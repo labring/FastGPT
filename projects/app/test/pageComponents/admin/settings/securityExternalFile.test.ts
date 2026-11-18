@@ -86,7 +86,11 @@ afterEach(async () => {
 
 /** 挂载真实表单并等待配置初始化，以验证隐藏输入与提交值之间的关系。 */
 const renderSettings = async (overrides: Record<string, unknown>) => {
-  mocks.effectiveConfig = resolveDomainEffectiveConfig({ domain: 'security', overrides });
+  mocks.effectiveConfig = resolveDomainEffectiveConfig({
+    domain: 'security',
+    overrides,
+    options: { strict: false }
+  });
   container = document.createElement('div');
   document.body.append(container);
   root = createRoot(container);
@@ -102,6 +106,41 @@ const changeTextarea = async (textarea: HTMLTextAreaElement, value: string) => {
 };
 
 describe('security allowlist controls', () => {
+  it.each([
+    { value: 'https://legacy.example.com', text: 'https://legacy.example.com' },
+    { value: { legacy: 'invalid' }, text: '{"legacy":"invalid"}' },
+    {
+      value: ['https://legacy.example.com', { legacy: 'invalid' }],
+      text: 'https://legacy.example.com\n{"legacy":"invalid"}'
+    }
+  ])('keeps malformed legacy lists editable: $text', async ({ value, text }) => {
+    await renderSettings({
+      allowedOriginsEnabled: true,
+      checkExternalFile: true,
+      allowedOrigins: value,
+      fileUrlWhitelist: value
+    });
+
+    const origins = container.querySelector<HTMLTextAreaElement>('[name="allowedOriginsText"]')!;
+    const whitelist = container.querySelector<HTMLTextAreaElement>(
+      '[name="fileUrlWhitelistText"]'
+    )!;
+    expect(origins.value).toBe(text);
+    expect(whitelist.value).toBe(text);
+
+    await changeTextarea(origins, 'https://repaired.example.com');
+    await changeTextarea(whitelist, 'cdn.example.com');
+    await act(async () => {
+      await mocks.save!();
+    });
+    expect(mocks.patch).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        allowedOrigins: ['https://repaired.example.com'],
+        fileUrlWhitelist: ['cdn.example.com']
+      })
+    );
+  });
+
   it('shows the allowlist only when enabled and retains it across disabling and saving', async () => {
     await renderSettings({ checkExternalFile: false, fileUrlWhitelist: ['cdn.example.com'] });
     const switchButton = container.querySelector<HTMLButtonElement>(

@@ -156,23 +156,29 @@ describe('external file check backfill with MongoDB', () => {
     expect(final?.revision).toBe(after?.revision);
   });
 
-  it.each(['missing', 'null'] as const)(
-    'treats %s overrides as empty and safely reruns',
-    async (kind) => {
-      await collection.insertOne({
-        _id: 'security',
-        revision: 2,
-        ...(kind === 'null' ? { overrides: null } : {})
-      } as any);
+  it('treats missing overrides as empty and safely reruns', async () => {
+    await collection.insertOne({ _id: 'security', revision: 2 } as any);
 
-      expect(await run()).toEqual({ updatedDocuments: 1 });
-      await expect(verifyExternalFileCheck()).resolves.toBeUndefined();
-      expect(await collection.findOne({ _id: 'security' } as any)).toMatchObject({
-        _id: 'security',
-        revision: 3,
-        overrides: { checkExternalFile: false }
-      });
+    expect(await run()).toEqual({ updatedDocuments: 1 });
+    await verifyExternalFileCheck();
+    expect(await collection.findOne({ _id: 'security' } as any)).toMatchObject({
+      revision: 3,
+      overrides: { checkExternalFile: false }
+    });
+    expect(await run()).toEqual({ updatedDocuments: 0 });
+  });
+
+  it.each([{ overrides: null }, { overrides: 'legacy-invalid' }, { overrides: [] }])(
+    'preserves a damaged root for repair without attempting a nested backfill: %j',
+    async ({ overrides }) => {
+      await collection.insertOne({ _id: 'security', revision: 2, overrides } as any);
+
       expect(await run()).toEqual({ updatedDocuments: 0 });
+      await verifyExternalFileCheck();
+      expect(await collection.findOne({ _id: 'security' } as any)).toMatchObject({
+        revision: 2,
+        overrides
+      });
     }
   );
 

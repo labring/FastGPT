@@ -103,7 +103,7 @@ const LimitsSettingComponent = () => {
     storage.isLoading ||
     vector.isLoading;
 
-  const { control, handleSubmit, reset } = useForm<LimitsConfigForm>({
+  const form = useForm<LimitsConfigForm>({
     defaultValues: {
       ...resource.effectiveConfig,
       ...performance.effectiveConfig,
@@ -113,6 +113,7 @@ const LimitsSettingComponent = () => {
       vectorRecallConcurrency: 0
     }
   });
+  const { control, handleSubmit, reset } = form;
 
   useEffect(() => {
     if (isLoading) return;
@@ -227,6 +228,7 @@ const LimitsSettingComponent = () => {
 
   return (
     <AdminSettingPage
+      form={form}
       headerTitle={t('admin:page_title_limits')}
       tocItems={tocItems}
       isLoading={isLoading}
@@ -276,6 +278,7 @@ const LimitsSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...numberInputProps}
                   min={1}
                   max={500}
@@ -302,6 +305,7 @@ const LimitsSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...numberInputProps}
                   min={1}
                   max={100}
@@ -328,6 +332,7 @@ const LimitsSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...numberInputProps}
                   min={1}
                   max={10000}
@@ -359,6 +364,7 @@ const LimitsSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...numberInputProps}
                   min={2}
                   max={20}
@@ -385,6 +391,7 @@ const LimitsSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...numberInputProps}
                   min={0}
                   max={10000}
@@ -414,6 +421,7 @@ const LimitsSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...numberInputProps}
                   min={0}
                   max={10000}
@@ -447,6 +455,7 @@ const LimitsSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...numberInputProps}
                   min={1}
                   max={10000}
@@ -473,6 +482,7 @@ const LimitsSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...numberInputProps}
                   min={1}
                   max={5000}
@@ -499,6 +509,7 @@ const LimitsSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <AdminNumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   maxW={'400px'}
                   min={0.01}
                   max={3650}
@@ -526,6 +537,7 @@ const LimitsSettingComponent = () => {
                 control={control}
                 render={({ field }) => (
                   <NumberInput
+                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                     {...numberInputProps}
                     min={1}
                     precision={0}
@@ -568,6 +580,7 @@ const LimitsSettingComponent = () => {
                   control={control}
                   render={({ field }) => (
                     <NumberInput
+                      isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                       {...numberInputProps}
                       min={0}
                       max={10000}
@@ -596,6 +609,7 @@ const LimitsSettingComponent = () => {
                   control={control}
                   render={({ field }) => (
                     <NumberInput
+                      isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                       {...numberInputProps}
                       min={0}
                       max={10000}
@@ -629,6 +643,7 @@ const LimitsSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...numberInputProps}
                   min={0}
                   max={5000}
@@ -658,6 +673,7 @@ const LimitsSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...numberInputProps}
                   min={0}
                   max={1000}
@@ -686,6 +702,7 @@ const LimitsSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...numberInputProps}
                   min={1}
                   max={100}
@@ -717,6 +734,7 @@ const LimitsSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...numberInputProps}
                   min={60}
                   max={6000}
@@ -743,6 +761,7 @@ const LimitsSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...numberInputProps}
                   min={1}
                   max={1048576}
@@ -769,6 +788,7 @@ const LimitsSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...numberInputProps}
                   min={1}
                   max={16384}
@@ -795,6 +815,7 @@ const LimitsSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...numberInputProps}
                   min={1}
                   max={10000000}
@@ -821,6 +842,7 @@ const LimitsSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...numberInputProps}
                   min={1}
                   max={5000000}
@@ -847,6 +869,7 @@ const LimitsSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...numberInputProps}
                   min={0}
                   max={10000000}
@@ -884,6 +907,7 @@ const LimitsSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...numberInputProps}
                   min={1}
                   max={100}
@@ -910,6 +934,7 @@ const LimitsSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...numberInputProps}
                   min={1}
                   max={100}
@@ -936,6 +961,7 @@ const LimitsSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...numberInputProps}
                   min={1}
                   max={100}
@@ -962,6 +988,7 @@ const LimitsSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...numberInputProps}
                   min={1}
                   max={100}
@@ -993,6 +1020,7 @@ const LimitsSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...numberInputProps}
                   min={100}
                   max={1000}
@@ -1020,6 +1048,7 @@ const LimitsSettingComponent = () => {
                 control={control}
                 render={({ field }) => (
                   <NumberInput
+                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                     {...numberInputProps}
                     min={0}
                     max={1000}
@@ -1059,6 +1088,7 @@ const LimitsSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...numberInputProps}
                   min={0}
                   max={50000}
@@ -1088,6 +1118,7 @@ const LimitsSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...numberInputProps}
                   min={1}
                   max={720}
@@ -1152,6 +1183,7 @@ const LimitsSettingComponent = () => {
                   control={control}
                   render={({ field }) => (
                     <NumberInput
+                      isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                       {...numberInputProps}
                       min={1}
                       max={50}

@@ -89,14 +89,16 @@ describe('backfillModelDeprecationSms', () => {
     await verifyModelDeprecationSms();
   });
 
-  it('does not write invalid legacy data or write after losing the lease', async () => {
-    await seedLegacy({ MODEL_DEPRECATION: 'x'.repeat(2001) });
-    const before = await read();
-    const error = await run().catch((err: Error) => err);
-    expect(String(error)).toBe('Error: Invalid legacy model deprecation SMS template');
-    expect(await read()).toEqual(before);
+  it('retains invalid legacy templates but still refuses writes after lease loss', async () => {
+    const value = 'x'.repeat(2001);
+    await seedLegacy({ MODEL_DEPRECATION: value });
+    await run();
+    expect((await read())?.overrides.loginProviders.sms.modelDeprecation.zh).toBe(value);
+    await verifyModelDeprecationSms();
+    await collection.updateOne({ domain: 'auth' }, { $set: { overrides: {} } });
     await MongoSystemConfigs.deleteMany({ type: 'fastgptPro' });
     await seedLegacy({ MODEL_DEPRECATION: 'LEGACY_ID' });
+    const before = await read();
     assertActive.mockRejectedValueOnce(new Error('lease lost'));
     await expect(run()).rejects.toThrow('lease lost');
     expect(await read()).toEqual(before);

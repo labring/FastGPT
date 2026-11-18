@@ -42,6 +42,54 @@ describe('rehomeAgentSandboxProxy', () => {
     await verifyAgentSandboxProxyMigration();
   });
 
+  it('imports proxy config for an enabled sandbox provider whose stored subservice lacks proxy fields', async () => {
+    await collection.updateOne(
+      { domain: 'subservice' },
+      {
+        $set: {
+          overrides: {
+            agentSandbox: {
+              provider: 'sealosdevbox',
+              sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+            }
+          }
+        }
+      }
+    );
+
+    expect(await run()).toEqual({ updatedDocuments: 1 });
+    expect(decryptDomainSecrets('subservice', (await read())?.overrides).agentSandbox).toEqual({
+      provider: 'sealosdevbox',
+      sealosdevbox: { baseUrl: 'https://devbox.example.test' },
+      proxy: {
+        wsUrl: legacyEnv.AGENT_SANDBOX_PROXY_URL,
+        previewUrl: legacyEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL,
+        secret: legacyEnv.AGENT_SANDBOX_PROXY_SECRET
+      }
+    });
+    await verifyAgentSandboxProxyMigration();
+  });
+
+  it('completes enabled sandbox proxy migration with warnings when legacy fields are missing', async () => {
+    await collection.updateOne(
+      { domain: 'subservice' },
+      {
+        $set: {
+          overrides: {
+            agentSandbox: {
+              provider: 'sealosdevbox',
+              sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+            }
+          }
+        }
+      }
+    );
+
+    await expect(run({})).resolves.toEqual({ updatedDocuments: 1 });
+    await expect(verifyAgentSandboxProxyMigration()).resolves.toBeUndefined();
+    expect((await read())?.overrides.agentSandbox.proxy.wsUrl).toBe('');
+  });
+
   it('preserves administrator values and explicit clears, including absent ENV', async () => {
     await collection.updateOne(
       { domain: 'subservice' },
@@ -77,18 +125,17 @@ describe('rehomeAgentSandboxProxy', () => {
     { AGENT_SANDBOX_PREVIEW_PROXY_URL: 'ws://wrong-protocol.test' },
     { AGENT_SANDBOX_PROXY_URL: 'wss://%invalid' },
     { AGENT_SANDBOX_PROXY_SECRET: 'private-short' }
-  ])(
-    'rejects malformed source without any partial write or credential disclosure: %j',
-    async (invalid) => {
-      const before = await read();
-      const error = await run({ ...legacyEnv, ...invalid }).catch((error: Error) => error);
-      expect(String(error)).toBe(
-        'Error: Invalid Agent Sandbox proxy configuration during migration'
-      );
-      expect(await read()).toEqual(before);
-      expect(assertActive).not.toHaveBeenCalled();
-    }
-  );
+  ])('retains malformed source fields without rejecting migration: %j', async (invalid) => {
+    await expect(run({ ...legacyEnv, ...invalid })).resolves.toEqual({ updatedDocuments: 1 });
+    await expect(verifyAgentSandboxProxyMigration()).resolves.toBeUndefined();
+    const proxy = decryptDomainSecrets('subservice', (await read())?.overrides).agentSandbox.proxy;
+    if (invalid.AGENT_SANDBOX_PROXY_URL !== undefined)
+      expect(proxy.wsUrl).toBe(invalid.AGENT_SANDBOX_PROXY_URL);
+    if (invalid.AGENT_SANDBOX_PREVIEW_PROXY_URL !== undefined)
+      expect(proxy.previewUrl).toBe(invalid.AGENT_SANDBOX_PREVIEW_PROXY_URL);
+    if (invalid.AGENT_SANDBOX_PROXY_SECRET !== undefined)
+      expect(proxy.secret).toBe(invalid.AGENT_SANDBOX_PROXY_SECRET);
+  });
 
   it.each([null, 'invalid', { secret: null }])(
     'does not normalize malformed stored proxy data: %j',
@@ -97,9 +144,11 @@ describe('rehomeAgentSandboxProxy', () => {
         { domain: 'subservice' },
         { $set: { 'overrides.agentSandbox.proxy': proxy } }
       );
-      const before = await read();
-      await expect(run()).rejects.toThrow('Invalid existing subservice configuration');
-      expect(await read()).toEqual(before);
+      await run();
+      const retained = decryptDomainSecrets('subservice', (await read())?.overrides).agentSandbox
+        .proxy;
+      if (proxy && typeof proxy === 'object') expect(retained).toMatchObject(proxy);
+      else expect(retained).toEqual(proxy);
     }
   );
 
@@ -158,8 +207,8 @@ describe('verifyAgentSandboxProxyMigration', () => {
       { domain: 'subservice' },
       { $set: { 'overrides.agentSandbox.proxy': { secret: 'short' } } }
     );
-    await expect(verifyAgentSandboxProxyMigration()).rejects.toThrow(
-      'Invalid Agent Sandbox proxy configuration after migration'
-    );
+    await expect(verifyAgentSandboxProxyMigration()).rejects.toThrow('migration is incomplete');
+    await run();
+    await expect(verifyAgentSandboxProxyMigration()).resolves.toBeUndefined();
   });
 });

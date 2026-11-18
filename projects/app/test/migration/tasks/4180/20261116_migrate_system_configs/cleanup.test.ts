@@ -1,3 +1,4 @@
+import { readMigrationDomainConfig } from '@/migration/tasks/4180/20261116_migrate_system_configs/validation';
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import {
   deprecatedOverridePaths,
@@ -321,7 +322,7 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
     expect((await cleanupInstanceConfigDeprecatedFields({ logger })).updatedDomains).toEqual([]);
   });
 
-  it('wraps schema rejection with the domain name for diagnosability', async () => {
+  it('cleans deprecated fields while retaining invalid current fields with warnings', async () => {
     // logUrl 属废弃字段会被剔除，但残留的 maxRunTimes=-1 违反 nonNegativeInteger
     // （0 是合法的"禁用"取值，不能用作非法样例）；
     // 后台任务的终审错误必须能定位到具体域，便于管理员修复后重试。
@@ -331,9 +332,10 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
       overrides: { workflow: { maxRunTimes: -1 }, chat: { logUrl: 'http://legacy' } }
     });
 
-    await expect(cleanupInstanceConfigDeprecatedFields({ logger })).rejects.toThrow(
-      /domain "performance"/
-    );
+    await cleanupInstanceConfigDeprecatedFields({ logger });
+    const doc = await MongoSystemInstanceConfig.findOne({ domain: 'performance' }).lean();
+    expect(doc?.overrides.workflow.maxRunTimes).toBe(-1);
+    expect(doc?.overrides.chat?.logUrl).toBeUndefined();
   });
 
   it('retries cleanup against the latest doc after a concurrent revision bump', async () => {
@@ -417,5 +419,64 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
     const doc = await MongoSystemInstanceConfig.findOne({ domain: 'security' }).lean();
     expect(doc?.explicitDefaultPaths).toEqual(['checkExternalFile']);
     expect((await verifyInstanceConfigDeprecatedFields()).remainingDocuments).toEqual([]);
+  });
+
+  it('cleans deprecated subservice fields for an enabled sandbox provider before proxy backfill', async () => {
+    await seedDirtyDoc({
+      domain: 'subservice',
+      revision: 1,
+      overrides: {
+        plugin: { remoteDebug: true },
+        agentSandbox: {
+          provider: 'sealosdevbox',
+          sealosdevbox: { baseUrl: 'https://devbox.example.test' },
+          proxy: { httpUrl: 'https://legacy-http-proxy.example.test' }
+        }
+      }
+    });
+
+    const result = await cleanupInstanceConfigDeprecatedFields({ logger });
+    expect(result.updatedDomains).toEqual(['subservice']);
+    expect(result.removedFieldCount).toBe(2);
+
+    const doc = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
+    expect(doc?.overrides).toEqual({
+      agentSandbox: {
+        provider: 'sealosdevbox',
+        sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+      }
+    });
+
+    // verify 阶段在 backfill 之后运行，仍要求完整代理配置
+    const beforeProxyBackfill = await verifyInstanceConfigDeprecatedFields();
+    expect(beforeProxyBackfill.remainingDocuments).toEqual([]);
+    expect(beforeProxyBackfill.invalidDomains).toEqual([]);
+  });
+
+  it('does not reject invalid provider baseUrl or proxy secret length on migration reads', () => {
+    expect(() =>
+      readMigrationDomainConfig({
+        domain: 'subservice',
+        overrides: {
+          agentSandbox: {
+            provider: 'sealosdevbox',
+            sealosdevbox: { baseUrl: '' }
+          }
+        }
+      })
+    ).not.toThrow();
+
+    expect(() =>
+      readMigrationDomainConfig({
+        domain: 'subservice',
+        overrides: {
+          agentSandbox: {
+            provider: 'sealosdevbox',
+            sealosdevbox: { baseUrl: 'https://devbox.example.test' },
+            proxy: { secret: 'too-short' }
+          }
+        }
+      })
+    ).not.toThrow();
   });
 });

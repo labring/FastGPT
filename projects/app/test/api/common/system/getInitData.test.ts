@@ -8,7 +8,6 @@ import { FastGPTFeConfigsSchema } from '@fastgpt/global/common/system/types';
 import type { GetSystemInitDataResponse } from '@fastgpt/global/openapi/common/system/api';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
-import { ZodError } from 'zod';
 import { serviceEnv } from '@fastgpt/service/env';
 import { postHealth } from '@fastgpt/service/thirdProvider/fastgptPro/api';
 import { appEnv } from '@/env';
@@ -606,12 +605,47 @@ describe('getInitData anonymous configuration filtering', () => {
     }
   );
 
-  it('reports invalid response data as an internal schema error', async () => {
-    global.feConfigs.limit.uploadFileMaxSize = Number.NaN;
-    const invalidResponse = await Call(handler, { auth, headers: {} });
+  it.each(['title', 'limit'] as const)(
+    'omits an invalid public %s projection without blocking the repair UI or changing stored values',
+    async (field) => {
+      if (field === 'title') global.feConfigs.systemTitle = 123 as never;
+      else global.feConfigs.limit.uploadFileMaxSize = Number.NaN;
+      const original = structuredClone(global.feConfigs);
+      const result = await Call(handler, { auth, headers: {} });
 
-    expect(invalidResponse.code).toBe(500);
-    expect(invalidResponse.error).toBeInstanceOf(ZodError);
+      expect(result.code).toBe(200);
+      expect(result.data.feConfigs).not.toHaveProperty(field === 'title' ? 'systemTitle' : 'limit');
+      expect(result.data.feConfigs.systemDescription).toBe(publicConfig.systemDescription);
+      expect(JSON.stringify(result.data)).not.toContain('private');
+      expect(global.feConfigs).toEqual(original);
+    }
+  );
+
+  it('omits invalid public plans without changing the stored configuration', async () => {
+    const config = getSystemInstanceConfig();
+    const previous = config.commercial.subPlans;
+    serviceEnv.PRO_URL = 'http://127.0.0.1:3001';
+    const invalid = { extraDatasetSize: { price: Number.NaN } };
+    config.commercial.subPlans = invalid;
+    try {
+      const response = await Call(handler, { auth, headers: {} });
+      expect(response.code).toBe(200);
+      expect(response.data).not.toHaveProperty('subPlans');
+      expect(config.commercial.subPlans).toBe(invalid);
+    } finally {
+      config.commercial.subPlans = previous;
+    }
+  });
+
+  it('still reports response invariants outside configuration as internal errors', async () => {
+    const previous = global.systemVersion;
+    global.systemVersion = 123 as never;
+    try {
+      const response = await Call(handler, { auth, headers: {} });
+      expect(response.code).toBe(500);
+    } finally {
+      global.systemVersion = previous;
+    }
   });
 
   it('snapshots feConfigs, subPlans and bufferId atomically when config rotates during async auth', async () => {

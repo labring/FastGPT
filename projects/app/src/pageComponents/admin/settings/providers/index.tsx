@@ -1,3 +1,4 @@
+import { Box, Text } from '@chakra-ui/react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useEffect, useMemo } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
@@ -32,11 +33,12 @@ const ProvidersSettingComponent = () => {
     [showWorkflowVariables, t]
   );
 
-  const { control, handleSubmit, reset, setValue } = useForm<ProvidersConfigForm>({
+  const form = useForm<ProvidersConfigForm>({
     defaultValues: {
       externalProviderWorkflowVariables: effectiveConfig.externalProviderWorkflowVariables
     }
   });
+  const { control, handleSubmit, reset, setValue } = form;
 
   useEffect(() => {
     if (effectiveConfig && Object.keys(effectiveConfig).length > 0) {
@@ -65,6 +67,7 @@ const ProvidersSettingComponent = () => {
 
   return (
     <AdminSettingPage
+      form={form}
       headerTitle={t('admin:page_title_providers')}
       tocItems={tocItems}
       isLoading={isLoading}
@@ -77,16 +80,31 @@ const ProvidersSettingComponent = () => {
           id="workflowVariables"
           title={t('admin:provider_section_workflow_vars')}
         >
-          <ThirdPartyVariables
-            value={externalProviderWorkflowVariables}
-            onChange={(val) =>
-              setValue(
-                'externalProviderWorkflowVariables',
-                val.map((item) => ({ ...item, url: item.url ?? '' }))
-              )
+          <Box
+            borderWidth={
+              form.getFieldState('externalProviderWorkflowVariables', form.formState).error
+                ? '1px'
+                : undefined
             }
-            title={t('admin:global_variable_list')}
-          />
+            borderColor={'red.500'}
+            borderRadius={'md'}
+          >
+            <ThirdPartyVariables
+              value={externalProviderWorkflowVariables}
+              onChange={(val) =>
+                setValue(
+                  'externalProviderWorkflowVariables',
+                  val.map((item) => ({ ...item, url: item.url ?? '' }))
+                )
+              }
+              title={t('admin:global_variable_list')}
+            />
+            {form.getFieldState('externalProviderWorkflowVariables', form.formState).error && (
+              <Text color={'red.500'} fontSize={'xs'}>
+                {t('admin:failed_to_save_settings')}
+              </Text>
+            )}
+          </Box>
         </AdminSettingSection>
       )}
     </AdminSettingPage>

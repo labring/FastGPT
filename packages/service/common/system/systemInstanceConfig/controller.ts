@@ -139,8 +139,18 @@ export const formatDomainConfigForAdmin = <T extends SystemInstanceConfigDomainK
   edition: SystemInstanceConfigEdition
 ): AdminDomainConfigResult<T> => {
   const { domain } = result;
-  const overrides = markDomainSecrets(domain, result.overrides);
-  const effectiveConfig = markDomainSecrets(domain, result.effectiveConfig);
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    !(value instanceof Date) &&
+    !(value instanceof RegExp);
+
+  // 根值损坏时运行期快照仍保留异常形态以触发安全拒绝；管理读取降级为可编辑空对象供管理员覆盖修复。
+  const overrides = isRecord(result.overrides) ? markDomainSecrets(domain, result.overrides) : {};
+  const effectiveConfig = isRecord(result.effectiveConfig)
+    ? markDomainSecrets(domain, result.effectiveConfig)
+    : markDomainSecrets(domain, getDomainDefaultConfig(domain));
 
   // Pro 也只暴露注册字段，避免已退役的兼容字段重新进入管理表单。
   return {
@@ -234,7 +244,7 @@ export const getDomainConfig = async <T extends SystemInstanceConfigDomainKey>(
   const doc = await MongoSystemInstanceConfig.findOne({ domain }).lean();
 
   const revision = doc?.revision ?? 0;
-  const overrides = decryptDomainSecrets(domain, doc?.overrides ?? {}) as DeepPartial<
+  const overrides = decryptDomainSecrets(domain, doc ? doc.overrides : {}) as DeepPartial<
     SystemInstanceConfigDomainMap[T]
   >;
   const effectiveConfig = resolveDomainEffectiveConfig({
@@ -406,7 +416,12 @@ export const batchUpdateDomainConfigs = async (
             return normalizeSubPlansInput(subPlans);
           } catch (error) {
             if (error instanceof ZodError) {
-              throw new ApiRequestInputParseError(error, { inputSource: 'body' });
+              throw new ApiRequestInputParseError(
+                new ZodError(
+                  error.issues.map((issue) => ({ ...issue, path: ['subPlans', ...issue.path] }))
+                ),
+                { inputSource: 'body' }
+              );
             }
             throw error;
           }
@@ -433,17 +448,29 @@ export const batchUpdateDomainConfigs = async (
       );
     }
 
+    /** 请求错误携带域前缀，供多域页面定位到对应表单字段；不回传校验输入值。 */
+    const configInputError = (error: ZodError) =>
+      new ApiRequestInputParseError(
+        new ZodError(error.issues.map((issue) => ({ ...issue, path: [domain, ...issue.path] }))),
+        { inputSource: 'body' }
+      );
+
     // overrides 内容是 record<string, unknown>，外壳 Schema 不校验域内叶子。
     // 先在请求边界用域 override Schema 校验本次提交，非法值归为 400；
-    // 合并后的校验仍保留普通 ZodError，用于暴露数据库坏记录或内部不变量错误（500）。
+    // 合并后的业务校验同样返回字段错误，管理员可以在页面修复旧值。
     try {
       if (domain === 'site' && Object.hasOwn(submittedOverrides, 'publicUrl')) {
-        SitePublicUrlSchema.parse(submittedOverrides.publicUrl);
+        const result = SitePublicUrlSchema.safeParse(submittedOverrides.publicUrl);
+        if (!result.success) {
+          throw new ZodError(
+            result.error.issues.map((issue) => ({ ...issue, path: ['publicUrl', ...issue.path] }))
+          );
+        }
       }
       parseDomainOverrides({ domain, overrides: submittedOverrides });
     } catch (error) {
       if (error instanceof ZodError) {
-        throw new ApiRequestInputParseError(error, { inputSource: 'body' });
+        throw configInputError(error);
       }
       throw error;
     }
@@ -492,31 +519,17 @@ export const batchUpdateDomainConfigs = async (
       existingOverrides: decryptDomainSecrets(domain, existing?.overrides ?? {}),
       submittedOverrides
     });
-    const parsedOverrides = parseDomainOverrides({ domain, overrides: mergedOverrides });
+    if (domain === 'commercial' && normalizedSubPlans !== undefined) {
+      (mergedOverrides as DeepPartial<SystemInstanceConfigDomainMap['commercial']>).subPlans =
+        normalizedSubPlans;
+    }
+    let parsedOverrides;
     let effectiveConfig;
     try {
+      parsedOverrides = parseDomainOverrides({ domain, overrides: mergedOverrides });
       effectiveConfig = resolveDomainEffectiveConfig({ domain, overrides: parsedOverrides });
     } catch (error) {
-      // 有效配置由默认值 + 库中现值 + 本次补丁共同决定，错误展示路径不一定出现在补丁里。
-      // 用同一份库中现值单独校验一次：基线有效而合并后失败，说明是本次提交触发，归为 400；
-      // 基线本身无效则是数据库坏记录或内部不变量错误，保留 500。
-      if (error instanceof ZodError) {
-        let previousConfigValid = false;
-        try {
-          const previousOverrides = parseDomainOverrides({
-            domain,
-            overrides: decryptDomainSecrets(domain, existing?.overrides ?? {}),
-            options: { strict: false }
-          });
-          resolveDomainEffectiveConfig({ domain, overrides: previousOverrides });
-          previousConfigValid = true;
-        } catch {
-          // 基线校验失败属于内部数据问题，保留下面原始 merged 校验错误。
-        }
-        if (previousConfigValid) {
-          throw new ApiRequestInputParseError(error, { inputSource: 'body' });
-        }
-      }
+      if (error instanceof ZodError) throw configInputError(error);
       throw error;
     }
 
@@ -526,9 +539,15 @@ export const batchUpdateDomainConfigs = async (
       try {
         assertStorageDownloadConfig(effectiveConfig);
       } catch (error) {
-        throw new ApiHttpError(
-          400,
-          error instanceof Error ? error.message : 'Invalid storage download config'
+        const message = error instanceof Error ? error.message : 'Invalid storage download config';
+        throw configInputError(
+          new ZodError([
+            {
+              code: 'custom',
+              path: [message.includes('R2') ? 'cdnEndpoint' : 'externalEndpoint'],
+              message
+            }
+          ])
         );
       }
     }
@@ -636,7 +655,7 @@ export const batchUpdateDomainConfigs = async (
 /**
  * 一次性获取全部 17 个 scope 并合成完整快照。
  * 供服务启动、Worker 进程同步以及全局运行时配置读取。
- * 发生错误时向上抛出，保留调用方已有的上一成功快照，绝不降级覆盖为全默认配置。
+ * 读取不做配置业务约束校验并保留原值；数据库读取等操作错误仍抛出，保留上一成功快照。
  *
  * 只按「Schema 默认值 + 数据库 overrides」合成，不再拼接 ENV；旧 ENV 只在首次迁移时写入。
  */

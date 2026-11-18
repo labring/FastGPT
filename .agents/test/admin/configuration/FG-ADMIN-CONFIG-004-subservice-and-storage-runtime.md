@@ -110,7 +110,8 @@ routes:
 related:
   - "FG-ADMIN-CONFIG-001"
   - "FG-ADMIN-CONFIG-003"
-baseline: "897611e5cdd2b4d5617c5104d0d9bb5b9ebd8a6c"
+  - "FG-INFRA-STORAGE-001"
+baseline: "f01326c1da6514b54e4e197ba32da84f018d101d"
 ---
 
 # 子服务与存储策略：AI Proxy、代码沙箱与下载模式
@@ -125,6 +126,7 @@ baseline: "897611e5cdd2b4d5617c5104d0d9bb5b9ebd8a6c"
 
 - 环境与版本：社区版或商业版均执行 C1/C4/C10/C11/C12；Agent Sandbox 配置和运行场景在社区版、商业版均可执行，不以 PRO_URL 或 License 限制其配置页；商业模型场景按实际所需部署能力准备；准备可用的 code-sandbox 服务、一个可记录请求头和路径的 AI Proxy mock、一个可响应的 MCP SSE/HTTP mock、MinIO 环境，另有 R2 环境时执行 C7 的 R2 分支。准备一个系统 OpenAI 兼容模型和带代码节点的测试应用 Wc；准备一个 1MB 确定性文件和一张测试头像。当前字段归属：Code Sandbox 的 enabled/url/token、MCP 的 enabled/sseProxyUrl 均由实例配置提供；AI Proxy 的 endpoint/token、Plugin 的 baseUrl/token 由 ENV 提供且无对应管理页/本地开关；Agent Sandbox 的 provider Token 仍在实例配置中。
 - 测试数据：记录 `subservice`、`storage` 的 revision 和当前值；记录 `AIPROXY_API_TOKEN`、`PLUGIN_TOKEN` 是否存在（只记录存在性，不记录凭据），记录 AI Proxy mock 请求计数、code-sandbox 请求计数、MinIO/R2 endpoint、当前 `STORAGE_VENDOR`、`FILE_DOWNLOAD_PUBLIC_URL_PREFIX`。准备短链所需的真实文件对象和头像对象，所有对象键带本次 run 前缀。
+- C5/C6/C8/C9 的下载模式对照使用已知 MIME 的普通 TXT 文件和 PNG 头像。HTML、SVG 等主动内容及历史类型错配沿用 FG-INFRA-STORAGE-001 的预览隔离断言，其中 C6/C7 分别覆盖下载模式和 App/Pro 图片入口。
 - 复位约定：每个子场景结束后通过 Admin API 恢复 D0（端点、enabled、MCP 地址和 Agent Sandbox 代理/Provider），恢复本轮修改过的 ENV 并重启；删除测试对象。AI Proxy 缺少 ENV 后的外呼可能失败，不要求模型回答成功，只要求没有发往 mock、没有携带 Token。C8 修改 endpoint 后要恢复并确认 bucket 使用新配置。配置独占串行，全部 scope 的加密快照及本轮对象/模型/App/chat/alias ID 列表留在本轮证据目录，清理不触及其他数据。
 - 快照与恢复遵循 FG-ADMIN-CONFIG-001 的 BSON 类型保留、公共配置锁、精确 CAS 和长窗口 License metadata 例外；短请求拒绝仍严格零写，不以普通 JSON 基线恢复文档，不回滚正常 License 验签。
 - 验证能力：浏览器可操作子服务页/核心配置页并读取 Toast；fake AI Proxy、fake code-sandbox 和 MCP mock 记录请求；Mongo 只读查询配置；对象存储可查询对象；日志按 requestId/时间窗读取 `getAiProxyBaseUrl`、`S3` 等 callsite。不得在文档保存 mock 的 Authorization 原值。
@@ -167,7 +169,7 @@ baseline: "897611e5cdd2b4d5617c5104d0d9bb5b9ebd8a6c"
 | C3 | API + mock + log | 缺少任一 ENV 后 mock 请求计数不增加，任何外呼/错误日志都不出现代理 Token；若请求回落到 `https://api.openai.com/v1`，这是允许的行为，但不要求网络成功。不得因为“模型请求失败”把配置安全断言判为通过或失败。 | mock 计数、响应/错误、日志中的 baseUrl 与脱敏后的 Authorization。 |
 | C4 | UI + DB | 空 provider baseUrl、启用时不完整代理或不足 32 字符的非空代理 secret 均被拒绝，无成功 Toast、revision 不变；完整代理和合法 provider 配置保存成功；省略敏感字段保留原加密值；合法既有代理下切 `none` 成功。社区版与商业版均可进入页面并保存 all 字段，重启后 provider 读取为 DB 值；没有真实 provider 时运行变体阻塞，不能把“配置已保存”当成沙箱可运行。 | 保存响应/Toast、DB、重启后 sandbox 能力/日志。 |
 | C5 | API + storage | 短链返回 HTTP 200，无 `Location`，正文哈希与上传文件一致；响应由 FastGPT 代理，不把对象存储内部地址暴露给客户端。 | 短链响应、对象存储对象、哈希。 |
-| C6 | API + storage | 短链返回 302，`Cache-Control: no-store`，Location 的 host 为 externalEndpoint（配置 CDN 时为 CDN host），带预签名参数；TTL 不超过固定 30 秒且不超过短链本身剩余有效期（解析签发时间和到期参数，允许 SDK 秒级取整）；跟随 Location 下载的字节与原文一致。 | 两次 HTTP 响应、Location 解析、下载哈希。 |
+| C6 | API + storage | 普通 TXT 短链返回 302，`Cache-Control: no-store`，Location 的 host 为 externalEndpoint（配置 CDN 时为 CDN host），带预签名参数；TTL 不超过固定 30 秒且不超过短链本身剩余有效期（解析签发时间和到期参数，允许 SDK 秒级取整）；跟随 Location 下载的字节与原文一致。主动文件走代理并在最终响应带隔离头，按 FG-INFRA-STORAGE-001/C6 验证。 | 两次 HTTP 响应、Location 解析、下载哈希。 |
 | C7 | API + DB | 7a/7b/7c 均返回 HTTP/业务 code 400，storage revision 不变；7d 成功并保存 mode/endpoint。 | update 响应、storage 文档。 |
 | C8 | API + storage + DB | 改 endpoint 后无需重启，新短链和旧短链都按当前 DB endpoint 生成 Location；S3 bucket/头像单例已重建，不继续使用旧 host。把 ENV 改为 short-proxy 并重启后仍返回 302，证明 ENV 不覆盖 DB。 | Location host、旧/新短链响应、重启后结果、日志。 |
 | C9 | API + storage | short-redirect 下头像请求返回 301，Location 指向公开存储/CDN host；short-proxy 下返回 200 和图片字节。两种模式都不应把私有 bucket 签名永久写入业务数据。 | 头像响应、对象键、DB site 引用。 |

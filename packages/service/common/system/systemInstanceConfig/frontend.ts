@@ -29,12 +29,12 @@ export const buildSystemFrontendConfig = (
 ): FastGPTFeConfigsType => {
   const commercialService = context.commercialService ?? Boolean(serviceEnv.PRO_URL);
   const feature = resolveFeatureConfigForEdition({
-    config: instanceConfig.feature,
+    config: instanceConfig?.feature,
     commercialService
   });
-  const licenseData = commercialService ? instanceConfig.license.data : undefined;
+  const licenseData = commercialService ? instanceConfig?.license?.data : undefined;
   const proEnv = commercialService
-    ? instanceConfig.proEnv
+    ? instanceConfig?.proEnv
     : {
         teamMode: 'single' as const,
         ssoUrl: '',
@@ -44,40 +44,40 @@ export const buildSystemFrontendConfig = (
         showWecomConfig: false
       };
   const isPlus = isLicenseActive(licenseData);
-  const payConfig = buildPayConfig(instanceConfig.commercial);
+  const payConfig = buildPayConfig(instanceConfig?.commercial);
   const authMethods = buildAuthMethodProjection({
-    auth: instanceConfig.auth,
+    auth: instanceConfig?.auth,
     legacyRegisterMethods: proEnv.teamMode === 'sync' ? ['sync'] : []
   });
   const pluginRemoteDebug = context.pluginRemoteDebug ?? false;
   const feConfigs: FastGPTFeConfigsType = {
     // 权威数据源：优先从 SystemInstanceConfig 读取
-    systemTitle: instanceConfig.site.name,
-    systemDescription: instanceConfig.site.description,
-    favicon: instanceConfig.site.favicon || '/favicon.ico',
-    docUrl: instanceConfig.site.docUrl,
-    loginGuideDocUrl: instanceConfig.site.loginGuideDocUrl,
-    concatMd: instanceConfig.site.concatMd,
-    appTemplateCourse: instanceConfig.site.appTemplateCourse,
+    systemTitle: instanceConfig?.site?.name,
+    systemDescription: instanceConfig?.site?.description,
+    favicon: instanceConfig?.site?.favicon || '/favicon.ico',
+    docUrl: instanceConfig?.site?.docUrl,
+    loginGuideDocUrl: instanceConfig?.site?.loginGuideDocUrl,
+    concatMd: instanceConfig?.site?.concatMd,
+    appTemplateCourse: instanceConfig?.site?.appTemplateCourse,
     marketplaceUrl: serviceEnv.MARKETPLACE_URL,
-    navbarItems: instanceConfig.site.navbarItems,
+    navbarItems: instanceConfig?.site?.navbarItems,
 
     // 团队模式由 Pro ENV 控制，Pro 重启时刷新此共享快照；实例 auth.teamMode 不能覆盖。
     teamMode: proEnv.teamMode ?? 'single',
     wecomLoginAutoRedirect: context.wecomLoginAutoRedirect ?? false,
-    oauth: buildOauthFeConfig(instanceConfig.auth),
+    oauth: buildOauthFeConfig(instanceConfig?.auth),
     sso: {
-      title: instanceConfig.auth.sso.title,
-      icon: instanceConfig.auth.sso.icon,
-      autoLogin: instanceConfig.auth.sso.autoLogin,
-      disablePasswordForSsoUsers: instanceConfig.auth.sso.disablePasswordForSsoUsers
+      title: instanceConfig?.auth?.sso?.title,
+      icon: instanceConfig?.auth?.sso?.icon,
+      autoLogin: instanceConfig?.auth?.sso?.autoLogin,
+      disablePasswordForSsoUsers: instanceConfig?.auth?.sso?.disablePasswordForSsoUsers
     },
     login_method: authMethods.login_method,
     register_method: authMethods.register_method,
     find_password_method: authMethods.find_password_method,
     bind_notification_method: authMethods.bind_notification_method,
     accountCancellation: {
-      enabled: instanceConfig.auth.accountCancellation.enabled
+      enabled: instanceConfig?.auth?.accountCancellation?.enabled
     },
 
     hideChatCopyrightSetting: feature.hideChatCopyrightSetting,
@@ -98,45 +98,51 @@ export const buildSystemFrontendConfig = (
     show_enterprise_auth: Boolean(proEnv.show_enterprise_auth),
     enableSaasAdminConfig: serviceEnv.ENABLE_SAAS_ADMIN_CONFIG,
 
-    show_coupon: instanceConfig.commercial.showCoupon,
-    show_discount_coupon: instanceConfig.commercial.showDiscountCoupon,
+    show_coupon: instanceConfig?.commercial?.showCoupon,
+    show_discount_coupon: instanceConfig?.commercial?.showDiscountCoupon,
     show_pay: hasPayChannel(payConfig),
     payConfig,
-    payFormUrl: instanceConfig.commercial.payFormUrl,
+    payFormUrl: instanceConfig?.commercial?.payFormUrl,
     // 沙箱免费提示仍以 ENV 为权威，未迁入实例配置（Schema 无消费点）。
 
-    uploadFileMaxSize: instanceConfig.resource.uploadFileMaxSize,
-    uploadFileMaxAmount: instanceConfig.resource.uploadFileMaxAmount,
+    uploadFileMaxSize: instanceConfig?.resource?.uploadFileMaxSize,
+    uploadFileMaxAmount: instanceConfig?.resource?.uploadFileMaxAmount,
 
-    fileUrlWhitelist: instanceConfig.security.fileUrlWhitelist,
-    externalProviderWorkflowVariables: instanceConfig.providers.externalProviderWorkflowVariables,
+    fileUrlWhitelist: instanceConfig?.security?.fileUrlWhitelist,
+    externalProviderWorkflowVariables: instanceConfig?.providers?.externalProviderWorkflowVariables,
 
     // 权威数据源：实例配置优先（含已迁入的 ENV 初值及管理员显式清空的空值）
-    customApiDomain: instanceConfig.site.customApiDomain,
-    customSharePageDomain: instanceConfig.site.customSharePageDomain,
-    customDomain: buildCustomDomainFeConfig(instanceConfig.site.customDomain),
-    botIframeUrl: instanceConfig.site.botIframeUrl,
-    scripts: instanceConfig.site.scripts,
+    customApiDomain: instanceConfig?.site?.customApiDomain,
+    customSharePageDomain: instanceConfig?.site?.customSharePageDomain,
+    customDomain: buildCustomDomainFeConfig(instanceConfig?.site?.customDomain),
+    botIframeUrl: instanceConfig?.site?.botIframeUrl,
+    scripts: instanceConfig?.site?.scripts,
     mcpServerProxyEndpoint:
-      instanceConfig.subservice.mcp.enabled &&
+      instanceConfig?.subservice?.mcp?.enabled &&
+      typeof instanceConfig?.subservice?.mcp?.sseProxyUrl === 'string' &&
       isValidServiceBaseUrl(instanceConfig.subservice.mcp.sseProxyUrl)
-        ? instanceConfig.subservice.mcp.sseProxyUrl.trim()
+        ? instanceConfig?.subservice?.mcp?.sseProxyUrl?.trim()
         : undefined,
     codeSandboxEnabled:
-      instanceConfig.subservice.codeSandbox.enabled &&
+      instanceConfig?.subservice?.codeSandbox?.enabled &&
+      typeof instanceConfig?.subservice?.codeSandbox?.url === 'string' &&
       isValidServiceBaseUrl(instanceConfig.subservice.codeSandbox.url) &&
+      typeof instanceConfig?.subservice?.codeSandbox?.token === 'string' &&
       Boolean(instanceConfig.subservice.codeSandbox.token.trim()),
     limit: {
       skillSandboxMaxBytes:
-        Math.round((instanceConfig.subservice.agentSandbox.common.storageSizeGi * 1024) / 2 - 150) *
+        Math.round(
+          (instanceConfig?.subservice?.agentSandbox?.common?.storageSizeGi * 1024) / 2 - 150
+        ) *
         1024 ** 2,
 
-      uploadFileMaxSize: instanceConfig.resource.uploadFileMaxSize,
-      uploadFileMaxAmount: instanceConfig.resource.uploadFileMaxAmount,
-      maxFolderDepth: instanceConfig.resource.maxFolderDepth,
-      exportDatasetLimitMinutes: instanceConfig.resource.exportDatasetLimitMinutes,
-      websiteSyncLimitMinuted: instanceConfig.resource.websiteSyncLimitMinuted,
-      workflowParallelRunMaxConcurrency: instanceConfig.performance.workflow.parallelMaxConcurrency
+      uploadFileMaxSize: instanceConfig?.resource?.uploadFileMaxSize,
+      uploadFileMaxAmount: instanceConfig?.resource?.uploadFileMaxAmount,
+      maxFolderDepth: instanceConfig?.resource?.maxFolderDepth,
+      exportDatasetLimitMinutes: instanceConfig?.resource?.exportDatasetLimitMinutes,
+      websiteSyncLimitMinuted: instanceConfig?.resource?.websiteSyncLimitMinuted,
+      workflowParallelRunMaxConcurrency:
+        instanceConfig?.performance?.workflow?.parallelMaxConcurrency
     },
     isPlus,
     // 仅表示是否接入 pro 服务（PRO_URL 已配置），与授权是否有效无关
@@ -147,20 +153,20 @@ export const buildSystemFrontendConfig = (
     pluginRemoteDebug,
     disableMarketplace: context.disableMarketplace ?? false,
     show_agent_sandbox_free_tip: serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP,
-    show_agent_sandbox: instanceConfig.subservice.agentSandbox.provider !== 'none',
-    showCustomPdfParse: instanceConfig.providers.documentParse.provider !== 'none',
-    customPdfParsePrice: instanceConfig.providers.documentParse.customPdf.price,
+    show_agent_sandbox: instanceConfig?.subservice?.agentSandbox?.provider !== 'none',
+    showCustomPdfParse: instanceConfig?.providers?.documentParse?.provider !== 'none',
+    customPdfParsePrice: instanceConfig?.providers?.documentParse?.customPdf?.price,
     show_outlink_brand: serviceEnv.SHOW_OUTLINK_BRAND,
     show_git: serviceEnv.PRO_URL ? (context.showGit ?? false) : true,
     chineseRedirectUrl: context.chineseRedirectUrl,
     login2faEnabled: proEnv.login2faEnabled,
     showWecomConfig: proEnv.showWecomConfig,
-    agentSandboxProxyUrl: instanceConfig.subservice.agentSandbox.proxy.wsUrl
+    agentSandboxProxyUrl: instanceConfig?.subservice?.agentSandbox?.proxy?.wsUrl
   };
   feConfigs.sso = { ...feConfigs.sso, enabled: Boolean(proEnv.ssoUrl) };
   if (
     !isPlus &&
-    instanceConfig.site.loginGuideDocUrl ===
+    instanceConfig?.site?.loginGuideDocUrl ===
       'https://doc.fastgpt.io/zh-CN/guide/version/cloud/faq#%E8%B4%A6%E5%8F%B7%E7%99%BB%E5%BD%95%E9%97%AE%E9%A2%98'
   ) {
     feConfigs.loginGuideDocUrl =

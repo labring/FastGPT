@@ -108,13 +108,14 @@ const AuthSettingComponent = () => {
     ]
   );
 
-  const { control, handleSubmit, reset, register, setValue } = useForm<AuthConfigForm>({
+  const form = useForm<AuthConfigForm>({
     defaultValues: {
       ...effectiveConfig,
       passwordLoginMinuteLimitCount: 10,
       maxLoginSession: 10
     }
   });
+  const { control, handleSubmit, reset, register, setValue } = form;
 
   const emailRegister = useWatch({ control, name: 'loginProviders.email.register' });
   const ssoAutoLogin = useWatch({ control, name: 'sso.autoLogin' });
@@ -148,12 +149,20 @@ const AuthSettingComponent = () => {
             status: 'error',
             title: t('admin:fast_login_entries_must_be_valid_json_array')
           });
+          form.setError('fastLogin', {
+            type: 'validate',
+            message: t('admin:fast_login_entries_must_be_valid_json_array')
+          });
           throw new ToastHandledError('Invalid fastLogin JSON');
         }
         if (!Array.isArray(fastLogin)) {
           toast({
             status: 'error',
             title: t('admin:fast_login_entries_must_be_valid_json_array')
+          });
+          form.setError('fastLogin', {
+            type: 'validate',
+            message: t('admin:fast_login_entries_must_be_valid_json_array')
           });
           throw new ToastHandledError('Invalid fastLogin JSON');
         }
@@ -215,6 +224,7 @@ const AuthSettingComponent = () => {
 
   return (
     <AdminSettingPage
+      form={form}
       headerTitle={t('admin:page_title_auth')}
       tocItems={tocItems}
       isLoading={isLoading}
@@ -234,6 +244,7 @@ const AuthSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   variant={'whiteOutline'}
                   maxW={'400px'}
                   min={0}
@@ -271,6 +282,7 @@ const AuthSettingComponent = () => {
                 control={control}
                 render={({ field }) => (
                   <NumberInput
+                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                     variant={'whiteOutline'}
                     min={1}
                     max={100}
@@ -297,6 +309,7 @@ const AuthSettingComponent = () => {
                 control={control}
                 render={({ field }) => (
                   <NumberInput
+                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                     variant={'whiteOutline'}
                     min={1}
                     max={100}
@@ -329,6 +342,7 @@ const AuthSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <AdminSwitchRow
+                  name={field.name}
                   label={t('admin:enable_account_cancellation')}
                   tooltip={t('admin:allow_users_to_self_submit_account_cancellation_requests')}
                   isChecked={field.value}
@@ -347,19 +361,37 @@ const AuthSettingComponent = () => {
               label={t('admin:cancellation_request_chinese_template')}
               tooltip={t('admin:sms_template_id_for_cancellation_submission_chinese')}
             >
-              <Input {...register('accountCancellation.cancellationSm.zh')} placeholder="SMS_xxx" />
+              <Input
+                isInvalid={Boolean(
+                  form.getFieldState('accountCancellation.cancellationSm.zh', form.formState).error
+                )}
+                {...register('accountCancellation.cancellationSm.zh')}
+                placeholder="SMS_xxx"
+              />
             </AdminFormItem>
             <AdminFormItem
               label={t('admin:cancellation_reminder_chinese_template')}
               tooltip={t('admin:sms_template_id_for_cancellation_cooling_off_reminder_chines')}
             >
-              <Input {...register('accountCancellation.reminderSm.zh')} placeholder="SMS_xxx" />
+              <Input
+                isInvalid={Boolean(
+                  form.getFieldState('accountCancellation.reminderSm.zh', form.formState).error
+                )}
+                {...register('accountCancellation.reminderSm.zh')}
+                placeholder="SMS_xxx"
+              />
             </AdminFormItem>
             <AdminFormItem
               label={t('admin:same_day_cancellation_chinese_template')}
               tooltip={t('admin:sms_template_id_for_cancellation_effective_date_chinese')}
             >
-              <Input {...register('accountCancellation.todaySm.zh')} placeholder="SMS_xxx" />
+              <Input
+                isInvalid={Boolean(
+                  form.getFieldState('accountCancellation.todaySm.zh', form.formState).error
+                )}
+                {...register('accountCancellation.todaySm.zh')}
+                placeholder="SMS_xxx"
+              />
             </AdminFormItem>
           </SimpleGrid>
         </AdminSettingSection>
@@ -374,6 +406,7 @@ const AuthSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <AdminSwitchRow
+                  name={field.name}
                   label={t('admin:enable_email_self_registration')}
                   tooltip={t('admin:allow_users_to_register_with_email')}
                   isChecked={field.value}
@@ -403,31 +436,58 @@ const AuthSettingComponent = () => {
               label={t('admin:login_code_chinese_template')}
               tooltip={t('admin:sms_template_id_for_login_chinese')}
             >
-              <Input {...register('loginProviders.sms.login.zh')} placeholder="SMS_xxx" />
+              <Input
+                isInvalid={Boolean(
+                  form.getFieldState('loginProviders.sms.login.zh', form.formState).error
+                )}
+                {...register('loginProviders.sms.login.zh')}
+                placeholder="SMS_xxx"
+              />
             </AdminFormItem>
             <AdminFormItem
               label={t('admin:registration_code_chinese_template')}
               tooltip={t('admin:sms_template_id_for_registration_chinese')}
             >
-              <Input {...register('loginProviders.sms.register.zh')} placeholder="SMS_xxx" />
+              <Input
+                isInvalid={Boolean(
+                  form.getFieldState('loginProviders.sms.register.zh', form.formState).error
+                )}
+                {...register('loginProviders.sms.register.zh')}
+                placeholder="SMS_xxx"
+              />
             </AdminFormItem>
             <AdminFormItem
               label={t('admin:reset_password_chinese_template')}
               tooltip={t('admin:sms_template_id_for_password_reset_chinese')}
             >
-              <Input {...register('loginProviders.sms.resetPassword.zh')} placeholder="SMS_xxx" />
+              <Input
+                isInvalid={Boolean(
+                  form.getFieldState('loginProviders.sms.resetPassword.zh', form.formState).error
+                )}
+                {...register('loginProviders.sms.resetPassword.zh')}
+                placeholder="SMS_xxx"
+              />
             </AdminFormItem>
             <AdminFormItem
               label={t('admin:change_password_chinese_template')}
               tooltip={t('admin:sms_template_id_for_password_change_chinese')}
             >
-              <Input {...register('loginProviders.sms.changePassword.zh')} placeholder="SMS_xxx" />
+              <Input
+                isInvalid={Boolean(
+                  form.getFieldState('loginProviders.sms.changePassword.zh', form.formState).error
+                )}
+                {...register('loginProviders.sms.changePassword.zh')}
+                placeholder="SMS_xxx"
+              />
             </AdminFormItem>
             <AdminFormItem
               label={t('admin:binding_notification_chinese_template')}
               tooltip={t('admin:sms_template_id_for_binding_notification_methods_chinese')}
             >
               <Input
+                isInvalid={Boolean(
+                  form.getFieldState('loginProviders.sms.bindNotification.zh', form.formState).error
+                )}
                 {...register('loginProviders.sms.bindNotification.zh')}
                 placeholder="SMS_xxx"
               />
@@ -437,6 +497,9 @@ const AuthSettingComponent = () => {
               tooltip={t('admin:sms_template_id_for_model_deprecation_chinese')}
             >
               <Input
+                isInvalid={Boolean(
+                  form.getFieldState('loginProviders.sms.modelDeprecation.zh', form.formState).error
+                )}
                 {...register('loginProviders.sms.modelDeprecation.zh')}
                 placeholder="SMS_xxx"
               />
@@ -457,7 +520,13 @@ const AuthSettingComponent = () => {
               label={t('admin:wechat_service_account_appid')}
               tooltip={t('admin:official_account_app_id')}
             >
-              <Input {...register('loginProviders.wechat.appId')} placeholder="wx******" />
+              <Input
+                isInvalid={Boolean(
+                  form.getFieldState('loginProviders.wechat.appId', form.formState).error
+                )}
+                {...register('loginProviders.wechat.appId')}
+                placeholder="wx******"
+              />
             </AdminFormItem>
             <AdminFormItem
               label={t('admin:wechat_service_account_appsecret')}
@@ -468,6 +537,7 @@ const AuthSettingComponent = () => {
                 control={control}
                 render={({ field }) => (
                   <AdminSecretInput
+                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
@@ -489,7 +559,13 @@ const AuthSettingComponent = () => {
 
           <SimpleGrid columns={[1, 2]} spacing={5}>
             <AdminFormItem label="SuiteId" tooltip={t('admin:wecom_service_provider_suiteid')}>
-              <Input {...register('loginProviders.wecom.suiteId')} placeholder="ww******" />
+              <Input
+                isInvalid={Boolean(
+                  form.getFieldState('loginProviders.wecom.suiteId', form.formState).error
+                )}
+                {...register('loginProviders.wecom.suiteId')}
+                placeholder="ww******"
+              />
             </AdminFormItem>
             <AdminFormItem
               label="SuiteSecret"
@@ -500,6 +576,7 @@ const AuthSettingComponent = () => {
                 control={control}
                 render={({ field }) => (
                   <AdminSecretInput
+                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
@@ -514,6 +591,7 @@ const AuthSettingComponent = () => {
                 control={control}
                 render={({ field }) => (
                   <AdminSecretInput
+                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
@@ -528,6 +606,7 @@ const AuthSettingComponent = () => {
                 control={control}
                 render={({ field }) => (
                   <AdminSecretInput
+                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
@@ -540,7 +619,13 @@ const AuthSettingComponent = () => {
               label={t('admin:enterprise_corpid')}
               tooltip={t('admin:wecom_enterprise_unique_identifier')}
             >
-              <Input {...register('loginProviders.wecom.corpId')} placeholder="ww******" />
+              <Input
+                isInvalid={Boolean(
+                  form.getFieldState('loginProviders.wecom.corpId', form.formState).error
+                )}
+                {...register('loginProviders.wecom.corpId')}
+                placeholder="ww******"
+              />
             </AdminFormItem>
             {showWecomProviderSecret && (
               <AdminFormItem
@@ -552,6 +637,7 @@ const AuthSettingComponent = () => {
                   control={control}
                   render={({ field }) => (
                     <AdminSecretInput
+                      isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                       name={field.name}
                       value={field.value}
                       onChange={field.onChange}
@@ -564,16 +650,30 @@ const AuthSettingComponent = () => {
             {showWecomSaaS && (
               <>
                 <AdminFormItem label={t('admin:wecom_buyer_user_id')}>
-                  <Input {...register('loginProviders.wecom.buyerUserId')} placeholder="userid" />
+                  <Input
+                    isInvalid={Boolean(
+                      form.getFieldState('loginProviders.wecom.buyerUserId', form.formState).error
+                    )}
+                    {...register('loginProviders.wecom.buyerUserId')}
+                    placeholder="userid"
+                  />
                 </AdminFormItem>
                 <AdminFormItem label={t('admin:wecom_basic_version_id')}>
                   <Input
+                    isInvalid={Boolean(
+                      form.getFieldState('loginProviders.wecom.basicVersionId', form.formState)
+                        .error
+                    )}
                     {...register('loginProviders.wecom.basicVersionId')}
                     placeholder="基础版版本ID"
                   />
                 </AdminFormItem>
                 <AdminFormItem label={t('admin:wecom_advanced_version_id')}>
                   <Input
+                    isInvalid={Boolean(
+                      form.getFieldState('loginProviders.wecom.advancedVersionId', form.formState)
+                        .error
+                    )}
                     {...register('loginProviders.wecom.advancedVersionId')}
                     placeholder="高级版版本ID"
                   />
@@ -584,6 +684,7 @@ const AuthSettingComponent = () => {
                     control={control}
                     render={({ field }) => (
                       <AdminSecretInput
+                        isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                         name={field.name}
                         value={field.value}
                         onChange={field.onChange}
@@ -603,7 +704,13 @@ const AuthSettingComponent = () => {
         <AdminSettingSection id="githubLogin" title={t('admin:github_login')} showDivider>
           <SimpleGrid columns={[1, 2]} spacing={5}>
             <AdminFormItem label="GitHub Client ID" tooltip={t('admin:github_oauth_app_client_id')}>
-              <Input {...register('loginProviders.github.clientId')} placeholder="******" />
+              <Input
+                isInvalid={Boolean(
+                  form.getFieldState('loginProviders.github.clientId', form.formState).error
+                )}
+                {...register('loginProviders.github.clientId')}
+                placeholder="******"
+              />
             </AdminFormItem>
             <AdminFormItem
               label="GitHub Client Secret"
@@ -614,6 +721,7 @@ const AuthSettingComponent = () => {
                 control={control}
                 render={({ field }) => (
                   <AdminSecretInput
+                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
@@ -629,7 +737,13 @@ const AuthSettingComponent = () => {
         <AdminSettingSection id="googleLogin" title={t('admin:google_login')} showDivider>
           <SimpleGrid columns={[1, 2]} spacing={5}>
             <AdminFormItem label="Google Client ID" tooltip={t('admin:google_oauth_2_0_client_id')}>
-              <Input {...register('loginProviders.google.clientId')} placeholder="******" />
+              <Input
+                isInvalid={Boolean(
+                  form.getFieldState('loginProviders.google.clientId', form.formState).error
+                )}
+                {...register('loginProviders.google.clientId')}
+                placeholder="******"
+              />
             </AdminFormItem>
             <AdminFormItem
               label="Google Client Secret"
@@ -640,6 +754,7 @@ const AuthSettingComponent = () => {
                 control={control}
                 render={({ field }) => (
                   <AdminSecretInput
+                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
@@ -658,7 +773,13 @@ const AuthSettingComponent = () => {
               label="Microsoft Client ID"
               tooltip={t('admin:azure_ad_application_client_id')}
             >
-              <Input {...register('loginProviders.microsoft.clientId')} placeholder="******" />
+              <Input
+                isInvalid={Boolean(
+                  form.getFieldState('loginProviders.microsoft.clientId', form.formState).error
+                )}
+                {...register('loginProviders.microsoft.clientId')}
+                placeholder="******"
+              />
             </AdminFormItem>
             <AdminFormItem
               label="Microsoft Client Secret"
@@ -669,6 +790,7 @@ const AuthSettingComponent = () => {
                 control={control}
                 render={({ field }) => (
                   <AdminSecretInput
+                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
@@ -681,7 +803,13 @@ const AuthSettingComponent = () => {
               label="Microsoft Tenant ID"
               tooltip={t('admin:azure_ad_tenant_id_use_common_for_multi_tenant')}
             >
-              <Input {...register('loginProviders.microsoft.tenantId')} placeholder="common" />
+              <Input
+                isInvalid={Boolean(
+                  form.getFieldState('loginProviders.microsoft.tenantId', form.formState).error
+                )}
+                {...register('loginProviders.microsoft.tenantId')}
+                placeholder="common"
+              />
             </AdminFormItem>
           </SimpleGrid>
         </AdminSettingSection>
@@ -692,18 +820,24 @@ const AuthSettingComponent = () => {
         <AdminSettingSection id="ssoLogin" title={t('admin:sso_settings')} showDivider>
           <SimpleGrid columns={[1, 2]} spacing={5}>
             <AdminFormItem label={t('admin:sso_login_button_title')}>
-              <Input {...register('sso.title')} placeholder={t('admin:sso_login_button_title')} />
+              <Input
+                isInvalid={Boolean(form.getFieldState('sso.title', form.formState).error)}
+                {...register('sso.title')}
+                placeholder={t('admin:sso_login_button_title')}
+              />
             </AdminFormItem>
             <AdminFormItem label={t('admin:sso_login_button_icon')}>
               <ImageInput control={control} name="sso.icon" />
             </AdminFormItem>
             <AdminSwitchRow
+              name="sso.autoLogin"
               label={t('admin:sso_auto_login')}
               tooltip={t('admin:sso_auto_login_tip')}
               isChecked={ssoAutoLogin}
               onChange={(value) => setValue('sso.autoLogin', value)}
             />
             <AdminSwitchRow
+              name="sso.disablePasswordForSsoUsers"
               label={t('admin:disable_password_for_sso_users')}
               tooltip={t('admin:disable_password_for_sso_users_tip')}
               isChecked={ssoDisablePassword}
@@ -726,6 +860,7 @@ const AuthSettingComponent = () => {
               control={control}
               render={() => (
                 <Textarea
+                  isInvalid={Boolean(form.getFieldState('fastLogin', form.formState).error)}
                   value={fastLoginText}
                   onChange={(event) => setFastLoginText(event.target.value)}
                   rows={8}

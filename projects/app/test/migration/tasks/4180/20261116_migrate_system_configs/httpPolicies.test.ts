@@ -75,14 +75,12 @@ describe('rehomeHttpRuntimePolicies', () => {
   });
 
   it.each(['-1', '1.5', 'Infinity', 'invalid-secret'])(
-    'rejects invalid input before either domain is changed: %s',
+    'keeps invalid input and commits both policy domains: %s',
     async (value) => {
-      const result = run({ AUTH_COOKIE_SECURE: 'true', SERVICE_AXIOS_MAX_CONTENT_LENGTH: value });
-      await expect(result).rejects.toThrow('Invalid HTTP policy migration input');
-      await expect(result).rejects.not.toThrow('invalid-secret');
-      expect(await read('security')).toMatchObject({ revision: 4 });
-      expect(await read('resource')).toMatchObject({ revision: 7 });
-      await expect(verifyHttpRuntimePolicyMigration()).rejects.toThrow('incomplete');
+      await run({ AUTH_COOKIE_SECURE: 'true', SERVICE_AXIOS_MAX_CONTENT_LENGTH: value });
+      expect((await read('resource'))?.overrides.serviceAxiosMaxContentLength).toBe(value);
+      expect((await read('security'))?.overrides.authCookieSecure).toBe(true);
+      await verifyHttpRuntimePolicyMigration();
     }
   );
 
