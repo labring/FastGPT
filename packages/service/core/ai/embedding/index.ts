@@ -11,7 +11,7 @@ import {
   createEmptyInputEmbeddingError,
   createInvalidResponseEmbeddingError,
   inspectEmbeddingFailure,
-  normalizeEmbeddingError,
+  normalizeEmbeddingFailure,
   pickEmbeddingRetryHeaders
 } from './error';
 
@@ -135,6 +135,7 @@ export async function getVectors({
     chunks.push(inputs.slice(i, i + chunkSize));
   }
 
+  // 模型探活传入超时值，每次探活尝试只发一次请求，由探活模块统一控制尝试次数。
   const maxRetries = timeoutMs === undefined ? 2 : 0;
   let remainingRetryWaitMs = MAX_EMBEDDING_RETRY_WAIT_MS;
   let failure: ReturnType<typeof inspectEmbeddingFailure> | undefined;
@@ -142,12 +143,14 @@ export async function getVectors({
   const allVectors: number[][] = [];
 
   try {
+    // 串行处理批次，保持返回向量与输入顺序一致，各批次共用退避预算。
     processChunks: for (const chunk of chunks) {
       const requestInput = chunk.map(getRequestInput);
       const inputTypes = Array.from(new Set(chunk.map((item) => item.type)));
       onRequestStart?.();
 
       const requestChunk = async () => {
+        // 关闭 SDK 重试，收到上游响应后才能区分欠费和普通限流。
         const { data: res, response } = await unwrapEmbeddingResponse(
           ai.embeddings.create(
             {
@@ -163,19 +166,20 @@ export async function getVectors({
               baseUrl: requestMeta?.baseUrl,
               headers,
               signal,
-              // 由本层读取错误响应后决定是否重试，避免 SDK 把欠费等确定性 429 当成普通限流。
               maxRetries: 0,
               omitEmptyHeaders: true
             })
           )
         );
+
+        // 校验向量数据完整性，并将 2xx 错误体交给同一套分类与重试流程。
         const data = res?.data;
         if (!Array.isArray(data) || data.length === 0 || data.some((item) => !item?.embedding)) {
-          // 部分供应商把错误放在 HTTP 200 的响应体里。分类后只携带退避白名单响应头。
           const structuredError = !data?.[0]?.embedding
             ? getStructuredResponseError(res)
             : undefined;
           if (structuredError) {
+            // 仅携带退避白名单响应头，避免把无关上游头带入异常链。
             const retryHeaders = pickEmbeddingRetryHeaders(response?.headers);
             const inspected = inspectEmbeddingFailure(
               retryHeaders && typeof structuredError === 'object'
@@ -201,6 +205,7 @@ export async function getVectors({
           throw createInvalidResponseEmbeddingError(apiMessage ? new Error(apiMessage) : undefined);
         }
 
+        // 供应商缺少 usage 时按当前批次回退计量，同时把返回向量转换为统一格式。
         const [tokens, vectors] = await Promise.all([
           (async () => {
             if (res.usage) return res.usage.total_tokens;
@@ -250,6 +255,8 @@ export async function getVectors({
 
   const { error, classification, retryDirective } = failure;
   const inputTypes = Array.from(new Set(inputs.map((item) => item.type)));
+
+  // 主动取消由调用方控制，降级为告警并原样抛出，供上层继续识别取消。
   if (classification.category === 'aborted') {
     logger.warn('Embedding request aborted', {
       model: model.model,
@@ -275,7 +282,7 @@ export async function getVectors({
     error
   });
 
-  throw normalizeEmbeddingError(error, { inspected: failure });
+  throw normalizeEmbeddingFailure(failure);
 }
 
 export function decodeEmbedding(embedding: number[] | string): number[] {

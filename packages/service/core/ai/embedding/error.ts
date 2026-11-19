@@ -811,23 +811,18 @@ export const inspectEmbeddingFailure = (error: unknown, signal?: AbortSignal) =>
 };
 
 /**
- * 将向量化原始异常转换为面向业务层的统一错误：
+ * 将同一次失败检查的原始异常、分类与退避信息转换为面向业务层的统一错误：
  * - 已识别的已知分类转为携带明确 `ModelErrEnum` 机器码的 `EmbeddingRequestError`；
  * - 主动取消与模型配置错误保留原异常语义；
  * - 无法归类的长尾异常原样兜底透出。
  */
-export const normalizeEmbeddingError = (
-  error: unknown,
-  options?: {
-    signal?: AbortSignal;
-    inspected?: ReturnType<typeof inspectEmbeddingFailure>;
-  }
-): unknown => {
-  if (isEmbeddingRequestError(error)) return error;
-
-  const { classification, retryDirective } =
-    options?.inspected ?? inspectEmbeddingFailure(error, options?.signal);
+export const normalizeEmbeddingFailure = ({
+  error,
+  classification,
+  retryDirective
+}: ReturnType<typeof inspectEmbeddingFailure>): unknown => {
   if (
+    isEmbeddingRequestError(error) ||
     classification.category === 'aborted' ||
     classification.category === 'modelConfig' ||
     !classification.errorCode
@@ -841,3 +836,12 @@ export const normalizeEmbeddingError = (
     cause: error
   });
 };
+
+/** 原始异常入口，先完成一次失败检查再转换，已归一化的业务错误直接复用。 */
+export const normalizeEmbeddingError = (
+  error: unknown,
+  options?: { signal?: AbortSignal }
+): unknown =>
+  isEmbeddingRequestError(error)
+    ? error
+    : normalizeEmbeddingFailure(inspectEmbeddingFailure(error, options?.signal));
