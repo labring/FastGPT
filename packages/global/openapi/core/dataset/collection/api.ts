@@ -122,6 +122,12 @@ export const ExportCollectionBodySchema = z.union([
 export type ExportCollectionBodyType = z.infer<typeof ExportCollectionBodyRawSchema>;
 export type ExportCollectionRuntimeBodyType = z.infer<typeof ExportCollectionBodySchema>;
 
+export const ExportCollectionResponseSchema = z.string().meta({
+  format: 'binary',
+  description: '导出的集合分块 CSV 文件流'
+});
+export type ExportCollectionResponseType = z.infer<typeof ExportCollectionResponseSchema>;
+
 // ============= Delete Collection =============
 /** 已弃用：仅为兼容旧调用方保留，新调用方应使用 body.id。 */
 export const DeleteCollectionQuerySchema = z.object({

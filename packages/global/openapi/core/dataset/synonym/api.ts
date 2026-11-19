@@ -76,7 +76,9 @@ export const GetDatasetSynonymDetailQuerySchema = z.object({
 });
 export const GetDatasetSynonymDetailResponseSchema = z.object({
   // S4：emptyVersions 是内部重建辅助字段，不暴露进公开 DevAPI 契约。
-  file: DatasetSynonymConfigSchema.omit({ emptyVersions: true }).optional().meta({ description: '当前同义词文件配置' }),
+  file: DatasetSynonymConfigSchema.omit({ emptyVersions: true })
+    .optional()
+    .meta({ description: '当前同义词文件配置' }),
   rebuilding: z.boolean().meta({ description: '知识库是否仍有待处理的重建数据或训练任务' })
 });
 export type GetDatasetSynonymDetailResponse = z.infer<typeof GetDatasetSynonymDetailResponseSchema>;
@@ -90,6 +92,11 @@ export const DeleteDatasetSynonymQuerySchema = z.object({
 export const DownloadDatasetSynonymQuerySchema = DeleteDatasetSynonymQuerySchema.omit({
   oldFileVersion: true
 });
+export const DownloadDatasetSynonymResponseSchema = z.string().meta({
+  format: 'binary',
+  description: '导出的同义词文件二进制流（跟随原上传扩展名输出 CSV、XLS 或 XLSX）'
+});
+export type DownloadDatasetSynonymResponse = z.infer<typeof DownloadDatasetSynonymResponseSchema>;
 export const DeleteDatasetSynonymResponseSchema = DatasetSynonymMutationResponseSchema.omit({
   fileName: true,
   size: true,

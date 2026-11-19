@@ -68,6 +68,10 @@ export const AppLogPath: OpenAPIPath = {
       summary: '获取应用日志列表',
       description: '分页获取应用的对话日志列表，支持按时间范围、来源、用户等条件筛选',
       tags: [DevApiTagsMap.appLog, SystemOpenApiTagMap.appLog],
+      'x-fastgpt-sdk': {
+        resource: 'apps.logs',
+        method: 'list'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -91,7 +95,11 @@ export const AppLogPath: OpenAPIPath = {
     post: {
       summary: '导出应用日志',
       description: '导出应用的对话日志为 CSV 文件，支持自定义导出字段和筛选条件',
-      tags: [DevApiTagsMap.appLog],
+      tags: [DevApiTagsMap.appLog, SystemOpenApiTagMap.appLog],
+      'x-fastgpt-sdk': {
+        resource: 'apps.logs',
+        method: 'export'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -116,6 +124,10 @@ export const AppLogPath: OpenAPIPath = {
       summary: '获取应用总体数据统计',
       description: '获取应用的总体数据统计，包括总用户数、总对话数、总积分消耗',
       tags: [DevApiTagsMap.appLog, SystemOpenApiTagMap.appLog],
+      'x-fastgpt-sdk': {
+        resource: 'apps.logs',
+        method: 'getTotalData'
+      },
       parameters: createChatTargetQueryParameters(GetTotalDataQuerySchema),
       responses: {
         200: {
@@ -135,6 +147,10 @@ export const AppLogPath: OpenAPIPath = {
       description:
         '严格按起止绝对时间查询，不扩展查询窗口；用户、对话及应用数据统一按开始时间自带的固定偏移分组，无偏移时使用服务器时区，不接收独立时区参数。',
       tags: [DevApiTagsMap.appLog, SystemOpenApiTagMap.appLog],
+      'x-fastgpt-sdk': {
+        resource: 'apps.logs',
+        method: 'getChartData'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -160,6 +176,10 @@ export const AppLogPath: OpenAPIPath = {
       description:
         '获取应用日志中的用户列表，包括外链用户和团队成员，按对话数量排序，支持搜索和分页',
       tags: [DevApiTagsMap.appLog, SystemOpenApiTagMap.appLog],
+      'x-fastgpt-sdk': {
+        resource: 'apps.logs',
+        method: 'listUsers'
+      },
       requestBody: {
         content: {
           'application/json': {

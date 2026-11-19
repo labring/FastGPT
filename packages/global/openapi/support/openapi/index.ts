@@ -24,7 +24,7 @@ import {
   UpdateOpenApiTagBodySchema,
   UpdateOpenApiTagResponseSchema
 } from './tag';
-import { DevApiTagsMap } from '../../tag';
+import { DevApiTagsMap, SystemOpenApiTagMap } from '../../tag';
 
 export const ApiKeyPath: OpenAPIPath = {
   '/support/openapi/create': {
@@ -145,7 +145,11 @@ export const ApiKeyPath: OpenAPIPath = {
   '/support/openapi/health': {
     get: {
       summary: '检查 API Key 是否健康',
-      tags: [DevApiTagsMap.apiKey],
+      tags: [DevApiTagsMap.apiKey, SystemOpenApiTagMap.system],
+      'x-fastgpt-sdk': {
+        resource: 'system',
+        method: 'health'
+      },
       requestParams: {
         header: ApiKeyHealthHeaderSchema
       },
