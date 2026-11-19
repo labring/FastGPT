@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { ApiRequestInputParseError } from '../../../common/zod/requestParseError';
-import { UserError, UserConfigError } from '@fastgpt/global/common/error/utils';
+import { ServerConfigError, UserError, UserConfigError } from '@fastgpt/global/common/error/utils';
 import { ERROR_ENUM, ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
@@ -313,6 +313,7 @@ describe('jsonRes HTTP status mapping', () => {
     [ModelErrEnum.unConfigured, 500],
     [AppErrEnum.unAuthApp, 403],
     [DatasetErrEnum.unExist, 404],
+    [DatasetErrEnum.externalChunkNotConfigured, 503],
     [ChatErrEnum.chatIsGenerating, 409],
     [UserErrEnum.invalidVerificationCode, 400],
     [UserErrEnum.sendVerificationCodeTooFrequently, 429],
@@ -368,6 +369,39 @@ describe('jsonRes HTTP status mapping', () => {
     } finally {
       entry.httpStatus = original;
     }
+  });
+
+  it('maps ServerConfigError(ModelErrEnum.unExist) to HTTP 500 while keeping explicit UserError at 404', () => {
+    const serverError = new ServerConfigError(ModelErrEnum.unExist, 'Model is disabled: GPT-5');
+    const explicitError = new UserError(ModelErrEnum.unExist, 'Model is disabled: GPT-5');
+
+    expect(processError({ error: serverError })).toMatchObject({
+      code: 513000,
+      statusText: ModelErrEnum.unExist,
+      message: 'Model is disabled: GPT-5',
+      httpStatus: 500
+    });
+    expect(processError({ error: explicitError })).toMatchObject({
+      code: 513000,
+      statusText: ModelErrEnum.unExist,
+      message: 'Model is disabled: GPT-5',
+      httpStatus: 404
+    });
+
+    const serverRes = createResponse();
+    jsonRes(serverRes, { code: 500, error: serverError });
+    expect(serverRes.status).toHaveBeenCalledWith(500);
+    expect(serverRes.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 513000,
+        statusText: ModelErrEnum.unExist,
+        message: 'Model is disabled: GPT-5'
+      })
+    );
+
+    const explicitRes = createResponse();
+    jsonRes(explicitRes, { code: 500, error: explicitError });
+    expect(explicitRes.status).toHaveBeenCalledWith(404);
   });
 
   it('maps UserConfigError(ModelErrEnum.unConfigured) to HTTP 400 while preserving code 513001', () => {

@@ -5,7 +5,12 @@ import type { NodeApiResponse, NodeHttpResponse } from '../../types/http';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { replaceSensitiveText } from '@fastgpt/global/common/string/tools';
-import { getErrorMessage, isUserConfigError, UserError } from '@fastgpt/global/common/error/utils';
+import {
+  getErrorMessage,
+  isServerConfigError,
+  isUserConfigError,
+  UserError
+} from '@fastgpt/global/common/error/utils';
 import { clearCookie } from '../../support/permission/auth/common';
 import type { ZodError } from 'zod';
 import type Stream from 'node:stream';
@@ -48,6 +53,10 @@ function resolveHttpStatusForApiError(
 ): number {
   const { code: propsCode = 200, error } = props;
   const bc = processedError.code;
+
+  if (isServerConfigError(error)) {
+    return 500;
+  }
 
   if (isUserConfigError(error)) {
     return 400;
@@ -133,10 +142,13 @@ export function processError(params: {
       data: ERROR_RESPONSE[errResponseKey].data
     });
 
-    // 优先尊重 UserConfigError(400) 与 ChatGeneratingConflictError(409)，其次使用登记的 HTTP 状态码；
-    // 若扩展条目缺失有效值，则保留调用方显式传入的 4xx defaultCode，避免被误覆盖为 500。
+    // 优先尊重 ServerConfigError(500)、UserConfigError(400) 与 ChatGeneratingConflictError(409)，
+    // 其次使用登记的 HTTP 状态码；若扩展条目缺失有效值，则保留调用方显式传入的 4xx defaultCode，避免被误覆盖为 500。
     const configuredHttpStatus = ERROR_RESPONSE[errResponseKey].httpStatus;
     const resolvedHttpStatus = (() => {
+      if (isServerConfigError(error)) {
+        return 500;
+      }
       if (isUserConfigError(error)) {
         return 400;
       }

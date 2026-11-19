@@ -213,7 +213,12 @@ export const createModelHandle = (input: ModelSnapshot) => {
     if (!options?.authorizedIds) {
       if (!isConfiguredValid && isOptionalSlot) return undefined as Result;
       if (!rawConfigured) throw new UserError(ModelErrEnum.unConfigured);
-      assertModelAvailable({ model: rawConfigured, type: expectedType, vision: needVision });
+      assertModelAvailable({
+        model: rawConfigured,
+        type: expectedType,
+        vision: needVision,
+        isServerDefault: true
+      });
       return rawConfigured as Result;
     }
 
@@ -227,7 +232,12 @@ export const createModelHandle = (input: ModelSnapshot) => {
     ) {
       if (isOptionalSlot) return undefined as Result;
       if (rawConfigured) {
-        assertModelAvailable({ model: rawConfigured, type: expectedType, vision: needVision });
+        assertModelAvailable({
+          model: rawConfigured,
+          type: expectedType,
+          vision: needVision,
+          isServerDefault: true
+        });
       }
     }
 
@@ -239,7 +249,12 @@ export const createModelHandle = (input: ModelSnapshot) => {
       throw new UserError(ModelErrEnum.unAuthModel);
     }
     if (rawConfigured) {
-      assertModelAvailable({ model: rawConfigured, type: expectedType, vision: needVision });
+      assertModelAvailable({
+        model: rawConfigured,
+        type: expectedType,
+        vision: needVision,
+        isServerDefault: true
+      });
     }
     throw new UserError(ModelErrEnum.unConfigured);
   };

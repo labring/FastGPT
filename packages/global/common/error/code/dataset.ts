@@ -124,7 +124,8 @@ const datasetErr: Array<{
   {
     statusText: DatasetErrEnum.externalChunkNotConfigured,
     message: i18nT('dataset:chunk_error.not_configured'),
-    httpStatus: 400
+    // 由实例侧环境变量 SANGFOR_CHUNK_URL 缺失触发，属于服务端配置不可用而非客户端入参错误。
+    httpStatus: 503
   },
   {
     statusText: DatasetErrEnum.dataNotIndexed,

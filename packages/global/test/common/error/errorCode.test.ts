@@ -125,6 +125,7 @@ describe('ERROR_RESPONSE HTTP status contract', () => {
     [SandboxErrEnum.runtimeUpgradeFailed, 510002, 500],
     [CommonErrEnum.pdfParseFailed, 507008, 500],
     [DatasetErrEnum.externalChunkFailed, 501013, 502],
+    [DatasetErrEnum.externalChunkNotConfigured, 501015, 503],
     [EnterpriseAuthErrEnum.serviceNotConfigured, 500033, 503],
     [EnterpriseAuthErrEnum.serviceTimeout, 500039, 504]
   ] as const)(
