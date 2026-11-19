@@ -24,6 +24,7 @@ import {
 } from '@fastgpt/service/common/parentFolder/ancestorIds';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
+import { buildAppAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
@@ -44,6 +45,7 @@ const logAppMove = ({
     tmbId,
     teamId,
     event: AuditEventEnum.MOVE_APP,
+    resources: [buildAppAuditResource(app)],
     params: {
       appName: app.name,
       targetFolderName: targetName,

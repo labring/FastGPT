@@ -41,6 +41,7 @@ import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model
 import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
+import { buildAppAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { getFolderAncestorIdsFromParentId } from '@fastgpt/service/common/parentFolder/ancestorIds';
 import { getAppFolderTree, validateParentFolderType } from '@fastgpt/service/core/app/folderTree';
@@ -370,6 +371,7 @@ export const onCreateApp = async ({
         tmbId,
         teamId,
         event: AuditEventEnum.CREATE_APP,
+        resources: [buildAppAuditResource({ _id: appId, name, avatar: _avatar, type: app.type })],
         params: {
           appName: name!,
           appType: getI18nAppType(type!)

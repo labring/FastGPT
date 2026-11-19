@@ -23,6 +23,7 @@ import { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
+import { buildAppAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import {
   assertMemberRateLimit,
@@ -93,6 +94,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       tmbId,
       teamId,
       event: AuditEventEnum.EXPORT_APP_CHAT_LOG,
+      resources: [buildAppAuditResource(app)],
       params: {
         appName: app.name,
         appType: getI18nAppType(app.type)

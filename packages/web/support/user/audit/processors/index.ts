@@ -2,6 +2,7 @@ import { AuditEventEnum, type TeamAuditEvent } from '@fastgpt/global/support/use
 import { createTeamProcessors } from './teamProcessors';
 import { createAppProcessors } from './appProcessors';
 import { createDatasetAuditProcessors } from './datasetProcessors';
+import { createSkillProcessors } from './skillProcessors';
 import { defaultMetadataProcessor, type CommonMetadataFields } from './commonProcessor';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 
@@ -15,6 +16,7 @@ const specialProcessors: Partial<Record<TeamAuditEvent, MetadataProcessor>> = {
   ...createTeamProcessors,
   ...createAppProcessors,
   ...createDatasetAuditProcessors,
+  ...createSkillProcessors,
   [AuditEventEnum.EXPORT_AUDIT_LOGS]: (metadata, t, formatTime) => {
     // 原始日志保留 ISO 时间；展示时使用页面本地时区或导出请求的时区。
     const formatBoundary = (value: unknown) => {

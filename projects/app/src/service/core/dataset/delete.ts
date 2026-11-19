@@ -7,6 +7,7 @@ import { deleteDatasetsImmediate } from '@fastgpt/service/core/dataset/delete/pr
 import { addDatasetDeleteJob } from '@fastgpt/service/core/dataset/delete';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { buildDatasetAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 /**
@@ -48,6 +49,12 @@ export const deleteDataset = async ({
     tmbId,
     teamId,
     event: AuditEventEnum.DELETE_DATASET,
+    resources: [
+      buildDatasetAuditResource(
+        { _id: id, name: dataset.name, avatar: dataset.avatar, type: dataset.type },
+        { deleted: true }
+      )
+    ],
     params: {
       datasetName: dataset.name,
       datasetType: getI18nDatasetType(dataset.type)

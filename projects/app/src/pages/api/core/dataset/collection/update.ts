@@ -19,6 +19,7 @@ import { type ClientSession } from '@fastgpt/service/common/mongo';
 import { type CollectionWithDatasetType } from '@fastgpt/global/core/dataset/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildCollectionAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { UpdateDatasetCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
@@ -205,6 +206,14 @@ async function handler(req: ApiRequestProps) {
       tmbId,
       teamId,
       event: AuditEventEnum.UPDATE_COLLECTION,
+      resources: [
+        buildCollectionAuditResource({
+          _id: collection._id,
+          datasetId: collection.datasetId,
+          name: name ?? collection.name,
+          type: collection.type
+        })
+      ],
       params: {
         collectionName: collection.name,
         datasetName: collection.dataset?.name || '',

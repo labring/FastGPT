@@ -29,6 +29,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { getTrainingAuditModelLabel } from '@fastgpt/service/core/dataset/audit/training';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildDatasetAuditResource } from '@fastgpt/global/support/user/audit/type';
 
 async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> {
   const { datasetId, vectorModelId } = parseApiInput({
@@ -147,6 +148,7 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
       tmbId,
       teamId,
       event: DatasetAuditEventEnum.DATASET_INDEX_REBUILD,
+      resources: [buildDatasetAuditResource(dataset)],
       params: {
         datasetName: dataset.name,
         oldModelName: oldModel.modelName,

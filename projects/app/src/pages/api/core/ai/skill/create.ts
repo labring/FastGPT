@@ -26,6 +26,7 @@ import {
 import { TeamSkillCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { createResourcePermissions } from '@fastgpt/service/support/permission/resourcePermissionService';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
+import { buildSkillAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
@@ -146,6 +147,14 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
       tmbId,
       teamId,
       event: AuditEventEnum.CREATE_SKILL,
+      resources: [
+        buildSkillAuditResource({
+          _id: skillId,
+          name: requestedName,
+          avatar,
+          type: AgentSkillTypeEnum.skill
+        })
+      ],
       params: { skillName: requestedName, skillType: getI18nSkillType(AgentSkillTypeEnum.skill) }
     });
   })();

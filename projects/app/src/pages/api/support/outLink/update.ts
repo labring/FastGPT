@@ -7,6 +7,7 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildAppAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -89,6 +90,7 @@ export async function handler(
       tmbId,
       teamId,
       event: AuditEventEnum.UPDATE_APP_PUBLISH_CHANNEL,
+      resources: [buildAppAuditResource(logApp)],
       params: {
         appName: logApp.name,
         channelName: outLink.name,
