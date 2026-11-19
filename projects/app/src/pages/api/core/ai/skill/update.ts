@@ -132,7 +132,7 @@ async function handler(req: ApiRequestProps<UpdateSkillBody>) {
       event: AuditEventEnum.UPDATE_SKILL,
       resources: [
         buildSkillAuditResource({
-          _id: skillId,
+          _id: skill._id,
           name: updateData.name ?? skill.name,
           avatar: updateData.avatar ?? skill.avatar,
           type: skill.type

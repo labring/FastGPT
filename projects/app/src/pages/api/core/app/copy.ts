@@ -92,8 +92,13 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
       teamId,
       event: AuditEventEnum.CREATE_APP_COPY,
       resources: [
-        buildAppAuditResource({ _id: sourceAppId, name: app.name, avatar: app.avatar, type: app.type }),
-        buildAppAuditResource({ _id: appId, name: app.name + ' Copy', avatar: app.avatar, type: app.type })
+        buildAppAuditResource(app),
+        buildAppAuditResource({
+          _id: appId,
+          name: app.name + ' Copy',
+          avatar: app.avatar,
+          type: app.type
+        })
       ],
       params: {
         appName: app.name,

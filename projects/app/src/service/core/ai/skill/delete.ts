@@ -39,12 +39,7 @@ export const deleteSkill = async ({
     tmbId,
     teamId,
     event: AuditEventEnum.DELETE_SKILL,
-    resources: [
-      buildSkillAuditResource(
-        { _id: skillId, name: skill.name, avatar: skill.avatar, type: skill.type },
-        { deleted: true }
-      )
-    ],
+    resources: [buildSkillAuditResource(skill, { deleted: true })],
     params: { skillName: skill.name, skillType: getI18nSkillType(skill.type) }
   });
   return deletedIds;

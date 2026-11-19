@@ -8,7 +8,12 @@ import { MongoOpenApi } from './schema';
 import { getOpenApiTypeFilter, getOpenApiAppIdFilter } from './utils';
 import { addAuditLog } from '../user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { AuditResourceTypeEnum, type AuditResourceType, buildAppAuditResource, buildEntityAuditResource } from '@fastgpt/global/support/user/audit/type';
+import {
+  AuditResourceTypeEnum,
+  type AuditResourceType,
+  buildAppAuditResource,
+  buildEntityAuditResource
+} from '@fastgpt/global/support/user/audit/type';
 import { getLogger, LogCategories } from '../../common/logger';
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
@@ -99,10 +104,10 @@ export const auditAppApiKeyTransfers = async ({
       return [];
     }
   })();
-  const appMap = new Map(apps.map((app) => [String(app._id), app]));
+  const appMap = new Map(apps.map((app) => [String(app._id).toLowerCase(), app]));
 
   for (const params of changes) {
-    const boundApp = params.appId ? appMap.get(String(params.appId)) : undefined;
+    const boundApp = params.appId ? appMap.get(String(params.appId).toLowerCase()) : undefined;
     const resources = [
       buildEntityAuditResource({
         type: AuditResourceTypeEnum.apiKey,

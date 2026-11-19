@@ -127,7 +127,6 @@ export const resolveAuditResourceAvatar = (resource: AuditResourceType): string 
   switch (resource.type) {
     case AuditResourceTypeEnum.apiKey:
     case AuditResourceTypeEnum.enterprise:
-    case AuditResourceTypeEnum.invitationLink:
       return undefined;
     case AuditResourceTypeEnum.appFolder:
     case AuditResourceTypeEnum.toolFolder:
@@ -290,7 +289,10 @@ const buildLegacyPresentedResources = ({
     ];
   };
 
-  if (event === AuditEventEnum.ASSIGN_PERMISSION || event === AuditEventEnum.RESUME_INHERIT_PERMISSION) {
+  if (
+    event === AuditEventEnum.ASSIGN_PERMISSION ||
+    event === AuditEventEnum.RESUME_INHERIT_PERMISSION
+  ) {
     const name = pickMetadataFallbackName(event, metadata);
     if (!name) return [];
     return [
@@ -391,9 +393,7 @@ export const resolveAuditResources = ({
         ...(forceDeleted ? { deleted: true } : {})
       };
       const name =
-        asNonEmptyString(item.name) ??
-        fallbackName ??
-        (item.id ? item.id.slice(-8) : '-');
+        asNonEmptyString(item.name) ?? fallbackName ?? (item.id ? item.id.slice(-8) : '-');
 
       return {
         key: `${item.type}:${item.id ?? name}:${index}`,
@@ -490,9 +490,7 @@ const formatDeletedResourceLines = ({
     if (resources && resources.length > 0) {
       const picked =
         event === AuditEventEnum.DELETE_API_KEY
-          ? resources.filter(
-              (item) => item.deleted || item.type === AuditResourceTypeEnum.apiKey
-            )
+          ? resources.filter((item) => item.deleted || item.type === AuditResourceTypeEnum.apiKey)
           : resources;
       const fallbackName =
         picked.length === 1 ? pickMetadataFallbackName(event, metadata) : undefined;
@@ -624,17 +622,13 @@ export const formatAuditSummary = ({
     case AuditEventEnum.CHANGE_MEMBER_NAME: {
       const oldName = asNonEmptyString(processed.memberName);
       const newName = asNonEmptyString(processed.newName);
-      return oldName && newName
-        ? t('account_team:audit_detail_rename', { oldName, newName })
-        : '-';
+      return oldName && newName ? t('account_team:audit_detail_rename', { oldName, newName }) : '-';
     }
 
     case AuditEventEnum.CHANGE_MEMBER_NAME_ACCOUNT: {
       const oldName = asNonEmptyString(processed.oldName);
       const newName = asNonEmptyString(processed.newName);
-      return oldName && newName
-        ? t('account_team:audit_detail_rename', { oldName, newName })
-        : '-';
+      return oldName && newName ? t('account_team:audit_detail_rename', { oldName, newName }) : '-';
     }
 
     case AuditEventEnum.CHANGE_DEPARTMENT: {
@@ -846,9 +840,7 @@ export const formatAuditSummary = ({
     case DatasetAuditEventEnum.DATASET_TRAINING_TASK_RETRY:
     case DatasetAuditEventEnum.DATASET_TRAINING_RECORD_DELETE: {
       const datasetName = asNonEmptyString(processed.datasetName);
-      return datasetName
-        ? t('account_team:audit_detail_collection_dataset', { datasetName })
-        : '-';
+      return datasetName ? t('account_team:audit_detail_collection_dataset', { datasetName }) : '-';
     }
 
     default:

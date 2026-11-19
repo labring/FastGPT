@@ -23,18 +23,15 @@ export enum AuditResourceTypeEnum {
   group = 'group',
   team = 'team',
   apiKey = 'apiKey',
-  enterprise = 'enterprise',
-  invitationLink = 'invitationLink'
+  enterprise = 'enterprise'
 }
 
-const ToolAppTypes = new Set<string>([
-  ...ToolTypeList,
-  AppTypeEnum.httpPlugin,
-  AppTypeEnum.tool
-]);
+const ToolAppTypes = new Set<string>([...ToolTypeList, AppTypeEnum.httpPlugin, AppTypeEnum.tool]);
 
 /** 根据应用/工具类型快照分类审计资源，统一区分应用、工具与两类文件夹。 */
-export const classifyAppAuditResourceType = (appType?: AppTypeEnum | string): AuditResourceTypeEnum => {
+export const classifyAppAuditResourceType = (
+  appType?: AppTypeEnum | string
+): AuditResourceTypeEnum => {
   if (appType === AppTypeEnum.folder) return AuditResourceTypeEnum.appFolder;
   if (appType === AppTypeEnum.toolFolder) return AuditResourceTypeEnum.toolFolder;
   if (appType && ToolAppTypes.has(appType)) return AuditResourceTypeEnum.tool;
@@ -69,7 +66,8 @@ export const AuditResourcesSchema = z.array(AuditResourceSchema);
 const toOptionalIdString = (value: unknown): string | undefined => {
   if (value === undefined || value === null) return undefined;
   const str = String(value).trim();
-  return str || undefined;
+  if (!str) return undefined;
+  return ObjectIdSchema.safeParse(str).success ? str.toLowerCase() : str;
 };
 
 const toOptionalText = (value?: string | null): string | undefined => {

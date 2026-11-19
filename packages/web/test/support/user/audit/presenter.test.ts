@@ -59,7 +59,9 @@ describe('audit presenter resources', () => {
         parentId
       })
     ).toBe(`/dataset/detail?datasetId=${parentId}&currentTab=collectionCard&parentId=${id}`);
-    expect(resolveAuditResourceHref({ type: AuditResourceTypeEnum.collection, id })).toBeUndefined();
+    expect(
+      resolveAuditResourceHref({ type: AuditResourceTypeEnum.collection, id })
+    ).toBeUndefined();
     expect(resolveAuditResourceHref({ type: AuditResourceTypeEnum.skill, id })).toBe(
       `/skill/detail?skillId=${id}`
     );
@@ -75,8 +77,7 @@ describe('audit presenter resources', () => {
       AuditResourceTypeEnum.group,
       AuditResourceTypeEnum.team,
       AuditResourceTypeEnum.apiKey,
-      AuditResourceTypeEnum.enterprise,
-      AuditResourceTypeEnum.invitationLink
+      AuditResourceTypeEnum.enterprise
     ]) {
       expect(resolveAuditResourceHref({ type, id, name: 'x' })).toBeUndefined();
     }
@@ -89,12 +90,9 @@ describe('audit presenter resources', () => {
     expect(
       resolveAuditResourceAvatar({ type: AuditResourceTypeEnum.enterprise, name: 'Acme' })
     ).toBeUndefined();
-    expect(
-      resolveAuditResourceAvatar({ type: AuditResourceTypeEnum.invitationLink, name: 'Invite' })
-    ).toBeUndefined();
-    expect(
-      resolveAuditResourceAvatar({ type: AuditResourceTypeEnum.app, name: 'Bot' })
-    ).toBe('core/app/type/simpleFill');
+    expect(resolveAuditResourceAvatar({ type: AuditResourceTypeEnum.app, name: 'Bot' })).toBe(
+      'core/app/type/simpleFill'
+    );
     expect(
       resolveAuditResourceAvatar({
         type: AuditResourceTypeEnum.app,
@@ -474,7 +472,7 @@ describe('audit presenter summary', () => {
           event,
           resources: [
             {
-              type: AuditResourceTypeEnum.invitationLink,
+              type: 'invitationLink',
               id: 'link-1',
               name: '2026 研发部邀请'
             }

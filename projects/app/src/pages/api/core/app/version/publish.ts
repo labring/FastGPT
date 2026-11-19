@@ -166,10 +166,10 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>): Promise<Publi
       tmbId,
       teamId,
       event: AuditEventEnum.SAVE_APP,
-      resources: [buildAppAuditResource({ _id: appId, name: app.name, avatar: app.avatar, type: app.type })],
+      resources: [buildAppAuditResource(app)],
       params: {
         appName: app.name,
-        appId,
+        appId: String(app._id),
         appType: getI18nAppType(app.type)
       }
     });
@@ -256,10 +256,10 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>): Promise<Publi
       tmbId,
       teamId,
       event: isPublish ? AuditEventEnum.PUBLISH_APP : AuditEventEnum.SAVE_APP,
-      resources: [buildAppAuditResource({ _id: appId, name: app.name, avatar: app.avatar, type: app.type })],
+      resources: [buildAppAuditResource(app)],
       params: {
         appName: app.name,
-        appId,
+        appId: String(app._id),
         appType: getI18nAppType(app.type)
       }
     });
