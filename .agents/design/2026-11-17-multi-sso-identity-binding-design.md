@@ -968,6 +968,7 @@ curl -s -X POST https://<admin域名>/api/admin/user/identity/backfill \
 - `missing` = 待补行数，作为实刷后核对 `created` 的基准；
 - `anomalies` 非空时**不得继续实刷**，按下文异常处置表处理；
 - `parallelAccountCandidates` 非空时进入步骤 2；
+- **刷数圈定范围（来源判定）**：`syncSource` 非空的账号优先按标记归属来源；**升级环境里旧版本同步号没有 `syncSource`**（该字段本期才引入，旧版本用 username 前缀识别同步号），此时按 `EXTERNAL_USER_SYSTEM_LEGACY_USERNAME_PREFIX` 前缀（如 `weaver-77000122`）认定为当前同步源（`EXTERNAL_USER_SYSTEM_SOURCE`）的存量号，externalId 按同一前缀规则剥离。两者都不满足的账号（纯手工/其他来源）不刷数，其身份由登录首绑或人工绑定补齐；
 - **已禁用账号（含合并收尾的 `merged-*` 旧号）不在刷数与候选范围**：合并后其绑定行已搬迁到接收账号，若给旧号重写同 `(source, externalId)` 行会与接收账号形成跨账号重复，且 forbidden 账号会挡住该外部身份的登录匹配（冒烟环境实测发现的缺口，已修复）。
 
 **平行账号评估维度 `parallelMatchKeys`**（请求参数，默认 `['contact']`）：
