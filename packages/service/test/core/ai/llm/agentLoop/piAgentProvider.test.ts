@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { convertMessages } from '@mariozechner/pi-ai/openai-completions';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -302,6 +303,64 @@ describe('runPiAgentLoop', () => {
     agentToolToExecute.value = undefined;
     compressRequestMessagesMock.mockImplementation(async ({ messages }) => ({ messages }));
   });
+
+  it.each(['normal', 'compression failure', 'checkpoint'])(
+    'preserves tool image order in the SDK request after %s',
+    async (mode) => {
+      await runPiAgentLoop({
+        input: { messages: [{ role: 'user', content: 'question' }] },
+        runtime: {
+          llmParams: { model: 'gpt-5', useVision: true },
+          toolCatalog: { runtimeTools: [] },
+          executeTool: vi.fn()
+        }
+      });
+      if (mode === 'compression failure') {
+        compressRequestMessagesMock.mockRejectedValueOnce(new Error('compression failed'));
+      }
+      if (mode === 'checkpoint') {
+        compressRequestMessagesMock.mockImplementationOnce(async ({ messages }) => ({
+          messages,
+          contextCheckpoint: 'checkpoint'
+        }));
+      }
+      const context = [
+        {
+          role: 'toolResult',
+          toolCallId: 'call_1',
+          toolName: 'image_tool',
+          content: [
+            { type: 'text', text: 'A' },
+            { type: 'image', mimeType: 'image/png', data: 'aW1hZ2U=' },
+            { type: 'text', text: 'B' }
+          ],
+          isError: false,
+          timestamp: 1
+        }
+      ];
+      const original = structuredClone(context);
+      const result = await agentConstructorArgs[0].transformContext(context);
+      const outgoing = convertMessages(
+        {
+          api: 'openai-completions',
+          provider: 'openai',
+          id: 'gpt-5',
+          baseUrl: 'https://example.com/v1',
+          input: ['text', 'image']
+        } as any,
+        { messages: result },
+        {} as Parameters<typeof convertMessages>[2]
+      );
+      expect(outgoing.map((message: any) => message.role)).toEqual(['tool', 'user']);
+      expect(outgoing[1].content).toEqual([
+        { type: 'text', text: 'Tool result call_1:' },
+        { type: 'text', text: 'A' },
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,aW1hZ2U=' } },
+        { type: 'text', text: 'B' }
+      ]);
+      if (mode !== 'checkpoint') expect(context).toEqual(original);
+    }
+  );
 
   it('passes the business recovery hook through piAgent context transformation', async () => {
     agentRunTransformContext.value = true;

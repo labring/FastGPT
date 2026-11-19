@@ -7,10 +7,12 @@ import {
   convertToolResponseContentToPiContent,
   mapStopReason,
   normalizePiAgentMessages,
+  preparePiToolImagesForRequest,
   replaceInteractiveToolResult,
   resolveInteractiveToolCall
 } from '@fastgpt/service/core/ai/llm/agentLoop/provider/piAgent/message';
 import { ChatCompletionToolMessageContentPartSchema } from '@fastgpt/global/core/ai/llm/type';
+import { buildToolMessageContent } from '@fastgpt/service/core/ai/llm/agentLoop/domain/tool';
 
 vi.mock('@fastgpt/service/common/file/image/utils', () => ({
   getImageBase64: vi.fn()
@@ -26,6 +28,152 @@ const model = {
 } as any;
 
 describe('piAgent message conversion', () => {
+  it('preserves tool image positions in the actual SDK request after all tool results', () => {
+    const image = { type: 'image', mimeType: 'image/png', data: 'aW1hZ2U=' };
+    const messages = [
+      {
+        role: 'toolResult',
+        toolCallId: 'call_a',
+        toolName: 'tool_a',
+        content: [{ type: 'text', text: 'A' }, image, { type: 'text', text: 'B' }],
+        details: {},
+        isError: false,
+        timestamp: 1
+      },
+      {
+        role: 'toolResult',
+        toolCallId: 'call_b',
+        toolName: 'tool_b',
+        content: [{ type: 'text', text: 'C' }, image],
+        details: {},
+        isError: false,
+        timestamp: 1
+      }
+    ] as any;
+    const original = structuredClone(messages);
+    const sdkModel = { ...model, baseUrl: 'https://example.com/v1', input: ['text', 'image'] };
+    const outgoing = convertMessages(
+      sdkModel,
+      { messages: preparePiToolImagesForRequest(messages) },
+      {} as Parameters<typeof convertMessages>[2]
+    );
+
+    expect(outgoing.map((message: any) => message.role)).toEqual(['tool', 'tool', 'user']);
+    expect(outgoing[2].content).toEqual([
+      { type: 'text', text: 'Tool result call_a:' },
+      { type: 'text', text: 'A' },
+      { type: 'image_url', image_url: { url: 'data:image/png;base64,aW1hZ2U=' } },
+      { type: 'text', text: 'B' },
+      { type: 'text', text: 'Tool result call_b:' },
+      { type: 'text', text: 'C' },
+      { type: 'image_url', image_url: { url: 'data:image/png;base64,aW1hZ2U=' } }
+    ]);
+    expect(messages).toEqual(original);
+    const moved = structuredClone(messages);
+    moved[0].content = [{ type: 'text', text: 'A' }, { type: 'text', text: 'B' }, image];
+    const movedOutgoing = convertMessages(
+      sdkModel,
+      { messages: preparePiToolImagesForRequest(moved) },
+      {} as Parameters<typeof convertMessages>[2]
+    );
+    expect(movedOutgoing[2].content).not.toEqual(outgoing[2].content);
+  });
+
+  it('converts accepted uppercase BASE64 image data into pi image content', async () => {
+    const data =
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
+    const part = { type: 'image_url', image_url: { url: `data:image/png;BASE64,${data}` } };
+    expect(ChatCompletionToolMessageContentPartSchema.safeParse(part).success).toBe(true);
+    await expect(convertToolResponseContentToPiContent([part] as any)).resolves.toEqual([
+      { type: 'image', mimeType: 'image/png', data }
+    ]);
+    await expect(
+      convertToolResponseContentToPiContent([part] as any, { useVision: false })
+    ).resolves.toEqual([{ type: 'text', text: '[Image: image/png]' }]);
+  });
+
+  it('preserves placeholders around remaining images and leaves text-only tool results intact', async () => {
+    vi.mocked(getImageBase64).mockRejectedValueOnce(new Error('download failed'));
+    const content = await convertToolResponseContentToPiContent([
+      { type: 'text', text: 'A' },
+      { type: 'image_url', image_url: { url: 'https://example.com/missing.png' } },
+      { type: 'text', text: 'B' },
+      { type: 'image_url', image_url: { url: 'data:image/png;base64,aW1hZ2U=' } }
+    ]);
+    const messages = [
+      {
+        role: 'toolResult',
+        toolCallId: 'a',
+        toolName: 'tool_a',
+        content,
+        isError: false,
+        timestamp: 1
+      },
+      {
+        role: 'toolResult',
+        toolCallId: 'b',
+        toolName: 'tool_b',
+        content: [{ type: 'text', text: 'no image' }],
+        isError: false,
+        timestamp: 2
+      },
+      { role: 'assistant', content: [], timestamp: 3 }
+    ] as any;
+    const result = preparePiToolImagesForRequest(messages);
+    expect(result[1]).toEqual(messages[1]);
+    expect(result[2]).toMatchObject({
+      role: 'user',
+      content: [
+        { type: 'text', text: 'Tool result a:' },
+        { type: 'text', text: 'A' },
+        { type: 'text', text: '[Image: https://example.com/missing.png]' },
+        { type: 'text', text: 'B' },
+        { type: 'image', mimeType: 'image/png', data: 'aW1hZ2U=' }
+      ]
+    });
+    expect(result[3]).toEqual(messages[2]);
+    expect(preparePiToolImagesForRequest([messages[1]])).toEqual([messages[1]]);
+  });
+
+  it('keeps field text and image order when the shared image limit drops later images', async () => {
+    const image = {
+      type: 'image_url' as const,
+      image_url: { url: 'data:image/png;base64,aW1hZ2U=' }
+    };
+    const content = buildToolMessageContent({
+      text: 'fallback',
+      content: [
+        { type: 'text', text: 'A' },
+        image,
+        image,
+        image,
+        image,
+        { type: 'text', text: 'B' },
+        image
+      ]
+    });
+    const piContent = await convertToolResponseContentToPiContent(content);
+    const messages = [
+      {
+        role: 'toolResult',
+        toolCallId: 'limited',
+        toolName: 'test',
+        content: piContent,
+        isError: false,
+        timestamp: 1
+      }
+    ] as any;
+    const prepared = preparePiToolImagesForRequest(messages);
+    expect(prepared[1]).toMatchObject({
+      role: 'user',
+      content: [
+        { type: 'text', text: 'Tool result limited:' },
+        { type: 'text', text: 'A' },
+        ...Array(4).fill({ type: 'image', mimeType: 'image/png', data: 'aW1hZ2U=' }),
+        { type: 'text', text: 'B' }
+      ]
+    });
+  });
   it.each([
     'not-a-url',
     'preview:/workspace/chart.png',
@@ -640,6 +788,12 @@ describe('piAgent message conversion', () => {
 
     // 缺 mime 的 data URI 也要脱敏，否则整段 base64 会进 prompt 文本。
     expect(result).toEqual([{ type: 'text', text: '[Image: data URI]' }]);
+
+    const uppercase = await convertToolResponseContentToPiContent(
+      [{ type: 'image_url', image_url: { url: 'DATA:;BASE64,THIS_IS_PAYLOAD' } }] as any,
+      { useVision: false }
+    );
+    expect(uppercase).toEqual([{ type: 'text', text: '[Image: data URI]' }]);
   });
 
   it('masks sandbox preview urls in image placeholders when vision is disabled', async () => {

@@ -104,10 +104,10 @@ const getContentText = (
  * 沙箱预览地址带一次性 session 凭证，需要脱敏后再写入文本。
  */
 const getImagePlaceholder = (url: string) => {
-  const dataMatch = url.match(/^data:([^;,]+)[;,]/);
+  const dataMatch = url.match(/^data:([^;,]+)[;,]/i);
   if (dataMatch) return `[Image: ${dataMatch[1]}]`;
   // 畸形 data URI（缺 mime）同样不能回显内容，否则整段 base64 会进 prompt 文本。
-  if (url.startsWith('data:')) return '[Image: data URI]';
+  if (/^data:/i.test(url)) return '[Image: data URI]';
   return `[Image: ${maskImagePlaceholderUrl(url)}]`;
 };
 
@@ -137,7 +137,7 @@ export const convertToolResponseContentToPiContent = async (
       if (!useVision) {
         return { type: 'text', text: getImagePlaceholder(url) };
       }
-      const dataMatch = url.match(/^data:([^;]+);base64,(.+)$/);
+      const dataMatch = url.match(/^data:([^;]+);base64,(.+)$/i);
       if (dataMatch) {
         return { type: 'image', mimeType: dataMatch[1], data: dataMatch[2] };
       }
@@ -151,6 +151,40 @@ export const convertToolResponseContentToPiContent = async (
       }
     })
   );
+};
+
+/** 为 Pi SDK 构造请求副本，在连续工具结果后保留各调用的顺序。 */
+export const preparePiToolImagesForRequest = (messages: AgentMessage[]): AgentMessage[] => {
+  const result: AgentMessage[] = [];
+  let pending: Array<TextContent | ImageContent> = [];
+  let timestamp = 0;
+
+  const flush = () => {
+    if (pending.length === 0) return;
+    result.push({ role: 'user', content: pending, timestamp });
+    pending = [];
+  };
+
+  for (const message of messages) {
+    if (message.role !== 'toolResult') {
+      flush();
+      result.push(message);
+      continue;
+    }
+
+    if (message.content.some((part) => part.type === 'image')) {
+      pending.push(
+        { type: 'text', text: `Tool result ${message.toolCallId}:` },
+        ...message.content
+      );
+      timestamp = message.timestamp;
+      result.push({ ...message, content: message.content.filter((part) => part.type === 'text') });
+    } else {
+      result.push(message);
+    }
+  }
+  flush();
+  return result;
 };
 
 /**

@@ -61,6 +61,7 @@ import {
   isAssistantMessage,
   mapStopReason,
   normalizePiAgentMessages,
+  preparePiToolImagesForRequest,
   readAssistantMessage,
   replaceInteractiveToolResult,
   resolveInteractiveToolCall,
@@ -611,7 +612,9 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         }
 
         if (!result.contextCheckpoint) {
-          return normalizePiAgentMessages({ messages, completionTools: normalizationTools });
+          return preparePiToolImagesForRequest(
+            normalizePiAgentMessages({ messages, completionTools: normalizationTools })
+          );
         }
 
         const compressedPiMessages = normalizePiAgentMessages({
@@ -627,10 +630,12 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         messages.splice(0, messages.length, ...compressedPiMessages);
         agent.state.messages = compressedPiMessages;
         latestContextCheckpoint = result.contextCheckpoint;
-        return messages;
+        return preparePiToolImagesForRequest(messages);
       } catch {
         // pi-agent-core 要求 transformContext 不抛错；压缩异常时保留原上下文继续运行。
-        return normalizePiAgentMessages({ messages, completionTools: normalizationTools });
+        return preparePiToolImagesForRequest(
+          normalizePiAgentMessages({ messages, completionTools: normalizationTools })
+        );
       }
     }
   });
