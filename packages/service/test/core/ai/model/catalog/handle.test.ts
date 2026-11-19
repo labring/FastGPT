@@ -139,7 +139,25 @@ describe('upstream model selection semantics', () => {
   });
 
   it('distinguishes absent defaults from disabled defaults', () => {
-    expect(() => createHandle().getDefaultModelData('llm')).toThrow(ModelErrEnum.unConfigured);
+    let defaultErr: unknown;
+    try {
+      createHandle().getDefaultModelData('llm');
+    } catch (error) {
+      defaultErr = error;
+    }
+    expect(defaultErr).toMatchObject({ name: 'UserError', message: ModelErrEnum.unConfigured });
+
+    let emptyRefErr: unknown;
+    try {
+      createHandle().getModelData({ modelId: '' }, { type: ModelTypeEnum.llm });
+    } catch (error) {
+      emptyRefErr = error;
+    }
+    expect(emptyRefErr).toMatchObject({
+      name: 'UserConfigError',
+      message: ModelErrEnum.unConfigured
+    });
+
     const handle = createModelHandle({
       models: [vlm],
       defaultModels: { llm: { ...vlm, isActive: false } },

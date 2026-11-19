@@ -5,7 +5,12 @@ import type { NodeApiResponse, NodeHttpResponse } from '../../types/http';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { replaceSensitiveText } from '@fastgpt/global/common/string/tools';
-import { getErrorMessage, isUserConfigError, UserError } from '@fastgpt/global/common/error/utils';
+import {
+  getErrorMessage,
+  isServerConfigError,
+  isUserConfigError,
+  UserError
+} from '@fastgpt/global/common/error/utils';
 import { clearCookie } from '../../support/permission/auth/common';
 import type { ZodError } from 'zod';
 import type Stream from 'node:stream';
@@ -48,6 +53,10 @@ function resolveHttpStatusForApiError(
 ): number {
   const { code: propsCode = 200, error } = props;
   const bc = processedError.code;
+
+  if (isServerConfigError(error)) {
+    return 500;
+  }
 
   if (isUserConfigError(error)) {
     return 400;
@@ -133,15 +142,38 @@ export function processError(params: {
       data: ERROR_RESPONSE[errResponseKey].data
     });
 
+    // 优先尊重 ServerConfigError(500)、UserConfigError(400) 与 ChatGeneratingConflictError(409)，
+    // 其次使用登记的 HTTP 状态码；若扩展条目缺失有效值，则保留调用方显式传入的 4xx defaultCode，避免被误覆盖为 500。
+    const configuredHttpStatus = ERROR_RESPONSE[errResponseKey].httpStatus;
+    const resolvedHttpStatus = (() => {
+      if (isServerConfigError(error)) {
+        return 500;
+      }
+      if (isUserConfigError(error)) {
+        return 400;
+      }
+      if (error instanceof ChatGeneratingConflictError) {
+        return 409;
+      }
+      if (
+        typeof configuredHttpStatus === 'number' &&
+        configuredHttpStatus >= 400 &&
+        configuredHttpStatus <= 599
+      ) {
+        return configuredHttpStatus;
+      }
+      if (typeof defaultCode === 'number' && defaultCode >= 400 && defaultCode <= 499) {
+        return defaultCode;
+      }
+      return 500;
+    })();
+
     return {
       code: ERROR_RESPONSE[errResponseKey].code || defaultCode,
       statusText: ERROR_RESPONSE[errResponseKey].statusText || 'error',
       message,
       data,
-      httpStatus:
-        error instanceof ChatGeneratingConflictError
-          ? 409
-          : (ERROR_RESPONSE[errResponseKey].httpStatus ?? 500),
+      httpStatus: resolvedHttpStatus,
       shouldClearCookie
     };
   }
@@ -260,12 +292,16 @@ export const getSseErrorResponse = (
   const errorResponse = ERROR_RESPONSE[processedError.statusText];
 
   if (errorResponse) {
+    // SSE 建连后 HTTP 响应头固定为 200，在 error 帧中显式携带等价 httpStatus，
+    // 保持与 v1/v2 Chat OpenAPI 示例兼容并方便客户端区分流内 4xx/5xx 语义。
     return {
       event: SseResponseEventEnum.error,
       data: JSON.stringify({
-        ...errorResponse,
+        code: errorResponse.code,
+        statusText: errorResponse.statusText,
         message: translateApiMessage(processedError.message, res),
-        data: processedError.data
+        data: processedError.data,
+        httpStatus: processedError.httpStatus
       }),
       shouldClearCookie: processedError.shouldClearCookie
     };
