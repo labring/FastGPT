@@ -2,8 +2,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
-/** 向上查找仓库根目录（以 pnpm-workspace.yaml 为锚点，兼容 git worktree）。 */
-export const findRepoRoot = (startDir = import.meta.dirname) => {
+const locateWorkspaceRootFrom = (startDir) => {
   let current = path.resolve(startDir);
   while (true) {
     if (fs.existsSync(path.join(current, 'pnpm-workspace.yaml'))) {
@@ -11,20 +10,60 @@ export const findRepoRoot = (startDir = import.meta.dirname) => {
     }
     const parent = path.dirname(current);
     if (parent === current) {
-      throw new Error('Could not locate FastGPT repository root (pnpm-workspace.yaml not found)');
+      return null;
     }
     current = parent;
   }
 };
 
+/** 向上查找仓库根目录（以 pnpm-workspace.yaml 为锚点，优先当前工作目录以兼容 worktree 与隔离 git 夹具）。 */
+export const findRepoRoot = (startDir) => {
+  if (startDir !== undefined) {
+    const explicit = locateWorkspaceRootFrom(startDir);
+    if (explicit !== null) {
+      return explicit;
+    }
+  }
+  const fromCwd = locateWorkspaceRootFrom(process.cwd());
+  if (fromCwd !== null) {
+    return fromCwd;
+  }
+  const fromScript = locateWorkspaceRootFrom(import.meta.dirname);
+  if (fromScript !== null) {
+    return fromScript;
+  }
+  throw new Error('Could not locate FastGPT repository root (pnpm-workspace.yaml not found)');
+};
+
 export const toPosixPath = (p) => p.split(path.sep).join('/');
 
-export const isTestOrMigrationFile = (relPath) => {
+export const isMigrationFile = (relPath) =>
+  /(^|\/)(migration|migrations)\//.test(toPosixPath(relPath));
+
+export const isTestFile = (relPath) => {
   const posix = toPosixPath(relPath);
-  return (
-    /(^|\/)(test|tests|migration|migrations|__tests__)\//.test(posix) ||
-    /\.(test|spec)\.[cm]?[jt]sx?$/.test(posix)
-  );
+  return /(^|\/)(test|tests|__tests__)\//.test(posix) || /\.(test|spec)\.[cm]?[jt]sx?$/.test(posix);
+};
+
+export const isTestOrMigrationFile = (relPath) =>
+  isTestFile(relPath) || isMigrationFile(relPath);
+
+/** 明确划出 SQL 适配范围的历史 Mongo 专有 Schema（如 GridFS 历史图片，SQL 模式不建表）。 */
+export const OUT_OF_SQL_SCOPE_SCHEMAS = new Set(['packages/service/core/dataset/image/schema.ts']);
+
+/** 根据领域源码目录推导标准测试目录；未知前缀返回 undefined。 */
+export const inferDomainTestDir = (domainRel) => {
+  const normalized = toPosixPath(domainRel).replace(/^\.\//, '').replace(/\/$/, '');
+  if (normalized.startsWith('packages/service/')) {
+    return `packages/service/test/${normalized.slice('packages/service/'.length)}`;
+  }
+  if (normalized.startsWith('projects/app/src/')) {
+    return `projects/app/test/${normalized.slice('projects/app/src/'.length)}`;
+  }
+  if (normalized.startsWith('pro/admin/src/')) {
+    return `pro/admin/test/${normalized.slice('pro/admin/src/'.length)}`;
+  }
+  return undefined;
 };
 
 /** 递归收集目录下匹配过滤器的文件（相对路径数组）。 */
@@ -412,7 +451,9 @@ const CRITICAL_INDEX_OPTION_KEYS = [
 ];
 
 const IDENTIFIER_REGEX = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
-const exportedStringCache = new Map();
+/** 仅缓存不可变 Git commit 历史对象（key 含 repoRoot + gitRef + relPath），工作区文件每次按需读取不跨调用复用。 */
+const gitBlobCache = new Map();
+const gitExportedStringCache = new Map();
 
 const stripTsAssertion = (raw) =>
   raw
@@ -448,50 +489,114 @@ const resolveStringTemplateExpr = ({ expr, localStringConsts, resolvedImportedSt
   return null;
 };
 
-const resolveImportedTsFile = ({ specifier, repoRoot, sourceRelPath }) => {
+/** 从指定 Git commit SHA 严格读取 blob 文件内容（目录/不存在均返回 null，绝不回退工作区）。 */
+const readGitBlobAtRef = ({ repoRoot, gitRef, relPath }) => {
+  const normalizedRel = toPosixPath(relPath).replace(/^\.\//, '');
+  const cacheKey = `${repoRoot}::${gitRef}::${normalizedRel}`;
+  if (gitBlobCache.has(cacheKey)) {
+    return gitBlobCache.get(cacheKey);
+  }
+
+  const objectSpec = `${gitRef}:${normalizedRel}`;
+  try {
+    const objType = execFileSync('git', ['cat-file', '-t', objectSpec], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe']
+    }).trim();
+    if (objType !== 'blob') {
+      gitBlobCache.set(cacheKey, null);
+      return null;
+    }
+    const content = execFileSync('git', ['cat-file', '-p', objectSpec], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    gitBlobCache.set(cacheKey, content);
+    return content;
+  } catch {
+    gitBlobCache.set(cacheKey, null);
+    return null;
+  }
+};
+
+/** 将导入路径解析为仓库相对路径候选项，并按工作区或指定 `gitRef` 严格读取目标文件内容。 */
+const resolveImportedTsModule = ({ specifier, repoRoot, sourceRelPath, gitRef }) => {
   if (!repoRoot || !specifier) {
     return null;
   }
-  const baseAbs = (() => {
+  const baseRel = (() => {
     if (specifier.startsWith('@fastgpt/global/')) {
-      return path.join(repoRoot, 'packages/global', specifier.slice('@fastgpt/global/'.length));
+      return `packages/global/${specifier.slice('@fastgpt/global/'.length)}`;
     }
     if (specifier.startsWith('@fastgpt/service/')) {
-      return path.join(repoRoot, 'packages/service', specifier.slice('@fastgpt/service/'.length));
+      return `packages/service/${specifier.slice('@fastgpt/service/'.length)}`;
     }
     if (specifier.startsWith('@/')) {
       const rootSub = sourceRelPath?.startsWith('pro/admin/') ? 'pro/admin/src' : 'projects/app/src';
-      return path.join(repoRoot, rootSub, specifier.slice(2));
+      return `${rootSub}/${specifier.slice(2)}`;
     }
     if ((specifier.startsWith('./') || specifier.startsWith('../')) && sourceRelPath) {
-      return path.resolve(path.dirname(path.join(repoRoot, sourceRelPath)), specifier);
+      const joined = path.posix.normalize(
+        path.posix.join(path.posix.dirname(toPosixPath(sourceRelPath)), specifier)
+      );
+      if (joined.startsWith('..') || path.posix.isAbsolute(joined)) {
+        return null;
+      }
+      return joined;
     }
     return null;
   })();
 
-  if (baseAbs === null) {
+  if (baseRel === null) {
     return null;
   }
-  for (const candidate of [baseAbs, `${baseAbs}.ts`, path.join(baseAbs, 'index.ts')]) {
-    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
-      return candidate;
+
+  const normalizedBase = baseRel.replace(/^\.\//, '');
+  const candidates = /\.[cm]?[jt]sx?$/.test(normalizedBase)
+    ? [normalizedBase]
+    : [`${normalizedBase}.ts`, `${normalizedBase}/index.ts`, `${normalizedBase}.tsx`, normalizedBase];
+
+  if (gitRef !== undefined) {
+    for (const candidateRel of candidates) {
+      const content = readGitBlobAtRef({ repoRoot, gitRef, relPath: candidateRel });
+      if (content !== null) {
+        return { relPath: candidateRel, content };
+      }
+    }
+    return null;
+  }
+
+  for (const candidateRel of candidates) {
+    const abs = path.resolve(repoRoot, candidateRel);
+    if (fs.existsSync(abs) && fs.statSync(abs).isFile()) {
+      return { relPath: candidateRel, content: fs.readFileSync(abs, 'utf8') };
     }
   }
   return null;
 };
 
-const readExportedStringConsts = ({ fileAbs, repoRoot, depth = 0 }) => {
-  if (!fileAbs || depth > 2) {
+const readExportedStringConsts = ({
+  moduleInfo,
+  repoRoot,
+  gitRef,
+  worktreeCache,
+  depth = 0
+}) => {
+  if (!moduleInfo || depth > 3) {
     return new Map();
   }
-  if (exportedStringCache.has(fileAbs)) {
-    return exportedStringCache.get(fileAbs);
+
+  const cache = gitRef !== undefined ? gitExportedStringCache : worktreeCache;
+  const cacheKey = `${repoRoot}::${gitRef ?? 'worktree'}::${moduleInfo.relPath}`;
+  if (cache.has(cacheKey)) {
+    return cache.get(cacheKey);
   }
 
   const map = new Map();
-  exportedStringCache.set(fileAbs, map);
-  const clean = stripCommentsPreserveStrings(fs.readFileSync(fileAbs, 'utf8'));
-  const relPath = toPosixPath(path.relative(repoRoot, fileAbs));
+  cache.set(cacheKey, map);
+  const clean = stripCommentsPreserveStrings(moduleInfo.content);
 
   for (const match of clean.matchAll(
     /\bexport\s+const\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*(?::[^=;]+)?=\s*(['"`][^'"`]*['"`])/g
@@ -503,14 +608,50 @@ const readExportedStringConsts = ({ fileAbs, repoRoot, depth = 0 }) => {
   }
 
   for (const match of clean.matchAll(/\bexport\s+\*\s+from\s+['"]([^'"]+)['"]/g)) {
-    const childAbs = resolveImportedTsFile({
+    const childMod = resolveImportedTsModule({
       specifier: match[1],
       repoRoot,
-      sourceRelPath: relPath
+      sourceRelPath: moduleInfo.relPath,
+      gitRef
     });
-    for (const [k, v] of readExportedStringConsts({ fileAbs: childAbs, repoRoot, depth: depth + 1 })) {
+    const childConsts = readExportedStringConsts({
+      moduleInfo: childMod,
+      repoRoot,
+      gitRef,
+      worktreeCache,
+      depth: depth + 1
+    });
+    for (const [k, v] of childConsts) {
       if (!map.has(k)) {
         map.set(k, v);
+      }
+    }
+  }
+
+  for (const match of clean.matchAll(/\bexport\s*\{([^}]+)\}\s*from\s*['"]([^'"]+)['"]/g)) {
+    const childMod = resolveImportedTsModule({
+      specifier: match[2],
+      repoRoot,
+      sourceRelPath: moduleInfo.relPath,
+      gitRef
+    });
+    const childConsts = readExportedStringConsts({
+      moduleInfo: childMod,
+      repoRoot,
+      gitRef,
+      worktreeCache,
+      depth: depth + 1
+    });
+    for (const rawSpec of match[1].split(',')) {
+      const trimmed = rawSpec.trim();
+      if (!trimmed || trimmed.startsWith('type ')) {
+        continue;
+      }
+      const asParts = trimmed.split(/\s+as\s+/).map((s) => s.trim());
+      const origName = asParts[0];
+      const exportedName = asParts[1] ?? origName;
+      if (childConsts.has(origName) && !map.has(exportedName)) {
+        map.set(exportedName, childConsts.get(origName));
       }
     }
   }
@@ -551,11 +692,266 @@ const scanBalancedSegment = (src, { startIdx, openChar, closeChar }) => {
   return null;
 };
 
-/** 解析源码内 Schema 变量与 MongoDB 集合名的映射关系及潜在归属冲突。 */
-const extractSchemaCollectionBindings = ({ sourceText, repoRoot, sourceRelPath }) => {
+const skipWhitespace = (src, startIdx) => {
+  let cursor = startIdx;
+  while (cursor < src.length && /\s/.test(src[cursor])) {
+    cursor += 1;
+  }
+  return cursor;
+};
+
+const skipQuotedLiteral = (src, startIdx) => {
+  const quote = src[startIdx];
+  let escaped = false;
+  for (let i = startIdx + 1; i < src.length; i += 1) {
+    const ch = src[i];
+    if (escaped) {
+      escaped = false;
+    } else if (ch === '\\') {
+      escaped = true;
+    } else if (ch === quote) {
+      return i;
+    }
+  }
+  return src.length - 1;
+};
+
+/** 跳过可选 TS 类型注解，查找位于括号/尖括号深度 0 处的目标分隔符（`=`、`=>` 或 `{`）。 */
+const scanToTopLevelToken = ({ src, startIdx, target }) => {
+  let depthParen = 0;
+  let depthBrace = 0;
+  let depthBracket = 0;
+  let depthAngle = 0;
+
+  for (let i = startIdx; i < src.length; i += 1) {
+    const ch = src[i];
+    if (ch === "'" || ch === '"' || ch === '`') {
+      i = skipQuotedLiteral(src, i);
+      continue;
+    }
+
+    const atTop =
+      depthParen === 0 && depthBrace === 0 && depthBracket === 0 && depthAngle === 0;
+    if (atTop) {
+      if (target === '=>' && ch === '=' && src[i + 1] === '>') {
+        return i;
+      }
+      if (
+        target === '=' &&
+        ch === '=' &&
+        src[i + 1] !== '>' &&
+        src[i + 1] !== '=' &&
+        src[i - 1] !== '=' &&
+        src[i - 1] !== '!' &&
+        src[i - 1] !== '<' &&
+        src[i - 1] !== '>'
+      ) {
+        return i;
+      }
+      if (target === '{' && ch === '{') {
+        return i;
+      }
+      if (ch === ';') {
+        return -1;
+      }
+    }
+
+    if (ch === '(') depthParen += 1;
+    else if (ch === ')' && depthParen > 0) depthParen -= 1;
+    else if (ch === '{') depthBrace += 1;
+    else if (ch === '}' && depthBrace > 0) depthBrace -= 1;
+    else if (ch === '[') depthBracket += 1;
+    else if (ch === ']' && depthBracket > 0) depthBracket -= 1;
+    else if (ch === '<') depthAngle += 1;
+    else if (ch === '>' && src[i - 1] !== '=' && depthAngle > 0) depthAngle -= 1;
+  }
+
+  return -1;
+};
+
+const NEW_STATEMENT_START_REGEX =
+  /^(?:export|const|let|var|function|async\s+function|class|interface|type|return|if|for|while|switch|try|import|defineIndex)\b/;
+
+/** 扫描表达式体箭头函数（无 `{...}`）的精确结束下标，防止作用域越界侵入相邻声明。 */
+const scanArrowExprBodyEnd = (src, startIdx) => {
+  let depthParen = 0;
+  let depthBrace = 0;
+  let depthBracket = 0;
+
+  for (let i = startIdx; i < src.length; i += 1) {
+    const ch = src[i];
+    if (ch === "'" || ch === '"' || ch === '`') {
+      i = skipQuotedLiteral(src, i);
+      continue;
+    }
+
+    const atTop = depthParen === 0 && depthBrace === 0 && depthBracket === 0;
+    if (atTop) {
+      if (ch === ';' || ch === ',' || ch === ')' || ch === ']' || ch === '}') {
+        return i;
+      }
+      if (ch === '\n') {
+        const nextIdx = skipWhitespace(src, i + 1);
+        if (nextIdx >= src.length || NEW_STATEMENT_START_REGEX.test(src.slice(nextIdx))) {
+          return i;
+        }
+      }
+    }
+
+    if (ch === '(') depthParen += 1;
+    else if (ch === ')' && depthParen > 0) depthParen -= 1;
+    else if (ch === '{') depthBrace += 1;
+    else if (ch === '}' && depthBrace > 0) depthBrace -= 1;
+    else if (ch === '[') depthBracket += 1;
+    else if (ch === ']' && depthBracket > 0) depthBracket -= 1;
+  }
+
+  return src.length;
+};
+
+/** 精确提取源码中所有命名函数声明与变量赋值函数/箭头函数的函数体字符区间 `[bodyStart, bodyEnd]`。 */
+const extractNamedFunctionScopes = (clean) => {
+  const scopes = [];
+
+  const parseFunctionBodyAfterSignature = (sigStart) => {
+    let cursor = skipWhitespace(clean, sigStart);
+    if (clean[cursor] === '<') {
+      const genericSeg = scanBalancedSegment(clean, {
+        startIdx: cursor,
+        openChar: '<',
+        closeChar: '>'
+      });
+      if (genericSeg === null) return null;
+      cursor = skipWhitespace(clean, genericSeg.endIdx + 1);
+    }
+    if (clean[cursor] !== '(') {
+      return null;
+    }
+    const paramSeg = scanBalancedSegment(clean, {
+      startIdx: cursor,
+      openChar: '(',
+      closeChar: ')'
+    });
+    if (paramSeg === null) return null;
+
+    const braceIdx = scanToTopLevelToken({
+      src: clean,
+      startIdx: paramSeg.endIdx + 1,
+      target: '{'
+    });
+    if (braceIdx === -1) return null;
+    const bodySeg = scanBalancedSegment(clean, {
+      startIdx: braceIdx,
+      openChar: '{',
+      closeChar: '}'
+    });
+    if (bodySeg === null) return null;
+    return { bodyStart: braceIdx, bodyEnd: bodySeg.endIdx };
+  };
+
+  // 1. 命名函数声明: `function getFoo(...) { ... }`
+  for (const match of clean.matchAll(/\bfunction\s+([A-Za-z_$][A-Za-z0-9_$]*)\b/g)) {
+    const body = parseFunctionBodyAfterSignature(match.index + match[0].length);
+    if (body !== null) {
+      scopes.push({ name: match[1], ...body });
+    }
+  }
+
+  // 2. 变量绑定的函数表达式或箭头函数: `const getFoo = (...) => ...` / `const getFoo = function(...) { ... }`
+  for (const match of clean.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\b/g)) {
+    const name = match[1];
+    const eqIdx = scanToTopLevelToken({
+      src: clean,
+      startIdx: match.index + match[0].length,
+      target: '='
+    });
+    if (eqIdx === -1) {
+      continue;
+    }
+
+    let cursor = skipWhitespace(clean, eqIdx + 1);
+    if (/^async\b/.test(clean.slice(cursor))) {
+      cursor = skipWhitespace(clean, cursor + 'async'.length);
+    }
+
+    if (/^function\b/.test(clean.slice(cursor))) {
+      cursor = skipWhitespace(clean, cursor + 'function'.length);
+      const optNameMatch = clean.slice(cursor).match(/^([A-Za-z_$][A-Za-z0-9_$]*)\b/);
+      if (optNameMatch) {
+        cursor += optNameMatch[0].length;
+      }
+      const body = parseFunctionBodyAfterSignature(cursor);
+      if (body !== null) {
+        scopes.push({ name, ...body });
+      }
+      continue;
+    }
+
+    if (clean[cursor] === '<') {
+      const genericSeg = scanBalancedSegment(clean, {
+        startIdx: cursor,
+        openChar: '<',
+        closeChar: '>'
+      });
+      if (genericSeg === null) continue;
+      cursor = skipWhitespace(clean, genericSeg.endIdx + 1);
+    }
+
+    let afterParamsIdx = -1;
+    if (clean[cursor] === '(') {
+      const paramSeg = scanBalancedSegment(clean, {
+        startIdx: cursor,
+        openChar: '(',
+        closeChar: ')'
+      });
+      if (paramSeg === null) continue;
+      afterParamsIdx = paramSeg.endIdx + 1;
+    } else {
+      const singleParam = clean.slice(cursor).match(/^([A-Za-z_$][A-Za-z0-9_$]*)\s*=>/);
+      if (singleParam) {
+        afterParamsIdx = cursor + singleParam[1].length;
+      }
+    }
+
+    if (afterParamsIdx === -1) {
+      continue;
+    }
+
+    const arrowIdx = scanToTopLevelToken({
+      src: clean,
+      startIdx: afterParamsIdx,
+      target: '=>'
+    });
+    if (arrowIdx === -1) {
+      continue;
+    }
+
+    const bodyStart = skipWhitespace(clean, arrowIdx + 2);
+    if (clean[bodyStart] === '{') {
+      const bodySeg = scanBalancedSegment(clean, {
+        startIdx: bodyStart,
+        openChar: '{',
+        closeChar: '}'
+      });
+      if (bodySeg !== null) {
+        scopes.push({ name, bodyStart, bodyEnd: bodySeg.endIdx });
+      }
+    } else if (bodyStart < clean.length) {
+      const bodyEnd = scanArrowExprBodyEnd(clean, bodyStart);
+      scopes.push({ name, bodyStart, bodyEnd });
+    }
+  }
+
+  return scopes;
+};
+
+/** 解析源码内 Schema 变量与 MongoDB 集合名的映射关系及潜在归属冲突（严格按 `gitRef` 隔离依赖版本）。 */
+const extractSchemaCollectionBindings = ({ sourceText, repoRoot, sourceRelPath, gitRef }) => {
   const clean = stripCommentsPreserveStrings(sourceText);
+  const worktreeCache = new Map();
   const localStringConsts = new Map();
   const resolvedImportedStrings = new Map();
+  const unresolvedImportedSymbols = new Map();
   const modelFactoryFns = new Set(['getMongoModel', 'getMongoLogModel']);
   const declaredSchemas = new Set();
   const schemaToCollection = new Map();
@@ -574,10 +970,20 @@ const extractSchemaCollectionBindings = ({ sourceText, repoRoot, sourceRelPath }
   for (const match of clean.matchAll(/\bimport\s*\{([^}]+)\}\s*from\s*['"]([^'"]+)['"]/g)) {
     const clause = match[1];
     const specifier = match[2];
-    const importedFileAbs = resolveImportedTsFile({ specifier, repoRoot, sourceRelPath });
+    const importedMod = resolveImportedTsModule({
+      specifier,
+      repoRoot,
+      sourceRelPath,
+      gitRef
+    });
     const exportedConsts =
-      importedFileAbs !== null
-        ? readExportedStringConsts({ fileAbs: importedFileAbs, repoRoot })
+      importedMod !== null
+        ? readExportedStringConsts({
+            moduleInfo: importedMod,
+            repoRoot,
+            gitRef,
+            worktreeCache
+          })
         : null;
 
     for (const rawSpec of clause.split(',')) {
@@ -593,6 +999,8 @@ const extractSchemaCollectionBindings = ({ sourceText, repoRoot, sourceRelPath }
       }
       if (exportedConsts?.has(importedName)) {
         resolvedImportedStrings.set(localName, exportedConsts.get(importedName));
+      } else if (importedMod === null) {
+        unresolvedImportedSymbols.set(localName, specifier);
       }
     }
   }
@@ -662,8 +1070,13 @@ const extractSchemaCollectionBindings = ({ sourceText, repoRoot, sourceRelPath }
     });
 
     if (resolvedCol === null || resolvedCol.length === 0) {
+      const missingSpec = unresolvedImportedSymbols.get(colExpr);
+      const refHint =
+        missingSpec !== undefined && gitRef !== undefined
+          ? ` (imported from "${missingSpec}" not found at git ref "${gitRef}")`
+          : '';
       ownershipErrors.push(
-        `Cannot resolve static collection name "${callArgs[0].trim()}" for schema "${schemaExpr}"`
+        `Cannot resolve static collection name "${callArgs[0].trim()}" for schema "${schemaExpr}"${refHint}`
       );
       continue;
     }
@@ -684,30 +1097,79 @@ const extractSchemaCollectionBindings = ({ sourceText, repoRoot, sourceRelPath }
     });
   }
 
-  // 解析 `const MongoX = getMongoModel(...)` 或惰性 getter 后通过 `const s = MongoX.schema` 声明动态索引的别名
+  // 严格按精确语句边界和包含该注册调用的最内层函数作用域绑定 Model/Getter 符号，禁止跨相邻声明猜测
+  const functionScopes = extractNamedFunctionScopes(clean);
   const modelSymbolToCollection = new Map();
-  for (const reg of modelRegistrations) {
-    const prefix = clean.slice(Math.max(0, reg.callIndex - 160), reg.callIndex);
-    const directModel = prefix.match(/\b(?:const|let)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*(?::[^=]+)?=\s*$/);
-    if (directModel) {
-      modelSymbolToCollection.set(directModel[1], reg.collection);
+  const ambiguousModelSymbols = new Set();
+
+  const bindModelSymbol = (symbolName, collection) => {
+    if (ambiguousModelSymbols.has(symbolName)) {
+      return;
     }
-    const getterModel = prefix.match(
-      /\b(?:const|function)\s+(get[A-Za-z0-9_$]*)\b[\s\S]*$/
+    const prev = modelSymbolToCollection.get(symbolName);
+    if (prev !== undefined && prev !== collection) {
+      modelSymbolToCollection.delete(symbolName);
+      ambiguousModelSymbols.add(symbolName);
+      return;
+    }
+    modelSymbolToCollection.set(symbolName, collection);
+  };
+
+  for (const reg of modelRegistrations) {
+    // 1. 同语句内直接变量赋值: `const MongoX = getMongoModel(...)`（绝不跨越 `;` / `{` / `}`）
+    const beforeCall = clean.slice(0, reg.callIndex);
+    const stmtBoundaryIdx = Math.max(
+      beforeCall.lastIndexOf(';'),
+      beforeCall.lastIndexOf('{'),
+      beforeCall.lastIndexOf('}')
     );
-    if (getterModel) {
-      modelSymbolToCollection.set(getterModel[1], reg.collection);
+    const stmtPrefix = beforeCall.slice(stmtBoundaryIdx + 1);
+    const directModel = stmtPrefix.match(
+      /^\s*(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*(?::[^=;{}]+)?=\s*$/
+    );
+    if (directModel) {
+      bindModelSymbol(directModel[1], reg.collection);
+    }
+
+    // 2. 包含该注册调用的最内层命名函数作用域（如 `getAMongoModel`；命名函数表达式同区间一并绑定）
+    const enclosingScopes = functionScopes
+      .filter((scope) => scope.bodyStart <= reg.callIndex && reg.callIndex <= scope.bodyEnd)
+      .sort((a, b) => a.bodyEnd - a.bodyStart - (b.bodyEnd - b.bodyStart));
+
+    if (enclosingScopes.length > 0) {
+      const minSpan = enclosingScopes[0].bodyEnd - enclosingScopes[0].bodyStart;
+      for (const scope of enclosingScopes) {
+        if (scope.bodyEnd - scope.bodyStart !== minSpan) {
+          break;
+        }
+        bindModelSymbol(scope.name, reg.collection);
+      }
     }
   }
+
   for (const match of clean.matchAll(
-    /\b(?:const|let)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*([A-Za-z_$][A-Za-z0-9_$]*)(?:\(\))?\.schema\b/g
+    /\b(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*(?::[^=;]+)?=\s*(?:await\s+)?([A-Za-z_$][A-Za-z0-9_$]*)(?:\s*\([^)]*\))?\.schema\b/g
   )) {
     const aliasVar = match[1];
     const modelSym = match[2];
-    const col = modelSymbolToCollection.get(modelSym);
-    if (col !== undefined && !schemaToCollection.has(aliasVar)) {
-      schemaToCollection.set(aliasVar, col);
+    if (ambiguousModelSymbols.has(modelSym)) {
+      ownershipErrors.push(
+        `Schema alias "${aliasVar}" references ambiguous model symbol "${modelSym}" bound to multiple collections`
+      );
+      continue;
     }
+    const col = modelSymbolToCollection.get(modelSym);
+    if (col === undefined) {
+      continue;
+    }
+    const prevCol = schemaToCollection.get(aliasVar);
+    if (prevCol !== undefined && prevCol !== col) {
+      ownershipErrors.push(
+        `Schema alias "${aliasVar}" resolves to multiple collections ("${prevCol}" and "${col}")`
+      );
+      continue;
+    }
+    schemaToCollection.set(aliasVar, col);
   }
 
   return {
@@ -720,9 +1182,15 @@ const extractSchemaCollectionBindings = ({ sourceText, repoRoot, sourceRelPath }
 
 /**
  * 解析源码中的 `defineIndex(...)` 列表及每个索引所属的 Schema / Collection 归属元数据。
+ * 当分析 `--git-legacy` 历史文件时必须传入 `gitRef`，确保所有导入常量均从同一历史版本解析。
  */
-export const analyzeSchemaIndexes = ({ sourceText, repoRoot, sourceRelPath }) => {
-  const bindings = extractSchemaCollectionBindings({ sourceText, repoRoot, sourceRelPath });
+export const analyzeSchemaIndexes = ({ sourceText, repoRoot, sourceRelPath, gitRef }) => {
+  const bindings = extractSchemaCollectionBindings({
+    sourceText,
+    repoRoot,
+    sourceRelPath,
+    gitRef
+  });
   const ownershipErrors = [...bindings.ownershipErrors];
   const results = [];
   const marker = 'defineIndex(';
@@ -1064,10 +1532,12 @@ export const discoverMongoSchemas = (repoRoot) => {
       const indexes = extractDefineIndexes(content, { repoRoot, sourceRelPath: relPath });
       const hasSoftDelete = /\bdeleteTime\b/.test(clean);
       const hasTtl = /\bexpireAfterSeconds\b|\bexpires\s*:/.test(clean);
+      const mongoLegacyOnly = OUT_OF_SQL_SCOPE_SCHEMAS.has(relPath);
 
       models.push({
         relPath,
         isMigrated,
+        mongoLegacyOnly,
         datasource,
         hasSoftDelete,
         hasTtl,
@@ -1127,27 +1597,53 @@ export const readGitLegacyFile = (repoRoot, spec) => {
     if (rawRef === 'merge-base') {
       return resolveMergeBaseCommit(repoRoot);
     }
-    return { ok: true, sha: rawRef };
+    try {
+      const sha = execFileSync('git', ['rev-parse', '--verify', `${rawRef}^{commit}`], {
+        cwd: repoRoot,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe']
+      }).trim();
+      return { ok: true, sha: sha || rawRef };
+    } catch (error) {
+      const stderr =
+        error && typeof error === 'object' && 'stderr' in error ? String(error.stderr).trim() : '';
+      const message = error instanceof Error ? error.message : String(error);
+      return { ok: false, error: stderr || message };
+    }
   })();
 
   if (!resolvedRefResult.ok) {
     return {
       ok: false,
-      objectSpec: `merge-base:${relPath}`,
+      objectSpec: `${rawRef}:${relPath}`,
       relPath,
       error: resolvedRefResult.error
     };
   }
 
-  const objectSpec = `${resolvedRefResult.sha}:${relPath}`;
+  const gitRef = resolvedRefResult.sha;
+  const objectSpec = `${gitRef}:${relPath}`;
 
   try {
-    const content = execFileSync('git', ['show', objectSpec], {
+    const objType = execFileSync('git', ['cat-file', '-t', objectSpec], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe']
+    }).trim();
+    if (objType !== 'blob') {
+      return {
+        ok: false,
+        objectSpec,
+        relPath,
+        error: `Git object "${objectSpec}" is "${objType}", expected blob`
+      };
+    }
+    const content = execFileSync('git', ['cat-file', '-p', objectSpec], {
       cwd: repoRoot,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe']
     });
-    return { ok: true, objectSpec, relPath, content };
+    return { ok: true, objectSpec, relPath, gitRef, content };
   } catch (error) {
     const stderr =
       error && typeof error === 'object' && 'stderr' in error ? String(error.stderr).trim() : '';
@@ -1159,6 +1655,119 @@ export const readGitLegacyFile = (repoRoot, spec) => {
       error: stderr || message
     };
   }
+};
+
+const MAX_OB_MYSQL_INDEX_BYTES = 3072;
+
+const estimateSqlColumnIndexBytes = (colDef) => {
+  const kind = colDef?.kind;
+  const nullableOverhead = colDef?.nullable === true ? 1 : 0;
+  switch (kind) {
+    case 'entityId':
+      return 24 * 4 + 2 + nullableOverhead;
+    case 'varchar': {
+      const length = typeof colDef.length === 'number' ? colDef.length : 255;
+      return length * 4 + 2 + nullableOverhead;
+    }
+    case 'boolean':
+      return 1 + nullableOverhead;
+    case 'integer':
+      return 4 + nullableOverhead;
+    case 'bigint':
+    case 'double':
+    case 'timestamp':
+      return 8 + nullableOverhead;
+    default:
+      return null;
+  }
+};
+
+/**
+ * 静态解析 `sql/table.ts` 中的全部 `defineSqlTable({...})` 声明并校验 OceanBase/MySQL 硬约束：
+ * - 禁止给 `text` / `json` 列声明 `defaultValue`（OB/MySQL `ERROR 1101`）；
+ * - 禁止对 `text` / `json` 列建普通 B-Tree 索引；
+ * - 校验单条普通/唯一复合索引在 `utf8mb4` 下的最大估算字节宽不超过 3072 字节。
+ */
+export const analyzeSqlTableDefinitions = (sourceText) => {
+  const clean = stripCommentsPreserveStrings(sourceText);
+  const tables = [];
+  const issues = [];
+  const callRegex = /\bdefineSqlTable\s*\(/g;
+
+  for (const match of clean.matchAll(callRegex)) {
+    const openParenIdx = match.index + match[0].length - 1;
+    const parenSeg = scanBalancedSegment(clean, {
+      startIdx: openParenIdx,
+      openChar: '(',
+      closeChar: ')'
+    });
+    if (parenSeg === null) {
+      continue;
+    }
+
+    const argExpr = stripTsAssertion(parenSeg.inner);
+    const parsed = parseJsValue(argExpr);
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed) || 'expr' in parsed) {
+      continue;
+    }
+
+    const tableName = typeof parsed.name === 'string' ? parsed.name : '(unnamed)';
+    const columns =
+      parsed.columns !== null && typeof parsed.columns === 'object' && !Array.isArray(parsed.columns)
+        ? parsed.columns
+        : {};
+    const indexes = Array.isArray(parsed.indexes) ? parsed.indexes : [];
+
+    tables.push({ name: tableName, columns, indexes });
+
+    for (const [colName, colDef] of Object.entries(columns)) {
+      if (colDef === null || typeof colDef !== 'object' || Array.isArray(colDef)) {
+        continue;
+      }
+      if ((colDef.kind === 'text' || colDef.kind === 'json') && colDef.defaultValue !== undefined) {
+        issues.push(
+          `table "${tableName}" column "${colName}" (${colDef.kind}) must not declare defaultValue (OceanBase/MySQL ERROR 1101 forbids DEFAULT on LONGTEXT/JSON)`
+        );
+      }
+    }
+
+    for (const idxDef of indexes) {
+      if (idxDef === null || typeof idxDef !== 'object' || Array.isArray(idxDef)) {
+        continue;
+      }
+      const idxName = typeof idxDef.name === 'string' ? idxDef.name : '(unnamed)';
+      const idxCols = Array.isArray(idxDef.columns) ? idxDef.columns : [];
+      let totalBytes = 0;
+
+      for (const colName of idxCols) {
+        if (typeof colName !== 'string') {
+          continue;
+        }
+        const colDef = columns[colName];
+        if (colDef === undefined || typeof colDef !== 'object' || colDef === null) {
+          continue;
+        }
+        if (colDef.kind === 'text' || colDef.kind === 'json') {
+          issues.push(
+            `table "${tableName}" index "${idxName}" cannot index ${colDef.kind} column "${colName}" on OceanBase/MySQL (use bounded varchar instead)`
+          );
+          continue;
+        }
+        const colBytes = estimateSqlColumnIndexBytes(colDef);
+        if (colBytes !== null) {
+          totalBytes += colBytes;
+        }
+      }
+
+      if (totalBytes > MAX_OB_MYSQL_INDEX_BYTES) {
+        issues.push(
+          `table "${tableName}" index "${idxName}" (${idxCols.join(', ')}) estimated width ${totalBytes}B exceeds OceanBase/MySQL utf8mb4 limit (${MAX_OB_MYSQL_INDEX_BYTES}B)`
+        );
+      }
+    }
+  }
+
+  return { tables, issues };
 };
 
 export { stripCommentsPreserveStrings };

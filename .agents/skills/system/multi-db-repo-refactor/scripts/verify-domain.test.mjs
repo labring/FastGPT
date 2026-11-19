@@ -2,12 +2,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { discoverMongoSchemas, extractDefineIndexes } from './common.mjs';
+import {
+  analyzeSchemaIndexes,
+  analyzeSqlTableDefinitions,
+  discoverMongoSchemas,
+  extractDefineIndexes,
+  readGitLegacyFile
+} from './common.mjs';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, '../../../../..');
+const auditScript = path.join(scriptDir, 'audit-domain.mjs');
 const verifyScript = path.join(scriptDir, 'verify-domain.mjs');
 const scaffoldScript = path.join(scriptDir, 'scaffold-repo.mjs');
 
@@ -44,10 +52,10 @@ const withTempDomain = ({ newMongoSchema, legacySchema, extraFiles = {} }, fn) =
   }
 };
 
-const runNodeScript = (scriptPath, args) => {
+const runNodeScript = (scriptPath, { args, cwd = repoRoot }) => {
   try {
     const stdout = execFileSync('node', [scriptPath, ...args], {
-      cwd: repoRoot,
+      cwd,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe']
     });
@@ -61,7 +69,7 @@ const runNodeScript = (scriptPath, args) => {
   }
 };
 
-const runVerify = (args) => runNodeScript(verifyScript, args);
+const runVerify = (args, { cwd = repoRoot } = {}) => runNodeScript(verifyScript, { args, cwd });
 
 test('extractDefineIndexes semantically parses keys, derived names, arithmetic TTL, expires duration strings, partial filters, and collations', () => {
   const indexes = extractDefineIndexes(`
@@ -420,17 +428,19 @@ test('scaffold-repo.mjs preserves existing service.ts, generates normalized SQL/
     const existingServiceText = 'export const keepMyExistingBusinessLogic = true;\n';
     fs.writeFileSync(path.join(tmpDomainAbs, 'service.ts'), existingServiceText);
 
-    const scaffoldRes = runNodeScript(scaffoldScript, [
-      '--dir',
-      tmpDomainRel,
-      '--entity',
-      'ProbeWidget',
-      '--table',
-      'probe_widgets',
-      '--datasource',
-      'log',
-      '--soft-delete'
-    ]);
+    const scaffoldRes = runNodeScript(scaffoldScript, {
+      args: [
+        '--dir',
+        tmpDomainRel,
+        '--entity',
+        'ProbeWidget',
+        '--table',
+        'probe_widgets',
+        '--datasource',
+        'log',
+        '--soft-delete'
+      ]
+    });
     assert.equal(scaffoldRes.status, 0, scaffoldRes.stderr);
     assert.match(scaffoldRes.stdout, /Skipped existing: packages\/service\/\.scaffold-verify-probe\/service\.ts/);
     assert.equal(fs.readFileSync(path.join(tmpDomainAbs, 'service.ts'), 'utf8'), existingServiceText);
@@ -449,6 +459,12 @@ test('scaffold-repo.mjs preserves existing service.ts, generates normalized SQL/
     );
     assert.doesNotMatch(contractTest, /execute\(undefined\)/);
     assert.match(contractTest, /createCollection\(\)/);
+    assert.match(contractTest, /compileSqlTableDDL\(probeWidgetSqlTable, 'oceanbase'\)/);
+    assert.match(contractTest, /new NoopProbeWidgetRepository\(\)/);
+
+    const serviceTest = fs.readFileSync(path.join(tmpTestAbs, 'service.test.ts'), 'utf8');
+    assert.match(serviceTest, /new ProbeWidgetService\(/);
+    assert.doesNotMatch(serviceTest, /vi\.mock\(/);
 
     const verifyRes = runVerify(['--dir', tmpDomainRel]);
     assert.equal(verifyRes.status, 0, verifyRes.stderr);
@@ -456,6 +472,142 @@ test('scaffold-repo.mjs preserves existing service.ts, generates normalized SQL/
     fs.rmSync(tmpDomainAbs, { recursive: true, force: true });
     fs.rmSync(tmpTestAbs, { recursive: true, force: true });
   }
+});
+
+test('enforces OceanBase/MySQL portability rules (INSERT IGNORE, NULLS LAST, LONGTEXT/JSON defaults & indexes, 3072B limit)', () => {
+  const tableCheck = analyzeSqlTableDefinitions(`
+    export const badTable = defineSqlTable({
+      name: 'bad_items',
+      columns: {
+        _id: { kind: 'entityId', primaryKey: true },
+        body: { kind: 'text', defaultValue: '' },
+        meta: { kind: 'json', defaultValue: '{}' },
+        a: { kind: 'varchar', length: 500 },
+        b: { kind: 'varchar', length: 400 }
+      },
+      indexes: [
+        { name: 'idx_body', columns: ['body'] },
+        { name: 'idx_too_wide', columns: ['a', 'b'] }
+      ]
+    });
+  `);
+  assert.equal(tableCheck.issues.length, 4);
+  assert.ok(tableCheck.issues.some((i) => i.includes('column "body" (text) must not declare defaultValue')));
+  assert.ok(tableCheck.issues.some((i) => i.includes('column "meta" (json) must not declare defaultValue')));
+  assert.ok(tableCheck.issues.some((i) => i.includes('cannot index text column "body"')));
+  assert.ok(tableCheck.issues.some((i) => i.includes('exceeds OceanBase/MySQL utf8mb4 limit (3072B)')));
+
+  withTempDomain(
+    {
+      legacySchema: `defineIndex(S, { key: { teamId: 1 } });`,
+      newMongoSchema: `defineIndex(S, { key: { teamId: 1 } });`,
+      extraFiles: {
+        'sql/table.ts': `
+          export const badTable = defineSqlTable({
+            name: 'bad_items',
+            columns: {
+              _id: { kind: 'entityId', primaryKey: true },
+              note: { kind: 'text', defaultValue: '' },
+              long_a: { kind: 'varchar', length: 600 },
+              long_b: { kind: 'varchar', length: 300 }
+            },
+            indexes: [{ name: 'idx_wide', columns: ['long_a', 'long_b'] }]
+          });
+        `,
+        'sql/repo.ts': `
+          export const badQuery = (q) => q.insertInto('t').ignore().orderBy(sql\`pinned_at DESC NULLS LAST\`);
+        `
+      }
+    },
+    ({ domainRel, legacyRel }) => {
+      const res = runVerify(['--dir', domainRel, '--legacy-schema', legacyRel]);
+      assert.equal(res.status, 1);
+      assert.match(res.stderr, /INSERT IGNORE \/ \.ignore\(\)/);
+      assert.match(res.stderr, /NULLS FIRST\/LAST is unsupported/);
+      assert.match(res.stderr, /must not declare defaultValue/);
+      assert.match(res.stderr, /exceeds OceanBase\/MySQL utf8mb4 limit/);
+    }
+  );
+});
+
+test('enforces contract test governance (forbids stubbed transactions, requires log Noop coverage, and blocks legacy model refs in test fixtures)', () => {
+  const tempTestLeakAbs = path.join(repoRoot, 'packages/service/test/.legacy-fixture-probe.test.ts');
+  const tempContractAbs = path.join(repoRoot, 'packages/service/test/.bad-contract.contract.test.ts');
+  try {
+    fs.writeFileSync(
+      tempTestLeakAbs,
+      `export const fixture = () => MongoTempTestLeak771.create({});\n`
+    );
+    fs.writeFileSync(
+      tempContractAbs,
+      `
+        registerDualDialectContractSuite({
+          setup: () => configureMongoDalRuntime({ transactionRunner: async ({ execute }) => execute(undefined) })
+        });
+      `
+    );
+
+    withTempDomain(
+      {
+        legacySchema: `
+          defineIndex(S, { key: { teamId: 1 } });
+          export const MongoTempTestLeak771 = getMongoLogModel('temp_log', S);
+        `,
+        newMongoSchema: `
+          defineIndex(S, { key: { teamId: 1 } });
+          export const getTempLogMongoModel = () => getMongoLogModel('temp_log', S);
+        `,
+        extraFiles: {
+          'repo.ts': `export const Token = defineLogRepoToken('TempLog', { mongo, sql, noop });\n`,
+          'noop/repo.ts': `export class NoopTempLogRepository {}\n`
+        }
+      },
+      ({ domainRel, legacyRel }) => {
+        const res = runVerify([
+          '--dir',
+          domainRel,
+          '--legacy-schema',
+          legacyRel,
+          '--test',
+          'packages/service/test/.bad-contract.contract.test.ts'
+        ]);
+        assert.equal(res.status, 1);
+        assert.match(
+          res.stderr,
+          /\[Test Callers\] Residual test fixture reference\(s\) to legacy model "MongoTempTestLeak771"/
+        );
+        assert.match(res.stderr, /stubs transactionRunner with execute\(undefined\)/);
+        assert.match(res.stderr, /contract tests do not cover Noop \/ logDisabled behavior/);
+      }
+    );
+  } finally {
+    fs.rmSync(tempTestLeakAbs, { force: true });
+    fs.rmSync(tempContractAbs, { force: true });
+  }
+});
+
+test('audit-domain.mjs separates out-of-SQL-scope GridFS legacy and reports recommended extra tests', () => {
+  const statusRes = runNodeScript(auditScript, { args: ['--status', '--json'] });
+  assert.equal(statusRes.status, 0, statusRes.stderr);
+  const status = JSON.parse(statusRes.stdout);
+  assert.ok(status.outOfSqlScopeSchemas.includes('packages/service/core/dataset/image/schema.ts'));
+
+  const gridfsRes = runNodeScript(auditScript, {
+    args: ['--model', 'MongoDatasetImageSchema', '--json']
+  });
+  assert.equal(gridfsRes.status, 0, gridfsRes.stderr);
+  const gridfsReport = JSON.parse(gridfsRes.stdout);
+  assert.equal(gridfsReport.mongoLegacyOnly, true);
+  assert.equal(gridfsReport.sliceStrategy, 'out-of-sql-scope-mongo-legacy');
+
+  const logRes = runNodeScript(auditScript, {
+    args: ['--model', 'MongoLLMRequestRecord', '--json']
+  });
+  assert.equal(logRes.status, 0, logRes.stderr);
+  const logReport = JSON.parse(logRes.stdout);
+  assert.equal(logReport.datasource, 'log');
+  assert.ok(logReport.recommendedExtraTests.some((t) => t.includes('日志三态专项测试')));
+  assert.ok(logReport.recommendedExtraTests.some((t) => t.includes('TTL 过期读过滤测试')));
 });
 
 test('fails loudly when --git-legacy cannot be read and passes with merge-base:<path> against real appRegistration', () => {
@@ -476,4 +628,214 @@ test('fails loudly when --git-legacy cannot be read and passes with merge-base:<
   ]);
   assert.equal(mergeBaseRes.status, 0, mergeBaseRes.stderr);
   assert.match(mergeBaseRes.stdout, /Domain verification PASSED/);
+});
+
+test('binds getter .schema aliases strictly to their enclosing getter scope (prevents adjacent getter misattribution)', () => {
+  const newAdjacentGetterSchema = `
+    const SchemaA = new Schema({ name: String, teamId: String });
+    const SchemaB = new Schema({ teamId: String });
+    defineIndex(SchemaA, { key: { name: 1 } });
+
+    export const getAMongoModel = () => getMongoModel('probe_a', SchemaA);
+    export const getBMongoModel = () => getMongoModel('probe_b', SchemaB);
+
+    export const configureExtraIndexes = () => {
+      const AliasA = getAMongoModel().schema;
+      defineIndex(AliasA, { key: { teamId: 1 }, options: { unique: true } });
+    };
+  `;
+
+  // Direct analysis check: AliasA must belong to probe_a, never overwritten by adjacent getBMongoModel -> probe_b
+  const analysis = analyzeSchemaIndexes({
+    sourceText: newAdjacentGetterSchema,
+    repoRoot,
+    sourceRelPath: 'probe/mongo/schema.ts'
+  });
+  assert.deepEqual(analysis.ownershipErrors, []);
+  const aliasIndex = analysis.indexes.find((idx) => idx.schemaVar === 'AliasA');
+  assert.ok(aliasIndex);
+  assert.equal(aliasIndex.collection, 'probe_a');
+
+  // End-to-end CLI check: legacy A has name index, legacy B has unique teamId index;
+  // new schema gives both to A via AliasA and drops B's unique index -> MUST FAIL!
+  withTempDomain(
+    {
+      legacySchema: `
+        const LegacyA = new Schema({ name: String });
+        defineIndex(LegacyA, { key: { name: 1 } });
+        export const MongoProbeA = getMongoModel('probe_a', LegacyA);
+      `,
+      newMongoSchema: newAdjacentGetterSchema
+    },
+    ({ tmpBase, domainRel, legacyRel }) => {
+      const legacyB = path.join(tmpBase, 'legacyB.ts');
+      fs.writeFileSync(
+        legacyB,
+        `
+          const LegacyB = new Schema({ teamId: String });
+          defineIndex(LegacyB, { key: { teamId: 1 }, options: { unique: true } });
+          export const MongoProbeB = getMongoModel('probe_b', LegacyB);
+        `
+      );
+      const legacyBRel = path.relative(repoRoot, legacyB);
+
+      const res = runVerify(['--dir', domainRel, '--legacy-schema', legacyRel, legacyBRel]);
+      assert.equal(res.status, 1);
+      assert.match(res.stderr, /collection "probe_b"/);
+      assert.match(res.stderr, /"unique":true/);
+    }
+  );
+
+  // Ambiguous single getter registering two different collections must fail closed when aliased
+  const ambiguousGetterSchema = `
+    const SchemaA = new Schema({});
+    const SchemaB = new Schema({});
+    export const getDynamicModel = (flag: boolean) =>
+      flag ? getMongoModel('probe_a', SchemaA) : getMongoModel('probe_b', SchemaB);
+    export const configure = () => {
+      const Alias = getDynamicModel(true).schema;
+      defineIndex(Alias, { key: { teamId: 1 } });
+    };
+  `;
+  const ambiguousAnalysis = analyzeSchemaIndexes({
+    sourceText: ambiguousGetterSchema,
+    repoRoot,
+    sourceRelPath: 'probe/mongo/schema.ts'
+  });
+  assert.ok(
+    ambiguousAnalysis.ownershipErrors.some((e) =>
+      e.includes('references ambiguous model symbol "getDynamicModel"')
+    )
+  );
+});
+
+test('resolves imported collection name constants from the same historical git ref (never leaks working-tree renames)', () => {
+  const tmpGitRepo = fs.mkdtempSync(path.join(os.tmpdir(), 'fastgpt-verify-git-ref-'));
+  const git = (args) =>
+    execFileSync('git', ['-c', 'commit.gpgsign=false', '-c', 'tag.gpgSign=false', ...args], {
+      cwd: tmpGitRepo,
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+
+  try {
+    fs.writeFileSync(path.join(tmpGitRepo, 'pnpm-workspace.yaml'), 'packages: []\n');
+    git(['init']);
+    git(['config', 'user.email', 'test@example.com']);
+    git(['config', 'user.name', 'Test User']);
+
+    // Commit 1: legacy schema imports ColName = 'old_collection' from ./names
+    const domainDir = path.join(tmpGitRepo, 'domain');
+    fs.mkdirSync(domainDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(domainDir, 'names.ts'),
+      `export const ColName = 'old_collection';\n`
+    );
+    fs.writeFileSync(
+      path.join(domainDir, 'legacySchema.ts'),
+      `
+        import { ColName } from './names';
+        const LegacySchema = new Schema({ teamId: String });
+        defineIndex(LegacySchema, { key: { teamId: 1 }, options: { unique: true } });
+        export const MongoOldThing = getMongoModel(ColName, LegacySchema);
+      `
+    );
+    git(['add', '.']);
+    git(['commit', '--no-verify', '-m', 'commit 1: old collection name']);
+
+    // Working tree / Commit 2: names.ts renamed to 'new_collection', migrated into domain/mongo/schema.ts
+    fs.writeFileSync(
+      path.join(domainDir, 'names.ts'),
+      `export const ColName = 'new_collection';\n`
+    );
+    fs.rmSync(path.join(domainDir, 'legacySchema.ts'));
+    fs.mkdirSync(path.join(domainDir, 'mongo'), { recursive: true });
+    fs.mkdirSync(path.join(domainDir, 'sql'), { recursive: true });
+    fs.writeFileSync(path.join(domainDir, 'repo.type.ts'), 'export type Repo = {};\n');
+    fs.writeFileSync(path.join(domainDir, 'repo.ts'), 'export const Token = {};\n');
+    fs.writeFileSync(path.join(domainDir, 'mongo/repo.ts'), 'export class MongoRepo {}\n');
+    fs.writeFileSync(path.join(domainDir, 'sql/table.ts'), 'export const table = {};\n');
+    fs.writeFileSync(path.join(domainDir, 'sql/repo.ts'), 'export class SqlRepo {}\n');
+    fs.writeFileSync(
+      path.join(domainDir, 'mongo/schema.ts'),
+      `
+        import { ColName } from '../names';
+        const NewSchema = new Schema({ teamId: String });
+        defineIndex(NewSchema, { key: { teamId: 1 }, options: { unique: true } });
+        export const getNewThingMongoModel = () => getMongoModel(ColName, NewSchema);
+      `
+    );
+    git(['add', '.']);
+    git(['commit', '--no-verify', '-m', 'commit 2: rename imported constant to new_collection']);
+
+    // 1. Direct API verification: legacy resolved at HEAD~1 -> 'old_collection', current -> 'new_collection'
+    const legacyFile = readGitLegacyFile(tmpGitRepo, 'HEAD~1:domain/legacySchema.ts');
+    assert.equal(legacyFile.ok, true);
+    assert.ok(legacyFile.gitRef);
+
+    const legacyAnalysis = analyzeSchemaIndexes({
+      sourceText: legacyFile.content,
+      repoRoot: tmpGitRepo,
+      sourceRelPath: legacyFile.relPath,
+      gitRef: legacyFile.gitRef
+    });
+    assert.deepEqual(legacyAnalysis.ownershipErrors, []);
+    assert.equal(legacyAnalysis.indexes[0].collection, 'old_collection');
+
+    const newAnalysis = analyzeSchemaIndexes({
+      sourceText: fs.readFileSync(path.join(domainDir, 'mongo/schema.ts'), 'utf8'),
+      repoRoot: tmpGitRepo,
+      sourceRelPath: 'domain/mongo/schema.ts'
+    });
+    assert.deepEqual(newAnalysis.ownershipErrors, []);
+    assert.equal(newAnalysis.indexes[0].collection, 'new_collection');
+
+    // 2. End-to-end CLI: without --collection-map must FAIL because old_collection != new_collection
+    const unmappedRes = runVerify(
+      ['--dir', 'domain', '--git-legacy', 'HEAD~1:domain/legacySchema.ts'],
+      { cwd: tmpGitRepo }
+    );
+    assert.equal(unmappedRes.status, 1);
+    assert.match(unmappedRes.stderr, /collection "old_collection"/);
+
+    // 3. End-to-end CLI: with explicit --collection-map old_collection=new_collection must PASS
+    const mappedRes = runVerify(
+      [
+        '--dir',
+        'domain',
+        '--git-legacy',
+        'HEAD~1:domain/legacySchema.ts',
+        '--collection-map',
+        'old_collection=new_collection'
+      ],
+      { cwd: tmpGitRepo }
+    );
+    assert.equal(mappedRes.status, 0, mappedRes.stderr);
+
+    // 4. Historical dependency missing at gitRef must fail closed (NEVER fall back to working tree)
+    fs.writeFileSync(
+      path.join(domainDir, 'onlyInWorktree.ts'),
+      `export const WorktreeCol = 'worktree_only';\n`
+    );
+    const missingHistDepAnalysis = analyzeSchemaIndexes({
+      sourceText: `
+        import { WorktreeCol } from './onlyInWorktree';
+        const S = new Schema({});
+        defineIndex(S, { key: { a: 1 } });
+        export const M = getMongoModel(WorktreeCol, S);
+      `,
+      repoRoot: tmpGitRepo,
+      sourceRelPath: 'domain/legacySchema.ts',
+      gitRef: legacyFile.gitRef
+    });
+    assert.ok(
+      missingHistDepAnalysis.ownershipErrors.some((e) =>
+        e.includes('not found at git ref')
+      )
+    );
+    assert.equal(missingHistDepAnalysis.indexes[0].collection, null);
+  } finally {
+    fs.rmSync(tmpGitRepo, { recursive: true, force: true });
+  }
 });

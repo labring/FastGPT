@@ -7,7 +7,10 @@ import {
   extractExportedModelNames,
   findRepoRoot,
   findWipIncompleteDomains,
+  isMigrationFile,
+  isTestFile,
   isTestOrMigrationFile,
+  OUT_OF_SQL_SCOPE_SCHEMAS,
   runRg,
   toPosixPath
 } from './common.mjs';
@@ -27,7 +30,7 @@ const hasFlag = (flag) => args.includes(flag);
 if (hasFlag('--help') || hasFlag('-h') || args.length === 0) {
   console.log(`Usage:
   node audit-domain.mjs --status [--json]
-  node audit-domain.mjs --list [--asc] [--max-callers <N>] [--area <substr>] [--json]
+  node audit-domain.mjs --list [--asc] [--max-callers <N>] [--area <substr>] [--include-legacy-only] [--json]
   node audit-domain.mjs --model <MongoModelName> [--usages] [--include-tests] [--json]
   node audit-domain.mjs --schema <path/to/schema.ts> [--usages] [--include-tests] [--json]`);
   process.exit(0);
@@ -35,6 +38,7 @@ if (hasFlag('--help') || hasFlag('-h') || args.length === 0) {
 
 const repoRoot = findRepoRoot();
 const includeTests = hasFlag('--include-tests');
+const includeLegacyOnly = hasFlag('--include-legacy-only');
 const showUsages = hasFlag('--usages');
 const sortAsc = hasFlag('--asc');
 const maxCallersRaw = getFlagValue('--max-callers');
@@ -44,6 +48,7 @@ const jsonOutput = hasFlag('--json');
 
 const RISK_PATTERNS = [
   { label: 'aggregate', regex: /\.aggregate\s*[<(]/ },
+  { label: '$lookup', regex: /\$lookup\b/ },
   { label: 'bulkWrite', regex: /\.bulkWrite\s*\(/ },
   { label: 'findOneAndUpdate', regex: /\.findOneAndUpdate\s*\(/ },
   {
@@ -53,7 +58,8 @@ const RISK_PATTERNS = [
   { label: 'watch', regex: /\.watch\s*\(/ },
   { label: 'mongoSessionRun', regex: /\bmongoSessionRun\b/ },
   { label: 'ClientSession', regex: /\bClientSession\b/ },
-  { label: '$elemMatch', regex: /\$elemMatch\b/ },
+  { label: '$elemMatch', regex: /\$elemMatch\b|arrayFilters\b/ },
+  { label: '$push/$pull', regex: /\$(?:push|pull|addToSet)\b/ },
   { label: '$regex', regex: /\$regex\b/ },
   { label: '$inc', regex: /\$inc\b/ },
   { label: 'bitmask', regex: /\$(?:bitsAllSet|bitsAnySet)\b/ },
@@ -120,9 +126,14 @@ const extractUsageSnippets = ({ content, fileRel, tokens, schemaBase }) => {
   return [...importSnippets, ...callSnippets];
 };
 
-const scanModelCallers = ({ modelNames, schemaRelPath, collectUsages = false }) => {
-  const searchDirs = ['packages', 'projects', 'pro/admin/src'].filter((d) =>
-    fs.existsSync(path.join(repoRoot, d))
+const scanModelCallers = ({
+  modelNames,
+  schemaRelPath,
+  collectUsages = false,
+  onlyTests = false
+}) => {
+  const searchDirs = ['packages', 'projects', 'pro/admin/src', 'pro/admin/test', 'test'].filter(
+    (d) => fs.existsSync(path.join(repoRoot, d))
   );
   const tokens = [...modelNames];
   const schemaBase = schemaRelPath ? schemaRelPath.replace(/\.ts$/, '') : undefined;
@@ -134,7 +145,11 @@ const scanModelCallers = ({ modelNames, schemaRelPath, collectUsages = false }) 
     if (posix === schemaRelPath) {
       return;
     }
-    if (!includeTests && isTestOrMigrationFile(posix)) {
+    if (onlyTests) {
+      if (!isTestFile(posix) || isMigrationFile(posix)) {
+        return;
+      }
+    } else if (!includeTests && isTestOrMigrationFile(posix)) {
       return;
     }
     if (!callerMap.has(posix)) {
@@ -218,7 +233,8 @@ if (hasFlag('--status')) {
   const wipDomains = findWipIncompleteDomains(repoRoot);
   const allSchemas = discoverMongoSchemas(repoRoot);
   const migratedSchemas = allSchemas.filter((s) => s.isMigrated);
-  const pendingSchemas = allSchemas.filter((s) => !s.isMigrated);
+  const outOfScopeSchemas = allSchemas.filter((s) => !s.isMigrated && s.mongoLegacyOnly);
+  const pendingSchemas = allSchemas.filter((s) => !s.isMigrated && !s.mongoLegacyOnly);
   const tokenHitsRaw = runRg(
     ['-l', 'define(?:Log)?RepoToken\\s*[<(]', 'packages/service', 'pro/admin/src', '--glob', '*.ts'],
     repoRoot
@@ -239,6 +255,7 @@ if (hasFlag('--status')) {
           migratedRepoTokens: migratedRepoTokens.length,
           migratedSchemas: migratedSchemas.length,
           pendingLegacySchemas: pendingSchemas.length,
+          outOfSqlScopeSchemas: outOfScopeSchemas.map((s) => s.relPath),
           wipIncompleteDomains: wipDomains,
           pendingByArea: Object.fromEntries(sortedAreas)
         },
@@ -253,6 +270,11 @@ if (hasFlag('--status')) {
   console.log(`Migrated DI Repo Tokens : ${migratedRepoTokens.length}`);
   console.log(`Migrated Schema Files   : ${migratedSchemas.length}`);
   console.log(`Pending Legacy Schemas  : ${pendingSchemas.length}`);
+  if (outOfScopeSchemas.length > 0) {
+    console.log(
+      `Out-of-SQL-Scope Legacy : ${outOfScopeSchemas.length} (${outOfScopeSchemas.map((s) => s.relPath).join(', ')})`
+    );
+  }
   console.log(`WIP=1 Unclosed Domains  : ${wipDomains.length}`);
 
   if (wipDomains.length > 0) {
@@ -276,7 +298,9 @@ if (hasFlag('--status')) {
 
 if (hasFlag('--list')) {
   const wipDomains = findWipIncompleteDomains(repoRoot);
-  const schemas = discoverMongoSchemas(repoRoot).filter((s) => !s.isMigrated);
+  const schemas = discoverMongoSchemas(repoRoot).filter(
+    (s) => !s.isMigrated && (includeLegacyOnly || !s.mongoLegacyOnly)
+  );
   let entries = [];
 
   for (const schema of schemas) {
@@ -368,6 +392,7 @@ const target = (() => {
     return {
       relPath: normalized,
       isMigrated: normalized.endsWith('/mongo/schema.ts'),
+      mongoLegacyOnly: OUT_OF_SQL_SCOPE_SCHEMAS.has(normalized),
       datasource: /\bgetMongoLogModel\b/.test(content) ? 'log' : 'main',
       hasSoftDelete: /\bdeleteTime\b/.test(content),
       hasTtl: /\bexpireAfterSeconds\b|\bexpires\s*:/.test(content),
@@ -404,13 +429,73 @@ const callers = scanModelCallers({
   schemaRelPath: target.relPath,
   collectUsages: showUsages
 });
+const affectedTestFiles = scanModelCallers({
+  modelNames: target.modelNames,
+  schemaRelPath: target.relPath,
+  onlyTests: true
+}).map((item) => item.file);
 const content = fs.readFileSync(path.join(repoRoot, target.relPath), 'utf8');
 const hasWatch = /\.watch\s*\(/.test(content);
 const wipDomains = findWipIncompleteDomains(repoRoot);
 
+/** 根据表特征和调用面高危算子，自动生成本切片必须额外补齐的测试清单。 */
+const buildRecommendedExtraTests = ({ schemaMeta, callerItems, testFiles }) => {
+  const recs = [
+    'L1/L2 多方言契约测试（OB/MySQL + PG DDL 编译、6 项同构契约 + 真实事务回滚/afterCommit）',
+    'L0 Service 纯内存单测（构造函数注入 Stub Repo，覆盖非平凡业务编排，零 DB/零 vi.mock）'
+  ];
+  const risks = new Set(callerItems.flatMap((c) => c.risks));
+
+  if (schemaMeta.datasource === 'log') {
+    recs.push('日志三态专项测试（shared 复用主池可读写、separate 独立池隔离、disabled 走 Noop 空实现）');
+  }
+  if (schemaMeta.hasSoftDelete) {
+    recs.push('软删除隔离测试（deleteTime 非空记录对常规读/改不可见，delete_time_ms=0 唯一哨兵约束）');
+  }
+  if (schemaMeta.hasTtl) {
+    recs.push('TTL 过期读过滤测试（已过期记录对读路径不可见、未过期记录正常返回）');
+  }
+  if (risks.has('findOneAndUpdate') || risks.has('$inc') || risks.has('bulkWrite')) {
+    recs.push(
+      '并发抢占/原子扣减/冲突重试测试（验证 FOR UPDATE SKIP LOCKED 或 CAS 不重复/不超扣、重试不重复跑 afterCommit）'
+    );
+  }
+  if (risks.has('sort')) {
+    recs.push('排序边界测试（若含可空排序列，必须覆盖带值与 NULL 混合行在 PG/OB/Mongo 顺序一致）');
+  }
+  if (risks.has('$regex')) {
+    recs.push('大小写对照测试（等值与唯一键区分大小写对齐 utf8mb4_bin；caseInsensitiveLike 正确转义 %/_/|）');
+  }
+  if (risks.has('cursor')) {
+    recs.push('Keyset 游标分批迭代测试（多批无漏行、无重行、空集安全终止）');
+  }
+  if (risks.has('bitmask')) {
+    recs.push('权限位运算掩码边界测试（0、单 bit、复合 bit、全命中/部分命中）');
+  }
+  if (risks.has('$lookup')) {
+    recs.push('跨表关联策略验证（简单补全改批量 IN 组装；复杂过滤建只读 Query Repo 并测分页一致性）');
+  }
+  if (testFiles.length > 0) {
+    recs.push(
+      `存量测试夹具脱 Mongo 迁移与回归（共 ${testFiles.length} 个测试文件引用旧 Model，收口前全部改走 Repo/Service）`
+    );
+  }
+
+  return recs;
+};
+
+const recommendedExtraTests = target.mongoLegacyOnly
+  ? ['[OUT-OF-SQL-SCOPE] 仅 Mongo GridFS 历史兼容读取，SQL 模式返回空/404，不建 SQL 表']
+  : buildRecommendedExtraTests({
+      schemaMeta: target,
+      callerItems: callers,
+      testFiles: affectedTestFiles
+    });
+
 const report = {
   wipDomains,
   schema: target.relPath,
+  mongoLegacyOnly: Boolean(target.mongoLegacyOnly),
   siblingSchemas,
   models: target.modelNames,
   datasource: target.datasource,
@@ -418,7 +503,11 @@ const report = {
   hasSoftDelete: target.hasSoftDelete,
   hasTtl: target.hasTtl,
   hasWatch,
-  sliceStrategy: callers.length > 20 ? 'super-table-micro-slices' : '1-slice-full-cutover',
+  sliceStrategy: target.mongoLegacyOnly
+    ? 'out-of-sql-scope-mongo-legacy'
+    : callers.length > 20
+      ? 'super-table-micro-slices'
+      : '1-slice-full-cutover',
   indexes: target.indexes.map((i) => ({
     name: i.name,
     deprecated: i.deprecated,
@@ -427,6 +516,8 @@ const report = {
   })),
   totalCallers: callers.length,
   proCallers: callers.filter((c) => c.file.startsWith('pro/')).length,
+  affectedTestFiles,
+  recommendedExtraTests,
   callers
 };
 
@@ -436,6 +527,11 @@ if (jsonOutput) {
 }
 
 console.log('=== Domain Refactor Audit Brief ===');
+if (report.mongoLegacyOnly) {
+  console.log(
+    'ℹ️  [OUT-OF-SQL-SCOPE] Mongo GridFS legacy only — do NOT create SQL tables; SQL mode returns empty/404.'
+  );
+}
 if (wipDomains.length > 0) {
   console.log(`⚠️  WIP=1 Lock Active: ${wipDomains.map((w) => w.dir).join(', ')}`);
 }
@@ -447,13 +543,13 @@ if (siblingSchemas.length > 0) {
   );
 }
 console.log(
-  `Datasource   : ${report.datasource}${report.requiresNoopRepo ? ' (MUST create noop/repo.ts + defineLogRepoToken!)' : ''}`
+  `Datasource   : ${report.datasource}${report.requiresNoopRepo ? ' (tri-state: default shared main pool, separate log pool, or disabled -> noop/repo.ts + defineLogRepoToken)' : ''}`
 );
 console.log(
   `Flags        : softDelete=${report.hasSoftDelete}, ttl=${report.hasTtl}, watch=${report.hasWatch}`
 );
 console.log(
-  `Slice Mode   : ${report.sliceStrategy} (total=${report.totalCallers}, pro=${report.proCallers})`
+  `Slice Mode   : ${report.sliceStrategy} (total=${report.totalCallers}, pro=${report.proCallers}, testFiles=${report.affectedTestFiles.length})`
 );
 console.log(`\nIndexes (${report.indexes.length}):`);
 for (const idx of report.indexes) {
@@ -461,6 +557,21 @@ for (const idx of report.indexes) {
   const optsText =
     Object.keys(idx.options).length > 0 ? ` options=${JSON.stringify(idx.options)}` : '';
   console.log(`  ${tag} ${idx.key}${idx.name ? ` (name=${idx.name})` : ''}${optsText}`);
+}
+
+console.log(`\nRecommended Extra Tests (${report.recommendedExtraTests.length}):`);
+for (const item of report.recommendedExtraTests) {
+  console.log(`  - ${item}`);
+}
+
+if (report.affectedTestFiles.length > 0) {
+  console.log(`\nAffected Test Files to Decouple (${report.affectedTestFiles.length}):`);
+  for (const tf of report.affectedTestFiles.slice(0, 15)) {
+    console.log(`  - ${tf}`);
+  }
+  if (report.affectedTestFiles.length > 15) {
+    console.log(`  ... and ${report.affectedTestFiles.length - 15} more (pass --include-tests to inspect)`);
+  }
 }
 
 console.log(`\nCaller Files (${report.callers.length}):`);

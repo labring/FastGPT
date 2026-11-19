@@ -4,10 +4,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   analyzeSchemaIndexes,
+  analyzeSqlTableDefinitions,
   extractDefineIndexes,
   extractExportedModelNames,
   findRepoRoot,
   findSiblingLegacySchemas,
+  inferDomainTestDir,
+  isMigrationFile,
+  isTestFile,
   isTestOrMigrationFile,
   readGitLegacyFile,
   runRg,
@@ -237,11 +241,28 @@ const checkDomainStaticBoundaries = () => {
         regex: /\bjsonb_path_exists\b|\bMERGE\s+INTO\b/i,
         reason:
           'jsonb_path_exists / MERGE INTO is non-portable; use B-Tree columns or this.upsertRow(...)'
+      },
+      {
+        regex: /\.\s*ignore\s*\(|\bINSERT\s+IGNORE\b/i,
+        reason:
+          'INSERT IGNORE / .ignore() silently swallows NOT NULL & truncation errors on OceanBase/MySQL; use this.upsertRow(...)'
+      },
+      {
+        regex: /\bNULLS\s+(?:FIRST|LAST)\b/i,
+        reason:
+          'NULLS FIRST/LAST is unsupported on MySQL/OceanBase; use CASE WHEN col IS NULL THEN 1 ELSE 0 END or a sentinel column'
       }
     ];
     for (const rule of nonPortableRules) {
       if (rule.regex.test(sqlFile.clean)) {
         failures.push(`[SQL Portability] ${domainRel}/${sqlRel}: ${rule.reason}`);
+      }
+    }
+
+    if (sqlRel === 'sql/table.ts') {
+      const tableCheck = analyzeSqlTableDefinitions(sqlFile.raw);
+      for (const issue of tableCheck.issues) {
+        failures.push(`[SQL Portability] ${domainRel}/${sqlRel}: ${issue}`);
       }
     }
   }
@@ -330,6 +351,7 @@ if (legacySchemaArgs.length > 0 && gitLegacyArgs.length > 0) {
     legacySources.push({
       label: res.objectSpec,
       relPath: res.relPath,
+      gitRef: res.gitRef,
       content: res.content
     });
   }
@@ -345,7 +367,8 @@ const verifyIndexParityByOwner = ({ legacyItems, newContent }) => {
     ...analyzeSchemaIndexes({
       sourceText: src.content,
       repoRoot,
-      sourceRelPath: src.relPath
+      sourceRelPath: src.relPath,
+      gitRef: src.gitRef
     })
   }));
   const newAnalysis = analyzeSchemaIndexes({
@@ -504,7 +527,7 @@ if (!legacyReadFailed && legacySources.length > 0 && mongoSchemaRaw !== null) {
   warnings.push('[Indexes] Neither --legacy-schema nor --git-legacy provided; skipped index diff check');
 }
 
-// 4. 收口与全仓残留裸调用清零检查（覆盖 schemaV2.ts / ttl.ts 及旧 Model 名残留引用）
+// 4. 收口与全仓残留裸调用清零检查（覆盖生产代码与非 migration 测试夹具，历史 migration 豁免）
 if (!allowWipSlice1) {
   const siblingLegacySchemas = findSiblingLegacySchemas(repoRoot, domainAbs);
   if (siblingLegacySchemas.length > 0) {
@@ -521,8 +544,8 @@ if (!allowWipSlice1) {
     ...legacySources.flatMap((src) => extractExportedModelNames(src.content))
   ]);
 
-  const searchDirs = ['packages', 'projects', 'pro/admin/src'].filter((d) =>
-    fs.existsSync(path.join(repoRoot, d))
+  const searchDirs = ['packages', 'projects', 'pro/admin/src', 'pro/admin/test', 'test'].filter(
+    (d) => fs.existsSync(path.join(repoRoot, d))
   );
 
   for (const modelName of legacyModelNames) {
@@ -533,21 +556,103 @@ if (!allowWipSlice1) {
       ['-l', '--word-regexp', modelName, ...searchDirs, '--glob', '*.{ts,tsx}'],
       repoRoot
     );
-    const residualFiles = out
+    const hitFiles = out
       .split('\n')
       .map((f) => toPosixPath(f.trim()))
-      .filter((f) => f.length > 0 && !isTestOrMigrationFile(f));
+      .filter((f) => f.length > 0);
+    const residualProdFiles = hitFiles.filter((f) => !isTestOrMigrationFile(f));
+    const residualTestFiles = hitFiles.filter((f) => isTestFile(f) && !isMigrationFile(f));
 
-    if (residualFiles.length > 0) {
+    if (residualProdFiles.length > 0) {
       failures.push(
-        `[Callers] Residual production reference(s) to legacy model "${modelName}" (${residualFiles.length}): ${residualFiles.join(', ')}`
+        `[Callers] Residual production reference(s) to legacy model "${modelName}" (${residualProdFiles.length}): ${residualProdFiles.join(', ')}`
+      );
+    }
+    if (residualTestFiles.length > 0) {
+      failures.push(
+        `[Test Callers] Residual test fixture reference(s) to legacy model "${modelName}" (${residualTestFiles.length}): ${residualTestFiles.join(', ')} (migrate test fixtures to Repo/Service so suite can run on OceanBase/PG)`
       );
     }
   }
 }
 
-// 5. 运行契约与业务测试
-if (testTargets.length > 0) {
+// 5. 契约测试存在性、真实事务门禁与日志三态/Noop 覆盖检查
+const checkContractTestGovernance = () => {
+  const inferredTestDir = inferDomainTestDir(domainRel);
+  const candidateFiles = new Set();
+
+  if (inferredTestDir !== undefined) {
+    const defaultContractRel = `${inferredTestDir}/repo.contract.test.ts`;
+    const defaultAbs = path.resolve(repoRoot, defaultContractRel);
+    if (fs.existsSync(defaultAbs) && fs.statSync(defaultAbs).isFile()) {
+      candidateFiles.add(defaultContractRel);
+    }
+  }
+  for (const target of testTargets) {
+    const rel = toPosixPath(target).replace(/^\.\//, '');
+    const abs = path.resolve(repoRoot, rel);
+    if (fs.existsSync(abs) && fs.statSync(abs).isFile()) {
+      candidateFiles.add(rel);
+    }
+  }
+
+  const contractTestFiles = [...candidateFiles].filter((rel) => {
+    if (rel.includes('.contract.test.')) {
+      return true;
+    }
+    const raw = fs.readFileSync(path.resolve(repoRoot, rel), 'utf8');
+    return /\bregister(?:Dual|Multi)DialectContractSuite\b/.test(raw);
+  });
+
+  if (inferredTestDir !== undefined && !allowWipSlice1 && contractTestFiles.length === 0) {
+    failures.push(
+      `[Tests] Missing multi-dialect contract test file (expected ${inferredTestDir}/repo.contract.test.ts or pass via --test)`
+    );
+    return;
+  }
+
+  const isLogDomain = /\bdefineLogRepoToken\b/.test(repoTsText);
+  let hasLogNoopCoverage = false;
+
+  for (const rel of candidateFiles) {
+    const raw = fs.readFileSync(path.resolve(repoRoot, rel), 'utf8');
+    const clean = stripCommentsPreserveStrings(raw);
+    if (/\b(?:Noop\w*Repository|logDisabled|noopRepo)\b/i.test(clean)) {
+      hasLogNoopCoverage = true;
+    }
+  }
+
+  for (const rel of contractTestFiles) {
+    const raw = fs.readFileSync(path.resolve(repoRoot, rel), 'utf8');
+    const clean = stripCommentsPreserveStrings(raw);
+
+    if (
+      /transactionRunner\s*:\s*(?:async\s*)?\([^)]*\)\s*=>\s*(?:\{\s*return\s+)?execute\s*\(\s*undefined\s*\)/.test(
+        clean
+      )
+    ) {
+      failures.push(
+        `[Tests] ${rel} stubs transactionRunner with execute(undefined); contract tests must run against real Mongo replset transactions`
+      );
+    }
+    if (!/\bregister(?:Dual|Multi)DialectContractSuite\b/.test(clean)) {
+      failures.push(
+        `[Tests] ${rel} must use registerDualDialectContractSuite / registerMultiDialectContractSuite`
+      );
+    }
+  }
+
+  if (isLogDomain && contractTestFiles.length > 0 && !hasLogNoopCoverage) {
+    failures.push(
+      `[Tests] Log domain ${domainRel} uses defineLogRepoToken, but contract tests do not cover Noop / logDisabled behavior`
+    );
+  }
+};
+
+checkContractTestGovernance();
+
+// 6. 运行契约与业务测试（静态门禁存在失败时 Fail-Fast，避免无效拉起 Vitest）
+if (testTargets.length > 0 && failures.length === 0) {
   try {
     console.log(`Running targeted tests: ${testTargets.join(' ')}`);
     execFileSync('pnpm', ['test', ...testTargets], {
@@ -557,6 +662,10 @@ if (testTargets.length > 0) {
   } catch {
     failures.push(`[Tests] Targeted tests failed: ${testTargets.join(' ')}`);
   }
+} else if (testTargets.length > 0) {
+  warnings.push(
+    `[Tests] Skipped executing --test (${testTargets.join(' ')}) until static verification issues above are fixed`
+  );
 } else {
   warnings.push('[Tests] No --test target specified; skipped test execution');
 }

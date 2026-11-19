@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
-import { findRepoRoot, toPosixPath } from './common.mjs';
+import { findRepoRoot, inferDomainTestDir, toPosixPath } from './common.mjs';
 
 const args = process.argv.slice(2);
 
@@ -55,21 +55,9 @@ const repoRoot = findRepoRoot();
 const domainRel = toPosixPath(dirArg).replace(/^\.\//, '').replace(/\/$/, '');
 const domainAbs = path.resolve(repoRoot, domainRel);
 
-const computeTestPath = () => {
-  if (domainRel.startsWith('packages/service/')) {
-    const sub = domainRel.slice('packages/service/'.length);
-    return `packages/service/test/${sub}/repo.contract.test.ts`;
-  }
-  if (domainRel.startsWith('projects/app/src/')) {
-    const sub = domainRel.slice('projects/app/src/'.length);
-    return `projects/app/test/${sub}/repo.contract.test.ts`;
-  }
-  if (domainRel.startsWith('pro/admin/src/')) {
-    const sub = domainRel.slice('pro/admin/src/'.length);
-    return `pro/admin/test/${sub}/repo.contract.test.ts`;
-  }
-  return `${domainRel}/repo.contract.test.ts`;
-};
+const testBaseDir = inferDomainTestDir(domainRel) ?? domainRel;
+const computeContractTestPath = () => `${testBaseDir}/repo.contract.test.ts`;
+const computeServiceTestPath = () => `${testBaseDir}/service.test.ts`;
 
 const mongoImport =
   domainRel.startsWith('packages/service/')
@@ -355,7 +343,7 @@ import {
   type ${entityArg}Repository
 } from '../repo.type';
 
-/** 未配置独立日志库（logWriteUrl）时的 Null Object 空实现，不建连、不回退主库。 */
+/** 显式关闭日志落库（logMode === 'disabled'）时的 Null Object 空实现，不建连、不写入主库。 */
 export class Noop${entityArg}Repository implements ${entityArg}Repository {
   async findById() {
     return null;
@@ -382,7 +370,9 @@ import { Mongo${entityArg}Repository } from './mongo/repo';
 import { Noop${entityArg}Repository } from './noop/repo';
 import { Sql${entityArg}Repository } from './sql/repo';
 
-/** ${entityArg} 独立日志仓储 DI Token（未配置 logWriteUrl 时自动解析为 Noop 空实现）。 */
+/**
+ * ${entityArg} 日志仓储 DI Token（三态路由：默认 shared 复用主池、separate 独立池、disabled 解析为 Noop）。
+ */
 export const ${entityArg}RepoToken = defineLogRepoToken<${entityArg}Repository>(
   '${entityArg}Repository',
   {
@@ -444,6 +434,7 @@ const contractTestContent = `import { afterAll, beforeAll, beforeEach, describe,
 import { createEntityId } from '@fastgpt/global/common/string/entityId';
 import { injectRepo } from '@fastgpt/dal/db/container';
 import { closeDbRuntime } from '@fastgpt/dal/db/runtime';
+import { compileSqlTableDDL } from '@fastgpt/dal/db/sql/ddl';
 import {
   createPGliteSqlTestHarness,
   registerDualDialectContractSuite,
@@ -451,11 +442,44 @@ import {
 } from '@fastgpt/dal/db/testing';
 import { runInTransaction } from '@fastgpt/dal/db/transaction';
 import { configureMongoDalRuntime } from '@fastgpt/service/common/mongo/dalRuntime';
-import { ${modelFnName} } from '${domainImportPrefix}/mongo/schema';
+import { ${modelFnName} } from '${domainImportPrefix}/mongo/schema';${
+  datasource === 'log'
+    ? `\nimport { Noop${entityArg}Repository } from '${domainImportPrefix}/noop/repo';`
+    : ''
+}
 import { ${entityArg}RepoToken } from '${domainImportPrefix}/repo';
 import { ${camelEntity}SqlTable } from '${domainImportPrefix}/sql/table';
 
-describe('${entityArg}Repository dual-dialect contract', () => {
+describe('${entityArg} portable SQL DDL (OceanBase/MySQL + PostgreSQL)', () => {
+  it('compiles cleanly for OceanBase/MySQL (P0) and PostgreSQL (P1)', () => {
+    const obSql = compileSqlTableDDL(${camelEntity}SqlTable, 'oceanbase').join('\\n');
+    expect(obSql).toContain('CREATE TABLE IF NOT EXISTS \`${tableArg}\`');
+    expect(obSql).toContain('DATETIME(3)');
+    expect(obSql).not.toContain('CREATE INDEX IF NOT EXISTS');
+
+    const pgSql = compileSqlTableDDL(${camelEntity}SqlTable, 'postgres').join('\\n');
+    expect(pgSql).toContain('CREATE TABLE IF NOT EXISTS "${tableArg}"');
+    expect(pgSql).toContain('TIMESTAMPTZ');
+  });
+});
+${
+  datasource === 'log'
+    ? `
+describe('${entityArg}Repository log disabled (Noop) mode', () => {
+  it('skips persistence and returns empty reads when log persistence is disabled', async () => {
+    const noopRepo = new Noop${entityArg}Repository();
+    const teamId = createEntityId();
+    const created = await noopRepo.create({ data: { teamId } });
+
+    expect(created.teamId).toBe(teamId);
+    expect(await noopRepo.findById({ id: created._id, teamId })).toBeNull();
+    // TODO(Phase 0.5): 补齐日志三态（shared 复用主池 / separate 独立池 / disabled 路由 Noop）完整测试
+  });
+});
+`
+    : ''
+}
+describe('${entityArg}Repository multi-dialect contract', () => {
   let sqlHarness: SqlTestHarness | undefined;
 
   registerDualDialectContractSuite({
@@ -555,15 +579,58 @@ describe('${entityArg}Repository dual-dialect contract', () => {
         expect(abortedHook).not.toHaveBeenCalled();
         expect(await repo.findById({ id: abortedId, teamId })).toBeNull();
       });
+
+      // TODO: 按 Step 1 审计清单补齐：
+      // 1. 单行脏数据 DbRecordCorruptedError（Fail-Fast）与列表 Warn & Skip 隔离；
+      // 2. 哨兵唯一键冲突 / 软删除 / TTL 过期不可见 / 可空列 NULL 排序 / 大小写对照 / 并发抢占与重试。
     }
   });
 });
 `;
 
-const testRel = computeTestPath();
+const serviceTestContent = `import { describe, expect, it, vi } from 'vitest';
+import { createEntityId } from '@fastgpt/global/common/string/entityId';
+import type { ${entityArg}DomainDTO, ${entityArg}Repository } from '${domainImportPrefix}/repo.type';
+import { ${entityArg}Service } from '${domainImportPrefix}/service';
+
+/**
+ * L0 纯内存 Service 单测（零数据库、零 vi.mock 模块劫持）。
+ * 通过构造函数注入 Stub Repository 验证业务编排逻辑与边界分支。
+ */
+describe('${entityArg}Service unit', () => {
+  it('delegates create and findById via constructor-injected repository', async () => {
+    const id = createEntityId();
+    const teamId = createEntityId();
+    const now = new Date('2026-06-01T00:00:00.000Z');
+    const stubRecord: ${entityArg}DomainDTO = {
+      _id: id,
+      teamId,
+      createTime: now,
+      updateTime: now
+    };
+
+    const stubRepo: ${entityArg}Repository = {
+      findById: vi.fn().mockResolvedValue(stubRecord),
+      create: vi.fn().mockResolvedValue(stubRecord)
+    };
+
+    const service = new ${entityArg}Service({ ${camelEntity}Repo: stubRepo });
+
+    expect(await service.create({ data: { _id: id, teamId } })).toEqual(stubRecord);
+    expect(await service.findById({ id, teamId })).toEqual(stubRecord);
+    expect(stubRepo.create).toHaveBeenCalledWith({ data: { _id: id, teamId }, tx: undefined });
+    expect(stubRepo.findById).toHaveBeenCalledWith({ id, teamId, tx: undefined });
+  });
+});
+`;
+
+const testRel = computeContractTestPath();
+const serviceTestRel = computeServiceTestPath();
 const serviceRelPath = `${domainRel}/service.ts`;
 const serviceAlreadyExists = fs.existsSync(path.resolve(repoRoot, serviceRelPath));
+const serviceTestAlreadyExists = fs.existsSync(path.resolve(repoRoot, serviceTestRel));
 const shouldEmitService = !noService && (force || !serviceAlreadyExists);
+const shouldEmitServiceTest = !noService && (force || !serviceTestAlreadyExists);
 
 const filesToCreate = [
   { relPath: `${domainRel}/repo.type.ts`, content: repoTypeContent },
@@ -576,7 +643,8 @@ const filesToCreate = [
     : []),
   { relPath: `${domainRel}/repo.ts`, content: repoTokenContent },
   ...(shouldEmitService ? [{ relPath: serviceRelPath, content: serviceContent }] : []),
-  { relPath: testRel, content: contractTestContent }
+  { relPath: testRel, content: contractTestContent },
+  ...(shouldEmitServiceTest ? [{ relPath: serviceTestRel, content: serviceTestContent }] : [])
 ];
 
 if (!force) {
@@ -597,6 +665,9 @@ if (dryRun) {
   if (!noService && serviceAlreadyExists && !force) {
     console.log(`  (skipping existing ${serviceRelPath}; refactor constructor DI in place)`);
   }
+  if (!noService && serviceTestAlreadyExists && !force) {
+    console.log(`  (skipping existing ${serviceTestRel}; extend L0 service unit tests in place)`);
+  }
   for (const file of filesToCreate) {
     console.log(`  - ${file.relPath}`);
   }
@@ -605,6 +676,9 @@ if (dryRun) {
 
 if (!noService && serviceAlreadyExists && !force) {
   console.log(`Skipped existing: ${serviceRelPath} (refactor constructor DI in place)`);
+}
+if (!noService && serviceTestAlreadyExists && !force) {
+  console.log(`Skipped existing: ${serviceTestRel} (extend L0 service unit tests in place)`);
 }
 
 for (const file of filesToCreate) {
