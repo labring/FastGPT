@@ -11,7 +11,9 @@ const workspaceFilters = {
   service: '@fastgpt/service',
   web: '@fastgpt/web',
   'workflow-core': '@fastgpt/workflow-core',
-  'workflow-cli': '@fastgpt/workflow-cli'
+  'workflow-cli': '@fastgpt/workflow-cli',
+  sdk: '@fastgpt/sdk',
+  'sdk-codegen': '@fastgpt-sdk/openapi-codegen'
 };
 const workspaceScopes = Object.keys(workspaceFilters);
 const optionalWorkspaceScopes = new Set(['workflow-core', 'workflow-cli']);

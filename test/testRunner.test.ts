@@ -28,6 +28,10 @@ describe('resolveTestPlan', () => {
     {
       scopeValue: 'workflow-core,workflow-cli',
       filters: ['--filter=@fastgpt/workflow-core', '--filter=@fastgpt/workflow-cli']
+    },
+    {
+      scopeValue: 'sdk,sdk-codegen',
+      filters: ['--filter=@fastgpt/sdk', '--filter=@fastgpt-sdk/openapi-codegen']
     }
   ])('filters unit tests to the requested $scopeValue scopes', ({ scopeValue, filters }) => {
     const plan = resolveTestPlan({ scopeValue });

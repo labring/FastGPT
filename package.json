@@ -29,7 +29,10 @@
     "test:service:integration:sandbox": "pnpm --dir packages/service test:integration:sandbox",
     "generate:i18n-loaders": "node scripts/generate-i18n-resource-loaders.mjs",
     "check:i18n-loaders": "node scripts/check-i18n-resource-loaders.mjs",
-    "build:sdks": "pnpm -r --filter @fastgpt-sdk/storage --filter @fastgpt-sdk/otel --filter @fastgpt-sdk/sandbox-adapter build",
+    "sdk:gen": "pnpm --filter @fastgpt-sdk/openapi-codegen generate",
+    "sdk:check": "pnpm --filter @fastgpt-sdk/openapi-codegen check",
+    "sdk:test": "pnpm --filter @fastgpt-sdk/openapi-codegen test && pnpm --filter @fastgpt/sdk test",
+    "build:sdks": "pnpm -r --filter @fastgpt-sdk/storage --filter @fastgpt-sdk/otel --filter @fastgpt-sdk/sandbox-adapter --filter @fastgpt/sdk build",
     "build:workflow-packages": "pnpm --filter @fastgpt/workflow-core build && pnpm --filter @fastgpt/workflow-cli build"
   },
   "devDependencies": {
