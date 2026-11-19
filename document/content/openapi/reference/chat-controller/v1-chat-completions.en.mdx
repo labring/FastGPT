@@ -96,9 +96,11 @@ Identify the application via `appId` and authenticate with an API Key or login s
 
 **Proxy Team Member ( `authProxy` )**: Act on behalf of another member in the same team via `authProxy` . Available only on personal API keys with `authProxy` enabled; mutually exclusive with `customUid` .
 
-| Field       | Type     | Required | Default | Constraints & Description                                                                                                                                                                                                                       |
-| ----------- | -------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `authProxy` | `object` | Yes      | -       | Team member identity to proxy via API Key (mutually exclusive with `customUid` ; unsupported on share-link chats). Specify `tmbId` or `username` ; if both are sent, `tmbId` takes precedence without falling back to `username` on invalid ID. |
+| Field                | Type     | Required | Default | Constraints & Description                                                                                                                                                                                                                       |
+| -------------------- | -------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `authProxy`          | `object` | Yes      | -       | Team member identity to proxy via API Key (mutually exclusive with `customUid` ; unsupported on share-link chats). Specify `tmbId` or `username` ; if both are sent, `tmbId` takes precedence without falling back to `username` on invalid ID. |
+| `authProxy.tmbId`    | `string` | Yes      | -       | **Branch: By Team Member ID** . Proxied team member ID ( `tmbId` ), takes precedence over `username` . pattern: `^[0-9a-fA-F]{24}$`                                                                                                             |
+| `authProxy.username` | `string` | Yes      | -       | **Branch: By Username** . Proxied team member username. minLength: 1; maxLength: 128                                                                                                                                                            |
 
 - **App API Key (no appId required)**
 

@@ -9,7 +9,7 @@ description: 'List team members and external users appearing in application chat
 - **Method** : `POST`
 - **Path** : `/api/core/app/logs/getUsers`
 - **Module** : Applications / App Logs
-- **Authentication** : `Authorization: Bearer <apiKey>`—Supports **App API Key** ( `appId` optional) and **Personal API Key** ( `appId` required); also supports `authProxy` team member proxy (see [API Getting Started](/en/openapi/intro) )
+- **Authentication** : `Authorization: Bearer <apiKey>`—Supports **App API Key** ( `appId` optional) and **Personal API Key** ( `appId` required) (see [API Getting Started](/en/openapi/intro) )
 - **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E5%BA%94%E7%94%A8%E6%97%A5%E5%BF%97/POST/core/app/logs/getUsers) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E5%BA%94%E7%94%A8%E6%97%A5%E5%BF%97/POST/core/app/logs/getUsers` )
 
 ## Description & Notes
@@ -96,7 +96,7 @@ curl --fail-with-body -X POST "https://cloud.fastgpt.io/api/core/app/logs/getUse
 
 ## Response Schema & Examples
 
-Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (and `null` when no payload schema is declared).
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (when a payload schema is declared; otherwise refer to the status description for runtime `data` semantics).
 
 ### HTTP 200
 

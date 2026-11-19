@@ -105,10 +105,10 @@ curl --fail-with-body -X PUT "https://cloud.fastgpt.io/api/core/dataset/update" 
 
 ## Response Schema & Examples
 
-Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (and `null` when no payload schema is declared).
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (when a payload schema is declared; otherwise refer to the status description for runtime `data` semantics).
 
 ### HTTP 200
 
 Successfully updated dataset
 
-Returns standard success envelope with `data: null` .
+Returns the standard FastGPT success envelope ( `{ "code": 200, "statusText": "", "message": "", "data": ... }` ). The exact `data` payload schema is not declared in this OpenAPI contract; refer to the status description above or inspect runtime responses.

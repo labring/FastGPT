@@ -4679,6 +4679,10 @@
       "zh": "展示态回答/补充文本，内部 S3 图片会替换为签名访问地址",
       "en": "Display supplementary answer/text with internal S3 image links signed"
     },
+    "ec7bed2e66d9046ee11ebd1d79b1733100a7a52041e03b967dbc078e0d55515a": {
+      "zh": "分块或用户问题中出现的原词到标准词映射",
+      "en": "Mapping from original terms appearing in chunks or user questions to canonical terms"
+    },
     "ec7c18bef8b3d27603ab4494a28b6eca0106300e8d5902da3ab053a5ced58b2e": {
       "zh": "测试 1",
       "en": "Test 1"

@@ -83,7 +83,7 @@ curl --fail-with-body -X POST "https://cloud.fastgpt.io/api/proApi/core/app/logs
 
 ## Response Schema & Examples
 
-Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (and `null` when no payload schema is declared).
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (when a payload schema is declared; otherwise refer to the status description for runtime `data` semantics).
 
 ### HTTP 200
 

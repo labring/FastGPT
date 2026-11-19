@@ -9,7 +9,7 @@ description: '初始化指定会话并获取应用基础信息、欢迎语、全
 - **HTTP 方法**：`GET`
 - **请求路径**：`/api/core/chat/init`
 - **所属模块**：对话 / 会话管理
-- **鉴权方式**：`Authorization: Bearer <apiKey>`—支持 **应用 API Key**（无需 `appId`）与 **个人密钥**（需传 `appId`）；另支持 `authProxy` 团队成员代理与 `outLinkAuthData` 外链分享（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **鉴权方式**：`Authorization: Bearer <apiKey>`—支持 **应用 API Key**（无需 `appId`）与 **个人密钥**（需传 `appId`）；另支持 `authProxy` 团队成员代理（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
 - **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E4%BC%9A%E8%AF%9D%E7%AE%A1%E7%90%86/GET/core/chat/init)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E4%BC%9A%E8%AF%9D%E7%AE%A1%E7%90%86/GET/core/chat/init`）
 
 ## 接口说明与注意事项
@@ -93,7 +93,7 @@ curl --fail-with-body -X GET "https://cloud.fastgpt.cn/api/core/chat/init?appId=
 
 ## 响应结构与示例
 
-除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（无数据返回时 `data` 为 `null`）。
+除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（若契约未声明具体载荷结构，请以上方状态描述及实际响应为准）。
 
 ### HTTP 200
 

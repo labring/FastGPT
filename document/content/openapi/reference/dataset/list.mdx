@@ -58,10 +58,70 @@ curl --fail-with-body -X POST "https://cloud.fastgpt.cn/api/core/dataset/list" \
 
 ## 响应结构与示例
 
-除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（无数据返回时 `data` 为 `null`）。
+除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（若契约未声明具体载荷结构，请以上方状态描述及实际响应为准）。
 
 ### HTTP 200
 
 成功返回知识库列表
 
 **Content-Type** : `application/json`
+
+**根结构类型**：数组（`object[]`）。数组元素包含以下字段：
+
+| 字段                                | 类型             | 必填 | 默认值             | 约束与说明                                                                                                                                    |
+| ----------------------------------- | ---------------- | ---- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `_id`                               | `string`         | 是   | -                  | 数据集 ID。正则：`^[0-9a-fA-F]{24}$`                                                                                                          |
+| `tmbId`                             | `string`         | 是   | -                  | 团队成员 ID。正则：`^[0-9a-fA-F]{24}$`                                                                                                        |
+| `avatar`                            | `string`         | 是   | `"/icon/logo.svg"` | 头像                                                                                                                                          |
+| `createTime`                        | `string`         | 是   | -                  | 创建时间                                                                                                                                      |
+| `updateTime`                        | `string`         | 是   | -                  | 更新时间                                                                                                                                      |
+| `name`                              | `string`         | 是   | -                  | 名称                                                                                                                                          |
+| `intro`                             | `string`         | 是   | -                  | 简介                                                                                                                                          |
+| `type`                              | `string` (enum)  | 是   | -                  | 数据集类型。可选值：`folder` , `dataset` , `websiteDataset` , `externalFile` , `apiDataset` , `feishu` , `yuque` , `dingtalk`                 |
+| `permission`                        | `object`         | 是   | -                  | 权限对象序列化后的 JSON 结构                                                                                                                  |
+| `permission.role`                   | `integer`        | 是   | -                  | 权限角色值。最小值：-9007199254740991；最大值：9007199254740991                                                                               |
+| `permission.isOwner`                | `boolean`        | 是   | -                  | 是否为所有者                                                                                                                                  |
+| `permission.hasManagePer`           | `boolean`        | 是   | -                  | 是否拥有管理权限                                                                                                                              |
+| `permission.hasWritePer`            | `boolean`        | 是   | -                  | 是否拥有写权限                                                                                                                                |
+| `permission.hasReadPer`             | `boolean`        | 是   | -                  | 是否拥有读权限                                                                                                                                |
+| `permission.hasManageRole`          | `boolean`        | 是   | -                  | 是否包含管理角色                                                                                                                              |
+| `permission.hasWriteRole`           | `boolean`        | 是   | -                  | 是否包含写角色                                                                                                                                |
+| `permission.hasReadRole`            | `boolean`        | 是   | -                  | 是否包含读角色                                                                                                                                |
+| `appCount`                          | `integer`        | 否   | -                  | 被正式应用引用的数量，开启引用统计时仅非文件夹资源的 Owner 返回。最小值：0；最大值：9007199254740991                                          |
+| `fileCount`                         | `integer`        | 否   | -                  | 知识库所有层级的非目录集合数量，不按文件权限过滤；仅 listV2 请求 withFileCount 时返回，folder 类型不返回。最小值：0；最大值：9007199254740991 |
+| `vectorModel`                       | `object`         | 否   | -                  | 向量模型；目录或模型已删除时为空，已停用模型仍返回展示数据                                                                                    |
+| `vectorModel.pricing`               | `object`         | 否   | -                  | 每固定计价单位的积分单价；缺省免费                                                                                                            |
+| `vectorModel.pricing.unitPrice`     | `number`         | 否   | -                  | 综合单价；Token/TTS 每百万数量，STT 时长模式固定为每 60 秒。最小值：0                                                                         |
+| `vectorModel.provider`              | `string`         | 是   | -                  | 最小长度：1                                                                                                                                   |
+| `vectorModel.model`                 | `string`         | 是   | -                  | 最小长度：1                                                                                                                                   |
+| `vectorModel.name`                  | `string`         | 是   | -                  | 最小长度：1                                                                                                                                   |
+| `vectorModel.scope`                 | `string` (enum)  | 是   | `"system"`         | 可选值：`system` , `team`                                                                                                                     |
+| `vectorModel.sortOrder`             | `integer`        | 否   | -                  | 同一作用域内的模型展示 rank，数值越小越靠前。最小值：0；最大值：9007199254740991                                                              |
+| `vectorModel.tmbId`                 | `string \| null` | 否   | -                  | -                                                                                                                                             |
+| `vectorModel.teamId`                | `string \| null` | 否   | -                  | -                                                                                                                                             |
+| `vectorModel.isActive`              | `boolean`        | 否   | -                  | -                                                                                                                                             |
+| `vectorModel.isUpcomingDeprecation` | `boolean`        | 否   | -                  | 模型是否即将下架                                                                                                                              |
+| `vectorModel.requestUrl`            | `string`         | 否   | -                  | -                                                                                                                                             |
+| `vectorModel.requestAuth`           | `string`         | 否   | -                  | -                                                                                                                                             |
+| `vectorModel.testMode`              | `boolean`        | 否   | -                  | -                                                                                                                                             |
+| `vectorModel.type`                  | `"embedding"`    | 是   | -                  | 固定值：`"embedding"`                                                                                                                         |
+| `vectorModel.config`                | `object`         | 是   | -                  | -                                                                                                                                             |
+| `vectorModel.config.defaultToken`   | `number`         | 是   | -                  | -                                                                                                                                             |
+| `vectorModel.config.maxToken`       | `number`         | 是   | -                  | -                                                                                                                                             |
+| `vectorModel.config.weight`         | `number`         | 是   | `0`                | -                                                                                                                                             |
+| `vectorModel.config.hidden`         | `boolean`        | 否   | -                  | -                                                                                                                                             |
+| `vectorModel.config.vision`         | `boolean`        | 否   | -                  | -                                                                                                                                             |
+| `vectorModel.config.normalization`  | `boolean`        | 否   | -                  | -                                                                                                                                             |
+| `vectorModel.config.batchSize`      | `number`         | 否   | -                  | -                                                                                                                                             |
+| `vectorModel.config.defaultConfig`  | `object`         | 否   | -                  | -                                                                                                                                             |
+| `vectorModel.config.dbConfig`       | `object`         | 否   | -                  | -                                                                                                                                             |
+| `vectorModel.config.queryConfig`    | `object`         | 否   | -                  | -                                                                                                                                             |
+| `vectorModel.modelId`               | `string`         | 是   | -                  | -                                                                                                                                             |
+| `vectorModel.avatar`                | `string`         | 否   | -                  | -                                                                                                                                             |
+| `inheritPermission`                 | `boolean`        | 是   | -                  | 继承权限                                                                                                                                      |
+| `private`                           | `boolean`        | 否   | -                  | 是否私有                                                                                                                                      |
+| `folderAccessMode`                  | `string` (enum)  | 否   | -                  | 文件夹访问方式；navigate 仅允许浏览可读后代，不授予真实读取权限。可选值：`read` , `navigate`                                                  |
+| `sourceMember`                      | `object`         | 否   | -                  | 来源成员                                                                                                                                      |
+| `sourceMember.name`                 | `string`         | 是   | -                  | 成员名称                                                                                                                                      |
+| `sourceMember.avatar`               | `string \| null` | 否   | -                  | 成员头像                                                                                                                                      |
+| `sourceMember.status`               | `string` (enum)  | 是   | -                  | 成员状态。可选值：`active` , `leave` , `forbidden`                                                                                            |

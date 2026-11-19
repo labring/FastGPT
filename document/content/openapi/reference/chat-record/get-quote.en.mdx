@@ -50,9 +50,11 @@ Identify the conversation via `appId` . When both API Key and login session are 
 
 **Proxy Team Member ( `authProxy` )**: Act on behalf of another member in the same team via `authProxy` . Available only on personal API keys with `authProxy` enabled; mutually exclusive with `customUid` .
 
-| Field       | Type     | Required | Default | Constraints & Description                                                                                                                                                                             |
-| ----------- | -------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `authProxy` | `object` | Yes      | -       | API Key proxy caller identity. Available only for personal keys with `authProxy` enabled; specify `tmbId` or `username` ( `tmbId` takes precedence without falling back to `username` on invalid ID). |
+| Field                | Type     | Required | Default | Constraints & Description                                                                                                                                                                             |
+| -------------------- | -------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `authProxy`          | `object` | Yes      | -       | API Key proxy caller identity. Available only for personal keys with `authProxy` enabled; specify `tmbId` or `username` ( `tmbId` takes precedence without falling back to `username` on invalid ID). |
+| `authProxy.tmbId`    | `string` | Yes      | -       | **Branch: By Team Member ID** . Proxied team member ID ( `tmbId` ), takes precedence over `username` . pattern: `^[0-9a-fA-F]{24}$`                                                                   |
+| `authProxy.username` | `string` | Yes      | -       | **Branch: By Username** . Proxied team member username. minLength: 1; maxLength: 128                                                                                                                  |
 
 - **Skill Debug Session**
 
@@ -121,10 +123,27 @@ curl --fail-with-body -X POST "https://cloud.fastgpt.io/api/core/chat/record/get
 
 ## Response Schema & Examples
 
-Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (and `null` when no payload schema is declared).
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (when a payload schema is declared; otherwise refer to the status description for runtime `data` semantics).
 
 ### HTTP 200
 
 Successfully returned citation list
 
 **Content-Type** : `application/json`
+
+**Root Type** : Array ( `object[]` ). Each array item has the following fields:
+
+| Field                  | Type       | Required | Default | Constraints & Description                         |
+| ---------------------- | ---------- | -------- | ------- | ------------------------------------------------- |
+| `_id`                  | `string`   | Yes      | -       | Data item ID. pattern: `^[0-9a-fA-F]{24}$`        |
+| `q`                    | `string`   | Yes      | -       | Primary chunk content / question                  |
+| `a`                    | `string`   | No       | -       | Supplementary answer / text                       |
+| `imagePreivewUrl`      | `string`   | No       | -       | Image preview URL                                 |
+| `history`              | `object[]` | No       | -       | Legacy snapshot flag                              |
+| `history[].q`          | `string`   | Yes      | -       | Primary chunk content / question                  |
+| `history[].a`          | `string`   | No       | -       | Supplementary answer / text                       |
+| `history[].imageId`    | `string`   | No       | -       | Image ID                                          |
+| `history[].updateTime` | `string`   | Yes      | -       | Update time                                       |
+| `updateTime`           | `string`   | Yes      | -       | Update time                                       |
+| `index`                | `integer`  | Yes      | -       | Chunk index. min: 0; max: 9007199254740991        |
+| `updated`              | `boolean`  | No       | -       | Whether the chunk has been updated since citation |

@@ -21,6 +21,12 @@ const DOC_LAST_MODIFIED_PATH = path.join(DOCUMENT_ROOT, 'data', 'doc-last-modifi
 const HAN_REGEX = /\p{Script=Han}/u;
 const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace'] as const;
 const LOADER_GUARD_KEY = Symbol.for('fastgpt.document.openapiSyncLoaderRegistered');
+const DIRECT_RESPONSE_OPERATION_KEYS = new Set<string>([
+  'POST /v1/chat/completions',
+  'POST /v2/chat/completions',
+  'GET /core/dataset/collection/batchDownload'
+]);
+const PUBLIC_NO_AUTH_PATHS = new Set<string>(['/core/ai/model/list']);
 
 export const MODULE_ORDER = [
   'model',
@@ -138,6 +144,14 @@ type FlattenedProperty = {
   schema: SchemaObject;
   required: boolean;
   unionLabel?: string;
+  branchNote?: string;
+};
+
+type RequestAuthCapabilities = {
+  isPublic: boolean;
+  supportsAppKey: boolean;
+  supportsProxy: boolean;
+  supportsOutLink: boolean;
 };
 
 type ExtractedUnionGroup = {
@@ -459,7 +473,16 @@ const translateDocumentToEnglish = (params: {
 
   cloned.servers = [
     { url: 'https://cloud.fastgpt.io/api', description: 'FastGPT International Cloud' },
-    { url: '/api', description: 'Self-hosted instance relative path' }
+    {
+      url: '{origin}/api',
+      description: 'Self-hosted instance (replace origin with your FastGPT instance URL)',
+      variables: {
+        origin: {
+          default: 'https://your-fastgpt-domain.com',
+          description: 'Scheme and host of your self-hosted FastGPT instance (without trailing slash)'
+        }
+      }
+    }
   ];
 
   return cloned;
@@ -790,7 +813,7 @@ const formatFieldConstraintsAndDescription = (params: {
   locale: OpenApiLocale;
 }): string => {
   const { prop, locale } = params;
-  const { schema, unionLabel } = prop;
+  const { schema, unionLabel, branchNote } = prop;
   const isEn = locale === 'en';
   const parts: string[] = [];
 
@@ -801,6 +824,9 @@ const formatFieldConstraintsAndDescription = (params: {
     parts.push(
       isEn ? `**Mutually Exclusive Group: ${unionLabel}**.` : `**互斥参数组：${unionLabel}**。`
     );
+  }
+  if (branchNote !== undefined) {
+    parts.push(isEn ? `**Branch: ${branchNote}**.` : `**分支：${branchNote}**。`);
   }
   if (typeof schema.description === 'string' && schema.description.trim().length > 0) {
     parts.push(schema.description.trim());
@@ -866,16 +892,152 @@ type RenderedRow = {
   prop: FlattenedProperty;
 };
 
-/** 递归展开属性表行（展开嵌套 object 与 object[]，并通过签名集合防止循环展开）。 */
+/** 从联合分支中提取用于字段表展示的简明分支标签。 */
+const deriveUnionBranchTag = (params: {
+  branch: { raw: SchemaObject; properties: Map<string, FlattenedProperty> };
+  keyword: ExtractedUnionGroup['keyword'];
+  branchIndex: number;
+  locale: OpenApiLocale;
+}): string => {
+  const { branch, keyword, branchIndex, locale } = params;
+  if (typeof branch.raw.title === 'string' && branch.raw.title.trim().length > 0) {
+    return branch.raw.title.trim();
+  }
+  const constPairs: string[] = [];
+  for (const prop of branch.properties.values()) {
+    if (prop.schema.const !== undefined) {
+      constPairs.push(`${prop.name}=${JSON.stringify(prop.schema.const)}`);
+    }
+  }
+  if (constPairs.length > 0) {
+    return constPairs.join(', ');
+  }
+  if (Array.isArray(branch.raw.required)) {
+    const reqFields = branch.raw.required.filter((item): item is string => typeof item === 'string');
+    if (reqFields.length > 0) {
+      return reqFields.join(' + ');
+    }
+  }
+  return locale === 'en' ? `${keyword} #${branchIndex + 1}` : `${keyword} 分支 ${branchIndex + 1}`;
+};
+
+/** 递归展开属性表行（展开嵌套 object、嵌套 object union 分支与 object[]，并通过签名集合防止循环展开）。 */
 const collectTableRows = (params: {
   properties: Map<string, FlattenedProperty>;
   prefix: string;
   depth: number;
   maxDepth: number;
   visitedSignatures: Set<string>;
+  locale: OpenApiLocale;
 }): RenderedRow[] => {
-  const { properties, prefix, depth, maxDepth, visitedSignatures } = params;
+  const { properties, prefix, depth, maxDepth, visitedSignatures, locale } = params;
   const rows: RenderedRow[] = [];
+
+  /** 为子属性附加外层继承的分支上下文标记。 */
+  const applyInheritedBranchNote = (
+    propMap: Map<string, FlattenedProperty>,
+    inheritedBranchNote?: string
+  ): Map<string, FlattenedProperty> => {
+    if (inheritedBranchNote === undefined) return propMap;
+    return new Map(
+      [...propMap.entries()].map(([key, item]) => [
+        key,
+        {
+          ...item,
+          branchNote:
+            item.branchNote !== undefined
+              ? `${inheritedBranchNote} / ${item.branchNote}`
+              : inheritedBranchNote
+        }
+      ])
+    );
+  };
+
+  /** 展开嵌套对象拆分结果（含普通属性与嵌套 anyOf/oneOf 分支）。 */
+  const expandDecomposedObject = (
+    decomposed: DecomposedObjectSchema,
+    nextPrefix: string,
+    nextDepth: number,
+    nextVisited: Set<string>,
+    inheritedBranchNote?: string
+  ) => {
+    if (decomposed.properties.size > 0) {
+      rows.push(
+        ...collectTableRows({
+          properties: applyInheritedBranchNote(decomposed.properties, inheritedBranchNote),
+          prefix: nextPrefix,
+          depth: nextDepth,
+          maxDepth,
+          visitedSignatures: nextVisited,
+          locale
+        })
+      );
+    }
+
+    for (const union of decomposed.unions) {
+      // 超大规模多态集合（如对话 messages 角色变体）保持在独立多态明细区展示，避免参数表过度膨胀。
+      if (union.branches.length > 8) continue;
+      const unionSig = computeSchemaSignature(union.branches);
+      if (nextVisited.has(unionSig)) continue;
+      const unionVisited = new Set(nextVisited).add(unionSig);
+
+      const { sharedProps, sharedNestedUnions, prunedBranches } = factorUnionBranches(union);
+      if (sharedProps.size > 0) {
+        rows.push(
+          ...collectTableRows({
+            properties: applyInheritedBranchNote(sharedProps, inheritedBranchNote),
+            prefix: nextPrefix,
+            depth: nextDepth,
+            maxDepth,
+            visitedSignatures: unionVisited,
+            locale
+          })
+        );
+      }
+
+      prunedBranches.forEach((branch, branchIndex) => {
+        const branchTag = deriveUnionBranchTag({
+          branch,
+          keyword: union.keyword,
+          branchIndex,
+          locale
+        });
+        const nextBranchNote =
+          inheritedBranchNote !== undefined ? `${inheritedBranchNote} / ${branchTag}` : branchTag;
+        if (branch.properties.size > 0) {
+          rows.push(
+            ...collectTableRows({
+              properties: applyInheritedBranchNote(branch.properties, nextBranchNote),
+              prefix: nextPrefix,
+              depth: nextDepth,
+              maxDepth,
+              visitedSignatures: unionVisited,
+              locale
+            })
+          );
+        }
+        if (branch.unions.length > 0 && nextDepth < maxDepth) {
+          expandDecomposedObject(
+            { properties: new Map(), unions: branch.unions },
+            nextPrefix,
+            nextDepth,
+            unionVisited,
+            nextBranchNote
+          );
+        }
+      });
+
+      if (sharedNestedUnions.length > 0 && nextDepth < maxDepth) {
+        expandDecomposedObject(
+          { properties: new Map(), unions: sharedNestedUnions },
+          nextPrefix,
+          nextDepth,
+          unionVisited,
+          inheritedBranchNote
+        );
+      }
+    }
+  };
 
   for (const prop of properties.values()) {
     const fieldPath = prefix.length > 0 ? `${prefix}.${prop.name}` : prop.name;
@@ -887,19 +1049,17 @@ const collectTableRows = (params: {
     const sig = computeSchemaSignature(schema);
     if (visitedSignatures.has(sig)) continue;
 
-    if (schema.type === 'object' || isPlainObject(schema.properties) || Array.isArray(schema.allOf)) {
+    if (
+      schema.type !== 'array' &&
+      (schema.type === 'object' ||
+        isPlainObject(schema.properties) ||
+        Array.isArray(schema.allOf) ||
+        isObjectSchemaNode(schema))
+    ) {
       const nested = decomposeObjectSchema(schema);
-      if (nested.properties.size > 0) {
+      if (nested.properties.size > 0 || nested.unions.length > 0) {
         const nextVisited = new Set(visitedSignatures).add(sig);
-        rows.push(
-          ...collectTableRows({
-            properties: nested.properties,
-            prefix: fieldPath,
-            depth: depth + 1,
-            maxDepth,
-            visitedSignatures: nextVisited
-          })
-        );
+        expandDecomposedObject(nested, fieldPath, depth + 1, nextVisited, prop.branchNote);
       }
     } else if (schema.type === 'array' && isPlainObject(schema.items)) {
       const itemSig = computeSchemaSignature(schema.items);
@@ -909,11 +1069,12 @@ const collectTableRows = (params: {
           const nextVisited = new Set(visitedSignatures).add(sig).add(itemSig);
           rows.push(
             ...collectTableRows({
-              properties: nested.properties,
+              properties: applyInheritedBranchNote(nested.properties, prop.branchNote),
               prefix: `${fieldPath}[]`,
               depth: depth + 1,
               maxDepth,
-              visitedSignatures: nextVisited
+              visitedSignatures: nextVisited,
+              locale
             })
           );
         }
@@ -937,7 +1098,8 @@ const renderPropertiesTable = (params: {
     prefix: '',
     depth: 0,
     maxDepth,
-    visitedSignatures: new Set()
+    visitedSignatures: new Set(),
+    locale
   });
 
   if (rows.length === 0) return '';
@@ -1113,6 +1275,61 @@ const renderStructuredSchemaSection = (params: {
   if (visitedSignatures.has(sig)) return '';
   const nextVisited = new Set(visitedSignatures).add(sig);
 
+  // 根级数组响应（如 getQuote、dataset/list）需显式展示数组类型及元素 items 结构。
+  const { schema: unwrappedRoot } = unwrapPropertySchema(schema);
+  if (unwrappedRoot.type === 'array') {
+    const blocks: string[] = [];
+    const typeLabel = formatSchemaType(unwrappedRoot, locale);
+    const arrayConstraints: string[] = [];
+    if (typeof unwrappedRoot.minItems === 'number') {
+      arrayConstraints.push(
+        isEn ? `minItems: ${unwrappedRoot.minItems}` : `最少项数：${unwrappedRoot.minItems}`
+      );
+    }
+    if (typeof unwrappedRoot.maxItems === 'number') {
+      arrayConstraints.push(
+        isEn ? `maxItems: ${unwrappedRoot.maxItems}` : `最多项数：${unwrappedRoot.maxItems}`
+      );
+    }
+    const constraintSuffix =
+      arrayConstraints.length > 0
+        ? isEn
+          ? ` (${arrayConstraints.join('; ')})`
+          : `（${arrayConstraints.join('；')}）`
+        : '';
+    const hasItemObject =
+      isPlainObject(unwrappedRoot.items) && isObjectSchemaNode(unwrappedRoot.items);
+    blocks.push(
+      isEn
+        ? `**Root Type**: Array (${typeLabel})${constraintSuffix}.${hasItemObject ? ' Each array item has the following fields:' : ''}`
+        : `**根结构类型**：数组（${typeLabel}）${constraintSuffix}。${hasItemObject ? '数组元素包含以下字段：' : ''}`
+    );
+    if (isPlainObject(unwrappedRoot.items)) {
+      const renderedItems = renderStructuredSchemaSection({
+        schema: unwrappedRoot.items,
+        locale,
+        headingDepth,
+        maxDepth,
+        commonHeading,
+        unionHeading,
+        visitedSignatures: nextVisited
+      });
+      if (renderedItems.length > 0) {
+        blocks.push(renderedItems);
+      } else if (!hasItemObject) {
+        const itemDesc =
+          typeof unwrappedRoot.items.description === 'string' &&
+          unwrappedRoot.items.description.trim().length > 0
+            ? sanitizeMdxProse(unwrappedRoot.items.description.trim())
+            : '';
+        if (itemDesc.length > 0) {
+          blocks.push(itemDesc);
+        }
+      }
+    }
+    return blocks.filter((b) => b.trim().length > 0).join('\n\n');
+  }
+
   const decomposed = decomposeObjectSchema(schema);
   const blocks: string[] = [];
 
@@ -1245,22 +1462,28 @@ const renderStructuredSchemaSection = (params: {
   return blocks.filter((b) => b.trim().length > 0).join('\n\n');
 };
 
-/** 收集数组多态子项（如 `messages[]` 或 `responseData[]`）并生成简明分支说明表。 */
+/** 收集数组多态子项（如 `messages[]`、`models[]` 或 `list[]`）并生成简明分支说明表。 */
 const renderArrayUnionFieldNotes = (params: {
   schema: unknown;
   locale: OpenApiLocale;
 }): string => {
   const { schema, locale } = params;
   const isEn = locale === 'en';
-  const decomposed = decomposeObjectSchema(schema);
+  const unwrappedRoot = unwrapPropertySchema(schema).schema;
+  const targetSchema =
+    unwrappedRoot.type === 'array' && isPlainObject(unwrappedRoot.items)
+      ? unwrappedRoot.items
+      : schema;
+  const decomposed = decomposeObjectSchema(targetSchema);
   const seenFields = new Set<string>();
   const notes: string[] = [];
 
   const inspectProps = (props: Map<string, FlattenedProperty>) => {
     for (const prop of props.values()) {
       if (seenFields.has(prop.name)) continue;
-      const itemSchema = prop.schema.type === 'array' ? prop.schema.items : prop.schema;
-      if (!isPlainObject(itemSchema)) continue;
+      // 非数组嵌套对象及其联合分支已直接在字段表中展开完整类型与约束，此处仅保留多态数组子项摘要。
+      if (prop.schema.type !== 'array' || !isPlainObject(prop.schema.items)) continue;
+      const itemSchema = prop.schema.items;
       const itemUnions = Array.isArray(itemSchema.anyOf)
         ? itemSchema.anyOf
         : Array.isArray(itemSchema.oneOf)
@@ -1322,7 +1545,7 @@ const buildCurlAndRequestExamples = (params: {
   const { method, apiPath, operation, locale } = params;
   const isEn = locale === 'en';
   const origin = locale === 'en' ? 'https://cloud.fastgpt.io' : 'https://cloud.fastgpt.cn';
-  const isPublicNoAuth = apiPath === '/core/ai/model/list';
+  const isPublicNoAuth = PUBLIC_NO_AUTH_PATHS.has(apiPath);
   const upperMethod = method.toUpperCase();
 
   // 1. 提取 Path 与 Query 参数示例（自动展平 `name === 'query'` 的 form/explode 对象）。
@@ -1457,35 +1680,107 @@ const renderChatCompletionExamplesSection = (params: {
   return parts.join('\n\n');
 };
 
-/** 推断操作所属鉴权作用域说明。 */
-const resolveAuthScopeSummary = (params: {
+/** 仅从原始请求契约结构与请求说明提取鉴权能力，避免响应字段说明或译文触发误判。 */
+const detectRequestAuthCapabilities = (params: {
   apiPath: string;
-  operation: SchemaObject;
+  zhOperation: SchemaObject;
+}): RequestAuthCapabilities => {
+  const { apiPath, zhOperation } = params;
+  const isPublic =
+    PUBLIC_NO_AUTH_PATHS.has(apiPath) ||
+    (Array.isArray(zhOperation.security) && zhOperation.security.length === 0);
+
+  if (isPublic) {
+    return {
+      isPublic: true,
+      supportsAppKey: false,
+      supportsProxy: false,
+      supportsOutLink: false
+    };
+  }
+
+  /** 检查 schema 结构节点中是否真正声明了目标请求字段名（不扫描自然语言描述）。 */
+  const hasSchemaProperty = (rawSchema: unknown, targetField: string): boolean => {
+    if (!isPlainObject(rawSchema)) return false;
+    if (
+      isPlainObject(rawSchema.properties) &&
+      Object.prototype.hasOwnProperty.call(rawSchema.properties, targetField)
+    ) {
+      return true;
+    }
+    for (const kw of ['allOf', 'anyOf', 'oneOf'] as const) {
+      const branches = rawSchema[kw];
+      if (Array.isArray(branches) && branches.some((branch) => hasSchemaProperty(branch, targetField))) {
+        return true;
+      }
+    }
+    if (isPlainObject(rawSchema.items) && hasSchemaProperty(rawSchema.items, targetField)) {
+      return true;
+    }
+    return false;
+  };
+
+  /** 检查 operation 的 parameters 与 requestBody（显式排除 responses）是否包含目标字段。 */
+  const hasRequestField = (targetField: string): boolean => {
+    const rawParams = Array.isArray(zhOperation.parameters) ? zhOperation.parameters : [];
+    for (const param of rawParams) {
+      if (!isPlainObject(param)) continue;
+      if (param.name === targetField || hasSchemaProperty(param.schema, targetField)) {
+        return true;
+      }
+    }
+    const reqContent =
+      isPlainObject(zhOperation.requestBody) && isPlainObject(zhOperation.requestBody.content)
+        ? zhOperation.requestBody.content
+        : undefined;
+    if (reqContent !== undefined) {
+      for (const mediaObj of Object.values(reqContent)) {
+        if (isPlainObject(mediaObj) && hasSchemaProperty(mediaObj.schema, targetField)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  const requestOnlySerialized = JSON.stringify({
+    summary: zhOperation.summary,
+    description: zhOperation.description,
+    parameters: zhOperation.parameters,
+    requestBody: zhOperation.requestBody
+  });
+
+  return {
+    isPublic: false,
+    supportsAppKey:
+      requestOnlySerialized.includes('应用 API Key') ||
+      requestOnlySerialized.includes('APP API Key') ||
+      requestOnlySerialized.includes('App API Key'),
+    supportsProxy: hasRequestField('authProxy'),
+    supportsOutLink: hasRequestField('outLinkAuthData')
+  };
+};
+
+/** 格式化操作所属鉴权作用域说明（确保中英文严格同源）。 */
+const resolveAuthScopeSummary = (params: {
+  authCapabilities: RequestAuthCapabilities;
   locale: OpenApiLocale;
 }): string => {
-  const { apiPath, operation, locale } = params;
+  const { authCapabilities, locale } = params;
   const isEn = locale === 'en';
 
-  if (apiPath === '/core/ai/model/list') {
+  if (authCapabilities.isPublic) {
     return isEn
       ? 'No authentication required (public endpoint)'
       : '无需鉴权（公开接口）';
   }
 
-  const serialized = JSON.stringify(operation);
-  const supportsAppKey =
-    serialized.includes('应用 API Key') ||
-    serialized.includes('APP API Key') ||
-    serialized.includes('App API Key');
-  const supportsOutLink = serialized.includes('outLinkAuthData');
-  const supportsProxy = serialized.includes('authProxy');
-
-  if (supportsAppKey) {
+  if (authCapabilities.supportsAppKey) {
     const extras: string[] = [];
-    if (supportsProxy) {
+    if (authCapabilities.supportsProxy) {
       extras.push(isEn ? '`authProxy` team member proxy' : '`authProxy` 团队成员代理');
     }
-    if (supportsOutLink) {
+    if (authCapabilities.supportsOutLink) {
       extras.push(isEn ? '`outLinkAuthData` share link' : '`outLinkAuthData` 外链分享');
     }
     const extraSuffix =
@@ -1540,6 +1835,7 @@ const renderOperationMdx = (params: {
   operation: SchemaObject;
   opMeta: TranslationOperationLocale;
   moduleMeta: TranslationModuleEntry;
+  authCapabilities: RequestAuthCapabilities;
   locale: OpenApiLocale;
   completionExamples?: CompletionResponseExamplesBundle;
 }): string => {
@@ -1551,6 +1847,7 @@ const renderOperationMdx = (params: {
     operation,
     opMeta,
     moduleMeta,
+    authCapabilities,
     locale,
     completionExamples
   } = params;
@@ -1584,7 +1881,7 @@ const renderOperationMdx = (params: {
   const scalarUrl = `${scalarOrigin}/apidoc/systemopenapi#${scalarAnchor}`;
   const groupName = isEn ? moduleMeta.enGroup : moduleMeta.zhGroup;
   const moduleName = isEn ? moduleMeta.enTitle : moduleMeta.zhTitle;
-  const authSummary = resolveAuthScopeSummary({ apiPath, operation, locale });
+  const authSummary = resolveAuthScopeSummary({ authCapabilities, locale });
 
   const overviewLines = isEn
     ? [
@@ -1784,11 +2081,11 @@ const renderOperationMdx = (params: {
   const isCompletions =
     opKey === 'POST /v1/chat/completions' || opKey === 'POST /v2/chat/completions';
 
-  if (!isCompletions && apiPath !== '/core/dataset/collection/batchDownload') {
+  if (!DIRECT_RESPONSE_OPERATION_KEYS.has(opKey)) {
     responseSections.push(
       isEn
-        ? 'Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }`, where `data` matches the `200` schema below (and `null` when no payload schema is declared).'
-        : '除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（无数据返回时 `data` 为 `null`）。'
+        ? 'Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }`, where `data` matches the `200` schema below (when a payload schema is declared; otherwise refer to the status description for runtime `data` semantics).'
+        : '除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（若契约未声明具体载荷结构，请以上方状态描述及实际响应为准）。'
     );
   }
 
@@ -1807,7 +2104,9 @@ const renderOperationMdx = (params: {
     const respContent = isPlainObject(rawResp.content) ? rawResp.content : undefined;
     if (respContent === undefined || Object.keys(respContent).length === 0) {
       responseSections.push(
-        isEn ? 'Returns standard success envelope with `data: null`.' : '返回标准成功响应（`data: null`）。'
+        isEn
+          ? 'Returns the standard FastGPT success envelope (`{ "code": 200, "statusText": "", "message": "", "data": ... }`). The exact `data` payload schema is not declared in this OpenAPI contract; refer to the status description above or inspect runtime responses.'
+          : '返回 FastGPT 标准成功响应结构（`{ "code": 200, "statusText": "", "message": "", "data": ... }`）。当前 OpenAPI 契约暂未声明 `data` 的具体字段结构，请结合上方状态描述或实际返回结果处理。'
       );
       continue;
     }
@@ -1932,6 +2231,111 @@ const createMdxFormatter = async () => {
 };
 
 /**
+ * 生成对外发布的机器可读 OpenAPI 文档副本：
+ * - 为非直写（SSE/OpenAI/二进制流）接口统一包裹 FastGPT HTTP 成功响应 envelope；
+ * - 为未声明 payload schema 的 200 响应保留开放式 `data` 描述，不臆断为 `null`；
+ * - 为公开免鉴权端点显式写入 `security: []`，避免继承顶层 Bearer 鉴权。
+ */
+const buildPublishedOpenApiDocument = (params: {
+  doc: SchemaObject;
+  locale: OpenApiLocale;
+}): SchemaObject => {
+  const { doc, locale } = params;
+  const isEn = locale === 'en';
+  const published = structuredClone(doc);
+
+  /** 将内部业务载荷 schema 包裹在标准 `{ code, statusText, message, data }` 外层结构中。 */
+  const wrapSuccessEnvelopeSchema = (dataSchema: unknown): SchemaObject => ({
+    type: 'object',
+    description: isEn
+      ? 'Standard FastGPT HTTP JSON response envelope.'
+      : 'FastGPT 标准 HTTP JSON 响应包装结构。',
+    properties: {
+      code: {
+        type: 'integer',
+        example: 200,
+        description: isEn
+          ? 'Business status code (200 indicates success).'
+          : '业务状态码（200 表示成功）。'
+      },
+      statusText: {
+        type: 'string',
+        example: '',
+        description: isEn
+          ? 'Status text (empty string on success).'
+          : '状态文本（成功时为空字符串）。'
+      },
+      message: {
+        type: 'string',
+        example: '',
+        description: isEn
+          ? 'Response message (empty string on success).'
+          : '响应消息（成功时为空字符串）。'
+      },
+      data:
+        dataSchema !== undefined
+          ? dataSchema
+          : {
+              description: isEn
+                ? 'Response payload. Exact schema is not declared in this OpenAPI contract; refer to the response description.'
+                : '响应载荷。当前 OpenAPI 契约暂未声明该字段的具体结构，请参见状态描述。'
+            }
+    },
+    required: ['code', 'statusText', 'message', 'data']
+  });
+
+  if (!isPlainObject(published.paths)) {
+    return published;
+  }
+
+  for (const [apiPath, pathItem] of Object.entries(published.paths)) {
+    if (!isPlainObject(pathItem)) continue;
+
+    for (const method of HTTP_METHODS) {
+      const operation = pathItem[method];
+      if (!isPlainObject(operation)) continue;
+
+      if (PUBLIC_NO_AUTH_PATHS.has(apiPath)) {
+        operation.security = [];
+      }
+
+      const opKey = `${method.toUpperCase()} ${apiPath}`;
+      if (DIRECT_RESPONSE_OPERATION_KEYS.has(opKey)) continue;
+
+      if (!isPlainObject(operation.responses) || !isPlainObject(operation.responses['200'])) {
+        continue;
+      }
+
+      const resp200 = operation.responses['200'];
+      const respContent = isPlainObject(resp200.content) ? resp200.content : undefined;
+      if (respContent === undefined || Object.keys(respContent).length === 0) {
+        resp200.content = {
+          'application/json': {
+            schema: wrapSuccessEnvelopeSchema(undefined)
+          }
+        };
+        continue;
+      }
+
+      const jsonMedia = respContent['application/json'];
+      if (isPlainObject(jsonMedia)) {
+        jsonMedia.schema = wrapSuccessEnvelopeSchema(jsonMedia.schema);
+        if (jsonMedia.example !== undefined) {
+          jsonMedia.example = {
+            code: 200,
+            statusText: '',
+            message: '',
+            data: jsonMedia.example
+          };
+        }
+      }
+    }
+  }
+
+  return published;
+};
+
+/**
  * 在内存中生成全套 OpenAPI 参考文档与双语 JSON 契约，并执行翻译完备性、零汉字、唯一性与 MDX 语法门禁。
  */
 export async function generateOpenApiDocs(): Promise<GeneratedOpenApiDocsBundle> {
@@ -1953,7 +2357,16 @@ export async function generateOpenApiDocs(): Promise<GeneratedOpenApiDocsBundle>
   stabilizeNonDeterministicDefaults(preparedZhDoc);
   preparedZhDoc.servers = [
     { url: 'https://cloud.fastgpt.cn/api', description: 'FastGPT 中国大陆云服务' },
-    { url: '/api', description: '私有化部署实例相对路径' }
+    {
+      url: '{origin}/api',
+      description: '私有化部署实例（请将 origin 替换为你的 FastGPT 实例地址）',
+      variables: {
+        origin: {
+          default: 'https://your-fastgpt-domain.com',
+          description: '自部署 FastGPT 实例的协议与域名（不含尾部斜杠）'
+        }
+      }
+    }
   ];
 
   // 2. 读取非侵入式英文翻译映射表，并校验分组/模块/操作完整覆盖。
@@ -2020,8 +2433,10 @@ export async function generateOpenApiDocs(): Promise<GeneratedOpenApiDocsBundle>
     );
   }
 
-  const zhSpecJson = `${JSON.stringify(preparedZhDoc, null, 2)}\n`;
-  const enSpecJson = `${JSON.stringify(preparedEnDoc, null, 2)}\n`;
+  const publishedZhDoc = buildPublishedOpenApiDocument({ doc: preparedZhDoc, locale: 'zh-CN' });
+  const publishedEnDoc = buildPublishedOpenApiDocument({ doc: preparedEnDoc, locale: 'en' });
+  const zhSpecJson = `${JSON.stringify(publishedZhDoc, null, 2)}\n`;
+  const enSpecJson = `${JSON.stringify(publishedEnDoc, null, 2)}\n`;
   if (HAN_REGEX.test(enSpecJson)) {
     throw new Error('English OpenAPI JSON still contains Han characters.');
   }
@@ -2121,6 +2536,7 @@ export async function generateOpenApiDocs(): Promise<GeneratedOpenApiDocsBundle>
             ? 'v2'
             : undefined;
 
+      const authCapabilities = detectRequestAuthCapabilities({ apiPath, zhOperation });
       const rawZhMdx = renderOperationMdx({
         opKey,
         method,
@@ -2130,6 +2546,7 @@ export async function generateOpenApiDocs(): Promise<GeneratedOpenApiDocsBundle>
         operation: zhOperation,
         opMeta: opTrans.zh,
         moduleMeta,
+        authCapabilities,
         locale: 'zh-CN',
         completionExamples:
           completionVersion !== undefined ? completionExamplesZh[completionVersion] : undefined
@@ -2143,6 +2560,7 @@ export async function generateOpenApiDocs(): Promise<GeneratedOpenApiDocsBundle>
         operation: enOperation,
         opMeta: opTrans.en,
         moduleMeta,
+        authCapabilities,
         locale: 'en',
         completionExamples:
           completionVersion !== undefined ? completionExamplesEn[completionVersion] : undefined

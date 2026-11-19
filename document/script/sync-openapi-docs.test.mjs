@@ -120,12 +120,17 @@ test('OpenAPI docs generator matches on-disk artifacts with zero drift and locks
   assert.equal(enSpec.openapi, '3.1.0');
   assert.deepEqual(
     zhSpec.servers.map((s) => s.url),
-    ['https://cloud.fastgpt.cn/api', '/api']
+    ['https://cloud.fastgpt.cn/api', '{origin}/api']
   );
   assert.deepEqual(
     enSpec.servers.map((s) => s.url),
-    ['https://cloud.fastgpt.io/api', '/api']
+    ['https://cloud.fastgpt.io/api', '{origin}/api']
   );
+  for (const spec of [zhSpec, enSpec]) {
+    assert.ok(spec.servers.every((s) => typeof s.url === 'string' && !s.url.startsWith('/')));
+    const selfHostedServer = spec.servers.find((s) => s.url === '{origin}/api');
+    assert.ok(selfHostedServer?.variables?.origin?.default?.startsWith('https://'));
+  }
 
   // 3. 校验 meta*.json（reference 与各模块均不得声明 root: true）。
   assert.equal(
@@ -241,6 +246,120 @@ test('OpenAPI docs generator matches on-disk artifacts with zero drift and locks
     if (!fs.statSync(full).isFile()) continue;
     const rel = path.relative(DOCUMENT_ROOT, full).split(path.sep).join('/');
     assert.ok(expectedDiskPaths.has(rel), `Unexpected stale file in reference/: ${rel}`);
+  }
+
+  // 6. 独立语义断言：验证外层响应结构、无虚假 data: null、嵌套联合字段约束、根级数组与鉴权一致性。
+  for (const [label, spec] of [
+    ['zh-CN', zhSpec],
+    ['en', enSpec]
+  ]) {
+    const search200Schema =
+      spec.paths['/core/dataset/search'].post.responses['200'].content['application/json'].schema;
+    assert.deepEqual(
+      search200Schema.required,
+      ['code', 'statusText', 'message', 'data'],
+      `${label} dataset/search 200 must wrap FastGPT envelope`
+    );
+    assert.ok(search200Schema.properties.data.properties.list);
+    assert.ok(search200Schema.properties.data.properties.meta);
+
+    // 直写流式 / OpenAI / 二进制接口不包裹 FastGPT envelope。
+    const v2Content = spec.paths['/v2/chat/completions'].post.responses['200'].content;
+    assert.ok(v2Content['application/json']);
+    assert.ok(v2Content['text/event-stream']);
+    assert.equal(v2Content['application/json'].schema.properties?.statusText, undefined);
+
+    const v1Content = spec.paths['/v1/chat/completions'].post.responses['200'].content;
+    assert.ok(v1Content['application/json']);
+    assert.ok(v1Content['text/event-stream']);
+    assert.equal(v1Content['application/json'].schema.properties?.statusText, undefined);
+
+    const zipSchema =
+      spec.paths['/core/dataset/collection/batchDownload'].get.responses['200'].content[
+        'application/zip'
+      ].schema;
+    assert.equal(zipSchema.format, 'binary');
+
+    // 未声明响应 schema 的接口保留开放式 data，不得声明为 type: null。
+    const create200Data =
+      spec.paths['/core/dataset/create'].post.responses['200'].content['application/json'].schema
+        .properties.data;
+    assert.notEqual(create200Data.type, 'null', `${label} dataset/create must not declare null`);
+
+    // 公开模型列表显式声明免鉴权。
+    assert.deepEqual(
+      spec.paths['/core/ai/model/list'].get.security,
+      [],
+      `${label} model/list must override top-level security with []`
+    );
+  }
+
+  // 验证缺失响应 schema 的代表页面不误导为 data: null。
+  for (const relPair of [
+    'content/openapi/reference/dataset/create',
+    'content/openapi/reference/dataset-collection/detail',
+    'content/openapi/reference/dataset-collection-create/local-file'
+  ]) {
+    for (const ext of ['.mdx', '.en.mdx']) {
+      const mdx = fs.readFileSync(path.join(DOCUMENT_ROOT, `${relPair}${ext}`), 'utf8');
+      assert.ok(!mdx.includes('data: null'), `${relPair}${ext} must not claim data: null`);
+    }
+  }
+
+  // 验证嵌套 union 字段在参数表中完整呈现（含类型、默认值、数值范围及 authProxy 子字段）。
+  for (const ext of ['.mdx', '.en.mdx']) {
+    const searchMdx = fs.readFileSync(
+      path.join(DOCUMENT_ROOT, `content/openapi/reference/dataset-search/search${ext}`),
+      'utf8'
+    );
+    assert.ok(searchMdx.includes('`query.text`'));
+    assert.ok(searchMdx.includes('`rerank.candidateNum`'));
+    assert.ok(searchMdx.includes('10') && searchMdx.includes('100'));
+    assert.ok(searchMdx.includes('`result.topk`'));
+    assert.ok(searchMdx.includes('`20`'));
+
+    const getQuoteMdx = fs.readFileSync(
+      path.join(DOCUMENT_ROOT, `content/openapi/reference/chat-record/get-quote${ext}`),
+      'utf8'
+    );
+    assert.ok(getQuoteMdx.includes('`authProxy.tmbId`'));
+    assert.ok(getQuoteMdx.includes('`authProxy.username`'));
+    // 根级数组响应保留数组语义与元素字段表。
+    assert.ok(getQuoteMdx.includes('`object[]`'));
+    assert.ok(getQuoteMdx.includes('`_id`'));
+    assert.ok(getQuoteMdx.includes('`q`'));
+    assert.ok(getQuoteMdx.includes('`a`'));
+
+    const datasetListMdx = fs.readFileSync(
+      path.join(DOCUMENT_ROOT, `content/openapi/reference/dataset/list${ext}`),
+      'utf8'
+    );
+    assert.ok(datasetListMdx.includes('`object[]`'));
+    assert.ok(datasetListMdx.includes('`_id`'));
+    assert.ok(datasetListMdx.includes('`name`'));
+
+    // 鉴权摘要严格基于请求契约，getUsers 概览与请求体不得误报 authProxy，model/list 保持免鉴权。
+    const getUsersMdx = fs.readFileSync(
+      path.join(DOCUMENT_ROOT, `content/openapi/reference/app-log/get-users${ext}`),
+      'utf8'
+    );
+    const getUsersOverviewLine = getUsersMdx
+      .split('\n')
+      .find((line) => line.includes('**鉴权方式**') || line.includes('**Authentication**'));
+    assert.ok(getUsersOverviewLine, `Missing auth overview line in get-users${ext}`);
+    assert.ok(
+      !getUsersOverviewLine.includes('authProxy'),
+      `get-users${ext} auth overview falsely claims authProxy`
+    );
+
+    const modelListMdx = fs.readFileSync(
+      path.join(DOCUMENT_ROOT, `content/openapi/reference/model/list${ext}`),
+      'utf8'
+    );
+    assert.ok(
+      modelListMdx.includes('无需鉴权') || modelListMdx.includes('No authentication required'),
+      `model/list${ext} must state no authentication required`
+    );
   }
 });
 
