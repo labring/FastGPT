@@ -30,7 +30,8 @@ const modelErrList: Array<{
   {
     statusText: ModelErrEnum.unConfigured,
     message: i18nT('common:not_model_config'),
-    httpStatus: 400
+    // 服务端默认模型未配置属于实例侧 5xx 故障；请求缺少模型引用时由模型句柄抛 UserConfigError 覆盖为 400。
+    httpStatus: 500
   },
   {
     statusText: ModelErrEnum.alreadyExists,

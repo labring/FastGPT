@@ -110,6 +110,7 @@ describe('ERROR_RESPONSE HTTP status contract', () => {
     [AppErrEnum.unExist, 502000, 404],
     [DatasetErrEnum.unExist, 501002, 404],
     [ModelErrEnum.unExist, 513000, 404],
+    [ModelErrEnum.unConfigured, 513001, 500],
     [UserErrEnum.notUser, 503000, 404],
     [UserErrEnum.account_psw_error, 503002, 401],
     [UserErrEnum.unAuthSso, 503003, 401],

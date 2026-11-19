@@ -310,6 +310,7 @@ describe('jsonRes HTTP status mapping', () => {
     [ERROR_ENUM.insufficientQuota, 402],
     [TeamErrEnum.aiPointsNotEnough, 402],
     [ModelErrEnum.unAuthModel, 403],
+    [ModelErrEnum.unConfigured, 500],
     [AppErrEnum.unAuthApp, 403],
     [DatasetErrEnum.unExist, 404],
     [ChatErrEnum.chatIsGenerating, 409],
@@ -367,6 +368,27 @@ describe('jsonRes HTTP status mapping', () => {
     } finally {
       entry.httpStatus = original;
     }
+  });
+
+  it('maps UserConfigError(ModelErrEnum.unConfigured) to HTTP 400 while preserving code 513001', () => {
+    const error = new UserConfigError(ModelErrEnum.unConfigured);
+    const processed = processError({ error });
+
+    expect(processed).toMatchObject({
+      code: 513001,
+      statusText: ModelErrEnum.unConfigured,
+      httpStatus: 400
+    });
+
+    const res = createResponse();
+    jsonRes(res, { code: 500, error });
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 513001,
+        statusText: ModelErrEnum.unConfigured
+      })
+    );
   });
 
   it('preserves caller-provided 4xx status when a runtime error entry lacks httpStatus', () => {
@@ -445,17 +467,24 @@ describe('getSseErrorResponse logging', () => {
     expect(logger.info).not.toHaveBeenCalled();
   });
 
-  it('keeps specified SSE wire error fields without leaking internal httpStatus metadata', () => {
-    const error = new UserError(ERROR_ENUM.unAuthorization);
+  it('keeps specified SSE error fields including httpStatus consistent with OpenAPI examples', () => {
+    const authError = new UserError(ERROR_ENUM.unAuthorization);
+    const authResponse = getSseErrorResponse(authError);
 
-    const response = getSseErrorResponse(error);
-    const parsed = JSON.parse(response.data);
-    const { httpStatus: _httpStatus, ...wireResponse } = ERROR_RESPONSE[ERROR_ENUM.unAuthorization];
-
-    expect(parsed).toEqual(wireResponse);
-    expect(parsed).not.toHaveProperty('httpStatus');
-    expect(response.shouldClearCookie).toBe(true);
+    expect(JSON.parse(authResponse.data)).toEqual(ERROR_RESPONSE[ERROR_ENUM.unAuthorization]);
+    expect(authResponse.shouldClearCookie).toBe(true);
     expect(logger.error).not.toHaveBeenCalled();
+
+    const upgradeError = new UserError(SandboxErrEnum.runtimeUpgradeInProgress);
+    const upgradePayload = JSON.parse(getSseErrorResponse(upgradeError).data);
+
+    expect(upgradePayload).toEqual({
+      code: 510003,
+      statusText: SandboxErrEnum.runtimeUpgradeInProgress,
+      message: ERROR_RESPONSE[SandboxErrEnum.runtimeUpgradeInProgress].message,
+      data: null,
+      httpStatus: 409
+    });
   });
 });
 

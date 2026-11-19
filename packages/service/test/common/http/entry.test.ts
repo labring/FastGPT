@@ -7,9 +7,27 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { ApiHttpError } from '@fastgpt/service/common/http/apiError';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { createModelHandle } from '@fastgpt/service/core/ai/model/catalog/handle';
 import { validateEvaluationFile } from '@fastgpt/service/core/app/evaluation/utils';
+
+const tracingMocks = vi.hoisted(() => ({
+  setSpanError: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/common/tracing', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/common/tracing')>();
+  return {
+    ...actual,
+    setSpanError: (...args: Parameters<typeof actual.setSpanError>) => {
+      tracingMocks.setSpanError(...args);
+      return actual.setSpanError(...args);
+    }
+  };
+});
 
 // 必须运行真实入口和 JSON 响应，才能验证 end/finish/close 之间的边界。
 vi.unmock('@fastgpt/service/common/http/entry');
@@ -297,6 +315,46 @@ describe('createApiEntry response lifecycle', () => {
       );
     }
   );
+
+  it('distinguishes missing server default model (500 + span error) from empty request model ref (400)', async () => {
+    const emptyHandle = createModelHandle({
+      models: [],
+      defaultModels: {},
+      configuredDefaultModelIds: {},
+      revision: 0,
+      version: 'empty'
+    });
+
+    tracingMocks.setSpanError.mockClear();
+    const serverMissing = createHttpObjects();
+    await createApiEntry({ requestI18n })(async () => {
+      emptyHandle.getDefaultModelData(ModelTypeEnum.llm);
+    })(serverMissing.req, serverMissing.res);
+
+    expect(serverMissing.res.statusCode).toBe(500);
+    expect(serverMissing.res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 513001,
+        statusText: ModelErrEnum.unConfigured
+      })
+    );
+    expect(tracingMocks.setSpanError).toHaveBeenCalledTimes(1);
+
+    tracingMocks.setSpanError.mockClear();
+    const requestMissing = createHttpObjects();
+    await createApiEntry({ requestI18n })(async () => {
+      emptyHandle.getModelData({ modelId: '' }, { type: ModelTypeEnum.llm });
+    })(requestMissing.req, requestMissing.res);
+
+    expect(requestMissing.res.statusCode).toBe(400);
+    expect(requestMissing.res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 513001,
+        statusText: ModelErrEnum.unConfigured
+      })
+    );
+    expect(tracingMocks.setSpanError).not.toHaveBeenCalled();
+  });
 
   it('destroys a partial response instead of appending a JSON error', async () => {
     const { req, res } = createHttpObjects();

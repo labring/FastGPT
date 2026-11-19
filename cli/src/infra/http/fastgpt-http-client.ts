@@ -148,17 +148,18 @@ function mapServerError({
     });
   }
 
-  // FastGPT 服务端 unAuthApiKey 的业务码为 514 且 HTTP 状态可能是 500，不能仅看 401/403。
+  // 明确的凭证失效/认证拒绝（含老版本以 HTTP 500 包装业务码 514 的场景），提示重新登录或检查 API Key。
   if (
     httpStatus === 401 ||
-    httpStatus === 403 ||
     serverCode === 401 ||
-    serverCode === 403 ||
     serverCode === 514 ||
     statusText === 'unAuthorization' ||
     statusText === 'unAuthApiKey' ||
     statusText === 'unAuthProToken' ||
     statusText === 'unAuthTeam' ||
+    statusText === 'unAuthSso' ||
+    statusText === 'unAuthUser' ||
+    statusText === 'accountCancellationPending' ||
     /accountCancellationPending/i.test(safeMessage)
   ) {
     const isApiKey = serverCode === 514 || statusText === 'unAuthApiKey';
@@ -168,6 +169,24 @@ function mapServerError({
       hint: isApiKey
         ? 'Verify your API Key or check whether it has been deleted/restricted. Run "fastgpt doctor" for diagnostics.'
         : 'Your session may be invalid or expired (7-day TTL). Run "fastgpt login" to re-authenticate.',
+      details: { httpStatus, serverCode, statusText, url: safeUrl }
+    });
+  }
+
+  // 资源权限拒绝（非套餐/配额上限）归类为 AUTH_FORBIDDEN，不误导用户重新登录；
+  // 套餐数量上限、商业版功能受限等带明确业务 statusText 的 HTTP 403 保留为 CliApiError（API_ERROR）。
+  const isPermissionRefusal =
+    (statusText !== undefined &&
+      /^(?:unAuth|canNotEditAdminPermission$|unPermission$|rootOnlyPermit$|agentSandboxPermissionDenied$|inheritPermissionError$|openapiUnAuth$|pluginUnAuth$|collectionPermissionDisabled$)/.test(
+        statusText
+      )) ||
+    ((httpStatus === 403 || serverCode === 403) && (!statusText || statusText === 'error'));
+
+  if (isPermissionRefusal) {
+    return new CliAuthError({
+      code: 'AUTH_FORBIDDEN',
+      message: safeMessage || 'Permission denied',
+      hint: 'You do not have permission for this resource or action. Verify team and resource permissions.',
       details: { httpStatus, serverCode, statusText, url: safeUrl }
     });
   }

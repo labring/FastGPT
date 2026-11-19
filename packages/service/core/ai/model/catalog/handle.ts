@@ -1,6 +1,6 @@
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { isModelConfigError } from '@fastgpt/global/common/error/model';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { UserConfigError, UserError } from '@fastgpt/global/common/error/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { ModelDefaultIds } from '@fastgpt/global/core/ai/model/default';
 import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
@@ -270,7 +270,9 @@ export const createModelHandle = (input: ModelSnapshot) => {
         if (options?.optional && !options?.fallbackToDefault) {
           return undefined;
         }
-        throw new UserError(ModelErrEnum.unConfigured);
+        // 请求或调用方配置未提供模型引用：抛出 UserConfigError 保留 513001 业务码并映射为 HTTP 400，
+        // 与 getDefaultModelData 服务端缺少默认模型（HTTP 500）区分开。
+        throw new UserConfigError(ModelErrEnum.unConfigured);
       }
       const model = resolve(reference);
       assertModelAvailable({ model, type: options?.type, vision: options?.vision });
