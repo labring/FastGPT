@@ -176,6 +176,48 @@ describe('getVectors real OpenAI SDK HTTP retry budgets', () => {
       expectedCategory: 'invalidRequest',
       expectedRetryable: false,
       expectedCode: ModelErrEnum.invalidRequest
+    },
+    {
+      name: 'HTTP 200 carrying invalid_request_error echoing request timed out stops after 1 HTTP request',
+      status: 200,
+      body: {
+        error: {
+          message: "Unsupported value: 'request timed out' for 'encoding_format'.",
+          type: 'invalid_request_error'
+        }
+      },
+      expectedCalls: 1,
+      expectedCategory: 'invalidRequest',
+      expectedRetryable: false,
+      expectedCode: ModelErrEnum.invalidRequest
+    },
+    {
+      name: 'HTTP 200 carrying invalid_request_error echoing failed to download image stops after 1 HTTP request',
+      status: 200,
+      body: {
+        error: {
+          message: "Unsupported value: 'failed to download image: 500' for 'encoding_format'.",
+          type: 'invalid_request_error'
+        }
+      },
+      expectedCalls: 1,
+      expectedCategory: 'invalidRequest',
+      expectedRetryable: false,
+      expectedCode: ModelErrEnum.invalidRequest
+    },
+    {
+      name: 'HTTP 400 with type: gateway_timeout and no code remains retryable across 3 HTTP requests',
+      status: 400,
+      body: {
+        error: {
+          message: 'Upstream did not respond in time.',
+          type: 'gateway_timeout'
+        }
+      },
+      expectedCalls: 3,
+      expectedCategory: 'timeout',
+      expectedRetryable: true,
+      expectedCode: ModelErrEnum.requestTimeout
     }
   ])(
     '$name',

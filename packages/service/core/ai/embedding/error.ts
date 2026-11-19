@@ -464,16 +464,6 @@ const isAbortSignals = (signals: ExtractedErrorSignals): boolean =>
   signals.rawMessage === 'Request was aborted.';
 
 /**
- * 判断错误是否为请求被主动取消/中断（例如探活超时取消或调用方终止）。
- * OpenAI SDK 的 APIUserAbortError 未覆写 name，需要同时兜底固定文案与 AbortError。
- */
-export const isEmbeddingAbortError = (error: unknown, signal?: AbortSignal): boolean => {
-  if (signal?.aborted) return true;
-  if (error instanceof OpenAI.APIUserAbortError) return true;
-  return isAbortSignals(extractErrorSignals(error));
-};
-
-/**
  * 对向量化请求异常进行统一分类，区分确定性失败与可重试瞬时故障，
  * 并映射稳定的用户可读错误码，减少上游原生错误直接暴露给终端用户。
  */
@@ -535,6 +525,7 @@ export const classifyEmbeddingError = (
     error === ModelErrEnum.noAvailableChannel ||
     normalizeRelayNoChannelError(error) === ModelErrEnum.noAvailableChannel ||
     hasAnyLowercaseCode(signals.codes, NO_AVAILABLE_CHANNEL_CODES) ||
+    hasAnyType(signals.types, NO_AVAILABLE_CHANNEL_CODES) ||
     (signals.status === 404 &&
       /no available channel|无可用渠道|channel not found|channel_not_found/i.test(
         signals.combinedText
@@ -570,17 +561,42 @@ export const classifyEmbeddingError = (
     };
   }
 
+  // 参数校验状态（400/422）或无失败 HTTP 状态码的 2xx 错误体中声明参数错误类型，以及明确参数校验码时，
+  // 提前识别参数校验上下文，避免后续超时/拉图/限流/鉴权等宽泛正文正则把回显的参数值误判为运行时故障，
+  // 同时保留 HTTP 429/403 携带通用 invalid_request_error 时的欠费正文识别。
+  const isParamValidationStatus =
+    signals.status === undefined ||
+    (signals.status >= 200 && signals.status < 300) ||
+    signals.status === 400 ||
+    signals.status === 422;
+  const isExplicitInvalidParamError = hasAnyLowercaseCode(
+    signals.codes,
+    EXPLICIT_INVALID_PARAM_CODES
+  );
+  const isStructuredInvalidRequest =
+    isExplicitInvalidParamError ||
+    (isParamValidationStatus &&
+      (signals.types.has('invalid_request_error') ||
+        hasAnyLowercaseCode(signals.codes, STRUCTURED_INVALID_PARAM_CODES)));
+  const isParamValidationMessage =
+    isStructuredInvalidRequest &&
+    /\b(?:unsupported|invalid)\s+(?:value|type|parameter|argument)\b|\bmissing\s+required\s+parameter\b|\bunknown\s+parameter\b|\bunrecognized\s+request\s+argument\b|\badditional\s+properties\s+are\s+not\s+allowed\b/i.test(
+      signals.payloadText
+    );
+
   if (
     error instanceof OpenAI.APIConnectionTimeoutError ||
     signals.status === 408 ||
     signals.names.has('TimeoutError') ||
     hasAnyExactCode(signals.codes, TIMEOUT_CODES) ||
     hasAnyLowercaseCode(signals.codes, TIMEOUT_ERROR_CODES) ||
-    signals.rawMessage === 'Request timed out.' ||
-    ((signals.status === undefined || signals.status >= 500) &&
-      /\b(request\s+timed?\s*out|gateway\s+time-?out|connect\s+timeout|headers\s+timeout|body\s+timeout|deadline\s+exceeded)\b/i.test(
-        signals.payloadText
-      ))
+    hasAnyType(signals.types, TIMEOUT_ERROR_CODES) ||
+    (!isStructuredInvalidRequest &&
+      (signals.rawMessage === 'Request timed out.' ||
+        ((signals.status === undefined || signals.status >= 500) &&
+          /\b(request\s+timed?\s*out|gateway\s+time-?out|connect\s+timeout|headers\s+timeout|body\s+timeout|deadline\s+exceeded)\b/i.test(
+            signals.payloadText
+          ))))
   ) {
     return {
       category: 'timeout',
@@ -590,15 +606,13 @@ export const classifyEmbeddingError = (
     };
   }
 
-  const isExplicitInvalidParamError = hasAnyLowercaseCode(
-    signals.codes,
-    EXPLICIT_INVALID_PARAM_CODES
-  );
-
   // 上游拉取图片失败常以 HTTP 400 返回，且正文可能内嵌被拉取站点的 401/403/429/500 状态码，
   // 必须先于通用鉴权/限流规则识别，避免把图片地址不可访问误判为模型 API Key 错误。
+  // 若已明确属于参数校验码或参数校验提示（如 Unsupported value: '...' for 'encoding_format'），
+  // 则跳过拉图正文匹配，避免回显的参数值误触发拉图重试。
   if (
     !isExplicitInvalidParamError &&
+    !isParamValidationMessage &&
     /failed to download image|error while downloading (file|image)|multimodal download failure|failed to fetch image|unable to download image|cannot download image|(image|url).*(download|fetch).*(fail|error|timeout|timed?\s*out)|image.*timed?\s*out.*download/i.test(
       signals.payloadText
     )
@@ -623,19 +637,6 @@ export const classifyEmbeddingError = (
       ...meta
     };
   }
-
-  // 参数校验状态（400/422）或无失败 HTTP 状态码的 2xx 错误体中声明参数错误类型，以及明确参数校验码时，
-  // 屏蔽宽泛正文正则避免回显参数值被误判，同时保留 HTTP 429/403 携带通用 invalid_request_error 时的欠费正文识别。
-  const isParamValidationStatus =
-    signals.status === undefined ||
-    (signals.status >= 200 && signals.status < 300) ||
-    signals.status === 400 ||
-    signals.status === 422;
-  const isStructuredInvalidRequest =
-    isExplicitInvalidParamError ||
-    (isParamValidationStatus &&
-      (signals.types.has('invalid_request_error') ||
-        hasAnyLowercaseCode(signals.codes, STRUCTURED_INVALID_PARAM_CODES)));
 
   // 上游额度/余额不足可能随 HTTP 402/403/429 返回，需先于限流与权限不足识别为不可重试。
   if (

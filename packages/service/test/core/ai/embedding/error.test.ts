@@ -581,13 +581,20 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
       }
     );
 
-    it.each([undefined, 200])(
-      'keeps status=%s structured invalid_request_error echoing rate_limit deterministic as invalidRequest',
-      (status) => {
+    it.each([
+      { status: undefined, echoedValue: 'rate_limit' },
+      { status: 200, echoedValue: 'rate_limit' },
+      { status: undefined, echoedValue: 'request timed out' },
+      { status: 200, echoedValue: 'request timed out' },
+      { status: undefined, echoedValue: 'failed to download image: 500' },
+      { status: 400, echoedValue: 'failed to download image: 500' }
+    ])(
+      'keeps status=$status structured invalid_request_error echoing "$echoedValue" deterministic as invalidRequest',
+      ({ status, echoedValue }) => {
         const raw = {
           ...(status !== undefined ? { status } : {}),
           type: 'invalid_request_error',
-          message: "Unsupported value: 'rate_limit' for 'encoding_format'."
+          message: `Unsupported value: '${echoedValue}' for 'encoding_format'.`
         };
 
         expect(classifyEmbeddingError(raw)).toMatchObject({
@@ -597,6 +604,20 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
         });
       }
     );
+
+    it('classifies HTTP 400 with type: gateway_timeout and no code as retryable timeout', () => {
+      const raw = makeApiError({
+        status: 400,
+        type: 'gateway_timeout',
+        message: 'Upstream did not respond in time.'
+      });
+
+      expect(classifyEmbeddingError(raw)).toMatchObject({
+        category: 'timeout',
+        retryable: true,
+        errorCode: ModelErrEnum.requestTimeout
+      });
+    });
 
     it.each([
       {
