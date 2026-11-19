@@ -38,12 +38,21 @@ describe('chat schema indexes', () => {
     expect(sourceAwareIndex?.[1]?.unique).toBe(true);
   });
 
-  it('keeps deprecated share data and its index, only cleaning the obsolete generation status index', () => {
+  it('declares cursor search index and deprecates the redundant prefix index', () => {
+    expect(hasIndex(MongoChat.schema.indexes(), { appId: 1, updateTime: -1, _id: -1 })).toBe(true);
+    expect(hasIndex(MongoChat.schema.indexes(), { appId: 1, updateTime: -1 })).toBe(false);
+  });
+
+  it('keeps deprecated share data and its index while cleaning obsolete chat indexes', () => {
     expect(MongoChat.schema.path('shareId')).toBeDefined();
     expect(
       hasIndex(MongoChat.schema.indexes(), { shareId: 1, outLinkUid: 1, updateTime: -1 })
     ).toBe(true);
     expect(getSchemaDeprecatedMongoIndexes(MongoChat.schema)).toMatchObject([
+      {
+        indexName: 'appId_1_updateTime_-1',
+        key: { appId: 1, updateTime: -1 }
+      },
       {
         indexName: 'chatGenerateStatus_1_updateTime_1',
         key: { chatGenerateStatus: 1, updateTime: 1 },
