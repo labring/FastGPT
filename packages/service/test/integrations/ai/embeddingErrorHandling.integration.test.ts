@@ -14,7 +14,7 @@ import type {
 } from '@fastgpt/global/core/ai/model/schema';
 import { generatedLoaders } from '@fastgpt/web/i18n/resourceLoaders.generated';
 import { PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
-import { createApiI18n, registerServerI18nLoaders } from '@fastgpt/service/common/i18n/request';
+import { createApiI18n } from '@fastgpt/service/common/i18n/request';
 import type { NodeApiRequest, NodeApiResponse } from '@fastgpt/service/types/http';
 import { EmbeddingRequestError } from '@fastgpt/service/core/ai/embedding/error';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
@@ -150,11 +150,9 @@ describe('Embedding error handling end-to-end integration', () => {
   beforeEach(() => {
     fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
-    registerServerI18nLoaders(generatedLoaders);
   });
 
   afterEach(() => {
-    registerServerI18nLoaders(undefined);
     vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
@@ -686,7 +684,7 @@ describe('Embedding error handling end-to-end integration', () => {
       expect(savedConfigData?.indexStatus).toBe(DatasetDataIndexStatusEnum.error);
     });
 
-    it('renders English + errorCode, falls back cleanly without loaders, and preserves Rerank 401 messages', async () => {
+    it('records errorCode + HTTP status for embedding failures without leaking secrets and preserves Rerank 401 messages', async () => {
       fetchMock.mockImplementation(async () =>
         jsonResponse({
           status: 401,
@@ -696,25 +694,14 @@ describe('Embedding error handling end-to-end integration', () => {
         })
       );
 
-      const withLoaderRecord = await probeModelStatus({
+      const embeddingRecord = await probeModelStatus({
         model: buildEmbeddingModel(),
         test: testModelConnection
       });
-      expect(withLoaderRecord.status).toBe('red');
-      expect(withLoaderRecord.error).toBe(
-        'Embedding Integration Model: Model API authentication failed. Please check the API key or channel configuration. (modelAuthFailed)'
-      );
-      expect(withLoaderRecord.error).not.toContain('sk-xxx');
-
-      registerServerI18nLoaders(undefined);
-      const withoutLoaderRecord = await probeModelStatus({
-        model: buildEmbeddingModel(),
-        test: testModelConnection
-      });
-      expect(withoutLoaderRecord.status).toBe('red');
-      expect(withoutLoaderRecord.error).toBe(
-        'Embedding Integration Model: Model test failed (modelAuthFailed)'
-      );
+      expect(embeddingRecord.status).toBe('red');
+      expect(embeddingRecord.error).toBe('Embedding Integration Model: modelAuthFailed (HTTP 401)');
+      expect(embeddingRecord.error).not.toContain('sk-xxx');
+      expect(embeddingRecord.error).not.toContain('common:code_error');
 
       const rerankModel: RerankModelDataType = {
         modelId: 'integration-rerank-id',

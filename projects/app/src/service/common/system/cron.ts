@@ -9,7 +9,6 @@ import { getScheduleTriggerApp } from '@/service/core/app/utils';
 import { cronJob as sandboxCronJob } from '@fastgpt/service/core/ai/sandbox/application/cron';
 import { clearExpiredS3FilesCron } from '@fastgpt/service/common/s3/lifecycle/cleanup';
 import { checkAndRunModelStatusProbe } from '@fastgpt/service/core/ai/modelStatus/service';
-import '@/service/middleware/i18n';
 
 // Try to run train every minute
 const setTrainingQueueCron = () => {

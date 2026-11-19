@@ -2,7 +2,6 @@ import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/cache
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
-import { LangEnum } from '@fastgpt/global/common/i18n/type';
 import {
   ModelStatusProbeConfigSchema,
   type ModelStatusProbeConfig
@@ -25,7 +24,6 @@ import type {
   UpdateModelStatusProbeConfigBody
 } from '@fastgpt/global/openapi/admin/system/model/status';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { translateServerMessage } from '../../../common/i18n/request';
 import { isEmbeddingRequestError } from '../embedding/error';
 import { ApiRequestInputParseError } from '../../../common/zod/requestParseError';
 import { MongoSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/schema';
@@ -313,38 +311,30 @@ export const getModelStatus = async (): Promise<GetModelStatusResponse> => {
   };
 };
 
-/** 已登记业务错误使用的翻译键集合；仅对未成功翻译的已登记键降级，不误伤普通上游报错文本。 */
-const REGISTERED_ERROR_I18N_KEYS = new Set(
-  Object.values(ERROR_RESPONSE)
-    .map((item) => item?.message)
-    .filter((message): message is string => typeof message === 'string')
-);
-
 /**
- * 渲染模型探活失败的展示文本：后台探测记录、状态接口与 Webhook 接收端不会经过前端 i18n，
- * 必须在探活边界复用应用注入的英文 i18n 资源渲染 `namespace:key` 并保留错误码；
- * 仅当已登记业务翻译键无法翻译时回退通用可读提示与业务码，普通上游脱敏报错文本原样保留。
+ * 格式化模型探活失败记录：日志与告警记录不需要经过 i18n 翻译，已登记业务错误直接输出错误码
+ * （携带上游状态码时附带 HTTP 状态），其余错误保留原有英文提示文本。
  */
-const formatProbeErrorMessage = async (error: unknown): Promise<string> => {
-  const raw = getErrText(error, 'Model test failed');
-  const translated = await translateServerMessage(raw, LangEnum.en);
-  const message =
-    translated === raw && REGISTERED_ERROR_I18N_KEYS.has(raw) ? 'Model test failed' : translated;
+const formatProbeErrorMessage = (error: unknown): string => {
+  if (isEmbeddingRequestError(error) && error.errorCode) {
+    return error.upstreamStatus !== undefined
+      ? `${error.errorCode} (HTTP ${error.upstreamStatus})`
+      : error.errorCode;
+  }
 
   const errorCode =
-    isEmbeddingRequestError(error) && error.errorCode
-      ? error.errorCode
-      : typeof error === 'object' &&
-          error !== null &&
-          'message' in error &&
-          typeof error.message === 'string' &&
-          Object.hasOwn(ERROR_RESPONSE, error.message)
-        ? error.message
-        : typeof error === 'string' && Object.hasOwn(ERROR_RESPONSE, error)
-          ? error
-          : undefined;
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof error.message === 'string' &&
+    Object.hasOwn(ERROR_RESPONSE, error.message)
+      ? error.message
+      : typeof error === 'string' && Object.hasOwn(ERROR_RESPONSE, error)
+        ? error
+        : undefined;
+  if (errorCode) return errorCode;
 
-  return errorCode ? `${message} (${errorCode})` : message;
+  return getErrText(error, 'Model test failed');
 };
 
 /**
@@ -422,7 +412,7 @@ export const probeModelStatus = async ({
     status: ModelStatusProbeStatusEnum.red,
     attempts: MODEL_STATUS_MAX_RETRIES + 1,
     // 告警接收端可能只展示 probe.error，因此错误文本也携带模型名称以便定位。
-    error: `${model.name}: ${await formatProbeErrorMessage(lastError)}`.slice(0, 1000),
+    error: `${model.name}: ${formatProbeErrorMessage(lastError)}`.slice(0, 1000),
     startedAt,
     requestStartedAt,
     requestEndedAt

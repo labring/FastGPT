@@ -5,8 +5,6 @@ import {
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { generatedLoaders } from '@fastgpt/web/i18n/resourceLoaders.generated';
-import { registerServerI18nLoaders } from '../../../../common/i18n/request';
 import { EmbeddingRequestError } from '../../../../core/ai/embedding/error';
 import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
@@ -48,7 +46,6 @@ const model: AIModelDataType = {
 
 describe('probeModelStatus', () => {
   afterEach(() => {
-    registerServerI18nLoaders(undefined);
     vi.useRealTimers();
     vi.restoreAllMocks();
   });
@@ -150,12 +147,12 @@ describe('probeModelStatus', () => {
     });
   });
 
-  it('renders readable English message from shared i18n resources and preserves error code', async () => {
-    registerServerI18nLoaders(generatedLoaders);
+  it('records machine error code and HTTP status for normalized embedding errors without raw i18n keys', async () => {
     const authErr = new EmbeddingRequestError(ModelErrEnum.authFailed, {
       category: 'authFailed',
       retryable: false,
-      errorCode: ModelErrEnum.authFailed
+      errorCode: ModelErrEnum.authFailed,
+      upstreamStatus: 401
     });
     const test = vi.fn().mockRejectedValue(authErr);
 
@@ -167,20 +164,13 @@ describe('probeModelStatus', () => {
     expect(result).toMatchObject({
       status: 'red',
       attempts: 4,
-      error:
-        'Test model: Model API authentication failed. Please check the API key or channel configuration. (modelAuthFailed)'
+      error: 'Test model: modelAuthFailed (HTTP 401)'
     });
     expect(result.error).not.toContain('common:code_error');
   });
 
-  it('falls back to generic message with error code when i18n loaders are unavailable', async () => {
-    registerServerI18nLoaders(undefined);
-    const authErr = new EmbeddingRequestError(ModelErrEnum.authFailed, {
-      category: 'authFailed',
-      retryable: false,
-      errorCode: ModelErrEnum.authFailed
-    });
-    const test = vi.fn().mockRejectedValue(authErr);
+  it('records error code directly for registered business errors without HTTP status', async () => {
+    const test = vi.fn().mockRejectedValue(new UserError(ModelErrEnum.noAvailableChannel));
 
     const result = await probeModelStatus({
       model,
@@ -190,7 +180,7 @@ describe('probeModelStatus', () => {
     expect(result).toMatchObject({
       status: 'red',
       attempts: 4,
-      error: 'Test model: Model test failed (modelAuthFailed)'
+      error: 'Test model: modelNoAvailableChannel'
     });
     expect(result.error).not.toContain('common:code_error');
   });
@@ -198,13 +188,8 @@ describe('probeModelStatus', () => {
   it('preserves plain upstream error messages containing colons such as Rerank 401', async () => {
     const test = vi.fn().mockRejectedValue(new Error('Unauthorized: Invalid API key'));
 
-    registerServerI18nLoaders(undefined);
-    const withoutLoaders = await probeModelStatus({ model, test });
-    expect(withoutLoaders.error).toBe('Test model: Unauthorized: Invalid API key');
-
-    registerServerI18nLoaders(generatedLoaders);
-    const withLoaders = await probeModelStatus({ model, test });
-    expect(withLoaders.error).toBe('Test model: Unauthorized: Invalid API key');
+    const result = await probeModelStatus({ model, test });
+    expect(result.error).toBe('Test model: Unauthorized: Invalid API key');
   });
 
   it('declares the model-time lookup index and 30-day TTL index', () => {
