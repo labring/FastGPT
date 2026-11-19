@@ -16,6 +16,24 @@ describe('createWechatOutlinkAdapter', () => {
     vi.clearAllMocks();
   });
 
+  it('sends partial output together with a terminal error', async () => {
+    const sendMessage = vi.fn();
+    const adapter = createWechatOutlinkAdapter({
+      client: { sendMessage } as any,
+      appId: 'app-1',
+      jobData: { shareId: 'share-1', userId: 'user-1', contextToken: 'context-1', items: [] } as any
+    });
+    await adapter.respond(
+      (async function* () {
+        yield { type: 'chunk' as const, content: 'partial' };
+        yield { type: 'error' as const, content: 'App run error: failed' };
+      })()
+    );
+    expect(sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ text: 'partial\n\nApp run error: failed' })
+    );
+  });
+
   it.each([
     ['report.pdf', ChatFileTypeEnum.document],
     ['archive.zip', ChatFileTypeEnum.unknown],
