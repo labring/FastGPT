@@ -8,6 +8,7 @@ import multerLibrary from 'multer';
 import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 
 import { multer } from '@fastgpt/service/common/file/multer';
+import { decodeMultipartFilename } from '@fastgpt/service/common/s3/filename';
 
 describe('_storage filename callback', () => {
   it('should generate a filename with nanoid and original extension', () => {
@@ -77,6 +78,68 @@ describe('_storage filename callback', () => {
 });
 
 describe('singleStore', () => {
+  it('accepts raw UTF-8 and RFC 5987 multipart filenames', async () => {
+    const server = http.createServer(async (request, response) => {
+      const result = await multer.resolveFormData({
+        request: request as Parameters<typeof multer.resolveFormData>[0]['request'],
+        defParamCharset: 'utf8'
+      });
+      fs.rmSync(result.fileMetadata.path);
+      response.end(result.fileMetadata.originalname);
+    });
+    try {
+      await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+      const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+      for (const filename of ['中文%20.csv', 'café.csv', 'file name.csv', '100%.csv']) {
+        const form = new FormData();
+        form.append('file', new Blob(['q,a']), filename);
+        expect(await (await fetch(url, { method: 'POST', body: form })).text()).toBe(filename);
+      }
+      const body =
+        '--boundary\r\nContent-Disposition: form-data; name="file"; filename*=UTF-8\'\'%C3%83%C2%A9.csv\r\n\r\nq,a\r\n--boundary--\r\n';
+      expect(
+        await (
+          await fetch(url, {
+            method: 'POST',
+            headers: { 'content-type': 'multipart/form-data; boundary=boundary' },
+            body
+          })
+        ).text()
+      ).toBe('Ã©.csv');
+    } finally {
+      server.closeAllConnections();
+      if (server.listening) await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+  it('preserves a UTF-8 filename from a real multipart upload', async () => {
+    const server = http.createServer(async (request, response) => {
+      const result = await multer.resolveFormData({
+        request: request as Parameters<typeof multer.resolveFormData>[0]['request']
+      });
+      fs.rmSync(result.fileMetadata.path);
+      response.end(decodeMultipartFilename(result.fileMetadata.originalname));
+    });
+    try {
+      await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+      for (const [filename, multipartFilename] of [
+        ['中文 文件.csv', '%E4%B8%AD%E6%96%87%20%E6%96%87%E4%BB%B6.csv'],
+        ['café.csv', 'caf%C3%A9.csv'],
+        ['file%20name.csv', 'file%20name.csv']
+      ]) {
+        const form = new FormData();
+        form.append('file', new Blob(['q,a']), multipartFilename);
+        const response = await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}`, {
+          method: 'POST',
+          body: form
+        });
+        expect(await response.text()).toBe(filename);
+      }
+    } finally {
+      server.closeAllConnections();
+      if (server.listening) await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
   it('should return a multer middleware function', () => {
     const middleware = multer.singleStore(100);
     expect(typeof middleware).toBe('function');

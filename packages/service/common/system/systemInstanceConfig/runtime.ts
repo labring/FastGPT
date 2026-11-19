@@ -1,5 +1,8 @@
 import type { SystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
-import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
+import {
+  resolveDomainEffectiveConfig,
+  resolveSystemInstanceConfig
+} from '@fastgpt/global/common/system/config/schema';
 import { getLogger, LogCategories } from '../../logger';
 import { logInstanceConfigRead } from '../migrationCoverageLog';
 import { buildSystemFrontendConfig, type FrontendConfigContext } from './frontend';
@@ -14,6 +17,19 @@ import { SecurityConfigSchema } from '@fastgpt/global/common/system/config/schem
 const logger = getLogger(LogCategories.SYSTEM);
 const defaultAuthConfig = AuthConfigSchema.parse({});
 const defaultSecurityConfig = SecurityConfigSchema.parse({});
+
+// 根域损坏时保留登录和会话默认值，让管理员可以登录修复。未知名单保留为 null，
+// 使既有 CORS 与外链策略拒绝未知来源，而不是把损坏值解释成合法空名单。
+const repairSecurityConfig = resolveDomainEffectiveConfig({
+  domain: 'security',
+  overrides: {
+    checkInternalIp: true,
+    checkExternalFile: true,
+    allowedOrigins: null,
+    fileUrlWhitelist: null
+  },
+  options: { strict: false }
+});
 
 type RuntimeState = {
   frontendContext: FrontendConfigContext;
@@ -105,13 +121,22 @@ export const onSystemInstanceConfigSnapshot = (
  * 由 reload 在数据库合成成功后调用；只更新 global，不发起数据库读取或业务刷新。
  */
 export const publishSystemInstanceConfigSnapshot = ({
-  snapshot,
+  snapshot: candidate,
   versionTag
 }: {
   snapshot: SystemInstanceConfig;
   versionTag?: string;
 }) => {
   const state = getSystemConfigRuntimeState();
+  // 商业版与社区版共用安全投影，DB 和管理视图仍保留自己的修复语义。
+  const security: unknown = candidate.security;
+  const snapshot =
+    security !== null &&
+    typeof security === 'object' &&
+    Object.getPrototypeOf(security) === Object.prototype
+      ? candidate
+      : { ...candidate, security: structuredClone(repairSecurityConfig) };
+
   // 社区版即便复用曾运行 Pro 的数据库，也不启用残留的部署能力、套餐或授权。
   // Pro 进程通过启动上下文声明自身商业服务能力，无需 PRO_URL 指向自己。
   const commercialService = state.frontendContext.commercialService ?? Boolean(serviceEnv.PRO_URL);

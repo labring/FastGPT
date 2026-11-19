@@ -155,6 +155,14 @@ describe('common and team OpenAPI contracts', () => {
     ).toMatchObject({ standard: normalizedStandardPlan, usedPoints: 900.5 });
   });
 
+  it('preserves fractional points when reading stored team subscriptions', () => {
+    const points = { totalPoints: 1000.25, surplusPoints: 999.5 };
+
+    expect(
+      GetTeamPlansResponseSchema.parse([{ ...normalizedStandardPlan, ...points }])[0]
+    ).toMatchObject(points);
+  });
+
   it('uses null for unlimited plan values in the client response', () => {
     expect(
       GetTeamPlanStatusResponseSchema.parse({

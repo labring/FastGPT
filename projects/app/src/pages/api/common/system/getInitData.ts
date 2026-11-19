@@ -139,7 +139,7 @@ async function handler(
     ? applyEnvAuthoritativeFeConfigs(projectedFeConfigs)
     : projectedFeConfigs;
 
-  const response = (() => {
+  const response: GetSystemInitDataResponse = (() => {
     if (isAuthenticated) {
       if (
         bufferId &&
@@ -181,7 +181,27 @@ async function handler(
     };
   })();
 
-  return GetSystemInitDataResponseSchema.parse(response);
+  const parsed = GetSystemInitDataResponseSchema.safeParse(response);
+  if (parsed.success) return parsed.data;
+
+  // 旧配置不能阻断前台和管理员修复入口。仅省略非法公开展示字段，
+  // 管理配置读取仍保留原值；最后继续按白名单解析，避免异常分支泄漏扩展字段。
+  const projected = { ...response, feConfigs: response.feConfigs && { ...response.feConfigs } };
+  for (const issue of parsed.error.issues) {
+    const [scope, field] = issue.path;
+    if (scope === 'feConfigs' && typeof field === 'string' && projected.feConfigs) {
+      delete projected.feConfigs[field as keyof typeof projected.feConfigs];
+    } else if (scope === 'subPlans') {
+      delete projected.subPlans;
+    } else {
+      // 非配置数据的接口不变量仍按内部错误报告。
+      throw parsed.error;
+    }
+  }
+  logger.warn('Invalid public configuration omitted from frontend projection', {
+    issues: parsed.error.issues.map(({ path, code }) => ({ path: path.join('.'), code }))
+  });
+  return GetSystemInitDataResponseSchema.parse(projected);
 }
 
 export default NextAPI(handler);

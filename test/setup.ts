@@ -32,7 +32,8 @@ const clearMongoCollections = async (db: Mongoose | undefined) => {
 
 beforeAll(async () => {
   const mongoUri = inject('MONGODB_URI');
-  vi.stubEnv('MONGODB_URI', mongoUri);
+  // 直接写入进程级测试基线，避免单测在 afterEach 调用 vi.unstubAllEnvs() 时意外清空 MONGODB_URI
+  process.env.MONGODB_URI = mongoUri;
   configureMongoDalRuntime({
     mainWriteUrl: mongoUri,
     logWriteUrl: process.env.MONGODB_LOG_URI,

@@ -143,4 +143,23 @@ describe('Admin plan schemas', () => {
       AdminPlanPath['/proApi/admin/wallet/plan/updatePlan']?.post?.responses?.[200]?.content
     ).toBeUndefined();
   });
+
+  it.each([SubTypeEnum.standard, SubTypeEnum.extraPoints])(
+    'requires integer total points while preserving fractional surplus for %s plans',
+    (type) => {
+      const plan = {
+        ...basePlan,
+        teamId: '68ad85a7463006c963799a05',
+        id: '68ad85a7463006c963799a06',
+        type,
+        level: StandardSubLevelEnum.basic,
+        totalPoints: 666667,
+        surplusPoints: -11.7634
+      };
+      for (const schema of [AddPlansBodySchema, UpdatePlanBodySchema]) {
+        expect(schema.parse(plan)).toMatchObject({ totalPoints: 666667, surplusPoints: -11.7634 });
+        expect(schema.safeParse({ ...plan, totalPoints: 666666.7 }).success).toBe(false);
+      }
+    }
+  );
 });

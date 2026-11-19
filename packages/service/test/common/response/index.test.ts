@@ -137,6 +137,19 @@ describe('processError zod logging', () => {
     expect(logger.error).not.toHaveBeenCalled();
   });
 
+  it('keeps field errors when the request error comes from another module instance', () => {
+    const error = new ApiRequestInputParseError(buildZodError(), { inputSource: 'body' });
+    // 模拟热更新或其他 bundle 的类身份：Symbol.for 标识与字段仍存在，instanceof 不再成立。
+    Object.setPrototypeOf(error, Error.prototype);
+    expect(error).not.toBeInstanceOf(ApiRequestInputParseError);
+    const processed = processError({ error, url: '/api/test', defaultCode: 400 });
+    expect(processed.httpStatus).toBe(400);
+    expect(processed.zodError).toEqual(
+      expect.arrayContaining([expect.objectContaining({ path: ['name'] })])
+    );
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
   it('does not require an api key header context to suppress request input ZodError logs', () => {
     const error = new ApiRequestInputParseError(buildZodError(), { inputSource: 'query' });
     const processed = processError({
@@ -267,6 +280,19 @@ describe('processError HTTP status mapping', () => {
 
     expect(processed.code).toBe(507002);
     expect(processed.httpStatus).toBe(404);
+  });
+
+  it('returns HTTP 403 with the existing business code for unauthorized files', () => {
+    const res = { status: vi.fn().mockReturnThis(), json: vi.fn() };
+    jsonRes(res as unknown as Parameters<typeof jsonRes>[0], {
+      code: 403,
+      error: CommonErrEnum.unAuthFile
+    });
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 507003, statusText: CommonErrEnum.unAuthFile })
+    );
   });
 });
 

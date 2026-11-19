@@ -56,9 +56,10 @@ const CommercialSettingComponent = () => {
   } = useDomainConfig('commercial');
   const plansRef = useRef<PlansSettingSectionHandle>(null);
 
-  const { control, handleSubmit, reset, register } = useForm<CommercialConfigForm>({
+  const form = useForm<CommercialConfigForm>({
     defaultValues: effectiveConfig
   });
+  const { control, handleSubmit, reset, register } = form;
 
   useEffect(() => {
     if (effectiveConfig && Object.keys(effectiveConfig).length > 0) {
@@ -132,14 +133,12 @@ const CommercialSettingComponent = () => {
   );
 
   // 在点击时再包装，避免 render 期创建会读取 ref 的提交闭包
-  const onSave = useCallback(() => {
-    // onSaveBatch 的错误已由 useAdminConfigSaveRequest 统一提示；
-    // 这里吞掉事件边界的 rejection，避免 ToastHandledError 变成未处理异常。
-    void handleSubmit(onSaveBatch)().catch(() => undefined);
-  }, [handleSubmit, onSaveBatch]);
+  const onSave = useCallback(() => handleSubmit(onSaveBatch)(), [handleSubmit, onSaveBatch]);
 
   return (
     <AdminSettingPage
+      form={form}
+      onSaveError={(error) => plansRef.current?.applySaveErrors(error)}
       headerTitle={t('admin:page_title_pay')}
       tocItems={tocItems}
       isLoading={isLoading}
@@ -161,6 +160,7 @@ const CommercialSettingComponent = () => {
                 control={control}
                 render={({ field }) => (
                   <AdminSwitchRow
+                    name={field.name}
                     label={t('admin:show_recharge_coupons')}
                     tooltip={t(
                       'admin:show_coupon_redemption_and_available_coupon_entries_on_the_r'
@@ -178,6 +178,7 @@ const CommercialSettingComponent = () => {
                 control={control}
                 render={({ field }) => (
                   <AdminSwitchRow
+                    name={field.name}
                     label={t('admin:show_discount_coupons')}
                     tooltip={t(
                       'admin:show_instant_discounts_and_coupon_options_during_user_checko'
@@ -199,7 +200,11 @@ const CommercialSettingComponent = () => {
             label={t('admin:bank_transfer_corporate_form_url')}
             tooltip={t('admin:full_url_of_the_corporate_form_a_user_fills_in_for_large_ban')}
           >
-            <Input {...register('payFormUrl')} placeholder="https://form.example.com/pay" />
+            <Input
+              isInvalid={Boolean(form.getFieldState('payFormUrl', form.formState).error)}
+              {...register('payFormUrl')}
+              placeholder="https://form.example.com/pay"
+            />
           </AdminFormItem>
         </AdminSettingSection>
       )}
@@ -208,19 +213,31 @@ const CommercialSettingComponent = () => {
       <AdminSettingSection id="wxPay" title={t('admin:pay_section_wx')} showDivider>
         <SimpleGrid columns={[1, 2]} spacing={5}>
           <AdminFormItem label="AppId" tooltip={t('admin:appid_bound_to_wechat_pay')}>
-            <Input {...register('payment.wx.appId')} placeholder="wx******" />
+            <Input
+              isInvalid={Boolean(form.getFieldState('payment.wx.appId', form.formState).error)}
+              {...register('payment.wx.appId')}
+              placeholder="wx******"
+            />
           </AdminFormItem>
           <AdminFormItem
             label={t('admin:merchant_id_mchid')}
             tooltip={t('admin:wechat_pay_merchant_id')}
           >
-            <Input {...register('payment.wx.mchId')} placeholder="1*********" />
+            <Input
+              isInvalid={Boolean(form.getFieldState('payment.wx.mchId', form.formState).error)}
+              {...register('payment.wx.mchId')}
+              placeholder="1*********"
+            />
           </AdminFormItem>
           <AdminFormItem
             label={t('admin:certificate_serial_number_serialno')}
             tooltip={t('admin:api_certificate_serial_no')}
           >
-            <Input {...register('payment.wx.serialNo')} placeholder="******" />
+            <Input
+              isInvalid={Boolean(form.getFieldState('payment.wx.serialNo', form.formState).error)}
+              {...register('payment.wx.serialNo')}
+              placeholder="******"
+            />
           </AdminFormItem>
           <AdminFormItem label={t('admin:apiv3_key')} tooltip={t('admin:wechat_pay_apiv3_key')}>
             <Controller
@@ -228,6 +245,7 @@ const CommercialSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <AdminSecretInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   name={field.name}
                   value={field.value}
                   onChange={field.onChange}
@@ -241,6 +259,7 @@ const CommercialSettingComponent = () => {
             tooltip={t('admin:wechat_pay_async_notification_url')}
           >
             <Input
+              isInvalid={Boolean(form.getFieldState('payment.wx.notifyUrl', form.formState).error)}
               {...register('payment.wx.notifyUrl')}
               placeholder="https://example.com/api/pay/wx"
             />
@@ -256,6 +275,7 @@ const CommercialSettingComponent = () => {
             control={control}
             render={({ field }) => (
               <AdminSecretInput
+                isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                 name={field.name}
                 value={field.value}
                 onChange={field.onChange}
@@ -274,13 +294,20 @@ const CommercialSettingComponent = () => {
         {' '}
         <SimpleGrid columns={[1, 2]} spacing={5}>
           <AdminFormItem label="AppId" tooltip={t('admin:alipay_open_platform_appid')}>
-            <Input {...register('payment.alipay.appId')} placeholder="2021********" />
+            <Input
+              isInvalid={Boolean(form.getFieldState('payment.alipay.appId', form.formState).error)}
+              {...register('payment.alipay.appId')}
+              placeholder="2021********"
+            />
           </AdminFormItem>
           <AdminFormItem
             label={t('admin:gateway_url')}
             tooltip={t('admin:alipay_gateway_url_defaults_to_the_official_gateway')}
           >
             <Input
+              isInvalid={Boolean(
+                form.getFieldState('payment.alipay.gateway', form.formState).error
+              )}
               {...register('payment.alipay.gateway')}
               placeholder="https://openapi.alipay.com/gateway.do"
             />
@@ -296,6 +323,7 @@ const CommercialSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <AdminSecretInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   name={field.name}
                   value={field.value}
                   onChange={field.onChange}
@@ -316,6 +344,7 @@ const CommercialSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <AdminSecretInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   name={field.name}
                   value={field.value}
                   onChange={field.onChange}
@@ -336,6 +365,7 @@ const CommercialSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <AdminSecretInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   name={field.name}
                   value={field.value}
                   onChange={field.onChange}
@@ -356,6 +386,7 @@ const CommercialSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <AdminSecretInput
+                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   name={field.name}
                   value={field.value}
                   onChange={field.onChange}
@@ -378,6 +409,9 @@ const CommercialSettingComponent = () => {
           tooltip={t('admin:payee_account_info_and_transfer_instructions_shown_when_the')}
         >
           <Textarea
+            isInvalid={Boolean(
+              form.getFieldState('payment.bank.description', form.formState).error
+            )}
             {...register('payment.bank.description')}
             rows={4}
             placeholder={t('admin:bank_xxx_10_account_name_xxx_10_account_no_xxx')}
@@ -396,10 +430,20 @@ const CommercialSettingComponent = () => {
             label={t('admin:low_balance_alert_chinese_template')}
             tooltip={t('admin:sms_template_id_for_low_points_balance_alert_chinese')}
           >
-            <Input {...register('billingNotify.lackOfPoints.zh')} placeholder="SMS_xxx" />
+            <Input
+              isInvalid={Boolean(
+                form.getFieldState('billingNotify.lackOfPoints.zh', form.formState).error
+              )}
+              {...register('billingNotify.lackOfPoints.zh')}
+              placeholder="SMS_xxx"
+            />
           </AdminFormItem>
           <AdminFormItem label={t('admin:points_thirty_percent_remain_template')}>
             <Input
+              isInvalid={Boolean(
+                form.getFieldState('billingNotify.pointsThirtyPercentRemain.zh', form.formState)
+                  .error
+              )}
               {...register('billingNotify.pointsThirtyPercentRemain.zh')}
               placeholder="SMS_xxx"
             />
@@ -408,24 +452,48 @@ const CommercialSettingComponent = () => {
             label={t('admin:points_running_out_chinese_template')}
             tooltip={t('admin:sms_template_id_for_10_points_remaining_reminder_chinese')}
           >
-            <Input {...register('billingNotify.pointsTenPercentRemain.zh')} placeholder="SMS_xxx" />
+            <Input
+              isInvalid={Boolean(
+                form.getFieldState('billingNotify.pointsTenPercentRemain.zh', form.formState).error
+              )}
+              {...register('billingNotify.pointsTenPercentRemain.zh')}
+              placeholder="SMS_xxx"
+            />
           </AdminFormItem>
           {showFreeClean && (
             <AdminFormItem label={t('admin:free_clean_template')}>
-              <Input {...register('billingNotify.freeClean.zh')} placeholder="SMS_xxx" />
+              <Input
+                isInvalid={Boolean(
+                  form.getFieldState('billingNotify.freeClean.zh', form.formState).error
+                )}
+                {...register('billingNotify.freeClean.zh')}
+                placeholder="SMS_xxx"
+              />
             </AdminFormItem>
           )}
           <AdminFormItem
             label={t('admin:plan_expiring_soon_chinese_template')}
             tooltip={t('admin:sms_template_id_for_plan_expiry_reminder_chinese')}
           >
-            <Input {...register('billingNotify.expireSoon.zh')} placeholder="SMS_xxx" />
+            <Input
+              isInvalid={Boolean(
+                form.getFieldState('billingNotify.expireSoon.zh', form.formState).error
+              )}
+              {...register('billingNotify.expireSoon.zh')}
+              placeholder="SMS_xxx"
+            />
           </AdminFormItem>
           <AdminFormItem
             label={t('admin:plan_expired_chinese_template')}
             tooltip={t('admin:sms_template_id_for_plan_expired_notification_chinese')}
           >
-            <Input {...register('billingNotify.expired.zh')} placeholder="SMS_xxx" />
+            <Input
+              isInvalid={Boolean(
+                form.getFieldState('billingNotify.expired.zh', form.formState).error
+              )}
+              {...register('billingNotify.expired.zh')}
+              placeholder="SMS_xxx"
+            />
           </AdminFormItem>
         </SimpleGrid>
       </AdminSettingSection>

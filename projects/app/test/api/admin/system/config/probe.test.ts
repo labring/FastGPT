@@ -194,7 +194,7 @@ describe('admin subservice probe', () => {
     expect(mocks.probe).not.toHaveBeenCalled();
   });
 
-  it('does not probe when a stored credential cannot be decrypted', async () => {
+  it('keeps damaged credentials readable but rejects their use before probing', async () => {
     await MongoSystemInstanceConfig.collection.insertOne({
       domain: 'subservice',
       revision: 1,
@@ -208,9 +208,13 @@ describe('admin subservice probe', () => {
       typeof import('@fastgpt/service/common/system/systemInstanceConfig/controller')
     >('@fastgpt/service/common/system/systemInstanceConfig/controller');
     mocks.read.mockImplementation(controller.getDomainConfig);
+    await expect(controller.getDomainConfig('subservice')).resolves.toBeDefined();
     await expect(
       call({ service: 'codeSandbox', url: 'http://sandbox:3002', useStoredToken: true })
-    ).rejects.toThrow('Unable to decrypt configuration secret');
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      message: 'Invalid stored Code Sandbox credential'
+    });
     expect(mocks.probe).not.toHaveBeenCalled();
   });
 });

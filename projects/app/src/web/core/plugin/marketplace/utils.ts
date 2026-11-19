@@ -1,5 +1,8 @@
+import { getErrText, getErrorMessage } from '@fastgpt/global/common/error/utils';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
+import { formatPluginInstallFailureReasons } from '@fastgpt/global/core/plugin/utils';
 import type {
   PluginInstallFailureType,
   PluginInstallResultType
@@ -208,4 +211,118 @@ export const getBatchUpdateFailures = ({
       }
     ];
   });
+};
+
+const isPluginInstallFailureItem = (value: unknown): value is PluginInstallFailureType =>
+  typeof value === 'object' && value !== null && 'url' in value && 'reason' in value;
+
+/**
+ * 兼容解析安装异常中可能携带的失败明细列表：
+ * - 支持服务端直接返回的结构化 `data.failed`；
+ * - 兼容历史/团队接口把 `failed` 数组 JSON 序列化进错误消息字符串或响应体 `message` 的情况。
+ */
+export const parseTeamInstallFailure = (error: unknown): PluginInstallFailureType[] | undefined => {
+  if (typeof error === 'object' && error !== null && 'data' in error) {
+    const data = (error as { data?: unknown }).data;
+    if (
+      typeof data === 'object' &&
+      data !== null &&
+      'failed' in data &&
+      Array.isArray((data as { failed?: unknown }).failed)
+    ) {
+      const failedList = (data as { failed: unknown[] }).failed;
+      if (failedList.every(isPluginInstallFailureItem)) {
+        return failedList;
+      }
+    }
+  }
+
+  const rawText = typeof error === 'string' ? error : getErrorMessage(error);
+  const trimmed = rawText.trim();
+  if (!trimmed.startsWith('[')) return undefined;
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed) && parsed.every(isPluginInstallFailureItem)) {
+      return parsed;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+/** 从安装接口返回的 `failed` 字段中提取去重后的本地化错误文案；无失败项时返回 `undefined`。 */
+export const getInstallFailureMessage = ({
+  installResult,
+  language,
+  fallback
+}: {
+  installResult?: PluginInstallResultType;
+  language: string;
+  fallback: string;
+}): string | undefined => {
+  const failed = installResult?.failed;
+  if (!failed || failed.length === 0) return undefined;
+
+  return formatPluginInstallFailureReasons({ failed, lang: language }) || fallback;
+};
+
+/** 提取插件安装/更新失败的可读错误提示，优先解析结构化 `failed` 明细。 */
+export const getInstallErrorReason = ({
+  error,
+  language,
+  fallback
+}: {
+  error: unknown;
+  language: string;
+  fallback: string;
+}): string => {
+  const failed = parseTeamInstallFailure(error);
+  if (failed && failed.length > 0) {
+    return (
+      getInstallFailureMessage({
+        installResult: { failed },
+        language,
+        fallback
+      }) ?? fallback
+    );
+  }
+
+  return getErrText(error, fallback, language as localeType) || fallback;
+};
+
+export type BatchUpdateSummary = {
+  status: 'success' | 'partial' | 'error';
+  successCount: number;
+  failedCount: number;
+  firstReason?: string;
+};
+
+/** 汇总批量更新结果，区分全成功、部分成功和全部失败以决定后续 Toast 与抽屉状态。 */
+export const summarizeBatchUpdateResult = ({
+  totalCount,
+  failures
+}: {
+  totalCount: number;
+  failures: BatchUpdateFailure[];
+}): BatchUpdateSummary => {
+  if (failures.length === 0) {
+    return {
+      status: 'success',
+      successCount: totalCount,
+      failedCount: 0,
+      firstReason: undefined
+    };
+  }
+
+  const failedCount = failures.length;
+  const successCount = Math.max(0, totalCount - failedCount);
+
+  return {
+    status: successCount > 0 ? 'partial' : 'error',
+    successCount,
+    failedCount,
+    firstReason: failures[0]?.reason
+  };
 };

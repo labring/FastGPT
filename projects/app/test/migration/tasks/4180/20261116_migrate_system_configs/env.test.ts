@@ -1,3 +1,4 @@
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readLegacyInstanceConfigEnv } from '@/migration/tasks/4180/20261116_migrate_system_configs/env';
 import {
@@ -106,12 +107,17 @@ describe('legacy instance config ENV import', () => {
   it('validates imported numbers and URLs without including secret values in errors', () => {
     vi.stubEnv('WORKFLOW_MAX_RUN_TIMES', '-1');
     vi.stubEnv('CODE_SANDBOX_URL', 'not-a-url-secret-value');
-    expect(readLegacyInstanceConfigEnv).toThrow('WORKFLOW_MAX_RUN_TIMES');
-    expect(readLegacyInstanceConfigEnv).toThrow('CODE_SANDBOX_URL');
+    const warn = vi
+      .spyOn(getLogger(LogCategories.SYSTEM.UPGRADE), 'warn')
+      .mockImplementation(() => {});
     try {
-      readLegacyInstanceConfigEnv();
-    } catch (error) {
-      expect(String(error)).not.toContain('not-a-url-secret-value');
+      const env = readLegacyInstanceConfigEnv();
+      expect(env.WORKFLOW_MAX_RUN_TIMES).toBe('-1');
+      expect(env.CODE_SANDBOX_URL).toBe('not-a-url-secret-value');
+      expect(JSON.stringify(warn.mock.calls)).not.toContain('not-a-url-secret-value');
+      expect(warn).toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
     }
   });
 
@@ -136,9 +142,19 @@ describe('legacy instance config ENV import', () => {
     'SHOW_COUPON',
     'SHOW_DISCOUNT_COUPON',
     'HIDE_CHAT_COPYRIGHT_SETTING'
-  ])('rejects invalid boolean for %s without printing its value', (key) => {
+  ])('retains invalid boolean for %s without printing its value', (key) => {
     vi.stubEnv(key, 'treu-secret-value');
-    expect(readLegacyInstanceConfigEnv).toThrow(key);
-    expect(readLegacyInstanceConfigEnv).not.toThrow('treu-secret-value');
+    const warn = vi
+      .spyOn(getLogger(LogCategories.SYSTEM.UPGRADE), 'warn')
+      .mockImplementation(() => {});
+    try {
+      expect(
+        readLegacyInstanceConfigEnv()[key as keyof ReturnType<typeof readLegacyInstanceConfigEnv>]
+      ).toBe('treu-secret-value');
+      expect(JSON.stringify(warn.mock.calls)).toContain(key);
+      expect(JSON.stringify(warn.mock.calls)).not.toContain('treu-secret-value');
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

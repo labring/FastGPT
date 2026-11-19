@@ -183,6 +183,80 @@ describe('runOutlinkRuntime', () => {
     vi.mocked(addOutLinkUsage).mockResolvedValue(undefined as any);
   });
 
+  it('reports uncaught workflow errors instead of a default answer', async () => {
+    vi.mocked(dispatchWorkFlow).mockResolvedValue({
+      ...workflowResult,
+      assistantResponses: [],
+      workflowRuntimeSummary: {
+        ...workflowResult.workflowRuntimeSummary,
+        errorCount: 1,
+        errorText: 'model failed'
+      }
+    } as any);
+    const { events, respond } = createResponder();
+
+    await runOutlinkRuntime({ outLinkConfig, message, respond });
+
+    expect(events).toEqual([
+      { type: 'start' },
+      {
+        type: 'error',
+        content: 'App run error: model failed'
+      }
+    ]);
+    expect(finalizeChatRound).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workflowRuntimeSummary: expect.objectContaining({ errorCount: 1 })
+      })
+    );
+  });
+
+  it('reports workflow errors after streaming a partial answer', async () => {
+    vi.mocked(dispatchWorkFlow).mockImplementation(async (props) => {
+      props.workflowStreamResponse?.(workflowSseEvent.answerDelta('partial'));
+      return {
+        ...workflowResult,
+        assistantResponses: [{ text: { content: 'partial' } }],
+        workflowRuntimeSummary: {
+          ...workflowResult.workflowRuntimeSummary,
+          errorCount: 1,
+          errorText: 'model failed'
+        }
+      } as any;
+    });
+    const { events, respond } = createResponder();
+
+    await runOutlinkRuntime({ outLinkConfig, message, respond });
+
+    expect(events).toEqual([
+      { type: 'start' },
+      { type: 'chunk', content: 'partial' },
+      {
+        type: 'error',
+        content: 'App run error: model failed'
+      }
+    ]);
+  });
+
+  it('reports an exception after streaming a partial answer', async () => {
+    vi.mocked(dispatchWorkFlow).mockImplementation(async (props) => {
+      props.workflowStreamResponse?.(workflowSseEvent.answerDelta('partial'));
+      throw new Error('workflow failed');
+    });
+    const { events, respond } = createResponder();
+
+    await runOutlinkRuntime({ outLinkConfig, message, respond });
+
+    expect(events).toEqual([
+      { type: 'start' },
+      { type: 'chunk', content: 'partial' },
+      {
+        type: 'error',
+        content: 'App run error: workflow failed'
+      }
+    ]);
+  });
+
   it('resolves the query after limits and start, then streams the final answer', async () => {
     vi.mocked(dispatchWorkFlow).mockImplementation(async (props) => {
       props.workflowStreamResponse?.(workflowSseEvent.answerDelta('partial '));

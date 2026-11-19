@@ -1,6 +1,9 @@
+import { getLogger, LogCategories } from '../../logger';
 import type { SystemInstanceConfigScopeKey } from '@fastgpt/global/common/system/config/schema';
 import { getDomainSecretKeys } from '@fastgpt/global/common/system/config/permission';
 import { decryptSecret, encryptSecret } from '../../secret/aes256gcm';
+
+const logger = getLogger(LogCategories.SYSTEM);
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   value !== null &&
@@ -44,13 +47,20 @@ const decryptStoredSecret = (value: Record<string, unknown>, field: string): str
   }
 };
 
-/** 读取边界解密，兼容迁移前的字符串；错误密文必须失败，避免静默发布缺少凭据的快照。 */
+/** 读取边界解密，兼容旧字符串；损坏字段保留原值并告警，允许管理员读取和修复。 */
 export const decryptDomainSecrets = <T>(domain: SystemInstanceConfigScopeKey, data: T): T =>
   transformDomainSecrets({
     domain,
     data,
-    transform: (value, path) =>
-      isObject(value) ? decryptStoredSecret(value, `${domain}.${path}`) : value
+    transform: (value, path) => {
+      if (!isObject(value)) return value;
+      try {
+        return decryptStoredSecret(value, `${domain}.${path}`);
+      } catch {
+        logger.warn('Invalid stored configuration secret retained', { path: `${domain}.${path}` });
+        return value;
+      }
+    }
   });
 
 /** 持久化边界加密；未改变的密钥复用旧密文，确保补迁重跑不制造 revision 变更。 */
@@ -74,15 +84,30 @@ export const encryptDomainSecrets = <T>({
     transform: (value, path) => {
       if (value === undefined || value === '') return value;
       if (isObject(value)) {
-        // 只接受真实可解密的 wrapper，保留密文，避免重复加密。
-        decryptStoredSecret(value, `${domain}.${path}`);
+        // 已有 wrapper 不重复加密；损坏值仅告警，保存边界仍拒绝客户端提交密文。
+        try {
+          decryptStoredSecret(value, `${domain}.${path}`);
+        } catch {
+          logger.warn('Invalid migrated configuration secret retained', {
+            path: `${domain}.${path}`
+          });
+        }
         return { ...value };
       }
-      if (typeof value !== 'string')
-        throw new Error(`Invalid configuration secret: ${domain}.${path}`);
+      if (typeof value !== 'string') {
+        logger.warn('Invalid migrated configuration secret retained', {
+          path: `${domain}.${path}`
+        });
+        return value;
+      }
       const previous = previousAt(path);
-      if (isObject(previous) && decryptStoredSecret(previous, `${domain}.${path}`) === value) {
-        return { secret: previous.secret };
+      if (isObject(previous)) {
+        try {
+          if (decryptStoredSecret(previous, `${domain}.${path}`) === value)
+            return { secret: previous.secret };
+        } catch {
+          // 管理员替换损坏的旧凭据时允许使用新值修复，不保留错误密文。
+        }
       }
       return { secret: encryptSecret(value) };
     }

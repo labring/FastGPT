@@ -37,7 +37,7 @@
 1. **`fastgpt-cli`**：核心入口规范——认证排查（`doctor`/`whoami`/`login`）、非 TTY JSON 信封消费、退出码处理、`fastgpt api` 通用逃生口使用规范、安全与 `--dry-run` 护栏。
 2. **`fastgpt-knowledge`**：`dataset` 全链路（建库、文件/链接导入、训练状态等待 `train wait`、检索召回调试）。
 3. **`fastgpt-app`**：`app` 导出/导入、版本发布、发布渠道与日志/评测排查。
-4. **`fastgpt-workflow`**：`workflow pull -> 本地 DSL 编辑/validate -> diff -> push/publish` 流程。
+4. **`fastgpt-workflow`**：`app pull` → `workflow-build` 编辑与校验 → `workflow diff` → `app save` 或 `app publish` 流程。
 5. **`fastgpt-chat-eval`**：`chat run`、`chat history`/`record`、`app logs`、`app eval` 对话调试与回归分析。
 
 ### 2.3 OpenAPI / Registry 漂移检查（CI 门禁脚本）

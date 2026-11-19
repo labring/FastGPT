@@ -1,3 +1,4 @@
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import { decryptDomainSecrets } from '@fastgpt/service/common/system/systemInstanceConfig/secrets';
@@ -103,43 +104,36 @@ describe('rehomeSubserviceConnections', () => {
     expect(await run()).toEqual({ updatedDocuments: 0 });
   });
 
-  it('rejects invalid legacy URLs before any write without including credentials', async () => {
-    const before = await read();
-    await expect(
-      run({ CODE_SANDBOX_URL: 'private-invalid-url', CODE_SANDBOX_TOKEN: 'private-token' })
-    ).rejects.toThrow('Invalid legacy Code Sandbox');
-    expect(await read()).toEqual(before);
-    expect(assertActive).not.toHaveBeenCalled();
-  });
-
   it.each([
+    'private-invalid-url',
     'ftp://sandbox.test',
     'https://sandbox.test?token=private-value',
     'https://sandbox.test#private-value',
     'https://user:private-value@sandbox.test'
-  ])('rejects a legacy connection with an unsafe base URL without leaking it', async (url) => {
-    const before = await read();
-    const error = await run({ CODE_SANDBOX_URL: url, CODE_SANDBOX_TOKEN: 'private-token' }).catch(
-      (err: Error) => err
-    );
-    expect(error).toBeInstanceOf(Error);
-    expect(String(error)).toBe('Error: Invalid legacy Code Sandbox connection environment');
-    expect(String(error)).not.toContain('private');
-    expect(await read()).toEqual(before);
-    expect(assertActive).not.toHaveBeenCalled();
+  ])('retains an invalid legacy connection and only reports its field path: %s', async (url) => {
+    const warn = vi
+      .spyOn(getLogger(LogCategories.SYSTEM.UPGRADE), 'warn')
+      .mockImplementation(() => {});
+    try {
+      await run({ CODE_SANDBOX_URL: url, CODE_SANDBOX_TOKEN: 'private-token' });
+      expect((await read())?.overrides.codeSandbox.url).toBe(url);
+      expect(warn).toHaveBeenCalled();
+      expect(JSON.stringify(warn.mock.calls)).not.toContain('private');
+      await verifyRehomedSubserviceConnections();
+    } finally {
+      warn.mockRestore();
+    }
   });
 
-  it('rejects an unsafe stored MCP address without logging its credentials', async () => {
+  it('preserves an invalid stored MCP address while filling other missing connections', async () => {
+    const url = 'https://user:private-value@mcp.test';
     await collection.updateOne(
       { domain: 'subservice' },
-      { $set: { 'overrides.mcp.sseProxyUrl': 'https://user:private-value@mcp.test' } }
+      { $set: { 'overrides.mcp.sseProxyUrl': url } }
     );
-    const before = await read();
-    const error = await run().catch((err: Error) => err);
-    expect(error).toBeInstanceOf(Error);
-    expect(String(error)).toBe('Error: Invalid existing subservice configuration');
-    expect(await read()).toEqual(before);
-    expect(assertActive).not.toHaveBeenCalled();
+    await run();
+    expect((await read())?.overrides.mcp.sseProxyUrl).toBe(url);
+    await verifyRehomedSubserviceConnections();
   });
 
   it('retries a concurrent admin save and does not overwrite its connection', async () => {

@@ -34,6 +34,8 @@ const DatasetSynonymConfigSchema = new Schema({
     default: 1
   },
   enabled: { type: Boolean, required: true, default: true },
+  // 空词表版本：data.synonymVersion 命中时说明旧向量按原文生成，可安全差量比较。
+  emptyVersions: { type: [Number], default: [] },
   schemaVersion: {
     type: Number,
     required: true,

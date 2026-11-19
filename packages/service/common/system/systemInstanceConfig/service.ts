@@ -63,9 +63,7 @@ export class SystemInstanceConfigManager {
   refresh(): Promise<SystemInstanceConfig> {
     const work = this.refreshQueue.then(async () => {
       const { getSystemInstanceConfigSnapshot } = await import('./controller');
-      const { assertStorageDownloadConfig } = await import('../../s3/config/utils');
       const { snapshot, versionTag } = await getSystemInstanceConfigSnapshot();
-      assertStorageDownloadConfig(snapshot.storage);
       publishSystemInstanceConfigSnapshot({ snapshot, versionTag });
       return this.get();
     });

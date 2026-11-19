@@ -1,100 +1,24 @@
 ---
 name: test-case
-description: 当用户需要编写一个单元测试时，触发该 skill，编写单元测试。
+description: 为 FastGPT 编写或修改 Vitest 单元测试，定位所属 workspace 的测试、选择回归场景并运行局部验证。
 ---
 
-## When to Use This Skill
+# FastGPT 单元测试
 
-用户需要编写一个单元测试时，触发该 skill，编写单元测试。
+## 放置测试
 
-## 测试文件位置
+优先扩展所属 workspace 中已有的相关测试，按业务模块组织。例如：
 
-### packages 测试
+- [S3 上传错误处理](../../../../packages/global/common/error/s3.ts)对应 [packages/global/test/common/error/s3.test.ts](../../../../packages/global/test/common/error/s3.test.ts)。
+- [创建数据集集合的 API](../../../../projects/app/src/pages/api/core/dataset/collection/create.ts)对应 [projects/app/test/api/core/dataset/collection/create.test.ts](../../../../projects/app/test/api/core/dataset/collection/create.test.ts)。
 
-packages 里的测试，写在 FastGPT/packages/xxx/test 目录下，子路径对应 packages 的目录结构。例如：
+## 选择用例与依赖
 
-`packages/global/common/error/s3.ts`文件，对应的测例文件路径为 `packages/test/global/common/error/s3.test.ts`。
+- 从调用方可观察的行为出发，覆盖本次改动的正常路径、可能改变结果的边界和失败分支。修复回归时，用能重现原问题的输入断言预期结果。
+- 纯函数直接执行。涉及外部请求、密钥或不稳定依赖时，在依赖边界 mock。先检查所属 workspace 的 Vitest 配置和[共享 mock](../../../../test/mocks/index.ts)，复用已有初始化。
+- 测试从定义模块或原依赖导入类型和实现。业务模块的导出遵循[代码规范](../../../code/syntax.md#禁止-re-export)。
+- 类型声明或静态常量通常无需独立用例。Schema 若包含运行时转换、历史数据兼容或请求校验，应验证相关行为。用覆盖率定位遗漏的分支，避免为相同结果重复写用例。
 
-并且，可以通过 @fastgpt 来导入 packages 里的文件。
-例如：
+## 验证
 
-```typescript
-import { s3 } from '@fastgpt/global/common/error/s3';
-```
-
-### projects 测试
-
-projects 里的测试，写在 FastGPT/projects/app/test 目录下，子路径对应 projects 的目录结构。
-
-`projects/app/src/pages/api/core/dataset/collection/create.ts`文件，对应的测例文件路径为 `projects/app/test/api/core/dataset/collection/create.test.ts`。
-
-## 测试文件规则
-
-### 通用规则
-
-1. 每个文件，对应一个测试文件。每个函数对应不同的 describe 块。
-2. 需覆盖 100% 行数和分支。
-3. 测试文件尽可能不要引入第三方依赖库，使用较为原生的方式进行检查。如果需要引入第三方依赖库，则从对应文件里 export 依赖库给 test 使用。例如：
-
-```ts
-// FastGPT/packages/service/common/geo/index.ts
-import type { NextApiRequest } from 'next';
-// 同时导出一个依赖给 FastGPT/packages/service/test/common/geo/index.test.ts 使用
-export type { NextApiRequest } from 'next';
-```
-
-4. 尽量减少函数 mock，如果是系统上原生可运行的函数，则无需 mock，只需要 mock 那些无法本地直接运行的依赖（比如需要远程服务，API 密钥之类的）
-5. 对于 type.ts, constants.ts, schema.ts, *.schema.ts 文件，以及静态数据，直接跳过忽略。
-6. 根据 [vitest.config.mts](../../../../vitest.config.mts) 文件配置，跳过不需要测试的文件。
-7. [Mock.ts](../../../../test/mocks/index.ts) 文件里，包含了全局 mock 的内容，在编写测试时，请勿重复 mock。理论上，测试里可以 mock 运行各类 infra。
-
-### 基础函数文件测试
-
-尽量不要 mock，而是完整的运行其逻辑进行测试。
-
-### 带 API 请求的函数
-
-mock 对应的 API 请求进行测试。
-
-## 编写流程
-
-**一、任务准备**
-
-1. 获取所需要编写的测试文件。
-2. 创建任务清单，来逐个完成每个文件的测例编写。
-
-**二、测例编写**
-
-不同测例文件，可以并行进行编写。
-
-1. 检查对应的 .test.ts 测试文件，如果没有则创建。
-2. 思考和分析代码后编写测试样例。
-3. 检查 TS 错误，确保无 ts 报错。
-4. 完成所有测试文件编写
-
-**三、结果验证**
-
-1. 调用`pnpm test <file-path> <test-name>`来运行测试并检查覆盖率，确保每个文件的覆盖率达到 90% 以上。
-2. 如果测试不通过，则根据错误信息检查代码逻辑或者测试用例。
-3. 如需二次修改，则回到”二、测例编写“。
-
-## 单测包含哪些场景
-
-1. 基础场景
-2. 复杂场景
-3. 边界值
-4. 安全边界情况（死循环、系统崩溃、超大数据等）
-5. 异常场景
-
-## 常用命令
-
-```shell
-# 运行所有测试
-pnpm test
-
-# 运行指定测试文件(file-path 填完整文件路径)
-pnpm test <file-path>
-
-# 运行指定测试文件的指定测试
-pnpm test <file-path> <test-name>
-```
+在仓库根目录运行 `pnpm test <测试文件或目录>`。按用例名筛选、测试数据库配置及各模式的范围见[开发命令](../../../code/commands.md#测试)。

@@ -26,6 +26,7 @@ const createRedisStorage = () => {
       let exMode: string | undefined;
       let exValue: number | undefined;
       let nx = false;
+      const getPrevious = args.some((arg) => String(arg).toUpperCase() === 'GET');
 
       for (let i = 0; i < args.length; i++) {
         const arg = String(args[i]).toUpperCase();
@@ -40,8 +41,9 @@ const createRedisStorage = () => {
         }
       }
 
-      if (nx && !isExpired(key) && storage.has(key)) {
-        return null;
+      const previous = !isExpired(key) ? (storage.get(key) ?? null) : null;
+      if (nx && previous !== null) {
+        return getPrevious ? previous : null;
       }
 
       storage.set(key, value);
@@ -51,7 +53,7 @@ const createRedisStorage = () => {
       } else if (exMode === 'PX' && typeof exValue === 'number') {
         expiryMap.set(key, Date.now() + exValue);
       }
-      return 'OK';
+      return getPrevious ? previous : 'OK';
     },
     del: (...keys: string[]) => {
       let deletedCount = 0;
