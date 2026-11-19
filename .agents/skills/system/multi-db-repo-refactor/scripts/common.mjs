@@ -455,12 +455,19 @@ const IDENTIFIER_REGEX = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 const gitBlobCache = new Map();
 const gitExportedStringCache = new Map();
 
-const stripTsAssertion = (raw) =>
-  raw
-    .trim()
-    .replace(/\s+as\s+[A-Za-z0-9_$.<>[\]\s|&]+$/, '')
-    .replace(/!$/, '')
-    .trim();
+const stripTsAssertion = (raw) => {
+  let current = raw.trim();
+  while (true) {
+    const next = current
+      .replace(/\s+(?:as|satisfies)\s+[A-Za-z0-9_$.<>[\]\s|&]+$/, '')
+      .replace(/!$/, '')
+      .trim();
+    if (next === current) {
+      return current;
+    }
+    current = next;
+  }
+};
 
 const resolveStringTemplateExpr = ({ expr, localStringConsts, resolvedImportedStrings }) => {
   const literal = unquoteString(expr);
@@ -1683,16 +1690,245 @@ const estimateSqlColumnIndexBytes = (colDef) => {
 };
 
 /**
- * 静态解析 `sql/table.ts` 中的全部 `defineSqlTable({...})` 声明并校验 OceanBase/MySQL 硬约束：
+ * 在剥离注释后，进一步将所有字符串/模板字面量替换为 `""` 并移除 `import` 声明，
+ * 供静态测试治理检查使用，避免注释、导入语句或普通字符串字面量误匹配真实代码调用。
+ */
+export const stripImportsAndStrings = (src) => {
+  const noComments = stripCommentsPreserveStrings(src);
+  let noStrings = '';
+
+  for (let i = 0; i < noComments.length; i += 1) {
+    const ch = noComments[i];
+    if (ch === "'" || ch === '"' || ch === '`') {
+      const endIdx = skipQuotedLiteral(noComments, i);
+      noStrings += '""';
+      i = endIdx;
+      continue;
+    }
+    noStrings += ch;
+  }
+
+  return noStrings.replace(/^\s*import\s+(?:type\s+)?(?:[^;]*?\bfrom\s*)?""\s*;?/gm, '');
+};
+
+/** 提取同文件内 `const/let/var <ident> = <expr>` 的静态初始化表达式（供表定义局部变量展开）。 */
+const extractLocalConstInitializers = (clean) => {
+  const bindings = new Map();
+  const ambiguous = new Set();
+
+  for (const match of clean.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\b/g)) {
+    const name = match[1];
+    const eqIdx = scanToTopLevelToken({
+      src: clean,
+      startIdx: match.index + match[0].length,
+      target: '='
+    });
+    if (eqIdx === -1) {
+      continue;
+    }
+    const exprStart = skipWhitespace(clean, eqIdx + 1);
+    if (exprStart >= clean.length) {
+      continue;
+    }
+    const exprEnd = scanArrowExprBodyEnd(clean, exprStart);
+    const exprText = clean.slice(exprStart, exprEnd).trim();
+    if (exprText.length === 0) {
+      continue;
+    }
+
+    if (bindings.has(name)) {
+      bindings.delete(name);
+      ambiguous.add(name);
+    } else if (!ambiguous.has(name)) {
+      bindings.set(name, exprText);
+    }
+  }
+
+  return { bindings, ambiguous };
+};
+
+/**
+ * 静态解析 `sql/table.ts` 中的全部 `defineSqlTable(...)` 声明并校验 OceanBase/MySQL 硬约束：
+ * - 支持内联对象字面量、局部 `const` 变量、局部对象展开与 `as const` / `satisfies` 断言；
+ * - 遇到无法静态确认的表定义、列集合或索引定义时 fail-closed 报错，严禁静默跳过；
  * - 禁止给 `text` / `json` 列声明 `defaultValue`（OB/MySQL `ERROR 1101`）；
  * - 禁止对 `text` / `json` 列建普通 B-Tree 索引；
  * - 校验单条普通/唯一复合索引在 `utf8mb4` 下的最大估算字节宽不超过 3072 字节。
  */
 export const analyzeSqlTableDefinitions = (sourceText) => {
   const clean = stripCommentsPreserveStrings(sourceText);
+  const { bindings: localBindings, ambiguous: ambiguousBindings } =
+    extractLocalConstInitializers(clean);
   const tables = [];
   const issues = [];
   const callRegex = /\bdefineSqlTable\s*\(/g;
+
+  const unwrapOuterParens = (expr) => {
+    let current = stripTsAssertion(expr);
+    while (current.startsWith('(') && current.endsWith(')')) {
+      const seg = scanBalancedSegment(current, { startIdx: 0, openChar: '(', closeChar: ')' });
+      if (seg === null || seg.endIdx !== current.length - 1) {
+        break;
+      }
+      current = stripTsAssertion(seg.inner);
+    }
+    return current;
+  };
+
+  /** 递归解析 SQL 表定义内的静态 JS 值；无法静态判定时返回 `{ ok: false, reason }`。 */
+  const resolveStaticValue = ({ rawExpr, visited = new Set(), allowOpaqueIdentifier = false }) => {
+    const expr = unwrapOuterParens(rawExpr);
+    if (expr.length === 0) {
+      return { ok: false, reason: 'empty expression' };
+    }
+    if (expr === 'true') return { ok: true, value: true };
+    if (expr === 'false') return { ok: true, value: false };
+    if (expr === 'null') return { ok: true, value: null };
+    if (expr === 'undefined') return { ok: true, value: undefined };
+
+    const str = unquoteString(expr);
+    if (str !== null) {
+      return { ok: true, value: str };
+    }
+
+    const num = evaluateNumericConstExpr(expr);
+    if (num !== null) {
+      return { ok: true, value: num };
+    }
+
+    if (IDENTIFIER_REGEX.test(expr)) {
+      if (ambiguousBindings.has(expr)) {
+        return { ok: false, reason: `identifier "${expr}" is declared multiple times` };
+      }
+      if (localBindings.has(expr)) {
+        if (visited.has(expr)) {
+          return { ok: false, reason: `circular local binding "${expr}"` };
+        }
+        const nextVisited = new Set(visited);
+        nextVisited.add(expr);
+        return resolveStaticValue({
+          rawExpr: localBindings.get(expr),
+          visited: nextVisited,
+          allowOpaqueIdentifier
+        });
+      }
+      if (allowOpaqueIdentifier) {
+        return { ok: true, value: expr };
+      }
+      return { ok: false, reason: `unresolved identifier "${expr}"` };
+    }
+
+    if (expr.startsWith('{') && expr.endsWith('}')) {
+      const seg = scanBalancedSegment(expr, { startIdx: 0, openChar: '{', closeChar: '}' });
+      if (seg === null || seg.endIdx !== expr.length - 1) {
+        return { ok: false, reason: `malformed object literal "${expr.slice(0, 60)}"` };
+      }
+      const inner = seg.inner.trim();
+      const result = {};
+      if (inner.length === 0) {
+        return { ok: true, value: result };
+      }
+      for (const entry of splitTopLevelComma(inner)) {
+        const trimmed = entry.trim();
+        if (trimmed.length === 0) {
+          continue;
+        }
+        if (trimmed.startsWith('...')) {
+          const spreadRes = resolveStaticValue({
+            rawExpr: trimmed.slice(3),
+            visited
+          });
+          if (
+            !spreadRes.ok ||
+            spreadRes.value === null ||
+            typeof spreadRes.value !== 'object' ||
+            Array.isArray(spreadRes.value)
+          ) {
+            return {
+              ok: false,
+              reason: `cannot statically expand object spread "${trimmed}" (${spreadRes.reason ?? 'not a plain object'})`
+            };
+          }
+          Object.assign(result, spreadRes.value);
+          continue;
+        }
+
+        const colonIdx = findTopLevelColon(trimmed);
+        if (colonIdx === -1) {
+          if (!IDENTIFIER_REGEX.test(trimmed)) {
+            return { ok: false, reason: `unsupported object entry "${trimmed}"` };
+          }
+          const shorthandRes = resolveStaticValue({
+            rawExpr: trimmed,
+            visited,
+            allowOpaqueIdentifier: trimmed === 'name'
+          });
+          if (!shorthandRes.ok) {
+            return { ok: false, reason: `property "${trimmed}": ${shorthandRes.reason}` };
+          }
+          result[trimmed] = shorthandRes.value;
+          continue;
+        }
+
+        const rawKey = trimmed.slice(0, colonIdx).trim();
+        const rawVal = trimmed.slice(colonIdx + 1).trim();
+        const key = unquoteString(rawKey) ?? rawKey;
+        if (!IDENTIFIER_REGEX.test(key) && unquoteString(rawKey) === null) {
+          return { ok: false, reason: `computed or dynamic property key "${rawKey}"` };
+        }
+        const valRes = resolveStaticValue({
+          rawExpr: rawVal,
+          visited,
+          allowOpaqueIdentifier: key === 'name'
+        });
+        if (!valRes.ok) {
+          return { ok: false, reason: `property "${key}": ${valRes.reason}` };
+        }
+        result[key] = valRes.value;
+      }
+      return { ok: true, value: result };
+    }
+
+    if (expr.startsWith('[') && expr.endsWith(']')) {
+      const seg = scanBalancedSegment(expr, { startIdx: 0, openChar: '[', closeChar: ']' });
+      if (seg === null || seg.endIdx !== expr.length - 1) {
+        return { ok: false, reason: `malformed array literal "${expr.slice(0, 60)}"` };
+      }
+      const inner = seg.inner.trim();
+      const items = [];
+      if (inner.length === 0) {
+        return { ok: true, value: items };
+      }
+      for (const entry of splitTopLevelComma(inner)) {
+        const trimmed = entry.trim();
+        if (trimmed.length === 0) {
+          continue;
+        }
+        if (trimmed.startsWith('...')) {
+          const spreadRes = resolveStaticValue({
+            rawExpr: trimmed.slice(3),
+            visited
+          });
+          if (!spreadRes.ok || !Array.isArray(spreadRes.value)) {
+            return {
+              ok: false,
+              reason: `cannot statically expand array spread "${trimmed}" (${spreadRes.reason ?? 'not an array'})`
+            };
+          }
+          items.push(...spreadRes.value);
+          continue;
+        }
+        const itemRes = resolveStaticValue({ rawExpr: trimmed, visited });
+        if (!itemRes.ok) {
+          return itemRes;
+        }
+        items.push(itemRes.value);
+      }
+      return { ok: true, value: items };
+    }
+
+    return { ok: false, reason: `non-static expression "${expr.slice(0, 80)}"` };
+  };
 
   for (const match of clean.matchAll(callRegex)) {
     const openParenIdx = match.index + match[0].length - 1;
@@ -1702,26 +1938,61 @@ export const analyzeSqlTableDefinitions = (sourceText) => {
       closeChar: ')'
     });
     if (parenSeg === null) {
+      issues.push('malformed defineSqlTable(...) call (unclosed parenthesis)');
       continue;
     }
 
-    const argExpr = stripTsAssertion(parenSeg.inner);
-    const parsed = parseJsValue(argExpr);
-    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed) || 'expr' in parsed) {
+    const callArgs = splitTopLevelComma(parenSeg.inner).filter((arg) => arg.trim().length > 0);
+    const rawArgSummary = (callArgs[0] ?? '').trim().replace(/\s+/g, ' ').slice(0, 80);
+    const resolvedTable =
+      callArgs.length === 1
+        ? resolveStaticValue({ rawExpr: callArgs[0] })
+        : {
+            ok: false,
+            reason:
+              callArgs.length === 0
+                ? 'missing table definition argument'
+                : `expected 1 argument, received ${callArgs.length}`
+          };
+    if (
+      !resolvedTable.ok ||
+      resolvedTable.value === null ||
+      typeof resolvedTable.value !== 'object' ||
+      Array.isArray(resolvedTable.value)
+    ) {
+      issues.push(
+        `cannot statically verify defineSqlTable(${rawArgSummary || '...'}): ${resolvedTable.reason ?? 'expected static object literal'}; inline the table definition or bind it to a static local const`
+      );
       continue;
     }
 
+    const parsed = resolvedTable.value;
     const tableName = typeof parsed.name === 'string' ? parsed.name : '(unnamed)';
-    const columns =
-      parsed.columns !== null && typeof parsed.columns === 'object' && !Array.isArray(parsed.columns)
-        ? parsed.columns
-        : {};
-    const indexes = Array.isArray(parsed.indexes) ? parsed.indexes : [];
+    if (
+      parsed.columns === null ||
+      parsed.columns === undefined ||
+      typeof parsed.columns !== 'object' ||
+      Array.isArray(parsed.columns)
+    ) {
+      issues.push(`table "${tableName}" has missing or non-static columns definition`);
+      continue;
+    }
+    if (parsed.indexes !== undefined && !Array.isArray(parsed.indexes)) {
+      issues.push(`table "${tableName}" has non-static indexes definition`);
+      continue;
+    }
 
+    const columns = parsed.columns;
+    const indexes = parsed.indexes ?? [];
     tables.push({ name: tableName, columns, indexes });
 
     for (const [colName, colDef] of Object.entries(columns)) {
       if (colDef === null || typeof colDef !== 'object' || Array.isArray(colDef)) {
+        issues.push(`table "${tableName}" column "${colName}" must be a static column definition object`);
+        continue;
+      }
+      if (typeof colDef.kind !== 'string') {
+        issues.push(`table "${tableName}" column "${colName}" has missing or non-static kind`);
         continue;
       }
       if ((colDef.kind === 'text' || colDef.kind === 'json') && colDef.defaultValue !== undefined) {
@@ -1733,14 +2004,20 @@ export const analyzeSqlTableDefinitions = (sourceText) => {
 
     for (const idxDef of indexes) {
       if (idxDef === null || typeof idxDef !== 'object' || Array.isArray(idxDef)) {
+        issues.push(`table "${tableName}" contains non-static index definition`);
         continue;
       }
       const idxName = typeof idxDef.name === 'string' ? idxDef.name : '(unnamed)';
-      const idxCols = Array.isArray(idxDef.columns) ? idxDef.columns : [];
+      if (!Array.isArray(idxDef.columns)) {
+        issues.push(`table "${tableName}" index "${idxName}" has non-static columns list`);
+        continue;
+      }
+      const idxCols = idxDef.columns;
       let totalBytes = 0;
 
       for (const colName of idxCols) {
         if (typeof colName !== 'string') {
+          issues.push(`table "${tableName}" index "${idxName}" contains non-string column reference`);
           continue;
         }
         const colDef = columns[colName];

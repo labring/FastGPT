@@ -55,7 +55,7 @@ node .agents/skills/system/multi-db-repo-refactor/scripts/audit-domain.mjs --sch
 ```
 
 重点核查脚本输出的 7 项情报：
-- `datasource`：`main`（`getMongoModel`）或 `log`（`getMongoLogModel`：三态拓扑——默认 `shared` 复用主池、配置独立库走 `separate`、显式关闭走 `disabled` + `noop/repo.ts`）；
+- `datasource`：`main`（`getMongoModel`）或 `log`（`getMongoLogModel`，必须补 `noop/repo.ts` 与 `defineLogRepoToken`；**注意：当前 Phase 0 DAL 运行时在未配置 `logWriteUrl` 时会直接路由至 `Noop` 跳过写入，迁移 4 张日志表前必须先落地设计总纲 TODO `0.5.1` 的默认 `shared` 复用主池三态改造**）；
 - `Sibling(s)`：同目录是否存在伙伴 Schema（如 `evalSchema + evalItemSchema`、`usage/schema + usageItemSchema`）——动手前先定好「按子目录 1:1 拆独立 Repo」还是「合并进同一 `mongo/schema.ts`」；
 - `Indexes`：全部 `defineIndex`（含 `deprecated: true` 历史索引、显式 `name`、`unique`、`partialFilterExpression`、数值或 `'15d'` 字符串 `expires` TTL），迁移后一条、一项关键 option 都不能丢；
 - 是否含 `deleteTime` 软删除、TTL、`.cursor()`、跨表 `$lookup` 或高危算子（`aggregate`、`bulkWrite`、`findOneAndUpdate + sort`、`$elemMatch`、`$inc`、`$regex`、`mongoSessionRun`）；
@@ -84,7 +84,7 @@ node .agents/skills/system/multi-db-repo-refactor/scripts/audit-domain.mjs --sch
 
 ### Step 3：生成标准骨架
 
-运行 [scaffold-repo.mjs](scripts/scaffold-repo.mjs) 生成样板（若目录已有 `service.ts` 会自动跳过覆盖以便原位改造构造函数 DI；同时自动生成 `repo.contract.test.ts` 与 L0 零 DB `service.test.ts` 骨架；纯子表无需独立 Service 时传 `--no-service`）：
+运行 [scaffold-repo.mjs](scripts/scaffold-repo.mjs) 生成样板（若目录已有 `service.ts` 会自动跳过覆盖并同步跳过生成模板 `service.test.ts`，避免导入不匹配，原位改造构造函数 DI 后按实际接口补写 L0 单测；新建 `service.ts` 时会自动生成配套 L0 `service.test.ts`；纯子表无需独立 Service 时传 `--no-service`）：
 
 ```bash
 node .agents/skills/system/multi-db-repo-refactor/scripts/scaffold-repo.mjs \
@@ -105,7 +105,7 @@ node .agents/skills/system/multi-db-repo-refactor/scripts/scaffold-repo.mjs \
    - **② Service 纯内存单测（`service.test.ts`，L0 零 DB，非平凡编排必做）**：
      - 凡 `service.ts` 包含多 Repo 协同、状态流转、权限/配额校验、错误处理、混合事务或 `afterCommit` 编排，必须通过 `new XxxService({ xxxRepo: stubRepo })` 编写零 DB、零 `vi.mock` 模块劫持的纯单测；
    - **③ 按表特征必补的专项测试**（对照 Step 1 输出的 `Recommended Extra Tests` 逐项覆盖）：
-     - `datasource: 'log'` 表 -> **日志三态测试**（`shared` 复用主池可读写、`separate` 独立池隔离、`disabled` 路由 `Noop` 静默不写库且读返回空）；
+     - `datasource: 'log'` 表 -> 当前 Phase 0 运行时必须验证配置 `logWriteUrl` 时的双库读写与未配置 `logWriteUrl` 时路由 `Noop`（静默跳过写、读返回空）；待 TODO `0.5.1` 三态改造落地后，升级为完整三态验收（`shared` 默认复用主池可读写、`separate` 独立池隔离、`disabled` 路由 `Noop`）；
      - 含 `FOR UPDATE SKIP LOCKED` / 原子扣减 / CAS / `$inc` / 冲突重试 -> **并发抢占与冲突重试测试**（多并发不重复领取、不超扣、重试不重复执行 `afterCommit`，标注在真实 OB/MySQL/PG/Mongo 连接池下运行、单连接 PGlite 按能力分层）；
      - 含可空列排序（如 `pinnedAt` / `expireTime`）、`$regex` 模糊搜索、权限位运算、`upsertRow` 或 Keyset 游标分页 -> 显式补齐对应边界用例（含 `NULL` 行排序断言、大小写敏感等值 vs 不敏感模糊查询对照、幂等重复 Upsert）；
      - 含 TTL 过期语义 -> 显式验证已过期记录不可见、未过期记录正常返回；

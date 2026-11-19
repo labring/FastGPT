@@ -16,6 +16,7 @@ import {
   readGitLegacyFile,
   runRg,
   stripCommentsPreserveStrings,
+  stripImportsAndStrings,
   toPosixPath
 } from './common.mjs';
 
@@ -576,7 +577,7 @@ if (!allowWipSlice1) {
   }
 }
 
-// 5. 契约测试存在性、真实事务门禁与日志三态/Noop 覆盖检查
+// 5. 契约测试存在性、真实注册调用、真实事务门禁与日志 Noop 断言覆盖检查
 const checkContractTestGovernance = () => {
   const inferredTestDir = inferDomainTestDir(domainRel);
   const candidateFiles = new Set();
@@ -596,12 +597,25 @@ const checkContractTestGovernance = () => {
     }
   }
 
+  const execCodeByFile = new Map();
+  for (const rel of candidateFiles) {
+    const raw = fs.readFileSync(path.resolve(repoRoot, rel), 'utf8');
+    execCodeByFile.set(rel, stripImportsAndStrings(raw));
+  }
+
+  const CONTRACT_SUITE_CALL_REGEX = /\bregister(?:Dual|Multi)DialectContractSuite\s*\(/;
+  const TEST_CASE_CALL_REGEX = /\b(?:it|test)\s*(?:\.(?:each|concurrent|sequential))?\s*\(/;
+  const ASSERTION_CALL_REGEX = /\bexpect\s*\(/;
+  const STUBBED_TX_REGEX =
+    /transactionRunner\s*:\s*(?:async\s*)?\([^)]*\)\s*=>\s*(?:\{\s*return\s+)?execute\s*\(\s*undefined\s*\)/;
+  const REAL_NOOP_EXEC_REGEX =
+    /\bnew\s+Noop[A-Za-z0-9_$]*Repository\s*\(|\btoBeInstanceOf\s*\(\s*Noop[A-Za-z0-9_$]*Repository\s*\)|\b(?:logDisabled\s*:\s*true|withLogDatabase\s*:\s*false|logWriteUrl\s*:\s*undefined)\b/;
+
   const contractTestFiles = [...candidateFiles].filter((rel) => {
     if (rel.includes('.contract.test.')) {
       return true;
     }
-    const raw = fs.readFileSync(path.resolve(repoRoot, rel), 'utf8');
-    return /\bregister(?:Dual|Multi)DialectContractSuite\b/.test(raw);
+    return CONTRACT_SUITE_CALL_REGEX.test(execCodeByFile.get(rel) ?? '');
   });
 
   if (inferredTestDir !== undefined && !allowWipSlice1 && contractTestFiles.length === 0) {
@@ -612,39 +626,42 @@ const checkContractTestGovernance = () => {
   }
 
   const isLogDomain = /\bdefineLogRepoToken\b/.test(repoTsText);
-  let hasLogNoopCoverage = false;
+  let hasExecutableLogNoopTest = false;
 
   for (const rel of candidateFiles) {
-    const raw = fs.readFileSync(path.resolve(repoRoot, rel), 'utf8');
-    const clean = stripCommentsPreserveStrings(raw);
-    if (/\b(?:Noop\w*Repository|logDisabled|noopRepo)\b/i.test(clean)) {
-      hasLogNoopCoverage = true;
+    const execCode = execCodeByFile.get(rel) ?? '';
+    if (
+      TEST_CASE_CALL_REGEX.test(execCode) &&
+      ASSERTION_CALL_REGEX.test(execCode) &&
+      REAL_NOOP_EXEC_REGEX.test(execCode)
+    ) {
+      hasExecutableLogNoopTest = true;
     }
   }
 
   for (const rel of contractTestFiles) {
-    const raw = fs.readFileSync(path.resolve(repoRoot, rel), 'utf8');
-    const clean = stripCommentsPreserveStrings(raw);
+    const execCode = execCodeByFile.get(rel) ?? '';
 
-    if (
-      /transactionRunner\s*:\s*(?:async\s*)?\([^)]*\)\s*=>\s*(?:\{\s*return\s+)?execute\s*\(\s*undefined\s*\)/.test(
-        clean
-      )
-    ) {
+    if (STUBBED_TX_REGEX.test(execCode)) {
       failures.push(
         `[Tests] ${rel} stubs transactionRunner with execute(undefined); contract tests must run against real Mongo replset transactions`
       );
     }
-    if (!/\bregister(?:Dual|Multi)DialectContractSuite\b/.test(clean)) {
+    if (!CONTRACT_SUITE_CALL_REGEX.test(execCode)) {
       failures.push(
-        `[Tests] ${rel} must use registerDualDialectContractSuite / registerMultiDialectContractSuite`
+        `[Tests] ${rel} must invoke registerDualDialectContractSuite(...) / registerMultiDialectContractSuite(...) (bare imports or strings do not count)`
+      );
+    }
+    if (!TEST_CASE_CALL_REGEX.test(execCode) || !ASSERTION_CALL_REGEX.test(execCode)) {
+      failures.push(
+        `[Tests] ${rel} must declare executable test case(s) with expect(...) assertions`
       );
     }
   }
 
-  if (isLogDomain && contractTestFiles.length > 0 && !hasLogNoopCoverage) {
+  if (isLogDomain && contractTestFiles.length > 0 && !hasExecutableLogNoopTest) {
     failures.push(
-      `[Tests] Log domain ${domainRel} uses defineLogRepoToken, but contract tests do not cover Noop / logDisabled behavior`
+      `[Tests] Log domain ${domainRel} uses defineLogRepoToken, but tests do not exercise Noop / unconfigured-log behavior with real assertions (bare imports or string literals do not count)`
     );
   }
 };

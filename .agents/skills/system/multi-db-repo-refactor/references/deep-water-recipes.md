@@ -133,7 +133,7 @@ await mongoSessionRun(async (session) => {
 
 | 表/查询特征 | 必须补齐的额外测试 |
 | --- | --- |
-| **`datasource === 'log'`（4 张日志表）** | **日志三态测试**：覆盖 `shared`（未配独立库默认复用主池可读写）、`separate`（写进独立日志库且主库不可见）、`disabled`（路由至 `Noop` 写静默跳过、读返回空/零值）。 |
+| **`datasource === 'log'`（4 张日志表）** | **日志路由与 Noop 降级测试**：当前 Phase 0 运行时 `hasLogDatabase()` 仅按 `logWriteUrl` 判定，未配置时路由至 `Noop`，须验证有 `logWriteUrl` 的正常读写与 `Noop` 静默跳过写/空读行为；**上线单库默认部署的日志表迁移前须先完成设计总纲 TODO `0.5.1`**，并在 `0.5.1` 落地后同步验收三态路由（`shared` 默认复用主池、`separate` 独立池、`disabled` 走 `Noop`）。 |
 | **`FOR UPDATE SKIP LOCKED` / 原子扣减 / CAS / `$inc` / 冲突重试** | **并发抢占与冲突重试测试**：使用 `Promise.all` 并发抢占同一批任务/扣减同一余额，验证零重复领取、不超扣、重试时上一轮未提交的 `afterCommit` 被清空丢弃（注意：单连接 PGlite 测不到多连接并发，需确保在真实 OB/MySQL/PG/Mongo 连接池下完整执行）。 |
 | **可空列排序（如 `pinnedAt`、`expireTime`、`sort`）** | **含 `NULL` 行的排序边界测试**：同时插入带值行与 `NULL` 行，验证 `ASC` / `DESC` 在 Mongo、PG、OB/MySQL 返回完全一致的顺序。 |
 | **`$regex` 模糊搜索 / 唯一键大小写** | **大小写对照测试**：验证等值查询与唯一索引严格区分大小写（对齐 `utf8mb4_bin`），而 `caseInsensitiveLike` 跨库大小写不敏感且正确转义 `%`、`_`、`|`。 |

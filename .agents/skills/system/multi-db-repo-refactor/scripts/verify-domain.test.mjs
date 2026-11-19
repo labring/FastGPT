@@ -418,12 +418,16 @@ test('detects non-standard legacy schema files (ttl.ts / schemaV2.ts) and residu
   }
 });
 
-test('scaffold-repo.mjs preserves existing service.ts, generates normalized SQL/Mongo templates, and passes verify-domain.mjs', () => {
+test('scaffold-repo.mjs preserves existing service.ts without emitting mismatched service.test.ts, emits paired service.test.ts for new domains, and passes verify-domain.mjs', () => {
   const tmpDomainRel = 'packages/service/.scaffold-verify-probe';
   const tmpDomainAbs = path.join(repoRoot, tmpDomainRel);
   const tmpTestAbs = path.join(repoRoot, 'packages/service/test/.scaffold-verify-probe');
+  const tmpFreshDomainRel = 'packages/service/.scaffold-fresh-probe';
+  const tmpFreshDomainAbs = path.join(repoRoot, tmpFreshDomainRel);
+  const tmpFreshTestAbs = path.join(repoRoot, 'packages/service/test/.scaffold-fresh-probe');
 
   try {
+    // 1. Existing service.ts preserved -> must NOT emit template service.test.ts importing nonexistent ProbeWidgetService
     fs.mkdirSync(tmpDomainAbs, { recursive: true });
     const existingServiceText = 'export const keepMyExistingBusinessLogic = true;\n';
     fs.writeFileSync(path.join(tmpDomainAbs, 'service.ts'), existingServiceText);
@@ -443,7 +447,9 @@ test('scaffold-repo.mjs preserves existing service.ts, generates normalized SQL/
     });
     assert.equal(scaffoldRes.status, 0, scaffoldRes.stderr);
     assert.match(scaffoldRes.stdout, /Skipped existing: packages\/service\/\.scaffold-verify-probe\/service\.ts/);
+    assert.match(scaffoldRes.stdout, /Skipped packages\/service\/test\/\.scaffold-verify-probe\/service\.test\.ts/);
     assert.equal(fs.readFileSync(path.join(tmpDomainAbs, 'service.ts'), 'utf8'), existingServiceText);
+    assert.equal(fs.existsSync(path.join(tmpTestAbs, 'service.test.ts')), false);
 
     const sqlRepo = fs.readFileSync(path.join(tmpDomainAbs, 'sql/repo.ts'), 'utf8');
     assert.match(sqlRepo, /this\.readDb\(tx\)/);
@@ -462,19 +468,37 @@ test('scaffold-repo.mjs preserves existing service.ts, generates normalized SQL/
     assert.match(contractTest, /compileSqlTableDDL\(probeWidgetSqlTable, 'oceanbase'\)/);
     assert.match(contractTest, /new NoopProbeWidgetRepository\(\)/);
 
-    const serviceTest = fs.readFileSync(path.join(tmpTestAbs, 'service.test.ts'), 'utf8');
-    assert.match(serviceTest, /new ProbeWidgetService\(/);
-    assert.doesNotMatch(serviceTest, /vi\.mock\(/);
-
     const verifyRes = runVerify(['--dir', tmpDomainRel]);
     assert.equal(verifyRes.status, 0, verifyRes.stderr);
+
+    // 2. Fresh domain without existing service.ts -> emits BOTH service.ts and matching L0 service.test.ts
+    const freshRes = runNodeScript(scaffoldScript, {
+      args: [
+        '--dir',
+        tmpFreshDomainRel,
+        '--entity',
+        'FreshWidget',
+        '--table',
+        'fresh_widgets'
+      ]
+    });
+    assert.equal(freshRes.status, 0, freshRes.stderr);
+    assert.equal(fs.existsSync(path.join(tmpFreshDomainAbs, 'service.ts')), true);
+    const serviceTest = fs.readFileSync(path.join(tmpFreshTestAbs, 'service.test.ts'), 'utf8');
+    assert.match(serviceTest, /new FreshWidgetService\(/);
+    assert.doesNotMatch(serviceTest, /vi\.mock\(/);
+
+    const verifyFreshRes = runVerify(['--dir', tmpFreshDomainRel]);
+    assert.equal(verifyFreshRes.status, 0, verifyFreshRes.stderr);
   } finally {
     fs.rmSync(tmpDomainAbs, { recursive: true, force: true });
     fs.rmSync(tmpTestAbs, { recursive: true, force: true });
+    fs.rmSync(tmpFreshDomainAbs, { recursive: true, force: true });
+    fs.rmSync(tmpFreshTestAbs, { recursive: true, force: true });
   }
 });
 
-test('enforces OceanBase/MySQL portability rules (INSERT IGNORE, NULLS LAST, LONGTEXT/JSON defaults & indexes, 3072B limit)', () => {
+test('enforces OceanBase/MySQL portability rules for inline, local-const, and unverifiable dynamic defineSqlTable declarations', () => {
   const tableCheck = analyzeSqlTableDefinitions(`
     export const badTable = defineSqlTable({
       name: 'bad_items',
@@ -497,6 +521,7 @@ test('enforces OceanBase/MySQL portability rules (INSERT IGNORE, NULLS LAST, LON
   assert.ok(tableCheck.issues.some((i) => i.includes('cannot index text column "body"')));
   assert.ok(tableCheck.issues.some((i) => i.includes('exceeds OceanBase/MySQL utf8mb4 limit (3072B)')));
 
+  // 1. Inline bad table + non-portable SQL repo rules
   withTempDomain(
     {
       legacySchema: `defineIndex(S, { key: { teamId: 1 } });`,
@@ -528,21 +553,119 @@ test('enforces OceanBase/MySQL portability rules (INSERT IGNORE, NULLS LAST, LON
       assert.match(res.stderr, /exceeds OceanBase\/MySQL utf8mb4 limit/);
     }
   );
+
+  // 2. Local const + as const passed to defineSqlTable(definition) must still fail on text defaultValue
+  withTempDomain(
+    {
+      legacySchema: `defineIndex(S, { key: { teamId: 1 } });`,
+      newMongoSchema: `defineIndex(S, { key: { teamId: 1 } });`,
+      extraFiles: {
+        'sql/table.ts': `
+          const definition = {
+            name: 'local_const_items',
+            columns: {
+              _id: { kind: 'entityId', primaryKey: true },
+              note: { kind: 'text', defaultValue: '' }
+            }
+          } as const;
+          export const badLocalTable = defineSqlTable(definition);
+        `
+      }
+    },
+    ({ domainRel, legacyRel }) => {
+      const res = runVerify(['--dir', domainRel, '--legacy-schema', legacyRel]);
+      assert.equal(res.status, 1);
+      assert.match(res.stderr, /table "local_const_items" column "note" \(text\) must not declare defaultValue/);
+    }
+  );
+
+  // 3. Valid local const (even with imported table name identifier) must PASS
+  withTempDomain(
+    {
+      legacySchema: `defineIndex(S, { key: { teamId: 1 } });`,
+      newMongoSchema: `defineIndex(S, { key: { teamId: 1 } });`,
+      extraFiles: {
+        'sql/table.ts': `
+          const baseCols = { _id: { kind: 'entityId', primaryKey: true } } as const;
+          const definition = {
+            name: ImportedTableName,
+            columns: {
+              ...baseCols,
+              title: { kind: 'varchar', length: 128 }
+            },
+            indexes: [{ name: 'idx_title', columns: ['title'] }]
+          } as const;
+          export const okLocalTable = defineSqlTable(definition);
+        `
+      }
+    },
+    ({ domainRel, legacyRel }) => {
+      const res = runVerify(['--dir', domainRel, '--legacy-schema', legacyRel]);
+      assert.equal(res.status, 0, res.stderr);
+    }
+  );
+
+  // 4. Unverifiable dynamic defineSqlTable(buildTable()) must fail closed
+  withTempDomain(
+    {
+      legacySchema: `defineIndex(S, { key: { teamId: 1 } });`,
+      newMongoSchema: `defineIndex(S, { key: { teamId: 1 } });`,
+      extraFiles: {
+        'sql/table.ts': `
+          export const dynTable = defineSqlTable(buildDynamicTable());
+        `
+      }
+    },
+    ({ domainRel, legacyRel }) => {
+      const res = runVerify(['--dir', domainRel, '--legacy-schema', legacyRel]);
+      assert.equal(res.status, 1);
+      assert.match(res.stderr, /cannot statically verify defineSqlTable/);
+    }
+  );
 });
 
-test('enforces contract test governance (forbids stubbed transactions, requires log Noop coverage, and blocks legacy model refs in test fixtures)', () => {
+test('enforces contract test governance (forbids stubbed transactions, bare imports/strings pretending coverage, and legacy model refs in test fixtures)', () => {
   const tempTestLeakAbs = path.join(repoRoot, 'packages/service/test/.legacy-fixture-probe.test.ts');
-  const tempContractAbs = path.join(repoRoot, 'packages/service/test/.bad-contract.contract.test.ts');
+  const tempStubContractAbs = path.join(repoRoot, 'packages/service/test/.bad-contract.contract.test.ts');
+  const tempImportOnlyAbs = path.join(repoRoot, 'packages/service/test/.import-only.contract.test.ts');
+  const tempStringOnlyNoopAbs = path.join(repoRoot, 'packages/service/test/.string-noop.contract.test.ts');
   try {
     fs.writeFileSync(
       tempTestLeakAbs,
       `export const fixture = () => MongoTempTestLeak771.create({});\n`
     );
     fs.writeFileSync(
-      tempContractAbs,
+      tempStubContractAbs,
       `
         registerDualDialectContractSuite({
-          setup: () => configureMongoDalRuntime({ transactionRunner: async ({ execute }) => execute(undefined) })
+          setup: () => configureMongoDalRuntime({ transactionRunner: async ({ execute }) => execute(undefined) }),
+          registerTests: () => { it('t', () => { expect(1).toBe(1); }); }
+        });
+      `
+    );
+    // Bare import + string literal only — no suite call, no it/expect, no real Noop usage
+    fs.writeFileSync(
+      tempImportOnlyAbs,
+      `
+        import { registerDualDialectContractSuite } from '@fastgpt/dal/db/testing';
+        import { NoopTempLogRepository } from '../noop/repo';
+        export const marker = 'NoopTempLogRepository';
+      `
+    );
+    // Real suite + assertion, but Noop only appears in import and string literal
+    fs.writeFileSync(
+      tempStringOnlyNoopAbs,
+      `
+        import { registerDualDialectContractSuite } from '@fastgpt/dal/db/testing';
+        import { NoopTempLogRepository } from '../noop/repo';
+        registerDualDialectContractSuite({
+          backends: [],
+          registerTests: () => {
+            it('only mentions NoopTempLogRepository in a string', () => {
+              const label = 'NoopTempLogRepository';
+              expect(label).toBe('NoopTempLogRepository');
+            });
+          }
         });
       `
     );
@@ -577,12 +700,45 @@ test('enforces contract test governance (forbids stubbed transactions, requires 
           /\[Test Callers\] Residual test fixture reference\(s\) to legacy model "MongoTempTestLeak771"/
         );
         assert.match(res.stderr, /stubs transactionRunner with execute\(undefined\)/);
-        assert.match(res.stderr, /contract tests do not cover Noop \/ logDisabled behavior/);
+        assert.match(res.stderr, /do not exercise Noop \/ unconfigured-log behavior with real assertions/);
+
+        // Bare import + string literal pretending to be a contract test must FAIL
+        const importOnlyRes = runVerify([
+          '--dir',
+          domainRel,
+          '--legacy-schema',
+          legacyRel,
+          '--allow-wip-slice1',
+          '--test',
+          'packages/service/test/.import-only.contract.test.ts'
+        ]);
+        assert.equal(importOnlyRes.status, 1);
+        assert.match(importOnlyRes.stderr, /must invoke registerDualDialectContractSuite/);
+        assert.match(importOnlyRes.stderr, /must declare executable test case\(s\) with expect\(\.\.\.\)/);
+        assert.match(importOnlyRes.stderr, /do not exercise Noop \/ unconfigured-log behavior with real assertions/);
+
+        // Real suite but Noop only in import/string must FAIL
+        const stringOnlyNoopRes = runVerify([
+          '--dir',
+          domainRel,
+          '--legacy-schema',
+          legacyRel,
+          '--allow-wip-slice1',
+          '--test',
+          'packages/service/test/.string-noop.contract.test.ts'
+        ]);
+        assert.equal(stringOnlyNoopRes.status, 1);
+        assert.match(
+          stringOnlyNoopRes.stderr,
+          /do not exercise Noop \/ unconfigured-log behavior with real assertions/
+        );
       }
     );
   } finally {
     fs.rmSync(tempTestLeakAbs, { force: true });
-    fs.rmSync(tempContractAbs, { force: true });
+    fs.rmSync(tempStubContractAbs, { force: true });
+    fs.rmSync(tempImportOnlyAbs, { force: true });
+    fs.rmSync(tempStringOnlyNoopAbs, { force: true });
   }
 });
 
@@ -606,7 +762,7 @@ test('audit-domain.mjs separates out-of-SQL-scope GridFS legacy and reports reco
   assert.equal(logRes.status, 0, logRes.stderr);
   const logReport = JSON.parse(logRes.stdout);
   assert.equal(logReport.datasource, 'log');
-  assert.ok(logReport.recommendedExtraTests.some((t) => t.includes('日志三态专项测试')));
+  assert.ok(logReport.recommendedExtraTests.some((t) => t.includes('TODO 0.5.1')));
   assert.ok(logReport.recommendedExtraTests.some((t) => t.includes('TTL 过期读过滤测试')));
 });
 

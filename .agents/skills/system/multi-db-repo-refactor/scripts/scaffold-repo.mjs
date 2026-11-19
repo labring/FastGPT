@@ -343,7 +343,10 @@ import {
   type ${entityArg}Repository
 } from '../repo.type';
 
-/** 显式关闭日志落库（logMode === 'disabled'）时的 Null Object 空实现，不建连、不写入主库。 */
+/**
+ * 日志库未启用时的 Null Object 空实现（当前 Phase 0 运行时在未配置 \`logWriteUrl\` 时路由至此；
+ * 待 Phase 0.5.1 三态改造落地后，仅在显式关闭日志落库时路由至此），不建连、不写入主库。
+ */
 export class Noop${entityArg}Repository implements ${entityArg}Repository {
   async findById() {
     return null;
@@ -371,7 +374,10 @@ import { Noop${entityArg}Repository } from './noop/repo';
 import { Sql${entityArg}Repository } from './sql/repo';
 
 /**
- * ${entityArg} 日志仓储 DI Token（三态路由：默认 shared 复用主池、separate 独立池、disabled 解析为 Noop）。
+ * ${entityArg} 日志仓储 DI Token。
+ *
+ * 当前 Phase 0 运行时在未配置 \`logWriteUrl\` 时自动解析为 \`Noop\`（不回退主库）；
+ * 需先完成设计总纲 TODO 0.5.1（默认 \`shared\` 复用主池）后再上线单库默认部署的日志表迁移。
  */
 export const ${entityArg}RepoToken = defineLogRepoToken<${entityArg}Repository>(
   '${entityArg}Repository',
@@ -465,15 +471,15 @@ describe('${entityArg} portable SQL DDL (OceanBase/MySQL + PostgreSQL)', () => {
 ${
   datasource === 'log'
     ? `
-describe('${entityArg}Repository log disabled (Noop) mode', () => {
-  it('skips persistence and returns empty reads when log persistence is disabled', async () => {
+describe('${entityArg}Repository Noop fallback mode', () => {
+  it('skips persistence and returns empty reads when routed to Noop (unconfigured logWriteUrl in Phase 0 / disabled in 0.5.1+)', async () => {
     const noopRepo = new Noop${entityArg}Repository();
     const teamId = createEntityId();
     const created = await noopRepo.create({ data: { teamId } });
 
     expect(created.teamId).toBe(teamId);
     expect(await noopRepo.findById({ id: created._id, teamId })).toBeNull();
-    // TODO(Phase 0.5): 补齐日志三态（shared 复用主池 / separate 独立池 / disabled 路由 Noop）完整测试
+    // TODO(Phase 0.5.1): 落地日志三态改造后，补齐 shared（默认复用主池）/ separate / disabled 路由集成断言
   });
 });
 `
@@ -630,7 +636,10 @@ const serviceRelPath = `${domainRel}/service.ts`;
 const serviceAlreadyExists = fs.existsSync(path.resolve(repoRoot, serviceRelPath));
 const serviceTestAlreadyExists = fs.existsSync(path.resolve(repoRoot, serviceTestRel));
 const shouldEmitService = !noService && (force || !serviceAlreadyExists);
-const shouldEmitServiceTest = !noService && (force || !serviceTestAlreadyExists);
+// 仅在本次新建配套 service.ts 时才生成对应模板单测，避免原位保留旧 service.ts 时导入不存在的新类导致报错
+const shouldEmitServiceTest = shouldEmitService && (force || !serviceTestAlreadyExists);
+const skippedServiceTestDueToExistingService =
+  !noService && !shouldEmitService && !serviceTestAlreadyExists;
 
 const filesToCreate = [
   { relPath: `${domainRel}/repo.type.ts`, content: repoTypeContent },
@@ -665,7 +674,11 @@ if (dryRun) {
   if (!noService && serviceAlreadyExists && !force) {
     console.log(`  (skipping existing ${serviceRelPath}; refactor constructor DI in place)`);
   }
-  if (!noService && serviceTestAlreadyExists && !force) {
+  if (skippedServiceTestDueToExistingService) {
+    console.log(
+      `  (skipping ${serviceTestRel} because existing ${serviceRelPath} was preserved; add L0 unit tests matching its actual exports/constructor)`
+    );
+  } else if (shouldEmitService && serviceTestAlreadyExists && !force) {
     console.log(`  (skipping existing ${serviceTestRel}; extend L0 service unit tests in place)`);
   }
   for (const file of filesToCreate) {
@@ -677,7 +690,11 @@ if (dryRun) {
 if (!noService && serviceAlreadyExists && !force) {
   console.log(`Skipped existing: ${serviceRelPath} (refactor constructor DI in place)`);
 }
-if (!noService && serviceTestAlreadyExists && !force) {
+if (skippedServiceTestDueToExistingService) {
+  console.log(
+    `Skipped ${serviceTestRel} (existing ${serviceRelPath} preserved; add L0 unit tests matching its actual exports/constructor)`
+  );
+} else if (shouldEmitService && serviceTestAlreadyExists && !force) {
   console.log(`Skipped existing: ${serviceTestRel} (extend L0 service unit tests in place)`);
 }
 

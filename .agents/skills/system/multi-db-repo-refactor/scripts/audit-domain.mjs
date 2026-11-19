@@ -447,7 +447,9 @@ const buildRecommendedExtraTests = ({ schemaMeta, callerItems, testFiles }) => {
   const risks = new Set(callerItems.flatMap((c) => c.risks));
 
   if (schemaMeta.datasource === 'log') {
-    recs.push('日志三态专项测试（shared 复用主池可读写、separate 独立池隔离、disabled 走 Noop 空实现）');
+    recs.push(
+      '日志库 Noop 降级测试（当前 Phase 0 运行时在未配置 logWriteUrl 时路由至 Noop；迁移本表前须先完成设计总纲 TODO 0.5.1 日志三态改造，并在 0.5.1 落地后补齐 shared/separate/disabled 三态路由测试）'
+    );
   }
   if (schemaMeta.hasSoftDelete) {
     recs.push('软删除隔离测试（deleteTime 非空记录对常规读/改不可见，delete_time_ms=0 唯一哨兵约束）');
@@ -543,7 +545,7 @@ if (siblingSchemas.length > 0) {
   );
 }
 console.log(
-  `Datasource   : ${report.datasource}${report.requiresNoopRepo ? ' (tri-state: default shared main pool, separate log pool, or disabled -> noop/repo.ts + defineLogRepoToken)' : ''}`
+  `Datasource   : ${report.datasource}${report.requiresNoopRepo ? ' (current Phase 0 runtime routes unconfigured logWriteUrl -> Noop; complete TODO 0.5.1 before migrating log tables for default shared main-pool routing)' : ''}`
 );
 console.log(
   `Flags        : softDelete=${report.hasSoftDelete}, ttl=${report.hasTtl}, watch=${report.hasWatch}`
