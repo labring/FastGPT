@@ -113,7 +113,6 @@ export const createToolCallToolProvider = async ({
         flowResponses: result.flatNodeResponses ?? [],
         workflowRuntimeSummary: result.workflowRuntimeSummary,
         flowUsages: result.flowUsages,
-        runTimes: result[DispatchNodeResponseKeyEnum.runTimes],
         assistantResponses: result[DispatchNodeResponseKeyEnum.assistantResponses],
         workflowInteractiveResponse: result.workflowInteractiveResponse,
         toolResponses: result[DispatchNodeResponseKeyEnum.toolResponse]

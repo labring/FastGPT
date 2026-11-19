@@ -36,7 +36,6 @@ export type AgentLoopCoreWorkflowToolRunResponse<TChildrenResponse = unknown> = 
   flowResponses: NonNullable<DispatchFlowResponse['flatNodeResponses']>;
   workflowRuntimeSummary?: DispatchFlowResponse['workflowRuntimeSummary'];
   flowUsages: DispatchFlowResponse['flowUsages'];
-  runTimes?: DispatchFlowResponse[DispatchNodeResponseKeyEnum.runTimes];
   assistantResponses: DispatchFlowResponse[DispatchNodeResponseKeyEnum.assistantResponses];
   workflowInteractiveResponse?: TChildrenResponse;
   toolResponses: DispatchFlowResponse[DispatchNodeResponseKeyEnum.toolResponse];
