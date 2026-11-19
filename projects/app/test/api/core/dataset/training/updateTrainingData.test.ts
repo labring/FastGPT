@@ -193,8 +193,10 @@ describe('updateTrainingData', () => {
             expect(logs).toHaveLength(1);
             expect(logs[0].resources).toEqual([
               {
-                collectionId: current.collection._id,
-                datasetId: current.dataset._id,
+                type: 'collection',
+                id: String(current.collection._id),
+                name: current.collection.name,
+                parentId: current.dataset._id,
                 collectionType: current.collection.type
               }
             ]);
@@ -227,7 +229,13 @@ describe('updateTrainingData', () => {
               })
             );
             expect(logs[0].metadata).not.toHaveProperty('collectionName');
-            expect(logs[0].resources).toEqual([{ datasetId: current.dataset._id }]);
+            expect(logs[0].resources).toEqual([
+              expect.objectContaining({
+                type: 'dataset',
+                id: String(current.dataset._id),
+                name: current.dataset.name
+              })
+            ]);
           },
           { timeout: 5000 }
         );
@@ -307,8 +315,10 @@ describe('updateTrainingData', () => {
         expect(logs).toHaveLength(1);
         expect(logs[0].resources).toEqual([
           {
-            collectionId: collection._id,
-            datasetId: dataset._id,
+            type: 'collection',
+            id: String(collection._id),
+            name: collection.name,
+            parentId: dataset._id,
             collectionType: collection.type
           }
         ]);

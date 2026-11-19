@@ -10,6 +10,7 @@ import {
 } from '@fastgpt/global/core/ai/skill/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
+import { buildSkillAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { isValidObjectId } from 'mongoose';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
@@ -60,7 +61,14 @@ async function handler(
       tmbId,
       teamId,
       event: AuditEventEnum.DEPLOY_SKILL,
-      resources: [{ skillId }],
+      resources: [
+        buildSkillAuditResource({
+          _id: skillId,
+          name: skill.name,
+          avatar: skill.avatar,
+          type: skill.type
+        })
+      ],
       params: { skillName: skill.name, skillType: getI18nSkillType(skill.type) }
     });
   })();

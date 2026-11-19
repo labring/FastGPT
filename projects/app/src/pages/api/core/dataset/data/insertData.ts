@@ -27,6 +27,7 @@ import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { buildCollectionAuditResource } from '@fastgpt/global/support/user/audit/type';
 
 async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
   const { collectionId, q, a, indexes, metadata } = parseApiInput({
@@ -111,13 +112,7 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
       tmbId,
       teamId,
       event: AuditEventEnum.CREATE_DATA,
-      resources: [
-        {
-          collectionId: String(collection._id),
-          datasetId: String(collection.datasetId),
-          collectionType: collection.type
-        }
-      ],
+      resources: [buildCollectionAuditResource(collection)],
       params: {
         collectionName: collection.name,
         datasetName: collection.dataset?.name || '',

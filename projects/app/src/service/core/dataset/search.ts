@@ -16,6 +16,7 @@ import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { buildDatasetAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 
@@ -99,7 +100,7 @@ export const searchDatasetForApi = ({
               teamId: auth.teamId,
               tmbId: auth.tmbId,
               event: AuditEventEnum.SEARCH_TEST,
-              resources: [{ datasetId: String(dataset._id) }],
+              resources: [buildDatasetAuditResource(dataset)],
               params: { datasetName: dataset.name, datasetType: getI18nDatasetType(dataset.type) }
             });
           }

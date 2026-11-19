@@ -6,6 +6,7 @@ import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildAppAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -47,7 +48,7 @@ export async function handler(
       tmbId,
       teamId,
       event: AuditEventEnum.CREATE_APP_PUBLISH_CHANNEL,
-      resources: [{ appId: String(app._id), appType: app.type }],
+      resources: [buildAppAuditResource(app)],
       params: {
         appName: app.name,
         channelName: props.name,

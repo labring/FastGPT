@@ -7,6 +7,7 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { onCreateApp } from './create';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildAppAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -18,7 +19,7 @@ import {
   type CopyAppBodyType,
   type CopyAppResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
-import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   encodeHttpToolSetNodesForStorage,
   encodeMcpToolSetNodesForStorage
@@ -90,9 +91,10 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
       tmbId,
       teamId,
       event: AuditEventEnum.CREATE_APP_COPY,
-      ...(!AppFolderTypeList.includes(app.type)
-        ? { resources: [{ appId: sourceAppId, appType: app.type }] }
-        : {}),
+      resources: [
+        buildAppAuditResource({ _id: sourceAppId, name: app.name, avatar: app.avatar, type: app.type }),
+        buildAppAuditResource({ _id: appId, name: app.name + ' Copy', avatar: app.avatar, type: app.type })
+      ],
       params: {
         appName: app.name,
         appType: getI18nAppType(app.type)

@@ -15,6 +15,7 @@ import { createResourceDefaultCollaborators } from '@fastgpt/service/support/per
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildAppAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -63,7 +64,7 @@ async function handler(req: ApiRequestProps<CreateAppFolderBodyType>): Promise<v
   });
 
   // Create app
-  await mongoSessionRun(async (session) => {
+  const createdApp = await mongoSessionRun(async (session) => {
     // parentId 是权威来源，兼容尚未完成回填的历史目录。
     const ancestorIds = await getFolderAncestorIdsFromParentId({
       parentId: parentId ? String(parentId) : null,
@@ -95,12 +96,14 @@ async function handler(req: ApiRequestProps<CreateAppFolderBodyType>): Promise<v
       resource: app,
       resourceType: PerResourceTypeEnum.app
     });
+    return app;
   });
   (async () => {
     addAuditLog({
       tmbId,
       teamId,
       event: AuditEventEnum.CREATE_APP_FOLDER,
+      resources: [buildAppAuditResource(createdApp)],
       params: {
         folderName: name
       }

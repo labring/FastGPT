@@ -7,8 +7,8 @@ import { deleteDatasetsImmediate } from '@fastgpt/service/core/dataset/delete/pr
 import { addDatasetDeleteJob } from '@fastgpt/service/core/dataset/delete';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { buildDatasetAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 /**
  * 删除单个知识库或文件夹及其子树，同步即时清理，投递异步清理队列，并记录审计日志。
@@ -49,7 +49,12 @@ export const deleteDataset = async ({
     tmbId,
     teamId,
     event: AuditEventEnum.DELETE_DATASET,
-    ...(dataset.type !== DatasetTypeEnum.folder ? { resources: [{ datasetId: id }] } : {}),
+    resources: [
+      buildDatasetAuditResource(
+        { _id: id, name: dataset.name, avatar: dataset.avatar, type: dataset.type },
+        { deleted: true }
+      )
+    ],
     params: {
       datasetName: dataset.name,
       datasetType: getI18nDatasetType(dataset.type)

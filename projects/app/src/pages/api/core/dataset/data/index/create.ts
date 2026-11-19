@@ -18,6 +18,7 @@ import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/servi
 import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { buildCollectionAuditResource } from '@fastgpt/global/support/user/audit/type';
 
 async function handler(req: ApiRequestProps): Promise<DatasetDataIndexResponse> {
   const { dataId, type, text } = parseApiInput({
@@ -68,13 +69,7 @@ async function handler(req: ApiRequestProps): Promise<DatasetDataIndexResponse> 
     tmbId,
     teamId,
     event: AuditEventEnum.UPDATE_DATA,
-    resources: [
-      {
-        collectionId: String(collection._id),
-        datasetId: String(collection.datasetId),
-        collectionType: collection.type
-      }
-    ],
+    resources: [buildCollectionAuditResource(collection)],
     params: {
       collectionName: collection.name,
       datasetName: collection.dataset?.name || '',

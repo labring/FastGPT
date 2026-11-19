@@ -2,6 +2,7 @@ import { authDatasetCollectionCreate } from '@fastgpt/service/support/permission
 import { createOneCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { NextAPI } from '@/service/middleware/entry';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildCollectionAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import type { ApiRequestProps } from '@fastgpt/next/type';
@@ -39,7 +40,12 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionResponseTy
       teamId,
       event: AuditEventEnum.CREATE_COLLECTION,
       resources: [
-        { collectionId: String(_id), datasetId: String(dataset._id), collectionType: body.type }
+        buildCollectionAuditResource({
+          _id,
+          datasetId: dataset._id,
+          name: body.name,
+          type: body.type
+        })
       ],
       params: {
         collectionName: body.name,

@@ -5,6 +5,7 @@ import { checkExportDatasetLimit } from '@fastgpt/service/support/user/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildDatasetAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -38,7 +39,7 @@ async function handler(req: ApiRequestProps): Promise<ExportDatasetLimitResponse
       tmbId,
       teamId,
       event: AuditEventEnum.EXPORT_DATASET,
-      resources: [{ datasetId: String(dataset._id) }],
+      resources: [buildDatasetAuditResource(dataset)],
       params: {
         datasetName: dataset.name,
         datasetType: getI18nDatasetType(dataset.type)

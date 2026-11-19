@@ -1,10 +1,23 @@
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { MongoTeamAudit } from '@fastgpt/service/support/user/audit/schema';
-import { addAuditLog, addAuditLogs } from '@fastgpt/service/support/user/audit/util';
-import type { AuditResourceType } from '@fastgpt/global/support/user/audit/type';
+import {
+  addAuditLog,
+  addAuditLogs,
+  buildAppAuditResource,
+  buildCollectionAuditResource,
+  buildDatasetAuditResource,
+  buildEntityAuditResource,
+  buildSkillAuditResource
+} from '@fastgpt/service/support/user/audit/util';
+import {
+  AuditResourceTypeEnum,
+  normalizeStoredAuditResources,
+  type AuditResourceType
+} from '@fastgpt/global/support/user/audit/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 
 vi.unmock('@fastgpt/service/support/user/audit/util');
 
@@ -31,9 +44,16 @@ describe('addAuditLog', () => {
     });
   });
 
-  it('writes resource IDs separately from display metadata', async () => {
+  it('writes structured resources separately from display metadata', async () => {
     const create = vi.spyOn(MongoTeamAudit, 'create').mockResolvedValue(undefined as never);
-    const resources = [{ appId: '68ad85a7463006c963799a05', appType: AppTypeEnum.workflowTool }];
+    const resources = [
+      buildAppAuditResource({
+        _id: '68ad85a7463006c963799a05',
+        name: 'My Tool',
+        avatar: 'core/app/type/pluginFill',
+        type: AppTypeEnum.workflowTool
+      })
+    ];
 
     await addAuditLog({ ...input, resources });
 
@@ -91,8 +111,17 @@ describe('addAuditLogs', () => {
   it('preserves resource associations and accepts entries without resources in one batch', async () => {
     const insertMany = vi.spyOn(MongoTeamAudit, 'insertMany').mockResolvedValue([] as never);
     const resources = [
-      { datasetId: '68ad85a7463006c963799a05' },
-      { collectionId: '68ad85a7463006c963799a06' }
+      buildDatasetAuditResource({
+        _id: '68ad85a7463006c963799a05',
+        name: 'Docs',
+        type: DatasetTypeEnum.dataset
+      }),
+      buildCollectionAuditResource({
+        _id: '68ad85a7463006c963799a06',
+        datasetId: '68ad85a7463006c963799a05',
+        name: 'guide.pdf',
+        type: DatasetCollectionTypeEnum.file
+      })
     ];
 
     await addAuditLogs([{ ...input, resources }, input]);
@@ -129,43 +158,92 @@ describe('addAuditLogs', () => {
 describe('audit resource associations', () => {
   const objectId = '68ad85a7463006c963799a05';
 
-  it('accepts one ID per item and preserves absent resources on legacy logs', async () => {
-    expectTypeOf<{ appId: string }>().toExtend<AuditResourceType>();
-    expectTypeOf<{
-      appId: string;
-      appType: AppTypeEnum.workflowTool;
-    }>().toExtend<AuditResourceType>();
-    expectTypeOf<{ appId: string; skillId: string }>().not.toExtend<AuditResourceType>();
-    expectTypeOf<{
-      collectionId: string;
-      datasetId: string;
-      collectionType: DatasetCollectionTypeEnum.file;
-    }>().toExtend<AuditResourceType>();
-    expectTypeOf<{
-      datasetId: string;
-      appType: AppTypeEnum.workflowTool;
-    }>().not.toExtend<AuditResourceType>();
+  it('validates structured resources, supports builders, and normalizes legacy records', async () => {
+    expectTypeOf<{ type: AuditResourceTypeEnum; id?: string; name?: string }>().toExtend<
+      AuditResourceType
+    >();
+
+    const structured = [
+      buildAppAuditResource({ _id: objectId, name: 'Bot', type: AppTypeEnum.simple }),
+      buildAppAuditResource({ _id: objectId, name: 'Tool', type: AppTypeEnum.workflowTool }),
+      buildAppAuditResource({ _id: objectId, name: 'Folder', type: AppTypeEnum.folder }),
+      buildAppAuditResource({ _id: objectId, name: 'ToolFolder', type: AppTypeEnum.toolFolder }),
+      buildDatasetAuditResource({ _id: objectId, name: 'KB', type: DatasetTypeEnum.dataset }),
+      buildDatasetAuditResource({ _id: objectId, name: 'KBFolder', type: DatasetTypeEnum.folder }),
+      buildCollectionAuditResource({
+        _id: objectId,
+        datasetId: objectId,
+        name: 'spec.md',
+        type: DatasetCollectionTypeEnum.file
+      }),
+      buildCollectionAuditResource({
+        _id: objectId,
+        datasetId: objectId,
+        name: 'Dir',
+        type: DatasetCollectionTypeEnum.folder
+      }),
+      buildSkillAuditResource({ _id: objectId, name: 'Skill', type: AgentSkillTypeEnum.skill }),
+      buildSkillAuditResource({
+        _id: objectId,
+        name: 'SkillDir',
+        type: AgentSkillTypeEnum.folder
+      }),
+      buildEntityAuditResource({
+        type: AuditResourceTypeEnum.enterprise,
+        name: 'Acme Corp'
+      })!,
+      buildEntityAuditResource({
+        type: AuditResourceTypeEnum.apiKey,
+        id: objectId,
+        name: 'Prod Key',
+        deleted: true
+      })!
+    ];
 
     const audit = new MongoTeamAudit({
       teamId: objectId,
       tmbId: objectId,
       event: AuditEventEnum.LOGIN,
-      resources: [
+      resources: structured
+    });
+    await expect(audit.validate()).resolves.toBeUndefined();
+    expect(audit.toObject().resources?.[1].type).toBe(AuditResourceTypeEnum.tool);
+    expect(audit.toObject().resources?.[2].type).toBe(AuditResourceTypeEnum.appFolder);
+    expect(audit.toObject().resources?.[3].type).toBe(AuditResourceTypeEnum.toolFolder);
+    expect(audit.toObject().resources?.[6].collectionType).toBe(DatasetCollectionTypeEnum.file);
+    expect(audit.toObject().resources?.[7].type).toBe(AuditResourceTypeEnum.collectionFolder);
+    expect(audit.toObject().resources?.[10]).toEqual({
+      type: AuditResourceTypeEnum.enterprise,
+      name: 'Acme Corp'
+    });
+    expect(audit.toObject().resources?.[11].deleted).toBe(true);
+
+    expect(buildEntityAuditResource({ type: AuditResourceTypeEnum.member, name: '   ' })).toBeUndefined();
+
+    expect(
+      normalizeStoredAuditResources([
         { appId: objectId },
         { appId: objectId, appType: AppTypeEnum.workflowTool },
         { datasetId: objectId },
         { skillId: objectId },
-        { collectionId: objectId },
         {
           collectionId: objectId,
           datasetId: objectId,
-          collectionType: DatasetCollectionTypeEnum.file
+          collectionType: DatasetCollectionTypeEnum.folder
         }
-      ]
-    });
-    await expect(audit.validate()).resolves.toBeUndefined();
-    expect(audit.toObject().resources?.[1].appType).toBe(AppTypeEnum.workflowTool);
-    expect(audit.toObject().resources?.at(-1)?.collectionType).toBe(DatasetCollectionTypeEnum.file);
+      ])
+    ).toEqual([
+      { type: AuditResourceTypeEnum.app, id: objectId },
+      { type: AuditResourceTypeEnum.tool, id: objectId },
+      { type: AuditResourceTypeEnum.dataset, id: objectId },
+      { type: AuditResourceTypeEnum.skill, id: objectId },
+      {
+        type: AuditResourceTypeEnum.collectionFolder,
+        id: objectId,
+        parentId: objectId,
+        collectionType: DatasetCollectionTypeEnum.folder
+      }
+    ]);
 
     const legacyAudit = new MongoTeamAudit({
       teamId: objectId,
@@ -178,14 +256,12 @@ describe('audit resource associations', () => {
 
   it.each([
     {},
-    { appId: objectId, skillId: objectId },
-    { appId: 'invalid-id' },
-    { appId: objectId, appType: 'invalid-type' },
-    { datasetId: objectId, appType: AppTypeEnum.workflowTool },
-    { datasetId: objectId, collectionType: DatasetCollectionTypeEnum.file },
-    { collectionId: objectId, datasetId: 'invalid-id' },
-    { collectionId: objectId, collectionType: 'invalid-type' },
-    { appId: objectId, unknownId: objectId }
+    { type: 'unknown', id: objectId },
+    { type: AuditResourceTypeEnum.app },
+    { type: AuditResourceTypeEnum.app, name: '   ' },
+    { type: AuditResourceTypeEnum.collection, id: objectId, parentId: 'invalid-id' },
+    { type: AuditResourceTypeEnum.collection, id: objectId, collectionType: 'invalid-type' },
+    { type: AuditResourceTypeEnum.app, id: objectId, unknownField: 'bad' }
   ])('rejects an invalid resource item %j', async (resource) => {
     const audit = new MongoTeamAudit({
       teamId: objectId,

@@ -23,6 +23,7 @@ import {
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
 import { shouldInheritResourcePermission } from '@fastgpt/service/support/permission/resourcePermissionPolicy';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
+import { buildSkillAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 
@@ -41,9 +42,7 @@ const logSkillMove = ({
     tmbId,
     teamId,
     event: AuditEventEnum.MOVE_SKILL,
-    ...(skill.type !== AgentSkillTypeEnum.folder
-      ? { resources: [{ skillId: String(skill._id) }] }
-      : {}),
+    resources: [buildSkillAuditResource(skill)],
     params: {
       skillName: skill.name,
       skillType: getI18nSkillType(skill.type),

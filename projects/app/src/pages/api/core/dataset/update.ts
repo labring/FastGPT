@@ -19,6 +19,7 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { assertAuthModels } from '@fastgpt/service/support/permission/model/auth';
 import { addAuditLogs } from '@fastgpt/service/support/user/audit/util';
+import { buildDatasetAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { buildDatasetConfigUpdatePatch } from '@fastgpt/service/core/dataset/audit/patch';
 import { buildDatasetUpdateAuditLogs } from '@fastgpt/service/core/dataset/audit/config';
 import { isEqual } from 'lodash-es';
@@ -257,9 +258,14 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
         tmbId,
         teamId,
         event: DatasetAuditEventEnum.DATASET_CONFIG_UPDATE,
-        ...(dataset.type !== DatasetTypeEnum.folder
-          ? { resources: [{ datasetId: String(dataset._id) }] }
-          : {}),
+        resources: [
+          buildDatasetAuditResource({
+            _id: dataset._id,
+            name: name ?? dataset.name,
+            avatar: avatar ?? dataset.avatar,
+            type: dataset.type
+          })
+        ],
         params: {
           datasetName: name ?? dataset.name,
           changeItem,

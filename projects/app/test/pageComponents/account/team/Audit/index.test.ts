@@ -43,6 +43,7 @@ vi.mock('@fastgpt/web/components/common/TagFilter', async () => ({
 }));
 vi.mock('@fastgpt/web/components/common/MyMenu', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/Icon', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/common/Avatar', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/UserBox', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/EmptyTip', () => ({
   default: ({ text }: { text: React.ReactNode }) => text
@@ -85,6 +86,7 @@ vi.mock('@chakra-ui/react', () => {
   return {
     Box: container('div'),
     Flex: container('div'),
+    Link: container('a'),
     Table: container('table'),
     Tbody: container('tbody'),
     Td: container('td'),

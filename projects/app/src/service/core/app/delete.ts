@@ -8,6 +8,7 @@ import { addAppDeleteJob } from '@fastgpt/service/core/app/delete';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
+import { buildAppAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 /**
@@ -40,7 +41,9 @@ export const deleteApp = async ({
     tmbId,
     teamId,
     event: AuditEventEnum.DELETE_APP,
-    ...(!AppFolderTypeList.includes(app.type) ? { resources: [{ appId, appType: app.type }] } : {}),
+    resources: [
+      buildAppAuditResource({ _id: appId, name: app.name, avatar: app.avatar, type: app.type }, { deleted: true })
+    ],
     params: {
       appName: app.name,
       appType: getI18nAppType(app.type)

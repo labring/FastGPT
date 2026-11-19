@@ -118,9 +118,12 @@ describe('delete collection permission', () => {
     expect(addAuditLog).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({
         resources: [collection, folder].map((item) => ({
-          collectionId: String(item._id),
-          datasetId: String(dataset._id),
-          collectionType: item.type
+          type: item.type === DatasetCollectionTypeEnum.folder ? 'collectionFolder' : 'collection',
+          id: String(item._id),
+          name: item.name,
+          parentId: String(dataset._id),
+          collectionType: item.type,
+          deleted: true
         }))
       })
     );

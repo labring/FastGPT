@@ -7,6 +7,7 @@ import { delCollection } from '@fastgpt/service/core/dataset/collection/controll
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildCollectionAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
@@ -87,11 +88,12 @@ async function handler(req: ApiRequestProps): Promise<ReTrainingCollectionRespon
         teamId,
         event: AuditEventEnum.RETRAIN_COLLECTION,
         resources: [
-          {
-            collectionId: String(collectionId),
-            datasetId: String(collection.datasetId),
-            collectionType: collection.type
-          }
+          buildCollectionAuditResource({
+            _id: collectionId,
+            datasetId: collection.datasetId,
+            name: collection.name,
+            type: collection.type
+          })
         ],
         params: {
           collectionName: collection.name,

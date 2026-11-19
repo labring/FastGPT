@@ -132,7 +132,15 @@ describe('POST /api/core/dataset/data/insertData', () => {
     expect(result).toEqual({ dataIds: [insertId] });
     expect(mocks.addAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
-        resources: [{ collectionId, datasetId, collectionType: DatasetCollectionTypeEnum.virtual }]
+        resources: [
+          {
+            type: 'collection',
+            id: collectionId,
+            name: 'Collection',
+            parentId: datasetId,
+            collectionType: DatasetCollectionTypeEnum.virtual
+          }
+        ]
       })
     );
     expect(mocks.mongoSessionRun).toHaveBeenCalledTimes(1);

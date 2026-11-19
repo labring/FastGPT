@@ -137,8 +137,10 @@ describe('reTrainingCollection', () => {
       expect.objectContaining({
         resources: [
           {
-            collectionId: newCollectionId,
-            datasetId: sourceDatasetId,
+            type: 'collection',
+            id: newCollectionId,
+            name: sourceCollection.name,
+            parentId: sourceDatasetId,
             collectionType: sourceCollection.type
           }
         ],

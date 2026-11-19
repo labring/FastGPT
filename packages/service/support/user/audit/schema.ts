@@ -1,11 +1,11 @@
 import { defineIndex, Schema, getMongoLogModel } from '../../../common/mongo';
 import {
   AuditResourcesSchema,
+  AuditResourceTypeEnum,
   type AuditResourceType,
   type TeamAuditSchemaType
 } from '@fastgpt/global/support/user/audit/type';
 import type { Types } from 'mongoose';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   AdminAuditEventEnum,
@@ -44,28 +44,37 @@ const TeamAuditSchema = new Schema({
     enum: [...TeamAuditEventList, ...Object.values(AdminAuditEventEnum)],
     required: true
   },
-  // 保存资源 ID、父级定位信息及操作时类型快照，不依赖资源继续存在，也不自动 populate 业务库。
+  // 保存受操作实体类型、ID、名称/头像快照及父级上下文；资源删除后仍可展示且导出无需回查业务库。
   resources: {
     type: [
       new Schema(
         {
-          appId: Schema.Types.ObjectId,
-          appType: { type: String, enum: Object.values(AppTypeEnum) },
-          datasetId: Schema.Types.ObjectId,
-          skillId: Schema.Types.ObjectId,
-          collectionId: Schema.Types.ObjectId,
-          collectionType: { type: String, enum: Object.values(DatasetCollectionTypeEnum) }
+          type: {
+            type: String,
+            enum: Object.values(AuditResourceTypeEnum),
+            required: true
+          },
+          id: String,
+          name: String,
+          avatar: String,
+          parentId: Schema.Types.ObjectId,
+          collectionType: { type: String, enum: Object.values(DatasetCollectionTypeEnum) },
+          deleted: Boolean
         },
         { _id: false, strict: 'throw' }
       )
     ],
     default: undefined,
     validate: {
-      // Mongoose 子文档含内部属性，转为普通对象后再校验唯一主资源及可选父级上下文。
+      // Mongoose 子文档含内部属性且 parentId 为 ObjectId，转为普通对象后统一复用共享 schema 校验。
       validator: (resources: Types.DocumentArray<AuditResourceType>) =>
-        AuditResourcesSchema.safeParse(resources.toObject()).success,
-      message:
-        'Each audit item must identify one resource; collections may include their dataset context'
+        AuditResourcesSchema.safeParse(
+          resources.toObject().map((item: AuditResourceType) => ({
+            ...item,
+            ...(item.parentId ? { parentId: String(item.parentId) } : {})
+          }))
+        ).success,
+      message: 'Each audit resource must contain a valid type and an id or name'
     }
   },
   metadata: {

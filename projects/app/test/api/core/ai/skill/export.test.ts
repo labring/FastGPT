@@ -154,7 +154,13 @@ describe('GET /api/core/ai/skill/export', () => {
     expect(addAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         event: AuditEventEnum.EXPORT_SKILL,
-        resources: [{ skillId }],
+        resources: [
+          expect.objectContaining({
+            type: 'skill',
+            id: skillId,
+            name: 'workspace-skill'
+          })
+        ],
         params: expect.objectContaining({ skillName: 'workspace-skill' })
       })
     );

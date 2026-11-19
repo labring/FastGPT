@@ -233,7 +233,14 @@ export const auditLogMap = {
   [AuditEventEnum.CHANGE_DEPARTMENT]: {
     content: i18nT('account_team:log_change_department'),
     typeLabel: i18nT('account_team:change_department_name'),
-    params: {} as { name?: string; departmentName: string }
+    params: {} as {
+      name?: string;
+      departmentName: string;
+      oldName?: string;
+      newName?: string;
+      newItemNames?: string[];
+      newItemValues?: string[];
+    }
   },
   [AuditEventEnum.DELETE_DEPARTMENT]: {
     content: i18nT('account_team:log_delete_department'),
@@ -243,7 +250,7 @@ export const auditLogMap = {
   [AuditEventEnum.RELOCATE_DEPARTMENT]: {
     content: i18nT('account_team:log_relocate_department'),
     typeLabel: i18nT('account_team:relocate_department'),
-    params: {} as { name?: string; departmentName: string }
+    params: {} as { name?: string; departmentName: string; targetDepartmentName?: string }
   },
   [AuditEventEnum.CREATE_GROUP]: {
     content: i18nT('account_team:log_create_group'),
@@ -352,6 +359,16 @@ export const auditLogMap = {
     typeLabel: i18nT('account_team:create_app_folder'),
     params: {} as { name?: string; folderName: string }
   },
+  [AuditEventEnum.SAVE_APP]: {
+    content: i18nT('account_team:log_save_app'),
+    typeLabel: i18nT('account_team:save_app'),
+    params: {} as { name?: string; appName: string; appId: string; appType: string }
+  },
+  [AuditEventEnum.PUBLISH_APP]: {
+    content: i18nT('account_team:log_publish_app'),
+    typeLabel: i18nT('account_team:publish_app'),
+    params: {} as { name?: string; appName: string; appId: string; appType: string }
+  },
   [AuditEventEnum.UPDATE_PUBLISH_APP]: {
     content: i18nT('account_team:log_update_publish_app'),
     typeLabel: i18nT('account_team:update_publish_app'),
@@ -388,17 +405,17 @@ export const auditLogMap = {
   [AuditEventEnum.CREATE_EVALUATION]: {
     content: i18nT('account_team:log_create_evaluation'),
     typeLabel: i18nT('account_team:create_evaluation'),
-    params: {} as { name: string; appName: string }
+    params: {} as { name: string; appName: string; evalName?: string }
   },
   [AuditEventEnum.EXPORT_EVALUATION]: {
     content: i18nT('account_team:log_export_evaluation'),
     typeLabel: i18nT('account_team:export_evaluation'),
-    params: {} as { name: string }
+    params: {} as { name: string; evalName?: string }
   },
   [AuditEventEnum.DELETE_EVALUATION]: {
     content: i18nT('account_team:log_delete_evaluation'),
     typeLabel: i18nT('account_team:delete_evaluation'),
-    params: {} as { name?: string }
+    params: {} as { name?: string; evalName?: string }
   },
 
   //Dataset
@@ -764,7 +781,13 @@ export const auditLogMap = {
   [AuditEventEnum.UPDATE_SKILL]: {
     content: i18nT('account_team:log_update_skill'),
     typeLabel: i18nT('account_team:update_skill'),
-    params: {} as { name?: string; skillName: string; skillType: string }
+    params: {} as {
+      name?: string;
+      skillName: string;
+      skillType: string;
+      newItemNames?: string[];
+      newItemValues?: string[];
+    }
   },
   [AuditEventEnum.DEPLOY_SKILL]: {
     content: i18nT('account_team:log_deploy_skill'),

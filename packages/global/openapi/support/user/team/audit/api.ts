@@ -79,7 +79,7 @@ export const AuditListItemSchema = z
       example: '2026-01-02T00:00:00.000Z',
       description: '操作发生时间'
     }),
-    resources: AuditResourcesSchema.optional().meta({ description: '关联的资源 ID' }),
+    resources: AuditResourcesSchema.optional().meta({ description: '关联的操作资源列表' }),
     metadata: z
       .record(
         z.string(),
@@ -125,6 +125,6 @@ export const AuditExportBodySchema = AuditFilterSchema.extend({
 export type AuditExportBodyType = z.infer<typeof AuditExportBodySchema>;
 export const AuditExportResponseSchema = z.string().meta({
   description: '带 UTF-8 BOM 的 CSV 文件流',
-  example: '\uFEFF操作人员,操作时间,操作类型,详情'
+  example: '\uFEFF操作人员,操作时间,操作类型,资源,详情'
 });
 export type AuditExportResponseType = z.infer<typeof AuditExportResponseSchema>;

@@ -27,7 +27,7 @@ export const authEval = async ({
       _id: evalId,
       teamId
     },
-    'tmbId appId'
+    'tmbId appId name'
   ).lean();
   if (!evaluation) {
     return Promise.reject('Evaluation not found');

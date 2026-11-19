@@ -166,8 +166,9 @@ describe('PUT /api/core/dataset/data/update', () => {
       expect.objectContaining({
         resources: [
           {
-            collectionId: '68ad85a7463006c963799a07',
-            datasetId: 'dataset-id',
+            type: 'collection',
+            id: '68ad85a7463006c963799a07',
+            name: 'Collection',
             collectionType: DatasetCollectionTypeEnum.images
           }
         ]

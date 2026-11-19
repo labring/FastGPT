@@ -907,7 +907,7 @@ describe('update dataset audit', () => {
 
     const logs = await waitForAuditLogs(owner.teamId, 2);
     expect(logs).toHaveLength(2);
-    expect(logs.map((log) => log.resources?.map((resource) => String(resource.datasetId)))).toEqual(
+    expect(logs.map((log) => log.resources?.map((resource) => String(resource.id)))).toEqual(
       [[String(dataset._id)], [String(dataset._id)]]
     );
 

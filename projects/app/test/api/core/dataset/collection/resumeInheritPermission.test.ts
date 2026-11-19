@@ -52,7 +52,13 @@ describe('resume collection inherit permission api', () => {
         }).lean();
         expect(audit).not.toBeNull();
         expect(audit?.resources).toEqual([
-          { collectionId: collection._id, datasetId: dataset._id, collectionType: collection.type }
+          {
+            type: 'collection',
+            id: String(collection._id),
+            name: 'audit-collection',
+            parentId: dataset._id,
+            collectionType: collection.type
+          }
         ]);
         expect(audit?.metadata).toEqual({
           targetResource: 'audit-collection',
@@ -109,7 +115,13 @@ describe('resume collection inherit permission api', () => {
           event: AuditEventEnum.RESUME_INHERIT_PERMISSION
         }).lean();
         expect(audit?.resources).toEqual([
-          { collectionId: collection._id, datasetId: dataset._id, collectionType: collection.type }
+          {
+            type: 'collection',
+            id: String(collection._id),
+            name: 'nested-audit-collection',
+            parentId: dataset._id,
+            collectionType: collection.type
+          }
         ]);
         expect(audit?.metadata).toEqual({
           targetResource: 'nested-audit-collection',

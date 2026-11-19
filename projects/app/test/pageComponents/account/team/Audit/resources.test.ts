@@ -2,8 +2,11 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import type { TeamAuditListItemType } from '@fastgpt/global/support/user/audit/type';
-import { AppTypeEnum, AppTypeList, ToolTypeList } from '@fastgpt/global/core/app/constants';
+import {
+  AuditResourceTypeEnum,
+  type TeamAuditListItemType
+} from '@fastgpt/global/support/user/audit/type';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 const mocks = vi.hoisted(() => ({ logs: [] as TeamAuditListItemType[] }));
@@ -39,6 +42,10 @@ vi.mock('@fastgpt/web/components/common/TagFilter', () => ({
 }));
 vi.mock('@/components/support/user/TeamMemberFilter', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/UserBox', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/common/Avatar', () => ({
+  default: ({ src }: { src?: string | null }) =>
+    React.createElement('span', { 'data-avatar': src ?? '' })
+}));
 
 describe('AuditLog resource column', () => {
   beforeAll(() => vi.stubGlobal('React', React));
@@ -46,7 +53,7 @@ describe('AuditLog resource column', () => {
   afterEach(() => vi.unstubAllEnvs());
 
   it.each(['', '/fastgpt'])(
-    'renders resource links with base URL "%s" and tolerates old logs',
+    'renders structured AuditResourceLink items with base URL "%s", concise summaries, and legacy fallbacks',
     async (baseUrl) => {
       // 部署前缀在模块加载时读取，重新加载组件以验证真实 URL helper。
       vi.stubEnv('NEXT_PUBLIC_BASE_URL', baseUrl);
@@ -56,70 +63,103 @@ describe('AuditLog resource column', () => {
       const id = '68ad85a7463006c963799a05';
       const fileId = '68ad85a7463006c963799a20';
       const folderId = '68ad85a7463006c963799a21';
-      const appResources = [
-        undefined,
-        ...AppTypeList,
-        ...ToolTypeList,
-        AppTypeEnum.toolFolder,
-        AppTypeEnum.httpPlugin,
-        AppTypeEnum.tool
-      ].map((appType, index) => ({
-        appId: `${id.slice(0, -2)}${index.toString(16).padStart(2, '0')}`,
-        ...(appType ? { appType } : {})
-      }));
       mocks.logs = [
         {
-          _id: 'linked',
+          _id: 'structured',
           timestamp: new Date(),
           event: AuditEventEnum.CREATE_APP,
-          metadata: { appName: 'original', appType: 'Agent' },
+          metadata: { appName: 'Chat Bot', appType: 'Agent' },
           resources: [
-            ...appResources,
-            { skillId: id },
-            { datasetId: id },
-            { collectionId: id },
-            { collectionId: fileId, datasetId: id, collectionType: DatasetCollectionTypeEnum.file },
+            { type: AuditResourceTypeEnum.app, id, name: 'Chat Bot', avatar: '/bot.png' },
+            { type: AuditResourceTypeEnum.tool, id, name: 'Search Tool' },
+            { type: AuditResourceTypeEnum.appFolder, id, name: 'Agents Dir' },
+            { type: AuditResourceTypeEnum.toolFolder, id, name: 'Tools Dir' },
+            { type: AuditResourceTypeEnum.dataset, id, name: 'Docs KB' },
+            { type: AuditResourceTypeEnum.datasetFolder, id, name: 'KB Dir' },
             {
-              collectionId: folderId,
-              datasetId: id,
+              type: AuditResourceTypeEnum.collection,
+              id: fileId,
+              parentId: id,
+              name: 'guide.pdf',
+              collectionType: DatasetCollectionTypeEnum.file
+            },
+            {
+              type: AuditResourceTypeEnum.collectionFolder,
+              id: folderId,
+              parentId: id,
+              name: 'Sub Dir',
               collectionType: DatasetCollectionTypeEnum.folder
-            }
+            },
+            { type: AuditResourceTypeEnum.skill, id, name: 'SQL Skill' },
+            { type: AuditResourceTypeEnum.skillFolder, id, name: 'Skills Dir' },
+            { type: AuditResourceTypeEnum.app, id, name: 'Deleted App', deleted: true },
+            { type: AuditResourceTypeEnum.member, id, name: 'Alice' },
+            { type: AuditResourceTypeEnum.apiKey, id, name: 'Prod Key' }
           ]
         },
         {
-          _id: 'legacy',
+          _id: 'login',
           timestamp: new Date(),
           event: AuditEventEnum.LOGIN,
-          metadata: {}
+          metadata: { name: 'operator' }
         },
         {
-          _id: 'legacy-collection',
+          _id: 'legacy-resource',
           timestamp: new Date(),
-          event: AuditEventEnum.LOGIN,
-          metadata: { name: 'operator' },
-          resources: [{ collectionId: id }]
+          event: AuditEventEnum.CREATE_APP,
+          metadata: { appName: 'Legacy Tool', appType: 'app:toolType_workflow' },
+          resources: [{ appId: id, appType: AppTypeEnum.workflowTool }] as any
+        },
+        {
+          _id: 'rename',
+          timestamp: new Date(),
+          event: AuditEventEnum.CHANGE_MEMBER_NAME,
+          metadata: { memberName: 'OldName', newName: 'NewName' },
+          resources: [
+            {
+              type: AuditResourceTypeEnum.member,
+              id,
+              name: 'NewName'
+            }
+          ]
         }
       ] as TeamAuditListItemType[];
 
       const html = renderToStaticMarkup(React.createElement(AuditLog, { Tabs: null }));
       expect(html.indexOf('account_team:log_user')).toBeLessThan(
+        html.indexOf('account_team:log_time')
+      );
+      expect(html.indexOf('account_team:log_time')).toBeLessThan(
+        html.indexOf('account_team:log_type')
+      );
+      expect(html.indexOf('account_team:log_type')).toBeLessThan(
         html.indexOf('account_team:log_resource')
       );
       expect(html.indexOf('account_team:log_resource')).toBeLessThan(
-        html.indexOf('account_team:log_time')
+        html.indexOf('account_team:log_details')
       );
       expect(
         Array.from(html.matchAll(/href="([^"]+)"/g), ([, href]) => href.replaceAll('&amp;', '&'))
       ).toEqual([
-        ...appResources.map(({ appId }) => `${baseUrl}/app/detail?appId=${appId}`),
-        `${baseUrl}/skill/detail?skillId=${id}`,
+        `${baseUrl}/app/detail?appId=${id}`,
+        `${baseUrl}/app/detail?appId=${id}`,
+        `${baseUrl}/dashboard/agent?parentId=${id}`,
+        `${baseUrl}/dashboard/tool?parentId=${id}`,
         `${baseUrl}/dataset/detail?datasetId=${id}`,
+        `${baseUrl}/dataset/list?parentId=${id}`,
         `${baseUrl}/dataset/detail?datasetId=${id}&currentTab=dataCard&collectionId=${fileId}`,
-        `${baseUrl}/dataset/detail?datasetId=${id}&currentTab=collectionCard&parentId=${folderId}`
+        `${baseUrl}/dataset/detail?datasetId=${id}&currentTab=collectionCard&parentId=${folderId}`,
+        `${baseUrl}/skill/detail?skillId=${id}`,
+        `${baseUrl}/dashboard/skill?parentId=${id}`,
+        `${baseUrl}/app/detail?appId=${id}`
       ]);
-      expect(html.match(/account_team:resource_app ·/g)).toHaveLength(AppTypeList.length + 1);
-      expect(html.match(/account_team:resource_tool ·/g)).toHaveLength(ToolTypeList.length + 3);
-      expect(html.match(/account_team:resource_collection ·/g)).toHaveLength(4);
+      expect(html).toContain('data-avatar="/bot.png"');
+      expect(html).toContain('account_team:audit_resource_deleted');
+      expect(html).not.toContain('Deleted App');
+      expect(html).toContain('Prod Key');
+      expect(html).toContain('Legacy Tool');
+      expect(html).not.toContain('account_team:resource_');
+      expect(html).toContain('account_team:audit_detail_rename');
       expect(html).toContain('>-</td>');
     }
   );

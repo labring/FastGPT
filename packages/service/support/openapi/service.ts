@@ -8,6 +8,7 @@ import { MongoOpenApi } from './schema';
 import { getOpenApiTypeFilter, getOpenApiAppIdFilter } from './utils';
 import { addAuditLog } from '../user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { AuditResourceTypeEnum, type AuditResourceType, buildAppAuditResource, buildEntityAuditResource } from '@fastgpt/global/support/user/audit/type';
 
 /**
  * 将指定成员的应用 Key 交给绑定应用的当前 owner，必须在应用交接之后、同一事务中调用。
@@ -81,11 +82,34 @@ export const auditAppApiKeyTransfers = async ({
   changes: ApiKeyAuditParams[];
   actorTmbId?: string;
 }) => {
+  const appIds = [...new Set(changes.map((item) => item.appId).filter(Boolean))];
+  const apps =
+    appIds.length > 0
+      ? await MongoApp.find({ teamId, _id: { $in: appIds } }, '_id name avatar type').lean()
+      : [];
+  const appMap = new Map(apps.map((app) => [String(app._id), app]));
+
   for (const params of changes) {
+    const boundApp = params.appId ? appMap.get(String(params.appId)) : undefined;
+    const resources = [
+      buildEntityAuditResource({
+        type: AuditResourceTypeEnum.apiKey,
+        id: params.keyId,
+        name: params.keyName
+      }),
+      ...(params.appId
+        ? [
+            boundApp
+              ? buildAppAuditResource(boundApp)
+              : buildEntityAuditResource({ type: AuditResourceTypeEnum.app, id: params.appId })
+          ]
+        : [])
+    ].filter((item): item is AuditResourceType => Boolean(item));
     await addAuditLog({
       teamId,
       ...(actorTmbId ? { tmbId: actorTmbId } : { scope: 'system' as const }),
       event: AuditEventEnum.UPDATE_API_KEY,
+      resources,
       params
     });
   }

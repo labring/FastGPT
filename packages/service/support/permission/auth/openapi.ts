@@ -1,4 +1,5 @@
 import { type AuthModeType, type AuthResponseType } from '../type';
+import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { type OpenApiSchema } from '@fastgpt/global/support/openapi/type';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { MongoOpenApi } from '../../openapi/schema';
@@ -23,13 +24,14 @@ export async function authOpenApiKeyCrud({
 }): Promise<
   AuthResponseType & {
     openapi: OpenApiSchema;
+    app?: AppSchemaType;
   }
 > {
   const result = await parseHeaderCert({ req: props.req, authToken: true });
   const { tmbId, teamId } = result;
   const { permission: tmbPer } = await getTmbInfoByTmbId({ tmbId });
 
-  const { openapi, permission } = await (async () => {
+  const { openapi, permission, app } = await (async () => {
     const openapi = await MongoOpenApi.findOne({ _id: id, teamId });
     if (!openapi) {
       return Promise.reject(OpenApiErrEnum.unExist);
@@ -40,21 +42,25 @@ export async function authOpenApiKeyCrud({
     }
 
     const scope = resolveApiKeyScope(openapi);
+    let boundApp: AppSchemaType | undefined;
     if (scope.type === ApiKeyTypeEnum.app) {
-      await authAppByTmbId({ tmbId, appId: scope.appId, per: ManagePermissionVal });
+      boundApp = (await authAppByTmbId({ tmbId, appId: scope.appId, per: ManagePermissionVal }))
+        .app;
     } else if (String(openapi.tmbId) !== tmbId) {
       return Promise.reject(OpenApiErrEnum.unAuth);
     }
 
     return {
       openapi,
-      permission: tmbPer
+      permission: tmbPer,
+      app: boundApp
     };
   })();
 
   return {
     ...result,
     openapi,
-    permission
+    permission,
+    app
   };
 }

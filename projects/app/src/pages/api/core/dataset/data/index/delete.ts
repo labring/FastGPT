@@ -8,6 +8,7 @@ import {
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { buildCollectionAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -36,13 +37,7 @@ async function handler(req: ApiRequestProps): Promise<DeleteDatasetDataIndexResp
     tmbId,
     teamId,
     event: AuditEventEnum.UPDATE_DATA,
-    resources: [
-      {
-        collectionId: String(collection._id),
-        datasetId: String(collection.datasetId),
-        collectionType: collection.type
-      }
-    ],
+    resources: [buildCollectionAuditResource(collection)],
     params: {
       collectionName: collection.name,
       datasetName: collection.dataset?.name || '',

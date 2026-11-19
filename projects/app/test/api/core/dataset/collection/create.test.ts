@@ -187,8 +187,10 @@ describe('create collection parent checks', () => {
       expect.objectContaining({
         resources: [
           {
-            collectionId: String(last.data),
-            datasetId: scope.datasetId,
+            type: 'collectionFolder',
+            id: String(last.data),
+            name: 'last',
+            parentId: scope.datasetId,
             collectionType: DatasetCollectionTypeEnum.folder
           }
         ]
@@ -215,8 +217,10 @@ describe('create collection parent checks', () => {
       expect.objectContaining({
         resources: [
           {
-            collectionId: String(leaf.data),
-            datasetId: scope.datasetId,
+            type: 'collection',
+            id: String(leaf.data),
+            name: 'leaf',
+            parentId: scope.datasetId,
             collectionType: DatasetCollectionTypeEnum.virtual
           }
         ]

@@ -10,6 +10,7 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildCollectionAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import type { ApiRequestProps } from '@fastgpt/next/type';
@@ -126,7 +127,7 @@ async function handler(req: ApiRequestProps) {
         teamId,
         datasetId: collection.datasetId,
         collectionId,
-        fields: '_id teamId type datasetId fileId metadata'
+        fields: '_id teamId name type datasetId fileId metadata'
       });
     })
   ).then((res) => {
@@ -158,13 +159,7 @@ async function handler(req: ApiRequestProps) {
   const auditResources = [...selectedCollectionIds].flatMap((id) => {
     const collection = deletedCollections.get(id);
     return collection
-      ? [
-          {
-            collectionId: String(collection._id),
-            datasetId: String(collection.datasetId),
-            collectionType: collection.type
-          }
-        ]
+      ? [buildCollectionAuditResource(collection, { deleted: true })]
       : [];
   });
 

@@ -16,6 +16,7 @@ import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildCollectionAuditResource } from '@fastgpt/global/support/user/audit/type';
 
 /** 删除训练任务；重建任务同时删除原始数据及其索引，首次训练维持原有取消行为。 */
 async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse> {
@@ -100,13 +101,7 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
       tmbId,
       teamId: String(teamId),
       event: DatasetAuditEventEnum.DATASET_TRAINING_RECORD_DELETE,
-      resources: [
-        {
-          collectionId: String(collection._id),
-          datasetId: String(collection.datasetId),
-          collectionType: collection.type
-        }
-      ],
+      resources: [buildCollectionAuditResource(collection)],
       params: {
         datasetName: collection.dataset.name,
         collectionName: collection.name

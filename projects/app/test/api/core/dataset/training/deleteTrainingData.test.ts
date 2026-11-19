@@ -79,8 +79,10 @@ describe('delete training data test', () => {
         expect(logs).toHaveLength(1);
         expect(logs[0].resources).toEqual([
           {
-            collectionId: collection._id,
-            datasetId: dataset._id,
+            type: 'collection',
+            id: String(collection._id),
+            name: collection.name,
+            parentId: dataset._id,
             collectionType: collection.type
           }
         ]);

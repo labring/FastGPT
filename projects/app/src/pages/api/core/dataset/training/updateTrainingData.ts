@@ -26,6 +26,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildCollectionAuditResource, buildDatasetAuditResource } from '@fastgpt/global/support/user/audit/type';
 
 /** 重试训练任务；首次训练允许编辑正文，rebuild 只重试已存索引。 */
 async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse> {
@@ -54,11 +55,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
             tmbId,
             datasetName: collection.dataset.name,
             collectionName: collection.name as string | undefined,
-            auditResource: {
-              collectionId: String(collection._id),
-              datasetId: String(collection.datasetId),
-              collectionType: collection.type
-            }
+            auditResource: buildCollectionAuditResource(collection)
           };
         }
 
@@ -79,7 +76,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
           tmbId,
           datasetName: dataset.name,
           collectionName: undefined,
-          auditResource: { datasetId: String(dataset._id) }
+          auditResource: buildDatasetAuditResource(dataset)
         };
       })();
 
@@ -199,13 +196,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
     tmbId,
     teamId: String(collection.teamId),
     event: DatasetAuditEventEnum.DATASET_TRAINING_TASK_RETRY,
-    resources: [
-      {
-        collectionId: String(collection._id),
-        datasetId: String(collection.datasetId),
-        collectionType: collection.type
-      }
-    ],
+    resources: [buildCollectionAuditResource(collection)],
     params: {
       datasetName: collection.dataset?.name ?? '',
       collectionName: collection.name
