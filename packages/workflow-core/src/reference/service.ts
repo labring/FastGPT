@@ -9,6 +9,7 @@ import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/consta
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import {
   areWorkflowValueTypesCompatible,
+  filterSelectableWorkflowNodeOutputs,
   getSelectedInputRenderType,
   getWorkflowReferenceSourceNodes,
   getWorkflowReferenceVariables
@@ -274,7 +275,12 @@ export const setInputReference = ({
   }
 
   const sourceNode = document.nodes.find((item) => item.nodeId === ref.nodeId);
-  const sourceOutput = sourceNode?.outputs.find((output) => output.key === ref.outputKey);
+  const sourceOutput = sourceNode
+    ? filterSelectableWorkflowNodeOutputs({
+        outputs: sourceNode.outputs,
+        catchError: sourceNode.catchError
+      }).find((output) => output.key === ref.outputKey)
+    : undefined;
   if (!sourceNode || !sourceOutput) {
     throw new WorkflowCommandError([
       {

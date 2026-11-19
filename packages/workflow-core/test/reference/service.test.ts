@@ -33,6 +33,20 @@ describe('input mutation services', () => {
     document = WorkflowDocumentSchema.parse(aiWorkflow);
   });
 
+  it('does not offer or assign a disabled output', () => {
+    const output = document.nodes.find((node) => node.nodeId === 'start')!.outputs[0];
+    output.invalid = true;
+    const ref = { nodeId: 'start', outputKey: output.key };
+    const params = { document, nodeId: 'ai', inputKey: 'userChatInput' };
+
+    expect(getAvailableInputReferences(params)).not.toContainEqual(
+      expect.objectContaining({ ref })
+    );
+    expect(() => setInputReference({ ...params, ref })).toThrow(
+      WorkflowDiagnosticCodeEnum.referenceOutputNotFound
+    );
+  });
+
   it('sets and replaces tool authorization while preserving unrelated credentials', () => {
     const input: FlowNodeInputItemType = {
       key: NodeInputKeyEnum.systemInputConfig,
