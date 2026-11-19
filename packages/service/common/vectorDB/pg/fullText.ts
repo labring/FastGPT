@@ -48,8 +48,8 @@ const readIndexSql = `SELECT e.extversion, i.indisvalid, pg_get_indexdef(i.index
 const capabilityError =
   'PG full-text extension or index does not match the supported configuration';
 
-/** 0.25 引入 paradedb 索引方法，0.26 起可省略 key_field。建索引与验收使用同一份定义。 */
-const getIndexDefinition = (extensionVersion: string) => {
+/** 0.25 引入 paradedb，0.26 起可省略 key_field。新建及复用的索引共用相同的列和分词定义。 */
+const getIndexDefinitions = (extensionVersion: string) => {
   const version = /^(\d+)\.(\d+)\.(\d+)(?:-([\w.-]+))?(?:\+[\w.-]+)?$/.exec(extensionVersion);
   if (!version) throw new Error('PG full-text could not determine the installed pg_search version');
 
@@ -58,13 +58,33 @@ const getIndexDefinition = (extensionVersion: string) => {
     Number(major) === 0 &&
     (Number(minor) < targetMinor ||
       (Number(minor) === targetMinor && Number(patch) === 0 && prerelease !== undefined));
-  const method = precedes(25) ? 'bm25' : 'paradedb';
-  const keyOption = precedes(26) ? ' WITH (key_field=id)' : '';
-  return `${method} (id, ((${column})::pdb.whitespace), ((team_id)::pdb.literal), ((dataset_id)::pdb.literal), ((collection_id)::pdb.literal))${keyOption}`;
+  const columns = `(id, ((${column})::pdb.whitespace), ((team_id)::pdb.literal), ((dataset_id)::pdb.literal), ((collection_id)::pdb.literal))`;
+  const legacyDefinition = `bm25 ${columns} WITH (key_field=id)`;
+  const keyedDefinition = `paradedb ${columns} WITH (key_field=id)`;
+  const keylessDefinition = `paradedb ${columns}`;
+
+  // 扩展原地升级后仍支持旧访问方法及选项，失败重试应复用已经有效的索引。
+  if (precedes(25)) {
+    return { preferred: legacyDefinition, compatible: [legacyDefinition], concurrently: false };
+  }
+  if (precedes(26)) {
+    return {
+      preferred: keyedDefinition,
+      compatible: [keyedDefinition, legacyDefinition],
+      concurrently: false
+    };
+  }
+  return {
+    preferred: keylessDefinition,
+    compatible: [keylessDefinition, keyedDefinition, legacyDefinition],
+    concurrently: true
+  };
 };
 
 const hasExpectedDefinition = (row: PgFullTextIndex) =>
-  row.definition.replace(/\s+/g, ' ').split(' USING ')[1] === getIndexDefinition(row.extversion);
+  getIndexDefinitions(row.extversion).compatible.includes(
+    row.definition.replace(/\s+/g, ' ').split(' USING ')[1]
+  );
 
 /** 精确核对已安装扩展和全文索引；同名错误索引不能被 IF NOT EXISTS 当作成功。 */
 export const assertPgFullTextCapability = async () => {
@@ -90,7 +110,7 @@ $fulltext$`;
 
 /**
  * 手动迁移准备列、物理目标和索引。用会话级锁串行化跨节点准备，
- * 列 DDL 独立提交后再在线建索引，避免建索引时持有表排他锁。
+ * 列 DDL 独立提交后再建索引，避免建索引时持有加列所需的表排他锁。
  */
 export const preparePgFullText = async ({
   signal
@@ -178,7 +198,9 @@ export const preparePgFullText = async ({
     const extension = await client.query<{ extversion: string }>(
       "SELECT extversion FROM pg_extension WHERE extname = 'pg_search'"
     );
-    const indexDefinition = getIndexDefinition(extension.rows[0]?.extversion ?? '');
+    const { preferred: indexDefinition, concurrently } = getIndexDefinitions(
+      extension.rows[0]?.extversion ?? ''
+    );
     const existingMetaTable = await client.query<{ regclass: string | null }>(
       `SELECT to_regclass('${metadataTable}')::text AS regclass`
     );
@@ -202,8 +224,10 @@ export const preparePgFullText = async ({
     if (!index?.indisvalid) {
       // 并发建索引被中断时可能留下无效索引。仅重建同表、同名且定义完全匹配的索引。
       if (index) await executeDdl(`DROP INDEX CONCURRENTLY ${indexName}`);
+      // 0.26 修复了并发建索引时的资源清理缺陷。旧版用普通 CREATE INDEX，让 PG 仅在构建期间阻塞向量表写入。
+      const concurrentOption = concurrently ? ' CONCURRENTLY' : '';
       await executeDdl(
-        `CREATE INDEX CONCURRENTLY IF NOT EXISTS ${indexName} ON ${DatasetVectorTableName} USING ${indexDefinition}`
+        `CREATE INDEX${concurrentOption} IF NOT EXISTS ${indexName} ON ${DatasetVectorTableName} USING ${indexDefinition}`
       );
     }
     const {

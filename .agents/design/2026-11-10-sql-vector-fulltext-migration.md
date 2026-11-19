@@ -54,14 +54,14 @@ SQL 的 `fastgpt_fulltext_metadata` 保存目标和版本。Mongo `dataset_sql_f
 
 | Provider | 当前代码门槛 | 全文实现及检查 |
 | --- | --- | --- |
-| PG | PG15.19+ 的 15.x，pg_search 0.26.6 | ParadeDB 索引；词串用 `pdb.whitespace`，归属字段用 `pdb.literal`；核对真实扩展、索引定义和有效性。 |
+| PG | 已安装并预加载与 PostgreSQL 兼容的 `pg_search` | 0.25.0 前使用 `bm25`，此后使用 `paradedb`；0.26.0 前显式指定 `key_field=id`。词串用 `pdb.whitespace`，归属字段用 `pdb.literal`。 |
 | OceanBase | 至少 4.3.5.1，MySQL 模式 | FULLTEXT SPACE，`min_token_size=1`；核对索引列、可见性、解析器与属性。 |
 | SeekDB | 至少 1.0.1 | 与 OceanBase 共用 FULLTEXT 适配，独立解析产品版本。 |
 | OpenGauss | 7.0.x，至少 RC2，并具备 DataVec BM25 | 普通 astore 表、nullable TEXT、BM25 索引及对应执行计划。 |
 
 这些版本是当前适配范围，不表示厂商首次支持全文的版本，也不承诺所有更高版本均已验证。必要的产品/扩展约束保留，兼容开关不参与能力检查。
 
-启动先准备基础表、词串列及必要的向量侧索引。PG 只在管理员运行手动任务后构建全文索引，已存在的词串列通过目录查询确认，只有缺列才短暂获取表排他锁。列 DDL 提交后，PG 15.19 + pg_search 0.26.6 在独立会话使用 `CREATE INDEX CONCURRENTLY`，常规向量读写可继续。建索引遇到长事务等待超时后可重试，仅对同表、同名、定义匹配的无效索引做在线重建。已有效的索引直接复用。
+启动先准备基础表、词串列及必要的向量侧索引。PG 只在管理员运行手动任务后构建全文索引，已存在的词串列通过目录查询确认，只有缺列才短暂获取表排他锁。列 DDL 提交后，`pg_search` 0.26.0 及以上使用 `CREATE INDEX CONCURRENTLY`。旧版扩展在构建期间使用普通 `CREATE INDEX`，由 PG 表锁阻塞写入，读取继续。索引建完后，回填与验收阶段都允许写入。建索引遇到长事务等待超时后可重试，仅对同表、同名、定义匹配的无效索引重建。扩展原地升级后会复用仍受支持的历史有效索引，并继续校验索引列、分词及固定查询结果。
 
 其他已适配的 SQL 向量库继续异步准备全文索引，应用启动可以继续。共享的 prepare Promise 合并本进程内对同一 provider 的并发准备。切读还需 Runner 提交成功并核验目标。
 

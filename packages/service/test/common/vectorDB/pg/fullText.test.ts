@@ -94,6 +94,11 @@ describe('PG full-text contracts', () => {
     undefined,
     { extversion: '0.24.3', indisvalid: true, definition },
     { extversion: '0.25.0', indisvalid: true, definition },
+    {
+      extversion: '0.26.6',
+      indisvalid: true,
+      definition: `${definition} WITH (key_field=team_id)`
+    },
     { extversion: '0.26.6', indisvalid: false, definition },
     {
       extversion: '0.26.6',
@@ -146,6 +151,29 @@ describe('PG full-text contracts', () => {
     }
   );
 
+  it.each([
+    ['0.25.0', 'bm25'],
+    ['0.26.6', 'bm25'],
+    ['0.26.6', 'paradedb']
+  ])('reuses a valid historical index on pg_search %s built using %s', async (version, method) => {
+    const query = client.query.getMockImplementation()!;
+    const index = {
+      extversion: version,
+      indisvalid: true,
+      definition: `${definition.replace('USING paradedb', `USING ${method}`)} WITH (key_field=id)`
+    };
+    client.query.mockImplementation(async (sql: string) => {
+      if (sql.startsWith('SELECT extversion')) return { rows: [{ extversion: version }] };
+      if (sql.includes('pg_get_indexdef')) return { rows: [index] };
+      return query(sql);
+    });
+
+    await expect(preparePgFullText()).resolves.toEqual(identity);
+    expect(client.query.mock.calls.some(([sql]) => /^(?:DROP|CREATE) INDEX/.test(sql))).toBe(false);
+    vi.mocked(PgClient.query).mockResolvedValueOnce({ rows: [index] } as never);
+    await expect(assertPgFullTextCapability()).resolves.toBeUndefined();
+  });
+
   it('rejects incompatible metadata before building the index', async () => {
     const query = client.query.getMockImplementation()!;
     client.query.mockImplementation(async (sql: string) => {
@@ -162,15 +190,15 @@ describe('PG full-text contracts', () => {
   });
 
   it.each([
-    ['0.24.3', 'bm25', ' WITH (key_field=id)'],
-    ['0.25.0-rc.1', 'bm25', ' WITH (key_field=id)'],
-    ['0.25.0', 'paradedb', ' WITH (key_field=id)'],
-    ['0.26.0-rc.1', 'paradedb', ' WITH (key_field=id)'],
-    ['0.26.0', 'paradedb', ''],
-    ['1.0.0', 'paradedb', '']
+    ['0.24.3', 'bm25', ' WITH (key_field=id)', ''],
+    ['0.25.0-rc.1', 'bm25', ' WITH (key_field=id)', ''],
+    ['0.25.0', 'paradedb', ' WITH (key_field=id)', ''],
+    ['0.26.0-rc.1', 'paradedb', ' WITH (key_field=id)', ''],
+    ['0.26.0', 'paradedb', '', ' CONCURRENTLY'],
+    ['1.0.0', 'paradedb', '', ' CONCURRENTLY']
   ])(
     'creates and accepts the expected index definition for pg_search %s',
-    async (version, method, options) => {
+    async (version, method, options, concurrentOption) => {
       const query = client.query.getMockImplementation()!;
       const expectedDefinition = definition.replace('USING paradedb', `USING ${method}`) + options;
       const index = { extversion: version, indisvalid: true, definition: expectedDefinition };
@@ -185,7 +213,7 @@ describe('PG full-text contracts', () => {
       await expect(preparePgFullText()).resolves.toEqual(identity);
       expect(client.query).toHaveBeenCalledWith(
         expectedDefinition
-          .replace('CREATE INDEX', 'CREATE INDEX CONCURRENTLY IF NOT EXISTS')
+          .replace('CREATE INDEX', `CREATE INDEX${concurrentOption} IF NOT EXISTS`)
           .replace('ON public.modeldata', 'ON modeldata'),
         undefined
       );

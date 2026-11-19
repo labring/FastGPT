@@ -743,13 +743,24 @@ describe.skipIf(!target)('PG full-text real migration', () => {
     await expect(preparePgFullText()).rejects.toThrow('supported configuration');
   });
 
-  it('stops an online index build when the Runner stops and lets another Runner recover', async () => {
+  it('stops a waiting index build when the Runner stops and lets another Runner recover', async () => {
     await ctrl.init();
+    const {
+      rows: [extension]
+    } = await pool.query<{ version: string }>(
+      `SELECT COALESCE(installed_version, default_version) AS version
+       FROM pg_available_extensions WHERE name = 'pg_search'`
+    );
+    const [major, minor] = extension.version.split('.').map(Number);
+    const concurrently = major > 0 || minor >= 26;
     const readIndex = () =>
       pool.query<{ indisvalid: boolean }>(
         "SELECT indisvalid FROM pg_index WHERE indexrelid = to_regclass('modeldata_fulltext')"
       );
     expect((await readIndex()).rows).toEqual([]);
+    const unfinishedIndex = concurrently ? [{ indisvalid: false }] : [];
+    // 普通建索引在等待 ShareLock 时，新写事务会在它后面排队，因此旧版先写入样本。
+    const dataBeforeBuild = concurrently ? undefined : await seed('线上数据库', { native: true });
     const migrations = systemMigrations.filter((m) => m.id === '20261110_migrate_sql_fulltext');
     await ensureMigrationStates(migrations);
     await enqueueManualMigration('20261110_migrate_sql_fulltext');
@@ -763,16 +774,20 @@ describe.skipIf(!target)('PG full-text real migration', () => {
       const pid = await vi.waitFor(
         async () => {
           const { rows } = await pool.query<{ pid: number }>(
-            `SELECT pid FROM pg_stat_progress_create_index
-             WHERE relid = 'modeldata'::regclass AND phase = 'waiting for writers before build'`
+            concurrently
+              ? `SELECT pid FROM pg_stat_progress_create_index
+               WHERE relid = 'modeldata'::regclass AND phase = 'waiting for writers before build'`
+              : `SELECT l.pid FROM pg_locks l JOIN pg_stat_activity a USING (pid)
+               WHERE l.relation = 'modeldata'::regclass AND l.mode = 'ShareLock' AND NOT l.granted
+                 AND a.application_name = 'fastgpt-pg-fulltext-prepare'`
           );
           expect(rows).toHaveLength(1);
           return rows[0].pid;
         },
         { timeout: 3000, interval: 25 }
       );
-      expect((await readIndex()).rows).toEqual([{ indisvalid: false }]);
-      const inserted = await seed('线上数据库', { native: true });
+      expect((await readIndex()).rows).toEqual(unfinishedIndex);
+      const inserted = dataBeforeBuild ?? (await seed('线上数据库', { native: true }));
       expect((await snapshot()).map(({ id }) => id)).toEqual(inserted.insertIds);
       firstRunner.stop();
       await running;
@@ -789,7 +804,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
       writer.release();
       await running;
     }
-    expect((await readIndex()).rows).toEqual([{ indisvalid: false }]);
+    expect((await readIndex()).rows).toEqual(unfinishedIndex);
     // 推进旧 lease 的到期时间，模拟另一节点接管，无需测试实际等待完整 lease。
     await MongoSystemMigrationState.updateOne(
       { _id: '20261110_migrate_sql_fulltext', status: 'running' },
