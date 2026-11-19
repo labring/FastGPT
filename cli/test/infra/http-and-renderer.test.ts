@@ -9,7 +9,7 @@ import {
 } from '../../src/infra/http/fastgpt-http-client';
 import { createOutputRenderer } from '../../src/infra/ui/renderer';
 import { CliApiError, CliArgumentError, CliNetworkError } from '../../src/shared/errors';
-import type { CliFetchFn } from '../../src/shared/types';
+import { CliExitCode, type CliFetchFn } from '../../src/shared/types';
 
 const tempDirs: string[] = [];
 
@@ -123,6 +123,107 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
     await expect(client.request({ method: 'GET', path: '/down' })).rejects.toBeInstanceOf(
       CliNetworkError
     );
+  });
+
+  it('keeps HTTP 403 plan/quota errors as API_ERROR while distinguishing 403 permission refusal and 401/514 auth failures', async () => {
+    const mockFetch: CliFetchFn = async (input) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (url.endsWith('/dataset-limit')) {
+        return jsonResponse(
+          {
+            code: 500007,
+            statusText: 'datasetAmountNotEnough',
+            message: 'Dataset amount limit reached',
+            data: null
+          },
+          403
+        );
+      }
+      if (url.endsWith('/commercial-feature')) {
+        return jsonResponse(
+          {
+            code: 509001,
+            statusText: 'commercialFeature',
+            message: 'Commercial feature required',
+            data: null
+          },
+          403
+        );
+      }
+      if (url.endsWith('/dataset-forbidden')) {
+        return jsonResponse(
+          {
+            code: 501004,
+            statusText: 'unAuthDataset',
+            message: 'No dataset permission',
+            data: null
+          },
+          403
+        );
+      }
+      if (url.endsWith('/apikey-401')) {
+        return jsonResponse(
+          {
+            code: 514,
+            statusText: 'unAuthApiKey',
+            message: 'Invalid API Key',
+            data: null
+          },
+          401
+        );
+      }
+      return jsonResponse(
+        {
+          code: 401,
+          statusText: 'unAuthorization',
+          message: 'Unauthenticated',
+          data: null
+        },
+        401
+      );
+    };
+
+    const client = createFastGptHttpClient({
+      baseUrl: 'http://127.0.0.1:3000/api',
+      cliVersion: '0.1.0',
+      fetchFn: mockFetch
+    });
+
+    for (const [path, expectedCode, expectedStatusText] of [
+      ['/dataset-limit', 500007, 'datasetAmountNotEnough'],
+      ['/commercial-feature', 509001, 'commercialFeature']
+    ] as const) {
+      await expect(client.request({ method: 'POST', path, body: {} })).rejects.toMatchObject({
+        code: 'API_ERROR',
+        exitCode: CliExitCode.business,
+        httpStatus: 403,
+        serverCode: expectedCode,
+        statusText: expectedStatusText
+      });
+    }
+
+    await expect(
+      client.request({ method: 'GET', path: '/dataset-forbidden' })
+    ).rejects.toMatchObject({
+      code: 'AUTH_FORBIDDEN',
+      exitCode: CliExitCode.auth
+    });
+    await expect(
+      client.request({ method: 'GET', path: '/dataset-forbidden' })
+    ).rejects.not.toMatchObject({
+      hint: expect.stringContaining('fastgpt login')
+    });
+
+    await expect(client.request({ method: 'GET', path: '/apikey-401' })).rejects.toMatchObject({
+      code: 'AUTH_INVALID',
+      exitCode: CliExitCode.auth,
+      hint: expect.stringContaining('API Key')
+    });
+    await expect(client.request({ method: 'GET', path: '/session-401' })).rejects.toMatchObject({
+      code: 'AUTH_INVALID',
+      exitCode: CliExitCode.auth,
+      hint: expect.stringContaining('fastgpt login')
+    });
   });
 
   it('renders JSON and text formats with picocolors and redaction', () => {
