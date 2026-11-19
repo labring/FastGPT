@@ -624,9 +624,13 @@ export const classifyEmbeddingError = (
     };
   }
 
-  // 仅当上游返回明确参数校验码或参数错误状态码（400/422）且声明参数错误类型时，屏蔽纯正文正则，
-  // 避免 400 回显参数值被误判，同时不干扰 HTTP 429/403 携带通用 invalid_request_error 时的欠费正文识别。
-  const isParamValidationStatus = signals.status === 400 || signals.status === 422;
+  // 参数校验状态（400/422）或无失败 HTTP 状态码的 2xx 错误体中声明参数错误类型，以及明确参数校验码时，
+  // 屏蔽宽泛正文正则避免回显参数值被误判，同时保留 HTTP 429/403 携带通用 invalid_request_error 时的欠费正文识别。
+  const isParamValidationStatus =
+    signals.status === undefined ||
+    (signals.status >= 200 && signals.status < 300) ||
+    signals.status === 400 ||
+    signals.status === 422;
   const isStructuredInvalidRequest =
     isExplicitInvalidParamError ||
     (isParamValidationStatus &&

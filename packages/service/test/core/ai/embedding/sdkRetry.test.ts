@@ -162,6 +162,20 @@ describe('getVectors real OpenAI SDK HTTP retry budgets', () => {
       expectedCategory: 'quotaExceeded',
       expectedRetryable: false,
       expectedCode: ModelErrEnum.upstreamQuotaExceeded
+    },
+    {
+      name: 'HTTP 200 carrying invalid_request_error echoing rate_limit stops after 1 HTTP request',
+      status: 200,
+      body: {
+        error: {
+          message: "Unsupported value: 'rate_limit' for 'encoding_format'.",
+          type: 'invalid_request_error'
+        }
+      },
+      expectedCalls: 1,
+      expectedCategory: 'invalidRequest',
+      expectedRetryable: false,
+      expectedCode: ModelErrEnum.invalidRequest
     }
   ])(
     '$name',

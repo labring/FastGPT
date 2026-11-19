@@ -581,6 +581,23 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
       }
     );
 
+    it.each([undefined, 200])(
+      'keeps status=%s structured invalid_request_error echoing rate_limit deterministic as invalidRequest',
+      (status) => {
+        const raw = {
+          ...(status !== undefined ? { status } : {}),
+          type: 'invalid_request_error',
+          message: "Unsupported value: 'rate_limit' for 'encoding_format'."
+        };
+
+        expect(classifyEmbeddingError(raw)).toMatchObject({
+          category: 'invalidRequest',
+          retryable: false,
+          errorCode: ModelErrEnum.invalidRequest
+        });
+      }
+    );
+
     it.each([
       {
         name: 'HTTP 403 Cloudflare HTML',
