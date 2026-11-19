@@ -285,6 +285,44 @@ describe('getImageBase64', () => {
     expect(result.base64).toBe(unknownBytes.toString('base64'));
   });
 
+  it('should accept real PNG bytes and reject 200 HTML/SVG when allowedMimeTypes is set', async () => {
+    const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+    const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
+    mockAxiosGet.mockResolvedValueOnce(
+      mockImageResponse(pngBytes, { 'content-type': 'application/octet-stream' })
+    );
+
+    const valid = await getImageBase64('https://example.com/chart.png', { allowedMimeTypes });
+    expect(valid.mime).toBe('image/png');
+    expect(valid.completeBase64).toBe(`data:image/png;base64,${pngBytes.toString('base64')}`);
+
+    // HTTP 200 text/html 登录页不能兜底包装成 data:image/...。
+    const htmlBytes = Buffer.from('<!doctype html><html><body>Login</body></html>', 'utf8');
+    mockAxiosGet.mockResolvedValueOnce(
+      mockImageResponse(htmlBytes, { 'content-type': 'text/html; charset=utf-8' })
+    );
+    await expect(
+      getImageBase64('https://example.com/login.png', { allowedMimeTypes })
+    ).rejects.toThrow('Invalid or unsupported image content');
+
+    // 即使响应头声称 image/png，非图片魔数字节也必须拒绝。
+    mockAxiosGet.mockResolvedValueOnce(
+      mockImageResponse(htmlBytes, { 'content-type': 'image/png' })
+    );
+    await expect(
+      getImageBase64('https://example.com/fake.png', { allowedMimeTypes })
+    ).rejects.toThrow('Invalid or unsupported image content');
+
+    // 不在白名单内的图片格式（如 SVG）必须拒绝。
+    const svgBytes = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"></svg>', 'utf8');
+    mockAxiosGet.mockResolvedValueOnce(
+      mockImageResponse(svgBytes, { 'content-type': 'image/svg+xml' })
+    );
+    await expect(
+      getImageBase64('https://example.com/icon.svg', { allowedMimeTypes })
+    ).rejects.toThrow('Invalid or unsupported image content');
+  });
+
   it('should handle content-type header with charset parameter', async () => {
     const svgBytes = Buffer.from([0x3c, 0x73, 0x76, 0x67, 0x20, 0x78, 0x6d, 0x6c]);
     mockAxiosGet.mockResolvedValue(

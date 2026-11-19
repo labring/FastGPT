@@ -11,10 +11,8 @@ type AgentLoopCoreAssistantMetaEventNames = {
 };
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { AgentAskInteractiveSchema } from '@fastgpt/global/core/ai/agent/type';
-import {
-  ChatCompletionToolMessageContentPartSchema,
-  isInlineImageDataUri
-} from '@fastgpt/global/core/ai/llm/type';
+import { isInlineImageDataUri } from '@fastgpt/global/common/file/image/utils';
+import { ChatCompletionToolMessageContentPartSchema } from '@fastgpt/global/core/ai/llm/type';
 import { WorkflowBuilderPreviewInteractiveSchema } from '@fastgpt/global/core/workflow/builder/type';
 
 // 记录用于恢复的工具图片时保留小型内联图片；超过上限的 base64 仍参与当前请求，

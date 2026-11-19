@@ -1,6 +1,7 @@
 import type openai from 'openai';
 import type { Stream } from 'openai/streaming';
 import { audioFileType } from '../../../common/file/constants';
+import { isInlineImageDataUri } from '../../../common/file/image/utils';
 import z from 'zod';
 import { OpenObjectOpenApiMeta } from '../../../common/zod/openapi';
 import { UserChatSelectSchema } from '../../chat/input/type';
@@ -59,26 +60,6 @@ export const ChatCompletionContentPartImageSchema = z.object({
   }),
   key: z.string().optional()
 });
-const INLINE_IMAGE_DATA_URI_REGEX = /^data:(image\/[^;,]+);base64,([^,]+)$/i;
-
-/**
- * 解析内联图片 data URI（忽略协议、MIME 与 base64 标识大小写）。
- * 供工具图片校验、Pi 视觉解码、正文遮蔽与持久化限额统一复用。
- */
-export const parseInlineImageDataUri = (
-  url: string
-): { mimeType: string; data: string } | undefined => {
-  const match = url.match(INLINE_IMAGE_DATA_URI_REGEX);
-  if (!match) return;
-  return {
-    mimeType: match[1].toLowerCase(),
-    data: match[2]
-  };
-};
-
-/** 判断字符串是否为可接受的内联图片 data URI。 */
-export const isInlineImageDataUri = (url: string) => Boolean(parseInlineImageDataUri(url));
-
 /** 工具图片只接受可发送的 http(s) URL 或非空图片 data URI。 */
 const ChatCompletionToolImageUrlSchema = z.string().refine((url) => {
   if (isInlineImageDataUri(url)) return true;

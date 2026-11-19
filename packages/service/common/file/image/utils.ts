@@ -152,6 +152,11 @@ export const getImageBuffer = async (
     maxSize?: number;
     /** 可信 origin（如沙箱预览代理），命中时跳过公共内网拦截。 */
     trustedOrigin?: string;
+    /**
+     * 严格校验响应体文件头属于指定图片 MIME 白名单；未指定时保留通用下载器的兼容回退。
+     * 工具视觉通道必须开启此校验，避免把 200 text/html 登录页兜底伪装成 image/jpeg 发给模型。
+     */
+    allowedMimeTypes?: readonly string[];
   } = {}
 ) => {
   logger.debug('Load image to buffer', { url });
@@ -208,6 +213,21 @@ export const getImageBuffer = async (
 
     const headerContentType = getAxiosContentType(response?.headers?.['content-type']);
 
+    if (options.allowedMimeTypes) {
+      const detectedType = detectImageTypeFromBuffer(buffer);
+      const allowedSet = new Set(options.allowedMimeTypes.map((item) => item.toLowerCase()));
+      if (!detectedType || !allowedSet.has(detectedType.toLowerCase())) {
+        throw new Error(
+          `Invalid or unsupported image content: ${detectedType || headerContentType || 'unknown'}`
+        );
+      }
+
+      return {
+        buffer,
+        mime: detectedType
+      };
+    }
+
     // 检测图片类型的优先级策略
     const imageType = (() => {
       // 1. 如果 Header 是有效的图片类型，直接使用
@@ -244,6 +264,8 @@ export const getImageBase64 = async (
     maxBase64BufferSize?: number;
     /** 可信 origin（如沙箱预览代理），命中时跳过公共内网拦截。 */
     trustedOrigin?: string;
+    /** 严格校验响应体文件头属于指定图片 MIME 白名单。 */
+    allowedMimeTypes?: readonly string[];
   } = {}
 ) => {
   logger.debug('Load image to base64', { url });
@@ -252,7 +274,8 @@ export const getImageBase64 = async (
     const { buffer, mime } = await getImageBuffer(url, {
       timeoutMs: options.timeoutMs,
       maxSize: options.maxSize,
-      trustedOrigin: options.trustedOrigin
+      trustedOrigin: options.trustedOrigin,
+      allowedMimeTypes: options.allowedMimeTypes
     });
     const maxBase64BufferSize = options.maxBase64BufferSize ?? DEFAULT_IMAGE_BASE64_MAX_BUFFER_SIZE;
 

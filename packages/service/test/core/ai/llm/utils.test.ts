@@ -9,8 +9,10 @@ import {
   loadRequestMessages,
   filterGPTMessageByMaxContext,
   isSandboxPreviewFileUrl,
-  maskImagePlaceholderUrl
+  maskImagePlaceholderUrl,
+  TOOL_IMAGE_DOWNLOAD_TIMEOUT_MS
 } from '@fastgpt/service/core/ai/llm/utils';
+import { providerImageMimeTypes } from '@fastgpt/global/common/file/image/utils';
 import {
   ChatCompletionContentPartInputAudioSchema,
   type ChatCompletionMessageParam
@@ -1531,7 +1533,10 @@ describe('loadRequestMessages function tests', () => {
       expect(result[2].content).toEqual([
         { type: 'image_url', image_url: { url: 'data:image/png;base64,test' } }
       ]);
-      expect(mockGetImageBase64).toHaveBeenCalledWith('https://example.com/a.png');
+      expect(mockGetImageBase64).toHaveBeenCalledWith('https://example.com/a.png', {
+        timeoutMs: TOOL_IMAGE_DOWNLOAD_TIMEOUT_MS,
+        allowedMimeTypes: providerImageMimeTypes
+      });
     });
 
     it('keeps each value next to its images in the provider vision message', async () => {
@@ -1618,7 +1623,10 @@ describe('loadRequestMessages function tests', () => {
         expect(result).toHaveLength(2);
         expect(result[1].role).toBe(ChatCompletionRequestMessageRoleEnum.Tool);
         expect(result[1].content).toBe('Look at this image');
-        expect(mockGetImageBase64).toHaveBeenCalledWith('https://example.com/gone.png');
+        expect(mockGetImageBase64).toHaveBeenCalledWith('https://example.com/gone.png', {
+          timeoutMs: TOOL_IMAGE_DOWNLOAD_TIMEOUT_MS,
+          allowedMimeTypes: providerImageMimeTypes
+        });
       }
     );
 
@@ -1737,7 +1745,11 @@ describe('loadRequestMessages function tests', () => {
       // 沙箱预览代理可能在内网，取图时按配置 origin 走受限通道。
       expect(mockGetImageBase64).toHaveBeenCalledWith(
         'https://sandbox-preview.example.com/preview/sandbox-1/session-1/a.png',
-        { trustedOrigin: 'https://sandbox-preview.example.com' }
+        {
+          trustedOrigin: 'https://sandbox-preview.example.com',
+          timeoutMs: TOOL_IMAGE_DOWNLOAD_TIMEOUT_MS,
+          allowedMimeTypes: providerImageMimeTypes
+        }
       );
     });
 
@@ -1773,7 +1785,11 @@ describe('loadRequestMessages function tests', () => {
       expect(result).toHaveLength(3);
       expect(mockGetImageBase64).toHaveBeenCalledWith(
         'https://sandbox-preview.example.com/preview/sandbox-1/session-1/a.png',
-        { trustedOrigin: 'https://Sandbox-Preview.Example.com:443/?v=1#x' }
+        {
+          trustedOrigin: 'https://Sandbox-Preview.Example.com:443/?v=1#x',
+          timeoutMs: TOOL_IMAGE_DOWNLOAD_TIMEOUT_MS,
+          allowedMimeTypes: providerImageMimeTypes
+        }
       );
     });
 
@@ -1827,7 +1843,96 @@ describe('loadRequestMessages function tests', () => {
         { type: 'image_url', image_url: { url: 'data:image/png;base64,test' } }
       ]);
       // 非沙箱预览地址不得附带 trustedOrigin，继续受公共 SSRF 策略约束。
-      expect(mockGetImageBase64).toHaveBeenCalledWith('https://example.com/a.png');
+      expect(mockGetImageBase64).toHaveBeenCalledWith('https://example.com/a.png', {
+        timeoutMs: TOOL_IMAGE_DOWNLOAD_TIMEOUT_MS,
+        allowedMimeTypes: providerImageMimeTypes
+      });
+    });
+
+    it('should reuse downloaded tool images within the same fileContext across rounds without cross-session caching', async () => {
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
+      const fileContext = createFileClassificationContext();
+      const baseMessages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call1',
+          content: [
+            { type: 'text', text: 'chart ready' },
+            { type: 'image_url', image_url: { url: 'https://example.com/chart.png' } }
+          ]
+        }
+      ];
+
+      const round1 = await loadRequestMessages({
+        messages: baseMessages,
+        useVision: true,
+        fileContext
+      });
+      // 第二轮仅追加普通问答，历史 tool 消息中的同一张 PNG 不得重复下载。
+      const round2 = await loadRequestMessages({
+        messages: [
+          ...baseMessages,
+          { role: ChatCompletionRequestMessageRoleEnum.Assistant, content: 'Done' },
+          { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Follow up' }
+        ],
+        useVision: true,
+        fileContext
+      });
+
+      expect(mockGetImageBase64).toHaveBeenCalledTimes(1);
+      expect(round1[2].content).toEqual([
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,test' } }
+      ]);
+      expect(round2[2].content).toEqual([
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,test' } }
+      ]);
+
+      // 新会话使用独立 fileContext，不跨会话共享缓存。
+      await loadRequestMessages({
+        messages: baseMessages,
+        useVision: true,
+        fileContext: createFileClassificationContext()
+      });
+      expect(mockGetImageBase64).toHaveBeenCalledTimes(2);
+    });
+
+    it('should limit concurrent tool image downloads across historical tool messages', async () => {
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
+      let active = 0;
+      let maxActive = 0;
+      mockGetImageBase64.mockImplementation(async (url: string) => {
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        active -= 1;
+        return {
+          completeBase64: `data:image/png;base64,${Buffer.from(url).toString('base64')}`,
+          base64: Buffer.from(url).toString('base64'),
+          mime: 'image/png'
+        };
+      });
+
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+        ...Array.from({ length: 8 }, (_, i) => ({
+          role: ChatCompletionRequestMessageRoleEnum.Tool as const,
+          tool_call_id: `call_${i}`,
+          content: [
+            { type: 'image_url' as const, image_url: { url: `https://example.com/img_${i}.png` } }
+          ]
+        }))
+      ];
+
+      const result = await loadRequestMessages({
+        messages,
+        useVision: true,
+        fileContext: createFileClassificationContext()
+      });
+
+      expect(mockGetImageBase64).toHaveBeenCalledTimes(8);
+      expect(maxActive).toBeLessThanOrEqual(4);
+      expect(result[result.length - 1].content).toHaveLength(8);
     });
 
     it('should normalize uppercase inline tool image data URIs without fetching', async () => {

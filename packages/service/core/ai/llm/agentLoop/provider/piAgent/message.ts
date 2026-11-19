@@ -9,15 +9,15 @@ import type {
 } from '@mariozechner/pi-ai';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import {
-  parseInlineImageDataUri,
-  type ChatCompletionMessageParam,
-  type ChatCompletionMessageToolCall,
-  type ChatCompletionTool,
-  type ChatCompletionToolMessageContentPart,
-  type CompletionFinishReason
+import { parseInlineImageDataUri } from '@fastgpt/global/common/file/image/utils';
+import type {
+  ChatCompletionMessageParam,
+  ChatCompletionMessageToolCall,
+  ChatCompletionTool,
+  ChatCompletionToolMessageContentPart,
+  CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
-import { loadImageBase64, maskImagePlaceholderUrl } from '../../../utils';
+import { loadToolImageBase64, maskImagePlaceholderUrl } from '../../../utils';
 
 /** 将工具参数稳定序列化；不可序列化值回退为空对象，避免中断事件链。 */
 export const stringifyJson = (value: unknown) => {
@@ -146,8 +146,8 @@ export const convertToolResponseContentToPiContent = async (
       }
 
       try {
-        // 与 fastAgent 共用取图通道：沙箱预览地址允许走配置 origin 的受限下载。
-        const { base64, mime } = await loadImageBase64(url);
+        // 与 fastAgent 共用工具取图通道：严格校验栅格图片魔数、限制超时，沙箱预览地址走受限 origin。
+        const { base64, mime } = await loadToolImageBase64(url);
         return { type: 'image', mimeType: mime, data: base64 };
       } catch {
         return { type: 'text', text: getImagePlaceholder(url) };

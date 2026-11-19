@@ -3,11 +3,13 @@ import {
   MODEL_CONTENT_SCHEMA_META_KEY
 } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import {
-  ChatCompletionToolMessageContentPartSchema,
   isInlineImageDataUri,
+  isProviderImageMimeType
+} from '@fastgpt/global/common/file/image/utils';
+import {
+  ChatCompletionToolMessageContentPartSchema,
   type ChatCompletionToolMessageContentPart
 } from '@fastgpt/global/core/ai/llm/type';
-import { providerImageMimeType } from '@fastgpt/global/common/file/constants';
 
 type JsonSchemaRecord = Record<string, unknown>;
 const PLUGIN_TOOL_RESPONSE_KEY = '__fastgptPluginModelContent' as const;
@@ -147,9 +149,6 @@ export const extractAgentLoopCoreToolContent = (
 
   return parts;
 };
-
-const providerImageMimeTypes = providerImageMimeType.split(',').map((item) => item.trim());
-const isProviderImageMimeType = (mimeType: string) => providerImageMimeTypes.includes(mimeType);
 
 /** MCP 图片块是否能转换成供应商可消费的视觉输入。 */
 const isConvertibleMcpImageBlock = (block: { data?: unknown; mimeType?: unknown }) =>

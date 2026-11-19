@@ -1,15 +1,19 @@
+import pLimit from 'p-limit';
 import {
   countGptMessagesTokens,
   countGptMessagesTokensBatch
 } from '../../../common/string/tiktoken/index';
+import type {
+  ChatCompletionAssistantMessageParam,
+  ChatCompletionContentPart,
+  ChatCompletionContentPartRefusal,
+  ChatCompletionContentPartText,
+  ChatCompletionMessageParam
+} from '@fastgpt/global/core/ai/llm/type';
 import {
   parseInlineImageDataUri,
-  type ChatCompletionAssistantMessageParam,
-  type ChatCompletionContentPart,
-  type ChatCompletionContentPartRefusal,
-  type ChatCompletionContentPartText,
-  type ChatCompletionMessageParam
-} from '@fastgpt/global/core/ai/llm/type';
+  providerImageMimeTypes
+} from '@fastgpt/global/common/file/image/utils';
 import { audioFileType, maxToolImagePartAmount } from '@fastgpt/global/common/file/constants';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { axios } from '../../../common/api/axios';
@@ -71,15 +75,38 @@ export const isSandboxPreviewFileUrl = (url: string) => {
 export const maskImagePlaceholderUrl = (url: string) =>
   isSandboxPreviewFileUrl(url) ? 'sandbox preview file' : url;
 
+/** 工具图片下载超时上限（ms），避免单张慢图长时间阻塞 Agent 推理轮次。 */
+export const TOOL_IMAGE_DOWNLOAD_TIMEOUT_MS = 15 * 1000;
+const TOOL_IMAGE_DOWNLOAD_CONCURRENCY = 4;
+
+type ToolImageDownloadCache = {
+  entries: Map<string, Promise<string | undefined>>;
+  limit: ReturnType<typeof pLimit>;
+};
+
+// 缓存随单次请求或 Agent 运行的 fileContext 回收，不跨会话共享。
+const toolImageDownloadCaches = new WeakMap<FileClassificationContext, ToolImageDownloadCache>();
+
+const getToolImageDownloadCache = (
+  fileContext: FileClassificationContext
+): ToolImageDownloadCache => {
+  const existing = toolImageDownloadCaches.get(fileContext);
+  if (existing) return existing;
+
+  const created: ToolImageDownloadCache = {
+    entries: new Map(),
+    limit: pLimit(TOOL_IMAGE_DOWNLOAD_CONCURRENCY)
+  };
+  toolImageDownloadCaches.set(fileContext, created);
+  return created;
+};
+
 /**
- * 按来源选择图片下载通道。
+ * 按来源选择图片下载通道（用户消息路径）。
  *
  * 沙箱预览代理可能部署在内网，公共 SSRF 内网拦截会把配置里的合法预览地址一起拒掉，
  * 导致工具图片全部丢失。这类地址的 origin 来自服务端配置而不是用户输入，因此只对
  * 该 origin 使用受限通道；其它地址继续走安全的公共下载逻辑。
- *
- * fastAgent（loadRequestMessages）与 piAgent（工具 content 转换）都通过这里取图，
- * 保证两条 provider 路径对沙箱预览地址的能力一致。
  */
 export const loadImageBase64 = (url: string) => {
   const previewProxyBase = getSystemInstanceConfig().subservice.agentSandbox.proxy.previewUrl;
@@ -88,6 +115,23 @@ export const loadImageBase64 = (url: string) => {
   }
 
   return getImageBase64(url, { trustedOrigin: previewProxyBase });
+};
+
+/**
+ * 工具视觉通道专用图片下载入口（fastAgent 与 piAgent 共用）。
+ *
+ * 工具返回的外链可能返回 200 text/html 登录页或慢响应：这里开启魔数白名单校验与短超时，
+ * 防止把非图像字节包装成无效 data:image/... 发给上游视觉模型，同时保留通用下载器的兼容语义。
+ */
+export const loadToolImageBase64 = (url: string) => {
+  const previewProxyBase = getSystemInstanceConfig().subservice.agentSandbox.proxy.previewUrl;
+  const isSandboxPreview = Boolean(previewProxyBase && isSandboxPreviewFileUrl(url));
+
+  return getImageBase64(url, {
+    ...(isSandboxPreview ? { trustedOrigin: previewProxyBase } : {}),
+    timeoutMs: TOOL_IMAGE_DOWNLOAD_TIMEOUT_MS,
+    allowedMimeTypes: providerImageMimeTypes
+  });
 };
 
 /**
@@ -401,17 +445,13 @@ export const loadRequestMessages = async ({
     return [...mediaParts, { type: 'text', text: input }];
   };
 
-  /**
-   * 归一化图片输入：内部文件、强制配置或工具图片（forceBase64）由服务端转 base64，
-   * 用户远程图片默认直接透传给模型服务，避免在服务端对用户任意多图做并发 HEAD/GET 引发 DoS。
-   */
-  const normalizeImageContentPart = async (
-    item: Extract<ChatCompletionContentPart, { type: 'image_url' }>,
-    options?: { forceBase64?: boolean }
-  ): Promise<ChatCompletionContentPart | undefined> => {
-    const { key: _key, ...imageItem } = item;
-    const imgUrl = imageItem.image_url.url;
+  const toolImageCache = getToolImageDownloadCache(fileContext);
 
+  /** 规范化已内联的 data URI 图片 part；非 data URI 返回 undefined 交由后续下载逻辑处理。 */
+  const normalizeInlineImageDataPart = (
+    imageItem: Omit<Extract<ChatCompletionContentPart, { type: 'image_url' }>, 'key'>
+  ): ChatCompletionContentPart | undefined => {
+    const imgUrl = imageItem.image_url.url;
     const inlineImage = parseInlineImageDataUri(imgUrl);
     if (inlineImage) {
       return {
@@ -427,7 +467,47 @@ export const loadRequestMessages = async ({
       return imageItem;
     }
 
-    if (options?.forceBase64 || shouldLoadMediaAsBase64(imgUrl)) {
+    return undefined;
+  };
+
+  /**
+   * 在当前 fileContext 生命周期内复用工具图片下载结果并限制并发度。
+   * 避免 FastAgent 后续每轮携带历史 tool 消息时反复 GET 同一张图，失败结果同样记忆以避免慢图反复阻塞。
+   */
+  const loadCachedToolImageDataUri = (url: string): Promise<string | undefined> => {
+    const cached = toolImageCache.entries.get(url);
+    if (cached) return cached;
+
+    const pending = toolImageCache.limit(async () => {
+      try {
+        const { completeBase64 } = await loadToolImageBase64(url);
+        return completeBase64;
+      } catch (error) {
+        logger.warn('Drop tool image part after normalization failure', {
+          error: getErrText(error)
+        });
+        return undefined;
+      }
+    });
+    toolImageCache.entries.set(url, pending);
+    return pending;
+  };
+
+  /**
+   * 归一化图片输入：内部文件或强制配置时转 base64，远程图片直接透传给模型服务。
+   * 不在 FastGPT 服务端做 HEAD 可访问性校验，避免多图并发请求引发外部连接耗尽 DoS。
+   */
+  const normalizeImageContentPart = async (
+    item: Extract<ChatCompletionContentPart, { type: 'image_url' }>
+  ): Promise<ChatCompletionContentPart | undefined> => {
+    const { key: _key, ...imageItem } = item;
+    const inlinePart = normalizeInlineImageDataPart(imageItem);
+    if (inlinePart) {
+      return inlinePart;
+    }
+
+    const imgUrl = imageItem.image_url.url;
+    if (shouldLoadMediaAsBase64(imgUrl)) {
       try {
         const { completeBase64: base64 } = await loadImageBase64(imgUrl);
 
@@ -566,10 +646,25 @@ export const loadRequestMessages = async ({
   const normalizeToolMediaContentParts = async (content: ChatCompletionContentPart[]) => {
     const normalized = await Promise.all(
       content.map(async (item) => {
-        try {
-          if (item.type === 'image_url') {
-            return await normalizeImageContentPart(item, { forceBase64: true });
+        if (item.type === 'image_url') {
+          const { key: _key, ...imageItem } = item;
+          const inlinePart = normalizeInlineImageDataPart(imageItem);
+          if (inlinePart) {
+            return inlinePart;
           }
+
+          const base64 = await loadCachedToolImageDataUri(imageItem.image_url.url);
+          if (!base64) return undefined;
+          return {
+            ...imageItem,
+            image_url: {
+              ...imageItem.image_url,
+              url: base64
+            }
+          };
+        }
+
+        try {
           const [result] = await normalizeMediaContentParts([item]);
           return result;
         } catch (error) {
