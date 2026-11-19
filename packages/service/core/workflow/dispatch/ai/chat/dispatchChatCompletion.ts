@@ -10,8 +10,10 @@ import { createLLMResponse } from '../../../../ai/llm/request';
 import { computedMaxToken } from '../../../../ai/utils';
 import { getWorkflowFileContext, getWorkflowFileMaxAmount } from '../../../utils/context';
 import { loadWorkflowModelResource } from '../../../resource/service';
-import { checkQuoteQAValue, getHistories, getNodeErrResponse } from '../../utils';
+import { checkQuoteQAValue, getNodeErrResponse } from '../../utils';
+import { getWorkflowNodeMemoryKey } from '../../../memory/state';
 import { getDispatchModerationContext } from '../../utils/runtime';
+import { selectChatHistories } from './historyWindow';
 import { getChatMessages } from './chatMessages';
 import { getDatasetCiteData } from './datasetCite';
 import { getAIChatFileContextConfig, getInputFiles } from './fileContext';
@@ -30,7 +32,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     retainDatasetCite = true,
     externalProvider,
     histories,
-    node: { name, version, inputs },
+    node: { nodeId, name, version, inputs },
     runningAppInfo,
     runningUserInfo,
     workflowStreamResponse,
@@ -42,6 +44,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       temperature,
       maxToken,
       history = 6,
+      aiChatHistoryWindow,
       userChatInput: rawUserChatInput = '',
       isResponseAnswerText = true,
       systemPrompt: rawSystemPrompt = '',
@@ -84,7 +87,29 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     const fileContextConfig = getAIChatFileContextConfig({ inputs, rawFileLinks });
     fileLinks = fileContextConfig.fileLinks;
 
-    const chatHistories = getHistories(history, histories);
+    const memoryNodeId = `${nodeId}:historyWindow`;
+    const memoryKey = getWorkflowNodeMemoryKey({
+      memoryState: props.memoryState,
+      runningAppInfo,
+      nodeId: memoryNodeId
+    });
+    const historySelection = selectChatHistories({
+      history,
+      histories,
+      window: aiChatHistoryWindow,
+      memoryKey,
+      // 只读取本节点，沿用旧键兼容及调用路径保护；周期窗口独立于固定 history=0。
+      memories: props.memoryState
+        ? {
+            [memoryKey]: props.memoryState.readNodeMemory<unknown>({
+              runningAppInfo,
+              nodeId: memoryNodeId
+            })
+          }
+        : undefined,
+      responseChatItemId: props.responseChatItemId
+    });
+    const chatHistories = historySelection.histories;
     quoteQA = checkQuoteQAValue(quoteQA);
 
     const [datasetCiteData, userFiles] = await Promise.all([
@@ -243,6 +268,9 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     }
 
     return {
+      ...(historySelection.memories
+        ? { [DispatchNodeResponseKeyEnum.memories]: historySelection.memories }
+        : {}),
       data: {
         answerText: answerText,
         reasoningText,
