@@ -5,6 +5,7 @@ import { AuditEventEnum, TeamAuditEventList } from '../../../../../support/user/
 import { createPaginationSchema } from '../../../../api';
 import { LanguageSchema } from '../../../../../common/i18n/type';
 import { DateSchema } from '../../../../../common/zod';
+import { AuditListResourcesSchema } from '../../../../../support/user/audit/type';
 
 /* ============================================================================
  * API: 获取团队操作日志
@@ -70,14 +71,18 @@ export const AuditListItemSchema = z
     sourceMember: SourceMemberSchema.meta({
       description: '发起操作的团队成员'
     }),
-    event: z.enum(TeamAuditEventList).meta({
-      example: AuditEventEnum.UPDATE_APP_INFO,
-      description: '操作事件类型'
-    }),
+    event: z
+      .enum([...TeamAuditEventList, 'unknown'] as const)
+      .catch('unknown')
+      .meta({
+        example: AuditEventEnum.UPDATE_APP_INFO,
+        description: '操作事件类型；未识别的历史事件回退为 unknown'
+      }),
     timestamp: z.coerce.date().meta({
       example: '2026-01-02T00:00:00.000Z',
       description: '操作发生时间'
     }),
+    resources: AuditListResourcesSchema.optional().meta({ description: '关联的操作资源列表' }),
     metadata: z
       .record(
         z.string(),
@@ -98,6 +103,7 @@ export const AuditListItemSchema = z
   .meta({
     description: '团队操作日志'
   });
+export type AuditListItemType = z.infer<typeof AuditListItemSchema>;
 
 export const AuditListResponseSchema = z.object({
   list: z.array(AuditListItemSchema).meta({
@@ -123,6 +129,6 @@ export const AuditExportBodySchema = AuditFilterSchema.extend({
 export type AuditExportBodyType = z.infer<typeof AuditExportBodySchema>;
 export const AuditExportResponseSchema = z.string().meta({
   description: '带 UTF-8 BOM 的 CSV 文件流',
-  example: '\uFEFF操作人员,操作时间,操作类型,详情'
+  example: '\uFEFF操作时间,操作人员,操作类型,资源,详情'
 });
 export type AuditExportResponseType = z.infer<typeof AuditExportResponseSchema>;

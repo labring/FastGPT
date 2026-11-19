@@ -39,6 +39,7 @@ import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model
 import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { buildDatasetAuditResource } from '@fastgpt/global/support/user/audit/type';
 
 async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResponse> {
   const { datasetParams, files } = parseApiInput({
@@ -206,6 +207,14 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
         tmbId,
         teamId,
         event: AuditEventEnum.CREATE_DATASET,
+        resources: [
+          buildDatasetAuditResource({
+            _id: result.datasetId,
+            name,
+            avatar,
+            type: DatasetTypeEnum.dataset
+          })
+        ],
         params: {
           datasetName: name,
           datasetType: getI18nDatasetType(DatasetTypeEnum.dataset)

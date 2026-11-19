@@ -25,6 +25,7 @@ import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/contro
 import { shouldInheritResourcePermission } from '@fastgpt/service/support/permission/resourcePermissionPolicy';
 import { syncDatasetToCollections } from '@fastgpt/service/support/permission/collection/controller';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { buildDatasetAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
@@ -43,6 +44,7 @@ const logDatasetMove = ({
     tmbId,
     teamId,
     event: AuditEventEnum.MOVE_DATASET,
+    resources: [buildDatasetAuditResource(dataset)],
     params: {
       datasetName: dataset.name,
       targetFolderName: targetName,

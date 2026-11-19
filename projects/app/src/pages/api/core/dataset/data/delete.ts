@@ -3,6 +3,7 @@ import { deleteDatasetData } from '@/service/core/dataset/data/data';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildCollectionAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { type ApiRequestProps } from '@fastgpt/next/type';
@@ -33,6 +34,7 @@ async function handler(req: ApiRequestProps): Promise<DeleteDatasetDataResponse>
       tmbId,
       teamId,
       event: AuditEventEnum.DELETE_DATA,
+      resources: [buildCollectionAuditResource(collection)],
       params: {
         collectionName: collection.name,
         datasetName: collection.dataset?.name || '',
