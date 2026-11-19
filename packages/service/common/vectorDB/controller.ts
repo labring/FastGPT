@@ -21,7 +21,8 @@ import { retryFn, withTimeout } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../logger';
 import { isRedisLeaseError, LeaseCache } from '@fastgpt/dal/redis/caches/lease';
 
-const getVectorObj = (): VectorControllerType => {
+/** 根据部署配置创建向量存储控制器，迁移验收也通过同一实现写入探测向量。 */
+export const createVectorController = (): VectorControllerType => {
   switch (getVectorType()) {
     case 'seekdb':
       return new SeekVectorCtrl({ type: 'seekdb' });
@@ -37,7 +38,7 @@ const getVectorObj = (): VectorControllerType => {
   }
 };
 
-const Vector = getVectorObj();
+const Vector = createVectorController();
 const recallLease = new LeaseCache();
 // 执行期间每 10 秒续租；释放失败时，额度在最后一次续租后 30 秒过期。
 const RECALL_LEASE_TTL_MS = 30_000;

@@ -1,23 +1,40 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const startSqlFullTextIndexBuild = vi.hoisted(() => vi.fn());
+vi.mock('@fastgpt/service/common/vectorDB/fullText/controller', () => ({
+  startSqlFullTextIndexBuild
+}));
 import { ObVectorCtrl } from '@fastgpt/service/common/vectorDB/oceanbase';
 
-const { query } = vi.hoisted(() => ({ query: vi.fn() }));
+const { query, insertBoundRows } = vi.hoisted(() => ({ query: vi.fn(), insertBoundRows: vi.fn() }));
 vi.unmock('@fastgpt/service/common/vectorDB/oceanbase');
 vi.unmock('@fastgpt/service/common/vectorDB/constants');
 vi.mock('@fastgpt/service/common/vectorDB/oceanbase/controller', () => ({
   ObClass: class {
     query = query;
+    insertBoundRows = insertBoundRows;
   }
 }));
 
 describe.each(['oceanbase', 'seekdb'] as const)('ObVectorCtrl (%s)', (type) => {
   beforeEach(() => {
     query.mockReset().mockResolvedValue([{ affectedRows: 0 }]);
+    insertBoundRows
+      .mockReset()
+      .mockResolvedValue({ insertIds: ['9007199254740993', '9007199254740998'] });
   });
 
-  it('creates the vector index with the agreed HNSW build parameters', async () => {
+  it('creates the vector and native full-text schema and indexes on init', async () => {
+    query.mockResolvedValue([[]]);
     await new ObVectorCtrl({ type }).init();
     expect(query).toHaveBeenCalledWith(expect.stringContaining('m=32, ef_construction=256'));
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'fulltext_tokens LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL'
+      )
+    );
+    expect(startSqlFullTextIndexBuild).toHaveBeenCalledWith(type);
+    expect(query.mock.calls.some(([sql]) => String(sql).includes('CREATE FULLTEXT'))).toBe(false);
   });
 
   it.each([200, 100])('applies the supplied search width %j', async (hnswEfSearch) => {
@@ -51,5 +68,47 @@ describe.each(['oceanbase', 'seekdb'] as const)('ObVectorCtrl (%s)', (type) => {
     await expect(ctrl.refreshCreateTime({ teamId: 'team', idList: ['1'] })).rejects.toThrow(
       'offline'
     );
+  });
+
+  it('writes vector-aligned analyzed tokens through the bound ID-preserving path', async () => {
+    expect(
+      await new ObVectorCtrl({ type }).insert({
+        teamId: 't',
+        datasetId: 'd',
+        collectionId: 'c',
+        vectors: [
+          [1, 0],
+          [0, 1]
+        ],
+        texts: ["O'Reilly 中文", '']
+      })
+    ).toEqual({ insertIds: ['9007199254740993', '9007199254740998'] });
+    expect(insertBoundRows).toHaveBeenCalledWith('modeldata', {
+      values: [
+        [
+          { key: 'vector', value: '[1,0]' },
+          { key: 'team_id', value: 't' },
+          { key: 'dataset_id', value: 'd' },
+          { key: 'collection_id', value: 'c' },
+          { key: 'fulltext_tokens', value: "o ' reilly 中文" }
+        ],
+        [
+          { key: 'vector', value: '[0,1]' },
+          { key: 'team_id', value: 't' },
+          { key: 'dataset_id', value: 'd' },
+          { key: 'collection_id', value: 'c' },
+          { key: 'fulltext_tokens', value: '' }
+        ]
+      ]
+    });
+    await expect(
+      new ObVectorCtrl({ type }).insert({
+        teamId: 't',
+        datasetId: 'd',
+        collectionId: 'c',
+        vectors: [[1, 0]],
+        texts: []
+      })
+    ).rejects.toThrow('match vector');
   });
 });

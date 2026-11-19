@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { Client, type Pool } from 'pg';
 import { PgClient } from '@fastgpt/service/common/vectorDB/pg/controller';
 import { PgVectorCtrl } from '@fastgpt/service/common/vectorDB/pg';
@@ -32,8 +33,11 @@ describe('PgVectorCtrl.init', () => {
       expect(statements[0]).toContain(
         `vector ${vectorVQ === 16 ? 'HALFVEC' : 'VECTOR'}(1536) NOT NULL`
       );
+      expect(statements[0]).toContain('fulltext_tokens TEXT');
+      expect(statements.join('\n')).not.toMatch(/pg_search|USING paradedb/i);
+      expect(statements[1]).toMatch(/IF NOT EXISTS[\s\S]*pg_attribute[\s\S]*ALTER TABLE/i);
       expect(statements.some((sql) => /USING hnsw/i.test(sql))).toBe(false);
-      expect(statements).toHaveLength(3);
+      expect(statements).toHaveLength(4);
     }
   );
 });

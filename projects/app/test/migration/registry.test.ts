@@ -20,13 +20,17 @@ describe('validateSystemMigrationRegistry', () => {
       '20261104_backfill_chat_publish_source',
       '20261104_backfill_openapi_key_type',
       '20261112_backfill_stt_pricing_type',
-      '20261116_migrate_system_configs'
+      '20261116_migrate_system_configs',
+      '20261110_migrate_sql_fulltext'
     ]);
     const tasks: readonly SystemMigration[] = systemMigrations;
     expect(tasks.filter((task) => task.blockStartup).map(({ id }) => id)).toEqual([
       '20261116_migrate_system_configs'
     ]);
-    expect(tasks.filter((task) => task.delay || task.manual || task.resumable)).toEqual([]);
+    expect(tasks.filter((task) => task.delay || task.resumable)).toEqual([]);
+    expect(tasks.filter((task) => task.manual).map(({ id }) => id)).toEqual([
+      '20261110_migrate_sql_fulltext'
+    ]);
 
     const configMigration = tasks.find(({ id }) => id === '20261116_migrate_system_configs');
     expect(configMigration).toMatchObject({
@@ -49,7 +53,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20261022_initialize_dataset_vector_indexes',
       '20261104_backfill_chat_publish_source',
       '20261104_backfill_openapi_key_type',
-      '20261112_backfill_stt_pricing_type'
+      '20261112_backfill_stt_pricing_type',
+      '20261110_migrate_sql_fulltext'
     ]);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
@@ -121,6 +126,20 @@ describe('validateSystemMigrationRegistry', () => {
       '20261104_backfill_chat_publish_source',
       '20261104_backfill_openapi_key_type'
     ]);
+  });
+
+  it('appends SQL full-text migration as a manual task gated on cluster upgrade completion', () => {
+    const task = systemMigrations.at(-1);
+    expect(task).toMatchObject({
+      id: '20261110_migrate_sql_fulltext',
+      version: '4.18.0',
+      manual: true
+    });
+    expect(task).not.toHaveProperty('dependsOn');
+    expect(task).not.toHaveProperty('blockStartup');
+    expect(task).not.toHaveProperty('independent');
+    expect(task).not.toHaveProperty('delay');
+    expect(task?.progressSteps.map(({ key }) => key)).toEqual(['prepare', 'scan', 'validation']);
   });
 
   it('rejects delayed manual execution', () => {

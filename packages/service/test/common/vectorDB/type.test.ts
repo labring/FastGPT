@@ -47,10 +47,9 @@ describe('vectorDB type schemas', () => {
     }
   });
 
-  it('TC-5.3 FullTextStore type exposes search + write/delete (compile-time contract)', () => {
-    // 被测: FullTextStore / FullTextSearchProps / FullTextSearchItem / FullTextWriteProps  等级: 3-High
-    // (契约场景) FullTextStore 含 search 与写/删方法(milvus 实现为空,mongo 真实落库);
-    // props/item 字段形状与下游 Task 6/7 的消费一致。
+  it('TC-5.3 FullTextStore type exposes search and compatibility write/delete hooks', () => {
+    // 被测: FullTextStore / FullTextSearchProps / FullTextSearchItem  等级: 3-High
+    // (契约场景) FullTextStore 暴露 search 及兼容期 Mongo 全文写删接口。
     const store: FullTextStore = {
       search: async () => [],
       write: async () => {},
@@ -58,7 +57,6 @@ describe('vectorDB type schemas', () => {
       deleteByDatasetIds: async () => {},
       deleteByCollectionIds: async () => {}
     };
-    // 类型层面:FullTextStore 包含 search + 写/删方法
     const keys = Object.keys(store);
     expect(keys).toEqual([
       'search',

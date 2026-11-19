@@ -9,6 +9,24 @@ upgradeTags:
 
 **Prerequisite**: Complete the required historical migrations on 4.17.x before upgrading. Version 4.18.x removes the old task registrations and implementations, so they will no longer run; historical status and error records remain in the database.
 
+> **Before upgrading a deployment that uses a SQL vector store**
+>
+> To keep full-text search available during the upgrade, set `TMP_MIGRATE_FULL_TEXT=true` on every App, Pro, and standalone indexing process before starting the first 4.18.0 instance.
+>
+> With the variable unset, instances read and write full-text data directly in SQL. Before migration completes, both full-text and hybrid search can fail or miss historical full-text matches.
+
+### Full-text search migration for SQL vector stores
+
+On PostgreSQL, OceanBase, SeekDB, and openGauss deployments, compatibility mode keeps full-text reads on MongoDB and writes to both stores during the upgrade, including while the manual migration is pending or has failed. Milvus and Zilliz keep their existing full-text search.
+
+1. Upgrade every instance and let legacy indexing jobs finish. On PostgreSQL, install and preload a `pg_search` extension compatible with your PostgreSQL version. The migration selects the index syntax based on the extension version and validates both the index and the search results. For other vector stores, use OceanBase 4.3.5.1 or later in MySQL mode, SeekDB 1.0.1 or later, or openGauss 7.0.x RC2 or later with DataVec BM25. If your image lacks full-text support, keep compatibility mode enabled until the database meets these requirements.
+2. In the Admin Console, open **System upgrade**, run **Migrate SQL vector full-text search**, and wait for the backfill and search validation to pass. When a vector row is confirmed missing, the migration calls the Dataset's embedding model to rebuild the vector and full-text tokens. It replaces only the missing vector references and skips FastGPT point checks and deductions. On PostgreSQL, the migration reuses an existing valid index and allows writes during backfill and validation.
+   - With `pg_search` 0.26.0 or later, the full-text index builds online. Use one of these versions if writes must continue during the build.
+   - With earlier versions, vector table writes wait while PostgreSQL first builds or rebuilds the index. Search remains available. Writes in compatibility mode also wait and can time out before acquiring the lock. The PostgreSQL client's query timeout is 60 seconds. Schedule the migration during off-peak hours. To avoid write timeouts, pause all Dataset vector writes and let in-flight writes finish before starting or retrying the migration. You can resume writes when **Prepare full-text schema and index** completes.
+3. After the migration succeeds, schedule a cutover window for the whole deployment. Pause writes and let in-flight requests finish, then remove `TMP_MIGRATE_FULL_TEXT` from every affected process and restart them. Resume writes once all instances use native SQL full-text search. As long as the variable is `true`, reads stay on MongoDB and both stores receive writes even after the migration succeeds.
+
+Before restoring MongoDB full-text search, check the legacy index and reconcile any additions, updates, and deletions made while compatibility mode was off.
+
 ### Configuration changes
 
 - Configure the Secure attribute for login cookies and the shared HTTP client response size limit in Admin → Security and Admin → Resource limits. Startup migration imports legacy `AUTH_COOKIE_SECURE` and `SERVICE_AXIOS_MAX_CONTENT_LENGTH` once from the App process environment only; values set in Pro are not imported. Existing form settings take precedence. Defaults remain Secure disabled and a 20 MiB response limit. The shared limit applies to decompressed buffered responses; 0 allows only empty responses. Explicit caller limits take precedence, and streamed downloads retain their business quotas. New limits apply to subsequent requests, and cookie attributes apply when cookies are reissued.
@@ -35,7 +53,7 @@ This version is still in development. Image tags will be added at release.
 
 ### Upgrade scripts
 
-These migrations run automatically; no manual execution is required.
+The tasks below run automatically. Follow the manual steps above for SQL vector full-text search.
 
 1. Added **Initialize Dataset vector indexes** (`20261022_initialize_dataset_vector_indexes`), which runs automatically in the background after startup for PostgreSQL without blocking the App: it first verifies and drops the legacy global `vector_index` online, then counts vectors in active Datasets in batches and queues index maintenance jobs. A successful migration means counting and queueing are complete; index builds continue in a globally serial queue. If cleanup or scanning fails, resolve the issue and retry from the upgrade management page to resume from the saved checkpoint. A custom index with the same name but a different definition is preserved and causes an error.
 2. PG partial indexes require `halfvec` support, a fixed vector dimension in the `1–4000` range, permission to create and drop indexes online, and sufficient memory, shared memory, and disk space. Datasets whose indexes are not ready or have failed continue to use exact search, which may increase query time. Failed builds do not automatically retry with a lower resource budget; after the issue is resolved, the next actual vector count queues another attempt. A cache hit does not trigger a retry.

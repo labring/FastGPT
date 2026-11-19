@@ -12,6 +12,8 @@ import { initializeDatasetVectorIndexes } from './tasks/4180/20261022_initialize
 import { backfillChatPublishSource } from './tasks/4180/20261104_backfill_chat_publish_source';
 import { backfillOpenApiKeyType } from './tasks/4180/20261104_backfill_openapi_key_type';
 import { backfillSTTPricingType } from './tasks/4180/20261112_backfill_stt_pricing_type';
+import { migrateSqlFullTextMigration } from './tasks/4180/20261110_migrate_sql_fulltext';
+import { SQL_FULL_TEXT_MIGRATION_ID } from '@fastgpt/global/core/dataset/fullText/constants';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -231,6 +233,30 @@ export const systemMigrations = [
     // 系统配置先迁移成功，后续模型加载与业务启动才能读取完整的生效配置。
     blockStartup: true,
     run: migrateSystemConfigs
+  },
+  {
+    id: SQL_FULL_TEXT_MIGRATION_ID,
+    version: '4.18.0',
+    // 需待集群所有旧版 App/Pro 节点与旧训练消费者升级排空后再手动执行，防止切读后仍有旧写入方产生 NULL 词串。
+    manual: true,
+    nameKey: i18nT('system_migration:migrations.20261110_migrate_sql_fulltext.name'),
+    descriptionKey: i18nT('system_migration:migrations.20261110_migrate_sql_fulltext.description'),
+    resultKey: i18nT('system_migration:migrations.20261110_migrate_sql_fulltext.result'),
+    progressSteps: [
+      {
+        key: 'prepare',
+        labelKey: i18nT('system_migration:migrations.20261110_migrate_sql_fulltext.prepare')
+      },
+      {
+        key: 'scan',
+        labelKey: i18nT('system_migration:migrations.20261110_migrate_sql_fulltext.scan')
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT('system_migration:migrations.20261110_migrate_sql_fulltext.validation')
+      }
+    ],
+    run: migrateSqlFullTextMigration
   }
 ] as const satisfies readonly SystemMigration[];
 
