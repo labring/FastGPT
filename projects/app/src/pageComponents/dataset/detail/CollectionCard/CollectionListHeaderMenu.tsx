@@ -151,6 +151,7 @@ const CollectionListHeaderMenu = ({ column, title, selection, onChange }: Props)
               <MenuItemOption
                 key={option.value}
                 value={option.value}
+                icon={null}
                 borderRadius="sm"
                 py={2}
                 px={3}
