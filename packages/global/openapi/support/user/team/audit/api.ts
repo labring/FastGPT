@@ -103,6 +103,7 @@ export const AuditListItemSchema = z
   .meta({
     description: '团队操作日志'
   });
+export type AuditListItemType = z.infer<typeof AuditListItemSchema>;
 
 export const AuditListResponseSchema = z.object({
   list: z.array(AuditListItemSchema).meta({

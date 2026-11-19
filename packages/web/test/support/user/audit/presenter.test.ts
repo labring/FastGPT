@@ -523,4 +523,42 @@ describe('audit presenter summary', () => {
       ).toBe('account_team:audit_detail_invitation_link(link=2026 研发部邀请)');
     }
   });
+
+  it('uses currentType for navigation link while keeping snapshot type in summary', () => {
+    const folderId = '68ad85a7463006c963799f01';
+    const resource = {
+      type: AuditResourceTypeEnum.appFolder,
+      currentType: AuditResourceTypeEnum.toolFolder,
+      id: folderId,
+      name: '共享目录'
+    };
+
+    expect(
+      resolveAuditResources({
+        event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
+        resources: [resource],
+        metadata: { targetResource: '共享目录', parentResource: '根目录' }
+      })
+    ).toEqual([
+      expect.objectContaining({
+        type: AuditResourceTypeEnum.appFolder,
+        name: '共享目录',
+        href: `/dashboard/tool?parentId=${folderId}`
+      })
+    ]);
+
+    expect(
+      formatAuditSummary({
+        event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
+        resources: [resource],
+        metadata: { targetResource: '共享目录', parentResource: '根目录' },
+        t
+      })
+    ).toBe(
+      [
+        'account_team:audit_detail_resource_type(type=account_team:audit_resource_type_appFolder)',
+        'account_team:audit_detail_inherit_parent(parentResource=根目录)'
+      ].join('\n')
+    );
+  });
 });

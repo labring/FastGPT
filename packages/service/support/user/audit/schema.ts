@@ -86,10 +86,8 @@ const TeamAuditSchema = new Schema({
 defineIndex(TeamAuditSchema, { key: { teamId: 1, timestamp: -1, _id: -1 } });
 defineIndex(TeamAuditSchema, { key: { teamId: 1, tmbId: 1, event: 1 } });
 defineIndex(TeamAuditSchema, { key: { event: 1, _id: -1 } });
-defineIndex(TeamAuditSchema, {
-  key: { timestamp: 1, teamId: 1 },
-  deprecated: true
-});
+// 过期审计日志归档任务需按全局 timestamp 范围预筛候选 teamId，不能仅靠 teamId 前缀索引覆盖。
+defineIndex(TeamAuditSchema, { key: { timestamp: 1, teamId: 1 } });
 
 export const MongoTeamAudit = getMongoLogModel<TeamAuditSchemaType>(
   TeamAuditCollectionName,

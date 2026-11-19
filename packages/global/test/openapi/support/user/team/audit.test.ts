@@ -4,6 +4,7 @@ import {
   AuditListItemSchema,
   AuditExportBodySchema
 } from '@fastgpt/global/openapi/support/user/team/audit/api';
+import { AuditResourceTypeEnum } from '@fastgpt/global/support/user/audit/type';
 
 const filters = {
   dateStart: '2026-03-07T00:00:00.000+08:00',
@@ -149,5 +150,35 @@ describe('team audit date contracts', () => {
       metadata: {}
     });
     expect(parsed.event).toBe('unknown');
+  });
+
+  it('preserves optional currentType on list item resources alongside snapshot type', () => {
+    const parsed = AuditListItemSchema.parse({
+      _id: '68ad85a7463006c963799a10',
+      sourceMember: {
+        name: 'Alice',
+        status: 'active'
+      },
+      event: 'RESUME_INHERIT_PERMISSION',
+      timestamp: '2026-01-02T00:00:00.000Z',
+      resources: [
+        {
+          type: AuditResourceTypeEnum.appFolder,
+          currentType: AuditResourceTypeEnum.toolFolder,
+          id: '68ad85a7463006c963799a05',
+          name: 'Shared Folder'
+        }
+      ],
+      metadata: {
+        newItemNames: ['name', 'type']
+      }
+    });
+    expect(parsed.resources?.[0]).toEqual({
+      type: AuditResourceTypeEnum.appFolder,
+      currentType: AuditResourceTypeEnum.toolFolder,
+      id: '68ad85a7463006c963799a05',
+      name: 'Shared Folder'
+    });
+    expect(parsed.metadata).toEqual({ newItemNames: ['name', 'type'] });
   });
 });

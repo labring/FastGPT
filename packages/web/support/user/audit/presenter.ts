@@ -122,9 +122,9 @@ const asNonEmptyString = (value: unknown): string | undefined => {
   return trimmed ? trimmed : undefined;
 };
 
-/** 解析资源头像或内置图标；无头像概念的实体返回 undefined，组件据此省略头像槽位。 */
+/** 解析资源头像或内置图标；优先按当前实时类型选取默认图标，无头像概念的实体返回 undefined。 */
 export const resolveAuditResourceAvatar = (resource: AuditResourceType): string | undefined => {
-  switch (resource.type) {
+  switch (resource.currentType ?? resource.type) {
     case AuditResourceTypeEnum.apiKey:
     case AuditResourceTypeEnum.enterprise:
       return undefined;
@@ -161,11 +161,11 @@ export const resolveAuditResourceAvatar = (resource: AuditResourceType): string 
   }
 };
 
-/** 解析站内相对跳转地址（不含部署前缀）；不可跳转、缺少 ID/父级上下文或已删除时返回 undefined。 */
+/** 解析站内相对跳转地址（不含部署前缀）；优先按当前实时类型路由，不可跳转、缺少 ID/父级上下文或已删除时返回 undefined。 */
 export const resolveAuditResourceHref = (resource: AuditResourceType): string | undefined => {
   if (!resource.id || resource.deleted) return undefined;
 
-  switch (resource.type) {
+  switch (resource.currentType ?? resource.type) {
     case AuditResourceTypeEnum.app:
     case AuditResourceTypeEnum.tool:
       return `/app/detail?appId=${encodeURIComponent(resource.id)}`;

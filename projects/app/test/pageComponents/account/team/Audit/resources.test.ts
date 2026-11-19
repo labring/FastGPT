@@ -2,14 +2,12 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import {
-  AuditResourceTypeEnum,
-  type TeamAuditListItemType
-} from '@fastgpt/global/support/user/audit/type';
+import { AuditResourceTypeEnum } from '@fastgpt/global/support/user/audit/type';
+import type { AuditListItemType } from '@fastgpt/global/openapi/support/user/team/audit/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
-const mocks = vi.hoisted(() => ({ logs: [] as TeamAuditListItemType[] }));
+const mocks = vi.hoisted(() => ({ logs: [] as AuditListItemType[] }));
 
 vi.mock('next-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } })
@@ -123,7 +121,7 @@ describe('AuditLog resource column', () => {
             }
           ]
         }
-      ] as TeamAuditListItemType[];
+      ] as AuditListItemType[];
 
       const html = renderToStaticMarkup(React.createElement(AuditLog, { Tabs: null }));
       expect(html.indexOf('account_team:log_time')).toBeLessThan(

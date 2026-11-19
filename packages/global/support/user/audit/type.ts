@@ -1,4 +1,3 @@
-import type { SourceMemberType } from '../type';
 import type { TeamAuditEvent } from './constants';
 import z from 'zod';
 import { ObjectIdSchema } from '../../../common/type/mongo';
@@ -41,7 +40,10 @@ export const classifyAppAuditResourceType = (
 /** 每项标识一个受操作实体，写入时记录名称/头像快照以便删除后依然可读且导出无需二次查库。 */
 export const AuditResourceSchema = z
   .strictObject({
-    type: z.enum(AuditResourceTypeEnum).meta({ description: '关联资源类型' }),
+    type: z.enum(AuditResourceTypeEnum).meta({ description: '操作时的关联资源类型快照' }),
+    currentType: z.enum(AuditResourceTypeEnum).optional().meta({
+      description: '资源当前实时类型；仅当列表实时补查发现类型已变化时返回，用于构造跳转路由'
+    }),
     id: z.string().trim().min(1).optional().meta({ description: '关联资源 ID' }),
     name: z.string().optional().meta({ description: '操作时的资源名称快照' }),
     avatar: z.string().optional().meta({ description: '资源头像或内置图标' }),
@@ -203,6 +205,7 @@ export const normalizeStoredAuditResource = (raw: unknown): AuditResourceType | 
   if (typeof record.type === 'string') {
     const candidate = {
       type: record.type,
+      ...(typeof record.currentType === 'string' ? { currentType: record.currentType } : {}),
       ...(toOptionalIdString(record.id) ? { id: toOptionalIdString(record.id) } : {}),
       ...(typeof record.name === 'string' && record.name ? { name: record.name } : {}),
       ...(typeof record.avatar === 'string' && record.avatar ? { avatar: record.avatar } : {}),
@@ -333,11 +336,3 @@ export type TeamAuditSchemaType = {
       scope: 'system';
     }
 );
-export type TeamAuditListItemType = {
-  _id: string;
-  sourceMember: SourceMemberType;
-  event: TeamAuditEvent | 'unknown';
-  timestamp: Date;
-  resources?: AuditResourceType[];
-  metadata: Record<string, string>;
-};
