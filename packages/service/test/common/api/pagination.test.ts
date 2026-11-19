@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
   normalizePagination,
+  parseCursor,
   parsePaginationRequest
 } from '@fastgpt/service/common/api/pagination';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 import type { NodeApiRequest } from '@fastgpt/service/types/http';
+import { Types } from '@fastgpt/service/common/mongo';
 
 describe('normalizePagination', () => {
   it.each([
@@ -66,4 +68,16 @@ describe('parsePaginationRequest', () => {
       expect(parse(body, query)).toEqual(expected);
     }
   );
+});
+
+describe('parseCursor', () => {
+  it('converts milliseconds and log ID into Mongo query values', () => {
+    const id = '68ad85a7463006c963799a05';
+    const timestamp = 1735689600000;
+
+    expect(parseCursor({ timestamp, id })).toEqual({
+      updateTime: new Date(timestamp),
+      id: expect.any(Types.ObjectId)
+    });
+  });
 });

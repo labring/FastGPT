@@ -5,6 +5,7 @@ import {
 } from '@fastgpt/global/openapi/api';
 import type { NodeApiRequest } from '../../types/http';
 import { parseApiInput } from '../zod/requestParseError';
+import { Types } from '../mongo';
 
 const PaginationRequestSchema = createPaginationSchema({
   pageSize: PaginationPageSizeSchema
@@ -43,3 +44,11 @@ export const parsePaginationRequest = (req: NodeApiRequest) => {
     : parseApiInput({ req: input, querySchema: PaginationRequestSchema }).query;
   return normalizePagination(pagination);
 };
+
+/** 将结构化毫秒游标转换为 Mongo 查询所需的日期和 ObjectId。 */
+export const parseCursor = <T extends { timestamp: number; id: string }>(
+  cursor: T
+): { updateTime: Date; id: Types.ObjectId } => ({
+  updateTime: new Date(cursor.timestamp),
+  id: new Types.ObjectId(cursor.id)
+});

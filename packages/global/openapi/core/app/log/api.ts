@@ -194,6 +194,65 @@ export const GetAppChatLogsResponseSchema = z
   .meta({ example: { total: 100, list: [] }, description: '应用对话日志列表' });
 export type getAppChatLogsResponseType = z.infer<typeof GetAppChatLogsResponseSchema>;
 
+/* ============================================================================
+ * API: 搜索应用对话日志
+ * Route: POST /api/core/app/logs/search
+ * Method: POST
+ * Description: 按复合游标搜索指定应用的对话日志，每页固定返回 50 条且不查询总数
+ * Tags: ['App', 'Log', 'Read']
+ * ============================================================================ */
+export const AppChatLogsSearchCursorSchema = z.object({
+  timestamp: IntSchema.meta({
+    example: 1735689600000,
+    description: '游标时间戳（毫秒）'
+  }),
+  id: z
+    .string()
+    .regex(/^[a-f\d]{24}$/i)
+    .meta({
+      example: '68ad85a7463006c963799a05',
+      description: '游标日志 ID'
+    })
+});
+export type AppChatLogsSearchCursor = z.infer<typeof AppChatLogsSearchCursorSchema>;
+
+const { appId: appIdSchema, ...appChatLogsFilterShape } = AppChatLogsFilterSchema.shape;
+const AppChatLogSearchTypeSchema = z.enum(['title', 'chatId']).optional().meta({
+  description: '搜索类型：title 搜索标题，chatId 精确匹配会话 ID；省略时兼容旧搜索',
+  example: 'title'
+});
+export type AppChatLogSearchType = NonNullable<z.infer<typeof AppChatLogSearchTypeSchema>>;
+export const SearchAppChatLogsBodySchema = z.intersection(
+  createAppApiKeyInputSchema(z.object({ appId: appIdSchema })),
+  z.object(appChatLogsFilterShape).extend({
+    chatSearch: AppChatLogsFilterSchema.shape.chatSearch.meta({
+      description: '搜索关键词；与 searchType 共同指定标题搜索或会话 ID 精确匹配',
+      example: 'chat123'
+    }),
+    searchType: AppChatLogSearchTypeSchema,
+    cursor: AppChatLogsSearchCursorSchema.optional().meta({
+      example: {
+        timestamp: 1735689600000,
+        id: '68ad85a7463006c963799a05'
+      },
+      description: '上一页响应中的 nextCursor；首屏请求省略，后续请求原样传入'
+    })
+  })
+);
+export type SearchAppChatLogsBody = z.infer<typeof SearchAppChatLogsBodySchema>;
+
+export const SearchAppChatLogsResponseSchema = z
+  .object({
+    list: z.array(ChatLogItemSchema).meta({
+      description: '对话日志记录列表，固定返回 50 条'
+    }),
+    nextCursor: AppChatLogsSearchCursorSchema.optional().meta({
+      description: '下一页游标；省略表示已加载全部'
+    })
+  })
+  .meta({ example: { list: [], nextCursor: undefined }, description: '应用对话日志搜索结果' });
+export type SearchAppChatLogsResponse = z.infer<typeof SearchAppChatLogsResponseSchema>;
+
 export const ExportChatLogsResponseSchema = z.string().meta({
   description:
     '导出的 CSV 文件内容；鉴权者及回落到 tmbId 的使用者以 id:成员名 展示，无成员名时仅展示 ID；outLinkUid 保留原值'
@@ -203,6 +262,11 @@ export type exportChatLogsResponseType = z.infer<typeof ExportChatLogsResponseSc
 /* Export chat log */
 export const ExportChatLogsBodySchema = createAppApiKeyInputSchema(
   AppChatLogsFilterSchema.safeExtend({
+    chatSearch: AppChatLogsFilterSchema.shape.chatSearch.meta({
+      description: '搜索关键词；与 searchType 共同指定标题搜索或会话 ID 精确匹配',
+      example: 'chat123'
+    }),
+    searchType: AppChatLogSearchTypeSchema,
     title: z.string().meta({
       example: 'chat logs',
       description: '标题'

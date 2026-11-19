@@ -57,6 +57,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     tmbIds,
     outLinkUids,
     chatSearch,
+    searchType,
     title,
     sourcesMap,
     logKeys = [],
@@ -120,6 +121,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     tmbIds,
     outLinkUids,
     chatSearch,
+    searchType,
     feedbackType,
     unreadOnly,
     errorFilter

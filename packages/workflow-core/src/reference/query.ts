@@ -2,6 +2,7 @@ import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/docume
 import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   areWorkflowValueTypesCompatible,
+  filterSelectableWorkflowNodeOutputs,
   getWorkflowReferenceVariables
 } from '@fastgpt/global/common/workflow/reference';
 import { getInput, assertInputMode, getInputReferenceSourceNodes } from './service';
@@ -19,7 +20,10 @@ export const getAvailableInputReferences = ({
   const { input, inputModes } = getInput({ document, nodeId, inputKey });
   assertInputMode({ inputKey, inputModes, nodeId, mode: 'reference' });
   const nodeOutputs = getInputReferenceSourceNodes({ document, nodeId, input }).flatMap((node) =>
-    node.outputs
+    filterSelectableWorkflowNodeOutputs({
+      outputs: node.outputs,
+      catchError: node.catchError
+    })
       .filter(
         (output) =>
           input.valueType === undefined ||
