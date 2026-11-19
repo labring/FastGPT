@@ -181,10 +181,10 @@ defineIndex(ChatSchema, {
 });
 
 /* get chat logs */
-// 1. Common get
-defineIndex(ChatSchema, { key: { appId: 1, updateTime: -1 } });
-// Cursor search, ordered by updateTime then _id.
+// 1. Common get & cursor search, ordered by updateTime then _id.
 defineIndex(ChatSchema, { key: { appId: 1, updateTime: -1, _id: -1 } });
+// 已被 { appId: 1, updateTime: -1, _id: -1 } 严格前缀覆盖；清理旧前缀索引避免冗余写入与 Plan Cache 竞争。
+defineIndex(ChatSchema, { key: { appId: 1, updateTime: -1 }, deprecated: true });
 // Get history(tmbId)
 defineIndex(ChatSchema, { key: { appId: 1, tmbId: 1, updateTime: -1 } });
 // clearHistory(API)
