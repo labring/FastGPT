@@ -126,11 +126,11 @@ const valuesEqual = (left: unknown, right: unknown): boolean => {
   }
 
   const leftEntries = Object.entries(left);
-  const rightRecord = right as Record<string, unknown>;
+  const rightEntries = new Map<string, unknown>(Object.entries(right));
   return (
-    leftEntries.length === Object.keys(rightRecord).length &&
+    leftEntries.length === rightEntries.size &&
     leftEntries.every(
-      ([key, value]) => Object.hasOwn(rightRecord, key) && valuesEqual(value, rightRecord[key])
+      ([key, value]) => rightEntries.has(key) && valuesEqual(value, rightEntries.get(key))
     )
   );
 };
