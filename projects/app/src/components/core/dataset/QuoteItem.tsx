@@ -1,7 +1,6 @@
 import { getChatAuthTargetInput } from '@/web/core/chat/utils';
 import React, { useMemo, useState } from 'react';
-import { Box, Flex, Progress } from '@chakra-ui/react';
-import Link from '@fastgpt/web/components/common/Link';
+import { Box, Flex, Link, Progress } from '@chakra-ui/react';
 import RawSourceBox from '@/components/core/dataset/RawSourceBox';
 import type { SearchDataResponseQuoteItemType } from '@fastgpt/global/core/dataset/type';
 import NextLink from 'next/link';

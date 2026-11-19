@@ -1,7 +1,6 @@
 import { STT_PRICE_UNITS } from '@fastgpt/global/core/ai/audio/constants';
 import React from 'react';
-import { Box, Flex, Grid } from '@chakra-ui/react';
-import Link from '@fastgpt/web/components/common/Link';
+import { Box, Flex, Grid, Link } from '@chakra-ui/react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import ModelTable from '@/components/core/ai/ModelTable';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';

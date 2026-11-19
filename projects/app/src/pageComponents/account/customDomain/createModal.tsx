@@ -17,9 +17,9 @@ import {
   Tr,
   IconButton,
   Button,
-  ModalFooter
+  ModalFooter,
+  Link
 } from '@chakra-ui/react';
-import Link from '@fastgpt/web/components/common/Link';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { Trans } from 'next-i18next';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';

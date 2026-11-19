@@ -1,5 +1,4 @@
-import { type LinkProps } from '@chakra-ui/react';
-import Link from '@fastgpt/web/components/common/Link';
+import { Link, type LinkProps } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 

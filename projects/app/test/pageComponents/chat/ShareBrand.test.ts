@@ -25,7 +25,6 @@ vi.mock('@fastgpt/web/components/common/MyTooltip', () => ({
   default: ({ children }: any) => children
 }));
 vi.mock('@chakra-ui/react', () => ({
-  forwardRef: React.forwardRef,
   Flex: React.forwardRef(function MockFlex({ children, ...props }: any, ref: any) {
     return React.createElement(
       'div',

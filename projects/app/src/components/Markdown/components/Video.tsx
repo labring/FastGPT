@@ -1,6 +1,5 @@
 import React, { useContext, useState, useMemo } from 'react';
-import { Box, Spinner, Text, HStack, Button } from '@chakra-ui/react';
-import Link from '@fastgpt/web/components/common/Link';
+import { Box, Spinner, Text, HStack, Button, Link } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useMarkdownWidth } from '../utils/hooks';
 import { MarkdownRendererRuntimeContext } from '../utils/runtimeContext';
