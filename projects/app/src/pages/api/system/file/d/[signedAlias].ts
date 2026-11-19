@@ -29,6 +29,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
 
     if (getStorageDownloadUrlMode() === 'short-redirect') {
       return await handleS3RedirectDownload({
+        req,
         res,
         payload,
         expiresAt: payload.expiresAt

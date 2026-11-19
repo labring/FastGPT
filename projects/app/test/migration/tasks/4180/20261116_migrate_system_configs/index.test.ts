@@ -120,9 +120,9 @@ describe('migrateSystemConfigs', () => {
     for (const backfill of [
       mocks.migrateScopes,
       mocks.backfillExternal,
+      mocks.rehomeProxy,
       mocks.rehomeConnections,
       mocks.backfillSms,
-      mocks.rehomeProxy,
       mocks.rehomeOvercommit,
       mocks.rehomeFile,
       mocks.rehomeHttp,
@@ -131,6 +131,12 @@ describe('migrateSystemConfigs', () => {
     ]) {
       expect(backfill).toHaveBeenCalledOnce();
     }
+    expect(mocks.rehomeProxy.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.rehomeConnections.mock.invocationCallOrder[0]
+    );
+    expect(mocks.rehomeProxy.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.rehomeOvercommit.mock.invocationCallOrder[0]
+    );
     for (const verify of [
       mocks.verifyCleanup,
       mocks.verifyExternal,

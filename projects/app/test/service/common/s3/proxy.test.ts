@@ -3,6 +3,7 @@ import { PassThrough, Readable, Writable } from 'node:stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   handleS3ProxyDownload,
+  handleS3RedirectDownload,
   handleS3ProxyUpload,
   handleS3ProxyUploadPart,
   handleS3ProxyRouteError,
@@ -55,11 +56,70 @@ const payload = {
   filename: 'image.png'
 };
 
+describe('handleS3RedirectDownload', () => {
+  it.each(['GET', 'HEAD'])(
+    'proxies active documents for %s instead of losing the sandbox headers at S3',
+    async (method) => {
+      const req = createRequest(method);
+      const res = createResponse();
+      const generatePresignedGetUrl = vi.fn();
+      global.s3BucketMap = {
+        'fastgpt-private': {
+          getFileMetadata: vi.fn().mockResolvedValue({
+            filename: 'misleading.png',
+            contentType: 'text/html'
+          }),
+          getFileStream: vi.fn().mockResolvedValue(Readable.from(['<script>test()</script>'])),
+          externalClient: { generatePresignedGetUrl }
+        }
+      } as any;
+
+      await handleS3RedirectDownload({
+        req,
+        res: res as any,
+        payload,
+        expiresAt: new Date(Date.now() + 60_000)
+      });
+
+      expect(generatePresignedGetUrl).not.toHaveBeenCalled();
+      expect(res.statusCode).toBe(200);
+      expect(res.headers['Content-Disposition']).toMatch(/^inline;/);
+      expect(res.headers['Content-Security-Policy']).toContain('sandbox allow-scripts');
+    }
+  );
+});
+
 describe('handleS3ProxyDownload', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     global.s3BucketMap = {} as any;
   });
+
+  it.each(['GET', 'HEAD'])(
+    'keeps HTML inline with browser isolation for %s, including misleading filenames',
+    async (method) => {
+      const req = createRequest(method);
+      const res = createResponse();
+      global.s3BucketMap = {
+        'fastgpt-private': {
+          getFileStream: vi.fn().mockResolvedValue(Readable.from(['<script>test()</script>'])),
+          getFileMetadata: vi.fn().mockResolvedValue({
+            filename: 'preview.png',
+            contentType: 'text/html'
+          })
+        }
+      } as any;
+
+      await handleS3ProxyDownload({ req, res: res as any, payload });
+
+      expect(res.headers['Content-Disposition']).toMatch(/^inline;/);
+      expect(res.headers['Content-Security-Policy']).toContain('sandbox allow-scripts');
+      expect(res.headers['Content-Security-Policy']).not.toContain('allow-same-origin');
+      expect(res.headers['Cross-Origin-Opener-Policy']).toBe('same-origin');
+      expect(res.headers['Cache-Control']).toBe('private, no-store');
+      expect(res.headers['Referrer-Policy']).toBe('no-referrer');
+    }
+  );
 
   it('streams the complete object and removes request lifecycle listeners', async () => {
     const req = createRequest();

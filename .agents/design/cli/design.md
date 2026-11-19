@@ -100,8 +100,10 @@ cli/
 
 | 顶层领域 | 负责业务边界 | 规划子命令 | 主要凭据 | 任务包 |
 |---|---|---|---|---|
-| **`app`** | 应用管理、文件夹、发布版本、发布渠道、日志与评测 | `list \| get \| create \| update \| delete \| copy \| pin \| export \| import`<br>`app folder ...`<br>`app version list \| detail \| latest \| publish \| update`<br>`app channel ...`（Playground / OutLink / 微信扫码）<br>`app logs ...` / `app eval ...` | `token`（`list` 兼容 `personalKey`，`logs` 兼容 `appKey`） | `T04`（P1） |
-| **`workflow`** | 独立一级域：工作流 DSL 本地编排与云端 GitOps（复用 `workflow-cli` / `@fastgpt/workflow-core`） | 云端同步：`pull \| push \| diff \| publish \| debug \| sandbox-packages \| optimize-code`<br>本地 DSL：`node \| edge \| variable \| input \| output \| tool \| container \| validate \| changeSet \| template \| meta` | `token` | `T06`（P2） |
+| **`app`** | 应用管理、草稿与发布、运行与测试、渠道、日志与评测 | `list \| get \| create \| update \| delete \| copy \| pin \| export \| import`<br>`app pull`、`app save`、`app publish`、`app test`、`app run`<br>`app folder ...`<br>`app version list \| detail \| latest \| publish \| update`<br>`app channel ...`（Playground / OutLink / 微信扫码）<br>`app logs ...` / `app eval ...` | `token`（`list` 兼容 `personalKey`，`logs` 兼容 `appKey`） | `T04`（P1） |
+| **`workflow`** | 远端工作流对比与单步调试 | `workflow diff`、`workflow debug` | `token` | `T06`（P2） |
+| **`workflow-build`** | 工作区初始化、模板刷新与本地构建 | `init \| build \| import \| inspect \| validate`<br>`meta \| config \| variable \| template \| node \| edge \| input \| output \| tool \| container \| changeset` | `init` / `template load` 支持 `token` 和 `personalKey`，本地命令与 `init --offline` 无需鉴权 | `T06`（P2） |
+| **`code-sandbox`** | 实例代码沙盒 | `code-sandbox packages` | `token` | `T06` |
 | **`dataset`** | 知识库、集合、分块数据、文件上传、训练排队、检索与 API 知识库 | `list \| get \| create \| update \| delete \| search \| sync \| export`<br>`dataset collection list \| get \| create \| update \| delete \| read \| export \| sync`<br>`dataset data list \| get \| insert \| update \| delete`<br>`dataset file upload \| preview`<br>`dataset train status \| queue \| error \| retry`<br>`dataset tag ...` / `dataset synonym ...` | `token` / `personalKey` | `T02`（P1） |
 | **`chat`** | 对话执行（含 SSE 流式）、停止、初始化、历史会话、消息记录与反馈 | `chat run <appId> [message]`（`--stream` / `--chat-id` / `--file` / `--variables`）<br>`chat init`、`chat stop`<br>`chat history list \| status \| rename \| delete \| clear`<br>`chat record list \| delete \| quote \| feedback` | `token` / `personalKey` / `appKey` | `T03`（P1） |
 | **`model`** | 模型目录查询、详情、配置与连通性测试 | `model list`、`model detail`、`model catalog`、`model test` | `token` / `personalKey` | `T05`（P1） |
@@ -405,13 +407,13 @@ CLI 不能假设所有部署实例都已升级到包含 `whoami` 的版本，因
 
 ### 6.7 后续演进（不在 P0）
 
-- **PAT（Personal Access Token）**：用户 + 团队维度、可配置细粒度 `scopes`（如 `app:write` / `workflow:publish` / `dataset:read`）、可设过期与随时撤销、带独立使用审计。一旦服务端支持 PAT，只需在 `AuthProvider` 新增 `pat` 分支即可打通无头 CI 与管理操作。
+- **PAT（Personal Access Token）**：用户 + 团队维度、可配置细粒度 `scopes`（如 `app:write` / `app:publish` / `dataset:read`）、可设过期与随时撤销、带独立使用审计。一旦服务端支持 PAT，只需在 `AuthProvider` 新增 `pat` 分支即可打通无头 CI 与管理操作。
 - **SSO / 企微浏览器登录回调**：OAuth / 扫码设备流或本地 loopback 回调，替代目前 `--token-stdin` 粘贴方式。
 - **审计扩展**：服务端审计日志透出 `X-FastGPT-Client` 与 Token/Key 身份标识。
 
 ## 7. AI 能力与 Skills
 
-- CLI 内建 AI 保持少量：`chat run`、`dataset search`、`workflow optimize-code` / 生成（调用服务端 AI 接口，产出草稿后必须走 validate/diff）。
+- CLI 内建 AI 能力包括应用运行（`chat run` 或 `app run`）和知识库检索（`dataset search`）。
 - 配套 5 个本地 Agent Skill（通过 `fastgpt skills install` 分发到 Claude Code / Codex / Cursor，与平台 `fastgpt skill` 资源命令区分）：
   - `fastgpt-cli`：认证、输出协议、安全规则、`api` 逃生口与自发现
   - `fastgpt-app`：应用生命周期与发布
@@ -474,7 +476,7 @@ CLI 不能假设所有部署实例都已升级到包含 `whoami` 的版本，因
 - **前置 PR / Phase 0（已在 Draft PR `labring/FastGPT#8334` 完成）**：服务端 `GET /api/support/user/account/whoami` + `@fastgpt/cli` 认证底座（三类凭据识别、登录/2FA 状态机、Keychain/`0600` 隔离存储、本地门禁、三层探活降级、`login`/`logout`/`whoami`/`auth`/`config`/`doctor`/`commands`、tsdown + Bun 双路构建）。
 - **Phase 0.5 · 公共运行时扩展（前置阻塞项 `T00`）**：为 HTTP 客户端补充 SSE / multipart / 下载能力；为执行管线补充 `--dry-run`、破坏性操作确认门禁、`--file`/`--stdin` 与分页渲染支持。
 - **Phase 1 · 逃生口与高频核心域（可并行：`T01`、`T02`、`T03`、`T04`、`T05`）**：`api` 逃生口、`dataset`、`chat`、`app`、`model`。
-- **Phase 2 · 工作流与扩展生态（可并行：`T06`、`T07`、`T08`、`T09`）**：`workflow`（复用 `workflow-cli`）、`tool`、`mcp`、`skill`。
+- **Phase 2 · 工作流与扩展生态（可并行：`T06`、`T07`、`T08`、`T09`）**：`workflow`、`workflow-build`、`tool`、`mcp`、`skill`。
 - **Phase 3 · 治理、Agent 技能包与漂移门禁（可并行：`T10`、`T11`）**：`team` & `admin`、`fastgpt skills` 技能分发与 OpenAPI 漂移 CI 检查。
 - **Phase 4（按需）**：单文件二进制发布（GitHub Releases / Homebrew / Docker）；PAT、SSO 浏览器登录、审计增强。
 
@@ -483,7 +485,7 @@ CLI 不能假设所有部署实例都已升级到包含 `whoami` 的版本，因
 - `GET /api/support/user/account/whoami` 是否补充 `SystemOpenApiTagMap` 标签进入 `/api/apidoc/systemopenapi.json` 对外公开文档？（当前仅注册于 Dev API）
 - PAT（Personal Access Token）何时在服务端立项，以补齐无头 CI 场景下 `app`/`workflow` 写入接口？
 - SSO / 企微浏览器 OAuth 回调何时立项？（当前以 `--token-stdin` 兜底）
-- `fastgpt-workflow` 独立二进制在并入 `fastgpt workflow` 后，是保留过渡别名还是逐步下线？
+- `fastgpt-workflow` 独立二进制在并入 `fastgpt workflow-build` 后，是保留过渡别名还是逐步下线？
 - npm 包名与公开发布流程（`@fastgpt/cli` 是否设为公开包发布至 npmjs）
 - `admin` 命令是否提供构建裁剪开关或默认在 `mcp serve` 中永久禁用？
 

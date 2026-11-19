@@ -59,7 +59,8 @@ function ConnectivityTestInput(
   const { t } = useSafeTranslation();
   const resolvedButtonText = buttonText ?? t('admin:probe_button');
   const resolvedPlaceholder = placeholder ?? t('admin:not_configured_service_address');
-  const effectiveUrl = value ?? url ?? '';
+  // 历史配置可能包含错误类型；保持可编辑文本，避免读取页面时因 trim 抛错。
+  const effectiveUrl = String(value ?? url ?? '');
   // 结果绑定完整输入快照；外部重置、凭据修改或禁用后不会展示旧结果。
   const probeInputs = useMemo(
     () => ({

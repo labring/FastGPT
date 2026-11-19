@@ -60,6 +60,10 @@ const PublishAppBodyCommonShape = {
   autoSave: BoolSchema.optional().meta({
     example: false,
     description: '是否为编辑器自动保存；自动保存会覆盖当前自动保存记录'
+  }),
+  returnWorkflow: BoolSchema.optional().meta({
+    example: true,
+    description: '是否返回本次保存后的工作流快照，用于建立同步基线；默认不返回'
   })
 };
 
@@ -185,9 +189,22 @@ export type PublishAppBodyType = Omit<z.input<typeof PublishAppBodySchema>, 'nod
  * Tags: ['版本管理']
  * ============================================================================ */
 
-export const PublishAppResponseSchema = z.undefined().meta({
-  description: '保存成功'
-});
+export const PublishAppResponseSchema = z
+  .object({
+    workflow: z
+      .object({
+        nodes: AppVersionNodesSchema,
+        edges: AppVersionEdgesSchema,
+        chatConfig: AppVersionChatConfigSchema
+      })
+      .meta({
+        description: '本次实际保存的工作流，已完成迁移、模型归一化和详情补全'
+      })
+  })
+  .optional()
+  .meta({
+    description: 'returnWorkflow 为 true 时返回本次保存的工作流快照，否则不返回业务数据'
+  });
 export type PublishAppResponseType = z.infer<typeof PublishAppResponseSchema>;
 
 /* ============================================================================

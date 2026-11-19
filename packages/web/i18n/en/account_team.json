@@ -437,5 +437,6 @@
   "log_admin_install_moderation_plugin": "[{{name}}] installed content moderation plugin [{{pluginName}}]",
   "log_admin_uninstall_moderation_plugin": "[{{name}}] uninstalled content moderation plugin [{{pluginName}}]",
   "log_admin_update_moderation_plugin_config": "[{{name}}] updated configuration for content moderation plugin [{{pluginName}}]",
-  "log_admin_update_moderation_policy": "[{{name}}] updated content moderation policy"
+  "log_admin_update_moderation_policy": "[{{name}}] updated content moderation policy",
+  "my_team": "My Team"
 }

@@ -3,6 +3,8 @@ import { DevApiTagsMap } from '../../tag';
 import {
   GetSandboxPackagesQuerySchema,
   GetSandboxPackagesResponseSchema,
+  GetWorkflowTemplateBundleQuerySchema,
+  GetWorkflowTemplateBundleResponseSchema,
   OptimizeCodeBodySchema,
   OptimizeCodeResponseSchema,
   WorkflowDebugBodySchema,
@@ -49,6 +51,22 @@ export const WorkflowPath: OpenAPIPath = {
             'application/json': {
               schema: GetSandboxPackagesResponseSchema
             }
+          }
+        }
+      }
+    }
+  },
+  '/core/workflow/getTemplateBundle': {
+    get: {
+      summary: '获取工作流构建模板包',
+      description: '查询当前成员可用的完整工具模板、内置节点模板和团队默认值',
+      tags: [DevApiTagsMap.workflowHelper, DevApiTagsMap.appSystemTool],
+      requestParams: { query: GetWorkflowTemplateBundleQuerySchema },
+      responses: {
+        200: {
+          description: '成功返回工作流模板包',
+          content: {
+            'application/json': { schema: GetWorkflowTemplateBundleResponseSchema }
           }
         }
       }

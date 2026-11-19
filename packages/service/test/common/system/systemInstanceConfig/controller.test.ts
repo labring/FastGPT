@@ -1,16 +1,19 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import {
   getDomainConfig,
+  getDomainConfigForAdmin,
   updateDomainConfig,
   batchUpdateDomainConfigs,
   getSystemInstanceConfigSnapshot,
   reloadSystemInstanceConfig
 } from '../../../../common/system/systemInstanceConfig/controller';
 import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/runtime';
+import { validateFileUrlDomain } from '../../../../common/security/fileUrlValidator';
 import { connectionMongo } from '../../../../common/mongo';
 import { MongoSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/schema';
 import { MongoSystemConfigs } from '../../../../common/system/config/schema';
 import { getDomainDefaultConfig } from '@fastgpt/global/common/system/config/schema';
+import { GetSystemInitDataResponseSchema } from '@fastgpt/global/openapi/common/system/api';
 import { encryptSecret } from '@fastgpt/service/common/secret/aes256gcm';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 
@@ -713,7 +716,7 @@ describe('systemInstanceConfig controller', () => {
   });
 
   describe('getSystemInstanceConfigSnapshot', () => {
-    it('does not publish any new scope when stored ciphertext cannot be authenticated', async () => {
+    it('publishes other scopes while retaining a damaged credential for repair', async () => {
       await batchUpdateDomainConfigs({
         items: [
           { domain: 'site', expectedRevision: 0, overrides: { name: 'Published site' } },
@@ -745,14 +748,14 @@ describe('systemInstanceConfig controller', () => {
         }
       );
 
-      await expect(reloadSystemInstanceConfig()).rejects.toThrow(
-        'Unable to decrypt configuration secret: providers.documentParse.customPdf.key'
-      );
-      expect(getSystemInstanceConfig()).toBe(published);
-      expect(getSystemInstanceConfig().site.name).toBe('Published site');
-      expect(getSystemInstanceConfig().providers.documentParse.customPdf.key).toBe('valid-key');
-      expect(global.feConfigs).toBe(frontend);
-      expect(global.systemInitBufferId).toBe(version);
+      await expect(reloadSystemInstanceConfig()).resolves.toBeDefined();
+      expect(getSystemInstanceConfig()).not.toBe(published);
+      expect(getSystemInstanceConfig().site.name).toBe('Unpublished site');
+      expect(getSystemInstanceConfig().providers.documentParse.customPdf.key).toEqual({
+        secret: `${'0'.repeat(32)}:00:${'0'.repeat(32)}`
+      });
+      expect(global.feConfigs).not.toBe(frontend);
+      expect(global.systemInitBufferId).not.toBe(version);
     });
 
     it.each([undefined, { readPreference: 'primary' as const }])(
@@ -984,30 +987,116 @@ describe('systemInstanceConfig controller', () => {
       }
     );
 
-    it('keeps database-originated invalid values as internal errors', async () => {
-      // 直接写 collection 模拟历史坏记录，绕过当前 Schema 的写入校验。
+    it('reads an invalid historical value without throwing, reports its save error, and allows a repair even alongside retired keys', async () => {
       await MongoSystemInstanceConfig.collection.insertOne({
         domain: 'performance',
         schemaVersion: 1,
         revision: 1,
-        overrides: { task: { evalConcurrency: 0 } },
-        updatedBy: { actor: 'system' },
-        createdAt: new Date(),
-        updatedAt: new Date()
+        overrides: {
+          streamResume: { ttlSeconds: 10 },
+          tracking: { batchUpdateTime: 5 },
+          workflow: { maxLoopTimes: -1 }
+        }
       });
-
+      expect((await getDomainConfig('performance')).effectiveConfig.workflow.maxLoopTimes).toBe(-1);
       await expect(
         batchUpdateDomainConfigs({
           items: [
             {
               domain: 'performance',
               expectedRevision: 1,
-              overrides: { workflow: { maxLoopTimes: 2 } }
+              overrides: { dataset: { parseMaxProcess: 3 } }
             }
           ],
           actor: { actor: 'admin' }
         })
-      ).rejects.not.toBeInstanceOf(ApiRequestInputParseError);
+      ).rejects.toMatchObject({
+        name: 'ApiRequestInputParseError',
+        cause: {
+          issues: expect.arrayContaining([
+            expect.objectContaining({ path: ['performance', 'workflow', 'maxLoopTimes'] })
+          ])
+        }
+      });
+      const [repaired] = await batchUpdateDomainConfigs({
+        items: [
+          {
+            domain: 'performance',
+            expectedRevision: 1,
+            overrides: { workflow: { maxLoopTimes: 100 } }
+          }
+        ],
+        actor: { actor: 'admin' }
+      });
+      expect(repaired.effectiveConfig.workflow.maxLoopTimes).toBe(100);
+      expect(repaired.overrides).not.toHaveProperty('streamResume');
+      expect(repaired.overrides.tracking).toBeUndefined();
+    });
+
+    it('rejects external file URLs when security root overrides are corrupted and allows administrator repair', async () => {
+      for (const corrupted of ['invalid-domain', ['unexpected'], null]) {
+        await MongoSystemInstanceConfig.deleteMany({});
+        await MongoSystemInstanceConfig.collection.insertOne({
+          domain: 'security',
+          schemaVersion: 1,
+          revision: 2,
+          overrides: corrupted as any
+        });
+
+        await reloadSystemInstanceConfig();
+        expect(validateFileUrlDomain('https://untrusted.example.com/file.txt')).toBe(false);
+
+        const adminView = await getDomainConfigForAdmin('security');
+        expect(adminView.revision).toBe(2);
+        expect(adminView.overrides).toEqual({});
+      }
+
+      const saved = await updateDomainConfig({
+        domain: 'security',
+        expectedRevision: 2,
+        submittedOverrides: { checkExternalFile: false, fileUrlWhitelist: [] },
+        actor: { actor: 'admin' }
+      });
+      expect(saved.revision).toBe(3);
+      await reloadSystemInstanceConfig();
+      expect(validateFileUrlDomain('https://untrusted.example.com/file.txt')).toBe(true);
+    });
+
+    it('preserves array element defaults across sparse save, re-read, refresh, and public projection', async () => {
+      const saved = await updateDomainConfig({
+        domain: 'site',
+        expectedRevision: 0,
+        submittedOverrides: {
+          navbarItems: [
+            {
+              id: 'nav-1',
+              name: 'Docs',
+              avatar: '',
+              url: 'https://docs.example.test'
+            }
+          ]
+        },
+        actor: { actor: 'admin' }
+      });
+      expect(saved.effectiveConfig.navbarItems).toEqual([
+        {
+          id: 'nav-1',
+          name: 'Docs',
+          avatar: '',
+          url: 'https://docs.example.test',
+          isActive: true
+        }
+      ]);
+
+      const reread = await getDomainConfig('site');
+      expect(reread.effectiveConfig.navbarItems).toEqual(saved.effectiveConfig.navbarItems);
+
+      const refreshed = await reloadSystemInstanceConfig();
+      expect(refreshed.site.navbarItems).toEqual(saved.effectiveConfig.navbarItems);
+      expect(
+        GetSystemInitDataResponseSchema.parse({ feConfigs: global.feConfigs }).feConfigs
+          ?.navbarItems
+      ).toEqual(saved.effectiveConfig.navbarItems);
     });
 
     it('rolls back completely if any domain in the batch encounters a revision conflict', async () => {

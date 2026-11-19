@@ -1,10 +1,10 @@
+import { readMigrationDomainConfig, readMigrationConfigValue } from './validation';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import z from 'zod';
 import {
   SYSTEM_INSTANCE_CONFIG_DOMAINS,
   SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
-  resolveDomainEffectiveConfig,
   systemInstanceConfigDomainOverrideSchemaMap,
   type SystemInstanceConfigDomainKey
 } from '@fastgpt/global/common/system/config/schema';
@@ -23,7 +23,7 @@ export type DefaultConfigInitialization = {
 
 /**
  * 读取 App 工作目录下可选的首次初始化增量；文件缺失等价于没有自定义默认值。
- * 使用当前实例配置域格式，拒绝未知字段和非法值；错误只返回字段路径，不暴露凭据。
+ * 使用当前实例配置域格式；配置约束失败保留原值并告警，文件读取及 JSON 语法错误仍失败。
  * 调用方必须先确认业务域为空；Pro ENV 不属于文件可配置范围，也不影响首次导入。
  */
 export const readDefaultInstanceConfig = async (
@@ -52,20 +52,14 @@ export const readDefaultInstanceConfig = async (
       ])
     )
   );
-  const parsed = schema.safeParse(raw);
-  if (!parsed.success) {
-    const paths = parsed.error.issues.map((issue) => issue.path.join('.') || '<root>');
-    throw new Error(`Invalid defaultConfig.json fields: ${paths.join(', ')}`);
-  }
-
-  const overrides = parsed.data as DefaultConfigOverrides;
+  const overrides = readMigrationConfigValue({
+    name: 'defaultConfig',
+    schema,
+    value: raw
+  }) as DefaultConfigOverrides;
   for (const domain of SYSTEM_INSTANCE_CONFIG_DOMAINS) {
     if (overrides[domain] === undefined) continue;
-    try {
-      resolveDomainEffectiveConfig({ domain, overrides: overrides[domain] });
-    } catch {
-      throw new Error(`Invalid defaultConfig.json configuration: ${domain}`);
-    }
+    readMigrationDomainConfig({ domain, overrides: overrides[domain] });
   }
   return overrides;
 };
@@ -79,16 +73,19 @@ export const initializeEmptyInstanceConfig = async ({
   overrides,
   explicitDefaultPaths
 }: DefaultConfigInitialization): Promise<SystemInstanceConfigDomainKey[]> => {
+  const now = new Date();
   const documents = SYSTEM_INSTANCE_CONFIG_DOMAINS.map((domain) => {
     const domainOverrides = overrides[domain] ?? {};
-    resolveDomainEffectiveConfig({ domain, overrides: domainOverrides });
+    readMigrationDomainConfig({ domain, overrides: domainOverrides });
     return {
       domain,
       schemaVersion: SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
       revision: 1,
       overrides: encryptDomainSecrets({ domain, data: domainOverrides }),
       explicitDefaultPaths: explicitDefaultPaths?.[domain] ?? [],
-      updatedBy: { actor: 'migration' as const }
+      updatedBy: { actor: 'migration' as const },
+      createdAt: now,
+      updatedAt: now
     };
   });
 
@@ -99,7 +96,12 @@ export const initializeEmptyInstanceConfig = async ({
           domain: { $in: SYSTEM_INSTANCE_CONFIG_DOMAINS }
         }).session(session);
         if (count > 0) return [];
-        await MongoSystemInstanceConfig.insertMany(documents, { session, ordered: true });
+        // 前面已执行前置 Schema 校验；跳过 Mongoose 终审 validator，避免在代理 backfill 前提前拒绝非 none 沙箱。
+        await MongoSystemInstanceConfig.insertMany(documents, {
+          session,
+          ordered: true,
+          lean: true
+        });
         return [...SYSTEM_INSTANCE_CONFIG_DOMAINS];
       },
       { readPreference: 'primary' }

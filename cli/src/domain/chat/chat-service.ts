@@ -172,7 +172,7 @@ export function createChatService(): ChatService {
 
       if (operation === 'run') {
         if (payload.stream !== undefined && payload.stream !== false) {
-          throw new CliArgumentError('chat run returns JSON; stream must be false.');
+          throw new CliArgumentError('App execution returns JSON. Set stream to false.');
         }
         payload.stream = false;
       }

@@ -27,9 +27,10 @@ const FeatureSettingComponent = () => {
 
   const { effectiveConfig, isLoading, isUpdating, patchConfig } = useDomainConfig('feature');
 
-  const { control, handleSubmit, reset } = useForm<FeatureConfigForm>({
+  const form = useForm<FeatureConfigForm>({
     defaultValues: effectiveConfig
   });
+  const { control, handleSubmit, reset } = form;
 
   useEffect(() => {
     if (effectiveConfig && Object.keys(effectiveConfig).length > 0) {
@@ -43,6 +44,7 @@ const FeatureSettingComponent = () => {
 
   return (
     <AdminSettingPage
+      form={form}
       headerTitle={t('admin:page_title_feature')}
       tocItems={tocItems}
       isLoading={isLoading}
@@ -57,6 +59,7 @@ const FeatureSettingComponent = () => {
             control={control}
             render={({ field }) => (
               <AdminSwitchRow
+                name={field.name}
                 label={t('admin:hide_chat_copyright_setting')}
                 tooltip={t('admin:when_enabled_share_pages_and_embedded_chat_windows_can_turn')}
                 isChecked={!field.value}
@@ -70,6 +73,7 @@ const FeatureSettingComponent = () => {
             control={control}
             render={({ field }) => (
               <AdminSwitchRow
+                name={field.name}
                 label={t('admin:show_compliance_copywriting')}
                 tooltip={t('admin:show_filing_and_compliance_copy_at_the_bottom_of_the_page')}
                 isChecked={field.value}
@@ -88,6 +92,7 @@ const FeatureSettingComponent = () => {
             control={control}
             render={({ field }) => (
               <AdminSwitchRow
+                name={field.name}
                 label={t('admin:allow_team_plugin_uploads')}
                 tooltip={t('admin:allow_regular_team_members_to_upload_custom_plugin_packages')}
                 isChecked={field.value}
@@ -102,6 +107,7 @@ const FeatureSettingComponent = () => {
               control={control}
               render={({ field }) => (
                 <AdminSwitchRow
+                  name={field.name}
                   label={t('admin:show_openai_account')}
                   tooltip={t('admin:show_openai_account_tip')}
                   isChecked={field.value}
@@ -115,6 +121,7 @@ const FeatureSettingComponent = () => {
             control={control}
             render={({ field }) => (
               <AdminSwitchRow
+                name={field.name}
                 label={t('admin:enable_team_model')}
                 tooltip={t('admin:enable_team_model_tip')}
                 isChecked={field.value}
@@ -137,6 +144,7 @@ const FeatureSettingComponent = () => {
             control={control}
             render={({ field }) => (
               <AdminSwitchRow
+                name={field.name}
                 label={t('admin:enable_feishu_data_source')}
                 tooltip={t('admin:show_the_feishu_data_source_entry_on_the_dataset_creation_pa')}
                 isChecked={field.value}
@@ -149,6 +157,7 @@ const FeatureSettingComponent = () => {
             control={control}
             render={({ field }) => (
               <AdminSwitchRow
+                name={field.name}
                 label={t('admin:enable_yuque_data_source')}
                 tooltip={t('admin:show_the_yuque_data_source_entry_on_the_dataset_creation_pag')}
                 isChecked={field.value}
@@ -161,6 +170,7 @@ const FeatureSettingComponent = () => {
             control={control}
             render={({ field }) => (
               <AdminSwitchRow
+                name={field.name}
                 label={t('admin:enable_dingtalk_data_source')}
                 tooltip={t('admin:show_the_dingtalk_data_source_entry_on_the_dataset_creation')}
                 isChecked={field.value}
@@ -183,6 +193,7 @@ const FeatureSettingComponent = () => {
             control={control}
             render={({ field }) => (
               <AdminSwitchRow
+                name={field.name}
                 label={t('admin:publish_channel_feishu')}
                 tooltip={t('admin:show_the_feishu_bot_publish_channel_on_the_app_publish_page')}
                 isChecked={field.value}
@@ -195,6 +206,7 @@ const FeatureSettingComponent = () => {
             control={control}
             render={({ field }) => (
               <AdminSwitchRow
+                name={field.name}
                 label={t('admin:publish_channel_dingtalk')}
                 tooltip={t('admin:show_the_dingtalk_bot_publish_channel_on_the_app_publish_pag')}
                 isChecked={field.value}
@@ -207,6 +219,7 @@ const FeatureSettingComponent = () => {
             control={control}
             render={({ field }) => (
               <AdminSwitchRow
+                name={field.name}
                 label={t('admin:publish_channel_wecom')}
                 tooltip={t('admin:show_the_wecom_publish_channel_on_the_app_publish_page')}
                 isChecked={field.value}
@@ -219,6 +232,7 @@ const FeatureSettingComponent = () => {
             control={control}
             render={({ field }) => (
               <AdminSwitchRow
+                name={field.name}
                 label={t('admin:publish_channel_official_account')}
                 tooltip={t('admin:show_the_wechat_official_account_publish_channel_on_the_app')}
                 isChecked={field.value}
@@ -231,6 +245,7 @@ const FeatureSettingComponent = () => {
             control={control}
             render={({ field }) => (
               <AdminSwitchRow
+                name={field.name}
                 label={t('admin:publish_channel_personal_wechat')}
                 tooltip={t('admin:show_the_personal_wechat_publish_channel_on_the_app')}
                 isChecked={field.value}

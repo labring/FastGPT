@@ -5,10 +5,10 @@ import type {
   IR2StorageOptions,
   IStorageOptions
 } from '@fastgpt-sdk/storage';
+import { isValidHttpUrl } from '@fastgpt/global/common/string/url';
 import { serviceEnv } from '../../../env';
 import { getSystemInstanceConfig } from '../../system/systemInstanceConfig/runtime';
 import { logInstanceConfigRead } from '../../system/migrationCoverageLog';
-import { StorageDownloadUrlModeSchema } from '../contracts/type';
 
 export const S3Buckets = {
   public: serviceEnv.STORAGE_PUBLIC_BUCKET,
@@ -115,7 +115,7 @@ export const applyRuntimeStorageConfig = (config: RuntimeStorageConfig | undefin
 /** 对外暴露的下载模式：仅取实例配置，未初始化时使用 Schema 默认值 short-proxy。 */
 export const getStorageDownloadUrlMode = () => {
   // 请求期读 global 快照：注入只发生在启动链路的模块实例里，路由 bundle 读不到那份状态
-  const value = StorageDownloadUrlModeSchema.parse(getSystemInstanceConfig().storage.downloadMode);
+  const value = getSystemInstanceConfig().storage.downloadMode;
   logInstanceConfigRead({
     callsite: 'runtime.common.s3.constants.getStorageDownloadUrlMode',
     source: 'instance-config',
@@ -146,6 +146,12 @@ export const getStorageS3CdnEndpoint = () => {
   return value;
 };
 
+/** 仅向存储 SDK 投影可用地址；历史非法值仍留在配置快照中，避免构造客户端阻断启动。 */
+const getUsableStorageExternalEndpoint = () => {
+  const value = getStorageExternalEndpoint();
+  return typeof value === 'string' && isValidHttpUrl(value) ? value.trim() : undefined;
+};
+
 const needExplicitExternalEndpointForRedirect = storageVendor === 'minio';
 
 /**
@@ -153,7 +159,7 @@ const needExplicitExternalEndpointForRedirect = storageVendor === 'minio';
  * MinIO 自建部署必须显式提供客户端可访问的 external endpoint，其它托管厂商自带公网地址。
  */
 export const canUseStorageDownloadRedirect = () =>
-  !needExplicitExternalEndpointForRedirect || Boolean(getStorageExternalEndpoint());
+  !needExplicitExternalEndpointForRedirect || Boolean(getUsableStorageExternalEndpoint());
 
 /**
  * bucket 级别的存储选项。
@@ -163,7 +169,7 @@ export const canUseStorageDownloadRedirect = () =>
 const getBucketStorageOptions = (): BucketStorageOptions => ({
   publicBucket: S3Buckets.public,
   privateBucket: S3Buckets.private,
-  externalEndpoint: getStorageExternalEndpoint(),
+  externalEndpoint: getUsableStorageExternalEndpoint(),
   publicEndpoint: serviceEnv.STORAGE_R2_PUBLIC_ENDPOINT
 });
 

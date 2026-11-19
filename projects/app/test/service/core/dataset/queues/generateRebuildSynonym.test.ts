@@ -123,10 +123,16 @@ const createContext = async ({ enabled = true, count = 1 } = {}) => {
       ]
     }))
   );
+  // 固定更新时间，便于断言领取任务时不会刷新它。
+  const fixedUpdateTime = new Date('2024-01-01T00:00:00.000Z');
+  await MongoDatasetData.updateMany(
+    { datasetId: dataset._id },
+    { $set: { updateTime: fixedUpdateTime } }
+  );
   const context = { ...scope, datasetId: String(dataset._id), billId: 'test' };
   await synonymQueue.enqueueNextDatasetSynonymRebuildTask(context);
   const task = await MongoDatasetTraining.findOne({ datasetId: dataset._id }).lean();
-  return { root, dataset, collection, config, datas, task: task!, context };
+  return { root, dataset, collection, config, datas, task: task!, context, fixedUpdateTime };
 };
 
 describe('generateRebuildSynonym', () => {
@@ -180,6 +186,13 @@ describe('generateRebuildSynonym', () => {
     const text = await MongoDatasetDataText.findOne({ dataId: datas[0]._id }).lean();
     expect(text?.fullTextToken).toBe(await jiebaSplit({ text: '我要退款 0' }));
     expect(mockVectorDelete).toHaveBeenCalledWith(expect.objectContaining({ idList: ['old-0'] }));
+  });
+
+  it('claims synonym rebuild tasks without refreshing data updateTime', async () => {
+    const { datas, fixedUpdateTime } = await createContext();
+    const updated = await MongoDatasetData.findById(datas[0]._id).lean();
+    expect(updated?.indexStatus).toBe(DatasetDataIndexStatusEnum.rebuildSynonymRunning);
+    expect(updated?.updateTime).toEqual(fixedUpdateTime);
   });
 
   it('rebuilds original indexes after deleting the word list', async () => {

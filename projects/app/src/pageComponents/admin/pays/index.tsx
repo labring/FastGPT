@@ -1,24 +1,15 @@
 'use client';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useRef, useState } from 'react';
-import {
-  Button,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Flex,
-  Box,
-  InputGroup,
-  Input,
-  InputLeftElement
-} from '@chakra-ui/react';
+import { Button, Table, Thead, Tbody, Tr, Th, Td, Flex, Box } from '@chakra-ui/react';
 import type { BillItemType } from '@fastgpt/global/openapi/admin/wallet/pay/api';
 import dayjs from 'dayjs';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import AdminCompositeSearch, {
+  useAdminCompositeSearch,
+  useAdminTeamSearchOptions
+} from '@/components/admin/CompositeSearch';
 import {
   BillPayWayEnum,
   BillStatusEnum,
@@ -36,11 +27,13 @@ import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const BillTable = () => {
   const { t } = useSafeTranslation();
-  const [username, setUsername] = useState<string>();
+  const paySearchOptions = useAdminTeamSearchOptions();
   const [billType, setBillType] = useState<BillTypeEnum | ''>('');
   const [billStatus, setBillStatus] = useState<BillStatusEnum | ''>(BillStatusEnum.SUCCESS);
   const [billDetail, setBillDetail] = useState<BillItemType>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { searchField, inputValue, isInvalid, searchParams, onFieldChange, onInputChange } =
+    useAdminCompositeSearch({ options: paySearchOptions });
 
   const billTypeList: { label: string; value: BillTypeEnum | '' }[] = [
     { label: t('admin:all'), value: '' },
@@ -96,9 +89,9 @@ const BillTable = () => {
     params: {
       type: billType === '' ? undefined : billType,
       status: billStatus === '' ? undefined : billStatus,
-      username: username ?? ''
+      ...searchParams
     },
-    refreshDeps: [billType, billStatus, username],
+    refreshDeps: [billType, billStatus, searchParams],
     scrollContainerRef
   });
 
@@ -117,16 +110,14 @@ const BillTable = () => {
           {t('admin:payment_records')}
         </Box>
         <Box flexGrow={1}></Box>
-        <InputGroup w={['100%', '250px']} h={'36px'}>
-          <InputLeftElement h={'full'}>
-            <MyIcon name="common/searchLight" w={4} color={'myGray.400'} />
-          </InputLeftElement>
-          <Input
-            placeholder={t('admin:search_by_username')}
-            onChange={(e) => setUsername(e.target.value)}
-            h={'36px'}
-          ></Input>
-        </InputGroup>
+        <AdminCompositeSearch
+          options={paySearchOptions}
+          field={searchField}
+          value={inputValue}
+          isInvalid={isInvalid}
+          onFieldChange={onFieldChange}
+          onValueChange={onInputChange}
+        />
         <SingleSelectFilter<BillTypeEnum | ''>
           storageKey={'admin.pays.type'}
           title={'套餐类型'}

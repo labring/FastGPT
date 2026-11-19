@@ -2,6 +2,10 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import path from 'node:path';
+import {
+  getFilePreviewSecurityHeaders,
+  isActiveFilePreview
+} from '@fastgpt/service/common/s3/preview';
 import { getContentDisposition } from '@fastgpt/global/common/file/tools';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
@@ -291,21 +295,23 @@ export const handleS3ProxyDownload = async ({
       parseRequestFilename(payload.filename) ||
       metadata?.filename ||
       parseObjectKeyFilename(objectKey);
-    const contentType =
-      payload.responseContentType || metadata?.contentType || DEFAULT_CONTENT_TYPE;
+    const contentType = ensureTextContentTypeCharset({
+      contentType: payload.responseContentType ?? metadata?.contentType ?? DEFAULT_CONTENT_TYPE,
+      filename
+    });
 
-    res.setHeader(
-      'Content-Type',
-      ensureTextContentTypeCharset({
-        contentType,
-        filename
-      })
-    );
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     if (metadata?.contentLength) {
       res.setHeader('Content-Length', metadata.contentLength);
     }
     res.setHeader('Content-Disposition', getContentDisposition({ filename, type: 'inline' }));
     res.setHeader('Cache-Control', 'public, max-age=31536000');
+    for (const [name, value] of Object.entries(
+      getFilePreviewSecurityHeaders({ contentType, filename })
+    )) {
+      res.setHeader(name, value);
+    }
   };
 
   try {
@@ -368,23 +374,38 @@ const resolveS3RedirectExpiresSeconds = ({ expiresAt }: { expiresAt: Date }) => 
  * 该函数不把 S3 presigned URL 写回业务数据，只作为当前 HTTP 响应的临时 Location。
  */
 export const handleS3RedirectDownload = async ({
+  req,
   res,
   payload,
   expiresAt
 }: {
+  req: NextApiRequest;
   res: NextApiResponse;
   payload: S3ProxyDownloadPayload;
   expiresAt: Date;
 }) => {
-  if (!canUseStorageDownloadRedirect()) {
-    throw new Error('S3 short redirect requires storage.externalEndpoint in admin settings');
-  }
-
   const { objectKey, bucketName } = payload;
   const bucket = global.s3BucketMap[bucketName];
 
   if (!bucket) {
     throw new Error('S3 bucket not found');
+  }
+
+  // CSP 只约束最终文档响应，不能靠 302 响应头保护 S3/CDN 输出的 HTML。
+  // 主动内容始终走代理；普通文件继续沿用实例配置的直连下载策略。
+  const metadata = await bucket.getFileMetadata(objectKey);
+  if (
+    !metadata?.contentType ||
+    isActiveFilePreview(metadata) ||
+    isActiveFilePreview({ contentType: payload.responseContentType, filename: payload.filename }) ||
+    isActiveFilePreview({ filename: parseObjectKeyFilename(objectKey) })
+  ) {
+    resolveS3RedirectExpiresSeconds({ expiresAt });
+    return handleS3ProxyDownload({ req, res, payload });
+  }
+
+  if (!canUseStorageDownloadRedirect()) {
+    throw new Error('S3 short redirect requires storage.externalEndpoint in admin settings');
   }
 
   const resolvedObjectKey = await bucket.resolveExistingObjectKey(objectKey);

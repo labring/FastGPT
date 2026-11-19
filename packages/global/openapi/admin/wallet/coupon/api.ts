@@ -20,8 +20,8 @@ export const CreateCouponSubscriptionSchema = z.object({
     description: '额外数据集容量',
     example: 1000
   }),
-  totalPoints: NumSchema.nonnegative().optional().meta({
-    description: '额外积分或套餐积分',
+  totalPoints: IntSchema.optional().meta({
+    description: '额外积分或套餐积分，非负整数',
     example: 5000
   }),
   customConfig: z.any().optional().meta({

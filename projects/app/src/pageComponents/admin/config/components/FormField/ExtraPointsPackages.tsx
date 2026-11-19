@@ -1,3 +1,5 @@
+import { SubPlanInputSchema } from '@fastgpt/global/support/wallet/sub/type';
+import { getConfigFormErrors } from '@/web/common/system/configFormErrors';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import {
   Box,
@@ -31,7 +33,7 @@ const AddPackageModal = ({
   editingPackage?: PointsPackageItem;
 }) => {
   const { t } = useSafeTranslation();
-  const { handleSubmit, watch, setValue } = useForm<PointsPackageItem>({
+  const form = useForm<PointsPackageItem>({
     defaultValues: editingPackage || {
       points: 1000,
       month: 1,
@@ -39,8 +41,16 @@ const AddPackageModal = ({
       activityBonusPoints: 0
     }
   });
+  const { handleSubmit, watch, setValue } = form;
 
   const handleFormSubmit = (data: PointsPackageItem) => {
+    const parsed = SubPlanInputSchema.safeParse({ extraPoints: { packages: [data] } });
+    if (!parsed.success) {
+      getConfigFormErrors({ error: parsed.error, values: form.getValues() }).forEach(
+        ({ name, message }) => form.setError(name as never, { type: 'validate', message })
+      );
+      return;
+    }
     onSubmit(data);
     onClose();
   };
@@ -56,7 +66,14 @@ const AddPackageModal = ({
           <Button variant={'whiteBase'} onClick={onClose}>
             {t('admin:cancel')}
           </Button>
-          <Button onClick={handleSubmit(handleFormSubmit)}>{t('admin:confirm')}</Button>
+          <Button
+            onClick={() => {
+              form.clearErrors();
+              void handleSubmit(handleFormSubmit)();
+            }}
+          >
+            {t('admin:confirm')}
+          </Button>
         </>
       }
     >
@@ -64,6 +81,7 @@ const AddPackageModal = ({
         <Box flex={1}>
           <FormLabel mb={2}>{t('admin:points')}</FormLabel>
           <MyNumberInput
+            isInvalid={Boolean(form.getFieldState('points', form.formState).error)}
             value={watch('points')}
             min={0}
             step={1000}
@@ -76,6 +94,7 @@ const AddPackageModal = ({
         <Box flex={1}>
           <FormLabel mb={2}>{t('admin:validity')}</FormLabel>
           <MySelect
+            isInvalid={Boolean(form.getFieldState('month', form.formState).error)}
             bg={'myGray.50'}
             h={10}
             value={watch('month')}
@@ -93,6 +112,7 @@ const AddPackageModal = ({
         <Box flex={1}>
           <FormLabel mb={2}>{t('admin:price')}</FormLabel>
           <MyNumberInput
+            isInvalid={Boolean(form.getFieldState('price', form.formState).error)}
             value={watch('price')}
             min={0}
             onChange={(e) => {
@@ -106,6 +126,7 @@ const AddPackageModal = ({
         <Box flex={1}>
           <FormLabel mb={2}>{t('admin:campaign_bonus_points')}</FormLabel>
           <MyNumberInput
+            isInvalid={Boolean(form.getFieldState('activityBonusPoints', form.formState).error)}
             value={watch('activityBonusPoints')}
             min={0}
             onChange={(e) => {

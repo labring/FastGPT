@@ -22,14 +22,15 @@ const McpSubserviceComponent = () => {
     { id: 'connection', label: t('admin:connection_connectivity') }
   ];
 
+  const form = useForm<SubserviceConfigForm>({
+    defaultValues: effectiveConfig
+  });
   const {
     control,
     handleSubmit,
     reset,
     formState: { errors }
-  } = useForm<SubserviceConfigForm>({
-    defaultValues: effectiveConfig
-  });
+  } = form;
   const enabled = useWatch({ control, name: 'mcp.enabled' }) ?? false;
 
   useEffect(() => {
@@ -51,6 +52,7 @@ const McpSubserviceComponent = () => {
 
   return (
     <AdminSettingPage
+      form={form}
       headerTitle={t('admin:page_title_mcp')}
       tocItems={tocItems}
       isLoading={isLoading}
@@ -64,6 +66,7 @@ const McpSubserviceComponent = () => {
           control={control}
           render={({ field }) => (
             <AdminSwitchRow
+              name={field.name}
               label={t('admin:enable_mcp_sse')}
               isChecked={field.value}
               onChange={field.onChange}

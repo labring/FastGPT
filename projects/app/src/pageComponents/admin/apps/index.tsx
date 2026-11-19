@@ -1,21 +1,9 @@
 'use client';
-import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import React, { useRef, useState } from 'react';
-import {
-  Button,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Flex,
-  Box,
-  HStack,
-  Input,
-  InputGroup
-} from '@chakra-ui/react';
+import React, { useMemo, useRef, useState } from 'react';
+import { Button, Table, Thead, Tbody, Tr, Th, Td, Flex, Box, HStack } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import AdminCompositeSearch, { useAdminCompositeSearch } from '@/components/admin/CompositeSearch';
+import type { AdminSearchOption } from '@/components/admin/CompositeSearch/utils';
 import { getApps } from '@/web/admin/app/api';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
@@ -24,12 +12,48 @@ import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const AppTable = () => {
   const { t } = useSafeTranslation();
+  const appSearchOptions = useMemo<
+    readonly AdminSearchOption<'username' | 'teamId' | 'teamName' | 'appId' | 'appName'>[]
+  >(
+    () => [
+      {
+        value: 'username',
+        label: t('admin:composite_search.field_username'),
+        placeholder: t('admin:composite_search.placeholder_username')
+      },
+      {
+        value: 'teamId',
+        label: t('admin:composite_search.field_team_id'),
+        placeholder: t('admin:composite_search.placeholder_team_id'),
+        exactObjectId: true
+      },
+      {
+        value: 'teamName',
+        label: t('admin:composite_search.field_team_name'),
+        placeholder: t('admin:composite_search.placeholder_team_name')
+      },
+      {
+        value: 'appId',
+        label: t('admin:composite_search.field_app_id'),
+        placeholder: t('admin:composite_search.placeholder_app_id'),
+        exactObjectId: true
+      },
+      {
+        value: 'appName',
+        label: t('admin:composite_search.field_app_name'),
+        placeholder: t('admin:composite_search.placeholder_app_name')
+      }
+    ],
+    [t]
+  );
   const [appDetail, setAppDetail] = useState<any>();
-  const [searchKey, setSearchKey] = useState<string>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { searchField, inputValue, isInvalid, searchParams, onFieldChange, onInputChange } =
+    useAdminCompositeSearch({ options: appSearchOptions });
 
   const {
     data: apps,
@@ -40,10 +64,8 @@ const AppTable = () => {
   } = usePagination(getApps, {
     defaultPageSize: 20,
     pageSizeCacheKey: 'admin-apps-list',
-    params: {
-      searchKey
-    },
-    refreshDeps: [searchKey],
+    params: searchParams,
+    refreshDeps: [searchParams],
     scrollContainerRef
   });
 
@@ -65,13 +87,14 @@ const AppTable = () => {
           {t('admin:user_apps')}
         </Box>
         <Box flexGrow={1}></Box>
-        <InputGroup w={['100%', '250px']} h={'36px'}>
-          <Input
-            placeholder={t('admin:search_by_app_name_or_app_id')}
-            h={'36px'}
-            onChange={(e) => setSearchKey(e.target.value)}
-          ></Input>
-        </InputGroup>
+        <AdminCompositeSearch
+          options={appSearchOptions}
+          field={searchField}
+          value={inputValue}
+          isInvalid={isInvalid}
+          onFieldChange={onFieldChange}
+          onValueChange={onInputChange}
+        />
       </Flex>
       <MyBox isLoading={isLoading} flex={'1 0 0'} h={0} minH={0}>
         <FixedTableContainer
