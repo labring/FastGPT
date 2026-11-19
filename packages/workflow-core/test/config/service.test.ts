@@ -1,3 +1,4 @@
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import {
   NodeInputKeyEnum,
@@ -289,6 +290,27 @@ describe('fileSelectConfig output synchronization', () => {
 });
 
 describe('global variable references', () => {
+  it('allows deleting a variable named in a literal array', async () => {
+    const document = await createDocumentWithVariableReferenceArray();
+    const read = document.nodes.find((node) => node.nodeId === 'read')!;
+    const literal = [VARIABLE_NODE_ID, 'tenantId'];
+    read.inputs = [
+      {
+        key: 'literal',
+        label: 'Literal',
+        renderTypeList: [FlowNodeInputTypeEnum.textarea],
+        value: literal
+      }
+    ];
+
+    const result = await apply(document, { type: 'variable.remove', key: 'tenantId' });
+
+    expect(result.document.chatConfig.variables).toEqual([]);
+    expect(result.document.nodes.find((node) => node.nodeId === 'read')?.inputs[0].value).toEqual(
+      literal
+    );
+  });
+
   it('renames variables inside reference arrays without changing other references', async () => {
     const document = await createDocumentWithVariableReferenceArray();
     const result = await apply(document, {

@@ -7,7 +7,10 @@ import {
 import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { userFilesInput } from '@fastgpt/global/core/workflow/template/output';
-import { areWorkflowValueTypesCompatible } from '@fastgpt/global/common/workflow/reference';
+import {
+  areWorkflowValueTypesCompatible,
+  nodeInputIsReference
+} from '@fastgpt/global/common/workflow/reference';
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import { WorkflowCommandError } from '../domain/diagnostic';
 import { getWorkflowReferenceValues } from '../reference/service';
@@ -158,6 +161,7 @@ const getGlobalVariableReferences = ({
 }) =>
   document.nodes.flatMap((node) =>
     node.inputs.flatMap((input) => {
+      if (!nodeInputIsReference(input)) return [];
       const references = (getWorkflowReferenceValues(input.value) ?? []).filter(
         ([sourceNodeId, outputKey]) => sourceNodeId === VARIABLE_NODE_ID && outputKey === key
       );
