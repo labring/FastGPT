@@ -371,6 +371,7 @@ jobs:
                   .metadata.annotations["kubectl.kubernetes.io/last-applied-configuration"]
                 )
               | .spec.replicas = 1
+              | .spec.strategy = { "type": "Recreate" }
               | .spec.selector.matchLabels = $selector
               | .spec.template.metadata.labels = ((.spec.template.metadata.labels // {}) + $selector)
               | .spec.template.metadata.annotations = ((.spec.template.metadata.annotations // {}) + {
@@ -477,10 +478,34 @@ jobs:
               exit 1
             fi
 
-            kubectl get deployment,rs,pods -l "fastgpt.io/preview-pr=$PR_NUMBER" -o wide || true
-            { kubectl get events --sort-by=.lastTimestamp --field-selector "involvedObject.kind=Pod" || true; } |
-              grep "$RESOURCE_NAME" |
-              tail -n 10 || true
+            kubectl get resourcequota --request-timeout=10s -o wide || true
+            kubectl get deployment,rs,pods -l "fastgpt.io/preview-pr=$PR_NUMBER" --request-timeout=10s -o wide || true
+
+            OBJECT_UIDS="[]"
+            if kubectl get deployment,rs,pods -l "fastgpt.io/preview-pr=$PR_NUMBER" --request-timeout=10s -o json > "$WORK_DIR/pr-objects.json" 2>/dev/null; then
+              OBJECT_UIDS=$(jq -c '[.items[]?.metadata.uid | select(type == "string" and length > 0)]' "$WORK_DIR/pr-objects.json")
+            fi
+
+            PR_EVENTS=""
+            if [[ "$OBJECT_UIDS" != "[]" ]] && kubectl get events --request-timeout=10s -o json > "$WORK_DIR/ns-events.json" 2>/dev/null; then
+              PR_EVENTS=$(jq -r --argjson uids "$OBJECT_UIDS" '
+                [
+                  .items[]?
+                  | select(.involvedObject.uid as $uid | ($uids | index($uid)) != null)
+                ]
+                | sort_by(.lastTimestamp // .eventTime // .metadata.creationTimestamp // "")
+                | .[-10:][]
+                | "\(.lastTimestamp // .eventTime // "-")\t\(.type // "-")\t\(.reason // "-")\t\(.involvedObject.kind // "-")/\(.involvedObject.name // "-")\t\(.message // "")"
+              ' "$WORK_DIR/ns-events.json")
+            fi
+
+            if [[ -n "$PR_EVENTS" ]]; then
+              printf '%s\n' "$PR_EVENTS"
+            fi
+            if grep -iq 'exceeded quota' <<< "$PR_EVENTS"; then
+              echo "::error::Docs preview rollout blocked by namespace ResourceQuota (exceeded quota). Free up Pods or raise quota before retrying."
+              exit 1
+            fi
 
             if ((retry == MAX_ROLLOUT_RETRIES)); then
               echo "::error::Docs preview rollout still timed out after $MAX_ROLLOUT_RETRIES retries."
@@ -495,8 +520,9 @@ jobs:
 
           curl --fail --silent --show-error \
             --max-time 15 \
-            --retry 18 \
+            --retry 12 \
             --retry-delay 5 \
+            --retry-max-time 120 \
             --retry-connrefused \
             --retry-all-errors \
             -o /dev/null "https://$PREVIEW_HOST"
