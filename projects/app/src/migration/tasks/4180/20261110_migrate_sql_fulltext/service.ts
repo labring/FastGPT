@@ -178,11 +178,6 @@ const processSqlFullTextRecord = async ({
           'Active vector row has wrong ownership or conflicting full text'
         );
       }
-      if (adapter.provider !== 'pg') {
-        throw new SqlFullTextMigrationRecordError(
-          'Active vector row is missing; rebuild this data before migrating'
-        );
-      }
       await repairMissingVectors();
       // 补建分配新 ID，必须重新读取 Mongo 并只读核对实际提交后的所有引用。
       return processSqlFullTextRecord({ id, validateOnly: true, assertActive });
@@ -221,7 +216,7 @@ const processSqlFullTextRecord = async ({
           throw new SqlFullTextMigrationRecordError('Dataset embedding model is unavailable');
         }
       })();
-      // PG 缺行补建属于升级修复，免团队积分检查和用量扣费。
+      // 缺行补建属于升级修复，免团队积分检查和用量扣费。
       await assertActive();
       const operation = new DatasetDataIndexOperation(model);
       const missing = new Set(invalidActiveIds);

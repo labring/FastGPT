@@ -129,28 +129,32 @@ beforeEach(() => {
 });
 
 describe('SQL full-text missing vector repair', () => {
-  it('repairs only missing PG rows, without checking or charging points, and skips repaired rows on retry', async () => {
-    const { data, id } = await seed();
-    state.points.mockRejectedValue(new Error('insufficient points'));
-    expect(await migrateSqlFullTextRecord(id)).toBe(2);
-    const current = (await MongoDatasetData.findById(id).lean())!;
-    expect(current.indexes.map((index) => index.dataId)).toEqual(['100', '2']);
-    expect(current).toMatchObject({ q: data.q, a: data.a, synonymVersion: 0 });
-    expect(current.indexes[1]).toEqual(data.toObject().indexes[1]);
-    expect(mockGetVectors).toHaveBeenCalledWith(
-      expect.objectContaining({
-        model: expect.objectContaining({ model: 'original-embedding' }),
-        inputs: [{ type: 'text', input: '缺失的索引' }]
-      })
-    );
-    expect(state.rows.get('100')?.text).toBe('缺失的索引');
-    expect(await migrateSqlFullTextRecord(id)).toBe(2);
-    expect(await migrateSqlFullTextRecord(id, { validateOnly: true })).toBe(2);
-    expect(mockGetVectors).toHaveBeenCalledOnce();
-    expect(mockVectorInsert).toHaveBeenCalledOnce();
-    expect(state.points).not.toHaveBeenCalled();
-    expect(state.usage).not.toHaveBeenCalled();
-  });
+  it.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
+    'repairs only missing %s rows without charging points or regenerating on retry',
+    async (provider) => {
+      state.provider = provider;
+      const { data, id } = await seed();
+      state.points.mockRejectedValue(new Error('insufficient points'));
+      expect(await migrateSqlFullTextRecord(id)).toBe(2);
+      const current = (await MongoDatasetData.findById(id).lean())!;
+      expect(current.indexes.map((index) => index.dataId)).toEqual(['100', '2']);
+      expect(current).toMatchObject({ q: data.q, a: data.a, synonymVersion: 0 });
+      expect(current.indexes[1]).toEqual(data.toObject().indexes[1]);
+      expect(mockGetVectors).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: expect.objectContaining({ model: 'original-embedding' }),
+          inputs: [{ type: 'text', input: '缺失的索引' }]
+        })
+      );
+      expect(state.rows.get('100')?.text).toBe('缺失的索引');
+      expect(await migrateSqlFullTextRecord(id)).toBe(2);
+      expect(await migrateSqlFullTextRecord(id, { validateOnly: true })).toBe(2);
+      expect(mockGetVectors).toHaveBeenCalledOnce();
+      expect(mockVectorInsert).toHaveBeenCalledOnce();
+      expect(state.points).not.toHaveBeenCalled();
+      expect(state.usage).not.toHaveBeenCalled();
+    }
+  );
 
   it('uses the recorded historical synonym input for both vector and full text', async () => {
     const { id } = await seed();
@@ -297,20 +301,6 @@ describe('SQL full-text missing vector repair', () => {
       else await MongoDataset.updateOne({ _id: dataset._id }, { $unset: { vectorModel: '' } });
       await expect(migrateSqlFullTextRecord(id)).rejects.toThrow('is missing');
       expect(mockGetVectors).not.toHaveBeenCalled();
-    }
-  );
-
-  it.each(['oceanbase', 'seekdb', 'opengauss'] as const)(
-    'reports missing %s rows for explicit rebuild without calling the model or billing',
-    async (provider) => {
-      state.provider = provider;
-      const { id } = await seed();
-      await expect(migrateSqlFullTextRecord(id)).rejects.toThrow(
-        'rebuild this data before migrating'
-      );
-      expect(mockGetVectors).not.toHaveBeenCalled();
-      expect(state.points).not.toHaveBeenCalled();
-      expect(state.usage).not.toHaveBeenCalled();
     }
   );
 

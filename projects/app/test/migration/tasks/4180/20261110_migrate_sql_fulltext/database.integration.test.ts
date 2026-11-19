@@ -51,10 +51,14 @@ vi.mock('@fastgpt/service/common/vectorDB/constants', async (importOriginal) => 
   OPENGAUSS_ADDRESS: target?.provider === 'opengauss' ? target.address : undefined
 }));
 
-import { initVectorStore } from '@fastgpt/service/common/vectorDB/controller';
+import {
+  createVectorController,
+  initVectorStore
+} from '@fastgpt/service/common/vectorDB/controller';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { getFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
 import { getSqlFullTextAdapter } from '@fastgpt/service/common/vectorDB/fullText/controller';
 import { systemMigrations } from '@/migration/registry';
@@ -66,6 +70,7 @@ import {
 } from '@/migration/entity';
 import { MongoSystemMigrationState } from '@/migration/mongoSchema';
 import { DatasetDataOperation } from '@/service/core/dataset/data/data';
+import { migrateSqlFullTextRecord } from '@/migration/tasks/4180/20261110_migrate_sql_fulltext/service';
 import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import {
   refreshSqlFullTextTargetReady,
@@ -463,4 +468,62 @@ describe.skipIf(!target)('selected SQL database real full-text migration', () =>
       await query("SELECT id FROM modeldata WHERE fulltext_tokens LIKE '%nativeupdateproof%'")
     ).toEqual([]);
   }, 120000);
+
+  it.runIf(target && !target.legacyPg)(
+    'repairs a physically missing vector and makes the new index reference searchable',
+    async () => {
+      const adapter = getSqlFullTextAdapter();
+      await adapter.prepare();
+      await MongoDataset.create({
+        _id: datasetId,
+        teamId,
+        tmbId: new Types.ObjectId(),
+        name: 'SQL full-text vector repair',
+        vectorModel: 'text-embedding-ada-002'
+      });
+      const missingText = '缺失向量 repairvectorproof';
+      const healthyText = '正常向量 preservedvectorproof';
+      const {
+        insertIds: [missingId, healthyId]
+      } = await createVectorController().insert({
+        teamId,
+        datasetId,
+        collectionId,
+        vectors: [vector, vector],
+        texts: [missingText, healthyText]
+      });
+      const idParameter = target!.isMysql ? '?' : '$1';
+      await query(`DELETE FROM modeldata WHERE id = ${idParameter}`, [missingId]);
+      const healthyBefore = await query(`SELECT * FROM modeldata WHERE id = ${idParameter}`, [
+        healthyId
+      ]);
+      const data = await MongoDatasetData.create({
+        teamId,
+        datasetId,
+        collectionId,
+        tmbId: new Types.ObjectId(),
+        synonymVersion: 0,
+        q: missingText,
+        a: '',
+        indexes: [
+          { dataId: missingId, text: missingText, type: 'custom' },
+          { dataId: healthyId, text: healthyText, type: 'custom' }
+        ]
+      });
+
+      expect(await migrateSqlFullTextRecord(String(data._id))).toBe(2);
+      const repaired = await MongoDatasetData.findById(data._id).lean();
+      const repairedId = repaired?.indexes[0].dataId;
+      expect(repairedId).toEqual(expect.any(String));
+      expect(repairedId).not.toBe(missingId);
+      expect(repaired?.indexes[1]).toEqual(data.toObject().indexes[1]);
+      expect(repaired?.q).toBe(missingText);
+      expect(await query(`SELECT * FROM modeldata WHERE id = ${idParameter}`, [healthyId])).toEqual(
+        healthyBefore
+      );
+      expect(await adapter.search(props('repairvectorproof'))).toMatchObject([
+        { vectorId: repairedId, collectionId }
+      ]);
+    }
+  );
 });
