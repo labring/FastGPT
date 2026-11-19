@@ -1534,9 +1534,12 @@ describe('loadRequestMessages function tests', () => {
         { type: 'image_url', image_url: { url: 'data:image/png;base64,test' } }
       ]);
       expect(mockGetImageBase64).toHaveBeenCalledWith('https://example.com/a.png', {
-        timeoutMs: TOOL_IMAGE_DOWNLOAD_TIMEOUT_MS,
+        timeoutMs: expect.any(Number),
         allowedMimeTypes: providerImageMimeTypes
       });
+      expect(mockGetImageBase64.mock.calls[0][1]?.timeoutMs).toBeLessThanOrEqual(
+        TOOL_IMAGE_DOWNLOAD_TIMEOUT_MS
+      );
     });
 
     it('keeps each value next to its images in the provider vision message', async () => {
@@ -1624,7 +1627,7 @@ describe('loadRequestMessages function tests', () => {
         expect(result[1].role).toBe(ChatCompletionRequestMessageRoleEnum.Tool);
         expect(result[1].content).toBe('Look at this image');
         expect(mockGetImageBase64).toHaveBeenCalledWith('https://example.com/gone.png', {
-          timeoutMs: TOOL_IMAGE_DOWNLOAD_TIMEOUT_MS,
+          timeoutMs: expect.any(Number),
           allowedMimeTypes: providerImageMimeTypes
         });
       }
@@ -1747,7 +1750,7 @@ describe('loadRequestMessages function tests', () => {
         'https://sandbox-preview.example.com/preview/sandbox-1/session-1/a.png',
         {
           trustedOrigin: 'https://sandbox-preview.example.com',
-          timeoutMs: TOOL_IMAGE_DOWNLOAD_TIMEOUT_MS,
+          timeoutMs: expect.any(Number),
           allowedMimeTypes: providerImageMimeTypes
         }
       );
@@ -1787,7 +1790,7 @@ describe('loadRequestMessages function tests', () => {
         'https://sandbox-preview.example.com/preview/sandbox-1/session-1/a.png',
         {
           trustedOrigin: 'https://Sandbox-Preview.Example.com:443/?v=1#x',
-          timeoutMs: TOOL_IMAGE_DOWNLOAD_TIMEOUT_MS,
+          timeoutMs: expect.any(Number),
           allowedMimeTypes: providerImageMimeTypes
         }
       );
@@ -1844,9 +1847,123 @@ describe('loadRequestMessages function tests', () => {
       ]);
       // 非沙箱预览地址不得附带 trustedOrigin，继续受公共 SSRF 策略约束。
       expect(mockGetImageBase64).toHaveBeenCalledWith('https://example.com/a.png', {
-        timeoutMs: TOOL_IMAGE_DOWNLOAD_TIMEOUT_MS,
+        timeoutMs: expect.any(Number),
         allowedMimeTypes: providerImageMimeTypes
       });
+    });
+
+    it('should fetch updated or recovered images independently for distinct tool calls sharing the same URL', async () => {
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
+      const fileContext = createFileClassificationContext();
+      mockGetImageBase64
+        .mockResolvedValueOnce({
+          completeBase64: 'data:image/png;base64,v1',
+          base64: 'v1',
+          mime: 'image/png'
+        })
+        .mockResolvedValueOnce({
+          completeBase64: 'data:image/png;base64,v2',
+          base64: 'v2',
+          mime: 'image/png'
+        });
+
+      const firstRoundMessages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Render chart' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call_v1',
+          content: [
+            { type: 'text', text: 'version 1' },
+            { type: 'image_url', image_url: { url: 'https://example.com/chart.png' } }
+          ]
+        }
+      ];
+      const round1 = await loadRequestMessages({
+        messages: firstRoundMessages,
+        useVision: true,
+        fileContext
+      });
+      expect(round1[2].content).toEqual([
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,v1' } }
+      ]);
+
+      // 新工具调用返回同一可更新 URL：历史 call_v1 复用 v1，新 call_v2 独立拉取 v2。
+      const secondRoundMessages: ChatCompletionMessageParam[] = [
+        ...firstRoundMessages,
+        { role: ChatCompletionRequestMessageRoleEnum.Assistant, content: 'Updating chart' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call_v2',
+          content: [
+            { type: 'text', text: 'version 2' },
+            { type: 'image_url', image_url: { url: 'https://example.com/chart.png' } }
+          ]
+        }
+      ];
+      const round2 = await loadRequestMessages({
+        messages: secondRoundMessages,
+        useVision: true,
+        fileContext
+      });
+      expect(mockGetImageBase64).toHaveBeenCalledTimes(2);
+      expect(round2[2].content).toEqual([
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,v1' } }
+      ]);
+      expect(round2[5].content).toEqual([
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,v2' } }
+      ]);
+
+      // 首次下载失败后，新工具调用返回同一 URL 且恢复可用时应能成功拉取。
+      mockGetImageBase64.mockRejectedValueOnce(new Error('temporary 503')).mockResolvedValueOnce({
+        completeBase64: 'data:image/png;base64,recovered',
+        base64: 'recovered',
+        mime: 'image/png'
+      });
+      const retryContext = createFileClassificationContext();
+      const failedRound = await loadRequestMessages({
+        messages: [
+          { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Fetch' },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Tool,
+            tool_call_id: 'call_fail',
+            content: [
+              { type: 'text', text: 'attempt 1' },
+              { type: 'image_url', image_url: { url: 'https://example.com/retry.png' } }
+            ]
+          }
+        ],
+        useVision: true,
+        fileContext: retryContext
+      });
+      expect(failedRound).toHaveLength(2);
+
+      const recoveredRound = await loadRequestMessages({
+        messages: [
+          { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Fetch' },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Tool,
+            tool_call_id: 'call_fail',
+            content: [
+              { type: 'text', text: 'attempt 1' },
+              { type: 'image_url', image_url: { url: 'https://example.com/retry.png' } }
+            ]
+          },
+          { role: ChatCompletionRequestMessageRoleEnum.Assistant, content: 'Retrying' },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Tool,
+            tool_call_id: 'call_ok',
+            content: [
+              { type: 'text', text: 'attempt 2' },
+              { type: 'image_url', image_url: { url: 'https://example.com/retry.png' } }
+            ]
+          }
+        ],
+        useVision: true,
+        fileContext: retryContext
+      });
+      expect(recoveredRound[recoveredRound.length - 1].content).toEqual([
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,recovered' } }
+      ]);
     });
 
     it('should reuse downloaded tool images within the same fileContext across rounds without cross-session caching', async () => {

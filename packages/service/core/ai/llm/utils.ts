@@ -123,13 +123,13 @@ export const loadImageBase64 = (url: string) => {
  * 工具返回的外链可能返回 200 text/html 登录页或慢响应：这里开启魔数白名单校验与短超时，
  * 防止把非图像字节包装成无效 data:image/... 发给上游视觉模型，同时保留通用下载器的兼容语义。
  */
-export const loadToolImageBase64 = (url: string) => {
+export const loadToolImageBase64 = (url: string, options?: { timeoutMs?: number }) => {
   const previewProxyBase = getSystemInstanceConfig().subservice.agentSandbox.proxy.previewUrl;
   const isSandboxPreview = Boolean(previewProxyBase && isSandboxPreviewFileUrl(url));
 
   return getImageBase64(url, {
     ...(isSandboxPreview ? { trustedOrigin: previewProxyBase } : {}),
-    timeoutMs: TOOL_IMAGE_DOWNLOAD_TIMEOUT_MS,
+    timeoutMs: options?.timeoutMs ?? TOOL_IMAGE_DOWNLOAD_TIMEOUT_MS,
     allowedMimeTypes: providerImageMimeTypes
   });
 };
@@ -471,16 +471,32 @@ export const loadRequestMessages = async ({
   };
 
   /**
-   * 在当前 fileContext 生命周期内复用工具图片下载结果并限制并发度。
-   * 避免 FastAgent 后续每轮携带历史 tool 消息时反复 GET 同一张图，失败结果同样记忆以避免慢图反复阻塞。
+   * 在当前 fileContext 生命周期内按「工具调用结果 + URL」复用下载结果并限制并发度与总等待时间。
+   * - 同一历史工具结果（相同 toolCallId + URL）在后续轮次直接复用，不再重复 GET；
+   * - 不同工具调用即使返回相同的可更新 URL（如新版本图表或重试恢复），也拥有独立下载机会；
+   * - 总截止时间包含并发排队时间，避免多批慢图叠加阻塞模型请求。
    */
-  const loadCachedToolImageDataUri = (url: string): Promise<string | undefined> => {
-    const cached = toolImageCache.entries.get(url);
+  const loadCachedToolImageDataUri = (
+    toolCallId: string,
+    url: string
+  ): Promise<string | undefined> => {
+    const cacheKey = `${toolCallId}:${url}`;
+    const cached = toolImageCache.entries.get(cacheKey);
     if (cached) return cached;
 
+    const deadline = Date.now() + TOOL_IMAGE_DOWNLOAD_TIMEOUT_MS;
     const pending = toolImageCache.limit(async () => {
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) {
+        logger.warn('Drop tool image part after queue wait timeout', {
+          toolCallId,
+          url
+        });
+        return undefined;
+      }
+
       try {
-        const { completeBase64 } = await loadToolImageBase64(url);
+        const { completeBase64 } = await loadToolImageBase64(url, { timeoutMs: remainingMs });
         return completeBase64;
       } catch (error) {
         logger.warn('Drop tool image part after normalization failure', {
@@ -489,7 +505,7 @@ export const loadRequestMessages = async ({
         return undefined;
       }
     });
-    toolImageCache.entries.set(url, pending);
+    toolImageCache.entries.set(cacheKey, pending);
     return pending;
   };
 
@@ -643,7 +659,10 @@ export const loadRequestMessages = async ({
    * 若在 multipleDataToBase64=false 时直接透传外部 URL，上游模型网关拉图失败会直接报错中断工具调用。
    * 因此工具图片统一走服务端内联（forceBase64），失败时静默丢弃并保留 tool 文本，与 piAgent 保持一致。
    */
-  const normalizeToolMediaContentParts = async (content: ChatCompletionContentPart[]) => {
+  const normalizeToolMediaContentParts = async (
+    content: ChatCompletionContentPart[],
+    toolCallId: string
+  ) => {
     const normalized = await Promise.all(
       content.map(async (item) => {
         if (item.type === 'image_url') {
@@ -653,7 +672,7 @@ export const loadRequestMessages = async ({
             return inlinePart;
           }
 
-          const base64 = await loadCachedToolImageDataUri(imageItem.image_url.url);
+          const base64 = await loadCachedToolImageDataUri(toolCallId, imageItem.image_url.url);
           if (!base64) return undefined;
           return {
             ...imageItem,
@@ -876,7 +895,10 @@ export const loadRequestMessages = async ({
   const toolMediaParts = new WeakMap<ChatCompletionMessageParam, ChatCompletionContentPart[]>();
 
   /** 拆分工具文本和多模态内容，保留媒体与对应文本的顺序。 */
-  const extractToolMediaContent = async (content: ChatCompletionContentPart[]) => {
+  const extractToolMediaContent = async (
+    content: ChatCompletionContentPart[],
+    toolCallId: string
+  ) => {
     const supportedContent = content
       .map(filterSupportedUserContentPart)
       .filter((part): part is ChatCompletionContentPart => part !== undefined);
@@ -892,7 +914,7 @@ export const loadRequestMessages = async ({
     const cappedParts = orderedParts.filter(
       (part) => part.type !== 'image_url' || ++imageCount <= maxToolImagePartAmount
     );
-    const normalizedMediaParts = await normalizeToolMediaContentParts(cappedParts);
+    const normalizedMediaParts = await normalizeToolMediaContentParts(cappedParts, toolCallId);
 
     return { textParts, mediaParts: normalizedMediaParts };
   };
@@ -969,7 +991,10 @@ export const loadRequestMessages = async ({
             return item;
           }
 
-          const { textParts, mediaParts } = await extractToolMediaContent(item.content);
+          const { textParts, mediaParts } = await extractToolMediaContent(
+            item.content,
+            item.tool_call_id
+          );
 
           const toolMessage = {
             ...item,

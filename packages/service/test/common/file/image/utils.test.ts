@@ -1,6 +1,6 @@
 import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { Readable } from 'node:stream';
+import { PassThrough, Readable } from 'node:stream';
 import {
   isValidImageContentType,
   detectImageTypeFromBuffer,
@@ -241,6 +241,7 @@ describe('getImageBase64', () => {
       baseURL: 'http://localhost:3000',
       responseType: 'stream',
       timeout: 180000,
+      signal: expect.any(AbortSignal),
       maxContentLength: 10 * 1024 * 1024
     });
     expect(result.mime).toBe('image/png');
@@ -321,6 +322,30 @@ describe('getImageBase64', () => {
     await expect(
       getImageBase64('https://example.com/icon.svg', { allowedMimeTypes })
     ).rejects.toThrow('Invalid or unsupported image content');
+  });
+
+  it('should abort slow streaming response bodies after timeoutMs and destroy the stream', async () => {
+    const stream = new PassThrough();
+    const destroySpy = vi.spyOn(stream, 'destroy');
+    mockAxiosGet.mockResolvedValueOnce({
+      status: 200,
+      headers: { 'content-type': 'image/png' },
+      data: stream
+    });
+
+    // 响应头立即返回，响应体首块及时到达，但迟迟不结束。
+    stream.write(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+
+    const start = Date.now();
+    await expect(
+      getImageBase64('https://example.com/slow.png', {
+        timeoutMs: 60,
+        allowedMimeTypes: ['image/png']
+      })
+    ).rejects.toThrow('Image download timed out after 60ms');
+
+    expect(Date.now() - start).toBeLessThan(300);
+    expect(destroySpy).toHaveBeenCalled();
   });
 
   it('should handle content-type header with charset parameter', async () => {
