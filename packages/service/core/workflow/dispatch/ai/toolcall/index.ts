@@ -240,11 +240,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     })();
     const toolMemories = toolCallMemoryContext.getDelta();
     const systemMemories = Object.keys(toolMemories).length > 0 ? toolMemories : undefined;
-    const { runTimes, toolDetail } =
-      summarizeAgentLoopCoreToolRunFlowResponses(toolDispatchFlowResponses);
-    // 有 sink 时 child workflow 和当前 ToolCall 的内部 response 已经独立发布；
-    // 只在无 sink 的调试/单测路径把兼容详情挂回顶层 response。
-    const toolDetailForResponse = getWorkflowContext().nodeResponseSink ? undefined : toolDetail;
+    // 子流程节点详情已通过响应 Context 独立发布，顶层 ToolCall 响应只保留自身汇总。
+    const { runTimes } = summarizeAgentLoopCoreToolRunFlowResponses(toolDispatchFlowResponses);
     const modelName = toolModel.name;
     const modelTotalPoints = toolCallTotalPoints;
     const nodeResponse = createAgentLoopCoreToolCallNodeResponse({
@@ -255,7 +252,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       query: userChatInput,
       completeMessages,
       useVision,
-      toolDetail: toolDetailForResponse,
       finishReason: finish_reason || 'stop',
       requestIds,
       firstTokenTime

@@ -77,8 +77,7 @@ export const createWorkflowAgentToolProvider = ({
         });
       }
     : undefined;
-  const { fileContext } = getWorkflowContext();
-  const readFileMaxFileAmount = fileContext.limits.maxFileAmount;
+  const readFileMaxFileAmount = workflowContext.fileContext.limits.maxFileAmount;
   const readFileExecutor = createAgentLoopCoreReadFileExecutor({
     enabled: true,
     execute: async ({ files }) =>

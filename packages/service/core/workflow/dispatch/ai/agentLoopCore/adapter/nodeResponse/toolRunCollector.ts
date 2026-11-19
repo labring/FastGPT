@@ -23,7 +23,6 @@ export type AgentLoopCoreToolRunFlowResponse = {
 
 export type AgentLoopCoreToolRunFlowResponsesSummary = {
   runTimes: number;
-  toolDetail: NonNullable<DispatchFlowResponse['flatNodeResponses']>;
   toolTotalPoints: number;
   workflowRuntimeSummary: DispatchFlowResponse['workflowRuntimeSummary'];
 };
@@ -51,7 +50,6 @@ export const summarizeAgentLoopCoreToolRunFlowResponses = (
   responses: AgentLoopCoreToolRunFlowResponse[]
 ): AgentLoopCoreToolRunFlowResponsesSummary => ({
   runTimes: responses.reduce((sum, item) => sum + (item.runTimes ?? 0), 0),
-  toolDetail: responses.flatMap((item) => item.flowResponses),
   toolTotalPoints: responses
     .flatMap((item) => item.flowUsages)
     .reduce((sum, item) => sum + item.totalPoints, 0),

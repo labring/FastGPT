@@ -12,7 +12,7 @@ const makeResponse = (id: string): ChatHistoryItemResType => ({
 });
 
 describe('createAgentNodeResponseCollector', () => {
-  it('存在 sink 时逐条串行发布，不在 Agent 内保留完整数组', async () => {
+  it('逐条串行发布详情，并维护本 Agent 的响应摘要', async () => {
     const publishOrder: string[] = [];
     const output = {
       publish: vi.fn(async ([{ response }]: Array<{ response: ChatHistoryItemResType }>) => {
@@ -20,18 +20,15 @@ describe('createAgentNodeResponseCollector', () => {
         return [response];
       })
     };
-    const nodeResponses: ChatHistoryItemResType[] = [];
     const nodeResponseSink = createWorkflowEntryNodeResponseSink({ output });
-    const collector = createAgentNodeResponseCollector({ nodeResponseSink, nodeResponses });
+    const collector = createAgentNodeResponseCollector({ nodeResponseSink });
 
     collector.appendNodeResponse(makeResponse('first'));
     collector.appendNodeResponse(makeResponse('second'));
     await collector.flush();
 
     expect(publishOrder).toEqual(['first', 'second']);
-    expect(nodeResponses).toEqual([]);
-    expect(collector.getNodeResponses()).toBeUndefined();
-    expect(collector.getWorkflowRuntimeSummary()?.responseIds).toEqual(['first', 'second']);
+    expect(collector.getWorkflowRuntimeSummary().responseIds).toEqual(['first', 'second']);
   });
 
   it('存在 nodeResponseParentId 时为未携带 parentId 的步骤补齐父节点，并保留已有深层 parentId', async () => {
@@ -43,10 +40,9 @@ describe('createAgentNodeResponseCollector', () => {
           return entries.map((entry) => entry.response);
         }
       )
-    };
+    } as unknown as Parameters<typeof createAgentNodeResponseCollector>[0]['nodeResponseSink'];
     const collector = createAgentNodeResponseCollector({
       nodeResponseSink,
-      nodeResponses: [],
       nodeResponseParentId: 'agent_root_id'
     });
 
@@ -70,15 +66,5 @@ describe('createAgentNodeResponseCollector', () => {
         parentId: 'tool_call_1'
       }
     ]);
-  });
-
-  it('没有 sink 时兼容调试路径，返回本地数组', () => {
-    const nodeResponses: ChatHistoryItemResType[] = [];
-    const collector = createAgentNodeResponseCollector({ nodeResponses });
-
-    collector.appendNodeResponse(makeResponse('local'));
-
-    expect(collector.getNodeResponses()).toEqual([makeResponse('local')]);
-    expect(collector.getWorkflowRuntimeSummary()).toBeUndefined();
   });
 });

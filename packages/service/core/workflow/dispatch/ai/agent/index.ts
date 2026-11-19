@@ -24,7 +24,7 @@ import {
 } from '../../../../ai/sandbox/application/availability';
 import { getWorkflowContext, getWorkflowSandboxContext, runWithContext } from '../../context';
 import { loadWorkflowModelResource } from '../../../resource/service';
-import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
+import { stripNodeSummaryErrorFields } from '../../utils/summary';
 import { getNodeErrResponse, removeUnfinishedInteractiveHistories } from '../../utils';
 import { getDispatchModerationContext } from '../../utils/runtime';
 import { getWorkflowNodeMemoryKey } from '../../context/memory';
@@ -141,13 +141,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
   // assistantResponses 贯穿整轮 dispatch；Agent 内部 nodeResponse 由 sink 逐条发布。
   const assistantResponses: AIChatItemValueItemType[] = [];
-  const childNodeResponses: ChatHistoryItemResType[] = [];
   const nodeResponseCollector = createAgentNodeResponseCollector({
     nodeResponseSink: getWorkflowContext().nodeResponseSink,
-    nodeResponses: childNodeResponses,
-    nodeResponseParentId: shouldWrapNodeResponses ? props.nodeResponseParentId : undefined,
-    onNodeResponseSummary: (summary) =>
-      props.nodeSummary.mergeNodeSummary(runtimeSummaryToNodeSummary(summary))
+    nodeResponseParentId: shouldWrapNodeResponses ? props.nodeResponseParentId : undefined
   });
   // 简易模式下主模型、工具和压缩响应平铺在当前层；工作流模式下未显式携带 parentId 的步骤统一挂在当前 Agent 节点响应下。
   const appendAgentNodeResponse = (response: ChatHistoryItemResType) =>
@@ -255,16 +251,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   } = {}) => {
     if (!shouldWrapNodeResponses) return undefined;
 
-    const childResponseCount =
-      nodeResponseCollector.getWorkflowRuntimeSummary()?.childResponseCount;
-    const childrenResponses = nodeResponseCollector.getNodeResponses();
+    const { childResponseCount } = nodeResponseCollector.getWorkflowRuntimeSummary();
 
     return {
       model: agentModel.name,
       query: userChatInput,
       ...(textOutput ? { textOutput } : {}),
       ...(childResponseCount !== undefined ? { childResponseCount } : {}),
-      ...(childrenResponses?.length ? { childrenResponses } : {}),
       ...(errorText !== undefined ? { errorText } : {})
     };
   };
@@ -432,7 +425,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         },
         usagePush,
         assistantResponses,
-        nodeResponses: childNodeResponses,
         appendNodeResponse: appendAgentNodeResponse,
         onToolResult: (result) => {
           props.nodeSummary.mergeNodeSummary(stripNodeSummaryErrorFields(result.nodeSummary));

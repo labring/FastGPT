@@ -3,7 +3,7 @@ import { summarizeAgentLoopCoreToolRunFlowResponses } from '@fastgpt/service/cor
 import { describe, expect, it } from 'vitest';
 
 describe('summarizeAgentLoopCoreToolRunFlowResponses', () => {
-  it('summarizes run times, flow responses and usage points', () => {
+  it('summarizes run times, runtime summary and usage points', () => {
     expect(
       summarizeAgentLoopCoreToolRunFlowResponses([
         {
@@ -24,7 +24,6 @@ describe('summarizeAgentLoopCoreToolRunFlowResponses', () => {
       ])
     ).toEqual({
       runTimes: 3,
-      toolDetail: [{ moduleName: 'A' }, { moduleName: 'B' }],
       workflowRuntimeSummary: {
         ...createWorkflowRuntimeSummary(),
         totalPoints: 0,
@@ -50,7 +49,6 @@ describe('summarizeAgentLoopCoreToolRunFlowResponses', () => {
       ])
     ).toEqual({
       runTimes: 0,
-      toolDetail: [],
       workflowRuntimeSummary: {
         ...createWorkflowRuntimeSummary(),
         totalPoints: 0,
