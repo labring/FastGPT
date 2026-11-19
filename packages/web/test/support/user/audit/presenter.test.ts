@@ -466,4 +466,30 @@ describe('audit presenter summary', () => {
       'account_team:audit_detail_resource_type(type=account_team:audit_resource_type_department)\n'
     );
   });
+
+  it('keeps invitation link out of resources and renders link name in summary', () => {
+    for (const event of [AuditEventEnum.CREATE_INVITATION_LINK, AuditEventEnum.JOIN_TEAM]) {
+      expect(
+        resolveAuditResources({
+          event,
+          resources: [
+            {
+              type: AuditResourceTypeEnum.invitationLink,
+              id: 'link-1',
+              name: '2026 研发部邀请'
+            }
+          ],
+          metadata: { link: '2026 研发部邀请' }
+        })
+      ).toEqual([]);
+
+      expect(
+        formatAuditSummary({
+          event,
+          metadata: { link: '2026 研发部邀请' },
+          t
+        })
+      ).toBe('account_team:audit_detail_invitation_link(link=2026 研发部邀请)');
+    }
+  });
 });

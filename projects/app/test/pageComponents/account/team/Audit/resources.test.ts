@@ -52,7 +52,7 @@ describe('AuditLog resource column', () => {
   afterAll(() => vi.unstubAllGlobals());
   afterEach(() => vi.unstubAllEnvs());
 
-  it.each(['', '/fastgpt'])(
+  it.each(['', '/fastgpt', '/app'])(
     'renders structured AuditResourceLink items with base URL "%s", concise summaries, and legacy fallbacks',
     async (baseUrl) => {
       // 部署前缀在模块加载时读取，重新加载组件以验证真实 URL helper。
@@ -154,8 +154,7 @@ describe('AuditLog resource column', () => {
         `${baseUrl}/app/detail?appId=${id}`
       ]);
       expect(html).toContain('data-avatar="/bot.png"');
-      expect(html).toContain('account_team:audit_resource_deleted');
-      expect(html).not.toContain('Deleted App');
+      expect(html).toContain('Deleted App (account_team:audit_resource_deleted_suffix)');
       expect(html).toContain('Prod Key');
       expect(html).toContain('Legacy Tool');
       expect(html).not.toContain('account_team:resource_');

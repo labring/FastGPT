@@ -17,14 +17,6 @@ import type { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/c
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import type { AuditResourceType } from '@fastgpt/global/support/user/audit/type';
 
-export {
-  buildAppAuditResource,
-  buildCollectionAuditResource,
-  buildDatasetAuditResource,
-  buildEntityAuditResource,
-  buildSkillAuditResource
-} from '@fastgpt/global/support/user/audit/type';
-
 const logger = getLogger(LogCategories.INFRA.MONGO);
 
 export type AuditLogInput = {

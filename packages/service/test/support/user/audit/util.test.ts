@@ -1,17 +1,14 @@
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { MongoTeamAudit } from '@fastgpt/service/support/user/audit/schema';
+import { addAuditLog, addAuditLogs } from '@fastgpt/service/support/user/audit/util';
 import {
-  addAuditLog,
-  addAuditLogs,
+  AuditResourceTypeEnum,
   buildAppAuditResource,
   buildCollectionAuditResource,
   buildDatasetAuditResource,
   buildEntityAuditResource,
-  buildSkillAuditResource
-} from '@fastgpt/service/support/user/audit/util';
-import {
-  AuditResourceTypeEnum,
+  buildSkillAuditResource,
   normalizeStoredAuditResources,
   type AuditResourceType
 } from '@fastgpt/global/support/user/audit/type';

@@ -1,17 +1,31 @@
 import React from 'react';
 import { Box, Flex, Link } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import { subRoute } from '@fastgpt/web/common/system/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import type { PresentedAuditResource } from '@fastgpt/web/support/user/audit/presenter';
 
 /**
- * 审计日志专用的资源展示组件：呈现可选头像与名称（已删除资源直接展示「该资源已被删除」且不可跳转），
+ * presenter 返回不含部署前缀的站内绝对路由；显式拼接一次部署前缀，避免前缀与路由首段同名（如 `/app`）时被启发式去重吞掉。
+ */
+const buildPrefixedResourceHref = (href: string) => {
+  const normalizedBase = subRoute ? subRoute.replace(/\/+$/, '') : '';
+  if (!normalizedBase) return href;
+  return `${normalizedBase}${href.startsWith('/') ? href : `/${href}`}`;
+};
+
+/**
+ * 审计日志专用的资源展示组件：呈现可选头像与名称（已删除资源保留快照名称并标记已删除、禁用跳转），
  * 类型仅用于决定图标与目标跳转路由。
  */
 const AuditResourceLink = ({ resource }: { resource: PresentedAuditResource }) => {
   const { t } = useSafeTranslation();
-  const label = resource.deleted ? t('account_team:audit_resource_deleted') : resource.name;
+  const hasSnapshotName = Boolean(resource.name && resource.name !== '-');
+  const label = resource.deleted
+    ? hasSnapshotName
+      ? `${resource.name} (${t('account_team:audit_resource_deleted_suffix')})`
+      : t('account_team:audit_resource_deleted')
+    : resource.name;
 
   const content = (
     <>
@@ -32,7 +46,7 @@ const AuditResourceLink = ({ resource }: { resource: PresentedAuditResource }) =
   if (!resource.deleted && resource.href) {
     return (
       <Link
-        href={getWebReqUrl(resource.href)}
+        href={buildPrefixedResourceHref(resource.href)}
         role="group"
         display="inline-flex"
         alignItems="center"

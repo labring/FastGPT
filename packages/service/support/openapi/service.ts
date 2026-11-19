@@ -9,6 +9,9 @@ import { getOpenApiTypeFilter, getOpenApiAppIdFilter } from './utils';
 import { addAuditLog } from '../user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { AuditResourceTypeEnum, type AuditResourceType, buildAppAuditResource, buildEntityAuditResource } from '@fastgpt/global/support/user/audit/type';
+import { getLogger, LogCategories } from '../../common/logger';
+
+const logger = getLogger(LogCategories.INFRA.MONGO);
 
 /**
  * 将指定成员的应用 Key 交给绑定应用的当前 owner，必须在应用交接之后、同一事务中调用。
@@ -83,10 +86,19 @@ export const auditAppApiKeyTransfers = async ({
   actorTmbId?: string;
 }) => {
   const appIds = [...new Set(changes.map((item) => item.appId).filter(Boolean))];
-  const apps =
-    appIds.length > 0
-      ? await MongoApp.find({ teamId, _id: { $in: appIds } }, '_id name avatar type').lean()
-      : [];
+  const apps = await (async () => {
+    if (appIds.length === 0) return [];
+    try {
+      return await MongoApp.find({ teamId, _id: { $in: appIds } }, '_id name avatar type').lean();
+    } catch (error) {
+      logger.warn('Failed to enrich app metadata for API key transfer audit', {
+        error,
+        teamId,
+        appCount: appIds.length
+      });
+      return [];
+    }
+  })();
   const appMap = new Map(apps.map((app) => [String(app._id), app]));
 
   for (const params of changes) {

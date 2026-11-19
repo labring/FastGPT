@@ -262,9 +262,6 @@ const pickMetadataFallbackName = (
   if (event === AuditEventEnum.TRANSFER_TEAM_OWNERSHIP) return asNonEmptyString(metadata.teamName);
   if (API_KEY_EVENTS.has(event)) return asNonEmptyString(metadata.keyName);
   if (ENTERPRISE_EVENTS.has(event)) return asNonEmptyString(metadata.enterpriseName);
-  if (event === AuditEventEnum.CREATE_INVITATION_LINK || event === AuditEventEnum.JOIN_TEAM) {
-    return asNonEmptyString(metadata.link);
-  }
   return undefined;
 };
 
@@ -364,9 +361,6 @@ const buildLegacyPresentedResources = ({
   if (ENTERPRISE_EVENTS.has(event)) {
     return fromTyped(AuditResourceTypeEnum.enterprise, asNonEmptyString(metadata.enterpriseName));
   }
-  if (event === AuditEventEnum.CREATE_INVITATION_LINK || event === AuditEventEnum.JOIN_TEAM) {
-    return fromTyped(AuditResourceTypeEnum.invitationLink, asNonEmptyString(metadata.link));
-  }
 
   return [];
 };
@@ -381,6 +375,10 @@ export const resolveAuditResources = ({
   resources?: unknown;
   metadata?: Record<string, unknown>;
 }): PresentedAuditResource[] => {
+  if (event === AuditEventEnum.CREATE_INVITATION_LINK || event === AuditEventEnum.JOIN_TEAM) {
+    return [];
+  }
+
   const normalized = normalizeStoredAuditResources(resources);
   if (normalized && normalized.length > 0) {
     const fallbackName =
@@ -525,20 +523,40 @@ const formatDeletedResourceLines = ({
   return lines;
 };
 
-const RESOURCE_TYPE_LABEL_KEYS: Partial<Record<AuditResourceTypeEnum, string>> = {
-  [AuditResourceTypeEnum.app]: 'account_team:audit_resource_type_app',
-  [AuditResourceTypeEnum.tool]: 'account_team:audit_resource_type_tool',
-  [AuditResourceTypeEnum.appFolder]: 'account_team:audit_resource_type_appFolder',
-  [AuditResourceTypeEnum.toolFolder]: 'account_team:audit_resource_type_toolFolder',
-  [AuditResourceTypeEnum.dataset]: 'account_team:audit_resource_type_dataset',
-  [AuditResourceTypeEnum.datasetFolder]: 'account_team:audit_resource_type_datasetFolder',
-  [AuditResourceTypeEnum.collection]: 'account_team:audit_resource_type_collection',
-  [AuditResourceTypeEnum.collectionFolder]: 'account_team:audit_resource_type_collectionFolder',
-  [AuditResourceTypeEnum.skill]: 'account_team:audit_resource_type_skill',
-  [AuditResourceTypeEnum.skillFolder]: 'account_team:audit_resource_type_skillFolder',
-  [AuditResourceTypeEnum.member]: 'account_team:audit_resource_type_member',
-  [AuditResourceTypeEnum.department]: 'account_team:audit_resource_type_department',
-  [AuditResourceTypeEnum.group]: 'account_team:audit_resource_type_group'
+const resolveResourceTypeLabel = (
+  resourceType: AuditResourceTypeEnum,
+  t: AuditTranslator
+): string | undefined => {
+  switch (resourceType) {
+    case AuditResourceTypeEnum.app:
+      return t('account_team:audit_resource_type_app');
+    case AuditResourceTypeEnum.tool:
+      return t('account_team:audit_resource_type_tool');
+    case AuditResourceTypeEnum.appFolder:
+      return t('account_team:audit_resource_type_appFolder');
+    case AuditResourceTypeEnum.toolFolder:
+      return t('account_team:audit_resource_type_toolFolder');
+    case AuditResourceTypeEnum.dataset:
+      return t('account_team:audit_resource_type_dataset');
+    case AuditResourceTypeEnum.datasetFolder:
+      return t('account_team:audit_resource_type_datasetFolder');
+    case AuditResourceTypeEnum.collection:
+      return t('account_team:audit_resource_type_collection');
+    case AuditResourceTypeEnum.collectionFolder:
+      return t('account_team:audit_resource_type_collectionFolder');
+    case AuditResourceTypeEnum.skill:
+      return t('account_team:audit_resource_type_skill');
+    case AuditResourceTypeEnum.skillFolder:
+      return t('account_team:audit_resource_type_skillFolder');
+    case AuditResourceTypeEnum.member:
+      return t('account_team:audit_resource_type_member');
+    case AuditResourceTypeEnum.department:
+      return t('account_team:audit_resource_type_department');
+    case AuditResourceTypeEnum.group:
+      return t('account_team:audit_resource_type_group');
+    default:
+      return undefined;
+  }
 };
 
 /** 为多资源共用的审计事件生成首行「类型：...」，无结构化资源时省略。 */
@@ -550,9 +568,9 @@ const formatResourceTypeLine = ({
   t: AuditTranslator;
 }): string | undefined => {
   const resourceType = resources?.[0]?.type;
-  const labelKey = resourceType ? RESOURCE_TYPE_LABEL_KEYS[resourceType] : undefined;
-  if (!labelKey) return undefined;
-  return t('account_team:audit_detail_resource_type', { type: t(labelKey) });
+  const label = resourceType ? resolveResourceTypeLabel(resourceType, t) : undefined;
+  if (!label) return undefined;
+  return t('account_team:audit_detail_resource_type', { type: label });
 };
 
 /**
@@ -595,6 +613,13 @@ export const formatAuditSummary = ({
   switch (event) {
     case AuditEventEnum.EXPORT_AUDIT_LOGS:
       return t('account_team:audit_detail_export_audit_logs', processed);
+
+    case AuditEventEnum.CREATE_INVITATION_LINK:
+    case AuditEventEnum.JOIN_TEAM: {
+      const link =
+        asNonEmptyString(processed.link) ?? asNonEmptyString(normalizedResources?.[0]?.name);
+      return link ? t('account_team:audit_detail_invitation_link', { link }) : '-';
+    }
 
     case AuditEventEnum.CHANGE_MEMBER_NAME: {
       const oldName = asNonEmptyString(processed.memberName);

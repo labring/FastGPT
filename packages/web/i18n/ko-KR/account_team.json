@@ -269,7 +269,7 @@
   "log_publish_app": "[{{name}}]님이 [{{appName}}]이라는 이름의 [{{appType}}]을(를) 게시했습니다",
   "log_update_publish_app": "【{{name}}】【{{operationName}}】【{{appType}}】 이름: [{{appName}}】",
   "log_user": "작업자",
-  "log_resource": "리소스",
+  "log_resource": "작업 리소스",
   "resource_app": "앱",
   "resource_tool": "도구",
   "resource_skill": "스킬",
@@ -450,6 +450,7 @@
   "log_admin_update_moderation_policy": "[{{name}}]님이 콘텐츠 검수 정책 설정을 업데이트했습니다",
   "my_team": "내 팀",
   "audit_resource_deleted": "이 리소스는 삭제되었습니다",
+  "audit_resource_deleted_suffix": "삭제됨",
   "audit_detail_resource_type": "유형: {{type}}",
   "audit_resource_type_app": "앱",
   "audit_resource_type_tool": "도구",
@@ -485,5 +486,6 @@
   "audit_detail_dataset_tag_rename": "태그: {{oldName}} → {{newName}}",
   "audit_detail_index_rebuild": "인덱스 모델: {{oldModelName}} → {{newModelName}}",
   "audit_detail_collection_dataset": "소속 지식 베이스: {{datasetName}}",
+  "audit_detail_invitation_link": "링크 이름: {{link}}",
   "audit_detail_export_audit_logs": "시간 범위: {{dateStart}} ~ {{dateEnd}}\n멤버: {{tmbIds}}\n유형: {{events}}\n일치 건수: {{total}}"
 }
