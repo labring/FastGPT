@@ -1,0 +1,10 @@
+{
+  "title": "Create Collections",
+  "pages": [
+    "create",
+    "local-file",
+    "link",
+    "text",
+    "api-collection"
+  ]
+}

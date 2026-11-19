@@ -1,0 +1,10 @@
+{
+  "title": "Dataset Data",
+  "pages": [
+    "v2-list",
+    "detail",
+    "update",
+    "delete",
+    "push-data"
+  ]
+}

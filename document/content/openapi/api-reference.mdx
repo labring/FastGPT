@@ -1,12 +1,69 @@
 ---
-title: API 文档地址
-description: 查找中国大陆云、国际云和私有部署的 System OpenAPI 与 Dev API 文档。
+title: System OpenAPI 参考总览
+seoTitle: System OpenAPI 参考总览与接口索引 | FastGPT OpenAPI
+description: 查阅 FastGPT System OpenAPI 4 大分组 11 个模块静态参考、API Key 鉴权规范、Base URL、OpenAPI 3.1 JSON 契约与在线调试入口。
 ---
 
-自 4.15.0 的文档体系迁移后，当前端点参考通过生成文档维护。System OpenAPI 覆盖明确开放给 API Key 的契约；Dev API 面向内部开发接口，各自的鉴权条件以操作声明为准。
+本文档站提供 FastGPT **System OpenAPI**（明确开放给 API Key 鉴权的 50 个接口操作，共 4 大分组、11 个模块）的静态结构化参考，适合浏览器检索、单页 Markdown 拉取及 AI Coding Agent 阅读。
 
-- 自部署：`<instance>/apidoc/systemopenapi`、`<instance>/apidoc/devapi`。
-- 中国大陆云：[System OpenAPI](https://cloud.fastgpt.cn/apidoc/systemopenapi)、[Dev API](https://cloud.fastgpt.cn/apidoc/devapi)。
-- 国际云：[System OpenAPI](https://cloud.fastgpt.io/apidoc/systemopenapi)、[Dev API](https://cloud.fastgpt.io/apidoc/devapi)。
+如需在同源控制台直接发起在线调试请求，或查阅仅限内部开发使用的 **Dev API**，请访问对应云服务或私有部署实例的 `/apidoc/*` 交互页面。
 
-首次接入可从 [API 入门：完成首次请求](/zh-CN/openapi/intro) 开始。
+## Base URL 与服务入口
+
+| 部署环境       | API 请求 Base URL              | 实例在线调试台（Scalar）                                                                                            |
+| -------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| 中国大陆云服务 | `https://cloud.fastgpt.cn/api` | [System OpenAPI](https://cloud.fastgpt.cn/apidoc/systemopenapi) · [Dev API](https://cloud.fastgpt.cn/apidoc/devapi) |
+| 国际云服务     | `https://cloud.fastgpt.io/api` | [System OpenAPI](https://cloud.fastgpt.io/apidoc/systemopenapi) · [Dev API](https://cloud.fastgpt.io/apidoc/devapi) |
+| 私有化自部署   | `<instance>/api`               | `<instance>/apidoc/systemopenapi` · `<instance>/apidoc/devapi`                                                      |
+
+## 鉴权与身份规范
+
+System OpenAPI 统一通过 HTTP 请求头传递 API Key：
+
+```http
+Authorization: Bearer <apiKey>
+```
+
+- **个人 API Key**：在 **账号 → API 密钥** 创建，按归属成员在当前团队中的资源权限执行。调用应用对话等接口时需显式传入 `appId`（或使用 OpenAI SDK 兼容格式 `Bearer <apiKey>-<appId>`）。支持开启 `authProxy`（FastGPT >= v4.15.0）代理同团队成员身份，详见[身份代理](/zh-CN/openapi/identity-proxy)。
+- **应用 API Key**（FastGPT >= v4.18.0）：在 **工作台 → 目标应用 → 发布渠道 → API 访问 → 应用 Key** 创建，绑定单个应用，可用于该应用的对话、会话管理与日志接口且无需传 `appId`。支持通过 `customUid` 标记外部业务用户。
+- **首次接入**：如需端到端示例与 OpenAI SDK 配置，请先阅读 [API 入门：完成首次请求](/zh-CN/openapi/intro)。
+
+## 4 大分组与 11 个模块导航
+
+### 1. 基础功能
+
+- **模型管理（`model`）**：[批量获取模型展示详情](/zh-CN/openapi/reference/model/summary) · [获取公开系统模型](/zh-CN/openapi/reference/model/list) · [获取当前成员可用模型清单](/zh-CN/openapi/reference/model/catalog)
+
+### 2. 应用管理
+
+- **应用日志（`app-log`）**：[获取应用日志列表](/zh-CN/openapi/reference/app-log/list) · [获取应用总体数据统计](/zh-CN/openapi/reference/app-log/get-total-data) · [获取应用图表数据](/zh-CN/openapi/reference/app-log/get-chart-data) · [获取日志用户列表](/zh-CN/openapi/reference/app-log/get-users)
+
+### 3. 对话
+
+- **会话操作（`chat-controller`）**：[发起会话 v2](/zh-CN/openapi/reference/chat-controller/v2-chat-completions) · [停止会话](/zh-CN/openapi/reference/chat-controller/v2-chat-stop)
+- **会话管理（`chat-history`）**：[获取会话列表](/zh-CN/openapi/reference/chat-history/get-histories) · [批量获取会话状态](/zh-CN/openapi/reference/chat-history/get-history-status) · [标记会话已读](/zh-CN/openapi/reference/chat-history/mark-read) · [修改会话](/zh-CN/openapi/reference/chat-history/update-history) · [删除单个会话](/zh-CN/openapi/reference/chat-history/del-history) · [清空会话](/zh-CN/openapi/reference/chat-history/clear-histories) · [批量删除会话](/zh-CN/openapi/reference/chat-history/batch-delete) · [初始化应用或 Skill 调试会话](/zh-CN/openapi/reference/chat-history/init)
+- **对话管理（`chat-record`）**：[分页获取对话](/zh-CN/openapi/reference/chat-record/get-pagination-records) · [根据锚点获取对话](/zh-CN/openapi/reference/chat-record/get-records-v2) · [获取对话响应详细数据](/zh-CN/openapi/reference/chat-record/get-res-data) · [获取对话引用数据](/zh-CN/openapi/reference/chat-record/get-quote) · [获取集合分页引用数据](/zh-CN/openapi/reference/chat-record/get-collection-quote) · [删除对话](/zh-CN/openapi/reference/chat-record/delete)
+- **反馈管理（`chat-feedback`）**：[添加/更新用户反馈](/zh-CN/openapi/reference/chat-feedback/update-user-feedback)
+
+### 4. 知识库
+
+- **知识库管理（`dataset`）**：[创建知识库](/zh-CN/openapi/reference/dataset/create) · [获取知识库列表 V2](/zh-CN/openapi/reference/dataset/list-v2) · [获取知识库详情](/zh-CN/openapi/reference/dataset/detail) · [更新知识库](/zh-CN/openapi/reference/dataset/update) · [删除知识库](/zh-CN/openapi/reference/dataset/delete) · [批量移动知识库](/zh-CN/openapi/reference/dataset/batch-move) · [批量删除知识库](/zh-CN/openapi/reference/dataset/batch-delete)
+- **集合管理（`dataset-collection`）**：[获取集合列表（分页）](/zh-CN/openapi/reference/dataset-collection/list-v2) · [获取集合详情](/zh-CN/openapi/reference/dataset-collection/detail) · [更新数据集集合信息](/zh-CN/openapi/reference/dataset-collection/update) · [删除集合](/zh-CN/openapi/reference/dataset-collection/delete) · [申请知识库集合批量下载凭证](/zh-CN/openapi/reference/dataset-collection/get-download-ticket) · [下载知识库集合归档文件](/zh-CN/openapi/reference/dataset-collection/batch-download)
+- **集合创建（`dataset-collection-create`）**：[创建空集合/目录](/zh-CN/openapi/reference/dataset-collection-create/create) · [上传本地文件创建集合](/zh-CN/openapi/reference/dataset-collection-create/local-file) · [通过链接创建集合](/zh-CN/openapi/reference/dataset-collection-create/link) · [通过文本创建集合](/zh-CN/openapi/reference/dataset-collection-create/text)
+- **数据管理（`dataset-data`）**：[获取数据列表](/zh-CN/openapi/reference/dataset-data/v2-list) · [获取数据详情](/zh-CN/openapi/reference/dataset-data/detail) · [更新数据](/zh-CN/openapi/reference/dataset-data/update) · [删除数据](/zh-CN/openapi/reference/dataset-data/delete) · [推送数据到训练队列](/zh-CN/openapi/reference/dataset-data/push-data)
+- **知识库搜索（`dataset-search`）**：[知识库搜索 API](/zh-CN/openapi/reference/dataset-search/search)
+
+## 机器可读发现入口（GEO 与自动化导入）
+
+面向 Coding Agent、SDK 生成器及自动化测试工具，官方文档站提供以下标准机器可读入口（均支持跨语言一致结构）：
+
+- **OpenAPI 3.1 JSON 契约**：[https://doc.fastgpt.cn/openapi.json](https://doc.fastgpt.cn/openapi.json)（路径 `/openapi.json`，开放 `Access-Control-Allow-Origin: *` 跨域读取，供 HTTP 客户端与工具导入使用）。
+- **OpenAPI 专项 Markdown 语料**：[https://doc.fastgpt.cn/llms-openapi.txt](https://doc.fastgpt.cn/llms-openapi.txt)（路径 `/llms-openapi.txt`，完整收录全部现行 System OpenAPI 接口契约、参数表与 SSE 示例）。
+- **全局 AI 索引**：[https://doc.fastgpt.cn/llms.txt](https://doc.fastgpt.cn/llms.txt)（路径 `/llms.txt`）。
+- **单页纯净 Markdown**：在任意接口参考页 URL 末尾追加 `.md`（例如 `https://doc.fastgpt.cn/openapi/reference/dataset-search/search.md`），或在请求头携带 `Accept: text/markdown`。
+
+## 在线调试（Scalar）与 Dev API 说明
+
+- **Scalar 在线调试台**：每篇接口参考页的「端点概览」均附带直达云服务 Scalar 调试台的锚点链接，可在同源环境下填入 API Key 直接测试请求。私有化部署实例请访问 `<instance>/apidoc/systemopenapi`（原始 JSON 位于 `<instance>/api/apidoc/systemopenapi.json`）。
+- **Dev API（内部开发与管理员接口）**：面向源码二开、前端内部交互与 Root 运维管理，依赖登录态 Cookie（`fastgpt_token`）或 `rootkey`。为避免与 API Key 开放接口混用鉴权方式，Dev API 不收录于公开静态文档与默认 AI 语料，需在你所部署的实例上访问 `<instance>/apidoc/devapi`（或云服务对应 `/apidoc/devapi`）查阅。
+- **历史接口迁移**：旧版手写参数归档见[历史 API 参数与迁移](/zh-CN/openapi/legacy)。
