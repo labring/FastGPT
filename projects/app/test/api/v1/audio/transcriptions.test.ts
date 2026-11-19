@@ -125,7 +125,7 @@ describe('audio transcription API', () => {
   it('preserves authorization errors instead of converting them to parameter errors', async () => {
     mocks.authChatTargetCrud.mockRejectedValue(ChatErrEnum.unAuthChat);
     const result = await invoke({ appId: '68ad85a7463006c963799a05', chatId: 'chat', duration: 1 });
-    expect(result).toMatchObject({ status: 500, body: { code: 504000 } });
+    expect(result).toMatchObject({ status: 403, body: { code: 504000 } });
     expect(mocks.aiTranscriptions).not.toHaveBeenCalled();
     expect(createUsageHandler).not.toHaveBeenCalled();
     expect(mocks.clearDiskTempFiles).toHaveBeenCalledWith([temporaryFile]);
