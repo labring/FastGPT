@@ -20,7 +20,6 @@ import { MilvusCtrl } from './milvus';
 import { retryFn, withTimeout } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../logger';
 import { isRedisLeaseError, LeaseCache } from '@fastgpt/dal/redis/caches/lease';
-import { startSqlFullTextReadiness } from '../../core/dataset/fullText/sql/readiness';
 
 /** 根据部署配置创建向量存储控制器，迁移验收也通过同一实现写入探测向量。 */
 export const createVectorController = (): VectorControllerType => {
@@ -54,7 +53,6 @@ const vectorStoreHooksKey = Symbol.for('fastgpt.vectorStore.hooks');
 export const initVectorStore = async (hooks: VectorStoreHooks = {}) => {
   Reflect.set(globalThis, vectorStoreHooksKey, hooks);
   await Vector.init();
-  startSqlFullTextReadiness();
 };
 /**
  * 所有向量库召回共用跨实例并发额度；每次数据库重试都重新获取额度并读取最新配置。

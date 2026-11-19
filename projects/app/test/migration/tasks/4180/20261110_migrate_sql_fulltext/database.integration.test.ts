@@ -72,10 +72,6 @@ import { MongoSystemMigrationState } from '@/migration/mongoSchema';
 import { DatasetDataOperation } from '@/service/core/dataset/data/data';
 import { migrateSqlFullTextRecord } from '@/migration/tasks/4180/20261110_migrate_sql_fulltext/service';
 import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import {
-  refreshSqlFullTextTargetReady,
-  startSqlFullTextReadiness
-} from '@fastgpt/service/core/dataset/fullText/sql/readiness';
 
 // 保留真实配置逻辑，用 getter 模拟不同部署进程的环境，无需重启测试宿主。
 const env = vi.hoisted(() => ({ compatibility: true }));
@@ -347,10 +343,7 @@ describe.skipIf(!target)('selected SQL database real full-text migration', () =>
         await query("SELECT id FROM modeldata WHERE fulltext_tokens LIKE '%concurrentproof%'")
       ).toHaveLength(1);
       env.compatibility = false;
-      expect(await refreshSqlFullTextTargetReady()).toBe(false);
-      await expect(hits('legacyonlyproof')).rejects.toThrow('not ready');
-      // 模拟未配置兼容变量的节点启动。它的后台检查在成功提交前必须保持关闭。
-      startSqlFullTextReadiness();
+      expect(await hits('legacyonlyproof')).toEqual([]);
       env.compatibility = true;
     } finally {
       continueScan.release();
@@ -374,11 +367,8 @@ describe.skipIf(!target)('selected SQL database real full-text migration', () =>
           throw new Error('Migration retry did not reach the success commit gate');
         })
       ]);
-      // 完整验收已经写入目标记录，但 Runner 仍未持久化 succeeded，原生读取继续拒绝。
-      env.compatibility = false;
-      expect(await refreshSqlFullTextTargetReady()).toBe(false);
-      await expect(hits('concurrentproof')).rejects.toThrow('not ready');
-      env.compatibility = true;
+      // Runner 尚未提交成功，兼容模式继续用 Mongo 全文。
+      expect(await hits('legacyonlyproof')).toHaveLength(3);
       expect(await hits('concurrentproof')).toEqual([concurrentId]);
     } finally {
       continueCommit.release();
@@ -420,12 +410,10 @@ describe.skipIf(!target)('selected SQL database real full-text migration', () =>
     ).toBeTruthy();
     expect(await hits('compatibilityproof')).toEqual([String(compatibilityWrite.insertId)]);
 
-    // 确认 Mongo 是已验收后的主读源，随后模拟移除变量并等待后台刷新。
-    env.compatibility = false;
-    await expect
-      .poll(() => hits('concurrentproof').catch(() => []), { timeout: 12_000 })
-      .toEqual([concurrentId]);
+    // 模拟确认迁移成功后移除变量，下一次查询直接读 SQL。
     const metadataReads = vi.spyOn(adapter, 'getMetadata');
+    env.compatibility = false;
+    expect(await hits('concurrentproof')).toEqual([concurrentId]);
     expect(await hits('legacyonlyproof')).toEqual([]);
     for (const fixture of fixtures) expect(await hits(fixture.search)).toContain(fixture.id);
     expect(

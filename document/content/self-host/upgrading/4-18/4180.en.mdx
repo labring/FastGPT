@@ -13,7 +13,7 @@ upgradeTags:
 >
 > To keep full-text search available during the upgrade, set `TMP_MIGRATE_FULL_TEXT=true` on every App, Pro, and standalone indexing process before starting the first 4.18.0 instance.
 >
-> You can leave the variable unset if you can tolerate a pause in full-text search. If you upgrade with your existing configuration and the variable is unset, new instances maintain the full-text index in SQL only. Until the migration passes validation, full-text-only search is unavailable and hybrid search returns vector results only.
+> With the variable unset, instances read and write full-text data directly in SQL. Before migration completes, both full-text and hybrid search can fail or miss historical full-text matches.
 
 ### Full-text search migration for SQL vector stores
 

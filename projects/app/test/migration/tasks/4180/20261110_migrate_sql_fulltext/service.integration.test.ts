@@ -44,7 +44,6 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { getFullTextStore, MongoFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
-import { refreshSqlFullTextTargetReady } from '@fastgpt/service/core/dataset/fullText/sql/readiness';
 import { searchSqlFullText } from '@fastgpt/service/core/dataset/fullText/sql/store';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import type { SystemMigrationContext } from '@/migration/registry';
@@ -250,7 +249,6 @@ describe.skipIf(!target)('PG full-text real migration', () => {
           validated: 4
         }
       });
-      expect(await refreshSqlFullTextTargetReady()).toBe(true);
       for (const fixture of fixtures) {
         expect((await getFullTextStore().search(props(fixture.query)))[0]?.dataId).toBe(fixture.id);
       }
@@ -346,7 +344,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
     }
   });
 
-  it('backfills healthy records around a bad row, then revalidates earlier records before readiness', async () => {
+  it('backfills healthy records around a bad row, then revalidates earlier records before success', async () => {
     const fixtures = [];
     for (let i = 0; i < 5; i++) fixtures.push(await seed(`分批回填 batch ${i}`));
     const state = createContext();

@@ -9,9 +9,7 @@ import type {
   FullTextWriteProps
 } from '../../../common/vectorDB/type';
 import { getMilvusFullTextStore } from '../../../common/vectorDB/milvus/fullText';
-import { UserError } from '@fastgpt/global/common/error/utils';
 import { searchSqlFullText } from '../fullText/sql/store';
-import { isSqlFullTextTargetReady } from '../fullText/sql/readiness';
 import { MongoDatasetDataText } from './dataTextSchema';
 import {
   getFullTextProvider,
@@ -147,19 +145,10 @@ export class MongoFullTextStore implements FullTextStore {
   }
 }
 
-/** 原生全文尚未验收，混合召回可在这个阶段保留向量结果。 */
-export class SqlFullTextNotReadyError extends UserError {
-  constructor() {
-    super('SQL full-text search is not ready. Complete the SQL full-text migration.');
-  }
-}
-
-/** SQL 向量库的兼容模式固定读写旧 Mongo 全文，原生模式仅在已验收目标就绪后读 SQL。 */
+/** SQL 向量库的全文读取和 Mongo 兼容写删由同一个环境变量控制。 */
 export class SqlFullTextStore extends MongoFullTextStore {
   override async search(props: FullTextSearchProps): Promise<FullTextSearchItem[]> {
     if (getFullTextProvider() === 'mongo') return super.search(props);
-    if (props.limit <= 0 || !props.query.trim() || !props.datasetIds.length) return [];
-    if (!isSqlFullTextTargetReady()) throw new SqlFullTextNotReadyError();
     return searchSqlFullText(props);
   }
 
@@ -190,7 +179,7 @@ export class SqlFullTextStore extends MongoFullTextStore {
 
 let fullTextStore: FullTextStore | undefined;
 
-/** 按物理存储分发单例，SQL Store 统一处理兼容模式和迁移就绪状态。 */
+/** 按物理存储分发单例，SQL Store 统一处理兼容模式。 */
 export const getFullTextStore = (): FullTextStore => {
   if (fullTextStore) return fullTextStore;
   fullTextStore = getVectorType() === 'milvus' ? getMilvusFullTextStore() : new SqlFullTextStore();

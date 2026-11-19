@@ -14,10 +14,6 @@ import {
 import { getVectorType } from '@fastgpt/service/common/vectorDB/constants';
 import { getSqlFullTextAdapter } from '@fastgpt/service/common/vectorDB/fullText/controller';
 import {
-  activateSqlFullTextTarget,
-  clearSqlFullTextTargetReady
-} from '@fastgpt/service/core/dataset/fullText/sql/entity';
-import {
   SqlFullTextMigrationRecordError,
   getLatestDatasetDataId,
   listDatasetDataBatchIds,
@@ -43,8 +39,8 @@ const CheckpointSchema = z.object({
 /**
  * 手动迁移 SQL 全文，采用分批断点续跑；执行前必须排空旧 App/Pro/训练写入方。
  * 每条记录先校验源文本与历史同义词，再补 NULL。物理缺失的向量行通过 embedding 补建并 CAS 更新引用。
- * 坏记录按批保存并在重试时优先处理；回填结束后完整重验，全部通过才登记目标 ready。
- * TMP_MIGRATE_FULL_TEXT 开启时固定读 Mongo；验收只发布证据，读路由必须再等 Runner 成功终态。
+ * 坏记录按批保存并在重试时优先处理。回填后完整验收，由 Runner 保存任务结果。
+ * 管理员确认任务成功后，通过 TMP_MIGRATE_FULL_TEXT 切换读写模式。
  */
 export const migrateSqlFullTextMigration = async (
   context: SystemMigrationContext
@@ -63,11 +59,10 @@ export const migrateSqlFullTextMigration = async (
     await context.assertActive();
   };
 
-  // 1. 准备并核验目标身份；回填和验收期间清除旧 ready 证据。
+  // 1. 准备索引并读取目标身份和版本。
   await assertActive();
   await context.reportProgress({ key: 'prepare', status: SystemMigrationStatusEnum.running });
   const adapter = getSqlFullTextAdapter();
-  await clearSqlFullTextTargetReady(adapter.provider);
   const metadata = await adapter.prepare({ signal: context.signal });
   await context.reportProgress({ key: 'prepare', status: SystemMigrationStatusEnum.succeeded });
 
@@ -236,7 +231,6 @@ export const migrateSqlFullTextMigration = async (
         assertActive
       });
       await assertActive();
-      await activateSqlFullTextTarget({ provider: adapter.provider, ...metadata });
     }
     await context.reportProgress({
       key: stage,

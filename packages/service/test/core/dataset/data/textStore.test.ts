@@ -5,7 +5,6 @@ const mockBulkWrite = vi.hoisted(() => vi.fn());
 const mockDeleteMany = vi.hoisted(() => vi.fn());
 const mockJiebaSplit = vi.hoisted(() => vi.fn());
 const mockSearchSqlFullText = vi.hoisted(() => vi.fn());
-const mockIsSqlFullTextTargetReady = vi.hoisted(() => vi.fn());
 const mockMilvusSearch = vi.hoisted(() => vi.fn());
 const fullTextConfig = vi.hoisted(() => ({
   compatibility: true
@@ -38,9 +37,6 @@ vi.mock('@fastgpt/service/common/string/jieba/index', () => ({
 }));
 vi.mock('@fastgpt/service/core/dataset/fullText/sql/store', () => ({
   searchSqlFullText: mockSearchSqlFullText
-}));
-vi.mock('@fastgpt/service/core/dataset/fullText/sql/readiness', () => ({
-  isSqlFullTextTargetReady: mockIsSqlFullTextTargetReady
 }));
 vi.mock('@fastgpt/service/common/vectorDB/milvus/fullText', () => ({
   getMilvusFullTextStore: () => ({ isMilvus: true, search: mockMilvusSearch })
@@ -80,7 +76,6 @@ beforeEach(() => {
   mockSearchSqlFullText
     .mockReset()
     .mockResolvedValue([{ dataId: '68ad85a7463006c963799a05', collectionId: 'col1', score: 2.5 }]);
-  mockIsSqlFullTextTargetReady.mockReset().mockReturnValue(true);
   mockMilvusSearch.mockReset().mockResolvedValue([]);
 });
 afterEach(() => {
@@ -121,16 +116,10 @@ describe('textStore', () => {
         forbidCollectionIdList: []
       };
 
-      // 验收已经就绪时，兼容开关仍优先选 Mongo，并跳过就绪状态读取。
       await store.search(props);
       expect(mockSearchSqlFullText).not.toHaveBeenCalled();
-      expect(mockIsSqlFullTextTargetReady).not.toHaveBeenCalled();
       mockAggregate.mockClear();
       fullTextConfig.compatibility = false;
-      mockIsSqlFullTextTargetReady.mockReturnValueOnce(false);
-      await expect(store.search(props)).rejects.toThrow('not ready');
-      expect(mockSearchSqlFullText).not.toHaveBeenCalled();
-      expect(mockAggregate).not.toHaveBeenCalled();
 
       const nativeItems = await store.search(props);
       expect(mockSearchSqlFullText).toHaveBeenCalledExactlyOnceWith(props);
@@ -240,16 +229,6 @@ describe('textStore', () => {
       forbidCollectionIdList: []
     });
     expect(mockSearchSqlFullText).toHaveBeenCalledOnce();
-    mockIsSqlFullTextTargetReady.mockReturnValueOnce(false);
-    await expect(
-      store.search({
-        teamId: 't',
-        datasetIds: ['ds'],
-        query: 'q',
-        limit: 10,
-        forbidCollectionIdList: []
-      })
-    ).rejects.toThrow('not ready');
     expect(mockAggregate).not.toHaveBeenCalled();
   });
 });

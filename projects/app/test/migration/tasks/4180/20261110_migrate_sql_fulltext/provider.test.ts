@@ -9,8 +9,6 @@ import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTex
 import { migrateSqlFullTextMigration } from '@/migration/tasks/4180/20261110_migrate_sql_fulltext';
 import { getFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
 import { searchSqlFullText } from '@fastgpt/service/core/dataset/fullText/sql/store';
-import { refreshSqlFullTextTargetReady } from '@fastgpt/service/core/dataset/fullText/sql/readiness';
-import { findSqlFullTextTargetById } from '@fastgpt/service/core/dataset/fullText/sql/entity';
 import { systemMigrations, type SystemMigrationContext } from '@/migration/registry';
 import { createSystemMigrationRunner } from '@/migration/runner';
 import { enqueueManualMigration, ensureMigrationStates } from '@/migration/entity';
@@ -174,8 +172,10 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
       ]);
       expect(driver.search).toHaveBeenCalledOnce();
       driver.compatibility = false;
-      expect(await refreshSqlFullTextTargetReady()).toBe(false);
-      await expect(getFullTextStore().search(queryProps)).rejects.toThrow('not ready');
+      expect(await getFullTextStore().search(queryProps)).toEqual([
+        { dataId: String(doc._id), collectionId, score: 2.5 }
+      ]);
+      expect(driver.search).toHaveBeenCalledTimes(2);
     });
 
     it('records failed backfills before advancing the cursor and retries them before validation', async () => {
@@ -234,7 +234,7 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
         scanned: 1,
         validated: 1
       });
-      // 先重试游标之前的错误，再全量验收，保留旧表与目标 ready 证据。
+      // 先重试游标之前的错误，再全量验收，旧全文表保留供兼容读取。
       expect(driver.fill).toHaveBeenCalledTimes(2);
       expect(await state.context.getFailedRecords()).toEqual([]);
       expect(await MongoDatasetDataText.countDocuments()).toBe(1);
@@ -255,7 +255,7 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
           synonymVersion: 0,
           indexes: [{ dataId: '1', text: '旧文本', type: 'custom' }]
         });
-        // 仅模拟 SQL 行状态；Mongo 引用读取、迁移恢复与 ready 写入均执行真实代码。
+        // 仅模拟 SQL 行状态；Mongo 引用读取和迁移恢复均执行真实代码。
         const rows = new Map([['1', '旧文本']]);
         let changed = false;
         driver.fill.mockImplementation(
@@ -296,6 +296,7 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
         );
         const state = createContext();
         expect(await migrateSqlFullTextMigration(state.context)).toMatchObject({
+          targetId: metadata.targetId,
           scanned: 1,
           validated: change === 'replace' ? 2 : 1
         });
@@ -303,13 +304,10 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
         expect(rows.get('3')).toBe('新增文本');
         expect(rows.get('2')).toBe(change === 'replace' ? '新文本' : undefined);
         expect(await state.context.getFailedRecords()).toEqual([]);
-        expect(await findSqlFullTextTargetById(provider)).toMatchObject({
-          targetId: metadata.targetId
-        });
       }
     );
 
-    it('blocks readiness when the text changes in place under the same vector ID', async () => {
+    it('fails migration when the text changes in place under the same vector ID', async () => {
       const doc = await MongoDatasetData.create({
         teamId: new Types.ObjectId(),
         datasetId: new Types.ObjectId(),
@@ -330,7 +328,6 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
       expect(await state.context.getFailedRecords()).toMatchObject([
         { stageKey: 'scan', data: { id: String(doc._id) } }
       ]);
-      expect(await findSqlFullTextTargetById(provider)).toBeNull();
     });
 
     it('blocks a missing SQL row while Mongo still references it and recovers after the delete commits', async () => {
@@ -346,7 +343,6 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
       driver.findMissingVectorIds.mockResolvedValueOnce(['1']);
       const state = createContext();
       await expect(migrateSqlFullTextMigration(state.context)).rejects.toThrow('unresolved');
-      expect(await findSqlFullTextTargetById(provider)).toBeNull();
       await MongoDatasetData.deleteOne({ _id: doc._id });
       driver.fill.mockClear();
       expect(await migrateSqlFullTextMigration(state.context)).toMatchObject({
@@ -490,7 +486,6 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
         ).toMatchObject({ status: 'succeeded' });
         driver.search.mockResolvedValue([{ vectorId: '1', collectionId, score: 3.1 }]);
         driver.compatibility = false;
-        expect(await refreshSqlFullTextTargetReady()).toBe(true);
         expect(
           await getFullTextStore().search({
             teamId,
