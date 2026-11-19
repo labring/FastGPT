@@ -1,5 +1,5 @@
 import type { OpenAPIPath } from '../../../type';
-import { DevApiTagsMap } from '../../../tag';
+import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
 import {
   PresignChatFilePostUrlRawSchema,
   PresignDraftChatFilePostUrlRawSchema,
@@ -13,7 +13,11 @@ export const ChatFilePath: OpenAPIPath = {
     post: {
       summary: '获取文件上传 URL',
       description: '获取文件上传 URL',
-      tags: [DevApiTagsMap.chatFile],
+      tags: [DevApiTagsMap.chatFile, SystemOpenApiTagMap.chatFile],
+      'x-fastgpt-sdk': {
+        resource: 'chat.files',
+        method: 'presignUploadUrl'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -61,7 +65,11 @@ export const ChatFilePath: OpenAPIPath = {
     post: {
       summary: '获取文件预览地址',
       description: '获取文件预览地址',
-      tags: [DevApiTagsMap.chatFile],
+      tags: [DevApiTagsMap.chatFile, SystemOpenApiTagMap.chatFile],
+      'x-fastgpt-sdk': {
+        resource: 'chat.files',
+        method: 'presignPreviewUrl'
+      },
       requestBody: {
         content: {
           'application/json': {

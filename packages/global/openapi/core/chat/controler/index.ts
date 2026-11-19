@@ -20,6 +20,10 @@ export const ChatControllerPath: OpenAPIPath = {
         'Skill 编辑沙盒的启动、恢复或复用使用 POST /api/core/ai/skill/runtime/init，与本接口的会话初始化用途不同。'
       ].join('\n\n'),
       tags: [DevApiTagsMap.chatHistory, DevApiTagsMap.skillDebug, SystemOpenApiTagMap.chatHistory],
+      'x-fastgpt-sdk': {
+        resource: 'chat',
+        method: 'init'
+      },
       parameters: createChatTargetQueryParameters(InitChatQueryRawSchema),
       responses: {
         200: {
@@ -39,6 +43,10 @@ export const ChatControllerPath: OpenAPIPath = {
       description: `为正在运行的会话写入停止标记并立即返回。客户端收到成功响应后应中断当前流式请求。
   工作流会在后续安全检查点停止调度；HTTP 请求等无法主动中断的当前节点仍需等待其自行结束。`,
       tags: [DevApiTagsMap.chatController, SystemOpenApiTagMap.chatController],
+      'x-fastgpt-sdk': {
+        resource: 'chat',
+        method: 'stop'
+      },
       requestBody: {
         content: {
           'application/json': {

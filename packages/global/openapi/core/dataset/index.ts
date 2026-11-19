@@ -12,7 +12,9 @@ import { DatasetBatchPath } from './batch';
 import { DatasetSearchPath } from './search';
 import {
   CreateDatasetBodySchema,
+  CreateDatasetResponseSchema,
   CreateDatasetWithFilesBodySchema,
+  CreateDatasetWithFilesResponseSchema,
   DeleteDatasetQuerySchema,
   GetDatasetDetailQuerySchema,
   GetDatasetDetailResponseSchema,
@@ -21,6 +23,7 @@ import {
   GetDatasetListV2BodySchema,
   GetDatasetListV2ResponseSchema,
   GetDatasetPathsQuerySchema,
+  GetDatasetPathsResponseSchema,
   UpdateDatasetBodySchema,
   ResumeDatasetInheritPermissionBodySchema,
   EnableCollectionPermissionBodySchema,
@@ -47,6 +50,10 @@ export const DatasetPath: OpenAPIPath = {
       summary: '创建知识库',
       description: '创建新的知识库,支持多种类型(普通知识库、文件夹、网站知识库等)',
       tags: [DevApiTagsMap.datasetCommon, SystemOpenApiTagMap.dataset],
+      'x-fastgpt-sdk': {
+        resource: 'datasets',
+        method: 'create'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -56,7 +63,12 @@ export const DatasetPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回新创建的知识库 ID'
+          description: '成功返回新创建的知识库 ID',
+          content: {
+            'application/json': {
+              schema: CreateDatasetResponseSchema
+            }
+          }
         }
       }
     }
@@ -65,7 +77,11 @@ export const DatasetPath: OpenAPIPath = {
     post: {
       summary: '创建知识库并上传文件',
       description: '一步完成知识库创建和文件上传,自动创建集合并开始数据处理',
-      tags: [DevApiTagsMap.datasetCommon],
+      tags: [DevApiTagsMap.datasetCommon, SystemOpenApiTagMap.dataset],
+      'x-fastgpt-sdk': {
+        resource: 'datasets',
+        method: 'createWithFiles'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -75,7 +91,12 @@ export const DatasetPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回知识库信息和向量模型配置'
+          description: '成功返回知识库信息和向量模型配置',
+          content: {
+            'application/json': {
+              schema: CreateDatasetWithFilesResponseSchema
+            }
+          }
         }
       }
     }
@@ -131,6 +152,10 @@ export const DatasetPath: OpenAPIPath = {
       description:
         '分页获取或按 datasetIds 精确查询当前用户有权限访问的知识库；提供 datasetIds 时优先按 ID 查询，解析时过滤 parentId 和分页参数，保留公共筛选字段',
       tags: [DevApiTagsMap.datasetCommon, SystemOpenApiTagMap.dataset],
+      'x-fastgpt-sdk': {
+        resource: 'datasets',
+        method: 'list'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -160,7 +185,12 @@ export const DatasetPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回路径列表'
+          description: '成功返回路径列表',
+          content: {
+            'application/json': {
+              schema: GetDatasetPathsResponseSchema
+            }
+          }
         }
       }
     }
@@ -170,6 +200,10 @@ export const DatasetPath: OpenAPIPath = {
       summary: '获取知识库详情',
       description: '获取知识库详细信息,包括模型配置、权限和同步状态',
       tags: [DevApiTagsMap.datasetCommon, SystemOpenApiTagMap.dataset],
+      'x-fastgpt-sdk': {
+        resource: 'datasets',
+        method: 'detail'
+      },
       requestParams: {
         query: GetDatasetDetailQuerySchema
       },
@@ -277,6 +311,10 @@ export const DatasetPath: OpenAPIPath = {
       summary: '删除知识库',
       description: '删除知识库及其所有子知识库,需要所有者权限',
       tags: [DevApiTagsMap.datasetCommon, SystemOpenApiTagMap.dataset],
+      'x-fastgpt-sdk': {
+        resource: 'datasets',
+        method: 'delete'
+      },
       requestParams: {
         query: DeleteDatasetQuerySchema
       },
@@ -292,6 +330,10 @@ export const DatasetPath: OpenAPIPath = {
       summary: '更新知识库',
       description: '更新知识库信息、配置或移动知识库到其他目录',
       tags: [DevApiTagsMap.datasetCommon, SystemOpenApiTagMap.dataset],
+      'x-fastgpt-sdk': {
+        resource: 'datasets',
+        method: 'update'
+      },
       requestBody: {
         content: {
           'application/json': {

@@ -9,6 +9,7 @@ import {
   PaginationPageSizeSchema
 } from '../../../api';
 import {
+  ChatHistoryItemResSchema,
   ChatItemMiniSchema,
   UserChatItemSchema,
   SystemChatItemSchema,
@@ -48,6 +49,11 @@ export const GetResDataQuerySchema = GetResDataQueryRawSchema.transform(
 );
 export type GetResDataQueryType = z.infer<typeof GetResDataQueryRawSchema>;
 export type GetResDataQueryRuntimeType = z.infer<typeof GetResDataQuerySchema>;
+
+export const GetResDataResponseSchema = z
+  .array(ChatHistoryItemResSchema)
+  .meta({ description: '工作流各节点的执行响应详情列表' });
+export type GetResDataResponseType = z.infer<typeof GetResDataResponseSchema>;
 
 /* ============================================================================
  * API: 删除对话消息
@@ -269,6 +275,12 @@ export const GetChatSpeechBodySchema = createOutLinkChatTargetInputSchema({
 }).transform(transformChatAuthTargetInput);
 export type GetChatSpeechBodyType = z.infer<typeof GetChatSpeechBodySchema>;
 
+export const GetChatSpeechResponseSchema = z.string().meta({
+  format: 'binary',
+  description: '二进制音频数据流（audio/mpeg）'
+});
+export type GetChatSpeechResponseType = z.infer<typeof GetChatSpeechResponseSchema>;
+
 /* ============================================================================
  * API: 语音转文字
  * Route: POST /api/v1/audio/transcriptions
@@ -294,3 +306,9 @@ export const AudioTranscriptionsFormRawSchema = z.object({
   })
 });
 export type AudioTranscriptionsFormType = z.infer<typeof AudioTranscriptionsFormRawSchema>;
+
+export const AudioTranscriptionsResponseSchema = z.string().meta({
+  example: '你好，世界',
+  description: '语音识别转换后的文本结果'
+});
+export type AudioTranscriptionsResponseType = z.infer<typeof AudioTranscriptionsResponseSchema>;

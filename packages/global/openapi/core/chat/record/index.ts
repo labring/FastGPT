@@ -3,6 +3,7 @@ import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
 import {
   GetResDataQueryRawSchema,
+  GetResDataResponseSchema,
   DeleteChatRecordBodyRawSchema,
   GetQuoteBodyRawSchema,
   GetQuoteResponseSchema,
@@ -13,7 +14,9 @@ import {
   GetRecordsV2BodyRawSchema,
   GetRecordsV2ResponseSchema,
   GetChatSpeechBodySchema,
-  AudioTranscriptionsFormRawSchema
+  GetChatSpeechResponseSchema,
+  AudioTranscriptionsFormRawSchema,
+  AudioTranscriptionsResponseSchema
 } from './api';
 
 export const ChatRecordPath: OpenAPIPath = {
@@ -22,6 +25,10 @@ export const ChatRecordPath: OpenAPIPath = {
       summary: '分页获取对话',
       description: '分页获取指定会话的对话，支持多种鉴权模式',
       tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat],
+      'x-fastgpt-sdk': {
+        resource: 'chat.records',
+        method: 'list'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -47,6 +54,10 @@ export const ChatRecordPath: OpenAPIPath = {
       description:
         '默认读取最新消息，按时间正序返回。prevId、nextId、initialId 三选一，也可均不传；角色由方向确定，prevId 定位 Human，nextId 和 initialId 定位 AI。将 prevCursor/nextCursor 直接传入 prevId/nextId；无对应方向的下一页时为 null。为补齐轮次边界，返回条数可能略超 pageSize。支持多种鉴权模式。',
       tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat],
+      'x-fastgpt-sdk': {
+        resource: 'chat.records',
+        method: 'listByAnchor'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -72,10 +83,19 @@ export const ChatRecordPath: OpenAPIPath = {
       summary: '获取对话响应详细数据',
       description: '根据 dataId 获取对话中某条 AI 回复的详细响应数据',
       tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat],
+      'x-fastgpt-sdk': {
+        resource: 'chat.records',
+        method: 'getResponseData'
+      },
       parameters: createChatTargetQueryParameters(GetResDataQueryRawSchema),
       responses: {
         200: {
-          description: '成功返回响应数据'
+          description: '成功返回响应数据',
+          content: {
+            'application/json': {
+              schema: GetResDataResponseSchema
+            }
+          }
         }
       }
     }
@@ -86,6 +106,10 @@ export const ChatRecordPath: OpenAPIPath = {
       summary: '获取对话引用数据',
       description: '获取指定对话消息的数据集引用列表，需要对话访问权限',
       tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat],
+      'x-fastgpt-sdk': {
+        resource: 'chat.records',
+        method: 'getQuotes'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -110,6 +134,10 @@ export const ChatRecordPath: OpenAPIPath = {
       summary: '获取集合分页引用数据',
       description: '以链式分页方式获取指定集合的引用数据，支持前后翻页，需要对话访问权限',
       tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat],
+      'x-fastgpt-sdk': {
+        resource: 'chat.records',
+        method: 'getCollectionQuotes'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -136,6 +164,10 @@ export const ChatRecordPath: OpenAPIPath = {
       description:
         '通过 JSON Body 软删除指定消息，outLinkAuthData 传对象，contentIds 传数组。Ask/Preview 的待回答状态由剩余消息推导；删除末轮回答及后续 AI 后可重新回答。',
       tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat],
+      'x-fastgpt-sdk': {
+        resource: 'chat.records',
+        method: 'delete'
+      },
       requestBody: {
         required: true,
         content: {
@@ -155,7 +187,11 @@ export const ChatRecordPath: OpenAPIPath = {
     post: {
       summary: '获取语音合成',
       description: '将文本转换为语音，返回二进制音频数据流',
-      tags: [DevApiTagsMap.chatRecord],
+      tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat],
+      'x-fastgpt-sdk': {
+        resource: 'chat.records',
+        method: 'synthesizeSpeech'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -165,7 +201,12 @@ export const ChatRecordPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回二进制音频数据流'
+          description: '成功返回二进制音频数据流',
+          content: {
+            'audio/mpeg': {
+              schema: GetChatSpeechResponseSchema
+            }
+          }
         }
       }
     }
@@ -175,7 +216,11 @@ export const ChatRecordPath: OpenAPIPath = {
       summary: '语音转文字',
       description:
         '将 multipart/form-data 表单中的音频文件转换为文本。file 为音频文件，data 为 JSON 序列化后的对话鉴权参数。',
-      tags: [DevApiTagsMap.chatRecord],
+      tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chatController],
+      'x-fastgpt-sdk': {
+        resource: 'chat',
+        method: 'transcribeAudio'
+      },
       requestBody: {
         content: {
           'multipart/form-data': {
@@ -188,7 +233,12 @@ export const ChatRecordPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回识别文本'
+          description: '成功返回识别文本',
+          content: {
+            'application/json': {
+              schema: AudioTranscriptionsResponseSchema
+            }
+          }
         }
       }
     }

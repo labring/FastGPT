@@ -1,5 +1,5 @@
 import type { OpenAPIPath } from '../../../type';
-import { DevApiTagsMap } from '../../../tag';
+import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
 import {
   ChatInputGuideListBodySchema,
   ChatInputGuideListResponseSchema,
@@ -142,7 +142,11 @@ export const ChatInputGuidePath: OpenAPIPath = {
     post: {
       summary: '查询对话输入引导（公开接口）',
       description: '根据搜索词查询对话输入引导，支持应用和分享链接鉴权',
-      tags: [DevApiTagsMap.chatInputGuide],
+      tags: [DevApiTagsMap.chatInputGuide, SystemOpenApiTagMap.chatController],
+      'x-fastgpt-sdk': {
+        resource: 'chat',
+        method: 'queryInputGuide'
+      },
       requestBody: {
         content: {
           'application/json': {

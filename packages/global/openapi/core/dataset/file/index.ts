@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { OpenAPIPath } from '../../../type';
-import { DevApiTagsMap } from '../../../tag';
+import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
 import {
   GetSearchTestImagePreviewUrlsBodySchema,
   GetSearchTestImagePreviewUrlsResponseSchema,
@@ -72,7 +72,11 @@ export const DatasetFilePath: OpenAPIPath = {
     post: {
       summary: '获取知识库文件上传预签名 URL',
       description: '为指定知识库生成 S3 上传预签名 URL，同时校验写权限并对上传频率进行限制',
-      tags: [DevApiTagsMap.datasetFile],
+      tags: [DevApiTagsMap.datasetFile, SystemOpenApiTagMap.datasetFile],
+      'x-fastgpt-sdk': {
+        resource: 'datasets.files',
+        method: 'presignUploadUrl'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -96,10 +100,25 @@ export const DatasetFilePath: OpenAPIPath = {
     put: {
       summary: '上传知识库文件 Multipart 分片',
       description: '通过 presign 返回的 token 代理上传单个 Multipart 分片',
-      tags: [DevApiTagsMap.datasetFile],
+      tags: [DevApiTagsMap.datasetFile, SystemOpenApiTagMap.datasetFile],
+      'x-fastgpt-sdk': {
+        resource: 'datasets.files',
+        method: 'uploadPart'
+      },
       requestParams: {
         path: DatasetFileUploadTokenPathSchema,
         query: UploadDatasetFileMultipartPartQuerySchema.partial()
+      },
+      requestBody: {
+        required: true,
+        content: {
+          'application/octet-stream': {
+            schema: z.string().meta({
+              format: 'binary',
+              description: '待上传的文件或分片原始二进制流'
+            })
+          }
+        }
       },
       responses: {
         200: {
@@ -120,7 +139,11 @@ export const DatasetFilePath: OpenAPIPath = {
     post: {
       summary: '完成知识库文件 Multipart 上传',
       description: '校验分片清单并合并生成最终对象',
-      tags: [DevApiTagsMap.datasetFile],
+      tags: [DevApiTagsMap.datasetFile, SystemOpenApiTagMap.datasetFile],
+      'x-fastgpt-sdk': {
+        resource: 'datasets.files',
+        method: 'completeMultipartUpload'
+      },
       requestParams: {
         path: DatasetFileUploadTokenPathSchema
       },
@@ -147,7 +170,11 @@ export const DatasetFilePath: OpenAPIPath = {
     post: {
       summary: '取消知识库文件 Multipart 上传',
       description: '取消未完成的 Multipart 上传并清理对象存储分片',
-      tags: [DevApiTagsMap.datasetFile],
+      tags: [DevApiTagsMap.datasetFile, SystemOpenApiTagMap.datasetFile],
+      'x-fastgpt-sdk': {
+        resource: 'datasets.files',
+        method: 'abortMultipartUpload'
+      },
       requestParams: {
         path: DatasetFileUploadTokenPathSchema
       },

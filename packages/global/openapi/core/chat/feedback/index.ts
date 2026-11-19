@@ -20,6 +20,10 @@ export const ChatFeedbackPath: OpenAPIPath = {
       summary: '添加/更新用户反馈',
       description: '用户对消息添加或更新好评/差评反馈',
       tags: [DevApiTagsMap.chatFeedback, SystemOpenApiTagMap.chatFeedback],
+      'x-fastgpt-sdk': {
+        resource: 'chat.feedbacks',
+        method: 'updateUser'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -43,7 +47,11 @@ export const ChatFeedbackPath: OpenAPIPath = {
     post: {
       summary: '获取反馈记录ID列表',
       description: '根据反馈类型和已读状态，获取符合条件的消息ID列表',
-      tags: [DevApiTagsMap.chatFeedback],
+      tags: [DevApiTagsMap.chatFeedback, SystemOpenApiTagMap.chatFeedback],
+      'x-fastgpt-sdk': {
+        resource: 'chat.feedbacks',
+        method: 'listRecordIds'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -67,7 +75,11 @@ export const ChatFeedbackPath: OpenAPIPath = {
     post: {
       summary: '更新反馈阅读状态',
       description: '标记指定消息的反馈为已读或未读状态',
-      tags: [DevApiTagsMap.chatFeedback],
+      tags: [DevApiTagsMap.chatFeedback, SystemOpenApiTagMap.chatFeedback],
+      'x-fastgpt-sdk': {
+        resource: 'chat.feedbacks',
+        method: 'updateReadStatus'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -91,7 +103,11 @@ export const ChatFeedbackPath: OpenAPIPath = {
     post: {
       summary: '标注反馈',
       description: '为指定消息添加或更新标注反馈，包含数据集关联信息',
-      tags: [DevApiTagsMap.chatFeedback],
+      tags: [DevApiTagsMap.chatFeedback, SystemOpenApiTagMap.chatFeedback],
+      'x-fastgpt-sdk': {
+        resource: 'chat.feedbacks',
+        method: 'adminUpdate'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -115,7 +131,11 @@ export const ChatFeedbackPath: OpenAPIPath = {
     post: {
       summary: '关闭自定义反馈',
       description: '删除或关闭指定索引位置的自定义反馈条目',
-      tags: [DevApiTagsMap.chatFeedback],
+      tags: [DevApiTagsMap.chatFeedback, SystemOpenApiTagMap.chatFeedback],
+      'x-fastgpt-sdk': {
+        resource: 'chat.feedbacks',
+        method: 'closeCustom'
+      },
       requestBody: {
         content: {
           'application/json': {
