@@ -1,9 +1,7 @@
 import { Types } from '@fastgpt/service/common/mongo';
+import type { PipelineStage } from 'mongoose';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import {
-  CollectionTrainingStatusEnum,
-  DatasetCollectionTypeEnum
-} from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   datasetDataRebuildFailedStatuses,
   rebuildingDatasetDataMatch
@@ -26,6 +24,7 @@ import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collecti
 import { getDescendantFolderIds } from '@fastgpt/global/common/parentFolder/subtree';
 import { buildCollectionListTagMatch } from '@fastgpt/service/core/dataset/collection/tagFilter';
 import {
+  type CollectionTrainingStatusType,
   type DatasetCollectionSchemaType,
   type CollectionTagLabelType
 } from '@fastgpt/global/core/dataset/type';
@@ -72,10 +71,11 @@ type TrainingAmountAggregateItem = {
   modeCounts: CollectionTrainingModeCount[];
 };
 
-/** 筛选要先于分页。只汇总可能改变集合状态的任务和重建数据，沿用列表的最慢阶段判定。 */
+/** 批量读取候选集合的训练状态，只统计可能改变状态的任务和重建数据。 */
 const loadCollectionTrainingStatuses = async (scope: {
   teamId: Types.ObjectId;
   datasetId: Types.ObjectId;
+  collectionId: { $in: Types.ObjectId[] };
 }) => {
   const [training, rebuild] = await Promise.all([
     MongoDatasetTraining.aggregate<TrainingAmountAggregateItem>(
@@ -360,43 +360,13 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     teamId: new Types.ObjectId(teamId),
     datasetId: new Types.ObjectId(datasetId)
   };
-  const trainingStatuses = statusFilter
-    ? await loadCollectionTrainingStatuses(datasetScope)
-    : undefined;
-  const statusMatch = (() => {
-    if (!statusFilter || !trainingStatuses) return {};
-
-    const { status, modes } = statusFilter;
-    // 没有剩余任务的集合也处于就绪状态。导航目录的状态不展示，因此不作为筛选结果。
-    const ready = status === CollectionTrainingStatusEnum.ready && modes === undefined;
-    const ids = Array.from(trainingStatuses)
-      .filter(([, item]) =>
-        ready
-          ? item.slowestTrainingStatus !== status
-          : item.slowestTrainingStatus === status &&
-            (modes === undefined ||
-              (item.slowestTrainingMode !== undefined && modes.includes(item.slowestTrainingMode)))
-      )
-      .map(([id]) => new Types.ObjectId(id));
-    const navigationIds = Array.from(folderAccessModeMap)
-      .filter(([, mode]) => mode === 'navigate')
-      .map(([id]) => new Types.ObjectId(id));
-
-    return {
-      $and: [
-        ready ? { _id: { $nin: ids } } : { _id: { $in: ids } },
-        { _id: { $nin: navigationIds } }
-      ]
-    };
-  })();
   const match = {
     ...datasetScope,
     ...(selectFolder ? { type: DatasetCollectionTypeEnum.folder } : {}),
     ...scopeMatch,
     ...buildCollectionListTagMatch(tagFilters),
     ...collectionIdFilter,
-    ...(trainingType === undefined ? {} : { trainingType }),
-    ...statusMatch
+    ...(trainingType === undefined ? {} : { trainingType })
   };
 
   const selectField = {
@@ -416,6 +386,11 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
   };
 
   const sortDirection = sortOrder === 'desc' ? -1 : 1;
+  const nameSortStages: PipelineStage[] = [
+    { $addFields: { nameSortKey: { $toLower: '$name' } } },
+    // 名称忽略大小写后可能相同，用唯一 ID 固定同值顺序，避免跨页重复或漏项。
+    { $sort: { nameSortKey: sortDirection, _id: sortDirection } }
+  ];
 
   /**
    * 当前页集合。
@@ -427,9 +402,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
       return MongoDatasetCollection.aggregate<DatasetCollectionSchemaType>(
         [
           { $match: match },
-          { $addFields: { nameSortKey: { $toLower: '$name' } } },
-          // 名称忽略大小写后可能相同，用唯一 ID 固定同值顺序，避免跨页重复或漏项。
-          { $sort: { nameSortKey: sortDirection, _id: sortDirection } },
+          ...nameSortStages,
           { $skip: offset },
           { $limit: pageSize },
           { $project: selectField }
@@ -448,6 +421,64 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
         .limit(pageSize)
         .lean()
     );
+  };
+
+  /** 状态由训练任务和重建数据派生。先应用权限与目录范围，再批量筛选并累计精确总数。 */
+  const queryCollectionPageByStatus = async (filter: NonNullable<typeof statusFilter>) => {
+    const batchSize = 500;
+    const sortStages: PipelineStage[] =
+      sortBy === 'name' ? nameSortStages : [{ $sort: { [sortBy]: sortDirection } }];
+    const cursor = MongoDatasetCollection.aggregate<DatasetCollectionSchemaType>(
+      [{ $match: match }, ...sortStages, { $project: selectField }],
+      readFromSecondary
+    )
+      .allowDiskUse(true)
+      .cursor({ batchSize });
+
+    const collections: DatasetCollectionSchemaType[] = [];
+    const trainingStatuses = new Map<string, CollectionTrainingStatusType>();
+    let total = 0;
+    const filterBatch = async (batch: DatasetCollectionSchemaType[]) => {
+      const statuses = await loadCollectionTrainingStatuses({
+        ...datasetScope,
+        collectionId: { $in: batch.map(({ _id }) => new Types.ObjectId(_id)) }
+      });
+      for (const item of batch) {
+        const id = String(item._id);
+        const status = statuses.get(id) ?? defaultCollectionTrainingStatus;
+        if (status.slowestTrainingStatus !== filter.status) continue;
+        if (
+          filter.modes !== undefined &&
+          (status.slowestTrainingMode === undefined ||
+            !filter.modes.includes(status.slowestTrainingMode))
+        ) {
+          continue;
+        }
+        if (total >= offset && collections.length < pageSize) {
+          collections.push(item);
+          trainingStatuses.set(id, status);
+        }
+        total += 1;
+      }
+    };
+
+    // 导航目录的状态不展示，因此不参与筛选。游标按批读取，只保留当前页的结果与状态。
+    const batch: DatasetCollectionSchemaType[] = [];
+    try {
+      for await (const item of cursor) {
+        if (folderAccessModeMap.get(String(item._id)) === 'navigate') continue;
+        batch.push(item);
+        if (batch.length === batchSize) {
+          await filterBatch(batch);
+          batch.length = 0;
+        }
+      }
+      if (batch.length > 0) await filterBatch(batch);
+    } finally {
+      await cursor.close().catch(() => undefined);
+    }
+
+    return { collections, total, trainingStatuses };
   };
 
   /** 分页后批量读取逐 Collection 权限，避免权限查询随 Dataset 集合总量增长。 */
@@ -492,12 +523,17 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     });
   };
 
-  // not count data amount
-  if (simple) {
+  const { collections, total, trainingStatuses } = await (async () => {
+    if (statusFilter) return queryCollectionPageByStatus(statusFilter);
     const [collections, total] = await Promise.all([
       queryCollectionPage(),
-      MongoDatasetCollection.countDocuments(match)
+      MongoDatasetCollection.countDocuments(match, simple ? {} : readFromSecondary)
     ]);
+    return { collections, total, trainingStatuses: undefined };
+  })();
+
+  // not count data amount
+  if (simple) {
     const [collectionPermissionMap, tags] = await Promise.all([
       loadCollectionPermissionMap(collections),
       Promise.all(
@@ -520,10 +556,6 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     });
   }
 
-  const [collections, total] = await Promise.all([
-    queryCollectionPage(),
-    MongoDatasetCollection.countDocuments(match, { ...readFromSecondary })
-  ]);
   const collectionIds = collections.map((item) => new Types.ObjectId(item._id));
 
   // Compute data amount

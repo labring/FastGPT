@@ -54,8 +54,10 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import type { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
-import { CollectionPageContext } from './Context';
-import CollectionListHeaderMenu from './CollectionListHeaderMenu';
+import { CollectionPageContext, defaultCollectionListSort } from './Context';
+import CollectionListHeaderMenu, {
+  type CollectionListHeaderSelection
+} from './CollectionListHeaderMenu';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
@@ -122,6 +124,7 @@ const CollectionCard = () => {
     Pagination,
     total,
     getData,
+    pollCollections,
     isInitialLoading,
     pageNum,
     pageSize,
@@ -129,7 +132,8 @@ const CollectionCard = () => {
     headerSelection,
     setHeaderSelection
   } = useContextSelector(CollectionPageContext, (v) => v);
-  const headerMenuProps = { selection: headerSelection, onChange: setHeaderSelection };
+  const { sortBy, sortOrder } = { ...defaultCollectionListSort, ...headerSelection?.params };
+  const ariaSort = sortOrder === 'asc' ? 'ascending' : 'descending';
 
   // Add file status icon
   const formatCollections = useMemo(
@@ -171,6 +175,18 @@ const CollectionCard = () => {
     list: selectableCollections,
     getItemId: (e) => e._id
   });
+
+  const onChangeHeaderSelection = (next: CollectionListHeaderSelection | undefined) => {
+    if (
+      headerSelection?.params.trainingType !== next?.params.trainingType ||
+      headerSelection?.params.statusFilter !== next?.params.statusFilter
+    ) {
+      // 筛选会隐藏部分结果，避免批量操作命中已不可见的勾选项。
+      setSelectedItems([]);
+    }
+    setHeaderSelection(next);
+  };
+  const headerMenuProps = { selection: headerSelection, onChange: onChangeHeaderSelection };
 
   const [moveCollectionData, setMoveCollectionData] = useState<{ collectionId: string }>();
 
@@ -326,7 +342,7 @@ const CollectionCard = () => {
       // 所有子请求都结束后，才能开始下一轮的等待；单个失败不能提前结束本轮。
       await Promise.allSettled([
         ...(isDatasetProcessing ? [loadDatasetDetail(datasetDetail._id)] : []),
-        getData(pageNum),
+        pollCollections(),
         ...(hasTrainingData || isDatasetProcessing ? [refreshDatasetTrainingError()] : [])
       ]);
     },
@@ -454,7 +470,7 @@ const CollectionCard = () => {
           <Table variant={'simple'} draggable={false}>
             <Thead draggable={false}>
               <Tr>
-                <Th py={4}>
+                <Th py={4} aria-sort={sortBy === 'name' ? ariaSort : undefined}>
                   <HStack>
                     <Checkbox isChecked={isSelecteAll} onChange={selectAllTrigger} />
                     <CollectionListHeaderMenu
@@ -472,7 +488,7 @@ const CollectionCard = () => {
                   />
                 </Th>
                 <Th py={4}>{t('dataset:collection_data_count')}</Th>
-                <Th py={4}>
+                <Th py={4} aria-sort={sortBy !== 'name' ? ariaSort : undefined}>
                   <CollectionListHeaderMenu
                     column="time"
                     title={t('dataset:collection.Create update time')}

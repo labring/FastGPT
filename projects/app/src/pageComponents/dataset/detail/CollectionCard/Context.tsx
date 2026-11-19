@@ -30,6 +30,8 @@ import type { CollectionListHeaderSelection } from './CollectionListHeaderMenu';
 
 const WebSiteConfigModal = dynamic(() => import('./WebsiteConfig'));
 
+export const defaultCollectionListSort = { sortBy: 'createTime', sortOrder: 'asc' } as const;
+
 type CollectionPageContextType = {
   openDatasetSyncConfirm: () => void;
   onOpenWebsiteModal: () => void;
@@ -37,6 +39,7 @@ type CollectionPageContextType = {
   Pagination: () => JSX.Element;
   total: number;
   getData: (e: number) => Promise<void>;
+  pollCollections: () => Promise<void>;
   isInitialLoading: boolean;
   pageNum: number;
   pageSize: number;
@@ -62,6 +65,9 @@ export const CollectionPageContext = createContext<CollectionPageContextType>({
   },
   total: 0,
   getData: async function (_e: number): Promise<void> {
+    throw new Error('Function not implemented.');
+  },
+  pollCollections: async function (): Promise<void> {
     throw new Error('Function not implemented.');
   },
   isInitialLoading: false,
@@ -99,12 +105,15 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   const [tagFilters, setTagFilters] = useState<CollectionTagFilterItem[]>([]);
   const [headerSelection, setHeaderSelection] = useState<CollectionListHeaderSelection>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const pendingListRequests = useRef(0);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const loadCollections = useCallback(
     async (params: Parameters<typeof getDatasetCollections>[0]) => {
+      pendingListRequests.current += 1;
       try {
         return await getDatasetCollections(params);
       } finally {
+        pendingListRequests.current -= 1;
         // 首次请求结束后，后台刷新（包括空列表）都保留当前内容，不再展示加载占位。
         setIsInitialLoading(false);
       }
@@ -127,8 +136,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       parentId,
       searchText,
       tagFilters,
-      sortBy: 'createTime',
-      sortOrder: 'asc',
+      ...defaultCollectionListSort,
       ...headerSelection?.params
     },
     refreshDeps: [
@@ -140,6 +148,11 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     ],
     scrollContainerRef
   });
+
+  const pollCollections = useCallback(async () => {
+    // 筛选刷新完成前页码仍是旧值，轮询不能用旧页码覆盖正在加载的第一页。
+    if (pendingListRequests.current === 0) await getData(pageNum);
+  }, [getData, pageNum]);
 
   useEffect(
     () => registerCollectionListRefresh(() => getData(pageNum)),
@@ -206,6 +219,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       Pagination,
       total,
       getData,
+      pollCollections,
       isInitialLoading,
       pageNum,
       pageSize,
@@ -223,6 +237,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       openDatasetSyncConfirm,
       pageNum,
       pageSize,
+      pollCollections,
       searchText,
       total
     ]

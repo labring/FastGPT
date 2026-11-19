@@ -230,6 +230,14 @@ describe('collection listV2 sort', () => {
       trainingType: DatasetCollectionDataProcessModeEnum.qa
     });
     const scope = { teamId: root.teamId, tmbId: root.tmbId, datasetId: dataset._id };
+    // 让非就绪文件排在首批 500 个候选之后，验证游标会继续筛选并累计总数。
+    await MongoDatasetCollection.insertMany(
+      Array.from({ length: 500 }, (_, index) => ({
+        ...scope,
+        name: `0-ready-${index}`,
+        type: DatasetCollectionTypeEnum.file
+      }))
+    );
     await MongoDatasetTraining.create({
       ...scope,
       collectionId: chunk._id,
@@ -261,9 +269,12 @@ describe('collection listV2 sort', () => {
     });
     expect(
       await query({ statusFilter: { status: CollectionTrainingStatusEnum.ready } })
-    ).toMatchObject({ total: 1, list: [{ _id: String(ready._id) }] });
+    ).toMatchObject({ total: 501, list: [{ _id: String(ready._id) }] });
     expect(
-      await query({ statusFilter: { status: CollectionTrainingStatusEnum.error } })
+      await query({
+        sortOrder: 'asc',
+        statusFilter: { status: CollectionTrainingStatusEnum.error }
+      })
     ).toMatchObject({
       total: 1,
       list: [{ _id: String(qa._id), slowestTrainingStatus: CollectionTrainingStatusEnum.error }]

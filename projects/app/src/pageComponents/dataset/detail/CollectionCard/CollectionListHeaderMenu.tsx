@@ -170,7 +170,10 @@ const CollectionListHeaderMenu = ({ column, title, selection, onChange }: Props)
                 <Flex as="span" justifyContent="space-between" gap={4} whiteSpace="nowrap">
                   {option.label}
                   {option === defaultOption && (
-                    <Box as="span" color="myGray.400">
+                    <Box
+                      as="span"
+                      color="var(--light-general-on-surface-lowest, var(--chakra-colors-myGray-500))"
+                    >
                       {t('dataset:default_params')}
                     </Box>
                   )}
