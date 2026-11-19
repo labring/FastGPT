@@ -1,9 +1,10 @@
 'use client';
-import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Table, Thead, Tbody, Tr, Th, Td, Flex, Box, HStack, Button } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
+import AdminCompositeSearch, { useAdminCompositeSearch } from '@/components/admin/CompositeSearch';
+import type { AdminSearchOption } from '@/components/admin/CompositeSearch/utils';
 import { getDatasets } from '@/web/admin/dataset/api';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { useRouter } from 'next/router';
@@ -12,12 +13,49 @@ import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const DatasetTable = () => {
   const { t } = useSafeTranslation();
+  const datasetSearchOptions = useMemo<
+    readonly AdminSearchOption<'username' | 'teamId' | 'teamName' | 'datasetId' | 'datasetName'>[]
+  >(
+    () => [
+      {
+        value: 'username',
+        label: t('admin:composite_search.field_username'),
+        placeholder: t('admin:composite_search.placeholder_username')
+      },
+      {
+        value: 'teamId',
+        label: t('admin:composite_search.field_team_id'),
+        placeholder: t('admin:composite_search.placeholder_team_id'),
+        exactObjectId: true
+      },
+      {
+        value: 'teamName',
+        label: t('admin:composite_search.field_team_name'),
+        placeholder: t('admin:composite_search.placeholder_team_name')
+      },
+      {
+        value: 'datasetId',
+        label: t('admin:composite_search.field_dataset_id'),
+        placeholder: t('admin:composite_search.placeholder_dataset_id'),
+        exactObjectId: true
+      },
+      {
+        value: 'datasetName',
+        label: t('admin:composite_search.field_dataset_name'),
+        placeholder: t('admin:composite_search.placeholder_dataset_name')
+      }
+    ],
+    [t]
+  );
   const [appDetail, setAppDetail] = useState();
   const router = useRouter();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { searchField, inputValue, isInvalid, searchParams, onFieldChange, onInputChange } =
+    useAdminCompositeSearch({ options: datasetSearchOptions });
 
   const {
     data: datasets,
@@ -28,6 +66,8 @@ const DatasetTable = () => {
   } = usePagination(getDatasets, {
     defaultPageSize: 20,
     pageSizeCacheKey: 'admin-datasets-list',
+    params: searchParams,
+    refreshDeps: [searchParams],
     scrollContainerRef
   });
 
@@ -49,6 +89,16 @@ const DatasetTable = () => {
           {t('admin:user_datasets')}
         </Box>
         <Box flexGrow={1}></Box>
+        <AdminCompositeSearch
+          options={datasetSearchOptions}
+          field={searchField}
+          value={inputValue}
+          triggerW={'112px'}
+          w={['100%', '311px']}
+          isInvalid={isInvalid}
+          onFieldChange={onFieldChange}
+          onValueChange={onInputChange}
+        />
       </Flex>
 
       <MyBox isLoading={isLoading} flex={'1 0 0'} h={0} minH={0}>

@@ -140,6 +140,23 @@ describe('buildSystemFrontendConfig', () => {
     });
   });
 
+  it('can project invalid persisted service fields without throwing', () => {
+    const config = resolveSystemInstanceConfig(
+      {
+        auth: { loginProviders: { sms: { register: { zh: 7 } } } },
+        subservice: {
+          codeSandbox: { enabled: true, url: 'https://sandbox.test', token: 7 },
+          mcp: { enabled: true, sseProxyUrl: 7 }
+        }
+      },
+      { strict: false }
+    );
+    expect(buildSystemFrontendConfig(config)).toMatchObject({
+      codeSandboxEnabled: false,
+      mcpServerProxyEndpoint: undefined
+    });
+  });
+
   it('does not show a configured Code Sandbox when its token is only whitespace', () => {
     const config = resolveSystemInstanceConfig({
       subservice: {

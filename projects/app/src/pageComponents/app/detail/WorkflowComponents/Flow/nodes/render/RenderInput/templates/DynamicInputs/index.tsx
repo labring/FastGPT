@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import type { RenderInputProps } from '../../type';
-import { Box, Flex, HStack, Input } from '@chakra-ui/react';
+import { Box, Flex, Grid, HStack, Input } from '@chakra-ui/react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import {
@@ -30,6 +30,7 @@ const defaultInput: FlowNodeInputItemType = {
   key: '',
   label: ''
 };
+const inputColumns = 'minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr)';
 
 const DynamicInputs = ({ item, inputs = [], nodeId }: RenderInputProps) => {
   const { t } = useSafeTranslation();
@@ -81,18 +82,18 @@ const DynamicInputs = ({ item, inputs = [], nodeId }: RenderInputProps) => {
       </HStack>
       {/* field render */}
       <Box mt={2}>
-        <Flex alignItems={'center'} mb={2} gap={2} px={1}>
-          <Flex flex={'1'}>
-            <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'medium'} flex={1} px={3}>
+        <Flex alignItems={'center'} mb={2} gap={2}>
+          <Grid flex={'1'} minW={0} templateColumns={inputColumns}>
+            <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'medium'} minW={0} px={3}>
               {t('workflow:Variable_name')}
             </Box>
-            <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'medium'} minW={'240px'} px={3}>
+            <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'medium'} minW={0} px={3}>
               {t('app:reference_variable')}
             </Box>
-            <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'medium'} minW={'140px'} px={3}>
+            <Box fontSize={'sm'} color={'myGray.500'} fontWeight={'medium'} minW={0} px={3}>
               {t('common:core.module.Data Type')}
             </Box>
-          </Flex>
+          </Grid>
           {dynamicInputs.length > 0 && <Box w={6} />}
         </Flex>
         {[...dynamicInputs, defaultInput].map((children) => (
@@ -217,8 +218,9 @@ const Reference = ({
 
   return (
     <Flex alignItems={'center'} mb={1} gap={2}>
-      <Flex flex={'1'} bg={'white'} rounded={'md'}>
+      <Grid flex={'1'} minW={0} bg={'white'} rounded={'md'} templateColumns={inputColumns}>
         <Input
+          minW={0}
           placeholder={t('workflow:Variable_name')}
           value={isEditing ? tempLabel : inputChildren.label || ''}
           onFocus={() => {
@@ -230,30 +232,34 @@ const Reference = ({
           h={10}
           borderRightRadius={'none'}
         />
-        <ReferSelector
-          placeholder={t('common:select_reference_variable')}
-          list={referenceList}
-          value={inputChildren.value}
-          onSelect={onSelectReference}
-          ButtonProps={{
-            bg: 'none',
-            borderRadius: 'none',
-            borderColor: 'myGray.200',
-            borderLeftColor: 'transparent',
-            borderRightColor: 'transparent',
-            isDisabled: isEmptyItem,
-            w: '240px',
-            _hover: {
-              borderColor: 'blue.300'
-            }
-          }}
-        />
+        <Box minW={0}>
+          <ReferSelector
+            placeholder={t('common:select_reference_variable')}
+            list={referenceList}
+            value={inputChildren.value}
+            onSelect={onSelectReference}
+            ButtonProps={{
+              bg: 'none',
+              borderRadius: 'none',
+              borderColor: 'myGray.200',
+              borderLeftColor: 'transparent',
+              borderRightColor: 'transparent',
+              isDisabled: isEmptyItem,
+              w: '100%',
+              _hover: {
+                borderColor: 'blue.300'
+              }
+            }}
+          />
+        </Box>
         <Flex
           h={10}
           border={'1px solid'}
           borderRightRadius={'sm'}
           borderColor={'myGray.200'}
-          minW={'150px'}
+          minW={0}
+          overflow={'hidden'}
+          whiteSpace={'nowrap'}
           alignItems={'center'}
           pl={4}
           opacity={isEmptyItem ? 0.5 : 1}
@@ -262,7 +268,7 @@ const Reference = ({
         >
           {t(getFlowValueTypeMeta(inputChildren.valueType).label)}
         </Flex>
-      </Flex>
+      </Grid>
       {!isEmptyItem && (
         <Box w={6}>
           <MyIconButton

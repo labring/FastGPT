@@ -94,12 +94,29 @@ vi.mock('@/web/common/system/useSystemStore', () => ({
 vi.mock('next/dynamic', () => ({ default: () => () => null }));
 vi.mock('@fastgpt/web/components/common/MyTooltip/QuestionTip', () => ({ default: () => null }));
 vi.mock('@/pageComponents/admin/settings/AdminSettingPage', () => ({
-  default: ({ children, onSave }: { children: React.ReactNode; onSave?: () => void }) =>
+  default: ({
+    children,
+    onSave
+  }: {
+    children: React.ReactNode;
+    onSave?: () => void | Promise<unknown>;
+  }) =>
     React.createElement(
       'main',
       null,
       children,
-      React.createElement('button', { 'data-action': 'save', onClick: () => onSave?.() }, 'save')
+      React.createElement(
+        'button',
+        {
+          'data-action': 'save',
+          // 保存错误由真实页面处理，布局 mock 只保留异步事件的结算契约。
+          onClick: () =>
+            void Promise.resolve()
+              .then(() => onSave?.())
+              .catch(() => undefined)
+        },
+        'save'
+      )
     )
 }));
 vi.mock('@/pageComponents/admin/settings/AdminSettingSection', () => ({

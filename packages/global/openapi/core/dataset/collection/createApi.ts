@@ -260,7 +260,7 @@ export const CreateTemplateCollectionMultipartSchema = z.object({
   file: z.string().meta({
     format: 'binary',
     description:
-      '模板 CSV 或 Excel 文件（表头由 q、a、index、metadata 组成，q/a/metadata 各一列，index 可多列且顺序任意，metadata 单元格为 JSON object；Excel 仅支持单工作表且不能包含合并单元格；兼容旧版 q、a、indexes 表头）'
+      '模板 CSV 或 Excel 文件，multipart filename 使用原始 UTF-8 文件名（表头由 q、a、index、metadata 组成，q/a/metadata 各一列，index 可多列且顺序任意，metadata 单元格为 JSON object；Excel 仅支持单工作表且不能包含合并单元格；兼容旧版 q、a、indexes 表头）'
   }),
   data: CreateTemplateCollectionFormSchema.meta({ description: '集合参数（JSON 序列化后传入）' })
 });

@@ -48,6 +48,8 @@ export type DatasetSynonymMatcher = {
   ): {
     transformedText: string;
     usedMappings: DatasetSynonymMappingMetadataType[];
+    /** 以标准词形式命中的词条（no-op 端子）：normalizedStandardizedTerm → standardizedTerm。 */
+    matchedStandardTerms?: [string, string][];
   };
 };
 
@@ -109,7 +111,7 @@ const parseCsvRows = (buffer: Buffer): unknown[][] => {
       throw new DatasetSynonymValidationError('CSV 文件必须使用 UTF-8 编码', 'invalid_file');
     }
   })();
-  const result = Papa.parse<unknown[]>(text.replace(/^\uFEFF/, ''), {
+  const result = Papa.parse<unknown[]>(text.replace(/^﻿/, ''), {
     delimiter: ',',
     skipEmptyLines: false
   });
@@ -362,9 +364,65 @@ export const serializeSynonymMappingsToCsv = (
   const maxSynonymCount = Math.max(1, ...mappings.map((mapping) => mapping.synonymTerms.length));
   const header = ['标准术语', ...Array.from({ length: maxSynonymCount }, () => '同义词')];
   const rows = mappings.map((mapping) => [mapping.standardizedTerm, ...mapping.synonymTerms]);
-  return `\uFEFF${[header, ...rows]
+  return `﻿${[header, ...rows]
     .map((row) => row.map((cell) => escapeCsvCell(cell)).join(','))
     .join('\r\n')}\r\n`;
+};
+
+/**
+ * 按上传格式（xlsx/xls）生成同义词工作簿 Buffer，保持下载格式与上传一致。
+ * 表头与解析端（standardizedTermHeaders / synonymHeaderReg）兼容，产物可直接回传。
+ */
+export const serializeSynonymMappingsToExcelBuffer = (
+  mappings: Array<Pick<NormalizedSynonymMappingType, 'standardizedTerm' | 'synonymTerms'>>,
+  extension: 'xlsx' | 'xls'
+) => {
+  // 单表列上限：xls(biff8) 256 列（IV）、xlsx 16384 列；扣除标准术语列后为每行别名上限。
+  // 同一标准词的别名超过上限时拆成多行（重复标准词），解析端会按标准词合并，保证往返无损。
+  const maxColumns = extension === 'xls' ? 256 : 16384;
+  const maxSynonymsPerRow = maxColumns - 1;
+
+  const dataRows: string[][] = [];
+  let maxSynonymCount = 1;
+  for (const mapping of mappings) {
+    for (let offset = 0; offset < Math.max(1, mapping.synonymTerms.length); offset += maxSynonymsPerRow) {
+      const group = mapping.synonymTerms.slice(offset, offset + maxSynonymsPerRow);
+      dataRows.push([mapping.standardizedTerm, ...group]);
+      maxSynonymCount = Math.max(maxSynonymCount, group.length);
+    }
+  }
+
+  const aoa: (string | number)[][] = [
+    ['标准术语', ...Array.from({ length: maxSynonymCount }, () => '同义词')],
+    ...dataRows
+  ];
+  const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Synonyms');
+  return XLSX.write(workbook, {
+    type: 'buffer',
+    bookType: extension === 'xls' ? 'biff8' : 'xlsx'
+  }) as Buffer;
+};
+
+/** 下载时按上传格式回传：xlsx/xls 生成工作簿，csv 生成 BOM CSV 文本。 */
+export const serializeSynonymMappingsToFile = (
+  mappings: Array<Pick<NormalizedSynonymMappingType, 'standardizedTerm' | 'synonymTerms'>>,
+  extension: string
+): { buffer: Buffer; contentType: string } => {
+  if (extension === 'xlsx' || extension === 'xls') {
+    return {
+      buffer: serializeSynonymMappingsToExcelBuffer(mappings, extension),
+      contentType:
+        extension === 'xlsx'
+          ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          : 'application/vnd.ms-excel'
+    };
+  }
+  return {
+    buffer: Buffer.from(serializeSynonymMappingsToCsv(mappings), 'utf-8'),
+    contentType: 'text/csv; charset=utf-8'
+  };
 };
 
 /** 解析并规范化 CSV、XLS 或 XLSX 同义词文件。 */
@@ -467,6 +525,7 @@ export const buildSynonymMatcher = (
       const normalizedCharacters = characters.map(normalizeMatchCharacter);
       const output: string[] = [];
       const usedMappings = new Map<string, DatasetSynonymMappingMetadataType>();
+      const matchedStandardTerms = new Map<string, string>();
 
       for (let start = 0; start < characters.length; ) {
         let current = root;
@@ -506,6 +565,12 @@ export const buildSynonymMatcher = (
 
         if (!matched.terminal.isSynonym) {
           output.push(matched.matchedTerm);
+          // 标准词命中（no-op terminal）也记录下来：问题侧反向匹配需要知道
+          // 分块正文以标准词形式命中了哪些词条（含最长匹配语义）。
+          matchedStandardTerms.set(
+            matched.terminal.mapping.normalizedStandardizedTerm,
+            matched.terminal.mapping.standardizedTerm
+          );
         } else {
           const { mapping } = matched.terminal;
           output.push(mapping.standardizedTerm);
@@ -526,7 +591,10 @@ export const buildSynonymMatcher = (
 
       return {
         transformedText: output.join(''),
-        usedMappings: [...usedMappings.values()]
+        usedMappings: [...usedMappings.values()],
+        // 标准词命中（no-op 端子）：normalizedStandardizedTerm → standardizedTerm。
+        // 供问题侧反向匹配判断「分块正文是否以标准词形式命中某词条」。
+        matchedStandardTerms: [...matchedStandardTerms.entries()]
       };
     }
   };

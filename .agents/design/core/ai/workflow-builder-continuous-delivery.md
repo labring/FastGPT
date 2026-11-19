@@ -177,7 +177,7 @@ checkpoint 携带的是资料定位入口，不包含全部原需求、预览、
 - Pro `workflowBuilder/sandbox/workspace.ts`、`cliGateway.ts`：草稿隔离、CLI 校验与候选提交。
 - 主仓库 `packages/global/core/workflow/builder/type.ts`：任务与交互共享契约。
 - 主仓库 `packages/service/core/ai/llm/agentLoop`、`compress`：两个 Provider 的消息续跑、事件、压缩与恢复 Hook。
-- Pro `admin/src/service/core/ai/skill/builtin/workflow-builder/README.md`：维护者文档与参考资料导航。
+- Pro `admin/src/service/core/ai/workflowBuilder/README.md` 记录维护规则，`cli/skills/workflow-build/references/` 保存共用参考资料。
 
 ## 验证与后续验收
 

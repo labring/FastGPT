@@ -1,5 +1,9 @@
 import z from 'zod';
-import { UploadPkgPluginResponseSchema, UploadPkgPluginResponseItemSchema } from '../../admin/api';
+import {
+  InstallPluginFromUrlResponseSchema,
+  UploadPkgPluginResponseSchema,
+  UploadPkgPluginResponseItemSchema
+} from '../../admin/api';
 import { TeamPluginEmptyResponseSchema } from '../common';
 
 /* ============================================================================
@@ -91,3 +95,25 @@ export type InstallTeamPluginFromUrlBodyType = z.infer<typeof InstallTeamPluginF
 
 export const TeamPkgEmptyResponseSchema = TeamPluginEmptyResponseSchema;
 export type TeamPkgEmptyResponseType = z.infer<typeof TeamPkgEmptyResponseSchema>;
+
+export const InstallTeamPluginFromUrlResponseSchema = z
+  .union([
+    TeamPkgEmptyResponseSchema,
+    InstallPluginFromUrlResponseSchema.pick({ failed: true }).meta({
+      example: {
+        failed: [
+          {
+            url: 'https://marketplace.fastgpt.io/plugin/search.pkg',
+            reason: { en: 'Download failed', 'zh-CN': '下载失败' }
+          }
+        ]
+      },
+      description: '批量安装部分成功时返回的失败明细；全量失败时接口直接抛出 HTTP 500 业务异常'
+    })
+  ])
+  .meta({
+    description: '从 URL 安装团队插件响应（全量成功返回空数据，部分成功返回 failed 明细）'
+  });
+export type InstallTeamPluginFromUrlResponseType = z.infer<
+  typeof InstallTeamPluginFromUrlResponseSchema
+>;

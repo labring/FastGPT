@@ -35,14 +35,18 @@ const BillMetadataSchema = z
     }),
     month: NumSchema.nonnegative().optional().meta({ example: 1, description: '订阅月数' }),
     datasetSize: IntSchema.optional().meta({ example: 10, description: '数据集容量' }),
-    extraPoints: IntSchema.optional().meta({ example: 10000, description: '额外积分数' }),
+    extraPoints: NumSchema.nonnegative()
+      .optional()
+      .meta({ example: 10000.5, description: '额外积分数，支持小数' }),
     activitySource: z
       .string()
       .optional()
       .meta({ example: 'enterpriseAuth', description: '活动来源' }),
     taskId: z.string().optional().meta({ example: 'task-123', description: '活动任务 ID' }),
     durationDay: IntSchema.optional().meta({ example: 30, description: '权益时长，单位天' }),
-    totalPoints: IntSchema.optional().meta({ example: 10000, description: '权益积分数' }),
+    totalPoints: NumSchema.nonnegative()
+      .optional()
+      .meta({ example: 10000.5, description: '权益积分数，支持小数' }),
     grantedPlanCount: IntSchema.optional().meta({ example: 1, description: '赠送套餐数' })
   })
   .catchall(z.unknown())
@@ -129,7 +133,9 @@ export const BillDetailResponseSchema = BillItemSchema.extend({
                 .enum(SubTypeEnum)
                 .meta({ example: SubTypeEnum.standard, description: '权益类型' }),
               durationDay: IntSchema.meta({ example: 30, description: '权益时长，单位天' }),
-              totalPoints: IntSchema.optional().meta({ example: 10000, description: '赠送积分数' }),
+              totalPoints: NumSchema.nonnegative()
+                .optional()
+                .meta({ example: 10000.5, description: '赠送积分数，支持小数' }),
               level: z.enum(StandardSubLevelEnum).optional().meta({
                 example: StandardSubLevelEnum.basic,
                 description: '标准套餐等级'
@@ -175,7 +181,10 @@ export const CreateExtractPointsBillSchema = z
       example: BillTypeEnum.extraPoints,
       description: '订单类型：额外积分'
     }),
-    extraPoints: IntSchema.meta({ example: 10000, description: '额外积分数量' }),
+    extraPoints: IntSchema.meta({
+      example: 10000,
+      description: '额外积分数量，非负整数'
+    }),
     month: IntSchema.min(1).max(12).meta({ example: 1, description: '订阅月数' }),
     discountCouponId: ObjectIdSchema.optional().meta({
       example: '68ee0bd23d17260b7829b138',

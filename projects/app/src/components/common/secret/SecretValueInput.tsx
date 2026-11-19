@@ -24,6 +24,7 @@ const SecretValueInput = ({
   isDisabled,
   h = 9,
   borderLeftRadius,
+  isInvalid,
   ...inputProps
 }: SecretValueInputProps) => {
   const { t } = useSafeTranslation();
@@ -41,7 +42,8 @@ const SecretValueInput = ({
           borderRadius={'6px'}
           borderLeftRadius={borderLeftRadius}
           border={'0.5px solid'}
-          borderColor={'primary.200'}
+          borderColor={isInvalid ? 'red.500' : 'primary.200'}
+          aria-invalid={isInvalid || undefined}
           bg={'primary.50'}
           h={h}
           px={3}
@@ -57,6 +59,7 @@ const SecretValueInput = ({
       ) : (
         <Input
           {...inputProps}
+          isInvalid={isInvalid}
           as={multiline ? 'textarea' : 'input'}
           {...(multiline ? { rows } : {})}
           flex={1}

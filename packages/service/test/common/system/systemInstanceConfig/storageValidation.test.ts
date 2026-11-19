@@ -89,7 +89,10 @@ describe('batchUpdateDomainConfigs storage validation', () => {
         ],
         actor: { actor: 'admin' }
       })
-    ).rejects.toMatchObject({ statusCode: 400, message: expect.stringContaining('MinIO') });
+    ).rejects.toMatchObject({
+      name: 'ApiRequestInputParseError',
+      cause: { issues: [expect.objectContaining({ path: ['storage', 'externalEndpoint'] })] }
+    });
 
     expect(mocks.transaction).not.toHaveBeenCalled();
     expect(mocks.update).not.toHaveBeenCalled();

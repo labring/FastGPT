@@ -1,6 +1,6 @@
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Box, Input, Textarea, SimpleGrid } from '@chakra-ui/react';
+import { Box, Input, Textarea, SimpleGrid, Text } from '@chakra-ui/react';
 import { useForm, useWatch, Controller } from 'react-hook-form';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
@@ -31,9 +31,10 @@ const SiteSettingComponent = () => {
 
   const { effectiveConfig, isLoading, isUpdating, patchConfig } = useDomainConfig('site');
 
-  const { register, handleSubmit, reset, control, setValue } = useForm<SiteConfigForm>({
+  const form = useForm<SiteConfigForm>({
     defaultValues: effectiveConfig
   });
+  const { register, handleSubmit, reset, control, setValue } = form;
 
   const [scriptsText, setScriptsText] = useState<string | null>(null);
   const navbarItems = useWatch({ control, name: 'navbarItems' });
@@ -53,10 +54,18 @@ const SiteSettingComponent = () => {
     try {
       scripts = rawScripts ? JSON.parse(rawScripts) : [];
     } catch {
+      form.setError('scripts', {
+        type: 'validate',
+        message: t('admin:site_scripts_must_be_valid_json_array')
+      });
       toast({ status: 'error', title: t('admin:site_scripts_must_be_valid_json_array') });
       return;
     }
     if (!Array.isArray(scripts)) {
+      form.setError('scripts', {
+        type: 'validate',
+        message: t('admin:site_scripts_must_be_valid_json_array')
+      });
       toast({ status: 'error', title: t('admin:site_scripts_must_be_valid_json_array') });
       return;
     }
@@ -73,6 +82,7 @@ const SiteSettingComponent = () => {
 
   return (
     <AdminSettingPage
+      form={form}
       headerTitle={t('admin:page_title_site')}
       tocItems={tocItems}
       isLoading={isLoading}
@@ -86,7 +96,11 @@ const SiteSettingComponent = () => {
           tooltip={t('admin:display_name_of_the_system_such_as_the_navbar_title_and_page')}
           isRequired
         >
-          <Input {...register('name', { required: true })} placeholder="AI" />
+          <Input
+            isInvalid={Boolean(form.getFieldState('name', form.formState).error)}
+            {...register('name', { required: true })}
+            placeholder="AI"
+          />
         </AdminFormItem>
 
         <AdminFormItem
@@ -94,6 +108,7 @@ const SiteSettingComponent = () => {
           tooltip={t('admin:site_description_used_for_the_browser_meta_description_or_ex')}
         >
           <Textarea
+            isInvalid={Boolean(form.getFieldState('description', form.formState).error)}
             {...register('description')}
             rows={3}
             placeholder={t('admin:enter_the_site_description')}
@@ -106,7 +121,12 @@ const SiteSettingComponent = () => {
           tooltip={t('admin:unified_prefix_for_generated_openapi_keys_default_fastgpt_ch')}
           isRequired
         >
-          <Input maxW={'400px'} {...register('openApiPrefix')} placeholder="fastgpt" />
+          <Input
+            isInvalid={Boolean(form.getFieldState('openApiPrefix', form.formState).error)}
+            maxW={'400px'}
+            {...register('openApiPrefix')}
+            placeholder="fastgpt"
+          />
         </AdminFormItem>
 
         <AdminFormItem
@@ -126,35 +146,55 @@ const SiteSettingComponent = () => {
             label={t('admin:help_documentation_url')}
             tooltip={t('admin:official_documentation_link_used_by_documentation_and_help_e')}
           >
-            <Input {...register('docUrl')} placeholder="https://doc.fastgpt.io" />
+            <Input
+              isInvalid={Boolean(form.getFieldState('docUrl', form.formState).error)}
+              {...register('docUrl')}
+              placeholder="https://doc.fastgpt.io"
+            />
           </AdminFormItem>
 
           <AdminFormItem
             label={t('admin:template_tutorial_url')}
             tooltip={t('admin:target_link_of_the_use_tutorial_button_at_the_top_right_of_t')}
           >
-            <Input {...register('appTemplateCourse')} placeholder="https://..." />
+            <Input
+              isInvalid={Boolean(form.getFieldState('appTemplateCourse', form.formState).error)}
+              {...register('appTemplateCourse')}
+              placeholder="https://..."
+            />
           </AdminFormItem>
 
           <AdminFormItem
             label={t('admin:login_guide_url')}
             tooltip={t('admin:help_documentation_link_for_account_issues_on_the_login_page')}
           >
-            <Input {...register('loginGuideDocUrl')} placeholder="https://..." />
+            <Input
+              isInvalid={Boolean(form.getFieldState('loginGuideDocUrl', form.formState).error)}
+              {...register('loginGuideDocUrl')}
+              placeholder="https://..."
+            />
           </AdminFormItem>
 
           <AdminFormItem
             label={t('admin:custom_api_domain')}
             tooltip={t('admin:custom_api_domain_tip')}
           >
-            <Input {...register('customApiDomain')} placeholder="https://api.example.com" />
+            <Input
+              isInvalid={Boolean(form.getFieldState('customApiDomain', form.formState).error)}
+              {...register('customApiDomain')}
+              placeholder="https://api.example.com"
+            />
           </AdminFormItem>
 
           <AdminFormItem
             label={t('admin:custom_share_page_domain')}
             tooltip={t('admin:custom_share_page_domain_tip')}
           >
-            <Input {...register('customSharePageDomain')} placeholder="https://share.example.com" />
+            <Input
+              isInvalid={Boolean(form.getFieldState('customSharePageDomain', form.formState).error)}
+              {...register('customSharePageDomain')}
+              placeholder="https://share.example.com"
+            />
           </AdminFormItem>
         </SimpleGrid>
       </AdminSettingSection>
@@ -166,23 +206,38 @@ const SiteSettingComponent = () => {
           tooltip={t('admin:replaces_the_contact_us_prompt_content_after_configuration_m')}
         >
           <Textarea
+            isInvalid={Boolean(form.getFieldState('concatMd', form.formState).error)}
             {...register('concatMd')}
             rows={5}
             placeholder={t('admin:markdown_syntax_supported')}
           />
         </AdminFormItem>
 
-        <Box mt={6}>
+        <Box
+          mt={6}
+          borderWidth={form.getFieldState('navbarItems', form.formState).error ? '1px' : undefined}
+          borderColor={'red.500'}
+          borderRadius={'md'}
+        >
           <NavbarItems
             value={navbarItems}
             onChange={(val) => setValue('navbarItems', val)}
             title={t('admin:custom_navigation_links')}
             description={t('admin:add_custom_external_link_entries_to_the_left_navigation_bar')}
           />
+          {form.getFieldState('navbarItems', form.formState).error && (
+            <Text color={'red.500'} fontSize={'xs'}>
+              {t('admin:failed_to_save_settings')}
+            </Text>
+          )}
         </Box>
 
         <AdminFormItem label={t('admin:bot_iframe_url')} tooltip={t('admin:bot_iframe_url_tip')}>
-          <Input {...register('botIframeUrl')} placeholder="https://..." />
+          <Input
+            isInvalid={Boolean(form.getFieldState('botIframeUrl', form.formState).error)}
+            {...register('botIframeUrl')}
+            placeholder="https://..."
+          />
         </AdminFormItem>
 
         <AdminFormItem label={t('admin:site_scripts')} tooltip={t('admin:site_scripts_tip')}>
@@ -191,6 +246,7 @@ const SiteSettingComponent = () => {
             control={control}
             render={({ field }) => (
               <JsonEditor
+                isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                 value={scriptsText ?? JSON.stringify(field.value ?? [], null, 2)}
                 onChange={setScriptsText}
                 defaultHeight={220}

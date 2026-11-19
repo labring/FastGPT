@@ -41,7 +41,10 @@ export const defaultSearchDatasetData = async ({
     ...props,
     userKey,
     reRankQuery,
-    textQueries: searchQueries
+    textQueries: searchQueries,
+    // S2：同义词装饰只扫「用户原始问题」（props.textQueries 是扩展前的输入），
+    // 扩展模型生成的同义词与装饰语义（原词出现在分块或用户问题中）无关。
+    rawQueries: [...(props.rawQueries ?? []), ...textQueries]
   });
 
   return {

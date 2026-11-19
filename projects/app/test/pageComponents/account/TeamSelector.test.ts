@@ -69,6 +69,10 @@ vi.mock('@fastgpt/web/hooks/useScrollPagination', () => ({
 vi.mock('@fastgpt/web/components/common/Avatar', () => ({
   default: (props: any) => React.createElement('img', { src: props.src })
 }));
+vi.mock('@fastgpt/web/components/common/Tag', () => ({
+  default: ({ children }: { children: React.ReactNode }) =>
+    React.createElement('span', { 'data-testid': 'my-team-tag' }, children)
+}));
 vi.mock('@fastgpt/web/components/common/MySelect', () => ({
   default: (props: any) => {
     mocks.lastMySelectProps = props;
@@ -76,6 +80,7 @@ vi.mock('@fastgpt/web/components/common/MySelect', () => ({
   }
 }));
 
+import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import TeamSelector from '@/pageComponents/account/TeamSelector';
 
 describe('TeamSelector', () => {
@@ -89,15 +94,39 @@ describe('TeamSelector', () => {
     mocks.router.pathname = '/account/info';
   });
 
-  it('removes manage_team item globally, enables search and renders pure team names for normal users', async () => {
+  it('pins owner teams first with "my_team" tag, enables search, and keeps pure names for non-owner teams', async () => {
     mocks.userInfo = {
       _id: 'u-1',
       username: 'alice',
-      team: { teamId: 't-1', teamName: 'Alice Team', avatar: '/a.png' }
+      team: {
+        teamId: 't-1',
+        teamName: 'Alice Team',
+        avatar: '/a.png',
+        role: TeamMemberRoleEnum.owner
+      }
     };
     mocks.teamsData = [
-      { teamId: 't-1', teamName: 'Alice Team', avatar: '/a.png' },
-      { teamId: 't-2', teamName: 'Shared Team', avatar: '/b.png' }
+      {
+        teamId: 't-4',
+        teamName: 'Never Switched Team',
+        avatar: '/d.png',
+        role: TeamMemberRoleEnum.member
+      },
+      {
+        teamId: 't-3',
+        teamName: 'Older Switched Team',
+        avatar: '/c.png',
+        role: TeamMemberRoleEnum.member,
+        lastSwitchTime: '2026-04-17T08:00:00.000Z'
+      },
+      {
+        teamId: 't-2',
+        teamName: 'Shared Team',
+        avatar: '/b.png',
+        role: TeamMemberRoleEnum.member,
+        lastSwitchTime: '2026-04-17T09:00:00.000Z'
+      },
+      { teamId: 't-1', teamName: 'Alice Team', avatar: '/a.png', role: TeamMemberRoleEnum.owner }
     ];
 
     renderToStaticMarkup(React.createElement(TeamSelector));
@@ -106,10 +135,27 @@ describe('TeamSelector', () => {
     expect(mocks.lastMySelectProps.isSearch).toBe(true);
     expect(mocks.lastMySelectProps.onSearchChange).toBeUndefined();
     expect(mocks.lastMySelectProps.ScrollData).toBeUndefined();
-    expect(mocks.lastMySelectProps.list).toEqual([
-      { icon: '/a.png', iconSize: '1.25rem', label: 'Alice Team', value: 't-1' },
-      { icon: '/b.png', iconSize: '1.25rem', label: 'Shared Team', value: 't-2' }
+    expect(mocks.lastMySelectProps.list.map((item: any) => item.value)).toEqual([
+      't-1',
+      't-2',
+      't-3',
+      't-4'
     ]);
+    expect(mocks.lastMySelectProps.list.map((item: any) => item.searchText)).toEqual([
+      'Alice Team',
+      'Shared Team',
+      'Older Switched Team',
+      'Never Switched Team'
+    ]);
+    expect(renderToStaticMarkup(mocks.lastMySelectProps.list[0].label)).toContain('Alice Team');
+    expect(renderToStaticMarkup(mocks.lastMySelectProps.list[0].label)).toContain(
+      'account_team:my_team'
+    );
+    expect(mocks.lastMySelectProps.list[1].label).toBe('Shared Team');
+    expect(renderToStaticMarkup(mocks.lastMySelectProps.valueLabel)).toContain('Alice Team');
+    expect(renderToStaticMarkup(mocks.lastMySelectProps.valueLabel)).not.toContain(
+      'account_team:my_team'
+    );
     expect(mocks.lastMySelectProps.list.some((item: any) => item.value === 'manage')).toBe(false);
 
     await mocks.lastMySelectProps.onChange('t-2');
@@ -119,17 +165,22 @@ describe('TeamSelector', () => {
     expect(mocks.router.reload).toHaveBeenCalledTimes(1);
   });
 
-  it('wires scroll pagination, server-backed search and admin switch endpoint for root user', async () => {
+  it('wires scroll pagination, server-backed search, owner tag and admin switch endpoint for root user', async () => {
     mocks.userInfo = {
       _id: 'root-id',
       username: 'root',
-      team: { teamId: 'root-team', teamName: 'Root Team', avatar: '/r.png' }
-    };
-    mocks.adminTeamsData = [
-      {
+      team: {
         teamId: 'tenant-1',
         teamName: 'Tenant One',
         avatar: '/t1.png'
+      }
+    };
+    mocks.adminTeamsData = [
+      {
+        teamId: 'root-team',
+        teamName: 'Root Team',
+        avatar: '/r.png',
+        isOwner: true
       }
     ];
 
@@ -141,11 +192,16 @@ describe('TeamSelector', () => {
     expect(mocks.lastMySelectProps.isSearch).toBe(true);
     expect(typeof mocks.lastMySelectProps.onSearchChange).toBe('function');
     expect(mocks.lastMySelectProps.ScrollData).toBe(mocks.adminScrollData);
-    // 当前团队不在列表切片中时应自动保留回显，且仅展示纯团队名
-    expect(mocks.lastMySelectProps.list.map((item: any) => item.label)).toEqual([
-      'Root Team',
-      'Tenant One'
+    // 自有团队置顶且带“我的团队”标签，未在列表中的当前切换团队紧随其后回显纯团队名
+    expect(mocks.lastMySelectProps.list.map((item: any) => item.value)).toEqual([
+      'root-team',
+      'tenant-1'
     ]);
+    expect(renderToStaticMarkup(mocks.lastMySelectProps.list[0].label)).toContain('Root Team');
+    expect(renderToStaticMarkup(mocks.lastMySelectProps.list[0].label)).toContain(
+      'account_team:my_team'
+    );
+    expect(mocks.lastMySelectProps.list[1].label).toBe('Tenant One');
 
     await mocks.lastMySelectProps.onChange('tenant-1');
     expect(mocks.putAdminSwitchTeam).toHaveBeenCalledWith({ teamId: 'tenant-1' });

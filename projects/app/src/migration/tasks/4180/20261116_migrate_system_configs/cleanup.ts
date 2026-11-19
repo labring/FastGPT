@@ -1,8 +1,8 @@
 import {
   SYSTEM_INSTANCE_CONFIG_DOMAINS,
-  type SystemInstanceConfigDomainKey,
-  resolveDomainEffectiveConfig
+  type SystemInstanceConfigDomainKey
 } from '@fastgpt/global/common/system/config/schema';
+import { readMigrationDomainConfig } from './validation';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import {
   decryptDomainSecrets,
@@ -242,10 +242,9 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
     const removed = removedOverrides + removedMarkers;
     if (removed === 0) continue;
 
-    // 写回前先按新 Schema 终审，确保清理结果可被运行时解析。
-    // 失败时补充 domain 上下文：blockStartup 下该错误会直接阻塞启动，需能定位到具体域。
+    // 写回前诊断保存约束；无效历史字段保留，告警不会阻断清理。
     try {
-      resolveDomainEffectiveConfig({ domain, overrides });
+      readMigrationDomainConfig({ domain, overrides });
     } catch (error) {
       throw new Error(
         `Instance config cleanup rejected by schema for domain "${domain}": ${
@@ -258,11 +257,15 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
       { _id: doc._id, revision: doc.revision },
       {
         $set: {
-          overrides: encryptDomainSecrets({
-            domain,
-            data: overrides,
-            previousStored: doc.overrides
-          }),
+          ...(removedOverrides > 0
+            ? {
+                overrides: encryptDomainSecrets({
+                  domain,
+                  data: overrides,
+                  previousStored: doc.overrides
+                })
+              }
+            : {}),
           ...(explicitDefaultPaths !== undefined ? { explicitDefaultPaths } : {}),
           updatedAt: new Date()
         },
@@ -290,9 +293,9 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
         : { explicitDefaultPaths: undefined, removedPathCount: 0 };
       const retryRemoved = retry.removedFieldCount + retryMarkers.removedPathCount;
       if (retryRemoved > 0 && retry.overrides) {
-        // 与首次路径一致：写回前按新 Schema 终审，避免清理结果运行时不可解析
+        // 与首次路径一致：诊断保存约束但保留历史值，清理只删除已声明的废弃字段。
         try {
-          resolveDomainEffectiveConfig({ domain, overrides: retry.overrides });
+          readMigrationDomainConfig({ domain, overrides: retry.overrides });
         } catch (error) {
           throw new Error(
             `Instance config cleanup rejected by schema for domain "${domain}": ${
@@ -304,11 +307,15 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
           { _id: doc._id, revision: latest!.revision },
           {
             $set: {
-              overrides: encryptDomainSecrets({
-                domain,
-                data: retry.overrides,
-                previousStored: latest!.overrides
-              }),
+              ...(retry.removedFieldCount > 0
+                ? {
+                    overrides: encryptDomainSecrets({
+                      domain,
+                      data: retry.overrides,
+                      previousStored: latest!.overrides
+                    })
+                  }
+                : {}),
               ...(retryMarkers.explicitDefaultPaths !== undefined
                 ? { explicitDefaultPaths: retryMarkers.explicitDefaultPaths }
                 : {}),
@@ -365,7 +372,7 @@ export const verifyInstanceConfigDeprecatedFields = async () => {
     }
 
     try {
-      resolveDomainEffectiveConfig({
+      readMigrationDomainConfig({
         domain,
         overrides: decryptDomainSecrets(domain, doc.overrides)
       });

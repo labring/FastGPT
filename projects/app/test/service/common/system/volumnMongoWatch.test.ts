@@ -1,62 +1,57 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
-import { createFakeChangeStream, type FakeChangeStream } from '@test/utils/changeStream';
-const mocks = vi.hoisted(() => ({ watch: vi.fn(), training: vi.fn(), loadTemplates: vi.fn() }));
+import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
+import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
+
+const mocks = vi.hoisted(() => ({ training: vi.fn(), templateWatch: vi.fn() }));
+
 vi.mock('@/service/core/dataset/training/utils', () => ({
   createDatasetTrainingMongoWatch: mocks.training
 }));
 vi.mock('@fastgpt/service/core/app/templates/templateSchema', () => ({
-  MongoAppTemplate: { watch: mocks.watch }
+  MongoAppTemplate: { watch: mocks.templateWatch }
 }));
-vi.mock('@fastgpt/service/core/app/templates/register', () => ({
-  getAppTemplatesAndLoadThem: mocks.loadTemplates
-}));
+
 import { startMongoWatch } from '@/service/common/system/volumnMongoWatch';
 
 describe('startMongoWatch', () => {
-  let stream: FakeChangeStream;
   let stop: (() => Promise<void>) | undefined;
+
   beforeEach(() => {
     vi.clearAllMocks();
-    stream = createFakeChangeStream();
-    mocks.watch.mockReturnValue(stream);
-    mocks.training.mockReturnValue({ close: vi.fn() });
+    mocks.training.mockImplementation(() => ({ close: vi.fn().mockResolvedValue(undefined) }));
   });
   afterEach(async () => {
     await stop?.();
+    stop = undefined;
     vi.restoreAllMocks();
-    vi.useRealTimers();
   });
 
-  it('registers only training and template streams and closes the previous registration', async () => {
+  it('只监听训练，不再监听系统配置、模型目录和模板', async () => {
     const configWatch = vi.spyOn(MongoSystemInstanceConfig, 'watch');
-    await startMongoWatch();
+    const modelWatch = vi.spyOn(MongoAIModel, 'watch');
+    const catalogWatch = vi.spyOn(MongoAIModelCatalog, 'watch');
+
     stop = await startMongoWatch();
+
+    expect(mocks.training).toHaveBeenCalledOnce();
+    expect(mocks.templateWatch).not.toHaveBeenCalled();
     expect(configWatch).not.toHaveBeenCalled();
-    expect(mocks.watch).toHaveBeenCalledTimes(2);
-    expect(mocks.training.mock.results[0].value.close).toHaveBeenCalledOnce();
-    expect(stream.close).toHaveBeenCalledOnce();
+    expect(modelWatch).not.toHaveBeenCalled();
+    expect(catalogWatch).not.toHaveBeenCalled();
   });
 
-  it('debounces template changes and reloads after the existing five-second grace period', async () => {
-    vi.useFakeTimers();
+  it('重启时关闭旧训练监听，返回的清理函数可关闭当前监听', async () => {
+    await startMongoWatch();
+    const previous = mocks.training.mock.results[0].value;
     stop = await startMongoWatch();
-    stream.emit('change', { operationType: 'insert' });
-    stream.emit('change', { operationType: 'update' });
-    await vi.advanceTimersByTimeAsync(5499);
-    expect(mocks.loadTemplates).not.toHaveBeenCalled();
-    await vi.advanceTimersByTimeAsync(1);
-    expect(mocks.loadTemplates).toHaveBeenCalledExactlyOnceWith(true);
-  });
+    const current = mocks.training.mock.results[1].value;
 
-  it('reconnects a failed template stream and reloads to compensate for missed changes', async () => {
-    vi.useFakeTimers();
-    stop = await startMongoWatch();
-    mocks.watch.mockReturnValueOnce(createFakeChangeStream());
-    stream.emit('error', new Error('connection closed'));
-    await vi.advanceTimersByTimeAsync(1000);
-    expect(mocks.watch).toHaveBeenCalledTimes(2);
-    await vi.advanceTimersByTimeAsync(5500);
-    expect(mocks.loadTemplates).toHaveBeenCalledExactlyOnceWith(true);
+    expect(previous.close).toHaveBeenCalledOnce();
+    expect(current.close).not.toHaveBeenCalled();
+
+    await stop();
+    stop = undefined;
+    expect(current.close).toHaveBeenCalledOnce();
   });
 });

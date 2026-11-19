@@ -1,4 +1,5 @@
-import { resolveDomainEffectiveConfig } from '@fastgpt/global/common/system/config/schema';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { readMigrationDomainConfig, readMigrationConfigValue } from './validation';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import {
   decryptDomainSecrets,
@@ -9,6 +10,8 @@ import z from 'zod';
 import { isValidServiceBaseUrl } from '@fastgpt/global/common/string/url';
 import { stripDeprecatedOverrides } from './cleanup';
 import { NumSchema } from '@fastgpt/global/common/zod';
+
+const logger = getLogger(LogCategories.SYSTEM.UPGRADE);
 
 const LegacyConnectionEnvSchema = z.object({
   CODE_SANDBOX_URL: z
@@ -44,7 +47,7 @@ export const rehomeSubserviceConnections = async ({
     // 既有地址可能包含凭据，解析失败时不能将原始配置带入迁移错误。
     const config = (() => {
       try {
-        return resolveDomainEffectiveConfig({ domain: 'subservice', overrides });
+        return readMigrationDomainConfig({ domain: 'subservice', overrides });
       } catch {
         throw new Error('Invalid existing subservice configuration');
       }
@@ -55,17 +58,20 @@ export const rehomeSubserviceConnections = async ({
     }
     const hasCodeValue = (key: string) =>
       Object.hasOwn(overrides.codeSandbox ?? {}, key) || paths.includes(`codeSandbox.${key}`);
-    const source = LegacyConnectionEnvSchema.safeParse({
-      ...(!hasCodeValue('url') ? { CODE_SANDBOX_URL: legacyEnv.CODE_SANDBOX_URL?.trim() } : {}),
-      ...(!hasCodeValue('token') ? { CODE_SANDBOX_TOKEN: legacyEnv.CODE_SANDBOX_TOKEN } : {})
+    const source = readMigrationConfigValue({
+      name: 'codeSandbox',
+      schema: LegacyConnectionEnvSchema,
+      value: {
+        ...(!hasCodeValue('url') ? { CODE_SANDBOX_URL: legacyEnv.CODE_SANDBOX_URL?.trim() } : {}),
+        ...(!hasCodeValue('token') ? { CODE_SANDBOX_TOKEN: legacyEnv.CODE_SANDBOX_TOKEN } : {})
+      }
     });
-    if (!source.success) throw new Error('Invalid legacy Code Sandbox connection environment');
 
     // URL 缺省不再默认指向 localhost；Token 缺省仅在实际迁入历史 URL 时沿用旧默认值。
-    const url = hasCodeValue('url') ? config.codeSandbox.url : (source.data.CODE_SANDBOX_URL ?? '');
+    const url = hasCodeValue('url') ? config.codeSandbox.url : (source.CODE_SANDBOX_URL ?? '');
     const token = hasCodeValue('token')
       ? config.codeSandbox.token
-      : (source.data.CODE_SANDBOX_TOKEN ?? (url ? 'codesandbox' : ''));
+      : (source.CODE_SANDBOX_TOKEN ?? (url ? 'codesandbox' : ''));
     // 旧版 enabled 的默认值是 true；URL 尚未迁入时的默认标记不能被新版 false 重新解释。
     const hasStoredEnabled = Object.hasOwn(overrides.codeSandbox ?? {}, 'enabled');
     const oldEnabledDefault = paths.includes('codeSandbox.enabled') && !hasCodeValue('url');
@@ -82,7 +88,7 @@ export const rehomeSubserviceConnections = async ({
       codeSandbox: { ...config.codeSandbox, enabled, url, token },
       mcp: { ...config.mcp, enabled: mcpEnabled }
     };
-    resolveDomainEffectiveConfig({ domain: 'subservice', overrides: target });
+    readMigrationDomainConfig({ domain: 'subservice', overrides: target });
     if (isDeepStrictEqual(target, decodedOverrides)) return { updatedDocuments: 0 };
 
     await assertActive();
@@ -115,7 +121,7 @@ export const verifyRehomedSubserviceConnections = async () => {
     { readPreference: 'primary' }
   );
   if (!doc) throw new Error('Subservice instance config is missing');
-  resolveDomainEffectiveConfig({
+  readMigrationDomainConfig({
     domain: 'subservice',
     overrides: decryptDomainSecrets('subservice', doc.overrides)
   });
@@ -164,17 +170,27 @@ export const rehomeAgentSandboxProxy = async ({
       throw new Error('Invalid subservice explicit-default metadata');
     }
     try {
-      resolveDomainEffectiveConfig({ domain: 'subservice', overrides });
+      readMigrationDomainConfig({ domain: 'subservice', overrides });
     } catch {
       throw new Error('Invalid existing subservice configuration');
+    }
+    const storedProxy = overrides.agentSandbox?.proxy;
+    if (
+      storedProxy !== undefined &&
+      (storedProxy === null || typeof storedProxy !== 'object' || Array.isArray(storedProxy))
+    ) {
+      logger.warn('Invalid migrated proxy retained', { path: 'agentSandbox.proxy' });
+      return { updatedDocuments: 0 };
     }
     const previous = overrides.agentSandbox?.proxy ?? {};
     const proxy = Object.fromEntries(
       Object.entries(proxyEnvKeys).map(([key, envKey]) => [
         key,
-        Object.hasOwn(previous, key) || paths.includes(`agentSandbox.proxy.${key}`)
-          ? (previous[key] ?? '')
-          : (legacyEnv[envKey] ?? '')
+        Object.hasOwn(previous, key)
+          ? previous[key]
+          : paths.includes(`agentSandbox.proxy.${key}`)
+            ? ''
+            : (legacyEnv[envKey] ?? '')
       ])
     );
     const target = {
@@ -182,9 +198,9 @@ export const rehomeAgentSandboxProxy = async ({
       agentSandbox: { ...overrides.agentSandbox, proxy }
     };
 
-    // 整域验证完成后才能写入；错误不携带可能含凭据的源值或 Zod 原始 issue。
+    // 诊断整域保存约束后保留历史值；告警不携带可能含凭据的源值或 Zod 原始 issue。
     try {
-      resolveDomainEffectiveConfig({ domain: 'subservice', overrides: target });
+      readMigrationDomainConfig({ domain: 'subservice', overrides: target });
     } catch {
       throw new Error('Invalid Agent Sandbox proxy configuration during migration');
     }
@@ -219,13 +235,20 @@ export const verifyAgentSandboxProxyMigration = async () => {
   );
   if (!doc) throw new Error('Subservice instance config is missing');
   try {
-    resolveDomainEffectiveConfig({
+    readMigrationDomainConfig({
       domain: 'subservice',
       overrides: decryptDomainSecrets('subservice', doc.overrides)
     });
   } catch {
     throw new Error('Invalid Agent Sandbox proxy configuration after migration');
   }
+  if (
+    Object.hasOwn(doc.overrides?.agentSandbox ?? {}, 'proxy') &&
+    (doc.overrides.agentSandbox.proxy === null ||
+      typeof doc.overrides.agentSandbox.proxy !== 'object' ||
+      Array.isArray(doc.overrides.agentSandbox.proxy))
+  )
+    return;
   for (const key of Object.keys(proxyEnvKeys)) {
     if (
       !Object.hasOwn(doc.overrides?.agentSandbox?.proxy ?? {}, key) &&
@@ -253,11 +276,7 @@ const readOvercommitDocument = async () => {
   if (!Array.isArray(explicitPaths) || !explicitPaths.every((path) => typeof path === 'string')) {
     throw new Error('Invalid subservice explicit-default metadata');
   }
-  try {
-    resolveDomainEffectiveConfig({ domain: 'subservice', overrides });
-  } catch {
-    throw new Error('Invalid existing subservice configuration');
-  }
+  readMigrationDomainConfig({ domain: 'subservice', overrides });
   return { doc, overrides, explicitPaths: new Set<string>(explicitPaths) };
 };
 
@@ -284,11 +303,12 @@ export const rehomeSandboxOvercommit = async ({
     const imported = Object.fromEntries(
       missingKeys.map((key) => {
         const raw = legacyEnv[legacyKeys[key]];
-        const parsed = NumSchema.min(1).safeParse(raw?.trim() ? raw : 1);
-        if (!parsed.success) {
-          throw new Error(`Invalid sandbox overcommit migration input: ${legacyKeys[key]}`);
-        }
-        return [key, parsed.data];
+        const value = readMigrationConfigValue({
+          name: legacyKeys[key],
+          schema: NumSchema.min(1),
+          value: raw?.trim() ? raw : 1
+        });
+        return [key, value];
       })
     );
     const target = {
@@ -299,7 +319,7 @@ export const rehomeSandboxOvercommit = async ({
       }
     };
     try {
-      resolveDomainEffectiveConfig({ domain: 'subservice', overrides: target });
+      readMigrationDomainConfig({ domain: 'subservice', overrides: target });
     } catch {
       throw new Error('Invalid sandbox overcommit configuration during migration');
     }

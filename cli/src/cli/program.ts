@@ -12,7 +12,24 @@ const GROUP_DESCRIPTIONS: Record<string, string> = {
   model: 'List models available to the current member',
   chat: 'Run App conversations and manage their history and messages',
   'chat history': 'Manage App conversations and their status',
-  'chat record': 'Read App messages and detailed responses'
+  'chat record': 'Read App messages and detailed responses',
+  app: 'List, pull, save, publish, run, and test FastGPT Apps',
+  plugin: 'Discover FastGPT plugins',
+  'plugin tool': 'Discover plugin-backed system tools',
+  'code-sandbox': 'Inspect the FastGPT code sandbox',
+  workflow: 'Compare and debug FastGPT workflows',
+  'workflow-build': 'Author, validate, and compile local workflows',
+  'workflow-build meta': 'Inspect and update workflow application metadata',
+  'workflow-build config': 'Inspect and update workflow ChatConfig settings',
+  'workflow-build variable': 'Manage global workflow variables',
+  'workflow-build template': 'Discover and inspect workflow node templates',
+  'workflow-build node': 'Inspect, add, update, move, insert, clone, and remove workflow nodes',
+  'workflow-build edge': 'Inspect and edit workflow execution edges',
+  'workflow-build input': 'Inspect, bind, and configure workflow node inputs',
+  'workflow-build output': 'Inspect and edit dynamic workflow node outputs',
+  'workflow-build tool': 'List, attach, and detach tool nodes on tool-call nodes',
+  'workflow-build container': 'Inspect child nodes inside workflow container nodes',
+  'workflow-build changeset': 'Plan and atomically apply validated workflow ChangeSets'
 };
 
 function attachCommandSpec({

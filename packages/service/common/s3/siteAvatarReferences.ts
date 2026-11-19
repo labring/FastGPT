@@ -61,9 +61,9 @@ export const getCurrentSiteAvatarKeys = async (): Promise<Set<string> | undefine
     });
     const avatars = [
       site.favicon,
-      ...site.navbarItems.map((item) => item.avatar),
-      auth.sso.icon
-    ].filter(Boolean) as string[];
+      ...(Array.isArray(site.navbarItems) ? site.navbarItems.map((item) => item?.avatar) : []),
+      auth.sso?.icon
+    ].filter((avatar): avatar is string => typeof avatar === 'string' && avatar.length > 0);
 
     return new Set(
       avatars

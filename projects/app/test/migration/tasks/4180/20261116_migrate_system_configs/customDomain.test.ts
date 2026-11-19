@@ -1,3 +1,4 @@
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import { decryptDomainSecrets } from '@fastgpt/service/common/system/systemInstanceConfig/secrets';
@@ -98,24 +99,36 @@ describe('restoreCustomDomainConfig', () => {
     await expect(verifyCustomDomainConfig()).resolves.toBeUndefined();
   });
 
-  it('rejects malformed legacy values without printing their contents or writing partial state', async () => {
+  it('retains malformed legacy values and logs only the field path', async () => {
+    const warn = vi
+      .spyOn(getLogger(LogCategories.SYSTEM.UPGRADE), 'warn')
+      .mockImplementation(() => {});
     await MongoSystemConfigs.updateMany(
       { type: SystemConfigsTypeEnum.fastgpt },
-      {
-        $set: {
-          'value.systemEnv.customDomain.kc.aliyun': { secret: 'synthetic-private-value' }
-        }
-      }
+      { $set: { 'value.systemEnv.customDomain.kc.aliyun': { secret: 'synthetic-private-value' } } }
     );
-    const error = await restoreCustomDomainConfig({ assertActive }).catch((error) => error);
-    expect(error.message).toContain('Invalid legacy custom domain field');
-    expect(error.message).not.toContain('synthetic-private-value');
-    expect((await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean())?.overrides).toEqual(
-      {}
-    );
+    await restoreCustomDomainConfig({ assertActive });
+    const doc = await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean();
+    expect(doc?.overrides.customDomain.kc.aliyun).toEqual({ secret: 'synthetic-private-value' });
+    await expect(verifyCustomDomainConfig()).resolves.toBeUndefined();
+    expect(warn).toHaveBeenCalled();
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('synthetic-private-value');
   });
 
-  it.each(['missing', 'metadata', 'configuration'] as const)(
+  it('retains invalid persisted configuration while filling missing siblings', async () => {
+    await MongoSystemInstanceConfig.collection.updateOne(
+      { domain: 'site' },
+      { $set: { overrides: { customDomain: { kc: { aliyun: 123 } } } } }
+    );
+    await restoreCustomDomainConfig({ assertActive });
+    expect(
+      (await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean())?.overrides.customDomain
+        .kc.aliyun
+    ).toBe(123);
+    await expect(verifyCustomDomainConfig()).resolves.toBeUndefined();
+  });
+
+  it.each(['missing', 'metadata'] as const)(
     'refuses invalid persisted state: %s',
     async (invalid) => {
       if (invalid === 'missing') {

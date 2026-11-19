@@ -39,6 +39,7 @@ export async function searchDatasetData(
     reRankQuery,
     textQueries,
     imageQueries = [],
+    rawQueries = [],
     userKey,
     model,
     vlmModel,
@@ -193,10 +194,15 @@ export async function searchDatasetData(
       ? await filterDatasetDataByMaxTokens(scoreFilter, maxTokens)
       : scoreFilter.slice(0, topk);
   // 同义词只装饰最终入选结果：被前面过滤掉的候选不会产生 alias 查询。
+  // 问题侧映射只扫「用户原始问题」（rawQueries）：textQueries 已过 query extension，
+  // 扩展模型生成的同义词和「原词出现在分块正文或用户问题里」的装饰语义无关，
+  // 带进来会让模型看到用户没提过的术语对应关系。未传 rawQueries 的旧入口回退到
+  // textQueries，保持原行为。
   const decoratedFinal = await attachSynonymMappingsToSearchResults({
     teamId,
     datasetIds,
-    results: filteredResults
+    results: filteredResults,
+    queries: rawQueries.length > 0 ? rawQueries : textQueries
   });
   // Step 8: 返回前一次收集最终结果中的 q、a、imageId，并批量签发唯一 dataset 对象 key。
   // 最终输出不暴露仅供格式化使用的 imageId。

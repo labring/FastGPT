@@ -53,10 +53,10 @@ export const enqueueNextDatasetSynonymRebuildTask = async (
           ]
         },
         {
+          // 领取只标记重建状态，不刷新 updateTime：差量重建可能不会改写索引内容。
           $set: {
             indexStatus: DatasetDataIndexStatusEnum.rebuildSynonymRunning,
-            synonymRebuildingVersion: config.version,
-            updateTime: new Date()
+            synonymRebuildingVersion: config.version
           }
         },
         { session }

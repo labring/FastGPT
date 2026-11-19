@@ -30,7 +30,7 @@ import {
 } from '@fastgpt/service/core/app/controller';
 import { extractAppResources } from '@fastgpt/service/core/app/resource/utils';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { isPluginSystemTemplate } from '@fastgpt/service/core/app/templates/register';
+import { isPluginSystemTemplate } from '@fastgpt/service/core/app/templates/service';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { normalizeAppWorkflow } from '@fastgpt/service/core/app/version/controller';

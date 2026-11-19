@@ -2,25 +2,41 @@ import { describe, expect, it, vi } from 'vitest';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import {
   getSystemInstanceConfigSnapshot,
-  reloadSystemInstanceConfig
+  reloadSystemInstanceConfig,
+  updateDomainConfig
 } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
 import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { serviceEnv } from '@fastgpt/service/env';
 
 describe('getSystemInstanceConfigSnapshot failure behavior', () => {
-  it('validates loaded storage policy before publishing a snapshot', async () => {
+  it('preserves legacy storage policy when reading but rejects invalid saves', async () => {
     const vendor = serviceEnv.STORAGE_VENDOR;
     serviceEnv.STORAGE_VENDOR = 'minio';
     try {
-      const initial = await reloadSystemInstanceConfig();
       await MongoSystemInstanceConfig.create({
         domain: 'storage',
         revision: 1,
         overrides: { downloadMode: 'short-redirect', externalEndpoint: '' },
         updatedBy: { actor: 'system' }
       });
-      await expect(reloadSystemInstanceConfig()).rejects.toThrow('external endpoint');
-      expect(getSystemInstanceConfig()).toBe(initial);
+      const loaded = await reloadSystemInstanceConfig();
+      expect(loaded.storage).toMatchObject({
+        downloadMode: 'short-redirect',
+        externalEndpoint: ''
+      });
+      expect(getSystemInstanceConfig()).toBe(loaded);
+      await expect(
+        updateDomainConfig({
+          domain: 'storage',
+          expectedRevision: 1,
+          submittedOverrides: {},
+          actor: { actor: 'system' }
+        })
+      ).rejects.toThrow('external endpoint');
+      expect(await MongoSystemInstanceConfig.findOne({ domain: 'storage' }).lean()).toMatchObject({
+        revision: 1,
+        overrides: { downloadMode: 'short-redirect', externalEndpoint: '' }
+      });
     } finally {
       serviceEnv.STORAGE_VENDOR = vendor;
     }

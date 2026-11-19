@@ -60,18 +60,16 @@ describe('rehomeFileDomain', () => {
     'https://user:private@files.test',
     'https://files.test?private=1',
     'https://files.test#private'
-  ])('rejects invalid or unsafe legacy address without partial writes: %s', async (domain) => {
-    const before = await read();
-    await expect(run(domain)).rejects.toThrow('Invalid legacy file service domain');
-    expect(await read()).toEqual(before);
-    expect(assertActive).not.toHaveBeenCalled();
+  ])('retains an invalid legacy file address for administrator repair: %s', async (domain) => {
+    await run(domain);
+    expect((await read())?.overrides.fileDomain).toBe(domain);
+    await verifyFileDomainMigration();
   });
 
   it('rejects malformed stored configuration and explicit-default metadata', async () => {
     await collection.updateOne({ domain: 'storage' }, { $set: { 'overrides.fileDomain': null } });
-    await expect(run('https://files.test')).rejects.toThrow(
-      'Invalid existing storage configuration'
-    );
+    await run('https://files.test');
+    expect((await read())?.overrides.fileDomain).toBeNull();
     await collection.updateOne(
       { domain: 'storage' },
       { $set: { explicitDefaultPaths: 'fileDomain' } }
@@ -106,9 +104,7 @@ describe('verifyFileDomainMigration', () => {
   it('rejects absent, incomplete and invalid persistent targets', async () => {
     await expect(verifyFileDomainMigration()).rejects.toThrow('migration is incomplete');
     await collection.updateOne({ domain: 'storage' }, { $set: { 'overrides.fileDomain': 123 } });
-    await expect(verifyFileDomainMigration()).rejects.toThrow(
-      'Invalid storage configuration after'
-    );
+    await expect(verifyFileDomainMigration()).resolves.toBeUndefined();
     await collection.deleteMany({});
     await expect(run()).rejects.toThrow('Storage instance config is missing');
     await expect(verifyFileDomainMigration()).rejects.toThrow('Storage instance config is missing');

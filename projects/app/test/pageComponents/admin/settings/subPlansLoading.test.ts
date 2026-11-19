@@ -43,12 +43,29 @@ vi.mock('@fastgpt/web/hooks/useToast', () => ({
 vi.mock('next/dynamic', () => ({ default: () => () => null }));
 vi.mock('@fastgpt/web/components/common/MyTooltip/QuestionTip', () => ({ default: () => null }));
 vi.mock('@/pageComponents/admin/settings/AdminSettingPage', () => ({
-  default: ({ children, onSave }: { children: React.ReactNode; onSave: () => void }) =>
+  default: ({
+    children,
+    onSave
+  }: {
+    children: React.ReactNode;
+    onSave: () => void | Promise<unknown>;
+  }) =>
     React.createElement(
       'main',
       null,
       children,
-      React.createElement('button', { 'data-action': 'save', onClick: onSave }, 'save')
+      React.createElement(
+        'button',
+        {
+          'data-action': 'save',
+          // 真实页面负责接收保存拒绝并展示字段错误；布局 mock 也需结算该 Promise。
+          onClick: () =>
+            void Promise.resolve()
+              .then(onSave)
+              .catch(() => undefined)
+        },
+        'save'
+      )
     )
 }));
 vi.mock('@/pageComponents/admin/settings/AdminSettingSection', () => ({
