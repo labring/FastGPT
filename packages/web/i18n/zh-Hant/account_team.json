@@ -1,6 +1,7 @@
 {
   "audit_empty": "暫無符合條件的審計日誌",
   "audit_reset_time": "重設時間範圍",
+  "audit_reset_filters": "重設篩選條件",
   "audit_export_limit": "單次最多匯出 50,000 筆審計日誌，請縮小篩選範圍後重試。",
   "audit_export_filename": "審計日誌",
   "export_audit_logs": "匯出審計日誌",

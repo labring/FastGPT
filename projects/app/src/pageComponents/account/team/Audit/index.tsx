@@ -212,16 +212,20 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
                   <Td colSpan={5}>
                     <EmptyTip
                       text={
-                        <>
+                        <Flex direction="column" alignItems="center">
                           <Box>{t('account_team:audit_empty')}</Box>
                           <Button
-                            variant={'link'}
+                            variant={'whiteBase'}
                             mt={3}
-                            onClick={() => setDateRange(getDefaultAuditDateRange())}
+                            onClick={() => {
+                              setDateRange(getDefaultAuditDateRange());
+                              setMemberFilter(createMultiSelectFilter());
+                              setEventFilter(createMultiSelectFilter());
+                            }}
                           >
-                            {t('account_team:audit_reset_time')}
+                            {t('account_team:audit_reset_filters')}
                           </Button>
-                        </>
+                        </Flex>
                       }
                     />
                   </Td>

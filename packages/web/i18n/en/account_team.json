@@ -1,6 +1,7 @@
 {
   "audit_empty": "No audit logs match your filters",
   "audit_reset_time": "Reset date range",
+  "audit_reset_filters": "Reset filters",
   "audit_export_limit": "You can export up to 50,000 audit logs at a time. Narrow your filters and try again.",
   "audit_export_filename": "Audit_logs",
   "export_audit_logs": "Export audit logs",

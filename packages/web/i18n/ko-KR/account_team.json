@@ -1,6 +1,7 @@
 {
   "audit_empty": "필터와 일치하는 감사 로그가 없습니다",
   "audit_reset_time": "날짜 범위 초기화",
+  "audit_reset_filters": "필터 초기화",
   "audit_export_limit": "한 번에 최대 50,000개의 감사 로그를 내보낼 수 있습니다. 필터 범위를 좁힌 후 다시 시도하세요.",
   "audit_export_filename": "감사_로그",
   "export_audit_logs": "감사 로그 내보내기",
