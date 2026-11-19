@@ -26,6 +26,7 @@ import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import type {
   GetModelStatusResponse,
@@ -59,6 +60,32 @@ const formatTimeToMinute = (time?: string | null) => {
   if (!time) return '-';
   const d = dayjs(time);
   return d.isValid() ? d.format('YYYY/MM/DD HH:mm') : '-';
+};
+
+const PROBE_ERROR_CODE_PATTERN = /^(?:(.+): )?([A-Za-z][A-Za-z0-9_]*)(?: \(HTTP (\d{3})\))?$/;
+
+/**
+ * 后台探活记录与 Webhook 只保存英文/错误码，状态页展示时将已登记业务错误码映射为当前语言提示，
+ * 历史记录及普通上游错误文本原样保留。
+ */
+export const formatModelProbeError = ({
+  error,
+  t
+}: {
+  error?: string;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}): string | undefined => {
+  if (!error) return undefined;
+  const match = PROBE_ERROR_CODE_PATTERN.exec(error.trim());
+  if (!match) return error;
+
+  const [, prefix, errorCode, httpStatus] = match;
+  const entry = Object.hasOwn(ERROR_RESPONSE, errorCode) ? ERROR_RESPONSE[errorCode] : undefined;
+  if (!entry?.message) return error;
+
+  const translated = t(entry.message);
+  const suffix = httpStatus ? ` (${errorCode}, HTTP ${httpStatus})` : ` (${errorCode})`;
+  return prefix ? `${prefix}: ${translated}${suffix}` : `${translated}${suffix}`;
 };
 
 const TIMELINE_BAR_MIN_WIDTH = 4;
@@ -210,7 +237,8 @@ const ProbeTimeline = ({
       );
     }
 
-    const errorMsg = point.error || t('config_model:model_status_red');
+    const errorMsg =
+      formatModelProbeError({ error: point.error, t }) || t('config_model:model_status_red');
 
     return (
       <Box maxW={'320px'} fontSize={'xs'}>
@@ -318,7 +346,7 @@ const ModelStatusCard = ({
       </Flex>
       {model.latest?.error && (
         <Text mt={2} color={'red.500'} fontSize={'xs'} noOfLines={2}>
-          {model.latest.error}
+          {formatModelProbeError({ error: model.latest.error, t })}
         </Text>
       )}
     </MyBox>

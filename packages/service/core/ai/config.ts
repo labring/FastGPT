@@ -64,8 +64,9 @@ export const getAIApi = (props?: {
   userKey?: OpenaiAccountType;
   timeout?: number;
   model?: AiproxyScopeModelInput;
+  maxRetries?: number;
 }) => {
-  const { userKey, timeout, model } = props || {};
+  const { userKey, timeout, model, maxRetries } = props || {};
   const userOpenAIAccount = getUserOpenAIAccount(userKey);
   // 仅对团队成员创建的模型启用运行时 SSRF 防护；系统模型由 root 配置，保持原有行为。
   const legacyEndpoint = userOpenAIAccount ? undefined : getLegacyModelEndpoint(model);
@@ -82,7 +83,7 @@ export const getAIApi = (props?: {
       baseURL: baseUrl,
       apiKey,
       timeout,
-      maxRetries: 2,
+      maxRetries: maxRetries ?? 2,
       defaultHeaders:
         defaultHeaders && Object.keys(defaultHeaders).length > 0 ? defaultHeaders : undefined,
       ...(guardedLegacyEndpoint ? { fetch: safeLegacyFetch } : {})

@@ -5,16 +5,40 @@ export const delay = (ms: number) =>
     }, ms);
   });
 
-export const retryFn = async <T>(fn: () => Promise<T>, attempts = 3): Promise<T> => {
+export type RetryFnOptions = {
+  attempts?: number;
+  delayMs?: number | ((attempt: number, error: unknown) => number);
+  shouldRetry?: (error: unknown, attempt: number) => boolean;
+};
+
+/**
+ * 重试异步任务；第二个参数兼容重试次数或选项对象，shouldRetry 返回 false 时立即终止重试并上抛原错误。
+ */
+export const retryFn = async <T>(
+  fn: () => Promise<T>,
+  options: number | RetryFnOptions = 3
+): Promise<T> => {
+  const {
+    attempts = 3,
+    delayMs = 500,
+    shouldRetry
+  } = typeof options === 'number' ? { attempts: options } : options;
+  let remaining = attempts;
+  let attempt = 0;
+
   while (true) {
     try {
       return await fn();
     } catch (error) {
-      if (attempts <= 0) {
+      if (remaining <= 0 || shouldRetry?.(error, attempt) === false) {
         return Promise.reject(error);
       }
-      await delay(500);
-      attempts--;
+      const waitMs = typeof delayMs === 'function' ? delayMs(attempt, error) : delayMs;
+      if (waitMs > 0) {
+        await delay(waitMs);
+      }
+      remaining--;
+      attempt++;
     }
   }
 };

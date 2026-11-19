@@ -1,4 +1,7 @@
 import { decodeEmbedding, formatVectors } from '@fastgpt/service/core/ai/embedding/index';
+import { EmbeddingRequestError } from '@fastgpt/service/core/ai/embedding/error';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import type {
   EmbeddingModelConfigType,
   EmbeddingModelDataType
@@ -39,14 +42,19 @@ vi.mock('@fastgpt/service/core/ai/config', async (importOriginal) => {
   };
 });
 
-// Skip retryFn backoff so failure-path tests don't wait 3×500ms each.
-// The real retryFn retries 3 times with 500ms gaps; for tests we only need to
-// verify that errors surface, not the retry cadence.
+// 直接复用真实 retryFn，仅将退避等待设为 0 避免单测耗时并消除双份循环实现。
 vi.mock('@fastgpt/global/common/system/utils', async (importOriginal) => {
-  const actual = (await importOriginal()) as any;
+  const actual = await importOriginal<typeof import('@fastgpt/global/common/system/utils')>();
   return {
     ...actual,
-    retryFn: <T>(fn: () => Promise<T>) => fn()
+    retryFn: <T>(
+      fn: () => Promise<T>,
+      options: Parameters<typeof actual.retryFn<T>>[1] = 3
+    ): Promise<T> =>
+      actual.retryFn(
+        fn,
+        typeof options === 'number' ? { attempts: options, delayMs: 0 } : { ...options, delayMs: 0 }
+      )
   };
 });
 
@@ -453,20 +461,27 @@ describe('getVectors function test', () => {
   const imageInput = (input: string) => ({ type: 'image' as const, input });
 
   describe('input validation', () => {
-    it('should reject with "input is empty" when input is an empty string', async () => {
-      await expect(
-        getVectors({ model: buildModel(), inputs: [textInput('')] })
-      ).rejects.toMatchObject({
-        code: 500,
-        message: 'input is empty'
+    it('should reject with non-retryable emptyInput error when input is an empty string', async () => {
+      const err = await getVectors({ model: buildModel(), inputs: [textInput('')] }).catch(
+        (e) => e
+      );
+      expect(err).toBeInstanceOf(EmbeddingRequestError);
+      expect(err).toMatchObject({
+        category: 'emptyInput',
+        retryable: false,
+        message: ModelErrEnum.embeddingEmptyInput
       });
+      expect(getErrText(err)).toBe('common:code_error.model_error.embedding_empty_input');
       expect(mockCreate).not.toHaveBeenCalled();
     });
 
-    it('should reject when inputs is empty', async () => {
-      await expect(getVectors({ model: buildModel(), inputs: [] })).rejects.toMatchObject({
-        code: 500,
-        message: 'input is empty'
+    it('should reject with non-retryable emptyInput error when inputs is empty', async () => {
+      const err = await getVectors({ model: buildModel(), inputs: [] }).catch((e) => e);
+      expect(err).toBeInstanceOf(EmbeddingRequestError);
+      expect(err).toMatchObject({
+        category: 'emptyInput',
+        retryable: false,
+        message: ModelErrEnum.embeddingEmptyInput
       });
       expect(mockCreate).not.toHaveBeenCalled();
     });
@@ -820,29 +835,143 @@ describe('getVectors function test', () => {
   });
 
   describe('error paths', () => {
-    it('should reject when API response has no data', async () => {
+    it('should retry and reject with invalidResponse error when API response has no data', async () => {
       mockCreate.mockResolvedValue({ data: null });
 
-      await expect(getVectors({ model: buildModel(), inputs: [textInput('x')] })).rejects.toBe(
-        'Embedding API is not responding'
+      const err = await getVectors({ model: buildModel(), inputs: [textInput('x')] }).catch(
+        (e) => e
       );
+      expect(mockCreate).toHaveBeenCalledTimes(3);
+      expect(err).toBeInstanceOf(EmbeddingRequestError);
+      expect(err).toMatchObject({
+        category: 'invalidResponse',
+        retryable: true,
+        message: ModelErrEnum.invalidResponse
+      });
     });
 
-    it('should reject when API response data exists but has no embedding', async () => {
+    it('should retry and reject with invalidResponse error when API response has no embedding', async () => {
       mockCreate.mockResolvedValue({ data: [{}] });
 
-      await expect(getVectors({ model: buildModel(), inputs: [textInput('x')] })).rejects.toBe(
-        'Embedding API is not responding'
+      const err = await getVectors({ model: buildModel(), inputs: [textInput('x')] }).catch(
+        (e) => e
       );
+      expect(mockCreate).toHaveBeenCalledTimes(3);
+      expect(err).toBeInstanceOf(EmbeddingRequestError);
+      expect(err).toMatchObject({
+        category: 'invalidResponse',
+        retryable: true,
+        message: ModelErrEnum.invalidResponse
+      });
     });
 
-    it('should reject with underlying error when embeddings.create throws', async () => {
-      const apiErr = new Error('network boom');
+    it('should stop immediately when an HTTP 200 payload carries a deterministic structured error', async () => {
+      mockCreate.mockResolvedValue({
+        error: {
+          code: 'insufficient_quota',
+          message: 'You exceeded your current quota'
+        }
+      });
+
+      const err = await getVectors({ model: buildModel(), inputs: [textInput('x')] }).catch(
+        (e) => e
+      );
+      expect(mockCreate).toHaveBeenCalledTimes(1);
+      expect(err).toBeInstanceOf(EmbeddingRequestError);
+      expect(err).toMatchObject({
+        category: 'quotaExceeded',
+        retryable: false,
+        message: ModelErrEnum.upstreamQuotaExceeded
+      });
+    });
+
+    it('should stop immediately without inner retries for non-retryable upstream 4xx errors', async () => {
+      const rawErr = Object.assign(new Error('401 Incorrect API key provided'), {
+        status: 401,
+        code: 'invalid_api_key'
+      });
+      mockCreate.mockRejectedValue(rawErr);
+
+      const err = await getVectors({ model: buildModel(), inputs: [textInput('x')] }).catch(
+        (e) => e
+      );
+      expect(mockCreate).toHaveBeenCalledTimes(1);
+      expect(err).toBeInstanceOf(EmbeddingRequestError);
+      expect(err).toMatchObject({
+        category: 'authFailed',
+        retryable: false,
+        message: ModelErrEnum.authFailed,
+        cause: rawErr
+      });
+      expect(getErrText(err)).toBe('common:code_error.model_error.auth_failed');
+    });
+
+    it('should retry bounded attempts on 500 upstream errors while marking error retryable for outer queues', async () => {
+      const rawErr = Object.assign(
+        new Error('500 failed to get group: failed to connect to postgres 10.96.188.19:5432'),
+        {
+          status: 500,
+          type: 'aiproxy_error'
+        }
+      );
+      mockCreate.mockRejectedValue(rawErr);
+
+      const err = await getVectors({ model: buildModel(), inputs: [textInput('x')] }).catch(
+        (e) => e
+      );
+      expect(mockCreate).toHaveBeenCalledTimes(3);
+      expect(err).toBeInstanceOf(EmbeddingRequestError);
+      expect(err).toMatchObject({
+        category: 'upstreamUnavailable',
+        retryable: true,
+        message: ModelErrEnum.serviceUnavailable,
+        cause: rawErr
+      });
+      expect(getErrText(err)).toBe('common:code_error.model_error.service_unavailable');
+    });
+
+    it('should retry transient 400 image download failures and recover when subsequent attempt succeeds', async () => {
+      const transientDownloadErr = Object.assign(
+        new Error("400 Failed to download images: 500, message='Internal Server Error'"),
+        {
+          status: 400,
+          code: 'BadRequest',
+          type: 'upstream_error'
+        }
+      );
+      mockCreate
+        .mockRejectedValueOnce(transientDownloadErr)
+        .mockResolvedValueOnce(
+          makeResponse([[0.1, 0.2, 0.3, 0.4]], { usage: { total_tokens: 1 } })
+        );
+
+      const result = await getVectors({
+        model: buildModel(),
+        inputs: [imageInput('https://example.com/a.png')]
+      });
+
+      expect(mockCreate).toHaveBeenCalledTimes(2);
+      expect(result.vectors).toHaveLength(1);
+    });
+
+    it('should not retry aborted requests and should preserve the original abort error', async () => {
+      const abortErr = new Error('Request was aborted.');
+      mockCreate.mockRejectedValue(abortErr);
+
+      await expect(getVectors({ model: buildModel(), inputs: [textInput('x')] })).rejects.toBe(
+        abortErr
+      );
+      expect(mockCreate).toHaveBeenCalledTimes(1);
+    });
+
+    it('should fall back to underlying error when embeddings.create throws an unclassified error', async () => {
+      const apiErr = new Error('unexpected runtime failure');
       mockCreate.mockRejectedValue(apiErr);
 
       await expect(getVectors({ model: buildModel(), inputs: [textInput('x')] })).rejects.toBe(
         apiErr
       );
+      expect(mockCreate).toHaveBeenCalledTimes(3);
     });
   });
 });
