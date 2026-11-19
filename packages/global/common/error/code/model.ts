@@ -1,4 +1,4 @@
-import { type ErrType } from '../errorCode';
+import { type ErrorHttpStatus, type ErrType } from '../errorCode';
 import { i18nT } from '../../i18n/utils';
 
 /* model: 513000 */
@@ -17,26 +17,35 @@ export enum ModelErrEnum {
   teamModelDisabled = 'teamModelDisabled'
 }
 
-const modelErrList = [
+const modelErrList: Array<{
+  statusText: ModelErrEnum;
+  message: string;
+  httpStatus: ErrorHttpStatus;
+}> = [
   {
     statusText: ModelErrEnum.unExist,
-    message: i18nT('common:model_delisted')
+    message: i18nT('common:model_delisted'),
+    httpStatus: 404
   },
   {
     statusText: ModelErrEnum.unConfigured,
-    message: i18nT('common:not_model_config')
+    message: i18nT('common:not_model_config'),
+    httpStatus: 400
   },
   {
     statusText: ModelErrEnum.alreadyExists,
-    message: i18nT('common:model_id_already_exists')
+    message: i18nT('common:model_id_already_exists'),
+    httpStatus: 409
   },
   {
     statusText: ModelErrEnum.probeTaskRunning,
-    message: i18nT('common:model_probe_task_running')
+    message: i18nT('common:model_probe_task_running'),
+    httpStatus: 409
   },
   {
     statusText: ModelErrEnum.unAuthModel,
-    message: i18nT('common:code_error.model_error.un_auth_model')
+    message: i18nT('common:code_error.model_error.un_auth_model'),
+    httpStatus: 403
   },
   {
     statusText: ModelErrEnum.invalidModelConfig,
@@ -83,7 +92,7 @@ export default modelErrList.reduce(
       statusText: cur.statusText,
       message: cur.message,
       data: null,
-      ...(cur.httpStatus !== undefined ? { httpStatus: cur.httpStatus } : {})
+      httpStatus: cur.httpStatus
     }
   }),
   {} as ErrType<`${ModelErrEnum}`>

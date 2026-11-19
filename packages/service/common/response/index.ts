@@ -129,15 +129,31 @@ export function processError(params: {
       data: ERROR_RESPONSE[errResponseKey].data
     });
 
+    // 优先使用显式登记的 HTTP 状态码；若扩展条目缺失有效值，则保留调用方显式传入的 4xx defaultCode，避免被误覆盖为 500。
+    const configuredHttpStatus = ERROR_RESPONSE[errResponseKey].httpStatus;
+    const resolvedHttpStatus = (() => {
+      if (error instanceof ChatGeneratingConflictError) {
+        return 409;
+      }
+      if (
+        typeof configuredHttpStatus === 'number' &&
+        configuredHttpStatus >= 400 &&
+        configuredHttpStatus <= 599
+      ) {
+        return configuredHttpStatus;
+      }
+      if (typeof defaultCode === 'number' && defaultCode >= 400 && defaultCode <= 499) {
+        return defaultCode;
+      }
+      return 500;
+    })();
+
     return {
       code: ERROR_RESPONSE[errResponseKey].code || defaultCode,
       statusText: ERROR_RESPONSE[errResponseKey].statusText || 'error',
       message,
       data,
-      httpStatus:
-        error instanceof ChatGeneratingConflictError
-          ? 409
-          : (ERROR_RESPONSE[errResponseKey].httpStatus ?? 500),
+      httpStatus: resolvedHttpStatus,
       shouldClearCookie
     };
   }
@@ -255,10 +271,12 @@ export const getSseErrorResponse = (
   const errorResponse = ERROR_RESPONSE[processedError.statusText];
 
   if (errorResponse) {
+    // SSE error 帧只输出面向客户端的协议字段，不泄露服务端用于设置状态码的 httpStatus 元数据。
     return {
       event: SseResponseEventEnum.error,
       data: JSON.stringify({
-        ...errorResponse,
+        code: errorResponse.code,
+        statusText: errorResponse.statusText,
         message: translateApiMessage(processedError.message, res),
         data: processedError.data
       }),

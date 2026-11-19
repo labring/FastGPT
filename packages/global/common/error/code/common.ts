@@ -1,5 +1,5 @@
 import { i18nT } from '../../i18n/utils';
-import { type ErrType } from '../errorCode';
+import { type ErrorHttpStatus, type ErrType } from '../errorCode';
 
 /* dataset: 507000 */
 const startCode = 507000;
@@ -24,14 +24,20 @@ export enum CommonErrEnum {
   docxConversionFailed = 'docxConversionFailed',
   unAuthFileKey = 'unAuthFileKey'
 }
-const datasetErr = [
+const datasetErr: Array<{
+  statusText: CommonErrEnum;
+  message: string;
+  httpStatus: ErrorHttpStatus;
+}> = [
   {
     statusText: CommonErrEnum.invalidParams,
-    message: i18nT('common:error.invalid_params')
+    message: i18nT('common:error.invalid_params'),
+    httpStatus: 400
   },
   {
     statusText: CommonErrEnum.invalidResource,
-    message: i18nT('common:error_invalid_resource')
+    message: i18nT('common:error_invalid_resource'),
+    httpStatus: 400
   },
   {
     statusText: CommonErrEnum.fileNotFound,
@@ -45,55 +51,68 @@ const datasetErr = [
   },
   {
     statusText: CommonErrEnum.missingParams,
-    message: i18nT('common:error.missingParams')
+    message: i18nT('common:error.missingParams'),
+    httpStatus: 400
   },
   {
     statusText: CommonErrEnum.inheritPermissionError,
-    message: i18nT('common:error.inheritPermissionError')
+    message: i18nT('common:error.inheritPermissionError'),
+    httpStatus: 403
   },
   {
     statusText: CommonErrEnum.folderDepthLimit,
-    message: i18nT('common:error.folderDepthLimit')
+    message: i18nT('common:error.folderDepthLimit'),
+    httpStatus: 400
   },
   {
     statusText: CommonErrEnum.folderMoveDepthLimit,
-    message: i18nT('common:error.folderMoveDepthLimit')
+    message: i18nT('common:error.folderMoveDepthLimit'),
+    httpStatus: 400
   },
   {
     statusText: CommonErrEnum.pdfParseFailed,
-    message: i18nT('file:pdf_parse_failed')
+    message: i18nT('file:pdf_parse_failed'),
+    httpStatus: 500
   },
   {
     statusText: CommonErrEnum.pdfEncrypted,
-    message: i18nT('file:pdf_encrypted_error')
+    message: i18nT('file:pdf_encrypted_error'),
+    httpStatus: 422
   },
   {
     statusText: CommonErrEnum.pdfCorrupted,
-    message: i18nT('file:pdf_corrupted_error')
+    message: i18nT('file:pdf_corrupted_error'),
+    httpStatus: 422
   },
   {
     statusText: CommonErrEnum.unsupportedParseFileType,
-    message: i18nT('file:unsupported_parse_file_type')
+    message: i18nT('file:unsupported_parse_file_type'),
+    httpStatus: 400
   },
   {
     statusText: CommonErrEnum.invalidParseFile,
-    message: i18nT('file:invalid_parse_file')
+    message: i18nT('file:invalid_parse_file'),
+    httpStatus: 422
   },
   {
     statusText: CommonErrEnum.officeConversionFailed,
-    message: i18nT('file:office_conversion_failed')
+    message: i18nT('file:office_conversion_failed'),
+    httpStatus: 500
   },
   {
     statusText: CommonErrEnum.docxParseInvalid,
-    message: i18nT('file:docx_parse_invalid')
+    message: i18nT('file:docx_parse_invalid'),
+    httpStatus: 422
   },
   {
     statusText: CommonErrEnum.docxConversionFailed,
-    message: i18nT('file:docx_conversion_failed')
+    message: i18nT('file:docx_conversion_failed'),
+    httpStatus: 500
   },
   {
     statusText: CommonErrEnum.unAuthFileKey,
-    message: i18nT('common:error.unAuthFileKey')
+    message: i18nT('common:error.unAuthFileKey'),
+    httpStatus: 403
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {
@@ -104,7 +123,7 @@ export default datasetErr.reduce((acc, cur, index) => {
       statusText: cur.statusText,
       message: cur.message,
       data: null,
-      ...(cur.httpStatus !== undefined ? { httpStatus: cur.httpStatus } : {})
+      httpStatus: cur.httpStatus
     }
   };
 }, {} as ErrType<`${CommonErrEnum}`>);

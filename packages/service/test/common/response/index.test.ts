@@ -8,6 +8,8 @@ import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { EventEmitter } from 'node:events';
 import {
   ChatEntryModerationError,
@@ -291,6 +293,13 @@ describe('jsonRes HTTP status mapping', () => {
     }) as unknown as Parameters<typeof jsonRes>[0];
 
   it.each([
+    [ERROR_ENUM.unAuthApiKey, 401],
+    [ERROR_ENUM.insufficientQuota, 402],
+    [TeamErrEnum.aiPointsNotEnough, 402],
+    [ModelErrEnum.unAuthModel, 403],
+    [AppErrEnum.unAuthApp, 403],
+    [DatasetErrEnum.unExist, 404],
+    [ChatErrEnum.chatIsGenerating, 409],
     [UserErrEnum.invalidVerificationCode, 400],
     [UserErrEnum.sendVerificationCodeTooFrequently, 429],
     [UserErrEnum.verifyCodeTooFrequently, 429],
@@ -299,6 +308,7 @@ describe('jsonRes HTTP status mapping', () => {
     [SandboxErrEnum.agentSandboxInitializing, 409],
     [SandboxErrEnum.agentSandboxLimitReached, 409],
     [SandboxErrEnum.agentSandboxTeamLimitReached, 409],
+    [SandboxErrEnum.runtimeUpgradeFailed, 500],
     [AppErrEnum.workflowBuilderVersionExpired, 410],
     [AppErrEnum.workflowBuilderVersionNotFound, 404]
   ] as const)('uses the configured HTTP status for %s', (errorKey, httpStatus) => {
@@ -342,8 +352,28 @@ describe('jsonRes HTTP status mapping', () => {
       jsonRes(res, { code: 400, error: new Error(S3ErrEnum.uploadFileTypeMismatch) });
       expect(res.status).toHaveBeenCalledWith(503);
     } finally {
-      if (original === undefined) delete entry.httpStatus;
-      else entry.httpStatus = original;
+      entry.httpStatus = original;
+    }
+  });
+
+  it('preserves caller-provided 4xx status when a runtime error entry lacks httpStatus', () => {
+    const syntheticKey = 'syntheticMissingHttpStatusTestError';
+    const res = createResponse();
+    (ERROR_RESPONSE as Record<string, any>)[syntheticKey] = {
+      code: 599999,
+      statusText: syntheticKey,
+      message: 'Synthetic validation failure',
+      data: null
+    };
+
+    try {
+      jsonRes(res, { code: 403, error: syntheticKey });
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ code: 599999, statusText: syntheticKey })
+      );
+    } finally {
+      delete (ERROR_RESPONSE as Record<string, any>)[syntheticKey];
     }
   });
 
@@ -402,12 +432,15 @@ describe('getSseErrorResponse logging', () => {
     expect(logger.info).not.toHaveBeenCalled();
   });
 
-  it('keeps specified error responses unchanged for UserError', () => {
+  it('keeps specified SSE wire error fields without leaking internal httpStatus metadata', () => {
     const error = new UserError(ERROR_ENUM.unAuthorization);
 
     const response = getSseErrorResponse(error);
+    const parsed = JSON.parse(response.data);
+    const { httpStatus: _httpStatus, ...wireResponse } = ERROR_RESPONSE[ERROR_ENUM.unAuthorization];
 
-    expect(JSON.parse(response.data)).toEqual(ERROR_RESPONSE[ERROR_ENUM.unAuthorization]);
+    expect(parsed).toEqual(wireResponse);
+    expect(parsed).not.toHaveProperty('httpStatus');
     expect(response.shouldClearCookie).toBe(true);
     expect(logger.error).not.toHaveBeenCalled();
   });

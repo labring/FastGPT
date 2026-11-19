@@ -7,6 +7,8 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { ApiHttpError } from '@fastgpt/service/common/http/apiError';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { validateEvaluationFile } from '@fastgpt/service/core/app/evaluation/utils';
 
 // 必须运行真实入口和 JSON 响应，才能验证 end/finish/close 之间的边界。
@@ -270,6 +272,31 @@ describe('createApiEntry response lifecycle', () => {
     expect(res.statusCode).toBe(409);
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 409 }));
   });
+
+  it.each([
+    { error: ERROR_ENUM.unAuthApiKey, status: 401, code: 514 },
+    { error: TeamErrEnum.aiPointsNotEnough, status: 402, code: 500005 },
+    { error: AppErrEnum.unAuthApp, status: 403, code: 502001 },
+    { error: AppErrEnum.unExist, status: 404, code: 502000 },
+    { error: SandboxErrEnum.runtimeUpgradeFailed, status: 500, code: 510002 }
+  ])(
+    'maps domain business error $error to HTTP $status while preserving business code $code',
+    async ({ error, status, code }) => {
+      const { req, res } = createHttpObjects();
+
+      await createApiEntry({ requestI18n })(async () => {
+        throw error;
+      })(req, res);
+
+      expect(res.statusCode).toBe(status);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code,
+          statusText: error
+        })
+      );
+    }
+  );
 
   it('destroys a partial response instead of appending a JSON error', async () => {
     const { req, res } = createHttpObjects();

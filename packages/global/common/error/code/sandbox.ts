@@ -1,5 +1,5 @@
 import { i18nT } from '../../i18n/utils';
-import type { ErrType } from '../errorCode';
+import type { ErrorHttpStatus, ErrType } from '../errorCode';
 
 /* sandbox: 510000 */
 const startCode = 510000;
@@ -13,10 +13,15 @@ export enum SandboxErrEnum {
   agentSandboxTeamLimitReached = 'agentSandboxTeamLimitReached'
 }
 
-const sandboxErr = [
+const sandboxErr: Array<{
+  statusText: SandboxErrEnum;
+  message: string;
+  httpStatus: ErrorHttpStatus;
+}> = [
   {
     statusText: SandboxErrEnum.agentSandboxPermissionDenied,
-    message: i18nT('common:code_error.sandbox_error.agent_sandbox_permission_denied')
+    message: i18nT('common:code_error.sandbox_error.agent_sandbox_permission_denied'),
+    httpStatus: 403
   },
   {
     statusText: SandboxErrEnum.agentSandboxInitializing,
@@ -25,7 +30,8 @@ const sandboxErr = [
   },
   {
     statusText: SandboxErrEnum.runtimeUpgradeFailed,
-    message: i18nT('common:code_error.sandbox_error.runtime_upgrade_failed')
+    message: i18nT('common:code_error.sandbox_error.runtime_upgrade_failed'),
+    httpStatus: 500
   },
   {
     statusText: SandboxErrEnum.runtimeUpgradeInProgress,
@@ -52,7 +58,7 @@ export default sandboxErr.reduce((acc, cur, index) => {
       statusText: cur.statusText,
       message: cur.message,
       data: null,
-      httpStatus: cur.httpStatus ?? 403
+      httpStatus: cur.httpStatus
     }
   };
 }, {} as ErrType<`${SandboxErrEnum}`>);
