@@ -1,9 +1,18 @@
+import { getConfiguredDbRuntime } from '@fastgpt/dal/db/runtime';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../logger';
 import type { Mongoose } from 'mongoose';
 import { serviceEnv } from '../../env';
+import { configureMongoDalRuntime } from './dalRuntime';
+import { connectionMongo } from './index';
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
+
+const ensureDefaultMongoDalRuntime = (db: Mongoose, url: string) => {
+  if (db === connectionMongo && getConfiguredDbRuntime() === undefined && url.trim().length > 0) {
+    configureMongoDalRuntime({ mainWriteUrl: url });
+  }
+};
 
 /**
  * connect MongoDB and init data
@@ -17,6 +26,7 @@ export async function connectMongo(props: {
 
   /* Connecting, connected will return */
   if (db.connection.readyState !== 0) {
+    ensureDefaultMongoDalRuntime(db, url);
     return db;
   }
 
@@ -59,6 +69,7 @@ export async function connectMongo(props: {
       heartbeatFrequencyMS: 5000 // 5s 进行一次健康检查
     });
 
+    ensureDefaultMongoDalRuntime(db, url);
     connectedCb?.();
 
     return db;

@@ -1,0 +1,8 @@
+{
+  "entries": [
+    {
+      "path": ".agents/skills/system",
+      "include_only": ["multi-db-repo-refactor"]
+    }
+  ]
+}

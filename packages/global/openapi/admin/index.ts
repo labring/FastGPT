@@ -3,6 +3,7 @@ import { AdminAppsPath } from './app';
 import { DashboardPath } from './dashboard';
 import { AdminDatasetsPath } from './dataset';
 import { AdminLicensePath } from './license';
+import { AdminAppRegistrationPath } from './support/appRegistration';
 import { AdminSystemPath } from './system';
 import { AdminModelStatusPath } from './system/model/statusPath';
 import { AdminTeamsPath } from './team';
@@ -12,6 +13,7 @@ import { AdminWalletPath } from './wallet';
 /** 管理员接口总路由，统一作为 DevAPI 的管理员接口入口。 */
 export const AdminPath: NonNullable<OpenAPIPath> = {
   ...AdminAppsPath,
+  ...AdminAppRegistrationPath,
   ...DashboardPath,
   ...AdminDatasetsPath,
   ...AdminLicensePath,

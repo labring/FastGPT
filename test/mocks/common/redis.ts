@@ -89,21 +89,21 @@ const createRedisStorage = () => {
       if (isExpired(key)) storage.delete(key);
       const current = Number(storage.get(key) ?? 0);
       const next = current + 1;
-      storage.set(key, next);
+      storage.set(key, String(next));
       return next;
     },
     incrbyfloat: (key: string, increment: number) => {
       if (isExpired(key)) storage.delete(key);
       const current = Number(storage.get(key) ?? 0);
       const next = current + Number(increment);
-      storage.set(key, next);
+      storage.set(key, String(next));
       return String(next);
     },
     incrby: (key: string, increment: number) => {
       if (isExpired(key)) storage.delete(key);
       const current = Number(storage.get(key) ?? 0);
       const next = current + increment;
-      storage.set(key, next);
+      storage.set(key, String(next));
       return next;
     },
     pexpire: (key: string, milliseconds: number) => {
@@ -148,15 +148,75 @@ const createRedisStorage = () => {
 
 // Shared global Redis storage for all mock clients
 const globalRedisStorage = createRedisStorage();
+const pubsubSubscribersByChannel = new Map<string, Set<any>>();
 
 // Create mock client with shared storage
 const createSharedMockRedisClient = () => {
-  return {
+  const listeners = new Map<string, Set<(...args: any[]) => void>>();
+  const subscribedChannels = new Set<string>();
+
+  const removeListener = (event: string, listener: (...args: any[]) => void) => {
+    listeners.get(event)?.delete(listener);
+    return mockClient;
+  };
+
+  const mockClient: Record<string, any> = {
+    status: 'ready',
     // Connection methods
-    on: vi.fn().mockReturnThis(),
+    on: vi.fn((event: string, listener: (...args: any[]) => void) => {
+      const set = listeners.get(event) ?? new Set();
+      set.add(listener);
+      listeners.set(event, set);
+      return mockClient;
+    }),
+    off: vi.fn(removeListener),
+    removeListener: vi.fn(removeListener),
+    emit: (event: string, ...args: any[]) => {
+      for (const listener of listeners.get(event) ?? []) {
+        listener(...args);
+      }
+      return true;
+    },
+    subscribe: vi.fn(async (...channels: string[]) => {
+      for (const channel of channels) {
+        subscribedChannels.add(channel);
+        const set = pubsubSubscribersByChannel.get(channel) ?? new Set();
+        set.add(mockClient);
+        pubsubSubscribersByChannel.set(channel, set);
+      }
+      return subscribedChannels.size;
+    }),
+    unsubscribe: vi.fn(async (...channels: string[]) => {
+      const targets = channels.length > 0 ? channels : Array.from(subscribedChannels);
+      for (const channel of targets) {
+        subscribedChannels.delete(channel);
+        pubsubSubscribersByChannel.get(channel)?.delete(mockClient);
+      }
+      return subscribedChannels.size;
+    }),
+    publish: vi.fn(async (channel: string, message: string) => {
+      const subscribers = Array.from(pubsubSubscribersByChannel.get(channel) ?? []);
+      queueMicrotask(() => {
+        for (const sub of subscribers) {
+          sub.emit('message', channel, message);
+        }
+      });
+      return subscribers.length;
+    }),
     connect: vi.fn().mockResolvedValue(undefined),
-    disconnect: vi.fn().mockResolvedValue(undefined),
-    quit: vi.fn().mockResolvedValue('OK'),
+    disconnect: vi.fn(async () => {
+      for (const channel of subscribedChannels) {
+        pubsubSubscribersByChannel.get(channel)?.delete(mockClient);
+      }
+      subscribedChannels.clear();
+    }),
+    quit: vi.fn(async () => {
+      for (const channel of subscribedChannels) {
+        pubsubSubscribersByChannel.get(channel)?.delete(mockClient);
+      }
+      subscribedChannels.clear();
+      return 'OK';
+    }),
     duplicate: vi.fn(function (this: any) {
       return createSharedMockRedisClient();
     }),
@@ -295,6 +355,7 @@ const createSharedMockRedisClient = () => {
     // Internal storage for testing purposes
     _storage: globalRedisStorage
   };
+  return mockClient;
 };
 
 const sharedRedisClient = createSharedMockRedisClient();

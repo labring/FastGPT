@@ -25,21 +25,27 @@ packages/
 │
 └── service/core/             # 后端业务逻辑（不可在前端引用）
     ├── app/
-    │   ├── schema.ts         # App 主表 Mongoose Schema
-    │   ├── entity.ts         # findById / create / updateById 等基础操作封装
-    │   ├── service.ts        # 聚合业务逻辑（跨子功能协调），不允许互相引用，只允许单向依赖，跨 service 的协调需由上层通过 props 传入另一个 service 或者衍生方法
+    │   ├── repo.type.ts      # 领域仓储契约 type、Write Schema、Normalized Read Schema 及 .pick() 窄 DTO
+    │   ├── mongo/
+    │   │   ├── schema.ts     # Mongoose Schema + defineIndex + 惰性 getAppMongoModel()
+    │   │   └── repo.ts       # MongoAppRepository（extends MongoRepositoryBase, implements AppRepository）
+    │   ├── sql/
+    │   │   ├── table.ts      # 中立可移植 SQL 表与 B-Tree 索引定义（defineSqlTable，通吃 PG/OceanBase/MySQL）
+    │   │   └── repo.ts       # SqlAppRepository（extends SqlRepositoryBase, implements AppRepository）
+    │   ├── noop/             # 仅独立日志库（log）子域提供：NoopXxxRepository 空对象降级实现
+    │   │   └── repo.ts
+    │   ├── repo.ts           # 调用 defineRepoToken / defineLogRepoToken 导出 AppRepoToken
+    │   ├── service.ts        # AppService 类（构造函数 deps 注入仓储与协同服务，默认回退 injectRepo）+ 导出单例
     │   ├── auth.ts           # 鉴权相关（如有）
     │   ├── utils.ts          # 纯函数工具，无副作用，可独立单测
     │   ├── version/
-    │   │   ├── schema.ts
-    │   │   ├── entity.ts
+    │   │   ├── repo.type.ts
+    │   │   ├── mongo/
+    │   │   ├── sql/
+    │   │   ├── repo.ts
     │   │   ├── service.ts
     │   │   └── utils.ts
     │   ├── evaluation/
-    │   │   ├── schema.ts     # 合并多个 schema 到单文件
-    │   │   ├── entity.ts
-    │   │   ├── service.ts
-    │   │   └── utils.ts
     │   ├── logs/
     │   └── tool/
     │       ├── service.ts
@@ -51,42 +57,56 @@ packages/
 
 ### 叶子目录固定文件说明
 
+> 架构设计详见 [多数据库适配与领域仓储重构设计](../design/common/dal/multi-db-repository-architecture.md)。存量 `entity.ts` 处于渐进收口阶段，所有新增与重构模块一律采用以下领域仓储结构：
+
 | 文件 | 职责 |
 |------|------|
-| `schema.ts` | Mongoose Schema 定义，导出 Model 和 SchemaType |
-| `entity.ts` | 数据访问封装：`findById`、`create`、`updateById` 等基础操作 |
-| `service.ts` | 业务逻辑：调用 entity，跨模块协调，处理业务规则 |
+| `repo.type.ts` | 领域仓储 `type` 契约、严进 Write Schema、宽出归一化 Read Schema 及 `.pick()` 窄 DTO（严禁泄漏 `FilterQuery`、空格投影字符串等驱动类型） |
+| `mongo/schema.ts` | Mongoose Schema 与 `defineIndex` 声明，通过惰性工厂获取 Model，严禁模块顶层注册副作用 |
+| `mongo/repo.ts` | 继承 `@fastgpt/dal/db/mongo/base` 的 `MongoRepositoryBase`，内部封闭 `.lean()`、`ObjectId` 转换与软删除/租户过滤，出口统一经过 `parseRow` / `parseList` |
+| `sql/table.ts` & `sql/repo.ts` | 跨 PG 与 OceanBase/MySQL 可移植的 `defineSqlTable` 表定义，以及继承 `@fastgpt/dal/db/sql/base` `SqlRepositoryBase`（基于 Kysely）的同构策略实现；严禁 GIN、数组列、`ILIKE`、`RETURNING` 与部分唯一索引 |
+| `noop/repo.ts` | 仅 `log` 数据源子域提供：未配置 `logWriteUrl` 时的 Null Object 空实现（写静默跳过、读返回空） |
+| `repo.ts` | 通过 `defineRepoToken`（或 `defineLogRepoToken`）定义并导出仓储 DI Token（`{ mongo, sql }`） |
+| `service.ts` | 业务编排类 `XxxService`：构造函数通过 `deps: XxxServiceDeps = {}` 注入仓储与协同 Service（默认回退 `injectRepo(Token)`），导出默认实例；严禁引入 `mongoose` / `kysely` / `pg` / `mysql2` |
 | `utils.ts` | 纯函数工具，无副作用，可独立单测 |
 
 ```typescript
-// entity.ts 示例 —— 只做数据访问，不含业务判断
-export const findAppById = (id: string) =>
-  MongoApp.findById(id).lean();
-export const createApp = (data: AppCreateParams, session?: ClientSession) =>
-  MongoApp.create([data], { session });
+// repo.ts —— 注册方言工厂，模块加载期零副作用
+export const AppRepoToken = defineRepoToken<AppRepository>('AppRepository', {
+  mongo: () => new MongoAppRepository(),
+  sql: () => new SqlAppRepository()
+});
 
-// service.ts 示例 —— 调用 entity，处理业务规则
-export const createAppAndInitVersion = async (data: AppCreateParams, session?: ClientSession) => {
-  const app = await createApp(data, session);
-  await createVersion({ appId: app._id, ... }, session);
-  return app;
+// service.ts —— 构造函数依赖注入（支持单测直接 new AppService({ appRepo: mockRepo }) 零 vi.mock 隔离）
+export type AppServiceDeps = {
+  appRepo?: AppRepository;
+  versionRepo?: AppVersionRepository;
 };
 
-// service 需协同，通过 props 传入另一个 service 或者衍生方法。
-const service1 = xxxx
-const service2 = (props: {id:string; service1: typeof service1 }) => {
-  const data = findAppById(id)
-  return props.service1(data);
-};
+export class AppService {
+  private readonly appRepo: AppRepository;
+  private readonly versionRepo: AppVersionRepository;
+
+  constructor(deps: AppServiceDeps = {}) {
+    this.appRepo = deps.appRepo ?? injectRepo(AppRepoToken);
+    this.versionRepo = deps.versionRepo ?? injectRepo(AppVersionRepoToken);
+  }
+
+  async findAppById(appId: string, teamId: string) {
+    return this.appRepo.findActiveById({ appId, teamId });
+  }
+}
+
+export const appService = new AppService();
 ```
 
 ### 层级约束
 
-- `global/core/` 只放类型和常量，**禁止**引入 mongoose、服务端 SDK
+- `global/core/` 只放类型和常量，**禁止**引入 mongoose、kysely、pg、mysql2、服务端 SDK；实体 ID 统一使用 `@fastgpt/global/common/string/entityId`
 - `service/core/` 只在服务端使用，**禁止**被 `packages/web/` 或前端页面直接引用
+- 除 `**/mongo/**`、`**/sql/**` 与 `packages/dal/db/**` 外，全仓业务与 API 代码**严禁**直接引用底层数据库驱动或裸 `MongoXxx` Model
 - 子功能目录不超过 **3 层**嵌套
-- 一个目录内无需拆子功能时，直接放 `schema.ts` + `entity.ts` + `service.ts` + `utils.ts`
-- 多个 schema 文件（如 `evalSchema.ts` + `evalItemSchema.ts`）**合并**到单个 `schema.ts`
+- 同子域下紧密关联的多张子表 Schema **合并**置于同一子域的 `mongo/schema.ts` 与 `sql/table.ts`
 
 ## 代码风格
 
@@ -385,33 +405,32 @@ function createVersion(data: { skillId: string; teamId: string; tmbId: string; v
 
 ---
 
-### 数据写操作函数支持可选 session 参数
+### 数据写操作支持可选 `tx?: DbSession` 显式事务参数
 
-涉及数据库写操作的函数统一支持可选的 `session` 参数，便于上层组合事务。事务统一通过 `mongoSessionRun` 发起，内部自动处理 startTransaction / commit / abort / retry。
+涉及数据库写操作的 Repository 与 Service 方法统一支持可选的 `tx?: DbSession` 参数（从 `@fastgpt/dal/db/types` 导入，严禁使用 `AsyncLocalStorage` 隐式传播或直接暴露 Mongoose `ClientSession`）。事务统一通过 `@fastgpt/dal/db/transaction` 的 `runInTransaction` 发起，内部自动处理开启、提交、回滚、写冲突重试以及 `tx.afterCommit` 提交后副作用触发。
 
 ```typescript
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { type ClientSession } from '@fastgpt/service/common/mongo';
+import { runInTransaction } from '@fastgpt/dal/db/transaction';
+import type { DbSession } from '@fastgpt/dal/db/types';
 
-// entity.ts —— 基础操作透传 session
-export const createVersion = (data: CreateVersionData, session?: ClientSession) =>
-  MongoAppVersion.create([data], { session });
+// mongo/repo.ts —— 通过基类 this.txOpts(tx) 透传底层会话
+async createVersion({ data, tx }: { data: CreateVersionInput; tx?: DbSession }) {
+  const [doc] = await this.model.create([data], this.txOpts(tx));
+  return this.parseRow(doc.toObject());
+}
 
-// service.ts —— 需要事务时用 mongoSessionRun 包裹，外部已有 session 时直接传入
-export const createAppAndInitVersion = async (
-  data: AppCreateParams,
-  session?: ClientSession
-) => {
-  const create = async (session: ClientSession) => {
-    const app = await createApp(data, session);
-    await createVersion({ appId: app._id, version: 0 }, session);
+// service.ts —— 外部已传入 tx 时直接复用，否则由 runInTransaction 开启新事务；缓存失效挂入 afterCommit
+async createAppAndInitVersion({ data, tx }: { data: CreateAppWriteInput; tx?: DbSession }) {
+  const execute = async (activeTx: DbSession) => {
+    const app = await this.appRepo.createApp({ data, tx: activeTx });
+    await this.versionRepo.createVersion({ data: { appId: app._id, version: 0 }, tx: activeTx });
+    activeTx.afterCommit(() => invalidateTeamAppCache(data.teamId));
     return app;
   };
 
-  if (session) {
-    return create(session);
-  } else {
-    return mongoSessionRun(create);
+  if (tx !== undefined) {
+    return execute(tx);
   }
-};
+  return runInTransaction(execute);
+}
 ```

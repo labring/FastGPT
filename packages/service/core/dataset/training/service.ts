@@ -16,6 +16,7 @@ import {
 
 import { getTrainingDataIndexStatuses, getTrainingTaskReadyUpdate } from './utils';
 import { BLOCKED_LOCK_TIME, finalErrorTrainingMatch } from './query';
+import { publishTrainingWakeup } from './wakeup';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.TRAINING);
 
@@ -178,6 +179,10 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
         lose();
         throw new TrainingLeaseLostError();
       }
+      await publishTrainingWakeup({
+        modes: [next.mode],
+        session
+      });
     });
   const fail = async (
     error: unknown,
@@ -290,19 +295,26 @@ export const skipDatasetTrainingEnhancement = async (
     .select('_id teamId datasetId collectionId dataId')
     .lean()
     .cursor();
+  const wokenModes = new Set<TrainingModeEnum>();
   try {
     for await (const training of cursor) {
       const nextMode = await getDatasetIndexTrainingMode(training);
       const readyUpdate = getTrainingTaskReadyUpdate({
         restoreExpiration: nextMode === TrainingModeEnum.index
       });
-      await MongoDatasetTraining.updateOne(
+      const result = await MongoDatasetTraining.updateOne(
         { _id: training._id, mode },
         { ...readyUpdate, $set: { ...readyUpdate.$set, mode: nextMode } }
       );
+      if (result.modifiedCount > 0) {
+        wokenModes.add(nextMode);
+      }
     }
   } finally {
     await cursor.close();
+  }
+  if (wokenModes.size > 0) {
+    await publishTrainingWakeup({ modes: [...wokenModes] });
   }
 };
 
@@ -361,6 +373,10 @@ export const retryFailedTrainingTasks = async (
         ];
       });
       if (updates.length) await MongoDatasetData.bulkWrite(updates, { session });
+      await publishTrainingWakeup({
+        modes: tasks.map((task) => task.mode),
+        session
+      });
       return tasks;
     });
     if (!batch.length) break;

@@ -14,12 +14,13 @@ export async function registerNodeInstrumentation() {
 
     const [
       { connectMongo },
+      { configureMongoDalRuntime },
       { connectionMongo, connectionLogMongo, MONGO_URL, MONGO_LOG_URL },
       { systemStartCb },
       { initGlobalVariables, getInitConfig, initSystemPluginTags, initAppTemplateTypes },
       { initVectorStore },
       { initSystemUser },
-      { startMongoWatch },
+      { startSystemSync },
       { startCron },
       { startTrainingQueue },
       { preLoadWorker },
@@ -42,12 +43,13 @@ export async function registerNodeInstrumentation() {
       { onDatasetVectorCounted }
     ] = await Promise.all([
       import('@fastgpt/service/common/mongo/init'),
+      import('@fastgpt/service/common/mongo/dalRuntime'),
       import('@fastgpt/service/common/mongo/index'),
       import('@fastgpt/service/common/system/tools'),
       import('@/service/common/system'),
       import('@fastgpt/service/common/vectorDB/controller'),
       import('@fastgpt/service/support/user/systemUser'),
-      import('@/service/common/system/volumnMongoWatch'),
+      import('@/service/common/system/sync'),
       import('@/service/common/system/cron'),
       import('@/service/core/dataset/training/utils'),
       import('@fastgpt/service/worker/preload'),
@@ -109,6 +111,13 @@ export async function registerNodeInstrumentation() {
       runInitializationStep({
         step: 'register-redis-shutdown',
         action: () => registerRedisRuntimeShutdown({ logger }),
+        logger,
+        getErrText
+      }),
+      runInitializationStep({
+        step: 'configure-db-runtime',
+        stage: InitialErrorEnum.MONGO_ERROR,
+        action: () => configureMongoDalRuntime(),
         logger,
         getErrText
       }),
@@ -241,8 +250,9 @@ export async function registerNodeInstrumentation() {
 
       await Promise.all([
         runInitializationStep({
-          step: 'start-mongo-watch',
-          action: () => startMongoWatch(),
+          step: 'start-system-sync',
+          stage: InitialErrorEnum.REDIS_ERROR,
+          action: () => startSystemSync(),
           logger,
           getErrText
         }),
