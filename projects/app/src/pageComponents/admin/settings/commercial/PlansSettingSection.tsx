@@ -7,10 +7,11 @@ import React, {
   useMemo,
   useState
 } from 'react';
-import { Box, Button, Flex, HStack, Input, Switch, Textarea } from '@chakra-ui/react';
+import { Box, Button, Flex, HStack, Input, Switch, Text, Textarea } from '@chakra-ui/react';
 import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
-import { useForm } from 'react-hook-form';
+import { FormProvider, useForm } from 'react-hook-form';
+import { getConfigFormErrors } from '@/web/common/system/configFormErrors';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
@@ -121,6 +122,8 @@ export type PlansSettingSectionHandle = {
    * 套餐读取未成功时返回不含 subPlans 键的对象，父级据此跳过套餐提交。
    */
   getSubPlansData: () => Promise<PlansSettingSectionSubmit | undefined>;
+  /** 将父级批量保存返回的套餐字段错误定位到本表单。 */
+  applySaveErrors: (error: unknown) => void;
   /** 重新拉取配置 */
   reload: () => Promise<unknown>;
 };
@@ -134,8 +137,12 @@ type PlansSettingSectionProps = {
  */
 const DateInput = ({
   value,
-  onChange
+  onChange,
+  name,
+  isInvalid
 }: {
+  name: string;
+  isInvalid: boolean;
   value?: Date | string;
   onChange: (value: string | undefined) => void;
 }) => {
@@ -147,6 +154,8 @@ const DateInput = ({
 
   return (
     <Input
+      name={name}
+      isInvalid={isInvalid}
       type={'datetime-local'}
       value={text}
       onChange={(e) => onChange(e.target.value || undefined)}
@@ -169,6 +178,7 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
 
     const [openPlan, setOpenPlan] = useState(false);
 
+    const form = useForm<ConfigFormType['paySettings']>();
     const {
       setValue,
       reset,
@@ -176,7 +186,7 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
       register,
       handleSubmit,
       formState: { errors }
-    } = useForm<ConfigFormType['paySettings']>();
+    } = form;
     /** 套餐读取时一起返回的 commercial revision，提交时用于防并发覆盖 */
     const [subPlansRevision, setSubPlansRevision] = useState<number>();
 
@@ -244,6 +254,8 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
       // 读取未成功时返回不带 subPlans 键的对象：父级据此跳过套餐提交，存量套餐保持不变
       if (!subPlansLoaded || typeof subPlansRevision !== 'number') return {};
 
+      // 服务端错误包含 watch 控件，重试前清理旧错误后重新验证当前草稿。
+      form.clearErrors();
       const formData = await new Promise<ConfigFormType['paySettings'] | undefined>((resolve) => {
         void handleSubmit(
           (data) => resolve(data),
@@ -255,163 +267,217 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
         subPlans: (formData.subPlans as Record<string, unknown>) ?? {},
         subPlansExpectedRevision: subPlansRevision
       };
-    }, [handleSubmit, subPlansLoaded, subPlansRevision]);
+    }, [handleSubmit, subPlansLoaded, subPlansRevision, form]);
 
     // reload 透给父级后多以 void 调用，沿用同一层 rejection 兜底，避免保存后刷新产生重复异常
-    useImperativeHandle(ref, () => ({ getSubPlansData, reload: loadPlans }), [
-      getSubPlansData,
-      loadPlans
-    ]);
+    useImperativeHandle(
+      ref,
+      () => ({
+        getSubPlansData,
+        reload: loadPlans,
+        applySaveErrors: (error) => {
+          const errors = getConfigFormErrors({
+            error,
+            values: form.getValues(),
+            aliases: {
+              'subPlans.extraDatasetSize.price': 'subPlans.extraDatasetSizePrice',
+              'subPlans.extraPoints.packages': 'subPlans.extraPointsPackages'
+            }
+          });
+          errors.forEach(({ name, message }) =>
+            form.setError(name as never, { type: 'server', message })
+          );
+        }
+      }),
+      [getSubPlansData, loadPlans, form]
+    );
 
     return (
-      <Box>
-        <Flex alignItems={'center'} mb={6}>
-          <HStack spacing={1.5}>
-            <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
-              {t('admin:plan_enable_label') || '是否启用订阅套餐'}
-            </Box>
-            <QuestionTip label={t('admin:plan_enable_tip')} />
-          </HStack>
-          <Box flex={1} />
-          {loadingConfig && (
-            <Box fontSize={'xs'} color={'myGray.500'} mr={3}>
-              {t('admin:loading')}
-            </Box>
-          )}
-          {/* 套餐读取失败时禁用编辑并说明后果：空表单一旦提交会清掉存量套餐 */}
-          {!loadingConfig && !subPlansLoaded && (
-            <Box fontSize={'xs'} color={'warning.500'} mr={3}>
-              {t('admin:plan_load_failed_tip')}
-            </Box>
-          )}
-          <Switch
-            isChecked={openPlan}
-            isDisabled={!subPlansLoaded}
-            colorScheme={'blue'}
-            onChange={(e) => {
-              const checked = e.target.checked;
-              if (checked) {
-                setValue('subPlans.standard', defaultStandardValueJSON);
-                setValue('subPlans.extraPointsPackages', defaultExtraPointPackages);
-              } else {
-                if (standard) defaultStandardValueJSON = standard;
-                if (extraPointsPackages) defaultExtraPointPackages = extraPointsPackages;
+      <FormProvider {...form}>
+        <Box>
+          <Flex alignItems={'center'} mb={6}>
+            <HStack spacing={1.5}>
+              <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
+                {t('admin:plan_enable_label') || '是否启用订阅套餐'}
+              </Box>
+              <QuestionTip label={t('admin:plan_enable_tip')} />
+            </HStack>
+            <Box flex={1} />
+            {loadingConfig && (
+              <Box fontSize={'xs'} color={'myGray.500'} mr={3}>
+                {t('admin:loading')}
+              </Box>
+            )}
+            {/* 套餐读取失败时禁用编辑并说明后果：空表单一旦提交会清掉存量套餐 */}
+            {!loadingConfig && !subPlansLoaded && (
+              <Box fontSize={'xs'} color={'warning.500'} mr={3}>
+                {t('admin:plan_load_failed_tip')}
+              </Box>
+            )}
+            <Switch
+              isChecked={openPlan}
+              isDisabled={!subPlansLoaded}
+              colorScheme={'blue'}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                if (checked) {
+                  setValue('subPlans.standard', defaultStandardValueJSON);
+                  setValue('subPlans.extraPointsPackages', defaultExtraPointPackages);
+                } else {
+                  if (standard) defaultStandardValueJSON = standard;
+                  if (extraPointsPackages) defaultExtraPointPackages = extraPointsPackages;
 
-                setValue('subPlans.standard', undefined);
-                setValue('subPlans.extraPointsPackages', []);
-              }
-              setOpenPlan(checked);
-            }}
-          />
-        </Flex>
+                  setValue('subPlans.standard', undefined);
+                  setValue('subPlans.extraPointsPackages', []);
+                }
+                setOpenPlan(checked);
+              }}
+            />
+          </Flex>
 
-        {openPlan && standard && (
-          <>
-            <Box mb={6}>
-              <AdminFormItem
-                label={t('admin:standard_subscription_plans')}
-                tooltip={t('admin:includes_free_basic_advanced_and_custom_tiers')}
-              >
-                <StandardPlans
-                  value={standard}
-                  onChange={(val) => setValue('subPlans.standard', val)}
-                />
-              </AdminFormItem>
-            </Box>
-
-            {hasLegacyPlans && (
+          {openPlan && standard && (
+            <>
               <Box mb={6}>
                 <AdminFormItem
-                  label={t('admin:standard_subscription_plans_legacy')}
-                  tooltip={t('admin:includes_experience_team_and_enterprise_tiers')}
+                  name="subPlans.standard"
+                  label={t('admin:standard_subscription_plans')}
+                  tooltip={t('admin:includes_free_basic_advanced_and_custom_tiers')}
                 >
-                  <LegacyPlans
+                  <StandardPlans
                     value={standard}
                     onChange={(val) => setValue('subPlans.standard', val)}
                   />
                 </AdminFormItem>
               </Box>
-            )}
 
-            <AdminFormItem
-              label={t('admin:dataset_storage_fee_cny_per_1000_records_month')}
-              tooltip={t('admin:price_per_1000_records_per_month_after_exceeding_the_plan_s')}
-            >
-              <Input
-                type={'number'}
-                min={0}
-                isInvalid={Boolean(errors.subPlans?.extraDatasetSizePrice)}
-                {...register('subPlans.extraDatasetSizePrice', {
-                  valueAsNumber: true,
-                  // 空输入会被 RHF 转为 NaN；与负价格一起在提交前拒绝，避免发送无效套餐。
-                  validate: (value) =>
-                    !openPlan ||
-                    (typeof value === 'number' && Number.isFinite(value) && value >= 0) ||
-                    t('admin:dataset_storage_price_invalid')
-                })}
-                placeholder="0"
-              />
-              {errors.subPlans?.extraDatasetSizePrice && (
-                <Box color={'red.500'} fontSize={'xs'} mt={1}>
-                  {t('admin:dataset_storage_price_invalid')}
+              {hasLegacyPlans && (
+                <Box mb={6}>
+                  <AdminFormItem
+                    name="subPlans.standard"
+                    label={t('admin:standard_subscription_plans_legacy')}
+                    tooltip={t('admin:includes_experience_team_and_enterprise_tiers')}
+                  >
+                    <LegacyPlans
+                      value={standard}
+                      onChange={(val) => setValue('subPlans.standard', val)}
+                    />
+                  </AdminFormItem>
                 </Box>
               )}
-            </AdminFormItem>
 
-            <Box mb={6}>
-              <ExtraPointsPackages
-                value={extraPointsPackages}
-                onChange={(val) => setValue('subPlans.extraPointsPackages', val)}
-              />
-            </Box>
-
-            <AdminFormItem
-              label={t('admin:custom_plan_description')}
-              tooltip={t('admin:filling_in_this_url_overrides_the_system_plan_page_and_redir')}
-            >
-              <Input {...register('subPlans.planDescriptionUrl')} placeholder="https://..." />
-            </AdminFormItem>
-
-            <AdminFormItem
-              label={t('admin:app_filing_url')}
-              tooltip={t('admin:redirect_url_to_guide_users_through_app_filing_applications')}
-            >
-              <Input {...register('subPlans.appRegistrationUrl')} placeholder="" />
-            </AdminFormItem>
-
-            <AdminFormItem
-              label={t('admin:community_support_notice')}
-              tooltip={t('admin:community_support_notice_shown_when_the_plan_has_no_ticket_s')}
-            >
-              <Textarea
-                {...register('subPlans.communitySupportTip')}
-                rows={8}
-                whiteSpace={'pre-wrap'}
-                wordBreak={'break-word'}
-              />
-            </AdminFormItem>
-
-            <AdminFormItem
-              label={t('admin:campaign_end_time')}
-              tooltip={t('admin:campaign_end_time_campaign_copy_stops_showing_afterwards_lea')}
-            >
-              <Flex gap={2} alignItems={'center'}>
-                <DateInput
-                  value={watch('subPlans.activityExpirationTime')}
-                  onChange={(val) => setValue('subPlans.activityExpirationTime', val as never)}
+              <AdminFormItem
+                label={t('admin:dataset_storage_fee_cny_per_1000_records_month')}
+                tooltip={t('admin:price_per_1000_records_per_month_after_exceeding_the_plan_s')}
+              >
+                <Input
+                  type={'number'}
+                  min={0}
+                  isInvalid={Boolean(errors.subPlans?.extraDatasetSizePrice)}
+                  {...register('subPlans.extraDatasetSizePrice', {
+                    valueAsNumber: true,
+                    // 空输入会被 RHF 转为 NaN；与负价格一起在提交前拒绝，避免发送无效套餐。
+                    validate: (value) =>
+                      !openPlan ||
+                      (typeof value === 'number' && Number.isFinite(value) && value >= 0) ||
+                      t('admin:dataset_storage_price_invalid')
+                  })}
+                  placeholder="0"
                 />
-                <Button
-                  size={'sm'}
-                  variant={'whiteBase'}
-                  onClick={() => setValue('subPlans.activityExpirationTime', undefined as never)}
-                >
-                  {t('admin:clear')}
-                </Button>
-              </Flex>
-            </AdminFormItem>
-          </>
-        )}
-      </Box>
+                {errors.subPlans?.extraDatasetSizePrice && (
+                  <Box color={'red.500'} fontSize={'xs'} mt={1}>
+                    {t('admin:dataset_storage_price_invalid')}
+                  </Box>
+                )}
+              </AdminFormItem>
+
+              <Box
+                mb={6}
+                borderWidth={
+                  form.getFieldState('subPlans.extraPointsPackages', form.formState).error
+                    ? '1px'
+                    : undefined
+                }
+                borderColor={'red.500'}
+                borderRadius={'md'}
+              >
+                <ExtraPointsPackages
+                  value={extraPointsPackages}
+                  onChange={(val) => setValue('subPlans.extraPointsPackages', val)}
+                />
+                {form.getFieldState('subPlans.extraPointsPackages', form.formState).error && (
+                  <Text color={'red.500'} fontSize={'xs'}>
+                    {t('admin:failed_to_save_settings')}
+                  </Text>
+                )}
+              </Box>
+
+              <AdminFormItem
+                label={t('admin:custom_plan_description')}
+                tooltip={t('admin:filling_in_this_url_overrides_the_system_plan_page_and_redir')}
+              >
+                <Input
+                  isInvalid={Boolean(
+                    form.getFieldState('subPlans.planDescriptionUrl', form.formState).error
+                  )}
+                  {...register('subPlans.planDescriptionUrl')}
+                  placeholder="https://..."
+                />
+              </AdminFormItem>
+
+              <AdminFormItem
+                label={t('admin:app_filing_url')}
+                tooltip={t('admin:redirect_url_to_guide_users_through_app_filing_applications')}
+              >
+                <Input
+                  isInvalid={Boolean(
+                    form.getFieldState('subPlans.appRegistrationUrl', form.formState).error
+                  )}
+                  {...register('subPlans.appRegistrationUrl')}
+                  placeholder=""
+                />
+              </AdminFormItem>
+
+              <AdminFormItem
+                label={t('admin:community_support_notice')}
+                tooltip={t('admin:community_support_notice_shown_when_the_plan_has_no_ticket_s')}
+              >
+                <Textarea
+                  isInvalid={Boolean(
+                    form.getFieldState('subPlans.communitySupportTip', form.formState).error
+                  )}
+                  {...register('subPlans.communitySupportTip')}
+                  rows={8}
+                  whiteSpace={'pre-wrap'}
+                  wordBreak={'break-word'}
+                />
+              </AdminFormItem>
+
+              <AdminFormItem
+                label={t('admin:campaign_end_time')}
+                tooltip={t('admin:campaign_end_time_campaign_copy_stops_showing_afterwards_lea')}
+              >
+                <Flex gap={2} alignItems={'center'}>
+                  <DateInput
+                    name="subPlans.activityExpirationTime"
+                    isInvalid={Boolean(
+                      form.getFieldState('subPlans.activityExpirationTime', form.formState).error
+                    )}
+                    value={watch('subPlans.activityExpirationTime')}
+                    onChange={(val) => setValue('subPlans.activityExpirationTime', val as never)}
+                  />
+                  <Button
+                    size={'sm'}
+                    variant={'whiteBase'}
+                    onClick={() => setValue('subPlans.activityExpirationTime', undefined as never)}
+                  >
+                    {t('admin:clear')}
+                  </Button>
+                </Flex>
+              </AdminFormItem>
+            </>
+          )}
+        </Box>
+      </FormProvider>
     );
   }
 );

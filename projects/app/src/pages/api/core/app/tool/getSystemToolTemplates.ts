@@ -16,7 +16,7 @@ export type GetSystemPluginTemplatesBody = GetSystemToolTemplatesBodyType;
 export async function handler(
   req: ApiRequestProps<GetSystemPluginTemplatesBody>
 ): Promise<NodeTemplateListItemType[]> {
-  const { teamId, tmbId, isRoot } = await authCert({ req, authToken: true });
+  const { teamId, tmbId, isRoot } = await authCert({ req, authToken: true, authApiKey: true });
   const {
     body: { tags, parentId, searchKey, source }
   } = parseApiInput({

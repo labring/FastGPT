@@ -59,6 +59,22 @@ describe('s3 storage constants', () => {
     );
   });
 
+  it.each(['invalid-external-endpoint', 7, { url: 'invalid' }])(
+    'keeps invalid external endpoints readable without passing them to the storage SDK: %j',
+    async (value) => {
+      vi.stubEnv('STORAGE_VENDOR', 'minio');
+      getTestInstanceConfig().storage.externalEndpoint = value as never;
+      const {
+        getStorageExternalEndpoint,
+        createDefaultStorageOptions,
+        canUseStorageDownloadRedirect
+      } = await loadConstants();
+      expect(getStorageExternalEndpoint()).toEqual(value);
+      expect(createDefaultStorageOptions().externalEndpoint).toBeUndefined();
+      expect(canUseStorageDownloadRedirect()).toBe(false);
+    }
+  );
+
   it('uses the expected Multipart upload defaults', async () => {
     const {
       S3_MULTIPART_UPLOAD_THRESHOLD_BYTES,

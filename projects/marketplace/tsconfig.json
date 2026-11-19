@@ -25,7 +25,6 @@
     "../../packages/**/vitest*.config.ts",
     "../../packages/**/test/**",
     "../../packages/workflow-core/**",
-    "../../packages/workflow-cli/**",
     ".next",
     "dist",
     "coverage"

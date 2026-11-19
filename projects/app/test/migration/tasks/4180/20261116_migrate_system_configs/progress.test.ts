@@ -6,6 +6,17 @@ import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import { decryptDomainSecrets } from '@fastgpt/service/common/system/systemInstanceConfig/secrets';
+import { systemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/service';
+import { getSystemConfigRuntimeState } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
+import { validateFileUrlDomain } from '@fastgpt/service/common/security/fileUrlValidator';
+import { passwordVerificationService } from '@fastgpt/service/support/user/account/verification/password/service';
+import { resolveAllowedOrigins } from '@fastgpt/global/common/system/config/security';
+import {
+  getModelStatusProbeConfig,
+  updateModelStatusProbeConfig
+} from '@fastgpt/service/core/ai/modelStatus/service';
+import { SecurityConfigSchema } from '@fastgpt/global/common/system/config/schemas/security';
+import { ModelStatusProbeConfigSchema } from '@fastgpt/global/common/system/config/modelStatus';
 import { MongoSystemMigrationState } from '@/migration/mongoSchema';
 import { systemMigrations, type SystemMigrationLogger } from '@/migration/registry';
 import { createSystemMigrationRunner } from '@/migration/runner';
@@ -76,7 +87,10 @@ const seedLegacySources = async () => {
     {
       type: SystemConfigsTypeEnum.fastgptPro,
       value: {
-        auth: { email: { port: '2525' }, sms: { MODEL_DEPRECATION: 'LEGACY_SMS_TEMPLATE' } }
+        auth: {
+          email: { port: '2525', secure: 0, register: 1 },
+          sms: { MODEL_DEPRECATION: 'LEGACY_SMS_TEMPLATE' }
+        }
       }
     }
   ]);
@@ -89,7 +103,13 @@ const createRunner = (runnerId: string) =>
 const waitForSuccess = async (runner: ReturnType<typeof createRunner>) => {
   await vi.waitFor(
     async () => {
-      expect(await MongoSystemMigrationState.findById(migration.id).lean()).toMatchObject({
+      const state = await MongoSystemMigrationState.findById(migration.id).lean();
+      if (state?.status === SystemMigrationStatusEnum.failed) {
+        throw new Error(
+          `Migration failed unexpectedly at ${state.lastError?.stageKey}: ${state.lastError?.message}`
+        );
+      }
+      expect(state).toMatchObject({
         status: SystemMigrationStatusEnum.succeeded
       });
     },
@@ -281,7 +301,11 @@ describe('system configuration migration with the real runner', () => {
         exportDatasetLimitMinutes: 0.1
       });
       expect(doc('providers')?.overrides.documentParse.customPdf.price).toBe(0.5);
-      expect(doc('auth')?.overrides.loginProviders.email.port).toBe(2525);
+      expect(doc('auth')?.overrides.loginProviders.email).toMatchObject({
+        port: 2525,
+        secure: false,
+        register: true
+      });
       expect(decryptDomainSecrets('site', doc('site')?.overrides)).toMatchObject({
         name: 'Legacy Platform',
         customDomain: legacyDomain
@@ -336,9 +360,140 @@ describe('system configuration migration with the real runner', () => {
     }
   });
 
+  it('migrates anomalous legacy values and lets a commercial administrator read and repair security', async () => {
+    await seedLegacySources();
+    const token = 't'.repeat(2049);
+    expect(ModelStatusProbeConfigSchema.shape.webhookToken.safeParse(token).success).toBe(false);
+    await MongoSystemConfigs.create({
+      type: SystemConfigsTypeEnum.modelStatusProbe,
+      value: { enabled: false, webhookToken: token }
+    });
+    const damaged = await MongoSystemInstanceConfig.collection.insertOne({
+      domain: 'security',
+      schemaVersion: 1,
+      revision: 7,
+      explicitDefaultPaths: ['useIpLimit'],
+      overrides: null as unknown as Record<string, unknown>
+    });
+
+    const runner = createRunner('system-config-damaged-security');
+    const state = getSystemConfigRuntimeState();
+    const previousContext = state.frontendContext;
+    const { setCookie } = await vi.importActual<
+      typeof import('@fastgpt/service/support/permission/auth/common')
+    >('@fastgpt/service/support/permission/auth/common');
+    try {
+      await runner.start();
+      await waitForSuccess(runner);
+
+      const stored = await MongoSystemInstanceConfig.collection.findOne({
+        _id: damaged.insertedId
+      });
+      expect(stored).toMatchObject({ overrides: null, revision: 8, explicitDefaultPaths: [] });
+      const credential = await MongoSystemInstanceConfig.findOne({
+        domain: 'modelStatusProbe'
+      }).lean();
+      expect(typeof credential?.overrides.webhookToken?.secret).toBe('string');
+      expect(
+        decryptDomainSecrets('modelStatusProbe', credential?.overrides).webhookToken === token
+      ).toBe(true);
+      expect(JSON.stringify(vi.mocked(logger.warn).mock.calls)).not.toContain(token);
+
+      systemInstanceConfig.setFrontendContext({ commercialService: true });
+      const snapshot = await systemInstanceConfig.refresh();
+      expect(snapshot.modelStatusProbe.webhookToken === token).toBe(true);
+      expect(await getModelStatusProbeConfig()).toEqual({
+        enabled: false,
+        intervalMinutes: 5,
+        webhookTokenConfigured: true
+      });
+      await expect(
+        updateModelStatusProbeConfig({
+          enabled: false,
+          intervalMinutes: 5,
+          clearWebhookToken: false,
+          webhookToken: 'replacement-token'
+        })
+      ).resolves.toEqual({ enabled: false, intervalMinutes: 5, webhookTokenConfigured: true });
+      expect(systemInstanceConfig.get().modelStatusProbe.webhookToken).toBe('replacement-token');
+      expect(snapshot.security.passwordLoginMinuteLimitCount).toBe(
+        SecurityConfigSchema.shape.passwordLoginMinuteLimitCount.parse(undefined)
+      );
+      expect(snapshot.security.csrfEnabled).toBe(true);
+      expect(
+        resolveAllowedOrigins({
+          enabled: snapshot.security.allowedOriginsEnabled,
+          origins: snapshot.security.allowedOrigins
+        })
+      ).toEqual([]);
+      expect(validateFileUrlDomain('https://files.example.test/file.txt')).toBe(false);
+      await expect(
+        passwordVerificationService.issuePreLoginCode({
+          username: 'root',
+          purpose: 'login'
+        })
+      ).resolves.toEqual({ code: expect.any(String) });
+      const setHeader = vi.fn();
+      setCookie({ setHeader } as unknown as Parameters<typeof setCookie>[0], 'test-session');
+      expect(setHeader).toHaveBeenCalledWith('Set-Cookie', expect.stringContaining('HttpOnly'));
+
+      const view = await systemInstanceConfig.readForEdit('security', 'pro');
+      const site = await systemInstanceConfig.readForEdit('site');
+      expect(view).toMatchObject({ overrides: {}, revision: 8 });
+      await expect(
+        systemInstanceConfig.update({
+          items: [
+            { domain: 'site', expectedRevision: site.revision, overrides: { name: 'uncommitted' } },
+            { domain: 'security', expectedRevision: view.revision, overrides: { csrfEnabled: 0 } }
+          ],
+          actor: { actor: 'admin' }
+        })
+      ).rejects.toMatchObject({
+        cause: { issues: [expect.objectContaining({ path: ['security', 'csrfEnabled'] })] }
+      });
+      expect(
+        await MongoSystemInstanceConfig.collection.findOne({ _id: damaged.insertedId })
+      ).toEqual(stored);
+      expect(await systemInstanceConfig.readForEdit('site')).toEqual(site);
+
+      await systemInstanceConfig.update({
+        items: [
+          {
+            domain: 'security',
+            expectedRevision: view.revision,
+            overrides: {
+              csrfEnabled: true,
+              checkExternalFile: true,
+              fileUrlWhitelist: ['files.example.test']
+            }
+          }
+        ],
+        actor: { actor: 'admin' }
+      });
+      expect(await systemInstanceConfig.readForEdit('security', 'pro')).toMatchObject({
+        revision: 9,
+        effectiveConfig: { csrfEnabled: true, fileUrlWhitelist: ['files.example.test'] }
+      });
+      await systemInstanceConfig.refresh();
+      expect(validateFileUrlDomain('https://files.example.test/file.txt')).toBe(true);
+    } finally {
+      state.frontendContext = previousContext;
+      await runner.stop();
+    }
+  });
+
   it('blocks startup on migration failure and preserves administrator values after owner restart', async () => {
     await seedLegacySources();
-    vi.stubEnv('FILE_DOMAIN', 'not a valid url');
+    const collection = MongoSystemInstanceConfig.collection;
+    const updateOne = collection.updateOne.bind(collection);
+    const backfillFailure = vi
+      .spyOn(collection, 'updateOne')
+      .mockImplementation(async (filter, update, options) => {
+        if ((filter as any).domain === 'storage') {
+          throw new Error('Synthetic database failure');
+        }
+        return updateOne(filter, update, options);
+      });
     const failedOwner = createRunner('system-config-failed-owner');
     const retry = createRunner('system-config-retry');
     const startupReady = vi.fn();
@@ -354,7 +509,7 @@ describe('system configuration migration with the real runner', () => {
         async () => {
           expect(await MongoSystemMigrationState.findById(migration.id).lean()).toMatchObject({
             status: SystemMigrationStatusEnum.failed,
-            lastError: { stageKey: 'backfill' }
+            lastError: { stageKey: expect.any(String) }
           });
         },
         { timeout: 30_000, interval: 100 }
@@ -364,9 +519,8 @@ describe('system configuration migration with the real runner', () => {
         'Startup migrations have not completed'
       );
       const failed = await MongoSystemMigrationState.findById(migration.id).lean();
-      expect(failed?.progress?.find(({ key }) => key === 'backfill')?.status).toBe(
-        SystemMigrationStatusEnum.failed
-      );
+      expect(failed?.lastError?.message).toContain('Synthetic database failure');
+      backfillFailure.mockRestore();
       expect(failed?.progress?.find(({ key }) => key === 'validate')).toBeUndefined();
 
       failedOwner.stop();
@@ -411,10 +565,81 @@ describe('system configuration migration with the real runner', () => {
         status: SystemMigrationStatusEnum.succeeded
       });
     } finally {
+      backfillFailure.mockRestore();
       failedOwner.stop();
       retry.stop();
       await failedOwner.tick();
       await startupWait;
+    }
+  });
+
+  it('migrates 4.17 env with enabled agentSandbox provider without dropping subservice before proxy backfill', async () => {
+    await seedLegacySources();
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'sealosdevbox');
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', 'https://devbox.example.test');
+    const runner = createRunner('system-config-417-enabled-sandbox');
+    try {
+      await runner.start();
+      await waitForSuccess(runner);
+      const subservice = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
+      expect(decryptDomainSecrets('subservice', subservice?.overrides)).toMatchObject({
+        agentSandbox: {
+          provider: 'sealosdevbox',
+          sealosdevbox: { baseUrl: 'https://devbox.example.test' },
+          proxy: {
+            wsUrl: 'wss://proxy.example.test',
+            previewUrl: 'https://preview.example.test',
+            secret: proxySecret
+          }
+        }
+      });
+    } finally {
+      runner.stop();
+      await runner.tick();
+    }
+  });
+
+  it('migrates existing pre-proxy subservice with enabled sandbox provider and deprecated fields', async () => {
+    await seedLegacySources();
+    await MongoSystemInstanceConfig.collection.insertOne({
+      domain: 'subservice',
+      schemaVersion: 1,
+      revision: 6,
+      overrides: {
+        plugin: { remoteDebug: true },
+        agentSandbox: {
+          provider: 'sealosdevbox',
+          sealosdevbox: { baseUrl: 'https://devbox.example.test' },
+          common: { entrypointTimeoutSeconds: 15 }
+        }
+      },
+      explicitDefaultPaths: []
+    });
+    const runner = createRunner('system-config-existing-enabled-sandbox');
+    try {
+      await runner.start();
+      await waitForSuccess(runner);
+      const subservice = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
+      expect(subservice?.overrides).not.toHaveProperty('plugin');
+      expect(decryptDomainSecrets('subservice', subservice?.overrides)).toMatchObject({
+        codeSandbox: {
+          enabled: true,
+          url: 'https://code.example.test',
+          token: 'synthetic-code-token'
+        },
+        agentSandbox: {
+          provider: 'sealosdevbox',
+          sealosdevbox: { baseUrl: 'https://devbox.example.test' },
+          proxy: {
+            wsUrl: 'wss://proxy.example.test',
+            previewUrl: 'https://preview.example.test',
+            secret: proxySecret
+          }
+        }
+      });
+    } finally {
+      runner.stop();
+      await runner.tick();
     }
   });
 });

@@ -26,6 +26,15 @@ node cli/dist/cli.mjs whoami
 node cli/dist/cli.mjs doctor
 ```
 
+## 工作流搭建参考
+
+```bash
+fastgpt workflow-build skills --format text
+fastgpt workflow-build skills changesets-and-plans --format text
+```
+
+第一个命令读取外部搭建 Skill 和参考目录，第二个命令按 ID 读取单篇 Markdown。两个命令都可离线执行，也支持 `--format json`。
+
 ## 命令一览
 
 | 命令                        | 说明                                                             | 关键参数                                                                                                                    |

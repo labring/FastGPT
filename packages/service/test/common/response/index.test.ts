@@ -139,6 +139,19 @@ describe('processError zod logging', () => {
     expect(logger.error).not.toHaveBeenCalled();
   });
 
+  it('keeps field errors when the request error comes from another module instance', () => {
+    const error = new ApiRequestInputParseError(buildZodError(), { inputSource: 'body' });
+    // 模拟热更新或其他 bundle 的类身份：Symbol.for 标识与字段仍存在，instanceof 不再成立。
+    Object.setPrototypeOf(error, Error.prototype);
+    expect(error).not.toBeInstanceOf(ApiRequestInputParseError);
+    const processed = processError({ error, url: '/api/test', defaultCode: 400 });
+    expect(processed.httpStatus).toBe(400);
+    expect(processed.zodError).toEqual(
+      expect.arrayContaining([expect.objectContaining({ path: ['name'] })])
+    );
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
   it('does not require an api key header context to suppress request input ZodError logs', () => {
     const error = new ApiRequestInputParseError(buildZodError(), { inputSource: 'query' });
     const processed = processError({

@@ -18,7 +18,6 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { parseDatasetImportFile } from '@fastgpt/service/core/dataset/importFile';
-import { decodeMultipartFilename } from '@fastgpt/service/common/s3/filename';
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
@@ -29,13 +28,14 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
   try {
     const result = await multer.resolveFormData({
       request: req,
-      maxFileSize: getSystemInstanceConfig().resource.uploadFileMaxSize
+      maxFileSize: getSystemInstanceConfig().resource.uploadFileMaxSize,
+      defParamCharset: 'utf8'
     });
     filepaths.push(result.fileMetadata.path);
-    const filename = decodeMultipartFilename(result.fileMetadata.originalname);
     const { datasetId, parentId, tags, autoIndexes } = CreateTemplateCollectionFormSchema.parse(
       result.data
     );
+    const filename = result.fileMetadata.originalname;
 
     const { teamId, tmbId, isRoot, dataset } = await authDatasetCollectionCreate({
       req,

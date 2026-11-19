@@ -29,6 +29,15 @@ import { createChatService, type ChatService } from '../domain/chat/chat-service
 import { createModelService, type ModelService } from '../domain/model/model-service';
 import { createProfileService, type ProfileService } from '../domain/profile/profile-service';
 import {
+  createWorkflowLocalService,
+  type WorkflowLocalService
+} from '../domain/workflow/workflow-local-service';
+import {
+  createWorkflowSyncService,
+  type WorkflowSyncService
+} from '../domain/workflow/workflow-sync-service';
+import { createWorkflowTemplateLoader } from '../infra/workflow/template-loader';
+import {
   createFileConfigRepository,
   resolveConfigDir,
   type ConfigRepository
@@ -76,6 +85,8 @@ export type CliContainer = {
   readonly datasetDataService: DatasetDataService;
   readonly chatService: ChatService;
   readonly modelService: ModelService;
+  readonly workflowLocalService: WorkflowLocalService;
+  readonly workflowSyncService: WorkflowSyncService;
   readonly readJsonInput: (params: { file?: string; stdin?: boolean }) => Promise<unknown>;
   readonly stdout: (value: string) => void;
   readonly stderr: (value: string) => void;
@@ -175,6 +186,20 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
   const datasetService = createDatasetService();
   const datasetCollectionService = createDatasetCollectionService();
   const datasetDataService = createDatasetDataService();
+  const workflowTemplateLoader = createWorkflowTemplateLoader({ fileIo });
+  const workflowLocalService = createWorkflowLocalService({
+    fileIo,
+    templateLoader: workflowTemplateLoader,
+    env: deps.env,
+    prompter,
+    readStdin: deps.readStdin
+  });
+  const workflowSyncService = createWorkflowSyncService({
+    fileIo,
+    templateLoader: workflowTemplateLoader,
+    env: deps.env,
+    readStdin: deps.readStdin
+  });
 
   return {
     env: deps.env,
@@ -193,6 +218,8 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
     datasetDataService,
     chatService: createChatService(),
     modelService: createModelService(),
+    workflowLocalService,
+    workflowSyncService,
     readJsonInput: (params) =>
       readJsonInput({ ...params, cwd: deps.cwd, readStdin: deps.readStdin }),
     stdout: deps.stdout,

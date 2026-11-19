@@ -59,8 +59,12 @@ async function handler(
   // 只在授权和版本检查后读取持久化凭据，表单空值则保持空值。
   const token =
     body.service === 'codeSandbox' && body.useStoredToken
-      ? (await getDomainConfig('subservice')).effectiveConfig.codeSandbox.token
+      ? (await getDomainConfig('subservice')).effectiveConfig.codeSandbox?.token
       : body.token;
+  // 配置读取保留损坏凭据供修复；实际探测不能把残留密文对象当成认证 Token 发出。
+  if (body.service === 'codeSandbox' && body.useStoredToken && typeof token !== 'string') {
+    throw new ApiHttpError(400, 'Invalid stored Code Sandbox credential');
+  }
   const result = await probeUrlConnection({ ...body, token });
 
   return ProbeConnectionResponseSchema.parse(result);

@@ -420,7 +420,7 @@ export function createFastGptHttpClient({
     searchParams,
     jsonBody,
     rawBody,
-    formData,
+    contentType,
     signal
   }: {
     client: any;
@@ -429,7 +429,7 @@ export function createFastGptHttpClient({
     searchParams?: Record<string, string | number | boolean>;
     jsonBody?: unknown;
     rawBody?: BodyInit | null;
-    formData?: FormData;
+    contentType?: string;
     signal?: AbortSignal;
   }): Promise<{ response: Response; finalUrl: string }> => {
     const baseWithSlash = normalizedBaseUrl.endsWith('/')
@@ -439,7 +439,7 @@ export function createFastGptHttpClient({
     let currentMethod = initialMethod;
     let currentJson = jsonBody;
     let currentRawBody = rawBody;
-    let currentFormData = formData;
+    let currentContentType = contentType;
     let currentSearchParams = searchParams;
 
     for (let hop = 0; hop <= 5; hop += 1) {
@@ -453,7 +453,11 @@ export function createFastGptHttpClient({
           ...(currentRawBody !== undefined && currentRawBody !== null
             ? { body: currentRawBody }
             : {}),
-          ...(currentFormData !== undefined ? { body: currentFormData } : {})
+          ...(currentRawBody !== undefined &&
+          currentRawBody !== null &&
+          currentContentType !== undefined
+            ? { headers: { 'content-type': currentContentType } }
+            : {})
         });
       } catch (error) {
         if (error instanceof CliNetworkError) throw error;
@@ -503,7 +507,7 @@ export function createFastGptHttpClient({
             currentMethod = 'GET';
             currentJson = undefined;
             currentRawBody = null;
-            currentFormData = undefined;
+            currentContentType = undefined;
           }
         } else if (response.status === 301 || response.status === 302) {
           // 301 / 302 仅对 POST 重写为 GET；PUT、DELETE 等保留原有方法和请求体
@@ -511,7 +515,7 @@ export function createFastGptHttpClient({
             currentMethod = 'GET';
             currentJson = undefined;
             currentRawBody = null;
-            currentFormData = undefined;
+            currentContentType = undefined;
           }
         }
         // 307 与 308 保留原始 HTTP 方法与请求载荷
@@ -626,12 +630,18 @@ export function createFastGptHttpClient({
         stripAccept: true
       });
 
+      // 预先将 FormData 序列化为字节负载，避免未消费的 undici multipart 流在 ky finally cancel() 时于 Node 24 抛出 ERR_INVALID_STATE
+      const serializedForm = new Response(formData);
+      const multipartContentType = serializedForm.headers.get('content-type') ?? undefined;
+      const multipartBody = new Uint8Array(await serializedForm.arrayBuffer());
+
       const { response, finalUrl } = await executeWithRedirects({
         client,
         initialPath: relativePath,
         method: 'POST',
         searchParams,
-        formData
+        rawBody: multipartBody,
+        contentType: multipartContentType
       });
 
       const rawText = await response.text();

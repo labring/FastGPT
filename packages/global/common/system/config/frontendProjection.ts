@@ -9,28 +9,30 @@ import type { SystemInstanceConfig } from './schema';
 export const buildCustomDomainFeConfig = (
   config: SystemInstanceConfig['site']['customDomain']
 ): FastGPTFeConfigsType['customDomain'] => ({
-  enable: config.enable,
-  domain: config.domain
+  enable: config?.enable,
+  domain: config?.domain
 });
 
 /** 将实例配置中的登录凭据投影为前端 OAuth 入口；缺少完整凭据的 Provider 不展示。 */
 export const buildOauthFeConfig = (
   auth: SystemInstanceConfig['auth']
 ): FastGPTFeConfigsType['oauth'] => {
-  const providers = auth.loginProviders;
+  const providers = auth?.loginProviders;
 
   return {
-    github: providers.github.clientId || undefined,
-    google: providers.google.clientId || undefined,
+    github: providers?.github?.clientId || undefined,
+    google: providers?.google?.clientId || undefined,
     wechat:
-      providers.wechat.appId && providers.wechat.appSecret ? providers.wechat.appId : undefined,
-    microsoft: providers.microsoft.clientId
+      providers?.wechat?.appId && providers?.wechat?.appSecret
+        ? providers?.wechat?.appId
+        : undefined,
+    microsoft: providers?.microsoft?.clientId
       ? {
-          clientId: providers.microsoft.clientId,
-          tenantId: providers.microsoft.tenantId
+          clientId: providers?.microsoft?.clientId,
+          tenantId: providers?.microsoft?.tenantId
         }
       : undefined,
-    wecom: Boolean(providers.wecom.suiteId && providers.wecom.secret)
+    wecom: Boolean(providers?.wecom?.suiteId && providers?.wecom?.secret)
   };
 };
 
@@ -44,23 +46,24 @@ export const buildOauthFeConfig = (
 export const buildPayConfig = (
   commercial: SystemInstanceConfig['commercial']
 ): NonNullable<FastGPTFeConfigsType['payConfig']> => ({
-  wx: Boolean(commercial.payment.wx.privateKey),
-  alipay: Boolean(commercial.payment.alipay.rootCertContent),
-  bank: Boolean(commercial.payment.bank.description)
+  wx: Boolean(commercial?.payment?.wx?.privateKey),
+  alipay: Boolean(commercial?.payment?.alipay?.rootCertContent),
+  bank: Boolean(commercial?.payment?.bank?.description)
 });
 
 /** 是否至少配置了一个可用支付渠道；用于 show_pay 公开入口。 */
 export const hasPayChannel = (payConfig: ReturnType<typeof buildPayConfig>) =>
   Boolean(payConfig.wx || payConfig.alipay || payConfig.bank);
 
-const hasSmsTemplate = (template?: string) => Boolean(template?.trim());
+const hasSmsTemplate = (template?: string) =>
+  typeof template === 'string' && Boolean(template.trim());
 const hasPhoneSmsChannel = (auth: SystemInstanceConfig['auth']) => {
-  const phone = auth.loginProviders.phone;
-  return Boolean(phone.accessKeyId && phone.accessKeySecret && phone.signName);
+  const phone = auth?.loginProviders?.phone;
+  return Boolean(phone?.accessKeyId && phone?.accessKeySecret && phone?.signName);
 };
 const hasEmailService = (auth: SystemInstanceConfig['auth']) => {
-  const email = auth.loginProviders.email;
-  return Boolean(email.smtp && email.user && email.pass);
+  const email = auth?.loginProviders?.email;
+  return Boolean(email?.smtp && email?.user && email?.pass);
 };
 
 /**
@@ -77,10 +80,10 @@ export const buildRegisterMethods = ({
 }): FastGPTRegisterMethodCompatType[] => {
   const methods: FastGPTRegisterMethodCompatType[] = [];
 
-  if (auth.loginProviders.email.register) {
+  if (auth?.loginProviders?.email?.register) {
     methods.push('email');
   }
-  if (hasPhoneSmsChannel(auth) && hasSmsTemplate(auth.loginProviders.sms.register.zh)) {
+  if (hasPhoneSmsChannel(auth) && hasSmsTemplate(auth?.loginProviders?.sms?.register?.zh)) {
     methods.push('phone');
   }
   // 仅保留旧传输形状；调用侧根据 Pro ENV 的生效团队模式统一移除或补充 sync。
@@ -110,15 +113,15 @@ export const buildAuthMethodProjection = ({
   find_password_method: FastGPTRegisterMethodType[];
   bind_notification_method: FastGPTRegisterMethodType[];
 } => {
-  const providers = auth.loginProviders;
-  const sms = providers.sms;
+  const providers = auth?.loginProviders;
+  const sms = providers?.sms;
   const phoneReady = hasPhoneSmsChannel(auth);
   const emailReady = hasEmailService(auth);
 
   return {
     login_method: [
       'email',
-      ...(phoneReady && hasSmsTemplate(sms.login.zh) ? (['phone'] as const) : [])
+      ...(phoneReady && hasSmsTemplate(sms?.login?.zh) ? (['phone'] as const) : [])
     ],
     register_method: buildRegisterMethods({
       legacyMethods: legacyRegisterMethods,
@@ -126,11 +129,11 @@ export const buildAuthMethodProjection = ({
     }),
     find_password_method: [
       ...(emailReady ? (['email'] as const) : []),
-      ...(phoneReady && hasSmsTemplate(sms.resetPassword.zh) ? (['phone'] as const) : [])
+      ...(phoneReady && hasSmsTemplate(sms?.resetPassword?.zh) ? (['phone'] as const) : [])
     ],
     bind_notification_method: [
       ...(emailReady ? (['email'] as const) : []),
-      ...(phoneReady && hasSmsTemplate(sms.bindNotification.zh) ? (['phone'] as const) : [])
+      ...(phoneReady && hasSmsTemplate(sms?.bindNotification?.zh) ? (['phone'] as const) : [])
     ]
   };
 };

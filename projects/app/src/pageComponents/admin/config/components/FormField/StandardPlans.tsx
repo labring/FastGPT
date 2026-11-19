@@ -1,3 +1,5 @@
+import { SubPlanInputSchema } from '@fastgpt/global/support/wallet/sub/type';
+import { getConfigFormErrors } from '@/web/common/system/configFormErrors';
 import { Box, Button, Flex, Grid, Input, Switch } from '@chakra-ui/react';
 import {
   StandardSubLevelEnum,
@@ -31,12 +33,20 @@ export const CustomPlanModal = ({
   const { t } = useSafeTranslation();
   const { feConfigs } = useSystemStore();
   const level = StandardSubLevelEnum.custom;
-  const { handleSubmit, watch, setValue } = useForm({
+  const form = useForm({
     defaultValues: planMap[level]
   });
+  const { handleSubmit, watch, setValue } = form;
   const label = planMap?.[level]?.name || t(standardSubLevelMap[level].label);
 
   const onSubmit = (data: TeamStandardSubPlanItemType) => {
+    const parsed = SubPlanInputSchema.safeParse({ standard: { [level]: data } });
+    if (!parsed.success) {
+      getConfigFormErrors({ error: parsed.error, values: form.getValues() }).forEach(
+        ({ name, message }) => form.setError(name as never, { type: 'validate', message })
+      );
+      return;
+    }
     onChange({
       ...planMap,
       [level]: data
@@ -56,7 +66,14 @@ export const CustomPlanModal = ({
           <Button variant={'whiteBase'} onClick={onClose}>
             {t('admin:cancel')}
           </Button>
-          <Button onClick={handleSubmit(onSubmit)}>{t('admin:confirm')}</Button>
+          <Button
+            onClick={() => {
+              form.clearErrors();
+              void handleSubmit(onSubmit)();
+            }}
+          >
+            {t('admin:confirm')}
+          </Button>
         </>
       }
     >
@@ -69,6 +86,7 @@ export const CustomPlanModal = ({
           <Box>
             <FormLabel mb={2}>{t('admin:plan_name')}</FormLabel>
             <Input
+              isInvalid={Boolean(form.getFieldState('name', form.formState).error)}
               bg={'myGray.50'}
               value={watch('name')}
               onChange={(e) => {
@@ -114,6 +132,7 @@ export const CustomPlanModal = ({
           <Box gridColumn="span 2">
             <FormLabel mb={2}>{t('admin:plan_purchase_link')}</FormLabel>
             <Input
+              isInvalid={Boolean(form.getFieldState('customFormUrl', form.formState).error)}
               bg={'myGray.50'}
               value={watch('customFormUrl')}
               onChange={(e) => {

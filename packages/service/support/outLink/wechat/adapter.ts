@@ -268,12 +268,14 @@ export const createWechatOutlinkAdapter = ({
   };
 
   const respond: OutlinkResponder = async (events) => {
+    let partial = '';
     for await (const event of events) {
+      if (event.type === 'chunk') partial += event.content;
       if (event.type !== 'done' && event.type !== 'error') continue;
 
       await client.sendMessage({
         to_user_id: jobData.userId,
-        text: event.content,
+        text: event.type === 'error' && partial ? `${partial}\n\n${event.content}` : event.content,
         context_token: jobData.contextToken
       });
     }
