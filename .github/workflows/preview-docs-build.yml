@@ -16,6 +16,30 @@ permissions:
   contents: read
 
 jobs:
+  verify-openapi-docs:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify OpenAPI docs stay in sync with contracts
+        run: pnpm --filter @fastgpt/document exec node --experimental-strip-types --test ./script/sync-openapi-docs.test.mjs
+
   build:
     runs-on: ubuntu-24.04
 

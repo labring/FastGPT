@@ -1,7 +1,15 @@
 import Head from 'next/head';
 import React, { useEffect, useMemo } from 'react';
 
-const NextHead = ({ title, icon, desc }: { title?: string; icon?: string; desc?: string }) => {
+type NextHeadProps = {
+  title?: string;
+  icon?: string;
+  desc?: string;
+  robots?: string;
+};
+
+/** 渲染页面文档头部元信息；仅在显式传入 robots 时输出搜索引擎索引指令。 */
+const NextHead = ({ title, icon, desc, robots }: NextHeadProps) => {
   const formatIcon = useMemo(() => {
     if (!icon || icon === '/') return '/favicon.ico';
     if (icon.startsWith('http') || icon.startsWith('/')) {
@@ -36,6 +44,7 @@ const NextHead = ({ title, icon, desc }: { title?: string; icon?: string; desc?:
       />
       <meta httpEquiv="Content-Security-Policy" content="img-src * data: blob:;" />
       {desc && <meta name="description" content={desc} />}
+      {robots && <meta name="robots" content={robots} />}
       {icon && <link rel="icon" href={formatIcon} />}
     </Head>
   );

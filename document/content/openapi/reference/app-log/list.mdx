@@ -1,0 +1,142 @@
+---
+title: '获取应用日志列表'
+seoTitle: '获取应用日志列表 - POST /api/core/app/logs/list | FastGPT OpenAPI'
+description: '分页查询 FastGPT 应用的对话日志记录，支持按起止时间、调用来源、反馈类型、未读状态、报错标记和用户条件精准筛选。'
+---
+
+## 端点概览
+
+- **HTTP 方法**：`POST`
+- **请求路径**：`/api/core/app/logs/list`
+- **所属模块**：应用管理 / 应用日志
+- **鉴权方式**：`Authorization: Bearer <apiKey>`—支持 **应用 API Key**（无需 `appId`）与 **个人密钥**（需传 `appId`）（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E5%BA%94%E7%94%A8%E6%97%A5%E5%BF%97/POST/core/app/logs/list)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E5%BA%94%E7%94%A8%E6%97%A5%E5%BF%97/POST/core/app/logs/list`）
+
+## 接口说明与注意事项
+
+分页获取应用的对话日志列表，支持按时间范围、来源、用户等条件筛选
+
+## 请求参数
+
+### Request Body 请求体（`application/json`）
+
+**互斥参数分支（`anyOf` 选填其一）**
+
+- **显式指定应用**
+
+个人密钥或登录态必须传 appId；应用 Key 始终以 Key 绑定的应用为准。
+
+| 字段    | 类型     | 必填 | 默认值 | 约束与说明           |
+| ------- | -------- | ---- | ------ | -------------------- |
+| `appId` | `string` | 是   | -      | 应用 ID。最小长度：1 |
+
+- **应用 API Key（无需 appId）**
+
+Authorization 使用绑定应用的 APP API Key 时无需传 appId 或 sourceType，服务端从 Key 绑定取得应用，sourceType 固定为 app。个人密钥和登录态不能使用此省略方式；显式传入 appId 时仍以 Key 绑定为准。
+
+该分支无需额外字段。
+
+#### 各分支公共字段
+
+| 字段           | 类型               | 必填 | 默认值 | 约束与说明                                                                                                                  |
+| -------------- | ------------------ | ---- | ------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `feedbackType` | `string` (enum)    | 否   | -      | 反馈类型：all- 全部记录，has_feedback- 包含反馈，good- 包含赞，bad- 包含踩。可选值：`all` , `has_feedback` , `good` , `bad` |
+| `unreadOnly`   | `boolean`          | 否   | -      | 是否仅显示未读反馈（当 feedbackType 为 all 时忽略）                                                                         |
+| `errorFilter`  | `string` (enum)    | 否   | -      | 报错筛选：all- 全部记录，has_error- 仅看报错。可选值：`all` , `has_error`                                                   |
+| `dateStart`    | `string`           | 是   | -      | 开始时间                                                                                                                    |
+| `dateEnd`      | `string`           | 是   | -      | 结束时间                                                                                                                    |
+| `sources`      | `string` (enum)[]` | 否   | -      | 对话来源筛选                                                                                                                |
+| `tmbIds`       | `string[]`         | 否   | -      | 团队成员 ID 列表                                                                                                            |
+| `outLinkUids`  | `string[]`         | 否   | -      | 外部用户 ID 列表                                                                                                            |
+| `chatSearch`   | `string`           | 否   | -      | 对话内容搜索关键词                                                                                                          |
+
+**互斥参数分支（`anyOf` 选填其一）**
+
+- **按偏移量获取**
+
+通过 offset 指定起始位置，从 0 开始；同时传入页码时优先使用 offset。
+
+| 字段       | 类型      | 必填 | 默认值 | 约束与说明                                                                              |
+| ---------- | --------- | ---- | ------ | --------------------------------------------------------------------------------------- |
+| `offset`   | `integer` | 是   | -      | **互斥参数组：分页参数**。偏移量，从 0 开始。最小值：0；最大值：9007199254740991        |
+| `pageSize` | `integer` | 否   | `20`   | **互斥参数组：分页参数**。每页条数，默认 20，最大 500，超出自动按 500 处理。最大值：500 |
+
+- **按页码获取**
+
+通过页码获取，默认第 1 页；pageSize 控制每页条数。
+
+| 字段       | 类型      | 必填 | 默认值 | 约束与说明                                                                              |
+| ---------- | --------- | ---- | ------ | --------------------------------------------------------------------------------------- |
+| `pageNum`  | `integer` | 否   | `1`    | **互斥参数组：分页参数**。页码，从 1 开始；传入 offset 时忽略。最大值：9007199254740991 |
+| `pageSize` | `integer` | 否   | `20`   | **互斥参数组：分页参数**。每页条数，默认 20，最大 500，超出自动按 500 处理。最大值：500 |
+
+## 请求示例
+
+调用前请将 `YOUR_API_KEY` 与示例 ID 替换为真实值；私有化部署实例请将基础域名替换为 `<instance>/api`。
+
+### cURL 请求示例
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.cn/api/core/app/logs/list" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "appId": "68ad85a7463006c963799a05",
+  "offset": 0,
+  "dateStart": "2024-01-01T00:00:00.000Z",
+  "dateEnd": "2024-12-31T23:59:59.999Z"
+}'
+```
+
+### 最小合法 JSON 请求体示例
+
+```json
+{
+  "appId": "68ad85a7463006c963799a05",
+  "offset": 0,
+  "dateStart": "2024-01-01T00:00:00.000Z",
+  "dateEnd": "2024-12-31T23:59:59.999Z"
+}
+```
+
+## 响应结构与示例
+
+除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（若契约未声明具体载荷结构，请以上方状态描述及实际响应为准）。
+
+### HTTP 200
+
+成功获取应用日志列表
+
+**Content-Type** : `application/json`
+
+| 字段                           | 类型              | 必填 | 默认值      | 约束与说明                                                                                                                                                                                                     |
+| ------------------------------ | ----------------- | ---- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `total`                        | `number`          | 是   | -           | 总记录数                                                                                                                                                                                                       |
+| `list`                         | `object[]`        | 是   | -           | 对话日志记录列表                                                                                                                                                                                               |
+| `list[].publishSource`         | `object`          | 否   | -           | -                                                                                                                                                                                                              |
+| `list[].publishSource.type`    | `string` (enum)   | 否   | `"unknown"` | 最近一次运行的调用渠道类型；无法识别时归为 unknown。可选值：`test` , `online` , `share` , `api` , `cronJob` , `feishu` , `official_account` , `wecom` , `wechat` , `mcp` , `dingtalk` , `unknown`              |
+| `list[].publishSource.id`      | `string`          | 否   | -           | 渠道记录的数据库 ID；内部入口及无法恢复引用的历史数据可省略。正则：`^[0-9a-fA-F]{24}$`                                                                                                                         |
+| `list[].publishSource.name`    | `string`          | 否   | -           | 当前渠道名称，兼容历史来源名称                                                                                                                                                                                 |
+| `list[]._id`                   | `string`          | 是   | -           | 对话日志 ID                                                                                                                                                                                                    |
+| `list[].chatId`                | `string`          | 是   | -           | 对话 ID。最大长度：1024                                                                                                                                                                                        |
+| `list[].title`                 | `string \| null`  | 否   | -           | 对话标题                                                                                                                                                                                                       |
+| `list[].customTitle`           | `string \| null`  | 否   | -           | 自定义对话标题                                                                                                                                                                                                 |
+| `list[].source`                | `string` (enum)   | 是   | `"unknown"` | **已弃用**。旧调用渠道类型，兼容保留；使用 `publishSource.type`。可选值：`test` , `online` , `share` , `api` , `cronJob` , `feishu` , `official_account` , `wecom` , `wechat` , `mcp` , `dingtalk` , `unknown` |
+| `list[].sourceName`            | `string \| null`  | 否   | -           | **已弃用**。旧渠道名称，兼容保留；使用 `publishSource.name`                                                                                                                                                    |
+| `list[].updateTime`            | `string`          | 是   | -           | 更新时间                                                                                                                                                                                                       |
+| `list[].createTime`            | `string \| null`  | 否   | -           | 创建时间                                                                                                                                                                                                       |
+| `list[].messageCount`          | `integer \| null` | 否   | -           | 消息数量                                                                                                                                                                                                       |
+| `list[].userGoodFeedbackCount` | `integer \| null` | 否   | -           | 好评反馈数量                                                                                                                                                                                                   |
+| `list[].userBadFeedbackCount`  | `integer \| null` | 否   | -           | 差评反馈数量                                                                                                                                                                                                   |
+| `list[].customFeedbacksCount`  | `integer \| null` | 否   | -           | 自定义反馈数量                                                                                                                                                                                                 |
+| `list[].markCount`             | `integer \| null` | 否   | -           | 标记数量                                                                                                                                                                                                       |
+| `list[].averageResponseTime`   | `number \| null`  | 否   | -           | 平均响应时间(毫秒)                                                                                                                                                                                             |
+| `list[].errorCount`            | `integer \| null` | 否   | -           | 错误次数                                                                                                                                                                                                       |
+| `list[].totalPoints`           | `number \| null`  | 否   | -           | 总积分消耗                                                                                                                                                                                                     |
+| `list[].outLinkUid`            | `string \| null`  | 否   | -           | 使用者 ID，外链访客或 API customUid；非空时优先于 tmbId                                                                                                                                                        |
+| `list[].tmbId`                 | `string \| null`  | 否   | -           | 本次实际鉴权成员 ID，代理调用时为被代理成员                                                                                                                                                                    |
+| `list[].sourceMember`          | `object \| null`  | 否   | -           | 来源成员信息（兼容字段，分享来源可能为访客）                                                                                                                                                                   |
+| `list[].authMember`            | `object \| null`  | 否   | -           | 按 tmbId 解析的鉴权成员信息，仅用于展示                                                                                                                                                                        |
+| `list[].versionName`           | `string \| null`  | 否   | -           | 版本名称                                                                                                                                                                                                       |
+| `list[].originIp`              | `string \| null`  | 否   | -           | 原始 IP 地址                                                                                                                                                                                                   |
+| `list[].region`                | `string \| null`  | 否   | -           | 区域                                                                                                                                                                                                           |

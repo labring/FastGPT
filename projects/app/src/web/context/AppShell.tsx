@@ -67,6 +67,7 @@ const AppContent = ({ Component, pageProps, renderPage }: AppPropsWithLayout) =>
             title={`${title} ${router.pathname === '/apidoc/systemopenapi' ? 'OpenAPI' : 'DevAPI'}`}
             desc={headDesc}
             icon={headIcon}
+            robots="noindex, nofollow"
           />
         )}
         {page}

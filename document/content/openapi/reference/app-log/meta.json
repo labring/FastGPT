@@ -1,0 +1,9 @@
+{
+  "title": "应用日志",
+  "pages": [
+    "list",
+    "get-total-data",
+    "get-chart-data",
+    "get-users"
+  ]
+}
