@@ -176,6 +176,29 @@ describe('fileUrlValidator', () => {
   });
 
   describe('validateFileUrlDomain', () => {
+    it.each([null, {}, { length: 0 }, 'allowed.com'])(
+      'rejects external URLs when the enabled policy has a malformed list: %j',
+      async (fileUrlWhitelist) => {
+        Object.assign(getTestInstanceConfig().security, {
+          checkExternalFile: true,
+          fileUrlWhitelist
+        });
+        const { validateFileUrlDomain } =
+          await import('@fastgpt/service/common/security/fileUrlValidator');
+        expect(validateFileUrlDomain('https://other.com/file.png')).toBe(false);
+      }
+    );
+
+    it('does not interpret an invalid false-like policy flag as explicitly disabled', async () => {
+      Object.assign(getTestInstanceConfig().security, {
+        checkExternalFile: 0,
+        fileUrlWhitelist: ['allowed.com']
+      });
+      const { validateFileUrlDomain } =
+        await import('@fastgpt/service/common/security/fileUrlValidator');
+      expect(validateFileUrlDomain('https://other.com/file.png')).toBe(false);
+    });
+
     it('should return true when fileUrlWhitelist is empty', async () => {
       Object.assign(getTestInstanceConfig().security, { fileUrlWhitelist: [] });
       const { validateFileUrlDomain } =
@@ -217,14 +240,14 @@ describe('fileUrlValidator', () => {
       expect(validateFileUrlDomain('https://blocked.com/path/file.png')).toBe(false);
     });
 
-    it('should return true for invalid URL (catch block)', async () => {
+    it('rejects an invalid URL when a non-empty allowlist is enabled', async () => {
       Object.assign(getTestInstanceConfig().security, {
         checkExternalFile: true,
         fileUrlWhitelist: ['allowed.com']
       });
       const { validateFileUrlDomain } =
         await import('@fastgpt/service/common/security/fileUrlValidator');
-      expect(validateFileUrlDomain('not-a-valid-url')).toBe(true);
+      expect(validateFileUrlDomain('not-a-valid-url')).toBe(false);
     });
 
     it('should skip null/undefined/non-string/empty domains', async () => {

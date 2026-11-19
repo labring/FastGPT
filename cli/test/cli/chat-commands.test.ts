@@ -63,9 +63,14 @@ async function exec({
 }
 
 describe('createChatCommandSpecs', () => {
-  it('registers exactly ten App-only commands with discoverable parameters and examples', async () => {
+  it('registers App conversation commands and makes both run paths discoverable', async () => {
     const specs = createChatCommandSpecs();
-    expect(specs).toHaveLength(10);
+    expect(specs.filter(({ path }) => path[0] === 'chat')).toHaveLength(10);
+    const appRun = specs.find(({ path }) => path.join(' ') === 'app run');
+    const chatRun = specs.find(({ path }) => path.join(' ') === 'chat run');
+    expect(appRun).toBeDefined();
+    expect(appRun?.execute).toBe(chatRun?.execute);
+    expect(appRun?.options).toBe(chatRun?.options);
     expect(
       specs.every(
         (spec) =>
@@ -236,14 +241,20 @@ describe('createChatCommandSpecs', () => {
           ? new Response(JSON.stringify(data), { headers: { 'content-type': 'application/json' } })
           : response(data);
       });
-      const result = await exec({
-        args: ['chat', ...command, '--appId', APP_ID, ...flags],
-        fetchFn
-      });
-      expect(result.stderr).toBe('');
-      expect(result.exitCode).toBe(0);
-      expect(JSON.parse(result.stdout)).toMatchObject({ data });
-      expect(fetchFn).toHaveBeenCalledOnce();
+      const domains = command[0] === 'run' ? ['chat', 'app'] : ['chat'];
+      for (const domain of domains) {
+        const result = await exec({
+          args: [domain, ...command, '--appId', APP_ID, ...flags],
+          fetchFn
+        });
+        expect(result.stderr).toBe('');
+        expect(result.exitCode).toBe(0);
+        expect(JSON.parse(result.stdout)).toMatchObject({
+          command: [domain, ...command].join(' '),
+          data
+        });
+      }
+      expect(fetchFn).toHaveBeenCalledTimes(domains.length);
     }
   );
 

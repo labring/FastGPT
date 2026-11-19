@@ -19,7 +19,7 @@
     "test:cases": "node .agents/skills/system/fastgpt-integration-test-runner/scripts/execute.mjs",
     "test:all": "pnpm test:workspace && pnpm test:vector",
     "test:repo": "vitest run --config vitest.config.mts --coverage --passWithNoTests",
-    "test:workspace": "node ./scripts/test/withMongo.mjs pnpm exec turbo run test --filter=@fastgpt/app --filter=@fastgpt/admin --filter=@fastgpt/global --filter=@fastgpt/service --filter=@fastgpt/web --filter=@fastgpt/workflow-core --filter=@fastgpt/workflow-cli",
+    "test:workspace": "node ./scripts/test/withMongo.mjs pnpm exec turbo run test --filter=@fastgpt/app --filter=@fastgpt/admin --filter=@fastgpt/global --filter=@fastgpt/service --filter=@fastgpt/web --filter=@fastgpt/workflow-core --filter=@fastgpt/cli",
     "test:app": "turbo run test --filter=@fastgpt/app",
     "test:admin": "turbo run test --filter=@fastgpt/admin",
     "test:global": "turbo run test --filter=@fastgpt/global",
@@ -33,7 +33,7 @@
     "sdk:check": "pnpm --filter @fastgpt-sdk/openapi-codegen check",
     "sdk:test": "pnpm --filter @fastgpt-sdk/openapi-codegen test && pnpm --filter @fastgpt/sdk test",
     "build:sdks": "pnpm -r --filter @fastgpt-sdk/storage --filter @fastgpt-sdk/otel --filter @fastgpt-sdk/sandbox-adapter --filter @fastgpt/sdk build",
-    "build:workflow-packages": "pnpm --filter @fastgpt/workflow-core build && pnpm --filter @fastgpt/workflow-cli build"
+    "build:workflow-packages": "pnpm --filter @fastgpt/workflow-core build && pnpm --filter @fastgpt/cli build:tsdown"
   },
   "devDependencies": {
     "@chakra-ui/cli": "^2.4.1",

@@ -452,7 +452,27 @@ jobs:
             -f "$WORK_DIR/service.json" \
             -f "$WORK_DIR/ingress.json"
 
-          kubectl rollout status "deployment/$RESOURCE_NAME" --timeout=180s
+          MAX_ROLLOUT_RETRIES=3
+          for ((retry = 0; retry <= MAX_ROLLOUT_RETRIES; retry++)); do
+            if kubectl rollout status "deployment/$RESOURCE_NAME" --timeout=180s 2>&1 |
+              tee "$WORK_DIR/rollout.log"; then
+              break
+            fi
+
+            if ! grep -Fxq 'error: timed out waiting for the condition' "$WORK_DIR/rollout.log"; then
+              exit 1
+            fi
+            if ((retry == MAX_ROLLOUT_RETRIES)); then
+              echo "::error::Docs preview rollout still timed out after $MAX_ROLLOUT_RETRIES retries."
+              exit 1
+            fi
+
+            # 等旧 Deployment 及其副本完成级联删除后，再用同一份配置重建。
+            echo "::warning::Docs preview rollout timed out. Recreating $RESOURCE_NAME (retry $((retry + 1))/$MAX_ROLLOUT_RETRIES)."
+            kubectl delete deployment "$RESOURCE_NAME" --ignore-not-found --cascade=foreground --timeout=60s
+            kubectl apply -f "$WORK_DIR/deployment.json"
+          done
+
           curl --fail --silent --show-error \
             --retry 12 \
             --retry-delay 5 \

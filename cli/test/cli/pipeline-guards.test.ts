@@ -49,6 +49,8 @@ function createMockContainer(isInteractive = false): CliContainer {
     datasetDataService: {} as any,
     chatService: {} as any,
     modelService: createModelService(),
+    workflowLocalService: {} as any,
+    workflowSyncService: {} as any,
     readJsonInput: async () => ({}),
     stdout: () => {},
     stderr: () => {}

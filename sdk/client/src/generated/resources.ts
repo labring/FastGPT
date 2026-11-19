@@ -2587,7 +2587,7 @@ export class DatasetsCollectionsResource {
 
   /**
    * 导入模板文件创建集合
-   * 上传 CSV 或 Excel 模板文件，批量导入数据到知识库集合。表头由 q、a、index、metadata 组成，q/a/metadata 各一列，index 可多列且顺序任意，metadata 单元格为 JSON object；Excel 仅支持单工作表且不能包含合并单元格；同时兼容旧版 q、a、indexes 表头。`file` 为上传文件，`data` 为 JSON 序列化的集合参数对象
+   * 上传 CSV 或 Excel 模板文件，批量导入数据到知识库集合。表头由 q、a、index、metadata 组成，q/a/metadata 各一列，index 可多列且顺序任意，metadata 单元格为 JSON object；Excel 仅支持单工作表且不能包含合并单元格；同时兼容旧版 q、a、indexes 表头。`file` 为上传文件，multipart filename 使用原始 UTF-8 文件名；`data` 为 JSON 序列化的集合参数对象
    */
   createByTemplate(
     req: DatasetsCollectionsCreateByTemplateReq,

@@ -9,7 +9,7 @@ on:
       - 'packages/service/**'
       - 'packages/web/**'
       - 'packages/workflow-core/**'
-      - 'packages/workflow-cli/**'
+      - 'cli/**'
       - 'sdk/otel/**'
       - 'sdk/storage/**'
       - 'package.json'

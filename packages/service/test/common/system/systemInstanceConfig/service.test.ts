@@ -183,21 +183,19 @@ describe('SystemInstanceConfigManager', () => {
     expect(await MongoSystemInstanceConfig.countDocuments()).toBe(4);
   });
 
-  it('keeps the last complete snapshot after invalid data and recovers on the next refresh', async () => {
+  it('publishes invalid stored fields without throwing and accepts the administrator repair', async () => {
     await MongoSystemInstanceConfig.create({
       domain: 'site',
       revision: 1,
       overrides: { name: 'valid' }
     });
-    const before = await systemInstanceConfig.refresh();
-    const oldFrontend = global.feConfigs;
+    await systemInstanceConfig.refresh();
     await MongoSystemInstanceConfig.collection.updateOne(
       { domain: 'site' },
       { $set: { 'overrides.name': 7 }, $inc: { revision: 1 } }
     );
-    await expect(systemInstanceConfig.refresh()).rejects.toThrow();
-    expect(systemInstanceConfig.get()).toBe(before);
-    expect(global.feConfigs).toBe(oldFrontend);
+    expect((await systemInstanceConfig.refresh()).site.name).toBe(7);
+    expect(global.feConfigs.systemTitle).toBe(7);
     await MongoSystemInstanceConfig.collection.updateOne(
       { domain: 'site' },
       { $set: { 'overrides.name': 'recovered' }, $inc: { revision: 1 } }

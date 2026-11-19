@@ -75,7 +75,16 @@ describe('NextAPI', () => {
       allowedOrigins: ['https://trusted.example.com'],
       expected: ['https://trusted.example.com']
     },
-    { allowedOriginsEnabled: true, allowedOrigins: [], expected: undefined }
+    { allowedOriginsEnabled: true, allowedOrigins: [], expected: undefined },
+    { allowedOriginsEnabled: true, allowedOrigins: {}, expected: [] },
+    { allowedOriginsEnabled: undefined, allowedOrigins: null, expected: [] },
+    { allowedOriginsEnabled: 0, allowedOrigins: [], expected: [] },
+    {
+      allowedOriginsEnabled: true,
+      allowedOrigins: [null, 'https://trusted.example.com'],
+      expected: ['https://trusted.example.com']
+    },
+    { allowedOriginsEnabled: true, allowedOrigins: [null, ''], expected: [] }
   ])(
     'honors the origins switch and legacy config: $allowedOriginsEnabled / $allowedOrigins',
     async ({ allowedOriginsEnabled, allowedOrigins, expected }) => {
@@ -121,5 +130,12 @@ describe('NextAPI', () => {
     NextAPI(async () => undefined, { csrf: false });
     await runBefore(mocks);
     expect(mocks.checkCsrf).not.toHaveBeenCalled();
+  });
+
+  it('keeps CSRF enabled when a retained legacy flag has an invalid false-like type', async () => {
+    securitySnapshot({ allowedOrigins: [], csrfEnabled: 0 });
+    NextAPI(async () => undefined);
+    await runBefore(mocks);
+    expect(mocks.checkCsrf).toHaveBeenCalledOnce();
   });
 });

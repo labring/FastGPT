@@ -226,7 +226,7 @@ STORAGE_SECRET_ACCESS_KEY
 
 ## 3.6 配置校验与加载边界
 
-推荐采用三层校验，而不是把 MongoDB 文档直接作为 `createEnv({ runtimeEnv })` 的输入：
+启动 ENV、配置读取和管理保存采用不同边界，不把 MongoDB 文档直接作为 `createEnv({ runtimeEnv })` 的输入：
 
 ```text
 bootstrapEnvSchema.parse(process.env)
@@ -235,16 +235,16 @@ bootstrapEnvSchema.parse(process.env)
 连接 MongoDB，读取 system_instance_configs
         |
         v
-resolveSystemInstanceConfig(overridesByDomain)
+resolveSystemInstanceConfig(overridesByDomain, { strict: false })
         |
         v
 合并 bootstrapEnv + systemInstanceConfig
         |
         v
-RuntimeConfigSchema.parse(runtimeConfig)
+发布运行时快照（启动/读取不做 Schema 校验，仅剥离未知字段并合并默认值）
 ```
 
-原因是两类配置的生命周期和错误处理不同：环境变量负责进程启动和基础设施，数据库配置负责 Admin 可编辑的实例行为；直接复用 `createEnv` 会把数据库缺失、首次初始化、动态刷新和环境变量兼容导入混在一起。配置注册表仍可以复用同一组 Zod 字段 schema，但应由独立的 `SystemInstanceConfigSchema` 负责数据库文档校验。
+原因是两类配置的生命周期和错误处理不同：环境变量负责进程启动和基础设施，数据库配置负责 Admin 可编辑的实例行为；直接复用 `createEnv` 会把数据库缺失、首次初始化、动态刷新和环境变量兼容导入混在一起。启动、轮询与管理读取只按 Schema 已知字段树剥离未知/废弃字段并深度合并默认值，不做业务规则校验、保留历史原值；数据库、事务和转换错误继续失败。管理保存使用同一组 Zod Schema 严格校验合并后的完整域，返回字段错误并保留表单草稿，不能绕过权限、revision 或密钥输入约束。
 
 首次启动或迁移时，旧环境变量只作为一次性 seed：
 
@@ -1310,7 +1310,7 @@ Pro ENV 派生能力存放在`system_instance_configs` 内独立 `domain=proEnv`
 
 ### Pro ENV 派生配置发布
 
-Pro 可以先使用 Schema 默认配置完整启动，并独立发布 Pro ENV scope，不加载迁移中的业务配置。App 与 Pro 启动时各注册一条常驻配置轮询：每轮从主库批量读取各 scope 的 `domain/revision/_id` 元数据，识别新增、修改、删除及同 revision 重建；版本变化时整体刷新，成功后才确认版本，每轮完成后等待 1 秒。Pro 在统一任务 `20261116_migrate_system_configs` 成功前维持默认配置，成功后由同一循环加载真实配置。失败保留未确认版本并继续重试；成功后轮询仍持续，配置刷新不再依赖 Mongo watch。训练和模板等非配置监听保持原行为。默认配置期间已执行的业务动作不会被刷新回滚。
+Pro 启动时先按数据库已有 scope 与 Schema 默认值合成真实配置，再独立发布 Pro ENV scope；读取和消费者启动不等待 App 配置迁移成功，不以全默认快照替代已有套餐、并发和授权配置。App 与 Pro 启动时各注册一条常驻配置轮询：每轮从主库批量读取各 scope 的 `domain/revision/_id` 元数据，识别新增、修改、删除及同 revision 重建；版本变化时整体刷新，成功后才确认版本，每轮完成后等待 1 秒。迁移写入同样由版本变化触发刷新。启动与轮询读取不做配置业务约束校验，原样保留历史值；数据库等操作失败保留未确认版本并继续重试。授权重验及实例 ID 首建仍保留必要的迁移写入屏障，配置刷新不再依赖 Mongo watch。
 
 Pro ENV 派生配置统一由 `getProEnvConfig` 归一化，每次启动由 `syncProEnvConfig` 在主库事务内读取 Pro 独占 scope 并按叶子 diff 写入；有差异才递增 revision，常驻轮询据此刷新配置与缓存，无差异不写库。
 
@@ -1319,12 +1319,12 @@ Pro ENV 派生配置统一由 `getProEnvConfig` 归一化，每次启动由 `syn
 旧 `fastgptPro` 文档不再参与 Pro 启动配置读取，也不维护 `fastgptPro.teamMode` 镜像；团队模式只从 ENV 派生后发布到 App 快照。
 
 
-文件服务域名由统一任务 `20261116_migrate_system_configs` 的 backfill 阶段迁入 `storage.fileDomain`，保留已有值和显式默认，校验通过后用 revision CAS 更新，幂等全量重跑不删除源配置。旧 ENV 运行时读取移除；FILE_DOWNLOAD_PUBLIC_URL_PREFIX 的下载优先级保持，空文件域名回落到 site.publicUrl；两者都为空则生成相对路径。
+文件服务域名由统一任务 `20261116_migrate_system_configs` 的 backfill 阶段迁入 `storage.fileDomain`，保留已有值和显式默认，诊断保存约束后用 revision CAS 更新，非法历史值仅告警，幂等全量重跑不删除源配置。旧 ENV 运行时读取移除；FILE_DOWNLOAD_PUBLIC_URL_PREFIX 的下载优先级保持，空文件域名回落到 site.publicUrl；两者都为空则生成相对路径。
 
 
 ### HTTP 与 Cookie 策略补充迁移
 
-统一任务 `20261116_migrate_system_configs` 的 backfill 阶段在实例配置导入与废弃字段清理后执行；任务整体采用幂等全量重跑，不使用 checkpoint。旧 `AUTH_COOKIE_SECURE` 与 `SERVICE_AXIOS_MAX_CONTENT_LENGTH` 只在目标字段缺失且无显式默认标记时导入；无旧值也持久化默认 `false` / `20`，已有管理员值优先。两域先完成格式校验，再用同一事务与 revision CAS 写入，冲突重读，失败不发布部分结果。运行时按当前实例快照签发 Cookie、按后续 HTTP 请求读取响应上限；不改变已有 Cookie 或在途请求。
+统一任务 `20261116_migrate_system_configs` 的 backfill 阶段在实例配置导入与废弃字段清理后执行；任务整体采用幂等全量重跑，不使用 checkpoint。旧 `AUTH_COOKIE_SECURE` 与 `SERVICE_AXIOS_MAX_CONTENT_LENGTH` 只在目标字段缺失且无显式默认标记时导入；无旧值也持久化默认 `false` / `20`，已有管理员值优先。两域诊断保存约束，非法历史值保留并告警；随后用同一事务与 revision CAS 写入，冲突重读，失败不发布部分结果。运行时按当前实例快照签发 Cookie、按后续 HTTP 请求读取响应上限；不改变已有 Cookie 或在途请求。
 
 
 ### 迁移来源补充约定
@@ -1337,7 +1337,7 @@ Pro ENV 是独占系统 scope，沿用 domain 唯一索引与 revision；仅 Pro
 
 全部系统配置统一存储于 `system_instance_configs`，共 17 个 scope：11 个管理表单业务域与 proEnv、license、instanceId、modelStatusProbe、moderationPolicy、operations 六个辅助 scope。套餐合入 `commercial.subPlans`，license 保持独立；operations 下包含 systemMsgModal、operationalAd、activityAd，写入单个子对象时仅更新对应路径并递增共享 revision。
 
-辅助 scope 不参与业务域 defaultConfig 初始化；旧 systemconfigs 仅由统一迁移读取，保留原数据但不再是运行期数据源。迁移在业务域初始化及废弃字段清理后，在同一事务内导入缺失配置，优先保留新目标，其次承接开发期旧实例 scope，最后回退旧 systemconfigs；完整校验后删除四个开发期旧实例 scope，失败整体回滚。License 原文/缓存与已有实例 ID 不重新生成；Pro 只有迁移成功后才能创建身份或写入授权。
+辅助 scope 不参与业务域 defaultConfig 初始化；旧 systemconfigs 仅由统一迁移读取，保留原数据但不再是运行期数据源。迁移在业务域初始化及废弃字段清理后，在同一事务内导入缺失配置，优先保留新目标，其次承接开发期旧实例 scope，最后回退旧 systemconfigs；配置约束只告警，承接结果复验完成后删除四个开发期旧实例 scope，数据库或迁移完整性错误整体回滚。License 原文/缓存与已有实例 ID 不重新生成；Pro 只有迁移成功后才能创建身份或写入授权。
 
 
 ### 统一运行时快照与管理入口

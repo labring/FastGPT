@@ -105,11 +105,14 @@ describe('rehomeSandboxOvercommit', () => {
     { AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR: 'Infinity' },
     { AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR: 'sensitive-invalid-value' },
     { AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR: '2', AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR: 'invalid' }
-  ])('rejects invalid legacy input atomically: %j', async (env) => {
-    await expect(run(env)).rejects.toThrow('Invalid sandbox overcommit migration input');
-    expect(await read()).toMatchObject({ revision: 4 });
-    expect((await read())?.overrides.agentSandbox.opensandbox).toEqual({ image: 'runtime:test' });
-    await expect(run(env)).rejects.not.toThrow('sensitive-invalid-value');
+  ])('retains invalid legacy input while completing the migration: %j', async (env) => {
+    await expect(run(env)).resolves.toEqual({ updatedDocuments: 1 });
+    const stored = (await read())?.overrides.agentSandbox.opensandbox;
+    expect(stored.image).toBe('runtime:test');
+    expect(stored.cpuOvercommitFactor).toBe(
+      env.AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR === '2' ? 2 : env.AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR
+    );
+    await verifySandboxOvercommitMigration();
   });
 
   it('stops before writing when the lease is lost', async () => {
@@ -132,7 +135,8 @@ describe('rehomeSandboxOvercommit', () => {
       { domain: 'subservice' },
       { $set: { 'overrides.agentSandbox.opensandbox.cpuOvercommitFactor': 0.5 } }
     );
-    await expect(run()).rejects.toThrow('Invalid existing subservice configuration');
+    await run();
+    expect((await read())?.overrides.agentSandbox.opensandbox.cpuOvercommitFactor).toBe(0.5);
     await collection.updateOne({ domain: 'subservice' }, { $set: { explicitDefaultPaths: [3] } });
     await expect(run()).rejects.toThrow('explicit-default');
     await collection.deleteMany({});

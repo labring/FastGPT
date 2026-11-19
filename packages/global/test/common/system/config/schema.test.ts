@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { vi, describe, expect, it } from 'vitest';
 import { AuthConfigSchema } from '@fastgpt/global/common/system/config/schemas/auth';
 import {
   getDomainDefaultConfig,
@@ -731,6 +731,138 @@ describe('agentSandbox.common.storageSizeGi validation', () => {
         resolveDomainEffectiveConfig({ domain: 'subservice', overrides: withStorageSize(size) })
           .agentSandbox.common.storageSizeGi
       ).toBe(size);
+    }
+  });
+});
+
+describe('unvalidated instance config reads and strict saves', () => {
+  it('retains invalid known fields and incomplete provider config on reads without warning while rejecting saves', () => {
+    const raw = { agentSandbox: { provider: 'sealosdevbox', common: { memoryMiB: -1 } } };
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const read = resolveDomainEffectiveConfig({
+        domain: 'subservice',
+        overrides: raw,
+        options: { strict: false }
+      });
+      expect(read.agentSandbox.provider).toBe('sealosdevbox');
+      expect(read.agentSandbox.common.memoryMiB).toBe(-1);
+      expect(read.agentSandbox.proxy.wsUrl).toBe('');
+      expect(warn).not.toHaveBeenCalled();
+      expect(() =>
+        resolveDomainEffectiveConfig({ domain: 'subservice', overrides: raw })
+      ).toThrow();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('strips retired unknown fields even when sibling known fields are invalid', () => {
+    const parsed = parseDomainOverrides({
+      domain: 'performance',
+      overrides: {
+        legacyTopLevelKey: true,
+        tracking: { batchUpdateTime: 5, retentionHours: -1 }
+      },
+      options: { strict: false }
+    });
+    expect(parsed).toEqual({
+      tracking: { retentionHours: -1 }
+    });
+  });
+
+  it('distinguishes unset domain overrides from corrupted non-object root values', () => {
+    expect(
+      resolveDomainEffectiveConfig({
+        domain: 'security',
+        overrides: undefined,
+        options: { strict: false }
+      }).checkExternalFile
+    ).toBe(false);
+
+    for (const corrupted of ['invalid-domain', ['unexpected-array'], null, 42]) {
+      expect(
+        parseDomainOverrides({
+          domain: 'security',
+          overrides: corrupted,
+          options: { strict: false }
+        })
+      ).toEqual(corrupted);
+      expect(
+        resolveDomainEffectiveConfig({
+          domain: 'security',
+          overrides: corrupted,
+          options: { strict: false }
+        })
+      ).toEqual(corrupted);
+    }
+  });
+
+  it('fills missing element defaults for sparse array items while retaining invalid fields', () => {
+    const site = resolveDomainEffectiveConfig({
+      domain: 'site',
+      overrides: {
+        navbarItems: [
+          { id: 'nav-1', name: 'Docs', url: 'https://docs.example.test' },
+          { id: 'nav-2', name: 'Broken', isActive: 'invalid-flag' }
+        ]
+      },
+      options: { strict: false }
+    });
+    expect(site.navbarItems).toEqual([
+      {
+        id: 'nav-1',
+        name: 'Docs',
+        avatar: '',
+        url: 'https://docs.example.test',
+        isActive: true
+      },
+      {
+        id: 'nav-2',
+        name: 'Broken',
+        avatar: '',
+        url: '',
+        isActive: 'invalid-flag'
+      }
+    ]);
+
+    const providers = resolveDomainEffectiveConfig({
+      domain: 'providers',
+      overrides: {
+        externalProviderWorkflowVariables: [{ key: 'EXT_KEY', name: 'External Key' }]
+      },
+      options: { strict: false }
+    });
+    expect(providers.externalProviderWorkflowVariables).toEqual([
+      {
+        key: 'EXT_KEY',
+        name: 'External Key',
+        intro: '',
+        url: '',
+        isOpen: true
+      }
+    ]);
+  });
+
+  it('keeps valid sibling domains when a read contains wrong types without logging warnings', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const snapshot = resolveSystemInstanceConfig(
+        {
+          site: { name: 'Existing' },
+          providers: {
+            documentParse: { provider: 'custom', customPdf: { key: 'private-synthetic-secret' } }
+          },
+          performance: { dataset: { qaMaxProcess: 'invalid-number' } }
+        },
+        { strict: false }
+      );
+      expect(snapshot.site.name).toBe('Existing');
+      expect(snapshot.providers.documentParse.customPdf.key).toBe('private-synthetic-secret');
+      expect(snapshot.performance.dataset.qaMaxProcess).toBe('invalid-number');
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
     }
   });
 });

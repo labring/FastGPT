@@ -35,7 +35,7 @@ const SecuritySettingComponent = () => {
 
   const { effectiveConfig, isLoading, isUpdating, patchConfig } = useDomainConfig('security');
 
-  const { control, handleSubmit, reset, register } = useForm<SecurityConfigForm>({
+  const form = useForm<SecurityConfigForm>({
     defaultValues: {
       checkInternalIp: false,
       csrfEnabled: true,
@@ -48,18 +48,31 @@ const SecuritySettingComponent = () => {
       workflowHttpNode: { ignoreHttpsCertificate: false }
     }
   });
+  const { control, handleSubmit, reset, register } = form;
 
   const checkExternalFile = useWatch({ control, name: 'checkExternalFile' });
   const allowedOriginsEnabled = useWatch({ control, name: 'allowedOriginsEnabled' });
 
   useEffect(() => {
     if (effectiveConfig && Object.keys(effectiveConfig).length > 0) {
+      /** 读取保留的非法旧值也要能显示和编辑；不在页面初始化时丢弃或写回数据库。 */
+      const toListText = (value: unknown): string => {
+        if (value === undefined) return '';
+        if (typeof value === 'string') return value;
+        if (Array.isArray(value)) {
+          return value
+            .map((item) => (typeof item === 'string' ? item : JSON.stringify(item)))
+            .join('\n');
+        }
+        return JSON.stringify(value) ?? '';
+      };
+
       reset({
         ...effectiveConfig,
         allowedOriginsEnabled:
           effectiveConfig.allowedOriginsEnabled ?? Boolean(effectiveConfig.allowedOrigins?.length),
-        allowedOriginsText: (effectiveConfig.allowedOrigins ?? []).join('\n'),
-        fileUrlWhitelistText: (effectiveConfig.fileUrlWhitelist ?? []).join('\n')
+        allowedOriginsText: toListText(effectiveConfig.allowedOrigins),
+        fileUrlWhitelistText: toListText(effectiveConfig.fileUrlWhitelist)
       });
     }
   }, [effectiveConfig, reset]);
@@ -90,6 +103,11 @@ const SecuritySettingComponent = () => {
 
   return (
     <AdminSettingPage
+      form={form}
+      fieldAliases={{
+        'security.allowedOrigins': 'allowedOriginsText',
+        'security.fileUrlWhitelist': 'fileUrlWhitelistText'
+      }}
       headerTitle={t('admin:page_title_security')}
       tocItems={tocItems}
       isLoading={isLoading}
@@ -104,6 +122,7 @@ const SecuritySettingComponent = () => {
             control={control}
             render={({ field }) => (
               <AdminSwitchRow
+                name={field.name}
                 label={t('admin:internal_ip_access_blocking_ssrf')}
                 tooltip={t('admin:when_enabled_outgoing_http_requests_from_the_main_site_are_b')}
                 isChecked={field.value}
@@ -117,6 +136,7 @@ const SecuritySettingComponent = () => {
             control={control}
             render={({ field }) => (
               <AdminSwitchRow
+                name={field.name}
                 label={t('admin:strict_csrf_validation')}
                 tooltip={t('admin:protects_against_csrf_attacks_keep_enabled_in_production')}
                 isChecked={field.value}
@@ -130,6 +150,7 @@ const SecuritySettingComponent = () => {
             control={control}
             render={({ field }) => (
               <AdminSwitchRow
+                name={field.name}
                 label={t('admin:http_node_ignore_https_certificate')}
                 tooltip={t('admin:high_risk_enabling_this_stops_validating_invalid_or_self_sig')}
                 isChecked={field.value}
@@ -143,6 +164,7 @@ const SecuritySettingComponent = () => {
             control={control}
             render={({ field }) => (
               <AdminSwitchRow
+                name={field.name}
                 label={t('admin:auth_cookie_secure')}
                 tooltip={t('admin:auth_cookie_secure_tip')}
                 isChecked={field.value}
@@ -153,12 +175,13 @@ const SecuritySettingComponent = () => {
         </SimpleGrid>
 
         <Box mb={6}>
-          <SimpleGrid columns={1}>
+          <SimpleGrid columns={[1, 2]} spacingX={16}>
             <Controller
               name="allowedOriginsEnabled"
               control={control}
               render={({ field }) => (
                 <AdminSwitchRow
+                  name={field.name}
                   label={t('admin:allowed_origins')}
                   tooltip={t('admin:origins_allowed_to_call_the_main_site_api_default_means_unre')}
                   isChecked={field.value}
@@ -170,6 +193,7 @@ const SecuritySettingComponent = () => {
           {allowedOriginsEnabled && (
             <Box mt={2}>
               <Textarea
+                isInvalid={Boolean(form.getFieldState('allowedOriginsText', form.formState).error)}
                 {...register('allowedOriginsText')}
                 aria-label={t('admin:allowed_origins')}
                 rows={4}
@@ -188,6 +212,7 @@ const SecuritySettingComponent = () => {
             control={control}
             render={({ field }) => (
               <AdminSwitchRow
+                name={field.name}
                 label={t('admin:upload_file_type_check')}
                 tooltip={t('admin:upload_file_type_check_tip')}
                 isChecked={!field.value}
@@ -198,12 +223,13 @@ const SecuritySettingComponent = () => {
         </SimpleGrid>
 
         <Box mb={6}>
-          <SimpleGrid columns={1}>
+          <SimpleGrid columns={[1, 2]} spacingX={16}>
             <Controller
               name="checkExternalFile"
               control={control}
               render={({ field }) => (
                 <AdminSwitchRow
+                  name={field.name}
                   label={t('admin:check_external_file')}
                   tooltip={t('admin:check_external_file_tip')}
                   isChecked={field.value}
@@ -215,6 +241,9 @@ const SecuritySettingComponent = () => {
           {checkExternalFile && (
             <Box mt={2}>
               <Textarea
+                isInvalid={Boolean(
+                  form.getFieldState('fileUrlWhitelistText', form.formState).error
+                )}
                 {...register('fileUrlWhitelistText')}
                 aria-label={t('admin:external_resource_domain_whitelist')}
                 rows={3}
