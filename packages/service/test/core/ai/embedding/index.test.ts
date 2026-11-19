@@ -780,7 +780,8 @@ describe('getVectors function test', () => {
         headers: {
           Authorization: 'Bearer secret-token',
           'X-Custom': 'yes'
-        }
+        },
+        maxRetries: 0
       });
     });
 
@@ -796,11 +797,12 @@ describe('getVectors function test', () => {
       // 否则客户端会用 AIPROXY_API_TOKEN 补一个 Authorization 发给自定义地址。
       expect(mockCreate.mock.calls[0][1]).toEqual({
         path: 'https://custom.example/v1/embeddings',
-        headers: { Authorization: null }
+        headers: { Authorization: null },
+        maxRetries: 0
       });
     });
 
-    it('should only pass headers (no path) when requestUrl is not set', async () => {
+    it('should preserve the default path and forward headers when requestUrl is not set', async () => {
       mockCreate.mockResolvedValue(
         makeResponse([[0.1, 0.2, 0.3, 0.4]], { usage: { total_tokens: 1 } })
       );
@@ -811,7 +813,10 @@ describe('getVectors function test', () => {
         headers: { 'X-Trace': 't1' }
       });
 
-      expect(mockCreate.mock.calls[0][1]).toEqual({ headers: { 'X-Trace': 't1' } });
+      expect(mockCreate.mock.calls[0][1]).toEqual({
+        headers: { 'X-Trace': 't1' },
+        maxRetries: 0
+      });
     });
   });
 

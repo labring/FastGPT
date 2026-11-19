@@ -182,7 +182,7 @@ describe('Embedding error handling integration', () => {
     expect(await findAndLockTrainingTask(claimOptions)).toBeNull();
     vi.setSystemTime(nextClaimableAt);
     expect(await findAndLockTrainingTask(claimOptions)).toMatchObject({
-      _id: task._id,
+      _id: task._id.toString(),
       retryCount: 2,
       lockTime: new Date(nextClaimableAt)
     });
