@@ -26,7 +26,6 @@ import { buildAgentLoopCoreRequestMessages } from '../agentLoopCore/application/
 import { createAgentLoopCoreChildInteractiveParams } from '../agentLoopCore/adapter/interactive/child';
 import { createAgentLoopCoreToolCallNodeResponse } from '../agentLoopCore/adapter/nodeResponse/toolCallNodeResponse';
 import { getAgentLoopCorePersistedTextOutput } from '../agentLoopCore/application/output/assistantResponses';
-import { summarizeAgentLoopCoreToolRunFlowResponses } from '../agentLoopCore/adapter/nodeResponse/toolRunCollector';
 import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
 import { useToolMessages } from './hooks/useToolMessages';
 import { useToolNodeList } from './hooks/useToolNodeList';
@@ -208,7 +207,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
     const {
       toolWorkflowInteractiveResponse,
-      toolDispatchFlowResponses, // 工具子流程运行详情
+      toolRunTimes: runTimes,
       toolCallInputTokens,
       toolCallOutputTokens,
       toolCallTotalPoints,
@@ -240,8 +239,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     })();
     const toolMemories = toolCallMemoryContext.getDelta();
     const systemMemories = Object.keys(toolMemories).length > 0 ? toolMemories : undefined;
-    // 子流程节点详情已通过响应 Context 独立发布，顶层 ToolCall 响应只保留自身汇总。
-    const { runTimes } = summarizeAgentLoopCoreToolRunFlowResponses(toolDispatchFlowResponses);
     const modelName = toolModel.name;
     const modelTotalPoints = toolCallTotalPoints;
     const nodeResponse = createAgentLoopCoreToolCallNodeResponse({

@@ -215,7 +215,7 @@ describe('dispatchRunTools', () => {
     });
     runToolCallMock.mockResolvedValue({
       toolWorkflowInteractiveResponse: undefined,
-      toolDispatchFlowResponses: [],
+      toolRunTimes: 0,
       workflowRuntimeSummary: createWorkflowRuntimeSummary(),
       runTimes: 0,
       toolTotalPoints: 0,
@@ -263,7 +263,7 @@ describe('dispatchRunTools', () => {
         { text: { content: 'answer' } }
       ];
       runToolCallMock.mockResolvedValueOnce({
-        toolDispatchFlowResponses: [],
+        toolRunTimes: 3,
         toolCallInputTokens: 0,
         toolCallOutputTokens: 0,
         toolCallTotalPoints: 0,
@@ -276,6 +276,7 @@ describe('dispatchRunTools', () => {
 
       const result = await dispatchRunTools(createProps());
 
+      expect(result.runTimes).toBe(3);
       expect(result.assistantResponses).toEqual(assistantResponses);
       const messages = buildAgentLoopCoreRequestMessages({
         messages: [{ obj: ChatRoleEnum.AI, value: result.assistantResponses ?? [] }]
@@ -290,7 +291,7 @@ describe('dispatchRunTools', () => {
   it('preserves user config classification from runToolCall', async () => {
     runToolCallMock.mockResolvedValueOnce({
       toolWorkflowInteractiveResponse: undefined,
-      toolDispatchFlowResponses: [],
+      toolRunTimes: 4,
       toolCallInputTokens: 0,
       toolCallOutputTokens: 0,
       toolCallTotalPoints: 0,
@@ -308,6 +309,8 @@ describe('dispatchRunTools', () => {
       name: 'UserConfigError'
     });
     expect(result.responseData).toMatchObject({ errorText: 'Invalid API key' });
+    // 失败分支同样把已执行的工具子流程次数交给队列扣减预算。
+    expect(result.runTimes).toBe(4);
   });
 
   it('does not restore history files when the node has no selected file link input', async () => {

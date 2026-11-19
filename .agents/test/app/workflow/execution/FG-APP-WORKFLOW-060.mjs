@@ -201,8 +201,7 @@ await runNodeCase('FG-APP-WORKFLOW-060', {
               usagePush() {},
               nodeSummary: createNodeSummary(),
               nodeResponseParentId: 'ROOT-TOOLS'
-            },
-            cacheToolFlowResponse() {}
+            }
           });
           const running = {},
             completions = [];

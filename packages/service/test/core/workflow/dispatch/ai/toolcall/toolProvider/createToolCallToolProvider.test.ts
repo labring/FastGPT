@@ -121,7 +121,6 @@ const createProvider = async (overrides: Record<string, any> = {}) => {
             target: 'search'
           }
         ] as any,
-        cacheToolFlowResponse: vi.fn(),
         ...providerOverrides
       })
   );
@@ -208,7 +207,7 @@ describe('createToolCallToolProvider', () => {
   );
 
   it.each(['error', 'throw', 'stop'] as const)(
-    'discards variable changes on %s without affecting the next call',
+    'discards variable changes on %s while still counting returned run times',
     async (outcome) => {
       const parent = await createVariableContext({ count: 1, nested: { items: [1] } });
       let stopping = false;
@@ -223,6 +222,7 @@ describe('createToolCallToolProvider', () => {
         if (outcome === 'throw') throw new Error('tool failed');
         if (outcome === 'stop') stopping = true;
         return createWorkflowResponse({
+          runTimes: 2,
           ...(outcome === 'error'
             ? { workflowRuntimeSummary: { errorCount: 1, errorText: 'tool failed' } }
             : {})
@@ -238,6 +238,8 @@ describe('createToolCallToolProvider', () => {
       else await first;
       expect(parent.toStoreRecord()).toEqual({ count: 1, nested: { items: [1] } });
       expect(workflowStreamResponse).not.toHaveBeenCalled();
+      // 失败或停止仍已消耗队列预算；抛错没有返回结果，无法计数。
+      expect(provider.getToolRunTimes()).toBe(outcome === 'throw' ? 0 : 2);
 
       stopping = false;
       runWorkflowMock.mockImplementationOnce(async () => {
@@ -314,6 +316,7 @@ describe('createToolCallToolProvider', () => {
       const updateNode = vi.spyOn(callbackMap, FlowNodeTypeEnum.variableUpdate);
       const paused = await provider.executeTool({ call: createCall('pause'), messages: [] });
       expect(paused.interactive).toMatchObject({ type: 'toolChildrenInteractive' });
+      expect(provider.getToolRunTimes()).toBeGreaterThan(0);
       expect(parent.get('counter')).toBe(42);
       expect(workflowStreamResponse).toHaveBeenCalledWith(
         workflowSseEvent.updateVariables({ counter: 42 })
@@ -529,7 +532,6 @@ describe('createToolCallToolProvider', () => {
   it.each([true, false])(
     'inherits parent stream=%s when executing workflow tools',
     async (stream) => {
-      const cacheToolFlowResponse = vi.fn();
       const workflowStreamResponse = vi.fn();
       runWorkflowMock.mockResolvedValue({
         toolResponse: {
@@ -549,7 +551,6 @@ describe('createToolCallToolProvider', () => {
       });
 
       const provider = await createProvider({
-        cacheToolFlowResponse,
         workflowProps: {
           runningAppInfo: { id: 'app_1' },
           runningUserInfo: { teamId: 'team_1', tmbId: 'tmb_1' },
@@ -579,21 +580,6 @@ describe('createToolCallToolProvider', () => {
           response: JSON.stringify({ answer: 'workflow ok' }, null, 2),
           usages: [{ moduleName: 'tool', totalPoints: 1 }],
           stop: false
-        })
-      );
-      expect(cacheToolFlowResponse).toHaveBeenCalledWith(
-        expect.objectContaining({
-          callId: 'call_search',
-          flowResponse: expect.objectContaining({
-            flowResponses: [
-              {
-                id: 'search',
-                nodeId: 'search',
-                moduleName: 'Search'
-              }
-            ],
-            flowUsages: [{ moduleName: 'tool', totalPoints: 1 }]
-          })
         })
       );
       expect(runWorkflowMock).toHaveBeenCalledWith(
@@ -687,7 +673,6 @@ describe('createToolCallToolProvider', () => {
         target: 'dataset_node_2'
       }
     ] as any;
-    const cacheToolFlowResponse = vi.fn();
     const provider = await createProvider({
       toolNodes: [
         createToolNode({
@@ -700,8 +685,7 @@ describe('createToolCallToolProvider', () => {
         })
       ],
       runtimeNodes,
-      runtimeEdges,
-      cacheToolFlowResponse
+      runtimeEdges
     });
 
     expect(provider.datasetSearchExecutor).toBeDefined();
@@ -775,16 +759,7 @@ describe('createToolCallToolProvider', () => {
       })
     );
     expect(result.response).toContain('quote_2');
-    expect(cacheToolFlowResponse).toHaveBeenCalledWith({
-      callId: 'call_dataset',
-      flowResponse: expect.objectContaining({
-        runTimes: 2,
-        flowResponses: expect.arrayContaining([
-          expect.objectContaining({ nodeId: 'dataset_node_1' }),
-          expect.objectContaining({ nodeId: 'dataset_node_2' })
-        ])
-      })
-    });
+    expect(provider.getToolRunTimes()).toBe(2);
   });
 
   it('always creates the direct-URL read file system executor', async () => {

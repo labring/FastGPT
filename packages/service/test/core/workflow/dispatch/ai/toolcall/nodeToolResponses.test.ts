@@ -232,8 +232,7 @@ describe('newly connectable nodes as tools', () => {
           lang: 'zh-CN' as any,
           workflowProps: nodeWorkflowProps,
           runtimeNodes: [codeNode],
-          runtimeEdges: [],
-          cacheToolFlowResponse: vi.fn()
+          runtimeEdges: []
         } as any);
         return provider.executeTool({
           call: {

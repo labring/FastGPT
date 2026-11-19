@@ -612,7 +612,7 @@ describe('runToolCall compression node responses', () => {
     }
   );
 
-  it('records context and tool-response compression as separate ToolCall detail rows', async () => {
+  it('passes ToolCall LLM params and streams only the final compressed tool response', async () => {
     const contextCompressUsage = {
       moduleName: 'account_usage:compress_llm_messages',
       modelId: '507f1f77bcf86cd799439011',
@@ -680,7 +680,6 @@ describe('runToolCall compression node responses', () => {
         ]
       })
     );
-    const flowResponses = result.toolDispatchFlowResponses.flatMap((item) => item.flowResponses);
 
     expect(result.requestIds).toEqual(['req_main']);
     expect(runAgentLoopMock).toHaveBeenCalledWith(
@@ -712,51 +711,6 @@ describe('runToolCall compression node responses', () => {
         })
       })
     );
-    expect(flowResponses[0].id).toBe('req_context_compress');
-    expect(flowResponses[0].nodeId).toBe(flowResponses[0].id);
-    expect(flowResponses[2].id).toBe('req_tool_response_compress');
-    expect(flowResponses[2].parentId).toBe('search');
-    expect(flowResponses[2].compressTextAgent).toBeUndefined();
-    expect(flowResponses).toEqual([
-      expect.objectContaining({
-        moduleName: 'chat:compress_llm_messages',
-        moduleType: FlowNodeTypeEnum.toolCall,
-        moduleLogo: 'core/app/agent/child/contextCompress',
-        runningTime: 0.12,
-        model: 'GPT-4',
-        llmRequestIds: ['req_context_compress'],
-        inputTokens: 20,
-        outputTokens: 4,
-        totalPoints: 0.2,
-        compressTextAgent: {
-          inputTokens: 20,
-          outputTokens: 4,
-          totalPoints: 0.2
-        }
-      }),
-      expect.objectContaining({
-        nodeId: 'search',
-        moduleName: 'Search'
-      }),
-      expect.objectContaining({
-        id: 'req_tool_response_compress',
-        parentId: 'search',
-        moduleName: 'chat:tool_response_compress',
-        moduleType: FlowNodeTypeEnum.toolCall,
-        moduleLogo: 'core/app/agent/child/contextCompress',
-        runningTime: 0.34,
-        model: 'GPT-4',
-        llmRequestIds: ['req_tool_response_compress'],
-        inputTokens: 30,
-        outputTokens: 6,
-        totalPoints: 0.3,
-        textOutput: 'compressed tool response'
-      })
-    ]);
-    expect(result.toolDispatchFlowResponses.map((item) => item.flowUsages)).toEqual([
-      [contextCompressUsage],
-      expect.arrayContaining([toolResponseCompressUsage])
-    ]);
     expect(
       workflowStreamResponse.mock.calls.filter(
         ([event]) => event.event === 'toolResponse' && event.id === 'call_search'
@@ -801,6 +755,7 @@ describe('runToolCall compression node responses', () => {
         llmInputTokens: 11,
         llmOutputTokens: 7
       },
+      runTimes: 2,
       workflowInteractiveResponse: undefined
     });
     runAgentLoopMock.mockImplementation(async (options) => {
@@ -819,12 +774,13 @@ describe('runToolCall compression node responses', () => {
       return createLoopResult({ usages: [] });
     });
 
-    await runToolCall(props);
+    const result = await runToolCall(props);
 
     expect(props.nodeSummary).toMatchObject({
       llmInputTokens: 11,
       llmOutputTokens: 7
     });
+    expect(result.toolRunTimes).toBe(2);
   });
 
   it('preserves user config failures from the normal core error result', async () => {
@@ -880,61 +836,6 @@ describe('runToolCall compression node responses', () => {
     expect(nodeResponseSink.publish).not.toHaveBeenCalled();
   });
 
-  it('keeps compression child node responses when compression has no requestId', async () => {
-    const usage = {
-      moduleName: 'account_usage:compress_llm_messages',
-      totalPoints: 0.1
-    };
-
-    runAgentLoopMock.mockImplementation(async (options) => {
-      options.runtime.emitEvent({
-        type: 'after_message_compress',
-        modelName: 'GPT-4',
-        usages: [usage],
-        requestIds: [],
-        seconds: 0.1
-      });
-      options.runtime.usagePush?.([usage]);
-
-      return createLoopResult();
-    });
-
-    const result = await runToolCall(createProps());
-    const [flowResponse] = result.toolDispatchFlowResponses.flatMap((item) => item.flowResponses);
-
-    expect(result.requestIds).toEqual(['req_main']);
-    expect(flowResponse).toEqual(
-      expect.objectContaining({
-        moduleName: 'chat:compress_llm_messages',
-        llmRequestIds: undefined,
-        totalPoints: 0.1,
-        compressTextAgent: {
-          inputTokens: 0,
-          outputTokens: 0,
-          totalPoints: 0.1
-        }
-      })
-    );
-  });
-
-  it('ignores context compression callbacks without usage', async () => {
-    runAgentLoopMock.mockImplementation(async (options) => {
-      options.runtime.emitEvent({
-        type: 'after_message_compress',
-        modelName: 'GPT-4',
-        requestIds: [],
-        seconds: 0.1
-      });
-
-      return createLoopResult();
-    });
-
-    const result = await runToolCall(createProps());
-
-    expect(result.requestIds).toEqual(['req_main']);
-    expect(result.toolDispatchFlowResponses).toEqual([]);
-  });
-
   it('only includes parent agent-call usage in ToolCall model totals', async () => {
     runAgentLoopMock.mockResolvedValue(
       createLoopResult({
@@ -962,70 +863,7 @@ describe('runToolCall compression node responses', () => {
     expect(result.toolCallTotalPoints).toBe(1);
   });
 
-  it('records the completed tool flow response after onToolRunEnd with a flat compression row', async () => {
-    const toolResponseCompressUsage = {
-      moduleName: 'account_usage:tool_response_compress',
-      modelId: '507f1f77bcf86cd799439011',
-      inputTokens: 30,
-      outputTokens: 6,
-      totalPoints: 0.3
-    };
-
-    runAgentLoopMock.mockImplementation(async (options) => {
-      const call = {
-        id: 'call_search',
-        type: 'function',
-        function: {
-          name: 'search',
-          arguments: '{}'
-        }
-      };
-
-      await options.runtime.executeTool({ call, messages: [] });
-      options.runtime.emitEvent({
-        type: 'tool_run_end',
-        call,
-        response: 'raw tool response',
-        seconds: 0.56,
-        toolResponseCompress: {
-          response: 'compressed tool response',
-          modelName: 'GPT-4',
-          usage: toolResponseCompressUsage,
-          requestIds: ['req_tool_response_compress'],
-          seconds: 0.34
-        }
-      });
-
-      return createLoopResult();
-    });
-
-    const result = await runToolCall(
-      createProps({
-        toolNodes: [
-          {
-            nodeId: 'search',
-            name: 'Search',
-            flowNodeType: FlowNodeTypeEnum.tool,
-            avatar: 'tool-avatar',
-            inputs: []
-          }
-        ]
-      })
-    );
-    const [toolFlowResponse] = result.toolDispatchFlowResponses;
-    expect(toolFlowResponse.flowResponses).toEqual([
-      expect.objectContaining({ id: 'search' }),
-      expect.objectContaining({
-        parentId: 'search',
-        moduleName: 'chat:tool_response_compress',
-        textOutput: 'compressed tool response',
-        llmRequestIds: ['req_tool_response_compress']
-      })
-    ]);
-    expect(toolFlowResponse.flowUsages).toContain(toolResponseCompressUsage);
-  });
-
-  it('executes sandbox as an agent-loop system tool and appends sandbox node response', async () => {
+  it('executes sandbox as an agent-loop system tool', async () => {
     getTestInstanceConfig().subservice.agentSandbox.provider = 'opensandbox';
     runAgentLoopMock.mockImplementation(async (options) => {
       expect(options.runtime.systemTools).toEqual(
@@ -1071,23 +909,9 @@ describe('runToolCall compression node responses', () => {
         sandboxClient: {} as any
       })
     );
-    const [sandboxFlowResponse] = result.toolDispatchFlowResponses;
-    const [sandboxNodeResponse] = sandboxFlowResponse.flowResponses;
 
-    expect(sandboxNodeResponse).toEqual(
-      expect.objectContaining({
-        moduleName: 'Run shell',
-        moduleType: FlowNodeTypeEnum.tool,
-        moduleLogo: 'sandbox-avatar',
-        toolId: SANDBOX_SHELL_TOOL_NAME,
-        toolInput: {
-          command: 'pwd'
-        },
-        toolRes: 'sandbox output',
-        totalPoints: 0
-      })
-    );
-    expect(sandboxFlowResponse.flowUsages).toEqual([]);
+    // 内置工具不运行工作流，不消耗队列预算。
+    expect(result.toolRunTimes).toBe(0);
   });
 
   it('passes known and dynamically generated URLs directly to read_files', async () => {
@@ -1161,12 +985,7 @@ describe('runToolCall compression node responses', () => {
         files: [{ url: 'https://files/known.pdf' }, { url: 'https://files/missing.pdf' }]
       })
     );
-    expect(result.toolDispatchFlowResponses[0].flowResponses[0]).toEqual(
-      expect.objectContaining({
-        id: 'call_read',
-        moduleName: 'File parse'
-      })
-    );
+    expect(result.toolRunTimes).toBe(0);
   });
 
   it('executes dataset search as an agent-loop system tool', async () => {
@@ -1249,7 +1068,7 @@ describe('runToolCall compression node responses', () => {
       }
     ];
 
-    const result = await runToolCall(
+    await runToolCall(
       createProps({
         runtimeNodes,
         runtimeEdges,
@@ -1296,67 +1115,5 @@ describe('runToolCall compression node responses', () => {
     expect(workflowCall.runtimeEdges).not.toBe(runtimeEdges);
     expect(runtimeNodes[0]).not.toHaveProperty('isEntry');
     expect(runtimeEdges[0]).toEqual({ target: 'dataset_node' });
-    expect(result.toolDispatchFlowResponses[0].flowResponses[0]).toEqual(
-      expect.objectContaining({
-        moduleName: 'Dataset search',
-        moduleType: FlowNodeTypeEnum.datasetSearchNode
-      })
-    );
-  });
-
-  it('preserves a failed tool node response when tool execution throws before returning flowResponse', async () => {
-    runWorkflowMock.mockRejectedValueOnce(new Error('network failed'));
-    runAgentLoopMock.mockImplementation(async (options) => {
-      const call = {
-        id: 'call_search',
-        type: 'function',
-        function: {
-          name: 'search',
-          arguments: '{"query":"FastGPT"}'
-        }
-      };
-
-      try {
-        await options.runtime.executeTool({ call, messages: [] });
-      } catch {
-        options.runtime.emitEvent({
-          type: 'tool_run_end',
-          call,
-          response: 'Tool error: network failed',
-          errorMessage: 'Tool error: network failed',
-          seconds: 0.56
-        });
-      }
-
-      return createLoopResult();
-    });
-
-    const result = await runToolCall(
-      createProps({
-        toolNodes: [
-          {
-            nodeId: 'search',
-            name: 'Search',
-            flowNodeType: FlowNodeTypeEnum.tool,
-            avatar: 'tool-avatar',
-            inputs: []
-          }
-        ]
-      })
-    );
-
-    expect(result.toolDispatchFlowResponses).toEqual([
-      expect.objectContaining({
-        flowResponses: [
-          expect.objectContaining({
-            id: 'call_search',
-            moduleName: 'Search',
-            moduleType: FlowNodeTypeEnum.tool,
-            errorText: 'Tool error: network failed',
-            toolRes: 'Tool error: network failed'
-          })
-        ]
-      })
-    ]);
   });
 });

@@ -9,8 +9,7 @@ import {
   createAgentLoopCoreReadFileExecutor,
   createAgentLoopCoreWorkflowSystemToolExecutor,
   createAgentLoopCoreWorkflowToolRunner,
-  type CreateAgentLoopCoreWorkflowToolRunnerParams,
-  type AgentLoopCoreToolRunFlowResponse
+  type CreateAgentLoopCoreWorkflowToolRunnerParams
 } from '../../agentLoopCore/interface';
 import { runWorkflow } from '../../../index';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -19,11 +18,6 @@ import { dispatchWorkflowReadFiles } from '../../readFiles';
 import { getWorkflowContext, runWithContext } from '../../../context';
 import type { DispatchFlowResponse } from '../../../type';
 import { WorkflowRunStateSnapshot } from '../../../utils/containerRunState';
-
-type CacheToolFlowResponse = (args: {
-  callId: string;
-  flowResponse?: AgentLoopCoreToolRunFlowResponse;
-}) => void;
 
 /**
  * 创建 ToolCall 节点的工具 provider。
@@ -40,7 +34,6 @@ export const createToolCallToolProvider = async ({
   workflowProps,
   runtimeNodes,
   runtimeEdges,
-  cacheToolFlowResponse,
   onWorkflowRuntimeSummary
 }: {
   messages: DispatchToolModuleProps['messages'];
@@ -53,7 +46,6 @@ export const createToolCallToolProvider = async ({
   >;
   runtimeNodes: DispatchToolModuleProps['runtimeNodes'];
   runtimeEdges: DispatchToolModuleProps['runtimeEdges'];
-  cacheToolFlowResponse: CacheToolFlowResponse;
   onWorkflowRuntimeSummary?: (summary?: DispatchFlowResponse['workflowRuntimeSummary']) => void;
 }): Promise<ToolCallToolProvider> => {
   const memoryContext = getWorkflowContext().memoryContext;
@@ -68,6 +60,8 @@ export const createToolCallToolProvider = async ({
     .map((toolNode) => toolNode.nodeId);
   const parentContext = getWorkflowContext();
   const parentVariableContext = parentContext.variableContext;
+  // 只统计子流程实际返回的次数；队列用它扣减本层预算，抛错的子流程没有可计数结果。
+  let toolRunTimes = 0;
 
   /**
    * 每次工具调用使用独立变量快照；正常完成或交互暂停时提交已完成节点的变量增量。
@@ -105,6 +99,7 @@ export const createToolCallToolProvider = async ({
         })
       );
       memoryContext.merge(result[DispatchNodeResponseKeyEnum.memories]);
+      toolRunTimes += result[DispatchNodeResponseKeyEnum.runTimes] ?? 0;
       onWorkflowRuntimeSummary?.(result.workflowRuntimeSummary);
 
       if (!result.workflowRuntimeSummary.errorCount && !parentContext.checkIsStopping()) {
@@ -128,8 +123,7 @@ export const createToolCallToolProvider = async ({
     runtimeNodes,
     runtimeEdges,
     getToolInfo,
-    runWorkflowTool,
-    cacheToolFlowResponse
+    runWorkflowTool
   });
   const { fileContext } = getWorkflowContext();
   const readFileMaxFileAmount = fileContext.limits.maxFileAmount;
@@ -174,14 +168,14 @@ export const createToolCallToolProvider = async ({
     },
     readFileExecutor,
     readFileMaxFileAmount,
+    getToolRunTimes: () => toolRunTimes,
     datasetSearchExecutor:
       datasetSearchNodeIds.length > 0
         ? createAgentLoopCoreWorkflowSystemToolExecutor({
             runtimeNodes,
             runtimeEdges,
             entryNodeIds: datasetSearchNodeIds,
-            runWorkflowTool,
-            cacheToolFlowResponse
+            runWorkflowTool
           })
         : undefined
   };

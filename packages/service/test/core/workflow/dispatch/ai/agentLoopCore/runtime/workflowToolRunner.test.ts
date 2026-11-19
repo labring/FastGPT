@@ -43,18 +43,15 @@ const createRunner = ({
   runtimeEdges?: any[];
   runWorkflowTool?: ReturnType<typeof vi.fn>;
 }) => {
-  const cacheToolFlowResponse = vi.fn();
   const runner = createAgentLoopCoreWorkflowToolRunner({
     runtimeNodes,
     runtimeEdges,
     getToolInfo,
-    runWorkflowTool,
-    cacheToolFlowResponse
+    runWorkflowTool
   });
 
   return {
     ...runner,
-    cacheToolFlowResponse,
     runWorkflowTool
   };
 };
@@ -282,8 +279,8 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
     expect(runtimeNodes[0].outputs[0].value.count).toBe(1);
   });
 
-  it('returns a stable not-found result without caching flow response', async () => {
-    const { runTool, cacheToolFlowResponse } = createRunner({
+  it('returns a stable not-found result without running a workflow', async () => {
+    const { runTool, runWorkflowTool } = createRunner({
       getToolInfo: () => undefined
     });
 
@@ -298,11 +295,11 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
       interactive: undefined,
       stop: false
     });
-    expect(cacheToolFlowResponse).not.toHaveBeenCalled();
+    expect(runWorkflowTool).not.toHaveBeenCalled();
   });
 
   it('does not execute sandbox system tools through the runtime tool runner', async () => {
-    const { runTool, cacheToolFlowResponse } = createRunner({
+    const { runTool, runWorkflowTool } = createRunner({
       getToolInfo: () => ({
         type: 'sandbox',
         name: 'Run shell',
@@ -325,11 +322,11 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
       interactive: undefined,
       stop: false
     });
-    expect(cacheToolFlowResponse).not.toHaveBeenCalled();
+    expect(runWorkflowTool).not.toHaveBeenCalled();
   });
 
   it('does not execute read-file system tools through the runtime tool runner', async () => {
-    const { runTool, cacheToolFlowResponse } = createRunner({
+    const { runTool, runWorkflowTool } = createRunner({
       getToolInfo: () => ({
         type: 'file',
         name: 'File parse',
@@ -351,11 +348,11 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
       interactive: undefined,
       stop: false
     });
-    expect(cacheToolFlowResponse).not.toHaveBeenCalled();
+    expect(runWorkflowTool).not.toHaveBeenCalled();
   });
 
   it('does not execute dataset search system tools through the runtime tool runner', async () => {
-    const { runTool, cacheToolFlowResponse } = createRunner({
+    const { runTool, runWorkflowTool } = createRunner({
       getToolInfo: () => ({
         type: 'datasetSearch',
         name: 'Dataset search',
@@ -378,7 +375,7 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
       interactive: undefined,
       stop: false
     });
-    expect(cacheToolFlowResponse).not.toHaveBeenCalled();
+    expect(runWorkflowTool).not.toHaveBeenCalled();
   });
 
   it('runs user workflow tools and interactive resume paths', async () => {
@@ -447,7 +444,7 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
           }
         ]
       });
-    const { runTool, runInteractiveTool, cacheToolFlowResponse } = createRunner({
+    const { runTool, runInteractiveTool } = createRunner({
       runtimeNodes,
       runtimeEdges,
       runWorkflowTool,
@@ -526,17 +523,6 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
         content: 'nested result'
       }
     ]);
-    expect(cacheToolFlowResponse).toHaveBeenCalledWith({
-      callId: call.id,
-      flowResponse: expect.objectContaining({
-        flowUsages: [usage],
-        flowResponses: [
-          {
-            toolStop: true
-          }
-        ]
-      })
-    });
 
     const interactiveResult = await runInteractiveTool({
       childrenResponse: {
@@ -545,16 +531,12 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
       toolCallId: 'call_interactive'
     } as any);
 
-    expect(cacheToolFlowResponse).toHaveBeenLastCalledWith({
-      callId: 'call_interactive',
-      flowResponse: expect.objectContaining({
-        flowResponses: [
-          {
-            toolStop: false
-          }
-        ]
+    expect(runWorkflowTool).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        callId: 'call_interactive',
+        lastInteractive: { entryNodeIds: ['search'] }
       })
-    });
+    );
     expect(interactiveResult).toEqual({
       response: 'interactive ok',
       assistantMessages: [],

@@ -44,7 +44,7 @@ baseline: "cd4fea54d75c013464761450262dfb7ef135edb2"
 
 ## 前置准备
 
-- 脚本配置见 [流、列表与数据库测试配置](../../../skills/system/fastgpt-integration-test-runner/references/stream-history-database.md)。使用专用主站、Mongo、Redis 和正常发布的 55 段确定回复/gate/尾段工作流；脚本内部启动真实 Chromium。C5 内存限制仅修改带本轮 marker 的私有 Redis，结束恢复原配置。
+- 脚本配置见 [流、列表与数据库测试配置](../../../skills/system/fastgpt-integration-test-runner/references/stream-history-database.md)。使用专用主站、Mongo、Redis 和正常发布的 55 段确定回复/gate/尾段工作流；脚本内部启动真实 Chromium。C5 的内存限制由操作者预先配置在独占 Redis 实例上，脚本不修改配置，准入条件见下方 C5 说明。
 
 - 复用 FG-CHAT-CONVERSATION-001 的数据隔离、鉴权、查询和清理；D0 增加两个 gate：先输出 RUN 的第一段，再等待，再输出第二段。需要 replay 分页时用受控输出产生至少 51 条实际缓存事件。
 - 记录 `STREAM_RESUME_TTL_SECONDS`、`STREAM_RESUME_POST_COMPLETE_TTL_SECONDS`、内存阈值和检查缓存间隔；不把 mirror TTL 写成 lease 的 60 秒。使用 `getStreamResumeRedisKeys`/adapter 确认物理 key，读取 `XRANGE/XLEN/TTL` 和 active/unavailable 状态。

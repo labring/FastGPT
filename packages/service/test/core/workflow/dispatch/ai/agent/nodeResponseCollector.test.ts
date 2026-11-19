@@ -32,17 +32,15 @@ describe('createAgentNodeResponseCollector', () => {
   });
 
   it('存在 nodeResponseParentId 时为未携带 parentId 的步骤补齐父节点，并保留已有深层 parentId', async () => {
-    const publishedEntries: Array<{ response: ChatHistoryItemResType; parentId?: string }> = [];
-    const nodeResponseSink = {
-      publish: vi.fn(
-        async (entries: Array<{ response: ChatHistoryItemResType; parentId?: string }>) => {
-          publishedEntries.push(...entries);
-          return entries.map((entry) => entry.response);
-        }
-      )
-    } as unknown as Parameters<typeof createAgentNodeResponseCollector>[0]['nodeResponseSink'];
+    const publishedResponses: ChatHistoryItemResType[] = [];
+    const output = {
+      publish: vi.fn(async (entries: Array<{ response: ChatHistoryItemResType }>) => {
+        publishedResponses.push(...entries.map((entry) => entry.response));
+        return entries.map((entry) => entry.response);
+      })
+    };
     const collector = createAgentNodeResponseCollector({
-      nodeResponseSink,
+      nodeResponseSink: createWorkflowEntryNodeResponseSink({ output }),
       nodeResponseParentId: 'agent_root_id'
     });
 
@@ -53,18 +51,10 @@ describe('createAgentNodeResponseCollector', () => {
     });
     await collector.flush();
 
-    expect(publishedEntries).toEqual([
-      {
-        response: makeResponse('step_1'),
-        parentId: 'agent_root_id'
-      },
-      {
-        response: {
-          ...makeResponse('tool_compress_1'),
-          parentId: 'tool_call_1'
-        },
-        parentId: 'tool_call_1'
-      }
+    // 真实响应 Scope 会把父 ID 归一化到响应本身，再交给请求级 output。
+    expect(publishedResponses).toEqual([
+      { ...makeResponse('step_1'), parentId: 'agent_root_id' },
+      { ...makeResponse('tool_compress_1'), parentId: 'tool_call_1' }
     ]);
   });
 });
