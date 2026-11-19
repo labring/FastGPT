@@ -26,6 +26,7 @@ import { type CollectionTagFilterItem } from '@fastgpt/global/core/dataset/type'
 import { useRouter } from 'next/router';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { type WebsiteConfigFormType } from './WebsiteConfig';
+import type { CollectionListHeaderSelection } from './CollectionListHeaderMenu';
 
 const WebSiteConfigModal = dynamic(() => import('./WebsiteConfig'));
 
@@ -44,6 +45,8 @@ type CollectionPageContextType = {
   setSearchText: Dispatch<SetStateAction<string>>;
   tagFilters: CollectionTagFilterItem[];
   setTagFilters: Dispatch<SetStateAction<CollectionTagFilterItem[]>>;
+  headerSelection?: CollectionListHeaderSelection;
+  setHeaderSelection: (selection: CollectionListHeaderSelection | undefined) => void;
 };
 
 export const CollectionPageContext = createContext<CollectionPageContextType>({
@@ -72,6 +75,9 @@ export const CollectionPageContext = createContext<CollectionPageContextType>({
   tagFilters: [],
   setTagFilters: function (_value: SetStateAction<CollectionTagFilterItem[]>): void {
     throw new Error('Function not implemented.');
+  },
+  setHeaderSelection: function (_selection: CollectionListHeaderSelection | undefined): void {
+    throw new Error('Function not implemented.');
   }
 });
 
@@ -91,6 +97,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   // collection list
   const [searchText, setSearchText] = useState('');
   const [tagFilters, setTagFilters] = useState<CollectionTagFilterItem[]>([]);
+  const [headerSelection, setHeaderSelection] = useState<CollectionListHeaderSelection>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const loadCollections = useCallback(
@@ -119,9 +126,18 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       datasetId,
       parentId,
       searchText,
-      tagFilters
+      tagFilters,
+      sortBy: 'createTime',
+      sortOrder: 'asc',
+      ...headerSelection?.params
     },
-    refreshDeps: [parentId, searchText, tagFilters, datasetDetail.collectionPermissionEnabled],
+    refreshDeps: [
+      parentId,
+      searchText,
+      tagFilters,
+      headerSelection,
+      datasetDetail.collectionPermissionEnabled
+    ],
     scrollContainerRef
   });
 
@@ -184,6 +200,8 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       setSearchText,
       tagFilters,
       setTagFilters,
+      headerSelection,
+      setHeaderSelection,
       collections,
       Pagination,
       total,
@@ -198,6 +216,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       collections,
       tagFilters,
       getData,
+      headerSelection,
       isInitialLoading,
       onOpenWebsiteModal,
       onSyncDataset,

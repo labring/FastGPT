@@ -1,5 +1,11 @@
 import listHandler from '@/pages/api/core/dataset/collection/listV2';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  CollectionTrainingStatusEnum,
+  DatasetCollectionDataProcessModeEnum,
+  DatasetCollectionTypeEnum,
+  TrainingModeEnum
+} from '@fastgpt/global/core/dataset/constants';
+import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import {
   OwnerRoleVal,
   PerResourceTypeEnum,
@@ -7,6 +13,8 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import pathsHandler from '@/pages/api/core/dataset/collection/paths';
 import detailHandler from '@/pages/api/core/dataset/collection/detail';
@@ -127,6 +135,27 @@ describe('collection listV2 navigation folders', () => {
     expect(response.data.list.map((item) => String(item._id))).toEqual([String(file._id)]);
   });
 
+  it('does not match navigation-only or unreadable folders in the ready status filter', async () => {
+    const { member, dataset, folder, file } = await setup();
+    const params = {
+      datasetId: dataset._id,
+      pageSize: 10,
+      offset: 0,
+      statusFilter: { status: CollectionTrainingStatusEnum.ready }
+    };
+
+    const root = await Call(listHandler, { auth: member, body: params });
+    expect(root.code).toBe(200);
+    expect(root.data).toEqual({ total: 0, list: [] });
+
+    const child = await Call(listHandler, {
+      auth: member,
+      body: { ...params, parentId: String(folder._id) }
+    });
+    expect(child.code).toBe(200);
+    expect(child.data).toMatchObject({ total: 1, list: [{ _id: String(file._id) }] });
+  });
+
   it('rejects browsing into a folder without readable descendants', async () => {
     const { member, dataset, emptyFolder } = await setup();
 
@@ -188,6 +217,69 @@ describe('collection listV2 sort', () => {
 
     return { root, dataset, createCollection, list };
   };
+
+  it('filters processing mode and displayed training status before paginating', async () => {
+    const { root, dataset, createCollection } = await createFixture();
+    const chunk = await createCollection('a-chunk', {
+      trainingType: DatasetCollectionDataProcessModeEnum.chunk
+    });
+    const qa = await createCollection('b-qa', {
+      trainingType: DatasetCollectionDataProcessModeEnum.qa
+    });
+    const ready = await createCollection('c-qa-ready', {
+      trainingType: DatasetCollectionDataProcessModeEnum.qa
+    });
+    const scope = { teamId: root.teamId, tmbId: root.tmbId, datasetId: dataset._id };
+    await MongoDatasetTraining.create({
+      ...scope,
+      collectionId: chunk._id,
+      mode: TrainingModeEnum.parse,
+      billId: 'test',
+      retryCount: 1
+    });
+    await MongoDatasetData.create({
+      ...scope,
+      collectionId: qa._id,
+      q: 'saved content',
+      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexFailed
+    });
+
+    const query = async (filters: Record<string, unknown>) => {
+      const response = await Call(listHandler, {
+        auth: root,
+        body: { datasetId: dataset._id, pageSize: 1, offset: 0, sortBy: 'name', ...filters }
+      });
+      expect(response.code).toBe(200);
+      return response.data;
+    };
+
+    const qaMode = { trainingType: DatasetCollectionDataProcessModeEnum.qa, sortOrder: 'asc' };
+    expect(await query(qaMode)).toMatchObject({ total: 2, list: [{ _id: String(qa._id) }] });
+    expect(await query({ ...qaMode, offset: 1 })).toMatchObject({
+      total: 2,
+      list: [{ _id: String(ready._id) }]
+    });
+    expect(
+      await query({ statusFilter: { status: CollectionTrainingStatusEnum.ready } })
+    ).toMatchObject({ total: 1, list: [{ _id: String(ready._id) }] });
+    expect(
+      await query({ statusFilter: { status: CollectionTrainingStatusEnum.error } })
+    ).toMatchObject({
+      total: 1,
+      list: [{ _id: String(qa._id), slowestTrainingStatus: CollectionTrainingStatusEnum.error }]
+    });
+    const running = { status: CollectionTrainingStatusEnum.running };
+    expect(
+      await query({ statusFilter: { ...running, modes: [TrainingModeEnum.parse] } })
+    ).toMatchObject({
+      total: 1,
+      list: [{ _id: String(chunk._id), slowestTrainingMode: TrainingModeEnum.parse }]
+    });
+    expect(await query({ statusFilter: { ...running, modes: [TrainingModeEnum.index] } })).toEqual({
+      total: 0,
+      list: []
+    });
+  });
 
   it('sorts by name/createTime/updateTime, and defaults to updateTime desc', async () => {
     const { createCollection, list } = await createFixture();

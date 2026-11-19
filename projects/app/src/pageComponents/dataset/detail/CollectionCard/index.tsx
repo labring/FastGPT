@@ -55,6 +55,7 @@ import type { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/datas
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
 import { CollectionPageContext } from './Context';
+import CollectionListHeaderMenu from './CollectionListHeaderMenu';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
@@ -124,8 +125,11 @@ const CollectionCard = () => {
     isInitialLoading,
     pageNum,
     pageSize,
-    scrollContainerRef
+    scrollContainerRef,
+    headerSelection,
+    setHeaderSelection
   } = useContextSelector(CollectionPageContext, (v) => v);
+  const headerMenuProps = { selection: headerSelection, onChange: setHeaderSelection };
 
   // Add file status icon
   const formatCollections = useMemo(
@@ -453,13 +457,35 @@ const CollectionCard = () => {
                 <Th py={4}>
                   <HStack>
                     <Checkbox isChecked={isSelecteAll} onChange={selectAllTrigger} />
-                    <Box>{t('common:Name')}</Box>
+                    <CollectionListHeaderMenu
+                      column="name"
+                      title={t('common:Name')}
+                      {...headerMenuProps}
+                    />
                   </HStack>
                 </Th>
-                <Th py={4}>{t('dataset:collection.training_type')}</Th>
+                <Th py={4}>
+                  <CollectionListHeaderMenu
+                    column="trainingType"
+                    title={t('dataset:collection.training_type')}
+                    {...headerMenuProps}
+                  />
+                </Th>
                 <Th py={4}>{t('dataset:collection_data_count')}</Th>
-                <Th py={4}>{t('dataset:collection.Create update time')}</Th>
-                <Th py={4}>{t('common:Status')}</Th>
+                <Th py={4}>
+                  <CollectionListHeaderMenu
+                    column="time"
+                    title={t('dataset:collection.Create update time')}
+                    {...headerMenuProps}
+                  />
+                </Th>
+                <Th py={4}>
+                  <CollectionListHeaderMenu
+                    column="status"
+                    title={t('common:Status')}
+                    {...headerMenuProps}
+                  />
+                </Th>
                 <Th py={4}>{t('dataset:Enable')}</Th>
                 <Th py={4} />
               </Tr>

@@ -8,6 +8,7 @@ import {
 } from '../../../../common/parentFolder/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import {
+  CollectionTrainingStatusEnum,
   DatasetCollectionSyncResultEnum,
   DatasetCollectionDataProcessModeEnum,
   TrainingModeEnum
@@ -210,7 +211,13 @@ export const GetCollectionDetailResponseSchema = DatasetCollectionItemSchema.met
 });
 export type GetCollectionDetailResponseType = z.infer<typeof GetCollectionDetailResponseSchema>;
 
-// ============= List Collections V2 =============
+/* ============================================================================
+ * API: 获取集合列表（分页）
+ * Route: POST /api/core/dataset/collection/listV2
+ * Method: POST
+ * Description: 搜索、筛选及排序当前成员可访问的知识库集合。
+ * Tags: ['知识库集合']
+ * ============================================================================ */
 /** 集合列表支持的排序字段。 */
 export const CollectionListSortByEnum = z.enum(['name', 'createTime', 'updateTime']);
 
@@ -222,6 +229,31 @@ export const ListCollectionV2BodySchema = createPaginationSchema({
   tagFilters: z.array(CollectionTagFilterItemSchema).optional().default([]).meta({
     description: '按标签值过滤。同一标签多值为 OR，不同标签为 AND'
   }),
+  trainingType: DatasetCollectionSchema.shape.trainingType.meta({
+    description: '按集合的处理模式筛选',
+    example: DatasetCollectionDataProcessModeEnum.qa
+  }),
+  statusFilter: z
+    .object({
+      status: z.enum(CollectionTrainingStatusEnum).meta({
+        description: '集合的最慢训练阶段状态',
+        example: CollectionTrainingStatusEnum.running
+      }),
+      modes: z
+        .array(z.enum(TrainingModeEnum))
+        .min(1)
+        .max(Object.keys(TrainingModeEnum).length)
+        .optional()
+        .meta({
+          description: '可选的最慢训练阶段列表，命中任一阶段即可',
+          example: [TrainingModeEnum.index]
+        })
+    })
+    .optional()
+    .meta({
+      description: '按集合状态筛选，可进一步限定训练阶段',
+      example: { status: CollectionTrainingStatusEnum.ready }
+    }),
   sortBy: CollectionListSortByEnum.optional().default('updateTime').meta({
     description: '排序字段，支持名称、创建时间和更新时间',
     example: 'name'

@@ -14,6 +14,7 @@ import {
   GetCollectionTrainingDetailQuerySchema,
   GetCollectionTrainingDetailResponseSchema,
   ListCollectionV2BodySchema,
+  ListCollectionV2ResponseSchema,
   GetTagFilterOptionsQuerySchema,
   GetTagFilterOptionsResponseSchema,
   ReadCollectionSourceBodyRawSchema,
@@ -130,7 +131,7 @@ export const DatasetCollectionPath: OpenAPIPath = {
     post: {
       summary: '获取集合列表（分页）',
       description:
-        '获取数据集集合列表，支持分页、搜索、标签过滤。需要数据集读权限；传入 parentId 时同时校验该文件夹读权限。知识库开启文件级权限后，列表按当前成员逐条可读的集合过滤，并返回每个集合的有效权限',
+        '获取数据集集合列表，支持分页、搜索、排序，以及按标签、处理模式和训练状态筛选。需要数据集读权限；传入 parentId 时同时校验该文件夹读权限。知识库开启文件级权限后，列表按当前成员逐条可读的集合过滤，并返回每个集合的有效权限',
       tags: [DevApiTagsMap.datasetCollection, SystemOpenApiTagMap.datasetCollection],
       requestBody: {
         content: {
@@ -141,7 +142,10 @@ export const DatasetCollectionPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回集合列表和总数'
+          description: '成功返回集合列表和筛选后的总数',
+          content: {
+            'application/json': { schema: ListCollectionV2ResponseSchema }
+          }
         }
       }
     }

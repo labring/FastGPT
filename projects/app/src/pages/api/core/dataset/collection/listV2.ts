@@ -1,6 +1,13 @@
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  CollectionTrainingStatusEnum,
+  DatasetCollectionTypeEnum
+} from '@fastgpt/global/core/dataset/constants';
+import {
+  datasetDataRebuildFailedStatuses,
+  rebuildingDatasetDataMatch
+} from '@fastgpt/global/core/dataset/data/utils';
 import {
   authDataset,
   authDatasetCollection
@@ -63,6 +70,47 @@ const defaultCollectionTrainingStatus = getCollectionTrainingStatusFromCounts({}
 type TrainingAmountAggregateItem = {
   _id: string;
   modeCounts: CollectionTrainingModeCount[];
+};
+
+/** 筛选要先于分页。只汇总可能改变集合状态的任务和重建数据，沿用列表的最慢阶段判定。 */
+const loadCollectionTrainingStatuses = async (scope: {
+  teamId: Types.ObjectId;
+  datasetId: Types.ObjectId;
+}) => {
+  const [training, rebuild] = await Promise.all([
+    MongoDatasetTraining.aggregate<TrainingAmountAggregateItem>(
+      getCollectionTrainingModeCountsPipeline(scope),
+      readFromSecondary
+    ),
+    MongoDatasetData.aggregate<DatasetDataRebuildStatusCounts & { _id: string }>(
+      [
+        {
+          $match: {
+            ...scope,
+            indexStatus: {
+              $in: [
+                ...rebuildingDatasetDataMatch.indexStatus.$in,
+                ...datasetDataRebuildFailedStatuses
+              ]
+            }
+          }
+        },
+        { $group: { _id: '$collectionId', ...datasetDataRebuildStatusCountFields } }
+      ],
+      readFromSecondary
+    )
+  ]);
+  const trainingById = new Map(training.map(({ _id, modeCounts }) => [String(_id), modeCounts]));
+  const rebuildById = new Map(rebuild.map((counts) => [String(counts._id), counts]));
+  return new Map(
+    Array.from(new Set([...trainingById.keys(), ...rebuildById.keys()]), (id) => [
+      id,
+      getCollectionTrainingStatusFromCounts({
+        modeCounts: trainingById.get(id),
+        rebuildCounts: rebuildById.get(id)
+      })
+    ])
+  );
 };
 
 /**
@@ -167,6 +215,8 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     searchText: rawSearchText,
     selectFolder,
     tagFilters,
+    trainingType,
+    statusFilter,
     sortBy,
     sortOrder,
     simple
@@ -306,13 +356,47 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     }
   }
 
-  const match = {
+  const datasetScope = {
     teamId: new Types.ObjectId(teamId),
-    datasetId: new Types.ObjectId(datasetId),
+    datasetId: new Types.ObjectId(datasetId)
+  };
+  const trainingStatuses = statusFilter
+    ? await loadCollectionTrainingStatuses(datasetScope)
+    : undefined;
+  const statusMatch = (() => {
+    if (!statusFilter || !trainingStatuses) return {};
+
+    const { status, modes } = statusFilter;
+    // 没有剩余任务的集合也处于就绪状态。导航目录的状态不展示，因此不作为筛选结果。
+    const ready = status === CollectionTrainingStatusEnum.ready && modes === undefined;
+    const ids = Array.from(trainingStatuses)
+      .filter(([, item]) =>
+        ready
+          ? item.slowestTrainingStatus !== status
+          : item.slowestTrainingStatus === status &&
+            (modes === undefined ||
+              (item.slowestTrainingMode !== undefined && modes.includes(item.slowestTrainingMode)))
+      )
+      .map(([id]) => new Types.ObjectId(id));
+    const navigationIds = Array.from(folderAccessModeMap)
+      .filter(([, mode]) => mode === 'navigate')
+      .map(([id]) => new Types.ObjectId(id));
+
+    return {
+      $and: [
+        ready ? { _id: { $nin: ids } } : { _id: { $in: ids } },
+        { _id: { $nin: navigationIds } }
+      ]
+    };
+  })();
+  const match = {
+    ...datasetScope,
     ...(selectFolder ? { type: DatasetCollectionTypeEnum.folder } : {}),
     ...scopeMatch,
     ...buildCollectionListTagMatch(tagFilters),
-    ...collectionIdFilter
+    ...collectionIdFilter,
+    ...(trainingType === undefined ? {} : { trainingType }),
+    ...statusMatch
   };
 
   const selectField = {
@@ -426,7 +510,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
         ...item,
         tags: folderAccessModeMap.get(String(item._id)) === 'navigate' ? [] : tags[index],
         dataAmount: 0,
-        ...defaultCollectionTrainingStatus,
+        ...(trainingStatuses?.get(String(item._id)) ?? defaultCollectionTrainingStatus),
         permission: getCollectionPermission(item, collectionPermissionMap),
         ...(folderAccessModeMap.has(String(item._id))
           ? { folderAccessMode: folderAccessModeMap.get(String(item._id)) }
@@ -449,28 +533,25 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     Map<string, CollectionPermission> | undefined,
     (CollectionTagLabelType[] | undefined)[]
   ] = await Promise.all([
-    MongoDatasetTraining.aggregate(
-      getCollectionTrainingModeCountsPipeline({
-        teamId: new Types.ObjectId(teamId),
-        datasetId: new Types.ObjectId(datasetId),
-        collectionId: { $in: collectionIds }
-      }),
-      readFromSecondary
-    ),
+    trainingStatuses
+      ? []
+      : MongoDatasetTraining.aggregate(
+          getCollectionTrainingModeCountsPipeline({
+            ...datasetScope,
+            collectionId: { $in: collectionIds }
+          }),
+          readFromSecondary
+        ),
     MongoDatasetData.aggregate(
       [
         {
-          $match: {
-            teamId: new Types.ObjectId(teamId),
-            datasetId: new Types.ObjectId(datasetId),
-            collectionId: { $in: collectionIds }
-          }
+          $match: { ...datasetScope, collectionId: { $in: collectionIds } }
         },
         {
           $group: {
             _id: '$collectionId',
             count: { $sum: 1 },
-            ...datasetDataRebuildStatusCountFields
+            ...(trainingStatuses ? {} : datasetDataRebuildStatusCountFields)
           }
         }
       ],
@@ -491,10 +572,12 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
       ...item,
       tags: folderAccessModeMap.get(collectionId) === 'navigate' ? [] : tags[index],
       dataAmount: dataCounts?.count ?? 0,
-      ...getCollectionTrainingStatusFromCounts({
-        modeCounts: trainingAmountMap.get(collectionId)?.modeCounts,
-        rebuildCounts: dataCounts
-      }),
+      ...(trainingStatuses
+        ? (trainingStatuses.get(collectionId) ?? defaultCollectionTrainingStatus)
+        : getCollectionTrainingStatusFromCounts({
+            modeCounts: trainingAmountMap.get(collectionId)?.modeCounts,
+            rebuildCounts: dataCounts
+          })),
       permission: getCollectionPermission(item, collectionPermissionMap),
       ...(folderAccessModeMap.has(collectionId)
         ? { folderAccessMode: folderAccessModeMap.get(collectionId) }

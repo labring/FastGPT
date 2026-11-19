@@ -13,6 +13,7 @@ const EmptyCollectionTip = () => {
   const tagFilters = useContextSelector(CollectionPageContext, (v) => v.tagFilters);
   const setTagFilters = useContextSelector(CollectionPageContext, (v) => v.setTagFilters);
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
+  const headerParams = useContextSelector(CollectionPageContext, (v) => v.headerSelection?.params);
 
   if (tagFilters.length > 0) {
     return (
@@ -33,6 +34,10 @@ const EmptyCollectionTip = () => {
         }
       />
     );
+  }
+
+  if (headerParams?.trainingType || headerParams?.statusFilter) {
+    return <EmptyTip text={t('dataset:collection_list.no_matches')} />;
   }
 
   return (
