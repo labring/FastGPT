@@ -178,7 +178,7 @@ describe('dispatchTool runtime toolset auth', () => {
   });
 
   it.each(['mcp', 'http'] as const)(
-    'passes Agent %s params through without schema validation',
+    'passes Agent %s params through to the tool',
     async (source) => {
       const schema = {
         type: 'object',
@@ -232,6 +232,79 @@ describe('dispatchTool runtime toolset auth', () => {
       }
     }
   );
+
+  it('rejects HTTP params that violate the property schema after variable resolution', async () => {
+    const tool = {
+      name: 'search',
+      description: 'Search',
+      path: '/search',
+      method: 'POST',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', pattern: '^user_[0-9]+$' },
+          count: { type: 'integer', minimum: 1 }
+        }
+      }
+    };
+    const nodes = [
+      { toolConfig: { httpToolSet: { baseUrl: 'https://example.com', toolList: [tool] } } }
+    ];
+    authAppByTmbIdMock.mockResolvedValue({ app: { _id: 'victim-toolset', modules: nodes } });
+    getAppVersionByIdMock.mockResolvedValue({ nodes });
+    getHTTPToolListMock.mockResolvedValue([tool]);
+    runHTTPToolMock.mockResolvedValue({ data: { ok: true } });
+
+    const props = createDispatchToolProps(
+      { httpTool: { toolId: 'http-victim-toolset/search' } },
+      { query: 'user_{{$VARIABLE_NODE_ID.id$}}', count: -1 }
+    );
+    props.fixedParamKeys = ['query', 'count'];
+    props.variableState.toRuntimeRecord.mockReturnValue({ id: 'abc' });
+
+    const result = await dispatchTool(props);
+
+    expect(result.errorMessage).toContain('query');
+    expect(result.errorMessage).toContain('count');
+    expect(runHTTPToolMock).not.toHaveBeenCalled();
+  });
+
+  it('passes HTTP params that satisfy the property schema after variable resolution', async () => {
+    const tool = {
+      name: 'search',
+      description: 'Search',
+      path: '/search',
+      method: 'POST',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', pattern: '^user_[0-9]+$' },
+          count: { type: 'integer', minimum: 1 }
+        }
+      }
+    };
+    const nodes = [
+      { toolConfig: { httpToolSet: { baseUrl: 'https://example.com', toolList: [tool] } } }
+    ];
+    authAppByTmbIdMock.mockResolvedValue({ app: { _id: 'victim-toolset', modules: nodes } });
+    getAppVersionByIdMock.mockResolvedValue({ nodes });
+    getHTTPToolListMock.mockResolvedValue([tool]);
+    runHTTPToolMock.mockResolvedValue({ data: { ok: true } });
+
+    const props = createDispatchToolProps(
+      { httpTool: { toolId: 'http-victim-toolset/search' } },
+      { query: 'user_{{$VARIABLE_NODE_ID.id$}}', count: 1 }
+    );
+    props.fixedParamKeys = ['query', 'count'];
+    props.variableState.toRuntimeRecord.mockReturnValue({ id: '42' });
+
+    const result = await dispatchTool(props);
+
+    expect(result.errorMessage).toBeUndefined();
+    expect(runHTTPToolMock).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ params: { query: 'user_42', count: 1 } })
+    );
+  });
 
   it.each(['mcp', 'http'] as const)(
     'executes an authorized %s child outside the snapshot selection and rejects denied calls',

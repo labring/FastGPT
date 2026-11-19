@@ -378,6 +378,37 @@ describe('rewriteRuntimeWorkFlow independent toolsets', () => {
     });
   });
 
+  it('keeps explicit AI input mode when expanding HTTP toolset children', async () => {
+    mocks.getHttpSchema.mockResolvedValue({ data: openApiSchema });
+    const nodes = [
+      {
+        ...createHttpToolSetNode([]),
+        inputs: [
+          {
+            key: 'search.query',
+            label: 'search.query',
+            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
+            selectedType: FlowNodeInputTypeEnum.agentGenerated,
+            canAgentGenerated: true,
+            valueType: WorkflowIOValueTypeEnum.string
+          }
+        ]
+      }
+    ];
+
+    await rewriteRuntimeWorkFlow({
+      teamId: 'team-1',
+      tmbId: 'member-1',
+      nodes,
+      edges: [createHttpSelectedToolEdge()]
+    });
+
+    const searchNode = nodes.find((node) => node.name.endsWith('/search'));
+    const queryInput = searchNode?.inputs.find((input) => input.key === 'query');
+    expect(queryInput?.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
+    expect(queryInput?.value).toBeUndefined();
+  });
+
   it('restores the parent connection from legacy child edges without discovering MCP tools', async () => {
     mocks.getMcpTools.mockResolvedValue([
       { name: 'search', description: 'Search', inputSchema: { type: 'object' } }

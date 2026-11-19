@@ -251,6 +251,7 @@ export const getExecuteTool = ({
               toolConfig: tool.toolConfig
             },
             params: requestParams,
+            fixedParamKeys: Object.keys(tool.params ?? {}),
             runningUserInfo,
             runningAppInfo,
             chatId,
