@@ -6,7 +6,10 @@ import { MongoDatasetTraining } from './schema';
 import { findAndLockTrainingTask, type FindAndLockTrainingTaskOptions } from './entity';
 import type { ClientSession } from '../../../common/mongo';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
-import { isNonRetryableModelError } from '@fastgpt/global/common/error/model';
+import {
+  getModelErrorRetryDelayMs,
+  isNonRetryableModelError
+} from '@fastgpt/global/common/error/model';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
@@ -19,6 +22,7 @@ import { getTrainingDataIndexStatuses, getTrainingTaskReadyUpdate } from './util
 import { BLOCKED_LOCK_TIME, finalErrorTrainingMatch } from './query';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.TRAINING);
+const MAX_TRAINING_RETRY_DELAY_MS = 24 * 60 * 60 * 1000;
 
 /** 失去租约不是业务失败，不扣重试次数，也不允许旧 worker 再写错误或结果。 */
 export class TrainingLeaseLostError extends Error {
@@ -185,7 +189,7 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
     {
       terminal,
       blocked = false,
-      retryDelayMs = TRAINING_LEASE_HEARTBEAT_MS
+      retryDelayMs
     }: { terminal?: boolean; blocked?: boolean; retryDelayMs?: number } = {}
   ) => {
     if (lost || error instanceof TrainingLeaseLostError) return;
@@ -193,6 +197,18 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
     const isTerminal = terminal ?? isNonRetryableModelError(error);
     const retryCount = isTerminal ? 0 : Math.max(0, task.retryCount - 1);
     const errorMsg = getErrText(error, 'unknown error');
+    const requestedRetryDelayMs = retryDelayMs ?? TRAINING_LEASE_HEARTBEAT_MS;
+    const upstreamRetryDelayMs = getModelErrorRetryDelayMs(error);
+    // 接续上游超出单次请求预算的 Retry-After 等待时间（不超过 24 小时，且不早于默认/显式延迟），
+    // 避免 429 长限流窗口下每分钟空转耗尽队列重试预算。
+    const effectiveRetryDelayMs =
+      upstreamRetryDelayMs !== undefined
+        ? Math.min(
+            Math.max(requestedRetryDelayMs, upstreamRetryDelayMs),
+            MAX_TRAINING_RETRY_DELAY_MS
+          )
+        : requestedRetryDelayMs;
+    const now = Date.now();
     try {
       await commit(async (session) => {
         const result = await MongoDatasetTraining.updateOne(
@@ -204,9 +220,14 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
               // 暂停使用统一锁时间；默认一分钟后重试，parse 可显式保留即时重试。
               lockTime: blocked
                 ? BLOCKED_LOCK_TIME
-                : new Date(Date.now() - TRAINING_LEASE_TIMEOUT_MS + retryDelayMs),
+                : new Date(now - TRAINING_LEASE_TIMEOUT_MS + effectiveRetryDelayMs),
               // 最终错误保留供用户重试，不能被 TTL 删除后留下无任务的 indexing 数据。
-              ...(retryCount === 0 ? { expireAt: null } : {})
+              // 长退避等待期间同步延后 expireAt，避免在下次重试到达前被 7 天 TTL 提前清理。
+              ...(retryCount === 0
+                ? { expireAt: null }
+                : !blocked && effectiveRetryDelayMs > TRAINING_LEASE_HEARTBEAT_MS
+                  ? { expireAt: new Date(now + effectiveRetryDelayMs) }
+                  : {})
             }
           },
           { session }

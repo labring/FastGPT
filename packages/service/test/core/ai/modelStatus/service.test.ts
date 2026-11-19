@@ -195,6 +195,18 @@ describe('probeModelStatus', () => {
     expect(result.error).not.toContain('common:code_error');
   });
 
+  it('preserves plain upstream error messages containing colons such as Rerank 401', async () => {
+    const test = vi.fn().mockRejectedValue(new Error('Unauthorized: Invalid API key'));
+
+    registerServerI18nLoaders(undefined);
+    const withoutLoaders = await probeModelStatus({ model, test });
+    expect(withoutLoaders.error).toBe('Test model: Unauthorized: Invalid API key');
+
+    registerServerI18nLoaders(generatedLoaders);
+    const withLoaders = await probeModelStatus({ model, test });
+    expect(withLoaders.error).toBe('Test model: Unauthorized: Invalid API key');
+  });
+
   it('declares the model-time lookup index and 30-day TTL index', () => {
     const indexes = MongoModelStatusProbeRecord.schema.indexes();
 

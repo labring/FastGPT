@@ -263,10 +263,12 @@ export async function getVectors({
     };
   } catch (error) {
     const cachedFailure = lastFailure.current;
-    const classification =
-      cachedFailure && cachedFailure.error === error
-        ? cachedFailure.classification
-        : classifyEmbeddingError(error, { signal });
+    const reused = cachedFailure && cachedFailure.error === error ? cachedFailure : undefined;
+    const classification = reused?.classification ?? classifyEmbeddingError(error, { signal });
+    // 最后一次 HTTP 失败会因 attempts 耗尽而跳过 shouldRetry，这里补读响应头保证上游长退避时间透传给队列层。
+    const retryAfterMs = classification.retryable
+      ? (reused?.retryAfterMs ?? getEmbeddingRetryDirective(error).retryAfterMs)
+      : undefined;
     const inputTypes = Array.from(new Set(inputs.map((item) => item.type)));
 
     // 主动中断/探活超时取消不属于上游故障，降级为 warn 并保留原异常。
@@ -286,13 +288,14 @@ export async function getVectors({
       errorCategory: classification.category,
       retryable: classification.retryable,
       errorCode: classification.errorCode,
+      ...(retryAfterMs !== undefined ? { retryAfterMs } : {}),
       upstreamStatus: classification.upstreamStatus,
       upstreamCode: classification.upstreamCode,
       upstreamType: classification.upstreamType,
       error
     });
 
-    return Promise.reject(normalizeEmbeddingError(error, { signal, classification }));
+    return Promise.reject(normalizeEmbeddingError(error, { signal, classification, retryAfterMs }));
   }
 }
 

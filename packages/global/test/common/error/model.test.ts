@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { isModelConfigError, isNonRetryableModelError } from '../../../common/error/model';
+import {
+  getModelErrorRetryDelayMs,
+  isModelConfigError,
+  isNonRetryableModelError
+} from '../../../common/error/model';
 import { ModelErrEnum } from '../../../common/error/code/model';
 import { UserError } from '../../../common/error/utils';
 
@@ -90,4 +94,30 @@ describe('isNonRetryableModelError', () => {
       expect(isNonRetryableModelError(error)).toBe(false);
     }
   );
+});
+
+describe('getModelErrorRetryDelayMs', () => {
+  it('returns finite non-negative retryAfterMs only for retryable errors', () => {
+    expect(
+      getModelErrorRetryDelayMs({
+        name: 'EmbeddingRequestError',
+        message: ModelErrEnum.rateLimited,
+        retryable: true,
+        retryAfterMs: 180_000
+      })
+    ).toBe(180_000);
+
+    expect(
+      getModelErrorRetryDelayMs({
+        name: 'EmbeddingRequestError',
+        message: ModelErrEnum.upstreamQuotaExceeded,
+        retryable: false,
+        retryAfterMs: 180_000
+      })
+    ).toBeUndefined();
+
+    expect(getModelErrorRetryDelayMs({ retryAfterMs: -1 })).toBeUndefined();
+    expect(getModelErrorRetryDelayMs({ retryAfterMs: Number.NaN })).toBeUndefined();
+    expect(getModelErrorRetryDelayMs(null)).toBeUndefined();
+  });
 });

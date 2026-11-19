@@ -313,17 +313,23 @@ export const getModelStatus = async (): Promise<GetModelStatusResponse> => {
   };
 };
 
-const I18N_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9_]*:/;
+/** 已登记业务错误使用的翻译键集合；仅对未成功翻译的已登记键降级，不误伤普通上游报错文本。 */
+const REGISTERED_ERROR_I18N_KEYS = new Set(
+  Object.values(ERROR_RESPONSE)
+    .map((item) => item?.message)
+    .filter((message): message is string => typeof message === 'string')
+);
 
 /**
  * 渲染模型探活失败的展示文本：后台探测记录、状态接口与 Webhook 接收端不会经过前端 i18n，
  * 必须在探活边界复用应用注入的英文 i18n 资源渲染 `namespace:key` 并保留错误码；
- * 若未注入资源或加载失败，回退通用可读提示与业务码，不对外暴露原始翻译键。
+ * 仅当已登记业务翻译键无法翻译时回退通用可读提示与业务码，普通上游脱敏报错文本原样保留。
  */
 const formatProbeErrorMessage = async (error: unknown): Promise<string> => {
   const raw = getErrText(error, 'Model test failed');
   const translated = await translateServerMessage(raw, LangEnum.en);
-  const message = I18N_KEY_PATTERN.test(translated) ? 'Model test failed' : translated;
+  const message =
+    translated === raw && REGISTERED_ERROR_I18N_KEYS.has(raw) ? 'Model test failed' : translated;
 
   const errorCode =
     isEmbeddingRequestError(error) && error.errorCode

@@ -236,7 +236,59 @@ describe('getVectors real OpenAI SDK HTTP retry budgets', () => {
     expect(err).toMatchObject({
       category: 'rateLimited',
       retryable: true,
+      retryAfterMs: 60_000,
       message: ModelErrEnum.rateLimited
+    });
+  });
+
+  it('preserves Retry-After from the final HTTP failure after in-request retries are exhausted', async () => {
+    let attempt = 0;
+    fetchMock.mockImplementation(async () => {
+      attempt++;
+      return jsonResponse(
+        429,
+        { error: { message: 'Rate limit exceeded', code: 'rate_limit_exceeded' } },
+        { 'retry-after': attempt < 3 ? '0' : '180' }
+      );
+    });
+
+    const err = await getVectors({
+      model: buildSystemEmbeddingModel(),
+      inputs: [{ type: 'text', input: 'hello' }]
+    }).catch((e) => e);
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(err).toBeInstanceOf(EmbeddingRequestError);
+    expect(err).toMatchObject({
+      category: 'rateLimited',
+      retryable: true,
+      retryAfterMs: 180_000,
+      message: ModelErrEnum.rateLimited
+    });
+  });
+
+  it('stops after 1 HTTP request for HTTP 400 invalid_request_error echoing rate_limit', async () => {
+    fetchMock.mockImplementation(async () =>
+      jsonResponse(400, {
+        error: {
+          message: "Unsupported value: 'rate_limit' for 'encoding_format'.",
+          type: 'invalid_request_error',
+          code: 'invalid_value'
+        }
+      })
+    );
+
+    const err = await getVectors({
+      model: buildSystemEmbeddingModel(),
+      inputs: [{ type: 'text', input: 'hello' }]
+    }).catch((e) => e);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(err).toBeInstanceOf(EmbeddingRequestError);
+    expect(err).toMatchObject({
+      category: 'invalidRequest',
+      retryable: false,
+      message: ModelErrEnum.invalidRequest
     });
   });
 

@@ -219,6 +219,77 @@ describe('createTrainingTaskLease', () => {
     }
   );
 
+  it('honors upstream retryAfterMs beyond 60s when scheduling next queue claim and extends expireAt', async () => {
+    const context = await createContext(DatasetDataIndexStatusEnum.indexing);
+    const task = await MongoDatasetTraining.create({
+      ...context,
+      tmbId: new Types.ObjectId(),
+      billId: 'test',
+      mode: TrainingModeEnum.index,
+      retryCount: 3,
+      lockTime: new Date()
+    });
+    const longRateLimitErr = new EmbeddingRequestError(ModelErrEnum.rateLimited, {
+      category: 'rateLimited',
+      retryable: true,
+      retryAfterMs: 180_000,
+      errorCode: ModelErrEnum.rateLimited
+    });
+    const beforeFail = Date.now();
+    const lease = createTrainingTaskLease(task);
+    try {
+      await lease.fail(longRateLimitErr);
+    } finally {
+      await lease.stop();
+    }
+
+    const rescheduled = await MongoDatasetTraining.findById(task._id).lean();
+    expect(rescheduled?.retryCount).toBe(2);
+    const nextClaimableAt = rescheduled!.lockTime.getTime() + TRAINING_LEASE_TIMEOUT_MS;
+    expect(nextClaimableAt - beforeFail).toBeGreaterThanOrEqual(179_000);
+    expect(nextClaimableAt - beforeFail).toBeLessThanOrEqual(185_000);
+    expect(rescheduled!.expireAt!.getTime() - beforeFail).toBeGreaterThanOrEqual(179_000);
+
+    // 未到 180 秒窗口前不应被提前领取。
+    const claimedTooEarly = await findAndLockTrainingTask({
+      mode: TrainingModeEnum.index,
+      filter: { _id: task._id }
+    });
+    expect(claimedTooEarly).toBeNull();
+  });
+
+  it('caps extreme upstream retryAfterMs to 24h so lockTime stays active below BLOCKED_LOCK_TIME', async () => {
+    const context = await createContext(DatasetDataIndexStatusEnum.indexing);
+    const task = await MongoDatasetTraining.create({
+      ...context,
+      tmbId: new Types.ObjectId(),
+      billId: 'test',
+      mode: TrainingModeEnum.index,
+      retryCount: 3,
+      lockTime: new Date()
+    });
+    const extremeErr = new EmbeddingRequestError(ModelErrEnum.rateLimited, {
+      category: 'rateLimited',
+      retryable: true,
+      retryAfterMs: 10 * 24 * 60 * 60 * 1000,
+      errorCode: ModelErrEnum.rateLimited
+    });
+    const beforeFail = Date.now();
+    const lease = createTrainingTaskLease(task);
+    try {
+      await lease.fail(extremeErr);
+    } finally {
+      await lease.stop();
+    }
+
+    const rescheduled = await MongoDatasetTraining.findById(task._id).lean();
+    const maxDelayMs = 24 * 60 * 60 * 1000;
+    const nextClaimableAt = rescheduled!.lockTime.getTime() + TRAINING_LEASE_TIMEOUT_MS;
+    expect(rescheduled!.lockTime.getTime()).toBeLessThan(BLOCKED_LOCK_TIME.getTime());
+    expect(nextClaimableAt - beforeFail).toBeGreaterThanOrEqual(maxDelayMs - 2000);
+    expect(nextClaimableAt - beforeFail).toBeLessThanOrEqual(maxDelayMs + 5000);
+  });
+
   it('respects explicit terminal=false override even on non-retryable model errors', async () => {
     const context = await createContext(DatasetDataIndexStatusEnum.indexing);
     const task = await MongoDatasetTraining.create({

@@ -47,3 +47,17 @@ export const isNonRetryableModelError = (error: unknown): boolean => {
 
   return typeof error === 'string' && NON_RETRYABLE_MODEL_ERROR_CODES.has(error);
 };
+
+/**
+ * 读取模型错误上附带的上游建议重试等待毫秒数（兼容跨 bundle 序列化）。
+ * 仅对可重试错误返回有限非负数值，确定性失败始终返回 undefined。
+ */
+export const getModelErrorRetryDelayMs = (error: unknown): number | undefined => {
+  if (typeof error !== 'object' || error === null || isNonRetryableModelError(error)) {
+    return undefined;
+  }
+  const retryAfterMs = (error as { retryAfterMs?: unknown }).retryAfterMs;
+  return typeof retryAfterMs === 'number' && Number.isFinite(retryAfterMs) && retryAfterMs >= 0
+    ? retryAfterMs
+    : undefined;
+};

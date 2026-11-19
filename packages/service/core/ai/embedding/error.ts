@@ -31,6 +31,8 @@ export type EmbeddingErrorClassification = {
   category: EmbeddingErrorCategory;
   /** 是否允许请求内退避重试及任务队列重试；确定性失败必须为 false。 */
   retryable: boolean;
+  /** 上游响应头（Retry-After / retry-after-ms）建议的下次重试等待毫秒数，供队列层接续退避。 */
+  retryAfterMs?: number;
   errorCode?: ModelErrEnum;
   upstreamStatus?: number;
   upstreamCode?: string;
@@ -49,6 +51,7 @@ type EmbeddingRequestErrorOptions = EmbeddingErrorClassification & {
 export class EmbeddingRequestError extends Error {
   readonly category: EmbeddingErrorCategory;
   readonly retryable: boolean;
+  readonly retryAfterMs?: number;
   readonly errorCode?: ModelErrEnum;
   readonly upstreamStatus?: number;
   readonly upstreamCode?: string;
@@ -59,6 +62,7 @@ export class EmbeddingRequestError extends Error {
     this.name = 'EmbeddingRequestError';
     this.category = options.category;
     this.retryable = options.retryable;
+    this.retryAfterMs = options.retryAfterMs;
     this.errorCode = options.errorCode ?? message;
     this.upstreamStatus = options.upstreamStatus;
     this.upstreamCode = options.upstreamCode;
@@ -190,12 +194,20 @@ const MODEL_NOT_FOUND_CODES = new Set(['model_not_found', 'not_found_error']);
 
 const NO_AVAILABLE_CHANNEL_CODES = new Set(['no_available_channel', 'channel_not_found']);
 
-const INVALID_REQUEST_CODES = new Set([
-  'badrequest',
-  'bad_request',
+const STRUCTURED_INVALID_PARAM_CODES = new Set([
+  'invalid_value',
+  'invalid_type',
+  'missing_required_parameter',
+  'unknown_parameter',
   'invalid_parameter',
   'invalid_parameter_error',
   'invalid_request_error'
+]);
+
+const INVALID_REQUEST_CODES = new Set([
+  'badrequest',
+  'bad_request',
+  ...STRUCTURED_INVALID_PARAM_CODES
 ]);
 
 const UPSTREAM_UNAVAILABLE_CODES = new Set([
@@ -454,6 +466,7 @@ export const classifyEmbeddingError = (
     return {
       category: error.category,
       retryable: error.retryable,
+      retryAfterMs: error.retryAfterMs,
       errorCode: error.errorCode,
       upstreamStatus: error.upstreamStatus,
       upstreamCode: error.upstreamCode,
@@ -586,14 +599,21 @@ export const classifyEmbeddingError = (
     };
   }
 
+  // 上游已通过结构化 type/code 明确声明为参数校验错误时，禁止纯正文正则把回显的参数值
+  // （如 encoding_format='rate_limit' 或 'overloaded'）误判为限流/鉴权/欠费/服务不可用。
+  const isStructuredInvalidRequest =
+    signals.types.has('invalid_request_error') ||
+    hasAnyLowercaseCode(signals.codes, STRUCTURED_INVALID_PARAM_CODES);
+
   // 上游额度/余额不足可能随 HTTP 402/403/429 返回，需先于限流与权限不足识别为不可重试。
   if (
     signals.status === 402 ||
     hasAnyLowercaseCode(signals.codes, QUOTA_CODES) ||
     hasAnyType(signals.types, QUOTA_CODES) ||
-    /insufficient[_\s-]?quota|insufficient[_\s-]?balance|out of quota|credit balance is too low|exceeded your current quota|billing[_\s-]?(not[_\s-]?active|hard[_\s-]?limit)|account.*(overdue|arrears|suspended|frozen)|余额不足|额度不足|欠费|配额已用尽/i.test(
-      signals.payloadText
-    )
+    (!isStructuredInvalidRequest &&
+      /insufficient[_\s-]?quota|insufficient[_\s-]?balance|out of quota|credit balance is too low|exceeded your current quota|billing[_\s-]?(not[_\s-]?active|hard[_\s-]?limit)|account.*(overdue|arrears|suspended|frozen)|余额不足|额度不足|欠费|配额已用尽/i.test(
+        signals.payloadText
+      ))
   ) {
     return {
       category: 'quotaExceeded',
@@ -607,9 +627,10 @@ export const classifyEmbeddingError = (
     signals.status === 429 ||
     hasAnyLowercaseCode(signals.codes, RATE_LIMIT_CODES) ||
     hasAnyType(signals.types, RATE_LIMIT_CODES) ||
-    /rate[_\s-]?limit|too many requests|requests? per (min|sec|minute|second)|exceeded.*request limit|速率限制|请求过于频繁|触发限流/i.test(
-      signals.payloadText
-    )
+    (!isStructuredInvalidRequest &&
+      /rate[_\s-]?limit|too many requests|requests? per (min|sec|minute|second)|exceeded.*request limit|速率限制|请求过于频繁|触发限流/i.test(
+        signals.payloadText
+      ))
   ) {
     return {
       category: 'rateLimited',
@@ -623,9 +644,10 @@ export const classifyEmbeddingError = (
     signals.status === 401 ||
     hasAnyLowercaseCode(signals.codes, AUTH_CODES) ||
     hasAnyType(signals.types, AUTH_CODES) ||
-    /incorrect api key|invalid api[_\s-]?key|invalid authentication|authentication failed|unauthorized|invalid[_\s-]?token|api[_\s-]?key.*(invalid|expired|missing)|鉴权失败|密钥无效/i.test(
-      signals.payloadText
-    )
+    (!isStructuredInvalidRequest &&
+      /incorrect api key|invalid api[_\s-]?key|invalid authentication|authentication failed|unauthorized|invalid[_\s-]?token|api[_\s-]?key.*(invalid|expired|missing)|鉴权失败|密钥无效/i.test(
+        signals.payloadText
+      ))
   ) {
     return {
       category: 'authFailed',
@@ -697,9 +719,10 @@ export const classifyEmbeddingError = (
     signals.status === 404 ||
     hasAnyLowercaseCode(signals.codes, MODEL_NOT_FOUND_CODES) ||
     hasAnyType(signals.types, MODEL_NOT_FOUND_CODES) ||
-    /model.*(not found|does not exist|not exist)|no such model|unknown model|模型不存在/i.test(
-      signals.payloadText
-    )
+    (!isStructuredInvalidRequest &&
+      /model.*(not found|does not exist|not exist)|no such model|unknown model|模型不存在/i.test(
+        signals.payloadText
+      ))
   ) {
     return {
       category: 'modelNotFound',
@@ -733,10 +756,7 @@ export const classifyEmbeddingError = (
   }
 
   // 明确的结构化参数错误先于宽泛正文匹配，避免参数值本身包含 `overloaded` 等字样时被误判为服务不可用。
-  if (
-    signals.types.has('invalid_request_error') ||
-    hasAnyLowercaseCode(signals.codes, INVALID_REQUEST_CODES)
-  ) {
+  if (isStructuredInvalidRequest || hasAnyLowercaseCode(signals.codes, INVALID_REQUEST_CODES)) {
     return {
       category: 'invalidRequest',
       retryable: false,
@@ -804,7 +824,11 @@ export const classifyEmbeddingError = (
  */
 export const normalizeEmbeddingError = (
   error: unknown,
-  options?: { signal?: AbortSignal; classification?: EmbeddingErrorClassification }
+  options?: {
+    signal?: AbortSignal;
+    classification?: EmbeddingErrorClassification;
+    retryAfterMs?: number;
+  }
 ): unknown => {
   if (isEmbeddingRequestError(error)) return error;
 
@@ -817,8 +841,15 @@ export const normalizeEmbeddingError = (
     return error;
   }
 
+  const retryAfterMs = classification.retryable
+    ? (options?.retryAfterMs ??
+      classification.retryAfterMs ??
+      getEmbeddingRetryDirective(error).retryAfterMs)
+    : undefined;
+
   return new EmbeddingRequestError(classification.errorCode, {
     ...classification,
+    ...(retryAfterMs !== undefined ? { retryAfterMs } : {}),
     cause: error
   });
 };

@@ -139,24 +139,28 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
       });
     });
 
-    it('keeps HTTP 400 invalid_request_error non-retryable even when parameter value contains "overloaded"', () => {
-      const raw = makeApiError({
-        status: 400,
-        type: 'invalid_request_error',
-        message: "Unsupported value: 'overloaded' for 'encoding_format'."
-      });
+    it.each(['overloaded', 'rate_limit', 'unauthorized', 'insufficient_quota'])(
+      'keeps HTTP 400 invalid_request_error non-retryable when parameter value echoes %s',
+      (echoedValue) => {
+        const raw = makeApiError({
+          status: 400,
+          code: 'invalid_value',
+          type: 'invalid_request_error',
+          message: `Unsupported value: '${echoedValue}' for 'encoding_format'.`
+        });
 
-      const classified = classifyEmbeddingError(raw);
-      expect(classified).toMatchObject({
-        category: 'invalidRequest',
-        retryable: false,
-        errorCode: ModelErrEnum.invalidRequest
-      });
+        const classified = classifyEmbeddingError(raw);
+        expect(classified).toMatchObject({
+          category: 'invalidRequest',
+          retryable: false,
+          errorCode: ModelErrEnum.invalidRequest
+        });
 
-      const normalized = normalizeEmbeddingError(raw);
-      expect(isNonRetryableModelError(normalized)).toBe(true);
-      expect(getErrText(normalized)).toBe('common:code_error.model_error.invalid_request');
-    });
+        const normalized = normalizeEmbeddingError(raw);
+        expect(isNonRetryableModelError(normalized)).toBe(true);
+        expect(getErrText(normalized)).toBe('common:code_error.model_error.invalid_request');
+      }
+    );
 
     it('parses x-should-retry, retry-after-ms, Retry-After seconds/date and enforces wait budget', () => {
       expect(
