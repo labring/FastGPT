@@ -12,6 +12,7 @@ import {
   createEmptyInputEmbeddingError,
   createInvalidResponseEmbeddingError,
   type EmbeddingErrorClassification,
+  getEmbeddingRetryDirective,
   normalizeEmbeddingError
 } from './error';
 
@@ -129,7 +130,11 @@ export async function getVectors({
   }
 
   const lastFailure: {
-    current?: { error: unknown; classification: EmbeddingErrorClassification };
+    current?: {
+      error: unknown;
+      classification: EmbeddingErrorClassification;
+      retryAfterMs?: number;
+    };
   } = {};
 
   try {
@@ -226,13 +231,24 @@ export async function getVectors({
               };
             }),
         {
-          // SDK 已关闭重试，本层统一执行最多 2 次指数退避重试（500ms -> 1000ms，总计最多 3 次请求）。
+          // SDK 已关闭重试，本层统一执行最多 2 次重试：优先遵循上游 x-should-retry / Retry-After 指令，
+          // 无上游等待指示时按 500ms -> 1000ms 指数退避（总计最多 3 次请求）。
           attempts: timeoutMs === undefined ? 2 : 0,
-          delayMs: (attempt) => 500 * 2 ** attempt,
+          delayMs: (attempt) =>
+            lastFailure.current?.retryAfterMs ?? Math.min(500 * 2 ** attempt, 8000),
           shouldRetry: (error) => {
             const classification = classifyEmbeddingError(error, { signal });
-            lastFailure.current = { error, classification };
-            return classification.retryable;
+            if (!classification.retryable) {
+              lastFailure.current = { error, classification };
+              return false;
+            }
+            const directive = getEmbeddingRetryDirective(error);
+            lastFailure.current = {
+              error,
+              classification,
+              retryAfterMs: directive.retryAfterMs
+            };
+            return directive.shouldRetryInRequest;
           }
         }
       );

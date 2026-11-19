@@ -219,8 +219,76 @@ const UPSTREAM_UNAVAILABLE_TYPES = new Set([
 const UPSTREAM_UNAVAILABLE_PATTERN =
   /<!doctype html|<html\b|bad gateway|service unavailable|internal server error|temporarily unavailable|overloaded|no healthy upstream|无健康节点/i;
 
+export const MAX_EMBEDDING_RETRY_AFTER_MS = 10_000;
+
 const recordOf = (value: unknown): Record<string, unknown> =>
   typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
+
+const readHeaderValue = (headers: unknown, name: string): string | undefined => {
+  if (!headers || typeof headers !== 'object') return undefined;
+  if ('get' in headers && typeof (headers as { get?: unknown }).get === 'function') {
+    const value = (headers as { get: (key: string) => string | null }).get(name);
+    return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+  }
+  const target = name.toLowerCase();
+  for (const [key, value] of Object.entries(headers as Record<string, unknown>)) {
+    if (key.toLowerCase() === target && typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  return undefined;
+};
+
+/**
+ * 解析上游响应头中的重试指令（`x-should-retry`、`retry-after-ms`、`Retry-After`）。
+ * 仅在业务分类允许重试后生效；若上游要求等待时间超出本次请求预算，则停止内层重试交由上层队列处理。
+ */
+export const getEmbeddingRetryDirective = (
+  error: unknown,
+  options?: { maxWaitMs?: number }
+): { shouldRetryInRequest: boolean; retryAfterMs?: number } => {
+  const maxWaitMs = options?.maxWaitMs ?? MAX_EMBEDDING_RETRY_AFTER_MS;
+  const original = recordOf(error);
+  const headers = original.headers ?? recordOf(original.response).headers;
+  if (!headers) {
+    return { shouldRetryInRequest: true };
+  }
+
+  const shouldRetryHeader = readHeaderValue(headers, 'x-should-retry')?.toLowerCase();
+  if (shouldRetryHeader === 'false') {
+    return { shouldRetryInRequest: false };
+  }
+
+  let retryAfterMs: number | undefined;
+  const retryAfterMsHeader = readHeaderValue(headers, 'retry-after-ms');
+  if (retryAfterMsHeader !== undefined) {
+    const parsed = Number(retryAfterMsHeader);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      retryAfterMs = parsed;
+    }
+  }
+
+  if (retryAfterMs === undefined) {
+    const retryAfterHeader = readHeaderValue(headers, 'retry-after');
+    if (retryAfterHeader !== undefined) {
+      const parsedSeconds = Number(retryAfterHeader);
+      if (Number.isFinite(parsedSeconds) && parsedSeconds >= 0) {
+        retryAfterMs = parsedSeconds * 1000;
+      } else {
+        const parsedDate = Date.parse(retryAfterHeader);
+        if (!Number.isNaN(parsedDate)) {
+          retryAfterMs = Math.max(0, parsedDate - Date.now());
+        }
+      }
+    }
+  }
+
+  if (retryAfterMs !== undefined && retryAfterMs > maxWaitMs) {
+    return { shouldRetryInRequest: false, retryAfterMs };
+  }
+
+  return { shouldRetryInRequest: true, retryAfterMs };
+};
 
 const readHttpStatus = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isInteger(value) && value >= 100 && value <= 599
@@ -650,12 +718,11 @@ export const classifyEmbeddingError = (
     };
   }
 
-  // 明确的服务端瞬时故障码/类型/网关文案即使被代理包装为 HTTP 400，也必须先于通用 4xx 兜底识别，
+  // 明确的结构化服务端瞬时故障码/类型即使被代理包装为 HTTP 400，也先于参数错误与通用 4xx 识别，
   // 避免可恢复的上游波动误判为确定性失败而直接终止训练队列。
   if (
     hasAnyLowercaseCode(signals.codes, UPSTREAM_UNAVAILABLE_CODES) ||
-    hasAnyType(signals.types, UPSTREAM_UNAVAILABLE_TYPES) ||
-    UPSTREAM_UNAVAILABLE_PATTERN.test(signals.payloadText)
+    hasAnyType(signals.types, UPSTREAM_UNAVAILABLE_TYPES)
   ) {
     return {
       category: 'upstreamUnavailable',
@@ -665,11 +732,29 @@ export const classifyEmbeddingError = (
     };
   }
 
+  // 明确的结构化参数错误先于宽泛正文匹配，避免参数值本身包含 `overloaded` 等字样时被误判为服务不可用。
   if (
-    (signals.status !== undefined && signals.status >= 400 && signals.status < 500) ||
     signals.types.has('invalid_request_error') ||
     hasAnyLowercaseCode(signals.codes, INVALID_REQUEST_CODES)
   ) {
+    return {
+      category: 'invalidRequest',
+      retryable: false,
+      errorCode: ModelErrEnum.invalidRequest,
+      ...meta
+    };
+  }
+
+  if (UPSTREAM_UNAVAILABLE_PATTERN.test(signals.payloadText)) {
+    return {
+      category: 'upstreamUnavailable',
+      retryable: true,
+      errorCode: ModelErrEnum.serviceUnavailable,
+      ...meta
+    };
+  }
+
+  if (signals.status !== undefined && signals.status >= 400 && signals.status < 500) {
     return {
       category: 'invalidRequest',
       retryable: false,

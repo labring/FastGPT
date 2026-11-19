@@ -42,33 +42,19 @@ vi.mock('@fastgpt/service/core/ai/config', async (importOriginal) => {
   };
 });
 
-// 保留真实 retryFn 的次数与 shouldRetry 判定逻辑，仅移除退避等待避免单测耗时。
+// 直接复用真实 retryFn，仅将退避等待设为 0 避免单测耗时并消除双份循环实现。
 vi.mock('@fastgpt/global/common/system/utils', async (importOriginal) => {
-  const actual = (await importOriginal()) as any;
+  const actual = await importOriginal<typeof import('@fastgpt/global/common/system/utils')>();
   return {
     ...actual,
-    retryFn: async <T>(
+    retryFn: <T>(
       fn: () => Promise<T>,
-      options:
-        | number
-        | { attempts?: number; shouldRetry?: (error: unknown, attempt: number) => boolean } = 3
-    ): Promise<T> => {
-      const { attempts = 3, shouldRetry } =
-        typeof options === 'number' ? { attempts: options } : options;
-      let remaining = attempts;
-      let attempt = 0;
-      while (true) {
-        try {
-          return await fn();
-        } catch (error) {
-          if (remaining <= 0 || shouldRetry?.(error, attempt) === false) {
-            return Promise.reject(error);
-          }
-          remaining--;
-          attempt++;
-        }
-      }
-    }
+      options: Parameters<typeof actual.retryFn<T>>[1] = 3
+    ): Promise<T> =>
+      actual.retryFn(
+        fn,
+        typeof options === 'number' ? { attempts: options, delayMs: 0 } : { ...options, delayMs: 0 }
+      )
   };
 });
 

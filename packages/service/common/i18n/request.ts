@@ -29,7 +29,7 @@ let defaultTranslators = new Map<localeType, Promise<RequestTranslator>>();
  * 注册进程级默认 i18n 资源加载器，供脱离 HTTP 请求上下文的后台任务（如模型探活告警）渲染可读文案。
  * 与 createApiI18n 显式分离，避免测试中的局部加载器污染全局默认状态。
  */
-export const registerServerI18nLoaders = (resourceLoaders: ResourceLoaders) => {
+export const registerServerI18nLoaders = (resourceLoaders?: ResourceLoaders) => {
   defaultResourceLoaders = resourceLoaders;
   defaultTranslators = new Map();
 };

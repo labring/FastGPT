@@ -5,6 +5,8 @@ import {
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { generatedLoaders } from '@fastgpt/web/i18n/resourceLoaders.generated';
+import { registerServerI18nLoaders } from '../../../../common/i18n/request';
 import { EmbeddingRequestError } from '../../../../core/ai/embedding/error';
 import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
@@ -46,6 +48,7 @@ const model: AIModelDataType = {
 
 describe('probeModelStatus', () => {
   afterEach(() => {
+    registerServerI18nLoaders(undefined);
     vi.useRealTimers();
     vi.restoreAllMocks();
   });
@@ -147,7 +150,8 @@ describe('probeModelStatus', () => {
     });
   });
 
-  it('renders readable English message and preserves error code for normalized embedding errors', async () => {
+  it('renders readable English message from shared i18n resources and preserves error code', async () => {
+    registerServerI18nLoaders(generatedLoaders);
     const authErr = new EmbeddingRequestError(ModelErrEnum.authFailed, {
       category: 'authFailed',
       retryable: false,
@@ -165,6 +169,28 @@ describe('probeModelStatus', () => {
       attempts: 4,
       error:
         'Test model: Model API authentication failed. Please check the API key or channel configuration. (modelAuthFailed)'
+    });
+    expect(result.error).not.toContain('common:code_error');
+  });
+
+  it('falls back to generic message with error code when i18n loaders are unavailable', async () => {
+    registerServerI18nLoaders(undefined);
+    const authErr = new EmbeddingRequestError(ModelErrEnum.authFailed, {
+      category: 'authFailed',
+      retryable: false,
+      errorCode: ModelErrEnum.authFailed
+    });
+    const test = vi.fn().mockRejectedValue(authErr);
+
+    const result = await probeModelStatus({
+      model,
+      test
+    });
+
+    expect(result).toMatchObject({
+      status: 'red',
+      attempts: 4,
+      error: 'Test model: Model test failed (modelAuthFailed)'
     });
     expect(result.error).not.toContain('common:code_error');
   });

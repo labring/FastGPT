@@ -175,15 +175,18 @@ describe('createApiI18n and translateApiMessage', () => {
 
   it('translates server background messages using explicitly registered loaders without mutating raw text', async () => {
     registerServerI18nLoaders(generatedLoaders);
-
-    expect(await translateServerMessage('common:code_error.model_error.auth_failed')).toBe(
-      'Model API authentication failed. Please check the API key or channel configuration.'
-    );
-    expect(await translateServerMessage('common:code_error.model_error.auth_failed', 'zh-CN')).toBe(
-      '模型接口鉴权失败，请检查 API Key 或渠道配置'
-    );
-    expect(await translateServerMessage('Model test timed out after 60000ms')).toBe(
-      'Model test timed out after 60000ms'
-    );
+    try {
+      expect(await translateServerMessage('common:code_error.model_error.auth_failed')).toBe(
+        'Model API authentication failed. Please check the API key or channel configuration.'
+      );
+      expect(
+        await translateServerMessage('common:code_error.model_error.auth_failed', 'zh-CN')
+      ).toBe('模型接口鉴权失败，请检查 API Key 或渠道配置');
+      expect(await translateServerMessage('Model test timed out after 60000ms')).toBe(
+        'Model test timed out after 60000ms'
+      );
+    } finally {
+      registerServerI18nLoaders(undefined);
+    }
   });
 });

@@ -30,10 +30,10 @@ const buildSystemEmbeddingModel = (): EmbeddingModelDataType => ({
   }
 });
 
-const jsonResponse = (status: number, body: unknown) =>
+const jsonResponse = (status: number, body: unknown, headers?: Record<string, string>) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { 'content-type': 'application/json' }
+    headers: { 'content-type': 'application/json', ...headers }
   });
 
 describe('getVectors real OpenAI SDK HTTP retry budgets', () => {
@@ -45,6 +45,7 @@ describe('getVectors real OpenAI SDK HTTP retry budgets', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
@@ -159,4 +160,106 @@ describe('getVectors real OpenAI SDK HTTP retry budgets', () => {
       });
     }
   );
+
+  it('honors Retry-After seconds on 429 and succeeds once upstream recovers after the requested wait', async () => {
+    vi.useFakeTimers();
+    const requestTimes: number[] = [];
+    fetchMock.mockImplementation(async () => {
+      requestTimes.push(Date.now());
+      if (requestTimes.length === 1) {
+        return jsonResponse(
+          429,
+          { error: { message: 'Rate limit exceeded', code: 'rate_limit_exceeded' } },
+          { 'retry-after': '2' }
+        );
+      }
+      return jsonResponse(200, {
+        data: [{ embedding: [0.1, 0.2, 0.3], index: 0 }],
+        usage: { total_tokens: 1 }
+      });
+    });
+
+    const promise = getVectors({
+      model: buildSystemEmbeddingModel(),
+      inputs: [{ type: 'text', input: 'hello' }]
+    });
+
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(1);
+    const result = await promise;
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(requestTimes[1] - requestTimes[0]).toBe(2000);
+    expect(result.vectors).toHaveLength(1);
+  });
+
+  it('obeys x-should-retry: false on 503 without in-request retries while keeping outer retryable semantics', async () => {
+    fetchMock.mockImplementation(async () =>
+      jsonResponse(
+        503,
+        { error: { message: 'Service temporarily unavailable', code: 'service_unavailable' } },
+        { 'x-should-retry': 'false' }
+      )
+    );
+
+    const err = await getVectors({
+      model: buildSystemEmbeddingModel(),
+      inputs: [{ type: 'text', input: 'hello' }]
+    }).catch((e) => e);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(err).toBeInstanceOf(EmbeddingRequestError);
+    expect(err).toMatchObject({
+      category: 'upstreamUnavailable',
+      retryable: true,
+      message: ModelErrEnum.serviceUnavailable
+    });
+  });
+
+  it('stops in-request retry when Retry-After exceeds budget and hands retryable error to upper layer', async () => {
+    fetchMock.mockImplementation(async () =>
+      jsonResponse(
+        429,
+        { error: { message: 'Rate limit exceeded', code: 'rate_limit_exceeded' } },
+        { 'retry-after': '60' }
+      )
+    );
+
+    const err = await getVectors({
+      model: buildSystemEmbeddingModel(),
+      inputs: [{ type: 'text', input: 'hello' }]
+    }).catch((e) => e);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(err).toBeInstanceOf(EmbeddingRequestError);
+    expect(err).toMatchObject({
+      category: 'rateLimited',
+      retryable: true,
+      message: ModelErrEnum.rateLimited
+    });
+  });
+
+  it('never retries deterministic 429 insufficient_quota even if upstream sends x-should-retry: true', async () => {
+    fetchMock.mockImplementation(async () =>
+      jsonResponse(
+        429,
+        { error: { message: 'You exceeded your current quota', code: 'insufficient_quota' } },
+        { 'x-should-retry': 'true', 'retry-after': '1' }
+      )
+    );
+
+    const err = await getVectors({
+      model: buildSystemEmbeddingModel(),
+      inputs: [{ type: 'text', input: 'hello' }]
+    }).catch((e) => e);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(err).toBeInstanceOf(EmbeddingRequestError);
+    expect(err).toMatchObject({
+      category: 'quotaExceeded',
+      retryable: false,
+      message: ModelErrEnum.upstreamQuotaExceeded
+    });
+  });
 });

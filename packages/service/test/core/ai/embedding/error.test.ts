@@ -10,6 +10,7 @@ import {
   createEmptyInputEmbeddingError,
   createInvalidResponseEmbeddingError,
   EmbeddingRequestError,
+  getEmbeddingRetryDirective,
   isEmbeddingRequestError,
   normalizeEmbeddingError
 } from '@fastgpt/service/core/ai/embedding/error';
@@ -136,6 +137,52 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
         retryable: false,
         errorCode: ModelErrEnum.invalidRequest
       });
+    });
+
+    it('keeps HTTP 400 invalid_request_error non-retryable even when parameter value contains "overloaded"', () => {
+      const raw = makeApiError({
+        status: 400,
+        type: 'invalid_request_error',
+        message: "Unsupported value: 'overloaded' for 'encoding_format'."
+      });
+
+      const classified = classifyEmbeddingError(raw);
+      expect(classified).toMatchObject({
+        category: 'invalidRequest',
+        retryable: false,
+        errorCode: ModelErrEnum.invalidRequest
+      });
+
+      const normalized = normalizeEmbeddingError(raw);
+      expect(isNonRetryableModelError(normalized)).toBe(true);
+      expect(getErrText(normalized)).toBe('common:code_error.model_error.invalid_request');
+    });
+
+    it('parses x-should-retry, retry-after-ms, Retry-After seconds/date and enforces wait budget', () => {
+      expect(
+        getEmbeddingRetryDirective({ headers: new Headers({ 'x-should-retry': 'false' }) })
+      ).toEqual({ shouldRetryInRequest: false });
+
+      expect(
+        getEmbeddingRetryDirective({ headers: new Headers({ 'retry-after-ms': '1500' }) })
+      ).toEqual({ shouldRetryInRequest: true, retryAfterMs: 1500 });
+
+      expect(getEmbeddingRetryDirective({ headers: new Headers({ 'retry-after': '2' }) })).toEqual({
+        shouldRetryInRequest: true,
+        retryAfterMs: 2000
+      });
+
+      const futureDate = new Date(Date.now() + 2500).toUTCString();
+      const dateDirective = getEmbeddingRetryDirective({
+        headers: { 'Retry-After': futureDate }
+      });
+      expect(dateDirective.shouldRetryInRequest).toBe(true);
+      expect(dateDirective.retryAfterMs).toBeGreaterThanOrEqual(0);
+      expect(dateDirective.retryAfterMs).toBeLessThanOrEqual(4000);
+
+      expect(getEmbeddingRetryDirective({ headers: new Headers({ 'retry-after': '60' }) })).toEqual(
+        { shouldRetryInRequest: false, retryAfterMs: 60_000 }
+      );
     });
 
     it('classifies HTTP 400 transient image download 500 failure as retryable and hides signed file URL', () => {

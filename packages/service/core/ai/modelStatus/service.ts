@@ -1,8 +1,5 @@
 import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
-import {
-  MODEL_ERROR_FALLBACK_MESSAGES,
-  ModelErrEnum
-} from '@fastgpt/global/common/error/code/model';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { LangEnum } from '@fastgpt/global/common/i18n/type';
@@ -316,14 +313,17 @@ export const getModelStatus = async (): Promise<GetModelStatusResponse> => {
   };
 };
 
+const I18N_KEY_PATTERN = /^[A-Za-z][A-Za-z0-9_]*:/;
+
 /**
  * 渲染模型探活失败的展示文本：后台探测记录、状态接口与 Webhook 接收端不会经过前端 i18n，
- * 必须在探活边界按固定默认语言（en）把 `namespace:key` 渲染为可读文案，并保留错误码便于排查。
+ * 必须在探活边界复用应用注入的英文 i18n 资源渲染 `namespace:key` 并保留错误码；
+ * 若未注入资源或加载失败，回退通用可读提示与业务码，不对外暴露原始翻译键。
  */
 const formatProbeErrorMessage = async (error: unknown): Promise<string> => {
   const raw = getErrText(error, 'Model test failed');
   const translated = await translateServerMessage(raw, LangEnum.en);
-  const message = translated !== raw ? translated : (MODEL_ERROR_FALLBACK_MESSAGES[raw] ?? raw);
+  const message = I18N_KEY_PATTERN.test(translated) ? 'Model test failed' : translated;
 
   const errorCode =
     isEmbeddingRequestError(error) && error.errorCode

@@ -34,7 +34,9 @@ export const retryFn = async <T>(
         return Promise.reject(error);
       }
       const waitMs = typeof delayMs === 'function' ? delayMs(attempt, error) : delayMs;
-      await delay(waitMs);
+      if (waitMs > 0) {
+        await delay(waitMs);
+      }
       remaining--;
       attempt++;
     }

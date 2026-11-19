@@ -171,51 +171,6 @@ const modelErrList = [
   }
 ];
 
-/**
- * 脱离 Web i18n 资源容器的后台/独立服务场景（如模型探活告警、单测）使用的英文可读文案兜底，
- * 避免将原始 `common:code_error.model_error.*` 翻译键直接持久化或发送到 Webhook。
- */
-export const MODEL_ERROR_FALLBACK_MESSAGES: Readonly<Record<string, string>> = {
-  [i18nT('common:model_delisted')]: 'The model has been delisted.',
-  [i18nT('common:not_model_config')]: 'Model is not configured.',
-  [i18nT('common:code_error.model_error.no_available_channel')]:
-    'No available channel to call this model',
-  [i18nT('common:code_error.model_error.team_model_disabled')]:
-    'The administrator has not enabled the team model feature',
-  [i18nT('common:code_error.model_error.embedding_empty_input')]:
-    'Embedding input content is empty. Please check the data.',
-  [i18nT('common:code_error.model_error.private_endpoint_blocked')]:
-    'The model endpoint points to a restricted internal address. Please check the custom model configuration.',
-  [i18nT('common:code_error.model_error.auth_failed')]:
-    'Model API authentication failed. Please check the API key or channel configuration.',
-  [i18nT('common:code_error.model_error.upstream_quota_exceeded')]:
-    'Upstream model service quota or balance is insufficient. Please check the model channel account.',
-  [i18nT('common:code_error.model_error.permission_denied')]:
-    'Permission denied for this model. Please check the model channel or API key permissions.',
-  [i18nT('common:code_error.model_error.model_not_found')]:
-    'Upstream model or endpoint was not found. Please check the model name and channel configuration.',
-  [i18nT('common:code_error.model_error.content_blocked')]:
-    'Input content was blocked by the model safety policy. Please modify the content and try again.',
-  [i18nT('common:code_error.model_error.input_too_long')]:
-    'Input content exceeds the model length limit. Please shorten the content or reduce the chunk size and try again.',
-  [i18nT('common:code_error.model_error.invalid_image')]:
-    'The image format is unsupported or invalid. Please check the image and try again.',
-  [i18nT('common:code_error.model_error.image_download_failed')]:
-    'The model failed to download the image. Please check image accessibility or try again later.',
-  [i18nT('common:code_error.model_error.invalid_request')]:
-    'Model request parameters or input format are not supported. Please check the data content or model configuration.',
-  [i18nT('common:code_error.model_error.rate_limited')]:
-    'Model requests are being rate-limited. Please try again later.',
-  [i18nT('common:code_error.model_error.request_timeout')]:
-    'Model service timed out. Please try again later.',
-  [i18nT('common:code_error.model_error.service_unavailable')]:
-    'Model service is temporarily unavailable. Please try again later.',
-  [i18nT('common:code_error.model_error.network_error')]:
-    'Failed to connect to the model service. Please check network connectivity or try again later.',
-  [i18nT('common:code_error.model_error.invalid_response')]:
-    'Model service returned an invalid response. Please try again later or check the model configuration.'
-};
-
 export default modelErrList.reduce(
   (acc, cur, index) => ({
     ...acc,
