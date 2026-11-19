@@ -4,6 +4,7 @@ import { delay, retryFn } from '@fastgpt/global/common/system/utils';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { isEmbeddingRequestError } from '@fastgpt/service/core/ai/embedding/error';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { cleanupUnusedDatasetSynonymMappings } from '@fastgpt/service/core/dataset/synonym/controller';
@@ -126,6 +127,11 @@ export const runDatasetRebuildQueue = async ({
           logger.error('Rebuild queue task failed', {
             mode,
             error,
+            ...(isEmbeddingRequestError(error) && {
+              errorCategory: error.category,
+              retryable: error.retryable,
+              errorCode: error.errorCode
+            }),
             trainingId: data._id,
             datasetId: data.datasetId,
             dataId: data.dataId

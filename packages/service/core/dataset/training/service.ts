@@ -6,6 +6,7 @@ import { MongoDatasetTraining } from './schema';
 import { findAndLockTrainingTask, type FindAndLockTrainingTaskOptions } from './entity';
 import type { ClientSession } from '../../../common/mongo';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import { isNonRetryableModelError } from '@fastgpt/global/common/error/model';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
@@ -182,13 +183,15 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
   const fail = async (
     error: unknown,
     {
-      terminal = false,
+      terminal,
       blocked = false,
       retryDelayMs = TRAINING_LEASE_HEARTBEAT_MS
     }: { terminal?: boolean; blocked?: boolean; retryDelayMs?: number } = {}
   ) => {
     if (lost || error instanceof TrainingLeaseLostError) return;
-    const retryCount = terminal ? 0 : Math.max(0, task.retryCount - 1);
+    // 调用方未显式覆盖 terminal 时，确定的模型配置或向量化错误直接终止重试，避免反复打上游并拖延失败反馈。
+    const isTerminal = terminal ?? isNonRetryableModelError(error);
+    const retryCount = isTerminal ? 0 : Math.max(0, task.retryCount - 1);
     const errorMsg = getErrText(error, 'unknown error');
     try {
       await commit(async (session) => {

@@ -14,7 +14,23 @@ export enum ModelErrEnum {
   channelNotExist = 'channelNotExist',
   channelNameConflict = 'channelNameConflict',
   noAvailableChannel = 'modelNoAvailableChannel',
-  teamModelDisabled = 'teamModelDisabled'
+  teamModelDisabled = 'teamModelDisabled',
+  embeddingEmptyInput = 'modelEmbeddingEmptyInput',
+  privateEndpointBlocked = 'modelPrivateEndpointBlocked',
+  authFailed = 'modelAuthFailed',
+  upstreamQuotaExceeded = 'modelUpstreamQuotaExceeded',
+  permissionDenied = 'modelPermissionDenied',
+  modelNotFound = 'modelNotFound',
+  contentBlocked = 'modelContentBlocked',
+  inputTooLong = 'modelInputTooLong',
+  invalidImage = 'modelInvalidImage',
+  imageDownloadFailed = 'modelImageDownloadFailed',
+  invalidRequest = 'modelInvalidRequest',
+  rateLimited = 'modelRateLimited',
+  requestTimeout = 'modelRequestTimeout',
+  serviceUnavailable = 'modelServiceUnavailable',
+  networkError = 'modelNetworkError',
+  invalidResponse = 'modelInvalidResponse'
 }
 
 const modelErrList = [
@@ -72,6 +88,86 @@ const modelErrList = [
     statusText: ModelErrEnum.teamModelDisabled,
     message: i18nT('common:code_error.model_error.team_model_disabled'),
     httpStatus: 403
+  },
+  {
+    statusText: ModelErrEnum.embeddingEmptyInput,
+    message: i18nT('common:code_error.model_error.embedding_empty_input'),
+    httpStatus: 400
+  },
+  {
+    statusText: ModelErrEnum.privateEndpointBlocked,
+    message: i18nT('common:code_error.model_error.private_endpoint_blocked'),
+    httpStatus: 400
+  },
+  {
+    statusText: ModelErrEnum.authFailed,
+    message: i18nT('common:code_error.model_error.auth_failed'),
+    httpStatus: 502
+  },
+  {
+    statusText: ModelErrEnum.upstreamQuotaExceeded,
+    message: i18nT('common:code_error.model_error.upstream_quota_exceeded'),
+    httpStatus: 502
+  },
+  {
+    statusText: ModelErrEnum.permissionDenied,
+    message: i18nT('common:code_error.model_error.permission_denied'),
+    httpStatus: 502
+  },
+  {
+    statusText: ModelErrEnum.modelNotFound,
+    message: i18nT('common:code_error.model_error.model_not_found'),
+    httpStatus: 502
+  },
+  {
+    statusText: ModelErrEnum.contentBlocked,
+    message: i18nT('common:code_error.model_error.content_blocked'),
+    httpStatus: 400
+  },
+  {
+    statusText: ModelErrEnum.inputTooLong,
+    message: i18nT('common:code_error.model_error.input_too_long'),
+    httpStatus: 400
+  },
+  {
+    statusText: ModelErrEnum.invalidImage,
+    message: i18nT('common:code_error.model_error.invalid_image'),
+    httpStatus: 400
+  },
+  {
+    statusText: ModelErrEnum.imageDownloadFailed,
+    message: i18nT('common:code_error.model_error.image_download_failed'),
+    httpStatus: 502
+  },
+  {
+    statusText: ModelErrEnum.invalidRequest,
+    message: i18nT('common:code_error.model_error.invalid_request'),
+    httpStatus: 400
+  },
+  {
+    statusText: ModelErrEnum.rateLimited,
+    message: i18nT('common:code_error.model_error.rate_limited'),
+    httpStatus: 429
+  },
+  {
+    statusText: ModelErrEnum.requestTimeout,
+    message: i18nT('common:code_error.model_error.request_timeout'),
+    httpStatus: 504
+  },
+  {
+    statusText: ModelErrEnum.serviceUnavailable,
+    message: i18nT('common:code_error.model_error.service_unavailable'),
+    httpStatus: 503
+  },
+  {
+    statusText: ModelErrEnum.networkError,
+    message: i18nT('common:code_error.model_error.network_error'),
+    httpStatus: 502
+  },
+  {
+    statusText: ModelErrEnum.invalidResponse,
+    message: i18nT('common:code_error.model_error.invalid_response'),
+    httpStatus: 502
   }
 ];
 

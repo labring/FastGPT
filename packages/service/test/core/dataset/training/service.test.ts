@@ -4,8 +4,11 @@ import {
 } from '@fastgpt/global/core/dataset/training/constant';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { EmbeddingRequestError } from '@fastgpt/service/core/ai/embedding/error';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { findAndLockTrainingTask } from '@fastgpt/service/core/dataset/training/entity';
@@ -97,6 +100,125 @@ describe('createTrainingTaskLease', () => {
         : DatasetDataIndexStatusEnum.indexing
     );
     expect(data?.indexErrorMsg).toBe(mode === TrainingModeEnum.index ? 'stage failed' : undefined);
+  });
+
+  it.each([
+    {
+      name: 'non-retryable EmbeddingRequestError',
+      error: new EmbeddingRequestError(ModelErrEnum.authFailed, {
+        category: 'authFailed',
+        retryable: false,
+        retryInRequest: false,
+        errorCode: ModelErrEnum.authFailed
+      }),
+      expectedMsg: 'common:code_error.model_error.auth_failed'
+    },
+    {
+      name: 'permanent imageDownloadFailed EmbeddingRequestError',
+      error: new EmbeddingRequestError(ModelErrEnum.imageDownloadFailed, {
+        category: 'imageDownloadFailed',
+        retryable: false,
+        retryInRequest: false,
+        errorCode: ModelErrEnum.imageDownloadFailed
+      }),
+      expectedMsg: 'common:code_error.model_error.image_download_failed'
+    },
+    {
+      name: 'model config error (unExist)',
+      error: new UserError(ModelErrEnum.unExist),
+      expectedMsg: 'common:model_delisted'
+    },
+    {
+      name: 'no available channel code',
+      error: ModelErrEnum.noAvailableChannel,
+      expectedMsg: 'common:code_error.model_error.no_available_channel'
+    }
+  ])(
+    'terminates retries immediately and records friendly error for $name',
+    async ({ error, expectedMsg }) => {
+      const context = await createContext(DatasetDataIndexStatusEnum.indexing);
+      const task = await MongoDatasetTraining.create({
+        ...context,
+        tmbId: new Types.ObjectId(),
+        billId: 'test',
+        mode: TrainingModeEnum.index,
+        retryCount: 3,
+        lockTime: new Date()
+      });
+      const lease = createTrainingTaskLease(task);
+      try {
+        await lease.fail(error);
+      } finally {
+        await lease.stop();
+      }
+
+      const failedTask = await MongoDatasetTraining.findById(task._id).lean();
+      const data = await MongoDatasetData.findById(context.dataId).lean();
+      expect(failedTask).toMatchObject({
+        retryCount: 0,
+        expireAt: null,
+        errorMsg: expectedMsg
+      });
+      expect(data).toMatchObject({
+        indexStatus: DatasetDataIndexStatusEnum.error,
+        indexErrorMsg: expectedMsg
+      });
+    }
+  );
+
+  it('keeps queue retries for retryable EmbeddingRequestError while still storing friendly message', async () => {
+    const context = await createContext(DatasetDataIndexStatusEnum.indexing);
+    const task = await MongoDatasetTraining.create({
+      ...context,
+      tmbId: new Types.ObjectId(),
+      billId: 'test',
+      mode: TrainingModeEnum.index,
+      retryCount: 3,
+      lockTime: new Date()
+    });
+    const rateLimitErr = new EmbeddingRequestError(ModelErrEnum.rateLimited, {
+      category: 'rateLimited',
+      retryable: true,
+      retryInRequest: false,
+      errorCode: ModelErrEnum.rateLimited
+    });
+    const lease = createTrainingTaskLease(task);
+    try {
+      await lease.fail(rateLimitErr);
+    } finally {
+      await lease.stop();
+    }
+
+    const pendingRetryTask = await MongoDatasetTraining.findById(task._id).lean();
+    const data = await MongoDatasetData.findById(context.dataId).lean();
+    expect(pendingRetryTask).toMatchObject({
+      retryCount: 2,
+      errorMsg: 'common:code_error.model_error.rate_limited'
+    });
+    expect(pendingRetryTask?.expireAt).toBeInstanceOf(Date);
+    expect(data?.indexStatus).toBe(DatasetDataIndexStatusEnum.indexing);
+    expect(data?.indexErrorMsg).toBeUndefined();
+  });
+
+  it('respects explicit terminal=false override even on non-retryable model errors', async () => {
+    const context = await createContext(DatasetDataIndexStatusEnum.indexing);
+    const task = await MongoDatasetTraining.create({
+      ...context,
+      tmbId: new Types.ObjectId(),
+      billId: 'test',
+      mode: TrainingModeEnum.index,
+      retryCount: 3,
+      lockTime: new Date()
+    });
+    const lease = createTrainingTaskLease(task);
+    try {
+      await lease.fail(new UserError(ModelErrEnum.unExist), { terminal: false });
+    } finally {
+      await lease.stop();
+    }
+
+    const taskAfterFail = await MongoDatasetTraining.findById(task._id).lean();
+    expect(taskAfterFail?.retryCount).toBe(2);
   });
 });
 

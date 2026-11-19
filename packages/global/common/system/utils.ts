@@ -5,12 +5,19 @@ export const delay = (ms: number) =>
     }, ms);
   });
 
-export const retryFn = async <T>(fn: () => Promise<T>, attempts = 3): Promise<T> => {
+/**
+ * 固定间隔重试异步任务；传入 shouldRetry 且返回 false 时立即终止重试并上抛原错误。
+ */
+export const retryFn = async <T>(
+  fn: () => Promise<T>,
+  attempts = 3,
+  shouldRetry?: (error: unknown) => boolean
+): Promise<T> => {
   while (true) {
     try {
       return await fn();
     } catch (error) {
-      if (attempts <= 0) {
+      if (attempts <= 0 || shouldRetry?.(error) === false) {
         return Promise.reject(error);
       }
       await delay(500);

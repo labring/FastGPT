@@ -1,13 +1,18 @@
 import { type EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { isTeamModel } from '@fastgpt/global/core/ai/model/utils';
 import { getAIApi, getModelOpenAIOptions } from '../config';
-import { normalizeRelayNoChannelError } from '../../../thirdProvider/aiproxy/error';
 import { countPromptTokens, countPromptTokensBatch } from '../../../common/string/tiktoken/index';
 import { EmbeddingTypeEnm } from '@fastgpt/global/core/ai/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
 import z from 'zod';
 import { truncateTextByFormattedTokenLimit } from './tokenLimit';
+import {
+  classifyEmbeddingError,
+  createEmptyInputEmbeddingError,
+  createInvalidResponseEmbeddingError,
+  normalizeEmbeddingError
+} from './error';
 
 const logger = getLogger(LogCategories.MODULE.AI.EMBEDDING);
 
@@ -65,10 +70,7 @@ export async function getVectors({
       input: item.input.trim()
     }));
   if (validatedInputs.length === 0 || validatedInputs.some((item) => !item.input)) {
-    return Promise.reject({
-      code: 500,
-      message: 'input is empty'
-    });
+    return Promise.reject(createEmptyInputEmbeddingError());
   }
   const textInputs = validatedInputs
     .filter((item) => item.type === 'text')
@@ -95,10 +97,7 @@ export async function getVectors({
     })
   );
   if (inputs.length === 0 || inputs.some((item) => !item.input)) {
-    return Promise.reject({
-      code: 500,
-      message: 'input is empty'
-    });
+    return Promise.reject(createEmptyInputEmbeddingError());
   }
 
   const { ai, requestMeta } = getAIApi(
@@ -157,7 +156,7 @@ export async function getVectors({
                   inputCount: chunk.length,
                   response: res
                 });
-                return Promise.reject('Embedding API is not responding');
+                return Promise.reject(createInvalidResponseEmbeddingError());
               }
               if (!res?.data?.[0]?.embedding) {
                 // @ts-expect-error provider error payload is not part of the embedding response type
@@ -169,7 +168,9 @@ export async function getVectors({
                   response: res,
                   apiMessage: msg
                 });
-                return Promise.reject('Embedding API is not responding');
+                return Promise.reject(
+                  createInvalidResponseEmbeddingError(msg ? new Error(msg) : undefined)
+                );
               }
 
               const [tokens, vectors] = await Promise.all([
@@ -191,7 +192,10 @@ export async function getVectors({
                 vectors
               };
             }),
-        timeoutMs === undefined ? 3 : 0
+        timeoutMs === undefined ? 3 : 0,
+        // 仅对 OpenAI SDK 未覆盖的瞬时异常（如空响应、400 瞬时拉图失败）做内层短重试；
+        // 确定性错误与 SDK 已指数退避重试过的 429/5xx/网络/超时立即终止内层循环，交由上层或队列决定。
+        (error) => classifyEmbeddingError(error, { signal }).retryInRequest
       );
 
       totalTokens += result.tokens;
@@ -203,14 +207,33 @@ export async function getVectors({
       vectors: allVectors
     };
   } catch (error) {
+    const classification = classifyEmbeddingError(error, { signal });
+    const inputTypes = Array.from(new Set(inputs.map((item) => item.type)));
+
+    // 主动中断/探活超时取消不属于上游故障，降级为 warn 并保留原异常。
+    if (classification.category === 'aborted') {
+      logger.warn('Embedding request aborted', {
+        model: model.model,
+        inputTypes,
+        inputCount: inputs.length
+      });
+      return Promise.reject(error);
+    }
+
     logger.error('Embedding request failed', {
       model: model.model,
-      inputTypes: Array.from(new Set(inputs.map((item) => item.type))),
+      inputTypes,
       inputCount: inputs.length,
+      errorCategory: classification.category,
+      retryable: classification.retryable,
+      errorCode: classification.errorCode,
+      upstreamStatus: classification.upstreamStatus,
+      upstreamCode: classification.upstreamCode,
+      upstreamType: classification.upstreamType,
       error
     });
 
-    return Promise.reject(normalizeRelayNoChannelError(error));
+    return Promise.reject(normalizeEmbeddingError(error, { signal }));
   }
 }
 

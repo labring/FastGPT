@@ -97,6 +97,29 @@ describe('system utils', () => {
 
       expect(result).toEqual(objectResult);
     });
+
+    it('should stop immediately when shouldRetry returns false', async () => {
+      const nonRetryableError = new Error('permanent failure');
+      const fn = vi.fn().mockRejectedValue(nonRetryableError);
+      const shouldRetry = vi.fn().mockReturnValue(false);
+
+      await expect(retryFn(fn, 3, shouldRetry)).rejects.toBe(nonRetryableError);
+      expect(fn).toHaveBeenCalledTimes(1);
+      expect(shouldRetry).toHaveBeenCalledTimes(1);
+      expect(shouldRetry).toHaveBeenCalledWith(nonRetryableError);
+    });
+
+    it('should retry while shouldRetry returns true until success', async () => {
+      const fn = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('transient'))
+        .mockResolvedValueOnce('recovered');
+      const shouldRetry = vi.fn().mockReturnValue(true);
+
+      await expect(retryFn(fn, 3, shouldRetry)).resolves.toBe('recovered');
+      expect(fn).toHaveBeenCalledTimes(2);
+      expect(shouldRetry).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('withTimeout', () => {
