@@ -336,7 +336,7 @@ export type TeamAuditSchemaType = {
 export type TeamAuditListItemType = {
   _id: string;
   sourceMember: SourceMemberType;
-  event: TeamAuditEvent;
+  event: TeamAuditEvent | 'unknown';
   timestamp: Date;
   resources?: AuditResourceType[];
   metadata: Record<string, string>;

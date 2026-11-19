@@ -1,6 +1,7 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import {
   AuditListBodySchema,
+  AuditListItemSchema,
   AuditExportBodySchema
 } from '@fastgpt/global/openapi/support/user/team/audit/api';
 
@@ -134,5 +135,19 @@ describe('team audit date contracts', () => {
     expect(parsed).not.toHaveProperty('teamId');
     expect(parsed).toMatchObject({ tmbIds: [], events: [] });
     expect(AuditExportBodySchema.parse({ ...filters, locale: 'en' })).not.toHaveProperty('events');
+  });
+
+  it('falls back unrecognized list item events to unknown instead of failing validation', () => {
+    const parsed = AuditListItemSchema.parse({
+      _id: '68ad85a7463006c963799a10',
+      sourceMember: {
+        name: 'Alice',
+        status: 'active'
+      },
+      event: 'LEGACY_REMOVED_EVENT',
+      timestamp: '2026-01-02T00:00:00.000Z',
+      metadata: {}
+    });
+    expect(parsed.event).toBe('unknown');
   });
 });

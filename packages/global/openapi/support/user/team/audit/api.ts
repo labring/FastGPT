@@ -71,10 +71,13 @@ export const AuditListItemSchema = z
     sourceMember: SourceMemberSchema.meta({
       description: '发起操作的团队成员'
     }),
-    event: z.enum(TeamAuditEventList).meta({
-      example: AuditEventEnum.UPDATE_APP_INFO,
-      description: '操作事件类型'
-    }),
+    event: z
+      .enum([...TeamAuditEventList, 'unknown'] as const)
+      .catch('unknown')
+      .meta({
+        example: AuditEventEnum.UPDATE_APP_INFO,
+        description: '操作事件类型；未识别的历史事件回退为 unknown'
+      }),
     timestamp: z.coerce.date().meta({
       example: '2026-01-02T00:00:00.000Z',
       description: '操作发生时间'

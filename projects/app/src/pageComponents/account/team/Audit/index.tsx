@@ -232,7 +232,7 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
                 </Tr>
               )}
               {auditLog.map((log) => {
-                const i18nData = auditLogMap[log.event];
+                const i18nData = log.event === 'unknown' ? undefined : auditLogMap[log.event];
                 const resources = resolveAuditResources({
                   event: log.event,
                   resources: log.resources,
@@ -245,7 +245,7 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
                   t
                 });
 
-                return i18nData ? (
+                return (
                   <Tr key={log._id} overflow={'unset'}>
                     <Td>{formatTime2YMDHMS(log.timestamp)}</Td>
                     <Td>
@@ -256,7 +256,7 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
                         spacing={0.5}
                       />
                     </Td>
-                    <Td>{t(i18nData.typeLabel)}</Td>
+                    <Td>{i18nData ? t(i18nData.typeLabel) : log.event}</Td>
                     <Td whiteSpace="normal" overflowWrap="anywhere">
                       {resources.length > 0 ? (
                         <Flex direction="column" align="flex-start" gap={1}>
@@ -276,7 +276,7 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
                       {summary}
                     </Td>
                   </Tr>
-                ) : null;
+                );
               })}
             </Tbody>
           </Table>
