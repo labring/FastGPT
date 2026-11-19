@@ -28,6 +28,61 @@ describe('code IO parser', () => {
     expect(extractReturnedObjectKeys(code)).toEqual(['amount', 'currency']);
   });
 
+  it('keeps Python outputs that follow a floor division', () => {
+    const multiline = `
+      def main(total, count=10 // 2, unit="s"):
+        return {
+          "average": total // count,
+          "remainder": total % count
+        }
+    `;
+    const inline = `
+      def main(total, count):
+        return {"average": total // count, "remainder": total % count}
+    `;
+
+    expect(extractCodeInputDefinitions(multiline)?.map(({ key }) => key)).toEqual([
+      'total',
+      'count',
+      'unit'
+    ]);
+    expect(extractReturnedObjectKeys(multiline)).toEqual(['average', 'remainder']);
+    expect(extractReturnedObjectKeys(inline)).toEqual(['average', 'remainder']);
+  });
+
+  it('detects the language from the main definition, not from comments', () => {
+    const python = `
+      # port of function main({ total })
+      # def main(legacy):
+      def main(total, count):
+        return {
+          "average": total // count,
+          "remainder": total % count
+        }
+    `;
+    const javascript = `
+      // was: def main(total)
+      function main({ total }) {
+        return { half: total / 2, // rounded later
+          ok: /}/.test(total) };
+      }
+    `;
+
+    expect(extractCodeInputDefinitions(python)?.map(({ key }) => key)).toEqual(['total', 'count']);
+    expect(extractReturnedObjectKeys(python)).toEqual(['average', 'remainder']);
+    expect(extractCodeInputDefinitions(javascript)?.map(({ key }) => key)).toEqual(['total']);
+    expect(extractReturnedObjectKeys(javascript)).toEqual(['half', 'ok']);
+  });
+
+  it('keeps Python inputs that follow a positional-only marker', () => {
+    const code = `
+      def main(total, /, count):
+        return {"average": total / count}
+    `;
+
+    expect(extractCodeInputDefinitions(code)?.map(({ key }) => key)).toEqual(['total', 'count']);
+  });
+
   it('extracts JavaScript inputs and return outputs with documented types', () => {
     const code = `
       /**

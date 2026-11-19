@@ -27,7 +27,23 @@ const skipQuotedValue = (source: string, start: number) => {
   return source.length;
 };
 
-const skipComment = (source: string, start: number) => {
+type CodeLanguage = 'js' | 'python';
+
+const jsMainPattern = /(?:async\s+)?function\s+main\s*\(\s*/;
+// 只匹配行首定义，注释掉的旧签名或字符串里提到的 main 不参与判断。
+const pythonMainPattern = /^[ \t]*(?:async[ \t]+)?def[ \t]+main[ \t]*\(/m;
+
+/** 行首的 `def main(` 只会是 Python 定义，其余代码按 JavaScript 解析。 */
+const getCodeLanguage = (code: string): CodeLanguage =>
+  pythonMainPattern.test(code) ? 'python' : 'js';
+
+const skipComment = (source: string, start: number, language: CodeLanguage) => {
+  // Python 中 `//` 是整除运算符，只有 `#` 才是注释。
+  if (language === 'python') {
+    if (source[start] !== '#') return start;
+    const end = source.indexOf('\n', start + 1);
+    return end < 0 ? source.length : end + 1;
+  }
   if (source.startsWith('//', start) || source[start] === '#') {
     const end = source.indexOf('\n', start + 1);
     return end < 0 ? source.length : end + 1;
@@ -39,7 +55,9 @@ const skipComment = (source: string, start: number) => {
   return start;
 };
 
-const isRegexLiteralStart = (source: string, start: number) => {
+const isRegexLiteralStart = (source: string, start: number, language: CodeLanguage) => {
+  // Python 没有正则字面量，`/` 只会是运算符或仅限位置参数分隔符。
+  if (language === 'python') return false;
   if (source[start] !== '/' || source[start + 1] === '/' || source[start + 1] === '*') {
     return false;
   }
@@ -74,21 +92,23 @@ const findMatchingCharacter = ({
   source,
   start,
   open,
-  close
+  close,
+  language
 }: {
   source: string;
   start: number;
   open: string;
   close: string;
+  language: CodeLanguage;
 }) => {
   let depth = 0;
   for (let index = start; index < source.length; index += 1) {
-    const commentEnd = skipComment(source, index);
+    const commentEnd = skipComment(source, index, language);
     if (commentEnd !== index) {
       index = commentEnd - 1;
       continue;
     }
-    if (isRegexLiteralStart(source, index)) {
+    if (isRegexLiteralStart(source, index, language)) {
       index = skipRegexLiteral(source, index) - 1;
       continue;
     }
@@ -105,17 +125,17 @@ const findMatchingCharacter = ({
   return -1;
 };
 
-const splitTopLevelItems = (value: string) => {
+const splitTopLevelItems = (value: string, language: CodeLanguage) => {
   const items: string[] = [];
   let start = 0;
   let depth = 0;
   for (let index = 0; index < value.length; index += 1) {
-    const commentEnd = skipComment(value, index);
+    const commentEnd = skipComment(value, index, language);
     if (commentEnd !== index) {
       index = commentEnd - 1;
       continue;
     }
-    if (isRegexLiteralStart(value, index)) {
+    if (isRegexLiteralStart(value, index, language)) {
       index = skipRegexLiteral(value, index) - 1;
       continue;
     }
@@ -135,18 +155,18 @@ const splitTopLevelItems = (value: string) => {
 };
 
 /** 跳过条目开头的注释，再解析实际的静态参数或属性。 */
-const stripLeadingComments = (item: string): string => {
+const stripLeadingComments = (item: string, language: CodeLanguage): string => {
   let value = item.trim();
-  let commentEnd = skipComment(value, 0);
+  let commentEnd = skipComment(value, 0, language);
   while (commentEnd > 0) {
     value = value.slice(commentEnd).trimStart();
-    commentEnd = skipComment(value, 0);
+    commentEnd = skipComment(value, 0, language);
   }
   return value;
 };
 
-const getStaticPropertyKey = (property: string) => {
-  const value = stripLeadingComments(property);
+const getStaticPropertyKey = (property: string, language: CodeLanguage) => {
+  const value = stripLeadingComments(property, language);
   if (!value || value.startsWith('...') || value.startsWith('[')) return;
   if (["'", '"'].includes(value[0])) {
     const end = skipQuotedValue(value, 0);
@@ -183,7 +203,7 @@ const mergeDefinitions = ({
 /** 提取 main 函数的静态参数名；无法识别动态参数对象时返回 undefined。 */
 export const extractCodeInputDefinitions = (code: string): CodeIoDefinition[] | undefined => {
   const documented = getDocumentedDefinitions(code, 'param');
-  const jsMatch = code.match(/(?:async\s+)?function\s+main\s*\(\s*/);
+  const jsMatch = getCodeLanguage(code) === 'js' ? code.match(jsMainPattern) : null;
   if (jsMatch?.index !== undefined) {
     const paramsStart = jsMatch.index + jsMatch[0].length;
     if (code[paramsStart] === ')') return [];
@@ -193,30 +213,32 @@ export const extractCodeInputDefinitions = (code: string): CodeIoDefinition[] | 
       source: code,
       start: objectStart,
       open: '{',
-      close: '}'
+      close: '}',
+      language: 'js'
     });
     if (objectEnd >= 0) {
-      const keys = splitTopLevelItems(code.slice(objectStart + 1, objectEnd))
-        .map(getStaticPropertyKey)
+      const keys = splitTopLevelItems(code.slice(objectStart + 1, objectEnd), 'js')
+        .map((item) => getStaticPropertyKey(item, 'js'))
         .filter((key): key is string => Boolean(key));
       return mergeDefinitions({ keys, documented });
     }
   }
 
-  const pythonMatch = code.match(/def\s+main\s*\(/);
+  const pythonMatch = code.match(pythonMainPattern);
   if (pythonMatch?.index !== undefined) {
     const paramsStart = pythonMatch.index + pythonMatch[0].length - 1;
     const paramsEnd = findMatchingCharacter({
       source: code,
       start: paramsStart,
       open: '(',
-      close: ')'
+      close: ')',
+      language: 'python'
     });
     if (paramsEnd >= 0) {
-      const keys = splitTopLevelItems(code.slice(paramsStart + 1, paramsEnd))
+      const keys = splitTopLevelItems(code.slice(paramsStart + 1, paramsEnd), 'python')
         .map(
           (item) =>
-            stripLeadingComments(item)
+            stripLeadingComments(item, 'python')
               .replace(/^\*+/, '')
               .match(/^([\p{L}_][\p{L}\p{N}_]*)/u)?.[1]
         )
@@ -229,15 +251,16 @@ export const extractCodeInputDefinitions = (code: string): CodeIoDefinition[] | 
 };
 
 const extractReturnedObjectKeysOrUndefined = (code: string): string[] | undefined => {
+  const language = getCodeLanguage(code);
   const keys: string[] = [];
   let foundReturnObject = false;
   for (let index = 0; index < code.length; index += 1) {
-    const commentEnd = skipComment(code, index);
+    const commentEnd = skipComment(code, index, language);
     if (commentEnd !== index) {
       index = commentEnd - 1;
       continue;
     }
-    if (isRegexLiteralStart(code, index)) {
+    if (isRegexLiteralStart(code, index, language)) {
       index = skipRegexLiteral(code, index) - 1;
       continue;
     }
@@ -263,12 +286,13 @@ const extractReturnedObjectKeysOrUndefined = (code: string): string[] | undefine
       source: code,
       start: objectStart,
       open: '{',
-      close: '}'
+      close: '}',
+      language
     });
     if (objectEnd < 0) continue;
     foundReturnObject = true;
-    splitTopLevelItems(code.slice(objectStart + 1, objectEnd)).forEach((property) => {
-      const key = getStaticPropertyKey(property);
+    splitTopLevelItems(code.slice(objectStart + 1, objectEnd), language).forEach((property) => {
+      const key = getStaticPropertyKey(property, language);
       if (key && !keys.includes(key)) keys.push(key);
     });
     index = objectEnd;
