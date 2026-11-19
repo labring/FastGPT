@@ -273,9 +273,6 @@ export const getEmbeddingRetryDirective = (
   }
 
   const shouldRetryHeader = readHeaderValue(headers, 'x-should-retry')?.toLowerCase();
-  if (shouldRetryHeader === 'false') {
-    return { shouldRetryInRequest: false };
-  }
 
   let retryAfterMs: number | undefined;
   const retryAfterMsHeader = readHeaderValue(headers, 'retry-after-ms');
@@ -299,6 +296,14 @@ export const getEmbeddingRetryDirective = (
         }
       }
     }
+  }
+
+  // x-should-retry: false 仅阻止单次请求内继续重试；若同时携带 Retry-After 仍保留退避时长供训练队列接续。
+  if (shouldRetryHeader === 'false') {
+    return {
+      shouldRetryInRequest: false,
+      ...(retryAfterMs !== undefined ? { retryAfterMs } : {})
+    };
   }
 
   if (retryAfterMs !== undefined && retryAfterMs > maxWaitMs) {
@@ -619,11 +624,14 @@ export const classifyEmbeddingError = (
     };
   }
 
-  // 上游已通过结构化 type/code 明确声明为参数校验错误时，禁止纯正文正则把回显的参数值
-  // （如 encoding_format='rate_limit' 或 'overloaded'）误判为限流/鉴权/欠费/服务不可用。
+  // 仅当上游返回明确参数校验码或参数错误状态码（400/422）且声明参数错误类型时，屏蔽纯正文正则，
+  // 避免 400 回显参数值被误判，同时不干扰 HTTP 429/403 携带通用 invalid_request_error 时的欠费正文识别。
+  const isParamValidationStatus = signals.status === 400 || signals.status === 422;
   const isStructuredInvalidRequest =
-    signals.types.has('invalid_request_error') ||
-    hasAnyLowercaseCode(signals.codes, STRUCTURED_INVALID_PARAM_CODES);
+    isExplicitInvalidParamError ||
+    (isParamValidationStatus &&
+      (signals.types.has('invalid_request_error') ||
+        hasAnyLowercaseCode(signals.codes, STRUCTURED_INVALID_PARAM_CODES)));
 
   // 上游额度/余额不足可能随 HTTP 402/403/429 返回，需先于限流与权限不足识别为不可重试。
   if (
@@ -776,7 +784,11 @@ export const classifyEmbeddingError = (
   }
 
   // 明确的结构化参数错误先于宽泛正文匹配，避免参数值本身包含 `overloaded` 等字样时被误判为服务不可用。
-  if (isStructuredInvalidRequest || hasAnyLowercaseCode(signals.codes, INVALID_REQUEST_CODES)) {
+  if (
+    isStructuredInvalidRequest ||
+    signals.types.has('invalid_request_error') ||
+    hasAnyLowercaseCode(signals.codes, INVALID_REQUEST_CODES)
+  ) {
     return {
       category: 'invalidRequest',
       retryable: false,

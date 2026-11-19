@@ -30,7 +30,15 @@ const buildSystemEmbeddingModel = (): EmbeddingModelDataType => ({
   }
 });
 
-const jsonResponse = (status: number, body: unknown, headers?: Record<string, string>) =>
+const jsonResponse = ({
+  status,
+  body,
+  headers
+}: {
+  status: number;
+  body: unknown;
+  headers?: Record<string, string>;
+}) =>
   new Response(JSON.stringify(body), {
     status,
     headers: { 'content-type': 'application/json', ...headers }
@@ -59,6 +67,20 @@ describe('getVectors real OpenAI SDK HTTP retry budgets', () => {
           message: 'You exceeded your current quota, please check your plan and billing details.',
           type: 'insufficient_quota',
           code: 'insufficient_quota'
+        }
+      },
+      expectedCalls: 1,
+      expectedCategory: 'quotaExceeded',
+      expectedRetryable: false,
+      expectedCode: ModelErrEnum.upstreamQuotaExceeded
+    },
+    {
+      name: 'HTTP 429 generic invalid_request_error with quota message stops after 1 HTTP request',
+      status: 429,
+      body: {
+        error: {
+          message: 'You exceeded your current quota',
+          type: 'invalid_request_error'
         }
       },
       expectedCalls: 1,
@@ -144,7 +166,7 @@ describe('getVectors real OpenAI SDK HTTP retry budgets', () => {
   ])(
     '$name',
     async ({ status, body, expectedCalls, expectedCategory, expectedRetryable, expectedCode }) => {
-      fetchMock.mockImplementation(async () => jsonResponse(status, body));
+      fetchMock.mockImplementation(async () => jsonResponse({ status, body }));
 
       const err = await getVectors({
         model: buildSystemEmbeddingModel(),
@@ -167,15 +189,18 @@ describe('getVectors real OpenAI SDK HTTP retry budgets', () => {
     fetchMock.mockImplementation(async () => {
       requestTimes.push(Date.now());
       if (requestTimes.length === 1) {
-        return jsonResponse(
-          429,
-          { error: { message: 'Rate limit exceeded', code: 'rate_limit_exceeded' } },
-          { 'retry-after': '2' }
-        );
+        return jsonResponse({
+          status: 429,
+          body: { error: { message: 'Rate limit exceeded', code: 'rate_limit_exceeded' } },
+          headers: { 'retry-after': '2' }
+        });
       }
-      return jsonResponse(200, {
-        data: [{ embedding: [0.1, 0.2, 0.3], index: 0 }],
-        usage: { total_tokens: 1 }
+      return jsonResponse({
+        status: 200,
+        body: {
+          data: [{ embedding: [0.1, 0.2, 0.3], index: 0 }],
+          usage: { total_tokens: 1 }
+        }
       });
     });
 
@@ -196,11 +221,13 @@ describe('getVectors real OpenAI SDK HTTP retry budgets', () => {
 
   it('obeys x-should-retry: false on 503 without in-request retries while keeping outer retryable semantics', async () => {
     fetchMock.mockImplementation(async () =>
-      jsonResponse(
-        503,
-        { error: { message: 'Service temporarily unavailable', code: 'service_unavailable' } },
-        { 'x-should-retry': 'false' }
-      )
+      jsonResponse({
+        status: 503,
+        body: {
+          error: { message: 'Service temporarily unavailable', code: 'service_unavailable' }
+        },
+        headers: { 'x-should-retry': 'false', 'retry-after': '180' }
+      })
     );
 
     const err = await getVectors({
@@ -213,17 +240,18 @@ describe('getVectors real OpenAI SDK HTTP retry budgets', () => {
     expect(err).toMatchObject({
       category: 'upstreamUnavailable',
       retryable: true,
+      retryAfterMs: 180_000,
       message: ModelErrEnum.serviceUnavailable
     });
   });
 
   it('stops in-request retry when Retry-After exceeds budget and hands retryable error to upper layer', async () => {
     fetchMock.mockImplementation(async () =>
-      jsonResponse(
-        429,
-        { error: { message: 'Rate limit exceeded', code: 'rate_limit_exceeded' } },
-        { 'retry-after': '60' }
-      )
+      jsonResponse({
+        status: 429,
+        body: { error: { message: 'Rate limit exceeded', code: 'rate_limit_exceeded' } },
+        headers: { 'retry-after': '60' }
+      })
     );
 
     const err = await getVectors({
@@ -245,11 +273,11 @@ describe('getVectors real OpenAI SDK HTTP retry budgets', () => {
     let attempt = 0;
     fetchMock.mockImplementation(async () => {
       attempt++;
-      return jsonResponse(
-        429,
-        { error: { message: 'Rate limit exceeded', code: 'rate_limit_exceeded' } },
-        { 'retry-after': attempt < 3 ? '0' : '180' }
-      );
+      return jsonResponse({
+        status: 429,
+        body: { error: { message: 'Rate limit exceeded', code: 'rate_limit_exceeded' } },
+        headers: { 'retry-after': attempt < 3 ? '0' : '180' }
+      });
     });
 
     const err = await getVectors({
@@ -267,38 +295,44 @@ describe('getVectors real OpenAI SDK HTTP retry budgets', () => {
     });
   });
 
-  it('stops after 1 HTTP request for HTTP 400 invalid_request_error echoing rate_limit', async () => {
-    fetchMock.mockImplementation(async () =>
-      jsonResponse(400, {
-        error: {
-          message: "Unsupported value: 'rate_limit' for 'encoding_format'.",
-          type: 'invalid_request_error',
-          code: 'invalid_value'
-        }
-      })
-    );
+  it.each(['rate_limit', 'failed to download image: 500'])(
+    'stops after 1 HTTP request for HTTP 400 invalid_value echoing %s',
+    async (echoedValue) => {
+      fetchMock.mockImplementation(async () =>
+        jsonResponse({
+          status: 400,
+          body: {
+            error: {
+              message: `Unsupported value: '${echoedValue}' for 'encoding_format'.`,
+              type: 'invalid_request_error',
+              code: 'invalid_value'
+            }
+          }
+        })
+      );
 
-    const err = await getVectors({
-      model: buildSystemEmbeddingModel(),
-      inputs: [{ type: 'text', input: 'hello' }]
-    }).catch((e) => e);
+      const err = await getVectors({
+        model: buildSystemEmbeddingModel(),
+        inputs: [{ type: 'text', input: 'hello' }]
+      }).catch((e) => e);
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(err).toBeInstanceOf(EmbeddingRequestError);
-    expect(err).toMatchObject({
-      category: 'invalidRequest',
-      retryable: false,
-      message: ModelErrEnum.invalidRequest
-    });
-  });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(err).toBeInstanceOf(EmbeddingRequestError);
+      expect(err).toMatchObject({
+        category: 'invalidRequest',
+        retryable: false,
+        message: ModelErrEnum.invalidRequest
+      });
+    }
+  );
 
   it('never retries deterministic 429 insufficient_quota even if upstream sends x-should-retry: true', async () => {
     fetchMock.mockImplementation(async () =>
-      jsonResponse(
-        429,
-        { error: { message: 'You exceeded your current quota', code: 'insufficient_quota' } },
-        { 'x-should-retry': 'true', 'retry-after': '1' }
-      )
+      jsonResponse({
+        status: 429,
+        body: { error: { message: 'You exceeded your current quota', code: 'insufficient_quota' } },
+        headers: { 'x-should-retry': 'true', 'retry-after': '1' }
+      })
     );
 
     const err = await getVectors({
@@ -339,7 +373,10 @@ describe('getVectors real OpenAI SDK HTTP retry budgets', () => {
     {
       name: 'HTTP 200 batch item missing embedding',
       makeResponse: () =>
-        jsonResponse(200, { data: [{ embedding: [0.1, 0.2], index: 0 }, { index: 1 }] })
+        jsonResponse({
+          status: 200,
+          body: { data: [{ embedding: [0.1, 0.2], index: 0 }, { index: 1 }] }
+        })
     }
   ])(
     'normalizes malformed 2xx response ($name) into retryable invalidResponse without crashing',

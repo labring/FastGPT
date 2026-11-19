@@ -174,6 +174,12 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
       ).toEqual({ shouldRetryInRequest: false });
 
       expect(
+        getEmbeddingRetryDirective({
+          headers: new Headers({ 'x-should-retry': 'false', 'retry-after': '180' })
+        })
+      ).toEqual({ shouldRetryInRequest: false, retryAfterMs: 180_000 });
+
+      expect(
         getEmbeddingRetryDirective({ headers: new Headers({ 'retry-after-ms': '1500' }) })
       ).toEqual({ shouldRetryInRequest: true, retryAfterMs: 1500 });
 
@@ -556,6 +562,71 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
           retryable,
           errorCode
         });
+      }
+    );
+    it.each([429, 403])(
+      'keeps HTTP %d generic invalid_request_error quota message deterministic as quotaExceeded',
+      (status) => {
+        const raw = makeApiError({
+          status,
+          type: 'invalid_request_error',
+          message: 'You exceeded your current quota, please check your plan and billing details.'
+        });
+
+        expect(classifyEmbeddingError(raw)).toMatchObject({
+          category: 'quotaExceeded',
+          retryable: false,
+          errorCode: ModelErrEnum.upstreamQuotaExceeded
+        });
+      }
+    );
+
+    it.each([
+      {
+        name: 'HTTP 403 Cloudflare HTML',
+        status: 403,
+        message:
+          '<html><head><title>403 Forbidden</title></head><body>Attention Required! | Cloudflare</body></html>',
+        category: 'permissionDenied',
+        retryable: false,
+        errorCode: ModelErrEnum.permissionDenied
+      },
+      {
+        name: 'HTTP 413 Nginx HTML',
+        status: 413,
+        message:
+          '<html><head><title>413 Request Entity Too Large</title></head><body>nginx</body></html>',
+        category: 'inputTooLong',
+        retryable: false,
+        errorCode: ModelErrEnum.inputTooLong
+      },
+      {
+        name: 'HTTP 404 Nginx HTML',
+        status: 404,
+        message: '<html><head><title>404 Not Found</title></head><body>nginx</body></html>',
+        category: 'modelNotFound',
+        retryable: false,
+        errorCode: ModelErrEnum.modelNotFound
+      },
+      {
+        name: 'HTTP 500 empty body',
+        status: 500,
+        message: '',
+        category: 'upstreamUnavailable',
+        retryable: true,
+        errorCode: ModelErrEnum.serviceUnavailable
+      }
+    ])(
+      'hides raw HTML/empty upstream payload on $name',
+      ({ status, message, category, retryable, errorCode }) => {
+        const raw = makeApiError({ status, message });
+        expect(classifyEmbeddingError(raw)).toMatchObject({
+          category,
+          retryable,
+          errorCode
+        });
+        const normalized = normalizeEmbeddingError(raw);
+        expect(getErrText(normalized)).toBe(ERROR_RESPONSE[errorCode].message);
       }
     );
   });

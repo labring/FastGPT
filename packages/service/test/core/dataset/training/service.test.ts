@@ -258,6 +258,63 @@ describe('createTrainingTaskLease', () => {
     expect(claimedTooEarly).toBeNull();
   });
 
+  it('preserves expireAt: null and missing expireAt when scheduling long retryAfterMs delays', async () => {
+    const context = await createContext(DatasetDataIndexStatusEnum.rebuildSynonymRunning);
+    const nullExpireTask = await MongoDatasetTraining.create({
+      ...context,
+      tmbId: new Types.ObjectId(),
+      billId: 'test',
+      mode: TrainingModeEnum.rebuildSynonym,
+      retryCount: 3,
+      expireAt: null,
+      lockTime: new Date()
+    });
+    const missingExpireTask = await MongoDatasetTraining.create({
+      ...context,
+      tmbId: new Types.ObjectId(),
+      billId: 'test',
+      mode: TrainingModeEnum.rebuildSynonym,
+      retryCount: 3,
+      expireAt: null,
+      lockTime: new Date()
+    });
+    await MongoDatasetTraining.updateOne(
+      { _id: missingExpireTask._id },
+      { $unset: { expireAt: 1 } }
+    );
+    const loadedMissingTask = (await MongoDatasetTraining.findById(missingExpireTask._id).lean())!;
+
+    const longRetryErr = new EmbeddingRequestError(ModelErrEnum.serviceUnavailable, {
+      category: 'upstreamUnavailable',
+      retryable: true,
+      retryAfterMs: 180_000,
+      errorCode: ModelErrEnum.serviceUnavailable
+    });
+    const beforeFail = Date.now();
+
+    for (const candidate of [nullExpireTask, loadedMissingTask]) {
+      const lease = createTrainingTaskLease(candidate);
+      try {
+        await lease.fail(longRetryErr);
+      } finally {
+        await lease.stop();
+      }
+    }
+
+    const savedNull = await MongoDatasetTraining.findById(nullExpireTask._id).lean();
+    const savedMissing = await MongoDatasetTraining.findById(missingExpireTask._id).lean();
+    expect(savedNull?.retryCount).toBe(2);
+    expect(savedNull?.expireAt).toBeNull();
+    expect(
+      savedNull!.lockTime.getTime() + TRAINING_LEASE_TIMEOUT_MS - beforeFail
+    ).toBeGreaterThanOrEqual(179_000);
+    expect(savedMissing?.retryCount).toBe(2);
+    expect(savedMissing?.expireAt).toBeUndefined();
+    expect(
+      savedMissing!.lockTime.getTime() + TRAINING_LEASE_TIMEOUT_MS - beforeFail
+    ).toBeGreaterThanOrEqual(179_000);
+  });
+
   it('caps extreme upstream retryAfterMs to 24h so lockTime stays active below BLOCKED_LOCK_TIME', async () => {
     const context = await createContext(DatasetDataIndexStatusEnum.indexing);
     const task = await MongoDatasetTraining.create({

@@ -54,7 +54,15 @@ type TrainingStageResult = Pick<DatasetTrainingSchemaType, 'mode'> &
 type TrainingLeaseTask = Pick<
   DatasetTrainingSchemaType,
   '_id' | 'mode' | 'lockTime' | 'retryCount' | 'dataId' | 'teamId' | 'datasetId' | 'collectionId'
->;
+> &
+  Partial<Pick<DatasetTrainingSchemaType, 'expireAt'>>;
+
+/** 仅在任务原本启用了有效 Date 类型 TTL 时解析其过期时间，保留 null/缺失的免过期策略。 */
+const parseActiveExpireAt = (expireAt: unknown): Date | undefined => {
+  if (expireAt === null || expireAt === undefined) return undefined;
+  const parsed = expireAt instanceof Date ? expireAt : new Date(String(expireAt));
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+};
 
 /**
  * 以现有 lockTime + mode 为租约，不增加训练字段。续租失败时保守放弃本地写权限；
@@ -209,6 +217,14 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
           )
         : requestedRetryDelayMs;
     const now = Date.now();
+    const existingExpireAt = parseActiveExpireAt(task.expireAt);
+    const extendedExpireAt =
+      retryCount > 0 &&
+      !blocked &&
+      effectiveRetryDelayMs > TRAINING_LEASE_HEARTBEAT_MS &&
+      existingExpireAt
+        ? new Date(Math.max(existingExpireAt.getTime(), now + effectiveRetryDelayMs))
+        : undefined;
     try {
       await commit(async (session) => {
         const result = await MongoDatasetTraining.updateOne(
@@ -222,11 +238,11 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
                 ? BLOCKED_LOCK_TIME
                 : new Date(now - TRAINING_LEASE_TIMEOUT_MS + effectiveRetryDelayMs),
               // 最终错误保留供用户重试，不能被 TTL 删除后留下无任务的 indexing 数据。
-              // 长退避等待期间同步延后 expireAt，避免在下次重试到达前被 7 天 TTL 提前清理。
+              // 长退避等待期间仅延后原本启用了 TTL 的日期字段，保留 rebuildSynonym / 恢复任务的 null 或缺失值。
               ...(retryCount === 0
                 ? { expireAt: null }
-                : !blocked && effectiveRetryDelayMs > TRAINING_LEASE_HEARTBEAT_MS
-                  ? { expireAt: new Date(now + effectiveRetryDelayMs) }
+                : extendedExpireAt
+                  ? { expireAt: extendedExpireAt }
                   : {})
             }
           },
