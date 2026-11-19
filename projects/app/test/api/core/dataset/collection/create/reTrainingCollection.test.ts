@@ -140,7 +140,7 @@ describe('reTrainingCollection', () => {
             type: 'collection',
             id: newCollectionId,
             name: sourceCollection.name,
-            parentId: sourceDatasetId,
+            datasetId: sourceDatasetId,
             collectionType: sourceCollection.type
           }
         ],

@@ -51,8 +51,12 @@ const AuditResourceBaseSchema = z.strictObject({
   id: z.string().trim().min(1).optional().meta({ description: '关联资源 ID' }),
   name: z.string().optional().meta({ description: '操作时的资源名称快照' }),
   avatar: z.string().optional().meta({ description: '资源头像或内置图标' }),
+  datasetId: ObjectIdSchema.optional().meta({
+    description: '集合所属知识库 ID，用于列表/导出补齐知识库与构造详情页跳转',
+    example: '68ad85a7463006c963799a05'
+  }),
   parentId: ObjectIdSchema.optional().meta({
-    description: '父级资源 ID（集合所属知识库 ID，用于构造详情页跳转）',
+    description: '历史父级资源 ID（兼容旧集合记录所属知识库 ID）',
     example: '68ad85a7463006c963799a05'
   }),
   collectionType: z.enum(DatasetCollectionTypeEnum).optional().meta({
@@ -148,7 +152,7 @@ export const buildCollectionAuditResource = (
   },
   options?: { deleted?: boolean }
 ): AuditResourceType => {
-  const parentId = toOptionalObjectIdString(collection.datasetId);
+  const datasetId = toOptionalObjectIdString(collection.datasetId);
   return {
     type:
       collection.type === DatasetCollectionTypeEnum.folder
@@ -158,7 +162,7 @@ export const buildCollectionAuditResource = (
       ? { id: toOptionalIdString(collection._id ?? collection.id) }
       : {}),
     ...(toOptionalText(collection.name) ? { name: toOptionalText(collection.name) } : {}),
-    ...(parentId ? { parentId } : {}),
+    ...(datasetId ? { datasetId } : {}),
     ...(collection.type ? { collectionType: collection.type } : {}),
     ...(options?.deleted ? { deleted: true } : {})
   };
@@ -224,6 +228,9 @@ export const normalizeStoredAuditResource = (raw: unknown): AuditResourceType | 
       ...(toOptionalIdString(record.id) ? { id: toOptionalIdString(record.id) } : {}),
       ...(typeof record.name === 'string' && record.name ? { name: record.name } : {}),
       ...(typeof record.avatar === 'string' && record.avatar ? { avatar: record.avatar } : {}),
+      ...(toOptionalIdString(record.datasetId)
+        ? { datasetId: toOptionalIdString(record.datasetId) }
+        : {}),
       ...(toOptionalIdString(record.parentId)
         ? { parentId: toOptionalIdString(record.parentId) }
         : {}),
@@ -253,7 +260,7 @@ export const normalizeStoredAuditResource = (raw: unknown): AuditResourceType | 
           ? AuditResourceTypeEnum.collectionFolder
           : AuditResourceTypeEnum.collection,
       id: collectionId,
-      ...(datasetId ? { parentId: datasetId } : {}),
+      ...(datasetId ? { datasetId } : {}),
       ...(collectionType ? { collectionType } : {})
     });
     return parsed.success ? parsed.data : undefined;

@@ -54,9 +54,23 @@ describe('audit presenter resources', () => {
     ).toBe(`/dataset/detail?datasetId=${parentId}&currentTab=dataCard&collectionId=${id}`);
     expect(
       resolveAuditResourceHref({
+        type: AuditResourceTypeEnum.collection,
+        id,
+        datasetId: parentId
+      })
+    ).toBe(`/dataset/detail?datasetId=${parentId}&currentTab=dataCard&collectionId=${id}`);
+    expect(
+      resolveAuditResourceHref({
         type: AuditResourceTypeEnum.collectionFolder,
         id,
         parentId
+      })
+    ).toBe(`/dataset/detail?datasetId=${parentId}&currentTab=collectionCard&parentId=${id}`);
+    expect(
+      resolveAuditResourceHref({
+        type: AuditResourceTypeEnum.collectionFolder,
+        id,
+        datasetId: parentId
       })
     ).toBe(`/dataset/detail?datasetId=${parentId}&currentTab=collectionCard&parentId=${id}`);
     expect(
@@ -582,5 +596,208 @@ describe('audit presenter summary', () => {
         href: `/dashboard/agent?parentId=${folderId}`
       })
     ]);
+  });
+
+  it('formats structured summaries and resources for dataset collection audit events', () => {
+    expect(
+      formatAuditSummary({
+        event: DatasetAuditEventEnum.DATASET_COLLECTION_CREATE,
+        metadata: {
+          collectionName: 'API 设计.pdf',
+          objectType: 'common:core.dataset.file',
+          location: '产品手册/技术文档'
+        },
+        t
+      })
+    ).toBe(
+      [
+        'account_team:audit_detail_resource_type(type=common:core.dataset.file)',
+        'account_team:audit_detail_collection_location(location=产品手册/技术文档)'
+      ].join('\n')
+    );
+
+    expect(
+      formatAuditSummary({
+        event: DatasetAuditEventEnum.DATASET_COLLECTION_RENAME,
+        metadata: {
+          oldName: '旧名称',
+          newName: '新名称'
+        },
+        t
+      })
+    ).toBe('account_team:audit_detail_rename(newName=新名称|oldName=旧名称)');
+
+    expect(
+      formatAuditSummary({
+        event: DatasetAuditEventEnum.DATASET_COLLECTION_MOVE,
+        metadata: {
+          oldPath: '产品手册/旧目录/API 设计.pdf',
+          newPath: '产品手册/新目录/API 设计.pdf'
+        },
+        t
+      })
+    ).toBe(
+      'account_team:audit_detail_rename(newName=产品手册/新目录/API 设计.pdf|oldName=产品手册/旧目录/API 设计.pdf)'
+    );
+
+    expect(
+      formatAuditSummary({
+        event: DatasetAuditEventEnum.DATASET_COLLECTION_TAG_ADD,
+        metadata: { tagName: '已审核' },
+        t
+      })
+    ).toBe('account_team:audit_detail_dataset_tag(tagName=已审核)');
+
+    expect(
+      formatAuditSummary({
+        event: DatasetAuditEventEnum.DATASET_COLLECTION_PERMISSION_INHERITANCE_RESUME,
+        metadata: {
+          parentResource: '技术文档'
+        },
+        t
+      })
+    ).toBe('account_team:audit_detail_inherit_parent(parentResource=技术文档)');
+
+    for (const event of [
+      DatasetAuditEventEnum.DATASET_COLLECTION_ENABLE,
+      DatasetAuditEventEnum.DATASET_COLLECTION_DISABLE,
+      DatasetAuditEventEnum.DATASET_COLLECTION_SOURCE_READ,
+      DatasetAuditEventEnum.DATASET_COLLECTION_QA_EXPORT,
+      DatasetAuditEventEnum.DATASET_COLLECTION_SYNC
+    ]) {
+      expect(
+        formatAuditSummary({
+          event,
+          metadata: {},
+          t
+        })
+      ).toBe('-');
+      expect(
+        resolveAuditResources({
+          event,
+          metadata: { datasetName: '产品手册', collectionName: 'API 设计.pdf' }
+        })
+      ).toEqual([
+        expect.objectContaining({
+          type: AuditResourceTypeEnum.collection,
+          name: 'API 设计.pdf'
+        })
+      ]);
+    }
+  });
+
+  it('omits duplicate dataset summary and protects dataset resource when collection logs bind dataset first', () => {
+    const datasetResource = {
+      type: AuditResourceTypeEnum.dataset,
+      id: '68ad85a7463006c963799b01',
+      name: '产品手册'
+    };
+    const collectionResource = {
+      type: AuditResourceTypeEnum.collection,
+      id: '68ad85a7463006c963799c01',
+      parentId: '68ad85a7463006c963799b01',
+      name: '接入指南.pdf',
+      deleted: true
+    };
+
+    const deletePresented = resolveAuditResources({
+      event: AuditEventEnum.DELETE_COLLECTION,
+      resources: [datasetResource, collectionResource]
+    });
+    expect(deletePresented[0]).toMatchObject({
+      type: AuditResourceTypeEnum.dataset,
+      name: '产品手册',
+      href: '/dataset/detail?datasetId=68ad85a7463006c963799b01'
+    });
+    expect(deletePresented[0].deleted).toBeUndefined();
+    expect(deletePresented[1].deleted).toBe(true);
+    expect(deletePresented[1].href).toBeUndefined();
+
+    expect(
+      formatAuditSummary({
+        event: AuditEventEnum.DELETE_COLLECTION,
+        resources: [datasetResource, collectionResource],
+        metadata: { datasetName: '旧知识库名', collectionName: '接入指南.pdf' },
+        t
+      })
+    ).toBe(
+      [
+        'account_team:audit_detail_resource_name(name=接入指南.pdf)',
+        'account_team:audit_detail_resource_id(id=68ad85a7463006c963799c01)'
+      ].join('\n')
+    );
+
+    expect(
+      formatAuditSummary({
+        event: DatasetAuditEventEnum.DATASET_COLLECTION_SYNC,
+        resources: [datasetResource, { ...collectionResource, deleted: undefined }],
+        metadata: { datasetName: '旧知识库名' },
+        t
+      })
+    ).toBe('-');
+
+    expect(
+      formatAuditSummary({
+        event: DatasetAuditEventEnum.DATASET_COLLECTION_TAG_ADD,
+        resources: [datasetResource, { ...collectionResource, deleted: undefined }],
+        metadata: {
+          datasetName: '旧知识库名',
+          tagName: '已审核'
+        },
+        t
+      })
+    ).toBe('account_team:audit_detail_dataset_tag(tagName=已审核)');
+
+    expect(
+      formatAuditSummary({
+        event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
+        resources: [datasetResource, { ...collectionResource, deleted: undefined }],
+        metadata: { parentResource: '产品手册' },
+        t
+      })
+    ).toBe(
+      [
+        'account_team:audit_detail_resource_type(type=account_team:audit_resource_type_collection)',
+        'account_team:audit_detail_inherit_parent(parentResource=产品手册)'
+      ].join('\n')
+    );
+
+    const deletedWithoutSnapshot = resolveAuditResources({
+      event: DatasetAuditEventEnum.DATASET_COLLECTION_SYNC,
+      resources: [
+        { type: AuditResourceTypeEnum.dataset, id: '68ad85a7463006c963799b01', deleted: true },
+        { ...collectionResource, deleted: undefined }
+      ]
+    });
+    expect(deletedWithoutSnapshot[0].name).toBe('-');
+    expect(deletedWithoutSnapshot[0].nameMissing).toBe(true);
+    expect(formatAuditResourcesText(deletedWithoutSnapshot, t)).toBe(
+      'account_team:audit_resource_deleted\n接入指南.pdf'
+    );
+
+    const deletedNamedDash = resolveAuditResources({
+      event: AuditEventEnum.DELETE_DATASET,
+      resources: [
+        {
+          type: AuditResourceTypeEnum.dataset,
+          id: '68ad85a7463006c963799b02',
+          name: '-',
+          deleted: true
+        }
+      ]
+    });
+    expect(deletedNamedDash[0].name).toBe('-');
+    expect(deletedNamedDash[0].nameMissing).toBeUndefined();
+    expect(formatAuditResourcesText(deletedNamedDash, t)).toBe('-');
+
+    const deletedWithLegacyMetadata = resolveAuditResources({
+      event: AuditEventEnum.DELETE_COLLECTION,
+      resources: [
+        { type: AuditResourceTypeEnum.dataset, id: '68ad85a7463006c963799b01', deleted: true },
+        collectionResource
+      ],
+      metadata: { datasetName: '历史知识库快照' }
+    });
+    expect(deletedWithLegacyMetadata[0].name).toBe('历史知识库快照');
   });
 });

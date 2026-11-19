@@ -13,6 +13,8 @@ import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildCollectionCreateAuditLog } from '@fastgpt/service/core/dataset/audit/collection';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const { fileId, customPdfParse, ...body } = parseApiInput({
@@ -50,19 +52,36 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     insertLen: 1
   });
 
-  return createCollectionAndInsertData({
+  const collectionType = DatasetCollectionTypeEnum.file;
+  const result = await createCollectionAndInsertData({
     dataset,
     modelAuthContext,
     createCollectionParams: {
       ...body,
       teamId,
       tmbId,
-      type: DatasetCollectionTypeEnum.file,
+      type: collectionType,
       name: metadata.filename,
       fileId, // ObjectId -> ObjectKey
       customPdfParse
     }
   });
+
+  void addAuditLog(
+    await buildCollectionCreateAuditLog({
+      teamId,
+      tmbId,
+      dataset,
+      collection: {
+        _id: result.collectionId,
+        name: metadata.filename,
+        type: collectionType,
+        parentId: body.parentId
+      }
+    })
+  );
+
+  return result;
 }
 
 export default NextAPI(handler);

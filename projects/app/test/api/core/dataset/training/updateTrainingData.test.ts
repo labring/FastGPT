@@ -196,7 +196,7 @@ describe('updateTrainingData', () => {
                 type: 'collection',
                 id: String(current.collection._id),
                 name: current.collection.name,
-                parentId: current.dataset._id,
+                datasetId: current.dataset._id,
                 collectionType: current.collection.type
               }
             ]);
@@ -318,7 +318,7 @@ describe('updateTrainingData', () => {
             type: 'collection',
             id: String(collection._id),
             name: collection.name,
-            parentId: dataset._id,
+            datasetId: dataset._id,
             collectionType: collection.type
           }
         ]);

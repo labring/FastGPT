@@ -27,6 +27,7 @@ export type PresentedAuditResource = {
   avatar?: string;
   href?: string;
   deleted?: boolean;
+  nameMissing?: boolean;
 };
 
 /** 这些事件的主目标资源已在本次操作中被删除，即使未落库 deleted 标记也不生成跳转链接。 */
@@ -86,6 +87,17 @@ const COLLECTION_EVENTS = new Set<string>([
   AuditEventEnum.CREATE_DATA,
   AuditEventEnum.UPDATE_DATA,
   AuditEventEnum.DELETE_DATA,
+  DatasetAuditEventEnum.DATASET_COLLECTION_CREATE,
+  DatasetAuditEventEnum.DATASET_COLLECTION_RENAME,
+  DatasetAuditEventEnum.DATASET_COLLECTION_MOVE,
+  DatasetAuditEventEnum.DATASET_COLLECTION_ENABLE,
+  DatasetAuditEventEnum.DATASET_COLLECTION_DISABLE,
+  DatasetAuditEventEnum.DATASET_COLLECTION_SOURCE_READ,
+  DatasetAuditEventEnum.DATASET_COLLECTION_QA_EXPORT,
+  DatasetAuditEventEnum.DATASET_COLLECTION_SYNC,
+  DatasetAuditEventEnum.DATASET_COLLECTION_TAG_ADD,
+  DatasetAuditEventEnum.DATASET_COLLECTION_TAG_REMOVE,
+  DatasetAuditEventEnum.DATASET_COLLECTION_PERMISSION_INHERITANCE_RESUME,
   DatasetAuditEventEnum.DATASET_COLLECTION_TRAINING_RETRY,
   DatasetAuditEventEnum.DATASET_TRAINING_TASK_RETRY,
   DatasetAuditEventEnum.DATASET_TRAINING_RECORD_DELETE
@@ -180,18 +192,20 @@ export const resolveAuditResourceHref = (resource: AuditListResourceType): strin
     case AuditResourceTypeEnum.datasetFolder:
       return `/dataset/list?parentId=${encodeURIComponent(resource.id)}`;
     case AuditResourceTypeEnum.collection: {
-      if (!resource.parentId) return undefined;
+      const datasetId = resource.datasetId ?? resource.parentId;
+      if (!datasetId) return undefined;
       const query = new URLSearchParams({
-        datasetId: resource.parentId,
+        datasetId,
         currentTab: 'dataCard',
         collectionId: resource.id
       });
       return `/dataset/detail?${query}`;
     }
     case AuditResourceTypeEnum.collectionFolder: {
-      if (!resource.parentId) return undefined;
+      const datasetId = resource.datasetId ?? resource.parentId;
+      if (!datasetId) return undefined;
       const query = new URLSearchParams({
-        datasetId: resource.parentId,
+        datasetId,
         currentTab: 'collectionCard',
         parentId: resource.id
       });
@@ -390,12 +404,23 @@ export const resolveAuditResources = ({
     const forceDeleted = DELETE_TARGET_EVENTS.has(event);
 
     return normalized.map((rawItem, index) => {
+      const shouldForceDelete =
+        forceDeleted &&
+        (event !== AuditEventEnum.DELETE_COLLECTION ||
+          rawItem.type === AuditResourceTypeEnum.collection ||
+          rawItem.type === AuditResourceTypeEnum.collectionFolder);
       const item: AuditListResourceType = {
         ...rawItem,
-        ...(forceDeleted ? { deleted: true } : {})
+        ...(shouldForceDelete ? { deleted: true } : {})
       };
-      const name =
-        asNonEmptyString(item.name) ?? fallbackName ?? (item.id ? item.id.slice(-8) : '-');
+      const datasetFallbackName =
+        item.type === AuditResourceTypeEnum.dataset ||
+        item.type === AuditResourceTypeEnum.datasetFolder
+          ? asNonEmptyString(metadata?.datasetName)
+          : undefined;
+      const resolvedName = asNonEmptyString(item.name) ?? datasetFallbackName ?? fallbackName;
+      const nameMissing = !resolvedName;
+      const name = resolvedName ?? (item.deleted ? '-' : item.id ? item.id.slice(-8) : '-');
 
       return {
         key: `${item.type}:${item.id ?? name}:${index}`,
@@ -403,7 +428,8 @@ export const resolveAuditResources = ({
         name,
         avatar: resolveAuditResourceAvatar({ ...item, name }),
         href: resolveAuditResourceHref(item),
-        ...(item.deleted ? { deleted: true } : {})
+        ...(item.deleted ? { deleted: true } : {}),
+        ...(nameMissing ? { nameMissing: true } : {})
       };
     });
   }
@@ -412,9 +438,18 @@ export const resolveAuditResources = ({
 };
 
 /** 将资源列表格式化为 CSV 纯文本列。 */
-export const formatAuditResourcesText = (resources: PresentedAuditResource[]): string => {
+export const formatAuditResourcesText = (
+  resources: PresentedAuditResource[],
+  t?: AuditTranslator
+): string => {
   if (resources.length === 0) return '-';
-  return resources.map((item) => item.name).join('\n');
+  return resources
+    .map((item) =>
+      item.deleted && (item.nameMissing || !item.name) && t
+        ? t('account_team:audit_resource_deleted')
+        : item.name
+    )
+    .join('\n');
 };
 
 const extractCollaboratorNames = (value: unknown): string[] => {
@@ -493,7 +528,13 @@ const formatDeletedResourceLines = ({
       const picked =
         event === AuditEventEnum.DELETE_API_KEY
           ? resources.filter((item) => item.deleted || item.type === AuditResourceTypeEnum.apiKey)
-          : resources;
+          : event === AuditEventEnum.DELETE_COLLECTION
+            ? resources.filter(
+                (item) =>
+                  item.type === AuditResourceTypeEnum.collection ||
+                  item.type === AuditResourceTypeEnum.collectionFolder
+              )
+            : resources;
       const fallbackName =
         picked.length === 1 ? pickMetadataFallbackName(event, metadata) : undefined;
       const fallbackId =
@@ -567,7 +608,12 @@ const formatResourceTypeLine = ({
   resources?: AuditResourceType[];
   t: AuditTranslator;
 }): string | undefined => {
-  const resourceType = resources?.[0]?.type;
+  const collectionTarget = resources?.find(
+    (item) =>
+      item.type === AuditResourceTypeEnum.collection ||
+      item.type === AuditResourceTypeEnum.collectionFolder
+  );
+  const resourceType = collectionTarget?.type ?? resources?.[0]?.type;
   const label = resourceType ? resolveResourceTypeLabel(resourceType, t) : undefined;
   if (!label) return undefined;
   return t('account_team:audit_detail_resource_type', { type: label });
@@ -597,6 +643,13 @@ export const formatAuditSummary = ({
   const hasMetadata = Boolean(metadata && Object.keys(metadata).length > 0);
   const normalizedResources = normalizeStoredAuditResources(resources);
   const hasResources = Boolean(normalizedResources && normalizedResources.length > 0);
+  const hasDatasetResource = Boolean(
+    normalizedResources?.some(
+      (item) =>
+        item.type === AuditResourceTypeEnum.dataset ||
+        item.type === AuditResourceTypeEnum.datasetFolder
+    )
+  );
   if (!hasMetadata && !hasResources) {
     return '-';
   }
@@ -815,10 +868,65 @@ export const formatAuditSummary = ({
         : '-';
     }
 
+    case DatasetAuditEventEnum.DATASET_COLLECTION_CREATE: {
+      const lines: string[] = [];
+      const objectType = asNonEmptyString(processed.objectType);
+      const location = asNonEmptyString(processed.location);
+      if (objectType) {
+        lines.push(t('account_team:audit_detail_resource_type', { type: objectType }));
+      }
+      if (location) {
+        lines.push(t('account_team:audit_detail_collection_location', { location }));
+      }
+      return lines.length > 0 ? lines.join('\n') : '-';
+    }
+
+    case DatasetAuditEventEnum.DATASET_COLLECTION_RENAME: {
+      const oldName = asNonEmptyString(processed.oldName);
+      const newName = asNonEmptyString(processed.newName);
+      return oldName && newName ? t('account_team:audit_detail_rename', { oldName, newName }) : '-';
+    }
+
+    case DatasetAuditEventEnum.DATASET_COLLECTION_MOVE: {
+      const oldPath = asNonEmptyString(processed.oldPath);
+      const newPath = asNonEmptyString(processed.newPath);
+      return oldPath && newPath
+        ? t('account_team:audit_detail_rename', { oldName: oldPath, newName: newPath })
+        : '-';
+    }
+
+    case DatasetAuditEventEnum.DATASET_COLLECTION_TAG_ADD:
+    case DatasetAuditEventEnum.DATASET_COLLECTION_TAG_REMOVE: {
+      const lines: string[] = [];
+      const datasetName = asNonEmptyString(processed.datasetName);
+      const tagName = asNonEmptyString(processed.tagName);
+      if (!hasDatasetResource && datasetName) {
+        lines.push(t('account_team:audit_detail_collection_dataset', { datasetName }));
+      }
+      if (tagName) {
+        lines.push(t('account_team:audit_detail_dataset_tag', { tagName }));
+      }
+      return lines.length > 0 ? lines.join('\n') : '-';
+    }
+
+    case DatasetAuditEventEnum.DATASET_COLLECTION_PERMISSION_INHERITANCE_RESUME: {
+      const lines: string[] = [];
+      const datasetName = asNonEmptyString(processed.datasetName);
+      if (!hasDatasetResource && datasetName) {
+        lines.push(t('account_team:audit_detail_collection_dataset', { datasetName }));
+      }
+      lines.push(
+        t('account_team:audit_detail_inherit_parent', {
+          parentResource: processed.parentResource ?? '-'
+        })
+      );
+      return lines.join('\n');
+    }
+
     case AuditEventEnum.DELETE_COLLECTION: {
       const lines: string[] = [];
       const datasetName = asNonEmptyString(processed.datasetName);
-      if (datasetName) {
+      if (!hasDatasetResource && datasetName) {
         lines.push(t('account_team:audit_detail_collection_dataset', { datasetName }));
       }
       lines.push(
@@ -838,9 +946,15 @@ export const formatAuditSummary = ({
     case AuditEventEnum.CREATE_DATA:
     case AuditEventEnum.UPDATE_DATA:
     case AuditEventEnum.DELETE_DATA:
+    case DatasetAuditEventEnum.DATASET_COLLECTION_ENABLE:
+    case DatasetAuditEventEnum.DATASET_COLLECTION_DISABLE:
+    case DatasetAuditEventEnum.DATASET_COLLECTION_SOURCE_READ:
+    case DatasetAuditEventEnum.DATASET_COLLECTION_QA_EXPORT:
+    case DatasetAuditEventEnum.DATASET_COLLECTION_SYNC:
     case DatasetAuditEventEnum.DATASET_COLLECTION_TRAINING_RETRY:
     case DatasetAuditEventEnum.DATASET_TRAINING_TASK_RETRY:
     case DatasetAuditEventEnum.DATASET_TRAINING_RECORD_DELETE: {
+      if (hasDatasetResource) return '-';
       const datasetName = asNonEmptyString(processed.datasetName);
       return datasetName ? t('account_team:audit_detail_collection_dataset', { datasetName }) : '-';
     }

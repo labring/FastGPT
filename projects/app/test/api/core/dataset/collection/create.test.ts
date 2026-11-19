@@ -190,7 +190,7 @@ describe('create collection parent checks', () => {
             type: 'collectionFolder',
             id: String(last.data),
             name: 'last',
-            parentId: scope.datasetId,
+            datasetId: scope.datasetId,
             collectionType: DatasetCollectionTypeEnum.folder
           }
         ]
@@ -220,7 +220,7 @@ describe('create collection parent checks', () => {
             type: 'collection',
             id: String(leaf.data),
             name: 'leaf',
-            parentId: scope.datasetId,
+            datasetId: scope.datasetId,
             collectionType: DatasetCollectionTypeEnum.virtual
           }
         ]

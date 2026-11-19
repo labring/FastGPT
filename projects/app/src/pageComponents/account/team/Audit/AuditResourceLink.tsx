@@ -20,7 +20,7 @@ const buildPrefixedResourceHref = (href: string) => {
  */
 const AuditResourceLink = ({ resource }: { resource: PresentedAuditResource }) => {
   const { t } = useSafeTranslation();
-  const hasSnapshotName = Boolean(resource.name && resource.name !== '-');
+  const hasSnapshotName = Boolean(resource.name && !resource.nameMissing);
   const label = resource.deleted
     ? hasSnapshotName
       ? `${resource.name} (${t('account_team:audit_resource_deleted_suffix')})`
@@ -32,12 +32,7 @@ const AuditResourceLink = ({ resource }: { resource: PresentedAuditResource }) =
       {resource.avatar && (
         <Avatar src={resource.avatar} w="18px" borderRadius="xs" flexShrink={0} />
       )}
-      <Box
-        as="span"
-        minW={0}
-        overflowWrap="anywhere"
-        _groupHover={{ textDecoration: 'underline' }}
-      >
+      <Box as="span" minW={0} overflowWrap="anywhere" _groupHover={{ textDecoration: 'underline' }}>
         {label}
       </Box>
     </>

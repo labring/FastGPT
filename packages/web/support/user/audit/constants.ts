@@ -530,6 +530,16 @@ export const auditLogMap = {
     params: {} as { name?: string; folderName: string }
   },
   //Collection
+  ['dataset.collection.create']: {
+    typeLabel: i18nT('account_team:dataset_collection_created'),
+    params: {} as {
+      name?: string;
+      objectType: string;
+      /** 知识库名/父目录链，已包含知识库自身 */
+      location: string;
+    }
+  },
+  /** @deprecated 历史日志展示用，新写入统一走 'dataset.collection.create'。 */
   [AuditEventEnum.CREATE_COLLECTION]: {
     content: i18nT('account_team:log_create_collection'),
     typeLabel: i18nT('account_team:create_collection'),
@@ -540,6 +550,7 @@ export const auditLogMap = {
       datasetType: string;
     }
   },
+  /** @deprecated 历史日志展示用，新写入已拆分为 rename/move/enable/disable 独立事件。 */
   [AuditEventEnum.UPDATE_COLLECTION]: {
     content: i18nT('account_team:log_update_collection'),
     typeLabel: i18nT('account_team:update_collection'),
@@ -548,6 +559,65 @@ export const auditLogMap = {
       collectionName: string;
       datasetName: string;
       datasetType: string;
+    }
+  },
+  ['dataset.collection.rename']: {
+    typeLabel: i18nT('account_team:dataset_collection_renamed'),
+    params: {} as {
+      name?: string;
+      oldName: string;
+      newName: string;
+    }
+  },
+  ['dataset.collection.move']: {
+    typeLabel: i18nT('account_team:dataset_collection_moved'),
+    params: {} as {
+      name?: string;
+      oldPath: string;
+      newPath: string;
+    }
+  },
+  ['dataset.collection.enable']: {
+    typeLabel: i18nT('account_team:dataset_collection_enabled'),
+    params: {} as { name?: string }
+  },
+  ['dataset.collection.disable']: {
+    typeLabel: i18nT('account_team:dataset_collection_disabled'),
+    params: {} as { name?: string }
+  },
+  ['dataset.collection.source.read']: {
+    typeLabel: i18nT('account_team:dataset_collection_source_read'),
+    params: {} as { name?: string }
+  },
+  ['dataset.collection.qa.export']: {
+    typeLabel: i18nT('account_team:dataset_collection_qa_exported'),
+    params: {} as { name?: string }
+  },
+  ['dataset.collection.sync']: {
+    typeLabel: i18nT('account_team:dataset_collection_synced'),
+    params: {} as { name?: string }
+  },
+  ['dataset.collection.tag.add']: {
+    typeLabel: i18nT('account_team:collection_tag_added'),
+    params: {} as {
+      name?: string;
+      tagName: string;
+    }
+  },
+  ['dataset.collection.tag.remove']: {
+    typeLabel: i18nT('account_team:collection_tag_removed'),
+    params: {} as {
+      name?: string;
+      tagName: string;
+    }
+  },
+  /** 集合权限恢复继承使用独立事件。 */
+  ['dataset.collection.permission.inheritance_resume']: {
+    typeLabel: i18nT('account_team:collection_permission_inheritance_resumed'),
+    params: {} as {
+      name?: string;
+      /** 恢复继承后跟随的上级：父目录名，根集合时为知识库名；父目录已不存在时省略。 */
+      parentResource?: string;
     }
   },
   [AuditEventEnum.DELETE_COLLECTION]: {

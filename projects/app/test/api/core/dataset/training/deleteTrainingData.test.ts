@@ -82,7 +82,7 @@ describe('delete training data test', () => {
             type: 'collection',
             id: String(collection._id),
             name: collection.name,
-            parentId: dataset._id,
+            datasetId: dataset._id,
             collectionType: collection.type
           }
         ]);

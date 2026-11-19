@@ -242,7 +242,7 @@ describe('audit resource associations', () => {
       {
         type: AuditResourceTypeEnum.collectionFolder,
         id: objectId,
-        parentId: objectId,
+        datasetId: objectId,
         collectionType: DatasetCollectionTypeEnum.folder
       }
     ]);
@@ -261,6 +261,7 @@ describe('audit resource associations', () => {
     { type: 'unknown', id: objectId },
     { type: AuditResourceTypeEnum.app },
     { type: AuditResourceTypeEnum.app, name: '   ' },
+    { type: AuditResourceTypeEnum.collection, id: objectId, datasetId: 'invalid-id' },
     { type: AuditResourceTypeEnum.collection, id: objectId, parentId: 'invalid-id' },
     { type: AuditResourceTypeEnum.collection, id: objectId, collectionType: 'invalid-type' },
     { type: AuditResourceTypeEnum.app, id: objectId, unknownField: 'bad' },
