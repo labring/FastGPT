@@ -571,7 +571,7 @@ V1 的 R1–R13 已并入附录 C.11，V2 修订/新增：
 
 ## 附录 C：自 V1 并入的有效公共契约
 
-> 评审后本仓库只保留本文一份设计。原 V1 中**仍属实施与验收依据**的公共契约已全部并入本附录（内容以 V1 评审通过版为准，仅按 V2 模型改写落点表述）：C.1 场景判定、C.2 设计原则、C.3 四个动作、C.4 路由、C.5 参数与校验、C.6 登录源模型、C.7 账密共存、C.8 同步源适配约束、C.9 前缀边界、C.10 合并方法论、C.11 风险清单、C.12 externalId 稳定性契约、C.13 术语、C.14 设计目标与硬约束、C.15 通用架构与职责边界、C.16 异常与边界基表、C.17 测试与验收基矩阵。V1 全文存档于内部评审文档《单同步源多SSO通用设计.md》，仅作历史对照，正文不再有依赖 V1 才能执行的规则。
+> 评审后本仓库只保留本文一份设计。原 V1 中**仍属实施与验收依据**的公共契约已全部并入本附录（内容以 V1 评审通过版为准，仅按 V2 模型改写落点表述）：C.1 场景判定、C.2 设计原则、C.3 四个动作、C.4 路由、C.5 参数与校验、C.6 登录源模型、C.7 账密共存、C.8 同步源适配约束、C.9 前缀边界、C.10 合并方法论、C.11 风险清单、C.12 externalId 稳定性契约、C.13 术语、C.14 设计目标与硬约束、C.15 通用架构与职责边界、C.16 异常与边界基表、C.17 测试与验收基矩阵；C.18 部署刷数操作说明（升级 Runbook）为本版新增，不属于 V1 契约。V1 全文存档于内部评审文档《单同步源多SSO通用设计.md》，仅作历史对照，正文不再有依赖 V1 才能执行的规则。
 
 ### C.1 适用场景判定（V1 §1.1）
 
@@ -601,8 +601,8 @@ V1 的 R1–R13 已并入附录 C.11，V2 修订/新增：
 | --- | --- | --- | --- | --- |
 | **⓪ 同步建号与维护** | canonical 账号集合从哪来 | 首次上线 + 周期同步 | 唯一同步源按 `syncSource` 圈定自己的账号（6.7 S8–S10） | 必须生效，是 ①③ 的前提 |
 | **① 运行时身份收敛** | 一个人有多个登录身份 | 每次登录 | `accounts` 行 + 首绑（6.1 / 6.2） | 必须生效，**全自动** |
-| **② 刷数（回填/纠错）** | 历史数据不符合新规则（缺绑定行、旧用户名格式） | 上线窗口一次 | 幂等数据脚本 | **不需要**（新数据天然合规） |
-| **③ 存量账号合并** | 旧平行账号持有资源，需要转移到 canonical 账号 | 上线窗口一次 | 合并脚本（C.10） | **不需要**（没有旧账号） |
+| **② 刷数（回填/纠错）** | 历史数据不符合新规则（缺绑定行、旧用户名格式） | 上线窗口一次 | 幂等数据脚本（操作步骤见 C.18 Runbook） | **不需要**（新数据天然合规） |
+| **③ 存量账号合并** | 旧平行账号持有资源，需要转移到 canonical 账号 | 上线窗口一次 | 合并脚本（C.10；操作步骤见 C.18 Runbook） | **不需要**（没有旧账号） |
 
 - **⓪ 决定账号集合**：账号由同步源建立，登录源只映射；① 的登录命中、③ 的合并目标都建立在它之上；
 - **① 是产品能力**，每次登录都在跑，不依赖任何脚本；
@@ -909,3 +909,142 @@ pro/admin（有状态）：身份解析 resolver（查 accounts → 未命中走
 | 6 | 存量合并 | 旧账号禁用，资源在新账号可见 |
 | 7 | 人员离职 | 所有入口统一拒绝 |
 | 8 | 某来源下线 | 该入口拒绝，其他入口正常 |
+
+### C.18 部署刷数操作说明（升级 Runbook，本版新增）
+
+定位：把 C.3 表中动作 ②（刷数回填）与 ③（存量合并）落成可执行的运维步骤。实现为 pro 管理端两个接口（均在升级窗口由 root 执行，幂等可重跑）：
+
+| 接口 | 作用 | 对应动作 |
+| --- | --- | --- |
+| `POST /api/admin/user/identity/backfill` | 刷数：为存量同步账号补 `accounts` 绑定行；dryRun 同时产出异常清单与疑似平行账号清单 | ② |
+| `POST /api/admin/user/identity/merge` | 合并：管理员提供 `fromUserId → toUserId` 映射，转移资源、搬迁绑定行、禁用旧账号 | ③ |
+
+**前置条件**（缺一不执行）：
+
+1. 新版本（`accounts` 模型 + 同步链路）已部署，同步源配置就绪（`EXTERNAL_USER_SYSTEM_SOURCE`、`EXTERNAL_USER_SYSTEM_LEGACY_USERNAME_PREFIX` 等）；
+2. 旧登录入口已关闭、旧同步源已停止写入（C.10 前置 ④）；
+3. MongoDB 全量备份已完成（合并动作不可逆，回滚只能靠备份恢复）；
+4. root 账号登录态可用（两接口均为 `authRoot` 校验）。
+
+**总流程与判定开关**：
+
+```text
+① backfill {dryRun:true} 一次预检，看三样输出：
+   sources      → 待补行数计划
+   anomalies    → 非空 = 有脏数据，先人工处理再继续
+   parallelAccountCandidates → 判定走哪条路：
+       为空   = 无平行账号，直接跳 ③ 实刷收工
+       非空   = 有平行账号，先走 ② 合并，再 ③ 实刷
+② merge {dryRun:true} 预演 → 管理员核对映射 → merge {dryRun:false} 实际合并
+③ backfill {dryRun:false} 实刷 → ④ 完成判据校验
+```
+
+顺序纪律不变：**回填必须在开放对应登录入口之前完成**（C.11 R4），合并必须在同步建号/认领之后（C.3）。
+
+---
+
+#### 步骤 1：预检（backfill dryRun）
+
+```bash
+curl -s -X POST https://<admin域名>/api/admin/user/identity/backfill \
+  -H "Authorization: Bearer <root登录token>" -H "Content-Type: application/json" \
+  -d '{"dryRun": true}'
+```
+
+示例响应（部署前缀 `wecom-`，1286 个同步账号，其中 83 个缺绑定行）：
+
+```json
+{
+  "dryRun": true,
+  "totalUsers": 1286,
+  "sources": [
+    { "source": "wecom", "total": 1286, "created": 0, "skipped": 1203, "missing": 83 }
+  ],
+  "anomalies": [],
+  "parallelAccountCandidates": []
+}
+```
+
+- `missing` = 待补行数，作为实刷后核对 `created` 的基准；
+- `anomalies` 非空时**不得继续实刷**，按下文异常处置表处理；
+- `parallelAccountCandidates` 非空时进入步骤 2。
+
+**有平行账号时的 candidates 示例**（同 contact 挂了旧手工号 + 同步号，属同一自然人）：
+
+```json
+"parallelAccountCandidates": [
+  {
+    "contact": "13800000001",
+    "accounts": [
+      { "userId": "665f1a2b...", "username": "legacy-zhang" },
+      { "userId": "665f2c3d...", "username": "wecom-zhang", "syncSource": "wecom" }
+    ]
+  }
+]
+```
+
+#### 步骤 2（仅 candidates 非空）：平行账号合并
+
+映射关系（`fromUserId → toUserId`）由管理员对照 candidates 清单核对后提供，脚本不做归属猜测。建议每批先 dryRun 预演、确认后实际执行：
+
+```bash
+# 2.1 预演
+curl -s -X POST https://<admin域名>/api/admin/user/identity/merge \
+  -H "Authorization: Bearer <root登录token>" -H "Content-Type: application/json" \
+  -d '{
+    "dryRun": true,
+    "pairs": [{ "fromUserId": "665f1a2b...", "toUserId": "665f2c3d...", "teamId": "665f9e8f..." }]
+  }'
+# → results[0]: { "status": "wouldMerge", "movedIdentities": 1, ... }  校验全部通过，预计搬迁 1 行
+
+# 2.2 实际执行（同请求体，dryRun:false）
+# → results[0]: { "status": "merged", "apps": 3, "datasets": 1, "movedIdentities": 1, ... }
+```
+
+实际执行在单事务内完成：资源（app/dataset/群组/组织/Key/权限）换绑到接收账号 tmb；绑定行搬迁并保留 matchKey/createdAt 审计证据；旧账号改名 `merged-<原名>-<时间戳>`、`status=forbidden`、清密码，事务提交后强制下线。逐 pair 独立执行，单对失败不影响其他对（一次最多 50 对）。
+
+#### 步骤 3：实刷（backfill dryRun=false）
+
+```bash
+curl -s -X POST https://<admin域名>/api/admin/user/identity/backfill \
+  -H "Authorization: Bearer <root登录token>" -H "Content-Type: application/json" \
+  -d '{"dryRun": false}'
+```
+
+示例响应：
+
+```json
+{
+  "dryRun": false,
+  "totalUsers": 1286,
+  "sources": [
+    { "source": "wecom", "total": 1286, "created": 83, "skipped": 1203 }
+  ],
+  "anomalies": [],
+  "parallelAccountCandidates": []
+}
+```
+
+逐来源条件 `$push` 只补缺的行，**幂等**：重复执行第二遍全部 `skipped`、`created=0`，可安全重跑。
+
+#### 步骤 4：完成判据
+
+1. 再跑一次 `backfill {dryRun:true}`：`missing` 全部为 0、`anomalies` 为空；
+2. 实刷响应中 `sources` 无 `error` 字段，且 `created` 之和等于 dryRun 时 `missing` 之和；
+3. `parallelAccountCandidates` 中每个 contact 均已合并（旧账号 `merged-*` / `forbidden`）或经业务方确认保留双账号；
+4. 用旧身份走一次 SSO 登录验证：命中 canonical 账号、资源可见（C.17 手工验收 #3/#6）。
+
+#### 异常处置表
+
+| 现象 | 含义 | 处置 |
+| --- | --- | --- |
+| `anomalies`：按前缀规则去前缀后 externalId 为空 | username 全部由前缀构成（或为空），无法定位外部身份 | 人工改名补齐或按实际身份补绑定行，处理后重跑 |
+| `anomalies`：同来源内 externalId 重名 | 批内两个不同账号推导出同一外部身份（如 `wecom-zhang` 与 `zhang` 在前缀 `wecom-` 下都推导出 `zhang`），登录匹配会产生二义性 | 判定是否同一自然人：是 → merge 合并；否 → 清理/禁用废弃账号；处理后重跑 |
+| merge：`接收账号已存在同来源绑定（source:externalId）` | 接收账号已有同键绑定行，属脏数据，整对失败不覆盖 | 先人工处理重复绑定（删废弃行或改用其他目标账号）后重试该 pair |
+| backfill：某来源带 `error` | 该来源整批失败（冲突/批内重名），**该批一行未写**，其他来源不受影响 | 按 error 原文处理对应脏数据后重跑（幂等，已写入的行会跳过） |
+| merge：`源账号已是禁用状态` 等 | 重复合并或账号状态不符合前置 | 已合并/已处理，无需操作；确认为其他原因时人工检查 |
+
+#### 回滚边界
+
+- 步骤 3 刷数：只新增绑定行，可回退（删除本次新增的 `accounts` 行）或直接保留（新行与同步链路写入形态一致）；
+- 步骤 2 合并：**不可逆**（禁用 + 改名 + 资源换绑），回滚只能依赖前置条件 3 的 Mongo 备份按文档恢复——因此 dryRun 预演 + 备份在先为强制纪律。
