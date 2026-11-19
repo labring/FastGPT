@@ -314,4 +314,51 @@ describe('getVectors real OpenAI SDK HTTP retry budgets', () => {
       message: ModelErrEnum.upstreamQuotaExceeded
     });
   });
+
+  it.each([
+    {
+      name: 'HTTP 204 No Content',
+      makeResponse: () => new Response(null, { status: 204 })
+    },
+    {
+      name: 'HTTP 200 JSON Content-Length 0',
+      makeResponse: () =>
+        new Response('', {
+          status: 200,
+          headers: { 'content-type': 'application/json', 'content-length': '0' }
+        })
+    },
+    {
+      name: 'HTTP 200 truncated JSON',
+      makeResponse: () =>
+        new Response('{"data": [', {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        })
+    },
+    {
+      name: 'HTTP 200 batch item missing embedding',
+      makeResponse: () =>
+        jsonResponse(200, { data: [{ embedding: [0.1, 0.2], index: 0 }, { index: 1 }] })
+    }
+  ])(
+    'normalizes malformed 2xx response ($name) into retryable invalidResponse without crashing',
+    async ({ makeResponse }) => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      fetchMock.mockImplementation(async () => makeResponse());
+
+      const err = await getVectors({
+        model: buildSystemEmbeddingModel(),
+        inputs: [{ type: 'text', input: 'hello' }]
+      }).catch((e) => e);
+
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+      expect(err).toBeInstanceOf(EmbeddingRequestError);
+      expect(err).toMatchObject({
+        category: 'invalidResponse',
+        retryable: true,
+        message: ModelErrEnum.invalidResponse
+      });
+    }
+  );
 });

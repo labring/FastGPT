@@ -187,7 +187,7 @@ export async function getVectors({
                   }
                 }
               }
-              if (!res.data) {
+              if (!res?.data) {
                 logger.error('Embedding API returned empty data', {
                   model: model.model,
                   inputTypes,
@@ -196,7 +196,11 @@ export async function getVectors({
                 });
                 return Promise.reject(createInvalidResponseEmbeddingError());
               }
-              if (!res?.data?.[0]?.embedding) {
+              if (
+                !Array.isArray(res.data) ||
+                res.data.length === 0 ||
+                res.data.some((item) => !item?.embedding)
+              ) {
                 // @ts-expect-error provider error payload is not part of the embedding response type
                 const msg = res.data?.err?.message || '';
                 logger.error('Embedding API returned invalid embedding', {

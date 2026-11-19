@@ -139,7 +139,13 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
       });
     });
 
-    it.each(['overloaded', 'rate_limit', 'unauthorized', 'insufficient_quota'])(
+    it.each([
+      'overloaded',
+      'rate_limit',
+      'unauthorized',
+      'insufficient_quota',
+      'failed to download image: 500'
+    ])(
       'keeps HTTP 400 invalid_request_error non-retryable when parameter value echoes %s',
       (echoedValue) => {
         const raw = makeApiError({
@@ -474,6 +480,12 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
         error: createInvalidResponseEmbeddingError(new Error('empty data')),
         category: 'invalidResponse',
         errorCode: ModelErrEnum.invalidResponse
+      },
+      {
+        name: 'truncated/malformed JSON SyntaxError',
+        error: new SyntaxError('Unexpected end of JSON input'),
+        category: 'invalidResponse',
+        errorCode: ModelErrEnum.invalidResponse
       }
     ])('classifies $name as retryable with clean message', ({ error, category, errorCode }) => {
       const classified = classifyEmbeddingError(error);
@@ -505,5 +517,46 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
       const twice = normalizeEmbeddingError(once);
       expect(twice).toBe(once);
     });
+
+    it.each([
+      {
+        code: 'Arrearage',
+        message: 'Access denied, please make sure your account is in good standing.',
+        category: 'quotaExceeded',
+        retryable: false,
+        errorCode: ModelErrEnum.upstreamQuotaExceeded
+      },
+      {
+        code: 'DataInspectionFailed',
+        message: 'Input rejected by policy.',
+        category: 'contentModeration',
+        retryable: false,
+        errorCode: ModelErrEnum.contentBlocked
+      },
+      {
+        code: 'InvalidApiKey',
+        message: 'Credential rejected.',
+        category: 'authFailed',
+        retryable: false,
+        errorCode: ModelErrEnum.authFailed
+      },
+      {
+        code: 'InvalidParameter',
+        message: 'Failed to download image: 500 Internal Server Error',
+        category: 'imageDownloadFailed',
+        retryable: true,
+        errorCode: ModelErrEnum.imageDownloadFailed
+      }
+    ])(
+      'normalizes PascalCase provider error code $code properly',
+      ({ code, message, category, retryable, errorCode }) => {
+        const raw = makeApiError({ status: 400, code, message });
+        expect(classifyEmbeddingError(raw)).toMatchObject({
+          category,
+          retryable,
+          errorCode
+        });
+      }
+    );
   });
 });

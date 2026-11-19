@@ -151,7 +151,8 @@ const QUOTA_CODES = new Set([
   'quota_exceeded',
   'billing_hard_limit_reached',
   'account_overdue',
-  'arrears'
+  'arrears',
+  'arrearage'
 ]);
 
 const RATE_LIMIT_CODES = new Set([
@@ -194,11 +195,16 @@ const MODEL_NOT_FOUND_CODES = new Set(['model_not_found', 'not_found_error']);
 
 const NO_AVAILABLE_CHANNEL_CODES = new Set(['no_available_channel', 'channel_not_found']);
 
-const STRUCTURED_INVALID_PARAM_CODES = new Set([
+// 明确表示请求参数 schema/枚举/类型校验失败的结构化错误码，不会由上游拉图等运行时动作触发。
+const EXPLICIT_INVALID_PARAM_CODES = new Set([
   'invalid_value',
   'invalid_type',
   'missing_required_parameter',
-  'unknown_parameter',
+  'unknown_parameter'
+]);
+
+const STRUCTURED_INVALID_PARAM_CODES = new Set([
+  ...EXPLICIT_INVALID_PARAM_CODES,
   'invalid_parameter',
   'invalid_parameter_error',
   'invalid_request_error'
@@ -417,9 +423,17 @@ const extractErrorSignals = (error: unknown): ExtractedErrorSignals => {
   };
 };
 
+const normalizeCodeKey = (code: string): string =>
+  code
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2')
+    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+    .replace(/[-\s]+/g, '_')
+    .toLowerCase();
+
 const hasAnyLowercaseCode = (codes: Set<string>, targets: Set<string>): boolean => {
   for (const code of codes) {
-    if (targets.has(code.toLowerCase())) return true;
+    const lower = code.toLowerCase();
+    if (targets.has(lower) || targets.has(normalizeCodeKey(code))) return true;
   }
   return false;
 };
@@ -571,9 +585,15 @@ export const classifyEmbeddingError = (
     };
   }
 
+  const isExplicitInvalidParamError = hasAnyLowercaseCode(
+    signals.codes,
+    EXPLICIT_INVALID_PARAM_CODES
+  );
+
   // 上游拉取图片失败常以 HTTP 400 返回，且正文可能内嵌被拉取站点的 401/403/429/500 状态码，
   // 必须先于通用鉴权/限流规则识别，避免把图片地址不可访问误判为模型 API Key 错误。
   if (
+    !isExplicitInvalidParamError &&
     /failed to download image|error while downloading (file|image)|multimodal download failure|failed to fetch image|unable to download image|cannot download image|(image|url).*(download|fetch).*(fail|error|timeout|timed?\s*out)|image.*timed?\s*out.*download/i.test(
       signals.payloadText
     )
@@ -805,6 +825,18 @@ export const classifyEmbeddingError = (
       category: 'networkError',
       retryable: true,
       errorCode: ModelErrEnum.networkError,
+      ...meta
+    };
+  }
+
+  if (
+    (error instanceof SyntaxError || signals.names.has('SyntaxError')) &&
+    /json|unexpected (end|token)/i.test(signals.rawMessage)
+  ) {
+    return {
+      category: 'invalidResponse',
+      retryable: true,
+      errorCode: ModelErrEnum.invalidResponse,
       ...meta
     };
   }
