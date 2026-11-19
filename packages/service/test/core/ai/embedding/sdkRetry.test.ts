@@ -431,7 +431,11 @@ describe('getVectors real OpenAI SDK HTTP retry budgets', () => {
             code: 'rate_limit_exceeded'
           }
         },
-        headers: { 'retry-after': '180' }
+        headers: {
+          'retry-after': '180',
+          'set-cookie': 'sid=secret-session-token; HttpOnly',
+          'x-upstream-secret': 'do-not-log'
+        }
       })
     );
 
@@ -448,6 +452,10 @@ describe('getVectors real OpenAI SDK HTTP retry budgets', () => {
       retryAfterMs: 180_000,
       message: ModelErrEnum.rateLimited
     });
+    const causeHeaders = (longErr.cause as { headers?: Record<string, string> })?.headers;
+    expect(causeHeaders).toEqual({ 'retry-after': '180' });
+    expect(JSON.stringify(longErr.cause)).not.toContain('secret-session-token');
+    expect(JSON.stringify(longErr.cause)).not.toContain('do-not-log');
 
     vi.useFakeTimers();
     fetchMock.mockReset();

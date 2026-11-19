@@ -257,6 +257,21 @@ const readHeaderValue = (headers: unknown, name: string): string | undefined => 
   return undefined;
 };
 
+const RETRY_DIRECTIVE_HEADERS = ['x-should-retry', 'retry-after-ms', 'retry-after'] as const;
+
+/** 仅按白名单提取与退避决策相关的响应头，避免把上游 Set-Cookie 等无关或敏感头带入异常链与日志。 */
+export const pickEmbeddingRetryHeaders = (headers: unknown): Record<string, string> | undefined => {
+  if (!headers) return undefined;
+  const picked: Record<string, string> = {};
+  for (const name of RETRY_DIRECTIVE_HEADERS) {
+    const value = readHeaderValue(headers, name);
+    if (value !== undefined) {
+      picked[name] = value;
+    }
+  }
+  return Object.keys(picked).length > 0 ? picked : undefined;
+};
+
 /**
  * 解析上游响应头中的重试指令（`x-should-retry`、`retry-after-ms`、`Retry-After`）。
  * 仅在业务分类允许重试后生效；若上游要求等待时间超出本次请求预算，则停止内层重试交由上层队列处理。

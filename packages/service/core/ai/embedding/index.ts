@@ -14,7 +14,8 @@ import {
   type EmbeddingErrorClassification,
   getEmbeddingRetryDirective,
   MAX_EMBEDDING_RETRY_AFTER_MS,
-  normalizeEmbeddingError
+  normalizeEmbeddingError,
+  pickEmbeddingRetryHeaders
 } from './error';
 
 const logger = getLogger(LogCategories.MODULE.AI.EMBEDDING);
@@ -183,14 +184,13 @@ export async function getVectors({
           ).then(async ({ data: res, response }) => {
             if (!res?.data || !res?.data?.[0]?.embedding) {
               // 兼容部分供应商以 HTTP 200 返回结构化错误体（如 insufficient_quota / rate_limit_exceeded），
-              // 保留响应头后交由统一重试与归一化流程处理，避免误当作空响应或丢失 Retry-After。
+              // 仅按白名单保留退避相关响应头后交由统一重试与归一化流程处理，避免误当作空响应、丢失 Retry-After 或泄露无关上游响应头。
               const structuredError = getStructuredResponseError(res);
               if (structuredError) {
+                const retryHeaders = pickEmbeddingRetryHeaders(response?.headers);
                 const structuredPayload =
-                  response?.headers &&
-                  typeof structuredError === 'object' &&
-                  structuredError !== null
-                    ? { ...structuredError, headers: response.headers }
+                  retryHeaders && typeof structuredError === 'object' && structuredError !== null
+                    ? { ...structuredError, headers: retryHeaders }
                     : structuredError;
                 const structuredClassification = classifyEmbeddingError(structuredPayload, {
                   signal
