@@ -431,6 +431,39 @@ describe('audit presenter summary', () => {
       formatAuditSummary({
         event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
         resources: [
+          { datasetId: '68ad85a7463006c963799e10' },
+          { collectionId: '68ad85a7463006c963799e11' }
+        ],
+        metadata: { targetResource: '产品手册.pdf', parentResource: '知识库 A' },
+        t
+      })
+    ).toBe(
+      [
+        'account_team:audit_detail_resource_type(type=account_team:audit_resource_type_collection)',
+        'account_team:audit_detail_inherit_parent(parentResource=知识库 A)'
+      ].join('\n')
+    );
+    expect(
+      resolveAuditResources({
+        event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
+        resources: [
+          { datasetId: '68ad85a7463006c963799e10' },
+          { collectionId: '68ad85a7463006c963799e11' }
+        ],
+        metadata: { targetResource: '产品手册.pdf', parentResource: '知识库 A' }
+      })
+    ).toEqual([
+      expect.objectContaining({
+        type: AuditResourceTypeEnum.collection,
+        name: '产品手册.pdf',
+        href: '/dataset/detail?datasetId=68ad85a7463006c963799e10&currentTab=dataCard&collectionId=68ad85a7463006c963799e11'
+      })
+    ]);
+
+    expect(
+      formatAuditSummary({
+        event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
+        resources: [
           {
             type: AuditResourceTypeEnum.app,
             id: '68ad85a7463006c963799a01',

@@ -275,6 +275,42 @@ export const normalizeStoredAuditResource = (raw: unknown): AuditResourceType | 
 
 export const normalizeStoredAuditResources = (raw: unknown): AuditResourceType[] | undefined => {
   if (!Array.isArray(raw)) return undefined;
+
+  // 兼容基线集合恢复继承权限写入的 `[{ datasetId }, { collectionId }]`：识别集合为操作目标并保留所属知识库作为 parentId。
+  if (raw.length === 2) {
+    const [first, second] = raw;
+    const isLegacyDatasetOnly = (item: unknown): item is Record<string, unknown> =>
+      Boolean(
+        item &&
+        typeof item === 'object' &&
+        typeof (item as Record<string, unknown>).type !== 'string' &&
+        !(item as Record<string, unknown>).collectionId &&
+        toOptionalObjectIdString((item as Record<string, unknown>).datasetId)
+      );
+    const isLegacyCollectionOnly = (item: unknown): item is Record<string, unknown> =>
+      Boolean(
+        item &&
+        typeof item === 'object' &&
+        typeof (item as Record<string, unknown>).type !== 'string' &&
+        toOptionalIdString((item as Record<string, unknown>).collectionId)
+      );
+
+    const legacyPair =
+      isLegacyDatasetOnly(first) && isLegacyCollectionOnly(second)
+        ? { dataset: first, collection: second }
+        : isLegacyCollectionOnly(first) && isLegacyDatasetOnly(second)
+          ? { dataset: second, collection: first }
+          : undefined;
+
+    if (legacyPair) {
+      const merged = normalizeStoredAuditResource({
+        ...legacyPair.collection,
+        datasetId: legacyPair.collection.datasetId ?? legacyPair.dataset.datasetId
+      });
+      return merged ? [merged] : [];
+    }
+  }
+
   return raw
     .map((item) => normalizeStoredAuditResource(item))
     .filter((item): item is AuditResourceType => item !== undefined);
