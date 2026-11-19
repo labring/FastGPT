@@ -967,7 +967,8 @@ curl -s -X POST https://<admin域名>/api/admin/user/identity/backfill \
 
 - `missing` = 待补行数，作为实刷后核对 `created` 的基准；
 - `anomalies` 非空时**不得继续实刷**，按下文异常处置表处理；
-- `parallelAccountCandidates` 非空时进入步骤 2。
+- `parallelAccountCandidates` 非空时进入步骤 2；
+- **已禁用账号（含合并收尾的 `merged-*` 旧号）不在刷数与候选范围**：合并后其绑定行已搬迁到接收账号，若给旧号重写同 `(source, externalId)` 行会与接收账号形成跨账号重复，且 forbidden 账号会挡住该外部身份的登录匹配（冒烟环境实测发现的缺口，已修复）。
 
 **平行账号评估维度 `parallelMatchKeys`**（请求参数，默认 `['contact']`）：
 
