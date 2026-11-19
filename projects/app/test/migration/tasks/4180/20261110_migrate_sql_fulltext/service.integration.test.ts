@@ -745,49 +745,52 @@ describe.skipIf(!target)('PG full-text real migration', () => {
 
   it('stops a waiting index build when the Runner stops and lets another Runner recover', async () => {
     await ctrl.init();
-    const {
-      rows: [extension]
-    } = await pool.query<{ version: string }>(
-      `SELECT COALESCE(installed_version, default_version) AS version
-       FROM pg_available_extensions WHERE name = 'pg_search'`
-    );
-    const [major, minor] = extension.version.split('.').map(Number);
-    const concurrently = major > 0 || minor >= 26;
     const readIndex = () =>
       pool.query<{ indisvalid: boolean }>(
         "SELECT indisvalid FROM pg_index WHERE indexrelid = to_regclass('modeldata_fulltext')"
       );
     expect((await readIndex()).rows).toEqual([]);
-    const unfinishedIndex = concurrently ? [{ indisvalid: false }] : [];
-    // 普通建索引在等待 ShareLock 时，新写事务会在它后面排队，因此旧版先写入样本。
-    const dataBeforeBuild = concurrently ? undefined : await seed('线上数据库', { native: true });
+    // 普通建索引等待 ShareLock 时，新写事务也会排队，先准备可供接管后验收的数据。
+    const inserted = await seed('线上数据库', { native: true });
     const migrations = systemMigrations.filter((m) => m.id === '20261110_migrate_sql_fulltext');
     await ensureMigrationStates(migrations);
     await enqueueManualMigration('20261110_migrate_sql_fulltext');
     const firstRunner = createSystemMigrationRunner({ migrations });
     const writer = await pool.connect();
     let running: ReturnType<typeof firstRunner.tick> | undefined;
+    let unfinishedIndex: { indisvalid: boolean }[] = [];
     try {
       await writer.query('BEGIN');
       await writer.query('LOCK TABLE modeldata IN ROW EXCLUSIVE MODE');
       running = firstRunner.tick();
-      const pid = await vi.waitFor(
+      const { pid, concurrently } = await vi.waitFor(
         async () => {
-          const { rows } = await pool.query<{ pid: number }>(
-            concurrently
-              ? `SELECT pid FROM pg_stat_progress_create_index
-               WHERE relid = 'modeldata'::regclass AND phase = 'waiting for writers before build'`
-              : `SELECT l.pid FROM pg_locks l JOIN pg_stat_activity a USING (pid)
-               WHERE l.relation = 'modeldata'::regclass AND l.mode = 'ShareLock' AND NOT l.granted
-                 AND a.application_name = 'fastgpt-pg-fulltext-prepare'`
+          // 直接从 PG 观察正在执行的建索引方式，版本候选版也复用生产逻辑。
+          const { rows } = await pool.query<{ pid: number; concurrently: boolean }>(
+            `SELECT p.pid, true AS "concurrently"
+             FROM pg_stat_progress_create_index p JOIN pg_stat_activity a USING (pid)
+             WHERE p.relid = 'modeldata'::regclass AND p.phase = 'waiting for writers before build'
+               AND a.application_name = 'fastgpt-pg-fulltext-prepare'
+             UNION ALL
+             SELECT l.pid, false AS "concurrently"
+             FROM pg_locks l JOIN pg_stat_activity a USING (pid)
+             WHERE l.relation = 'modeldata'::regclass AND l.mode = 'ShareLock' AND NOT l.granted
+               AND a.application_name = 'fastgpt-pg-fulltext-prepare'`
           );
           expect(rows).toHaveLength(1);
-          return rows[0].pid;
+          return rows[0];
         },
         { timeout: 3000, interval: 25 }
       );
+      unfinishedIndex = concurrently ? [{ indisvalid: false }] : [];
       expect((await readIndex()).rows).toEqual(unfinishedIndex);
-      const inserted = dataBeforeBuild ?? (await seed('线上数据库', { native: true }));
+      if (concurrently) {
+        const updated = await pool.query(
+          "UPDATE modeldata SET createtime = createtime + interval '1 second' WHERE id = $1",
+          [inserted.insertIds[0]]
+        );
+        expect(updated.rowCount).toBe(1);
+      }
       expect((await snapshot()).map(({ id }) => id)).toEqual(inserted.insertIds);
       firstRunner.stop();
       await running;
