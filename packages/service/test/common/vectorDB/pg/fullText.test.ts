@@ -55,7 +55,6 @@ beforeEach(() => {
     .mockReset()
     .mockResolvedValue({ rows: [], rowCount: 0 } as never);
   client.query.mockReset().mockImplementation(async (sql: string) => {
-    if (sql.startsWith('SHOW')) return { rows: [{ server_version_num: '150019' }] };
     if (sql.startsWith('SELECT extversion')) return { rows: [{ extversion: '0.26.6' }] };
     if (sql.includes('target_id AS "targetId"')) return { rows: [identity] };
     return { rows: [] };
@@ -93,7 +92,8 @@ describe('PG full-text contracts', () => {
 
   it.each([
     undefined,
-    { extversion: '0.26.5', indisvalid: true, definition },
+    { extversion: '0.24.3', indisvalid: true, definition },
+    { extversion: '0.25.0', indisvalid: true, definition },
     { extversion: '0.26.6', indisvalid: false, definition },
     {
       extversion: '0.26.6',
@@ -132,7 +132,7 @@ describe('PG full-text contracts', () => {
         expect(build).toBeUndefined();
       } else {
         expect(build).toContain('CONCURRENTLY IF NOT EXISTS modeldata_fulltext');
-        expect(build).toContain('fulltext_tokens::pdb.whitespace');
+        expect(build).toContain('((fulltext_tokens)::pdb.whitespace)');
         expect(build).not.toContain('key_field');
       }
       expect(statements.includes('DROP INDEX CONCURRENTLY modeldata_fulltext')).toBe(
@@ -161,25 +161,47 @@ describe('PG full-text contracts', () => {
     expect(client.end).toHaveBeenCalledOnce();
   });
 
-  it.each(['150014', '160000'])(
-    'rejects unsupported PG version %s before changing modeldata',
-    async (server_version_num) => {
-      client.query.mockImplementation(async (sql: string) => ({
-        rows: sql.startsWith('SHOW') ? [{ server_version_num }] : []
-      }));
-      await expect(preparePgFullText()).rejects.toThrow('15.19');
-      expect(client.query.mock.calls.some(([sql]) => sql.includes('ALTER TABLE'))).toBe(false);
-      expect(client.end).toHaveBeenCalledOnce();
+  it.each([
+    ['0.24.3', 'bm25', ' WITH (key_field=id)'],
+    ['0.25.0-rc.1', 'bm25', ' WITH (key_field=id)'],
+    ['0.25.0', 'paradedb', ' WITH (key_field=id)'],
+    ['0.26.0-rc.1', 'paradedb', ' WITH (key_field=id)'],
+    ['0.26.0', 'paradedb', ''],
+    ['1.0.0', 'paradedb', '']
+  ])(
+    'creates and accepts the expected index definition for pg_search %s',
+    async (version, method, options) => {
+      const query = client.query.getMockImplementation()!;
+      const expectedDefinition = definition.replace('USING paradedb', `USING ${method}`) + options;
+      const index = { extversion: version, indisvalid: true, definition: expectedDefinition };
+      let created = false;
+      client.query.mockImplementation(async (sql: string) => {
+        if (sql.startsWith('SELECT extversion')) return { rows: [{ extversion: version }] };
+        if (sql.includes('pg_get_indexdef')) return { rows: created ? [index] : [] };
+        if (sql.startsWith('CREATE INDEX')) created = true;
+        return query(sql);
+      });
+
+      await expect(preparePgFullText()).resolves.toEqual(identity);
+      expect(client.query).toHaveBeenCalledWith(
+        expectedDefinition
+          .replace('CREATE INDEX', 'CREATE INDEX CONCURRENTLY IF NOT EXISTS')
+          .replace('ON public.modeldata', 'ON modeldata'),
+        undefined
+      );
+      expect(client.query).not.toHaveBeenCalledWith('SHOW server_version_num');
+      vi.mocked(PgClient.query).mockResolvedValueOnce({ rows: [index] } as never);
+      await expect(assertPgFullTextCapability()).resolves.toBeUndefined();
     }
   );
 
-  it('rejects an incompatible extension before changing modeldata', async () => {
+  it('rejects an unrecognized extension version before changing modeldata', async () => {
     const query = client.query.getMockImplementation()!;
     client.query.mockImplementation(async (sql: string) => {
-      if (sql.startsWith('SELECT extversion')) return { rows: [{ extversion: '0.25.0' }] };
+      if (sql.startsWith('SELECT extversion')) return { rows: [{ extversion: 'unknown' }] };
       return query(sql);
     });
-    await expect(preparePgFullText()).rejects.toThrow('0.26.6');
+    await expect(preparePgFullText()).rejects.toThrow('installed pg_search version');
     expect(client.query.mock.calls.some(([sql]) => sql.includes('ALTER TABLE'))).toBe(false);
     expect(client.end).toHaveBeenCalledOnce();
   });
@@ -252,8 +274,14 @@ describe('PG full-text contracts', () => {
     await searchPgFullText({ ...props, filterCollectionIdList: ['allowed', 'hidden'] });
     const [sql, values] = vi.mocked(PgClient.query).mock.calls[0];
     expect(sql).toContain('fulltext_tokens ||| $1::text[]');
+    expect(sql).toContain('AND NOT (collection_id = ANY($6::varchar[]))');
     expect(sql).not.toContain(props.query);
-    expect(values).toEqual([["'", '1', '=', ';', '中文'], 't', ['d'], ['allowed'], ['hidden'], 10]);
+    expect(values).toEqual([["'", '1', '=', ';', '中文'], 't', ['d'], ['allowed'], 10, ['hidden']]);
+
+    await searchPgFullText({ ...props, forbidCollectionIdList: [] });
+    const [sqlWithoutDeny, valuesWithoutDeny] = vi.mocked(PgClient.query).mock.calls[1];
+    expect(sqlWithoutDeny).not.toContain('AND NOT');
+    expect(valuesWithoutDeny).toEqual([["'", '1', '=', ';', '中文'], 't', ['d'], null, 10]);
   });
 
   it('writes analyzed tokens, not raw text, in the same insert as the vectors', async () => {

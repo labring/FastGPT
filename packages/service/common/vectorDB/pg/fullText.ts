@@ -21,7 +21,6 @@ import { executePostgresFullTextRows, findMissingPostgresVectorIds } from '../fu
 import { toSqlFullTextQueryTerms } from '../fullText/analyzer';
 import { getLogger, LogCategories } from '../../logger';
 
-export const PG_FULL_TEXT_EXTENSION_VERSION = '0.26.6';
 const metadataTable = 'fastgpt_fulltext_metadata';
 const indexName = SQL_FULL_TEXT_INDEX;
 const column = SQL_FULL_TEXT_COLUMN;
@@ -49,10 +48,23 @@ const readIndexSql = `SELECT e.extversion, i.indisvalid, pg_get_indexdef(i.index
 const capabilityError =
   'PG full-text extension or index does not match the supported configuration';
 
+/** 0.25 引入 paradedb 索引方法，0.26 起可省略 key_field。建索引与验收使用同一份定义。 */
+const getIndexDefinition = (extensionVersion: string) => {
+  const version = /^(\d+)\.(\d+)\.(\d+)(?:-([\w.-]+))?(?:\+[\w.-]+)?$/.exec(extensionVersion);
+  if (!version) throw new Error('PG full-text could not determine the installed pg_search version');
+
+  const [, major, minor, patch, prerelease] = version;
+  const precedes = (targetMinor: number) =>
+    Number(major) === 0 &&
+    (Number(minor) < targetMinor ||
+      (Number(minor) === targetMinor && Number(patch) === 0 && prerelease !== undefined));
+  const method = precedes(25) ? 'bm25' : 'paradedb';
+  const keyOption = precedes(26) ? ' WITH (key_field=id)' : '';
+  return `${method} (id, ((${column})::pdb.whitespace), ((team_id)::pdb.literal), ((dataset_id)::pdb.literal), ((collection_id)::pdb.literal))${keyOption}`;
+};
+
 const hasExpectedDefinition = (row: PgFullTextIndex) =>
-  row.extversion === PG_FULL_TEXT_EXTENSION_VERSION &&
-  row.definition.replace(/\s+/g, ' ').split(' USING ')[1] ===
-    `paradedb (id, ((${column})::pdb.whitespace), ((team_id)::pdb.literal), ((dataset_id)::pdb.literal), ((collection_id)::pdb.literal))`;
+  row.definition.replace(/\s+/g, ' ').split(' USING ')[1] === getIndexDefinition(row.extversion);
 
 /** 精确核对已安装扩展和全文索引；同名错误索引不能被 IF NOT EXISTS 当作成功。 */
 export const assertPgFullTextCapability = async () => {
@@ -162,20 +174,11 @@ export const preparePgFullText = async ({
     }
     await client.query("SET lock_timeout = '5s'");
     await client.query('SELECT pg_advisory_lock(20261110, 1)');
-    const version = await client.query<{ server_version_num: string }>('SHOW server_version_num');
-    const serverVersion = Number(version.rows[0].server_version_num);
-    if (serverVersion < 150019 || serverVersion >= 160000) {
-      throw new Error(
-        'PG full-text currently requires PostgreSQL 15.19+ within 15.x; verify the extension binary first'
-      );
-    }
     await executeDdl('CREATE EXTENSION IF NOT EXISTS pg_search');
     const extension = await client.query<{ extversion: string }>(
       "SELECT extversion FROM pg_extension WHERE extname = 'pg_search'"
     );
-    if (extension.rows[0]?.extversion !== PG_FULL_TEXT_EXTENSION_VERSION) {
-      throw new Error(`PG full-text requires pg_search ${PG_FULL_TEXT_EXTENSION_VERSION}`);
-    }
+    const indexDefinition = getIndexDefinition(extension.rows[0]?.extversion ?? '');
     const existingMetaTable = await client.query<{ regclass: string | null }>(
       `SELECT to_regclass('${metadataTable}')::text AS regclass`
     );
@@ -199,9 +202,9 @@ export const preparePgFullText = async ({
     if (!index?.indisvalid) {
       // 并发建索引被中断时可能留下无效索引。仅重建同表、同名且定义完全匹配的索引。
       if (index) await executeDdl(`DROP INDEX CONCURRENTLY ${indexName}`);
-      await executeDdl(`CREATE INDEX CONCURRENTLY IF NOT EXISTS ${indexName} ON ${DatasetVectorTableName}
-        USING paradedb (id, (${column}::pdb.whitespace),
-          (team_id::pdb.literal), (dataset_id::pdb.literal), (collection_id::pdb.literal))`);
+      await executeDdl(
+        `CREATE INDEX CONCURRENTLY IF NOT EXISTS ${indexName} ON ${DatasetVectorTableName} USING ${indexDefinition}`
+      );
     }
     const {
       rows: [preparedIndex]
@@ -257,14 +260,23 @@ export const searchPgFullText = async (props: FullTextSearchProps) => {
   if (!query.trim() || limit <= 0 || !datasetIds.length || allowed?.length === 0) return [];
   const terms = await toSqlFullTextQueryTerms(query);
   if (!terms.length) return [];
+  // 旧版 pg_search 会将 NOT ANY(空数组) 错误下推为无命中，空排除列表无需添加谓词。
+  const hasDeniedCollections = forbidCollectionIdList.length > 0;
   const { rows } = await PgClient.query<{ vectorId: string; collectionId: string; score: number }>(
     `SELECT id::text AS "vectorId", collection_id AS "collectionId", pdb.score(id) AS score
      FROM ${DatasetVectorTableName}
      WHERE ${column} ||| $1::text[] AND team_id = $2 AND dataset_id = ANY($3::varchar[])
        AND ($4::varchar[] IS NULL OR collection_id = ANY($4::varchar[]))
-       AND NOT (collection_id = ANY($5::varchar[]))
-     ORDER BY pdb.score(id) DESC, id ASC LIMIT $6`,
-    [terms, teamId, datasetIds, allowed ?? null, forbidCollectionIdList, limit]
+       ${hasDeniedCollections ? 'AND NOT (collection_id = ANY($6::varchar[]))' : ''}
+     ORDER BY pdb.score(id) DESC, id ASC LIMIT $5`,
+    [
+      terms,
+      teamId,
+      datasetIds,
+      allowed ?? null,
+      limit,
+      ...(hasDeniedCollections ? [forbidCollectionIdList] : [])
+    ]
   );
   return rows;
 };
