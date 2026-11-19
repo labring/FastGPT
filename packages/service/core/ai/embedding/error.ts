@@ -591,7 +591,8 @@ export const classifyEmbeddingError = (
     hasAnyExactCode(signals.codes, TIMEOUT_CODES) ||
     hasAnyLowercaseCode(signals.codes, TIMEOUT_ERROR_CODES) ||
     hasAnyType(signals.types, TIMEOUT_ERROR_CODES) ||
-    (!isStructuredInvalidRequest &&
+    (!isExplicitInvalidParamError &&
+      !isParamValidationMessage &&
       (signals.rawMessage === 'Request timed out.' ||
         ((signals.status === undefined || signals.status >= 500) &&
           /\b(request\s+timed?\s*out|gateway\s+time-?out|connect\s+timeout|headers\s+timeout|body\s+timeout|deadline\s+exceeded)\b/i.test(

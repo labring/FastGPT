@@ -619,6 +619,19 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
       });
     });
 
+    it('keeps stateless generic invalid_request_error with complete "Request timed out." message retryable as timeout', () => {
+      const raw = {
+        type: 'invalid_request_error',
+        message: 'Request timed out.'
+      };
+
+      expect(classifyEmbeddingError(raw)).toMatchObject({
+        category: 'timeout',
+        retryable: true,
+        errorCode: ModelErrEnum.requestTimeout
+      });
+    });
+
     it.each([
       {
         name: 'HTTP 403 Cloudflare HTML',
