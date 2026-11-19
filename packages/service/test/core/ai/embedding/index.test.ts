@@ -42,19 +42,12 @@ vi.mock('@fastgpt/service/core/ai/config', async (importOriginal) => {
   };
 });
 
-// 直接复用真实 retryFn，仅将退避等待设为 0 避免单测耗时并消除双份循环实现。
+// 保留 getVectors 的重试逻辑，只跳过退避等待。
 vi.mock('@fastgpt/global/common/system/utils', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@fastgpt/global/common/system/utils')>();
   return {
     ...actual,
-    retryFn: <T>(
-      fn: () => Promise<T>,
-      options: Parameters<typeof actual.retryFn<T>>[1] = 3
-    ): Promise<T> =>
-      actual.retryFn(
-        fn,
-        typeof options === 'number' ? { attempts: options, delayMs: 0 } : { ...options, delayMs: 0 }
-      )
+    delay: vi.fn().mockResolvedValue(undefined)
   };
 });
 

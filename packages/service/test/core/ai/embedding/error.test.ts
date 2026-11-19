@@ -168,23 +168,23 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
       }
     );
 
-    it('parses x-should-retry, retry-after-ms, Retry-After seconds/date and enforces wait budget', () => {
+    it('parses x-should-retry, retry-after-ms, and Retry-After seconds/date', () => {
       expect(
         getEmbeddingRetryDirective({ headers: new Headers({ 'x-should-retry': 'false' }) })
-      ).toEqual({ shouldRetryInRequest: false });
+      ).toEqual({ allowsRequestRetry: false });
 
       expect(
         getEmbeddingRetryDirective({
           headers: new Headers({ 'x-should-retry': 'false', 'retry-after': '180' })
         })
-      ).toEqual({ shouldRetryInRequest: false, retryAfterMs: 180_000 });
+      ).toEqual({ allowsRequestRetry: false, retryAfterMs: 180_000 });
 
       expect(
         getEmbeddingRetryDirective({ headers: new Headers({ 'retry-after-ms': '1500' }) })
-      ).toEqual({ shouldRetryInRequest: true, retryAfterMs: 1500 });
+      ).toEqual({ allowsRequestRetry: true, retryAfterMs: 1500 });
 
       expect(getEmbeddingRetryDirective({ headers: new Headers({ 'retry-after': '2' }) })).toEqual({
-        shouldRetryInRequest: true,
+        allowsRequestRetry: true,
         retryAfterMs: 2000
       });
 
@@ -192,12 +192,12 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
       const dateDirective = getEmbeddingRetryDirective({
         headers: { 'Retry-After': futureDate }
       });
-      expect(dateDirective.shouldRetryInRequest).toBe(true);
+      expect(dateDirective.allowsRequestRetry).toBe(true);
       expect(dateDirective.retryAfterMs).toBeGreaterThanOrEqual(0);
       expect(dateDirective.retryAfterMs).toBeLessThanOrEqual(4000);
 
       expect(getEmbeddingRetryDirective({ headers: new Headers({ 'retry-after': '60' }) })).toEqual(
-        { shouldRetryInRequest: false, retryAfterMs: 60_000 }
+        { allowsRequestRetry: true, retryAfterMs: 60_000 }
       );
     });
 
