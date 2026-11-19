@@ -355,6 +355,31 @@ export const createMcpSafeFetch = ({
         }
         const tunnelSignal = AbortSignal.any(signals);
 
+        const toAbortError = (reason: unknown): Error => {
+          return reason instanceof Error
+            ? reason
+            : new Error(String(reason ?? 'Proxy tunnel aborted'));
+        };
+
+        let settled = false;
+        let activeRawSocket: Socket | undefined;
+        let activeTlsSocket: Socket | undefined;
+        let onTunnelAbort: (() => void) | undefined;
+        let onTlsClose: (() => void) | undefined;
+
+        // 保证每次 connect 只回调一次 undici，并在完成后及时清理监听，避免重复回调或内存泄漏。
+        const finish = (...args: Parameters<typeof callback>) => {
+          if (settled) return;
+          settled = true;
+          if (onTunnelAbort) {
+            tunnelSignal.removeEventListener('abort', onTunnelAbort);
+          }
+          if (onTlsClose && activeTlsSocket) {
+            activeTlsSocket.removeListener('close', onTlsClose);
+          }
+          callback(...args);
+        };
+
         void (async () => {
           try {
             tunnelSignal.throwIfAborted();
@@ -396,9 +421,12 @@ export const createMcpSafeFetch = ({
                 throw proxyConnectError;
               });
 
+            const rawSocket = socket as Socket;
+            activeRawSocket = rawSocket;
+
             if (statusCode !== 200) {
-              socket.on('error', () => {}).destroy();
-              callback(
+              rawSocket.on('error', () => {}).destroy();
+              finish(
                 new McpProxyTunnelError(
                   `Proxy response (${statusCode}) !== 200 when HTTP Tunneling`,
                   statusCode
@@ -409,25 +437,30 @@ export const createMcpSafeFetch = ({
             }
 
             if (tunnelSignal.aborted) {
-              socket.on('error', () => {}).destroy();
-              callback(
-                tunnelSignal.reason instanceof Error
-                  ? tunnelSignal.reason
-                  : new Error(String(tunnelSignal.reason)),
-                null
-              );
+              rawSocket.on('error', () => {}).destroy();
+              finish(toAbortError(tunnelSignal.reason), null);
               return;
             }
 
             if (connectOpts.protocol !== 'https:') {
-              callback(null, socket as Socket);
+              finish(null, rawSocket);
               return;
             }
 
-            const onTunnelAbort = () => {
-              socket.on('error', () => {}).destroy();
+            onTunnelAbort = () => {
+              const abortError = toAbortError(tunnelSignal.reason);
+              // 先通过 finish 结束 undici Client 的 connecting 状态，再销毁 TLS/底层 socket 并清理超时定时器；
+              // 仅调用无参 socket.destroy() 不会触发 buildConnector 的 error 回调，会导致 Agent.close() 永远挂起。
+              finish(abortError, null);
+              activeTlsSocket?.on('error', () => {}).destroy(abortError);
+              rawSocket.on('error', () => {}).destroy();
             };
-            tunnelSignal.addEventListener('abort', onTunnelAbort, { once: true });
+
+            onTlsClose = () => {
+              // 兜底：若 TLS socket 未触发 secureConnect/error 即关闭，必须结束 connect 回调防止 Client 卡死。
+              finish(new Error('TLS socket closed before handshake completed'), null);
+              rawSocket.on('error', () => {}).destroy();
+            };
 
             // IP 字面量不写入 SNI（RFC 6066），域名则保留原 servername 完成虚拟主机与证书校验。
             const rawHostname = connectOpts.hostname.replace(/^\[|\]$/g, '');
@@ -436,19 +469,31 @@ export const createMcpSafeFetch = ({
               : isIP(rawHostname)
                 ? undefined
                 : rawHostname;
-            endpointConnector(
+
+            activeTlsSocket = endpointConnector(
               {
                 ...connectOpts,
                 servername,
-                httpSocket: socket as Socket
+                httpSocket: rawSocket
               },
               (...args) => {
-                tunnelSignal.removeEventListener('abort', onTunnelAbort);
-                callback(...args);
+                finish(...args);
               }
-            );
+            ) as unknown as Socket | undefined;
+
+            if (!settled) {
+              activeTlsSocket?.once('close', onTlsClose);
+              tunnelSignal.addEventListener('abort', onTunnelAbort, { once: true });
+              if (tunnelSignal.aborted) {
+                onTunnelAbort();
+              }
+            }
           } catch (error) {
-            callback(error instanceof Error ? error : new Error(String(error)), null);
+            if (!settled) {
+              activeTlsSocket?.on('error', () => {}).destroy();
+              activeRawSocket?.on('error', () => {}).destroy();
+            }
+            finish(error instanceof Error ? error : new Error(String(error)), null);
           }
         })();
       }
