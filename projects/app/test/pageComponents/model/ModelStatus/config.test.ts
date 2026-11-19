@@ -81,7 +81,9 @@ vi.mock('@fastgpt/web/components/common/MyTooltip/QuestionTip', () => ({ default
 vi.mock('@fastgpt/web/components/common/Input/NumberInput', () => ({ default: () => null }));
 vi.mock('@/web/core/ai/model/useUserModelStore', () => ({ useUserModelStore: () => () => ({}) }));
 
-import ModelStatus from '@/pageComponents/model/ModelStatus';
+import ModelStatus, { formatModelProbeError } from '@/pageComponents/model/ModelStatus';
+import zhCommon from '@fastgpt/web/i18n/zh-CN/common.json';
+import enCommon from '@fastgpt/web/i18n/en/common.json';
 
 describe('model status webhook secret form', () => {
   let dom: JSDOM;
@@ -163,5 +165,48 @@ describe('model status webhook secret form', () => {
       webhookToken: 'replacement-token',
       clearWebhookToken: false
     });
+  });
+});
+
+describe('formatModelProbeError', () => {
+  const translate = (dict: Record<string, string>) => (key: string) => {
+    const stripped = key.startsWith('common:') ? key.slice('common:'.length) : key;
+    return dict[stripped] ?? key;
+  };
+
+  it('translates registered probe error codes with optional HTTP status and model names containing colons', () => {
+    expect(
+      formatModelProbeError({
+        error: 'Embedding Model: modelAuthFailed (HTTP 401)',
+        t: translate(zhCommon)
+      })
+    ).toBe(
+      'Embedding Model: 模型接口鉴权失败，请检查 API Key 或渠道配置 (modelAuthFailed, HTTP 401)'
+    );
+
+    expect(
+      formatModelProbeError({
+        error: 'qwen3:8b: modelInvalidRequest',
+        t: translate(enCommon)
+      })
+    ).toBe(
+      'qwen3:8b: Model request parameters or input format are not supported. Please check the data content or model configuration. (modelInvalidRequest)'
+    );
+  });
+
+  it('preserves historical and plain upstream error messages verbatim', () => {
+    const t = translate(enCommon);
+    expect(
+      formatModelProbeError({
+        error: 'Rerank Model: Unauthorized: Invalid API key',
+        t
+      })
+    ).toBe('Rerank Model: Unauthorized: Invalid API key');
+    expect(
+      formatModelProbeError({
+        error: 'Test model: Model test timed out after 60000ms',
+        t
+      })
+    ).toBe('Test model: Model test timed out after 60000ms');
   });
 });
