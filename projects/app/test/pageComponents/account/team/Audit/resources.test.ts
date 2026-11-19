@@ -126,10 +126,10 @@ describe('AuditLog resource column', () => {
       ] as TeamAuditListItemType[];
 
       const html = renderToStaticMarkup(React.createElement(AuditLog, { Tabs: null }));
-      expect(html.indexOf('account_team:log_user')).toBeLessThan(
-        html.indexOf('account_team:log_time')
-      );
       expect(html.indexOf('account_team:log_time')).toBeLessThan(
+        html.indexOf('account_team:log_user')
+      );
+      expect(html.indexOf('account_team:log_user')).toBeLessThan(
         html.indexOf('account_team:log_type')
       );
       expect(html.indexOf('account_team:log_type')).toBeLessThan(

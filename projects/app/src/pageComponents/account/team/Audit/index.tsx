@@ -189,11 +189,11 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
           <Table w={'100%'} minW={['900px', '100%']} sx={{ tableLayout: 'fixed' }}>
             <Thead>
               <Tr bgColor={'white !important'}>
-                <Th w={'14%'} borderLeftRadius="6px" bgColor="myGray.100">
-                  {t('account_team:log_user')}
-                </Th>
-                <Th w={'16%'} bgColor="myGray.100">
+                <Th w={'16%'} borderLeftRadius="6px" bgColor="myGray.100">
                   {t('account_team:log_time')}
+                </Th>
+                <Th w={'14%'} bgColor="myGray.100">
+                  {t('account_team:log_user')}
                 </Th>
                 <Th w={'15%'} bgColor="myGray.100">
                   {t('account_team:log_type')}
@@ -247,6 +247,7 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
 
                 return i18nData ? (
                   <Tr key={log._id} overflow={'unset'}>
+                    <Td>{formatTime2YMDHMS(log.timestamp)}</Td>
                     <Td>
                       <UserBox
                         sourceMember={log.sourceMember}
@@ -255,7 +256,6 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
                         spacing={0.5}
                       />
                     </Td>
-                    <Td>{formatTime2YMDHMS(log.timestamp)}</Td>
                     <Td>{t(i18nData.typeLabel)}</Td>
                     <Td whiteSpace="normal" overflowWrap="anywhere">
                       {resources.length > 0 ? (
