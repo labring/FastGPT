@@ -3,22 +3,20 @@ import { isTeamModel } from '@fastgpt/global/core/ai/model/utils';
 import { getAIApi, getModelOpenAIOptions } from '../config';
 import { countPromptTokens, countPromptTokensBatch } from '../../../common/string/tiktoken/index';
 import { EmbeddingTypeEnm } from '@fastgpt/global/core/ai/constants';
-import { retryFn } from '@fastgpt/global/common/system/utils';
+import { delay } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
 import z from 'zod';
 import { truncateTextByFormattedTokenLimit } from './tokenLimit';
 import {
-  classifyEmbeddingError,
   createEmptyInputEmbeddingError,
   createInvalidResponseEmbeddingError,
-  type EmbeddingErrorClassification,
-  getEmbeddingRetryDirective,
-  MAX_EMBEDDING_RETRY_AFTER_MS,
-  normalizeEmbeddingError,
+  inspectEmbeddingFailure,
+  normalizeEmbeddingFailure,
   pickEmbeddingRetryHeaders
 } from './error';
 
 const logger = getLogger(LogCategories.MODULE.AI.EMBEDDING);
+const MAX_EMBEDDING_RETRY_WAIT_MS = 10_000;
 
 type GetVectorsBaseProps = {
   model: EmbeddingModelDataType;
@@ -120,14 +118,11 @@ export async function getVectors({
       };
     })
   );
-  if (inputs.length === 0 || inputs.some((item) => !item.input)) {
+  if (inputs.some((item) => !item.input)) {
     return Promise.reject(createEmptyInputEmbeddingError());
   }
 
-  // 关闭 OpenAI SDK 按状态码盲目重试，由本层在读取响应体分类后统一决定是否退避重试，
-  // 避免 429 欠费在分类前已发送多次请求，也消除 SDK 与外层 retryFn 的重试放大。
   const { ai, requestMeta } = getAIApi({
-    maxRetries: 0,
     ...(timeoutMs === undefined ? {} : { timeout: timeoutMs }),
     ...(isTeamModel(model) ? { model } : {})
   });
@@ -140,190 +135,154 @@ export async function getVectors({
     chunks.push(inputs.slice(i, i + chunkSize));
   }
 
-  const lastFailure: {
-    current?: {
-      error: unknown;
-      classification: EmbeddingErrorClassification;
-      retryAfterMs?: number;
-      plannedDelayMs?: number;
-    };
-  } = {};
-  let remainingRetryWaitMs = MAX_EMBEDDING_RETRY_AFTER_MS;
+  // 模型探活传入超时值，每次探活尝试只发一次请求，由探活模块统一控制尝试次数。
+  const maxRetries = timeoutMs === undefined ? 2 : 0;
+  let remainingRetryWaitMs = MAX_EMBEDDING_RETRY_WAIT_MS;
+  let failure: ReturnType<typeof inspectEmbeddingFailure> | undefined;
+  let totalTokens = 0;
+  const allVectors: number[][] = [];
 
   try {
-    // Process chunks sequentially
-    let totalTokens = 0;
-    const allVectors: number[][] = [];
-
-    for (const chunk of chunks) {
+    // 串行处理批次，保持返回向量与输入顺序一致，各批次共用退避预算。
+    processChunks: for (const chunk of chunks) {
       const requestInput = chunk.map(getRequestInput);
       const inputTypes = Array.from(new Set(chunk.map((item) => item.type)));
-
       onRequestStart?.();
-      const result = await retryFn(
-        () =>
-          unwrapEmbeddingResponse(
-            ai.embeddings.create(
-              {
-                model: model.model,
-                input: requestInput,
-                encoding_format: 'float',
-                ...model.config.defaultConfig,
-                ...(type === EmbeddingTypeEnm.db && model.config.dbConfig),
-                ...(type === EmbeddingTypeEnm.query && model.config.queryConfig)
-              } as any,
-              getModelOpenAIOptions({
-                model,
-                baseUrl: requestMeta?.baseUrl,
-                headers,
-                signal,
-                maxRetries: timeoutMs === undefined ? undefined : 0,
-                omitEmptyHeaders: true
-              })
-            )
-          ).then(async ({ data: res, response }) => {
-            if (!res?.data || !res?.data?.[0]?.embedding) {
-              // 兼容部分供应商以 HTTP 200 返回结构化错误体（如 insufficient_quota / rate_limit_exceeded），
-              // 仅按白名单保留退避相关响应头后交由统一重试与归一化流程处理，避免误当作空响应、丢失 Retry-After 或泄露无关上游响应头。
-              const structuredError = getStructuredResponseError(res);
-              if (structuredError) {
-                const retryHeaders = pickEmbeddingRetryHeaders(response?.headers);
-                const structuredPayload =
-                  retryHeaders && typeof structuredError === 'object' && structuredError !== null
-                    ? { ...structuredError, headers: retryHeaders }
-                    : structuredError;
-                const structuredClassification = classifyEmbeddingError(structuredPayload, {
-                  signal
-                });
-                if (structuredClassification.category !== 'unknown') {
-                  return Promise.reject(structuredPayload);
-                }
-              }
-            }
-            if (!res?.data) {
-              logger.error('Embedding API returned empty data', {
-                model: model.model,
-                inputTypes,
-                inputCount: chunk.length,
-                response: res
-              });
-              return Promise.reject(createInvalidResponseEmbeddingError());
-            }
-            if (
-              !Array.isArray(res.data) ||
-              res.data.length === 0 ||
-              res.data.some((item) => !item?.embedding)
-            ) {
-              // @ts-expect-error provider error payload is not part of the embedding response type
-              const msg = res.data?.err?.message || '';
-              logger.error('Embedding API returned invalid embedding', {
-                model: model.model,
-                inputTypes,
-                inputCount: chunk.length,
-                response: res,
-                apiMessage: msg
-              });
-              return Promise.reject(
-                createInvalidResponseEmbeddingError(msg ? new Error(msg) : undefined)
-              );
-            }
 
-            const [tokens, vectors] = await Promise.all([
-              (async () => {
-                if (res.usage) return res.usage.total_tokens;
+      const requestChunk = async () => {
+        // 关闭 SDK 重试，收到上游响应后才能区分欠费和普通限流。
+        const { data: res, response } = await unwrapEmbeddingResponse(
+          ai.embeddings.create(
+            {
+              model: model.model,
+              input: requestInput,
+              encoding_format: 'float',
+              ...model.config.defaultConfig,
+              ...(type === EmbeddingTypeEnm.db && model.config.dbConfig),
+              ...(type === EmbeddingTypeEnm.query && model.config.queryConfig)
+            } as any,
+            getModelOpenAIOptions({
+              model,
+              baseUrl: requestMeta?.baseUrl,
+              headers,
+              signal,
+              maxRetries: 0,
+              omitEmptyHeaders: true
+            })
+          )
+        );
 
-                const tokens = await Promise.all(chunk.map(countInputTokens));
-                return tokens.reduce((sum, item) => sum + item, 0);
-              })(),
-              Promise.all(
-                res.data.map((item) =>
-                  formatVectors(decodeEmbedding(item.embedding), model.config.normalization)
-                )
-              )
-            ]);
-
-            return {
-              tokens,
-              vectors
-            };
-          }),
-        {
-          // SDK 已关闭重试，本层统一执行最多 2 次重试：优先遵循上游 x-should-retry / Retry-After 指令，
-          // 无上游等待指示时按 500ms -> 1000ms 指数退避（总计最多 3 次请求），且单次调用累计退避不超过 10 秒。
-          attempts: timeoutMs === undefined ? 2 : 0,
-          delayMs: (attempt) =>
-            lastFailure.current?.plannedDelayMs ?? Math.min(500 * 2 ** attempt, 8000),
-          shouldRetry: (error, attempt) => {
-            const classification = classifyEmbeddingError(error, { signal });
-            if (!classification.retryable) {
-              lastFailure.current = { error, classification };
-              return false;
-            }
-            const directive = getEmbeddingRetryDirective(error, {
-              maxWaitMs: remainingRetryWaitMs
-            });
-            const plannedDelayMs = directive.retryAfterMs ?? Math.min(500 * 2 ** attempt, 8000);
-            const withinBudget =
-              directive.shouldRetryInRequest && plannedDelayMs <= remainingRetryWaitMs;
-            lastFailure.current = {
-              error,
-              classification,
-              retryAfterMs: directive.retryAfterMs,
-              plannedDelayMs
-            };
-            if (!withinBudget) {
-              return false;
-            }
-            remainingRetryWaitMs = Math.max(0, remainingRetryWaitMs - plannedDelayMs);
-            return true;
+        // 校验向量数据完整性，并将 2xx 错误体交给同一套分类与重试流程。
+        const data = res?.data;
+        if (!Array.isArray(data) || data.length === 0 || data.some((item) => !item?.embedding)) {
+          const structuredError = !data?.[0]?.embedding
+            ? getStructuredResponseError(res)
+            : undefined;
+          if (structuredError) {
+            // 仅携带退避白名单响应头，避免把无关上游头带入异常链。
+            const retryHeaders = pickEmbeddingRetryHeaders(response?.headers);
+            const inspected = inspectEmbeddingFailure(
+              retryHeaders && typeof structuredError === 'object'
+                ? { ...structuredError, headers: retryHeaders }
+                : structuredError,
+              signal
+            );
+            if (inspected.classification.category !== 'unknown') return { failure: inspected };
           }
+
+          // @ts-expect-error provider error payload is not part of the embedding response type
+          const apiMessage = data?.err?.message || '';
+          logger.error(
+            data ? 'Embedding API returned invalid embedding' : 'Embedding API returned empty data',
+            {
+              model: model.model,
+              inputTypes,
+              inputCount: chunk.length,
+              response: res,
+              ...(data ? { apiMessage } : {})
+            }
+          );
+          throw createInvalidResponseEmbeddingError(apiMessage ? new Error(apiMessage) : undefined);
         }
-      );
 
-      totalTokens += result.tokens;
-      allVectors.push(...result.vectors);
+        // 供应商缺少 usage 时按当前批次回退计量，同时把返回向量转换为统一格式。
+        const [tokens, vectors] = await Promise.all([
+          (async () => {
+            if (res.usage) return res.usage.total_tokens;
+
+            const tokens = await Promise.all(chunk.map(countInputTokens));
+            return tokens.reduce((sum, item) => sum + item, 0);
+          })(),
+          Promise.all(
+            data.map((item) =>
+              formatVectors(decodeEmbedding(item.embedding), model.config.normalization)
+            )
+          )
+        ]);
+        return { tokens, vectors };
+      };
+
+      for (let attempt = 0; ; attempt++) {
+        const result = await requestChunk().catch((error: unknown) => ({
+          failure: inspectEmbeddingFailure(error, signal)
+        }));
+        if (!result.failure) {
+          totalTokens += result.tokens;
+          allVectors.push(...result.vectors);
+          break;
+        }
+
+        const { retryDirective } = result.failure;
+        const waitMs = retryDirective?.retryAfterMs ?? 500 * 2 ** attempt;
+        // 预算覆盖本次 getVectors 的所有批次。停止时保留上游等待时间，供训练队列接续。
+        if (
+          attempt >= maxRetries ||
+          !retryDirective?.allowsRequestRetry ||
+          waitMs > remainingRetryWaitMs
+        ) {
+          failure = result.failure;
+          break processChunks;
+        }
+        remainingRetryWaitMs -= waitMs;
+        if (waitMs > 0) await delay(waitMs);
+      }
     }
-
-    return {
-      tokens: totalTokens,
-      vectors: allVectors
-    };
   } catch (error) {
-    const cachedFailure = lastFailure.current;
-    const reused = cachedFailure && cachedFailure.error === error ? cachedFailure : undefined;
-    const classification = reused?.classification ?? classifyEmbeddingError(error, { signal });
-    // 最后一次 HTTP 失败会因 attempts 耗尽而跳过 shouldRetry，这里补读响应头保证上游长退避时间透传给队列层。
-    const retryAfterMs = classification.retryable
-      ? (reused?.retryAfterMs ?? getEmbeddingRetryDirective(error).retryAfterMs)
-      : undefined;
-    const inputTypes = Array.from(new Set(inputs.map((item) => item.type)));
+    failure = inspectEmbeddingFailure(error, signal);
+  }
 
-    // 主动中断/探活超时取消不属于上游故障，降级为 warn 并保留原异常。
-    if (classification.category === 'aborted') {
-      logger.warn('Embedding request aborted', {
-        model: model.model,
-        inputTypes,
-        inputCount: inputs.length
-      });
-      return Promise.reject(error);
-    }
+  if (!failure) return { tokens: totalTokens, vectors: allVectors };
 
-    logger.error('Embedding request failed', {
+  const { error, classification, retryDirective } = failure;
+  const inputTypes = Array.from(new Set(inputs.map((item) => item.type)));
+
+  // 主动取消由调用方控制，降级为告警并原样抛出，供上层继续识别取消。
+  if (classification.category === 'aborted') {
+    logger.warn('Embedding request aborted', {
       model: model.model,
       inputTypes,
-      inputCount: inputs.length,
-      errorCategory: classification.category,
-      retryable: classification.retryable,
-      errorCode: classification.errorCode,
-      ...(retryAfterMs !== undefined ? { retryAfterMs } : {}),
-      upstreamStatus: classification.upstreamStatus,
-      upstreamCode: classification.upstreamCode,
-      upstreamType: classification.upstreamType,
-      error
+      inputCount: inputs.length
     });
-
-    return Promise.reject(normalizeEmbeddingError(error, { signal, classification, retryAfterMs }));
+    throw error;
   }
+
+  logger.error('Embedding request failed', {
+    model: model.model,
+    inputTypes,
+    inputCount: inputs.length,
+    errorCategory: classification.category,
+    retryable: classification.retryable,
+    errorCode: classification.errorCode,
+    ...(retryDirective?.retryAfterMs !== undefined
+      ? { retryAfterMs: retryDirective.retryAfterMs }
+      : {}),
+    upstreamStatus: classification.upstreamStatus,
+    upstreamCode: classification.upstreamCode,
+    upstreamType: classification.upstreamType,
+    error
+  });
+
+  throw normalizeEmbeddingFailure(failure);
 }
 
 export function decodeEmbedding(embedding: number[] | string): number[] {

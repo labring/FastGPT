@@ -37,9 +37,6 @@ export const isNonRetryableModelError = (error: unknown): boolean => {
     if (record.name === 'EmbeddingRequestError' && typeof record.retryable === 'boolean') {
       return !record.retryable;
     }
-    if (isModelConfigError(error)) {
-      return true;
-    }
     return (
       typeof record.message === 'string' && NON_RETRYABLE_MODEL_ERROR_CODES.has(record.message)
     );

@@ -629,6 +629,8 @@
   "content/openapi/reference/app-log/get-users.mdx": "2026-11-18T01:29:51+08:00",
   "content/openapi/reference/app-log/list.en.mdx": "2026-11-18T01:29:51+08:00",
   "content/openapi/reference/app-log/list.mdx": "2026-11-18T01:29:51+08:00",
+  "content/openapi/reference/app-log/search.en.mdx": "2026-11-19T23:57:47+08:00",
+  "content/openapi/reference/app-log/search.mdx": "2026-11-19T23:57:47+08:00",
   "content/openapi/reference/chat-controller/v1-chat-completions.en.mdx": "2026-11-18T01:29:51+08:00",
   "content/openapi/reference/chat-controller/v1-chat-completions.mdx": "2026-11-18T01:29:51+08:00",
   "content/openapi/reference/chat-controller/v2-chat-completions.en.mdx": "2026-11-18T01:29:51+08:00",

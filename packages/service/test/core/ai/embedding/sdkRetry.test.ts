@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
 import { EmbeddingRequestError } from '@fastgpt/service/core/ai/embedding/error';
 
 vi.unmock('@fastgpt/service/core/ai/embedding');
@@ -89,7 +90,7 @@ describe('getVectors real OpenAI SDK HTTP retry budgets', () => {
       expectedCode: ModelErrEnum.upstreamQuotaExceeded
     },
     {
-      name: 'HTTP 429 rate limit executes exactly 3 HTTP requests without SDK+retryFn amplification',
+      name: 'HTTP 429 rate limit executes exactly 3 HTTP requests without SDK retry amplification',
       status: 429,
       body: {
         error: {
@@ -222,12 +223,15 @@ describe('getVectors real OpenAI SDK HTTP retry budgets', () => {
   ])(
     '$name',
     async ({ status, body, expectedCalls, expectedCategory, expectedRetryable, expectedCode }) => {
+      vi.useFakeTimers();
       fetchMock.mockImplementation(async () => jsonResponse({ status, body }));
 
-      const err = await getVectors({
+      const failure = getVectors({
         model: buildSystemEmbeddingModel(),
         inputs: [{ type: 'text', input: 'hello' }]
       }).catch((e) => e);
+      await vi.advanceTimersByTimeAsync(1500);
+      const err = await failure;
 
       expect(fetchMock).toHaveBeenCalledTimes(expectedCalls);
       expect(err).toBeInstanceOf(EmbeddingRequestError);
@@ -239,41 +243,61 @@ describe('getVectors real OpenAI SDK HTTP retry budgets', () => {
     }
   );
 
-  it('honors Retry-After seconds on 429 and succeeds once upstream recovers after the requested wait', async () => {
-    vi.useFakeTimers();
-    const requestTimes: number[] = [];
-    fetchMock.mockImplementation(async () => {
-      requestTimes.push(Date.now());
-      if (requestTimes.length === 1) {
-        return jsonResponse({
-          status: 429,
-          body: { error: { message: 'Rate limit exceeded', code: 'rate_limit_exceeded' } },
-          headers: { 'retry-after': '2' }
-        });
-      }
-      return jsonResponse({
-        status: 200,
-        body: {
-          data: [{ embedding: [0.1, 0.2, 0.3], index: 0 }],
-          usage: { total_tokens: 1 }
-        }
-      });
-    });
+  it('stops after one fetch when the SDK wraps a private endpoint block', async () => {
+    fetchMock.mockRejectedValue(new Error(PRIVATE_URL_TEXT));
 
-    const promise = getVectors({
-      model: buildSystemEmbeddingModel(),
-      inputs: [{ type: 'text', input: 'hello' }]
+    await expect(
+      getVectors({
+        model: buildSystemEmbeddingModel(),
+        inputs: [{ type: 'text', input: 'hello' }]
+      })
+    ).rejects.toMatchObject({
+      retryable: false,
+      message: ModelErrEnum.privateEndpointBlocked
     });
-
-    await vi.advanceTimersByTimeAsync(1999);
     expect(fetchMock).toHaveBeenCalledTimes(1);
-
-    await vi.advanceTimersByTimeAsync(1);
-    const result = await promise;
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(requestTimes[1] - requestTimes[0]).toBe(2000);
-    expect(result.vectors).toHaveLength(1);
   });
+
+  it.each(['seconds', 'HTTP-date'] as const)(
+    'honors Retry-After %s before retrying 429',
+    async (format) => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-11-19T00:00:00Z'));
+      const retryAfter = format === 'seconds' ? '2' : new Date(Date.now() + 2000).toUTCString();
+      const requestTimes: number[] = [];
+      fetchMock.mockImplementation(async () => {
+        requestTimes.push(Date.now());
+        if (requestTimes.length === 1) {
+          return jsonResponse({
+            status: 429,
+            body: { error: { message: 'Rate limit exceeded', code: 'rate_limit_exceeded' } },
+            headers: { 'retry-after': retryAfter }
+          });
+        }
+        return jsonResponse({
+          status: 200,
+          body: {
+            data: [{ embedding: [0.1, 0.2, 0.3], index: 0 }],
+            usage: { total_tokens: 1 }
+          }
+        });
+      });
+
+      const promise = getVectors({
+        model: buildSystemEmbeddingModel(),
+        inputs: [{ type: 'text', input: 'hello' }]
+      });
+
+      await vi.advanceTimersByTimeAsync(1999);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(1);
+      const result = await promise;
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(requestTimes[1] - requestTimes[0]).toBe(2000);
+      expect(result.vectors).toHaveLength(1);
+    }
+  );
 
   it('obeys x-should-retry: false on 503 without in-request retries while keeping outer retryable semantics', async () => {
     fetchMock.mockImplementation(async () =>
@@ -351,11 +375,20 @@ describe('getVectors real OpenAI SDK HTTP retry budgets', () => {
     });
   });
 
-  it('enforces cumulative 10s in-request retry wait budget across repeated Retry-After: 8 responses', async () => {
+  it.each([
+    { scope: 'retries in one batch', recoverFirstBatch: false },
+    { scope: 'multiple batches', recoverFirstBatch: true }
+  ])('shares the 10s retry wait budget across $scope', async ({ recoverFirstBatch }) => {
     vi.useFakeTimers();
     const requestTimes: number[] = [];
     fetchMock.mockImplementation(async () => {
       requestTimes.push(Date.now());
+      if (recoverFirstBatch && requestTimes.length === 2) {
+        return Response.json({
+          data: [{ embedding: [0.1, 0.2], index: 0 }],
+          usage: { total_tokens: 1 }
+        });
+      }
       return jsonResponse({
         status: 429,
         body: { error: { message: 'Rate limit exceeded', code: 'rate_limit_exceeded' } },
@@ -365,7 +398,10 @@ describe('getVectors real OpenAI SDK HTTP retry budgets', () => {
 
     const promise = getVectors({
       model: buildSystemEmbeddingModel(),
-      inputs: [{ type: 'text', input: 'hello' }]
+      inputs: (recoverFirstBatch ? ['hello', 'world'] : ['hello']).map((input) => ({
+        type: 'text',
+        input
+      }))
     }).catch((e) => e);
 
     await vi.advanceTimersByTimeAsync(7999);
@@ -374,7 +410,7 @@ describe('getVectors real OpenAI SDK HTTP retry budgets', () => {
     await vi.advanceTimersByTimeAsync(1);
     const err = await promise;
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(recoverFirstBatch ? 3 : 2);
     expect(requestTimes[1] - requestTimes[0]).toBe(8000);
     expect(err).toBeInstanceOf(EmbeddingRequestError);
     expect(err).toMatchObject({

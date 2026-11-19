@@ -42,19 +42,12 @@ vi.mock('@fastgpt/service/core/ai/config', async (importOriginal) => {
   };
 });
 
-// 直接复用真实 retryFn，仅将退避等待设为 0 避免单测耗时并消除双份循环实现。
+// 保留 getVectors 的重试逻辑，只跳过退避等待。
 vi.mock('@fastgpt/global/common/system/utils', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@fastgpt/global/common/system/utils')>();
   return {
     ...actual,
-    retryFn: <T>(
-      fn: () => Promise<T>,
-      options: Parameters<typeof actual.retryFn<T>>[1] = 3
-    ): Promise<T> =>
-      actual.retryFn(
-        fn,
-        typeof options === 'number' ? { attempts: options, delayMs: 0 } : { ...options, delayMs: 0 }
-      )
+    delay: vi.fn().mockResolvedValue(undefined)
   };
 });
 
@@ -787,7 +780,8 @@ describe('getVectors function test', () => {
         headers: {
           Authorization: 'Bearer secret-token',
           'X-Custom': 'yes'
-        }
+        },
+        maxRetries: 0
       });
     });
 
@@ -803,11 +797,12 @@ describe('getVectors function test', () => {
       // 否则客户端会用 AIPROXY_API_TOKEN 补一个 Authorization 发给自定义地址。
       expect(mockCreate.mock.calls[0][1]).toEqual({
         path: 'https://custom.example/v1/embeddings',
-        headers: { Authorization: null }
+        headers: { Authorization: null },
+        maxRetries: 0
       });
     });
 
-    it('should only pass headers (no path) when requestUrl is not set', async () => {
+    it('should preserve the default path and forward headers when requestUrl is not set', async () => {
       mockCreate.mockResolvedValue(
         makeResponse([[0.1, 0.2, 0.3, 0.4]], { usage: { total_tokens: 1 } })
       );
@@ -818,7 +813,10 @@ describe('getVectors function test', () => {
         headers: { 'X-Trace': 't1' }
       });
 
-      expect(mockCreate.mock.calls[0][1]).toEqual({ headers: { 'X-Trace': 't1' } });
+      expect(mockCreate.mock.calls[0][1]).toEqual({
+        headers: { 'X-Trace': 't1' },
+        maxRetries: 0
+      });
     });
   });
 

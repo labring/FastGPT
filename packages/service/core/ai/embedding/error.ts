@@ -237,8 +237,6 @@ const UPSTREAM_UNAVAILABLE_TYPES = new Set([
 const UPSTREAM_UNAVAILABLE_PATTERN =
   /<!doctype html|<html\b|bad gateway|service unavailable|internal server error|temporarily unavailable|overloaded|no healthy upstream|无健康节点/i;
 
-export const MAX_EMBEDDING_RETRY_AFTER_MS = 10_000;
-
 const recordOf = (value: unknown): Record<string, unknown> =>
   typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
 
@@ -274,17 +272,15 @@ export const pickEmbeddingRetryHeaders = (headers: unknown): Record<string, stri
 
 /**
  * 解析上游响应头中的重试指令（`x-should-retry`、`retry-after-ms`、`Retry-After`）。
- * 仅在业务分类允许重试后生效；若上游要求等待时间超出本次请求预算，则停止内层重试交由上层队列处理。
+ * 上游的等待时间原样传给请求与队列，各自按自己的预算判断何时重试。
  */
 export const getEmbeddingRetryDirective = (
-  error: unknown,
-  options?: { maxWaitMs?: number }
-): { shouldRetryInRequest: boolean; retryAfterMs?: number } => {
-  const maxWaitMs = options?.maxWaitMs ?? MAX_EMBEDDING_RETRY_AFTER_MS;
+  error: unknown
+): { allowsRequestRetry: boolean; retryAfterMs?: number } => {
   const original = recordOf(error);
   const headers = original.headers ?? recordOf(original.response).headers;
   if (!headers) {
-    return { shouldRetryInRequest: true };
+    return { allowsRequestRetry: true };
   }
 
   const shouldRetryHeader = readHeaderValue(headers, 'x-should-retry')?.toLowerCase();
@@ -314,18 +310,7 @@ export const getEmbeddingRetryDirective = (
   }
 
   // x-should-retry: false 仅阻止单次请求内继续重试；若同时携带 Retry-After 仍保留退避时长供训练队列接续。
-  if (shouldRetryHeader === 'false') {
-    return {
-      shouldRetryInRequest: false,
-      ...(retryAfterMs !== undefined ? { retryAfterMs } : {})
-    };
-  }
-
-  if (retryAfterMs !== undefined && retryAfterMs > maxWaitMs) {
-    return { shouldRetryInRequest: false, retryAfterMs };
-  }
-
-  return { shouldRetryInRequest: true, retryAfterMs };
+  return { allowsRequestRetry: shouldRetryHeader !== 'false', retryAfterMs };
 };
 
 const readHttpStatus = (value: unknown): number | undefined =>
@@ -450,24 +435,9 @@ const normalizeCodeKey = (code: string): string =>
     .replace(/[-\s]+/g, '_')
     .toLowerCase();
 
-const hasAnyLowercaseCode = (codes: Set<string>, targets: Set<string>): boolean => {
-  for (const code of codes) {
-    const lower = code.toLowerCase();
-    if (targets.has(lower) || targets.has(normalizeCodeKey(code))) return true;
-  }
-  return false;
-};
-
-const hasAnyExactCode = (codes: Set<string>, targets: Set<string>): boolean => {
-  for (const code of codes) {
-    if (targets.has(code)) return true;
-  }
-  return false;
-};
-
-const hasAnyType = (types: Set<string>, targets: Set<string>): boolean => {
-  for (const type of types) {
-    if (targets.has(type)) return true;
+const intersects = (values: Set<string>, targets: Set<string>): boolean => {
+  for (const value of values) {
+    if (targets.has(value)) return true;
   }
   return false;
 };
@@ -477,6 +447,22 @@ const isAbortSignals = (signals: ExtractedErrorSignals): boolean =>
   signals.codes.has('ERR_CANCELED') ||
   signals.codes.has('ABORT_ERR') ||
   signals.rawMessage === 'Request was aborted.';
+
+const timeoutClassification = {
+  category: 'timeout',
+  retryable: true,
+  errorCode: ModelErrEnum.requestTimeout
+} as const;
+const unavailableClassification = {
+  category: 'upstreamUnavailable',
+  retryable: true,
+  errorCode: ModelErrEnum.serviceUnavailable
+} as const;
+const invalidRequestClassification = {
+  category: 'invalidRequest',
+  retryable: false,
+  errorCode: ModelErrEnum.invalidRequest
+} as const;
 
 /**
  * 对向量化请求异常进行统一分类，区分确定性失败与可重试瞬时故障，
@@ -521,37 +507,40 @@ export const classifyEmbeddingError = (
     };
   }
 
-  const meta = {
+  const codeKeys = new Set(
+    Array.from(signals.codes).flatMap((code) => [code.toLowerCase(), normalizeCodeKey(code)])
+  );
+  const classified = (
+    result: Pick<EmbeddingErrorClassification, 'category' | 'retryable' | 'errorCode'>
+  ) => ({
+    ...result,
     upstreamStatus: signals.status,
     upstreamCode: signals.upstreamCode,
     upstreamType: signals.upstreamType
-  };
+  });
 
   if (signals.combinedText.includes(PRIVATE_URL_TEXT)) {
-    return {
+    return classified({
       category: 'privateUrl',
       retryable: false,
-      errorCode: ModelErrEnum.privateEndpointBlocked,
-      ...meta
-    };
+      errorCode: ModelErrEnum.privateEndpointBlocked
+    });
   }
 
   if (
-    error === ModelErrEnum.noAvailableChannel ||
     normalizeRelayNoChannelError(error) === ModelErrEnum.noAvailableChannel ||
-    hasAnyLowercaseCode(signals.codes, NO_AVAILABLE_CHANNEL_CODES) ||
-    hasAnyType(signals.types, NO_AVAILABLE_CHANNEL_CODES) ||
+    intersects(codeKeys, NO_AVAILABLE_CHANNEL_CODES) ||
+    intersects(signals.types, NO_AVAILABLE_CHANNEL_CODES) ||
     (signals.status === 404 &&
       /no available channel|无可用渠道|channel not found|channel_not_found/i.test(
         signals.combinedText
       ))
   ) {
-    return {
+    return classified({
       category: 'noAvailableChannel',
       retryable: false,
-      errorCode: ModelErrEnum.noAvailableChannel,
-      ...meta
-    };
+      errorCode: ModelErrEnum.noAvailableChannel
+    });
   }
 
   // 5xx 服务端异常优先按网关/超时归类，避免响应体内部报错文本（如数据库鉴权失败）被误判为客户端配置错误。
@@ -560,20 +549,10 @@ export const classifyEmbeddingError = (
       signals.status === 504 ||
       /\b(gateway\s+time-?out|request\s+timed?\s*out)\b/i.test(signals.payloadText)
     ) {
-      return {
-        category: 'timeout',
-        retryable: true,
-        errorCode: ModelErrEnum.requestTimeout,
-        ...meta
-      };
+      return classified(timeoutClassification);
     }
 
-    return {
-      category: 'upstreamUnavailable',
-      retryable: true,
-      errorCode: ModelErrEnum.serviceUnavailable,
-      ...meta
-    };
+    return classified(unavailableClassification);
   }
 
   // 参数校验状态（400/422）或无失败 HTTP 状态码的 2xx 错误体中声明参数错误类型，以及明确参数校验码时，
@@ -584,15 +563,12 @@ export const classifyEmbeddingError = (
     (signals.status >= 200 && signals.status < 300) ||
     signals.status === 400 ||
     signals.status === 422;
-  const isExplicitInvalidParamError = hasAnyLowercaseCode(
-    signals.codes,
-    EXPLICIT_INVALID_PARAM_CODES
-  );
+  const isExplicitInvalidParamError = intersects(codeKeys, EXPLICIT_INVALID_PARAM_CODES);
   const isStructuredInvalidRequest =
     isExplicitInvalidParamError ||
     (isParamValidationStatus &&
       (signals.types.has('invalid_request_error') ||
-        hasAnyLowercaseCode(signals.codes, STRUCTURED_INVALID_PARAM_CODES)));
+        intersects(codeKeys, STRUCTURED_INVALID_PARAM_CODES)));
   const isParamValidationMessage =
     isStructuredInvalidRequest &&
     /\b(?:unsupported|invalid)\s+(?:value|type|parameter|argument)\b|\bmissing\s+required\s+parameter\b|\bunknown\s+parameter\b|\bunrecognized\s+request\s+argument\b|\badditional\s+properties\s+are\s+not\s+allowed\b/i.test(
@@ -603,9 +579,9 @@ export const classifyEmbeddingError = (
     error instanceof OpenAI.APIConnectionTimeoutError ||
     signals.status === 408 ||
     signals.names.has('TimeoutError') ||
-    hasAnyExactCode(signals.codes, TIMEOUT_CODES) ||
-    hasAnyLowercaseCode(signals.codes, TIMEOUT_ERROR_CODES) ||
-    hasAnyType(signals.types, TIMEOUT_ERROR_CODES) ||
+    intersects(signals.codes, TIMEOUT_CODES) ||
+    intersects(codeKeys, TIMEOUT_ERROR_CODES) ||
+    intersects(signals.types, TIMEOUT_ERROR_CODES) ||
     (!isExplicitInvalidParamError &&
       !isParamValidationMessage &&
       (signals.rawMessage === 'Request timed out.' ||
@@ -614,12 +590,7 @@ export const classifyEmbeddingError = (
             signals.payloadText
           ))))
   ) {
-    return {
-      category: 'timeout',
-      retryable: true,
-      errorCode: ModelErrEnum.requestTimeout,
-      ...meta
-    };
+    return classified(timeoutClassification);
   }
 
   // 上游拉取图片失败常以 HTTP 400 返回，且正文可能内嵌被拉取站点的 401/403/429/500 状态码，
@@ -646,96 +617,90 @@ export const classifyEmbeddingError = (
       );
     const retryable = !isPermanentDownloadFailure;
 
-    return {
+    return classified({
       category: 'imageDownloadFailed',
       retryable,
-      errorCode: ModelErrEnum.imageDownloadFailed,
-      ...meta
-    };
+      errorCode: ModelErrEnum.imageDownloadFailed
+    });
   }
 
   // 上游额度/余额不足可能随 HTTP 402/403/429 返回，需先于限流与权限不足识别为不可重试。
   if (
     signals.status === 402 ||
-    hasAnyLowercaseCode(signals.codes, QUOTA_CODES) ||
-    hasAnyType(signals.types, QUOTA_CODES) ||
+    intersects(codeKeys, QUOTA_CODES) ||
+    intersects(signals.types, QUOTA_CODES) ||
     (!isStructuredInvalidRequest &&
       /insufficient[_\s-]?quota|insufficient[_\s-]?balance|out of quota|credit balance is too low|exceeded your current quota|billing[_\s-]?(not[_\s-]?active|hard[_\s-]?limit)|account.*(overdue|arrears|suspended|frozen)|余额不足|额度不足|欠费|配额已用尽/i.test(
         signals.payloadText
       ))
   ) {
-    return {
+    return classified({
       category: 'quotaExceeded',
       retryable: false,
-      errorCode: ModelErrEnum.upstreamQuotaExceeded,
-      ...meta
-    };
+      errorCode: ModelErrEnum.upstreamQuotaExceeded
+    });
   }
 
   if (
     signals.status === 429 ||
-    hasAnyLowercaseCode(signals.codes, RATE_LIMIT_CODES) ||
-    hasAnyType(signals.types, RATE_LIMIT_CODES) ||
+    intersects(codeKeys, RATE_LIMIT_CODES) ||
+    intersects(signals.types, RATE_LIMIT_CODES) ||
     (!isStructuredInvalidRequest &&
       /rate[_\s-]?limit|too many requests|requests? per (min|sec|minute|second)|exceeded.*request limit|速率限制|请求过于频繁|触发限流/i.test(
         signals.payloadText
       ))
   ) {
-    return {
+    return classified({
       category: 'rateLimited',
       retryable: true,
-      errorCode: ModelErrEnum.rateLimited,
-      ...meta
-    };
+      errorCode: ModelErrEnum.rateLimited
+    });
   }
 
   if (
     signals.status === 401 ||
-    hasAnyLowercaseCode(signals.codes, AUTH_CODES) ||
-    hasAnyType(signals.types, AUTH_CODES) ||
+    intersects(codeKeys, AUTH_CODES) ||
+    intersects(signals.types, AUTH_CODES) ||
     (!isStructuredInvalidRequest &&
       /incorrect api key|invalid api[_\s-]?key|invalid authentication|authentication failed|unauthorized|invalid[_\s-]?token|api[_\s-]?key.*(invalid|expired|missing)|鉴权失败|密钥无效/i.test(
         signals.payloadText
       ))
   ) {
-    return {
+    return classified({
       category: 'authFailed',
       retryable: false,
-      errorCode: ModelErrEnum.authFailed,
-      ...meta
-    };
+      errorCode: ModelErrEnum.authFailed
+    });
   }
 
   if (
     signals.status === 451 ||
-    hasAnyLowercaseCode(signals.codes, CONTENT_BLOCK_CODES) ||
-    hasAnyType(signals.types, CONTENT_BLOCK_CODES) ||
+    intersects(codeKeys, CONTENT_BLOCK_CODES) ||
+    intersects(signals.types, CONTENT_BLOCK_CODES) ||
     /content[_\s-]?filter|content[_\s-]?management[_\s-]?policy|data[_\s-]?inspection[_\s-]?failed|inappropriate content|violates?.*(safety|usage|content)\s+polic|sensitive content|safety\s+(check|system|policy)|内容安全|敏感内容|违规内容|审核未通过/i.test(
       signals.payloadText
     )
   ) {
-    return {
+    return classified({
       category: 'contentModeration',
       retryable: false,
-      errorCode: ModelErrEnum.contentBlocked,
-      ...meta
-    };
+      errorCode: ModelErrEnum.contentBlocked
+    });
   }
 
   if (
     signals.status === 413 ||
-    hasAnyLowercaseCode(signals.codes, INPUT_TOO_LONG_CODES) ||
-    hasAnyType(signals.types, INPUT_TOO_LONG_CODES) ||
+    intersects(codeKeys, INPUT_TOO_LONG_CODES) ||
+    intersects(signals.types, INPUT_TOO_LONG_CODES) ||
     /maximum context length|context[_\s-]?length[_\s-]?exceeded|too many tokens|exceeds? (the )?(max(imum)? )?(context|token|input|content|sequence|batch)[_\s-]?(length|size|limit)|range of input length|input (is )?too long|payload too large|request entity too large|token limit|长度超限|超过最大(长度|限制|token)/i.test(
       signals.payloadText
     )
   ) {
-    return {
+    return classified({
       category: 'inputTooLong',
       retryable: false,
-      errorCode: ModelErrEnum.inputTooLong,
-      ...meta
-    };
+      errorCode: ModelErrEnum.inputTooLong
+    });
   }
 
   if (
@@ -743,162 +708,121 @@ export const classifyEmbeddingError = (
       signals.payloadText
     )
   ) {
-    return {
+    return classified({
       category: 'invalidImage',
       retryable: false,
-      errorCode: ModelErrEnum.invalidImage,
-      ...meta
-    };
+      errorCode: ModelErrEnum.invalidImage
+    });
   }
 
   if (
     signals.status === 403 ||
-    hasAnyLowercaseCode(signals.codes, PERMISSION_CODES) ||
-    hasAnyType(signals.types, PERMISSION_CODES)
+    intersects(codeKeys, PERMISSION_CODES) ||
+    intersects(signals.types, PERMISSION_CODES)
   ) {
-    return {
+    return classified({
       category: 'permissionDenied',
       retryable: false,
-      errorCode: ModelErrEnum.permissionDenied,
-      ...meta
-    };
+      errorCode: ModelErrEnum.permissionDenied
+    });
   }
 
   if (
     signals.status === 404 ||
-    hasAnyLowercaseCode(signals.codes, MODEL_NOT_FOUND_CODES) ||
-    hasAnyType(signals.types, MODEL_NOT_FOUND_CODES) ||
+    intersects(codeKeys, MODEL_NOT_FOUND_CODES) ||
+    intersects(signals.types, MODEL_NOT_FOUND_CODES) ||
     (!isStructuredInvalidRequest &&
       /model.*(not found|does not exist|not exist)|no such model|unknown model|模型不存在/i.test(
         signals.payloadText
       ))
   ) {
-    return {
+    return classified({
       category: 'modelNotFound',
       retryable: false,
-      errorCode: ModelErrEnum.modelNotFound,
-      ...meta
-    };
-  }
-
-  if (signals.status === 409) {
-    return {
-      category: 'upstreamUnavailable',
-      retryable: true,
-      errorCode: ModelErrEnum.serviceUnavailable,
-      ...meta
-    };
+      errorCode: ModelErrEnum.modelNotFound
+    });
   }
 
   // 明确的结构化服务端瞬时故障码/类型即使被代理包装为 HTTP 400，也先于参数错误与通用 4xx 识别，
   // 避免可恢复的上游波动误判为确定性失败而直接终止训练队列。
   if (
-    hasAnyLowercaseCode(signals.codes, UPSTREAM_UNAVAILABLE_CODES) ||
-    hasAnyType(signals.types, UPSTREAM_UNAVAILABLE_TYPES)
+    signals.status === 409 ||
+    intersects(codeKeys, UPSTREAM_UNAVAILABLE_CODES) ||
+    intersects(signals.types, UPSTREAM_UNAVAILABLE_TYPES)
   ) {
-    return {
-      category: 'upstreamUnavailable',
-      retryable: true,
-      errorCode: ModelErrEnum.serviceUnavailable,
-      ...meta
-    };
+    return classified(unavailableClassification);
   }
 
   // 明确的结构化参数错误先于宽泛正文匹配，避免参数值本身包含 `overloaded` 等字样时被误判为服务不可用。
-  if (
-    isStructuredInvalidRequest ||
-    signals.types.has('invalid_request_error') ||
-    hasAnyLowercaseCode(signals.codes, INVALID_REQUEST_CODES)
-  ) {
-    return {
-      category: 'invalidRequest',
-      retryable: false,
-      errorCode: ModelErrEnum.invalidRequest,
-      ...meta
-    };
+  if (signals.types.has('invalid_request_error') || intersects(codeKeys, INVALID_REQUEST_CODES)) {
+    return classified(invalidRequestClassification);
   }
 
   if (UPSTREAM_UNAVAILABLE_PATTERN.test(signals.payloadText)) {
-    return {
-      category: 'upstreamUnavailable',
-      retryable: true,
-      errorCode: ModelErrEnum.serviceUnavailable,
-      ...meta
-    };
+    return classified(unavailableClassification);
   }
 
   if (signals.status !== undefined && signals.status >= 400 && signals.status < 500) {
-    return {
-      category: 'invalidRequest',
-      retryable: false,
-      errorCode: ModelErrEnum.invalidRequest,
-      ...meta
-    };
+    return classified(invalidRequestClassification);
   }
 
   if (signals.types.has('aiproxy_error') || signals.types.has('upstream_error')) {
-    return {
-      category: 'upstreamUnavailable',
-      retryable: true,
-      errorCode: ModelErrEnum.serviceUnavailable,
-      ...meta
-    };
+    return classified(unavailableClassification);
   }
 
   if (
     error instanceof OpenAI.APIConnectionError ||
     signals.names.has('APIConnectionError') ||
-    hasAnyExactCode(signals.codes, NETWORK_CODES) ||
+    intersects(signals.codes, NETWORK_CODES) ||
     /^(connection error\.?|fetch failed)$/i.test(signals.rawMessage.trim()) ||
     /socket hang up|dial tcp|econnreset|econnrefused|enotfound|epipe|tls handshake/i.test(
       signals.combinedText
     )
   ) {
-    return {
+    return classified({
       category: 'networkError',
       retryable: true,
-      errorCode: ModelErrEnum.networkError,
-      ...meta
-    };
+      errorCode: ModelErrEnum.networkError
+    });
   }
 
   if (
     (error instanceof SyntaxError || signals.names.has('SyntaxError')) &&
     /json|unexpected (end|token)/i.test(signals.rawMessage)
   ) {
-    return {
+    return classified({
       category: 'invalidResponse',
       retryable: true,
-      errorCode: ModelErrEnum.invalidResponse,
-      ...meta
-    };
+      errorCode: ModelErrEnum.invalidResponse
+    });
   }
 
+  return classified({ category: 'unknown', retryable: true });
+};
+
+/** 每次失败只提取一次分类和退避信息，供重试决策、日志与最终错误共用。 */
+export const inspectEmbeddingFailure = (error: unknown, signal?: AbortSignal) => {
+  const classification = classifyEmbeddingError(error, { signal });
   return {
-    category: 'unknown',
-    retryable: true,
-    ...meta
+    error,
+    classification,
+    retryDirective: classification.retryable ? getEmbeddingRetryDirective(error) : undefined
   };
 };
 
 /**
- * 将向量化原始异常转换为面向业务层的统一错误：
+ * 将同一次失败检查的原始异常、分类与退避信息转换为面向业务层的统一错误：
  * - 已识别的已知分类转为携带明确 `ModelErrEnum` 机器码的 `EmbeddingRequestError`；
  * - 主动取消与模型配置错误保留原异常语义；
  * - 无法归类的长尾异常原样兜底透出。
  */
-export const normalizeEmbeddingError = (
-  error: unknown,
-  options?: {
-    signal?: AbortSignal;
-    classification?: EmbeddingErrorClassification;
-    retryAfterMs?: number;
-  }
-): unknown => {
-  if (isEmbeddingRequestError(error)) return error;
-
-  const classification = options?.classification ?? classifyEmbeddingError(error, options);
+export const normalizeEmbeddingFailure = ({
+  error,
+  classification,
+  retryDirective
+}: ReturnType<typeof inspectEmbeddingFailure>): unknown => {
   if (
+    isEmbeddingRequestError(error) ||
     classification.category === 'aborted' ||
     classification.category === 'modelConfig' ||
     !classification.errorCode
@@ -906,15 +830,18 @@ export const normalizeEmbeddingError = (
     return error;
   }
 
-  const retryAfterMs = classification.retryable
-    ? (options?.retryAfterMs ??
-      classification.retryAfterMs ??
-      getEmbeddingRetryDirective(error).retryAfterMs)
-    : undefined;
-
   return new EmbeddingRequestError(classification.errorCode, {
     ...classification,
-    ...(retryAfterMs !== undefined ? { retryAfterMs } : {}),
+    retryAfterMs: retryDirective?.retryAfterMs ?? classification.retryAfterMs,
     cause: error
   });
 };
+
+/** 原始异常入口，先完成一次失败检查再转换，已归一化的业务错误直接复用。 */
+export const normalizeEmbeddingError = (
+  error: unknown,
+  options?: { signal?: AbortSignal }
+): unknown =>
+  isEmbeddingRequestError(error)
+    ? error
+    : normalizeEmbeddingFailure(inspectEmbeddingFailure(error, options?.signal));
