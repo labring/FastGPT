@@ -54,7 +54,11 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import type { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
-import { CollectionPageContext, defaultCollectionListSort } from './Context';
+import {
+  CollectionPageContext,
+  defaultCollectionListSort,
+  getCollectionHeaderFilter
+} from './Context';
 import CollectionListHeaderMenu, {
   type CollectionListHeaderSelection
 } from './CollectionListHeaderMenu';
@@ -126,6 +130,7 @@ const CollectionCard = () => {
     getData,
     pollCollections,
     isInitialLoading,
+    isHeaderFilterPending,
     pageNum,
     pageSize,
     scrollContainerRef,
@@ -177,10 +182,7 @@ const CollectionCard = () => {
   });
 
   const onChangeHeaderSelection = (next: CollectionListHeaderSelection | undefined) => {
-    if (
-      headerSelection?.params.trainingType !== next?.params.trainingType ||
-      headerSelection?.params.statusFilter !== next?.params.statusFilter
-    ) {
+    if (getCollectionHeaderFilter(headerSelection) !== getCollectionHeaderFilter(next)) {
       // 筛选会隐藏部分结果，避免批量操作命中已不可见的勾选项。
       setSelectedItems([]);
     }
@@ -404,7 +406,7 @@ const CollectionCard = () => {
           flex={'1 0 0'}
           h={0}
           footer={
-            <>
+            <Box hidden={isHeaderFilterPending}>
               <FloatingActionBar
                 pt={4}
                 Controler={
@@ -464,15 +466,19 @@ const CollectionCard = () => {
                   </Flex>
                 )}
               </FloatingActionBar>
-            </>
+            </Box>
           }
         >
-          <Table variant={'simple'} draggable={false}>
+          <Table variant={'simple'} draggable={false} aria-busy={isHeaderFilterPending}>
             <Thead draggable={false}>
               <Tr>
                 <Th py={4} aria-sort={sortBy === 'name' ? ariaSort : undefined}>
                   <HStack>
-                    <Checkbox isChecked={isSelecteAll} onChange={selectAllTrigger} />
+                    <Checkbox
+                      isChecked={isSelecteAll}
+                      isDisabled={isHeaderFilterPending}
+                      onChange={selectAllTrigger}
+                    />
                     <CollectionListHeaderMenu
                       column="name"
                       title={t('common:Name')}
@@ -541,6 +547,7 @@ const CollectionCard = () => {
                   })}
                   draggable={false}
                   {...getRowSelectionProps(collection, {
+                    isDisabled: isHeaderFilterPending,
                     // 导航目录不能被多选切换，点击始终进入目录
                     forceClick: collection.isNavigableFolder,
                     onClick: () => {
@@ -580,6 +587,7 @@ const CollectionCard = () => {
                         ) : (
                           <Checkbox
                             isChecked={isSelected(collection)}
+                            isDisabled={isHeaderFilterPending}
                             onChange={() => toggleSelect(collection)}
                           />
                         )}
@@ -794,7 +802,7 @@ const CollectionCard = () => {
             </Tbody>
           </Table>
 
-          {!isInitialLoading && total === 0 && <EmptyCollectionTip />}
+          {!isInitialLoading && !isHeaderFilterPending && total === 0 && <EmptyCollectionTip />}
         </FixedTableContainer>
 
         <ConfirmDeleteModal />
