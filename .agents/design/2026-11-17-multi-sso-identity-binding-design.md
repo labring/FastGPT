@@ -969,12 +969,23 @@ curl -s -X POST https://<admin域名>/api/admin/user/identity/backfill \
 - `anomalies` 非空时**不得继续实刷**，按下文异常处置表处理；
 - `parallelAccountCandidates` 非空时进入步骤 2。
 
-**有平行账号时的 candidates 示例**（同 contact 挂了旧手工号 + 同步号，属同一自然人）：
+**平行账号评估维度 `parallelMatchKeys`**（请求参数，默认 `['contact']`）：
+
+| 维度 | 规则 | 适用 |
+| --- | --- | --- |
+| `contact` | 同手机号挂多个账号 | 最可靠的人归属信号（默认） |
+| `username` | 按部署前缀规则去前缀后 username 相同 | 捞回 contact 为空的旧 SSO 号对；**依赖 `EXTERNAL_USER_SYSTEM_LEGACY_USERNAME_PREFIX` 配置**，未配置前缀时该维度退化为全同名（username 唯一索引下不可能命中） |
+
+客户环境按需选择：只认手机号传 `["contact"]`（默认，行为不变）；手机号与 username 二者合并传 `["contact","username"]`——同一批账号任一维度命中即并为一组（如 contact 对与 username 对共享某账号时串成一组，响应 `matchKeys` 字段标明命中了哪些维度）。返回的 `usernameKey` 为去前缀后的归约键。
+
+**有平行账号时的 candidates 示例**（同 contact 挂了旧手工号 + 同步号，属同一自然人；请求体 `{"dryRun": true, "parallelMatchKeys": ["contact", "username"]}`）：
 
 ```json
 "parallelAccountCandidates": [
   {
     "contact": "13800000001",
+    "usernameKey": "zhang",
+    "matchKeys": ["contact", "username"],
     "accounts": [
       { "userId": "665f1a2b...", "username": "legacy-zhang" },
       { "userId": "665f2c3d...", "username": "wecom-zhang", "syncSource": "wecom" }
