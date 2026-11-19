@@ -1,5 +1,6 @@
 import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { planNodeRemoval } from './removal';
+import { nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum,
@@ -153,7 +154,8 @@ export const removeNode = ({
   const clearedReferences: Array<{ nodeId: string; inputKey: string }> = [];
   for (const item of document.nodes) {
     for (const input of item.inputs) {
-      if (!isReferenceToDeletedNode(input.value, deletedNodeIds)) continue;
+      if (!nodeInputIsReference(input) || !isReferenceToDeletedNode(input.value, deletedNodeIds))
+        continue;
       input.value = undefined;
       clearedReferences.push({ nodeId: item.nodeId, inputKey: input.key });
     }
