@@ -83,8 +83,13 @@ const TeamAuditSchema = new Schema({
   }
 });
 
+defineIndex(TeamAuditSchema, { key: { teamId: 1, timestamp: -1, _id: -1 } });
 defineIndex(TeamAuditSchema, { key: { teamId: 1, tmbId: 1, event: 1 } });
-defineIndex(TeamAuditSchema, { key: { timestamp: 1, teamId: 1 } });
+defineIndex(TeamAuditSchema, { key: { event: 1, _id: -1 } });
+defineIndex(TeamAuditSchema, {
+  key: { timestamp: 1, teamId: 1 },
+  deprecated: true
+});
 
 export const MongoTeamAudit = getMongoLogModel<TeamAuditSchemaType>(
   TeamAuditCollectionName,

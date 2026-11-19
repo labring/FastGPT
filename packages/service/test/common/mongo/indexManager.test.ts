@@ -20,6 +20,7 @@ import {
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoModelStatusProbeRecord } from '@fastgpt/service/core/ai/modelStatus/schema';
+import { MongoTeamAudit } from '@fastgpt/service/support/user/audit/schema';
 
 const logger = {
   debug: vi.fn(),
@@ -766,5 +767,27 @@ describe('sandbox quota index migration', () => {
     expect(names).toContain('status_1_lastActiveAt_1');
     expect(names).toContain('sourceType_1_sourceId_1_userId_1');
     expect(names).toContain('customer_sandbox_source');
+  });
+});
+
+describe('team audit index migration', () => {
+  it('removes the old timestamp-first index and retains current and customer indexes', async () => {
+    const schema = new Schema({}, { autoIndex: false });
+    MongoTeamAudit.schema.indexes().forEach(([key, options]) => {
+      defineIndex(schema, { key, options });
+    });
+    defineDeprecatedTestIndexes(schema, getSchemaDeprecatedMongoIndexes(MongoTeamAudit.schema));
+    const model = createModel({ schema, prefix: 'TeamAuditIndex' });
+    await model.collection.createIndex({ timestamp: 1, teamId: 1 });
+    await model.collection.createIndex({ teamId: 1, scope: 1 }, { name: 'customer_audit_scope' });
+
+    await MongoIndexManager.syncModelIndexes({ model, logger });
+
+    const names = await getIndexNames(model);
+    expect(names).not.toContain('timestamp_1_teamId_1');
+    expect(names).toContain('teamId_1_timestamp_-1__id_-1');
+    expect(names).toContain('teamId_1_tmbId_1_event_1');
+    expect(names).toContain('event_1__id_-1');
+    expect(names).toContain('customer_audit_scope');
   });
 });
