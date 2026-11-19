@@ -153,6 +153,20 @@
         "description": "Query paginated FastGPT application chat logs filtered by time range, channel source, feedback status, errors, and search keywords."
       }
     },
+    "POST /core/app/logs/search": {
+      "module": "app-log",
+      "slug": "search",
+      "zh": {
+        "title": "搜索应用对话日志",
+        "seoTitle": "搜索应用对话日志 - POST /api/core/app/logs/search | FastGPT OpenAPI",
+        "description": "使用游标搜索 FastGPT 应用的对话日志，支持按标题或精确的会话 ID 查找。每页最多 50 条，可以使用响应中的 nextCursor 继续获取结果。"
+      },
+      "en": {
+        "title": "Search App Chat Logs",
+        "seoTitle": "Search App Chat Logs - POST /api/core/app/logs/search | FastGPT OpenAPI",
+        "description": "Search FastGPT app chat logs by title or exact session ID. Get up to 50 results per page and use the returned cursor to continue."
+      }
+    },
     "GET /proApi/core/app/logs/getTotalData": {
       "module": "app-log",
       "slug": "get-total-data",
@@ -843,6 +857,10 @@
       "zh": "将文本内容存储为文件后创建集合并触发训练",
       "en": "Store raw text content as a file, create a collection, and trigger indexing training."
     },
+    "03b35deb09573d055862bbaee2ca9fcc2ef1251f4aff0c82f464d41185cb279a": {
+      "zh": "按游标搜索应用的对话日志列表，每页固定 50 条且不查询总数",
+      "en": "Search app chat logs with cursor-based pagination. The page size is fixed at 50 and the response does not include a total count."
+    },
     "03ba7677d46545883b41182afc3b0b6b3f429666b31631f61faef691d96ecd51": {
       "zh": "collection 级权限开关：false 表示关闭态（默认，可读性等于 dataset）",
       "en": "Collection-level permission toggle (`false` by default, inheriting dataset readability)"
@@ -1247,6 +1265,10 @@
       "zh": "只返回文件夹",
       "en": "Return folders only"
     },
+    "1d9742ff1596c39cd57228e228bd14b7731d3d7bc446405a4a4a6dc00257a72d": {
+      "zh": "游标时间戳（毫秒）",
+      "en": "Cursor timestamp in milliseconds"
+    },
     "1d9fde9495eba0075ea1b5ff5099c340d925c6052a83f8e0223adc1a29a6ab73": {
       "zh": "Agent loop 内部 update_plan 调用记录，用于恢复模型上下文和后续 UI 展示",
       "en": "Internal `update_plan` call record in the Agent loop for context recovery and UI display"
@@ -1399,6 +1421,10 @@
       "zh": "成功获取会话列表",
       "en": "Successfully retrieved chat history list"
     },
+    "2777fd4ad8e6d2af9a933b6ba8f38782adf394ada77ad8243fa62b5dc5f59cfd": {
+      "zh": "搜索应用日志列表",
+      "en": "Search app logs"
+    },
     "27959fd236ba13bc34d9ddea49dc021eaeebdacc883ac8c5b8ac74b47439b654": {
       "zh": "流式错误",
       "en": "Stream Error"
@@ -1486,6 +1512,10 @@
     "2c1fafd4dde82316f21f5b33141931350144f19bd157be5c369e0a29de1ce4ca": {
       "zh": "第三方知识库服务器配置(API/飞书/语雀/钉钉)",
       "en": "Third-party dataset server configuration (API / Lark / Yuque / DingTalk)"
+    },
+    "2c246544f0a9b9a8f475bda0e484326487d1acd63cf9b267c4f74a56d9055070": {
+      "zh": "游标日志 ID",
+      "en": "Log ID in the cursor"
     },
     "2cd9afcee0b5841215950848e6f7a3e528243e080f75dc37a8980452ced25bda": {
       "zh": "匹配的文本或选项",
@@ -2183,6 +2213,10 @@
       "zh": "是否允许在对话中选择视频",
       "en": "Whether videos can be uploaded in chat"
     },
+    "5196d1aea2014859a833534a4b1f5567df1c79fcd86a3272e977e0bbb036eec5": {
+      "zh": "应用对话日志搜索结果",
+      "en": "App chat log search results"
+    },
     "519991bdc73b4b1df7ddbe006af7cd4914beca52f54b5835c74823ed14f290ba": {
       "zh": "隐藏内部工具展示，仍保留模型上下文",
       "en": "Hide internal tool UI display while retaining model context"
@@ -2482,6 +2516,10 @@
     "647f9ce6e6c16ec1cb86f2425b156f243b3cf5bc2719b78fddd75afecc8b257a": {
       "zh": "该变量是否允许选择音频",
       "en": "Whether audio files are allowed for this variable"
+    },
+    "6481165ee41e6681a347e2d19273498d34f86eaa31c7a5056d45c2c2491f40d9": {
+      "zh": "搜索关键词；与 searchType 共同指定标题搜索或会话 ID 精确匹配",
+      "en": "Search term. Use with `searchType` to search titles or match a session ID exactly."
     },
     "64f88dc6831d41055a3bcaa252c3d9fdaee735e5aecf434aa7222f9946dc7fc1": {
       "zh": "event: plan\ndata: {\"plan\":{\"planId\":\"plan-1\",\"name\":\"查询导演信息\",\"steps\":[{\"id\":\"step-1\",\"name\":\"确认电影名称\",\"status\":\"done\"},{\"id\":\"step-2\",\"name\":\"检索电影资料\",\"status\":\"in_progress\"},{\"id\":\"step-3\",\"name\":\"整理导演信息\",\"status\":\"pending\"},{\"id\":\"step-4\",\"name\":\"核对付费资料\",\"status\":\"blocked\",\"note\":\"等待用户授权\"},{\"id\":\"step-5\",\"name\":\"补充无关作品\",\"status\":\"skipped\",\"note\":\"不在本次范围内\"}]}}\n\n",
@@ -3094,6 +3132,10 @@
     "8cfc95be047002d73381b020a1f40b31f9bcd3f1d91848b1a5087a28782013a3": {
       "zh": ": 1. 空文本心跳\nevent: answer\ndata: {\"choices\":[{\"delta\":{\"role\":\"assistant\",\"content\":\"\"},\"index\":0,\"finish_reason\":null}]}\n\n: 2. 回答文本\nevent: answer\ndata: {\"choices\":[{\"delta\":{\"role\":\"assistant\",\"content\":\"电影《铃芽之旅》的导演是新海诚。\"},\"index\":0,\"finish_reason\":null}]}\n\n: 3. 思考增量\nevent: answer\ndata: {\"choices\":[{\"delta\":{\"role\":\"assistant\",\"reasoning_content\":\"先核对电影的导演信息。\"},\"index\":0,\"finish_reason\":null}]}\n\n: 4. 回答停止片段\nevent: answer\ndata: {\"choices\":[{\"delta\":{\"role\":\"assistant\",\"content\":null},\"index\":0,\"finish_reason\":\"stop\"}]}\n\n: 5. 整轮流结束\nevent: answer\ndata: [DONE]\n\n",
       "en": ": 1. Empty heartbeat\nevent: answer\ndata: {\"choices\":[{\"delta\":{\"role\":\"assistant\",\"content\":\"\"},\"index\":0,\"finish_reason\":null}]}\n\n: 2. Answer text\nevent: answer\ndata: {\"choices\":[{\"delta\":{\"role\":\"assistant\",\"content\":\"Makoto Shinkai directed the film Suzume.\"},\"index\":0,\"finish_reason\":null}]}\n\n: 3. Reasoning delta\nevent: answer\ndata: {\"choices\":[{\"delta\":{\"role\":\"assistant\",\"reasoning_content\":\"Verify the director of Suzume first.\"},\"index\":0,\"finish_reason\":null}]}\n\n: 4. Stop finish chunk\nevent: answer\ndata: {\"choices\":[{\"delta\":{\"role\":\"assistant\",\"content\":null},\"index\":0,\"finish_reason\":\"stop\"}]}\n\n: 5. End of stream\nevent: answer\ndata: [DONE]\n\n"
+    },
+    "8d274443d77a90f350a8f3706ceb5c243862692994161587ff91eeafd64dc0a1": {
+      "zh": "上一页响应中的 nextCursor；首屏请求省略，后续请求原样传入",
+      "en": "The `nextCursor` from the previous response. Omit this field on the first page and pass the cursor unchanged for subsequent pages."
     },
     "8d5ed6643b2c00a1b24ff1b5720754f46df0e0fc7e8dce18c8b32c9a7d62ecd1": {
       "zh": "集合管理",
@@ -4003,6 +4045,10 @@
       "zh": "本次实际鉴权成员 ID，代理调用时为被代理成员",
       "en": "Effective authenticated team member ID (or proxied member ID when using `authProxy`)"
     },
+    "c18481c8056b7c938af88a3a6e851fb9b5ce5d78b3bffe18123945c83304c4fc": {
+      "zh": "对话日志记录列表，固定返回 50 条",
+      "en": "Chat log records for this page. The page size is fixed at 50."
+    },
     "c1cbac290d928ee0d49560eadd1e07fbb0c8631862ec87c7c4364d069ace0058": {
       "zh": "是否返回详细信息，包括 reasoning_content, tool_calls, usage 等",
       "en": "Whether to include detailed execution metadata such as `responseData`, `reasoning_content`, `tool_calls`, and `newVariables`"
@@ -4207,6 +4253,10 @@
       "zh": "模型播报时使用的语音模型 ID",
       "en": "TTS model ID used for speech synthesis"
     },
+    "ce45368d84be62b98d42d7a2f9e11a60688ade4a9a6469676a92e749a8f54647": {
+      "zh": "搜索类型：title 搜索标题，chatId 精确匹配会话 ID；省略时兼容旧搜索",
+      "en": "Search mode. Use `title` to search titles or `chatId` to match a session ID exactly. Omit this field to use the legacy search behavior."
+    },
     "cea1aafe9416de7bb6b8c10d5787cc791376a186f2bd6a513825f38f7e929b36": {
       "zh": "请求头",
       "en": "Request headers"
@@ -4218,6 +4268,10 @@
     "ceb893d894cca38b50d81e8c41a33badfeeafdc7aec2f56588c74f2931495f8d": {
       "zh": "获取知识库列表 V2",
       "en": "List Datasets (V2)"
+    },
+    "cebf8bc73c161bc181c27cf9862866d88f8630aedbf05c9e84232bbf0e55c729": {
+      "zh": "下一页游标；省略表示已加载全部",
+      "en": "Cursor for the next page. This field is absent when no more results are available."
     },
     "cecd82e7ba37b0b5349c2cff9455d79c62c92aee89336e0144dce377ccb1a68e": {
       "zh": "数值变量最小值",
@@ -4458,6 +4512,10 @@
     "de33f6c95e6dd4a5f3505fe71cc35e23ab93022a2557ebdb64d59d35c44fd608": {
       "zh": "chatTitle · 会话标题",
       "en": "chatTitle · Chat Title"
+    },
+    "ded7ede6038991d3c579a268932ff52d9dfc6301b86a92bb0a422af0101c79ef": {
+      "zh": "成功搜索应用日志列表",
+      "en": "App log search completed successfully"
     },
     "df626facf817fd01a0e4688e64b84b31165c07d27c789e1ab676e1a42df293b1": {
       "zh": "向前翻页",

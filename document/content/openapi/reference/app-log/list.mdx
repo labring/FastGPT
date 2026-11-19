@@ -2,7 +2,19 @@
 title: '获取应用日志列表'
 seoTitle: '获取应用日志列表 - POST /api/core/app/logs/list | FastGPT OpenAPI'
 description: '分页查询 FastGPT 应用的对话日志记录，支持按起止时间、调用来源、反馈类型、未读状态、报错标记和用户条件精准筛选。'
+deprecated: true
 ---
+
+import { Alert } from '@/components/docs/Alert';
+
+<Alert icon="⚠️" context="warning">
+  **接口已弃用**：`POST
+  /api/core/dataset/collection/create/apiCollection`（V1）已进入历史兼容阶段。System OpenAPI
+  新接入请使用
+  [上传本地文件创建集合](/zh-CN/openapi/reference/dataset-collection-create/local-file)、[通过链接创建集合](/zh-CN/openapi/reference/dataset-collection-create/link)
+  或 [通过文本创建集合](/zh-CN/openapi/reference/dataset-collection-create/text)，如需 V2
+  批量导入（`apiCollectionV2`）请查看实例 Dev API。
+</Alert>
 
 ## 端点概览
 
