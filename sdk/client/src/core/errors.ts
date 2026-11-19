@@ -116,11 +116,12 @@ export class FastGptNetworkError extends FastGptError {
   }
 }
 
-const AUTH_STATUS_TEXT_RE = /^unAuth/i;
-const NOT_FOUND_STATUS_TEXT_RE = /(?:^unExist|NotFound|not_found)/i;
+const AUTH_STATUS_TEXT_RE = /(?:^unAuth|UnAuth$|^unPermission$)/i;
+const NOT_FOUND_STATUS_TEXT_RE = /(?:^unExist|UnExist$|NotFound|NotExist|not_found)/i;
 
 /**
  * 根据 HTTP 状态码、服务端业务 code 与 statusText 映射具体的异常子类。
+ * 优先尊重标准 HTTP 4xx/5xx 语义，同时向下兼容旧版 FastGPT 以 HTTP 200/500 包装业务错误码的行为。
  */
 export const createMappedApiError = (details: FastGptErrorDetails): FastGptError => {
   const { httpStatus, serverCode, statusText } = details;
@@ -139,21 +140,24 @@ export const createMappedApiError = (details: FastGptErrorDetails): FastGptError
     return new FastGptConflictError(details);
   }
 
-  if (httpStatus === 429 || statusText === 'tooManyRequest') {
+  if (
+    httpStatus === 429 ||
+    statusText === 'tooManyRequest' ||
+    statusText === 'uploadFileIntervalLimit'
+  ) {
     return new FastGptRateLimitError(details);
   }
 
   if (
     httpStatus === 404 ||
+    httpStatus === 410 ||
     (statusText !== undefined && NOT_FOUND_STATUS_TEXT_RE.test(statusText))
   ) {
     return new FastGptNotFoundError(details);
   }
 
   if (
-    httpStatus === 400 ||
-    httpStatus === 406 ||
-    httpStatus === 422 ||
+    (httpStatus !== undefined && httpStatus >= 400 && httpStatus < 500) ||
     (effectiveCode >= 400 && effectiveCode < 500)
   ) {
     return new FastGptBadRequestError(details);

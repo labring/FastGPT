@@ -221,14 +221,48 @@ describe('FastGPT Core Client, Auth, Identity & Error Semantics', () => {
         expectedClass: FastGptAuthError
       },
       {
+        httpStatus: 401,
+        body: { code: 514, statusText: 'unAuthApiKey', message: 'Invalid API Key' },
+        expectedClass: FastGptAuthError
+      },
+      {
         httpStatus: 403,
         body: { code: 403, message: 'Forbidden resource' },
+        expectedClass: FastGptAuthError
+      },
+      {
+        httpStatus: 500,
+        body: { code: 506001, statusText: 'openapiUnAuth', message: 'OpenAPI unauthorized' },
         expectedClass: FastGptAuthError
       },
       {
         httpStatus: 404,
         body: { code: 404, message: 'Dataset not found' },
         expectedClass: FastGptNotFoundError
+      },
+      {
+        httpStatus: 410,
+        body: {
+          code: 502005,
+          statusText: 'workflowBuilderVersionExpired',
+          message: 'Version expired'
+        },
+        expectedClass: FastGptNotFoundError
+      },
+      {
+        httpStatus: 500,
+        body: { code: 502000, statusText: 'appUnExist', message: 'App does not exist' },
+        expectedClass: FastGptNotFoundError
+      },
+      {
+        httpStatus: 402,
+        body: { code: 510, statusText: 'insufficientQuota', message: 'Insufficient quota' },
+        expectedClass: FastGptBadRequestError
+      },
+      {
+        httpStatus: 413,
+        body: { code: 501025, statusText: 'archiveLimitExceeded', message: 'Archive too large' },
+        expectedClass: FastGptBadRequestError
       },
       {
         httpStatus: 409,
