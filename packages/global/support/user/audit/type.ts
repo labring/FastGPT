@@ -37,33 +37,49 @@ export const classifyAppAuditResourceType = (
   return AuditResourceTypeEnum.app;
 };
 
-/** 每项标识一个受操作实体，写入时记录名称/头像快照以便删除后依然可读且导出无需二次查库。 */
-export const AuditResourceSchema = z
-  .strictObject({
-    type: z.enum(AuditResourceTypeEnum).meta({ description: '操作时的关联资源类型快照' }),
-    currentType: z.enum(AuditResourceTypeEnum).optional().meta({
-      description: '资源当前实时类型；仅当列表实时补查发现类型已变化时返回，用于构造跳转路由'
-    }),
-    id: z.string().trim().min(1).optional().meta({ description: '关联资源 ID' }),
-    name: z.string().optional().meta({ description: '操作时的资源名称快照' }),
-    avatar: z.string().optional().meta({ description: '资源头像或内置图标' }),
-    parentId: ObjectIdSchema.optional().meta({
-      description: '父级资源 ID（集合所属知识库 ID，用于构造详情页跳转）',
-      example: '68ad85a7463006c963799a05'
-    }),
-    collectionType: z.enum(DatasetCollectionTypeEnum).optional().meta({
-      description: '操作时的集合类型，用于区分目录跳转和文件图标',
-      example: DatasetCollectionTypeEnum.file
-    }),
-    deleted: z.boolean().optional().meta({
-      description: '资源是否已删除或不存在；已删除资源仅展示文本不跳转'
-    })
+const AuditResourceTypeSchema = z.enum(AuditResourceTypeEnum);
+
+const hasAuditResourceIdentity = (item: { id?: string; name?: string }) =>
+  Boolean(item.id || item.name?.trim());
+
+const auditResourceIdentityRefine = {
+  message: 'Each audit resource must provide an id or a non-empty name'
+};
+
+const AuditResourceBaseSchema = z.strictObject({
+  type: AuditResourceTypeSchema.meta({ description: '操作时的关联资源类型快照' }),
+  id: z.string().trim().min(1).optional().meta({ description: '关联资源 ID' }),
+  name: z.string().optional().meta({ description: '操作时的资源名称快照' }),
+  avatar: z.string().optional().meta({ description: '资源头像或内置图标' }),
+  parentId: ObjectIdSchema.optional().meta({
+    description: '父级资源 ID（集合所属知识库 ID，用于构造详情页跳转）',
+    example: '68ad85a7463006c963799a05'
+  }),
+  collectionType: z.enum(DatasetCollectionTypeEnum).optional().meta({
+    description: '操作时的集合类型，用于区分目录跳转和文件图标',
+    example: DatasetCollectionTypeEnum.file
+  }),
+  deleted: z.boolean().optional().meta({
+    description: '资源是否已删除或不存在；已删除资源仅展示文本不跳转'
   })
-  .refine((item) => Boolean(item.id || item.name?.trim()), {
-    message: 'Each audit resource must provide an id or a non-empty name'
-  });
+});
+
+/** 持久化审计资源快照：写入时记录名称/头像等快照字段，与 MongoDB 严格子文档保持一致。 */
+export const AuditResourceSchema = AuditResourceBaseSchema.refine(
+  hasAuditResourceIdentity,
+  auditResourceIdentityRefine
+);
 export type AuditResourceType = z.infer<typeof AuditResourceSchema>;
 export const AuditResourcesSchema = z.array(AuditResourceSchema);
+
+/** 列表响应中的资源项：从持久化快照派生并扩展可选实时导航类型，未知导航枚举单独降级省略。 */
+export const AuditListResourceSchema = AuditResourceBaseSchema.extend({
+  currentType: AuditResourceTypeSchema.optional().catch(undefined).meta({
+    description: '资源当前实时类型；仅当列表实时补查发现类型已变化时返回，用于构造跳转路由'
+  })
+}).refine(hasAuditResourceIdentity, auditResourceIdentityRefine);
+export type AuditListResourceType = z.infer<typeof AuditListResourceSchema>;
+export const AuditListResourcesSchema = z.array(AuditListResourceSchema);
 
 const toOptionalIdString = (value: unknown): string | undefined => {
   if (value === undefined || value === null) return undefined;
@@ -205,7 +221,6 @@ export const normalizeStoredAuditResource = (raw: unknown): AuditResourceType | 
   if (typeof record.type === 'string') {
     const candidate = {
       type: record.type,
-      ...(typeof record.currentType === 'string' ? { currentType: record.currentType } : {}),
       ...(toOptionalIdString(record.id) ? { id: toOptionalIdString(record.id) } : {}),
       ...(typeof record.name === 'string' && record.name ? { name: record.name } : {}),
       ...(typeof record.avatar === 'string' && record.avatar ? { avatar: record.avatar } : {}),
@@ -276,47 +291,72 @@ export const normalizeStoredAuditResource = (raw: unknown): AuditResourceType | 
   return undefined;
 };
 
+// 兼容基线集合恢复继承权限写入的 `[{ datasetId }, { collectionId }]`：识别集合为操作目标并保留所属知识库作为 parentId。
+const normalizeLegacyCollectionPair = (raw: unknown[]): AuditResourceType[] | undefined => {
+  if (raw.length !== 2) return undefined;
+  const [first, second] = raw;
+  const isLegacyDatasetOnly = (item: unknown): item is Record<string, unknown> =>
+    Boolean(
+      item &&
+      typeof item === 'object' &&
+      typeof (item as Record<string, unknown>).type !== 'string' &&
+      !(item as Record<string, unknown>).collectionId &&
+      toOptionalObjectIdString((item as Record<string, unknown>).datasetId)
+    );
+  const isLegacyCollectionOnly = (item: unknown): item is Record<string, unknown> =>
+    Boolean(
+      item &&
+      typeof item === 'object' &&
+      typeof (item as Record<string, unknown>).type !== 'string' &&
+      toOptionalIdString((item as Record<string, unknown>).collectionId)
+    );
+
+  const legacyPair =
+    isLegacyDatasetOnly(first) && isLegacyCollectionOnly(second)
+      ? { dataset: first, collection: second }
+      : isLegacyCollectionOnly(first) && isLegacyDatasetOnly(second)
+        ? { dataset: second, collection: first }
+        : undefined;
+
+  if (!legacyPair) return undefined;
+  const merged = normalizeStoredAuditResource({
+    ...legacyPair.collection,
+    datasetId: legacyPair.collection.datasetId ?? legacyPair.dataset.datasetId
+  });
+  return merged ? [merged] : [];
+};
+
 export const normalizeStoredAuditResources = (raw: unknown): AuditResourceType[] | undefined => {
   if (!Array.isArray(raw)) return undefined;
 
-  // 兼容基线集合恢复继承权限写入的 `[{ datasetId }, { collectionId }]`：识别集合为操作目标并保留所属知识库作为 parentId。
-  if (raw.length === 2) {
-    const [first, second] = raw;
-    const isLegacyDatasetOnly = (item: unknown): item is Record<string, unknown> =>
-      Boolean(
-        item &&
-        typeof item === 'object' &&
-        typeof (item as Record<string, unknown>).type !== 'string' &&
-        !(item as Record<string, unknown>).collectionId &&
-        toOptionalObjectIdString((item as Record<string, unknown>).datasetId)
-      );
-    const isLegacyCollectionOnly = (item: unknown): item is Record<string, unknown> =>
-      Boolean(
-        item &&
-        typeof item === 'object' &&
-        typeof (item as Record<string, unknown>).type !== 'string' &&
-        toOptionalIdString((item as Record<string, unknown>).collectionId)
-      );
-
-    const legacyPair =
-      isLegacyDatasetOnly(first) && isLegacyCollectionOnly(second)
-        ? { dataset: first, collection: second }
-        : isLegacyCollectionOnly(first) && isLegacyDatasetOnly(second)
-          ? { dataset: second, collection: first }
-          : undefined;
-
-    if (legacyPair) {
-      const merged = normalizeStoredAuditResource({
-        ...legacyPair.collection,
-        datasetId: legacyPair.collection.datasetId ?? legacyPair.dataset.datasetId
-      });
-      return merged ? [merged] : [];
-    }
-  }
+  const legacyCollectionPair = normalizeLegacyCollectionPair(raw);
+  if (legacyCollectionPair) return legacyCollectionPair;
 
   return raw
     .map((item) => normalizeStoredAuditResource(item))
     .filter((item): item is AuditResourceType => item !== undefined);
+};
+
+/**
+ * 规范化列表展示用的资源数组：先按持久化快照校验，再单独校验可选 `currentType`，
+ * 遇到未识别的导航枚举时仅忽略 `currentType` 而保留已验证的快照。
+ */
+export const normalizeAuditListResources = (raw: unknown): AuditListResourceType[] | undefined => {
+  if (!Array.isArray(raw)) return undefined;
+
+  const legacyCollectionPair = normalizeLegacyCollectionPair(raw);
+  if (legacyCollectionPair) return legacyCollectionPair;
+
+  const normalizeItem = (item: unknown): AuditListResourceType | undefined => {
+    const stored = normalizeStoredAuditResource(item);
+    if (!stored || !item || typeof item !== 'object') return stored;
+    const parsedCurrentType = AuditResourceTypeSchema.safeParse(
+      (item as Record<string, unknown>).currentType
+    );
+    return parsedCurrentType.success ? { ...stored, currentType: parsedCurrentType.data } : stored;
+  };
+
+  return raw.map(normalizeItem).filter((item): item is AuditListResourceType => item !== undefined);
 };
 
 export type TeamAuditSchemaType = {

@@ -181,4 +181,31 @@ describe('team audit date contracts', () => {
     });
     expect(parsed.metadata).toEqual({ newItemNames: ['name', 'type'] });
   });
+
+  it('ignores unknown currentType on list item resources without dropping the snapshot', () => {
+    const parsed = AuditListItemSchema.parse({
+      _id: '68ad85a7463006c963799a10',
+      sourceMember: {
+        name: 'Alice',
+        status: 'active'
+      },
+      event: 'RESUME_INHERIT_PERMISSION',
+      timestamp: '2026-01-02T00:00:00.000Z',
+      resources: [
+        {
+          type: AuditResourceTypeEnum.appFolder,
+          currentType: 'futureResourceType',
+          id: '68ad85a7463006c963799a05',
+          name: 'Shared Folder'
+        }
+      ],
+      metadata: {}
+    });
+    expect(parsed.resources?.[0]).toEqual({
+      type: AuditResourceTypeEnum.appFolder,
+      currentType: undefined,
+      id: '68ad85a7463006c963799a05',
+      name: 'Shared Folder'
+    });
+  });
 });

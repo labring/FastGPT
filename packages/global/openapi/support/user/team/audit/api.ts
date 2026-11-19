@@ -5,7 +5,7 @@ import { AuditEventEnum, TeamAuditEventList } from '../../../../../support/user/
 import { createPaginationSchema } from '../../../../api';
 import { LanguageSchema } from '../../../../../common/i18n/type';
 import { DateSchema } from '../../../../../common/zod';
-import { AuditResourcesSchema } from '../../../../../support/user/audit/type';
+import { AuditListResourcesSchema } from '../../../../../support/user/audit/type';
 
 /* ============================================================================
  * API: 获取团队操作日志
@@ -82,7 +82,7 @@ export const AuditListItemSchema = z
       example: '2026-01-02T00:00:00.000Z',
       description: '操作发生时间'
     }),
-    resources: AuditResourcesSchema.optional().meta({ description: '关联的操作资源列表' }),
+    resources: AuditListResourcesSchema.optional().meta({ description: '关联的操作资源列表' }),
     metadata: z
       .record(
         z.string(),

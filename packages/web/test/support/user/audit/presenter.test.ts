@@ -560,5 +560,27 @@ describe('audit presenter summary', () => {
         'account_team:audit_detail_inherit_parent(parentResource=根目录)'
       ].join('\n')
     );
+
+    // 遇到未识别的 currentType 时保留有效快照，并回退到快照类型构造链接。
+    expect(
+      resolveAuditResources({
+        event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
+        resources: [
+          {
+            type: AuditResourceTypeEnum.appFolder,
+            currentType: 'futureResourceType',
+            id: folderId,
+            name: '共享目录'
+          }
+        ],
+        metadata: { targetResource: '共享目录', parentResource: '根目录' }
+      })
+    ).toEqual([
+      expect.objectContaining({
+        type: AuditResourceTypeEnum.appFolder,
+        name: '共享目录',
+        href: `/dashboard/agent?parentId=${folderId}`
+      })
+    ]);
   });
 });

@@ -9,7 +9,9 @@ import { AuditEventEnum, type TeamAuditEvent } from '@fastgpt/global/support/use
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import {
   AuditResourceTypeEnum,
+  normalizeAuditListResources,
   normalizeStoredAuditResources,
+  type AuditListResourceType,
   type AuditResourceType
 } from '@fastgpt/global/support/user/audit/type';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
@@ -123,7 +125,7 @@ const asNonEmptyString = (value: unknown): string | undefined => {
 };
 
 /** 解析资源头像或内置图标；优先按当前实时类型选取默认图标，无头像概念的实体返回 undefined。 */
-export const resolveAuditResourceAvatar = (resource: AuditResourceType): string | undefined => {
+export const resolveAuditResourceAvatar = (resource: AuditListResourceType): string | undefined => {
   switch (resource.currentType ?? resource.type) {
     case AuditResourceTypeEnum.apiKey:
     case AuditResourceTypeEnum.enterprise:
@@ -162,7 +164,7 @@ export const resolveAuditResourceAvatar = (resource: AuditResourceType): string 
 };
 
 /** 解析站内相对跳转地址（不含部署前缀）；优先按当前实时类型路由，不可跳转、缺少 ID/父级上下文或已删除时返回 undefined。 */
-export const resolveAuditResourceHref = (resource: AuditResourceType): string | undefined => {
+export const resolveAuditResourceHref = (resource: AuditListResourceType): string | undefined => {
   if (!resource.id || resource.deleted) return undefined;
 
   switch (resource.currentType ?? resource.type) {
@@ -381,14 +383,14 @@ export const resolveAuditResources = ({
     return [];
   }
 
-  const normalized = normalizeStoredAuditResources(resources);
+  const normalized = normalizeAuditListResources(resources);
   if (normalized && normalized.length > 0) {
     const fallbackName =
       normalized.length === 1 ? pickMetadataFallbackName(event, metadata) : undefined;
     const forceDeleted = DELETE_TARGET_EVENTS.has(event);
 
     return normalized.map((rawItem, index) => {
-      const item: AuditResourceType = {
+      const item: AuditListResourceType = {
         ...rawItem,
         ...(forceDeleted ? { deleted: true } : {})
       };

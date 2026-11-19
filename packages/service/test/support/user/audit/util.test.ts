@@ -3,6 +3,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { MongoTeamAudit } from '@fastgpt/service/support/user/audit/schema';
 import { addAuditLog, addAuditLogs } from '@fastgpt/service/support/user/audit/util';
 import {
+  AuditResourceSchema,
   AuditResourceTypeEnum,
   buildAppAuditResource,
   buildCollectionAuditResource,
@@ -156,9 +157,11 @@ describe('audit resource associations', () => {
   const objectId = '68ad85a7463006c963799a05';
 
   it('validates structured resources, supports builders, and normalizes legacy records', async () => {
-    expectTypeOf<{ type: AuditResourceTypeEnum; id?: string; name?: string }>().toExtend<
-      AuditResourceType
-    >();
+    expectTypeOf<{
+      type: AuditResourceTypeEnum;
+      id?: string;
+      name?: string;
+    }>().toExtend<AuditResourceType>();
 
     const structured = [
       buildAppAuditResource({ _id: objectId, name: 'Bot', type: AppTypeEnum.simple }),
@@ -215,7 +218,9 @@ describe('audit resource associations', () => {
     });
     expect(audit.toObject().resources?.[11].deleted).toBe(true);
 
-    expect(buildEntityAuditResource({ type: AuditResourceTypeEnum.member, name: '   ' })).toBeUndefined();
+    expect(
+      buildEntityAuditResource({ type: AuditResourceTypeEnum.member, name: '   ' })
+    ).toBeUndefined();
 
     expect(
       normalizeStoredAuditResources([
@@ -258,8 +263,15 @@ describe('audit resource associations', () => {
     { type: AuditResourceTypeEnum.app, name: '   ' },
     { type: AuditResourceTypeEnum.collection, id: objectId, parentId: 'invalid-id' },
     { type: AuditResourceTypeEnum.collection, id: objectId, collectionType: 'invalid-type' },
-    { type: AuditResourceTypeEnum.app, id: objectId, unknownField: 'bad' }
+    { type: AuditResourceTypeEnum.app, id: objectId, unknownField: 'bad' },
+    {
+      type: AuditResourceTypeEnum.appFolder,
+      id: objectId,
+      name: 'Agents Dir',
+      currentType: AuditResourceTypeEnum.toolFolder
+    }
   ])('rejects an invalid resource item %j', async (resource) => {
+    expect(AuditResourceSchema.safeParse(resource).success).toBe(false);
     const audit = new MongoTeamAudit({
       teamId: objectId,
       tmbId: objectId,
