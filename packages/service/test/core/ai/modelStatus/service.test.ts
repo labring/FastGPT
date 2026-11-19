@@ -5,6 +5,7 @@ import {
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { EmbeddingRequestError } from '../../../../core/ai/embedding/error';
 import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -144,6 +145,28 @@ describe('probeModelStatus', () => {
       attempts: 4,
       error: 'Test model: Model test timed out after 60000ms'
     });
+  });
+
+  it('renders readable English message and preserves error code for normalized embedding errors', async () => {
+    const authErr = new EmbeddingRequestError(ModelErrEnum.authFailed, {
+      category: 'authFailed',
+      retryable: false,
+      errorCode: ModelErrEnum.authFailed
+    });
+    const test = vi.fn().mockRejectedValue(authErr);
+
+    const result = await probeModelStatus({
+      model,
+      test
+    });
+
+    expect(result).toMatchObject({
+      status: 'red',
+      attempts: 4,
+      error:
+        'Test model: Model API authentication failed. Please check the API key or channel configuration. (modelAuthFailed)'
+    });
+    expect(result.error).not.toContain('common:code_error');
   });
 
   it('declares the model-time lookup index and 30-day TTL index', () => {

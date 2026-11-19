@@ -53,7 +53,6 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
       expect(classified).toMatchObject({
         category: 'upstreamUnavailable',
         retryable: true,
-        retryInRequest: false,
         errorCode: ModelErrEnum.serviceUnavailable,
         upstreamStatus: 500,
         upstreamType: 'aiproxy_error'
@@ -86,7 +85,7 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
       });
     });
 
-    it('classifies 429 bad response status code as retryable rateLimited without inner retry amplification', () => {
+    it('classifies 429 bad response status code as retryable rateLimited', () => {
       const raw = makeApiError({
         status: 429,
         code: 'bad_response',
@@ -98,11 +97,45 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
       expect(classifyEmbeddingError(raw)).toMatchObject({
         category: 'rateLimited',
         retryable: true,
-        retryInRequest: false,
         errorCode: ModelErrEnum.rateLimited
       });
       expect(getErrText(normalized)).toBe('common:code_error.model_error.rate_limited');
       expect(processError({ error: normalized }).httpStatus).toBe(429);
+    });
+
+    it('classifies HTTP 400 wrapped service_unavailable as retryable upstreamUnavailable rather than invalidRequest', () => {
+      const raw = makeApiError({
+        status: 400,
+        code: 'service_unavailable',
+        type: 'upstream_error',
+        message: 'upstream temporary failure'
+      });
+
+      const classified = classifyEmbeddingError(raw);
+      expect(classified).toMatchObject({
+        category: 'upstreamUnavailable',
+        retryable: true,
+        errorCode: ModelErrEnum.serviceUnavailable
+      });
+
+      const normalized = normalizeEmbeddingError(raw);
+      expect(isNonRetryableModelError(normalized)).toBe(false);
+      expect(getErrText(normalized)).toBe('common:code_error.model_error.service_unavailable');
+    });
+
+    it('keeps generic HTTP 400 BadRequest with upstream_error type as non-retryable invalidRequest', () => {
+      const raw = makeApiError({
+        status: 400,
+        code: 'BadRequest',
+        type: 'upstream_error',
+        message: 'dimensions must be <= 1024'
+      });
+
+      expect(classifyEmbeddingError(raw)).toMatchObject({
+        category: 'invalidRequest',
+        retryable: false,
+        errorCode: ModelErrEnum.invalidRequest
+      });
     });
 
     it('classifies HTTP 400 transient image download 500 failure as retryable and hides signed file URL', () => {
@@ -118,7 +151,6 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
       expect(classified).toMatchObject({
         category: 'imageDownloadFailed',
         retryable: true,
-        retryInRequest: true,
         errorCode: ModelErrEnum.imageDownloadFailed
       });
 
@@ -140,7 +172,6 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
         expect(classified).toMatchObject({
           category: 'imageDownloadFailed',
           retryable: false,
-          retryInRequest: false,
           errorCode: ModelErrEnum.imageDownloadFailed
         });
 
@@ -159,8 +190,7 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
       for (const err of [sdkAbort, plainAbort]) {
         expect(classifyEmbeddingError(err)).toMatchObject({
           category: 'aborted',
-          retryable: false,
-          retryInRequest: false
+          retryable: false
         });
         expect(normalizeEmbeddingError(err)).toBe(err);
       }
@@ -168,8 +198,7 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
       const canceled = new Error('any');
       expect(classifyEmbeddingError(canceled, { signal: controller.signal })).toMatchObject({
         category: 'aborted',
-        retryable: false,
-        retryInRequest: false
+        retryable: false
       });
       expect(normalizeEmbeddingError(canceled, { signal: controller.signal })).toBe(canceled);
     });
@@ -295,7 +324,6 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
         expect(classified).toMatchObject({
           category,
           retryable: false,
-          retryInRequest: false,
           errorCode
         });
 
@@ -317,7 +345,6 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
       expect(classifyEmbeddingError(configErr)).toMatchObject({
         category: 'modelConfig',
         retryable: false,
-        retryInRequest: false,
         errorCode: ModelErrEnum.unExist
       });
       expect(normalizeEmbeddingError(configErr)).toBe(configErr);
@@ -328,7 +355,6 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
       expect(classifyEmbeddingError(err)).toMatchObject({
         category: 'emptyInput',
         retryable: false,
-        retryInRequest: false,
         errorCode: ModelErrEnum.embeddingEmptyInput
       });
       expect(getErrText(err)).toBe('common:code_error.model_error.embedding_empty_input');
@@ -341,14 +367,23 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
         name: 'SDK timeout error',
         error: new OpenAI.APIConnectionTimeoutError(),
         category: 'timeout',
-        retryInRequest: false,
         errorCode: ModelErrEnum.requestTimeout
       },
       {
         name: 'HTTP 504 gateway timeout',
         error: makeApiError({ status: 504, message: 'Gateway Timeout' }),
         category: 'timeout',
-        retryInRequest: false,
+        errorCode: ModelErrEnum.requestTimeout
+      },
+      {
+        name: 'HTTP 400 wrapped gateway_timeout code',
+        error: makeApiError({
+          status: 400,
+          code: 'gateway_timeout',
+          type: 'upstream_error',
+          message: 'upstream gateway timed out'
+        }),
+        category: 'timeout',
         errorCode: ModelErrEnum.requestTimeout
       },
       {
@@ -359,21 +394,18 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
           })
         }),
         category: 'timeout',
-        retryInRequest: false,
         errorCode: ModelErrEnum.requestTimeout
       },
       {
         name: 'HTTP 502 HTML gateway error',
         error: makeApiError({ status: 502, message: '<html><body>502 Bad Gateway</body></html>' }),
         category: 'upstreamUnavailable',
-        retryInRequest: false,
         errorCode: ModelErrEnum.serviceUnavailable
       },
       {
         name: 'HTTP 409 conflict',
         error: makeApiError({ status: 409, message: 'Conflict' }),
         category: 'upstreamUnavailable',
-        retryInRequest: false,
         errorCode: ModelErrEnum.serviceUnavailable
       },
       {
@@ -384,32 +416,26 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
           })
         }),
         category: 'networkError',
-        retryInRequest: false,
         errorCode: ModelErrEnum.networkError
       },
       {
         name: 'invalid response (empty embedding)',
         error: createInvalidResponseEmbeddingError(new Error('empty data')),
         category: 'invalidResponse',
-        retryInRequest: true,
         errorCode: ModelErrEnum.invalidResponse
       }
-    ])(
-      'classifies $name as retryable with clean message',
-      ({ error, category, retryInRequest, errorCode }) => {
-        const classified = classifyEmbeddingError(error);
-        expect(classified).toMatchObject({
-          category,
-          retryable: true,
-          retryInRequest,
-          errorCode
-        });
+    ])('classifies $name as retryable with clean message', ({ error, category, errorCode }) => {
+      const classified = classifyEmbeddingError(error);
+      expect(classified).toMatchObject({
+        category,
+        retryable: true,
+        errorCode
+      });
 
-        const normalized = normalizeEmbeddingError(error);
-        expect(isNonRetryableModelError(normalized)).toBe(false);
-        expect(getErrText(normalized)).toBe(ERROR_RESPONSE[errorCode].message);
-      }
-    );
+      const normalized = normalizeEmbeddingError(error);
+      expect(isNonRetryableModelError(normalized)).toBe(false);
+      expect(getErrText(normalized)).toBe(ERROR_RESPONSE[errorCode].message);
+    });
 
     it('falls back to original error for truly unclassified errors and guards cyclic cause chains', () => {
       const cyclic: Error & { cause?: unknown } = new Error('unexpected local error');
@@ -417,8 +443,7 @@ describe('classifyEmbeddingError & normalizeEmbeddingError', () => {
 
       expect(classifyEmbeddingError(cyclic)).toMatchObject({
         category: 'unknown',
-        retryable: true,
-        retryInRequest: true
+        retryable: true
       });
       expect(normalizeEmbeddingError(cyclic)).toBe(cyclic);
     });

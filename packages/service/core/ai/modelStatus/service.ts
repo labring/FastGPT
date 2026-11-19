@@ -1,6 +1,11 @@
 import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
-import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import {
+  MODEL_ERROR_FALLBACK_MESSAGES,
+  ModelErrEnum
+} from '@fastgpt/global/common/error/code/model';
+import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
+import { LangEnum } from '@fastgpt/global/common/i18n/type';
 import {
   ModelStatusProbeConfigSchema,
   type ModelStatusProbeConfig
@@ -23,6 +28,8 @@ import type {
   UpdateModelStatusProbeConfigBody
 } from '@fastgpt/global/openapi/admin/system/model/status';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { translateServerMessage } from '../../../common/i18n/request';
+import { isEmbeddingRequestError } from '../embedding/error';
 import { ApiRequestInputParseError } from '../../../common/zod/requestParseError';
 import { MongoSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/schema';
 import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
@@ -310,6 +317,31 @@ export const getModelStatus = async (): Promise<GetModelStatusResponse> => {
 };
 
 /**
+ * 渲染模型探活失败的展示文本：后台探测记录、状态接口与 Webhook 接收端不会经过前端 i18n，
+ * 必须在探活边界按固定默认语言（en）把 `namespace:key` 渲染为可读文案，并保留错误码便于排查。
+ */
+const formatProbeErrorMessage = async (error: unknown): Promise<string> => {
+  const raw = getErrText(error, 'Model test failed');
+  const translated = await translateServerMessage(raw, LangEnum.en);
+  const message = translated !== raw ? translated : (MODEL_ERROR_FALLBACK_MESSAGES[raw] ?? raw);
+
+  const errorCode =
+    isEmbeddingRequestError(error) && error.errorCode
+      ? error.errorCode
+      : typeof error === 'object' &&
+          error !== null &&
+          'message' in error &&
+          typeof error.message === 'string' &&
+          Object.hasOwn(ERROR_RESPONSE, error.message)
+        ? error.message
+        : typeof error === 'string' && Object.hasOwn(ERROR_RESPONSE, error)
+          ? error
+          : undefined;
+
+  return errorCode ? `${message} (${errorCode})` : message;
+};
+
+/**
  * 对单个模型执行一次探测并计算最终状态。通过注入 test 函数保留纯业务边界，便于验证重试和延迟阈值。
  * 规则：
  * 1. 首次请求失败后自动重试最多 3 次（单轮最多 4 次调用）；
@@ -384,7 +416,7 @@ export const probeModelStatus = async ({
     status: ModelStatusProbeStatusEnum.red,
     attempts: MODEL_STATUS_MAX_RETRIES + 1,
     // 告警接收端可能只展示 probe.error，因此错误文本也携带模型名称以便定位。
-    error: `${model.name}: ${getErrText(lastError, 'Model test failed')}`.slice(0, 1000),
+    error: `${model.name}: ${await formatProbeErrorMessage(lastError)}`.slice(0, 1000),
     startedAt,
     requestStartedAt,
     requestEndedAt

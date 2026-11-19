@@ -42,25 +42,30 @@ vi.mock('@fastgpt/service/core/ai/config', async (importOriginal) => {
   };
 });
 
-// 保留真实 retryFn 的次数与 shouldRetry 判定逻辑，仅移除 500ms 等待避免单测耗时。
+// 保留真实 retryFn 的次数与 shouldRetry 判定逻辑，仅移除退避等待避免单测耗时。
 vi.mock('@fastgpt/global/common/system/utils', async (importOriginal) => {
   const actual = (await importOriginal()) as any;
   return {
     ...actual,
     retryFn: async <T>(
       fn: () => Promise<T>,
-      attempts = 3,
-      shouldRetry?: (error: unknown) => boolean
+      options:
+        | number
+        | { attempts?: number; shouldRetry?: (error: unknown, attempt: number) => boolean } = 3
     ): Promise<T> => {
+      const { attempts = 3, shouldRetry } =
+        typeof options === 'number' ? { attempts: options } : options;
       let remaining = attempts;
+      let attempt = 0;
       while (true) {
         try {
           return await fn();
         } catch (error) {
-          if (remaining <= 0 || shouldRetry?.(error) === false) {
+          if (remaining <= 0 || shouldRetry?.(error, attempt) === false) {
             return Promise.reject(error);
           }
           remaining--;
+          attempt++;
         }
       }
     }
@@ -850,7 +855,7 @@ describe('getVectors function test', () => {
       const err = await getVectors({ model: buildModel(), inputs: [textInput('x')] }).catch(
         (e) => e
       );
-      expect(mockCreate).toHaveBeenCalledTimes(4);
+      expect(mockCreate).toHaveBeenCalledTimes(3);
       expect(err).toBeInstanceOf(EmbeddingRequestError);
       expect(err).toMatchObject({
         category: 'invalidResponse',
@@ -865,12 +870,32 @@ describe('getVectors function test', () => {
       const err = await getVectors({ model: buildModel(), inputs: [textInput('x')] }).catch(
         (e) => e
       );
-      expect(mockCreate).toHaveBeenCalledTimes(4);
+      expect(mockCreate).toHaveBeenCalledTimes(3);
       expect(err).toBeInstanceOf(EmbeddingRequestError);
       expect(err).toMatchObject({
         category: 'invalidResponse',
         retryable: true,
         message: ModelErrEnum.invalidResponse
+      });
+    });
+
+    it('should stop immediately when an HTTP 200 payload carries a deterministic structured error', async () => {
+      mockCreate.mockResolvedValue({
+        error: {
+          code: 'insufficient_quota',
+          message: 'You exceeded your current quota'
+        }
+      });
+
+      const err = await getVectors({ model: buildModel(), inputs: [textInput('x')] }).catch(
+        (e) => e
+      );
+      expect(mockCreate).toHaveBeenCalledTimes(1);
+      expect(err).toBeInstanceOf(EmbeddingRequestError);
+      expect(err).toMatchObject({
+        category: 'quotaExceeded',
+        retryable: false,
+        message: ModelErrEnum.upstreamQuotaExceeded
       });
     });
 
@@ -895,7 +920,7 @@ describe('getVectors function test', () => {
       expect(getErrText(err)).toBe('common:code_error.model_error.auth_failed');
     });
 
-    it('should avoid amplifying SDK retries on 429/500 while marking error retryable for outer queues', async () => {
+    it('should retry bounded attempts on 500 upstream errors while marking error retryable for outer queues', async () => {
       const rawErr = Object.assign(
         new Error('500 failed to get group: failed to connect to postgres 10.96.188.19:5432'),
         {
@@ -908,7 +933,7 @@ describe('getVectors function test', () => {
       const err = await getVectors({ model: buildModel(), inputs: [textInput('x')] }).catch(
         (e) => e
       );
-      expect(mockCreate).toHaveBeenCalledTimes(1);
+      expect(mockCreate).toHaveBeenCalledTimes(3);
       expect(err).toBeInstanceOf(EmbeddingRequestError);
       expect(err).toMatchObject({
         category: 'upstreamUnavailable',
@@ -960,7 +985,7 @@ describe('getVectors function test', () => {
       await expect(getVectors({ model: buildModel(), inputs: [textInput('x')] })).rejects.toBe(
         apiErr
       );
-      expect(mockCreate).toHaveBeenCalledTimes(4);
+      expect(mockCreate).toHaveBeenCalledTimes(3);
     });
   });
 });

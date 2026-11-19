@@ -11,6 +11,7 @@ import {
   classifyEmbeddingError,
   createEmptyInputEmbeddingError,
   createInvalidResponseEmbeddingError,
+  type EmbeddingErrorClassification,
   normalizeEmbeddingError
 } from './error';
 
@@ -51,6 +52,17 @@ const getRequestInput = (input: GetVectorInputItem) => {
 const countInputTokens = async (input: GetVectorInputItem) => {
   if (input.type === 'image') return 1;
   return countPromptTokens(input.input);
+};
+
+const getStructuredResponseError = (res: unknown): unknown => {
+  if (typeof res !== 'object' || res === null) return undefined;
+  const record = res as { error?: unknown; data?: unknown };
+  if (record.error) return record;
+  if (typeof record.data === 'object' && record.data !== null && 'err' in record.data) {
+    const err = (record.data as { err?: unknown }).err;
+    if (err) return { error: err };
+  }
+  return undefined;
 };
 
 export async function getVectors({
@@ -100,14 +112,13 @@ export async function getVectors({
     return Promise.reject(createEmptyInputEmbeddingError());
   }
 
-  const { ai, requestMeta } = getAIApi(
-    timeoutMs === undefined && !isTeamModel(model)
-      ? undefined
-      : {
-          ...(timeoutMs === undefined ? {} : { timeout: timeoutMs }),
-          ...(isTeamModel(model) ? { model } : {})
-        }
-  );
+  // 关闭 OpenAI SDK 按状态码盲目重试，由本层在读取响应体分类后统一决定是否退避重试，
+  // 避免 429 欠费在分类前已发送多次请求，也消除 SDK 与外层 retryFn 的重试放大。
+  const { ai, requestMeta } = getAIApi({
+    maxRetries: 0,
+    ...(timeoutMs === undefined ? {} : { timeout: timeoutMs }),
+    ...(isTeamModel(model) ? { model } : {})
+  });
 
   let chunkSize = Number(model.config.batchSize || 1);
   chunkSize = isNaN(chunkSize) ? 1 : chunkSize;
@@ -116,6 +127,10 @@ export async function getVectors({
   for (let i = 0; i < inputs.length; i += chunkSize) {
     chunks.push(inputs.slice(i, i + chunkSize));
   }
+
+  const lastFailure: {
+    current?: { error: unknown; classification: EmbeddingErrorClassification };
+  } = {};
 
   try {
     // Process chunks sequentially
@@ -149,6 +164,24 @@ export async function getVectors({
               })
             )
             .then(async (res) => {
+              if (!res?.data || !res?.data?.[0]?.embedding) {
+                // 兼容部分供应商以 HTTP 200 返回结构化错误体（如 insufficient_quota），
+                // 命中已知错误类别时按真实语义直接归类与止损，避免误当作空响应重复重试。
+                const structuredError = getStructuredResponseError(res);
+                if (structuredError) {
+                  const structuredClassification = classifyEmbeddingError(structuredError, {
+                    signal
+                  });
+                  if (structuredClassification.category !== 'unknown') {
+                    return Promise.reject(
+                      normalizeEmbeddingError(structuredError, {
+                        signal,
+                        classification: structuredClassification
+                      })
+                    );
+                  }
+                }
+              }
               if (!res.data) {
                 logger.error('Embedding API returned empty data', {
                   model: model.model,
@@ -192,10 +225,16 @@ export async function getVectors({
                 vectors
               };
             }),
-        timeoutMs === undefined ? 3 : 0,
-        // 仅对 OpenAI SDK 未覆盖的瞬时异常（如空响应、400 瞬时拉图失败）做内层短重试；
-        // 确定性错误与 SDK 已指数退避重试过的 429/5xx/网络/超时立即终止内层循环，交由上层或队列决定。
-        (error) => classifyEmbeddingError(error, { signal }).retryInRequest
+        {
+          // SDK 已关闭重试，本层统一执行最多 2 次指数退避重试（500ms -> 1000ms，总计最多 3 次请求）。
+          attempts: timeoutMs === undefined ? 2 : 0,
+          delayMs: (attempt) => 500 * 2 ** attempt,
+          shouldRetry: (error) => {
+            const classification = classifyEmbeddingError(error, { signal });
+            lastFailure.current = { error, classification };
+            return classification.retryable;
+          }
+        }
       );
 
       totalTokens += result.tokens;
@@ -207,7 +246,11 @@ export async function getVectors({
       vectors: allVectors
     };
   } catch (error) {
-    const classification = classifyEmbeddingError(error, { signal });
+    const cachedFailure = lastFailure.current;
+    const classification =
+      cachedFailure && cachedFailure.error === error
+        ? cachedFailure.classification
+        : classifyEmbeddingError(error, { signal });
     const inputTypes = Array.from(new Set(inputs.map((item) => item.type)));
 
     // 主动中断/探活超时取消不属于上游故障，降级为 warn 并保留原异常。
@@ -233,7 +276,7 @@ export async function getVectors({
       error
     });
 
-    return Promise.reject(normalizeEmbeddingError(error, { signal }));
+    return Promise.reject(normalizeEmbeddingError(error, { signal, classification }));
   }
 }
 

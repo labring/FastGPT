@@ -29,14 +29,8 @@ export type EmbeddingErrorCategory =
 
 export type EmbeddingErrorClassification = {
   category: EmbeddingErrorCategory;
-  /** 是否允许任务队列或上层调用方重试；确定性失败必须为 false。 */
+  /** 是否允许请求内退避重试及任务队列重试；确定性失败必须为 false。 */
   retryable: boolean;
-  /**
-   * 是否允许 getVectors 内部短间隔重试。
-   * OpenAI SDK 默认已对 408/409/429/5xx/网络连接错误执行 2 次指数退避重试，
-   * 对这类错误关闭内层 retryFn 可避免重试放大，仍由队列层按分钟级间隔重试。
-   */
-  retryInRequest: boolean;
   errorCode?: ModelErrEnum;
   upstreamStatus?: number;
   upstreamCode?: string;
@@ -55,7 +49,6 @@ type EmbeddingRequestErrorOptions = EmbeddingErrorClassification & {
 export class EmbeddingRequestError extends Error {
   readonly category: EmbeddingErrorCategory;
   readonly retryable: boolean;
-  readonly retryInRequest: boolean;
   readonly errorCode?: ModelErrEnum;
   readonly upstreamStatus?: number;
   readonly upstreamCode?: string;
@@ -66,7 +59,6 @@ export class EmbeddingRequestError extends Error {
     this.name = 'EmbeddingRequestError';
     this.category = options.category;
     this.retryable = options.retryable;
-    this.retryInRequest = options.retryInRequest;
     this.errorCode = options.errorCode ?? message;
     this.upstreamStatus = options.upstreamStatus;
     this.upstreamCode = options.upstreamCode;
@@ -84,8 +76,7 @@ export const isEmbeddingRequestError = (error: unknown): error is EmbeddingReque
   return (
     record.name === 'EmbeddingRequestError' &&
     typeof record.category === 'string' &&
-    typeof record.retryable === 'boolean' &&
-    typeof record.retryInRequest === 'boolean'
+    typeof record.retryable === 'boolean'
   );
 };
 
@@ -93,7 +84,6 @@ export const createEmptyInputEmbeddingError = (): EmbeddingRequestError =>
   new EmbeddingRequestError(ModelErrEnum.embeddingEmptyInput, {
     category: 'emptyInput',
     retryable: false,
-    retryInRequest: false,
     errorCode: ModelErrEnum.embeddingEmptyInput
   });
 
@@ -101,7 +91,6 @@ export const createInvalidResponseEmbeddingError = (cause?: unknown): EmbeddingR
   new EmbeddingRequestError(ModelErrEnum.invalidResponse, {
     category: 'invalidResponse',
     retryable: true,
-    retryInRequest: true,
     errorCode: ModelErrEnum.invalidResponse,
     cause
   });
@@ -127,6 +116,13 @@ const TIMEOUT_CODES = new Set([
   'UND_ERR_HEADERS_TIMEOUT',
   'UND_ERR_BODY_TIMEOUT',
   'ERR_TIMED_OUT'
+]);
+
+const TIMEOUT_ERROR_CODES = new Set([
+  'timeout',
+  'request_timeout',
+  'gateway_timeout',
+  'deadline_exceeded'
 ]);
 
 const NETWORK_CODES = new Set([
@@ -202,7 +198,26 @@ const INVALID_REQUEST_CODES = new Set([
   'invalid_request_error'
 ]);
 
-const UPSTREAM_UNAVAILABLE_CODES = new Set(['internal_error', 'service_unavailable']);
+const UPSTREAM_UNAVAILABLE_CODES = new Set([
+  'internal_error',
+  'internal_server_error',
+  'service_unavailable',
+  'bad_gateway',
+  'overloaded',
+  'overloaded_error',
+  'server_error',
+  'temporarily_unavailable',
+  'upstream_unavailable'
+]);
+
+const UPSTREAM_UNAVAILABLE_TYPES = new Set([
+  'server_error',
+  'service_unavailable',
+  'overloaded_error'
+]);
+
+const UPSTREAM_UNAVAILABLE_PATTERN =
+  /<!doctype html|<html\b|bad gateway|service unavailable|internal server error|temporarily unavailable|overloaded|no healthy upstream|无健康节点/i;
 
 const recordOf = (value: unknown): Record<string, unknown> =>
   typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
@@ -343,6 +358,12 @@ const hasAnyType = (types: Set<string>, targets: Set<string>): boolean => {
   return false;
 };
 
+const isAbortSignals = (signals: ExtractedErrorSignals): boolean =>
+  signals.names.has('AbortError') ||
+  signals.codes.has('ERR_CANCELED') ||
+  signals.codes.has('ABORT_ERR') ||
+  signals.rawMessage === 'Request was aborted.';
+
 /**
  * 判断错误是否为请求被主动取消/中断（例如探活超时取消或调用方终止）。
  * OpenAI SDK 的 APIUserAbortError 未覆写 name，需要同时兜底固定文案与 AbortError。
@@ -350,13 +371,7 @@ const hasAnyType = (types: Set<string>, targets: Set<string>): boolean => {
 export const isEmbeddingAbortError = (error: unknown, signal?: AbortSignal): boolean => {
   if (signal?.aborted) return true;
   if (error instanceof OpenAI.APIUserAbortError) return true;
-  const signals = extractErrorSignals(error);
-  return (
-    signals.names.has('AbortError') ||
-    signals.codes.has('ERR_CANCELED') ||
-    signals.codes.has('ABORT_ERR') ||
-    signals.rawMessage === 'Request was aborted.'
-  );
+  return isAbortSignals(extractErrorSignals(error));
 };
 
 /**
@@ -371,7 +386,6 @@ export const classifyEmbeddingError = (
     return {
       category: error.category,
       retryable: error.retryable,
-      retryInRequest: error.retryInRequest,
       errorCode: error.errorCode,
       upstreamStatus: error.upstreamStatus,
       upstreamCode: error.upstreamCode,
@@ -379,11 +393,10 @@ export const classifyEmbeddingError = (
     };
   }
 
-  if (isEmbeddingAbortError(error, options?.signal)) {
+  if (options?.signal?.aborted || error instanceof OpenAI.APIUserAbortError) {
     return {
       category: 'aborted',
-      retryable: false,
-      retryInRequest: false
+      retryable: false
     };
   }
 
@@ -391,12 +404,18 @@ export const classifyEmbeddingError = (
     return {
       category: 'modelConfig',
       retryable: false,
-      retryInRequest: false,
       errorCode: error.message as ModelErrEnum
     };
   }
 
   const signals = extractErrorSignals(error);
+  if (isAbortSignals(signals)) {
+    return {
+      category: 'aborted',
+      retryable: false
+    };
+  }
+
   const meta = {
     upstreamStatus: signals.status,
     upstreamCode: signals.upstreamCode,
@@ -407,7 +426,6 @@ export const classifyEmbeddingError = (
     return {
       category: 'privateUrl',
       retryable: false,
-      retryInRequest: false,
       errorCode: ModelErrEnum.privateEndpointBlocked,
       ...meta
     };
@@ -425,7 +443,6 @@ export const classifyEmbeddingError = (
     return {
       category: 'noAvailableChannel',
       retryable: false,
-      retryInRequest: false,
       errorCode: ModelErrEnum.noAvailableChannel,
       ...meta
     };
@@ -440,7 +457,6 @@ export const classifyEmbeddingError = (
       return {
         category: 'timeout',
         retryable: true,
-        retryInRequest: false,
         errorCode: ModelErrEnum.requestTimeout,
         ...meta
       };
@@ -449,7 +465,6 @@ export const classifyEmbeddingError = (
     return {
       category: 'upstreamUnavailable',
       retryable: true,
-      retryInRequest: false,
       errorCode: ModelErrEnum.serviceUnavailable,
       ...meta
     };
@@ -460,6 +475,7 @@ export const classifyEmbeddingError = (
     signals.status === 408 ||
     signals.names.has('TimeoutError') ||
     hasAnyExactCode(signals.codes, TIMEOUT_CODES) ||
+    hasAnyLowercaseCode(signals.codes, TIMEOUT_ERROR_CODES) ||
     signals.rawMessage === 'Request timed out.' ||
     ((signals.status === undefined || signals.status >= 500) &&
       /\b(request\s+timed?\s*out|gateway\s+time-?out|connect\s+timeout|headers\s+timeout|body\s+timeout|deadline\s+exceeded)\b/i.test(
@@ -469,7 +485,6 @@ export const classifyEmbeddingError = (
     return {
       category: 'timeout',
       retryable: true,
-      retryInRequest: false,
       errorCode: ModelErrEnum.requestTimeout,
       ...meta
     };
@@ -498,8 +513,6 @@ export const classifyEmbeddingError = (
     return {
       category: 'imageDownloadFailed',
       retryable,
-      // OpenAI SDK 不重试 HTTP 400，瞬时拉图失败允许在 getVectors 内层短重试。
-      retryInRequest: retryable,
       errorCode: ModelErrEnum.imageDownloadFailed,
       ...meta
     };
@@ -517,7 +530,6 @@ export const classifyEmbeddingError = (
     return {
       category: 'quotaExceeded',
       retryable: false,
-      retryInRequest: false,
       errorCode: ModelErrEnum.upstreamQuotaExceeded,
       ...meta
     };
@@ -534,7 +546,6 @@ export const classifyEmbeddingError = (
     return {
       category: 'rateLimited',
       retryable: true,
-      retryInRequest: false,
       errorCode: ModelErrEnum.rateLimited,
       ...meta
     };
@@ -551,7 +562,6 @@ export const classifyEmbeddingError = (
     return {
       category: 'authFailed',
       retryable: false,
-      retryInRequest: false,
       errorCode: ModelErrEnum.authFailed,
       ...meta
     };
@@ -568,7 +578,6 @@ export const classifyEmbeddingError = (
     return {
       category: 'contentModeration',
       retryable: false,
-      retryInRequest: false,
       errorCode: ModelErrEnum.contentBlocked,
       ...meta
     };
@@ -585,7 +594,6 @@ export const classifyEmbeddingError = (
     return {
       category: 'inputTooLong',
       retryable: false,
-      retryInRequest: false,
       errorCode: ModelErrEnum.inputTooLong,
       ...meta
     };
@@ -599,7 +607,6 @@ export const classifyEmbeddingError = (
     return {
       category: 'invalidImage',
       retryable: false,
-      retryInRequest: false,
       errorCode: ModelErrEnum.invalidImage,
       ...meta
     };
@@ -613,7 +620,6 @@ export const classifyEmbeddingError = (
     return {
       category: 'permissionDenied',
       retryable: false,
-      retryInRequest: false,
       errorCode: ModelErrEnum.permissionDenied,
       ...meta
     };
@@ -630,7 +636,6 @@ export const classifyEmbeddingError = (
     return {
       category: 'modelNotFound',
       retryable: false,
-      retryInRequest: false,
       errorCode: ModelErrEnum.modelNotFound,
       ...meta
     };
@@ -640,7 +645,21 @@ export const classifyEmbeddingError = (
     return {
       category: 'upstreamUnavailable',
       retryable: true,
-      retryInRequest: false,
+      errorCode: ModelErrEnum.serviceUnavailable,
+      ...meta
+    };
+  }
+
+  // 明确的服务端瞬时故障码/类型/网关文案即使被代理包装为 HTTP 400，也必须先于通用 4xx 兜底识别，
+  // 避免可恢复的上游波动误判为确定性失败而直接终止训练队列。
+  if (
+    hasAnyLowercaseCode(signals.codes, UPSTREAM_UNAVAILABLE_CODES) ||
+    hasAnyType(signals.types, UPSTREAM_UNAVAILABLE_TYPES) ||
+    UPSTREAM_UNAVAILABLE_PATTERN.test(signals.payloadText)
+  ) {
+    return {
+      category: 'upstreamUnavailable',
+      retryable: true,
       errorCode: ModelErrEnum.serviceUnavailable,
       ...meta
     };
@@ -654,25 +673,15 @@ export const classifyEmbeddingError = (
     return {
       category: 'invalidRequest',
       retryable: false,
-      retryInRequest: false,
       errorCode: ModelErrEnum.invalidRequest,
       ...meta
     };
   }
 
-  if (
-    signals.types.has('aiproxy_error') ||
-    signals.types.has('server_error') ||
-    signals.types.has('upstream_error') ||
-    hasAnyLowercaseCode(signals.codes, UPSTREAM_UNAVAILABLE_CODES) ||
-    /<!doctype html|<html\b|bad gateway|service unavailable|internal server error|overloaded|no healthy upstream|无健康节点/i.test(
-      signals.payloadText
-    )
-  ) {
+  if (signals.types.has('aiproxy_error') || signals.types.has('upstream_error')) {
     return {
       category: 'upstreamUnavailable',
       retryable: true,
-      retryInRequest: false,
       errorCode: ModelErrEnum.serviceUnavailable,
       ...meta
     };
@@ -690,7 +699,6 @@ export const classifyEmbeddingError = (
     return {
       category: 'networkError',
       retryable: true,
-      retryInRequest: false,
       errorCode: ModelErrEnum.networkError,
       ...meta
     };
@@ -699,7 +707,6 @@ export const classifyEmbeddingError = (
   return {
     category: 'unknown',
     retryable: true,
-    retryInRequest: true,
     ...meta
   };
 };
@@ -712,11 +719,11 @@ export const classifyEmbeddingError = (
  */
 export const normalizeEmbeddingError = (
   error: unknown,
-  options?: { signal?: AbortSignal }
+  options?: { signal?: AbortSignal; classification?: EmbeddingErrorClassification }
 ): unknown => {
   if (isEmbeddingRequestError(error)) return error;
 
-  const classification = classifyEmbeddingError(error, options);
+  const classification = options?.classification ?? classifyEmbeddingError(error, options);
   if (
     classification.category === 'aborted' ||
     classification.category === 'modelConfig' ||

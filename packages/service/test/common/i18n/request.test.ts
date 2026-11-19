@@ -6,7 +6,9 @@ import type { NodeApiRequest, NodeApiResponse } from '@fastgpt/service/types/htt
 import {
   createApiI18n,
   getRequestLocale,
-  translateApiMessage
+  registerServerI18nLoaders,
+  translateApiMessage,
+  translateServerMessage
 } from '@fastgpt/service/common/i18n/request';
 
 vi.unmock('@fastgpt/service/common/response');
@@ -169,5 +171,19 @@ describe('createApiI18n and translateApiMessage', () => {
   it('defaults requests without language preferences to English', async () => {
     const http = httpObjects();
     await withI18n(http, () => expect(translateApiMessage(key)).toBe('Unauthorized'));
+  });
+
+  it('translates server background messages using explicitly registered loaders without mutating raw text', async () => {
+    registerServerI18nLoaders(generatedLoaders);
+
+    expect(await translateServerMessage('common:code_error.model_error.auth_failed')).toBe(
+      'Model API authentication failed. Please check the API key or channel configuration.'
+    );
+    expect(await translateServerMessage('common:code_error.model_error.auth_failed', 'zh-CN')).toBe(
+      '模型接口鉴权失败，请检查 API Key 或渠道配置'
+    );
+    expect(await translateServerMessage('Model test timed out after 60000ms')).toBe(
+      'Model test timed out after 60000ms'
+    );
   });
 });

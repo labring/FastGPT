@@ -103,22 +103,26 @@ describe('system utils', () => {
       const fn = vi.fn().mockRejectedValue(nonRetryableError);
       const shouldRetry = vi.fn().mockReturnValue(false);
 
-      await expect(retryFn(fn, 3, shouldRetry)).rejects.toBe(nonRetryableError);
+      await expect(retryFn(fn, { attempts: 3, shouldRetry })).rejects.toBe(nonRetryableError);
       expect(fn).toHaveBeenCalledTimes(1);
       expect(shouldRetry).toHaveBeenCalledTimes(1);
-      expect(shouldRetry).toHaveBeenCalledWith(nonRetryableError);
+      expect(shouldRetry).toHaveBeenCalledWith(nonRetryableError, 0);
     });
 
-    it('should retry while shouldRetry returns true until success', async () => {
+    it('should retry with custom backoff options while shouldRetry returns true until success', async () => {
       const fn = vi
         .fn()
-        .mockRejectedValueOnce(new Error('transient'))
+        .mockRejectedValueOnce(new Error('transient-1'))
+        .mockRejectedValueOnce(new Error('transient-2'))
         .mockResolvedValueOnce('recovered');
       const shouldRetry = vi.fn().mockReturnValue(true);
+      const delayMs = vi.fn((attempt: number) => attempt);
 
-      await expect(retryFn(fn, 3, shouldRetry)).resolves.toBe('recovered');
-      expect(fn).toHaveBeenCalledTimes(2);
-      expect(shouldRetry).toHaveBeenCalledTimes(1);
+      await expect(retryFn(fn, { attempts: 3, delayMs, shouldRetry })).resolves.toBe('recovered');
+      expect(fn).toHaveBeenCalledTimes(3);
+      expect(shouldRetry).toHaveBeenCalledTimes(2);
+      expect(delayMs).toHaveBeenNthCalledWith(1, 0, expect.any(Error));
+      expect(delayMs).toHaveBeenNthCalledWith(2, 1, expect.any(Error));
     });
   });
 

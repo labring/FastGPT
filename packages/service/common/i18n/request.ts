@@ -22,6 +22,70 @@ const requestI18n = new AsyncLocalStorage<RequestI18nContext>();
 // 响应对象同时绑定上下文，避免外部 SDK 的事件回调脱离 AsyncLocalStorage 后丢失语言。
 const responseI18n = new WeakMap<NodeHttpResponse, RequestI18nContext>();
 
+let defaultResourceLoaders: ResourceLoaders | undefined;
+let defaultTranslators = new Map<localeType, Promise<RequestTranslator>>();
+
+/**
+ * 注册进程级默认 i18n 资源加载器，供脱离 HTTP 请求上下文的后台任务（如模型探活告警）渲染可读文案。
+ * 与 createApiI18n 显式分离，避免测试中的局部加载器污染全局默认状态。
+ */
+export const registerServerI18nLoaders = (resourceLoaders: ResourceLoaders) => {
+  defaultResourceLoaders = resourceLoaders;
+  defaultTranslators = new Map();
+};
+
+const loadLocaleTranslator = ({
+  resourceLoaders,
+  translators,
+  locale
+}: {
+  resourceLoaders: ResourceLoaders;
+  translators: Map<localeType, Promise<RequestTranslator>>;
+  locale: localeType;
+}): Promise<RequestTranslator> => {
+  let loading = translators.get(locale);
+  if (!loading) {
+    loading = import('./server')
+      .then(({ createServerTranslator }) =>
+        createServerTranslator({
+          locale,
+          namespaces: Object.keys(resourceLoaders[locale]),
+          resourceLoaders
+        })
+      )
+      .catch((error) => {
+        translators.delete(locale);
+        throw error;
+      });
+    translators.set(locale, loading);
+  }
+  return loading;
+};
+
+/**
+ * 使用已注册的进程级资源按指定语言翻译完整 namespace:key。
+ * 未注册资源、非翻译键或加载失败时原样返回，不影响主流程。
+ */
+export const translateServerMessage = async (
+  message: string,
+  locale: localeType = LangEnum.en
+): Promise<string> => {
+  if (!defaultResourceLoaders || !/^[A-Za-z][A-Za-z0-9_]*:/.test(message)) return message;
+
+  try {
+    const translator = await loadLocaleTranslator({
+      resourceLoaders: defaultResourceLoaders,
+      translators: defaultTranslators,
+      locale
+    });
+    return translator.exists(message)
+      ? translator.t(message, { returnEmptyString: false })
+      : message;
+  } catch {
+    return message;
+  }
+};
+
 /** 读取当前 HTTP 请求语言；后台任务没有请求上下文时不向内部服务强加语言。 */
 export const getRequestLocale = (): localeType | undefined => requestI18n.getStore()?.locale;
 
@@ -54,22 +118,7 @@ export const createApiI18n = (resourceLoaders: ResourceLoaders): ApiI18n => {
     const locale = getLocale(req) ?? LangEnum.en;
     const context: RequestI18nContext = { locale };
 
-    let loading = translators.get(locale);
-    if (!loading) {
-      loading = import('./server')
-        .then(({ createServerTranslator }) =>
-          createServerTranslator({
-            locale,
-            namespaces: Object.keys(resourceLoaders[locale]),
-            resourceLoaders
-          })
-        )
-        .catch((error) => {
-          translators.delete(locale);
-          throw error;
-        });
-      translators.set(locale, loading);
-    }
+    const loading = loadLocaleTranslator({ resourceLoaders, translators, locale });
 
     try {
       context.translator = await loading;

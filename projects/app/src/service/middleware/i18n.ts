@@ -1,6 +1,8 @@
-import { createApiI18n } from '@fastgpt/service/common/i18n/request';
+import { createApiI18n, registerServerI18nLoaders } from '@fastgpt/service/common/i18n/request';
 import { generatedLoaders } from '@fastgpt/web/i18n/resourceLoaders.generated';
 import type { NodeHttpRequest, NodeHttpResponse } from '@fastgpt/service/types/http';
+
+registerServerI18nLoaders(generatedLoaders);
 
 /** 应用资源仅在适配层注入，所有 API 共用按语言缓存的翻译函数。 */
 export const apiI18n = createApiI18n(generatedLoaders);
