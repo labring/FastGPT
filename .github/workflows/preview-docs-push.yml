@@ -474,7 +474,7 @@ jobs:
               break
             fi
 
-            if ! grep -Fxq 'error: timed out waiting for the condition' "$WORK_DIR/rollout.log"; then
+            if ! grep -Eq '^error: (timed out waiting for the condition|deployment ".*" exceeded its progress deadline)$' "$WORK_DIR/rollout.log"; then
               exit 1
             fi
 
@@ -502,7 +502,47 @@ jobs:
             if [[ -n "$PR_EVENTS" ]]; then
               printf '%s\n' "$PR_EVENTS"
             fi
-            if grep -iq 'exceeded quota' <<< "$PR_EVENTS"; then
+
+            QUOTA_BLOCKED="false"
+            if [[ -s "$WORK_DIR/pr-objects.json" ]]; then
+              QUOTA_BLOCKED=$(jq -r --arg dep_name "$RESOURCE_NAME" '
+                (.items // []) as $items
+                | ($items | map(select(.kind == "Deployment" and .metadata.name == $dep_name)) | first) as $dep
+                | ($dep.metadata.uid // "") as $dep_uid
+                | ($dep.metadata.annotations["deployment.kubernetes.io/revision"] // "") as $dep_rev
+                | [
+                    $items[]
+                    | select(.kind == "ReplicaSet")
+                    | select(
+                        if $dep_uid != "" then
+                          any(.metadata.ownerReferences[]?; .uid == $dep_uid)
+                        else
+                          true
+                        end
+                      )
+                    | select(
+                        if $dep_rev != "" then
+                          (.metadata.annotations["deployment.kubernetes.io/revision"] // "") == $dep_rev
+                        else
+                          (.spec.replicas // 0) > 0
+                        end
+                      )
+                    | select((.status.replicas // 0) < (.spec.replicas // 1))
+                    | select(
+                        any(
+                          .status.conditions[]?;
+                          .type == "ReplicaFailure"
+                          and .status == "True"
+                          and .reason == "FailedCreate"
+                          and ((.message // "") | test("exceeded quota"; "i"))
+                        )
+                      )
+                  ]
+                | if length > 0 then "true" else "false" end
+              ' "$WORK_DIR/pr-objects.json" 2>/dev/null || echo "false")
+            fi
+
+            if [[ "$QUOTA_BLOCKED" == "true" ]]; then
               echo "::error::Docs preview rollout blocked by namespace ResourceQuota (exceeded quota). Free up Pods or raise quota before retrying."
               exit 1
             fi
