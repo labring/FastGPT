@@ -175,7 +175,7 @@ const SecuritySettingComponent = () => {
         </SimpleGrid>
 
         <Box mb={6}>
-          <SimpleGrid columns={1}>
+          <SimpleGrid columns={[1, 2]} spacingX={16}>
             <Controller
               name="allowedOriginsEnabled"
               control={control}
@@ -223,7 +223,7 @@ const SecuritySettingComponent = () => {
         </SimpleGrid>
 
         <Box mb={6}>
-          <SimpleGrid columns={1}>
+          <SimpleGrid columns={[1, 2]} spacingX={16}>
             <Controller
               name="checkExternalFile"
               control={control}
