@@ -1529,12 +1529,24 @@ describe('loadRequestMessages function tests', () => {
       expect(result[1].content).toBe('Look at this image');
       expect(result[2].role).toBe(ChatCompletionRequestMessageRoleEnum.User);
       expect(result[2].content).toEqual([
-        { type: 'image_url', image_url: { url: 'https://example.com/a.png' } }
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,test' } }
       ]);
+      expect(mockGetImageBase64).toHaveBeenCalledWith('https://example.com/a.png');
     });
 
     it('keeps each value next to its images in the provider vision message', async () => {
       getTestInstanceConfig().feature.multipleDataToBase64 = false;
+      mockGetImageBase64
+        .mockResolvedValueOnce({
+          completeBase64: 'data:image/png;base64,img1',
+          base64: 'img1',
+          mime: 'image/png'
+        })
+        .mockResolvedValueOnce({
+          completeBase64: 'data:image/png;base64,img2',
+          base64: 'img2',
+          mime: 'image/png'
+        });
       const content = [
         { type: 'text' as const, text: '{"jobId":"1"}' },
         { type: 'text' as const, text: '[1]' },
@@ -1553,7 +1565,13 @@ describe('loadRequestMessages function tests', () => {
           }
         ]
       });
-      expect(result[2].content).toEqual(content);
+      expect(result[2].content).toEqual([
+        { type: 'text', text: '{"jobId":"1"}' },
+        { type: 'text', text: '[1]' },
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,img1' } },
+        { type: 'text', text: '[2]' },
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,img2' } }
+      ]);
     });
 
     it('preserves the order of complete multi-text tool content', async () => {
@@ -1573,32 +1591,36 @@ describe('loadRequestMessages function tests', () => {
       expect(result[2].content).toEqual([
         { type: 'text', text: 'one' },
         { type: 'text', text: 'two' },
-        image
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,test' } }
       ]);
     });
 
-    it('should drop a tool image that fails to load and keep the tool text', async () => {
-      getTestInstanceConfig().feature.multipleDataToBase64 = true;
-      mockGetImageBase64.mockRejectedValue(new Error('download failed'));
-      const messages: ChatCompletionMessageParam[] = [
-        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
-        {
-          role: ChatCompletionRequestMessageRoleEnum.Tool,
-          tool_call_id: 'call1',
-          content: [
-            { type: 'text', text: 'Look at this image' },
-            { type: 'image_url', image_url: { url: 'https://example.com/gone.png' } }
-          ]
-        }
-      ];
+    it.each([false, true])(
+      'should drop a tool image that fails to load and keep the tool text (multipleDataToBase64=%s)',
+      async (multipleDataToBase64) => {
+        getTestInstanceConfig().feature.multipleDataToBase64 = multipleDataToBase64;
+        mockGetImageBase64.mockRejectedValue(new Error('download failed'));
+        const messages: ChatCompletionMessageParam[] = [
+          { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Tool,
+            tool_call_id: 'call1',
+            content: [
+              { type: 'text', text: 'Look at this image' },
+              { type: 'image_url', image_url: { url: 'https://example.com/gone.png' } }
+            ]
+          }
+        ];
 
-      // 单张工具图片失效不能让整轮请求失败：丢掉图片，保留 tool 文本。
-      const result = await loadRequestMessages({ messages, useVision: true });
+        // 无论 multipleDataToBase64 是否开启，工具图片失效都不能让整轮请求失败：静默丢图、保留 tool 文本。
+        const result = await loadRequestMessages({ messages, useVision: true });
 
-      expect(result).toHaveLength(2);
-      expect(result[1].role).toBe(ChatCompletionRequestMessageRoleEnum.Tool);
-      expect(result[1].content).toBe('Look at this image');
-    });
+        expect(result).toHaveLength(2);
+        expect(result[1].role).toBe(ChatCompletionRequestMessageRoleEnum.Tool);
+        expect(result[1].content).toBe('Look at this image');
+        expect(mockGetImageBase64).toHaveBeenCalledWith('https://example.com/gone.png');
+      }
+    );
 
     it('should append tool images after every tool result of the same assistant turn', async () => {
       getTestInstanceConfig().feature.multipleDataToBase64 = false;
@@ -1648,7 +1670,7 @@ describe('loadRequestMessages function tests', () => {
       expect((result[2] as any).tool_call_id).toBe('call_a');
       expect((result[3] as any).tool_call_id).toBe('call_b');
       expect(result[4].content).toEqual([
-        { type: 'image_url', image_url: { url: 'https://example.com/a.png' } }
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,test' } }
       ]);
     });
 
@@ -1785,7 +1807,7 @@ describe('loadRequestMessages function tests', () => {
       expect(mockGetImageBase64).toHaveBeenCalledTimes(1);
     });
 
-    it('should not inline non-preview remote image urls', async () => {
+    it('should inline non-preview remote tool image urls through public fetch without trustedOrigin', async () => {
       getTestInstanceConfig().feature.multipleDataToBase64 = false;
       getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl =
         'https://sandbox-preview.example.com';
@@ -1802,9 +1824,54 @@ describe('loadRequestMessages function tests', () => {
       const result = await loadRequestMessages({ messages, useVision: true });
 
       expect(result[2].content).toEqual([
-        { type: 'image_url', image_url: { url: 'https://example.com/a.png' } }
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,test' } }
+      ]);
+      // 非沙箱预览地址不得附带 trustedOrigin，继续受公共 SSRF 策略约束。
+      expect(mockGetImageBase64).toHaveBeenCalledWith('https://example.com/a.png');
+    });
+
+    it('should normalize uppercase inline tool image data URIs without fetching', async () => {
+      getTestInstanceConfig().feature.multipleDataToBase64 = true;
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call1',
+          content: [
+            {
+              type: 'image_url',
+              image_url: { url: 'DATA:IMAGE/PNG;BASE64,aW1hZ2U=' }
+            }
+          ]
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages, useVision: true });
+
+      expect(result[2].content).toEqual([
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,aW1hZ2U=' } }
       ]);
       expect(mockGetImageBase64).not.toHaveBeenCalled();
+    });
+
+    it('should cap tool image downloads to maxToolImagePartAmount before loading', async () => {
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call1',
+          content: Array.from({ length: 6 }, (_, i) => ({
+            type: 'image_url' as const,
+            image_url: { url: `https://example.com/${i}.png` }
+          }))
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages, useVision: true });
+
+      expect(mockGetImageBase64).toHaveBeenCalledTimes(4);
+      expect(result[2].content).toHaveLength(4);
     });
 
     it('should drop tool images and collapse single text part without vision', async () => {

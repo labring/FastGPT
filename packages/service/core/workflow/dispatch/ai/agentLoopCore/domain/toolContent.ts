@@ -4,6 +4,7 @@ import {
 } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import {
   ChatCompletionToolMessageContentPartSchema,
+  isInlineImageDataUri,
   type ChatCompletionToolMessageContentPart
 } from '@fastgpt/global/core/ai/llm/type';
 import { providerImageMimeType } from '@fastgpt/global/common/file/constants';
@@ -194,7 +195,7 @@ export const maskToolImagePayload = (
     }
 
     const url = item.image_url?.url;
-    if (options.maskDataUrlParts && typeof url === 'string' && url.startsWith('data:')) {
+    if (options.maskDataUrlParts && typeof url === 'string' && isInlineImageDataUri(url)) {
       changed = true;
       return { ...item, image_url: { ...item.image_url, url: '[image data omitted]' } };
     }

@@ -933,21 +933,39 @@ describe('maskToolImagePayload', () => {
     });
   });
 
-  it('masks data URI parts only when the part is also sent as content', () => {
-    const input = {
+  it('masks lowercase and uppercase data URI parts consistently while preserving HTTP(S) URLs', () => {
+    const base64 =
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
+    const httpImage = {
+      type: 'image_url',
+      image_url: { url: 'https://files.example.com/chart.png' }
+    };
+    const lowercaseInput = {
       content: [
         { type: 'text', text: 'ok' },
-        { type: 'image_url', image_url: { url: 'data:image/png;base64,AAAA' } }
+        { type: 'image_url', image_url: { url: `data:image/png;base64,${base64}` } },
+        httpImage
+      ]
+    };
+    const uppercaseInput = {
+      content: [
+        { type: 'text', text: 'ok' },
+        { type: 'image_url', image_url: { url: `DATA:IMAGE/PNG;BASE64,${base64}` } },
+        httpImage
+      ]
+    };
+    const expected = {
+      content: [
+        { type: 'text', text: 'ok' },
+        { type: 'image_url', image_url: { url: '[image data omitted]' } },
+        httpImage
       ]
     };
 
-    expect(maskToolImagePayload(input, { maskDataUrlParts: true })).toEqual({
-      content: [
-        { type: 'text', text: 'ok' },
-        { type: 'image_url', image_url: { url: '[image data omitted]' } }
-      ]
-    });
+    expect(maskToolImagePayload(lowercaseInput, { maskDataUrlParts: true })).toEqual(expected);
+    expect(maskToolImagePayload(uppercaseInput, { maskDataUrlParts: true })).toEqual(expected);
     // 没走 content 通道时保持原样，否则唯一一份数据会被抹掉。
-    expect(maskToolImagePayload(input)).toBe(input);
+    expect(maskToolImagePayload(lowercaseInput)).toBe(lowercaseInput);
+    expect(maskToolImagePayload(uppercaseInput)).toBe(uppercaseInput);
   });
 });

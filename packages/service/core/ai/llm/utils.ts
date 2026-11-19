@@ -2,12 +2,13 @@ import {
   countGptMessagesTokens,
   countGptMessagesTokensBatch
 } from '../../../common/string/tiktoken/index';
-import type {
-  ChatCompletionAssistantMessageParam,
-  ChatCompletionContentPart,
-  ChatCompletionContentPartRefusal,
-  ChatCompletionContentPartText,
-  ChatCompletionMessageParam
+import {
+  parseInlineImageDataUri,
+  type ChatCompletionAssistantMessageParam,
+  type ChatCompletionContentPart,
+  type ChatCompletionContentPartRefusal,
+  type ChatCompletionContentPartText,
+  type ChatCompletionMessageParam
 } from '@fastgpt/global/core/ai/llm/type';
 import { audioFileType, maxToolImagePartAmount } from '@fastgpt/global/common/file/constants';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -330,38 +331,6 @@ export const loadRequestMessages = async ({
     input.replace(/<system-reminder>[\s\S]*?<\/system-reminder>\s*/g, '');
 
   /**
-   * 预览图片在发送前由服务端下载并转成 data URI。
-   * 下载失败时丢弃该图片 part，避免把带凭证的预览地址透传给模型服务商。
-   */
-  const inlineSandboxPreviewImage = async (
-    part: ChatCompletionContentPart
-  ): Promise<ChatCompletionContentPart | undefined> => {
-    if (
-      part.type !== 'image_url' ||
-      !part.image_url.url ||
-      !isSandboxPreviewFileUrl(part.image_url.url)
-    ) {
-      return part;
-    }
-
-    try {
-      const { completeBase64: base64 } = await loadImageBase64(part.image_url.url);
-      return {
-        ...part,
-        image_url: {
-          ...part.image_url,
-          url: base64
-        }
-      };
-    } catch (error) {
-      logger.warn('Failed to inline sandbox preview image, drop the image part', {
-        error: getErrText(error)
-      });
-      return undefined;
-    }
-  };
-
-  /**
    * 从短文本中提取候选 HTTP(S) 链接并做尾部标点与 Markdown 语法清洗。
    * 具体是否为媒体文件交由统一分类入口 classifyUrlMediaType 判断，支持无后缀短链探测。
    */
@@ -433,20 +402,32 @@ export const loadRequestMessages = async ({
   };
 
   /**
-   * 归一化图片输入：内部文件或强制配置时转 base64，远程图片直接透传给模型服务。
-   * 不在 FastGPT 服务端做 HEAD 可访问性校验，避免多图并发请求引发外部连接耗尽 DoS。
+   * 归一化图片输入：内部文件、强制配置或工具图片（forceBase64）由服务端转 base64，
+   * 用户远程图片默认直接透传给模型服务，避免在服务端对用户任意多图做并发 HEAD/GET 引发 DoS。
    */
   const normalizeImageContentPart = async (
-    item: Extract<ChatCompletionContentPart, { type: 'image_url' }>
+    item: Extract<ChatCompletionContentPart, { type: 'image_url' }>,
+    options?: { forceBase64?: boolean }
   ): Promise<ChatCompletionContentPart | undefined> => {
     const { key: _key, ...imageItem } = item;
     const imgUrl = imageItem.image_url.url;
 
-    if (imgUrl.startsWith('data:image/')) {
+    const inlineImage = parseInlineImageDataUri(imgUrl);
+    if (inlineImage) {
+      return {
+        ...imageItem,
+        image_url: {
+          ...imageItem.image_url,
+          url: `data:${inlineImage.mimeType};base64,${inlineImage.data}`
+        }
+      };
+    }
+
+    if (/^data:image\//i.test(imgUrl)) {
       return imageItem;
     }
 
-    if (shouldLoadMediaAsBase64(imgUrl)) {
+    if (options?.forceBase64 || shouldLoadMediaAsBase64(imgUrl)) {
       try {
         const { completeBase64: base64 } = await loadImageBase64(imgUrl);
 
@@ -578,13 +559,17 @@ export const loadRequestMessages = async ({
   /**
    * 工具图片的归一化不阻塞整轮请求。
    *
-   * 工具给出的图片可能已经失效（404、超限、被内网策略拒绝）；此时只丢弃这张图片，
-   * 保留 tool 文本继续请求，与 piAgent 的占位降级语义保持一致，避免整次 agent 运行失败。
+   * 工具给出的图片可能已经失效（404、超限、被内网策略拒绝）或仅在服务端网络可达（如沙箱预览地址）。
+   * 若在 multipleDataToBase64=false 时直接透传外部 URL，上游模型网关拉图失败会直接报错中断工具调用。
+   * 因此工具图片统一走服务端内联（forceBase64），失败时静默丢弃并保留 tool 文本，与 piAgent 保持一致。
    */
   const normalizeToolMediaContentParts = async (content: ChatCompletionContentPart[]) => {
     const normalized = await Promise.all(
       content.map(async (item) => {
         try {
+          if (item.type === 'image_url') {
+            return await normalizeImageContentPart(item, { forceBase64: true });
+          }
           const [result] = await normalizeMediaContentParts([item]);
           return result;
         } catch (error) {
@@ -807,14 +792,12 @@ export const loadRequestMessages = async ({
 
     // 多段文本需要随媒体一起发送，才能保留字段值与媒体的对应关系。
     const orderedParts = textParts.length > 1 ? supportedContent : mediaParts;
+    // 先按单条工具结果的图片上限截断，再由服务端内联，避免返回大量链接时并发拉图。
     let imageCount = 0;
-    const normalizedMediaParts = (
-      await normalizeToolMediaContentParts(
-        (await Promise.all(orderedParts.map(inlineSandboxPreviewImage))).filter(
-          (part): part is ChatCompletionContentPart => Boolean(part)
-        )
-      )
-    ).filter((part) => part.type !== 'image_url' || ++imageCount <= maxToolImagePartAmount);
+    const cappedParts = orderedParts.filter(
+      (part) => part.type !== 'image_url' || ++imageCount <= maxToolImagePartAmount
+    );
+    const normalizedMediaParts = await normalizeToolMediaContentParts(cappedParts);
 
     return { textParts, mediaParts: normalizedMediaParts };
   };

@@ -74,8 +74,16 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
     ).toBe(true);
   });
 
-  it('does not persist oversized inline tool images', () => {
+  it.each([
+    ['lowercase', 'data:image/png;base64,'],
+    ['uppercase', 'DATA:IMAGE/PNG;BASE64,']
+  ])('does not persist oversized %s inline tool images', (_label, prefix) => {
     const collector = createAgentLoopCoreAssistantEventCollector();
+    const oversizedUrl = `${prefix}${'A'.repeat(4 * 1024 * 1024 + 1)}`;
+    const httpImage = {
+      type: 'image_url' as const,
+      image_url: { url: 'https://example.com/result.png' }
+    };
     collector.emitEvent(end('large-image', [call('large-image')]));
     collector.emitEvent({
       type: 'tool_run_end',
@@ -83,18 +91,31 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
       response: 'rendered',
       content: [
         { type: 'text', text: 'rendered' },
-        {
-          type: 'image_url',
-          image_url: {
-            url: `data:image/png;base64,${'A'.repeat(4 * 1024 * 1024 + 1)}`
-          }
-        }
+        { type: 'image_url', image_url: { url: oversizedUrl } },
+        httpImage
       ],
       seconds: 0
     });
-
     const tool = collector.assistantResponses[0].tools?.[0];
-    expect(tool?.content).toEqual([{ type: 'text', text: 'rendered' }]);
+    expect(tool?.content).toEqual([{ type: 'text', text: 'rendered' }, httpImage]);
+
+    const resumedCollector = createAgentLoopCoreAssistantEventCollector();
+    resumedCollector.emitEvent({
+      type: 'tool_run_end',
+      resumed: true,
+      call: call('resumed-large-image'),
+      response: 'rendered',
+      content: [
+        { type: 'text', text: 'rendered' },
+        { type: 'image_url', image_url: { url: oversizedUrl } },
+        httpImage
+      ],
+      seconds: 0
+    });
+    expect(resumedCollector.assistantResponses[0].toolResponses?.[0]?.content).toEqual([
+      { type: 'text', text: 'rendered' },
+      httpImage
+    ]);
   });
 
   it('persists structured content for a resumed child tool result', () => {

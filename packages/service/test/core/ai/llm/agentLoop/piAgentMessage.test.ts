@@ -79,18 +79,24 @@ describe('piAgent message conversion', () => {
     expect(movedOutgoing[2].content).not.toEqual(outgoing[2].content);
   });
 
-  it('converts accepted uppercase BASE64 image data into pi image content', async () => {
-    const data =
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
-    const part = { type: 'image_url', image_url: { url: `data:image/png;BASE64,${data}` } };
-    expect(ChatCompletionToolMessageContentPartSchema.safeParse(part).success).toBe(true);
-    await expect(convertToolResponseContentToPiContent([part] as any)).resolves.toEqual([
-      { type: 'image', mimeType: 'image/png', data }
-    ]);
-    await expect(
-      convertToolResponseContentToPiContent([part] as any, { useVision: false })
-    ).resolves.toEqual([{ type: 'text', text: '[Image: image/png]' }]);
-  });
+  it.each([
+    ['lowercase', 'data:image/png;base64,'],
+    ['uppercase', 'DATA:IMAGE/PNG;BASE64,']
+  ])(
+    'converts accepted %s inline image data URI identically into pi content',
+    async (_label, prefix) => {
+      const data =
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
+      const part = { type: 'image_url', image_url: { url: `${prefix}${data}` } };
+      expect(ChatCompletionToolMessageContentPartSchema.safeParse(part).success).toBe(true);
+      await expect(convertToolResponseContentToPiContent([part] as any)).resolves.toEqual([
+        { type: 'image', mimeType: 'image/png', data }
+      ]);
+      await expect(
+        convertToolResponseContentToPiContent([part] as any, { useVision: false })
+      ).resolves.toEqual([{ type: 'text', text: '[Image: image/png]' }]);
+    }
+  );
 
   it('preserves placeholders around remaining images and leaves text-only tool results intact', async () => {
     vi.mocked(getImageBase64).mockRejectedValueOnce(new Error('download failed'));

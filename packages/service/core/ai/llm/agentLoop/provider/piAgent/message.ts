@@ -9,12 +9,13 @@ import type {
 } from '@mariozechner/pi-ai';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import type {
-  ChatCompletionMessageParam,
-  ChatCompletionMessageToolCall,
-  ChatCompletionTool,
-  ChatCompletionToolMessageContentPart,
-  CompletionFinishReason
+import {
+  parseInlineImageDataUri,
+  type ChatCompletionMessageParam,
+  type ChatCompletionMessageToolCall,
+  type ChatCompletionTool,
+  type ChatCompletionToolMessageContentPart,
+  type CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
 import { loadImageBase64, maskImagePlaceholderUrl } from '../../../utils';
 
@@ -104,8 +105,10 @@ const getContentText = (
  * 沙箱预览地址带一次性 session 凭证，需要脱敏后再写入文本。
  */
 const getImagePlaceholder = (url: string) => {
+  const inlineImage = parseInlineImageDataUri(url);
+  if (inlineImage) return `[Image: ${inlineImage.mimeType}]`;
   const dataMatch = url.match(/^data:([^;,]+)[;,]/i);
-  if (dataMatch) return `[Image: ${dataMatch[1]}]`;
+  if (dataMatch) return `[Image: ${dataMatch[1].toLowerCase()}]`;
   // 畸形 data URI（缺 mime）同样不能回显内容，否则整段 base64 会进 prompt 文本。
   if (/^data:/i.test(url)) return '[Image: data URI]';
   return `[Image: ${maskImagePlaceholderUrl(url)}]`;
@@ -137,9 +140,9 @@ export const convertToolResponseContentToPiContent = async (
       if (!useVision) {
         return { type: 'text', text: getImagePlaceholder(url) };
       }
-      const dataMatch = url.match(/^data:([^;]+);base64,(.+)$/i);
-      if (dataMatch) {
-        return { type: 'image', mimeType: dataMatch[1], data: dataMatch[2] };
+      const inlineImage = parseInlineImageDataUri(url);
+      if (inlineImage) {
+        return { type: 'image', mimeType: inlineImage.mimeType, data: inlineImage.data };
       }
 
       try {

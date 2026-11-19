@@ -11,7 +11,10 @@ type AgentLoopCoreAssistantMetaEventNames = {
 };
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { AgentAskInteractiveSchema } from '@fastgpt/global/core/ai/agent/type';
-import { ChatCompletionToolMessageContentPartSchema } from '@fastgpt/global/core/ai/llm/type';
+import {
+  ChatCompletionToolMessageContentPartSchema,
+  isInlineImageDataUri
+} from '@fastgpt/global/core/ai/llm/type';
 import { WorkflowBuilderPreviewInteractiveSchema } from '@fastgpt/global/core/workflow/builder/type';
 
 // 记录用于恢复的工具图片时保留小型内联图片；超过上限的 base64 仍参与当前请求，
@@ -27,7 +30,7 @@ const getPersistedToolContent = (content: unknown) => {
     if (part.type === 'text') return true;
 
     const url = part.image_url.url;
-    if (!url.startsWith('data:')) return true;
+    if (!isInlineImageDataUri(url)) return true;
     if (inlineImageBytes + url.length > MAX_PERSISTED_INLINE_TOOL_IMAGE_BYTES) return false;
     inlineImageBytes += url.length;
     return true;
