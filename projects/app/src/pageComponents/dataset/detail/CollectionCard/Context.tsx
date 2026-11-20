@@ -152,13 +152,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       ...defaultCollectionListSort,
       ...headerSelection?.params
     },
-    refreshDeps: [
-      parentId,
-      searchText,
-      tagFilters,
-      headerSort.version,
-      datasetDetail.collectionPermissionEnabled
-    ],
+    refreshDeps: [parentId, searchText, tagFilters, datasetDetail.collectionPermissionEnabled],
     onChange: (page) => {
       if (!headerSort.pending || page !== 1) return;
       // 已显示的结果可以用于回退，但只有当前排序的响应能结束首页刷新。
@@ -177,6 +171,11 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     },
     scrollContainerRef
   });
+
+  useEffect(() => {
+    // 排序立即发起请求，避免节流队列中的首页刷新覆盖失败回退。
+    if (headerSort.pending) void getData(1);
+  }, [getData, headerSort.pending, headerSort.version]);
 
   const pollCollections = useCallback(async () => {
     // 列表请求未完成时跳过轮询，避免轮询反复抢占慢请求。
