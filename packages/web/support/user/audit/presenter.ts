@@ -665,6 +665,19 @@ export const formatAuditSummary = ({
   });
 
   switch (event) {
+    case AuditEventEnum.LOGIN: {
+      const lines: string[] = [];
+      const ip = asNonEmptyString(processed.ip);
+      const region = asNonEmptyString(processed.region);
+      if (ip) {
+        lines.push(t('account_team:audit_detail_login_ip', { ip }));
+      }
+      if (region) {
+        lines.push(t('account_team:audit_detail_login_region', { region }));
+      }
+      return lines.length > 0 ? lines.join('\n') : '-';
+    }
+
     case AuditEventEnum.EXPORT_AUDIT_LOGS:
       return t('account_team:audit_detail_export_audit_logs', processed);
 

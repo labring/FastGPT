@@ -496,5 +496,7 @@
   "audit_detail_dataset_deleted": "지식 베이스가 삭제되었습니다",
   "audit_detail_collection_location": "위치: {{location}}",
   "audit_detail_invitation_link": "링크 이름: {{link}}",
+  "audit_detail_login_ip": "IP: {{ip}}",
+  "audit_detail_login_region": "지역: {{region}}",
   "audit_detail_export_audit_logs": "시간 범위: {{dateStart}} ~ {{dateEnd}}\n멤버: {{tmbIds}}\n유형: {{events}}\n일치 건수: {{total}}"
 }

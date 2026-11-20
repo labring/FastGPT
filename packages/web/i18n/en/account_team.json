@@ -496,5 +496,7 @@
   "audit_detail_dataset_deleted": "Knowledge base has been deleted",
   "audit_detail_collection_location": "Location: {{location}}",
   "audit_detail_invitation_link": "Link name: {{link}}",
+  "audit_detail_login_ip": "IP: {{ip}}",
+  "audit_detail_login_region": "Region: {{region}}",
   "audit_detail_export_audit_logs": "Time range: {{dateStart}} to {{dateEnd}}\nMembers: {{tmbIds}}\nTypes: {{events}}\nTotal: {{total}}"
 }

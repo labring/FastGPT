@@ -496,5 +496,7 @@
   "audit_detail_dataset_deleted": "知識庫已被刪除",
   "audit_detail_collection_location": "位置：{{location}}",
   "audit_detail_invitation_link": "連結名：{{link}}",
+  "audit_detail_login_ip": "IP：{{ip}}",
+  "audit_detail_login_region": "地區：{{region}}",
   "audit_detail_export_audit_logs": "時間範圍：{{dateStart}} 至 {{dateEnd}}\n成員：{{tmbIds}}\n類型：{{events}}\n符合筆數：{{total}}"
 }

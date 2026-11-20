@@ -198,7 +198,7 @@ export const auditLogMap = {
   [AuditEventEnum.LOGIN]: {
     content: i18nT('account_team:log_login'),
     typeLabel: i18nT('account_team:login'),
-    params: {} as { name?: string }
+    params: {} as { name?: string; ip?: string; region?: string }
   },
   [AuditEventEnum.CREATE_INVITATION_LINK]: {
     content: i18nT('account_team:log_create_invitation_link'),

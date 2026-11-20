@@ -792,5 +792,32 @@ describe('audit presenter summary', () => {
     expect(deletedNamedDash[0].name).toBe('-');
     expect(deletedNamedDash[0].nameMissing).toBeUndefined();
     expect(formatAuditResourcesText(deletedNamedDash, t)).toBe('-');
+
+    expect(
+      formatAuditSummary({
+        event: AuditEventEnum.LOGIN,
+        metadata: { ip: '203.0.113.50', region: '中国，浙江省，杭州市' },
+        t
+      })
+    ).toBe(
+      [
+        'account_team:audit_detail_login_ip(ip=203.0.113.50)',
+        'account_team:audit_detail_login_region(region=中国，浙江省，杭州市)'
+      ].join('\n')
+    );
+    expect(
+      formatAuditSummary({
+        event: AuditEventEnum.LOGIN,
+        metadata: { ip: '127.0.0.1' },
+        t
+      })
+    ).toBe('account_team:audit_detail_login_ip(ip=127.0.0.1)');
+    expect(
+      formatAuditSummary({
+        event: AuditEventEnum.LOGIN,
+        metadata: {},
+        t
+      })
+    ).toBe('-');
   });
 });
