@@ -2,9 +2,9 @@
 
 ## 文档状态
 
-- 状态：已落地
+- 状态：已落地（**演进预告**：后续随多库 DAL Phase 0.5 演进至「`packages/dal/db/mongo/` 异步只增补建 + 新增索引统一 `fg_` 命名空间 + 删除与改属性走一次性迁移任务并清除 `schema.ts` 中的 `deprecated: true` 墓碑」，详见 [multi-db-repository-architecture.md](./dal/multi-db-repository-architecture.md#5-九大异构数据库深水区与标准解法) 及 TODO Step 0 / 0.5.4）
 - 适用范围：主 Service、日志库、Marketplace 和 `pro/admin` 中由 FastGPT 管理的 MongoDB Schema
-- 最终结论：启动时只补建当前 Schema 索引；仅当业务 Schema 明确登记废弃索引时才执行精确清理，任何未知索引一律保留。当前没有业务 Schema 登记废弃索引
+- 当前基线结论：启动时只补建当前 Schema 索引；仅当业务 Schema 明确登记废弃索引时才执行精确清理，任何未知索引一律保留（现网代码尚待 Step 0 修复 `autoIndex: false`、复合 `text` 匹配、`MONGO_DEPRECATE_INDEX` 门控与 DDL 无超时连接 4 项隐患）
 
 ## 问题与根因
 

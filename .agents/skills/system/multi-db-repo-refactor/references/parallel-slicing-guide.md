@@ -13,8 +13,8 @@
 
 - **Slice 0（仅核心大域需拆子表时）**：在开始编码前先集中确认该域命中四信号法则的 ER 拆表方案（例如 `dataset_data_indexes`、`dataset_collection_tags`、`app_published_resources`），避免各子切片各拆各的。
 - **Slice 1（灵魂设计切片，单独深度 Review）**：
-  - 交付：`repo.type.ts` + `mongo/schema.ts & repo.ts` + `sql/table.ts & repo.ts` + `repo.ts`（Token）+ `service.ts` 骨架 + **多方言契约测试 + L0 Service 单测 + 按特征必补的专项测试**（Phase 0.5 版本化迁移器落地后同步附带版本化 Migration）；
-  - 过渡方式：暂留原旧 `schema.ts`，但其内部直接委托调用新 `mongo/schema.ts` 的惰性模型工厂（绝不保留两套独立 `new Schema()` 定义），**本切片不修改上层数十个业务调用方**，验证时传 `--allow-wip-slice1`；
+  - 交付：`repo.type.ts` + `mongo/schema.ts & repo.ts` + `sql/table.ts & repo.ts` + `repo.ts`（Token）+ `service.ts` 骨架 + **多方言契约测试 + L0 Service 单测 + 按特征必补的专项测试**（Phase 0.5.2 后仓储与契约测试落 `packages/dal/db/repos/<domain>/` 与 `packages/dal/test/db/repos/<domain>/`，Pro 落 `pro/admin/src/dal/db/repos/<domain>/`；Phase 0.5.4 后同步附带轻量 SQL 版本化 Migration）；
+  - 过渡方式：暂留原旧 `schema.ts`，但其内部直接绑定新 `mongo/schema.ts` 的集合定义/模型（绝不保留两套独立 `new Schema()` 定义），**本切片不修改上层数十个业务调用方**，验证时传 `--allow-wip-slice1`；
   - Review 重点：聚焦方法收敛质量、`sql/table.ts` OB/MySQL 优先建模、哨兵唯一索引、多层级测试覆盖度。
 - **Slice 2 ~ N（纯消费迁移切片，每片 10~15 个调用文件）**：
   - 按目录批次迁移：`packages/service` 调用方 -> `projects/app` API 路由 -> `pro/admin` 调用方 -> `test/datas/` 及相关测试夹具脱 Mongo（跨未迁移表混合事务遵循自底向上顺序，使用 `bridgeClientSessionToDbSession` 桥接）；
@@ -34,5 +34,5 @@
 2. **独立分支 / Worktree 隔离编辑**：
    每个 Worker（`invoke_subagent` 或 `swarm`）使用独立隔离工作区（`workspace: 'share'` / `'branch'`），在各自切片内运行 `verify-domain.mjs --git-legacy merge-base:<path> --test <契约+Service+受影响业务测试>`。
 3. **共享清单文件独占原则（防 Merge 冲突）**：
-   - Worker **严禁**读取或修改 `.agents/design/common/dal/multi-db-repository-architecture.md` 等全局共享文档（以及全局集中式 Schema Registry / Migration 序号索引，若存在则交由 Coordinator 合并后统一登记）；
+   - Worker **严禁**读取或修改 `.agents/design/common/dal/multi-db-repository-architecture.md` 等全局共享文档（以及 `packages/dal/package.json` `exports`、`packages/dal/db/repos/registry.ts`、SQL Migration 序号索引等集中式共享清单，统一交由 Coordinator 合并后登记）；
    - 由协调者（Coordinator）在合并所有 Worker 的代码切片后，统一执行 `node .agents/skills/system/multi-db-repo-refactor/scripts/audit-domain.mjs --status` 核对进度并统一更新设计文档 TODO。

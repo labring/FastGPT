@@ -21,12 +21,16 @@ description: >-
 - **大表 / 多 Agent 并行按需读**：[并行切片指南](references/parallel-slicing-guide.md)；
 - **架构总纲仅兜底/收尾读**：[设计总纲](../../../design/common/dal/multi-db-repository-architecture.md)（共 900+ 行，**禁止开局全文通读**；仅在遇到罕见 DAL 运行时疑问或全部合龙后勾选最终 TODO 时局部查阅，并行 Worker 严禁修改该文件）。
 
-## 硬性前提（WIP=1 锁、范围边界 & 全仓一刀切）
+## 硬性前提（WIP=1 锁、包物理隔离、范围边界 & 全仓一刀切）
 
 1. **WIP=1 大表合龙锁**：先跑进度脚本。**只要存在任何尚未合龙删除旧 Schema/Model 文件的在途域，严禁开启任何新表重构！**
-2. **同表跨 `pro` 与测试夹具一刀切**：同一张表的重构周期内必须同步改完 `packages/`、`projects/`、`pro/admin/` 全部生产调用方**及关联测试文件/`test/datas/` 中的裸 `Mongo*` 造数与断言**，并物理删除旧 Schema 文件（不留过渡残余，确保 1,479 个存量测试平滑脱 Mongo）。
-3. **垂直端到端一步到位**：当场写完 `repo.type.ts` + `mongo/` + `sql/`（`log` 表附加 `noop/`）+ **全套必做与按特征必补测试**，严禁只写单方言半成品或只写最小 CRUD 冒烟测试。
-4. **明确范围外边界**：
+2. **包边界与目录归属（物理防依赖污染）**：
+   - **`@fastgpt/global`**：仅放前后端共享的 `EntityId`、业务枚举、OpenAPI/接口 DTO；**禁止新增数据库物理集合名 / 表名常量到 `@fastgpt/global`**。
+   - **目标态（TODO `0.5.2` 落地后生效）**：开源表的物理集合名/表名常量、`repo.type.ts`、`repo.ts`（Token）、私有 `mongo/{schema,repo}.ts`（原生 `new Schema` + `defineMongoCollection`，`MongoRepositoryBase` 在 `constructor` 自动构 `readonly model`）、私有 `sql/{table,repo}.ts` 与 `noop/repo.ts` 全部收口进 **`packages/dal/db/repos/<domain>/`**（`packages/dal/package.json` 绝不导出 `mongo/` 与 `sql/`），契约测试放 **`packages/dal/test/db/repos/<domain>/repo.contract.test.ts`**；Pro 10 张商业表放 **`pro/admin/src/dal/db/repos/<domain>/`**；`packages/service/<domain>/service.ts` 只 `import` DAL Token 与 `repo.type`，`packages/service/test/<domain>/service.test.ts` 保持 L0 零 DB 纯内存单测。
+   - **当前 Phase 0 过渡态**：在 TODO `0.5.2` 完成 `MongoRuntime` 下沉与脚手架升级前，当前脚本（`scaffold-repo.mjs` / `verify-domain.mjs`）暂按 Phase 0 Pilot 路径（`packages/service/<domain>/` + 惰性 `getXxxMongoModel`）运行；开启大规模 Phase 1 迁表前须先完成 `0.5.1`–`0.5.5`。
+3. **同表跨 `pro` 与测试夹具一刀切**：同一张表的重构周期内必须同步改完 `packages/`、`projects/`、`pro/admin/` 全部生产调用方**及关联测试文件/`test/datas/` 中的裸 `Mongo*` 造数与断言**，并物理删除旧 Schema 文件（不留过渡残余，确保 1,479 个存量测试平滑脱 Mongo）。
+4. **垂直端到端一步到位**：当场写完 `repo.type.ts` + `mongo/` + `sql/`（`log` 表附加 `noop/`）+ **全套必做与按特征必补测试**，严禁只写单方言半成品或只写最小 CRUD 冒烟测试。
+5. **明确范围外边界**：
    - `packages/service/core/dataset/image/schema.ts`（Mongo GridFS）：纯 Mongo 历史遗留，**禁止为其建 SQL 表**（SQL 模式下走只读空降级/404）；
    - `projects/marketplace/**`：独立应用，不在本次主仓多库重构范围内。
 
@@ -71,9 +75,9 @@ node .agents/skills/system/multi-db-repo-refactor/scripts/audit-domain.mjs --sch
 2. **四信号拆表法则**：禁止按 JSON 嵌套层数一刀切；仅命中「进 WHERE/ORDER BY/反查」「高频并发局部更新/CAS」「数组无上限增长」「跨行聚合/`$inc`」之一才拆列或子表；超大流水表索引坚持 `team_id` 前导列；
 3. **OceanBase / MySQL 优先的可移植 B-Tree SQL**：
    - 禁用 `ARRAY[]`、GIN/GIST、部分唯一索引、`ILIKE`、`RETURNING`、JSON 路径查询、`INSERT IGNORE` / `.ignore()` 与 `NULLS FIRST/LAST` 语法；
-   - `sql/table.ts` 禁给 `text`/`json` 列设 `defaultValue` 或建普通索引，复合索引估算宽 `<= 3072` 字节（`utf8mb4` 按 `4B/char`），OB/MySQL 建表默认 `COLLATE=utf8mb4_bin`（区分大小写）；
+   - `sql/table.ts` 禁给 `text`/`json` 列设 `defaultValue` 或建普通索引，复合索引估算宽 `<= 3072` 字节（`utf8mb4` 按 `4B/char`），索引名 `<= 63` ASCII 字节且全部 SQL 索引与新增 Mongo 索引统一采用 **`fg_<table_short>_<purpose>[_vN]`** 命名（存量无前缀 Mongo 索引原位冻结不改名重建），OB/MySQL 建表默认 `COLLATE=utf8mb4_bin`（区分大小写）；
    - 层级用 `ancestor_path`，大小写不敏感模糊匹配用 `this.caseInsensitiveLike`，可空排序列显式 `CASE WHEN col IS NULL` 统一 `NULL` 位置，大表 `.cursor()` 改基于 `_id` 的 Keyset 分批迭代，纯读查询走 `this.readDb(tx)`；
-   - **版本化 Migration 联动**：Phase 0.5 版本化迁移器就位后，新增表或变更现有 `sql/table.ts` 列/索引时必须同步新增对应版本化 SQL Migration 文件；
+   - **索引与迁移解耦约定（TODO `0.5.4` 就位后生效）**：SQL 侧新增表或变更 `sql/table.ts` 列/索引时同步新增轻量 SQL 版本化 Migration（`packages/dal/db/sql/migrations/`）；Mongo 侧新增索引直接在 `mongo/schema.ts` 声明 `fg_*` 由启动异步只增补建，删除旧索引与改 TTL/`unique` 走 Expand-Contract 两版制 + 一次性迁移任务（禁止新增 `deprecated: true` 墓碑）；
 4. **确定性哨兵值**：进唯一索引的可空列与软删除列在 SQL 层存确定性哨兵值（`''` / `0`），防止 `NULL != NULL` 漏放重复记录；
 5. **24 位 Hex ID 大小写与非法 ID 双库同构**：
    - 新领域 DTO 统一使用 `EntityIdSchema` / `EntityIdStringSchema`（自动归一化小写 hex；**勿用**保留大小写的旧兼容 `ObjectIdSchema`）；
@@ -97,7 +101,7 @@ node .agents/skills/system/multi-db-repo-refactor/scripts/scaffold-repo.mjs \
 
 ### Step 4：完成双库实现与多层级测试（严禁偷工减料）
 
-1. 补全 `repo.type.ts`、`mongo/schema.ts`（惰性 `getXxxMongoModel()`，严禁模块顶层立即注册 Model 或使用 `.index()` / 字段内联 `unique: true`）、`mongo/repo.ts`、`sql/table.ts`、`sql/repo.ts`（`log` 表补 `noop/repo.ts`）与 `repo.ts`，并将 `service.ts` 改造为 `XxxService` 类 + 构造函数依赖注入（`deps.xxxRepo ?? injectRepo(Token)`）。
+1. 补全 `repo.type.ts`、`mongo/schema.ts`（Phase 0.5.2 后使用原生 `new Schema` + `defineMongoCollection` 并在 `MongoRepositoryBase` `constructor` 自动构 `readonly model`；当前 Phase 0 过渡态暂用惰性 `getXxxMongoModel()`；严禁模块顶层立即注册 Model 或使用 `.index()` / 字段内联 `index: true / unique: true`）、`mongo/repo.ts`、`sql/table.ts`、`sql/repo.ts`（`log` 表补 `noop/repo.ts`）与 `repo.ts`，并将 `service.ts` 改造为 `XxxService` 类 + 构造函数依赖注入（`deps.xxxRepo ?? injectRepo(Token)`）。
 2. **必须按以下 4 类完整交付测试**（详见 [深水区建模食谱 §6](references/deep-water-recipes.md#6-多层级测试矩阵必做--按表特征必补)）：
    - **① 多方言仓储契约测试（`repo.contract.test.ts`，必做）**：
      - 校验 `compileSqlTableDDL` 在 **`oceanbase`（P0）与 `postgres`（P1）** 双目标编译产物（`DATETIME(3)`、内联索引、无 `CREATE INDEX IF NOT EXISTS`）；

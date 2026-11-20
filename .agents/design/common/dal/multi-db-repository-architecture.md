@@ -22,15 +22,15 @@
 
 ### 1.2 现状痛点（为什么必须同步重构 Mongo 访问层）
 
-当前主仓与商业版在范围之内共约 **77 张业务集合/表**（`packages/service` 与 `pro/admin` 合计，含已完成 Pilot 的 `AppRegistration`，剥离 GridFS 遗留后剩余 75 张核心待迁表；不含范围外的 `projects/marketplace`），存在严重的数据库驱动穿透问题：
+按 AST 全仓盘点，当前主仓与商业版在范围之内共 **81 个 Mongoose Model**（`packages/service` 71 个含 4 个日志库集合、1 个 GridFS 遗留与 1 个 Phase 0 Pilot `app_registrations`；`pro/admin` 10 个；不含范围外的 `projects/marketplace` 2 个与 `projects/app/src/migration` 2 个内部状态表），剥离 GridFS 后共 **79 张待适配 SQL 的核心业务/日志表**；现存 **253 个现行索引**（其中 245 个即 96.8% 为无前缀默认名）及 **17 条 `deprecated: true` 废弃索引墓碑**，存在严重的数据库驱动穿透问题：
 
 1. **裸调 `MongoXxx` 穿透全栈**：`packages/service` 有 394 个文件、`projects/app/src` 有 158 个文件（含 121 个 `pages/api` 路由）、`pro/admin/src` 有 1,117 处直接引用 Mongoose Model 与算子。
-2. **已有 `entity.ts` 仍存在算子泄漏（“假封装”）**：例如 `packages/service/core/app/entity.ts` 仍直接暴露 `FilterQuery<AppSchemaType>` 与空格分隔的 Mongoose `fields` 投影字符串，API 路由仍在手写 `$in`、`$or`、`$regex` 甚至在 `@fastgpt/global` 中遗留 `parseParentIdInMongo` 等耦合工具。
+2. **已有 `entity.ts` 仍存在算子泄漏（“假封装”）**：例如 `packages/service/core/app/entity.ts` 仍直接暴露 `FilterQuery<AppSchemaType>` 与空格分隔的 Mongoose `fields` 投影字符串，API 路由仍在手写 `$in`、`$or`、`$regex` 甚至在 `@fastgpt/global` 中遗留 `parseParentIdInMongo` 与数据库物理 `CollectionName` 常量。
 3. **业务安全不变量缺乏统一闸口**：软删除过滤（`deleteTime: null`）、多租户隔离（`teamId`）、TTL 有效期判断散落在上百个调用点靠人工记忆传递，极易产生漏过滤越权或幽灵数据。
 4. **返回值类型失真与隐式全局魔法**：`packages/service/common/mongo/index.ts` 中的 `convertObjectIds` 中间件只浅层转换顶层 `ObjectId`，嵌套数组（如 `ancestorIds`、`indexes[].dataId`）与部分聚合结果仍残留 BSON `ObjectId`；漏写 `.lean()` 时还会返回重型 Mongoose `Document` 实例，导致业务层被迫到处编写 `String(doc._id)` 防御代码。
-5. **模块顶层副作用绑死运行时**：各 `schema.ts` 在模块导入阶段即执行 `new Schema()` 与 `getMongoModel()` 注册，导致纯逻辑单测被迫启动内存数据库，且无法在纯 PG 环境下按需加载。
+5. **模块顶层副作用与索引隐患**：各 `schema.ts` 在模块导入阶段即执行 `getMongoModel()` 绑定全局 `connectionMongo` 并异步 fire-and-forget 同步索引，导致纯逻辑单测被迫启动内存数据库、无法在纯 SQL 环境下按需加载，同时存在未关 `autoIndex`、复合 `text` 索引匹配缺前导列、启动无条件删索引、60s 业务查询超时打断大表建索引等现网隐患。
 
-因此，本设计采取 **“先彻底收口重构 Mongo 数据访问层（去 Mongoose 侵入），再平滑接入 PG 方言”** 的演进路线：即使在纯 Mongo 环境下，阶段一也能直接带来安全性、内存性能与可测试性的全面收益。
+因此，本设计采取 **“先彻底收口重构持久化层进 `@fastgpt/dal`（物理隔离驱动依赖），再平滑接入 OceanBase/MySQL（P0）与 PostgreSQL（P1）”** 的演进路线：即使在纯 Mongo 环境下，也能直接带来包边界隔离、内存性能、索引安全与可测试性的全面收益。
 
 ---
 
@@ -39,32 +39,44 @@
 ### 2.1 拒绝的两条死胡同
 
 - **❌ 死胡同 1：自研通用类 Mongo Query DSL 转 SQL 翻译器**
-  业务中大量存在“排序后原子扣减（`findOneAndUpdate + sort`）”、“深层数组条件匹配与动态键 CAS 更新”、“异构 `bulkWrite`”。通用 AST 翻译器无法在 PG 下使用 `CTE + FOR UPDATE SKIP LOCKED` 或 `UNNEST` 批量更新，必然退化为性能低劣且锁粒度失控的半成品 ORM。
+  业务中大量存在“排序后原子扣减（`findOneAndUpdate + sort`）”、“深层数组条件匹配与动态键 CAS 更新”、“异构 `bulkWrite`”。通用 AST 翻译器无法在 OceanBase / MySQL / PG 下使用 `CTE + FOR UPDATE SKIP LOCKED` 或精确批量更新，必然退化为性能低劣且锁粒度失控的半成品 ORM。
 - **❌ 死胡同 2：强行将所有文档聚合根拆成纯关系子表（或按 JSON 嵌套层数机械拆表）**
-  FastGPT 拥有大量天然聚合根文档（Workflow `nodes/edges/chatConfig`、`ChatItem.value` 多态消息块、`SystemConfigs`）。既然不做跨库迁移且 PG/OceanBase 均支持高性能二进制 JSON 存储，**禁止按“第 2 层 JSON 必须拆表”一刀切**（这会在分布式 SQL 下引爆大量跨表 JOIN 与分布式写事务），而应遵循 **“四信号拆表法则”**：只有命中 **① 需进 `WHERE/ORDER BY`/反查主记录、② 独立高频局部更新/并发 CAS 抢占、③ 数组随时间无上限增长、④ 需跨行 `SUM/COUNT` 或原子加减** 这 4 个信号之一时才拆独立关系列或关联表；未命中时哪怕嵌套 5 层仍作为黑盒 `JSON/JSONB` 整存整取。
+  FastGPT 拥有大量天然聚合根文档（Workflow `nodes/edges/chatConfig`、`ChatItem.value` 多态消息块、`SystemConfigs`）。既然不做跨库迁移且 OceanBase / MySQL / PG 均支持高性能 JSON 存储，**禁止按“第 2 层 JSON 必须拆表”一刀切**（这会在分布式 SQL 下引爆大量跨表 JOIN 与分布式写事务），而应遵循 **“四信号拆表法则”**：只有命中 **① 需进 `WHERE/ORDER BY`/反查主记录、② 独立高频局部更新/并发 CAS 抢占、③ 数组随时间无上限增长、④ 需跨行 `SUM/COUNT` 或原子加减** 这 4 个信号之一时才拆独立关系列或关联表；未命中时哪怕嵌套 5 层仍作为黑盒 `JSON/JSONB` 整存整取。
 
-### 2.2 分层模型与物理包归属
+### 2.2 分层模型与物理包归属（物理硬隔离，与 Redis DAL 对称）
 
-沿用 `@fastgpt/dal` 的克制分层哲学，将**数据库无关底座**下沉至 `@fastgpt/dal/db`，而将**强领域语义的业务 Repository** 保留在 `packages/service` 与 `pro/admin` 各 DDD 业务域内：
+沿用 [FastGPT Data Access Layer 设计](./data-access-layer.md) 的包边界治理经验（开源 Redis Cache 在 `packages/dal/redis/caches/`、Pro 专属在 `pro/admin/src/dal/redis/caches/`、`packages/service/common/redis/` 已彻底移除），将**全部开源持久化基础设施、Mongo Schema、SQL Table、双族 Repository 实现及契约测试统一收口至 `@fastgpt/dal/db/`**，用 Node/TS 包级 `exports` 物理阻断依赖污染：
 
 ```mermaid
 flowchart TD
-  API["API Routes / Workers / Workflow Engine"] --> SVC["Domain Services (Class + 构造函数依赖注入，显式透传 DbSession)<br/>纯业务编排，零驱动依赖，默认通过 injectRepo 获取仓储"]
-  SVC --> REPO["DI Token & Contract (repo.ts Token + repo.type.ts 契约)<br/>领域语义入参 + Zod 出口强校验归一化"]
-  REPO --> MONGO_IMPL["MongoXxxRepository (extends MongoRepositoryBase)<br/>Mongoose .lean() + 惰性 Model 绑定"]
-  REPO --> SQL_IMPL["SqlXxxRepository (extends SqlRepositoryBase)<br/>Kysely 跨方言查询（通吃 PG / OceanBase / MySQL 8+）"]
-  REPO --> NOOP_IMPL["NoopXxxRepository (Null Object 降级，仅 log 表)<br/>显式配置 logDisabled 时写静默跳过、读返回空"]
-  MONGO_IMPL --> DAL_DB["@fastgpt/dal/db<br/>Runtime / 连接池拓扑 / DbSession 事务 / RepositoryBase / DI 容器 / 方言 DDL"]
-  SQL_IMPL --> DAL_DB
-  NOOP_IMPL --> DAL_DB
-  DAL_DB --> GLOBAL["@fastgpt/global<br/>24位 EntityId / 领域 Zod Schema / 常量"]
+  API["projects/app、pro/admin（API / Workers / Instrumentation）"] --> SVC["@fastgpt/service（Domain Services，Class + 构造函数 DI）<br/>纯业务编排，零驱动依赖，只 import DAL 的 Token 与 repo.type"]
+  SVC --> DAL_PUB["@fastgpt/dal 公开导出面（exports）<br/>db/repos/*/repo（DI Token） + db/repos/*/repo.type（持久化 DTO/契约）<br/>db/{container, transaction, errors, types}"]
+  DAL_PUB --> MONGO_IMPL["[DAL 私有] db/repos/*/mongo/{schema,repo}.ts<br/>defineMongoCollection + MongoRepositoryBase（constructor 自动构 readonly model）"]
+  DAL_PUB --> SQL_IMPL["[DAL 私有] db/repos/*/sql/{table,repo}.ts<br/>defineSqlTable + SqlRepositoryBase（Kysely 通吃 OB / MySQL 8+ / PG 14+）"]
+  DAL_PUB --> NOOP_IMPL["[DAL 私有，仅 log 表] db/repos/*/noop/repo.ts<br/>logMode === 'disabled' 时的 Null Object 降级实现"]
+  MONGO_IMPL --> DAL_CORE["@fastgpt/dal/db/{runtime, mongo/*, sql/*}<br/>连接池拓扑 / DbSession 事务 / 轻量 SQL 迁移器 / Mongo 异步只增补建"]
+  SQL_IMPL --> DAL_CORE
+  NOOP_IMPL --> DAL_CORE
+  DAL_CORE --> GLOBAL["@fastgpt/global（前后端共享、browser-safe）<br/>24 位 EntityId / 业务枚举 / 前后端与 OpenAPI 共享 DTO"]
 ```
 
-**为什么业务 Repository 留在 `packages/service`（及 `pro/admin`）而非全部搬入 `@fastgpt/dal`？**
-1. 保持 DDD 业务域高内聚，避免每改一个业务表字段都要跨 `global → dal → service → app` 四个包联动修改；
-2. 商业版 13 张专属表自然留在 `pro/admin/src/**`，遵守 `shared DAL 不得反向依赖 pro` 的铁律，无需额外拆分 `@fastgpt/pro-dal`；
-3. 部分仓储（如全文检索 `FullTextStore`）需调用 `packages/service` 内的分词工具，留在业务域内可避免跨包循环依赖；
-4. 通过 `.agents/code/syntax.md` 与 `multi-db-repo-refactor` Skill 的提示词规范分层边界，辅以“物理删除旧 `schema.ts` + TypeScript 编译检查 + 双库契约单测”，不在仓库引入侵入性的静态拦截插件。
+**物理包归属与边界铁律**：
+1. **`@fastgpt/global` vs `@fastgpt/dal` 严格按“前端是否需要”切分**：
+   - **`@fastgpt/global`**（browser-safe）：仅放前后端共享的 `EntityId` 工具、业务枚举（`AppTypeEnum`、`PerResourceTypeEnum` 等）及 OpenAPI / API 响应 DTO；**不再向 `@fastgpt/global` 放入数据库物理集合名 / 表名常量**；
+   - **`@fastgpt/dal`**（纯服务端持久化，前端严禁引用）：承载物理集合名 / 表名常量、持久化层 `repo.type.ts`（含内部存储字段与 Read/Write Zod Schema）、`mongo/{schema,repo}.ts`、`sql/{table,repo}.ts`、`noop/repo.ts`、DI Token 以及独立契约测试（`packages/dal/test/db/repos/`）。
+2. **`packages/dal/package.json` `exports` 物理防污染**：
+   - 对业务层仅暴露 `./db/repos/*/repo`、`./db/repos/*/repo.type` 与 `./db/{container,transaction,errors,types}`；
+   - 对应用启动入口（`instrumentation-node.ts`）与 `pro/admin` 暴露 `./db/runtime`、`./db/mongo/*`、`./db/sql/*`；
+   - **绝不暴露 `./db/repos/*/mongo/*` 与 `./db/repos/*/sql/*`**，从编译期物理禁止 `@fastgpt/service`、`projects/app`、`pro/admin` 直接导入 Mongoose Model 或 SQL Table。
+3. **契约测试与业务单测天然物理隔离**：
+   - `packages/dal/test/db/repos/<domain>/repo.contract.test.ts` 运行在独立 `packages/dal/vitest.config.ts` 中，**完全不加载根 `test/setup.ts`**（零 `projects/app` 全局变量、零业务 mock）；
+   - `packages/service/test/<domain>/service.test.ts` 保持为 **L0 零数据库纯内存单测**（通过构造函数注入 Fake Repo）。
+4. **`pro/admin` 与 `service` 过渡边界**：
+   - 商业版 10 张专属表置于 `pro/admin/src/dal/db/repos/<domain>/`（契约测试在 `pro/admin/test/dal/db/repos/`），遵守 `shared DAL 不反向依赖 pro` 铁律；
+   - `@fastgpt/service` 已直接依赖 `@fastgpt/dal`，**新迁移领域无需任何转发层**；极少数依赖 `service` 分词的能力（如 `FullTextStore` 的 `jiebaSplit`）由 `service` 层完成分词后传 token 或以 callback 注入 DAL；
+   - 存量未迁移的 71 张旧表仍暂留于 `packages/service`，过渡期 `packages/service/common/mongo/index.ts` 直接复用 `@fastgpt/dal/db/mongo/runtime` 的同一份底层 `Mongoose` 连接实例（确保新旧混跑事务共享同一 `ClientSession`），严禁任何新代码引用；待 Phase 1 全部旧表迁入 DAL 后，整目录删除 `packages/service/common/mongo/`（与已删除的 `packages/service/common/redis/` 一致）。
+
+> **Phase 0 过渡说明**：首个最小试点 `AppRegistration` 在 Phase 0 暂落于 `packages/service/support/appRegistration/`，将在 TODO `0.5.2` 随 `MongoRuntime` 下沉同步迁入 `packages/dal/db/repos/appRegistration/` 与 `packages/dal/test/db/repos/appRegistration/`。
 
 ---
 
@@ -106,9 +118,9 @@ export type DbRuntimeConfig = {
   1. `separate`（配置了独立 `logWriteUrl`）：走独立日志连接池；
   2. `shared`（**默认**，未配置 `logWriteUrl` 且 `logDisabled !== true`）：**直接复用 `main` 物理连接池**（消除旧代码 `connectionLogMongo` 连接同一库却建两套池的资源浪费，同时 100% 保证默认单库部署下对话日志、审计日志、请求追踪功能正常可用）；
   3. `disabled`（显式配置 `logDisabled: true`）：不建连接、不写主库，DI 容器自动解析注入 `Noop` 空实现（写静默跳过、读返回空/零值）；若此模式下显式发起 `runInTransaction(..., { datasource: 'log' })`，底座抛出 `DbLogDatasourceNotConfiguredError`。
-- **可观测性与启动期 Schema Registry**：
-  - 在 `Kysely` 层挂载轻量观测插件统一汇报 `runtime.recordOperation()`（慢查询告警 + 指标）并接入 `common/profiling` 请求级分段耗时统计，对齐 Mongo 中间件能力；
-  - 区分**模块 `import` 零副作用**与**应用启动显式引导（Bootstrap）**：维护统一领域 Schema / Table Registry，启动期（`instrumentation-node.ts`）按方言显式执行 `await syncRegisteredMongoIndexes()`（恢复冷启动唯一索引与 `deprecated: true` 废弃索引集中同步）或 `await runRegisteredSqlMigrations()`。
+- **Mongo 连接下沉、可观测性与启动期 Schema Registry**：
+  - `@fastgpt/dal/db/mongo/runtime.ts` 接管进程唯一的 `Mongoose` 主连接与可选独立日志连接（`shared` 模式复用主连接，彻底淘汰 `global.mongodb` / `global.mongodbLog`），统一设置 `autoIndex: false`、独立非连接池 DDL 连接（`socketTimeoutMS: 0`），并在 `Kysely` 与 `Mongoose` 双侧统一接入 `runtime.recordOperation()` 慢查询告警与 `common/profiling` 分段耗时回调；
+  - 区分**模块 `import` 零副作用**与**应用启动显式引导（Bootstrap）**：维护统一领域注册表 `packages/dal/db/repos/registry.ts`（以及 `pro/admin` 专属注册表），启动期（`instrumentation-node.ts`）按方言执行**解耦的轻量初始化**——SQL 侧同步执行轻量版本化 DDL 迁移器，Mongo 侧启动后异步只增补建缺失索引（绝不阻塞探针、绝不在启动自动删索引），并共享统一的只读 `inspect` 能力。
 
 ### 3.2 显式事务模型 `DbSession` 与 `afterCommit` 机制
 
@@ -191,10 +203,29 @@ export function parseRepoRows<TSchema extends z.ZodTypeAny>({
 
 为消除闭包工厂与重复样板代码，`@fastgpt/dal/db` 提供两层基础能力：
 
-1. **方言抽象基类（Template Method）**：`MongoRepositoryBase`（`@fastgpt/dal/db/mongo/base`）与 `SqlRepositoryBase`（`@fastgpt/dal/db/sql/base`）将 `tableName`、`readSchema`、`ObjectId` 转换、读写分离/事务路由、`upsertRow`、`insertChunked`、`caseInsensitiveLike`、`toJsonParam`、哨兵与物化路径编解码、以及 `parseRepoRow` / `parseRepoRows` 收口至 `protected` 方法，子类（Strategy 实现类）只需专注纯粹的数据查询与写入逻辑：
+1. **方言抽象基类（Template Method）**：
+   - **`MongoRepositoryBase<TDoc, TReadSchema>`（`@fastgpt/dal/db/mongo/base`）**：彻底废除 `getMongoModel` / `getXxxMongoModel()` / 模块级 `let cachedModel`。每个域的 `mongo/schema.ts` 使用原生 `new Schema(...)`（保留 `.virtual()` / `.pre()` 表达力）并传给纯声明式 `defineMongoCollection({ name, datasource, schema, indexes })`（零导入副作用、定义期自动禁止字段级 `index: true / unique: true`）；`MongoRepositoryBase` 在 **`constructor({ collection, readSchema, runtime })` 中直接通过 `runtime.bindMongoModel(collection)` 幂等构出 `protected readonly model: Model<TDoc>`**（基于 `container.ts` 按 `DbRuntime` 隔离的懒单例生命周期，换连/测试重建自动淘汰旧 Model，且内部先查 `connection.models[name]` 防 `OverwriteModelError`），同时封装 `oid`、`txOpts`、`readOpts`、`parseRow`、`parseList`；
+   - **`SqlRepositoryBase`（`@fastgpt/dal/db/sql/base`）**：将 `tableName`、`readSchema`、读写分离/事务路由（`this.db(tx)` / `this.readDb(tx)`，因 Kysely 事务与读副本按次切执行器故按次路由）、`upsertRow`、`insertChunked`、`caseInsensitiveLike`、`orderByNullable`、`toJsonParam`、Keyset 游标分页、哨兵与物化路径编解码，以及 `parseRepoRow` / `parseRepoRows` 收口至 `protected` 方法，子类（Strategy 实现类）只需专注纯粹的数据查询与写入逻辑：
 
 ```ts
 // 完整源码见 packages/dal/db/mongo/base.ts 与 packages/dal/db/sql/base.ts
+export abstract class MongoRepositoryBase<TDoc, TReadSchema extends z.ZodTypeAny> {
+  protected readonly model: Model<TDoc>;
+  protected readonly tableName: string;
+  protected readonly readSchema: TReadSchema;
+
+  constructor(params: {
+    collection: MongoCollectionDefinition<TDoc>;
+    readSchema: TReadSchema;
+    runtime?: DbRuntime;
+  }) {
+    const runtime = params.runtime ?? getDbRuntime();
+    this.tableName = params.collection.name;
+    this.readSchema = params.readSchema;
+    this.model = runtime.bindMongoModel(params.collection);
+  }
+}
+
 export abstract class SqlRepositoryBase<
   TDatabase extends Record<string, any>,
   TTableName extends keyof TDatabase & string,
@@ -221,7 +252,7 @@ export abstract class SqlRepositoryBase<
 ```
 
 2. **轻量级 Token DI 容器（无装饰器 / 零 `reflect-metadata` 侵入）**：
-   - `defineRepoToken<TRepo>(name, { mongo, sql })` 注册标准业务仓储的双族构造工厂（`postgres` / `oceanbase` / `mysql` 自动映射至 `sql`）；
+   - `defineRepoToken<TRepo>(name, { mongo, sql })` 注册标准业务仓储的双族构造工厂（`postgres` / `oceanbase` / `mysql` 自动映射至 `sql`），并在实例化时向工厂透传当前 `runtime`（`mongo: (runtime) => new MongoXxxRepository(runtime)`）；
    - `defineLogRepoToken<TRepo>(name, { mongo, sql, noop })` 专用于日志库仓储：默认 `shared` 复用主池、配置 `logWriteUrl` 时走 `separate` 独立池、仅显式关闭（`logMode === 'disabled'`）时自动解析至 `noop`；
    - `injectRepo(token)` 返回一个轻量 **Lazy `Proxy`**（含 `.then` 防 `await` 误展开保护）：因此即使在模块顶层执行 `export const appService = new AppService()`，在模块导入或 Next.js 静态构建阶段**绝对不会触发**任何数据库连接、Mongoose 模型注册或方言解析；仅在仓储方法被实际调用时，才按当前 `DbRuntime` 生命周期解析并缓存单例（并在热重载或测试切换 Runtime 时自动失效重建）。
 
@@ -229,28 +260,36 @@ export abstract class SqlRepositoryBase<
 
 ## 4. 领域仓储（Domain Repository）编写铁律
 
-每个业务子域的持久化目录统一演进为以下结构（严格遵守 `syntax.md` **禁止 barrel re-export** 规范）：
+每个业务子域的持久化与编排代码统一演进为以下目录结构（严格遵守 `syntax.md` **禁止 barrel re-export** 规范，且通过 `packages/dal/package.json` `exports` 物理隐藏 `mongo/` 与 `sql/`）：
 
 ```text
-packages/service/core/app/
-├── repo.type.ts       # 领域仓储契约 type、Write Schema、Normalized Read Schema 及 .pick() 窄 DTO
-├── mongo/
-│   ├── schema.ts      # Mongoose Schema + defineIndex + 模块内惰性 getAppMongoModel()
-│   └── repo.ts        # MongoAppRepository 类（extends MongoRepositoryBase, implements AppRepository）
-├── sql/
-│   ├── table.ts       # 中立可移植 SQL 表定义（defineSqlTable，零 PG/OB 方言私货）+ 行类型
-│   └── repo.ts        # SqlAppRepository 类（extends SqlRepositoryBase, implements AppRepository）
-├── noop/              # 仅 log 数据源子域提供：NoopXxxRepository（Null Object 空实现）
-│   └── repo.ts
-├── repo.ts            # 调用 defineRepoToken / defineLogRepoToken 导出 XxxRepoToken
-├── service.ts         # XxxService 类（构造函数 deps 注入依赖，默认回退 injectRepo）+ 导出单例
-└── utils.ts           # 无副作用纯函数
+packages/dal/db/repos/<domain>/         # 开源表（Pro 10 张专属表在 pro/admin/src/dal/db/repos/<domain>/）
+├── repo.type.ts                        # 【公开导出】领域仓储契约 type、Write/Read Zod Schema、.pick() 窄 DTO
+├── repo.ts                             # 【公开导出】defineRepoToken / defineLogRepoToken 导出 XxxRepoToken
+├── mongo/                              # 【包内私有，exports 不暴露】
+│   ├── schema.ts                       # 原生 new Schema(...) + defineMongoCollection（纯声明、零副作用、含物理集合名常量）
+│   └── repo.ts                         # MongoXxxRepository（constructor 自动 bindMongoModel，implements XxxRepository）
+├── sql/                                # 【包内私有，exports 不暴露】
+│   ├── table.ts                        # 中立可移植 SQL 表定义（defineSqlTable，零 PG/OB 方言私货）+ 行类型
+│   └── repo.ts                         # SqlXxxRepository（extends SqlRepositoryBase，implements XxxRepository）
+└── noop/                               # 【包内私有，仅 log 数据源子域提供】
+    └── repo.ts                         # NoopXxxRepository（logMode === 'disabled' 空实现）
+
+packages/dal/test/db/repos/<domain>/
+└── repo.contract.test.ts               # DAL 独立 Vitest 多方言契约测试（零 service/app 全局依赖）
+
+packages/service/<domain>/
+├── service.ts                          # XxxService 类（只 import @fastgpt/dal/db/repos/<domain>/{repo,repo.type}）
+└── utils.ts                            # 无副作用纯函数
+
+packages/service/test/<domain>/
+└── service.test.ts                     # L0 零数据库纯内存单测（构造注入 Fake Repo）
 ```
 
 ### 四条编码铁律
 
-1. **铁律一：零驱动算子泄漏**
-   `repo.type.ts` 的方法签名只允许表达**业务意图**（如 `listActiveApps`、`claimNextTrainingTask`、`deductEarliestExpiringSubPoints`），严禁出现 `FilterQuery`、`UpdateQuery`、空格分隔的 `fields: string` 或 `AnyBulkWriteOperation`。原 `resourcePermissionRepo` 中遗留的 `bulkWrite`、`findCursor(query)`、`deleteByFilter(filter)` 等逃生口必须在收口阶段改为具名领域方法。
+1. **铁律一：零驱动算子泄漏与物理包隔离**
+   `repo.type.ts` 的方法签名只允许表达**业务意图**（如 `listActiveApps`、`claimNextTrainingTask`、`deductEarliestExpiringSubPoints`），严禁出现 `FilterQuery`、`UpdateQuery`、空格分隔的 `fields: string` 或 `AnyBulkWriteOperation`。原 `resourcePermissionRepo` 中遗留的 `bulkWrite`、`findCursor(query)`、`deleteByFilter(filter)` 等逃生口必须在收口阶段改为具名领域方法。物理集合名 / 表名常量与持久化 Repo DTO 归属 `@fastgpt/dal`，禁止塞入面向前端的 `@fastgpt/global`。
 2. **铁律二：业务安全不变量焊死在 Repo 内部**
    - 含软删除语义的表，所有常规读/写方法内部强制附加 `deleteTime: null`（回收站专属方法显式命名为 `listTrashApps` / `restoreDeletedApp`）；
    - 多租户业务表的方法入参强制要求 `teamId: string`（系统级后台巡检方法显式以 `Admin` 或 `System` 后缀区分）；
@@ -260,9 +299,9 @@ packages/service/core/app/
    - **宽出归一化（Read Schema）**：所有可选列统一使用 `optionalNullToUndefined(...)` 抹平 SQL `null` 与 Mongo `undefined`；历史可能缺失的字符串列补 `.default('')`；布尔列使用 `BoolSchema` 抹平 OceanBase/MySQL `0/1`；JSON 列使用 `jsonColumnSchema(...)` 且内嵌时间使用 `z.coerce.date()`；所有 ID 列使用 `EntityIdSchema` 自动将 BSON `ObjectId` 深层转为 `string`。**待全仓收口完成后，彻底移除 `mongo/index.ts` 中的浅层 `convertObjectIds` 全局钩子**；
    - **窄 DTO 派生**：局部字段查询必须基于领域基准读 Schema 调用 `.pick({ _id: true, name: true, ... })` 派生出口 Schema，严禁使用宽泛的全表类型冒充局部返回类型；
    - **大载荷分层校验**：对于 `AppVersion.nodes / edges`、`ChatItem.value` 等动辄数百 KB 的深层多态数组，Repo 出口只校验外层容器与骨架字段，深层节点参数交由工作流/对话引擎在执行期按需校验，避免热路径双重深度遍历。
-4. **铁律四：零顶层副作用与构造函数依赖注入**
-   - `mongo/schema.ts` 不在模块顶层调用 `connectionMongo.model(...)`，而是封装在 `getAppMongoModel()` 内首次调用时注册；
-   - `repo.ts` 通过 `defineRepoToken` / `defineLogRepoToken` 声明 `{ mongo, sql }` Token，结合 `injectRepo` 的惰性代理确保 `DB_DIALECT=oceanbase|mysql|postgres` 时绝不加载或初始化 Mongoose 模型（`logMode === 'disabled'` 时自动绑定 `Noop`，默认 `shared` 复用主池）；
+4. **铁律四：零顶层副作用、构造期自动绑定 Model 与构造函数依赖注入**
+   - `mongo/schema.ts` 只导出纯声明式 `defineMongoCollection(...)` 描述符（内部接收原生 Mongoose `Schema` 并校验无内联 `index: true / unique: true`），模块导入阶段零连接、零注册、零建索引副作用；
+   - `MongoXxxRepository` 在 `constructor(runtime?: DbRuntime)` 内由父类 `MongoRepositoryBase` 自动构出 `readonly model`，依托容器 `WeakMap<DbRuntime, Map<RepoToken, object>>` 保证 `DB_DIALECT=oceanbase|mysql|postgres` 时永不实例化 Mongo Repo，且每次切换 `DbRuntime` 自动重建；
    - `service.ts` 统一定义为 `XxxService` 类，通过构造函数对象参数 `constructor(deps: XxxServiceDeps = {})` 注入所需仓储及协同服务（默认使用 `injectRepo(Token)`），单测直接 `new AppService({ appRepo: mockRepo })` 即可毫秒级隔离运行，彻底告别 `vi.mock` 模块劫持与参数列表膨胀。
 
 ---
@@ -279,7 +318,7 @@ packages/service/core/app/
 | **6** | **权限位运算与跨库冲突错误码重试** | `resourcePermissionRepo` 使用 `$bitsAllSet` / `$bitsAnySet` 过滤权限掩码，并依赖捕获 `11000 / 112` 抛出冲突异常触发外层事务重试。 | OceanBase/MySQL 与 PG 均原生支持整型按位与 `(permission & ?) = ?` 与 `(permission & ?) <> 0`；错误码映射层除覆盖 Mongo `112`、MySQL `1213/1205`、PG `40001/40P01` 外，**显式补充 OceanBase 高频瞬态错误码（`4012`、`6002`、`6004`、`6210`、`6223`）** 统一转为可重试冲突异常。 |
 | **7** | **知识库全文检索（`FullTextStore`）** | 当向量库为 OceanBase / SeekDB / PG / OpenGauss 时，全文检索目前强耦合在 MongoDB 的 `dataset_data_texts` 集合 + `$text` 索引上；标准 MySQL 默认 `ft_min_token_size=3` 会丢弃 1~2 字中文词。 | FastGPT 已在 Node 层通过 `jiebaSplit` 预先切好空格分词串：<br>1. `FullTextStore` 作为极少数（<2%）按需使用方言子策略的模块：**P0 OceanBase 4.3+ / SeekDB 优先采用原生 `FULLTEXT INDEX ... WITH PARSER space`（或 `ik`）+ `MATCH ... AGAINST`**（进入 `core/dataset` 前用真实 OB 容器完成短词召回 PoC）；P1 PG 采用 `to_tsvector('simple', full_text_token)`；<br>2. 路由改为：Milvus 走向量库原生 BM25，其余跟随主库方言路由。 |
 | **8** | **跨库类型、批量上限、大表流式导出与跨表 `$lookup`** | PG 单条 SQL 最多 65,535 参数且数组参数误序列；MySQL/OB `TEXT` 仅 64KB、`LONGTEXT`/`JSON` 禁 `DEFAULT`、复合索引上限 3072B、`BIGINT` 驱动返回类型不一致；全仓存在 9 处 `.cursor()` 大表流式导出与 8 处跨表 `$lookup`。 | 由 `@fastgpt/dal/db/sql` 底座与分层规范一次性封死：<br>1. `insertChunked` 控批参数 `< 60,000`，`toJsonParam` 统一 `JSON.stringify`；<br>2. `ddl.ts` 映射 `LONGTEXT`/`DATETIME(3)` 并静态拦截 `text/json` 默认值与 >3072B 复合索引，`mysql2` 开启 `supportBigNumbers + bigNumberStrings`；<br>3. `.cursor()` 统一改为基于 24 位有序 `_id` 的 **Keyset 分批迭代器**（不占长连接）；<br>4. 跨表 `$lookup` 简单字段补全改 Service 批量 `IN` 组装（天然兼容 `main`/`log` 跨库），必须 DB 侧过滤分页的（如 `resourceLookup`）独立建只读 **Query Repo** + 关联表。 |
-| **9** | **DDL 版本化演进、四信号拆表、迁移锁与大表分区前导列** | `CREATE TABLE IF NOT EXISTS` 无法解决发版后加列/改列/加删索引；按嵌套层数切分 JSON 会引爆分布式 JOIN；`GET_LOCK`/`pg_advisory_lock` 在代理/连接池模式下稳定性参差不齐。 | **四信号拆表**：仅命中 `WHERE/ORDER BY` 反查、高频局部更新/CAS、无上限数组增长、聚合/`$inc` 之一才拆表（核心大域迁前先过 ER 拆表评审）。<br>**版本化 Migration + Redis 锁**：`defineSqlTable` 仅负责初始基线建表与单测建表，所有增量结构变更走 **Kysely 版本化 Migration 文件**；启动迁移锁采用 **Redis `LeaseCache` + DB 迁移历史表主键幂等**，且严格先于 `projects/app/src/migration` 执行（历史 Mongo 数据修复任务在 SQL 模式下跳过）。<br>**OB 分区预留**：超大表（`chat_items`、`dataset_datas`、`app_chat_logs`、`llm_request_records`）索引坚持 `team_id` 前导列。 |
+| **9** | **索引命名、`deprecated: true` 清理、DDL 迁移引擎与四信号拆表** | 原 `mongo-index-sync-strategy` 在 `schema.ts` 积累了 17 条 `deprecated: true` 墓碑、无法改 TTL/unique 且存在未设 `autoIndex: false`/复合 `text` 匹配 Bug/60s 超时/无条件删索引 4 个现网隐患；原版 Kysely `0.29.9` `Migrator` 在 PG 下把所有迁移包进事务（导致 `CREATE INDEX CONCURRENTLY` 报 `25001`）、硬编码 `GET_LOCK`/`pg_advisory_lock`（OBProxy/PgBouncer 脆弱）且回滚遇到未来版本 ID 会 CrashLoop；但把无 Schema 的 Mongo 硬塞进重型跨引擎状态机又会带来 `0000_mongo_cutover` 与 Pod 心跳等过度复杂度。 | **原则统一，执行解耦（各用最简方案）**：<br>1. **四条统一契约**：`schema.ts`/`table.ts` 只声明当前有效索引（**彻底移除 `deprecated: true`**）；全部 SQL 索引与所有新增 Mongo 索引统一命名 `fg_<table_short>_<purpose>[_vN]`（≤63 ASCII 字节、SQL 全库唯一），存量 245 个无前缀 Mongo 索引原位冻结零重建，严禁碰客户自建索引；删除旧索引遵守 **Expand-Contract 两版制**（版本 N 移出声明并停用、版本 N+1 显式删除，天然杜绝旧 Pod 复活）；大表建索引不卡启动探针、不用 60s 业务查询超时，并提供只读 `inspect`。<br>2. **SQL 侧（`@fastgpt/dal/db/sql/migrations/`，~250 行轻量自研执行器）**：外层 Redis `LeaseCache` + 每物理库独立 `_fg_sql_migrations(scope: 'core'\|'pro', id)` 主键幂等账本；向前兼容回滚（忽略未知未来版本 ID）；支持单迁移 `transactional: false` 与专用 DDL 连接；提供 `ensureSqlIndex`（PG `CONCURRENTLY` + `indisvalid=false` 自愈、MySQL `LOCK=NONE` + `lock_wait_timeout`、OB `1061` 幂等）与 `dropSqlIndexIfExists`（硬守卫仅删 `fg_*`）；先于 `projects/app/src/migration` 执行；CI 重放 `0001 -> latest` 与 `defineSqlTable` 防漂移。<br>3. **Mongo 侧（异步只增补建 + 低频删/改走一次性任务）**：新增索引直接在 `mongo/schema.ts` 声明 `fg_*`，启动后后台异步只增补建（Redis 锁、`autoIndex: false`、独立 `socketTimeoutMS: 0` 连接、key 等价检查防 Error 85、`285` 轮询，支持动态条件索引函数）；删除废弃索引与改 TTL/`unique` 绝不在启动自动执行，改为一次性迁移任务（复用 `projects/app/src/migration` 或运维脚本显式 `dropMongoIndex`/`collMod`）。<br>4. **四信号拆表与 OB 分区预留**：仅命中四信号之一才拆表；超大表（`chat_items`、`dataset_datas`、`app_chat_logs`、`llm_request_records`）索引坚持 `team_id` 前导列。 |
 
 ---
 
@@ -287,7 +326,7 @@ packages/service/core/app/
 
 以下样板展示如何将现有耦合 Mongoose 的 `packages/service/core/app/entity.ts` 与 API 裸查询彻底重构为双库同构的领域仓储。
 
-### 6.1 领域契约与读写 Schema（`packages/service/core/app/repo.type.ts`）
+### 6.1 领域契约与读写 Schema（`packages/dal/db/repos/app/repo.type.ts`）
 
 ```ts
 import z from 'zod';
@@ -378,14 +417,48 @@ export type AppRepository = {
 };
 ```
 
-### 6.2 Mongo 方言实现（`packages/service/core/app/mongo/repo.ts`）
+### 6.2 Mongo 方言实现（`packages/dal/db/repos/app/mongo/schema.ts` & `repo.ts`）
 
 ```ts
+// packages/dal/db/repos/app/mongo/schema.ts（包内私有，exports 不暴露）
+import { Schema } from 'mongoose';
+import { defineMongoCollection } from '../../../mongo/collection';
+
+export const AppCollectionName = 'apps';
+
+export type AppMongoDoc = Record<string, unknown>;
+
+const AppMongoSchema = new Schema(
+  {
+    teamId: { type: Schema.Types.ObjectId, required: true },
+    tmbId: { type: Schema.Types.ObjectId, required: true },
+    parentId: { type: Schema.Types.ObjectId, default: null },
+    name: { type: String, required: true },
+    deleteTime: { type: Date, default: null }
+  },
+  { versionKey: false }
+);
+
+export const appMongoCollection = defineMongoCollection<AppMongoDoc>({
+  name: AppCollectionName,
+  datasource: 'main',
+  schema: AppMongoSchema,
+  indexes: [
+    // 存量索引原位保留名称；新增索引统一采用 fg_<table_short>_<purpose>[_vN]
+    { key: { teamId: 1, deleteTime: 1, updateTime: -1 } }
+  ]
+});
+```
+
+```ts
+// packages/dal/db/repos/app/mongo/repo.ts（包内私有，exports 不暴露）
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { createEntityId } from '@fastgpt/global/common/string/entityId';
 import { AppListSortEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { MongoRepositoryBase } from '@fastgpt/dal/db/mongoBase';
-import { AppCollectionName, getAppMongoModel } from './schema';
+import { MongoRepositoryBase } from '../../../mongo/base';
+import type { DbRuntime } from '../../../runtime';
+import type { DbSession } from '../../../types';
+import { appMongoCollection, type AppMongoDoc } from './schema';
 import {
   AppDomainReadSchema,
   AppListItemDTOSchema,
@@ -393,23 +466,23 @@ import {
   type AppRepository,
   type ListActiveAppsParams
 } from '../repo.type';
-import type { DbSession } from '@fastgpt/dal/db/types';
 
 /**
  * App 仓储的 MongoDB 策略实现。
  *
- * 继承 MongoRepositoryBase 自动复用 ObjectId 转换、事务解包与 Zod 出口归一化，
- * 并将软删除过滤（deleteTime: null）、正则转义与 .lean() 完全封闭在内部。
+ * 在 constructor 中由 MongoRepositoryBase 自动绑定当前 DbRuntime 对应的 readonly model，
+ * 并将软删除过滤（deleteTime: null）、正则转义、.lean() 与 Zod 出口归一化完全封闭在内部。
  */
 export class MongoAppRepository
-  extends MongoRepositoryBase<typeof AppDomainReadSchema>
+  extends MongoRepositoryBase<AppMongoDoc, typeof AppDomainReadSchema>
   implements AppRepository
 {
-  protected readonly tableName = AppCollectionName;
-  protected readonly readSchema = AppDomainReadSchema;
-
-  private get model() {
-    return getAppMongoModel();
+  constructor(runtime?: DbRuntime) {
+    super({
+      collection: appMongoCollection,
+      readSchema: AppDomainReadSchema,
+      runtime
+    });
   }
 
   async findActiveById({
@@ -573,17 +646,14 @@ export class MongoAppRepository
 }
 ```
 
-### 6.3 通用 SQL 方言实现（`packages/service/core/app/sql/repo.ts`，通吃 PG / OceanBase / MySQL）
+### 6.3 通用 SQL 方言实现（`packages/dal/db/repos/app/sql/repo.ts`，通吃 PG / OceanBase / MySQL）
 
 ```ts
 import { sql } from 'kysely';
 import { createEntityId } from '@fastgpt/global/common/string/entityId';
 import { AppListSortEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import {
-  SQL_ACTIVE_DELETE_TIME_MS,
-  SqlRepositoryBase
-} from '@fastgpt/dal/db/sql/base';
-import type { DbSession } from '@fastgpt/dal/db/types';
+import { SQL_ACTIVE_DELETE_TIME_MS, SqlRepositoryBase } from '../../../sql/base';
+import type { DbSession } from '../../../types';
 import type { AppsDatabase } from './table';
 import {
   AppDomainReadSchema,
@@ -789,10 +859,10 @@ export class SqlAppRepository
 
 ### 6.4 DI Token 注册与 Service 构造函数注入装配（`repo.ts` & `service.ts` & 日志库 `Noop` 示例）
 
-#### 1. Token 定义（`packages/service/core/app/repo.ts`）
+#### 1. Token 定义（`packages/dal/db/repos/app/repo.ts`，公开导出）
 
 ```ts
-import { defineRepoToken } from '@fastgpt/dal/db/container';
+import { defineRepoToken } from '../../container';
 import type { AppRepository } from './repo.type';
 import { MongoAppRepository } from './mongo/repo';
 import { SqlAppRepository } from './sql/repo';
@@ -800,10 +870,11 @@ import { SqlAppRepository } from './sql/repo';
 /**
  * App 仓储 DI Token。
  *
- * 仅注册方言构造工厂；配合 injectRepo 的惰性代理，在模块加载期不会触发任何连接或模型初始化。
+ * 仅注册方言构造工厂；配合 injectRepo 的惰性代理，在模块加载期不会触发任何连接或模型初始化，
+ * 首次调用时由容器透传当前 DbRuntime 并在 constructor 内绑定 Model。
  */
 export const AppRepoToken = defineRepoToken<AppRepository>('AppRepository', {
-  mongo: () => new MongoAppRepository(),
+  mongo: (runtime) => new MongoAppRepository(runtime),
   sql: () => new SqlAppRepository()
 });
 ```
@@ -814,10 +885,10 @@ export const AppRepoToken = defineRepoToken<AppRepository>('AppRepository', {
 import { injectRepo } from '@fastgpt/dal/db/container';
 import { runInTransaction } from '@fastgpt/dal/db/transaction';
 import type { DbSession } from '@fastgpt/dal/db/types';
-import { AppRepoToken } from './repo';
-import type { AppRepository, CreateAppWriteInput } from './repo.type';
-import { AppVersionRepoToken } from './version/repo';
-import type { AppVersionRepository } from './version/repo.type';
+import { AppRepoToken } from '@fastgpt/dal/db/repos/app/repo';
+import type { AppRepository, CreateAppWriteInput } from '@fastgpt/dal/db/repos/app/repo.type';
+import { AppVersionRepoToken } from '@fastgpt/dal/db/repos/appVersion/repo';
+import type { AppVersionRepository } from '@fastgpt/dal/db/repos/appVersion/repo.type';
 
 export type AppServiceDeps = {
   appRepo?: AppRepository;
@@ -860,10 +931,10 @@ export const appService = new AppService();
 // const service = new AppService({ appRepo: mockAppRepo, versionRepo: mockVersionRepo });
 ```
 
-#### 3. 日志库三态路由与显式 `Noop` 降级示例（`packages/service/core/app/logs/repo.ts`）
+#### 3. 日志库三态路由与显式 `Noop` 降级示例（`packages/dal/db/repos/appChatLog/repo.ts`）
 
 ```ts
-import { defineLogRepoToken } from '@fastgpt/dal/db/container';
+import { defineLogRepoToken } from '../../container';
 import type { AppChatLogRepository } from './repo.type';
 import { MongoAppChatLogRepository } from './mongo/repo';
 import { SqlAppChatLogRepository } from './sql/repo';
@@ -876,14 +947,14 @@ import { NoopAppChatLogRepository } from './noop/repo';
  * - `disabled`（显式配置 logDisabled: true）：自动解析为 NoopAppChatLogRepository。
  */
 export const AppChatLogRepoToken = defineLogRepoToken<AppChatLogRepository>('AppChatLogRepository', {
-  mongo: () => new MongoAppChatLogRepository(),
+  mongo: (runtime) => new MongoAppChatLogRepository(runtime),
   sql: () => new SqlAppChatLogRepository(),
   noop: () => new NoopAppChatLogRepository()
 });
 ```
 
 ```ts
-// packages/service/core/app/logs/noop/repo.ts
+// packages/dal/db/repos/appChatLog/noop/repo.ts
 import type { AppChatLogRepository } from '../repo.type';
 
 /** 显式关闭日志落库（logMode === 'disabled'）时的 Null Object 空实现，不建连、不写入主库。 */
@@ -906,25 +977,25 @@ export class NoopAppChatLogRepository implements AppChatLogRepository {
 
 | 层级 | 测试对象 | 运行后端 | 触发时机与耗时 | 核心职责 |
 | :--- | :--- | :--- | :--- | :--- |
-| **L0：纯内存单测** | `Domain Service` 业务编排、纯函数、Zod Schema、DDL 编译与防呆校验、`@fastgpt/dal` | **零数据库**（构造函数注入 Stub/Mock Repo，独立轻量 Vitest 配置，不加载 `test/setup.ts`） | 本地保存 & 每次 PR（< 3s） | 兑现 Constructor DI 速度红利，彻底摆脱 `MongoMemoryReplSet` 启动开销。 |
-| **L1：快速多库契约（Contract Unit）** | 每域 1 份共享 `repo.contract.test.ts` | **`MongoMemoryReplSet` + `PGlite`**（进程内零容器） | 本地开发 & 每次 PR（秒级） | 快速校验空值/类型归一化、24 位 Hex ID 大小写与非法 ID、哨兵唯一键、租户/软删除/TTL 隔离、`parseRepoRows` Warn & Skip、真实副本集回滚与 `afterCommit`。 |
-| **L2：真实 SQL 协议与并发契约（SQL Integration）** | **复用同一份 `repo.contract.test.ts`** + 专项并发 / Migration / 全文用例 | **PR 必跑 `MySQL 8`**（轻量快启，若 SeekDB 容器同样轻量可前移）；**合并前门禁 / Nightly 跑 `OceanBase 4.3+ / SeekDB`（P0）+ `PostgreSQL 14+`（P1）** | PR 必跑 MySQL 8；门禁/定时跑 OB + PG | 捕获单连接 PGlite 测不出的真实差异：`mysql2` 类型与 `utf8mb4_bin`、OB 瞬态错误码重试、多连接 `SKIP LOCKED` 抢占、版本化 Migration 增量演进、OB 中文全文召回。 |
+| **L0：纯内存单测** | `packages/service/test/<domain>/service.test.ts`、纯函数、Zod Schema、DDL 编译与防呆校验、`@fastgpt/dal` 底座 | **零数据库**（构造函数注入 Stub/Mock Repo，独立轻量 Vitest 配置，不加载 `test/setup.ts`） | 本地保存 & 每次 PR（< 3s） | 兑现 Constructor DI 速度红利，彻底摆脱 `MongoMemoryReplSet` 启动开销。 |
+| **L1：快速多库契约（Contract Unit）** | `packages/dal/test/db/repos/<domain>/repo.contract.test.ts`（Pro 在 `pro/admin/test/dal/db/repos/`） | **`MongoMemoryReplSet` + `PGlite`**（进程内零容器，在 `packages/dal/vitest.config.ts` 中隔离运行，不沾 `service/app` 全局状态） | 本地开发 & 每次 PR（秒级） | 快速校验空值/类型归一化、24 位 Hex ID 大小写与非法 ID、哨兵唯一键、租户/软删除/TTL 隔离、`parseRepoRows` Warn & Skip、真实副本集回滚与 `afterCommit`。 |
+| **L2：真实 SQL 协议与并发契约（SQL Integration）** | **复用同一份 `repo.contract.test.ts`** + 专项并发 / SQL Migration / 全文用例 | **PR 必跑 `MySQL 8`**（轻量快启，若 SeekDB 容器同样轻量可前移）；**合并前门禁 / Nightly 跑 `OceanBase 4.3+ / SeekDB`（P0）+ `PostgreSQL 14+`（P1）** | PR 必跑 MySQL 8；门禁/定时跑 OB + PG | 捕获单连接 PGlite 测不出的真实差异：`mysql2` 类型与 `utf8mb4_bin`、OB 瞬态错误码重试、多连接 `SKIP LOCKED` 抢占、SQL 轻量版本化迁移演进与 PG `indisvalid` 自愈、OB 中文全文召回。 |
 | **L3：存量业务/API 全链路回归** | 全仓 1,479 个既有 `service` / `app` / `pro` 测试 | `test/setup.ts` 支持 `FASTGPT_TEST_DB_DIALECT=mongo \| oceanbase \| mysql \| postgres` | 随表迁移完成分域解锁；Phase 2~3 全量回归 | 零重写成本将存量业务测试转化为 OceanBase / PG 全链路回归防护网。 |
 
 ### 7.1 测试基础设施四项核心设计
 
 1. **一份契约测试，动态挂载多后端（`createContractBackends`）**：
-   - `@fastgpt/dal/db/testing` 统一封装动态后端工厂与 `insertRawRow` 脏数据插入 helper：默认本地挂载 `[mongo, pglite]`；当 CI 注入 `FASTGPT_TEST_MYSQL_URL`、`FASTGPT_TEST_OB_URL` 或 `FASTGPT_TEST_PG_URL` 时，**同一份 `repo.contract.test.ts` 零代码修改自动追加对应真实引擎重放**。
+   - `@fastgpt/dal/db/testing` 统一封装动态后端工厂与 `insertRawRow` 脏数据插入 helper：默认本地挂载 `[mongo, pglite]`（DAL 包内补齐 `mongodb-memory-server` 惰性 Harness，优先连 `FASTGPT_TEST_MONGODB_URI` 否则按需拉起临时副本集）；当 CI 注入 `FASTGPT_TEST_MYSQL_URL`、`FASTGPT_TEST_OB_URL` 或 `FASTGPT_TEST_PG_URL` 时，**同一份 `repo.contract.test.ts` 零代码修改自动追加对应真实引擎重放**。
 2. **真实 SQL 容器的多 Worker 隔离与无锁清理**：
    - 禁止多并发 Vitest Worker 共用同一 SQL 库并执行 `TRUNCATE TABLE`（会触发 Metadata Lock 死锁与跨文件互清）；
-   - `globalSetup` 按 `VITEST_POOL_ID` 为每个 Worker 预建独立库/Schema（`fastgpt_test_w1..wN`）并仅执行一次完整版本化 Migration；用例间统一使用 **`DELETE FROM`（仅清本用例涉及表）** 替代 `TRUNCATE`，在 OceanBase / MySQL 中更快且不持表级 DDL 锁；
+   - `globalSetup` 按 `VITEST_POOL_ID` 为每个 Worker 预建独立库/Schema（`fastgpt_test_w1..wN`）并仅执行一次完整 SQL 版本化 Migration；用例间统一使用 **`DELETE FROM`（仅清本用例涉及表）** 替代 `TRUNCATE`，在 OceanBase / MySQL 中更快且不持表级 DDL 锁；
    - 修复 `test/setup.ts` 中默认的 `transactionRunner: ({ execute }) => execute(undefined)` 事务空壳，默认启用 `MongoMemoryReplSet` 真实事务语义（无 DB 纯逻辑单测直接走 L0 轻量配置）。
 3. **三大按特征必补的专项测试套件**：
    - **真实多连接并发与锁竞争套件**（自动跳过单连接 PGlite，在真实 OB / MySQL / PG / Mongo 跑）：覆盖 10 并发 `FOR UPDATE SKIP LOCKED` 抢训练分片零重复、最早过期套餐并发扣费不超扣、人为构造冲突/死锁重试后 `afterCommit` 仅执行最终成功一轮；
-   - **版本化 Migration 守卫套件**：覆盖空库 `0001 → latest` 升级、重复执行幂等、双协程并发启动 Redis 锁防惊群，以及**防漂移断言**（跑完所有版本化 Migration 后对比 `information_schema` 与全部 `sql/table.ts` 定义一致，杜绝改表定义却漏写增量 Migration）；
+   - **SQL 轻量版本化 Migration & 索引守卫套件**：覆盖空库 `0001 → latest` 升级、重复执行幂等、双协程并发启动 Redis 锁防惊群、回滚遇未来版本 ID 向前兼容跳过、PG `indisvalid = false` 僵尸索引自愈，以及**防漂移断言**（跑完所有 SQL Migration 后对比 `information_schema` / `pg_index` 与全部 `sql/table.ts` 定义一致，杜绝改表定义却漏写增量 Migration）；
    - **日志三态专项套件**：对每张 `datasource: 'log'` 表验证 `shared`（复用主池可读写）、`separate`（写独立日志库、主库无数据）、`disabled`（路由 `Noop` 静默不落库、读返回空）。
 4. **存量测试夹具同步脱 Mongo 化 & CI 补全**：
-   - 每张表物理删除旧 `schema.ts` 时，同步将该表关联的 `test/datas/` 公共夹具与测试文件内的裸 `MongoXxx` 造数/断言改走 Repo / Service（`verify-domain.mjs` 自动拦截非 `migration/` 测试文件中的旧 Model 残留），确保全部 75 张表迁完后存量测试天然零 Mongoose 依赖；
+   - 每张表物理删除旧 `schema.ts` 时，同步将该表关联的 `test/datas/` 公共夹具与测试文件内的裸 `MongoXxx` 造数/断言改走 Repo / Service（`verify-domain.mjs` 自动拦截非 `migration/` 测试文件中的旧 Model 残留），确保全部 79 张待适配表迁完后存量测试天然零 Mongoose 依赖；
    - Phase 0.5 补全 `.github/workflows/test-fastgpt.yaml`（经确认后变更），纳入 `packages/dal/**` 变更探测与 `test-dal` / `MySQL 8` 契约作业。
 
 ---
@@ -935,17 +1006,19 @@ export class NoopAppChatLogRepository implements AppChatLogRepository {
 
 - **Phase 0：底座就位、可移植 SQL 基建、最小 Pilot 与自动化 Skill（已完成）**
   完成 `@fastgpt/dal/db`（`mongo` + `Kysely sql` + `PGlite` 契约底座）、24 位 `EntityId` 工具、`.agents/code/syntax.md` 升级、`.agents/skills/system/multi-db-repo-refactor` 自动化工具链、Mongo Change Streams 全面切 Redis Pub/Sub，以及首个端到端最小样板 `AppRegistration`。
-- **Phase 0.5：OceanBase 优先底座补强与版本化迁移基建（Phase 1 大规模迁移前置）**
-  将日志库升级为三态拓扑（默认 `shared` 复用主池，显式开关才 `Noop`）；补齐 OceanBase / MySQL 底座护栏（`utf8mb4_bin`、DDL 静态防呆校验、`mysql2` 参数、`orderByNullable`、去 `INSERT IGNORE`、Keyset 游标迭代、OB 瞬态错误码、Kysely 观测/Profiling 插件）；建立统一 Schema/Table Registry 与 Kysely 版本化 Migration 骨架（Redis 锁 + DB 迁移表幂等），并在 CI 前置接入 MySQL 8 / OceanBase 真实契约验证。
-- **Phase 1：垂直端到端切片重构（同表一步到位 + 同表含 `pro` 一刀切 + WIP=1 合龙锁）**
+- **Step 0（现网 Mongo 索引 4 个 Bug 定点修复，可独立小 PR 优先合入）**
+  设置 `autoIndex: false` 消除双重竞态、修复 `indexManager.ts` 复合 `text` 索引匹配器（纳入 `teamId: 1` 前导列）、修复无条件删索引问题补齐删除开关门控、为 DDL 建索引分离无 60s 超时的专用连接。
+- **Phase 0.5：DAL 物理隔离收口、底座硬对齐与解耦迁移基建（Phase 1 大规模迁移前置）**
+  将 `MongoRuntime`、`defineMongoCollection`（原生 `Schema` + 禁字段内联索引）与 `MongoRepositoryBase` `constructor` 自动构 `readonly model` 下沉至 `@fastgpt/dal/db/mongo/`，把 `AppRegistration` 试点迁入 `packages/dal/db/repos/appRegistration/` 与 `packages/dal/test/db/repos/appRegistration/`；落地日志三态（默认 `shared` 复用主池）；补齐 OceanBase / MySQL 底座护栏（`utf8mb4_bin`、`fg_` 命名与 63B/3072B/asc-desc 静态校验、`mysql2` 参数、`orderByNullable`、去 `INSERT IGNORE`、Keyset 游标、OB 瞬态错误码、Kysely 观测插件）；落地**原则统一、执行解耦**的轻量索引与迁移基建（SQL 侧 ~250 行轻量版本化 DDL 迁移器，Mongo 侧异步只增补建 + 一次性迁移清零现有 17 条 `deprecated: true` + 只读 `inspect`），并补齐多后端测试底座与 CI 漂移门禁。
+- **Phase 1：垂直端到端切片重构（开源表落 `packages/dal/db/repos/`、Pro 表落 `pro/admin/src/dal/db/repos/`，同表含 `pro` 一刀切 + WIP=1 合龙锁）**
   - **Wave 1 轻量原型验证**：优先迁移 4~8 张低耦合叶子表，验证日志库三态 + TTL（`llm_request_records`、`system_logs`）、原子 Upsert/CAS/`$inc`（`timer_locks`、`count_limits`），并在 Mongo + PGlite + MySQL/OceanBase 三端打通闭环；
-  - **≤ 20 个调用文件的中小型表（占 ~80%）**：单个原子切片同时完成 `repo.type.ts` + `mongo/` + `sql/` + 契约单测，一次性迁移主仓与 `pro` 全部调用点、物理删除旧 `schema.ts` 并通过 `verify-domain.mjs` 验收；
+  - **≤ 20 个调用文件的中小型表（占 ~80%）**：单个原子切片同时完成 `packages/dal/db/repos/<domain>/` + `packages/dal/test/db/repos/<domain>/repo.contract.test.ts` + `packages/service/<domain>/service.ts` + L0 单测，一次性迁移主仓与 `pro` 全部调用点、物理删除旧 `schema.ts` 并通过 `verify-domain.mjs` 验收；
   - **> 20 个调用文件的核心超级大表**：进入前先完成该域 ER 拆表评审；Slice 1 审 `repo.type.ts` + `mongo/` + `sql/` + 契约单测；Slice 2~N 每批 10~15 个调用文件直到删除旧 `schema.ts`（跨表事务严格遵循“自底向上先叶子桥接、整链迁完再翻外层 `runInTransaction`”）。通过 `WIP=1` 锁强制前一张大表彻底合龙后再开下一张；
-  - **历史遗留剥离**：`dataset_image`（GridFS）仅保留 Mongo 兼容读，SQL 模式下返回空/404；`projects/marketplace` 在范围外。
-- **Phase 2：生产运行时、版本化迁移落地与 TTL 后台清理**
-  完成 `instrumentation-node.ts` 按 `DB_DIALECT` 接入 `oceanbase` / `mysql`（P0）与 `postgres`（P1）运行时、基于 Kysely `Migrator` + Redis 锁的启动期版本化 DDL 升级（先于 `projects/app/src/migration` 且 SQL 模式下跳过历史 Mongo 修复任务），以及通用带过期时间表的分批物理清理任务。
+  - **收口清零**：开源 71 表全部迁完后整目录删除 `packages/service/common/mongo/` 与全局 `convertObjectIds` 浅层中间件；`dataset_image`（GridFS）仅保留 Mongo 兼容读，SQL 模式下返回空/404；`projects/marketplace` 在范围外。
+- **Phase 2：SQL 生产运行时、启动迁移装配与 TTL 后台清理**
+  完成 `projects/app` 与 `pro/admin` 的 `instrumentation-node.ts` 按 `DB_DIALECT` 接入 `oceanbase` / `mysql`（P0）与 `postgres`（P1）或 `mongo` 运行时、SQL 启动期版本化 DDL 升级（`scope: 'core' | 'pro'`，先于 `projects/app/src/migration` 且 SQL 模式下跳过历史 Mongo 修复任务），以及通用带过期时间表的分批物理清理任务与 `inspect` 运维入口。
 - **Phase 3：异构引擎全链路集成回归与压测验收**
-  优先在 `DB_DIALECT=oceanbase`（搭配 `OceanBase` / `SeekDB` / `Milvus`）与 `DB_DIALECT=mysql`、次先在 `DB_DIALECT=postgres`（搭配 `pgvector` / `Milvus`）及 `DB_DIALECT=mongo` 环境下通过全链路回归与并发压测验收。
+  优先在 `DB_DIALECT=oceanbase`（搭配 `OceanBase` / `SeekDB` / `Milvus`）与 `DB_DIALECT=mysql`、次先在 `DB_DIALECT=postgres`（搭配 `pgvector` / `Milvus`）及 `DB_DIALECT=mongo` 环境下通过 1,479 存量测试全链路回归与并发压测验收。
 
 ---
 
@@ -966,38 +1039,53 @@ export class NoopAppChatLogRepository implements AppChatLogRepository {
   - [x] 更新 `.agents/code/syntax.md` 并创建 `.agents/skills/system/multi-db-repo-refactor/`（`audit-domain.mjs`、`scaffold-repo.mjs`、`verify-domain.mjs`）；
   - [x] 完成 `support/appRegistration` 全链路端到端迁移与双库契约单测，物理删除旧 `schema.ts`。
 
-### Phase 0.5：OceanBase 优先底座补强与版本化迁移基建（Wave 1 前置）
-- [ ] **0.5.1 日志数据源三态改造**：升级 `DbRuntime` / `defineLogRepoToken` / `dalRuntime.ts` 支持 `logMode: 'separate' | 'shared' | 'disabled'`，未配置独立日志库时默认复用 `main` 连接池（兼容默认单库部署），仅显式关闭时走 `Noop`。
-- [ ] **0.5.2 OceanBase / MySQL 底座硬对齐**：
-  - [ ] `ddl.ts`：OB/MySQL 建表显式声明 `CHARSET=utf8mb4 COLLATE=utf8mb4_bin`；`defineSqlTable` 增加静态校验（禁 `text`/`json` 默认值与普通索引、复合索引 `<= 3072` 字节）；
+### Step 0：现网 Mongo 索引 4 个高危 Bug 定点修复（可独立优先合入）
+- [ ] **S0.1 禁用 Mongoose `autoIndex`**：在 `connectionMongo`、`connectionLogMongo` 与 `marketplace` 连接初始化时显式设置 `db.set('autoIndex', false)`，消除与索引管理器的双重并发建索引竞态。
+- [ ] **S0.2 修复复合 `text` 索引匹配器**：修复 `packages/service/common/mongo/indexManager.ts` 忽略非 text 前导字段的 Bug（覆盖 `dataset_data_texts` 与 `agent_skills` 的 `{ teamId: 1, ...: 'text' }`）。
+- [ ] **S0.3 补齐删除开关门控**：修复 `indexManager.ts` 硬编码 `apply: true` 忽略 `MONGO_DEPRECATE_INDEX` 的问题，杜绝启动无条件删除生产索引。
+- [ ] **S0.4 分离 DDL 建索引超时**：为索引操作提供独立无 60s `socketTimeoutMS` 限制的连接配置，防止大表建索引中途客户端超时。
+
+### Phase 0.5：DAL 物理隔离收口、底座硬对齐与解耦迁移基建（Wave 1 前置）
+- [ ] **0.5.1 日志数据源三态改造**：升级 `DbRuntime` / `defineLogRepoToken` / Mongo & SQL 运行时支持 `logMode: 'separate' | 'shared' | 'disabled'`，未配置独立日志库时默认 `shared` 复用 `main` 连接池（兼容默认单库部署），仅显式关闭时走 `Noop`。
+- [ ] **0.5.2 Mongo 连接下沉、构造期 Model 绑定与 `AppRegistration` 迁入 `@fastgpt/dal`**：
+  - [ ] 在 `packages/dal/db/mongo/` 实现 `runtime.ts`（接管唯一主/日志 `Mongoose` 连接池、`autoIndex: false`、独立 DDL 连接、`bindMongoModel` 幂等缓存与统一慢查询/Profiling 回调）与 `collection.ts`（纯声明式 `defineMongoCollection`，接收原生 `Schema` 并拦截内联 `index: true / unique: true`）；
+  - [ ] 升级 `MongoRepositoryBase` 在 `constructor({ collection, readSchema, runtime })` 自动构出 `readonly model`，`defineRepoToken` 透传 `runtime`；
+  - [ ] `packages/service/common/mongo/index.ts` 改为直接复用 DAL 的同一 `Mongoose` 实例（仅服务未迁旧表，不做新代码转发层）；
+  - [ ] 将 `AppRegistration` 的 `repo.type.ts`、`repo.ts`、`mongo/`、`sql/`（索引命名改为 `fg_app_reg_team`）与 `repo.contract.test.ts` 迁入 `packages/dal/db/repos/appRegistration/` 与 `packages/dal/test/db/repos/appRegistration/`，并同步更新 `packages/dal/package.json` `exports`（严禁导出 `mongo/` 与 `sql/`）及 `multi-db-repo-refactor` Skill 脚本路径校验。
+- [ ] **0.5.3 OceanBase / MySQL 底座硬对齐**：
+  - [ ] `ddl.ts`：OB/MySQL 建表显式声明 `CHARSET=utf8mb4 COLLATE=utf8mb4_bin`；`SqlIndexDef` 补齐列排序方向（`asc`/`desc`）；`defineSqlTable` 增加静态校验（强制 `fg_` 前缀与 `<= 63B`、跨表索引名唯一、禁 `text`/`json` 默认值与普通索引、复合索引 `<= 3072` 字节）；
   - [ ] `mysql.ts` & `sql/base.ts`：`mysql2` 补齐 `charset: 'utf8mb4'` / `supportBigNumbers` / `bigNumberStrings`；`upsertRow` 禁用 `INSERT IGNORE`；新增 `orderByNullable` 与基于 `_id` 的 Keyset 游标分批迭代 helper；
   - [ ] `errors.ts`：补充 OceanBase 瞬态冲突错误码（`4012`、`6002`、`6004`、`6210`、`6223`）；
   - [ ] Kysely 观测插件：接通 `runtime.recordOperation()` 慢查询告警与 `common/profiling` 分段耗时统计。
-- [ ] **0.5.3 Schema Registry、版本化 Migration 与多后端测试底座**：
-  - [ ] 建立统一领域 Schema/Table Registry，恢复 Mongo 启动期集中索引同步与废弃索引清理，并承载 SQL 基线建表与 Kysely `Migrator` 版本化增量迁移骨架（Redis `LeaseCache` + 迁移历史表主键幂等锁 + `information_schema` 防漂移守卫）；
-  - [ ] 升级 `@fastgpt/dal/db/testing` 提供 `createContractBackends`（按环境变量动态挂载 `Mongo / PGlite / MySQL 8 / OceanBase / PG`）、`insertRawRow` 及按 `VITEST_POOL_ID` 独立库 + `DELETE` 无锁清理；
-  - [ ] 拆分无 DB 的 L0 轻量 Vitest 配置（脱离 `test/setup.ts`），修复 `test/setup.ts` 默认事务空壳，并在 CI 补齐 `packages/dal` 触发与 PR 级 MySQL 8 容器契约验证（OB/SeekDB + PG 走门禁/Nightly）。
+- [ ] **0.5.4 轻量 SQL DDL 迁移器、Mongo 异步只增补建与 `deprecated: true` 清零**：
+  - [ ] 在 `packages/dal/db/sql/migrations/` 实现轻量自研 SQL DDL 迁移器（~250 行）：Redis `LeaseCache` 锁 + 每物理库独立 `_fg_sql_migrations(scope: 'core' | 'pro', id)` 账本 + 回滚向前兼容跳过未来版本 + 单迁移 `transactional: false` + 专用 DDL 连接 + `ensureSqlIndex`（PG `CONCURRENTLY` + `indisvalid` 自愈、MySQL `LOCK=NONE` / `lock_wait_timeout`、OB `1061` 幂等）+ `dropSqlIndexIfExists`（硬守卫仅删 `fg_*`）；
+  - [ ] 在 `packages/dal/db/repos/registry.ts` 建立开源 Collection / Table 注册表，Mongo 启动后后台异步执行只增补建（Redis 锁、key 等价检查防 Error 85、`285` 轮询、支持动态条件索引函数，绝不启动自动删索引），并补齐 Mongo & SQL 统一只读 `inspect`；
+  - [ ] 将当前 11 个文件中的 17 条 `deprecated: true` 废弃索引一次性迁出为显式一次性清理任务并从 `schema.ts` 彻底删除，后续严禁新增 `deprecated: true` 墓碑及无 `fg_` 前缀新索引，同步更新 `.agents/design/common/mongo-index-sync-strategy.md` 与 `AGENTS.md`。
+- [ ] **0.5.5 四层测试底座与 CI 漂移门禁**：
+  - [ ] `@fastgpt/dal` 补齐 `mongodb-memory-server` devDep 与惰性 Mongo Harness；升级 `@fastgpt/dal/db/testing` 提供 `createContractBackends`（按环境变量动态挂载 `Mongo / PGlite / MySQL 8 / OceanBase / PG`）、`insertRawRow` 及按 `VITEST_POOL_ID` 独立库 + `DELETE` 无锁清理；
+  - [ ] 拆分无 DB 的 L0 轻量 Vitest 配置（脱离 `test/setup.ts`），修复 `test/setup.ts` 默认事务空壳；
+  - [ ] 落地 CI 防漂移校验（SQL 重放 `0001 -> latest` 比对 `defineSqlTable` + 校验无超期未删索引；Mongo 校验新索引 `fg_` 规范与零 `deprecated: true`）并补齐 `.github/workflows/test-fastgpt.yaml`（经确认后变更）纳入 `packages/dal` 触发与 PR 级 MySQL 8 容器契约作业。
 
-### Phase 1：垂直端到端切片重构（每域同步完成 `mongo/` + `sql/` + 契约单测，同表含 `pro` 一刀切并删除旧 `schema.ts`，WIP=1 锁推进）
-- [ ] **1.0 Wave 1 轻量原型验证**：优先迁移 `llm_request_records`、`system_logs`（验证日志三态 + TTL）、`timer_locks`、`count_limits`（验证原子 Upsert/CAS/`$inc`）及零耦合叶子表，在 Mongo + PGlite + MySQL/OceanBase 三端打通闭环。
-- [ ] **1.1 应用域（`core/app`，含 `version`、`folder`、`tool`、`logs/app_chat_logs` 与 `resourceLookup` 只读 Query Repo）**：先过 ER 拆表评审，消除 `pages/api/core/app/**` 中的裸查询与 `@fastgpt/global` 中的 `parseParentIdInMongo` 耦合。
-- [ ] **1.2 认证、用户与团队域（`support/user`、`account`、`team`、`inform`、`operationLog`、`audit`）**：收口仓储（`mongo/` + `sql/` + 契约测试），为 `team_audits` 接入日志三态 `Noop` 实现，验证码/瞬态会话迁 Redis。
+### Phase 1：81 张业务表垂直端到端迁入 DAL（开源 71 表落 `packages/dal/db/repos/`，Pro 10 表落 `pro/admin/src/dal/db/repos/`，同表含 `pro` 一刀切，WIP=1 锁）
+- [ ] **1.0 Wave 1 轻量原型验证**：优先迁移 `llm_request_records`、`system_logs`（验证日志三态 + TTL/动态 `collMod`）、`timer_locks`、`count_limits`（验证原子 Upsert/CAS/`$inc`）及零耦合叶子表，在 Mongo + PGlite + MySQL/OceanBase 三端打通闭环。
+- [ ] **1.1 应用域（`core/app`，含 `version`、`folder`、`tool`、`logs/app_chat_logs` 与 `resourceLookup` 只读 Query Repo）**：先过 ER 拆表评审，消除 `pages/api/core/app/**` 中的裸查询与 `@fastgpt/global` 中的 `parseParentIdInMongo` 及物理集合名常量耦合。
+- [ ] **1.2 认证、用户与团队域（`support/user`、`account`、`team`、`inform`、`operationLog`、`audit`）**：收口仓储（`mongo/` + `sql/` + 契约测试），为 `team_audits` 接入日志三态 `Noop` 实现，验证码/瞬态会话迁 Redis，逐步回收 `@fastgpt/global` 中遗留的 `TeamCollectionName` / `OrgCollectionName` 等物理表名常量至 `@fastgpt/dal`。
 - [ ] **1.3 权限与组织架构域（`support/permission`、`memberGroup`、`org`、`sync`）**：收回 `resourcePermissionRepo` 中残留的 `bulkWrite` / `findCursor` / `deleteByFilter` 逃生口，全部转为具名语义方法，补齐 `sql/` 按位与过滤与契约测试。
 - [ ] **1.4 对话与分享域（`core/chat`、`outLink`、`publishChannel`）**：收口高频对话读写、历史记录游标分页与多态消息容器级校验（`chat_items` 索引坚持 `team_id` 前导列）。
 - [ ] **1.5 知识库与全文检索域（`core/dataset`、`collection`、`data`、`training`、`tag`）**：
   - [ ] 先完成 ER 拆表评审（`dataset_data_indexes`、`dataset_collection_tags` 等核心热路径子表）及 OceanBase 4.3+ / SeekDB `FULLTEXT ... WITH PARSER space/ik` 短词召回 PoC；
   - [ ] 收口分片训练原子抢占（`claim*` 语义化 + `FOR UPDATE SKIP LOCKED`）；
-  - [ ] 重构 `FullTextStore` 路由契约，拆分 `sql/oceanbase.ts`（P0）与 `sql/postgres.ts`（P1）子策略，解除非 Milvus 场景对 Mongo 的硬编码绑定；
+  - [ ] 重构 `FullTextStore` 路由契约，分词保留在 `service` 层或以 callback 注入 DAL，拆分 `sql/oceanbase.ts`（P0）与 `sql/postgres.ts`（P1）子策略，解除非 Milvus 场景对 Mongo 的硬编码绑定；
   - [ ] `dataset_image`（GridFS）标记为 Mongo 历史只读兼容，SQL 模式走空降级实现。
 - [ ] **1.6 计费、钱包与用量域（`support/wallet`、`usage`、`sub`、`discountCoupon`）**：收口最早过期套餐原子扣减与账单聚合，杜绝业务层试探 `insert + catch` 模式。
-- [ ] **1.7 AI 模型、插件、评测与系统基础设施（`core/ai`、`plugin`、`evaluation`、`common/s3`、`system`）**：收口剩余开源表，清理 `convertObjectIds` 全局浅层中间件。
-- [ ] **1.8 商业版专属域（`pro/admin` 13 张表；不含范围外的 `projects/marketplace`）**：完成商业版仓储双族收口并彻底删除全部旧版 `schema.ts`。
+- [ ] **1.7 AI 模型、插件、评测与系统基础设施（`core/ai`、`plugin`、`evaluation`、`common/s3`、`system`）**：收口剩余开源表，彻底删除 `packages/service/common/mongo/` 整目录与全局 `convertObjectIds` 浅层中间件。
+- [ ] **1.8 商业版专属域（`pro/admin` 10 张专属表；不含范围外的 `projects/marketplace`）**：完成商业版仓储双族收口至 `pro/admin/src/dal/db/repos/` 并彻底删除全部旧版 `schema.ts`。
 
-### Phase 2：SQL 生产运行时、版本化启动迁移器与 TTL 后台清理
-- [ ] **2.1 应用启动方言装配**：在 `instrumentation-node.ts`（主应用与 `pro/admin`）根据 `DB_DIALECT` 优先接入 `oceanbase` / `mysql`（P0）与 `postgres`（P1）或 Mongo Runtime，遵循日志三态隔离策略。
-- [ ] **2.2 版本化 SQL 启动迁移器**：基于 Kysely `Migrator` 与 Redis `LeaseCache` + 迁移表主键幂等锁实现多副本串行升级，且在启动屏障中位于 `projects/app/src/migration` 之前执行（SQL 模式下自动跳过历史 Mongo 数据修复任务）。
+### Phase 2：SQL 生产运行时、启动迁移装配与 TTL 后台清理
+- [ ] **2.1 应用启动方言装配**：在 `projects/app` 与 `pro/admin` 的 `instrumentation-node.ts` 根据 `DB_DIALECT` 优先接入 `oceanbase` / `mysql`（P0）与 `postgres`（P1）或 `mongo` 运行时，遵循日志三态隔离策略。
+- [ ] **2.2 SQL 启动迁移装配与运维入口**：在 `projects/app`（`scope: 'core'`）与 `pro/admin`（`scope: 'core'` + `scope: 'pro'`）启动 Step 2 接入轻量 SQL DDL 迁移器（先于 `projects/app/src/migration` 且 SQL 模式下自动跳过历史 Mongo 数据修复任务），并提供只读 `inspect` 与手动迁移 CLI。
 - [ ] **2.3 通用 TTL 物理清理 Cron**：为带 `expire_time` 的 SQL 表实现按主键范围低峰期分批物理回收任务。
 
 ### Phase 3：异构引擎全链路集成测试与压测验收
 - [ ] **3.1 CI 容器集成矩阵**：优先挂载真实 OceanBase 4.3+ / SeekDB 与 MySQL 8+、次先挂载 PostgreSQL ≥ 14 与 MongoDB 副本集，跑通仓储集成契约、并发锁竞争（`SKIP LOCKED` / 死锁重试）、中文全文检索与多副本版本迁移。
-- [ ] **3.2 全链路集成测试与压测验收**：在 `DB_DIALECT=oceanbase`（P0）、`DB_DIALECT=mysql`（P0）、`DB_DIALECT=postgres`（P1）及 `DB_DIALECT=mongo` 环境下通过存量业务回归与并发压测验收。
+- [ ] **3.2 全链路集成测试与压测验收**：在 `DB_DIALECT=oceanbase`（P0）、`DB_DIALECT=mysql`（P0）、`DB_DIALECT=postgres`（P1）及 `DB_DIALECT=mongo` 环境下通过 1,479 存量业务回归与并发压测验收。

@@ -28,7 +28,7 @@
 | `INSERT IGNORE` / `.ignore()` | MySQL / OceanBase 会将 `NOT NULL`、截断等真实错误静默降级为 Warning | 走 `this.upsertRow(...)`（无更新场景 OB 侧走无副作用 `ON DUPLICATE KEY UPDATE _id = _id`，且限定单唯一键冲突路径） |
 | 裸 `ORDER BY nullable_col DESC` 或 `NULLS FIRST/LAST` | PG `DESC` 默认 `NULLS FIRST` 而 OB/MySQL 默认 `NULLS LAST`，且 MySQL 8 不支持 `NULLS LAST` 语法 | 显式加 `CASE WHEN col IS NULL THEN 1 ELSE 0 END asc`（或 `orderByNullable` / 哨兵值）统一排序行为 |
 | 给 `text` / `json` 列声明 `defaultValue` 或建 B-Tree 索引 | MySQL / OceanBase 禁止 `LONGTEXT`/`JSON` 设常量默认值（`ERROR 1101`）与无前缀长度普通索引 | 去掉 `defaultValue` 在应用层兜底；需要索引检索的字段改为定长 `varchar` |
-| 复合索引字节宽超过 `3072` 字节 | InnoDB / OceanBase `utf8mb4` 每字符占 4 字节，总长超 3072B 直接建表失败 | 压缩复合索引中 `varchar` 列宽或改为定长哈希列 |
+| 复合索引字节宽超过 `3072` 字节 / 索引名超 `63` 字符或无 `fg_` 前缀 | InnoDB / OceanBase `utf8mb4` 每字符占 4 字节，总长超 3072B 直接建表失败；PG 索引名超 63B 静默截断且全库唯一 | 压缩复合索引中 `varchar` 列宽或改为定长哈希列；全部 SQL 索引与新增 Mongo 索引统一采用 `fg_<table_short>_<purpose>[_vN]`（≤63B），存量无前缀 Mongo 索引原位冻结不改名 |
 | 直接传 JS 数组写入 JSON 列 | `pg` 驱动把 JS 数组误序列化成 PG Array `{"a"}` | 统一包裹 `this.toJsonParam(value)`（显式 `JSON.stringify`），读出口用 `jsonColumnSchema(...)` |
 | `MERGE INTO` / `jsonb_path_exists` | 仅 PG 15+ 或方言特定语法 | 用 `this.upsertRow(...)`；JSON 黑盒存取 |
 | 一次性插上万行 `values(rows)` | 超出 PG `65,535` 绑定参数上限 | 统一调用 `this.insertChunked({ rows })` |
@@ -140,7 +140,7 @@ await mongoSessionRun(async (session) => {
 | **TTL 过期表（`expireTime` / `expires`）** | **TTL 读过滤测试**：插入已过期与未过期两条记录，断言常规读路径绝不返回已过期记录。 |
 | **大表 `.cursor()` 导出 / Keyset 游标分页** | **多批游标遍历测试**：覆盖多批遍历无漏行、无重行、空结果终止。 |
 | **权限位运算（`$bitsAllSet` / `$bitsAnySet`）** | **掩码边界测试**：覆盖 `0`、单 bit、复合 bit、全覆盖与部分命中。 |
-| **Phase 0.5 版本化 Migration 就位后** | **Migration 守卫测试**：验证新增/修改表结构的增量 Migration 正向升级、幂等重跑及 `information_schema` 与 `sql/table.ts` 一致。 |
+| **Phase 0.5 轻量 SQL DDL 迁移器就位后** | **SQL Migration 守卫测试**：验证新增/修改表结构的增量 SQL Migration 正向升级、幂等重跑、回滚遇未来版本 ID 向前兼容跳过、PG `CONCURRENTLY` / `indisvalid` 自愈，及 `information_schema` / `pg_index` 与 `sql/table.ts` 一致。 |
 
 ### 6.4 必做 C：存量测试与公共夹具同步脱 Mongo
 
