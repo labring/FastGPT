@@ -65,54 +65,29 @@ const extractSignedAliasFromPrefixes = (pathname: string, prefixes: Iterable<str
   return '';
 };
 
-const getDownloadRoutePathVariants = (endpointPath: string, nextBasePath: string) => {
-  return new Set<string>([
-    `${endpointPath}${nextBasePath}${S3_ACCESS_LINK_ROUTES.download}`,
-    `${endpointPath}${S3_ACCESS_LINK_ROUTES.download}`,
-    `${nextBasePath}${S3_ACCESS_LINK_ROUTES.download}`,
-    S3_ACCESS_LINK_ROUTES.download
-  ]);
-};
-
 const getConfiguredDownloadRouteRules = () => {
   const nextBasePath = normalizePathPrefix(serviceEnv.NEXT_PUBLIC_BASE_URL);
+  const defaultAppRoutePath = `${nextBasePath}${S3_ACCESS_LINK_ROUTES.download}`;
   const publicPrefix = parseUrlPrefix(serviceEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX);
-  const relativeRoutePrefixes = getDownloadRoutePathVariants('', nextBasePath);
+  const relativeRoutePrefixes = new Set<string>([defaultAppRoutePath]);
   const originRoutePrefixes = new Map<string, Set<string>>();
 
-  const addOriginRoutes = (origin: string, routes: Iterable<string>) => {
-    const existing = originRoutePrefixes.get(origin) ?? new Set<string>();
-    for (const route of routes) {
-      existing.add(route);
-    }
-    originRoutePrefixes.set(origin, existing);
-  };
-
   for (const domain of [getStorageFileDomain(), getSystemInstanceConfig().site.publicUrl]) {
-    const domainPrefix = parseUrlPrefix(domain);
+    if (!domain?.trim()) continue;
+    // 与 buildS3AccessLinkDownloadUrl 共用同一完整端点规则，避免把同网关下其他服务的相邻路径误判为本实例。
     const issuedRoutePrefix = parseUrlPrefix(
       `${buildS3AccessLinkEndpointUrl(domain)}${S3_ACCESS_LINK_ROUTES.download}`
     );
-    if (!domainPrefix) continue;
+    if (!issuedRoutePrefix) continue;
 
-    // 签发端保留 fileDomain / publicUrl 中的路径段，识别端复用同一端点规则避免带路径网关地址失配。
-    const routeVariants = getDownloadRoutePathVariants(domainPrefix.pathname, nextBasePath);
-    if (issuedRoutePrefix) {
-      routeVariants.add(issuedRoutePrefix.pathname);
-    }
-
-    addOriginRoutes(domainPrefix.origin, routeVariants);
-    for (const route of routeVariants) {
-      relativeRoutePrefixes.add(route);
-    }
-  }
-
-  if (publicPrefix) {
-    addOriginRoutes(publicPrefix.origin, getDownloadRoutePathVariants('', nextBasePath));
+    const existing = originRoutePrefixes.get(issuedRoutePrefix.origin) ?? new Set<string>();
+    existing.add(issuedRoutePrefix.pathname);
+    originRoutePrefixes.set(issuedRoutePrefix.origin, existing);
+    relativeRoutePrefixes.add(issuedRoutePrefix.pathname);
   }
 
   return {
-    nextBasePath,
+    defaultAppRoutePath,
     publicPrefix,
     relativeRoutePrefixes,
     originRoutePrefixes
@@ -122,15 +97,15 @@ const getConfiguredDownloadRouteRules = () => {
 /**
  * 仅从当前实例的下载路由或已配置的 `FILE_DOWNLOAD_PUBLIC_URL_PREFIX` 提取 signed alias。
  *
- * 与 `buildS3AccessLinkDownloadUrl` 共享含路径的端点规则（兼容带路径前缀的 `storage.fileDomain`
- * 与 `site.publicUrl`），同时不会把任意外部 URL 末段误判为本实例短链，避免外部 CDN 上恰巧命中
- * `v2-...` 形状的文件在进入外链读取前因本地验签失败而被拒绝。
+ * 与 `buildS3AccessLinkDownloadUrl` 共享含路径的完整端点规则（兼容带路径前缀的 `storage.fileDomain`
+ * 与 `site.publicUrl`），同时不会把同网关其他服务路径或外部 CDN 上恰巧命中 `v2-...` 形状的文件
+ * 误判为本实例短链，避免在进入外链读取前因本地验签失败而被拒绝。
  */
 export const resolveS3DownloadAliasFromUrl = (url: string) => {
   try {
     const isRelativeUrl = url.startsWith('/') && !url.startsWith('//');
     const parsedUrl = new URL(url, 'http://localhost:3000');
-    const { nextBasePath, publicPrefix, relativeRoutePrefixes, originRoutePrefixes } =
+    const { defaultAppRoutePath, publicPrefix, relativeRoutePrefixes, originRoutePrefixes } =
       getConfiguredDownloadRouteRules();
 
     // 1. 已配置公开短路径前缀：{FILE_DOWNLOAD_PUBLIC_URL_PREFIX}/{signedAlias}
@@ -143,16 +118,13 @@ export const resolveS3DownloadAliasFromUrl = (url: string) => {
       }
     }
 
-    // 2. 当前实例下载路由：[domainPath][NEXT_PUBLIC_BASE_URL]/api/system/file/d/{signedAlias}
+    // 2. 当前实例完整下载路由：[domainPath][NEXT_PUBLIC_BASE_URL]/api/system/file/d/{signedAlias}
     if (isRelativeUrl) {
       return extractSignedAliasFromPrefixes(parsedUrl.pathname, relativeRoutePrefixes);
     }
 
-    if (originRoutePrefixes.size === 0) {
-      return extractSignedAliasFromPrefixes(
-        parsedUrl.pathname,
-        getDownloadRoutePathVariants('', nextBasePath)
-      );
+    if (originRoutePrefixes.size === 0 && !publicPrefix) {
+      return extractSignedAliasFromPrefixes(parsedUrl.pathname, [defaultAppRoutePath]);
     }
 
     const allowedRoutes = originRoutePrefixes.get(parsedUrl.origin);

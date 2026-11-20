@@ -353,12 +353,18 @@ describe('s3 access link', () => {
       )
     ).toBe(v2Alias);
     expect(
-      resolveS3DownloadAliasFromUrl(`https://app.example.com/api/system/file/d/${v2Alias}`)
+      resolveS3DownloadAliasFromUrl(`https://app.example.com/fastgpt/api/system/file/d/${v2Alias}`)
     ).toBe(v2Alias);
     expect(resolveS3DownloadAliasFromUrl(`/fastgpt/api/system/file/d/${v2Alias}`)).toBe(v2Alias);
     expect(resolveS3DownloadAliasFromUrl(`https://short.example.com/f/${v2Alias}`)).toBe(v2Alias);
 
-    // 非本实例域名、嵌套子路径及普通外部 CDN 上形如 v2 的文件名均不识别为本实例短链
+    // 非本实例域名、缺少 NEXT_PUBLIC_BASE_URL 的同域其他服务路径、嵌套子路径及普通外部 CDN 上形如 v2 的文件名均不识别为本实例短链
+    expect(
+      resolveS3DownloadAliasFromUrl(`https://app.example.com/api/system/file/d/${v2Alias}`)
+    ).toBe('');
+    expect(
+      resolveS3DownloadAliasFromUrl(`https://short.example.com/api/system/file/d/${v2Alias}`)
+    ).toBe('');
     expect(resolveS3DownloadAliasFromUrl(externalCdnUrl)).toBe('');
     expect(resolveS3DownloadAliasFromUrl(`https://short.example.com/f/nested/${v2Alias}`)).toBe('');
     expect(resolveS3DownloadAliasFromUrl(`https://short.example.com/${v2Alias}`)).toBe('');
@@ -388,7 +394,12 @@ describe('s3 access link', () => {
     expect(
       gatewayUrlMod.resolveS3DownloadAliasFromUrl(`/gateway/api/system/file/d/${v2Alias}`)
     ).toBe(v2Alias);
-    // 同域名非下载路由与其他域名同路径均不误判
+    // 同域名根路径、非下载路由与其他域名同路径均不误判
+    expect(
+      gatewayUrlMod.resolveS3DownloadAliasFromUrl(
+        `https://files.example.com/api/system/file/d/${v2Alias}`
+      )
+    ).toBe('');
     expect(
       gatewayUrlMod.resolveS3DownloadAliasFromUrl(
         `https://files.example.com/gateway/reports/${v2Alias}`
@@ -400,9 +411,9 @@ describe('s3 access link', () => {
       )
     ).toBe('');
 
-    // 2. storage.fileDomain 带首尾空白与路径 + 非空 NEXT_PUBLIC_BASE_URL
+    // 2. storage.fileDomain 带首尾空白与路径 + 非空 NEXT_PUBLIC_BASE_URL，不把同网关相邻服务路径误判为本实例
     await loadAccessLinkModules({
-      fileDomain: '  https://files.example.com/gateway/  ',
+      fileDomain: '  https://files.example.com/docs/  ',
       publicUrl: '',
       fileDownloadPublicUrlPrefix: '',
       nextPublicBaseUrl: '/fastgpt'
@@ -410,9 +421,24 @@ describe('s3 access link', () => {
     const combinedUrlMod = await import('@fastgpt/service/common/s3/accessLink/url');
     const combinedIssued = combinedUrlMod.buildS3AccessLinkDownloadUrl(v2Alias);
     expect(combinedIssued).toBe(
-      `https://files.example.com/gateway/fastgpt/api/system/file/d/${v2Alias}`
+      `https://files.example.com/docs/fastgpt/api/system/file/d/${v2Alias}`
     );
     expect(combinedUrlMod.resolveS3DownloadAliasFromUrl(combinedIssued)).toBe(v2Alias);
+    expect(
+      combinedUrlMod.resolveS3DownloadAliasFromUrl(
+        `https://files.example.com/docs/api/system/file/d/${v2Alias}`
+      )
+    ).toBe('');
+    expect(
+      combinedUrlMod.resolveS3DownloadAliasFromUrl(
+        `https://files.example.com/fastgpt/api/system/file/d/${v2Alias}`
+      )
+    ).toBe('');
+    expect(
+      combinedUrlMod.resolveS3DownloadAliasFromUrl(
+        `https://files.example.com/api/system/file/d/${v2Alias}`
+      )
+    ).toBe('');
 
     // 3. 仅配置带路径的 site.publicUrl（含大写协议与尾斜杠）
     await loadAccessLinkModules({
