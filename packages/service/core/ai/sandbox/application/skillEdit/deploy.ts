@@ -119,7 +119,9 @@ export async function saveDeploySkillFromSandbox({
         tmbId,
         versionName: resolvedVersionName,
         storageKey: storageInfo.key,
-        runtimeSkills
+        runtimeSkills,
+        // 新发布链路显式写入契约标记，运行态据此按 runtimeSkills 严格过滤。
+        skillEntryContract: 'explicit-v1'
       },
       session
     );

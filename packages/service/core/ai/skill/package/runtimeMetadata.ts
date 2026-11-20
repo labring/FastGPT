@@ -1,6 +1,11 @@
 import JSZip from 'jszip';
 import type { RuntimeSkillMetadataType } from '@fastgpt/global/core/ai/skill/type';
 import { parseSkillMarkdown } from '../utils';
+import {
+  findSkillMdEntries,
+  normalizeSkillScanEntryPath,
+  selectSkillEntryPaths
+} from './skillEntryScan';
 import { validateZipSafety } from './zipBuilder';
 
 export type ExtractRuntimeSkillsFromPackageOptions = {
@@ -10,9 +15,15 @@ export type ExtractRuntimeSkillsFromPackageOptions = {
 /**
  * 从 Skill 包中解析运行态子 Skill 元数据。
  *
- * 标准 workspace 读取 `skills/<skillDir>/SKILL.md`；历史单 skill 包允许从根目录或
- * 一级目录 `SKILL.md` 兜底解析，并把 path 规范化为运行态可识别的
- * `skills/<name>/SKILL.md`。初始空白 workspace 可通过 `allowEmpty` 跳过空包校验。
+ * 入口优先级（避免把示例/资源模板误当成可执行入口）：
+ * 1. 若包内存在**标准工作区入口** `skills/<name>/SKILL.md`（大小写不敏感），只解析这些
+ *    入口，更深层的 `SKILL.md`（如 `skills/<name>/examples/template/SKILL.md`）一律忽略，
+ *    视为示例或资源文件；
+ * 2. 否则（根级 / 一级目录 / 更深层等非标准布局），回退到递归扫描，保持任意深度可发布。
+ *
+ * 扫描规则与发布校验、运行态 `find` 命令一致：递归查找（仅文件、不把反斜杠当分隔符）、
+ * 大小写不敏感、跳过 `node_modules/.venv/venv`。`path` 保留包内真实相对路径。
+ * 初始空白 workspace 可通过 `allowEmpty` 跳过空包校验。
  */
 export async function extractRuntimeSkillsFromPackage(
   zipBuffer: Buffer,
@@ -24,24 +35,29 @@ export async function extractRuntimeSkillsFromPackage(
     throw new Error(safety.error || 'Invalid skill package');
   }
 
-  const allSkillMdEntries = Object.entries(zip.files)
-    .filter(([, file]) => !file.dir)
-    .map(([path, file]) => ({
-      path: normalizeRuntimeSkillPath(path),
-      file
-    }))
-    .sort((a, b) => a.path.localeCompare(b.path));
-  const workspaceEntries = allSkillMdEntries.filter((entry) =>
-    isWorkspaceRuntimeSkillMdPath(entry.path)
+  const fileByNormalizedPath = new Map<string, JSZip.JSZipObject>();
+  for (const [path, file] of Object.entries(zip.files)) {
+    if (file.dir) continue;
+    const normalizedPath = normalizeSkillScanEntryPath(path);
+    if (!fileByNormalizedPath.has(normalizedPath)) {
+      fileByNormalizedPath.set(normalizedPath, file);
+    }
+  }
+
+  const allSkillMdPaths = findSkillMdEntries(
+    Object.entries(zip.files).map(([path, file]) => ({ path, isDir: file.dir }))
   );
-  const skillMdEntries =
-    workspaceEntries.length > 0
-      ? workspaceEntries
-      : allSkillMdEntries.filter((entry) => isLegacySkillMdPath(entry.path));
+  // 标准工作区入口存在时只解析标准入口，深层示例/资源里的 SKILL.md 不参与发布元数据。
+  const skillMdPaths = selectSkillEntryPaths(allSkillMdPaths);
+
+  const skillMdEntries = skillMdPaths.map((path) => ({
+    path,
+    file: fileByNormalizedPath.get(path)!
+  }));
 
   if (skillMdEntries.length === 0) {
     if (options.allowEmpty) return [];
-    throw new Error('Skill package must contain at least one skills/<name>/SKILL.md');
+    throw new Error('Skill package must contain at least one SKILL.md');
   }
 
   const nameSet = new Set<string>();
@@ -68,25 +84,9 @@ export async function extractRuntimeSkillsFromPackage(
       name,
       description:
         typeof frontmatter.description === 'string' ? frontmatter.description.trim() : '',
-      path: getRuntimeSkillMetadataPath(entry.path, name)
+      path: entry.path
     });
   }
 
   return runtimeSkills;
-}
-
-function normalizeRuntimeSkillPath(path: string): string {
-  return path.replace(/\\/g, '/').replace(/^\.\/+/, '');
-}
-
-function isWorkspaceRuntimeSkillMdPath(path: string): boolean {
-  return /^skills\/[^/]+\/SKILL\.md$/i.test(path);
-}
-
-function isLegacySkillMdPath(path: string): boolean {
-  return /^SKILL\.md$/i.test(path) || /^[^/]+\/SKILL\.md$/i.test(path);
-}
-
-function getRuntimeSkillMetadataPath(path: string, name: string): string {
-  return isWorkspaceRuntimeSkillMdPath(path) ? path : `skills/${name}/SKILL.md`;
 }

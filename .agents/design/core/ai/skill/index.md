@@ -20,20 +20,42 @@
 
 ## 工作区约束
 
-用户 Skill 产物必须位于：
+用户 Skill 产物推荐位于：
 
 ```text
 <workspace>/skills/<skill-name>/SKILL.md
 ```
 
-禁止把用户 Skill 写到 workspace 根目录或系统内置 Skill 目录。Agent reminder 会明确提供当前工作目录和写入边界。
+这是编辑器和 Agent 的默认约定；发布校验与运行态扫描并不强制该布局，只要求包内至少有一个 `SKILL.md`。
+禁止把用户 Skill 写到系统内置 Skill 目录。Agent reminder 会明确提供当前工作目录和写入边界。
 
 发布/保存版本前执行最小结构校验，至少要求：
 
-- workspace 中存在 `skills` 目录。
-- 至少存在一个合法的 `skills/<name>/SKILL.md`。
+- 包内任意位置存在至少一个 `SKILL.md`（大小写不敏感、任意深度，仅文件、`node_modules`、`.venv`、`venv` 下的条目跳过）。
+- 若存在标准工作区入口 `skills/<name>/SKILL.md`，版本元数据只解析这些入口；更深层的 `SKILL.md`（如示例模板）视为资源，不参与发布。
+- 打包时默认与自定义忽略规则可能排除 `dist/` 等目录；打包后必须核对**入口选择规则选中的入口**全部保留在实际 ZIP 中，否则拒绝发布。标准包里被排除的深层示例属于资源，不作为丢失入口。
+- 打包前的入口扫描必须成功：发布模式下 `find` 非零退出会直接报错拒绝保存，不会把「空入口清单」当成没有入口继续发布。
+- 打包后的条目清单来自 `unzip -Z1` 展示文本，文件名中的换行/回车会显示成 `^J`；比较前把扫描到的真实路径归一化成同一表示，避免含换行的合法文件被误判为丢失。
 - `SKILL.md` frontmatter 满足平台解析要求。
-- 版本包不能通过绝对路径或 `..` 逃逸工作区。
+- 版本包不能通过绝对路径或 `..` 逃逸工作区，且解压总大小受限。
+
+「标准入口判断」与「入口选择（标准优先）」只有一份实现：`packages/service/core/ai/skill/package/skillEntryScan.ts`
+（`isStandardWorkspaceSkillEntryPath` / `selectSkillEntryPaths`）。版本元数据解析、打包保留检查和运行态扫描都直接引用该模块，
+不再各自维护同名谓词。
+
+发布校验与运行态扫描使用同一套规则：运行时把版本包整包解压到 `projects/<versionId>/` 后，用
+`find ... -type f -iname "SKILL.md"` 递归扫描（同样跳过 `node_modules/.venv/venv`），每个命中的
+`SKILL.md` 目录即一个可执行 Skill。路径只按 `/` 解释（Unix `unzip` 保留字面反斜杠），目录条目不算入口。
+运行态按**已发布版本的入口契约**工作：`injectAgentSkillFilesToSandbox` 把版本的 `runtimeSkills[].path` 作为
+`skillMdPaths` 带入 `DeployedSkillVersion`，扫描已部署版本目录时：
+
+- `skillMdPaths` 非空 → 只提供这些声明入口，与发布元数据保持一致；
+- `skillMdPaths` 为空（旧导入版本或未重发版本）→ 不做入口过滤，保留基点行为（递归扫描，有效根级入口照常提供）。
+
+非版本目录（编辑调试工作区、内置技能目录）继续使用「标准入口优先」：扫描根存在 `skills/<name>/SKILL.md`
+时只认这些标准入口，否则递归接受任意深度的 `SKILL.md`；每个扫描根独立判断，互不影响。
+
+导入 Skill 包时**原样入库**：平台不做布局校验、不重排目录、不改写文件，只保留流式大小限制和 ZIP 路径安全校验。
 
 ## 内置辅助生成 Skill
 

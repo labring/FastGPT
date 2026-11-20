@@ -35,6 +35,15 @@ export const RuntimeSkillMetadataSchema = z.object({
 });
 export type RuntimeSkillMetadataType = z.infer<typeof RuntimeSkillMetadataSchema>;
 
+/**
+ * 版本入口清单契约标记。
+ *
+ * 只有显式采用新入口契约写出的版本才带此字段；旧版本/导入包缺失该字段，
+ * 运行态必须回退到递归扫描，不能把已存的 `runtimeSkills` 当成完整入口清单。
+ */
+export const SkillEntryContractSchema = z.enum(['explicit-v1']);
+export type SkillEntryContractType = z.infer<typeof SkillEntryContractSchema>;
+
 export const AgentSkillSchema = z.object({
   _id: z.string(),
   parentId: z.string().nullable().optional(),
@@ -107,6 +116,8 @@ export const AgentSkillsVersionSchema = z.object({
   versionName: z.string().optional(),
   storageKey: z.string(),
   runtimeSkills: z.array(RuntimeSkillMetadataSchema),
+  // 仅新发布链路写入；缺失表示旧版本/导入版本，运行态走递归扫描兼容路径。
+  skillEntryContract: SkillEntryContractSchema.optional(),
   importSource: AgentSkillsVersionImportSourceSchema.optional(),
   createdAt: z.coerce.date()
 });

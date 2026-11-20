@@ -163,7 +163,7 @@ ${largeMarkdown}`;
       ]);
     });
 
-    it('should normalize legacy single skill package path', async () => {
+    it('should keep real relative path for legacy single skill package', async () => {
       const zip = new JSZip();
       zip.file('legacy-skill/SKILL.MD', '---\nname: legacy-skill\n---\n');
 
@@ -174,9 +174,71 @@ ${largeMarkdown}`;
         {
           name: 'legacy-skill',
           description: '',
-          path: 'skills/legacy-skill/SKILL.md'
+          path: 'legacy-skill/SKILL.MD'
         }
       ]);
+    });
+
+    it('should extract root-level SKILL.md', async () => {
+      const zip = new JSZip();
+      zip.file('SKILL.md', '---\nname: root-skill\ndescription: Root skill\n---\n');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await extractRuntimeSkillsFromPackage(buffer);
+
+      expect(result).toEqual([
+        {
+          name: 'root-skill',
+          description: 'Root skill',
+          path: 'SKILL.md'
+        }
+      ]);
+    });
+
+    it('should extract deeply nested SKILL.md with real relative path', async () => {
+      const zip = new JSZip();
+      zip.file('a/b/SKILL.md', '---\nname: deep-skill\n---\n');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await extractRuntimeSkillsFromPackage(buffer);
+
+      expect(result).toEqual([
+        {
+          name: 'deep-skill',
+          description: '',
+          path: 'a/b/SKILL.md'
+        }
+      ]);
+    });
+
+    it('should skip SKILL.md under pruned directories', async () => {
+      const zip = new JSZip();
+      zip.file('node_modules/a/SKILL.md', '---\nname: dependency-skill\n---\n');
+      zip.file('.venv/b/SKILL.md', '---\nname: hidden-venv-skill\n---\n');
+      zip.file('venv/c/SKILL.md', '---\nname: hidden-venv-skill-2\n---\n');
+      zip.file('kept/SKILL.md', '---\nname: kept-skill\n---\n');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await extractRuntimeSkillsFromPackage(buffer);
+
+      expect(result).toEqual([
+        {
+          name: 'kept-skill',
+          description: '',
+          path: 'kept/SKILL.md'
+        }
+      ]);
+    });
+
+    it('should reject package whose only SKILL.md lives under a pruned directory', async () => {
+      const zip = new JSZip();
+      zip.file('node_modules/a/SKILL.md', '---\nname: hidden\n---\n');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+
+      await expect(extractRuntimeSkillsFromPackage(buffer)).rejects.toThrow(
+        'Skill package must contain at least one SKILL.md'
+      );
     });
 
     it('should reject duplicate runtime skill names', async () => {
@@ -219,6 +281,100 @@ ${largeMarkdown}`;
       await expect(extractRuntimeSkillsFromPackage(buffer, { allowEmpty: true })).resolves.toEqual(
         []
       );
+    });
+
+    it('should only parse standard workspace entries when deep example templates exist', async () => {
+      const zip = new JSZip();
+      zip.file('skills/writer/SKILL.md', '---\nname: writer\ndescription: Writer\n---\n');
+      // 示例模板没有 frontmatter，标准布局下应视为资源而不是可执行入口。
+      zip.file('skills/writer/examples/template/SKILL.md', '# Example template\n');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await extractRuntimeSkillsFromPackage(buffer);
+
+      expect(result).toEqual([
+        {
+          name: 'writer',
+          description: 'Writer',
+          path: 'skills/writer/SKILL.md'
+        }
+      ]);
+    });
+
+    it('should ignore deep example templates with duplicate frontmatter names in standard workspace', async () => {
+      const zip = new JSZip();
+      zip.file('skills/writer/SKILL.md', '---\nname: writer\n---\n');
+      zip.file('skills/writer/examples/template/SKILL.md', '---\nname: writer\n---\n');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await extractRuntimeSkillsFromPackage(buffer);
+
+      expect(result).toEqual([
+        {
+          name: 'writer',
+          description: '',
+          path: 'skills/writer/SKILL.md'
+        }
+      ]);
+    });
+
+    it('should recursively scan non-standard layouts', async () => {
+      const zip = new JSZip();
+      zip.file('SKILL.md', '---\nname: root-skill\n---\n');
+      zip.file('foo/SKILL.md', '---\nname: flat-skill\n---\n');
+      zip.file('a/b/SKILL.md', '---\nname: deep-skill\n---\n');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await extractRuntimeSkillsFromPackage(buffer);
+
+      expect(result.map((item) => item.path).sort()).toEqual(
+        ['SKILL.md', 'a/b/SKILL.md', 'foo/SKILL.md'].sort()
+      );
+      expect(result.map((item) => item.name)).toEqual(
+        expect.arrayContaining(['root-skill', 'flat-skill', 'deep-skill'])
+      );
+    });
+
+    it('should not treat literal backslash filenames as SKILL.md entries', async () => {
+      const zip = new JSZip();
+      zip.file('notes\\SKILL.md', '---\nname: backslash-name\n---\n');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+
+      await expect(extractRuntimeSkillsFromPackage(buffer)).rejects.toThrow(
+        'Skill package must contain at least one SKILL.md'
+      );
+      await expect(validateDeployableSkillWorkspacePackage(buffer)).resolves.toMatchObject({
+        valid: false
+      });
+    });
+
+    it('should not treat a directory named SKILL.md as an entry', async () => {
+      const zip = new JSZip();
+      zip.folder('skills/example/SKILL.md');
+      zip.file('skills/writer/SKILL.md', '---\nname: writer\n---\n');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await extractRuntimeSkillsFromPackage(buffer);
+
+      expect(result).toEqual([
+        {
+          name: 'writer',
+          description: '',
+          path: 'skills/writer/SKILL.md'
+        }
+      ]);
+    });
+
+    it('should reject a package whose only SKILL.md is a directory', async () => {
+      const zip = new JSZip();
+      zip.folder('skills/template/SKILL.md');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+
+      await expect(validateDeployableSkillWorkspacePackage(buffer)).resolves.toMatchObject({
+        valid: false
+      });
     });
   });
 
@@ -292,10 +448,10 @@ ${largeMarkdown}`;
       const result = await validateDeployableSkillWorkspacePackage(buffer);
 
       expect(result.valid).toBe(false);
-      expect(result.error).toContain('at least one first-level skill folder');
+      expect(result.error).toContain('at least one SKILL.md');
     });
 
-    it('should accept a workspace with at least one first-level skill folder containing SKILL.md', async () => {
+    it('should accept a workspace with at least one skill folder containing SKILL.md', async () => {
       const zip = new JSZip();
       zip.file('.gitignore', 'node_modules/\n');
       zip.file(
@@ -308,6 +464,59 @@ ${largeMarkdown}`;
       const result = await validateDeployableSkillWorkspacePackage(buffer);
 
       expect(result.valid).toBe(true);
+    });
+
+    it('should accept SKILL.md at package root', async () => {
+      const zip = new JSZip();
+      zip.file('SKILL.md', '---\nname: root-skill\n---\n');
+      zip.file('README.md', '# Root skill');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await validateDeployableSkillWorkspacePackage(buffer);
+
+      expect(result.valid).toBe(true);
+    });
+
+    it('should accept SKILL.md in a non-skills first-level folder', async () => {
+      const zip = new JSZip();
+      zip.file('foo/SKILL.md', '---\nname: foo\n---\n');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await validateDeployableSkillWorkspacePackage(buffer);
+
+      expect(result.valid).toBe(true);
+    });
+
+    it('should accept deeply nested SKILL.md', async () => {
+      const zip = new JSZip();
+      zip.file('a/b/c/SKILL.md', '---\nname: deep\n---\n');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await validateDeployableSkillWorkspacePackage(buffer);
+
+      expect(result.valid).toBe(true);
+    });
+
+    it('should reject when no SKILL.md exists even if files are present', async () => {
+      const zip = new JSZip();
+      zip.file('skills/a/notes.md', '# Notes');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await validateDeployableSkillWorkspacePackage(buffer);
+
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('at least one SKILL.md');
+    });
+
+    it('should reject when the only SKILL.md lives under a pruned directory', async () => {
+      const zip = new JSZip();
+      zip.file('node_modules/x/SKILL.md', '---\nname: hidden\n---\n');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await validateDeployableSkillWorkspacePackage(buffer);
+
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('at least one SKILL.md');
     });
 
     it('should accept workspace entries prefixed by ./ from sandbox zip command', async () => {
@@ -323,18 +532,17 @@ ${largeMarkdown}`;
       expect(result.valid).toBe(true);
     });
 
-    it('should reject when any first-level skill folder misses SKILL.md', async () => {
+    it('should accept folders without SKILL.md as long as one SKILL.md exists', async () => {
       const zip = new JSZip();
       zip.folder('skills/valid-skill');
       zip.file('skills/valid-skill/SKILL.md', '---\nname: valid-skill\n---\n');
-      zip.folder('skills/missing-entry');
-      zip.file('skills/missing-entry/README.md', '# Missing entry');
+      zip.folder('skills/notes-only');
+      zip.file('skills/notes-only/README.md', '# No skill entry');
 
       const buffer = await zip.generateAsync({ type: 'nodebuffer' });
       const result = await validateDeployableSkillWorkspacePackage(buffer);
 
-      expect(result.valid).toBe(false);
-      expect(result.error).toContain('missing-entry');
+      expect(result.valid).toBe(true);
     });
 
     it('should accept case-insensitive SKILL.md for deployable skill folders', async () => {
@@ -350,7 +558,7 @@ ${largeMarkdown}`;
     it('should extract runtime skills from case-insensitive SKILL.md entries', async () => {
       const zip = new JSZip();
       zip.file('skills/lowercase-entry/skill.md', '---\nname: lowercase-entry\n---\n');
-      zip.file('UPPERCASE/SKILL.MD', '---\nname: uppercase-entry\n---\n');
+      zip.file('SKILLS/uppercase-entry/SKILL.MD', '---\nname: uppercase-entry\n---\n');
 
       const buffer = await zip.generateAsync({ type: 'nodebuffer' });
       const result = await extractRuntimeSkillsFromPackage(buffer);
@@ -360,6 +568,11 @@ ${largeMarkdown}`;
           name: 'lowercase-entry',
           description: '',
           path: 'skills/lowercase-entry/skill.md'
+        },
+        {
+          name: 'uppercase-entry',
+          description: '',
+          path: 'SKILLS/uppercase-entry/SKILL.MD'
         }
       ]);
     });

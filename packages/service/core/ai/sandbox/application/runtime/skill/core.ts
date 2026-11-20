@@ -7,6 +7,12 @@ import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { MongoAgentSkillsVersion } from '../../../../skill/version/schema';
 import { downloadSkillPackageStream } from '../../../../skill/package';
+import {
+  filterSkillScanPathsByDeclaredEntries,
+  RUNTIME_SKILL_SCAN_PRUNE_DIRS,
+  selectSkillEntryPaths,
+  toRelativeScanPath
+} from '../../../../skill/package/skillEntryScan';
 import { parseSkillMarkdown } from '../../../../skill/utils';
 import { getLogger, LogCategories } from '../../../../../../common/logger';
 import type { DeployedSkillInfo, DeployedSkillVersion } from './types';
@@ -24,17 +30,17 @@ import {
 
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 const parseCommandOutputNulls = (stdout: string) => stdout.split('\0').filter(Boolean);
-const SKILL_INFO_SCAN_PRUNE_DIRS = ['node_modules', '.venv', 'venv'];
 
+// 扫描规则与发布校验同源：prune 目录列表来自 skill/package，避免两端规则漂移。
 const getRuntimeSkillsRootPath = (workDirectory: string): string =>
   joinSandboxPath(workDirectory, 'projects');
 
 const buildSkillInfoFindCommand = (dir: string) => {
-  const pruneClause = SKILL_INFO_SCAN_PRUNE_DIRS.map((name) => `-name ${shellQuote(name)}`).join(
+  const pruneClause = RUNTIME_SKILL_SCAN_PRUNE_DIRS.map((name) => `-name ${shellQuote(name)}`).join(
     ' -o '
   );
 
-  return `find ${shellQuote(dir)} \\( ${pruneClause} \\) -prune -o -iname "SKILL.md" -print0 2>/dev/null`;
+  return `find ${shellQuote(dir)} \\( ${pruneClause} \\) -prune -o -type f -iname "SKILL.md" -print0 2>/dev/null`;
 };
 
 type GetAgentSkillInfosParams = {
@@ -42,6 +48,21 @@ type GetAgentSkillInfosParams = {
   skillDirectories?: string[];
   deployedSkillVersions?: DeployedSkillVersion[];
   sandbox: ISandbox;
+};
+
+/** find 命中的一条 SKILL.md 及其扫描上下文。 */
+type ScannedSkillPath = {
+  path: string;
+  scanDirectory: string;
+  relativePath: string;
+  deployedVersion?: DeployedSkillVersion;
+  /** 非版本目录在解析后应用「标准有效入口优先」；版本目录已按契约处理。 */
+  applyStandardEntryFallback: boolean;
+};
+
+type ParsedSkillInfo = {
+  info: DeployedSkillInfo;
+  scannedPath?: ScannedSkillPath;
 };
 
 /**
@@ -61,25 +82,57 @@ export const getAgentSkillInfos = async ({
     deployedSkillVersions?.map((version) => [normalizeSandboxDir(version.targetDir), version]) || []
   );
 
-  // 并发 find 所有目录，过滤出错目录，避免级联报错
+  // 并发 find 所有目录，过滤出错目录，避免级联报错。
+  // 记录每条命中路径所属的扫描根，非版本目录需要在解析 SKILL.md 后再应用入口选择规则。
   const findResults = await Promise.all(
-    scanDirectories.map(async (dir) => {
+    scanDirectories.map(async (dir): Promise<ScannedSkillPath[]> => {
       const { exitCode, stdout, stderr } = await sandbox.execute(buildSkillInfoFindCommand(dir));
       if (exitCode !== 0) {
         logger.warn('[Agent Skills] Find command failed for directory', { dir, stderr });
         return [];
       }
-      return parseCommandOutputNulls(stdout);
+      const foundPaths = parseCommandOutputNulls(stdout);
+      const deployedVersion = findDeployedVersionByPath(dir, deployedVersionByTargetDir);
+
+      // 只有显式带 `explicit-v1` 契约且声明非空的版本，才把 runtimeSkills 当作完整入口清单；
+      // 旧版本（字段缺失）保持基点行为：递归扫描版本目录。
+      if (
+        deployedVersion?.skillEntryContract === 'explicit-v1' &&
+        deployedVersion.skillMdPaths?.length
+      ) {
+        return filterSkillScanPathsByDeclaredEntries({
+          scanDirectory: dir,
+          paths: foundPaths,
+          declaredPaths: deployedVersion.skillMdPaths
+        }).map((path) => ({
+          path,
+          scanDirectory: dir,
+          relativePath: toRelativeScanPath(path, dir),
+          deployedVersion,
+          applyStandardEntryFallback: false
+        }));
+      }
+
+      // 旧版本目录全量递归扫描；编辑调试工作区、内置技能目录同样先保留全部候选，
+      // 待解析出有效 frontmatter 后，再按「标准有效入口优先」回退，避免标准路径草稿挤掉根级入口。
+      return foundPaths.map((path) => ({
+        path,
+        scanDirectory: dir,
+        relativePath: toRelativeScanPath(path, dir),
+        ...(deployedVersion ? { deployedVersion } : {}),
+        applyStandardEntryFallback: !deployedVersion
+      }));
     })
   );
 
-  const paths = findResults.flat();
-  if (paths.length === 0) return [];
+  const scannedPaths = findResults.flat();
+  if (scannedPaths.length === 0) return [];
 
-  const files = await sandbox.readFiles(paths);
+  const scannedPathByPath = new Map(scannedPaths.map((scanned) => [scanned.path, scanned]));
+  const files = await sandbox.readFiles(scannedPaths.map(({ path }) => path));
 
-  return files
-    .map((file) => {
+  const parsedSkills = files
+    .map((file): ParsedSkillInfo | null => {
       if (file.error) {
         logger.error('[Agent Skills] Failed to read skill.md file', {
           path: file.path,
@@ -110,21 +163,52 @@ export const getAgentSkillInfos = async ({
       const deployedVersion = findDeployedVersionByPath(directory, deployedVersionByTargetDir);
 
       return {
-        id: file.path,
-        name: String(frontmatter.name),
-        description: frontmatter.description ? String(frontmatter.description) : '',
-        directory,
-        skillMdPath: file.path,
-        ...(deployedVersion
-          ? {
-              appId: deployedVersion.skillId,
-              appName: deployedVersion.name,
-              appDescription: deployedVersion.description
-            }
-          : {})
+        info: {
+          id: file.path,
+          name: String(frontmatter.name),
+          description: frontmatter.description ? String(frontmatter.description) : '',
+          directory,
+          skillMdPath: file.path,
+          ...(deployedVersion
+            ? {
+                appId: deployedVersion.skillId,
+                appName: deployedVersion.name,
+                appDescription: deployedVersion.description
+              }
+            : {})
+        },
+        scannedPath: scannedPathByPath.get(file.path)
       };
     })
-    .filter((info): info is DeployedSkillInfo => !!info);
+    .filter((parsed): parsed is ParsedSkillInfo => !!parsed);
+
+  // 版本目录直接采用解析结果；非版本目录按扫描根分组后做「标准有效入口优先」。
+  const skillInfos: DeployedSkillInfo[] = [];
+  const fallbackGroups = new Map<string, ParsedSkillInfo[]>();
+  for (const parsed of parsedSkills) {
+    if (!parsed.scannedPath?.applyStandardEntryFallback) {
+      skillInfos.push(parsed.info);
+      continue;
+    }
+
+    const group = fallbackGroups.get(parsed.scannedPath.scanDirectory) ?? [];
+    group.push(parsed);
+    fallbackGroups.set(parsed.scannedPath.scanDirectory, group);
+  }
+
+  for (const group of fallbackGroups.values()) {
+    // 只有解析成功（frontmatter 有 name）的标准入口才算有效；草稿不触发优先规则。
+    const selectedRelativePaths = new Set(
+      selectSkillEntryPaths(group.map(({ scannedPath }) => scannedPath!.relativePath))
+    );
+    for (const parsed of group) {
+      if (selectedRelativePaths.has(parsed.scannedPath!.relativePath)) {
+        skillInfos.push(parsed.info);
+      }
+    }
+  }
+
+  return skillInfos;
 };
 
 /**
@@ -309,13 +393,16 @@ export const injectAgentSkillFilesToSandbox = async ({
     }
   }
 
-  return deployableSkills.map(({ skill, versionId, targetDir }) => ({
+  return deployableSkills.map(({ skill, version, versionId, targetDir }) => ({
     skillId: String(skill._id),
     name: skill.name,
     description: skill.description || '',
     avatar: skill.avatar,
     versionId,
-    targetDir
+    targetDir,
+    // 入口清单与契约标记；旧导入版本没有 runtimeSkills/契约，运行态回退到全量扫描。
+    skillMdPaths: version.runtimeSkills?.map((runtimeSkill) => runtimeSkill.path) ?? [],
+    ...(version.skillEntryContract ? { skillEntryContract: version.skillEntryContract } : {})
   }));
 };
 

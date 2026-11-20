@@ -10,12 +10,14 @@
  *   ├── skill-2/SKILL.md
  *   └── skill-3/SKILL.md
  *
- * 每个包含 SKILL.md 的一级目录会被视为一个独立 skill。
+ * 每个包含 SKILL.md 的目录（任意深度）会被视为一个独立 skill；`node_modules`、
+ * `.venv`、`venv` 下的 SKILL.md 会被跳过。
  */
 
 import JSZip from 'jszip';
 import { extractSkillNameFromSkillMd } from '../utils';
 import { DEFAULT_GITIGNORE_CONTENT } from './constants';
+import { findSkillMdEntries } from './skillEntryScan';
 
 export type CreateSkillPackageParams = {
   name: string;
@@ -227,7 +229,8 @@ export async function validateZipStructure(
  * 发布/保存版本时校验可部署工作区。
  *
  * 这里只校验 workspace 级最小结构，不解析 SKILL.md frontmatter。创建阶段的空白初始包
- * 不应调用该校验；用户主动发布时必须至少存在一个可执行 Skill 目录。
+ * 不应调用该校验；用户主动发布时包内任意位置至少存在一个 `SKILL.md` 即可部署。
+ * 扫描规则与运行态读取一致：递归、大小写不敏感、跳过 `node_modules/.venv/venv`。
  */
 export async function validateDeployableSkillWorkspacePackage(
   zipBuffer: Buffer,
@@ -246,52 +249,14 @@ export async function validateDeployableSkillWorkspacePackage(
       };
     }
 
-    const hasSkillsDirectory = files.some((path) => {
-      const normalized = normalizeDeployableWorkspaceEntryPath(path);
-      return normalized === 'skills/' || normalized.startsWith('skills/');
-    });
-
-    if (!hasSkillsDirectory) {
-      return {
-        valid: false,
-        files,
-        error: 'Missing required directory: skills/'
-      };
-    }
-
-    const firstLevelSkillDirs = new Set<string>();
-    const executableSkillDirs = new Set<string>();
-
-    for (const path of files) {
-      const normalized = normalizeDeployableWorkspaceEntryPath(path);
-
-      const firstLevelDirMatch = normalized.match(/^skills\/([^/]+)(?:\/|$)/);
-      if (firstLevelDirMatch?.[1] && normalized !== `skills/${firstLevelDirMatch[1]}`) {
-        firstLevelSkillDirs.add(firstLevelDirMatch[1]);
-      }
-
-      const skillMdMatch = normalized.match(/^skills\/([^/]+)\/SKILL\.md$/i);
-      if (skillMdMatch?.[1]) {
-        executableSkillDirs.add(skillMdMatch[1]);
-      }
-    }
-
-    if (firstLevelSkillDirs.size === 0) {
-      return {
-        valid: false,
-        files,
-        error: 'The skills/ directory must contain at least one first-level skill folder'
-      };
-    }
-
-    const missingSkillMdDirs = [...firstLevelSkillDirs].filter(
-      (dir) => !executableSkillDirs.has(dir)
+    const skillMdEntries = findSkillMdEntries(
+      Object.entries(zip.files).map(([path, file]) => ({ path, isDir: file.dir }))
     );
-    if (missingSkillMdDirs.length > 0) {
+    if (skillMdEntries.length === 0) {
       return {
         valid: false,
         files,
-        error: `Each first-level skill folder under skills/ must contain SKILL.md: ${missingSkillMdDirs.join(', ')}`
+        error: 'Skill package must contain at least one SKILL.md'
       };
     }
 
@@ -306,10 +271,6 @@ export async function validateDeployableSkillWorkspacePackage(
       error: `Invalid ZIP archive: ${error instanceof Error ? error.message : 'Unknown error'}`
     };
   }
-}
-
-function normalizeDeployableWorkspaceEntryPath(path: string): string {
-  return path.replace(/\\/g, '/').replace(/^\.\/+/, '');
 }
 
 function isZipRootDirectoryEntry(path: string): boolean {

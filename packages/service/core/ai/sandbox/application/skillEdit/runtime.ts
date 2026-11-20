@@ -18,6 +18,12 @@ import {
   validateDeployableSkillWorkspacePackage,
   validateZipStructure
 } from '../../../skill/package';
+import {
+  normalizeArchiveListedEntryPath,
+  normalizeSkillScanEntryPath,
+  RUNTIME_SKILL_SCAN_PRUNE_DIRS,
+  selectSkillEntryPaths
+} from '../../../skill/package/skillEntryScan';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID, getEditDebugSandboxId } from '../../../skill/edit/config';
 import {
   getSandboxProviderConfig,
@@ -374,6 +380,91 @@ export async function initSkillEditRuntimeSandbox({
 }
 
 /**
+ * 与运行态同口径的 SKILL.md 扫描命令：递归、仅文件、跳过依赖目录。
+ *
+ * 这里刻意不套用 `DEFAULT_GITIGNORE_CONTENT` 等业务排除规则，目的是拿到「打包前真实存在的
+ * 全部入口」用于打包后的保留校验。
+ */
+const buildSkillEntryFindCommand = () => {
+  const pruneClause = RUNTIME_SKILL_SCAN_PRUNE_DIRS.map((name) => `-name ${shellQuote(name)}`).join(
+    ' -o '
+  );
+  return `find . \\( ${pruneClause} \\) -prune -o -type f -iname "SKILL.md" -print0 2>/dev/null`;
+};
+
+const parseNulSeparatedPaths = (stdout: string) =>
+  stdout
+    .split('\0')
+    .map((path) => path.trim())
+    .filter(Boolean);
+
+/**
+ * 拒绝会被 sandbox `unzip` 改名的入口路径。
+ *
+ * FastGPT Linux 沙盒镜像使用 `unzip -o -q` 落盘：含换行等控制字符的文件名会被改写，
+ * 版本里记录的声明路径与实际解包结果无法一一对应，运行态严格过滤后就注册不到 Skill。
+ * 因此发布前在选中入口确定后直接拒绝，而不是保存一个运行期必然失效的版本。
+ */
+const SKILL_ENTRY_CONTROL_CHAR_PATTERN = /[\x00-\x1f\x7f]/;
+
+const assertSkillEntriesSupported = (entries: readonly string[]) => {
+  const unsupportedEntry = entries.find((entry) => SKILL_ENTRY_CONTROL_CHAR_PATTERN.test(entry));
+  if (unsupportedEntry) {
+    throw new Error(
+      `Unsupported SKILL.md path with control characters (rejected by sandbox unzip): ${normalizeSkillScanEntryPath(unsupportedEntry)}`
+    );
+  }
+};
+
+/**
+ * 校验打包排除规则没有把有效入口从版本包中剔除。
+ *
+ * 默认/自定义忽略规则包含 `dist/`、`build/` 等目录，可能让 `writer/SKILL.md` 之外的入口
+ * 在打包时静默消失。`scannedEntries` 必须已经过 `selectSkillEntryPaths` 的入口选择
+ * （与版本元数据同一规则），因此标准包里的深层示例/资源不会被当成丢失入口。
+ *
+ * ZIP 条目清单来自 `unzip -Z1` 展示文本：文件名中的换行/回车/制表符会被显示成
+ * `^J`/`^M`/`^I`，比较前把两侧归一化成同一表示，避免被误判为丢失。
+ * 路径口径与 Unix `unzip` 一致：只按 `/` 解释，不转换反斜杠。
+ */
+const assertSkillEntriesRetained = async ({
+  sandbox,
+  zipFilePath,
+  scannedEntries
+}: {
+  sandbox: ISandbox;
+  zipFilePath: string;
+  scannedEntries: string[];
+}) => {
+  const listResult = await sandbox.execute(`unzip -Z1 ${shellQuote(zipFilePath)}`);
+  if (listResult.exitCode !== 0) {
+    throw new Error(
+      `Failed to list skill package entries: ${listResult.stderr || listResult.stdout}`
+    );
+  }
+
+  const packagedEntries = new Set(
+    listResult.stdout
+      .split('\n')
+      .map((entry) => normalizeArchiveListedEntryPath(normalizeSkillScanEntryPath(entry.trim())))
+      .filter(Boolean)
+  );
+  const missingEntries = Array.from(
+    new Set(
+      scannedEntries
+        .map((entry) => normalizeArchiveListedEntryPath(normalizeSkillScanEntryPath(entry)))
+        .filter((entry) => !packagedEntries.has(entry))
+    )
+  );
+
+  if (missingEntries.length > 0) {
+    throw new Error(
+      `Skill package is missing SKILL.md entries excluded by packaging rules: ${missingEntries.join(', ')}`
+    );
+  }
+};
+
+/**
  * 将编辑态 sandbox 内的 skill 目录打包成 zip。
  *
  * 保存发布时只读取指定 workDirectory，默认会先做目录大小检查，避免把过大的编辑工作区
@@ -453,6 +544,23 @@ export async function packageSkillInSandbox(params: {
       }
     }
 
+    // 发布版本前先记录「业务排除规则生效前」的入口清单，打包后核对是否被排除规则删掉。
+    let scannedSkillEntries: string[] = [];
+    if (validationMode === 'deployableWorkspace') {
+      const scanResult = await newSandbox.execute(buildSkillEntryFindCommand(), {
+        workingDirectory: targetDir
+      });
+      if (scanResult.exitCode !== 0) {
+        // 扫描失败时不能把「空入口清单」当成没有入口继续发布，否则会静默放行缺少入口的包。
+        throw new Error(
+          `Failed to scan SKILL.md entries before packaging: ${
+            scanResult.stderr || scanResult.stdout
+          }`
+        );
+      }
+      scannedSkillEntries = parseNulSeparatedPaths(scanResult.stdout);
+    }
+
     const excludeArgs = allExcludes.map((pattern) => `-x ${shellQuote(pattern)}`).join(' ');
     const zipCommand = `zip -r -y ${shellQuote(zipFilePath)} . ${excludeArgs}`;
     const zipResult = await newSandbox.execute(zipCommand, { workingDirectory: targetDir });
@@ -462,6 +570,19 @@ export async function packageSkillInSandbox(params: {
     }
 
     try {
+      // 只核对工作区实际选中的入口（标准入口优先），与版本元数据解析使用同一规则；
+      // 被默认/自定义排除规则剔除的深层示例不属于入口，不应阻止发布。
+      const retainedEntries = selectSkillEntryPaths(scannedSkillEntries);
+      if (retainedEntries.length > 0) {
+        // 入口路径必须能在 sandbox 解包后原样存在；控制字符路径在发布前直接拒绝。
+        assertSkillEntriesSupported(retainedEntries);
+        await assertSkillEntriesRetained({
+          sandbox: newSandbox,
+          zipFilePath,
+          scannedEntries: retainedEntries
+        });
+      }
+
       const files = await newSandbox.readFiles([zipFilePath]);
       const file = files?.[0];
 

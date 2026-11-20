@@ -181,7 +181,8 @@ describe('saveDeploySkillFromSandbox', () => {
             description: 'Runtime skill',
             path: 'skills/runtime-skill/SKILL.md'
           }
-        ]
+        ],
+        skillEntryContract: 'explicit-v1'
       }),
       { id: 'mock-session' }
     );
