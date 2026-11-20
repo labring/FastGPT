@@ -154,11 +154,24 @@ export class AwsS3StorageAdapter implements IStorage {
 
     // lib-storage 不把 abortSignal 传给实际的 S3 命令；用代理客户端为每个 send 注入，
     // 这样单 PUT、分片和多段完成的在途 HTTP 请求都会随取消关闭。
+    let multipartUploadId: string | undefined;
     const uploadClient = uploadAbortController
       ? new Proxy(this.client, {
           get: (target, property) => {
             if (property === 'send') {
               return (command: any, options?: any) => {
+                // 记录 Multipart uploadId，取消发生在 Complete 阶段时用于补偿 AbortMultipartUpload。
+                if (command instanceof AWS.CreateMultipartUploadCommand) {
+                  return target
+                    .send(command, {
+                      ...options,
+                      abortSignal: uploadAbortController.signal
+                    })
+                    .then((result) => {
+                      if (result?.UploadId) multipartUploadId = result.UploadId;
+                      return result;
+                    });
+                }
                 // lib-storage 在失败/取消后会发送 AbortMultipartUploadCommand 清理分片；
                 // 该请求不能复用已取消的信号，否则 provider 的 Multipart 会话会残留。
                 if (command instanceof AWS.AbortMultipartUploadCommand) {
@@ -177,6 +190,22 @@ export class AwsS3StorageAdapter implements IStorage {
           }
         })
       : this.client;
+
+    /** Complete 阶段被取消时 lib-storage 不会走 markUploadAsAborted，需要补偿清理已上传分片。 */
+    const abortProviderMultipartUpload = async () => {
+      if (!multipartUploadId) return;
+      try {
+        await this.client.send(
+          new AWS.AbortMultipartUploadCommand({
+            Bucket: this.options.bucket,
+            Key: key,
+            UploadId: multipartUploadId
+          })
+        );
+      } catch {
+        // 清理是尽力而为；已完成/已清理或网络失败都不能覆盖原始取消原因。
+      }
+    };
 
     try {
       const upload = new Upload({
@@ -197,6 +226,7 @@ export class AwsS3StorageAdapter implements IStorage {
     } catch (error) {
       // lib-storage 的 __abortTimeout 固定抛内置 AbortError，这里统一按 SDK 契约透传调用方原因。
       if (abortSignal?.aborted) {
+        await abortProviderMultipartUpload();
         throw getAbortSignalError(abortSignal);
       }
       throw error;

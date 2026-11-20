@@ -140,13 +140,69 @@ const createMultipartStalledServer = () => {
   return { server, sockets, partReceived, partClosed, abortReceived };
 };
 
-const withTimeout = async <T>(promise: Promise<T>, message: string): Promise<T> => {
+const createMultipartCompleteStalledServer = () => {
+  const sockets = new Set<Socket>();
+  let notifyComplete: (() => void) | undefined;
+  const completeReceived = new Promise<void>((resolve) => {
+    notifyComplete = resolve;
+  });
+  let notifyAbort: (() => void) | undefined;
+  const abortReceived = new Promise<void>((resolve) => {
+    notifyAbort = resolve;
+  });
+
+  const server = http.createServer((request, response) => {
+    const url = new URL(request.url ?? '/', 'http://127.0.0.1');
+    if (request.method === 'POST' && url.searchParams.has('uploads')) {
+      request.resume();
+      response.writeHead(200, { 'Content-Type': 'application/xml' });
+      response.end(
+        '<InitiateMultipartUploadResult><Bucket>test-bucket</Bucket><Key>abort/upload.bin</Key><UploadId>upload-1</UploadId></InitiateMultipartUploadResult>'
+      );
+      return;
+    }
+    if (request.method === 'POST' && url.searchParams.get('uploadId') === 'upload-1') {
+      request.resume();
+      notifyComplete?.();
+      return;
+    }
+    if (request.method === 'DELETE') {
+      request.resume();
+      notifyAbort?.();
+      response.writeHead(204);
+      response.end();
+      return;
+    }
+    if (request.method === 'PUT' && url.searchParams.has('partNumber')) {
+      const partNumber = url.searchParams.get('partNumber')!;
+      request.resume();
+      request.on('end', () => {
+        response.writeHead(200, { ETag: `"etag-${partNumber}"` });
+        response.end();
+      });
+      return;
+    }
+    request.resume();
+  });
+  server.on('connection', (socket) => {
+    sockets.add(socket);
+    socket.once('close', () => sockets.delete(socket));
+  });
+
+  return { server, sockets, completeReceived, abortReceived };
+};
+
+const withTimeout = async <T>(
+  promise: Promise<T>,
+  message: string,
+  timeoutMs = 1000
+): Promise<T> => {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
       promise,
       new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error(message)), 1000);
+        timer = setTimeout(() => reject(new Error(message)), timeoutMs);
       })
     ]);
   } finally {
@@ -439,6 +495,55 @@ describe('provider upload abort transport integration', () => {
     expect(body.destroyed).toBe(true);
     await withTimeout(partClosed, 'AWS multipart part socket did not close after abort');
     await withTimeout(abortReceived, 'AWS did not send AbortMultipartUpload after cancel');
+    await storage.destroy();
+    await closeServer(server);
+  });
+
+  it('cleans up an AWS multipart upload aborted during Complete', async () => {
+    const { server, completeReceived, abortReceived } = createMultipartCompleteStalledServer();
+    const port = await listen(server);
+    const storage = new AwsS3StorageAdapter({
+      vendor: 'aws-s3',
+      bucket: 'test-bucket',
+      endpoint: `http://127.0.0.1:${port}`,
+      region: 'us-east-1',
+      forcePathStyle: true,
+      maxRetries: 1,
+      credentials: { accessKeyId: 'access-key', secretAccessKey: 'secret-key' }
+    });
+    const controller = new AbortController();
+    const abortReason = new Error('client aborted');
+    const body = new PassThrough({ autoDestroy: false });
+    const uploadPromise = storage.uploadObject({
+      key: 'abort/upload.bin',
+      body,
+      contentLength: 6 * 1024 * 1024,
+      abortSignal: controller.signal
+    });
+    const uploadSettled = uploadPromise.then(
+      () => undefined,
+      (error) => error
+    );
+    body.end(Buffer.alloc(6 * 1024 * 1024));
+    await withTimeout(
+      completeReceived,
+      'AWS multipart Complete did not reach the local server',
+      5000
+    );
+
+    controller.abort(abortReason);
+
+    const error = await withTimeout(
+      uploadSettled,
+      'AWS multipart upload did not settle after abort',
+      5000
+    );
+    expect(error).toBe(abortReason);
+    await withTimeout(
+      abortReceived,
+      'AWS did not send AbortMultipartUpload after Complete was cancelled',
+      5000
+    );
     await storage.destroy();
     await closeServer(server);
   });
