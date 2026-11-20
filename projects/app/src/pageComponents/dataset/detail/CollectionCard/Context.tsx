@@ -30,11 +30,7 @@ import type { CollectionListHeaderSelection } from './CollectionListHeaderMenu';
 
 const WebSiteConfigModal = dynamic(() => import('./WebsiteConfig'));
 
-export const defaultCollectionListSort = { sortBy: 'createTime', sortOrder: 'asc' } as const;
-
-/** 提取会改变结果范围的表头筛选条件。 */
-export const getCollectionHeaderFilter = (selection: CollectionListHeaderSelection | undefined) =>
-  selection?.params.trainingType ?? selection?.params.statusFilter;
+export const defaultCollectionListSort = { sortBy: 'updateTime', sortOrder: 'desc' } as const;
 
 type CollectionPageContextType = {
   openDatasetSyncConfirm: () => void;
@@ -45,7 +41,6 @@ type CollectionPageContextType = {
   getData: (e: number) => Promise<void>;
   pollCollections: () => Promise<void>;
   isInitialLoading: boolean;
-  isHeaderFilterPending: boolean;
   pageNum: number;
   pageSize: number;
   scrollContainerRef: RefObject<HTMLDivElement>;
@@ -76,7 +71,6 @@ export const CollectionPageContext = createContext<CollectionPageContextType>({
     throw new Error('Function not implemented.');
   },
   isInitialLoading: false,
-  isHeaderFilterPending: false,
   pageNum: 0,
   pageSize: 0,
   scrollContainerRef: { current: null },
@@ -110,9 +104,17 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   const [searchText, setSearchText] = useState('');
   const [tagFilters, setTagFilters] = useState<CollectionTagFilterItem[]>([]);
   const [headerSelection, setHeaderSelection] = useState<CollectionListHeaderSelection>();
-  const headerFilter = getCollectionHeaderFilter(headerSelection);
-  const [loadedHeaderFilter, setLoadedHeaderFilter] = useState<typeof headerFilter>();
-  const isHeaderFilterPending = headerFilter !== loadedHeaderFilter;
+  const [loadedHeaderSelection, setLoadedHeaderSelection] =
+    useState<CollectionListHeaderSelection>();
+  const [headerSelectionVersion, setHeaderSelectionVersion] = useState(0);
+  const selectHeader = useCallback(
+    (selection: CollectionListHeaderSelection | undefined) => {
+      if (selection === headerSelection) return;
+      setHeaderSelection(selection);
+      setHeaderSelectionVersion((version) => version + 1);
+    },
+    [headerSelection]
+  );
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const pendingListRequests = useRef(0);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -133,7 +135,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     data: collections,
     Pagination,
     total,
-    getData: requestPage,
+    getData,
     pageNum,
     pageSize
   } = usePagination(loadCollections, {
@@ -152,20 +154,21 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       parentId,
       searchText,
       tagFilters,
-      headerSelection,
+      headerSelectionVersion,
       datasetDetail.collectionPermissionEnabled
     ],
-    onChange: () => setLoadedHeaderFilter(headerFilter),
+    onChange: () => setLoadedHeaderSelection(headerSelection),
+    onError: () => {
+      // 保留上次成功的表头与页码，并避免回退覆盖尚未发出请求的新选项。
+      setHeaderSelection((current) =>
+        current === headerSelection ? loadedHeaderSelection : current
+      );
+    },
     scrollContainerRef
   });
 
-  const getData = useCallback(
-    (page: number) => requestPage(isHeaderFilterPending ? 1 : page),
-    [isHeaderFilterPending, requestPage]
-  );
-
   const pollCollections = useCallback(async () => {
-    // 筛选刷新完成前页码仍是旧值，轮询不能用旧页码覆盖正在加载的第一页。
+    // 排序刷新完成前页码仍是旧值，轮询不能用旧页码覆盖正在加载的第一页。
     if (pendingListRequests.current === 0) await getData(pageNum);
   }, [getData, pageNum]);
 
@@ -229,14 +232,13 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       tagFilters,
       setTagFilters,
       headerSelection,
-      setHeaderSelection,
+      setHeaderSelection: selectHeader,
       collections,
       Pagination,
       total,
       getData,
       pollCollections,
       isInitialLoading,
-      isHeaderFilterPending,
       pageNum,
       pageSize,
       scrollContainerRef
@@ -247,7 +249,6 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       tagFilters,
       getData,
       headerSelection,
-      isHeaderFilterPending,
       isInitialLoading,
       onOpenWebsiteModal,
       onSyncDataset,
@@ -256,6 +257,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       pageSize,
       pollCollections,
       searchText,
+      selectHeader,
       total
     ]
   );

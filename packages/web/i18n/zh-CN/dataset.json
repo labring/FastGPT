@@ -49,7 +49,6 @@
   "collection_list.create_time_desc": "创建时间倒序",
   "collection_list.name_asc": "按首字母升序",
   "collection_list.name_desc": "按首字母降序",
-  "collection_list.no_matches": "未找到符合筛选条件的文件",
   "collection_list.update_time_asc": "更新时间正序",
   "collection_list.update_time_desc": "更新时间倒序",
   "collection_metadata_custom_pdf_parse": "PDF增强解析",

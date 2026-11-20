@@ -13,8 +13,6 @@ export type GetDatasetCollectionsProps = PaginationProps<
         | 'parentId'
         | 'searchText'
         | 'tagFilters'
-        | 'trainingType'
-        | 'statusFilter'
         | 'sortBy'
         | 'sortOrder'
         | 'simple'

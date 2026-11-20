@@ -54,14 +54,8 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import type { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
-import {
-  CollectionPageContext,
-  defaultCollectionListSort,
-  getCollectionHeaderFilter
-} from './Context';
-import CollectionListHeaderMenu, {
-  type CollectionListHeaderSelection
-} from './CollectionListHeaderMenu';
+import { CollectionPageContext, defaultCollectionListSort } from './Context';
+import CollectionListHeaderMenu from './CollectionListHeaderMenu';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
@@ -130,7 +124,6 @@ const CollectionCard = () => {
     getData,
     pollCollections,
     isInitialLoading,
-    isHeaderFilterPending,
     pageNum,
     pageSize,
     scrollContainerRef,
@@ -139,6 +132,7 @@ const CollectionCard = () => {
   } = useContextSelector(CollectionPageContext, (v) => v);
   const { sortBy, sortOrder } = { ...defaultCollectionListSort, ...headerSelection?.params };
   const ariaSort = sortOrder === 'asc' ? 'ascending' : 'descending';
+  const headerMenuProps = { selection: headerSelection, onChange: setHeaderSelection };
 
   // Add file status icon
   const formatCollections = useMemo(
@@ -180,15 +174,6 @@ const CollectionCard = () => {
     list: selectableCollections,
     getItemId: (e) => e._id
   });
-
-  const onChangeHeaderSelection = (next: CollectionListHeaderSelection | undefined) => {
-    if (getCollectionHeaderFilter(headerSelection) !== getCollectionHeaderFilter(next)) {
-      // 筛选会隐藏部分结果，避免批量操作命中已不可见的勾选项。
-      setSelectedItems([]);
-    }
-    setHeaderSelection(next);
-  };
-  const headerMenuProps = { selection: headerSelection, onChange: onChangeHeaderSelection };
 
   const [moveCollectionData, setMoveCollectionData] = useState<{ collectionId: string }>();
 
@@ -406,7 +391,7 @@ const CollectionCard = () => {
           flex={'1 0 0'}
           h={0}
           footer={
-            <Box hidden={isHeaderFilterPending}>
+            <>
               <FloatingActionBar
                 pt={4}
                 Controler={
@@ -466,19 +451,15 @@ const CollectionCard = () => {
                   </Flex>
                 )}
               </FloatingActionBar>
-            </Box>
+            </>
           }
         >
-          <Table variant={'simple'} draggable={false} aria-busy={isHeaderFilterPending}>
+          <Table variant={'simple'} draggable={false}>
             <Thead draggable={false}>
               <Tr>
                 <Th py={4} aria-sort={sortBy === 'name' ? ariaSort : undefined}>
                   <HStack>
-                    <Checkbox
-                      isChecked={isSelecteAll}
-                      isDisabled={isHeaderFilterPending}
-                      onChange={selectAllTrigger}
-                    />
+                    <Checkbox isChecked={isSelecteAll} onChange={selectAllTrigger} />
                     <CollectionListHeaderMenu
                       column="name"
                       title={t('common:Name')}
@@ -486,13 +467,7 @@ const CollectionCard = () => {
                     />
                   </HStack>
                 </Th>
-                <Th py={4}>
-                  <CollectionListHeaderMenu
-                    column="trainingType"
-                    title={t('dataset:collection.training_type')}
-                    {...headerMenuProps}
-                  />
-                </Th>
+                <Th py={4}>{t('dataset:collection.training_type')}</Th>
                 <Th py={4}>{t('dataset:collection_data_count')}</Th>
                 <Th py={4} aria-sort={sortBy !== 'name' ? ariaSort : undefined}>
                   <CollectionListHeaderMenu
@@ -501,13 +476,7 @@ const CollectionCard = () => {
                     {...headerMenuProps}
                   />
                 </Th>
-                <Th py={4}>
-                  <CollectionListHeaderMenu
-                    column="status"
-                    title={t('common:Status')}
-                    {...headerMenuProps}
-                  />
-                </Th>
+                <Th py={4}>{t('common:Status')}</Th>
                 <Th py={4}>{t('dataset:Enable')}</Th>
                 <Th py={4} />
               </Tr>
@@ -547,7 +516,6 @@ const CollectionCard = () => {
                   })}
                   draggable={false}
                   {...getRowSelectionProps(collection, {
-                    isDisabled: isHeaderFilterPending,
                     // 导航目录不能被多选切换，点击始终进入目录
                     forceClick: collection.isNavigableFolder,
                     onClick: () => {
@@ -587,7 +555,6 @@ const CollectionCard = () => {
                         ) : (
                           <Checkbox
                             isChecked={isSelected(collection)}
-                            isDisabled={isHeaderFilterPending}
                             onChange={() => toggleSelect(collection)}
                           />
                         )}
@@ -802,7 +769,7 @@ const CollectionCard = () => {
             </Tbody>
           </Table>
 
-          {!isInitialLoading && !isHeaderFilterPending && total === 0 && <EmptyCollectionTip />}
+          {!isInitialLoading && total === 0 && <EmptyCollectionTip />}
         </FixedTableContainer>
 
         <ConfirmDeleteModal />

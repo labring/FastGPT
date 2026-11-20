@@ -66,6 +66,7 @@ export function usePagination<DataT, ResT = unknown>(
     params,
     type = 'button',
     onChange,
+    onError,
     refreshDeps,
     scrollLoadType = 'bottom',
     EmptyTip,
@@ -80,6 +81,8 @@ export function usePagination<DataT, ResT = unknown>(
     params?: DataT;
     type?: 'button' | 'scroll';
     onChange?: (pageNum: number) => void;
+    /** 最新请求未能加载列表时调用，包括取消。 */
+    onError?: (error: unknown) => void;
     refreshDeps?: any[];
     throttleWait?: number;
     scrollLoadType?: 'top' | 'bottom';
@@ -224,7 +227,9 @@ export function usePagination<DataT, ResT = unknown>(
 
         onChange?.(num);
       } catch (error: any) {
-        if (requestId !== requestIdRef.current || error?.code === 'ERR_CANCELED') return;
+        if (requestId !== requestIdRef.current) return;
+        onError?.(error);
+        if (error?.code === 'ERR_CANCELED') return;
         setError(error);
         toast({
           title: getErrText(error, t('common:core.chat.error.data_error')),

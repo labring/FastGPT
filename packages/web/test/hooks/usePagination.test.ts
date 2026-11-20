@@ -102,12 +102,14 @@ const createDeferredApi = () => {
 type HarnessProps = {
   api: (params: PaginationProps) => Promise<TestResponse>;
   onState: (state: ReturnType<typeof usePagination<unknown, TestItem>>) => void;
+  onError?: (error: unknown) => void;
   type?: 'button' | 'scroll';
 };
 
-const Harness = ({ api, onState, type = 'scroll' }: HarnessProps) => {
+const Harness = ({ api, onState, onError, type = 'scroll' }: HarnessProps) => {
   const state = usePagination(api, {
     type,
+    onError,
     defaultPageSize: 1
   });
 
@@ -271,9 +273,11 @@ describe('usePagination', () => {
   ])('settles loading after rejection with $reason', async ({ reason, toastCount }) => {
     const { api, requests } = createDeferredApi();
     const onState = vi.fn<HarnessProps['onState']>();
-    await renderHarness(root, { api, onState, type: 'button' });
+    const onError = vi.fn();
+    await renderHarness(root, { api, onState, onError, type: 'button' });
     await act(async () => requests[0].reject(reason));
     expect(onState.mock.lastCall?.[0]).toMatchObject({ data: [], isLoading: false });
+    expect(onError).toHaveBeenCalledExactlyOnceWith(reason);
     expect(mocks.toast).toHaveBeenCalledTimes(toastCount);
   });
 
@@ -309,13 +313,15 @@ describe('usePagination', () => {
     async (reason) => {
       const { api, requests } = createDeferredApi();
       const onState = vi.fn<HarnessProps['onState']>();
-      await renderHarness(root, { api, onState, type: 'button' });
+      const onError = vi.fn();
+      await renderHarness(root, { api, onState, onError, type: 'button' });
       await act(async () => {
         void onState.mock.lastCall?.[0].getData(2);
       });
 
       await act(async () => requests[0].reject(reason));
       expect(onState.mock.lastCall?.[0]).toMatchObject({ isLoading: true, error: null });
+      expect(onError).not.toHaveBeenCalled();
       expect(mocks.toast).not.toHaveBeenCalled();
 
       await act(async () => requests[1].resolve({ list: ['latest'], total: 2 }));

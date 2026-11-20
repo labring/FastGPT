@@ -49,7 +49,6 @@
   "collection_list.create_time_desc": "Created time (newest first)",
   "collection_list.name_asc": "Name (A–Z)",
   "collection_list.name_desc": "Name (Z–A)",
-  "collection_list.no_matches": "No files match the selected filter.",
   "collection_list.update_time_asc": "Updated time (oldest first)",
   "collection_list.update_time_desc": "Updated time (newest first)",
   "collection_metadata_custom_pdf_parse": "PDF enhancement analysis",

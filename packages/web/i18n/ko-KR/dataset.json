@@ -49,7 +49,6 @@
   "collection_list.create_time_desc": "생성 시간 내림차순",
   "collection_list.name_asc": "이름 오름차순",
   "collection_list.name_desc": "이름 내림차순",
-  "collection_list.no_matches": "선택한 조건에 맞는 파일이 없습니다.",
   "collection_list.update_time_asc": "수정 시간 오름차순",
   "collection_list.update_time_desc": "수정 시간 내림차순",
   "collection_metadata_custom_pdf_parse": "PDF 고급 분석",
