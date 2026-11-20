@@ -156,13 +156,19 @@ export const attachSynonymMappingsToSearchResults = async ({
           preserveMatchedTermCase: true
         });
         const chunkMappings = matchResult.usedMappings;
+        // 分块命中的映射组 id：同组的另一个同义词出现在正文时（问题问「B」、分块写「C」，
+        // B/C 同属标准词「A」），问题侧映射也要并入，否则回答模型无法把问题措辞对齐到
+        // 分块概念。用 logicalMappingId 判等而不是标准词字符串，避免跨组误带。
+        const chunkMappingIds = new Set(
+          chunkMappings.map((mapping) => mapping.mappingId).filter(Boolean)
+        );
         // 标准词命中集合：同一次 transform 扫描里，标准词作为 no-op 端子命中时
         // 会被记录（见 buildSynonymMatcher 的 matchedStandardTerms）——命中判定
         // 完全复用原 matcher 算法（最长匹配 + hasValidBoundary 词边界 + 大小写
         // 归一化），不引入任何二次扫描或独立判定逻辑。
-        // 问题侧映射的保留条件：问题里的别名所对应的标准词，确实以标准词形式
-        // 命中了本分块正文（例：用户问「枕瓜排骨汤」、命中分块正文只写「冬瓜」，
-        // 仍附上「枕瓜 → 冬瓜」让回答模型对齐措辞；无关分块不会拿到这组映射）。
+        // 问题侧映射的保留条件（满足其一）：问题别名对应的标准词以标准词形式命中了
+        // 本分块正文（用户问「枕瓜排骨汤」、分块只写「冬瓜」）；或分块命中了同一映射组
+        // 的另一个同义词。无关分块和不同映射组不会拿到这组映射。
         const standardHits = new Set(matchResult.matchedStandardTerms?.map(([key]) => key) ?? []);
         if (queryText && !queryMappingsByMatcher.has(matcherKey)) {
           queryMappingsByMatcher.set(
@@ -170,8 +176,10 @@ export const attachSynonymMappingsToSearchResults = async ({
             matcher.transform(queryText, { preserveMatchedTermCase: true }).usedMappings
           );
         }
-        const queryMappings = (queryMappingsByMatcher.get(matcherKey) ?? []).filter((mapping) =>
-          standardHits.has(normalizeSynonymTerm(mapping.standardizedTerm))
+        const queryMappings = (queryMappingsByMatcher.get(matcherKey) ?? []).filter(
+          (mapping) =>
+            chunkMappingIds.has(mapping.mappingId) ||
+            standardHits.has(normalizeSynonymTerm(mapping.standardizedTerm))
         );
 
         const mappings: Record<string, string> = Object.create(null);
