@@ -227,25 +227,8 @@ describe('Agent read_files tool protocol', () => {
       content
     });
 
-    const executeTool = getExecuteTool({
-      checkIsStopping: vi.fn(),
-      chatConfig: {},
-      runningUserInfo: { teamId: 'team_1', tmbId: 'tmb_1' },
-      runningAppInfo: { id: 'app_1' },
-      chatId: 'chat_1',
-      uid: 'user_1',
-      variableState: {} as any,
-      externalProvider: {} as any,
-      lang: 'zh-CN',
-      requestOrigin: '',
-      mode: 'chat',
-      timezone: 'Asia/Shanghai',
-      retainDatasetCite: false,
-      maxRunTimes: 10,
-      workflowDispatchDeep: 0,
-      params: { model: 'gpt-4' },
+    const executeTool = createExecuteToolForTest({
       stream: true,
-      streamResponseFn: vi.fn(),
       getSubApp: () => ({
         type: 'tool',
         id: 'system-tool',
@@ -253,15 +236,22 @@ describe('Agent read_files tool protocol', () => {
         avatar: '',
         toolConfig: { systemTool: { toolId: 'systemTool-test' } },
         params: {}
-      }),
-      completionTools: []
-    } as any);
-
-    const result = await executeTool({
-      callId: 'call_plugin',
-      toolId: 'system-tool',
-      args: '{}'
+      })
     });
+
+    const result = await runWithTestWorkflowContext(
+      {
+        fileContext: await createTestWorkflowFileContext(),
+        mcpClientMemory: {},
+        checkIsStopping: () => false
+      },
+      () =>
+        executeTool({
+          callId: 'call_plugin',
+          toolId: 'system-tool',
+          args: '{}'
+        })
+    );
 
     // 业务输出保持原样，结构化 content 单独透传给 agent-loop。
     expect(result.response).toBe('{"files":["chart.png"]}');
@@ -271,25 +261,8 @@ describe('Agent read_files tool protocol', () => {
   it('omits content when the tool returns plain text', async () => {
     dispatchToolMock.mockResolvedValue({ response: 'plain result' });
 
-    const executeTool = getExecuteTool({
-      checkIsStopping: vi.fn(),
-      chatConfig: {},
-      runningUserInfo: { teamId: 'team_1', tmbId: 'tmb_1' },
-      runningAppInfo: { id: 'app_1' },
-      chatId: 'chat_1',
-      uid: 'user_1',
-      variableState: {} as any,
-      externalProvider: {} as any,
-      lang: 'zh-CN',
-      requestOrigin: '',
-      mode: 'chat',
-      timezone: 'Asia/Shanghai',
-      retainDatasetCite: false,
-      maxRunTimes: 10,
-      workflowDispatchDeep: 0,
-      params: { model: 'gpt-4' },
+    const executeTool = createExecuteToolForTest({
       stream: true,
-      streamResponseFn: vi.fn(),
       getSubApp: () => ({
         type: 'tool',
         id: 'system-tool',
@@ -297,15 +270,22 @@ describe('Agent read_files tool protocol', () => {
         avatar: '',
         toolConfig: { systemTool: { toolId: 'systemTool-test' } },
         params: {}
-      }),
-      completionTools: []
-    } as any);
-
-    const result = await executeTool({
-      callId: 'call_plain',
-      toolId: 'system-tool',
-      args: '{}'
+      })
     });
+
+    const result = await runWithTestWorkflowContext(
+      {
+        fileContext: await createTestWorkflowFileContext(),
+        mcpClientMemory: {},
+        checkIsStopping: () => false
+      },
+      () =>
+        executeTool({
+          callId: 'call_plain',
+          toolId: 'system-tool',
+          args: '{}'
+        })
+    );
 
     expect(result.response).toBe('plain result');
     expect(result.content).toBeUndefined();

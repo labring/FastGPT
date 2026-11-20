@@ -395,7 +395,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           moduleLogo: avatar,
           totalPoints: usagePoints
         },
-        [DispatchNodeResponseKeyEnum.toolResponse]: props.isToolCall
+        [DispatchNodeResponseKeyEnum.toolResponse]: getWorkflowContext().runtimeControl.isToolCall
           ? createPluginToolResponse({
               result: projected.responseResult,
               content: projected.content

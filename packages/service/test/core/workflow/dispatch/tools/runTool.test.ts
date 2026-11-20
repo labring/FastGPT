@@ -348,8 +348,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
       output: { summary: { value: ['generated'], images: [] } }
     });
     const props = createRunToolProps({ systemTool: { toolId: 'systemTool-search' } });
-    props.isToolCall = true;
-    const result = await dispatchRunTool(props);
+    const result = await dispatchRunTool({ ...props, isToolCall: true });
     expect(result.data).toEqual({ summary: ['generated'] });
     expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toEqual({
       __fastgptPluginModelContent: true,
