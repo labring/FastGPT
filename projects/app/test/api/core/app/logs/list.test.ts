@@ -9,11 +9,9 @@ import { describe, expect, it, beforeEach, vi } from 'vitest';
 import * as listApi from '@/pages/api/core/app/logs/list';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import {
-  AppVersionCollectionName,
-  MongoAppVersion
-} from '@fastgpt/service/core/app/version/schema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
+import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
@@ -1141,8 +1139,9 @@ describe('logs list API - errorFilter', () => {
       { ...base, chatId: 'chat-deleted-version', appVersionId: new Types.ObjectId() }
     ] as any);
 
-    const aggregateSpy = vi.spyOn(MongoChat, 'aggregate');
+    const chatAggregateSpy = vi.spyOn(MongoChat, 'aggregate');
     const versionFindSpy = vi.spyOn(MongoAppVersion, 'find');
+    const responseAggregateSpy = vi.spyOn(MongoChatItemResponse, 'aggregate');
     try {
       const exported = await StreamCall(exportLogs, {
         auth: authUser,
@@ -1162,11 +1161,9 @@ describe('logs list API - errorFilter', () => {
       expect(exported.raw).toContain('\nchat-without-version,,');
       expect(exported.raw).toContain('\nchat-deleted-version,,');
 
-      const hasVersionLookup = aggregateSpy.mock.calls.some((call) =>
-        (call[0] as any[])?.some((stage) => stage?.$lookup?.from === AppVersionCollectionName)
-      );
-      expect(hasVersionLookup).toBe(false);
+      expect(chatAggregateSpy).not.toHaveBeenCalled();
       expect(versionFindSpy).toHaveBeenCalledTimes(1);
+      expect(responseAggregateSpy).not.toHaveBeenCalled();
 
       versionFindSpy.mockClear();
       const exportedWithoutVersion = await StreamCall(exportLogs, {
@@ -1183,9 +1180,11 @@ describe('logs list API - errorFilter', () => {
       });
       expect(exportedWithoutVersion.code).toBe(200);
       expect(versionFindSpy).not.toHaveBeenCalled();
+      expect(responseAggregateSpy).not.toHaveBeenCalled();
     } finally {
-      aggregateSpy.mockRestore();
+      chatAggregateSpy.mockRestore();
       versionFindSpy.mockRestore();
+      responseAggregateSpy.mockRestore();
     }
   });
 });

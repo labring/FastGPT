@@ -1,7 +1,7 @@
 import type { AppResourceType, AppSchemaType } from '@fastgpt/global/core/app/type';
 import { Types } from '../../common/mongo';
 import { MongoApp } from './schema';
-import { AppVersionCollectionName } from './version/schema';
+import { MongoAppVersion } from './version/schema';
 import { buildAppResourceMongoQuery } from './resource/utils';
 import { AppTypeEnum, AppTypeList, ToolTypeList } from '@fastgpt/global/core/app/constants';
 
@@ -51,47 +51,62 @@ const findMatchedTeamAppsByPublishedResources = async ({
 }) => {
   const resourceQueries = Array.from(resourceIdsByType).flatMap(([type, resourceIds]) => {
     const ids = Array.from(resourceIds);
-    return ids.length > 0
-      ? [{ 'published.resources': buildAppResourceMongoQuery({ type, ids }).resources }]
-      : [];
+    return ids.length > 0 ? [buildAppResourceMongoQuery({ type, ids })] : [];
   });
   if (resourceQueries.length === 0) return [];
 
-  // Mongo 聚合的 $match 不会执行 Mongoose 查询的自动转型，因此需要显式转换团队 ID。
   const teamObjectId = Types.ObjectId.isValid(teamId) ? new Types.ObjectId(teamId) : teamId;
-  return MongoApp.aggregate<MatchedPublishedApp>([
+  const apps = await MongoApp.find(
     {
-      $match: {
-        teamId: teamObjectId,
-        deleteTime: null,
-        publishedVersionId: { $exists: true, $ne: null }
-      }
+      teamId: teamObjectId,
+      deleteTime: null,
+      publishedVersionId: { $exists: true, $ne: null }
     },
     {
-      $lookup: {
-        from: AppVersionCollectionName,
-        localField: 'publishedVersionId',
-        foreignField: '_id',
-        as: 'published'
-      }
-    },
-    { $unwind: { path: '$published' } },
-    { $match: { $or: resourceQueries } },
-    {
-      $project: {
-        parentId: 1,
-        avatar: 1,
-        type: 1,
-        name: 1,
-        intro: 1,
-        tmbId: 1,
-        updateTime: 1,
-        inheritPermission: 1,
-        publishedVersionId: 1,
-        publishedResources: '$published.resources'
-      }
+      parentId: 1,
+      avatar: 1,
+      type: 1,
+      name: 1,
+      intro: 1,
+      tmbId: 1,
+      updateTime: 1,
+      inheritPermission: 1,
+      publishedVersionId: 1
     }
-  ]);
+  ).lean();
+  if (apps.length === 0) return [];
+
+  const versionIdSet = new Set<string>();
+  for (const app of apps) {
+    if (app.publishedVersionId && Types.ObjectId.isValid(app.publishedVersionId)) {
+      versionIdSet.add(String(app.publishedVersionId));
+    }
+  }
+  if (versionIdSet.size === 0) return [];
+
+  const matchedVersions = await MongoAppVersion.find(
+    {
+      _id: { $in: Array.from(versionIdSet, (id) => new Types.ObjectId(id)) },
+      $or: resourceQueries
+    },
+    { _id: 1, resources: 1 }
+  ).lean();
+  if (matchedVersions.length === 0) return [];
+
+  const resourcesByVersionId = new Map<string, PublishedAppResource[]>(
+    matchedVersions.map((version) => [
+      String(version._id),
+      (version.resources ?? []) as PublishedAppResource[]
+    ])
+  );
+
+  return apps.flatMap((app) => {
+    const publishedResources = app.publishedVersionId
+      ? resourcesByVersionId.get(String(app.publishedVersionId))
+      : undefined;
+    if (!publishedResources) return [];
+    return [{ ...app, publishedResources } as MatchedPublishedApp];
+  });
 };
 
 /**
