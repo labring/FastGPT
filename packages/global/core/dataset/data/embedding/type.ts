@@ -2,7 +2,7 @@ import z from 'zod';
 
 export const DatasetEmbeddingDimensions = 1536;
 
-/** 向量 ID 与 dataset_datas.indexes.dataId 对应；迁移保留 PG 的十进制 ID。 */
+/** 向量 ID 与 dataset_datas.indexes.dataId 对应。 */
 export const DatasetDataEmbeddingSchema = z.object({
   _id: z.string().min(1),
   teamId: z.string().min(1),
