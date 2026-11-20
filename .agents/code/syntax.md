@@ -426,6 +426,7 @@ export const createAppAndInitVersion = async (
 - **按需跳过**：可选展示字段未被请求时直接不查库、不投影外键，避免聚合管道无条件执行关联。
 - **全版本兼容**：规避 `localField/foreignField + pipeline` 在 MongoDB 4.4 报错，以及 `let + $expr` 在缺失外键字段时退化为 `COLLSCAN` 的问题。
 - **实现要点**：流式分批场景跨批次复用 `Map` 缓存；校验有效 ID（`Types.ObjectId.isValid`）后仅查询未缓存的 ID，查不到的 ID 也写入空值占位防止重复查库；只投影必要字段并配合 `readFromSecondary` 与 `.lean()`；多路独立补充查询用 `Promise.all` 并行执行。
+- **ObjectId 显式还原**：全局 `find` post hook（`convertObjectIds`）会将查询结果的顶层 `ObjectId` 转为 `string`，而 `aggregate` 的 `$match` 不做 Mongoose 自动转型；将 `find` 得到的 ID 传给后续 `aggregate` `$match` 时必须显式包一层 `new Types.ObjectId(...)`。
 
 ```typescript
 // Good —— 按需批量查询 + 跨批次缓存，只拉取必要字段
