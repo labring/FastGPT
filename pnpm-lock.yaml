@@ -193,8 +193,8 @@ catalogs:
       specifier: 8.0.7
       version: 8.0.7
     mongodb-memory-server:
-      specifier: ^10.1.4
-      version: 10.1.4
+      specifier: ^11.3.0
+      version: 11.3.0
     mongoose:
       specifier: ^8.24.7
       version: 8.24.8
@@ -355,7 +355,7 @@ importers:
         version: 16.4.0
       mongodb-memory-server:
         specifier: 'catalog:'
-        version: 10.1.4(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
+        version: 11.3.0(bare-buffer@3.7.1)(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
       next-i18next:
         specifier: 'catalog:'
         version: 15.4.2(i18next@23.16.8)(next@16.3.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
@@ -1277,7 +1277,7 @@ importers:
         version: 11.16.1
       mongodb-memory-server:
         specifier: 'catalog:'
-        version: 10.1.4(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
+        version: 11.3.0(bare-buffer@3.7.1)(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
       tsx:
         specifier: 'catalog:'
         version: 4.20.6
@@ -4627,9 +4627,6 @@ packages:
       react: ^18
       react-dom: ^18
 
-  '@mongodb-js/saslprep@1.2.0':
-    resolution: {integrity: sha512-+ywrb0AqkfaYuhHs6LxKWgqbh3I72EpEgESCw37o+9qPx9WTCkgDm2B+eMrwehGtHBWHFU4GXvnSCNiFhhausg==}
-
   '@mongodb-js/saslprep@1.4.11':
     resolution: {integrity: sha512-o9rAHc0IpIjuPSxRutWpE1F62x7n+4mVS4rCNHkzhIUMQcc18bb6xEq5wd2NdN0WjepIyXIppRshYI2kQDOZVA==}
 
@@ -7282,6 +7279,9 @@ packages:
   '@types/whatwg-url@11.0.5':
     resolution: {integrity: sha512-coYR071JRaHa+xoEvvYqvnIHaVqaYrLPbsufM9BF63HkwI5Lgmy2QR8Q5K/lYDYo5AK82wOvSOS0UsLTpTG7uQ==}
 
+  '@types/whatwg-url@13.0.0':
+    resolution: {integrity: sha512-N8WXpbE6Wgri7KUSvrmQcqrMllKZ9uxkYWMt+mCSGwNc0Hsw9VQTW7ApqI4XNrx6/SaM2QQJCzMPDEXE058s+Q==}
+
   '@types/xml-encryption@1.2.4':
     resolution: {integrity: sha512-I69K/WW1Dv7j6O3jh13z0X8sLWJRXbu5xnHDl9yHzUNDUBtUoBY058eb5s+x/WG6yZC1h8aKdI2EoyEPjyEh+Q==}
 
@@ -8080,13 +8080,13 @@ packages:
     engines: {node: ^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7}
     hasBin: true
 
-  bson@6.10.3:
-    resolution: {integrity: sha512-MTxGsqgYTwfshYWTRdmZRC+M7FnG1b4y7RO7p2k3X24Wq0yv1m77Wsj0BzlPzd/IowgESfsruQCUToa7vbOpPQ==}
-    engines: {node: '>=16.20.1'}
-
   bson@6.10.4:
     resolution: {integrity: sha512-WIsKqkSC0ABoBJuT1LEX+2HEvNmNKKgnTAyd0fL8qzK4SH2i9NXg+t08YtdZp/V9IZ33cxe3iV4yM0qg8lMQng==}
     engines: {node: '>=16.20.1'}
+
+  bson@7.3.4:
+    resolution: {integrity: sha512-eb33j2Ha6xgygjJ8bhI3sYaI9cLAbSaopZLRJQ5/rxk32XyBSoVVcbeHIzVGJx1SyQpyyoElkoEZgQrg+RVVoA==}
+    engines: {node: '>=20.19.0'}
 
   buffer-crc32@0.2.13:
     resolution: {integrity: sha512-VO9Ht/+p3SN7SKWqcrgEzjGbRSJYTx+Q1pTQC0wrWqHx0vpJraQ6GtHx8tvcg1rlK1byhU5gccxgOgj7B0TDkQ==}
@@ -11821,16 +11821,20 @@ packages:
   mongodb-connection-string-url@3.0.2:
     resolution: {integrity: sha512-rMO7CGo/9BFwyZABcKAWL8UJwH/Kc2x0g72uhDWzG48URRax5TCIcJ7Rc3RZqffZzO/Gwff/jyKwCU9TN8gehA==}
 
-  mongodb-memory-server-core@10.1.4:
-    resolution: {integrity: sha512-o8fgY7ZalEd8pGps43fFPr/hkQu1L8i6HFEGbsTfA2zDOW0TopgpswaBCqDr0qD7ptibyPfB5DmC+UlIxbThzA==}
-    engines: {node: '>=16.20.1'}
+  mongodb-connection-string-url@7.0.3:
+    resolution: {integrity: sha512-5I/pX3C2gPEz1EDdYMdZwBx1b/jE/f+J+KItSUJ02uQZ66bbe7kHKjv2uqCHJWaMCagem3dyfWqoAcv+XYZ6aw==}
+    engines: {node: '>=20.19.0'}
 
-  mongodb-memory-server@10.1.4:
-    resolution: {integrity: sha512-+oKQ/kc3CX+816oPFRtaF0CN4vNcGKNjpOQe4bHo/21A3pMD+lC7Xz1EX5HP7siCX4iCpVchDMmCOFXVQSGkUg==}
-    engines: {node: '>=16.20.1'}
+  mongodb-memory-server-core@11.3.0:
+    resolution: {integrity: sha512-QBu/RsRpBfcNd5CrBDfCzqcaFPaYpivUzGYUy9YgVc3up78ff0gIHQVD9PLmBLOOxFX6BM9hU6YT0HocZH+s1g==}
+    engines: {node: '>=20.19.0'}
 
-  mongodb@6.14.2:
-    resolution: {integrity: sha512-kMEHNo0F3P6QKDq17zcDuPeaywK/YaJVCEQRzPF3TOM/Bl9MFg64YE5Tu7ifj37qZJMhwU1tl2Ioivws5gRG5Q==}
+  mongodb-memory-server@11.3.0:
+    resolution: {integrity: sha512-8ZCDrraqKqmAikoeKuEq+16jeWdVKwjtEAuMxxeQctHiGSGYt17W9LmoRzV1Nwnz7owyxwDKMhow4IVkNYYRKw==}
+    engines: {node: '>=20.19.0'}
+
+  mongodb@6.20.0:
+    resolution: {integrity: sha512-Tl6MEIU3K4Rq3TSHd+sZQqRBoGlFsOgNrH5ltAcFBV62Re3Fd+FcaVf8uSEQFOJ51SDowDVttBTONMfoYWrWlQ==}
     engines: {node: '>=16.20.1'}
     peerDependencies:
       '@aws-sdk/credential-providers': ^3.188.0
@@ -11838,7 +11842,7 @@ packages:
       gcp-metadata: ^5.2.0
       kerberos: ^2.0.1
       mongodb-client-encryption: '>=6.0.0 <7'
-      snappy: ^7.2.2
+      snappy: ^7.3.2
       socks: ^2.7.1
     peerDependenciesMeta:
       '@aws-sdk/credential-providers':
@@ -11856,17 +11860,17 @@ packages:
       socks:
         optional: true
 
-  mongodb@6.20.0:
-    resolution: {integrity: sha512-Tl6MEIU3K4Rq3TSHd+sZQqRBoGlFsOgNrH5ltAcFBV62Re3Fd+FcaVf8uSEQFOJ51SDowDVttBTONMfoYWrWlQ==}
-    engines: {node: '>=16.20.1'}
+  mongodb@7.5.0:
+    resolution: {integrity: sha512-5FnrEDLnvp6ycUOGLNLLU33BfCx2qmp2mJjGPDwKLruYsVzXVSK5fsGpoDXvsXJwBfBsD7ebMRdawbDxC2814g==}
+    engines: {node: '>=20.19.0'}
     peerDependencies:
-      '@aws-sdk/credential-providers': ^3.188.0
-      '@mongodb-js/zstd': ^1.1.0 || ^2.0.0
-      gcp-metadata: ^5.2.0
-      kerberos: ^2.0.1
-      mongodb-client-encryption: '>=6.0.0 <7'
+      '@aws-sdk/credential-providers': ^3.806.0
+      '@mongodb-js/zstd': ^7.0.0
+      gcp-metadata: ^7.0.1
+      kerberos: ^7.0.0
+      mongodb-client-encryption: ^7.2.0
       snappy: ^7.3.2
-      socks: ^2.7.1
+      socks: ^2.8.6
     peerDependenciesMeta:
       '@aws-sdk/credential-providers':
         optional: true
@@ -13623,11 +13627,6 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
-  semver@7.8.0:
-    resolution: {integrity: sha512-AcM7dV/5ul4EekoQ29Agm5vri8JNqRyj39o0qpX6vDF2GZrtutZl5RwgD1XnZjiTAfncsJhMI48QQH3sN87YNA==}
-    engines: {node: '>=10'}
-    hasBin: true
-
   semver@7.8.5:
     resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
     engines: {node: '>=10'}
@@ -14194,6 +14193,9 @@ packages:
   tar-stream@3.1.7:
     resolution: {integrity: sha512-qJj60CXt7IU1Ffyc3NJMjh6EkuCFej46zUqJ4J7pqYlThyd9bO0XBTmcOIhSzZJVWfsLks0+nle/j538YAW9RQ==}
 
+  tar-stream@3.2.2:
+    resolution: {integrity: sha512-+8NeqHRjQWH9nYlwo2gamAMImZCVzI4UoEgDpWorBt9OEfppiZn+uSkskzQKPWIZyji/C8fpWO7u69G0DX0tbg==}
+
   teex@1.0.1:
     resolution: {integrity: sha512-eYE6iEI62Ni1H8oIa7KlDU6uQBtqr4Eajni3wX7rpfXD8ysFx8z0+dri+KWEPWpBsxXfxu58x/0jvTVT1ekOSg==}
 
@@ -14407,6 +14409,10 @@ packages:
   tr46@5.1.1:
     resolution: {integrity: sha512-hdF5ZgjTqgAntKkklYw0R03MG2x/bSzTtkxmIRw/sTNV8YXsCJ1tfLAX23lhxhHJlEf3CRCOCGGWw3vI3GaSPw==}
     engines: {node: '>=18'}
+
+  tr46@6.0.0:
+    resolution: {integrity: sha512-bLVMLPtstlZ4iMQHpFHTR7GAGj2jxi8Dg0s2h2MafAE4uSWF98FC/3MomU51iQAMf8/qDUbKWf5GxuvvVcXEhw==}
+    engines: {node: '>=20'}
 
   traverse@0.6.11:
     resolution: {integrity: sha512-vxXDZg8/+p3gblxB6BhhG5yWVn1kGRlaL8O78UDXc3wRnPizB5g83dcvWV1jpDMIPnjZjOFuxlMmE82XJ4407w==}
@@ -15079,6 +15085,10 @@ packages:
     resolution: {integrity: sha512-VwddBukDzu71offAQR975unBIGqfKZpM+8ZX6ySk8nYhVoo5CYaZyzt3YBvYtRtO+aoGlqxPg/B87NGVZ/fu6g==}
     engines: {node: '>=12'}
 
+  webidl-conversions@8.0.1:
+    resolution: {integrity: sha512-BMhLD/Sw+GbJC21C/UgyaZX41nPt8bUTg+jWyDeg7e7YN4xOM05YPSIXceACnXVtqyEw/LMClUQMtMZ+PGGpqQ==}
+    engines: {node: '>=20'}
+
   webpack-bundle-analyzer@4.10.1:
     resolution: {integrity: sha512-s3P7pgexgT/HTUSYgxJyn28A+99mmLq4HsJepMPzu0R8ImJc52QNqaFYW1Z2z2uIb1/J3eYgaAWVpaC+v/1aAQ==}
     engines: {node: '>= 10.13.0'}
@@ -15100,6 +15110,10 @@ packages:
   whatwg-url@14.2.0:
     resolution: {integrity: sha512-De72GdQZzNTUBBChsXueQUnPKDkg/5A5zp7pFDuQAj5UFoENpiACU0wlCvzpAGnTkj++ihpKwKyYewn/XNUbKw==}
     engines: {node: '>=18'}
+
+  whatwg-url@15.1.0:
+    resolution: {integrity: sha512-2ytDk0kiEj/yu90JOAp44PVPUkO9+jVhyf+SybKlRHSDlvOOZhdPIrr7xTH64l4WixO2cP+wQIcgujkGBPPz6g==}
+    engines: {node: '>=20'}
 
   whatwg-url@5.0.0:
     resolution: {integrity: sha512-saE57nupxk6v3HY35+jzBwYa0rKSy0XR8JSxZPwgLr7ys0IBzhGviA1/TUGJLmSVqs8pb9AnvICXEuOHLprYTw==}
@@ -15341,10 +15355,6 @@ packages:
 
   yauzl@2.10.0:
     resolution: {integrity: sha512-p4a9I6X6nu6IhoGmBqAcbJy1mlC4j27vEPZX9F4L4/vZT3Lyq1VkFHw/V/PUcB9Buo+DG3iHkT0x3Qya58zc3g==}
-
-  yauzl@3.2.0:
-    resolution: {integrity: sha512-Ow9nuGZE+qp1u4JIPvg+uCiUr7xGQWdff7JQSk5VGYTAZMDe2q8lxJ10ygv10qmSj031Ty/6FNJpLO4o1Sgc+w==}
-    engines: {node: '>=12'}
 
   yauzl@3.4.0:
     resolution: {integrity: sha512-jIH9yLR9wqr0wOS0TpBvo/g/2UgZH5qePVbjgRliiF0BYvOZyaBknKsF+x9Iht0O6sqgnB93rCICdOZFecJuDw==}
@@ -18750,10 +18760,6 @@ snapshots:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  '@mongodb-js/saslprep@1.2.0':
-    dependencies:
-      sparse-bitfield: 3.0.3
-
   '@mongodb-js/saslprep@1.4.11':
     dependencies:
       sparse-bitfield: 3.0.3
@@ -21688,6 +21694,10 @@ snapshots:
     dependencies:
       '@types/webidl-conversions': 7.0.3
 
+  '@types/whatwg-url@13.0.0':
+    dependencies:
+      '@types/webidl-conversions': 7.0.3
+
   '@types/xml-encryption@1.2.4':
     dependencies:
       '@types/node': 20.19.43
@@ -22492,8 +22502,7 @@ snapshots:
 
   b4a@1.6.7: {}
 
-  b4a@1.9.0:
-    optional: true
+  b4a@1.9.0: {}
 
   babel-plugin-macros@3.1.0:
     dependencies:
@@ -22533,14 +22542,11 @@ snapshots:
 
   balanced-match@4.0.4: {}
 
-  bare-buffer@3.7.1:
-    optional: true
+  bare-buffer@3.7.1: {}
 
-  bare-events@2.5.4:
-    optional: true
+  bare-events@2.5.4: {}
 
-  bare-events@2.9.2:
-    optional: true
+  bare-events@2.9.2: {}
 
   bare-fs@4.8.4(bare-buffer@3.7.1):
     dependencies:
@@ -22554,10 +22560,8 @@ snapshots:
     transitivePeerDependencies:
       - bare-abort-controller
       - react-native-b4a
-    optional: true
 
-  bare-path@3.1.2:
-    optional: true
+  bare-path@3.1.2: {}
 
   bare-stream@2.13.4(bare-buffer@3.7.1)(bare-events@2.5.4):
     dependencies:
@@ -22569,13 +22573,11 @@ snapshots:
       bare-events: 2.5.4
     transitivePeerDependencies:
       - react-native-b4a
-    optional: true
 
   bare-url@2.5.6:
     dependencies:
       bare-buffer: 3.7.1
       bare-path: 3.1.2
-    optional: true
 
   base64-js@1.5.1: {}
 
@@ -22704,9 +22706,9 @@ snapshots:
       node-releases: 2.0.63
       update-browserslist-db: 1.3.4(browserslist@4.29.4)
 
-  bson@6.10.3: {}
-
   bson@6.10.4: {}
+
+  bson@7.3.4: {}
 
   buffer-crc32@0.2.13: {}
 
@@ -24481,7 +24483,6 @@ snapshots:
       bare-events: 2.9.2
     transitivePeerDependencies:
       - bare-abort-controller
-    optional: true
 
   events@3.3.0: {}
 
@@ -27557,7 +27558,12 @@ snapshots:
       '@types/whatwg-url': 11.0.5
       whatwg-url: 14.1.1
 
-  mongodb-memory-server-core@10.1.4(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10):
+  mongodb-connection-string-url@7.0.3:
+    dependencies:
+      '@types/whatwg-url': 13.0.0
+      whatwg-url: 15.1.0
+
+  mongodb-memory-server-core@11.3.0(bare-buffer@3.7.1)(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10):
     dependencies:
       async-mutex: 0.5.0
       camelcase: 6.3.0
@@ -27565,50 +27571,56 @@ snapshots:
       find-cache-dir: 3.3.2
       follow-redirects: 1.16.0(debug@4.4.3)
       https-proxy-agent: 7.0.6
-      mongodb: 6.14.2(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
+      mongodb: 7.5.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
       new-find-package-json: 2.0.0
-      semver: 7.8.0
-      tar-stream: 3.1.7
+      semver: 7.8.5
+      tar-stream: 3.2.2(bare-buffer@3.7.1)
       tslib: 2.8.1
-      yauzl: 3.2.0
+      yauzl: 3.4.0
     transitivePeerDependencies:
       - '@aws-sdk/credential-providers'
       - '@mongodb-js/zstd'
+      - bare-abort-controller
+      - bare-buffer
       - gcp-metadata
       - kerberos
       - mongodb-client-encryption
+      - react-native-b4a
       - snappy
       - socks
       - supports-color
 
-  mongodb-memory-server@10.1.4(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10):
+  mongodb-memory-server@11.3.0(bare-buffer@3.7.1)(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10):
     dependencies:
-      mongodb-memory-server-core: 10.1.4(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
+      mongodb-memory-server-core: 11.3.0(bare-buffer@3.7.1)(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
       tslib: 2.8.1
     transitivePeerDependencies:
       - '@aws-sdk/credential-providers'
       - '@mongodb-js/zstd'
+      - bare-abort-controller
+      - bare-buffer
       - gcp-metadata
       - kerberos
       - mongodb-client-encryption
+      - react-native-b4a
       - snappy
       - socks
       - supports-color
-
-  mongodb@6.14.2(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10):
-    dependencies:
-      '@mongodb-js/saslprep': 1.2.0
-      bson: 6.10.3
-      mongodb-connection-string-url: 3.0.2
-    optionalDependencies:
-      gcp-metadata: 5.3.0(encoding@0.1.13)
-      socks: 2.8.10
 
   mongodb@6.20.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10):
     dependencies:
       '@mongodb-js/saslprep': 1.4.11
       bson: 6.10.4
       mongodb-connection-string-url: 3.0.2
+    optionalDependencies:
+      gcp-metadata: 5.3.0(encoding@0.1.13)
+      socks: 2.8.10
+
+  mongodb@7.5.0(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10):
+    dependencies:
+      '@mongodb-js/saslprep': 1.4.11
+      bson: 7.3.4
+      mongodb-connection-string-url: 7.0.3
     optionalDependencies:
       gcp-metadata: 5.3.0(encoding@0.1.13)
       socks: 2.8.10
@@ -29661,8 +29673,6 @@ snapshots:
 
   semver@7.7.4: {}
 
-  semver@7.8.0: {}
-
   semver@7.8.5: {}
 
   send@0.19.0:
@@ -30138,7 +30148,6 @@ snapshots:
       text-decoder: 1.2.3
     transitivePeerDependencies:
       - bare-abort-controller
-    optional: true
 
   strict-event-emitter-types@2.0.0: {}
 
@@ -30439,12 +30448,22 @@ snapshots:
       fast-fifo: 1.3.2
       streamx: 2.22.0
 
+  tar-stream@3.2.2(bare-buffer@3.7.1):
+    dependencies:
+      b4a: 1.9.0
+      bare-fs: 4.8.4(bare-buffer@3.7.1)
+      fast-fifo: 1.3.2
+      streamx: 2.28.1
+    transitivePeerDependencies:
+      - bare-abort-controller
+      - bare-buffer
+      - react-native-b4a
+
   teex@1.0.1:
     dependencies:
       streamx: 2.28.1
     transitivePeerDependencies:
       - bare-abort-controller
-    optional: true
 
   terser@5.39.0:
     dependencies:
@@ -30695,6 +30714,10 @@ snapshots:
       punycode: 2.3.1
 
   tr46@5.1.1:
+    dependencies:
+      punycode: 2.3.1
+
+  tr46@6.0.0:
     dependencies:
       punycode: 2.3.1
 
@@ -31549,6 +31572,8 @@ snapshots:
 
   webidl-conversions@7.0.0: {}
 
+  webidl-conversions@8.0.1: {}
+
   webpack-bundle-analyzer@4.10.1(bufferutil@4.1.0)(utf-8-validate@5.0.10):
     dependencies:
       '@discoveryjs/json-ext': 0.5.7
@@ -31583,6 +31608,11 @@ snapshots:
     dependencies:
       tr46: 5.1.1
       webidl-conversions: 7.0.0
+
+  whatwg-url@15.1.0:
+    dependencies:
+      tr46: 6.0.0
+      webidl-conversions: 8.0.1
 
   whatwg-url@5.0.0:
     dependencies:
@@ -31838,11 +31868,6 @@ snapshots:
     dependencies:
       buffer-crc32: 0.2.13
       fd-slicer: 1.1.0
-
-  yauzl@3.2.0:
-    dependencies:
-      buffer-crc32: 0.2.13
-      pend: 1.2.0
 
   yauzl@3.4.0:
     dependencies:
