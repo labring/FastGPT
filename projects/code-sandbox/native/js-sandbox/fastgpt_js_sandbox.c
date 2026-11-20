@@ -65,7 +65,9 @@ static int install_seccomp(void) {
       "getrandom",     "eventfd2",       "epoll_create1",  "epoll_ctl",
       "epoll_wait",    "epoll_pwait",    "pselect6",       "poll",
       "ppoll",         "set_robust_list", "get_robust_list", "rseq",
-      "prlimit64",     "exit",           "exit_group"};
+      "prlimit64",     "exit",           "exit_group",
+      /* Linux 5.1+ libuv 在 loop 初始化时创建 io_uring；seccomp 安装后仍需 enter/register。 */
+      "io_uring_setup", "io_uring_enter", "io_uring_register"};
 
   scmp_filter_ctx filter = seccomp_init(SCMP_ACT_ERRNO(EPERM));
   if (filter == NULL) return -1;

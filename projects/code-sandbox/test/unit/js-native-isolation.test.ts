@@ -120,4 +120,31 @@ socket.close();
     });
     expect(payload.writeError).toMatch(/EPERM|EACCES/);
   });
+
+  it('seccomp 安装后仍允许 libuv 通过 io_uring 写入大量 stdout', () => {
+    const sandboxRoot = mkdtempSync(join(tmpdir(), 'fastgpt-js-native-stdout-'));
+    const probe = `
+const addon = require(${JSON.stringify(nativeAddonPath)});
+
+addon.init({
+  uid: ${JS_SANDBOX_UID},
+  gid: ${JS_SANDBOX_GID},
+  cwd: '/',
+  enableSeccomp: true
+});
+
+process.stdout.write('x'.repeat(300000) + '\\n');
+`;
+
+    const result = spawnSync(process.execPath, ['-e', probe], {
+      cwd: sandboxRoot,
+      encoding: 'utf8',
+      timeout: 5000,
+      maxBuffer: 1024 * 1024
+    });
+    rmSync(sandboxRoot, { recursive: true, force: true });
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout.trim().length).toBe(300000);
+  });
 });
