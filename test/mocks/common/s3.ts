@@ -149,6 +149,28 @@ const createMockBucketClass = (defaultName: string) => {
         accessUrl: await this.createExternalUrl({ key: params.key })
       };
     }
+    async uploadStreamWithMultipart(params: {
+      key: string;
+      body: AsyncIterable<Buffer | Uint8Array | string>;
+      contentType: string;
+      filename?: string;
+    }) {
+      const chunks: Buffer[] = [];
+      for await (const chunk of params.body) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      const buffer = Buffer.concat(chunks);
+      await this.client.uploadObject({
+        key: params.key,
+        body: buffer,
+        contentType: params.contentType,
+        contentLength: buffer.length,
+        metadata: {
+          originFilename: encodeURIComponent(params.filename || 'mock-file')
+        }
+      });
+      return { sizeBytes: buffer.length };
+    }
     async getFileStream() {
       return null;
     }

@@ -140,7 +140,7 @@ export const verifyRehomedSubserviceConnections = async () => {
   }
 };
 
-const proxyEnvKeys = {
+export const agentSandboxProxyEnvKeys = {
   wsUrl: 'AGENT_SANDBOX_PROXY_URL',
   previewUrl: 'AGENT_SANDBOX_PREVIEW_PROXY_URL',
   secret: 'AGENT_SANDBOX_PROXY_SECRET'
@@ -184,7 +184,7 @@ export const rehomeAgentSandboxProxy = async ({
     }
     const previous = overrides.agentSandbox?.proxy ?? {};
     const proxy = Object.fromEntries(
-      Object.entries(proxyEnvKeys).map(([key, envKey]) => [
+      Object.entries(agentSandboxProxyEnvKeys).map(([key, envKey]) => [
         key,
         Object.hasOwn(previous, key)
           ? previous[key]
@@ -249,7 +249,7 @@ export const verifyAgentSandboxProxyMigration = async () => {
       Array.isArray(doc.overrides.agentSandbox.proxy))
   )
     return;
-  for (const key of Object.keys(proxyEnvKeys)) {
+  for (const key of Object.keys(agentSandboxProxyEnvKeys)) {
     if (
       !Object.hasOwn(doc.overrides?.agentSandbox?.proxy ?? {}, key) &&
       !doc.explicitDefaultPaths?.includes(`agentSandbox.proxy.${key}`)

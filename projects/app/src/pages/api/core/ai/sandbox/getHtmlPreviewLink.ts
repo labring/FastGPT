@@ -2,13 +2,11 @@ import type { NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import { authSandboxRuntimeSession } from '@/service/core/sandbox/access';
+import { getAuthorizedSandboxClient } from '@/service/core/sandbox/runtime';
 import {
   SandboxGetHtmlPreviewLinkBodySchema,
   SandboxGetHtmlPreviewLinkResponseSchema
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
-import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
-import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   createSandboxPreviewFileUrl,
@@ -25,12 +23,8 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
       bodySchema: SandboxGetHtmlPreviewLinkBodySchema
     }).body;
 
-  // 1. 鉴权
-  const {
-    uid,
-    sourceType: resolvedSourceType,
-    sourceId: resolvedSourceId
-  } = await authSandboxRuntimeSession({
+  // 1. 鉴权并获取沙盒客户端，不把 sandbox 内容复制到主站或对象存储。
+  const { sandboxQuery, sandbox } = await getAuthorizedSandboxClient({
     customUid,
     authProxy,
     req,
@@ -40,18 +34,11 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
     outLinkAuthData,
     per: ReadPermissionVal
   });
-
-  // 2. 只检查目标文件，不把 sandbox 内容复制到主站或对象存储。
-  const sandboxQuery = buildSandboxClientQueryFromChatSource({
-    sourceType: resolvedSourceType,
-    sourceId: resolvedSourceId,
-    userId: uid,
-    chatId
-  });
-  const sandbox = await getSandboxClient(sandboxQuery);
-  const providerPath = sandbox.resolveRuntimePath(filePath, { allowAbsolutePath: true });
-  resolveSandboxPreviewPath(providerPath);
-  const fileInfo = (await sandbox.provider.getFileInfo([providerPath])).get(providerPath);
+  const runtimePath = sandbox.resolveRuntimePath(filePath, { allowAbsolutePath: true });
+  const { providerPath, relativePath } = resolveSandboxPreviewPath(runtimePath);
+  const fileInfo = (
+    await sandbox.runWithRecovery(() => sandbox.opensandbox.getFileInfo([providerPath]))
+  ).get(providerPath);
 
   if (!fileInfo || fileInfo.isDirectory) {
     return jsonRes(res, { code: 400, message: 'HTML file does not exist' });
@@ -63,7 +50,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
   // 3. session 仅保存 sandbox 查询参数，provider endpoint 和内部口令由 proxy 按请求解析。
   const url = await createSandboxPreviewFileUrl({
     context: sandboxQuery,
-    filePath: providerPath
+    relativePath
   }).catch((error) => {
     if (error instanceof SandboxPreviewSessionLimitError) return null;
     throw error;

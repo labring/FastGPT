@@ -1,43 +1,51 @@
-import JSZip from 'jszip';
 import type { RuntimeSkillMetadataType } from '@fastgpt/global/core/ai/skill/type';
 import { parseSkillMarkdown } from '../utils';
-import { validateZipSafety } from './zipBuilder';
 
-export type ExtractRuntimeSkillsFromPackageOptions = {
+type ExtractRuntimeSkillsFromPackageOptions = {
   allowEmpty?: boolean;
 };
 
-/**
- * 从 Skill 包中解析运行态子 Skill 元数据。
- *
- * 标准 workspace 读取 `skills/<skillDir>/SKILL.md`；历史单 skill 包允许从根目录或
- * 一级目录 `SKILL.md` 兜底解析，并把 path 规范化为运行态可识别的
- * `skills/<name>/SKILL.md`。初始空白 workspace 可通过 `allowEmpty` 跳过空包校验。
- */
-export async function extractRuntimeSkillsFromPackage(
-  zipBuffer: Buffer,
-  options: ExtractRuntimeSkillsFromPackageOptions = {}
-): Promise<RuntimeSkillMetadataType[]> {
-  const zip = await JSZip.loadAsync(zipBuffer);
-  const safety = validateZipSafety(zip);
-  if (!safety.valid) {
-    throw new Error(safety.error || 'Invalid skill package');
-  }
+export type SkillMdFileInput = {
+  path: string;
+  content: string;
+};
 
-  const allSkillMdEntries = Object.entries(zip.files)
-    .filter(([, file]) => !file.dir)
-    .map(([path, file]) => ({
-      path: normalizeRuntimeSkillPath(path),
-      file
-    }))
-    .sort((a, b) => a.path.localeCompare(b.path));
-  const workspaceEntries = allSkillMdEntries.filter((entry) =>
-    isWorkspaceRuntimeSkillMdPath(entry.path)
-  );
+export const MAX_SKILL_MD_ENTRY_BYTES = 2 * 1024 * 1024;
+
+function isWorkspaceRuntimeSkillMdPath(path: string): boolean {
+  return /^skills\/[^/]+\/SKILL\.md$/i.test(path);
+}
+
+function isLegacySkillMdPath(path: string): boolean {
+  return /^SKILL\.md$/i.test(path) || /^[^/]+\/SKILL\.md$/i.test(path);
+}
+
+/** 判断（已由归档解析器规范化的）条目路径是否属于可参与运行时子 Skill 元数据提取的 `SKILL.md`。 */
+export function isRuntimeSkillMdPath(entryPath: string): boolean {
+  return isWorkspaceRuntimeSkillMdPath(entryPath) || isLegacySkillMdPath(entryPath);
+}
+
+function getRuntimeSkillMetadataPath(path: string, name: string): string {
+  return isWorkspaceRuntimeSkillMdPath(path) ? path : `skills/${name}/SKILL.md`;
+}
+
+/**
+ * 从已提取的 `SKILL.md` 文件集合解析运行态子 Skill 元数据（与底层打包格式 `.tar.zst`/`.zip` 解耦）。
+ *
+ * 优先匹配标准 `skills/<skillDir>/SKILL.md`；未命中时允许根目录或一级目录 `SKILL.md` 兜底，
+ * 并统一规范化为 `skills/<name>/SKILL.md`。初始空白工作区可通过 `allowEmpty` 跳过空校验。
+ */
+export function extractRuntimeSkillsFromSkillMdFiles(
+  files: SkillMdFileInput[],
+  options: ExtractRuntimeSkillsFromPackageOptions = {}
+): RuntimeSkillMetadataType[] {
+  const sortedFiles = [...files].sort((a, b) => a.path.localeCompare(b.path));
+
+  const workspaceEntries = sortedFiles.filter((entry) => isWorkspaceRuntimeSkillMdPath(entry.path));
   const skillMdEntries =
     workspaceEntries.length > 0
       ? workspaceEntries
-      : allSkillMdEntries.filter((entry) => isLegacySkillMdPath(entry.path));
+      : sortedFiles.filter((entry) => isLegacySkillMdPath(entry.path));
 
   if (skillMdEntries.length === 0) {
     if (options.allowEmpty) return [];
@@ -48,8 +56,7 @@ export async function extractRuntimeSkillsFromPackage(
   const runtimeSkills: RuntimeSkillMetadataType[] = [];
 
   for (const entry of skillMdEntries) {
-    const content = await entry.file.async('string');
-    const { frontmatter, error } = parseSkillMarkdown(content);
+    const { frontmatter, error } = parseSkillMarkdown(entry.content);
     if (error) {
       throw new Error(`${entry.path}: ${error}`);
     }
@@ -73,20 +80,4 @@ export async function extractRuntimeSkillsFromPackage(
   }
 
   return runtimeSkills;
-}
-
-function normalizeRuntimeSkillPath(path: string): string {
-  return path.replace(/\\/g, '/').replace(/^\.\/+/, '');
-}
-
-function isWorkspaceRuntimeSkillMdPath(path: string): boolean {
-  return /^skills\/[^/]+\/SKILL\.md$/i.test(path);
-}
-
-function isLegacySkillMdPath(path: string): boolean {
-  return /^SKILL\.md$/i.test(path) || /^[^/]+\/SKILL\.md$/i.test(path);
-}
-
-function getRuntimeSkillMetadataPath(path: string, name: string): string {
-  return isWorkspaceRuntimeSkillMdPath(path) ? path : `skills/${name}/SKILL.md`;
 }

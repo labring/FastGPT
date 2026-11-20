@@ -1,12 +1,14 @@
 import { hashStr } from '../../../common/string/tools';
-import type { SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 import type { ChatSourceTypeEnum } from '../../chat/constants';
 
-// ---- 沙盒提供方 ----
-export const agentSandboxProviderList = [
-  'sealosdevbox',
-  'opensandbox'
-] as const satisfies readonly SandboxProviderType[];
+// ---- 沙盒运行期路径与端口约定 ----
+export const OPEN_SANDBOX_DEFAULT_HOME_PATH = '/home/sandbox';
+export const OPEN_SANDBOX_DEFAULT_ROOT_PATH = '/home/sandbox/workspace';
+/** 容器临时层内部运行态目录（存放口令、容器级 state.json、apt mirrors 标记与内置 skills，容器销毁即清空）。 */
+export const OPEN_SANDBOX_CONTAINER_RUNTIME_DIR = '/var/lib/fastgpt-runtime';
+export const SANDBOX_INTERNAL_RUNTIME_DIR_NAME = '.fastgpt';
+export const SANDBOX_IDE_AGENT_WS_PORT = 1318;
+export const SANDBOX_IDE_AGENT_HTTP_PORT = 1319;
 
 // ---- 沙盒状态 ----
 export const SandboxStatusEnum = {
@@ -23,7 +25,6 @@ export enum SandboxUnavailableReasonEnum {
 
 /** Chat Test 保存本轮实际 Sandbox 开关的 metadata key。 */
 export const APP_SANDBOX_ENABLED_CHAT_METADATA_KEY = 'appSandboxEnabled';
-export type SandboxStatusType = (typeof SandboxStatusEnum)[keyof typeof SandboxStatusEnum];
 
 // ---- 沙盒实例类型 ----
 /** @deprecated sandbox 实例归属统一使用 sourceType/sourceId；该枚举仅用于历史数据迁移。 */
@@ -48,7 +49,7 @@ export const generateSandboxId = ({
 export const SANDBOX_USER_FILES_PATH = 'user_files/';
 export const SANDBOX_ENTRYPOINT_MAX_LENGTH = 16 * 1024;
 export const SANDBOX_SYSTEM_PROMPT = `<sandbox_capability>
-你拥有一个独立的 Linux 沙盒环境（Ubuntu 22.04），可通过 sandbox 工具操作文件和执行命令。
+你拥有一个独立的 Linux 沙盒环境（Debian 13 (trixie)），可通过 sandbox 工具操作文件和执行命令。
 - 系统预装：bash / python3 / node / bun / git / curl
 - 用户对话上传的文件存储在 ${SANDBOX_USER_FILES_PATH} 目录下
 - 文件操作优先使用对应的专用工具，具体用途、参数和限制见各工具 description

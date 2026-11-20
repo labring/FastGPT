@@ -30,7 +30,7 @@
     "generate:i18n-loaders": "node scripts/generate-i18n-resource-loaders.mjs",
     "check:i18n-loaders": "node scripts/check-i18n-resource-loaders.mjs",
     "sync:openapi-docs": "node --experimental-strip-types ./document/script/syncOpenApiDocs.mts",
-    "build:sdks": "pnpm -r --filter @fastgpt-sdk/storage --filter @fastgpt-sdk/otel --filter @fastgpt-sdk/sandbox-adapter build",
+    "build:sdks": "pnpm -r --filter @fastgpt-sdk/storage --filter @fastgpt-sdk/otel build",
     "build:workflow-packages": "pnpm --filter @fastgpt/workflow-core build && pnpm --filter @fastgpt/cli build:tsdown"
   },
   "devDependencies": {

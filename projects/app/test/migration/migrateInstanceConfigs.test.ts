@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   buildLegacyDomainOverrides as buildFromLegacy,
   buildLegacyProOverrides,
@@ -13,6 +13,10 @@ import { readLegacyInstanceConfigEnv } from '@/migration/tasks/4180/20261116_mig
 const legacyEnv = readLegacyInstanceConfigEnv();
 const buildLegacyDomainOverrides = (input: Parameters<typeof buildFromLegacy>[0]) =>
   buildFromLegacy({ ...input, legacyEnv });
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe('migration buildLegacyDomainOverrides', () => {
   it('maps the legacy main site URL into site.publicUrl', () => {
@@ -693,15 +697,15 @@ describe('migration env wiring', () => {
       AGENT_SANDBOX_NPM_REGISTRY: 'https://npm.migration.test',
       AGENT_SANDBOX_PYPI_INDEX_URL: 'https://pypi.migration.test',
       AGENT_SANDBOX_APT_MIRROR: 'https://apt.migration.test',
-      AGENT_SANDBOX_SEALOS_BASEURL: 'https://sealos.migration.test',
-      AGENT_SANDBOX_SEALOS_TOKEN: 'synthetic-sealos-token',
-      AGENT_SANDBOX_SEALOS_IMAGE: 'migration-sealos:latest',
       AGENT_SANDBOX_OPENSANDBOX_BASEURL: 'https://opensandbox.migration.test',
       AGENT_SANDBOX_OPENSANDBOX_API_KEY: 'synthetic-opensandbox-key',
       AGENT_SANDBOX_OPENSANDBOX_IMAGE: 'migration-opensandbox:latest',
       AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL: 'https://volume.migration.test',
-      AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: 'synthetic-volume-token'
-    };
+      AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: 'synthetic-volume-token',
+      AGENT_SANDBOX_PROXY_URL: 'wss://proxy.migration.test',
+      AGENT_SANDBOX_PREVIEW_PROXY_URL: 'https://preview.migration.test',
+      AGENT_SANDBOX_PROXY_SECRET: 'migration-proxy-secret-32-characters-min'
+    } as typeof legacyEnv & Record<string, string>;
     const overrides = buildFromLegacy({ feConfigs: {}, systemEnv: {}, legacyEnv });
     const cases: [string, unknown][] = [
       // site
@@ -777,7 +781,7 @@ describe('migration env wiring', () => {
       ['providers.documentParse.sangfor.timeoutSeconds', legacyEnv.SANGFOR_PARSE_TIMEOUT_SECONDS],
       // subservice
       ['subservice.mcp.sseProxyUrl', legacyEnv.SSE_MCP_SERVER_PROXY_ENDPOINT],
-      ['subservice.agentSandbox.provider', legacyEnv.AGENT_SANDBOX_PROVIDER],
+      ['subservice.agentSandbox.enabled', true],
       ['subservice.agentSandbox.common.cpuCount', legacyEnv.AGENT_SANDBOX_CPU_COUNT],
       ['subservice.agentSandbox.common.memoryMiB', legacyEnv.AGENT_SANDBOX_MEMORY_MIB],
       ['subservice.agentSandbox.common.storageSizeGi', legacyEnv.AGENT_SANDBOX_STORAGE_SIZE_GI],
@@ -790,13 +794,6 @@ describe('migration env wiring', () => {
       ['subservice.agentSandbox.common.npmRegistry', legacyEnv.AGENT_SANDBOX_NPM_REGISTRY],
       ['subservice.agentSandbox.common.pypiIndexUrl', legacyEnv.AGENT_SANDBOX_PYPI_INDEX_URL],
       ['subservice.agentSandbox.common.aptMirror', legacyEnv.AGENT_SANDBOX_APT_MIRROR],
-      ['subservice.agentSandbox.sealosdevbox.baseUrl', legacyEnv.AGENT_SANDBOX_SEALOS_BASEURL],
-      ['subservice.agentSandbox.sealosdevbox.token', legacyEnv.AGENT_SANDBOX_SEALOS_TOKEN],
-      [
-        'subservice.agentSandbox.sealosdevbox.workDirectory',
-        legacyEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY
-      ],
-      ['subservice.agentSandbox.sealosdevbox.image', legacyEnv.AGENT_SANDBOX_SEALOS_IMAGE],
       ['subservice.agentSandbox.opensandbox.baseUrl', legacyEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL],
       ['subservice.agentSandbox.opensandbox.apiKey', legacyEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY],
       ['subservice.agentSandbox.opensandbox.runtime', legacyEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME],
@@ -819,15 +816,19 @@ describe('migration env wiring', () => {
       ]
     ];
 
-    // EVAL_CONCURRENCY 已明确弃用，本轮不迁入实例配置。
+    // EVAL_CONCURRENCY 与 AGENT_SANDBOX_EPHEMERAL_STORAGE_SIZE 已明确弃用，本轮不迁入实例配置。
     expect(legacyEnv).not.toHaveProperty('EVAL_CONCURRENCY');
+    expect(legacyEnv).not.toHaveProperty('AGENT_SANDBOX_EPHEMERAL_STORAGE_SIZE');
     expect(pick(overrides, 'performance.task.evalConcurrency')).toBeUndefined();
+    expect(
+      pick(overrides, 'subservice.agentSandbox.opensandbox.ephemeralStorageSize')
+    ).toBeUndefined();
 
     // Marketplace、企业微信自动跳转与四项数据源地址只读运行时 ENV；三项 Sandbox 固定限制也不再计入迁移绑定数。
     // 兜底：有取值才能验证绑定，条数过少说明表格被削掉了。
     expect(
       cases.filter(([, expected]) => expected !== undefined && expected !== '').length
-    ).toBeGreaterThanOrEqual(56);
+    ).toBeGreaterThanOrEqual(53);
 
     const mismatched = cases
       .filter(([path, expected]) => {
@@ -842,5 +843,109 @@ describe('migration env wiring', () => {
       );
 
     expect(mismatched).toEqual([]);
+  });
+
+  it('enables Agent Sandbox across explicit opensandbox and upgraded Helm/Compose envs while blocking disabled/placeholder envs', () => {
+    const baseEnv = readLegacyInstanceConfigEnv();
+    const upgradedHelmEnv = {
+      ...baseEnv,
+      AGENT_SANDBOX_OPENSANDBOX_BASEURL: 'http://fgc-opensandbox-server:8090',
+      AGENT_SANDBOX_PROXY_URL: 'wss://proxy.migration.test',
+      AGENT_SANDBOX_PREVIEW_PROXY_URL: 'https://preview.migration.test',
+      AGENT_SANDBOX_PROXY_SECRET: 'proxy_generated_secret_32_characters_min'
+    };
+    const templatePlaceholderEnv = {
+      ...baseEnv,
+      AGENT_SANDBOX_OPENSANDBOX_BASEURL: 'http://localhost:8090',
+      AGENT_SANDBOX_PROXY_URL: 'ws://localhost:3006',
+      AGENT_SANDBOX_PREVIEW_PROXY_URL: 'http://localhost:3006',
+      AGENT_SANDBOX_PROXY_SECRET: 'default_fastgpt_agent_sandbox_proxy_secret'
+    };
+
+    expect(baseEnv).not.toHaveProperty('AGENT_SANDBOX_PROVIDER');
+
+    // 1. 显式声明旧 AGENT_SANDBOX_PROVIDER 为空 / none / sealosdevbox 时不得自动开启
+    for (const provider of ['', 'none', 'sealosdevbox'] as const) {
+      vi.stubEnv('AGENT_SANDBOX_PROVIDER', provider);
+      const overrides = buildFromLegacy({
+        feConfigs: {},
+        systemEnv: {},
+        legacyEnv: {
+          ...upgradedHelmEnv,
+          AGENT_SANDBOX_PROVIDER: provider
+        } as typeof baseEnv & Record<string, string>
+      });
+      expect(pick(overrides, 'subservice.agentSandbox.enabled')).toBeUndefined();
+    }
+
+    // 2. 新版 Helm / Compose 已移除 AGENT_SANDBOX_PROVIDER：
+    //    - 未填写代理地址（如 Compose 默认空 proxy url）或保留旧 .env.template 本地占位组合时保持关闭；
+    //    - 控制面地址与代理配置齐全时在迁移后自动保留启用状态。
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', undefined);
+    const placeholderOverrides = buildFromLegacy({
+      feConfigs: {},
+      systemEnv: {},
+      legacyEnv: templatePlaceholderEnv as typeof baseEnv & Record<string, string>
+    });
+    expect(pick(placeholderOverrides, 'subservice.agentSandbox.enabled')).toBeUndefined();
+
+    const unconfiguredComposeOverrides = buildFromLegacy({
+      feConfigs: {},
+      systemEnv: {},
+      legacyEnv: {
+        ...baseEnv,
+        AGENT_SANDBOX_OPENSANDBOX_BASEURL: 'http://fastgpt-opensandbox-server:8090',
+        AGENT_SANDBOX_PROXY_URL: '',
+        AGENT_SANDBOX_PREVIEW_PROXY_URL: '',
+        AGENT_SANDBOX_PROXY_SECRET: 'default_fastgpt_agent_sandbox_proxy_secret'
+      } as typeof baseEnv & Record<string, string>
+    });
+    expect(pick(unconfiguredComposeOverrides, 'subservice.agentSandbox.enabled')).toBeUndefined();
+
+    const helmUpgradeOverrides = buildFromLegacy({
+      feConfigs: {},
+      systemEnv: {},
+      legacyEnv: upgradedHelmEnv as typeof baseEnv & Record<string, string>
+    });
+    expect(pick(helmUpgradeOverrides, 'subservice.agentSandbox.enabled')).toBe(true);
+    expect(pick(helmUpgradeOverrides, 'subservice.agentSandbox.proxy')).toEqual({
+      wsUrl: 'wss://proxy.migration.test',
+      previewUrl: 'https://preview.migration.test',
+      secret: 'proxy_generated_secret_32_characters_min'
+    });
+
+    const composeUpgradeOverrides = buildFromLegacy({
+      feConfigs: {},
+      systemEnv: {},
+      legacyEnv: {
+        ...baseEnv,
+        AGENT_SANDBOX_OPENSANDBOX_BASEURL: 'http://fastgpt-opensandbox-server:8090',
+        AGENT_SANDBOX_PROXY_URL: 'wss://sandbox.example.com',
+        AGENT_SANDBOX_PREVIEW_PROXY_URL: 'https://preview.example.com',
+        AGENT_SANDBOX_PROXY_SECRET: 'default_fastgpt_agent_sandbox_proxy_secret'
+      } as typeof baseEnv & Record<string, string>
+    });
+    expect(pick(composeUpgradeOverrides, 'subservice.agentSandbox.enabled')).toBe(true);
+
+    // 3. 显式 opensandbox 且缺少代理配置时仍保持关闭
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
+    const withoutProxyOverrides = buildFromLegacy({
+      feConfigs: {},
+      systemEnv: {},
+      legacyEnv: {
+        ...baseEnv,
+        AGENT_SANDBOX_OPENSANDBOX_BASEURL: 'https://opensandbox.migration.test',
+        AGENT_SANDBOX_PROVIDER: 'opensandbox'
+      } as typeof baseEnv & Record<string, string>
+    });
+    expect(pick(withoutProxyOverrides, 'subservice.agentSandbox.enabled')).toBeUndefined();
+
+    // 4. process.env 显式 opensandbox 且使用本地开发配置时也允许开启
+    const enabledViaEnv = buildFromLegacy({
+      feConfigs: {},
+      systemEnv: {},
+      legacyEnv: templatePlaceholderEnv as typeof baseEnv & Record<string, string>
+    });
+    expect(pick(enabledViaEnv, 'subservice.agentSandbox.enabled')).toBe(true);
   });
 });

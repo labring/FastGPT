@@ -3,7 +3,8 @@ import type { Readable } from 'stream';
 import type {
   ProbeConnectionBody,
   ProbeConnectionErrorCode,
-  ProbeConnectionResponse
+  ProbeConnectionResponse,
+  ProbeConnectionService
 } from '@fastgpt/global/openapi/admin/system/instanceConfig/probe';
 import { axiosWithoutSSRF } from '../../api/axios';
 import { isValidServiceBaseUrl } from '@fastgpt/global/common/string/url';
@@ -73,7 +74,7 @@ export const probeUrlConnection = async ({
       parsedUrl.hash = '';
     }
 
-    if (service === 'agentSandboxWsProxy' || service === 'agentSandboxPreviewProxy') {
+    const probeAgentSandboxProxy = async (): Promise<ProbeConnectionResponse> => {
       parsedUrl.pathname = `${basePath}/health`;
       const response = await axiosWithoutSSRF.get<string>(parsedUrl.toString(), {
         ...options,
@@ -83,9 +84,9 @@ export const probeUrlConnection = async ({
         return invalidResponse(response.status);
       }
       return { connected: true, status: response.status, responseTimeMs: responseTimeMs() };
-    }
+    };
 
-    if (service === 'fileService') {
+    const probeFileService = async (): Promise<ProbeConnectionResponse> => {
       parsedUrl.pathname = `${basePath}${serviceEnv.NEXT_PUBLIC_BASE_URL}/api/system/file/health`;
       const response = await axiosWithoutSSRF.get(parsedUrl.toString(), options);
       if (
@@ -96,9 +97,9 @@ export const probeUrlConnection = async ({
         return invalidResponse(response.status);
       }
       return { connected: true, status: response.status, responseTimeMs: responseTimeMs() };
-    }
+    };
 
-    if (service === 'cdn') {
+    const probeCdn = async (): Promise<ProbeConnectionResponse> => {
       // 测试唯一的临时对象，避免根路径 403 或普通网站的 200 被当成 CDN 可用。
       if (serviceEnv.STORAGE_VENDOR === 'r2') return invalidResponse();
       const bucket = global.s3BucketMap?.[S3Buckets.public];
@@ -154,9 +155,9 @@ export const probeUrlConnection = async ({
       } finally {
         controller.signal.removeEventListener('abort', onAbort);
       }
-    }
+    };
 
-    if (service === 'codeSandbox') {
+    const probeCodeSandbox = async (): Promise<ProbeConnectionResponse> => {
       if (!token?.trim()) return invalidResponse();
       parsedUrl.pathname = `${basePath}/sandbox/js`;
       const response = await axiosWithoutSSRF.post(
@@ -173,9 +174,25 @@ export const probeUrlConnection = async ({
         return invalidResponse(response.status);
       }
       return { connected: true, status: response.status, responseTimeMs: responseTimeMs() };
-    }
+    };
 
-    if (service === 'mcpSse') {
+    const probeOpenSandbox = async (): Promise<ProbeConnectionResponse> => {
+      if (!token?.trim()) return invalidResponse();
+      // 与 @alibaba-group/opensandbox SDK 一致，剥离用户可能填写的尾随 /v1 后再拼接 /v1/sandboxes。
+      const normalizedBasePath = basePath.endsWith('/v1') ? basePath.slice(0, -3) : basePath;
+      parsedUrl.pathname = `${normalizedBasePath}/v1/sandboxes`;
+      parsedUrl.searchParams.set('pageSize', '1');
+      const response = await axiosWithoutSSRF.get(parsedUrl.toString(), {
+        ...options,
+        headers: { ...options.headers, 'OPEN-SANDBOX-API-KEY': token.trim() }
+      });
+      if (response.status !== 200 || !Array.isArray(response.data?.items)) {
+        return invalidResponse(response.status);
+      }
+      return { connected: true, status: response.status, responseTimeMs: responseTimeMs() };
+    };
+
+    const probeMcpSse = async (): Promise<ProbeConnectionResponse> => {
       const key = `fastgpt-probe-${randomUUID()}`;
       parsedUrl.pathname = `${basePath}/${key}/sse`;
       const response = await axiosWithoutSSRF.get<Readable>(parsedUrl.toString(), {
@@ -257,6 +274,23 @@ export const probeUrlConnection = async ({
       });
       if (!matched) return invalidResponse(response.status);
       return { connected: true, status: response.status, responseTimeMs: responseTimeMs() };
+    };
+
+    const serviceProbeHandlers: Record<
+      ProbeConnectionService,
+      () => Promise<ProbeConnectionResponse>
+    > = {
+      agentSandboxWsProxy: probeAgentSandboxProxy,
+      agentSandboxPreviewProxy: probeAgentSandboxProxy,
+      fileService: probeFileService,
+      cdn: probeCdn,
+      codeSandbox: probeCodeSandbox,
+      opensandbox: probeOpenSandbox,
+      mcpSse: probeMcpSse
+    };
+
+    if (service) {
+      return await serviceProbeHandlers[service]();
     }
 
     // 通用模式保留任意 HTTP 状态视作网络连通的历史语义。

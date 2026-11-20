@@ -7,10 +7,9 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoAgentSkillsVersion } from '@fastgpt/service/core/ai/skill/version/schema';
 import { importSkill } from '@fastgpt/service/core/ai/skill/manage';
-import { deleteSkillPackage } from '@fastgpt/service/core/ai/skill/package';
+import { deleteSkillPackage } from '@fastgpt/service/core/ai/skill/package/storage';
 import {
   getSkillEditRuntimeContext,
-  getSkillEditRuntimeStatus,
   initSkillEditRuntimeSandbox
 } from '@fastgpt/service/core/ai/sandbox/application/skillEdit/runtime';
 import {
@@ -26,7 +25,7 @@ import { getSandboxIntegrationProvider } from './config';
 
 const integrationProvider = getSandboxIntegrationProvider();
 
-/** 创建一个真实导入包，故意不写入根目录 `.gitignore`。 */
+/** 创建一个真实导入 `.zip` 包，故意不写入根目录 `.gitignore`。 */
 const createImportedSkillPackage = async (): Promise<Buffer> => {
   const zip = new JSZip();
   zip.file('SKILL.md', '# Imported skill\n\nThis package intentionally has no gitignore.\n');
@@ -51,11 +50,11 @@ describe.skipIf(!integrationProvider).sequential('Skill import Sandbox Integrati
       ...snapshot,
       subservice: {
         ...snapshot.subservice,
-        agentSandbox: { ...snapshot.subservice.agentSandbox, provider: integrationProvider! }
+        agentSandbox: { ...snapshot.subservice.agentSandbox, enabled: true }
       }
     };
     global.sandboxBucket = {
-      deleteWorkspaceArchiveNow: cleanupArchive
+      deleteSandboxArchives: cleanupArchive
     } as unknown as typeof global.sandboxBucket;
 
     const teamId = new Types.ObjectId().toString();
@@ -64,33 +63,70 @@ describe.skipIf(!integrationProvider).sequential('Skill import Sandbox Integrati
     const importedZip = await JSZip.loadAsync(packageBuffer);
     expect(importedZip.file('.gitignore')).toBeNull();
     let storedPackage: Buffer | undefined;
+    const consumeUploadBody = async (body: Buffer | Readable) => {
+      if (Buffer.isBuffer(body)) return body;
+      const chunks: Buffer[] = [];
+      for await (const chunk of body) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+      return Buffer.concat(chunks);
+    };
     global.skillBucket = {
       uploadPackage: vi.fn(
         async ({
           teamId: uploadTeamId,
           skillId: uploadSkillId,
           packageObjectId,
-          body
+          body,
+          extension = 'tar.zst'
         }: {
           teamId: string;
           skillId: string;
           packageObjectId: string;
           body: Buffer | Readable;
+          extension?: string;
         }) => {
-          const chunks: Buffer[] = [];
-          for await (const chunk of Readable.from(body)) {
-            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-          }
-          storedPackage = Buffer.concat(chunks);
+          storedPackage = await consumeUploadBody(body);
           return {
-            key: `agent-skills/${uploadTeamId}/${uploadSkillId}/${packageObjectId}.zip`
+            key: `agent-skills/${uploadTeamId}/${uploadSkillId}/${packageObjectId}.${extension}`
+          };
+        }
+      ),
+      uploadPackageStream: vi.fn(
+        async ({
+          teamId: uploadTeamId,
+          skillId: uploadSkillId,
+          packageObjectId,
+          body,
+          extension = 'tar.zst'
+        }: {
+          teamId: string;
+          skillId: string;
+          packageObjectId: string;
+          body: Readable;
+          extension?: string;
+        }) => {
+          storedPackage = await consumeUploadBody(body);
+          return {
+            key: `agent-skills/${uploadTeamId}/${uploadSkillId}/${packageObjectId}.${extension}`,
+            sizeBytes: storedPackage.length
           };
         }
       ),
       removePackageTTL: vi.fn(async () => undefined),
       client: {
-        downloadObject: vi.fn(async () => ({
-          body: Readable.from([storedPackage])
+        getObjectMetadata: vi.fn(async ({ key }: { key: string }) => ({
+          bucket: 'test-bucket',
+          key,
+          metadata: {},
+          contentLength: storedPackage?.length ?? 0
+        })),
+        downloadObject: vi.fn(async ({ range }: { range?: { start: number; end: number } }) => ({
+          body: Readable.from([
+            storedPackage && range
+              ? storedPackage.subarray(range.start, range.end + 1)
+              : storedPackage
+          ])
         })),
         deleteObject: vi.fn(async () => undefined)
       }
@@ -116,9 +152,7 @@ describe.skipIf(!integrationProvider).sequential('Skill import Sandbox Integrati
 
     try {
       const context = await getSkillEditRuntimeContext({ skillId, teamId });
-      await expect(getSkillEditRuntimeStatus({ context })).resolves.toMatchObject({
-        status: 'readyToInit'
-      });
+      expect(context.existingInstance).toBeNull();
 
       await initSkillEditRuntimeSandbox({ context });
 
@@ -131,7 +165,7 @@ describe.skipIf(!integrationProvider).sequential('Skill import Sandbox Integrati
       });
 
       const workDirectory = context.runtimeProfile.workDirectory;
-      const [gitignore, skillMd] = await sandboxClient.provider.readFiles([
+      const [gitignore, skillMd] = await sandboxClient.opensandbox.readFiles([
         joinSandboxPath(workDirectory, '.gitignore'),
         joinSandboxPath(workDirectory, 'SKILL.md')
       ]);
@@ -140,7 +174,7 @@ describe.skipIf(!integrationProvider).sequential('Skill import Sandbox Integrati
       expect(Buffer.from(gitignore?.content ?? []).toString()).toContain('node_modules');
       expect(skillMd?.error).toBeNull();
     } finally {
-      await sandboxClient?.provider.close().catch(() => undefined);
+      await sandboxClient?.opensandbox.close().catch(() => undefined);
 
       const sandboxInstance = await MongoSandboxInstance.findOne({ sandboxId }).lean();
       if (sandboxInstance) {
@@ -151,6 +185,6 @@ describe.skipIf(!integrationProvider).sequential('Skill import Sandbox Integrati
       await MongoAgentSkills.deleteOne({ _id: skillId });
     }
 
-    expect(cleanupArchive).toHaveBeenCalledWith({ sandboxId });
+    expect(cleanupArchive).toHaveBeenCalledWith(expect.objectContaining({ sandboxId }));
   });
 });

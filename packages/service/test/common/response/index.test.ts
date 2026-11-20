@@ -323,7 +323,8 @@ describe('jsonRes HTTP status mapping', () => {
     [SandboxErrEnum.agentSandboxInitializing, 409],
     [SandboxErrEnum.agentSandboxLimitReached, 409],
     [SandboxErrEnum.agentSandboxTeamLimitReached, 409],
-    [SandboxErrEnum.runtimeUpgradeFailed, 500],
+    [SandboxErrEnum.agentSandboxMigrationInProgress, 409],
+    [SandboxErrEnum.agentSandboxDiskQuotaExceeded, 403],
     [AppErrEnum.workflowBuilderVersionExpired, 410],
     [AppErrEnum.workflowBuilderVersionNotFound, 404]
   ] as const)('uses the configured HTTP status for %s', (errorKey, httpStatus) => {
@@ -509,13 +510,13 @@ describe('getSseErrorResponse logging', () => {
     expect(authResponse.shouldClearCookie).toBe(true);
     expect(logger.error).not.toHaveBeenCalled();
 
-    const upgradeError = new UserError(SandboxErrEnum.runtimeUpgradeInProgress);
-    const upgradePayload = JSON.parse(getSseErrorResponse(upgradeError).data);
+    const initError = new UserError(SandboxErrEnum.agentSandboxInitializing);
+    const initPayload = JSON.parse(getSseErrorResponse(initError).data);
 
-    expect(upgradePayload).toEqual({
-      code: 510003,
-      statusText: SandboxErrEnum.runtimeUpgradeInProgress,
-      message: ERROR_RESPONSE[SandboxErrEnum.runtimeUpgradeInProgress].message,
+    expect(initPayload).toEqual({
+      code: 510001,
+      statusText: SandboxErrEnum.agentSandboxInitializing,
+      message: ERROR_RESPONSE[SandboxErrEnum.agentSandboxInitializing].message,
       data: null,
       httpStatus: 409
     });

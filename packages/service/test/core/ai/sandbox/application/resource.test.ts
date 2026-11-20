@@ -3,20 +3,37 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
-  buildSandboxResourceAdapter: vi.fn(),
+  redis: { get: vi.fn(), set: vi.fn(), delete: vi.fn() },
+  createOpenSandboxResourceClient: vi.fn(),
+  disconnectSandbox: vi.fn(),
+  killManagedOpenSandboxById: vi.fn(),
+  listManagedOpenSandboxes: vi.fn(),
+  getOpenSandboxClientConfig: vi.fn(),
+  isAgentSandboxOpenSandboxConfigured: vi.fn(),
   deleteSessionVolume: vi.fn(),
   getSessionVolumeClaimName: vi.fn(),
-  deleteWorkspaceArchiveNow: vi.fn(),
-  withSandboxLifecycleLease: vi.fn(),
+  getOrphanVolumeMarkerKey: vi.fn(),
+  listSessionVolumes: vi.fn(),
+  getVolumeManagerEnvConfig: vi.fn(),
+  deleteSandboxArchives: vi.fn(),
+  withSandboxLease: vi.fn(),
   findSandboxInstanceBySandboxId: vi.fn(),
+  findExistingSandboxVolumeClaimNames: vi.fn(),
+  findSandboxInstancesBySandboxIds: vi.fn(),
   claimSandboxOperation: vi.fn(),
   advanceSandboxOperation: vi.fn(),
   completeSandboxOperation: vi.fn(),
   deleteClaimedSandboxRecord: vi.fn(),
   markSandboxOperationFailed: vi.fn(),
+  touchSandboxOperationHeartbeat: vi.fn(),
   findStaleSandboxOperations: vi.fn(),
   findSandboxResourcesBySource: vi.fn(),
   findSkillRelatedSandboxResources: vi.fn()
+}));
+
+vi.mock('@fastgpt/dal/redis/adapter', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/dal/redis/adapter')>()),
+  redisCacheAdapter: mocks.redis
 }));
 
 vi.mock('@fastgpt/service/common/logger', () => ({
@@ -24,21 +41,51 @@ vi.mock('@fastgpt/service/common/logger', () => ({
   LogCategories: { MODULE: { AI: { SANDBOX: 'sandbox' } } }
 }));
 
+vi.mock('@fastgpt/service/core/ai/sandbox/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/config')>()),
+  isAgentSandboxOpenSandboxConfigured: mocks.isAgentSandboxOpenSandboxConfigured
+}));
+
 vi.mock('@fastgpt/service/core/ai/sandbox/application/lease', () => ({
-  withSandboxLifecycleLease: mocks.withSandboxLifecycleLease
+  withSandboxLease: mocks.withSandboxLease
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/adapter', () => ({
-  buildSandboxResourceAdapter: mocks.buildSandboxResourceAdapter
+vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox/config', () => ({
+  getOpenSandboxClientConfig: mocks.getOpenSandboxClientConfig
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/volume/service', () => ({
-  deleteSessionVolume: mocks.deleteSessionVolume,
-  getSessionVolumeClaimName: mocks.getSessionVolumeClaimName
+vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox/opensandbox', () => ({
+  createOpenSandboxResourceClient: mocks.createOpenSandboxResourceClient,
+  disconnectSandbox: mocks.disconnectSandbox,
+  killManagedOpenSandboxById: mocks.killManagedOpenSandboxById,
+  listManagedOpenSandboxes: mocks.listManagedOpenSandboxes
 }));
+
+vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/volume/config', () => ({
+  getVolumeManagerEnvConfig: mocks.getVolumeManagerEnvConfig
+}));
+
+vi.mock(
+  '@fastgpt/service/core/ai/sandbox/infrastructure/volume/service',
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import('@fastgpt/service/core/ai/sandbox/infrastructure/volume/service')
+      >();
+    return {
+      ...actual,
+      deleteSessionVolume: mocks.deleteSessionVolume,
+      getOrphanVolumeMarkerKey: mocks.getOrphanVolumeMarkerKey,
+      getSessionVolumeClaimName: mocks.getSessionVolumeClaimName,
+      listSessionVolumes: mocks.listSessionVolumes
+    };
+  }
+);
 
 vi.mock('@fastgpt/service/common/s3/sources/sandbox', () => ({
-  getS3SandboxSource: () => ({ deleteWorkspaceArchiveNow: mocks.deleteWorkspaceArchiveNow })
+  buildSandboxArchiveObjectKey: (sandboxId: string, generation: string) =>
+    `sandbox/${sandboxId}/${generation}.tar.zst`,
+  getS3SandboxSource: () => ({ deleteSandboxArchives: mocks.deleteSandboxArchives })
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository', () => ({
@@ -46,18 +93,24 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository', (
   claimSandboxOperation: mocks.claimSandboxOperation,
   completeSandboxOperation: mocks.completeSandboxOperation,
   deleteClaimedSandboxRecord: mocks.deleteClaimedSandboxRecord,
+  findExistingSandboxVolumeClaimNames: mocks.findExistingSandboxVolumeClaimNames,
   findInactiveRunningSandboxResources: vi.fn(),
   findStaleSandboxOperations: mocks.findStaleSandboxOperations,
   findSandboxInstanceBySandboxId: mocks.findSandboxInstanceBySandboxId,
+  findSandboxInstancesBySandboxIds: mocks.findSandboxInstancesBySandboxIds,
   findSandboxResourcesBySource: mocks.findSandboxResourcesBySource,
   findSkillRelatedSandboxResources: mocks.findSkillRelatedSandboxResources,
-  markSandboxOperationFailed: mocks.markSandboxOperationFailed
+  markSandboxOperationFailed: mocks.markSandboxOperationFailed,
+  touchSandboxOperationHeartbeat: mocks.touchSandboxOperationHeartbeat
 }));
 
 import {
   deleteSandboxResourcesBySource,
   deleteSandboxResource,
+  deleteSandboxResourceWithinLease,
   deleteSkillEditSandboxes,
+  reconcileOrphanSandboxResources,
+  reconcileOrphanSandboxVolumes,
   retryStaleStoppingSandboxes,
   stopSandboxResource,
   stopSandboxResources
@@ -67,6 +120,7 @@ const createResource = (overrides: Record<string, unknown> = {}) =>
   ({
     provider: 'opensandbox',
     sandboxId: 'sandbox-1',
+    instanceId: 'remote-1',
     sourceType: ChatSourceTypeEnum.app,
     sourceId: 'app-1',
     userId: 'user-1',
@@ -80,7 +134,14 @@ const createResource = (overrides: Record<string, unknown> = {}) =>
           mountPath: '/workspace'
         }
       ],
-      mountPath: '/workspace'
+      mountPath: '/workspace',
+      archive: {
+        objectKey: 'sandbox/sandbox-1/gen1.tar.zst',
+        generation: 'gen1',
+        format: 'tar.zst',
+        sizeBytes: 64,
+        archivedAt: new Date('2026-07-01T00:00:00.000Z')
+      }
     },
     ...overrides
   }) as any;
@@ -102,7 +163,16 @@ describe('sandbox resource lifecycle', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.withSandboxLifecycleLease.mockImplementation(async ({ fn }: any) =>
+    mocks.isAgentSandboxOpenSandboxConfigured.mockReturnValue(true);
+    mocks.getVolumeManagerEnvConfig.mockReturnValue({ volumeNamePrefix: 'fastgpt-session' });
+    mocks.getOpenSandboxClientConfig.mockReturnValue({});
+    mocks.listManagedOpenSandboxes.mockResolvedValue([]);
+    mocks.findExistingSandboxVolumeClaimNames.mockResolvedValue(new Set());
+    mocks.getOrphanVolumeMarkerKey.mockImplementation((claimName: string) => `orphan:${claimName}`);
+    mocks.redis.get.mockResolvedValue(null);
+    mocks.redis.set.mockResolvedValue(undefined);
+    mocks.redis.delete.mockResolvedValue(undefined);
+    mocks.withSandboxLease.mockImplementation(async ({ fn }: any) =>
       fn({ signal: new AbortController().signal, assertValid })
     );
     mocks.findSandboxInstanceBySandboxId.mockResolvedValue(createResource());
@@ -118,31 +188,33 @@ describe('sandbox resource lifecycle', () => {
       (storage: any) =>
         storage?.volumes?.find((volume: any) => volume.name === 'workspace')?.claimName
     );
-    mocks.deleteWorkspaceArchiveNow.mockResolvedValue(undefined);
+    mocks.deleteSandboxArchives.mockResolvedValue(undefined);
     mocks.findSandboxResourcesBySource.mockResolvedValue([]);
     mocks.findSkillRelatedSandboxResources.mockResolvedValue([]);
     mocks.findStaleSandboxOperations.mockResolvedValue([]);
-    mocks.buildSandboxResourceAdapter.mockReturnValue({
+    mocks.disconnectSandbox.mockResolvedValue(undefined);
+    mocks.createOpenSandboxResourceClient.mockImplementation(async () => ({
       stop: vi.fn(async () => undefined),
-      delete: vi.fn(async () => undefined)
-    });
+      delete: vi.fn(async () => undefined),
+      close: vi.fn(async () => undefined)
+    }));
   });
 
-  it('claims running -> stopping before the provider call and commits stopped', async () => {
+  it('claims running -> stopping before the opensandbox call and commits stopped', async () => {
     await stopSandboxResource(createResource());
 
-    const adapter = mocks.buildSandboxResourceAdapter.mock.results[0].value;
+    const client = await mocks.createOpenSandboxResourceClient.mock.results[0].value;
     expect(mocks.claimSandboxOperation).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'stopping', type: 'stop', matchLastActiveAt: true })
     );
     expect(mocks.claimSandboxOperation.mock.invocationCallOrder[0]).toBeLessThan(
-      adapter.stop.mock.invocationCallOrder[0]
+      client.stop.mock.invocationCallOrder[0]
     );
     expect(mocks.advanceSandboxOperation).toHaveBeenCalledWith(
       expect.objectContaining({ operationId: 'operation-1', phase: 'providerStopped' })
     );
     expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
-      expect.objectContaining({ fromStatus: 'stopping', status: 'stopped' })
+      expect.objectContaining({ fromStatus: 'stopping', status: 'stopped', unset: ['instanceId'] })
     );
   });
 
@@ -162,7 +234,7 @@ describe('sandbox resource lifecycle', () => {
         })
       );
       await expect(deleteSandboxResource(createResource())).rejects.toThrow('isolation window');
-      expect(mocks.buildSandboxResourceAdapter).not.toHaveBeenCalled();
+      expect(mocks.createOpenSandboxResourceClient).not.toHaveBeenCalled();
       expect(mocks.claimSandboxOperation).not.toHaveBeenCalled();
     }
   );
@@ -184,15 +256,16 @@ describe('sandbox resource lifecycle', () => {
         matchLastActiveAt: true
       })
     );
-    expect(mocks.buildSandboxResourceAdapter).not.toHaveBeenCalled();
+    expect(mocks.createOpenSandboxResourceClient).not.toHaveBeenCalled();
   });
 
   it('keeps stopping with an operation error when provider stop fails', async () => {
-    mocks.buildSandboxResourceAdapter.mockReturnValueOnce({
+    mocks.createOpenSandboxResourceClient.mockResolvedValueOnce({
       stop: vi.fn(async () => {
         throw new Error('provider stop failed');
       }),
-      delete: vi.fn()
+      delete: vi.fn(),
+      close: vi.fn()
     });
 
     await expect(stopSandboxResource(createResource())).rejects.toThrow('provider stop failed');
@@ -217,7 +290,7 @@ describe('sandbox resource lifecycle', () => {
     expect(mocks.findStaleSandboxOperations).toHaveBeenCalledWith({
       statuses: ['stopping'],
       now: new Date('2026-07-10T00:00:00.000Z'),
-      heartbeatBefore: new Date('2026-07-09T23:55:00.000Z')
+      heartbeatBefore: new Date('2026-07-09T23:59:00.000Z')
     });
     expect(mocks.claimSandboxOperation).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -227,16 +300,21 @@ describe('sandbox resource lifecycle', () => {
         matchLastActiveAt: false
       })
     );
-    expect(mocks.buildSandboxResourceAdapter).toHaveBeenCalledTimes(1);
+    expect(mocks.createOpenSandboxResourceClient).toHaveBeenCalledTimes(1);
   });
 
-  it('deletes provider, volume and archive before token-guarded record cleanup', async () => {
+  it('deletes container, volume and archives before token-guarded record cleanup', async () => {
     await deleteSandboxResource(createResource());
 
-    const adapter = mocks.buildSandboxResourceAdapter.mock.results[0].value;
-    expect(adapter.delete).toHaveBeenCalledTimes(1);
-    expect(mocks.deleteSessionVolume).toHaveBeenCalledWith('fastgpt-session-sandbox-1-current');
-    expect(mocks.deleteWorkspaceArchiveNow).toHaveBeenCalledWith({ sandboxId: 'sandbox-1' });
+    const client = await mocks.createOpenSandboxResourceClient.mock.results[0].value;
+    expect(client.delete).toHaveBeenCalledTimes(1);
+    expect(mocks.deleteSessionVolume).toHaveBeenCalledWith('fastgpt-session-sandbox-1-current', {
+      allowLegacyUnlabeled: true
+    });
+    expect(mocks.deleteSandboxArchives).toHaveBeenCalledWith({
+      sandboxId: 'sandbox-1',
+      currentObjectKey: 'sandbox/sandbox-1/gen1.tar.zst'
+    });
     expect(mocks.advanceSandboxOperation.mock.calls.map((call) => call[0].phase)).toEqual([
       'providerDeleted',
       'volumeDeleted',
@@ -248,7 +326,7 @@ describe('sandbox resource lifecycle', () => {
   });
 
   it('does not delete the record after an archive deletion failure', async () => {
-    mocks.deleteWorkspaceArchiveNow.mockRejectedValueOnce(new Error('archive delete failed'));
+    mocks.deleteSandboxArchives.mockRejectedValueOnce(new Error('archive delete failed'));
 
     await expect(deleteSandboxResource(createResource())).rejects.toThrow('archive delete failed');
 
@@ -270,9 +348,9 @@ describe('sandbox resource lifecycle', () => {
 
     await deleteSandboxResource(deleting);
 
-    expect(mocks.buildSandboxResourceAdapter).not.toHaveBeenCalled();
+    expect(mocks.createOpenSandboxResourceClient).not.toHaveBeenCalled();
     expect(mocks.deleteSessionVolume).not.toHaveBeenCalled();
-    expect(mocks.deleteWorkspaceArchiveNow).not.toHaveBeenCalled();
+    expect(mocks.deleteSandboxArchives).not.toHaveBeenCalled();
     expect(mocks.deleteClaimedSandboxRecord).toHaveBeenCalledWith({
       resource: reclaimed,
       operationId: 'resumed-delete'
@@ -290,17 +368,17 @@ describe('sandbox resource lifecycle', () => {
         sourceType,
         sourceId: 'app-1'
       });
-      expect(mocks.withSandboxLifecycleLease).toHaveBeenCalledTimes(1);
+      expect(mocks.withSandboxLease).toHaveBeenCalledTimes(1);
     }
   );
 
-  it('does not acquire lifecycle leases when the source has no resources', async () => {
+  it('does not acquire leases when the source has no resources', async () => {
     await deleteSandboxResourcesBySource({
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app-1'
     });
 
-    expect(mocks.withSandboxLifecycleLease).not.toHaveBeenCalled();
+    expect(mocks.withSandboxLease).not.toHaveBeenCalled();
   });
 
   it('uses the skill query for skill bulk deletion', async () => {
@@ -316,7 +394,7 @@ describe('sandbox resource lifecycle', () => {
 
     expect(mocks.findSandboxResourcesBySource).not.toHaveBeenCalled();
     expect(mocks.findSkillRelatedSandboxResources).toHaveBeenCalledWith(['skill-1']);
-    expect(mocks.withSandboxLifecycleLease).toHaveBeenCalledTimes(1);
+    expect(mocks.withSandboxLease).toHaveBeenCalledTimes(1);
   });
 
   it('records every failed resource after bulk deletion settles', async () => {
@@ -326,7 +404,7 @@ describe('sandbox resource lifecycle', () => {
       createResource({ sandboxId: 'sandbox-c' })
     ];
     mocks.findSandboxResourcesBySource.mockResolvedValueOnce(resources);
-    mocks.withSandboxLifecycleLease.mockImplementation(async ({ sandboxId, fn }: any) => {
+    mocks.withSandboxLease.mockImplementation(async ({ sandboxId, fn }: any) => {
       if (sandboxId === 'sandbox-a') throw new Error('delete a failed');
       if (sandboxId === 'sandbox-b') throw new Error('delete b failed');
       return fn({ signal: new AbortController().signal, assertValid });
@@ -336,7 +414,7 @@ describe('sandbox resource lifecycle', () => {
       deleteSandboxResourcesBySource({ sourceType: ChatSourceTypeEnum.app, sourceId: 'app-1' })
     ).rejects.toThrow('Failed to delete 2 sandbox resources');
 
-    expect(mocks.withSandboxLifecycleLease).toHaveBeenCalledTimes(3);
+    expect(mocks.withSandboxLease).toHaveBeenCalledTimes(3);
     expect(mocks.logger.error).toHaveBeenCalledWith('Failed to delete sandbox resources', {
       failureCount: 2,
       failures: [
@@ -347,11 +425,12 @@ describe('sandbox resource lifecycle', () => {
   });
 
   it('isolates failures while stopping a cron batch', async () => {
-    mocks.buildSandboxResourceAdapter.mockReturnValueOnce({
+    mocks.createOpenSandboxResourceClient.mockResolvedValueOnce({
       stop: vi.fn(async () => {
         throw new Error('stop failed');
       }),
-      delete: vi.fn()
+      delete: vi.fn(),
+      close: vi.fn()
     });
 
     await stopSandboxResources([createResource()]);
@@ -360,5 +439,327 @@ describe('sandbox resource lifecycle', () => {
       'Failed to stop sandbox',
       expect.objectContaining({ sandboxId: 'sandbox-1' })
     );
+  });
+
+  it('reconciles managed generation orphan PVCs while skipping no-generation or foreign-prefix PVCs without false warnings on referenced claims', async () => {
+    const now = new Date('2026-07-10T01:00:00.000Z');
+    const firstSeenExpired = String(now.getTime() - 31 * 60_000);
+    const rawVolumes = [
+      'fastgpt-session-legacy-referenced',
+      'fastgpt-session-legacy-no-generation',
+      'other-prefix-sandbox-1-0',
+      'fastgpt-session-sandbox-1-0'
+    ];
+    mocks.listSessionVolumes.mockResolvedValueOnce(rawVolumes);
+    mocks.findExistingSandboxVolumeClaimNames.mockImplementation(async (claims: string[]) =>
+      claims.includes('fastgpt-session-legacy-referenced')
+        ? new Set(['fastgpt-session-legacy-referenced'])
+        : new Set()
+    );
+    mocks.redis.get.mockImplementation(async (key: string) =>
+      key === 'orphan:fastgpt-session-sandbox-1-0' ? firstSeenExpired : null
+    );
+
+    await reconcileOrphanSandboxVolumes({ now });
+
+    expect(mocks.findExistingSandboxVolumeClaimNames).toHaveBeenCalledWith(rawVolumes);
+    expect(mocks.logger.warn).toHaveBeenCalledTimes(2);
+    expect(mocks.logger.warn).toHaveBeenCalledWith(
+      'Skipping unmanaged PVC during orphan volume reconciliation',
+      { claimName: 'fastgpt-session-legacy-no-generation', volumeNamePrefix: 'fastgpt-session' }
+    );
+    expect(mocks.logger.warn).toHaveBeenCalledWith(
+      'Skipping unmanaged PVC during orphan volume reconciliation',
+      { claimName: 'other-prefix-sandbox-1-0', volumeNamePrefix: 'fastgpt-session' }
+    );
+    expect(mocks.redis.delete).toHaveBeenCalledWith('orphan:fastgpt-session-legacy-referenced');
+    expect(mocks.deleteSessionVolume).toHaveBeenCalledWith('fastgpt-session-sandbox-1-0');
+    expect(mocks.deleteSessionVolume).toHaveBeenCalledTimes(1);
+  });
+
+  it('tombstones opensandbox record to archived when legacyDevboxPendingCleanup is true by default', async () => {
+    const resource = createResource({
+      storage: {
+        volumes: [{ name: 'workspace', claimName: 'fastgpt-session-sandbox-1-current' }],
+        mountPath: '/workspace',
+        archive: {
+          objectKey: 'sandbox/sandbox-1/gen1.tar.zst',
+          generation: 'gen1',
+          format: 'tar.zst',
+          sizeBytes: 64,
+          archivedAt: new Date('2026-07-01T00:00:00Z')
+        },
+        legacyDevboxPendingCleanup: true
+      }
+    });
+    const claimed = {
+      ...resource,
+      status: 'deleting',
+      operation: { id: 'op-tombstone', type: 'delete', phase: 'claimed' }
+    };
+    mocks.claimSandboxOperation.mockResolvedValueOnce(claimed);
+
+    await deleteSandboxResourceWithinLease({
+      current: resource,
+      lease: { signal: new AbortController().signal, assertValid: vi.fn() } as any
+    });
+
+    expect(mocks.deleteClaimedSandboxRecord).not.toHaveBeenCalled();
+    expect(mocks.completeSandboxOperation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fromStatus: 'deleting',
+        status: 'archived',
+        unset: ['instanceId', 'storage.volumes', 'storage.mountPath'],
+        set: {
+          storage: {
+            archive: expect.objectContaining({
+              objectKey: 'sandbox/sandbox-1/deleted.tar.zst',
+              generation: 'deleted',
+              format: 'tar.zst',
+              sizeBytes: 0
+            }),
+            legacyDevboxPendingCleanup: true
+          }
+        }
+      })
+    );
+  });
+
+  it('physically deletes opensandbox record with legacyDevboxPendingCleanup when allowDeleteLegacyDevboxPointer is true', async () => {
+    const resource = createResource({
+      storage: {
+        legacyDevboxPendingCleanup: true
+      }
+    });
+
+    await deleteSandboxResourceWithinLease({
+      current: resource,
+      lease: { signal: new AbortController().signal, assertValid: vi.fn() } as any,
+      allowDeleteLegacyDevboxPointer: true
+    });
+
+    expect(mocks.completeSandboxOperation).not.toHaveBeenCalled();
+    expect(mocks.deleteClaimedSandboxRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ operationId: 'operation-1' })
+    );
+  });
+
+  it('reconciles young late containers with superseded operationId immediately while preserving current operation and running instance containers', async () => {
+    const now = new Date('2026-07-10T01:00:00.000Z');
+    const createdRecently = new Date(now.getTime() - 30_000);
+
+    const lateDoc = createResource({
+      sandboxId: 'sb-late',
+      instanceId: undefined,
+      status: 'provisioning',
+      operation: {
+        id: 'op-new',
+        type: 'provision',
+        phase: 'claimed',
+        startedAt: createdRecently,
+        heartbeatAt: createdRecently
+      }
+    });
+    const activeProvisionDoc = createResource({
+      sandboxId: 'sb-active',
+      instanceId: undefined,
+      status: 'provisioning',
+      operation: {
+        id: 'op-cur',
+        type: 'provision',
+        phase: 'claimed',
+        startedAt: createdRecently,
+        heartbeatAt: createdRecently
+      }
+    });
+    const activeRunningDoc = createResource({
+      sandboxId: 'sb-run',
+      instanceId: 'c-run',
+      status: 'running',
+      operation: undefined
+    });
+
+    mocks.listManagedOpenSandboxes.mockResolvedValueOnce([
+      {
+        id: 'c-late',
+        sessionId: 'sb-late',
+        state: 'Running',
+        createdAt: createdRecently,
+        metadata: { app: 'fastgpt', sessionId: 'sb-late', operationId: 'op-old' }
+      },
+      {
+        id: 'c-active',
+        sessionId: 'sb-active',
+        state: 'Running',
+        createdAt: createdRecently,
+        metadata: { app: 'fastgpt', sessionId: 'sb-active', operationId: 'op-cur' }
+      },
+      {
+        id: 'c-run',
+        sessionId: 'sb-run',
+        state: 'Running',
+        createdAt: createdRecently,
+        metadata: { app: 'fastgpt', sessionId: 'sb-run', operationId: 'op-run' }
+      }
+    ]);
+    mocks.findSandboxInstancesBySandboxIds.mockResolvedValueOnce([
+      lateDoc,
+      activeProvisionDoc,
+      activeRunningDoc
+    ]);
+    mocks.findSandboxInstanceBySandboxId.mockResolvedValueOnce(lateDoc);
+
+    await reconcileOrphanSandboxResources(now);
+
+    expect(mocks.killManagedOpenSandboxById).toHaveBeenCalledTimes(1);
+    expect(mocks.killManagedOpenSandboxById).toHaveBeenCalledWith(
+      { sessionId: 'sb-late', remoteSandboxId: 'c-late' },
+      {}
+    );
+  });
+
+  it('restricts orphan container and volume reconciliation to the provided scope without touching unrelated sessions', async () => {
+    const now = new Date('2026-07-10T01:00:00.000Z');
+    const createdPastGrace = new Date(now.getTime() - 20 * 60_000);
+    const firstSeenExpired = String(now.getTime() - 35 * 60_000);
+
+    mocks.listManagedOpenSandboxes.mockResolvedValueOnce([
+      {
+        id: 'c-scoped',
+        sessionId: 'app-scoped',
+        state: 'Running',
+        createdAt: createdPastGrace,
+        metadata: { app: 'fastgpt', sessionId: 'app-scoped' }
+      },
+      {
+        id: 'c-other',
+        sessionId: 'app-other',
+        state: 'Running',
+        createdAt: createdPastGrace,
+        metadata: { app: 'fastgpt', sessionId: 'app-other' }
+      },
+      {
+        id: 'c-unlabeled',
+        state: 'Running',
+        createdAt: createdPastGrace,
+        metadata: { app: 'fastgpt' }
+      }
+    ]);
+    mocks.findSandboxInstancesBySandboxIds.mockResolvedValueOnce([]);
+    mocks.findSandboxInstanceBySandboxId.mockResolvedValueOnce(null);
+
+    // 仅传 sessionIds 时只清理目标会话，且不得扫描/修改未指定 claimNames 的持久卷
+    await reconcileOrphanSandboxResources(now, {
+      sessionIds: new Set(['app-scoped'])
+    });
+
+    expect(mocks.listSessionVolumes).not.toHaveBeenCalled();
+    expect(mocks.findSandboxInstancesBySandboxIds).toHaveBeenCalledWith(['app-scoped']);
+    expect(mocks.killManagedOpenSandboxById).toHaveBeenCalledTimes(1);
+    expect(mocks.killManagedOpenSandboxById).toHaveBeenCalledWith(
+      { sessionId: 'app-scoped', remoteSandboxId: 'c-scoped' },
+      {}
+    );
+
+    vi.clearAllMocks();
+    mocks.isAgentSandboxOpenSandboxConfigured.mockReturnValue(true);
+    mocks.getOpenSandboxClientConfig.mockReturnValue({});
+    mocks.getVolumeManagerEnvConfig.mockReturnValue({ volumeNamePrefix: 'fastgpt-session' });
+    mocks.withSandboxLease.mockImplementation(
+      async ({ fn }: { fn: (lease: any) => Promise<void> }) =>
+        fn({ signal: new AbortController().signal, assertValid: vi.fn() })
+    );
+    mocks.findExistingSandboxVolumeClaimNames.mockResolvedValue(new Set());
+    mocks.listSessionVolumes.mockResolvedValueOnce([
+      'fastgpt-session-scoped-0',
+      'fastgpt-session-unrelated-0'
+    ]);
+    mocks.listManagedOpenSandboxes.mockResolvedValueOnce([]);
+    mocks.redis.get.mockResolvedValue(firstSeenExpired);
+
+    await reconcileOrphanSandboxVolumes({
+      now,
+      scope: {
+        claimNames: new Set(['fastgpt-session-scoped-0'])
+      }
+    });
+
+    expect(mocks.findExistingSandboxVolumeClaimNames).toHaveBeenCalledWith([
+      'fastgpt-session-scoped-0'
+    ]);
+    expect(mocks.deleteSessionVolume).toHaveBeenCalledTimes(1);
+    expect(mocks.deleteSessionVolume).toHaveBeenCalledWith('fastgpt-session-scoped-0');
+  });
+
+  it('deletes purely archived opensandbox resource without requiring OpenSandbox control plane config', async () => {
+    mocks.isAgentSandboxOpenSandboxConfigured.mockReturnValue(false);
+    const archivedResource = createResource({
+      status: 'archived',
+      instanceId: undefined,
+      storage: {
+        archive: {
+          objectKey: 'sandbox/sandbox-1/gen1.tar.zst',
+          generation: 'gen1',
+          format: 'tar.zst',
+          sizeBytes: 32,
+          archivedAt: new Date('2026-07-01T00:00:00Z')
+        }
+      }
+    });
+    const claimedArchived = {
+      ...archivedResource,
+      status: 'deleting',
+      operation: {
+        id: 'operation-archived-del',
+        type: 'delete',
+        phase: 'claimed',
+        previousStatus: 'archived'
+      }
+    };
+    mocks.claimSandboxOperation.mockResolvedValueOnce(claimedArchived);
+    mocks.advanceSandboxOperation.mockImplementation(async ({ toPhase }: { toPhase: string }) => ({
+      ...claimedArchived,
+      operation: { ...claimedArchived.operation, phase: toPhase }
+    }));
+
+    await deleteSandboxResourceWithinLease({
+      current: archivedResource,
+      lease: { signal: new AbortController().signal, assertValid: vi.fn() } as any
+    });
+
+    expect(mocks.createOpenSandboxResourceClient).not.toHaveBeenCalled();
+    expect(mocks.deleteSandboxArchives).toHaveBeenCalledWith({
+      sandboxId: 'sandbox-1',
+      currentObjectKey: 'sandbox/sandbox-1/gen1.tar.zst'
+    });
+    expect(mocks.deleteClaimedSandboxRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ operationId: 'operation-archived-del' })
+    );
+  });
+
+  it('shares a single listManagedOpenSandboxes call across container/volume reconciliation and skips listing when all volumes are referenced', async () => {
+    const now = new Date('2026-07-10T01:00:00.000Z');
+    mocks.isAgentSandboxOpenSandboxConfigured.mockReturnValue(true);
+    mocks.getOpenSandboxClientConfig.mockReturnValue({});
+    mocks.getVolumeManagerEnvConfig.mockReturnValue({ volumeNamePrefix: 'fastgpt-session' });
+    mocks.listManagedOpenSandboxes.mockResolvedValue([]);
+    mocks.listSessionVolumes.mockResolvedValue(['fastgpt-session-orphan-0']);
+    mocks.findExistingSandboxVolumeClaimNames.mockResolvedValue(new Set());
+
+    await reconcileOrphanSandboxResources(now);
+    expect(mocks.listManagedOpenSandboxes).toHaveBeenCalledTimes(1);
+
+    vi.clearAllMocks();
+    mocks.isAgentSandboxOpenSandboxConfigured.mockReturnValue(true);
+    mocks.getOpenSandboxClientConfig.mockReturnValue({});
+    mocks.getVolumeManagerEnvConfig.mockReturnValue({ volumeNamePrefix: 'fastgpt-session' });
+    mocks.listSessionVolumes.mockResolvedValue(['fastgpt-session-active-0']);
+    mocks.findExistingSandboxVolumeClaimNames.mockResolvedValue(
+      new Set(['fastgpt-session-active-0'])
+    );
+
+    await reconcileOrphanSandboxVolumes({ now });
+    expect(mocks.listManagedOpenSandboxes).not.toHaveBeenCalled();
+    expect(mocks.redis.delete).toHaveBeenCalledTimes(1);
   });
 });

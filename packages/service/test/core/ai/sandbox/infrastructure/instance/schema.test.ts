@@ -104,27 +104,19 @@ describe('MongoSandboxInstance schema indexes', () => {
     ).rejects.toThrow('Stable status running must not keep an operation');
   });
 
-  it('rejects the removed provider migration state and operation', async () => {
-    await expect(
-      new MongoSandboxInstance({ ...baseInstance, status: 'providerMigrating' }).validate()
-    ).rejects.toThrow();
-
-    await expect(
-      new MongoSandboxInstance({
-        ...baseInstance,
-        status: 'archiving',
-        operation: {
-          id: 'provider-migration-operation',
-          type: 'providerMigration',
-          phase: 'claimed',
-          startedAt: new Date(),
-          heartbeatAt: new Date()
-        }
-      }).validate()
-    ).rejects.toThrow();
-  });
-
-  it('does not define a metadata container in the v2 model', () => {
-    expect(MongoSandboxInstance.schema.path('metadata')).toBeUndefined();
+  it('persists runtime resource limits via SandboxLimitMongoSchema rather than raw Zod shape', async () => {
+    const doc = new MongoSandboxInstance({
+      ...baseInstance,
+      status: 'running',
+      limit: {
+        cpuCount: 2,
+        memoryMiB: 2048
+      }
+    });
+    await expect(doc.validate()).resolves.toBeUndefined();
+    expect(doc.limit?.toObject?.() ?? doc.limit).toEqual({
+      cpuCount: 2,
+      memoryMiB: 2048
+    });
   });
 });

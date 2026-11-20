@@ -54,7 +54,8 @@ describe('sandbox getTicket API', () => {
     });
     mocks.createDirectories.mockResolvedValue(undefined);
     mocks.getSandboxClient.mockResolvedValue({
-      provider: { createDirectories: mocks.createDirectories },
+      opensandbox: { createDirectories: mocks.createDirectories },
+      runWithRecovery: vi.fn(async (fn: () => Promise<unknown>) => fn()),
       getRuntimePaths: () => ({
         workspaceRoot: '/workspace',
         runtimeSkillsRoot: '/workspace/projects',
@@ -112,7 +113,7 @@ describe('sandbox getTicket API', () => {
 
       expect(result).toEqual({
         wsUrl: expect.any(String),
-        maxFileBytes: 362 * 1024 ** 2,
+        maxFileBytes: 1024 ** 3,
         workspaceRoot: '/workspace',
         sessionWorkDirectory: '/workspace/sessions/chat-1'
       });

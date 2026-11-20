@@ -11,7 +11,11 @@ export const SandboxVolumeNameSchema = z.string().trim().regex(SANDBOX_VOLUME_NA
 
 export const SandboxVolumeEnsureRequestSchema = z.object({
   claimName: SandboxVolumeNameSchema,
-  storageSize: z.string().trim().min(1).max(64).optional()
+  storageSize: z.string().trim().min(1).max(64).optional(),
+  allowLegacyUnlabeled: z.boolean().optional().meta({
+    description: '4.18.0 过渡期兼容开关（>= 4.19.0 待存量卷迁移清理完毕后移除）',
+    deprecated: true
+  })
 });
 export type SandboxVolumeEnsureRequest = z.infer<typeof SandboxVolumeEnsureRequestSchema>;
 
@@ -20,3 +24,11 @@ export const SandboxVolumeEnsureResponseSchema = z.object({
   created: z.boolean()
 });
 export type SandboxVolumeEnsureResponse = z.infer<typeof SandboxVolumeEnsureResponseSchema>;
+
+export const SandboxVolumeInspectResponseSchema = z.object({
+  claimName: SandboxVolumeNameSchema
+});
+
+export const SandboxVolumeListResponseSchema = z.object({
+  items: z.array(SandboxVolumeNameSchema)
+});

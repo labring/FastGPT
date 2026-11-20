@@ -31,7 +31,7 @@ describe('sandbox session interface', () => {
     vi.clearAllMocks();
     mocks.checkSandboxRuntimeInstanceExists.mockResolvedValue(true);
     mocks.getRunningSandboxClient.mockResolvedValue({
-      provider: { close: vi.fn(async () => undefined) }
+      opensandbox: { close: vi.fn(async () => undefined) }
     });
   });
 

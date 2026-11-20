@@ -12,6 +12,8 @@ import { initializeDatasetVectorIndexes } from './tasks/4180/20261022_initialize
 import { backfillChatPublishSource } from './tasks/4180/20261104_backfill_chat_publish_source';
 import { backfillOpenApiKeyType } from './tasks/4180/20261104_backfill_openapi_key_type';
 import { migrateModelPricing } from './tasks/4180/20261120_migrate_model_pricing';
+import { migrateSandboxToOpenSandbox } from './tasks/4180/20261117_migrate_sandbox_to_opensandbox';
+import { cleanupLegacySandboxResources } from './tasks/4180/20261117_cleanup_legacy_sandbox_resources';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -233,6 +235,91 @@ export const systemMigrations = [
       }
     ],
     run: backfillOpenApiKeyType
+  },
+  {
+    id: '20261117_migrate_sandbox_to_opensandbox',
+    version: '4.18.0',
+    manual: true,
+    blockStartup: false,
+    nameKey: i18nT('system_migration:migrations.20261117_migrate_sandbox_to_opensandbox.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261117_migrate_sandbox_to_opensandbox.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261117_migrate_sandbox_to_opensandbox.result'),
+    progressSteps: [
+      {
+        key: 'preflight',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_migrate_sandbox_to_opensandbox.preflight'
+        )
+      },
+      {
+        key: 'runningDevbox',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_migrate_sandbox_to_opensandbox.runningDevbox'
+        )
+      },
+      {
+        key: 'stoppedDevbox',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_migrate_sandbox_to_opensandbox.stoppedDevbox'
+        )
+      },
+      {
+        key: 'legacyArchives',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_migrate_sandbox_to_opensandbox.legacyArchives'
+        )
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_migrate_sandbox_to_opensandbox.validation'
+        )
+      }
+    ],
+    run: migrateSandboxToOpenSandbox
+  },
+  {
+    id: '20261117_cleanup_legacy_sandbox_resources',
+    version: '4.18.0',
+    manual: true,
+    blockStartup: false,
+    dependsOn: ['20261117_migrate_sandbox_to_opensandbox'],
+    nameKey: i18nT('system_migration:migrations.20261117_cleanup_legacy_sandbox_resources.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261117_cleanup_legacy_sandbox_resources.description'
+    ),
+    resultKey: i18nT(
+      'system_migration:migrations.20261117_cleanup_legacy_sandbox_resources.result'
+    ),
+    progressSteps: [
+      {
+        key: 'preflight',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_cleanup_legacy_sandbox_resources.preflight'
+        )
+      },
+      {
+        key: 'cleanupDevboxes',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_cleanup_legacy_sandbox_resources.cleanupDevboxes'
+        )
+      },
+      {
+        key: 'cleanupLegacyZips',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_cleanup_legacy_sandbox_resources.cleanupLegacyZips'
+        )
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261117_cleanup_legacy_sandbox_resources.validation'
+        )
+      }
+    ],
+    run: cleanupLegacySandboxResources
   }
 ] as const satisfies readonly SystemMigration[];
 

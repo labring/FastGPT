@@ -5,18 +5,12 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  getAgentSandboxProvider,
-  getAgentSandboxProxyConfig,
-  validateAgentSandboxProxyConfig,
-  validateAgentSandboxPreviewProxyConfig,
-  getAgentSandboxArchiveInactiveDays,
-  getAgentSandboxArchiveMaxBytes,
+  getAgentSandboxCommonConfig,
   getAgentSandboxDiskBytes,
-  getAgentSandboxMax,
-  getAgentSandboxMaxFileBytes,
-  getAgentSandboxMaxPerTeam,
-  getAgentSandboxSkillMaxBytes,
-  getAgentSandboxSuspendMinutes
+  getAgentSandboxOpenSandboxConfig,
+  getAgentSandboxProxyConfig,
+  isAgentSandboxEnabled,
+  isAgentSandboxOpenSandboxConfigured
 } from '@fastgpt/service/core/ai/sandbox/config';
 
 // 需要验证实例配置优先的用例在用例内直接覆写快照叶子。
@@ -36,6 +30,7 @@ describe('agent sandbox config', () => {
   const originalProxy = { ...getAgentSandboxProxyConfig() };
 
   afterEach(() => {
+    getTestInstanceConfig().subservice.agentSandbox.enabled = false;
     getTestInstanceConfig().subservice.agentSandbox.common.storageSizeGi =
       originalAgentSandboxStorageSize;
     getTestInstanceConfig().subservice.agentSandbox.common.suspendMinutes =
@@ -45,66 +40,58 @@ describe('agent sandbox config', () => {
     getTestInstanceConfig().subservice.agentSandbox.common.maxEditDebug = originalAgentSandboxMax;
     getTestInstanceConfig().subservice.agentSandbox.common.maxPerTeam =
       originalAgentSandboxMaxPerTeam;
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.baseUrl = '';
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.apiKey = '';
     getTestInstanceConfig().subservice.agentSandbox.proxy = { ...originalProxy };
     vi.unstubAllEnvs();
   });
 
-  it('derives all size limits from instance config storageSizeGi', () => {
+  it('derives disk bytes from instance config storageSizeGi without reserving fixed system capacity', () => {
     ((global as any).systemInstanceConfig.subservice.agentSandbox.common as any).storageSizeGi = 1;
-    expect(getAgentSandboxArchiveMaxBytes()).toBe(362 * 1024 * 1024);
-    expect(getAgentSandboxDiskBytes()).toBe(362 * 1024 * 1024);
-    expect(getAgentSandboxSkillMaxBytes()).toBe(362 * 1024 * 1024);
-    expect(getAgentSandboxMaxFileBytes()).toBe(362 * 1024 * 1024);
+    expect(getAgentSandboxDiskBytes()).toBe(1024 * 1024 * 1024);
 
     ((global as any).systemInstanceConfig.subservice.agentSandbox.common as any).storageSizeGi = 2;
-    expect(getAgentSandboxDiskBytes()).toBe(874 * 1024 * 1024);
+    expect(getAgentSandboxDiskBytes()).toBe(2048 * 1024 * 1024);
   });
 
-  it('rejects storage sizes without enough space for the reserved system capacity', () => {
-    ((global as any).systemInstanceConfig.subservice.agentSandbox.common as any).storageSizeGi =
-      0.29;
-    expect(() => getAgentSandboxDiskBytes()).toThrow(
-      'Agent Sandbox storage size must be greater than 300 MiB'
-    );
-  });
-
-  it('reads lifecycle thresholds from instance config', () => {
-    ((global as any).systemInstanceConfig.subservice.agentSandbox.common as any).suspendMinutes =
-      90;
-    (
-      (global as any).systemInstanceConfig.subservice.agentSandbox.common as any
-    ).archiveInactiveDays = 14;
-
-    expect(getAgentSandboxSuspendMinutes()).toBe(90);
-    expect(getAgentSandboxArchiveInactiveDays()).toBe(14);
-  });
-
-  it('resolves system and per-team quotas from instance config', () => {
-    ((global as any).systemInstanceConfig.subservice.agentSandbox.common as any).maxEditDebug = 42;
-    ((global as any).systemInstanceConfig.subservice.agentSandbox.common as any).maxPerTeam = 5;
-    expect(getAgentSandboxMax()).toBe(42);
-    expect(getAgentSandboxMaxPerTeam()).toBe(5);
-
-    ((global as any).systemInstanceConfig.subservice.agentSandbox.common as any).maxPerTeam = null;
-    expect(getAgentSandboxMaxPerTeam()).toBeUndefined();
-  });
-
-  it('does not revive an explicit unlimited per-team quota from env', () => {
+  it('reads lifecycle thresholds and quotas from instance config without env revival', () => {
     vi.stubEnv('AGENT_SANDBOX_MAX_PER_TEAM', '5');
-    getTestInstanceConfig().subservice.agentSandbox.common.maxPerTeam = null;
+    const common = getTestInstanceConfig().subservice.agentSandbox.common;
+    common.suspendMinutes = 90;
+    common.archiveInactiveDays = 14;
+    common.maxEditDebug = 42;
+    common.maxPerTeam = 5;
 
-    expect(getAgentSandboxMaxPerTeam()).toBeUndefined();
+    expect(getAgentSandboxCommonConfig()).toMatchObject({
+      suspendMinutes: 90,
+      archiveInactiveDays: 14,
+      maxEditDebug: 42,
+      maxPerTeam: 5
+    });
+
+    common.maxPerTeam = null;
+    expect(getAgentSandboxCommonConfig().maxPerTeam).toBeNull();
   });
 
-  it('reads the provider only from instance config', () => {
+  it('reads the enabled switch and OpenSandbox readiness from instance config', () => {
+    expect(isAgentSandboxEnabled()).toBe(false);
+    expect(isAgentSandboxOpenSandboxConfigured()).toBe(false);
+
     const snapshot = createDefaultInstanceConfig() as any;
-    snapshot.subservice.agentSandbox.provider = 'opensandbox';
+    snapshot.subservice.agentSandbox.enabled = true;
+    snapshot.subservice.agentSandbox.opensandbox.baseUrl = 'https://opensandbox.example.com';
+    snapshot.subservice.agentSandbox.opensandbox.apiKey = 'test-key';
     (global as any).systemInstanceConfig = snapshot;
 
-    expect(getAgentSandboxProvider()).toBe('opensandbox');
+    expect(isAgentSandboxEnabled()).toBe(true);
+    expect(isAgentSandboxOpenSandboxConfigured()).toBe(true);
+    expect(getAgentSandboxOpenSandboxConfig()).toMatchObject({
+      baseUrl: 'https://opensandbox.example.com',
+      apiKey: 'test-key'
+    });
   });
 
-  it('reads lifecycle thresholds from instance config before env', () => {
+  it('reads lifecycle thresholds from the active instance snapshot', () => {
     getTestInstanceConfig().subservice.agentSandbox.common.suspendMinutes = 90;
     getTestInstanceConfig().subservice.agentSandbox.common.archiveInactiveDays = 14;
     const snapshot = createDefaultInstanceConfig() as any;
@@ -112,8 +99,8 @@ describe('agent sandbox config', () => {
     snapshot.subservice.agentSandbox.common.archiveInactiveDays = 3;
     (global as any).systemInstanceConfig = snapshot;
 
-    expect(getAgentSandboxSuspendMinutes()).toBe(30);
-    expect(getAgentSandboxArchiveInactiveDays()).toBe(3);
+    expect(getAgentSandboxCommonConfig().suspendMinutes).toBe(30);
+    expect(getAgentSandboxCommonConfig().archiveInactiveDays).toBe(3);
   });
 });
 
@@ -127,24 +114,17 @@ describe('Agent Sandbox proxy configuration', () => {
     vi.unstubAllEnvs();
   });
 
-  it('requires all three fields for App, only preview for Pro, and ignores legacy ENV', () => {
+  it('reads proxy fields only from the live instance snapshot and ignores legacy ENV', () => {
     vi.stubEnv('AGENT_SANDBOX_PROXY_URL', 'wss://legacy.test');
     vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', 'https://legacy.test');
     vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', 'legacy_secret_32_characters_minimum');
-    expect(() => validateAgentSandboxProxyConfig('none')).not.toThrow();
-    expect(() => validateAgentSandboxPreviewProxyConfig('none')).not.toThrow();
-    expect(() => validateAgentSandboxProxyConfig('opensandbox')).toThrow(
-      'wsUrl, previewUrl, secret'
-    );
-    expect(() => validateAgentSandboxPreviewProxyConfig('sealosdevbox')).toThrow('preview proxy');
-    getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl = 'https://preview.test';
-    expect(() => validateAgentSandboxPreviewProxyConfig('sealosdevbox')).not.toThrow();
-    expect(() => validateAgentSandboxProxyConfig('opensandbox')).toThrow('wsUrl, secret');
+    expect(getAgentSandboxProxyConfig()).toEqual({ wsUrl: '', previewUrl: '', secret: '' });
+
     Object.assign(getTestInstanceConfig().subservice.agentSandbox.proxy, {
       wsUrl: 'wss://current.test',
+      previewUrl: 'https://preview.test',
       secret: 'current_secret_32_characters_minimum'
     });
-    expect(() => validateAgentSandboxProxyConfig('opensandbox')).not.toThrow();
     expect(getAgentSandboxProxyConfig().wsUrl).toBe('wss://current.test');
     getTestInstanceConfig().subservice.agentSandbox.proxy.wsUrl = 'wss://updated.test';
     expect(getAgentSandboxProxyConfig().wsUrl).toBe('wss://updated.test');

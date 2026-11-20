@@ -28,9 +28,6 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/service/core/sandbox/auth', () => ({
   authSandboxSession: mocks.authSandboxSession
 }));
-vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/upgrade', () => ({
-  ensureAppSandboxRuntimeReady: vi.fn(async () => false)
-}));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/application/availability', () => ({
   assertSandboxAvailable: mocks.assertSandboxAvailable,
@@ -73,7 +70,7 @@ const appSession = {
 describe('resolveSandboxSessionAvailability', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getTestInstanceConfig().subservice.agentSandbox.provider = 'opensandbox';
+    getTestInstanceConfig().subservice.agentSandbox.enabled = true;
     mocks.resolveAppSandboxAvailability.mockImplementation(async ({ appEnabled }) =>
       appEnabled
         ? { available: true }
@@ -87,7 +84,7 @@ describe('resolveSandboxSessionAvailability', () => {
   });
 
   it('short-circuits before App queries when the system feature is disabled', async () => {
-    getTestInstanceConfig().subservice.agentSandbox.provider = 'none';
+    getTestInstanceConfig().subservice.agentSandbox.enabled = false;
     mocks.resolveAppSandboxAvailability.mockResolvedValueOnce({
       available: false,
       reason: SandboxUnavailableReasonEnum.systemDisabled
@@ -246,7 +243,7 @@ describe('authSandboxRuntimeSession', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    getTestInstanceConfig().subservice.agentSandbox.provider = 'opensandbox';
+    getTestInstanceConfig().subservice.agentSandbox.enabled = true;
     mocks.authSandboxSession.mockResolvedValue({
       ...appSession,
       chat: {

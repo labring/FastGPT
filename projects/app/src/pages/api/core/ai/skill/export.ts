@@ -1,3 +1,6 @@
+import archiver from 'archiver';
+import { PassThrough } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { NextAPI } from '@/service/middleware/entry';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
@@ -10,7 +13,8 @@ import { buildSkillAuditResource } from '@fastgpt/global/support/user/audit/type
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
-import { packageSkillEditWorkspace } from '@fastgpt/service/core/ai/sandbox/application/skillEdit/runtime';
+import { streamSkillEditWorkspaceTarZst } from '@fastgpt/service/core/ai/sandbox/application/skillEdit/runtime';
+import { parseTarZstStream } from '@fastgpt/service/common/file/tarZst';
 import { SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR } from '@fastgpt/service/core/ai/sandbox/constants';
 
 export const config = {
@@ -42,12 +46,69 @@ async function handler(req: ApiRequestProps, res: ApiResponseType<any>) {
 
   logger.debug('Exporting skill edit workspace', { skillId, skillName: skill.name });
 
-  let zipBuffer: Buffer;
+  const filename = `${skill.name}.zip`;
+  const abortController = new AbortController();
+  const onResponseClose = () => {
+    if (!res.writableEnded) {
+      abortController.abort();
+    }
+  };
+  res.once('close', onResponseClose);
+
   try {
-    zipBuffer = await packageSkillEditWorkspace({
+    await streamSkillEditWorkspaceTarZst({
       skillId,
       teamId,
-      validationMode: 'basicZip'
+      signal: abortController.signal,
+      onStreamReady: async (tarZstStream) => {
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`
+        );
+        res.setHeader('Cache-Control', 'no-store');
+        res.status(200);
+
+        // 边解析 `.tar.zst` 边写 zip：任一侧出错都通过同一个中止信号终止整条链路。
+        const archive = archiver('zip', { zlib: { level: 6 } });
+        archive.on('error', (error) => abortController.abort(error));
+        const zipTask = pipeline(archive, res as unknown as NodeJS.WritableStream);
+        zipTask.catch((error) => abortController.abort(error));
+
+        let hasSkillMd = false;
+        try {
+          await parseTarZstStream({
+            stream: tarZstStream,
+            signal: abortController.signal,
+            onEntry: async (entry) => {
+              if (entry.type === 'file' && /(?:^|\/)skill\.md$/i.test(entry.path)) {
+                hasSkillMd = true;
+              }
+              const data = { name: entry.path, mode: entry.mode, date: entry.mtime };
+              if (entry.type === 'symlink') {
+                archive.symlink(entry.path, entry.linkname ?? '', entry.mode);
+              } else if (entry.type === 'directory') {
+                archive.append(Buffer.alloc(0), data);
+              } else {
+                const body = new PassThrough();
+                archive.append(body, data);
+                await pipeline(entry.stream, body, { signal: abortController.signal });
+              }
+            }
+          });
+          if (!hasSkillMd) {
+            throw new Error(
+              'Missing required file: SKILL.md (expected at root or inside a top-level directory)'
+            );
+          }
+          await archive.finalize();
+          await zipTask;
+        } catch (error) {
+          // 响应头已发出，只能中断 zip 流让客户端感知下载失败。
+          archive.destroy(error instanceof Error ? error : new Error(String(error)));
+          throw error;
+        }
+      }
     });
   } catch (error) {
     if (error instanceof Error && error.message === SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR) {
@@ -55,17 +116,9 @@ async function handler(req: ApiRequestProps, res: ApiResponseType<any>) {
     }
 
     throw error;
+  } finally {
+    res.off('close', onResponseClose);
   }
-
-  const filename = `${skill.name}.zip`;
-  res.setHeader('Content-Type', 'application/zip');
-  res.setHeader(
-    'Content-Disposition',
-    `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`
-  );
-  res.setHeader('Content-Length', zipBuffer.length);
-  res.setHeader('Cache-Control', 'no-store');
-  res.status(200).end(zipBuffer);
 
   (async () => {
     addAuditLog({

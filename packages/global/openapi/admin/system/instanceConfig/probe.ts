@@ -12,6 +12,30 @@ import { isValidServiceBaseUrl } from '../../../../common/string/url';
  * Tags: ['Admin', 'InstanceConfig', 'Probe']
  * ============================================================================ */
 
+export const ProbeConnectionServiceSchema = z
+  .enum([
+    'codeSandbox',
+    'opensandbox',
+    'mcpSse',
+    'fileService',
+    'cdn',
+    'agentSandboxWsProxy',
+    'agentSandboxPreviewProxy'
+  ])
+  .meta({
+    description:
+      '服务类型；Code Sandbox 执行算术探针，OpenSandbox 校验 /v1/sandboxes 与 API Key，MCP SSE 验证握手，Agent Sandbox 代理检查 /health'
+  });
+export type ProbeConnectionService = z.infer<typeof ProbeConnectionServiceSchema>;
+
+/** 支持携带草稿凭据或服务端持久化凭据进行鉴权探测的子服务列表。 */
+export const CREDENTIAL_PROBE_SERVICES = ['codeSandbox', 'opensandbox'] as const;
+
+export const isCredentialProbeService = (
+  service?: ProbeConnectionService
+): service is (typeof CREDENTIAL_PROBE_SERVICES)[number] =>
+  service !== undefined && (CREDENTIAL_PROBE_SERVICES as readonly string[]).includes(service);
+
 export const ProbeConnectionBodySchema = z
   .object({
     url: z.string().url().meta({
@@ -23,36 +47,26 @@ export const ProbeConnectionBodySchema = z
       description: '探测超时时间（毫秒），默认 5000ms',
       example: 5000
     }),
-    service: z
-      .enum([
-        'codeSandbox',
-        'mcpSse',
-        'fileService',
-        'cdn',
-        'agentSandboxWsProxy',
-        'agentSandboxPreviewProxy'
-      ])
-      .optional()
-      .meta({
-        description:
-          '服务类型；Agent Sandbox 代理检查 /health，不验证共享密钥或创建沙箱；省略时只探测网络连通性'
-      }),
+    service: ProbeConnectionServiceSchema.optional().meta({
+      description: '服务类型；省略时只探测网络连通性'
+    }),
     token: z.string().optional().meta({
-      description: '代码沙箱新填写的草稿凭据；空字符串表示明确不使用密钥'
+      description: '鉴权子服务新填写的草稿凭据；空字符串表示明确不使用密钥'
     }),
     useStoredToken: z.boolean().optional().meta({
       description: '使用服务端已保存凭据，不向客户端返回其明文或密文；与 token 互斥',
       example: true
     })
   })
-  .refine((body) => body.token === undefined || body.service === 'codeSandbox', {
-    message: 'Token is only supported for code sandbox probes',
+  .refine((body) => body.token === undefined || isCredentialProbeService(body.service), {
+    message: 'Token is only supported for authenticated subservice probes',
     path: ['token']
   })
   .refine(
-    (body) => !body.useStoredToken || (body.service === 'codeSandbox' && body.token === undefined),
+    (body) =>
+      !body.useStoredToken || (isCredentialProbeService(body.service) && body.token === undefined),
     {
-      message: 'Stored credentials require a code sandbox probe without a draft token',
+      message: 'Stored credentials require an authenticated subservice probe without a draft token',
       path: ['useStoredToken']
     }
   )
@@ -121,7 +135,7 @@ export const AdminInstanceConfigProbePath: OpenAPIPath = {
     post: {
       summary: '后端探测目标服务 URL 连通性',
       description:
-        '默认检测网络连通性；代码沙箱执行固定算术，MCP SSE 验证传输握手；Agent Sandbox 两类代理检查 /health，WebSocket 地址按 WS→HTTP、WSS→HTTPS 转换，不验证 WebSocket 升级、共享密钥或实际沙箱访问',
+        '默认检测网络连通性；代码沙箱执行固定算术，OpenSandbox 携带 OPEN-SANDBOX-API-KEY 请求 /v1/sandboxes，MCP SSE 验证传输握手；Agent Sandbox 两类代理检查 /health，WebSocket 地址按 WS→HTTP、WSS→HTTPS 转换，不验证 WebSocket 升级、共享密钥或实际沙箱访问',
       tags: [DevApiTagsMap.adminSettings],
       requestBody: {
         content: {

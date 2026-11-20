@@ -1,0 +1,129 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+vi.mock('../../src/env', () => ({
+  env: {
+    PORT: 3000,
+    VM_AUTH_TOKEN: 'secret-token',
+    VM_RUNTIME: 'kubernetes',
+    VM_DOCKER_SOCKET: '/var/run/docker.sock',
+    VM_DOCKER_API_VERSION: 'v1.44',
+    VM_K8S_NAMESPACE: 'opensandbox',
+    VM_K8S_PVC_STORAGE_CLASS: '',
+    VM_LOG_LEVEL: 'none'
+  }
+}));
+
+import { createVolumeManagerApp } from '../../src/index';
+import type { IVolumeDriver } from '../../src/drivers/IVolumeDriver';
+
+const CLAIM_NAME = 'fastgpt-session-a1b2c3d4e5f6a1b2c3d4e5f6-generation';
+const AUTH_HEADERS = { Authorization: 'Bearer secret-token' };
+
+describe('volume-manager HTTP routes', () => {
+  let driver: IVolumeDriver;
+  let app: ReturnType<typeof createVolumeManagerApp>;
+
+  beforeEach(() => {
+    driver = {
+      exists: vi.fn(),
+      ensure: vi.fn(),
+      remove: vi.fn(),
+      list: vi.fn()
+    };
+    app = createVolumeManagerApp(driver, 'secret-token');
+  });
+
+  it('allows /health without auth and enforces bearer auth on /v1/*', async () => {
+    const healthRes = await app.request('/health');
+    expect(healthRes.status).toBe(200);
+
+    const unauthRes = await app.request('/v1/volumes');
+    expect(unauthRes.status).toBe(401);
+  });
+
+  it('GET /v1/volumes returns items', async () => {
+    vi.mocked(driver.list).mockResolvedValueOnce([CLAIM_NAME]);
+    const okRes = await app.request('/v1/volumes', {
+      headers: AUTH_HEADERS
+    });
+    expect(okRes.status).toBe(200);
+    await expect(okRes.json()).resolves.toEqual({ items: [CLAIM_NAME] });
+    expect(driver.list).toHaveBeenCalledWith();
+  });
+
+  it('GET /v1/volumes/:claimName validates params and returns 200 or 404 without creating', async () => {
+    const badNameRes = await app.request('/v1/volumes/INVALID_NAME', {
+      headers: AUTH_HEADERS
+    });
+    expect(badNameRes.status).toBe(400);
+
+    vi.mocked(driver.exists).mockResolvedValueOnce(false);
+    const missingRes = await app.request(`/v1/volumes/${CLAIM_NAME}`, {
+      headers: AUTH_HEADERS
+    });
+    expect(missingRes.status).toBe(404);
+    expect(driver.exists).toHaveBeenCalledWith(CLAIM_NAME);
+
+    vi.mocked(driver.exists).mockResolvedValueOnce(true);
+    const legacyOkRes = await app.request(`/v1/volumes/${CLAIM_NAME}?allowLegacyUnlabeled=true`, {
+      headers: AUTH_HEADERS
+    });
+    expect(legacyOkRes.status).toBe(200);
+    await expect(legacyOkRes.json()).resolves.toEqual({ claimName: CLAIM_NAME });
+    expect(driver.exists).toHaveBeenLastCalledWith(CLAIM_NAME, { allowLegacyUnlabeled: true });
+    expect(driver.ensure).not.toHaveBeenCalled();
+  });
+
+  it('POST /v1/volumes/ensure forwards claimName and storageSize', async () => {
+    vi.mocked(driver.ensure).mockResolvedValueOnce({ claimName: CLAIM_NAME, created: true });
+    const createRes = await app.request('/v1/volumes/ensure', {
+      method: 'POST',
+      headers: { ...AUTH_HEADERS, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ claimName: CLAIM_NAME, storageSize: '2Gi' })
+    });
+    expect(createRes.status).toBe(201);
+    expect(driver.ensure).toHaveBeenCalledWith({
+      claimName: CLAIM_NAME,
+      storageSize: '2Gi'
+    });
+
+    vi.mocked(driver.ensure).mockResolvedValueOnce({ claimName: CLAIM_NAME, created: false });
+    const legacyEnsureRes = await app.request('/v1/volumes/ensure', {
+      method: 'POST',
+      headers: { ...AUTH_HEADERS, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ claimName: CLAIM_NAME, allowLegacyUnlabeled: true })
+    });
+    expect(legacyEnsureRes.status).toBe(200);
+    expect(driver.ensure).toHaveBeenLastCalledWith({
+      claimName: CLAIM_NAME,
+      allowLegacyUnlabeled: true
+    });
+  });
+
+  it('DELETE /v1/volumes/:claimName validates params and deletes volume', async () => {
+    const badNameRes = await app.request('/v1/volumes/INVALID_NAME', {
+      method: 'DELETE',
+      headers: AUTH_HEADERS
+    });
+    expect(badNameRes.status).toBe(400);
+
+    vi.mocked(driver.remove).mockResolvedValueOnce(undefined);
+    const okRes = await app.request(`/v1/volumes/${CLAIM_NAME}`, {
+      method: 'DELETE',
+      headers: AUTH_HEADERS
+    });
+    expect(okRes.status).toBe(204);
+    expect(driver.remove).toHaveBeenCalledWith(CLAIM_NAME);
+
+    vi.mocked(driver.remove).mockResolvedValueOnce(undefined);
+    const legacyDeleteRes = await app.request(
+      `/v1/volumes/${CLAIM_NAME}?allowLegacyUnlabeled=true`,
+      {
+        method: 'DELETE',
+        headers: AUTH_HEADERS
+      }
+    );
+    expect(legacyDeleteRes.status).toBe(204);
+    expect(driver.remove).toHaveBeenLastCalledWith(CLAIM_NAME, { allowLegacyUnlabeled: true });
+  });
+});

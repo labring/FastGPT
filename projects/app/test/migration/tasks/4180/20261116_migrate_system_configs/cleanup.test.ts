@@ -56,7 +56,9 @@ describe('deprecatedOverridePaths', () => {
         'commercial.billingNotify.paymentReceived',
         'subservice.plugin',
         'subservice.codeSandbox.baseUrl',
-        'subservice.aiProxy'
+        'subservice.aiProxy',
+        'subservice.agentSandbox.sealosdevbox',
+        'subservice.agentSandbox.provider'
       ])
     );
   });
@@ -421,15 +423,15 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
     expect((await verifyInstanceConfigDeprecatedFields()).remainingDocuments).toEqual([]);
   });
 
-  it('cleans deprecated subservice fields for an enabled sandbox provider before proxy backfill', async () => {
+  it('cleans deprecated subservice fields for an enabled sandbox before proxy backfill', async () => {
     await seedDirtyDoc({
       domain: 'subservice',
       revision: 1,
       overrides: {
         plugin: { remoteDebug: true },
         agentSandbox: {
-          provider: 'sealosdevbox',
-          sealosdevbox: { baseUrl: 'https://devbox.example.test' },
+          enabled: true,
+          opensandbox: { baseUrl: 'https://sandbox.example.test' },
           proxy: { httpUrl: 'https://legacy-http-proxy.example.test' }
         }
       }
@@ -442,25 +444,24 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
     const doc = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
     expect(doc?.overrides).toEqual({
       agentSandbox: {
-        provider: 'sealosdevbox',
-        sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+        enabled: true,
+        opensandbox: { baseUrl: 'https://sandbox.example.test' }
       }
     });
 
-    // verify 阶段在 backfill 之后运行，仍要求完整代理配置
     const beforeProxyBackfill = await verifyInstanceConfigDeprecatedFields();
     expect(beforeProxyBackfill.remainingDocuments).toEqual([]);
     expect(beforeProxyBackfill.invalidDomains).toEqual([]);
   });
 
-  it('does not reject invalid provider baseUrl or proxy secret length on migration reads', () => {
+  it('does not reject invalid opensandbox baseUrl or proxy secret length on migration reads', () => {
     expect(() =>
       readMigrationDomainConfig({
         domain: 'subservice',
         overrides: {
           agentSandbox: {
-            provider: 'sealosdevbox',
-            sealosdevbox: { baseUrl: '' }
+            enabled: true,
+            opensandbox: { baseUrl: '' }
           }
         }
       })
@@ -471,12 +472,70 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
         domain: 'subservice',
         overrides: {
           agentSandbox: {
-            provider: 'sealosdevbox',
-            sealosdevbox: { baseUrl: 'https://devbox.example.test' },
+            enabled: true,
+            opensandbox: { baseUrl: 'https://sandbox.example.test' },
             proxy: { secret: 'too-short' }
           }
         }
       })
     ).not.toThrow();
+  });
+
+  it('promotes provider=opensandbox to enabled=true while stripping provider and leaves disabled/incomplete providers off', async () => {
+    const storedSecret = 'proxy_secret_32_characters_minimum';
+    await seedDirtyDoc({
+      domain: 'subservice',
+      revision: 2,
+      overrides: encryptDomainSecrets({
+        domain: 'subservice',
+        data: {
+          agentSandbox: {
+            provider: 'opensandbox',
+            proxy: {
+              wsUrl: 'wss://proxy.example.test',
+              previewUrl: 'https://preview.example.test',
+              secret: storedSecret
+            },
+            opensandbox: { baseUrl: 'https://sandbox.example.test' }
+          }
+        }
+      })
+    });
+
+    const result = await cleanupInstanceConfigDeprecatedFields({ logger });
+    expect(result.updatedDomains).toEqual(['subservice']);
+
+    const cleanedDoc = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
+    expect(decryptDomainSecrets('subservice', cleanedDoc?.overrides)).toEqual({
+      agentSandbox: {
+        enabled: true,
+        proxy: {
+          wsUrl: 'wss://proxy.example.test',
+          previewUrl: 'https://preview.example.test',
+          secret: storedSecret
+        },
+        opensandbox: { baseUrl: 'https://sandbox.example.test' }
+      }
+    });
+    expect((await verifyInstanceConfigDeprecatedFields()).remainingDocuments).toEqual([]);
+
+    await MongoSystemInstanceConfig.deleteMany({});
+    await seedDirtyDoc({
+      domain: 'subservice',
+      revision: 1,
+      overrides: {
+        agentSandbox: {
+          provider: 'none',
+          opensandbox: { baseUrl: 'https://sandbox.example.test' }
+        }
+      }
+    });
+
+    await cleanupInstanceConfigDeprecatedFields({ logger });
+    const disabledDoc = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
+    expect(disabledDoc?.overrides).toEqual({
+      agentSandbox: { opensandbox: { baseUrl: 'https://sandbox.example.test' } }
+    });
+    expect((await verifyInstanceConfigDeprecatedFields()).invalidDomains).toEqual([]);
   });
 });

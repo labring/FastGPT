@@ -17,7 +17,7 @@ const identity = {
   sourceId: 'app-1',
   userId: 'user-1'
 };
-const instance = { ...identity, provider: 'sealosdevbox', status: 'archived' };
+const instance = { ...identity, provider: 'opensandbox', status: 'archived' };
 
 describe('ensureSandboxTeamOwnership', () => {
   beforeEach(() => {
@@ -43,7 +43,7 @@ describe('ensureSandboxTeamOwnership', () => {
     mocks.findSandboxInstanceBySource.mockResolvedValue(instance);
     await expect(ensureSandboxTeamOwnership(identity)).resolves.toMatchObject({ teamId: 'team-1' });
     expect(mocks.backfillSandboxInstanceTeamId).toHaveBeenCalledWith({
-      provider: 'sealosdevbox',
+      provider: 'opensandbox',
       sandboxId: identity.sandboxId,
       teamId: 'team-1'
     });

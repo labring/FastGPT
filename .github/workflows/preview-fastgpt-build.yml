@@ -42,7 +42,7 @@ jobs:
             );
 
             const images = [];
-            const addImage = (image) => images.push(image);
+            const addImage = (image) => images.push({ context: '.', target: '', ...image });
 
             if (hasPath([
               'projects/app',
@@ -81,9 +81,46 @@ jobs:
               });
             }
 
+            if (hasPath(['projects/agent-sandbox', 'projects/fastgpt-ide-agent'])) {
+              addImage({
+                image: 'agent-sandbox',
+                image_name: 'fastgpt-agent-sandbox',
+                dockerfile: 'projects/agent-sandbox/Dockerfile',
+                target: 'nonroot',
+                description: 'fastgpt-agent-sandbox-pr image'
+              });
+              addImage({
+                image: 'agent-sandbox-root',
+                image_name: 'fastgpt-agent-sandbox-root',
+                dockerfile: 'projects/agent-sandbox/Dockerfile',
+                target: 'root',
+                description: 'fastgpt-agent-sandbox-root-pr image'
+              });
+            }
+
+            if (hasPath(['projects/volume-manager', 'packages/global/core/ai/sandbox/volume.ts'])) {
+              addImage({
+                image: 'volume-manager',
+                image_name: 'fastgpt-agent-volume-manager',
+                dockerfile: 'projects/volume-manager/Dockerfile',
+                target: 'runner',
+                description: 'fastgpt-agent-volume-manager-pr image'
+              });
+            }
+
+            if (hasPath(['projects/agent-sandbox-proxy'])) {
+              addImage({
+                image: 'agent-sandbox-proxy',
+                image_name: 'fastgpt-agent-sandbox-proxy',
+                dockerfile: 'projects/agent-sandbox-proxy/Dockerfile',
+                context: 'projects/agent-sandbox-proxy',
+                description: 'fastgpt-agent-sandbox-proxy-pr image'
+              });
+            }
+
             const matrix = images.length > 0
               ? { include: images }
-              : { include: [{ image: 'noop', image_name: 'noop', dockerfile: 'noop', description: 'noop' }] };
+              : { include: [{ image: 'noop', image_name: 'noop', dockerfile: 'noop', context: '.', target: '', description: 'noop' }] };
 
             core.info(`Preview images selected: ${images.map((image) => image.image).join(', ') || 'none'}`);
             core.setOutput('should_build', images.length > 0 ? 'true' : 'false');
@@ -96,7 +133,7 @@ jobs:
     strategy:
       matrix: ${{ fromJSON(needs.detect_changes.outputs.matrix) }}
       fail-fast: false
-      max-parallel: 3
+      max-parallel: 6
 
     steps:
       - name: Checkout PR code
@@ -112,8 +149,9 @@ jobs:
       - name: Build Docker image (no push)
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
+          target: ${{ matrix.target }}
           platforms: linux/amd64
           push: false
           tags: ${{ matrix.image_name }}-pr:${{ github.event.pull_request.head.sha }}

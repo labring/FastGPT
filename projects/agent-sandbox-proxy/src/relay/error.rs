@@ -6,23 +6,6 @@ pub(super) type RelayResult<T> = Result<T, RelayError>;
 /// Relay setup errors retain their original source while presenting stable operator-facing text.
 #[derive(Debug, Error)]
 pub(super) enum RelayError {
-    #[error("Sandbox endpoint URL is empty")]
-    EmptyEndpoint,
-    #[error("Invalid sandbox endpoint URL: {source}")]
-    InvalidEndpoint {
-        #[source]
-        source: url::ParseError,
-    },
-    #[error("Invalid workspace preview path")]
-    InvalidPreviewPath,
-    #[error("Sandbox endpoint cannot be used as a base URL")]
-    EndpointCannotBeBase,
-    #[error("Invalid loopback rewrite host: {host}")]
-    InvalidRewriteHost { host: String },
-    #[error("Unsupported sandbox endpoint scheme: {scheme}")]
-    UnsupportedEndpointScheme { scheme: String },
-    #[error("Failed to set sandbox endpoint scheme to {scheme}")]
-    EndpointSchemeRewrite { scheme: &'static str },
     #[error("Failed to build WebSocket request: {source}")]
     WebSocketRequest {
         #[source]

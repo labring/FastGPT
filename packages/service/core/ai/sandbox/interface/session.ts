@@ -28,7 +28,7 @@ export async function checkSandboxSessionExist(query: SandboxClientQuery): Promi
  */
 export async function keepaliveSandboxSession(query: SandboxClientQuery): Promise<void> {
   await getRunningSandboxClient(query)
-    .then((client) => client.provider.close())
+    .then((client) => client.opensandbox.close())
     .catch((error) => {
       // stop cron 与 keepalive 可以同时命中；保活不能反向恢复资源，也不应把竞态记录成系统 500。
       if (

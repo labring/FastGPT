@@ -83,5 +83,20 @@
   "migrations.20261120_migrate_model_pricing.stt": "回填 STT 計價類型",
   "migrations.20261120_migrate_model_pricing.llmTiers": "遷移 LLM 階梯上限",
   "migrations.20261120_migrate_model_pricing.validation": "驗證模型價格",
-  "migrations.20261120_migrate_model_pricing.result": "已掃描 {{sttModels}} 個 STT 模型，已轉換 {{llmModels}} 個系統 LLM 模型的階梯上限為 K Tokens。"
+  "migrations.20261120_migrate_model_pricing.result": "已掃描 {{sttModels}} 個 STT 模型，已轉換 {{llmModels}} 個系統 LLM 模型的階梯上限為 K Tokens。",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.name": "遷移存量沙盒至 OpenSandbox (.tar.zst)",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.description": "請於確認所有舊版 Pod 已下線後手動執行。依運行中 Devbox、已暫停 Devbox、歷史 S3 package.zip 的順序串流轉碼為 .tar.zst 歸檔，並保留原資源供回滾。",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.result": "已遷移 {{runningDevbox}} 個運行中 Devbox、{{stoppedDevbox}} 個已暫停 Devbox、{{legacyArchives}} 個歷史 zip 歸檔",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.preflight": "前置環境與存量檢查",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.runningDevbox": "靜止化遷移運行中 Devbox",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.stoppedDevbox": "遷移已暫停 Devbox",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.legacyArchives": "串流轉碼歷史 package.zip",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.validation": "驗證遷移結果",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.name": "清理歷史沙盒遺留資源",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.description": "須於沙盒遷移成功並穩定運行後手動執行。先驗證無未遷移活躍記錄，再回收遠端歷史 Sealos Devbox、已驗證新歸檔的 S3 舊 package.zip 及已軟刪除來源的孤兒記錄。",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.result": "已清理 {{deletedDevboxes}} 個遠端 Devbox、{{deletedZips}} 個舊 zip 歸檔、{{deletedOrphans}} 筆孤兒記錄",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.preflight": "遷移狀態安全門禁",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupDevboxes": "清理遠端 Devbox 與孤兒記錄",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupLegacyZips": "核驗並刪除舊 zip 歸檔",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.validation": "驗證遺留清理結果"
 }

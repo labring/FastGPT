@@ -10,7 +10,7 @@ const createSandboxInstance = () =>
       if (path.startsWith('/')) return path;
       return `/workspace/sessions/chat/${path}`;
     }),
-    provider: {
+    opensandbox: {
       listDirectory: vi.fn(async () => [
         { name: 'src', isDirectory: true },
         { name: '.env', isDirectory: false },
@@ -37,12 +37,12 @@ describe('sandboxLsTool', () => {
     expect(sandbox.resolveRuntimePath).toHaveBeenCalledWith('/workspace', {
       allowAbsolutePath: true
     });
-    expect(sandbox.provider.listDirectory).toHaveBeenCalledWith('/workspace');
+    expect(sandbox.opensandbox.listDirectory).toHaveBeenCalledWith('/workspace');
   });
 
   it('returns a stable empty directory result', async () => {
     const sandbox = createSandboxInstance();
-    sandbox.provider.listDirectory.mockResolvedValueOnce([]);
+    sandbox.opensandbox.listDirectory.mockResolvedValueOnce([]);
 
     await expect(
       sandboxLsTool.execute({
@@ -57,7 +57,7 @@ describe('sandboxLsTool', () => {
     expect(sandbox.resolveRuntimePath).toHaveBeenCalledWith(undefined, {
       allowAbsolutePath: true
     });
-    expect(sandbox.provider.listDirectory).toHaveBeenCalledWith('/workspace/sessions/chat');
+    expect(sandbox.opensandbox.listDirectory).toHaveBeenCalledWith('/workspace/sessions/chat');
   });
 
   it('reports when the entry limit is reached', async () => {

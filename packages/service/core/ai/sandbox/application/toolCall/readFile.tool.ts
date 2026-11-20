@@ -29,9 +29,11 @@ export const sandboxReadFileTool = defineTool({
     const providerPath = sandboxInstance.resolveRuntimePath(params.path, {
       allowAbsolutePath: true
     });
-    const [file] = await sandboxInstance.provider.readFiles([providerPath]);
+    const [file] = await sandboxInstance.opensandbox.readFiles([providerPath]);
     if (!file || file.error) {
-      throw new Error(`Failed to read file: ${file?.error?.message || params.path}`);
+      throw new Error(`Failed to read file: ${file?.error?.message || params.path}`, {
+        cause: file?.error
+      });
     }
 
     const content = decodeFileContent(file.content);

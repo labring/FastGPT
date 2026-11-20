@@ -108,43 +108,56 @@ describe('admin subservice probe', () => {
     expect(mocks.auth).not.toHaveBeenCalled();
   });
 
-  it('reads and decrypts the stored credential only after administrator and edition authorization', async () => {
-    await updateDomainConfig({
-      domain: 'subservice',
-      expectedRevision: 0,
-      submittedOverrides: { codeSandbox: { token: 'persisted-secret' } },
-      actor: { actor: 'admin' }
-    });
-    const stored = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
-    const storedOverrides = stored?.overrides as
-      | { codeSandbox?: { token?: { secret: string } } }
-      | undefined;
-    const storedToken = storedOverrides?.codeSandbox?.token;
-    expect(storedToken).toEqual({ secret: expect.any(String) });
-    expect(JSON.stringify(stored?.overrides)).not.toContain('persisted-secret');
-    const controller = await vi.importActual<
-      typeof import('@fastgpt/service/common/system/systemInstanceConfig/controller')
-    >('@fastgpt/service/common/system/systemInstanceConfig/controller');
-    mocks.read.mockImplementation(controller.getDomainConfig);
-
-    const result = await call({
-      service: 'codeSandbox',
+  it.each([
+    {
+      service: 'codeSandbox' as const,
       url: 'http://sandbox:3002',
-      useStoredToken: true
-    });
-    expect(result).toMatchObject({ connected: true });
-    expect(JSON.stringify(result)).not.toContain('persisted-secret');
-    expect(JSON.stringify(result)).not.toContain(storedToken?.secret ?? '');
-    expect(mocks.auth.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.edition.mock.invocationCallOrder[0]
-    );
-    expect(mocks.edition.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.read.mock.invocationCallOrder[0]
-    );
-    expect(mocks.probe).toHaveBeenCalledWith(
-      expect.objectContaining({ token: 'persisted-secret' })
-    );
-  });
+      overrides: { codeSandbox: { token: 'persisted-secret' } },
+      readSecret: (overrides: any) => overrides?.codeSandbox?.token
+    },
+    {
+      service: 'opensandbox' as const,
+      url: 'http://opensandbox:8090',
+      overrides: { agentSandbox: { opensandbox: { apiKey: 'persisted-secret' } } },
+      readSecret: (overrides: any) => overrides?.agentSandbox?.opensandbox?.apiKey
+    }
+  ])(
+    'reads and decrypts stored $service credential only after administrator and edition authorization',
+    async ({ service, url, overrides, readSecret }) => {
+      await updateDomainConfig({
+        domain: 'subservice',
+        expectedRevision: 0,
+        submittedOverrides: overrides,
+        actor: { actor: 'admin' }
+      });
+      const stored = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
+      const storedToken = readSecret(stored?.overrides);
+      expect(storedToken).toEqual({ secret: expect.any(String) });
+      expect(JSON.stringify(stored?.overrides)).not.toContain('persisted-secret');
+      const controller = await vi.importActual<
+        typeof import('@fastgpt/service/common/system/systemInstanceConfig/controller')
+      >('@fastgpt/service/common/system/systemInstanceConfig/controller');
+      mocks.read.mockImplementation(controller.getDomainConfig);
+
+      const result = await call({
+        service,
+        url,
+        useStoredToken: true
+      });
+      expect(result).toMatchObject({ connected: true });
+      expect(JSON.stringify(result)).not.toContain('persisted-secret');
+      expect(JSON.stringify(result)).not.toContain(storedToken?.secret ?? '');
+      expect(mocks.auth.mock.invocationCallOrder[0]).toBeLessThan(
+        mocks.edition.mock.invocationCallOrder[0]
+      );
+      expect(mocks.edition.mock.invocationCallOrder[0]).toBeLessThan(
+        mocks.read.mock.invocationCallOrder[0]
+      );
+      expect(mocks.probe).toHaveBeenCalledWith(
+        expect.objectContaining({ token: 'persisted-secret' })
+      );
+    }
+  );
 
   it('does not read stored credentials for empty or draft tokens and retains generic compatibility', async () => {
     await call({ service: 'codeSandbox', url: 'http://sandbox:3002', token: '' });
@@ -165,10 +178,15 @@ describe('admin subservice probe', () => {
     await expect(
       call({ service: 'codeSandbox', url: 'http://sandbox:3002', useStoredToken: true })
     ).rejects.toThrow('unauthorized');
-    mocks.edition.mockReturnValueOnce(['codeSandbox.token']);
-    await expect(
-      call({ service: 'codeSandbox', url: 'http://sandbox:3002', useStoredToken: true })
-    ).rejects.toMatchObject({ statusCode: 403 });
+    for (const [service, expectedPath] of [
+      ['codeSandbox', 'codeSandbox.token'],
+      ['opensandbox', 'agentSandbox.opensandbox.apiKey']
+    ] as const) {
+      mocks.edition.mockReturnValueOnce([expectedPath]);
+      await expect(
+        call({ service, url: 'http://sandbox:3002', useStoredToken: true })
+      ).rejects.toMatchObject({ statusCode: 403 });
+    }
     expect(mocks.read).not.toHaveBeenCalled();
     expect(mocks.probe).not.toHaveBeenCalled();
   });

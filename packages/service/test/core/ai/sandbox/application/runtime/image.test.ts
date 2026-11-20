@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  getSandboxAdapterConfig: vi.fn()
+  getOpenSandboxRuntimeConfig: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/config', () => ({
-  getSandboxAdapterConfig: mocks.getSandboxAdapterConfig
+vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox/config', () => ({
+  getOpenSandboxRuntimeConfig: mocks.getOpenSandboxRuntimeConfig
 }));
 
 import {
@@ -15,7 +15,7 @@ import {
 } from '@fastgpt/service/core/ai/sandbox/application/runtime/image';
 
 describe('normalizeSandboxImage', () => {
-  it('normalizes string and object image forms without treating registry ports as tags', () => {
+  it('normalizes string and object image forms without treating registry ports or digests as tags', () => {
     expect(normalizeSandboxImage('registry.example.com/team/runtime:v2')).toEqual({
       repository: 'registry.example.com/team/runtime',
       tag: 'v2'
@@ -23,6 +23,27 @@ describe('normalizeSandboxImage', () => {
     expect(normalizeSandboxImage('registry.example.com:5000/team/runtime')).toEqual({
       repository: 'registry.example.com:5000/team/runtime',
       tag: ''
+    });
+    expect(
+      normalizeSandboxImage('registry.example.com:5000/team/runtime:v2@sha256:abcdef1234')
+    ).toEqual({
+      repository: 'registry.example.com:5000/team/runtime',
+      tag: 'v2'
+    });
+    expect(
+      normalizeSandboxImage('registry.example.com:5000/team/runtime@sha256:abcdef1234')
+    ).toEqual({
+      repository: 'registry.example.com:5000/team/runtime',
+      tag: '@sha256:abcdef1234'
+    });
+    expect(
+      normalizeSandboxImage({
+        repository: 'registry.example.com:5000/team/runtime',
+        digest: 'sha256:abcdef1234'
+      })
+    ).toEqual({
+      repository: 'registry.example.com:5000/team/runtime',
+      tag: '@sha256:abcdef1234'
     });
     expect(normalizeSandboxImage({ repository: 'team/runtime:v3' })).toEqual({
       repository: 'team/runtime',
@@ -57,21 +78,18 @@ describe('resolveSandboxRuntimeImage', () => {
   });
 
   it('uses the backend runtime create config as the target image source', () => {
-    mocks.getSandboxAdapterConfig.mockReturnValue({
+    mocks.getOpenSandboxRuntimeConfig.mockReturnValue({
+      rawImage: 'team/runtime:v4',
+      image: { repository: 'team/runtime', tag: 'v4' },
       createConfig: { image: 'team/runtime:v4' }
     });
 
     expect(
       resolveSandboxRuntimeImage({
-        provider: 'opensandbox',
-        sandboxId: 'app-sandbox',
         createConfig: { env: { KEY: 'value' } }
       })
     ).toEqual({ repository: 'team/runtime', tag: 'v4' });
-    expect(mocks.getSandboxAdapterConfig).toHaveBeenCalledWith({
-      provider: 'opensandbox',
-      runtime: true,
-      sessionId: 'app-sandbox',
+    expect(mocks.getOpenSandboxRuntimeConfig).toHaveBeenCalledWith({
       createConfig: { env: { KEY: 'value' } }
     });
   });

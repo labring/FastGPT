@@ -8,7 +8,6 @@ import {
 const volumeConfigMock = vi.hoisted(() => ({
   readLive: false,
   config: {
-    enable: true,
     url: 'http://volume-manager.local',
     token: 'volume-token',
     volumeNamePrefix: 'fastgpt-session',
@@ -28,20 +27,21 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/volume/config', async (
 });
 
 import {
+  assertSessionVolumeExists,
   buildVolumeConfig,
-  createLegacySessionVolumeClaimName,
   createSessionVolumeClaimName,
   deleteSessionVolume,
   ensureSessionVolume,
   getSessionVolumeClaimName,
-  getSessionVolumeConfig
+  getSessionVolumeConfig,
+  parseSandboxIdFromVolumeClaimName
 } from '@fastgpt/service/core/ai/sandbox/infrastructure/volume/service';
+import { createLegacySessionVolumeClaimName } from '@fastgpt/service/core/ai/sandbox/legacy';
 
 describe('sandbox volume service', () => {
   beforeEach(() => {
     vi.unstubAllGlobals();
     volumeConfigMock.config = {
-      enable: true,
       url: 'http://volume-manager.local',
       token: 'volume-token',
       volumeNamePrefix: 'fastgpt-session',
@@ -117,12 +117,12 @@ describe('sandbox volume service', () => {
             createIfNotExists: false,
             deleteOnSandboxTermination: false
           },
-          mountPath: '/workspace'
+          mountPath: '/home/sandbox'
         }
       ],
       storage: {
-        volumes: [{ name: 'workspace', claimName: 'claim-1', mountPath: '/workspace' }],
-        mountPath: '/workspace'
+        volumes: [{ name: 'workspace', claimName: 'claim-1', mountPath: '/home/sandbox' }],
+        mountPath: '/home/sandbox'
       }
     });
   });
@@ -141,6 +141,7 @@ describe('sandbox volume service', () => {
     const claimName = createSessionVolumeClaimName({ sandboxId: 'ABC123' });
 
     expect(claimName).toMatch(/^fastgpt-session-abc123-[a-f0-9]{8}$/);
+    expect(createLegacySessionVolumeClaimName('ABC123')).toBe('fastgpt-session-abc123');
   });
 
   it('uses the app-configured volume name prefix', () => {
@@ -149,12 +150,6 @@ describe('sandbox volume service', () => {
     expect(createSessionVolumeClaimName({ sandboxId: 'ABC123', generationId: 'generation1' })).toBe(
       'custom-volume-abc123-generation1'
     );
-  });
-
-  it('reconstructs the pre-generation deterministic volume name', () => {
-    volumeConfigMock.config.volumeNamePrefix = 'legacy-prefix';
-
-    expect(createLegacySessionVolumeClaimName('ABC123')).toBe('legacy-prefix-abc123');
   });
 
   it('ensures an exact claimName with auth header', async () => {
@@ -220,7 +215,7 @@ describe('sandbox volume service', () => {
     await expect(ensureSessionVolume('claim-1')).rejects.toThrow('volume-manager error: 500 boom');
   });
 
-  it('deletes session volume and treats disabled or 404 as success', async () => {
+  it('deletes session volume and treats 404 as success', async () => {
     const fetchMock = vi.fn(async () => ({ ok: true, status: 204, text: async () => '' }));
     vi.stubGlobal('fetch', fetchMock);
 
@@ -246,9 +241,6 @@ describe('sandbox volume service', () => {
         headers: { Authorization: 'Bearer volume-token' }
       }
     );
-
-    volumeConfigMock.config.enable = false;
-    await expect(deleteSessionVolume('disabled')).resolves.toBeUndefined();
   });
 
   it('throws volume-manager response text on delete failure', async () => {
@@ -289,6 +281,154 @@ describe('sandbox volume service', () => {
 
     await expect(ensureSessionVolume('claim-1')).rejects.toThrow(
       'expected claim-1, received other-claim'
+    );
+  });
+
+  it('parses sandboxId from both -0 and 8-hex generation claimNames', () => {
+    expect(
+      parseSandboxIdFromVolumeClaimName({
+        claimName: 'fastgpt-session-app-abc-123-0',
+        volumeNamePrefix: 'fastgpt-session'
+      })
+    ).toBe('app-abc-123');
+    expect(
+      parseSandboxIdFromVolumeClaimName({
+        claimName: 'fastgpt-session-app-abc-123-deadbeef',
+        volumeNamePrefix: 'fastgpt-session'
+      })
+    ).toBe('app-abc-123');
+    expect(
+      parseSandboxIdFromVolumeClaimName({
+        claimName: 'fastgpt-session-0',
+        volumeNamePrefix: 'fastgpt-session'
+      })
+    ).toBeUndefined();
+    expect(
+      parseSandboxIdFromVolumeClaimName({
+        claimName: 'other-prefix-app-1-0',
+        volumeNamePrefix: 'fastgpt-session'
+      })
+    ).toBeUndefined();
+    expect(
+      parseSandboxIdFromVolumeClaimName({
+        claimName: 'fastgpt-session-legacy-no-gen',
+        volumeNamePrefix: 'fastgpt-session'
+      })
+    ).toBeUndefined();
+  });
+
+  it('forwards allowLegacyUnlabeled only for claimNames under the configured prefix', async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ claimName: 'fastgpt-session-legacy-1', created: false }),
+      text: async () => ''
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await getSessionVolumeConfig('fastgpt-session-legacy-1', { allowLegacyUnlabeled: true });
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://volume-manager.local/v1/volumes/ensure',
+      expect.objectContaining({
+        body: JSON.stringify({
+          claimName: 'fastgpt-session-legacy-1',
+          storageSize: '1Gi',
+          allowLegacyUnlabeled: true
+        })
+      })
+    );
+
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ claimName: 'foreign-claim-1', created: false }),
+      text: async () => ''
+    });
+    await getSessionVolumeConfig('foreign-claim-1', { allowLegacyUnlabeled: true });
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://volume-manager.local/v1/volumes/ensure',
+      expect.objectContaining({
+        body: JSON.stringify({
+          claimName: 'foreign-claim-1',
+          storageSize: '1Gi'
+        })
+      })
+    );
+
+    await deleteSessionVolume('fastgpt-session-legacy-1', { allowLegacyUnlabeled: true });
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://volume-manager.local/v1/volumes/fastgpt-session-legacy-1?allowLegacyUnlabeled=true',
+      {
+        method: 'DELETE',
+        headers: { Authorization: 'Bearer volume-token' }
+      }
+    );
+
+    await deleteSessionVolume('foreign-claim-1', { allowLegacyUnlabeled: true });
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://volume-manager.local/v1/volumes/foreign-claim-1',
+      {
+        method: 'DELETE',
+        headers: { Authorization: 'Bearer volume-token' }
+      }
+    );
+  });
+
+  it('assertSessionVolumeExists calls read-only GET endpoint and throws on 404 or mismatched claimName', async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ claimName: 'fastgpt-session-legacy-1' }),
+      text: async () => ''
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      assertSessionVolumeExists('fastgpt-session-legacy-1', { allowLegacyUnlabeled: true })
+    ).resolves.toBe('fastgpt-session-legacy-1');
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://volume-manager.local/v1/volumes/fastgpt-session-legacy-1?allowLegacyUnlabeled=true',
+      {
+        method: 'GET',
+        headers: { Authorization: 'Bearer volume-token' }
+      }
+    );
+
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ claimName: 'foreign-claim-1' }),
+      text: async () => ''
+    });
+    await expect(
+      assertSessionVolumeExists('foreign-claim-1', { allowLegacyUnlabeled: true })
+    ).resolves.toBe('foreign-claim-1');
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      'http://volume-manager.local/v1/volumes/foreign-claim-1',
+      {
+        method: 'GET',
+        headers: { Authorization: 'Bearer volume-token' }
+      }
+    );
+
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      json: async () => ({ error: 'Volume not found' }),
+      text: async () => 'Volume not found'
+    });
+    await expect(assertSessionVolumeExists('fastgpt-session-missing')).rejects.toThrow(
+      'volume-manager inspect error: 404 Volume not found'
+    );
+
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ claimName: 'other-claim' }),
+      text: async () => ''
+    });
+    await expect(assertSessionVolumeExists('fastgpt-session-a')).rejects.toThrow(
+      'expected fastgpt-session-a, received other-claim'
     );
   });
 });

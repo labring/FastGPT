@@ -1,19 +1,29 @@
-/** 运行准备的唯一编排入口：归属、恢复、配置迁移和激活；client 不解释生命周期。 */
-import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
-import { SandboxNotFoundError, SandboxStateError } from '@fastgpt-sdk/sandbox-adapter';
+/** 运行准备的唯一编排入口：归属、迁移门禁、恢复、静默升级和激活；client 不解释生命周期。 */
+import { SandboxApiException } from '@alibaba-group/opensandbox';
 import { isRedisLeaseError, type RedisLeaseContext } from '@fastgpt/dal/redis/caches';
 import {
   createSandboxProvisioningInstance,
+  deleteClaimedSandboxRecord,
+  findSandboxInstanceBySandboxId,
   findSandboxInstanceBySource,
-  switchArchivedSandboxProvider,
   touchRunningSandboxInstance,
   type SandboxResourceDoc
 } from '../../infrastructure/instance/repository';
-import { buildRuntimeSandboxAdapter } from '../../infrastructure/provider/adapter';
+import { getLogger, LogCategories } from '../../../../../common/logger';
 import {
-  getConfiguredSandboxProvider,
-  getSandboxAdapterConfig
-} from '../../infrastructure/provider/config';
+  getOpenSandboxRuntimeConfig,
+  type OpenSandboxRuntimeConfig
+} from '../../infrastructure/opensandbox/config';
+import {
+  isUncertainControlPlaneError,
+  SandboxNotFoundError,
+  SandboxStateError
+} from '../../infrastructure/opensandbox/errors';
+import {
+  createRuntimeOpenSandboxClient,
+  disconnectSandbox,
+  type OpenSandboxClient
+} from '../../infrastructure/opensandbox/opensandbox';
 import {
   buildVolumeConfig,
   createSessionVolumeClaimName,
@@ -23,326 +33,404 @@ import {
 import { ensureSandboxTeamOwnership } from '../ownership';
 import { checkSandboxQuota } from '../quota';
 import { assertSandboxSourceActive } from '../sourceGuard';
-import { withSandboxLifecycleLease, withSandboxSourceMutationLease } from '../lease';
-import { recoverSandboxActivationWithinLease } from '../lifecycle/service';
+import { withSandboxLease } from '../lease';
+import {
+  recoverArchivingSandboxWithinLease,
+  recoverSandboxActivationWithinLease
+} from '../lifecycle/service';
 import { runSandboxLifecycleOperation } from '../lifecycle/runner';
 import { SandboxLifecycleStateError, SandboxOperationConflictError } from '../lifecycle/error';
-import { archiveSandboxResourceWithinLease, restoreArchivedSandboxWithinLease } from '../archive';
+import { restoreArchivedSandboxWithinLease } from '../archive';
 import { stopSandboxResourceWithinLease } from '../resource';
 import { createAgentSandboxInitializingError, SandboxRuntimeNotRunningError } from '../../error';
-import { isSandboxRuntimeImageMatched, resolveSandboxRuntimeImage } from './image';
+import { assertSandboxMigratedOrThrow, backfillLegacyInstanceIdIfNeeded } from '../../legacy';
+import { SANDBOX_PROVIDER } from '../../type';
+import { isSandboxRuntimeImageMatched } from './image';
 import type {
   SandboxClientQuery,
   SandboxRuntimeOptions,
   OwnedSandboxResource,
   PreparedSandboxRuntime
 } from './type';
-import {
-  SANDBOX_RUNTIME_CONFIGURATION_TIMEOUT_MS,
-  SANDBOX_RUNTIME_CONFIGURATION_RETRY_INTERVAL_MS
-} from '../../constants';
+import { SandboxInstanceStatusEnum } from '../../constants';
+
+const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
+
+/**
+ * 检查错误或其 cause 链是否表示底层容器已缺失或处于不健康状态，避免误复用失效实例。
+ * 深度上限同时防御 cause 环引用，无需额外记录已访问节点。
+ */
+const isContainerMissingOrUnhealthyError = (error: unknown): boolean => {
+  let current: unknown = error;
+  for (let depth = 0; depth < 6 && current; depth += 1) {
+    if (
+      current instanceof SandboxNotFoundError ||
+      current instanceof SandboxStateError ||
+      current instanceof SandboxRuntimeNotRunningError ||
+      (current instanceof SandboxApiException &&
+        (current.statusCode === 404 || current.statusCode === 502 || current.statusCode === 503))
+    ) {
+      return true;
+    }
+    current = current instanceof Error ? current.cause : undefined;
+  }
+  return false;
+};
 
 /** 持久化 workspace 是连接真值，禁止用调用方旧 volume 配置覆盖新 generation。 */
-function buildRuntimeConnection(resource: SandboxResourceDoc, options: SandboxRuntimeOptions) {
+function buildRuntimeConnection({
+  resource,
+  options,
+  runtimeConfig
+}: {
+  resource: SandboxResourceDoc;
+  options: SandboxRuntimeOptions;
+  runtimeConfig?: OpenSandboxRuntimeConfig;
+}): OpenSandboxClient {
   const claimName = getSessionVolumeClaimName(resource.storage);
-  if (resource.provider === 'opensandbox' && !claimName) {
+  if (!claimName) {
     throw new Error(`OpenSandbox ${resource.sandboxId} has no persisted workspace claimName`);
   }
-  return buildRuntimeSandboxAdapter(resource.provider, resource.sandboxId, {
-    ...options,
-    vmConfig:
-      resource.provider === 'opensandbox' && claimName ? buildVolumeConfig(claimName) : undefined
+  return createRuntimeOpenSandboxClient({
+    sandboxId: resource.sandboxId,
+    remoteSandboxId: resource.instanceId || undefined,
+    resourceLimits: options.resourceLimits,
+    volumes: buildVolumeConfig(claimName).volumes,
+    createConfig: options.createConfig,
+    ...(runtimeConfig ? { runtimeConfig } : {})
   });
 }
 
 /**
- * 连接已有 running 实例，不创建、不恢复、不迁移。用于 proxy 保活，也供激活快路径复用。
+ * 连接已有 running 实例，不创建、不恢复、不升级。用于 proxy 保活，也供激活快路径复用。
  * touch 的 identity/claimName CAS 防止旧连接跨 generation 继续使用。
  */
 export async function connectRunningSandbox(params: {
   query: SandboxClientQuery;
   options?: SandboxRuntimeOptions;
   resource?: OwnedSandboxResource;
-  adapter?: ISandbox;
+  opensandbox?: OpenSandboxClient;
+  verifyHealth?: boolean;
+  /** 内部优化：调用方已执行过 `ensureSandboxTeamOwnership` 时跳过重复活跃校验。 */
+  skipSourceCheck?: boolean;
+  /** 内部优化：复用外层已校验的 OpenSandbox 运行态配置，避免重复解析。 */
+  runtimeConfig?: OpenSandboxRuntimeConfig;
 }): Promise<PreparedSandboxRuntime> {
   const options = params.options ?? {};
   const { teamId, resource } = params.resource
     ? { teamId: params.resource.teamId, resource: params.resource }
     : await ensureSandboxTeamOwnership(params.query);
-  if (params.resource) await assertSandboxSourceActive(params.query);
-  const provider = options.providerName ?? getConfiguredSandboxProvider();
-  if (!resource || resource.provider !== provider || resource.status !== 'running') {
+  if (params.resource && !params.skipSourceCheck) {
+    await assertSandboxSourceActive(params.query);
+  }
+
+  assertSandboxMigratedOrThrow(resource);
+  if (!resource || resource.status !== SandboxInstanceStatusEnum.running) {
     throw new SandboxRuntimeNotRunningError(params.query.sandboxId);
   }
   const touched = await touchRunningSandboxInstance({
     ...params.query,
-    provider,
     expectedWorkspaceClaimName: getSessionVolumeClaimName(resource.storage)
   });
   if (!touched) throw new SandboxRuntimeNotRunningError(params.query.sandboxId);
-  const adapter = params.adapter ?? buildRuntimeConnection(resource, options);
+
+  const opensandbox =
+    params.opensandbox ??
+    buildRuntimeConnection({
+      resource: touched,
+      options,
+      runtimeConfig: params.runtimeConfig
+    });
   try {
-    await adapter.connectRunning();
-    return { resource: { ...touched, teamId }, adapter };
+    await opensandbox.connectRunning({
+      verifyHealth: params.verifyHealth,
+      remoteSandboxId: touched.instanceId || undefined
+    });
+    backfillLegacyInstanceIdIfNeeded(touched, opensandbox);
+    return {
+      resource: {
+        ...touched,
+        teamId,
+        ...(opensandbox.id && !touched.instanceId ? { instanceId: opensandbox.id } : {})
+      },
+      opensandbox
+    };
   } catch (error) {
-    if (!params.adapter) await adapter.close().catch(() => undefined);
-    if (error instanceof SandboxNotFoundError || error instanceof SandboxStateError)
+    if (!params.opensandbox) await disconnectSandbox(opensandbox);
+    if (isContainerMissingOrUnhealthyError(error)) {
       throw new SandboxRuntimeNotRunningError(params.query.sandboxId);
+    }
     throw error;
   }
 }
 
 /**
- * 共用配置收敛与完整激活的决策链。慢路径锁内重读后，以当前记录执行全部操作。
- * 首次创建及缺失 Provider 的重建使用 Source -> Lifecycle；其他操作只取得 Lifecycle。
+ * 运行准备与激活的统一决策链。慢路径在 Lifecycle Lease 内重读后，以当前记录执行全部操作。
+ * 首次创建采用 Mongo `provisioning` 占位 + Store-Load 屏障，不额外持有 Source Mutation Lease。
  */
 async function prepareSandboxRuntime(params: {
   query: SandboxClientQuery;
   options: SandboxRuntimeOptions;
-  target: 'configuration' | 'running';
   connection?: PreparedSandboxRuntime;
-}) {
+  verifyHealth?: boolean;
+}): Promise<PreparedSandboxRuntime> {
   const { query, options } = params;
-  const provider = options.providerName ?? getConfiguredSandboxProvider();
-  const image = resolveSandboxRuntimeImage({
-    provider,
-    sandboxId: query.sandboxId,
-    createConfig: options.createConfig
-  });
-  // 目标连接和创建配置先完成纯解析；配置错误不能发生在旧资源已归档删除之后。
-  getSandboxAdapterConfig({
-    provider,
-    runtime: true,
-    sessionId: query.sandboxId,
+  // 目标连接和创建配置先完成纯解析；配置错误不能发生在旧容器清理或创建之后。
+  const runtimeConfig = getOpenSandboxRuntimeConfig({
     resourceLimits: options.resourceLimits,
     createConfig: options.createConfig
   });
+  const image = runtimeConfig.image;
+
   const owned = params.connection
     ? { teamId: params.connection.resource.teamId, resource: params.connection.resource }
     : await ensureSandboxTeamOwnership(query);
-  let repairMissingProvider = false;
-  const matchesConfiguration = (resource: SandboxResourceDoc) =>
-    resource.provider === provider && isSandboxRuntimeImageMatched(image, resource.image);
+  assertSandboxMigratedOrThrow(owned.resource);
 
-  if (owned.resource && matchesConfiguration(owned.resource)) {
-    if (
-      params.target === 'configuration' &&
-      ['running', 'stopped', 'archived'].includes(owned.resource.status)
-    )
-      return { resource: owned.resource, adapter: null };
-    if (owned.resource.status === 'running') {
-      try {
-        // 复用 client 时 source 会变化；首次调用的归属准备已经读取 source。
-        if (!params.connection) {
-          const touched = await touchRunningSandboxInstance({
-            ...query,
-            provider,
-            expectedWorkspaceClaimName: getSessionVolumeClaimName(owned.resource.storage)
+  const matchesConfiguration = (resource: SandboxResourceDoc) =>
+    resource.provider === SANDBOX_PROVIDER && isSandboxRuntimeImageMatched(image, resource.image);
+
+  if (
+    owned.resource &&
+    matchesConfiguration(owned.resource) &&
+    owned.resource.status === SandboxInstanceStatusEnum.running
+  ) {
+    try {
+      return await connectRunningSandbox({
+        query,
+        options,
+        resource: params.connection?.resource ?? { ...owned.resource, teamId: owned.teamId },
+        opensandbox: params.connection?.opensandbox,
+        verifyHealth: params.verifyHealth,
+        skipSourceCheck: !params.connection,
+        runtimeConfig
+      });
+    } catch (error) {
+      if (!isContainerMissingOrUnhealthyError(error)) {
+        throw error;
+      }
+    }
+  }
+
+  return withSandboxLease({
+    sandboxId: query.sandboxId,
+    label: `prepare-sandbox:${query.sandboxId}`,
+    fn: async (lease: RedisLeaseContext) => {
+      await assertSandboxSourceActive(query);
+      lease.assertValid();
+      let current = await findSandboxInstanceBySource(query);
+
+      const bindOwnedResource = (resource: SandboxResourceDoc): OwnedSandboxResource => {
+        if (resource.sandboxId !== query.sandboxId || resource.teamId !== owned.teamId) {
+          throw new Error(`Sandbox identity or team ownership mismatch: ${query.sandboxId}`);
+        }
+        return { ...resource, teamId: owned.teamId };
+      };
+
+      let upgraded = false;
+      if (current) {
+        bindOwnedResource(current);
+        assertSandboxMigratedOrThrow(current);
+        current = await recoverSandboxActivationWithinLease({
+          resource: current,
+          lease
+        });
+        if (current.status === SandboxInstanceStatusEnum.stopping) {
+          current = await stopSandboxResourceWithinLease({ current, lease });
+          if (!current) throw new SandboxOperationConflictError(query.sandboxId);
+        }
+        if (current.status === SandboxInstanceStatusEnum.archiving) {
+          current = await recoverArchivingSandboxWithinLease({ resource: current, lease });
+        }
+        if (
+          current.status !== SandboxInstanceStatusEnum.running &&
+          current.status !== SandboxInstanceStatusEnum.stopped &&
+          current.status !== SandboxInstanceStatusEnum.archived
+        ) {
+          throw new SandboxLifecycleStateError(current.status);
+        }
+
+        // 同 PVC 静默换镜像：先停掉旧容器卸载 RWO PVC（保留原 claimName，不走 S3 归档），再按新镜像原位重拉。
+        if (
+          (current.status === SandboxInstanceStatusEnum.running ||
+            current.status === SandboxInstanceStatusEnum.stopped) &&
+          !matchesConfiguration(current)
+        ) {
+          upgraded = true;
+          options.onUpgrade?.();
+          if (current.status === SandboxInstanceStatusEnum.running) {
+            // 传入当前快照的 lastActiveAt 做 CAS，防止并发无锁保活或快路径刷新活跃时间后仍抢占停机。
+            current = await stopSandboxResourceWithinLease({
+              current,
+              matchLastActiveAt: current.lastActiveAt,
+              lease
+            });
+            if (!current) throw new SandboxOperationConflictError(query.sandboxId);
+          }
+        }
+      }
+
+      let alreadyClaimed = false;
+      if (!current) {
+        await checkSandboxQuota({ teamId: owned.teamId, current: null });
+        const claimName = createSessionVolumeClaimName({
+          sandboxId: query.sandboxId,
+          generationId: '0'
+        });
+        const created = await createSandboxProvisioningInstance({
+          ...query,
+          teamId: owned.teamId,
+          storage: buildVolumeConfig(claimName).storage,
+          ...(image ? { image } : {}),
+          ...(options.resourceLimits ? { limit: options.resourceLimits } : {})
+        });
+        current = created.instance;
+        alreadyClaimed = created.created;
+        if (!current) throw new SandboxOperationConflictError(query.sandboxId);
+
+        // Store-Load 屏障：落库 `provisioning` 占位后再次确认 source 未软删；若已删除则撤回占位记录。
+        try {
+          await assertSandboxSourceActive(query);
+        } catch (error) {
+          if (alreadyClaimed && current.operation?.id) {
+            await deleteClaimedSandboxRecord({
+              resource: current,
+              operationId: current.operation.id,
+              status: SandboxInstanceStatusEnum.provisioning
+            }).catch(() => undefined);
+          }
+          throw error;
+        }
+
+        bindOwnedResource(current);
+        if (!alreadyClaimed) {
+          assertSandboxMigratedOrThrow(current);
+          if (
+            current.status !== SandboxInstanceStatusEnum.running &&
+            current.status !== SandboxInstanceStatusEnum.stopped
+          ) {
+            throw new SandboxLifecycleStateError(current.status);
+          }
+        }
+      }
+
+      if (current.status === SandboxInstanceStatusEnum.archived) {
+        await checkSandboxQuota({ teamId: owned.teamId, current });
+        try {
+          current = await restoreArchivedSandboxWithinLease({
+            resource: bindOwnedResource(current),
+            lease,
+            resourceLimit: options.resourceLimits,
+            createConfig: options.createConfig
           });
-          if (touched) {
-            const adapter = buildRuntimeConnection(touched, options);
-            try {
-              await adapter.connectRunning();
-              return { resource: { ...touched, teamId: owned.teamId }, adapter };
-            } catch (error) {
-              await adapter.close().catch(() => undefined);
-              throw error;
+        } catch (error) {
+          // 数据面 /restore 或确定性拒绝失败时控制面状态已明确，立即在同一租约内销毁临时容器与新 PVC 并退回 archived 释放配额；
+          // 仅当控制面创建本身处于未收到响应的传输未决状态时保留 240s 冷却窗口防止在途创建迟到逃逸。
+          if (!lease.signal.aborted && !isUncertainControlPlaneError(error)) {
+            const targetSandboxId = current.sandboxId;
+            const failed = await findSandboxInstanceBySandboxId({
+              sandboxId: targetSandboxId
+            });
+            if (failed) {
+              await recoverSandboxActivationWithinLease({
+                resource: failed,
+                lease,
+                now: new Date(Date.now() + 1)
+              }).catch((recoverError) => {
+                logger.warn('Failed to immediately recover sandbox restore failure', {
+                  sandboxId: targetSandboxId,
+                  error: recoverError
+                });
+              });
             }
           }
-        } else {
-          return await connectRunningSandbox({ query, options, ...params.connection });
-        }
-      } catch (error) {
-        if (
-          !(error instanceof SandboxNotFoundError) &&
-          !(error instanceof SandboxRuntimeNotRunningError) &&
-          !(error instanceof SandboxStateError)
-        )
           throw error;
-        repairMissingProvider = true;
-      }
-    }
-  }
-
-  const missingProviderRequiresSourceLease = new Error(
-    'Missing provider repair requires source lease'
-  );
-  const runWithinLease = async ({
-    lease,
-    allowRecordCreate,
-    allowProviderRepair
-  }: {
-    lease: RedisLeaseContext;
-    allowRecordCreate: boolean;
-    allowProviderRepair: boolean;
-  }) => {
-    await assertSandboxSourceActive(query);
-    lease.assertValid();
-    let current = await findSandboxInstanceBySource(query);
-    const bindOwnedResource = (resource: SandboxResourceDoc): OwnedSandboxResource => {
-      if (resource.sandboxId !== query.sandboxId || resource.teamId !== owned.teamId) {
-        throw new Error(`Sandbox identity or team ownership mismatch: ${query.sandboxId}`);
-      }
-      return { ...resource, teamId: owned.teamId };
-    };
-    if (current) {
-      bindOwnedResource(current);
-      current = await recoverSandboxActivationWithinLease({
-        resource: current,
-        lease,
-        rollbackRestore: current.provider !== provider
-      });
-      if (current.status === 'stopping') {
-        current = await stopSandboxResourceWithinLease({ current, resource: current, lease });
-        if (!current) throw new SandboxOperationConflictError(query.sandboxId);
-      }
-      if (
-        current.status === 'archiving' ||
-        (!matchesConfiguration(current) &&
-          (current.status === 'running' || current.status === 'stopped'))
-      ) {
-        options.onUpgrade?.();
-        const result = await archiveSandboxResourceWithinLease(current, lease);
-        if (result.status === 'failed') throw new Error(result.error);
-        if (result.status === 'skipped') throw new SandboxLifecycleStateError(current.status);
-        current = result.resource;
-      }
-      if (
-        current.status !== 'running' &&
-        current.status !== 'stopped' &&
-        current.status !== 'archived'
-      ) {
-        throw new SandboxLifecycleStateError(current.status);
-      }
-      if (current.provider !== provider) {
-        options.onUpgrade?.();
-        // 完整运行配置在任何破坏性操作前已经解析；这里只切换 archived 记录。
-        if (current.status !== 'archived') throw new SandboxLifecycleStateError(current.status);
-        lease.assertValid();
-        current = await switchArchivedSandboxProvider({ resource: current, provider, image });
-        if (!current) throw new SandboxOperationConflictError(query.sandboxId);
-      }
-    }
-    if (params.target === 'configuration')
-      return { resource: current ? bindOwnedResource(current) : null, adapter: null };
-
-    let alreadyClaimed = false;
-    if (!current) {
-      if (!allowRecordCreate) throw new Error('Sandbox record disappeared before activation');
-      await checkSandboxQuota({ teamId: owned.teamId, current: null });
-      const created = await createSandboxProvisioningInstance({
-        ...query,
-        provider,
-        teamId: owned.teamId,
-        ...(provider === 'opensandbox'
-          ? {
-              storage: buildVolumeConfig(
-                createSessionVolumeClaimName({ sandboxId: query.sandboxId, generationId: '0' })
-              ).storage
-            }
-          : {}),
-        ...(image ? { image } : {}),
-        ...(options.resourceLimits ? { limit: options.resourceLimits } : {})
-      });
-      current = created.instance;
-      alreadyClaimed = created.created;
-      if (!current) throw new SandboxOperationConflictError(query.sandboxId);
-      bindOwnedResource(current);
-      if (
-        current.provider !== provider ||
-        (!alreadyClaimed && current.status !== 'running' && current.status !== 'stopped')
-      ) {
-        throw new SandboxLifecycleStateError(current.status);
-      }
-    }
-    if (current.status === 'archived') {
-      await checkSandboxQuota({ teamId: owned.teamId, current });
-      const restored = await restoreArchivedSandboxWithinLease({
-        resource: bindOwnedResource(current),
-        lease,
-        resourceLimit: options.resourceLimits,
-        createConfig: options.createConfig
-      });
-      current = restored;
-    }
-    if (current.status === 'stopped') await checkSandboxQuota({ teamId: owned.teamId, current });
-    const adapter = buildRuntimeConnection(current, options);
-    try {
-      if (current.status === 'running') {
-        try {
-          lease.assertValid();
-          await adapter.connectRunning();
-          lease.assertValid();
-          return { resource: bindOwnedResource(current), adapter };
-        } catch (error) {
-          if (!(error instanceof SandboxNotFoundError) && !(error instanceof SandboxStateError))
-            throw error;
-          if (!allowProviderRepair) throw missingProviderRequiresSourceLease;
         }
       }
-      const activated = await runSandboxLifecycleOperation({
-        resource: current,
-        lease,
-        claim: alreadyClaimed ? { type: 'created' } : undefined,
-        definition: {
-          status: 'provisioning',
-          steps: [
-            {
-              fromPhase: 'claimed',
-              toPhase: 'providerEnsured',
-              run: async ({ resource, assertValid }) => {
-                await assertSandboxSourceActive(query);
-                assertValid();
-                const claimName = getSessionVolumeClaimName(resource.storage);
-                if (claimName) await getSessionVolumeConfig(claimName);
-                assertValid();
-                await adapter.ensureRunning();
-                return image ? { image } : {};
-              }
+
+      if (current.status === SandboxInstanceStatusEnum.stopped) {
+        await checkSandboxQuota({ teamId: owned.teamId, current });
+      }
+
+      let opensandbox = buildRuntimeConnection({ resource: current, options, runtimeConfig });
+      try {
+        if (current.status === SandboxInstanceStatusEnum.running) {
+          try {
+            lease.assertValid();
+            await opensandbox.connectRunning({
+              verifyHealth: params.verifyHealth,
+              remoteSandboxId: current.instanceId || undefined
+            });
+            lease.assertValid();
+            backfillLegacyInstanceIdIfNeeded(current, opensandbox);
+            return {
+              resource: bindOwnedResource({
+                ...current,
+                ...(opensandbox.id && !current.instanceId ? { instanceId: opensandbox.id } : {})
+              }),
+              opensandbox
+            };
+          } catch (error) {
+            if (!isContainerMissingOrUnhealthyError(error)) {
+              throw error;
             }
-          ],
-          finish: { type: 'complete', status: 'running', touchActive: true }
+            // 远端容器已失效或驱逐：先收口到 stopped（卸载残留并 unset instanceId），再在同一 PVC 上重拉。
+            // 传入当前快照的 lastActiveAt 做 CAS，避免与并发无锁保活竞态误停已恢复或刚续期的运行中容器。
+            await disconnectSandbox(opensandbox);
+            const stopped = await stopSandboxResourceWithinLease({
+              current,
+              matchLastActiveAt: current.lastActiveAt,
+              lease
+            });
+            if (!stopped) throw new SandboxOperationConflictError(query.sandboxId);
+            current = stopped;
+            opensandbox = buildRuntimeConnection({ resource: current, options, runtimeConfig });
+          }
         }
-      });
-      return { resource: bindOwnedResource(activated), adapter };
-    } catch (error) {
-      await adapter.close().catch(() => undefined);
-      throw error;
-    }
-  };
-  const withLifecycle = (allowCreate: boolean, sourceLease?: RedisLeaseContext) =>
-    withSandboxLifecycleLease({
-      sandboxId: query.sandboxId,
-      label: `prepare-sandbox:${query.sandboxId}`,
-      fn: (lease) =>
-        runWithinLease({
-          lease: sourceLease
-            ? {
-                signal: AbortSignal.any([sourceLease.signal, lease.signal]),
-                assertValid: () => {
-                  sourceLease.assertValid();
-                  lease.assertValid();
+
+        const activated = await runSandboxLifecycleOperation({
+          resource: current,
+          lease,
+          claim: alreadyClaimed ? { type: 'created' } : undefined,
+          definition: {
+            status: SandboxInstanceStatusEnum.provisioning,
+            steps: [
+              {
+                fromPhase: 'claimed',
+                toPhase: 'providerEnsured',
+                run: async ({ resource, operationId, assertValid }) => {
+                  const claimName = getSessionVolumeClaimName(resource.storage);
+                  if (claimName) {
+                    await getSessionVolumeConfig(claimName, {
+                      allowLegacyUnlabeled: !alreadyClaimed
+                    });
+                  }
+                  assertValid();
+                  await opensandbox.ensureRunning({ signal: lease.signal, operationId });
+                  return {
+                    ...(image ? { image } : {}),
+                    ...(opensandbox.id ? { instanceId: opensandbox.id } : {})
+                  };
                 }
               }
-            : lease,
-          allowRecordCreate: allowCreate,
-          allowProviderRepair: Boolean(sourceLease)
-        })
-    });
-  const withSource = () =>
-    withSandboxSourceMutationLease({
-      ...query,
-      label: `prepare-sandbox-source:${query.sandboxId}`,
-      fn: (lease) => withLifecycle(!owned.resource, lease)
-    });
-  if (!owned.resource || repairMissingProvider) return withSource();
-  try {
-    return await withLifecycle(false);
-  } catch (error) {
-    if (error !== missingProviderRequiresSourceLease) throw error;
-    // 缺失资源可能在锁内才被发现；先释放 Lifecycle，再按统一顺序重新取得两把锁并重读。
-    return withSource();
-  }
+            ],
+            finish: {
+              type: 'complete',
+              status: SandboxInstanceStatusEnum.running,
+              touchActive: true
+            }
+          }
+        });
+        if (upgraded) {
+          options.onUpgradeComplete?.();
+        }
+        return { resource: bindOwnedResource(activated), opensandbox };
+      } catch (error) {
+        await disconnectSandbox(opensandbox);
+        throw error;
+      }
+    }
+  });
 }
 
 /** 完整激活入口，所有业务使用与 client 再次使用都经过同一决策链。 */
@@ -350,19 +438,13 @@ export async function ensureSandboxRuntime(params: {
   query: SandboxClientQuery;
   options?: SandboxRuntimeOptions;
   connection?: PreparedSandboxRuntime;
+  verifyHealth?: boolean;
 }): Promise<PreparedSandboxRuntime> {
   try {
-    const result = await prepareSandboxRuntime({
+    return await prepareSandboxRuntime({
       ...params,
-      options: params.options ?? {},
-      target: 'running'
+      options: params.options ?? {}
     });
-    if (!result.resource || !result.adapter)
-      throw new Error('Sandbox activation did not return a runtime');
-    return {
-      resource: result.resource,
-      adapter: result.adapter
-    };
   } catch (error) {
     if (
       isRedisLeaseError(error) ||
@@ -371,39 +453,5 @@ export async function ensureSandboxRuntime(params: {
     )
       throw createAgentSandboxInitializingError();
     throw error;
-  }
-}
-
-/** Workflow 前置配置准备复用同一编排，仅在激活前停下；不另写升级状态机。 */
-export async function ensureSandboxRuntimeConfiguration(params: {
-  query: SandboxClientQuery;
-  onUpgrade?: () => void;
-  options?: SandboxRuntimeOptions;
-}) {
-  const deadline = Date.now() + SANDBOX_RUNTIME_CONFIGURATION_TIMEOUT_MS;
-  while (true) {
-    try {
-      await prepareSandboxRuntime({
-        query: params.query,
-        options: { ...params.options, onUpgrade: params.onUpgrade ?? params.options?.onUpgrade },
-        target: 'configuration'
-      });
-      return;
-    } catch (error) {
-      // 等待只负责调度；每次重新经过同一编排并在锁内读取，不能自行解释 phase。
-      if (
-        !(
-          isRedisLeaseError(error) ||
-          error instanceof SandboxOperationConflictError ||
-          error instanceof SandboxLifecycleStateError
-        )
-      )
-        throw error;
-      if (Date.now() >= deadline)
-        throw new Error('Sandbox runtime configuration preparation timed out', { cause: error });
-      await new Promise<void>((resolve) =>
-        setTimeout(resolve, SANDBOX_RUNTIME_CONFIGURATION_RETRY_INTERVAL_MS)
-      );
-    }
   }
 }

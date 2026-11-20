@@ -18,7 +18,6 @@ const mocks = vi.hoisted(() => ({
   save: undefined as undefined | (() => Promise<unknown>),
   toc: [] as { id: string }[],
   inputs: new Map<string, (value: unknown) => void>(),
-  changeProvider: undefined as undefined | ((value: string) => void),
   changeRuntime: undefined as undefined | ((value: string) => void)
 }));
 vi.mock('@/web/common/system/useDomainConfig', () => ({
@@ -86,7 +85,6 @@ vi.mock('@fastgpt/web/components/common/MySelect', () => ({
     list: { value: string }[];
     onChange: (value: string) => void;
   }) => {
-    if (list.some(({ value }) => value === 'none')) mocks.changeProvider = onChange;
     if (list.some(({ value }) => value === 'kubernetes')) mocks.changeRuntime = onChange;
     return null;
   }
@@ -159,44 +157,45 @@ beforeEach(() => {
   root = createRoot(container);
   mocks.patch.mockReset().mockResolvedValue(undefined);
   mocks.inputs.clear();
-  mocks.changeProvider = undefined;
   mocks.changeRuntime = undefined;
 });
 
-describe('agent sandbox Kubernetes overcommit settings', () => {
+describe('agent sandbox Kubernetes settings', () => {
   it.each([
-    { provider: 'none', runtime: 'kubernetes', visible: false },
-    { provider: 'sealosdevbox', runtime: 'kubernetes', visible: false },
-    { provider: 'opensandbox', runtime: 'docker', visible: false },
-    { provider: 'opensandbox', runtime: 'kubernetes', visible: true }
+    { enabled: false, runtime: 'kubernetes', visible: false },
+    { enabled: true, runtime: 'docker', visible: false },
+    { enabled: true, runtime: 'kubernetes', visible: true }
   ] as const)(
-    'shows factors for $provider / $runtime: $visible',
-    async ({ provider, runtime, visible }) => {
+    'shows Kubernetes controls for enabled=$enabled / $runtime: $visible',
+    async ({ enabled, runtime, visible }) => {
       mocks.effectiveConfig = resolveDomainEffectiveConfig({
         domain: 'subservice',
         overrides: {
           agentSandbox: {
-            provider,
+            enabled,
             proxy: {
               wsUrl: 'wss://proxy.test',
               previewUrl: 'https://proxy.test',
               secret: 'proxy_secret_32_characters_minimum'
             },
-            sealosdevbox: { baseUrl: 'https://devbox.test' },
             opensandbox: { baseUrl: 'https://sandbox.test', runtime }
           }
         }
       });
       await act(async () => root.render(React.createElement(AgentSandbox)));
+      expect(container.textContent).not.toContain('admin:sandbox_ephemeral_storage_size');
       expect(container.textContent?.includes('admin:sandbox_cpu_overcommit_factor')).toBe(visible);
       expect(container.textContent?.includes('admin:sandbox_memory_overcommit_factor')).toBe(
         visible
       );
-      if (provider === 'opensandbox' && runtime === 'docker') {
+      if (enabled && runtime === 'docker') {
         await act(async () => mocks.changeRuntime!('kubernetes'));
+        expect(container.textContent).not.toContain('admin:sandbox_ephemeral_storage_size');
         expect(container.textContent).toContain('admin:sandbox_cpu_overcommit_factor');
+        expect(container.textContent).toContain('admin:sandbox_memory_overcommit_factor');
         await act(async () => mocks.changeRuntime!('docker'));
         expect(container.textContent).not.toContain('admin:sandbox_cpu_overcommit_factor');
+        expect(container.textContent).not.toContain('admin:sandbox_memory_overcommit_factor');
       }
     }
   );
@@ -204,16 +203,15 @@ describe('agent sandbox Kubernetes overcommit settings', () => {
 
 describe('agent sandbox hidden URL drafts', () => {
   const fields = [
-    { name: 'agentSandbox.sealosdevbox.baseUrl', provider: 'sealosdevbox', other: 'opensandbox' },
-    { name: 'agentSandbox.opensandbox.baseUrl', provider: 'opensandbox', other: 'sealosdevbox' },
+    { name: 'agentSandbox.opensandbox.baseUrl', enabled: true, other: false },
     {
       name: 'agentSandbox.opensandbox.volumeManagerUrl',
-      provider: 'opensandbox',
-      other: 'sealosdevbox'
+      enabled: true,
+      other: false
     }
   ] as const;
 
-  /** 通过真实 RHF 输入回调留下草稿，再切换 Provider，检查提交值和服务端域契约。 */
+  /** 通过真实 RHF 输入回调留下草稿，再切换启用开关，检查提交值和服务端域契约。 */
   const saveDraft = async ({
     field,
     draft,
@@ -221,19 +219,18 @@ describe('agent sandbox hidden URL drafts', () => {
   }: {
     field: (typeof fields)[number];
     draft: string;
-    target: string;
+    target: boolean;
   }) => {
     const baseline = resolveDomainEffectiveConfig({
       domain: 'subservice',
       overrides: {
         agentSandbox: {
-          provider: field.provider,
+          enabled: field.enabled,
           proxy: {
             wsUrl: 'wss://proxy.test',
             previewUrl: 'https://proxy.test',
             secret: 'proxy_secret_32_characters_minimum'
           },
-          sealosdevbox: { baseUrl: 'https://sealos.example.test' },
           opensandbox: {
             baseUrl: 'https://opensandbox.example.test',
             volumeManagerUrl: 'https://volume.example.test'
@@ -245,7 +242,9 @@ describe('agent sandbox hidden URL drafts', () => {
     await act(async () => root.render(React.createElement(AgentSandbox)));
     expect(mocks.inputs.has(field.name)).toBe(true);
     await act(async () => mocks.inputs.get(field.name)!({ target: { value: draft } }));
-    await act(async () => mocks.changeProvider!(target));
+    if (target !== field.enabled) {
+      await clickSwitch('enable_agent_sandbox');
+    }
     await act(async () => {
       await mocks.save!();
     });
@@ -253,13 +252,13 @@ describe('agent sandbox hidden URL drafts', () => {
     return { baseline, submitted: deepMergeConfig(baseline, mocks.patch.mock.calls[0][0]) };
   };
 
-  it.each(fields.flatMap((field) => ['none', field.other].map((target) => ({ field, target }))))(
-    'restores $field.name when switching to $target with an incomplete URL',
+  it.each(fields.map((field) => ({ field, target: field.other })))(
+    'restores $field.name when switching enabled=$target with an incomplete URL',
     async ({ field, target }) => {
       const { baseline, submitted } = await saveDraft({ field, target, draft: 'https://' });
       expect(SubserviceConfigSchema.parse(submitted).agentSandbox).toEqual({
         ...baseline.agentSandbox,
-        provider: target
+        enabled: target
       });
     }
   );
@@ -267,18 +266,18 @@ describe('agent sandbox hidden URL drafts', () => {
   it.each(['https://draft.example.test/path?version=1', ''])(
     'preserves a valid hidden draft or explicit clear: %j',
     async (draft) => {
-      const field = fields[2];
-      const { baseline, submitted } = await saveDraft({ field, target: 'none', draft });
+      const field = fields[1];
+      const { baseline, submitted } = await saveDraft({ field, target: false, draft });
       expect(SubserviceConfigSchema.parse(submitted).agentSandbox).toEqual({
         ...baseline.agentSandbox,
-        provider: 'none',
+        enabled: false,
         opensandbox: { ...baseline.agentSandbox.opensandbox, volumeManagerUrl: draft }
       });
     }
   );
 
   it.each(fields)('retains invalid active input for server rejection: $name', async (field) => {
-    const { submitted } = await saveDraft({ field, target: field.provider, draft: 'https://' });
+    const { submitted } = await saveDraft({ field, target: field.enabled, draft: 'https://' });
     const result = SubserviceConfigSchema.safeParse(submitted);
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -445,7 +444,7 @@ describe('Agent Sandbox proxy form', () => {
       domain: 'subservice',
       overrides: {
         agentSandbox: {
-          provider: 'opensandbox',
+          enabled: true,
           proxy: {
             wsUrl: 'wss://proxy.test',
             previewUrl: 'https://preview.test',
@@ -486,7 +485,7 @@ describe('Agent Sandbox proxy form', () => {
     await act(async () => root.render(React.createElement(AgentSandbox)));
     expect(container.querySelector('#proxy')).toBeNull();
     expect(mocks.toc.some(({ id }) => id === 'proxy')).toBe(false);
-    await act(async () => mocks.changeProvider!('opensandbox'));
+    await clickSwitch('enable_agent_sandbox');
     expect(container.querySelector('#proxy')).not.toBeNull();
     expect(container.querySelector('[name="agentSandbox.proxy.secret"]')).not.toBeNull();
     await act(async () => {
@@ -507,6 +506,7 @@ describe('Agent Sandbox proxy form', () => {
     expect(mocks.patch).toHaveBeenLastCalledWith(
       expect.objectContaining({
         agentSandbox: expect.objectContaining({
+          enabled: true,
           proxy: {
             wsUrl: 'wss://proxy.test',
             previewUrl: 'https://preview.test',
@@ -530,11 +530,40 @@ describe('Agent Sandbox proxy form', () => {
     expect(mocks.patch).not.toHaveBeenCalled();
     expect(container.textContent).toContain('admin:sandbox_proxy_url_invalid');
     expect(container.textContent).toContain('admin:sandbox_proxy_secret_invalid');
-    await act(async () => mocks.changeProvider!('none'));
+    await clickSwitch('enable_agent_sandbox');
     await act(async () => {
       await mocks.save!();
     });
     expect(mocks.patch).toHaveBeenCalledTimes(1);
     expect(container.querySelector('#proxy')).toBeNull();
+  });
+
+  it('wires OpenSandbox probe credentials to stored API key or explicit draft changes', async () => {
+    mocks.effectiveConfig = resolveDomainEffectiveConfig({
+      domain: 'subservice',
+      overrides: {
+        agentSandbox: {
+          enabled: true,
+          proxy: {
+            wsUrl: 'wss://proxy.test',
+            previewUrl: 'https://preview.test',
+            secret: 'proxy_secret_32_characters_minimum'
+          },
+          opensandbox: { baseUrl: 'http://localhost:8090', apiKey: 'stored-key' }
+        }
+      }
+    });
+    await act(async () => root.render(React.createElement(AgentSandbox)));
+    const probeInput = container.querySelector('[data-service="opensandbox"]');
+    expect(probeInput).not.toBeNull();
+    expect(probeInput?.getAttribute('data-use-stored-token')).toBe('true');
+
+    for (const token of ['replacement-key', '']) {
+      await act(async () =>
+        mocks.inputs.get('agentSandbox.opensandbox.apiKey')!({ target: { value: token } })
+      );
+      expect(probeInput?.getAttribute('data-token')).toBe(token);
+      expect(probeInput?.getAttribute('data-use-stored-token')).toBe('false');
+    }
   });
 });

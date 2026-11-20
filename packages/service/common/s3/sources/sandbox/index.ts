@@ -1,92 +1,104 @@
+import path from 'node:path';
 import type { Readable } from 'node:stream';
+import { throwIfAborted } from '@fastgpt/global/common/system/utils';
 import { S3PrivateBucket } from '../../buckets/private';
-import { readStreamToBuffer } from '../../utils';
-import { getContentDisposition } from '@fastgpt/global/common/file/tools';
-import { encodeS3Filename } from '../../filename';
 
-const SANDBOX_WORKSPACE_ARCHIVE_FILENAME = 'package.zip';
-
-const getWorkspaceArchiveKey = (sandboxId: string): string =>
-  `sandbox/archive/${sandboxId}/${SANDBOX_WORKSPACE_ARCHIVE_FILENAME}`;
-
-type WorkspaceArchiveBody = Buffer | string | Readable;
+/**
+ * 构造 Agent Sandbox `.tar.zst` 代次归档对象键。
+ *
+ * 每个归档批次拥有独立 `<generation>`，实现 Copy-on-Write，避免上传中途覆盖上一代可用冷备。
+ */
+export const buildSandboxArchiveObjectKey = (sandboxId: string, generation: string): string =>
+  `sandbox/archive/${encodeURIComponent(sandboxId)}/${generation}.tar.zst`;
 
 export class S3SandboxSource extends S3PrivateBucket {
-  constructor() {
-    super();
-  }
-
-  private async uploadWorkspaceArchiveByKey(params: { key: string; body: WorkspaceArchiveBody }) {
-    await this.client.uploadObject({
+  /**
+   * 流式上传 `.tar.zst` Workspace 归档。
+   *
+   * 复用通用 Unknown-length S3 Multipart 分片逻辑（<= 5 MiB 单次 PUT，> 5 MiB 分片流式推送），
+   * 避免整包缓冲进主站内存，并在失败或中止时主动 `abortMultipartUpload`。
+   */
+  async uploadArchiveStream(params: {
+    key: string;
+    body: Readable;
+    signal?: AbortSignal;
+  }): Promise<{ sizeBytes: number }> {
+    return this.uploadStreamWithMultipart({
       key: params.key,
       body: params.body,
-      contentType: 'application/zip',
-      contentDisposition: getContentDisposition({
-        filename: SANDBOX_WORKSPACE_ARCHIVE_FILENAME,
-        type: 'attachment'
-      }),
-      metadata: {
-        uploadTime: new Date().toISOString(),
-        originFilename: encodeS3Filename(SANDBOX_WORKSPACE_ARCHIVE_FILENAME)
-      }
+      contentType: 'application/zstd',
+      filename: path.basename(params.key) || 'archive.tar.zst',
+      signal: params.signal
     });
   }
 
-  private async downloadWorkspaceArchiveByKey(params: {
-    key: string;
-    sandboxId: string;
-    maxBytes?: number;
-  }) {
+  /**
+   * 获取指定 S3 对象键的只读下载流（调用方负责消费、限流与销毁，不在主站整包缓冲进内存）。
+   */
+  async downloadArchiveStream(params: { key: string; sandboxId: string }): Promise<Readable> {
     const response = await this.client.downloadObject({ key: params.key });
     if (!response.body) {
       throw new Error(`Failed to download sandbox archive: ${params.sandboxId}`);
     }
-
-    return readStreamToBuffer({
-      stream: response.body,
-      maxBytes: params.maxBytes,
-      exceededMessage:
-        params.maxBytes === undefined
-          ? undefined
-          : `Sandbox archive exceeds maximum allowed size (${params.maxBytes} bytes)`
-    });
+    return response.body;
   }
 
-  private async deleteWorkspaceArchiveNowByKey(params: { key: string; sandboxId: string }) {
-    const { key, sandboxId } = params;
-    await this.removeObject(key);
-    if (await this.isObjectExists(key)) {
-      throw new Error(`Failed to delete sandbox archive: ${sandboxId}`);
+  private getArchivePrefix(sandboxId: string): string {
+    const normalizedSandboxId = sandboxId.trim();
+    if (
+      !normalizedSandboxId ||
+      normalizedSandboxId === '.' ||
+      normalizedSandboxId === '..' ||
+      normalizedSandboxId.includes('/') ||
+      normalizedSandboxId.includes('\\')
+    ) {
+      throw new Error(`Invalid sandboxId for archive prefix: ${sandboxId}`);
+    }
+    return `sandbox/archive/${encodeURIComponent(normalizedSandboxId)}/`;
+  }
+
+  /**
+   * 同步删除单个归档对象，用于清理已被新 generation 取代的历史 `.tar.zst` 或旧 `package.zip`。
+   */
+  async deleteArchiveObject(params: { key: string }) {
+    await this.removeObject(params.key);
+  }
+
+  /**
+   * 清理已被新 generation `.tar.zst` 取代（或中断残留）的旧归档对象，严格保留当前 `keepObjectKey` 与历史 `package.zip`。
+   *
+   * 兼容期说明（>= 4.19.0 移除窗口）：`package.zip` 仅在 4.18.0 迁移及 `cleanup_legacy_sandbox_resources`
+   * 清理前保留；待历史归档全部完成转码并确认无需回滚后，不再区分保留旧 `package.zip`。
+   */
+  async deleteSupersededSandboxArchives({
+    sandboxId,
+    keepObjectKey,
+    signal
+  }: {
+    sandboxId: string;
+    keepObjectKey?: string;
+    signal?: AbortSignal;
+  }): Promise<void> {
+    throwIfAborted(signal);
+    const { keys } = await this.client.listObjects({ prefix: this.getArchivePrefix(sandboxId) });
+    throwIfAborted(signal);
+    const keysToDelete = keys.filter((key) => key.endsWith('.tar.zst') && key !== keepObjectKey);
+
+    for (let i = 0; i < keysToDelete.length; i += 1000) {
+      throwIfAborted(signal);
+      await this.client.deleteObjectsByMultiKeys({ keys: keysToDelete.slice(i, i + 1000) });
     }
   }
 
-  /** 上传 v2 Sandbox 的完整 Workspace 归档。 */
-  uploadWorkspaceArchive(params: { sandboxId: string; body: WorkspaceArchiveBody }) {
-    return this.uploadWorkspaceArchiveByKey({
-      key: getWorkspaceArchiveKey(params.sandboxId),
-      body: params.body
-    });
-  }
-
-  /** 下载 v2 Sandbox 的完整 Workspace 归档。 */
-  downloadWorkspaceArchive(params: { sandboxId: string; maxBytes?: number }) {
-    return this.downloadWorkspaceArchiveByKey({
-      ...params,
-      key: getWorkspaceArchiveKey(params.sandboxId)
-    });
-  }
-
-  /** 同步删除 v2 Sandbox 的 Workspace 归档，返回前保证对象已经不存在。 */
-  deleteWorkspaceArchiveNow(params: { sandboxId: string }) {
-    return this.deleteWorkspaceArchiveNowByKey({
-      ...params,
-      key: getWorkspaceArchiveKey(params.sandboxId)
-    });
-  }
-
-  /** 检查指定 v2 Sandbox 的 Workspace 归档是否存在。 */
-  isWorkspaceArchiveExists(params: { sandboxId: string }) {
-    return this.isObjectExists(getWorkspaceArchiveKey(params.sandboxId));
+  /**
+   * 清理指定逻辑沙盒名下的全部 S3 归档（含当前代次 `.tar.zst`、前缀下所有代次对象及历史 `package.zip`）。
+   */
+  async deleteSandboxArchives(params: { sandboxId: string; currentObjectKey?: string }) {
+    const prefix = this.getArchivePrefix(params.sandboxId);
+    await Promise.all([
+      ...(params.currentObjectKey ? [this.removeObject(params.currentObjectKey)] : []),
+      this.client.deleteObjectsByPrefix({ prefix })
+    ]);
   }
 }
 

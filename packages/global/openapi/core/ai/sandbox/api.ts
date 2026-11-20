@@ -53,32 +53,25 @@ export const SandboxKeepaliveBodySchema = z.object({
 });
 export type SandboxKeepaliveBody = z.infer<typeof SandboxKeepaliveBodySchema>;
 
-export const SandboxKeepaliveResponseSchema = z.undefined().meta({
-  description: '保活成功'
-});
-export type SandboxKeepaliveResponse = z.infer<typeof SandboxKeepaliveResponseSchema>;
-
 /* ============================================================================
  * API: 校验沙盒 Ticket 或 Preview Session
  * Route: GET /api/core/ai/sandbox/verifyTicket
  * Method: GET
- * Description: 供 agent-sandbox-proxy 内部调用，解析沙盒地址、Agent 口令和 WebSocket 限制
+ * Description: 供 agent-sandbox-proxy 内部调用，解析沙盒地址、上游数据面鉴权头和 WebSocket 限制
  * Tags: ['Sandbox', 'Read']
  * ============================================================================ */
 
 export const SandboxVerifyTicketQuerySchema = z.object({
-  ticket: z.string().meta({
+  ticket: z.string().min(1).optional().meta({
     example: 'eyJhbGciOiJIUzI1NiJ9...',
-    description: '沙盒 WebSocket 临时访问凭证'
+    description: '沙盒 WebSocket 临时访问凭证；未传 Preview Session 请求头时必填'
+  }),
+  forceRefresh: z.enum(['true', 'false']).optional().meta({
+    example: 'true',
+    description: '是否强制刷新上游 IDE Agent 认证密钥缓存'
   })
 });
 export type SandboxVerifyTicketQuery = z.infer<typeof SandboxVerifyTicketQuerySchema>;
-
-export const SandboxVerifyTicketDocumentQuerySchema = z.object({
-  ticket: SandboxVerifyTicketQuerySchema.shape.ticket.optional().meta({
-    description: '沙盒 WebSocket 临时访问凭证；未传 Preview Session 请求头时必填'
-  })
-});
 
 export const SandboxVerifyTicketHeaderSchema = SandboxProxyHeaderSchema.extend({
   'x-sandbox-preview-session': z.string().min(1).optional().meta({
@@ -92,9 +85,8 @@ export const SandboxVerifyTicketResponseSchema = z.object({
     example: 'http://sandbox-provider.internal:1318',
     description: 'IDE Agent 的代理连接地址'
   }),
-  agent_token: z.string().meta({
-    example: 'temporary-agent-password',
-    description: '连接 IDE Agent 使用的临时口令'
+  upstream_headers: z.record(z.string(), z.string()).optional().meta({
+    description: '连接沙盒端点时需透传的上游数据面认证请求头'
   }),
   ws_limits: z.object({
     max_message_bytes: IntSchema.min(1).meta({
@@ -166,7 +158,7 @@ export const SandboxUploadResponseSchema = z.object({
     example: 'src/main.py',
     description: '上传成功后的目标文件路径'
   }),
-  bytesWritten: z.number().int().nonnegative().meta({
+  bytesWritten: IntSchema.nonnegative().meta({
     example: 1024,
     description: '写入字节数'
   })
@@ -228,11 +220,11 @@ export const SandboxGetTicketResponseSchema = z.object({
     description: '沙盒单文件大小限制（字节），与服务端及 IDE 使用同一配置来源'
   }),
   workspaceRoot: z.string().meta({
-    example: '/workspace',
+    example: '/home/sandbox/workspace',
     description: '用户级沙盒工作区根目录'
   }),
   sessionWorkDirectory: z.string().meta({
-    example: '/workspace/sessions/bEdzC6PNupZrr1RoVutMF2DL',
+    example: '/home/sandbox/workspace/sessions/bEdzC6PNupZrr1RoVutMF2DL',
     description: '当前 Chat 默认工作目录'
   })
 });
@@ -269,3 +261,53 @@ export type SandboxGetHtmlPreviewLinkRuntimeBody = z.output<
 export type SandboxGetHtmlPreviewLinkResponse = z.infer<
   typeof SandboxGetHtmlPreviewLinkResponseSchema
 >;
+
+/* ============================================================================
+ * API: 解压沙盒工作区内的 .zip 文件
+ * Route: POST /api/core/ai/sandbox/extractZip
+ * Method: POST
+ * Description: 通过 OpenSandbox execd 在当前 Chat 会话目录下将指定 .zip 文件解压到同名不冲突目录
+ * Tags: ['Sandbox', 'Write']
+ * ============================================================================ */
+const validateRelativeZipPath = (value: string) => {
+  if (!value || value.startsWith('/') || value.includes('\\') || value.includes('\0')) {
+    return false;
+  }
+  const segments = value.split('/');
+  if (segments.some((segment) => segment.length === 0 || segment === '.' || segment === '..')) {
+    return false;
+  }
+  const fileName = segments[segments.length - 1];
+  if (!fileName.toLowerCase().endsWith('.zip')) {
+    return false;
+  }
+  const stem = fileName.slice(0, -4);
+  return stem.length > 0 && stem !== '.' && stem !== '..';
+};
+
+export const SandboxExtractZipPathSchema = z
+  .string()
+  .refine(validateRelativeZipPath, {
+    message: 'Path must be a valid relative .zip file path inside the current session directory'
+  })
+  .meta({
+    example: 'uploads/demo.zip',
+    description: '待解压的相对当前会话根目录的 .zip 文件路径'
+  });
+
+export const SandboxExtractZipBodyRawSchema = createOutLinkChatTargetInputSchema({
+  ...SandboxBaseShape,
+  path: SandboxExtractZipPathSchema
+});
+export const SandboxExtractZipBodySchema = withSandboxTarget({
+  path: SandboxExtractZipPathSchema
+});
+export const SandboxExtractZipResponseSchema = z.object({
+  targetDirPath: z.string().min(1).meta({
+    example: 'uploads/demo',
+    description: '实际解压生成的相对会话根目录的目录路径'
+  })
+});
+export type SandboxExtractZipBody = z.input<typeof SandboxExtractZipBodySchema>;
+export type SandboxExtractZipRuntimeBody = z.output<typeof SandboxExtractZipBodySchema>;
+export type SandboxExtractZipResponse = z.infer<typeof SandboxExtractZipResponseSchema>;

@@ -37,13 +37,21 @@ const createContext = () => {
 };
 
 describe('sandbox runtime prepare', () => {
-  it('deletes direct children while preserving the work directory', async () => {
+  it('deletes all direct children while preserving the work directory itself', async () => {
     const { sandbox, context } = createContext();
+    sandbox.listDirectory.mockResolvedValueOnce([
+      file('.env'),
+      directory('src'),
+      directory('.fastgpt')
+    ]);
 
     await emptyWorkDirectory()(context);
 
     expect(sandbox.deleteFiles).toHaveBeenCalledWith(['/workspace/session/.env']);
-    expect(sandbox.deleteDirectories).toHaveBeenCalledWith(['/workspace/session/src']);
+    expect(sandbox.deleteDirectories).toHaveBeenCalledWith([
+      '/workspace/session/src',
+      '/workspace/session/.fastgpt'
+    ]);
   });
 
   it('stops before deleting directories when a file deletion fails', async () => {

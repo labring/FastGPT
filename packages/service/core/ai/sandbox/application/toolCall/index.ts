@@ -26,7 +26,8 @@ import { sandboxLsTool } from './ls.tool';
 import { sandboxReadFileTool } from './readFile.tool';
 import { sandboxShellTool } from './shell.tool';
 import { sandboxWriteFileTool } from './writeFile.tool';
-import { getSandboxClient, type SandboxClient } from '../runtime/client';
+import { type SandboxClient } from '../runtime/client';
+import { prepareAgentSandboxRuntime } from '../runtime';
 import { parseJsonArgs } from '../../../utils';
 import { writeUrlFilesToSandbox, type SandboxInputFileReader } from '../file';
 import { preparePackageMirrors, prepareSandbox } from '../runtime/prepare';
@@ -36,9 +37,15 @@ import {
   getSandboxInputFileNameAllocation,
   getSafeSandboxInputFilename
 } from '../../utils';
-import { getRunningSandboxId, getSandboxUserId } from '../../utils/id';
+import { getSandboxUserId } from '../../utils/id';
+import { formatAgentDiskQuotaNotice, getSandboxDiskQuotaStatus } from '../quota';
 import { createToolRunner, type SandboxToolCallValidator } from './type';
 import type { ChatCompletionToolMessageContentPart } from '@fastgpt/global/core/ai/llm/type';
+
+const QUOTA_CHECKED_WRITE_TOOLS = new Set<string>([
+  SANDBOX_WRITE_FILE_TOOL_NAME,
+  SANDBOX_EDIT_FILE_TOOL_NAME
+]);
 
 const ToolMap = {
   [SANDBOX_EDIT_FILE_TOOL_NAME]: createToolRunner(sandboxEditFileTool),
@@ -102,6 +109,19 @@ export const runSandboxTools = async ({
     };
   }
 
+  // Docker 卷容量超限时在写工具入口统一拦截，返回明确清理指引而不中断 Agent Loop。
+  if (QUOTA_CHECKED_WRITE_TOOLS.has(toolName)) {
+    const quota = await getSandboxDiskQuotaStatus(sandboxClient.opensandbox);
+    if (quota.exceeded) {
+      return {
+        success: false,
+        input: {},
+        response: formatAgentDiskQuotaNotice(quota, 'write'),
+        durationSeconds: getDuration()
+      };
+    }
+  }
+
   const result = await tool({
     sandboxInstance: sandboxClient,
     input: parseJsonArgs<Record<string, unknown>>(args)
@@ -136,7 +156,9 @@ export const prepareSandboxToolRuntime = async ({
   userId,
   chatId,
   files,
-  readInputFile
+  readInputFile,
+  onUpgrade,
+  onUpgradeComplete
 }: {
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
@@ -144,30 +166,31 @@ export const prepareSandboxToolRuntime = async ({
   chatId: string;
   files: { path: string; url: string }[];
   readInputFile?: SandboxInputFileReader;
+  onUpgrade?: () => void;
+  onUpgradeComplete?: () => void;
 }) => {
-  const sandboxUserId = getSandboxUserId({ sourceType, userId });
-  const sandboxId = getRunningSandboxId({
+  const {
+    sandboxClient: instance,
+    workspaceRoot,
+    workDirectory
+  } = await prepareAgentSandboxRuntime({
     sourceType,
     sourceId,
-    userId: sandboxUserId
+    userId,
+    chatId,
+    onUpgrade,
+    onUpgradeComplete
   });
-  const instance = await getSandboxClient({
-    sandboxId,
-    sourceType,
-    sourceId,
-    userId: sandboxUserId,
-    chatId
-  });
-  const runtimePaths = instance.getRuntimePaths();
   await prepareSandbox(
     {
-      sandbox: instance.provider,
+      sandbox: instance.opensandbox,
       sandboxClient: instance,
-      workDirectory: runtimePaths.sessionWorkDirectory,
-      workspaceRoot: runtimePaths.workspaceRoot
+      workDirectory,
+      workspaceRoot
     },
     preparePackageMirrors()
   );
+  const sandboxUserId = getSandboxUserId({ sourceType, userId });
   const allocation = getSandboxInputFileNameAllocation({
     scopeKey: buildSandboxInputFileScopeKey({
       sourceType,
@@ -175,36 +198,43 @@ export const prepareSandboxToolRuntime = async ({
       userId: sandboxUserId,
       chatId
     }),
-    sandbox: instance.provider,
-    workDirectory: runtimePaths.sessionWorkDirectory
+    sandbox: instance.opensandbox,
+    workDirectory
   });
   const usedNames = new Map<string, number>();
   const batchUsedFilenames = new Set<string>();
-  await writeUrlFilesToSandbox(
-    instance.provider,
-    files.map((file, index) => {
-      const normalizedPath = file.path.replace(/^\.\//, '');
-      if (normalizedPath.startsWith(SANDBOX_USER_FILES_PATH)) {
-        const rawFilename = normalizedPath.slice(SANDBOX_USER_FILES_PATH.length);
-        const filename = getSafeSandboxInputFilename(rawFilename, index, usedNames, {
-          url: file.url,
-          allocation,
-          batchUsedFilenames
-        });
-        const relativePath = `${SANDBOX_USER_FILES_PATH}${filename}`;
-        file.path = relativePath;
-        return {
-          ...file,
-          path: instance.resolveRuntimePath(relativePath, { allowAbsolutePath: true })
-        };
-      }
-
+  const writeEntries = files.map((file, index) => {
+    const normalizedPath = file.path.replace(/^\.\//, '');
+    if (normalizedPath.startsWith(SANDBOX_USER_FILES_PATH)) {
+      const rawFilename = normalizedPath.slice(SANDBOX_USER_FILES_PATH.length);
+      const filename = getSafeSandboxInputFilename({
+        filename: rawFilename,
+        index,
+        usedNames,
+        url: file.url,
+        allocation,
+        batchUsedFilenames
+      });
+      const relativePath = `${SANDBOX_USER_FILES_PATH}${filename}`;
+      file.path = relativePath;
       return {
         ...file,
-        path: instance.resolveRuntimePath(file.path, { allowAbsolutePath: true })
+        path: instance.resolveRuntimePath(relativePath, { allowAbsolutePath: true })
       };
-    }),
-    readInputFile
+    }
+
+    return {
+      ...file,
+      path: instance.resolveRuntimePath(file.path, { allowAbsolutePath: true })
+    };
+  });
+
+  await instance.runWithRecovery(() =>
+    writeUrlFilesToSandbox({
+      sandbox: instance.opensandbox,
+      files: writeEntries,
+      readInputFile
+    })
   );
   return instance;
 };

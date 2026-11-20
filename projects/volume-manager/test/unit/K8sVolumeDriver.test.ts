@@ -20,12 +20,24 @@ vi.mock('fs', () => ({
 describe('K8sVolumeDriver', () => {
   let fetchMock: ReturnType<typeof vi.fn>;
 
-  const pvcResponse = (uid: string, deletionTimestamp?: string) => ({
+  const pvcResponse = ({
+    uid,
+    deletionTimestamp,
+    labels = {
+      app: 'fastgpt',
+      'managed-by': 'fastgpt-volume-manager'
+    }
+  }: {
+    uid: string;
+    deletionTimestamp?: string;
+    labels?: Record<string, string> | null;
+  }) => ({
     ok: true,
     status: 200,
     json: async () => ({
       metadata: {
         uid,
+        ...(labels ? { labels } : {}),
         ...(deletionTimestamp ? { deletionTimestamp } : {})
       }
     })
@@ -46,8 +58,38 @@ describe('K8sVolumeDriver', () => {
     vi.unstubAllGlobals();
   });
 
+  it('exists inspects PVC without creating and treats absent/deleting as false', async () => {
+    const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
+    const driver = new K8sVolumeDriver();
+
+    fetchMock.mockResolvedValueOnce(notFoundResponse());
+    await expect(driver.exists(VOLUME_NAME)).resolves.toBe(false);
+
+    fetchMock.mockResolvedValueOnce(
+      pvcResponse({ uid: 'uid-deleting', deletionTimestamp: '2026-07-30T00:00:00Z' })
+    );
+    await expect(driver.exists(VOLUME_NAME)).resolves.toBe(false);
+
+    fetchMock.mockResolvedValueOnce(pvcResponse({ uid: 'uid-active' }));
+    await expect(driver.exists(VOLUME_NAME)).resolves.toBe(true);
+
+    fetchMock.mockResolvedValueOnce(pvcResponse({ uid: 'uid-legacy', labels: null }));
+    await expect(driver.exists(VOLUME_NAME)).rejects.toThrow(
+      'missing fastgpt-volume-manager ownership labels'
+    );
+
+    fetchMock.mockResolvedValueOnce(pvcResponse({ uid: 'uid-legacy', labels: null }));
+    await expect(driver.exists(VOLUME_NAME, { allowLegacyUnlabeled: true })).resolves.toBe(true);
+
+    fetchMock.mockResolvedValueOnce(pvcResponse({ uid: 'uid-foreign', labels: { app: 'other' } }));
+    await expect(driver.exists(VOLUME_NAME, { allowLegacyUnlabeled: true })).rejects.toThrow(
+      'missing fastgpt-volume-manager ownership labels'
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+  });
+
   it('ensure returns created=false when PVC already exists', async () => {
-    fetchMock.mockResolvedValueOnce(pvcResponse('uid-1'));
+    fetchMock.mockResolvedValueOnce(pvcResponse({ uid: 'uid-1' }));
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver();
     const result = await driver.ensure({ claimName: VOLUME_NAME });
@@ -68,13 +110,20 @@ describe('K8sVolumeDriver', () => {
     expect(body.spec.storageClassName).toBe('');
     expect(body.spec.resources.requests.storage).toBe('5Gi');
     expect(body.metadata.namespace).toBe('opensandbox');
-    expect(body.metadata).not.toHaveProperty('labels');
+    expect(body.metadata.labels).toEqual({
+      app: 'fastgpt',
+      'managed-by': 'fastgpt-volume-manager'
+    });
   });
 
   it('ensure waits for a deleting PVC before creating the next generation', async () => {
     fetchMock
-      .mockResolvedValueOnce(pvcResponse('uid-1', '2026-07-30T00:00:00Z'))
-      .mockResolvedValueOnce(pvcResponse('uid-1', '2026-07-30T00:00:00Z'))
+      .mockResolvedValueOnce(
+        pvcResponse({ uid: 'uid-1', deletionTimestamp: '2026-07-30T00:00:00Z' })
+      )
+      .mockResolvedValueOnce(
+        pvcResponse({ uid: 'uid-1', deletionTimestamp: '2026-07-30T00:00:00Z' })
+      )
       .mockResolvedValueOnce(notFoundResponse())
       .mockResolvedValueOnce(notFoundResponse())
       .mockResolvedValueOnce({ ok: true, status: 201 });
@@ -90,9 +139,11 @@ describe('K8sVolumeDriver', () => {
 
   it('ensure reuses a replacement generation instead of creating another PVC', async () => {
     fetchMock
-      .mockResolvedValueOnce(pvcResponse('uid-1', '2026-07-30T00:00:00Z'))
-      .mockResolvedValueOnce(pvcResponse('uid-2'))
-      .mockResolvedValueOnce(pvcResponse('uid-2'));
+      .mockResolvedValueOnce(
+        pvcResponse({ uid: 'uid-1', deletionTimestamp: '2026-07-30T00:00:00Z' })
+      )
+      .mockResolvedValueOnce(pvcResponse({ uid: 'uid-2' }))
+      .mockResolvedValueOnce(pvcResponse({ uid: 'uid-2' }));
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver({ waitTimeoutMs: 100, pollIntervalMs: 1 });
 
@@ -107,7 +158,7 @@ describe('K8sVolumeDriver', () => {
     fetchMock
       .mockResolvedValueOnce(notFoundResponse())
       .mockResolvedValueOnce(errorResponse(409, 'already exists'))
-      .mockResolvedValueOnce(pvcResponse('uid-1'));
+      .mockResolvedValueOnce(pvcResponse({ uid: 'uid-1' }));
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver({ waitTimeoutMs: 100, pollIntervalMs: 1 });
 
@@ -159,7 +210,7 @@ describe('K8sVolumeDriver', () => {
   });
 
   it('fetch calls use an Undici dispatcher with ca.crt loaded', async () => {
-    fetchMock.mockResolvedValueOnce(pvcResponse('uid-1'));
+    fetchMock.mockResolvedValueOnce(pvcResponse({ uid: 'uid-1' }));
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const { readFileSync } = await import('fs');
     const driver = new K8sVolumeDriver();
@@ -181,9 +232,11 @@ describe('K8sVolumeDriver', () => {
 
   it('remove waits for the target UID to disappear after DELETE 202', async () => {
     fetchMock
-      .mockResolvedValueOnce(pvcResponse('uid-1'))
+      .mockResolvedValueOnce(pvcResponse({ uid: 'uid-1' }))
       .mockResolvedValueOnce({ ok: true, status: 202 })
-      .mockResolvedValueOnce(pvcResponse('uid-1', '2026-07-30T00:00:00Z'))
+      .mockResolvedValueOnce(
+        pvcResponse({ uid: 'uid-1', deletionTimestamp: '2026-07-30T00:00:00Z' })
+      )
       .mockResolvedValueOnce(notFoundResponse());
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver({ waitTimeoutMs: 100, pollIntervalMs: 1 });
@@ -198,7 +251,9 @@ describe('K8sVolumeDriver', () => {
   });
 
   it('remove treats a DELETE 404 after reading the PVC as idempotent success', async () => {
-    fetchMock.mockResolvedValueOnce(pvcResponse('uid-1')).mockResolvedValueOnce(notFoundResponse());
+    fetchMock
+      .mockResolvedValueOnce(pvcResponse({ uid: 'uid-1' }))
+      .mockResolvedValueOnce(notFoundResponse());
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver();
 
@@ -207,9 +262,9 @@ describe('K8sVolumeDriver', () => {
 
   it('remove stops when the target UID was replaced', async () => {
     fetchMock
-      .mockResolvedValueOnce(pvcResponse('uid-1'))
+      .mockResolvedValueOnce(pvcResponse({ uid: 'uid-1' }))
       .mockResolvedValueOnce({ ok: true, status: 202 })
-      .mockResolvedValueOnce(pvcResponse('uid-2'));
+      .mockResolvedValueOnce(pvcResponse({ uid: 'uid-2' }));
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver({ waitTimeoutMs: 100, pollIntervalMs: 1 });
 
@@ -218,7 +273,9 @@ describe('K8sVolumeDriver', () => {
 
   it('remove waits for an already deleting PVC', async () => {
     fetchMock
-      .mockResolvedValueOnce(pvcResponse('uid-1', '2026-07-30T00:00:00Z'))
+      .mockResolvedValueOnce(
+        pvcResponse({ uid: 'uid-1', deletionTimestamp: '2026-07-30T00:00:00Z' })
+      )
       .mockResolvedValueOnce(notFoundResponse());
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver({ waitTimeoutMs: 100, pollIntervalMs: 1 });
@@ -229,9 +286,9 @@ describe('K8sVolumeDriver', () => {
 
   it('remove treats a UID precondition conflict after replacement as success', async () => {
     fetchMock
-      .mockResolvedValueOnce(pvcResponse('uid-1'))
+      .mockResolvedValueOnce(pvcResponse({ uid: 'uid-1' }))
       .mockResolvedValueOnce(errorResponse(409, 'uid precondition failed'))
-      .mockResolvedValueOnce(pvcResponse('uid-2'));
+      .mockResolvedValueOnce(pvcResponse({ uid: 'uid-2' }));
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver({ waitTimeoutMs: 100, pollIntervalMs: 1 });
 
@@ -240,9 +297,9 @@ describe('K8sVolumeDriver', () => {
 
   it('remove throws when a DELETE conflict still references the target UID', async () => {
     fetchMock
-      .mockResolvedValueOnce(pvcResponse('uid-1'))
+      .mockResolvedValueOnce(pvcResponse({ uid: 'uid-1' }))
       .mockResolvedValueOnce(errorResponse(409, 'conflict'))
-      .mockResolvedValueOnce(pvcResponse('uid-1'));
+      .mockResolvedValueOnce(pvcResponse({ uid: 'uid-1' }));
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver({ waitTimeoutMs: 100, pollIntervalMs: 1 });
 
@@ -251,7 +308,7 @@ describe('K8sVolumeDriver', () => {
 
   it('remove throws on unexpected DELETE error', async () => {
     fetchMock
-      .mockResolvedValueOnce(pvcResponse('uid-1'))
+      .mockResolvedValueOnce(pvcResponse({ uid: 'uid-1' }))
       .mockResolvedValueOnce(errorResponse(500, 'error'));
     const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
     const driver = new K8sVolumeDriver();
@@ -261,7 +318,7 @@ describe('K8sVolumeDriver', () => {
   it('ensure times out while a PVC generation remains deleting', async () => {
     fetchMock.mockImplementation(async (url: string) => {
       if (url.endsWith(`/persistentvolumeclaims/${VOLUME_NAME}`)) {
-        return pvcResponse('uid-1', '2026-07-30T00:00:00Z');
+        return pvcResponse({ uid: 'uid-1', deletionTimestamp: '2026-07-30T00:00:00Z' });
       }
       return errorResponse(500, 'unexpected create');
     });
@@ -269,5 +326,117 @@ describe('K8sVolumeDriver', () => {
     const driver = new K8sVolumeDriver({ waitTimeoutMs: 2, pollIntervalMs: 1 });
 
     await expect(driver.ensure({ claimName: VOLUME_NAME })).rejects.toThrow('Timed out waiting');
+  });
+
+  it('list queries K8s PVCs with managed label selector and filters out deleting/invalid items', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        items: [
+          {
+            metadata: {
+              name: VOLUME_NAME,
+              uid: 'uid-1'
+            }
+          },
+          {
+            metadata: {
+              name: 'fastgpt-session-deleting-pvc',
+              uid: 'uid-2',
+              deletionTimestamp: '2026-07-30T00:00:00Z'
+            }
+          },
+          {
+            metadata: {
+              name: 'INVALID_PVC_NAME',
+              uid: 'uid-3'
+            }
+          }
+        ]
+      })
+    });
+
+    const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
+    const driver = new K8sVolumeDriver();
+    const items = await driver.list();
+
+    expect(items).toEqual([VOLUME_NAME]);
+    const [listUrl] = fetchMock.mock.calls[0];
+    expect(decodeURIComponent(String(listUrl))).toContain(
+      'labelSelector=app=fastgpt,managed-by=fastgpt-volume-manager'
+    );
+  });
+
+  it('ensure and remove refuse to touch existing PVCs lacking ownership labels', async () => {
+    const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
+    const driver = new K8sVolumeDriver();
+
+    fetchMock.mockResolvedValueOnce(
+      pvcResponse({ uid: 'uid-unmanaged', labels: { app: 'other' } })
+    );
+    await expect(driver.ensure({ claimName: VOLUME_NAME })).rejects.toThrow(
+      'missing fastgpt-volume-manager ownership labels'
+    );
+
+    fetchMock.mockResolvedValueOnce(pvcResponse({ uid: 'uid-unmanaged', labels: null }));
+    await expect(driver.remove(VOLUME_NAME)).rejects.toThrow(
+      'missing fastgpt-volume-manager ownership labels'
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('ensure reuses legacy unlabeled PVCs without issuing PATCH requests when allowLegacyUnlabeled=true', async () => {
+    const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
+    const driver = new K8sVolumeDriver();
+
+    fetchMock.mockResolvedValueOnce(pvcResponse({ uid: 'uid-legacy', labels: null }));
+
+    await expect(
+      driver.ensure({ claimName: VOLUME_NAME, allowLegacyUnlabeled: true })
+    ).resolves.toEqual({ claimName: VOLUME_NAME, created: false });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [getUrl, getOpts] = fetchMock.mock.calls[0];
+    expect(String(getUrl)).toContain(`/persistentvolumeclaims/${VOLUME_NAME}`);
+    expect((getOpts as RequestInit).method).toBeUndefined();
+  });
+
+  it('remove deletes legacy unlabeled PVCs when allowLegacyUnlabeled=true while still rejecting foreign labels', async () => {
+    const { K8sVolumeDriver } = await import('../../src/drivers/K8sVolumeDriver');
+    const driver = new K8sVolumeDriver({ waitTimeoutMs: 100, pollIntervalMs: 1 });
+
+    fetchMock
+      .mockResolvedValueOnce(pvcResponse({ uid: 'uid-legacy', labels: null }))
+      .mockResolvedValueOnce({ ok: true, status: 200 })
+      .mockResolvedValueOnce(notFoundResponse());
+    await expect(
+      driver.remove(VOLUME_NAME, { allowLegacyUnlabeled: true })
+    ).resolves.toBeUndefined();
+
+    fetchMock.mockResolvedValueOnce(pvcResponse({ uid: 'uid-foreign', labels: { app: 'other' } }));
+    await expect(
+      driver.ensure({ claimName: VOLUME_NAME, allowLegacyUnlabeled: true })
+    ).rejects.toThrow('missing fastgpt-volume-manager ownership labels');
+
+    fetchMock.mockResolvedValueOnce(
+      pvcResponse({ uid: 'uid-foreign', labels: { 'managed-by': 'helm' } })
+    );
+    await expect(driver.remove(VOLUME_NAME, { allowLegacyUnlabeled: true })).rejects.toThrow(
+      'missing fastgpt-volume-manager ownership labels'
+    );
+
+    const foreignLabelCases: Record<string, string>[] = [
+      { 'k8s-app': 'metrics-server' },
+      { 'helm.sh/chart': 'redis-18.0.0' },
+      { 'app.kubernetes.io/part-of': 'logging' },
+      { 'com.docker.compose.service': 'worker' }
+    ];
+    for (const foreignLabels of foreignLabelCases) {
+      fetchMock.mockResolvedValueOnce(pvcResponse({ uid: 'uid-foreign', labels: foreignLabels }));
+      await expect(
+        driver.ensure({ claimName: VOLUME_NAME, allowLegacyUnlabeled: true })
+      ).rejects.toThrow('missing fastgpt-volume-manager ownership labels');
+    }
   });
 });

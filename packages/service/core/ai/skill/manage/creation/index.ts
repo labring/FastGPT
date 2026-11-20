@@ -7,13 +7,12 @@ import { mongoSessionRun } from '../../../../../common/mongo/sessionRun';
 import { MongoAgentSkills } from '../../model/schema';
 import { updateCurrentVersion, updateSkillCreationFailed } from '../update';
 import {
-  createBlankSkillWorkspacePackage,
   deleteSkillPackage,
-  extractRuntimeSkillsFromPackage,
   removeSkillPackageTTL,
   type SkillStorageInfo,
   uploadSkillPackage
-} from '../../package';
+} from '../../package/storage';
+import { createBlankSkillWorkspacePackage } from '../../package/workspace';
 import { createVersion } from '../../version';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -108,15 +107,15 @@ export async function completePendingSkillCreation(data: AgentSkillCreateJobData
   }
 
   try {
-    const zipBuffer = await createBlankSkillWorkspacePackage();
-    const runtimeSkills = await extractRuntimeSkillsFromPackage(zipBuffer, { allowEmpty: true });
+    const packageBuffer = await createBlankSkillWorkspacePackage();
+    const runtimeSkills: [] = [];
     const versionId = new Types.ObjectId().toString();
 
     const storageInfo = await uploadSkillPackage({
       teamId,
       skillId,
       packageObjectId: versionId,
-      zipBuffer
+      packageBuffer
     });
     uploadedStorageInfo = storageInfo;
 

@@ -4,10 +4,8 @@
  * 只定义 sandbox 实例、provider 和生命周期 operation，不访问服务端资源。
  */
 import z from 'zod';
-import {
-  agentSandboxProviderList,
-  SandboxStatusEnum
-} from '@fastgpt/global/core/ai/sandbox/constants';
+import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SandboxImageConfigSchema } from '@fastgpt/global/core/ai/sandbox/type';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   sandboxInstanceStatusList,
@@ -18,7 +16,8 @@ import {
 } from './constants';
 
 // ---- 沙盒实例 DB 类型 ----
-export const SandboxProviderSchema = z.enum(agentSandboxProviderList);
+export const SANDBOX_PROVIDER = 'opensandbox' as const;
+export const SandboxProviderSchema = z.literal(SANDBOX_PROVIDER);
 export type SandboxProviderType = z.infer<typeof SandboxProviderSchema>;
 export const SharedSandboxStatusSchema = z.enum(SandboxStatusEnum);
 export type SharedSandboxStatusType = z.infer<typeof SharedSandboxStatusSchema>;
@@ -40,10 +39,11 @@ export const SandboxSourceTypeSchema = z.enum([
 export type SandboxSourceType = z.infer<typeof SandboxSourceTypeSchema>;
 
 export const SandboxLimitSchema = z.object({
-  cpuCount: z.number(),
-  memoryMiB: z.number(),
-  storageSize: z.string()
+  cpuCount: z.number().optional(),
+  memoryMiB: z.number().optional()
 });
+
+export type SandboxResourceLimitsType = z.infer<typeof SandboxLimitSchema>;
 
 export const SandboxVolumeSchema = z.object({
   name: z.string(),
@@ -52,16 +52,26 @@ export const SandboxVolumeSchema = z.object({
   subPath: z.string().optional()
 });
 
+export const SandboxArchiveInfoSchema = z.object({
+  objectKey: z.string().min(1),
+  generation: z.string().min(1),
+  format: z.literal('tar.zst'),
+  sizeBytes: z.number().int().nonnegative(),
+  archivedAt: z.coerce.date()
+});
+export type SandboxArchiveInfoType = z.infer<typeof SandboxArchiveInfoSchema>;
+
 export const SandboxStorageSchema = z.object({
   volumes: z.array(SandboxVolumeSchema).optional(),
-  mountPath: z.string().optional()
+  mountPath: z.string().optional(),
+  archive: SandboxArchiveInfoSchema.optional(),
+  // [4.18.0 legacy compat, remove in >= 4.19.0] 旧 Sealos Devbox 清理完成前保留墓碑标记
+  legacyDevboxPendingCleanup: z.boolean().optional().meta({
+    description: '4.18.0 迁移过渡字段（>= 4.19.0 移除）：保留旧 Sealos Devbox 待清理标记',
+    deprecated: true
+  })
 });
 export type SandboxStorageType = z.infer<typeof SandboxStorageSchema>;
-
-export const SandboxImageSchema = z.object({
-  repository: z.string(),
-  tag: z.string().optional()
-});
 
 export const SandboxOperationSchema = z.object({
   id: z.string().min(1),
@@ -88,9 +98,10 @@ export const SandboxInstanceZodSchema = z
     createdAt: z.coerce.date(),
     limit: SandboxLimitSchema.nullish(),
     provider: SandboxProviderSchema,
+    instanceId: z.string().optional(),
     storage: SandboxStorageSchema.nullish(),
     teamId: z.string().optional(),
-    image: SandboxImageSchema.optional(),
+    image: SandboxImageConfigSchema.optional(),
     versionId: z.string().optional(),
     operation: SandboxOperationSchema.optional()
   })
