@@ -54,7 +54,8 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import type { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
-import { CollectionPageContext, defaultCollectionListSort } from './Context';
+import { CollectionPageContext } from './Context';
+import { defaultCollectionListSort } from './useCollectionList';
 import CollectionListHeaderMenu from './CollectionListHeaderMenu';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
@@ -121,10 +122,9 @@ const CollectionCard = () => {
     collections,
     Pagination,
     total,
-    getData,
+    refreshCollections,
     pollCollections,
     isInitialLoading,
-    pageNum,
     pageSize,
     scrollContainerRef,
     headerSelection,
@@ -205,7 +205,7 @@ const CollectionCard = () => {
     putDatasetCollectionById,
     {
       onSuccess() {
-        getData(pageNum);
+        refreshCollections();
       },
       successToast: t('common:update_success')
     }
@@ -223,7 +223,7 @@ const CollectionCard = () => {
     },
     {
       onSuccess() {
-        getData(pageNum);
+        refreshCollections();
         refreshDatasetTrainingError().catch(() => undefined);
       },
       successToast: t('common:delete_success'),
@@ -236,7 +236,7 @@ const CollectionCard = () => {
   });
   const { runAsync: onclickStartSync, loading: isSyncing } = useRequest(postLinkCollectionSync, {
     onSuccess(res: DatasetCollectionSyncResultEnum) {
-      getData(pageNum);
+      refreshCollections();
       toast({
         status: 'success',
         title: t(DatasetCollectionSyncResultMap[res]?.label as any)
@@ -279,7 +279,7 @@ const CollectionCard = () => {
   /** 权限弹窗内写操作后刷新列表权限摘要与当前 collection 详情，避免继承态/owner 停留在旧值。 */
   const refreshPermissionCollection = async () => {
     if (!editPerCollection) return;
-    await getData(pageNum);
+    await refreshCollections();
     await loadPermissionCollection(editPerCollection._id);
   };
 
@@ -346,7 +346,7 @@ const CollectionCard = () => {
           id: dragId,
           parentId: targetId
         });
-        getData(pageNum);
+        refreshCollections();
       } catch {
         // Drag failures are handled by the request layer toast; keep the list state unchanged here.
       }
@@ -816,7 +816,7 @@ const CollectionCard = () => {
             collection={tagSetCollection}
             onClose={() => setTagSetCollection(undefined)}
             onSuccess={() => {
-              getData(pageNum);
+              refreshCollections();
               setTagSetCollection(undefined);
             }}
           />
@@ -827,7 +827,7 @@ const CollectionCard = () => {
             collections={writableSelectedCollections}
             onClose={() => setIsBatchTagModalOpen(false)}
             onSuccess={() => {
-              getData(pageNum);
+              refreshCollections();
               setSelectedItems([]);
               setIsBatchTagModalOpen(false);
             }}
@@ -848,7 +848,7 @@ const CollectionCard = () => {
             permission={datasetDetail.permission}
             onClose={() => setIsTrainingErrorModalOpen(false)}
             onRefresh={() => {
-              getData(pageNum);
+              refreshCollections();
               refreshDatasetTrainingError().catch(() => undefined);
             }}
           />
@@ -865,7 +865,7 @@ const CollectionCard = () => {
                 id: moveCollectionData.collectionId,
                 parentId
               });
-              getData(pageNum);
+              refreshCollections();
               setMoveCollectionData(undefined);
               toast({
                 status: 'success',
