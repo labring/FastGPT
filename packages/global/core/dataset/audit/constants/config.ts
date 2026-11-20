@@ -15,6 +15,7 @@ export enum DatasetConfigAuditItemEnum {
   EXTERNAL_READ_URL = 'externalReadUrl',
   API_DATASET_SERVER = 'apiDatasetServer',
   AUTO_SYNC = 'autoSync',
+  SYNC_ALL = 'syncAll',
   CHUNK_SETTINGS = 'chunkSettings',
   FILE_PARSE_CONFIG = 'fileParseConfig'
 }
@@ -38,6 +39,7 @@ export const datasetConfigAuditItemLabelMap: Record<DatasetConfigAuditItem, stri
     'account_team:dataset_config_item_apiDatasetServer'
   ),
   [DatasetConfigAuditItemEnum.AUTO_SYNC]: i18nT('account_team:dataset_config_item_autoSync'),
+  [DatasetConfigAuditItemEnum.SYNC_ALL]: i18nT('account_team:dataset_config_item_syncAll'),
   [DatasetConfigAuditItemEnum.CHUNK_SETTINGS]: i18nT(
     'account_team:dataset_config_item_chunkSettings'
   ),

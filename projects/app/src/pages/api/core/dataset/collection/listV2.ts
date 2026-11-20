@@ -328,7 +328,9 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     fileId: 1,
     rawLink: 1,
     tags: 1,
-    externalFileId: 1
+    externalFileId: 1,
+    apiFileId: 1,
+    syncChildren: 1
   };
 
   const sortDirection = sortOrder === 'desc' ? -1 : 1;

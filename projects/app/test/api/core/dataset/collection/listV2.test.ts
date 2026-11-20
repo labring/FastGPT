@@ -401,4 +401,42 @@ describe('collection listV2 sort', () => {
       expect(response.error).toBeInstanceOf(ApiRequestInputParseError);
     }
   });
+
+  it('projects apiFileId and syncChildren for API dataset collections', async () => {
+    const { root, dataset } = await createFixture();
+    const pausedDir = await MongoDatasetCollection.create({
+      name: 'paused-dir',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'remote-dir-paused',
+      syncChildren: false,
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id
+    });
+    const activeDir = await MongoDatasetCollection.create({
+      name: 'active-dir',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'remote-dir-active',
+      syncChildren: true,
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id
+    });
+
+    const response = await Call(listHandler, {
+      auth: root,
+      body: { datasetId: dataset._id, pageSize: 10, offset: 0 }
+    });
+
+    expect(response.code).toBe(200);
+    const byId = new Map(response.data.list.map((item) => [String(item._id), item]));
+    expect(byId.get(String(pausedDir._id))).toMatchObject({
+      apiFileId: 'remote-dir-paused',
+      syncChildren: false
+    });
+    expect(byId.get(String(activeDir._id))).toMatchObject({
+      apiFileId: 'remote-dir-active',
+      syncChildren: true
+    });
+  });
 });

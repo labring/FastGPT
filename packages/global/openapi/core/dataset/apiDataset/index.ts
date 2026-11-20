@@ -4,7 +4,8 @@ import {
   GetApiDatasetCatalogBodySchema,
   GetApiDatasetFileListBodySchema,
   GetApiDatasetFileListExistIdQuerySchema,
-  GetApiDatasetPathNamesBodySchema
+  GetApiDatasetPathNamesBodySchema,
+  GetApiDatasetSyncStateQuerySchema
 } from './api';
 
 export const ApiDatasetPath: OpenAPIPath = {
@@ -78,6 +79,22 @@ export const ApiDatasetPath: OpenAPIPath = {
       responses: {
         200: {
           description: '成功返回已存在的 apiFileId 列表'
+        }
+      }
+    }
+  },
+  '/core/dataset/apiDataset/syncState': {
+    get: {
+      summary: '获取第三方知识库同步范围状态',
+      description:
+        '返回知识库根级 syncAll 与本地已导入 API 集合的 syncChildren 状态，供导入树渲染三态勾选',
+      tags: [DevApiTagsMap.datasetApiDataset],
+      requestParams: {
+        query: GetApiDatasetSyncStateQuerySchema
+      },
+      responses: {
+        200: {
+          description: '成功返回知识库同步范围状态'
         }
       }
     }

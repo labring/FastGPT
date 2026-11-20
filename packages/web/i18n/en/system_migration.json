@@ -83,5 +83,10 @@
   "migrations.20261120_migrate_model_pricing.stt": "Backfill STT pricing types",
   "migrations.20261120_migrate_model_pricing.llmTiers": "Convert LLM tier limits",
   "migrations.20261120_migrate_model_pricing.validation": "Validate model pricing",
-  "migrations.20261120_migrate_model_pricing.result": "Scanned {{sttModels}} STT models and converted tier limits to K Tokens for {{llmModels}} system LLM models."
+  "migrations.20261120_migrate_model_pricing.result": "Scanned {{sttModels}} STT models and converted tier limits to K Tokens for {{llmModels}} system LLM models.",
+  "migrations.20261120_clean_api_dataset_system_root.name": "Clean legacy API dataset virtual root nodes",
+  "migrations.20261120_clean_api_dataset_system_root.description": "Remove legacy SYSTEM_ROOT sentinel folders from API datasets, reparent top-level collections to the dataset root, and backfill Dataset.syncAll before starting business services.",
+  "migrations.20261120_clean_api_dataset_system_root.migrate": "Clean sentinel nodes and backfill syncAll",
+  "migrations.20261120_clean_api_dataset_system_root.validation": "Verify no legacy virtual root nodes remain",
+  "migrations.20261120_clean_api_dataset_system_root.result": "Processed {{datasets}} datasets, removed {{sentinels}} sentinel nodes, and reparented {{reparented}} top-level collections."
 }

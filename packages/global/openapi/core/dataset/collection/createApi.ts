@@ -173,7 +173,21 @@ export const CreateApiCollectionV2BodySchema = ApiCreateCollectionRequestBaseSch
     deprecated: true,
     description: '已忽略：api 文件库的层级以 server 文件树为准，导入时所处目录不影响落位'
   }),
-  apiFiles: z.array(APIFileItemSchema).meta({ description: 'API 文件列表（支持文件夹递归导入）' })
+  syncAll: BoolSchema.optional().meta({
+    description: '是否全选同步远端根目录下的全部文件及后续新增内容'
+  }),
+  apiFiles: z
+    .array(APIFileItemSchema)
+    .optional()
+    .default([])
+    .meta({ description: 'API 文件列表（支持文件夹递归导入）；syncAll=true 时可为空数组' }),
+  ancestorPaths: z
+    .record(z.string(), z.array(z.string().min(1)))
+    .optional()
+    .meta({
+      description:
+        '深层选中节点的远端祖先目录 ID 链（按根到直接父级排序），key 为选中节点 id；服务端会自顶向下通过 listFiles 校验后自动补建 syncChildren=false 的祖先目录'
+    })
 });
 export type CreateApiCollectionV2BodyType = z.infer<typeof CreateApiCollectionV2BodySchema>;
 

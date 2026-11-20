@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import { type SetStateAction, useEffect, useMemo, useState } from 'react';
+import { type SetStateAction, useEffect, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
 import {
@@ -36,6 +36,8 @@ type DatasetImportContextType = {
   processParamsForm: UseFormReturn<ImportFormType, any>;
   sources: ImportSourceItemType[];
   setSources: React.Dispatch<React.SetStateAction<ImportSourceItemType[]>>;
+  apiDatasetSyncAll: boolean;
+  setApiDatasetSyncAll: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 export const defaultFormData: ImportFormType = {
@@ -78,6 +80,10 @@ export const DatasetImportContext = createContext<DatasetImportContextType>({
   minChunkSize: 0,
   sources: [],
   setSources: function (value: SetStateAction<ImportSourceItemType[]>): void {
+    throw new Error('Function not implemented.');
+  },
+  apiDatasetSyncAll: false,
+  setApiDatasetSyncAll: function (): void {
     throw new Error('Function not implemented.');
   },
   chunkSize: 0,
@@ -218,6 +224,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
   }, [customPdfParse, setLocalCustomPdfParse]);
 
   const [sources, setSources] = useState<ImportSourceItemType[]>([]);
+  const [apiDatasetSyncAll, setApiDatasetSyncAll] = useState(false);
 
   const contextValue = {
     importSource: source,
@@ -227,7 +234,9 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
 
     processParamsForm,
     sources,
-    setSources
+    setSources,
+    apiDatasetSyncAll,
+    setApiDatasetSyncAll
   };
 
   return (

@@ -85,6 +85,7 @@
   "dataset_config_item_externalReadUrl": "外部预览地址",
   "dataset_config_item_apiDatasetServer": "第三方来源配置",
   "dataset_config_item_autoSync": "自动同步",
+  "dataset_config_item_syncAll": "同步根目录新增",
   "dataset_config_item_chunkSettings": "分块参数",
   "dataset_config_item_fileParseConfig": "文件解析配置",
   "create_department": "创建子部门",

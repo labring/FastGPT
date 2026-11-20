@@ -510,6 +510,9 @@ export const UpdateDatasetBodySchema = z.object({
   autoSync: z.boolean().optional().meta({
     description: '是否自动同步'
   }),
+  syncAll: z.boolean().optional().meta({
+    description: '是否同步第三方知识库根目录下的新增文件与文件夹（仅 API 知识库生效）'
+  }),
   chunkSettings: ChunkSettingsSchema.optional().meta({
     description: '分块配置'
   }),

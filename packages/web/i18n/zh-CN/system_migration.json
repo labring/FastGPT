@@ -83,5 +83,10 @@
   "migrations.20261120_migrate_model_pricing.stt": "回填 STT 计价类型",
   "migrations.20261120_migrate_model_pricing.llmTiers": "迁移 LLM 阶梯上限",
   "migrations.20261120_migrate_model_pricing.validation": "校验模型价格",
-  "migrations.20261120_migrate_model_pricing.result": "已扫描 {{sttModels}} 个 STT 模型，已转换 {{llmModels}} 个系统 LLM 模型的阶梯上限为 K Tokens。"
+  "migrations.20261120_migrate_model_pricing.result": "已扫描 {{sttModels}} 个 STT 模型，已转换 {{llmModels}} 个系统 LLM 模型的阶梯上限为 K Tokens。",
+  "migrations.20261120_clean_api_dataset_system_root.name": "清理 API 知识库历史虚拟根节点",
+  "migrations.20261120_clean_api_dataset_system_root.description": "清理存量 API 知识库中的 SYSTEM_ROOT 哨兵目录，将顶层子集合重挂到知识库根目录并回填 Dataset.syncAll 标记；全部核验通过后启动业务。",
+  "migrations.20261120_clean_api_dataset_system_root.migrate": "清理哨兵节点并回填同步标记",
+  "migrations.20261120_clean_api_dataset_system_root.validation": "核验无残留虚拟根节点",
+  "migrations.20261120_clean_api_dataset_system_root.result": "已处理 {{datasets}} 个知识库，清理 {{sentinels}} 个哨兵节点，重挂 {{reparented}} 个顶层集合。"
 }

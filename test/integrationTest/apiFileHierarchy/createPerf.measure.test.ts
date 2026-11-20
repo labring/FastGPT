@@ -82,7 +82,6 @@ vi.mock('@fastgpt/service/common/mongo/sessionRun', async (importOriginal) => ({
 }));
 
 import { Types } from '@fastgpt/service/common/mongo';
-import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
@@ -105,7 +104,7 @@ const originalCollectionCreate = MongoDatasetCollection.create.bind(MongoDataset
 const originalCollectionInsertMany = MongoDatasetCollection.insertMany.bind(MongoDatasetCollection);
 const originalTrainingInsertMany = MongoDatasetTraining.insertMany.bind(MongoDatasetTraining);
 
-/** 4 层结构：哨兵 -> L1 -> L2 -> L3 -> 文件 */
+/** 4 层结构：根目录 -> L1 -> L2 -> L3 -> 文件 */
 type Shape = { l1: number; l2: number; l3: number; filesPerLeaf: number };
 
 const serverItem = (id: string, type: 'file' | 'folder') => ({
@@ -151,18 +150,19 @@ const runCreate = async (shape: Shape) => {
   const startedAt = Date.now();
   const result = await createApiDatasetCollection({
     datasetId: String(dataset._id),
-    apiFiles: [{ ...serverItem(RootCollectionId, 'folder'), name: 'root' }] as any,
+    apiFiles: [],
+    syncAll: true,
     parentId: undefined,
     customPdfParse: false,
     trainingType: 'chunk',
     teamId,
     tmbId,
-    dataset: { ...dataset.toObject(), permission: {} } as any
+    dataset: { ...dataset.toObject(), permission: { hasManagePer: true } } as any
   } as any);
   const wallMs = Date.now() - startedAt;
 
   const files = shape.l1 * shape.l2 * shape.l3 * shape.filesPerLeaf;
-  const folders = tree.nodes.filter((node) => node.type === 'folder').length;
+  const folders = tree.nodes.filter((node) => node.type === 'folder' && node.key !== 'ROOT').length;
 
   // 耗时之外验证实际提交：所有目录/正文都落库，且解析任务逐一指向本轮正文。
   expect(result).toEqual({ successCount: files + folders, failedCount: 0 });
@@ -175,12 +175,12 @@ const runCreate = async (shape: Shape) => {
   const bodies = collections.filter((item) => item.type === DatasetCollectionTypeEnum.apiFile);
   expect(bodies).toHaveLength(files);
   for (const item of collections) {
+    const remoteParent = tree.byKey.get(item.apiFileId!)?.parent;
     if (item.parentId) {
       const parent = byId.get(String(item.parentId));
       expect(parent?.type).toBe(DatasetCollectionTypeEnum.folder);
-      const remoteParent = tree.byKey.get(item.apiFileId!)?.parent;
-      expect(parent?.apiFileId).toBe(remoteParent === 'ROOT' ? RootCollectionId : remoteParent);
-    } else expect(item.apiFileId).toBe(RootCollectionId);
+      expect(parent?.apiFileId).toBe(remoteParent);
+    } else expect(remoteParent).toBe('ROOT');
   }
   const tasks = await MongoDatasetTraining.find({ datasetId: dataset._id })
     .select('collectionId billId mode')
@@ -207,7 +207,7 @@ const runCreate = async (shape: Shape) => {
 
   return {
     files,
-    folders: folders - 1,
+    folders,
     wallMs,
     perFileMs: Number((wallMs / files).toFixed(2)),
     result,

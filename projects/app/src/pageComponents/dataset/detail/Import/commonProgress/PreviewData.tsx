@@ -108,7 +108,7 @@ const PreviewData = () => {
                 })}
                 _notLast={{ mb: 3 }}
                 onClick={() => {
-                  if (source.apiFile?.type === 'folder') {
+                  if (source.isSyncAllSummary || source.apiFile?.type === 'folder') {
                     toast({
                       status: 'warning',
                       title: t('dataset:preview_chunk_folder_warning')

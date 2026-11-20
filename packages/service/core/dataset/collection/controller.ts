@@ -84,6 +84,8 @@ export type BulkInsertCollectionDoc = {
   apiFileId: string;
   apiFileParentId?: string | null;
   parentId: Types.ObjectId | null;
+  /** API 目录级同步范围标记；自动补建祖先为 false，显式或自动展开目录为 true */
+  syncChildren?: boolean;
   /**
    * 缺省 = 继承父级（与 schema default 一致）。必须与同一轮 file 的取值一致，
    * 否则一次导入里目录与文件权限口径不同：目录名与层级会按继承态外泄
@@ -707,6 +709,7 @@ export type CreateOneCollectionParams = ApiCreateDatasetCollectionParams & {
   externalFileUrl?: string;
   apiFileId?: string;
   apiFileParentId?: string;
+  syncChildren?: boolean;
   rawTextLength?: number;
   hashRawText?: string;
   createTime?: Date;
