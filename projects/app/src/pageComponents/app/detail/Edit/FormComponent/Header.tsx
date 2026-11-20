@@ -14,10 +14,10 @@ import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useBoolean, useDebounceEffect, useLockFn } from 'ahooks';
+import { useBoolean, useLockFn, useMemoizedFn } from 'ahooks';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { publishStatusStyle } from '../../constants';
 import { AppContext, TabEnum } from '../../context';
@@ -37,7 +37,6 @@ const Header = ({
   appForm,
   setAppForm,
   past,
-  setPast,
   saveSnapshot,
   form2WorkflowFn,
   form2AppWorkflowFn
@@ -46,7 +45,6 @@ const Header = ({
   appForm: AppFormEditFormType;
   setAppForm: (form: AppFormEditFormType) => void;
   past: SimpleAppSnapshotType[];
-  setPast: (value: React.SetStateAction<SimpleAppSnapshotType[]>) => void;
   saveSnapshot: onSaveSnapshotFnType;
   form2AppWorkflowFn: AppForm2WorkflowFnType;
   form2WorkflowFn: Form2WorkflowFnType;
@@ -84,6 +82,7 @@ const Header = ({
     [router, lastAppListRouteType]
   );
 
+  const [lastSavedForm, setLastSavedForm] = useState<AppFormEditFormType>();
   const { runAsync: onClickSave, loading } = useRequest(
     async ({
       isPublish,
@@ -94,27 +93,19 @@ const Header = ({
       versionName?: string;
       autoSave?: boolean;
     }) => {
-      const { nodes, edges } = form2WorkflowFn(appForm, t);
+      const submittedForm = appForm;
+      const { nodes, edges } = form2WorkflowFn(submittedForm, t);
       const saved = await onSaveApp({
         nodes,
         edges,
-        chatConfig: appForm.chatConfig,
+        chatConfig: submittedForm.chatConfig,
         isPublish,
         versionName,
         autoSave
       });
-      if (!saved) return false;
-      setPast((prevPast) =>
-        prevPast.map((item, index) =>
-          index === 0
-            ? {
-                ...item,
-                isSaved: true
-              }
-            : item
-        )
-      );
-      return true;
+      // 表单历史在保存期间还会变化，回执只确认本次提交的内容。
+      if (saved) setLastSavedForm(submittedForm);
+      return saved;
     }
   );
 
@@ -154,37 +145,30 @@ const Header = ({
 
       return res;
     },
-    [forbiddenSaveSnapshotRef, saveSnapshot, setAppForm, t]
+    [forbiddenSaveSnapshotRef, form2AppWorkflowFn, saveSnapshot, setAppForm, t]
   );
 
-  // Check if the workflow is published
-  const [isSaved, setIsSaved] = useState(false);
-  useDebounceEffect(
-    () => {
-      const savedSnapshot = past.find((snapshot) => snapshot.isSaved);
-      const val = compareSimpleAppSnapshot(savedSnapshot?.appForm, appForm);
-      setIsSaved(val);
-    },
-    [past],
-    { wait: 500 }
-  );
+  const initialSavedForm = past.find((snapshot) => snapshot.isSaved)?.appForm;
+  const savedForm = lastSavedForm ?? initialSavedForm;
+  const isSaved = useMemo(() => compareSimpleAppSnapshot(savedForm, appForm), [savedForm, appForm]);
 
-  const onLeaveAutoSave = useLockFn(async () => {
-    if (isSaved) return;
-    try {
-      console.log('Leave auto save');
-      return onClickSave({ isPublish: false, autoSave: true });
-    } catch (error) {
-      console.error(error);
-    }
-  });
+  const onLeaveAutoSave = useMemoizedFn(
+    useLockFn(async () => {
+      if (isSaved) return;
+      try {
+        return await onClickSave({ isPublish: false, autoSave: true });
+      } catch (error) {
+        console.error(error);
+      }
+    })
+  );
   useEffect(() => {
     return () => {
       if (isProduction) {
-        onLeaveAutoSave();
+        void onLeaveAutoSave();
       }
     };
-  }, []);
+  }, [onLeaveAutoSave]);
   useBeforeunload({
     tip: t('common:core.tip.leave page'),
     callback: onLeaveAutoSave

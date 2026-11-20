@@ -258,6 +258,52 @@ describe('runWorkflow single-step debug', () => {
   beforeEach(() => vi.spyOn(teamLimit, 'checkTeamAIPoints').mockResolvedValue(undefined));
   afterEach(() => vi.restoreAllMocks());
 
+  it.each([
+    ['removed', undefined],
+    ['kept', 'previous result']
+  ])(
+    'resolves ordinary inputs through the %s branch in a restored graph',
+    async (branch, value) => {
+      const classifier = createNode('classify', FlowNodeTypeEnum.classifyQuestion);
+      classifier.inputs = [
+        {
+          key: NodeInputKeyEnum.agents,
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: [{ key: 'kept', value: 'Kept' }]
+        }
+      ];
+      classifier.outputs = [
+        {
+          id: 'result',
+          key: 'result',
+          type: FlowNodeOutputTypeEnum.static,
+          value: 'previous result'
+        }
+      ];
+      const target = createNode('target', FlowNodeTypeEnum.textEditor);
+      target.isEntry = true;
+      target.inputs = [
+        {
+          key: NodeInputKeyEnum.textareaInput,
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          value: ['classify', 'result']
+        }
+      ];
+      const dispatchTextEditor = vi.spyOn(callbackMap, FlowNodeTypeEnum.textEditor);
+      await runStep({
+        apiVersion: 'v2',
+        mode: 'chat',
+        runtimeNodes: [classifier, target],
+        runtimeEdges: [createEdge('classify', 'target', 'active', `classify-source-${branch}`)]
+      });
+
+      expect(dispatchTextEditor).toHaveBeenCalledOnce();
+      expect(dispatchTextEditor.mock.calls[0][0].params[NodeInputKeyEnum.textareaInput]).toBe(
+        value
+      );
+    }
+  );
+
   it.each(['debug', 'test'] as const)('respects the queue run mode %s', async (mode) => {
     const input = {
       key: NodeInputKeyEnum.userSelectOptions,

@@ -26,6 +26,7 @@ import {
   getWorkflowReferenceVariables,
   isValidReferenceValueFormat,
   isWorkflowArrayReferenceInput,
+  isWorkflowEdgeSourceHandleValid,
   isWorkflowErrorBranchReachable,
   isWorkflowReferenceItem,
   nodeInputIsReference
@@ -84,25 +85,31 @@ const createLegacyParentReader = (runtimeNodesMap: Map<string, RuntimeNodeItemTy
 /** 同一张执行图共享入边、旧容器归属及已确认的来源可达关系。 */
 export const createRuntimeReferenceGraph = ({
   runtimeEdges,
-  runtimeNodesMap,
-  isEdgeAllowed
+  runtimeNodesMap
 }: {
   runtimeEdges: readonly RuntimeEdgeItemType[];
   runtimeNodesMap: Map<string, RuntimeNodeItemType>;
-  isEdgeAllowed?: (edge: RuntimeEdgeItemType) => boolean;
 }) => {
   const toolCallerIds = new Set<string>();
   const reachableTargetsBySource = new Map<string, Set<string>>();
   let variableTypes: ReturnType<typeof getWorkflowVariableTypes> | undefined;
   let byTarget: Map<string, RuntimeEdgeItemType[]> | undefined;
-  const getEdgeIndex = () =>
-    (byTarget ??= Map.groupBy(
-      isEdgeAllowed ? runtimeEdges.filter(isEdgeAllowed) : runtimeEdges,
-      (edge) => {
-        if (edge.targetHandle === NodeOutputKeyEnum.selectedTools) toolCallerIds.add(edge.source);
-        return edge.target;
-      }
-    ));
+  const getEdgeIndex = () => {
+    if (byTarget) return byTarget;
+    byTarget = new Map();
+    for (const edge of runtimeEdges) {
+      const source = runtimeNodesMap.get(edge.source);
+      if (!source) continue;
+      // 工具挂载提供调用者的上游来源。普通连线只认当前分支，旧快照可能带有已删除的出口。
+      if (edge.targetHandle === NodeOutputKeyEnum.selectedTools) toolCallerIds.add(edge.source);
+      else if (!isWorkflowEdgeSourceHandleValid(source, edge.sourceHandle)) continue;
+
+      const incoming = byTarget.get(edge.target);
+      if (incoming) incoming.push(edge);
+      else byTarget.set(edge.target, [edge]);
+    }
+    return byTarget;
+  };
 
   return {
     getIncomingEdges: (nodeId: string) => getEdgeIndex().get(nodeId) ?? [],
