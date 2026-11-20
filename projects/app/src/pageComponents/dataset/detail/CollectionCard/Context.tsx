@@ -103,18 +103,19 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   // collection list
   const [searchText, setSearchText] = useState('');
   const [tagFilters, setTagFilters] = useState<CollectionTagFilterItem[]>([]);
-  const [headerSelection, setHeaderSelection] = useState<CollectionListHeaderSelection>();
-  const [loadedHeaderSelection, setLoadedHeaderSelection] =
-    useState<CollectionListHeaderSelection>();
-  const [headerSelectionVersion, setHeaderSelectionVersion] = useState(0);
-  const selectHeader = useCallback(
-    (selection: CollectionListHeaderSelection | undefined) => {
-      if (selection === headerSelection) return;
-      setHeaderSelection(selection);
-      setHeaderSelectionVersion((version) => version + 1);
-    },
-    [headerSelection]
-  );
+  const [headerSort, setHeaderSort] = useState<{
+    selection?: CollectionListHeaderSelection;
+    loadedSelection?: CollectionListHeaderSelection;
+    version: number;
+    pending: boolean;
+  }>({ version: 0, pending: false });
+  const headerSelection = headerSort.selection;
+  const selectHeader = useCallback((selection: CollectionListHeaderSelection | undefined) => {
+    setHeaderSort((current) => {
+      if (selection === current.selection) return current;
+      return { ...current, selection, version: current.version + 1, pending: true };
+    });
+  }, []);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const pendingListRequests = useRef(0);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -142,6 +143,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     defaultPageSize: 20,
     pageSizeCacheKey: 'dataset-detail-collections',
     storeToQuery: true,
+    forceFirstPage: headerSort.pending,
     params: {
       datasetId,
       parentId,
@@ -154,21 +156,30 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       parentId,
       searchText,
       tagFilters,
-      headerSelectionVersion,
+      headerSort.version,
       datasetDetail.collectionPermissionEnabled
     ],
-    onChange: () => setLoadedHeaderSelection(headerSelection),
+    onChange: (page) => {
+      if (!headerSort.pending || page !== 1) return;
+      // 已显示的结果可以用于回退，但只有当前排序的响应能结束首页刷新。
+      setHeaderSort((current) => ({
+        ...current,
+        loadedSelection: headerSelection,
+        pending: current.pending && current.version !== headerSort.version
+      }));
+    },
     onError: () => {
       // 保留上次成功的表头与页码，并避免回退覆盖尚未发出请求的新选项。
-      setHeaderSelection((current) =>
-        current === headerSelection ? loadedHeaderSelection : current
-      );
+      setHeaderSort((current) => {
+        if (!current.pending || current.version !== headerSort.version) return current;
+        return { ...current, selection: current.loadedSelection, pending: false };
+      });
     },
     scrollContainerRef
   });
 
   const pollCollections = useCallback(async () => {
-    // 排序刷新完成前页码仍是旧值，轮询不能用旧页码覆盖正在加载的第一页。
+    // 列表请求未完成时跳过轮询，避免轮询反复抢占慢请求。
     if (pendingListRequests.current === 0) await getData(pageNum);
   }, [getData, pageNum]);
 
