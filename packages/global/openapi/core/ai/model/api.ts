@@ -472,29 +472,7 @@ export const PreviewImportFromChannelResponseSchema = z.object({
           .array(ImportPreviewItemSchema)
           .min(1)
           .meta({
-            example: [
-              { category: 'existing', modelId: '68ad85a7463006c963799a05' },
-              {
-                category: 'template',
-                template: { type: ModelTypeEnum.llm, model: 'gpt-5.4' },
-                contextLength: 128000,
-                modelData: {
-                  type: ModelTypeEnum.llm,
-                  provider: 'openai',
-                  model: 'gpt-5.4',
-                  name: 'GPT-5.4',
-                  scope: 'system',
-                  config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 120000 }
-                },
-                blankModelData: {
-                  type: ModelTypeEnum.llm,
-                  provider: 'openai',
-                  model: 'openai/gpt-5.4',
-                  name: 'GPT-5.4',
-                  config: { maxContext: 128000 }
-                }
-              }
-            ],
+            example: [{ category: 'existing', modelId: '68ad85a7463006c963799a05' }],
             description: '按匹配优先级排序的模型和模板候选；未命中时包含一个空白模型草稿'
           })
       })
@@ -502,9 +480,13 @@ export const PreviewImportFromChannelResponseSchema = z.object({
     .meta({
       example: [
         {
+          providerModelSlug: 'openai/gpt-5-mini',
+          candidates: [{ category: 'existing', modelId: '68ad85a7463006c963799a05' }]
+        },
+        {
           providerModelSlug: 'openai/gpt-5.4',
+          contextLength: 128000,
           candidates: [
-            { category: 'existing', modelId: '68ad85a7463006c963799a05' },
             {
               category: 'template',
               template: { type: ModelTypeEnum.llm, model: 'gpt-5.4' },
