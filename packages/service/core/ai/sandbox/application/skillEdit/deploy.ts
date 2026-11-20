@@ -25,8 +25,9 @@ import {
 import { MongoAgentSkills } from '../../../skill/model/schema';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
-import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import type { SaveDeploySkillResponse } from '@fastgpt/global/core/ai/skill/api';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 
@@ -65,8 +66,19 @@ export async function saveDeploySkillFromSandbox({
     sandboxInfo.status !== SandboxStatusEnum.running ||
     sandboxInfo.teamId !== teamId
   ) {
-    return Promise.reject(new UserError('Edit sandbox not found or not running'));
+    return Promise.reject(new UserError(SkillErrEnum.editSandboxNotRunning));
   }
+
+  /** 若底层异常已携带已注册的业务错误码，直接透传以保持 HTTP 状态码和 i18n 提示。 */
+  const resolveRegisteredBusinessError = (error: unknown): UserError | undefined => {
+    const errorKey =
+      typeof error === 'string' ? error : error instanceof Error ? error.message : '';
+    if (!errorKey || !Object.hasOwn(ERROR_RESPONSE, errorKey)) return;
+
+    return error instanceof UserError
+      ? error
+      : new UserError(errorKey, undefined, { cause: error });
+  };
 
   let packageBuffer: Buffer;
   try {
@@ -76,7 +88,11 @@ export async function saveDeploySkillFromSandbox({
       workDirectory: runtimeProfile.workDirectory
     });
   } catch (error) {
-    return Promise.reject(new UserError(`Failed to package skill directory: ${getErrText(error)}`));
+    const businessError = resolveRegisteredBusinessError(error);
+    if (businessError) {
+      return Promise.reject(businessError);
+    }
+    return Promise.reject(new UserError(SkillErrEnum.deployFailed, undefined, { cause: error }));
   }
 
   const versionId = new Types.ObjectId().toString();
@@ -93,11 +109,16 @@ export async function saveDeploySkillFromSandbox({
       zipBuffer: packageBuffer
     });
   } catch (error) {
-    const errorText = getErrText(error);
-    if (errorText === SkillErrEnum.archiveTooLarge) {
-      return Promise.reject(SkillErrEnum.archiveTooLarge);
+    const businessError = resolveRegisteredBusinessError(error);
+    if (businessError) {
+      return Promise.reject(businessError);
     }
-    throw new UserError(`Failed to upload package: ${errorText}`);
+    logger.error('[Sandbox] Failed to upload skill package', {
+      skillId,
+      versionId,
+      error
+    });
+    throw new UserError(SkillErrEnum.deployFailed, undefined, { cause: error });
   }
 
   const deployResult = await mongoSessionRun(async (session) => {
@@ -109,7 +130,7 @@ export async function saveDeploySkillFromSandbox({
     });
     if (!isVersionLinked) {
       // skill 可能在打包上传期间被删除。此时不能移除 S3 TTL，让孤儿包继续走 TTL 清理。
-      throw new UserError('Skill not found');
+      throw new UserError(SkillErrEnum.unExist);
     }
 
     await createVersion(
@@ -119,9 +140,7 @@ export async function saveDeploySkillFromSandbox({
         tmbId,
         versionName: resolvedVersionName,
         storageKey: storageInfo.key,
-        runtimeSkills,
-        // 新发布链路显式写入契约标记，运行态据此按 runtimeSkills 严格过滤。
-        skillEntryContract: 'explicit-v1'
+        runtimeSkills
       },
       session
     );

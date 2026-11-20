@@ -15,6 +15,7 @@
  */
 
 import JSZip from 'jszip';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { extractSkillNameFromSkillMd } from '../utils';
 import { DEFAULT_GITIGNORE_CONTENT } from './constants';
 import { findSkillMdEntries } from './skillEntryScan';
@@ -44,6 +45,7 @@ export type ZipValidationResult = {
   hasSkillMd: boolean;
   files: string[];
   error?: string;
+  errorCode?: SkillErrEnum;
   skillMdPath?: string;
   totalUncompressedBytes?: number;
 };
@@ -52,12 +54,14 @@ export type DeployableSkillWorkspaceValidationResult = {
   valid: boolean;
   files: string[];
   error?: string;
+  errorCode?: SkillErrEnum;
 };
 
 type ZipSafetyValidationResult = {
   valid: boolean;
   files: string[];
   error?: string;
+  errorCode?: SkillErrEnum;
   totalUncompressedBytes?: number;
 };
 
@@ -178,7 +182,8 @@ export async function validateZipStructure(
         hasSkillMd: false,
         files,
         totalUncompressedBytes: safety.totalUncompressedBytes,
-        error: safety.error
+        error: safety.error,
+        errorCode: safety.errorCode
       };
     }
 
@@ -204,7 +209,8 @@ export async function validateZipStructure(
         valid: false,
         hasSkillMd: false,
         files,
-        error: 'Missing required file: SKILL.md (expected at root or inside a top-level directory)'
+        error: 'Missing required file: SKILL.md (expected at root or inside a top-level directory)',
+        errorCode: SkillErrEnum.missingSkillMd
       };
     }
 
@@ -220,7 +226,8 @@ export async function validateZipStructure(
       valid: false,
       hasSkillMd: false,
       files: [],
-      error: `Invalid ZIP archive: ${error instanceof Error ? error.message : 'Unknown error'}`
+      error: `Invalid ZIP archive: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      errorCode: SkillErrEnum.invalidSkillPackage
     };
   }
 }
@@ -228,9 +235,9 @@ export async function validateZipStructure(
 /**
  * 发布/保存版本时校验可部署工作区。
  *
- * 这里只校验 workspace 级最小结构，不解析 SKILL.md frontmatter。创建阶段的空白初始包
- * 不应调用该校验；用户主动发布时包内任意位置至少存在一个 `SKILL.md` 即可部署。
- * 扫描规则与运行态读取一致：递归、大小写不敏感、跳过 `node_modules/.venv/venv`。
+ * 这里只校验 workspace 级最小结构（ZIP 安全性与至少存在一个 `SKILL.md` 文件），
+ * 不解析 SKILL.md frontmatter。创建阶段的空白初始包不应调用该校验；
+ * 扫描规则与运行态读取一致：任意深度递归、大小写不敏感、跳过 `node_modules/.venv/venv`。
  */
 export async function validateDeployableSkillWorkspacePackage(
   zipBuffer: Buffer,
@@ -245,7 +252,8 @@ export async function validateDeployableSkillWorkspacePackage(
       return {
         valid: false,
         files,
-        error: safety.error
+        error: safety.error,
+        errorCode: safety.errorCode
       };
     }
 
@@ -256,7 +264,8 @@ export async function validateDeployableSkillWorkspacePackage(
       return {
         valid: false,
         files,
-        error: 'Skill package must contain at least one SKILL.md'
+        error: 'Skill package must contain at least one SKILL.md',
+        errorCode: SkillErrEnum.missingSkillMd
       };
     }
 
@@ -268,7 +277,8 @@ export async function validateDeployableSkillWorkspacePackage(
     return {
       valid: false,
       files: [],
-      error: `Invalid ZIP archive: ${error instanceof Error ? error.message : 'Unknown error'}`
+      error: `Invalid ZIP archive: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      errorCode: SkillErrEnum.invalidSkillPackage
     };
   }
 }
@@ -292,7 +302,8 @@ export function validateZipSafety(
     return {
       valid: false,
       files,
-      error: 'ZIP archive is empty'
+      error: 'ZIP archive is empty',
+      errorCode: SkillErrEnum.archiveEmpty
     };
   }
 
@@ -308,7 +319,8 @@ export function validateZipSafety(
       return {
         valid: false,
         files,
-        error: `Unsafe ZIP entry path: ${unsafePath}`
+        error: `Unsafe ZIP entry path: ${unsafePath}`,
+        errorCode: SkillErrEnum.invalidSkillPackage
       };
     }
 
@@ -316,7 +328,8 @@ export function validateZipSafety(
       return {
         valid: false,
         files,
-        error: `ZIP symlink entries are not allowed: ${unsafePath}`
+        error: `ZIP symlink entries are not allowed: ${unsafePath}`,
+        errorCode: SkillErrEnum.archiveSymlinkNotAllowed
       };
     }
 
@@ -330,7 +343,8 @@ export function validateZipSafety(
           valid: false,
           files,
           totalUncompressedBytes,
-          error: 'ZIP archive uncompressed size exceeds maximum allowed size'
+          error: 'ZIP archive uncompressed size exceeds maximum allowed size',
+          errorCode: SkillErrEnum.archiveTooLarge
         };
       }
     }

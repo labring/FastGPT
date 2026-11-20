@@ -40,11 +40,6 @@ const AgentSkillsVersionSchema = new Schema({
     type: [RuntimeSkillMetadataSchema],
     default: []
   },
-  // 入口清单契约标记：仅新发布链路写入，旧版本/导入包没有该字段。
-  skillEntryContract: {
-    type: String,
-    enum: ['explicit-v1']
-  },
   // 导入来源信息，仅导入场景存在。
   importSource: {
     originalFilename: String,

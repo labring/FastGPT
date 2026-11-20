@@ -129,9 +129,7 @@ async function handler(req: ApiRequestProps<CopySkillBody>): Promise<CopySkillRe
         tmbId,
         versionName: 'Copied from ' + skill.name,
         storageKey: storageInfo.key,
-        runtimeSkills,
-        // 包字节与源版本相同，入口契约必须一并复制，否则新版本会丢失严格清单语义。
-        skillEntryContract: sourceVersion.skillEntryContract
+        runtimeSkills
       },
       session
     );

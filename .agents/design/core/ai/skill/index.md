@@ -31,29 +31,20 @@
 
 发布/保存版本前执行最小结构校验，至少要求：
 
-- 包内任意位置存在至少一个 `SKILL.md`（大小写不敏感、任意深度，仅文件、`node_modules`、`.venv`、`venv` 下的条目跳过）。
-- 若存在标准工作区入口 `skills/<name>/SKILL.md`，版本元数据只解析这些入口；更深层的 `SKILL.md`（如示例模板）视为资源，不参与发布。
-- 打包时默认与自定义忽略规则可能排除 `dist/` 等目录；打包后必须核对**入口选择规则选中的入口**全部保留在实际 ZIP 中，否则拒绝发布。标准包里被排除的深层示例属于资源，不作为丢失入口。
-- 打包前的入口扫描必须成功：发布模式下 `find` 非零退出会直接报错拒绝保存，不会把「空入口清单」当成没有入口继续发布。
-- 打包后的条目清单来自 `unzip -Z1` 展示文本，文件名中的换行/回车会显示成 `^J`；比较前把扫描到的真实路径归一化成同一表示，避免含换行的合法文件被误判为丢失。
-- `SKILL.md` frontmatter 满足平台解析要求。
+- 包内任意位置存在至少一个 `SKILL.md` 文件（大小写不敏感、任意深度，仅文件，`node_modules`、`.venv`、`venv` 下的条目跳过）。
+- 至少存在一个 frontmatter 有效且包含非空 `name` 的 `SKILL.md`；解析失败或缺少 `name` 的文件（如文档示例、草稿）会被跳过并记录警告，不阻断发布；若包内所有 `SKILL.md` 均无效，则拒绝发布并返回可国际化的业务错误码（`SkillErrEnum`），具体解析原因记入日志与 `cause`。
+- 不限制同一包内子 Skill 之间的 `name` 重复（模型提示同时注入 `name`、`description` 和唯一文件路径 `location`）。
 - 版本包不能通过绝对路径或 `..` 逃逸工作区，且解压总大小受限。
 
-「标准入口判断」与「入口选择（标准优先）」只有一份实现：`packages/service/core/ai/skill/package/skillEntryScan.ts`
-（`isStandardWorkspaceSkillEntryPath` / `selectSkillEntryPaths`）。版本元数据解析、打包保留检查和运行态扫描都直接引用该模块，
-不再各自维护同名谓词。
+扫描与元数据解析规则各只有一份实现：
 
-发布校验与运行态扫描使用同一套规则：运行时把版本包整包解压到 `projects/<versionId>/` 后，用
-`find ... -type f -iname "SKILL.md"` 递归扫描（同样跳过 `node_modules/.venv/venv`），每个命中的
-`SKILL.md` 目录即一个可执行 Skill。路径只按 `/` 解释（Unix `unzip` 保留字面反斜杠），目录条目不算入口。
-运行态按**已发布版本的入口契约**工作：`injectAgentSkillFilesToSandbox` 把版本的 `runtimeSkills[].path` 作为
-`skillMdPaths` 带入 `DeployedSkillVersion`，扫描已部署版本目录时：
+- 入口扫描：`packages/service/core/ai/skill/package/skillEntryScan.ts`（`RUNTIME_SKILL_SCAN_PRUNE_DIRS` / `findSkillMdEntries`）。
+- 元数据解析：`packages/service/core/ai/skill/utils.ts`（`extractSkillMetadataFromMarkdown`），包级聚合入口为 `packages/service/core/ai/skill/package/runtimeMetadata.ts`（`extractRuntimeSkillsFromPackage`）。
 
-- `skillMdPaths` 非空 → 只提供这些声明入口，与发布元数据保持一致；
-- `skillMdPaths` 为空（旧导入版本或未重发版本）→ 不做入口过滤，保留基点行为（递归扫描，有效根级入口照常提供）。
-
-非版本目录（编辑调试工作区、内置技能目录）继续使用「标准入口优先」：扫描根存在 `skills/<name>/SKILL.md`
-时只认这些标准入口，否则递归接受任意深度的 `SKILL.md`；每个扫描根独立判断，互不影响。
+发布结构校验、版本元数据解析和运行态扫描共用同一套口径：运行时把版本包整包解压到 `projects/<versionId>/` 后，
+用 `find ... -type f -iname "SKILL.md"` 递归扫描（同样跳过 `node_modules/.venv/venv`），跳过解析失败或缺少 `name` 的文件，
+每个有效 `SKILL.md` 目录即一个可执行 Skill。路径只按 `/` 解释（Unix `unzip` 保留字面反斜杠），目录条目不算入口。
+编辑调试工作区与内置技能目录采用完全相同的递归扫描规则。
 
 导入 Skill 包时**原样入库**：平台不做布局校验、不重排目录、不改写文件，只保留流式大小限制和 ZIP 路径安全校验。
 

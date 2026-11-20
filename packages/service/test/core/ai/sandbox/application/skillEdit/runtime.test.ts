@@ -1,5 +1,4 @@
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { normalizeArchiveListedEntryPath } from '@fastgpt/service/core/ai/skill/package/skillEntryScan';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -165,28 +164,10 @@ const createContext = (
   } as any;
 };
 
-const createPackageSandbox = (
-  readResult?: { content: Uint8Array; error: Error | null },
-  scanResult?: {
-    findOutput?: string;
-    unzipOutput?: string;
-    scanExitCode?: number;
-    scanStderr?: string;
-  }
-) => ({
+const createPackageSandbox = (readResult?: { content: Uint8Array; error: Error | null }) => ({
   execute: vi.fn(async (command: string) => {
     if (command === 'printf "%s" "$HOME"') {
       return { stdout: '/home/sandbox', stderr: '', exitCode: 0 };
-    }
-    if (command.includes('-iname "SKILL.md"')) {
-      return {
-        stdout: scanResult?.findOutput ?? '',
-        stderr: scanResult?.scanStderr ?? '',
-        exitCode: scanResult?.scanExitCode ?? 0
-      };
-    }
-    if (command.startsWith('unzip -Z1 ')) {
-      return { stdout: scanResult?.unzipOutput ?? '', stderr: '', exitCode: 0 };
     }
     if (command.includes("awk '{s+=$7}")) {
       return { stdout: '12', stderr: '', exitCode: 0 };
@@ -259,97 +240,6 @@ describe('packageSkillInSandbox', () => {
 
     expect(mocks.validateZipStructure).toHaveBeenCalledTimes(1);
     expect(mocks.validateDeployableSkillWorkspacePackage).not.toHaveBeenCalled();
-    expect(
-      sandbox.execute.mock.calls.some(([command]) => String(command).includes('-iname "SKILL.md"'))
-    ).toBe(false);
-  });
-
-  it('rejects packaging when exclusion rules drop a selected SKILL.md entry', async () => {
-    const sandbox = createPackageSandbox(undefined, {
-      findOutput: './src/SKILL.md\0./dist/SKILL.md\0',
-      unzipOutput: './src/SKILL.md\n'
-    });
-    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
-
-    await expect(packageSkillInSandbox({ sandboxId: 'sandbox-1' })).rejects.toThrow(
-      'Skill package is missing SKILL.md entries excluded by packaging rules: dist/SKILL.md'
-    );
-
-    expect(mocks.validateDeployableSkillWorkspacePackage).not.toHaveBeenCalled();
-    expect(sandbox.deleteFiles).toHaveBeenCalledWith([
-      expect.stringMatching(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-/)
-    ]);
-    expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
-  });
-
-  it('does not treat a resource SKILL.md dropped by default excludes as a missing entry', async () => {
-    // 标准包：skills/writer/SKILL.md 是入口，dist/ 下的无 frontmatter 示例是资源，
-    // 默认排除规则把它移出产物是预期行为，不能因此拒绝发布。
-    const sandbox = createPackageSandbox(undefined, {
-      findOutput: './skills/writer/SKILL.md\0./skills/writer/dist/examples/SKILL.md\0',
-      unzipOutput: './skills/writer/SKILL.md\n'
-    });
-    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
-
-    await expect(packageSkillInSandbox({ sandboxId: 'sandbox-1' })).resolves.toEqual(
-      Buffer.from([1, 2, 3])
-    );
-    expect(mocks.validateDeployableSkillWorkspacePackage).toHaveBeenCalledTimes(1);
-  });
-
-  it('fails packaging when the pre-package SKILL.md scan exits non-zero', async () => {
-    const sandbox = createPackageSandbox(undefined, {
-      findOutput: '',
-      scanExitCode: 1,
-      scanStderr: 'find: permission denied'
-    });
-    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
-
-    await expect(packageSkillInSandbox({ sandboxId: 'sandbox-1' })).rejects.toThrow(
-      'Failed to scan SKILL.md entries before packaging: find: permission denied'
-    );
-    expect(mocks.validateDeployableSkillWorkspacePackage).not.toHaveBeenCalled();
-    expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
-  });
-
-  it('rejects selected SKILL.md paths containing a newline', async () => {
-    // 含换行的入口虽然能通过 zip，但 sandbox unzip 落盘时会改名，发布前必须拒绝。
-    const sandbox = createPackageSandbox(undefined, {
-      findOutput: './pkg/SKILL.md\0./line\nbreak/SKILL.md\0',
-      unzipOutput: './pkg/SKILL.md\n./line^Jbreak/SKILL.md\n'
-    });
-    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
-
-    await expect(packageSkillInSandbox({ sandboxId: 'sandbox-1' })).rejects.toThrow(
-      'Unsupported SKILL.md path with control characters (rejected by sandbox unzip): line\nbreak/SKILL.md'
-    );
-    expect(mocks.validateDeployableSkillWorkspacePackage).not.toHaveBeenCalled();
-  });
-
-  it('rejects selected SKILL.md paths containing a tab', async () => {
-    const sandbox = createPackageSandbox(undefined, {
-      findOutput: './pkg/SKILL.md\0./tab\tbreak/SKILL.md\0',
-      unzipOutput: './pkg/SKILL.md\n./tab^Ibreak/SKILL.md\n'
-    });
-    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
-
-    await expect(packageSkillInSandbox({ sandboxId: 'sandbox-1' })).rejects.toThrow(
-      'Unsupported SKILL.md path with control characters (rejected by sandbox unzip): tab\tbreak/SKILL.md'
-    );
-    expect(mocks.validateDeployableSkillWorkspacePackage).not.toHaveBeenCalled();
-  });
-
-  it('accepts packaging when every scanned entry is retained', async () => {
-    const sandbox = createPackageSandbox(undefined, {
-      findOutput: './skills/writer/SKILL.md\0',
-      unzipOutput: './skills/writer/SKILL.md\n'
-    });
-    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
-
-    await expect(packageSkillInSandbox({ sandboxId: 'sandbox-1' })).resolves.toEqual(
-      Buffer.from([1, 2, 3])
-    );
-    expect(mocks.validateDeployableSkillWorkspacePackage).toHaveBeenCalledTimes(1);
   });
 
   it('propagates read failures and still disconnects', async () => {
@@ -362,17 +252,21 @@ describe('packageSkillInSandbox', () => {
     await expect(packageSkillInSandbox({ sandboxId: 'sandbox-1' })).rejects.toThrow('read failed');
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
   });
-});
 
-describe('normalizeArchiveListedEntryPath', () => {
-  it('maps newline, carriage return and tab to distinct unzip display markers', () => {
-    expect(normalizeArchiveListedEntryPath('a\nb\rc\td')).toBe('a^Jb^Mc^Id');
-  });
+  it('throws structured SkillErrEnum errorCode when package validation fails', async () => {
+    const sandbox = createPackageSandbox();
+    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
+    mocks.validateDeployableSkillWorkspacePackage.mockResolvedValueOnce({
+      valid: false,
+      files: [],
+      error: 'Skill package must contain at least one SKILL.md',
+      errorCode: 'missingSkillMd'
+    });
 
-  it('keeps ordinary paths unchanged', () => {
-    expect(normalizeArchiveListedEntryPath('./skills/writer/SKILL.md')).toBe(
-      './skills/writer/SKILL.md'
+    await expect(packageSkillInSandbox({ sandboxId: 'sandbox-1' })).rejects.toThrow(
+      'missingSkillMd'
     );
+    expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
   });
 });
 

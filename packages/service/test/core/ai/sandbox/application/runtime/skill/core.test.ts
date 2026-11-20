@@ -516,8 +516,7 @@ description: Latest current skill
         description: '',
         avatar: undefined,
         versionId: String(versionId),
-        targetDir,
-        skillMdPaths: []
+        targetDir
       }
     ]);
   });
@@ -581,8 +580,7 @@ description: Latest current skill
         description: '',
         avatar: undefined,
         versionId: String(currentVersionId),
-        targetDir: currentTargetDir,
-        skillMdPaths: []
+        targetDir: currentTargetDir
       }
     ]);
     await expect(
@@ -840,7 +838,7 @@ description: Read webpages
   });
 });
 
-describe('getAgentSkillInfos standard entry priority', () => {
+describe('getAgentSkillInfos recursive scan', () => {
   const makeScanSandbox = (
     pathsByDirectory: Record<string, string[]>,
     contentByPath: Record<string, string>
@@ -868,62 +866,22 @@ description: ${description}
 
 # ${name}`;
 
-  it('keeps only standard entries when the scan root has skills/<name>/SKILL.md', async () => {
-    const root = '/workspace/projects/version-standard';
-    const standardPath = `${root}/skills/writer/SKILL.md`;
-    const deepExamplePath = `${root}/skills/writer/examples/template/SKILL.md`;
-    const sandbox = makeScanSandbox(
-      { [root]: [standardPath, deepExamplePath] },
-      {
-        [standardPath]: skillMarkdown('writer', 'Standard writer skill'),
-        [deepExamplePath]: skillMarkdown('template-valid', 'Deep template with valid frontmatter')
-      }
-    );
-
-    const skillInfos = await getAgentSkillInfos({
-      skillDirectories: [root],
-      sandbox: sandbox as any
-    });
-
-    expect(skillInfos.map(({ name, skillMdPath }) => ({ name, skillMdPath }))).toEqual([
-      { name: 'writer', skillMdPath: standardPath }
-    ]);
-    // 调试目录先读取全部候选再解析，只有解析成功后才按标准入口回退。
-    expect(sandbox.readFiles).toHaveBeenCalledWith([standardPath, deepExamplePath]);
-  });
-
-  it('ignores a deep example with the same name instead of reporting a duplicate', async () => {
-    const root = '/workspace/projects/version-same-name';
-    const standardPath = `${root}/skills/writer/SKILL.md`;
-    const deepExamplePath = `${root}/skills/writer/examples/template/SKILL.md`;
-    const sandbox = makeScanSandbox(
-      { [root]: [standardPath, deepExamplePath] },
-      {
-        [standardPath]: skillMarkdown('writer'),
-        [deepExamplePath]: skillMarkdown('writer')
-      }
-    );
-
-    const skillInfos = await getAgentSkillInfos({
-      skillDirectories: [root],
-      sandbox: sandbox as any
-    });
-
-    expect(skillInfos).toHaveLength(1);
-    expect(skillInfos[0]).toMatchObject({ name: 'writer', skillMdPath: standardPath });
-  });
-
-  it('keeps every recursive SKILL.md for non-standard packages', async () => {
-    const root = '/workspace/projects/version-non-standard';
+  it('keeps valid skills across all depths and skips invalid or unnamed SKILL.md files', async () => {
+    const root = '/workspace/projects/version-mixed';
     const rootEntry = `${root}/SKILL.md`;
-    const firstLevelEntry = `${root}/foo/SKILL.md`;
-    const deepEntry = `${root}/a/b/SKILL.md`;
+    const standardEntry = `${root}/skills/writer/SKILL.md`;
+    const deepEntry = `${root}/skills/writer/helpers/review/SKILL.md`;
+    const draftEntry = `${root}/skills/writer/examples/template/SKILL.md`;
+    const unnamedEntry = `${root}/drafts/SKILL.md`;
+
     const sandbox = makeScanSandbox(
-      { [root]: [rootEntry, firstLevelEntry, deepEntry] },
+      { [root]: [rootEntry, standardEntry, deepEntry, draftEntry, unnamedEntry] },
       {
-        [rootEntry]: skillMarkdown('root-skill'),
-        [firstLevelEntry]: skillMarkdown('foo-skill'),
-        [deepEntry]: skillMarkdown('deep-skill')
+        [rootEntry]: skillMarkdown('root-skill', 'Root skill'),
+        [standardEntry]: skillMarkdown('writer', 'Writer skill'),
+        [deepEntry]: skillMarkdown('reviewer', 'Review helper skill'),
+        [draftEntry]: '# Example template without frontmatter',
+        [unnamedEntry]: '---\ndescription: Missing name\n---\n'
       }
     );
 
@@ -932,229 +890,54 @@ description: ${description}
       sandbox: sandbox as any
     });
 
-    expect(skillInfos.map(({ name }) => name).sort()).toEqual([
-      'deep-skill',
-      'foo-skill',
-      'root-skill'
+    expect(
+      skillInfos
+        .map(({ name, description, skillMdPath }) => ({ name, description, skillMdPath }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+    ).toEqual([
+      { name: 'reviewer', description: 'Review helper skill', skillMdPath: deepEntry },
+      { name: 'root-skill', description: 'Root skill', skillMdPath: rootEntry },
+      { name: 'writer', description: 'Writer skill', skillMdPath: standardEntry }
     ]);
   });
 
-  it('applies the standard-entry rule per scan directory', async () => {
-    const standardRoot = '/workspace/projects/version-a';
-    const legacyRoot = '/workspace/projects/version-b';
-    const standardEntry = `${standardRoot}/skills/alpha/SKILL.md`;
-    const standardDeepEntry = `${standardRoot}/skills/alpha/examples/SKILL.md`;
-    const legacyRootEntry = `${legacyRoot}/SKILL.md`;
-    const legacyNestedEntry = `${legacyRoot}/foo/SKILL.md`;
+  it('keeps skills with duplicate names when their file paths differ', async () => {
+    const root = '/workspace/projects/version-same-name';
+    const firstPath = `${root}/skills/a/SKILL.md`;
+    const secondPath = `${root}/skills/b/SKILL.md`;
     const sandbox = makeScanSandbox(
+      { [root]: [firstPath, secondPath] },
       {
-        [standardRoot]: [standardEntry, standardDeepEntry],
-        [legacyRoot]: [legacyRootEntry, legacyNestedEntry]
+        [firstPath]: skillMarkdown('same', 'First description'),
+        [secondPath]: skillMarkdown('same', 'Second description')
+      }
+    );
+
+    const skillInfos = await getAgentSkillInfos({
+      skillDirectories: [root],
+      sandbox: sandbox as any
+    });
+
+    expect(
+      skillInfos.map(({ id, name, description, skillMdPath }) => ({
+        id,
+        name,
+        description,
+        skillMdPath
+      }))
+    ).toEqual([
+      {
+        id: firstPath,
+        name: 'same',
+        description: 'First description',
+        skillMdPath: firstPath
       },
       {
-        [standardEntry]: skillMarkdown('alpha'),
-        [standardDeepEntry]: skillMarkdown('alpha-example'),
-        [legacyRootEntry]: skillMarkdown('legacy-root'),
-        [legacyNestedEntry]: skillMarkdown('legacy-foo')
-      }
-    );
-
-    const skillInfos = await getAgentSkillInfos({
-      skillDirectories: [standardRoot, legacyRoot],
-      sandbox: sandbox as any
-    });
-
-    expect(skillInfos.map(({ name }) => name).sort()).toEqual([
-      'alpha',
-      'legacy-foo',
-      'legacy-root'
-    ]);
-    expect(skillInfos.map(({ skillMdPath }) => skillMdPath)).toEqual(
-      expect.arrayContaining([standardEntry, legacyRootEntry, legacyNestedEntry])
-    );
-    expect(skillInfos.map(({ skillMdPath }) => skillMdPath)).not.toContain(standardDeepEntry);
-  });
-
-  it('keeps a root-level skill when the standard path is an invalid draft during edit debugging', async () => {
-    // 编辑调试没有版本契约：标准路径草稿解析失败时不能触发「标准入口优先」，
-    // 否则有效的根级 reader 会被空结果挤掉。
-    const root = '/workspace/projects/debug-draft';
-    const rootEntry = `${root}/SKILL.md`;
-    const draftStandardEntry = `${root}/skills/writer/SKILL.md`;
-    const sandbox = makeScanSandbox(
-      { [root]: [rootEntry, draftStandardEntry] },
-      {
-        [rootEntry]: skillMarkdown('reader', 'Root reader skill'),
-        [draftStandardEntry]: '# writer draft without frontmatter'
-      }
-    );
-
-    const skillInfos = await getAgentSkillInfos({
-      skillDirectories: [root],
-      sandbox: sandbox as any
-    });
-
-    expect(skillInfos.map(({ name, skillMdPath }) => ({ name, skillMdPath }))).toEqual([
-      { name: 'reader', skillMdPath: rootEntry }
-    ]);
-    expect(sandbox.readFiles).toHaveBeenCalledWith([rootEntry, draftStandardEntry]);
-  });
-
-  it('keeps builtin skill directories with SKILL.md at the scan root', async () => {
-    const builtinRoot = '/home/test/.fastgpt/skills/builtin-report';
-    const builtinEntry = `${builtinRoot}/SKILL.md`;
-    const sandbox = makeScanSandbox(
-      { [builtinRoot]: [builtinEntry] },
-      { [builtinEntry]: skillMarkdown('builtin-report', 'Builtin report skill') }
-    );
-
-    const skillInfos = await getAgentSkillInfos({
-      skillDirectories: [builtinRoot],
-      sandbox: sandbox as any
-    });
-
-    expect(skillInfos).toEqual([
-      {
-        id: builtinEntry,
-        name: 'builtin-report',
-        description: 'Builtin report skill',
-        directory: builtinRoot,
-        skillMdPath: builtinEntry
+        id: secondPath,
+        name: 'same',
+        description: 'Second description',
+        skillMdPath: secondPath
       }
     ]);
-  });
-
-  describe('deployed version entry contract', () => {
-    const deployedVersion = ({
-      targetDir,
-      skillMdPaths,
-      skillEntryContract
-    }: {
-      targetDir: string;
-      skillMdPaths: string[];
-      skillEntryContract?: 'explicit-v1';
-    }) => ({
-      versionId: 'version-1',
-      targetDir,
-      skillMdPaths,
-      ...(skillEntryContract ? { skillEntryContract } : {})
-    });
-
-    it('keeps recursively discovered skills for legacy versions without the contract marker', async () => {
-      // 基点版本：runtimeSkills 只列出 writer，但运行态递归扫描同时提供深层 reviewer。
-      // 缺失 skillEntryContract 时必须按旧行为递归，不能把 runtimeSkills 当成完整清单。
-      const root = '/workspace/projects/legacy-published';
-      const writerEntry = `${root}/skills/writer/SKILL.md`;
-      const reviewerEntry = `${root}/skills/writer/helpers/review/SKILL.md`;
-      const sandbox = makeScanSandbox(
-        { [root]: [writerEntry, reviewerEntry] },
-        {
-          [writerEntry]: skillMarkdown('writer', 'Writer skill'),
-          [reviewerEntry]: skillMarkdown('reviewer', 'Review helper skill')
-        }
-      );
-
-      const skillInfos = await getAgentSkillInfos({
-        skillDirectories: [root],
-        deployedSkillVersions: [
-          deployedVersion({ targetDir: root, skillMdPaths: ['skills/writer/SKILL.md'] })
-        ],
-        sandbox: sandbox as any
-      });
-
-      expect(
-        skillInfos
-          .map(({ name, skillMdPath }) => ({ name, skillMdPath }))
-          .sort((a, b) => a.name.localeCompare(b.name))
-      ).toEqual([
-        { name: 'reviewer', skillMdPath: reviewerEntry },
-        { name: 'writer', skillMdPath: writerEntry }
-      ]);
-      expect(sandbox.readFiles).toHaveBeenCalledWith([writerEntry, reviewerEntry]);
-    });
-
-    it('keeps the root-level skill when the standard path is only a draft and metadata is empty', async () => {
-      // 旧导入版本（无 runtimeSkills）：基点扫描两者，跳过无 frontmatter 的草稿，仍提供 reader。
-      const root = '/workspace/projects/legacy-draft';
-      const rootEntry = `${root}/SKILL.md`;
-      const draftStandardEntry = `${root}/skills/writer/SKILL.md`;
-      const sandbox = makeScanSandbox(
-        { [root]: [rootEntry, draftStandardEntry] },
-        {
-          [rootEntry]: skillMarkdown('reader', 'Root reader skill'),
-          [draftStandardEntry]: '# writer draft without frontmatter'
-        }
-      );
-
-      const skillInfos = await getAgentSkillInfos({
-        skillDirectories: [root],
-        deployedSkillVersions: [deployedVersion({ targetDir: root, skillMdPaths: [] })],
-        sandbox: sandbox as any
-      });
-
-      expect(skillInfos.map(({ name, skillMdPath }) => ({ name, skillMdPath }))).toEqual([
-        { name: 'reader', skillMdPath: rootEntry }
-      ]);
-    });
-
-    it('keeps both the root-level skill and the standard skill when metadata is empty', async () => {
-      const root = '/workspace/projects/legacy-mixed';
-      const rootEntry = `${root}/SKILL.md`;
-      const standardEntry = `${root}/skills/writer/SKILL.md`;
-      const sandbox = makeScanSandbox(
-        { [root]: [rootEntry, standardEntry] },
-        {
-          [rootEntry]: skillMarkdown('reader'),
-          [standardEntry]: skillMarkdown('writer')
-        }
-      );
-
-      const skillInfos = await getAgentSkillInfos({
-        skillDirectories: [root],
-        deployedSkillVersions: [deployedVersion({ targetDir: root, skillMdPaths: [] })],
-        sandbox: sandbox as any
-      });
-
-      expect(
-        skillInfos
-          .map(({ name, skillMdPath }) => ({ name, skillMdPath }))
-          .sort((a, b) => a.name.localeCompare(b.name))
-      ).toEqual([
-        { name: 'reader', skillMdPath: rootEntry },
-        { name: 'writer', skillMdPath: standardEntry }
-      ]);
-    });
-
-    it('keeps only the declared entries when a version uses the explicit entry contract', async () => {
-      const root = '/workspace/projects/published-standard';
-      const rootEntry = `${root}/SKILL.md`;
-      const standardEntry = `${root}/skills/writer/SKILL.md`;
-      const deepReviewerEntry = `${root}/skills/writer/helpers/review/SKILL.md`;
-      const sandbox = makeScanSandbox(
-        { [root]: [rootEntry, standardEntry, deepReviewerEntry] },
-        {
-          [rootEntry]: skillMarkdown('reader'),
-          [standardEntry]: skillMarkdown('writer'),
-          [deepReviewerEntry]: skillMarkdown('reviewer')
-        }
-      );
-
-      const skillInfos = await getAgentSkillInfos({
-        skillDirectories: [root],
-        deployedSkillVersions: [
-          deployedVersion({
-            targetDir: root,
-            skillMdPaths: ['skills/writer/SKILL.md'],
-            skillEntryContract: 'explicit-v1'
-          })
-        ],
-        sandbox: sandbox as any
-      });
-
-      expect(skillInfos.map(({ name, skillMdPath }) => ({ name, skillMdPath }))).toEqual([
-        { name: 'writer', skillMdPath: standardEntry }
-      ]);
-      expect(sandbox.readFiles).toHaveBeenCalledWith([standardEntry]);
-    });
   });
 });

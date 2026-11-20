@@ -47,6 +47,41 @@ export function parseSkillMarkdown(markdown: string): {
   }
 }
 
+export type ParsedSkillMetadataResult =
+  | {
+      valid: true;
+      name: string;
+      description: string;
+    }
+  | {
+      valid: false;
+      error: string;
+    };
+
+/**
+ * 从 SKILL.md 文本中提取运行态所需的元数据（name、description）。
+ *
+ * 发布元数据解析与运行态 sandbox 扫描共用这套口径：必须存在合法 frontmatter 且
+ * `name` 为非空字符串；`description` 为可选字符串，缺省回退为空串。
+ */
+export function extractSkillMetadataFromMarkdown(markdown: string): ParsedSkillMetadataResult {
+  const { frontmatter, error } = parseSkillMarkdown(markdown);
+  if (error) {
+    return { valid: false, error };
+  }
+
+  const name = typeof frontmatter.name === 'string' ? frontmatter.name.trim() : '';
+  if (!name) {
+    return { valid: false, error: 'frontmatter name is required' };
+  }
+
+  return {
+    valid: true,
+    name,
+    description: typeof frontmatter.description === 'string' ? frontmatter.description.trim() : ''
+  };
+}
+
 /**
  * 轻量 frontmatter YAML 解析器。
  *
