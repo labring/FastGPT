@@ -112,6 +112,11 @@ export const serviceEnv = createEnv({
     MONGODB_LOG_URI: z.string().optional(),
 
     // VectorDB
+    SEARCH_MONGO_URL: z.string().optional().meta({
+      description:
+        '独立 MongoDB 8.3+ 检索库连接参数（需 mongot），默认库名 fastgpt_search；仅适用于新建存储（不含存量迁移），配置后优先启用且不复用业务主库连接',
+      example: 'mongodb://localhost:27017/fastgpt_search'
+    }),
     VECTOR_VQ_LEVEL: IntSchema.default(32).meta({
       description: '向量量化等级'
     }),
