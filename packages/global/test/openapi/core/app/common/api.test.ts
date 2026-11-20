@@ -8,6 +8,8 @@ import {
   OpenAPIAppScheduledTriggerConfigSchema,
   UpdateAppBodySchema
 } from '@fastgpt/global/openapi/core/app/common/api';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { openAPIDocument } from '@fastgpt/global/openapi/provider/devapi';
 import {
   PublishAppBodySchema,
   PublishAppRequestBodySchema
@@ -31,6 +33,20 @@ const currentNode = {
   outputs: []
 };
 
+it.each([
+  ['/core/app/detail', 'get'],
+  ['/core/app/version/detail', 'get'],
+  ['/core/app/version/publish', 'post']
+] as const)('documents a reference snapshot in the %s response', (path, method) => {
+  expect(JSON.stringify(openAPIDocument.paths?.[path]?.[method]?.responses)).toContain(
+    JSON.stringify({
+      example: [
+        { reference: ['removed-node', 'result'], sourceLabel: '历史代码节点', outputLabel: '结果' }
+      ]
+    }).slice(1, -1)
+  );
+});
+
 describe('UpdateAppBodySchema', () => {
   it('rejects workflow fields', () => {
     expect(UpdateAppBodySchema.safeParse({ nodes: [] }).success).toBe(false);
@@ -48,6 +64,24 @@ describe('CreateAppBodySchema', () => {
         chatConfig: {}
       }).success
     ).toBe(true);
+  });
+
+  it('preserves reference snapshots through create request migration', () => {
+    const referenceSnapshots = [
+      {
+        reference: ['deleted-node', 'output'],
+        sourceLabel: 'Deleted node'
+      }
+    ];
+    const result = CreateAppRequestBodySchema.parse({
+      name: 'snapshot app',
+      type: AppTypeEnum.workflow,
+      modules: [currentNode],
+      edges: [],
+      referenceSnapshots
+    });
+
+    expect(result.referenceSnapshots).toEqual(referenceSnapshots);
   });
 
   it('preserves empty scheduled trigger compatibility', () => {
@@ -144,6 +178,23 @@ describe('CreateAppBodySchema', () => {
 });
 
 describe('PublishAppBodySchema', () => {
+  it.each([
+    { reference: ['removed-node'] },
+    { reference: ['removed-node', ''] },
+    { reference: ['', 'result'] }
+  ])('rejects a snapshot without both reference IDs ($reference)', ({ reference }) => {
+    const referenceSnapshots = [{ reference }];
+    const workflow = { nodes: [currentNode], edges: [], referenceSnapshots };
+    expect(PublishAppRequestBodySchema.safeParse(workflow).success).toBe(false);
+    expect(
+      CreateAppRequestBodySchema.safeParse({
+        name: 'Invalid snapshot',
+        type: 'workflow',
+        ...workflow
+      }).success
+    ).toBe(false);
+  });
+
   it('accepts current NodeIO and strips unknown workflow fields', () => {
     expect(
       PublishAppBodySchema.safeParse({ nodes: [currentNode], edges: [], chatConfig: {} }).success
