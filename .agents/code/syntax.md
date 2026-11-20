@@ -415,3 +415,43 @@ export const createAppAndInitVersion = async (
   }
 };
 ```
+
+---
+
+### 关联查询优先应用层按需批量查询与缓存，避免 `$lookup`
+
+列表查询、流式导出等批量读取场景中，跨集合补充展示字段（如版本名、成员名、渠道名）优先采用**应用层按需收集外键 + `$in` 批量投影查询 + 内存 `Map` 缓存**，避免在 MongoDB 聚合管道中使用 `$lookup`。仅当必须在数据库侧按关联字段过滤、排序或分页时才使用 `$lookup`。
+
+- **避免大文档重复 `FETCH`**：`$lookup` 对每条主记录逐条执行关联，被关联集合若无覆盖索引且单文档较大（如 `app_versions` 含 `nodes`/`edges`），会触发大量重复的大文档读取与裁切。
+- **按需跳过**：可选展示字段未被请求时直接不查库、不投影外键，避免聚合管道无条件执行关联。
+- **全版本兼容**：规避 `localField/foreignField + pipeline` 在 MongoDB 4.4 报错，以及 `let + $expr` 在缺失外键字段时退化为 `COLLSCAN` 的问题。
+- **实现要点**：流式分批场景跨批次复用 `Map` 缓存；校验有效 ID（`Types.ObjectId.isValid`）后仅查询未缓存的 ID，查不到的 ID 也写入空值占位防止重复查库；只投影必要字段并配合 `readFromSecondary` 与 `.lean()`；多路独立补充查询用 `Promise.all` 并行执行。
+
+```typescript
+// Good —— 按需批量查询 + 跨批次缓存，只拉取必要字段
+const versionNameMap = new Map<string, string>();
+
+const loadVersionNames = async (batch: Array<{ appVersionId?: unknown }>) => {
+  if (!needVersionName) return;
+
+  const missingIds: Types.ObjectId[] = [];
+  for (const doc of batch) {
+    if (!doc.appVersionId || !Types.ObjectId.isValid(doc.appVersionId)) continue;
+    const idStr = String(doc.appVersionId);
+    if (!versionNameMap.has(idStr)) {
+      versionNameMap.set(idStr, ''); // 占位，避免已删除记录跨批次重复查库
+      missingIds.push(new Types.ObjectId(idStr));
+    }
+  }
+  if (missingIds.length === 0) return;
+
+  const versions = await MongoAppVersion.find(
+    { _id: { $in: missingIds } },
+    { _id: 1, versionName: 1 },
+    readFromSecondary
+  ).lean();
+  for (const version of versions) {
+    versionNameMap.set(String(version._id), version.versionName || '');
+  }
+};
+```
