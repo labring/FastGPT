@@ -537,7 +537,7 @@ export const batchUpdateDomainConfigs = async (
     // 也不能因为省略库中已有的 endpoint 而被误拒绝。校验失败前不启动事务。
     if (domain === 'storage') {
       try {
-        assertStorageDownloadConfig(effectiveConfig);
+        assertStorageDownloadConfig(effectiveConfig, submittedOverrides);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Invalid storage download config';
         throw configInputError(

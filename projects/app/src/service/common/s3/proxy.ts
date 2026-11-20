@@ -23,6 +23,7 @@ import {
   DEFAULT_CONTENT_TYPE,
   ensureTextContentTypeCharset
 } from '@fastgpt/service/common/s3/utils/mime';
+import { isFileNotFoundError } from '@fastgpt/service/common/s3/utils/assert';
 import {
   canUseStorageDownloadRedirect,
   replaceS3UrlWithCdnEndpoint,
@@ -42,6 +43,19 @@ import {
 const logger = getLogger(LogCategories.INFRA.FILE);
 const MULTIPART_UPLOAD_REQUEST_ABORTED = 'Multipart upload request aborted';
 const UPLOAD_REQUEST_ABORTED = 'Upload request aborted';
+
+/**
+ * 仅把明确的对象缺失映射为 404；排除 NoSuchBucket 等服务端配置故障，避免把系统故障降级成普通 404。
+ */
+const isS3MissingObjectError = (error: unknown): boolean => {
+  if (error && typeof error === 'object') {
+    const value = error as { code?: unknown; name?: unknown };
+    if (value.code === 'NoSuchBucket' || value.name === 'NoSuchBucket') {
+      return false;
+    }
+  }
+  return isFileNotFoundError(error);
+};
 
 type GuardStreamOptions = {
   maxSize: number;
@@ -275,11 +289,13 @@ const resolveProxyUploadFileHint = ({
 export const handleS3ProxyDownload = async ({
   req,
   res,
-  payload
+  payload,
+  cacheControl = 'public, max-age=31536000'
 }: {
   req: NextApiRequest;
   res: NextApiResponse;
   payload: S3ProxyDownloadPayload;
+  cacheControl?: string;
 }) => {
   const { objectKey, bucketName } = payload;
   const bucket = global.s3BucketMap[bucketName];
@@ -307,7 +323,7 @@ export const handleS3ProxyDownload = async ({
       res.setHeader('Content-Length', metadata.contentLength);
     }
     res.setHeader('Content-Disposition', getContentDisposition({ filename, type: 'inline' }));
-    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    res.setHeader('Cache-Control', cacheControl);
     for (const [name, value] of Object.entries(
       getFilePreviewSecurityHeaders({ contentType, filename })
     )) {
@@ -324,15 +340,23 @@ export const handleS3ProxyDownload = async ({
     }
 
     const [downloadStream, metadata] = await Promise.all([
-      bucket.getFileStream(objectKey, { abortSignal: abortContext.signal }).then((value) => {
-        stream = value;
-        value?.once('error', (error) => {
-          if (!abortContext.isClientAborted() && !req.aborted && !res.destroyed) {
-            logger.error('Error reading proxy download stream', { objectKey, bucketName, error });
+      bucket
+        .getFileStream(objectKey, { abortSignal: abortContext.signal })
+        .then((value) => {
+          stream = value;
+          value?.once('error', (error) => {
+            if (!abortContext.isClientAborted() && !req.aborted && !res.destroyed) {
+              logger.error('Error reading proxy download stream', { objectKey, bucketName, error });
+            }
+          });
+          return value;
+        })
+        .catch((error) => {
+          if (isS3MissingObjectError(error)) {
+            throw CommonErrEnum.fileNotFound;
           }
-        });
-        return value;
-      }),
+          throw error;
+        }),
       bucket.getFileMetadata(objectKey)
     ]);
 

@@ -5,6 +5,7 @@ import {
   SystemInstanceConfigDomainKeySchema,
   SystemInstanceConfigUpdatedBySchema
 } from '../../../../common/system/config/schema';
+import { StorageVendorCapabilitiesSchema } from '../../../../common/system/config/schemas/storage';
 
 /* ============================================================================
  * API: 获取指定 Domain 的配置与生效快照
@@ -46,6 +47,10 @@ export const GetDomainConfigResponseSchema = z.object({
   updatedBy: SystemInstanceConfigUpdatedBySchema.optional().meta({
     description: '最后修改人信息',
     example: { actor: 'admin', userId: 'user_123', username: 'admin' }
+  }),
+  storageCapabilities: StorageVendorCapabilitiesSchema.optional().meta({
+    description: '仅 domain=storage 时返回：根据环境变量推导的存储提供商与端点能力',
+    example: { vendor: 'minio', supportsExternalEndpoint: true, supportsCdnEndpoint: true }
   })
 });
 export type GetDomainConfigResponse = z.infer<typeof GetDomainConfigResponseSchema>;

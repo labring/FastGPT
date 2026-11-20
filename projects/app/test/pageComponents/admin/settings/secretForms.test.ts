@@ -16,6 +16,13 @@ const mocks = vi.hoisted(() => ({
   subPlans: undefined as undefined | { standard?: Record<string, unknown> },
   configs: {} as Record<string, any>,
   configured: {} as Record<string, Record<string, unknown>>,
+  storageCapabilities: undefined as
+    | undefined
+    | {
+        vendor: 'minio' | 'aws-s3' | 'r2' | 'cos' | 'oss';
+        supportsExternalEndpoint: boolean;
+        supportsCdnEndpoint: boolean;
+      },
   update: vi.fn(),
   patch: vi.fn(),
   updateSystemStore: vi.fn(),
@@ -36,6 +43,7 @@ vi.mock('@/web/common/system/useDomainConfig', () => ({
     }, []);
     return {
       effectiveConfig: mocks.configs[domain],
+      storageCapabilities: domain === 'storage' ? mocks.storageCapabilities : undefined,
       isSecretConfigured: (path: string) =>
         isConfiguredSecret(
           path.split('.').reduce<any>((value, key) => value?.[key], mocks.configured[domain])
@@ -200,6 +208,7 @@ beforeEach(() => {
   mocks.updateSystemStore.mockReset();
   mocks.isPro = true;
   mocks.subPlans = { standard: { basic: {} } };
+  mocks.storageCapabilities = undefined;
   const full = resolveSystemInstanceConfig({});
   full.auth.loginProviders.email.pass = 'stored-email';
   full.auth.loginProviders.phone.accessKeySecret = 'stored-sms';
@@ -334,6 +343,64 @@ describe('system configuration secret forms', () => {
         cdnEndpoint: 'https://cdn.test'
       });
       expect(sentOverrides('storage')).not.toHaveProperty('redirectTtlSeconds');
+    }
+  );
+
+  it.each([
+    {
+      capabilities: {
+        vendor: 'oss' as const,
+        supportsExternalEndpoint: false,
+        supportsCdnEndpoint: true
+      },
+      expectExternal: false,
+      expectCdn: true,
+      expectedExternalOverride: '',
+      expectedCdnOverride: 'https://cdn.test'
+    },
+    {
+      capabilities: {
+        vendor: 'r2' as const,
+        supportsExternalEndpoint: false,
+        supportsCdnEndpoint: false
+      },
+      expectExternal: false,
+      expectCdn: false,
+      expectedExternalOverride: '',
+      expectedCdnOverride: ''
+    }
+  ])(
+    'dynamically hides unsupported redirect endpoints for $capabilities.vendor and clears stale overrides on save',
+    async ({
+      capabilities,
+      expectExternal,
+      expectCdn,
+      expectedExternalOverride,
+      expectedCdnOverride
+    }) => {
+      mocks.storageCapabilities = capabilities;
+      mocks.configs.storage = {
+        ...mocks.configs.storage,
+        downloadMode: 'short-redirect',
+        externalEndpoint: 'https://legacy-minio.test',
+        cdnEndpoint: 'https://cdn.test'
+      };
+      await act(async () => root.render(React.createElement(CoreSettings)));
+
+      expect(container.textContent).toContain(
+        `admin:object_storage_backend_read_only:${capabilities.vendor}`
+      );
+      expect(container.querySelector('[name="externalEndpoint"]') !== null).toBe(expectExternal);
+      expect(container.querySelector('[name="cdnEndpoint"][data-service="cdn"]') !== null).toBe(
+        expectCdn
+      );
+
+      await save();
+      expect(sentOverrides('storage')).toMatchObject({
+        downloadMode: 'short-redirect',
+        externalEndpoint: expectedExternalOverride,
+        cdnEndpoint: expectedCdnOverride
+      });
     }
   );
 
