@@ -635,60 +635,72 @@ describe('handleS3ProxyUpload', () => {
 });
 
 describe('handleS3ProxyDownload missing object vs bucket errors', () => {
-  it('maps NoSuchKey from getFileStream to CommonErrEnum.fileNotFound (HTTP 404)', async () => {
-    const req = createRequest('GET');
-    const res = createResponse();
-    const noSuchKeyError = Object.assign(new Error('The specified key does not exist.'), {
-      name: 'NoSuchKey',
-      $metadata: { httpStatusCode: 404 }
-    });
+  it.each(['GET', 'HEAD'] as const)(
+    'maps NoSuchKey to CommonErrEnum.fileNotFound (HTTP 404) through real S3BaseBucket for %s',
+    async (method) => {
+      const { S3BaseBucket } = await vi.importActual<
+        typeof import('@fastgpt/service/common/s3/buckets/base')
+      >('@fastgpt/service/common/s3/buckets/base');
+      const req = createRequest(method);
+      const res = createResponse();
+      const noSuchKeyError = Object.assign(new Error('The specified key does not exist.'), {
+        name: 'NoSuchKey',
+        $metadata: { httpStatusCode: 404 }
+      });
+      const bucket = new S3BaseBucket({
+        bucketName: 'fastgpt-private',
+        downloadObject: vi.fn().mockRejectedValue(noSuchKeyError),
+        getObjectMetadata: vi.fn().mockRejectedValue(noSuchKeyError)
+      } as any);
 
-    global.s3BucketMap = {
-      'fastgpt-private': {
-        getFileStream: vi.fn().mockRejectedValue(noSuchKeyError),
-        getFileMetadata: vi.fn().mockResolvedValue(undefined)
-      } as any
-    };
+      global.s3BucketMap = { 'fastgpt-private': bucket as any };
 
-    await expect(
-      handleS3ProxyDownload({
-        req,
-        res: res as any,
-        payload
-      })
-    ).rejects.toBe(CommonErrEnum.fileNotFound);
-    expect(resolveS3ProxyErrorResponse(CommonErrEnum.fileNotFound)).toEqual({
-      httpStatus: 404,
-      publicError: CommonErrEnum.fileNotFound
-    });
-  });
+      await expect(
+        handleS3ProxyDownload({
+          req,
+          res: res as any,
+          payload
+        })
+      ).rejects.toBe(CommonErrEnum.fileNotFound);
+      expect(resolveS3ProxyErrorResponse(CommonErrEnum.fileNotFound)).toEqual({
+        httpStatus: 404,
+        publicError: CommonErrEnum.fileNotFound
+      });
+    }
+  );
 
-  it('keeps NoSuchBucket as an HTTP 500 server error for download and upload routes', async () => {
-    const req = createRequest('GET');
-    const res = createResponse();
-    const noSuchBucketError = Object.assign(new Error('The specified bucket does not exist.'), {
-      name: 'NoSuchBucket',
-      code: 'NoSuchBucket',
-      $metadata: { httpStatusCode: 404 }
-    });
+  it.each(['GET', 'HEAD'] as const)(
+    'keeps NoSuchBucket as an HTTP 500 server error through real S3BaseBucket for %s',
+    async (method) => {
+      const { S3BaseBucket } = await vi.importActual<
+        typeof import('@fastgpt/service/common/s3/buckets/base')
+      >('@fastgpt/service/common/s3/buckets/base');
+      const req = createRequest(method);
+      const res = createResponse();
+      const noSuchBucketError = Object.assign(new Error('The specified bucket does not exist.'), {
+        name: 'NoSuchBucket',
+        code: 'NoSuchBucket',
+        $metadata: { httpStatusCode: 404 }
+      });
+      const bucket = new S3BaseBucket({
+        bucketName: 'fastgpt-private',
+        downloadObject: vi.fn().mockRejectedValue(noSuchBucketError),
+        getObjectMetadata: vi.fn().mockRejectedValue(noSuchBucketError)
+      } as any);
 
-    global.s3BucketMap = {
-      'fastgpt-private': {
-        getFileStream: vi.fn().mockRejectedValue(noSuchBucketError),
-        getFileMetadata: vi.fn().mockResolvedValue(undefined)
-      } as any
-    };
+      global.s3BucketMap = { 'fastgpt-private': bucket as any };
 
-    await expect(
-      handleS3ProxyDownload({
-        req,
-        res: res as any,
-        payload
-      })
-    ).rejects.toBe(noSuchBucketError);
-    expect(resolveS3ProxyErrorResponse(noSuchBucketError)).toEqual({
-      httpStatus: 500,
-      publicError: noSuchBucketError
-    });
-  });
+      await expect(
+        handleS3ProxyDownload({
+          req,
+          res: res as any,
+          payload
+        })
+      ).rejects.toBe(noSuchBucketError);
+      expect(resolveS3ProxyErrorResponse(noSuchBucketError)).toEqual({
+        httpStatus: 500,
+        publicError: noSuchBucketError
+      });
+    }
+  );
 });

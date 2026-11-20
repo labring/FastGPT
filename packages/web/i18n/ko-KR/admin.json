@@ -1112,6 +1112,7 @@
   "storage_external_endpoint_tip": "사용자가 직접 접근할 수 있는 객체 스토리지 주소입니다. MinIO 리디렉션 액세스 모드에서 필수입니다.",
   "storage_cdn_endpoint": "CDN 엔드포인트",
   "storage_cdn_endpoint_tip": "리디렉션 액세스용 선택적 CDN 주소입니다(MinIO는 스토리지 서비스 외부 엔드포인트도 필요). 테스트는 임시 파일을 생성하여 CDN을 통한 실제 조회를 확인한 후 삭제합니다.",
+  "storage_r2_legacy_external_endpoint_notice": "이전 외부 엔드포인트 설정이 남아 있습니다. Cloudflare R2는 리디렉션 서명에 이 필드를 더 이상 사용하지 않으므로 다운로드가 임시로 프록시 모드로 폴백됩니다. 저장을 클릭해 이전 설정을 정리하면 리디렉션 모드가 복구됩니다.",
   "revision_conflict_refresh_required": "다른 사용자가 설정을 수정했습니다. 필요한 변경 내용을 먼저 복사한 다음 페이지를 새로 고치고 변경 사항을 다시 확인한 후 저장해 주세요.",
   "feature_section_display": "표시 설정",
   "page_title_inform": "알림 관리",

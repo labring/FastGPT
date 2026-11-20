@@ -9,6 +9,10 @@ import { isValidHttpUrl } from '@fastgpt/global/common/string/url';
 import { serviceEnv } from '../../../env';
 import { getSystemInstanceConfig } from '../../system/systemInstanceConfig/runtime';
 import { logInstanceConfigRead } from '../../system/migrationCoverageLog';
+import { getLogger, LogCategories } from '../../logger';
+
+const logger = getLogger(LogCategories.INFRA.S3);
+let warnedLegacyR2ExternalEndpoint: string | undefined;
 
 export const S3Buckets = {
   public: serviceEnv.STORAGE_PUBLIC_BUCKET,
@@ -121,6 +125,20 @@ export const getStorageDownloadUrlMode = () => {
     source: 'instance-config',
     fields: [{ path: 'storage.downloadMode', value }]
   });
+  // R2 已不再使用 storage.externalEndpoint 签发直连重定向；若历史升级仍存有该字段，先安全降级为代理模式，
+  // 防止将客户端 302 到仅供服务端访问的主端点，待管理员在设置页保存清空旧字段后恢复直连。
+  if (value === 'short-redirect' && storageVendor === 'r2') {
+    const legacyExternalEndpoint = getStorageExternalEndpoint();
+    if (legacyExternalEndpoint) {
+      if (warnedLegacyR2ExternalEndpoint !== legacyExternalEndpoint) {
+        warnedLegacyR2ExternalEndpoint = legacyExternalEndpoint;
+        logger.warn(
+          'R2 no longer uses storage.externalEndpoint for short-redirect; falling back to short-proxy until admin settings are saved to clear the legacy externalEndpoint'
+        );
+      }
+      return 'short-proxy';
+    }
+  }
   return value;
 };
 

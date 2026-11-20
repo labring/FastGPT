@@ -1,5 +1,6 @@
 import { S3BaseBucket } from './base';
 import { createDefaultStorageOptions } from '../config/constants';
+import { getStorageVendorCapabilities } from '@fastgpt/global/common/system/config/schemas/storage';
 import {
   type IAwsS3CompatibleStorageOptions,
   type IR2StorageOptions,
@@ -17,6 +18,7 @@ export class S3PublicBucket extends S3BaseBucket {
   constructor() {
     const storageOptions = createDefaultStorageOptions();
     const { vendor, publicBucket, externalEndpoint, credentials, region } = storageOptions;
+    const { supportsExternalEndpoint } = getStorageVendorCapabilities(vendor);
 
     const getConfig = () => {
       if (vendor === 'minio' || vendor === 'aws-s3') {
@@ -31,12 +33,13 @@ export class S3PublicBucket extends S3BaseBucket {
         } as Omit<IAwsS3CompatibleStorageOptions, 'bucket'>;
         return {
           config,
-          externalConfig: externalEndpoint
-            ? {
-                ...config,
-                endpoint: externalEndpoint
-              }
-            : undefined
+          externalConfig:
+            supportsExternalEndpoint && externalEndpoint
+              ? {
+                  ...config,
+                  endpoint: externalEndpoint
+                }
+              : undefined
         };
       } else if (vendor === 'r2') {
         const config = {

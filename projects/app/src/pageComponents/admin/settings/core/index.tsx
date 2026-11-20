@@ -119,6 +119,8 @@ const CoreSettingComponent = () => {
   const storageCapabilities = storage.storageCapabilities;
   const supportsExternalEndpoint = storageCapabilities?.supportsExternalEndpoint ?? true;
   const supportsCdnEndpoint = storageCapabilities?.supportsCdnEndpoint ?? true;
+  const hasLegacyR2ExternalEndpoint =
+    storageCapabilities?.vendor === 'r2' && Boolean(storage.effectiveConfig?.externalEndpoint);
   const showRedirectEndpoints =
     downloadMode === 'short-redirect' && (supportsExternalEndpoint || supportsCdnEndpoint);
   // 与订阅套餐开关一致：无套餐或空套餐均不展示计费，开源版始终隐藏。
@@ -379,6 +381,19 @@ const CoreSettingComponent = () => {
               {storageCapabilities.vendor}
             </Box>
           </HStack>
+        )}
+        {hasLegacyR2ExternalEndpoint && (
+          <Text
+            fontSize={'xs'}
+            color={'yellow.700'}
+            bg={'yellow.50'}
+            px={3}
+            py={2}
+            borderRadius={'md'}
+            mb={4}
+          >
+            {t('admin:storage_r2_legacy_external_endpoint_notice')}
+          </Text>
         )}
         <AdminFormItem
           label={t('admin:file_service_domain')}

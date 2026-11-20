@@ -44,19 +44,6 @@ const logger = getLogger(LogCategories.INFRA.FILE);
 const MULTIPART_UPLOAD_REQUEST_ABORTED = 'Multipart upload request aborted';
 const UPLOAD_REQUEST_ABORTED = 'Upload request aborted';
 
-/**
- * 仅把明确的对象缺失映射为 404；排除 NoSuchBucket 等服务端配置故障，避免把系统故障降级成普通 404。
- */
-const isS3MissingObjectError = (error: unknown): boolean => {
-  if (error && typeof error === 'object') {
-    const value = error as { code?: unknown; name?: unknown };
-    if (value.code === 'NoSuchBucket' || value.name === 'NoSuchBucket') {
-      return false;
-    }
-  }
-  return isFileNotFoundError(error);
-};
-
 type GuardStreamOptions = {
   maxSize: number;
   uploadPolicy: UploadPolicy;
@@ -352,7 +339,7 @@ export const handleS3ProxyDownload = async ({
           return value;
         })
         .catch((error) => {
-          if (isS3MissingObjectError(error)) {
+          if (isFileNotFoundError(error)) {
             throw CommonErrEnum.fileNotFound;
           }
           throw error;
