@@ -290,6 +290,33 @@ describe('fileSelectConfig output synchronization', () => {
 });
 
 describe('global variable references', () => {
+  it('rewrites whole-filter references and prevents deleting their variables', async () => {
+    const document = await createDocumentWithVariableReferenceArray();
+    const read = document.nodes.find((node) => node.nodeId === 'read');
+    if (!read) throw new Error('Read files node is unavailable');
+    read.inputs = [
+      {
+        key: NodeInputKeyEnum.collectionFilterMatch,
+        label: 'Tag filter',
+        renderTypeList: [FlowNodeInputTypeEnum.datasetTagFilter],
+        value: [VARIABLE_NODE_ID, 'tenantId']
+      }
+    ];
+
+    const renamed = await apply(document, {
+      type: 'variable.update',
+      key: 'tenantId',
+      patch: { key: 'currentTenantId' }
+    });
+    expect(renamed.document.nodes.find((node) => node.nodeId === 'read')?.inputs[0].value).toEqual([
+      VARIABLE_NODE_ID,
+      'currentTenantId'
+    ]);
+    await expect(
+      apply(renamed.document, { type: 'variable.remove', key: 'currentTenantId' })
+    ).rejects.toThrow(WorkflowDiagnosticCodeEnum.variableStillReferenced);
+  });
+
   it('allows deleting a variable named in a literal array', async () => {
     const document = await createDocumentWithVariableReferenceArray();
     const read = document.nodes.find((node) => node.nodeId === 'read')!;

@@ -4,7 +4,11 @@ import {
   VariableItemTypeSchema,
   type VariableItemType
 } from '@fastgpt/global/core/app/variable/type';
-import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  VARIABLE_NODE_ID
+} from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { userFilesInput } from '@fastgpt/global/core/workflow/template/output';
 import {
@@ -13,7 +17,7 @@ import {
 } from '@fastgpt/global/common/workflow/reference';
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import { WorkflowCommandError } from '../domain/diagnostic';
-import { getWorkflowReferenceValues } from '../reference/service';
+import { getWorkflowReferenceValues, isWorkflowReferenceValue } from '../reference/service';
 import { CHAT_CONFIG_PATHS } from './type';
 
 const assertConfigPath = (path: string) => {
@@ -161,8 +165,14 @@ const getGlobalVariableReferences = ({
 }) =>
   document.nodes.flatMap((node) =>
     node.inputs.flatMap((input) => {
-      if (!nodeInputIsReference(input)) return [];
-      const references = (getWorkflowReferenceValues(input.value) ?? []).filter(
+      // 整项标签过滤由搜索参数归一化解析，且只接受顶层引用元组。
+      const inputReferences = nodeInputIsReference(input)
+        ? (getWorkflowReferenceValues(input.value) ?? [])
+        : input.key === NodeInputKeyEnum.collectionFilterMatch &&
+            isWorkflowReferenceValue(input.value)
+          ? [input.value]
+          : [];
+      const references = inputReferences.filter(
         ([sourceNodeId, outputKey]) => sourceNodeId === VARIABLE_NODE_ID && outputKey === key
       );
       return references.length > 0 ? [{ node, input, references }] : [];
