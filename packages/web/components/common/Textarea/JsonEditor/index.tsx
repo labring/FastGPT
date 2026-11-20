@@ -1,19 +1,21 @@
 import React, { useEffect, useCallback, useRef, useState, useMemo } from 'react';
-import Editor, { type Monaco, loader, useMonaco } from '@monaco-editor/react';
+import Editor, { type Monaco, type OnMount, loader, useMonaco } from '@monaco-editor/react';
+import { useMemoizedFn } from 'ahooks';
 import { Box, type BoxProps } from '@chakra-ui/react';
 import MyIcon from '../../Icon';
 import { useToast } from '../../../../hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { getWebReqUrl } from '../../../../common/system/utils';
+import {
+  registerJsonEditorContext,
+  registerJsonEditorLanguage,
+  type EditorVariablePickerType
+} from '../monacoLanguageRegistry';
+import { registerWorkflowMonacoModel, shouldSaveMonacoViewState } from '../monacoModelRegistry';
 
 loader.config({
   paths: { vs: getWebReqUrl('/js/monaco-editor.0.45.0/vs') }
 });
-
-type EditorVariablePickerType = {
-  key: string;
-  label: string;
-};
 
 type Props = Omit<BoxProps, 'resize' | 'onChange'> & {
   height?: number;
@@ -23,6 +25,7 @@ type Props = Omit<BoxProps, 'resize' | 'onChange'> & {
   onChange?: (e: string) => void;
   variables?: EditorVariablePickerType[];
   defaultHeight?: number;
+  path?: string;
   placeholder?: string;
   isDisabled?: boolean;
   readOnly?: boolean;
@@ -62,6 +65,7 @@ const JSONEditor = ({
   onChange,
   resize,
   variables = [],
+  path,
   placeholder,
   defaultHeight = 100,
   isDisabled = false,
@@ -75,73 +79,16 @@ const JSONEditor = ({
   const [height, setHeight] = useState(defaultHeight);
   const [placeholderDisplay, setPlaceholderDisplay] = useState('block');
   const initialY = useRef(0);
-  const completionRegisterRef = useRef<any>();
   const monaco = useMonaco();
-  const triggerChar = useRef<string>();
-  const monarchProviderRegistered = useRef<boolean>(false);
+  const modelUriRef = useRef<string>();
+  const saveViewState = shouldSaveMonacoViewState(path);
 
   useEffect(() => {
-    if (!monaco) return;
-
-    // 自定义补全提供者
-    completionRegisterRef.current = monaco.languages.registerCompletionItemProvider('json', {
-      triggerCharacters: ['{'],
-      provideCompletionItems: function (model, position, context) {
-        const lineContent = model.getLineContent(position.lineNumber);
-
-        if (context.triggerCharacter) {
-          triggerChar.current = context.triggerCharacter;
-        }
-        const word = model.getWordUntilPosition(position);
-        const range = {
-          startLineNumber: position.lineNumber,
-          endLineNumber: position.lineNumber,
-          startColumn: word.startColumn,
-          endColumn: word.endColumn
-        };
-
-        const startText = lineContent.substring(0, position.column - 1); // 光标前的文本
-        const endText = lineContent.substring(position.column - 1); // 光标后的文本
-        const before2Char = startText[startText.length - 2];
-        const beforeChar = startText[startText.length - 1];
-        const afterChar = endText[0];
-        const after2Char = endText[1];
-
-        if (before2Char !== '{' && beforeChar !== '"') {
-          return {
-            suggestions: []
-          };
-        }
-
-        return {
-          suggestions:
-            variables?.map((item) => {
-              let insertText = item.key;
-              if (before2Char !== '{') {
-                insertText = `{${insertText}`;
-              }
-              if (afterChar !== '}') {
-                insertText = `${insertText}}`;
-              }
-              if (after2Char !== '}') {
-                insertText = `${insertText}}`;
-              }
-
-              return {
-                label: item.key,
-                kind: monaco.languages.CompletionItemKind.Variable,
-                detail: item.label,
-                insertText: insertText,
-                range
-              };
-            }) || []
-        };
-      }
-    });
-
-    return () => {
-      completionRegisterRef.current?.dispose();
-    };
+    if (!monaco || !modelUriRef.current) return;
+    const model = monaco.editor.getModel(monaco.Uri.parse(modelUriRef.current));
+    if (model) {
+      registerJsonEditorContext(model, variables);
+    }
   }, [monaco, variables]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -192,62 +139,49 @@ const JSONEditor = ({
     }
   }, [formatedValue, toast, t, validateOnBlur]);
 
-  const beforeMount = useCallback(
-    (monaco: Monaco) => {
-      // 配置 JSON 语言诊断选项
-      monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
-        validate: false,
-        allowComments: false,
-        schemas: [
-          {
-            uri: 'http://myserver/foo-schema.json', // 一个假设的 URI
-            fileMatch: ['*'], // 匹配所有文件
-            schema: {} // 空的 Schema
-          }
-        ]
-      });
+  const beforeMount = useCallback((monaco: Monaco) => {
+    registerJsonEditorLanguage(monaco);
 
-      // 定义自定义主题
-      monaco.editor.defineTheme('JSONEditorTheme', {
-        base: 'vs', // 可以基于已有的主题进行定制
-        inherit: true, // 继承基础主题的设置
-        rules: [{ token: 'variable', foreground: '2B5FD9' }],
-        colors: {
-          'editor.background': '#ffffff00',
-          'editorLineNumber.foreground': '#aaa',
-          'editorOverviewRuler.border': '#ffffff00',
-          'editor.lineHighlightBackground': '#F7F8FA',
-          'scrollbarSlider.background': '#E8EAEC',
-          'editorIndentGuide.activeBackground': '#ddd',
-          'editorIndentGuide.background': '#eee'
-        }
-      });
-
-      // 注册自定义语法高亮（仅注册一次）
-      if (!monarchProviderRegistered.current) {
-        try {
-          monaco.languages.setMonarchTokensProvider('json', {
-            tokenizer: {
-              root: [
-                // 匹配variables里的变量
-                [new RegExp(`{{(${variables.map((item) => item.key).join('|')})}}`), 'variable'],
-                [/".*?"/, 'string'], // 匹配字符串
-                [/[{}\[\]]/, '@brackets'], // 匹配括号
-                [/[0-9]+/, 'number'], // 匹配数字
-                [/true|false/, 'keyword'], // 匹配布尔值
-                [/:/, 'delimiter'], // 匹配冒号
-                [/,/, 'delimiter.comma'] // 匹配逗号
-              ]
-            }
-          });
-          monarchProviderRegistered.current = true;
-        } catch (error) {
-          console.warn('Failed to register Monaco Monarch token provider:', error);
-        }
+    // 定义自定义主题
+    monaco.editor.defineTheme('JSONEditorTheme', {
+      base: 'vs', // 可以基于已有的主题进行定制
+      inherit: true, // 继承基础主题的设置
+      rules: [{ token: 'variable', foreground: '2B5FD9' }],
+      colors: {
+        'editor.background': '#ffffff00',
+        'editorLineNumber.foreground': '#aaa',
+        'editorOverviewRuler.border': '#ffffff00',
+        'editor.lineHighlightBackground': '#F7F8FA',
+        'scrollbarSlider.background': '#E8EAEC',
+        'editorIndentGuide.activeBackground': '#ddd',
+        'editorIndentGuide.background': '#eee'
       }
-    },
-    [variables]
-  );
+    });
+  }, []);
+
+  // 加载器可能晚于 props 更新完成，onMount 需要读取最新内容和变量配置。
+  const handleEditorDidMount = useMemoizedFn<OnMount>((editor, monaco) => {
+    const model = editor.getModel();
+    if (model) {
+      modelUriRef.current = model.uri.toString();
+      registerJsonEditorContext(model, variables);
+      if (path) {
+        registerWorkflowMonacoModel(model);
+      }
+      if (model.getValue() !== formatedValue) {
+        model.setValue(formatedValue);
+      }
+      monaco.editor.setModelLanguage(model, 'json');
+    }
+    setPlaceholderDisplay(formatedValue ? 'none' : 'block');
+
+    // Prevent browser autofill from causing getModifierState errors.
+    const textarea = editor.getDomNode()?.querySelector('textarea');
+    textarea?.setAttribute('autocomplete', 'off');
+    textarea?.setAttribute('autocorrect', 'off');
+    textarea?.setAttribute('autocapitalize', 'off');
+    textarea?.setAttribute('spellcheck', 'false');
+  });
 
   return (
     <Box
@@ -285,11 +219,15 @@ const JSONEditor = ({
         </Box>
       )}
       <Editor
+        key={saveViewState ? undefined : path}
         height={'100%'}
         defaultLanguage="json"
         options={{ ...options, readOnly } as any}
         theme="JSONEditorTheme"
         beforeMount={beforeMount}
+        path={path}
+        keepCurrentModel={Boolean(path)}
+        saveViewState={saveViewState}
         value={formatedValue}
         onChange={(e) => {
           onChange?.(e || '');
@@ -302,25 +240,7 @@ const JSONEditor = ({
         wrapperProps={{
           onBlur
         }}
-        onMount={(editor) => {
-          if (!value) {
-            setPlaceholderDisplay('block');
-          } else {
-            setPlaceholderDisplay('none');
-          }
-
-          // Prevent browser autofill from causing getModifierState errors
-          const editorDom = editor.getDomNode();
-          if (editorDom) {
-            const textarea = editorDom.querySelector('textarea');
-            if (textarea) {
-              textarea.setAttribute('autocomplete', 'off');
-              textarea.setAttribute('autocorrect', 'off');
-              textarea.setAttribute('autocapitalize', 'off');
-              textarea.setAttribute('spellcheck', 'false');
-            }
-          }
-        }}
+        onMount={handleEditorDidMount}
       />
       <Box
         className="monaco-placeholder"
