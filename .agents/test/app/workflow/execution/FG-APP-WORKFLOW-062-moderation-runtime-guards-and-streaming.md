@@ -1,6 +1,6 @@
 ---
 case_version: 1
-id: FG-APP-WORKFLOW-052
+id: FG-APP-WORKFLOW-062
 title: 工作流与 Agent 在入口、模型输入和最终输出三阶段的内容审核拦截与替换
 business: app/workflow/execution
 types: [api, ui, e2e, integration]
