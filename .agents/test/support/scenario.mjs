@@ -469,7 +469,13 @@ export function sanitize(value, secrets = new Set()) {
       let result = value;
       for (const secret of secrets)
         if (secret.length >= 6) result = result.split(secret).join('[REDACTED]');
-      return result.replace(/mongodb(?:\+srv)?:\/\/[^\s"']+/g, '[REDACTED_MONGO_URI]');
+      return result
+        .replace(/mongodb(?:\+srv)?:\/\/[^\s"']+/g, '[REDACTED_MONGO_URI]')
+        .replace(/(\/api\/system\/file\/d\/)[a-zA-Z0-9._%-]+/g, '$1[REDACTED_ACCESS_LINK]')
+        .replace(
+          /https?:\/\/[^\s"'<>]*[?&]X-Amz-(?:Signature|Credential)=[^\s"'<>]*/gi,
+          '[REDACTED_SIGNED_URL]'
+        );
     }
     if (value?.toHexString) return value.toHexString();
     if (value instanceof Date) return value.toISOString();

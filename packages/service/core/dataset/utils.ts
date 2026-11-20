@@ -1,6 +1,6 @@
 import { authDatasetByTmbId } from '../../support/permission/dataset/auth';
 import { getTmbInfoByTmbId } from '../../support/user/team/controller';
-import { getWorkflowResourceContext } from '../workflow/utils/context';
+import { getWorkflowResourceContext } from '../workflow/dispatch/context';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getLogger, LogCategories } from '../../common/logger';
 import { isImageEmbeddingModel } from '@fastgpt/global/core/ai/model/utils';

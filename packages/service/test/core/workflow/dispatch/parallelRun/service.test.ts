@@ -9,7 +9,11 @@ import {
   type ParallelTaskResult
 } from '@fastgpt/service/core/workflow/dispatch/parallelRun/service';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum, ParallelRunStatusEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  ParallelRunStatusEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
@@ -34,7 +38,7 @@ const makeNode = (
   inputs: inputs.map((i) => ({
     key: i.key,
     renderTypeList: [],
-    valueType: 'any',
+    valueType: WorkflowIOValueTypeEnum.any,
     label: '',
     value: i.value
   })),
@@ -487,6 +491,33 @@ describe('parallelRun/service', () => {
         loopOutputValue: undefined
       });
       expect(responseDetails[0].childrenResponses).toBeUndefined();
+    });
+
+    it('仅标记最终成功任务的失败重试，不隐藏其他任务的最终失败', () => {
+      const recovered = { ...successResult0, taskResponseId: 'task-0-attempt-2' };
+      const failed = { ...failResult1, taskResponseId: 'task-1-attempt-0' };
+      const { attemptResponseDetails, responseDetails } = aggregateParallelResults(
+        [recovered, failed],
+        {
+          taskInputs: ['a', 'b'],
+          parentNodeId: 'parent',
+          attemptResults: [
+            { ...failResult1, index: 0, taskResponseId: 'task-0-attempt-0' },
+            { ...failResult1, index: 0, taskResponseId: 'task-0-attempt-1' },
+            recovered,
+            failed
+          ]
+        }
+      );
+
+      expect(attemptResponseDetails).toMatchObject([
+        { id: 'task-0-attempt-0', error: 'task failed', errorCaptured: true },
+        { id: 'task-0-attempt-1', error: 'task failed', errorCaptured: true },
+        { id: 'task-0-attempt-2', loopOutputValue: 'data-0' },
+        { id: 'task-1-attempt-0', error: 'task failed' }
+      ]);
+      expect(attemptResponseDetails[3].errorCaptured).toBeUndefined();
+      expect(responseDetails[1].errorCaptured).toBeUndefined();
     });
 
     it('wrapper.runningTime 使用任务自身耗时，不累加子节点耗时', () => {
