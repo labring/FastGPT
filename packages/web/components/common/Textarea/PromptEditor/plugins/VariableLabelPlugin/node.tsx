@@ -11,12 +11,24 @@ import {
   type TextFormatType
 } from 'lexical';
 import VariableLabel from './components/VariableLabel';
+import type { WorkflowReferenceStatus } from '@fastgpt/global/core/workflow/editor/types';
+import { createElement } from 'react';
+
+type VariableLabelInvalidReason = Exclude<WorkflowReferenceStatus['code'], 'empty' | 'valid'>;
+
+type VariableLabelNodeOptions = {
+  variableKey: string;
+  variableLabel: string;
+  nodeAvatar: string;
+  invalidReason?: VariableLabelInvalidReason;
+};
 
 export type SerializedVariableLabelNode = Spread<
   {
     variableKey: string;
     variableLabel: string;
     nodeAvatar: string;
+    invalidReason?: VariableLabelInvalidReason;
     format: number | TextFormatType;
   },
   SerializedLexicalNode
@@ -27,38 +39,43 @@ export class VariableLabelNode extends DecoratorNode<JSX.Element> {
   __variableKey: string;
   __variableLabel: string;
   __nodeAvatar: string;
+  __invalidReason?: VariableLabelInvalidReason;
   static getType(): string {
     return 'variableLabel';
   }
   static clone(node: VariableLabelNode): VariableLabelNode {
-    return new VariableLabelNode(
-      node.__variableKey,
-      node.__variableLabel,
-      node.__nodeAvatar,
-      node.__format,
-      node.__key
-    );
+    return new VariableLabelNode({
+      variableKey: node.__variableKey,
+      variableLabel: node.__variableLabel,
+      nodeAvatar: node.__nodeAvatar,
+      format: node.__format,
+      key: node.__key,
+      invalidReason: node.__invalidReason
+    });
   }
-  constructor(
-    variableKey: string,
-    variableLabel: string,
-    nodeAvatar: string,
-    format?: number | TextFormatType,
-    key?: NodeKey
-  ) {
+  constructor({
+    variableKey,
+    variableLabel,
+    nodeAvatar,
+    format,
+    key,
+    invalidReason
+  }: VariableLabelNodeOptions & { format?: number | TextFormatType; key?: NodeKey }) {
     super(key);
     this.__variableKey = variableKey;
     this.__format = format || 0;
     this.__variableLabel = variableLabel;
     this.__nodeAvatar = nodeAvatar;
+    this.__invalidReason = invalidReason;
   }
 
   static importJSON(serializedNode: SerializedVariableLabelNode): VariableLabelNode {
-    const node = $createVariableLabelNode(
-      serializedNode.variableKey,
-      serializedNode.variableLabel,
-      serializedNode.nodeAvatar
-    );
+    const node = $createVariableLabelNode({
+      variableKey: serializedNode.variableKey,
+      variableLabel: serializedNode.variableLabel,
+      nodeAvatar: serializedNode.nodeAvatar,
+      invalidReason: serializedNode.invalidReason
+    });
     node.setFormat(serializedNode.format);
     return node;
   }
@@ -78,7 +95,8 @@ export class VariableLabelNode extends DecoratorNode<JSX.Element> {
       version: 1,
       variableKey: this.getVariableKey(),
       variableLabel: this.__variableLabel,
-      nodeAvatar: this.__nodeAvatar
+      nodeAvatar: this.__nodeAvatar,
+      ...(this.__invalidReason ? { invalidReason: this.__invalidReason } : {})
     };
   }
   createDOM(): HTMLElement {
@@ -108,17 +126,18 @@ export class VariableLabelNode extends DecoratorNode<JSX.Element> {
   ): string {
     return `${this.__variableKey}`;
   }
-  decorate(_editor: LexicalEditor, config: EditorConfig): JSX.Element {
-    return <VariableLabel variableLabel={this.__variableLabel} nodeAvatar={this.__nodeAvatar} />;
+  decorate(_editor: LexicalEditor, _config: EditorConfig): JSX.Element {
+    return createElement(VariableLabel, {
+      variableKey: this.__variableKey,
+      variableLabel: this.__variableLabel,
+      nodeAvatar: this.__nodeAvatar,
+      invalidReason: this.__invalidReason
+    });
   }
 }
 
-export function $createVariableLabelNode(
-  variableKey: string,
-  variableLabel: string,
-  nodeAvatar: string
-): VariableLabelNode {
-  return new VariableLabelNode(variableKey, variableLabel, nodeAvatar);
+export function $createVariableLabelNode(options: VariableLabelNodeOptions): VariableLabelNode {
+  return new VariableLabelNode(options);
 }
 
 export function $isVariableLabelNode(

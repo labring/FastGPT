@@ -9,7 +9,10 @@ import { getUserModelSummaries } from '@/web/core/ai/model/catalogApi';
 import {
   getModelDefault,
   getModelDetail,
-  getModelReadIdentity
+  getModelReadIdentity,
+  matchesModelFilter,
+  peekModelCatalog,
+  resolveModelDefault
 } from '@/web/core/ai/model/modelData';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
@@ -23,13 +26,53 @@ import {
   workflowDatasetParamModelSlots,
   workflowSystemModelSlots
 } from '@fastgpt/global/core/workflow/model/constants';
-import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type {
+  DeepReadonly,
+  WorkflowEnvironmentModel
+} from '@fastgpt/global/core/workflow/editor/types';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
+
+type WorkflowModelNodeData = Pick<StoreNodeItemType, 'flowNodeType' | 'inputs'>;
+type WorkflowModelNode =
+  | WorkflowModelNodeData
+  | { data: WorkflowModelNodeData }
+  | DeepReadonly<WorkflowModelNodeData>
+  | { data: DeepReadonly<WorkflowModelNodeData> };
+
+const getWorkflowModelNodeData = (node: WorkflowModelNode) =>
+  ('data' in node ? node.data : node) as WorkflowModelNodeData;
+
+/** Runtime 同步读取已验证目录和有效默认模型，目录冷启动期间暂不报错。 */
+export const peekWorkflowEnvironmentModels = ():
+  | {
+      models: WorkflowEnvironmentModel[];
+      defaultModelIds: WorkflowModelCheckData['defaultModelIds'];
+    }
+  | undefined => {
+  const catalog = peekModelCatalog();
+  if (!catalog) return undefined;
+
+  return {
+    models: catalog.modelList
+      .filter((model) => matchesModelFilter(model, {}))
+      .map((model) => ({
+        modelId: model.modelId,
+        ...(isSystemModel(model) ? { legacyModel: model.model } : {}),
+        type: model.type,
+        config: model.config
+      })),
+    defaultModelIds: {
+      [ModelTypeEnum.llm]: resolveModelDefault(catalog, { modelType: ModelTypeEnum.llm })?.modelId,
+      [ModelTypeEnum.tts]: resolveModelDefault(catalog, { modelType: ModelTypeEnum.tts })?.modelId
+    }
+  };
+};
 
 /**
  * 按实际引用读取模型校验信息。个人目录之外的模型通过应用草稿基线确认可用性，
@@ -40,8 +83,8 @@ export const getWorkflowModelCheckData = async ({
   chatConfig,
   appId
 }: {
-  nodes: { data: FlowNodeItemType }[];
-  chatConfig?: AppChatConfigType;
+  nodes: readonly WorkflowModelNode[];
+  chatConfig?: AppChatConfigType | DeepReadonly<AppChatConfigType>;
   appId?: string;
 }): Promise<WorkflowModelCheckData> => {
   const references = new Map<string, { modelId?: string; model?: string }>();
@@ -53,7 +96,8 @@ export const getWorkflowModelCheckData = async ({
     const reference = !isEmptyModelValue(modelId) ? { modelId: value } : { model: value };
     references.set(JSON.stringify(reference), reference);
   };
-  for (const { data } of nodes) {
+  for (const node of nodes) {
+    const data = getWorkflowModelNodeData(node);
     for (const slot of workflowSystemModelSlots) {
       const inputs = getWorkflowNodeModelInputs({ node: data, slot });
       const canonicalInputs = inputs.modelIdInputs.filter((input) => !nodeInputIsReference(input));
