@@ -1,4 +1,11 @@
 import z from 'zod';
+import { optionalNullToUndefined } from '../../common/zod';
+import { OpenObjectOpenApiMeta } from '../../common/zod/openapi';
+import {
+  ChatCompletionMessageParamSchema,
+  ChatCompletionMessageToolCallSchema,
+  CompletionFinishReasonSchema
+} from '../../core/ai/llm/type';
 import { ChatFileTypeEnum } from '../../core/chat/constants';
 
 /* ============================================================================
@@ -101,3 +108,277 @@ export const InvokeFileUploadResponseSchema = z.object({
 
 export type InvokeFileUploadBodyType = z.infer<typeof InvokeFileUploadBodySchema>;
 export type InvokeFileUploadResponseType = z.infer<typeof InvokeFileUploadResponseSchema>;
+
+/* ============================================================================
+ * API: 反向调用大语言模型 Chat Completions
+ * Route: POST /api/invoke/llm/chat/completions
+ * Method: POST
+ * Description: 插件通过 invoke token（需具备 model:invoke 权限）调用平台已授权的 LLM/VLM 模型，100% 兼容 OpenAI Chat Completions 契约
+ * Tags: ['通用-反向调用', '插件']
+ * ============================================================================ */
+export const InvokeChatCompletionToolSchema = z.object({
+  type: z.literal('function').meta({
+    description: '工具类型，固定为 function',
+    example: 'function'
+  }),
+  function: z.object({
+    name: z.string().min(1).meta({
+      description: '工具函数名称',
+      example: 'search_docs'
+    }),
+    description: z.string().optional().meta({
+      description: '工具函数用途说明',
+      example: '检索相关技术文档'
+    }),
+    parameters: z
+      .record(z.string(), z.any())
+      .optional()
+      .meta({
+        ...OpenObjectOpenApiMeta,
+        description: '工具函数入参 JSON Schema'
+      }),
+    strict: z.boolean().nullish().meta({
+      description: '是否启用严格 Schema 校验'
+    })
+  })
+});
+
+export const InvokeChatCompletionToolChoiceSchema = z.union([
+  z.enum(['none', 'auto', 'required']),
+  z.object({
+    type: z.literal('function'),
+    function: z.object({
+      name: z.string().min(1).meta({
+        description: '指定强制调用的工具函数名称',
+        example: 'search_docs'
+      })
+    })
+  })
+]);
+
+export const InvokeChatCompletionResponseFormatSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('text').meta({
+      description: '普通文本输出格式'
+    })
+  }),
+  z.object({
+    type: z.literal('json_object').meta({
+      description: 'JSON 对象输出格式'
+    })
+  }),
+  z.object({
+    type: z.literal('json_schema').meta({
+      description: '结构化 JSON Schema 输出格式'
+    }),
+    json_schema: z
+      .union([
+        z
+          .object({
+            name: z.string().min(1).meta({
+              description: 'JSON Schema 名称',
+              example: 'structured_answer'
+            }),
+            description: z.string().optional().meta({
+              description: 'JSON Schema 说明'
+            }),
+            schema: z
+              .record(z.string(), z.any())
+              .optional()
+              .meta({
+                ...OpenObjectOpenApiMeta,
+                description: 'JSON Schema 定义对象'
+              }),
+            strict: z.boolean().nullish().meta({
+              description: '是否开启严格 Schema 约束'
+            })
+          })
+          .passthrough(),
+        z.string().min(1)
+      ])
+      .meta({
+        description: 'JSON Schema 配置对象或序列化字符串'
+      })
+  })
+]);
+
+export const InvokeChatCompletionStreamOptionsSchema = z
+  .object({
+    include_usage: z.boolean().optional().meta({
+      description: '流式响应结束前是否在末尾 chunk 中包含 token usage 统计',
+      example: true
+    })
+  })
+  .passthrough();
+
+export const InvokeChatCompletionsBodySchema = z
+  .object({
+    model: z.string().trim().min(1).meta({
+      description: 'FastGPT 平台的模型唯一标识 modelId（ai_models._id），禁止直接传上游模型名',
+      example: '68ad85a7463006c963799a05'
+    }),
+    messages: z
+      .array(ChatCompletionMessageParamSchema)
+      .min(1)
+      .meta({
+        description: 'OpenAI 标准对话消息列表（至少包含一条消息）',
+        example: [{ role: 'user', content: '请总结这段文本的核心要点' }]
+      }),
+    stream: optionalNullToUndefined(z.boolean()).meta({
+      description: '是否以 text/event-stream SSE 流式返回结果；默认 false',
+      example: false
+    }),
+    stream_options: optionalNullToUndefined(InvokeChatCompletionStreamOptionsSchema).meta({
+      description: '流式输出附加配置'
+    }),
+    temperature: optionalNullToUndefined(z.number()).meta({
+      description: '采样温度（OpenAI 标准范围，如 0~2）',
+      example: 0.7
+    }),
+    top_p: optionalNullToUndefined(z.number()).meta({
+      description: '核采样概率阈值（0~1）',
+      example: 1
+    }),
+    max_tokens: optionalNullToUndefined(z.number().int().positive()).meta({
+      description: '单次回复最大生成 Token 数',
+      example: 1024
+    }),
+    max_completion_tokens: optionalNullToUndefined(z.number().int().positive()).meta({
+      description: '单次回复最大补全 Token 数（含推理 Token）',
+      example: 1024
+    }),
+    tools: optionalNullToUndefined(z.array(InvokeChatCompletionToolSchema)).meta({
+      description: '可供模型调用的 Function Tool 列表'
+    }),
+    tool_choice: optionalNullToUndefined(InvokeChatCompletionToolChoiceSchema).meta({
+      description: '工具调用选择策略'
+    }),
+    parallel_tool_calls: optionalNullToUndefined(z.boolean()).meta({
+      description: '是否允许模型单轮并行发起多个工具调用'
+    }),
+    response_format: optionalNullToUndefined(InvokeChatCompletionResponseFormatSchema).meta({
+      description: '输出格式约束（text / json_object / json_schema）'
+    }),
+    stop: optionalNullToUndefined(z.union([z.string(), z.array(z.string())])).meta({
+      description: '停止序列（单个字符串或字符串数组）'
+    }),
+    seed: optionalNullToUndefined(z.number().int()).meta({
+      description: '确定性采样随机种子'
+    }),
+    presence_penalty: optionalNullToUndefined(z.number()).meta({
+      description: '存在惩罚系数（-2.0~2.0）'
+    }),
+    frequency_penalty: optionalNullToUndefined(z.number()).meta({
+      description: '频率惩罚系数（-2.0~2.0）'
+    }),
+    logit_bias: optionalNullToUndefined(z.record(z.string(), z.number())).meta({
+      description: '指定 Token 的采样偏置映射'
+    }),
+    logprobs: optionalNullToUndefined(z.boolean()).meta({
+      description: '是否返回输出 Token 的对数概率'
+    }),
+    top_logprobs: optionalNullToUndefined(z.number().int().min(0).max(20)).meta({
+      description: '每个输出位置返回的最可能 Token 数量（0~20）'
+    }),
+    n: optionalNullToUndefined(z.number().int().positive()).meta({
+      description: '生成的候选回复数量',
+      example: 1
+    }),
+    reasoning_effort: optionalNullToUndefined(
+      z.enum(['none', 'minimal', 'low', 'medium', 'high', 'xhigh'])
+    ).meta({
+      description: '推理模型思考强度',
+      example: 'medium'
+    }),
+    user: optionalNullToUndefined(z.string()).meta({
+      description: '终端调用者标识'
+    })
+  })
+  .passthrough();
+
+export type InvokeChatCompletionsBodyType = z.infer<typeof InvokeChatCompletionsBodySchema>;
+
+export const InvokeChatCompletionUsageSchema = z
+  .object({
+    prompt_tokens: z.number().meta({ description: '输入提示词 Token 数', example: 32 }),
+    completion_tokens: z.number().meta({ description: '模型生成输出 Token 数', example: 64 }),
+    total_tokens: z.number().meta({ description: '总消耗 Token 数', example: 96 })
+  })
+  .passthrough();
+
+export const InvokeChatCompletionChoiceMessageSchema = z
+  .object({
+    role: z.literal('assistant').meta({ description: '助手角色标识', example: 'assistant' }),
+    content: z.string().nullable().meta({
+      description: '助手回复文本内容',
+      example: '这是模型生成的结构化总结。'
+    }),
+    reasoning_content: z.string().nullish().meta({
+      description: '推理模型返回的思考过程文本'
+    }),
+    refusal: z.string().nullish().meta({
+      description: '模型安全拒绝说明'
+    }),
+    tool_calls: z.array(ChatCompletionMessageToolCallSchema).optional().meta({
+      description: '模型触发的工具调用列表'
+    })
+  })
+  .passthrough();
+
+export const InvokeChatCompletionsResponseSchema = z
+  .object({
+    id: z.string().meta({ description: '补全响应 ID', example: 'chatcmpl-123' }),
+    object: z.string().meta({ description: 'OpenAI 对象类型', example: 'chat.completion' }),
+    created: z.number().meta({ description: '响应创建时间戳（秒）', example: 1700000000 }),
+    model: z.string().meta({ description: '实际执行推理的上游模型名称', example: 'gpt-4o' }),
+    choices: z
+      .array(
+        z
+          .object({
+            index: z.number().meta({ description: '候选回复索引', example: 0 }),
+            message: InvokeChatCompletionChoiceMessageSchema,
+            finish_reason: CompletionFinishReasonSchema
+          })
+          .passthrough()
+      )
+      .meta({ description: '候选补全结果列表' }),
+    usage: InvokeChatCompletionUsageSchema.optional().meta({
+      description: '本次调用的 Token 消耗统计'
+    }),
+    system_fingerprint: z.string().nullish().meta({
+      description: '上游模型服务指纹'
+    })
+  })
+  .passthrough();
+
+export type InvokeChatCompletionsResponseType = z.infer<typeof InvokeChatCompletionsResponseSchema>;
+
+export const InvokeChatCompletionsSseResponseSchema = z.string().meta({
+  description:
+    '标准 OpenAI ChatCompletionChunk SSE 事件流，每帧为 data: <JSON> 并以 data: [DONE] 结束',
+  example:
+    'data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1700000000,"model":"gpt-4o","choices":[{"index":0,"delta":{"role":"assistant","content":"你好"},"finish_reason":null}]}\n\ndata: [DONE]\n\n'
+});
+
+export type InvokeChatCompletionsSseResponseType = z.infer<
+  typeof InvokeChatCompletionsSseResponseSchema
+>;
+
+export const InvokeOpenAIErrorResponseSchema = z.object({
+  error: z.object({
+    message: z.string().meta({
+      description: '可读错误说明',
+      example: 'Model not found or disabled'
+    }),
+    type: z.string().meta({
+      description: 'OpenAI 兼容错误分类',
+      example: 'invalid_request_error'
+    }),
+    code: z.string().nullable().optional().meta({
+      description: '机器可读错误码',
+      example: 'model_not_found'
+    })
+  })
+});
+
+export type InvokeOpenAIErrorResponseType = z.infer<typeof InvokeOpenAIErrorResponseSchema>;

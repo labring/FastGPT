@@ -3,6 +3,7 @@ import { dispatchTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/s
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { PluginPermissionEnum } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
@@ -445,7 +446,16 @@ describe('dispatchTool runtime toolset auth', () => {
   });
 
   it('signs the system-tool invoke token as the runtime caller, not the app owner', async () => {
+    getSystemToolRuntimeMock.mockResolvedValueOnce({
+      id: 'search',
+      version: '1.0.0',
+      currentCost: 0,
+      systemKeyCost: 0,
+      secretsVal: {},
+      permissions: [PluginPermissionEnum['model:invoke']]
+    });
     const props = createDispatchToolProps({ systemTool: { toolId: 'systemTool-search' } });
+    props.usageId = 'usage-agent-tool-1';
     props.runningAppInfo = {
       ...props.runningAppInfo,
       sourceType: ChatSourceTypeEnum.app,
@@ -469,7 +479,10 @@ describe('dispatchTool runtime toolset auth', () => {
       teamId: 'caller-team',
       tmbId: 'caller-tmb',
       uId: 'uid',
-      appId: 'app-id'
+      appId: 'app-id',
+      permissions: ['model:invoke'],
+      usageId: 'usage-agent-tool-1',
+      toolId: 'systemTool-search'
     });
     expect(pushTrack.runSystemTool).toHaveBeenCalledWith({
       teamId: 'caller-team',

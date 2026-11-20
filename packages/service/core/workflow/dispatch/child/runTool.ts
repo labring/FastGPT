@@ -23,7 +23,8 @@ import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import { pushTrack } from '../../../../common/middle/tracks/utils';
 import { getNodeErrResponse } from '../utils';
 import { getHTTPToolList, runHTTPTool } from '../../../app/http';
-import { getWorkflowContext } from '../../utils/context';
+import { getWorkflowContext, getWorkflowResourceContext } from '../../utils/context';
+import { PluginPermissionEnum } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { getAppVersionById } from '../../../app/version/controller';
 import {
   HttpToolSetRuntimeConfigSchema,
@@ -273,15 +274,28 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       toolInput = Object.fromEntries(
         Object.entries(params).filter(([key]) => key !== NodeInputKeyEnum.systemInputConfig)
       );
+      const resourceContext = getWorkflowResourceContext();
+      const teamId = String(runningUserInfo.teamId);
+      const authorizedModelIds =
+        tool.permissions?.includes(PluginPermissionEnum['model:invoke']) &&
+        resourceContext &&
+        (!resourceContext.teamId || resourceContext.teamId === teamId)
+          ? Array.from(resourceContext.resourceMap.values())
+              .filter((item) => item.type === 'model')
+              .map((item) => item.id)
+          : [];
       const invokeToken = appId
         ? new InvokeProcessor({
             appId,
             chatId,
             uId,
-            teamId: String(runningUserInfo.teamId),
+            teamId,
             tmbId: String(runningUserInfo.tmbId),
+            permissions: tool.permissions ?? [],
             usageId: props.usageId,
-            permissions: tool.permissions ?? []
+            toolId: toolConfig.systemTool.toolId,
+            ...(resourceContext?.isRoot ? { isRoot: true } : {}),
+            ...(authorizedModelIds.length > 0 ? { authorizedModelIds } : {})
           }).generateToken()
         : undefined;
 

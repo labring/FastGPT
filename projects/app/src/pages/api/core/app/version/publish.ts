@@ -23,12 +23,14 @@ import {
   updateParentFoldersUpdateTime
 } from '@fastgpt/service/core/app/controller';
 import { assertAppDatasetIndexModelsAvailable } from '@fastgpt/service/core/dataset/model';
-import { extractAppResources } from '@fastgpt/service/core/app/resource/utils';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
-import { resolveAppResourcesByPermission } from '@fastgpt/service/core/app/resource/service';
+import {
+  extractAppResourcesWithToolModels,
+  resolveAppResourcesByPermission
+} from '@fastgpt/service/core/app/resource/service';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { normalizeAppWorkflow } from '@fastgpt/service/core/app/version/controller';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -84,9 +86,11 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     nodes: normalizedWorkflow.nodes,
     teamId
   });
-  const extracted = extractAppResources({
+  const extracted = await extractAppResourcesWithToolModels({
     nodes: normalizedWorkflow.nodes,
-    chatConfig: normalizedWorkflow.chatConfig
+    chatConfig: normalizedWorkflow.chatConfig,
+    teamId,
+    modelHandle
   });
   if (autoSave) {
     await mongoSessionRun(async (session) => {

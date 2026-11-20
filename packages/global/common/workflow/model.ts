@@ -26,13 +26,24 @@ const systemLLMNodeTypes = new Set<FlowNodeTypeEnum>([
   FlowNodeTypeEnum.toolCall
 ]);
 
+const externalModelInputNodeTypes = new Set<FlowNodeTypeEnum>([
+  FlowNodeTypeEnum.tool,
+  FlowNodeTypeEnum.toolSet,
+  FlowNodeTypeEnum.pluginModule,
+  FlowNodeTypeEnum.appModule,
+  FlowNodeTypeEnum.runApp,
+  FlowNodeTypeEnum.pluginInput,
+  FlowNodeTypeEnum.formInput,
+  FlowNodeTypeEnum.workflowStart
+]);
+
 /** 识别整体由工作流变量提供的模型表达式；实际模型 ID 由执行点解析并鉴权。 */
 export const isWorkflowModelExpression = (value: unknown) =>
   typeof value === 'string' && /^\{\{.*\}\}$/.test(value);
 
 /**
  * 判断模型字段是否属于 FastGPT 系统模型引用。
- * 外部工具可以自由声明 model/rerankModel 等同名参数，因此不能只根据 key 判断。
+ * 外部工具可以自由声明 model/rerankModel 等同名参数，即使使用 selectLLMModel 控件也不能改写其参数 key。
  */
 export const isWorkflowSystemModelInput = ({
   node,
@@ -41,6 +52,8 @@ export const isWorkflowSystemModelInput = ({
   node: Pick<StoreNodeItemType, 'flowNodeType'>;
   input: FlowNodeInputItemType;
 }) => {
+  if (externalModelInputNodeTypes.has(node.flowNodeType)) return false;
+
   if (input.key === NodeInputKeyEnum.aiModel || input.key === NodeInputKeyEnum.aiModelId) {
     const renderTypeList = input.renderTypeList ?? [];
     return (

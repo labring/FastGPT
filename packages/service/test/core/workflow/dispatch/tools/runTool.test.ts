@@ -7,6 +7,8 @@ import {
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { PluginPermissionEnum } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { MCPClient } from '@fastgpt/service/core/app/mcp';
 import { getWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/context';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
@@ -807,10 +809,50 @@ describe('dispatchRunTool runtime toolset auth', () => {
     expect(runParams.systemVar.chat.usageId).toBe('usage-1');
     expect(runParams.systemVar.usageId).toBe('usage-1');
 
-    const token = runParams.systemVar.invokeToken as string;
+    const token = runToolStreamMock.mock.calls[0][0].systemVar.invokeToken as string;
     const [, payload] = token.split('.');
     const tokenPayload = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
     expect(tokenPayload.usageId).toBe('usage-1');
+  });
+
+  it('includes usageId, toolId and model:invoke permission in system-tool invokeToken', async () => {
+    getSystemToolRuntimeMock.mockResolvedValueOnce({
+      id: 'systemTool-search',
+      version: '1.0.0',
+      currentCost: 0,
+      systemKeyCost: 0,
+      permissions: [PluginPermissionEnum['model:invoke']]
+    });
+
+    const props = createRunToolProps({
+      systemTool: {
+        toolId: 'systemTool-search'
+      }
+    });
+    props.usageId = 'usage-run-tool-1';
+    props.runningAppInfo = {
+      ...props.runningAppInfo,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app-run-tool-1'
+    };
+
+    const result = await dispatchRunTool(props);
+    expect(result.error).toBeUndefined();
+
+    const token = runToolStreamMock.mock.calls[0][0].systemVar.invokeToken as string;
+    const [, payload] = token.split('.');
+    const tokenPayload = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+
+    expect(tokenPayload).toMatchObject({
+      appId: 'app-run-tool-1',
+      chatId: 'chat',
+      uId: 'uid',
+      teamId: 'attacker-team',
+      tmbId: 'caller-without-toolset-permission',
+      permissions: ['model:invoke'],
+      usageId: 'usage-run-tool-1',
+      toolId: 'systemTool-search'
+    });
   });
 });
 

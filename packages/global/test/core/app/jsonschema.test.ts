@@ -365,6 +365,90 @@ describe('jsonSchema2NodeInput', () => {
     });
   });
 
+  it('should map format: "modelId" string properties to selectLLMModel and deny agent generation', () => {
+    const schema: JSONSchemaInputType = {
+      type: 'object',
+      required: ['model'],
+      properties: {
+        model: {
+          type: 'string',
+          format: 'modelId',
+          title: 'Model',
+          description: 'Model for analysis',
+          default: 'default-model-id',
+          isToolParam: true,
+          'x-i18n': {
+            title: { en: 'Analysis Model', 'zh-CN': '分析模型' },
+            description: { en: 'Select LLM model', 'zh-CN': '选择对话模型' },
+            placeholder: { en: 'Choose a model', 'zh-CN': '请选择模型' }
+          }
+        },
+        nullableModel: {
+          anyOf: [{ type: 'string', format: 'modelId' }, { type: 'null' }]
+        },
+        nonStringModelFormat: {
+          type: 'number',
+          format: 'modelId'
+        }
+      }
+    };
+
+    const systemToolInputs = jsonSchema2NodeInput({
+      schemaType: 'systemTool',
+      lang: 'zh-CN',
+      jsonSchema: schema
+    });
+    expect(systemToolInputs[0]).toMatchObject({
+      key: 'model',
+      label: '分析模型',
+      description: '选择对话模型',
+      placeholder: '请选择模型',
+      valueType: WorkflowIOValueTypeEnum.string,
+      renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+      selectedType: FlowNodeInputTypeEnum.selectLLMModel,
+      defaultValue: 'default-model-id',
+      required: true,
+      canAgentGenerated: false,
+      defaultToAgentGenerated: false
+    });
+    expect(systemToolInputs[1]).toMatchObject({
+      key: 'nullableModel',
+      valueType: WorkflowIOValueTypeEnum.string,
+      renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+      selectedType: FlowNodeInputTypeEnum.selectLLMModel,
+      required: false,
+      canAgentGenerated: false,
+      defaultToAgentGenerated: false
+    });
+    expect(systemToolInputs[2]).toMatchObject({
+      key: 'nonStringModelFormat',
+      valueType: WorkflowIOValueTypeEnum.number,
+      renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference]
+    });
+
+    const mcpInputs = jsonSchema2NodeInput({
+      schemaType: 'mcp',
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          model: {
+            type: ['string', 'null'],
+            format: 'modelId',
+            description: 'MCP model'
+          }
+        }
+      }
+    });
+    expect(mcpInputs[0]).toMatchObject({
+      key: 'model',
+      valueType: WorkflowIOValueTypeEnum.string,
+      renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+      selectedType: FlowNodeInputTypeEnum.selectLLMModel,
+      canAgentGenerated: false,
+      defaultToAgentGenerated: false
+    });
+  });
+
   it('should render integer schema fields as number input', () => {
     const result = jsonSchema2NodeInput({
       schemaType: 'mcp',
@@ -1545,7 +1629,8 @@ describe('nodeInputs2JsonSchema', () => {
       FlowNodeInputTypeEnum.switch,
       FlowNodeInputTypeEnum.timePointSelect,
       FlowNodeInputTypeEnum.timeRangeSelect,
-      FlowNodeInputTypeEnum.customVariable
+      FlowNodeInputTypeEnum.customVariable,
+      FlowNodeInputTypeEnum.selectLLMModel
     ];
     const supportedValueTypes = [
       WorkflowIOValueTypeEnum.string,
@@ -1557,11 +1642,11 @@ describe('nodeInputs2JsonSchema', () => {
       WorkflowIOValueTypeEnum.boolean,
       WorkflowIOValueTypeEnum.string,
       WorkflowIOValueTypeEnum.arrayString,
+      WorkflowIOValueTypeEnum.string,
       WorkflowIOValueTypeEnum.string
     ];
     const ignoredRenderTypes = [
       FlowNodeInputTypeEnum.fileSelect,
-      FlowNodeInputTypeEnum.selectLLMModel,
       FlowNodeInputTypeEnum.selectDataset,
       FlowNodeInputTypeEnum.addInputParam
     ];

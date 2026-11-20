@@ -514,6 +514,13 @@ describe('formatModels', () => {
             label: 'Business model parameter',
             value: 'gpt-4',
             renderTypeList: [FlowNodeInputTypeEnum.select]
+          },
+          {
+            key: NodeInputKeyEnum.aiModel,
+            label: 'Plugin reverse invoke model',
+            value: models[0].modelId,
+            selectedType: FlowNodeInputTypeEnum.selectLLMModel,
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
           }
         ],
         outputs: []
@@ -521,9 +528,15 @@ describe('formatModels', () => {
     ];
 
     formatModels({ nodes, models, modelReferencePolicy: 'fallback' });
+    addModelNamesToWorkflow({ nodes, models });
 
     expect(nodes[0].inputs).toEqual([
-      expect.objectContaining({ key: NodeInputKeyEnum.aiModel, value: 'gpt-4' })
+      expect.objectContaining({ key: NodeInputKeyEnum.aiModel, value: 'gpt-4' }),
+      expect.objectContaining({
+        key: NodeInputKeyEnum.aiModel,
+        value: models[0].modelId,
+        renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+      })
     ]);
   });
 

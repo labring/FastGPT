@@ -114,11 +114,12 @@ describe('Agent read_files tool protocol', () => {
     expect(dispatchAgentDatasetSearchMock).not.toHaveBeenCalled();
   });
 
-  it('does not forward child tool streams from Agent', async () => {
+  it('does not forward child tool streams from Agent and passes usageId to dispatchTool', async () => {
     const streamResponseFn = vi.fn();
     dispatchToolMock.mockResolvedValue({ response: 'ok' });
     const executeTool = createExecuteToolForTest({
       stream: true,
+      usageId: 'usage-agent-sub-1',
       streamResponseFn,
       getSubApp: () => ({
         type: 'tool',
@@ -138,6 +139,7 @@ describe('Agent read_files tool protocol', () => {
 
     expect(dispatchToolMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        usageId: 'usage-agent-sub-1',
         workflowStreamResponse: undefined
       })
     );

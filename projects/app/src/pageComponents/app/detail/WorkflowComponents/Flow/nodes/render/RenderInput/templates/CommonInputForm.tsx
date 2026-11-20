@@ -9,6 +9,7 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
+import { isWorkflowSystemModelInput } from '@fastgpt/global/common/workflow/model';
 import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
 import { workflowModelKeyMappings } from '@fastgpt/global/core/workflow/model/constants';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
@@ -62,14 +63,19 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
           value = value.slice(0, 1000000);
         }
       }
-      if (item.key === NodeInputKeyEnum.aiModel || item.key === NodeInputKeyEnum.aiModelId) {
+      const node = getNodeById(nodeId);
+      const isSystemModelInput = !node || isWorkflowSystemModelInput({ node, input: item });
+      if (
+        isSystemModelInput &&
+        (item.key === NodeInputKeyEnum.aiModel || item.key === NodeInputKeyEnum.aiModelId)
+      ) {
         setDefaultModel(value);
       }
 
       const modelIdKey = workflowModelKeyMappings.find(
         ([legacyKey]) => legacyKey === item.key
       )?.[1];
-      if (inputType === InputTypeEnum.selectLLMModel && modelIdKey) {
+      if (inputType === InputTypeEnum.selectLLMModel && modelIdKey && isSystemModelInput) {
         onChangeNode({
           nodeId,
           type: 'replaceInput',
@@ -86,7 +92,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
         value: { ...item, value }
       });
     },
-    [inputType, item, nodeId, onChangeNode, setDefaultModel]
+    [getNodeById, inputType, item, nodeId, onChangeNode, setDefaultModel]
   );
 
   // 嵌套容器节点（loop/parallelRun/loopRun）里的 select 下拉向上展开，避免被子节点覆盖。

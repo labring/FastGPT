@@ -28,7 +28,7 @@ import {
   beforeUpdateAppFormat,
   updateParentFoldersUpdateTime
 } from '@fastgpt/service/core/app/controller';
-import { extractAppResources } from '@fastgpt/service/core/app/resource/utils';
+import { extractAppResourcesWithToolModels } from '@fastgpt/service/core/app/resource/service';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { isPluginSystemTemplate } from '@fastgpt/service/core/app/templates/register';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
@@ -257,9 +257,11 @@ export const onCreateApp = async ({
         });
         // 新建、导入或复制应用时，仅将操作人有权限读取的资源写入初始快照，无权限或不存在的资源不阻断创建。
         const resources = await filterAuthorizedAppResources({
-          resources: extractAppResources({
+          resources: await extractAppResourcesWithToolModels({
             nodes: workflow.nodes,
-            chatConfig: workflow.chatConfig
+            chatConfig: workflow.chatConfig,
+            teamId,
+            modelHandle
           }),
           tmbId,
           teamId,
