@@ -21,10 +21,6 @@ export const readFromSecondary = {
   } // local | majority | linearizable | available
 };
 
-export const readFromPrimary = {
-  readPreference: ReadPreference.PRIMARY
-};
-
 export const writePrimary = {
   writeConcern: {
     w: 1,
