@@ -146,4 +146,70 @@ describe('S3ChatSource.createGetChatFileURL', () => {
       filename: 'cover'
     });
   });
+
+  it('reuses SDK safe extension rules so bare extension names like png still fall back to S3 MIME metadata', async () => {
+    const source = Object.create(S3ChatSource.prototype) as InstanceType<typeof S3ChatSource>;
+    const fileId = '0123456789abcdef0123456789abcdef';
+    const key = `chat/app/app-1/user-1/chat-1/file/${fileId}`;
+    const createExternalUrl = vi.fn().mockResolvedValue({ url: 'https://files.test/signed.png' });
+    const getFileMetadata = vi
+      .fn()
+      .mockResolvedValueOnce({
+        filename: 'png',
+        extension: '',
+        contentType: 'image/png',
+        contentLength: 10
+      })
+      .mockResolvedValueOnce({
+        filename: 'png',
+        extension: '',
+        contentType: 'application/octet-stream',
+        contentLength: 10
+      })
+      .mockResolvedValueOnce({
+        filename: 'v1.2',
+        extension: '',
+        contentType: 'image/webp',
+        contentLength: 10
+      });
+    Object.assign(source, { createExternalUrl, getFileMetadata });
+
+    await source.createGetChatFileURL({
+      key,
+      external: true,
+      filename: 'png'
+    });
+    expect(createExternalUrl).toHaveBeenNthCalledWith(1, {
+      key,
+      expiredHours: 1,
+      filename: 'png',
+      fallbackExtension: 'png'
+    });
+
+    // 元数据本身为无类型二进制且原文件名也无点后缀时，不把裸名 png 误当作 .png 后缀
+    await source.createGetChatFileURL({
+      key,
+      external: true,
+      filename: 'png'
+    });
+    expect(createExternalUrl).toHaveBeenNthCalledWith(2, {
+      key,
+      expiredHours: 1,
+      filename: 'png'
+    });
+
+    // 纯数字后缀（如 v1.2）会被 SDK 忽略，仍应通过 S3 MIME 补齐扩展名
+    await source.createGetChatFileURL({
+      key,
+      external: true,
+      filename: 'v1.2'
+    });
+    expect(createExternalUrl).toHaveBeenNthCalledWith(3, {
+      key,
+      expiredHours: 1,
+      filename: 'v1.2',
+      fallbackExtension: 'webp'
+    });
+    expect(getFileMetadata).toHaveBeenCalledTimes(3);
+  });
 });

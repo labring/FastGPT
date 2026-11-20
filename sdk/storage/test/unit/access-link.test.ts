@@ -521,6 +521,7 @@ describe('S3 access link SDK core', () => {
   });
 
   it('generates Base62 default aliasIds and normalizes safe extensions', () => {
+    const { service } = createDeterministicService();
     const idGenerator = createDefaultIdGenerator();
     for (let index = 0; index < 32; index++) {
       expect(idGenerator.aliasId()).toMatch(/^[A-Za-z0-9]{16}$/);
@@ -531,6 +532,25 @@ describe('S3 access link SDK core', () => {
     expect(normalizeS3DownloadExtension('..png')).toBe('');
     expect(normalizeS3DownloadExtension('2026')).toBe('');
     expect(normalizeS3DownloadExtension('tar.gz')).toBe('');
+    expect(
+      service.resolveDownloadExtension({
+        filename: 'png',
+        objectKey: 'chat/app/app-1/user-1/chat-1/file/opaque-id'
+      })
+    ).toBe('');
+    expect(
+      service.resolveDownloadExtension({
+        filename: 'png',
+        objectKey: 'chat/app/app-1/user-1/chat-1/file/opaque-id',
+        fallbackExtension: 'png'
+      })
+    ).toBe('png');
+    expect(
+      service.resolveDownloadExtension({
+        filename: 'report.2026',
+        objectKey: 'chat/app/app-1/user-1/chat-1/file/opaque-id'
+      })
+    ).toBe('');
     expect(
       resolveS3DownloadExtension({
         filename: '显示名无后缀',

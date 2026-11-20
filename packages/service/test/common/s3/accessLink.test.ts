@@ -369,6 +369,76 @@ describe('s3 access link', () => {
     ).toBe('');
   });
 
+  it('round-trips build and resolve consistently for path-prefixed fileDomain, publicUrl, and short prefixes', async () => {
+    const v2Alias = 'v2-R7mQG0Yh2kVxP9Za-200000-4k9LmN2pQrStUvWxYz12Ab.png';
+
+    // 1. storage.fileDomain 带网关路径且 NEXT_PUBLIC_BASE_URL 为空
+    await loadAccessLinkModules({
+      fileDomain: 'https://files.example.com/gateway',
+      publicUrl: 'https://app.example.com',
+      fileDownloadPublicUrlPrefix: '',
+      nextPublicBaseUrl: ''
+    });
+    const gatewayUrlMod = await import('@fastgpt/service/common/s3/accessLink/url');
+    const gatewayFileContextMod = await import('@fastgpt/service/core/chat/fileContext');
+    const gatewayIssued = gatewayUrlMod.buildS3AccessLinkDownloadUrl(v2Alias);
+    expect(gatewayIssued).toBe(`https://files.example.com/gateway/api/system/file/d/${v2Alias}`);
+    expect(gatewayUrlMod.resolveS3DownloadAliasFromUrl(gatewayIssued)).toBe(v2Alias);
+    expect(gatewayFileContextMod.resolveSignedDownloadAliasFromUrl(gatewayIssued)).toBe(v2Alias);
+    expect(
+      gatewayUrlMod.resolveS3DownloadAliasFromUrl(`/gateway/api/system/file/d/${v2Alias}`)
+    ).toBe(v2Alias);
+    // 同域名非下载路由与其他域名同路径均不误判
+    expect(
+      gatewayUrlMod.resolveS3DownloadAliasFromUrl(
+        `https://files.example.com/gateway/reports/${v2Alias}`
+      )
+    ).toBe('');
+    expect(
+      gatewayUrlMod.resolveS3DownloadAliasFromUrl(
+        `https://other.example.com/gateway/api/system/file/d/${v2Alias}`
+      )
+    ).toBe('');
+
+    // 2. storage.fileDomain 带首尾空白与路径 + 非空 NEXT_PUBLIC_BASE_URL
+    await loadAccessLinkModules({
+      fileDomain: '  https://files.example.com/gateway/  ',
+      publicUrl: '',
+      fileDownloadPublicUrlPrefix: '',
+      nextPublicBaseUrl: '/fastgpt'
+    });
+    const combinedUrlMod = await import('@fastgpt/service/common/s3/accessLink/url');
+    const combinedIssued = combinedUrlMod.buildS3AccessLinkDownloadUrl(v2Alias);
+    expect(combinedIssued).toBe(
+      `https://files.example.com/gateway/fastgpt/api/system/file/d/${v2Alias}`
+    );
+    expect(combinedUrlMod.resolveS3DownloadAliasFromUrl(combinedIssued)).toBe(v2Alias);
+
+    // 3. 仅配置带路径的 site.publicUrl（含大写协议与尾斜杠）
+    await loadAccessLinkModules({
+      fileDomain: '',
+      publicUrl: 'HTTPS://app.example.com/portal/',
+      fileDownloadPublicUrlPrefix: '',
+      nextPublicBaseUrl: ''
+    });
+    const publicUrlMod = await import('@fastgpt/service/common/s3/accessLink/url');
+    const publicUrlIssued = publicUrlMod.buildS3AccessLinkDownloadUrl(v2Alias);
+    expect(publicUrlIssued).toBe(`HTTPS://app.example.com/portal/api/system/file/d/${v2Alias}`);
+    expect(publicUrlMod.resolveS3DownloadAliasFromUrl(publicUrlIssued)).toBe(v2Alias);
+
+    // 4. 配置多段路径的 FILE_DOWNLOAD_PUBLIC_URL_PREFIX
+    await loadAccessLinkModules({
+      fileDomain: 'https://files.example.com/gateway',
+      publicUrl: 'https://app.example.com',
+      fileDownloadPublicUrlPrefix: 'https://short.example.com/gateway/f/',
+      nextPublicBaseUrl: ''
+    });
+    const shortPrefixMod = await import('@fastgpt/service/common/s3/accessLink/url');
+    const shortPrefixIssued = shortPrefixMod.buildS3AccessLinkDownloadUrl(v2Alias);
+    expect(shortPrefixIssued).toBe(`https://short.example.com/gateway/f/${v2Alias}`);
+    expect(shortPrefixMod.resolveS3DownloadAliasFromUrl(shortPrefixIssued)).toBe(v2Alias);
+  });
+
   it('supports STORAGE_DOWNLOAD_SIGN_VERSION=v1 for staged rollout while still verifying v2 aliases', async () => {
     const v2Modules = await loadAccessLinkModules({ storageDownloadSignVersion: 'v2' });
     const params = {

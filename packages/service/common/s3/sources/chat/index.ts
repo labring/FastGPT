@@ -18,8 +18,8 @@ import { createUploadConstraints } from '../../utils/uploadConstraints';
 import { encodeS3ObjectKeySegment } from '../../keySanitizer';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getLogger, LogCategories } from '../../../logger';
+import { s3AccessLinkService } from '../../accessLink/accessLinkService';
 import { resolveS3DownloadMimeFallbackExtension } from '../../accessLink/utils';
-import { resolveMimeType } from '../../utils/mime';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 const getChatFileScope = ({
@@ -114,20 +114,12 @@ export class S3ChatSource extends S3PrivateBucket {
   }) {
     const { key, expiredHours = 1, external = false, filename } = params; // 默认一个小时
     const needsFilenameMetadata = isOpaqueS3FileKey(key) && !filename;
-    // 文件名与对象键均无法识别扩展名（例如历史回显传入无后缀展示名 cover 且 key 无后缀）时，
-    // 读取 S3 元数据以借助已存 MIME 为短链补充真实扩展名。
-    const needsMimeExtensionFallback = (() => {
-      if (filename && resolveMimeType([filename], '')) return false;
-      const keyBasename = (() => {
-        const rawBasename = path.posix.basename(key);
-        try {
-          return decodeURIComponent(rawBasename);
-        } catch {
-          return rawBasename;
-        }
-      })();
-      return !resolveMimeType([keyBasename], '');
-    })();
+    // 复用 SDK 安全后缀规则判断是否已能从 filename 或 objectKey 推导后缀；
+    // 推导为空（例如无后缀展示名 cover / png、纯数字后缀或无后缀历史 key）时读取 S3 元数据以补充真实后缀。
+    const needsMimeExtensionFallback = !s3AccessLinkService.resolveDownloadExtension({
+      filename,
+      objectKey: key
+    });
     const fileMetadata =
       external && (needsFilenameMetadata || needsMimeExtensionFallback)
         ? await this.getFileMetadata(key).catch((error) => {
@@ -146,7 +138,10 @@ export class S3ChatSource extends S3PrivateBucket {
       const fallbackExtension =
         resolveS3DownloadMimeFallbackExtension(fileMetadata?.contentType) ||
         (fileMetadata?.filename
-          ? resolveS3DownloadMimeFallbackExtension(resolveMimeType([fileMetadata.filename], ''))
+          ? s3AccessLinkService.resolveDownloadExtension({
+              filename: fileMetadata.filename,
+              objectKey: key
+            })
           : '');
 
       return await this.createExternalUrl({

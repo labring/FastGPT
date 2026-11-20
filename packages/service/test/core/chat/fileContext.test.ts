@@ -98,6 +98,7 @@ import {
   rewriteChatMessagesWithFileContext,
   getFileContentByUrl,
   getFileInfoFromUrl,
+  resolveSignedDownloadAliasFromUrl,
   type FileReadContext
 } from '@fastgpt/service/core/chat/fileContext';
 import {
@@ -1247,6 +1248,43 @@ describe('getFileInfoFromUrl', () => {
     } finally {
       (serviceEnv as { FILE_DOWNLOAD_PUBLIC_URL_PREFIX?: string }).FILE_DOWNLOAD_PUBLIC_URL_PREFIX =
         originalPublicPrefix;
+    }
+  });
+
+  it('带路径前缀的 storage.fileDomain 签发短链仍按本实例私有短链校验并保留本地元数据', async () => {
+    const savedConfig = global.systemInstanceConfig;
+    const savedBuckets = global.s3BucketMap;
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    getTestInstanceConfig().storage.fileDomain = 'https://files.example.com/gateway';
+    try {
+      const { buildS3AccessLinkDownloadUrl } =
+        await import('@fastgpt/service/common/s3/accessLink/url');
+      const v2Alias = 'v2-R7mQG0Yh2kVxP9Za-200000-4k9LmN2pQrStUvWxYz12Ab.png';
+      const issuedUrl = buildS3AccessLinkDownloadUrl(v2Alias);
+      expect(issuedUrl).toBe(`https://files.example.com/gateway/api/system/file/d/${v2Alias}`);
+      expect(resolveSignedDownloadAliasFromUrl(issuedUrl)).toBe(v2Alias);
+
+      mockVerifyS3DownloadAccess.mockResolvedValueOnce({
+        bucketName: S3Buckets.private,
+        objectKey: 'chat/workflowBuilder/app-1/u-1/c-1/file/opaque-id',
+        filename: 'builder-diagram.png',
+        responseContentType: 'image/png'
+      });
+      global.s3BucketMap = {
+        [S3Buckets.private]: {
+          client: {
+            getObjectMetadata: vi.fn().mockResolvedValue({ contentLength: 12 }),
+            downloadObject: vi.fn()
+          }
+        }
+      } as any;
+
+      const info = await getFileInfoFromUrl({ url: issuedUrl, teamId: 'team-1' });
+      expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(v2Alias);
+      expect(info.filename).toBe('builder-diagram.png');
+    } finally {
+      global.systemInstanceConfig = savedConfig;
+      global.s3BucketMap = savedBuckets;
     }
   });
 });

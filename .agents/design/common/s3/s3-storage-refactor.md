@@ -114,20 +114,20 @@ Mongo 是跨实例一致性的必要状态，不使用进程内缓存。性能�
 | `STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS` | 302 临时 S3 URL TTL，默认 300 秒 |
 | `FILE_DOMAIN` | 完整 FastGPT 文件 API 域名，同时影响上传和下载 URL |
 | `FILE_DOWNLOAD_PUBLIC_URL_PREFIX` | 可选下载短链公开前缀，只影响下载 |
-| `STORAGE_DOWNLOAD_SIGN_VERSION` | 下载短链签发格式版本，默认 `v2`；多实例滚动升级或代理过渡期可暂设为 `v1`，服务端始终同时校验 `v1` 与 `v2` |
+| `STORAGE_DOWNLOAD_SIGN_VERSION` | 下载短链签发格式版本，默认 `v2`；按进程读取，多实例滚动升级或代理过渡期需在**所有签发进程**（`projects/app` 与 `pro/admin`）同步暂设为 `v1`，下载接收端始终同时校验 `v1` 与 `v2` |
 | `STORAGE_EXTERNAL_ENDPOINT` / `STORAGE_S3_CDN_ENDPOINT` | `short-redirect` 使用的客户端可访问地址 |
 
-使用 nginx 缩短公开下载路径时，可配置：
+使用 nginx 缩短公开下载路径时，因为正则中包含 `{12,32}` 等花括号量词，表达式**必须使用引号包裹**，可配置并通过 `nginx -t` 校验：
 
 ```nginx
-location ~ ^/((?:v2-[A-Za-z0-9_-]{12,32}-[0-9a-z]{1,8}-[A-Za-z0-9]{16,64}(?:\.[a-z0-9]{1,16})?|[A-Za-z0-9_-]{12,32}\.[0-9a-z]{1,8}\.[A-Za-z0-9_-]{16,64}))$ {
+location ~ "^/((?:v2-[A-Za-z0-9_-]{12,32}-[0-9a-z]{1,8}-[A-Za-z0-9]{16,64}(?:\.(?=[a-z0-9]*[a-z])[a-z0-9]{1,16})?|[A-Za-z0-9_-]{12,32}\.[0-9a-z]{1,8}\.[A-Za-z0-9_-]{16,64}))$" {
   proxy_pass http://host.docker.internal:3000/api/system/file/d/$1;
   proxy_set_header Host $host;
   proxy_set_header X-Forwarded-Proto $scheme;
 }
 ```
 
-同时设置 `FILE_DOWNLOAD_PUBLIC_URL_PREFIX=http://localhost:8088`。Plugin、Pro 和浏览器拿到的仍是主 App 生成的 URL，不需要各自配置或实现文件下载 public API。
+同时设置 `FILE_DOWNLOAD_PUBLIC_URL_PREFIX=http://localhost:8088`。下载公开 API（`/api/system/file/d/*`）统一由主 App（`projects/app`）承接，Plugin、Pro 和浏览器都不需要各自实现文件下载路由；但注意 `pro/admin`（知识库图片训练非 Base64 模式、ChatAgentHelper 等）会作为独立进程直接调用 `@fastgpt/service` 签发下载短链，因此其 `STORAGE_DOWNLOAD_SIGN_VERSION` 需与主 App 保持同一阶段配置。
 
 ## 5. 上传策略与内容校验
 
@@ -241,7 +241,12 @@ Route 必须捕获可预期文件代理错误并映射状态码，不能全部�
 2. 默认使用 `short-proxy`；外部 S3/CDN 部署可切换 `short-redirect`。旧配置 `presigned` 必须在升级前改为其中一种模式。
 3. nginx 根路径短链是可选展示层，App 的 `/api/system/file/d/*` 必须始终可达。
 4. 历史 JWT 路由和历史 Chat key 在兼容期继续工作；新写入统一使用短链和 source-aware key。
-5. **v1 → v2 短链平滑升级顺序**（适用于多实例滚动更新或配置了自定义根路径正则 Nginx rewrite 的部署）：
-   - 第一阶段（接收端与代理就绪）：先更新 Nginx 根路径 rewrite 为同时匹配 v1 与 v2 的双格式正则（使用 `/api/system/file/d/` 或 `/f/` 前缀转发的无需改代理）；滚动发布新版 App 时先配置 `STORAGE_DOWNLOAD_SIGN_VERSION=v1`，使全部实例具备 v1 + v2 双格式校验能力但仍签发 v1，避免旧实例在混跑期拒绝 v2 链接。
-   - 第二阶段（切换 v2 签发）：确认全部 App/代理实例升级完成后，移除 `STORAGE_DOWNLOAD_SIGN_VERSION`（或设为 `v2`）启用 v2 签发；已签发的存量 v1 链接在有效期内持续可用。
-6. **回滚约束**：直接回滚到仅支持 v1 的旧版 App 会使已签发到消息、dataset 预览或缓存中的 v2 链接返回 403；若需平滑回退，应先切换 `STORAGE_DOWNLOAD_SIGN_VERSION=v1` 并等待存量 v2 链接过期后再降级。直接移除 `/d` 路由同样会使历史内容不可访问。
+5. **v1 → v2 短链平滑升级顺序**（适用于多实例滚动更新、同时部署 Pro 或配置了自定义根路径正则 Nginx rewrite 的生产环境；`STORAGE_DOWNLOAD_SIGN_VERSION` 按进程读取，当前独立签发进程包括 `projects/app` 与 `pro/admin`）：
+   - **第一阶段（代理与全部接收/签发进程以 v1 就绪）**：
+     1. 若配置了自定义 Nginx 根路径正则 rewrite，先更新为上文带引号的双格式正则并用 `nginx -t` 验证后 reload（使用 `/api/system/file/d/` 或 `/f/` 前缀转发的无需改代理）。
+     2. 为**所有独立签发进程**配置 `STORAGE_DOWNLOAD_SIGN_VERSION=v1`：
+        - `projects/app`（承接 `/api/system/file/d/*` 下载接收端，同时签发对话、知识库、工作流短链）：`STORAGE_DOWNLOAD_SIGN_VERSION=v1`。
+        - `pro/admin`（独立进程，知识库图片训练非 Base64 模式、ChatAgentHelper 直接调用 `@fastgpt/service` 签发短链，Workflow Builder 校验短链）：`STORAGE_DOWNLOAD_SIGN_VERSION=v1`。
+     3. 先全量滚动升级 `projects/app`（确保所有下载接收端具备 v1 + v2 双格式校验能力），再全量滚动升级 `pro/admin`（确保 Pro 校验侧具备 v2 兼容且在切换前不会提前产出 v2）。
+   - **第二阶段（全量切换 v2 签发）**：确认代理、全部 `projects/app` 实例与全部 `pro/admin` 实例均已升级完成后，移除各签发进程的 `STORAGE_DOWNLOAD_SIGN_VERSION`（或显式设为 `v2`）并滚动重启；已签发的存量 v1 链接在有效期内持续可用。
+6. **回滚约束**：直接把 `projects/app` 回滚到仅支持 v1 的旧版本会使已签发到消息、dataset 预览或缓存中的 v2 链接返回 403；若需平滑回退，必须先把**所有签发进程**（`projects/app` 与 `pro/admin`）切换为 `STORAGE_DOWNLOAD_SIGN_VERSION=v1`，确认不再产出新的 v2 链接并等待存量 v2 链接过期后再降级。直接移除 `/d` 路由同样会使历史内容不可访问。

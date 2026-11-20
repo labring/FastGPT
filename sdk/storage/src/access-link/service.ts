@@ -8,6 +8,7 @@ import {
   revokeDownloadAliasHandler,
   verifyDownloadAliasHandler
 } from './download';
+import { resolveS3DownloadExtension } from './extension';
 import {
   createUploadUrlHandler,
   markMultipartAbortedHandler,
@@ -61,6 +62,7 @@ export const createS3AccessLinkService = (
   const deps = { ...resolvedOptions, crypto };
 
   return {
+    resolveDownloadExtension: resolveS3DownloadExtension,
     createDownloadUrl: createDownloadUrlHandler(deps),
     createDownloadUrls: createDownloadUrlsHandler(deps),
     verifyDownloadAlias: verifyDownloadAliasHandler(deps),

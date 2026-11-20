@@ -196,6 +196,12 @@ export type CreateS3AccessLinkServiceOptions = {
 };
 
 export type S3AccessLinkService = {
+  /** 按与签发完全一致的安全后缀规则，从文件名、对象键或兜底后缀推导短链扩展名。 */
+  resolveDownloadExtension: (params: {
+    filename?: string;
+    objectKey: string;
+    fallbackExtension?: string;
+  }) => string;
   createDownloadUrl: (params: CreateS3DownloadAccessUrlParams) => Promise<string>;
   createDownloadUrls: (params: CreateS3DownloadAccessUrlParams[]) => Promise<string[]>;
   verifyDownloadAlias: (signedAlias: string) => Promise<S3VerifiedDownloadPayload>;
