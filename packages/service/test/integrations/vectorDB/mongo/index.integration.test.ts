@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import type { Model } from 'mongoose';
 import type { DatasetDataEmbedding } from '@fastgpt/global/core/dataset/data/embedding/type';
 import { createTestIds, TEST_COLLECTION_IDS, VECTOR_DIM } from '../testData';
 
@@ -31,7 +32,7 @@ describe.skipIf(!isEnabled)('Mongo Vector Integration', () => {
   describe.sequential('exact $similarityDotProduct rescoring (MongoDB 8.3+)', () => {
     const rescoreCollectionName = `mongo_embedding_rescore_test_${Date.now()}`;
     const unitAxis = [1, ...Array(VECTOR_DIM - 1).fill(0)];
-    let rescoreModel: ReturnType<typeof embeddingMongo.model<DatasetDataEmbedding>>;
+    let rescoreModel: Model<DatasetDataEmbedding>;
 
     beforeAll(async () => {
       await connectEmbeddingMongo();
@@ -88,6 +89,7 @@ describe.skipIf(!isEnabled)('Mongo Vector Integration', () => {
         datasetIds: ['dataset'],
         vector: queryVector,
         limit: 7,
+        hnswEfSearch: 200,
         forbidCollectionIdList: ['denied'],
         filterCollectionIdList: ['allowed', 'denied']
       });
@@ -130,6 +132,7 @@ describe.skipIf(!isEnabled)('Mongo Vector Integration', () => {
         datasetIds: ['d'],
         vector: queryVector,
         limit: 4,
+        hnswEfSearch: 200,
         forbidCollectionIdList: []
       });
       expect(results.map(({ id }) => id)).toEqual(['best', 'tiny', 'cancel', 'negative']);
@@ -179,6 +182,7 @@ describe.skipIf(!isEnabled)('Mongo Vector Integration', () => {
           datasetIds: [datasetId],
           vector: UNIT_QUERY_VECTOR,
           limit: 3,
+          hnswEfSearch: 200,
           forbidCollectionIdList: []
         });
         expect(recalled.results.map(({ id }) => id)).toEqual(insertIds);
@@ -189,6 +193,7 @@ describe.skipIf(!isEnabled)('Mongo Vector Integration', () => {
           datasetIds: [datasetId],
           vector: UNIT_QUERY_VECTOR,
           limit: 10,
+          hnswEfSearch: 200,
           forbidCollectionIdList: [TEST_COLLECTION_IDS[0]]
         });
         expect(forbidden.results.length).toBeGreaterThan(0);
@@ -201,6 +206,7 @@ describe.skipIf(!isEnabled)('Mongo Vector Integration', () => {
           datasetIds: [datasetId],
           vector: UNIT_QUERY_VECTOR,
           limit: 10,
+          hnswEfSearch: 200,
           forbidCollectionIdList: [],
           filterCollectionIdList: [TEST_COLLECTION_IDS[1]]
         });

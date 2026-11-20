@@ -151,6 +151,7 @@ describe('MongoVectorCtrl.embRecall', () => {
       datasetIds: ['dataset'],
       vector: queryVector,
       limit: 7,
+      hnswEfSearch: 200,
       forbidCollectionIdList: ['denied'],
       filterCollectionIdList: ['allowed', 'denied']
     });
@@ -205,6 +206,7 @@ describe('MongoVectorCtrl.embRecall', () => {
         datasetIds: ['d'],
         vector,
         limit: 100,
+        hnswEfSearch: 200,
         forbidCollectionIdList: []
       })
     ).rejects.toBe(error);
@@ -229,6 +231,7 @@ describe('MongoVectorCtrl.embRecall', () => {
         datasetIds: ['d'],
         vector,
         limit,
+        hnswEfSearch: 200,
         forbidCollectionIdList: ['blocked'],
         filterCollectionIdList: ['allowed', 'blocked']
       });
@@ -257,6 +260,7 @@ describe('MongoVectorCtrl.embRecall', () => {
         datasetIds: ['d'],
         vector,
         limit: 100,
+        hnswEfSearch: 200,
         forbidCollectionIdList: []
       })
     ).resolves.toEqual({ results: [] });
@@ -275,6 +279,7 @@ describe('MongoVectorCtrl.embRecall', () => {
         datasetIds: ['d'],
         vector,
         limit: 100,
+        hnswEfSearch: 200,
         forbidCollectionIdList: []
       })
     ).rejects.toThrow('count unavailable');
@@ -294,6 +299,7 @@ describe('MongoVectorCtrl.embRecall', () => {
       await controller.embRecall({
         teamId: 'a',
         vector,
+        hnswEfSearch: 200,
         forbidCollectionIdList: ['blocked'],
         ...props
       })
