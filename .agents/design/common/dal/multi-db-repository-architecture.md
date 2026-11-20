@@ -1032,10 +1032,10 @@ export const AppChatLogRepoToken = defineRepoToken<AppChatLogRepository>('AppCha
   - [x] `mysql.ts` & `sql/base.ts`：`mysql2` 补齐 `charset: 'utf8mb4'` / `supportBigNumbers` / `bigNumberStrings`；`upsertRow` 禁用 `INSERT IGNORE`；新增 `orderByNullable` 与基于 `_id` 的 Keyset 游标分批迭代 helper；
   - [x] `errors.ts`：补充 OceanBase 瞬态冲突错误码（`4012`、`6002`、`6004`、`6210`、`6223`）；
   - [x] Kysely 观测插件：接通 `runtime.recordOperation()` 慢查询告警与 `common/profiling` 分段耗时统计。
-- [ ] **0.5.4 轻量 SQL DDL 迁移器、Mongo 异步只增补建与 `deprecated: true` 清零**：
-  - [ ] 在 `packages/dal/db/sql/migrations/` 实现轻量自研 SQL DDL 迁移器（~250 行）：Redis `LeaseCache` 锁 + 每物理库独立 `_fg_sql_migrations(scope: 'core' | 'pro', id)` 账本 + 回滚向前兼容跳过未来版本 + 单迁移 `transactional: false` + 专用 DDL 连接 + `ensureSqlIndex`（PG `CONCURRENTLY` + `indisvalid` 自愈、MySQL `LOCK=NONE` / `lock_wait_timeout`、OB `1061` 幂等）+ `dropSqlIndexIfExists`（硬守卫仅删 `fg_*`）；
-  - [ ] 在 `packages/dal/db/repos/registry.ts` 建立开源 Collection / Table 注册表，Mongo 启动后后台异步执行只增补建（Redis 锁、key 等价检查防 Error 85、`285` 轮询、支持动态条件索引函数，绝不启动自动删索引），并补齐 Mongo & SQL 统一只读 `inspect`；
-  - [ ] 将当前 11 个文件中的 17 条 `deprecated: true` 废弃索引一次性迁出为显式一次性清理任务并从 `schema.ts` 彻底删除，后续严禁新增 `deprecated: true` 墓碑及无 `fg_` 前缀新索引，同步更新 `.agents/design/common/mongo-index-sync-strategy.md` 与 `AGENTS.md`。
+- [x] **0.5.4 轻量 SQL DDL 迁移器、Mongo 异步只增补建与 `deprecated: true` 清零**：
+  - [x] 在 `packages/dal/db/sql/migrations/` 实现轻量自研 SQL DDL 迁移器（~250 行）：Redis `LeaseCache` 锁 + 每物理库独立 `_fg_sql_migrations(scope: 'core' | 'pro', id)` 账本 + 回滚向前兼容跳过未来版本 + 单迁移 `transactional: false` + 专用 DDL 连接 + `ensureSqlIndex`（PG `CONCURRENTLY` + `indisvalid` 自愈、MySQL `LOCK=NONE` / `lock_wait_timeout`、OB `1061` 幂等）+ `dropSqlIndexIfExists`（硬守卫仅删 `fg_*`）；
+  - [x] 在 `packages/dal/db/repos/registry.ts` 建立开源 Collection / Table 注册表，Mongo 启动后后台异步执行只增补建（Redis 锁、key 等价检查防 Error 85、`285` 轮询、支持动态条件索引函数，绝不启动自动删索引），并补齐 Mongo & SQL 统一只读 `inspect`；
+  - [x] 将当前 11 个文件中的 17 条 `deprecated: true` 废弃索引一次性迁出为显式一次性清理任务并从 `schema.ts` 彻底删除，后续严禁新增 `deprecated: true` 墓碑及无 `fg_` 前缀新索引，同步更新 `.agents/design/common/mongo-index-sync-strategy.md` 与 `AGENTS.md`。
 - [ ] **0.5.5 四层测试底座与 CI 漂移门禁**：
   - [ ] `@fastgpt/dal` 补齐 `mongodb-memory-server` devDep 与惰性 Mongo Harness；升级 `@fastgpt/dal/db/testing` 提供 `createContractBackends`（按环境变量动态挂载 `Mongo / PGlite / MySQL 8 / OceanBase / PG`）、`insertRawRow` 及按 `VITEST_POOL_ID` 独立库 + `DELETE` 无锁清理；
   - [ ] 拆分无 DB 的 L0 轻量 Vitest 配置（脱离 `test/setup.ts`），修复 `test/setup.ts` 默认事务空壳；

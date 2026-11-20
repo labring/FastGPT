@@ -11,6 +11,10 @@ import {
 import type { DeprecatedMongoIndexDefinition } from '@fastgpt/service/common/mongo/schemaIndexes';
 import { MongoIndexManager } from '@fastgpt/service/common/mongo/indexManager';
 import { withMongoDdlConnection } from '@fastgpt/service/common/mongo/init';
+import {
+  LEGACY_DEPRECATED_MONGO_INDEXES,
+  runLegacyDeprecatedMongoIndexCleanup
+} from '@fastgpt/service/common/mongo/legacyDeprecatedIndexCleanup';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
@@ -78,7 +82,7 @@ describe('runtime configuration scope indexes', () => {
     expect(await model.countDocuments()).toBe(2);
     expect(getSchemaDeprecatedMongoIndexes(MongoSystemInstanceConfig.schema)).toEqual([]);
   });
-  it('removes only the deprecated legacy scope index and retains migration source records', async () => {
+  it('removes only the deprecated legacy scope index via explicit cleanup and retains migration source records', async () => {
     const model = createModel({ schema: MongoSystemConfigs.schema, prefix: 'RuntimeScopeIndexes' });
     await model.collection.createIndex({ type: 1 });
     await model.collection.createIndex(
@@ -90,15 +94,21 @@ describe('runtime configuration scope indexes', () => {
       }
     );
     await model.create({ type: 'subPlans', value: { extraDatasetSize: { price: 4 } } });
+    // Schema itself no longer holds deprecated tombstones; startup sync is additive-only
+    expect(getSchemaDeprecatedMongoIndexes(MongoSystemConfigs.schema)).toEqual([]);
     await MongoIndexManager.syncModelIndexes({ model, logger });
+    expect(await getIndexNames(model)).toContain('runtime_scope_type_unique');
+
+    const cleanupRes = await runLegacyDeprecatedMongoIndexCleanup({
+      entries: LEGACY_DEPRECATED_MONGO_INDEXES.filter((e) => e.collectionName === 'systemConfigs'),
+      collectionOverrides: { systemConfigs: model.collection.collectionName }
+    });
+    expect(cleanupRes).toEqual([
+      expect.objectContaining({ indexName: 'runtime_scope_type_unique', status: 'dropped' })
+    ]);
     expect(await getIndexNames(model)).not.toContain('runtime_scope_type_unique');
     expect(await getIndexNames(model)).toContain('type_1');
     expect(await model.countDocuments()).toBe(1);
-    expect(getSchemaDeprecatedMongoIndexes(MongoSystemConfigs.schema)).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ indexName: 'runtime_scope_type_unique', key: { type: 1 } })
-      ])
-    );
   });
 });
 
@@ -294,7 +304,7 @@ describe('MongoIndexManager.syncModelIndexes', () => {
     );
   });
 
-  it('keeps legacy share and customer indexes while removing the obsolete generating index', async () => {
+  it('keeps legacy share and customer indexes while removing the obsolete generating index via explicit cleanup', async () => {
     const schema = new Schema({}, { autoIndex: false });
     const [key, options] = MongoChat.schema.indexes().find(([key]) => 'publishSource.id' in key)!;
     defineIndex(schema, { key, options });
@@ -302,7 +312,7 @@ describe('MongoIndexManager.syncModelIndexes', () => {
       .indexes()
       .find(([key]) => 'shareId' in key)!;
     defineIndex(schema, { key: legacyKey, options: legacyOptions });
-    defineDeprecatedTestIndexes(schema, getSchemaDeprecatedMongoIndexes(MongoChat.schema));
+    expect(getSchemaDeprecatedMongoIndexes(MongoChat.schema)).toEqual([]);
     const model = createModel({ schema, prefix: 'ChatLeaseIndex' });
     await model.collection.createIndex(
       { shareId: 1, outLinkUid: 1, updateTime: -1 },
@@ -318,7 +328,11 @@ describe('MongoIndexManager.syncModelIndexes', () => {
     await model.collection.createIndex({ customerField: 1 }, { name: 'customer_chat_index' });
     await model.collection.createIndex({ shareId: 1 }, { name: 'customer_share_index' });
 
-    const result = await MongoIndexManager.syncModelIndexes({ model, logger });
+    await MongoIndexManager.syncModelIndexes({ model, logger });
+    const cleanupRes = await runLegacyDeprecatedMongoIndexCleanup({
+      entries: LEGACY_DEPRECATED_MONGO_INDEXES.filter((e) => e.collectionName === 'chats'),
+      collectionOverrides: { chats: model.collection.collectionName }
+    });
     const indexNames = await getIndexNames(model);
     expect(indexNames).not.toContain('chatGenerateStatus_1_updateTime_1');
     expect(indexNames).toContain('shareId_1_outLinkUid_1_updateTime_-1');
@@ -327,32 +341,26 @@ describe('MongoIndexManager.syncModelIndexes', () => {
     );
     expect(indexNames).toContain('customer_chat_index');
     expect(indexNames).toContain('customer_share_index');
-    expect(result.cleanupReport.items).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          action: 'drop',
-          applied: true,
-          indexName: 'chatGenerateStatus_1_updateTime_1'
-        })
-      ])
-    );
+    expect(cleanupRes).toEqual([
+      expect.objectContaining({
+        status: 'dropped',
+        indexName: 'chatGenerateStatus_1_updateTime_1'
+      })
+    ]);
     expect(MongoChat.schema.path('shareId')).toBeDefined();
     expect(MongoChat.schema.indexes().some(([key]) => 'shareId' in key)).toBe(true);
     expect(MongoChat.schema.path('chatGenerateStatus')).toBeUndefined();
     expect(MongoChat.schema.indexes().some(([key]) => 'chatGenerateStatus' in key)).toBe(false);
   });
 
-  it('replaces model status testedAt indexes with requestEndedAt indexes', async () => {
+  it('replaces model status testedAt indexes with requestEndedAt indexes via explicit cleanup', async () => {
     const schema = new Schema({}, { autoIndex: false });
     defineIndex(schema, { key: { modelId: 1, requestEndedAt: -1 } });
     defineIndex(schema, {
       key: { requestEndedAt: 1 },
       options: { expireAfterSeconds: 30 * 24 * 60 * 60 }
     });
-    defineDeprecatedTestIndexes(
-      schema,
-      getSchemaDeprecatedMongoIndexes(MongoModelStatusProbeRecord.schema)
-    );
+    expect(getSchemaDeprecatedMongoIndexes(MongoModelStatusProbeRecord.schema)).toEqual([]);
     const model = createModel({ schema, prefix: 'ModelStatusProbeIndex' });
     await model.collection.createIndex(
       { modelId: 1, testedAt: -1 },
@@ -364,6 +372,12 @@ describe('MongoIndexManager.syncModelIndexes', () => {
     );
 
     await MongoIndexManager.syncModelIndexes({ model, logger });
+    await runLegacyDeprecatedMongoIndexCleanup({
+      entries: LEGACY_DEPRECATED_MONGO_INDEXES.filter(
+        (e) => e.collectionName === 'model_status_probe_records'
+      ),
+      collectionOverrides: { model_status_probe_records: model.collection.collectionName }
+    });
 
     const indexes = await model.collection.indexes();
     expect(indexes.map(({ name }) => name)).toEqual(
@@ -676,15 +690,12 @@ describe('MongoIndexManager.cleanupModelDeprecatedIndexes', () => {
 });
 
 describe('dataset collection index consolidation', () => {
-  it('replaces three managed indexes without growing the index count or breaking legacy hints', async () => {
+  it('replaces three managed indexes via explicit cleanup without growing the index count or breaking legacy hints', async () => {
     const schema = new Schema({}, { autoIndex: false });
     MongoDatasetCollection.schema.indexes().forEach(([key, options]) => {
       defineIndex(schema, { key, options });
     });
-    defineDeprecatedTestIndexes(
-      schema,
-      getSchemaDeprecatedMongoIndexes(MongoDatasetCollection.schema)
-    );
+    expect(getSchemaDeprecatedMongoIndexes(MongoDatasetCollection.schema)).toEqual([]);
     const model = createModel({ schema, prefix: 'CollectionConsolidatedIndex' });
     await model.collection.createIndex({
       teamId: 1,
@@ -696,7 +707,13 @@ describe('dataset collection index consolidation', () => {
     await model.collection.createIndex({ teamId: 1, 'metadata.relatedImgId': 1 });
     await model.collection.createIndex({ fileId: 1 }, { name: 'customer_file_lookup' });
 
-    const result = await MongoIndexManager.syncModelIndexes({ model, logger });
+    await MongoIndexManager.syncModelIndexes({ model, logger });
+    const cleanupRes = await runLegacyDeprecatedMongoIndexCleanup({
+      entries: LEGACY_DEPRECATED_MONGO_INDEXES.filter(
+        (e) => e.collectionName === 'dataset_collections'
+      ),
+      collectionOverrides: { dataset_collections: model.collection.collectionName }
+    });
     const names = await getIndexNames(model);
     expect(names.size).toBe(10); // 9 条内置索引（含 _id）及 1 条客户索引。
     expect(names).toContain('teamId_1_fileId_1');
@@ -705,7 +722,7 @@ describe('dataset collection index consolidation', () => {
     expect(names).toContain('teamId_1_datasetId_1_type_1_parentId_1_inheritPermission_1__id_1');
     expect(names).toContain('teamId_1_datasetId_1_forbid_1__id_1');
     expect(names).toContain('customer_file_lookup');
-    expect(result.cleanupReport.items.filter(({ action }) => action === 'drop')).toHaveLength(3);
+    expect(cleanupRes.filter(({ status }) => status === 'dropped')).toHaveLength(3);
     expect(names).not.toContain('teamId_1_datasetId_1_tags_1');
     expect(names).not.toContain('teamId_1_metadata.relatedImgId_1');
     expect(names).not.toContain('teamId_1_datasetId_1_parentId_1_inheritPermission_1');
@@ -727,17 +744,21 @@ describe('dataset training TTL index migration', () => {
 });
 
 describe('dataset rebuild status index migration', () => {
-  it('drops the old rebuilding index and retains the replacement and customer indexes', async () => {
+  it('drops the old rebuilding index via explicit cleanup and retains the replacement and customer indexes', async () => {
     const schema = new Schema(
       { rebuilding: Boolean, indexStatus: String, teamId: String, datasetId: String },
       { autoIndex: false }
     );
     defineIndex(schema, { key: { indexStatus: 1, teamId: 1, datasetId: 1 } });
-    defineDeprecatedTestIndexes(schema, getSchemaDeprecatedMongoIndexes(MongoDatasetData.schema));
+    expect(getSchemaDeprecatedMongoIndexes(MongoDatasetData.schema)).toEqual([]);
     const model = createModel({ schema, prefix: 'DatasetRebuildIndex' });
     await model.collection.createIndex({ rebuilding: 1, teamId: 1, datasetId: 1 });
     await model.collection.createIndex({ rebuilding: 1 }, { name: 'customer_rebuild_status' });
     await MongoIndexManager.syncModelIndexes({ model, logger });
+    await runLegacyDeprecatedMongoIndexCleanup({
+      entries: LEGACY_DEPRECATED_MONGO_INDEXES.filter((e) => e.collectionName === 'dataset_datas'),
+      collectionOverrides: { dataset_datas: model.collection.collectionName }
+    });
     const names = await getIndexNames(model);
     expect(names.has('rebuilding_1_teamId_1_datasetId_1')).toBe(false);
     expect(names.has('indexStatus_1_teamId_1_datasetId_1')).toBe(true);
@@ -746,20 +767,23 @@ describe('dataset rebuild status index migration', () => {
 });
 
 describe('sandbox quota index migration', () => {
-  it('removes the old source quota index and retains current and customer indexes', async () => {
+  it('removes the old source quota index via explicit cleanup and retains current and customer indexes', async () => {
     const schema = new Schema({}, { autoIndex: false });
     MongoSandboxInstance.schema.indexes().forEach(([key, options]) => {
       defineIndex(schema, { key, options });
     });
-    defineDeprecatedTestIndexes(
-      schema,
-      getSchemaDeprecatedMongoIndexes(MongoSandboxInstance.schema)
-    );
+    expect(getSchemaDeprecatedMongoIndexes(MongoSandboxInstance.schema)).toEqual([]);
     const model = createModel({ schema, prefix: 'SandboxQuotaIndex' });
     await model.collection.createIndex({ sourceType: 1, status: 1, provider: 1 });
     await model.collection.createIndex({ sourceType: 1 }, { name: 'customer_sandbox_source' });
 
     await MongoIndexManager.syncModelIndexes({ model, logger });
+    await runLegacyDeprecatedMongoIndexCleanup({
+      entries: LEGACY_DEPRECATED_MONGO_INDEXES.filter(
+        (e) => e.collectionName === 'agent_sandbox_instances_v2'
+      ),
+      collectionOverrides: { agent_sandbox_instances_v2: model.collection.collectionName }
+    });
 
     const names = await getIndexNames(model);
     expect(names).not.toContain('sourceType_1_status_1_provider_1');
@@ -767,6 +791,7 @@ describe('sandbox quota index migration', () => {
     expect(names).toContain('status_1_lastActiveAt_1');
     expect(names).toContain('sourceType_1_sourceId_1_userId_1');
     expect(names).toContain('customer_sandbox_source');
+    expect(LEGACY_DEPRECATED_MONGO_INDEXES).toHaveLength(17);
   });
 });
 

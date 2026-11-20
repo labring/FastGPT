@@ -189,17 +189,6 @@ defineIndex(ChatSchema, { key: { appId: 1, tmbId: 1, updateTime: -1 } });
 defineIndex(ChatSchema, {
   key: { appId: 1, source: 1, tmbId: 1, updateTime: -1 }
 });
-// 旧版 generating 清理索引已由 Redis lease 取代；仅登记本项目创建过的索引供自动清理。
-defineIndex(ChatSchema, {
-  key: { chatGenerateStatus: 1, updateTime: 1 },
-  options: {
-    partialFilterExpression: {
-      chatGenerateStatus: 0
-    }
-  },
-  deprecated: true
-});
-
 /* 反馈过滤的索引 */
 // 2. Has good feedback filter
 defineIndex(ChatSchema, {

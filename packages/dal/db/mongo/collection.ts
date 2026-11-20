@@ -11,13 +11,16 @@ export type MongoCollectionDefinition<TDoc = Record<string, unknown>> =
   MongoCollectionDescriptor<TDoc> & {
     readonly schema: Schema;
     readonly indexes: readonly MongoCollectionIndexDef[];
+    /** 可选运行时动态索引生成器（如依赖动态配置的条件索引或可调 TTL），在启动异步索引同步时求值。 */
+    readonly resolveDynamicIndexes?: () => readonly MongoCollectionIndexDef[];
   };
 
 const appliedSchemas = new WeakSet<Schema>();
 
 const FORBIDDEN_FIELD_INDEX_OPTIONS = ['index', 'unique', 'sparse', 'text', 'expires'] as const;
+const VALID_FG_MONGO_INDEX_NAME_REGEX = /^fg_[a-z0-9_]+$/;
 
-const deriveMongoIndexName = (index: MongoCollectionIndexDef): string => {
+export const deriveMongoIndexName = (index: MongoCollectionIndexDef): string => {
   if (typeof index.options?.name === 'string' && index.options.name.trim().length > 0) {
     return index.options.name.trim();
   }
@@ -58,12 +61,14 @@ export const defineMongoCollection = <TDoc = Record<string, unknown>>({
   name,
   datasource = 'main',
   schema,
-  indexes = []
+  indexes = [],
+  resolveDynamicIndexes
 }: {
   name: string;
   datasource?: DbDatasource;
   schema: Schema;
   indexes?: readonly MongoCollectionIndexDef[];
+  resolveDynamicIndexes?: () => readonly MongoCollectionIndexDef[];
 }): MongoCollectionDefinition<TDoc> => {
   const normalizedName = name.trim();
   if (normalizedName.length === 0) {
@@ -80,6 +85,16 @@ export const defineMongoCollection = <TDoc = Record<string, unknown>>({
       );
     }
     const derivedName = deriveMongoIndexName(idx);
+    if (derivedName.startsWith('fg_')) {
+      if (
+        !VALID_FG_MONGO_INDEX_NAME_REGEX.test(derivedName) ||
+        Buffer.byteLength(derivedName, 'ascii') > 63
+      ) {
+        throw new DbConfigurationError(
+          `Managed Mongo index "${derivedName}" on "${normalizedName}" must match fg_<snake_case> and be <= 63 ASCII bytes`
+        );
+      }
+    }
     if (seenNames.has(derivedName)) {
       throw new DbConfigurationError(
         `Duplicate Mongo index "${derivedName}" declared on collection "${normalizedName}"`
@@ -99,6 +114,7 @@ export const defineMongoCollection = <TDoc = Record<string, unknown>>({
     name: normalizedName,
     datasource,
     schema,
-    indexes: Object.freeze([...indexes])
+    indexes: Object.freeze([...indexes]),
+    ...(resolveDynamicIndexes !== undefined ? { resolveDynamicIndexes } : {})
   });
 };

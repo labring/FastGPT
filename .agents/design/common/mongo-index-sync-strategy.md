@@ -2,9 +2,12 @@
 
 ## 文档状态
 
-- 状态：已落地（**演进预告**：后续随多库 DAL Phase 0.5 演进至「`packages/dal/db/mongo/` 异步只增补建 + 新增索引统一 `fg_` 命名空间 + 删除与改属性走一次性迁移任务并清除 `schema.ts` 中的 `deprecated: true` 墓碑」，详见 [multi-db-repository-architecture.md](./dal/multi-db-repository-architecture.md#5-九大异构数据库深水区与标准解法) 及 TODO Step 0 / 0.5.4）
+- 状态：已演进至 **Step 0 + Phase 0.5.4 收敛架构**（详见 [multi-db-repository-architecture.md](./dal/multi-db-repository-architecture.md#5-九大异构数据库深水区与标准解法)）
 - 适用范围：主 Service、日志库、Marketplace 和 `pro/admin` 中由 FastGPT 管理的 MongoDB Schema
-- 当前基线结论：启动时只补建当前 Schema 索引；仅当业务 Schema 明确登记废弃索引时才执行精确清理，任何未知索引一律保留（现网代码尚待 Step 0 修复 `autoIndex: false`、复合 `text` 匹配、`MONGO_DEPRECATE_INDEX` 门控与 DDL 无超时连接 4 项隐患）
+- 当前基线结论：
+  1. Step 0 4 项现网隐患已全部修复（连接级 `autoIndex: false`、复合 `text` 索引 `_fts/_ftsx` 精确匹配、`MONGO_DEPRECATE_INDEX` 门控与独立 `withMongoDdlConnection` 无 60s 超时 DDL 连接）；
+  2. `@fastgpt/dal/db/mongo/indexSync.ts` 已落地**启动期只增补建**（`syncMongoCollectionIndexes`：key 等价检查防 Error 85、Error `285` 退避重试、支持动态条件索引与可选 `collMod` TTL 原地更新）、**只读巡检**（`inspectMongoIndexes`）与**显式一次性安全清理**（`dropManagedMongoIndexIfExists`）；
+  3. 历史 11 个旧版 Schema 中的 17 条 `deprecated: true` 墓碑已全部清零并收口至 `packages/service/common/mongo/legacyDeprecatedIndexCleanup.ts` 显式一次性清理目录，后续严禁在任何 `schema.ts` 中新增 `deprecated: true`，所有新增 Mongo 索引统一使用 `fg_<table_short>_<purpose>[_vN]` 命名（<= 63B），客户自建与存量未带前缀索引 100% 保留。
 
 ## 问题与根因
 

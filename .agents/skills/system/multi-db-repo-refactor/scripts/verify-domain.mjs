@@ -306,6 +306,11 @@ const checkDomainStaticBoundaries = () => {
         `[Indexes] ${domainRel}/mongo/schema.ts calls .index() directly; declare all indexes via defineMongoCollection({ indexes }) or defineIndex(schema, ...)`
       );
     }
+    if (/\bdeprecated\s*:\s*true\b/.test(mongoSchema.clean)) {
+      failures.push(
+        `[Indexes] ${domainRel}/mongo/schema.ts must not declare deprecated: true tombstones (use Expand-Contract one-off migration drops instead)`
+      );
+    }
     if (/\bexport\s+const\s+\w+\s*=\s*getMongo(?:Log)?Model\b/.test(mongoSchema.clean)) {
       failures.push(
         `[Boundary] ${domainRel}/mongo/schema.ts registers Mongoose Model eagerly at module top level; declare defineMongoCollection(...) and bind model in MongoRepositoryBase constructor instead`

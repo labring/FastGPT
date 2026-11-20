@@ -354,6 +354,7 @@ test('enforces static layered isolation, SQL portability, and Mongo index govern
         const S = new Schema({ key: { type: String, unique: true } });
         S.index({ key: 1 });
         defineIndex(S, { key: { teamId: 1 } });
+        defineIndex(S, { key: { oldField: 1 }, deprecated: true });
         export const MongoBad = getMongoModel('bad', S);
       `
     },
@@ -361,6 +362,7 @@ test('enforces static layered isolation, SQL portability, and Mongo index govern
       const res = runVerify(['--dir', domainRel, '--legacy-schema', legacyRel]);
       assert.equal(res.status, 1);
       assert.match(res.stderr, /calls \.index\(\) directly/);
+      assert.match(res.stderr, /must not declare deprecated: true tombstones/);
       assert.match(res.stderr, /inline field \{ index: true \} or \{ unique: true \}/);
       assert.match(res.stderr, /registers Mongoose Model eagerly/);
     }

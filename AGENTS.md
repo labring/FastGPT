@@ -26,11 +26,11 @@ FastGPT 是使用 pnpm workspaces 的 AI Agent 构建平台。开发环境按根
 - **历史兼容与升级**涉及 Zod 枚举或判别联合变更时，按[历史兼容规范](./.agents/code/syntax.md#zod-枚举变更与历史兼容)核对旧数据和旧客户端，同时保留新写入的校验。新增或修改自动升级任务时遵循[系统迁移规范](./.agents/skills/system/system-migration-development/SKILL.md)。
 - **CI** 修改 GitHub Actions workflow 时按[双轨同步规则](./.agents/skills/system/ci-workflow-sync/SKILL.md)核对 Forgejo 对应项。
 
-### MongoDB 索引
+### 数据库与索引规范
 
-- 当前索引与废弃索引统一用 `defineIndex` 声明。当前索引省略 `deprecated`，禁止直接调用 `schema.index()` 或用字段级 `index: true`、`unique: true` 隐式建索引。
-- 字段或索引变化时核对历史版本。只在所属 Schema 的当前索引旁用 `deprecated: true` 登记 FastGPT 明确创建且已废弃的索引，并补充或调整[清理测试](./packages/service/test/common/mongo/indexManager.test.ts)。保留客户自建和来源不明的索引。
-- 清理器按名称和 key 匹配。同名同 key 仅改变 TTL、唯一性或 partial filter 等选项时需显式迁移。详见[索引同步设计](./.agents/design/common/mongo-index-sync-strategy.md)。
+- **新建/迁移 DAL 集合与表**：MongoDB 集合统一使用 `@fastgpt/dal/db/mongo/collection` 的 `defineMongoCollection`（接收原生 `Schema` 与 `indexes`），SQL 表使用 `@fastgpt/dal/db/sql/ddl` 的 `defineSqlTable`；未迁出的存量旧 Schema 仍使用 `defineIndex`。禁止直接调用 `schema.index()` 或使用字段级 `index: true`、`unique: true` 隐式建索引。
+- **命名与零墓碑原则**：所有 SQL 索引与所有**新增** Mongo 索引统一命名为 `fg_<table_short>_<purpose>[_vN]`（<= 63 ASCII 字节，SQL 跨表全局唯一）；存量未带前缀的 Mongo 索引原地冻结不强改名；严禁在 `schema.ts` / `table.ts` 中新增 `deprecated: true` 永久墓碑。
+- **Expand-Contract 删除与属性变更**：启动期 Mongo 同步仅做异步只增补建，绝不自动删除索引；删除索引遵循两版本收缩（N 版移除声明与查询依赖，N+1 版通过显式一次性迁移或 `dropSqlIndexIfExists` / `dropManagedMongoIndexIfExists` 清理），保留客户 DBA 自建与来源不明索引。详见[多库仓储架构](./.agents/design/common/dal/multi-db-repository-architecture.md)与[索引同步设计](./.agents/design/common/mongo-index-sync-strategy.md)。
 
 ## 测试
 
