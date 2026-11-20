@@ -260,7 +260,10 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
           from: AppVersionCollectionName,
           // localField/foreignField 不能与 pipeline 同时使用：MongoDB 4.4 或 FCV=4.4 会直接
           // 拒绝该聚合，导致导出恒为空表头。改用 let + $match $expr，全版本兼容。
-          let: { versionId: '$appVersionId' },
+          // 历史会话（appVersionId 4.14.4 才引入）可能没有该字段，$expr 中的 missing
+          // 不会改写成 _id 索引查找，会退化为逐条全表扫描 app_versions。先归一成 null，
+          // 仍按 _id 等值索引查找（索引边界 [null, null]，单次点查）。
+          let: { versionId: { $ifNull: ['$appVersionId', null] } },
           pipeline: [
             {
               $match: {

@@ -9,6 +9,10 @@ import { describe, expect, it, beforeEach, vi } from 'vitest';
 import * as listApi from '@/pages/api/core/app/logs/list';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import {
+  AppVersionCollectionName,
+  MongoAppVersion
+} from '@fastgpt/service/core/app/version/schema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
@@ -1108,6 +1112,66 @@ describe('logs list API - errorFilter', () => {
           .map((line) => line.split(',')[0])
           .sort()
       ).toEqual(expected);
+    }
+  });
+
+  it('导出缺失 appVersionId 的历史会话时归一化版本关联，仍可按 _id 索引', async () => {
+    const version = await MongoAppVersion.create({
+      tmbId: testTmbId,
+      appId: testAppId,
+      versionName: 'version-with-id',
+      nodes: [],
+      edges: []
+    });
+    const now = new Date();
+    const base = {
+      appId: new Types.ObjectId(testAppId),
+      teamId: new Types.ObjectId(testTeamId),
+      tmbId: new Types.ObjectId(testTmbId),
+      sourceType: ChatSourceTypeEnum.app,
+      source: 'api',
+      createTime: now,
+      updateTime: now
+    };
+    // 用 collection 写入，确保历史会话真的不带 appVersionId 字段。
+    await MongoChat.collection.insertMany([
+      { ...base, chatId: 'chat-with-version', appVersionId: version._id },
+      { ...base, chatId: 'chat-without-version' }
+    ] as any);
+
+    const aggregateSpy = vi.spyOn(MongoChat, 'aggregate');
+    try {
+      const exported = await StreamCall(exportLogs, {
+        auth: authUser,
+        headers: {},
+        body: {
+          appId: testAppId,
+          dateStart: '2020-01-01',
+          dateEnd: '2099-01-01',
+          title: 'Session,Version',
+          sourcesMap: {},
+          logKeys: [AppLogKeysEnum.SESSION_ID, AppLogKeysEnum.VERSION_NAME]
+        }
+      });
+      expect(exported.code).toBe(200);
+      expect(exported.raw).toContain('\nchat-with-version,version-with-id,');
+      expect(exported.raw).toContain('\nchat-without-version,,');
+
+      // 缺少 appVersionId 时，$expr 里的 missing 不会改写成 _id 索引查找，
+      // 会逐条全表扫描 app_versions。归一成 null 后才能继续走索引。
+      const pipeline = aggregateSpy.mock.calls
+        .map((call) => call[0] as any[])
+        .find((stages) =>
+          stages?.some((stage) => stage?.$lookup?.from === AppVersionCollectionName)
+        );
+      const versionLookup = pipeline?.find(
+        (stage) => stage?.$lookup?.from === AppVersionCollectionName
+      );
+      expect(versionLookup?.$lookup.let).toEqual({
+        versionId: { $ifNull: ['$appVersionId', null] }
+      });
+    } finally {
+      aggregateSpy.mockRestore();
     }
   });
 });
