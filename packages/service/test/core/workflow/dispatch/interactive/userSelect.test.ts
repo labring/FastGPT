@@ -1,9 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/common/workflow/migration';
+import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  VARIABLE_NODE_ID,
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { createTestWorkflowDispatch } from '../context/fixtures';
+import { createTestVariableContext, createTestWorkflowDispatch } from '../context/fixtures';
 import { dispatchUserSelect as dispatchUserSelectWithoutContext } from '@fastgpt/service/core/workflow/dispatch/interactive/userSelect';
+import { createEdge, createNode } from '../../utils';
 
 const dispatchUserSelect = createTestWorkflowDispatch(dispatchUserSelectWithoutContext);
 
@@ -44,12 +57,36 @@ describe('dispatchUserSelect', () => {
     );
   });
 
-  it('resolves dynamic reference options into userSelect interactive params', async () => {
+  it.each([
+    { shape: 'list', reference: [['upstream', 'opts']] },
+    {
+      shape: 'list from a root node with a legacy empty parent ID',
+      reference: [['upstream', 'opts']],
+      parentNodeId: ''
+    },
+    {
+      shape: 'legacy single tuple after a manual branch with malformed options',
+      reference: ['upstream', 'opts'],
+      flowNodeType: FlowNodeTypeEnum.userSelect,
+      branchInputKey: NodeInputKeyEnum.userSelectOptions
+    },
+    {
+      shape: 'partly malformed list after a classifier with malformed agents',
+      reference: [['stale'], ['upstream', 'opts']],
+      flowNodeType: FlowNodeTypeEnum.classifyQuestion,
+      branchInputKey: NodeInputKeyEnum.agents
+    }
+  ])('resolves $shape', async ({ reference, flowNodeType, branchInputKey, parentNodeId }) => {
     const runtimeNodesMap = new Map([
       [
         'upstream',
         {
           nodeId: 'upstream',
+          parentNodeId,
+          flowNodeType,
+          inputs: branchInputKey
+            ? [{ key: branchInputKey, value: [null, false, {}, { key: 'branch' }] }]
+            : [],
           outputs: [{ id: 'opts', value: ['Option A', 'Option B'] }]
         } as any
       ]
@@ -69,9 +106,12 @@ describe('dispatchUserSelect', () => {
         ]
       } as any,
       runtimeNodesMap,
+      runtimeEdges: [
+        { source: 'upstream', target: 'selectNode', sourceHandle: 'upstream-source-branch' }
+      ],
       params: {
         [NodeInputKeyEnum.description]: 'Choose one',
-        [NodeInputKeyEnum.userSelectOptions]: [['upstream', 'opts']]
+        [NodeInputKeyEnum.userSelectOptions]: reference
       },
       query: []
     } as any);
@@ -87,6 +127,82 @@ describe('dispatchUserSelect', () => {
       }
     });
   });
+
+  it.each([
+    {
+      reasoningEffort: 'low',
+      produced: 'Reasoning text',
+      expected: ['Reasoning text', 'Fallback']
+    },
+    { reasoningEffort: 'none', produced: 'Reasoning text', expected: ['Fallback'] },
+    { reasoningEffort: 'low', produced: '', expected: ['Fallback'] }
+  ])(
+    'uses available reasoning from a legacy output with effort $reasoningEffort and value $produced',
+    async ({ reasoningEffort, produced, expected }) => {
+      const optionRefs = [
+        ['source', NodeOutputKeyEnum.reasoningText],
+        ['source', 'hidden'],
+        ['source', NodeOutputKeyEnum.answerText]
+      ];
+      const { nodes } = migrateWorkflowToCurrent({
+        nodes: [
+          {
+            ...createNode('source', FlowNodeTypeEnum.chatNode),
+            inputs: [
+              {
+                key: NodeInputKeyEnum.aiChatReasoningEffort,
+                renderTypeList: [FlowNodeInputTypeEnum.hidden],
+                value: reasoningEffort
+              }
+            ],
+            outputs: [NodeOutputKeyEnum.reasoningText, 'hidden', NodeOutputKeyEnum.answerText].map(
+              (key) => ({
+                id: key,
+                key,
+                type: FlowNodeOutputTypeEnum.static,
+                valueType: WorkflowIOValueTypeEnum.string,
+                invalid: key !== NodeOutputKeyEnum.answerText
+              })
+            )
+          },
+          {
+            ...createNode('selectNode', FlowNodeTypeEnum.userSelect),
+            inputs: [
+              {
+                key: NodeInputKeyEnum.userSelectOptions,
+                renderTypeList: [FlowNodeInputTypeEnum.reference],
+                value: optionRefs
+              }
+            ]
+          }
+        ]
+      });
+      const [source, selectNode] = storeNodes2RuntimeNodes(nodes, []);
+      expect(source.outputs[0].invalid).toBe(true);
+      // 调度会把聊天节点本次返回的数据写到输出 value，旧版本的 invalid 仍来自存储。
+      source.outputs[0].value = produced;
+      source.outputs[1].value = 'Hidden';
+      source.outputs[2].value = 'Fallback';
+      const result = await dispatchUserSelect({
+        mode: 'chat',
+        histories: [],
+        node: selectNode,
+        runtimeNodesMap: new Map([
+          [source.nodeId, source],
+          [selectNode.nodeId, selectNode]
+        ]),
+        runtimeEdges: [createEdge('source', 'selectNode', 'active')],
+        params: { userSelectOptions: optionRefs },
+        query: []
+      } as Parameters<typeof dispatchUserSelect>[0]);
+
+      expect(
+        result[DispatchNodeResponseKeyEnum.interactive]?.params.userSelectOptions.map(
+          ({ value }) => value
+        )
+      ).toEqual(expected);
+    }
+  );
 
   it('returns a business failure without a raw exception when reference options are empty', async () => {
     await expect(
@@ -146,7 +262,19 @@ describe('dispatchUserSelect', () => {
     expect(res[DispatchNodeResponseKeyEnum.skipHandleId]).toEqual([]);
   });
 
-  it('expands array values item-by-item and formats non-array values as single options', async () => {
+  const referenceNode = {
+    nodeId: 'selectNode',
+    isEntry: false,
+    inputs: [
+      {
+        key: NodeInputKeyEnum.userSelectOptions,
+        renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
+        selectedType: FlowNodeInputTypeEnum.reference
+      }
+    ]
+  };
+
+  it('expands allowed values and excludes boolean arrays and disconnected outputs', async () => {
     const runtimeNodesMap = new Map([
       [
         'upstream',
@@ -161,26 +289,22 @@ describe('dispatchUserSelect', () => {
             { id: 'num', valueType: 'number', value: 42 },
             { id: 'bool', valueType: 'boolean', value: true },
             { id: 'obj', valueType: 'object', value: { k: 'v' } },
-            { id: 'anyArr', valueType: 'any', value: ['raw1', 'raw2'] }
+            { id: 'anyArr', valueType: 'any', value: ['raw1', 'raw2'] },
+            { id: 'boolArr', valueType: 'arrayBoolean', value: [true, false] }
           ]
         } as any
+      ],
+      [
+        'disconnected',
+        { nodeId: 'disconnected', outputs: [{ id: 'opts', value: ['Disconnected'] }] }
       ]
     ]);
 
     const res = await dispatchUserSelect({
       histories: [],
-      node: {
-        nodeId: 'selectNode',
-        isEntry: false,
-        inputs: [
-          {
-            key: NodeInputKeyEnum.userSelectOptions,
-            renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
-            selectedType: FlowNodeInputTypeEnum.reference
-          }
-        ]
-      } as any,
+      node: referenceNode,
       runtimeNodesMap,
+      runtimeEdges: [{ source: 'upstream', target: 'selectNode' }],
       params: {
         [NodeInputKeyEnum.description]: 'Choose one',
         [NodeInputKeyEnum.userSelectOptions]: [
@@ -192,7 +316,9 @@ describe('dispatchUserSelect', () => {
           ['upstream', 'num'],
           ['upstream', 'bool'],
           ['upstream', 'obj'],
-          ['upstream', 'anyArr']
+          ['upstream', 'anyArr'],
+          ['upstream', 'boolArr'],
+          ['disconnected', 'opts']
         ]
       },
       query: []
@@ -223,24 +349,23 @@ describe('dispatchUserSelect', () => {
     });
   });
 
-  it('supports literal option values injected by single-node debug without deduplicating', async () => {
+  it.each([
+    { override: false, values: ['Option A', 'Option A'] },
+    { override: true, values: ['upstream', 'opts'] }
+  ])('preserves literal debug options (override: $override)', async ({ override, values }) => {
     const res = await dispatchUserSelect({
+      mode: 'debug',
       histories: [],
       node: {
-        nodeId: 'selectNode',
-        isEntry: false,
-        inputs: [
-          {
-            key: NodeInputKeyEnum.userSelectOptions,
-            renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
-            selectedType: FlowNodeInputTypeEnum.reference
-          }
-        ]
-      } as any,
-      runtimeNodesMap: new Map(),
+        ...referenceNode,
+        inputs: [{ ...referenceNode.inputs[0], ...(override && { debugValueOverride: true }) }]
+      },
+      runtimeNodesMap: new Map([
+        ['upstream', { nodeId: 'upstream', outputs: [{ id: 'opts', value: ['Unexpected'] }] }]
+      ]),
       params: {
         [NodeInputKeyEnum.description]: 'Choose one',
-        [NodeInputKeyEnum.userSelectOptions]: ['Option A', 'Option A']
+        [NodeInputKeyEnum.userSelectOptions]: values
       },
       query: []
     } as any);
@@ -249,11 +374,28 @@ describe('dispatchUserSelect', () => {
       type: 'userSelect',
       params: {
         description: 'Choose one',
-        userSelectOptions: [
-          { key: 'option_1', value: 'Option A' },
-          { key: 'option_2', value: 'Option A' }
-        ]
+        userSelectOptions: values.map((value, index) => ({ key: `option_${index + 1}`, value }))
       }
+    });
+  });
+
+  it('treats marked saved options as references during debug', async () => {
+    const result = await dispatchUserSelect({
+      mode: 'debug',
+      histories: [],
+      node: {
+        ...referenceNode,
+        inputs: [{ ...referenceNode.inputs[0], debugValueOverride: false }]
+      },
+      runtimeNodesMap: new Map(),
+      runtimeEdges: [],
+      params: { [NodeInputKeyEnum.userSelectOptions]: ['removed', 'options'] },
+      query: []
+    } as Parameters<typeof dispatchUserSelect>[0]);
+
+    expect(result[DispatchNodeResponseKeyEnum.interactive]).toBeUndefined();
+    expect(result.error).toEqual({
+      [NodeOutputKeyEnum.errorText]: 'workflow:user_select_no_available_options'
     });
   });
 
@@ -261,21 +403,23 @@ describe('dispatchUserSelect', () => {
     const dynamicRaw = Array.from({ length: 205 }, (_, i) => `dyn_${i}_${'y'.repeat(110)}`);
     const res = await dispatchUserSelect({
       histories: [],
-      node: {
-        nodeId: 'selectNode',
-        isEntry: false,
-        inputs: [
+      node: referenceNode,
+      runtimeNodesMap: new Map(),
+      chatConfig: {
+        variables: [
           {
-            key: NodeInputKeyEnum.userSelectOptions,
-            renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
-            selectedType: FlowNodeInputTypeEnum.reference
+            key: 'choices',
+            label: 'Choices',
+            description: '',
+            type: VariableInputEnum.custom,
+            valueType: WorkflowIOValueTypeEnum.arrayString
           }
         ]
-      } as any,
-      runtimeNodesMap: new Map(),
+      },
+      variableContext: createTestVariableContext({ choices: dynamicRaw }),
       params: {
         [NodeInputKeyEnum.description]: 'Choose one',
-        [NodeInputKeyEnum.userSelectOptions]: dynamicRaw
+        [NodeInputKeyEnum.userSelectOptions]: [[VARIABLE_NODE_ID, 'choices']]
       },
       query: []
     } as any);
@@ -286,5 +430,46 @@ describe('dispatchUserSelect', () => {
       key: 'option_1',
       value: dynamicRaw[0].slice(0, 100)
     });
+  });
+
+  it.each(['removed', 'kept'])('only follows existing branch handles (%s)', async (key) => {
+    const result = await dispatchUserSelect({
+      histories: [],
+      node: {
+        nodeId: 'selectNode',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.userSelectOptions,
+            renderTypeList: [FlowNodeInputTypeEnum.reference]
+          }
+        ]
+      },
+      runtimeNodesMap: new Map([
+        [
+          'upstream',
+          {
+            nodeId: 'upstream',
+            flowNodeType: FlowNodeTypeEnum.userSelect,
+            inputs: [
+              {
+                key: NodeInputKeyEnum.userSelectOptions,
+                renderTypeList: [FlowNodeInputTypeEnum.custom],
+                value: [{ key: 'kept', value: 'Keep' }]
+              }
+            ],
+            outputs: [{ id: 'opts', value: ['Upstream option'] }]
+          }
+        ]
+      ]),
+      runtimeEdges: [
+        { source: 'upstream', target: 'selectNode', sourceHandle: `upstream-source-${key}` }
+      ],
+      params: { userSelectOptions: [['upstream', 'opts']] },
+      query: []
+    } as unknown as Parameters<typeof dispatchUserSelect>[0]);
+
+    expect(result[DispatchNodeResponseKeyEnum.interactive]?.params?.userSelectOptions).toEqual(
+      key === 'kept' ? [{ key: 'option_1', value: 'Upstream option' }] : undefined
+    );
   });
 });

@@ -385,6 +385,35 @@ describe('checkExecutionConnection', () => {
     }
   );
 
+  it.each(['left', 'top', 'bottom'])(
+    'rejects a duplicate of a historical ordinary %s source',
+    (position) => {
+      const connection = ordinary('source', 'target');
+      const edges = [
+        {
+          ...connection,
+          sourceHandle: `source-source-${position}`,
+          targetHandle: 'target-target-right'
+        }
+      ];
+      expect(evaluate({ connection, edges })).toMatchObject({
+        allowed: false,
+        reason: { code: WorkflowDiagnosticCodeEnum.edgeDuplicated }
+      });
+    }
+  );
+
+  it('keeps an explicit source output distinct from the default source', () => {
+    const connection = ordinary('source', 'target');
+    const edges = [{ ...connection, sourceHandle: 'source-source-left' }];
+    const source = node('source', FlowNodeTypeEnum.toolCall);
+    source.outputs.push({ id: 'left', key: 'left', type: FlowNodeOutputTypeEnum.source });
+
+    expect(evaluate({ connection, edges, nodes: [source, node('target')] })).toEqual({
+      allowed: true
+    });
+  });
+
   it('keeps raw and semantic candidates, command validation and existing-edge validation consistent', () => {
     const nodes = [node('source', FlowNodeTypeEnum.toolCall), node('target'), node('other')];
     const document = createWorkflowDocument({ nodes });

@@ -13,6 +13,7 @@ import {
 import { legacySystemConfigNodeType } from '../../core/workflow/migration/legacy/systemConfig';
 import type {
   WorkflowModelFeature,
+  WorkflowModelReferenceStatus,
   WorkflowModelValidationIssue
 } from '../../core/workflow/model/type';
 import { nodeInputIsReference } from './reference';
@@ -29,6 +30,31 @@ const systemLLMNodeTypes = new Set<FlowNodeTypeEnum>([
 /** 识别整体由工作流变量提供的模型表达式；实际模型 ID 由执行点解析并鉴权。 */
 export const isWorkflowModelExpression = (value: unknown) =>
   typeof value === 'string' && /^\{\{.*\}\}$/.test(value);
+
+/** 稳定 ID 精确匹配。只有旧工具选择器允许把保存的模型名称作为 ID 回退。 */
+export const workflowModelReferenceIsAvailable = ({
+  references,
+  type,
+  modelId,
+  model,
+  allowLegacyModelFallback = false
+}: {
+  references: readonly WorkflowModelReferenceStatus[];
+  type: ModelTypeEnum;
+  modelId?: unknown;
+  model?: unknown;
+  allowLegacyModelFallback?: boolean;
+}) => {
+  const hasModelId = !isEmptyModelValue(modelId);
+  return references.some(
+    (item) =>
+      item.type === type &&
+      (hasModelId
+        ? item.modelId === String(modelId) ||
+          (allowLegacyModelFallback && item.legacyModel === modelId)
+        : item.legacyModel === model)
+  );
+};
 
 /**
  * 判断模型字段是否属于 FastGPT 系统模型引用。

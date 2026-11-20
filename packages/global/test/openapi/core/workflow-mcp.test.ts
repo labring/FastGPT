@@ -105,6 +105,59 @@ describe('Workflow debug and MCP runtime OpenAPI contracts', () => {
     });
   });
 
+  it.each([{}, { debugValueOverride: true }, { debugValueOverride: false }])(
+    'keeps debug input fields with optional literal override %o',
+    (override) => {
+      const nodes = [
+        {
+          nodeId: 'code',
+          nodeExtension: { value: 1 },
+          inputs: [{ key: 'payload', inputExtension: [1, 2], ...override }]
+        }
+      ];
+      const payload = WorkflowDebugBodySchema.parse({ appId: '68ad85a7463006c963799a05', nodes });
+      expect(payload.nodes).toEqual(nodes);
+    }
+  );
+
+  it.each(['true', null, 1])('rejects a non-boolean debug override %o', (value) => {
+    const payload = WorkflowDebugBodySchema.safeParse({
+      appId: '68ad85a7463006c963799a05',
+      nodes: [{ inputs: [{ debugValueOverride: value }] }]
+    });
+    expect(payload.error?.issues).toEqual([
+      expect.objectContaining({
+        code: 'invalid_type',
+        path: ['nodes', 0, 'inputs', 0, 'debugValueOverride']
+      })
+    ]);
+  });
+
+  it('documents the optional boolean debug override in the request', () => {
+    expect(openAPIDocument.paths?.['/core/workflow/debug']?.post?.requestBody).toMatchObject({
+      content: {
+        'application/json': {
+          schema: {
+            properties: {
+              nodes: {
+                items: {
+                  properties: {
+                    inputs: {
+                      items: {
+                        additionalProperties: true,
+                        properties: { debugValueOverride: { type: 'boolean' } }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+  });
+
   it('keeps workflow debug dynamic fields compatible with their legacy types', () => {
     type DebugNodeResponse = WorkflowDebugResponse['nodeResponses'][string];
 

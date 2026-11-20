@@ -1,59 +1,59 @@
 import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
-import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
+import {
+  VARIABLE_NODE_ID,
+  type WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   areWorkflowValueTypesCompatible,
+  DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES,
   filterSelectableWorkflowNodeOutputs,
-  getWorkflowReferenceVariables,
-  nodeInputIsReference
+  getWorkflowReferenceItems,
+  getWorkflowReferenceVariables
 } from '@fastgpt/global/common/workflow/reference';
 import type { WorkflowDiagnostic } from '../domain/diagnostic';
 import { hasConfiguredValue } from '../template/defaultValue';
+import { resolveWorkflowDocumentOutput } from './codec';
+import { isWorkflowInputReferenceForValidation } from '../template/inputValue';
 import {
+  createWorkflowErrorBranchIndex,
   getInputReferenceSourceNodes,
+  isWorkflowReferenceOutputUpstream,
   getWorkflowReferenceValues,
-  isWorkflowReferenceValue
+  isWorkflowReferenceValue,
+  type WorkflowReferenceValue
 } from './service';
 
 export type WorkflowInvalidReferencePolicy = 'error' | 'asEmpty';
 
-/**
- * 统一检查输入引用的格式、来源、类型和作用域，兼容 Document 的 output key 与画布的 output id。
- * 只返回诊断，不修改输入；严格校验和客户端的有效值归一化共用此规则。
- * 调用方仅传入引用选择器输入；文本中的 {{变量}}、{{$node.output$}} 由编辑器独立提示，不在此检查。
- */
-export const getWorkflowInputReferenceDiagnostics = ({
-  document,
-  nodeId,
-  input
-}: {
+type InputReferenceContext = {
   document: WorkflowDocument;
   nodeId: string;
   input: FlowNodeInputItemType;
-}): WorkflowDiagnostic[] => {
-  const references = getWorkflowReferenceValues(input.value);
-  if (!references) {
-    return [
-      {
-        code: WorkflowDiagnosticCodeEnum.referenceFormatInvalid,
-        severity: 'error',
-        nodeId,
-        inputKey: input.key
-      }
-    ];
-  }
+};
 
-  const diagnostics: WorkflowDiagnostic[] = [];
-  let sourceNodes: ReturnType<typeof getInputReferenceSourceNodes> | undefined;
-  for (const [sourceNodeId, outputKey] of references) {
+/** 校验已解析的引用，作用域和错误分支索引延迟计算并在同一输入内共享。 */
+const createInputReferenceCheck = ({
+  document,
+  nodeId,
+  input,
+  excludeValueTypes
+}: InputReferenceContext & {
+  excludeValueTypes?: readonly WorkflowIOValueTypeEnum[];
+}) => {
+  let sourceNodeIds: Set<string> | undefined;
+  let errorBranchIndex: ReturnType<typeof createWorkflowErrorBranchIndex> | undefined;
+  let variables: ReturnType<typeof getWorkflowReferenceVariables> | undefined;
+  return ([sourceNodeId, outputKey]: WorkflowReferenceValue): WorkflowDiagnostic[] => {
+    const diagnostics: WorkflowDiagnostic[] = [];
     const sourceNode = document.nodes.find((node) => node.nodeId === sourceNodeId);
-    const nodeOutput = sourceNode?.outputs.find(
-      (output) => output.key === outputKey || output.id === outputKey
-    );
+    const nodeOutput =
+      sourceNode && resolveWorkflowDocumentOutput(sourceNode.outputs, outputKey).output;
     const sourceOutput =
       sourceNodeId === VARIABLE_NODE_ID
-        ? getWorkflowReferenceVariables({ chatConfig: document.chatConfig }).find(
+        ? (variables ??= getWorkflowReferenceVariables({ chatConfig: document.chatConfig })).find(
             (item) => item.key === outputKey
           )
         : nodeOutput;
@@ -73,9 +73,11 @@ export const getWorkflowInputReferenceDiagnostics = ({
         inputKey: input.key,
         params: { sourceNodeId, outputKey }
       });
-      continue;
+      return diagnostics;
     }
     if (
+      (sourceOutput.valueType !== undefined &&
+        excludeValueTypes?.includes(sourceOutput.valueType)) ||
       !areWorkflowValueTypesCompatible({
         expected: input.valueType,
         actual: sourceOutput.valueType
@@ -89,10 +91,25 @@ export const getWorkflowInputReferenceDiagnostics = ({
         params: { expected: input.valueType, actual: sourceOutput.valueType }
       });
     }
-    if (sourceNodeId === VARIABLE_NODE_ID) continue;
+    if (sourceNodeId === VARIABLE_NODE_ID) return diagnostics;
 
-    sourceNodes ??= getInputReferenceSourceNodes({ document, nodeId, input });
-    if (!sourceNodes.some((source) => source.nodeId === sourceNodeId)) {
+    sourceNodeIds ??= new Set(
+      getInputReferenceSourceNodes({ document, nodeId, input }).map((source) => source.nodeId)
+    );
+    const isErrorOutput =
+      'type' in sourceOutput && sourceOutput.type === FlowNodeOutputTypeEnum.error;
+    if (
+      !sourceNodeIds.has(sourceNodeId) ||
+      (isErrorOutput &&
+        !isWorkflowReferenceOutputUpstream({
+          document,
+          nodeId,
+          sourceNodeId,
+          isErrorOutput,
+          allowLoopRunChildSource: input.canEdit === true && sourceNode?.catchError === true,
+          errorBranchIndex: (errorBranchIndex ??= createWorkflowErrorBranchIndex(document))
+        }))
+    ) {
       diagnostics.push({
         code: WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream,
         severity: 'error',
@@ -111,13 +128,46 @@ export const getWorkflowInputReferenceDiagnostics = ({
         }
       });
     }
-  }
-  return diagnostics;
+    return diagnostics;
+  };
 };
 
 /**
- * 按检查场景生成有效值快照：AI 保留失效引用报错，客户端将其视为未引用，多引用只保留有效项。
- * 仅处理引用选择器（含知识库引用），不解析文本中的双括号表达式。
+ * 统一检查输入引用的格式、来源、类型和作用域，兼容 Document 的 output key 与画布的 output id。
+ * 只返回诊断，不修改输入；严格校验和客户端的有效值归一化共用此规则。
+ * 调用方传入引用选择器或旧版整项标签筛选引用；文本插值由编辑器独立提示。
+ */
+export const getWorkflowInputReferenceDiagnostics = (
+  context: InputReferenceContext
+): WorkflowDiagnostic[] => {
+  const { nodeId, input } = context;
+  const references = getWorkflowReferenceValues(input.value);
+  if (!references) {
+    return [
+      {
+        code: WorkflowDiagnosticCodeEnum.referenceFormatInvalid,
+        severity: 'error',
+        nodeId,
+        inputKey: input.key
+      }
+    ];
+  }
+  return references.flatMap(createInputReferenceCheck(context));
+};
+
+/** 动态选项每组至少保留一个可选引用，同一输入的多组表单项可共用检查。 */
+export const createDynamicOptionReferenceCheck = (context: InputReferenceContext) => {
+  const checkReference = createInputReferenceCheck({
+    ...context,
+    excludeValueTypes: DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES
+  });
+  return (value: unknown) =>
+    getWorkflowReferenceItems(value).some((reference) => checkReference(reference).length === 0);
+};
+
+/**
+ * 按检查场景生成有效值快照：AI 保留失效引用报错，客户端将普通引用视为未引用，多引用只保留有效项。
+ * 处理引用选择器和旧版整项标签筛选引用；文本插值及结构化 Secret 引用原样保留。
  * 调用方必须显式传入策略，避免共享入口因遗漏场景而使用错误语义。
  * 清空失效默认引用时同时移除 defaultValue，避免后续必填、模型和资源检查再次回退到旧值。
  * 父容器输入影响子节点的引用作用域，逐轮剔除直到稳定；每轮只移除引用，因此一定有限收敛。
@@ -140,20 +190,23 @@ export const resolveWorkflowReferenceDocument = ({
   while (true) {
     const nodes = effectiveDocument.nodes.map((node) => {
       const inputs = node.inputs.map((input) => {
-        if (!nodeInputIsReference(input)) return input;
         const value = input.value ?? input.defaultValue;
+        if (
+          !isWorkflowInputReferenceForValidation({ input, flowNodeType: node.flowNodeType, value })
+        )
+          return input;
         if (!hasConfiguredValue(value)) return input;
 
         const single = isWorkflowReferenceValue(value);
         const candidates = single ? [value] : Array.isArray(value) ? value : [];
+        const checkReference = createInputReferenceCheck({
+          document: effectiveDocument,
+          nodeId: node.nodeId,
+          input
+        });
         const validReferences = candidates.filter(
           (reference) =>
-            isWorkflowReferenceValue(reference) &&
-            getWorkflowInputReferenceDiagnostics({
-              document: effectiveDocument,
-              nodeId: node.nodeId,
-              input: { ...input, value: reference }
-            }).length === 0
+            isWorkflowReferenceValue(reference) && checkReference(reference).length === 0
         );
         if (validReferences.length === candidates.length && (single || Array.isArray(value)))
           return input;

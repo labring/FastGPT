@@ -5,24 +5,88 @@ import {
   VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import {
   areWorkflowValueTypesCompatible,
   filterSelectableWorkflowNodeOutputs,
+  getHandleId,
   getSelectedInputRenderType,
+  isWorkflowErrorBranchReachable,
+  isWorkflowEdgeSourceHandleValid,
   getWorkflowReferenceSourceNodes,
   getWorkflowReferenceVariables
 } from '@fastgpt/global/common/workflow/reference';
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
+import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { WorkflowCommandError } from '../domain/diagnostic';
 import type { VariableRef } from './type';
 import { getInputAutomationMeta } from '@fastgpt/global/core/workflow/template/automationMeta';
 import { getNodeInputCapability, type NodeParameterInputMode } from '../template/descriptor';
 import { assertValueSchema, getNodeInputValueSchema } from '../template/valueSchema';
 import { getWorkflowInputValueForValidation } from '../template/inputValue';
+import {
+  getWorkflowSecretInputKind,
+  inputTypeValueTypeMap
+} from '@fastgpt/global/common/workflow/input';
+import { getSecretReferenceValue } from '@fastgpt/global/common/secret/utils';
 
 export type WorkflowReferenceValue = [string, string];
+
+/** 提取 Secret 容器里的引用，并按内部输入类型返回校验目标。 */
+export const getWorkflowSecretReferences = ({
+  flowNodeType,
+  input
+}: {
+  flowNodeType: unknown;
+  input: FlowNodeInputItemType;
+}) => {
+  const kind = getWorkflowSecretInputKind({ flowNodeType, inputKey: input.key });
+  if (!kind) return [];
+  if (
+    kind === 'systemConfig' &&
+    (!input.value ||
+      typeof input.value !== 'object' ||
+      Array.isArray(input.value) ||
+      !('type' in input.value) ||
+      input.value.type !== 'manual')
+  ) {
+    return [];
+  }
+
+  const source =
+    kind === 'systemConfig' &&
+    typeof input.value === 'object' &&
+    input.value !== null &&
+    !Array.isArray(input.value) &&
+    'type' in input.value &&
+    input.value.type === 'manual' &&
+    typeof input.value.value === 'object' &&
+    input.value.value !== null &&
+    !Array.isArray(input.value.value)
+      ? input.value.value
+      : input.value;
+  if (typeof source !== 'object' || source === null) return [];
+
+  return Object.entries(source).flatMap(([key, value]) => {
+    const reference = getSecretReferenceValue(value);
+    if (!reference) return [];
+    const inputType =
+      kind === 'systemConfig'
+        ? input.inputList?.find((item) => item.key === key)?.inputType
+        : 'secret';
+    return [
+      {
+        value: reference,
+        valueType: inputType ? inputTypeValueTypeMap[inputType] : WorkflowIOValueTypeEnum.string
+      }
+    ];
+  });
+};
 
 /** 判断单个引用元组的结构；来源是否存在由引用校验统一判断。 */
 export const isWorkflowReferenceValue = (value: unknown): value is WorkflowReferenceValue =>
@@ -69,6 +133,85 @@ export const getInputReferenceSourceNodes = ({
         .filter((node) => node.parentNodeId === nodeId)
         .map((node) => node.nodeId)
     }
+  });
+};
+
+type WorkflowErrorBranchIndex = {
+  incomingEdgesByNodeId: Map<
+    string,
+    Pick<StoreEdgeItemType, 'source' | 'sourceHandle' | 'targetHandle'>[]
+  >;
+  parentByNodeId: Map<string, string>;
+};
+
+const getExecutionSourceHandle = (source: WorkflowDocument['executionEdges'][number]['source']) => {
+  if (source.kind === 'next') return getHandleId(source.nodeId, 'source', 'right');
+  if (source.kind === 'catch') return getHandleId(source.nodeId, 'source_catch', 'right');
+  if (source.kind === 'selectedTools') return NodeOutputKeyEnum.selectedTools;
+  if (source.kind === 'branch') return getHandleId(source.nodeId, 'source', source.branchKey);
+  return getHandleId(source.nodeId, 'source', source.outputKey);
+};
+
+/** 预投影当前有效的入边，避免引用选择器为每个输出重复扫描全图。 */
+export const createWorkflowErrorBranchIndex = (
+  document: Pick<WorkflowDocument, 'nodes' | 'executionEdges'>
+): WorkflowErrorBranchIndex => {
+  const incomingEdgesByNodeId: WorkflowErrorBranchIndex['incomingEdgesByNodeId'] = new Map();
+  const nodesById = new Map(document.nodes.map((node) => [node.nodeId, node]));
+  const parentByNodeId = new Map(
+    document.nodes.flatMap((node) =>
+      node.parentNodeId ? [[node.nodeId, node.parentNodeId] as const] : []
+    )
+  );
+
+  for (const edge of document.executionEdges) {
+    const sourceHandle = getExecutionSourceHandle(edge.source);
+    if (!isWorkflowEdgeSourceHandleValid(nodesById.get(edge.source.nodeId), sourceHandle)) continue;
+
+    const incomingEdges = incomingEdgesByNodeId.get(edge.target.nodeId) ?? [];
+    incomingEdges.push({
+      source: edge.source.nodeId,
+      sourceHandle,
+      targetHandle: edge.target.kind === 'selectedTools' ? NodeOutputKeyEnum.selectedTools : ''
+    });
+    incomingEdgesByNodeId.set(edge.target.nodeId, incomingEdges);
+  }
+
+  return { incomingEdgesByNodeId, parentByNodeId };
+};
+
+/**
+ * 错误输出沿 catch 路径传播，LoopRun 的自定义输出还可读取直接子节点的捕获结果。
+ */
+export const isWorkflowReferenceOutputUpstream = ({
+  document,
+  nodeId,
+  sourceNodeId,
+  isErrorOutput,
+  errorBranchIndex,
+  allowLoopRunChildSource
+}: {
+  document: WorkflowDocument;
+  nodeId: string;
+  sourceNodeId: string;
+  isErrorOutput: boolean;
+  allowLoopRunChildSource?: boolean;
+  /** 同一查询内复用的有效执行边索引；未传入时按单次调用构建。 */
+  errorBranchIndex?: WorkflowErrorBranchIndex;
+}) => {
+  if (!isErrorOutput) return true;
+  const index = errorBranchIndex ?? createWorkflowErrorBranchIndex(document);
+  if (
+    allowLoopRunChildSource &&
+    index.parentByNodeId.get(sourceNodeId) === nodeId &&
+    document.nodes.find((node) => node.nodeId === nodeId)?.flowNodeType === FlowNodeTypeEnum.loopRun
+  )
+    return true;
+  return isWorkflowErrorBranchReachable({
+    sourceNodeId,
+    targetNodeId: nodeId,
+    parentByNodeId: index.parentByNodeId,
+    getIncomingEdges: (targetId) => index.incomingEdgesByNodeId.get(targetId) ?? []
   });
 };
 
@@ -296,7 +439,16 @@ export const setInputReference = ({
   const sourceIsVisible = getInputReferenceSourceNodes({ document, nodeId, input }).some(
     (node) => node.nodeId === sourceNode.nodeId
   );
-  if (!sourceIsVisible) {
+  if (
+    !sourceIsVisible ||
+    !isWorkflowReferenceOutputUpstream({
+      document,
+      nodeId,
+      sourceNodeId: sourceNode.nodeId,
+      isErrorOutput: sourceOutput.type === FlowNodeOutputTypeEnum.error,
+      allowLoopRunChildSource: input.canEdit === true && sourceNode.catchError === true
+    })
+  ) {
     throw new WorkflowCommandError([
       {
         code: WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream,
