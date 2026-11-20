@@ -97,6 +97,7 @@ export const classifyApiDatasetError = (
       case 'NETWORK_ERROR':
       case 'SERVER_ERROR':
       case 'INVALID_PARAMS':
+      case 'INVALID_RESPONSE':
       case 'UNKNOWN_ERROR':
         return toApiDatasetError({ code, message: msg, status });
       default:
@@ -112,6 +113,14 @@ export const classifyApiDatasetError = (
   }
   if (/timeout|network|econnreset|service unavailable/i.test(msg)) {
     return toApiDatasetError({ code: 'NETWORK_ERROR', message: msg, status });
+  }
+  // 路由或接口缺失文案（网关 HTML、Express/Go 默认 404 等）不属于资源级删除依据。
+  if (
+    /(?:cannot\s+(?:get|post|put|delete|patch)\b|<!doctype\s+html|<html[\s>]|404\s+page\s+not\s+found|(?:route|endpoint|path|api|method)\s+not\s+found|接口不存在|路由不存在)/i.test(
+      msg
+    )
+  ) {
+    return toApiDatasetError({ code: 'INVALID_RESPONSE', message: msg, status });
   }
   if (/not found|文件不存在|不存在/i.test(msg)) {
     return toApiDatasetError({ code: 'NOT_FOUND', message: msg, status: status ?? 404 });

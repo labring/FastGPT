@@ -31,6 +31,11 @@ export type LegacyApiFileFolderMigration = {
   inheritPermission?: boolean;
 };
 
+/** 沿用请求 factory 的配置优先级，判断当前是否启用自定义 API 文件库 Provider。 */
+export const usesCustomApiDataset = (apiDatasetServer?: ApiDatasetServerType) => {
+  return Boolean(apiDatasetServer?.apiServer);
+};
+
 /** 沿用请求 factory 的配置优先级，判断当前是否启用飞书 Provider（飞书 getFileDetail 不返回 parentId）。 */
 export const usesFeishuDataset = (apiDatasetServer?: ApiDatasetServerType) => {
   const { apiServer, yuqueServer, feishuServer } = apiDatasetServer ?? {};

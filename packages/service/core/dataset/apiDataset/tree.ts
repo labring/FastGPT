@@ -76,12 +76,18 @@ export const toApiFileDirId = (serverId: string, type: ApiFileTreeNode['type']) 
 export const buildApiFileTree = async ({
   request,
   seeds,
-  filterChildren
+  filterChildren,
+  verifyFolderChildren = false
 }: {
   request: ApiDatasetRequest;
   seeds: ApiFileTreeSeed[];
   /** 可选：对某父节点 listFiles 返回的直属子节点进行过滤（如 syncChildren=false 仅保留本地已存在子项）。 */
   filterChildren?: (parent: ApiFileTreeNode, children: APIFileItemType[]) => APIFileItemType[];
+  /**
+   * 可选：对 type=folder 且 hasChild=false 的节点仍调用 listFiles 核实子项。
+   * 用于兜底详情或列表把有子项的目录误标为 hasChild=false 的第三方服务，避免漏同步或误删子项。
+   */
+  verifyFolderChildren?: boolean;
 }): Promise<ApiFileTreeNode[]> => {
   const nodes: ApiFileTreeNode[] = [];
   const nodeById = new Map<string, ApiFileTreeNode>();
@@ -110,6 +116,8 @@ export const buildApiFileTree = async ({
     depth: number
   ): Promise<void> => {
     const wantExpand = seed.expandChildren !== false;
+    const shouldExpand =
+      wantExpand && (Boolean(seed.hasChild) || (verifyFolderChildren && seed.type === 'folder'));
     const isAutoAncestor = Boolean(seed.isAutoAncestor);
 
     if (visited.has(seed.id)) {
@@ -136,11 +144,14 @@ export const buildApiFileTree = async ({
         existing.isAutoAncestor = false;
         existing.syncChildren = seed.syncChildren ?? true;
       }
-      if (existing && wantExpand && seed.hasChild && !expanded.has(seed.id)) {
+      if (existing && shouldExpand && !expanded.has(seed.id)) {
         expanded.add(seed.id);
         const rawChildren: APIFileItemType[] = await request.listFiles({
           parentId: Object.prototype.hasOwnProperty.call(seed, 'listId') ? seed.listId : seed.id
         });
+        if (rawChildren.length > 0) {
+          existing.hasChild = true;
+        }
         const children = filterChildren ? filterChildren(existing, rawChildren) : rawChildren;
         for (const child of children) {
           await walk(child, seed.id, existing.depth + 1);
@@ -164,12 +175,15 @@ export const buildApiFileTree = async ({
     nodes.push(node);
     nodeById.set(seed.id, node);
 
-    if (!seed.hasChild || !wantExpand) return;
+    if (!shouldExpand) return;
 
     expanded.add(seed.id);
     const rawChildren: APIFileItemType[] = await request.listFiles({
       parentId: Object.prototype.hasOwnProperty.call(seed, 'listId') ? seed.listId : seed.id
     });
+    if (rawChildren.length > 0) {
+      node.hasChild = true;
+    }
     const children = filterChildren ? filterChildren(node, rawChildren) : rawChildren;
     for (const child of children) {
       await walk(child, seed.id, node.depth + 1);

@@ -118,6 +118,10 @@ describe('listFiles', () => {
   });
   it.each([
     [{ data: undefined }, { message: '服务器异常' }],
+    [
+      { data: '<html>404 Not Found</html>' },
+      { code: 'INVALID_RESPONSE', message: '服务器返回格式异常' }
+    ],
     [{ data: { success: false, message: 'failed' } }, { success: false, message: 'failed' }]
   ])('响应协议错误 %#', async (response, error) => {
     mocks.request.mockResolvedValueOnce(response);
@@ -142,7 +146,7 @@ describe('getFileDetail', () => {
     async ({ type, hasChild, expected }) => {
       mocks.request.mockResolvedValueOnce(
         ok({
-          id: 'remote',
+          id: 'file',
           name: 'Doc',
           parentId: null,
           type,
@@ -154,7 +158,7 @@ describe('getFileDetail', () => {
       expect(await provider().getFileDetail({ apiFileId: 'file' })).toEqual({
         success: true,
         data: {
-          id: 'remote',
+          id: 'file',
           rawId: 'file',
           name: 'Doc',
           parentId: '',
@@ -175,12 +179,52 @@ describe('getFileDetail', () => {
       data: { parentId: 'parent' }
     });
   });
-  it.each([null, undefined])('空详情 %j resolve NOT_FOUND', async (data) => {
+  it.each([[null], [undefined], [[]], ['not-object']])(
+    '空详情或非对象 %j resolve INVALID_RESPONSE 而非 NOT_FOUND',
+    async (data) => {
+      mocks.request.mockResolvedValueOnce(ok(data));
+      expect(await provider().getFileDetail({ apiFileId: 'file' })).toEqual({
+        success: false,
+        code: 'INVALID_RESPONSE',
+        message: 'Invalid file detail response: empty data',
+        status: undefined
+      });
+    }
+  );
+  it.each([
+    ['错误 id', { id: 'other', name: 'Doc', type: 'folder' }, 'mismatched id'],
+    ['缺少 id', { id: '', name: 'Doc', type: 'folder' }, 'mismatched id'],
+    ['缺少 name', { id: 'file', name: '', type: 'folder' }, 'missing name'],
+    ['非法 type', { id: 'file', name: 'Doc', type: 'unknown' }, 'invalid type']
+  ])('详情关键字段异常（%s）resolve INVALID_RESPONSE', async (_label, data, reason) => {
     mocks.request.mockResolvedValueOnce(ok(data));
-    expect(await provider().getFileDetail({ apiFileId: 'file' })).toEqual({
+    expect(await provider().getFileDetail({ apiFileId: 'file' })).toMatchObject({
       success: false,
-      code: 'NOT_FOUND',
-      message: 'File not found',
+      code: 'INVALID_RESPONSE',
+      message: expect.stringContaining(reason)
+    });
+  });
+  it('HTML 等非协议 HTTP 200 响应不会按 not found 文案误判为 NOT_FOUND', async () => {
+    mocks.request.mockResolvedValueOnce({ data: '<html>404 Not Found</html>' });
+    expect(await provider().getFileDetail({ apiFileId: 'file' })).toMatchObject({
+      success: false,
+      code: 'INVALID_RESPONSE'
+    });
+  });
+  it.each([
+    ['Express 路由缺失', 'Cannot GET /v1/file/detail?id=file'],
+    ['Nginx HTML 404', '<!doctype html><html><body>404 Not Found</body></html>'],
+    ['Go 默认 404', '404 page not found\n'],
+    ['FastAPI 默认 404', { detail: 'Not Found' }],
+    ['Spring Boot 默认 404', { error: 'Not Found', path: '/v1/file/detail' }]
+  ])('路由缺失 HTTP 404（%s）归类为 INVALID_RESPONSE 而非 NOT_FOUND', async (_label, data) => {
+    mocks.request.mockRejectedValueOnce({
+      message: 'Request failed with status code 404',
+      response: { status: 404, data }
+    });
+    expect(await provider().getFileDetail({ apiFileId: 'file' })).toMatchObject({
+      success: false,
+      code: 'INVALID_RESPONSE',
       status: 404
     });
   });
@@ -253,7 +297,7 @@ describe('getFileContent', () => {
   ])('缓存命中标题优先级：$expected', async ({ title, filename, expected }) => {
     mocks.request
       .mockResolvedValueOnce(ok({ title, previewUrl: 'https://example.com/doc.pdf' }))
-      .mockResolvedValueOnce(ok({ name: 'Detail', type: 'file' }));
+      .mockResolvedValueOnce(ok({ id: 'file', name: 'Detail', type: 'file' }));
     mocks.getBuffer.mockResolvedValueOnce({ filename, text: 'cached' });
     await expect(provider().getFileContent(contentInput)).resolves.toEqual({
       title: expected,
