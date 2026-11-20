@@ -209,12 +209,7 @@ describe('audit presenter summary', () => {
         metadata: { appName: '客服助手' },
         t
       })
-    ).toBe(
-      [
-        'account_team:audit_detail_resource_name(name=客服助手)',
-        'account_team:audit_detail_resource_id(id=68ad85a7463006c963799a01)'
-      ].join('\n')
-    );
+    ).toBe('account_team:audit_detail_resource_id(id=68ad85a7463006c963799a01)');
 
     expect(
       formatAuditSummary({
@@ -222,7 +217,7 @@ describe('audit presenter summary', () => {
         metadata: { appName: '旧应用' },
         t
       })
-    ).toBe('account_team:audit_detail_resource_name(name=旧应用)');
+    ).toBe('-');
 
     expect(
       formatAuditSummary({
@@ -243,12 +238,7 @@ describe('audit presenter summary', () => {
         metadata: { keyName: '线上生产 Key', keyId: '68ad85a7463006c963799f01' },
         t
       })
-    ).toBe(
-      [
-        'account_team:audit_detail_resource_name(name=线上生产 Key)',
-        'account_team:audit_detail_resource_id(id=68ad85a7463006c963799f01)'
-      ].join('\n')
-    );
+    ).toBe('account_team:audit_detail_resource_id(id=68ad85a7463006c963799f01)');
 
     expect(
       formatAuditSummary({
@@ -275,9 +265,7 @@ describe('audit presenter summary', () => {
     ).toBe(
       [
         'account_team:audit_detail_collection_dataset(datasetName=产品手册)',
-        'account_team:audit_detail_resource_name(name=接入指南.pdf)',
         'account_team:audit_detail_resource_id(id=68ad85a7463006c963799c01)',
-        'account_team:audit_detail_resource_name(name=FAQ.docx)',
         'account_team:audit_detail_resource_id(id=68ad85a7463006c963799c02)'
       ].join('\n')
     );
@@ -756,7 +744,6 @@ describe('audit presenter summary', () => {
     ).toBe(
       [
         'account_team:audit_detail_collection_dataset(datasetName=产品手册（最新）)',
-        'account_team:audit_detail_resource_name(name=接入指南.pdf)',
         'account_team:audit_detail_resource_id(id=68ad85a7463006c963799c01)'
       ].join('\n')
     );
@@ -772,7 +759,6 @@ describe('audit presenter summary', () => {
     ).toBe(
       [
         'account_team:audit_detail_collection_dataset(datasetName=历史知识库快照)',
-        'account_team:audit_detail_resource_name(name=接入指南.pdf)',
         'account_team:audit_detail_resource_id(id=68ad85a7463006c963799c01)'
       ].join('\n')
     );

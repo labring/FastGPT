@@ -510,7 +510,7 @@ const pickMetadataDeletedResourceId = (
   return undefined;
 };
 
-/** 提取删除资源事件中被删目标的名称与 ID，供详情列按每行一项输出（避免资源列置灰后丢失识别信息）。 */
+/** 提取删除资源事件中被删目标的 ID，供详情列按每行一项输出（名称已在资源列展示，不再重复）。 */
 const formatDeletedResourceLines = ({
   event,
   resources,
@@ -522,45 +522,26 @@ const formatDeletedResourceLines = ({
   metadata?: Record<string, unknown>;
   t: AuditTranslator;
 }): string[] => {
-  const targets = (() => {
+  const ids = (() => {
     if (resources && resources.length > 0) {
       const picked =
         event === AuditEventEnum.DELETE_API_KEY
           ? resources.filter((item) => item.deleted || item.type === AuditResourceTypeEnum.apiKey)
           : event === AuditEventEnum.DELETE_COLLECTION
-            ? resources.filter(
-                (item) =>
-                  item.type === AuditResourceTypeEnum.collection ||
-                  item.type === AuditResourceTypeEnum.collectionFolder
-              )
+            ? resources.filter(isCollectionAuditResource)
             : resources;
-      const fallbackName =
-        picked.length === 1 ? pickMetadataFallbackName(event, metadata) : undefined;
       const fallbackId =
         picked.length === 1 ? pickMetadataDeletedResourceId(event, metadata) : undefined;
       return picked
-        .map((item) => ({
-          name: asNonEmptyString(item.name) ?? fallbackName,
-          id: asNonEmptyString(item.id) ?? fallbackId
-        }))
-        .filter((item) => Boolean(item.name || item.id));
+        .map((item) => asNonEmptyString(item.id) ?? fallbackId)
+        .filter((id): id is string => Boolean(id));
     }
 
-    const name = pickMetadataFallbackName(event, metadata);
     const id = pickMetadataDeletedResourceId(event, metadata);
-    return name || id ? [{ name, id }] : [];
+    return id ? [id] : [];
   })();
 
-  const lines: string[] = [];
-  for (const target of targets) {
-    if (target.name) {
-      lines.push(t('account_team:audit_detail_resource_name', { name: target.name }));
-    }
-    if (target.id) {
-      lines.push(t('account_team:audit_detail_resource_id', { id: target.id }));
-    }
-  }
-  return lines;
+  return ids.map((id) => t('account_team:audit_detail_resource_id', { id }));
 };
 
 const resolveResourceTypeLabel = (
