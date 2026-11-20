@@ -70,11 +70,6 @@
   "migrations.20261104_backfill_openapi_key_type.result": "已掃描 {{keys}} 個密鑰",
   "migrations.20261104_backfill_openapi_key_type.keys": "密鑰類型",
   "migrations.20261104_backfill_openapi_key_type.validation": "驗證回填結果",
-  "migrations.20261112_backfill_stt_pricing_type.name": "回填 STT 計價類型",
-  "migrations.20261112_backfill_stt_pricing_type.description": "在背景將舊 STT 價格標記為按時長計費，保留原單價及既有 Tokens 設定，不阻塞業務啟動。",
-  "migrations.20261112_backfill_stt_pricing_type.result": "已掃描 {{models}} 個 STT 模型",
-  "migrations.20261112_backfill_stt_pricing_type.models": "模型計價類型",
-  "migrations.20261112_backfill_stt_pricing_type.validation": "驗證回填結果",
   "migrations.20261116_migrate_system_configs.name": "系統配置遷移",
   "migrations.20261116_migrate_system_configs.description": "統一遷移舊系統配置與環境變數，清理廢棄欄位並補齊受管配置；全部驗證通過後才啟動業務。",
   "migrations.20261116_migrate_system_configs.inspect": "檢查配置來源",
@@ -82,5 +77,11 @@
   "migrations.20261116_migrate_system_configs.cleanup": "清理廢棄欄位",
   "migrations.20261116_migrate_system_configs.backfill": "補齊配置欄位",
   "migrations.20261116_migrate_system_configs.validate": "驗證完整配置",
-  "migrations.20261116_migrate_system_configs.result": "已遷移 {{migratedDomainCount}} 個配置域，清理 {{removedFieldCount}} 個廢棄欄位；{{skippedConfigCount}} 個舊配置項被跳過或需人工處理。"
+  "migrations.20261116_migrate_system_configs.result": "已遷移 {{migratedDomainCount}} 個配置域，清理 {{removedFieldCount}} 個廢棄欄位；{{skippedConfigCount}} 個舊配置項被跳過或需人工處理。",
+  "migrations.20261120_migrate_model_pricing.name": "模型價格遷移",
+  "migrations.20261120_migrate_model_pricing.description": "啟動後在背景獨立執行多階段模型價格遷移：先回填舊 STT 模型計價類型為按時長計費，再將系統 LLM 模型階梯輸入上限由 M Tokens 轉換為正整數 K Tokens（>10 跳過），最後統一驗證價格設定。",
+  "migrations.20261120_migrate_model_pricing.stt": "回填 STT 計價類型",
+  "migrations.20261120_migrate_model_pricing.llmTiers": "遷移 LLM 階梯上限",
+  "migrations.20261120_migrate_model_pricing.validation": "驗證模型價格",
+  "migrations.20261120_migrate_model_pricing.result": "已掃描 {{sttModels}} 個 STT 模型，已轉換 {{llmModels}} 個系統 LLM 模型的階梯上限為 K Tokens。"
 }

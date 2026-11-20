@@ -16,6 +16,9 @@ import { STT_PRICE_UNITS } from '../audio/constants';
 export const resolveSTTPricing = (pricing?: ModelPricingType) =>
   STTModelPricingSchema.parse(pricing ?? { type: 'duration' });
 
+/** 阶梯输入区间上限以 K Tokens（1000）配置和匹配，单价仍以 M Tokens（1000000）计费。 */
+export const MODEL_PRICE_TIER_TOKEN_UNIT = 1000;
+
 export const MAX_MODEL_PRICE_TIERS = 5;
 
 /** 模型单价最多两位小数，undefined 按 0 处理；不舍入每次调用的最终费用。 */
@@ -137,9 +140,12 @@ export const calculateModelPrice = ({
     })();
     return { totalPoints, tiers, matchedTier: undefined };
   }
+  // 阶梯上限按 K Tokens 匹配，实际积分单价按 M Tokens 结算。
   const matchedTier =
     tiers.find(
-      (tier) => tier.maxInputTokens === undefined || inputTokens / multiple <= tier.maxInputTokens
+      (tier) =>
+        tier.maxInputTokens === undefined ||
+        inputTokens / MODEL_PRICE_TIER_TOKEN_UNIT <= tier.maxInputTokens
     ) ?? tiers.at(-1);
   const totalPoints =
     config?.scope !== ModelScopeEnum.system

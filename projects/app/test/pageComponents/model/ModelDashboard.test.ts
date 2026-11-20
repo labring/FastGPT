@@ -78,9 +78,9 @@ describe('model dashboard million-unit pricing', () => {
 
   it.each([
     {
-      name: 'M tiers selected by total input',
+      name: 'K tiers selected by total input',
       pricing: {
-        pricing: { tiers: [{ maxInputTokens: 0.005, inputPrice: 1, outputPrice: 1 }, tier] }
+        pricing: { tiers: [{ maxInputTokens: 5, inputPrice: 1, outputPrice: 1 }, tier] }
       } satisfies PriceType,
       expected: 28,
       displayedTotal: 56

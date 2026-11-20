@@ -43,13 +43,13 @@ describe('sanitizeModelPriceTiers', () => {
     expect(
       sanitizeModelPriceTiers([
         { maxInputTokens: -1, inputPrice: NaN, outputPrice: Infinity },
-        { maxInputTokens: 0.0041, inputPrice: 1, outputPrice: 2 },
-        { maxInputTokens: 0.0041, inputPrice: 5, outputPrice: 5 },
+        { maxInputTokens: 4, inputPrice: 1, outputPrice: 2 },
+        { maxInputTokens: 4, inputPrice: 5, outputPrice: 5 },
         { inputPrice: undefined, outputPrice: undefined } as never
       ])
     ).toEqual([
       { maxInputTokens: 0, inputPrice: 0, outputPrice: 0 },
-      { maxInputTokens: 0.0041, inputPrice: 1, outputPrice: 2 }
+      { maxInputTokens: 4, inputPrice: 1, outputPrice: 2 }
     ]);
     expect(
       sanitizeModelPriceTiers([
@@ -88,22 +88,41 @@ describe('calculateModelPrice', () => {
       ...model,
       pricing: {
         tiers: [
-          { maxInputTokens: 0.0041, inputPrice: 1000, outputPrice: 2000 },
-          { maxInputTokens: 0.01, inputPrice: 3000, outputPrice: 4000 }
+          { maxInputTokens: 4, inputPrice: 1000, outputPrice: 2000 },
+          { maxInputTokens: 10, inputPrice: 3000, outputPrice: 4000 }
         ]
       }
     };
     for (const [inputTokens, totalPoints, tierIndex] of [
       [0, 0.002, 0],
-      [4099, 4.101, 0],
-      [4100, 4.102, 0],
-      [4101, 12.307, 1],
+      [3999, 4.001, 0],
+      [4000, 4.002, 0],
+      [4001, 12.007, 1],
       [10001, 30.007, 1]
     ]) {
       const result = calculateModelPrice({ config, inputTokens, outputTokens: 1 });
       expect(result.matchedTier).toEqual(config.pricing.tiers[tierIndex]);
       expect(result.totalPoints).toBe(totalPoints);
     }
+    // 常见 K Tokens 边界（如 272K = 272000）精确匹配首档，同时单价按 M Tokens 结算。
+    expect(
+      calculateModelPrice({
+        config: {
+          ...model,
+          pricing: {
+            tiers: [
+              { maxInputTokens: 272, inputPrice: 1680, outputPrice: 8400 },
+              { inputPrice: 3360, outputPrice: 12600 }
+            ]
+          }
+        },
+        inputTokens: 272000,
+        outputTokens: 1000
+      })
+    ).toMatchObject({
+      matchedTier: { maxInputTokens: 272, inputPrice: 1680, outputPrice: 8400 },
+      totalPoints: 465.36
+    });
     expect(
       calculateModelPrice({
         config: {
@@ -179,9 +198,9 @@ describe('calculateModelPrice', () => {
 
 const tieredModel = {
   ...model,
-  pricing: { tiers: [{ maxInputTokens: 0.0041, inputPrice: 1.005, outputPrice: 2.675 }] }
+  pricing: { tiers: [{ maxInputTokens: 4, inputPrice: 1.005, outputPrice: 2.675 }] }
 };
-const roundedTiers = [{ maxInputTokens: 0.0041, inputPrice: 1.01, outputPrice: 2.68 }];
+const roundedTiers = [{ maxInputTokens: 4, inputPrice: 1.01, outputPrice: 2.68 }];
 const sttModel = {
   ...model,
   type: ModelTypeEnum.stt as const,

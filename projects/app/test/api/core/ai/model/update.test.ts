@@ -226,7 +226,7 @@ describe('admin settings model create/update api', () => {
           pricing: {
             tiers: [
               {
-                maxInputTokens: 0.000125,
+                maxInputTokens: 125,
                 inputPrice: 0.125,
                 outputPrice: 2.345
               }
@@ -241,7 +241,7 @@ describe('admin settings model create/update api', () => {
       ModelPricingSchema.parse((await MongoAIModel.findById(modelId).lean())?.pricing).tiers
     ).toMatchObject([
       {
-        maxInputTokens: 0.000125,
+        maxInputTokens: 125,
         inputPrice: 0.13,
         outputPrice: 2.35
       }
@@ -255,7 +255,7 @@ describe('admin settings model create/update api', () => {
           pricing: {
             tiers: [
               {
-                maxInputTokens: 0.000125,
+                maxInputTokens: 125,
                 inputPrice: 0.335,
                 outputPrice: 3.335
               }
@@ -268,7 +268,7 @@ describe('admin settings model create/update api', () => {
     const stored = await MongoAIModel.findById(modelId).lean();
     expect(ModelPricingSchema.parse(stored?.pricing).tiers).toMatchObject([
       {
-        maxInputTokens: 0.000125,
+        maxInputTokens: 125,
         inputPrice: 0.34,
         outputPrice: 3.34
       }

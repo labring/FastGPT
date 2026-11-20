@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
-import { backfillSTTPricingTypeRecord } from '@/migration/tasks/4180/20261112_backfill_stt_pricing_type/service';
+import { backfillSTTPricingTypeRecord } from '@/migration/tasks/4180/20261120_migrate_model_pricing/service';
+
 vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 
 const seed = async (overrides: Record<string, unknown> = {}) => {
@@ -22,7 +23,7 @@ const seed = async (overrides: Record<string, unknown> = {}) => {
   return raw;
 };
 
-describe('backfillSTTPricingTypeRecord', () => {
+describe('20261120_migrate_model_pricing service (STT backfill)', () => {
   it('does not overwrite malformed explicit types or invalid pricing objects', async () => {
     for (const pricing of [
       { type: null },
@@ -37,6 +38,7 @@ describe('backfillSTTPricingTypeRecord', () => {
       expect(await MongoAIModel.collection.findOne({ _id: raw._id })).toEqual(raw);
     }
   });
+
   it('rolls back pricing and catalog revisions together on write failure', async () => {
     const raw = await seed({ pricing: { unitPrice: 0.2 } });
     const catalogs = await MongoAIModelCatalog.find({}).lean();
@@ -51,6 +53,7 @@ describe('backfillSTTPricingTypeRecord', () => {
     expect(await MongoAIModel.collection.findOne({ _id: raw._id })).toEqual(raw);
     expect(await MongoAIModelCatalog.find({}).lean()).toEqual(catalogs);
   });
+
   it('preserves a concurrent explicit token configuration by re-reading inside the transaction', async () => {
     const raw = await seed({ pricing: { unitPrice: 0.2 } });
     const collection = MongoAIModel.collection;
