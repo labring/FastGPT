@@ -3,7 +3,7 @@ import z from 'zod';
 
 /**
  * 模型健康状态探测系统配置 Schema。
- * 存储在 MongoSystemConfigs 中，key 为 SystemConfigsTypeEnum.modelStatusProbe。
+ * 存储在 system_instance_configs 的 modelStatusProbe scope。
  */
 export const ModelStatusProbeConfigSchema = z.object({
   /** 是否开启所有模型定时自动探测 */

@@ -6,6 +6,28 @@ import {
 import { describe, expect, it } from 'vitest';
 
 describe('code IO parser', () => {
+  it('keeps static inputs and outputs that follow comments', () => {
+    const code = `
+      function main({
+        // Input comment.
+        amount,
+        /* Currency comment. */ currency
+      }) {
+        return {
+          // Output comment.
+          amount,
+          /* Currency comment. */ currency
+        };
+      }
+    `;
+
+    expect(extractCodeInputDefinitions(code)?.map(({ key }) => key)).toEqual([
+      'amount',
+      'currency'
+    ]);
+    expect(extractReturnedObjectKeys(code)).toEqual(['amount', 'currency']);
+  });
+
   it('extracts JavaScript inputs and return outputs with documented types', () => {
     const code = `
       /**

@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { checkWebSyncLimit } from '@fastgpt/service/support/user/utils';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import type { ApiRequestProps } from '@fastgpt/next/type';
@@ -17,7 +18,7 @@ async function handler(req: ApiRequestProps): Promise<WebSyncLimitResponse> {
 
   await checkWebSyncLimit({
     teamId,
-    limitMinutes: global.feConfigs?.limit?.websiteSyncLimitMinuted
+    limitMinutes: getSystemInstanceConfig().resource.websiteSyncLimitMinuted
   });
 
   return WebSyncLimitResponseSchema.parse(undefined);

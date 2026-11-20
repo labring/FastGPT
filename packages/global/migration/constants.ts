@@ -21,3 +21,7 @@ export const systemMigrationLimits = {
   /** 单个 checkpoint 经 JSON 序列化后的最大 UTF-8 字节数。 */
   maxCheckpointBytes: 64 * 1024
 } as const;
+
+/** App 与 Pro 共用的系统配置迁移握手标识，Pro 只读取状态，不运行迁移。 */
+export const systemConfigMigrationId = '20261116_migrate_system_configs';
+export const systemMigrationStateCollectionName = 'system_migration_states';

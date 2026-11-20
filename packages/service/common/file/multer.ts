@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '../system/systemInstanceConfig/runtime';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
 import m from 'multer';
@@ -9,6 +10,7 @@ import { decodeMultipartFilename } from '../s3/filename';
 
 type MulterFileFilterOptions = {
   allowedExtensions?: string[];
+  defParamCharset?: string;
 };
 
 type MultipartRequest = NodeHttpRequest & {
@@ -59,6 +61,7 @@ export const multer = {
       },
       preservePath: true,
       storage: this._storage,
+      ...(options?.defParamCharset ? { defParamCharset: options.defParamCharset } : {}),
       ...(fileFilter ? { fileFilter } : {})
     }).single('file');
   },
@@ -76,17 +79,19 @@ export const multer = {
       preservePath: true,
       storage: this._storage,
       ...(fileFilter ? { fileFilter } : {})
-    }).array('file', global.feConfigs.limit.uploadFileMaxAmount);
+    }).array('file', getSystemInstanceConfig().resource.uploadFileMaxAmount);
   },
 
   resolveFormData<T extends Record<string, any>>({
     request,
     maxFileSize,
-    allowedExtensions
+    allowedExtensions,
+    defParamCharset
   }: {
     request: MultipartRequest;
     maxFileSize?: number;
     allowedExtensions?: string[];
+    defParamCharset?: string;
   }) {
     return new Promise<{
       data: T;
@@ -94,7 +99,7 @@ export const multer = {
       getBuffer: () => Buffer;
       getReadStream: () => fs.ReadStream;
     }>((resolve, reject) => {
-      const handler = this.singleStore(maxFileSize, { allowedExtensions });
+      const handler = this.singleStore(maxFileSize, { allowedExtensions, defParamCharset });
 
       // @ts-expect-error Multer 声明要求完整 Express Request，运行时兼容 IncomingMessage。
       handler(request, null, (error) => {

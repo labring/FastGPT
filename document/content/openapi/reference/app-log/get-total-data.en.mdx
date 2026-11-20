@@ -1,0 +1,66 @@
+---
+title: 'Get App Total Statistics'
+seoTitle: 'Get App Total Statistics - GET /api/proApi/core/app/logs/getTotalData | FastGPT OpenAPI'
+description: 'Retrieve cumulative usage statistics for a FastGPT app, including total users, chats, credit points, and token consumption.'
+---
+
+## Endpoint Overview
+
+- **Method** : `GET`
+- **Path** : `/api/proApi/core/app/logs/getTotalData`
+- **Module** : Applications / App Logs
+- **Authentication** : `Authorization: Bearer <apiKey>`—Supports **App API Key** ( `appId` optional) and **Personal API Key** ( `appId` required) (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E5%BA%94%E7%94%A8%E6%97%A5%E5%BF%97/GET/proApi/core/app/logs/getTotalData) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E5%BA%94%E7%94%A8%E6%97%A5%E5%BF%97/GET/proApi/core/app/logs/getTotalData` )
+
+## Description & Notes
+
+Retrieve cumulative application statistics including total users, total chats, and total credit consumption.
+
+## Request Parameters
+
+### Query Parameters
+
+**Mutually Exclusive Branches ( `anyOf` )**
+
+- **Explicit App ID**
+
+Personal API keys and login sessions must pass `appId` ; an App API Key always uses the bound application.
+
+| Field   | Type     | Required | Default | Constraints & Description    |
+| ------- | -------- | -------- | ------- | ---------------------------- |
+| `appId` | `string` | Yes      | -       | Application ID. minLength: 1 |
+
+- **App API Key (no appId required)**
+
+When authorizing with an app-bound App API Key, omit `appId` and `sourceType` ; the server resolves the bound app with `sourceType` fixed to `app` . Personal keys and login sessions cannot omit `appId` , and an explicit `appId` does not override an App API Key binding.
+
+No extra branch-specific fields are required.
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X GET "https://cloud.fastgpt.io/api/proApi/core/app/logs/getTotalData?appId=68ad85a7463006c963799a05" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## Response Schema & Examples
+
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (when a payload schema is declared; otherwise refer to the status description for runtime `data` semantics).
+
+### HTTP 200
+
+Successfully retrieved application total statistics
+
+**Content-Type** : `application/json`
+
+| Field               | Type     | Required | Default | Constraints & Description    |
+| ------------------- | -------- | -------- | ------- | ---------------------------- |
+| `totalUsers`        | `number` | Yes      | -       | Total users                  |
+| `totalChats`        | `number` | Yes      | -       | Total chats                  |
+| `totalPoints`       | `number` | Yes      | -       | Total credit points consumed |
+| `totalInputTokens`  | `number` | Yes      | -       | Total input tokens consumed  |
+| `totalOutputTokens` | `number` | Yes      | -       | Total output tokens consumed |

@@ -13,6 +13,7 @@ import {
   VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { MCPClient } from '@fastgpt/service/core/app/mcp';
 import { getWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/context';
@@ -334,6 +335,27 @@ describe('dispatchRunTool runtime toolset auth', () => {
       result: 1,
       usagePoint: expectedPoints,
       msg: ''
+    });
+  });
+
+  it('returns value to workflow and ordered content to the agent', async () => {
+    getSystemToolDetailMock.mockResolvedValueOnce({
+      outputSchema: { properties: { summary: { 'x-fastgpt-output-kind': 'model-content' } } }
+    });
+    runToolStreamMock.mockResolvedValueOnce({
+      output: { summary: { value: ['generated'], images: [] } }
+    });
+    const props = createRunToolProps({ systemTool: { toolId: 'systemTool-search' } });
+    props.isToolCall = true;
+    const result = await dispatchRunTool(props);
+    expect(result.data).toEqual({ summary: ['generated'] });
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toEqual({
+      __fastgptPluginModelContent: true,
+      result: { summary: '["generated"]' },
+      content: [
+        { type: 'text', text: '{}' },
+        { type: 'text', text: '["generated"]' }
+      ]
     });
   });
 
@@ -894,6 +916,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
     const result = await dispatchRunTool(createRunToolProps({ systemTool: { toolId: 'search' } }));
 
     expect(result.error).toBeUndefined();
+    expect(result.toolResponse).toEqual({ ok: true });
     expect(runToolStreamMock).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({ input: { keyword: 'fastgpt' } })
     );

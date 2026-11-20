@@ -4,6 +4,12 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import {
+  AuditResourceTypeEnum,
+  type AuditResourceType,
+  buildAppAuditResource,
+  buildEntityAuditResource
+} from '@fastgpt/global/support/user/audit/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { OpenApiErrEnum } from '@fastgpt/global/common/error/code/openapi';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
@@ -25,7 +31,7 @@ async function handler(
     bodySchema: UpdateApiKeyBodySchema
   }).body;
 
-  const { tmbId, teamId, openapi, permission } = await authOpenApiKeyCrud({
+  const { tmbId, teamId, openapi, permission, app } = await authOpenApiKeyCrud({
     req,
     authToken: true,
     id: _id
@@ -55,10 +61,25 @@ async function handler(
       : undefined;
 
   (async () => {
+    const resources = [
+      buildEntityAuditResource({
+        type: AuditResourceTypeEnum.apiKey,
+        id: openapi._id,
+        name: name || openapi.name
+      }),
+      ...(scope.type === ApiKeyTypeEnum.app
+        ? [
+            app
+              ? buildAppAuditResource(app)
+              : buildEntityAuditResource({ type: AuditResourceTypeEnum.app, id: scope.appId })
+          ]
+        : [])
+    ].filter((item): item is AuditResourceType => Boolean(item));
     addAuditLog({
       tmbId,
       teamId,
       event: AuditEventEnum.UPDATE_API_KEY,
+      resources,
       params: {
         keyName: name || openapi.name,
         keyId: String(openapi._id),

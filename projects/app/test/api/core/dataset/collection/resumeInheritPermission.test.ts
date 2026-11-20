@@ -15,7 +15,7 @@ describe('resume collection inherit permission api', () => {
     await MongoTeamAudit.deleteMany({});
   });
 
-  it('writes a dataset audit for a root collection', async () => {
+  it('writes a collection audit with its dataset context for a root collection', async () => {
     const users = await getFakeUsers(1);
     const dataset = await MongoDataset.create({
       name: 'audit-dataset',
@@ -52,8 +52,13 @@ describe('resume collection inherit permission api', () => {
         }).lean();
         expect(audit).not.toBeNull();
         expect(audit?.resources).toEqual([
-          { datasetId: dataset._id },
-          { collectionId: collection._id }
+          {
+            type: 'collection',
+            id: String(collection._id),
+            name: 'audit-collection',
+            parentId: dataset._id,
+            collectionType: collection.type
+          }
         ]);
         expect(audit?.metadata).toEqual({
           targetResource: 'audit-collection',
@@ -110,8 +115,13 @@ describe('resume collection inherit permission api', () => {
           event: AuditEventEnum.RESUME_INHERIT_PERMISSION
         }).lean();
         expect(audit?.resources).toEqual([
-          { datasetId: dataset._id },
-          { collectionId: collection._id }
+          {
+            type: 'collection',
+            id: String(collection._id),
+            name: 'nested-audit-collection',
+            parentId: dataset._id,
+            collectionType: collection.type
+          }
         ]);
         expect(audit?.metadata).toEqual({
           targetResource: 'nested-audit-collection',

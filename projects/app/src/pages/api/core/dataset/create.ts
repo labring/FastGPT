@@ -25,9 +25,13 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
-import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
+import {
+  checkTeamDatasetFolderLimit,
+  checkTeamDatasetLimit
+} from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { buildDatasetAuditResource } from '@fastgpt/global/support/user/audit/type';
 
 async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
   const {
@@ -101,8 +105,12 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
     return modelHandle.getDefaultModelData('datasetImageLLM', { authorizedIds });
   })();
 
-  // check limit
-  await checkTeamDatasetLimit(teamId);
+  // 目录和知识库分别计入不同配额，通用入口应与专用目录入口保持一致。
+  if (type === DatasetTypeEnum.folder) {
+    await checkTeamDatasetFolderLimit({ teamId });
+  } else {
+    await checkTeamDatasetLimit(teamId);
+  }
 
   const datasetId = await mongoSessionRun(async (session) => {
     const ancestorIds =
@@ -162,6 +170,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
       tmbId,
       teamId,
       event: AuditEventEnum.CREATE_DATASET,
+      resources: [buildDatasetAuditResource({ _id: datasetId, name, avatar, type })],
       params: {
         datasetName: name,
         datasetType: getI18nDatasetType(type)

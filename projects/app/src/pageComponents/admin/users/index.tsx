@@ -1,24 +1,14 @@
 'use client';
-import React, { useRef, useState } from 'react';
-import {
-  Button,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Flex,
-  Box,
-  InputGroup,
-  Input,
-  InputLeftElement
-} from '@chakra-ui/react';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import React, { useMemo, useRef, useState } from 'react';
+import { Button, Table, Thead, Tbody, Tr, Th, Td, Flex, Box } from '@chakra-ui/react';
 import dayjs from 'dayjs';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import Tag from '@fastgpt/web/components/common/Tag';
 import SingleSelectFilter from '@fastgpt/web/components/common/TagFilter/SingleSelectFilter';
+import AdminCompositeSearch, { useAdminCompositeSearch } from '@/components/admin/CompositeSearch';
+import type { AdminSearchOption } from '@/components/admin/CompositeSearch/utils';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getUsers } from '@/web/admin/user/api';
 import UserEditModal from './components/UserEditModal';
@@ -32,7 +22,6 @@ import UserAddModal from './components/UserAddModal';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
-import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const userStatusColorMap = {
   [UserStatusEnum.active]: 'green',
@@ -43,13 +32,29 @@ const userStatusColorMap = {
 
 const UserTable = () => {
   const { t } = useSafeTranslation();
-  // const [username, setUsername] = useState<string>();
+  const userSearchOptions = useMemo<readonly AdminSearchOption<'username' | 'userId'>[]>(
+    () => [
+      {
+        value: 'username',
+        label: t('admin:composite_search.field_username'),
+        placeholder: t('admin:composite_search.placeholder_username')
+      },
+      {
+        value: 'userId',
+        label: t('admin:composite_search.field_user_id'),
+        placeholder: t('admin:composite_search.placeholder_user_id'),
+        exactObjectId: true
+      }
+    ],
+    [t]
+  );
   const [userDetail, setUserDetail] = useState<UserItemType>();
-  const [search, setSearch] = useState<string>();
   const [status, setStatus] = useState<AdminUserStatusFilterType | undefined>(
     UserStatusEnum.active
   );
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { searchField, inputValue, isInvalid, searchParams, onFieldChange, onInputChange } =
+    useAdminCompositeSearch({ options: userSearchOptions });
 
   const statusOptions = [
     { label: t('common:All'), value: undefined },
@@ -70,11 +75,11 @@ const UserTable = () => {
     defaultPageSize: 20,
     pageSizeCacheKey: 'users-users-list',
     params: {
-      username: search,
+      ...searchParams,
       // 接口保留多选契约；单选“全部”时省略条件，其余转换为单元素数组。
       statuses: status ? [status] : undefined
     },
-    refreshDeps: [search, status],
+    refreshDeps: [searchParams, status],
     scrollContainerRef
   });
 
@@ -90,21 +95,17 @@ const UserTable = () => {
         borderColor={'myGray.200'}
       >
         <Box as={'h1'} {...accountTitleTextStyles}>
-          用户信息
+          {t('admin:user_info')}
         </Box>
         <Box flexGrow={1} />
-        <InputGroup w={['100%', '250px']} h={'36px'}>
-          <InputLeftElement h={'full'}>
-            <MyIcon name="common/searchLight" w={4} color={'myGray.400'} />
-          </InputLeftElement>
-          <Input
-            placeholder="请输入用户名搜索"
-            onChange={(e) => {
-              setSearch(e.target.value);
-            }}
-            h={'36px'}
-          ></Input>
-        </InputGroup>
+        <AdminCompositeSearch
+          options={userSearchOptions}
+          field={searchField}
+          value={inputValue}
+          isInvalid={isInvalid}
+          onFieldChange={onFieldChange}
+          onValueChange={onInputChange}
+        />
         <SingleSelectFilter
           title={t('common:Status')}
           value={status}
@@ -137,9 +138,9 @@ const UserTable = () => {
         <Table>
           <Thead>
             <Tr>
-              <Th>用户名</Th>
-              <Th>创建时间</Th>
-              <Th>{t('common:Status')}</Th>
+              <Th>{t('admin:username')}</Th>
+              <Th>{t('admin:created_at')}</Th>
+              <Th>{t('admin:status')}</Th>
               <Th></Th>
             </Tr>
           </Thead>
@@ -169,7 +170,7 @@ const UserTable = () => {
                       mr={2}
                       onClick={() => setUserDetail(item)}
                     >
-                      详情
+                      {t('admin:details')}
                     </Button>
                     <UserEditModal
                       data={item}
@@ -192,7 +193,7 @@ const UserTable = () => {
           >
             <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
             <Box mt={2} color={'myGray.500'}>
-              无用户记录～
+              {t('admin:no_users')}
             </Box>
           </Flex>
         )}
@@ -208,22 +209,23 @@ const UserTable = () => {
 export default UserTable;
 
 function UserDetailModal({ user, onClose }: { user: UserItemType; onClose: () => void }) {
+  const { t } = useSafeTranslation();
   return (
     <MyModal isOpen={true} onClose={onClose} title={'用户详情'} maxW={['90vw', '700px']}>
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>用户名</Box>
+        <Box flex={'0 0 120px'}>{t('admin:username')}</Box>
         <Box>{user.username}</Box>
       </Flex>
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>创建时间:</Box>
+        <Box flex={'0 0 120px'}>{t('admin:created_at_2')}</Box>
         <Box>{dayjs(user.createTime).format('YYYY/MM/DD HH:mm:ss')}</Box>
       </Flex>
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>联系方式:</Box>
+        <Box flex={'0 0 120px'}>{t('admin:contact')}</Box>
         <Box>{user.contact || '-'}</Box>
       </Flex>
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>状态:</Box>
+        <Box flex={'0 0 120px'}>{t('admin:status_2')}</Box>
         <Box>{user.status}</Box>
       </Flex>
       <Flex alignItems={'center'} pb={4}>

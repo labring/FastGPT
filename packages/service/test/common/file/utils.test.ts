@@ -1,3 +1,7 @@
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import os from 'os';
@@ -23,19 +27,20 @@ import {
 } from '@fastgpt/service/common/file/utils';
 
 describe('getFileMaxSize', () => {
-  let originalConfig: typeof global.feConfigs;
+  let originalConfig: typeof global.systemInstanceConfig;
   beforeEach(() => {
-    originalConfig = global.feConfigs;
+    originalConfig = global.systemInstanceConfig;
   });
   afterEach(() => {
-    global.feConfigs = originalConfig;
+    global.systemInstanceConfig = originalConfig;
   });
   it.each([
     [undefined, 1000],
     [500, 500],
     [0, 1000]
   ])('returns the configured size %s or the missing-value default in bytes', (value, expected) => {
-    global.feConfigs = { limit: { uploadFileMaxSize: value } } as any;
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    if (value !== undefined) getTestInstanceConfig().resource.uploadFileMaxSize = value;
     expect(getFileMaxSize()).toBe(expected * 1024 * 1024);
   });
 });

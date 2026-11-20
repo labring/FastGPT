@@ -6,7 +6,7 @@ on:
       - 'packages/service/**'
       - 'packages/web/**'
       - 'packages/workflow-core/**'
-      - 'packages/workflow-cli/**'
+      - 'cli/**'
       - 'projects/app/**'
       - 'sdk/**'
       - 'test/**'
@@ -43,7 +43,7 @@ jobs:
       run_web: ${{ steps.scope.outputs.run_web }}
       run_app: ${{ steps.scope.outputs.run_app }}
       run_workflow_core: ${{ steps.scope.outputs.run_workflow_core }}
-      run_workflow_cli: ${{ steps.scope.outputs.run_workflow_cli }}
+      run_cli: ${{ steps.scope.outputs.run_cli }}
       should_report: ${{ steps.scope.outputs.should_report }}
 
     steps:
@@ -52,22 +52,22 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const setOutputs = ({ global, service, web, app, workflowCore, workflowCli }) => {
-              const shouldReport = global || service || web || app || workflowCore || workflowCli;
+            const setOutputs = ({ global, service, web, app, workflowCore, cli }) => {
+              const shouldReport = global || service || web || app || workflowCore || cli;
               core.setOutput('run_global', global ? 'true' : 'false');
               core.setOutput('run_service', service ? 'true' : 'false');
               core.setOutput('run_web', web ? 'true' : 'false');
               core.setOutput('run_app', app ? 'true' : 'false');
               core.setOutput('run_workflow_core', workflowCore ? 'true' : 'false');
-              core.setOutput('run_workflow_cli', workflowCli ? 'true' : 'false');
+              core.setOutput('run_cli', cli ? 'true' : 'false');
               core.setOutput('should_report', shouldReport ? 'true' : 'false');
               core.info(
-                `Test scopes selected: global=${global}, service=${service}, web=${web}, app=${app}, workflowCore=${workflowCore}, workflowCli=${workflowCli}`
+                `Test scopes selected: global=${global}, service=${service}, web=${web}, app=${app}, workflowCore=${workflowCore}, cli=${cli}`
               );
             };
 
             if (context.eventName !== 'pull_request') {
-              setOutputs({ global: true, service: true, web: true, app: true, workflowCore: true, workflowCli: true });
+              setOutputs({ global: true, service: true, web: true, app: true, workflowCore: true, cli: true });
               return;
             }
 
@@ -109,11 +109,10 @@ jobs:
             ]);
 
             const runWorkflowCore = affectsAll || hasPath(['packages/global', 'packages/workflow-core']);
-            const runWorkflowCli = affectsAll || hasPath([
+            const runCli = affectsAll || hasPath([
               'packages/global',
-              'packages/web',
               'packages/workflow-core',
-              'packages/workflow-cli'
+              'cli'
             ]);
 
             setOutputs({
@@ -122,7 +121,7 @@ jobs:
               web: runWeb,
               app: runApp,
               workflowCore: runWorkflowCore,
-              workflowCli: runWorkflowCli
+              cli: runCli
             });
 
   test-global:
@@ -311,9 +310,9 @@ jobs:
           name: coverage-workflow-core
           path: packages/workflow-core/coverage/coverage-summary.json
 
-  test-workflow-cli:
+  test-cli:
     needs: detect-changes
-    if: ${{ needs.detect-changes.outputs.run_workflow_cli == 'true' }}
+    if: ${{ needs.detect-changes.outputs.run_cli == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -333,23 +332,26 @@ jobs:
       - name: 'Install Deps'
         run: pnpm install --frozen-lockfile
 
-      - name: 'Typecheck Workflow CLI'
-        run: pnpm --filter @fastgpt/workflow-cli typecheck
+      - name: 'Typecheck CLI'
+        run: pnpm --filter @fastgpt/cli typecheck
 
-      - name: 'Test Workflow CLI'
+      - name: 'Lint CLI'
+        run: pnpm --filter @fastgpt/cli lint
+
+      - name: 'Test CLI'
         env:
-          FASTGPT_TEST_SCOPE: workflow-cli
+          FASTGPT_TEST_SCOPE: cli
         run: pnpm test
 
-      - name: 'Verify CLI bin and packed package'
-        run: pnpm --filter @fastgpt/workflow-cli test:package
+      - name: 'Verify CLI bin smoke'
+        run: pnpm --filter @fastgpt/cli test:bin
 
-      - name: 'Upload Coverage (Workflow CLI)'
-        if: always() && hashFiles('packages/workflow-cli/coverage/coverage-summary.json') != ''
+      - name: 'Upload Coverage (CLI)'
+        if: always() && hashFiles('cli/coverage/coverage-summary.json') != ''
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-workflow-cli
-          path: packages/workflow-cli/coverage/coverage-summary.json
+          name: coverage-cli
+          path: cli/coverage/coverage-summary.json
 
   report-coverage:
     runs-on: ubuntu-latest
@@ -361,7 +363,7 @@ jobs:
         test-web,
         test-app,
         test-workflow-core,
-        test-workflow-cli
+        test-cli
       ]
     if: ${{ always() && needs.detect-changes.outputs.should_report == 'true' }}
     permissions:
@@ -391,7 +393,7 @@ jobs:
               { name: 'Web', dir: 'coverage-web' },
               { name: 'App', dir: 'coverage-app' },
               { name: 'Workflow Core', dir: 'coverage-workflow-core' },
-              { name: 'Workflow CLI', dir: 'coverage-workflow-cli' }
+              { name: 'CLI', dir: 'coverage-cli' }
             ];
 
             const formatPct = (value) => {
@@ -476,8 +478,8 @@ jobs:
                [ "${{ needs.test-web.result }}" != "skipped" ]; } ||
              { [ "${{ needs.test-workflow-core.result }}" != "success" ] &&
                [ "${{ needs.test-workflow-core.result }}" != "skipped" ]; } ||
-             { [ "${{ needs.test-workflow-cli.result }}" != "success" ] &&
-               [ "${{ needs.test-workflow-cli.result }}" != "skipped" ]; } ||
+             { [ "${{ needs.test-cli.result }}" != "success" ] &&
+               [ "${{ needs.test-cli.result }}" != "skipped" ]; } ||
              { [ "${{ needs.test-app.result }}" != "success" ] &&
                [ "${{ needs.test-app.result }}" != "skipped" ]; }; then
             exit 1

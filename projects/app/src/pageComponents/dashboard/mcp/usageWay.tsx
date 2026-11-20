@@ -15,9 +15,11 @@ const UsageWay = ({ mcp, onClose }: { mcp: McpKeyType; onClose: () => void }) =>
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const [linkWay, setLinkWay] = useState<LinkWay>('http');
+  const sseBaseUrl = feConfigs?.mcpServerProxyEndpoint?.replace(/\/+$/, '') ?? '';
+  const currentLinkWay = linkWay === 'sse' && sseBaseUrl ? 'sse' : 'http';
 
   const { url, jsonConfig } = (() => {
-    if (linkWay === 'http') {
+    if (currentLinkWay === 'http') {
       const baseUrl = feConfigs?.customApiDomain || `${location.origin}/api`;
       const url = `${baseUrl}/mcp/app/${mcp.key}/mcp`;
       const jsonConfig = `{
@@ -33,9 +35,7 @@ const UsageWay = ({ mcp, onClose }: { mcp: McpKeyType; onClose: () => void }) =>
       };
     }
 
-    const url = feConfigs?.mcpServerProxyEndpoint
-      ? `${feConfigs?.mcpServerProxyEndpoint}/${mcp.key}/sse`
-      : '';
+    const url = `${sseBaseUrl}/${mcp.key}/sse`;
     const jsonConfig = `{
   "mcpServers": {
     "${feConfigs?.systemTitle}-mcp-${mcp._id}": {
@@ -59,9 +59,9 @@ const UsageWay = ({ mcp, onClose }: { mcp: McpKeyType; onClose: () => void }) =>
             w={'100%'}
             list={[
               { label: 'Streamable HTTP', value: 'http' },
-              { label: 'SSE', value: 'sse' }
+              ...(sseBaseUrl ? [{ label: 'SSE', value: 'sse' as const }] : [])
             ]}
-            value={linkWay}
+            value={currentLinkWay}
             onChange={setLinkWay}
           />
         </Flex>

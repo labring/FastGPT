@@ -1,30 +1,22 @@
 'use client';
-import React, { useRef, useState } from 'react';
-import {
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Flex,
-  Box,
-  InputGroup,
-  Input,
-  InputLeftElement
-} from '@chakra-ui/react';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import React, { useRef } from 'react';
+import { Table, Thead, Tbody, Tr, Th, Td, Flex, Box } from '@chakra-ui/react';
 import dayjs from 'dayjs';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import AdminCompositeSearch, {
+  useAdminCompositeSearch,
+  useAdminTeamSearchOptions
+} from '@/components/admin/CompositeSearch';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getPlans } from '@/web/admin/wallet/plan/api';
-import { standardSubLevelMap } from '../pays';
-import type { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { SubTypeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import PlanAddModal from './components/PlanAddModal';
 import PlanEditModal from './components/PlanEditModal';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
+import { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 
 export type PlanType = {
   id: string;
@@ -58,8 +50,36 @@ export type PlanType = {
 };
 
 const PlanTable = () => {
-  const [search, setSearch] = useState<string>();
+  const { t } = useSafeTranslation();
+  const planSearchOptions = useAdminTeamSearchOptions();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { searchField, inputValue, isInvalid, searchParams, onFieldChange, onInputChange } =
+    useAdminCompositeSearch({ options: planSearchOptions });
+  const standardSubLevelMap = {
+    [StandardSubLevelEnum.free]: {
+      label: t('admin:free_short')
+    },
+    [StandardSubLevelEnum.custom]: {
+      label: t('admin:custom_short')
+    },
+    [StandardSubLevelEnum.basic]: {
+      label: t('admin:basic_short')
+    },
+    [StandardSubLevelEnum.advanced]: {
+      label: t('admin:advanced_short')
+    },
+
+    // deprecated
+    [StandardSubLevelEnum.experience]: {
+      label: t('admin:experience_short')
+    },
+    [StandardSubLevelEnum.team]: {
+      label: t('admin:team')
+    },
+    [StandardSubLevelEnum.enterprise]: {
+      label: t('admin:enterprise_short')
+    }
+  };
 
   const {
     data: plans,
@@ -71,10 +91,8 @@ const PlanTable = () => {
   } = usePagination(getPlans, {
     defaultPageSize: 20,
     pageSizeCacheKey: 'users-plans-list',
-    params: {
-      search
-    },
-    refreshDeps: [search],
+    params: searchParams,
+    refreshDeps: [searchParams],
     scrollContainerRef
   });
 
@@ -90,19 +108,17 @@ const PlanTable = () => {
         borderColor={'myGray.200'}
       >
         <Box as={'h1'} {...accountTitleTextStyles}>
-          套餐管理
+          {t('admin:plan_management')}
         </Box>
         <Box flexGrow={1}></Box>
-        <InputGroup w={['100%', '250px']} h={'36px'}>
-          <InputLeftElement h={'full'}>
-            <MyIcon name="common/searchLight" w={4} color={'myGray.400'} />
-          </InputLeftElement>
-          <Input
-            placeholder="请输入用户名搜索"
-            h={'36px'}
-            onChange={(e) => setSearch(e.target.value)}
-          ></Input>
-        </InputGroup>
+        <AdminCompositeSearch
+          options={planSearchOptions}
+          field={searchField}
+          value={inputValue}
+          isInvalid={isInvalid}
+          onFieldChange={onFieldChange}
+          onValueChange={onInputChange}
+        />
         <PlanAddModal
           updateData={() => {
             getData(1);
@@ -128,12 +144,12 @@ const PlanTable = () => {
         <Table>
           <Thead>
             <Tr>
-              <Th>团队id</Th>
-              <Th>团队名</Th>
-              <Th>用户名</Th>
-              <Th>订阅套餐</Th>
-              <Th>积分</Th>
-              <Th>起止时间</Th>
+              <Th>{t('admin:team_id_3')}</Th>
+              <Th>{t('admin:team_name_2')}</Th>
+              <Th>{t('admin:username')}</Th>
+              <Th>{t('admin:subscription_plans')}</Th>
+              <Th>{t('admin:points')}</Th>
+              <Th>{t('admin:time_range')}</Th>
               <Th></Th>
             </Tr>
           </Thead>
@@ -148,7 +164,7 @@ const PlanTable = () => {
                     ? `${standardSubLevelMap[item.level]?.label}版`
                     : item.type === SubTypeEnum.extraDatasetSize
                       ? '额外知识库'
-                      : 'AI 积分套餐'}
+                      : t('admin:ai_points_package')}
                 </Td>
                 <Td>
                   {item.totalPoints
@@ -185,7 +201,7 @@ const PlanTable = () => {
           >
             <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
             <Box mt={2} color={'myGray.500'}>
-              无套餐记录～
+              {t('admin:no_plans')}
             </Box>
           </Flex>
         )}

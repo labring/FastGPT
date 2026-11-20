@@ -15,8 +15,11 @@ import { getLogger, LogCategories } from '../../common/logger';
 import { composeChatItemResponseData } from './nodeResponseStorage';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { buildChatSourceAggregateMatch, buildChatSourceQuery } from './source';
+import { UserChatSelectSchema } from '@fastgpt/global/core/chat/input/type';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.HISTORY);
+// 仅持久化历史允许无效交互回复降级为未识别，新请求仍使用严格的 UserChatSelectSchema。
+const persistedUserChatSelectSchema = UserChatSelectSchema.optional().catch(undefined);
 
 export type ChatItemNodeResponseMode = 'none' | 'preview' | 'full';
 type ChatItemResponsePreviewProjection = Record<string, 1>;
@@ -85,19 +88,39 @@ export async function getChatItems({
   hasMoreNext: boolean;
 }> {
   /**
-   * 读取时校验计划展示数据；旧 Ask 不做字段迁移或答案恢复。
+   * 读取时校验交互回复和计划展示数据；无效 select 按普通消息读取，不推断旧协议动作或恢复答案。
    */
   const normalizePersistedAgentData = (histories: ChatItemMiniType[]) => {
     histories.forEach((item) => {
       if (!item.value) return;
+
+      if (item.obj === ChatRoleEnum.Human) {
+        item.value.forEach((value) => {
+          // 旧记录不能阻断整页历史读取；只移除无效交互信息，保留正文且不写回数据库。
+          if (
+            value.select !== undefined &&
+            persistedUserChatSelectSchema.parse(value.select) === undefined
+          ) {
+            delete value.select;
+          }
+        });
+        return;
+      }
 
       if (item.obj !== ChatRoleEnum.AI) return;
 
       item.value.forEach((value) => {
         if (!includeInternalContext) delete value.inputContext;
         if (!includeInternalContext && value.tools) {
-          value.tools = value.tools.map((tool) =>
-            tool.internalOnly ? { ...tool, params: '', response: '', hideDetails: true } : tool
+          value.tools = value.tools.map((tool) => {
+            if (!tool.internalOnly) return tool;
+            const { content: _content, ...publicTool } = tool;
+            return { ...publicTool, params: '', response: '', hideDetails: true };
+          });
+        }
+        if (!includeInternalContext && value.toolResponses) {
+          value.toolResponses = value.toolResponses.map(
+            ({ content: _content, ...response }) => response
           );
         }
         if (value.agentAsk && !AgentLoopAskSchema.safeParse(value.agentAsk).success)

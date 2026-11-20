@@ -1,3 +1,4 @@
+import pLimit from 'p-limit';
 import {
   countGptMessagesTokens,
   countGptMessagesTokensBatch
@@ -9,7 +10,11 @@ import type {
   ChatCompletionContentPartText,
   ChatCompletionMessageParam
 } from '@fastgpt/global/core/ai/llm/type';
-import { audioFileType } from '@fastgpt/global/common/file/constants';
+import {
+  parseInlineImageDataUri,
+  providerImageMimeTypes
+} from '@fastgpt/global/common/file/image/utils';
+import { audioFileType, maxToolImagePartAmount } from '@fastgpt/global/common/file/constants';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { axios } from '../../../common/api/axios';
 
@@ -22,7 +27,8 @@ import {
   parseFilenameExtension
 } from '@fastgpt/global/common/string/tools';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { serviceEnv } from '../../../env';
+import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
+import { getMultipleDataToBase64 } from '../../../common/system/constants';
 import {
   classifyUrlMediaType,
   createFileClassificationContext,
@@ -37,6 +43,96 @@ import {
 } from './compress/constants';
 
 const logger = getLogger(LogCategories.MODULE.AI.LLM);
+
+/**
+ * 判断 URL 是否为沙箱文件预览地址。
+ *
+ * 预览地址带一次性 session 凭证且只在服务端网络拓扑内可达，不适合直接透传给模型服务商。
+ * 这里按 env 里的代理前缀识别（与 sandbox 层 buildSandboxPreviewFileUrl 的 `/preview/` 契约一致），
+ * 避免把 sandbox 模块及其 dal/redis 依赖拖进 llm 模块。
+ */
+export const isSandboxPreviewFileUrl = (url: string) => {
+  const base = getSystemInstanceConfig().subservice.agentSandbox.proxy.previewUrl;
+  if (!base) return false;
+
+  try {
+    // 与 sandbox 层 buildSandboxPreviewFileUrl 的 URL 规范化保持一致：host 小写、去掉默认端口，
+    // 并清掉 base 自身可能带的 query/hash，否则生成的预览地址认不出来。
+    const parsedBase = new URL(base);
+    parsedBase.search = '';
+    parsedBase.hash = '';
+    const normalizedBase = parsedBase.toString().replace(/\/+$/, '');
+    return url.startsWith(`${normalizedBase}/preview/`);
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * 图片占位文本里的 URL 可能是带凭证的预览地址，写入提示词前先脱敏，
+ * 避免凭证经纯文本路径外发给模型服务商。
+ */
+export const maskImagePlaceholderUrl = (url: string) =>
+  isSandboxPreviewFileUrl(url) ? 'sandbox preview file' : url;
+
+/** 工具图片下载超时上限（ms），避免单张慢图长时间阻塞 Agent 推理轮次。 */
+export const TOOL_IMAGE_DOWNLOAD_TIMEOUT_MS = 15 * 1000;
+const TOOL_IMAGE_DOWNLOAD_CONCURRENCY = 4;
+
+type ToolImageDownloadCache = {
+  entries: Map<string, Promise<string | undefined>>;
+  limit: ReturnType<typeof pLimit>;
+};
+
+// 缓存随单次请求或 Agent 运行的 fileContext 回收，不跨会话共享。
+const toolImageDownloadCaches = new WeakMap<FileClassificationContext, ToolImageDownloadCache>();
+
+const getToolImageDownloadCache = (
+  fileContext: FileClassificationContext
+): ToolImageDownloadCache => {
+  const existing = toolImageDownloadCaches.get(fileContext);
+  if (existing) return existing;
+
+  const created: ToolImageDownloadCache = {
+    entries: new Map(),
+    limit: pLimit(TOOL_IMAGE_DOWNLOAD_CONCURRENCY)
+  };
+  toolImageDownloadCaches.set(fileContext, created);
+  return created;
+};
+
+/**
+ * 按来源选择图片下载通道（用户消息路径）。
+ *
+ * 沙箱预览代理可能部署在内网，公共 SSRF 内网拦截会把配置里的合法预览地址一起拒掉，
+ * 导致工具图片全部丢失。这类地址的 origin 来自服务端配置而不是用户输入，因此只对
+ * 该 origin 使用受限通道；其它地址继续走安全的公共下载逻辑。
+ */
+export const loadImageBase64 = (url: string) => {
+  const previewProxyBase = getSystemInstanceConfig().subservice.agentSandbox.proxy.previewUrl;
+  if (!previewProxyBase || !isSandboxPreviewFileUrl(url)) {
+    return getImageBase64(url);
+  }
+
+  return getImageBase64(url, { trustedOrigin: previewProxyBase });
+};
+
+/**
+ * 工具视觉通道专用图片下载入口（fastAgent 与 piAgent 共用）。
+ *
+ * 工具返回的外链可能返回 200 text/html 登录页或慢响应：这里开启魔数白名单校验与短超时，
+ * 防止把非图像字节包装成无效 data:image/... 发给上游视觉模型，同时保留通用下载器的兼容语义。
+ */
+export const loadToolImageBase64 = (url: string, options?: { timeoutMs?: number }) => {
+  const previewProxyBase = getSystemInstanceConfig().subservice.agentSandbox.proxy.previewUrl;
+  const isSandboxPreview = Boolean(previewProxyBase && isSandboxPreviewFileUrl(url));
+
+  return getImageBase64(url, {
+    ...(isSandboxPreview ? { trustedOrigin: previewProxyBase } : {}),
+    timeoutMs: options?.timeoutMs ?? TOOL_IMAGE_DOWNLOAD_TIMEOUT_MS,
+    allowedMimeTypes: providerImageMimeTypes
+  });
+};
 
 /**
  * 判断消息是否属于系统级提示。
@@ -262,10 +358,14 @@ export const loadRequestMessages = async ({
 
   /**
    * 判断媒体是否需要在服务端转 base64。
-   * 本地相对路径只有服务端能读取；远程媒体统一由 MULTIPLE_DATA_TO_BASE64 控制。
+   * 本地路径只有服务端能读取；multipleDataToBase64 用于兼容不支持远程 URL 的模型。
+   * 开关在本次请求入口只取一次：若逐条媒体求值，管理员中途保存配置会触发快照
+   * 重载，导致同一次请求部分图片转 base64、部分保留远程 URL 的混合形态。
    */
-  const shouldLoadMediaAsBase64 = (url: string) =>
-    url.startsWith('/') || serviceEnv.MULTIPLE_DATA_TO_BASE64;
+  const multipleDataToBase64 = getMultipleDataToBase64();
+  const shouldLoadMediaAsBase64 = (url: string) => {
+    return url.startsWith('/') || multipleDataToBase64;
+  };
 
   /**
    * 剥离系统自动注入的 <system-reminder> 块，仅对用户原始输入做长度判断与链接提取。
@@ -345,6 +445,70 @@ export const loadRequestMessages = async ({
     return [...mediaParts, { type: 'text', text: input }];
   };
 
+  const toolImageCache = getToolImageDownloadCache(fileContext);
+
+  /** 规范化已内联的 data URI 图片 part；非 data URI 返回 undefined 交由后续下载逻辑处理。 */
+  const normalizeInlineImageDataPart = (
+    imageItem: Omit<Extract<ChatCompletionContentPart, { type: 'image_url' }>, 'key'>
+  ): ChatCompletionContentPart | undefined => {
+    const imgUrl = imageItem.image_url.url;
+    const inlineImage = parseInlineImageDataUri(imgUrl);
+    if (inlineImage) {
+      return {
+        ...imageItem,
+        image_url: {
+          ...imageItem.image_url,
+          url: `data:${inlineImage.mimeType};base64,${inlineImage.data}`
+        }
+      };
+    }
+
+    if (/^data:image\//i.test(imgUrl)) {
+      return imageItem;
+    }
+
+    return undefined;
+  };
+
+  /**
+   * 在当前 fileContext 生命周期内按「工具调用结果 + URL」复用下载结果并限制并发度与总等待时间。
+   * - 同一历史工具结果（相同 toolCallId + URL）在后续轮次直接复用，不再重复 GET；
+   * - 不同工具调用即使返回相同的可更新 URL（如新版本图表或重试恢复），也拥有独立下载机会；
+   * - 总截止时间包含并发排队时间，避免多批慢图叠加阻塞模型请求。
+   */
+  const loadCachedToolImageDataUri = (
+    toolCallId: string,
+    url: string
+  ): Promise<string | undefined> => {
+    const cacheKey = `${toolCallId}:${url}`;
+    const cached = toolImageCache.entries.get(cacheKey);
+    if (cached) return cached;
+
+    const deadline = Date.now() + TOOL_IMAGE_DOWNLOAD_TIMEOUT_MS;
+    const pending = toolImageCache.limit(async () => {
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) {
+        logger.warn('Drop tool image part after queue wait timeout', {
+          toolCallId,
+          url
+        });
+        return undefined;
+      }
+
+      try {
+        const { completeBase64 } = await loadToolImageBase64(url, { timeoutMs: remainingMs });
+        return completeBase64;
+      } catch (error) {
+        logger.warn('Drop tool image part after normalization failure', {
+          error: getErrText(error)
+        });
+        return undefined;
+      }
+    });
+    toolImageCache.entries.set(cacheKey, pending);
+    return pending;
+  };
+
   /**
    * 归一化图片输入：内部文件或强制配置时转 base64，远程图片直接透传给模型服务。
    * 不在 FastGPT 服务端做 HEAD 可访问性校验，避免多图并发请求引发外部连接耗尽 DoS。
@@ -353,15 +517,15 @@ export const loadRequestMessages = async ({
     item: Extract<ChatCompletionContentPart, { type: 'image_url' }>
   ): Promise<ChatCompletionContentPart | undefined> => {
     const { key: _key, ...imageItem } = item;
-    const imgUrl = imageItem.image_url.url;
-
-    if (imgUrl.startsWith('data:image/')) {
-      return imageItem;
+    const inlinePart = normalizeInlineImageDataPart(imageItem);
+    if (inlinePart) {
+      return inlinePart;
     }
 
+    const imgUrl = imageItem.image_url.url;
     if (shouldLoadMediaAsBase64(imgUrl)) {
       try {
-        const { completeBase64: base64 } = await getImageBase64(imgUrl);
+        const { completeBase64: base64 } = await loadImageBase64(imgUrl);
 
         return {
           ...imageItem,
@@ -484,6 +648,52 @@ export const loadRequestMessages = async ({
    */
   const normalizeMediaContentParts = async (content: ChatCompletionContentPart[]) => {
     const normalized = await Promise.all(content.map((item) => normalizeMediaContentPart(item)));
+
+    return normalized.filter(Boolean) as ChatCompletionContentPart[];
+  };
+
+  /**
+   * 工具图片的归一化不阻塞整轮请求。
+   *
+   * 工具给出的图片可能已经失效（404、超限、被内网策略拒绝）或仅在服务端网络可达（如沙箱预览地址）。
+   * 若在 multipleDataToBase64=false 时直接透传外部 URL，上游模型网关拉图失败会直接报错中断工具调用。
+   * 因此工具图片统一走服务端内联（forceBase64），失败时静默丢弃并保留 tool 文本，与 piAgent 保持一致。
+   */
+  const normalizeToolMediaContentParts = async (
+    content: ChatCompletionContentPart[],
+    toolCallId: string
+  ) => {
+    const normalized = await Promise.all(
+      content.map(async (item) => {
+        if (item.type === 'image_url') {
+          const { key: _key, ...imageItem } = item;
+          const inlinePart = normalizeInlineImageDataPart(imageItem);
+          if (inlinePart) {
+            return inlinePart;
+          }
+
+          const base64 = await loadCachedToolImageDataUri(toolCallId, imageItem.image_url.url);
+          if (!base64) return undefined;
+          return {
+            ...imageItem,
+            image_url: {
+              ...imageItem.image_url,
+              url: base64
+            }
+          };
+        }
+
+        try {
+          const [result] = await normalizeMediaContentParts([item]);
+          return result;
+        } catch (error) {
+          logger.warn('Drop tool image part after normalization failure', {
+            error: getErrText(error)
+          });
+          return undefined;
+        }
+      })
+    );
 
     return normalized.filter(Boolean) as ChatCompletionContentPart[];
   };
@@ -676,6 +886,39 @@ export const loadRequestMessages = async ({
     }, []);
   })(messages);
 
+  /**
+   * 工具消息里的图片不能直接放进 tool content（供应商只接受字符串或文本 parts），
+   * 需要转换成紧随其后的 user 视觉消息。但同一个 assistant 消息可能同时发起多个工具调用，
+   * 这时的图片消息必须排在全部 tool 结果之后，否则会打断 tool_call 结果回填顺序。
+   * 这里先给 tool 消息登记图片，拼装阶段再按“整轮 tool 结果”统一追加。
+   */
+  const toolMediaParts = new WeakMap<ChatCompletionMessageParam, ChatCompletionContentPart[]>();
+
+  /** 拆分工具文本和多模态内容，保留媒体与对应文本的顺序。 */
+  const extractToolMediaContent = async (
+    content: ChatCompletionContentPart[],
+    toolCallId: string
+  ) => {
+    const supportedContent = content
+      .map(filterSupportedUserContentPart)
+      .filter((part): part is ChatCompletionContentPart => part !== undefined);
+    const textParts = supportedContent.filter(
+      (part): part is ChatCompletionContentPartText => part.type === 'text'
+    );
+    const mediaParts = supportedContent.filter((part) => part.type !== 'text');
+
+    // 多段文本需要随媒体一起发送，才能保留字段值与媒体的对应关系。
+    const orderedParts = textParts.length > 1 ? supportedContent : mediaParts;
+    // 先按单条工具结果的图片上限截断，再由服务端内联，避免返回大量链接时并发拉图。
+    let imageCount = 0;
+    const cappedParts = orderedParts.filter(
+      (part) => part.type !== 'image_url' || ++imageCount <= maxToolImagePartAmount
+    );
+    const normalizedMediaParts = await normalizeToolMediaContentParts(cappedParts, toolCallId);
+
+    return { textParts, mediaParts: normalizedMediaParts };
+  };
+
   const loadMessages = (
     await Promise.all(
       mergeMessages.map(async (raw, i) => {
@@ -740,6 +983,34 @@ export const loadRequestMessages = async ({
             ...formatAssistantItem(item, supportReason),
             content: formatContent
           };
+        } else if (item.role === ChatCompletionRequestMessageRoleEnum.Tool) {
+          // 供应商接口的 tool content 只接受字符串或文本 parts，图片不能放进 tool 消息。
+          // 文本保留在 tool 消息里；图片先按模型能力过滤、再归一化，登记到 toolMediaParts，
+          // 由拼装阶段转换成这一轮 tool 结果之后的 user 视觉消息。
+          if (!Array.isArray(item.content)) {
+            return item;
+          }
+
+          const { textParts, mediaParts } = await extractToolMediaContent(
+            item.content,
+            item.tool_call_id
+          );
+
+          const toolMessage = {
+            ...item,
+            content:
+              textParts.length === 0
+                ? 'none'
+                : textParts.length === 1
+                  ? textParts[0].text
+                  : textParts
+          } as ChatCompletionMessageParam;
+
+          if (mediaParts.some((part) => part.type !== 'text')) {
+            toolMediaParts.set(toolMessage, mediaParts);
+          }
+
+          return toolMessage;
         } else {
           return item;
         }
@@ -747,5 +1018,40 @@ export const loadRequestMessages = async ({
     )
   ).filter(Boolean) as ChatCompletionMessageParam[];
 
-  return loadMessages;
+  /**
+   * 同一轮的全部 tool 结果必须连续回填，工具图片消息统一追加在这一轮 tool 结果之后。
+   * 否则 assistant(A,B) 的回填会变成 tool A → user(image) → tool B，打断协议顺序。
+   */
+  const appendToolMediaAfterToolRun = (messages: ChatCompletionMessageParam[]) => {
+    const result: ChatCompletionMessageParam[] = [];
+    let pendingToolMedia: ChatCompletionContentPart[] = [];
+
+    const flushToolMedia = () => {
+      if (pendingToolMedia.length === 0) return;
+      result.push({
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: pendingToolMedia
+      } as ChatCompletionMessageParam);
+      pendingToolMedia = [];
+    };
+
+    messages.forEach((message) => {
+      if (message.role === ChatCompletionRequestMessageRoleEnum.Tool) {
+        result.push(message);
+        const media = toolMediaParts.get(message);
+        if (media?.length) {
+          pendingToolMedia.push(...media);
+        }
+        return;
+      }
+
+      flushToolMedia();
+      result.push(message);
+    });
+    flushToolMedia();
+
+    return result;
+  };
+
+  return appendToolMediaAfterToolRun(loadMessages);
 };

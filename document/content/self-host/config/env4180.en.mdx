@@ -1,0 +1,227 @@
+---
+title: Environment variables (V4.18.0+)
+description: Environment variables for FastGPT App, Pro, Code Sandbox, and Volume Manager in V4.18.0 and later.
+---
+
+Starting with V4.18.0, environment configuration is simpler, with business settings managed in Admin. This page lists the remaining environment variables. Set them in the relevant service and restart that service after changes. Build-time variables require a new build.
+
+Configure the Secure attribute for login cookies under Admin → Security, and the shared HTTP client response size limit under Admin → Resource limits (default: 20 MiB; 0 allows only empty responses). Legacy `AUTH_COOKIE_SECURE` and `SERVICE_AXIOS_MAX_CONTENT_LENGTH` values are imported only from the App process environment during the upgrade migration; matching Pro values are not imported. Existing form values take precedence. Changing these environment variables after upgrading has no effect. Cookie attributes apply when cookies are reissued; HTTP limits apply to subsequent requests.
+
+## Shared App / Pro environment variables
+
+### Core settings and secrets
+
+| Variable              | Default            | Description                                                                                                                                             |
+| --------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DB_MAX_LINK`         | `10`               | Maximum connection pool size for MongoDB, PG, OceanBase, openGauss, and other databases. Values are clamped to 10–1000.                                 |
+| `FILE_TOKEN_KEY`      | None, **required** | Secret for file read and file authorization flows. Must be at least 6 characters.                                                                       |
+| `AES256_SECRET_KEY`   | None, **required** | Secret used by AES encryption and decryption. Must be at least 6 characters.                                                                            |
+| `INVOKE_TOKEN_SECRET` | None, **required** | JWT secret for Invoke reverse calls. Must be at least 32 characters.                                                                                    |
+| `ROOT_KEY`            | `fastgpt_root_key` | Admin API key for the current system. It can call `/api/admin/**` APIs and must be at least 6 characters.                                               |
+| `PRO_TOKEN`           | Empty              | Token for FastGPT app server calls to pro/admin internal APIs. It must match the pro/admin configuration and is required when App configures `PRO_URL`. |
+| `PRO_URL`             | Empty              | Commercial service URL. When set, App can call Pro APIs, and the domain is allowed by file URL validation.                                              |
+| `AGENT_USERS`         | Unset              | Comma-separated usernames for preconfigured Agent accounts. Requires `DEFAULT_AGENT_PSW`.                                                               |
+| `DEFAULT_AGENT_PSW`   | Unset              | Initial password for the accounts listed in `AGENT_USERS`.                                                                                              |
+
+### Service connections
+
+| Variable                        | Default                 | Description                                                                                                                                           |
+| ------------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PLUGIN_BASE_URL`               | `http://localhost:3004` | FastGPT Plugin service URL. Provided at runtime by this environment variable; restart the service after changing it.                                  |
+| `PLUGIN_TOKEN`                  | `token`                 | Authentication token for calling the Plugin service. Provided at runtime by this environment variable and must match the plugin service `AUTH_TOKEN`. |
+| `AIPROXY_API_ENDPOINT`          | Empty                   | AI Proxy service root URL, such as `http://aiproxy:3000`. Do not append `/v1`.                                                                        |
+| `AIPROXY_API_TOKEN`             | Empty                   | AI Proxy administrator token. When using the proxy, it must be nonempty and match the server configuration.                                           |
+| `CRM_API_URL`                   | Empty                   | Lead attribution CRM API base URL (including `/api/v1`). Empty disables identity reporting.                                                           |
+| `CRM_API_KEY`                   | Empty                   | CRM admin API key used to bind a FastGPT user to `visitor_id` after registration or login.                                                            |
+| `SANGFOR_CHUNK_URL`             | Unset                   | Sangfor intelligent chunking service URL. Used by intelligent chunking requests.                                                                      |
+| `SANGFOR_CHUNK_KEY`             | Unset                   | Bearer token for the Sangfor intelligent chunking service.                                                                                            |
+| `SANGFOR_CHUNK_TIMEOUT_MINUTES` | `60`                    | Intelligent chunking request timeout, in minutes.                                                                                                     |
+
+### Agent Sandbox
+
+| Variable                      | Default | Description                                                 |
+| ----------------------------- | ------- | ----------------------------------------------------------- |
+| `AGENT_SANDBOX_SHOW_FREE_TIP` | `false` | Whether the frontend shows the Agent Sandbox free-use hint. |
+
+### Databases, cache, and vector stores
+
+| Variable                     | Default                                     | Description                                                                                                                                                                                                    |
+| ---------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `REDIS_URL`                  | `redis://default:mypassword@localhost:6379` | Redis connection URL.                                                                                                                                                                                          |
+| `MONGODB_URI`                | Local MongoDB example URL                   | Main business MongoDB connection URL.                                                                                                                                                                          |
+| `MONGODB_LOG_URI`            | Same example as `MONGODB_URI`               | MongoDB connection URL for logs. If unset, it can reuse the main database.                                                                                                                                     |
+| `VECTOR_VQ_LEVEL`            | `32`                                        | Vector quantization level. Supported ranges depend on the vector store.                                                                                                                                        |
+| `PG_URL`                     | Empty                                       | PostgreSQL/pgvector connection URL.                                                                                                                                                                            |
+| `OCEANBASE_URL`              | Empty                                       | OceanBase vector store connection URL.                                                                                                                                                                         |
+| `SEEKDB_URL`                 | Empty                                       | SeekDB vector store connection URL.                                                                                                                                                                            |
+| `MILVUS_ADDRESS`             | Empty                                       | Milvus/Zilliz address.                                                                                                                                                                                         |
+| `MILVUS_TOKEN`               | Empty                                       | Milvus/Zilliz access token.                                                                                                                                                                                    |
+| `MILVUS_LANGUAGE_IDENTIFIER` | `lingua`                                    | Language-identifier for Milvus BM25 full-text search: `lingua` (default) \| `whatlang`. When the vector store is Milvus, full-text uses BM25 (single `modeldata_v2`); other vector stores use MongoDB `$text`. |
+| `OPENGAUSS_URL`              | Empty                                       | openGauss vector store connection URL.                                                                                                                                                                         |
+
+### Object storage
+
+| Variable                               | Default                 | Description                                                                                                                       |
+| -------------------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `STORAGE_VENDOR`                       | `minio`                 | Object storage vendor. Supported values are `minio`, `aws-s3`, `r2`, `cos`, and `oss`.                                            |
+| `STORAGE_PUBLIC_BUCKET`                | `fastgpt-public`        | Public file bucket.                                                                                                               |
+| `STORAGE_PRIVATE_BUCKET`               | `fastgpt-private`       | Private file bucket.                                                                                                              |
+| `STORAGE_REGION`                       | `us-east-1`             | Object storage region.                                                                                                            |
+| `STORAGE_R2_PUBLIC_ENDPOINT`           | Empty                   | Public HTTPS domain for a Cloudflare R2 bucket; required when `STORAGE_VENDOR=r2`.                                                |
+| `STORAGE_S3_ENDPOINT`                  | `http://localhost:9000` | S3/MinIO-compatible API endpoint.                                                                                                 |
+| `STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH` | Empty                   | Extra sub-path for public file access URLs.                                                                                       |
+| `STORAGE_ACCESS_KEY_ID`                | `minioadmin`            | Object storage access key.                                                                                                        |
+| `STORAGE_SECRET_ACCESS_KEY`            | `minioadmin`            | Object storage secret key.                                                                                                        |
+| `STORAGE_S3_FORCE_PATH_STYLE`          | `false`                 | Whether S3 path-style access is forced. MinIO usually requires this.                                                              |
+| `STORAGE_S3_MAX_RETRIES`               | `3`                     | Maximum S3 client retry count.                                                                                                    |
+| `STORAGE_COS_PROTOCOL`                 | `https:`                | Tencent Cloud COS protocol, either `https:` or `http:`.                                                                           |
+| `STORAGE_COS_USE_ACCELERATE`           | `false`                 | Whether Tencent Cloud COS acceleration domain is used.                                                                            |
+| `STORAGE_COS_CNAME_DOMAIN`             | Empty                   | Tencent Cloud COS custom CNAME domain.                                                                                            |
+| `STORAGE_COS_PROXY`                    | Empty                   | Tencent Cloud COS proxy URL.                                                                                                      |
+| `STORAGE_OSS_ENDPOINT`                 | Empty                   | Alibaba Cloud OSS endpoint.                                                                                                       |
+| `STORAGE_OSS_CNAME`                    | `false`                 | Whether Alibaba Cloud OSS uses CNAME.                                                                                             |
+| `STORAGE_OSS_INTERNAL`                 | `false`                 | Whether Alibaba Cloud OSS uses an internal endpoint.                                                                              |
+| `STORAGE_OSS_SECURE`                   | `false`                 | Whether Alibaba Cloud OSS uses HTTPS.                                                                                             |
+| `FILE_DOWNLOAD_PUBLIC_URL_PREFIX`      | Unset                   | Public URL prefix for short download links. Configure your proxy to forward this prefix to FastGPT’s `/api/system/file/d/` route. |
+
+Configure the **File service domain** in **Admin → Core settings → Download links** (`storage.fileDomain`). It points to FastGPT and is used for both upload and download short links. Leave it empty to use `FE_DOMAIN`. Saved changes apply to newly generated links without a restart. A configured `FILE_DOWNLOAD_PUBLIC_URL_PREFIX` still takes precedence for downloads. Legacy `FILE_DOMAIN` is imported once during upgrade, preserving saved values and explicit clears; runtime no longer reads this ENV variable.
+
+### Logs, metrics, and tracing
+
+| Variable                    | Default          | Description                                                                                                                                                                                                                 |
+| --------------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LOG_ENABLE_CONSOLE`        | `true`           | Whether console logging is enabled.                                                                                                                                                                                         |
+| `LOG_CONSOLE_LEVEL`         | `debug`          | Console log level. Supported values are `trace`, `debug`, `info`, `warning`, `error`, and `fatal`.                                                                                                                          |
+| `LOG_ENABLE_OTEL`           | `false`          | Whether OpenTelemetry log export is enabled.                                                                                                                                                                                |
+| `LOG_OTEL_LEVEL`            | `info`           | OTEL log level.                                                                                                                                                                                                             |
+| `LOG_OTEL_SERVICE_NAME`     | `fastgpt-client` | OTEL log service name.                                                                                                                                                                                                      |
+| `LOG_OTEL_URL`              | Empty            | OTEL log export URL.                                                                                                                                                                                                        |
+| `METRICS_ENABLE_OTEL`       | `false`          | Whether OpenTelemetry metrics export is enabled.                                                                                                                                                                            |
+| `METRICS_EXPORT_INTERVAL`   | `30000`          | Metrics export interval, in milliseconds.                                                                                                                                                                                   |
+| `METRICS_OTEL_SERVICE_NAME` | `fastgpt-client` | OTEL metrics service name.                                                                                                                                                                                                  |
+| `METRICS_OTEL_URL`          | Empty            | OTEL metrics export URL.                                                                                                                                                                                                    |
+| `TRACING_ENABLE_OTEL`       | `false`          | Whether OpenTelemetry tracing is enabled.                                                                                                                                                                                   |
+| `TRACING_OTEL_SERVICE_NAME` | `fastgpt-client` | OTEL tracing service name.                                                                                                                                                                                                  |
+| `TRACING_OTEL_URL`          | Empty            | OTEL tracing export URL.                                                                                                                                                                                                    |
+| `TRACING_OTEL_SAMPLE_RATIO` | Empty            | Trace sampling ratio from `0` to `1`.                                                                                                                                                                                       |
+| `CHAT_LOG_URL`              | Empty            | Base URL of the chat log service. Each log is posted separately to `{CHAT_LOG_URL}/api/chat/push`. Pushing also requires `CHAT_LOG_INTERVAL` greater than `0`.                                                              |
+| `CHAT_LOG_INTERVAL`         | Empty            | Delay in milliseconds before sending each chat log separately; logs are not batched. Pushing is disabled when this value is unset or less than or equal to `0`, or when `CHAT_LOG_URL` is empty.                            |
+| `CHAT_LOG_SOURCE_ID_PREFIX` | `fastgpt-`       | Prefix for chat log source IDs.                                                                                                                                                                                             |
+| `RETRIEVAL_RESULTS_LIMIT`   | `0`              | Maximum number of pre-rerank candidates recorded in dataset search log details when reranking is enabled. Set to 0 to disable recording. Configured only through this environment variable; restart services after changes. |
+| `LANGFUSE_SECRET_KEY`       | Unset            | Langfuse secret key.                                                                                                                                                                                                        |
+| `LANGFUSE_PUBLIC_KEY`       | Unset            | Langfuse public key.                                                                                                                                                                                                        |
+| `LANGFUSE_BASE_URL`         | Unset            | Langfuse service URL.                                                                                                                                                                                                       |
+
+### Domains, frontend, and runtime
+
+| Variable               | Default  | Description                                                                                                                                                                   |
+| ---------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FE_DOMAIN`            | Required | The origin clients use to access FastGPT, including the scheme, host, and optional port. It completes file and image URLs. Local development can use `http://localhost:3000`. |
+| `NEXT_PUBLIC_BASE_URL` | Empty    | Next.js sub-path deployment prefix, such as `/fastgpt`. It must be fixed when building the image.                                                                             |
+| `PORT`                 | `3000`   | Next.js listening port. Also used for local-address detection.                                                                                                                |
+
+### Network security and proxies
+
+| Variable               | Default | Description                                                                                                                |
+| ---------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `TRUSTED_PROXY_ENABLE` | `false` | Validate client IP information provided by reverse proxies.                                                                |
+| `TRUSTED_PROXY_IPS`    | Empty   | Trusted reverse proxy IP/CIDR list, separated by commas or whitespace.                                                     |
+| `HTTP_PROXY`           | Empty   | Outbound HTTP proxy for Node and workers.                                                                                  |
+| `HTTPS_PROXY`          | Empty   | Outbound HTTPS proxy for Node and workers.                                                                                 |
+| `NO_PROXY`             | Empty   | Address list that bypasses proxies.                                                                                        |
+| `ALL_PROXY`            | Unset   | Proxy for outbound clients that support this variable. Default fetch/OpenAI clients require `HTTP_PROXY` or `HTTPS_PROXY`. |
+
+### Feature controls and service limits
+
+| Variable                                 | Default | Description                                                                                                                                                                                                                                                                                      |
+| ---------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED` | `false` | Whether newly created teams grant their default all-members group permission to create Apps, Skills, Datasets, and API Keys. Does not change existing teams. Configured only through this environment variable; restart services after changes. Configure consistently in FastGPT and Pro Admin. |
+| `SYSTEM_MIGRATION_BATCH_SIZE`            | `100`   | Records processed per batch by system upgrade tasks. Range: `50`–`1000`.                                                                                                                                                                                                                         |
+| `SYSTEM_MIGRATION_DELAY_SECONDS`         | `0`     | Delay before deferred system upgrade tasks, in seconds. `0` means no delay.                                                                                                                                                                                                                      |
+| `AUXILIARY_GENERATION_SHOW_RUN_DETAIL`   | `false` | Show run details for Skill, Agent, and Workflow generation.                                                                                                                                                                                                                                      |
+| `DATASET_SYNONYM_ENABLED`                | `false` | Enable synonym-based Dataset retrieval.                                                                                                                                                                                                                                                          |
+
+## App environment variables
+
+| Variable                             | Default | Description                                                                                                                                                                                     |
+| ------------------------------------ | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CHINESE_IP_REDIRECT_URL`            | Unset   | Destination for the China Mainland IP redirect prompt. Users click to navigate. Leave empty to hide the prompt.                                                                                 |
+| `SHOW_GIT`                           | `false` | Set this variable in App only. When `PRO_URL` is set, it controls Git information visibility regardless of License activation. Community deployments ignore it and always show Git information. |
+| `SHOW_OUTLINK_BRAND`                 | `false` | Set this variable in App only. When `PRO_URL` is set, it controls branding on public share links regardless of License activation. Community deployments ignore it and always enable branding.  |
+| `DISABLE_MARKETPLACE`                | `false` | Hides the plugin marketplace installation entry when `true`; local file installation remains available.                                                                                         |
+| `ENABLE_SAAS_ADMIN_CONFIG`           | `false` | Show SaaS-specific settings in Admin. Set this only in App.                                                                                                                                     |
+| `NEXT_PUBLIC_WORKFLOW_LEAVE_CONFIRM` | `true`  | Confirm before leaving the Workflow editor. Only the literal value `false` disables it. Set at build time.                                                                                      |
+
+## Pro / Admin environment variables
+
+| Variable                              | Default                  | Description                                                                                                                                                                                                                         |
+| ------------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PRO_TOKEN`                           | None, **required**       | Service-to-service token for FastGPT app calls to pro/admin internal APIs. Must be at least 32 characters and match App.                                                                                                            |
+| `BATCH_UPDATE_TIME`                   | `3000`                   | Wallet balance batch update interval, in milliseconds.                                                                                                                                                                              |
+| `INVOICE_FEISHU_WEBHOOK_URL`          | Empty                    | Lark webhook URL for invoice request notifications.                                                                                                                                                                                 |
+| `INVOICE_FEISHU_WEBHOOK_CALLBACK_URL` | Empty                    | Callback URL for buttons in invoice notifications.                                                                                                                                                                                  |
+| `SMS_PROXY`                           | Empty                    | SMS sending proxy service URL.                                                                                                                                                                                                      |
+| `MAX_CRAWL_PAGE`                      | `2000`                   | Maximum number of pages to crawl during website sync.                                                                                                                                                                               |
+| `CRAWL_MAX_HTML_SIZE`                 | `10`                     | Estimated maximum HTML size for one static crawled page, in MB.                                                                                                                                                                     |
+| `CRAWL_EXCLUDE_LIST`                  | Empty                    | Crawler exclusion rules for domains or paths. Use commas to separate values.                                                                                                                                                        |
+| `CLEAR_FREE_ACCOUNT`                  | `false`                  | Whether free account resource cleanup is enabled.                                                                                                                                                                                   |
+| `SYNC_MEMBER_CRON`                    | Empty                    | Cron expression for automatic member sync. Empty disables the sync task.                                                                                                                                                            |
+| `WORKORDER_BASE_URL`                  | Empty                    | Work order system URL. The entry is shown only when both this URL and `WORKORDER_JWT_SECRET` are configured.                                                                                                                        |
+| `WORKORDER_JWT_SECRET`                | Empty                    | Secret used to sign JWTs when creating work orders.                                                                                                                                                                                 |
+| `EXTERNAL_USER_SYSTEM_BASE_URL`       | Empty                    | External user system URL.                                                                                                                                                                                                           |
+| `EXTERNAL_USER_SYSTEM_AUTH_TOKEN`     | Empty                    | Authentication token for the external user system.                                                                                                                                                                                  |
+| `BAIDU_CONVERSION_TOKEN`              | Empty                    | Baidu conversion tracking token.                                                                                                                                                                                                    |
+| `BAIDU_CONVERSION_BASE_URL`           | Empty                    | Landing page URL for Baidu conversion tracking, without query parameters. The code appends `?bd_vid=...` to build the payload's `logidUrl`. The upload endpoint is fixed at `https://ocpc.baidu.com/ocpcapi/api/uploadConvertData`. |
+| `BING_ADS_DEVELOPER_TOKEN`            | Empty                    | Bing Ads developer token.                                                                                                                                                                                                           |
+| `BING_ADS_CUSTOMER_ID`                | Empty                    | Bing Ads customer ID.                                                                                                                                                                                                               |
+| `BING_ADS_CUSTOMER_ACCOUNT_ID`        | Empty                    | Bing Ads customer account ID.                                                                                                                                                                                                       |
+| `BING_ADS_CONVERSION_NAME`            | `fastgptcn`              | Bing Ads conversion goal name.                                                                                                                                                                                                      |
+| `BING_OAUTH_CLIENT_ID`                | Empty                    | Bing OAuth client ID.                                                                                                                                                                                                               |
+| `BING_OAUTH_CLIENT_SECRET`            | Empty                    | Bing OAuth client secret.                                                                                                                                                                                                           |
+| `BING_OAUTH_REFRESH_TOKEN`            | Empty                    | Bing OAuth refresh token.                                                                                                                                                                                                           |
+| `SHOW_WECOM_CONFIG`                   | `false`                  | Whether WeCom configuration is shown.                                                                                                                                                                                               |
+| `WECOM_DEV`                           | `false`                  | Development mode switch for WeCom Pay.                                                                                                                                                                                              |
+| `LICENSE_PUBLIC_KEY`                  | Unset                    | License verification public key contents. Uses the public key bundled in the image when unset.                                                                                                                                      |
+| `LICENSE_PUBLIC_KEY_PATH`             | Unset                    | Path to a public key file that overrides the bundled License verification key.                                                                                                                                                      |
+| `TEAM_MODE`                           | `single`                 | Team mode: `single` for one team, `multi` for multiple teams, or `sync` for external account synchronization. Restart Pro after changing it.                                                                                        |
+| `LOGIN_2FA_ENABLED`                   | `false`                  | Require email or SMS verification after password login. Set this only in Pro.                                                                                                                                                       |
+| `WECHAT_AUTH_TOKEN`                   | `THEAIDATASETPLATFORM`   | WeChat Official Account callback signing token. Must match the account’s configuration.                                                                                                                                             |
+| `TRANSFER_RESOURCE_ON_MEMBER_LEAVE`   | `true`                   | Transfer a member’s resources to root when external synchronization marks the member as having left.                                                                                                                                |
+| `LICENSE_AUTH_METHOD`                 | Unset                    | Set to `sangfor` to use the Sangfor License service. Other values use built-in License verification.                                                                                                                                |
+| `LICENSE_BASE_URL`                    | `http://127.0.0.1:10003` | Sangfor License service URL.                                                                                                                                                                                                        |
+
+## Code Sandbox environment variables
+
+| Variable                          | Default                                                  | Description                                                                                                                                       |
+| --------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SANDBOX_PORT`                    | `3000`                                                   | Code Sandbox listening port.                                                                                                                      |
+| `SANDBOX_TOKEN`                   | Empty                                                    | Bearer token for the `/sandbox` endpoint. Empty disables API authentication. It only allows printable ASCII characters and cannot contain spaces. |
+| `SANDBOX_POOL_SIZE`               | `5`                                                      | Number of pre-warmed JS/Python workers, from `1` to `100`.                                                                                        |
+| `SANDBOX_QUEUE_ID_CONCURRENCY`    | Empty                                                    | Number of requests with the same `queueId` that may enter execution concurrently. Empty disables `queueId` queueing. Range: `1` to `100`.         |
+| `SANDBOX_API_MAX_BODY_MB`         | `8`                                                      | Maximum `/sandbox` API JSON body size, including `variables`, in MB. Range: `1` to `100`.                                                         |
+| `SANDBOX_MAX_TIMEOUT`             | `60000`                                                  | Timeout for one code execution, in milliseconds. Range: `1000` to `600000`.                                                                       |
+| `SANDBOX_MAX_MEMORY_MB`           | `256`                                                    | Maximum memory for one sandbox, in MB. Range: `32` to `4096`. The runtime reserves an extra `50` MB for overhead.                                 |
+| `SANDBOX_MAX_OUTPUT_MB`           | `10`                                                     | Maximum output JSON size for one code execution, including return values and logs, in MB. Range: `1` to `100`.                                    |
+| `CHECK_INTERNAL_IP`               | `true`                                                   | Whether internal IP checks are enabled for sandbox network requests.                                                                              |
+| `SANDBOX_REQUEST_MAX_COUNT`       | `30`                                                     | Maximum number of network requests allowed during one code execution. Range: `1` to `1000`.                                                       |
+| `SANDBOX_REQUEST_TIMEOUT`         | `60000`                                                  | Timeout for one network request from inside the sandbox, in milliseconds. Range: `1000` to `300000`.                                              |
+| `SANDBOX_REQUEST_MAX_RESPONSE_MB` | `10`                                                     | Maximum response body size for one sandbox network request, in MB. Range: `1` to `100`.                                                           |
+| `SANDBOX_REQUEST_MAX_BODY_MB`     | `5`                                                      | Maximum request body size for one sandbox network request, in MB. Range: `1` to `100`.                                                            |
+| `SANDBOX_JS_ALLOWED_MODULES`      | `lodash,dayjs,moment,uuid,crypto-js,qs,url,querystring`  | Module allowlist for JavaScript code. Use commas to separate modules.                                                                             |
+| `SANDBOX_PYTHON_ALLOWED_MODULES`  | Common standard libraries plus `numpy,pandas,matplotlib` | Module allowlist for Python code. Use commas to separate modules.                                                                                 |
+| `PORT`                            | `3000`                                                   | Sandbox local service port used for local-address detection. Actual listening uses `SANDBOX_PORT` first.                                          |
+| `SANDBOX_DISABLE_SECCOMP`         | `false`                                                  | Disable Linux seccomp system call filtering.                                                                                                      |
+| `SANDBOX_MAX_TMP_MB`              | `16`                                                     | Temporary directory size limit per Python sandbox, in MB. Range: `1`–`1024`.                                                                      |
+
+## Volume Manager environment variables
+
+| Variable                   | Default                | Description                                                                                             |
+| -------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------- |
+| `PORT`                     | `3000`                 | Volume Manager listening port.                                                                          |
+| `VM_AUTH_TOKEN`            | None, **required**     | API authentication token for Volume Manager.                                                            |
+| `VM_RUNTIME`               | `kubernetes`           | Runtime type, either `docker` or `kubernetes`.                                                          |
+| `VM_DOCKER_SOCKET`         | `/var/run/docker.sock` | Docker socket path. Required only in `docker` mode.                                                     |
+| `VM_DOCKER_API_VERSION`    | `v1.44`                | Docker API version. Required only in `docker` mode.                                                     |
+| `VM_K8S_NAMESPACE`         | `opensandbox`          | Kubernetes namespace. Required only in `kubernetes` mode.                                               |
+| `VM_K8S_PVC_STORAGE_CLASS` | Unset                  | Kubernetes PVC StorageClass. Leave empty to use the cluster default. Applies only to `kubernetes` mode. |
+| `VM_LOG_LEVEL`             | `info`                 | Log level. Supported values are `debug`, `info`, and `none`.                                            |

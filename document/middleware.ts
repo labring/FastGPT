@@ -220,6 +220,7 @@ const exactMap: Record<string, string> = {
   '/openapi/app': '/openapi/best-practices/app-integration',
   '/openapi/chat': '/openapi/best-practices/app-integration',
   '/openapi/best-practices': '/openapi/intro',
+  '/openapi/reference': '/openapi/api-reference',
   '/openapi/swagger': '/openapi/intro',
   '/openapi/share': '/guide/build/publish/link',
   '/plugin': '/plugin/intro',
@@ -509,7 +510,7 @@ export default function middleware(request: NextRequest) {
   // Redirect root discovery and search index endpoints on legacy domains to their canonical owner host,
   // while passing canonical and preview root endpoints straight through untouched.
   if (
-    /^\/(?:robots\.txt|sitemap[^/]*\.xml|llms(?:-(?:full|guide|openapi|self-host))?\.txt|pricing\.md|static\.json(?:\/.*)?)$/i.test(
+    /^\/(?:robots\.txt|sitemap[^/]*\.xml|llms(?:-(?:full|guide|openapi|self-host))?\.txt|pricing\.md|openapi\.json|static\.json(?:\/.*)?)$/i.test(
       pathname
     )
   ) {
@@ -569,7 +570,7 @@ export default function middleware(request: NextRequest) {
 
   // Redirect locale-prefixed discovery endpoints on production hosts to their root owner paths.
   if (
-    /^\/(?:robots\.txt|sitemap[^/]*\.xml|llms(?:-(?:full|guide|openapi|self-host))?\.txt)$/i.test(
+    /^\/(?:robots\.txt|sitemap[^/]*\.xml|llms(?:-(?:full|guide|openapi|self-host))?\.txt|openapi\.json)$/i.test(
       pathWithoutLang
     )
   ) {

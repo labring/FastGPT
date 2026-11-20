@@ -15,6 +15,12 @@ import type { AgentLoopInteractiveToolExecuteParams } from '../../../../../../ai
 import type { AgentLoopDatasetSearchExecutor } from '../../../../../../ai/llm/agentLoop/interface';
 import { parseJsonArgs } from '../../../../../../ai/utils';
 import type { AgentLoopCoreToolInfo, AgentLoopCoreToolRunResult } from '../../domain/toolProvider';
+import {
+  convertMcpToolContentToToolContent,
+  extractAgentLoopCoreToolContent,
+  maskToolImagePayload,
+  unwrapPluginToolResponse
+} from '../../domain/toolContent';
 import type { AgentLoopCoreToolRunFlowResponse } from '../../adapter/nodeResponse/toolRunCollector';
 import { normalizeAgentLoopCoreDatasetSearchResult } from './systemToolHelpers';
 import { cloneDeep } from 'lodash-es';
@@ -166,6 +172,7 @@ const toFlowResponse = (
   runTimes: toolRunResponse.runTimes ?? 0
 });
 
+/** 将工作流工具结果转换为 Agent 响应，并保留运行详情和交互状态。 */
 const toToolRunResult = <TChildrenResponse = unknown>(
   toolRunResponse: AgentLoopCoreWorkflowToolRunResponse<TChildrenResponse>
 ): {
@@ -178,17 +185,49 @@ const toToolRunResult = <TChildrenResponse = unknown>(
       ? toolRunResponse.workflowRuntimeSummary?.errorText || 'Tool execution failed'
       : undefined;
 
-  const rawToolResponses = toolRunResponse.toolResponses;
-  const hasToolResponses =
-    rawToolResponses !== undefined && rawToolResponses !== null && rawToolResponses !== '';
+  const { response, content } = (() => {
+    const pluginResponse = unwrapPluginToolResponse(toolRunResponse.toolResponses);
+    const rawResponse = pluginResponse?.result ?? toolRunResponse.toolResponses;
+    const hasResponse = rawResponse !== undefined && rawResponse !== null && rawResponse !== '';
+    // 没有结果的失败调用必须返回错误，而不是用空结果掩盖失败原因。
+    const formatResponse = (value: unknown) =>
+      hasResponse || !errorMessage ? formatAgentLoopCoreToolResponse(value) : errorMessage;
+
+    if (pluginResponse) {
+      // 插件执行时已按 outputSchema 投影，直接使用完整 content，不能再猜测业务字段。
+      return {
+        response: formatResponse(maskToolImagePayload(rawResponse)),
+        content: pluginResponse.content.length > 0 ? pluginResponse.content : undefined
+      };
+    }
+
+    // MCP 原生图片需先转为 image_url；HTTP 和 workflow 使用已有 content 契约。
+    const mcpContent =
+      rawResponse && typeof rawResponse === 'object' && 'content' in rawResponse
+        ? rawResponse.content
+        : undefined;
+    const imageParts =
+      convertMcpToolContentToToolContent(mcpContent) ??
+      extractAgentLoopCoreToolContent(rawResponse);
+    // 图片走结构化通道时，文本中的内联数据需遮蔽，避免重复发送。
+    const response = formatResponse(
+      maskToolImagePayload(rawResponse, { maskDataUrlParts: Boolean(imageParts) })
+    );
+    return {
+      response,
+      content: imageParts
+        ? [
+            { type: 'text' as const, text: response },
+            ...imageParts.filter((part) => part.type === 'image_url')
+          ]
+        : undefined
+    };
+  })();
 
   const result: AgentLoopCoreToolRunResult<TChildrenResponse> = {
     // 工具失败时把错误原因返回给模型；'none' 会掩盖失败原因；内容审核命中时返回统一脱敏提示且不携带 errorMessage。
-    response: hasModerationBlock
-      ? MODERATION_BLOCKED_REPLACE_TEXT
-      : hasToolResponses || !errorMessage
-        ? formatAgentLoopCoreToolResponse(rawToolResponses)
-        : errorMessage,
+    response: hasModerationBlock ? MODERATION_BLOCKED_REPLACE_TEXT : response,
+    ...(!hasModerationBlock && content ? { content } : {}),
     ...(errorMessage ? { errorMessage } : {}),
     assistantMessages: hasModerationBlock
       ? []

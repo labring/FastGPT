@@ -32,6 +32,7 @@ export function GET() {
   ).join('\n\n');
   const content = `# AI Context: ${domain}/llms.txt
 # Pricing & Editions: ${domain}/pricing.md
+# OpenAPI 3.1 Spec: ${domain}/openapi.json
 
 ${rules}
 

@@ -1,7 +1,7 @@
 import type { NextApiRequest } from 'next';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { NextAPI } from '@/service/middleware/entry';
-import { getAppTemplatesAndLoadThem } from '@fastgpt/service/core/app/templates/register';
+import { getAppTemplateData } from '@fastgpt/service/core/app/templates/service';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetAppTemplateDetailQuerySchema,
@@ -17,7 +17,7 @@ async function handler(req: NextApiRequest): Promise<GetAppTemplateDetailRespons
     querySchema: GetAppTemplateDetailQuerySchema
   }).query;
 
-  const templateMarketItems: AppTemplateSchemaType[] = await getAppTemplatesAndLoadThem();
+  const templateMarketItems: AppTemplateSchemaType[] = await getAppTemplateData().get();
 
   return GetAppTemplateDetailResponseSchema.parse(
     templateMarketItems.find((item) => item.templateId === templateId)

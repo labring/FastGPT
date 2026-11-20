@@ -1,4 +1,5 @@
 import { authAppByTmbId } from '../app/auth';
+import type { AppWithPermissionType } from '@fastgpt/global/core/app/type';
 import {
   ManagePermissionVal,
   ReadPermissionVal
@@ -17,6 +18,7 @@ export const authEval = async ({
   evalId: string;
 }): Promise<{
   evaluation: EvaluationSchemaType;
+  app?: AppWithPermissionType;
   tmbId: string;
   teamId: string;
 }> => {
@@ -27,7 +29,7 @@ export const authEval = async ({
       _id: evalId,
       teamId
     },
-    'tmbId appId'
+    'tmbId appId name'
   ).lean();
   if (!evaluation) {
     return Promise.reject('Evaluation not found');
@@ -41,30 +43,32 @@ export const authEval = async ({
     };
   }
 
+  let app: AppWithPermissionType | undefined;
   try {
     // App read per
     if (per === ReadPermissionVal) {
-      await authAppByTmbId({
+      ({ app } = await authAppByTmbId({
         tmbId,
         appId: evaluation.appId,
         per: ReadPermissionVal,
         isRoot
-      });
+      }));
 
       return {
         teamId,
         tmbId,
-        evaluation
+        evaluation,
+        app
       };
     }
 
     // Write per
-    await authAppByTmbId({
+    ({ app } = await authAppByTmbId({
       tmbId,
       appId: evaluation.appId,
       per: ManagePermissionVal,
       isRoot
-    });
+    }));
   } catch (error) {
     // If app does not exist, allow operation (app was deleted, allow eval cleanup)
     if (error !== AppErrEnum.unExist) {
@@ -75,6 +79,7 @@ export const authEval = async ({
   return {
     teamId,
     tmbId,
-    evaluation
+    evaluation,
+    app
   };
 };

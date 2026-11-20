@@ -100,6 +100,14 @@
       "types": "./dist/store/decompile.d.ts",
       "import": "./dist/store/decompile.js"
     },
+    "./template/bundle": {
+      "types": "./dist/template/bundle.d.ts",
+      "import": "./dist/template/bundle.js"
+    },
+    "./template/i18n": {
+      "types": "./dist/template/i18n.d.ts",
+      "import": "./dist/template/i18n.js"
+    },
     "./template/descriptor": {
       "types": "./dist/template/descriptor.d.ts",
       "import": "./dist/template/descriptor.js"

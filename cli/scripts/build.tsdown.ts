@@ -1,6 +1,11 @@
 import { dirname, resolve } from 'node:path';
+import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'tsdown';
+import {
+  readWorkflowBuildSkillSource,
+  WORKFLOW_BUILD_SKILL_FILE
+} from '../src/infra/workflow/skill-catalog.ts';
 
 export default defineConfig({
   cwd: resolve(dirname(fileURLToPath(import.meta.url)), '..'),
@@ -16,6 +21,8 @@ export default defineConfig({
   deps: {
     alwaysBundle: [
       /^@fastgpt\/global/,
+      /^@fastgpt\/workflow-core/,
+      /^crypto-js/,
       /^zod/,
       /^commander/,
       /^@clack\/prompts/,
@@ -26,5 +33,9 @@ export default defineConfig({
     ],
     onlyBundle: false
   },
-  dts: false
+  dts: false,
+  onSuccess: async ({ outDir }) => {
+    const skill = await readWorkflowBuildSkillSource();
+    await writeFile(resolve(outDir, WORKFLOW_BUILD_SKILL_FILE), JSON.stringify(skill));
+  }
 });

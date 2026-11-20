@@ -1,4 +1,5 @@
 'use client';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useMemo } from 'react';
 import { Box, useTheme, Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@chakra-ui/react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -22,6 +23,7 @@ const ChartsBoxStyles = {
 };
 
 export default function ActivePage(): JSX.Element {
+  const { t } = useSafeTranslation();
   const theme = useTheme();
 
   const { dateRange, granularity } = useDashboardFilters();
@@ -81,7 +83,7 @@ export default function ActivePage(): JSX.Element {
               ]}
               tooltipItems={[
                 {
-                  label: '总对话数',
+                  label: t('admin:total_chats'),
                   dataKey: 'totalCount',
                   color: theme.colors.adora['500']
                 }
@@ -100,21 +102,25 @@ export default function ActivePage(): JSX.Element {
                 }
               ]}
               tooltipItems={[
-                { label: '总会话数', dataKey: 'totalCount', color: theme.colors.blue['500'] }
+                {
+                  label: t('admin:total_sessions'),
+                  dataKey: 'totalCount',
+                  color: theme.colors.blue['500']
+                }
               ]}
             />
           </Box>
           <Box {...ChartsBoxStyles} mt={4} h={'auto'}>
             <Box fontSize={'sm'} color={'myGray.900'} fontWeight={'medium'} mb={4}>
-              工作流 QPM 范围
+              {t('admin:workflow_qpm_range')}
             </Box>
             <TableContainer>
               <Table variant={'simple'}>
                 <Thead>
                   <Tr>
-                    <Th>QPM 范围</Th>
-                    <Th>次数</Th>
-                    <Th>占比</Th>
+                    <Th>{t('admin:qpm_range')}</Th>
+                    <Th>{t('admin:count')}</Th>
+                    <Th>{t('admin:ratio')}</Th>
                   </Tr>
                 </Thead>
                 <Tbody>

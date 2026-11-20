@@ -24,6 +24,7 @@ import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/servi
 import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { buildCollectionAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { addHours } from 'date-fns';
 
 async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse> {
@@ -70,6 +71,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
       tmbId,
       teamId,
       event: AuditEventEnum.UPDATE_DATA,
+      resources: [buildCollectionAuditResource(collection)],
       params: {
         collectionName: collection.name,
         datasetName: collection.dataset?.name || '',

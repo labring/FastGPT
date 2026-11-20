@@ -15,7 +15,10 @@ const createSandbox = (initialState?: Record<string, unknown>) => {
   return {
     execution,
     execute: vi.fn(
-      async (command: string, _options?: { workingDirectory?: string }): Promise<ExecuteResult> => {
+      async (
+        command: string,
+        _options?: { workingDirectory?: string; timeoutMs?: number }
+      ): Promise<ExecuteResult> => {
         if (command === 'printf "%s" "$HOME"') {
           return { exitCode: 0, stdout: '/home/test', stderr: '' };
         }
@@ -73,6 +76,9 @@ describe('runtime entrypoint', () => {
     });
 
     expect(startupCalls(sandbox)).toHaveLength(3);
+    expect(startupCalls(sandbox).map(([, options]) => options?.timeoutMs)).toEqual([
+      60_000, 60_000, 60_000
+    ]);
     for (const [index, script] of ['echo parent', 'echo child', 'echo edited'].entries()) {
       expect(startupCalls(sandbox)[index][0]).toContain(Buffer.from(script).toString('base64'));
     }

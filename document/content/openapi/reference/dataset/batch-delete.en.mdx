@@ -1,0 +1,66 @@
+---
+title: 'Batch Delete Datasets'
+seoTitle: 'Batch Delete Datasets - POST /api/core/dataset/batch/delete | FastGPT OpenAPI'
+description: 'Batch delete multiple datasets or folders by ID, handling recursive subtree removal and returning per-ID results.'
+---
+
+## Endpoint Overview
+
+- **Method** : `POST`
+- **Path** : `/api/core/dataset/batch/delete`
+- **Module** : Datasets / Datasets
+- **Authentication** : `Authorization: Bearer <apiKey>`—Personal API Key (access scoped by team member permissions) (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E7%AE%A1%E7%90%86/POST/core/dataset/batch/delete) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E7%AE%A1%E7%90%86/POST/core/dataset/batch/delete` )
+
+## Description & Notes
+
+Batch delete datasets or folders; subtree handling and async cleanup are handled by the dataset service.
+
+## Request Parameters
+
+### Request Body ( `application/json` )
+
+| Field | Type       | Required | Default | Constraints & Description                       |
+| ----- | ---------- | -------- | ------- | ----------------------------------------------- |
+| `ids` | `string[]` | Yes      | -       | List of resource IDs to operate on. minItems: 1 |
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.io/api/core/dataset/batch/delete" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "ids": [
+    "68ad85a7463006c963799a05"
+  ]
+}'
+```
+
+### Minimal Valid JSON Body
+
+```json
+{
+  "ids": ["68ad85a7463006c963799a05"]
+}
+```
+
+## Response Schema & Examples
+
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (when a payload schema is declared; otherwise refer to the status description for runtime `data` semantics).
+
+### HTTP 200
+
+Successfully deleted dataset
+
+**Content-Type** : `application/json`
+
+| Field         | Type       | Required | Default | Constraints & Description                                                        |
+| ------------- | ---------- | -------- | ------- | -------------------------------------------------------------------------------- |
+| `successIds`  | `string[]` | Yes      | -       | List of requested resource IDs processed successfully                            |
+| `failedIds`   | `string[]` | Yes      | -       | List of requested resource IDs that failed                                       |
+| `affectedIds` | `string[]` | Yes      | -       | List of resource IDs actually affected (deletions may include removed child IDs) |

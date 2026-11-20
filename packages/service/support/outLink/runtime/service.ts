@@ -31,7 +31,7 @@ import {
 } from '../../../core/chat/saveChat';
 import { preChatRound, type PreChatRoundResult } from '../../../core/chat/utils/prepare';
 import { dispatchWorkFlow } from '../../../core/workflow/dispatch';
-import { WORKFLOW_MAX_RUN_TIMES } from '../../../core/workflow/constants';
+import { getWorkflowMaxRunTimes } from '../../../core/workflow/constants';
 import {
   filterWorkflowQueryFiles,
   getWorkflowFileLimits
@@ -428,7 +428,7 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       workflowStreamResponse,
       runtimeEdges: storeEdges2RuntimeEdges(edges),
       runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
-      maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+      maxRunTimes: getWorkflowMaxRunTimes(),
       retainDatasetCite: false,
       nodeResponseWriteConfig: {
         persistToDb: true,
@@ -437,14 +437,20 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
     });
 
     // The terminal event carries the authoritative full reply for final correction or delivery.
-    const responseContent =
-      removeAIResponseCite(assistantResponses, false)
-        .map((response) => response.text?.content)
-        .filter(Boolean)
-        .join('\n')
-        .trim() || DEFAULT_REPLY;
+    const responseContent = removeAIResponseCite(assistantResponses, false)
+      .map((response) => response.text?.content)
+      .filter(Boolean)
+      .join('\n')
+      .trim();
 
-    responseController.push({ type: 'done', content: responseContent });
+    if (workflowRuntimeSummary.errorCount > 0) {
+      responseController.push({
+        type: 'error',
+        content: `App run error: ${getErrText(workflowRuntimeSummary.errorText)}`
+      });
+    } else {
+      responseController.push({ type: 'done', content: responseContent || DEFAULT_REPLY });
+    }
     // Wait for delivery so responder failures can be persisted with the final chat round.
     const respondResult = await responseController.result;
     if (!respondResult.success) {

@@ -53,10 +53,13 @@ import {
 } from '@fastgpt/global/openapi/core/plugin/marketplace/api';
 import {
   getBatchUpdateFailures,
+  getInstallErrorReason,
+  getInstallFailureMessage,
   hasMarketplaceToolUpdate,
+  parseTeamInstallFailure,
+  summarizeBatchUpdateResult,
   updateMarketplaceInstalledPluginStatus
 } from '@/web/core/plugin/marketplace/utils';
-import type { PluginInstallFailureType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { getAdminSystemTools, putAdminUpdateSystemTool } from '@/web/core/plugin/admin/tool/api';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { parseI18nString, selectPluginText } from '@fastgpt/global/common/i18n/utils';
@@ -69,6 +72,7 @@ import { isTeamPluginSource, splitCombineToolId } from '@fastgpt/global/core/app
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { ToastHandledError } from '@fastgpt/global/common/error/utils';
 
 type QueryValue = string | string[] | undefined;
 type QueryRecord = Record<string, QueryValue>;
@@ -165,16 +169,6 @@ const getSystemToolRawPluginId = (toolId: string) => {
   try {
     const { source, pluginId } = splitCombineToolId(toolId);
     return source === AppToolSourceEnum.systemTool ? pluginId : undefined;
-  } catch {
-    return undefined;
-  }
-};
-
-const parseTeamInstallFailure = (error: unknown): PluginInstallFailureType[] | undefined => {
-  if (typeof error !== 'string') return;
-  try {
-    const parsed = JSON.parse(error);
-    return Array.isArray(parsed) ? (parsed as PluginInstallFailureType[]) : undefined;
   } catch {
     return undefined;
   }
@@ -401,6 +395,70 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
     }
   );
 
+  const installPluginByDownloadUrl = useCallback(
+    async ({
+      tool,
+      downloadUrl,
+      version,
+      fallbackError
+    }: {
+      tool: ToolCardItemType;
+      downloadUrl: string;
+      version?: string;
+      fallbackError: string;
+    }) => {
+      if (mode === 'team') {
+        try {
+          const installResult = await installTeamPluginWithUrl({
+            downloadUrls: [downloadUrl],
+            plugins: [
+              {
+                pluginId: tool.id,
+                version: version || tool.version || '',
+                etag: tool.etag || '',
+                marketplaceToolId: tool.id,
+                marketplaceSource: tool.source
+              }
+            ]
+          });
+          const failureMessage = getInstallFailureMessage({
+            installResult,
+            language: i18n.language,
+            fallback: fallbackError
+          });
+          if (failureMessage) {
+            return Promise.reject(failureMessage);
+          }
+        } catch (error) {
+          if (error instanceof ToastHandledError) {
+            throw error;
+          }
+          return Promise.reject(
+            getInstallErrorReason({
+              error,
+              language: i18n.language,
+              fallback: fallbackError
+            })
+          );
+        }
+        return;
+      }
+
+      const installResult = await intallPluginWithUrl({
+        downloadUrls: [downloadUrl]
+      });
+      const failureMessage = getInstallFailureMessage({
+        installResult,
+        language: i18n.language,
+        fallback: fallbackError
+      });
+      if (failureMessage) {
+        return Promise.reject(failureMessage);
+      }
+    },
+    [i18n.language, mode]
+  );
+
   // Controler
   const { runAsync: handleInstallTool } = useRequest(
     async (tool: ToolCardItemType, version?: string) => {
@@ -436,23 +494,22 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
               version,
               type: tool.type
             });
-            if (!downloadUrl) return;
-            await installTeamPluginWithUrl({
-              downloadUrls: [downloadUrl],
-              plugins: [
-                {
-                  pluginId: tool.id,
-                  version: version || tool.version || '',
-                  etag: tool.etag || '',
-                  marketplaceToolId: tool.id,
-                  marketplaceSource: tool.source
-                }
-              ]
+            if (!downloadUrl) {
+              return Promise.reject(t('common:Error'));
+            }
+            await installPluginByDownloadUrl({
+              tool,
+              downloadUrl,
+              version,
+              fallbackError: t('common:Error')
             });
           } else if (activeTab === 'moderation' && shouldReinstallOfflineTool) {
             try {
               await postAdminRestoreModerationPlugin({ pluginId: tool.id });
             } catch (err) {
+              if (err instanceof ToastHandledError) {
+                throw err;
+              }
               const downloadUrl = await getMarketplaceDownloadURL({
                 toolId: tool.id,
                 version,
@@ -460,15 +517,12 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
               });
               if (!downloadUrl) throw err;
 
-              const installResult = await intallPluginWithUrl({
-                downloadUrls: [downloadUrl]
+              await installPluginByDownloadUrl({
+                tool,
+                downloadUrl,
+                version,
+                fallbackError: t('common:Error')
               });
-              if (installResult.failed?.length) {
-                return Promise.reject(
-                  parseI18nString(installResult.failed[0].reason, i18n.language) ||
-                    t('common:Error')
-                );
-              }
             }
           } else if (shouldReinstallOfflineTool && offlineTool) {
             await updateSystemToolStatus(offlineTool.systemToolId, PluginStatusEnum.Normal);
@@ -478,16 +532,16 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
               version,
               type: tool.type
             });
-            if (!downloadUrl) return;
-
-            const installResult = await intallPluginWithUrl({
-              downloadUrls: [downloadUrl]
-            });
-            if (installResult.failed?.length) {
-              return Promise.reject(
-                parseI18nString(installResult.failed[0].reason, i18n.language) || t('common:Error')
-              );
+            if (!downloadUrl) {
+              return Promise.reject(t('common:Error'));
             }
+
+            await installPluginByDownloadUrl({
+              tool,
+              downloadUrl,
+              version,
+              fallbackError: t('common:Error')
+            });
           }
 
           if (selectedTool?.id === tool.id && shouldReinstallOfflineTool) {
@@ -534,30 +588,17 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
             version,
             type: tool.type
           });
-          if (!downloadUrl) return;
+          if (!downloadUrl) {
+            return Promise.reject(t('app:toolkit_update_failed'));
+          }
 
           // Call install interface for update
-          if (mode === 'team') {
-            await installTeamPluginWithUrl({
-              downloadUrls: [downloadUrl],
-              plugins: [
-                {
-                  pluginId: tool.id,
-                  version: version || tool.version || '',
-                  etag: tool.etag || '',
-                  marketplaceToolId: tool.id,
-                  marketplaceSource: tool.source
-                }
-              ]
-            });
-          } else {
-            const installResult = await intallPluginWithUrl({ downloadUrls: [downloadUrl] });
-            if (installResult.failed?.length) {
-              return Promise.reject(
-                parseI18nString(installResult.failed[0].reason, i18n.language) || t('common:Error')
-              );
-            }
-          }
+          await installPluginByDownloadUrl({
+            tool,
+            downloadUrl,
+            version,
+            fallbackError: t('app:toolkit_update_failed')
+          });
 
           // If the currently selected tool is the tool to be updated, update its status
           if (selectedTool?.id === tool.id) {
@@ -573,7 +614,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
       operatingPromisesRef.current.set(tool.id, operationPromise);
       await operationPromise;
     },
-    [i18n.language, mode, updatingToolIdsDispatch, selectedTool, refreshInstalledPlugins, t]
+    [installPluginByDownloadUrl, updatingToolIdsDispatch, selectedTool, refreshInstalledPlugins, t]
   );
 
   const { runAsync: handleSingleUpdateTool } = useRequest(
@@ -814,13 +855,23 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
 
       // 1. Batch get download URLs
       const downloadUrls = await getMarketplaceDownloadURLs(toolIds);
-      const selectedTools = updatableTools.filter((tool) => toolIds.includes(tool.id));
+      if (
+        downloadUrls.length !== toolIds.length ||
+        downloadUrls.some((url) => typeof url !== 'string' || !url)
+      ) {
+        return Promise.reject(t('app:toolkit_update_failed'));
+      }
+
+      const updatableToolMap = new Map(updatableTools.map((tool) => [tool.id, tool]));
+      const selectedTools = toolIds
+        .map((id) => updatableToolMap.get(id))
+        .filter((tool): tool is NonNullable<typeof tool> => Boolean(tool));
 
       // 2. Batch install (update)
       let failures: ReturnType<typeof getBatchUpdateFailures> = [];
       if (mode === 'team') {
         try {
-          await installTeamPluginWithUrl({
+          const installResult = await installTeamPluginWithUrl({
             downloadUrls,
             plugins: selectedTools.map((tool) => ({
               pluginId: tool.id,
@@ -829,7 +880,18 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
               marketplaceToolId: tool.id
             }))
           });
+          failures = installResult?.failed
+            ? getBatchUpdateFailures({
+                toolIds,
+                downloadUrls,
+                installResult,
+                language: i18n.language
+              })
+            : [];
         } catch (error) {
+          if (error instanceof ToastHandledError) {
+            throw error;
+          }
           const failed = parseTeamInstallFailure(error);
           if (!failed) throw error;
           failures = getBatchUpdateFailures({
@@ -849,17 +911,40 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
         });
       }
 
-      // 3. Refresh installed plugins list
-      await refreshInstalledPlugins();
+      const summary = summarizeBatchUpdateResult({
+        totalCount: toolIds.length,
+        failures
+      });
 
-      // 4. Close Drawer
-      setShowBatchUpdateDrawer(false);
+      // 3. Refresh installed plugins list when any item succeeded
+      if (summary.status !== 'error') {
+        await refreshInstalledPlugins();
+      }
+
+      // 4. Show toast and close drawer only on full success
+      if (summary.status === 'success') {
+        setShowBatchUpdateDrawer(false);
+        toast({
+          title: t('common:update_success'),
+          status: 'success'
+        });
+      } else if (summary.status === 'partial') {
+        toast({
+          title: t('common:batch_partial_failed'),
+          description: summary.firstReason,
+          status: 'warning'
+        });
+      } else {
+        toast({
+          title: summary.firstReason || t('app:toolkit_update_failed'),
+          status: 'error'
+        });
+      }
 
       return failures;
     },
     {
-      manual: true,
-      successToast: t('common:Success')
+      manual: true
     }
   );
 

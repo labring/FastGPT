@@ -1,3 +1,4 @@
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { rebuildableDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -8,7 +9,8 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoDatasetSynonym } from '@fastgpt/service/core/dataset/synonym/schema';
-import { serviceEnv } from '@fastgpt/service/env';
+import { isDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
+import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
 
 type SynonymRebuildContext = Pick<
   DatasetTrainingSchemaType,
@@ -24,7 +26,7 @@ export const enqueueNextDatasetSynonymRebuildTask = async (
   context: SynonymRebuildContext,
   session?: ClientSession
 ) => {
-  if (!serviceEnv.DATASET_SYNONYM_ENABLED) return false;
+  if (!isDatasetSynonymEnabled()) return false;
   const enqueue = async (session: ClientSession) => {
     const config = await MongoDatasetSynonym.findOne({
       teamId: context.teamId,
@@ -51,10 +53,10 @@ export const enqueueNextDatasetSynonymRebuildTask = async (
           ]
         },
         {
+          // 领取只标记重建状态，不刷新 updateTime：差量重建可能不会改写索引内容。
           $set: {
             indexStatus: DatasetDataIndexStatusEnum.rebuildSynonymRunning,
-            synonymRebuildingVersion: config.version,
-            updateTime: new Date()
+            synonymRebuildingVersion: config.version
           }
         },
         { session }
@@ -104,7 +106,12 @@ export const seedDatasetSynonymRebuildTasks = async (
   session?: ClientSession
 ) => {
   const seed = async (session: ClientSession) => {
-    const seedCount = (global.systemEnv?.vectorMaxProcess ?? 10) * 2;
+    const seedCount = (getSystemInstanceConfig().performance.dataset.vectorMaxProcess ?? 10) * 2;
+    logInstanceConfigRead({
+      callsite: 'runtime.app.dataset.queue.rebuildSynonym',
+      source: 'bridged-system-env',
+      fields: [{ path: 'performance.dataset.vectorMaxProcess', value: seedCount / 2 }]
+    });
     let createdCount = 0;
     for (let i = 0; i < seedCount; i++) {
       if (!(await enqueueNextDatasetSynonymRebuildTask(context, session))) break;

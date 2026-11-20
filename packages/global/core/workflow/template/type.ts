@@ -48,8 +48,8 @@ export type NodeTemplateAutomationMeta = z.infer<typeof NodeTemplateAutomationMe
 export const WorkflowTemplateBundleItemSchema = z
   .object({
     ref: NodeTemplateRefSchema,
-    // 模板包供 Core/CLI 消费，只接收输出数据，不携带画布的可用性回调。
-    template: FlowNodeTemplateTypeSchema.extend({
+    // 模板包是纯 JSON，画布的运行时可用性回调不参与序列化或 OpenAPI。
+    template: FlowNodeTemplateTypeSchema.omit({ isShowInContext: true }).extend({
       outputs: z.array(FlowNodeOutputItemTypeSchema)
     }),
     automationMeta: NodeTemplateAutomationMetaSchema.optional(),

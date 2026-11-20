@@ -1,8 +1,10 @@
 'use client';
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Table, Thead, Tbody, Tr, Th, Td, Flex, Box, HStack, Button } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
+import AdminCompositeSearch, { useAdminCompositeSearch } from '@/components/admin/CompositeSearch';
+import type { AdminSearchOption } from '@/components/admin/CompositeSearch/utils';
 import { getDatasets } from '@/web/admin/dataset/api';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { useRouter } from 'next/router';
@@ -11,11 +13,49 @@ import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const DatasetTable = () => {
+  const { t } = useSafeTranslation();
+  const datasetSearchOptions = useMemo<
+    readonly AdminSearchOption<'username' | 'teamId' | 'teamName' | 'datasetId' | 'datasetName'>[]
+  >(
+    () => [
+      {
+        value: 'username',
+        label: t('admin:composite_search.field_username'),
+        placeholder: t('admin:composite_search.placeholder_username')
+      },
+      {
+        value: 'teamId',
+        label: t('admin:composite_search.field_team_id'),
+        placeholder: t('admin:composite_search.placeholder_team_id'),
+        exactObjectId: true
+      },
+      {
+        value: 'teamName',
+        label: t('admin:composite_search.field_team_name'),
+        placeholder: t('admin:composite_search.placeholder_team_name')
+      },
+      {
+        value: 'datasetId',
+        label: t('admin:composite_search.field_dataset_id'),
+        placeholder: t('admin:composite_search.placeholder_dataset_id'),
+        exactObjectId: true
+      },
+      {
+        value: 'datasetName',
+        label: t('admin:composite_search.field_dataset_name'),
+        placeholder: t('admin:composite_search.placeholder_dataset_name')
+      }
+    ],
+    [t]
+  );
   const [appDetail, setAppDetail] = useState();
   const router = useRouter();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { searchField, inputValue, isInvalid, searchParams, onFieldChange, onInputChange } =
+    useAdminCompositeSearch({ options: datasetSearchOptions });
 
   const {
     data: datasets,
@@ -26,6 +66,8 @@ const DatasetTable = () => {
   } = usePagination(getDatasets, {
     defaultPageSize: 20,
     pageSizeCacheKey: 'admin-datasets-list',
+    params: searchParams,
+    refreshDeps: [searchParams],
     scrollContainerRef
   });
 
@@ -44,9 +86,19 @@ const DatasetTable = () => {
         borderColor={'myGray.200'}
       >
         <Box as={'h1'} {...accountTitleTextStyles}>
-          用户知识库
+          {t('admin:user_datasets')}
         </Box>
         <Box flexGrow={1}></Box>
+        <AdminCompositeSearch
+          options={datasetSearchOptions}
+          field={searchField}
+          value={inputValue}
+          triggerW={'112px'}
+          w={['100%', '311px']}
+          isInvalid={isInvalid}
+          onFieldChange={onFieldChange}
+          onValueChange={onInputChange}
+        />
       </Flex>
 
       <MyBox isLoading={isLoading} flex={'1 0 0'} h={0} minH={0}>
@@ -68,11 +120,11 @@ const DatasetTable = () => {
           <Table minW={'1100px'}>
             <Thead>
               <Tr>
-                <Th>知识库名</Th>
-                <Th>创建者</Th>
-                <Th>介绍</Th>
-                <Th>数据量</Th>
-                <Th>向量总数</Th>
+                <Th>{t('admin:dataset_name_2')}</Th>
+                <Th>{t('admin:creator')}</Th>
+                <Th>{t('admin:description')}</Th>
+                <Th>{t('admin:data_count')}</Th>
+                <Th>{t('admin:total_vectors')}</Th>
                 <Th></Th>
               </Tr>
             </Thead>
@@ -98,7 +150,7 @@ const DatasetTable = () => {
                         size={'sm'}
                         onClick={() => routeToDataset(item.id)}
                       >
-                        跳转
+                        {t('admin:open')}
                       </Button>
                     </HStack>
                   </Td>
@@ -115,7 +167,7 @@ const DatasetTable = () => {
             >
               <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
               <Box mt={2} color={'myGray.500'}>
-                无应用记录～
+                {t('admin:no_datasets')}
               </Box>
             </Flex>
           )}
@@ -130,22 +182,23 @@ const DatasetTable = () => {
 export default DatasetTable;
 
 function AppDetailModal({ app, onClose }: { app: any; onClose: () => void }) {
+  const { t } = useSafeTranslation();
   return (
     <MyModal isOpen={true} onClose={onClose} title={'应用详情'} maxW={['90vw', '700px']}>
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>应用id:</Box>
+        <Box flex={'0 0 120px'}>{t('admin:app_id_3')}</Box>
         <Box>{app.id}</Box>
       </Flex>
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>应用名:</Box>
+        <Box flex={'0 0 120px'}>{t('admin:app_name_3')}</Box>
         <Box>{app.name}</Box>
       </Flex>
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>介绍:</Box>
+        <Box flex={'0 0 120px'}>{t('admin:description_2')}</Box>
         <Box>{app.intro}</Box>
       </Flex>
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>收藏数:</Box>
+        <Box flex={'0 0 120px'}>{t('admin:favorites')}</Box>
         <Box>{app['share.collection']}</Box>
       </Flex>
     </MyModal>

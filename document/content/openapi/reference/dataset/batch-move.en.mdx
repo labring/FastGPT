@@ -1,0 +1,69 @@
+---
+title: 'Batch Move Datasets'
+seoTitle: 'Batch Move Datasets - POST /api/core/dataset/batch/move | FastGPT OpenAPI'
+description: 'Move multiple datasets or folders into a target parent folder or root directory with permission and hierarchy checks.'
+---
+
+## Endpoint Overview
+
+- **Method** : `POST`
+- **Path** : `/api/core/dataset/batch/move`
+- **Module** : Datasets / Datasets
+- **Authentication** : `Authorization: Bearer <apiKey>`—Personal API Key (access scoped by team member permissions) (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E7%AE%A1%E7%90%86/POST/core/dataset/batch/move) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E7%AE%A1%E7%90%86/POST/core/dataset/batch/move` )
+
+## Description & Notes
+
+Batch move datasets or folders; permissions, depth limits, and permission inheritance are enforced by the dataset service.
+
+## Request Parameters
+
+### Request Body ( `application/json` )
+
+| Field      | Type             | Required | Default | Constraints & Description                            |
+| ---------- | ---------------- | -------- | ------- | ---------------------------------------------------- |
+| `ids`      | `string[]`       | Yes      | -       | List of resource IDs to operate on. minItems: 1      |
+| `parentId` | `string \| null` | Yes      | -       | Target parent folder ID; pass `null` to move to root |
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.io/api/core/dataset/batch/move" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "ids": [
+    "68ad85a7463006c963799a05"
+  ],
+  "parentId": "68ee0bd23d17260b7829b137"
+}'
+```
+
+### Minimal Valid JSON Body
+
+```json
+{
+  "ids": ["68ad85a7463006c963799a05"],
+  "parentId": "68ee0bd23d17260b7829b137"
+}
+```
+
+## Response Schema & Examples
+
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (when a payload schema is declared; otherwise refer to the status description for runtime `data` semantics).
+
+### HTTP 200
+
+Successfully moved datasets
+
+**Content-Type** : `application/json`
+
+| Field         | Type       | Required | Default | Constraints & Description                                                        |
+| ------------- | ---------- | -------- | ------- | -------------------------------------------------------------------------------- |
+| `successIds`  | `string[]` | Yes      | -       | List of requested resource IDs processed successfully                            |
+| `failedIds`   | `string[]` | Yes      | -       | List of requested resource IDs that failed                                       |
+| `affectedIds` | `string[]` | Yes      | -       | List of resource IDs actually affected (deletions may include removed child IDs) |

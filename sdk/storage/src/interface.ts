@@ -152,11 +152,6 @@ export interface IOssStorageOptions extends ICommonStorageOptions {
   secure?: boolean;
 
   /**
-   * 是否启用代理，可选。
-   */
-  enableProxy?: boolean;
-
-  /**
    * 是否走内网（internal endpoint），可选。
    *
    * - 在同地域云内网环境可显著降低延迟与流量费用。

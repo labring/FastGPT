@@ -3,7 +3,7 @@
  *
  * 只负责 OpenSandbox createConfig 映射，不连接远端实例。
  */
-import { serviceEnv } from '../../../../../../env';
+import { getAgentSandboxCommonConfig, getAgentSandboxOpenSandboxConfig } from '../../../config';
 import type { SandboxRuntimeCreateConfigInput, SandboxRuntimeProfile } from './types';
 import { getSandboxSkillsRootPath, mergeStringRecord, normalizeEntrypoint } from './utils';
 import { OPEN_SANDBOX_DEFAULT_ROOT_PATH, parseImageSpec } from '@fastgpt-sdk/sandbox-adapter';
@@ -64,16 +64,19 @@ function buildOpenSandboxNetworkPolicy(
  */
 export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
   const workDirectory = OPEN_SANDBOX_DEFAULT_ROOT_PATH;
-  const defaultImage = parseImageSpec(serviceEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE?.trim());
+  const opensandbox = getAgentSandboxOpenSandboxConfig();
+  const common = getAgentSandboxCommonConfig();
+  const defaultImage = parseImageSpec(opensandbox.image?.trim());
 
   /**
    * 按最终 limits 独立派生 CPU、内存 requests；倍率为 1 时保持该维度不变。
-   * 环境变量 schema 已保证倍率有限且 >= 1；两者均为 1 时省略 requests，沿用服务端默认值。
+   * 实例配置 Schema 已保证倍率有限且 >= 1；两者均为 1 时省略 requests，沿用服务端默认值。
    * CPU 向下取整到毫核、内存到 MiB，最低分别为 1m、1Mi；不派生磁盘预留。
    */
   function deriveResourceRequests(limits: { cpuCount: number; memoryMiB: number }) {
-    const cpuFactor = serviceEnv.AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR;
-    const memoryFactor = serviceEnv.AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR;
+    // profile 可能被复用；仅在构建新的创建请求时读取最新倍率，不修改现有实例。
+    const { cpuOvercommitFactor: cpuFactor, memoryOvercommitFactor: memoryFactor } =
+      getAgentSandboxOpenSandboxConfig();
     if (cpuFactor === 1 && memoryFactor === 1) return undefined;
 
     return {
@@ -97,7 +100,7 @@ export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
     buildConfig(input = {}) {
       // OpenSandbox create 必须带镜像；调用方显式传入的镜像优先，其次才使用运行态默认镜像。
       const createConfig = input.createConfig ?? {};
-      const isKubernetesRuntime = serviceEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME === 'kubernetes';
+      const isKubernetesRuntime = opensandbox.runtime === 'kubernetes';
       const {
         networkPolicy: requestedNetworkPolicy,
         resourceRequests: requestedResourceRequests,
@@ -105,7 +108,7 @@ export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
       } = createConfig;
       const image = input.image ?? createConfig.image ?? defaultImage;
       if (!image?.repository) {
-        throw new Error('AGENT_SANDBOX_OPENSANDBOX_IMAGE is required for opensandbox provider');
+        throw new Error('Configure the OpenSandbox image in Agent Sandbox admin settings');
       }
 
       const entrypoint = createConfig.entrypoint ?? normalizeEntrypoint(input.entrypoint);
@@ -122,11 +125,11 @@ export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
         cpuCount:
           input.resourceLimits?.cpuCount ??
           createConfig.resourceLimits?.cpuCount ??
-          serviceEnv.AGENT_SANDBOX_CPU_COUNT,
+          common.cpuCount,
         memoryMiB:
           input.resourceLimits?.memoryMiB ??
           createConfig.resourceLimits?.memoryMiB ??
-          serviceEnv.AGENT_SANDBOX_MEMORY_MIB,
+          common.memoryMiB,
         ...storageLimit
       };
       // 仅 Kubernetes 运行态下发 requests（按 CPU/内存独立倍率派生）；Docker 运行态不下发该字段。

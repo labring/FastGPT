@@ -7,6 +7,7 @@ import {
 } from '../../../openapi/core/ai/model/api';
 import { GetSystemInitDataResponseSchema } from '../../../openapi/common/system/api';
 import { StandardSubLevelEnum } from '../../../support/wallet/sub/constants';
+import { SubPlanInputSchema } from '../../../support/wallet/sub/type';
 
 const desensitizedEmbeddingModel = {
   modelId: '68ad85a7463006c963799a01',
@@ -22,11 +23,11 @@ const desensitizedEmbeddingModel = {
 };
 
 describe('system initialization OpenAPI contract', () => {
-  it.each([true, false])('preserves the Workflow Builder visibility setting: %s', (enabled) => {
+  it('drops the retired Workflow Builder visibility setting', () => {
     const result = GetSystemInitDataResponseSchema.parse({
-      feConfigs: { show_workflow_builder: enabled }
+      feConfigs: { show_workflow_builder: false }
     });
-    expect(result.feConfigs?.show_workflow_builder).toBe(enabled);
+    expect(result.feConfigs).not.toHaveProperty('show_workflow_builder');
   });
 
   it('declares SSO capabilities without returning the stored root address', () => {
@@ -119,6 +120,67 @@ describe('system initialization OpenAPI contract', () => {
       ).toThrow();
     }
   );
+
+  it('preserves integer plan and bonus points from configuration input to initialization', () => {
+    const subPlans = SubPlanInputSchema.parse({
+      standard: {
+        [StandardSubLevelEnum.basic]: {
+          price: '10',
+          totalPoints: '1000',
+          annualBonusPoints: '1',
+          maxTeamMember: '1',
+          maxAppAmount: '10',
+          maxDatasetAmount: '3',
+          maxDatasetSize: '600',
+          chatHistoryStoreDuration: '30'
+        },
+        [StandardSubLevelEnum.custom]: { totalPoints: '0', annualBonusPoints: '' }
+      },
+      extraPoints: {
+        packages: [
+          { points: '1000', month: '1', price: '10', activityBonusPoints: '125' },
+          { points: 0, month: 1, price: 0, activityBonusPoints: null }
+        ]
+      }
+    });
+
+    expect(subPlans.standard?.[StandardSubLevelEnum.basic]).toMatchObject({
+      totalPoints: 1000,
+      annualBonusPoints: 1
+    });
+    expect(subPlans.standard?.[StandardSubLevelEnum.custom]).toEqual({ totalPoints: 0 });
+    expect(subPlans.extraPoints?.packages).toEqual([
+      { points: 1000, month: 1, price: 10, activityBonusPoints: 125 },
+      { points: 0, month: 1, price: 0, activityBonusPoints: undefined }
+    ]);
+    expect(GetSystemInitDataResponseSchema.parse({ subPlans }).subPlans).toEqual(subPlans);
+  });
+
+  it('rejects fractional and invalid point inputs while retaining integer resource limits', () => {
+    for (const value of [0.5, -1, NaN, Infinity, 'invalid']) {
+      for (const field of ['totalPoints', 'annualBonusPoints']) {
+        expect(
+          SubPlanInputSchema.safeParse({ standard: { custom: { [field]: value } } }).success
+        ).toBe(false);
+      }
+      for (const field of ['points', 'activityBonusPoints']) {
+        expect(
+          SubPlanInputSchema.safeParse({
+            extraPoints: { packages: [{ points: 1, month: 1, price: 1, [field]: value }] }
+          }).success
+        ).toBe(false);
+      }
+    }
+
+    expect(
+      SubPlanInputSchema.safeParse({ standard: { custom: { maxTeamMember: 1.5 } } }).success
+    ).toBe(false);
+    expect(
+      SubPlanInputSchema.safeParse({
+        extraPoints: { packages: [{ points: 1, month: 1.5, price: 1 }] }
+      }).success
+    ).toBe(false);
+  });
 
   it('rejects dirty subscription values at read time', () => {
     expect(() =>

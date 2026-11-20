@@ -10,7 +10,7 @@ import {
   assertDatasetSynonymEnabled,
   getDatasetSynonymMappings
 } from '@fastgpt/service/core/dataset/synonym/entity';
-import { serializeSynonymMappingsToCsv } from '@fastgpt/service/core/dataset/synonym/utils';
+import { serializeSynonymMappingsToFile } from '@fastgpt/service/core/dataset/synonym/utils';
 
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
   assertDatasetSynonymEnabled();
@@ -32,14 +32,21 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     datasetId: String(config.datasetId),
     fileVersion: config.version
   });
-  const csv = serializeSynonymMappingsToCsv(mappings);
-  const fileName = (config.fileName ?? 'synonyms.csv').replace(/\.(xlsx?|csv)$/i, '') + '.csv';
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  // 下载格式跟随上传格式（验收问题 1）：xlsx/xls 重新生成工作簿，csv 才回 CSV。
+  const rawExtension = config.fileName?.match(/\.(\w+)$/)?.[1]?.toLowerCase();
+  const extension =
+    rawExtension === 'xlsx' || rawExtension === 'xls' || rawExtension === 'csv'
+      ? rawExtension
+      : 'csv';
+  const baseName = (config.fileName ?? 'synonyms.csv').replace(/\.(xlsx?|csv)$/i, '');
+  const { buffer, contentType } = serializeSynonymMappingsToFile(mappings, extension);
+  const fileName = `${baseName}.${extension}`;
+  res.setHeader('Content-Type', contentType);
   res.setHeader(
     'Content-Disposition',
     `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`
   );
-  res.end(csv);
+  res.end(buffer);
 }
 
 export default NextAPI(handler);

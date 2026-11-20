@@ -1,3 +1,4 @@
+import { setTestLicenseActive } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
 
@@ -24,10 +25,7 @@ describe('plugin debug channel key refresh handler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     originalIsPlus = global.feConfigs?.isPlus;
-    global.feConfigs = {
-      ...global.feConfigs,
-      isPlus: true
-    } as any;
+    setTestLicenseActive(true);
     mocks.authCert.mockResolvedValue({
       tmbId: 'tmb_test'
     });

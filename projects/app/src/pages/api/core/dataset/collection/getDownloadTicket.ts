@@ -15,7 +15,7 @@ import {
   assertMemberRateLimit,
   MemberRateLimitPolicy
 } from '@fastgpt/service/common/rateLimit/interface/member';
-import { serviceEnv } from '@fastgpt/service/env';
+import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import {
   assertDatasetArchiveCollectionsReadable,
   prepareDatasetArchive,
@@ -46,7 +46,7 @@ async function handler(
 
   const result = await withDatasetArchiveResources({
     tmbId: String(tmbId),
-    concurrency: serviceEnv.DATASET_ARCHIVE_MAX_CONCURRENCY,
+    concurrency: getSystemInstanceConfig().resource.datasetArchive.maxConcurrency,
     fn: async ({ signals, assertValid }) => {
       const abortContext = createS3ProxyAbortContext({ req, res });
       const signal = AbortSignal.any([abortContext.signal, ...signals]);

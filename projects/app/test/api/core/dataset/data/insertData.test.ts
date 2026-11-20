@@ -10,6 +10,7 @@ vi.mock('@fastgpt/service/core/dataset/entity', () => ({
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 const mocks = vi.hoisted(() => ({
   parseApiInput: vi.fn(),
@@ -104,6 +105,9 @@ describe('POST /api/core/dataset/data/insertData', () => {
       tmbId: 'tmb-id',
       isRoot: false,
       collection: {
+        _id: collectionId,
+        datasetId,
+        type: DatasetCollectionTypeEnum.virtual,
         name: 'Collection',
         dataset: { name: 'Dataset', type: 'dataset' }
       }
@@ -126,6 +130,19 @@ describe('POST /api/core/dataset/data/insertData', () => {
     const result = await handler({} as never);
 
     expect(result).toEqual({ dataIds: [insertId] });
+    expect(mocks.addAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resources: [
+          {
+            type: 'collection',
+            id: collectionId,
+            name: 'Collection',
+            parentId: datasetId,
+            collectionType: DatasetCollectionTypeEnum.virtual
+          }
+        ]
+      })
+    );
     expect(mocks.mongoSessionRun).toHaveBeenCalledTimes(1);
     expect(mocks.createDatasetData).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -1,0 +1,16 @@
+{
+  "title": "System OpenAPI 参考",
+  "pages": [
+    "model",
+    "app-log",
+    "chat-controller",
+    "chat-history",
+    "chat-record",
+    "chat-feedback",
+    "dataset",
+    "dataset-collection",
+    "dataset-collection-create",
+    "dataset-data",
+    "dataset-search"
+  ]
+}

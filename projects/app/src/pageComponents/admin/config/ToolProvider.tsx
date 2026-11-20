@@ -148,7 +148,7 @@ const ToolProvider = () => {
           borderColor={'myGray.200'}
         >
           <Box as={'h1'} display={['none', 'block']} {...accountTitleTextStyles}>
-            系统工具
+            {t('admin:system_tools')}
           </Box>
           <Flex
             ml={[0, 'auto']}

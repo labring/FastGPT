@@ -49,6 +49,10 @@ import {
   assertTeamPluginSourceAccess,
   getRawPluginIdFromSystemToolId
 } from '../../../plugin/teamPluginPolicy';
+import {
+  createPluginToolResponse,
+  projectPluginModelContent
+} from '../ai/agentLoopCore/domain/toolContent';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -401,16 +405,27 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         msg: String(res.error || '')
       });
 
+      const projected = projectPluginModelContent({
+        result,
+        outputSchema: toolDetail.outputSchema,
+        onInvalidField: (field, reason) =>
+          logger.warn('Invalid plugin model content field', { field, reason })
+      });
       return {
-        data: result,
+        data: projected.workflowResult as Record<string, any>,
         [DispatchNodeResponseKeyEnum.answerText]: answerText,
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
           toolInput,
-          toolRes: result,
+          toolRes: projected.workflowResult,
           moduleLogo: avatar,
           totalPoints: usagePoints
         },
-        [DispatchNodeResponseKeyEnum.toolResponse]: result
+        [DispatchNodeResponseKeyEnum.toolResponse]: props.isToolCall
+          ? createPluginToolResponse({
+              result: projected.responseResult,
+              content: projected.content
+            })
+          : projected.workflowResult
       };
     } else if (toolConfig?.mcpTool) {
       const mcpTool = toolConfig.mcpTool;

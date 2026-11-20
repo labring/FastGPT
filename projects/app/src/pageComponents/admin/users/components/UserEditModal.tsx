@@ -1,3 +1,4 @@
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import {
   Box,
   Button,
@@ -31,6 +32,7 @@ type TFormData = {
 };
 
 export default function UserEditModal(props: { data: any; getData: any }) {
+  const { t } = useSafeTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { data, getData } = props;
   const { toast } = useToast();
@@ -100,7 +102,7 @@ export default function UserEditModal(props: { data: any; getData: any }) {
           reset({ ...data, password: '' });
         }}
       >
-        编辑
+        {t('admin:edit')}
       </Button>
 
       <MyModal
@@ -118,34 +120,34 @@ export default function UserEditModal(props: { data: any; getData: any }) {
                   onConfirm={onDeleteUser}
                   Trigger={
                     <Button alignSelf={'flex-start'} variant={'dangerFill'}>
-                      注销
+                      {t('admin:cancel_account')}
                     </Button>
                   }
                 />
               )}
             </Box>
             <Button variant={'whiteBase'} onClick={onClose}>
-              关闭
+              {t('admin:close')}
             </Button>
             <Button
               isLoading={loading}
               variant={'primary'}
               onClick={handleSubmit(onSubmit, onSubmitErr)}
             >
-              确定
+              {t('admin:ok')}
             </Button>
           </>
         }
       >
         <FormControl mt={4}>
           <FormLabel htmlFor="username" fontWeight="bold">
-            用户名
+            {t('admin:username')}
           </FormLabel>
           <Input {...register('username')} id="username" variant="outline" placeholder="" />
         </FormControl>
         <FormControl mt={4}>
           <FormLabel htmlFor="password" fontWeight="bold">
-            密码
+            {t('admin:password')}
           </FormLabel>
           {passwordAvailable ? (
             <Input
@@ -159,7 +161,7 @@ export default function UserEditModal(props: { data: any; getData: any }) {
                 }
               })}
               variant="outline"
-              placeholder="密码至少 8 位，且至少包含两种组合：数字、字母或特殊字符"
+              placeholder={t('admin:password_must_be_at_least_8_characters_with_at_least_two_of')}
             />
           ) : (
             <SsoPasswordUnavailableTip />
@@ -167,7 +169,7 @@ export default function UserEditModal(props: { data: any; getData: any }) {
         </FormControl>
         <FormControl mt={4}>
           <FormLabel htmlFor="password" mb={0} fontWeight="bold">
-            用户状态
+            {t('admin:user_status_2')}
           </FormLabel>
           <RadioGroup defaultValue={data?.status}>
             <HStack spacing={6} mt={2}>

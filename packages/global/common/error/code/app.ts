@@ -1,4 +1,4 @@
-import { type ErrType } from '../errorCode';
+import { type ErrorHttpStatus, type ErrType } from '../errorCode';
 import { i18nT } from '../../i18n/utils';
 /* dataset: 502000 */
 export enum AppErrEnum {
@@ -12,26 +12,35 @@ export enum AppErrEnum {
   parentFolderTypeMismatch = 'parentFolderTypeMismatch',
   invalidEvaluationFile = 'invalidEvaluationFile'
 }
-const appErrList = [
+const appErrList: Array<{
+  statusText: AppErrEnum;
+  message: string;
+  httpStatus: ErrorHttpStatus;
+}> = [
   {
     statusText: AppErrEnum.unExist,
-    message: i18nT('common:code_error.app_error.not_exist')
+    message: i18nT('common:code_error.app_error.not_exist'),
+    httpStatus: 404
   },
   {
     statusText: AppErrEnum.unAuthApp,
-    message: i18nT('common:code_error.app_error.un_auth_app')
+    message: i18nT('common:code_error.app_error.un_auth_app'),
+    httpStatus: 403
   },
   {
     statusText: AppErrEnum.invalidOwner,
-    message: i18nT('common:code_error.app_error.invalid_owner')
+    message: i18nT('common:code_error.app_error.invalid_owner'),
+    httpStatus: 400
   },
   {
     statusText: AppErrEnum.invalidAppType,
-    message: i18nT('common:code_error.app_error.invalid_app_type')
+    message: i18nT('common:code_error.app_error.invalid_app_type'),
+    httpStatus: 400
   },
   {
     statusText: AppErrEnum.canNotEditAdminPermission,
-    message: i18nT('common:code_error.app_error.can_not_edit_admin_permission')
+    message: i18nT('common:code_error.app_error.can_not_edit_admin_permission'),
+    httpStatus: 403
   },
   {
     statusText: AppErrEnum.workflowBuilderVersionExpired,
@@ -45,7 +54,8 @@ const appErrList = [
   },
   {
     statusText: AppErrEnum.parentFolderTypeMismatch,
-    message: i18nT('common:code_error.app_error.parent_folder_type_mismatch')
+    message: i18nT('common:code_error.app_error.parent_folder_type_mismatch'),
+    httpStatus: 400
   },
   {
     statusText: AppErrEnum.invalidEvaluationFile,
@@ -61,7 +71,7 @@ export default appErrList.reduce((acc, cur, index) => {
       statusText: cur.statusText,
       message: cur.message,
       data: null,
-      ...('httpStatus' in cur ? { httpStatus: cur.httpStatus } : {})
+      httpStatus: cur.httpStatus
     }
   };
 }, {} as ErrType<`${AppErrEnum}`>);
