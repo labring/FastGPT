@@ -20,7 +20,7 @@ import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/w
 import { pushTrack } from '../../../../../../../common/middle/tracks/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getMCPToolErrorText } from '@fastgpt/global/core/app/tool/mcpTool/utils';
-import { validateToolInputValue } from '@fastgpt/global/core/app/tool/runtime';
+import { getHTTPToolFixedParamErrors } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { assertMCPUrlNotInternal, getMCPChildren, MCPClient } from '../../../../../../app/mcp';
 import { getHTTPToolList, runHTTPTool } from '../../../../../../app/http';
 import { getAppVersionById } from '../../../../../../app/version/controller';
@@ -394,16 +394,10 @@ export const dispatchTool = async ({
       }
 
       // 变量替换和 JSON 转换后的配置值仍要满足参数 schema；模型生成参数保持直通。
-      const fixedParamKeySet = new Set(fixedParamKeys);
-      const invalidParams = Object.entries(params).flatMap(([key, value]) => {
-        if (value === undefined || !fixedParamKeySet.has(key)) return [];
-        const validationResult = validateToolInputValue({
-          schema: httpTool.inputSchema?.properties?.[key],
-          value
-        });
-        return validationResult.success
-          ? []
-          : validationResult.errors.map((error) => `${key}${error}`);
+      const invalidParams = getHTTPToolFixedParamErrors({
+        tool: httpTool,
+        params,
+        fixedParamKeys: new Set(fixedParamKeys)
       });
       if (invalidParams.length > 0) {
         return getErrResponse(`Invalid tool params: ${invalidParams.join('; ')}`);

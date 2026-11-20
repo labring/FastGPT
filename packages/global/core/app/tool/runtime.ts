@@ -182,6 +182,8 @@ export const mergeToolRuntimeParams = ({
 export type ToolSchemaValidationResult = {
   success: boolean;
   errors: string[];
+  /** Schema 本身无法编译：属于工具配置问题，调用方不应按参数值不合规处理。 */
+  schemaInvalid?: boolean;
 };
 
 const ajvOptions = { allErrors: true, strict: false, validateFormats: false } as const;
@@ -233,7 +235,8 @@ export const validateToolInputValue = ({
   } catch (error) {
     return {
       success: false,
-      errors: [error instanceof Error ? error.message : String(error)]
+      errors: [error instanceof Error ? error.message : String(error)],
+      schemaInvalid: true
     };
   }
 };

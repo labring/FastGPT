@@ -306,6 +306,47 @@ describe('dispatchTool runtime toolset auth', () => {
     );
   });
 
+  it('validates legacy requestSchema with OpenAPI 3.0 exclusive bounds', async () => {
+    const tool = {
+      name: 'search',
+      description: 'Search',
+      path: '/search',
+      method: 'POST',
+      // 存量工具只有 requestSchema，且沿用 OpenAPI 3.0 的布尔型排他最小值。
+      requestSchema: {
+        type: 'object',
+        properties: { count: { type: 'integer', minimum: 0, exclusiveMinimum: true } }
+      }
+    };
+    const nodes = [
+      { toolConfig: { httpToolSet: { baseUrl: 'https://example.com', toolList: [tool] } } }
+    ];
+    authAppByTmbIdMock.mockResolvedValue({ app: { _id: 'victim-toolset', modules: nodes } });
+    getAppVersionByIdMock.mockResolvedValue({ nodes });
+    getHTTPToolListMock.mockResolvedValue([tool]);
+    runHTTPToolMock.mockResolvedValue({ data: { ok: true } });
+
+    const invalidProps = createDispatchToolProps(
+      { httpTool: { toolId: 'http-victim-toolset/search' } },
+      { count: 0 }
+    );
+    invalidProps.fixedParamKeys = ['count'];
+    const invalidResult = await dispatchTool(invalidProps);
+    expect(invalidResult.errorMessage).toContain('count');
+    expect(runHTTPToolMock).not.toHaveBeenCalled();
+
+    const validProps = createDispatchToolProps(
+      { httpTool: { toolId: 'http-victim-toolset/search' } },
+      { count: 2 }
+    );
+    validProps.fixedParamKeys = ['count'];
+    const validResult = await dispatchTool(validProps);
+    expect(validResult.errorMessage).toBeUndefined();
+    expect(runHTTPToolMock).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ params: { count: 2 } })
+    );
+  });
+
   it.each(['mcp', 'http'] as const)(
     'executes an authorized %s child outside the snapshot selection and rejects denied calls',
     async (source) => {

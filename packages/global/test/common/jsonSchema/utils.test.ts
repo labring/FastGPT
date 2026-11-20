@@ -45,6 +45,30 @@ describe('normalizeJsonSchema', () => {
     expect(schema).toEqual(before);
   });
 
+  it('converts OpenAPI 3.0 boolean exclusive bounds to Draft 7 numeric form', () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        count: { type: 'integer', minimum: 0, exclusiveMinimum: true },
+        limit: { type: 'integer', maximum: 10, exclusiveMaximum: true },
+        open: { type: 'integer', minimum: 0, exclusiveMinimum: false },
+        unbounded: { type: 'integer', exclusiveMinimum: true }
+      }
+    };
+    const before = structuredClone(schema);
+
+    expect(normalizeJsonSchema({ schema })).toEqual({
+      type: 'object',
+      properties: {
+        count: { type: 'integer', minimum: 0, exclusiveMinimum: 0 },
+        limit: { type: 'integer', maximum: 10, exclusiveMaximum: 10 },
+        open: { type: 'integer', minimum: 0 },
+        unbounded: { type: 'integer' }
+      }
+    });
+    expect(schema).toEqual(before);
+  });
+
   it('normalizes schema maps and tuple or union branches while preserving literal data', () => {
     const data = { required: true, 'x-internal': true, properties: { name: { required: false } } };
     const legacy = {

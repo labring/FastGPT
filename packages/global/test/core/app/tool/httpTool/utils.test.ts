@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getHTTPToolFixedParamErrors,
   getHTTPToolSetRuntimeNode,
   getHTTPToolRuntimeNode,
   getHTTPToolRuntimeSchemas,
@@ -114,6 +115,79 @@ describe('HTTP request schema compatibility', () => {
         parameters: [{ in: 'query', name: 'q', schema: { type: 'string' } }]
       })
     ).toBeUndefined();
+  });
+});
+
+describe('getHTTPToolFixedParamErrors', () => {
+  it('validates configured values against a legacy requestSchema fallback', () => {
+    const tool = {
+      requestSchema: {
+        type: 'object',
+        properties: { count: { type: 'integer', minimum: 1 } }
+      }
+    };
+    const fixedParamKeys = new Set(['count']);
+
+    expect(
+      getHTTPToolFixedParamErrors({ tool, params: { count: -1 }, fixedParamKeys })
+    ).toHaveLength(1);
+    expect(getHTTPToolFixedParamErrors({ tool, params: { count: 2 }, fixedParamKeys })).toEqual([]);
+  });
+
+  it('accepts OpenAPI 3.0 boolean exclusive bounds', () => {
+    const tool = {
+      inputSchema: {
+        type: 'object',
+        properties: { count: { type: 'integer', minimum: 0, exclusiveMinimum: true } }
+      }
+    };
+    const fixedParamKeys = new Set(['count']);
+
+    expect(getHTTPToolFixedParamErrors({ tool, params: { count: 2 }, fixedParamKeys })).toEqual([]);
+    expect(
+      getHTTPToolFixedParamErrors({ tool, params: { count: 0 }, fixedParamKeys })
+    ).toHaveLength(1);
+  });
+
+  it('skips unconfigured values but lets the schema judge explicit null', () => {
+    const tool = {
+      inputSchema: {
+        type: 'object',
+        properties: { payload: { type: 'object', properties: { id: { type: 'string' } } } }
+      }
+    };
+    const fixedParamKeys = new Set(['payload']);
+
+    expect(
+      getHTTPToolFixedParamErrors({ tool, params: { payload: undefined }, fixedParamKeys })
+    ).toEqual([]);
+    expect(
+      getHTTPToolFixedParamErrors({ tool, params: { payload: null }, fixedParamKeys })
+    ).toHaveLength(1);
+    expect(
+      getHTTPToolFixedParamErrors({ tool, params: { payload: { id: 'a' } }, fixedParamKeys })
+    ).toEqual([]);
+    // 模型生成的参数不参与固定值校验
+    expect(getHTTPToolFixedParamErrors({ tool, params: { other: null }, fixedParamKeys })).toEqual(
+      []
+    );
+  });
+
+  it('does not report an uncompilable schema as an invalid value', () => {
+    const tool = {
+      inputSchema: {
+        type: 'object',
+        properties: { count: { type: 'integer', exclusiveMinimum: 'invalid' } }
+      }
+    };
+
+    expect(
+      getHTTPToolFixedParamErrors({
+        tool,
+        params: { count: 1 },
+        fixedParamKeys: new Set(['count'])
+      })
+    ).toEqual([]);
   });
 });
 

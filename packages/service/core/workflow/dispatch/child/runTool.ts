@@ -16,7 +16,7 @@ import { getSecretValue } from '../../../../common/secret/utils';
 import { resolveToolInputValues } from '../../../app/tool/secretConfig';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import { getMCPToolErrorText } from '@fastgpt/global/core/app/tool/mcpTool/utils';
-import { validateToolInputValue } from '@fastgpt/global/core/app/tool/runtime';
+import { getHTTPToolFixedParamErrors } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { getAgentToolInputMode } from '@fastgpt/global/core/app/formEdit/utils';
 import { AgentToolInputModeEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
@@ -162,15 +162,10 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         getAgentToolInputMode(input) === AgentToolInputModeEnum.manual ? [input.key] : []
       )
     );
-    const invalidParams = Object.entries(params).flatMap(([key, value]) => {
-      if (value === undefined || value === null || !configParamKeys.has(key)) return [];
-      const validationResult = validateToolInputValue({
-        schema: tool.inputSchema?.properties?.[key],
-        value
-      });
-      return validationResult.success
-        ? []
-        : validationResult.errors.map((error) => `${key}${error}`);
+    const invalidParams = getHTTPToolFixedParamErrors({
+      tool,
+      params,
+      fixedParamKeys: configParamKeys
     });
     if (invalidParams.length > 0) {
       return getNodeErrResponse({
