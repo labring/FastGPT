@@ -15,7 +15,10 @@ import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { WorkflowVariableStateLike } from '../context/variables';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import type { FlowNodeInputItemType, ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
+import type {
+  FlowNodeInputItemType,
+  ReferenceValueType
+} from '@fastgpt/global/core/workflow/type/io';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getReferenceVariableValue } from '@fastgpt/global/common/workflow/runtime';
 import {

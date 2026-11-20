@@ -698,7 +698,7 @@ export class WorkflowQueue {
         runtimeNodesMap: this.runtimeNodesMap,
         runtimeEdges: this.data.runtimeEdges,
         params,
-        isDebugMode: this.isDebugMode,
+        ...(this.isDebugMode && { isDebugMode: true }),
         nodeResponseParentId: nodeResponseId
       };
 

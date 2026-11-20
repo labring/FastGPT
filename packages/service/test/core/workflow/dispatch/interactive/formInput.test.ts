@@ -138,7 +138,10 @@ describe('dispatchFormInput', () => {
           }
         ]
       ]),
-      variableContext: createTestVariableContext({ cities: sourceValue, deletedCity: 'Stale city' }),
+      variableContext: createTestVariableContext({
+        cities: sourceValue,
+        deletedCity: 'Stale city'
+      }),
       query: []
     } as any);
   };
