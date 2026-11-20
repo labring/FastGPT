@@ -36,7 +36,8 @@ import { computedSystemToolUsage } from '../../../../../../app/tool/runtime/util
 import { InvokeProcessor } from '../../../../../../../support/invoke/invoke';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import { isWorkflowResourceError, loadWorkflowAppResource } from '../../../../../resource/service';
-import { getWorkflowContext } from '../../../../context';
+import { getWorkflowContext, getWorkflowResourceContext } from '../../../../context';
+import { PluginPermissionEnum } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { getWorkflowAppId } from '../../../../utils/source';
 import {
   assertTeamPluginSourceAccess,
@@ -199,15 +200,28 @@ export const dispatchTool = async ({
       const appId = getWorkflowAppId(runningAppInfo);
 
       // 系统工具的用户信息反向调用必须使用实际运行成员，不能使用应用 owner。
+      const resourceContext = getWorkflowResourceContext();
+      const teamId = String(runningUserInfo.teamId);
+      const authorizedModelIds =
+        tool.permissions?.includes(PluginPermissionEnum['model:invoke']) &&
+        resourceContext &&
+        (!resourceContext.teamId || resourceContext.teamId === teamId)
+          ? Array.from(resourceContext.resourceMap.values())
+              .filter((item) => item.type === 'model')
+              .map((item) => item.id)
+          : [];
       const invokeToken = appId
         ? new InvokeProcessor({
             appId,
             chatId,
             uId: uid,
             permissions: tool.permissions ?? [],
-            teamId: String(runningUserInfo.teamId),
+            teamId,
             tmbId: String(runningUserInfo.tmbId),
-            usageId
+            usageId,
+            toolId: toolConfig.systemTool.toolId,
+            ...(resourceContext?.isRoot ? { isRoot: true } : {}),
+            ...(authorizedModelIds.length > 0 ? { authorizedModelIds } : {})
           }).generateToken()
         : undefined;
 

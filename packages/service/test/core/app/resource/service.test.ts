@@ -1,11 +1,15 @@
 import { assertAppDatasetIndexModelsAvailable } from '@fastgpt/service/core/dataset/model';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import {
+  extractAppResourcesWithToolModels,
+  extractSelectedToolModelResources,
   getAppDraftResourceBaseline,
   prepareAppWorkflowResources,
   authTargetModelResource,
   resolveAppResourcesByPermission
 } from '@fastgpt/service/core/app/resource/service';
+import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
+import { AgentToolInputModeEnum } from '@fastgpt/global/core/app/tool/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeTypeEnum,
@@ -657,5 +661,159 @@ describe('prepareAppWorkflowResources', () => {
       value: model.modelId
     });
     expect(mocks.mongoAppFindById).not.toHaveBeenCalled();
+  });
+
+  it('extracts selectLLMModel config values from Agent selectedTools and enforces permission checks', async () => {
+    const getSystemToolDetailSpy = vi
+      .spyOn(SystemToolRepo.getInstance(), 'getSystemToolDetail')
+      .mockResolvedValue({
+        id: 'systemTool-modelInvokeTest',
+        version: '1.0.0',
+        status: 1,
+        source: 'system',
+        isToolSet: false,
+        avatar: '',
+        name: { en: 'Model Invoke Test' },
+        intro: { en: 'Test tool' },
+        author: 'FastGPT',
+        tags: [],
+        currentCost: 0,
+        systemKeyCost: 0,
+        hasTokenFee: false,
+        hasSystemSecret: false,
+        systemSecretStatus: 'none',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            summaryModel: {
+              type: 'string',
+              format: 'modelId',
+              description: 'Summary LLM model'
+            },
+            ignoredModelField: {
+              type: 'string',
+              description: 'Plain string field that should not be treated as a model selector'
+            },
+            agentGeneratedModel: {
+              type: 'string',
+              format: 'modelId',
+              description: 'Explicitly marked agentGenerated'
+            }
+          }
+        }
+      } as any);
+
+    try {
+      const agentNodes = [
+        {
+          nodeId: 'agent-1',
+          name: 'Agent',
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+              value: [
+                {
+                  id: 'systemTool-modelInvokeTest',
+                  source: 'system',
+                  inputs: [
+                    { key: 'summaryModel', mode: AgentToolInputModeEnum.manual },
+                    { key: 'ignoredModelField', mode: AgentToolInputModeEnum.manual },
+                    { key: 'agentGeneratedModel', mode: AgentToolInputModeEnum.agentGenerated }
+                  ],
+                  config: {
+                    summaryModel: model.modelId,
+                    ignoredModelField: 'not-a-model-selector',
+                    agentGeneratedModel: '65f000000000000000000999'
+                  }
+                }
+              ]
+            }
+          ],
+          outputs: []
+        }
+      ];
+
+      const modelHandle = (await mocks.getTeamModelHandle()) as ModelHandle;
+
+      const extractedOnlyToolModels = await extractSelectedToolModelResources({
+        nodes: agentNodes as any,
+        teamId,
+        modelHandle
+      });
+      expect(extractedOnlyToolModels).toEqual([{ type: 'model', id: model.modelId }]);
+
+      const combined = await extractAppResourcesWithToolModels({
+        nodes: agentNodes as any,
+        teamId,
+        modelHandle
+      });
+      expect(combined).toEqual([{ type: 'model', id: model.modelId }]);
+
+      const prepared = await prepareAppWorkflowResources({
+        appId: 'app-with-agent-tool',
+        nodes: agentNodes as any,
+        teamId,
+        tmbId
+      });
+      expect(prepared).toEqual([{ type: 'model', id: model.modelId }]);
+
+      // Without the draft snapshot baseline, a private model in selectedTools[*].config is rejected
+      const privateModel = AIModelDataSchema.parse({
+        scope: 'team',
+        teamId,
+        tmbId: '65f000000000000000000099',
+        isActive: true,
+        modelId: 'private-tool-model-id',
+        model: 'private-tool-llm',
+        name: 'Private Tool LLM',
+        provider: 'OpenAI',
+        type: 'llm',
+        config: { maxContext: 4096, maxResponse: 1024, quoteMaxToken: 1024 }
+      });
+      const restrictedHandle = createModelHandle({
+        models: [privateModel],
+        defaultModels: {},
+        configuredDefaultModelIds: {},
+        revision: 1,
+        version: 'restricted-tool-model-catalog'
+      });
+      mocks.getAppDraftVersion.mockResolvedValueOnce({ resources: [] });
+      mocks.getTeamModelHandle.mockResolvedValueOnce(restrictedHandle);
+
+      const unauthorizedAgentNodes = [
+        {
+          ...agentNodes[0],
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+              value: [
+                {
+                  id: 'systemTool-modelInvokeTest',
+                  source: 'system',
+                  inputs: [{ key: 'summaryModel', mode: AgentToolInputModeEnum.manual }],
+                  config: {
+                    summaryModel: privateModel.modelId
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ];
+
+      await expect(
+        prepareAppWorkflowResources({
+          appId: 'app-with-agent-tool',
+          nodes: unauthorizedAgentNodes as any,
+          teamId,
+          tmbId
+        })
+      ).rejects.toBe(ERROR_ENUM.unAuthModel);
+    } finally {
+      getSystemToolDetailSpy.mockRestore();
+    }
   });
 });

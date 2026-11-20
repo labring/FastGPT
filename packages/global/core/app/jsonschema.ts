@@ -37,6 +37,7 @@ const workflowToolPreservedInputRenderTypes = new Set<FlowNodeInputTypeEnum>([
   FlowNodeInputTypeEnum.timePointSelect,
   FlowNodeInputTypeEnum.timeRangeSelect,
   FlowNodeInputTypeEnum.customVariable,
+  FlowNodeInputTypeEnum.selectLLMModel,
   // Agent 生成由工具配置补充，也需要在工作流工具往返时保留。
   FlowNodeInputTypeEnum.agentGenerated,
   // 内部变量不对外暴露，但需要保留元数据和默认值供工作流 runtime 恢复。
@@ -244,6 +245,7 @@ export const ToolParamJsonSchemaSchema: z.ZodType<JsonSchemaPropertiesItemType> 
 
 type JsonSchemaValue = {
   type?: unknown;
+  format?: unknown;
   enum?: unknown;
   const?: unknown;
   items?: unknown;
@@ -446,8 +448,25 @@ const getStrictEnumInitialValue = ({
   return findMatchingEnumValue(schema.default) ?? enumValues[0];
 };
 
+/** 识别通过标准 JSON Schema `format: "modelId"` 声明的平台模型选择器字段（兼容可空联合）。 */
+const isModelIdSchema = (schema: unknown): boolean => {
+  if (!isJsonSchemaValue(schema) || getJsonSchemaType(schema) !== 'string') return false;
+  if (schema.format === 'modelId') return true;
+
+  const nonNullBranches = getJsonSchemaUnionBranches(schema).filter(
+    (branch) => getJsonSchemaType(branch) !== 'null'
+  );
+  return nonNullBranches.length > 0 && nonNullBranches.every(isModelIdSchema);
+};
+
 const getNodeInputRenderTypeFromSchemaInputType = (schema: JsonSchemaPropertiesItemType) => {
   const type = getJsonSchemaType(schema);
+  if (isModelIdSchema(schema)) {
+    return {
+      renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+      selectedType: FlowNodeInputTypeEnum.selectLLMModel
+    };
+  }
   const enumSchema = type === 'array' ? schema.items : schema;
   const enumValues = getJsonSchemaEnumValues(enumSchema);
   const enumList = enumValues?.map(formatJsonSchemaEnumOption);
@@ -551,6 +570,7 @@ export const jsonSchema2NodeInput = ({
   if (!jsonSchema) return [];
   return Object.entries(jsonSchema?.properties || {}).map(([key, value]) => {
     const canProjectToNodeInput = canProjectJsonSchemaToNodeInput(value);
+    const isModelId = isModelIdSchema(value);
     const valueType = getNodeInputTypeFromSchemaInputType({
       type: getJsonSchemaType(value),
       arrayItems: value.items,
@@ -583,10 +603,17 @@ export const jsonSchema2NodeInput = ({
       valueType: nodeMetadata?.valueType ?? valueType,
       description: localizedDescription,
       ...(localizedPlaceholder !== undefined ? { placeholder: localizedPlaceholder } : {}),
-      // MCP 未声明输入方式时默认交给 AI；显式 false 及 HTTP/系统工具的原规则保持不变。
-      defaultToAgentGenerated: canProjectToNodeInput
-        ? (value.isToolParam ?? (schemaType === 'mcp' ? true : undefined))
-        : true,
+      // 模型选择字段严禁由 Agent 自动生成；MCP 普通参数未声明输入方式时默认交给 AI。
+      ...(isModelId
+        ? {
+            canAgentGenerated: false,
+            defaultToAgentGenerated: false
+          }
+        : {
+            defaultToAgentGenerated: canProjectToNodeInput
+              ? (value.isToolParam ?? (schemaType === 'mcp' ? true : undefined))
+              : true
+          }),
       customJsonSchema: cloneJsonSchemaProperty(value),
       toolDescription:
         schemaType === 'http'

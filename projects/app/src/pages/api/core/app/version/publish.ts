@@ -25,12 +25,14 @@ import {
   updateParentFoldersUpdateTime
 } from '@fastgpt/service/core/app/controller';
 import { assertAppDatasetIndexModelsAvailable } from '@fastgpt/service/core/dataset/model';
-import { extractAppResources } from '@fastgpt/service/core/app/resource/utils';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
-import { resolveAppResourcesByPermission } from '@fastgpt/service/core/app/resource/service';
+import {
+  extractAppResourcesWithToolModels,
+  resolveAppResourcesByPermission
+} from '@fastgpt/service/core/app/resource/service';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { buildAppAuditResource } from '@fastgpt/global/support/user/audit/type';
 import {
@@ -92,9 +94,11 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>): Promise<Publi
     nodes: normalizedWorkflow.nodes,
     teamId
   });
-  const extracted = extractAppResources({
+  const extracted = await extractAppResourcesWithToolModels({
     nodes: normalizedWorkflow.nodes,
-    chatConfig: normalizedWorkflow.chatConfig
+    chatConfig: normalizedWorkflow.chatConfig,
+    teamId,
+    modelHandle
   });
 
   /** 从本次写入的快照构造回执，避免重读最新草稿时将其他成员的并发保存纳入同步基线。 */
