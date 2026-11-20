@@ -78,7 +78,6 @@ const AgentEdit = () => {
         forbiddenSaveSnapshot={forbiddenSaveSnapshot}
         setAppForm={setAppForm}
         past={past}
-        setPast={setPast}
         saveSnapshot={saveSnapshot}
         form2WorkflowFn={agentForm2AppWorkflow}
         form2AppWorkflowFn={appWorkflow2AgentForm}

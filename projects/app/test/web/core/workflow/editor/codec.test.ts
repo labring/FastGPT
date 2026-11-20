@@ -938,7 +938,7 @@ describe('workflow-core reference boundary', () => {
     const runtime = hydrateRuntime({
       input: {
         ...workflow,
-        nodes: encodeWorkflowNodeReferences([
+        nodes: [
           {
             nodeId: 'producer',
             name: 'Producer',
@@ -980,7 +980,7 @@ describe('workflow-core reference boundary', () => {
             ],
             outputs: []
           }
-        ]),
+        ],
         edges: [
           {
             source: 'producer',
@@ -1008,7 +1008,7 @@ describe('workflow-core reference boundary', () => {
     runtime.dispose();
   });
 
-  it('preserves document references compiled to output IDs when opening and saving', () => {
+  it('migrates a legacy output key to its ID when opening and saving', () => {
     const workflow = createStoreWorkflow();
     workflow.nodes = workflow.nodes.slice(0, 2);
     workflow.edges = [
@@ -1020,10 +1020,7 @@ describe('workflow-core reference boundary', () => {
       }
     ];
     workflow.nodes[0].outputs[0].id = 'stable-output-id';
-    const runtime = hydrateRuntime({
-      input: { ...workflow, nodes: encodeWorkflowNodeReferences(workflow.nodes) },
-      t
-    });
+    const runtime = hydrateRuntime({ input: workflow, t });
     const value = runtime
       .getNode('answer')!
       .inputs.find((input) => input.key === NodeInputKeyEnum.answerText)!.value;
@@ -1043,28 +1040,42 @@ describe('workflow-core reference boundary', () => {
     ).toEqual(['start', 'stable-output-id']);
     expect(workflow.nodes[1].inputs[0].value).toEqual(['start', NodeOutputKeyEnum.userChatInput]);
   });
-  it('keeps an existing id when another output key has the same name', () => {
-    const workflow = createStoreWorkflow();
-    workflow.nodes = workflow.nodes.slice(0, 2);
-    workflow.edges = [];
-    workflow.nodes[0].outputs[0].id = 'stable-output-id';
-    workflow.nodes[0].outputs.push({
-      id: 'other-id',
-      key: 'stable-output-id',
-      type: FlowNodeOutputTypeEnum.static,
-      valueType: WorkflowIOValueTypeEnum.string
-    });
-    workflow.nodes[1].inputs[0].value = ['start', 'stable-output-id'];
-    const materialized = materializeWorkflow({ input: workflow, t });
-    expect(
-      materialized.nodes[1].inputs.find((input) => input.key === NodeInputKeyEnum.answerText)!.value
-    ).toEqual(['start', 'stable-output-id']);
-    expect(
-      materializeWorkflow({ input: materialized, t }).nodes[1].inputs.find(
-        (input) => input.key === NodeInputKeyEnum.answerText
-      )!.value
-    ).toEqual(['start', 'stable-output-id']);
-  });
+  it.each(['existing', 'snapshotted'])(
+    'keeps a %s ID when another output key has the same name',
+    (kind) => {
+      const workflow = createStoreWorkflow();
+      workflow.nodes = workflow.nodes.slice(0, 2);
+      workflow.edges = [];
+      workflow.nodes[0].outputs[0].id = kind === 'existing' ? 'stable-output-id' : 'new-start-id';
+      workflow.nodes[0].outputs.push({
+        id: 'other-id',
+        key: 'stable-output-id',
+        type: FlowNodeOutputTypeEnum.static,
+        valueType: WorkflowIOValueTypeEnum.string
+      });
+      workflow.nodes[1].inputs[0].value = ['start', 'stable-output-id'];
+      const referenceSnapshots =
+        kind === 'existing'
+          ? []
+          : [
+              {
+                reference: ['start', 'stable-output-id'],
+                sourceLabel: 'Old Start',
+                outputLabel: 'Old output'
+              }
+            ];
+      const materialized = materializeWorkflow({ input: { ...workflow, referenceSnapshots }, t });
+      expect(
+        materialized.nodes[1].inputs.find((input) => input.key === NodeInputKeyEnum.answerText)!
+          .value
+      ).toEqual(['start', 'stable-output-id']);
+      expect(
+        materializeWorkflow({ input: materialized, t }).nodes[1].inputs.find(
+          (input) => input.key === NodeInputKeyEnum.answerText
+        )!.value
+      ).toEqual(['start', 'stable-output-id']);
+    }
+  );
 });
 
 describe('workflow-core connection boundary', () => {

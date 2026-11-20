@@ -23,7 +23,10 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import {
   getSelectedInputRenderType,
+  getWorkflowDatasetFilterInputKind,
+  indexWorkflowReferenceSnapshotOutputs,
   isWorkflowReferenceItem,
+  mapWorkflowInputReferenceValues,
   nodeInputIsReference
 } from '@fastgpt/global/common/workflow/reference';
 import {
@@ -172,30 +175,58 @@ export const materializeWorkflow = ({
     chatConfig ? { ...(input as Record<string, unknown>), chatConfig } : input
   );
   const nodesById = new Map(workflow.nodes.map((node) => [node.nodeId, node]));
+  const snapshotOutputIds = indexWorkflowReferenceSnapshotOutputs(workflow.referenceSnapshots);
 
-  // 旧版文本控件允许用 key 引用整项筛选，模板换成当前控件前迁移为输出 ID。
-  const migrateLegacyFilterReference = (node: StoreNodeItemType) => {
-    if (node.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode) return;
-    const filter = node.inputs.find(
-      (input) => input.key === NodeInputKeyEnum.collectionFilterMatch
-    );
+  // Store 优先保留现有 ID 和快照记录的旧 ID，仅将唯一匹配的旧 key 迁移为 ID。
+  const normalizeReference = (value: unknown) => {
+    if (!isWorkflowReferenceItem(value)) return value;
+    const [sourceNodeId, selector] = value;
+    const outputs = nodesById.get(sourceNodeId)?.outputs;
     if (
-      !filter ||
-      getSelectedInputRenderType(filter) !== FlowNodeInputTypeEnum.textarea ||
-      !filter.renderTypeList.includes(FlowNodeInputTypeEnum.textarea) ||
-      !datasetSearchUsesLegacyFilter(node.inputs)
+      sourceNodeId === VARIABLE_NODE_ID ||
+      !outputs ||
+      snapshotOutputIds.get(sourceNodeId)?.has(selector) ||
+      outputs.some((output) => output.id === selector)
     ) {
-      return;
+      return value;
     }
-    for (const field of ['value', 'defaultValue'] as const) {
-      const reference: unknown = filter[field];
-      if (!isWorkflowReferenceItem(reference)) continue;
-      const [sourceNodeId, selector] = reference;
-      if (sourceNodeId === VARIABLE_NODE_ID) continue;
-      const outputs = nodesById.get(sourceNodeId)?.outputs;
-      if (!outputs || outputs.some((output) => output.id === selector)) continue;
-      const matches = outputs.filter((output) => output.key === selector);
-      if (matches.length === 1) filter[field] = [sourceNodeId, matches[0].id];
+    const matches = outputs.filter((output) => output.key === selector);
+    return matches.length === 1 ? [sourceNodeId, matches[0].id] : value;
+  };
+
+  const normalizeNodeReferences = ({ flowNodeType, inputs }: StoreNodeItemType) => {
+    for (const input of inputs) {
+      const isDatasetFilter =
+        getWorkflowDatasetFilterInputKind(input, flowNodeType) === 'direct' &&
+        !nodeInputIsReference(input);
+      // 已物化的整项筛选保存的是 ID。只有旧版搜索节点的文本控件允许用 key 引用整项。
+      const usesLegacyFilterKey =
+        isDatasetFilter &&
+        flowNodeType === FlowNodeTypeEnum.datasetSearchNode &&
+        getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.textarea &&
+        input.renderTypeList.includes(FlowNodeInputTypeEnum.textarea) &&
+        datasetSearchUsesLegacyFilter(inputs);
+
+      for (const field of ['value', 'defaultValue'] as const) {
+        const value: unknown = input[field];
+        if (
+          value === undefined ||
+          (isDatasetFilter && !usesLegacyFilterKey && isWorkflowReferenceItem(value))
+        ) {
+          continue;
+        }
+        input[field] = mapWorkflowInputReferenceValues({
+          input,
+          flowNodeType,
+          value,
+          mapValue: (value, includeCanonicalReferences) => {
+            if (!includeCanonicalReferences || !Array.isArray(value)) return value;
+            return isWorkflowReferenceItem(value)
+              ? normalizeReference(value)
+              : value.map(normalizeReference);
+          }
+        });
+      }
     }
   };
 
@@ -210,7 +241,7 @@ export const materializeWorkflow = ({
   // Materialization：复用现有模板物化，
   // 保证字段命令按 key 能解析到模板新增而存量数据缺失的字段（ADR 0001）。
   const nodes = workflow.nodes.map((node) => {
-    migrateLegacyFilterReference(node);
+    normalizeNodeReferences(node);
     const flowNode = storeNode2FlowNode({
       item: node,
       isTool: toolNodeIds.has(node.nodeId),

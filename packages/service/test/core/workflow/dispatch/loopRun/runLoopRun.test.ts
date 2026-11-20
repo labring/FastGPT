@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createContainerVariableProbe } from '../utils/containerVariableProbe';
 import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import {
+  FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
@@ -24,6 +25,7 @@ import {
   createWorkflowRuntimeSummary,
   summarizeRuntimeNodeResponses
 } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
+import { createEdge, createNode } from '../../utils';
 
 const runWorkflowMock = vi.fn();
 
@@ -251,6 +253,50 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(checkIsStopping).toHaveReturnedWith(true);
     expect(props).not.toHaveProperty('checkIsStopping');
   });
+
+  it.each([
+    ['removed', undefined],
+    ['kept', 'previous result']
+  ])(
+    'captures LoopRun outputs through the %s branch in a restored graph',
+    async (branch, value) => {
+      const props = makeProps({
+        [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+        [NodeInputKeyEnum.loopRunInputArray]: ['first']
+      });
+      const node = makeLoopRunNode([{ key: 'result', ref: ['classify', 'result'] }]);
+      node.inputs.at(-1)!.renderTypeList = [FlowNodeInputTypeEnum.reference];
+      props.node = props.runtimeNodes[0] = node;
+
+      const classifier = createNode('classify', FlowNodeTypeEnum.classifyQuestion);
+      classifier.inputs = [
+        makeInput({ key: NodeInputKeyEnum.agents, value: [{ key: 'kept', value: 'Kept' }] })
+      ];
+      classifier.outputs = [
+        {
+          id: 'result',
+          key: 'result',
+          type: FlowNodeOutputTypeEnum.static,
+          value: 'previous result'
+        }
+      ];
+      props.runtimeNodes.push(classifier);
+      props.runtimeNodesMap.set(classifier.nodeId, classifier);
+      props.runtimeNodesMap.set(node.nodeId, node);
+      props.runtimeEdges = [
+        createEdge('classify', node.nodeId, 'active', `classify-source-${branch}`)
+      ];
+      props.lastInteractive = {
+        type: 'loopRunInteractive',
+        params: { iteration: 1, loopHistory: [] }
+      };
+      runWorkflowMock.mockResolvedValue(makeDispatchFlowResponse());
+
+      const result = await dispatchLoopRun(props);
+
+      expect(result.data).toStrictEqual({ result: value });
+    }
+  );
 
   it('array mode 数组正常跑完 → loopHistory 全 success, data 含最后一轮快照', async () => {
     // Each iteration returns a clean response that writes a new value to chatNode

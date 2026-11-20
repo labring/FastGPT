@@ -1,7 +1,6 @@
 import {
   DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES,
-  getWorkflowReferenceItems,
-  isWorkflowEdgeSourceHandleValid
+  getWorkflowReferenceItems
 } from '@fastgpt/global/common/workflow/reference';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
@@ -37,9 +36,7 @@ export const createDynamicOptionResolver = ({
     chatConfig,
     ...createRuntimeReferenceGraph({
       runtimeEdges,
-      runtimeNodesMap,
-      isEdgeAllowed: (edge) =>
-        isWorkflowEdgeSourceHandleValid(runtimeNodesMap.get(edge.source), edge.sourceHandle)
+      runtimeNodesMap
     })
   });
 
