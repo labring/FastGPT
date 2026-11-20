@@ -31,10 +31,12 @@ export class S3PublicBucket extends S3BaseBucket {
         } as Omit<IAwsS3CompatibleStorageOptions, 'bucket'>;
         return {
           config,
-          externalConfig: {
-            ...config,
-            endpoint: externalEndpoint
-          }
+          externalConfig: externalEndpoint
+            ? {
+                ...config,
+                endpoint: externalEndpoint
+              }
+            : undefined
         };
       } else if (vendor === 'aws-s3') {
         const config = {
@@ -48,10 +50,12 @@ export class S3PublicBucket extends S3BaseBucket {
         } as Omit<IAwsS3CompatibleStorageOptions, 'bucket'>;
         return {
           config,
-          externalConfig: {
-            ...config,
-            endpoint: externalEndpoint
-          }
+          externalConfig: externalEndpoint
+            ? {
+                ...config,
+                endpoint: externalEndpoint
+              }
+            : undefined
         };
       } else if (vendor === 'r2') {
         const config = {
@@ -65,11 +69,7 @@ export class S3PublicBucket extends S3BaseBucket {
           publicAccessExtraSubPath: storageOptions.publicAccessExtraSubPath
         } as Omit<IR2StorageOptions, 'bucket'>;
         return {
-          config,
-          externalConfig: {
-            ...config,
-            endpoint: externalEndpoint || storageOptions.endpoint
-          }
+          config
         };
       } else if (vendor === 'cos') {
         return {
@@ -104,7 +104,7 @@ export class S3PublicBucket extends S3BaseBucket {
     const client = createStorage({ bucket: publicBucket, ...config });
 
     let externalClient: ReturnType<typeof createStorage> | undefined = undefined;
-    if (externalEndpoint || vendor === 'r2') {
+    if (externalConfig) {
       externalClient = createStorage({
         bucket: publicBucket,
         ...externalConfig

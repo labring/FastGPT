@@ -27,7 +27,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   try {
     const payload = await verifyS3DownloadAccess(signedAlias);
 
-    if (getStorageDownloadUrlMode() === 'short-redirect') {
+    if (req.method !== 'HEAD' && getStorageDownloadUrlMode() === 'short-redirect') {
       return await handleS3RedirectDownload({
         res,
         payload,

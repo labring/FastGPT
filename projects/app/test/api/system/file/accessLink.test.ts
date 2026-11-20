@@ -337,6 +337,20 @@ describe('s3 short access link api', () => {
         expiredSeconds: 30,
         responseContentType: 'text/markdown; charset=utf-8'
       });
+
+      const headReq = Object.assign(createDownloadReq(signedAlias), { method: 'HEAD' });
+      const headRes = makeMockRes() as any;
+      global.s3BucketMap['fastgpt-private'].getFileMetadata = vi.fn().mockResolvedValue({
+        filename: 'page.md',
+        contentType: 'text/markdown',
+        contentLength: 5
+      });
+      await redirectDownloadAccessHandler(headReq, headRes);
+
+      expect(headRes.statusCode).toBe(200);
+      expect(headRes.headers['Content-Length']).toBe(5);
+      expect(headRes.headers.Location).toBeUndefined();
+      expect(generatePresignedGetUrl).toHaveBeenCalledTimes(1);
     } finally {
       vi.resetModules();
     }

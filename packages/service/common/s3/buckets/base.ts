@@ -1114,7 +1114,12 @@ export class S3BaseBucket {
         key: candidate,
         ...(options?.abortSignal ? { abortSignal: options.abortSignal } : {})
       })
-    );
+    ).catch((error) => {
+      if (isFileNotFoundError(error)) {
+        throw CommonErrEnum.fileNotFound;
+      }
+      throw error;
+    });
     if (!downloadResponse) return;
 
     return downloadResponse.body;
