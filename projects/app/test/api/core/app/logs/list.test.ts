@@ -1136,7 +1136,9 @@ describe('logs list API - errorFilter', () => {
       { ...base, chatId: 'chat-with-version-1', appVersionId: version._id },
       { ...base, chatId: 'chat-with-version-2', appVersionId: version._id },
       { ...base, chatId: 'chat-without-version' },
-      { ...base, chatId: 'chat-deleted-version', appVersionId: new Types.ObjectId() }
+      { ...base, chatId: 'chat-deleted-version', appVersionId: new Types.ObjectId() },
+      { ...base, chatId: 'chat-numeric-version', appVersionId: 123 },
+      { ...base, chatId: 'chat-short-string-version', appVersionId: '123456789012' }
     ] as any);
 
     const chatAggregateSpy = vi.spyOn(MongoChat, 'aggregate');
@@ -1160,9 +1162,12 @@ describe('logs list API - errorFilter', () => {
       expect(exported.raw).toContain('\nchat-with-version-2,version-with-id,');
       expect(exported.raw).toContain('\nchat-without-version,,');
       expect(exported.raw).toContain('\nchat-deleted-version,,');
+      expect(exported.raw).toContain('\nchat-numeric-version,,');
+      expect(exported.raw).toContain('\nchat-short-string-version,,');
 
       expect(chatAggregateSpy).not.toHaveBeenCalled();
-      expect(versionFindSpy).toHaveBeenCalledTimes(1);
+      // 存在 1 个已删版本 ID：首次从库批量查询未命中后，回主库确认一次再写入负缓存
+      expect(versionFindSpy).toHaveBeenCalledTimes(2);
       expect(responseAggregateSpy).not.toHaveBeenCalled();
 
       versionFindSpy.mockClear();
@@ -1185,6 +1190,68 @@ describe('logs list API - errorFilter', () => {
       chatAggregateSpy.mockRestore();
       versionFindSpy.mockRestore();
       responseAggregateSpy.mockRestore();
+    }
+  });
+
+  it('导出版本名在从库短暂查空时回主库批量确认，且跨 200+ 批次复用缓存不重复查库', async () => {
+    const version = await MongoAppVersion.create({
+      tmbId: testTmbId,
+      appId: testAppId,
+      versionName: 'v-replica-sync',
+      nodes: [],
+      edges: []
+    });
+    const baseTime = Date.now();
+    await MongoChat.collection.insertMany(
+      Array.from({ length: 203 }, (_, idx) => ({
+        appId: new Types.ObjectId(testAppId),
+        teamId: new Types.ObjectId(testTeamId),
+        tmbId: new Types.ObjectId(testTmbId),
+        chatId: `chat-batch-${idx}`,
+        sourceType: ChatSourceTypeEnum.app,
+        source: 'api',
+        appVersionId: version._id,
+        createTime: new Date(baseTime - idx * 1000),
+        updateTime: new Date(baseTime - idx * 1000)
+      })) as any
+    );
+
+    const originalFind = MongoAppVersion.find.bind(MongoAppVersion);
+    let findCalls = 0;
+    const versionFindSpy = vi.spyOn(MongoAppVersion, 'find').mockImplementation(((
+      filter: any,
+      projection: any,
+      options: any
+    ) => {
+      findCalls++;
+      // 模拟首次从库查询因复制延迟查空，后续主库确认返回真实数据
+      if (findCalls === 1 && options?.readPreference) {
+        return { lean: async () => [] } as any;
+      }
+      return originalFind(filter, projection, options);
+    }) as any);
+
+    try {
+      const exported = await StreamCall(exportLogs, {
+        auth: authUser,
+        headers: {},
+        body: {
+          appId: testAppId,
+          dateStart: '2020-01-01',
+          dateEnd: '2099-01-01',
+          title: 'Session,Version',
+          sourcesMap: {},
+          logKeys: [AppLogKeysEnum.SESSION_ID, AppLogKeysEnum.VERSION_NAME]
+        }
+      });
+      expect(exported.code).toBe(200);
+      const dataRows = exported.raw.split('\n').slice(1);
+      expect(dataRows).toHaveLength(203);
+      expect(dataRows.every((line) => line.includes(',v-replica-sync,'))).toBe(true);
+      // 第 1 批：1 次从库(空) + 1 次主库(命中)；第 2 批命中缓存 0 次查库
+      expect(findCalls).toBe(2);
+    } finally {
+      versionFindSpy.mockRestore();
     }
   });
 });

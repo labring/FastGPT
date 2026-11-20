@@ -418,41 +418,61 @@ export const createAppAndInitVersion = async (
 
 ---
 
-### 关联查询优先应用层按需批量查询与缓存，避免 `$lookup`
+### 关联查询按场景选用应用层按需批量查询与缓存
 
-列表查询、流式导出等批量读取场景中，跨集合补充展示字段（如版本名、成员名、渠道名）优先采用**应用层按需收集外键 + `$in` 批量投影查询 + 内存 `Map` 缓存**，避免在 MongoDB 聚合管道中使用 `$lookup`。仅当必须在数据库侧按关联字段过滤、排序或分页时才使用 `$lookup`。
+在批量导出、分页列表等跨集合补充展示字段（如版本名、成员名、渠道名）的场景中，若满足**外键高度重复、被关联文档较大且无覆盖索引、或展示列可选**，优先采用**应用层按需收集外键 + `_id $in` 最小投影批量查询 + 内存 `Map` 缓存**替代聚合管道中的 `$lookup`。涉及数据库侧跨表过滤/排序/分页，或小文档、强同节点一致性场景，按索引、往返次数和一致性要求权衡选型。
 
-- **避免大文档重复 `FETCH`**：`$lookup` 对每条主记录逐条执行关联，被关联集合若无覆盖索引且单文档较大（如 `app_versions` 含 `nodes`/`edges`），会触发大量重复的大文档读取与裁切。
-- **按需跳过**：可选展示字段未被请求时直接不查库、不投影外键，避免聚合管道无条件执行关联。
-- **全版本兼容**：规避 `localField/foreignField + pipeline` 在 MongoDB 4.4 报错，以及 `let + $expr` 在缺失外键字段时退化为 `COLLSCAN` 的问题。
-- **实现要点**：流式分批场景跨批次复用 `Map` 缓存；校验有效 ID（`Types.ObjectId.isValid`）后仅查询未缓存的 ID，查不到的 ID 也写入空值占位防止重复查库；只投影必要字段并配合 `readFromSecondary` 与 `.lean()`；多路独立补充查询用 `Promise.all` 并行执行。
-- **ObjectId 显式还原**：全局 `find` post hook（`convertObjectIds`）会将查询结果的顶层 `ObjectId` 转为 `string`，而 `aggregate` 的 `$match` 不做 Mongoose 自动转型；将 `find` 得到的 ID 传给后续 `aggregate` `$match` 时必须显式包一层 `new Types.ObjectId(...)`。
+- **避免大文档重复 `FETCH`**：被关联集合单文档较大（如 `app_versions` 含完整 `nodes`/`edges`）且无覆盖索引时，逐条 `$lookup` 会触发大量重复读取与裁切。
+- **按需跳过与全版本兼容**：可选列未启用时直接不查库、不投影外键；同时规避 `localField/foreignField + pipeline` 在 MongoDB 4.4 报错及 `let + $expr` 缺失外键退化 `COLLSCAN` 的问题。
+- **严格校验 `ObjectId`**：统一使用 `parseObjectId(value)`（仅接受 `ObjectId` 实例或 24 位 hex 字符串），避免 BSON 数字（如 `123`）或 12 字符短串绕过 `Types.ObjectId.isValid` 后在构造 `ObjectId` 时抛 `BSONError`。
+- **从库读取与负缓存一致性**：主查询与补充查询均使用 `readFromSecondary` 时，跨从库复制延迟可能导致短暂查空。做跨批次负缓存前，需先对从库未命中的 ID 回主库批量确认，仅缓存主库确认缺失的空值。
+- **ObjectId 显式还原**：全局 `find` post hook（`convertObjectIds`）会将顶层 `ObjectId` 转为 `string`，而 `aggregate` 的 `$match` 不做 Mongoose 自动转型；将 `find` 得到的 ID 传给后续 `aggregate` `$match` 时必须显式还原为 `Types.ObjectId`。
 
 ```typescript
-// Good —— 按需批量查询 + 跨批次缓存，只拉取必要字段
+import { parseObjectId, readFromSecondary } from '@fastgpt/service/common/mongo/utils';
+import { type Types } from '@fastgpt/service/common/mongo';
+
+// Good —— 严格校验 ObjectId、最小投影批量查询、从库未命中回主库确认后再负缓存
 const versionNameMap = new Map<string, string>();
 
 const loadVersionNames = async (batch: Array<{ appVersionId?: unknown }>) => {
   if (!needVersionName) return;
 
-  const missingIds: Types.ObjectId[] = [];
+  const missingMap = new Map<string, Types.ObjectId>();
   for (const doc of batch) {
-    if (!doc.appVersionId || !Types.ObjectId.isValid(doc.appVersionId)) continue;
-    const idStr = String(doc.appVersionId);
-    if (!versionNameMap.has(idStr)) {
-      versionNameMap.set(idStr, ''); // 占位，避免已删除记录跨批次重复查库
-      missingIds.push(new Types.ObjectId(idStr));
+    const oid = parseObjectId(doc.appVersionId);
+    if (!oid) continue;
+    const idStr = oid.toString();
+    if (!versionNameMap.has(idStr) && !missingMap.has(idStr)) {
+      missingMap.set(idStr, oid);
     }
   }
-  if (missingIds.length === 0) return;
+  if (missingMap.size === 0) return;
 
-  const versions = await MongoAppVersion.find(
-    { _id: { $in: missingIds } },
+  const secondaryVersions = await MongoAppVersion.find(
+    { _id: { $in: Array.from(missingMap.values()) } },
     { _id: 1, versionName: 1 },
     readFromSecondary
   ).lean();
-  for (const version of versions) {
-    versionNameMap.set(String(version._id), version.versionName || '');
+  for (const version of secondaryVersions) {
+    const idStr = String(version._id);
+    versionNameMap.set(idStr, version.versionName || '');
+    missingMap.delete(idStr);
+  }
+
+  if (missingMap.size > 0) {
+    const primaryVersions = await MongoAppVersion.find(
+      { _id: { $in: Array.from(missingMap.values()) } },
+      { _id: 1, versionName: 1 }
+    ).lean();
+    for (const version of primaryVersions) {
+      const idStr = String(version._id);
+      versionNameMap.set(idStr, version.versionName || '');
+      missingMap.delete(idStr);
+    }
+    for (const idStr of missingMap.keys()) {
+      versionNameMap.set(idStr, '');
+    }
   }
 };
 ```

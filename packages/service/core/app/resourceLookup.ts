@@ -1,5 +1,6 @@
 import type { AppResourceType, AppSchemaType } from '@fastgpt/global/core/app/type';
 import { Types } from '../../common/mongo';
+import { parseObjectId } from '../../common/mongo/utils';
 import { MongoApp } from './schema';
 import { MongoAppVersion } from './version/schema';
 import { buildAppResourceMongoQuery } from './resource/utils';
@@ -76,17 +77,18 @@ const findMatchedTeamAppsByPublishedResources = async ({
   ).lean();
   if (apps.length === 0) return [];
 
-  const versionIdSet = new Set<string>();
+  const versionIdMap = new Map<string, Types.ObjectId>();
   for (const app of apps) {
-    if (app.publishedVersionId && Types.ObjectId.isValid(app.publishedVersionId)) {
-      versionIdSet.add(String(app.publishedVersionId));
+    const oid = parseObjectId(app.publishedVersionId);
+    if (oid) {
+      versionIdMap.set(oid.toString(), oid);
     }
   }
-  if (versionIdSet.size === 0) return [];
+  if (versionIdMap.size === 0) return [];
 
   const matchedVersions = await MongoAppVersion.find(
     {
-      _id: { $in: Array.from(versionIdSet, (id) => new Types.ObjectId(id)) },
+      _id: { $in: Array.from(versionIdMap.values()) },
       $or: resourceQueries
     },
     { _id: 1, resources: 1 }

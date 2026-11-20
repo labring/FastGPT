@@ -2,7 +2,7 @@ import { MongoChat } from '../../chat/chatSchema';
 import { MongoChatItem } from '../../chat/chatItemSchema';
 import { MongoChatItemResponse } from '../../chat/chatItemResponseSchema';
 import { Types } from '../../../common/mongo';
-import { readFromSecondary } from '../../../common/mongo/utils';
+import { parseObjectId, readFromSecondary } from '../../../common/mongo/utils';
 import { MongoAppVersion } from '../../app/version/schema';
 import type { AppLogsListItemType } from '@fastgpt/global/openapi/core/app/log/api';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -69,13 +69,14 @@ export const findAppChatLogPage = async ({
 
   const appObjectId = new Types.ObjectId(appId);
   const chatIds = Array.from(new Set(chats.map((chat) => chat.chatId).filter(Boolean)));
-  const versionIdSet = new Set<string>();
+  const versionIdMap = new Map<string, Types.ObjectId>();
   for (const chat of chats) {
-    if (chat.appVersionId && Types.ObjectId.isValid(chat.appVersionId)) {
-      versionIdSet.add(String(chat.appVersionId));
+    const oid = parseObjectId(chat.appVersionId);
+    if (oid) {
+      versionIdMap.set(oid.toString(), oid);
     }
   }
-  const versionIds = Array.from(versionIdSet, (id) => new Types.ObjectId(id));
+  const versionIds = Array.from(versionIdMap.values());
 
   const sourceFilter = {
     appId: appObjectId,
@@ -162,9 +163,21 @@ export const findAppChatLogPage = async ({
 
   const itemStatsMap = new Map(chatItemStats.map((item) => [item._id, item]));
   const responseStatsMap = new Map(responseStats.map((item) => [item._id, item]));
-  const versionNameMap = new Map(
+  const versionNameMap = new Map<string, string | null>(
     versions.map((version) => [String(version._id), version.versionName ?? null])
   );
+
+  // 从库短暂复制延迟导致未命中的版本 ID 回主库批量确认，避免日志列表漏填版本名。
+  const unresolvedVersionIds = versionIds.filter((oid) => !versionNameMap.has(oid.toString()));
+  if (unresolvedVersionIds.length > 0) {
+    const primaryVersions = await MongoAppVersion.find(
+      { _id: { $in: unresolvedVersionIds } },
+      { _id: 1, versionName: 1 }
+    ).lean();
+    for (const version of primaryVersions) {
+      versionNameMap.set(String(version._id), version.versionName ?? null);
+    }
+  }
 
   return chats.map((chat): AppLogsListItemType => {
     const itemStats = itemStatsMap.get(chat.chatId);
@@ -174,9 +187,8 @@ export const findAppChatLogPage = async ({
     const averageResponseTime = aiMessageCount > 0 ? totalResponseTime / aiMessageCount : 0;
     const totalPoints =
       (itemStats?.totalPointsFromChatItem ?? 0) + (responseStat?.totalPointsFromResponse ?? 0);
-    const versionName = chat.appVersionId
-      ? (versionNameMap.get(String(chat.appVersionId)) ?? null)
-      : null;
+    const versionOid = parseObjectId(chat.appVersionId);
+    const versionName = versionOid ? (versionNameMap.get(versionOid.toString()) ?? null) : null;
 
     return {
       _id: String(chat._id),

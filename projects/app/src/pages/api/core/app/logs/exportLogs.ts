@@ -5,7 +5,7 @@ import {
 import { extendChatPublishSources } from '@fastgpt/service/core/chat/publishSource/service';
 import { buildAppChatLogFilter } from '@fastgpt/service/core/app/logs/utils';
 import type { NextApiResponse } from 'next';
-import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
+import { parseObjectId, readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { formatDateWithOffset } from '@fastgpt/global/common/time/fixedOffset';
 import { type ApiRequestProps } from '@fastgpt/next/type';
@@ -167,24 +167,42 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const versionNameMap = new Map<string, string>();
   const loadVersionNames = async (batch: any[]) => {
     if (!needVersionName) return;
-    const missingIds: Types.ObjectId[] = [];
+    const missingMap = new Map<string, Types.ObjectId>();
     for (const doc of batch) {
-      if (!doc.appVersionId || !Types.ObjectId.isValid(doc.appVersionId)) continue;
-      const idStr = String(doc.appVersionId);
-      if (!versionNameMap.has(idStr)) {
-        versionNameMap.set(idStr, '');
-        missingIds.push(new Types.ObjectId(idStr));
+      const oid = parseObjectId(doc.appVersionId);
+      if (!oid) continue;
+      const idStr = oid.toString();
+      if (!versionNameMap.has(idStr) && !missingMap.has(idStr)) {
+        missingMap.set(idStr, oid);
       }
     }
-    if (missingIds.length === 0) return;
+    if (missingMap.size === 0) return;
 
-    const versions = await MongoAppVersion.find(
-      { _id: { $in: missingIds } },
+    const secondaryVersions = await MongoAppVersion.find(
+      { _id: { $in: Array.from(missingMap.values()) } },
       { _id: 1, versionName: 1 },
       readFromSecondary
     ).lean();
-    for (const version of versions) {
-      versionNameMap.set(String(version._id), version.versionName || '');
+    for (const version of secondaryVersions) {
+      const idStr = String(version._id);
+      versionNameMap.set(idStr, version.versionName || '');
+      missingMap.delete(idStr);
+    }
+
+    // 从库未命中可能是短暂复制延迟，回主库批量确认后再将真实缺失写入负缓存。
+    if (missingMap.size > 0) {
+      const primaryVersions = await MongoAppVersion.find(
+        { _id: { $in: Array.from(missingMap.values()) } },
+        { _id: 1, versionName: 1 }
+      ).lean();
+      for (const version of primaryVersions) {
+        const idStr = String(version._id);
+        versionNameMap.set(idStr, version.versionName || '');
+        missingMap.delete(idStr);
+      }
+      for (const idStr of missingMap.keys()) {
+        versionNameMap.set(idStr, '');
+      }
     }
   };
 
@@ -438,8 +456,10 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       [AppLogKeysEnum.ERROR_COUNT]: () => doc.errorCount || 0,
       [AppLogKeysEnum.POINTS]: () => (totalPoints ? Number(totalPoints).toFixed(2) : 0),
       [AppLogKeysEnum.REGION]: () => region,
-      [AppLogKeysEnum.VERSION_NAME]: () =>
-        doc.appVersionId ? versionNameMap.get(String(doc.appVersionId)) || '' : '',
+      [AppLogKeysEnum.VERSION_NAME]: () => {
+        const versionOid = parseObjectId(doc.appVersionId);
+        return versionOid ? versionNameMap.get(versionOid.toString()) || '' : '';
+      },
       chatDetails: () => formatJsonString(itemStats?.chatDetails || [])
     };
 
