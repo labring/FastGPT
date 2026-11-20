@@ -74,6 +74,43 @@ describe('code IO parser', () => {
     expect(extractReturnedObjectKeys(javascript)).toEqual(['half', 'ok']);
   });
 
+  it('ignores Python signatures quoted inside JavaScript comments and strings', () => {
+    const blockComment = `
+      /*
+      def main(legacy):
+      */
+      function main({ total, count }) {
+        return { average: total / count, // rounded later
+          remainder: total % count };
+      }
+    `;
+    const templateString = `
+      function main({ total, count }) {
+        const example = \`
+      def main(legacy):
+        \`;
+        return { average: total / count, // rounded later
+          remainder: total % count };
+      }
+    `;
+
+    [blockComment, templateString].forEach((code) => {
+      expect(extractCodeInputDefinitions(code)?.map(({ key }) => key)).toEqual(['total', 'count']);
+      expect(extractReturnedObjectKeys(code)).toEqual(['average', 'remainder']);
+    });
+  });
+
+  it('ignores JavaScript signatures quoted inside Python docstrings', () => {
+    const code = `
+      def main(total, count):
+        """Port of function main({ legacy })."""
+        return {"average": total // count, "remainder": total % count}
+    `;
+
+    expect(extractCodeInputDefinitions(code)?.map(({ key }) => key)).toEqual(['total', 'count']);
+    expect(extractReturnedObjectKeys(code)).toEqual(['average', 'remainder']);
+  });
+
   it('keeps Python inputs that follow a positional-only marker', () => {
     const code = `
       def main(total, /, count):

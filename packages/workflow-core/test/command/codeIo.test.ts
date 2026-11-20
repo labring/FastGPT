@@ -120,6 +120,47 @@ describe('code node IO synchronization', () => {
     expect(nextNode.outputs).toEqual(previousNode?.outputs);
   });
 
+  it('keeps JavaScript IO when a comment quotes a Python signature', async () => {
+    const getEditableIO = (document: Awaited<ReturnType<typeof createCodeDocument>>) => {
+      const codeNode = document.nodes.find((node) => node.nodeId === 'code')!;
+      return {
+        inputs: codeNode.inputs.filter((input) => input.canEdit).map((input) => input.key),
+        outputs: codeNode.outputs
+          .filter(
+            (output) =>
+              output.type === FlowNodeOutputTypeEnum.dynamic &&
+              output.key !== 'system_addOutputParam'
+          )
+          .map((output) => output.key)
+      };
+    };
+    const body = `
+      function main({ total, count }) {
+        return { average: total / count, // rounded later
+          remainder: total % count };
+      }
+    `;
+    const setCode = async (
+      document: Awaited<ReturnType<typeof createCodeDocument>>,
+      value: string
+    ) =>
+      applyWorkflowCommand({
+        document,
+        command: { type: 'input.set', nodeId: 'code', inputKey: 'code', value },
+        dependencies
+      });
+
+    const { document } = await setCode(await createCodeDocument(), body);
+    expect(getEditableIO(document)).toEqual({
+      inputs: ['total', 'count'],
+      outputs: ['average', 'remainder']
+    });
+
+    const result = await setCode(document, `/*\ndef main(legacy):\n*/${body}`);
+    expect(getEditableIO(result.document)).toEqual(getEditableIO(document));
+    expect(result.warnings).toEqual([]);
+  });
+
   it('removes all editable IO for an explicitly empty signature and return object', async () => {
     let document = await createCodeDocument();
 
