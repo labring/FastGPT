@@ -47,6 +47,12 @@ type DatasetSearchParams = {
   llmModel: LLMModelDataType;
   userKey?: OpenaiAccountType;
   datasetParams?: AppFormEditFormType['dataset'];
+  /**
+   * 用户原始问题（未经 LLM 改写）。Agent 生成的检索词往往已把别名换成标准词
+   * （例：问题「枕瓜排骨汤」→ 检索词「冬瓜排骨汤的做法」），同义词映射装饰需要
+   * 原始问题才能把「问题原词 → 标准词」对齐到命中分块。
+   */
+  userQuery?: string;
 };
 
 /**
@@ -174,7 +180,8 @@ export const dispatchAgentDatasetSearch = async ({
   teamId,
   tmbId,
   llmModel,
-  userKey
+  userKey,
+  userQuery
 }: DatasetSearchParams): Promise<DispatchSubAppResponse> => {
   if (!datasetParams || datasetParams.datasets.length === 0) {
     return {
@@ -277,6 +284,8 @@ export const dispatchAgentDatasetSearch = async ({
       teamId,
       textQueries,
       imageQueries,
+      // 原始问题只参与同义词映射装饰（不参与召回/重排），理由见 userQuery 注释。
+      rawQueries: userQuery ? [userQuery] : undefined,
       model: vectorModel,
       vlmModel: vlmModelData,
       similarity: datasetParams.similarity ?? 0.4,

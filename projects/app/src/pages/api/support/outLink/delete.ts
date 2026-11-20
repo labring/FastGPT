@@ -4,6 +4,7 @@ import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildAppAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { stopWechatPolling } from '@fastgpt/service/support/outLink/wechat/mq';
@@ -46,6 +47,7 @@ async function handler(
       tmbId,
       teamId,
       event: AuditEventEnum.DELETE_APP_PUBLISH_CHANNEL,
+      resources: [buildAppAuditResource(app)],
       params: {
         appName: app.name,
         channelName: outLink.name,

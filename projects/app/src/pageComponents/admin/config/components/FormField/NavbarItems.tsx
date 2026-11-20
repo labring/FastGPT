@@ -233,9 +233,10 @@ const NavbarItemModal = ({
   onSubmit: (data: NavbarItemType) => void;
 }) => {
   const { t } = useSafeTranslation();
-  const { register, setValue, control, handleSubmit } = useForm({
+  const form = useForm({
     defaultValues: currentNavbarItem
   });
+  const { register, setValue, control, handleSubmit } = form;
 
   const avatar = useWatch({ control, name: 'avatar' });
 
@@ -300,6 +301,7 @@ const NavbarItemModal = ({
           )}
         </MyTooltip>
         <Input
+          isInvalid={Boolean(form.getFieldState('name', form.formState).error)}
           flex={1}
           ml={3}
           autoFocus
@@ -314,6 +316,7 @@ const NavbarItemModal = ({
         {t('admin:redirect_link')}
       </Box>
       <Input
+        isInvalid={Boolean(form.getFieldState('url', form.formState).error)}
         flex={1}
         bg={'myWhite.600'}
         placeholder={t('admin:navbar_item_url_placeholder')}

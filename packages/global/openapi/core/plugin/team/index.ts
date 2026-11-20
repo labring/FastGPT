@@ -12,6 +12,7 @@ import {
 import {
   ConfirmTeamUploadPkgPluginBodySchema,
   InstallTeamPluginFromUrlBodySchema,
+  InstallTeamPluginFromUrlResponseSchema,
   TeamPkgEmptyResponseSchema,
   UploadTeamPkgPluginBodySchema,
   UploadTeamPkgPluginResponseSchema
@@ -167,10 +168,10 @@ export const PluginTeamPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '从 URL 安装团队插件成功',
+          description: '从 URL 安装团队插件成功（批量安装允许部分成功，失败项在 failed 中返回）',
           content: {
             'application/json': {
-              schema: TeamPkgEmptyResponseSchema
+              schema: InstallTeamPluginFromUrlResponseSchema
             }
           }
         }

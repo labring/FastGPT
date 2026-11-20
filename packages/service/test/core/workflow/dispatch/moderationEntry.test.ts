@@ -11,6 +11,7 @@ import {
 import * as checkerMod from '../../../../core/plugin/moderation/checker';
 import * as serviceMod from '../../../../core/plugin/moderation/service';
 import { dispatchWorkFlow } from '../../../../core/workflow/dispatch';
+import { createWorkflowResourceContext } from '../../../../core/workflow/dispatch/context/resource';
 import { ChatSourceTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { preChatRound } from '../../../../core/chat/utils/prepare';
 import { MongoChat } from '../../../../core/chat/chatSchema';
@@ -56,7 +57,7 @@ describe('dispatchWorkFlow Entry Guard integration', () => {
         runtimeEdges: [],
         maxFileAmount: 5,
         maxBytesPerFile: 1024 * 1024,
-        maxRunTimes: 10,
+        resourceContext: createWorkflowResourceContext({ resources: [], teamId: 'team_1' }),
         usageSource: 'fastgpt' as any,
         usageId: 'usage_1',
         concatUsage: vi.fn(),
@@ -192,7 +193,10 @@ describe('dispatchWorkFlow Entry Guard integration', () => {
         runtimeEdges: [],
         maxFileAmount: 5,
         maxBytesPerFile: 1024 * 1024,
-        maxRunTimes: 10,
+        resourceContext: createWorkflowResourceContext({
+          resources: [],
+          teamId: '654a4107c32f3bf5f998452f'
+        }),
         usageSource: 'fastgpt' as any,
         usageId: 'usage_1',
         concatUsage: vi.fn(),

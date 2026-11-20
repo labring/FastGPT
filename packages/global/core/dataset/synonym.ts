@@ -27,6 +27,10 @@ export const DatasetSynonymConfigSchema = z.object({
   uploaderId: ObjectIdSchema.optional().meta({ description: '当前生效文件上传成员 ID' }),
   version: z.number().int().positive().meta({ description: '当前生效的 mapping 版本' }),
   enabled: z.boolean().meta({ description: '同义词规则是否生效' }),
+  emptyVersions: z
+    .array(z.number().int().nonnegative())
+    .optional()
+    .meta({ description: '历史空词表版本；差量重建据此识别「未转换」快照' }),
   schemaVersion: z.literal(DatasetSynonymSchemaVersion).meta({ description: '同义词存储结构版本' }),
   updateTime: z.coerce.date().meta({ description: '配置更新时间' })
 });

@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { dispatchUserSelect } from '@fastgpt/service/core/workflow/dispatch/interactive/userSelect';
+import { createTestWorkflowDispatch } from '../context/fixtures';
+import { dispatchUserSelect as dispatchUserSelectWithoutContext } from '@fastgpt/service/core/workflow/dispatch/interactive/userSelect';
+
+const dispatchUserSelect = createTestWorkflowDispatch(dispatchUserSelectWithoutContext);
 
 describe('dispatchUserSelect', () => {
   it.each([

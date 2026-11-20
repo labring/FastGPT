@@ -68,11 +68,11 @@ describe('listFiles', () => {
         id: 'root1',
         rawId: 'root1',
         name: 'Space',
-        parentId: 'operator',
+        parentId: null,
         type: 'folder',
         hasChild: true
       }),
-      expect.objectContaining({ id: 'root2', name: 'Space 2', type: 'folder' })
+      expect.objectContaining({ id: 'root2', name: 'Space 2', parentId: null, type: 'folder' })
     ]);
     expect(mocks.request.mock.calls.map(([args]) => args.params)).toEqual([
       { operatorId: 'operator', maxResults: 100 },
@@ -134,11 +134,13 @@ describe('listFiles', () => {
         ]
       })
     );
-    expect((await provider().listFiles({})).map(({ id, name }) => ({ id, name }))).toEqual([
-      { id: 'r1', name: 'One' },
-      { id: 'r2', name: 's2' },
-      { id: 'r3', name: 's3' },
-      { id: 'r4', name: 's4' }
+    expect(
+      (await provider().listFiles({})).map(({ id, name, parentId }) => ({ id, name, parentId }))
+    ).toEqual([
+      { id: 'r1', name: 'One', parentId: null },
+      { id: 'r2', name: 's2', parentId: null },
+      { id: 'r3', name: 's3', parentId: null },
+      { id: 'r4', name: 's4', parentId: null }
     ]);
   });
 

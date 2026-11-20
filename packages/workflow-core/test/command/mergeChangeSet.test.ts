@@ -341,6 +341,25 @@ describe('mergeWorkflowChangeSetChunks', () => {
     }
   );
 
+  it('rejects duplicate chunk IDs instead of silently dropping commands', () => {
+    expect(() =>
+      mergeWorkflowChangeSetChunks({
+        baseChecksum,
+        chunks: [
+          chunk({ chunkId: 'consumer', dependsOn: ['shared'] }),
+          chunk({
+            chunkId: 'shared',
+            commands: [{ type: 'meta.update', intro: 'first' }]
+          }),
+          chunk({
+            chunkId: 'shared',
+            commands: [{ type: 'meta.update', intro: 'second' }]
+          })
+        ]
+      })
+    ).toThrow(/Duplicate ChangeSet chunk ID: shared/);
+  });
+
   it('rejects missing dependencies and cycles', () => {
     expect(() =>
       mergeWorkflowChangeSetChunks({

@@ -270,13 +270,7 @@ const isDingtalkOnlineDocNode = (node: DingtalkNode) => {
   );
 };
 
-const formatDingtalkWorkspaceItem = ({
-  workspace,
-  operatorId
-}: {
-  workspace: DingtalkWorkspace;
-  operatorId: string;
-}): APIFileItemType | undefined => {
+const formatDingtalkWorkspaceItem = (workspace: DingtalkWorkspace): APIFileItemType | undefined => {
   const workspaceId = workspace.workspaceId || workspace.spaceId || workspace.id;
   const rootNodeId =
     workspace.rootNodeId ||
@@ -290,7 +284,7 @@ const formatDingtalkWorkspaceItem = ({
   return {
     id: rootNodeId,
     rawId: rootNodeId,
-    parentId: operatorId,
+    parentId: null,
     name: workspace.workspaceName || workspace.name || workspaceId,
     type: 'folder',
     hasChild: true,
@@ -368,7 +362,7 @@ const listDingtalkWorkspaces = async ({
 
     return workspaces
       .filter((item) => !searchKey || (item.workspaceName || item.name || '').includes(searchKey))
-      .map((workspace) => formatDingtalkWorkspaceItem({ workspace, operatorId }))
+      .map(formatDingtalkWorkspaceItem)
       .filter(Boolean) as APIFileItemType[];
   } catch (error) {
     logger.warn('DingTalk workspace list request failed', {

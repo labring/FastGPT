@@ -5,6 +5,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Readable } from 'node:stream';
 import { ChatFileTypeEnum as FileType } from '@fastgpt/global/core/chat/constants';
+import { resolveDomainEffectiveConfig } from '@fastgpt/global/common/system/config/schema';
 import { axios } from '@fastgpt/service/common/api/axios';
 import { s3AccessLinkService } from '@fastgpt/service/common/s3/accessLink/accessLinkService';
 import {
@@ -365,6 +366,24 @@ describe('validateChatFileInput', () => {
 });
 
 describe('prepareChatFiles', () => {
+  it('拒绝容错读取的损坏白名单，在探测和登记之前阻止外链', async () => {
+    const fileUrlWhitelist = { legacy: 'allowed.example.com' };
+    getTestInstanceConfig().security = resolveDomainEffectiveConfig({
+      domain: 'security',
+      overrides: { checkExternalFile: true, fileUrlWhitelist },
+      options: { strict: false }
+    });
+    const { context } = createContext();
+
+    await expect(
+      prepareChatFiles({ files: [{ url }], maxFiles: 1, fileContext: context })
+    ).rejects.toThrow('Invalid file URL domain');
+    expect(getTestInstanceConfig().security.fileUrlWhitelist).toEqual(fileUrlWhitelist);
+    expect(axios.head).not.toHaveBeenCalled();
+    expect(axios.get).not.toHaveBeenCalled();
+    expect(context.registerExternalFile).not.toHaveBeenCalled();
+  });
+
   it('清理空输入，按 Context 身份去重并在校验、探测、登记前截断', async () => {
     getTestInstanceConfig().security.checkExternalFile = true;
     getTestInstanceConfig().security.fileUrlWhitelist = ['files.example.com'];

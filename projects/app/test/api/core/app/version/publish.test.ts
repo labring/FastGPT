@@ -24,7 +24,8 @@ import { storeNodes2RuntimeNodes } from '@fastgpt/global/core/workflow/runtime/u
 import type {
   GetAppVersionDetailQueryType,
   GetAppVersionDetailResponseType,
-  PublishAppBodyType
+  PublishAppBodyType,
+  PublishAppResponseType
 } from '@fastgpt/global/openapi/core/app/version/api';
 import type {
   GetDatasetListV2Body,
@@ -40,9 +41,12 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controlle
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { getWorkflowNodeRunParams } from '@fastgpt/service/core/workflow/dispatch/utils/runtime';
-import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
-import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
-import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/resource/context';
+import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/context/variables';
+import {
+  createTestWorkflowFileContext,
+  runWithTestWorkflowContext as runWithContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { createWorkflowResourceContext } from '@fastgpt/service/core/workflow/dispatch/context/resource';
 import {
   loadWorkflowDatasetResource,
   loadWorkflowModelResource
@@ -517,6 +521,8 @@ describe('publish manually selected datasets', () => {
     const loadedDataset = await runWithContext(
       {
         mcpClientMemory: {},
+        checkIsStopping: () => false,
+        fileContext: await createTestWorkflowFileContext(),
         resourceContext: createWorkflowResourceContext({
           resources: version.resources,
           teamId: owner.teamId
@@ -923,6 +929,51 @@ describe('publish optional model defaults', () => {
     }
   );
 
+  it.each([
+    { autoSave: true, isPublish: false },
+    { autoSave: false, isPublish: false },
+    { autoSave: false, isPublish: true }
+  ])(
+    'returns the normalized saved workflow when requested (autoSave=$autoSave, isPublish=$isPublish)',
+    async ({ autoSave, isPublish }) => {
+      const root = await getRootUser();
+      const app = await MongoApp.create({
+        name: 'Save receipt',
+        type: AppTypeEnum.workflow,
+        teamId: root.teamId,
+        tmbId: root.tmbId
+      });
+      const result = await Call<PublishAppBodyType, { appId: string }, PublishAppResponseType>(
+        handler,
+        {
+          auth: root,
+          headers: {},
+          query: { appId: String(app._id) },
+          body: { ...makeBody(true), autoSave, isPublish, returnWorkflow: true }
+        }
+      );
+
+      expect(result.code, String(result.error ?? JSON.stringify(result))).toBe(200);
+      const version = await MongoAppVersion.findOne({ appId: app._id }).lean();
+      expect(result.data?.workflow.chatConfig.questionGuide?.modelId).toBe(
+        previousDefaults.llm!.modelId
+      );
+      const loaded = await Call<
+        Record<string, never>,
+        GetAppVersionDetailQueryType,
+        GetAppVersionDetailResponseType
+      >(versionDetailHandler, {
+        auth: root,
+        headers: {},
+        query: { appId: String(app._id), versionId: String(version?._id) }
+      });
+      expect(loaded.code, JSON.stringify(loaded)).toBe(200);
+      expect(result.data?.workflow.chatConfig).toEqual(loaded.data.chatConfig);
+      expect(result.data?.workflow.nodes).toEqual(loaded.data.nodes);
+      expect(result.data?.workflow.edges).toEqual(loaded.data.edges);
+    }
+  );
+
   it('allows disabled features to retain unavailable models without replacement', async () => {
     const root = await getRootUser();
     const app = await MongoApp.create({
@@ -1044,28 +1095,37 @@ describe('publish optional model defaults', () => {
         resolveInputFile: async () => ''
       });
 
-      await runWithContext({ mcpClientMemory: {}, resourceContext }, async () => {
-        for (const node of runtimeNodes) {
-          const params = getWorkflowNodeRunParams({
-            node,
-            runtimeNodesMap,
-            variableState
-          });
-          if (params[NodeInputKeyEnum.datasetSearchUsingReRank]) {
-            await loadWorkflowModelResource({
-              appTeamId: String(root.teamId),
-              userInfo: {
-                teamId: String(root.teamId),
-                tmbId: String(root.tmbId)
-              },
-              type: 'rerank',
-              modelId: params[NodeInputKeyEnum.datasetSearchRerankModelId],
-              model: params[NodeInputKeyEnum.datasetSearchRerankModel],
-              fallbackToDefault: true
+      await runWithContext(
+        {
+          checkIsStopping: () => false,
+          fileContext: await createTestWorkflowFileContext(),
+          mcpClientMemory: {},
+          resourceContext,
+          variableContext: variableState
+        },
+        async () => {
+          for (const node of runtimeNodes) {
+            const params = getWorkflowNodeRunParams({
+              node,
+              runtimeNodesMap,
+              variableState
             });
+            if (params[NodeInputKeyEnum.datasetSearchUsingReRank]) {
+              await loadWorkflowModelResource({
+                appTeamId: String(root.teamId),
+                userInfo: {
+                  teamId: String(root.teamId),
+                  tmbId: String(root.tmbId)
+                },
+                type: 'rerank',
+                modelId: params[NodeInputKeyEnum.datasetSearchRerankModelId],
+                model: params[NodeInputKeyEnum.datasetSearchRerankModel],
+                fallbackToDefault: true
+              });
+            }
           }
         }
-      });
+      );
     };
 
     // 1. 预览链路：prepareAppWorkflowResources + 运行时节点模型校验通过

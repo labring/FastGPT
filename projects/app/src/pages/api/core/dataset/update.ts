@@ -19,6 +19,7 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { assertAuthModels } from '@fastgpt/service/support/permission/model/auth';
 import { addAuditLogs } from '@fastgpt/service/support/user/audit/util';
+import { buildDatasetAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { buildDatasetConfigUpdatePatch } from '@fastgpt/service/core/dataset/audit/patch';
 import { buildDatasetUpdateAuditLogs } from '@fastgpt/service/core/dataset/audit/config';
 import { isEqual } from 'lodash-es';
@@ -209,7 +210,10 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
         }
       )
     ) {
-      await delDatasetRelevantData({ datasets: [dataset], session });
+      // web 站点改分块大小 = 数据重建而非删除知识库：传 keepSynonyms 让
+      // delDatasetRelevantData 跳过同义词配置与映射的删除（配置与当前版本映射
+      // 原地保留，历史残留映射由清理器按版本条件回收）。真实删除知识库路径不变。
+      await delDatasetRelevantData({ datasets: [dataset], session }, { keepSynonyms: true });
     }
 
     const apiDatasetParams = apiDatasetServerPatch?.updateFields ?? {};
@@ -254,6 +258,14 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
         tmbId,
         teamId,
         event: DatasetAuditEventEnum.DATASET_CONFIG_UPDATE,
+        resources: [
+          buildDatasetAuditResource({
+            _id: dataset._id,
+            name: name ?? dataset.name,
+            avatar: avatar ?? dataset.avatar,
+            type: dataset.type
+          })
+        ],
         params: {
           datasetName: name ?? dataset.name,
           changeItem,

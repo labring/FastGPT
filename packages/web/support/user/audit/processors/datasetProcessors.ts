@@ -39,7 +39,45 @@ export const processDatasetConfigUpdateSpecific = (metadata: any, t: any) => {
   };
 };
 
+/** 集合创建审计只翻译已知的 7 种集合对象类型，未知类型与路径原文保留。 */
+export const processDatasetCollectionSpecific = (metadata: any, t: (key: string) => string) => {
+  // 有限枚举保留字面量调用，静态 i18n 扫描无需依赖服务端同步声明翻译标记。
+  const translateObjectType = (value: string) => {
+    switch (value) {
+      case 'common:core.dataset.folder':
+        return t('common:core.dataset.folder');
+      case 'common:core.dataset.file':
+        return t('common:core.dataset.file');
+      case 'common:core.dataset.externalFile':
+        return t('common:core.dataset.externalFile');
+      case 'common:core.dataset.link':
+        return t('common:core.dataset.link');
+      case 'dataset:empty_collection':
+        return t('dataset:empty_collection');
+      case 'common:core.dataset.apiFile':
+        return t('common:core.dataset.apiFile');
+      case 'dataset:core.dataset.Image collection':
+        return t('dataset:core.dataset.Image collection');
+      default:
+        return value;
+    }
+  };
+
+  return {
+    ...metadata,
+    ...(typeof metadata.objectType === 'string'
+      ? { objectType: translateObjectType(metadata.objectType) }
+      : {})
+  };
+};
+
 export const createDatasetAuditProcessors = {
   UPDATE_DATASET_COLLABORATOR: processUpdateDatasetCollaboratorSpecific,
-  [DatasetAuditEventEnum.DATASET_CONFIG_UPDATE]: processDatasetConfigUpdateSpecific
+  [DatasetAuditEventEnum.DATASET_CONFIG_UPDATE]: processDatasetConfigUpdateSpecific,
+  [DatasetAuditEventEnum.DATASET_COLLECTION_CREATE]: processDatasetCollectionSpecific,
+  // 父目录缺失时仅在展示层填充占位，避免把知识库名误记为继承来源。
+  [DatasetAuditEventEnum.DATASET_COLLECTION_PERMISSION_INHERITANCE_RESUME]: (metadata: any) => ({
+    ...metadata,
+    parentResource: metadata.parentResource ?? '-'
+  })
 };

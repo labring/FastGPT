@@ -3,10 +3,10 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 
-const mocks = vi.hoisted(() => ({ getAppTemplatesAndLoadThem: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getAppTemplateData: vi.fn() }));
 
-vi.mock('@fastgpt/service/core/app/templates/register', () => ({
-  getAppTemplatesAndLoadThem: mocks.getAppTemplatesAndLoadThem
+vi.mock('@fastgpt/service/core/app/templates/service', () => ({
+  getAppTemplateData: () => ({ get: mocks.getAppTemplateData })
 }));
 
 import handler from '@/pages/api/core/app/template/list';
@@ -14,7 +14,7 @@ import handler from '@/pages/api/core/app/template/list';
 describe('template list api', () => {
   it('returns experienceUrl for market cards', async () => {
     const users = await getFakeUsers(1);
-    mocks.getAppTemplatesAndLoadThem.mockResolvedValue([
+    mocks.getAppTemplateData.mockResolvedValue([
       {
         templateId: 'community-demo',
         name: 'Demo',

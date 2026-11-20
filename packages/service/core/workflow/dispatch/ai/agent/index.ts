@@ -22,12 +22,12 @@ import {
   assertSandboxAvailable,
   resolveAppSandboxAvailability
 } from '../../../../ai/sandbox/application/availability';
-import { getWorkflowFileMaxAmount, getWorkflowSandboxContext } from '../../../utils/context';
+import { getWorkflowContext, getWorkflowSandboxContext, runWithContext } from '../../context';
 import { loadWorkflowModelResource } from '../../../resource/service';
-import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
+import { stripNodeSummaryErrorFields } from '../../utils/summary';
 import { getNodeErrResponse, removeUnfinishedInteractiveHistories } from '../../utils';
 import { getDispatchModerationContext } from '../../utils/runtime';
-import { getWorkflowNodeMemoryKey, WorkflowMemoryState } from '../../../memory/state';
+import { getWorkflowNodeMemoryKey } from '../../context/memory';
 import {
   buildAgentLoopCoreDoneMemories,
   buildAgentLoopCoreFinalAssistantOutput,
@@ -44,7 +44,7 @@ import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
 import { replaceAgentPromptToolReferences } from './adapter/prompt';
 import { createWorkflowAgentLoopRuntime } from './adapter/runtime';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
-import { ensureAgentSandboxRuntime, type AgentSandboxPrepareAction } from './sub/sandbox/prepare';
+import { ensureAgentSandboxRuntime } from './sub/sandbox/prepare';
 import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
 import { checkModelContextModeration } from '../../../../plugin/moderation/modelInput';
 import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
@@ -90,9 +90,7 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.authTmbId]?: boolean;
   [NodeInputKeyEnum.useAgentSandbox]?: boolean;
   [NodeInputKeyEnum.sandboxEntrypoint]?: string;
-}> & {
-  agentSandboxPrepareActions?: AgentSandboxPrepareAction[];
-};
+}>;
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -111,7 +109,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     lastInteractive,
     runningAppInfo,
     runningUserInfo,
-    workflowStreamResponse,
     agentSandboxPrepareActions,
     usagePush,
     chatId,
@@ -144,13 +141,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
   // assistantResponses 贯穿整轮 dispatch；Agent 内部 nodeResponse 由 sink 逐条发布。
   const assistantResponses: AIChatItemValueItemType[] = [];
-  const childNodeResponses: ChatHistoryItemResType[] = [];
   const nodeResponseCollector = createAgentNodeResponseCollector({
-    nodeResponseSink: props.nodeResponseSink,
-    nodeResponses: childNodeResponses,
-    nodeResponseParentId: shouldWrapNodeResponses ? props.nodeResponseParentId : undefined,
-    onNodeResponseSummary: (summary) =>
-      props.nodeSummary.mergeNodeSummary(runtimeSummaryToNodeSummary(summary))
+    nodeResponseSink: getWorkflowContext().nodeResponseSink,
+    nodeResponseParentId: shouldWrapNodeResponses ? props.nodeResponseParentId : undefined
   });
   // 简易模式下主模型、工具和压缩响应平铺在当前层；工作流模式下未显式携带 parentId 的步骤统一挂在当前 Agent 节点响应下。
   const appendAgentNodeResponse = (response: ChatHistoryItemResType) =>
@@ -176,7 +169,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   const skillIds = editSkillId ? [editSkillId] : selectedSkills.map(({ skillId }) => skillId);
   const hasSandboxRuntimeDependency = !!editSkillId || skillIds.length > 0;
   const sandboxRequested = hasSandboxRuntimeDependency || !!useAgentSandbox;
-  const memoryState = WorkflowMemoryState.fromWorkflow(props);
+  const memoryContext = getWorkflowContext().memoryContext;
   const sandboxContext = getWorkflowSandboxContext({
     sourceType: runningAppInfo.sourceType,
     sourceId: runningAppInfo.sourceId,
@@ -207,12 +200,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   const fileLinks = parseHistoryFiles ? props.params.fileUrlList : undefined;
 
   const provider = getWorkflowAgentLoopProvider();
-  const agentMemoryState = memoryState.fork(`node:${nodeId}`);
+  const agentMemoryContext = memoryContext.fork(`node:${nodeId}`);
   // FastAgent 作为子工具或子应用运行时，其输出在父级历史中会被标记为 displayOnly 或跨轮置空。
-  // 交互恢复时优先从节点作用域 memoryState 恢复暂停前保存的完整 transcript，缺省再回退到历史。
+  // 交互恢复时优先从节点作用域 memoryContext 恢复暂停前保存的完整 transcript，缺省再回退到历史。
   const storedMemory =
     provider === 'fastAgent' && lastInteractive
-      ? memoryState.readNodeMemory<ChatItemMiniType[]>({
+      ? memoryContext.readNodeMemory<ChatItemMiniType[]>({
           runningAppInfo,
           nodeId
         })
@@ -237,11 +230,11 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   };
   const buildClearedNodeMemories = () =>
     provider === 'piAgent' || restoredMessages !== undefined
-      ? buildAgentLoopCoreDoneMemories({ memoryState, runningAppInfo, nodeId })
+      ? buildAgentLoopCoreDoneMemories({ memoryContext, runningAppInfo, nodeId })
       : undefined;
   const buildAgentMemories = (ownMemories?: Record<string, any>) => {
     const merged = {
-      ...agentMemoryState.getDelta(),
+      ...agentMemoryContext.getDelta(),
       ...ownMemories
     };
     return Object.keys(merged).length > 0 ? merged : undefined;
@@ -258,16 +251,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   } = {}) => {
     if (!shouldWrapNodeResponses) return undefined;
 
-    const childResponseCount =
-      nodeResponseCollector.getWorkflowRuntimeSummary()?.childResponseCount;
-    const childrenResponses = nodeResponseCollector.getNodeResponses();
+    const { childResponseCount } = nodeResponseCollector.getWorkflowRuntimeSummary();
 
     return {
       model: agentModel.name,
       query: userChatInput,
       ...(textOutput ? { textOutput } : {}),
       ...(childResponseCount !== undefined ? { childResponseCount } : {}),
-      ...(childrenResponses?.length ? { childrenResponses } : {}),
       ...(errorText !== undefined ? { errorText } : {})
     };
   };
@@ -276,6 +266,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       await assertSandboxAvailable(sandboxContext.teamId);
     }
 
+    const { fileContext } = getWorkflowContext();
     const userContext = await useUserContext({
       histories: restoredMessages ? [] : histories,
       currentFiles: fileLinks,
@@ -287,7 +278,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       authTmbId: datasetParams?.authTmbId,
       tmbId: runningUserInfo.tmbId,
       timezone,
-      maxFileAmount: getWorkflowFileMaxAmount()
+      maxFileAmount: fileContext.limits.maxFileAmount
     });
 
     // 初始化 sandbox：初始化、注入 skills、files。命中 Version 快照的 Skill 由快照授权，未命中的检查运行人权限。
@@ -309,7 +300,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       });
     const { sandboxClient, currentWorkingDirectory, skillInfos } = effectiveUseAgentSandbox
       ? await ensureWorkflowSandboxReadyForUse({
-          workflowStreamResponse,
           sourceType: sandboxSourceType,
           sourceId: sandboxSourceId,
           userId: sandboxContext.userId,
@@ -370,7 +360,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     const restoredMemory =
       provider === 'piAgent'
         ? readAgentLoopCoreProviderStateMemory({
-            memoryState,
+            memoryContext,
             runningAppInfo,
             nodeId
           })
@@ -419,28 +409,28 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
     // 2. 创建 workflow adapter。
     // 通用 agent loop 不感知 workflow；工具执行、SSE、usage、nodeResponse 都通过 runtime 参数回调进来。
-    const { runtime, artifacts } = createWorkflowAgentLoopRuntime({
-      context: {
-        ...props,
-        memoryState: agentMemoryState,
-        modelData: agentModel,
-        systemPrompt: formattedUserSystemPrompt,
-        getSubAppInfo,
-        getSubApp,
-        completionTools: agentCompletionTools,
-        currentFiles: userContext.currentFiles,
-        sandboxClient,
-        streamResponseFn: isResponseAnswerText ? workflowStreamResponse : undefined
-      },
-      usagePush,
-      workflowStreamResponse,
-      assistantResponses,
-      nodeResponses: childNodeResponses,
-      appendNodeResponse: appendAgentNodeResponse,
-      onToolResult: (result) => {
-        props.nodeSummary.mergeNodeSummary(stripNodeSummaryErrorFields(result.nodeSummary));
-      }
-    });
+    // Agent 自身暂停态仍使用父层节点键；仅内部工具绑定派生后的记忆作用域。
+    const toolContext = getWorkflowContext().getChildContext({ memoryContext: agentMemoryContext });
+    const { runtime, artifacts } = runWithContext(toolContext, () =>
+      createWorkflowAgentLoopRuntime({
+        context: {
+          ...props,
+          modelData: agentModel,
+          systemPrompt: formattedUserSystemPrompt,
+          getSubAppInfo,
+          getSubApp,
+          completionTools: agentCompletionTools,
+          currentFiles: userContext.currentFiles,
+          sandboxClient
+        },
+        usagePush,
+        assistantResponses,
+        appendNodeResponse: appendAgentNodeResponse,
+        onToolResult: (result) => {
+          props.nodeSummary.mergeNodeSummary(stripNodeSummaryErrorFields(result.nodeSummary));
+        }
+      })
+    );
     const agentSystemPrompt = buildDefaultAgentSystemPrompt({
       userSystemPrompt: formattedUserSystemPrompt,
       sandboxEnabled: !!sandboxClient
@@ -498,14 +488,14 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       const interactiveMemories = buildAgentMemories(
         provider === 'piAgent'
           ? buildAgentLoopCorePausedMemories({
-              memoryState,
+              memoryContext,
               runningAppInfo,
               nodeId,
               providerState: outputSummary.providerState,
               assistantResponses: [...previousAssistantResponses, ...outputAssistantResponses]
             })
           : {
-              [getWorkflowNodeMemoryKey({ memoryState, runningAppInfo, nodeId })]: [
+              [getWorkflowNodeMemoryKey({ memoryContext, runningAppInfo, nodeId })]: [
                 ...requestMessages,
                 {
                   dataId: responseChatItemId,

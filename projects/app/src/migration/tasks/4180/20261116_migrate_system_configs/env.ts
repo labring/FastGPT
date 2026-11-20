@@ -1,29 +1,12 @@
+import { LegacyBooleanSchema, readMigrationConfigValue } from './validation';
 import z from 'zod';
-import { BoolSchema, IntSchema, NumSchema, UrlSchema } from '@fastgpt/global/common/zod';
+import { IntSchema, NumSchema, UrlSchema } from '@fastgpt/global/common/zod';
 import { DEFAULT_MAX_FOLDER_DEPTH } from '@fastgpt/global/common/parentFolder/depth';
 import { agentSandboxProviderList } from '@fastgpt/global/core/ai/sandbox/constants';
 import { SandboxVolumeNameSchema } from '@fastgpt/global/core/ai/sandbox/volume';
 
 const defaultableIntSchema = (defaultValue: number) =>
   z.preprocess((value) => (value === '' || value === undefined ? defaultValue : value), IntSchema);
-
-// 公共 BoolSchema 会把未知字符串解析成 false，迁移时必须拒绝拼写错误以免静默关闭安全设置。
-const legacyBooleanValues = new Set([
-  'true',
-  '1',
-  'yes',
-  'y',
-  'on',
-  'false',
-  '0',
-  'no',
-  'n',
-  'off'
-]);
-const LegacyEnvBooleanSchema = z
-  .string()
-  .refine((value) => legacyBooleanValues.has(value.trim().toLowerCase()))
-  .transform((value) => BoolSchema.parse(value));
 
 /**
  * 仅供 4.18 实例配置迁移读取的历史 ENV 合约。
@@ -64,7 +47,7 @@ const LegacyInstanceConfigEnvSchema = z.object({
   AGENT_SANDBOX_OPENSANDBOX_IMAGE: z.string().optional().meta({
     description: 'OpenSandbox 使用的运行态镜像；启用 opensandbox 时必填'
   }),
-  AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: LegacyEnvBooleanSchema.default(true),
+  AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: LegacyBooleanSchema.default(true),
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL: UrlSchema.optional(),
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: z.string().optional(),
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX: SandboxVolumeNameSchema.default(
@@ -133,10 +116,10 @@ const LegacyInstanceConfigEnvSchema = z.object({
   FILE_URL_EXPIRED_DAYS: NumSchema.positive().default(90).meta({
     description: '聊天记录中文件访问短链有效期（天），支持小数'
   }),
-  CHECK_INTERNAL_IP: LegacyEnvBooleanSchema.default(false).meta({
+  CHECK_INTERNAL_IP: LegacyBooleanSchema.default(false).meta({
     description: '是否启用内网 IP 检查'
   }),
-  CSRF_ENABLED: LegacyEnvBooleanSchema.default(true).meta({
+  CSRF_ENABLED: LegacyBooleanSchema.default(true).meta({
     description: '是否启用 CSRF Web 请求标记校验'
   }),
   PASSWORD_LOGIN_MINUTE_LIMIT_COUNT: defaultableIntSchema(10).meta({
@@ -147,13 +130,13 @@ const LegacyInstanceConfigEnvSchema = z.object({
     .string()
     .optional()
     .meta({ description: '自定义跨域；不配置时默认允许所有跨域（逗号分割）' }),
-  MULTIPLE_DATA_TO_BASE64: LegacyEnvBooleanSchema.default(false).meta({
+  MULTIPLE_DATA_TO_BASE64: LegacyBooleanSchema.default(false).meta({
     description: '是否强制将图片、音频、视频转成 base64 传递给模型'
   }),
   AGENT_ENGINE: z.enum(['fastAgent', 'piAgent']).default('fastAgent').meta({
     description: 'Agent 引擎选择：fastAgent（FastGPT agent loop）| piAgent（pi-agent-core 引擎）'
   }),
-  SKIP_FILE_TYPE_CHECK: LegacyEnvBooleanSchema.default(false).meta({
+  SKIP_FILE_TYPE_CHECK: LegacyBooleanSchema.default(false).meta({
     description: '是否跳过文件类型检查'
   }),
   XLSX_PARSE_MAX_ROWS: IntSchema.min(1).max(1_048_576).default(100_000).meta({
@@ -235,9 +218,9 @@ const LegacyInstanceConfigEnvSchema = z.object({
   SYSTEM_DESCRIPTION: z.string().default(''),
   SYSTEM_FAVICON: z.string().default(''),
   PAY_FORM_URL: UrlSchema.default(''),
-  SHOW_COUPON: LegacyEnvBooleanSchema.default(false),
-  SHOW_DISCOUNT_COUPON: LegacyEnvBooleanSchema.default(false),
-  HIDE_CHAT_COPYRIGHT_SETTING: LegacyEnvBooleanSchema.default(false),
+  SHOW_COUPON: LegacyBooleanSchema.default(false),
+  SHOW_DISCOUNT_COUPON: LegacyBooleanSchema.default(false),
+  HIDE_CHAT_COPYRIGHT_SETTING: LegacyBooleanSchema.default(false),
   OPENAPI_KEY_MAX_COUNT: IntSchema.min(1).default(100),
   PASSWORD_EXPIRED_MONTH: IntSchema.optional(),
   CUSTOM_API_DOMAIN: UrlSchema.default(''),
@@ -250,12 +233,10 @@ export const readLegacyInstanceConfigEnv = () => {
   const env = Object.fromEntries(
     Object.entries(process.env).map(([key, value]) => [key, value === '' ? undefined : value])
   );
-  const result = LegacyInstanceConfigEnvSchema.safeParse(env);
-  if (!result.success) {
-    throw new Error(
-      'Invalid legacy instance config environment variables: ' +
-        result.error.issues.map((issue) => issue.path.join('.')).join(', ')
-    );
-  }
-  return result.data;
+  return Object.fromEntries(
+    Object.entries(LegacyInstanceConfigEnvSchema.shape).map(([key, schema]) => [
+      key,
+      readMigrationConfigValue({ name: key, schema, value: env[key] })
+    ])
+  ) as z.infer<typeof LegacyInstanceConfigEnvSchema>;
 };

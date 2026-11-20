@@ -7,12 +7,13 @@ description: Choose a FastGPT extension path and understand tool plugins, model 
 
 Plugin development is part of the FastGPT developer documentation. Choose a guide based on the capability you want to deliver:
 
-| Goal | Start here | Delivery format |
-| --- | --- | --- |
-| Build your first tool plugin | [Quick start](/en/plugin/quick-start) | Verify locally and generate a `.pkg` tool package |
-| Implement a tool or Toolkit | [Tool development guide](/en/plugin/system-tool-development) | SDK definitions, debugging, building, and packaging |
-| Add model or provider presets | [Model preset guide](/en/plugin/model-presets) | Update static configuration in the plugin repository and submit the changes |
-| Develop Agent Skills | [Skill development tutorial](/en/guide/build/skill/development) | Author code in sandbox and bind to Agent |
+| Goal                                  | Start here                                                      | Delivery format                                                             |
+| ------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Build your first tool plugin          | [Quick start](/en/plugin/quick-start)                           | Verify locally and generate a `.pkg` tool package                           |
+| Implement a tool or Toolkit           | [Tool development guide](/en/plugin/system-tool-development)    | SDK definitions, debugging, building, and packaging                         |
+| Configure or build content moderation | [Content moderation guide](/en/plugin/moderation)               | Admin policy configuration and `defineModeration()` `.pkg` packages         |
+| Add model or provider presets         | [Model preset guide](/en/plugin/model-presets)                  | Update static configuration in the plugin repository and submit the changes |
+| Develop Agent Skills                  | [Skill development tutorial](/en/guide/build/skill/development) | Author code in sandbox and bind to Agent                                    |
 
 To install existing plugins, see [team installation and management](/en/plugin/team-installation). System administrators (users signed in with the `root` account, with the **Admin** entry at the bottom-left of the sidebar) can use [system tool management](/en/guide/build/tools/system-plugins/upload_system_tool) and [plugin runtime configuration](/en/plugin/runtime).
 
@@ -31,39 +32,39 @@ Recommended development baseline: FastGPT v4.15.0+, FastGPT Plugin v1.0.0+, Node
 
 ## Core Concepts
 
-| Term | Meaning |
-| --- | --- |
-| Plugin | A resource that extends FastGPT; its development steps depend on the resource type. |
-| Tool | An API or computation exposed for Workflows and Agents to call. |
-| Toolkit | Multiple child tools in one plugin with shared metadata and secret configuration. |
-| Plugin package | The `.pkg` delivery file used to install and version tool plugins. |
-| Model preset | Static provider, capability, and default-parameter configuration supplied by the plugin service. |
-| Marketplace | A discovery and publishing channel for official and community plugins. |
-| Runtime | The backend that runs plugin code and manages resources; the default is `local-pool`. |
-| Pod | A plugin worker process in `local-pool`. |
+| Term           | Meaning                                                                                          |
+| -------------- | ------------------------------------------------------------------------------------------------ |
+| Plugin         | A resource that extends FastGPT; its development steps depend on the resource type.              |
+| Tool           | An API or computation exposed for Workflows and Agents to call.                                  |
+| Toolkit        | Multiple child tools in one plugin with shared metadata and secret configuration.                |
+| Plugin package | The `.pkg` delivery file used to install and version tool plugins.                               |
+| Model preset   | Static provider, capability, and default-parameter configuration supplied by the plugin service. |
+| Marketplace    | A discovery and publishing channel for official and community plugins.                           |
+| Runtime        | The backend that runs plugin code and manages resources; the default is `local-pool`.            |
+| Pod            | A plugin worker process in `local-pool`.                                                         |
 
 ## Repository Structure
 
 Plugin authors primarily use these entry points:
 
-| Path | Responsibility |
-| --- | --- |
-| `apps/cli/` | Create, debug, build, check, and pack commands |
-| `sdk/factory/` | Author SDK for tools, Toolkits, schemas, and handlers |
-| `sdk/client/` | Client SDK used by the FastGPT main service to call the plugin service |
-| `apps/server/` | Plugin server startup and HTTP interfaces |
-| `packages/infrastructure/src/static-data/models/` | Model and provider presets |
+| Path                                              | Responsibility                                                         |
+| ------------------------------------------------- | ---------------------------------------------------------------------- |
+| `apps/cli/`                                       | Create, debug, build, check, and pack commands                         |
+| `sdk/factory/`                                    | Author SDK for tools, Toolkits, schemas, and handlers                  |
+| `sdk/client/`                                     | Client SDK used by the FastGPT main service to call the plugin service |
+| `apps/server/`                                    | Plugin server startup and HTTP interfaces                              |
+| `packages/infrastructure/src/static-data/models/` | Model and provider presets                                             |
 
 For internal layers and dependencies, see the [FastGPT Plugin architecture](https://github.com/labring/fastgpt-plugin/blob/main/docs/dev/architecture.md).
 
 ## Repository Responsibilities
 
-| Repository | Maintained content |
-| --- | --- |
-| `labring/fastgpt-plugin` | Plugin service, CLI, SDKs, runtime, and model presets |
-| `fastgpt-official-plugins` | Officially maintained or reviewed tool plugins |
-| `fastgpt-community-plugins` | Community-contributed tool plugins |
-| `fastgpt-business-plugins` | Private, customer-specific, and commercial plugins |
+| Repository                  | Maintained content                                    |
+| --------------------------- | ----------------------------------------------------- |
+| `labring/fastgpt-plugin`    | Plugin service, CLI, SDKs, runtime, and model presets |
+| `fastgpt-official-plugins`  | Officially maintained or reviewed tool plugins        |
+| `fastgpt-community-plugins` | Community-contributed tool plugins                    |
+| `fastgpt-business-plugins`  | Private, customer-specific, and commercial plugins    |
 
 ## Marketplace And Usage Boundaries
 
@@ -71,11 +72,11 @@ After verification, tool authors follow the [publishing workflow](/en/plugin/deb
 
 ## Plugin Installation And Management
 
-| Scope | Responsible role | Guide |
-| --- | --- | --- |
-| Team installation, updates, and removal | Team administrator or owner | [Install and manage team plugins](/en/plugin/team-installation) |
-| System-wide installation and configuration | System administrator (`root` account) | [System tool management](/en/guide/build/tools/system-plugins/upload_system_tool) |
-| Runtime capacity, environment variables, and troubleshooting | Deployment operator | [Plugin runtime configuration](/en/plugin/runtime) |
+| Scope                                                        | Responsible role                      | Guide                                                                             |
+| ------------------------------------------------------------ | ------------------------------------- | --------------------------------------------------------------------------------- |
+| Team installation, updates, and removal                      | Team administrator or owner           | [Install and manage team plugins](/en/plugin/team-installation)                   |
+| System-wide installation and configuration                   | System administrator (`root` account) | [System tool management](/en/guide/build/tools/system-plugins/upload_system_tool) |
+| Runtime capacity, environment variables, and troubleshooting | Deployment operator                   | [Plugin runtime configuration](/en/plugin/runtime)                                |
 
 ### Localized Plugin Metadata
 

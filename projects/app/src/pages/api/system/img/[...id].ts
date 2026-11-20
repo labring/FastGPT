@@ -8,6 +8,10 @@ import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { encodeS3ObjectKey } from '@fastgpt/service/common/s3/keySanitizer';
 import { getStorageDownloadUrlMode } from '@fastgpt/service/common/s3/config/constants';
 import { handleS3ProxyDownload, handleS3ProxyRouteError } from '@/service/common/s3/proxy';
+import {
+  getFilePreviewSecurityHeaders,
+  isActiveFilePreview
+} from '@fastgpt/service/common/s3/preview';
 
 // get the models available to the system
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -21,6 +25,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (Types.ObjectId.isValid(keys)) {
       const { binary, mime } = await readMongoImg({ id: joined });
       res.setHeader('Content-Type', mime);
+      for (const [name, value] of Object.entries(
+        getFilePreviewSecurityHeaders({ contentType: mime, filename: joined })
+      )) {
+        res.setHeader(name, value);
+      }
       res.send(binary);
       return;
     }
@@ -36,9 +45,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         return;
       }
 
-      const publicUrl = avatarSource.createPublicUrl(resolvedKey);
-      res.redirect(301, publicUrl);
-      return;
+      const metadata = await avatarSource.getFileMetadata(resolvedKey);
+      if (
+        metadata?.contentType &&
+        !isActiveFilePreview(metadata) &&
+        !isActiveFilePreview({ filename: joined })
+      ) {
+        res.redirect(301, avatarSource.createPublicUrl(resolvedKey));
+        return;
+      }
     }
 
     return await handleS3ProxyDownload({

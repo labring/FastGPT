@@ -5,6 +5,7 @@ import {
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { EmbeddingRequestError } from '../../../../core/ai/embedding/error';
 import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -144,6 +145,51 @@ describe('probeModelStatus', () => {
       attempts: 4,
       error: 'Test model: Model test timed out after 60000ms'
     });
+  });
+
+  it('records machine error code and HTTP status for normalized embedding errors without raw i18n keys', async () => {
+    const authErr = new EmbeddingRequestError(ModelErrEnum.authFailed, {
+      category: 'authFailed',
+      retryable: false,
+      errorCode: ModelErrEnum.authFailed,
+      upstreamStatus: 401
+    });
+    const test = vi.fn().mockRejectedValue(authErr);
+
+    const result = await probeModelStatus({
+      model,
+      test
+    });
+
+    expect(result).toMatchObject({
+      status: 'red',
+      attempts: 4,
+      error: 'Test model: modelAuthFailed (HTTP 401)'
+    });
+    expect(result.error).not.toContain('common:code_error');
+  });
+
+  it('records error code directly for registered business errors without HTTP status', async () => {
+    const test = vi.fn().mockRejectedValue(new UserError(ModelErrEnum.noAvailableChannel));
+
+    const result = await probeModelStatus({
+      model,
+      test
+    });
+
+    expect(result).toMatchObject({
+      status: 'red',
+      attempts: 4,
+      error: 'Test model: modelNoAvailableChannel'
+    });
+    expect(result.error).not.toContain('common:code_error');
+  });
+
+  it('preserves plain upstream error messages containing colons such as Rerank 401', async () => {
+    const test = vi.fn().mockRejectedValue(new Error('Unauthorized: Invalid API key'));
+
+    const result = await probeModelStatus({ model, test });
+    expect(result.error).toBe('Test model: Unauthorized: Invalid API key');
   });
 
   it('declares the model-time lookup index and 30-day TTL index', () => {
@@ -337,7 +383,14 @@ describe('model status probe configuration', () => {
 
     await expect(
       updateModelStatusProbeConfig({ enabled: false, intervalMinutes: 5, clearWebhookToken: false })
-    ).rejects.toThrow('Unable to decrypt configuration secret: modelStatusProbe.webhookToken');
+    ).rejects.toMatchObject({
+      name: 'ApiRequestInputParseError',
+      cause: {
+        issues: expect.arrayContaining([
+          expect.objectContaining({ path: ['webhookToken'], code: 'invalid_type' })
+        ])
+      }
+    });
     expect(
       await MongoSystemInstanceConfig.findOne({ domain: 'modelStatusProbe' }).lean()
     ).toMatchObject({
@@ -346,18 +399,31 @@ describe('model status probe configuration', () => {
     });
   });
 
-  it('rejects invalid stored configuration before overwriting its credentials', async () => {
+  it('rejects an invalid retained token and lets the administrator explicitly clear it', async () => {
+    const oldToken = 't'.repeat(2049);
     await MongoSystemInstanceConfig.collection.insertOne({
       domain: 'modelStatusProbe',
-      overrides: { enabled: true, intervalMinutes: 1, webhookToken: 'stored-token' },
+      overrides: { enabled: true, intervalMinutes: 1, webhookToken: oldToken },
       revision: 1
     } as any);
 
     await expect(
       updateModelStatusProbeConfig({ enabled: false, intervalMinutes: 5, clearWebhookToken: false })
-    ).rejects.toThrow();
-    const record = await MongoSystemInstanceConfig.findOne({ domain: 'modelStatusProbe' }).lean();
-    expect(record).toMatchObject({ revision: 1, overrides: { webhookToken: 'stored-token' } });
+    ).rejects.toMatchObject({
+      cause: { issues: [expect.objectContaining({ path: ['webhookToken'] })] }
+    });
+    const unchanged = await MongoSystemInstanceConfig.findOne({
+      domain: 'modelStatusProbe'
+    }).lean();
+    expect(unchanged?.revision).toBe(1);
+    expect(unchanged?.overrides.webhookToken === oldToken).toBe(true);
+
+    await expect(
+      updateModelStatusProbeConfig({ enabled: false, intervalMinutes: 5, clearWebhookToken: true })
+    ).resolves.toEqual({ enabled: false, intervalMinutes: 5, webhookTokenConfigured: false });
+    const repaired = await MongoSystemInstanceConfig.findOne({ domain: 'modelStatusProbe' }).lean();
+    expect(repaired).toMatchObject({ revision: 2, overrides: { intervalMinutes: 5 } });
+    expect(repaired?.overrides.webhookToken).toBeUndefined();
   });
 
   it('keeps the successful write when refreshing the snapshot fails', async () => {

@@ -1,0 +1,124 @@
+---
+title: 'Search App Chat Logs'
+seoTitle: 'Search App Chat Logs - POST /api/core/app/logs/search | FastGPT OpenAPI'
+description: 'Search FastGPT app chat logs by title or exact session ID. Get up to 50 results per page and use the returned cursor to continue.'
+---
+
+## Endpoint Overview
+
+- **Method** : `POST`
+- **Path** : `/api/core/app/logs/search`
+- **Module** : Applications / App Logs
+- **Authentication** : `Authorization: Bearer <apiKey>`—Supports **App API Key** ( `appId` optional) and **Personal API Key** ( `appId` required) (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E5%BA%94%E7%94%A8%E6%97%A5%E5%BF%97/POST/core/app/logs/search) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E5%BA%94%E7%94%A8%E6%97%A5%E5%BF%97/POST/core/app/logs/search` )
+
+## Description & Notes
+
+Search app chat logs with cursor-based pagination. The page size is fixed at 50 and the response does not include a total count.
+
+## Request Parameters
+
+### Request Body ( `application/json` )
+
+| Field              | Type               | Required | Default | Constraints & Description                                                                                                                                                  |
+| ------------------ | ------------------ | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `feedbackType`     | `string` (enum)    | No       | -       | Feedback filter: `all` (all logs), `has_feedback` (logs with feedback), `good` (likes), `bad` (dislikes). Allowed values: `all` , `has_feedback` , `good` , `bad`          |
+| `unreadOnly`       | `boolean`          | No       | -       | Whether to return only unread feedback (ignored when `feedbackType` is `all` )                                                                                             |
+| `errorFilter`      | `string` (enum)    | No       | -       | Error filter: `all` (all logs), `has_error` (error logs only). Allowed values: `all` , `has_error`                                                                         |
+| `dateStart`        | `string`           | Yes      | -       | Start time                                                                                                                                                                 |
+| `dateEnd`          | `string`           | Yes      | -       | End time                                                                                                                                                                   |
+| `sources`          | `string` (enum)[]` | No       | -       | Chat source filter                                                                                                                                                         |
+| `tmbIds`           | `string[]`         | No       | -       | List of team member IDs                                                                                                                                                    |
+| `outLinkUids`      | `string[]`         | No       | -       | List of external user IDs                                                                                                                                                  |
+| `chatSearch`       | `string`           | No       | -       | Search term. Use with `searchType` to search titles or match a session ID exactly.                                                                                         |
+| `searchType`       | `string` (enum)    | No       | -       | Search mode. Use `title` to search titles or `chatId` to match a session ID exactly. Omit this field to use the legacy search behavior. Allowed values: `title` , `chatId` |
+| `cursor`           | `object`           | No       | -       | The `nextCursor` from the previous response. Omit this field on the first page and pass the cursor unchanged for subsequent pages.                                         |
+| `cursor.timestamp` | `integer`          | Yes      | -       | Cursor timestamp in milliseconds. min: 0; max: 9007199254740991                                                                                                            |
+| `cursor.id`        | `string`           | Yes      | -       | Log ID in the cursor. pattern: `^[a-f\d]{24}$`                                                                                                                             |
+
+**Mutually Exclusive Branches ( `anyOf` )**
+
+- **Explicit App ID**
+
+Personal API keys and login sessions must pass `appId` ; an App API Key always uses the bound application.
+
+| Field   | Type     | Required | Default | Constraints & Description    |
+| ------- | -------- | -------- | ------- | ---------------------------- |
+| `appId` | `string` | Yes      | -       | Application ID. minLength: 1 |
+
+- **App API Key (no appId required)**
+
+When authorizing with an app-bound App API Key, omit `appId` and `sourceType` ; the server resolves the bound app with `sourceType` fixed to `app` . Personal keys and login sessions cannot omit `appId` , and an explicit `appId` does not override an App API Key binding.
+
+No extra branch-specific fields are required.
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.io/api/core/app/logs/search" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "appId": "68ad85a7463006c963799a05",
+  "dateStart": "2024-01-01T00:00:00.000Z",
+  "dateEnd": "2024-12-31T23:59:59.999Z"
+}'
+```
+
+### Minimal Valid JSON Body
+
+```json
+{
+  "appId": "68ad85a7463006c963799a05",
+  "dateStart": "2024-01-01T00:00:00.000Z",
+  "dateEnd": "2024-12-31T23:59:59.999Z"
+}
+```
+
+## Response Schema & Examples
+
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (when a payload schema is declared; otherwise refer to the status description for runtime `data` semantics).
+
+### HTTP 200
+
+App log search completed successfully
+
+**Content-Type** : `application/json`
+
+| Field                          | Type              | Required | Default     | Constraints & Description                                                                                                                                                                                                                                |
+| ------------------------------ | ----------------- | -------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `list`                         | `object[]`        | Yes      | -           | Chat log records for this page. The page size is fixed at 50.                                                                                                                                                                                            |
+| `list[].publishSource`         | `object`          | No       | -           | -                                                                                                                                                                                                                                                        |
+| `list[].publishSource.type`    | `string` (enum)   | No       | `"unknown"` | Channel type of the latest run; falls back to `unknown` if unrecognized. Allowed values: `test` , `online` , `share` , `api` , `cronJob` , `feishu` , `official_account` , `wecom` , `wechat` , `mcp` , `dingtalk` , `unknown`                           |
+| `list[].publishSource.id`      | `string`          | No       | -           | Database ID of the channel record; omitted for internal entry points or legacy data without recoverable references. pattern: `^[0-9a-fA-F]{24}$`                                                                                                         |
+| `list[].publishSource.name`    | `string`          | No       | -           | Current channel name, compatible with legacy source names                                                                                                                                                                                                |
+| `list[]._id`                   | `string`          | Yes      | -           | Chat log ID                                                                                                                                                                                                                                              |
+| `list[].chatId`                | `string`          | Yes      | -           | Chat ID. maxLength: 1024                                                                                                                                                                                                                                 |
+| `list[].title`                 | `string \| null`  | No       | -           | Chat title                                                                                                                                                                                                                                               |
+| `list[].customTitle`           | `string \| null`  | No       | -           | Custom chat title                                                                                                                                                                                                                                        |
+| `list[].source`                | `string` (enum)   | Yes      | `"unknown"` | **Deprecated** . Legacy channel type retained for compatibility; use `publishSource.type` instead. Allowed values: `test` , `online` , `share` , `api` , `cronJob` , `feishu` , `official_account` , `wecom` , `wechat` , `mcp` , `dingtalk` , `unknown` |
+| `list[].sourceName`            | `string \| null`  | No       | -           | **Deprecated** . Legacy channel name retained for compatibility; use `publishSource.name` instead                                                                                                                                                        |
+| `list[].updateTime`            | `string`          | Yes      | -           | Update time                                                                                                                                                                                                                                              |
+| `list[].createTime`            | `string \| null`  | No       | -           | Creation time                                                                                                                                                                                                                                            |
+| `list[].messageCount`          | `integer \| null` | No       | -           | Message count                                                                                                                                                                                                                                            |
+| `list[].userGoodFeedbackCount` | `integer \| null` | No       | -           | Positive feedback count                                                                                                                                                                                                                                  |
+| `list[].userBadFeedbackCount`  | `integer \| null` | No       | -           | Negative feedback count                                                                                                                                                                                                                                  |
+| `list[].customFeedbacksCount`  | `integer \| null` | No       | -           | Custom feedback count                                                                                                                                                                                                                                    |
+| `list[].markCount`             | `integer \| null` | No       | -           | Marked count                                                                                                                                                                                                                                             |
+| `list[].averageResponseTime`   | `number \| null`  | No       | -           | Average response time (ms)                                                                                                                                                                                                                               |
+| `list[].errorCount`            | `integer \| null` | No       | -           | Error count                                                                                                                                                                                                                                              |
+| `list[].totalPoints`           | `number \| null`  | No       | -           | Total credit points consumed                                                                                                                                                                                                                             |
+| `list[].outLinkUid`            | `string \| null`  | No       | -           | End user ID from a share link visitor or API `customUid` ; takes precedence over `tmbId` when non-empty                                                                                                                                                  |
+| `list[].tmbId`                 | `string \| null`  | No       | -           | Effective authenticated team member ID (or proxied member ID when using `authProxy` )                                                                                                                                                                    |
+| `list[].sourceMember`          | `object \| null`  | No       | -           | Source member details (compatibility field; may represent a guest for share-link traffic)                                                                                                                                                                |
+| `list[].authMember`            | `object \| null`  | No       | -           | Authenticated member metadata resolved by `tmbId` , for display only                                                                                                                                                                                     |
+| `list[].versionName`           | `string \| null`  | No       | -           | Version name                                                                                                                                                                                                                                             |
+| `list[].originIp`              | `string \| null`  | No       | -           | Origin IP address                                                                                                                                                                                                                                        |
+| `list[].region`                | `string \| null`  | No       | -           | Region                                                                                                                                                                                                                                                   |
+| `nextCursor`                   | `object`          | No       | -           | Cursor for the next page. This field is absent when no more results are available.                                                                                                                                                                       |
+| `nextCursor.timestamp`         | `integer`         | Yes      | -           | Cursor timestamp in milliseconds. min: 0; max: 9007199254740991                                                                                                                                                                                          |
+| `nextCursor.id`                | `string`          | Yes      | -           | Log ID in the cursor. pattern: `^[a-f\d]{24}$`                                                                                                                                                                                                           |

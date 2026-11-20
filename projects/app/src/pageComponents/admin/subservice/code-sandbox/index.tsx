@@ -36,14 +36,15 @@ const CodeSandboxSubserviceComponent = () => {
     useDomainConfig('subservice');
   const isTokenConfigured = isSecretConfigured('codeSandbox.token');
 
+  const form = useForm<SubserviceConfigForm>({
+    defaultValues: effectiveConfig
+  });
   const {
     control,
     handleSubmit,
     reset,
     formState: { errors }
-  } = useForm<SubserviceConfigForm>({
-    defaultValues: effectiveConfig
-  });
+  } = form;
   const enabled = useWatch({ control, name: 'codeSandbox.enabled' }) ?? false;
   const token = useWatch({ control, name: 'codeSandbox.token' });
   const tocItems: SettingTOCItem[] = useMemo(
@@ -72,6 +73,7 @@ const CodeSandboxSubserviceComponent = () => {
 
   return (
     <AdminSettingPage
+      form={form}
       headerTitle={t('admin:page_title_code_sandbox')}
       tocItems={tocItems}
       isLoading={isLoading}
@@ -85,6 +87,7 @@ const CodeSandboxSubserviceComponent = () => {
           control={control}
           render={({ field }) => (
             <AdminSwitchRow
+              name={field.name}
               label={t('admin:enable_code_sandbox')}
               tooltip={t('admin:enable_code_sandbox_tip')}
               isChecked={field.value}

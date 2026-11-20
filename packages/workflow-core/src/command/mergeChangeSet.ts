@@ -92,7 +92,17 @@ const mergePatchCommand = (
 };
 
 const sortChunks = (chunks: WorkflowChangeSetChunk[]) => {
-  const byId = new Map(chunks.map((chunk) => [chunk.chunkId, chunk]));
+  const byId = new Map<string, WorkflowChangeSetChunk>();
+  for (const chunk of chunks) {
+    if (byId.has(chunk.chunkId)) {
+      throw new WorkflowChangeSetMergeError(
+        WorkflowDiagnosticCodeEnum.changesetChunkIdDuplicate,
+        `Duplicate ChangeSet chunk ID: ${chunk.chunkId}`,
+        { chunkId: chunk.chunkId }
+      );
+    }
+    byId.set(chunk.chunkId, chunk);
+  }
   const state = new Map<string, 'visiting' | 'visited'>();
   const sorted: WorkflowChangeSetChunk[] = [];
   const visit = (chunk: WorkflowChangeSetChunk) => {

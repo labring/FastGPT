@@ -1,0 +1,78 @@
+---
+title: '推送数据到训练队列'
+seoTitle: '推送数据到训练队列 - POST /api/core/dataset/data/pushData | FastGPT OpenAPI'
+description: '向指定知识库集合批量写入最多 200 条结构化 q/a 数据与额外检索索引，并自动推入后台异步向量化训练队列。'
+---
+
+## 端点概览
+
+- **HTTP 方法**：`POST`
+- **请求路径**：`/api/core/dataset/data/pushData`
+- **所属模块**：知识库 / 数据管理
+- **鉴权方式**：`Authorization: Bearer <apiKey>`—个人密钥（按归属团队成员资源权限校验）（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E6%95%B0%E6%8D%AE%E7%AE%A1%E7%90%86/POST/core/dataset/data/pushData)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E6%95%B0%E6%8D%AE%E7%AE%A1%E7%90%86/POST/core/dataset/data/pushData`）
+
+## 接口说明与注意事项
+
+批量推送数据到训练队列，最多 200 条
+
+## 请求参数
+
+### Request Body 请求体（`application/json`）
+
+| 字段                    | 类型            | 必填 | 默认值     | 约束与说明                                                                                                                                            |
+| ----------------------- | --------------- | ---- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `collectionId`          | `string`        | 是   | -          | 集合 ID。正则：`^[0-9a-fA-F]{24}$`                                                                                                                    |
+| `data`                  | `object[]`      | 是   | -          | 数据列表，最多 200 条。最多项数：200                                                                                                                  |
+| `data[].q`              | `string`        | 否   | -          | 问题/主文本                                                                                                                                           |
+| `data[].a`              | `string`        | 否   | -          | 回答/补充文本                                                                                                                                         |
+| `data[].imageId`        | `string`        | 否   | -          | 图片 ID                                                                                                                                               |
+| `data[].chunkIndex`     | `number`        | 否   | -          | 块索引                                                                                                                                                |
+| `data[].indexes`        | `object[]`      | 否   | -          | 额外向量索引                                                                                                                                          |
+| `data[].indexes[].type` | `string` (enum) | 否   | `"custom"` | 索引类型, 外部接口不需要传，都 custom，其他 type 是系统自动生成的。可选值：`default` , `imageEmbedding` , `summary` , `question` , `image` , `custom` |
+| `data[].indexes[].text` | `string`        | 是   | -          | 默认就是索引的文本内容，特殊的：imageEmbedding - 图片的 objectKey/URL                                                                                 |
+| `data[].metadata`       | `object`        | 否   | -          | 自定义元数据                                                                                                                                          |
+| `trainingType`          | `string` (enum) | 否   | -          | 训练类型。可选值：`chunk` , `qa` , `imageParse` , `backup` , `template` , `auto`                                                                      |
+| `indexSize`             | `number`        | 否   | -          | 索引大小限制                                                                                                                                          |
+| `autoIndexes`           | `boolean`       | 否   | -          | 是否自动生成索引                                                                                                                                      |
+| `imageIndex`            | `boolean`       | 否   | -          | 是否生成图片索引                                                                                                                                      |
+| `prompt`                | `string`        | 否   | -          | 自定义提示词                                                                                                                                          |
+| `billId`                | `string`        | 否   | -          | 可选的训练账单 ID；不传时自动创建                                                                                                                     |
+| `trainingMode`          | `string` (enum) | 否   | -          | **已弃用**。训练类型。可选值：`chunk` , `qa` , `imageParse` , `backup` , `template` , `auto`                                                          |
+
+## 请求示例
+
+调用前请将 `YOUR_API_KEY` 与示例 ID 替换为真实值；私有化部署实例请将基础域名替换为 `<instance>/api`。
+
+### cURL 请求示例
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.cn/api/core/dataset/data/pushData" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "collectionId": "68ad85a7463006c963799a06",
+  "data": [
+    {}
+  ]
+}'
+```
+
+### 最小合法 JSON 请求体示例
+
+```json
+{
+  "collectionId": "68ad85a7463006c963799a06",
+  "data": [{}]
+}
+```
+
+## 响应结构与示例
+
+除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（若契约未声明具体载荷结构，请以上方状态描述及实际响应为准）。
+
+### HTTP 200
+
+成功返回插入条数
+
+返回 FastGPT 标准成功响应结构（`{ "code": 200, "statusText": "", "message": "", "data": ... }`）。当前 OpenAPI 契约暂未声明 `data` 的具体字段结构，请结合上方状态描述或实际返回结果处理。

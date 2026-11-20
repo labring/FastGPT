@@ -7,7 +7,7 @@ import type { CliCommandSpec } from '../pipeline';
 
 type ChatOption = CommandOptionMeta & { encoding?: 'json' | 'csv' | 'boolean' };
 
-/** 注册 App 会话的十个 OpenAPI 命令；帮助、参数清单与实际请求共用同一份声明。 */
+/** 注册 App 会话命令，chat run 和 app run 共用参数与执行逻辑。 */
 export function createChatCommandSpecs(): CliCommandSpec[] {
   function value({
     name,
@@ -193,9 +193,10 @@ export function createChatCommandSpecs(): CliCommandSpec[] {
     }
   ];
 
-  return definitions.map((definition): CliCommandSpec => {
+  return definitions.flatMap((definition): CliCommandSpec[] => {
     const fields = [...targetOptions, ...definition.options];
-    return {
+    const exampleOptions = ['--appId', '68ad85a7463006c963799a05', ...definition.example];
+    const spec: CliCommandSpec = {
       path: ['chat', ...definition.operation.split(' ')],
       summary: definition.summary,
       risk: definition.risk,
@@ -204,13 +205,7 @@ export function createChatCommandSpecs(): CliCommandSpec[] {
       examples: [
         {
           description: definition.summary,
-          args: [
-            'chat',
-            ...definition.operation.split(' '),
-            '--appId',
-            '68ad85a7463006c963799a05',
-            ...definition.example
-          ]
+          args: ['chat', ...definition.operation.split(' '), ...exampleOptions]
         }
       ],
       execute: async ({ options, client, container, resolvedAuth }) => {
@@ -275,5 +270,15 @@ export function createChatCommandSpecs(): CliCommandSpec[] {
         });
       }
     };
+    if (definition.operation !== 'run') return [spec];
+
+    return [
+      spec,
+      {
+        ...spec,
+        path: ['app', 'run'],
+        examples: [{ description: definition.summary, args: ['app', 'run', ...exampleOptions] }]
+      }
+    ];
   });
 }

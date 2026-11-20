@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   getErrorMessage,
   getErrText,
+  isServerConfigError,
   isUserConfigError,
+  ServerConfigError,
   ToastHandledError,
   UserError,
   UserConfigError
@@ -187,6 +189,25 @@ describe('isUserConfigError', () => {
       expect(isUserConfigError(error)).toBe(false);
     }
   );
+});
+
+describe('ServerConfigError & isServerConfigError', () => {
+  it('inherits UserError, preserves displayMessage, and rejects spoofed plain objects', () => {
+    const error = new ServerConfigError(ModelErrEnum.unExist, 'Model is disabled: Default LLM');
+
+    expect(error).toBeInstanceOf(ServerConfigError);
+    expect(error).toBeInstanceOf(UserError);
+    expect(error.name).toBe('ServerConfigError');
+    expect(error.message).toBe(ModelErrEnum.unExist);
+    expect(getErrText(error)).toBe('Model is disabled: Default LLM');
+    expect(isServerConfigError(error)).toBe(true);
+
+    expect(isServerConfigError(new UserError(ModelErrEnum.unExist))).toBe(false);
+    expect(isServerConfigError({ name: 'ServerConfigError' })).toBe(false);
+    expect(
+      isServerConfigError(Object.assign(new Error('boom'), { name: 'ServerConfigError' }))
+    ).toBe(false);
+  });
 });
 
 describe('ToastHandledError', () => {

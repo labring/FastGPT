@@ -3,9 +3,13 @@ import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import {
   comparePluginVersion,
   getBatchUpdateFailures,
+  getInstallErrorReason,
+  getInstallFailureMessage,
   getMarketplaceToolStateAfterInstall,
   hasMarketplaceToolUpdate,
+  parseTeamInstallFailure,
   shouldReinstallOfflineMarketplaceTool,
+  summarizeBatchUpdateResult,
   updateMarketplaceInstalledPluginStatus
 } from '@/web/core/plugin/marketplace/utils';
 import { isToolVersionInstalled } from '@fastgpt/web/components/core/plugin/tool/utils';
@@ -260,5 +264,117 @@ describe('hasMarketplaceToolUpdate', () => {
         marketplaceVersion: '1.0.0'
       })
     ).toBe(true);
+  });
+});
+
+describe('marketplace install failure helpers', () => {
+  it('parses team install failure arrays from plain strings, responseError objects, and structured data', () => {
+    const failed = [{ url: 'url-1', reason: { en: 'Install failed', 'zh-CN': '安装失败' } }];
+
+    expect(parseTeamInstallFailure(JSON.stringify(failed))).toEqual(failed);
+    expect(
+      parseTeamInstallFailure({
+        code: 500,
+        statusText: 'error',
+        message: JSON.stringify(failed),
+        data: null
+      })
+    ).toEqual(failed);
+    expect(parseTeamInstallFailure({ data: { failed } })).toEqual(failed);
+    expect(parseTeamInstallFailure({ code: 500, message: 'plain error' })).toBeUndefined();
+    expect(parseTeamInstallFailure('[invalid json')).toBeUndefined();
+  });
+
+  it('formats deduplicated localized install failure messages and returns undefined when empty', () => {
+    expect(
+      getInstallFailureMessage({
+        installResult: { failed: [] },
+        language: 'zh-CN',
+        fallback: 'Error'
+      })
+    ).toBeUndefined();
+
+    expect(
+      getInstallFailureMessage({
+        installResult: {
+          failed: [
+            { url: 'url-1', reason: { en: 'Timeout', 'zh-CN': '下载超时' } },
+            { url: 'url-2', reason: { en: 'Timeout', 'zh-CN': '下载超时' } },
+            { url: 'url-3', reason: { en: 'Invalid pkg', 'zh-CN': '插件包无效' } }
+          ]
+        },
+        language: 'zh-CN',
+        fallback: 'Error'
+      })
+    ).toBe('下载超时; 插件包无效');
+
+    expect(
+      getInstallFailureMessage({
+        installResult: {
+          failed: [{ url: 'url-1', reason: { en: '   ' } }]
+        },
+        language: 'en',
+        fallback: 'Error'
+      })
+    ).toBe('Error');
+  });
+
+  it('extracts readable install error reason from JSON failure payloads and plain errors', () => {
+    expect(
+      getInstallErrorReason({
+        error: {
+          code: 500,
+          message: JSON.stringify([
+            { url: 'url-1', reason: { en: 'Bad pkg', 'zh-CN': '包格式错误' } }
+          ])
+        },
+        language: 'zh-CN',
+        fallback: 'Error'
+      })
+    ).toBe('包格式错误');
+
+    expect(
+      getInstallErrorReason({
+        error: { code: 500, message: 'Download failed: network error' },
+        language: 'en',
+        fallback: 'Error'
+      })
+    ).toBe('Download failed: network error');
+  });
+
+  it('summarizes batch update outcomes across full success, partial success, and full failure', () => {
+    expect(summarizeBatchUpdateResult({ totalCount: 2, failures: [] })).toEqual({
+      status: 'success',
+      successCount: 2,
+      failedCount: 0,
+      firstReason: undefined
+    });
+
+    expect(
+      summarizeBatchUpdateResult({
+        totalCount: 2,
+        failures: [{ toolId: 'tool-2', reason: '安装失败' }]
+      })
+    ).toEqual({
+      status: 'partial',
+      successCount: 1,
+      failedCount: 1,
+      firstReason: '安装失败'
+    });
+
+    expect(
+      summarizeBatchUpdateResult({
+        totalCount: 2,
+        failures: [
+          { toolId: 'tool-1', reason: '下载超时' },
+          { toolId: 'tool-2', reason: '校验失败' }
+        ]
+      })
+    ).toEqual({
+      status: 'error',
+      successCount: 0,
+      failedCount: 2,
+      firstReason: '下载超时'
+    });
   });
 });

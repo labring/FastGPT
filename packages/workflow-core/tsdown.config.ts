@@ -26,6 +26,8 @@ export default defineConfig({
     'config/type': 'src/config/type.ts',
     'store/compile': 'src/store/compile.ts',
     'store/decompile': 'src/store/decompile.ts',
+    'template/bundle': 'src/template/bundle.ts',
+    'template/i18n': 'src/template/i18n.ts',
     'template/descriptor': 'src/template/descriptor.ts',
     'template/defaultValue': 'src/template/defaultValue.ts',
     'template/instantiate': 'src/template/instantiate.ts',

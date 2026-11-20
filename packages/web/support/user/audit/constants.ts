@@ -198,7 +198,7 @@ export const auditLogMap = {
   [AuditEventEnum.LOGIN]: {
     content: i18nT('account_team:log_login'),
     typeLabel: i18nT('account_team:login'),
-    params: {} as { name?: string }
+    params: {} as { name?: string; ip?: string; region?: string }
   },
   [AuditEventEnum.CREATE_INVITATION_LINK]: {
     content: i18nT('account_team:log_create_invitation_link'),
@@ -233,7 +233,14 @@ export const auditLogMap = {
   [AuditEventEnum.CHANGE_DEPARTMENT]: {
     content: i18nT('account_team:log_change_department'),
     typeLabel: i18nT('account_team:change_department_name'),
-    params: {} as { name?: string; departmentName: string }
+    params: {} as {
+      name?: string;
+      departmentName: string;
+      oldName?: string;
+      newName?: string;
+      newItemNames?: string[];
+      newItemValues?: string[];
+    }
   },
   [AuditEventEnum.DELETE_DEPARTMENT]: {
     content: i18nT('account_team:log_delete_department'),
@@ -243,7 +250,7 @@ export const auditLogMap = {
   [AuditEventEnum.RELOCATE_DEPARTMENT]: {
     content: i18nT('account_team:log_relocate_department'),
     typeLabel: i18nT('account_team:relocate_department'),
-    params: {} as { name?: string; departmentName: string }
+    params: {} as { name?: string; departmentName: string; targetDepartmentName?: string }
   },
   [AuditEventEnum.CREATE_GROUP]: {
     content: i18nT('account_team:log_create_group'),
@@ -352,6 +359,16 @@ export const auditLogMap = {
     typeLabel: i18nT('account_team:create_app_folder'),
     params: {} as { name?: string; folderName: string }
   },
+  [AuditEventEnum.SAVE_APP]: {
+    content: i18nT('account_team:log_save_app'),
+    typeLabel: i18nT('account_team:save_app'),
+    params: {} as { name?: string; appName: string; appId: string; appType: string }
+  },
+  [AuditEventEnum.PUBLISH_APP]: {
+    content: i18nT('account_team:log_publish_app'),
+    typeLabel: i18nT('account_team:publish_app'),
+    params: {} as { name?: string; appName: string; appId: string; appType: string }
+  },
   [AuditEventEnum.UPDATE_PUBLISH_APP]: {
     content: i18nT('account_team:log_update_publish_app'),
     typeLabel: i18nT('account_team:update_publish_app'),
@@ -388,17 +405,17 @@ export const auditLogMap = {
   [AuditEventEnum.CREATE_EVALUATION]: {
     content: i18nT('account_team:log_create_evaluation'),
     typeLabel: i18nT('account_team:create_evaluation'),
-    params: {} as { name: string; appName: string }
+    params: {} as { name: string; appName: string; evalName?: string }
   },
   [AuditEventEnum.EXPORT_EVALUATION]: {
     content: i18nT('account_team:log_export_evaluation'),
     typeLabel: i18nT('account_team:export_evaluation'),
-    params: {} as { name: string }
+    params: {} as { name: string; evalName?: string }
   },
   [AuditEventEnum.DELETE_EVALUATION]: {
     content: i18nT('account_team:log_delete_evaluation'),
     typeLabel: i18nT('account_team:delete_evaluation'),
-    params: {} as { name?: string }
+    params: {} as { name?: string; evalName?: string }
   },
 
   //Dataset
@@ -513,6 +530,16 @@ export const auditLogMap = {
     params: {} as { name?: string; folderName: string }
   },
   //Collection
+  ['dataset.collection.create']: {
+    typeLabel: i18nT('account_team:dataset_collection_created'),
+    params: {} as {
+      name?: string;
+      objectType: string;
+      /** 知识库名/父目录链，已包含知识库自身 */
+      location: string;
+    }
+  },
+  /** @deprecated 历史日志展示用，新写入统一走 'dataset.collection.create'。 */
   [AuditEventEnum.CREATE_COLLECTION]: {
     content: i18nT('account_team:log_create_collection'),
     typeLabel: i18nT('account_team:create_collection'),
@@ -523,6 +550,7 @@ export const auditLogMap = {
       datasetType: string;
     }
   },
+  /** @deprecated 历史日志展示用，新写入已拆分为 rename/move/enable/disable 独立事件。 */
   [AuditEventEnum.UPDATE_COLLECTION]: {
     content: i18nT('account_team:log_update_collection'),
     typeLabel: i18nT('account_team:update_collection'),
@@ -531,6 +559,65 @@ export const auditLogMap = {
       collectionName: string;
       datasetName: string;
       datasetType: string;
+    }
+  },
+  ['dataset.collection.rename']: {
+    typeLabel: i18nT('account_team:dataset_collection_renamed'),
+    params: {} as {
+      name?: string;
+      oldName: string;
+      newName: string;
+    }
+  },
+  ['dataset.collection.move']: {
+    typeLabel: i18nT('account_team:dataset_collection_moved'),
+    params: {} as {
+      name?: string;
+      oldPath: string;
+      newPath: string;
+    }
+  },
+  ['dataset.collection.enable']: {
+    typeLabel: i18nT('account_team:dataset_collection_enabled'),
+    params: {} as { name?: string }
+  },
+  ['dataset.collection.disable']: {
+    typeLabel: i18nT('account_team:dataset_collection_disabled'),
+    params: {} as { name?: string }
+  },
+  ['dataset.collection.source.read']: {
+    typeLabel: i18nT('account_team:dataset_collection_source_read'),
+    params: {} as { name?: string }
+  },
+  ['dataset.collection.qa.export']: {
+    typeLabel: i18nT('account_team:dataset_collection_qa_exported'),
+    params: {} as { name?: string }
+  },
+  ['dataset.collection.sync']: {
+    typeLabel: i18nT('account_team:dataset_collection_synced'),
+    params: {} as { name?: string }
+  },
+  ['dataset.collection.tag.add']: {
+    typeLabel: i18nT('account_team:collection_tag_added'),
+    params: {} as {
+      name?: string;
+      tagName: string;
+    }
+  },
+  ['dataset.collection.tag.remove']: {
+    typeLabel: i18nT('account_team:collection_tag_removed'),
+    params: {} as {
+      name?: string;
+      tagName: string;
+    }
+  },
+  /** 集合权限恢复继承使用独立事件。 */
+  ['dataset.collection.permission.inheritance_resume']: {
+    typeLabel: i18nT('account_team:collection_permission_inheritance_resumed'),
+    params: {} as {
+      name?: string;
+      /** 恢复继承后跟随的上级：父目录名，根集合时为知识库名；父目录已不存在时省略。 */
+      parentResource?: string;
     }
   },
   [AuditEventEnum.DELETE_COLLECTION]: {
@@ -764,7 +851,13 @@ export const auditLogMap = {
   [AuditEventEnum.UPDATE_SKILL]: {
     content: i18nT('account_team:log_update_skill'),
     typeLabel: i18nT('account_team:update_skill'),
-    params: {} as { name?: string; skillName: string; skillType: string }
+    params: {} as {
+      name?: string;
+      skillName: string;
+      skillType: string;
+      newItemNames?: string[];
+      newItemValues?: string[];
+    }
   },
   [AuditEventEnum.DEPLOY_SKILL]: {
     content: i18nT('account_team:log_deploy_skill'),

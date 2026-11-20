@@ -1,3 +1,8 @@
+import {
+  createTestWorkflowDispatch,
+  runWithTestWorkflowContext,
+  createTestWorkflowFileContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, expect, it, vi } from 'vitest';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
@@ -12,13 +17,12 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import {
-  DispatchNodeResponseKeyEnum,
-  SseResponseEventEnum
-} from '@fastgpt/global/core/workflow/runtime/constants';
-import { runWorkflow } from '@fastgpt/service/core/workflow/dispatch';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { runWorkflow as runWorkflowWithoutContext } from '@fastgpt/service/core/workflow/dispatch';
+
+const runWorkflow = createTestWorkflowDispatch(runWorkflowWithoutContext, { newWorkflow: true });
 import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
-import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
+import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/context/variables';
 import {
   composeNodeResponseDetail,
   createWorkflowNodeResponseWriter,
@@ -29,24 +33,66 @@ import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
-import { WorkflowNodeResponseSink } from '@fastgpt/service/core/workflow/dispatch/nodeResponseSink';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { createWorkflowEntryNodeResponseSink } from '@fastgpt/service/core/workflow/dispatch/context/nodeResponse';
+import { getWorkflowContext } from '@fastgpt/service/core/workflow/dispatch/context';
 
 const createTestNodeResponseSink = ({
   writer,
-  apiVersion = 'v2',
-  workflowStreamResponse
+  apiVersion = 'v2'
 }: {
   writer: Awaited<ReturnType<typeof createWorkflowNodeResponseWriter>>;
   apiVersion?: 'v1' | 'v2';
-  workflowStreamResponse?: WorkflowResponseType;
 }) =>
-  new WorkflowNodeResponseSink({
+  createWorkflowEntryNodeResponseSink({
     writer,
     apiVersion,
     responseAllData: true,
-    responseDetail: true,
-    workflowStreamResponse
+    responseDetail: true
   });
+
+/** 真实变量 Context 共用空配置；各场景仍显式提供自身的运行身份。 */
+const createTestVariableContext = ({
+  runningAppInfo,
+  chatId,
+  responseChatItemId
+}: Pick<
+  Parameters<typeof WorkflowVariableState.create>[0],
+  'runningAppInfo' | 'chatId' | 'responseChatItemId'
+>) =>
+  WorkflowVariableState.create({
+    timezone: 'Asia/Shanghai',
+    runningAppInfo,
+    uid: 'test-user',
+    chatId,
+    responseChatItemId,
+    histories: [],
+    variablesConfig: [],
+    inputVariables: {},
+    externalVariables: {}
+  });
+
+/** 仅收集结构完整的节点详情；原始字符串事件不属于节点详情。 */
+const collectNodeResponses =
+  (responses: ChatHistoryItemResType[]): WorkflowResponseType =>
+  (event) => {
+    if (event.event !== SseResponseEventEnum.flowNodeResponse || typeof event.data === 'string') {
+      return;
+    }
+    const isNodeResponse = (value: unknown): value is ChatHistoryItemResType =>
+      typeof value === 'object' &&
+      value !== null &&
+      'id' in value &&
+      typeof value.id === 'string' &&
+      'nodeId' in value &&
+      typeof value.nodeId === 'string' &&
+      'moduleName' in value &&
+      typeof value.moduleName === 'string' &&
+      'moduleType' in value &&
+      typeof value.moduleType === 'string';
+    if (!isNodeResponse(event.data)) throw new Error('Invalid node response event');
+    responses.push(event.data);
+  };
 
 const makeInput = ({
   key,
@@ -215,36 +261,35 @@ describe('runWorkflow node response persistence', () => {
     options: { publishChildResponse?: boolean; includeInlineChild?: boolean } = {}
   ) => {
     const originalTextEditorDispatch = callbackMap[FlowNodeTypeEnum.textEditor];
-    callbackMap[FlowNodeTypeEnum.textEditor] = vi.fn(
-      async ({ nodeResponseSink, nodeResponseParentId }) => {
-        const childResponse = {
-          id: 'module-child-response',
-          nodeId: 'module-child-node',
-          moduleName: 'Module Child',
-          moduleType: FlowNodeTypeEnum.agent,
-          runningTime: 1,
-          totalPoints: 2
-        } as ChatHistoryItemResType;
+    callbackMap[FlowNodeTypeEnum.textEditor] = vi.fn(async ({ nodeResponseParentId }) => {
+      const { nodeResponseSink } = getWorkflowContext();
+      const childResponse = {
+        id: 'module-child-response',
+        nodeId: 'module-child-node',
+        moduleName: 'Module Child',
+        moduleType: FlowNodeTypeEnum.agent,
+        runningTime: 1,
+        totalPoints: 2
+      } as ChatHistoryItemResType;
 
-        if (options.publishChildResponse) {
-          await nodeResponseSink?.publish([
-            { response: childResponse, parentId: nodeResponseParentId }
-          ]);
-        }
-
-        return {
-          data: {
-            [NodeOutputKeyEnum.text]: 'parent output'
-          },
-          [DispatchNodeResponseKeyEnum.nodeResponse]: {
-            ...parentNodeResponse,
-            ...(options.includeInlineChild || !options.publishChildResponse
-              ? { childrenResponses: [childResponse] }
-              : {})
-          }
-        };
+      if (options.publishChildResponse) {
+        await nodeResponseSink?.publish([
+          { response: childResponse, parentId: nodeResponseParentId }
+        ]);
       }
-    );
+
+      return {
+        data: {
+          [NodeOutputKeyEnum.text]: 'parent output'
+        },
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          ...parentNodeResponse,
+          ...(options.includeInlineChild || !options.publishChildResponse
+            ? { childrenResponses: [childResponse] }
+            : {})
+        }
+      };
+    });
 
     return () => {
       callbackMap[FlowNodeTypeEnum.textEditor] = originalTextEditorDispatch;
@@ -267,6 +312,14 @@ describe('runWorkflow node response persistence', () => {
     workflowStreamResponse?: WorkflowResponseType;
   }) => {
     const appId = '67e0d5535c02d1d5cdede721';
+    const runningAppInfo = {
+      id: appId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
+      name: 'Workflow Module Child App',
+      teamId: '654a4107c32f3bf5f998452f',
+      tmbId: '65ab7007462ada7dbb899948'
+    };
     const runtimeNodes: RuntimeNodeItemType[] = [
       makeNode('parent_text_editor', FlowNodeTypeEnum.textEditor, {
         isEntry: true,
@@ -294,12 +347,7 @@ describe('runWorkflow node response persistence', () => {
       mode: 'chat',
       chatId,
       responseChatItemId,
-      runningAppInfo: {
-        id: appId,
-        name: 'Workflow Module Child App',
-        teamId: '654a4107c32f3bf5f998452f',
-        tmbId: '65ab7007462ada7dbb899948'
-      },
+      runningAppInfo,
       runningUserInfo: {
         teamId: '654a4107c32f3bf5f998452f',
         tmbId: '65ab7007462ada7dbb899948',
@@ -316,21 +364,10 @@ describe('runWorkflow node response persistence', () => {
       chatConfig: {},
       runtimeNodes,
       runtimeEdges: [],
-      variableState: await WorkflowVariableState.create({
-        timezone: 'Asia/Shanghai',
-        runningAppInfo: {
-          id: appId,
-          name: 'Workflow Module Child App',
-          teamId: '654a4107c32f3bf5f998452f',
-          tmbId: '65ab7007462ada7dbb899948'
-        },
-        uid: 'test-user',
+      variableContext: await createTestVariableContext({
+        runningAppInfo,
         chatId,
-        responseChatItemId,
-        histories: [],
-        variablesConfig: [],
-        inputVariables: {},
-        externalVariables: {}
+        responseChatItemId
       }),
       externalProvider: {},
       workflowDispatchDeep: 0,
@@ -340,11 +377,9 @@ describe('runWorkflow node response persistence', () => {
       responseDetail: true,
       nodeResponseSink: createTestNodeResponseSink({
         writer: nodeResponseWriter,
-        apiVersion,
-        workflowStreamResponse
+        apiVersion
       }),
-      workflowStreamResponse,
-      checkIsStopping: () => false
+      workflowStreamResponse
     } as any);
 
     await nodeResponseWriter.close();
@@ -377,7 +412,7 @@ describe('runWorkflow node response persistence', () => {
         nodeId: 'parent_text_editor',
         childResponseCount: 1
       });
-      expect(detail[0].childTotalPoints).toBeUndefined();
+      expect(Reflect.get(detail[0], 'childTotalPoints')).toBeUndefined();
       expect(detail[0].childrenResponses).toEqual([
         expect.objectContaining({
           id: 'module-child-response',
@@ -402,14 +437,7 @@ describe('runWorkflow node response persistence', () => {
         chatId: 'workflow-module-child-stream-chat',
         responseChatItemId: 'workflow-module-child-stream-ai-item',
         retainInMemory: true,
-        workflowStreamResponse: (event) => {
-          if (
-            event.event === SseResponseEventEnum.flowNodeResponse &&
-            typeof event.data !== 'string'
-          ) {
-            streamedNodeResponses.push(event.data);
-          }
-        }
+        workflowStreamResponse: collectNodeResponses(streamedNodeResponses)
       });
 
       expect(streamedNodeResponses).toEqual([
@@ -443,14 +471,7 @@ describe('runWorkflow node response persistence', () => {
         chatId: 'workflow-module-child-duplicate-chat',
         responseChatItemId: 'workflow-module-child-duplicate-ai-item',
         retainInMemory: true,
-        workflowStreamResponse: (event) => {
-          if (
-            event.event === SseResponseEventEnum.flowNodeResponse &&
-            typeof event.data !== 'string'
-          ) {
-            streamedNodeResponses.push(event.data);
-          }
-        }
+        workflowStreamResponse: collectNodeResponses(streamedNodeResponses)
       });
 
       const flatResponses = nodeResponseWriter.getFlatNodeResponses();
@@ -497,14 +518,7 @@ describe('runWorkflow node response persistence', () => {
         apiVersion: 'v2',
         chatId: 'workflow-module-child-inline-chat',
         responseChatItemId: 'workflow-module-child-inline-ai-item',
-        workflowStreamResponse: (event) => {
-          if (
-            event.event === SseResponseEventEnum.flowNodeResponse &&
-            typeof event.data !== 'string'
-          ) {
-            streamedNodeResponses.push(event.data);
-          }
-        }
+        workflowStreamResponse: collectNodeResponses(streamedNodeResponses)
       });
 
       expect(streamedNodeResponses).toEqual([
@@ -558,14 +572,7 @@ describe('runWorkflow node response persistence', () => {
         apiVersion: 'v2',
         chatId: 'workflow-module-child-error-chat',
         responseChatItemId: 'workflow-module-child-error-ai-item',
-        workflowStreamResponse: (event) => {
-          if (
-            event.event === SseResponseEventEnum.flowNodeResponse &&
-            typeof event.data !== 'string'
-          ) {
-            streamedNodeResponses.push(event.data);
-          }
-        }
+        workflowStreamResponse: collectNodeResponses(streamedNodeResponses)
       });
 
       expect(streamedNodeResponses).toEqual([
@@ -669,6 +676,8 @@ describe('runWorkflow node response persistence', () => {
       ];
       const runningAppInfo = {
         id: appId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId,
         name: 'Workflow Debug App',
         teamId: '654a4107c32f3bf5f998452f',
         tmbId: '65ab7007462ada7dbb899948'
@@ -705,24 +714,14 @@ describe('runWorkflow node response persistence', () => {
         chatConfig: {},
         runtimeNodes,
         runtimeEdges: [],
-        variableState: await WorkflowVariableState.create({
-          timezone: 'Asia/Shanghai',
-          runningAppInfo,
-          uid: 'test-user',
-          chatId,
-          histories: [],
-          variablesConfig: [],
-          inputVariables: {},
-          externalVariables: {}
-        }),
+        variableContext: await createTestVariableContext({ runningAppInfo, chatId }),
         externalProvider: {},
         workflowDispatchDeep: 0,
         maxRunTimes: 20,
         stream: false,
         responseAllData: true,
         responseDetail: true,
-        nodeResponseSink: createTestNodeResponseSink({ writer: nodeResponseWriter }),
-        checkIsStopping: () => false
+        nodeResponseSink: createTestNodeResponseSink({ writer: nodeResponseWriter })
       } as any);
       await nodeResponseWriter.close();
 
@@ -777,6 +776,8 @@ describe('runWorkflow node response persistence', () => {
       const responseChatItemId = 'workflow-caught-error-ai-item';
       const runningAppInfo = {
         id: appId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId,
         name: 'Workflow Caught Error App',
         teamId: '654a4107c32f3bf5f998452f',
         tmbId: '65ab7007462ada7dbb899948'
@@ -827,16 +828,10 @@ describe('runWorkflow node response persistence', () => {
         chatConfig: {},
         runtimeNodes,
         runtimeEdges,
-        variableState: await WorkflowVariableState.create({
-          timezone: 'Asia/Shanghai',
+        variableContext: await createTestVariableContext({
           runningAppInfo,
-          uid: 'test-user',
           chatId,
-          responseChatItemId,
-          histories: [],
-          variablesConfig: [],
-          inputVariables: {},
-          externalVariables: {}
+          responseChatItemId
         }),
         externalProvider: {},
         workflowDispatchDeep: 0,
@@ -845,8 +840,7 @@ describe('runWorkflow node response persistence', () => {
         isToolCall: true,
         responseAllData: true,
         responseDetail: true,
-        nodeResponseSink: createTestNodeResponseSink({ writer: nodeResponseWriter }),
-        checkIsStopping: () => false
+        nodeResponseSink: createTestNodeResponseSink({ writer: nodeResponseWriter })
       } as any);
       await nodeResponseWriter.close();
 
@@ -885,6 +879,8 @@ describe('runWorkflow node response persistence', () => {
     const responseChatItemId = 'workflow-interactive-node-response-ai-item';
     const runningAppInfo = {
       id: appId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       name: 'Workflow Interactive App',
       teamId: '654a4107c32f3bf5f998452f',
       tmbId: '65ab7007462ada7dbb899948'
@@ -941,16 +937,10 @@ describe('runWorkflow node response persistence', () => {
       chatConfig: {},
       runtimeNodes,
       runtimeEdges: [],
-      variableState: await WorkflowVariableState.create({
-        timezone: 'Asia/Shanghai',
+      variableContext: await createTestVariableContext({
         runningAppInfo,
-        uid: 'test-user',
         chatId,
-        responseChatItemId,
-        histories: [],
-        variablesConfig: [],
-        inputVariables: {},
-        externalVariables: {}
+        responseChatItemId
       }),
       externalProvider: {},
       workflowDispatchDeep: 0,
@@ -958,8 +948,7 @@ describe('runWorkflow node response persistence', () => {
       stream: false,
       responseAllData: true,
       responseDetail: true,
-      nodeResponseSink: createTestNodeResponseSink({ writer: nodeResponseWriter }),
-      checkIsStopping: () => false
+      nodeResponseSink: createTestNodeResponseSink({ writer: nodeResponseWriter })
     } as any);
     await nodeResponseWriter.close();
 
@@ -1011,6 +1000,8 @@ describe('runWorkflow node response persistence', () => {
       const responseChatItemId = 'workflow-nested-interactive-node-response-ai-item';
       const runningAppInfo = {
         id: appId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId,
         name: 'Workflow Nested Interactive App',
         teamId: '654a4107c32f3bf5f998452f',
         tmbId: '65ab7007462ada7dbb899948'
@@ -1050,16 +1041,10 @@ describe('runWorkflow node response persistence', () => {
         chatConfig: {},
         runtimeNodes,
         runtimeEdges: [],
-        variableState: await WorkflowVariableState.create({
-          timezone: 'Asia/Shanghai',
+        variableContext: await createTestVariableContext({
           runningAppInfo,
-          uid: 'test-user',
           chatId,
-          responseChatItemId,
-          histories: [],
-          variablesConfig: [],
-          inputVariables: {},
-          externalVariables: {}
+          responseChatItemId
         }),
         externalProvider: {},
         workflowDispatchDeep: 0,
@@ -1067,8 +1052,7 @@ describe('runWorkflow node response persistence', () => {
         stream: false,
         responseAllData: true,
         responseDetail: true,
-        nodeResponseSink: createTestNodeResponseSink({ writer: nodeResponseWriter }),
-        checkIsStopping: () => false
+        nodeResponseSink: createTestNodeResponseSink({ writer: nodeResponseWriter })
       } as any);
       await nodeResponseWriter.close();
 
@@ -1103,45 +1087,48 @@ describe('runWorkflow node response persistence', () => {
       chatItemDataId: responseChatItemId
     });
     const responseEvents: ChatHistoryItemResType[] = [];
-    const nodeResponseSink = new WorkflowNodeResponseSink({
+    const nodeResponseSink = createWorkflowEntryNodeResponseSink({
       writer: nodeResponseWriter,
       apiVersion: 'v2',
       responseAllData: false,
-      responseDetail: false,
-      workflowStreamResponse: (event) => {
-        if (
-          event.event === SseResponseEventEnum.flowNodeResponse &&
-          typeof event.data !== 'string'
-        ) {
-          responseEvents.push(event.data);
-        }
-      }
+      responseDetail: false
     });
-
-    await nodeResponseSink.publish([
+    await runWithTestWorkflowContext(
       {
-        response: {
-          id: 'share-dataset-response',
-          parentId: 'share-agent-response',
-          nodeId: 'share-dataset-node',
-          moduleName: 'Dataset Search',
-          moduleType: FlowNodeTypeEnum.datasetSearchNode,
-          runningTime: 1,
-          quoteList: [
-            {
-              id: 'share-quote',
-              datasetId: 'share-dataset',
-              collectionId: 'share-collection',
-              sourceId: 'share-source',
-              sourceName: 'private-source-name',
-              q: 'private question',
-              a: 'private answer'
-            }
-          ],
-          toolInput: { secret: true }
-        } as ChatHistoryItemResType
-      }
-    ]);
+        fileContext: await createTestWorkflowFileContext(),
+        mcpClientMemory: {},
+        checkIsStopping: () => false,
+        workflowStreamResponse: collectNodeResponses(responseEvents)
+      },
+      () =>
+        nodeResponseSink.publish([
+          {
+            response: {
+              id: 'share-dataset-response',
+              parentId: 'share-agent-response',
+              nodeId: 'share-dataset-node',
+              moduleName: 'Dataset Search',
+              moduleType: FlowNodeTypeEnum.datasetSearchNode,
+              runningTime: 1,
+              quoteList: [
+                {
+                  id: 'share-quote',
+                  datasetId: 'share-dataset',
+                  collectionId: 'share-collection',
+                  sourceId: 'share-source',
+                  sourceName: 'private-source-name',
+                  q: 'private question',
+                  a: 'private answer',
+                  updateTime: new Date('2026-01-01T00:00:00Z'),
+                  chunkIndex: 0,
+                  score: []
+                }
+              ],
+              toolInput: { secret: true }
+            } as ChatHistoryItemResType
+          }
+        ])
+    );
     await nodeResponseSink.close();
 
     const row = await MongoChatItemResponse.findOne({
@@ -1181,12 +1168,23 @@ describe('runWorkflow node response persistence', () => {
     const loopItems = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta'];
     const { runtimeNodes, runtimeEdges } = createLoopRunWorkflow(loopItems);
     const responseEvents: unknown[] = [];
-    const nodeResponseWriter = await createWorkflowNodeResponseWriter({
-      teamId: '654a4107c32f3bf5f998452f',
+    const chatId = 'workflow-persistence-chat';
+    const responseChatItemId = 'workflow-persistence-ai-item';
+    const appId = '67e0d5535c02d1d5cdede71f';
+    const runningAppInfo = {
+      id: appId,
       sourceType: ChatSourceTypeEnum.app,
-      sourceId: '67e0d5535c02d1d5cdede71f',
-      chatId: 'workflow-persistence-chat',
-      chatItemDataId: 'workflow-persistence-ai-item'
+      sourceId: appId,
+      name: 'Workflow Persistence App',
+      teamId: '654a4107c32f3bf5f998452f',
+      tmbId: '65ab7007462ada7dbb899948'
+    };
+    const nodeResponseWriter = await createWorkflowNodeResponseWriter({
+      teamId: runningAppInfo.teamId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: runningAppInfo.id,
+      chatId,
+      chatItemDataId: responseChatItemId
     });
     const workflowStreamResponse: WorkflowResponseType = (event) => {
       if (event.data && event.event) {
@@ -1197,17 +1195,12 @@ describe('runWorkflow node response persistence', () => {
     const result = await runWorkflow({
       apiVersion: 'v2',
       mode: 'chat',
-      chatId: 'workflow-persistence-chat',
-      responseChatItemId: 'workflow-persistence-ai-item',
-      runningAppInfo: {
-        id: '67e0d5535c02d1d5cdede71f',
-        name: 'Workflow Persistence App',
-        teamId: '654a4107c32f3bf5f998452f',
-        tmbId: '65ab7007462ada7dbb899948'
-      },
+      chatId,
+      responseChatItemId,
+      runningAppInfo,
       runningUserInfo: {
-        teamId: '654a4107c32f3bf5f998452f',
-        tmbId: '65ab7007462ada7dbb899948',
+        teamId: runningAppInfo.teamId,
+        tmbId: runningAppInfo.tmbId,
         teamName: 'team',
         memberName: 'member',
         contact: '',
@@ -1221,21 +1214,10 @@ describe('runWorkflow node response persistence', () => {
       chatConfig: {},
       runtimeNodes,
       runtimeEdges,
-      variableState: await WorkflowVariableState.create({
-        timezone: 'Asia/Shanghai',
-        runningAppInfo: {
-          id: '67e0d5535c02d1d5cdede71f',
-          name: 'Workflow Persistence App',
-          teamId: '654a4107c32f3bf5f998452f',
-          tmbId: '65ab7007462ada7dbb899948'
-        },
-        uid: 'test-user',
-        chatId: 'workflow-persistence-chat',
-        responseChatItemId: 'workflow-persistence-ai-item',
-        histories: [],
-        variablesConfig: [],
-        inputVariables: {},
-        externalVariables: {}
+      variableContext: await createTestVariableContext({
+        runningAppInfo,
+        chatId,
+        responseChatItemId
       }),
       externalProvider: {},
       workflowDispatchDeep: 0,
@@ -1243,11 +1225,8 @@ describe('runWorkflow node response persistence', () => {
       stream: true,
       responseAllData: true,
       responseDetail: true,
-      nodeResponseSink: createTestNodeResponseSink({
-        writer: nodeResponseWriter,
-        workflowStreamResponse
-      }),
-      checkIsStopping: () => false,
+      nodeResponseSink: createTestNodeResponseSink({ writer: nodeResponseWriter }),
+
       workflowStreamResponse
     } as any);
     await nodeResponseWriter.close();
@@ -1262,9 +1241,9 @@ describe('runWorkflow node response persistence', () => {
     });
 
     const rows = await MongoChatItemResponse.find({
-      appId: '67e0d5535c02d1d5cdede71f',
-      chatId: 'workflow-persistence-chat',
-      chatItemDataId: 'workflow-persistence-ai-item'
+      appId: runningAppInfo.id,
+      chatId,
+      chatItemDataId: responseChatItemId
     })
       .sort({ _id: 1 })
       .lean();
@@ -1284,21 +1263,21 @@ describe('runWorkflow node response persistence', () => {
     expect(rootRow.data.parentId).toBeUndefined();
     expect(rootRow.data.childrenResponses).toBeUndefined();
     expect(rootRow.data.childResponseCount).toBe(loopItems.length * 4);
-    expect(rootRow.data.childTotalPoints).toBeUndefined();
+    expect(Reflect.get(rootRow.data, 'childTotalPoints')).toBeUndefined();
 
     rows
       .filter(
         (row) => row.data.moduleType === FlowNodeTypeEnum.loopRun && row.data.id !== rootRow.data.id
       )
       .forEach((row) => {
-        expect(row.data.childTotalPoints).toBeUndefined();
+        expect(Reflect.get(row.data, 'childTotalPoints')).toBeUndefined();
       });
 
     const detail = await getChatItemResponseData({
       sourceType: ChatSourceTypeEnum.app,
-      sourceId: '67e0d5535c02d1d5cdede71f',
-      chatId: 'workflow-persistence-chat',
-      chatItemDataId: 'workflow-persistence-ai-item'
+      sourceId: runningAppInfo.id,
+      chatId,
+      chatItemDataId: responseChatItemId
     });
 
     expect(detail).toHaveLength(1);
@@ -1307,13 +1286,13 @@ describe('runWorkflow node response persistence', () => {
       loopRunIterations: loopItems.length,
       childResponseCount: loopItems.length * 4
     });
-    expect(detail[0].childTotalPoints).toBeUndefined();
+    expect(Reflect.get(detail[0], 'childTotalPoints')).toBeUndefined();
     expect(detail[0].childrenResponses).toHaveLength(loopItems.length);
     expect(detail[0].childrenResponses?.map((item) => item.moduleType)).toEqual(
       Array(loopItems.length).fill(FlowNodeTypeEnum.loopRun)
     );
     detail[0].childrenResponses?.forEach((iterationResponse, index) => {
-      const iterationChildren = iterationResponse.childrenResponses || [];
+      const iterationChildren: ChatHistoryItemResType[] = iterationResponse.childrenResponses ?? [];
       expect(iterationResponse.childResponseCount).toBe(3);
       expect(iterationChildren.map((item) => item.moduleType)).toEqual([
         FlowNodeTypeEnum.loopRunStart,

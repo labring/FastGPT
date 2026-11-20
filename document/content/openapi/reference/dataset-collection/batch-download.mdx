@@ -1,0 +1,46 @@
+---
+title: '下载知识库集合归档文件'
+seoTitle: '下载知识库集合归档文件 - GET /api/core/dataset/collection/batchDownload | FastGPT OpenAPI'
+description: '使用批量下载凭证（ticket）将预检后的知识库集合原始文件实时打包为 ZIP 归档文件流返回下载。'
+---
+
+## 端点概览
+
+- **HTTP 方法**：`GET`
+- **请求路径**：`/api/core/dataset/collection/batchDownload`
+- **所属模块**：知识库 / 集合管理
+- **鉴权方式**：`Authorization: Bearer <apiKey>`—个人密钥（按归属团队成员资源权限校验）（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E9%9B%86%E5%90%88%E7%AE%A1%E7%90%86/GET/core/dataset/collection/batchDownload)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E9%9B%86%E5%90%88%E7%AE%A1%E7%90%86/GET/core/dataset/collection/batchDownload`）
+
+## 接口说明与注意事项
+
+使用短效凭证将预检后的集合原始文件流式归档为 ZIP 文件
+
+## 请求参数
+
+### Query 查询参数
+
+| 字段     | 类型     | 必填 | 默认值 | 约束与说明                                    |
+| -------- | -------- | ---- | ------ | --------------------------------------------- |
+| `ticket` | `string` | 是   | -      | 申请下载接口返回的短效一次性凭证。最小长度：1 |
+
+## 请求示例
+
+调用前请将 `YOUR_API_KEY` 与示例 ID 替换为真实值；私有化部署实例请将基础域名替换为 `<instance>/api`。
+
+### cURL 请求示例
+
+```bash
+curl --fail-with-body -X GET "https://cloud.fastgpt.cn/api/core/dataset/collection/batchDownload?ticket=01JZZ8B7M5Y7QJX9J7S5V7QJ4F" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## 响应结构与示例
+
+### HTTP 200
+
+成功返回 ZIP 归档文件流
+
+**Content-Type** : `application/zip`
+
+返回原始二进制文件流（`application/zip`），可通过 `curl -o archive.zip` 保存。

@@ -31,7 +31,6 @@ export type AgentLoopCoreNodeRuntime<TChildrenResponse = unknown> = {
  *
  * 这一层把环境副作用和工具执行结果缓存绑定起来：
  * - Workflow Agent 传 nodeResponses 后，工具执行结果会先缓存，再由 tool_run_end 落平铺运行详情。
- * - ToolCall 开启 collectToolRunResponses 后，工具子流程详情会缓存到同一个 environment。
  *
  * 调用方只需要提供节点能力配置和 ToolProvider，不再重复拼 emitEvent/onToolResult。
  */

@@ -1,0 +1,13 @@
+{
+  "title": "知识库管理",
+  "pages": [
+    "create",
+    "list",
+    "list-v2",
+    "detail",
+    "delete",
+    "update",
+    "batch-move",
+    "batch-delete"
+  ]
+}

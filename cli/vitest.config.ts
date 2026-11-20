@@ -7,6 +7,7 @@ const cliRoot = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   resolve: {
     alias: {
+      '@fastgpt/workflow-core': resolve(cliRoot, '../packages/workflow-core/src'),
       '@fastgpt': resolve(cliRoot, '../packages')
     }
   },

@@ -1,8 +1,8 @@
 import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import {
-  ModelStatusProbeConfigDefaults,
   ModelStatusProbeConfigSchema,
   type ModelStatusProbeConfig
 } from '@fastgpt/global/common/system/config/modelStatus';
@@ -24,6 +24,8 @@ import type {
   UpdateModelStatusProbeConfigBody
 } from '@fastgpt/global/openapi/admin/system/model/status';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { isEmbeddingRequestError } from '../embedding/error';
+import { ApiRequestInputParseError } from '../../../common/zod/requestParseError';
 import { MongoSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/schema';
 import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
 import { systemInstanceConfig } from '../../../common/system/systemInstanceConfig/service';
@@ -63,24 +65,6 @@ let modelStatusProbeInFlight: Promise<RunModelStatusProbeResponse> | undefined;
 const manualModelStatusProbeLease = new LeaseCache();
 
 /**
- * 写入前从主库读取模型探测配置，以保留未修改的 URL 和令牌。
- * 缺失记录时使用默认值；现有记录无效时拒绝保存，避免覆盖无法安全合并的凭据。
- */
-const getStoredConfig = async () => {
-  const record = await MongoSystemInstanceConfig.findOne({ domain: 'modelStatusProbe' })
-    .read('primary')
-    .lean();
-
-  return {
-    config: ModelStatusProbeConfigSchema.parse({
-      ...ModelStatusProbeConfigDefaults,
-      ...decryptDomainSecrets('modelStatusProbe', record?.overrides ?? {})
-    }),
-    storedOverrides: record?.overrides
-  };
-};
-
-/**
  * 将内部配置结构转换为脱敏的外部响应对象。
  * 敏感信息 webhookToken 仅转换为布尔值 webhookTokenConfigured，永不回显明文。
  */
@@ -107,29 +91,30 @@ export const getModelStatusProbeConfig = async () => {
  * 2. webhookToken 未传时保持旧值，仅在 clearWebhookToken=true 时彻底清除已保存 Token。
  */
 export const updateModelStatusProbeConfig = async (input: UpdateModelStatusProbeConfigBody) => {
-  const { config: current, storedOverrides } = await getStoredConfig();
-  const next: ModelStatusProbeConfig = {
+  // 读取主库的原值后再应用补丁。先严格校验旧值会让管理员无法替换损坏的凭据。
+  const record = await MongoSystemInstanceConfig.findOne({ domain: 'modelStatusProbe' })
+    .read('primary')
+    .lean();
+  const storedOverrides = record?.overrides;
+  const current = decryptDomainSecrets('modelStatusProbe', storedOverrides ?? {});
+  const webhookUrl = input.webhookUrl === undefined ? current.webhookUrl : input.webhookUrl;
+  const webhookToken = input.clearWebhookToken
+    ? undefined
+    : input.webhookToken === undefined
+      ? current.webhookToken
+      : input.webhookToken;
+
+  // 仍对最终写入值严格校验，未提交的无效旧凭据需要明确修复或清除。
+  const result = ModelStatusProbeConfigSchema.safeParse({
     enabled: input.enabled,
     intervalMinutes: input.intervalMinutes,
-    ...(input.webhookUrl === undefined
-      ? current.webhookUrl
-        ? { webhookUrl: current.webhookUrl }
-        : {}
-      : input.webhookUrl
-        ? { webhookUrl: input.webhookUrl }
-        : {}),
-    ...(input.clearWebhookToken
-      ? {}
-      : input.webhookToken === undefined
-        ? current.webhookToken
-          ? { webhookToken: current.webhookToken }
-          : {}
-        : input.webhookToken
-          ? { webhookToken: input.webhookToken }
-          : {})
-  };
-
-  const value = ModelStatusProbeConfigSchema.parse(next);
+    ...(webhookUrl !== undefined && webhookUrl !== '' ? { webhookUrl } : {}),
+    ...(webhookToken !== undefined && webhookToken !== '' ? { webhookToken } : {})
+  });
+  if (!result.success) {
+    throw new ApiRequestInputParseError(result.error, { inputSource: 'body' });
+  }
+  const value = result.data;
   const encrypted = encryptDomainSecrets({
     domain: 'modelStatusProbe',
     data: value,
@@ -327,6 +312,32 @@ export const getModelStatus = async (): Promise<GetModelStatusResponse> => {
 };
 
 /**
+ * 格式化模型探活失败记录：日志与告警记录不需要经过 i18n 翻译，已登记业务错误直接输出错误码
+ * （携带上游状态码时附带 HTTP 状态），其余错误保留原有英文提示文本。
+ */
+const formatProbeErrorMessage = (error: unknown): string => {
+  if (isEmbeddingRequestError(error) && error.errorCode) {
+    return error.upstreamStatus !== undefined
+      ? `${error.errorCode} (HTTP ${error.upstreamStatus})`
+      : error.errorCode;
+  }
+
+  const errorCode =
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof error.message === 'string' &&
+    Object.hasOwn(ERROR_RESPONSE, error.message)
+      ? error.message
+      : typeof error === 'string' && Object.hasOwn(ERROR_RESPONSE, error)
+        ? error
+        : undefined;
+  if (errorCode) return errorCode;
+
+  return getErrText(error, 'Model test failed');
+};
+
+/**
  * 对单个模型执行一次探测并计算最终状态。通过注入 test 函数保留纯业务边界，便于验证重试和延迟阈值。
  * 规则：
  * 1. 首次请求失败后自动重试最多 3 次（单轮最多 4 次调用）；
@@ -401,7 +412,7 @@ export const probeModelStatus = async ({
     status: ModelStatusProbeStatusEnum.red,
     attempts: MODEL_STATUS_MAX_RETRIES + 1,
     // 告警接收端可能只展示 probe.error，因此错误文本也携带模型名称以便定位。
-    error: `${model.name}: ${getErrText(lastError, 'Model test failed')}`.slice(0, 1000),
+    error: `${model.name}: ${formatProbeErrorMessage(lastError)}`.slice(0, 1000),
     startedAt,
     requestStartedAt,
     requestEndedAt

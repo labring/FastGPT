@@ -6,9 +6,10 @@ import z from 'zod';
 export const ModelPriceTierSchema = z.object({
   maxInputTokens: z
     .number()
-    .min(0)
+    .int()
+    .positive()
     .optional()
-    .meta({ description: '本档输入上限，单位 M Tokens；省略表示无限', example: 1 }),
+    .meta({ description: '本档输入上限，单位 K Tokens；省略表示无限', example: 32 }),
   inputPrice: z.number().min(0).meta({ description: '每百万输入 Tokens 的积分单价', example: 2 }),
   outputPrice: z.number().min(0).meta({ description: '每百万输出 Tokens 的积分单价', example: 4 })
 });
