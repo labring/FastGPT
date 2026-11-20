@@ -4,6 +4,7 @@ import {
   FlowNodeTypeEnum,
   isNestedParentNodeType
 } from '../../core/workflow/node/constant';
+import { getIfElseBranchHandleKey } from './condition';
 import { getWorkflowGlobalVariables } from './editor/variables';
 import { getWorkflowSecretInputKind } from './input';
 import { DatasetTagFilterValueModeEnum } from '../../core/dataset/constants';
@@ -13,6 +14,7 @@ import {
   VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
 } from '../../core/workflow/constants';
+import { IfElseResultEnum } from '../../core/workflow/template/system/ifElse/constant';
 import { USER_SELECT_REFERENCE_HANDLE_KEY } from '../../core/workflow/template/system/interactive/userSelect';
 import { isReferenceOptionFormItem } from '../../core/workflow/template/system/interactive/constants';
 import { getSecretReferenceValue } from '../secret/utils';
@@ -537,7 +539,7 @@ type WorkflowSourceNode = Pick<
   'nodeId' | 'flowNodeType' | 'inputs' | 'parentNodeId'
 >;
 
-/** 多分支节点只允许当前仍存在的 source handle 参与来源计算。 */
+/** 引用来源只经过当前分支或执行仍支持的历史出口。 */
 export const isWorkflowEdgeSourceHandleValid = (
   sourceNode: WorkflowSourceNode | undefined,
   sourceHandle: string | null | undefined
@@ -549,6 +551,7 @@ export const isWorkflowEdgeSourceHandleValid = (
     return true;
   }
   const branchInputKey = (() => {
+    if (flowNodeType === FlowNodeTypeEnum.ifElseNode) return NodeInputKeyEnum.ifElseList;
     if (flowNodeType === FlowNodeTypeEnum.userSelect) return NodeInputKeyEnum.userSelectOptions;
     if (flowNodeType === FlowNodeTypeEnum.classifyQuestion) return NodeInputKeyEnum.agents;
   })();
@@ -556,8 +559,29 @@ export const isWorkflowEdgeSourceHandleValid = (
   if (!sourceHandle) return false;
 
   const input = inputs?.find((item) => item.key === branchInputKey);
-  if (flowNodeType === FlowNodeTypeEnum.userSelect && input && nodeInputIsReference(input)) {
-    return sourceHandle === getHandleId(nodeId, 'source', USER_SELECT_REFERENCE_HANDLE_KEY);
+  if (flowNodeType === FlowNodeTypeEnum.userSelect && input) {
+    if (nodeInputIsReference(input)) {
+      return sourceHandle === getHandleId(nodeId, 'source', USER_SELECT_REFERENCE_HANDLE_KEY);
+    }
+    // 历史手动选择的通用出口在续跑时仍会激活。
+    if (Array.isArray(input.value) && sourceHandle === getHandleId(nodeId, 'source', 'right')) {
+      return true;
+    }
+  }
+
+  if (flowNodeType === FlowNodeTypeEnum.ifElseNode) {
+    if (sourceHandle === getHandleId(nodeId, 'source', IfElseResultEnum.ELSE)) return true;
+    return (
+      Array.isArray(input?.value) &&
+      input.value.some((branch: unknown, index: number) => {
+        if (typeof branch !== 'object' || branch === null || Array.isArray(branch)) return false;
+        const branchId = 'branchId' in branch ? branch.branchId : undefined;
+        if (branchId !== undefined && branchId !== null && typeof branchId !== 'string')
+          return false;
+        const key = getIfElseBranchHandleKey({ branchId: branchId ?? undefined }, index);
+        return key !== '' && sourceHandle === getHandleId(nodeId, 'source', key);
+      })
+    );
   }
 
   return (

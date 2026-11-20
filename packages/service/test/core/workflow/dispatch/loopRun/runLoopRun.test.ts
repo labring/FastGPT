@@ -255,24 +255,36 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
   });
 
   it.each([
-    ['removed', undefined],
-    ['kept', 'previous result']
-  ])(
-    'captures LoopRun outputs through the %s branch in a restored graph',
-    async (branch, value) => {
+    [FlowNodeTypeEnum.classifyQuestion, 'removed', undefined],
+    [FlowNodeTypeEnum.classifyQuestion, 'kept', 'previous result'],
+    [FlowNodeTypeEnum.ifElseNode, 'removed', undefined],
+    [FlowNodeTypeEnum.ifElseNode, 'kept', 'previous result'],
+    [FlowNodeTypeEnum.ifElseNode, 'ELSE IF 1', 'previous result'],
+    [FlowNodeTypeEnum.ifElseNode, 'ELSE', 'previous result']
+  ] as const)(
+    'captures LoopRun outputs from %s via %s in a restored graph',
+    async (type, branch, value) => {
       const props = makeProps({
         [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
         [NodeInputKeyEnum.loopRunInputArray]: ['first']
       });
-      const node = makeLoopRunNode([{ key: 'result', ref: ['classify', 'result'] }]);
+      const node = makeLoopRunNode([{ key: 'result', ref: ['source', 'result'] }]);
       node.inputs.at(-1)!.renderTypeList = [FlowNodeInputTypeEnum.reference];
       props.node = props.runtimeNodes[0] = node;
 
-      const classifier = createNode('classify', FlowNodeTypeEnum.classifyQuestion);
-      classifier.inputs = [
-        makeInput({ key: NodeInputKeyEnum.agents, value: [{ key: 'kept', value: 'Kept' }] })
+      const source = createNode('source', type);
+      source.inputs = [
+        type === FlowNodeTypeEnum.ifElseNode
+          ? makeInput({
+              key: NodeInputKeyEnum.ifElseList,
+              value: [
+                { branchId: 'kept', condition: 'AND', list: [] },
+                { condition: 'AND', list: [] }
+              ]
+            })
+          : makeInput({ key: NodeInputKeyEnum.agents, value: [{ key: 'kept', value: 'Kept' }] })
       ];
-      classifier.outputs = [
+      source.outputs = [
         {
           id: 'result',
           key: 'result',
@@ -280,12 +292,10 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
           value: 'previous result'
         }
       ];
-      props.runtimeNodes.push(classifier);
-      props.runtimeNodesMap.set(classifier.nodeId, classifier);
+      props.runtimeNodes.push(source);
+      props.runtimeNodesMap.set(source.nodeId, source);
       props.runtimeNodesMap.set(node.nodeId, node);
-      props.runtimeEdges = [
-        createEdge('classify', node.nodeId, 'active', `classify-source-${branch}`)
-      ];
+      props.runtimeEdges = [createEdge('source', node.nodeId, 'active', `source-source-${branch}`)];
       props.lastInteractive = {
         type: 'loopRunInteractive',
         params: { iteration: 1, loopHistory: [] }

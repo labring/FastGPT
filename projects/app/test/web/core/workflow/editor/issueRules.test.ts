@@ -21,6 +21,8 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
+import { getExecutionBranchKeys } from '@fastgpt/workflow-core/edge/validation';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { createWorkflowEditor } from '@fastgpt/global/common/workflow/editor/runtime/runtime';
 import { migrateStoreWorkflow } from '@fastgpt/global/common/workflow/editor/protocol';
@@ -38,6 +40,7 @@ import { WorkflowStart } from '@fastgpt/global/core/workflow/template/system/wor
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
 import { IfElseNode } from '@fastgpt/global/core/workflow/template/system/ifElse/index';
+import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { FormInputNode } from '@fastgpt/global/core/workflow/template/system/interactive/formInput';
 import { UserSelectNode } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
 import { LoopRunNode } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
@@ -867,6 +870,9 @@ const codeFixtures: Fixture[] = [
   }
 ];
 
+const realWorldIfNode = named(IfElseNode, 'if');
+const [ifBranchKey] = getExecutionBranchKeys(realWorldIfNode.data);
+
 /** 语料 C：一份接近真实导出的多节点工作流。 */
 const realWorldFixture: Fixture = {
   name: 'real:multi-node',
@@ -875,7 +881,7 @@ const realWorldFixture: Fixture = {
     named(DatasetConcatModule, 'concat'),
     named(AiChatModule, 'chat'),
     named(AssignedAnswerModule, 'answer'),
-    named(IfElseNode, 'if'),
+    realWorldIfNode,
     named(HttpNode468, 'http'),
     named(LoopRunNode, 'loop'),
     flowNode(LoopRunStartNode, (node) => {
@@ -892,8 +898,18 @@ const realWorldFixture: Fixture = {
     edge({ source: 'start', target: 'concat', index: 0 }),
     edge({ source: 'concat', target: 'chat', index: 1 }),
     edge({ source: 'chat', target: 'if', index: 2 }),
-    edge({ source: 'if', target: 'http', index: 3 }),
-    edge({ source: 'if', target: 'loop', index: 4 }),
+    edge({
+      source: 'if',
+      target: 'http',
+      index: 3,
+      handles: { sourceHandle: getHandleId('if', 'source', ifBranchKey) }
+    }),
+    edge({
+      source: 'if',
+      target: 'loop',
+      index: 4,
+      handles: { sourceHandle: getHandleId('if', 'source', IfElseResultEnum.ELSE) }
+    }),
     edge({ source: 'loop', target: 'update', index: 5 }),
     edge({ source: 'update', target: 'answer', index: 6 })
   ],

@@ -100,12 +100,6 @@ const Header = () => {
       refreshDeps: [appId, onSaveApp, createSaveRequest, markSaved]
     }
   );
-  const onClickSaveForButton = useCallback(
-    async (options: { isPublish?: boolean; versionName?: string }) => {
-      return onClickSave(options);
-    },
-    [onClickSave]
-  );
 
   const onBack = useCallback(async () => {
     leaveSaveSignRef.current = false;
@@ -191,7 +185,7 @@ const Header = () => {
                 colorSchema={'black'}
                 isLoading={loading}
                 isDisabled={showHistoryModal}
-                onClickSave={onClickSaveForButton}
+                onClickSave={onClickSave}
                 checkData={async () => !!(await flowData2StoreDataAndCheck())}
               />
             </HStack>
@@ -208,7 +202,7 @@ const Header = () => {
     showHistoryModal,
     t,
     loading,
-    onClickSaveForButton,
+    onClickSave,
     openPanel,
     closePanel,
     flowData2StoreDataAndCheck,
