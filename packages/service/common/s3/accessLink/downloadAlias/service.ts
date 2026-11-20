@@ -6,20 +6,16 @@ import {
   type VerifiedS3DownloadAccess
 } from '../type';
 import { s3AccessLinkService } from '../accessLinkService';
-import { resolveS3DownloadFallbackExtension } from '../utils';
+import { resolveS3DownloadMimeFallbackExtension } from '../utils';
 
-/** 文件名与对象键均无安全扩展名时，使用明确的 responseContentType 兜底推导短链后缀。 */
+/** 当调用方未显式传入 fallbackExtension 时，用明确的 responseContentType 作为无后缀对象的兜底扩展名。 */
 const enrichDownloadExtensionFromMime = (
   params: CreateS3DownloadAccessUrlParams
 ): CreateS3DownloadAccessUrlParams => {
-  const mimeExtension = resolveS3DownloadFallbackExtension({
-    extension: params.extension,
-    filename: params.filename,
-    objectKey: params.objectKey,
-    contentType: params.responseContentType
-  });
+  if (params.fallbackExtension) return params;
 
-  return mimeExtension ? { ...params, extension: mimeExtension } : params;
+  const mimeExtension = resolveS3DownloadMimeFallbackExtension(params.responseContentType);
+  return mimeExtension ? { ...params, fallbackExtension: mimeExtension } : params;
 };
 
 /**

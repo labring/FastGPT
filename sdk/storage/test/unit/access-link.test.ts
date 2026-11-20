@@ -8,12 +8,14 @@ import {
   createS3AccessLinkCrypto,
   createS3AccessLinkService,
   encodeExpiresAtMinute,
-  formatSignedS3DownloadAlias,
-  normalizeS3DownloadExtension,
   parseSignedS3DownloadAlias,
-  resolveS3DownloadExtension,
   type S3DownloadAliasStore
 } from '../../src/access-link';
+import { formatSignedS3DownloadAlias } from '../../src/access-link/download';
+import {
+  normalizeS3DownloadExtension,
+  resolveS3DownloadExtension
+} from '../../src/access-link/extension';
 
 const baseNow = new Date('2026-01-01T00:00:00.000Z');
 const getFutureDate = (minutes: number) => new Date(baseNow.getTime() + minutes * 60_000);
@@ -441,26 +443,81 @@ describe('S3 access link SDK core', () => {
       objectKey: 'dataset/team-1/raw-object'
     });
 
-    // 同一 aliasId 的历史 v1 点分链接依然可验证通过
-    const expMinute36 = encodeExpiresAtMinute(getFutureDate(10));
-    const v1SignedAlias = formatSignedS3DownloadAlias({
-      aliasId: legacyAliasId,
-      expMinute36,
-      sig: crypto.signDownloadAlias({
-        aliasId: legacyAliasId,
-        expMinute36,
-        version: 'v1'
-      }),
-      version: 'v1'
-    });
-    expect(parseSignedS3DownloadAlias(v1SignedAlias)).toMatchObject({
+    // 同一 aliasId 的历史 v1 固定样本（按旧版 v1 算法离线预计算）依然可验证通过
+    const frozenLegacyV1SignedAlias = 'legacy-alias_1234.hkh9a.Hn1SUbhgqZDhIphaN59dhR';
+    expect(parseSignedS3DownloadAlias(frozenLegacyV1SignedAlias)).toMatchObject({
       version: 'v1',
-      aliasId: legacyAliasId
+      aliasId: legacyAliasId,
+      expMinute36: 'hkh9a',
+      sig: 'Hn1SUbhgqZDhIphaN59dhR'
     });
-    await expect(service.verifyDownloadAlias(v1SignedAlias)).resolves.toMatchObject({
+    await expect(service.verifyDownloadAlias(frozenLegacyV1SignedAlias)).resolves.toMatchObject({
       bucketName: 'private',
       objectKey: 'dataset/team-1/raw-object'
     });
+
+    // 支持配置 downloadSignVersion='v1' 用于多实例滚动升级或代理过渡期，同时保持双版本验签。
+    const { service: v1IssuerService } = createDeterministicService({
+      downloadSignVersion: 'v1',
+      stores: {
+        downloadAlias: stores.downloadAliasStore,
+        uploadSession: stores.uploadSessionStore
+      },
+      idGenerator: {
+        aliasId: () => legacyAliasId
+      }
+    });
+    const issuedV1Url = await v1IssuerService.createDownloadUrl({
+      bucketName: 'private',
+      objectKey: 'dataset/team-1/raw-object',
+      filename: 'report.2026',
+      expiredTime: getFutureDate(10)
+    });
+    const issuedV1Alias = extractLastPathSegment(issuedV1Url);
+    expect(issuedV1Alias).toMatch(/^legacy-alias_1234\.[0-9a-z]+\.[A-Za-z0-9_-]{22}$/);
+    await expect(v1IssuerService.verifyDownloadAlias(issuedV1Alias)).resolves.toMatchObject({
+      bucketName: 'private',
+      objectKey: 'dataset/team-1/raw-object'
+    });
+    await expect(v1IssuerService.verifyDownloadAlias(noExtAlias)).resolves.toMatchObject({
+      bucketName: 'private',
+      objectKey: 'dataset/team-1/raw-object'
+    });
+    // 同时校验 crypto 显式 v1 签发输出与固定历史样本一致
+    expect(
+      crypto.signDownloadAlias({
+        aliasId: legacyAliasId,
+        expMinute36: 'hkh9a',
+        version: 'v1'
+      })
+    ).toBe('Hn1SUbhgqZDhIphaN59dhR');
+  });
+
+  it('does not URI-decode literal filenames when deriving extensions, while decoding encoded objectKeys', async () => {
+    const { service } = createDeterministicService();
+
+    // 业务 filename 中的字面量 %2E 不能被再次解码成点号，应跳过并回退到 fallbackExtension。
+    const urlWithLiteralPercent = await service.createDownloadUrl({
+      bucketName: 'private',
+      objectKey: 'dataset/team-1/opaque-blob',
+      filename: 'report%2Epng',
+      fallbackExtension: 'webp',
+      expiredTime: getFutureDate(10)
+    });
+    expect(urlWithLiteralPercent).toMatch(
+      /^https:\/\/file\.example\.com\/d\/v2-AliasId12345678-[0-9a-z]+-[A-Za-z0-9]{22}\.webp$/
+    );
+
+    // 编码后的 S3 objectKey 应正确解码提取真实后缀。
+    const urlWithEncodedKey = await service.createDownloadUrl({
+      bucketName: 'private',
+      objectKey: 'dataset/team-1/record%2Emp3',
+      filename: 'report%2Epng',
+      expiredTime: getFutureDate(10)
+    });
+    expect(urlWithEncodedKey).toMatch(
+      /^https:\/\/file\.example\.com\/d\/v2-AliasId87654321-[0-9a-z]+-[A-Za-z0-9]{22}\.mp3$/
+    );
   });
 
   it('generates Base62 default aliasIds and normalizes safe extensions', () => {
@@ -482,9 +539,28 @@ describe('S3 access link SDK core', () => {
     ).toBe('jpeg');
     expect(
       resolveS3DownloadExtension({
-        extension: '.webp',
+        filename: 'report%2Epng',
+        objectKey: 'dataset/team/raw-object'
+      })
+    ).toBe('');
+    expect(
+      resolveS3DownloadExtension({
+        filename: '100%25 done.pdf',
+        objectKey: 'dataset/team/raw-object'
+      })
+    ).toBe('pdf');
+    expect(
+      resolveS3DownloadExtension({
         filename: 'photo.png',
-        objectKey: 'dataset/team/photo.jpg'
+        objectKey: 'dataset/team/photo.jpg',
+        fallbackExtension: '.webp'
+      })
+    ).toBe('png');
+    expect(
+      resolveS3DownloadExtension({
+        filename: 'cover',
+        objectKey: 'dataset/team/raw-object',
+        fallbackExtension: '.webp'
       })
     ).toBe('webp');
     expect(

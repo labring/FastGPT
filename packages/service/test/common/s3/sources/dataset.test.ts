@@ -146,7 +146,7 @@ describe('S3DatasetSource FileSource lifecycle', () => {
       expect.objectContaining({
         key: `dataset/${datasetId}/opaque-image`,
         filename: 'cover',
-        extension: 'png'
+        fallbackExtension: 'png'
       })
     );
   });

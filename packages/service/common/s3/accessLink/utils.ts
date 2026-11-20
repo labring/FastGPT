@@ -3,12 +3,8 @@ import {
   createS3AccessLinkCrypto,
   decodeExpiresAtMinute,
   encodeExpiresAtMinute,
-  formatSignedS3DownloadAlias as formatSdkSignedS3DownloadAlias,
-  normalizeS3DownloadExtension,
   parseSignedS3DownloadAlias as parseSdkSignedS3DownloadAlias,
-  resolveDownloadExpiresAt,
-  resolveS3DownloadExtension,
-  type S3DownloadAliasSignVersion
+  resolveDownloadExpiresAt
 } from '@fastgpt-sdk/storage';
 import { serviceEnv } from '../../../env';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -54,7 +50,7 @@ export const signS3DownloadAlias = ({
   aliasId: string;
   expMinute36: string;
   extension?: string;
-  version?: S3DownloadAliasSignVersion;
+  version?: ParsedS3SignedDownloadAlias['version'];
 }) => {
   return s3AccessLinkCrypto.signDownloadAlias({
     aliasId,
@@ -64,30 +60,13 @@ export const signS3DownloadAlias = ({
   });
 };
 
-export const formatSignedS3DownloadAlias = (
-  params: Parameters<typeof formatSdkSignedS3DownloadAlias>[0]
-) => formatSdkSignedS3DownloadAlias(params);
-
-/** 当文件名与对象键均无安全扩展名时，尝试从明确 MIME 推导下载短链后缀。 */
-export const resolveS3DownloadFallbackExtension = ({
-  extension,
-  filename,
-  objectKey,
-  contentType
-}: {
-  extension?: string;
-  filename?: string;
-  objectKey: string;
-  contentType?: string;
-}) => {
-  if (resolveS3DownloadExtension({ extension, filename, objectKey })) {
-    return undefined;
-  }
-
+/** 从明确的 MIME（跳过通用 application/octet-stream）推导下载短链兜底扩展名。 */
+export const resolveS3DownloadMimeFallbackExtension = (contentType?: string) => {
   const mime = normalizeMimeType(contentType, '');
   if (!mime || mime === DEFAULT_CONTENT_TYPE) return undefined;
 
-  return normalizeS3DownloadExtension(resolveMimeExtension(mime)) || undefined;
+  const extension = resolveMimeExtension(mime).replace(/^\./, '');
+  return extension || undefined;
 };
 
 export const parseSignedS3DownloadAlias = (value: string): ParsedS3SignedDownloadAlias => {

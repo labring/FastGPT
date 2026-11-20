@@ -1,3 +1,4 @@
+import { S3_DOWNLOAD_ALIAS_SIGN_VERSION } from './constants';
 import { createDefaultIdGenerator, createS3AccessLinkCrypto } from './crypto';
 import {
   createDownloadUrlsHandler,
@@ -41,7 +42,8 @@ const resolveOptions = (
         options.idGenerator?.multipartCompletionAttemptId ??
         defaultIdGenerator.multipartCompletionAttemptId
     },
-    uploadSessionUsePolicy: options.uploadSessionUsePolicy ?? 'mark-used'
+    uploadSessionUsePolicy: options.uploadSessionUsePolicy ?? 'mark-used',
+    downloadSignVersion: options.downloadSignVersion ?? S3_DOWNLOAD_ALIAS_SIGN_VERSION
   };
 };
 

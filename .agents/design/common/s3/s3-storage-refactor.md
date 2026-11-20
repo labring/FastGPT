@@ -52,9 +52,9 @@ flowchart LR
 - `v2-`：显式版本前缀，避免与普通连字符外链文件名冲突，并为后续协议演进预留版本位。
 - `aliasId`：16 位随机 Base62 ID，用于查询对象映射（兼容存量含 `-` / `_` 的 aliasId）。
 - `expMinute36`：Unix 分钟的 36 进制编码，过期时间直接参与签名。
-- `sig`：`HMAC-SHA256(FILE_TOKEN_KEY, "s3-download:v2:" + aliasId + ":" + expMinute36 + ":" + ext)` 的前 22 位 Base62（不含 `.` / `-` / `_`），防止上游把签名误识别为扩展名，也避免 `-` 分隔符冲突。
-- `.<ext>`：可选真实扩展名，按显式 `extension` → `filename` → `objectKey` basename → 明确 MIME 推导，统一小写且满足 `/^(?=[a-z0-9]*[a-z])[a-z0-9]{1,16}$/`；参与 HMAC 签名防止篡改，无合法扩展名时省略。
-- 校验端同时向后兼容存量 `v1` 点分格式（`<aliasId>.<expMinute36>.<sig>`，`base64url` 签名）。
+- `sig`：`HMAC-SHA256(FILE_TOKEN_KEY, "s3-download:v2:" + aliasId + ":" + expMinute36 + ":" + ext)` 数值对 `62^22` 取模并固定编码为 22 位 Base62（不含 `.` / `-` / `_`），防止上游把签名误识别为扩展名，也避免 `-` 分隔符冲突。
+- `.<ext>`：可选真实扩展名，按原始 `filename` → URI 解码后的 `objectKey` basename → 明确 MIME 兜底推导，统一小写且满足 `/^(?=[a-z0-9]*[a-z])[a-z0-9]{1,16}$/`；参与 HMAC 签名防止篡改，无合法扩展名时省略。
+- 校验端同时向后兼容存量 `v1` 点分格式（`<aliasId>.<expMinute36>.<sig>`，`base64url` 签名）。可通过 `STORAGE_DOWNLOAD_SIGN_VERSION=v1` 在滚动发布或代理过渡期暂维持 v1 签发。
 
 Mongo 集合 `s3_download_aliases` 只保存对象映射，不保存可直接使用的 bearer URL：
 
@@ -114,6 +114,7 @@ Mongo 是跨实例一致性的必要状态，不使用进程内缓存。性能�
 | `STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS` | 302 临时 S3 URL TTL，默认 300 秒 |
 | `FILE_DOMAIN` | 完整 FastGPT 文件 API 域名，同时影响上传和下载 URL |
 | `FILE_DOWNLOAD_PUBLIC_URL_PREFIX` | 可选下载短链公开前缀，只影响下载 |
+| `STORAGE_DOWNLOAD_SIGN_VERSION` | 下载短链签发格式版本，默认 `v2`；多实例滚动升级或代理过渡期可暂设为 `v1`，服务端始终同时校验 `v1` 与 `v2` |
 | `STORAGE_EXTERNAL_ENDPOINT` / `STORAGE_S3_CDN_ENDPOINT` | `short-redirect` 使用的客户端可访问地址 |
 
 使用 nginx 缩短公开下载路径时，可配置：
@@ -240,4 +241,7 @@ Route 必须捕获可预期文件代理错误并映射状态码，不能全部�
 2. 默认使用 `short-proxy`；外部 S3/CDN 部署可切换 `short-redirect`。旧配置 `presigned` 必须在升级前改为其中一种模式。
 3. nginx 根路径短链是可选展示层，App 的 `/api/system/file/d/*` 必须始终可达。
 4. 历史 JWT 路由和历史 Chat key 在兼容期继续工作；新写入统一使用短链和 source-aware key。
-5. 回滚前必须评估已写入消息、dataset 或工具结果的新 `/d` 链接；直接移除新路由会使历史内容不可访问。
+5. **v1 → v2 短链平滑升级顺序**（适用于多实例滚动更新或配置了自定义根路径正则 Nginx rewrite 的部署）：
+   - 第一阶段（接收端与代理就绪）：先更新 Nginx 根路径 rewrite 为同时匹配 v1 与 v2 的双格式正则（使用 `/api/system/file/d/` 或 `/f/` 前缀转发的无需改代理）；滚动发布新版 App 时先配置 `STORAGE_DOWNLOAD_SIGN_VERSION=v1`，使全部实例具备 v1 + v2 双格式校验能力但仍签发 v1，避免旧实例在混跑期拒绝 v2 链接。
+   - 第二阶段（切换 v2 签发）：确认全部 App/代理实例升级完成后，移除 `STORAGE_DOWNLOAD_SIGN_VERSION`（或设为 `v2`）启用 v2 签发；已签发的存量 v1 链接在有效期内持续可用。
+6. **回滚约束**：直接回滚到仅支持 v1 的旧版 App 会使已签发到消息、dataset 预览或缓存中的 v2 链接返回 403；若需平滑回退，应先切换 `STORAGE_DOWNLOAD_SIGN_VERSION=v1` 并等待存量 v2 链接过期后再降级。直接移除 `/d` 路由同样会使历史内容不可访问。

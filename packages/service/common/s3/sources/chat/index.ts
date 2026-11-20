@@ -18,7 +18,8 @@ import { createUploadConstraints } from '../../utils/uploadConstraints';
 import { encodeS3ObjectKeySegment } from '../../keySanitizer';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getLogger, LogCategories } from '../../../logger';
-import { resolveS3DownloadFallbackExtension } from '../../accessLink/utils';
+import { resolveS3DownloadMimeFallbackExtension } from '../../accessLink/utils';
+import { resolveMimeType } from '../../utils/mime';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 const getChatFileScope = ({
@@ -112,11 +113,26 @@ export class S3ChatSource extends S3PrivateBucket {
     filename?: string;
   }) {
     const { key, expiredHours = 1, external = false, filename } = params; // 默认一个小时
+    const needsFilenameMetadata = isOpaqueS3FileKey(key) && !filename;
+    // 文件名与对象键均无法识别扩展名（例如历史回显传入无后缀展示名 cover 且 key 无后缀）时，
+    // 读取 S3 元数据以借助已存 MIME 为短链补充真实扩展名。
+    const needsMimeExtensionFallback = (() => {
+      if (filename && resolveMimeType([filename], '')) return false;
+      const keyBasename = (() => {
+        const rawBasename = path.posix.basename(key);
+        try {
+          return decodeURIComponent(rawBasename);
+        } catch {
+          return rawBasename;
+        }
+      })();
+      return !resolveMimeType([keyBasename], '');
+    })();
     const fileMetadata =
-      external && isOpaqueS3FileKey(key) && !filename
+      external && (needsFilenameMetadata || needsMimeExtensionFallback)
         ? await this.getFileMetadata(key).catch((error) => {
             if (error !== CommonErrEnum.fileNotFound) {
-              logger.warn('Failed to resolve opaque chat filename from S3 metadata', {
+              logger.warn('Failed to resolve chat file metadata from S3', {
                 key,
                 error
               });
@@ -127,17 +143,17 @@ export class S3ChatSource extends S3PrivateBucket {
 
     if (external) {
       const resolvedFilename = filename || fileMetadata?.filename;
-      const fallbackExtension = resolveS3DownloadFallbackExtension({
-        filename: resolvedFilename,
-        objectKey: key,
-        contentType: fileMetadata?.contentType
-      });
+      const fallbackExtension =
+        resolveS3DownloadMimeFallbackExtension(fileMetadata?.contentType) ||
+        (fileMetadata?.filename
+          ? resolveS3DownloadMimeFallbackExtension(resolveMimeType([fileMetadata.filename], ''))
+          : '');
 
       return await this.createExternalUrl({
         key,
         expiredHours,
         filename: resolvedFilename,
-        ...(fallbackExtension ? { extension: fallbackExtension } : {})
+        ...(fallbackExtension ? { fallbackExtension } : {})
       });
     }
     return await this.createPreviewUrl({ key, expiredHours });

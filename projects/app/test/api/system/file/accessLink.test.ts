@@ -14,7 +14,6 @@ import {
   createS3DownloadAccessUrl,
   createS3UploadAccessUrl,
   encodeExpiresAtMinute,
-  formatSignedS3DownloadAlias,
   parseSignedS3DownloadAlias,
   revokeS3UploadSessionToken,
   signS3DownloadAlias
@@ -141,7 +140,12 @@ const buildSignedAlias = ({
   const expMinute36 = encodeExpiresAtMinute(expiresAt);
   const sig = signS3DownloadAlias({ aliasId, expMinute36, extension, version });
 
-  return formatSignedS3DownloadAlias({ aliasId, expMinute36, sig, extension, version });
+  if (version === 'v1') {
+    return `${aliasId}.${expMinute36}.${sig}`;
+  }
+  return extension
+    ? `v2-${aliasId}-${expMinute36}-${sig}.${extension}`
+    : `v2-${aliasId}-${expMinute36}-${sig}`;
 };
 
 const createTranslator = () =>
@@ -223,23 +227,9 @@ describe('s3 short access link api', () => {
     const tamperedExpMinute36 = (Number.parseInt(expMinute36, 36) + 60).toString(36);
 
     for (const tamperedAlias of [
-      formatSignedS3DownloadAlias({
-        aliasId,
-        expMinute36: tamperedExpMinute36,
-        sig,
-        extension: 'png'
-      }),
-      formatSignedS3DownloadAlias({
-        aliasId,
-        expMinute36,
-        sig,
-        extension: 'jpg'
-      }),
-      formatSignedS3DownloadAlias({
-        aliasId,
-        expMinute36,
-        sig
-      })
+      `v2-${aliasId}-${tamperedExpMinute36}-${sig}.png`,
+      `v2-${aliasId}-${expMinute36}-${sig}.jpg`,
+      `v2-${aliasId}-${expMinute36}-${sig}`
     ]) {
       const res = makeMockRes() as any;
 
@@ -428,7 +418,6 @@ describe('s3 short access link api', () => {
         {
           createS3DownloadAccessUrl,
           encodeExpiresAtMinute,
-          formatSignedS3DownloadAlias,
           parseSignedS3DownloadAlias,
           revokeS3DownloadAlias,
           signS3DownloadAlias
@@ -460,12 +449,7 @@ describe('s3 short access link api', () => {
       await revokeS3DownloadAlias(parseSignedS3DownloadAlias(revokedAlias).aliasId);
       const cases = [
         buildSignedAlias({ expiresAt: getFutureDate(-10), extension: 'md' }),
-        formatSignedS3DownloadAlias({
-          aliasId,
-          expMinute36: tamperedExpMinute36,
-          sig,
-          extension: 'md'
-        }),
+        `v2-${aliasId}-${tamperedExpMinute36}-${sig}.md`,
         revokedAlias
       ];
       const generatePresignedGetUrl = vi.fn();

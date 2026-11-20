@@ -88,7 +88,8 @@ export type CreateS3DownloadAccessUrlParams = {
   expiredTime: Date;
   filename?: string;
   responseContentType?: string;
-  extension?: string;
+  /** filename 与 objectKey 均无法提取安全扩展名时的兜底扩展名（如由明确 MIME 推导）。 */
+  fallbackExtension?: string;
 };
 
 export type ParsedS3SignedDownloadAlias = {
@@ -189,6 +190,8 @@ export type CreateS3AccessLinkServiceOptions = {
   clock?: S3AccessLinkClock;
   idGenerator?: Partial<S3AccessLinkIdGenerator>;
   uploadSessionUsePolicy?: UploadSessionUsePolicy;
+  /** 签发下载短链使用的协议版本（默认 v2）；校验端始终同时兼容 v1 与 v2。 */
+  downloadSignVersion?: S3DownloadAliasSignVersion;
   onDownloadUrlTiming?: (timing: S3DownloadUrlTiming) => void;
 };
 
@@ -222,9 +225,10 @@ export type S3AccessLinkService = {
 
 export type ResolvedS3AccessLinkServiceOptions = Omit<
   CreateS3AccessLinkServiceOptions,
-  'clock' | 'idGenerator' | 'uploadSessionUsePolicy'
+  'clock' | 'idGenerator' | 'uploadSessionUsePolicy' | 'downloadSignVersion'
 > & {
   clock: S3AccessLinkClock;
   idGenerator: S3AccessLinkIdGenerator;
   uploadSessionUsePolicy: UploadSessionUsePolicy;
+  downloadSignVersion: S3DownloadAliasSignVersion;
 };

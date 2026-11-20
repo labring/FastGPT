@@ -3,9 +3,8 @@ import { MAX_MULTIPART_PART_COUNT } from '@fastgpt/global/common/file/constants'
 import { StorageObjectKeySchema } from '../contracts/type';
 import { UploadFileHintSchema, UploadPolicySchema } from '../uploadPolicy/type';
 import {
-  S3_DOWNLOAD_EXTENSION_PATTERN,
   S3_DOWNLOAD_URL_BATCH_MAX_SIZE,
-  S3_SIGNED_DOWNLOAD_ALIAS_PATTERN
+  parseSignedS3DownloadAlias
 } from '@fastgpt-sdk/storage/access-link';
 
 const UrlSafeTokenSchema = z.string().regex(/^[A-Za-z0-9_-]+$/);
@@ -13,6 +12,15 @@ const HexSha256Schema = z
   .string()
   .length(64)
   .regex(/^[a-f0-9]+$/);
+
+const isValidSignedDownloadAliasFormat = (value: string) => {
+  try {
+    parseSignedS3DownloadAlias(value);
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 export const S3AccessBucketNameSchema = z.string().min(1);
 export const S3AccessObjectKeySchema = StorageObjectKeySchema;
@@ -25,8 +33,10 @@ export const S3DownloadExpiresMinuteSchema = z
   .max(8)
   .regex(/^[0-9a-z]+$/);
 export const S3DownloadSignatureSchema = UrlSafeTokenSchema.min(16).max(64);
-export const S3DownloadExtensionSchema = z.string().regex(S3_DOWNLOAD_EXTENSION_PATTERN);
-export const S3SignedDownloadAliasValueSchema = z.string().regex(S3_SIGNED_DOWNLOAD_ALIAS_PATTERN);
+/** 复用 SDK 协议解析作为单一格式真源，避免服务层与 SDK 各自维护正则导致漂移。 */
+export const S3SignedDownloadAliasValueSchema = z
+  .string()
+  .refine(isValidSignedDownloadAliasFormat, 'Invalid signed download alias');
 
 export const S3DownloadAliasSchema = z.object({
   aliasId: S3DownloadAliasIdSchema,
@@ -49,7 +59,7 @@ export const CreateS3DownloadAccessUrlParamsSchema = z.object({
   expiredTime: z.coerce.date(),
   filename: z.string().min(1).optional(),
   responseContentType: z.string().min(1).optional(),
-  extension: z.string().min(1).optional()
+  fallbackExtension: z.string().min(1).optional()
 });
 export type CreateS3DownloadAccessUrlParams = z.infer<typeof CreateS3DownloadAccessUrlParamsSchema>;
 export const CreateS3DownloadAccessUrlsParamsSchema = z
@@ -61,7 +71,7 @@ export const ParsedS3SignedDownloadAliasSchema = z.object({
   aliasId: S3DownloadAliasIdSchema,
   expMinute36: S3DownloadExpiresMinuteSchema,
   sig: S3DownloadSignatureSchema,
-  extension: S3DownloadExtensionSchema.optional()
+  extension: z.string().min(1).optional()
 });
 export type ParsedS3SignedDownloadAlias = z.infer<typeof ParsedS3SignedDownloadAliasSchema>;
 

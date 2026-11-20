@@ -56,7 +56,7 @@ import {
   markS3MultipartUploadCompleteFailed,
   markS3MultipartUploadCompleting,
   markS3MultipartUploadCompleted,
-  resolveS3DownloadFallbackExtension,
+  resolveS3DownloadMimeFallbackExtension,
   retryS3MultipartUploadCompleting,
   verifyS3MultipartUploadSessionToken
 } from '../accessLink';
@@ -1012,7 +1012,7 @@ export class S3BaseBucket {
   async createExternalUrl(params: createPreviewUrlParams) {
     const parsed = CreateGetPresignedUrlParamsSchema.parse(params);
 
-    const { key, expiredHours, responseContentType, filename, extension } = parsed;
+    const { key, expiredHours, responseContentType, filename, fallbackExtension } = parsed;
     const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
 
     return {
@@ -1024,7 +1024,7 @@ export class S3BaseBucket {
         expiredTime: addMinutes(new Date(), Math.ceil(expires / 60)),
         filename: filename ?? getDownloadFilenameFromKey(key),
         responseContentType,
-        ...(extension ? { extension } : {})
+        ...(fallbackExtension ? { fallbackExtension } : {})
       })
     };
   }
@@ -1071,11 +1071,7 @@ export class S3BaseBucket {
       }
     });
 
-    const fallbackExtension = resolveS3DownloadFallbackExtension({
-      filename,
-      objectKey: key,
-      contentType
-    });
+    const fallbackExtension = resolveS3DownloadMimeFallbackExtension(contentType);
 
     return {
       key,
@@ -1083,7 +1079,7 @@ export class S3BaseBucket {
         key,
         expiredHours: Math.max(1, differenceInHours(expiredTime, new Date())),
         filename,
-        ...(fallbackExtension ? { extension: fallbackExtension } : {})
+        ...(fallbackExtension ? { fallbackExtension } : {})
       })
     };
   }
