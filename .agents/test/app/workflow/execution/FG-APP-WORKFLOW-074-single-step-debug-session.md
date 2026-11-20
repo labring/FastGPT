@@ -1,6 +1,6 @@
 ---
 case_version: 1
-id: FG-APP-WORKFLOW-064
+id: FG-APP-WORKFLOW-074
 title: 节点单步调试结果、交互续跑和配置隔离
 business: app/workflow/execution
 types: [ui, api, e2e]
@@ -32,7 +32,7 @@ related: [FG-APP-WORKFLOW-014, FG-APP-WORKFLOW-040]
 baseline: 9b0128032da5c30749d579d04e4c26e86bca99f7
 automation:
   - runner: playwright
-    script: .agents/test/app/workflow/execution/FG-APP-WORKFLOW-064.browser.spec.ts
+    script: .agents/test/app/workflow/execution/FG-APP-WORKFLOW-074.browser.spec.ts
     items: [C1, C2, C3, C4, C5, C6]
 ---
 

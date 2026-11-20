@@ -1,6 +1,6 @@
 ---
 case_version: 1
-id: FG-APP-WORKFLOW-060
+id: FG-APP-WORKFLOW-072
 title: 工作流引用历史随草稿与发布版本保留
 business: app/workflow/management
 category: boundary
@@ -49,7 +49,7 @@ routes:
 related: [FG-APP-WORKFLOW-040]
 automation:
   - runner: playwright
-    script: .agents/test/app/workflow/management/FG-APP-WORKFLOW-060.browser.spec.ts
+    script: .agents/test/app/workflow/management/FG-APP-WORKFLOW-072.browser.spec.ts
     items: [C1, C2, C3, C4, C5, C6, C7, C8]
 baseline: 9b0128032da5c30749d579d04e4c26e86bca99f7
 ---

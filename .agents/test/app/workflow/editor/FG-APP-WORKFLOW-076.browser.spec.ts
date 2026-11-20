@@ -12,7 +12,7 @@ import {
 import { FlowNodeInputTypeEnum } from '../../../../../packages/global/core/workflow/node/constant';
 import { UserSelectNode } from '../../../../../packages/global/core/workflow/template/system/interactive/userSelect';
 
-test('[FG-APP-WORKFLOW-067/C1] 240 节点工作流缩放、导航和导出', async ({ page }, testInfo) => {
+test('[FG-APP-WORKFLOW-076/C1] 240 节点工作流缩放、导航和导出', async ({ page }, testInfo) => {
   test.setTimeout(90_000);
   const ids = ['Start', ...Array.from({ length: 239 }, (_, index) => `N${index + 1}`)];
   const graph = buildWorkflowGraph(
@@ -113,7 +113,7 @@ test('[FG-APP-WORKFLOW-067/C1] 240 节点工作流缩放、导航和导出', asy
   });
 });
 
-test('[FG-APP-WORKFLOW-067/C2] 贴右的多选引用菜单仍可点击第二列', async ({ page }, testInfo) => {
+test('[FG-APP-WORKFLOW-076/C2] 贴右的多选引用菜单仍可点击第二列', async ({ page }, testInfo) => {
   const width = 920;
   await page.setViewportSize({ width, height: 820 });
   const graph = buildWorkflowGraph(
