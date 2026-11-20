@@ -231,6 +231,9 @@ describe('getWorkflowIssueUIStatus', () => {
       'pending_handle'
     );
     expect(getWorkflowIssueUIStatus(WorkflowIssueCode.sandboxNotConfigured)).toBe('pending_handle');
+    expect(getWorkflowIssueUIStatus(WorkflowIssueCode.sandboxSkillUnavailable)).toBe(
+      'pending_handle'
+    );
   });
 
   it('marks everything else as pending_improve', () => {

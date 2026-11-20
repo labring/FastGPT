@@ -100,7 +100,7 @@ export const createRuntimeReferenceGraph = ({
     for (const edge of runtimeEdges) {
       const source = runtimeNodesMap.get(edge.source);
       if (!source) continue;
-      // 工具挂载提供调用者的上游来源。普通连线只认当前分支，旧快照可能带有已删除的出口。
+      // 工具挂载提供调用者的上游来源。普通连线按出口规则过滤旧快照中的已删除分支。
       if (edge.targetHandle === NodeOutputKeyEnum.selectedTools) toolCallerIds.add(edge.source);
       else if (!isWorkflowEdgeSourceHandleValid(source, edge.sourceHandle)) continue;
 

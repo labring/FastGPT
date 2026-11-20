@@ -12,8 +12,10 @@ export const getElseIFLabel = (i: number) => {
 export const createIfElseBranchId = () => getNanoid();
 
 /** 返回稳定分支 handle；旧数据没有 branchId 时回退到历史展示标签。 */
-export const getIfElseBranchHandleKey = (item: IfElseListItemType, index?: number) =>
-  item.branchId ?? (index === undefined ? '' : getElseIFLabel(index));
+export const getIfElseBranchHandleKey = (
+  { branchId }: Pick<IfElseListItemType, 'branchId'>,
+  index?: number
+) => branchId ?? (index === undefined ? '' : getElseIFLabel(index));
 
 /** 旧草稿的分支可能缺少条件列表，编辑时按空列表处理。 */
 export const getIfElseBranchConditions = (

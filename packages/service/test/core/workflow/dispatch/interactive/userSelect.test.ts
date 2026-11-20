@@ -432,7 +432,7 @@ describe('dispatchUserSelect', () => {
     });
   });
 
-  it.each(['removed', 'kept'])('only follows existing branch handles (%s)', async (key) => {
+  it.each(['removed', 'kept', 'right'])('respects branch handle %s', async (key) => {
     const result = await dispatchUserSelect({
       histories: [],
       node: {
@@ -469,7 +469,7 @@ describe('dispatchUserSelect', () => {
     } as unknown as Parameters<typeof dispatchUserSelect>[0]);
 
     expect(result[DispatchNodeResponseKeyEnum.interactive]?.params?.userSelectOptions).toEqual(
-      key === 'kept' ? [{ key: 'option_1', value: 'Upstream option' }] : undefined
+      key === 'removed' ? undefined : [{ key: 'option_1', value: 'Upstream option' }]
     );
   });
 });

@@ -33,6 +33,7 @@ const PENDING_HANDLE_CODES = new Set<string>([
   'resource_no_permission',
   'model_unavailable',
   'model_unavailable_short',
+  WorkflowIssueCode.sandboxSkillUnavailable,
   'sandbox_not_configured',
   'sandbox_plan_not_supported'
 ]);
