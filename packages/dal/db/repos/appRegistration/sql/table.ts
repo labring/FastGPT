@@ -1,4 +1,4 @@
-import { defineSqlTable } from '@fastgpt/dal/db/sql/ddl';
+import { defineSqlTable } from '../../../sql/ddl';
 
 export type AppRegistrationSqlRow = {
   _id: string;
@@ -12,7 +12,7 @@ export type AppRegistrationDatabase = {
   app_registrations: AppRegistrationSqlRow;
 };
 
-/** 跨 PostgreSQL 与 OceanBase/MySQL 可移植的 AppRegistration 表定义（纯 B-Tree 索引）。 */
+/** 跨 OceanBase/MySQL 与 PostgreSQL 可移植的 AppRegistration 表定义（纯 B-Tree、`fg_` 命名规范）。 */
 export const appRegistrationSqlTable = defineSqlTable({
   name: 'app_registrations',
   columns: {
@@ -22,5 +22,5 @@ export const appRegistrationSqlTable = defineSqlTable({
     app_id: { kind: 'entityId', nullable: true },
     created_at: { kind: 'timestamp', nullable: true }
   },
-  indexes: [{ name: 'idx_app_registrations_team', columns: ['team_id'] }]
+  indexes: [{ name: 'fg_app_reg_team', columns: ['team_id'] }]
 });

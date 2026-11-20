@@ -1,6 +1,7 @@
 import { createEntityId, isValidEntityId } from '@fastgpt/global/common/string/entityId';
-import { MongoRepositoryBase } from '@fastgpt/dal/db/mongo/base';
-import type { DbSession } from '@fastgpt/dal/db/types';
+import { MongoRepositoryBase } from '../../../mongo/base';
+import type { DbRuntime } from '../../../runtime';
+import type { DbSession } from '../../../types';
 import {
   AppRegistrationDomainReadSchema,
   CreateAppRegistrationWriteSchema,
@@ -8,18 +9,19 @@ import {
   type AppRegistrationRepository,
   type CreateAppRegistrationWriteInput
 } from '../repo.type';
-import { AppRegistrationCollectionName, getAppRegistrationMongoModel } from './schema';
+import { appRegistrationMongoCollection, type AppRegistrationMongoDoc } from './schema';
 
-/** AppRegistration 仓储的 MongoDB 策略实现。 */
+/** AppRegistration 仓储的 MongoDB 策略实现（构造期由父类自动绑定当前 DbRuntime 的 readonly model）。 */
 export class MongoAppRegistrationRepository
-  extends MongoRepositoryBase<typeof AppRegistrationDomainReadSchema>
+  extends MongoRepositoryBase<AppRegistrationMongoDoc, typeof AppRegistrationDomainReadSchema>
   implements AppRegistrationRepository
 {
-  protected readonly tableName = AppRegistrationCollectionName;
-  protected readonly readSchema = AppRegistrationDomainReadSchema;
-
-  private get model() {
-    return getAppRegistrationMongoModel();
+  constructor(runtime?: DbRuntime) {
+    super({
+      collection: appRegistrationMongoCollection,
+      readSchema: AppRegistrationDomainReadSchema,
+      runtime
+    });
   }
 
   async findById({

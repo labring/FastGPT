@@ -17,14 +17,15 @@ const hasFlag = (flag) => args.includes(flag);
 
 if (hasFlag('--help') || hasFlag('-h') || args.length === 0) {
   console.log(`Usage:
-  node scaffold-repo.mjs --dir <domain-dir> --entity <PascalName> --table <snake_table> [--datasource main|log] [--soft-delete] [--no-service] [--force] [--dry-run]
+  node scaffold-repo.mjs --dir <repo-dir> --entity <PascalName> --table <snake_table> [--service-dir <service-dir>] [--datasource main|log] [--soft-delete] [--no-service] [--force] [--dry-run]
 
 Example:
-  node scaffold-repo.mjs --dir packages/service/core/dataset/synonym --entity DatasetSynonym --table dataset_synonyms`);
+  node scaffold-repo.mjs --dir packages/dal/db/repos/datasetSynonym --service-dir packages/service/core/dataset/synonym --entity DatasetSynonym --table dataset_synonyms`);
   process.exit(0);
 }
 
 const dirArg = getFlagValue('--dir');
+const serviceDirArg = getFlagValue('--service-dir');
 const entityArg = getFlagValue('--entity');
 const tableArg = getFlagValue('--table');
 const datasource = getFlagValue('--datasource') ?? 'main';
@@ -53,19 +54,23 @@ if (!/^[a-z_][a-z0-9_]*$/.test(tableArg)) {
 const camelEntity = entityArg[0].toLowerCase() + entityArg.slice(1);
 const repoRoot = findRepoRoot();
 const domainRel = toPosixPath(dirArg).replace(/^\.\//, '').replace(/\/$/, '');
-const domainAbs = path.resolve(repoRoot, domainRel);
+const isDalRepoDir = domainRel.startsWith('packages/dal/db/repos/');
+const serviceRelDir =
+  serviceDirArg !== undefined
+    ? toPosixPath(serviceDirArg).replace(/^\.\//, '').replace(/\/$/, '')
+    : isDalRepoDir
+      ? undefined
+      : domainRel;
 
 const testBaseDir = inferDomainTestDir(domainRel) ?? domainRel;
+const serviceTestBaseDir =
+  serviceRelDir !== undefined ? (inferDomainTestDir(serviceRelDir) ?? serviceRelDir) : undefined;
 const computeContractTestPath = () => `${testBaseDir}/repo.contract.test.ts`;
-const computeServiceTestPath = () => `${testBaseDir}/service.test.ts`;
+const computeServiceTestPath = () =>
+  serviceTestBaseDir !== undefined ? `${serviceTestBaseDir}/service.test.ts` : undefined;
 
-const mongoImport =
-  domainRel.startsWith('packages/service/')
-    ? path.posix.relative(domainRel + '/mongo', 'packages/service/common/mongo')
-    : '@fastgpt/service/common/mongo';
-
-const modelFnName = `get${entityArg}MongoModel`;
-const getModelCall = datasource === 'log' ? 'getMongoLogModel' : 'getMongoModel';
+const collectionVarName = `${camelEntity}MongoCollection`;
+const sqlTeamIndexName = `fg_${tableArg}_team`.slice(0, 63);
 
 const repoTypeContent = `import z from 'zod';
 import { EntityIdSchema, EntityIdStringSchema } from '@fastgpt/global/common/string/entityId';
@@ -103,11 +108,12 @@ export type ${entityArg}Repository = {
 };
 `;
 
-const mongoSchemaContent = `import { defineIndex, ${getModelCall}, Schema, type Model } from '${mongoImport}';
+const mongoSchemaContent = `import { Schema } from 'mongoose';
+import { defineMongoCollection } from '@fastgpt/dal/db/mongo/collection';
 
 export const ${entityArg}CollectionName = '${tableArg}';
 
-type ${entityArg}MongoDoc = {
+export type ${entityArg}MongoDoc = {
   teamId: unknown;
   createTime: Date;
   updateTime: Date;${softDelete ? '\n  deleteTime?: Date | null;' : ''}
@@ -139,26 +145,21 @@ const ${entityArg}MongoSchema = new Schema(
   { versionKey: false }
 );
 
-// TODO: 从原 schema.ts 完整迁入全部 defineIndex（含 deprecated: true 历史索引）
-defineIndex(${entityArg}MongoSchema, { key: { teamId: 1 } });
-
-let cachedModel: Model<${entityArg}MongoDoc> | undefined;
-
-/** 惰性获取 ${entityArg} Mongoose Model，确保导入模块或运行 SQL 方言时零顶层注册副作用。 */
-export const ${modelFnName} = (): Model<${entityArg}MongoDoc> => {
-  if (cachedModel !== undefined) {
-    return cachedModel;
-  }
-  cachedModel = ${getModelCall}<${entityArg}MongoDoc>(
-    ${entityArg}CollectionName,
-    ${entityArg}MongoSchema
-  );
-  return cachedModel;
-};
+/** ${entityArg} MongoDB 纯声明式集合定义（零导入副作用，由 MongoRepositoryBase 构造期自动绑定 Model）。 */
+export const ${collectionVarName} = defineMongoCollection<${entityArg}MongoDoc>({
+  name: ${entityArg}CollectionName,
+  datasource: '${datasource}',
+  schema: ${entityArg}MongoSchema,
+  indexes: [
+    // TODO: 从原 schema.ts 完整迁入全部存量索引（存量索引保留原名不重建；新增索引统一采用 fg_ 前缀）
+    { key: { teamId: 1 } }
+  ]
+});
 `;
 
 const mongoRepoContent = `import { createEntityId, isValidEntityId } from '@fastgpt/global/common/string/entityId';
 import { MongoRepositoryBase } from '@fastgpt/dal/db/mongo/base';
+import type { DbRuntime } from '@fastgpt/dal/db/runtime';
 import type { DbSession } from '@fastgpt/dal/db/types';
 import {
   Create${entityArg}WriteSchema,
@@ -166,18 +167,19 @@ import {
   type Create${entityArg}WriteInput,
   type ${entityArg}Repository
 } from '../repo.type';
-import { ${entityArg}CollectionName, ${modelFnName} } from './schema';
+import { ${collectionVarName}, type ${entityArg}MongoDoc } from './schema';
 
-/** ${entityArg} 仓储的 MongoDB 策略实现。 */
+/** ${entityArg} 仓储的 MongoDB 策略实现（构造期由父类自动绑定当前 DbRuntime 的 readonly model）。 */
 export class Mongo${entityArg}Repository
-  extends MongoRepositoryBase<typeof ${entityArg}DomainReadSchema>
+  extends MongoRepositoryBase<${entityArg}MongoDoc, typeof ${entityArg}DomainReadSchema>
   implements ${entityArg}Repository
 {
-  protected readonly tableName = ${entityArg}CollectionName;
-  protected readonly readSchema = ${entityArg}DomainReadSchema;
-
-  private get model() {
-    return ${modelFnName}();
+  constructor(runtime?: DbRuntime) {
+    super({
+      collection: ${collectionVarName},
+      readSchema: ${entityArg}DomainReadSchema,
+      runtime
+    });
   }
 
   async findById({ id, teamId, tx }: { id: string; teamId: string; tx?: DbSession }) {
@@ -234,7 +236,7 @@ export type ${entityArg}Database = {
   ${tableArg}: ${entityArg}SqlRow;
 };
 
-/** 跨 PostgreSQL 与 OceanBase/MySQL 可移植的 ${entityArg} 表定义（纯 B-Tree 索引）。 */
+/** 跨 OceanBase/MySQL 与 PostgreSQL 可移植的 ${entityArg} 表定义（纯 B-Tree、\`fg_\` 命名规范）。 */
 export const ${camelEntity}SqlTable = defineSqlTable({
   name: '${tableArg}',
   columns: {
@@ -250,7 +252,7 @@ export const ${camelEntity}SqlTable = defineSqlTable({
     }
   },
   indexes: [
-    { name: 'idx_${tableArg}_team', columns: ['team_id'] }
+    { name: '${sqlTeamIndexName}', columns: ['team_id'] }
   ]
 });
 `;
@@ -381,7 +383,7 @@ import { Sql${entityArg}Repository } from './sql/repo';
 export const ${entityArg}RepoToken = defineLogRepoToken<${entityArg}Repository>(
   '${entityArg}Repository',
   {
-    mongo: () => new Mongo${entityArg}Repository(),
+    mongo: (runtime) => new Mongo${entityArg}Repository(runtime),
     sql: () => new Sql${entityArg}Repository(),
     noop: () => new Noop${entityArg}Repository()
   }
@@ -392,20 +394,28 @@ import type { ${entityArg}Repository } from './repo.type';
 import { Mongo${entityArg}Repository } from './mongo/repo';
 import { Sql${entityArg}Repository } from './sql/repo';
 
-/** ${entityArg} 仓储 DI Token（按运行时自动路由至 Mongo 或通用 SQL 实现）。 */
+/** ${entityArg} 仓储 DI Token（按运行时自动路由至 Mongo 或通用 SQL 实现，构造期透传 DbRuntime）。 */
 export const ${entityArg}RepoToken = defineRepoToken<${entityArg}Repository>(
   '${entityArg}Repository',
   {
-    mongo: () => new Mongo${entityArg}Repository(),
+    mongo: (runtime) => new Mongo${entityArg}Repository(runtime),
     sql: () => new Sql${entityArg}Repository()
   }
 );
 `;
 
+const repoPublicImportPrefix = isDalRepoDir
+  ? `@fastgpt/dal/${domainRel.slice('packages/dal/'.length)}`
+  : domainRel.startsWith('packages/service/')
+    ? `@fastgpt/service/${domainRel.slice('packages/service/'.length)}`
+    : `@/${domainRel.replace(/^projects\/app\/src\/|^pro\/admin\/src\//, '')}`;
+
+const serviceRepoImportPrefix = isDalRepoDir ? repoPublicImportPrefix : '.';
+
 const serviceContent = `import { injectRepo } from '@fastgpt/dal/db/container';
 import type { DbSession } from '@fastgpt/dal/db/types';
-import { ${entityArg}RepoToken } from './repo';
-import type { Create${entityArg}WriteInput, ${entityArg}Repository } from './repo.type';
+import { ${entityArg}RepoToken } from '${serviceRepoImportPrefix}/repo';
+import type { Create${entityArg}WriteInput, ${entityArg}Repository } from '${serviceRepoImportPrefix}/repo.type';
 
 export type ${entityArg}ServiceDeps = {
   ${camelEntity}Repo?: ${entityArg}Repository;
@@ -431,29 +441,36 @@ export class ${entityArg}Service {
 export const ${camelEntity}Service = new ${entityArg}Service();
 `;
 
-const domainImportPrefix = domainRel.startsWith('packages/service/')
-  ? `@fastgpt/service/${domainRel.slice('packages/service/'.length)}`
-  : `@/${domainRel.replace(/^projects\/app\/src\/|^pro\/admin\/src\//, '')}`;
+const serviceImportPrefix =
+  serviceRelDir !== undefined
+    ? serviceRelDir.startsWith('packages/service/')
+      ? `@fastgpt/service/${serviceRelDir.slice('packages/service/'.length)}`
+      : `@/${serviceRelDir.replace(/^projects\/app\/src\/|^pro\/admin\/src\//, '')}`
+    : repoPublicImportPrefix;
+
+const contractInternalImportBase = isDalRepoDir
+  ? path.posix.relative(testBaseDir, domainRel)
+  : repoPublicImportPrefix;
 
 const contractTestContent = `import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createEntityId } from '@fastgpt/global/common/string/entityId';
 import { injectRepo } from '@fastgpt/dal/db/container';
-import { closeDbRuntime } from '@fastgpt/dal/db/runtime';
 import { compileSqlTableDDL } from '@fastgpt/dal/db/sql/ddl';
 import {
+  createMongoTestHarness,
   createPGliteSqlTestHarness,
   registerDualDialectContractSuite,
+  type MongoTestHarness,
   type SqlTestHarness
 } from '@fastgpt/dal/db/testing';
 import { runInTransaction } from '@fastgpt/dal/db/transaction';
-import { configureMongoDalRuntime } from '@fastgpt/service/common/mongo/dalRuntime';
-import { ${modelFnName} } from '${domainImportPrefix}/mongo/schema';${
+import { ${entityArg}RepoToken } from '${repoPublicImportPrefix}/repo';
+import { ${collectionVarName} } from '${contractInternalImportBase}/mongo/schema';${
   datasource === 'log'
-    ? `\nimport { Noop${entityArg}Repository } from '${domainImportPrefix}/noop/repo';`
+    ? `\nimport { Noop${entityArg}Repository } from '${contractInternalImportBase}/noop/repo';`
     : ''
 }
-import { ${entityArg}RepoToken } from '${domainImportPrefix}/repo';
-import { ${camelEntity}SqlTable } from '${domainImportPrefix}/sql/table';
+import { ${camelEntity}SqlTable } from '${contractInternalImportBase}/sql/table';
 
 describe('${entityArg} portable SQL DDL (OceanBase/MySQL + PostgreSQL)', () => {
   it('compiles cleanly for OceanBase/MySQL (P0) and PostgreSQL (P1)', () => {
@@ -484,6 +501,7 @@ describe('${entityArg}Repository tri-state logMode & Noop fallback', () => {
     : ''
 }
 describe('${entityArg}Repository multi-dialect contract', () => {
+  let mongoHarness: MongoTestHarness | undefined;
   let sqlHarness: SqlTestHarness | undefined;
 
   registerDualDialectContractSuite({
@@ -496,22 +514,17 @@ describe('${entityArg}Repository multi-dialect contract', () => {
         label: 'MongoDB',
         dialect: 'mongo',
         setup: async () => {
-          await closeDbRuntime();
-          const uri = process.env.MONGODB_URI ?? 'mongodb://127.0.0.1:27017/test';
-          configureMongoDalRuntime({
-            mainWriteUrl: uri${
-              datasource === 'log' ? ',\n            logWriteUrl: uri' : ''
+          mongoHarness = await createMongoTestHarness({
+            ${datasource === 'log' ? 'collections: [],\n            logCollections: [' : 'collections: ['}${collectionVarName}]${
+              datasource === 'log' ? ",\n            logMode: 'separate'" : ''
             }
           });
-          await ${modelFnName}()
-            .createCollection()
-            .catch(() => undefined);
         },
         cleanupEach: async () => {
-          await ${modelFnName}().deleteMany({});
+          await mongoHarness?.clearAll();
         },
         teardown: async () => {
-          await closeDbRuntime();
+          await mongoHarness?.close();
         }
       },
       {
@@ -520,7 +533,7 @@ describe('${entityArg}Repository multi-dialect contract', () => {
         setup: async () => {
           sqlHarness = await createPGliteSqlTestHarness({
             ${datasource === 'log' ? 'tables: [],\n            logTables: [' : 'tables: ['}${camelEntity}SqlTable]${
-              datasource === 'log' ? ',\n            withLogDatabase: true' : ''
+              datasource === 'log' ? ",\n            logMode: 'separate'" : ''
             }
           });
         },
@@ -594,8 +607,8 @@ describe('${entityArg}Repository multi-dialect contract', () => {
 
 const serviceTestContent = `import { describe, expect, it, vi } from 'vitest';
 import { createEntityId } from '@fastgpt/global/common/string/entityId';
-import type { ${entityArg}DomainDTO, ${entityArg}Repository } from '${domainImportPrefix}/repo.type';
-import { ${entityArg}Service } from '${domainImportPrefix}/service';
+import type { ${entityArg}DomainDTO, ${entityArg}Repository } from '${repoPublicImportPrefix}/repo.type';
+import { ${entityArg}Service } from '${serviceImportPrefix}/service';
 
 /**
  * L0 纯内存 Service 单测（零数据库、零 vi.mock 模块劫持）。
@@ -630,14 +643,22 @@ describe('${entityArg}Service unit', () => {
 
 const testRel = computeContractTestPath();
 const serviceTestRel = computeServiceTestPath();
-const serviceRelPath = `${domainRel}/service.ts`;
-const serviceAlreadyExists = fs.existsSync(path.resolve(repoRoot, serviceRelPath));
-const serviceTestAlreadyExists = fs.existsSync(path.resolve(repoRoot, serviceTestRel));
-const shouldEmitService = !noService && (force || !serviceAlreadyExists);
+const serviceRelPath = serviceRelDir !== undefined ? `${serviceRelDir}/service.ts` : undefined;
+const serviceAlreadyExists =
+  serviceRelPath !== undefined && fs.existsSync(path.resolve(repoRoot, serviceRelPath));
+const serviceTestAlreadyExists =
+  serviceTestRel !== undefined && fs.existsSync(path.resolve(repoRoot, serviceTestRel));
+const shouldEmitService =
+  !noService && serviceRelPath !== undefined && (force || !serviceAlreadyExists);
 // 仅在本次新建配套 service.ts 时才生成对应模板单测，避免原位保留旧 service.ts 时导入不存在的新类导致报错
-const shouldEmitServiceTest = shouldEmitService && (force || !serviceTestAlreadyExists);
+const shouldEmitServiceTest =
+  shouldEmitService && serviceTestRel !== undefined && (force || !serviceTestAlreadyExists);
 const skippedServiceTestDueToExistingService =
-  !noService && !shouldEmitService && !serviceTestAlreadyExists;
+  !noService &&
+  serviceRelPath !== undefined &&
+  !shouldEmitService &&
+  serviceTestRel !== undefined &&
+  !serviceTestAlreadyExists;
 
 const filesToCreate = [
   { relPath: `${domainRel}/repo.type.ts`, content: repoTypeContent },

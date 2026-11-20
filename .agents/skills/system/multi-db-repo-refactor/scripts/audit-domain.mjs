@@ -235,10 +235,13 @@ if (hasFlag('--status')) {
   const migratedSchemas = allSchemas.filter((s) => s.isMigrated);
   const outOfScopeSchemas = allSchemas.filter((s) => !s.isMigrated && s.mongoLegacyOnly);
   const pendingSchemas = allSchemas.filter((s) => !s.isMigrated && !s.mongoLegacyOnly);
-  const tokenHitsRaw = runRg(
-    ['-l', 'define(?:Log)?RepoToken\\s*[<(]', 'packages/service', 'pro/admin/src', '--glob', '*.ts'],
-    repoRoot
+  const tokenRoots = ['packages/dal/db/repos', 'packages/service', 'pro/admin/src'].filter((d) =>
+    fs.existsSync(path.join(repoRoot, d))
   );
+  const tokenHitsRaw =
+    tokenRoots.length > 0
+      ? runRg(['-l', 'define(?:Log)?RepoToken\\s*[<(]', ...tokenRoots, '--glob', '*.ts'], repoRoot)
+      : '';
   const migratedRepoTokens = tokenHitsRaw ? tokenHitsRaw.split('\n').filter(Boolean) : [];
 
   const areaCounts = new Map();
@@ -393,7 +396,10 @@ const target = (() => {
       relPath: normalized,
       isMigrated: normalized.endsWith('/mongo/schema.ts'),
       mongoLegacyOnly: OUT_OF_SQL_SCOPE_SCHEMAS.has(normalized),
-      datasource: /\bgetMongoLogModel\b/.test(content) ? 'log' : 'main',
+      datasource:
+        /\bgetMongoLogModel\b/.test(content) || /\bdatasource\s*:\s*['"]log['"]/.test(content)
+          ? 'log'
+          : 'main',
       hasSoftDelete: /\bdeleteTime\b/.test(content),
       hasTtl: /\bexpireAfterSeconds\b|\bexpires\s*:/.test(content),
       indexes: extractDefineIndexes(content, { repoRoot, sourceRelPath: normalized }),

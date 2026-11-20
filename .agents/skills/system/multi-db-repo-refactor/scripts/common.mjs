@@ -54,6 +54,9 @@ export const OUT_OF_SQL_SCOPE_SCHEMAS = new Set(['packages/service/core/dataset/
 /** 根据领域源码目录推导标准测试目录；未知前缀返回 undefined。 */
 export const inferDomainTestDir = (domainRel) => {
   const normalized = toPosixPath(domainRel).replace(/^\.\//, '').replace(/\/$/, '');
+  if (normalized.startsWith('packages/dal/')) {
+    return `packages/dal/test/${normalized.slice('packages/dal/'.length)}`;
+  }
   if (normalized.startsWith('packages/service/')) {
     return `packages/service/test/${normalized.slice('packages/service/'.length)}`;
   }
@@ -963,6 +966,7 @@ const extractSchemaCollectionBindings = ({ sourceText, repoRoot, sourceRelPath, 
   const declaredSchemas = new Set();
   const schemaToCollection = new Map();
   const modelRegistrations = [];
+  const collectionDefinitions = [];
   const ownershipErrors = [];
 
   for (const match of clean.matchAll(
@@ -1104,6 +1108,104 @@ const extractSchemaCollectionBindings = ({ sourceText, repoRoot, sourceRelPath, 
     });
   }
 
+  // 解析新版纯声明式 defineMongoCollection({ name, datasource, schema, indexes }) 绑定关系
+  for (const match of clean.matchAll(/\bdefineMongoCollection\b/g)) {
+    let cursor = match.index + match[0].length;
+    while (cursor < clean.length && /\s/.test(clean[cursor])) {
+      cursor += 1;
+    }
+    if (clean[cursor] === '<') {
+      const genericSeg = scanBalancedSegment(clean, {
+        startIdx: cursor,
+        openChar: '<',
+        closeChar: '>'
+      });
+      if (genericSeg === null) {
+        continue;
+      }
+      cursor = genericSeg.endIdx + 1;
+      while (cursor < clean.length && /\s/.test(clean[cursor])) {
+        cursor += 1;
+      }
+    }
+    if (clean[cursor] !== '(') {
+      continue;
+    }
+    const callSeg = scanBalancedSegment(clean, {
+      startIdx: cursor,
+      openChar: '(',
+      closeChar: ')'
+    });
+    if (callSeg === null) {
+      continue;
+    }
+
+    const argExpr = stripTsAssertion(callSeg.inner.trim());
+    if (!argExpr.startsWith('{') || !argExpr.endsWith('}')) {
+      ownershipErrors.push(
+        `defineMongoCollection call must pass an inline object literal (found "${argExpr.slice(0, 60)}")`
+      );
+      continue;
+    }
+
+    const propEntries = new Map(
+      splitTopLevelComma(argExpr.slice(1, -1)).map((entry) => {
+        const colonIdx = findTopLevelColon(entry);
+        if (colonIdx === -1) return [entry.trim(), entry.trim()];
+        return [
+          unquoteString(entry.slice(0, colonIdx)) ?? entry.slice(0, colonIdx).trim(),
+          entry.slice(colonIdx + 1).trim()
+        ];
+      })
+    );
+
+    const nameExpr = stripTsAssertion(propEntries.get('name') ?? '');
+    const schemaExpr = stripTsAssertion(propEntries.get('schema') ?? '');
+    const indexesExpr = stripTsAssertion(propEntries.get('indexes') ?? '');
+
+    const resolvedCol = resolveStringTemplateExpr({
+      expr: nameExpr,
+      localStringConsts,
+      resolvedImportedStrings
+    });
+    if (resolvedCol === null || resolvedCol.length === 0) {
+      ownershipErrors.push(
+        `Cannot resolve static collection name "${nameExpr}" in defineMongoCollection(...)`
+      );
+      continue;
+    }
+
+    const schemaVar = IDENTIFIER_REGEX.test(schemaExpr) ? schemaExpr : null;
+    if (schemaVar !== null) {
+      const prevCol = schemaToCollection.get(schemaVar);
+      if (prevCol !== undefined && prevCol !== resolvedCol) {
+        ownershipErrors.push(
+          `Schema "${schemaVar}" is registered to multiple collections ("${prevCol}" and "${resolvedCol}")`
+        );
+        continue;
+      }
+      schemaToCollection.set(schemaVar, resolvedCol);
+      modelRegistrations.push({
+        schemaVar,
+        collection: resolvedCol,
+        callIndex: match.index
+      });
+    } else {
+      modelRegistrations.push({
+        schemaVar: resolvedCol,
+        collection: resolvedCol,
+        callIndex: match.index
+      });
+    }
+
+    collectionDefinitions.push({
+      collection: resolvedCol,
+      schemaVar,
+      indexesExpr,
+      raw: clean.slice(match.index, callSeg.endIdx + 1)
+    });
+  }
+
   // 严格按精确语句边界和包含该注册调用的最内层函数作用域绑定 Model/Getter 符号，禁止跨相邻声明猜测
   const functionScopes = extractNamedFunctionScopes(clean);
   const modelSymbolToCollection = new Map();
@@ -1183,7 +1285,105 @@ const extractSchemaCollectionBindings = ({ sourceText, repoRoot, sourceRelPath, 
     declaredSchemas: [...declaredSchemas],
     schemaToCollection,
     modelRegistrations,
+    collectionDefinitions,
     ownershipErrors
+  };
+};
+
+/** 将单条索引定义对象（`{ key, options?, deprecated? }`）归一化为可精确对比的签名记录。 */
+const buildNormalizedIndexRecord = ({ schemaVar, collection, defArg, raw }) => {
+  const trimmed = stripTsAssertion(defArg.trim());
+  const defEntries =
+    trimmed.startsWith('{') && trimmed.endsWith('}')
+      ? new Map(
+          splitTopLevelComma(trimmed.slice(1, -1)).map((entry) => {
+            const colonIdx = findTopLevelColon(entry);
+            if (colonIdx === -1) return [entry.trim(), entry.trim()];
+            return [
+              unquoteString(entry.slice(0, colonIdx)) ?? entry.slice(0, colonIdx).trim(),
+              entry.slice(colonIdx + 1).trim()
+            ];
+          })
+        )
+      : new Map();
+
+  const keyRaw = defEntries.get('key');
+  const parsedKey =
+    keyRaw !== undefined ? parseJsValue(keyRaw, { preserveKeyOrder: true }) : undefined;
+  const keyEntries = Array.isArray(parsedKey) ? parsedKey : null;
+
+  const optionsRaw = defEntries.get('options');
+  const parsedOptions =
+    optionsRaw !== undefined ? parseJsValue(optionsRaw, { preserveKeyOrder: false }) : {};
+  const optionsObj =
+    parsedOptions !== null && typeof parsedOptions === 'object' && !Array.isArray(parsedOptions)
+      ? parsedOptions
+      : { raw: parsedOptions };
+
+  const deprecatedRaw = defEntries.get('deprecated');
+  const deprecated = deprecatedRaw !== undefined && parseJsValue(deprecatedRaw) === true;
+
+  const explicitName = (() => {
+    if (typeof optionsObj.name === 'string') return optionsObj.name;
+    if (optionsObj.name && typeof optionsObj.name === 'object' && 'expr' in optionsObj.name) {
+      return optionsObj.name.expr;
+    }
+    return undefined;
+  })();
+  const derivedName =
+    keyEntries !== null
+      ? keyEntries.map(([field, order]) => `${field}_${formatKeyValueToken(order)}`).join('_')
+      : undefined;
+  const resolvedName = explicitName ?? derivedName;
+
+  const criticalOptions = {};
+  for (const optKey of CRITICAL_INDEX_OPTION_KEYS) {
+    if (!(optKey in optionsObj)) {
+      continue;
+    }
+    const val = optionsObj[optKey];
+    // MongoDB 中 unique: false / sparse: false / hidden: false 等同于未传该选项。
+    if ((optKey === 'unique' || optKey === 'sparse' || optKey === 'hidden') && val === false) {
+      continue;
+    }
+    if (optKey === 'expires' && val !== undefined) {
+      const normalizedSeconds = parseExpiresDurationSeconds(val);
+      if (normalizedSeconds !== null && !('expireAfterSeconds' in criticalOptions)) {
+        criticalOptions.expireAfterSeconds = normalizedSeconds;
+      } else {
+        criticalOptions.expires = val;
+      }
+      continue;
+    }
+    if (val !== undefined) {
+      criticalOptions[optKey] = val;
+    }
+  }
+
+  const orderedCriticalOptions = Object.fromEntries(
+    Object.entries(criticalOptions).sort(([a], [b]) => a.localeCompare(b))
+  );
+
+  const keySummary = keyRaw ? keyRaw.replace(/\s+/g, ' ').trim() : '(complex)';
+  const signature = JSON.stringify({
+    deprecated,
+    name: resolvedName ?? null,
+    key: keyEntries ?? (parsedKey !== undefined ? parsedKey : keySummary),
+    options: orderedCriticalOptions
+  });
+
+  return {
+    schemaVar,
+    collection,
+    deprecated,
+    name: resolvedName,
+    explicitName,
+    derivedName,
+    keySummary,
+    keyEntries,
+    criticalOptions: orderedCriticalOptions,
+    signature,
+    raw
   };
 };
 
@@ -1292,107 +1492,47 @@ export const analyzeSchemaIndexes = ({ sourceText, repoRoot, sourceRelPath, gitR
     const collection = schemaVar !== null ? (bindings.schemaToCollection.get(schemaVar) ?? null) : null;
     const defArg = args[1]?.trim() ?? '';
 
-    const defEntries =
-      defArg.startsWith('{') && defArg.endsWith('}')
-        ? new Map(
-            splitTopLevelComma(defArg.slice(1, -1))
-              .map((entry) => {
-                const colonIdx = findTopLevelColon(entry);
-                if (colonIdx === -1) return [entry.trim(), entry.trim()];
-                return [
-                  unquoteString(entry.slice(0, colonIdx)) ?? entry.slice(0, colonIdx).trim(),
-                  entry.slice(colonIdx + 1).trim()
-                ];
-              })
-          )
-        : new Map();
-
-    const keyRaw = defEntries.get('key');
-    const parsedKey =
-      keyRaw !== undefined ? parseJsValue(keyRaw, { preserveKeyOrder: true }) : undefined;
-    const keyEntries = Array.isArray(parsedKey) ? parsedKey : null;
-
-    const optionsRaw = defEntries.get('options');
-    const parsedOptions =
-      optionsRaw !== undefined ? parseJsValue(optionsRaw, { preserveKeyOrder: false }) : {};
-    const optionsObj =
-      parsedOptions !== null && typeof parsedOptions === 'object' && !Array.isArray(parsedOptions)
-        ? parsedOptions
-        : { raw: parsedOptions };
-
-    const deprecatedRaw = defEntries.get('deprecated');
-    const deprecated = deprecatedRaw !== undefined && parseJsValue(deprecatedRaw) === true;
-
-    const explicitName = (() => {
-      if (typeof optionsObj.name === 'string') return optionsObj.name;
-      if (optionsObj.name && typeof optionsObj.name === 'object' && 'expr' in optionsObj.name) {
-        return optionsObj.name.expr;
-      }
-      return undefined;
-    })();
-    const derivedName =
-      keyEntries !== null
-        ? keyEntries.map(([field, order]) => `${field}_${formatKeyValueToken(order)}`).join('_')
-        : undefined;
-    const resolvedName = explicitName ?? derivedName;
-
-    const criticalOptions = {};
-    for (const optKey of CRITICAL_INDEX_OPTION_KEYS) {
-      if (!(optKey in optionsObj)) {
-        continue;
-      }
-      const val = optionsObj[optKey];
-      // MongoDB 中 unique: false / sparse: false / hidden: false 等同于未传该选项。
-      if ((optKey === 'unique' || optKey === 'sparse' || optKey === 'hidden') && val === false) {
-        continue;
-      }
-      if (optKey === 'expires' && val !== undefined) {
-        const normalizedSeconds = parseExpiresDurationSeconds(val);
-        if (normalizedSeconds !== null && !('expireAfterSeconds' in criticalOptions)) {
-          criticalOptions.expireAfterSeconds = normalizedSeconds;
-        } else {
-          criticalOptions.expires = val;
-        }
-        continue;
-      }
-      if (val !== undefined) {
-        criticalOptions[optKey] = val;
-      }
-    }
-
-    const orderedCriticalOptions = Object.fromEntries(
-      Object.entries(criticalOptions).sort(([a], [b]) => a.localeCompare(b))
+    results.push(
+      buildNormalizedIndexRecord({
+        schemaVar,
+        collection,
+        defArg,
+        raw: block
+      })
     );
 
-    const keySummary = keyRaw ? keyRaw.replace(/\s+/g, ' ').trim() : '(complex)';
-    const signature = JSON.stringify({
-      deprecated,
-      name: resolvedName ?? null,
-      key: keyEntries ?? (parsedKey !== undefined ? parsedKey : keySummary),
-      options: orderedCriticalOptions
-    });
-
-    results.push({
-      schemaVar,
-      collection,
-      deprecated,
-      name: resolvedName,
-      explicitName,
-      derivedName,
-      keySummary,
-      keyEntries,
-      criticalOptions: orderedCriticalOptions,
-      signature,
-      raw: block
-    });
-
     i = end + 1;
+  }
+
+  // 解析 defineMongoCollection({ indexes: [...] }) 中声明的索引条目
+  for (const colDef of bindings.collectionDefinitions) {
+    if (!colDef.indexesExpr || colDef.indexesExpr.length === 0) {
+      continue;
+    }
+    if (!colDef.indexesExpr.startsWith('[') || !colDef.indexesExpr.endsWith(']')) {
+      ownershipErrors.push(
+        `defineMongoCollection("${colDef.collection}") indexes must be a static array literal for verification`
+      );
+      continue;
+    }
+    const items = splitTopLevelComma(colDef.indexesExpr.slice(1, -1));
+    for (const item of items) {
+      results.push(
+        buildNormalizedIndexRecord({
+          schemaVar: colDef.schemaVar,
+          collection: colDef.collection,
+          defArg: item,
+          raw: item
+        })
+      );
+    }
   }
 
   return {
     indexes: results,
     declaredSchemas: bindings.declaredSchemas,
     modelRegistrations: bindings.modelRegistrations,
+    collectionDefinitions: bindings.collectionDefinitions,
     ownershipErrors
   };
 };
@@ -1406,7 +1546,8 @@ export const extractDefineIndexes = (sourceText, options = {}) =>
 
 const srcCharNotNewline = (ch) => ch !== '\n';
 
-const MONGO_MODEL_REG_REGEX = /\b(?:getMongo(?:Log)?Model|connection(?:Log)?Mongo\.model|mongoose\.model)\b/;
+const MONGO_MODEL_REG_REGEX =
+  /\b(?:defineMongoCollection|getMongo(?:Log)?Model|connection(?:Log)?Mongo\.model|mongoose\.model)\b/;
 const STANDARD_DOMAIN_FILES = new Set([
   'repo.ts',
   'repo.type.ts',
@@ -1420,7 +1561,7 @@ const STANDARD_DOMAIN_FILES = new Set([
   'index.ts'
 ]);
 
-/** 从 Schema 源码中提取导出的 Mongoose Model 标识符或惰性工厂函数名。 */
+/** 从 Schema 源码中提取导出的 Mongoose Model / 集合描述符 / 惰性工厂函数名。 */
 export const extractExportedModelNames = (content) => {
   const clean = stripCommentsPreserveStrings(content);
   const matches = new Set([
@@ -1431,7 +1572,7 @@ export const extractExportedModelNames = (content) => {
     ].map((m) => m[1]),
     ...[
       ...clean.matchAll(
-        /export\s+(?:const|let|function)\s+([A-Za-z_][A-Za-z0-9_]*)\s*=[\s\S]{0,80}?\bgetMongo(?:Log)?Model\b/g
+        /export\s+(?:const|let|function)\s+([A-Za-z_][A-Za-z0-9_]*)\s*=[\s\S]{0,80}?\b(?:getMongo(?:Log)?Model|defineMongoCollection)\b/g
       )
     ].map((m) => m[1]),
     ...[...clean.matchAll(/export\s+(?:const|function)\s+(get[A-Z][A-Za-z0-9_]*)\b/g)]
@@ -1474,7 +1615,12 @@ export const findSiblingLegacySchemas = (repoRoot, domainDirAbs) => {
   return legacyRelPaths.sort();
 };
 
-/** 检查全局 WIP=1 锁：查找同时存在 `mongo/schema.ts` 与同目录旧版 Mongo Schema/Model 文件的未合龙域。 */
+/**
+ * 检查全局 WIP=1 锁：
+ * 1. 同目录同时存在 `mongo/schema.ts` 与旧版 Mongo Schema/Model 文件；
+ * 2. 或 `packages/dal/db/repos/<domain>/mongo/schema.ts` 已落地，但 `packages/service`/`pro/admin/src`
+ *    中仍残留注册同一集合名的未删旧 Schema 文件。
+ */
 export const findWipIncompleteDomains = (repoRoot) => {
   const roots = [
     path.join(repoRoot, 'packages/service'),
@@ -1498,12 +1644,73 @@ export const findWipIncompleteDomains = (repoRoot) => {
     }
   }
 
+  // 跨包 WIP 检测：若 DAL 已迁移某集合但 service/pro 中仍有注册同一集合名的旧 Schema 未删
+  const dalReposRoot = path.join(repoRoot, 'packages/dal/db/repos');
+  const dalSchemas = walkFiles(dalReposRoot, (f) => toPosixPath(f).endsWith('/mongo/schema.ts'));
+  if (dalSchemas.length > 0) {
+    const legacyCollectionToFiles = new Map();
+    for (const base of roots) {
+      const candidateFiles = walkFiles(base, (f) => {
+        if (!f.endsWith('.ts')) return false;
+        const rel = toPosixPath(path.relative(repoRoot, f));
+        if (
+          isTestOrMigrationFile(rel) ||
+          rel.startsWith('packages/service/common/mongo/') ||
+          rel.endsWith('/mongo/schema.ts')
+        ) {
+          return false;
+        }
+        return /schema[^/]*\.ts$/i.test(path.basename(f));
+      });
+      for (const legacyAbs of candidateFiles) {
+        const legacyRel = toPosixPath(path.relative(repoRoot, legacyAbs));
+        const raw = fs.readFileSync(legacyAbs, 'utf8');
+        const analysis = analyzeSchemaIndexes({
+          sourceText: raw,
+          repoRoot,
+          sourceRelPath: legacyRel
+        });
+        for (const reg of analysis.modelRegistrations) {
+          if (!legacyCollectionToFiles.has(reg.collection)) {
+            legacyCollectionToFiles.set(reg.collection, new Set());
+          }
+          legacyCollectionToFiles.get(reg.collection).add(legacyRel);
+        }
+      }
+    }
+
+    for (const dalSchemaAbs of dalSchemas) {
+      const dalSchemaRel = toPosixPath(path.relative(repoRoot, dalSchemaAbs));
+      const domainDirAbs = path.dirname(path.dirname(dalSchemaAbs));
+      const raw = fs.readFileSync(dalSchemaAbs, 'utf8');
+      const analysis = analyzeSchemaIndexes({
+        sourceText: raw,
+        repoRoot,
+        sourceRelPath: dalSchemaRel
+      });
+      const matchedLegacy = new Set();
+      for (const reg of analysis.modelRegistrations) {
+        for (const file of legacyCollectionToFiles.get(reg.collection) ?? []) {
+          matchedLegacy.add(file);
+        }
+      }
+      if (matchedLegacy.size > 0) {
+        wipDomains.push({
+          dir: toPosixPath(path.relative(repoRoot, domainDirAbs)),
+          mongoSchema: dalSchemaRel,
+          legacySchemas: [...matchedLegacy].sort()
+        });
+      }
+    }
+  }
+
   return wipDomains;
 };
 
-/** 发现全仓尚未迁移或已迁移的 Mongo Schema 与导出 Model 清单（同时识别 schemaV2.ts、ttl.ts 等文件）。 */
+/** 发现全仓尚未迁移或已迁移的 Mongo Schema 与导出 Model 清单（同时识别 packages/dal/db/repos、schemaV2.ts、ttl.ts 等文件）。 */
 export const discoverMongoSchemas = (repoRoot) => {
   const roots = [
+    path.join(repoRoot, 'packages/dal/db/repos'),
     path.join(repoRoot, 'packages/service'),
     path.join(repoRoot, 'pro/admin/src')
   ];
@@ -1535,7 +1742,10 @@ export const discoverMongoSchemas = (repoRoot) => {
         continue;
       }
 
-      const datasource = /\bgetMongoLogModel\b/.test(clean) ? 'log' : 'main';
+      const datasource =
+        /\bgetMongoLogModel\b/.test(clean) || /\bdatasource\s*:\s*['"]log['"]/.test(clean)
+          ? 'log'
+          : 'main';
       const indexes = extractDefineIndexes(content, { repoRoot, sourceRelPath: relPath });
       const hasSoftDelete = /\bdeleteTime\b/.test(clean);
       const hasTtl = /\bexpireAfterSeconds\b|\bexpires\s*:/.test(clean);

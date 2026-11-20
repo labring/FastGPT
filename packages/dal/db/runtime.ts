@@ -12,6 +12,8 @@ import {
   type DbLogger,
   type DbMetrics,
   type DbTransactionRunner,
+  type MongoCollectionDescriptor,
+  type MongoModelBinder,
   type SqlExecutorResolver
 } from './types';
 
@@ -54,6 +56,7 @@ export type DbRuntimeConfig = {
   metrics?: DbMetrics;
   transactionRunner?: DbTransactionRunner;
   sqlExecutorResolver?: SqlExecutorResolver;
+  mongoModelBinder?: MongoModelBinder;
   healthChecker?: (datasource: DbDatasource) => Promise<void>;
   closeHandler?: () => Promise<void>;
 };
@@ -79,6 +82,7 @@ export class DbRuntime {
   private readonly metrics: DbMetrics;
   private transactionRunner?: DbTransactionRunner;
   private sqlExecutorResolver?: SqlExecutorResolver;
+  private mongoModelBinder?: MongoModelBinder;
   private readonly healthChecker?: (datasource: DbDatasource) => Promise<void>;
   private readonly closeHandler?: () => Promise<void>;
   private state: 'open' | 'closing' | 'closed' = 'open';
@@ -117,6 +121,7 @@ export class DbRuntime {
     this.metrics = config.metrics ?? {};
     this.transactionRunner = config.transactionRunner;
     this.sqlExecutorResolver = config.sqlExecutorResolver;
+    this.mongoModelBinder = config.mongoModelBinder;
     this.healthChecker = config.healthChecker;
     this.closeHandler = config.closeHandler;
   }
@@ -187,6 +192,34 @@ export class DbRuntime {
       );
     }
     return this.sqlExecutorResolver;
+  }
+
+  setMongoModelBinder(binder: MongoModelBinder): void {
+    this.mongoModelBinder = binder;
+  }
+
+  /**
+   * 按当前 `DbRuntime` 拓扑幂等绑定指定集合的 Mongo `Model`。
+   *
+   * 供 `MongoRepositoryBase` 在 `constructor` 内直接调用，消除模块级 `getMongoModel` / `let cachedModel`；
+   * 会自动按 `logMode` 将 `shared` 日志集合透明路由至 `main` 连接，并在 `disabled` 时抛错。
+   */
+  bindMongoModel<TDoc, TModel = unknown>(collection: MongoCollectionDescriptor<TDoc>): TModel {
+    if (this.family !== 'mongo') {
+      throw new DbConfigurationError(
+        `Cannot bind Mongo model "${collection.name}" when DbRuntime is configured for dialect "${this.dialect}"`
+      );
+    }
+    if (this.mongoModelBinder === undefined) {
+      throw new DbConfigurationError(
+        `Mongo model binder has not been registered for dialect "${this.dialect}"`
+      );
+    }
+    const effectiveDatasource = this.resolveEffectiveDatasource(collection.datasource);
+    return this.mongoModelBinder<TDoc, TModel>({
+      collection,
+      datasource: effectiveDatasource
+    });
   }
 
   /**

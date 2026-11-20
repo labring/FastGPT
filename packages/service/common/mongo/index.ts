@@ -1,4 +1,8 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import {
+  getSharedMongoConnection,
+  getSharedMongoLogConnection
+} from '@fastgpt/dal/db/mongo/runtime';
 import { isTestEnv } from '@fastgpt/global/common/system/constants';
 import { getLogger, LogCategories } from '../logger';
 import { isProfiling, recordMongoOperation } from '../profiling';
@@ -9,7 +13,7 @@ import type {
   Mongoose as MongooseType,
   PipelineStage
 } from 'mongoose';
-import mongoose, { Mongoose } from 'mongoose';
+import mongoose from 'mongoose';
 import { serviceEnv } from '../../env';
 import { MongoIndexManager } from './indexManager';
 
@@ -28,19 +32,10 @@ export type {
 export const MONGO_URL = serviceEnv.MONGODB_URI;
 export const MONGO_LOG_URL = serviceEnv.MONGODB_LOG_URI ?? serviceEnv.MONGODB_URI;
 
-export const connectionMongo = (() => {
-  if (!global.mongodb) {
-    global.mongodb = new Mongoose();
-  }
-  return global.mongodb;
-})();
+// 过渡期与 @fastgpt/dal/db/mongo/runtime 共享同一 Mongoose 物理实例，确保新旧模型事务共用 ClientSession。
+export const connectionMongo = getSharedMongoConnection();
 
-export const connectionLogMongo = (() => {
-  if (!global.mongodbLog) {
-    global.mongodbLog = new Mongoose();
-  }
-  return global.mongodbLog;
-})();
+export const connectionLogMongo = getSharedMongoLogConnection();
 
 const installedSchemas = new WeakSet<mongoose.Schema>();
 

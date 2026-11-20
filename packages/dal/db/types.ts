@@ -101,3 +101,16 @@ export type SqlExecutorResolver<TExecutor = unknown> = (params: {
   target: 'write' | 'readReplica';
   nativeTx?: unknown;
 }) => TExecutor;
+
+/** 驱动无关的 Mongo 集合描述符最小结构（避免 `types.ts` 直接耦合 `mongoose`）。 */
+export type MongoCollectionDescriptor<TDoc = Record<string, unknown>> = {
+  readonly name: string;
+  readonly datasource: DbDatasource;
+  readonly _docType?: TDoc;
+};
+
+/** 由 Mongo 运行时注入的幂等 Model 绑定器，供 `MongoRepositoryBase` 在 `constructor` 中调用。 */
+export type MongoModelBinder = <TDoc, TModel = unknown>(params: {
+  collection: MongoCollectionDescriptor<TDoc>;
+  datasource: DbDatasource;
+}) => TModel;

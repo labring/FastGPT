@@ -76,7 +76,7 @@ flowchart TD
    - `@fastgpt/service` 已直接依赖 `@fastgpt/dal`，**新迁移领域无需任何转发层**；极少数依赖 `service` 分词的能力（如 `FullTextStore` 的 `jiebaSplit`）由 `service` 层完成分词后传 token 或以 callback 注入 DAL；
    - 存量未迁移的 71 张旧表仍暂留于 `packages/service`，过渡期 `packages/service/common/mongo/index.ts` 直接复用 `@fastgpt/dal/db/mongo/runtime` 的同一份底层 `Mongoose` 连接实例（确保新旧混跑事务共享同一 `ClientSession`），严禁任何新代码引用；待 Phase 1 全部旧表迁入 DAL 后，整目录删除 `packages/service/common/mongo/`（与已删除的 `packages/service/common/redis/` 一致）。
 
-> **Phase 0 过渡说明**：首个最小试点 `AppRegistration` 在 Phase 0 暂落于 `packages/service/support/appRegistration/`，将在 TODO `0.5.2` 随 `MongoRuntime` 下沉同步迁入 `packages/dal/db/repos/appRegistration/` 与 `packages/dal/test/db/repos/appRegistration/`。
+> **Pilot 落地验证**：首个最小试点 `AppRegistration` 已完成全链路迁入 `packages/dal/db/repos/appRegistration/` 与 `packages/dal/test/db/repos/appRegistration/repo.contract.test.ts`，`packages/service/support/appRegistration/service.ts` 只通过 `@fastgpt/dal` 公开 `exports` 消费 Token 与 `repo.type`。
 
 ---
 
@@ -1047,11 +1047,11 @@ export class NoopAppChatLogRepository implements AppChatLogRepository {
 
 ### Phase 0.5：DAL 物理隔离收口、底座硬对齐与解耦迁移基建（Wave 1 前置）
 - [x] **0.5.1 日志数据源三态改造**：升级 `DbRuntime` / `defineLogRepoToken` / Mongo & SQL 运行时支持 `logMode: 'separate' | 'shared' | 'disabled'`，未配置独立日志库时默认 `shared` 复用 `main` 连接池（兼容默认单库部署），仅显式关闭时走 `Noop`。
-- [ ] **0.5.2 Mongo 连接下沉、构造期 Model 绑定与 `AppRegistration` 迁入 `@fastgpt/dal`**：
-  - [ ] 在 `packages/dal/db/mongo/` 实现 `runtime.ts`（接管唯一主/日志 `Mongoose` 连接池、`autoIndex: false`、独立 DDL 连接、`bindMongoModel` 幂等缓存与统一慢查询/Profiling 回调）与 `collection.ts`（纯声明式 `defineMongoCollection`，接收原生 `Schema` 并拦截内联 `index: true / unique: true`）；
-  - [ ] 升级 `MongoRepositoryBase` 在 `constructor({ collection, readSchema, runtime })` 自动构出 `readonly model`，`defineRepoToken` 透传 `runtime`；
-  - [ ] `packages/service/common/mongo/index.ts` 改为直接复用 DAL 的同一 `Mongoose` 实例（仅服务未迁旧表，不做新代码转发层）；
-  - [ ] 将 `AppRegistration` 的 `repo.type.ts`、`repo.ts`、`mongo/`、`sql/`（索引命名改为 `fg_app_reg_team`）与 `repo.contract.test.ts` 迁入 `packages/dal/db/repos/appRegistration/` 与 `packages/dal/test/db/repos/appRegistration/`，并同步更新 `packages/dal/package.json` `exports`（严禁导出 `mongo/` 与 `sql/`）及 `multi-db-repo-refactor` Skill 脚本路径校验。
+- [x] **0.5.2 Mongo 连接下沉、构造期 Model 绑定与 `AppRegistration` 迁入 `@fastgpt/dal`**：
+  - [x] 在 `packages/dal/db/mongo/` 实现 `runtime.ts`（接管唯一主/日志 `Mongoose` 连接池、`autoIndex: false`、独立 DDL 连接、`bindMongoModel` 幂等缓存与统一慢查询/Profiling 回调）与 `collection.ts`（纯声明式 `defineMongoCollection`，接收原生 `Schema` 并拦截内联 `index: true / unique: true`）；
+  - [x] 升级 `MongoRepositoryBase` 在 `constructor({ collection, readSchema, runtime })` 自动构出 `readonly model`，`defineRepoToken` 透传 `runtime`；
+  - [x] `packages/service/common/mongo/index.ts` 改为直接复用 DAL 的同一 `Mongoose` 实例（仅服务未迁旧表，不做新代码转发层）；
+  - [x] 将 `AppRegistration` 的 `repo.type.ts`、`repo.ts`、`mongo/`、`sql/`（索引命名改为 `fg_app_reg_team`）与 `repo.contract.test.ts` 迁入 `packages/dal/db/repos/appRegistration/` 与 `packages/dal/test/db/repos/appRegistration/`，并同步更新 `packages/dal/package.json` `exports`（严禁导出 `mongo/` 与 `sql/`）及 `multi-db-repo-refactor` Skill 脚本路径校验。
 - [ ] **0.5.3 OceanBase / MySQL 底座硬对齐**：
   - [ ] `ddl.ts`：OB/MySQL 建表显式声明 `CHARSET=utf8mb4 COLLATE=utf8mb4_bin`；`SqlIndexDef` 补齐列排序方向（`asc`/`desc`）；`defineSqlTable` 增加静态校验（强制 `fg_` 前缀与 `<= 63B`、跨表索引名唯一、禁 `text`/`json` 默认值与普通索引、复合索引 `<= 3072` 字节）；
   - [ ] `mysql.ts` & `sql/base.ts`：`mysql2` 补齐 `charset: 'utf8mb4'` / `supportBigNumbers` / `bigNumberStrings`；`upsertRow` 禁用 `INSERT IGNORE`；新增 `orderByNullable` 与基于 `_id` 的 Keyset 游标分批迭代 helper；

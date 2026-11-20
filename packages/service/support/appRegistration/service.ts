@@ -1,8 +1,11 @@
 import { injectRepo } from '@fastgpt/dal/db/container';
+import { AppRegistrationRepoToken } from '@fastgpt/dal/db/repos/appRegistration/repo';
+import type {
+  AppRegistrationDomainDTO,
+  AppRegistrationRepository
+} from '@fastgpt/dal/db/repos/appRegistration/repo.type';
 import { runInTransaction } from '@fastgpt/dal/db/transaction';
 import type { DbSession } from '@fastgpt/dal/db/types';
-import { AppRegistrationRepoToken } from './repo';
-import type { AppRegistrationDomainDTO, AppRegistrationRepository } from './repo.type';
 
 export type AppRegistrationServiceDeps = {
   appRegistrationRepo?: AppRegistrationRepository;

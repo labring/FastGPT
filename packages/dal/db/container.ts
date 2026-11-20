@@ -2,16 +2,16 @@ import { getDbRuntime, type DbRuntime } from './runtime';
 import type { DbDialectFamily } from './types';
 
 export type RepoProviders<TRepo extends object> = {
-  mongo: () => TRepo;
+  mongo: (runtime: DbRuntime) => TRepo;
   /** 统一覆盖 PostgreSQL、OceanBase、MySQL 等关系型方言实现。 */
-  sql: () => TRepo;
+  sql: (runtime: DbRuntime) => TRepo;
 };
 
 export type LogRepoProviders<TRepo extends object> = {
-  mongo: () => TRepo;
-  sql: () => TRepo;
+  mongo: (runtime: DbRuntime) => TRepo;
+  sql: (runtime: DbRuntime) => TRepo;
   /** 显式禁用日志库持久化（`logMode === 'disabled'`）时自动启用的 Null Object 空实现。 */
-  noop: () => TRepo;
+  noop: (runtime: DbRuntime) => TRepo;
 };
 
 declare const repoTokenTypeBrand: unique symbol;
@@ -20,7 +20,10 @@ export type RepoToken<TRepo extends object> = {
   readonly [repoTokenTypeBrand]?: TRepo;
   readonly name: string;
   readonly kind: 'main' | 'log';
-  readonly resolveFactory: (params: { family: DbDialectFamily; hasLogDb: boolean }) => () => TRepo;
+  readonly resolveFactory: (params: {
+    family: DbDialectFamily;
+    hasLogDb: boolean;
+  }) => (runtime: DbRuntime) => TRepo;
 };
 
 /**
@@ -86,7 +89,7 @@ const resolveRepoInstance = <TRepo extends object>(token: RepoToken<TRepo>): TRe
     family: runtime.family,
     hasLogDb: runtime.hasLogDatabase()
   });
-  const instance = factory();
+  const instance = factory(runtime);
   scopedMap.set(token as RepoToken<object>, instance);
   return instance;
 };

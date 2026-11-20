@@ -284,23 +284,31 @@ const checkDomainStaticBoundaries = () => {
   if (mongoSchema !== null) {
     if (/\.\s*index\s*\(/.test(mongoSchema.clean)) {
       failures.push(
-        `[Indexes] ${domainRel}/mongo/schema.ts calls .index() directly; declare all indexes via defineIndex(schema, ...)`
+        `[Indexes] ${domainRel}/mongo/schema.ts calls .index() directly; declare all indexes via defineMongoCollection({ indexes }) or defineIndex(schema, ...)`
       );
     }
     if (/\bexport\s+const\s+\w+\s*=\s*getMongo(?:Log)?Model\b/.test(mongoSchema.clean)) {
       failures.push(
-        `[Boundary] ${domainRel}/mongo/schema.ts registers Mongoose Model eagerly at module top level; export a lazy getXxxMongoModel() factory instead`
+        `[Boundary] ${domainRel}/mongo/schema.ts registers Mongoose Model eagerly at module top level; declare defineMongoCollection(...) and bind model in MongoRepositoryBase constructor instead`
       );
     }
 
-    let withoutDefineIndexes = mongoSchema.raw;
-    for (const idx of extractDefineIndexes(mongoSchema.raw)) {
-      withoutDefineIndexes = withoutDefineIndexes.replace(idx.raw, '');
+    const schemaAnalysis = analyzeSchemaIndexes({
+      sourceText: mongoSchema.raw,
+      repoRoot,
+      sourceRelPath: `${domainRel}/mongo/schema.ts`
+    });
+    let withoutIndexDecls = mongoSchema.raw;
+    for (const idx of schemaAnalysis.indexes) {
+      withoutIndexDecls = withoutIndexDecls.replace(idx.raw, '');
     }
-    const cleanFieldDefs = stripCommentsPreserveStrings(withoutDefineIndexes);
+    for (const colDef of schemaAnalysis.collectionDefinitions ?? []) {
+      withoutIndexDecls = withoutIndexDecls.replace(colDef.raw, '');
+    }
+    const cleanFieldDefs = stripCommentsPreserveStrings(withoutIndexDecls);
     if (/\b(?:index|unique)\s*:\s*true\b/.test(cleanFieldDefs)) {
       failures.push(
-        `[Indexes] ${domainRel}/mongo/schema.ts uses inline field { index: true } or { unique: true }; move all index declarations to defineIndex(...)`
+        `[Indexes] ${domainRel}/mongo/schema.ts uses inline field { index: true } or { unique: true }; move all index declarations to defineMongoCollection({ indexes })`
       );
     }
   }
@@ -670,12 +678,29 @@ checkContractTestGovernance();
 
 // 6. 运行契约与业务测试（静态门禁存在失败时 Fail-Fast，避免无效拉起 Vitest）
 if (testTargets.length > 0 && failures.length === 0) {
+  const dalTargets = testTargets
+    .map((t) => toPosixPath(t).replace(/^\.\//, ''))
+    .filter((t) => t.startsWith('packages/dal/'))
+    .map((t) => t.slice('packages/dal/'.length));
+  const rootTargets = testTargets
+    .map((t) => toPosixPath(t).replace(/^\.\//, ''))
+    .filter((t) => !t.startsWith('packages/dal/'));
+
   try {
-    console.log(`Running targeted tests: ${testTargets.join(' ')}`);
-    execFileSync('pnpm', ['test', ...testTargets], {
-      cwd: repoRoot,
-      stdio: 'inherit'
-    });
+    if (dalTargets.length > 0) {
+      console.log(`Running @fastgpt/dal tests: ${dalTargets.join(' ')}`);
+      execFileSync('pnpm', ['--filter', '@fastgpt/dal', 'test', ...dalTargets], {
+        cwd: repoRoot,
+        stdio: 'inherit'
+      });
+    }
+    if (rootTargets.length > 0) {
+      console.log(`Running targeted tests: ${rootTargets.join(' ')}`);
+      execFileSync('pnpm', ['test', ...rootTargets], {
+        cwd: repoRoot,
+        stdio: 'inherit'
+      });
+    }
   } catch {
     failures.push(`[Tests] Targeted tests failed: ${testTargets.join(' ')}`);
   }

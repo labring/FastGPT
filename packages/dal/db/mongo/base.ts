@@ -1,18 +1,26 @@
-import { Types, type ClientSession } from 'mongoose';
+import { Types, type ClientSession, type Model } from 'mongoose';
 import type z from 'zod';
 import { DbLogDatasourceNotConfiguredError } from '../errors';
 import { parseRepoRow, parseRepoRows } from '../parse';
-import { getDbLogger } from '../runtime';
+import { getDbLogger, getDbRuntime, type DbRuntime } from '../runtime';
 import { unwrapNativeDbSession } from '../transaction';
-import type { DbSession, DbTransactionRunner } from '../types';
+import type { DbDatasource, DbSession, DbTransactionRunner } from '../types';
+import type { MongoCollectionDefinition } from './collection';
 
 export type MongoSessionStarter = {
   startSession: () => Promise<ClientSession>;
 };
 
 /** 解包绑定在 `DbSession` 上的原生 Mongoose `ClientSession`（仅限 Mongo 仓储内部调用）。 */
-export const unwrapMongoSession = (tx?: DbSession): ClientSession | undefined =>
-  unwrapNativeDbSession<ClientSession>(tx, { family: 'mongo', dialect: 'mongo' });
+export const unwrapMongoSession = (
+  tx?: DbSession,
+  datasource?: DbDatasource
+): ClientSession | undefined =>
+  unwrapNativeDbSession<ClientSession>(tx, {
+    family: 'mongo',
+    dialect: 'mongo',
+    ...(datasource !== undefined ? { datasource } : {})
+  });
 
 /**
  * 构建基于 Mongoose 连接的 `DbTransactionRunner`，供应用启动入口注入 `configureDbRuntime`。
@@ -49,12 +57,34 @@ export const createMongoTransactionRunner = ({
 /**
  * MongoDB 领域仓储模板方法抽象基类。
  *
- * 统一封装 `ObjectId` 转换、事务会话解包与出口 Zod 归一化解析（单行 Fail-Fast、列表 Warn & Skip），
- * 子类只需聚焦集合查询与更新语义。
+ * 在 `constructor` 内按当前 `DbRuntime` 生命周期自动幂等构出 `readonly model`（彻底告别模块级
+ * `getMongoModel` / `let cachedModel`），并统一封装 `ObjectId` 转换、事务会话解包与出口 Zod
+ * 归一化解析（单行 Fail-Fast、列表 Warn & Skip），子类只需聚焦集合查询与更新语义。
  */
-export abstract class MongoRepositoryBase<TReadSchema extends z.ZodTypeAny> {
-  protected abstract readonly tableName: string;
-  protected abstract readonly readSchema: TReadSchema;
+export abstract class MongoRepositoryBase<
+  TDoc = Record<string, unknown>,
+  TReadSchema extends z.ZodTypeAny = z.ZodTypeAny
+> {
+  protected readonly model: Model<TDoc>;
+  protected readonly tableName: string;
+  protected readonly readSchema: TReadSchema;
+  protected readonly datasource: DbDatasource;
+
+  constructor({
+    collection,
+    readSchema,
+    runtime
+  }: {
+    collection: MongoCollectionDefinition<TDoc>;
+    readSchema: TReadSchema;
+    runtime?: DbRuntime;
+  }) {
+    const activeRuntime = runtime ?? getDbRuntime();
+    this.tableName = collection.name;
+    this.readSchema = readSchema;
+    this.datasource = collection.datasource;
+    this.model = activeRuntime.bindMongoModel<TDoc, Model<TDoc>>(collection);
+  }
 
   protected oid(id: string): Types.ObjectId {
     return new Types.ObjectId(id);
@@ -65,7 +95,7 @@ export abstract class MongoRepositoryBase<TReadSchema extends z.ZodTypeAny> {
   }
 
   protected txOpts(tx?: DbSession): { session?: ClientSession } {
-    const session = unwrapMongoSession(tx);
+    const session = unwrapMongoSession(tx, this.datasource);
     return session !== undefined ? { session } : {};
   }
 

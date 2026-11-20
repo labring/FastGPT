@@ -1,37 +1,38 @@
+import { Types } from 'mongoose';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createEntityId } from '@fastgpt/global/common/string/entityId';
 import { injectRepo } from '@fastgpt/dal/db/container';
 import { DbRecordCorruptedError } from '@fastgpt/dal/db/errors';
-import { closeDbRuntime } from '@fastgpt/dal/db/runtime';
 import { compileSqlTableDDL } from '@fastgpt/dal/db/sql/ddl';
 import {
+  createMongoTestHarness,
   createPGliteSqlTestHarness,
   registerDualDialectContractSuite,
+  type MongoTestHarness,
   type SqlTestHarness
 } from '@fastgpt/dal/db/testing';
 import { runInTransaction } from '@fastgpt/dal/db/transaction';
-import { Types } from '@fastgpt/service/common/mongo';
-import { configureMongoDalRuntime } from '@fastgpt/service/common/mongo/dalRuntime';
-import { getAppRegistrationMongoModel } from '@fastgpt/service/support/appRegistration/mongo/schema';
-import { AppRegistrationRepoToken } from '@fastgpt/service/support/appRegistration/repo';
-import { appRegistrationSqlTable } from '@fastgpt/service/support/appRegistration/sql/table';
+import { AppRegistrationRepoToken } from '@fastgpt/dal/db/repos/appRegistration/repo';
+import { appRegistrationMongoCollection } from '../../../../db/repos/appRegistration/mongo/schema';
+import { appRegistrationSqlTable } from '../../../../db/repos/appRegistration/sql/table';
 
 describe('AppRegistration portable SQL DDL', () => {
-  it('compiles cleanly for PostgreSQL and OceanBase/MySQL without dialect leaks', () => {
-    const pgSql = compileSqlTableDDL(appRegistrationSqlTable, 'postgres').join('\n');
-    expect(pgSql).toContain('CREATE TABLE IF NOT EXISTS "app_registrations"');
-    expect(pgSql).toContain('"created_at" TIMESTAMPTZ');
-    expect(pgSql).toContain('CREATE INDEX IF NOT EXISTS "idx_app_registrations_team"');
-
+  it('compiles cleanly for OceanBase/MySQL (P0) and PostgreSQL (P1) with fg_ index naming', () => {
     const obSql = compileSqlTableDDL(appRegistrationSqlTable, 'oceanbase').join('\n');
     expect(obSql).toContain('CREATE TABLE IF NOT EXISTS `app_registrations`');
     expect(obSql).toContain('`created_at` DATETIME(3)');
-    expect(obSql).toContain('KEY `idx_app_registrations_team` (`team_id`)');
+    expect(obSql).toContain('KEY `fg_app_reg_team` (`team_id`)');
     expect(obSql).not.toContain('CREATE INDEX IF NOT EXISTS');
+
+    const pgSql = compileSqlTableDDL(appRegistrationSqlTable, 'postgres').join('\n');
+    expect(pgSql).toContain('CREATE TABLE IF NOT EXISTS "app_registrations"');
+    expect(pgSql).toContain('"created_at" TIMESTAMPTZ');
+    expect(pgSql).toContain('CREATE INDEX IF NOT EXISTS "fg_app_reg_team"');
   });
 });
 
 describe('AppRegistrationRepository dual-dialect contract', () => {
+  let mongoHarness: MongoTestHarness | undefined;
   let sqlHarness: SqlTestHarness | undefined;
 
   registerDualDialectContractSuite({
@@ -44,20 +45,15 @@ describe('AppRegistrationRepository dual-dialect contract', () => {
         label: 'MongoDB',
         dialect: 'mongo',
         setup: async () => {
-          await closeDbRuntime();
-          const uri = process.env.MONGODB_URI ?? 'mongodb://127.0.0.1:27017/test';
-          configureMongoDalRuntime({
-            mainWriteUrl: uri
+          mongoHarness = await createMongoTestHarness({
+            collections: [appRegistrationMongoCollection]
           });
-          await getAppRegistrationMongoModel()
-            .createCollection()
-            .catch(() => undefined);
         },
         cleanupEach: async () => {
-          await getAppRegistrationMongoModel().deleteMany({});
+          await mongoHarness?.clearAll();
         },
         teardown: async () => {
-          await closeDbRuntime();
+          await mongoHarness?.close();
         }
       },
       {
@@ -102,7 +98,7 @@ describe('AppRegistrationRepository dual-dialect contract', () => {
         // 校验历史可空字段（appId / createdAt）在 SQL null 与 Mongo 缺失/null 时统一归一为 undefined
         const nullableRowId = createEntityId();
         if (getDialect() === 'mongo') {
-          await getAppRegistrationMongoModel().collection.insertOne({
+          await mongoHarness!.getModel(appRegistrationMongoCollection).collection.insertOne({
             _id: new Types.ObjectId(nullableRowId),
             teamId: new Types.ObjectId(teamId),
             tmbId: new Types.ObjectId(tmbId),
@@ -175,7 +171,7 @@ describe('AppRegistrationRepository dual-dialect contract', () => {
         const corruptedId = createEntityId();
 
         if (getDialect() === 'mongo') {
-          await getAppRegistrationMongoModel().collection.insertOne({
+          await mongoHarness!.getModel(appRegistrationMongoCollection).collection.insertOne({
             _id: new Types.ObjectId(corruptedId),
             teamId: new Types.ObjectId(teamId),
             tmbId: 'legacy-corrupted-tmb',

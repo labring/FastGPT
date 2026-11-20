@@ -1,8 +1,9 @@
-import { createMongoTransactionRunner } from '@fastgpt/dal/db/mongo/base';
+import { createMongoRuntimeDeps } from '@fastgpt/dal/db/mongo/runtime';
 import { configureDbRuntime, type DbRuntime } from '@fastgpt/dal/db/runtime';
 import type { DbTransactionRunner } from '@fastgpt/dal/db/types';
 import { serviceEnv } from '../../env';
 import { getLogger, LogCategories } from '../logger';
+import { isProfiling, recordMongoOperation } from '../profiling';
 import { connectionLogMongo, connectionMongo, MONGO_URL } from './index';
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
@@ -29,6 +30,14 @@ export const configureMongoDalRuntime = (options?: {
       ? options.logWriteUrl
       : (process.env.MONGODB_LOG_URI ?? serviceEnv.MONGODB_LOG_URI);
 
+  const mongoDeps = createMongoRuntimeDeps({
+    getMainClient: () => connectionMongo,
+    getLogClient: () =>
+      !logDisabled && logWriteUrl !== undefined && logWriteUrl.trim().length > 0
+        ? connectionLogMongo
+        : undefined
+  });
+
   return configureDbRuntime({
     dialect: 'mongo',
     mainWriteUrl,
@@ -36,14 +45,18 @@ export const configureMongoDalRuntime = (options?: {
     logDisabled,
     maxConnections: serviceEnv.DB_MAX_LINK,
     logger,
-    transactionRunner:
-      options?.transactionRunner ??
-      createMongoTransactionRunner({
-        getMainClient: () => connectionMongo,
-        getLogClient: () =>
-          !logDisabled && logWriteUrl !== undefined && logWriteUrl.trim().length > 0
-            ? connectionLogMongo
-            : undefined
-      })
+    metrics: {
+      operationCompleted: ({ table, durationMs }) => {
+        if (isProfiling()) {
+          recordMongoOperation({
+            collectionName: table,
+            durationMs
+          });
+        }
+      }
+    },
+    mongoModelBinder: mongoDeps.mongoModelBinder,
+    healthChecker: mongoDeps.healthChecker,
+    transactionRunner: options?.transactionRunner ?? mongoDeps.transactionRunner
   });
 };

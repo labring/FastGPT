@@ -571,6 +571,9 @@ importers:
       '@types/pg':
         specifier: ^8.6.6
         version: 8.11.11
+      mongodb-memory-server:
+        specifier: 'catalog:'
+        version: 10.1.4(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3

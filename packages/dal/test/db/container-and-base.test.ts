@@ -1,3 +1,4 @@
+import { Mongoose, Schema } from 'mongoose';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import z from 'zod';
 import { createEntityId, EntityIdSchema } from '@fastgpt/global/common/string/entityId';
@@ -10,8 +11,10 @@ import {
   overrideRepoForTest
 } from '@fastgpt/dal/db/container';
 import { MongoRepositoryBase } from '@fastgpt/dal/db/mongo/base';
+import { defineMongoCollection } from '@fastgpt/dal/db/mongo/collection';
+import { createMongoRuntimeDeps } from '@fastgpt/dal/db/mongo/runtime';
 import { jsonColumnSchema } from '@fastgpt/dal/db/parse';
-import { closeDbRuntime, configureDbRuntime } from '@fastgpt/dal/db/runtime';
+import { closeDbRuntime, configureDbRuntime, type DbRuntime } from '@fastgpt/dal/db/runtime';
 import { SqlRepositoryBase } from '@fastgpt/dal/db/sql/base';
 import { compileSqlTableDDL, defineSqlTable } from '@fastgpt/dal/db/sql/ddl';
 import { createPGliteSqlTestHarness } from '@fastgpt/dal/db/testing';
@@ -83,12 +86,26 @@ type ItemRepo = {
   countAll: () => Promise<number>;
 };
 
-class MongoItemRepo extends MongoRepositoryBase<typeof ItemReadSchema> implements ItemRepo {
-  protected readonly tableName = 'demo_items';
-  protected readonly readSchema = ItemReadSchema;
+const demoItemsMongoCollection = defineMongoCollection<Record<string, unknown>>({
+  name: 'demo_items',
+  schema: new Schema({ name: String }, { versionKey: false }),
+  indexes: [{ key: { name: 1 } }]
+});
+
+class MongoItemRepo
+  extends MongoRepositoryBase<Record<string, unknown>, typeof ItemReadSchema>
+  implements ItemRepo
+{
+  constructor(runtime?: DbRuntime) {
+    super({
+      collection: demoItemsMongoCollection,
+      readSchema: ItemReadSchema,
+      runtime
+    });
+  }
 
   getTag() {
-    return `mongo:${this.oid(createEntityId()).toHexString().length}`;
+    return `mongo:${this.model.collection.collectionName}:${this.oid(createEntityId()).toHexString().length}`;
   }
 
   async upsertItem(): Promise<z.output<typeof ItemReadSchema>> {
@@ -217,7 +234,7 @@ describe('@fastgpt/dal/db DI container, portable SQL DDL, and PGlite integration
   });
 
   it('defers instantiation, prevents await .then trap, and routes postgres/oceanbase/mysql to sql factory', async () => {
-    const mongoSpy = vi.fn(() => new MongoItemRepo());
+    const mongoSpy = vi.fn((runtime: DbRuntime) => new MongoItemRepo(runtime));
     const sqlSpy = vi.fn(() => new SqlItemRepo());
 
     const ItemRepoToken = defineRepoToken<ItemRepo>('ItemRepo', {
@@ -233,11 +250,13 @@ describe('@fastgpt/dal/db DI container, portable SQL DDL, and PGlite integration
     expect(awaitedRepo).toBe(repo);
     expect(mongoSpy).not.toHaveBeenCalled();
 
+    const fakeMongoConn = new Mongoose();
     configureDbRuntime({
       dialect: 'mongo',
-      mainWriteUrl: 'mongodb://localhost:27017/fastgpt'
+      mainWriteUrl: 'mongodb://localhost:27017/fastgpt',
+      ...createMongoRuntimeDeps({ getMainClient: () => fakeMongoConn })
     });
-    expect(repo.getTag()).toBe('mongo:24');
+    expect(repo.getTag()).toBe('mongo:demo_items:24');
     expect(mongoSpy).toHaveBeenCalledTimes(1);
 
     await closeDbRuntime();

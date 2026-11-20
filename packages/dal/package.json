@@ -28,11 +28,15 @@
     "./db/transaction": "./db/transaction.ts",
     "./db/container": "./db/container.ts",
     "./db/mongo/base": "./db/mongo/base.ts",
+    "./db/mongo/collection": "./db/mongo/collection.ts",
+    "./db/mongo/runtime": "./db/mongo/runtime.ts",
     "./db/sql/base": "./db/sql/base.ts",
     "./db/sql/ddl": "./db/sql/ddl.ts",
     "./db/sql/dialects/postgres": "./db/sql/dialects/postgres.ts",
     "./db/sql/dialects/mysql": "./db/sql/dialects/mysql.ts",
-    "./db/testing": "./db/testing.ts"
+    "./db/testing": "./db/testing.ts",
+    "./db/repos/*/repo": "./db/repos/*/repo.ts",
+    "./db/repos/*/repo.type": "./db/repos/*/repo.type.ts"
   },
   "scripts": {
     "test": "vitest run -c vitest.config.ts",
@@ -59,6 +63,7 @@
     "@electric-sql/pglite": "^0.5.16",
     "@types/node": "catalog:",
     "@types/pg": "^8.6.6",
+    "mongodb-memory-server": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

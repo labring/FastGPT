@@ -464,7 +464,7 @@ test('scaffold-repo.mjs preserves existing service.ts without emitting mismatche
       'utf8'
     );
     assert.doesNotMatch(contractTest, /execute\(undefined\)/);
-    assert.match(contractTest, /createCollection\(\)/);
+    assert.match(contractTest, /createMongoTestHarness\(/);
     assert.match(contractTest, /compileSqlTableDDL\(probeWidgetSqlTable, 'oceanbase'\)/);
     assert.match(contractTest, /new NoopProbeWidgetRepository\(\)/);
 
@@ -766,10 +766,10 @@ test('audit-domain.mjs separates out-of-SQL-scope GridFS legacy and reports reco
   assert.ok(logReport.recommendedExtraTests.some((t) => t.includes('TTL 过期读过滤测试')));
 });
 
-test('fails loudly when --git-legacy cannot be read and passes with merge-base:<path> against real appRegistration', () => {
+test('fails loudly when --git-legacy cannot be read and passes with merge-base:<path> against real appRegistration in @fastgpt/dal', () => {
   const missingRes = runVerify([
     '--dir',
-    'packages/service/support/appRegistration',
+    'packages/dal/db/repos/appRegistration',
     '--git-legacy',
     'packages/service/support/appRegistration/schema.ts'
   ]);
@@ -778,12 +778,58 @@ test('fails loudly when --git-legacy cannot be read and passes with merge-base:<
 
   const mergeBaseRes = runVerify([
     '--dir',
-    'packages/service/support/appRegistration',
+    'packages/dal/db/repos/appRegistration',
     '--git-legacy',
     'merge-base:packages/service/support/appRegistration/schema.ts'
   ]);
   assert.equal(mergeBaseRes.status, 0, mergeBaseRes.stderr);
   assert.match(mergeBaseRes.stdout, /Domain verification PASSED/);
+});
+
+test('verifies defineMongoCollection index parity without false-positiving options.unique while still catching inline field unique', () => {
+  const legacySchema = `
+    export const DemoCollectionName = 'demo_items';
+    const DemoSchema = new Schema({ teamId: String, code: String });
+    defineIndex(DemoSchema, { key: { teamId: 1, code: 1 }, options: { unique: true, name: 'fg_demo_team_code' } });
+    export const MongoDemo = getMongoModel(DemoCollectionName, DemoSchema);
+  `;
+  const newSchemaOk = `
+    import { Schema } from 'mongoose';
+    import { defineMongoCollection } from '../../../mongo/collection';
+    export const DemoCollectionName = 'demo_items';
+    const DemoSchema = new Schema({ teamId: String, code: String }, { versionKey: false });
+    export const demoCollection = defineMongoCollection({
+      name: DemoCollectionName,
+      schema: DemoSchema,
+      indexes: [{ key: { teamId: 1, code: 1 }, options: { unique: true, name: 'fg_demo_team_code' } }]
+    });
+  `;
+  const newSchemaBadInline = `
+    import { Schema } from 'mongoose';
+    import { defineMongoCollection } from '../../../mongo/collection';
+    export const DemoCollectionName = 'demo_items';
+    const DemoSchema = new Schema({ teamId: String, code: { type: String, unique: true } }, { versionKey: false });
+    export const demoCollection = defineMongoCollection({
+      name: DemoCollectionName,
+      schema: DemoSchema,
+      indexes: [{ key: { teamId: 1, code: 1 }, options: { unique: true, name: 'fg_demo_team_code' } }]
+    });
+  `;
+
+  withTempDomain({ newMongoSchema: newSchemaOk, legacySchema }, ({ domainDir, domainRel, legacyRel }) => {
+    const okRes = runVerify(['--dir', domainRel, '--legacy-schema', legacyRel]);
+    assert.equal(okRes.status, 0, `${okRes.stdout}\n${okRes.stderr}`);
+
+    fs.writeFileSync(path.join(domainDir, 'mongo/schema.ts'), newSchemaOk.replace('unique: true, ', ''));
+    const dropUniqueRes = runVerify(['--dir', domainRel, '--legacy-schema', legacyRel]);
+    assert.equal(dropUniqueRes.status, 1);
+    assert.match(dropUniqueRes.stderr, /Missing or altered defineIndex for collection "demo_items"/);
+
+    fs.writeFileSync(path.join(domainDir, 'mongo/schema.ts'), newSchemaBadInline);
+    const badInlineRes = runVerify(['--dir', domainRel, '--legacy-schema', legacyRel]);
+    assert.equal(badInlineRes.status, 1);
+    assert.match(badInlineRes.stderr, /uses inline field/);
+  });
 });
 
 test('binds getter .schema aliases strictly to their enclosing getter scope (prevents adjacent getter misattribution)', () => {

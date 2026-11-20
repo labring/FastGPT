@@ -1,7 +1,7 @@
 import z from 'zod';
 import { EntityIdSchema, EntityIdStringSchema } from '@fastgpt/global/common/string/entityId';
 import { optionalNullToUndefined } from '@fastgpt/global/common/zod';
-import type { DbSession } from '@fastgpt/dal/db/types';
+import type { DbSession } from '../../types';
 
 /**
  * AppRegistration 读路径归一化基准 Schema（兼容历史缺失 appId / createdAt 的数据，统一将 SQL null 归一为 undefined）。

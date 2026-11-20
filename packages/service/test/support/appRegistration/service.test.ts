@@ -5,7 +5,7 @@ import { AppRegistrationService } from '@fastgpt/service/support/appRegistration
 import type {
   AppRegistrationDomainDTO,
   AppRegistrationRepository
-} from '@fastgpt/service/support/appRegistration/repo.type';
+} from '@fastgpt/dal/db/repos/appRegistration/repo.type';
 
 const createMockRepo = (): {
   repo: AppRegistrationRepository;

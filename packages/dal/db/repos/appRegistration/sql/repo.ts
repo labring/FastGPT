@@ -1,6 +1,6 @@
 import { createEntityId, isValidEntityId } from '@fastgpt/global/common/string/entityId';
-import { SqlRepositoryBase } from '@fastgpt/dal/db/sql/base';
-import type { DbSession } from '@fastgpt/dal/db/types';
+import { SqlRepositoryBase } from '../../../sql/base';
+import type { DbSession } from '../../../types';
 import {
   AppRegistrationDomainReadSchema,
   CreateAppRegistrationWriteSchema,
@@ -10,7 +10,7 @@ import {
 } from '../repo.type';
 import type { AppRegistrationDatabase, AppRegistrationSqlRow } from './table';
 
-/** AppRegistration 仓储的可移植 SQL（Kysely）策略实现，通吃 PostgreSQL 与 OceanBase/MySQL。 */
+/** AppRegistration 仓储的可移植 SQL（Kysely）策略实现，通吃 OceanBase/MySQL 与 PostgreSQL。 */
 export class SqlAppRegistrationRepository
   extends SqlRepositoryBase<
     AppRegistrationDatabase,
