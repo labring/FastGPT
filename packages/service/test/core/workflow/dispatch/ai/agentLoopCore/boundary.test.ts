@@ -55,7 +55,6 @@ describe('workflow agent-loop core boundary', () => {
       'createAgentLoopCoreAssistantEventCollector',
       'createAgentLoopCoreEventDispatcher',
       'createAgentLoopCoreNodeResponseEventCollector',
-      'createAgentLoopCoreToolRunResponseCollector',
       'normalizeAgentLoopCoreToolRunResult',
       'parseAgentLoopCoreReadFileCall',
       'sumAgentLoopCoreUsagePoints'

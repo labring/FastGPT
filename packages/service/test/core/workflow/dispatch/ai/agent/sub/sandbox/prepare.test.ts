@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatFileTypeEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
+import { ensureAgentSandboxRuntime as ensureAgentSandboxRuntimeWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/sandbox/prepare';
+import { runInTestWorkflowContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+
+/** 沙箱准备属于节点运行能力；测试同样从完整 Workflow Context 进入。 */
+const ensureAgentSandboxRuntime: typeof ensureAgentSandboxRuntimeWithoutContext = (props) =>
+  runInTestWorkflowContext(() => ensureAgentSandboxRuntimeWithoutContext(props));
 
 const {
   prepareAgentSandboxRuntimeMock,
@@ -154,8 +160,6 @@ describe('ensureAgentSandboxRuntime', () => {
   });
 
   it('runs selected skill lifecycle inside sandbox init lease', async () => {
-    const { ensureAgentSandboxRuntime } =
-      await import('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/sandbox/prepare');
     const prepareAction = vi.fn(async (context) => ({
       ...context,
       skillScanDirectories: [...context.skillScanDirectories, '/home/sandbox/.fastgpt/skills']
@@ -264,9 +268,6 @@ describe('ensureAgentSandboxRuntime', () => {
   });
 
   it('runs edit-debug lifecycle without deploying selected skills or builtin skills by default', async () => {
-    const { ensureAgentSandboxRuntime } =
-      await import('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/sandbox/prepare');
-
     await ensureAgentSandboxRuntime({
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: 'edit_skill_1',
@@ -302,8 +303,6 @@ describe('ensureAgentSandboxRuntime', () => {
   });
 
   it('runs custom prepare actions in edit-debug lifecycle', async () => {
-    const { ensureAgentSandboxRuntime } =
-      await import('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/sandbox/prepare');
     const prepareAction = vi.fn(async (context) => ({
       ...context,
       skillScanDirectories: [...context.skillScanDirectories, '/home/sandbox/.fastgpt/skills']
@@ -386,9 +385,6 @@ describe('ensureAgentSandboxRuntime', () => {
   });
 
   it('returns empty skill infos when sandbox runtime is not needed', async () => {
-    const { ensureAgentSandboxRuntime } =
-      await import('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/sandbox/prepare');
-
     await expect(
       ensureAgentSandboxRuntime({
         sourceType: ChatSourceTypeEnum.app,

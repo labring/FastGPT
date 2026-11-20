@@ -8,7 +8,7 @@ import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { formatModelChars2Points } from '../../../../../support/wallet/usage/utils';
 import { createLLMResponse } from '../../../../ai/llm/request';
 import { computedMaxToken } from '../../../../ai/utils';
-import { getWorkflowFileContext, getWorkflowFileMaxAmount } from '../../../utils/context';
+import { getWorkflowContext, getWorkflowFileContext } from '../../context';
 import { loadWorkflowModelResource } from '../../../resource/service';
 import { checkQuoteQAValue, getHistories, getNodeErrResponse } from '../../utils';
 import { getDispatchModerationContext } from '../../utils/runtime';
@@ -23,8 +23,8 @@ import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/mo
  * 调度 AI Chat 节点：整理引用、历史和文件上下文，调用 LLM，并写入节点响应与用量。
  */
 export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResponse> => {
+  const { fileContext, checkIsStopping, workflowStreamResponse } = getWorkflowContext();
   const {
-    checkIsStopping,
     requestOrigin,
     stream = false,
     retainDatasetCite = true,
@@ -33,7 +33,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     node: { name, version, inputs },
     runningAppInfo,
     runningUserInfo,
-    workflowStreamResponse,
     chatConfig,
     usageId,
     params: {
@@ -123,7 +122,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       userChatInput,
       userFiles,
       parseHistoryFiles: fileContextConfig.parseHistoryFiles,
-      maxFileAmount: getWorkflowFileMaxAmount(),
+      maxFileAmount: fileContext.limits.maxFileAmount,
       customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
       usageId,
       runningUserInfo

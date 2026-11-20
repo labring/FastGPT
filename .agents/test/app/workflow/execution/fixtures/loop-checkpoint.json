@@ -1,0 +1,546 @@
+{
+  "nodes": [
+    {
+      "id": "workflowStart",
+      "templateType": "systemInput",
+      "flowNodeType": "workflowStart",
+      "showSourceHandle": true,
+      "showTargetHandle": false,
+      "avatar": "core/workflow/template/workflowStart",
+      "avatarLinear": "core/workflow/template/workflowStartLinear",
+      "colorSchema": "blue",
+      "name": "Start",
+      "intro": "",
+      "forbidDelete": true,
+      "unique": true,
+      "inputs": [
+        {
+          "key": "userChatInput",
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
+          "valueType": "string",
+          "label": "workflow:user_question",
+          "toolDescription": "workflow:user_question",
+          "required": true,
+          "defaultToAgentGenerated": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "userChatInput",
+          "key": "userChatInput",
+          "label": "common:core.module.input.label.user question",
+          "type": "static",
+          "valueType": "string"
+        }
+      ],
+      "nodeId": "Start",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "loopRun",
+      "templateType": "tools",
+      "flowNodeType": "loopRun",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/loopRun",
+      "avatarLinear": "core/workflow/template/loopRunLinear",
+      "colorSchema": "loopRun",
+      "name": "Container",
+      "intro": "workflow:intro_loop_run",
+      "showStatus": true,
+      "isTool": true,
+      "courseUrl": "/guide/build/workflow/nodes/loop_run",
+      "catchError": false,
+      "inputs": [
+        {
+          "key": "loopRunMode",
+          "renderTypeList": [
+            "select"
+          ],
+          "valueType": "string",
+          "canAgentGenerated": false,
+          "required": true,
+          "label": "workflow:loop_run_mode",
+          "description": "workflow:loop_run_mode_tip",
+          "list": [
+            {
+              "label": "workflow:loop_run_mode_array",
+              "value": "array",
+              "icon": "core/workflow/inputType/array",
+              "description": "workflow:loop_run_mode_array_desc"
+            },
+            {
+              "label": "workflow:loop_run_mode_conditional",
+              "value": "conditional",
+              "icon": "core/workflow/inputType/conditional",
+              "description": "workflow:loop_run_mode_conditional_desc"
+            }
+          ],
+          "value": "array"
+        },
+        {
+          "key": "loopRunInputArray",
+          "renderTypeList": [
+            "reference"
+          ],
+          "valueType": "arrayAny",
+          "canAgentGenerated": false,
+          "required": true,
+          "label": "workflow:loop_run_input_array",
+          "value": [
+            "one"
+          ]
+        },
+        {
+          "key": "loopCustomOutputs",
+          "renderTypeList": [
+            "addInputParam"
+          ],
+          "valueType": "dynamic",
+          "canAgentGenerated": false,
+          "label": "workflow:loop_custom_outputs",
+          "description": "workflow:loop_custom_outputs_tip",
+          "required": false,
+          "customInputConfig": {
+            "selectValueTypeList": [
+              "string",
+              "number",
+              "boolean",
+              "object",
+              "arrayString",
+              "arrayNumber",
+              "arrayBoolean",
+              "arrayObject",
+              "arrayAny",
+              "any",
+              "chatHistory",
+              "datasetQuote",
+              "dynamic",
+              "selectDataset",
+              "selectApp"
+            ],
+            "showDescription": false,
+            "showDefaultValue": false,
+            "hideBottomDivider": true
+          }
+        },
+        {
+          "key": "childrenNodeIdList",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "arrayString",
+          "label": "",
+          "value": [
+            "BodyStart",
+            "BodyUpdate",
+            "BodyEnd",
+            "Form"
+          ]
+        },
+        {
+          "key": "nodeWidth",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "number",
+          "label": "",
+          "value": 900
+        },
+        {
+          "key": "nodeHeight",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "number",
+          "label": "",
+          "value": 500
+        },
+        {
+          "key": "loopNodeInputHeight",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "number",
+          "label": "",
+          "value": 320
+        }
+      ],
+      "outputs": [
+        {
+          "id": "system_error_text",
+          "key": "system_error_text",
+          "label": "workflow:error_text",
+          "type": "error",
+          "valueType": "string"
+        }
+      ],
+      "nodeId": "Container",
+      "position": {
+        "x": 300,
+        "y": 0
+      }
+    },
+    {
+      "id": "loopRunStart",
+      "templateType": "systemInput",
+      "flowNodeType": "loopRunStart",
+      "showSourceHandle": true,
+      "showTargetHandle": false,
+      "avatar": "core/workflow/template/loopRunStart",
+      "avatarLinear": "core/workflow/template/loopRunStartLinear",
+      "colorSchema": "loopRun",
+      "name": "BodyStart",
+      "unique": true,
+      "forbidDelete": true,
+      "showStatus": false,
+      "inputs": [
+        {
+          "key": "loopRunMode",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "string",
+          "label": "",
+          "value": "array"
+        },
+        {
+          "key": "loopStartInput",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
+          "label": "",
+          "value": ""
+        },
+        {
+          "key": "loopStartIndex",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "number",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "currentIndex",
+          "key": "currentIndex",
+          "label": "workflow:current_index",
+          "description": "workflow:current_index_desc",
+          "type": "static",
+          "valueType": "number"
+        },
+        {
+          "id": "currentItem",
+          "key": "currentItem",
+          "label": "workflow:current_item",
+          "description": "workflow:current_item_desc",
+          "type": "static",
+          "valueType": "any"
+        },
+        {
+          "id": "currentIteration",
+          "key": "currentIteration",
+          "label": "workflow:current_iteration",
+          "description": "workflow:current_iteration_desc",
+          "type": "static",
+          "valueType": "number"
+        }
+      ],
+      "nodeId": "BodyStart",
+      "position": {
+        "x": 600,
+        "y": 300
+      },
+      "parentNodeId": "Container"
+    },
+    {
+      "id": "variableUpdate",
+      "templateType": "tools",
+      "flowNodeType": "variableUpdate",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/variableUpdate",
+      "avatarLinear": "core/workflow/template/variableUpdateLinear",
+      "colorSchema": "coral",
+      "name": "BodyUpdate",
+      "intro": "workflow:update_specified_node_output_or_global_variable",
+      "showStatus": false,
+      "isTool": true,
+      "courseUrl": "/guide/build/workflow/nodes/variable_update",
+      "inputs": [
+        {
+          "key": "updateList",
+          "valueType": "any",
+          "label": "",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": [
+            {
+              "variable": [
+                "VARIABLE_NODE_ID",
+                "a"
+              ],
+              "value": [
+                "",
+                "body-complete"
+              ],
+              "valueType": "string",
+              "renderType": "input"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "nodeId": "BodyUpdate",
+      "position": {
+        "x": 900,
+        "y": 300
+      },
+      "parentNodeId": "Container"
+    },
+    {
+      "id": "formInput",
+      "templateType": "interactive",
+      "flowNodeType": "formInput",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/formInput",
+      "avatarLinear": "core/workflow/template/formInputLinear",
+      "colorSchema": "violetDeep",
+      "name": "Form",
+      "intro": "app:workflow.form_input_tip",
+      "isTool": true,
+      "inputs": [
+        {
+          "key": "description",
+          "renderTypeList": [
+            "textarea"
+          ],
+          "valueType": "string",
+          "label": "app:workflow.select_description",
+          "description": "app:workflow.input_description_tip",
+          "placeholder": "app:workflow.form_input_description_placeholder"
+        },
+        {
+          "key": "userInputForms",
+          "renderTypeList": [
+            "custom"
+          ],
+          "valueType": "any",
+          "label": "",
+          "value": [
+            {
+              "key": "value",
+              "label": "value",
+              "type": "input",
+              "valueType": "string",
+              "required": true
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "id": "formInputResult",
+          "key": "formInputResult",
+          "required": true,
+          "label": "workflow:form_input_result",
+          "description": "workflow:form_input_result_tip",
+          "valueType": "object",
+          "type": "static"
+        }
+      ],
+      "nodeId": "Form",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "parentNodeId": "Container"
+    },
+    {
+      "id": "loopEnd",
+      "templateType": "systemInput",
+      "flowNodeType": "loopEnd",
+      "showSourceHandle": false,
+      "showTargetHandle": true,
+      "unique": true,
+      "forbidDelete": true,
+      "avatar": "core/workflow/template/loopEnd",
+      "avatarLinear": "core/workflow/template/loopEndLinear",
+      "colorSchema": "violetDeep",
+      "name": "BodyEnd",
+      "showStatus": false,
+      "inputs": [
+        {
+          "key": "loopEndInput",
+          "renderTypeList": [
+            "reference"
+          ],
+          "valueType": "any",
+          "label": "",
+          "required": true,
+          "value": [
+            "BodyStart",
+            "currentItem"
+          ]
+        }
+      ],
+      "outputs": [],
+      "nodeId": "BodyEnd",
+      "position": {
+        "x": 1200,
+        "y": 300
+      },
+      "parentNodeId": "Container"
+    },
+    {
+      "id": "answerNode",
+      "templateType": "tools",
+      "flowNodeType": "answerNode",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/reply",
+      "avatarLinear": "core/workflow/template/replyLinear",
+      "colorSchema": "blue",
+      "name": "ReadVariables",
+      "intro": "workflow:intro_assigned_reply",
+      "courseUrl": "/guide/build/workflow/nodes/reply",
+      "isTool": true,
+      "inputs": [
+        {
+          "key": "text",
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
+          "valueType": "any",
+          "required": true,
+          "isRichText": false,
+          "maxLength": 100000,
+          "label": "common:core.module.input.label.Response content",
+          "description": "common:core.module.input.description.Response content",
+          "placeholder": "common:core.module.input.description.Response content",
+          "value": "a={{$VARIABLE_NODE_ID.a$}}|b={{$VARIABLE_NODE_ID.b$}}|stamp={{$VARIABLE_NODE_ID.stamp$}}|n={{$VARIABLE_NODE_ID.n$}}|flag={{$VARIABLE_NODE_ID.flag$}}|text={{$VARIABLE_NODE_ID.text$}}"
+        }
+      ],
+      "outputs": [],
+      "nodeId": "ReadVariables",
+      "position": {
+        "x": 1500,
+        "y": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "Start",
+      "target": "Container",
+      "sourceHandle": "Start-source-right",
+      "targetHandle": "Container-target-left"
+    },
+    {
+      "source": "Container",
+      "target": "ReadVariables",
+      "sourceHandle": "Container-source-right",
+      "targetHandle": "ReadVariables-target-left"
+    },
+    {
+      "source": "BodyStart",
+      "target": "BodyUpdate",
+      "sourceHandle": "BodyStart-source-right",
+      "targetHandle": "BodyUpdate-target-left"
+    },
+    {
+      "source": "BodyUpdate",
+      "target": "Form",
+      "sourceHandle": "BodyUpdate-source-right",
+      "targetHandle": "Form-target-left"
+    },
+    {
+      "source": "Form",
+      "target": "BodyEnd",
+      "sourceHandle": "Form-source-right",
+      "targetHandle": "BodyEnd-target-left"
+    }
+  ],
+  "chatConfig": {
+    "variables": [
+      {
+        "key": "a",
+        "label": "a",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "A0",
+        "required": false
+      },
+      {
+        "key": "b",
+        "label": "b",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "B0",
+        "required": false
+      },
+      {
+        "key": "stamp",
+        "label": "stamp",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "S0",
+        "required": false
+      },
+      {
+        "key": "n",
+        "label": "n",
+        "description": "",
+        "type": "input",
+        "valueType": "number",
+        "defaultValue": 9,
+        "required": false
+      },
+      {
+        "key": "flag",
+        "label": "flag",
+        "description": "",
+        "type": "input",
+        "valueType": "boolean",
+        "defaultValue": true,
+        "required": false
+      },
+      {
+        "key": "text",
+        "label": "text",
+        "description": "",
+        "type": "input",
+        "valueType": "string",
+        "defaultValue": "seed",
+        "required": false
+      },
+      {
+        "key": "obj",
+        "label": "obj",
+        "description": "",
+        "type": "input",
+        "valueType": "object",
+        "defaultValue": {
+          "items": [
+            1
+          ]
+        },
+        "required": false
+      }
+    ]
+  }
+}

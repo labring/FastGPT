@@ -6,7 +6,7 @@ import {
   prepareAgentLoopCoreProviderRunState,
   readAgentLoopCoreProviderStateMemory
 } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/memory/providerState';
-import { WorkflowMemoryState } from '@fastgpt/service/core/workflow/memory/state';
+import { WorkflowMemoryContext } from '@fastgpt/service/core/workflow/dispatch/context/memory';
 
 const runningAppInfo = {
   sourceType: ChatSourceTypeEnum.app,
@@ -90,10 +90,10 @@ describe('agentLoopCore providerState memory', () => {
       'app:app_1:node_1': { providerState }
     });
 
-    const scopedState = WorkflowMemoryState.fromHistories([]).fork('node:parent_agent');
+    const scopedState = WorkflowMemoryContext.fromHistories([]).fork('node:parent_agent');
     expect(
       buildAgentLoopCorePausedMemories({
-        memoryState: scopedState,
+        memoryContext: scopedState,
         runningAppInfo,
         nodeId: 'node_1',
         providerState

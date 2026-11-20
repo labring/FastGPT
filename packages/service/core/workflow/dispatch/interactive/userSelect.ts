@@ -7,6 +7,7 @@ import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/
 import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { resolveDynamicOptionStrings } from './dynamicOptions';
+import { getWorkflowContext } from '../context';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { checkOutputTextModeration } from '../../../plugin/moderation/output';
 import { getNodeErrResponse } from '../utils';
@@ -30,11 +31,11 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
     histories,
     node,
     runtimeNodesMap,
-    variableState,
     params: { description, userSelectOptions },
     query,
     lastInteractive
   } = props;
+  const { variableContext } = getWorkflowContext();
   const { nodeId, isEntry } = node;
 
   const userSelectOptionInput = node.inputs.find(
@@ -48,7 +49,7 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
       ? resolveDynamicOptionStrings({
           value: userSelectOptions,
           runtimeNodesMap,
-          variables: variableState?.toRuntimeRecord?.() ?? {}
+          variables: variableContext.toRuntimeRecord()
         }).map((value, index) => ({
           key: `option_${index + 1}`,
           value
