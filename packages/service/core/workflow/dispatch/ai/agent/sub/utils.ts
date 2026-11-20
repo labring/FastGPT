@@ -19,6 +19,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { mergeToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
+import { buildPromptToolReferenceInfoMap } from '../adapter/prompt';
 
 /**
  * 收集 Agent 节点可用的 workflow runtime tools 和用户选择的子应用工具。
@@ -36,26 +37,21 @@ export const getSubapps = async ({
   completionTools: ChatCompletionTool[];
   subAppsMap: Map<string, SubAppRuntimeType>;
   promptToolReferenceInfoMap: Map<string, string>;
+  ambiguousPromptToolReferenceIds: Set<string>;
 }> => {
   const completionTools: ChatCompletionTool[] = [];
 
   /* User tools */
   const subAppsMap = new Map<string, SubAppRuntimeType>();
-  const promptToolReferenceInfoMap = new Map<string, string>();
   const formatTools = await getAgentRuntimeTools({
     tools,
     tmbId,
     lang
   });
+  // 身份键全量登记；旧版裸 ID 仅在全局唯一时登记（同 ID 多来源时不做猜测）。
+  const { referenceInfoMap: promptToolReferenceInfoMap, ambiguousLegacyIds } =
+    buildPromptToolReferenceInfoMap(formatTools);
   formatTools.forEach((tool) => {
-    if (tool.promptReference) {
-      promptToolReferenceInfoMap.set(tool.promptReference.id, tool.promptReference.name);
-      // 兼容旧版 PromptEditor 持久化的原始工具 ID。
-      promptToolReferenceInfoMap.set(
-        tool.promptReference.legacyId || tool.promptReference.id,
-        tool.promptReference.name
-      );
-    }
     completionTools.push(tool.requestSchema);
     subAppsMap.set(tool.id, {
       type: tool.type,
@@ -73,7 +69,8 @@ export const getSubapps = async ({
   return {
     completionTools,
     subAppsMap,
-    promptToolReferenceInfoMap
+    promptToolReferenceInfoMap,
+    ambiguousPromptToolReferenceIds: ambiguousLegacyIds
   };
 };
 

@@ -1,16 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import {
+  createToolReferenceRegExp,
   getTeamPluginSource,
   getToolIdentityKey,
   getToolNameCandidates,
   getToolRawId,
+  getToolReferenceKeyCandidates,
   getToolSetChildDescription,
   hasDebugToolInNodes,
   hasDebugToolInSelectedTools,
+  isSourcedToolReferenceKey,
   isTeamPluginSource,
   mergeToolSetChildDescriptions,
+  normalizeToolReferenceBraces,
   parseDebugToolSource,
   parseTeamPluginSource,
+  parseToolReferenceKey,
   parseToolsetToolId,
   shouldUseLegacyToolDescriptionFallback,
   splitCombineToolId,
@@ -397,5 +402,129 @@ describe('getToolNameCandidates', () => {
 
   it('should preserve leading slash name before fallback', () => {
     expect(getToolNameCandidates('/test')).toEqual(['/test', 'test']);
+  });
+});
+
+describe('parseToolReferenceKey', () => {
+  it('parses explicit sources', () => {
+    expect(parseToolReferenceKey('system:systemTool-report')).toEqual({
+      source: 'system',
+      id: 'systemTool-report'
+    });
+    expect(parseToolReferenceKey('teamId:team-1:systemTool-report')).toEqual({
+      source: 'teamId:team-1',
+      id: 'systemTool-report'
+    });
+    expect(parseToolReferenceKey('debug:tmbId:tmb-1:systemTool-report')).toEqual({
+      source: 'debug:tmbId:tmb-1',
+      id: 'systemTool-report'
+    });
+  });
+
+  it('keeps combined and bare ids without a source', () => {
+    expect(parseToolReferenceKey('mcp-app_1/search')).toEqual({ id: 'mcp-app_1/search' });
+    expect(parseToolReferenceKey('6afff3db9958f5358f796e8b')).toEqual({
+      id: '6afff3db9958f5358f796e8b'
+    });
+    expect(parseToolReferenceKey('systemTool-report')).toEqual({ id: 'systemTool-report' });
+  });
+
+  it('does not treat unrelated colon segments as a source', () => {
+    expect(parseToolReferenceKey('mcp:app_1')).toEqual({ id: 'mcp:app_1' });
+    expect(parseToolReferenceKey('')).toEqual({ id: '' });
+  });
+});
+
+describe('getToolReferenceKeyCandidates', () => {
+  const toolId = '6afff3db9958f5358f796e8b';
+
+  it('keeps bare ids and ignores empty keys', () => {
+    expect(getToolReferenceKeyCandidates(toolId)).toEqual([toolId]);
+    expect(getToolReferenceKeyCandidates('')).toEqual([]);
+    expect(getToolReferenceKeyCandidates('   ')).toEqual([]);
+  });
+
+  it('does not emit bare candidates for a sourced key', () => {
+    const systemKey = 'system:systemTool-report';
+    const systemCandidates = getToolReferenceKeyCandidates(systemKey);
+    expect(systemCandidates[0]).toBe(systemKey);
+    expect(systemCandidates).not.toContain('systemTool-report');
+    expect(systemCandidates.every((candidate) => candidate.startsWith('system:'))).toBe(true);
+
+    const teamKey = `teamId:68ad85a7463006c963799a07:${toolId}`;
+    expect(getToolReferenceKeyCandidates(teamKey)).toEqual([teamKey]);
+  });
+
+  it('does not emit sourced candidates for a bare key', () => {
+    const candidates = getToolReferenceKeyCandidates('systemTool-report');
+    expect(candidates[0]).toBe('systemTool-report');
+    expect(candidates.every((candidate) => !candidate.includes(':'))).toBe(true);
+  });
+
+  it('keeps the identity key for combined tool ids without breaking slashed plugin ids', () => {
+    const candidates = getToolReferenceKeyCandidates(`mcp-${toolId}/search`);
+
+    expect(candidates[0]).toBe(`mcp-${toolId}/search`);
+    expect(candidates).toContain(`${toolId}/search`);
+    expect(candidates).toContain(toolId + 'search');
+    expect(new Set(candidates).size).toBe(candidates.length);
+  });
+
+  it('reports whether the reference key is sourced', () => {
+    expect(isSourcedToolReferenceKey('system:systemTool-report')).toBe(true);
+    expect(isSourcedToolReferenceKey('teamId:team-1:systemTool-report')).toBe(true);
+    expect(isSourcedToolReferenceKey('debug:tmbId:tmb-1:systemTool-report')).toBe(true);
+    expect(isSourcedToolReferenceKey('systemTool-report')).toBe(false);
+    expect(isSourcedToolReferenceKey(`mcp-${toolId}/search`)).toBe(false);
+  });
+});
+
+describe('normalizeToolReferenceBraces', () => {
+  it('folds multi-layer braces into a single layer', () => {
+    expect(normalizeToolReferenceBraces('use {{{{@6afff3db9958f5358f796e8b@}}}} now')).toBe(
+      'use {{@6afff3db9958f5358f796e8b@}} now'
+    );
+  });
+
+  it('keeps single-layer references and plain text unchanged', () => {
+    expect(normalizeToolReferenceBraces('use {{@tool_1@}}')).toBe('use {{@tool_1@}}');
+    expect(normalizeToolReferenceBraces('no reference')).toBe('no reference');
+  });
+
+  it('folds every occurrence in the text', () => {
+    expect(normalizeToolReferenceBraces('{{{{@a@}}}} and {{{{@b@}}}}')).toBe('{{@a@}} and {{@b@}}');
+  });
+});
+
+describe('TOOL_REFERENCE_REGEX_SOURCE / createToolReferenceRegExp', () => {
+  const matchKey = (text: string) => {
+    const matches = createToolReferenceRegExp().exec(text);
+    return matches ? { matched: matches[0], key: matches[3] } : null;
+  };
+
+  it('matches single and multi-layer references with the key in capture group 3', () => {
+    expect(matchKey('{{@id@}}')).toEqual({ matched: '{{@id@}}', key: 'id' });
+    expect(matchKey('{{{{@tool_1@}}}}')).toEqual({ matched: '{{{{@tool_1@}}}}', key: 'tool_1' });
+  });
+
+  it('consumes asymmetric brace layers the same way for both sides', () => {
+    // 三层左、两层右：整段被消费，键仍在捕获组 3。
+    expect(matchKey('{{{@id@}}')).toEqual({ matched: '{{{@id@}}', key: 'id' });
+    // 两层左、三层右。
+    expect(matchKey('{{@id@}}}')).toEqual({ matched: '{{@id@}}}', key: 'id' });
+    expect(matchKey('{{{@id@}}}')).toEqual({ matched: '{{{@id@}}}', key: 'id' });
+  });
+
+  it('requires at least two brace layers and a brace/@-free key', () => {
+    expect(matchKey('{@id@}')).toBeNull();
+    expect(matchKey('{{@a{b@}}')).toBeNull();
+    expect(matchKey('{{@a@b@}}')).toBeNull();
+  });
+
+  it('finds every reference with the global flag', () => {
+    const keys = Array.from('{{@a@}} {{@b@}}'.matchAll(createToolReferenceRegExp())).map(
+      (matches) => matches[3]
+    );
+    expect(keys).toEqual(['a', 'b']);
   });
 });

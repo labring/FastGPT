@@ -124,6 +124,95 @@ const TeamPluginSourcePrefix = 'teamId:';
 export const getToolIdentityKey = (id?: string, source?: string) =>
   `${source || 'system'}:${id || ''}`;
 
+/**
+ * 引用键里可以明确识别的工具来源：`system:<id>`、`teamId:<teamId>:<id>`、
+ * `debug:tmbId:<tmbId>:<id>`。其他写法（组合 ID、裸 ObjectId 等）视为无来源。
+ * 按已知来源形态匹配，避免把 `mcp-appId/tool` 这类 pluginId 误当作来源。
+ */
+export const parseToolReferenceKey = (key: string): { source?: string; id: string } => {
+  const trimmedKey = typeof key === 'string' ? key.trim() : '';
+  if (!trimmedKey) return { id: '' };
+
+  const teamMatch = /^(teamId:[^:]+):(.+)$/.exec(trimmedKey);
+  if (teamMatch) {
+    return { source: teamMatch[1], id: teamMatch[2] };
+  }
+
+  const debugMatch = /^(debug:tmbId:[^:]+):(.+)$/.exec(trimmedKey);
+  if (debugMatch) {
+    return { source: debugMatch[1], id: debugMatch[2] };
+  }
+
+  if (trimmedKey.startsWith('system:')) {
+    const id = trimmedKey.slice('system:'.length);
+    if (id) return { source: 'system', id };
+  }
+
+  return { id: trimmedKey };
+};
+
+/** 引用键是否带明确来源。带来源的引用只在同一来源命名空间内解析。 */
+export const isSourcedToolReferenceKey = (key: string): boolean =>
+  Boolean(parseToolReferenceKey(key).source);
+
+/**
+ * 构造工具引用键的匹配候选（按优先级去重）。
+ *
+ * 提示词中的工具引用可能来自不同版本：`<source>:<id>` 身份键、`teamId:xxx:<id>`、
+ * 组合工具 ID（`mcp-appId/tool`）、或历史数据里的裸 id。解析出明确来源后，
+ * 候选只在同一来源命名空间内生成，避免同 ID 不同来源的工具互相命中；
+ * 无来源的裸键也不会生成任何带来源的候选。
+ */
+export const getToolReferenceKeyCandidates = (key: string): string[] => {
+  const trimmedKey = typeof key === 'string' ? key.trim() : '';
+  if (!trimmedKey) return [];
+
+  const { source, id } = parseToolReferenceKey(trimmedKey);
+  const candidates: string[] = [];
+  const pushCandidate = (candidate?: string) => {
+    if (candidate && !candidates.includes(candidate)) {
+      candidates.push(candidate);
+    }
+  };
+  // 有来源时保持来源前缀，保证候选不会漂移到其他来源或裸键命名空间。
+  const withSource = (value?: string) => {
+    if (!value) return undefined;
+    return source ? `${source}:${value}` : value;
+  };
+
+  pushCandidate(trimmedKey);
+  pushCandidate(withSource(id));
+  try {
+    const { pluginId } = splitCombineToolId(id);
+    const runtimeId = pluginId.replace(/[^a-zA-Z0-9_-]/g, '');
+    pushCandidate(withSource(pluginId));
+    pushCandidate(withSource(runtimeId));
+  } catch {
+    // 非组合工具 ID 只使用原值解析。
+  }
+
+  return candidates;
+};
+
+/**
+ * 工具引用统一匹配规则（编辑器与运行时共用，避免两侧包裹范围/键字符不一致）：
+ * ≥2 层花括号 + `@key@`，key 不允许包含花括号与 @；捕获组 3 为引用键。
+ */
+export const TOOL_REFERENCE_REGEX_SOURCE = '({){2,}(@)([^@{}]+)(@)(}){2,}';
+
+export const createToolReferenceRegExp = (flags = 'g') =>
+  new RegExp(TOOL_REFERENCE_REGEX_SOURCE, flags);
+
+/**
+ * 折叠 PromptEditor 中多层包裹的工具引用花括号：`{{{{@id@}}}}` -> `{{@id@}}`。
+ * 单层引用保持不变，避免把编辑器写入的合法格式改坏。
+ */
+export const normalizeToolReferenceBraces = (text: string): string => {
+  if (typeof text !== 'string' || !text.includes('{')) return text;
+
+  return text.replace(/\{{3,}@([^@{}]+)@\}{3,}/g, '{{@$1@}}');
+};
+
 /** 构造 plugin service 使用的团队隔离 source。 */
 export const getTeamPluginSource = (teamId: string) => `${TeamPluginSourcePrefix}${teamId}`;
 

@@ -3,6 +3,8 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   agentForm2AppWorkflow,
   appWorkflow2AgentForm,
+  formatAuxiliaryGenerationPrompt,
+  getAuxiliaryGenerationToolKey,
   loadGeneratedTools
 } from '@/pageComponents/app/detail/Edit/ChatAgent/utils';
 import { getNewToolPreviewNode } from '@/web/core/app/api/tool';
@@ -339,5 +341,72 @@ describe('agentForm2AppWorkflow model reference', () => {
     expect(
       agentNode?.inputs.find((input) => input.key === NodeInputKeyEnum.history)
     ).toBeUndefined();
+  });
+});
+
+describe('getAuxiliaryGenerationToolKey', () => {
+  it('无 source 的个人/团队工作流工具使用裸资源键', () => {
+    expect(getAuxiliaryGenerationToolKey({ id: '6afff3db9958f5358f796e8b' })).toBe(
+      '6afff3db9958f5358f796e8b'
+    );
+  });
+
+  it('有 source 的工具使用 <source>:<id> 身份键', () => {
+    expect(getAuxiliaryGenerationToolKey({ id: 'systemTool-x', source: 'system' })).toBe(
+      'system:systemTool-x'
+    );
+    expect(getAuxiliaryGenerationToolKey({ id: 'x', source: 'teamId:t1' })).toBe('teamId:t1:x');
+  });
+
+  it('pluginId 优先于 id', () => {
+    expect(
+      getAuxiliaryGenerationToolKey({ id: 'toolset-id', pluginId: 'plugin-id', source: 'system' })
+    ).toBe('system:plugin-id');
+    expect(getAuxiliaryGenerationToolKey({ id: 'toolset-id', pluginId: 'plugin-id' })).toBe(
+      'plugin-id'
+    );
+  });
+
+  it('手动加入的系统工具即使缺省 source 也使用 system:<id> 身份键', () => {
+    expect(getAuxiliaryGenerationToolKey({ id: 'systemTool-metaso' })).toBe(
+      'system:systemTool-metaso'
+    );
+    expect(getAuxiliaryGenerationToolKey({ id: 'commercial-abc' })).toBe('system:commercial-abc');
+  });
+});
+
+describe('formatAuxiliaryGenerationPrompt', () => {
+  const toolset = { id: '6afff3db9958f5358f796e8b', pluginId: '6afff3db9958f5358f796e8b' };
+
+  it('把正文里的工具集身份键转换为 Pro 目录使用的裸应用 ID', () => {
+    expect(
+      formatAuxiliaryGenerationPrompt({
+        systemPrompt: '步骤 2 使用 {{@system:6afff3db9958f5358f796e8b@}} 检索代码',
+        tools: [toolset]
+      })
+    ).toBe('步骤 2 使用 {{@6afff3db9958f5358f796e8b@}} 检索代码');
+  });
+
+  it('保持不需要转换的引用原样，并折叠多层花括号', () => {
+    expect(
+      formatAuxiliaryGenerationPrompt({
+        systemPrompt: 'A {{{{@system:6afff3db9958f5358f796e8b@}}}} B {{@unknown@}}',
+        tools: [toolset]
+      })
+    ).toBe('A {{@6afff3db9958f5358f796e8b@}} B {{@unknown@}}');
+  });
+
+  it('系统工具的引用键在两侧一致时不改写', () => {
+    expect(
+      formatAuxiliaryGenerationPrompt({
+        systemPrompt: '使用 {{@system:systemTool-metaso@}}',
+        tools: [{ id: 'systemTool-metaso' }]
+      })
+    ).toBe('使用 {{@system:systemTool-metaso@}}');
+  });
+
+  it('未选择工具或正文为空时原样返回', () => {
+    expect(formatAuxiliaryGenerationPrompt({ systemPrompt: '', tools: [toolset] })).toBe('');
+    expect(formatAuxiliaryGenerationPrompt({ systemPrompt: 'x', tools: [] })).toBe('x');
   });
 });

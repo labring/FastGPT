@@ -33,7 +33,66 @@ import { getNewToolPreviewNode } from '@/web/core/app/api/tool';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { inheritToolInputConfig } from '../FormComponent/ToolSelector/utils';
-import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import {
+  createToolReferenceRegExp,
+  getToolIdentityKey,
+  isSystemOrCommercialToolId,
+  normalizeToolReferenceBraces
+} from '@fastgpt/global/core/app/tool/utils';
+
+/**
+ * 辅助生成的资源键。固定 Pro 版本按工具类型使用两套目录键：
+ * - 系统/商业工具（含手动加入、缺省 source 的情况）走身份键 `<source>:<id>`（缺省 `system:<id>`）；
+ * - 个人/团队工作流工具与工具集（MCP/HTTP 工具集 app）走裸应用 ID。
+ */
+export const getAuxiliaryGenerationToolKey = (tool: {
+  id?: string;
+  pluginId?: string;
+  source?: string;
+}) => {
+  const rawId = tool.pluginId ?? tool.id ?? '';
+  if (!rawId) return '';
+  if (tool.source || isSystemOrCommercialToolId(rawId)) {
+    return getToolIdentityKey(rawId, tool.source);
+  }
+  return rawId;
+};
+
+/**
+ * 把编辑器正文里的工具引用键转换为固定 Pro 资源目录使用的键。
+ *
+ * 预设（selectedTools）与正文必须走同一套映射：编辑器里插入工具集时会写入
+ * `{{@system:<appId>@}}`，而 Pro 目录登记的是裸 app id；若正文原样下发，模型沿用该 ID
+ * 填写 `expectedTools` 会命中 Pro 的 `Unavailable resources` 校验。
+ */
+export const formatAuxiliaryGenerationPrompt = ({
+  systemPrompt,
+  tools
+}: {
+  systemPrompt?: string;
+  tools: Array<{ id?: string; pluginId?: string; source?: string }>;
+}) => {
+  if (!systemPrompt) return systemPrompt;
+
+  const keyMap = new Map<string, string>();
+  tools.forEach((tool) => {
+    if (!tool.pluginId && !tool.id) return;
+    const editorKey = getToolIdentityKey(tool.pluginId ?? tool.id, tool.source);
+    const proKey = getAuxiliaryGenerationToolKey(tool);
+    if (editorKey && proKey && editorKey !== proKey) {
+      keyMap.set(editorKey, proKey);
+    }
+  });
+  if (keyMap.size === 0) return systemPrompt;
+
+  return normalizeToolReferenceBraces(systemPrompt).replace(
+    createToolReferenceRegExp('g'),
+    (raw, _left: string, _at: string, referenceKey: string) => {
+      const mappedKey = keyMap.get(referenceKey.trim());
+      return mappedKey ? `{{@${mappedKey}@}}` : raw;
+    }
+  );
+};
 
 /* format app nodes to edit form */
 export const appWorkflow2AgentForm = ({

@@ -672,16 +672,13 @@ export const getAgentRuntimeTools = async ({
         })();
 
         // toolset 展开后的子工具统一走 tool 执行；params 仍继承父工具配置。
-        const promptReference = runtimeSource
-          ? {
-              id: getToolIdentityKey(tool.id, runtimeSource),
-              legacyId: tool.id,
-              name: toolNode.name
-            }
-          : {
-              id: tool.id,
-              name: toolNode.name
-            };
+        // 缺省 source 的系统工具同样写入身份键（`system:<id>`）与 legacyId，
+        // 保证与团队版同 ID 时裸引用能进入歧义判断，而不是被当成唯一来源。
+        const promptReference = {
+          id: getToolIdentityKey(tool.id, runtimeSource),
+          legacyId: tool.id,
+          name: toolNode.name
+        };
         const buildSubApp = (child: RuntimeNodeItemType, id = child.nodeId): SubAppInitType => {
           const runtimeId = getAgentRuntimeToolId({ pluginId: id, source: runtimeSource });
           const isHttpToolChild = Boolean(child.toolConfig?.httpTool);

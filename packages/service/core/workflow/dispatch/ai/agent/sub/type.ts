@@ -17,7 +17,8 @@ export type SubAppInitType = {
   requestSchema: ChatCompletionTool;
   promptReference?: {
     id: string;
-    legacyId?: string;
+    /** 旧版裸 ID；生产端恒写，用于唯一性判定。 */
+    legacyId: string;
     name: string;
   };
   params: {

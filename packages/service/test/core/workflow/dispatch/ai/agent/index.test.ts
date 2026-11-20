@@ -502,6 +502,7 @@ describe('dispatchRunAgent user context', () => {
         params: {},
         promptReference: {
           id: 'mcp-app_1/search',
+          legacyId: 'mcp-app_1/search',
           name: 'Search documentation'
         },
         requestSchema: {
