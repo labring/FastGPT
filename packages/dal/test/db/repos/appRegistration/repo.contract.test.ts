@@ -4,16 +4,13 @@ import { createEntityId } from '@fastgpt/global/common/string/entityId';
 import { injectRepo } from '@fastgpt/dal/db/container';
 import { DbRecordCorruptedError } from '@fastgpt/dal/db/errors';
 import { compileSqlTableDDL } from '@fastgpt/dal/db/sql/ddl';
-import {
-  createMongoTestHarness,
-  createPGliteSqlTestHarness,
-  registerDualDialectContractSuite,
-  type MongoTestHarness,
-  type SqlTestHarness
-} from '@fastgpt/dal/db/testing';
+import { createContractBackends, registerMultiDialectContractSuite } from '@fastgpt/dal/db/testing';
 import { runInTransaction } from '@fastgpt/dal/db/transaction';
 import { AppRegistrationRepoToken } from '@fastgpt/dal/db/repos/appRegistration/repo';
-import { appRegistrationMongoCollection } from '../../../../db/repos/appRegistration/mongo/schema';
+import {
+  AppRegistrationCollectionName,
+  appRegistrationMongoCollection
+} from '../../../../db/repos/appRegistration/mongo/schema';
 import { appRegistrationSqlTable } from '../../../../db/repos/appRegistration/sql/table';
 
 describe('AppRegistration portable SQL DDL', () => {
@@ -22,6 +19,7 @@ describe('AppRegistration portable SQL DDL', () => {
     expect(obSql).toContain('CREATE TABLE IF NOT EXISTS `app_registrations`');
     expect(obSql).toContain('`created_at` DATETIME(3)');
     expect(obSql).toContain('KEY `fg_app_reg_team` (`team_id`)');
+    expect(obSql).toContain('DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;');
     expect(obSql).not.toContain('CREATE INDEX IF NOT EXISTS');
 
     const pgSql = compileSqlTableDDL(appRegistrationSqlTable, 'postgres').join('\n');
@@ -31,48 +29,17 @@ describe('AppRegistration portable SQL DDL', () => {
   });
 });
 
-describe('AppRegistrationRepository dual-dialect contract', () => {
-  let mongoHarness: MongoTestHarness | undefined;
-  let sqlHarness: SqlTestHarness | undefined;
-
-  registerDualDialectContractSuite({
+describe('AppRegistrationRepository multi-dialect contract', () => {
+  registerMultiDialectContractSuite({
     describeFn: describe,
     beforeAllFn: beforeAll,
     beforeEachFn: beforeEach,
     afterAllFn: afterAll,
-    backends: [
-      {
-        label: 'MongoDB',
-        dialect: 'mongo',
-        setup: async () => {
-          mongoHarness = await createMongoTestHarness({
-            collections: [appRegistrationMongoCollection]
-          });
-        },
-        cleanupEach: async () => {
-          await mongoHarness?.clearAll();
-        },
-        teardown: async () => {
-          await mongoHarness?.close();
-        }
-      },
-      {
-        label: 'SQL (PGlite)',
-        dialect: 'postgres',
-        setup: async () => {
-          sqlHarness = await createPGliteSqlTestHarness({
-            tables: [appRegistrationSqlTable]
-          });
-        },
-        cleanupEach: async () => {
-          await sqlHarness?.truncateAll();
-        },
-        teardown: async () => {
-          await sqlHarness?.close();
-        }
-      }
-    ],
-    registerTests: (getDialect) => {
+    backends: createContractBackends({
+      collections: [appRegistrationMongoCollection],
+      tables: [appRegistrationSqlTable]
+    }),
+    registerTests: (ctx) => {
       const repo = injectRepo(AppRegistrationRepoToken);
 
       it('normalizes IDs, dates, and nullable fields identically across dialects', async () => {
@@ -97,26 +64,28 @@ describe('AppRegistrationRepository dual-dialect contract', () => {
 
         // 校验历史可空字段（appId / createdAt）在 SQL null 与 Mongo 缺失/null 时统一归一为 undefined
         const nullableRowId = createEntityId();
-        if (getDialect() === 'mongo') {
-          await mongoHarness!.getModel(appRegistrationMongoCollection).collection.insertOne({
-            _id: new Types.ObjectId(nullableRowId),
-            teamId: new Types.ObjectId(teamId),
-            tmbId: new Types.ObjectId(tmbId),
-            appId: null,
-            createdAt: null
-          });
-        } else {
-          await sqlHarness!.db
-            .insertInto('app_registrations')
-            .values({
+        await ctx.insertRawRow({
+          mongo: {
+            collection: AppRegistrationCollectionName,
+            doc: {
+              _id: new Types.ObjectId(nullableRowId),
+              teamId: new Types.ObjectId(teamId),
+              tmbId: new Types.ObjectId(tmbId),
+              appId: null,
+              createdAt: null
+            }
+          },
+          sql: {
+            table: appRegistrationSqlTable.name,
+            row: {
               _id: nullableRowId,
               team_id: teamId,
               tmb_id: tmbId,
               app_id: null,
               created_at: null
-            })
-            .execute();
-        }
+            }
+          }
+        });
 
         const nullableRow = await repo.findById({ id: nullableRowId, teamId });
         expect(nullableRow).toEqual({
@@ -170,26 +139,28 @@ describe('AppRegistrationRepository dual-dialect contract', () => {
         });
         const corruptedId = createEntityId();
 
-        if (getDialect() === 'mongo') {
-          await mongoHarness!.getModel(appRegistrationMongoCollection).collection.insertOne({
-            _id: new Types.ObjectId(corruptedId),
-            teamId: new Types.ObjectId(teamId),
-            tmbId: 'legacy-corrupted-tmb',
-            appId: new Types.ObjectId(createEntityId()),
-            createdAt: new Date()
-          });
-        } else {
-          await sqlHarness!.db
-            .insertInto('app_registrations')
-            .values({
+        await ctx.insertRawRow({
+          mongo: {
+            collection: AppRegistrationCollectionName,
+            doc: {
+              _id: new Types.ObjectId(corruptedId),
+              teamId: new Types.ObjectId(teamId),
+              tmbId: 'legacy-corrupted-tmb',
+              appId: new Types.ObjectId(createEntityId()),
+              createdAt: new Date()
+            }
+          },
+          sql: {
+            table: appRegistrationSqlTable.name,
+            row: {
               _id: corruptedId,
               team_id: teamId,
               tmb_id: 'legacy-corrupted-tmb',
               app_id: createEntityId(),
               created_at: new Date()
-            })
-            .execute();
-        }
+            }
+          }
+        });
 
         await expect(repo.findById({ id: corruptedId, teamId })).rejects.toBeInstanceOf(
           DbRecordCorruptedError

@@ -36,9 +36,7 @@ beforeAll(async () => {
   process.env.MONGODB_URI = mongoUri;
   configureMongoDalRuntime({
     mainWriteUrl: mongoUri,
-    logWriteUrl: process.env.MONGODB_LOG_URI,
-    // 单机/测试默认跳过底层 startSession 同时保留 DbSession.afterCommit 行为（显式事务契约测试可覆盖此配置）
-    transactionRunner: async ({ execute }) => execute(undefined)
+    logWriteUrl: process.env.MONGODB_LOG_URI
   });
   await connectMongo({ db: connectionMongo, url: mongoUri });
   await connectMongo({ db: connectionLogMongo, url: mongoUri });

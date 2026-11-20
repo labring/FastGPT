@@ -1037,9 +1037,10 @@ export const AppChatLogRepoToken = defineRepoToken<AppChatLogRepository>('AppCha
   - [x] 在 `packages/dal/db/repos/registry.ts` 建立开源 Collection / Table 注册表，Mongo 启动后后台异步执行只增补建（Redis 锁、key 等价检查防 Error 85、`285` 轮询、支持动态条件索引函数，绝不启动自动删索引），并补齐 Mongo & SQL 统一只读 `inspect`；
   - [x] 将当前 11 个文件中的 17 条 `deprecated: true` 废弃索引一次性迁出为显式一次性清理任务并从 `schema.ts` 彻底删除，后续严禁新增 `deprecated: true` 墓碑及无 `fg_` 前缀新索引，同步更新 `.agents/design/common/mongo-index-sync-strategy.md` 与 `AGENTS.md`。
 - [ ] **0.5.5 四层测试底座与 CI 漂移门禁**：
-  - [ ] `@fastgpt/dal` 补齐 `mongodb-memory-server` devDep 与惰性 Mongo Harness；升级 `@fastgpt/dal/db/testing` 提供 `createContractBackends`（按环境变量动态挂载 `Mongo / PGlite / MySQL 8 / OceanBase / PG`）、`insertRawRow` 及按 `VITEST_POOL_ID` 独立库 + `DELETE` 无锁清理；
-  - [ ] 拆分无 DB 的 L0 轻量 Vitest 配置（脱离 `test/setup.ts`），修复 `test/setup.ts` 默认事务空壳；
-  - [ ] 落地 CI 防漂移校验（SQL 重放 `0001 -> latest` 比对 `defineSqlTable` + 校验无超期未删索引；Mongo 校验新索引 `fg_` 规范与零 `deprecated: true`）并补齐 `.github/workflows/test-fastgpt.yaml`（经确认后变更）纳入 `packages/dal` 触发与 PR 级 MySQL 8 容器契约作业。
+  - [x] `@fastgpt/dal` 补齐 `mongodb-memory-server` devDep 与惰性 Mongo Harness；升级 `@fastgpt/dal/db/testing` 提供 `createContractBackends`（按环境变量动态挂载 `Mongo / PGlite / MySQL 8 / OceanBase / PG`）、`insertRawRow` 及按 `VITEST_POOL_ID` 独立库 + `DELETE` 无锁清理；
+  - [x] 拆分无 DB 的 L0 轻量 Vitest 配置（`packages/service/vitest.unit.config.ts`，脱离 `test/setup.ts`），修复 `test/setup.ts` 默认事务空壳，`scripts/test/run.mjs` 纳入 `dal` scope；
+  - [x] 落地防漂移门禁测试 `packages/dal/test/db/schema-drift-guard.test.ts`（SQL 重放 `0001 -> latest` 比对 `defineSqlTable` + 校验无多余托管索引；Mongo 校验增量同步零漂移与全仓零 `deprecated: true`）；
+  - [ ] 待用户确认后同步更新 `.github/workflows/test-fastgpt.yaml` 与 `.forgejo/workflows/test-fastgpt.yaml`，纳入 `packages/dal` 触发与 PR 级 MySQL 8 容器契约作业。
 
 ### Phase 1：81 张业务表垂直端到端迁入 DAL（开源 71 表落 `packages/dal/db/repos/`，Pro 10 表落 `pro/admin/src/dal/db/repos/`，同表含 `pro` 一刀切，WIP=1 锁）
 - [ ] **1.0 Wave 1 轻量原型验证**：优先迁移 `llm_request_records`、`system_logs`（验证日志双态回退 + TTL/动态 `collMod`）、`timer_locks`、`count_limits`（验证原子 Upsert/CAS/`$inc`）及零耦合叶子表，在 Mongo + PGlite + MySQL/OceanBase 三端打通闭环。

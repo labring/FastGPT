@@ -407,11 +407,8 @@ import { createEntityId } from '@fastgpt/global/common/string/entityId';
 import { injectRepo } from '@fastgpt/dal/db/container';
 import { compileSqlTableDDL } from '@fastgpt/dal/db/sql/ddl';
 import {
-  createMongoTestHarness,
-  createPGliteSqlTestHarness,
-  registerDualDialectContractSuite,
-  type MongoTestHarness,
-  type SqlTestHarness
+  createContractBackends,${datasource === 'log' ? '\n  createPGliteSqlTestHarness,' : ''}
+  registerMultiDialectContractSuite
 } from '@fastgpt/dal/db/testing';
 import { runInTransaction } from '@fastgpt/dal/db/transaction';
 import { ${entityArg}RepoToken } from '${repoPublicImportPrefix}/repo';
@@ -423,6 +420,7 @@ describe('${entityArg} portable SQL DDL (OceanBase/MySQL + PostgreSQL)', () => {
     const obSql = compileSqlTableDDL(${camelEntity}SqlTable, 'oceanbase').join('\\n');
     expect(obSql).toContain('CREATE TABLE IF NOT EXISTS \`${tableArg}\`');
     expect(obSql).toContain('DATETIME(3)');
+    expect(obSql).toContain('DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;');
     expect(obSql).not.toContain('CREATE INDEX IF NOT EXISTS');
 
     const pgSql = compileSqlTableDDL(${camelEntity}SqlTable, 'postgres').join('\\n');
@@ -456,50 +454,18 @@ describe('${entityArg}Repository shared main-pool fallback', () => {
     : ''
 }
 describe('${entityArg}Repository multi-dialect contract', () => {
-  let mongoHarness: MongoTestHarness | undefined;
-  let sqlHarness: SqlTestHarness | undefined;
-
-  registerDualDialectContractSuite({
+  registerMultiDialectContractSuite({
     describeFn: describe,
     beforeAllFn: beforeAll,
     beforeEachFn: beforeEach,
     afterAllFn: afterAll,
-    backends: [
-      {
-        label: 'MongoDB',
-        dialect: 'mongo',
-        setup: async () => {
-          mongoHarness = await createMongoTestHarness({
-            ${datasource === 'log' ? 'collections: [],\n            logCollections: [' : 'collections: ['}${collectionVarName}]${
-              datasource === 'log' ? ",\n            logMode: 'separate'" : ''
-            }
-          });
-        },
-        cleanupEach: async () => {
-          await mongoHarness?.clearAll();
-        },
-        teardown: async () => {
-          await mongoHarness?.close();
-        }
-      },
-      {
-        label: 'SQL (PGlite)',
-        dialect: 'postgres',
-        setup: async () => {
-          sqlHarness = await createPGliteSqlTestHarness({
-            ${datasource === 'log' ? 'tables: [],\n            logTables: [' : 'tables: ['}${camelEntity}SqlTable]${
-              datasource === 'log' ? ",\n            logMode: 'separate'" : ''
-            }
-          });
-        },
-        cleanupEach: async () => {
-          await sqlHarness?.truncateAll();
-        },
-        teardown: async () => {
-          await sqlHarness?.close();
-        }
+    backends: createContractBackends({
+      ${
+        datasource === 'log'
+          ? `collections: [],\n      logCollections: [${collectionVarName}],\n      tables: [],\n      logTables: [${camelEntity}SqlTable],\n      logMode: 'separate'`
+          : `collections: [${collectionVarName}],\n      tables: [${camelEntity}SqlTable]`
       }
-    ],
+    }),
     registerTests: () => {
       const repo = injectRepo(${entityArg}RepoToken);
 

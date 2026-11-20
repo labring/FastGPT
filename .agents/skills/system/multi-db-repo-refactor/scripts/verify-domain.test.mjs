@@ -467,7 +467,7 @@ test('scaffold-repo.mjs preserves existing service.ts without emitting mismatche
       'utf8'
     );
     assert.doesNotMatch(contractTest, /execute\(undefined\)/);
-    assert.match(contractTest, /createMongoTestHarness\(/);
+    assert.match(contractTest, /createContractBackends\(/);
     assert.match(contractTest, /compileSqlTableDDL\(probeWidgetSqlTable, 'oceanbase'\)/);
     assert.match(contractTest, /logMode:\s*'shared'/);
 
