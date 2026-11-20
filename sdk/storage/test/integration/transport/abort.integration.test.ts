@@ -150,8 +150,8 @@ const createMultipartCompleteStalledServer = () => {
   const completeClosed = new Promise<void>((resolve) => {
     resolveCompleteClosed = resolve;
   });
-  let notifyAbort: (() => void) | undefined;
-  const abortReceived = new Promise<void>((resolve) => {
+  let notifyAbort: ((uploadId: string | null) => void) | undefined;
+  const abortReceived = new Promise<string | null>((resolve) => {
     notifyAbort = resolve;
   });
   let abortRequests = 0;
@@ -175,7 +175,7 @@ const createMultipartCompleteStalledServer = () => {
     if (request.method === 'DELETE') {
       abortRequests += 1;
       request.resume();
-      notifyAbort?.();
+      notifyAbort?.(url.searchParams.get('uploadId'));
       response.writeHead(404, { 'Content-Type': 'application/xml' });
       response.end(
         '<Error><Code>NoSuchUpload</Code><Message>The specified upload does not exist.</Message></Error>'
@@ -561,11 +561,12 @@ describe('provider upload abort transport integration', () => {
       'AWS CompleteMultipartUpload socket did not close on abort',
       5000
     );
-    await withTimeout(
+    const abortedUploadId = await withTimeout(
       abortReceived,
       'AWS did not send AbortMultipartUpload after Complete was cancelled',
       5000
     );
+    expect(abortedUploadId).toBe('upload-1');
     expect(getAbortRequests()).toBe(1);
     await storage.destroy();
     await closeServer(server);

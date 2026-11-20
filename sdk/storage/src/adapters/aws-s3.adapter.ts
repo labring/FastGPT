@@ -151,7 +151,10 @@ export class AwsS3StorageAdapter implements IStorage {
     let completeDispatched = false;
     let multipartCleanupPromise: Promise<unknown> | undefined;
 
-    const scheduleMultipartCleanup = (uploadId: string, options?: Record<string, unknown>) => {
+    const scheduleMultipartCleanup = (
+      uploadId: string,
+      options?: Parameters<AWS.S3Client['send']>[1]
+    ) => {
       if (multipartCleanupPromise) {
         return multipartCleanupPromise;
       }
@@ -162,10 +165,6 @@ export class AwsS3StorageAdapter implements IStorage {
       }, MULTIPART_CONTROL_CLEANUP_TIMEOUT_MS);
       timeoutId.unref?.();
 
-      const cleanupOptions = {
-        ...options,
-        abortSignal: cleanupController.signal
-      };
       multipartCleanupPromise = this.client
         .send(
           new AWS.AbortMultipartUploadCommand({
@@ -173,7 +172,10 @@ export class AwsS3StorageAdapter implements IStorage {
             Key: key,
             UploadId: uploadId
           }),
-          cleanupOptions as any
+          {
+            ...options,
+            abortSignal: cleanupController.signal
+          }
         )
         // 远端可能已完成合并（返回 NoSuchUpload）或已清理，补偿清理失败不应覆盖调用方取消原因。
         .catch(() => undefined)
@@ -244,33 +246,13 @@ export class AwsS3StorageAdapter implements IStorage {
                   if (completeUploadId) {
                     multipartUploadId = completeUploadId;
                   }
-                  if (uploadAbortController.signal.aborted) {
-                    if (completeUploadId) {
-                      void scheduleMultipartCleanup(completeUploadId);
-                    }
-                    return Promise.reject(getAbortSignalError(uploadAbortController.signal));
-                  }
-
-                  return target
-                    .send(command, {
-                      ...options,
-                      abortSignal: uploadAbortController.signal
-                    })
-                    .catch((completeError: unknown) => {
-                      // lib-storage 在进入 CompleteMultipartUpload 后不再调用 markUploadAsAborted；
-                      // 合并阶段被取消时需要独立发起补偿清理，避免已上传分片残留。
-                      if (uploadAbortController.signal.aborted && completeUploadId) {
-                        void scheduleMultipartCleanup(completeUploadId);
-                      }
-                      throw completeError;
-                    });
                 }
 
                 // lib-storage 在失败/取消后会发送 AbortMultipartUploadCommand 清理分片；
                 // 该请求不能复用已取消的信号，否则 provider 的 Multipart 会话会残留。
                 if (command instanceof AWS.AbortMultipartUploadCommand) {
                   const abortUploadId = command.input.UploadId ?? multipartUploadId;
-                  if (abortUploadId) {
+                  if (uploadAbortController.signal.aborted && abortUploadId) {
                     return scheduleMultipartCleanup(abortUploadId, options);
                   }
                   const cleanupOptions = { ...options };
