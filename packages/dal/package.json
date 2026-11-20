@@ -32,6 +32,7 @@
     "./db/mongo/runtime": "./db/mongo/runtime.ts",
     "./db/sql/base": "./db/sql/base.ts",
     "./db/sql/ddl": "./db/sql/ddl.ts",
+    "./db/sql/observability": "./db/sql/observability.ts",
     "./db/sql/dialects/postgres": "./db/sql/dialects/postgres.ts",
     "./db/sql/dialects/mysql": "./db/sql/dialects/mysql.ts",
     "./db/testing": "./db/testing.ts",

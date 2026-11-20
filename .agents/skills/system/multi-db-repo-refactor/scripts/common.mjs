@@ -2218,18 +2218,50 @@ export const analyzeSqlTableDefinitions = (sourceText) => {
         continue;
       }
       const idxName = typeof idxDef.name === 'string' ? idxDef.name : '(unnamed)';
+      if (typeof idxDef.name === 'string') {
+        if (!/^fg_[a-z0-9_]+$/.test(idxDef.name)) {
+          issues.push(
+            `table "${tableName}" index "${idxName}" must start with "fg_" and use lowercase ASCII snake_case`
+          );
+        } else if (Buffer.byteLength(idxDef.name, 'ascii') > 63) {
+          issues.push(
+            `table "${tableName}" index "${idxName}" exceeds 63 ASCII bytes (PostgreSQL NAMEDATALEN limit)`
+          );
+        }
+      }
       if (!Array.isArray(idxDef.columns)) {
         issues.push(`table "${tableName}" index "${idxName}" has non-static columns list`);
         continue;
       }
       const idxCols = idxDef.columns;
+      const idxColNames = [];
       let totalBytes = 0;
 
-      for (const colName of idxCols) {
-        if (typeof colName !== 'string') {
-          issues.push(`table "${tableName}" index "${idxName}" contains non-string column reference`);
+      for (const rawCol of idxCols) {
+        let colName;
+        if (typeof rawCol === 'string') {
+          colName = rawCol;
+        } else if (
+          rawCol !== null &&
+          typeof rawCol === 'object' &&
+          !Array.isArray(rawCol) &&
+          typeof rawCol.column === 'string'
+        ) {
+          colName = rawCol.column;
+          if (
+            rawCol.direction !== undefined &&
+            rawCol.direction !== 'asc' &&
+            rawCol.direction !== 'desc'
+          ) {
+            issues.push(
+              `table "${tableName}" index "${idxName}" has invalid sort direction "${String(rawCol.direction)}" on column "${colName}"`
+            );
+          }
+        } else {
+          issues.push(`table "${tableName}" index "${idxName}" contains invalid column reference`);
           continue;
         }
+        idxColNames.push(colName);
         const colDef = columns[colName];
         if (colDef === undefined || typeof colDef !== 'object' || colDef === null) {
           continue;
@@ -2248,7 +2280,7 @@ export const analyzeSqlTableDefinitions = (sourceText) => {
 
       if (totalBytes > MAX_OB_MYSQL_INDEX_BYTES) {
         issues.push(
-          `table "${tableName}" index "${idxName}" (${idxCols.join(', ')}) estimated width ${totalBytes}B exceeds OceanBase/MySQL utf8mb4 limit (${MAX_OB_MYSQL_INDEX_BYTES}B)`
+          `table "${tableName}" index "${idxName}" (${idxColNames.join(', ')}) estimated width ${totalBytes}B exceeds OceanBase/MySQL utf8mb4 limit (${MAX_OB_MYSQL_INDEX_BYTES}B)`
         );
       }
     }

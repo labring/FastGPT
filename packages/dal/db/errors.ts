@@ -55,7 +55,8 @@ export class DbUniqueConflictError extends DbError {
 
 /**
  * 标记可重试的并发事务冲突异常（如 Mongo 112 WriteConflict / TransientTransactionError，
- * PG 40001 / 40P01，OceanBase/MySQL 1213 死锁 / 1205 锁超时，以及业务显式抛出的乐观并发冲突）。
+ * PG 40001 / 40P01，MySQL 1213 死锁 / 1205 锁超时，OceanBase 4012 / 6002 / 6004 / 6210 / 6223，
+ * 以及业务显式抛出的乐观并发冲突）。
  */
 export class DbTransactionConflictError extends DbError {
   constructor(cause?: unknown, message = 'Database transaction write conflict') {
@@ -159,7 +160,7 @@ export const isDbUniqueConflictError = (error: unknown): boolean => {
   );
 };
 
-/** 识别可由事务入口重新开启新会话安全重跑的瞬态写冲突、串行化失败或死锁错误。 */
+/** 识别可由事务入口重新开启新会话安全重跑的瞬态写冲突、串行化失败、死锁或 OceanBase 切主事务回滚错误。 */
 export const isDbTransientConflictError = (error: unknown): boolean => {
   if (error instanceof DbTransactionConflictError) {
     return true;
@@ -174,7 +175,17 @@ export const isDbTransientConflictError = (error: unknown): boolean => {
         code === 1213 ||
         code === 'ER_LOCK_DEADLOCK' ||
         code === 1205 ||
-        code === 'ER_LOCK_WAIT_TIMEOUT'
+        code === 'ER_LOCK_WAIT_TIMEOUT' ||
+        code === 4012 ||
+        code === '4012' ||
+        code === 6002 ||
+        code === '6002' ||
+        code === 6004 ||
+        code === '6004' ||
+        code === 6210 ||
+        code === '6210' ||
+        code === 6223 ||
+        code === '6223'
     )
   ) {
     return true;

@@ -516,11 +516,27 @@ test('enforces OceanBase/MySQL portability rules for inline, local-const, and un
       ]
     });
   `);
-  assert.equal(tableCheck.issues.length, 4);
+  assert.equal(tableCheck.issues.length, 6);
   assert.ok(tableCheck.issues.some((i) => i.includes('column "body" (text) must not declare defaultValue')));
   assert.ok(tableCheck.issues.some((i) => i.includes('column "meta" (json) must not declare defaultValue')));
   assert.ok(tableCheck.issues.some((i) => i.includes('cannot index text column "body"')));
   assert.ok(tableCheck.issues.some((i) => i.includes('exceeds OceanBase/MySQL utf8mb4 limit (3072B)')));
+  assert.ok(tableCheck.issues.some((i) => i.includes('must start with "fg_"')));
+
+  const validDescTable = analyzeSqlTableDefinitions(`
+    export const okTable = defineSqlTable({
+      name: 'ok_items',
+      columns: {
+        _id: { kind: 'entityId', primaryKey: true },
+        team_id: { kind: 'entityId' },
+        create_time: { kind: 'timestamp' }
+      },
+      indexes: [
+        { name: 'fg_ok_team_created', columns: ['team_id', { column: 'create_time', direction: 'desc' }] }
+      ]
+    });
+  `);
+  assert.deepEqual(validDescTable.issues, []);
 
   // 1. Inline bad table + non-portable SQL repo rules
   withTempDomain(
@@ -594,7 +610,7 @@ test('enforces OceanBase/MySQL portability rules for inline, local-const, and un
               ...baseCols,
               title: { kind: 'varchar', length: 128 }
             },
-            indexes: [{ name: 'idx_title', columns: ['title'] }]
+            indexes: [{ name: 'fg_demo_title', columns: ['title'] }]
           } as const;
           export const okLocalTable = defineSqlTable(definition);
         `

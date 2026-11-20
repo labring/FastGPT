@@ -6,7 +6,8 @@ import type { MongoCollectionDefinition } from './mongo/collection';
 import { createMongoRuntimeDeps } from './mongo/runtime';
 import { closeDbRuntime, configureDbRuntime, getDbRuntime } from './runtime';
 import { compileSqlTableDDL, type SqlTableDefinition } from './sql/ddl';
-import type { DbDialect, DbLogMode } from './types';
+import { createSqlQueryLogger } from './sql/observability';
+import type { DbDatasource, DbDialect, DbLogMode } from './types';
 
 export type SqlTestHarness = {
   db: Kysely<any>;
@@ -129,13 +130,15 @@ export const createMongoTestHarness = async ({
 };
 
 const createKyselyOverPGlite = async (
-  tables: readonly SqlTableDefinition[]
+  tables: readonly SqlTableDefinition[],
+  datasource: DbDatasource
 ): Promise<{ pglite: PGlite; db: Kysely<any> }> => {
   const pglite = new PGlite();
   await pglite.waitReady;
 
   const db = new Kysely<any>({
-    dialect: new PGliteDialect({ pglite })
+    dialect: new PGliteDialect({ pglite }),
+    log: createSqlQueryLogger(datasource)
   });
 
   for (const table of tables) {
@@ -169,9 +172,11 @@ export const createPGliteSqlTestHarness = async ({
 
   const resolvedLogMode: DbLogMode = logMode ?? (withLogDatabase ? 'separate' : 'shared');
   const mainTables = resolvedLogMode === 'shared' ? [...tables, ...(logTables ?? [])] : tables;
-  const main = await createKyselyOverPGlite(mainTables);
+  const main = await createKyselyOverPGlite(mainTables, 'main');
   const log =
-    resolvedLogMode === 'separate' ? await createKyselyOverPGlite(logTables ?? []) : undefined;
+    resolvedLogMode === 'separate'
+      ? await createKyselyOverPGlite(logTables ?? [], 'log')
+      : undefined;
 
   const resolveTargetDb = (datasource: 'main' | 'log'): Kysely<any> => {
     if (datasource === 'log') {

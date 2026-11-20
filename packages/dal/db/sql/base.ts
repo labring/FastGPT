@@ -1,6 +1,7 @@
 import { sql, type Kysely, type RawBuilder } from 'kysely';
 import type z from 'zod';
 import { normalizeEntityId } from '@fastgpt/global/common/string/entityId';
+import { DbConfigurationError } from '../errors';
 import { parseRepoRow, parseRepoRows } from '../parse';
 import { getDbDialect, getDbLogger, getDbRuntime } from '../runtime';
 import { unwrapNativeDbSession } from '../transaction';
@@ -175,6 +176,73 @@ export abstract class SqlRepositoryBase<
   }
 
   /**
+   * 构造跨 PG / OceanBase / MySQL 行为一致的可空列排序子句。
+   *
+   * 规避 PostgreSQL 与 OceanBase/MySQL 默认 NULL 排序相反以及 MySQL/OB 不支持 `NULLS FIRST/LAST`
+   * 语法的差异，通过标准 `CASE WHEN col IS NULL ...` 保证多库排序 100% 确定一致。
+   */
+  protected orderByNullable<TQuery extends { orderBy: (...args: any[]) => TQuery }>({
+    query,
+    column,
+    direction,
+    nulls = 'last',
+    table
+  }: {
+    query: TQuery;
+    column: string;
+    direction: 'asc' | 'desc';
+    nulls?: 'first' | 'last';
+    table?: string;
+  }): TQuery {
+    const ref = sql.ref(`${table ?? this.tableName}.${column}`);
+    const nullPriority =
+      nulls === 'first'
+        ? sql<number>`CASE WHEN ${ref} IS NULL THEN 0 ELSE 1 END`
+        : sql<number>`CASE WHEN ${ref} IS NULL THEN 1 ELSE 0 END`;
+    return query.orderBy(nullPriority, 'asc').orderBy(ref, direction);
+  }
+
+  /**
+   * 基于单调递增游标（默认 `_id`）的分批 Keyset 迭代，用于平滑替代 MongoDB `.cursor()`，
+   * 避免深分页 `OFFSET` 的 O(N^2) 扫描退化，并内置单调递增守卫防止调用方漏写游标条件导致死循环。
+   */
+  protected async *iterateByKeyset<TRow = z.output<TReadSchema>>({
+    fetchBatch,
+    getCursor,
+    batchSize = 500
+  }: {
+    fetchBatch: (params: { afterId?: string; limit: number }) => Promise<readonly TRow[]>;
+    getCursor: (row: NoInfer<TRow>) => string;
+    batchSize?: number;
+  }): AsyncGenerator<TRow[], void, void> {
+    if (!Number.isSafeInteger(batchSize) || batchSize <= 0) {
+      throw new DbConfigurationError(`Invalid Keyset batchSize: ${batchSize}`);
+    }
+
+    let afterId: string | undefined;
+    while (true) {
+      const batch = await fetchBatch({ afterId, limit: batchSize });
+      if (batch.length === 0) {
+        return;
+      }
+
+      const nextCursor = getCursor(batch[batch.length - 1]);
+      if (afterId !== undefined && nextCursor <= afterId) {
+        throw new DbConfigurationError(
+          `Keyset pagination cursor did not advance monotonically (previous="${afterId}", next="${nextCursor}")`
+        );
+      }
+
+      yield [...batch];
+
+      if (batch.length < batchSize) {
+        return;
+      }
+      afterId = nextCursor;
+    }
+  }
+
+  /**
    * 自动分片批量插入，规避 PostgreSQL Wire Protocol 65,535 参数上限与 MySQL 数据包超限。
    */
   protected async insertChunked<TRow extends Record<string, unknown>>({
@@ -214,7 +282,9 @@ export abstract class SqlRepositoryBase<
   /**
    * 跨方言原子 Upsert 封装：
    * - PostgreSQL 编译为 `INSERT ... ON CONFLICT (conflictKeys) DO UPDATE SET ...`（或 `DO NOTHING`）；
-   * - OceanBase / MySQL 编译为 `INSERT ... ON DUPLICATE KEY UPDATE ...`（或 `INSERT IGNORE`）。
+   * - OceanBase / MySQL 编译为 `INSERT ... ON DUPLICATE KEY UPDATE ...`；无更新列时使用
+   *   `ON DUPLICATE KEY UPDATE <conflictKey> = <conflictKey>` 空操作，刻意禁用 `INSERT IGNORE`
+   *   （后者会静默吞掉 `NOT NULL`、截断和类型异常）。
    */
   protected async upsertRow<TRow extends Record<string, unknown>>({
     table,
@@ -229,6 +299,10 @@ export abstract class SqlRepositoryBase<
     updateValues?: Record<string, unknown>;
     tx?: DbSession;
   }): Promise<void> {
+    if (conflictKeys.length === 0) {
+      throw new DbConfigurationError('upsertRow requires at least one conflictKey');
+    }
+
     const targetTable = table ?? this.tableName;
     const executor = this.db(tx);
     const hasUpdates = updateValues !== undefined && Object.keys(updateValues).length > 0;
@@ -254,10 +328,12 @@ export abstract class SqlRepositoryBase<
       return;
     }
 
+    // 禁用 INSERT IGNORE：用主键/冲突列自赋值实现纯冲突忽略，同时保留 NOT NULL / 长度溢出等真实报错
+    const noopConflictCol = conflictKeys[0];
     await executor
       .insertInto(targetTable)
-      .ignore()
       .values(values as never)
+      .onDuplicateKeyUpdate({ [noopConflictCol]: sql.ref(noopConflictCol) } as never)
       .execute();
   }
 }

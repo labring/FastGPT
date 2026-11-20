@@ -36,6 +36,7 @@ type ItemRow = {
   parent_id: string;
   name: string;
   enabled: boolean | number;
+  priority: number | null;
   tags: unknown;
   ancestor_path: string;
 };
@@ -52,12 +53,16 @@ const demoItemsTable = defineSqlTable({
     parent_id: { kind: 'varchar', length: 24, defaultValue: '' },
     name: { kind: 'varchar', length: 128 },
     enabled: { kind: 'boolean', defaultValue: true },
+    priority: { kind: 'integer', nullable: true },
     tags: { kind: 'json', nullable: true },
     ancestor_path: { kind: 'varchar', length: 512, defaultValue: '' }
   },
   indexes: [
-    { name: 'uniq_team_parent_name', columns: ['team_id', 'parent_id', 'name'], unique: true },
-    { name: 'idx_team_ancestor', columns: ['team_id', 'ancestor_path'] }
+    { name: 'fg_demo_team_parent_name', columns: ['team_id', 'parent_id', 'name'], unique: true },
+    {
+      name: 'fg_demo_team_ancestor',
+      columns: ['team_id', { column: 'ancestor_path', direction: 'desc' }]
+    }
   ]
 });
 
@@ -300,12 +305,15 @@ describe('@fastgpt/dal/db DI container, portable SQL DDL, and PGlite integration
   it('compiles portable DDL for both PostgreSQL and OceanBase/MySQL without dialect leaks', () => {
     const pgSql = compileSqlTableDDL(demoItemsTable, 'postgres').join('\n');
     expect(pgSql).toContain('"tags" JSONB');
-    expect(pgSql).toContain('CREATE UNIQUE INDEX IF NOT EXISTS "uniq_team_parent_name"');
+    expect(pgSql).toContain('CREATE UNIQUE INDEX IF NOT EXISTS "fg_demo_team_parent_name"');
+    expect(pgSql).toContain('"ancestor_path" DESC');
 
     const obSql = compileSqlTableDDL(demoItemsTable, 'oceanbase').join('\n');
     expect(obSql).toContain('`tags` JSON');
     expect(obSql).toContain('`enabled` TINYINT(1) NOT NULL DEFAULT 1');
-    expect(obSql).toContain('UNIQUE KEY `uniq_team_parent_name`');
+    expect(obSql).toContain('UNIQUE KEY `fg_demo_team_parent_name`');
+    expect(obSql).toContain('`ancestor_path` DESC');
+    expect(obSql).toContain('DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;');
     expect(obSql).not.toContain('CREATE INDEX IF NOT EXISTS');
   });
 

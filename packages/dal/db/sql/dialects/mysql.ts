@@ -1,6 +1,7 @@
 import { Kysely, MysqlDialect, sql, type MysqlPool } from 'kysely';
 import { createPool } from 'mysql2';
 import type { DbDatasource, DbTransactionRunner, SqlExecutorResolver } from '../../types';
+import { createSqlQueryLogger } from '../observability';
 
 export type MysqlRuntimeDeps = {
   transactionRunner: DbTransactionRunner;
@@ -11,7 +12,15 @@ export type MysqlRuntimeDeps = {
 
 const DEFAULT_MYSQL_POOL_LIMIT = 20;
 
-const createMysqlKysely = (url: string, connectionLimit: number): Kysely<any> =>
+const createMysqlKysely = ({
+  url,
+  connectionLimit,
+  datasource
+}: {
+  url: string;
+  connectionLimit: number;
+  datasource: DbDatasource;
+}): Kysely<any> =>
   new Kysely<any>({
     dialect: new MysqlDialect({
       pool: createPool({
@@ -19,15 +28,20 @@ const createMysqlKysely = (url: string, connectionLimit: number): Kysely<any> =>
         connectionLimit,
         waitForConnections: true,
         enableKeepAlive: true,
-        timezone: 'Z'
+        timezone: 'Z',
+        charset: 'utf8mb4',
+        supportBigNumbers: true,
+        bigNumberStrings: true
       }) as unknown as MysqlPool
-    })
+    }),
+    log: createSqlQueryLogger(datasource)
   });
 
 /**
  * 构建基于 `mysql2` + Kysely `MysqlDialect` 的运行时依赖（通吃 OceanBase、SeekDB 与 MySQL 8+）。
  *
- * 强制使用 `timezone: 'Z'` 保持跨库 UTC 时间行为一致；遵循日志双态拓扑：
+ * 强制使用 `timezone: 'Z'`、`charset: 'utf8mb4'`、`supportBigNumbers` 与 `bigNumberStrings`
+ * 保持跨库 UTC 时区与 BIGINT 精度一致，并接入统一慢查询与 Profiling 观测；遵循日志双态拓扑：
  * - 配置 `logWriteUrl`（`separate`）：建立独立日志连接池；
  * - 未配置 `logWriteUrl`（默认 `shared`）：透明回退复用 `main` 连接池（不重复建池）。
  */
@@ -44,17 +58,35 @@ export const createMysqlKyselyRuntimeDeps = ({
   logReadUrl?: string;
   maxConnections?: number;
 }): MysqlRuntimeDeps => {
-  const mainWriteDb = createMysqlKysely(mainWriteUrl, maxConnections);
+  const mainWriteDb = createMysqlKysely({
+    url: mainWriteUrl,
+    connectionLimit: maxConnections,
+    datasource: 'main'
+  });
   const mainReadDb =
     mainReadUrl !== undefined && mainReadUrl.trim().length > 0
-      ? createMysqlKysely(mainReadUrl, maxConnections)
+      ? createMysqlKysely({
+          url: mainReadUrl,
+          connectionLimit: maxConnections,
+          datasource: 'main'
+        })
       : undefined;
 
   const hasSeparateLog = logWriteUrl !== undefined && logWriteUrl.trim().length > 0;
-  const logWriteDb = hasSeparateLog ? createMysqlKysely(logWriteUrl, maxConnections) : undefined;
+  const logWriteDb = hasSeparateLog
+    ? createMysqlKysely({
+        url: logWriteUrl,
+        connectionLimit: maxConnections,
+        datasource: 'log'
+      })
+    : undefined;
   const logReadDb =
     hasSeparateLog && logReadUrl !== undefined && logReadUrl.trim().length > 0
-      ? createMysqlKysely(logReadUrl, maxConnections)
+      ? createMysqlKysely({
+          url: logReadUrl,
+          connectionLimit: maxConnections,
+          datasource: 'log'
+        })
       : undefined;
 
   const resolvePoolDb = (

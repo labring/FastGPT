@@ -1027,11 +1027,11 @@ export const AppChatLogRepoToken = defineRepoToken<AppChatLogRepository>('AppCha
   - [x] 升级 `MongoRepositoryBase` 在 `constructor({ collection, readSchema, runtime })` 自动构出 `readonly model`，`defineRepoToken` 透传 `runtime`；
   - [x] `packages/service/common/mongo/index.ts` 改为直接复用 DAL 的同一 `Mongoose` 实例（仅服务未迁旧表，不做新代码转发层）；
   - [x] 将 `AppRegistration` 的 `repo.type.ts`、`repo.ts`、`mongo/`、`sql/`（索引命名改为 `fg_app_reg_team`）与 `repo.contract.test.ts` 迁入 `packages/dal/db/repos/appRegistration/` 与 `packages/dal/test/db/repos/appRegistration/`，并同步更新 `packages/dal/package.json` `exports`（严禁导出 `mongo/` 与 `sql/`）及 `multi-db-repo-refactor` Skill 脚本路径校验。
-- [ ] **0.5.3 OceanBase / MySQL 底座硬对齐**：
-  - [ ] `ddl.ts`：OB/MySQL 建表显式声明 `CHARSET=utf8mb4 COLLATE=utf8mb4_bin`；`SqlIndexDef` 补齐列排序方向（`asc`/`desc`）；`defineSqlTable` 增加静态校验（强制 `fg_` 前缀与 `<= 63B`、跨表索引名唯一、禁 `text`/`json` 默认值与普通索引、复合索引 `<= 3072` 字节）；
-  - [ ] `mysql.ts` & `sql/base.ts`：`mysql2` 补齐 `charset: 'utf8mb4'` / `supportBigNumbers` / `bigNumberStrings`；`upsertRow` 禁用 `INSERT IGNORE`；新增 `orderByNullable` 与基于 `_id` 的 Keyset 游标分批迭代 helper；
-  - [ ] `errors.ts`：补充 OceanBase 瞬态冲突错误码（`4012`、`6002`、`6004`、`6210`、`6223`）；
-  - [ ] Kysely 观测插件：接通 `runtime.recordOperation()` 慢查询告警与 `common/profiling` 分段耗时统计。
+- [x] **0.5.3 OceanBase / MySQL 底座硬对齐**：
+  - [x] `ddl.ts`：OB/MySQL 建表显式声明 `CHARSET=utf8mb4 COLLATE=utf8mb4_bin`；`SqlIndexDef` 补齐列排序方向（`asc`/`desc`）；`defineSqlTable` 增加静态校验（强制 `fg_` 前缀与 `<= 63B`、跨表索引名唯一、禁 `text`/`json` 默认值与普通索引、复合索引 `<= 3072` 字节）；
+  - [x] `mysql.ts` & `sql/base.ts`：`mysql2` 补齐 `charset: 'utf8mb4'` / `supportBigNumbers` / `bigNumberStrings`；`upsertRow` 禁用 `INSERT IGNORE`；新增 `orderByNullable` 与基于 `_id` 的 Keyset 游标分批迭代 helper；
+  - [x] `errors.ts`：补充 OceanBase 瞬态冲突错误码（`4012`、`6002`、`6004`、`6210`、`6223`）；
+  - [x] Kysely 观测插件：接通 `runtime.recordOperation()` 慢查询告警与 `common/profiling` 分段耗时统计。
 - [ ] **0.5.4 轻量 SQL DDL 迁移器、Mongo 异步只增补建与 `deprecated: true` 清零**：
   - [ ] 在 `packages/dal/db/sql/migrations/` 实现轻量自研 SQL DDL 迁移器（~250 行）：Redis `LeaseCache` 锁 + 每物理库独立 `_fg_sql_migrations(scope: 'core' | 'pro', id)` 账本 + 回滚向前兼容跳过未来版本 + 单迁移 `transactional: false` + 专用 DDL 连接 + `ensureSqlIndex`（PG `CONCURRENTLY` + `indisvalid` 自愈、MySQL `LOCK=NONE` / `lock_wait_timeout`、OB `1061` 幂等）+ `dropSqlIndexIfExists`（硬守卫仅删 `fg_*`）；
   - [ ] 在 `packages/dal/db/repos/registry.ts` 建立开源 Collection / Table 注册表，Mongo 启动后后台异步执行只增补建（Redis 锁、key 等价检查防 Error 85、`285` 轮询、支持动态条件索引函数，绝不启动自动删索引），并补齐 Mongo & SQL 统一只读 `inspect`；

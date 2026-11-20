@@ -204,6 +204,11 @@ describe('@fastgpt/dal/db runtime & errors', () => {
     expect(isDbTransientConflictError({ code: '40P01' })).toBe(true);
     expect(isDbTransientConflictError({ code: 'ER_LOCK_DEADLOCK', errno: 1213 })).toBe(true);
     expect(isDbTransientConflictError({ errno: 1205 })).toBe(true);
+    expect(isDbTransientConflictError({ errno: 4012 })).toBe(true);
+    expect(isDbTransientConflictError({ errno: 6002 })).toBe(true);
+    expect(isDbTransientConflictError({ code: '6004' })).toBe(true);
+    expect(isDbTransientConflictError({ errno: 6210 })).toBe(true);
+    expect(isDbTransientConflictError({ errno: 6223 })).toBe(true);
     expect(isDbTransientConflictError({ errorLabels: ['TransientTransactionError'] })).toBe(true);
     expect(isDbTransientConflictError(new Error('normal error'))).toBe(false);
   });
