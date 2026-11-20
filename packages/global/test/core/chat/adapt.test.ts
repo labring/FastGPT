@@ -4312,4 +4312,170 @@ describe('workflow preview answers', () => {
       chats2GPTMessages({ messages, reserveId: false, reserveTool: false }).at(-1)
     ).toMatchObject({ role: 'user', content: JSON.stringify({ action: 'confirm' }) });
   });
+
+  it('filters disallowed tool calls/responses and drops reasoning-only shells when toolFilter is set', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'Check weather and stock' } }]
+      },
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            modelResponseId: 'resp_drop_only',
+            reasoning: { content: 'Only calling disallowed stock tool' },
+            tools: [
+              {
+                id: 'call_stock',
+                toolName: 'Stock',
+                toolAvatar: '',
+                functionName: 'get_stock',
+                params: '{"symbol":"AAPL"}',
+                response: 'AAPL 200'
+              }
+            ]
+          },
+          {
+            modelResponseId: 'resp_mixed',
+            reasoning: { content: 'Mixed tools' },
+            text: { content: 'Checking weather...' },
+            tools: [
+              {
+                id: 'call_stock_2',
+                toolName: 'Stock',
+                toolAvatar: '',
+                functionName: 'get_stock',
+                params: '{"symbol":"MSFT"}',
+                response: 'MSFT 400'
+              },
+              {
+                id: 'call_weather',
+                toolName: 'Weather',
+                toolAvatar: '',
+                functionName: 'get_weather',
+                params: '{"city":"Shanghai"}',
+                response: 'Sunny 25C'
+              }
+            ]
+          },
+          {
+            modelResponseId: 'resp_text_with_dropped_tool',
+            text: { content: 'Interim note' },
+            tools: [
+              {
+                id: 'call_stock_3',
+                toolName: 'Stock',
+                toolAvatar: '',
+                functionName: 'get_stock',
+                params: '{}',
+                response: 'ignored'
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
+    const result = chats2GPTMessages({
+      messages,
+      reserveId: false,
+      reserveTool: true,
+      toolFilter: (name) => name === 'get_weather'
+    });
+
+    expect(result).toEqual([
+      { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Check weather and stock' },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'Checking weather...',
+        reasoning_content: 'Mixed tools',
+        tool_calls: [
+          {
+            id: 'call_weather',
+            type: 'function',
+            function: { name: 'get_weather', arguments: '{"city":"Shanghai"}' }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_weather',
+        content: 'Sunny 25C'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'Interim note'
+      }
+    ]);
+  });
+
+  it('filters legacy dispersed tools and plan/ask tool pairs uniformly by tool name', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          { reasoning: { content: 'Dropped legacy tool reasoning' } },
+          {
+            agentPlanUpdate: {
+              id: 'call_plan',
+              functionName: 'update_plan',
+              params: '{"updates":[]}',
+              response: 'plan updated'
+            }
+          },
+          {
+            tools: [
+              {
+                id: 'call_other',
+                toolName: 'Other',
+                toolAvatar: '',
+                functionName: 'other_tool',
+                params: '{}',
+                response: 'other'
+              },
+              {
+                id: 'call_weather',
+                toolName: 'Weather',
+                toolAvatar: '',
+                functionName: 'get_weather',
+                params: '{"city":"Beijing"}',
+                response: 'Cloudy'
+              }
+            ]
+          },
+          { text: { content: 'Final answer' } }
+        ]
+      }
+    ];
+
+    const result = chats2GPTMessages({
+      messages,
+      reserveId: false,
+      reserveTool: true,
+      toolFilter: (name) => name === 'get_weather'
+    });
+
+    expect(result).toEqual([
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        tool_calls: [
+          {
+            id: 'call_weather',
+            type: 'function',
+            function: { name: 'get_weather', arguments: '{"city":"Beijing"}' }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_weather',
+        content: 'Cloudy'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'Final answer'
+      }
+    ]);
+  });
 });

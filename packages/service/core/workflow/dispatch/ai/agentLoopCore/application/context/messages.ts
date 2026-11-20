@@ -1,10 +1,61 @@
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
+import {
+  askUserToolName,
+  DATASET_SEARCH_TOOL_NAME,
+  getAgentLoopSandboxToolNames,
+  READ_FILES_TOOL_NAME,
+  setPlanToolName,
+  updatePlanToolName
+} from '../../../../../../ai/llm/agentLoop/interface';
 
 export type BuildAgentLoopCoreRequestMessagesParams = {
   messages: ChatItemMiniType[];
   removeSystemMessages?: boolean;
+  toolFilter?: (toolName: string) => boolean;
+};
+
+export type CreateAgentLoopCoreToolFilterParams = {
+  toolNames?: Iterable<string>;
+  planEnabled?: boolean;
+  askEnabled?: boolean;
+  sandboxEnabled?: boolean;
+  readFileEnabled?: boolean;
+  datasetSearchEnabled?: boolean;
+};
+
+/**
+ * 按当前节点实际暴露给模型的工具集合（业务工具 + 启用的系统内置工具）构建历史工具过滤器。
+ */
+export const createAgentLoopCoreToolFilter = ({
+  toolNames = [],
+  planEnabled = false,
+  askEnabled = false,
+  sandboxEnabled = false,
+  readFileEnabled = false,
+  datasetSearchEnabled = false
+}: CreateAgentLoopCoreToolFilterParams): ((toolName: string) => boolean) => {
+  const allowedToolNames = new Set<string>(toolNames);
+
+  if (planEnabled) {
+    allowedToolNames.add(setPlanToolName);
+    allowedToolNames.add(updatePlanToolName);
+  }
+  if (askEnabled) {
+    allowedToolNames.add(askUserToolName);
+  }
+  if (sandboxEnabled) {
+    getAgentLoopSandboxToolNames().forEach((name) => allowedToolNames.add(name));
+  }
+  if (readFileEnabled) {
+    allowedToolNames.add(READ_FILES_TOOL_NAME);
+  }
+  if (datasetSearchEnabled) {
+    allowedToolNames.add(DATASET_SEARCH_TOOL_NAME);
+  }
+
+  return (toolName: string) => allowedToolNames.has(toolName);
 };
 
 /**
@@ -15,12 +66,14 @@ export type BuildAgentLoopCoreRequestMessagesParams = {
  */
 export const buildAgentLoopCoreRequestMessages = ({
   messages,
-  removeSystemMessages = true
+  removeSystemMessages = true,
+  toolFilter
 }: BuildAgentLoopCoreRequestMessagesParams): ChatCompletionMessageParam[] => {
   const requestMessages = chats2GPTMessages({
     messages,
     reserveId: false,
-    reserveTool: true
+    reserveTool: true,
+    toolFilter
   });
 
   return removeSystemMessages

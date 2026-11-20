@@ -35,6 +35,7 @@ import {
   buildAgentLoopCorePausedMemories,
   buildAgentLoopCoreRequestMessages,
   createAgentLoopCoreChildInteractiveParams,
+  createAgentLoopCoreToolFilter,
   prepareAgentLoopCoreProviderRunState,
   readAgentLoopCoreActivePlan,
   readAgentLoopCoreProviderStateMemory,
@@ -339,10 +340,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         : lastInteractive
           ? baseHistories
           : [...baseHistories, currentUserMessage];
-    const loopMessages = buildAgentLoopCoreRequestMessages({
-      messages: requestMessages,
-      removeSystemMessages: true
-    });
     // 汇总用户选择工具和知识库 runtime tool。
     // plan/ask/sandbox/readFile 由 agentLoop provider 根据 systemTools 注入，不混入业务 completionTools。
     const {
@@ -353,6 +350,18 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       tools: selectedTools,
       tmbId: runningUserInfo.tmbId,
       lang
+    });
+    const loopMessages = buildAgentLoopCoreRequestMessages({
+      messages: requestMessages,
+      removeSystemMessages: true,
+      toolFilter: createAgentLoopCoreToolFilter({
+        toolNames: agentCompletionTools.map((tool) => tool.function.name),
+        planEnabled: true,
+        askEnabled: true,
+        sandboxEnabled: !!sandboxClient,
+        readFileEnabled: true,
+        datasetSearchEnabled: Boolean(datasetParams?.datasets?.length)
+      })
     });
     const { getSubAppInfo, getSubApp } = createAgentSubAppLookup({
       subAppsMap: agentSubAppsMap,

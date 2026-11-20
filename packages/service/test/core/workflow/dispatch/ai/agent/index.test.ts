@@ -1948,4 +1948,90 @@ describe('dispatchRunAgent user context', () => {
       teamId: 'team_1'
     });
   });
+
+  it('filters historical tools not available to the current Agent node before running agent loop', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    getAgentRuntimeToolsMock.mockResolvedValueOnce([
+      {
+        type: 'tool',
+        id: 'weather_tool',
+        name: 'Weather',
+        avatar: '',
+        params: {},
+        requestSchema: {
+          type: 'function',
+          function: {
+            name: 'weather_tool',
+            description: 'Get weather',
+            parameters: { type: 'object', properties: {} }
+          }
+        }
+      }
+    ]);
+
+    const props = createProps();
+    props.histories = [
+      { obj: ChatRoleEnum.Human, value: [{ text: { content: 'Earlier question' } }] },
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            agentPlanUpdate: {
+              id: 'call_plan',
+              functionName: 'update_plan',
+              params: '{"updates":[]}',
+              response: 'updated'
+            }
+          },
+          {
+            tools: [
+              {
+                id: 'call_other',
+                functionName: 'other_tool',
+                params: '{}',
+                response: 'other'
+              },
+              {
+                id: 'call_ds',
+                functionName: 'dataset_search',
+                params: '{}',
+                response: 'ds'
+              },
+              {
+                id: 'call_sandbox',
+                functionName: 'sandbox_shell',
+                params: '{}',
+                response: 'sh'
+              },
+              {
+                id: 'call_weather',
+                functionName: 'weather_tool',
+                params: '{"city":"BJ"}',
+                response: 'sunny'
+              },
+              {
+                id: 'call_read',
+                functionName: 'read_files',
+                params: '{"urls":["u"]}',
+                response: 'file'
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
+    await runWithContext({ mcpClientMemory: {} }, () => dispatchRunAgent(props));
+
+    const loopInputMessages = runAgentLoopMock.mock.calls[0][0].input.messages;
+    const toolNames = loopInputMessages
+      .filter((msg: any) => msg.role === 'assistant')
+      .flatMap((msg: any) => (msg.tool_calls ?? []).map((tc: any) => tc.function.name));
+    const toolCallIds = loopInputMessages
+      .filter((msg: any) => msg.role === 'tool')
+      .map((msg: any) => msg.tool_call_id);
+
+    expect(toolNames).toEqual(['update_plan', 'dataset_search', 'weather_tool', 'read_files']);
+    expect(toolCallIds).toEqual(['call_plan', 'call_ds', 'call_weather', 'call_read']);
+  });
 });
