@@ -10,7 +10,10 @@ export {
   type AgentLoopCoreInputFile
 } from '../application/context/files';
 export { readAgentLoopCoreActivePlan } from '../application/context/activePlan';
-export { buildAgentLoopCoreRequestMessages } from '../application/context/messages';
+export {
+  buildAgentLoopCoreRequestMessages,
+  createAgentLoopCoreToolFilter
+} from '../application/context/messages';
 export {
   buildAgentLoopCoreUserReminderInput,
   type AgentLoopCoreUserReminderContext,

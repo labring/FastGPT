@@ -5,7 +5,8 @@ import {
   buildAgentLoopCoreInput,
   buildAgentLoopCoreRequestMessages,
   buildAgentLoopCoreSkillsPrompt,
-  buildAgentLoopCoreUserReminderInput
+  buildAgentLoopCoreUserReminderInput,
+  createAgentLoopCoreToolFilter
 } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/context';
 import { describe, expect, it } from 'vitest';
 
@@ -87,6 +88,71 @@ describe('buildAgentLoopCoreRequestMessages', () => {
       {
         role: ChatCompletionRequestMessageRoleEnum.System,
         content: 'system prompt'
+      }
+    ]);
+  });
+
+  it('filters historical tools with createAgentLoopCoreToolFilter across business and system tools', () => {
+    const toolFilter = createAgentLoopCoreToolFilter({
+      toolNames: ['weather_tool'],
+      planEnabled: true,
+      askEnabled: false,
+      sandboxEnabled: false,
+      readFileEnabled: true,
+      datasetSearchEnabled: true
+    });
+
+    expect(toolFilter('weather_tool')).toBe(true);
+    expect(toolFilter('set_plan')).toBe(true);
+    expect(toolFilter('update_plan')).toBe(true);
+    expect(toolFilter('read_files')).toBe(true);
+    expect(toolFilter('dataset_search')).toBe(true);
+    expect(toolFilter('ask_user')).toBe(false);
+    expect(toolFilter('sandbox_shell')).toBe(false);
+    expect(toolFilter('other_tool')).toBe(false);
+
+    const messages = buildAgentLoopCoreRequestMessages({
+      messages: [
+        {
+          obj: ChatRoleEnum.AI,
+          value: [
+            {
+              tools: [
+                {
+                  id: 'call_other',
+                  functionName: 'other_tool',
+                  params: '{}',
+                  response: 'other'
+                },
+                {
+                  id: 'call_weather',
+                  functionName: 'weather_tool',
+                  params: '{"city":"HZ"}',
+                  response: 'cloudy'
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      toolFilter
+    });
+
+    expect(messages).toEqual([
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        tool_calls: [
+          {
+            id: 'call_weather',
+            type: 'function',
+            function: { name: 'weather_tool', arguments: '{"city":"HZ"}' }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_weather',
+        content: 'cloudy'
       }
     ]);
   });
