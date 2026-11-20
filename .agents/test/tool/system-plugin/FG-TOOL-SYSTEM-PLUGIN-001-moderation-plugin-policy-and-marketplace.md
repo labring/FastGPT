@@ -62,7 +62,7 @@ routes:
   - GET /marketplace/api/tool/getDownloadUrl
   - POST /marketplace/api/tool/getDownloadUrl
 related:
-  - FG-APP-WORKFLOW-052
+  - FG-APP-WORKFLOW-062
   - FG-PERMISSION-RESOURCE-003
 automation: []
 baseline: "c915077feb8edd7cfa36fe73b49c9d00550d24a1"
