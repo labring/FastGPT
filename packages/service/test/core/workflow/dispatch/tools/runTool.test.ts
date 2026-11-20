@@ -1,11 +1,18 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeTypeEnum,
+  FlowNodeInputTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import {
   dispatchRunTool,
   parseToolId
 } from '@fastgpt/service/core/workflow/dispatch/child/runTool';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeOutputKeyEnum,
+  VARIABLE_NODE_ID,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { MCPClient } from '@fastgpt/service/core/app/mcp';
@@ -436,7 +443,12 @@ describe('dispatchRunTool runtime toolset auth', () => {
     });
   });
 
-  it('should pass HTTP params through without validating against the toolset schema', async () => {
+  it('should validate configured HTTP params against a legacy requestSchema fallback', async () => {
+    const requestSchema = {
+      type: 'object',
+      properties: { keyword: { type: 'string', pattern: '^allowed$' } },
+      required: ['keyword']
+    };
     authAppByTmbIdMock.mockResolvedValueOnce({
       app: {
         _id: 'victim-toolset',
@@ -451,11 +463,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
                     description: 'Sandbox echo',
                     path: '/echo',
                     method: 'post',
-                    requestSchema: {
-                      type: 'object',
-                      properties: { keyword: { type: 'string', pattern: '^allowed$' } },
-                      required: ['keyword']
-                    }
+                    requestSchema
                   }
                 ]
               }
@@ -469,11 +477,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
         name: 'sandbox_echo',
         path: '/echo',
         method: 'post',
-        requestSchema: {
-          type: 'object',
-          properties: { keyword: { type: 'string', pattern: '^allowed$' } },
-          required: ['keyword']
-        }
+        requestSchema
       }
     ]);
     runHTTPToolMock.mockResolvedValueOnce({ data: { ok: true } });
@@ -482,18 +486,120 @@ describe('dispatchRunTool runtime toolset auth', () => {
       { httpTool: { toolId: 'http-victim-toolset/sandbox_echo' } },
       { keyword: 'blocked', extra: true }
     );
-    props.node.jsonSchema = {
-      type: 'object',
-      properties: { keyword: { type: 'string' } },
-      required: ['keyword']
-    };
+    props.node.inputs = [
+      {
+        key: 'keyword',
+        label: 'keyword',
+        renderTypeList: [FlowNodeInputTypeEnum.input],
+        selectedType: FlowNodeInputTypeEnum.input,
+        valueType: WorkflowIOValueTypeEnum.string,
+        value: 'blocked'
+      }
+    ];
 
     const result = await dispatchRunTool(props);
 
-    expect(result.error).toBeUndefined();
-    expect(runHTTPToolMock).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ params: { keyword: 'blocked', extra: true } })
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toContain('keyword');
+    expect(runHTTPToolMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects an explicit null fixed value that the schema does not allow', async () => {
+    const tool = {
+      name: 'sandbox_echo',
+      description: 'Sandbox echo',
+      path: '/echo',
+      method: 'post',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          payload: { type: 'object', properties: { id: { type: 'string' } } }
+        },
+        required: ['payload']
+      }
+    };
+    authAppByTmbIdMock.mockResolvedValueOnce({
+      app: {
+        _id: 'victim-toolset',
+        modules: [
+          {
+            toolConfig: {
+              httpToolSet: { baseUrl: 'https://example.com', toolList: [tool] }
+            }
+          }
+        ]
+      }
+    });
+    getHTTPToolListMock.mockResolvedValueOnce([tool]);
+    runHTTPToolMock.mockResolvedValueOnce({ data: { ok: true } });
+
+    const props = createRunToolProps(
+      { httpTool: { toolId: 'http-victim-toolset/sandbox_echo' } },
+      { payload: null }
     );
+    // 必填对象参数绑定到当前值为 null 的全局变量，由 Schema 判定是否允许。
+    props.node.inputs = [
+      {
+        key: 'payload',
+        label: 'payload',
+        renderTypeList: [FlowNodeInputTypeEnum.reference],
+        selectedType: FlowNodeInputTypeEnum.reference,
+        valueType: WorkflowIOValueTypeEnum.object,
+        value: [VARIABLE_NODE_ID, 'payload']
+      }
+    ];
+
+    const result = await dispatchRunTool(props);
+
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toContain('payload');
+    expect(runHTTPToolMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects resolved HTTP params that violate the tool input schema', async () => {
+    const tool = {
+      name: 'sandbox_echo',
+      description: 'Sandbox echo',
+      path: '/echo',
+      method: 'post',
+      inputSchema: {
+        type: 'object',
+        properties: { keyword: { type: 'string', pattern: '^allowed$' } },
+        required: ['keyword']
+      }
+    };
+    authAppByTmbIdMock.mockResolvedValueOnce({
+      app: {
+        _id: 'victim-toolset',
+        modules: [
+          {
+            toolConfig: {
+              httpToolSet: { baseUrl: 'https://example.com', toolList: [tool] }
+            }
+          }
+        ]
+      }
+    });
+    getHTTPToolListMock.mockResolvedValueOnce([tool]);
+    runHTTPToolMock.mockResolvedValueOnce({ data: { ok: true } });
+
+    const props = createRunToolProps(
+      { httpTool: { toolId: 'http-victim-toolset/sandbox_echo' } },
+      { keyword: 'blocked' }
+    );
+    props.node.inputs = [
+      {
+        key: 'keyword',
+        label: 'keyword',
+        renderTypeList: [FlowNodeInputTypeEnum.input],
+        selectedType: FlowNodeInputTypeEnum.input,
+        valueType: WorkflowIOValueTypeEnum.string,
+        value: 'blocked'
+      }
+    ];
+
+    const result = await dispatchRunTool(props);
+
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toContain('keyword');
+    expect(runHTTPToolMock).not.toHaveBeenCalled();
   });
 
   it('executes inline HTTP tools without external authorization', async () => {

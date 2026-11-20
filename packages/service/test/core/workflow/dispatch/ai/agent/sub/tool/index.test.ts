@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { dispatchTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool';
+import {
+  dispatchTool,
+  resolveToolParamValue
+} from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool';
+import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -118,9 +122,41 @@ const createDispatchToolProps = (
     chatId: 'chat',
     uid: 'uid',
     variableState: {
-      get: vi.fn()
+      get: vi.fn(),
+      toRuntimeRecord: vi.fn(() => ({}))
     }
   }) as any;
+
+describe('resolveToolParamValue', () => {
+  const variables = { city: 'Hangzhou', count: 2 };
+
+  it('resolves global variable references', () => {
+    expect(
+      resolveToolParamValue({
+        value: [VARIABLE_NODE_ID, 'city'],
+        nodesMap: new Map(),
+        variables
+      })
+    ).toBe('Hangzhou');
+  });
+
+  it('replaces reference text inserted by the prompt editor', () => {
+    expect(
+      resolveToolParamValue({
+        value: 'city={{$VARIABLE_NODE_ID.city$}}',
+        nodesMap: new Map(),
+        variables
+      })
+    ).toBe('city=Hangzhou');
+  });
+
+  it('keeps ordinary strings, including plain {{name}} text', () => {
+    expect(resolveToolParamValue({ value: 'hello {{name}}', nodesMap: new Map(), variables })).toBe(
+      'hello {{name}}'
+    );
+    expect(resolveToolParamValue({ value: 42, nodesMap: new Map(), variables })).toBe(42);
+  });
+});
 
 describe('dispatchTool runtime toolset auth', () => {
   beforeEach(() => {
@@ -244,7 +280,7 @@ describe('dispatchTool runtime toolset auth', () => {
   });
 
   it.each(['mcp', 'http'] as const)(
-    'passes Agent %s params through without schema validation',
+    'passes Agent %s params through to the tool',
     async (source) => {
       const schema = {
         type: 'object',
@@ -298,6 +334,120 @@ describe('dispatchTool runtime toolset auth', () => {
       }
     }
   );
+
+  it('rejects HTTP params that violate the property schema after variable resolution', async () => {
+    const tool = {
+      name: 'search',
+      description: 'Search',
+      path: '/search',
+      method: 'POST',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', pattern: '^user_[0-9]+$' },
+          count: { type: 'integer', minimum: 1 }
+        }
+      }
+    };
+    const nodes = [
+      { toolConfig: { httpToolSet: { baseUrl: 'https://example.com', toolList: [tool] } } }
+    ];
+    authAppByTmbIdMock.mockResolvedValue({ app: { _id: 'victim-toolset', modules: nodes } });
+    getAppVersionByIdMock.mockResolvedValue({ nodes });
+    getHTTPToolListMock.mockResolvedValue([tool]);
+    runHTTPToolMock.mockResolvedValue({ data: { ok: true } });
+
+    const props = createDispatchToolProps(
+      { httpTool: { toolId: 'http-victim-toolset/search' } },
+      { query: 'user_{{$VARIABLE_NODE_ID.id$}}', count: -1 }
+    );
+    props.fixedParamKeys = ['query', 'count'];
+    props.variableState.toRuntimeRecord.mockReturnValue({ id: 'abc' });
+
+    const result = await dispatchTool(props);
+
+    expect(result.errorMessage).toContain('query');
+    expect(result.errorMessage).toContain('count');
+    expect(runHTTPToolMock).not.toHaveBeenCalled();
+  });
+
+  it('passes HTTP params that satisfy the property schema after variable resolution', async () => {
+    const tool = {
+      name: 'search',
+      description: 'Search',
+      path: '/search',
+      method: 'POST',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', pattern: '^user_[0-9]+$' },
+          count: { type: 'integer', minimum: 1 }
+        }
+      }
+    };
+    const nodes = [
+      { toolConfig: { httpToolSet: { baseUrl: 'https://example.com', toolList: [tool] } } }
+    ];
+    authAppByTmbIdMock.mockResolvedValue({ app: { _id: 'victim-toolset', modules: nodes } });
+    getAppVersionByIdMock.mockResolvedValue({ nodes });
+    getHTTPToolListMock.mockResolvedValue([tool]);
+    runHTTPToolMock.mockResolvedValue({ data: { ok: true } });
+
+    const props = createDispatchToolProps(
+      { httpTool: { toolId: 'http-victim-toolset/search' } },
+      { query: 'user_{{$VARIABLE_NODE_ID.id$}}', count: 1 }
+    );
+    props.fixedParamKeys = ['query', 'count'];
+    props.variableState.toRuntimeRecord.mockReturnValue({ id: '42' });
+
+    const result = await dispatchTool(props);
+
+    expect(result.errorMessage).toBeUndefined();
+    expect(runHTTPToolMock).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ params: { query: 'user_42', count: 1 } })
+    );
+  });
+
+  it('validates legacy requestSchema with OpenAPI 3.0 exclusive bounds', async () => {
+    const tool = {
+      name: 'search',
+      description: 'Search',
+      path: '/search',
+      method: 'POST',
+      // 存量工具只有 requestSchema，且沿用 OpenAPI 3.0 的布尔型排他最小值。
+      requestSchema: {
+        type: 'object',
+        properties: { count: { type: 'integer', minimum: 0, exclusiveMinimum: true } }
+      }
+    };
+    const nodes = [
+      { toolConfig: { httpToolSet: { baseUrl: 'https://example.com', toolList: [tool] } } }
+    ];
+    authAppByTmbIdMock.mockResolvedValue({ app: { _id: 'victim-toolset', modules: nodes } });
+    getAppVersionByIdMock.mockResolvedValue({ nodes });
+    getHTTPToolListMock.mockResolvedValue([tool]);
+    runHTTPToolMock.mockResolvedValue({ data: { ok: true } });
+
+    const invalidProps = createDispatchToolProps(
+      { httpTool: { toolId: 'http-victim-toolset/search' } },
+      { count: 0 }
+    );
+    invalidProps.fixedParamKeys = ['count'];
+    const invalidResult = await dispatchTool(invalidProps);
+    expect(invalidResult.errorMessage).toContain('count');
+    expect(runHTTPToolMock).not.toHaveBeenCalled();
+
+    const validProps = createDispatchToolProps(
+      { httpTool: { toolId: 'http-victim-toolset/search' } },
+      { count: 2 }
+    );
+    validProps.fixedParamKeys = ['count'];
+    const validResult = await dispatchTool(validProps);
+    expect(validResult.errorMessage).toBeUndefined();
+    expect(runHTTPToolMock).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ params: { count: 2 } })
+    );
+  });
 
   it.each(['mcp', 'http'] as const)(
     'executes an authorized %s child outside the snapshot selection and rejects denied calls',

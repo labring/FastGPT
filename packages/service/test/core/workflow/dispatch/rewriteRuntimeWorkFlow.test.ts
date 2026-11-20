@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  NodeOutputKeyEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { SecretValueReferenceResolver } from '@fastgpt/global/common/secret/utils';
 import {
@@ -337,6 +343,70 @@ describe('rewriteRuntimeWorkFlow independent toolsets', () => {
       JSON.stringify(await bundleOpenAPISchema(parseOpenAPISchemaString(openApiSchema)))
     );
     expect(edges.map((edge) => edge.target)).toEqual(nodes.map((node) => node.nodeId));
+  });
+
+  it('applies toolset manual params to expanded HTTP child inputs', async () => {
+    mocks.getHttpSchema.mockResolvedValue({ data: openApiSchema });
+    const nodes = [
+      {
+        ...createHttpToolSetNode([]),
+        inputs: [
+          {
+            key: 'search.query',
+            label: 'search.query',
+            renderTypeList: [FlowNodeInputTypeEnum.input],
+            selectedType: FlowNodeInputTypeEnum.input,
+            canAgentGenerated: false,
+            valueType: WorkflowIOValueTypeEnum.string,
+            value: '{{$VARIABLE_NODE_ID.query$}}'
+          }
+        ]
+      }
+    ];
+
+    await rewriteRuntimeWorkFlow({
+      teamId: 'team-1',
+      tmbId: 'member-1',
+      nodes,
+      edges: [createHttpSelectedToolEdge()]
+    });
+
+    const searchNode = nodes.find((node) => node.name.endsWith('/search'));
+    expect(searchNode?.inputs.find((input) => input.key === 'query')).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.input,
+      value: '{{$VARIABLE_NODE_ID.query$}}'
+    });
+  });
+
+  it('keeps explicit AI input mode when expanding HTTP toolset children', async () => {
+    mocks.getHttpSchema.mockResolvedValue({ data: openApiSchema });
+    const nodes = [
+      {
+        ...createHttpToolSetNode([]),
+        inputs: [
+          {
+            key: 'search.query',
+            label: 'search.query',
+            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
+            selectedType: FlowNodeInputTypeEnum.agentGenerated,
+            canAgentGenerated: true,
+            valueType: WorkflowIOValueTypeEnum.string
+          }
+        ]
+      }
+    ];
+
+    await rewriteRuntimeWorkFlow({
+      teamId: 'team-1',
+      tmbId: 'member-1',
+      nodes,
+      edges: [createHttpSelectedToolEdge()]
+    });
+
+    const searchNode = nodes.find((node) => node.name.endsWith('/search'));
+    const queryInput = searchNode?.inputs.find((input) => input.key === 'query');
+    expect(queryInput?.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
+    expect(queryInput?.value).toBeUndefined();
   });
 
   it('restores the parent connection from legacy child edges without discovering MCP tools', async () => {

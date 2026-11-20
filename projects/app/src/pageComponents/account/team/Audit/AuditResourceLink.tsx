@@ -32,12 +32,7 @@ const AuditResourceLink = ({ resource }: { resource: PresentedAuditResource }) =
       {resource.avatar && (
         <Avatar src={resource.avatar} w="18px" borderRadius="xs" flexShrink={0} />
       )}
-      <Box
-        as="span"
-        minW={0}
-        overflowWrap="anywhere"
-        _groupHover={{ textDecoration: 'underline' }}
-      >
+      <Box as="span" minW={0} overflowWrap="anywhere" _groupHover={{ textDecoration: 'underline' }}>
         {label}
       </Box>
     </>

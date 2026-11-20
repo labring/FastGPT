@@ -25,6 +25,8 @@ import {
   parseHttpToolConfig,
   pathData2ToolList
 } from '@fastgpt/global/core/app/tool/httpTool/utils';
+import { applyToolSetInputValues } from '@fastgpt/global/core/app/tool/toolSet/utils';
+import { AgentToolInputModeEnum } from '@fastgpt/global/core/app/tool/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getMCPChildren, MCPClient } from '../../../app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../../utils';
@@ -48,7 +50,9 @@ import { getSecretValue } from '../../../../common/secret/utils';
 import { checkUrlSafety } from '../../../../common/system/utils';
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
+  getAgentToolInputMode,
   getSavedToolInputSelectedType,
+  initAgentToolInputType,
   initToolInputsTypeByDefaultMode,
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
@@ -572,6 +576,37 @@ export const rewriteRuntimeWorkFlow = async ({
         const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId;
         const mcpToolsetVal = toolSetNode.toolConfig?.mcpToolSet;
         const httpToolsetVal = toolSetNode.toolConfig?.httpToolSet;
+        /** 注入工具集保存的子参数来源和值；未显式配置的参数保持子工具默认输入方式。 */
+        const applyToolSetChildInputs = (node: RuntimeNodeItemType, toolName: string) => {
+          const prefix = `${toolName}.`;
+          const bindings = new Map(
+            toolSetNode.inputs.flatMap((input) =>
+              input.key.startsWith(prefix) && input.key.length > prefix.length
+                ? [[input.key.slice(prefix.length), input] as const]
+                : []
+            )
+          );
+          const inputs = node.inputs.map((input) => {
+            const binding = bindings.get(input.key);
+            if (!binding) return input;
+            const mode = getAgentToolInputMode(binding);
+            const nextInput = initAgentToolInputType({ input, mode });
+            return mode === AgentToolInputModeEnum.agentGenerated
+              ? { ...nextInput, value: undefined }
+              : nextInput;
+          });
+          // 显式 AI 来源不携带值，历史残留值不能覆盖来源选择。
+          const values = Object.fromEntries(
+            Array.from(bindings.entries()).flatMap(([key, binding]) =>
+              binding.value !== undefined &&
+              getAgentToolInputMode(binding) === AgentToolInputModeEnum.manual
+                ? [[key, binding.value] as const]
+                : []
+            )
+          );
+
+          return { ...node, inputs: applyToolSetInputValues({ inputs, values }) };
+        };
 
         const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
         // ToolSet 只是编辑态聚合节点，运行态需要把入口边复制到每个实际工具节点。
@@ -691,7 +726,10 @@ export const rewriteRuntimeWorkFlow = async ({
                 }
               };
 
-              const newToolNode = initToolSetChildNode(runtimeNode);
+              const newToolNode = applyToolSetChildInputs(
+                initToolSetChildNode(runtimeNode),
+                tool.name
+              );
               nodes.push(newToolNode);
               const legacyChildId = `${toolSetNode.nodeId}${index}`;
               if (!nodeIds.has(legacyChildId)) {
@@ -728,14 +766,16 @@ export const rewriteRuntimeWorkFlow = async ({
                   tool.description
                 )
               };
-              const newToolNode = initToolSetChildNode(
-                getHTTPToolRuntimeNode({
-                  tool: runtimeTool,
-                  nodeId: `${toolSetNode.nodeId}${index}`,
-                  avatar: toolSetNode.avatar,
-                  toolSetId,
-                  toolsetName: toolSetNode.name
-                })
+              const runtimeHttpTool = getHTTPToolRuntimeNode({
+                tool: runtimeTool,
+                nodeId: `${toolSetNode.nodeId}${index}`,
+                avatar: toolSetNode.avatar,
+                toolSetId,
+                toolsetName: toolSetNode.name
+              });
+              const newToolNode = applyToolSetChildInputs(
+                initToolSetChildNode(runtimeHttpTool),
+                runtimeTool.name
               );
               nodes.push(newToolNode);
               pushEdges(newToolNode.nodeId);

@@ -20,6 +20,7 @@ import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/w
 import { pushTrack } from '../../../../../../../common/middle/tracks/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getMCPToolErrorText } from '@fastgpt/global/core/app/tool/mcpTool/utils';
+import { getHTTPToolFixedParamErrors } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { assertMCPUrlNotInternal, getMCPChildren, MCPClient } from '../../../../../../app/mcp';
 import { getHTTPToolList, runHTTPTool } from '../../../../../../app/http';
 import { getAppVersionById } from '../../../../../../app/version/controller';
@@ -37,6 +38,7 @@ import { InvokeProcessor } from '../../../../../../../support/invoke/invoke';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import { isWorkflowResourceError, loadWorkflowAppResource } from '../../../../../resource/service';
 import { getWorkflowAppId } from '../../../../utils/source';
+import { replaceEditorVariable } from '../../../../utils/replaceEditorVariable';
 import {
   assertTeamPluginSourceAccess,
   getRawPluginIdFromSystemToolId
@@ -63,6 +65,8 @@ export type Props = {
     [NodeInputKeyEnum.systemInputConfig]?: SystemInputConfigType;
     [key: string]: any;
   };
+  /** 由开发者配置固定绑定的参数 key；模型生成参数保持直通，只校验这些配置值。 */
+  fixedParamKeys?: string[];
   runningUserInfo: ChatDispatchProps['runningUserInfo'];
   runningAppInfo: ChatDispatchProps['runningAppInfo'];
   chatId: ChatDispatchProps['chatId'];
@@ -73,10 +77,35 @@ export type Props = {
   workflowStreamResponse: ChatDispatchProps['workflowStreamResponse'];
 };
 
+/**
+ * 解析 Agent 工具参数：全局变量引用元组和提示词里插入的 `{{$VARIABLE_NODE_ID.key$}}`。
+ * Agent 直接执行工具不经过节点调度，需要在调用工具前完成替换；普通文本保持原样。
+ */
+export const resolveToolParamValue = ({
+  value,
+  nodesMap,
+  variables
+}: {
+  value: unknown;
+  nodesMap: Map<string, RuntimeNodeItemType>;
+  variables: Record<string, unknown>;
+}) => {
+  if (typeof value === 'string' && value.includes('{{$')) {
+    return replaceEditorVariable({ text: value, nodesMap, variables });
+  }
+  return getReferenceVariableValue({
+    value: value as ReferenceValueType,
+    nodesMap: new Map(),
+    variables,
+    isReferenceVal: true
+  });
+};
+
 /** 执行 Agent 选择的工具；协议执行错误保留原结果，并返回模型可处理的错误标记。 */
 export const dispatchTool = async ({
   tool: { name, avatar, version, toolConfig },
-  params: { system_input_config, ...params },
+  params: { system_input_config, ...rawParams },
+  fixedParamKeys = [],
   runningUserInfo,
   runningAppInfo,
   chatId,
@@ -86,13 +115,24 @@ export const dispatchTool = async ({
   runtimeNodesMap,
   workflowStreamResponse
 }: Props): Promise<DispatchSubAppResponse> => {
+  const runtimeVariables = variableState.toRuntimeRecord();
   const resolveReference = (value: ReferenceValueType) =>
     getReferenceVariableValue({
       value,
       nodesMap: runtimeNodesMap ?? new Map(),
-      variables: variableState.toRuntimeRecord(),
+      variables: runtimeVariables,
       isReferenceVal: true
     });
+  const params = Object.fromEntries(
+    Object.entries(rawParams).map(([key, value]) => [
+      key,
+      resolveToolParamValue({
+        value,
+        nodesMap: runtimeNodesMap ?? new Map(),
+        variables: runtimeVariables
+      })
+    ])
+  );
   const getNodeResponse = ({
     result,
     response
@@ -373,6 +413,16 @@ export const dispatchTool = async ({
         .find(Boolean);
       if (!httpTool) {
         return Promise.reject(`HTTP tool ${toolName} not found`);
+      }
+
+      // 变量替换和 JSON 转换后的配置值仍要满足参数 schema；模型生成参数保持直通。
+      const invalidParams = getHTTPToolFixedParamErrors({
+        tool: httpTool,
+        params,
+        fixedParamKeys: new Set(fixedParamKeys)
+      });
+      if (invalidParams.length > 0) {
+        return getErrResponse(`Invalid tool params: ${invalidParams.join('; ')}`);
       }
 
       const { data, errorMsg } = await runHTTPTool({

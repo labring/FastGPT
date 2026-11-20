@@ -10,7 +10,12 @@ import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { TeamApikeyCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { AuditResourceTypeEnum, type AuditResourceType, buildAppAuditResource, buildEntityAuditResource } from '@fastgpt/global/support/user/audit/type';
+import {
+  AuditResourceTypeEnum,
+  type AuditResourceType,
+  buildAppAuditResource,
+  buildEntityAuditResource
+} from '@fastgpt/global/support/user/audit/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';

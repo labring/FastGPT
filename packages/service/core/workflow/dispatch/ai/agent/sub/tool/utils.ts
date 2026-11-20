@@ -39,8 +39,12 @@ import {
   validateToolConfiguration
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { compileToolRuntime } from '@fastgpt/global/core/app/tool/runtime';
+import {
+  applyToolSetInputValues,
+  pickToolSetChildValues
+} from '@fastgpt/global/core/app/tool/toolSet/utils';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
-import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { AgentToolInputModeEnum, AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   appData2FlowNodeIO,
@@ -685,7 +689,7 @@ export const getAgentRuntimeTools = async ({
         const buildSubApp = (child: RuntimeNodeItemType, id = child.nodeId): SubAppInitType => {
           const runtimeId = getAgentRuntimeToolId({ pluginId: id, source: runtimeSource });
           const isHttpToolChild = Boolean(child.toolConfig?.httpTool);
-          const inputs = initToolInputsTypeByDefaultMode(
+          const normalizedInputs = initToolInputsTypeByDefaultMode(
             child.inputs.map((input) => ({
               ...input,
               ...(isHttpToolChild ? {} : { defaultToAgentGenerated: true })
@@ -695,13 +699,46 @@ export const getAgentRuntimeTools = async ({
               allowUserChatInputAgentGenerated: true
             }
           );
+          // 工具集参数按子工具名从 config 中取出；子工具节点名带工具集前缀。
+          const childToolName = child.name.startsWith(`${toolNode.name}/`)
+            ? child.name.slice(toolNode.name.length + 1)
+            : child.name;
+          const childInputMap = new Map(normalizedInputs.map((input) => [input.key, input]));
+          // 显式保存的子参数输入来源优先于工具定义的默认方式。
+          const getSavedChildMode = (key: string) =>
+            savedInputConfigMap.get(`${childToolName}.${key}`)?.mode;
+          const childValues = Object.fromEntries(
+            Object.entries(
+              pickToolSetChildValues({ toolName: childToolName, values: configuredParams })
+            ).flatMap(([key, value]) => {
+              const input = childInputMap.get(key);
+              if (!input || getSavedChildMode(key) === AgentToolInputModeEnum.agentGenerated) {
+                return [];
+              }
+              // 与单工具一致：JSON Editor 的编辑文本在运行边界转成原生值。
+              const runtimeValue = getRuntimeConfiguredValue({ input, value });
+              return runtimeValue === undefined ? [] : [[key, runtimeValue] as const];
+            })
+          );
+          const modeConfiguredInputs = normalizedInputs.map((input) => {
+            const mode = getSavedChildMode(input.key);
+            if (!mode) return input;
+            const nextInput = initAgentToolInputType({ input, mode });
+            return mode === AgentToolInputModeEnum.agentGenerated
+              ? { ...nextInput, value: undefined }
+              : nextInput;
+          });
+          const inputs = applyToolSetInputValues({
+            inputs: modeConfiguredInputs,
+            values: childValues
+          });
           const compiledRuntime = compileRuntimeTool({
             toolId: runtimeId,
             inputs,
             name: child.name,
             intro: child.intro,
             jsonSchema: child.jsonSchema,
-            fixedInputBindings: filterToolConfiguredParams({ params: configuredParams, inputs })
+            fixedInputBindings: filterToolConfiguredParams({ params: childValues, inputs })
           });
 
           return {

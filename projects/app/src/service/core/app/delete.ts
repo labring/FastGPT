@@ -42,7 +42,10 @@ export const deleteApp = async ({
     teamId,
     event: AuditEventEnum.DELETE_APP,
     resources: [
-      buildAppAuditResource({ _id: appId, name: app.name, avatar: app.avatar, type: app.type }, { deleted: true })
+      buildAppAuditResource(
+        { _id: appId, name: app.name, avatar: app.avatar, type: app.type },
+        { deleted: true }
+      )
     ],
     params: {
       appName: app.name,

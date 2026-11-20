@@ -5,7 +5,12 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { AuditResourceTypeEnum, type AuditResourceType, buildAppAuditResource, buildEntityAuditResource } from '@fastgpt/global/support/user/audit/type';
+import {
+  AuditResourceTypeEnum,
+  type AuditResourceType,
+  buildAppAuditResource,
+  buildEntityAuditResource
+} from '@fastgpt/global/support/user/audit/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   DeleteApiKeyQuerySchema,

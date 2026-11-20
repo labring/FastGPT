@@ -41,6 +41,17 @@ export const normalizeJsonSchema = ({
 
     const normalized = { ...value };
     if (typeof value.required === 'boolean') delete normalized.required;
+    // OpenAPI 3.0 用布尔型排他边界修饰 minimum/maximum，Draft 7 校验器只接受数值。
+    for (const [exclusiveKey, boundKey] of [
+      ['exclusiveMinimum', 'minimum'],
+      ['exclusiveMaximum', 'maximum']
+    ] as const) {
+      if (typeof normalized[exclusiveKey] !== 'boolean') continue;
+      const exclusive = normalized[exclusiveKey];
+      const bound = normalized[boundKey];
+      delete normalized[exclusiveKey];
+      if (exclusive && typeof bound === 'number') normalized[exclusiveKey] = bound;
+    }
     const properties = isRecord(value.properties) ? value.properties : {};
     const required = [
       ...(Array.isArray(value.required) ? value.required : []),

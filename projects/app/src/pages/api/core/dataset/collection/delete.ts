@@ -158,9 +158,7 @@ async function handler(req: ApiRequestProps) {
   );
   const auditResources = [...selectedCollectionIds].flatMap((id) => {
     const collection = deletedCollections.get(id);
-    return collection
-      ? [buildCollectionAuditResource(collection, { deleted: true })]
-      : [];
+    return collection ? [buildCollectionAuditResource(collection, { deleted: true })] : [];
   });
 
   (async () => {

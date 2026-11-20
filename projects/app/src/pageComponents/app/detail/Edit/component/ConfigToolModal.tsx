@@ -43,7 +43,10 @@ import {
   parseJsonEditorValue,
   stripToolInputDefaultMode
 } from '@fastgpt/global/core/app/formEdit/utils';
-import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
+import {
+  areWorkflowValueTypesCompatible,
+  getSelectedInputRenderType
+} from '@fastgpt/global/common/workflow/reference';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSelect';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
@@ -54,11 +57,29 @@ import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import { getAppVersionList } from '@/web/core/app/api/version';
 import { getTeamToolVersions } from '@/web/core/plugin/team/api';
 import type { SystemToolVersionType } from '@fastgpt/global/core/app/tool/systemTool/type/base';
-import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { AgentToolInputModeEnum, AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { isDebugToolSource, splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import type {
+  EditorVariablePickerType,
+  FlowNodeInputItemType
+} from '@fastgpt/global/core/workflow/type/io';
+import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
+import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { getNodeToolSetList } from '../../WorkflowComponents/Flow/nodes/components/ToolSetList';
+import GlobalVariableSelect, {
+  useGlobalVariableLabels
+} from '../../WorkflowComponents/Flow/nodes/components/GlobalVariableSelect';
+import ToolSetInputBindingList from '../../WorkflowComponents/Flow/nodes/components/ToolSetInputBindingList';
+import {
+  buildToolSetManualInput,
+  getToolSetInputModesFromInputs,
+  getToolSetInputValuesFromInputs,
+  isGlobalVariableReferenceValue,
+  isToolSetInputBindingKey
+} from '@fastgpt/global/core/app/tool/toolSet/utils';
 import { inheritToolInputConfig } from '../FormComponent/ToolSelector/utils';
 import { validateToolInputValue } from '@fastgpt/global/core/app/tool/runtime';
 import { isSecretValueConfigured } from '@fastgpt/global/common/secret/utils';
@@ -137,11 +158,14 @@ const buildConfigInputTypeState = ({
   const selectedRenderType =
     canAgentGenerated && selectedInputType === FlowNodeInputTypeEnum.agentGenerated
       ? FlowNodeInputTypeEnum.agentGenerated
-      : canManuallyConfigure
-        ? (developerInputType ?? finalRenderTypeList[0])
-        : canAgentGenerated
-          ? FlowNodeInputTypeEnum.agentGenerated
-          : finalRenderTypeList[0];
+      : selectedInputType === FlowNodeInputTypeEnum.reference &&
+          finalRenderTypeList.includes(FlowNodeInputTypeEnum.reference)
+        ? FlowNodeInputTypeEnum.reference
+        : canManuallyConfigure
+          ? (developerInputType ?? finalRenderTypeList[0])
+          : canAgentGenerated
+            ? FlowNodeInputTypeEnum.agentGenerated
+            : finalRenderTypeList[0];
   return {
     renderTypeList: finalRenderTypeList,
     selectedType: selectedRenderType
@@ -197,12 +221,15 @@ const getConfigFormValues = (tool: FlowNodeTemplateType) =>
               value: inputValue as ToolParamsFormType | undefined,
               hasSystemSecret: tool.hasSystemSecret === true
             })
-          : developerInputType === FlowNodeInputTypeEnum.JSONEditor
+          : !isGlobalVariableReferenceValue(inputValue) &&
+              developerInputType === FlowNodeInputTypeEnum.JSONEditor
             ? formatJsonEditorValue(jsonEditorInputValue)
             : inputValue;
-      acc[inputTypeFormKey(input.key)] = isAgentGeneratedToolInput(normalizedInput)
-        ? FlowNodeInputTypeEnum.agentGenerated
-        : (developerInputType ?? getSelectedInputRenderType(normalizedInput));
+      acc[inputTypeFormKey(input.key)] = isGlobalVariableReferenceValue(input.value)
+        ? FlowNodeInputTypeEnum.reference
+        : isAgentGeneratedToolInput(normalizedInput)
+          ? FlowNodeInputTypeEnum.agentGenerated
+          : (developerInputType ?? getSelectedInputRenderType(normalizedInput));
       acc[developerInputTypeFormKey(input.key)] = developerInputType;
       return acc;
     },
@@ -427,10 +454,14 @@ const AgentGeneratedPlaceholder = () => {
 
 const ConfigValueInput = ({
   input,
-  control
+  control,
+  globalVariables,
+  supportsGlobalVariable
 }: {
   input: FlowNodeTemplateType['inputs'][number];
   control: Control<Record<string, any>>;
+  globalVariables: EditorVariablePickerType[];
+  supportsGlobalVariable: boolean;
 }) => {
   const { t } = useSafeTranslation();
   const appId = useContextSelector(AppContext, (v) => v.appId);
@@ -442,9 +473,14 @@ const ConfigValueInput = ({
     control,
     name: developerInputTypeFormKey(input.key)
   }) as FlowNodeInputTypeEnum | undefined;
+  const variableLabels = useGlobalVariableLabels(globalVariables);
 
   const isAgentGenerated = selectedInputType === FlowNodeInputTypeEnum.agentGenerated;
+  const isReference = selectedInputType === FlowNodeInputTypeEnum.reference;
   const inputType = developerInputType ?? FlowNodeInputTypeEnum.input;
+  const isTextManual =
+    supportsGlobalVariable &&
+    [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.textarea].includes(inputType);
 
   if (isAgentGenerated) {
     return <AgentGeneratedPlaceholder />;
@@ -456,6 +492,9 @@ const ConfigValueInput = ({
       name={input.key}
       rules={{
         validate: (value) => {
+          if (isReference) {
+            return !input.required || isGlobalVariableReferenceValue(value);
+          }
           if (input.required && !isToolInputValueConfigured({ input, value })) return false;
 
           const configuredValue = value ?? input.defaultValue;
@@ -464,6 +503,11 @@ const ConfigValueInput = ({
           const parsedValue = parseConfigInputValue({ inputType, value: configuredValue });
           if (!parsedValue.success) return t('common:json_parse_error');
           if (parsedValue.value === undefined) return !input.required;
+
+          // 含变量占位符的文本保存时仍是模板，替换前无法按最终值校验。
+          if (typeof parsedValue.value === 'string' && parsedValue.value.includes('{{$')) {
+            return true;
+          }
 
           const validationResult = validateToolInputValue({
             schema: input.customJsonSchema,
@@ -475,15 +519,45 @@ const ConfigValueInput = ({
       render={({ field: { onChange, value }, fieldState: { error } }) => {
         return (
           <FormControl isInvalid={!!error}>
-            <InputRender
-              {...input}
-              appId={appId || undefined}
-              isRichText={false}
-              isInvalid={!!error}
-              inputType={nodeInputTypeToInputType([inputType])}
-              value={value}
-              onChange={onChange}
-            />
+            {isReference ? (
+              <GlobalVariableSelect
+                value={value}
+                valueType={input.valueType}
+                globalVariables={globalVariables}
+                width={'100%'}
+                onChange={onChange}
+              />
+            ) : isTextManual ? (
+              <PromptEditor
+                isRichText={false}
+                showOpenModal={false}
+                minH={60}
+                maxH={160}
+                bg={'white'}
+                isInvalid={!!error}
+                value={
+                  typeof value === 'string'
+                    ? value
+                    : value === undefined || value === null
+                      ? ''
+                      : String(value)
+                }
+                variableLabels={variableLabels}
+                maxLength={input.maxLength}
+                placeholder={input.placeholder ?? t('app:toolset_param_manual_placeholder')}
+                onChange={onChange}
+              />
+            ) : (
+              <InputRender
+                {...input}
+                appId={appId || undefined}
+                isRichText={false}
+                isInvalid={!!error}
+                inputType={nodeInputTypeToInputType([inputType])}
+                value={value}
+                onChange={onChange}
+              />
+            )}
             {error?.message && <FormErrorMessage>{error.message}</FormErrorMessage>}
           </FormControl>
         );
@@ -551,20 +625,35 @@ const SecretInputControl = ({
 
 const ConfigInputRow = ({
   input,
-  control
+  control,
+  globalVariables,
+  supportsGlobalVariable
 }: {
   input: FlowNodeTemplateType['inputs'][number];
   control: Control<Record<string, any>>;
+  globalVariables: EditorVariablePickerType[];
+  supportsGlobalVariable: boolean;
 }) => {
   const { t } = useSafeTranslation();
   const canAgentGenerated = canInputBeAgentGenerated(input);
   const canManuallyConfigure = canInputBeManuallyConfigured(input);
   const developerInputType = canManuallyConfigure ? getToolInputManualRenderType(input) : undefined;
-  const selectableRenderTypeList = canAgentGenerated
-    ? [FlowNodeInputTypeEnum.agentGenerated, ...(developerInputType ? [developerInputType] : [])]
-    : developerInputType
-      ? [developerInputType]
-      : [];
+  const canReference =
+    supportsGlobalVariable &&
+    input.renderTypeList.includes(FlowNodeInputTypeEnum.reference) &&
+    globalVariables.some((variable) =>
+      areWorkflowValueTypesCompatible({
+        expected: input.valueType,
+        actual: variable.valueType
+      })
+    );
+  const selectableRenderTypeList = Array.from(
+    new Set([
+      ...(canAgentGenerated ? [FlowNodeInputTypeEnum.agentGenerated] : []),
+      ...(canReference ? [FlowNodeInputTypeEnum.reference] : []),
+      ...(developerInputType ? [developerInputType] : [])
+    ])
+  );
 
   return (
     <Box w={'full'}>
@@ -593,7 +682,12 @@ const ConfigInputRow = ({
       </Flex>
 
       <Box mt={1.5}>
-        <ConfigValueInput input={input} control={control} />
+        <ConfigValueInput
+          input={input}
+          control={control}
+          globalVariables={globalVariables}
+          supportsGlobalVariable={supportsGlobalVariable}
+        />
       </Box>
     </Box>
   );
@@ -711,10 +805,14 @@ const ToolSetListCard = ({ tool }: { tool: FlowNodeTemplateType }) => {
 
 const InputConfigSection = ({
   inputs,
-  control
+  control,
+  globalVariables,
+  supportsGlobalVariable
 }: {
   inputs: FlowNodeTemplateType['inputs'];
   control: Control<Record<string, any>>;
+  globalVariables: EditorVariablePickerType[];
+  supportsGlobalVariable: boolean;
 }) => {
   const { t } = useSafeTranslation();
 
@@ -726,7 +824,13 @@ const InputConfigSection = ({
         <SmallSectionLabel>{t('common:Input')}</SmallSectionLabel>
         <Flex flexDirection={'column'} gap={4}>
           {inputs.map((input) => (
-            <ConfigInputRow key={input.key} input={input} control={control} />
+            <ConfigInputRow
+              key={input.key}
+              input={input}
+              control={control}
+              globalVariables={globalVariables}
+              supportsGlobalVariable={supportsGlobalVariable}
+            />
           ))}
         </Flex>
       </Flex>
@@ -903,10 +1007,13 @@ const ToolVersionSelect = ({
 
 const ConfigToolModal = ({
   configTool,
+  chatConfig,
   onCloseConfigTool,
   onAddTool
 }: {
   configTool: SelectedToolItemType;
+  /** 对话设置等非应用编辑入口需要显式传入全局变量配置。 */
+  chatConfig?: AppChatConfigType;
   onCloseConfigTool: () => void;
   onAddTool: (tool: SelectedToolItemType) => void;
 }) => {
@@ -923,15 +1030,64 @@ const ConfigToolModal = ({
     [editingTool.outputs]
   );
   const isToolSet = hasToolSetConfig(editingTool);
+  const isHttpToolSet = !!editingTool.toolConfig?.httpToolSet;
+  // 只有直接执行、且运行时做了变量替换的工具才开放引用/提示词编辑器。
+  const supportsGlobalVariable =
+    editingTool.flowNodeType === FlowNodeTypeEnum.tool || isHttpToolSet;
+  const appChatConfig = useContextSelector(AppContext, (v) => v.appDetail.chatConfig);
+  const globalVariables = useMemo(
+    () => getWorkflowGlobalVariables({ chatConfig: chatConfig ?? appChatConfig }),
+    [appChatConfig, chatConfig]
+  );
+  const toolSetToolNames = useMemo(
+    () => getNodeToolSetList(configTool).map((item) => item.name),
+    [configTool]
+  );
+  const [toolSetValues, setToolSetValues] = useState<Record<string, unknown>>(() => ({
+    ...getToolSetInputValuesFromInputs({ inputs: configTool.inputs, toolNames: toolSetToolNames }),
+    ...Object.fromEntries(
+      Object.entries(configTool.config ?? {}).filter(([key]) =>
+        isToolSetInputBindingKey(key, toolSetToolNames)
+      )
+    )
+  }));
+  // 子参数的输入来源需要单独保存；缺失表示沿用工具定义默认方式。
+  const [toolSetModes, setToolSetModes] = useState<Record<string, AgentToolInputModeEnum>>(() =>
+    getToolSetInputModesFromInputs({ inputs: configTool.inputs, toolNames: toolSetToolNames })
+  );
+
+  /** 记录子参数的输入来源；选择 AI 生成时删除手工/引用值。 */
+  const onChangeToolSetParameter = ({
+    key,
+    mode,
+    value
+  }: {
+    key: string;
+    mode?: AgentToolInputModeEnum;
+    value?: unknown;
+  }) => {
+    if (mode) {
+      setToolSetModes((state) => ({ ...state, [key]: mode }));
+    }
+    setToolSetValues((state) => {
+      const next = { ...state };
+      if (value === undefined) delete next[key];
+      else next[key] = value;
+      return next;
+    });
+  };
 
   const { handleSubmit, control, reset, getValues } = useForm({
     defaultValues: getConfigFormValues(editingTool)
   });
 
   const onSubmit = handleSubmit((data) => {
-    const nextTool: SelectedToolItemType = {
-      ...editingTool,
-      inputs: editingTool.inputs.map((input) => {
+    const isToolSetBindingInput = (key: string) =>
+      isHttpToolSet && isToolSetInputBindingKey(key, toolSetToolNames);
+
+    const nextInputs = editingTool.inputs
+      .filter((input) => !isToolSetBindingInput(input.key))
+      .map((input) => {
         if (!shouldShowConfigInput(input)) {
           return stripToolInputDefaultMode(input);
         }
@@ -942,6 +1098,8 @@ const ConfigToolModal = ({
           renderTypeList: input.renderTypeList,
           canAgentGenerated: canInputBeAgentGenerated(input)
         });
+        const configuredValue = data[input.key] ?? input.value;
+        const isReference = inputTypeState.selectedType === FlowNodeInputTypeEnum.reference;
 
         return stripToolInputDefaultMode({
           ...input,
@@ -949,19 +1107,56 @@ const ConfigToolModal = ({
           value:
             inputTypeState.selectedType === FlowNodeInputTypeEnum.agentGenerated
               ? undefined
-              : (() => {
-                  const configuredValue = data[input.key] ?? input.value;
-                  const parsedValue = parseConfigInputValue({
-                    inputType: inputTypeState.selectedType,
-                    value: configuredValue
-                  });
-                  // 编辑文本持久化以兼容历史配置；空白输入统一表示未配置。
-                  return parsedValue.success && parsedValue.value === undefined
-                    ? undefined
-                    : configuredValue;
-                })()
+              : isReference
+                ? isGlobalVariableReferenceValue(configuredValue)
+                  ? configuredValue
+                  : undefined
+                : (() => {
+                    const parsedValue = parseConfigInputValue({
+                      inputType: inputTypeState.selectedType,
+                      value: configuredValue
+                    });
+                    // 编辑文本持久化以兼容历史配置；空白输入统一表示未配置。
+                    return parsedValue.success && parsedValue.value === undefined
+                      ? undefined
+                      : configuredValue;
+                  })()
         });
+      });
+
+    // 空白文本与单工具一致，视为未配置，避免必填参数以空字符串发给工具。
+    const savedToolSetValues = Object.fromEntries(
+      Object.entries(toolSetValues).filter(
+        ([key, value]) =>
+          toolSetModes[key] !== AgentToolInputModeEnum.agentGenerated &&
+          !(typeof value === 'string' && value.trim() === '')
+      )
+    );
+    // 每个子参数只保留一个配置载体：AI 生成记录来源，手动/引用记录值。
+    const toolSetInputs: FlowNodeInputItemType[] = [
+      ...new Set([...Object.keys(savedToolSetValues), ...Object.keys(toolSetModes)])
+    ].map((key) =>
+      buildToolSetManualInput({
+        key,
+        mode: toolSetModes[key],
+        value: savedToolSetValues[key]
       })
+    );
+    const nextTool: SelectedToolItemType = {
+      ...editingTool,
+      inputs: [...nextInputs, ...(isHttpToolSet ? toolSetInputs : [])],
+      ...(isHttpToolSet
+        ? {
+            config: {
+              ...Object.fromEntries(
+                Object.entries(editingTool.config ?? {}).filter(
+                  ([key]) => !isToolSetBindingInput(key)
+                )
+              ),
+              ...savedToolSetValues
+            }
+          }
+        : {})
     };
 
     onAddTool(nextTool);
@@ -1028,10 +1223,36 @@ const ConfigToolModal = ({
             />
             <SecretConfigSection input={secretInput} control={control} configTool={editingTool} />
             {isToolSet ? (
-              <ToolSetListCard tool={editingTool} />
+              isHttpToolSet && editingTool.pluginId ? (
+                <CardSection>
+                  <Flex flexDirection={'column'} gap={3}>
+                    <SmallSectionLabel>{t('workflow:tool_input')}</SmallSectionLabel>
+                    <ToolSetInputBindingList
+                      toolList={getNodeToolSetList(editingTool)}
+                      toolsetAppId={
+                        editingTool.toolConfig?.httpToolSet &&
+                        'toolId' in editingTool.toolConfig.httpToolSet
+                          ? editingTool.toolConfig.httpToolSet.toolId
+                          : editingTool.pluginId
+                      }
+                      values={toolSetValues}
+                      modes={toolSetModes}
+                      globalVariables={globalVariables}
+                      onChangeParameter={onChangeToolSetParameter}
+                    />
+                  </Flex>
+                </CardSection>
+              ) : (
+                <ToolSetListCard tool={editingTool} />
+              )
             ) : (
               <>
-                <InputConfigSection inputs={visibleConfigInputs} control={control} />
+                <InputConfigSection
+                  inputs={visibleConfigInputs}
+                  control={control}
+                  globalVariables={globalVariables}
+                  supportsGlobalVariable={supportsGlobalVariable}
+                />
                 <OutputConfigSection outputs={visibleOutputs} />
               </>
             )}

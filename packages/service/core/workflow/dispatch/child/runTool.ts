@@ -16,6 +16,9 @@ import { getSecretValue } from '../../../../common/secret/utils';
 import { resolveToolInputValues } from '../../../app/tool/secretConfig';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import { getMCPToolErrorText } from '@fastgpt/global/core/app/tool/mcpTool/utils';
+import { getHTTPToolFixedParamErrors } from '@fastgpt/global/core/app/tool/httpTool/utils';
+import { getAgentToolInputMode } from '@fastgpt/global/core/app/formEdit/utils';
+import { AgentToolInputModeEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
@@ -157,6 +160,27 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     customHeaders?: string | Record<string, string>;
   }) => {
     toolInput = params;
+    // 只校验开发者配置的最终值；模型生成的参数保持直通，与 Agent 工具路径一致。
+    const configParamKeys = new Set(
+      props.node.inputs.flatMap((input) =>
+        getAgentToolInputMode(input) === AgentToolInputModeEnum.manual ? [input.key] : []
+      )
+    );
+    const invalidParams = getHTTPToolFixedParamErrors({
+      tool,
+      params,
+      fixedParamKeys: configParamKeys
+    });
+    if (invalidParams.length > 0) {
+      return getNodeErrResponse({
+        error: `Invalid tool params: ${invalidParams.join('; ')}`,
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          toolInput,
+          moduleLogo: avatar
+        }
+      });
+    }
+
     const { data, errorMsg } = await runHTTPTool({
       apiSchemaStr,
       baseUrl: baseUrl || '',

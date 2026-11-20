@@ -17,6 +17,7 @@ import {
 } from '../../../workflow/constants';
 import { i18nT } from '../../../../common/i18n/utils';
 import type { NodeToolConfigType } from '../../../workflow/type/node';
+import { validateToolInputValue } from '../runtime';
 
 const legacyManualHttpToolArrayTypes = new Set<string>([
   WorkflowIOValueTypeEnum.arrayString,
@@ -192,6 +193,31 @@ export const getHTTPToolRuntimeSchemas = ({
     requestSchema: currentRequestSchema,
     inputSchema: hasInputProperties ? inputSchema : currentRequestSchema
   };
+};
+
+/**
+ * 校验开发者配置的 HTTP 参数最终值，Agent 和 Workflow 共用 Schema 回退与校验规则。
+ * undefined 表示参数未配置，跳过；null 交给 Schema 判断是否允许。
+ * Schema 本身无法编译时属于工具配置问题，不阻断请求，避免存量工具直接调用失败。
+ */
+export const getHTTPToolFixedParamErrors = ({
+  tool,
+  params,
+  fixedParamKeys
+}: {
+  tool: Pick<HttpToolConfigType, 'requestSchema' | 'inputSchema'>;
+  params: Record<string, unknown>;
+  fixedParamKeys: ReadonlySet<string>;
+}): string[] => {
+  // 历史工具可能只有 requestSchema，沿用编辑和运行节点相同的回退规则。
+  const properties = getHTTPToolRuntimeSchemas(tool).inputSchema?.properties;
+
+  return Object.entries(params).flatMap(([key, value]) => {
+    if (value === undefined || !fixedParamKeys.has(key)) return [];
+    const validationResult = validateToolInputValue({ schema: properties?.[key], value });
+    if (validationResult.success || validationResult.schemaInvalid) return [];
+    return validationResult.errors.map((error) => `${key}${error}`);
+  });
 };
 
 /**

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AgentToolInputModeEnum } from '@fastgpt/global/core/app/tool/constants';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import {
@@ -8,6 +9,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import {
   NodeInputKeyEnum,
+  VARIABLE_NODE_ID,
   VariableInputEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
@@ -247,6 +249,41 @@ const httpMixedTool = {
   requestSchema: httpMixedRequestSchema
 };
 
+const httpJsonTool = {
+  ...httpTool,
+  name: 'json',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      payload: {
+        type: 'object',
+        description: 'Payload',
+        'x-tool-description': 'Payload',
+        isToolParam: true,
+        properties: {
+          count: { type: 'integer' }
+        }
+      },
+      ids: {
+        type: 'array',
+        description: 'Ids',
+        'x-tool-description': 'Ids',
+        isToolParam: true,
+        items: { type: 'integer' }
+      }
+    },
+    required: ['payload']
+  },
+  requestSchema: {
+    type: 'object',
+    properties: {
+      payload: { type: 'object', description: 'Payload', isToolParam: true },
+      ids: { type: 'array', description: 'Ids', isToolParam: true }
+    },
+    required: ['payload']
+  }
+};
+
 const legacyHttpTool = {
   ...httpTool,
   inputSchema: {
@@ -459,6 +496,17 @@ describe('getAgentRuntimeTools schema loading', () => {
           baseUrl: 'https://api.example.com',
           headerSecret: {},
           toolList: [httpMixedTool]
+        }
+      }
+    }),
+    http_json_app: createToolsetApp({
+      id: 'http_json_app',
+      type: AppTypeEnum.httpToolSet,
+      toolConfig: {
+        httpToolSet: {
+          baseUrl: 'https://api.example.com',
+          headerSecret: {},
+          toolList: [httpJsonTool]
         }
       }
     }),
@@ -962,6 +1010,71 @@ describe('getAgentRuntimeTools schema loading', () => {
       id: 'http_app',
       name: 'http_app name'
     });
+  });
+
+  it('applies HTTP toolset child manual params from tool config', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'http_app', config: { 'create.keyword': '{{$VARIABLE_NODE_ID.keyword$}}' } }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].params).toEqual({ keyword: '{{$VARIABLE_NODE_ID.keyword$}}' });
+    expect(tools[0].inputs.find((input) => input.key === 'keyword')).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.input,
+      value: '{{$VARIABLE_NODE_ID.keyword$}}'
+    });
+  });
+
+  it('applies HTTP toolset child global variable references from tool config', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'http_app', config: { 'create.keyword': [VARIABLE_NODE_ID, 'keyword'] } }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].params).toEqual({ keyword: [VARIABLE_NODE_ID, 'keyword'] });
+    expect(tools[0].inputs.find((input) => input.key === 'keyword')).toMatchObject({
+      selectedType: FlowNodeInputTypeEnum.reference,
+      value: [VARIABLE_NODE_ID, 'keyword']
+    });
+  });
+
+  it('converts JSON editor child values to native values before compiling', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [
+        {
+          id: 'http_json_app',
+          config: {
+            'json.payload': '{"count":2}',
+            'json.ids': '[1,2]'
+          }
+        }
+      ]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].params).toEqual({ payload: { count: 2 }, ids: [1, 2] });
+  });
+
+  it('keeps an explicit agent-generated child mode over the schema default', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [
+        {
+          id: 'http_mixed_app',
+          inputs: [{ key: 'mixed.manual', mode: AgentToolInputModeEnum.agentGenerated }],
+          config: { 'mixed.manual': 'stale fixed value' }
+        }
+      ]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].params).toEqual({});
+    expect(tools[0].agentGeneratedInputKeys).toEqual(
+      expect.arrayContaining(['manual', 'generated'])
+    );
   });
 
   it.each([
