@@ -762,7 +762,7 @@ test('audit-domain.mjs separates out-of-SQL-scope GridFS legacy and reports reco
   assert.equal(logRes.status, 0, logRes.stderr);
   const logReport = JSON.parse(logRes.stdout);
   assert.equal(logReport.datasource, 'log');
-  assert.ok(logReport.recommendedExtraTests.some((t) => t.includes('TODO 0.5.1')));
+  assert.ok(logReport.recommendedExtraTests.some((t) => t.includes('日志库三态路由测试')));
   assert.ok(logReport.recommendedExtraTests.some((t) => t.includes('TTL 过期读过滤测试')));
 });
 

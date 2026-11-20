@@ -11,8 +11,16 @@ export type SqlDialect = Exclude<DbDialect, 'mongo'>;
 export const getDbDialectFamily = (dialect: DbDialect): DbDialectFamily =>
   dialect === 'mongo' ? 'mongo' : 'sql';
 
-/** 物理隔离的数据源角色：业务主库（main）与可选独立日志库（log）。 */
+/** 物理隔离的数据源角色：业务主库（main）与日志库（log）。 */
 export type DbDatasource = 'main' | 'log';
+
+/**
+ * 日志数据源三态拓扑：
+ * - `separate`：配置了独立 `logWriteUrl`，使用独立日志连接池；
+ * - `shared`（默认）：未配置 `logWriteUrl` 且未显式禁用，直接复用 `main` 连接池（零重复建池）；
+ * - `disabled`：显式配置 `logDisabled: true`，日志仓储自动路由至 `Noop` 空实现。
+ */
+export type DbLogMode = 'separate' | 'shared' | 'disabled';
 
 export type DbLogMetadata = Record<string, unknown>;
 

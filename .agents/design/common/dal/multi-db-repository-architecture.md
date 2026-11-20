@@ -1046,7 +1046,7 @@ export class NoopAppChatLogRepository implements AppChatLogRepository {
 - [x] **S0.4 分离 DDL 建索引超时**：为索引操作提供独立无 60s `socketTimeoutMS` 限制的连接配置（`withMongoDdlConnection`），防止大表建索引中途客户端超时。
 
 ### Phase 0.5：DAL 物理隔离收口、底座硬对齐与解耦迁移基建（Wave 1 前置）
-- [ ] **0.5.1 日志数据源三态改造**：升级 `DbRuntime` / `defineLogRepoToken` / Mongo & SQL 运行时支持 `logMode: 'separate' | 'shared' | 'disabled'`，未配置独立日志库时默认 `shared` 复用 `main` 连接池（兼容默认单库部署），仅显式关闭时走 `Noop`。
+- [x] **0.5.1 日志数据源三态改造**：升级 `DbRuntime` / `defineLogRepoToken` / Mongo & SQL 运行时支持 `logMode: 'separate' | 'shared' | 'disabled'`，未配置独立日志库时默认 `shared` 复用 `main` 连接池（兼容默认单库部署），仅显式关闭时走 `Noop`。
 - [ ] **0.5.2 Mongo 连接下沉、构造期 Model 绑定与 `AppRegistration` 迁入 `@fastgpt/dal`**：
   - [ ] 在 `packages/dal/db/mongo/` 实现 `runtime.ts`（接管唯一主/日志 `Mongoose` 连接池、`autoIndex: false`、独立 DDL 连接、`bindMongoModel` 幂等缓存与统一慢查询/Profiling 回调）与 `collection.ts`（纯声明式 `defineMongoCollection`，接收原生 `Schema` 并拦截内联 `index: true / unique: true`）；
   - [ ] 升级 `MongoRepositoryBase` 在 `constructor({ collection, readSchema, runtime })` 自动构出 `readonly model`，`defineRepoToken` 透传 `runtime`；

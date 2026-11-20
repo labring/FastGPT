@@ -73,10 +73,39 @@ describe('@fastgpt/dal/db transaction & afterCommit', () => {
     ]);
   });
 
-  it('rejects log datasource transaction when logWriteUrl is not configured', async () => {
+  it('routes log transaction to main pool in shared mode while preserving logical datasource isolation, and rejects in disabled mode', async () => {
+    const seenRunnerDatasources: string[] = [];
     configureDbRuntime({
       dialect: 'postgres',
       mainWriteUrl: 'postgres://localhost:5432/main',
+      transactionRunner: async ({ datasource, execute }) => {
+        seenRunnerDatasources.push(datasource);
+        return execute({ txPool: datasource });
+      }
+    });
+
+    const result = await runInTransaction(
+      async (tx) => {
+        expect(tx.datasource).toBe('log');
+        expect(unwrapNativeDbSession(tx, { family: 'sql', datasource: 'log' })).toEqual({
+          txPool: 'main'
+        });
+        expect(() => unwrapNativeDbSession(tx, { family: 'sql', datasource: 'main' })).toThrow(
+          DbConfigurationError
+        );
+        return 'shared-ok';
+      },
+      { datasource: 'log' }
+    );
+
+    expect(result).toBe('shared-ok');
+    expect(seenRunnerDatasources).toEqual(['main']);
+
+    await closeDbRuntime();
+    configureDbRuntime({
+      dialect: 'postgres',
+      mainWriteUrl: 'postgres://localhost:5432/main',
+      logDisabled: true,
       transactionRunner: async ({ execute }) => execute({})
     });
 

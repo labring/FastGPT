@@ -13,6 +13,7 @@ import {
   getConfiguredDbRuntime,
   getDbDialect,
   getDbFamily,
+  getDbLogMode,
   getDbRuntime,
   hasLogDatabase
 } from '@fastgpt/dal/db/runtime';
@@ -27,22 +28,46 @@ describe('@fastgpt/dal/db runtime & errors', () => {
     expect(() => getDbRuntime()).toThrow(DbRuntimeNotConfiguredError);
   });
 
-  it('keeps log database disabled without falling back to mainWriteUrl when logWriteUrl is omitted', () => {
-    const runtime = configureDbRuntime({
+  it('defaults logMode to shared (reusing main pool) when logWriteUrl is omitted, and disables only when logDisabled=true', async () => {
+    const sharedRuntime = configureDbRuntime({
       dialect: 'oceanbase',
-      mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt'
+      mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt',
+      mainReadUrl: 'mysql://root@127.0.0.1:2882/fastgpt'
     });
 
     expect(getDbDialect()).toBe('oceanbase');
     expect(getDbFamily()).toBe('sql');
+    expect(getDbLogMode()).toBe('shared');
+    expect(hasLogDatabase()).toBe(true);
+    expect(sharedRuntime.hasLogDatabase()).toBe(true);
+    expect(sharedRuntime.hasSeparateLogDatabase()).toBe(false);
+    expect(sharedRuntime.resolveReadTarget({ datasource: 'log' })).toEqual({
+      datasource: 'main',
+      target: 'write'
+    });
+    expect(sharedRuntime.resolveReadTarget({ datasource: 'log', useReadReplica: true })).toEqual({
+      datasource: 'main',
+      target: 'readReplica'
+    });
+
+    await closeDbRuntime();
+
+    const disabledRuntime = configureDbRuntime({
+      dialect: 'oceanbase',
+      mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt',
+      logDisabled: true
+    });
+
+    expect(getDbLogMode()).toBe('disabled');
     expect(hasLogDatabase()).toBe(false);
-    expect(runtime.hasLogDatabase()).toBe(false);
-    expect(() => runtime.resolveReadTarget({ datasource: 'log' })).toThrow(
+    expect(disabledRuntime.hasLogDatabase()).toBe(false);
+    expect(disabledRuntime.hasSeparateLogDatabase()).toBe(false);
+    expect(() => disabledRuntime.resolveReadTarget({ datasource: 'log' })).toThrow(
       DbLogDatasourceNotConfiguredError
     );
   });
 
-  it('rejects empty mainWriteUrl or logReadUrl without logWriteUrl', () => {
+  it('rejects empty mainWriteUrl, logReadUrl without logWriteUrl, or logWriteUrl when logDisabled=true', () => {
     expect(() =>
       configureDbRuntime({
         dialect: 'postgres',
@@ -55,6 +80,15 @@ describe('@fastgpt/dal/db runtime & errors', () => {
         dialect: 'postgres',
         mainWriteUrl: 'postgres://localhost:5432/main',
         logReadUrl: 'postgres://localhost:5432/log_replica'
+      })
+    ).toThrow(DbConfigurationError);
+
+    expect(() =>
+      configureDbRuntime({
+        dialect: 'postgres',
+        mainWriteUrl: 'postgres://localhost:5432/main',
+        logWriteUrl: 'postgres://localhost:5432/log',
+        logDisabled: true
       })
     ).toThrow(DbConfigurationError);
   });
@@ -158,6 +192,18 @@ describe('@fastgpt/dal/db runtime & errors', () => {
     expect(healthCheck).toHaveBeenCalledWith(
       expect.objectContaining({ dialect: 'oceanbase', datasource: 'main', success: true })
     );
+    await checkDbHealth('log');
+    expect(healthCheck).toHaveBeenLastCalledWith(
+      expect.objectContaining({ dialect: 'oceanbase', datasource: 'log', success: true })
+    );
+
+    await closeDbRuntime();
+    configureDbRuntime({
+      dialect: 'oceanbase',
+      mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt',
+      logDisabled: true,
+      healthChecker: async () => undefined
+    });
     await expect(checkDbHealth('log')).rejects.toBeInstanceOf(DbLogDatasourceNotConfiguredError);
   });
 

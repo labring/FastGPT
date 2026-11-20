@@ -249,7 +249,7 @@ describe('@fastgpt/dal/db DI container, portable SQL DDL, and PGlite integration
     expect(sqlSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('resolves defineLogRepoToken to Noop when logWriteUrl is unconfigured', async () => {
+  it('routes defineLogRepoToken across shared, separate, and disabled logMode topologies', async () => {
     const LogRepoToken = defineLogRepoToken<AuditLogRepo>('AuditLogRepo', {
       mongo: () => ({ mode: () => 'mongo' }),
       sql: () => ({ mode: () => 'sql' }),
@@ -258,12 +258,23 @@ describe('@fastgpt/dal/db DI container, portable SQL DDL, and PGlite integration
 
     const logRepo = injectRepo(LogRepoToken);
 
+    // 默认 shared 模式复用主库连接池，仍走真实 sql 仓储
     configureDbRuntime({
       dialect: 'oceanbase',
       mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt'
     });
+    expect(logRepo.mode()).toBe('sql');
+
+    // 显式关闭日志库持久化（logDisabled: true）时自动降级至 Noop 空实现
+    await closeDbRuntime();
+    configureDbRuntime({
+      dialect: 'oceanbase',
+      mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt',
+      logDisabled: true
+    });
     expect(logRepo.mode()).toBe('noop');
 
+    // separate 模式使用独立日志库连接池
     await closeDbRuntime();
     configureDbRuntime({
       dialect: 'oceanbase',

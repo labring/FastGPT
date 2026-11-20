@@ -1,8 +1,9 @@
 import { PGlite } from '@electric-sql/pglite';
 import { Kysely, PGliteDialect, sql } from 'kysely';
+import { DbLogDatasourceNotConfiguredError } from './errors';
 import { closeDbRuntime, configureDbRuntime } from './runtime';
 import { compileSqlTableDDL, type SqlTableDefinition } from './sql/ddl';
-import type { DbDialect } from './types';
+import type { DbDialect, DbLogMode } from './types';
 
 export type SqlTestHarness = {
   db: Kysely<any>;
@@ -39,53 +40,62 @@ const createKyselyOverPGlite = async (
 export const createPGliteSqlTestHarness = async ({
   tables,
   logTables,
-  withLogDatabase = false
+  withLogDatabase = false,
+  logMode
 }: {
   tables: readonly SqlTableDefinition[];
   logTables?: readonly SqlTableDefinition[];
   withLogDatabase?: boolean;
+  /** 日志数据源三态模式；未显式传入时 `withLogDatabase=true` 对应 `separate`，否则默认 `shared` 复用主库。 */
+  logMode?: DbLogMode;
 }): Promise<SqlTestHarness> => {
   await closeDbRuntime();
 
-  const main = await createKyselyOverPGlite(tables);
-  const log = withLogDatabase ? await createKyselyOverPGlite(logTables ?? []) : undefined;
+  const resolvedLogMode: DbLogMode = logMode ?? (withLogDatabase ? 'separate' : 'shared');
+  const mainTables = resolvedLogMode === 'shared' ? [...tables, ...(logTables ?? [])] : tables;
+  const main = await createKyselyOverPGlite(mainTables);
+  const log =
+    resolvedLogMode === 'separate' ? await createKyselyOverPGlite(logTables ?? []) : undefined;
+
+  const resolveTargetDb = (datasource: 'main' | 'log'): Kysely<any> => {
+    if (datasource === 'log') {
+      if (resolvedLogMode === 'disabled') {
+        throw new DbLogDatasourceNotConfiguredError();
+      }
+      return log?.db ?? main.db;
+    }
+    return main.db;
+  };
 
   configureDbRuntime({
     dialect: 'postgres',
     mainWriteUrl: 'pglite://memory/main',
-    ...(withLogDatabase ? { logWriteUrl: 'pglite://memory/log' } : {}),
+    ...(resolvedLogMode === 'separate' ? { logWriteUrl: 'pglite://memory/log' } : {}),
+    ...(resolvedLogMode === 'disabled' ? { logDisabled: true } : {}),
     sqlExecutorResolver: ({ datasource, nativeTx }) => {
       if (nativeTx !== undefined) {
         return nativeTx;
       }
-      if (datasource === 'log') {
-        return log?.db;
-      }
-      return main.db;
+      return resolveTargetDb(datasource);
     },
     transactionRunner: async ({ datasource, execute }) => {
-      const targetDb = datasource === 'log' ? log?.db : main.db;
-      if (targetDb === undefined) {
-        throw new Error('Log PGlite instance is not initialized');
-      }
+      const targetDb = resolveTargetDb(datasource);
       return targetDb.transaction().execute(async (trx) => execute(trx));
     },
     healthChecker: async (datasource) => {
-      const targetDb = datasource === 'log' ? log?.db : main.db;
-      if (targetDb !== undefined) {
-        await sql`SELECT 1`.execute(targetDb);
-      }
+      const targetDb = resolveTargetDb(datasource);
+      await sql`SELECT 1`.execute(targetDb);
     }
   });
 
   const allTableNames = [
-    ...tables.map((t) => ({ name: t.name, target: main.db })),
+    ...mainTables.map((t) => ({ name: t.name, target: main.db })),
     ...(log !== undefined ? (logTables ?? []).map((t) => ({ name: t.name, target: log.db })) : [])
   ];
 
   return {
     db: main.db,
-    logDb: log?.db,
+    logDb: resolvedLogMode === 'disabled' ? undefined : (log?.db ?? main.db),
     truncateAll: async () => {
       for (const item of allTableNames) {
         await sql.raw(`TRUNCATE TABLE "${item.name}" CASCADE`).execute(item.target);

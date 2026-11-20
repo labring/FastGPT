@@ -10,7 +10,7 @@ export type RepoProviders<TRepo extends object> = {
 export type LogRepoProviders<TRepo extends object> = {
   mongo: () => TRepo;
   sql: () => TRepo;
-  /** 未配置独立日志库（logWriteUrl）时自动启用的 Null Object 空实现。 */
+  /** 显式禁用日志库持久化（`logMode === 'disabled'`）时自动启用的 Null Object 空实现。 */
   noop: () => TRepo;
 };
 
@@ -39,10 +39,13 @@ export const defineRepoToken = <TRepo extends object>(
 });
 
 /**
- * 定义独立日志库领域仓储 DI Token。
+ * 定义日志库领域仓储 DI Token。
  *
- * 当 Runtime 未配置 `logWriteUrl`（`hasLogDb === false`）时，自动路由至 `noop` 空实现，
- * 既不创建日志库连接，也不向主业务库回退写入，同时消除业务层的 `if (hasLogDb)` 判断。
+ * 日志数据源遵循三态拓扑：
+ * - `separate`（配置了独立 `logWriteUrl`）：走独立日志连接池；
+ * - `shared`（默认，未配置 `logWriteUrl` 且未显式禁用）：直接复用 `main` 连接池；
+ * - `disabled`（显式 `logDisabled: true`，即 `hasLogDb === false`）：自动路由至 `noop` 空实现，
+ *   消除业务层的 `if (hasLogDb)` 判断。
  */
 export const defineLogRepoToken = <TRepo extends object>(
   name: string,

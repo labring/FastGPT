@@ -8,6 +8,7 @@ import {
   type DbDatasource,
   type DbDialect,
   type DbDialectFamily,
+  type DbLogMode,
   type DbLogger,
   type DbMetrics,
   type DbTransactionRunner,
@@ -38,12 +39,16 @@ export type DbRuntimeConfig = {
   /** 只读副本连接串；未配置时读流量自动路由至主写连接池。 */
   mainReadUrl?: string;
   /**
-   * 独立日志库连接串。
-   * 未配置时不回退至 mainWriteUrl、不建立任何日志库连接实例，日志类仓储将自动切换至 Noop 空实现。
+   * 独立日志库连接串：
+   * - 配置时进入 `separate` 模式，建立独立日志连接池；
+   * - 未配置且未显式禁用（`logDisabled !== true`）时进入 `shared` 模式，直接复用 `main` 连接池（不重复建池）；
+   * - 显式配置 `logDisabled: true` 时进入 `disabled` 模式，日志仓储自动切换至 `Noop` 空实现。
    */
   logWriteUrl?: string;
-  /** 独立日志库只读副本连接串；仅在配置了 logWriteUrl 时生效，未配置时回退至 logWritePool。 */
+  /** 独立日志库只读副本连接串；仅在 `separate` 模式下生效，未配置时回退至 logWritePool。 */
   logReadUrl?: string;
+  /** 显式关闭日志库持久化（`disabled` 模式），默认 `false`。 */
+  logDisabled?: boolean;
   maxConnections?: number;
   logger?: DbLogger;
   metrics?: DbMetrics;
@@ -63,6 +68,7 @@ export type DbRuntimeConfig = {
 export class DbRuntime {
   readonly dialect: DbDialect;
   readonly family: DbDialectFamily;
+  readonly logMode: DbLogMode;
   readonly maxConnections?: number;
 
   private readonly mainWriteUrl: string;
@@ -86,6 +92,13 @@ export class DbRuntime {
 
     const logWriteUrl = normalizeOptionalUrl(config.logWriteUrl);
     const logReadUrl = normalizeOptionalUrl(config.logReadUrl);
+    const logDisabled = config.logDisabled === true;
+
+    if (logDisabled && (logWriteUrl !== undefined || logReadUrl !== undefined)) {
+      throw new DbConfigurationError(
+        'Database logWriteUrl/logReadUrl cannot be configured when logDisabled is true'
+      );
+    }
     if (logReadUrl !== undefined && logWriteUrl === undefined) {
       throw new DbConfigurationError(
         'Database logReadUrl cannot be configured when logWriteUrl is omitted'
@@ -94,6 +107,7 @@ export class DbRuntime {
 
     this.dialect = config.dialect;
     this.family = getDbDialectFamily(config.dialect);
+    this.logMode = logDisabled ? 'disabled' : logWriteUrl !== undefined ? 'separate' : 'shared';
     this.mainWriteUrl = mainWriteUrl;
     this.mainReadUrl = normalizeOptionalUrl(config.mainReadUrl);
     this.logWriteUrl = logWriteUrl;
@@ -111,9 +125,14 @@ export class DbRuntime {
     return this.state;
   }
 
-  /** 是否启用了独立的日志数据库实例（未配置 logWriteUrl 时为 false）。 */
+  /** 是否启用日志库持久化（`separate` 与默认 `shared` 均为 `true`；仅显式 `disabled` 时为 `false`）。 */
   hasLogDatabase(): boolean {
-    return this.logWriteUrl !== undefined;
+    return this.logMode !== 'disabled';
+  }
+
+  /** 是否配置了物理独立的日志数据库实例（仅 `separate` 模式为 `true`）。 */
+  hasSeparateLogDatabase(): boolean {
+    return this.logMode === 'separate';
   }
 
   hasMainReadReplica(): boolean {
@@ -122,6 +141,22 @@ export class DbRuntime {
 
   hasLogReadReplica(): boolean {
     return this.logReadUrl !== undefined;
+  }
+
+  /**
+   * 将逻辑数据源解析为底层实际承接流量的物理数据源：
+   * - `logMode === 'disabled'` 且请求 `log` 时抛出 `DbLogDatasourceNotConfiguredError`；
+   * - `logMode === 'shared'` 且请求 `log` 时透明路由至 `main` 连接池（零重复建池）；
+   * - `logMode === 'separate'` 时保持物理隔离 `log`。
+   */
+  resolveEffectiveDatasource(datasource: DbDatasource): DbDatasource {
+    if (datasource === 'log') {
+      if (this.logMode === 'disabled') {
+        throw new DbLogDatasourceNotConfiguredError();
+      }
+      return this.logMode === 'shared' ? 'main' : 'log';
+    }
+    return 'main';
   }
 
   getLogger(): DbLogger {
@@ -169,15 +204,14 @@ export class DbRuntime {
     useReadReplica?: boolean;
     hasActiveTx?: boolean;
   } = {}): { datasource: DbDatasource; target: 'write' | 'readReplica' } {
-    if (datasource === 'log' && !this.hasLogDatabase()) {
-      throw new DbLogDatasourceNotConfiguredError();
-    }
+    const effectiveDatasource = this.resolveEffectiveDatasource(datasource);
     if (hasActiveTx || !useReadReplica) {
-      return { datasource, target: 'write' };
+      return { datasource: effectiveDatasource, target: 'write' };
     }
-    const hasReplica = datasource === 'main' ? this.hasMainReadReplica() : this.hasLogReadReplica();
+    const hasReplica =
+      effectiveDatasource === 'main' ? this.hasMainReadReplica() : this.hasLogReadReplica();
     return {
-      datasource,
+      datasource: effectiveDatasource,
       target: hasReplica ? 'readReplica' : 'write'
     };
   }
@@ -229,13 +263,11 @@ export class DbRuntime {
   }
 
   async checkHealth(datasource: DbDatasource = 'main'): Promise<void> {
-    if (datasource === 'log' && !this.hasLogDatabase()) {
-      throw new DbLogDatasourceNotConfiguredError();
-    }
+    const effectiveDatasource = this.resolveEffectiveDatasource(datasource);
 
     const startedAt = Date.now();
     try {
-      await this.healthChecker?.(datasource);
+      await this.healthChecker?.(effectiveDatasource);
       this.recordMetric('healthCheck', () =>
         this.metrics.healthCheck?.({
           dialect: this.dialect,
@@ -308,7 +340,8 @@ const buildConfigurationKey = (config: DbRuntimeConfig): string =>
     mainWriteUrl: normalizeOptionalUrl(config.mainWriteUrl),
     mainReadUrl: normalizeOptionalUrl(config.mainReadUrl),
     logWriteUrl: normalizeOptionalUrl(config.logWriteUrl),
-    logReadUrl: normalizeOptionalUrl(config.logReadUrl)
+    logReadUrl: normalizeOptionalUrl(config.logReadUrl),
+    logDisabled: config.logDisabled === true
   });
 
 /**
@@ -359,6 +392,8 @@ export const getDbDialect = (): DbDialect => getDbRuntime().dialect;
 export const getDbFamily = (): DbDialectFamily => getDbRuntime().family;
 
 export const hasLogDatabase = (): boolean => getDbRuntime().hasLogDatabase();
+
+export const getDbLogMode = (): DbLogMode => getDbRuntime().logMode;
 
 export const getDbLogger = (): DbLogger => getConfiguredDbRuntime()?.getLogger() ?? silentLogger;
 

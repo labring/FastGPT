@@ -34,11 +34,11 @@ export class DbRuntimeNotConfiguredError extends DbError {
   }
 }
 
-/** 未配置独立日志库（logWriteUrl）却显式请求 log 数据源事务或连接时抛出。 */
+/** 日志数据源处于显式禁用（`logMode === 'disabled'`）或未初始化状态却请求 log 事务/连接时抛出。 */
 export class DbLogDatasourceNotConfiguredError extends DbError {
   readonly datasource: DbDatasource = 'log';
 
-  constructor(message = 'Log database datasource is not configured') {
+  constructor(message = 'Log database datasource is disabled or not configured') {
     super({ message, code: 'DB_LOG_DATASOURCE_NOT_CONFIGURED' });
   }
 }

@@ -344,8 +344,7 @@ import {
 } from '../repo.type';
 
 /**
- * 日志库未启用时的 Null Object 空实现（当前 Phase 0 运行时在未配置 \`logWriteUrl\` 时路由至此；
- * 待 Phase 0.5.1 三态改造落地后，仅在显式关闭日志落库时路由至此），不建连、不写入主库。
+ * 显式关闭日志库持久化（\`logMode === 'disabled'\`）时的 Null Object 空实现，不建连、不写入主库。
  */
 export class Noop${entityArg}Repository implements ${entityArg}Repository {
   async findById() {
@@ -376,8 +375,8 @@ import { Sql${entityArg}Repository } from './sql/repo';
 /**
  * ${entityArg} 日志仓储 DI Token。
  *
- * 当前 Phase 0 运行时在未配置 \`logWriteUrl\` 时自动解析为 \`Noop\`（不回退主库）；
- * 需先完成设计总纲 TODO 0.5.1（默认 \`shared\` 复用主池）后再上线单库默认部署的日志表迁移。
+ * 日志数据源遵循三态拓扑：默认 \`shared\` 复用主池、配置 \`logWriteUrl\` 走 \`separate\` 独立池、
+ * 显式 \`logDisabled: true\` 自动路由至 \`Noop\` 空实现。
  */
 export const ${entityArg}RepoToken = defineLogRepoToken<${entityArg}Repository>(
   '${entityArg}Repository',
@@ -471,15 +470,14 @@ describe('${entityArg} portable SQL DDL (OceanBase/MySQL + PostgreSQL)', () => {
 ${
   datasource === 'log'
     ? `
-describe('${entityArg}Repository Noop fallback mode', () => {
-  it('skips persistence and returns empty reads when routed to Noop (unconfigured logWriteUrl in Phase 0 / disabled in 0.5.1+)', async () => {
+describe('${entityArg}Repository tri-state logMode & Noop fallback', () => {
+  it('skips persistence and returns empty reads when logDisabled=true routes to Noop', async () => {
     const noopRepo = new Noop${entityArg}Repository();
     const teamId = createEntityId();
     const created = await noopRepo.create({ data: { teamId } });
 
     expect(created.teamId).toBe(teamId);
     expect(await noopRepo.findById({ id: created._id, teamId })).toBeNull();
-    // TODO(Phase 0.5.1): 落地日志三态改造后，补齐 shared（默认复用主池）/ separate / disabled 路由集成断言
   });
 });
 `
