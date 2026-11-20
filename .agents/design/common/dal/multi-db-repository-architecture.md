@@ -1040,10 +1040,10 @@ export class NoopAppChatLogRepository implements AppChatLogRepository {
   - [x] 完成 `support/appRegistration` 全链路端到端迁移与双库契约单测，物理删除旧 `schema.ts`。
 
 ### Step 0：现网 Mongo 索引 4 个高危 Bug 定点修复（可独立优先合入）
-- [ ] **S0.1 禁用 Mongoose `autoIndex`**：在 `connectionMongo`、`connectionLogMongo` 与 `marketplace` 连接初始化时显式设置 `db.set('autoIndex', false)`，消除与索引管理器的双重并发建索引竞态。
-- [ ] **S0.2 修复复合 `text` 索引匹配器**：修复 `packages/service/common/mongo/indexManager.ts` 忽略非 text 前导字段的 Bug（覆盖 `dataset_data_texts` 与 `agent_skills` 的 `{ teamId: 1, ...: 'text' }`）。
-- [ ] **S0.3 补齐删除开关门控**：修复 `indexManager.ts` 硬编码 `apply: true` 忽略 `MONGO_DEPRECATE_INDEX` 的问题，杜绝启动无条件删除生产索引。
-- [ ] **S0.4 分离 DDL 建索引超时**：为索引操作提供独立无 60s `socketTimeoutMS` 限制的连接配置，防止大表建索引中途客户端超时。
+- [x] **S0.1 禁用 Mongoose `autoIndex`**：在 `connectionMongo`、`connectionLogMongo` 与 `marketplace` 连接初始化时显式设置 `db.set('autoIndex', false)`，消除与索引管理器的双重并发建索引竞态。
+- [x] **S0.2 修复复合 `text` 索引匹配器**：修复 `packages/service/common/mongo/indexManager.ts` 忽略非 text 前导字段的 Bug（覆盖 `dataset_data_texts` 与 `agent_skills` 的 `{ teamId: 1, ...: 'text' }`）。
+- [x] **S0.3 补齐删除开关门控**：修复 `indexManager.ts` 硬编码 `apply: true` 忽略 `MONGO_DEPRECATE_INDEX` 的问题，杜绝启动无条件删除生产索引。
+- [x] **S0.4 分离 DDL 建索引超时**：为索引操作提供独立无 60s `socketTimeoutMS` 限制的连接配置（`withMongoDdlConnection`），防止大表建索引中途客户端超时。
 
 ### Phase 0.5：DAL 物理隔离收口、底座硬对齐与解耦迁移基建（Wave 1 前置）
 - [ ] **0.5.1 日志数据源三态改造**：升级 `DbRuntime` / `defineLogRepoToken` / Mongo & SQL 运行时支持 `logMode: 'separate' | 'shared' | 'disabled'`，未配置独立日志库时默认 `shared` 复用 `main` 连接池（兼容默认单库部署），仅显式关闭时走 `Noop`。

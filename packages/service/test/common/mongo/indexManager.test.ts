@@ -10,6 +10,7 @@ import {
 } from '@fastgpt/service/common/mongo';
 import type { DeprecatedMongoIndexDefinition } from '@fastgpt/service/common/mongo/schemaIndexes';
 import { MongoIndexManager } from '@fastgpt/service/common/mongo/indexManager';
+import { withMongoDdlConnection } from '@fastgpt/service/common/mongo/init';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
@@ -766,5 +767,116 @@ describe('sandbox quota index migration', () => {
     expect(names).toContain('status_1_lastActiveAt_1');
     expect(names).toContain('sourceType_1_sourceId_1_userId_1');
     expect(names).toContain('customer_sandbox_source');
+  });
+});
+
+describe('Step 0 Mongo index safety fixes', () => {
+  it('respects MONGO_DEPRECATE_INDEX=false by creating missing indexes without dropping deprecated ones', async () => {
+    const schema = new Schema({ currentField: String, legacyField: String }, { autoIndex: false });
+    defineIndex(schema, { key: { currentField: 1 }, options: { name: 'current_field_1' } });
+    defineDeprecatedTestIndexes(schema, [legacyDefinition]);
+    const model = createModel({ schema, prefix: 'DeprecateGate' });
+    await model.collection.createIndex({ legacyField: 1 }, { name: 'legacy_field_1' });
+
+    const prev = process.env.MONGO_DEPRECATE_INDEX;
+    process.env.MONGO_DEPRECATE_INDEX = 'false';
+    try {
+      const result = await MongoIndexManager.syncModelIndexes({ model, logger });
+      const names = await getIndexNames(model);
+
+      expect(names).toContain('current_field_1');
+      expect(names).toContain('legacy_field_1');
+      expect(result.cleanupReport.apply).toBe(false);
+      expect(result.cleanupReport.items).toEqual([
+        expect.objectContaining({
+          action: 'drop',
+          applied: false,
+          indexName: 'legacy_field_1'
+        })
+      ]);
+    } finally {
+      if (prev === undefined) {
+        delete process.env.MONGO_DEPRECATE_INDEX;
+      } else {
+        process.env.MONGO_DEPRECATE_INDEX = prev;
+      }
+    }
+  });
+
+  it('matches compound text indexes including non-text prefix fields and rejects mismatched prefixes', async () => {
+    const matchingSchema = new Schema(
+      { teamId: String, name: String, description: String },
+      { autoIndex: false }
+    );
+    defineIndex(matchingSchema, {
+      key: { teamId: 1, name: 'text', description: 'text' },
+      options: { name: 'compound_text_legacy' },
+      deprecated: true
+    });
+    const matchingModel = createModel({ schema: matchingSchema, prefix: 'CompoundTextMatch' });
+    await matchingModel.collection.createIndex(
+      { teamId: 1, name: 'text', description: 'text' },
+      { name: 'compound_text_legacy' }
+    );
+
+    const matchResult = await MongoIndexManager.syncModelIndexes({ model: matchingModel, logger });
+    expect(await getIndexNames(matchingModel)).not.toContain('compound_text_legacy');
+    expect(matchResult.cleanupReport.items).toEqual([
+      expect.objectContaining({ action: 'drop', applied: true, indexName: 'compound_text_legacy' })
+    ]);
+
+    // 前导列从 teamId 换成 otherId（同名同 text 权重但前导列不同），必须按 skip_mismatch 保留，绝不误删。
+    const mismatchedSchema = new Schema(
+      { teamId: String, otherId: String, name: String, description: String },
+      { autoIndex: false }
+    );
+    defineIndex(mismatchedSchema, {
+      key: { teamId: 1, name: 'text', description: 'text' },
+      options: { name: 'compound_text_mismatch' },
+      deprecated: true
+    });
+    const mismatchedModel = createModel({
+      schema: mismatchedSchema,
+      prefix: 'CompoundTextMismatch'
+    });
+    await mismatchedModel.collection.createIndex(
+      { otherId: 1, name: 'text', description: 'text' },
+      { name: 'compound_text_mismatch' }
+    );
+
+    const mismatchResult = await MongoIndexManager.syncModelIndexes({
+      model: mismatchedModel,
+      logger
+    });
+    expect(await getIndexNames(mismatchedModel)).toContain('compound_text_mismatch');
+    expect(mismatchResult.cleanupReport.items).toEqual([
+      expect.objectContaining({
+        action: 'skip_mismatch',
+        applied: false,
+        indexName: 'compound_text_mismatch'
+      })
+    ]);
+  });
+
+  it('opens an isolated DDL connection with autoIndex disabled and socketTimeoutMS=0 and closes it after execution', async () => {
+    const uri = process.env.MONGODB_URI;
+    expect(uri).toBeTruthy();
+
+    let capturedAutoIndex: unknown;
+    let capturedReadyStateInside: number | undefined;
+    let capturedDdlDb: { connection: { readyState: number } } | undefined;
+
+    await withMongoDdlConnection({
+      url: uri!,
+      execute: async (ddlDb) => {
+        capturedAutoIndex = ddlDb.get('autoIndex');
+        capturedReadyStateInside = ddlDb.connection.readyState;
+        capturedDdlDb = ddlDb;
+      }
+    });
+
+    expect(capturedAutoIndex).toBe(false);
+    expect(capturedReadyStateInside).toBe(1);
+    expect(capturedDdlDb?.connection.readyState).toBe(0);
   });
 });

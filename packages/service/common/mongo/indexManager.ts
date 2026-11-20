@@ -64,6 +64,20 @@ export type MongoIndexCleanupSummary = {
 type SyncModelIndexesParams = {
   model: Model<any>;
   logger?: MongoIndexLogger;
+  /**
+   * 是否执行废弃索引删除；未显式传入时读取 `MONGO_DEPRECATE_INDEX` 环境变量（默认 `true`，
+   * 设为 `false` / `0` 时仅创建缺失的当前索引而不执行删除）。
+   */
+  applyDeprecatedCleanup?: boolean;
+};
+
+const isMongoDeprecateIndexEnabled = (): boolean => {
+  const raw = process.env.MONGO_DEPRECATE_INDEX;
+  if (raw === undefined) {
+    return true;
+  }
+  const normalized = raw.trim().toLowerCase();
+  return normalized !== 'false' && normalized !== '0';
 };
 
 /**
@@ -125,7 +139,8 @@ export class MongoIndexManager {
 
   private static async syncModelIndexesInner({
     model,
-    logger = defaultLogger
+    logger = defaultLogger,
+    applyDeprecatedCleanup
   }: SyncModelIndexesParams): Promise<MongoIndexSyncResult> {
     const inspection = await MongoIndexManager.inspectModelIndexes(model);
 
@@ -140,7 +155,7 @@ export class MongoIndexManager {
 
     const cleanupReport = await MongoIndexManager.cleanupModelDeprecatedIndexes({
       model,
-      apply: true,
+      apply: applyDeprecatedCleanup ?? isMongoDeprecateIndexEnabled(),
       logger
     });
     const result: MongoIndexSyncResult = {
@@ -374,12 +389,58 @@ export class MongoIndexManager {
 
   /**
    * 从废弃声明中提取 text 字段列表，保持声明顺序。
-   * 非 text 前缀/后缀字段暂不参与匹配，当前 FastGPT 未使用混合 text 复合索引。
    */
   private static getDeclaredTextFields(key: DeprecatedMongoIndexDefinition['key']) {
     return Object.entries(key as Record<string, unknown>)
       .filter(([, value]) => value === 'text')
       .map(([field]) => field);
+  }
+
+  /**
+   * 将声明中的复合 text 索引归一化为骨架序列：所有 `"text"` 字段在首个 text 位置折叠为单一
+   * `['$text', 'text']` 占位符，同时完整保留其前后的非 text 前导/尾随字段（如 `teamId: 1`）。
+   */
+  private static getDeclaredTextKeySkeleton(key: DeprecatedMongoIndexDefinition['key']) {
+    const skeleton: Array<[string, unknown]> = [];
+    let insertedTextPlaceholder = false;
+
+    for (const [field, value] of Object.entries(key as Record<string, unknown>)) {
+      if (value === 'text') {
+        if (!insertedTextPlaceholder) {
+          skeleton.push(['$text', 'text']);
+          insertedTextPlaceholder = true;
+        }
+        continue;
+      }
+      skeleton.push([field, value]);
+    }
+
+    return skeleton;
+  }
+
+  /**
+   * 将 listIndexes 返回的 text 索引 key 归一化为与 `getDeclaredTextKeySkeleton` 对齐的骨架序列：
+   * `_fts: 'text'` 映射为 `['$text', 'text']`，跳过伴随字段 `_ftsx`，保留所有前导/尾随非 text 字段。
+   */
+  private static getStoredTextKeySkeleton(index: MongoIndexDescription) {
+    const skeleton: Array<[string, unknown]> = [];
+    let insertedTextPlaceholder = false;
+
+    for (const [field, value] of Object.entries(index.key ?? {})) {
+      if (field === '_fts' && value === 'text') {
+        if (!insertedTextPlaceholder) {
+          skeleton.push(['$text', 'text']);
+          insertedTextPlaceholder = true;
+        }
+        continue;
+      }
+      if (field === '_ftsx') {
+        continue;
+      }
+      skeleton.push([field, value]);
+    }
+
+    return skeleton;
   }
 
   /**
@@ -397,7 +458,7 @@ export class MongoIndexManager {
    * 废弃索引删除前的安全校验：name 已由调用方定位，这里只校验 key。
    *
    * - 普通索引：key 对象按声明顺序精确相等
-   * - text 索引：声明字段集合与 weights 字段集合相等（忽略 `_fts/_ftsx` 形态差异）
+   * - text / 复合 text 索引：非 text 前导与尾随字段顺序精确相等，且声明 text 字段集合与 weights 字段集合相等
    * - options（unique/sparse/TTL 等）不参与匹配，避免重复声明成本；同名同 key 下
    *   option 冲突极少，需由声明方自行确认
    */
@@ -413,6 +474,15 @@ export class MongoIndexManager {
 
     if (definitionIsText || storedIsText) {
       if (!definitionIsText || !storedIsText) {
+        return false;
+      }
+
+      const skeletonMatched = MongoIndexManager.isSameValue(
+        MongoIndexManager.getDeclaredTextKeySkeleton(definition.key),
+        MongoIndexManager.getStoredTextKeySkeleton(index),
+        { sortObjectKeys: false }
+      );
+      if (!skeletonMatched) {
         return false;
       }
 

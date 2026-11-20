@@ -110,6 +110,9 @@ export const serviceEnv = createEnv({
         'mongodb://myusername:mypassword@localhost:27017/fastgpt?authSource=admin&directConnection=true'
       ),
     MONGODB_LOG_URI: z.string().optional(),
+    MONGO_DEPRECATE_INDEX: BoolSchema.default(true).meta({
+      description: '是否在 Mongo 索引同步阶段清理显式声明为 deprecated 的历史索引（默认开启）'
+    }),
 
     // VectorDB
     VECTOR_VQ_LEVEL: IntSchema.default(32).meta({

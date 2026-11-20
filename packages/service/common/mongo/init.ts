@@ -40,6 +40,8 @@ export async function connectMongo(props: {
     // Remove existing listeners to prevent duplicates
     RemoveListeners();
     db.set('strictQuery', 'throw');
+    // 禁用 Mongoose 隐式自动建索引，统一交由 MongoIndexManager / DAL 索引同步器显式管理，避免双重竞态。
+    db.set('autoIndex', false);
 
     db.connection.on('error', async (error) => {
       logger.error('MongoDB connection error', {
@@ -80,5 +82,39 @@ export async function connectMongo(props: {
 
     await delay(1000);
     return connectMongo(props);
+  }
+}
+
+/**
+ * 使用独立无 socket 超时限制（`socketTimeoutMS: 0`）的临时连接执行大表 DDL/建索引操作，
+ * 避免与业务查询池共用 60s `socketTimeoutMS` 导致大表建索引中途客户端断开重试。
+ */
+export async function withMongoDdlConnection<T>({
+  url,
+  execute
+}: {
+  url: string;
+  execute: (ddlDb: Mongoose) => Promise<T>;
+}): Promise<T> {
+  const { Mongoose: MongooseCtor } = await import('mongoose');
+  const ddlDb = new MongooseCtor();
+  ddlDb.set('strictQuery', 'throw');
+  ddlDb.set('autoIndex', false);
+
+  await ddlDb.connect(url, {
+    bufferCommands: true,
+    maxPoolSize: 2,
+    minPoolSize: 0,
+    connectTimeoutMS: 60000,
+    serverSelectionTimeoutMS: 10000,
+    socketTimeoutMS: 0,
+    retryWrites: true,
+    retryReads: true
+  });
+
+  try {
+    return await execute(ddlDb);
+  } finally {
+    await ddlDb.disconnect().catch(() => undefined);
   }
 }
