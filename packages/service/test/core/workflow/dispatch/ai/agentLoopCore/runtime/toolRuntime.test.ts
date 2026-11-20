@@ -1,5 +1,7 @@
 import { createAgentLoopCoreToolRuntime } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/runtime/toolRuntime';
 import { describe, expect, it, vi } from 'vitest';
+import * as modelInput from '@fastgpt/service/core/plugin/moderation/modelInput';
+import { MODERATION_BLOCKED_REPLACE_TEXT } from '@fastgpt/global/core/plugin/moderation/constants';
 
 const createCall = (overrides: Record<string, any> = {}) =>
   ({
@@ -128,4 +130,45 @@ describe('createAgentLoopCoreToolRuntime', () => {
       result: expect.objectContaining({ response: 'interactive result' })
     });
   });
+  it.each(['ordinary', 'interactive'])(
+    'removes blocked image content for %s results before collection',
+    async (entry) => {
+      const spy = vi
+        .spyOn(modelInput, 'checkToolResultModeration')
+        .mockResolvedValue(MODERATION_BLOCKED_REPLACE_TEXT);
+      const onToolResult = vi.fn();
+      const makeResult = () => ({
+        response: 'blocked text',
+        content: [
+          {
+            type: 'image_url',
+            image_url: {
+              url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aN8AAAAASUVORK5CYII='
+            }
+          }
+        ]
+      });
+      const runtime = createAgentLoopCoreToolRuntime({
+        toolProvider: {
+          buildRuntimeTools: () => [],
+          getToolInfo: vi.fn(),
+          executeTool: vi.fn(async () => makeResult()),
+          executeInteractiveTool: vi.fn(async () => makeResult())
+        } as any,
+        onToolResult
+      });
+      const result =
+        entry === 'ordinary'
+          ? await runtime.executeTool({ call: createCall(), messages: [] })
+          : await runtime.executeInteractiveTool?.({
+              call: createCall(),
+              toolCallId: 'call_search',
+              childrenResponse: {}
+            } as any);
+      expect(result?.response).toBe(MODERATION_BLOCKED_REPLACE_TEXT);
+      expect(result?.content).toBeUndefined();
+      expect(onToolResult.mock.calls[0][0].result.content).toBeUndefined();
+      spy.mockRestore();
+    }
+  );
 });

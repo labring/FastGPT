@@ -81,6 +81,8 @@ describe('workflow agent-loop core boundary', () => {
     // 公共能力也允许从定义模块直接导入，避免为了边界检查新增 re-export。
     const publicCoreModules = [
       'interface',
+      // syntax.md 禁止转导，公共定义模块直接登记，不再经由 interface 转发。
+      'domain/toolContent',
       ...Array.from(
         readSource('core/workflow/dispatch/ai/agentLoopCore/interface/index.ts').matchAll(
           /export\s+(?:type\s+)?\{[^}]+\}\s+from\s+['"]\.\.\/([^'"]+)['"]/g

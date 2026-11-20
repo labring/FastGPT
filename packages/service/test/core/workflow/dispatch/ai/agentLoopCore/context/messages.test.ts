@@ -7,6 +7,7 @@ import {
   buildAgentLoopCoreSkillsPrompt,
   buildAgentLoopCoreUserReminderInput
 } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/context';
+import { createAgentLoopCoreAssistantEventCollector } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/assistantResponses/eventCollector';
 import { describe, expect, it } from 'vitest';
 
 describe('buildAgentLoopCoreRequestMessages', () => {
@@ -64,6 +65,49 @@ describe('buildAgentLoopCoreRequestMessages', () => {
         content: 'tool result'
       })
     );
+  });
+
+  it('restores legacy tool text without rewriting data URIs in its business content', () => {
+    const response = JSON.stringify({
+      jobId: 'legacy',
+      content: 'data:image/png;base64,aW1hZ2U='
+    });
+    const collector = createAgentLoopCoreAssistantEventCollector();
+    const call = {
+      id: 'legacy',
+      type: 'function' as const,
+      function: { name: 'legacy_tool', arguments: '{}' }
+    };
+    collector.emitEvent({
+      type: 'llm_request_end',
+      requestIndex: 1,
+      requestId: 'request',
+      modelName: 'Model',
+      finishReason: 'tool_calls',
+      toolCalls: [call],
+      seconds: 0
+    });
+    collector.emitEvent({
+      type: 'tool_run_end',
+      call,
+      response,
+      seconds: 0
+    });
+
+    const messages = buildAgentLoopCoreRequestMessages({
+      messages: [
+        {
+          obj: ChatRoleEnum.AI,
+          value: collector.assistantResponses
+        }
+      ]
+    });
+
+    expect(messages.at(-1)).toMatchObject({
+      role: ChatCompletionRequestMessageRoleEnum.Tool,
+      tool_call_id: 'legacy',
+      content: response
+    });
   });
 
   it('can keep system messages for ToolCall-compatible input', () => {
