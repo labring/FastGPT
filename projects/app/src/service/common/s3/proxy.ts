@@ -442,19 +442,9 @@ export const handleS3ProxyUpload = async ({
     fileHint: resolvedFileHint
   });
 
-  let clientAborted = false;
   const abortContext = createS3ProxyAbortContext({ req, res });
   const destroyGuardStream = () => {
     if (!guardStream.destroyed) guardStream.destroy();
-  };
-
-  /**
-   * 响应在 finish 前关闭（例如小文件或大文件发完 body 后等待对象存储响应期间客户端取消）
-   * 会通过 abortContext.signal 通知此处与底层存储 SDK。
-   */
-  const handleAbortSignal = () => {
-    clientAborted = true;
-    destroyGuardStream();
   };
 
   /**
@@ -466,13 +456,10 @@ export const handleS3ProxyUpload = async ({
     // 正常请求体读取结束也会触发 req 的 close；后续等待存储响应阶段由 res.close 接管。
     if (req.complete || req.readableEnded) return;
 
-    clientAborted = true;
     abortContext.abort(new Error(UPLOAD_REQUEST_ABORTED));
-    destroyGuardStream();
   };
 
-  abortContext.signal.addEventListener('abort', handleAbortSignal, { once: true });
-  req.once('aborted', handleRequestDisconnect);
+  abortContext.signal.addEventListener('abort', destroyGuardStream, { once: true });
   req.once('error', handleRequestDisconnect);
   req.once('close', handleRequestDisconnect);
 
@@ -500,15 +487,14 @@ export const handleS3ProxyUpload = async ({
   } catch (error) {
     destroyGuardStream();
     // 客户端已断开时上传注定无法完成，统一转为可识别的取消错误，避免误记服务端异常。
-    if (clientAborted || abortContext.isClientAborted()) {
+    if (abortContext.signal.aborted) {
       throw new Error(UPLOAD_REQUEST_ABORTED);
     }
     throw error;
   } finally {
-    req.off('aborted', handleRequestDisconnect);
     req.off('error', handleRequestDisconnect);
     req.off('close', handleRequestDisconnect);
-    abortContext.signal.removeEventListener('abort', handleAbortSignal);
+    abortContext.signal.removeEventListener('abort', destroyGuardStream);
     abortContext.cleanup();
   }
 };
