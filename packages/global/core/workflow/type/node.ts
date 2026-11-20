@@ -340,7 +340,6 @@ export type NodeTemplateContext = {
   isSidebar: boolean;
   sourceNodeId: string | null;
   sourceType: FlowNodeTypeEnum | null;
-  sourceIsTool?: boolean;
   /** 源节点是否已被 selectedTools 边挂载到工具调用（工具子流程）。 */
   isConnectedTool: boolean;
   handleId: string | null;
@@ -354,7 +353,7 @@ export type NodeTemplateContext = {
    * 目标作用域内已被占用的唯一节点类型：root context 是根级唯一节点（workflowStart/pluginInput/pluginOutput），
    * 容器 context 是容器内系统子节点（nestedStart/nestedEnd/loopRunStart）。模板目录据此过滤 unique 模板。
    */
-  takenUniqueTypes?: FlowNodeTypeEnum[];
+  takenUniqueTypes: FlowNodeTypeEnum[];
 };
 export type NodeTemplateContextPredicate = (ctx: NodeTemplateContext | null) => boolean;
 
@@ -422,14 +421,12 @@ export const WorkflowCheckIssueSchema = z.object({
   params: z.record(z.string(), z.string()).optional()
 });
 export type WorkflowCheckIssue = z.infer<typeof WorkflowCheckIssueSchema>;
-export type WorkflowCheckNodeIssueMap = Record<string, WorkflowCheckIssue[]>;
 
 // react flow node type
 export const FlowNodeItemSchema = FlowNodeTemplateTypeSchema.extend({
   nodeId: z.string(),
   parentNodeId: z.string().optional(),
   isError: BoolSchema.optional(),
-  workflowCheckIssues: z.array(WorkflowCheckIssueSchema).optional(),
   searchedText: z.string().optional(),
   debugResult: z
     .object({

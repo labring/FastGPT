@@ -1,14 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+import { useMemoizedFn } from 'ahooks';
 import { cloneDeep } from 'lodash-es';
 import dagre from '@dagrejs/dagre';
-import { type Edge, type Node, useNodes, useNodesInitialized, useReactFlow } from 'reactflow';
-import { useContextSelector } from 'use-context-selector';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { Node } from '@xyflow/react';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { WorkflowSnapshot } from '@fastgpt/global/core/workflow/editor/types';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
-import { WorkflowLayoutContext } from '../../context/workflowComputeContext';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
+import { useWorkflowRuntime } from '@/web/core/workflow/editor/session/workflowSession';
+import type { CanvasNode } from '@/web/core/workflow/editor/canvas/canvasTypes';
+import {
+  useWorkflowCanvasRendererValue,
+  useWorkflowCanvasValue
+} from '../canvas/workflowCanvasContext';
+import { getParentNodeSizeAndPosition } from '../utils/layout';
 import { getHandleIndex } from '../utils/edge';
+import type { DimensionReader } from '../canvas/nodeDimensions';
 
 const defaultNodeWidth = 420;
 const defaultNodeHeight = 240;
@@ -19,7 +26,7 @@ export type WorkflowAutoLayoutResult = 'applied' | 'degraded' | 'failed';
 
 type PendingAutoLayoutRequest = {
   nodeIds: Set<string>;
-  workflowDataRevision: number;
+  releaseMeasurements: () => void;
   resolve: (result: WorkflowAutoLayoutResult) => void;
   running: boolean;
   timeout: ReturnType<typeof setTimeout>;
@@ -37,21 +44,23 @@ type LayoutOptions = {
 
 type RequestAutoLayoutOptions = {
   nodeIds: string[];
-  workflowDataRevision: number;
+  contentRevision: number;
 };
 
-type MergeWorkflowLayoutNodesProps = {
-  currentNodes: Node<FlowNodeItemType>[];
-  layoutedNodes: Node<FlowNodeItemType>[];
-  resizedNodeIds: Set<string>;
+type IdentifiedNode = { id: string };
+type PositionedNode = {
+  id: string;
+  position: { x: number; y: number };
+  width?: number;
+  height?: number;
 };
 
 /** 判断当前画布是否已经完整加载了本次 Builder 应用的节点集合。 */
-export const matchesWorkflowAutoLayoutRequest = ({
+export const matchesWorkflowAutoLayoutRequest = <T extends IdentifiedNode>({
   nodes,
   nodeIds
 }: {
-  nodes: Node<FlowNodeItemType>[];
+  nodes: readonly T[];
   nodeIds: Set<string>;
 }) => nodes.length === nodeIds.size && nodes.every((node) => nodeIds.has(node.id));
 
@@ -59,155 +68,118 @@ export const matchesWorkflowAutoLayoutRequest = ({
  * 生成 Builder 目标节点的完整尺寸签名。
  * 节点集合不匹配或仍有节点未完成测量时返回 undefined，避免使用不完整尺寸开始布局。
  */
-export const getWorkflowAutoLayoutNodeSizeSignature = ({
+export const getWorkflowAutoLayoutNodeSizeSignature = <T extends IdentifiedNode>({
   nodes,
-  nodeIds
+  nodeIds,
+  getNodeDimension
 }: {
-  nodes: Node<FlowNodeItemType>[];
+  nodes: readonly T[];
   nodeIds: Set<string>;
+  getNodeDimension: DimensionReader;
 }) => {
   if (!matchesWorkflowAutoLayoutRequest({ nodes, nodeIds })) return;
-  if (nodes.some((node) => !node.width || !node.height)) return;
 
-  return nodes
-    .map((node) => `${node.id}:${node.width}:${node.height}`)
-    .sort()
-    .join('|');
+  const sizes: string[] = [];
+  for (const { id } of nodes) {
+    const dimension = getNodeDimension(id);
+    if (!dimension?.width || !dimension.height) return;
+    sizes.push(`${id}:${dimension.width}:${dimension.height}`);
+  }
+  return sizes.sort().join('|');
 };
 
 /**
- * 将布局结果合并到画布的最新节点，只更新坐标和容器尺寸。
- *
- * 布局计算期间 Builder 导入可能已经更新节点参数，因此不能把计算开始时捕获的整份节点
- * 写回画布，否则同 ID 节点的最新业务数据会被旧快照覆盖。
+ * 把布局坐标合并到画布当前投影；尺寸由 DOM 测量，避免 Dagre 临时尺寸锁住容器伸缩。
  */
-export const mergeWorkflowLayoutNodes = ({
+export const mergeWorkflowLayoutNodes = <T extends PositionedNode>({
   currentNodes,
-  layoutedNodes,
-  resizedNodeIds
-}: MergeWorkflowLayoutNodesProps) => {
-  const layoutedNodeMap = new Map(layoutedNodes.map((node) => [node.id, node]));
+  layoutedNodes
+}: {
+  currentNodes: T[];
+  layoutedNodes: T[];
+}) => {
+  const layoutedNodesById = new Map(layoutedNodes.map((node) => [node.id, node]));
 
   return currentNodes.map((node) => {
-    const layoutedNode = layoutedNodeMap.get(node.id);
+    const layoutedNode = layoutedNodesById.get(node.id);
     if (!layoutedNode) return node;
-
-    if (!resizedNodeIds.has(node.id)) {
-      return {
-        ...node,
-        position: layoutedNode.position
-      };
-    }
-
-    const layoutInputMap = new Map(
-      layoutedNode.data.inputs
-        .filter(
-          (input) =>
-            input.key === NodeInputKeyEnum.nodeWidth || input.key === NodeInputKeyEnum.nodeHeight
-        )
-        .map((input) => [input.key, input.value])
-    );
-
     return {
       ...node,
       position: layoutedNode.position,
-      width: layoutedNode.width,
-      height: layoutedNode.height,
-      data: {
-        ...node.data,
-        inputs: node.data.inputs.map((input) =>
-          layoutInputMap.has(input.key)
-            ? {
-                ...input,
-                value: layoutInputMap.get(input.key)
-              }
-            : input
-        )
-      }
+      width: undefined,
+      height: undefined
     };
   });
 };
 
 /**
  * 提供工作流画布统一的自动布局能力。
- * 手动对齐立即执行；Builder 对齐会等待本次导入的节点集合完成 ReactFlow 初始化。
+ * 手动对齐立即执行；Builder 等待完整图的尺寸，超时后为未测量节点使用估算值。
  */
 export const useWorkflowAutoLayout = () => {
-  const { setNodes, workflowDataRevision } = useContextSelector(
-    WorkflowBufferDataContext,
-    (value) => value
-  );
-  const getParentNodeSizeAndPosition = useContextSelector(
-    WorkflowLayoutContext,
-    (value) => value.getParentNodeSizeAndPosition
-  );
-  const { fitView, getEdges, getNodes } = useReactFlow<FlowNodeItemType>();
-  const renderedNodes = useNodes<FlowNodeItemType>();
-  const nodesInitialized = useNodesInitialized();
+  const runtime = useWorkflowRuntime();
+  const actions = useWorkflowActions();
+  const getNodes = useWorkflowCanvasRendererValue((value) => value.getNodes);
+  const replaceNodes = useWorkflowCanvasRendererValue((value) => value.replaceNodes);
+  const fitNodes = useWorkflowCanvasValue((value) => value.fitNodes);
+  const getNodeDimension = useWorkflowCanvasValue((value) => value.getNodeDimension);
+  const getNodeDimensions = useWorkflowCanvasValue((value) => value.getNodeDimensions);
+  const requestNodeMeasurements = useWorkflowCanvasValue((value) => value.requestNodeMeasurements);
   const pendingRequestRef = useRef<PendingAutoLayoutRequest>();
-  const workflowDataRevisionRef = useRef(workflowDataRevision);
   const mountedRef = useRef(false);
-  const [requestVersion, setRequestVersion] = useState(0);
 
-  useEffect(() => {
-    workflowDataRevisionRef.current = workflowDataRevision;
-  }, [workflowDataRevision]);
-
-  const autoLayout = useCallback(
+  const autoLayout = useMemoizedFn(
     async ({
       allowFallbackDimensions = false,
       expectedNodeIds,
       isRequestCurrent
     }: LayoutOptions = {}) => {
-      const layoutRevision = workflowDataRevisionRef.current;
+      const layoutSnapshot = runtime && !runtime.isDisposed() ? runtime.getWorkflow() : undefined;
       const currentNodes = getNodes();
       if (
+        !runtime ||
+        !layoutSnapshot ||
         currentNodes.length === 0 ||
+        isRequestCurrent?.() === false ||
         (expectedNodeIds &&
           !matchesWorkflowAutoLayoutRequest({ nodes: currentNodes, nodeIds: expectedNodeIds }))
       ) {
         return 'failed' as const;
       }
 
+      const edges = layoutSnapshot.edges;
       let usedFallbackDimensions = false;
-      const originalDimensions = new Map(
-        currentNodes.map((node) => [node.id, { width: node.width, height: node.height }])
-      );
       const newNodes = cloneDeep(currentNodes);
+      for (const node of newNodes) {
+        const dimension = getNodeDimensions(node.id)?.card;
+        node.width = dimension?.width ?? node.width;
+        node.height = dimension?.height ?? node.height;
+        if (!node.width || !node.height) {
+          if (!allowFallbackDimensions) return 'failed' as const;
 
-      if (allowFallbackDimensions) {
-        newNodes.forEach((node) => {
-          const configuredWidth = Number(
-            node.data.inputs.find((input) => input.key === NodeInputKeyEnum.nodeWidth)?.value
-          );
-          const configuredHeight = Number(
-            node.data.inputs.find((input) => input.key === NodeInputKeyEnum.nodeHeight)?.value
-          );
-          if (!node.width) {
-            node.width = configuredWidth || defaultNodeWidth;
-            usedFallbackDimensions = true;
-          }
-          if (!node.height) {
-            node.height = configuredHeight || defaultNodeHeight;
-            usedFallbackDimensions = true;
-          }
-        });
+          node.width = node.width || defaultNodeWidth;
+          node.height = node.height || defaultNodeHeight;
+          usedFallbackDimensions = true;
+        }
       }
+      const layoutNodesById = new Map(newNodes.map((node) => [node.id, node]));
 
-      if (newNodes.some((node) => !node.width || !node.height)) {
-        return 'failed' as const;
-      }
-
-      const edges = getEdges();
+      const workflowNodesById = new Map(
+        layoutSnapshot.nodes.map((node) => [node.nodeId, node] as const)
+      );
+      const getRuntimeNode = (node?: CanvasNode) => {
+        const data = node ? workflowNodesById.get(node.data.nodeId) : undefined;
+        return node && data ? ({ ...node, data } as unknown as Node<FlowNodeItemType>) : undefined;
+      };
       const updateNodesPosition = ({
         startNode,
         nodes,
         edges,
         syncChildNodes
       }: {
-        startNode: Node<FlowNodeItemType>;
-        nodes: Node<FlowNodeItemType>[];
-        edges: Edge[];
+        startNode: CanvasNode;
+        nodes: CanvasNode[];
+        edges: WorkflowSnapshot['edges'];
         syncChildNodes: boolean;
       }) => {
         const startPosition = { x: startNode.position.x, y: startNode.position.y };
@@ -240,7 +212,7 @@ export const useWorkflowAutoLayout = () => {
         const connectedNodeIds = new Set(layoutEdges.flatMap((edge) => [edge.source, edge.target]));
         const nodesByRank = new Map<
           number,
-          Array<{ node: Node<FlowNodeItemType>; dagreNode: { x: number; y: number } }>
+          Array<{ node: CanvasNode; dagreNode: { x: number; y: number } }>
         >();
 
         layoutNodes.forEach((node) => {
@@ -274,7 +246,10 @@ export const useWorkflowAutoLayout = () => {
               edgeA?.source === edgeB?.source &&
               (isSourceASpecial || isSourceBSpecial || !sourceA || !sourceB)
             ) {
-              return getHandleIndex(edgeA, sourceA) - getHandleIndex(edgeB, sourceB);
+              return (
+                getHandleIndex(edgeA, getRuntimeNode(sourceA)) -
+                getHandleIndex(edgeB, getRuntimeNode(sourceB))
+              );
             }
             return a.dagreNode.y - b.dagreNode.y;
           });
@@ -304,13 +279,13 @@ export const useWorkflowAutoLayout = () => {
         });
       };
 
-      const parentNodeIds = new Set<string>();
-      const childNodesByParent = new Map<string, Node<FlowNodeItemType>[]>();
+      const childNodesByParent = new Map<string, CanvasNode[]>();
       newNodes.forEach((node) => {
         const parentId = node.data.parentNodeId;
         if (!parentId) return;
-        parentNodeIds.add(parentId);
-        childNodesByParent.set(parentId, [...(childNodesByParent.get(parentId) ?? []), node]);
+        const children = childNodesByParent.get(parentId);
+        if (children) children.push(node);
+        else childNodesByParent.set(parentId, [node]);
       });
 
       childNodesByParent.forEach((childNodes) => {
@@ -323,20 +298,24 @@ export const useWorkflowAutoLayout = () => {
       });
 
       newNodes
-        .filter((node) => parentNodeIds.has(node.id))
+        .filter((node) => childNodesByParent.has(node.id))
         .forEach((node) => {
-          const size = getParentNodeSizeAndPosition({ nodes: newNodes, parentId: node.id });
+          const size = getParentNodeSizeAndPosition({
+            parent: node,
+            childNodes: childNodesByParent.get(node.id) ?? [],
+            getNodeDimension: (nodeId) => {
+              const node = layoutNodesById.get(nodeId);
+              return node?.width && node.height
+                ? { width: node.width, height: node.height }
+                : undefined;
+            },
+            containerContentOffset: getNodeDimensions(node.id)?.containerContentOffset,
+            containerContentSize: getNodeDimensions(node.id)?.containerContentSize
+          });
           if (!size) return;
           node.position = { x: size.parentX, y: size.parentY };
           node.width = size.nodeWidth;
           node.height = size.nodeHeight;
-          node.data.inputs.forEach((input) => {
-            if (input.key === NodeInputKeyEnum.nodeHeight) {
-              input.value = size.childHeight;
-            } else if (input.key === NodeInputKeyEnum.nodeWidth) {
-              input.value = size.childWidth;
-            }
-          });
         });
 
       const startNode =
@@ -352,36 +331,43 @@ export const useWorkflowAutoLayout = () => {
         syncChildNodes: true
       });
 
-      newNodes.forEach((node) => {
-        if (parentNodeIds.has(node.id)) return;
-        const original = originalDimensions.get(node.id);
-        node.width = original?.width;
-        node.height = original?.height;
+      const renderNodes = mergeWorkflowLayoutNodes({
+        currentNodes: getNodes(),
+        layoutedNodes: newNodes
       });
-      setNodes((latestNodes) =>
-        mergeWorkflowLayoutNodes({
-          currentNodes: latestNodes,
-          layoutedNodes: newNodes,
-          resizedNodeIds: parentNodeIds
+      const previousNodes = new Map(currentNodes.map((node) => [node.id, node]));
+      replaceNodes(renderNodes);
+      const committed = actions.commitGeometry(
+        renderNodes.flatMap((node) => {
+          const previous = previousNodes.get(node.id);
+          return previous &&
+            (previous.position.x !== node.position.x || previous.position.y !== node.position.y)
+            ? [{ nodeId: node.data.nodeId, position: node.position }]
+            : [];
         })
       );
+
+      if (!committed.ok) return 'failed' as const;
+      const contentRevision = runtime.getSavepoint().contentRevision;
 
       await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
       await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
       // 等待期间画布可能已整体替换，旧布局不能再聚焦新画布。
       if (
         !mountedRef.current ||
-        layoutRevision !== workflowDataRevisionRef.current ||
+        runtime.isDisposed() ||
+        runtime.getSavepoint().contentRevision !== contentRevision ||
         isRequestCurrent?.() === false
       ) {
         return 'failed' as const;
       }
-      const validNodes = getNodes().filter((node) => node.width && node.height);
-      fitView({ nodes: validNodes, padding: 0.3 });
+      fitNodes(
+        currentNodes.map((node) => node.id),
+        { padding: 0.3, ...(usedFallbackDimensions && { useEstimatedDimensions: true }) }
+      );
 
       return usedFallbackDimensions ? ('degraded' as const) : ('applied' as const);
-    },
-    [fitView, getEdges, getNodes, getParentNodeSizeAndPosition, setNodes]
+    }
   );
 
   const finishPendingRequest = useCallback(
@@ -394,113 +380,84 @@ export const useWorkflowAutoLayout = () => {
         window.cancelAnimationFrame(request.animationFrame);
       }
       pendingRequestRef.current = undefined;
+      request.releaseMeasurements();
       request.resolve(result);
     },
     []
   );
 
-  const runPendingRequest = useCallback(
-    async (allowFallbackDimensions: boolean) => {
-      const request = pendingRequestRef.current;
-      if (!request || request.running) return;
-      if (request.workflowDataRevision !== workflowDataRevisionRef.current) {
-        finishPendingRequest('failed');
-        return;
-      }
-      if (request.animationFrame !== undefined) {
-        window.cancelAnimationFrame(request.animationFrame);
-        request.animationFrame = undefined;
-      }
-      request.running = true;
-
-      try {
-        const result = await autoLayout({
-          allowFallbackDimensions,
-          expectedNodeIds: request.nodeIds,
-          isRequestCurrent: () => pendingRequestRef.current === request
-        });
-        finishPendingRequest(result, request);
-      } catch {
-        finishPendingRequest('failed', request);
-      }
-    },
-    [autoLayout, finishPendingRequest]
-  );
-
-  const requestAutoLayout = useCallback(
-    ({ nodeIds, workflowDataRevision }: RequestAutoLayoutOptions) =>
+  const requestAutoLayout = useMemoizedFn(
+    ({ nodeIds, contentRevision }: RequestAutoLayoutOptions) =>
       new Promise<WorkflowAutoLayoutResult>((resolve) => {
         finishPendingRequest('failed');
+        const isCurrent = () => pendingRequestRef.current === request;
+        // 模型目录刷新只更换 Issue 快照，内容版本保持不变。
+        const isSameWorkflow = () =>
+          !!runtime &&
+          !runtime.isDisposed() &&
+          runtime.getSavepoint().contentRevision === contentRevision;
+
+        const run = async (allowFallbackDimensions: boolean) => {
+          if (!isCurrent() || request.running) return;
+          if (!isSameWorkflow()) {
+            finishPendingRequest('failed', request);
+            return;
+          }
+          request.running = true;
+          if (request.animationFrame !== undefined) {
+            window.cancelAnimationFrame(request.animationFrame);
+          }
+          try {
+            const result = await autoLayout({
+              allowFallbackDimensions,
+              expectedNodeIds: request.nodeIds,
+              isRequestCurrent: isCurrent
+            });
+            finishPendingRequest(result, request);
+          } catch {
+            finishPendingRequest('failed', request);
+          }
+        };
+        const requestedIds = new Set(nodeIds);
         const request: PendingAutoLayoutRequest = {
-          nodeIds: new Set(nodeIds),
-          workflowDataRevision,
+          nodeIds: requestedIds,
+          releaseMeasurements: requestNodeMeasurements(requestedIds),
           resolve,
           running: false,
           stableNodeSizeFrames: 0,
-          timeout: setTimeout(() => {
-            void runPendingRequest(true);
-          }, autoLayoutInitializationTimeoutMs)
+          timeout: setTimeout(() => void run(true), autoLayoutInitializationTimeoutMs)
         };
         pendingRequestRef.current = request;
-        setRequestVersion((version) => version + 1);
-      }),
-    [finishPendingRequest, runPendingRequest]
+
+        // 只读完整投影和真实尺寸索引，虚拟化下无需等所有节点挂到 React Flow。
+        const checkNodeSizes = () => {
+          if (!isCurrent() || request.running) return;
+          if (!isSameWorkflow()) {
+            finishPendingRequest('failed', request);
+            return;
+          }
+
+          const signature = getWorkflowAutoLayoutNodeSizeSignature({
+            nodes: getNodes(),
+            nodeIds: request.nodeIds,
+            getNodeDimension
+          });
+          request.stableNodeSizeFrames =
+            signature === undefined
+              ? 0
+              : signature === request.lastNodeSizeSignature
+                ? request.stableNodeSizeFrames + 1
+                : 1;
+          request.lastNodeSizeSignature = signature;
+          if (request.stableNodeSizeFrames >= autoLayoutStableSizeFrameCount) {
+            void run(false);
+          } else {
+            request.animationFrame = window.requestAnimationFrame(checkNodeSizes);
+          }
+        };
+        request.animationFrame = window.requestAnimationFrame(checkNodeSizes);
+      })
   );
-
-  useEffect(() => {
-    const request = pendingRequestRef.current;
-    if (
-      !request ||
-      request.running ||
-      request.workflowDataRevision !== workflowDataRevision ||
-      !nodesInitialized ||
-      !matchesWorkflowAutoLayoutRequest({ nodes: renderedNodes, nodeIds: request.nodeIds }) ||
-      request.animationFrame !== undefined
-    ) {
-      return;
-    }
-
-    /** ReactFlow 首次初始化后，节点内部控件仍可能继续撑高，需要等尺寸连续两帧不变。 */
-    const checkNodeSizes = () => {
-      const currentRequest = pendingRequestRef.current;
-      if (!currentRequest || currentRequest !== request || currentRequest.running) return;
-      currentRequest.animationFrame = undefined;
-      if (currentRequest.workflowDataRevision !== workflowDataRevisionRef.current) {
-        finishPendingRequest('failed', currentRequest);
-        return;
-      }
-
-      const signature = getWorkflowAutoLayoutNodeSizeSignature({
-        nodes: getNodes(),
-        nodeIds: currentRequest.nodeIds
-      });
-      if (signature === undefined) {
-        currentRequest.lastNodeSizeSignature = undefined;
-        currentRequest.stableNodeSizeFrames = 0;
-      } else if (signature === currentRequest.lastNodeSizeSignature) {
-        currentRequest.stableNodeSizeFrames += 1;
-      } else {
-        currentRequest.lastNodeSizeSignature = signature;
-        currentRequest.stableNodeSizeFrames = 1;
-      }
-
-      if (currentRequest.stableNodeSizeFrames >= autoLayoutStableSizeFrameCount) {
-        void runPendingRequest(false);
-        return;
-      }
-      currentRequest.animationFrame = window.requestAnimationFrame(checkNodeSizes);
-    };
-
-    request.animationFrame = window.requestAnimationFrame(checkNodeSizes);
-  }, [
-    finishPendingRequest,
-    getNodes,
-    nodesInitialized,
-    renderedNodes,
-    requestVersion,
-    runPendingRequest,
-    workflowDataRevision
-  ]);
 
   useEffect(() => {
     mountedRef.current = true;

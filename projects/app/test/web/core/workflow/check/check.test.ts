@@ -13,7 +13,7 @@ import type {
   FlowNodeItemType,
   FlowNodeTemplateType
 } from '@fastgpt/global/core/workflow/type/node';
-import type { Node, Edge } from 'reactflow';
+import type { Node, Edge } from '@xyflow/react';
 import {
   FlowNodeTypeEnum,
   FlowNodeInputTypeEnum,
@@ -40,7 +40,6 @@ import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { AssignedAnswerModule } from '@fastgpt/global/core/workflow/template/system/assignedAnswer';
 import { DatasetConcatModule } from '@fastgpt/global/core/workflow/template/system/datasetConcat';
-import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
 import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http468';
 import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
@@ -883,95 +882,6 @@ describe('checkWorkflowNodeIssues', () => {
     }
   );
 
-  it('filters unselectable single and multiple references when storing workflow data', () => {
-    const sourceNode = makeNode('source', FlowNodeTypeEnum.workflowStart, {
-      outputs: [
-        {
-          id: 'text',
-          key: 'text',
-          label: 'text',
-          type: FlowNodeOutputTypeEnum.static,
-          valueType: WorkflowIOValueTypeEnum.string
-        },
-        {
-          id: 'files',
-          key: 'files',
-          label: 'files',
-          type: FlowNodeOutputTypeEnum.static,
-          valueType: WorkflowIOValueTypeEnum.arrayString
-        },
-        {
-          id: 'count',
-          key: 'count',
-          label: 'count',
-          type: FlowNodeOutputTypeEnum.static,
-          valueType: WorkflowIOValueTypeEnum.number
-        }
-      ]
-    });
-    const node = makeNode('ref', FlowNodeTypeEnum.chatNode, {
-      inputs: [
-        {
-          key: NodeInputKeyEnum.userChatInput,
-          label: '用户问题',
-          valueType: WorkflowIOValueTypeEnum.string,
-          renderTypeList: [FlowNodeInputTypeEnum.reference],
-          value: ['source', 'count']
-        },
-        {
-          key: NodeInputKeyEnum.fileUrlList,
-          label: '文件链接',
-          valueType: WorkflowIOValueTypeEnum.arrayString,
-          renderTypeList: [FlowNodeInputTypeEnum.reference],
-          value: [
-            ['source', 'files'],
-            ['source', 'deleted'],
-            ['source', 'count']
-          ]
-        }
-      ]
-    });
-
-    const result = uiWorkflow2StoreWorkflow({
-      nodes: [sourceNode, node],
-      edges: [{ id: 'e1', source: 'source', target: 'ref', type: EDGE_TYPE }],
-      chatConfig: {}
-    });
-    const storedNode = result.nodes.find((item) => item.nodeId === 'ref');
-
-    expect(
-      storedNode?.inputs.find((input) => input.key === NodeInputKeyEnum.userChatInput)
-    ).toEqual(
-      expect.objectContaining({
-        value: undefined
-      })
-    );
-    expect(storedNode?.inputs.find((input) => input.key === NodeInputKeyEnum.fileUrlList)).toEqual(
-      expect.objectContaining({
-        value: [['source', 'files']]
-      })
-    );
-  });
-
-  it('stores the canonical selectedType', () => {
-    const node = makeNode('input-node', FlowNodeTypeEnum.chatNode, {
-      inputs: [
-        {
-          key: 'query',
-          label: 'Query',
-          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-          selectedType: FlowNodeInputTypeEnum.reference
-        }
-      ]
-    });
-
-    const result = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [], chatConfig: {} });
-
-    expect(result.nodes[0].inputs[0]).toMatchObject({
-      selectedType: FlowNodeInputTypeEnum.reference
-    });
-  });
-
   it('reports generic plugin load errors without telling users to delete the tool', () => {
     const node = makeNode('tool', FlowNodeTypeEnum.appModule, {
       pluginData: {
@@ -1044,6 +954,10 @@ describe('checkWorkflowNodeIssues', () => {
   });
 
   it('uses fixed design copy for mapped issue codes', () => {
+    const t = ((key: string, params?: Record<string, unknown>) => {
+      const text = (commonZh as Record<string, string>)[key.replace('common:', '')] ?? key;
+      return text.replace(/\{\{(\w+)\}\}/g, (_, name) => String(params?.[name] ?? ''));
+    }) as TFunction;
     const disconnectedNode = makeNode('disconnected', FlowNodeTypeEnum.textEditor);
     const unreachableNode = makeNode('unreachable', FlowNodeTypeEnum.answerNode);
     const requiredNode = makeNode('required', FlowNodeTypeEnum.answerNode, {
@@ -1061,22 +975,20 @@ describe('checkWorkflowNodeIssues', () => {
 
     const unreachableResult = checkWorkflowNodeIssues({
       nodes: [startNode, disconnectedNode, unreachableNode],
-      edges: [{ id: 'e1', source: 'disconnected', target: 'unreachable', type: EDGE_TYPE }]
+      edges: [{ id: 'e1', source: 'disconnected', target: 'unreachable', type: EDGE_TYPE }],
+      t
     });
     const requiredResult = checkWorkflowNodeIssues({
       nodes: [startNode, requiredNode],
-      edges: [{ id: 'e1', source: 'start', target: 'required', type: EDGE_TYPE }]
+      edges: [{ id: 'e1', source: 'start', target: 'required', type: EDGE_TYPE }],
+      t
     });
 
     expect(unreachableResult.unreachable[0]?.code).toBe(
       WorkflowCheckIssueCodeEnum.unreachableFromStart
     );
-    expect(unreachableResult.unreachable[0]?.message).toBe(
-      'common:core.workflow.check.no_upstream'
-    );
-    expect(requiredResult.required[0]?.message).toBe(
-      'common:core.workflow.check.required_input_empty'
-    );
+    expect(unreachableResult.unreachable[0]?.message).toBe('未与其他节点连线');
+    expect(requiredResult.required[0]?.message).toBe('需填写必填项 answer');
   });
 
   it('does not treat non-latest tool versions as inactive', () => {
@@ -2506,7 +2418,7 @@ describe('checkWorkflowBeforeRunOrPublish', () => {
         expect.objectContaining({
           code: WorkflowCheckIssueCodeEnum.requiredInputEmpty,
           inputKey: NodeInputKeyEnum.aiModel,
-          message: `missing:i18n:${NodeInputKeyEnum.aiModel}`
+          message: `missing:${NodeInputKeyEnum.aiModel}`
         })
       ]);
     });
@@ -2656,6 +2568,10 @@ describe('Core validation and Web extension contract', () => {
       '「目标」需填写必填项 热榜来源',
       '「目标2」需填写必填项 热榜来源',
       '「目标3」需填写必填项 热榜来源'
+    ]);
+    expect(result.errorIssueMessages.map(({ message }) => message)).toEqual([
+      ...result.errorMessages,
+      '「目标4」需填写必填项 热榜来源'
     ]);
     expect(result.errorNodeIds).toEqual(['target', 'target-2', 'target-3', 'target-4']);
     expect(result.issueMap['target-4']).toEqual([

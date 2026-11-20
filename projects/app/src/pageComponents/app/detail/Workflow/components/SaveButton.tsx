@@ -18,7 +18,7 @@ const SaveButton = ({
   colorSchema: 'primary' | 'black';
   isLoading: boolean;
   isDisabled?: boolean;
-  onClickSave: (options: { isPublish?: boolean; versionName?: string }) => Promise<void>;
+  onClickSave: (options: { isPublish?: boolean; versionName?: string }) => Promise<boolean | void>;
   checkData?: () => boolean | undefined | Promise<boolean | undefined>;
 }) => {
   const { t } = useTranslation();
@@ -102,7 +102,8 @@ const SaveButton = ({
               cursor={'pointer'}
               isLoading={isLoading}
               onClick={async () => {
-                await onClickSave({});
+                const saved = await onClickSave({});
+                if (saved === false) return;
                 toast({
                   status: 'success',
                   title: t('app:saved_success'),
@@ -148,7 +149,8 @@ const SaveButton = ({
           isLoading={isLoading}
           onClose={onSaveAndPublishModalClose}
           onConfirm={async (versionName) => {
-            await onClickSave({ isPublish: true, versionName });
+            const saved = await onClickSave({ isPublish: true, versionName });
+            if (saved === false) return;
             toast({
               status: 'success',
               title: t('app:publish_success'),

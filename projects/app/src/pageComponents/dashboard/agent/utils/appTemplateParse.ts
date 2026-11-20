@@ -3,9 +3,11 @@ import { getAppType, getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import type { WorkflowReferenceSnapshot } from '@fastgpt/global/core/workflow/type/io';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { form2AppWorkflow } from '@/pageComponents/app/detail/Edit/SimpleApp/utils';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import { filterWorkflowEdgesWithExistingNodes } from '@fastgpt/global/common/workflow/connection';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/common/workflow/migration';
 import { formatModels } from '@fastgpt/global/common/workflow/model';
 import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
@@ -15,6 +17,7 @@ type ImportWorkflowConfig = {
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
   chatConfig?: AppChatConfigType;
+  referenceSnapshots?: WorkflowReferenceSnapshot[];
 };
 
 type ParsedImportConfig = {
@@ -231,7 +234,10 @@ const parseWorkflowLikeImportConfig = async ({
   const workflow = {
     nodes: config.nodes as StoreNodeItemType[],
     edges: Array.isArray(config.edges) ? (config.edges as StoreEdgeItemType[]) : [],
-    chatConfig: (config.chatConfig ?? {}) as AppChatConfigType
+    chatConfig: (config.chatConfig ?? {}) as AppChatConfigType,
+    ...(Array.isArray(config.referenceSnapshots)
+      ? { referenceSnapshots: config.referenceSnapshots as WorkflowReferenceSnapshot[] }
+      : {})
   };
 
   return migrateWorkflow ? migrateWorkflowToCurrent(workflow) : workflow;
@@ -301,7 +307,7 @@ export const parseAppImportConfig = async ({
  *
  * 顶层 `type` 存在时按导出元信息校验业务结构；无 `type` 时回退
  * 现有 `getAppType` 结构识别逻辑，以兼容老版本导出 JSON。新建应用由服务端
- * 创建接口统一迁移，这里保留原始工作流，避免客户端和服务端重复维护写入规则。
+ * 创建接口统一迁移，导入时只清理旧工作流遗留的悬挂边。
  */
 export const parseDashboardImportConfig = async ({
   config,
@@ -316,7 +322,7 @@ export const parseDashboardImportConfig = async ({
   models?: Array<{ modelId: string; model: string; type: ModelTypeEnum }>;
   modelCatalogLoaded?: boolean;
 }): Promise<ParsedImportConfig> => {
-  return await parseAppImportConfig({
+  const result = await parseAppImportConfig({
     config,
     t,
     resolveScene: scene,
@@ -325,6 +331,18 @@ export const parseDashboardImportConfig = async ({
     models,
     modelCatalogLoaded
   });
+  const { workflow, appType } = result;
+  // 保留无效结构供创建接口拒绝，只清理端点 ID 合法但对应节点已不存在的边。
+  if (
+    appType !== AppTypeEnum.simple &&
+    workflow.nodes.every((node) => typeof node?.nodeId === 'string') &&
+    workflow.edges.every(
+      (edge) => typeof edge?.source === 'string' && typeof edge?.target === 'string'
+    )
+  ) {
+    workflow.edges = filterWorkflowEdgesWithExistingNodes(workflow);
+  }
+  return result;
 };
 
 /**

@@ -6,11 +6,13 @@ import { getHashtagRegexString } from './utils';
 import { registerLexicalTextEntity } from '../../utils';
 import type { EditorVariablePickerType } from '@fastgpt/global/core/workflow/type/io';
 import { $createVariableNode, VariableNode } from './node';
+import { useSafeTranslation } from '../../../../../../hooks/useSafeTranslation';
 
 const REGEX = new RegExp(getHashtagRegexString(), 'i');
 
 export default function VariablePlugin({ variables }: { variables: EditorVariablePickerType[] }) {
   const [editor] = useLexicalComposerContext();
+  const { t } = useSafeTranslation();
   useEffect(() => {
     if (!editor.hasNodes([VariableNode]))
       throw new Error('VariablePlugin: VariableNode not registered on editor');
@@ -25,10 +27,10 @@ export default function VariablePlugin({ variables }: { variables: EditorVariabl
       const currentVariable = variables.find(
         (item) => item.key === textNode.getTextContent().replace(/[{}]/g, '')
       );
-      const variableLabel = currentVariable?.label;
+      const variableLabel = currentVariable?.label ? t(currentVariable.label as any) : undefined;
       return $createVariableNode(textNode.getTextContent(), variableLabel || '');
     },
-    [variables]
+    [t, variables]
   );
 
   const getVariableMatch = useCallback(

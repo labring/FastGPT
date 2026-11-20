@@ -186,7 +186,7 @@ export const isTemplateAddable = (
 ): boolean => {
   if (!template.unique) return true;
   if (!ctx || ctx.parentType) return false;
-  return !ctx.takenUniqueTypes?.includes(template.flowNodeType);
+  return !ctx.takenUniqueTypes.includes(template.flowNodeType);
 };
 
 type TemplateContextEdge = { source?: string; target: string; targetHandle?: string | null };
