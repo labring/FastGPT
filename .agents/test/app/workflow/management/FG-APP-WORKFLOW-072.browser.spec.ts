@@ -32,7 +32,7 @@ import {
   type WorkflowGraph
 } from '../editor/workflow-persistence.browser';
 
-const caseId = 'FG-APP-WORKFLOW-060';
+const caseId = 'FG-APP-WORKFLOW-072';
 const missingLabel = 'Historical Origin';
 const referenceValue = `{{$Source.${NodeOutputKeyEnum.text}$}}/{{$Start.${NodeOutputKeyEnum.userChatInput}$}}`;
 const connected = buildWorkflowGraph(

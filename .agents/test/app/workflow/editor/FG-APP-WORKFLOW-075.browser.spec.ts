@@ -82,7 +82,7 @@ function references(graph: Graph) {
 
 for (const existingOutput of [false, true]) {
   const item = existingOutput ? 'C2' : 'C1';
-  test(`[FG-APP-WORKFLOW-066/${item}] 图片开关与撤销同步更新下游引用`, async ({
+  test(`[FG-APP-WORKFLOW-075/${item}] 图片开关与撤销同步更新下游引用`, async ({
     page
   }, testInfo) => {
     await withWorkflowApp({

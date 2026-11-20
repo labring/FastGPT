@@ -1,6 +1,6 @@
 ---
 case_version: 1
-id: FG-APP-WORKFLOW-067
+id: FG-APP-WORKFLOW-076
 title: 大工作流在小地图导航和缩放中保持节点与连线完整
 business: app/workflow/editor
 category: boundary
@@ -20,7 +20,7 @@ routes: []
 related: [FG-APP-WORKFLOW-049]
 automation:
   - runner: playwright
-    script: .agents/test/app/workflow/editor/FG-APP-WORKFLOW-067.browser.spec.ts
+    script: .agents/test/app/workflow/editor/FG-APP-WORKFLOW-076.browser.spec.ts
     items: [C1, C2]
 baseline: 9b0128032da5c30749d579d04e4c26e86bca99f7
 ---

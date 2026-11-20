@@ -31,7 +31,7 @@ routes:
   - GET /api/core/chat/resume
 related:
   - FG-TOOL-SYSTEM-PLUGIN-001
-  - FG-APP-WORKFLOW-062
+  - FG-APP-WORKFLOW-073
   - FG-PERMISSION-RESOURCE-001
 automation: []
 baseline: "c915077feb8edd7cfa36fe73b49c9d00550d24a1"

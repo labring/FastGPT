@@ -48,7 +48,7 @@ routes:
   - POST /api/core/app/create
   - GET /api/core/app/detail
   - POST /api/core/app/version/publish
-related: [FG-APP-WORKFLOW-060]
+related: [FG-APP-WORKFLOW-072]
 automation:
   - runner: playwright
     script: .agents/test/app/workflow/editor/FG-APP-WORKFLOW-040.browser.spec.ts

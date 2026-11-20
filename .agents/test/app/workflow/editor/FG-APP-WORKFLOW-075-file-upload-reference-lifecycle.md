@@ -1,6 +1,6 @@
 ---
 case_version: 1
-id: FG-APP-WORKFLOW-066
+id: FG-APP-WORKFLOW-075
 title: 文件上传配置与下游默认引用同步更新
 business: app/workflow/editor
 category: boundary
@@ -19,7 +19,7 @@ routes: []
 related: [FG-APP-WORKFLOW-040]
 automation:
   - runner: playwright
-    script: .agents/test/app/workflow/editor/FG-APP-WORKFLOW-066.browser.spec.ts
+    script: .agents/test/app/workflow/editor/FG-APP-WORKFLOW-075.browser.spec.ts
     items: [C1, C2]
 baseline: 9b0128032da5c30749d579d04e4c26e86bca99f7
 ---

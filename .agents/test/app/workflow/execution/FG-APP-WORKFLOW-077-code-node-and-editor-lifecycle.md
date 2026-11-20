@@ -1,6 +1,6 @@
 ---
 case_version: 1
-id: FG-APP-WORKFLOW-068
+id: FG-APP-WORKFLOW-077
 title: 代码节点调试和编辑器重挂载后的内容一致性
 business: app/workflow/execution
 types: [ui, api, integration]
@@ -25,7 +25,7 @@ routes:
   - POST /api/core/app/create
   - POST /api/core/workflow/debug
   - DELETE /api/core/app/del
-related: [FG-APP-WORKFLOW-064]
+related: [FG-APP-WORKFLOW-074]
 baseline: 9b0128032da5c30749d579d04e4c26e86bca99f7
 ---
 

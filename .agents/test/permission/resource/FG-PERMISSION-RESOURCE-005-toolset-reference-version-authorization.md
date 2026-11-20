@@ -1,6 +1,6 @@
 ---
 case_version: 1
-id: FG-PERMISSION-RESOURCE-004
+id: FG-PERMISSION-RESOURCE-005
 title: 外部工具集引用遵守版本授权与动态资源边界
 business: permission/resource
 category: boundary

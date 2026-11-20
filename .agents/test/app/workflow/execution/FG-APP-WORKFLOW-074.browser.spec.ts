@@ -24,7 +24,7 @@ import {
   webHeaders
 } from '../editor/workflow-persistence.browser';
 
-const caseId = 'FG-APP-WORKFLOW-064';
+const caseId = 'FG-APP-WORKFLOW-074';
 const node = (page: Page, id: string) => page.locator(`.react-flow__node[data-id="${id}"]`);
 const result = (node: Locator) => node.getByText('运行结果', { exact: true });
 const branchOption = 'Continue after ELSE';
