@@ -9,6 +9,7 @@ import { AuditEventEnum, type TeamAuditEvent } from '@fastgpt/global/support/use
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import {
   AuditResourceTypeEnum,
+  isCollectionAuditResource,
   normalizeAuditListResources,
   normalizeStoredAuditResources,
   type AuditListResourceType,
@@ -151,7 +152,7 @@ export const resolveAuditResourceAvatar = (resource: AuditListResourceType): str
       return 'common/folderFill';
     case AuditResourceTypeEnum.collection:
       return getCollectionIcon({
-        type: resource.collectionType,
+        type: isCollectionAuditResource(resource) ? resource.collectionType : undefined,
         name: resource.name
       });
     case AuditResourceTypeEnum.app:
@@ -192,7 +193,9 @@ export const resolveAuditResourceHref = (resource: AuditListResourceType): strin
     case AuditResourceTypeEnum.datasetFolder:
       return `/dataset/list?parentId=${encodeURIComponent(resource.id)}`;
     case AuditResourceTypeEnum.collection: {
-      const datasetId = resource.datasetId ?? resource.parentId;
+      const datasetId = isCollectionAuditResource(resource)
+        ? (resource.datasetId ?? resource.parentId)
+        : undefined;
       if (!datasetId) return undefined;
       const query = new URLSearchParams({
         datasetId,
@@ -202,7 +205,9 @@ export const resolveAuditResourceHref = (resource: AuditListResourceType): strin
       return `/dataset/detail?${query}`;
     }
     case AuditResourceTypeEnum.collectionFolder: {
-      const datasetId = resource.datasetId ?? resource.parentId;
+      const datasetId = isCollectionAuditResource(resource)
+        ? (resource.datasetId ?? resource.parentId)
+        : undefined;
       if (!datasetId) return undefined;
       const query = new URLSearchParams({
         datasetId,

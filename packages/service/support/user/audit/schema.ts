@@ -2,6 +2,7 @@ import { defineIndex, Schema, getMongoLogModel } from '../../../common/mongo';
 import {
   AuditResourcesSchema,
   AuditResourceTypeEnum,
+  isCollectionAuditResource,
   type AuditResourceType,
   type TeamAuditSchemaType
 } from '@fastgpt/global/support/user/audit/type';
@@ -72,8 +73,12 @@ const TeamAuditSchema = new Schema({
         AuditResourcesSchema.safeParse(
           resources.toObject().map((item: AuditResourceType) => ({
             ...item,
-            ...(item.datasetId ? { datasetId: String(item.datasetId) } : {}),
-            ...(item.parentId ? { parentId: String(item.parentId) } : {})
+            ...(isCollectionAuditResource(item) && item.datasetId
+              ? { datasetId: String(item.datasetId) }
+              : {}),
+            ...(isCollectionAuditResource(item) && item.parentId
+              ? { parentId: String(item.parentId) }
+              : {})
           }))
         ).success,
       message: 'Each audit resource must contain a valid type and an id or name'

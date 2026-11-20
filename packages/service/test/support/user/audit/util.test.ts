@@ -264,6 +264,13 @@ describe('audit resource associations', () => {
     { type: AuditResourceTypeEnum.collection, id: objectId, datasetId: 'invalid-id' },
     { type: AuditResourceTypeEnum.collection, id: objectId, parentId: 'invalid-id' },
     { type: AuditResourceTypeEnum.collection, id: objectId, collectionType: 'invalid-type' },
+    { type: AuditResourceTypeEnum.app, id: objectId, datasetId: objectId },
+    { type: AuditResourceTypeEnum.dataset, id: objectId, parentId: objectId },
+    {
+      type: AuditResourceTypeEnum.app,
+      id: objectId,
+      collectionType: DatasetCollectionTypeEnum.file
+    },
     { type: AuditResourceTypeEnum.app, id: objectId, unknownField: 'bad' },
     {
       type: AuditResourceTypeEnum.appFolder,
