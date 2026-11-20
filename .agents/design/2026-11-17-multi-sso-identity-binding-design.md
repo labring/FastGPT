@@ -86,7 +86,7 @@
 
 | # | 约束 | 说明 |
 | --- | --- | --- |
-| C8 | `(source, externalId)` 的全局唯一性由**应用层**保证 | 内嵌数组无法建跨文档唯一索引；写入必须走统一的原子绑定流程（5.4.2），禁止业务代码直接 `$push` |
+| C8 | `(source, externalId)` 的全局唯一性由**应用层**保证 | 内嵌数组形态下 DB 级唯一约束不完整——同一数组两字段的复合唯一多键索引虽可创建（见 5.3.4），但同文档内重复元素与字段缺失场景仍需 partial index / schema validation 配套，且仍需应用层条件写入兜底；权衡后按非唯一索引交付，唯一性收敛到应用层：写入必须走统一的原子绑定流程（5.4.2），禁止业务代码直接 `$push` |
 | C9 | `username` 一旦允许修改，任何逻辑不得依赖"username 恒定" | 同步匹配、身份解析、Session、审计引用均不得以 username 为长期键（存量自动认领的一次性判定除外，见 6.8 S10） |
 
 ---
@@ -141,7 +141,7 @@ flowchart LR
 | --- | --- | --- |
 | `users.accounts` 数组字段 | 🆕 **新增字段** | 本期唯一的结构性变更；`User.accounts` 是一个 array，每个元素表示该用户的一个外部身份绑定（见 5.3） |
 | `users` 复合多键索引 `(accounts.source, accounts.externalId)` | 🆕 新增索引 | 登录解析点查的性能保障（非唯一，见 5.3.3） |
-| `users.username` | 🔧 语义变更 | 字段与唯一索引不变；语义改为"账密登录名 + 展示名"：SSO/注册路径**随机分配**，**开放修改**（6.3 / 6.4） |
+| `users.username` | 🔧 语义变更 | 字段与唯一索引不变；语义改为"账密登录名 + 展示名"：生成收敛为策略位（6.3），**本期 `legacy` 沿用现有逻辑**（`random` 随机生成是预留策略，本期不启用），**开放修改**（6.4） |
 | `users.contact` 及其普通索引 | 无变化 | 首绑匹配值，语义与约束见 C.5 |
 | `users` 上的"同步来源"单值字段（`syncSource`，如存在） | 无变化 | 语义不变：标记账号由哪个同步源维护；同步按它 + `accounts` 圈定自己的账号 |
 | `user_identity` 集合 | ❌ **取消（V1 方案不落地）** | 评审否决新增表；能力并入 `accounts` 数组 |
@@ -165,7 +165,7 @@ flowchart LR
 | --- | --- | --- | --- | --- | --- | --- |
 | `U_001` | `77000001` | `[{weaver,77000001},{wecom-hq,zhangsan},{wecom-sub1,zs01}]` | `weaver` | `13800000000` | `active` | 同步新建：张三；后两条来自首绑 |
 | `U_002` | `77000002` | `[{weaver,77000002},{wecom-hq,lisi}]` | `weaver` | `13900000000` | `active` | 同步新建：李四 |
-| `U_003` | 按现有注册规则生成 | `[]` | — | — | `active` | 自助注册：沿用现有生成逻辑（本期不做随机）；如后续 SSO 首绑命中，绑到它 |
+| `U_003` | 按现有注册规则生成 | —（未落字段，读侧视为空） | — | — | `active` | 自助注册：沿用现有生成逻辑（本期不做随机）；如后续 SSO 首绑命中，绑到它 |
 | `U_004` | 按现有 SSO 建号逻辑生成 | `[{oauth2-x,e10086}]` | — | — | `active` | SSO 自动建号（允许 create 的部署）：沿用现有建号逻辑 + 建号即写绑定 |
 
 ### 5.2 匹配字段约束（修订）
@@ -193,7 +193,7 @@ type UserAccountBinding = {
 };
 
 // MongoUser 上新增字段
-accounts: UserAccountBinding[];    // 默认 []；存量账号回填前视为空
+accounts?: UserAccountBinding[];   // schema 默认 undefined（不落字段）；存量账号回填前视为空，读侧按空数组语义处理
 ```
 
 实现要求：
@@ -240,7 +240,7 @@ V1 曾以四条理由否决内嵌数组；V2 在"不新增集合"的评审约束
 
 | V1 的反对理由 | V2 缓解措施 | 残余风险 |
 | --- | --- | --- |
-| 无法对 `(source, externalId)` 建跨文档唯一索引，首绑并发下可能重复绑定 | ① 绑定写入用**带条件的原子 `$push`**（`accounts: { $not: { $elemMatch: { source, externalId } } }`），文档内幂等；② 跨账号并发首绑加 **Redis SETNX 锁** `lock:bind:{source}:{externalId}`；③ 写前先全库查重（同一身份绑到别人 → 拒绝）；④ **定期去重审计脚本**兜底（用多键索引扫描重复键）（5.4.2 / 5.4.3） | 极端并发下（锁失效/Redis 不可用且未配置降级暂停首绑）仍可能写入重复行；靠去重审计发现并人工合并，登录侧多命中即拒绝，不会静默串号 |
+| DB 级唯一约束在内嵌数组形态下不完整，首绑并发下可能重复绑定：同一数组两字段的复合唯一多键索引虽可创建，但字段缺失场景需 partial index、同文档重复元素仍需应用层拦截 | ① 绑定写入用**带条件的原子 `$push`**（`accounts: { $not: { $elemMatch: { source, externalId } } }`），文档内幂等；② 跨账号并发首绑加 **Redis SETNX 锁** `lock:bind:{source}:{externalId}`；③ 写前先全库查重（同一身份绑到别人 → 拒绝）；④ **定期去重审计脚本**兜底（用多键索引扫描重复键）（5.4.2 / 5.4.3） | 极端并发下（锁失效/Redis 不可用且未配置降级暂停首绑）仍可能写入重复行；靠去重审计发现并人工合并，登录侧多命中即拒绝，不会静默串号 |
 | 登录解析按 `(source, externalId)` 直查需要全表扫描大文档 | 复合多键索引支撑点查；查询带 projection 只取必要字段；users 量级（万级）下索引点查代价与独立表相当 | 无实质残余；前提 MongoDB ≥ 4.4 |
 | 绑定/解绑/审计都写整个账号大文档，并发冲突风险高 | 所有写入用原子操作符（`$push` / `$set` positional / `$pull`），禁止读-改-写；并发更新由 Mongo 文档级原子性串行化，`$push` 与同步的 `$set: {contact, status}` 互不覆盖对方字段 | 高频并发写同一账号时操作排队（代价可忽略）；读-改-写式代码是唯一禁忌（C8） |
 | per-source 状态、`lastLoginAt` 挤在账号文档里，职责不清 | `accounts` 行字段集与 V1 身份行等价，职责边界不变；账号文档其余字段（contact/status/组织）仍由同步维护 | 职责在同一文档内分层，靠 helper 与写入纪律维持 |
@@ -311,7 +311,7 @@ bindAccount(userId, row):
 
 | 集合 | 变动类型 | 最终形态 / 操作 | 触发方 |
 | --- | --- | --- | --- |
-| `users` | 🆕 `accounts` 字段 + 多键索引；🔧 `username` 语义 | 全部身份绑定内嵌于账号文档；`username` 随机分配、可修改 | 同步 / 回填 / 首绑 / 管理端 / 用户自助 |
+| `users` | 🆕 `accounts` 字段 + 多键索引；🔧 `username` 语义 | 全部身份绑定内嵌于账号文档；`username` 可修改，生成策略本期沿用现有逻辑（`random` 为预留策略） | 同步 / 回填 / 首绑 / 管理端 / 用户自助 |
 | `team_members` | ＝ 原有 | 名称、状态随同步 | 同步 |
 | `orgs` | ＝ 原有 | 全量重建，跟随同步源组织结构 | 同步 |
 | app / dataset / 协作权限 / 成员关系 | ＝ 原有，仅数据迁移 | 存量合并时 `tmbId` 换绑 | 合并脚本 |
@@ -912,7 +912,9 @@ pro/admin（有状态）：身份解析 resolver（查 accounts → 未命中走
 
 ### C.18 部署刷数操作说明（升级 Runbook，本版新增）
 
-定位：把 C.3 表中动作 ②（刷数回填）与 ③（存量合并）落成可执行的运维步骤。实现为 pro 管理端两个接口（均在升级窗口由 root 执行，幂等可重跑）：
+定位：把 C.3 表中动作 ②（刷数回填）与 ③（存量合并）落成可执行的运维步骤。契约形态为 pro 管理端两个接口（均在升级窗口由 root 执行，幂等可重跑）：
+
+> **交付状态（待实现契约）**：截至本设计定稿，下述两个管理端接口与"同步按 `syncSource`/`accounts` 圈定"**均尚未进入主仓或任何已发布的 Pro 版本**——主仓 `admin/user` 路由下无对应入口，已发布 Pro 的同步仍按 username 前缀圈定成员。本节按**待实现契约**编写：命令、鉴权与响应是后续交付的实现规格与验收依据；**在部署包含 ① `User.accounts` 模型（本 PR）② 两个管理端接口 ③ 同步链路按来源圈定（C.8 S8）的版本之前，不得按本节对生产环境执行**。文中冒烟验证在配套实现分支完成，随该分支一同交付。
 
 | 接口 | 作用 | 对应动作 |
 | --- | --- | --- |
@@ -926,22 +928,30 @@ pro/admin（有状态）：身份解析 resolver（查 accounts → 未命中走
 3. MongoDB 全量备份已完成（合并动作不可逆，回滚只能靠备份恢复）；
 4. root 账号登录态可用（两接口均为 `authRoot` 校验）。
 
-**总流程与判定开关**：
+**总流程与判定开关**（回填先于合并，与 C.10 前置 ②、5.4.1 时机顺序一致）：
 
 ```text
-① backfill {dryRun:true} 一次预检，看三样输出：
+0. 前缀候选来源确认（认领，见步骤 0）——无 syncSource 的前缀账号核对后补标记，不自动归属
+① backfill {dryRun:true} 预检，**携带首轮 parallelMatchKeys**，看四样输出：
    sources      → 待补行数计划
+   unconfirmed  → 前缀命中但尚未认领的账号清单（回步骤 0，认领后重跑）
    anomalies    → 非空 = 有脏数据，先人工处理再继续
-   parallelAccountCandidates → 判定走哪条路：
-       为空   = 无平行账号，直接跳 ③ 实刷收工
-       非空   = 有平行账号，先走 ② 合并，再 ③ 实刷
-② merge {dryRun:true} 预演 → 管理员核对映射 → merge {dryRun:false} 实际合并
-③ backfill {dryRun:false} 实刷 → ④ 完成判据校验
+   parallelAccountCandidates → 非空 = 有平行账号，走步骤 3 合并
+② backfill {dryRun:false} 实刷（对来源已确认的账号补行；分来源失败按异常表处理后重跑）
+③ merge {dryRun:true} 预演 → 管理员核对映射 → merge {dryRun:false} 实际合并（仅 candidates 非空时）
+④ 复跑 backfill {dryRun:true}（**同一 parallelMatchKeys**）→ 完成判据校验
 ```
 
-顺序纪律不变：**回填必须在开放对应登录入口之前完成**（C.11 R4），合并必须在同步建号/认领之后（C.3）。
+顺序纪律：**回填先于合并**（C.10 前置 ②"绑定行已完成全量回填"、5.4.1 时机 #1 先于 #2）——合并要搬迁的绑定行必须已在旧账号上；**回填必须在开放对应登录入口之前完成**（C.11 R4）；合并必须在同步建号/认领之后（C.3）。旧账号缺绑定行时由 merge 按 5.4.1 时机 #2 补写旧登录身份行（对应 pair `movedIdentities` 为 0，属正常）。
 
 ---
+
+#### 步骤 0：存量账号来源确认（前缀候选认领）
+
+- `syncSource` 非空的账号来源可信，直接进入刷数范围；
+- 无 `syncSource`、username 命中 `EXTERNAL_USER_SYSTEM_LEGACY_USERNAME_PREFIX` 的账号：**前缀只用于候选发现**，dryRun 列入 `unconfirmed`，**实刷不写入**；
+- 管理员按 C.3 认领条件逐项核对（目标团队一致 + 来源人员名单命中，或已确认的旧账号映射）后完成认领——同步首跑自动认领或人工补 `syncSource=S`；认领后重跑预检，账号转入正常刷数范围；
+- 无法确认或与名单/团队冲突的账号留在待处理清单，其身份由登录首绑或人工绑定补齐，**不得凭前缀自动归属写行**。
 
 #### 步骤 1：预检（backfill dryRun）
 
@@ -961,15 +971,17 @@ curl -s -X POST https://<admin域名>/api/admin/user/identity/backfill \
     { "source": "wecom", "total": 1286, "created": 0, "skipped": 1203, "missing": 83 }
   ],
   "anomalies": [],
+  "unconfirmed": [],
   "parallelAccountCandidates": []
 }
 ```
 
-- `missing` = 待补行数，作为实刷后核对 `created` 的基准；
+- `missing` = 本轮待补行数，作为**本轮**实刷 `created` 的对账基准（分轮对账，见步骤 4 判据 2）；
 - `anomalies` 非空时**不得继续实刷**，按下文异常处置表处理；
-- `parallelAccountCandidates` 非空时进入步骤 2；
-- **刷数圈定范围（来源判定）**：`syncSource` 非空的账号优先按标记归属来源；**升级环境里旧版本同步号没有 `syncSource`**（该字段本期才引入，旧版本用 username 前缀识别同步号），此时按 `EXTERNAL_USER_SYSTEM_LEGACY_USERNAME_PREFIX` 前缀（如 `weaver-77000122`）认定为当前同步源（`EXTERNAL_USER_SYSTEM_SOURCE`）的存量号，externalId 按同一前缀规则剥离。两者都不满足的账号（纯手工/其他来源）不刷数，其身份由登录首绑或人工绑定补齐；
-- **已禁用账号（含合并收尾的 `merged-*` 旧号）不在刷数与候选范围**：合并后其绑定行已搬迁到接收账号，若给旧号重写同 `(source, externalId)` 行会与接收账号形成跨账号重复，且 forbidden 账号会挡住该外部身份的登录匹配（冒烟环境实测发现的缺口，已修复）。
+- `parallelAccountCandidates` 非空时进入步骤 3（平行账号合并）；
+- `unconfirmed` 非空时回步骤 0 完成认领后重跑预检，实刷不处理这些账号；
+- **刷数圈定范围（来源判定）**：只对**来源已确认**的账号写行——`syncSource=S` 的账号（S = `EXTERNAL_USER_SYSTEM_SOURCE`）直接进入范围，externalId 取同步输入。**升级环境里旧版本同步号没有 `syncSource`**（该字段本期才引入，旧版本用 username 前缀识别同步号），此时**前缀（如 `weaver-77000122`）只用于候选发现**：dryRun 将其列入 `unconfirmed` 输出，实刷不写入；按步骤 0 完成认领（C.3：目标团队一致 + 来源人员名单核对，或已确认的旧账号映射）后进入范围。未标记来源的手工账号、其他来源账号可能使用相同前缀，**不得凭前缀自动归属并写行**——写错归属后 5.3.3 的身份解析会优先命中该行，导致登录指向错误账号。两者都不满足的账号（纯手工/其他来源）不刷数，其身份由登录首绑或人工绑定补齐；
+- **排除范围以"已确认的合并结果"为准，不以 `status` 单独判断**：合并收尾旧号（`merged-*` 改名 + `forbidden` + 合并审计记录指向接收账号）不进刷数与候选范围——其绑定行已搬迁到接收账号，重写同 `(source, externalId)` 行会形成跨账号重复，且 forbidden 账号会挡住该外部身份的登录匹配（冒烟实测确认的缺口）；**普通禁用账号（管理员暂停、同步离职）不排除**：照常进入刷数与候选范围，防止"临时禁用且无绑定行"的账号被最终预检漏判（`missing=0`，恢复启用后仍缺绑定）。恢复启用前按步骤 4 判据核对其绑定行。
 
 **平行账号评估维度 `parallelMatchKeys`**（请求参数，默认 `['contact']`）：
 
@@ -980,14 +992,19 @@ curl -s -X POST https://<admin域名>/api/admin/user/identity/backfill \
 
 客户环境按需选择：只认手机号传 `["contact"]`（默认，行为不变）；手机号与 username 二者合并传 `["contact","username"]`——同一批账号任一维度命中即并为一组（如 contact 对与 username 对共享某账号时串成一组，响应 `matchKeys` 字段标明命中了哪些维度）。返回的 `usernameKey` 为去前缀后的归约键。
 
+**候选分组的匹配依据（契约要求）**：两个维度可通过共享账号把多对候选串成一组（A-B 共 contact、B-C 共 username，A 与 C 无直接匹配），组级 `matchKeys` 只是汇总。响应必须按**每对账号（或每个原始匹配子组）**给出依据 `pairs: [{ fromUserId, toUserId, rule, value }]`；管理员的映射核对、merge 输入与审计以 `pairs` 为准，不得把整组成员默认当成同一人。组内任一账号被多对引用（串组/歧义）时标记 `ambiguous: true`，必须人工确认后才可提供 merge 映射（C.10 映射矩阵的阻断规则同样适用）。
+
 **有平行账号时的 candidates 示例**（同 contact 挂了旧手工号 + 同步号，属同一自然人；请求体 `{"dryRun": true, "parallelMatchKeys": ["contact", "username"]}`）：
 
 ```json
 "parallelAccountCandidates": [
   {
-    "contact": "13800000001",
     "usernameKey": "zhang",
     "matchKeys": ["contact", "username"],
+    "pairs": [
+      { "fromUserId": "665f1a2b...", "toUserId": "665f2c3d...", "rule": "contact", "value": "138****0001" }
+    ],
+    "ambiguous": false,
     "accounts": [
       { "userId": "665f1a2b...", "username": "legacy-zhang" },
       { "userId": "665f2c3d...", "username": "wecom-zhang", "syncSource": "wecom" }
@@ -996,12 +1013,12 @@ curl -s -X POST https://<admin域名>/api/admin/user/identity/backfill \
 ]
 ```
 
-#### 步骤 2（仅 candidates 非空）：平行账号合并
+#### 步骤 3（仅 candidates 非空）：平行账号合并
 
 映射关系（`fromUserId → toUserId`）由管理员对照 candidates 清单核对后提供，脚本不做归属猜测。建议每批先 dryRun 预演、确认后实际执行：
 
 ```bash
-# 2.1 预演
+# 3.1 预演
 curl -s -X POST https://<admin域名>/api/admin/user/identity/merge \
   -H "Authorization: Bearer <root登录token>" -H "Content-Type: application/json" \
   -d '{
@@ -1010,13 +1027,13 @@ curl -s -X POST https://<admin域名>/api/admin/user/identity/merge \
   }'
 # → results[0]: { "status": "wouldMerge", "movedIdentities": 1, ... }  校验全部通过，预计搬迁 1 行
 
-# 2.2 实际执行（同请求体，dryRun:false）
+# 3.2 实际执行（同请求体，dryRun:false）
 # → results[0]: { "status": "merged", "apps": 3, "datasets": 1, "movedIdentities": 1, ... }
 ```
 
-实际执行在单事务内完成：资源（app/dataset/群组/组织/Key/权限）换绑到接收账号 tmb；绑定行搬迁并保留 matchKey/createdAt 审计证据；旧账号改名 `merged-<原名>-<时间戳>`、`status=forbidden`、清密码，事务提交后强制下线。逐 pair 独立执行，单对失败不影响其他对（一次最多 50 对）。
+实际执行在单事务内完成：资源（app/dataset/群组/组织/Key/权限）换绑到接收账号 tmb；绑定行搬迁并保留 matchKey/createdAt 审计证据；旧账号改名 `merged-<原名>-<时间戳>`、`status=forbidden`、清密码，事务提交后强制下线。逐 pair 独立执行，单对失败不影响其他对（一次最多 50 对）。旧账号尚无绑定行时，merge 按 5.4.1 时机 #2 补写旧登录身份行（该 pair `movedIdentities` 为 0，属正常）。
 
-#### 步骤 3：实刷（backfill dryRun=false）
+#### 步骤 2：实刷（backfill dryRun=false）
 
 ```bash
 curl -s -X POST https://<admin域名>/api/admin/user/identity/backfill \
@@ -1034,18 +1051,21 @@ curl -s -X POST https://<admin域名>/api/admin/user/identity/backfill \
     { "source": "wecom", "total": 1286, "created": 83, "skipped": 1203 }
   ],
   "anomalies": [],
+  "unconfirmed": [],
   "parallelAccountCandidates": []
 }
 ```
 
-逐来源条件 `$push` 只补缺的行，**幂等**：重复执行第二遍全部 `skipped`、`created=0`，可安全重跑。
+逐来源条件 `$push` 只补缺的行，**幂等**：重复执行第二遍全部 `skipped`、`created=0`，可安全重跑。实刷计数按轮对账：本轮 `created` 对照本轮预检的 `missing`（分轮对账规则见步骤 4 判据 2）。
 
 #### 步骤 4：完成判据
 
-1. 再跑一次 `backfill {dryRun:true}`：`missing` 全部为 0、`anomalies` 为空；
-2. 实刷响应中 `sources` 无 `error` 字段，且 `created` 之和等于 dryRun 时 `missing` 之和；
-3. `parallelAccountCandidates` 中每个 contact 均已合并（旧账号 `merged-*` / `forbidden`）或经业务方确认保留双账号；
-4. 用旧身份走一次 SSO 登录验证：命中 canonical 账号、资源可见（C.17 手工验收 #3/#6）。
+1. 复跑 `backfill {dryRun:true}`，**必须携带与首轮相同的 `parallelMatchKeys`**（首轮启用了 `username` 维度的，复核不得省略——否则仅靠 username 命中的候选会从清单消失，被空结果误判为已验收）：`missing` 全部为 0、`anomalies` 为空、`unconfirmed` 为空或剩余项均已列入待处理清单；
+2. **分轮对账，按最终数据状态验收**：单次无 `error` 的实刷，`created` 之和等于**同轮** dryRun 的 `missing` 之和；某来源带 `error` 时按异常表处理后重跑，每轮计数只用于本轮对账，**不与初次预检的 `missing` 累计比较**——部分失败重跑会跳过已写入行、合并搬迁会改变计数起点，累计比较会把正确完成的执行误判为失败。最终完成条件 = 复跑预检无缺行、无异常，且所有执行 `error` 均已处理；
+3. 首轮 `parallelAccountCandidates` 按**候选账号 ID 逐项**核对处置并记录留档：已合并（旧账号 `merged-*` / `forbidden`）/ 业务方确认保留双账号 / 待处理——不以 contact 值为核销单位，覆盖无 contact、仅靠 `username` 维度命中的候选；
+4. 登录验收按绑定状态分别执行（C.17 手工验收 #3/#6）：
+   - canonical 账号、资源与权限：用**启用的新登录入口**验证命中 canonical 账号、资源可见；
+   - 旧登录身份：默认迁移为 `disabled`（5.4.1 #2）→ 按 5.3.3 契约验证旧入口登录**被拒绝**，且新入口不受影响；客户要求旧入口保留 `active` → 验证旧入口登录命中 canonical 账号。
 
 #### 异常处置表
 
@@ -1059,5 +1079,5 @@ curl -s -X POST https://<admin域名>/api/admin/user/identity/backfill \
 
 #### 回滚边界
 
-- 步骤 3 刷数：只新增绑定行，可回退（删除本次新增的 `accounts` 行）或直接保留（新行与同步链路写入形态一致）；
-- 步骤 2 合并：**不可逆**（禁用 + 改名 + 资源换绑），回滚只能依赖前置条件 3 的 Mongo 备份按文档恢复——因此 dryRun 预演 + 备份在先为强制纪律。
+- 步骤 2 实刷：只新增绑定行，可回退（删除本次新增的 `accounts` 行）或直接保留（新行与同步链路写入形态一致）；
+- 步骤 3 合并：**不可逆**（禁用 + 改名 + 资源换绑），回滚只能依赖前置条件 3 的 Mongo 备份按文档恢复——因此 dryRun 预演 + 备份在先为强制纪律。
