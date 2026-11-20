@@ -444,8 +444,13 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
                   data.lastInteractive?.skipNodeQueue || data.defaultSkipNodeQueue
               });
 
+              const debugInteractiveEntryIds =
+                runtimeControl.mode === 'debug' ? data.lastInteractive?.entryNodeIds : undefined;
               entryNodes.forEach((node) => {
-                workflowQueue.addActiveNode(node.nodeId);
+                workflowQueue.addActiveNode(
+                  node.nodeId,
+                  debugInteractiveEntryIds?.includes(node.nodeId)
+                );
               });
             });
 

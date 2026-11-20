@@ -3,11 +3,12 @@ import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
   VARIABLE_NODE_ID,
+  VariableInputEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { createTestWorkflowDispatch } from '../context/fixtures';
+import { createTestVariableContext, createTestWorkflowDispatch } from '../context/fixtures';
 import { dispatchFormInput as dispatchFormInputWithoutContext } from '@fastgpt/service/core/workflow/dispatch/interactive/formInput';
 import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import {
@@ -92,13 +93,15 @@ describe('dispatchFormInput', () => {
   const dispatchOptionForm = ({
     type = FlowNodeInputTypeEnum.select,
     sourceValue,
+    listReference = [[VARIABLE_NODE_ID, 'cities']],
     required = true
   }: {
     type?: FlowNodeInputTypeEnum;
     sourceValue: unknown;
+    listReference?: unknown;
     required?: boolean;
   }) => {
-    const formItem: UserInputFormItemType = {
+    const formItem = {
       key: 'city',
       label: '城市',
       type,
@@ -107,37 +110,75 @@ describe('dispatchFormInput', () => {
       required,
       defaultValue: 'LegacyDefault',
       listInputType: FlowNodeInputTypeEnum.reference,
-      listReference: [[VARIABLE_NODE_ID, 'cities']]
-    };
+      listReference
+    } satisfies Omit<UserInputFormItemType, 'listReference'> & { listReference: unknown };
 
     return dispatchFormInput({
       histories: [],
-      node: { isEntry: false },
+      node: { nodeId: 'form', isEntry: false },
       params: { description: 'Fill form', userInputForms: [formItem] },
-      variableContext: { toRuntimeRecord: () => ({ cities: sourceValue }) },
+      chatConfig: {
+        variables: [
+          {
+            key: 'cities',
+            label: 'Cities',
+            description: '',
+            type: VariableInputEnum.custom,
+            valueType: WorkflowIOValueTypeEnum.arrayString
+          }
+        ]
+      },
+      runtimeEdges: [{ source: 'upstream', target: 'form' }],
+      runtimeNodesMap: new Map([
+        [
+          'upstream',
+          {
+            nodeId: 'upstream',
+            outputs: [{ id: 'bools', valueType: 'arrayBoolean', value: [true, false] }]
+          }
+        ]
+      ]),
+      variableContext: createTestVariableContext({ cities: sourceValue, deletedCity: 'Stale city' }),
       query: []
     } as any);
   };
 
-  it('resolves dynamic options, trims whitespace, and removes the static default', async () => {
+  it.each([
+    { shape: 'list', listReference: [[VARIABLE_NODE_ID, 'cities']] },
+    { shape: 'legacy single tuple', listReference: [VARIABLE_NODE_ID, 'cities'] },
+    { shape: 'partly malformed list', listReference: [['stale'], [VARIABLE_NODE_ID, 'cities']] }
+  ])(
+    'resolves a $shape into form options with a persistable interactive result',
+    async ({ listReference }) => {
+      const result = await dispatchOptionForm({
+        sourceValue: ['  Beijing  ', '   ', '', 'Shanghai'],
+        listReference
+      });
+      const interactive = result[DispatchNodeResponseKeyEnum.interactive];
+      if (interactive?.type !== 'userInput') throw new Error('Expected a user input interaction');
+      expect(interactive.params.inputForm[0].defaultValue).toBeUndefined();
+      const saved = UserInputInteractiveSchema.parse(JSON.parse(JSON.stringify(interactive)));
+      expect(saved.params.description).toBe('Fill form');
+      expect(saved.params.inputForm[0]).toMatchObject({
+        listReference: [[VARIABLE_NODE_ID, 'cities']],
+        list: ['Beijing', 'Shanghai'].map((city) => ({ label: city, value: city }))
+      });
+    }
+  );
+
+  it('ignores a deleted global with an injected value and disallowed referenced outputs', async () => {
     const result = await dispatchOptionForm({
-      sourceValue: ['  Beijing  ', '   ', '', 'Shanghai']
+      sourceValue: ['Beijing'],
+      listReference: [
+        [VARIABLE_NODE_ID, 'deletedCity'],
+        ['upstream', 'bools'],
+        [VARIABLE_NODE_ID, 'cities']
+      ]
     });
-    expect(result[DispatchNodeResponseKeyEnum.interactive]).toEqual({
-      type: 'userInput',
-      params: {
-        description: 'Fill form',
-        inputForm: [
-          expect.objectContaining({
-            defaultValue: undefined,
-            list: [
-              { label: 'Beijing', value: 'Beijing' },
-              { label: 'Shanghai', value: 'Shanghai' }
-            ]
-          })
-        ]
-      }
-    });
+    const interactive = UserInputInteractiveSchema.parse(
+      result[DispatchNodeResponseKeyEnum.interactive]
+    );
+    expect(interactive.params.inputForm[0].list).toEqual([{ label: 'Beijing', value: 'Beijing' }]);
   });
 
   it.each([

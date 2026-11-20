@@ -1,10 +1,12 @@
 import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import {
-  FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getHandleId } from '@fastgpt/global/common/workflow/reference';
+import {
+  getWorkflowBranchInputKey,
+  normalizeWorkflowSourceHandle,
+  normalizeWorkflowTargetHandle
+} from '@fastgpt/global/common/workflow/connection';
 import {
   type StoreEdgeItemType,
   type ExecutionSourcePortRef,
@@ -33,13 +35,7 @@ const compileSourceHandle = (
   if (port.kind === 'catch') return getHandleId(port.nodeId, 'source_catch', 'right');
   if (port.kind === 'selectedTools') return NodeOutputKeyEnum.selectedTools;
   if (port.kind === 'branch') {
-    if (
-      ![
-        FlowNodeTypeEnum.ifElseNode,
-        FlowNodeTypeEnum.userSelect,
-        FlowNodeTypeEnum.classifyQuestion
-      ].includes(node.flowNodeType)
-    ) {
+    if (getWorkflowBranchInputKey(node.flowNodeType) === undefined) {
       throw new WorkflowCommandError([
         {
           code: WorkflowDiagnosticCodeEnum.branchPortUnsupported,
@@ -102,13 +98,13 @@ export const decompileStoreSourcePort = ({
     return { kind: 'catch', nodeId: edge.source };
   }
   const sourceNode = assertNode(document, edge.source);
-  const isBranchNode = [
-    FlowNodeTypeEnum.ifElseNode,
-    FlowNodeTypeEnum.userSelect,
-    FlowNodeTypeEnum.classifyQuestion
-  ].includes(sourceNode.flowNodeType);
-  // 分支 key 也允许叫 right；这些节点没有普通出口，不能把同名分支反编译成 next。
-  if (edge.sourceHandle === getHandleId(edge.source, 'source', 'right') && !isBranchNode) {
+  const isBranchNode = getWorkflowBranchInputKey(sourceNode.flowNodeType) !== undefined;
+  // 分支 key 允许叫 right；这些节点没有普通出口。
+  if (
+    !isBranchNode &&
+    normalizeWorkflowSourceHandle(edge.sourceHandle, sourceNode) ===
+      getHandleId(edge.source, 'source', 'right')
+  ) {
     return { kind: 'next', nodeId: edge.source };
   }
 
@@ -144,10 +140,9 @@ const parseTargetHandle = (edge: StoreEdgeItemType): ExecutionTargetPortRef => {
   if (edge.targetHandle === NodeOutputKeyEnum.selectedTools) {
     return { kind: 'selectedTools', nodeId: edge.target };
   }
-  // 旧画布允许从右侧接入；两侧都表示普通目标端口，编译时统一输出 left。
   if (
-    edge.targetHandle === getHandleId(edge.target, 'target', 'left') ||
-    edge.targetHandle === getHandleId(edge.target, 'target', 'right')
+    normalizeWorkflowTargetHandle(edge.targetHandle, edge.target) ===
+    getHandleId(edge.target, 'target', 'left')
   ) {
     return { kind: 'target', nodeId: edge.target };
   }

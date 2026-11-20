@@ -618,7 +618,7 @@ const NodeWorkflowCheckIssues = React.memo(function NodeWorkflowCheckIssues({
               wordBreak={'break-word'}
               {...workflowCheckIssueTextStyle}
             >
-              {issue.message.trim()}
+              {issue.message?.trim()}
             </Box>
           </Flex>
         );

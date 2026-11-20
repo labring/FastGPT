@@ -1,5 +1,104 @@
-import { NodeOutputKeyEnum } from '../../core/workflow/constants';
-import { FlowNodeTypeEnum } from '../../core/workflow/node/constant';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '../../core/workflow/constants';
+import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../core/workflow/node/constant';
+import type { StoreEdgeItemType } from '../../core/workflow/type/edge';
+import type { StoreNodeItemType } from '../../core/workflow/type/node';
+import { UserConfigError } from '../error/utils';
+import { getHandleId } from './reference';
+
+/** 只有声明该分支配置的节点类型才会用输入值生成连接端口。 */
+export const getWorkflowBranchInputKey = (nodeType: FlowNodeTypeEnum) => {
+  switch (nodeType) {
+    case FlowNodeTypeEnum.ifElseNode:
+      return NodeInputKeyEnum.ifElseList;
+    case FlowNodeTypeEnum.userSelect:
+      return NodeInputKeyEnum.userSelectOptions;
+    case FlowNodeTypeEnum.classifyQuestion:
+      return NodeInputKeyEnum.agents;
+  }
+};
+
+const legacySourceDirections = ['left', 'top', 'bottom'];
+const legacyTargetDirections = ['right', 'top', 'bottom'];
+
+/** 历史普通出口统一到右侧；分支和显式输出保留原名以匹配真实端口。 */
+export const normalizeWorkflowSourceHandle = (
+  handle: string,
+  node: Pick<StoreNodeItemType, 'nodeId' | 'flowNodeType'> & {
+    outputs: readonly Pick<StoreNodeItemType['outputs'][number], 'key' | 'type'>[];
+  }
+) => {
+  const prefix = getHandleId(node.nodeId, 'source', '');
+  if (!handle.startsWith(prefix)) return handle;
+
+  const key = handle.slice(prefix.length);
+  if (
+    !legacySourceDirections.includes(key) ||
+    getWorkflowBranchInputKey(node.flowNodeType) !== undefined ||
+    node.outputs.some(
+      (output) => output.type === FlowNodeOutputTypeEnum.source && output.key === key
+    )
+  ) {
+    return handle;
+  }
+  return getHandleId(node.nodeId, 'source', 'right');
+};
+
+/** 历史普通入口统一到左侧，工具入口保持原值。 */
+export const normalizeWorkflowTargetHandle = (handle: string, nodeId: string) => {
+  const prefix = getHandleId(nodeId, 'target', '');
+  return handle.startsWith(prefix) && legacyTargetDirections.includes(handle.slice(prefix.length))
+    ? getHandleId(nodeId, 'target', 'left')
+    : handle;
+};
+
+/** 清理已有版本中的悬挂边，供编辑和复制历史数据时使用。 */
+export const filterWorkflowEdgesWithExistingNodes = ({
+  nodes,
+  edges
+}: {
+  nodes: readonly Pick<StoreNodeItemType, 'nodeId'>[];
+  edges: readonly StoreEdgeItemType[];
+}) => {
+  const nodeIds = new Set(nodes.map(({ nodeId }) => nodeId));
+  return edges.filter(({ source, target }) => nodeIds.has(source) && nodeIds.has(target));
+};
+
+/** 编辑和保存共用的结构检查。孤立节点和缺失父节点保留给业务诊断。 */
+export const assertWorkflowDocumentStructure = ({
+  nodes,
+  edges
+}: {
+  nodes: readonly Pick<StoreNodeItemType, 'nodeId' | 'parentNodeId'>[];
+  edges: readonly Pick<StoreEdgeItemType, 'source' | 'target'>[];
+}): void => {
+  const parentByNodeId = new Map<string, string | undefined>();
+  for (const { nodeId, parentNodeId } of nodes) {
+    if (parentByNodeId.has(nodeId))
+      throw new UserConfigError(`Duplicate workflow node id: ${nodeId}`);
+    parentByNodeId.set(nodeId, parentNodeId);
+  }
+
+  // 父链独立于执行边，允许草稿保存尚未连通的流程。
+  const checked = new Set<string>();
+  for (const [nodeId, parentId] of parentByNodeId) {
+    if (!parentId || checked.has(nodeId)) continue;
+
+    const chain = new Set<string>();
+    let currentId: string | undefined = nodeId;
+    while (currentId && !checked.has(currentId)) {
+      if (chain.has(currentId)) throw new UserConfigError(`Circular workflow parent: ${currentId}`);
+      chain.add(currentId);
+      currentId = parentByNodeId.get(currentId);
+    }
+    chain.forEach((id) => checked.add(id));
+  }
+
+  for (const { source, target } of edges) {
+    if (!parentByNodeId.has(source) || !parentByNodeId.has(target)) {
+      throw new UserConfigError(`Workflow edge references a missing node: ${source} -> ${target}`);
+    }
+  }
+};
 
 type ConnectionEdge = {
   source?: string;

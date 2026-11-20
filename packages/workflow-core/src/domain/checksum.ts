@@ -26,7 +26,12 @@ export const normalizeWorkflowDocument = (document: WorkflowDocument): WorkflowD
       const rightKey = JSON.stringify(right);
       return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
     }),
-  chatConfig: sortRecord(document.chatConfig) as WorkflowDocument['chatConfig']
+  chatConfig: sortRecord(document.chatConfig) as WorkflowDocument['chatConfig'],
+  ...(document.referenceSnapshots !== undefined && {
+    referenceSnapshots: sortRecord(document.referenceSnapshots) as NonNullable<
+      WorkflowDocument['referenceSnapshots']
+    >
+  })
 });
 
 /** 对规范化后的 UTF-8 JSON 计算跨 Node/Browser 一致的 SHA-256。 */

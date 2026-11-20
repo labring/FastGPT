@@ -1,6 +1,7 @@
 import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { describe, expect, it } from 'vitest';
 import {
+  NodeInputKeyEnum,
   VARIABLE_NODE_ID,
   VariableInputEnum,
   WorkflowIOValueTypeEnum
@@ -12,10 +13,14 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { createWorkflowDocument } from '../../src/domain/document';
+import { TextEditorNode } from '@fastgpt/global/core/workflow/template/system/textEditor';
+import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http468';
 import {
   getWorkflowInputReferenceDiagnostics,
   resolveWorkflowReferenceDocument
 } from '../../src/reference/validation';
+import { getAvailableInputReferences } from '../../src/reference/query';
+import { createWorkflowErrorBranchIndex, setInputReference } from '../../src/reference/service';
 import { validateWorkflow } from '../../src/validation/index';
 
 /** 最小连通图同时提供稳定 key 和历史 id，用真实引用规则检查两种策略。 */
@@ -77,6 +82,68 @@ const makeDocument = (input: Partial<FlowNodeInputItemType> = {}) =>
   });
 
 describe('getWorkflowInputReferenceDiagnostics', () => {
+  it('ignores removed dynamic source handles in the error branch index', () => {
+    const document = makeDocument();
+    document.nodes[1] = {
+      ...document.nodes[1],
+      flowNodeType: FlowNodeTypeEnum.userSelect,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userSelectOptions,
+          label: 'Options',
+          renderTypeList: [],
+          value: [{ key: 'removed' }]
+        }
+      ]
+    };
+    document.executionEdges = [
+      {
+        source: { kind: 'branch', nodeId: 'target', branchKey: 'removed' },
+        target: { kind: 'target', nodeId: 'start' }
+      }
+    ];
+
+    expect(
+      createWorkflowErrorBranchIndex(document).incomingEdgesByNodeId.get('start')
+    ).toContainEqual(expect.objectContaining({ source: 'target' }));
+
+    document.nodes[1].inputs[0] = { ...document.nodes[1].inputs[0], value: [] };
+    expect(
+      createWorkflowErrorBranchIndex(document).incomingEdgesByNodeId.get('start')
+    ).toBeUndefined();
+  });
+
+  it('only accepts string references for a selected reference input', () => {
+    const document = makeDocument();
+    document.nodes[1].flowNodeType = FlowNodeTypeEnum.textEditor;
+    document.nodes[1].inputs[0] = {
+      ...TextEditorNode.inputs[0],
+      key: NodeInputKeyEnum.textareaInput,
+      value: [VARIABLE_NODE_ID, 'count'],
+      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+      selectedType: FlowNodeInputTypeEnum.reference
+    };
+    document.chatConfig.variables = [
+      {
+        key: 'count',
+        label: 'Count',
+        description: '',
+        type: VariableInputEnum.numberInput,
+        valueType: WorkflowIOValueTypeEnum.number
+      }
+    ];
+
+    expect(
+      getWorkflowInputReferenceDiagnostics({
+        document,
+        nodeId: 'target',
+        input: document.nodes[1].inputs[0]
+      })
+    ).toEqual([
+      expect.objectContaining({ code: WorkflowDiagnosticCodeEnum.referenceTypeMismatch })
+    ]);
+  });
+
   it.each([
     { value: ['start'], code: WorkflowDiagnosticCodeEnum.referenceFormatInvalid },
     { value: ['deleted', 'text'], code: WorkflowDiagnosticCodeEnum.referenceOutputNotFound },
@@ -113,7 +180,218 @@ describe('getWorkflowInputReferenceDiagnostics', () => {
     ];
     document.nodes[0].catchError = true;
     input.value = ['start', 'error'];
+    expect(
+      getWorkflowInputReferenceDiagnostics({ document, nodeId: 'target', input }).map(
+        (item) => item.code
+      )
+    ).toEqual([WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream]);
+    expect(
+      getAvailableInputReferences({ document, nodeId: 'target', inputKey: input.key })
+    ).not.toContainEqual(expect.objectContaining({ ref: { nodeId: 'start', outputKey: 'error' } }));
+
+    document.executionEdges = [
+      { source: { kind: 'catch', nodeId: 'start' }, target: { kind: 'target', nodeId: 'target' } }
+    ];
     expect(getWorkflowInputReferenceDiagnostics({ document, nodeId: 'target', input })).toEqual([]);
+    expect(
+      getAvailableInputReferences({ document, nodeId: 'target', inputKey: input.key })
+    ).toContainEqual(expect.objectContaining({ ref: { nodeId: 'start', outputKey: 'error' } }));
+
+    input.value = ['start', 'text'];
+    expect(getWorkflowInputReferenceDiagnostics({ document, nodeId: 'target', input })).toEqual([]);
+
+    document.executionEdges = [
+      { source: { kind: 'catch', nodeId: 'start' }, target: { kind: 'target', nodeId: 'middle' } },
+      { source: { kind: 'next', nodeId: 'middle' }, target: { kind: 'target', nodeId: 'target' } }
+    ];
+    document.nodes.splice(1, 0, {
+      nodeId: 'middle',
+      name: 'Middle',
+      flowNodeType: FlowNodeTypeEnum.code,
+      inputs: [],
+      outputs: []
+    });
+    input.value = ['start', 'error'];
+    expect(getWorkflowInputReferenceDiagnostics({ document, nodeId: 'target', input })).toEqual([]);
+
+    document.executionEdges = [
+      { source: { kind: 'next', nodeId: 'start' }, target: { kind: 'target', nodeId: 'middle' } },
+      { source: { kind: 'next', nodeId: 'middle' }, target: { kind: 'target', nodeId: 'target' } }
+    ];
+    expect(
+      getWorkflowInputReferenceDiagnostics({ document, nodeId: 'target', input }).map(
+        (item) => item.code
+      )
+    ).toEqual([WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream]);
+  });
+
+  it('offers and validates a direct child’s caught error for a LoopRun output', () => {
+    const document = makeDocument({ canEdit: true, value: ['start', 'error'] });
+    const [child, loop] = document.nodes;
+    child.flowNodeType = FlowNodeTypeEnum.code;
+    child.parentNodeId = loop.nodeId;
+    child.catchError = true;
+    loop.flowNodeType = FlowNodeTypeEnum.loopRun;
+    const input = loop.inputs[0];
+    document.executionEdges = [];
+    const query = { document, nodeId: loop.nodeId, inputKey: input.key };
+    const ref = { nodeId: child.nodeId, outputKey: 'error' };
+    expect(getAvailableInputReferences(query)).toContainEqual(expect.objectContaining({ ref }));
+    expect(getWorkflowInputReferenceDiagnostics({ document, nodeId: loop.nodeId, input })).toEqual(
+      []
+    );
+    setInputReference({ ...query, ref });
+    expect(input.value).toEqual([child.nodeId, 'error']);
+
+    child.catchError = false;
+    expect(getAvailableInputReferences(query)).not.toContainEqual(expect.objectContaining({ ref }));
+    expect(
+      getWorkflowInputReferenceDiagnostics({ document, nodeId: loop.nodeId, input })
+    ).toContainEqual(
+      expect.objectContaining({ code: WorkflowDiagnosticCodeEnum.referenceOutputNotFound })
+    );
+  });
+
+  it.each(['selected tool', 'container alias'])(
+    'inherits ordinary sources through a %s and requires a real catch edge for errors',
+    (path) => {
+      const document = makeDocument({ value: ['start', 'error'] });
+      const [source, target] = document.nodes;
+      const [input] = target.inputs;
+      const mountedTool = path === 'selected tool';
+      source.catchError = true;
+      target.parentNodeId = mountedTool ? undefined : 'relay';
+      document.nodes.push({
+        nodeId: 'relay',
+        name: 'Relay',
+        flowNodeType: mountedTool ? FlowNodeTypeEnum.toolCall : FlowNodeTypeEnum.parallelRun,
+        inputs: mountedTool
+          ? []
+          : [{ ...input, key: 'alias', value: undefined, defaultValue: ['start', 'text'] }],
+        outputs: []
+      });
+      document.executionEdges = mountedTool
+        ? [
+            {
+              source: { kind: 'catch', nodeId: 'start' },
+              target: { kind: 'target', nodeId: 'relay' }
+            },
+            {
+              source: { kind: 'selectedTools', nodeId: 'relay' },
+              target: { kind: 'selectedTools', nodeId: 'target' }
+            }
+          ]
+        : [];
+      const options = getAvailableInputReferences({
+        document,
+        nodeId: target.nodeId,
+        inputKey: input.key
+      });
+
+      const errors = getWorkflowInputReferenceDiagnostics({
+        document,
+        nodeId: target.nodeId,
+        input
+      });
+      const errorRef = expect.objectContaining({ ref: { nodeId: 'start', outputKey: 'error' } });
+      if (mountedTool) {
+        expect(errors).toEqual([]);
+        expect(options).toContainEqual(errorRef);
+        document.executionEdges[0].source = { kind: 'next', nodeId: 'start' };
+        expect(
+          getWorkflowInputReferenceDiagnostics({ document, nodeId: target.nodeId, input }).map(
+            ({ code }) => code
+          )
+        ).toEqual([WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream]);
+      } else {
+        expect(errors.map(({ code }) => code)).toEqual([
+          WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream
+        ]);
+        expect(options).not.toContainEqual(errorRef);
+      }
+      input.value = ['start', 'text'];
+      expect(
+        getWorkflowInputReferenceDiagnostics({ document, nodeId: target.nodeId, input })
+      ).toEqual([]);
+      expect(options).toContainEqual(
+        expect.objectContaining({ ref: { nodeId: 'start', outputKey: 'text' } })
+      );
+    }
+  );
+});
+
+describe('Secret reference validation', () => {
+  it.each([
+    {
+      flowNodeType: FlowNodeTypeEnum.httpRequest468,
+      key: NodeInputKeyEnum.headerSecret,
+      value: { Authorization: { ref: ['start', 'text'] } }
+    },
+    {
+      flowNodeType: FlowNodeTypeEnum.tool,
+      key: NodeInputKeyEnum.systemInputConfig,
+      inputList: [
+        { key: 'token', label: 'Token', inputType: 'secret' as const },
+        { key: 'count', label: 'Count', inputType: 'numberInput' as const }
+      ],
+      value: {
+        type: 'manual',
+        value: {
+          token: { ref: ['start', 'text'] },
+          count: { ref: ['start', 'count'] }
+        }
+      }
+    }
+  ])('accepts $flowNodeType secret references', (fixture) => {
+    const document = makeDocument({
+      key: fixture.key,
+      label: 'Secret',
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      valueType: WorkflowIOValueTypeEnum.object,
+      inputList: fixture.inputList,
+      value: fixture.value
+    });
+    const target = document.nodes[1];
+    target.flowNodeType = fixture.flowNodeType;
+    if (fixture.flowNodeType === FlowNodeTypeEnum.httpRequest468) {
+      const url = HttpNode468.inputs.find(({ key }) => key === NodeInputKeyEnum.httpReqUrl)!;
+      target.inputs.unshift({ ...url, value: 'https://example.com' });
+    }
+
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([]);
+  });
+
+  it('preserves invalid secret references in the validation snapshot', () => {
+    const document = makeDocument({
+      key: NodeInputKeyEnum.systemInputConfig,
+      label: 'Secret',
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      valueType: WorkflowIOValueTypeEnum.object,
+      inputList: [
+        { key: 'token', label: 'Token', inputType: 'secret' },
+        { key: 'other', label: 'Other', inputType: 'secret' }
+      ],
+      value: {
+        type: 'manual',
+        value: { token: { ref: ['deleted', 'text'] }, other: { value: 'keep' } }
+      }
+    });
+    document.nodes[1].flowNodeType = FlowNodeTypeEnum.tool;
+    const before = structuredClone(document);
+    const resolved = resolveWorkflowReferenceDocument({
+      document,
+      invalidReferencePolicy: 'asEmpty'
+    });
+
+    expect(resolved).toBe(document);
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toContainEqual(
+      expect.objectContaining({
+        code: WorkflowDiagnosticCodeEnum.referenceOutputNotFound,
+        nodeId: 'target',
+        inputKey: NodeInputKeyEnum.systemInputConfig
+      })
+    );
+    expect(document).toEqual(before);
   });
 });
 
@@ -204,6 +482,21 @@ describe('resolveWorkflowReferenceDocument', () => {
 });
 
 describe('validateWorkflow reference policy', () => {
+  it('reports a removed legacy dataset filter source in strict mode and clears it for clients', () => {
+    const document = makeDocument({
+      key: NodeInputKeyEnum.collectionFilterMatch,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden, FlowNodeInputTypeEnum.reference],
+      defaultValue: ['start', 'deleted']
+    });
+    document.nodes[1].flowNodeType = FlowNodeTypeEnum.agent;
+
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'error' })).toEqual([
+      expect.objectContaining({ code: WorkflowDiagnosticCodeEnum.referenceOutputNotFound })
+    ]);
+    expect(validateWorkflow(document, { invalidReferencePolicy: 'asEmpty' })).toEqual([]);
+    expect(document.nodes[1].inputs[0].defaultValue).toEqual(['start', 'deleted']);
+  });
+
   it.each(['error', 'asEmpty'] as const)(
     'leaves invalid inline expressions to the editor under the %s policy',
     (invalidReferencePolicy) => {
@@ -290,7 +583,7 @@ describe('node and global reference coverage', () => {
       client: [WorkflowDiagnosticCodeEnum.requiredInputMissing]
     },
     {
-      name: 'user global type mismatch',
+      name: 'user global reference type mismatch',
       value: [VARIABLE_NODE_ID, 'count'],
       required: true,
       strict: [WorkflowDiagnosticCodeEnum.referenceTypeMismatch],

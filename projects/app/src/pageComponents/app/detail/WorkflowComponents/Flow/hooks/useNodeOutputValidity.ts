@@ -25,7 +25,10 @@ export const useNodeOutputValidity = (nodeId: string) => {
 
   useEffect(() => {
     if (!node || !needsModel || loading || error) return;
-    const llmModelMap = model ? { [model.modelId]: model, [model.model]: model } : {};
+    const llmModelMap = {
+      byId: model ? { [model.modelId]: model.config } : {},
+      byLegacyName: model ? { [model.model]: model.config } : {}
+    };
     setNodes((nodes) => {
       const current = nodes.find((item) => item.id === nodeId);
       // 等待期间删除节点或修改输入后，旧详情不能回写；输出从最新状态计算以保留其他编辑。
