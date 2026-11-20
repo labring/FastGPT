@@ -5,7 +5,7 @@ import { MongoS3TTL } from '@fastgpt/service/common/s3/models/ttl';
 import { MongoS3UploadSession } from '@fastgpt/service/common/s3/accessLink/uploadSession/schema';
 import { S3_MULTIPART_COMPLETING_LEASE_MS } from '@fastgpt/service/common/s3/config/constants';
 import { MULTIPART_OBJECT_MARKER_METADATA_KEY } from '@fastgpt/global/common/file/constants';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { isFileNotFoundError } from '@fastgpt/service/common/s3/utils/assert';
 import type { UploadPolicy } from '@fastgpt/service/common/s3/uploadPolicy/type';
 
 const { S3BaseBucket } = await vi.importActual<
@@ -942,13 +942,16 @@ describe('S3BaseBucket historical key compatibility', () => {
     expect(storage.uploadObject).not.toHaveBeenCalled();
   });
 
-  it('maps missing-object errors in getFileStream to CommonErrEnum.fileNotFound', async () => {
+  it('preserves raw missing-object errors in getFileStream for downstream classifiers', async () => {
     const { storage, bucket } = createBucket();
-    const notFoundError = Object.assign(new Error('NoSuchKey'), { statusCode: 404 });
+    const notFoundError = Object.assign(new Error('NoSuchKey'), {
+      name: 'NoSuchKey',
+      statusCode: 404
+    });
     vi.spyOn(storage, 'downloadObject').mockRejectedValueOnce(notFoundError);
 
-    await expect(bucket.getFileStream('dataset/missing.txt')).rejects.toBe(
-      CommonErrEnum.fileNotFound
-    );
+    const caught = await bucket.getFileStream('dataset/missing.txt').catch((error) => error);
+    expect(caught).toBe(notFoundError);
+    expect(isFileNotFoundError(caught)).toBe(true);
   });
 });

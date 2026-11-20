@@ -349,6 +349,7 @@ describe('s3 short access link api', () => {
 
       expect(headRes.statusCode).toBe(200);
       expect(headRes.headers['Content-Length']).toBe(5);
+      expect(headRes.headers['Cache-Control']).toBe('no-store');
       expect(headRes.headers.Location).toBeUndefined();
       expect(generatePresignedGetUrl).toHaveBeenCalledTimes(1);
     } finally {

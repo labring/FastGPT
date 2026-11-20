@@ -1,6 +1,7 @@
 import { EventEmitter } from 'node:events';
 import { PassThrough, Readable, Writable } from 'node:stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import {
   handleS3ProxyDownload,
   handleS3ProxyUpload,
@@ -570,5 +571,19 @@ describe('handleS3ProxyUpload', () => {
     await expect(uploadPromise).rejects.toThrow('Upload request aborted');
     expect(uploadSignal?.aborted).toBe(true);
     expect(res.listenerCount('close')).toBe(0);
+  });
+});
+
+describe('resolveS3ProxyErrorResponse', () => {
+  it('maps raw storage missing-object errors to HTTP 404 fileNotFound', () => {
+    const noSuchKeyError = Object.assign(new Error('The specified key does not exist.'), {
+      name: 'NoSuchKey',
+      $metadata: { httpStatusCode: 404 }
+    });
+
+    expect(resolveS3ProxyErrorResponse(noSuchKeyError)).toEqual({
+      httpStatus: 404,
+      publicError: CommonErrEnum.fileNotFound
+    });
   });
 });

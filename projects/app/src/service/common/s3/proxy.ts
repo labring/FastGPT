@@ -19,6 +19,7 @@ import {
   DEFAULT_CONTENT_TYPE,
   ensureTextContentTypeCharset
 } from '@fastgpt/service/common/s3/utils/mime';
+import { isFileNotFoundError } from '@fastgpt/service/common/s3/utils/assert';
 import {
   canUseStorageDownloadRedirect,
   replaceS3UrlWithCdnEndpoint,
@@ -271,11 +272,13 @@ const resolveProxyUploadFileHint = ({
 export const handleS3ProxyDownload = async ({
   req,
   res,
-  payload
+  payload,
+  cacheControl = 'public, max-age=31536000'
 }: {
   req: NextApiRequest;
   res: NextApiResponse;
   payload: S3ProxyDownloadPayload;
+  cacheControl?: string;
 }) => {
   const { objectKey, bucketName } = payload;
   const bucket = global.s3BucketMap[bucketName];
@@ -306,7 +309,7 @@ export const handleS3ProxyDownload = async ({
       res.setHeader('Content-Length', metadata.contentLength);
     }
     res.setHeader('Content-Disposition', getContentDisposition({ filename, type: 'inline' }));
-    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    res.setHeader('Cache-Control', cacheControl);
   };
 
   try {
@@ -721,7 +724,7 @@ export function resolveS3ProxyErrorResponse(error: unknown): {
     };
   }
 
-  if (errorKey === CommonErrEnum.fileNotFound) {
+  if (errorKey === CommonErrEnum.fileNotFound || isFileNotFoundError(error)) {
     return {
       httpStatus: 404,
       publicError: CommonErrEnum.fileNotFound
