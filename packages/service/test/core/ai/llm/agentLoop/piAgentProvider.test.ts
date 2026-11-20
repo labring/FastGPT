@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { convertMessages } from '@mariozechner/pi-ai/openai-completions';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -302,6 +303,64 @@ describe('runPiAgentLoop', () => {
     agentToolToExecute.value = undefined;
     compressRequestMessagesMock.mockImplementation(async ({ messages }) => ({ messages }));
   });
+
+  it.each(['normal', 'compression failure', 'checkpoint'])(
+    'preserves tool image order in the SDK request after %s',
+    async (mode) => {
+      await runPiAgentLoop({
+        input: { messages: [{ role: 'user', content: 'question' }] },
+        runtime: {
+          llmParams: { model: 'gpt-5', useVision: true },
+          toolCatalog: { runtimeTools: [] },
+          executeTool: vi.fn()
+        }
+      });
+      if (mode === 'compression failure') {
+        compressRequestMessagesMock.mockRejectedValueOnce(new Error('compression failed'));
+      }
+      if (mode === 'checkpoint') {
+        compressRequestMessagesMock.mockImplementationOnce(async ({ messages }) => ({
+          messages,
+          contextCheckpoint: 'checkpoint'
+        }));
+      }
+      const context = [
+        {
+          role: 'toolResult',
+          toolCallId: 'call_1',
+          toolName: 'image_tool',
+          content: [
+            { type: 'text', text: 'A' },
+            { type: 'image', mimeType: 'image/png', data: 'aW1hZ2U=' },
+            { type: 'text', text: 'B' }
+          ],
+          isError: false,
+          timestamp: 1
+        }
+      ];
+      const original = structuredClone(context);
+      const result = await agentConstructorArgs[0].transformContext(context);
+      const outgoing = convertMessages(
+        {
+          api: 'openai-completions',
+          provider: 'openai',
+          id: 'gpt-5',
+          baseUrl: 'https://example.com/v1',
+          input: ['text', 'image']
+        } as any,
+        { messages: result },
+        {} as Parameters<typeof convertMessages>[2]
+      );
+      expect(outgoing.map((message: any) => message.role)).toEqual(['tool', 'user']);
+      expect(outgoing[1].content).toEqual([
+        { type: 'text', text: 'Tool result call_1:' },
+        { type: 'text', text: 'A' },
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,aW1hZ2U=' } },
+        { type: 'text', text: 'B' }
+      ]);
+      if (mode !== 'checkpoint') expect(context).toEqual(original);
+    }
+  );
 
   it('passes the business recovery hook through piAgent context transformation', async () => {
     agentRunTransformContext.value = true;
@@ -1431,6 +1490,115 @@ describe('runPiAgentLoop', () => {
     );
   });
 
+  it('removes blocked images from pi interactive resume', async () => {
+    const modelInput = await import('@fastgpt/service/core/plugin/moderation/modelInput');
+    const { MODERATION_BLOCKED_REPLACE_TEXT } =
+      await import('@fastgpt/global/core/plugin/moderation/constants');
+    const moderationSpy = vi
+      .spyOn(modelInput, 'checkToolResultModeration')
+      .mockResolvedValue(MODERATION_BLOCKED_REPLACE_TEXT);
+    const emitEvent = vi.fn();
+    const executeInteractiveTool = vi.fn().mockResolvedValue({
+      response: 'selected project A',
+      content: [
+        {
+          type: 'image_url',
+          image_url: {
+            url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aN8AAAAASUVORK5CYII='
+          }
+        }
+      ],
+      assistantMessages: [],
+      assistantResponses: [{ text: { content: 'selected project A' } }],
+      usages: [],
+      stop: false
+    });
+
+    const result = await runPiAgentLoop({
+      input: {
+        messages: [
+          {
+            role: 'assistant',
+            content: null,
+            tool_calls: [
+              {
+                id: 'call_search',
+                type: 'function',
+                function: {
+                  name: 'search',
+                  arguments: '{"q":"FastGPT"}'
+                }
+              }
+            ]
+          }
+        ],
+        providerState: {
+          piMessages: [
+            {
+              role: 'toolResult',
+              toolCallId: 'call_search',
+              toolName: 'search',
+              content: [{ type: 'text', text: 'waiting for selection' }],
+              details: {},
+              isError: false,
+              timestamp: 1
+            }
+          ]
+        },
+        childrenInteractiveParams: {
+          childrenResponse: {
+            type: 'userSelect',
+            entryNodeIds: ['select_1']
+          },
+          toolCallId: 'call_search'
+        }
+      },
+      runtime: {
+        llmParams: { model: 'gpt-5' },
+        toolCatalog: { runtimeTools: [] },
+        executeTool: vi.fn(),
+        executeInteractiveTool,
+        emitEvent,
+        checkIsStopping: vi.fn(() => false)
+      }
+    });
+
+    expect(executeInteractiveTool).toHaveBeenCalledWith(
+      expect.objectContaining({
+        call: expect.objectContaining({
+          id: 'call_search',
+          function: expect.objectContaining({ name: 'search' })
+        })
+      })
+    );
+    expect(agentConstructorArgs.at(-1).initialState.messages).toEqual([
+      expect.objectContaining({
+        role: 'toolResult',
+        toolCallId: 'call_search',
+        content: [{ type: 'text', text: MODERATION_BLOCKED_REPLACE_TEXT }]
+      })
+    ]);
+    expect(
+      JSON.stringify({
+        result,
+        events: emitEvent.mock.calls,
+        state: agentConstructorArgs.at(-1).initialState.messages
+      })
+    ).not.toContain(
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aN8AAAAASUVORK5CYII='
+    );
+    expect(agentContinueMock).toHaveBeenCalledTimes(1);
+    expect(agentPromptMock).not.toHaveBeenCalled();
+    expect(result.status).toBe('done');
+    expect(emitEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'tool_run_end',
+        response: MODERATION_BLOCKED_REPLACE_TEXT
+      })
+    );
+    moderationSpy.mockRestore();
+  });
+
   it('normalizes an empty child interactive response before continuing pi context', async () => {
     const events: any[] = [];
     const result = await runPiAgentLoop({
@@ -1505,6 +1673,72 @@ describe('runPiAgentLoop', () => {
       content: 'none'
     });
     expect(agentContinueMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps structured content when a pi child tool recovers after Ask', async () => {
+    const events: any[] = [];
+    const content = [
+      { type: 'text' as const, text: 'child resumed' },
+      {
+        type: 'image_url' as const,
+        image_url: { url: 'https://files.example.com/child.png' }
+      }
+    ];
+
+    await runPiAgentLoop({
+      input: {
+        messages: [
+          {
+            role: 'assistant',
+            content: null,
+            tool_calls: [
+              {
+                id: 'call_child',
+                type: 'function',
+                function: { name: 'child_workflow', arguments: '{}' }
+              }
+            ]
+          },
+          { role: 'tool', tool_call_id: 'call_child', content: 'waiting for selection' }
+        ],
+        providerState: {
+          piMessages: [
+            {
+              role: 'toolResult',
+              toolCallId: 'call_child',
+              toolName: 'child_workflow',
+              content: [{ type: 'text', text: 'waiting for selection' }],
+              details: {},
+              isError: false,
+              timestamp: 1
+            }
+          ]
+        },
+        childrenInteractiveParams: {
+          childrenResponse: { type: 'userSelect', entryNodeIds: ['select'] },
+          toolCallId: 'call_child'
+        }
+      },
+      runtime: {
+        llmParams: { model: 'gpt-5' },
+        toolCatalog: { runtimeTools: [] },
+        executeTool: vi.fn(),
+        executeInteractiveTool: vi.fn().mockResolvedValue({
+          response: 'child resumed',
+          content,
+          assistantMessages: [],
+          usages: [],
+          stop: false
+        }),
+        checkIsStopping: vi.fn(() => false),
+        emitEvent: (event) => events.push(event)
+      }
+    });
+
+    expect(events.find((event) => event.type === 'tool_run_end')).toMatchObject({
+      call: { id: 'call_child' },
+      content
+    });
   });
 
   it('turns a pi interactive tool resume exception into a tool_run_end error', async () => {
@@ -2145,7 +2379,15 @@ describe('runPiAgentLoop', () => {
 
     runSandboxToolsMock.mockResolvedValueOnce({
       success: false,
-      response: 'raw toxic stderr leak'
+      response: 'raw toxic stderr leak',
+      content: [
+        {
+          type: 'image_url',
+          image_url: {
+            url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aN8AAAAASUVORK5CYII='
+          }
+        }
+      ]
     });
 
     const emittedEvents: any[] = [];
@@ -2175,9 +2417,29 @@ describe('runPiAgentLoop', () => {
       }
     });
 
+    runSandboxToolsMock.mockResolvedValueOnce({
+      success: false,
+      response: 'raw toxic stderr leak',
+      content: [
+        {
+          type: 'image_url',
+          image_url: {
+            url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aN8AAAAASUVORK5CYII='
+          }
+        }
+      ]
+    });
+    const tool = agentConstructorArgs
+      .at(-1)
+      .initialState.tools.find((item: any) => item.name === 'sandbox_shell');
+    const piResult = await tool.execute('call_direct', { command: 'cat /tmp/out' });
+    expect(piResult.content).toEqual([{ type: 'text', text: MODERATION_BLOCKED_REPLACE_TEXT }]);
     expect(result.status).toBe('done');
     const toolEndEvent = emittedEvents.find((e) => e.type === 'tool_run_end');
     expect(toolEndEvent?.response).toBe(MODERATION_BLOCKED_REPLACE_TEXT);
     expect(toolEndEvent?.errorMessage).toBeUndefined();
+    expect(JSON.stringify({ result, emittedEvents })).not.toContain(
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aN8AAAAASUVORK5CYII='
+    );
   });
 });

@@ -7,8 +7,12 @@ import {
 
 import {
   loadRequestMessages,
-  filterGPTMessageByMaxContext
+  filterGPTMessageByMaxContext,
+  isSandboxPreviewFileUrl,
+  maskImagePlaceholderUrl,
+  TOOL_IMAGE_DOWNLOAD_TIMEOUT_MS
 } from '@fastgpt/service/core/ai/llm/utils';
+import { providerImageMimeTypes } from '@fastgpt/global/common/file/image/utils';
 import {
   ChatCompletionContentPartInputAudioSchema,
   type ChatCompletionMessageParam
@@ -56,11 +60,13 @@ const mockGetImageBase64 = vi.mocked(getImageBase64);
 const mockAxiosHead = vi.mocked(axios.head);
 const mockAxiosGet = vi.mocked(axios.get);
 const originalMultipleDataToBase64 = getTestInstanceConfig().feature.multipleDataToBase64;
+const originalPreviewProxyUrl = getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl;
 
 describe('filterGPTMessageByMaxContext function tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getTestInstanceConfig().feature.multipleDataToBase64 = originalMultipleDataToBase64;
+    getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl = originalPreviewProxyUrl;
     mockCountGptMessagesTokens.mockResolvedValue(10);
   });
 
@@ -441,6 +447,8 @@ describe('loadRequestMessages function tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getTestInstanceConfig().feature.multipleDataToBase64 = originalMultipleDataToBase64;
+    // 预览代理地址也被本组用例改动，逐例复位，避免后续用例继承配置。
+    getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl = originalPreviewProxyUrl;
     mockGetImageBase64.mockResolvedValue({
       completeBase64: 'data:image/png;base64,test',
       base64: 'test',
@@ -1502,6 +1510,625 @@ describe('loadRequestMessages function tests', () => {
       expect(result[1].content).toBe('Tool result');
     });
 
+    it('should keep tool text and move image parts into a following user message', async () => {
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call1',
+          content: [
+            { type: 'text', text: 'Look at this image' },
+            { type: 'image_url', image_url: { url: 'https://example.com/a.png' } }
+          ]
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages, useVision: true });
+
+      expect(result).toHaveLength(3);
+      expect(result[1].role).toBe(ChatCompletionRequestMessageRoleEnum.Tool);
+      expect(result[1].content).toBe('Look at this image');
+      expect(result[2].role).toBe(ChatCompletionRequestMessageRoleEnum.User);
+      expect(result[2].content).toEqual([
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,test' } }
+      ]);
+      expect(mockGetImageBase64).toHaveBeenCalledWith('https://example.com/a.png', {
+        timeoutMs: expect.any(Number),
+        allowedMimeTypes: providerImageMimeTypes
+      });
+      expect(mockGetImageBase64.mock.calls[0][1]?.timeoutMs).toBeLessThanOrEqual(
+        TOOL_IMAGE_DOWNLOAD_TIMEOUT_MS
+      );
+    });
+
+    it('keeps each value next to its images in the provider vision message', async () => {
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
+      mockGetImageBase64
+        .mockResolvedValueOnce({
+          completeBase64: 'data:image/png;base64,img1',
+          base64: 'img1',
+          mime: 'image/png'
+        })
+        .mockResolvedValueOnce({
+          completeBase64: 'data:image/png;base64,img2',
+          base64: 'img2',
+          mime: 'image/png'
+        });
+      const content = [
+        { type: 'text' as const, text: '{"jobId":"1"}' },
+        { type: 'text' as const, text: '[1]' },
+        { type: 'image_url' as const, image_url: { url: 'https://example.com/1.png' } },
+        { type: 'text' as const, text: '[2]' },
+        { type: 'image_url' as const, image_url: { url: 'https://example.com/2.png' } }
+      ];
+      const result = await loadRequestMessages({
+        useVision: true,
+        messages: [
+          { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Tool,
+            tool_call_id: 'call1',
+            content
+          }
+        ]
+      });
+      expect(result[2].content).toEqual([
+        { type: 'text', text: '{"jobId":"1"}' },
+        { type: 'text', text: '[1]' },
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,img1' } },
+        { type: 'text', text: '[2]' },
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,img2' } }
+      ]);
+    });
+
+    it('preserves the order of complete multi-text tool content', async () => {
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
+      const image = { type: 'image_url' as const, image_url: { url: 'https://example.com/1.png' } };
+      const result = await loadRequestMessages({
+        useVision: true,
+        messages: [
+          { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Tool,
+            tool_call_id: 'call1',
+            content: [{ type: 'text', text: 'one' }, { type: 'text', text: 'two' }, image]
+          }
+        ]
+      });
+      expect(result[2].content).toEqual([
+        { type: 'text', text: 'one' },
+        { type: 'text', text: 'two' },
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,test' } }
+      ]);
+    });
+
+    it.each([false, true])(
+      'should drop a tool image that fails to load and keep the tool text (multipleDataToBase64=%s)',
+      async (multipleDataToBase64) => {
+        getTestInstanceConfig().feature.multipleDataToBase64 = multipleDataToBase64;
+        mockGetImageBase64.mockRejectedValue(new Error('download failed'));
+        const messages: ChatCompletionMessageParam[] = [
+          { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Tool,
+            tool_call_id: 'call1',
+            content: [
+              { type: 'text', text: 'Look at this image' },
+              { type: 'image_url', image_url: { url: 'https://example.com/gone.png' } }
+            ]
+          }
+        ];
+
+        // 无论 multipleDataToBase64 是否开启，工具图片失效都不能让整轮请求失败：静默丢图、保留 tool 文本。
+        const result = await loadRequestMessages({ messages, useVision: true });
+
+        expect(result).toHaveLength(2);
+        expect(result[1].role).toBe(ChatCompletionRequestMessageRoleEnum.Tool);
+        expect(result[1].content).toBe('Look at this image');
+        expect(mockGetImageBase64).toHaveBeenCalledWith('https://example.com/gone.png', {
+          timeoutMs: expect.any(Number),
+          allowedMimeTypes: providerImageMimeTypes
+        });
+      }
+    );
+
+    it('should append tool images after every tool result of the same assistant turn', async () => {
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          content: '',
+          tool_calls: [
+            {
+              id: 'call_a',
+              type: 'function',
+              function: { name: 'get_file_url', arguments: '{}' }
+            },
+            {
+              id: 'call_b',
+              type: 'function',
+              function: { name: 'get_file_url', arguments: '{}' }
+            }
+          ]
+        },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call_a',
+          content: [
+            { type: 'text', text: 'files' },
+            { type: 'image_url', image_url: { url: 'https://example.com/a.png' } }
+          ]
+        },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call_b',
+          content: 'plain result'
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages, useVision: true });
+
+      // 同一轮的全部 tool 结果必须连续回填，图片消息统一追加在其后。
+      expect(result.map((item) => item.role)).toEqual([
+        ChatCompletionRequestMessageRoleEnum.User,
+        ChatCompletionRequestMessageRoleEnum.Assistant,
+        ChatCompletionRequestMessageRoleEnum.Tool,
+        ChatCompletionRequestMessageRoleEnum.Tool,
+        ChatCompletionRequestMessageRoleEnum.User
+      ]);
+      expect((result[2] as any).tool_call_id).toBe('call_a');
+      expect((result[3] as any).tool_call_id).toBe('call_b');
+      expect(result[4].content).toEqual([
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,test' } }
+      ]);
+    });
+
+    it('should convert tool image urls to base64 when configured', async () => {
+      getTestInstanceConfig().feature.multipleDataToBase64 = true;
+      mockGetImageBase64.mockResolvedValue({
+        completeBase64: 'data:image/png;base64,converted',
+        base64: 'converted',
+        mime: 'image/png'
+      });
+
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call1',
+          content: [{ type: 'image_url', image_url: { url: 'https://example.com/a.png' } }]
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages, useVision: true });
+
+      expect(result).toHaveLength(3);
+      expect(result[1].role).toBe(ChatCompletionRequestMessageRoleEnum.Tool);
+      expect(result[1].content).toBe('none');
+      expect(result[2].role).toBe(ChatCompletionRequestMessageRoleEnum.User);
+      expect(result[2].content).toEqual([
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,converted' } }
+      ]);
+    });
+
+    it('should inline sandbox preview image urls before sending', async () => {
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
+      getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl =
+        'https://sandbox-preview.example.com';
+      mockGetImageBase64.mockResolvedValue({
+        completeBase64: 'data:image/png;base64,inlined',
+        base64: 'inlined',
+        mime: 'image/png'
+      });
+
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call1',
+          content: [
+            {
+              type: 'image_url',
+              image_url: {
+                url: 'https://sandbox-preview.example.com/preview/sandbox-1/session-1/a.png'
+              }
+            }
+          ]
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages, useVision: true });
+
+      expect(result).toHaveLength(3);
+      expect(result[2].content).toEqual([
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,inlined' } }
+      ]);
+      // 沙箱预览代理可能在内网，取图时按配置 origin 走受限通道。
+      expect(mockGetImageBase64).toHaveBeenCalledWith(
+        'https://sandbox-preview.example.com/preview/sandbox-1/session-1/a.png',
+        {
+          trustedOrigin: 'https://sandbox-preview.example.com',
+          timeoutMs: expect.any(Number),
+          allowedMimeTypes: providerImageMimeTypes
+        }
+      );
+    });
+
+    it('should recognize preview urls when the configured base carries query or default port', async () => {
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
+      // builder 会规范化 base：host 小写、去掉默认端口与 query；识别逻辑必须一致。
+      getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl =
+        'https://Sandbox-Preview.Example.com:443/?v=1#x';
+      mockGetImageBase64.mockResolvedValue({
+        completeBase64: 'data:image/png;base64,inlined',
+        base64: 'inlined',
+        mime: 'image/png'
+      });
+
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call1',
+          content: [
+            {
+              type: 'image_url',
+              image_url: {
+                url: 'https://sandbox-preview.example.com/preview/sandbox-1/session-1/a.png'
+              }
+            }
+          ]
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages, useVision: true });
+
+      expect(result).toHaveLength(3);
+      expect(mockGetImageBase64).toHaveBeenCalledWith(
+        'https://sandbox-preview.example.com/preview/sandbox-1/session-1/a.png',
+        {
+          trustedOrigin: 'https://Sandbox-Preview.Example.com:443/?v=1#x',
+          timeoutMs: expect.any(Number),
+          allowedMimeTypes: providerImageMimeTypes
+        }
+      );
+    });
+
+    it('should drop sandbox preview images when inlining fails', async () => {
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
+      getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl =
+        'https://sandbox-preview.example.com';
+      mockGetImageBase64.mockRejectedValue(new Error('download failed'));
+
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call1',
+          content: [
+            {
+              type: 'image_url',
+              image_url: {
+                url: 'https://sandbox-preview.example.com/preview/sandbox-1/session-1/a.png'
+              }
+            }
+          ]
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages, useVision: true });
+
+      expect(result).toHaveLength(2);
+      expect(result[1].role).toBe(ChatCompletionRequestMessageRoleEnum.Tool);
+      expect(result[1].content).toBe('none');
+      expect(mockGetImageBase64).toHaveBeenCalledTimes(1);
+    });
+
+    it('should inline non-preview remote tool image urls through public fetch without trustedOrigin', async () => {
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
+      getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl =
+        'https://sandbox-preview.example.com';
+
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call1',
+          content: [{ type: 'image_url', image_url: { url: 'https://example.com/a.png' } }]
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages, useVision: true });
+
+      expect(result[2].content).toEqual([
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,test' } }
+      ]);
+      // 非沙箱预览地址不得附带 trustedOrigin，继续受公共 SSRF 策略约束。
+      expect(mockGetImageBase64).toHaveBeenCalledWith('https://example.com/a.png', {
+        timeoutMs: expect.any(Number),
+        allowedMimeTypes: providerImageMimeTypes
+      });
+    });
+
+    it('should fetch updated or recovered images independently for distinct tool calls sharing the same URL', async () => {
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
+      const fileContext = createFileClassificationContext();
+      mockGetImageBase64
+        .mockResolvedValueOnce({
+          completeBase64: 'data:image/png;base64,v1',
+          base64: 'v1',
+          mime: 'image/png'
+        })
+        .mockResolvedValueOnce({
+          completeBase64: 'data:image/png;base64,v2',
+          base64: 'v2',
+          mime: 'image/png'
+        });
+
+      const firstRoundMessages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Render chart' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call_v1',
+          content: [
+            { type: 'text', text: 'version 1' },
+            { type: 'image_url', image_url: { url: 'https://example.com/chart.png' } }
+          ]
+        }
+      ];
+      const round1 = await loadRequestMessages({
+        messages: firstRoundMessages,
+        useVision: true,
+        fileContext
+      });
+      expect(round1[2].content).toEqual([
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,v1' } }
+      ]);
+
+      // 新工具调用返回同一可更新 URL：历史 call_v1 复用 v1，新 call_v2 独立拉取 v2。
+      const secondRoundMessages: ChatCompletionMessageParam[] = [
+        ...firstRoundMessages,
+        { role: ChatCompletionRequestMessageRoleEnum.Assistant, content: 'Updating chart' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call_v2',
+          content: [
+            { type: 'text', text: 'version 2' },
+            { type: 'image_url', image_url: { url: 'https://example.com/chart.png' } }
+          ]
+        }
+      ];
+      const round2 = await loadRequestMessages({
+        messages: secondRoundMessages,
+        useVision: true,
+        fileContext
+      });
+      expect(mockGetImageBase64).toHaveBeenCalledTimes(2);
+      expect(round2[2].content).toEqual([
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,v1' } }
+      ]);
+      expect(round2[5].content).toEqual([
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,v2' } }
+      ]);
+
+      // 首次下载失败后，新工具调用返回同一 URL 且恢复可用时应能成功拉取。
+      mockGetImageBase64.mockRejectedValueOnce(new Error('temporary 503')).mockResolvedValueOnce({
+        completeBase64: 'data:image/png;base64,recovered',
+        base64: 'recovered',
+        mime: 'image/png'
+      });
+      const retryContext = createFileClassificationContext();
+      const failedRound = await loadRequestMessages({
+        messages: [
+          { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Fetch' },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Tool,
+            tool_call_id: 'call_fail',
+            content: [
+              { type: 'text', text: 'attempt 1' },
+              { type: 'image_url', image_url: { url: 'https://example.com/retry.png' } }
+            ]
+          }
+        ],
+        useVision: true,
+        fileContext: retryContext
+      });
+      expect(failedRound).toHaveLength(2);
+
+      const recoveredRound = await loadRequestMessages({
+        messages: [
+          { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Fetch' },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Tool,
+            tool_call_id: 'call_fail',
+            content: [
+              { type: 'text', text: 'attempt 1' },
+              { type: 'image_url', image_url: { url: 'https://example.com/retry.png' } }
+            ]
+          },
+          { role: ChatCompletionRequestMessageRoleEnum.Assistant, content: 'Retrying' },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Tool,
+            tool_call_id: 'call_ok',
+            content: [
+              { type: 'text', text: 'attempt 2' },
+              { type: 'image_url', image_url: { url: 'https://example.com/retry.png' } }
+            ]
+          }
+        ],
+        useVision: true,
+        fileContext: retryContext
+      });
+      expect(recoveredRound[recoveredRound.length - 1].content).toEqual([
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,recovered' } }
+      ]);
+    });
+
+    it('should reuse downloaded tool images within the same fileContext across rounds without cross-session caching', async () => {
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
+      const fileContext = createFileClassificationContext();
+      const baseMessages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call1',
+          content: [
+            { type: 'text', text: 'chart ready' },
+            { type: 'image_url', image_url: { url: 'https://example.com/chart.png' } }
+          ]
+        }
+      ];
+
+      const round1 = await loadRequestMessages({
+        messages: baseMessages,
+        useVision: true,
+        fileContext
+      });
+      // 第二轮仅追加普通问答，历史 tool 消息中的同一张 PNG 不得重复下载。
+      const round2 = await loadRequestMessages({
+        messages: [
+          ...baseMessages,
+          { role: ChatCompletionRequestMessageRoleEnum.Assistant, content: 'Done' },
+          { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Follow up' }
+        ],
+        useVision: true,
+        fileContext
+      });
+
+      expect(mockGetImageBase64).toHaveBeenCalledTimes(1);
+      expect(round1[2].content).toEqual([
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,test' } }
+      ]);
+      expect(round2[2].content).toEqual([
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,test' } }
+      ]);
+
+      // 新会话使用独立 fileContext，不跨会话共享缓存。
+      await loadRequestMessages({
+        messages: baseMessages,
+        useVision: true,
+        fileContext: createFileClassificationContext()
+      });
+      expect(mockGetImageBase64).toHaveBeenCalledTimes(2);
+    });
+
+    it('should limit concurrent tool image downloads across historical tool messages', async () => {
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
+      let active = 0;
+      let maxActive = 0;
+      mockGetImageBase64.mockImplementation(async (url: string) => {
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        active -= 1;
+        return {
+          completeBase64: `data:image/png;base64,${Buffer.from(url).toString('base64')}`,
+          base64: Buffer.from(url).toString('base64'),
+          mime: 'image/png'
+        };
+      });
+
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+        ...Array.from({ length: 8 }, (_, i) => ({
+          role: ChatCompletionRequestMessageRoleEnum.Tool as const,
+          tool_call_id: `call_${i}`,
+          content: [
+            { type: 'image_url' as const, image_url: { url: `https://example.com/img_${i}.png` } }
+          ]
+        }))
+      ];
+
+      const result = await loadRequestMessages({
+        messages,
+        useVision: true,
+        fileContext: createFileClassificationContext()
+      });
+
+      expect(mockGetImageBase64).toHaveBeenCalledTimes(8);
+      expect(maxActive).toBeLessThanOrEqual(4);
+      expect(result[result.length - 1].content).toHaveLength(8);
+    });
+
+    it('should normalize uppercase inline tool image data URIs without fetching', async () => {
+      getTestInstanceConfig().feature.multipleDataToBase64 = true;
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call1',
+          content: [
+            {
+              type: 'image_url',
+              image_url: { url: 'DATA:IMAGE/PNG;BASE64,aW1hZ2U=' }
+            }
+          ]
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages, useVision: true });
+
+      expect(result[2].content).toEqual([
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,aW1hZ2U=' } }
+      ]);
+      expect(mockGetImageBase64).not.toHaveBeenCalled();
+    });
+
+    it('should cap tool image downloads to maxToolImagePartAmount before loading', async () => {
+      getTestInstanceConfig().feature.multipleDataToBase64 = false;
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call1',
+          content: Array.from({ length: 6 }, (_, i) => ({
+            type: 'image_url' as const,
+            image_url: { url: `https://example.com/${i}.png` }
+          }))
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages, useVision: true });
+
+      expect(mockGetImageBase64).toHaveBeenCalledTimes(4);
+      expect(result[2].content).toHaveLength(4);
+    });
+
+    it('should drop tool images and collapse single text part without vision', async () => {
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call1',
+          content: [
+            { type: 'text', text: 'Only text survives' },
+            { type: 'image_url', image_url: { url: 'https://example.com/a.png' } }
+          ]
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages });
+
+      expect(result[1].content).toBe('Only text survives');
+    });
+
+    it('should normalize empty tool content parts to none', async () => {
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call1',
+          content: []
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages });
+
+      expect(result[1].content).toBe('none');
+    });
+
     it('should handle user message with empty content as null', async () => {
       const messages: ChatCompletionMessageParam[] = [
         { role: ChatCompletionRequestMessageRoleEnum.User, content: '' }
@@ -1608,5 +2235,46 @@ describe('loadRequestMessages function tests', () => {
         }
       ]);
     });
+  });
+});
+
+describe('sandbox preview url helpers', () => {
+  beforeEach(() => {
+    getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl = originalPreviewProxyUrl;
+  });
+
+  it('should detect sandbox preview file urls by env prefix', () => {
+    getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl =
+      'https://sandbox-preview.example.com/';
+
+    expect(isSandboxPreviewFileUrl('https://sandbox-preview.example.com/preview/s/a/b.png')).toBe(
+      true
+    );
+    expect(isSandboxPreviewFileUrl('https://sandbox-preview.example.com/other/a.png')).toBe(false);
+    expect(isSandboxPreviewFileUrl('https://example.com/a.png')).toBe(false);
+  });
+
+  it('should treat every url as non-preview when the env is unset', () => {
+    getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl = '';
+
+    expect(isSandboxPreviewFileUrl('https://sandbox-preview.example.com/preview/s/a/b.png')).toBe(
+      false
+    );
+  });
+
+  it('should mask sandbox preview urls in image placeholders', () => {
+    getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl =
+      'https://sandbox-preview.example.com';
+
+    expect(maskImagePlaceholderUrl('https://sandbox-preview.example.com/preview/s/a/b.png')).toBe(
+      'sandbox preview file'
+    );
+    expect(maskImagePlaceholderUrl('https://example.com/a.png')).toBe('https://example.com/a.png');
+  });
+
+  it('should leave remote urls untouched in image placeholders when the env is unset', () => {
+    getTestInstanceConfig().subservice.agentSandbox.proxy.previewUrl = '';
+
+    expect(maskImagePlaceholderUrl('https://example.com/a.png')).toBe('https://example.com/a.png');
   });
 });
