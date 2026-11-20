@@ -49,3 +49,9 @@ LLM、Embedding、Rerank 固定为百万 Tokens，TTS 固定为百万字符；�
 ## STT 后续扩展
 
 STT 新增按每百万 Tokens 或每 60 秒计价，通过后续启动迁移为本设计形成的旧 `pricing.unitPrice` 补齐 duration 类型。具体规则见 [STT 用量与计费](./stt-usage-billing.md)。其他模型的百万单位及历史迁移规则不变。
+
+## LLM 阶梯输入上限回退为 K Tokens
+
+单价（`inputPrice`、`outputPrice`、`unitPrice`）维持每百万 Tokens 计费不变，LLM 阶梯输入区间上限 `pricing.tiers[].maxInputTokens` 调整回 **K Tokens**（即 `inputTokens / 1000 <= maxInputTokens`），表格列头同步标明 `输入区间：K Tokens`、`输入价格/M Tokens`、`输出价格/M Tokens`。
+
+`maxInputTokens` 约束为正整数（K Tokens），4.18.0 已将 STT 计价类型回填与 LLM 阶梯上限转换合并为多阶段独立后台迁移 `20261120_migrate_model_pricing`（模型价格迁移）：依次执行 `stt` 分批回填、`llmTiers` 单事务 M → K 转换（`Math.max(1, Math.round(val * 1000))`，任一阶梯上限 `> 10` 时整条跳过）与 `validation` 联合校验。
