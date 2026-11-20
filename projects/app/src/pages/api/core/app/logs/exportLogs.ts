@@ -35,7 +35,7 @@ import { getTimezoneCodeFromStr } from '@fastgpt/global/common/time/timezone';
 import { getLocationFromIp } from '@fastgpt/service/common/geo';
 import { getDisplayChatTitle } from '@fastgpt/service/core/chat/title';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
-import { AppVersionCollectionName } from '@fastgpt/service/core/app/version/schema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { ExportChatLogsBodySchema } from '@fastgpt/global/openapi/core/app/log/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { isUnselectedLogUserFilter } from '@fastgpt/global/core/app/logs/utils';
@@ -114,6 +114,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
 
   // Get members
   const memberDisplayMap = await getTeamMemberMap({ teamId, fields: '_id name' });
+  const needVersionName = logKeys.includes(AppLogKeysEnum.VERSION_NAME);
 
   const where = buildAppChatLogFilter({
     appId,
@@ -256,31 +257,6 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
         }
       },
       {
-        $lookup: {
-          from: AppVersionCollectionName,
-          // localField/foreignField 不能与 pipeline 同时使用：MongoDB 4.4 或 FCV=4.4 会直接
-          // 拒绝该聚合，导致导出恒为空表头。改用 let + $match $expr，全版本兼容。
-          // 历史会话（appVersionId 4.14.4 才引入）可能没有该字段，$expr 中的 missing
-          // 不会改写成 _id 索引查找，会退化为逐条全表扫描 app_versions。先归一成 null，
-          // 仍按 _id 等值索引查找（索引边界 [null, null]，单次点查）。
-          let: { versionId: { $ifNull: ['$appVersionId', null] } },
-          pipeline: [
-            {
-              $match: {
-                $expr: { $eq: ['$_id', '$$versionId'] }
-              }
-            },
-            {
-              $project: {
-                versionName: 1,
-                _id: 0
-              }
-            }
-          ],
-          as: 'versionData'
-        }
-      },
-      {
         $addFields: {
           messageCount: { $ifNull: [{ $arrayElemAt: ['$chatData.messageCount', 0] }, 0] },
           userGoodFeedbackCount: {
@@ -358,8 +334,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
                 value: '$$item.value'
               }
             }
-          },
-          versionName: { $ifNull: [{ $arrayElemAt: ['$versionData.versionName', 0] }, null] }
+          }
         }
       },
       {
@@ -383,7 +358,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
           totalPoints: 1,
           outLinkUid: 1,
           tmbId: 1,
-          versionName: 1,
+          ...(needVersionName ? { appVersionId: 1 } : {}),
           userGoodFeedbackItems: 1,
           userBadFeedbackItems: 1,
           customFeedbackItems: 1,
@@ -398,6 +373,30 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       ...readFromSecondary
     }
   ).cursor({ batchSize: 1000 });
+
+  const versionNameMap = new Map<string, string>();
+  const loadVersionNames = async (batch: any[]) => {
+    if (!needVersionName) return;
+    const missingIds: Types.ObjectId[] = [];
+    for (const doc of batch) {
+      if (!doc.appVersionId || !Types.ObjectId.isValid(doc.appVersionId)) continue;
+      const idStr = String(doc.appVersionId);
+      if (!versionNameMap.has(idStr)) {
+        versionNameMap.set(idStr, '');
+        missingIds.push(new Types.ObjectId(idStr));
+      }
+    }
+    if (missingIds.length === 0) return;
+
+    const versions = await MongoAppVersion.find(
+      { _id: { $in: missingIds } },
+      { _id: 1, versionName: 1 },
+      readFromSecondary
+    ).lean();
+    for (const version of versions) {
+      versionNameMap.set(String(version._id), version.versionName || '');
+    }
+  };
 
   /** 每个固定批次先批量取名，再按响应背压输出，避免逐行查询和积压整份导出。 */
   const write = async (value: string) => {
@@ -485,7 +484,8 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       [AppLogKeysEnum.ERROR_COUNT]: () => doc.errorCount || 0,
       [AppLogKeysEnum.POINTS]: () => (doc.totalPoints ? Number(doc.totalPoints).toFixed(2) : 0),
       [AppLogKeysEnum.REGION]: () => region,
-      versionName: () => doc.versionName || '',
+      [AppLogKeysEnum.VERSION_NAME]: () =>
+        doc.appVersionId ? versionNameMap.get(String(doc.appVersionId)) || '' : '',
       chatDetails: () => formatJsonString(doc.chatDetails || [])
     };
 
@@ -507,7 +507,10 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   };
 
   const flush = async (batch: any[]) => {
-    const rows = await extendChatPublishSources({ list: batch, teamId, appId });
+    const [rows] = await Promise.all([
+      extendChatPublishSources({ list: batch, teamId, appId }),
+      loadVersionNames(batch)
+    ]);
     for (const row of rows) {
       if (res.destroyed || res.writableEnded) break;
       await write(renderRow(row));

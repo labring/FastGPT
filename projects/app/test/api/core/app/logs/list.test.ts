@@ -1115,7 +1115,7 @@ describe('logs list API - errorFilter', () => {
     }
   });
 
-  it('导出缺失 appVersionId 的历史会话时归一化版本关联，仍可按 _id 索引', async () => {
+  it('导出版本名按需批量查缓存，缺失 appVersionId 的历史会话正常留空且不走 $lookup', async () => {
     const version = await MongoAppVersion.create({
       tmbId: testTmbId,
       appId: testAppId,
@@ -1135,11 +1135,14 @@ describe('logs list API - errorFilter', () => {
     };
     // 用 collection 写入，确保历史会话真的不带 appVersionId 字段。
     await MongoChat.collection.insertMany([
-      { ...base, chatId: 'chat-with-version', appVersionId: version._id },
-      { ...base, chatId: 'chat-without-version' }
+      { ...base, chatId: 'chat-with-version-1', appVersionId: version._id },
+      { ...base, chatId: 'chat-with-version-2', appVersionId: version._id },
+      { ...base, chatId: 'chat-without-version' },
+      { ...base, chatId: 'chat-deleted-version', appVersionId: new Types.ObjectId() }
     ] as any);
 
     const aggregateSpy = vi.spyOn(MongoChat, 'aggregate');
+    const versionFindSpy = vi.spyOn(MongoAppVersion, 'find');
     try {
       const exported = await StreamCall(exportLogs, {
         auth: authUser,
@@ -1154,24 +1157,35 @@ describe('logs list API - errorFilter', () => {
         }
       });
       expect(exported.code).toBe(200);
-      expect(exported.raw).toContain('\nchat-with-version,version-with-id,');
+      expect(exported.raw).toContain('\nchat-with-version-1,version-with-id,');
+      expect(exported.raw).toContain('\nchat-with-version-2,version-with-id,');
       expect(exported.raw).toContain('\nchat-without-version,,');
+      expect(exported.raw).toContain('\nchat-deleted-version,,');
 
-      // 缺少 appVersionId 时，$expr 里的 missing 不会改写成 _id 索引查找，
-      // 会逐条全表扫描 app_versions。归一成 null 后才能继续走索引。
-      const pipeline = aggregateSpy.mock.calls
-        .map((call) => call[0] as any[])
-        .find((stages) =>
-          stages?.some((stage) => stage?.$lookup?.from === AppVersionCollectionName)
-        );
-      const versionLookup = pipeline?.find(
-        (stage) => stage?.$lookup?.from === AppVersionCollectionName
+      const hasVersionLookup = aggregateSpy.mock.calls.some((call) =>
+        (call[0] as any[])?.some((stage) => stage?.$lookup?.from === AppVersionCollectionName)
       );
-      expect(versionLookup?.$lookup.let).toEqual({
-        versionId: { $ifNull: ['$appVersionId', null] }
+      expect(hasVersionLookup).toBe(false);
+      expect(versionFindSpy).toHaveBeenCalledTimes(1);
+
+      versionFindSpy.mockClear();
+      const exportedWithoutVersion = await StreamCall(exportLogs, {
+        auth: authUser,
+        headers: {},
+        body: {
+          appId: testAppId,
+          dateStart: '2020-01-01',
+          dateEnd: '2099-01-01',
+          title: 'Session',
+          sourcesMap: {},
+          logKeys: [AppLogKeysEnum.SESSION_ID]
+        }
       });
+      expect(exportedWithoutVersion.code).toBe(200);
+      expect(versionFindSpy).not.toHaveBeenCalled();
     } finally {
       aggregateSpy.mockRestore();
+      versionFindSpy.mockRestore();
     }
   });
 });
