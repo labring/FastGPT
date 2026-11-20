@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeJsonSchema } from '@fastgpt/global/common/jsonSchema/utils';
+import {
+  normalizeJsonSchema,
+  sanitizeToolParametersForModel
+} from '@fastgpt/global/common/jsonSchema/utils';
 
 describe('normalizeJsonSchema', () => {
   it.each([undefined, null, true, false, 0, 'schema'])(
@@ -83,5 +86,54 @@ describe('normalizeJsonSchema', () => {
       }
     });
     expect(schema).toEqual(before);
+  });
+});
+
+const isRecordLike = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const isEmptyObjectSchema = (
+  value: unknown
+): value is { type: 'object'; properties: Record<string, unknown> } => {
+  if (!isRecordLike(value)) return false;
+  const { type, properties } = value;
+  return type === 'object' && isRecordLike(properties);
+};
+
+describe('sanitizeToolParametersForModel', () => {
+  it('falls back to an empty object schema for zero-parameter tools', () => {
+    expect(sanitizeToolParametersForModel(undefined)).toEqual({ type: 'object', properties: {} });
+    expect(sanitizeToolParametersForModel(null)).toEqual({ type: 'object', properties: {} });
+  });
+
+  it('keeps an existing parameters schema unchanged', () => {
+    const schema = {
+      type: 'object',
+      properties: { query: { type: 'string', required: true } }
+    };
+    expect(sanitizeToolParametersForModel(schema)).toEqual({
+      type: 'object',
+      properties: { query: { type: 'string' } },
+      required: ['query']
+    });
+  });
+
+  it('returns an isolated schema object for each zero-parameter tool', () => {
+    const first = sanitizeToolParametersForModel(undefined);
+    const second = sanitizeToolParametersForModel(undefined);
+
+    // 用类型守卫收窄 unknown，不依赖类型断言
+    if (!isEmptyObjectSchema(first) || !isEmptyObjectSchema(second)) {
+      throw new Error('expected empty object schema');
+    }
+
+    expect(first).not.toBe(second);
+    expect(first.properties).not.toBe(second.properties);
+
+    // 调用方修改返回值不能污染后续调用
+    first.properties.added = { type: 'string' };
+    const third = sanitizeToolParametersForModel(undefined);
+    expect(isEmptyObjectSchema(third)).toBe(true);
+    expect(third).toEqual({ type: 'object', properties: {} });
   });
 });

@@ -12,12 +12,22 @@ const toolSchemaPrivateKeys = new Set([
   'x-fastgpt-node-output'
 ]);
 
+type JsonSchemaRecord = Record<string, unknown>;
+
+const isRecord = (value: unknown): value is JsonSchemaRecord =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
 /**
  * 模型请求出口的工具参数归一化：合并旧版 required 布尔标记并移除内部字段。
- * 返回副本，不修改工具原始定义。
+ *
+ * 返回副本，不修改工具原始定义。零入参工具没有 parameters，而部分严格实现的上游
+ * （Rust/serde 网关等）要求该字段必填，缺省会整次请求 400，因此在出口兜底为空对象 schema。
+ * 兜底结果必须每次新建对象，调用方修改返回值时不能影响其他工具。
  */
-export const sanitizeToolParametersForModel = (schema: unknown): unknown =>
-  normalizeJsonSchema({ schema, omitKeys: toolSchemaPrivateKeys });
+export const sanitizeToolParametersForModel = (schema: unknown): unknown => {
+  const sanitized = normalizeJsonSchema({ schema, omitKeys: toolSchemaPrivateKeys });
+  return isRecord(sanitized) ? sanitized : { type: 'object', properties: {} };
+};
 
 /**
  * 将旧版 property.required 布尔标记合并到父对象的 required 数组，并按需清理内部 Schema 字段。
@@ -31,9 +41,6 @@ export const normalizeJsonSchema = ({
   schema: unknown;
   omitKeys?: ReadonlySet<string>;
 }): unknown => {
-  const isRecord = (value: unknown): value is Record<string, unknown> =>
-    typeof value === 'object' && value !== null && !Array.isArray(value);
-
   /** 区分 Schema 字典和普通数据，避免误删名为 isSecret、required 等合法业务字段。 */
   const normalize = (value: unknown): unknown => {
     if (Array.isArray(value)) return value.map(normalize);
