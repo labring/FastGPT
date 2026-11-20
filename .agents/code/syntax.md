@@ -425,14 +425,14 @@ export const createAppAndInitVersion = async (
 - **避免大文档重复 `FETCH`**：被关联集合单文档较大（如 `app_versions` 含完整 `nodes`/`edges`）且无覆盖索引时，逐条 `$lookup` 会触发大量重复读取与裁切。
 - **按需跳过与全版本兼容**：可选列未启用时直接不查库、不投影外键；同时规避 `localField/foreignField + pipeline` 在 MongoDB 4.4 报错及 `let + $expr` 缺失外键退化 `COLLSCAN` 的问题。
 - **严格校验 `ObjectId`**：统一使用 `parseObjectId(value)`（仅接受 `ObjectId` 实例或 24 位 hex 字符串），避免 BSON 数字（如 `123`）或 12 字符短串绕过 `Types.ObjectId.isValid` 后在构造 `ObjectId` 时抛 `BSONError`。
-- **从库读取与一致性取舍**：日志列表、CSV 导出等弱一致性只读分析场景可全链路使用 `readFromSecondary` 分流从库压力并接受短暂复制延迟（无需强制回主库）；仅对强一致性业务（如计费扣减、权限写入前校验）才要求主库读或同视图读取。
+- **从库读取与缓存策略**：日志列表、CSV 导出等弱一致性只读分析场景可全链路使用 `readFromSecondary` 分流从库压力并接受短暂复制延迟（无需强制回主库）；但跨批次缓存应**只缓存命中结果**，不对从库查空做整次导出的永久负缓存，确保副本追平后后续批次可自动恢复。仅强一致性业务（如计费扣减、权限写入前校验）才要求主库读或同视图读取。
 - **ObjectId 显式还原**：全局 `find` post hook（`convertObjectIds`）会将顶层 `ObjectId` 转为 `string`，而 `aggregate` 的 `$match` 不做 Mongoose 自动转型；将 `find` 得到的 ID 传给后续 `aggregate` `$match` 时必须显式还原为 `Types.ObjectId`。
 
 ```typescript
 import { parseObjectId, readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { type Types } from '@fastgpt/service/common/mongo';
 
-// Good —— 严格校验 ObjectId、最小投影批量查询与跨批次缓存（弱一致性分析读统一走从库）
+// Good —— 严格校验 ObjectId、最小投影批量查询与命中结果跨批次缓存（弱一致性分析读统一走从库）
 const versionNameMap = new Map<string, string>();
 
 const loadVersionNames = async (batch: Array<{ appVersionId?: unknown }>) => {
@@ -444,12 +444,12 @@ const loadVersionNames = async (batch: Array<{ appVersionId?: unknown }>) => {
     if (!oid) continue;
     const idStr = oid.toString();
     if (!versionNameMap.has(idStr) && !missingMap.has(idStr)) {
-      versionNameMap.set(idStr, '');
       missingMap.set(idStr, oid);
     }
   }
   if (missingMap.size === 0) return;
 
+  // 仅缓存命中记录，避免将从库短暂查空永久固化到后续批次
   const versions = await MongoAppVersion.find(
     { _id: { $in: Array.from(missingMap.values()) } },
     { _id: 1, versionName: 1 },

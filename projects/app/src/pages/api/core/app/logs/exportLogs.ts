@@ -173,13 +173,12 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       if (!oid) continue;
       const idStr = oid.toString();
       if (!versionNameMap.has(idStr) && !missingMap.has(idStr)) {
-        // 弱一致性分析导出场景统一走从库分流，写入空占位避免已删版本跨批次重复查库。
-        versionNameMap.set(idStr, '');
         missingMap.set(idStr, oid);
       }
     }
     if (missingMap.size === 0) return;
 
+    // 仅缓存从库实际命中的版本，避免将短暂复制延迟查空永久写入跨批次缓存。
     const versions = await MongoAppVersion.find(
       { _id: { $in: Array.from(missingMap.values()) } },
       { _id: 1, versionName: 1 },

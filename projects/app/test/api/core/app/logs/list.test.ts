@@ -1239,4 +1239,68 @@ describe('logs list API - errorFilter', () => {
       versionFindSpy.mockRestore();
     }
   });
+
+  it('导出版本名在首批从库短暂查空时不永久负缓存，副本追平后次批自动恢复并复用缓存', async () => {
+    const version = await MongoAppVersion.create({
+      tmbId: testTmbId,
+      appId: testAppId,
+      versionName: 'v-recovered',
+      nodes: [],
+      edges: []
+    });
+    const baseTime = Date.now();
+    await MongoChat.collection.insertMany(
+      Array.from({ length: 403 }, (_, idx) => ({
+        appId: new Types.ObjectId(testAppId),
+        teamId: new Types.ObjectId(testTeamId),
+        tmbId: new Types.ObjectId(testTmbId),
+        chatId: `chat-recover-${idx}`,
+        sourceType: ChatSourceTypeEnum.app,
+        source: 'api',
+        appVersionId: version._id,
+        createTime: new Date(baseTime - idx * 1000),
+        updateTime: new Date(baseTime - idx * 1000)
+      })) as any
+    );
+
+    const originalFind = MongoAppVersion.find.bind(MongoAppVersion);
+    let findCalls = 0;
+    const versionFindSpy = vi.spyOn(MongoAppVersion, 'find').mockImplementation(((
+      filter: any,
+      projection: any,
+      options: any
+    ) => {
+      findCalls++;
+      // 模拟第 1 批选中滞后从库查空，第 2 批副本追平后命中并缓存，第 3 批直接复用缓存
+      if (findCalls === 1) {
+        return { lean: async () => [] } as any;
+      }
+      return originalFind(filter, projection, options);
+    }) as any);
+
+    try {
+      const exported = await StreamCall(exportLogs, {
+        auth: authUser,
+        headers: {},
+        body: {
+          appId: testAppId,
+          dateStart: '2020-01-01',
+          dateEnd: '2099-01-01',
+          title: 'Session,Version',
+          sourcesMap: {},
+          logKeys: [AppLogKeysEnum.SESSION_ID, AppLogKeysEnum.VERSION_NAME]
+        }
+      });
+      expect(exported.code).toBe(200);
+      const dataRows = exported.raw.split('\n').slice(1);
+      expect(dataRows).toHaveLength(403);
+      // 第 1 批 200 行查空留空，第 2/3 批共 203 行自动恢复为 v-recovered
+      expect(dataRows.slice(0, 200).every((line) => line.split(',')[1] === '')).toBe(true);
+      expect(dataRows.slice(200).every((line) => line.split(',')[1] === 'v-recovered')).toBe(true);
+      // 仅查 2 次：第 1 批查空 + 第 2 批命中并缓存；第 3 批 0 次查库
+      expect(findCalls).toBe(2);
+    } finally {
+      versionFindSpy.mockRestore();
+    }
+  });
 });
