@@ -35,7 +35,7 @@ export async function resolveSandboxSessionAvailability(
     return { available: true };
   }
 
-  if (getSystemInstanceConfig().subservice.agentSandbox.provider === 'none') {
+  if (!getSystemInstanceConfig().subservice.agentSandbox.enabled) {
     return resolveAppSandboxAvailability({ appEnabled: true, teamId: session.teamId });
   }
 

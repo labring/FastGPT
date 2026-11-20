@@ -11,7 +11,6 @@ RUN npm install -g pnpm@10.33.2
 
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.json ./
 COPY packages/global/ ./packages/global/
-COPY sdk/sandbox-adapter/ ./sdk/sandbox-adapter/
 COPY projects/volume-manager/ ./projects/volume-manager/
 
 RUN if [ -z "$proxy" ]; then \

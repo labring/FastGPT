@@ -8,7 +8,7 @@ const createSandboxInstance = (content: unknown) =>
     resolveRuntimePath: vi.fn((path: string) =>
       path.startsWith('/') ? path : `/workspace/sessions/chat_1/${path}`
     ),
-    provider: {
+    opensandbox: {
       readFiles: vi.fn(async (paths: string[]) =>
         paths.map((path) => ({
           path,
@@ -22,7 +22,7 @@ const createFailedSandboxInstance = (file: unknown) =>
   ({
     ensureAvailable: vi.fn(async () => undefined),
     resolveRuntimePath: vi.fn((path: string) => `/workspace/sessions/chat_1/${path}`),
-    provider: {
+    opensandbox: {
       readFiles: vi.fn(async () => [file])
     }
   }) as any;
@@ -44,7 +44,7 @@ describe('sandboxReadFileTool', () => {
 
     expect(result.response).toBe('line 1\nline 2\nline 3');
     expect(sandboxInstance.ensureAvailable).toHaveBeenCalledTimes(1);
-    expect(sandboxInstance.provider.readFiles).toHaveBeenCalledWith([
+    expect(sandboxInstance.opensandbox.readFiles).toHaveBeenCalledWith([
       '/workspace/sessions/chat_1/notes.txt'
     ]);
   });
@@ -66,7 +66,7 @@ describe('sandboxReadFileTool', () => {
     expect(sandboxInstance.resolveRuntimePath).toHaveBeenCalledWith(path, {
       allowAbsolutePath: true
     });
-    expect(sandboxInstance.provider.readFiles).toHaveBeenCalledWith([path]);
+    expect(sandboxInstance.opensandbox.readFiles).toHaveBeenCalledWith([path]);
   });
 
   it('reads a line range and returns a continuation hint', async () => {
@@ -92,7 +92,7 @@ describe('sandboxReadFileTool', () => {
 
   it('decodes non-binary file content', async () => {
     const sandboxInstance = createSandboxInstance('plain text');
-    sandboxInstance.provider.readFiles.mockResolvedValueOnce([
+    sandboxInstance.opensandbox.readFiles.mockResolvedValueOnce([
       {
         path: 'notes.txt',
         content: 12345

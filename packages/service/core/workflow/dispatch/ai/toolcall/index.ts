@@ -8,10 +8,10 @@ import {
   resolveAppSandboxAvailability
 } from '../../../../ai/sandbox/application/availability';
 import { getRunningSandboxId } from '../../../../ai/sandbox/utils/id';
-import { getSandboxRuntimeProfile } from '../../../../ai/sandbox/application/runtime';
+import { getSandboxRuntimeProfile } from '../../../../ai/sandbox/infrastructure/opensandbox/runtimeProfile';
 import {
   runAgentSandboxEntrypoint,
-  withAgentSandboxInitLease
+  withAgentSandboxLease
 } from '../../../../ai/sandbox/application/runtime/entrypoint';
 import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/application/toolCall';
 import { getWorkflowContext, getWorkflowSandboxContext, runWithContext } from '../../context';
@@ -162,14 +162,14 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
           userId: sandboxContext.userId,
           chatId: sandboxContext.chatId,
           teamId: sandboxContext.teamId,
-          prepareRuntime: () =>
-            withAgentSandboxInitLease({
+          prepareRuntime: ({ onUpgrade, onUpgradeComplete }) =>
+            withAgentSandboxLease({
               sandboxId: getRunningSandboxId({
                 sourceType: sandboxSourceType,
                 sourceId: sandboxSourceId,
                 userId: sandboxContext.userId
               }),
-              fn: async () => {
+              fn: async (lease) => {
                 const runtime = await prepareSandboxToolRuntime({
                   sourceType: sandboxSourceType,
                   sourceId: sandboxSourceId,
@@ -179,16 +179,25 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
                   files: currentInputFiles.map((file) => ({
                     path: file.sandboxPath!,
                     url: file.url
-                  }))
+                  })),
+                  onUpgrade,
+                  onUpgradeComplete
                 });
+                lease?.assertValid();
                 const effectiveEntrypoint = sandboxEntrypoint?.trim();
                 if (effectiveEntrypoint) {
-                  await runAgentSandboxEntrypoint({
-                    sandbox: runtime.provider,
-                    sandboxEntrypoint: effectiveEntrypoint,
-                    scope: `${runningAppInfo.sourceType}:${runningAppInfo.sourceId}:node:${nodeId}`,
-                    workDirectory: getSandboxRuntimeProfile().workDirectory
-                  });
+                  await runtime.runWithRecovery(
+                    () => {
+                      lease?.assertValid();
+                      return runAgentSandboxEntrypoint({
+                        sandbox: runtime.opensandbox,
+                        sandboxEntrypoint: effectiveEntrypoint,
+                        scope: `${runningAppInfo.sourceType}:${runningAppInfo.sourceId}:node:${nodeId}`,
+                        workDirectory: getSandboxRuntimeProfile().workDirectory
+                      });
+                    },
+                    { skipEnsureAvailable: true }
+                  );
                 }
                 return runtime;
               }

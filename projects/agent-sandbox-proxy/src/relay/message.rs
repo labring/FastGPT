@@ -68,10 +68,6 @@ pub(super) fn send_upstream_close(
     let _ = upstream_tx.try_send(UpstreamControl::Close(message));
 }
 
-pub(super) fn send_upstream_flush(upstream_tx: &tokio::sync::mpsc::Sender<UpstreamControl>) {
-    let _ = upstream_tx.try_send(UpstreamControl::Flush);
-}
-
 pub(super) fn client_close_message(code: u16, reason: &str) -> AxumMsg {
     AxumMsg::Close(Some(axum::extract::ws::CloseFrame {
         code,

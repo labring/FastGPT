@@ -4,26 +4,22 @@
  * API 层负责鉴权和请求校验；本文件负责定位运行态 edit-debug sandbox、打包工作区、
  * 上传版本包、创建版本记录，并同步运行实例的 versionId 字段。
  */
+import { isRedisLeaseError } from '@fastgpt/dal/redis/caches';
 import { mongoSessionRun } from '../../../../../common/mongo/sessionRun';
 import { Types } from '../../../../../common/mongo';
 import { getLogger, LogCategories } from '../../../../../common/logger';
-import { updateCurrentVersion } from '../../../skill/manage';
-import {
-  extractRuntimeSkillsFromPackage,
-  removeSkillPackageTTL,
-  uploadSkillPackage
-} from '../../../skill/package';
-import { packageSkillInSandbox } from './runtime';
 import { getEditDebugSandboxId } from '../../../skill/edit/config';
+import { updateCurrentVersion } from '../../../skill/manage';
+import { removeSkillPackageTTL, type SkillStorageInfo } from '../../../skill/package/storage';
+import { createAgentSandboxInitializingError } from '../../error';
+import { withSandboxLease } from '../lease';
+import { getRunningSkillEditSandbox, packageAndUploadSkillTarZstInSandbox } from './runtime';
+import type { RuntimeSkillMetadataType } from '@fastgpt/global/core/ai/skill/type';
 import { createVersion } from '../../../skill/version';
-import { getSandboxRuntimeProfile } from '../../infrastructure/provider/runtimeProfile';
-import { getSandboxProviderConfig } from '../../infrastructure/provider/config';
-import {
-  findSandboxInstanceBySandboxIdAndSource,
-  updateSandboxInstanceRecordBySandboxId
-} from '../../infrastructure/instance/repository';
+import { SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR } from '../../constants';
+import { SANDBOX_PROVIDER } from '../../type';
+import { updateSandboxInstanceRecordBySandboxId } from '../../infrastructure/instance/repository';
 import { MongoAgentSkills } from '../../../skill/model/schema';
-import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
@@ -51,124 +47,123 @@ export async function saveDeploySkillFromSandbox({
   tmbId,
   versionName
 }: SaveDeploySkillFromSandboxParams): Promise<SaveDeploySkillResponse> {
-  const providerConfig = getSandboxProviderConfig();
-  const sandboxInfo = await findSandboxInstanceBySandboxIdAndSource({
-    provider: providerConfig.provider,
-    sandboxId: getEditDebugSandboxId(skillId),
-    sourceType: ChatSourceTypeEnum.skillEdit,
-    sourceId: skillId,
-    status: SandboxStatusEnum.running
-  });
-
-  if (
-    !sandboxInfo ||
-    sandboxInfo.status !== SandboxStatusEnum.running ||
-    sandboxInfo.teamId !== teamId
-  ) {
-    return Promise.reject(new UserError('Edit sandbox not found or not running'));
-  }
-
-  let packageBuffer: Buffer;
+  const sessionId = getEditDebugSandboxId(skillId);
   try {
-    const runtimeProfile = getSandboxRuntimeProfile(providerConfig.provider);
-    packageBuffer = await packageSkillInSandbox({
-      sandboxId: sandboxInfo.sandboxId,
-      workDirectory: runtimeProfile.workDirectory
-    });
-  } catch (error) {
-    return Promise.reject(new UserError(`Failed to package skill directory: ${getErrText(error)}`));
-  }
+    return await withSandboxLease({
+      sandboxId: sessionId,
+      label: `skill-edit:deploy:${sessionId}`,
+      fn: async (lease) => {
+        const sandboxInfo = await getRunningSkillEditSandbox({ skillId, teamId });
 
-  const versionId = new Types.ObjectId().toString();
-  const createdAt = new Date();
-  const resolvedVersionName = versionName || formatTime2YMDHMS(createdAt);
-  const runtimeSkills = await extractRuntimeSkillsFromPackage(packageBuffer);
-
-  let storageInfo;
-  try {
-    storageInfo = await uploadSkillPackage({
-      teamId,
-      skillId,
-      packageObjectId: versionId,
-      zipBuffer: packageBuffer
-    });
-  } catch (error) {
-    const errorText = getErrText(error);
-    if (errorText === SkillErrEnum.archiveTooLarge) {
-      return Promise.reject(SkillErrEnum.archiveTooLarge);
-    }
-    throw new UserError(`Failed to upload package: ${errorText}`);
-  }
-
-  const deployResult = await mongoSessionRun(async (session) => {
-    const isVersionLinked = await updateCurrentVersion({
-      skillId,
-      currentVersionId: versionId,
-      runtimeSkills,
-      session
-    });
-    if (!isVersionLinked) {
-      // skill 可能在打包上传期间被删除。此时不能移除 S3 TTL，让孤儿包继续走 TTL 清理。
-      throw new UserError('Skill not found');
-    }
-
-    await createVersion(
-      {
-        versionId,
-        skillId,
-        tmbId,
-        versionName: resolvedVersionName,
-        storageKey: storageInfo.key,
-        runtimeSkills
-      },
-      session
-    );
-    await MongoAgentSkills.updateOne(
-      { _id: skillId },
-      {
-        $set: {
-          updateTime: createdAt
+        if (!sandboxInfo) {
+          throw new UserError(SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR);
         }
-      },
-      { session }
-    );
-    await removeSkillPackageTTL(storageInfo.key, session);
 
-    return {
-      skillId,
-      versionId,
-      versionName: resolvedVersionName,
-      storageKey: storageInfo.key,
-      createdAt: createdAt.toISOString()
-    };
-  });
+        const versionId = new Types.ObjectId().toString();
+        const createdAt = new Date();
+        const resolvedVersionName = versionName || formatTime2YMDHMS(createdAt);
 
-  // 发布新版本成功后，更新运行中沙盒实例的 versionId，保证后续版本切换时能够正确执行版本比对和容器重建
-  const updatedSandboxInfo = await updateSandboxInstanceRecordBySandboxId({
-    provider: providerConfig.provider,
-    sandboxId: sandboxInfo.sandboxId,
-    sourceType: ChatSourceTypeEnum.skillEdit,
-    sourceId: skillId,
-    userId: ChatSourceTypeEnum.skillEdit,
-    versionId,
-    touchActive: true
-  }).catch((err) => {
-    logger.error('[Sandbox] Failed to update sandbox versionId after deploy', {
-      sandboxId: sandboxInfo.sandboxId,
-      versionId,
-      error: err
-    });
-    return null;
-  });
-  if (!updatedSandboxInfo) {
-    logger.warn(
-      '[Sandbox] Skip updating sandbox versionId after deploy because sandbox state changed',
-      {
-        sandboxId: sandboxInfo.sandboxId,
-        versionId
+        let storageInfo: SkillStorageInfo;
+        let runtimeSkills: RuntimeSkillMetadataType[];
+        try {
+          ({ storageInfo, runtimeSkills } = await packageAndUploadSkillTarZstInSandbox({
+            teamId,
+            skillId,
+            packageObjectId: versionId,
+            sandboxId: sandboxInfo.sandboxId,
+            instanceId: sandboxInfo.instanceId,
+            signal: lease.signal
+          }));
+        } catch (error) {
+          if (isRedisLeaseError(error)) throw error;
+          const errorText = getErrText(error);
+          if (
+            errorText === SkillErrEnum.archiveTooLarge ||
+            errorText.includes('exceeds maximum allowed')
+          ) {
+            return Promise.reject(SkillErrEnum.archiveTooLarge);
+          }
+          return Promise.reject(new UserError(`Failed to package skill directory: ${errorText}`));
+        }
+
+        lease.assertValid();
+        const deployResult = await mongoSessionRun(async (session) => {
+          const isVersionLinked = await updateCurrentVersion({
+            skillId,
+            currentVersionId: versionId,
+            runtimeSkills,
+            session
+          });
+          if (!isVersionLinked) {
+            // skill 可能在打包上传期间被删除。此时不能移除 S3 TTL，让孤儿包继续走 TTL 清理。
+            throw new UserError('Skill not found');
+          }
+
+          await createVersion(
+            {
+              versionId,
+              skillId,
+              tmbId,
+              versionName: resolvedVersionName,
+              storageKey: storageInfo.key,
+              runtimeSkills
+            },
+            session
+          );
+          await MongoAgentSkills.updateOne(
+            { _id: skillId },
+            {
+              $set: {
+                updateTime: createdAt
+              }
+            },
+            { session }
+          );
+          await removeSkillPackageTTL(storageInfo.key, session);
+
+          return {
+            skillId,
+            versionId,
+            versionName: resolvedVersionName,
+            storageKey: storageInfo.key,
+            createdAt: createdAt.toISOString()
+          };
+        });
+
+        // 发布新版本成功后，更新运行中沙盒实例的 versionId，保证后续版本切换时能够正确执行版本比对和容器重建
+        const updatedSandboxInfo = await updateSandboxInstanceRecordBySandboxId({
+          provider: SANDBOX_PROVIDER,
+          sandboxId: sandboxInfo.sandboxId,
+          sourceType: ChatSourceTypeEnum.skillEdit,
+          sourceId: skillId,
+          userId: ChatSourceTypeEnum.skillEdit,
+          versionId,
+          touchActive: true
+        }).catch((err) => {
+          logger.error('[Sandbox] Failed to update sandbox versionId after deploy', {
+            sandboxId: sandboxInfo.sandboxId,
+            versionId,
+            error: err
+          });
+          return null;
+        });
+        if (!updatedSandboxInfo) {
+          logger.warn(
+            '[Sandbox] Skip updating sandbox versionId after deploy because sandbox state changed',
+            {
+              sandboxId: sandboxInfo.sandboxId,
+              versionId
+            }
+          );
+        }
+
+        return deployResult;
       }
-    );
+    });
+  } catch (error) {
+    if (isRedisLeaseError(error)) {
+      throw createAgentSandboxInitializingError();
+    }
+    throw error;
   }
-
-  return deployResult;
 }

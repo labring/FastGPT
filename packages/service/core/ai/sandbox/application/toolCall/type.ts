@@ -59,9 +59,14 @@ export const createToolRunner =
     const parsed = definition.zodSchema.safeParse(params.input);
     if (!parsed.success) return { success: false, error: parsed.error.message };
 
-    const result = await definition.execute({
-      sandboxInstance: params.sandboxInstance,
-      params: parsed.data
+    const executeTool = () =>
+      definition.execute({
+        sandboxInstance: params.sandboxInstance,
+        params: parsed.data
+      });
+    // 所有沙盒工具内部均已自行调用 ensureAvailable() 或带降级处理的 exec()，此处仅包裹断连自愈重试。
+    const result = await params.sandboxInstance.runWithRecovery(executeTool, {
+      skipEnsureAvailable: true
     });
     return {
       success: true,

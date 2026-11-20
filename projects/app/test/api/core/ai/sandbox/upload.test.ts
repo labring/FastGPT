@@ -4,10 +4,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Readable } from 'node:stream';
 
 const mocks = vi.hoisted(() => ({
+  assertSandboxWorkspaceWritable: vi.fn(),
   authSandboxRuntimeSession: vi.fn(),
   buildSandboxClientQueryFromChatSource: vi.fn(),
   createDirectories: vi.fn(),
-  getAgentSandboxMaxFileBytes: vi.fn(),
+  getAgentSandboxDiskBytes: vi.fn(),
   getSandboxClient: vi.fn(),
   writeFiles: vi.fn()
 }));
@@ -21,7 +22,11 @@ vi.mock('@/service/core/sandbox/access', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/config', () => ({
-  getAgentSandboxMaxFileBytes: mocks.getAgentSandboxMaxFileBytes
+  getAgentSandboxDiskBytes: mocks.getAgentSandboxDiskBytes
+}));
+
+vi.mock('@fastgpt/service/core/ai/sandbox/application/quota', () => ({
+  assertSandboxWorkspaceWritable: mocks.assertSandboxWorkspaceWritable
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', () => ({
@@ -66,7 +71,8 @@ describe('sandbox upload API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     uploadedContent = Buffer.alloc(0);
-    mocks.getAgentSandboxMaxFileBytes.mockReturnValue(10 * 1024 * 1024);
+    mocks.getAgentSandboxDiskBytes.mockReturnValue(10 * 1024 * 1024);
+    mocks.assertSandboxWorkspaceWritable.mockResolvedValue(undefined);
     mocks.authSandboxRuntimeSession.mockResolvedValue({
       uid: 'user-1',
       sourceType: ChatSourceTypeEnum.app,
@@ -78,10 +84,11 @@ describe('sandbox upload API', () => {
       return [{ path: entry.path, bytesWritten: uploadedContent.length, error: null }];
     });
     mocks.getSandboxClient.mockResolvedValue({
-      provider: {
+      opensandbox: {
         createDirectories: mocks.createDirectories,
         writeFiles: mocks.writeFiles
       },
+      runWithRecovery: vi.fn(async (fn: () => Promise<unknown>) => fn()),
       resolveRuntimePath: (path: string) => `/workspace/sessions/chat-1/${path}`
     });
   });
@@ -125,12 +132,22 @@ describe('sandbox upload API', () => {
   });
 
   it('rejects an oversized Content-Length before auth', async () => {
-    mocks.getAgentSandboxMaxFileBytes.mockReturnValue(3);
+    mocks.getAgentSandboxDiskBytes.mockReturnValue(3);
     const req = createReq();
 
     await expect(handler(req)).rejects.toThrow('File is too large (4 bytes > 3 bytes)');
 
     expect(mocks.authSandboxRuntimeSession).not.toHaveBeenCalled();
+    expect(mocks.writeFiles).not.toHaveBeenCalled();
+  });
+
+  it('rejects upload before writing when sandbox disk quota is exceeded', async () => {
+    mocks.assertSandboxWorkspaceWritable.mockRejectedValueOnce(new Error('disk quota exceeded'));
+    const req = createReq();
+
+    await expect(handler(req)).rejects.toThrow('disk quota exceeded');
+
+    expect(mocks.createDirectories).not.toHaveBeenCalled();
     expect(mocks.writeFiles).not.toHaveBeenCalled();
   });
 });

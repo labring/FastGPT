@@ -82,12 +82,13 @@ describe('sandbox getHtmlPreviewLink API', () => {
     );
     mocks.getSandboxClient.mockResolvedValue({
       resolveRuntimePath: mocks.resolveRuntimePath,
-      provider: { getFileInfo: mocks.getFileInfo }
+      runWithRecovery: vi.fn(async (fn: () => Promise<unknown>) => fn()),
+      opensandbox: { getFileInfo: mocks.getFileInfo }
     });
-    mocks.resolveSandboxPreviewPath.mockReturnValue({
-      providerPath: '/workspace/sessions/chat-1/dist/index.html',
-      relativePath: 'sessions/chat-1/dist/index.html'
-    });
+    mocks.resolveSandboxPreviewPath.mockImplementation((runtimePath: string) => ({
+      providerPath: runtimePath,
+      relativePath: runtimePath.replace(/^\/workspace\//, '')
+    }));
     mocks.createSandboxPreviewFileUrl.mockResolvedValue(
       'https://agent-proxy.example.com/preview/a12345678901234567890123/dist/index.html'
     );
@@ -122,7 +123,7 @@ describe('sandbox getHtmlPreviewLink API', () => {
         userId: 'user-1',
         chatId: 'chat-1'
       },
-      filePath: '/workspace/sessions/chat-1/dist/index.html'
+      relativePath: 'sessions/chat-1/dist/index.html'
     });
     expect(mockJsonRes).toHaveBeenCalledWith(res, {
       data: 'https://agent-proxy.example.com/preview/a12345678901234567890123/dist/index.html'
@@ -181,7 +182,7 @@ describe('sandbox getHtmlPreviewLink API', () => {
       expect(mocks.getSandboxClient).toHaveBeenCalledExactlyOnceWith(query);
       expect(mocks.createSandboxPreviewFileUrl).toHaveBeenCalledWith({
         context: query,
-        filePath: '/workspace/sessions/chat-1/dist/index.html'
+        relativePath: 'sessions/chat-1/dist/index.html'
       });
     }
   );

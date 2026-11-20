@@ -1,6 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import { authSandboxRuntimeSession } from '@/service/core/sandbox/access';
+import { getAuthorizedSandboxClient } from '@/service/core/sandbox/runtime';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
@@ -9,9 +9,8 @@ import {
   type SandboxUploadQuery,
   type SandboxUploadResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
-import { getAgentSandboxMaxFileBytes } from '@fastgpt/service/core/ai/sandbox/config';
-import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
-import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
+import { getAgentSandboxDiskBytes } from '@fastgpt/service/core/ai/sandbox/config';
+import { assertSandboxWorkspaceWritable } from '@fastgpt/service/core/ai/sandbox/application/quota';
 import { prepareSandboxFileParentDirectories } from '@fastgpt/service/core/ai/sandbox/application/file';
 import { Readable } from 'node:stream';
 import { createSizeLimitedStream } from '@fastgpt/service/common/file/stream';
@@ -25,7 +24,7 @@ async function handler(
       querySchema: SandboxUploadQuerySchema
     }).query;
 
-  const maxFileBytes = getAgentSandboxMaxFileBytes();
+  const maxFileBytes = getAgentSandboxDiskBytes();
   const contentLengthHeader = req.headers['content-length'];
   const contentLength = contentLengthHeader ? Number(contentLengthHeader) : undefined;
   const createFileTooLargeError = (size: number) =>
@@ -35,11 +34,7 @@ async function handler(
     throw createFileTooLargeError(contentLength);
   }
 
-  const {
-    uid,
-    sourceType: resolvedSourceType,
-    sourceId: resolvedSourceId
-  } = await authSandboxRuntimeSession({
+  const { sandbox } = await getAuthorizedSandboxClient({
     customUid,
     authProxy,
     req,
@@ -50,24 +45,18 @@ async function handler(
     per: WritePermissionVal
   });
 
-  const sandbox = await getSandboxClient(
-    buildSandboxClientQueryFromChatSource({
-      sourceType: resolvedSourceType,
-      sourceId: resolvedSourceId,
-      userId: uid,
-      chatId
-    })
-  );
-
   const providerPath = sandbox.resolveRuntimePath(path, { allowAbsolutePath: true });
-  await prepareSandboxFileParentDirectories(sandbox.provider, [providerPath]);
+  await assertSandboxWorkspaceWritable(sandbox.opensandbox);
+  await sandbox.runWithRecovery(() =>
+    prepareSandboxFileParentDirectories(sandbox.opensandbox, [providerPath])
+  );
 
   const boundedStream = createSizeLimitedStream({
     stream: req,
     maxBytes: maxFileBytes,
     createExceededError: createFileTooLargeError
   });
-  const [writeResult] = await sandbox.provider.writeFiles([
+  const [writeResult] = await sandbox.opensandbox.writeFiles([
     {
       path: providerPath,
       data: Readable.toWeb(boundedStream) as ReadableStream<Uint8Array>

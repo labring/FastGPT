@@ -121,7 +121,7 @@ fi
 
 ### versionId 成功去重
 
-虚拟机内通过 `~/.fastgpt/runtime/state.json` 记录已成功初始化的 `versionId`。后续对话复用同一虚拟机实例时，已成功的版本自动跳过脚本执行，实现秒级热启动。
+虚拟机内通过 `/var/lib/fastgpt-runtime/state.json` 记录已成功初始化的 `versionId`。后续对话复用同一虚拟机实例时，已成功的版本自动跳过脚本执行，实现秒级热启动。
 
 初始化详细约束与容错策略见[初始化脚本指南](/zh-CN/guide/build/skill/initialization)。
 

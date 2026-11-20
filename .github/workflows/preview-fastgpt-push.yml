@@ -46,7 +46,11 @@ jobs:
             const artifactConfigs = [
               { image: 'fastgpt', artifact_name: 'preview-fastgpt-image', image_name: 'fastgpt' },
               { image: 'code-sandbox', artifact_name: 'preview-code-sandbox-image', image_name: 'fastgpt-code-sandbox' },
-              { image: 'mcp_server', artifact_name: 'preview-mcp_server-image', image_name: 'fastgpt-mcp-server' }
+              { image: 'mcp_server', artifact_name: 'preview-mcp_server-image', image_name: 'fastgpt-mcp-server' },
+              { image: 'agent-sandbox', artifact_name: 'preview-agent-sandbox-image', image_name: 'fastgpt-agent-sandbox' },
+              { image: 'agent-sandbox-root', artifact_name: 'preview-agent-sandbox-root-image', image_name: 'fastgpt-agent-sandbox-root' },
+              { image: 'volume-manager', artifact_name: 'preview-volume-manager-image', image_name: 'fastgpt-agent-volume-manager' },
+              { image: 'agent-sandbox-proxy', artifact_name: 'preview-agent-sandbox-proxy-image', image_name: 'fastgpt-agent-sandbox-proxy' }
             ];
 
             const hasPublishPermission = async (username) => {
@@ -238,7 +242,7 @@ jobs:
     strategy:
       matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
       fail-fast: false
-      max-parallel: 3
+      max-parallel: 6
 
     steps:
       - name: Download build artifact

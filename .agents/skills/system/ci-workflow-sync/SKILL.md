@@ -30,7 +30,7 @@ FastGPT 同时维护两套 CI workflow：
 | `build-fastgpt.yml` | ✅ | 镜像构建 |
 | `build-code-sandbox.yml` | ✅ | 镜像构建 |
 | `build-agent-sandbox.yml` | ✅ | 镜像构建 |
-| `build-fastgpt-ide-agent.yml` | ✅ | 镜像构建 |
+| `build-agent-sandbox-proxy.yml` | ✅ | 镜像构建 |
 | `build-marketplace.yml` | ✅ | 镜像构建 |
 | `build-mcp-server.yml` | ✅ | 镜像构建 |
 | `test-fastgpt.yaml` | ✅ | 测试 + 覆盖率 |

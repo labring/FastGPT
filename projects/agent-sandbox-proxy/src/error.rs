@@ -96,8 +96,8 @@ pub enum PreviewError {
     #[error("Preview session resolution failed: {0}")]
     ResolutionFailed(String),
 
-    #[error("Missing upstream credentials: {0}")]
-    MissingCredentials(&'static str),
+    #[error("Missing upstream endpoint: {0}")]
+    MissingEndpoint(&'static str),
 
     #[error("Invalid preview request: {0}")]
     InvalidRequest(String),
@@ -123,7 +123,7 @@ impl IntoResponse for PreviewError {
             PreviewError::InvalidRequest(_) => {
                 safe_error_response(StatusCode::BAD_REQUEST, "Invalid preview request")
             }
-            PreviewError::MissingCredentials(_)
+            PreviewError::MissingEndpoint(_)
             | PreviewError::UpstreamConnect(_)
             | PreviewError::UpstreamStatus(_) => {
                 safe_error_response(StatusCode::BAD_GATEWAY, "Sandbox preview is unavailable")

@@ -3,6 +3,7 @@ import { Box, Flex } from '@chakra-ui/react';
 import { SkillDetailContext } from '../../dashboard/skill/detail/context';
 import { useContextSelector } from 'use-context-selector';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 import FileTree from './components/FileTree';
@@ -59,10 +60,24 @@ const SandboxEditor = ({
   const editorLayoutRef = useRef<HTMLDivElement>(null);
   const [fileTreeWidth, setFileTreeWidth] = useState(FILE_TREE_DEFAULT_WIDTH);
   const [isFileTreeResizing, setIsFileTreeResizing] = useState(false);
-  const sandboxTarget = useMemo(
-    () => resolveSandboxTarget({ appId, chatTarget }),
-    [appId, chatTarget?.appId, chatTarget?.skillId]
-  );
+  const targetAppId = chatTarget?.appId;
+  const targetSkillId = chatTarget?.skillId;
+  const targetSourceType = chatTarget?.sourceType;
+  const sandboxTarget = useMemo(() => {
+    const nextChatTarget: SandboxTargetInput['chatTarget'] = targetSkillId
+      ? { skillId: targetSkillId }
+      : targetAppId
+        ? {
+            appId: targetAppId,
+            ...(targetSourceType ? { sourceType: targetSourceType } : {})
+          }
+        : undefined;
+
+    return resolveSandboxTarget({
+      appId,
+      chatTarget: nextChatTarget
+    });
+  }, [appId, targetAppId, targetSkillId, targetSourceType]);
   const fileTreeShowDownload = showFileTreeDownload ?? showDownload;
 
   const {
@@ -94,7 +109,7 @@ const SandboxEditor = ({
     onMoveFiles,
     onDeleteFile,
     onUploadFiles,
-    onExecCommand,
+    sessionWorkDirectory,
     toggleDirectory
   } = useSandboxFileStore({
     sandboxTarget,
@@ -195,7 +210,7 @@ const SandboxEditor = ({
         onMoveFiles={onMoveFiles}
         onDeleteFile={onDeleteFile}
         onUploadFiles={onUploadFiles}
-        onExecCommand={onExecCommand}
+        sessionWorkDirectory={sessionWorkDirectory}
         onRefreshWorkspace={refreshWorkspace}
         setExpandedDirs={setExpandedDirs}
         sandboxTarget={sandboxTarget}

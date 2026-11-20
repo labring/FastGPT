@@ -202,7 +202,7 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
   ],
   '/admin/subservice/mcp': ['subservice.mcp.enabled', 'subservice.mcp.sseProxyUrl'],
   '/admin/subservice/agent-sandbox': [
-    'subservice.agentSandbox.provider',
+    'subservice.agentSandbox.enabled',
     'subservice.agentSandbox.proxy.wsUrl',
     'subservice.agentSandbox.proxy.previewUrl',
     'subservice.agentSandbox.proxy.secret',
@@ -216,9 +216,6 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'subservice.agentSandbox.common.npmRegistry',
     'subservice.agentSandbox.common.pypiIndexUrl',
     'subservice.agentSandbox.common.aptMirror',
-    'subservice.agentSandbox.sealosdevbox.baseUrl',
-    'subservice.agentSandbox.sealosdevbox.workDirectory',
-    'subservice.agentSandbox.sealosdevbox.image',
     'subservice.agentSandbox.opensandbox.baseUrl',
     'subservice.agentSandbox.opensandbox.runtime',
     'subservice.agentSandbox.opensandbox.cpuOvercommitFactor',
@@ -227,7 +224,6 @@ export const adminConfigPageFieldsMap: Record<string, readonly string[]> = {
     'subservice.agentSandbox.opensandbox.useServerProxy',
     'subservice.agentSandbox.opensandbox.volumeManagerUrl',
     'subservice.agentSandbox.opensandbox.volumeNamePrefix',
-    'subservice.agentSandbox.sealosdevbox.token',
     'subservice.agentSandbox.opensandbox.apiKey',
     'subservice.agentSandbox.opensandbox.volumeManagerToken'
   ]

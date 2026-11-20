@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import {
-  getBuiltinSkillsRootPath,
-  syncBuiltinSkillsToSandbox
-} from '@fastgpt/service/core/ai/sandbox/application/runtime/skill/builtin';
+import { syncBuiltinSkillsToSandbox } from '@fastgpt/service/core/ai/sandbox/application/runtime/skill/builtin';
 import { buildRuntimeHash } from '@fastgpt/service/core/ai/sandbox/utils';
 
 describe('builtin skill runtime', () => {
@@ -11,7 +8,7 @@ describe('builtin skill runtime', () => {
       name: 'skill-creator',
       files: createBuiltinSkillSourceFiles()
     };
-    const targetDirectory = '/home/sandbox/.fastgpt/skills/skill-creator';
+    const targetDirectory = '/var/lib/fastgpt-runtime/skills/skill-creator';
 
     const sandbox = {
       createDirectories: vi.fn(async () => undefined),
@@ -29,7 +26,7 @@ describe('builtin skill runtime', () => {
         paths.map((path) => ({
           path,
           content: Buffer.from(''),
-          error: new Error('not found')
+          error: Object.assign(new Error('not found'), { code: 'ENOENT' })
         }))
       ),
       writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer | string }>) =>
@@ -43,18 +40,16 @@ describe('builtin skill runtime', () => {
 
     await syncBuiltinSkillsToSandbox({
       sandbox: sandbox as any,
-      homeDirectory: '/home/sandbox',
       sources: [skillCreatorSource!]
     });
 
-    expect(getBuiltinSkillsRootPath('/home/sandbox')).toBe('/home/sandbox/.fastgpt/skills');
     expect(sandbox.deleteDirectories).toHaveBeenCalledWith([targetDirectory]);
     expect(sandbox.createDirectories).toHaveBeenCalledWith([targetDirectory]);
     const writeEntries = sandbox.writeFiles.mock.calls[0][0];
     expect(writeEntries).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          path: '/home/sandbox/.fastgpt/skills/skill-creator/SKILL.md',
+          path: '/var/lib/fastgpt-runtime/skills/skill-creator/SKILL.md',
           data: expect.any(Buffer)
         })
       ])
@@ -62,7 +57,7 @@ describe('builtin skill runtime', () => {
     expect(writeEntries.every((entry) => !entry.path.includes('/workspace/'))).toBe(true);
     expect(sandbox.writeFiles.mock.calls[1][0]).toEqual([
       expect.objectContaining({
-        path: '/home/sandbox/.fastgpt/runtime/state.json',
+        path: '/var/lib/fastgpt-runtime/state.json',
         data: expect.stringContaining('"values"')
       })
     ]);
@@ -96,12 +91,11 @@ describe('builtin skill runtime', () => {
 
     await syncBuiltinSkillsToSandbox({
       sandbox: sandbox as any,
-      homeDirectory: '/home/sandbox',
       sources
     });
 
     expect(sandbox.writeFiles).not.toHaveBeenCalled();
-    expect(sandbox.readFiles).toHaveBeenCalledWith(['/home/sandbox/.fastgpt/runtime/state.json']);
+    expect(sandbox.readFiles).toHaveBeenCalledWith(['/var/lib/fastgpt-runtime/state.json']);
   });
 
   it('reinjects builtin skills after Sandbox recreation clears HOME and runtime state', async () => {
@@ -118,7 +112,11 @@ describe('builtin skill runtime', () => {
           const content = files.get(path);
           return content
             ? { path, content, error: null }
-            : { path, content: Buffer.alloc(0), error: new Error('not found') };
+            : {
+                path,
+                content: Buffer.alloc(0),
+                error: Object.assign(new Error('not found'), { code: 'ENOENT' })
+              };
         })
       ),
       createDirectories: vi.fn(async () => undefined),
@@ -133,12 +131,11 @@ describe('builtin skill runtime', () => {
         })
       )
     };
-    const skillPath = '/home/sandbox/.fastgpt/skills/skill-creator/SKILL.md';
-    const runtimeStatePath = '/home/sandbox/.fastgpt/runtime/state.json';
+    const skillPath = '/var/lib/fastgpt-runtime/skills/skill-creator/SKILL.md';
+    const runtimeStatePath = '/var/lib/fastgpt-runtime/state.json';
 
     await syncBuiltinSkillsToSandbox({
       sandbox: sandbox as any,
-      homeDirectory: '/home/sandbox',
       sources
     });
     expect(files.has(skillPath)).toBe(true);
@@ -149,7 +146,6 @@ describe('builtin skill runtime', () => {
 
     await syncBuiltinSkillsToSandbox({
       sandbox: sandbox as any,
-      homeDirectory: '/home/sandbox',
       sources
     });
 

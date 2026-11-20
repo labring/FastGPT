@@ -4,7 +4,7 @@
  * 统一把 sandbox 业务错误转换成 UserError，不承载 provider 或数据库逻辑。
  */
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
-import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
+import { UserError } from '@fastgpt/global/common/error/utils';
 
 /** 表示 keepalive 等禁止创建的路径没有可继续使用的 running sandbox。 */
 export class SandboxRuntimeNotRunningError extends Error {
@@ -32,10 +32,6 @@ export const createAgentSandboxPermissionDeniedError = () =>
 export const createAgentSandboxInitializingError = () =>
   new UserError(SandboxErrEnum.agentSandboxInitializing);
 
-/** 将底层迁移异常转换为可展示且经过敏感信息替换的用户错误。 */
-export const createSandboxRuntimeUpgradeFailedError = (error: unknown) =>
-  new UserError(getErrText(error, SandboxErrEnum.runtimeUpgradeFailed));
-
 /**
  * 生成沙箱活跃实例系统总上限拒绝错误。
  *
@@ -47,3 +43,11 @@ export const createAgentSandboxLimitReachedError = () =>
 /** 生成团队沙箱配额拒绝错误：当前团队的活跃沙箱实例已达配额上限。 */
 export const createAgentSandboxTeamLimitReachedError = () =>
   new UserError(SandboxErrEnum.agentSandboxTeamLimitReached);
+
+/** 生成存量沙箱迁移动作进行中的阻断错误（409 语义）：等待后台迁移完成后自动放行。 */
+export const createAgentSandboxMigrationInProgressError = () =>
+  new UserError(SandboxErrEnum.agentSandboxMigrationInProgress);
+
+/** 生成 Docker 沙盒卷容量软限制超限错误（403 语义）：需清理 `/home/sandbox` 内文件释放空间。 */
+export const createAgentSandboxDiskQuotaExceededError = () =>
+  new UserError(SandboxErrEnum.agentSandboxDiskQuotaExceeded);

@@ -10,9 +10,13 @@ use notify_debouncer_full::{
 use serde_json::json;
 use tokio::sync::{broadcast, mpsc};
 use tokio_tungstenite::tungstenite::Message;
+use tracing::error;
 
 use crate::protocol::JsonRpcNotification;
-use crate::workspace::{get_workspace_root, normalize_workspace_relative_path};
+use crate::workspace::{
+    get_workspace_root, is_atomic_tmp_workspace_path, is_reserved_workspace_path,
+    normalize_workspace_relative_path,
+};
 
 const FS_CHANGE_DEBOUNCE_MS: u64 = 500;
 const FS_CHANGE_MAX_PATHS: usize = 200;
@@ -47,6 +51,7 @@ pub(super) fn collect_fs_event_paths(event: &Event) -> Vec<String> {
         .paths
         .iter()
         .filter_map(|path| normalize_workspace_relative_path(path))
+        .filter(|rel| !is_reserved_workspace_path(rel) && !is_atomic_tmp_workspace_path(rel))
         .collect()
 }
 
@@ -136,13 +141,13 @@ fn start_workspace_watcher(tx: broadcast::Sender<FsChangeBatch>) {
     ) {
         Ok(debouncer) => debouncer,
         Err(error) => {
-            eprintln!("Failed to create workspace watcher: {error}");
+            error!("Failed to create workspace watcher: {error}");
             return;
         }
     };
 
     if let Err(error) = debouncer.watch(&root, RecursiveMode::Recursive) {
-        eprintln!("Failed to watch workspace {root:?}: {error}");
+        error!("Failed to watch workspace {root:?}: {error}");
         return;
     }
 
@@ -169,8 +174,8 @@ fn start_workspace_watcher(tx: broadcast::Sender<FsChangeBatch>) {
                     }
                 }
                 Err(errors) => {
-                    for error in errors {
-                        eprintln!("Workspace watcher event error: {error}");
+                    for err in errors {
+                        error!("Workspace watcher event error: {err}");
                     }
                     FsChangeBatch {
                         seq: 0,

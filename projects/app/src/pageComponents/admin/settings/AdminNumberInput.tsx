@@ -35,6 +35,7 @@ const AdminNumberInput = ({
       variant={'whiteOutline'}
       min={min}
       max={max}
+      clampValueOnBlur={false}
       {...rest}
       value={displayValue}
       onChange={(valueAsString, valueAsNumber) => {

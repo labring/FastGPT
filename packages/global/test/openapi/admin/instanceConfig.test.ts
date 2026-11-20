@@ -112,7 +112,7 @@ describe('Instance config OpenAPI schemas', () => {
 
     expect(ProbeConnectionBodySchema.safeParse({ url: 'not-a-valid-url' }).success).toBe(false);
 
-    for (const service of ['codeSandbox', 'mcpSse'] as const) {
+    for (const service of ['codeSandbox', 'opensandbox', 'mcpSse'] as const) {
       expect(
         ProbeConnectionBodySchema.safeParse({ service, url: 'https://example.com/base' }).success
       ).toBe(true);
@@ -124,6 +124,30 @@ describe('Instance config OpenAPI schemas', () => {
       ]) {
         expect(ProbeConnectionBodySchema.safeParse({ service, url }).success).toBe(false);
       }
+    }
+    for (const service of ['codeSandbox', 'opensandbox'] as const) {
+      expect(
+        ProbeConnectionBodySchema.safeParse({
+          service,
+          url: 'https://example.com',
+          token: 'draft-secret'
+        }).success
+      ).toBe(true);
+      expect(
+        ProbeConnectionBodySchema.safeParse({
+          service,
+          url: 'https://example.com',
+          useStoredToken: true
+        }).success
+      ).toBe(true);
+      expect(
+        ProbeConnectionBodySchema.safeParse({
+          service,
+          url: 'https://example.com',
+          token: 'draft-secret',
+          useStoredToken: true
+        }).success
+      ).toBe(false);
     }
     // 通用探测仍接收含参数的目标 URL。
     expect(ProbeConnectionBodySchema.safeParse({ url: 'https://example.com?x=1' }).success).toBe(

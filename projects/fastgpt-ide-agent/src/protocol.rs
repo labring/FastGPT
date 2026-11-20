@@ -3,33 +3,39 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 /// JSON-RPC 错误码的语义枚举，序列化时仍保持协议要求的数字格式。
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum JsonRpcErrorCode {
+    ParseError,
     MethodNotFound,
     InternalError,
     FileConflict,
     PermissionDenied,
     FileTooLarge,
+    DiskQuotaExceeded,
     Unknown(i32),
 }
 
 impl JsonRpcErrorCode {
     pub const fn as_i32(self) -> i32 {
         match self {
+            Self::ParseError => -32700,
             Self::MethodNotFound => -32601,
             Self::InternalError => -32603,
             Self::FileConflict => -32001,
             Self::PermissionDenied => -32003,
             Self::FileTooLarge => -32004,
+            Self::DiskQuotaExceeded => -32005,
             Self::Unknown(code) => code,
         }
     }
 
     pub const fn from_i32(code: i32) -> Self {
         match code {
+            -32700 => Self::ParseError,
             -32601 => Self::MethodNotFound,
             -32603 => Self::InternalError,
             -32001 => Self::FileConflict,
             -32003 => Self::PermissionDenied,
             -32004 => Self::FileTooLarge,
+            -32005 => Self::DiskQuotaExceeded,
             _ => Self::Unknown(code),
         }
     }
@@ -54,15 +60,14 @@ impl<'de> Deserialize<'de> for JsonRpcErrorCode {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct JsonRpcRequest {
-    pub jsonrpc: String,
     pub id: serde_json::Value,
     pub method: String,
     pub params: Option<serde_json::Value>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Debug)]
 pub struct JsonRpcResponse {
     pub jsonrpc: String,
     pub id: serde_json::Value,
@@ -78,7 +83,7 @@ pub struct JsonRpcError {
     pub message: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Debug)]
 pub struct JsonRpcNotification {
     pub jsonrpc: String,
     pub method: String,

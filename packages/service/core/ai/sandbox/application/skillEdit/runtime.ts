@@ -1,86 +1,85 @@
 /**
- * 沙盒业务层：编排 Skill Edit runtime 的状态解释、初始化、升级和工作区打包。
+ * 沙盒业务层：编排 Skill Edit runtime 的上下文解析、初始化、就绪保证与工作区打包。
  *
- * 本文件统一处理镜像版本、归档状态和运行态实例的业务判断；外部 Skill 业务直接引用
- * 本模块的业务能力，不直接依赖 provider、repository 或 archive 原子能力。
+ * 统一依赖 OpenSandbox + 持久化 PVC 与单行迁移门禁：运行中或已停止实例升级镜像时，
+ * 直接在 `getSandboxClient` 内完成同 PVC 静默重建，不再需要独立升级状态/弹窗流程。
  */
+import { PassThrough, type Readable } from 'node:stream';
 import { SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR } from '../../constants';
-import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
-import { shellQuote } from '@fastgpt/global/common/string/utils';
-import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
+import type { OpenSandboxClient } from '../../infrastructure/opensandbox/opensandbox';
+import type { SandboxCreateSpec } from '../../infrastructure/opensandbox/type';
 import { MongoAgentSkills } from '../../../skill/model/schema';
 import { MongoAgentSkillsVersion } from '../../../skill/version/schema';
-import { parseGitignoreRules } from '../../../skill/utils';
-import { resolveSandboxHome } from '../runtime/home';
 import { joinSandboxPath } from '../../utils';
+import { DEFAULT_GITIGNORE_CONTENT } from '../../../skill/package/constants';
 import {
-  DEFAULT_GITIGNORE_CONTENT,
-  validateDeployableSkillWorkspacePackage,
-  validateZipStructure
-} from '../../../skill/package';
+  extractRuntimeSkillsFromSkillMdFiles,
+  isRuntimeSkillMdPath,
+  MAX_SKILL_MD_ENTRY_BYTES,
+  type SkillMdFileInput
+} from '../../../skill/package/runtimeMetadata';
+import {
+  deleteSkillPackage,
+  type SkillStorageInfo,
+  uploadSkillPackageStream
+} from '../../../skill/package/storage';
+import { validateDeployableSkillWorkspacePaths } from '../../../skill/package/workspace';
+import type { RuntimeSkillMetadataType } from '@fastgpt/global/core/ai/skill/type';
+import { parseTarZstStream } from '../../../../../common/file/tarZst';
+import { packSandboxDirectory } from '../ideAgent';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID, getEditDebugSandboxId } from '../../../skill/edit/config';
-import {
-  getSandboxProviderConfig,
-  validateSandboxConfig,
-  getSandboxAdapterConfig
-} from '../../infrastructure/provider/config';
-import { getSandboxRuntimeProfile } from '../../infrastructure/provider/runtimeProfile';
+import { getOpenSandboxRuntimeConfig } from '../../infrastructure/opensandbox/config';
+import { getSandboxRuntimeProfile } from '../../infrastructure/opensandbox/runtimeProfile';
 import type {
   AgentSkillsVersionSchemaType,
   SandboxImageConfigType
 } from '@fastgpt/global/core/ai/skill/type';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import {
-  connectToSandbox,
-  disconnectSandbox,
-  getReadySandboxInfo
-} from '../../infrastructure/provider/lifecycle';
+  connectToOpenSandbox,
+  disconnectSandbox
+} from '../../infrastructure/opensandbox/opensandbox';
 import type { SandboxClient } from '../runtime/client';
 import { getSandboxClient } from '../runtime/client';
-import { SandboxLifecycleStateError } from '../lifecycle/error';
 import {
   findSandboxInstanceBySandboxIdAndSource,
   findSandboxResourcesBySource,
-  updateSandboxInstanceRecordBySandboxId
+  updateSandboxInstanceRecordBySandboxId,
+  type SandboxResourceDoc
 } from '../../infrastructure/instance/repository';
 import { getLogger, LogCategories } from '../../../../../common/logger';
-import { getAgentSandboxSkillMaxBytes } from '../../config';
+import { getAgentSandboxDiskBytes } from '../../config';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 import { assertSandboxAvailable } from '../availability';
 import {
   emptyWorkDirectory,
   preparePackageMirrors,
   prepareWorkDirectory,
-  prepareSandbox
+  prepareSandbox,
+  type SandboxPrepareContext
 } from '../runtime/prepare';
-import { deploySkillPackage, type SkillPackagePrepareContext } from '../runtime/skill/prepare';
-import { normalizeSandboxImage } from '../runtime/image';
-import {
-  getSandboxRuntimeUpgradeStatus,
-  isSandboxRuntimeUpgradeBusyState,
-  resolveSandboxRuntimeUpgradeTarget,
-  triggerSandboxRuntimeUpgrade,
-  type SandboxRuntimeUpgradeTarget
-} from '../runtime/upgrade';
-import type { SandboxRuntimeStatusResponse } from '@fastgpt/global/core/ai/sandbox/type';
+import { deploySkillPackage } from '../runtime/skill/prepare';
+import { isRedisLeaseError, type RedisLeaseContext } from '@fastgpt/dal/redis/caches';
+import { createAgentSandboxInitializingError } from '../../error';
+import { resolveSandboxRuntimeImage } from '../runtime/image';
+import { assertSandboxMigratedOrThrow } from '../../legacy';
+import { SANDBOX_PROVIDER } from '../../type';
+import { withSandboxLease } from '../lease';
 
 const addLog = getLogger(LogCategories.MODULE.AI.AGENT);
-const RUNTIME_UPGRADE_IN_PROGRESS_MESSAGE = SandboxErrEnum.runtimeUpgradeInProgress;
 const EDIT_DEBUG_SANDBOX_SCENARIO = 'edit-debug';
 
 export type SkillEditRuntimeContext = {
   skillId: string;
   teamId: string;
-  providerConfig: ReturnType<typeof getSandboxProviderConfig>;
   runtimeProfile: ReturnType<typeof getSandboxRuntimeProfile>;
   createConfig: SandboxCreateSpec;
   runtimeImage?: SandboxImageConfigType;
   currentVersion: AgentSkillsVersionSchemaType;
   sessionId: string;
   targetVersionId: string;
-  runtimeUpgradeTarget: SandboxRuntimeUpgradeTarget;
+  existingInstance: SandboxResourceDoc | null;
 };
 
 export type InitSkillEditRuntimeSandboxParams = {
@@ -89,23 +88,20 @@ export type InitSkillEditRuntimeSandboxParams = {
 };
 
 /**
- * 构建 Skill Edit runtime 的后端上下文。
+ * 构建 Skill Edit runtime 的后端上下文并执行存量迁移门禁检查。
  *
- * 这里统一完成 skill/version 查询、provider/runtime config 构造和 sandbox-instance 查询。
- * 目标镜像只从后端 runtime profile/createConfig 得到，不能从客户端入参透传。
+ * 目标镜像只从后端 runtime profile / createConfig 派生，不从客户端入参透传；
+ * 若关联记录尚未完成 4.18.0 迁移（非 OpenSandbox 或非 tar.zst 归档），抛出 409 阻断。
  */
 export async function getSkillEditRuntimeContext(params: {
   skillId: string;
   teamId: string;
-  entrypoint?: SandboxCreateSpec['entrypoint'];
 }): Promise<SkillEditRuntimeContext> {
-  const { skillId, teamId, entrypoint } = params;
+  const { skillId, teamId } = params;
 
   await assertSandboxAvailable(teamId);
 
-  const providerConfig = getSandboxProviderConfig();
-  const runtimeProfile = getSandboxRuntimeProfile(providerConfig.provider);
-  validateSandboxConfig(providerConfig);
+  const runtimeProfile = getSandboxRuntimeProfile();
 
   const skill = await MongoAgentSkills.findOne({
     _id: skillId,
@@ -138,84 +134,40 @@ export async function getSkillEditRuntimeContext(params: {
     scenario: EDIT_DEBUG_SANDBOX_SCENARIO
   };
 
-  const { createConfig } = getSandboxAdapterConfig({
-    provider: providerConfig.provider,
-    runtime: true,
-    sessionId,
+  const { createConfig } = getOpenSandboxRuntimeConfig({
     createConfig: {
-      entrypoint,
       metadata: runtimeMetadata
     }
   });
 
-  if (!createConfig) {
-    throw new Error('Failed to build sandbox create config');
-  }
-
-  const runtimeImage = normalizeSandboxImage(createConfig.image);
+  const runtimeImage = resolveSandboxRuntimeImage({ createConfig });
   const runtimeInstances = await findSandboxResourcesBySource({
     sourceType: ChatSourceTypeEnum.skillEdit,
     sourceId: skillId
   });
+  const existingInstance =
+    runtimeInstances.find((item) => item.sandboxId === sessionId) ?? runtimeInstances[0] ?? null;
+
+  assertSandboxMigratedOrThrow(existingInstance);
 
   return {
     skillId,
     teamId,
-    providerConfig,
     runtimeProfile,
     createConfig,
     runtimeImage,
     currentVersion: currentVersion as AgentSkillsVersionSchemaType,
     sessionId,
     targetVersionId: currentVersion._id.toString(),
-    runtimeUpgradeTarget: resolveSandboxRuntimeUpgradeTarget({
-      sandboxId: sessionId,
-      targetProvider: providerConfig.provider,
-      targetImage: runtimeImage,
-      instances: runtimeInstances
-    })
+    existingInstance
   };
-}
-
-/**
- * 获取 Skill Edit runtime 升级状态，不启动、不恢复、不归档 sandbox。
- */
-export async function getSkillEditRuntimeStatus(
-  params:
-    | { context: SkillEditRuntimeContext }
-    | {
-        skillId: string;
-        teamId: string;
-        entrypoint?: SandboxCreateSpec['entrypoint'];
-      }
-): Promise<SandboxRuntimeStatusResponse> {
-  const context = 'context' in params ? params.context : await getSkillEditRuntimeContext(params);
-  return getSandboxRuntimeUpgradeStatus(context.runtimeUpgradeTarget);
-}
-
-/**
- * 触发 Skill Edit runtime 升级归档。
- *
- * 该函数只负责把旧 runtime 推进到 archiving，并启动后台归档任务；客户端随后通过 getStatus 轮询。
- */
-export async function triggerSkillEditRuntimeUpgrade(
-  params:
-    | { context: SkillEditRuntimeContext }
-    | {
-        skillId: string;
-        teamId: string;
-        entrypoint?: SandboxCreateSpec['entrypoint'];
-      }
-): Promise<SandboxRuntimeStatusResponse> {
-  const context = 'context' in params ? params.context : await getSkillEditRuntimeContext(params);
-  return triggerSandboxRuntimeUpgrade(context.runtimeUpgradeTarget);
 }
 
 /**
  * 初始化 Skill Edit runtime sandbox。
  *
- * 调用方必须先通过 getSkillEditRuntimeStatus 判定为 readyToInit；本函数只负责启动、恢复或
- * 复用 sandbox，不再返回 runtime 升级状态。
+ * 通过 `getSandboxClient` 自动完成冷恢复、同 PVC 静默换镜像与运行激活；
+ * 仅在首次创建或已部署 `versionId` 变更时清理非系统工作区内容并从 S3 解压写入目标版本包。
  */
 export async function initSkillEditRuntimeSandbox({
   context,
@@ -224,14 +176,13 @@ export async function initSkillEditRuntimeSandbox({
   const {
     skillId,
     teamId,
-    providerConfig,
     runtimeProfile,
     createConfig,
     runtimeImage,
     currentVersion,
     sessionId,
     targetVersionId,
-    runtimeUpgradeTarget
+    existingInstance
   } = context;
 
   addLog.info('[Sandbox] Initializing skill edit runtime sandbox', {
@@ -239,113 +190,152 @@ export async function initSkillEditRuntimeSandbox({
     teamId
   });
 
-  const runtimeStatusInstance = runtimeUpgradeTarget.statusInstance;
-  const existingLifecycleStatus = runtimeStatusInstance?.status;
-  const shouldUnzipFromS3 =
-    !runtimeStatusInstance || runtimeStatusInstance.versionId !== targetVersionId;
-  const shouldCleanWorkspaceBeforeDeploy = !!runtimeStatusInstance;
-
-  const prepareContext = (sandbox: ISandbox): SkillPackagePrepareContext => ({
-    sandbox,
+  const prepareContext = (
+    activeClient: SandboxClient,
+    lease?: RedisLeaseContext
+  ): SandboxPrepareContext => ({
+    sandbox: activeClient.opensandbox,
+    sandboxClient: activeClient,
+    lease,
     workDirectory: runtimeProfile.workDirectory
   });
 
   const reportProgress = (sandboxId: string) => (phase: SandboxStatusItemType['phase']) =>
     onProgress?.({ sandboxId, phase });
 
-  if (runtimeStatusInstance) {
+  if (existingInstance) {
     addLog.info('[Sandbox] Existing edit-debug sandbox will be activated by runtime client', {
-      sandboxId: runtimeStatusInstance.sandboxId,
-      lifecycleStatus: existingLifecycleStatus
+      sandboxId: existingInstance.sandboxId,
+      lifecycleStatus: existingInstance.status
     });
   }
 
-  let sandbox: ISandbox | null = null;
-  let sandboxClient: SandboxClient | null = null;
-  const shouldCleanupCreatedSandboxOnFailure = !runtimeStatusInstance;
+  const runtimeState: {
+    client: SandboxClient | null;
+    shouldCleanupOnFailure: boolean;
+  } = {
+    client: null,
+    shouldCleanupOnFailure: !existingInstance
+  };
 
   try {
     onProgress?.({ sandboxId: sessionId, phase: 'creatingContainer' });
-    const createRuntimeSandboxClient = () =>
-      getSandboxClient(
-        {
-          sandboxId: sessionId,
-          sourceType: ChatSourceTypeEnum.skillEdit,
-          sourceId: skillId,
-          userId: ChatSourceTypeEnum.skillEdit,
-          chatId: EDIT_DEBUG_SANDBOX_CHAT_ID
-        },
-        {
-          createConfig
-        }
-      );
-
-    const client = await createRuntimeSandboxClient();
-    sandboxClient = client;
-    sandbox = client.provider;
-
-    await getReadySandboxInfo(client.provider, {
+    await withSandboxLease({
       sandboxId: sessionId,
-      image: createConfig.image,
-      entrypoint: createConfig.entrypoint,
-      status: client.provider.status
-    });
+      label: `skill-edit:init:${sessionId}`,
+      fn: async (lease) => {
+        try {
+          const client = await getSandboxClient(
+            {
+              sandboxId: sessionId,
+              sourceType: ChatSourceTypeEnum.skillEdit,
+              sourceId: skillId,
+              userId: ChatSourceTypeEnum.skillEdit,
+              chatId: EDIT_DEBUG_SANDBOX_CHAT_ID
+            },
+            {
+              createConfig,
+              onUpgrade: () => onProgress?.({ sandboxId: sessionId, phase: 'creatingContainer' })
+            }
+          );
+          runtimeState.client = client;
+          lease.assertValid();
 
-    if (shouldUnzipFromS3) {
-      const prepareSteps = [
-        preparePackageMirrors(),
-        prepareWorkDirectory(),
-        ...(shouldCleanWorkspaceBeforeDeploy ? [emptyWorkDirectory()] : []),
-        deploySkillPackage({
-          storageKey: currentVersion.storageKey,
-          skillsRootPath: runtimeProfile.skillsRootPath,
-          onProgress: reportProgress(sessionId)
-        })
-      ];
+          const latestInstance = await findSandboxInstanceBySandboxIdAndSource({
+            provider: SANDBOX_PROVIDER,
+            sandboxId: sessionId,
+            sourceType: ChatSourceTypeEnum.skillEdit,
+            sourceId: skillId
+          });
+          if (latestInstance?.versionId) {
+            runtimeState.shouldCleanupOnFailure = false;
+          }
+          const effectiveInstance = latestInstance ?? existingInstance;
+          const shouldUnzipFromS3 =
+            !effectiveInstance || effectiveInstance.versionId !== targetVersionId;
+          const shouldCleanWorkspaceBeforeDeploy = Boolean(
+            existingInstance || latestInstance?.versionId
+          );
 
-      await prepareSandbox(prepareContext(client.provider), ...prepareSteps);
-    } else {
-      addLog.info(
-        '[Sandbox] Skill sandbox resumed with existing volume, skip initial S3 download/unzip',
-        {
-          sandboxId: sessionId
+          if (shouldUnzipFromS3) {
+            if (shouldCleanWorkspaceBeforeDeploy && effectiveInstance?.versionId) {
+              // 清空工作区前先置空已部署版本标记，防止清空后解压失败导致回切旧版本跳过重解压。
+              await updateSandboxInstanceRecordBySandboxId({
+                provider: SANDBOX_PROVIDER,
+                sandboxId: sessionId,
+                sourceType: ChatSourceTypeEnum.skillEdit,
+                sourceId: skillId,
+                userId: ChatSourceTypeEnum.skillEdit,
+                teamId,
+                versionId: ''
+              });
+            }
+            const prepareSteps = [
+              preparePackageMirrors(),
+              prepareWorkDirectory(),
+              ...(shouldCleanWorkspaceBeforeDeploy ? [emptyWorkDirectory()] : []),
+              deploySkillPackage({
+                storageKey: currentVersion.storageKey,
+                skillsRootPath: runtimeProfile.skillsRootPath,
+                onProgress: reportProgress(sessionId)
+              })
+            ];
+
+            await prepareSandbox(prepareContext(client, lease), ...prepareSteps);
+          } else {
+            addLog.info(
+              '[Sandbox] Skill sandbox resumed with existing volume, skip initial S3 download/unzip',
+              {
+                sandboxId: sessionId
+              }
+            );
+            await prepareSandbox(
+              prepareContext(client, lease),
+              preparePackageMirrors(),
+              prepareWorkDirectory()
+            );
+          }
+
+          lease.assertValid();
+          const newSandboxDoc = await updateSandboxInstanceRecordBySandboxId({
+            provider: SANDBOX_PROVIDER,
+            sandboxId: sessionId,
+            sourceType: ChatSourceTypeEnum.skillEdit,
+            sourceId: skillId,
+            userId: ChatSourceTypeEnum.skillEdit,
+            touchActive: true,
+            teamId,
+            ...(runtimeImage ? { image: runtimeImage } : {}),
+            versionId: targetVersionId
+          });
+
+          if (!newSandboxDoc) throw new Error('Failed to find sandbox document after creation');
+        } catch (innerError) {
+          // 首次创建失败清理必须在仍持有有效租约的临界区内完成，避免锁释放后与并发请求竞争或租约丢失后越权删除。
+          if (
+            runtimeState.client !== null &&
+            runtimeState.shouldCleanupOnFailure &&
+            !lease.signal.aborted &&
+            !isRedisLeaseError(innerError)
+          ) {
+            await runtimeState.client.delete().catch((cleanupError) => {
+              addLog.error('[Sandbox] Failed to cleanup sandbox after error', { cleanupError });
+            });
+            runtimeState.client = null;
+          }
+          throw innerError;
         }
-      );
-      await prepareSandbox(
-        prepareContext(client.provider),
-        preparePackageMirrors(),
-        prepareWorkDirectory()
-      );
-    }
-
-    const newSandboxDoc = await updateSandboxInstanceRecordBySandboxId({
-      provider: providerConfig.provider,
-      sandboxId: sessionId,
-      sourceType: ChatSourceTypeEnum.skillEdit,
-      sourceId: skillId,
-      userId: ChatSourceTypeEnum.skillEdit,
-      touchActive: true,
-      teamId,
-      ...(runtimeImage ? { image: runtimeImage } : {}),
-      versionId: currentVersion._id.toString()
+      }
     });
-
-    if (!newSandboxDoc) throw new Error('Failed to find sandbox document after creation');
 
     onProgress?.({
       sandboxId: sessionId,
       phase: 'ready'
     });
-    return;
   } catch (error) {
-    if (
-      error instanceof SandboxLifecycleStateError &&
-      isSandboxRuntimeUpgradeBusyState(error.state)
-    ) {
-      throw new UserError(RUNTIME_UPGRADE_IN_PROGRESS_MESSAGE);
+    if (isRedisLeaseError(error)) {
+      throw createAgentSandboxInitializingError();
     }
-
-    /** Provider SDK 的 rawBody 可能挂在当前错误或嵌套 cause 上，仅用于诊断日志。 */
     const getProviderRawBody = (value: unknown): unknown => {
       if (!value || typeof value !== 'object') return undefined;
       if ('rawBody' in value) return value.rawBody;
@@ -356,165 +346,65 @@ export async function initSkillEditRuntimeSandbox({
       rawBody: getProviderRawBody(error)
     });
 
-    if (sandboxClient && shouldCleanupCreatedSandboxOnFailure) {
-      try {
-        await sandboxClient.delete();
-        sandbox = null;
-      } catch (cleanupError) {
-        addLog.error('[Sandbox] Failed to cleanup sandbox after error', { cleanupError });
-      }
-    }
-
     throw error;
   } finally {
-    if (sandbox) {
-      await disconnectSandbox(sandbox);
+    if (runtimeState.client !== null) {
+      await disconnectSandbox(runtimeState.client.opensandbox);
     }
   }
 }
 
+/** 发布/导出包的排除规则：系统默认 `.gitignore` + 工作区根 `.gitignore` + 内部产物（`.gitignore` 语法，由 agent 求值）。 */
+const buildSkillExcludePatterns = (rootGitignore?: string): string[] => [
+  'package.zip',
+  '.fastgpt/',
+  ...[DEFAULT_GITIGNORE_CONTENT, rootGitignore ?? ''].flatMap((content) => content.split(/\r?\n/))
+];
+
 /**
- * 将编辑态 sandbox 内的 skill 目录打包成 zip。
+ * 通过 `fastgpt-ide-agent` `POST /archive/pack` 获取编辑态工作区 `.tar.zst` 流并交给回调消费。
  *
- * 保存发布时只读取指定 workDirectory，默认会先做目录大小检查，避免把过大的编辑工作区
- * 直接压入对象存储。调用方负责后续 SKILL.md 解析、版本写入和对象存储上传。
+ * 包内容的结构校验、体积上限与 `SKILL.md` 解析均由消费方在主站侧完成；工作区为空时直接报错。
  */
-export async function packageSkillInSandbox(params: {
-  sandboxId: string;
-  workDirectory?: string;
-  validationMode?: 'basicZip' | 'deployableWorkspace';
-}): Promise<Buffer> {
-  const { sandboxId, workDirectory, validationMode = 'deployableWorkspace' } = params;
-  const maxBytes = getAgentSandboxSkillMaxBytes();
+async function withSkillEditPackStream<T>(
+  params: {
+    sandboxId: string;
+    instanceId?: string;
+    signal?: AbortSignal;
+  },
+  consumer: (ctx: { stream: Readable; maxBytes: number }) => Promise<T>
+): Promise<T> {
+  const { sandboxId, instanceId, signal } = params;
+  const maxBytes = getAgentSandboxDiskBytes();
+  const { workDirectory } = getSandboxRuntimeProfile();
 
-  const providerConfig = getSandboxProviderConfig();
-  const runtimeProfile = getSandboxRuntimeProfile(providerConfig.provider);
-  const targetDir = workDirectory || runtimeProfile.workDirectory;
-
-  let sandbox: ISandbox | null = null;
+  let sandbox: OpenSandboxClient | null = null;
+  let tarZstStream: Readable | null = null;
 
   try {
-    const newSandbox = await connectToSandbox(providerConfig, sandboxId);
-    sandbox = newSandbox;
+    sandbox = await connectToOpenSandbox({
+      sandboxId,
+      remoteSandboxId: instanceId || undefined
+    });
 
-    const targetDirInfo = await newSandbox.getFileInfo([targetDir]);
-    if (!targetDirInfo.get(targetDir)?.isDirectory) {
-      throw new Error(`Skill directory does not exist: ${targetDir}`);
-    }
-    const homeDirectory = await resolveSandboxHome(newSandbox);
-    if (!homeDirectory) {
-      throw new Error('Failed to resolve sandbox HOME for package temp directory');
-    }
-    const packageTempDir = joinSandboxPath(homeDirectory, '.fastgpt', 'tmp');
-    const packageZipFilename = `skill-package-${Date.now()}-${Math.random()
-      .toString(36)
-      .slice(2)}.zip`;
-    const zipFilePath = joinSandboxPath(packageTempDir, packageZipFilename);
-    await newSandbox.createDirectories([packageTempDir]);
-
-    let gitignoreContents: string[] = [];
-    try {
-      const rootGitignorePath = joinSandboxPath(targetDir, '.gitignore');
-      const [rootGitignore] = await newSandbox.readFiles([rootGitignorePath]);
-
-      if (rootGitignore && !rootGitignore.error) {
-        gitignoreContents = [
-          typeof rootGitignore.content === 'string'
-            ? rootGitignore.content
-            : Buffer.from(rootGitignore.content).toString('utf-8')
-        ];
-      }
-    } catch (err) {
-      addLog.warn('[Sandbox] Failed to read root .gitignore file', {
-        sandboxId,
-        error: getErrText(err)
-      });
+    const [rootGitignore] = await sandbox
+      .readFiles([joinSandboxPath(workDirectory, '.gitignore')])
+      .catch(() => []);
+    tarZstStream = await packSandboxDirectory({
+      sandbox,
+      targetDirectory: workDirectory,
+      excludePatterns: buildSkillExcludePatterns(
+        rootGitignore && !rootGitignore.error
+          ? Buffer.from(rootGitignore.content).toString('utf8')
+          : undefined
+      ),
+      signal
+    });
+    if (!tarZstStream) {
+      throw new Error('Skill package is empty or contains no deployable files');
     }
 
-    // 发布包必须始终套用系统默认忽略规则，避免没有 .gitignore 的工作区把 .venv/node_modules 打进版本包。
-    const { customExcludes, pruneClause } = parseGitignoreRules([
-      DEFAULT_GITIGNORE_CONTENT,
-      ...gitignoreContents
-    ]);
-    const packageZipExcludes = ['package.zip', '*/package.zip'];
-    const allExcludes = Array.from(new Set([...packageZipExcludes, ...customExcludes]));
-    const packageZipNameExcludeClause = `! -name ${shellQuote('package.zip')}`;
-    const sizeCheckCmd = pruneClause
-      ? `find . \\( ${pruneClause} \\) -prune -o -type f ${packageZipNameExcludeClause} -ls 2>/dev/null | awk '{s+=$7} END {print s+0}'`
-      : `find . -type f ${packageZipNameExcludeClause} -ls 2>/dev/null | awk '{s+=$7} END {print s+0}'`;
-    const sizeResult = await newSandbox.execute(sizeCheckCmd, { workingDirectory: targetDir });
-
-    if (sizeResult.exitCode === 0 && sizeResult.stdout.trim()) {
-      const dirBytes = parseInt(sizeResult.stdout.trim(), 10);
-      if (!isNaN(dirBytes) && dirBytes > maxBytes) {
-        throw new Error(
-          `Skill directory size (${(dirBytes / 1024 / 1024).toFixed(2)}MB) exceeds maximum allowed size (${(maxBytes / 1024 / 1024).toFixed(2)}MB)`
-        );
-      }
-    }
-
-    const excludeArgs = allExcludes.map((pattern) => `-x ${shellQuote(pattern)}`).join(' ');
-    const zipCommand = `zip -r -y ${shellQuote(zipFilePath)} . ${excludeArgs}`;
-    const zipResult = await newSandbox.execute(zipCommand, { workingDirectory: targetDir });
-
-    if (zipResult.exitCode !== 0) {
-      throw new Error(`Failed to package skill directory: ${zipResult.stderr || zipResult.stdout}`);
-    }
-
-    try {
-      const files = await newSandbox.readFiles([zipFilePath]);
-      const file = files?.[0];
-
-      if (!file) {
-        throw new Error('Package file not found in sandbox');
-      }
-      if (file.error) {
-        throw new Error(`Failed to read package file in sandbox: ${file.error.message}`);
-      }
-
-      const content = file.content;
-      const zipBuffer = Buffer.from(
-        content instanceof Uint8Array ? content : Buffer.from(content, 'utf-8')
-      );
-      if (zipBuffer.length > maxBytes) {
-        throw new Error(
-          `Skill package size (${(zipBuffer.length / 1024 / 1024).toFixed(2)}MB) exceeds maximum allowed size (${(maxBytes / 1024 / 1024).toFixed(2)}MB)`
-        );
-      }
-
-      const validation =
-        validationMode === 'deployableWorkspace'
-          ? await validateDeployableSkillWorkspacePackage(zipBuffer, {
-              maxUncompressedBytes: maxBytes
-            })
-          : await validateZipStructure(zipBuffer, {
-              maxUncompressedBytes: maxBytes
-            });
-      if (!validation.valid) {
-        throw new Error(validation.error || 'Invalid skill package structure');
-      }
-
-      return zipBuffer;
-    } finally {
-      await newSandbox
-        .deleteFiles([zipFilePath])
-        .then(([cleanupResult]) => {
-          if (cleanupResult?.success && !cleanupResult.error) return;
-
-          addLog.warn('[Sandbox] Failed to cleanup package zip', {
-            sandboxId,
-            zipFilePath,
-            error: cleanupResult?.error ?? new Error('Delete did not succeed')
-          });
-        })
-        .catch((cleanupError) => {
-          addLog.warn('[Sandbox] Failed to cleanup package zip', {
-            sandboxId,
-            zipFilePath,
-            error: cleanupError
-          });
-        });
-    }
+    return await consumer({ stream: tarZstStream, maxBytes });
   } catch (error) {
     addLog.error('[Sandbox] Failed to package skill', {
       sandboxId,
@@ -522,6 +412,9 @@ export async function packageSkillInSandbox(params: {
     });
     throw error;
   } finally {
+    if (tarZstStream && !tarZstStream.destroyed) {
+      tarZstStream.destroy();
+    }
     if (sandbox) {
       await disconnectSandbox(sandbox);
     }
@@ -529,46 +422,134 @@ export async function packageSkillInSandbox(params: {
 }
 
 /**
- * 查询当前 provider 下正在运行的 Skill Edit sandbox。
+ * 将编辑态 sandbox 工作区流式打包为 `.tar.zst` 并上传 S3，同时单遍提取可部署结构校验与 `SKILL.md` 元数据。
  *
- * 该接口只返回已归属指定 team 的 running edit-debug sandbox，不触发创建或恢复。
+ * 同一份字节流同时写给 S3 上传与主站解析（`pipe` 自动按较慢一侧背压）；任一侧失败立即中止另一侧，
+ * 并清理已上传但未绑定版本的 S3 对象。
+ */
+export async function packageAndUploadSkillTarZstInSandbox(params: {
+  teamId: string;
+  skillId: string;
+  packageObjectId: string;
+  sandboxId: string;
+  instanceId?: string;
+  signal?: AbortSignal;
+}): Promise<{ storageInfo: SkillStorageInfo; runtimeSkills: RuntimeSkillMetadataType[] }> {
+  return withSkillEditPackStream(
+    {
+      sandboxId: params.sandboxId,
+      instanceId: params.instanceId,
+      signal: params.signal
+    },
+    async ({ stream, maxBytes }) => {
+      const controller = new AbortController();
+      const signal = params.signal
+        ? AbortSignal.any([params.signal, controller.signal])
+        : controller.signal;
+      const uploadStream = new PassThrough();
+      const inspectStream = new PassThrough();
+      let primaryError: unknown;
+
+      const fail = (error: unknown) => {
+        primaryError ??= error;
+        const normalized = error instanceof Error ? error : new Error(String(error));
+        controller.abort(normalized);
+        for (const target of [stream, uploadStream, inspectStream]) {
+          if (!target.destroyed) target.destroy(normalized);
+        }
+      };
+      const failFast = <T>(task: Promise<T>) =>
+        task.catch((error) => {
+          fail(error);
+          throw error;
+        });
+
+      stream.on('error', fail);
+      stream.pipe(uploadStream);
+      stream.pipe(inspectStream);
+
+      const inspect = async (): Promise<RuntimeSkillMetadataType[]> => {
+        const files: string[] = [];
+        const skillMdFiles: SkillMdFileInput[] = [];
+
+        await parseTarZstStream({
+          stream: inspectStream,
+          signal,
+          maxTotalBytes: maxBytes,
+          onEntry: async (entry) => {
+            files.push(entry.path);
+            if (entry.type !== 'file' || !isRuntimeSkillMdPath(entry.path)) return;
+            if (entry.size > MAX_SKILL_MD_ENTRY_BYTES) {
+              throw new Error(`SKILL.md exceeds maximum metadata size: ${entry.path}`);
+            }
+            const chunks: Buffer[] = [];
+            for await (const chunk of entry.stream) chunks.push(chunk);
+            skillMdFiles.push({
+              path: entry.path,
+              content: Buffer.concat(chunks).toString('utf8')
+            });
+          }
+        });
+
+        const validation = validateDeployableSkillWorkspacePaths(files);
+        if (!validation.valid) {
+          throw new Error(validation.error || 'Invalid skill package structure');
+        }
+        return extractRuntimeSkillsFromSkillMdFiles(skillMdFiles);
+      };
+
+      const [uploadResult, inspectResult] = await Promise.allSettled([
+        failFast(
+          uploadSkillPackageStream({
+            teamId: params.teamId,
+            skillId: params.skillId,
+            packageObjectId: params.packageObjectId,
+            packageStream: uploadStream,
+            signal
+          })
+        ),
+        failFast(inspect())
+      ]);
+
+      if (uploadResult.status === 'fulfilled' && inspectResult.status === 'fulfilled') {
+        return { storageInfo: uploadResult.value, runtimeSkills: inspectResult.value };
+      }
+      if (uploadResult.status === 'fulfilled') {
+        await deleteSkillPackage(uploadResult.value.key).catch(() => undefined);
+      }
+      throw primaryError;
+    }
+  );
+}
+
+/**
+ * 查询当前正在运行的 OpenSandbox Skill Edit sandbox。
  */
 export async function getRunningSkillEditSandbox(params: { skillId: string; teamId: string }) {
-  const providerConfig = getSandboxProviderConfig();
   const sandboxInfo = await findSandboxInstanceBySandboxIdAndSource({
-    provider: providerConfig.provider,
     sandboxId: getEditDebugSandboxId(params.skillId),
     sourceType: ChatSourceTypeEnum.skillEdit,
     sourceId: params.skillId,
     status: SandboxStatusEnum.running
   });
 
-  if (
-    !sandboxInfo ||
-    sandboxInfo.status !== SandboxStatusEnum.running ||
-    sandboxInfo.teamId !== params.teamId
-  ) {
+  if (!sandboxInfo || sandboxInfo.teamId !== params.teamId) {
     return;
   }
+
+  assertSandboxMigratedOrThrow(sandboxInfo);
 
   return sandboxInfo;
 }
 
 /**
  * 确保 Skill Edit sandbox 已启动并等待就绪，供导出接口在打包前调用。
- *
- * 已运行的实例直接复用；不存在时按现有 runtime 状态初始化，初始化完成后再次确认实例已注册。
  */
-export async function ensureSkillEditRuntimeSandbox(params: { skillId: string; teamId: string }) {
+async function ensureSkillEditRuntimeSandbox(params: { skillId: string; teamId: string }) {
   const running = await getRunningSkillEditSandbox(params);
   if (running) return running;
 
   const context = await getSkillEditRuntimeContext(params);
-  const status = await getSkillEditRuntimeStatus({ context });
-  if (status.status !== 'readyToInit') {
-    throw new Error(status.lastError || SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR);
-  }
-
   await initSkillEditRuntimeSandbox({ context });
 
   const ready = await getRunningSkillEditSandbox(params);
@@ -579,21 +560,44 @@ export async function ensureSkillEditRuntimeSandbox(params: { skillId: string; t
 }
 
 /**
- * 打包当前正在运行的 Skill Edit sandbox 工作区。
- *
- * 调用方需要先完成权限校验；本函数只负责定位运行态 sandbox 和调用打包逻辑。
+ * 将当前 Skill Edit sandbox 工作区在统一可重入租约保护下流式打包为 `.tar.zst` 并传入回调流（供 `.zip` 实时导出）。
  */
-export async function packageSkillEditWorkspace(params: {
+export async function streamSkillEditWorkspaceTarZst<T = void>(params: {
   skillId: string;
   teamId: string;
-  validationMode?: Parameters<typeof packageSkillInSandbox>[0]['validationMode'];
-}) {
-  const sandboxInfo = await ensureSkillEditRuntimeSandbox(params);
+  signal?: AbortSignal;
+  onStreamReady: (tarZstStream: Readable) => Promise<T>;
+}): Promise<T> {
+  const sessionId = getEditDebugSandboxId(params.skillId);
+  try {
+    return await withSandboxLease({
+      sandboxId: sessionId,
+      label: `skill-edit:export:${sessionId}`,
+      signal: params.signal,
+      fn: async (lease) => {
+        const sandboxInfo = await ensureSkillEditRuntimeSandbox({
+          skillId: params.skillId,
+          teamId: params.teamId
+        });
+        params.signal?.throwIfAborted();
+        const packSignal = params.signal
+          ? AbortSignal.any([lease.signal, params.signal])
+          : lease.signal;
 
-  const runtimeProfile = getSandboxRuntimeProfile(sandboxInfo.provider);
-  return packageSkillInSandbox({
-    sandboxId: sandboxInfo.sandboxId,
-    workDirectory: runtimeProfile.workDirectory,
-    validationMode: params.validationMode
-  });
+        return await withSkillEditPackStream(
+          {
+            sandboxId: sandboxInfo.sandboxId,
+            instanceId: sandboxInfo.instanceId,
+            signal: packSignal
+          },
+          ({ stream }) => params.onStreamReady(stream)
+        );
+      }
+    });
+  } catch (error) {
+    if (isRedisLeaseError(error)) {
+      throw createAgentSandboxInitializingError();
+    }
+    throw error;
+  }
 }

@@ -1,17 +1,24 @@
 use std::env;
-use std::io::{Read, Write};
-use std::thread;
+use std::io;
+use std::time::Duration;
 
-use portable_pty::{CommandBuilder, PtySize, native_pty_system};
+use pty_process::{Command, Size};
 use thiserror::Error;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::process::Child;
 use tokio::sync::mpsc;
+use tokio::task::JoinHandle;
 use tokio_tungstenite::tungstenite::Message;
+use tokio_tungstenite::tungstenite::protocol::frame::{CloseFrame, coding::CloseCode};
+use tracing::warn;
 
+use crate::connection::finish_or_abort;
+use crate::disk::{DISK_SOFT_LIMIT_ENV, disk_soft_limit_bytes};
 use crate::workspace::get_workspace_root;
 
-const PTY_CHANNEL_CAPACITY: usize = 100;
+const PTY_CHANNEL_CAPACITY: usize = 64;
+const PTY_SHUTDOWN_READER_TIMEOUT: Duration = Duration::from_secs(2);
 
-#[derive(Debug)]
 pub(super) enum PtyCommand {
     Write(Vec<u8>),
     Resize { rows: u16, cols: u16 },
@@ -24,18 +31,6 @@ pub(super) enum TerminalError {
         operation: &'static str,
         message: String,
     },
-    #[error("failed to spawn {name} thread")]
-    ThreadSpawn {
-        name: &'static str,
-        #[source]
-        source: std::io::Error,
-    },
-    #[error("{name} thread panicked")]
-    ThreadPanic { name: &'static str },
-    #[error("PTY setup task failed")]
-    SetupTask(#[source] tokio::task::JoinError),
-    #[error("PTY cleanup task failed")]
-    CleanupTask(#[source] tokio::task::JoinError),
 }
 
 impl TerminalError {
@@ -47,121 +42,129 @@ impl TerminalError {
     }
 }
 
-/// Bridges the async WebSocket session to the blocking `portable-pty` API.
+/// 在子 shell `fork` 后、`exec` 前设置 `RLIMIT_FSIZE` 硬上限，防止单文件瞬间写爆磁盘且不限制 `ide-agent` 自身。
+#[cfg(unix)]
+fn apply_fsize_limit(command: Command, fsize_limit: Option<u64>) -> Command {
+    let Some(limit) = fsize_limit.filter(|value| *value > 0) else {
+        return command;
+    };
+    let rlim = limit as libc::rlim_t;
+    // Safety: `libc::setrlimit` is an async-signal-safe POSIX syscall operating only on stack data.
+    unsafe {
+        command.pre_exec(move || {
+            let resource_limit = libc::rlimit {
+                rlim_cur: rlim,
+                rlim_max: rlim,
+            };
+            if libc::setrlimit(libc::RLIMIT_FSIZE, &resource_limit) != 0 {
+                return Err(io::Error::last_os_error());
+            }
+            Ok(())
+        })
+    }
+}
+
+#[cfg(not(unix))]
+fn apply_fsize_limit(command: Command, _fsize_limit: Option<u64>) -> Command {
+    command
+}
+
+/// Bridges one async WebSocket session to a child shell running on an async Unix PTY.
 pub(super) struct PtyBridge {
     command_tx: mpsc::Sender<PtyCommand>,
-    child: Box<dyn portable_pty::Child + Send>,
-    reader_thread: thread::JoinHandle<()>,
-    control_thread: thread::JoinHandle<()>,
+    child: Child,
+    reader_task: JoinHandle<()>,
+    control_task: JoinHandle<()>,
 }
 
 impl PtyBridge {
-    /// Creates the PTY on Tokio's blocking pool; persistent I/O then runs on dedicated threads.
-    pub(super) async fn spawn(outbound_tx: mpsc::Sender<Message>) -> Result<Self, TerminalError> {
-        tokio::task::spawn_blocking(move || Self::spawn_blocking(outbound_tx))
-            .await
-            .map_err(TerminalError::SetupTask)?
+    /// Spawns the default shell inside an async PTY with optional Docker `RLIMIT_FSIZE` protection.
+    pub(super) fn spawn(outbound_tx: mpsc::Sender<Message>) -> Result<Self, TerminalError> {
+        let shell = env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
+        let mut command = Command::new(shell)
+            .current_dir(get_workspace_root())
+            .env("TERM", "xterm-256color");
+        for bootstrap_var in [
+            "FASTGPT_WORKDIR",
+            "FASTGPT_RUNTIME_DIR",
+            DISK_SOFT_LIMIT_ENV,
+        ] {
+            command = command.env_remove(bootstrap_var);
+        }
+        command = apply_fsize_limit(command, disk_soft_limit_bytes());
+        Self::spawn_command(command, outbound_tx)
     }
 
-    fn spawn_blocking(outbound_tx: mpsc::Sender<Message>) -> Result<Self, TerminalError> {
-        let pty_system = native_pty_system();
-        let pair = pty_system
-            .openpty(PtySize {
-                rows: 24,
-                cols: 80,
-                pixel_width: 0,
-                pixel_height: 0,
-            })
-            .map_err(|error| TerminalError::pty("open PTY", error))?;
+    #[cfg(test)]
+    pub(super) fn spawn_for_test(
+        command: Command,
+        fsize_limit: Option<u64>,
+        outbound_tx: mpsc::Sender<Message>,
+    ) -> Result<Self, TerminalError> {
+        Self::spawn_command(apply_fsize_limit(command, fsize_limit), outbound_tx)
+    }
 
-        let shell = env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
-        let mut command = CommandBuilder::new(shell);
-        command.cwd(get_workspace_root());
-        command.env("TERM", "xterm-256color");
+    fn spawn_command(
+        command: Command,
+        outbound_tx: mpsc::Sender<Message>,
+    ) -> Result<Self, TerminalError> {
+        let (pty, pts) = pty_process::open().map_err(|err| TerminalError::pty("open PTY", err))?;
+        pty.resize(Size::new(24, 80))
+            .map_err(|err| TerminalError::pty("initialize PTY size", err))?;
 
-        let mut reader = pair
-            .master
-            .try_clone_reader()
-            .map_err(|error| TerminalError::pty("clone PTY reader", error))?;
-        let mut writer = pair
-            .master
-            .take_writer()
-            .map_err(|error| TerminalError::pty("take PTY writer", error))?;
-        let mut child = pair
-            .slave
-            .spawn_command(command)
-            .map_err(|error| TerminalError::pty("spawn PTY command", error))?;
+        let child = command
+            .spawn(pts)
+            .map_err(|err| TerminalError::pty("spawn PTY command", err))?;
 
+        let (mut reader, mut writer) = pty.into_split();
         let (command_tx, mut command_rx) = mpsc::channel(PTY_CHANNEL_CAPACITY);
-        let master = pair.master;
-        let control_thread = match thread::Builder::new()
-            .name("fastgpt-pty-control".to_string())
-            .spawn(move || {
-                while let Some(command) = command_rx.blocking_recv() {
-                    let result = match command {
-                        PtyCommand::Write(data) => {
-                            writer.write_all(&data).and_then(|()| writer.flush())
-                        }
-                        PtyCommand::Resize { rows, cols } => master
-                            .resize(PtySize {
-                                rows,
-                                cols,
-                                pixel_width: 0,
-                                pixel_height: 0,
-                            })
-                            .map_err(std::io::Error::other),
-                    };
-                    if result.is_err() {
+
+        let control_task = tokio::spawn(async move {
+            while let Some(command) = command_rx.recv().await {
+                let ok = match command {
+                    PtyCommand::Write(data) => {
+                        writer.write_all(&data).await.is_ok() && writer.flush().await.is_ok()
+                    }
+                    PtyCommand::Resize { rows, cols } => {
+                        writer.resize(Size::new(rows, cols)).is_ok()
+                    }
+                };
+                if !ok {
+                    break;
+                }
+            }
+        });
+
+        let reader_task = tokio::spawn(async move {
+            let mut buffer = [0_u8; 4096];
+            loop {
+                match reader.read(&mut buffer).await {
+                    Ok(0) | Err(_) => {
+                        // Notify the WebSocket sender immediately when the shell exits so
+                        // `handle_terminal_session` closes cleanly instead of waiting on `outbound_tx`.
+                        let _ = outbound_tx
+                            .send(Message::Close(Some(CloseFrame {
+                                code: CloseCode::Normal,
+                                reason: "Shell exited".into(),
+                            })))
+                            .await;
                         break;
                     }
-                }
-            }) {
-            Ok(thread) => thread,
-            Err(source) => {
-                let _ = child.kill();
-                let _ = child.wait();
-                return Err(TerminalError::ThreadSpawn {
-                    name: "PTY control",
-                    source,
-                });
-            }
-        };
-
-        let reader_thread = match thread::Builder::new()
-            .name("fastgpt-pty-reader".to_string())
-            .spawn(move || {
-                let mut buffer = [0_u8; 4096];
-                loop {
-                    match reader.read(&mut buffer) {
-                        Ok(0) => break,
-                        Ok(read_len) => {
-                            let message = Message::Binary(buffer[..read_len].to_vec().into());
-                            if outbound_tx.blocking_send(message).is_err() {
-                                break;
-                            }
+                    Ok(read_len) => {
+                        let message = Message::Binary(buffer[..read_len].to_vec().into());
+                        if outbound_tx.send(message).await.is_err() {
+                            break;
                         }
-                        Err(_) => break,
                     }
                 }
-            }) {
-            Ok(thread) => thread,
-            Err(source) => {
-                drop(command_tx);
-                let _ = child.kill();
-                let _ = child.wait();
-                let _ = control_thread.join();
-                return Err(TerminalError::ThreadSpawn {
-                    name: "PTY reader",
-                    source,
-                });
             }
-        };
+        });
 
         Ok(Self {
             command_tx,
             child,
-            reader_thread,
-            control_thread,
+            reader_task,
+            control_task,
         })
     }
 
@@ -169,30 +172,40 @@ impl PtyBridge {
         self.command_tx.clone()
     }
 
-    /// Stops the child process before joining both blocking PTY threads.
-    pub(super) async fn shutdown(self) -> Result<(), TerminalError> {
+    /// Stops the child process group and tears down async PTY tasks with a bounded reader wait.
+    pub(super) async fn shutdown(self) {
         let Self {
             command_tx,
             mut child,
-            reader_thread,
-            control_thread,
+            mut reader_task,
+            mut control_task,
         } = self;
         drop(command_tx);
 
-        tokio::task::spawn_blocking(move || {
-            let _ = child.kill();
-            let _ = child.wait();
-            control_thread
-                .join()
-                .map_err(|_| TerminalError::ThreadPanic {
-                    name: "PTY control",
-                })?;
-            reader_thread
-                .join()
-                .map_err(|_| TerminalError::ThreadPanic { name: "PTY reader" })?;
-            Ok(())
-        })
-        .await
-        .map_err(TerminalError::CleanupTask)?
+        #[cfg(unix)]
+        if let Some(pid) = child.id() {
+            // `pty_process::Command::spawn` starts a new session/process group led by `pid`.
+            // Signal the whole group before `wait` (while `pid` cannot be recycled) to reap children too.
+            unsafe {
+                libc::killpg(pid as libc::pid_t, libc::SIGKILL);
+            }
+        } else {
+            let _ = child.start_kill();
+        }
+        #[cfg(not(unix))]
+        let _ = child.start_kill();
+
+        let _ = child.wait().await;
+        finish_or_abort(&mut control_task).await;
+
+        // A detached `setsid` descendant can keep the PTY slave fd open, preventing EOF on `reader`.
+        if tokio::time::timeout(PTY_SHUTDOWN_READER_TIMEOUT, &mut reader_task)
+            .await
+            .is_err()
+        {
+            warn!("Timed out waiting for PTY reader task to observe EOF after shutdown");
+            reader_task.abort();
+            let _ = reader_task.await;
+        }
     }
 }

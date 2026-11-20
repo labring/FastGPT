@@ -1,15 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PassThrough, Readable } from 'node:stream';
+import JSZip from 'jszip';
 import handler from '@/pages/api/core/ai/skill/export';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { getRootUser } from '@test/datas/users';
 import { jsonRes } from '@fastgpt/service/common/response';
+import { buffer } from 'node:stream/consumers';
+import { createTarZstStream } from '@fastgpt/service/common/file/tarZst';
 import { SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR } from '@fastgpt/service/core/ai/sandbox/constants';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 const skillExportMocks = vi.hoisted(() => ({
-  packageSkillEditWorkspaceMock: vi.fn()
+  streamSkillEditWorkspaceTarZstMock: vi.fn()
 }));
 
 vi.mock(
@@ -19,7 +23,10 @@ vi.mock(
       await importOriginal<
         typeof import('@fastgpt/service/core/ai/sandbox/application/skillEdit/runtime')
       >();
-    return { ...actual, packageSkillEditWorkspace: skillExportMocks.packageSkillEditWorkspaceMock };
+    return {
+      ...actual,
+      streamSkillEditWorkspaceTarZst: skillExportMocks.streamSkillEditWorkspaceTarZstMock
+    };
   }
 );
 
@@ -27,31 +34,40 @@ const mockJsonRes = vi.mocked(jsonRes);
 
 function makeMockRes() {
   const headers: Record<string, any> = {};
-  let endData: any;
+  const chunks: Buffer[] = [];
   let statusCode = 200;
 
-  const res: any = {
-    get headers() {
-      return headers;
-    },
-    get endData() {
-      return endData;
-    },
-    get statusCode() {
-      return statusCode;
-    },
-    setHeader: vi.fn((key: string, value: any) => {
-      headers[key] = value;
+  const stream = new PassThrough();
+  stream.on('data', (chunk) => {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  });
+
+  const res: any = Object.defineProperties(
+    Object.assign(stream, {
+      setHeader: vi.fn((key: string, value: any) => {
+        headers[key] = value;
+      }),
+      status: vi.fn((code: number) => {
+        statusCode = code;
+        return res;
+      }),
+      json: vi.fn()
     }),
-    status: vi.fn((code: number) => {
-      statusCode = code;
-      return res;
-    }),
-    end: vi.fn((data?: any) => {
-      endData = data;
-    }),
-    json: vi.fn()
-  };
+    {
+      headers: {
+        enumerable: true,
+        get: () => headers
+      },
+      bodyBuffer: {
+        enumerable: true,
+        get: () => Buffer.concat(chunks)
+      },
+      statusCode: {
+        enumerable: true,
+        get: () => statusCode
+      }
+    }
+  );
   return res;
 }
 
@@ -103,7 +119,7 @@ describe('GET /api/core/ai/skill/export', () => {
     const skill = await createPersonalSkill({ user, name: 'skill-without-sandbox' });
     const skillId = String(skill._id);
 
-    skillExportMocks.packageSkillEditWorkspaceMock.mockRejectedValueOnce(
+    skillExportMocks.streamSkillEditWorkspaceTarZstMock.mockRejectedValueOnce(
       new Error(SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR)
     );
 
@@ -112,24 +128,46 @@ describe('GET /api/core/ai/skill/export', () => {
 
     await handler(req, res);
 
-    expect(skillExportMocks.packageSkillEditWorkspaceMock).toHaveBeenCalledWith({
-      skillId,
-      teamId: user.teamId,
-      validationMode: 'basicZip'
-    });
+    expect(skillExportMocks.streamSkillEditWorkspaceTarZstMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skillId,
+        teamId: user.teamId
+      })
+    );
     expect(mockJsonRes).toHaveBeenCalledWith(res, {
       code: 404,
       error: SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR
     });
   });
 
-  it('同 team 用户可成功导出 edit sandbox 工作区内容', async () => {
+  it('同 team 用户可流式将 edit sandbox 工作区(.tar.zst)实时转为 .zip 导出', async () => {
     const user = await getRootUser();
     const skill = await createPersonalSkill({ user, name: 'workspace-skill' });
     const skillId = String(skill._id);
 
-    const workspaceZip = Buffer.from('PK workspace zip content');
-    skillExportMocks.packageSkillEditWorkspaceMock.mockResolvedValueOnce(workspaceZip);
+    const tarZstBuffer = await buffer(
+      createTarZstStream([
+        { path: 'skills/', type: 'directory', mode: 0o755 },
+        { path: 'skills/demo/', type: 'directory', mode: 0o755 },
+        {
+          path: 'skills/demo/SKILL.md',
+          type: 'file',
+          mode: 0o644,
+          content: Buffer.from('---\nname: demo\n---\n# Demo')
+        },
+        {
+          path: 'skills/demo/empty.txt',
+          type: 'file',
+          mode: 0o644,
+          content: Buffer.alloc(0)
+        },
+        { path: 'skills/demo/lib', type: 'symlink', mode: 0o777, linkname: '../shared' }
+      ])
+    );
+
+    skillExportMocks.streamSkillEditWorkspaceTarZstMock.mockImplementationOnce(
+      async ({ onStreamReady }) => onStreamReady(Readable.from([tarZstBuffer]))
+    );
 
     const res = makeMockRes();
     const req = makeMockReq({ auth: user, query: { skillId } });
@@ -137,20 +175,27 @@ describe('GET /api/core/ai/skill/export', () => {
     await handler(req, res);
 
     expect(mockJsonRes).not.toHaveBeenCalled();
-    expect(skillExportMocks.packageSkillEditWorkspaceMock).toHaveBeenCalledWith({
-      skillId,
-      teamId: user.teamId,
-      validationMode: 'basicZip'
-    });
+    expect(skillExportMocks.streamSkillEditWorkspaceTarZstMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skillId,
+        teamId: user.teamId
+      })
+    );
     expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/zip');
     expect(res.setHeader).toHaveBeenCalledWith(
       'Content-Disposition',
       expect.stringContaining("attachment; filename*=UTF-8''")
     );
-    expect(res.setHeader).toHaveBeenCalledWith('Content-Length', workspaceZip.length);
     expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(Buffer.compare(res.endData, workspaceZip)).toBe(0);
+    const exportedZip = await JSZip.loadAsync(res.bodyBuffer);
+    expect(await exportedZip.file('skills/demo/SKILL.md')?.async('string')).toBe(
+      '---\nname: demo\n---\n# Demo'
+    );
+    expect((await exportedZip.file('skills/demo/empty.txt')?.async('nodebuffer'))?.length).toBe(0);
+    const symlink = exportedZip.file('skills/demo/lib');
+    expect(((symlink?.unixPermissions as number) & 0o170000) >>> 0).toBe(0o120000);
+    expect(await symlink?.async('string')).toBe('../shared');
     expect(addAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
         event: AuditEventEnum.EXPORT_SKILL,
@@ -171,7 +216,7 @@ describe('GET /api/core/ai/skill/export', () => {
     const skill = await createPersonalSkill({ user, name: 'workspace-skill-team-mismatch' });
     const skillId = String(skill._id);
 
-    skillExportMocks.packageSkillEditWorkspaceMock.mockRejectedValueOnce(
+    skillExportMocks.streamSkillEditWorkspaceTarZstMock.mockRejectedValueOnce(
       new Error(SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR)
     );
 
@@ -180,11 +225,6 @@ describe('GET /api/core/ai/skill/export', () => {
 
     await handler(req, res);
 
-    expect(skillExportMocks.packageSkillEditWorkspaceMock).toHaveBeenCalledWith({
-      skillId,
-      teamId: user.teamId,
-      validationMode: 'basicZip'
-    });
     expect(mockJsonRes).toHaveBeenCalledWith(res, {
       code: 404,
       error: SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR
@@ -196,7 +236,7 @@ describe('GET /api/core/ai/skill/export', () => {
     const skill = await createPersonalSkill({ user, name: 'workspace-package-error' });
     const packageError = new Error('package failed');
 
-    skillExportMocks.packageSkillEditWorkspaceMock.mockRejectedValueOnce(packageError);
+    skillExportMocks.streamSkillEditWorkspaceTarZstMock.mockRejectedValueOnce(packageError);
 
     const res = makeMockRes();
     const req = makeMockReq({ auth: user, query: { skillId: String(skill._id) } });
@@ -206,5 +246,29 @@ describe('GET /api/core/ai/skill/export', () => {
       error: packageError
     });
     expect(mockJsonRes).not.toHaveBeenCalled();
+  });
+
+  it('工作区打包流缺少 SKILL.md 时应在流解析阶段报错', async () => {
+    const user = await getRootUser();
+    const skill = await createPersonalSkill({ user, name: 'workspace-missing-skill-md' });
+    const tarZstBuffer = await buffer(
+      createTarZstStream([
+        { path: 'README.md', type: 'file', mode: 0o644, content: Buffer.from('# readme') }
+      ])
+    );
+
+    skillExportMocks.streamSkillEditWorkspaceTarZstMock.mockImplementationOnce(
+      async ({ onStreamReady }) => onStreamReady(Readable.from([tarZstBuffer]))
+    );
+
+    const res = makeMockRes();
+    const req = makeMockReq({ auth: user, query: { skillId: String(skill._id) } });
+
+    await expect(handler(req, res)).resolves.toMatchObject({
+      code: 500,
+      error: expect.objectContaining({
+        message: expect.stringContaining('Missing required file: SKILL.md')
+      })
+    });
   });
 });

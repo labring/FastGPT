@@ -18,6 +18,7 @@ import {
   sanitizeOverridesForSchema,
   type SchemaSanitizedIssue
 } from '@/migration/tasks/4180/20261116_migrate_system_configs/service';
+import { migrateSystemConfigs } from '@/migration/tasks/4180/20261116_migrate_system_configs';
 import { readLegacyInstanceConfigEnv } from '@/migration/tasks/4180/20261116_migrate_system_configs/env';
 
 const logger = {
@@ -25,6 +26,10 @@ const logger = {
   warn: () => {},
   error: () => {}
 };
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe('legacy numeric configuration migration', () => {
   it('converts numeric strings across App and Pro sources before domain validation', () => {
@@ -236,8 +241,8 @@ describe('sanitizeOverridesForSchema', () => {
       overrides: {
         subservice: {
           agentSandbox: {
-            provider: 'sealosdevbox',
-            sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+            enabled: true,
+            opensandbox: { baseUrl: 'https://sandbox.example.test' }
           }
         }
       },
@@ -249,8 +254,8 @@ describe('sanitizeOverridesForSchema', () => {
     expect(warnings.length).toBeGreaterThan(0);
     expect(overrides.subservice).toEqual({
       agentSandbox: {
-        provider: 'sealosdevbox',
-        sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+        enabled: true,
+        opensandbox: { baseUrl: 'https://sandbox.example.test' }
       }
     });
   });
@@ -728,8 +733,8 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
       overrides: {
         subservice: {
           agentSandbox: {
-            provider: 'sealosdevbox',
-            sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+            enabled: true,
+            opensandbox: { baseUrl: 'https://opensandbox.example.test' }
           }
         }
       },
@@ -742,8 +747,8 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
         subservice: {
           codeSandbox: { url: 'https://code.example.test' },
           agentSandbox: {
-            provider: 'sealosdevbox',
-            sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+            enabled: true,
+            opensandbox: { baseUrl: 'https://opensandbox.example.test' }
           }
         }
       },
@@ -755,10 +760,138 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
     expect(doc?.overrides).toMatchObject({
       codeSandbox: { url: 'https://code.example.test' },
       agentSandbox: {
-        provider: 'sealosdevbox',
-        sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+        enabled: true,
+        opensandbox: { baseUrl: 'https://opensandbox.example.test' }
       }
     });
     expect(doc?.explicitDefaultPaths ?? []).not.toContain('codeSandbox.url');
+  });
+
+  it('warns on invalid subservice proxy/enabled constraints while retaining all values for repair', () => {
+    const overrides = {
+      subservice: {
+        codeSandbox: { enabled: true, url: 'https://code.example.test', token: 'code-token' },
+        agentSandbox: {
+          enabled: true,
+          opensandbox: { baseUrl: 'https://opensandbox.example.test' },
+          proxy: {
+            wsUrl: 'https://wrong-protocol.test',
+            previewUrl: 'https://preview.example.test',
+            secret: 'proxy_secret_32_characters_minimum'
+          }
+        }
+      }
+    };
+    const warnings: string[] = [];
+    const issues: SchemaSanitizedIssue[] = [];
+    const sanitized = sanitizeOverridesForSchema({ overrides, warnings, issues });
+
+    expect(warnings).toContain(
+      'subservice.agentSandbox.proxy.wsUrl 配置不满足保存校验，已保留原值'
+    );
+    expect(issues).toContainEqual({
+      domain: 'subservice',
+      path: 'agentSandbox.proxy.wsUrl'
+    });
+    expect(sanitized.subservice).toEqual(overrides.subservice);
+  });
+});
+
+describe('upgraded deployment migration end-to-end (process.env -> DB)', () => {
+  beforeEach(async () => {
+    await MongoSystemInstanceConfig.deleteMany({});
+  });
+
+  const runFullMigration = () =>
+    migrateSystemConfigs({
+      logger,
+      assertActive: async () => undefined,
+      reportProgress: async () => undefined
+    } as any);
+
+  it('preserves agentSandbox.enabled when upgrading via Helm/Compose env without AGENT_SANDBOX_PROVIDER', async () => {
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', undefined);
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://fgc-opensandbox-server:8090');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', 'osb_generated_key');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_URL', 'wss://proxy.upgraded.test');
+    vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', 'https://preview.upgraded.test');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', 'proxy_generated_secret_32_characters_min');
+
+    await runFullMigration();
+
+    const doc = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
+    const resolved = resolveDomainEffectiveConfig({
+      domain: 'subservice',
+      overrides: decryptDomainSecrets('subservice', doc?.overrides)
+    });
+    expect(resolved.agentSandbox.enabled).toBe(true);
+    expect(resolved.agentSandbox.proxy).toEqual({
+      wsUrl: 'wss://proxy.upgraded.test',
+      previewUrl: 'https://preview.upgraded.test',
+      secret: 'proxy_generated_secret_32_characters_min'
+    });
+    expect(resolved.agentSandbox.opensandbox.baseUrl).toBe('http://fgc-opensandbox-server:8090');
+  });
+
+  it('keeps agentSandbox disabled when upgrading with legacy .env.template empty/placeholder values', async () => {
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', '');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://localhost:8090');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_URL', 'ws://localhost:3006');
+    vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', 'http://localhost:3006');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', 'default_fastgpt_agent_sandbox_proxy_secret');
+
+    await runFullMigration();
+
+    const doc = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
+    const resolved = resolveDomainEffectiveConfig({
+      domain: 'subservice',
+      overrides: decryptDomainSecrets('subservice', doc?.overrides)
+    });
+    expect(resolved.agentSandbox.enabled).toBe(false);
+  });
+
+  it('preserves disabled state when existing subservice doc had provider=none/sealosdevbox or env is Sealos-only', async () => {
+    await MongoSystemInstanceConfig.collection.insertOne({
+      domain: 'subservice',
+      schemaVersion: 1,
+      revision: 1,
+      overrides: {
+        agentSandbox: {
+          provider: 'none',
+          opensandbox: { baseUrl: 'https://sandbox.example.test' }
+        }
+      },
+      explicitDefaultPaths: []
+    } as any);
+
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', undefined);
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://fgc-opensandbox-server:8090');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', 'osb_generated_key');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_URL', 'wss://proxy.upgraded.test');
+    vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', 'https://preview.upgraded.test');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', 'proxy_generated_secret_32_characters_min');
+
+    await runFullMigration();
+
+    const doc = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
+    const resolved = resolveDomainEffectiveConfig({
+      domain: 'subservice',
+      overrides: decryptDomainSecrets('subservice', doc?.overrides)
+    });
+    expect(resolved.agentSandbox.enabled).toBe(false);
+
+    await MongoSystemInstanceConfig.deleteMany({});
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', '');
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', 'https://devbox.sealos.example.test');
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', 'sealos-token');
+
+    await runFullMigration();
+
+    const sealosDoc = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
+    const sealosResolved = resolveDomainEffectiveConfig({
+      domain: 'subservice',
+      overrides: decryptDomainSecrets('subservice', sealosDoc?.overrides)
+    });
+    expect(sealosResolved.agentSandbox.enabled).toBe(false);
   });
 });

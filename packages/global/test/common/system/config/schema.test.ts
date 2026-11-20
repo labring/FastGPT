@@ -531,7 +531,7 @@ describe('resolveSystemInstanceConfig', () => {
     expect(fullConfig.site.name).toBe('My AI');
     expect(fullConfig.site.openApiPrefix).toBe('fastgpt');
     expect(fullConfig.performance.workflow.maxRunTimes).toBe(800);
-    expect(fullConfig.subservice.agentSandbox.provider).toBe('none');
+    expect(fullConfig.subservice.agentSandbox.enabled).toBe(false);
     expect(fullConfig.security.csrfEnabled).toBe(true);
   });
 });
@@ -646,27 +646,24 @@ describe('systemInstanceConfigRegistry', () => {
       expect(communityKeys).not.toContain(key);
     }
   });
-  it('checks subservice resolveDomainEffectiveConfig errors', () => {
-    try {
+  it('checks subservice resolveDomainEffectiveConfig errors and rejects retired provider field', () => {
+    expect(() =>
       resolveDomainEffectiveConfig({
         domain: 'subservice',
         overrides: {
           agentSandbox: {
-            provider: 'sealosdevbox',
-            sealosdevbox: { baseUrl: '', token: '', image: '' }
-          }
+            provider: 'sealosdevbox'
+          } as any
         }
-      });
-    } catch (e: any) {
-      console.error('SEALOS_FAIL:', e.message);
-    }
+      })
+    ).toThrow();
 
-    try {
+    expect(() =>
       resolveDomainEffectiveConfig({
         domain: 'subservice',
         overrides: {
           agentSandbox: {
-            provider: 'opensandbox',
+            enabled: true,
             opensandbox: {
               baseUrl: '',
               apiKey: '',
@@ -676,10 +673,8 @@ describe('systemInstanceConfigRegistry', () => {
             }
           }
         }
-      });
-    } catch (e: any) {
-      console.error('OPEN_FAIL:', e.message);
-    }
+      })
+    ).toThrow();
   });
 });
 
@@ -736,8 +731,14 @@ describe('agentSandbox.common.storageSizeGi validation', () => {
 });
 
 describe('unvalidated instance config reads and strict saves', () => {
-  it('retains invalid known fields and incomplete provider config on reads without warning while rejecting saves', () => {
-    const raw = { agentSandbox: { provider: 'sealosdevbox', common: { memoryMiB: -1 } } };
+  it('retains invalid known fields and incomplete opensandbox config on reads without warning while rejecting saves', () => {
+    const raw = {
+      agentSandbox: {
+        enabled: true,
+        common: { memoryMiB: -1 },
+        opensandbox: { baseUrl: 'not-a-url' }
+      }
+    };
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       const read = resolveDomainEffectiveConfig({
@@ -745,7 +746,8 @@ describe('unvalidated instance config reads and strict saves', () => {
         overrides: raw,
         options: { strict: false }
       });
-      expect(read.agentSandbox.provider).toBe('sealosdevbox');
+      expect(read.agentSandbox.enabled).toBe(true);
+      expect(read.agentSandbox.opensandbox.baseUrl).toBe('not-a-url');
       expect(read.agentSandbox.common.memoryMiB).toBe(-1);
       expect(read.agentSandbox.proxy.wsUrl).toBe('');
       expect(warn).not.toHaveBeenCalled();

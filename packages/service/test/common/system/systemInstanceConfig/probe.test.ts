@@ -10,6 +10,7 @@ describe('probeUrlConnection', () => {
   let server: http.Server;
   let baseUrl: string;
   let sandboxCalls = 0;
+  let openSandboxCalls = 0;
   let sseCloses = 0;
   const probeObjects = new Map<string, string>();
 
@@ -25,6 +26,24 @@ describe('probeUrlConnection', () => {
         }
         res.writeHead(req.url === '/error/health' ? 503 : 200);
         res.end(req.url === '/proxy/health' ? 'OK' : 'unrelated service');
+      } else if (
+        req.url?.startsWith('/v1/sandboxes') ||
+        req.url?.startsWith('/invalid/v1/sandboxes')
+      ) {
+        openSandboxCalls++;
+        if (req.headers['open-sandbox-api-key'] !== 'opensandbox-secret') {
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ code: 'INVALID_API_KEY', message: 'secret leak check' }));
+        } else {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(
+            JSON.stringify(
+              req.url.startsWith('/v1/sandboxes')
+                ? { items: [], pagination: { page: 1, pageSize: 1 } }
+                : { ok: true }
+            )
+          );
+        }
       } else if (req.url?.startsWith('/cdn/')) {
         const key = req.url.split('/').slice(3).join('/');
         res.writeHead(probeObjects.has(key) ? 200 : 404, { 'Content-Type': 'text/plain' });
@@ -343,9 +362,53 @@ describe('probeUrlConnection', () => {
     expect(sandboxCalls).toBe(count);
   });
 
+  it('validates OpenSandbox authentication and response payload without leaking credentials', async () => {
+    for (const url of [baseUrl, `${baseUrl}/v1`, `${baseUrl}/v1/`]) {
+      await expect(
+        probeUrlConnection({
+          service: 'opensandbox',
+          url,
+          token: 'opensandbox-secret',
+          timeoutMs: 2000
+        })
+      ).resolves.toMatchObject({ connected: true, status: 200 });
+    }
+    for (const [url, token, expectedStatus] of [
+      [baseUrl, 'wrong-secret', 401],
+      [`${baseUrl}/invalid`, 'opensandbox-secret', 200]
+    ] as const) {
+      const result = await probeUrlConnection({
+        service: 'opensandbox',
+        url,
+        token,
+        timeoutMs: 2000
+      });
+      expect(result).toMatchObject({
+        connected: false,
+        status: expectedStatus,
+        errorCode: 'response'
+      });
+      expect(JSON.stringify(result)).not.toContain(token);
+      expect(JSON.stringify(result)).not.toContain('secret leak check');
+    }
+    const count = openSandboxCalls;
+    expect(
+      (
+        await probeUrlConnection({
+          service: 'opensandbox',
+          url: baseUrl,
+          token: '',
+          timeoutMs: 2000
+        })
+      ).connected
+    ).toBe(false);
+    expect(openSandboxCalls).toBe(count);
+  });
+
   it('rejects unsafe service URLs before making a request, while retaining generic query probes', async () => {
     const count = sandboxCalls;
-    for (const service of ['codeSandbox', 'mcpSse'] as const) {
+    const osCount = openSandboxCalls;
+    for (const service of ['codeSandbox', 'opensandbox', 'mcpSse'] as const) {
       for (const url of [
         `${baseUrl}?x=1`,
         `${baseUrl}#fragment`,
@@ -362,6 +425,7 @@ describe('probeUrlConnection', () => {
       }
     }
     expect(sandboxCalls).toBe(count);
+    expect(openSandboxCalls).toBe(osCount);
     await expect(
       probeUrlConnection({ url: `${baseUrl}/api/status?x=1`, timeoutMs: 2000 })
     ).resolves.toMatchObject({ connected: true });

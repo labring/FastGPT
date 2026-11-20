@@ -28,7 +28,6 @@ const {
   runToolCallMock,
   useToolMessagesMock,
   useToolNodeListMock,
-  ensureAppSandboxRuntimeReadyMock,
   markChatSandboxEnabledMock
 } = vi.hoisted(() => ({
   getLLMModelDataMock: vi.fn(),
@@ -36,7 +35,6 @@ const {
   runToolCallMock: vi.fn(),
   useToolMessagesMock: vi.fn(),
   useToolNodeListMock: vi.fn(),
-  ensureAppSandboxRuntimeReadyMock: vi.fn(),
   markChatSandboxEnabledMock: vi.fn()
 }));
 
@@ -78,15 +76,6 @@ vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
 vi.mock('@fastgpt/service/core/ai/sandbox/application/toolCall', () => ({
   prepareSandboxToolRuntime: getSandboxClientMock
 }));
-
-vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/upgrade', async (importOriginal) => {
-  const original =
-    await importOriginal<
-      typeof import('@fastgpt/service/core/ai/sandbox/application/runtime/upgrade')
-    >();
-
-  return { ...original, ensureAppSandboxRuntimeReady: ensureAppSandboxRuntimeReadyMock };
-});
 
 const createProps = (overrides: Record<string, any> = {}) =>
   ({
@@ -190,9 +179,8 @@ describe('dispatchRunTools', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    getTestInstanceConfig().subservice.agentSandbox.provider = 'opensandbox';
+    getTestInstanceConfig().subservice.agentSandbox.enabled = true;
     vi.mocked(checkTeamSandboxPermission).mockResolvedValue(undefined);
-    ensureAppSandboxRuntimeReadyMock.mockResolvedValue(false);
     markChatSandboxEnabledMock.mockResolvedValue(undefined);
     getLLMModelDataMock.mockReturnValue({
       model: 'gpt-5',
@@ -210,7 +198,7 @@ describe('dispatchRunTools', () => {
       currentInputFiles: []
     });
     getSandboxClientMock.mockResolvedValue({
-      provider: {},
+      opensandbox: {},
       exec: vi.fn()
     });
     runToolCallMock.mockResolvedValue({
@@ -435,9 +423,9 @@ describe('dispatchRunTools', () => {
   });
 
   it('initializes sandbox client and injects input files before running toolcall', async () => {
-    getTestInstanceConfig().subservice.agentSandbox.provider = 'opensandbox';
+    getTestInstanceConfig().subservice.agentSandbox.enabled = true;
     const sandboxClient = {
-      provider: {},
+      opensandbox: {},
       exec: vi.fn()
     };
     getSandboxClientMock.mockResolvedValueOnce(sandboxClient);
@@ -468,6 +456,8 @@ describe('dispatchRunTools', () => {
       sourceId: createProps().runningAppInfo.sourceId,
       userId: 'user_1',
       chatId: 'chat_1',
+      onUpgrade: expect.any(Function),
+      onUpgradeComplete: expect.any(Function),
       readInputFile: expect.any(Function),
       files: [
         {
@@ -484,9 +474,11 @@ describe('dispatchRunTools', () => {
   });
 
   it('silently upgrades App sandbox and continues the same ToolCall workflow', async () => {
-    ensureAppSandboxRuntimeReadyMock.mockImplementationOnce(async ({ onUpgrade }) => {
-      onUpgrade?.();
-      return true;
+    const defaultClient = getSandboxClientMock.getMockImplementation();
+    getSandboxClientMock.mockImplementationOnce(async (params) => {
+      params.onUpgrade?.();
+      params.onUpgradeComplete?.();
+      return defaultClient!(params);
     });
     const props = createProps({
       params: {
@@ -502,16 +494,16 @@ describe('dispatchRunTools', () => {
       sourceId: 'app_1',
       userId: 'user_1'
     });
-    expect(ensureAppSandboxRuntimeReadyMock).toHaveBeenCalledWith({
-      query: {
-        sandboxId,
+    expect(getSandboxClientMock).toHaveBeenCalledWith(
+      expect.objectContaining({
         sourceType: ChatSourceTypeEnum.app,
         sourceId: 'app_1',
         userId: 'user_1',
-        chatId: 'chat_1'
-      },
-      onUpgrade: expect.any(Function)
-    });
+        chatId: 'chat_1',
+        onUpgrade: expect.any(Function),
+        onUpgradeComplete: expect.any(Function)
+      })
+    );
     expect(props.workflowStreamResponse.mock.calls.map(([event]: [unknown]) => event)).toEqual([
       {
         event: 'sandboxStatus',
@@ -536,7 +528,7 @@ describe('dispatchRunTools', () => {
   });
 
   it('stops ToolCall runtime initialization when silent sandbox upgrade fails', async () => {
-    ensureAppSandboxRuntimeReadyMock.mockRejectedValueOnce(new Error('archive upload failed'));
+    getSandboxClientMock.mockRejectedValueOnce(new Error('archive upload failed'));
     const props = createProps({
       params: {
         ...createProps().params,
@@ -552,7 +544,6 @@ describe('dispatchRunTools', () => {
     expect(result.toolResponse).toEqual({
       error: 'archive upload failed'
     });
-    expect(getSandboxClientMock).not.toHaveBeenCalled();
     expect(runToolCallMock).not.toHaveBeenCalled();
     expect(
       props.workflowStreamResponse.mock.calls.map(

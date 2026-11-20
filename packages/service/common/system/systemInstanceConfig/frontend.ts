@@ -131,9 +131,7 @@ export const buildSystemFrontendConfig = (
       Boolean(instanceConfig.subservice.codeSandbox.token.trim()),
     limit: {
       skillSandboxMaxBytes:
-        Math.round(
-          (instanceConfig?.subservice?.agentSandbox?.common?.storageSizeGi * 1024) / 2 - 150
-        ) *
+        Math.round((instanceConfig?.subservice?.agentSandbox?.common?.storageSizeGi ?? 0) * 1024) *
         1024 ** 2,
 
       uploadFileMaxSize: instanceConfig?.resource?.uploadFileMaxSize,
@@ -153,7 +151,7 @@ export const buildSystemFrontendConfig = (
     pluginRemoteDebug,
     disableMarketplace: context.disableMarketplace ?? false,
     show_agent_sandbox_free_tip: serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP,
-    show_agent_sandbox: instanceConfig?.subservice?.agentSandbox?.provider !== 'none',
+    show_agent_sandbox: instanceConfig?.subservice?.agentSandbox?.enabled === true,
     showCustomPdfParse: instanceConfig?.providers?.documentParse?.provider !== 'none',
     customPdfParsePrice: instanceConfig?.providers?.documentParse?.customPdf?.price,
     show_outlink_brand: serviceEnv.SHOW_OUTLINK_BRAND,

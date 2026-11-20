@@ -7,63 +7,64 @@ import {
   deleteSandboxResourcesBySource,
   deleteSkillEditSandboxes as deleteCurrentSkillSandboxes
 } from '../../application/resource';
-import { withSandboxSourceMutationLease } from '../../application/lease';
 import { assertSandboxSourceDeleted } from '../../application/sourceGuard';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 /**
- * 分别在 App、Builder 的 Source lease 内确认 App 已删除，再查询、清理对应资源。
+ * 确认 App 已打软删除标记后，按 App / WorkflowBuilder 维度清理对应 Sandbox 资源。
  *
- * 删除标记阻止后续创建；各自的 Source lease 确保查询不会漏掉正在创建的记录。
- * 按固定顺序逐个取得并释放 Source lease，内部保持 Source -> Lifecycle 的锁顺序。
+ * 依赖 Store-Load 持久栅栏：新建侧落库 `provisioning` 后会再次校验 source 未删除，
+ * 删除侧先确认主表已标记删除，再扫描并逐个持有 Lifecycle Lease 执行回收。
  */
 export async function deleteAppSandboxes(appId: string): Promise<void> {
   for (const sourceType of [ChatSourceTypeEnum.app, ChatSourceTypeEnum.workflowBuilder] as const) {
-    await withSandboxSourceMutationLease({
-      sourceType,
-      sourceId: appId,
-      label: `delete-app-sandboxes:${sourceType}:${appId}`,
-      fn: async ({ assertValid }) => {
-        await assertSandboxSourceDeleted({ sourceType, sourceId: appId });
-        assertValid();
-        await deleteSandboxResourcesBySource({ sourceType, sourceId: appId });
-      }
-    });
+    await assertSandboxSourceDeleted({ sourceType, sourceId: appId });
+    await deleteSandboxResourcesBySource({ sourceType, sourceId: appId });
   }
 }
 
-/** 按 Skill source 独立持有 lease，清理所有已删除 Skill 的 Sandbox 资源。 */
+/** 确认 Skill 已打软删除标记后，清理所有已删除 Skill 的 Sandbox 资源。 */
 export async function deleteSkillEditSandboxes(skillIds: string[]): Promise<void> {
+  if (skillIds.length === 0) return;
+
   const results = await batchRunSettled(
     skillIds,
     async (skillId) => {
-      await withSandboxSourceMutationLease({
+      await assertSandboxSourceDeleted({
         sourceType: ChatSourceTypeEnum.skillEdit,
-        sourceId: skillId,
-        label: `delete-skill-sandbox:${skillId}`,
-        fn: async ({ assertValid }) => {
-          await assertSandboxSourceDeleted({
-            sourceType: ChatSourceTypeEnum.skillEdit,
-            sourceId: skillId
-          });
-          assertValid();
-          await deleteCurrentSkillSandboxes([skillId]);
-        }
+        sourceId: skillId
       });
     },
     SOURCE_DELETE_CONCURRENCY
   );
 
-  const failures = results.flatMap((result, index) => {
-    if (result.success) return [];
-    return [
-      {
-        skillId: skillIds[index],
-        error: getErrText(result.error, 'Unknown Skill Sandbox cleanup error')
-      }
-    ];
+  const failures: Array<{ skillId: string; error: string }> = [];
+  const verifiedSkillIds: string[] = [];
+
+  results.forEach((result, index) => {
+    const skillId = skillIds[index];
+    if (result.success) {
+      verifiedSkillIds.push(skillId);
+      return;
+    }
+    failures.push({
+      skillId,
+      error: getErrText(result.error, 'Unknown Skill Sandbox cleanup error')
+    });
   });
+
+  if (verifiedSkillIds.length > 0) {
+    try {
+      await deleteCurrentSkillSandboxes(verifiedSkillIds);
+    } catch (error) {
+      const errorText = getErrText(error, 'Unknown Skill Sandbox cleanup error');
+      for (const skillId of verifiedSkillIds) {
+        failures.push({ skillId, error: errorText });
+      }
+    }
+  }
+
   if (failures.length === 0) return;
 
   logger.error('Failed to clean up Skill Sandbox sources', {

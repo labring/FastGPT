@@ -20,7 +20,7 @@ export const sandboxEditFileTool = defineTool({
   zodSchema: SandboxEditFileToolSchema,
   execute: async ({ sandboxInstance, params }) => {
     await sandboxInstance.ensureAvailable();
-    const results = await sandboxInstance.provider.replaceContent(
+    const results = await sandboxInstance.opensandbox.replaceContent(
       params.entries.map((entry) => ({
         path: sandboxInstance.resolveRuntimePath(entry.path, { allowAbsolutePath: true }),
         oldContent: entry.oldContent,

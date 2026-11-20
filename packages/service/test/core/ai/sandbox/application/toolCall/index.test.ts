@@ -1,10 +1,16 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  SANDBOX_EDIT_FILE_TOOL_NAME,
   SANDBOX_READ_FILE_TOOL_NAME,
   SANDBOX_SHELL_TOOL_NAME,
   SANDBOX_WRITE_FILE_TOOL_NAME
 } from '@fastgpt/global/core/ai/sandbox/tools';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  createDefaultInstanceConfig,
+  getTestInstanceConfig
+} from '@test/utils/instanceConfigSnapshot';
+import { invalidateIdeAgentPasswordCache } from '@fastgpt/service/core/ai/sandbox/application/ideAgent';
 
 const runtimeMock = vi.hoisted(() => ({
   getSandboxClient: vi.fn()
@@ -30,7 +36,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/mirrors', () => ({
   prepareSandboxRuntimeMirrors: mirrorMock.prepareSandboxRuntimeMirrors
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile', () => ({
+vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox/runtimeProfile', () => ({
   getSandboxRuntimeProfile: () => ({ workDirectory: '/workspace' })
 }));
 
@@ -43,6 +49,7 @@ import {
 const createSandboxInstance = () =>
   ({
     ensureAvailable: vi.fn(async () => undefined),
+    runWithRecovery: vi.fn(async (fn: () => Promise<unknown>) => fn()),
     exec: vi.fn(async () => ({ stdout: 'out', stderr: '', exitCode: 0 })),
     getRuntimePaths: vi.fn(() => ({
       workspaceRoot: '/workspace',
@@ -52,7 +59,7 @@ const createSandboxInstance = () =>
     resolveRuntimePath: vi.fn((path: string) =>
       path.startsWith('/') ? path : `/workspace/sessions/chat/${path}`
     ),
-    provider: {
+    opensandbox: {
       readFiles: vi.fn(async () => [{ content: 'a\nb\nc' }]),
       deleteFiles: vi.fn(async () => [])
     }
@@ -66,10 +73,17 @@ describe('sandbox toolCall index', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    invalidateIdeAgentPasswordCache();
     runtimeMock.getSandboxClient.mockResolvedValue(createSandboxInstance());
   });
 
-  it('executes known tools through a prepared sandbox client', async () => {
+  afterEach(() => {
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    invalidateIdeAgentPasswordCache();
+  });
+
+  it('executes known tools through a prepared sandbox client without recreating it', async () => {
     const sandboxClient = createSandboxInstance();
     const validate = vi.fn(() => undefined);
     await expect(
@@ -88,6 +102,10 @@ describe('sandbox toolCall index', () => {
       toolName: SANDBOX_SHELL_TOOL_NAME,
       args: JSON.stringify({ command: 'pwd' })
     });
+    expect(sandboxClient.exec).toHaveBeenCalledWith(
+      expect.stringContaining('/tmp/fastgpt-bash-'),
+      undefined
+    );
     expect(runtimeMock.getSandboxClient).not.toHaveBeenCalled();
   });
 
@@ -142,29 +160,6 @@ describe('sandbox toolCall index', () => {
     });
   });
 
-  it('reuses a provided sandbox client for valid tools', async () => {
-    const sandbox = createSandboxInstance();
-
-    await expect(
-      runSandboxTools({
-        ...appSource,
-        userId: 'user',
-        chatId: 'chat',
-        toolName: SANDBOX_SHELL_TOOL_NAME,
-        args: JSON.stringify({ command: 'pwd' }),
-        sandboxClient: sandbox
-      })
-    ).resolves.toMatchObject({
-      success: true
-    });
-
-    expect(runtimeMock.getSandboxClient).not.toHaveBeenCalled();
-    expect(sandbox.exec).toHaveBeenCalledWith(
-      expect.stringMatching(/^\/bin\/bash -c 'pwd' > '\/tmp\/fastgpt-bash-[^']+\.log' 2>&1/),
-      undefined
-    );
-  });
-
   it('injects sandbox files into the session sandbox', async () => {
     const sandbox = createSandboxInstance();
     runtimeMock.getSandboxClient.mockResolvedValueOnce(sandbox);
@@ -181,16 +176,62 @@ describe('sandbox toolCall index', () => {
 
     expect(sandbox.ensureAvailable).not.toHaveBeenCalled();
     expect(mirrorMock.prepareSandboxRuntimeMirrors).toHaveBeenCalledWith({
-      sandbox: sandbox.provider
+      sandbox: sandbox.opensandbox
     });
     expect(mirrorMock.prepareSandboxRuntimeMirrors.mock.invocationCallOrder[0]).toBeLessThan(
       fileApplicationMock.writeUrlFilesToSandbox.mock.invocationCallOrder[0]
     );
-    expect(fileApplicationMock.writeUrlFilesToSandbox).toHaveBeenCalledWith(
-      sandbox.provider,
+    expect(fileApplicationMock.writeUrlFilesToSandbox).toHaveBeenCalledWith({
+      sandbox: sandbox.opensandbox,
       files,
-      undefined
-    );
+      readInputFile: undefined
+    });
+  });
+
+  it('blocks write_file and edit_file with cleanup guidance when docker disk quota is exceeded', async () => {
+    const originalFetch = globalThis.fetch;
+    try {
+      getTestInstanceConfig().subservice.agentSandbox.opensandbox.runtime = 'docker';
+      getTestInstanceConfig().subservice.agentSandbox.common.storageSizeGi = 1;
+      globalThis.fetch = vi.fn(
+        async () =>
+          new Response(JSON.stringify({ usedBytes: 2 * 1024 * 1024 * 1024 }), { status: 200 })
+      ) as unknown as typeof fetch;
+
+      const sandbox = createSandboxInstance();
+      sandbox.opensandbox.id = 'sbx-tool-quota';
+      sandbox.opensandbox.getEndpoint = vi.fn(async () => ({
+        url: '127.0.0.1:1319',
+        protocol: 'http',
+        headers: {}
+      }));
+      sandbox.opensandbox.readFiles = vi.fn(async () => [
+        { content: Buffer.from('token'), error: null }
+      ]);
+      sandbox.opensandbox.writeFiles = vi.fn();
+      sandbox.opensandbox.replaceContent = vi.fn();
+
+      const writeRes = await runSandboxTools({
+        toolName: SANDBOX_WRITE_FILE_TOOL_NAME,
+        args: JSON.stringify({ path: 'a.txt', content: 'hello' }),
+        sandboxClient: sandbox
+      });
+      expect(writeRes.success).toBe(false);
+      expect(writeRes.response).toContain('Sandbox disk quota exceeded');
+      expect(writeRes.response).toContain('sandbox_shell');
+      expect(sandbox.opensandbox.writeFiles).not.toHaveBeenCalled();
+
+      const editRes = await runSandboxTools({
+        toolName: SANDBOX_EDIT_FILE_TOOL_NAME,
+        args: JSON.stringify({ entries: [{ path: 'a.txt', oldContent: 'a', newContent: 'b' }] }),
+        sandboxClient: sandbox
+      });
+      expect(editRes.success).toBe(false);
+      expect(editRes.response).toContain('Sandbox disk quota exceeded');
+      expect(sandbox.opensandbox.replaceContent).not.toHaveBeenCalled();
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   it('returns localized tool info for known sandbox tools', () => {

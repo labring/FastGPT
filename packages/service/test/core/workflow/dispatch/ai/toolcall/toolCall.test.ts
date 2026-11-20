@@ -864,7 +864,7 @@ describe('runToolCall compression node responses', () => {
   });
 
   it('executes sandbox as an agent-loop system tool', async () => {
-    getTestInstanceConfig().subservice.agentSandbox.provider = 'opensandbox';
+    getTestInstanceConfig().subservice.agentSandbox.enabled = true;
     runAgentLoopMock.mockImplementation(async (options) => {
       expect(options.runtime.systemTools).toEqual(
         expect.objectContaining({

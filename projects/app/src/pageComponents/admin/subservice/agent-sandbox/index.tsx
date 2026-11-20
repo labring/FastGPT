@@ -1,5 +1,5 @@
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   Input,
   NumberInput,
@@ -36,14 +36,7 @@ const AgentSandboxSubserviceComponent = () => {
   const { t } = useSafeTranslation();
   const { effectiveConfig, isSecretConfigured, isLoading, isUpdating, patchConfig } =
     useDomainConfig('subservice');
-
-  const tocItems: SettingTOCItem[] = [
-    { id: 'provider', label: t('admin:sandbox_provider_selection') },
-    { id: 'proxy', label: t('admin:sandbox_proxy_settings') },
-    { id: 'specs', label: t('admin:shared_resource_specs') },
-    { id: 'lifecycle', label: t('admin:lifecycle_runtime') },
-    { id: 'mirrors', label: t('admin:package_mirror_acceleration') }
-  ];
+  const isOpenSandboxApiKeyConfigured = isSecretConfigured('agentSandbox.opensandbox.apiKey');
 
   const form = useForm<SubserviceConfigForm>({
     defaultValues: effectiveConfig
@@ -62,60 +55,62 @@ const AgentSandboxSubserviceComponent = () => {
     }
   }, [effectiveConfig, reset]);
 
-  const selectedProvider = useWatch({
+  const enabled =
+    useWatch({
+      control,
+      name: 'agentSandbox.enabled'
+    }) ?? false;
+  const openSandboxApiKey = useWatch({
     control,
-    name: 'agentSandbox.provider'
+    name: 'agentSandbox.opensandbox.apiKey'
   });
   const openSandboxRuntime = useWatch({
     control,
     name: 'agentSandbox.opensandbox.runtime'
   });
-  const isKubernetesRuntime =
-    selectedProvider === 'opensandbox' && openSandboxRuntime === 'kubernetes';
+  const isKubernetesRuntime = enabled && openSandboxRuntime === 'kubernetes';
 
-  const isSandboxEnabled = selectedProvider !== 'none';
+  const tocItems: SettingTOCItem[] = useMemo(
+    () => [
+      { id: 'connection', label: t('admin:connection_connectivity') },
+      ...(enabled ? [{ id: 'proxy', label: t('admin:sandbox_proxy_settings') }] : []),
+      { id: 'specs', label: t('admin:shared_resource_specs') },
+      { id: 'lifecycle', label: t('admin:lifecycle_runtime') },
+      { id: 'mirrors', label: t('admin:package_mirror_acceleration') }
+    ],
+    [enabled, t]
+  );
 
   const onSave = handleSubmit(async (formData) => {
-    const provider = formData.agentSandbox.provider;
-    const isSealosActive = provider === 'sealosdevbox';
-    const isOpenSandboxActive = provider === 'opensandbox';
+    const isEnabled = formData.agentSandbox.enabled;
     const isKubernetesActive =
-      isOpenSandboxActive && formData.agentSandbox.opensandbox.runtime === 'kubernetes';
+      isEnabled && formData.agentSandbox.opensandbox.runtime === 'kubernetes';
     // 隐藏的无效数字草稿不能阻断切换运行态或停用服务；可见字段仍由 RHF 与服务端校验。
     const resolveOvercommitFactor = (value: number, previous = 1) =>
       isKubernetesActive || (Number.isFinite(value) && value >= 1) ? value : previous;
-    // 非当前激活 Provider 的隐藏分支若残留未填完的草稿 URL，回落到已持久化地址，不阻断切换或关闭。
+    // 关闭服务时隐藏的无效草稿回退到已保存值，允许管理员正常停用。
     const sanitizedAgentSandbox: DeepPartial<SubserviceConfigForm['agentSandbox']> = {
       ...formData.agentSandbox,
-      // 关闭服务时隐藏的无效草稿回退到已保存值，允许管理员正常停用。
-      proxy:
-        provider === 'none'
-          ? {
-              wsUrl: AgentSandboxProxyConfigSchema.shape.wsUrl.safeParse(
-                formData.agentSandbox.proxy.wsUrl
-              ).success
-                ? formData.agentSandbox.proxy.wsUrl
-                : (effectiveConfig.agentSandbox?.proxy.wsUrl ?? ''),
-              previewUrl: AgentSandboxProxyConfigSchema.shape.previewUrl.safeParse(
-                formData.agentSandbox.proxy.previewUrl
-              ).success
-                ? formData.agentSandbox.proxy.previewUrl
-                : (effectiveConfig.agentSandbox?.proxy.previewUrl ?? ''),
-              secret:
-                formData.agentSandbox.proxy.secret === undefined ||
-                formData.agentSandbox.proxy.secret === '' ||
-                formData.agentSandbox.proxy.secret.length >= 32
-                  ? formData.agentSandbox.proxy.secret
-                  : undefined
-            }
-          : formData.agentSandbox.proxy,
-      sealosdevbox: {
-        ...formData.agentSandbox.sealosdevbox,
-        baseUrl:
-          isSealosActive || isValidOptionalUrl(formData.agentSandbox.sealosdevbox.baseUrl)
-            ? formData.agentSandbox.sealosdevbox.baseUrl
-            : (effectiveConfig.agentSandbox?.sealosdevbox?.baseUrl ?? '')
-      },
+      proxy: !isEnabled
+        ? {
+            wsUrl: AgentSandboxProxyConfigSchema.shape.wsUrl.safeParse(
+              formData.agentSandbox.proxy.wsUrl
+            ).success
+              ? formData.agentSandbox.proxy.wsUrl
+              : (effectiveConfig.agentSandbox?.proxy.wsUrl ?? ''),
+            previewUrl: AgentSandboxProxyConfigSchema.shape.previewUrl.safeParse(
+              formData.agentSandbox.proxy.previewUrl
+            ).success
+              ? formData.agentSandbox.proxy.previewUrl
+              : (effectiveConfig.agentSandbox?.proxy.previewUrl ?? ''),
+            secret:
+              formData.agentSandbox.proxy.secret === undefined ||
+              formData.agentSandbox.proxy.secret === '' ||
+              formData.agentSandbox.proxy.secret.length >= 32
+                ? formData.agentSandbox.proxy.secret
+                : undefined
+          }
+        : formData.agentSandbox.proxy,
       opensandbox: {
         ...formData.agentSandbox.opensandbox,
         cpuOvercommitFactor: resolveOvercommitFactor(
@@ -127,12 +122,11 @@ const AgentSandboxSubserviceComponent = () => {
           effectiveConfig.agentSandbox?.opensandbox.memoryOvercommitFactor
         ),
         baseUrl:
-          isOpenSandboxActive || isValidOptionalUrl(formData.agentSandbox.opensandbox.baseUrl)
+          isEnabled || isValidOptionalUrl(formData.agentSandbox.opensandbox.baseUrl)
             ? formData.agentSandbox.opensandbox.baseUrl
             : (effectiveConfig.agentSandbox?.opensandbox?.baseUrl ?? ''),
         volumeManagerUrl:
-          isOpenSandboxActive ||
-          isValidOptionalUrl(formData.agentSandbox.opensandbox.volumeManagerUrl)
+          isEnabled || isValidOptionalUrl(formData.agentSandbox.opensandbox.volumeManagerUrl)
             ? formData.agentSandbox.opensandbox.volumeManagerUrl
             : (effectiveConfig.agentSandbox?.opensandbox?.volumeManagerUrl ?? '')
       }
@@ -144,160 +138,28 @@ const AgentSandboxSubserviceComponent = () => {
     <AdminSettingPage
       form={form}
       headerTitle={t('admin:page_title_agent_sandbox')}
-      tocItems={tocItems.filter(({ id }) => id !== 'proxy' || isSandboxEnabled)}
+      tocItems={tocItems}
       isLoading={isLoading}
       isSaving={isUpdating}
       onSave={onSave}
     >
-      {/* 1. 沙箱 Provider 选择 */}
-      <AdminSettingSection id="provider" title={t('admin:sandbox_provider_selection')}>
-        <AdminFormItem
-          label={t('admin:current_sandbox_provider')}
-          tooltip={t('admin:select_the_code_sandbox_cluster_driver_used_to_create_and_sc')}
-          isRequired
-          mb={6}
-        >
-          <Controller
-            name="agentSandbox.provider"
-            control={control}
-            render={({ field }) => (
-              <MySelect<'none' | 'sealosdevbox' | 'opensandbox'>
-                isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
-                width={'400px'}
-                list={[
-                  { label: t('admin:disabled_none'), value: 'none' },
-                  {
-                    label: t('admin:sealos_devbox_k8s_native_fast_sandbox'),
-                    value: 'sealosdevbox'
-                  },
-                  {
-                    label: t('admin:opensandbox_general_container_isolated_sandbox'),
-                    value: 'opensandbox'
-                  }
-                ]}
-                value={field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
-        </AdminFormItem>
-
-        {/* 当前 Provider 配置卡片直接跟随选择器。 */}
-        {selectedProvider === 'none' && (
-          <Box
-            p={5}
-            bg={'white'}
-            borderRadius={'lg'}
-            borderWidth={'1px'}
-            borderColor={'myGray.200'}
-            color={'myGray.500'}
-            fontSize={'sm'}
-          >
-            {t('admin:agent_sandbox_is_not_enabled_select_sealos_devbox_or_opensan')}
-          </Box>
-        )}
-
-        {selectedProvider === 'sealosdevbox' && (
-          <Box
-            p={5}
-            bg={'white'}
-            borderRadius={'lg'}
-            borderWidth={'1px'}
-            borderColor={'myGray.200'}
-          >
-            <Controller
-              name="agentSandbox.sealosdevbox.baseUrl"
-              control={control}
-              render={({ field }) => (
-                <ConnectivityTestInput
-                  isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
-                  {...field}
-                  isEditable
-                  placeholder="https://devbox.cloud.sealos.io"
-                  renderLayout={({ input, button, result }) => (
-                    <ConnectivityTestGroup
-                      address={
-                        <AdminFormItem
-                          label={t('admin:sealos_devbox_service_url')}
-                          tooltip={t('admin:sealos_devbox_cluster_api_endpoint')}
-                          isRequired
-                          mb={4}
-                        >
-                          {input}
-                        </AdminFormItem>
-                      }
-                      credential={
-                        <AdminFormItem
-                          label={t('admin:sealos_access_token')}
-                          tooltip={t('admin:sealos_platform_api_token')}
-                          isRequired
-                          mb={4}
-                        >
-                          <Controller
-                            name="agentSandbox.sealosdevbox.token"
-                            control={control}
-                            render={({ field }) => (
-                              <AdminSecretInput
-                                isInvalid={Boolean(
-                                  form.getFieldState(field.name, form.formState).error
-                                )}
-                                name={field.name}
-                                value={field.value}
-                                onChange={field.onChange}
-                                isConfigured={isSecretConfigured('agentSandbox.sealosdevbox.token')}
-                              />
-                            )}
-                          />
-                        </AdminFormItem>
-                      }
-                      button={button}
-                      result={result}
-                    />
-                  )}
-                />
-              )}
+      {/* 1. 连接与连通性 */}
+      <AdminSettingSection id="connection" title={t('admin:connection_connectivity')}>
+        <Controller
+          name="agentSandbox.enabled"
+          control={control}
+          render={({ field }) => (
+            <AdminSwitchRow
+              label={t('admin:enable_agent_sandbox')}
+              tooltip={t('admin:enable_agent_sandbox_tip')}
+              isChecked={field.value}
+              onChange={field.onChange}
             />
+          )}
+        />
 
-            <SimpleGrid columns={[1, 2]} spacing={5}>
-              <AdminFormItem
-                label={t('admin:default_development_image')}
-                tooltip={t('admin:default_base_container_image_pulled_at_sandbox_startup')}
-                isRequired
-              >
-                <Input
-                  isInvalid={Boolean(
-                    form.getFieldState('agentSandbox.sealosdevbox.image', form.formState).error
-                  )}
-                  {...register('agentSandbox.sealosdevbox.image')}
-                  placeholder="ghcr.io/labring-actions/devbox:v0.1"
-                />
-              </AdminFormItem>
-
-              <AdminFormItem
-                label={t('admin:workspace_working_directory')}
-                tooltip={t('admin:default_workspace_mount_path_in_the_container')}
-              >
-                <Input
-                  isInvalid={Boolean(
-                    form.getFieldState('agentSandbox.sealosdevbox.workDirectory', form.formState)
-                      .error
-                  )}
-                  {...register('agentSandbox.sealosdevbox.workDirectory')}
-                  placeholder="/home/devbox/workspace"
-                />
-              </AdminFormItem>
-            </SimpleGrid>
-          </Box>
-        )}
-
-        {selectedProvider === 'opensandbox' && (
-          <Box
-            p={5}
-            bg={'white'}
-            borderRadius={'lg'}
-            borderWidth={'1px'}
-            borderColor={'myGray.200'}
-          >
+        {enabled && (
+          <Box mt={6}>
             <Controller
               name="agentSandbox.opensandbox.baseUrl"
               control={control}
@@ -306,6 +168,9 @@ const AgentSandboxSubserviceComponent = () => {
                   isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                   {...field}
                   isEditable
+                  service="opensandbox"
+                  token={openSandboxApiKey}
+                  useStoredToken={openSandboxApiKey === undefined && isOpenSandboxApiKeyConfigured}
                   placeholder="http://opensandbox:8080"
                   renderLayout={({ input, button, result }) => (
                     <ConnectivityTestGroup
@@ -337,7 +202,7 @@ const AgentSandboxSubserviceComponent = () => {
                                 name={field.name}
                                 value={field.value}
                                 onChange={field.onChange}
-                                isConfigured={isSecretConfigured('agentSandbox.opensandbox.apiKey')}
+                                isConfigured={isOpenSandboxApiKeyConfigured}
                               />
                             )}
                           />
@@ -384,7 +249,7 @@ const AgentSandboxSubserviceComponent = () => {
                     form.getFieldState('agentSandbox.opensandbox.image', form.formState).error
                   )}
                   {...register('agentSandbox.opensandbox.image')}
-                  placeholder="opensandbox/runtime:latest"
+                  placeholder="registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.3.1"
                 />
               </AdminFormItem>
 
@@ -418,19 +283,14 @@ const AgentSandboxSubserviceComponent = () => {
                       control={control}
                       rules={{ validate: (value) => Number.isFinite(value) && value >= 1 }}
                       render={({ field, fieldState }) => (
-                        <NumberInput
+                        <AdminNumberInput
                           min={1}
                           step={0.1}
-                          value={field.value ?? ''}
+                          value={field.value}
+                          fallbackValue={1}
                           isInvalid={Boolean(fieldState.error)}
-                          onChange={(_, value) => field.onChange(value)}
-                        >
-                          <NumberInputField />
-                          <NumberInputStepper>
-                            <NumberIncrementStepper />
-                            <NumberDecrementStepper />
-                          </NumberInputStepper>
-                        </NumberInput>
+                          onChange={field.onChange}
+                        />
                       )}
                     />
                   </AdminFormItem>
@@ -444,19 +304,14 @@ const AgentSandboxSubserviceComponent = () => {
                       control={control}
                       rules={{ validate: (value) => Number.isFinite(value) && value >= 1 }}
                       render={({ field, fieldState }) => (
-                        <NumberInput
+                        <AdminNumberInput
                           min={1}
                           step={0.1}
-                          value={field.value ?? ''}
+                          value={field.value}
+                          fallbackValue={1}
                           isInvalid={Boolean(fieldState.error)}
-                          onChange={(_, value) => field.onChange(value)}
-                        >
-                          <NumberInputField />
-                          <NumberInputStepper>
-                            <NumberIncrementStepper />
-                            <NumberDecrementStepper />
-                          </NumberInputStepper>
-                        </NumberInput>
+                          onChange={field.onChange}
+                        />
                       )}
                     />
                   </AdminFormItem>
@@ -537,7 +392,7 @@ const AgentSandboxSubserviceComponent = () => {
         )}
       </AdminSettingSection>
 
-      {isSandboxEnabled && (
+      {enabled && (
         <AdminSettingSection id="proxy" title={t('admin:sandbox_proxy_settings')} showDivider>
           {(['wsUrl', 'previewUrl', 'secret'] as const).map((key) => {
             const isSecret = key === 'secret';
@@ -560,7 +415,6 @@ const AgentSandboxSubserviceComponent = () => {
                   control={control}
                   rules={{
                     validate: (value) => {
-                      if (!isSandboxEnabled) return true;
                       if (isSecret) {
                         if (
                           value === undefined &&
@@ -652,21 +506,16 @@ const AgentSandboxSubserviceComponent = () => {
               name="agentSandbox.common.memoryMiB"
               control={control}
               render={({ field }) => (
-                <NumberInput
+                <AdminNumberInput
                   isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
-                  variant={'whiteOutline'}
                   min={512}
                   max={65536}
                   step={512}
-                  value={field.value ?? 2048}
-                  onChange={(_, val) => field.onChange(val || 2048)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
+                  precision={0}
+                  value={field.value}
+                  fallbackValue={2048}
+                  onChange={field.onChange}
+                />
               )}
             />
           </AdminFormItem>
@@ -680,20 +529,14 @@ const AgentSandboxSubserviceComponent = () => {
               name="agentSandbox.common.storageSizeGi"
               control={control}
               render={({ field }) => (
-                <NumberInput
+                <AdminNumberInput
                   isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
-                  variant={'whiteOutline'}
                   min={1}
                   max={200}
-                  value={field.value ?? 1}
-                  onChange={(_, val) => field.onChange(val || 1)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
+                  value={field.value}
+                  fallbackValue={1}
+                  onChange={field.onChange}
+                />
               )}
             />
           </AdminFormItem>
@@ -712,20 +555,15 @@ const AgentSandboxSubserviceComponent = () => {
               name="agentSandbox.common.suspendMinutes"
               control={control}
               render={({ field }) => (
-                <NumberInput
+                <AdminNumberInput
                   isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
-                  variant={'whiteOutline'}
                   min={5}
                   max={1440}
-                  value={field.value ?? 60}
-                  onChange={(_, val) => field.onChange(val || 60)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
+                  precision={0}
+                  value={field.value}
+                  fallbackValue={60}
+                  onChange={field.onChange}
+                />
               )}
             />
           </AdminFormItem>
@@ -739,20 +577,15 @@ const AgentSandboxSubserviceComponent = () => {
               name="agentSandbox.common.archiveInactiveDays"
               control={control}
               render={({ field }) => (
-                <NumberInput
+                <AdminNumberInput
                   isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
-                  variant={'whiteOutline'}
                   min={1}
                   max={365}
-                  value={field.value ?? 7}
-                  onChange={(_, val) => field.onChange(val || 7)}
-                >
-                  <NumberInputField />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
+                  precision={0}
+                  value={field.value}
+                  fallbackValue={7}
+                  onChange={field.onChange}
+                />
               )}
             />
           </AdminFormItem>

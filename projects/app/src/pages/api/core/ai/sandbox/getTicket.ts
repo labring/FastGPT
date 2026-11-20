@@ -1,12 +1,10 @@
 import {
-  getAgentSandboxMaxFileBytes,
+  getAgentSandboxDiskBytes,
   getAgentSandboxProxyConfig
 } from '@fastgpt/service/core/ai/sandbox/config';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
-import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
-import { authSandboxRuntimeSession } from '@/service/core/sandbox/access';
+import { getAuthorizedSandboxClient } from '@/service/core/sandbox/runtime';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import jwt from 'jsonwebtoken';
 import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -49,13 +47,11 @@ async function handler(req: ApiRequestProps): Promise<SandboxGetTicketResponse> 
     throw new Error('Sandbox terminal is only available in edit debug sessions');
   }
 
-  // 1. 复用 FastGPT 现有的多租户与 Session 安全鉴权
+  // 1. 鉴权、检查产品可用性并确保沙盒已拉起可用
   const {
-    uid,
-    teamId,
-    sourceType: resolvedSourceType,
-    sourceId: resolvedSourceId
-  } = await authSandboxRuntimeSession({
+    session: { uid, teamId, sourceType: resolvedSourceType, sourceId: resolvedSourceId },
+    sandbox
+  } = await getAuthorizedSandboxClient({
     customUid,
     authProxy,
     req,
@@ -65,19 +61,12 @@ async function handler(req: ApiRequestProps): Promise<SandboxGetTicketResponse> 
     outLinkAuthData,
     per: ticketPermission === 'write' ? WritePermissionVal : ReadPermissionVal
   });
-  const sandboxQuery = buildSandboxClientQueryFromChatSource({
-    sourceType: resolvedSourceType,
-    sourceId: resolvedSourceId,
-    userId: uid,
-    chatId
-  });
-
-  // 2. 调度并确保沙盒已拉起可用
-  const sandbox = await getSandboxClient(sandboxQuery);
   const { workspaceRoot, sessionWorkDirectory } = sandbox.getRuntimePaths();
 
   // 用户级 Sandbox 可能由其它 Chat 创建，签发 Ticket 前确保当前 Chat 的 IDE 根目录存在。
-  await sandbox.provider.createDirectories([sessionWorkDirectory]);
+  await sandbox.runWithRecovery(() =>
+    sandbox.opensandbox.createDirectories([sessionWorkDirectory])
+  );
 
   // 签发短期 HMAC 凭证，内含租户元数据，不包含任何物理寻址信息。
   const ticket = jwt.sign(
@@ -101,7 +90,7 @@ async function handler(req: ApiRequestProps): Promise<SandboxGetTicketResponse> 
 
   return SandboxGetTicketResponseSchema.parse({
     wsUrl: wsUrl.toString(),
-    maxFileBytes: getAgentSandboxMaxFileBytes(),
+    maxFileBytes: getAgentSandboxDiskBytes(),
     workspaceRoot,
     sessionWorkDirectory
   });

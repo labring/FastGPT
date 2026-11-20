@@ -53,7 +53,6 @@ x-no-proxy-config: &x-no-proxy-config
 
 # FastGPT 主服务的 Agent Sandbox 配置
 x-agent-sandbox-config: &x-agent-sandbox-config
-  AGENT_SANDBOX_PROVIDER: opensandbox
   AGENT_SANDBOX_PROXY_SECRET: *x-agent-sandbox-proxy-secret
   # 浏览器访问 agent-sandbox-proxy 的 WebSocket 地址。
   AGENT_SANDBOX_PROXY_URL: *x-agent-sandbox-proxy-url
@@ -67,25 +66,23 @@ x-agent-sandbox-config: &x-agent-sandbox-config
   AGENT_SANDBOX_SUSPEND_MINUTES: 60
   # 长期不活跃判断阈值
   AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS: 7
-  AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES: 67108864
-  AGENT_SANDBOX_WS_MAX_FRAME_BYTES: 16777216
-  # 自定义 npm/pip 源
+  # 自定义 npm/pip/apt 源
   AGENT_SANDBOX_NPM_REGISTRY:
   AGENT_SANDBOX_PYPI_INDEX_URL:
+  AGENT_SANDBOX_APT_MIRROR:
   # Opensandox 配置
   AGENT_SANDBOX_OPENSANDBOX_BASEURL: http://fastgpt-opensandbox-server:8090
   AGENT_SANDBOX_OPENSANDBOX_API_KEY: fastgpt-opensandbox-api-key
   AGENT_SANDBOX_OPENSANDBOX_RUNTIME: docker
-  AGENT_SANDBOX_OPENSANDBOX_IMAGE: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.4.0
+  AGENT_SANDBOX_OPENSANDBOX_IMAGE: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.5.0
   AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: true
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL: http://fastgpt-volume-manager:3000
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: *x-volume-manager-auth-token
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX: fastgpt-session
-  # Sealos devbox 配置
+  # 旧版 Sealos devbox 迁移/清理配置（新部署无需填写）
   AGENT_SANDBOX_SEALOS_BASEURL:
   AGENT_SANDBOX_SEALOS_TOKEN:
   AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: /home/devbox/workspace
-  AGENT_SANDBOX_SEALOS_IMAGE:
 
 # 向量库相关配置
 x-vec-config: &x-vec-config
@@ -403,7 +400,7 @@ services:
 
   # OpenSandbox Server 和 Volume Manager 仅需在 app 内网中访问。
   fastgpt-opensandbox-server:
-    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/server:release-1.2.0
+    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/server:release-1.2.1
     container_name: fastgpt-opensandbox-server
     restart: always
     networks:
@@ -429,7 +426,7 @@ services:
       retries: 5
 
   fastgpt-volume-manager:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-volume-manager:v0.4.0
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-volume-manager:v0.5.0
     container_name: fastgpt-volume-manager
     restart: always
     networks:
@@ -456,21 +453,21 @@ services:
 
   # 仅用于预拉取运行时镜像，不会随 docker compose up 启动。
   opensandbox-agent-sandbox-image:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.4.0
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.5.0
     profiles:
       - prepull
   opensandbox-execd-image:
-    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:release-1.2.0
+    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:release-1.2.1
     profiles:
       - prepull
   opensandbox-egress-image:
-    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:release-1.2.0
+    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:release-1.2.1
     profiles:
       - prepull
 
   # 浏览器访问 Agent Sandbox 的鉴权代理，生产环境应通过独立域名反向代理 3006 端口。
   fastgpt-agent-sandbox-proxy:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-proxy:v0.4.0
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-proxy:v0.5.0
     container_name: fastgpt-agent-sandbox-proxy
     restart: always
     networks:
@@ -567,10 +564,10 @@ configs:
 
       [runtime]
       type = "docker"
-      execd_image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:release-1.2.0"
+      execd_image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:release-1.2.1"
 
       [egress]
-      image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:release-1.2.0"
+      image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:release-1.2.1"
 
       [docker]
       network_mode = "bridge"

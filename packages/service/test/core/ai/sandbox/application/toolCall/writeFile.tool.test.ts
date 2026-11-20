@@ -6,7 +6,7 @@ const createSandboxInstance = () =>
   ({
     ensureAvailable: vi.fn(async () => undefined),
     resolveRuntimePath: vi.fn((path: string) => path),
-    provider: {
+    opensandbox: {
       writeFiles: vi.fn(async (files: { path: string; data: string }[]) =>
         files.map((file) => ({
           path: file.path,
@@ -18,7 +18,7 @@ const createSandboxInstance = () =>
   }) as any;
 
 describe('sandboxWriteFileTool', () => {
-  it('writes files through the provider', async () => {
+  it('writes files through opensandbox', async () => {
     const sandbox = createSandboxInstance();
 
     await expect(
@@ -33,14 +33,14 @@ describe('sandboxWriteFileTool', () => {
     ).resolves.toEqual({ response: 'File written successfully: /workspace/a.txt' });
 
     expect(sandbox.ensureAvailable).toHaveBeenCalledTimes(1);
-    expect(sandbox.provider.writeFiles).toHaveBeenCalledWith([
+    expect(sandbox.opensandbox.writeFiles).toHaveBeenCalledWith([
       { path: '/workspace/a.txt', data: 'hello' }
     ]);
   });
 
   it('throws when the provider reports a write failure', async () => {
     const sandbox = createSandboxInstance();
-    sandbox.provider.writeFiles.mockResolvedValueOnce([
+    sandbox.opensandbox.writeFiles.mockResolvedValueOnce([
       {
         path: '/workspace/a.txt',
         bytesWritten: 0,
@@ -62,7 +62,7 @@ describe('sandboxWriteFileTool', () => {
 
   it('throws when the provider returns no write result', async () => {
     const sandbox = createSandboxInstance();
-    sandbox.provider.writeFiles.mockResolvedValueOnce([]);
+    sandbox.opensandbox.writeFiles.mockResolvedValueOnce([]);
 
     await expect(
       sandboxWriteFileTool.execute({

@@ -21,7 +21,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
  * 从编辑态 sandbox 保存并发布 skill。
  *
  * API 层只保留请求校验、权限校验、创建状态校验和审计日志；实际打包、解析、
- * 上传对象存储和版本切换逻辑收敛到 sandbox/interface/skillEdit。
+ * 上传对象存储和版本切换逻辑收敛到 sandbox/application/skillEdit。
  */
 async function handler(
   req: ApiRequestProps<SaveDeploySkillBody>

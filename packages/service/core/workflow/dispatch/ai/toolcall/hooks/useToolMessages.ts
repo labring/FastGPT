@@ -79,7 +79,10 @@ export const useToolMessages = async ({
         const batchUsedFilenames = new Set<string>();
         return files.map((file, index) => {
           const filename = inputFileAllocation
-            ? getSafeSandboxInputFilename(file.name, index, usedNames, {
+            ? getSafeSandboxInputFilename({
+                filename: file.name,
+                index,
+                usedNames,
                 url: file.url,
                 allocation: inputFileAllocation,
                 batchUsedFilenames

@@ -28,6 +28,7 @@ upgradeTags:
 - 评估任务最大数据行数改为后台「限制与并发」中的 `resource.evaluationMaxRows`，默认 `1000`，不含表头。旧 `EVAL_LINE_LIMIT` 不再读取或迁移，升级后新字段统一默认 `1000`，需要其他值时请在表单中修改；保存后无需重启。
 - 旧 `EVAL_CONCURRENCY` 不迁移，迁移后也不再读取该 ENV；评估任务并发在管理员「资源限制」中设置，未配置时默认 `3`，已有实例配置保持不变。
 - Agent Sandbox 的 CPU 与内存超卖倍数改为实例配置，仅在 OpenSandbox 的 Kubernetes 模式下展示。旧 `AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR`、`AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR` 仅从 App 进程 ENV 由启动迁移一次性导入，Pro 同名 ENV 不参与迁移；已有表单值优先、未配置默认 `1`；迁移后修改 ENV 不再生效。表单修改仅影响后续新建或重建的沙盒。
+- **Agent Sandbox 镜像与运行态升级**：4.18.0 起 OpenSandbox 沙盒持久卷统一挂载至 `/home/sandbox`（工作区 `/home/sandbox/workspace`），归档格式升级为 `.tar.zst`，运行态容器默认启用内置 `fastgpt-ide-agent` 与 `/usr/local/bin/entrypoint.sh`。升级后如存在历史 `sealosdevbox` 实例、旧 `.zip` 归档或旧 `/workspace` 挂载的 OpenSandbox 持久卷，在系统迁移管理页执行 `20261117_migrate_sandbox_to_opensandbox` **之前**，必须先将沙盒运行态镜像（含自定义派生镜像）以及 `fastgpt-agent-volume-manager`、`fastgpt-agent-sandbox-proxy` 同步升级至 `v0.5.0+`；使用旧版镜像会导致迁移临时容器启动失败（原持久卷不会被删除，切换为 `v0.5.0+` 镜像后可直接重试）。详见 [OpenSandbox 配置](/self-host/config/sandbox/opensandbox)。
 - 商业版新增模型下架提醒短信模板 `auth.sms.MODEL_DEPRECATION`；当前短信统一使用该中文模板，不按用户语言选择，`auth.sms.MODEL_DEPRECATION_EN` 配置暂不生效。启用短信提醒前需在管理台配置中文模板 ID。
 - **插件服务部署**：Docker Compose 模板补齐 `fastgpt-plugin` 的 `FASTGPT_BASE_URL=http://fastgpt-app:3000`，将 `MONGODB_URI` 指向独立的 `fastgpt-plugin` 数据库，并显式设置 `DB_MAX_LINK=100`，避免与主库集合混用；自定义部署应填写插件容器可访问的主服务地址；若插件容器日志出现反向上传文件 `401`，优先核对该地址，修正后重建插件容器并重试工具。已有部署替换模板前应核对原插件库，保留已使用的独立库连接；若需切换数据库，先备份并迁移既有插件数据。
 - 默认部署的对象存储改为 RustFS，已有部署可继续使用原存储，如需切换请参考 [MinIO 迁移到 RustFS](/self-host/docker_minio_to_rustfs)。

@@ -1,7 +1,7 @@
 # Multi-stage build for extremely lightweight fastgpt-agent-sandbox-proxy binary extraction image
 
 # Stage 1: Build the binary inside high-performance Rust compiler container
-FROM rust:1.95-slim AS builder
+FROM rust:1.100-slim AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates musl-tools \
     && rm -rf /var/lib/apt/lists/*

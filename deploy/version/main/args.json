@@ -4,12 +4,12 @@
     "fastgpt-plugin": "v1.2.0",
     "fastgpt-code-sandbox": "v5.0.0",
 
-    "volume-manager": "v0.4.0",
-    "agent-sandbox-image": "v0.4.0",
-    "agent-sandbox-proxy": "v0.4.0",
-    "opensandbox-server": "release-1.2.0",
-    "opensandbox-execd": "release-1.2.0",
-    "opensandbox-egress": "release-1.2.0",
+    "volume-manager": "v0.5.0",
+    "agent-sandbox-image": "v0.5.0",
+    "agent-sandbox-proxy": "v0.5.0",
+    "opensandbox-server": "release-1.2.1",
+    "opensandbox-execd": "release-1.2.1",
+    "opensandbox-egress": "release-1.2.1",
 
     "aiproxy": "v0.7.7",
     "aiproxy-pg": "0.8.0-pg15",

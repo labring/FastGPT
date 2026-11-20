@@ -1,10 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import {
   getSandboxIdeSessionRoot,
+  isValidSandboxPathSegment,
+  resolveSandboxAbsolutePaths,
   scopeSandboxIdeRpcParams
 } from '@/pageComponents/chat/SandboxEditor/utils';
 
 describe('SandboxEditor session RPC paths', () => {
+  it('validates single path segments', () => {
+    expect(isValidSandboxPathSegment('file.txt')).toBe(true);
+    expect(isValidSandboxPathSegment('nested-dir')).toBe(true);
+    expect(isValidSandboxPathSegment('')).toBe(false);
+    expect(isValidSandboxPathSegment('.')).toBe(false);
+    expect(isValidSandboxPathSegment('..')).toBe(false);
+    expect(isValidSandboxPathSegment('a/b')).toBe(false);
+    expect(isValidSandboxPathSegment('a\\b')).toBe(false);
+    expect(isValidSandboxPathSegment('bad\u0000name')).toBe(false);
+  });
+
   it('derives the IDE Agent relative root from ticket paths', () => {
     expect(getSandboxIdeSessionRoot('/workspace', '/workspace/sessions/chat-1')).toBe(
       'sessions/chat-1'
@@ -15,7 +28,7 @@ describe('SandboxEditor session RPC paths', () => {
     );
   });
 
-  it('scopes filesystem and exec RPC parameters to the Chat session', () => {
+  it('scopes filesystem RPC parameters to the Chat session', () => {
     expect(
       scopeSandboxIdeRpcParams('fs/read_file', { path: 'src/index.ts' }, 'sessions/chat-1')
     ).toEqual({ path: 'sessions/chat-1/src/index.ts' });
@@ -28,11 +41,25 @@ describe('SandboxEditor session RPC paths', () => {
     expect(
       scopeSandboxIdeRpcParams('fs/read_dir_recursive', { path: '.' }, 'sessions/chat-1')
     ).toEqual({ path: 'sessions/chat-1' });
+  });
+
+  it('resolves container absolute paths from sessionWorkDirectory without RPC execution', () => {
     expect(
-      scopeSandboxIdeRpcParams('fs/exec', { command: 'pwd', timeoutMs: 1000 }, 'sessions/chat-1')
-    ).toEqual({
-      command: "mkdir -p 'sessions/chat-1' && cd 'sessions/chat-1' && pwd",
-      timeoutMs: 1000
-    });
+      resolveSandboxAbsolutePaths('/workspace/sessions/chat-1/', ['.', 'src/index.ts', './a/b'])
+    ).toEqual([
+      '/workspace/sessions/chat-1',
+      '/workspace/sessions/chat-1/src/index.ts',
+      '/workspace/sessions/chat-1/a/b'
+    ]);
+    expect(resolveSandboxAbsolutePaths('/', ['./file.txt'])).toEqual(['/file.txt']);
+    expect(() => resolveSandboxAbsolutePaths('/workspace', ['../secret'])).toThrow(
+      'Invalid sandbox path'
+    );
+    expect(() => resolveSandboxAbsolutePaths('/workspace', ['/etc/passwd'])).toThrow(
+      'Invalid sandbox path'
+    );
+    expect(() => resolveSandboxAbsolutePaths('/workspace', ['bad\u0000name'])).toThrow(
+      'Invalid sandbox path'
+    );
   });
 });

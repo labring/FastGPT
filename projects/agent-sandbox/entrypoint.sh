@@ -1,22 +1,21 @@
 #!/bin/bash
 set -euo pipefail
 
-# Set work directory from environment variable, default to /home/sandbox
-WORKDIR="${FASTGPT_WORKDIR:-/home/sandbox}"
-mkdir -p "${WORKDIR}"
+# Ensure home, workspace and container-ephemeral runtime directories exist before launching agents
+HOME_DIR="${HOME:-/home/sandbox}"
+WORKDIR="${FASTGPT_WORKDIR:-/home/sandbox/workspace}"
+RUNTIME_DIR="${FASTGPT_RUNTIME_DIR:-/var/lib/fastgpt-runtime}"
+mkdir -p "${HOME_DIR}" "${WORKDIR}" "${RUNTIME_DIR}"
 
 if [ ! -w "${WORKDIR}" ]; then
   echo "Sandbox work directory is not writable: ${WORKDIR}" >&2
   exit 1
 fi
 
-if [ "${IDE_AGENT_ENABLED:-false}" = "true" ]; then
-  echo "Starting fastgpt-ide-agent..."
-  fastgpt-ide-agent > /tmp/ide-agent.log 2>&1 &
+if [ ! -w "${RUNTIME_DIR}" ]; then
+  echo "Sandbox runtime directory is not writable: ${RUNTIME_DIR}" >&2
+  exit 1
 fi
 
-# Clear FastGPT runtime vars from the long-running shell after child processes inherit them.
-unset FASTGPT_SESSION_ID FASTGPT_WORKDIR IDE_AGENT_ENABLED
-
-# Keep the sandbox running so backend can execute commands
-exec sleep infinity
+echo "Starting fastgpt-ide-agent..."
+exec fastgpt-ide-agent

@@ -778,15 +778,18 @@ describe('sandbox quota index migration', () => {
     );
     const model = createModel({ schema, prefix: 'SandboxQuotaIndex' });
     await model.collection.createIndex({ sourceType: 1, status: 1, provider: 1 });
+    await model.collection.createIndex({ status: 1, 'metadata.operation.heartbeatAt': 1 });
     await model.collection.createIndex({ sourceType: 1 }, { name: 'customer_sandbox_source' });
 
     await MongoIndexManager.syncModelIndexes({ model, logger });
 
     const names = await getIndexNames(model);
     expect(names).not.toContain('sourceType_1_status_1_provider_1');
+    expect(names).not.toContain('status_1_metadata.operation.heartbeatAt_1');
     expect(names).toContain('teamId_1_status_1');
     expect(names).toContain('status_1_lastActiveAt_1');
     expect(names).toContain('sourceType_1_sourceId_1_userId_1');
+    expect(names).toContain('storage.volumes.claimName_1');
     expect(names).toContain('customer_sandbox_source');
   });
 });
