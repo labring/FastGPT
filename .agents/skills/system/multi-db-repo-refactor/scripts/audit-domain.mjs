@@ -240,7 +240,7 @@ if (hasFlag('--status')) {
   );
   const tokenHitsRaw =
     tokenRoots.length > 0
-      ? runRg(['-l', 'define(?:Log)?RepoToken\\s*[<(]', ...tokenRoots, '--glob', '*.ts'], repoRoot)
+      ? runRg(['-l', 'defineRepoToken\\s*[<(]', ...tokenRoots, '--glob', '*.ts'], repoRoot)
       : '';
   const migratedRepoTokens = tokenHitsRaw ? tokenHitsRaw.split('\n').filter(Boolean) : [];
 
@@ -454,7 +454,7 @@ const buildRecommendedExtraTests = ({ schemaMeta, callerItems, testFiles }) => {
 
   if (schemaMeta.datasource === 'log') {
     recs.push(
-      '日志库三态路由测试（覆盖 shared 默认复用主池可读写、separate 独立日志库隔离、disabled 路由至 Noop 静默跳过写/空读）'
+      '日志库双态路由测试（覆盖默认 shared 回退复用主池可读写、separate 独立日志库隔离且主库无数据）'
     );
   }
   if (schemaMeta.hasSoftDelete) {
@@ -507,7 +507,6 @@ const report = {
   siblingSchemas,
   models: target.modelNames,
   datasource: target.datasource,
-  requiresNoopRepo: target.datasource === 'log',
   hasSoftDelete: target.hasSoftDelete,
   hasTtl: target.hasTtl,
   hasWatch,
@@ -551,7 +550,7 @@ if (siblingSchemas.length > 0) {
   );
 }
 console.log(
-  `Datasource   : ${report.datasource}${report.requiresNoopRepo ? ' (tri-state: shared main pool by default, separate when logWriteUrl set, Noop when logDisabled=true)' : ''}`
+  `Datasource   : ${report.datasource}${report.datasource === 'log' ? ' (two-state: defaults to shared fallback on main pool; switches to separate pool when logWriteUrl is configured)' : ''}`
 );
 console.log(
   `Flags        : softDelete=${report.hasSoftDelete}, ttl=${report.hasTtl}, watch=${report.hasWatch}`

@@ -5,7 +5,6 @@ import { createEntityId, EntityIdSchema } from '@fastgpt/global/common/string/en
 import { BoolSchema, optionalNullToUndefined } from '@fastgpt/global/common/zod';
 import {
   clearRepoOverrides,
-  defineLogRepoToken,
   defineRepoToken,
   injectRepo,
   overrideRepoForTest
@@ -224,7 +223,7 @@ class SqlItemRepo
 }
 
 type AuditLogRepo = {
-  mode: () => 'mongo' | 'sql' | 'noop';
+  mode: () => 'mongo' | 'sql';
 };
 
 describe('@fastgpt/dal/db DI container, portable SQL DDL, and PGlite integration', () => {
@@ -268,30 +267,20 @@ describe('@fastgpt/dal/db DI container, portable SQL DDL, and PGlite integration
     expect(sqlSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('routes defineLogRepoToken across shared, separate, and disabled logMode topologies', async () => {
-    const LogRepoToken = defineLogRepoToken<AuditLogRepo>('AuditLogRepo', {
+  it('routes log repositories uniformly via defineRepoToken across shared (main fallback) and separate topologies and supports test overrides', async () => {
+    const LogRepoToken = defineRepoToken<AuditLogRepo>('AuditLogRepo', {
       mongo: () => ({ mode: () => 'mongo' }),
-      sql: () => ({ mode: () => 'sql' }),
-      noop: () => ({ mode: () => 'noop' })
+      sql: () => ({ mode: () => 'sql' })
     });
 
     const logRepo = injectRepo(LogRepoToken);
 
-    // 默认 shared 模式复用主库连接池，仍走真实 sql 仓储
+    // 默认 shared 模式透明回退复用主库连接池，仍走真实 sql 仓储
     configureDbRuntime({
       dialect: 'oceanbase',
       mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt'
     });
     expect(logRepo.mode()).toBe('sql');
-
-    // 显式关闭日志库持久化（logDisabled: true）时自动降级至 Noop 空实现
-    await closeDbRuntime();
-    configureDbRuntime({
-      dialect: 'oceanbase',
-      mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt',
-      logDisabled: true
-    });
-    expect(logRepo.mode()).toBe('noop');
 
     // separate 模式使用独立日志库连接池
     await closeDbRuntime();

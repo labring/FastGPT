@@ -26,9 +26,9 @@ description: >-
 1. **WIP=1 大表合龙锁**：先跑进度脚本。**只要存在任何尚未合龙删除旧 Schema/Model 文件的在途域，严禁开启任何新表重构！**
 2. **包边界与目录归属（物理防依赖污染）**：
    - **`@fastgpt/global`**：仅放前后端共享的 `EntityId`、业务枚举、OpenAPI/接口 DTO；**禁止新增数据库物理集合名 / 表名常量到 `@fastgpt/global`**。
-   - **开源表归属 `@fastgpt/dal`**：物理集合名/表名常量、`repo.type.ts`、`repo.ts`（Token）、私有 `mongo/{schema,repo}.ts`（原生 `new Schema` + `defineMongoCollection`，`MongoRepositoryBase` 在 `constructor` 自动构 `readonly model`）、私有 `sql/{table,repo}.ts` 与 `noop/repo.ts` 全部收口进 **`packages/dal/db/repos/<domain>/`**（`packages/dal/package.json` 绝不导出 `mongo/` 与 `sql/`），契约测试放 **`packages/dal/test/db/repos/<domain>/repo.contract.test.ts`**；Pro 10 张商业表放 **`pro/admin/src/dal/db/repos/<domain>/`**；`packages/service/<domain>/service.ts` 只 `import` DAL Token 与 `repo.type`，`packages/service/test/<domain>/service.test.ts` 保持 L0 零 DB 纯内存单测。
+   - **开源表归属 `@fastgpt/dal`**：物理集合名/表名常量、`repo.type.ts`、`repo.ts`（Token）、私有 `mongo/{schema,repo}.ts`（原生 `new Schema` + `defineMongoCollection`，`MongoRepositoryBase` 在 `constructor` 自动构 `readonly model`）与私有 `sql/{table,repo}.ts` 全部收口进 **`packages/dal/db/repos/<domain>/`**（`packages/dal/package.json` 绝不导出 `mongo/` 与 `sql/`），契约测试放 **`packages/dal/test/db/repos/<domain>/repo.contract.test.ts`**；Pro 10 张商业表放 **`pro/admin/src/dal/db/repos/<domain>/`**；`packages/service/<domain>/service.ts` 只 `import` DAL Token 与 `repo.type`，`packages/service/test/<domain>/service.test.ts` 保持 L0 零 DB 纯内存单测。
 3. **同表跨 `pro` 与测试夹具一刀切**：同一张表的重构周期内必须同步改完 `packages/`、`projects/`、`pro/admin/` 全部生产调用方**及关联测试文件/`test/datas/` 中的裸 `Mongo*` 造数与断言**，并物理删除旧 Schema 文件（不留过渡残余，确保 1,479 个存量测试平滑脱 Mongo）。
-4. **垂直端到端一步到位**：当场写完 `repo.type.ts` + `mongo/` + `sql/`（`log` 表附加 `noop/`）+ **全套必做与按特征必补测试**，严禁只写单方言半成品或只写最小 CRUD 冒烟测试。
+4. **垂直端到端一步到位**：当场写完 `repo.type.ts` + `mongo/` + `sql/` + **全套必做与按特征必补测试**，严禁只写单方言半成品或只写最小 CRUD 冒烟测试。
 5. **明确范围外边界**：
    - `packages/service/core/dataset/image/schema.ts`（Mongo GridFS）：纯 Mongo 历史遗留，**禁止为其建 SQL 表**（SQL 模式下走只读空降级/404）；
    - `projects/marketplace/**`：独立应用，不在本次主仓多库重构范围内。
@@ -58,7 +58,7 @@ node .agents/skills/system/multi-db-repo-refactor/scripts/audit-domain.mjs --sch
 ```
 
 重点核查脚本输出的 7 项情报：
-- `datasource`：`main`（`getMongoModel`）或 `log`（`getMongoLogModel`，必须补 `noop/repo.ts` 与 `defineLogRepoToken`，运行时支持 `shared` 默认复用主池 / `separate` 独立池 / `disabled` 路由 `Noop` 三态拓扑）；
+- `datasource`：`main`（`getMongoModel`）或 `log`（`getMongoLogModel`，在 `mongo/schema.ts` 声明 `datasource: 'log'`、在 `sql/repo.ts` 声明 `protected override readonly datasource = 'log'`，与普通表统一使用 `defineRepoToken`，运行时支持 `shared` 默认回退复用主池 / `separate` 独立日志池双态拓扑，无需 `noop/repo.ts`）；
 - `Sibling(s)`：同目录是否存在伙伴 Schema（如 `evalSchema + evalItemSchema`、`usage/schema + usageItemSchema`）——动手前先定好「按子目录 1:1 拆独立 Repo」还是「合并进同一 `mongo/schema.ts`」；
 - `Indexes`：全部 `defineIndex`（含 `deprecated: true` 历史索引、显式 `name`、`unique`、`partialFilterExpression`、数值或 `'15d'` 字符串 `expires` TTL），迁移后一条、一项关键 option 都不能丢；
 - 是否含 `deleteTime` 软删除、TTL、`.cursor()`、跨表 `$lookup` 或高危算子（`aggregate`、`bulkWrite`、`findOneAndUpdate + sort`、`$elemMatch`、`$inc`、`$regex`、`mongoSessionRun`）；
@@ -101,7 +101,7 @@ node .agents/skills/system/multi-db-repo-refactor/scripts/scaffold-repo.mjs \
 
 ### Step 4：完成双库实现与多层级测试（严禁偷工减料）
 
-1. 补全 `repo.type.ts`、`mongo/schema.ts`（原生 `new Schema` + `defineMongoCollection`，严禁模块顶层立即注册 Model 或使用 `.index()` / 字段内联 `index: true / unique: true`）、`mongo/repo.ts`（`constructor` 中由 `MongoRepositoryBase` 自动构出 `readonly model`）、`sql/table.ts`（`fg_` 命名规范）、`sql/repo.ts`（`log` 表补 `noop/repo.ts`）与 `repo.ts`（透传 `runtime`），并将 `service.ts` 改造为 `XxxService` 类 + 构造函数依赖注入（`deps.xxxRepo ?? injectRepo(Token)`）。
+1. 补全 `repo.type.ts`、`mongo/schema.ts`（原生 `new Schema` + `defineMongoCollection`，严禁模块顶层立即注册 Model 或使用 `.index()` / 字段内联 `index: true / unique: true`）、`mongo/repo.ts`（`constructor` 中由 `MongoRepositoryBase` 自动构出 `readonly model`）、`sql/table.ts`（`fg_` 命名规范）、`sql/repo.ts`（`log` 表覆写 `protected override readonly datasource = 'log'`）与 `repo.ts`（统一使用 `defineRepoToken` 并透传 `runtime`），并将 `service.ts` 改造为 `XxxService` 类 + 构造函数依赖注入（`deps.xxxRepo ?? injectRepo(Token)`）。
 2. **必须按以下 4 类完整交付测试**（详见 [深水区建模食谱 §6](references/deep-water-recipes.md#6-多层级测试矩阵必做--按表特征必补)）：
    - **① 多方言仓储契约测试（`repo.contract.test.ts`，必做）**：
      - 校验 `compileSqlTableDDL` 在 **`oceanbase`（P0）与 `postgres`（P1）** 双目标编译产物（`DATETIME(3)`、内联索引、无 `CREATE INDEX IF NOT EXISTS`）；
@@ -109,7 +109,7 @@ node .agents/skills/system/multi-db-repo-refactor/scripts/scaffold-repo.mjs \
    - **② Service 纯内存单测（`service.test.ts`，L0 零 DB，非平凡编排必做）**：
      - 凡 `service.ts` 包含多 Repo 协同、状态流转、权限/配额校验、错误处理、混合事务或 `afterCommit` 编排，必须通过 `new XxxService({ xxxRepo: stubRepo })` 编写零 DB、零 `vi.mock` 模块劫持的纯单测；
    - **③ 按表特征必补的专项测试**（对照 Step 1 输出的 `Recommended Extra Tests` 逐项覆盖）：
-     - `datasource: 'log'` 表 -> 必须覆盖完整三态验收（`shared` 默认复用主池可读写、`separate` 独立池隔离、`disabled` 路由 `Noop` 静默跳过写且读返回空）；
+     - `datasource: 'log'` 表 -> 必须覆盖双态路由验收（`shared` 默认回退复用主池可读写、`separate` 独立日志池隔离且主库无数据）；
      - 含 `FOR UPDATE SKIP LOCKED` / 原子扣减 / CAS / `$inc` / 冲突重试 -> **并发抢占与冲突重试测试**（多并发不重复领取、不超扣、重试不重复执行 `afterCommit`，标注在真实 OB/MySQL/PG/Mongo 连接池下运行、单连接 PGlite 按能力分层）；
      - 含可空列排序（如 `pinnedAt` / `expireTime`）、`$regex` 模糊搜索、权限位运算、`upsertRow` 或 Keyset 游标分页 -> 显式补齐对应边界用例（含 `NULL` 行排序断言、大小写敏感等值 vs 不敏感模糊查询对照、幂等重复 Upsert）；
      - 含 TTL 过期语义 -> 显式验证已过期记录不可见、未过期记录正常返回；
@@ -127,7 +127,7 @@ node .agents/skills/system/multi-db-repo-refactor/scripts/scaffold-repo.mjs \
 
 ### Step 6：自动化边界、OB/MySQL 合规、索引、残留引用与测试全检
 
-[verify-domain.mjs](scripts/verify-domain.mjs) 会自动执行：目录完整性、分层隔离、**OB/MySQL 优先 SQL 可移植性静态扫描**（含禁 `INSERT IGNORE` / `NULLS LAST` / `text|json` 默认值与索引 / 复合索引 `> 3072B`）、**契约测试存在性与真实事务/日志 Noop 覆盖检查**、`defineIndex`（按集合隔离含名称/关键 options/TTL）零丢失比对、同目录旧文件收口、**全仓生产与非迁移测试文件旧 `Mongo*` 零残留引用检查**，以及目标测试执行。
+[verify-domain.mjs](scripts/verify-domain.mjs) 会自动执行：目录完整性、分层隔离、**OB/MySQL 优先 SQL 可移植性静态扫描**（含禁 `INSERT IGNORE` / `NULLS LAST` / `text|json` 默认值与索引 / 复合索引 `> 3072B`）、**契约测试存在性与真实事务/日志双态路由覆盖检查**、`defineIndex`（按集合隔离含名称/关键 options/TTL）零丢失比对、同目录旧文件收口、**全仓生产与非迁移测试文件旧 `Mongo*` 零残留引用检查**，以及目标测试执行。
 
 使用 `merge-base:<旧schema相对路径>` 可在 `git commit` 前后稳定对比分支基线（多旧文件合并时传多个路径；若集合重命名显式传 `--collection-map old=new`）：
 

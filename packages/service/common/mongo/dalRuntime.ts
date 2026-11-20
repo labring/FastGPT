@@ -11,38 +11,31 @@ const logger = getLogger(LogCategories.INFRA.MONGO);
 /**
  * 将当前进程的 MongoDB 连接拓扑注入 `@fastgpt/dal` 数据库 Runtime。
  *
- * 日志数据源遵循三态拓扑：
+ * 日志数据源遵循双态拓扑：
  * - 配置 `logWriteUrl` / `MONGODB_LOG_URI`：`separate` 模式，使用独立日志连接实例；
- * - 未配置且未显式禁用（默认）：`shared` 模式，直接复用 `main` 连接实例；
- * - 显式传入 `logDisabled: true`：`disabled` 模式，日志仓储路由至 `Noop` 空实现。
+ * - 未配置（默认）：`shared` 模式，透明回退复用 `main` 连接实例（不重复建池）。
  */
 export const configureMongoDalRuntime = (options?: {
   mainWriteUrl?: string;
   logWriteUrl?: string;
-  logDisabled?: boolean;
   transactionRunner?: DbTransactionRunner;
 }): DbRuntime => {
   const mainWriteUrl = options?.mainWriteUrl ?? process.env.MONGODB_URI ?? MONGO_URL;
-  const logDisabled = options?.logDisabled === true;
-  const logWriteUrl = logDisabled
-    ? undefined
-    : options !== undefined && 'logWriteUrl' in options
+  const logWriteUrl =
+    options !== undefined && 'logWriteUrl' in options
       ? options.logWriteUrl
       : (process.env.MONGODB_LOG_URI ?? serviceEnv.MONGODB_LOG_URI);
 
   const mongoDeps = createMongoRuntimeDeps({
     getMainClient: () => connectionMongo,
     getLogClient: () =>
-      !logDisabled && logWriteUrl !== undefined && logWriteUrl.trim().length > 0
-        ? connectionLogMongo
-        : undefined
+      logWriteUrl !== undefined && logWriteUrl.trim().length > 0 ? connectionLogMongo : undefined
   });
 
   return configureDbRuntime({
     dialect: 'mongo',
     mainWriteUrl,
     logWriteUrl,
-    logDisabled,
     maxConnections: serviceEnv.DB_MAX_LINK,
     logger,
     metrics: {

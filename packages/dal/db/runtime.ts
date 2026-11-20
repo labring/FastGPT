@@ -1,8 +1,4 @@
-import {
-  DbConfigurationError,
-  DbLogDatasourceNotConfiguredError,
-  DbRuntimeNotConfiguredError
-} from './errors';
+import { DbConfigurationError, DbRuntimeNotConfiguredError } from './errors';
 import {
   getDbDialectFamily,
   type DbDatasource,
@@ -43,14 +39,11 @@ export type DbRuntimeConfig = {
   /**
    * 独立日志库连接串：
    * - 配置时进入 `separate` 模式，建立独立日志连接池；
-   * - 未配置且未显式禁用（`logDisabled !== true`）时进入 `shared` 模式，直接复用 `main` 连接池（不重复建池）；
-   * - 显式配置 `logDisabled: true` 时进入 `disabled` 模式，日志仓储自动切换至 `Noop` 空实现。
+   * - 未配置（默认）时进入 `shared` 模式，透明回退复用 `main` 连接池（不重复建池）。
    */
   logWriteUrl?: string;
   /** 独立日志库只读副本连接串；仅在 `separate` 模式下生效，未配置时回退至 logWritePool。 */
   logReadUrl?: string;
-  /** 显式关闭日志库持久化（`disabled` 模式），默认 `false`。 */
-  logDisabled?: boolean;
   maxConnections?: number;
   logger?: DbLogger;
   metrics?: DbMetrics;
@@ -96,13 +89,7 @@ export class DbRuntime {
 
     const logWriteUrl = normalizeOptionalUrl(config.logWriteUrl);
     const logReadUrl = normalizeOptionalUrl(config.logReadUrl);
-    const logDisabled = config.logDisabled === true;
 
-    if (logDisabled && (logWriteUrl !== undefined || logReadUrl !== undefined)) {
-      throw new DbConfigurationError(
-        'Database logWriteUrl/logReadUrl cannot be configured when logDisabled is true'
-      );
-    }
     if (logReadUrl !== undefined && logWriteUrl === undefined) {
       throw new DbConfigurationError(
         'Database logReadUrl cannot be configured when logWriteUrl is omitted'
@@ -111,7 +98,7 @@ export class DbRuntime {
 
     this.dialect = config.dialect;
     this.family = getDbDialectFamily(config.dialect);
-    this.logMode = logDisabled ? 'disabled' : logWriteUrl !== undefined ? 'separate' : 'shared';
+    this.logMode = logWriteUrl !== undefined ? 'separate' : 'shared';
     this.mainWriteUrl = mainWriteUrl;
     this.mainReadUrl = normalizeOptionalUrl(config.mainReadUrl);
     this.logWriteUrl = logWriteUrl;
@@ -130,12 +117,7 @@ export class DbRuntime {
     return this.state;
   }
 
-  /** 是否启用日志库持久化（`separate` 与默认 `shared` 均为 `true`；仅显式 `disabled` 时为 `false`）。 */
-  hasLogDatabase(): boolean {
-    return this.logMode !== 'disabled';
-  }
-
-  /** 是否配置了物理独立的日志数据库实例（仅 `separate` 模式为 `true`）。 */
+  /** 是否配置了物理独立的日志数据库实例（`separate` 为 `true`，回退复用主库 `shared` 时为 `false`）。 */
   hasSeparateLogDatabase(): boolean {
     return this.logMode === 'separate';
   }
@@ -150,16 +132,12 @@ export class DbRuntime {
 
   /**
    * 将逻辑数据源解析为底层实际承接流量的物理数据源：
-   * - `logMode === 'disabled'` 且请求 `log` 时抛出 `DbLogDatasourceNotConfiguredError`；
-   * - `logMode === 'shared'` 且请求 `log` 时透明路由至 `main` 连接池（零重复建池）；
+   * - `logMode === 'shared'`（默认）且请求 `log` 时透明回退至 `main` 连接池（零重复建池）；
    * - `logMode === 'separate'` 时保持物理隔离 `log`。
    */
   resolveEffectiveDatasource(datasource: DbDatasource): DbDatasource {
     if (datasource === 'log') {
-      if (this.logMode === 'disabled') {
-        throw new DbLogDatasourceNotConfiguredError();
-      }
-      return this.logMode === 'shared' ? 'main' : 'log';
+      return this.logMode === 'separate' ? 'log' : 'main';
     }
     return 'main';
   }
@@ -202,7 +180,7 @@ export class DbRuntime {
    * 按当前 `DbRuntime` 拓扑幂等绑定指定集合的 Mongo `Model`。
    *
    * 供 `MongoRepositoryBase` 在 `constructor` 内直接调用，消除模块级 `getMongoModel` / `let cachedModel`；
-   * 会自动按 `logMode` 将 `shared` 日志集合透明路由至 `main` 连接，并在 `disabled` 时抛错。
+   * 会自动按 `logMode` 将 `shared` 日志集合透明回退路由至 `main` 连接。
    */
   bindMongoModel<TDoc, TModel = unknown>(collection: MongoCollectionDescriptor<TDoc>): TModel {
     if (this.family !== 'mongo') {
@@ -373,8 +351,7 @@ const buildConfigurationKey = (config: DbRuntimeConfig): string =>
     mainWriteUrl: normalizeOptionalUrl(config.mainWriteUrl),
     mainReadUrl: normalizeOptionalUrl(config.mainReadUrl),
     logWriteUrl: normalizeOptionalUrl(config.logWriteUrl),
-    logReadUrl: normalizeOptionalUrl(config.logReadUrl),
-    logDisabled: config.logDisabled === true
+    logReadUrl: normalizeOptionalUrl(config.logReadUrl)
   });
 
 /**
@@ -424,9 +401,9 @@ export const getDbDialect = (): DbDialect => getDbRuntime().dialect;
 
 export const getDbFamily = (): DbDialectFamily => getDbRuntime().family;
 
-export const hasLogDatabase = (): boolean => getDbRuntime().hasLogDatabase();
-
 export const getDbLogMode = (): DbLogMode => getDbRuntime().logMode;
+
+export const hasSeparateLogDatabase = (): boolean => getDbRuntime().hasSeparateLogDatabase();
 
 export const getDbLogger = (): DbLogger => getConfiguredDbRuntime()?.getLogger() ?? silentLogger;
 

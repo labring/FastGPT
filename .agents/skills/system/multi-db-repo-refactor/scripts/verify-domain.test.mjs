@@ -456,8 +456,9 @@ test('scaffold-repo.mjs preserves existing service.ts without emitting mismatche
     assert.match(sqlRepo, /this\.normalizeId\(id\)/);
     assert.match(sqlRepo, /isValidEntityId\(id\)/);
 
-    const noopRepo = fs.readFileSync(path.join(tmpDomainAbs, 'noop/repo.ts'), 'utf8');
-    assert.match(noopRepo, /ProbeWidgetDomainReadSchema\.parse\(/);
+    assert.equal(fs.existsSync(path.join(tmpDomainAbs, 'noop/repo.ts')), false);
+    const repoTs = fs.readFileSync(path.join(tmpDomainAbs, 'repo.ts'), 'utf8');
+    assert.match(repoTs, /\bdefineRepoToken</);
 
     const contractTest = fs.readFileSync(
       path.join(tmpTestAbs, 'repo.contract.test.ts'),
@@ -466,7 +467,7 @@ test('scaffold-repo.mjs preserves existing service.ts without emitting mismatche
     assert.doesNotMatch(contractTest, /execute\(undefined\)/);
     assert.match(contractTest, /createMongoTestHarness\(/);
     assert.match(contractTest, /compileSqlTableDDL\(probeWidgetSqlTable, 'oceanbase'\)/);
-    assert.match(contractTest, /new NoopProbeWidgetRepository\(\)/);
+    assert.match(contractTest, /logMode:\s*'shared'/);
 
     const verifyRes = runVerify(['--dir', tmpDomainRel]);
     assert.equal(verifyRes.status, 0, verifyRes.stderr);
@@ -648,22 +649,20 @@ test('enforces contract test governance (forbids stubbed transactions, bare impo
       tempImportOnlyAbs,
       `
         import { registerDualDialectContractSuite } from '@fastgpt/dal/db/testing';
-        import { NoopTempLogRepository } from '../noop/repo';
-        export const marker = 'NoopTempLogRepository';
+        export const marker = 'logMode: shared';
       `
     );
-    // Real suite + assertion, but Noop only appears in import and string literal
+    // Real suite + assertion, but logMode only appears in a string literal
     fs.writeFileSync(
       tempStringOnlyNoopAbs,
       `
         import { registerDualDialectContractSuite } from '@fastgpt/dal/db/testing';
-        import { NoopTempLogRepository } from '../noop/repo';
         registerDualDialectContractSuite({
           backends: [],
           registerTests: () => {
-            it('only mentions NoopTempLogRepository in a string', () => {
-              const label = 'NoopTempLogRepository';
-              expect(label).toBe('NoopTempLogRepository');
+            it('only mentions logMode in a string', () => {
+              const label = 'logMode: shared';
+              expect(label).toBe('logMode: shared');
             });
           }
         });
@@ -677,12 +676,16 @@ test('enforces contract test governance (forbids stubbed transactions, bare impo
           export const MongoTempTestLeak771 = getMongoLogModel('temp_log', S);
         `,
         newMongoSchema: `
-          defineIndex(S, { key: { teamId: 1 } });
-          export const getTempLogMongoModel = () => getMongoLogModel('temp_log', S);
+          export const tempLogCollection = defineMongoCollection({
+            name: 'temp_log',
+            datasource: 'log',
+            schema: S,
+            indexes: [{ key: { teamId: 1 } }]
+          });
         `,
         extraFiles: {
-          'repo.ts': `export const Token = defineLogRepoToken('TempLog', { mongo, sql, noop });\n`,
-          'noop/repo.ts': `export class NoopTempLogRepository {}\n`
+          'repo.ts': `export const Token = defineRepoToken('TempLog', { mongo, sql });\n`,
+          'sql/repo.ts': `export class SqlTempLogRepo { protected override readonly datasource = 'log'; }\n`
         }
       },
       ({ domainRel, legacyRel }) => {
@@ -700,7 +703,7 @@ test('enforces contract test governance (forbids stubbed transactions, bare impo
           /\[Test Callers\] Residual test fixture reference\(s\) to legacy model "MongoTempTestLeak771"/
         );
         assert.match(res.stderr, /stubs transactionRunner with execute\(undefined\)/);
-        assert.match(res.stderr, /do not exercise Noop \/ unconfigured-log behavior with real assertions/);
+        assert.match(res.stderr, /must exercise shared\/separate log topology routing with real assertions/);
 
         // Bare import + string literal pretending to be a contract test must FAIL
         const importOnlyRes = runVerify([
@@ -715,9 +718,9 @@ test('enforces contract test governance (forbids stubbed transactions, bare impo
         assert.equal(importOnlyRes.status, 1);
         assert.match(importOnlyRes.stderr, /must invoke registerDualDialectContractSuite/);
         assert.match(importOnlyRes.stderr, /must declare executable test case\(s\) with expect\(\.\.\.\)/);
-        assert.match(importOnlyRes.stderr, /do not exercise Noop \/ unconfigured-log behavior with real assertions/);
+        assert.match(importOnlyRes.stderr, /must exercise shared\/separate log topology routing with real assertions/);
 
-        // Real suite but Noop only in import/string must FAIL
+        // Real suite but logMode only in string must FAIL
         const stringOnlyNoopRes = runVerify([
           '--dir',
           domainRel,
@@ -730,7 +733,7 @@ test('enforces contract test governance (forbids stubbed transactions, bare impo
         assert.equal(stringOnlyNoopRes.status, 1);
         assert.match(
           stringOnlyNoopRes.stderr,
-          /do not exercise Noop \/ unconfigured-log behavior with real assertions/
+          /must exercise shared\/separate log topology routing with real assertions/
         );
       }
     );
@@ -762,7 +765,7 @@ test('audit-domain.mjs separates out-of-SQL-scope GridFS legacy and reports reco
   assert.equal(logRes.status, 0, logRes.stderr);
   const logReport = JSON.parse(logRes.stdout);
   assert.equal(logReport.datasource, 'log');
-  assert.ok(logReport.recommendedExtraTests.some((t) => t.includes('日志库三态路由测试')));
+  assert.ok(logReport.recommendedExtraTests.some((t) => t.includes('日志库双态路由测试')));
   assert.ok(logReport.recommendedExtraTests.some((t) => t.includes('TTL 过期读过滤测试')));
 });
 

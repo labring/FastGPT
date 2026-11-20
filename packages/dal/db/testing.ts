@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto';
 import { PGlite } from '@electric-sql/pglite';
 import { Kysely, PGliteDialect, sql } from 'kysely';
 import { Mongoose, type Model } from 'mongoose';
-import { DbLogDatasourceNotConfiguredError } from './errors';
 import type { MongoCollectionDefinition } from './mongo/collection';
 import { createMongoRuntimeDeps } from './mongo/runtime';
 import { closeDbRuntime, configureDbRuntime, getDbRuntime } from './runtime';
@@ -11,7 +10,7 @@ import type { DbDialect, DbLogMode } from './types';
 
 export type SqlTestHarness = {
   db: Kysely<any>;
-  logDb?: Kysely<any>;
+  logDb: Kysely<any>;
   truncateAll: () => Promise<void>;
   close: () => Promise<void>;
 };
@@ -89,12 +88,13 @@ export const createMongoTestHarness = async ({
     dialect: 'mongo',
     mainWriteUrl: mainUrl,
     ...(logUrl !== undefined ? { logWriteUrl: logUrl } : {}),
-    ...(logMode === 'disabled' ? { logDisabled: true } : {}),
     ...mongoDeps
   });
 
-  const activeCollections: readonly MongoCollectionDefinition<any>[] =
-    logMode === 'disabled' ? collections : [...collections, ...logCollections];
+  const activeCollections: readonly MongoCollectionDefinition<any>[] = [
+    ...collections,
+    ...logCollections
+  ];
 
   // Mongo 副本集多文档事务要求目标集合在事务开启前已存在
   const boundModels = activeCollections.map((col) => runtime.bindMongoModel<any, Model<any>>(col));
@@ -162,7 +162,7 @@ export const createPGliteSqlTestHarness = async ({
   tables: readonly SqlTableDefinition[];
   logTables?: readonly SqlTableDefinition[];
   withLogDatabase?: boolean;
-  /** 日志数据源三态模式；未显式传入时 `withLogDatabase=true` 对应 `separate`，否则默认 `shared` 复用主库。 */
+  /** 日志数据源双态模式；未显式传入时 `withLogDatabase=true` 对应 `separate`，否则默认 `shared` 复用主库。 */
   logMode?: DbLogMode;
 }): Promise<SqlTestHarness> => {
   await closeDbRuntime();
@@ -175,9 +175,6 @@ export const createPGliteSqlTestHarness = async ({
 
   const resolveTargetDb = (datasource: 'main' | 'log'): Kysely<any> => {
     if (datasource === 'log') {
-      if (resolvedLogMode === 'disabled') {
-        throw new DbLogDatasourceNotConfiguredError();
-      }
       return log?.db ?? main.db;
     }
     return main.db;
@@ -187,7 +184,6 @@ export const createPGliteSqlTestHarness = async ({
     dialect: 'postgres',
     mainWriteUrl: 'pglite://memory/main',
     ...(resolvedLogMode === 'separate' ? { logWriteUrl: 'pglite://memory/log' } : {}),
-    ...(resolvedLogMode === 'disabled' ? { logDisabled: true } : {}),
     sqlExecutorResolver: ({ datasource, nativeTx }) => {
       if (nativeTx !== undefined) {
         return nativeTx;
@@ -211,7 +207,7 @@ export const createPGliteSqlTestHarness = async ({
 
   return {
     db: main.db,
-    logDb: resolvedLogMode === 'disabled' ? undefined : (log?.db ?? main.db),
+    logDb: log?.db ?? main.db,
     truncateAll: async () => {
       for (const item of allTableNames) {
         await sql.raw(`TRUNCATE TABLE "${item.name}" CASCADE`).execute(item.target);

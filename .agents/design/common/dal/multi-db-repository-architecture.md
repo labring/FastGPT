@@ -53,17 +53,15 @@ flowchart TD
   SVC --> DAL_PUB["@fastgpt/dal 公开导出面（exports）<br/>db/repos/*/repo（DI Token） + db/repos/*/repo.type（持久化 DTO/契约）<br/>db/{container, transaction, errors, types}"]
   DAL_PUB --> MONGO_IMPL["[DAL 私有] db/repos/*/mongo/{schema,repo}.ts<br/>defineMongoCollection + MongoRepositoryBase（constructor 自动构 readonly model）"]
   DAL_PUB --> SQL_IMPL["[DAL 私有] db/repos/*/sql/{table,repo}.ts<br/>defineSqlTable + SqlRepositoryBase（Kysely 通吃 OB / MySQL 8+ / PG 14+）"]
-  DAL_PUB --> NOOP_IMPL["[DAL 私有，仅 log 表] db/repos/*/noop/repo.ts<br/>logMode === 'disabled' 时的 Null Object 降级实现"]
-  MONGO_IMPL --> DAL_CORE["@fastgpt/dal/db/{runtime, mongo/*, sql/*}<br/>连接池拓扑 / DbSession 事务 / 轻量 SQL 迁移器 / Mongo 异步只增补建"]
+  MONGO_IMPL --> DAL_CORE["@fastgpt/dal/db/{runtime, mongo/*, sql/*}<br/>连接池拓扑（日志未配默认回退主池）/ DbSession 事务 / 轻量 SQL 迁移器 / Mongo 异步只增补建"]
   SQL_IMPL --> DAL_CORE
-  NOOP_IMPL --> DAL_CORE
   DAL_CORE --> GLOBAL["@fastgpt/global（前后端共享、browser-safe）<br/>24 位 EntityId / 业务枚举 / 前后端与 OpenAPI 共享 DTO"]
 ```
 
 **物理包归属与边界铁律**：
 1. **`@fastgpt/global` vs `@fastgpt/dal` 严格按“前端是否需要”切分**：
    - **`@fastgpt/global`**（browser-safe）：仅放前后端共享的 `EntityId` 工具、业务枚举（`AppTypeEnum`、`PerResourceTypeEnum` 等）及 OpenAPI / API 响应 DTO；**不再向 `@fastgpt/global` 放入数据库物理集合名 / 表名常量**；
-   - **`@fastgpt/dal`**（纯服务端持久化，前端严禁引用）：承载物理集合名 / 表名常量、持久化层 `repo.type.ts`（含内部存储字段与 Read/Write Zod Schema）、`mongo/{schema,repo}.ts`、`sql/{table,repo}.ts`、`noop/repo.ts`、DI Token 以及独立契约测试（`packages/dal/test/db/repos/`）。
+   - **`@fastgpt/dal`**（纯服务端持久化，前端严禁引用）：承载物理集合名 / 表名常量、持久化层 `repo.type.ts`（含内部存储字段与 Read/Write Zod Schema）、`mongo/{schema,repo}.ts`、`sql/{table,repo}.ts`、DI Token 以及独立契约测试（`packages/dal/test/db/repos/`）。
 2. **`packages/dal/package.json` `exports` 物理防污染**：
    - 对业务层仅暴露 `./db/repos/*/repo`、`./db/repos/*/repo.type` 与 `./db/{container,transaction,errors,types}`；
    - 对应用启动入口（`instrumentation-node.ts`）与 `pro/admin` 暴露 `./db/runtime`、`./db/mongo/*`、`./db/sql/*`；
@@ -89,7 +87,7 @@ flowchart TD
 ```ts
 export type DbDialect = 'mongo' | 'oceanbase' | 'mysql' | 'postgres';
 export type DbDialectFamily = 'mongo' | 'sql';
-export type DbLogMode = 'separate' | 'shared' | 'disabled';
+export type DbLogMode = 'separate' | 'shared';
 
 export type DbRuntimeConfig = {
   dialect: DbDialect;
@@ -98,14 +96,11 @@ export type DbRuntimeConfig = {
   /**
    * 独立日志库连接串：
    * - 配置时进入 `separate` 模式，建立独立日志连接池；
-   * - 未配置且未显式禁用（`logDisabled !== true`）时进入 `shared` 模式，直接复用 `main` 连接池（既不重复建池，又兼容默认单库部署）；
-   * - 显式设置 `logDisabled: true` 时进入 `disabled` 模式，日志类仓储路由至 `Noop` 空实现。
+   * - 未配置（默认）时进入 `shared` 模式，透明回退复用 `main` 连接池（既不重复建池，又兼容默认单库部署）。
    */
   logWriteUrl?: string;
   /** 独立日志库只读副本连接串；仅在 `separate` 模式下生效，未配置时回退至 logWritePool。 */
   logReadUrl?: string;
-  /** 显式关闭日志表落库（`disabled` 模式），默认 `false`。 */
-  logDisabled?: boolean;
   maxConnections?: number;
   logger: DbLogger;
   metrics?: DbMetrics;
@@ -114,10 +109,9 @@ export type DbRuntimeConfig = {
 
 - **SQL 技术栈选型**：采用 **`Kysely` + 原生驱动池（`mysql2` / `pg.Pool`）**（仓库已内置 `mysql2@^3.23` 与 `pg@^8.10`）。Kysely 纯 TypeScript 零二进制引擎包袱，表定义即纯类型，**同一份 `Kysely` 查询代码可通过底层 `MysqlDialect`（OceanBase / MySQL，P0）与 `PostgresDialect`（PG，P1）直接通吃**；`mysql2` 连接池显式配置 `timezone: 'Z'`、`charset: 'utf8mb4'`、`supportBigNumbers: true`、`bigNumberStrings: true` 以对齐 `pg` 精度与时区语义。
 - **读写分离路由**：Mongo 通过单连接串 + `readPreference: 'secondaryPreferred'` 路由；SQL 族通过 `mainReadPool` 路由。底座统一暴露语义选项 `{ useReadReplica?: boolean, tx?: DbSession }`——**一旦传入活跃的 `tx` 事务会话，底座强制忽略 `useReadReplica` 并路由至 `WritePool`**，杜绝事务内读不到自身未提交写入的一致性事故。
-- **日志数据源三态拓扑（默认复用主池，显式开关才 `Noop`）**：挂载在 `log` 数据源上的 4 张日志表（`app_chat_logs`、`team_audits`、`llm_request_records`、`system_logs`）统一通过 `defineLogRepoToken` 注册 `mongo` / `sql` / `noop` 三种实现：
+- **日志数据源双态拓扑（未配独立日志库时默认回退主库，无 `Noop` 降级）**：挂载在 `log` 数据源上的 4 张日志表（`app_chat_logs`、`team_audits`、`llm_request_records`、`system_logs`）与普通仓储一致，统一通过 `defineRepoToken` 注册 `mongo` / `sql` 实现，仅通过 `mongo/schema.ts` 的 `datasource: 'log'` 与 `sql/repo.ts` 的 `protected override readonly datasource = 'log'` 声明逻辑数据源：
   1. `separate`（配置了独立 `logWriteUrl`）：走独立日志连接池；
-  2. `shared`（**默认**，未配置 `logWriteUrl` 且 `logDisabled !== true`）：**直接复用 `main` 物理连接池**（消除旧代码 `connectionLogMongo` 连接同一库却建两套池的资源浪费，同时 100% 保证默认单库部署下对话日志、审计日志、请求追踪功能正常可用）；
-  3. `disabled`（显式配置 `logDisabled: true`）：不建连接、不写主库，DI 容器自动解析注入 `Noop` 空实现（写静默跳过、读返回空/零值）；若此模式下显式发起 `runInTransaction(..., { datasource: 'log' })`，底座抛出 `DbLogDatasourceNotConfiguredError`。
+  2. `shared`（**默认**，未配置 `logWriteUrl`）：**透明回退复用 `main` 物理连接池**（消除旧代码 `connectionLogMongo` 连接同一库却建两套池的资源浪费，同时 100% 保证默认单库部署下对话日志、审计日志、请求追踪功能正常可用；且 `runInTransaction(..., { datasource: 'log' })` 仍保持逻辑数据源隔离校验，防止与 `main` 仓储误混入同一事务）。
 - **Mongo 连接下沉、可观测性与启动期 Schema Registry**：
   - `@fastgpt/dal/db/mongo/runtime.ts` 接管进程唯一的 `Mongoose` 主连接与可选独立日志连接（`shared` 模式复用主连接，彻底淘汰 `global.mongodb` / `global.mongodbLog`），统一设置 `autoIndex: false`、独立非连接池 DDL 连接（`socketTimeoutMS: 0`），并在 `Kysely` 与 `Mongoose` 双侧统一接入 `runtime.recordOperation()` 慢查询告警与 `common/profiling` 分段耗时回调；
   - 区分**模块 `import` 零副作用**与**应用启动显式引导（Bootstrap）**：维护统一领域注册表 `packages/dal/db/repos/registry.ts`（以及 `pro/admin` 专属注册表），启动期（`instrumentation-node.ts`）按方言执行**解耦的轻量初始化**——SQL 侧同步执行轻量版本化 DDL 迁移器，Mongo 侧启动后异步只增补建缺失索引（绝不阻塞探针、绝不在启动自动删索引），并共享统一的只读 `inspect` 能力。
@@ -252,8 +246,7 @@ export abstract class SqlRepositoryBase<
 ```
 
 2. **轻量级 Token DI 容器（无装饰器 / 零 `reflect-metadata` 侵入）**：
-   - `defineRepoToken<TRepo>(name, { mongo, sql })` 注册标准业务仓储的双族构造工厂（`postgres` / `oceanbase` / `mysql` 自动映射至 `sql`），并在实例化时向工厂透传当前 `runtime`（`mongo: (runtime) => new MongoXxxRepository(runtime)`）；
-   - `defineLogRepoToken<TRepo>(name, { mongo, sql, noop })` 专用于日志库仓储：默认 `shared` 复用主池、配置 `logWriteUrl` 时走 `separate` 独立池、仅显式关闭（`logMode === 'disabled'`）时自动解析至 `noop`；
+   - `defineRepoToken<TRepo>(name, { mongo, sql })` 统一注册主库与日志库仓储的双族构造工厂（`postgres` / `oceanbase` / `mysql` 自动映射至 `sql`），并在实例化时向工厂透传当前 `runtime`（`mongo: (runtime) => new MongoXxxRepository(runtime)`）；日志仓储未配置 `logWriteUrl` 时在底座层透明回退复用主池，无需单独的 `Noop` 实现；
    - `injectRepo(token)` 返回一个轻量 **Lazy `Proxy`**（含 `.then` 防 `await` 误展开保护）：因此即使在模块顶层执行 `export const appService = new AppService()`，在模块导入或 Next.js 静态构建阶段**绝对不会触发**任何数据库连接、Mongoose 模型注册或方言解析；仅在仓储方法被实际调用时，才按当前 `DbRuntime` 生命周期解析并缓存单例（并在热重载或测试切换 Runtime 时自动失效重建）。
 
 ---
@@ -265,15 +258,13 @@ export abstract class SqlRepositoryBase<
 ```text
 packages/dal/db/repos/<domain>/         # 开源表（Pro 10 张专属表在 pro/admin/src/dal/db/repos/<domain>/）
 ├── repo.type.ts                        # 【公开导出】领域仓储契约 type、Write/Read Zod Schema、.pick() 窄 DTO
-├── repo.ts                             # 【公开导出】defineRepoToken / defineLogRepoToken 导出 XxxRepoToken
+├── repo.ts                             # 【公开导出】defineRepoToken 导出 XxxRepoToken
 ├── mongo/                              # 【包内私有，exports 不暴露】
 │   ├── schema.ts                       # 原生 new Schema(...) + defineMongoCollection（纯声明、零副作用、含物理集合名常量）
 │   └── repo.ts                         # MongoXxxRepository（constructor 自动 bindMongoModel，implements XxxRepository）
-├── sql/                                # 【包内私有，exports 不暴露】
-│   ├── table.ts                        # 中立可移植 SQL 表定义（defineSqlTable，零 PG/OB 方言私货）+ 行类型
-│   └── repo.ts                         # SqlXxxRepository（extends SqlRepositoryBase，implements XxxRepository）
-└── noop/                               # 【包内私有，仅 log 数据源子域提供】
-    └── repo.ts                         # NoopXxxRepository（logMode === 'disabled' 空实现）
+└── sql/                                # 【包内私有，exports 不暴露】
+    ├── table.ts                        # 中立可移植 SQL 表定义（defineSqlTable，零 PG/OB 方言私货）+ 行类型
+    └── repo.ts                         # SqlXxxRepository（extends SqlRepositoryBase，implements XxxRepository）
 
 packages/dal/test/db/repos/<domain>/
 └── repo.contract.test.ts               # DAL 独立 Vitest 多方言契约测试（零 service/app 全局依赖）
@@ -857,7 +848,7 @@ export class SqlAppRepository
 }
 ```
 
-### 6.4 DI Token 注册与 Service 构造函数注入装配（`repo.ts` & `service.ts` & 日志库 `Noop` 示例）
+### 6.4 DI Token 注册与 Service 构造函数注入装配（`repo.ts` & `service.ts` & 日志库双态路由示例）
 
 #### 1. Token 定义（`packages/dal/db/repos/app/repo.ts`，公开导出）
 
@@ -931,42 +922,26 @@ export const appService = new AppService();
 // const service = new AppService({ appRepo: mockAppRepo, versionRepo: mockVersionRepo });
 ```
 
-#### 3. 日志库三态路由与显式 `Noop` 降级示例（`packages/dal/db/repos/appChatLog/repo.ts`）
+#### 3. 日志库双态自动回退示例（`packages/dal/db/repos/appChatLog/`）
 
 ```ts
-import { defineLogRepoToken } from '../../container';
+// packages/dal/db/repos/appChatLog/repo.ts
+import { defineRepoToken } from '../../container';
 import type { AppChatLogRepository } from './repo.type';
 import { MongoAppChatLogRepository } from './mongo/repo';
 import { SqlAppChatLogRepository } from './sql/repo';
-import { NoopAppChatLogRepository } from './noop/repo';
 
 /**
- * 日志数据源三态自动路由：
+ * 日志数据源双态自动路由（与普通仓储统一使用 defineRepoToken）：
  * - `separate`（配置 logWriteUrl）：走独立日志连接池；
- * - `shared`（默认，未配置 logWriteUrl 且未显式禁用）：直接复用主库连接池；
- * - `disabled`（显式配置 logDisabled: true）：自动解析为 NoopAppChatLogRepository。
+ * - `shared`（默认，未配置 logWriteUrl）：透明回退复用主库连接池，不重复建池、不丢日志。
+ * Mongo 侧在 `defineMongoCollection({ datasource: 'log', ... })` 声明；
+ * SQL 侧在 `SqlAppChatLogRepository` 声明 `protected override readonly datasource = 'log'`。
  */
-export const AppChatLogRepoToken = defineLogRepoToken<AppChatLogRepository>('AppChatLogRepository', {
+export const AppChatLogRepoToken = defineRepoToken<AppChatLogRepository>('AppChatLogRepository', {
   mongo: (runtime) => new MongoAppChatLogRepository(runtime),
-  sql: () => new SqlAppChatLogRepository(),
-  noop: () => new NoopAppChatLogRepository()
+  sql: () => new SqlAppChatLogRepository()
 });
-```
-
-```ts
-// packages/dal/db/repos/appChatLog/noop/repo.ts
-import type { AppChatLogRepository } from '../repo.type';
-
-/** 显式关闭日志落库（logMode === 'disabled'）时的 Null Object 空实现，不建连、不写入主库。 */
-export class NoopAppChatLogRepository implements AppChatLogRepository {
-  async appendChatLog() {
-    return;
-  }
-
-  async listChatLogs() {
-    return { list: [], total: 0 };
-  }
-}
 ```
 
 ---
@@ -993,7 +968,7 @@ export class NoopAppChatLogRepository implements AppChatLogRepository {
 3. **三大按特征必补的专项测试套件**：
    - **真实多连接并发与锁竞争套件**（自动跳过单连接 PGlite，在真实 OB / MySQL / PG / Mongo 跑）：覆盖 10 并发 `FOR UPDATE SKIP LOCKED` 抢训练分片零重复、最早过期套餐并发扣费不超扣、人为构造冲突/死锁重试后 `afterCommit` 仅执行最终成功一轮；
    - **SQL 轻量版本化 Migration & 索引守卫套件**：覆盖空库 `0001 → latest` 升级、重复执行幂等、双协程并发启动 Redis 锁防惊群、回滚遇未来版本 ID 向前兼容跳过、PG `indisvalid = false` 僵尸索引自愈，以及**防漂移断言**（跑完所有 SQL Migration 后对比 `information_schema` / `pg_index` 与全部 `sql/table.ts` 定义一致，杜绝改表定义却漏写增量 Migration）；
-   - **日志三态专项套件**：对每张 `datasource: 'log'` 表验证 `shared`（复用主池可读写）、`separate`（写独立日志库、主库无数据）、`disabled`（路由 `Noop` 静默不落库、读返回空）。
+   - **日志双态专项套件**：对每张 `datasource: 'log'` 表验证 `shared`（未配置独立日志库时默认回退复用主池可读写）与 `separate`（配置独立日志库时写独立日志库、主库无数据）。
 4. **存量测试夹具同步脱 Mongo 化 & CI 补全**：
    - 每张表物理删除旧 `schema.ts` 时，同步将该表关联的 `test/datas/` 公共夹具与测试文件内的裸 `MongoXxx` 造数/断言改走 Repo / Service（`verify-domain.mjs` 自动拦截非 `migration/` 测试文件中的旧 Model 残留），确保全部 79 张待适配表迁完后存量测试天然零 Mongoose 依赖；
    - Phase 0.5 补全 `.github/workflows/test-fastgpt.yaml`（经确认后变更），纳入 `packages/dal/**` 变更探测与 `test-dal` / `MySQL 8` 契约作业。
@@ -1009,9 +984,9 @@ export class NoopAppChatLogRepository implements AppChatLogRepository {
 - **Step 0（现网 Mongo 索引 4 个 Bug 定点修复，可独立小 PR 优先合入）**
   设置 `autoIndex: false` 消除双重竞态、修复 `indexManager.ts` 复合 `text` 索引匹配器（纳入 `teamId: 1` 前导列）、修复无条件删索引问题补齐删除开关门控、为 DDL 建索引分离无 60s 超时的专用连接。
 - **Phase 0.5：DAL 物理隔离收口、底座硬对齐与解耦迁移基建（Phase 1 大规模迁移前置）**
-  将 `MongoRuntime`、`defineMongoCollection`（原生 `Schema` + 禁字段内联索引）与 `MongoRepositoryBase` `constructor` 自动构 `readonly model` 下沉至 `@fastgpt/dal/db/mongo/`，把 `AppRegistration` 试点迁入 `packages/dal/db/repos/appRegistration/` 与 `packages/dal/test/db/repos/appRegistration/`；落地日志三态（默认 `shared` 复用主池）；补齐 OceanBase / MySQL 底座护栏（`utf8mb4_bin`、`fg_` 命名与 63B/3072B/asc-desc 静态校验、`mysql2` 参数、`orderByNullable`、去 `INSERT IGNORE`、Keyset 游标、OB 瞬态错误码、Kysely 观测插件）；落地**原则统一、执行解耦**的轻量索引与迁移基建（SQL 侧 ~250 行轻量版本化 DDL 迁移器，Mongo 侧异步只增补建 + 一次性迁移清零现有 17 条 `deprecated: true` + 只读 `inspect`），并补齐多后端测试底座与 CI 漂移门禁。
+  将 `MongoRuntime`、`defineMongoCollection`（原生 `Schema` + 禁字段内联索引）与 `MongoRepositoryBase` `constructor` 自动构 `readonly model` 下沉至 `@fastgpt/dal/db/mongo/`，把 `AppRegistration` 试点迁入 `packages/dal/db/repos/appRegistration/` 与 `packages/dal/test/db/repos/appRegistration/`；落地日志双态（未配置独立日志库时默认 `shared` 透明回退复用主池，移除 `Noop` 路由）；补齐 OceanBase / MySQL 底座护栏（`utf8mb4_bin`、`fg_` 命名与 63B/3072B/asc-desc 静态校验、`mysql2` 参数、`orderByNullable`、去 `INSERT IGNORE`、Keyset 游标、OB 瞬态错误码、Kysely 观测插件）；落地**原则统一、执行解耦**的轻量索引与迁移基建（SQL 侧 ~250 行轻量版本化 DDL 迁移器，Mongo 侧异步只增补建 + 一次性迁移清零现有 17 条 `deprecated: true` + 只读 `inspect`），并补齐多后端测试底座与 CI 漂移门禁。
 - **Phase 1：垂直端到端切片重构（开源表落 `packages/dal/db/repos/`、Pro 表落 `pro/admin/src/dal/db/repos/`，同表含 `pro` 一刀切 + WIP=1 合龙锁）**
-  - **Wave 1 轻量原型验证**：优先迁移 4~8 张低耦合叶子表，验证日志库三态 + TTL（`llm_request_records`、`system_logs`）、原子 Upsert/CAS/`$inc`（`timer_locks`、`count_limits`），并在 Mongo + PGlite + MySQL/OceanBase 三端打通闭环；
+  - **Wave 1 轻量原型验证**：优先迁移 4~8 张低耦合叶子表，验证日志库双态回退 + TTL（`llm_request_records`、`system_logs`）、原子 Upsert/CAS/`$inc`（`timer_locks`、`count_limits`），并在 Mongo + PGlite + MySQL/OceanBase 三端打通闭环；
   - **≤ 20 个调用文件的中小型表（占 ~80%）**：单个原子切片同时完成 `packages/dal/db/repos/<domain>/` + `packages/dal/test/db/repos/<domain>/repo.contract.test.ts` + `packages/service/<domain>/service.ts` + L0 单测，一次性迁移主仓与 `pro` 全部调用点、物理删除旧 `schema.ts` 并通过 `verify-domain.mjs` 验收；
   - **> 20 个调用文件的核心超级大表**：进入前先完成该域 ER 拆表评审；Slice 1 审 `repo.type.ts` + `mongo/` + `sql/` + 契约单测；Slice 2~N 每批 10~15 个调用文件直到删除旧 `schema.ts`（跨表事务严格遵循“自底向上先叶子桥接、整链迁完再翻外层 `runInTransaction`”）。通过 `WIP=1` 锁强制前一张大表彻底合龙后再开下一张；
   - **收口清零**：开源 71 表全部迁完后整目录删除 `packages/service/common/mongo/` 与全局 `convertObjectIds` 浅层中间件；`dataset_image`（GridFS）仅保留 Mongo 兼容读，SQL 模式下返回空/404；`projects/marketplace` 在范围外。
@@ -1029,7 +1004,7 @@ export class NoopAppChatLogRepository implements AppChatLogRepository {
 - [x] **0.2 `@fastgpt/dal/db` 核心底座（`mongo` + 通用 `sql` Kysely 底座 + `PGlite` 契约沙盒）**：
   - [x] 实现 `configureDbRuntime`、`getDbDialect`、`getDbFamily`、连接生命周期与健康检查；
   - [x] 实现不透明 `DbSession`、`runInTransaction`、`tx.afterCommit` 及冲突重试器；
-  - [x] 实现 `MongoRepositoryBase` / `SqlRepositoryBase`（含 `upsertRow`、`insertChunked`、`caseInsensitiveLike`、`toJsonParam`、物化路径与哨兵值 helper）、中立 `compileSqlTableDDL`（PG + OceanBase/MySQL）、`postgres.ts` & `mysql.ts` 方言连接器，以及 `defineRepoToken` / `defineLogRepoToken` / `injectRepo` DI 容器；
+  - [x] 实现 `MongoRepositoryBase` / `SqlRepositoryBase`（含 `upsertRow`、`insertChunked`、`caseInsensitiveLike`、`toJsonParam`、物化路径与哨兵值 helper）、中立 `compileSqlTableDDL`（PG + OceanBase/MySQL）、`postgres.ts` & `mysql.ts` 方言连接器，以及 `defineRepoToken` / `injectRepo` DI 容器；
   - [x] 实现 `parseRepoRow`（Fail-Fast）、`parseRepoRows`（Warn & Skip）、`jsonColumnSchema` 与 `createPGliteSqlTestHarness` / `registerDualDialectContractSuite` 双库契约测试基建；
   - [x] 定义跨库标准错误类型与慢查询监控日志接口。
 - [x] **0.3 消除 Mongo Change Streams 依赖**：
@@ -1046,7 +1021,7 @@ export class NoopAppChatLogRepository implements AppChatLogRepository {
 - [x] **S0.4 分离 DDL 建索引超时**：为索引操作提供独立无 60s `socketTimeoutMS` 限制的连接配置（`withMongoDdlConnection`），防止大表建索引中途客户端超时。
 
 ### Phase 0.5：DAL 物理隔离收口、底座硬对齐与解耦迁移基建（Wave 1 前置）
-- [x] **0.5.1 日志数据源三态改造**：升级 `DbRuntime` / `defineLogRepoToken` / Mongo & SQL 运行时支持 `logMode: 'separate' | 'shared' | 'disabled'`，未配置独立日志库时默认 `shared` 复用 `main` 连接池（兼容默认单库部署），仅显式关闭时走 `Noop`。
+- [x] **0.5.1 日志数据源双态回退改造**：升级 `DbRuntime` / `container` / Mongo & SQL 运行时支持 `logMode: 'separate' | 'shared'`，移除 `disabled`/`Noop` 路由与 `defineLogRepoToken`，未配置独立日志库时默认 `shared` 透明回退复用 `main` 连接池（兼容默认单库部署且不重复建池）。
 - [x] **0.5.2 Mongo 连接下沉、构造期 Model 绑定与 `AppRegistration` 迁入 `@fastgpt/dal`**：
   - [x] 在 `packages/dal/db/mongo/` 实现 `runtime.ts`（接管唯一主/日志 `Mongoose` 连接池、`autoIndex: false`、独立 DDL 连接、`bindMongoModel` 幂等缓存与统一慢查询/Profiling 回调）与 `collection.ts`（纯声明式 `defineMongoCollection`，接收原生 `Schema` 并拦截内联 `index: true / unique: true`）；
   - [x] 升级 `MongoRepositoryBase` 在 `constructor({ collection, readSchema, runtime })` 自动构出 `readonly model`，`defineRepoToken` 透传 `runtime`；
@@ -1067,9 +1042,9 @@ export class NoopAppChatLogRepository implements AppChatLogRepository {
   - [ ] 落地 CI 防漂移校验（SQL 重放 `0001 -> latest` 比对 `defineSqlTable` + 校验无超期未删索引；Mongo 校验新索引 `fg_` 规范与零 `deprecated: true`）并补齐 `.github/workflows/test-fastgpt.yaml`（经确认后变更）纳入 `packages/dal` 触发与 PR 级 MySQL 8 容器契约作业。
 
 ### Phase 1：81 张业务表垂直端到端迁入 DAL（开源 71 表落 `packages/dal/db/repos/`，Pro 10 表落 `pro/admin/src/dal/db/repos/`，同表含 `pro` 一刀切，WIP=1 锁）
-- [ ] **1.0 Wave 1 轻量原型验证**：优先迁移 `llm_request_records`、`system_logs`（验证日志三态 + TTL/动态 `collMod`）、`timer_locks`、`count_limits`（验证原子 Upsert/CAS/`$inc`）及零耦合叶子表，在 Mongo + PGlite + MySQL/OceanBase 三端打通闭环。
+- [ ] **1.0 Wave 1 轻量原型验证**：优先迁移 `llm_request_records`、`system_logs`（验证日志双态回退 + TTL/动态 `collMod`）、`timer_locks`、`count_limits`（验证原子 Upsert/CAS/`$inc`）及零耦合叶子表，在 Mongo + PGlite + MySQL/OceanBase 三端打通闭环。
 - [ ] **1.1 应用域（`core/app`，含 `version`、`folder`、`tool`、`logs/app_chat_logs` 与 `resourceLookup` 只读 Query Repo）**：先过 ER 拆表评审，消除 `pages/api/core/app/**` 中的裸查询与 `@fastgpt/global` 中的 `parseParentIdInMongo` 及物理集合名常量耦合。
-- [ ] **1.2 认证、用户与团队域（`support/user`、`account`、`team`、`inform`、`operationLog`、`audit`）**：收口仓储（`mongo/` + `sql/` + 契约测试），为 `team_audits` 接入日志三态 `Noop` 实现，验证码/瞬态会话迁 Redis，逐步回收 `@fastgpt/global` 中遗留的 `TeamCollectionName` / `OrgCollectionName` 等物理表名常量至 `@fastgpt/dal`。
+- [ ] **1.2 认证、用户与团队域（`support/user`、`account`、`team`、`inform`、`operationLog`、`audit`）**：收口仓储（`mongo/` + `sql/` + 契约测试），为 `team_audits` 接入日志双态路由（默认回退复用主池），验证码/瞬态会话迁 Redis，逐步回收 `@fastgpt/global` 中遗留的 `TeamCollectionName` / `OrgCollectionName` 等物理表名常量至 `@fastgpt/dal`。
 - [ ] **1.3 权限与组织架构域（`support/permission`、`memberGroup`、`org`、`sync`）**：收回 `resourcePermissionRepo` 中残留的 `bulkWrite` / `findCursor` / `deleteByFilter` 逃生口，全部转为具名语义方法，补齐 `sql/` 按位与过滤与契约测试。
 - [ ] **1.4 对话与分享域（`core/chat`、`outLink`、`publishChannel`）**：收口高频对话读写、历史记录游标分页与多态消息容器级校验（`chat_items` 索引坚持 `team_id` 前导列）。
 - [ ] **1.5 知识库与全文检索域（`core/dataset`、`collection`、`data`、`training`、`tag`）**：
@@ -1082,7 +1057,7 @@ export class NoopAppChatLogRepository implements AppChatLogRepository {
 - [ ] **1.8 商业版专属域（`pro/admin` 10 张专属表；不含范围外的 `projects/marketplace`）**：完成商业版仓储双族收口至 `pro/admin/src/dal/db/repos/` 并彻底删除全部旧版 `schema.ts`。
 
 ### Phase 2：SQL 生产运行时、启动迁移装配与 TTL 后台清理
-- [ ] **2.1 应用启动方言装配**：在 `projects/app` 与 `pro/admin` 的 `instrumentation-node.ts` 根据 `DB_DIALECT` 优先接入 `oceanbase` / `mysql`（P0）与 `postgres`（P1）或 `mongo` 运行时，遵循日志三态隔离策略。
+- [ ] **2.1 应用启动方言装配**：在 `projects/app` 与 `pro/admin` 的 `instrumentation-node.ts` 根据 `DB_DIALECT` 优先接入 `oceanbase` / `mysql`（P0）与 `postgres`（P1）或 `mongo` 运行时，遵循日志双态路由策略（配置独立日志库走 `separate`，未配置默认 `shared` 回退复用主池）。
 - [ ] **2.2 SQL 启动迁移装配与运维入口**：在 `projects/app`（`scope: 'core'`）与 `pro/admin`（`scope: 'core'` + `scope: 'pro'`）启动 Step 2 接入轻量 SQL DDL 迁移器（先于 `projects/app/src/migration` 且 SQL 模式下自动跳过历史 Mongo 数据修复任务），并提供只读 `inspect` 与手动迁移 CLI。
 - [ ] **2.3 通用 TTL 物理清理 Cron**：为带 `expire_time` 的 SQL 表实现按主键范围低峰期分批物理回收任务。
 

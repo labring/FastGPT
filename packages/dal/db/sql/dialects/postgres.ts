@@ -1,6 +1,5 @@
 import { Kysely, PostgresDialect, sql } from 'kysely';
 import { Pool } from 'pg';
-import { DbLogDatasourceNotConfiguredError } from '../../errors';
 import type { DbDatasource, DbTransactionRunner, SqlExecutorResolver } from '../../types';
 
 export type PostgresRuntimeDeps = {
@@ -25,24 +24,21 @@ const createPgKysely = (url: string, max: number): Kysely<any> =>
 /**
  * 构建基于 `pg.Pool` + Kysely `PostgresDialect` 的数据库底座运行时依赖。
  *
- * 遵循日志三态拓扑：
+ * 遵循日志双态拓扑：
  * - 配置 `logWriteUrl`（`separate`）：建立独立日志连接池；
- * - 未配置 `logWriteUrl` 且未禁用（默认 `shared`）：直接复用 `main` 连接池（不重复建池）；
- * - 显式 `logDisabled: true`（`disabled`）：拒绝 log 连接请求并由容器路由至 `Noop`。
+ * - 未配置 `logWriteUrl`（默认 `shared`）：透明回退复用 `main` 连接池（不重复建池）。
  */
 export const createPostgresKyselyRuntimeDeps = ({
   mainWriteUrl,
   mainReadUrl,
   logWriteUrl,
   logReadUrl,
-  logDisabled = false,
   maxConnections = DEFAULT_PG_POOL_MAX
 }: {
   mainWriteUrl: string;
   mainReadUrl?: string;
   logWriteUrl?: string;
   logReadUrl?: string;
-  logDisabled?: boolean;
   maxConnections?: number;
 }): PostgresRuntimeDeps => {
   const mainWriteDb = createPgKysely(mainWriteUrl, maxConnections);
@@ -51,7 +47,7 @@ export const createPostgresKyselyRuntimeDeps = ({
       ? createPgKysely(mainReadUrl, maxConnections)
       : undefined;
 
-  const hasSeparateLog = !logDisabled && logWriteUrl !== undefined && logWriteUrl.trim().length > 0;
+  const hasSeparateLog = logWriteUrl !== undefined && logWriteUrl.trim().length > 0;
   const logWriteDb = hasSeparateLog ? createPgKysely(logWriteUrl, maxConnections) : undefined;
   const logReadDb =
     hasSeparateLog && logReadUrl !== undefined && logReadUrl.trim().length > 0
@@ -63,16 +59,13 @@ export const createPostgresKyselyRuntimeDeps = ({
     target: 'write' | 'readReplica'
   ): Kysely<any> => {
     if (datasource === 'log') {
-      if (logDisabled) {
-        throw new DbLogDatasourceNotConfiguredError();
-      }
       if (logWriteDb !== undefined) {
         if (target === 'readReplica' && logReadDb !== undefined) {
           return logReadDb;
         }
         return logWriteDb;
       }
-      // shared 模式复用主库连接池，不重复建池
+      // shared 模式默认回退复用主库连接池，不重复建池
       if (target === 'readReplica' && mainReadDb !== undefined) {
         return mainReadDb;
       }

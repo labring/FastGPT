@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   DbConfigurationError,
-  DbLogDatasourceNotConfiguredError,
   DbRuntimeNotConfiguredError,
   isDbTransientConflictError,
   isDbUniqueConflictError
@@ -15,7 +14,7 @@ import {
   getDbFamily,
   getDbLogMode,
   getDbRuntime,
-  hasLogDatabase
+  hasSeparateLogDatabase
 } from '@fastgpt/dal/db/runtime';
 
 describe('@fastgpt/dal/db runtime & errors', () => {
@@ -28,7 +27,7 @@ describe('@fastgpt/dal/db runtime & errors', () => {
     expect(() => getDbRuntime()).toThrow(DbRuntimeNotConfiguredError);
   });
 
-  it('defaults logMode to shared (reusing main pool) when logWriteUrl is omitted, and disables only when logDisabled=true', async () => {
+  it('defaults logMode to shared (fallback to main pool) when logWriteUrl is omitted, and switches to separate when configured', async () => {
     const sharedRuntime = configureDbRuntime({
       dialect: 'oceanbase',
       mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt',
@@ -38,8 +37,7 @@ describe('@fastgpt/dal/db runtime & errors', () => {
     expect(getDbDialect()).toBe('oceanbase');
     expect(getDbFamily()).toBe('sql');
     expect(getDbLogMode()).toBe('shared');
-    expect(hasLogDatabase()).toBe(true);
-    expect(sharedRuntime.hasLogDatabase()).toBe(true);
+    expect(hasSeparateLogDatabase()).toBe(false);
     expect(sharedRuntime.hasSeparateLogDatabase()).toBe(false);
     expect(sharedRuntime.resolveReadTarget({ datasource: 'log' })).toEqual({
       datasource: 'main',
@@ -52,22 +50,27 @@ describe('@fastgpt/dal/db runtime & errors', () => {
 
     await closeDbRuntime();
 
-    const disabledRuntime = configureDbRuntime({
+    const separateRuntime = configureDbRuntime({
       dialect: 'oceanbase',
       mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt',
-      logDisabled: true
+      logWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt_log',
+      logReadUrl: 'mysql://root@127.0.0.1:2882/fastgpt_log'
     });
 
-    expect(getDbLogMode()).toBe('disabled');
-    expect(hasLogDatabase()).toBe(false);
-    expect(disabledRuntime.hasLogDatabase()).toBe(false);
-    expect(disabledRuntime.hasSeparateLogDatabase()).toBe(false);
-    expect(() => disabledRuntime.resolveReadTarget({ datasource: 'log' })).toThrow(
-      DbLogDatasourceNotConfiguredError
-    );
+    expect(getDbLogMode()).toBe('separate');
+    expect(hasSeparateLogDatabase()).toBe(true);
+    expect(separateRuntime.hasSeparateLogDatabase()).toBe(true);
+    expect(separateRuntime.resolveReadTarget({ datasource: 'log' })).toEqual({
+      datasource: 'log',
+      target: 'write'
+    });
+    expect(separateRuntime.resolveReadTarget({ datasource: 'log', useReadReplica: true })).toEqual({
+      datasource: 'log',
+      target: 'readReplica'
+    });
   });
 
-  it('rejects empty mainWriteUrl, logReadUrl without logWriteUrl, or logWriteUrl when logDisabled=true', () => {
+  it('rejects empty mainWriteUrl or logReadUrl without logWriteUrl', () => {
     expect(() =>
       configureDbRuntime({
         dialect: 'postgres',
@@ -80,15 +83,6 @@ describe('@fastgpt/dal/db runtime & errors', () => {
         dialect: 'postgres',
         mainWriteUrl: 'postgres://localhost:5432/main',
         logReadUrl: 'postgres://localhost:5432/log_replica'
-      })
-    ).toThrow(DbConfigurationError);
-
-    expect(() =>
-      configureDbRuntime({
-        dialect: 'postgres',
-        mainWriteUrl: 'postgres://localhost:5432/main',
-        logWriteUrl: 'postgres://localhost:5432/log',
-        logDisabled: true
       })
     ).toThrow(DbConfigurationError);
   });
@@ -196,15 +190,6 @@ describe('@fastgpt/dal/db runtime & errors', () => {
     expect(healthCheck).toHaveBeenLastCalledWith(
       expect.objectContaining({ dialect: 'oceanbase', datasource: 'log', success: true })
     );
-
-    await closeDbRuntime();
-    configureDbRuntime({
-      dialect: 'oceanbase',
-      mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt',
-      logDisabled: true,
-      healthChecker: async () => undefined
-    });
-    await expect(checkDbHealth('log')).rejects.toBeInstanceOf(DbLogDatasourceNotConfiguredError);
   });
 
   it('classifies Mongo, PostgreSQL, and OceanBase/MySQL unique & transient conflict errors uniformly', () => {

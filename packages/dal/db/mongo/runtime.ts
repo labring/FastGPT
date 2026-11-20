@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { Mongoose, type Model, type Schema } from 'mongoose';
-import { DbLogDatasourceNotConfiguredError } from '../errors';
+import { DbConfigurationError } from '../errors';
 import { getConfiguredDbRuntime } from '../runtime';
 import type {
   DbDatasource,
@@ -163,7 +163,7 @@ export const createMongoRuntimeDeps = ({
     if (effectiveDatasource === 'log') {
       const logClient = getLogClient?.();
       if (logClient === undefined) {
-        throw new DbLogDatasourceNotConfiguredError();
+        throw new DbConfigurationError('Separate log Mongo client is not configured');
       }
       return logClient;
     }

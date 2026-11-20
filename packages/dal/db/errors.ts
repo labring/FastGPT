@@ -1,9 +1,6 @@
-import type { DbDatasource } from './types';
-
 export type DbErrorCode =
   | 'DB_CONFIGURATION_ERROR'
   | 'DB_RUNTIME_NOT_CONFIGURED'
-  | 'DB_LOG_DATASOURCE_NOT_CONFIGURED'
   | 'DB_UNIQUE_CONFLICT'
   | 'DB_TRANSACTION_CONFLICT'
   | 'DB_RECORD_CORRUPTED'
@@ -31,15 +28,6 @@ export class DbConfigurationError extends DbError {
 export class DbRuntimeNotConfiguredError extends DbError {
   constructor(message = 'Database runtime has not been configured') {
     super({ message, code: 'DB_RUNTIME_NOT_CONFIGURED' });
-  }
-}
-
-/** 日志数据源处于显式禁用（`logMode === 'disabled'`）或未初始化状态却请求 log 事务/连接时抛出。 */
-export class DbLogDatasourceNotConfiguredError extends DbError {
-  readonly datasource: DbDatasource = 'log';
-
-  constructor(message = 'Log database datasource is disabled or not configured') {
-    super({ message, code: 'DB_LOG_DATASOURCE_NOT_CONFIGURED' });
   }
 }
 

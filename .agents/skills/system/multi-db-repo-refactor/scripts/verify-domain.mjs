@@ -137,8 +137,27 @@ for (const rel of requiredFiles) {
 
 const repoTsPath = path.join(domainAbs, 'repo.ts');
 const repoTsText = fs.existsSync(repoTsPath) ? fs.readFileSync(repoTsPath, 'utf8') : '';
-if (/\bdefineLogRepoToken\b/.test(repoTsText) && !checkFileExists('noop/repo.ts')) {
-  failures.push(`[Structure] defineLogRepoToken requires ${domainRel}/noop/repo.ts`);
+if (/\bdefineLogRepoToken\b/.test(repoTsText) || checkFileExists('noop/repo.ts')) {
+  failures.push(
+    `[Structure] Log repositories default-fallback to main pool via shared logMode; use defineRepoToken and remove ${domainRel}/noop/repo.ts`
+  );
+}
+
+const mongoSchemaClean = fs.existsSync(path.join(domainAbs, 'mongo/schema.ts'))
+  ? stripCommentsPreserveStrings(fs.readFileSync(path.join(domainAbs, 'mongo/schema.ts'), 'utf8'))
+  : '';
+const isLogDomain =
+  /\bdatasource\s*:\s*['"]log['"]/.test(mongoSchemaClean) ||
+  /\bgetMongoLogModel\b/.test(mongoSchemaClean);
+if (isLogDomain && checkFileExists('sql/repo.ts')) {
+  const sqlRepoClean = stripCommentsPreserveStrings(
+    fs.readFileSync(path.join(domainAbs, 'sql/repo.ts'), 'utf8')
+  );
+  if (!/\bdatasource\b[^=\n]*=\s*['"]log['"]/.test(sqlRepoClean)) {
+    failures.push(
+      `[Structure] Log domain ${domainRel}/sql/repo.ts must override readonly datasource = 'log' to match mongo/schema.ts`
+    );
+  }
 }
 
 // 2. 领域内部分层隔离、索引声明规范与跨方言 SQL 可移植性静态检查
@@ -585,7 +604,7 @@ if (!allowWipSlice1) {
   }
 }
 
-// 5. 契约测试存在性、真实注册调用、真实事务门禁与日志 Noop 断言覆盖检查
+// 5. 契约测试存在性、真实注册调用、真实事务门禁与日志双态路由断言覆盖检查
 const checkContractTestGovernance = () => {
   const inferredTestDir = inferDomainTestDir(domainRel);
   const candidateFiles = new Set();
@@ -616,8 +635,8 @@ const checkContractTestGovernance = () => {
   const ASSERTION_CALL_REGEX = /\bexpect\s*\(/;
   const STUBBED_TX_REGEX =
     /transactionRunner\s*:\s*(?:async\s*)?\([^)]*\)\s*=>\s*(?:\{\s*return\s+)?execute\s*\(\s*undefined\s*\)/;
-  const REAL_NOOP_EXEC_REGEX =
-    /\bnew\s+Noop[A-Za-z0-9_$]*Repository\s*\(|\btoBeInstanceOf\s*\(\s*Noop[A-Za-z0-9_$]*Repository\s*\)|\b(?:logDisabled\s*:\s*true|withLogDatabase\s*:\s*false|logWriteUrl\s*:\s*undefined)\b/;
+  const REAL_LOG_TOPOLOGY_EXEC_REGEX =
+    /\b(?:logMode|logTables|logCollections|withLogDatabase)\s*:/;
 
   const contractTestFiles = [...candidateFiles].filter((rel) => {
     if (rel.includes('.contract.test.')) {
@@ -633,17 +652,16 @@ const checkContractTestGovernance = () => {
     return;
   }
 
-  const isLogDomain = /\bdefineLogRepoToken\b/.test(repoTsText);
-  let hasExecutableLogNoopTest = false;
+  let hasExecutableLogTopologyTest = false;
 
   for (const rel of candidateFiles) {
     const execCode = execCodeByFile.get(rel) ?? '';
     if (
       TEST_CASE_CALL_REGEX.test(execCode) &&
       ASSERTION_CALL_REGEX.test(execCode) &&
-      REAL_NOOP_EXEC_REGEX.test(execCode)
+      REAL_LOG_TOPOLOGY_EXEC_REGEX.test(execCode)
     ) {
-      hasExecutableLogNoopTest = true;
+      hasExecutableLogTopologyTest = true;
     }
   }
 
@@ -667,9 +685,9 @@ const checkContractTestGovernance = () => {
     }
   }
 
-  if (isLogDomain && contractTestFiles.length > 0 && !hasExecutableLogNoopTest) {
+  if (isLogDomain && contractTestFiles.length > 0 && !hasExecutableLogTopologyTest) {
     failures.push(
-      `[Tests] Log domain ${domainRel} uses defineLogRepoToken, but tests do not exercise Noop / unconfigured-log behavior with real assertions (bare imports or string literals do not count)`
+      `[Tests] Log domain ${domainRel} must exercise shared/separate log topology routing with real assertions (bare imports or string literals do not count)`
     );
   }
 };

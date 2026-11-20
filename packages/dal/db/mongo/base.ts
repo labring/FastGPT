@@ -1,6 +1,6 @@
 import { Types, type ClientSession, type Model } from 'mongoose';
 import type z from 'zod';
-import { DbLogDatasourceNotConfiguredError } from '../errors';
+import { DbConfigurationError } from '../errors';
 import { parseRepoRow, parseRepoRows } from '../parse';
 import { getDbLogger, getDbRuntime, type DbRuntime } from '../runtime';
 import { unwrapNativeDbSession } from '../transaction';
@@ -35,7 +35,7 @@ export const createMongoTransactionRunner = ({
   return async ({ datasource, timeoutMs, execute }) => {
     const client = datasource === 'main' ? getMainClient() : getLogClient?.();
     if (client === undefined) {
-      throw new DbLogDatasourceNotConfiguredError();
+      throw new DbConfigurationError('Separate log Mongo client is not configured');
     }
 
     const session = await client.startSession();

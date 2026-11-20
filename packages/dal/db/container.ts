@@ -7,61 +7,27 @@ export type RepoProviders<TRepo extends object> = {
   sql: (runtime: DbRuntime) => TRepo;
 };
 
-export type LogRepoProviders<TRepo extends object> = {
-  mongo: (runtime: DbRuntime) => TRepo;
-  sql: (runtime: DbRuntime) => TRepo;
-  /** 显式禁用日志库持久化（`logMode === 'disabled'`）时自动启用的 Null Object 空实现。 */
-  noop: (runtime: DbRuntime) => TRepo;
-};
-
 declare const repoTokenTypeBrand: unique symbol;
 
 export type RepoToken<TRepo extends object> = {
   readonly [repoTokenTypeBrand]?: TRepo;
   readonly name: string;
-  readonly kind: 'main' | 'log';
-  readonly resolveFactory: (params: {
-    family: DbDialectFamily;
-    hasLogDb: boolean;
-  }) => (runtime: DbRuntime) => TRepo;
+  readonly resolveFactory: (family: DbDialectFamily) => (runtime: DbRuntime) => TRepo;
 };
 
 /**
- * 定义主库领域仓储 DI Token。
+ * 定义领域仓储 DI Token（统一覆盖主库与日志库仓储）。
  *
  * 仅登记 `mongo` 与 `sql` 两族方言的惰性构造工厂，模块加载阶段不会执行任何实例化或驱动初始化；
  * 运行时由容器根据 `runtime.family`（mongo vs postgres/oceanbase/mysql -> sql）自动路由。
+ * 日志类仓储在未配置独立 `logWriteUrl` 时自动回退复用 `main` 连接池，无需单独的 `Noop` 实现。
  */
 export const defineRepoToken = <TRepo extends object>(
   name: string,
   providers: RepoProviders<TRepo>
 ): RepoToken<TRepo> => ({
   name,
-  kind: 'main',
-  resolveFactory: ({ family }) => (family === 'sql' ? providers.sql : providers.mongo)
-});
-
-/**
- * 定义日志库领域仓储 DI Token。
- *
- * 日志数据源遵循三态拓扑：
- * - `separate`（配置了独立 `logWriteUrl`）：走独立日志连接池；
- * - `shared`（默认，未配置 `logWriteUrl` 且未显式禁用）：直接复用 `main` 连接池；
- * - `disabled`（显式 `logDisabled: true`，即 `hasLogDb === false`）：自动路由至 `noop` 空实现，
- *   消除业务层的 `if (hasLogDb)` 判断。
- */
-export const defineLogRepoToken = <TRepo extends object>(
-  name: string,
-  providers: LogRepoProviders<TRepo>
-): RepoToken<TRepo> => ({
-  name,
-  kind: 'log',
-  resolveFactory: ({ family, hasLogDb }) => {
-    if (!hasLogDb) {
-      return providers.noop;
-    }
-    return family === 'sql' ? providers.sql : providers.mongo;
-  }
+  resolveFactory: (family) => (family === 'sql' ? providers.sql : providers.mongo)
 });
 
 const runtimeInstanceCache = new WeakMap<DbRuntime, Map<RepoToken<object>, object>>();
@@ -85,10 +51,7 @@ const resolveRepoInstance = <TRepo extends object>(token: RepoToken<TRepo>): TRe
     return cached as TRepo;
   }
 
-  const factory = token.resolveFactory({
-    family: runtime.family,
-    hasLogDb: runtime.hasLogDatabase()
-  });
+  const factory = token.resolveFactory(runtime.family);
   const instance = factory(runtime);
   scopedMap.set(token as RepoToken<object>, instance);
   return instance;

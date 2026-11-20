@@ -337,64 +337,14 @@ export class Sql${entityArg}Repository
 }
 `;
 
-const noopRepoContent = `import { createEntityId } from '@fastgpt/global/common/string/entityId';
-import {
-  Create${entityArg}WriteSchema,
-  ${entityArg}DomainReadSchema,
-  type Create${entityArg}WriteInput,
-  type ${entityArg}Repository
-} from '../repo.type';
-
-/**
- * 显式关闭日志库持久化（\`logMode === 'disabled'\`）时的 Null Object 空实现，不建连、不写入主库。
- */
-export class Noop${entityArg}Repository implements ${entityArg}Repository {
-  async findById() {
-    return null;
-  }
-
-  async create({ data }: { data: Create${entityArg}WriteInput }) {
-    const parsed = Create${entityArg}WriteSchema.parse(data);
-    const now = new Date();
-    return ${entityArg}DomainReadSchema.parse({
-      _id: parsed._id ?? createEntityId(),
-      teamId: parsed.teamId,
-      createTime: now,
-      updateTime: now
-    });
-  }
-}
-`;
-
-const repoTokenContent =
-  datasource === 'log'
-    ? `import { defineLogRepoToken } from '@fastgpt/dal/db/container';
-import type { ${entityArg}Repository } from './repo.type';
-import { Mongo${entityArg}Repository } from './mongo/repo';
-import { Noop${entityArg}Repository } from './noop/repo';
-import { Sql${entityArg}Repository } from './sql/repo';
-
-/**
- * ${entityArg} 日志仓储 DI Token。
- *
- * 日志数据源遵循三态拓扑：默认 \`shared\` 复用主池、配置 \`logWriteUrl\` 走 \`separate\` 独立池、
- * 显式 \`logDisabled: true\` 自动路由至 \`Noop\` 空实现。
- */
-export const ${entityArg}RepoToken = defineLogRepoToken<${entityArg}Repository>(
-  '${entityArg}Repository',
-  {
-    mongo: (runtime) => new Mongo${entityArg}Repository(runtime),
-    sql: () => new Sql${entityArg}Repository(),
-    noop: () => new Noop${entityArg}Repository()
-  }
-);
-`
-    : `import { defineRepoToken } from '@fastgpt/dal/db/container';
+const repoTokenContent = `import { defineRepoToken } from '@fastgpt/dal/db/container';
 import type { ${entityArg}Repository } from './repo.type';
 import { Mongo${entityArg}Repository } from './mongo/repo';
 import { Sql${entityArg}Repository } from './sql/repo';
 
-/** ${entityArg} 仓储 DI Token（按运行时自动路由至 Mongo 或通用 SQL 实现，构造期透传 DbRuntime）。 */
+/** ${entityArg} 仓储 DI Token（按运行时自动路由至 Mongo 或通用 SQL 实现${
+  datasource === 'log' ? '；未配置独立日志库时透明回退复用主库连接池' : ''
+}）。 */
 export const ${entityArg}RepoToken = defineRepoToken<${entityArg}Repository>(
   '${entityArg}Repository',
   {
@@ -465,11 +415,7 @@ import {
 } from '@fastgpt/dal/db/testing';
 import { runInTransaction } from '@fastgpt/dal/db/transaction';
 import { ${entityArg}RepoToken } from '${repoPublicImportPrefix}/repo';
-import { ${collectionVarName} } from '${contractInternalImportBase}/mongo/schema';${
-  datasource === 'log'
-    ? `\nimport { Noop${entityArg}Repository } from '${contractInternalImportBase}/noop/repo';`
-    : ''
-}
+import { ${collectionVarName} } from '${contractInternalImportBase}/mongo/schema';
 import { ${camelEntity}SqlTable } from '${contractInternalImportBase}/sql/table';
 
 describe('${entityArg} portable SQL DDL (OceanBase/MySQL + PostgreSQL)', () => {
@@ -487,14 +433,23 @@ describe('${entityArg} portable SQL DDL (OceanBase/MySQL + PostgreSQL)', () => {
 ${
   datasource === 'log'
     ? `
-describe('${entityArg}Repository tri-state logMode & Noop fallback', () => {
-  it('skips persistence and returns empty reads when logDisabled=true routes to Noop', async () => {
-    const noopRepo = new Noop${entityArg}Repository();
-    const teamId = createEntityId();
-    const created = await noopRepo.create({ data: { teamId } });
+describe('${entityArg}Repository shared main-pool fallback', () => {
+  it('falls back to main pool cleanly when logWriteUrl is omitted (logMode=shared)', async () => {
+    const sharedHarness = await createPGliteSqlTestHarness({
+      tables: [],
+      logTables: [${camelEntity}SqlTable],
+      logMode: 'shared'
+    });
+    try {
+      const repo = injectRepo(${entityArg}RepoToken);
+      const teamId = createEntityId();
+      const created = await repo.create({ data: { teamId } });
 
-    expect(created.teamId).toBe(teamId);
-    expect(await noopRepo.findById({ id: created._id, teamId })).toBeNull();
+      expect(created.teamId).toBe(teamId);
+      expect(await repo.findById({ id: created._id, teamId })).not.toBeNull();
+    } finally {
+      await sharedHarness.close();
+    }
   });
 });
 `
@@ -666,9 +621,6 @@ const filesToCreate = [
   { relPath: `${domainRel}/mongo/repo.ts`, content: mongoRepoContent },
   { relPath: `${domainRel}/sql/table.ts`, content: sqlTableContent },
   { relPath: `${domainRel}/sql/repo.ts`, content: sqlRepoContent },
-  ...(datasource === 'log'
-    ? [{ relPath: `${domainRel}/noop/repo.ts`, content: noopRepoContent }]
-    : []),
   { relPath: `${domainRel}/repo.ts`, content: repoTokenContent },
   ...(shouldEmitService ? [{ relPath: serviceRelPath, content: serviceContent }] : []),
   { relPath: testRel, content: contractTestContent },

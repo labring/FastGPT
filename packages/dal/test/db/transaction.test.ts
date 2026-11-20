@@ -1,9 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  DbConfigurationError,
-  DbLogDatasourceNotConfiguredError,
-  DbTransactionConflictError
-} from '@fastgpt/dal/db/errors';
+import { DbConfigurationError, DbTransactionConflictError } from '@fastgpt/dal/db/errors';
 import { closeDbRuntime, configureDbRuntime } from '@fastgpt/dal/db/runtime';
 import {
   createManagedDbSession,
@@ -73,7 +69,7 @@ describe('@fastgpt/dal/db transaction & afterCommit', () => {
     ]);
   });
 
-  it('routes log transaction to main pool in shared mode while preserving logical datasource isolation, and rejects in disabled mode', async () => {
+  it('routes log transaction to main pool in shared mode and log pool in separate mode while preserving logical datasource isolation', async () => {
     const seenRunnerDatasources: string[] = [];
     configureDbRuntime({
       dialect: 'postgres',
@@ -105,12 +101,24 @@ describe('@fastgpt/dal/db transaction & afterCommit', () => {
     configureDbRuntime({
       dialect: 'postgres',
       mainWriteUrl: 'postgres://localhost:5432/main',
-      logDisabled: true,
-      transactionRunner: async ({ execute }) => execute({})
+      logWriteUrl: 'postgres://localhost:5432/log',
+      transactionRunner: async ({ datasource, execute }) => {
+        seenRunnerDatasources.push(datasource);
+        return execute({ txPool: datasource });
+      }
     });
 
-    await expect(runInTransaction(async () => 'ok', { datasource: 'log' })).rejects.toBeInstanceOf(
-      DbLogDatasourceNotConfiguredError
+    const separateResult = await runInTransaction(
+      async (tx) => {
+        expect(tx.datasource).toBe('log');
+        expect(unwrapNativeDbSession(tx, { family: 'sql', datasource: 'log' })).toEqual({
+          txPool: 'log'
+        });
+        return 'separate-ok';
+      },
+      { datasource: 'log' }
     );
+    expect(separateResult).toBe('separate-ok');
+    expect(seenRunnerDatasources).toEqual(['main', 'log']);
   });
 });

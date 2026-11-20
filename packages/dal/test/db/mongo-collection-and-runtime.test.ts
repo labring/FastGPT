@@ -1,7 +1,7 @@
 import { Mongoose, Schema } from 'mongoose';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import z from 'zod';
-import { DbConfigurationError, DbLogDatasourceNotConfiguredError } from '@fastgpt/dal/db/errors';
+import { DbConfigurationError } from '@fastgpt/dal/db/errors';
 import { MongoRepositoryBase } from '@fastgpt/dal/db/mongo/base';
 import { defineMongoCollection } from '@fastgpt/dal/db/mongo/collection';
 import { createMongoRuntimeDeps } from '@fastgpt/dal/db/mongo/runtime';
@@ -73,7 +73,7 @@ describe('@fastgpt/dal/db/mongo collection & constructor model binding', () => {
     ]);
   });
 
-  it('binds readonly model idempotently in constructor and routes log collections across shared, separate, and disabled modes', async () => {
+  it('binds readonly model idempotently in constructor and routes log collections across shared (main fallback) and separate modes', async () => {
     const mainCol = defineMongoCollection({
       name: 'demo_main_entities',
       datasource: 'main',
@@ -87,7 +87,7 @@ describe('@fastgpt/dal/db/mongo collection & constructor model binding', () => {
       indexes: [{ key: { teamId: 1 } }]
     });
 
-    // 1. shared 模式：log 集合透明绑定到 mainClient，零重复建池且不触发 OverwriteModelError
+    // 1. shared 模式（默认）：log 集合透明回退绑定到 mainClient，零重复建池且不触发 OverwriteModelError
     const mainClient1 = new Mongoose();
     configureDbRuntime({
       dialect: 'mongo',
@@ -103,7 +103,7 @@ describe('@fastgpt/dal/db/mongo collection & constructor model binding', () => {
     const sharedLogRepo = new DemoMongoRepo(logCol);
     expect(sharedLogRepo.getBoundModel().db).toBe(mainClient1.connection);
 
-    // 2. 重建 DbRuntime（切换新连接）：新 Repo 自动绑定至新 Mongoose 实例
+    // 2. separate 模式（配置 logWriteUrl）：新 Repo 自动绑定至独立 Mongoose 实例
     await closeDbRuntime();
     const mainClient2 = new Mongoose();
     const separateLogClient = new Mongoose();
@@ -123,16 +123,16 @@ describe('@fastgpt/dal/db/mongo collection & constructor model binding', () => {
     expect(repoC.getBoundModel()).not.toBe(repoA.getBoundModel());
     expect(separateLogRepo.getBoundModel().db).toBe(separateLogClient.connection);
 
-    // 3. disabled 模式：直接构造 log Repo 抛出 DbLogDatasourceNotConfiguredError
+    // 3. separate 模式但未注入 getLogClient 时暴露配置错误
     await closeDbRuntime();
     const mainClient3 = new Mongoose();
     configureDbRuntime({
       dialect: 'mongo',
       mainWriteUrl: 'mongodb://localhost:27017/main',
-      logDisabled: true,
+      logWriteUrl: 'mongodb://localhost:27017/log',
       ...createMongoRuntimeDeps({ getMainClient: () => mainClient3 })
     });
 
-    expect(() => new DemoMongoRepo(logCol)).toThrow(DbLogDatasourceNotConfiguredError);
+    expect(() => new DemoMongoRepo(logCol)).toThrow(DbConfigurationError);
   });
 });

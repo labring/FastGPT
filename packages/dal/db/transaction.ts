@@ -133,9 +133,8 @@ export type RunInTransactionOptions = {
 /**
  * 在显式事务上下文中执行数据库编排逻辑。
  *
- * - 当 `datasource === 'log'` 且 `logMode === 'disabled'` 时，直接抛出 `DbLogDatasourceNotConfiguredError`；
- * - 当 `datasource === 'log'` 且 `logMode === 'shared'` 时，底层透明复用 `main` 连接池开启事务，但会话逻辑
- *   数据源仍标记为 `'log'`，防止业务代码把 `'main'` 与 `'log'` 仓储误混入同一事务导致切换 `separate` 后崩溃；
+ * - 当 `datasource === 'log'` 且 `logMode === 'shared'`（默认回退复用主库）时，底层透明复用 `main` 连接池开启事务，
+ *   但会话逻辑数据源仍标记为 `'log'`，防止业务代码把 `'main'` 与 `'log'` 仓储误混入同一事务导致切换 `separate` 后崩溃；
  * - 当捕获到 `DbTransactionConflictError` 或驱动层瞬态写冲突/死锁时，自动开启新会话重跑（默认最多重试 3 次），
  *   并在每次重跑前自动清空上一轮未提交的 `afterCommit` 队列；
  * - 事务成功 commit 后，按注册顺序依次执行最终轮次的 `afterCommit` 回调。

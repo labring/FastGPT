@@ -15,12 +15,11 @@ export const getDbDialectFamily = (dialect: DbDialect): DbDialectFamily =>
 export type DbDatasource = 'main' | 'log';
 
 /**
- * 日志数据源三态拓扑：
+ * 日志数据源双态拓扑：
  * - `separate`：配置了独立 `logWriteUrl`，使用独立日志连接池；
- * - `shared`（默认）：未配置 `logWriteUrl` 且未显式禁用，直接复用 `main` 连接池（零重复建池）；
- * - `disabled`：显式配置 `logDisabled: true`，日志仓储自动路由至 `Noop` 空实现。
+ * - `shared`（默认）：未配置 `logWriteUrl`，透明回退复用 `main` 连接池（零重复建池）。
  */
-export type DbLogMode = 'separate' | 'shared' | 'disabled';
+export type DbLogMode = 'separate' | 'shared';
 
 export type DbLogMetadata = Record<string, unknown>;
 

@@ -8,7 +8,7 @@
 
 ```
 packages/
-├── global/core/              # 类型、常量（前后端共享）
+├── global/core/              # 类型、常量（前后端共享，browser-safe，严禁声明物理表名/集合名）
 │   ├── app/
 │   │   ├── type.ts           # 顶层聚合类型
 │   │   ├── constants.ts
@@ -23,26 +23,23 @@ packages/
 │   ├── dataset/
 │   └── plugin/
 │
-└── service/core/             # 后端业务逻辑（不可在前端引用）
+├── dal/db/repos/             # 纯服务端持久化与仓储边界（开源表；Pro 10 表位于 pro/admin/src/dal/db/repos/）
+│   └── app/
+│       ├── repo.type.ts      # 【公开导出】领域仓储契约 type、Write Schema、Normalized Read Schema 及 .pick() 窄 DTO
+│       ├── repo.ts           # 【公开导出】调用 defineRepoToken 导出 AppRepoToken
+│       ├── mongo/            # 【包内私有，package.json exports 不暴露】
+│       │   ├── schema.ts     # 原生 new Schema + defineMongoCollection（含物理集合名与索引，零副作用）
+│       │   └── repo.ts       # MongoAppRepository（extends MongoRepositoryBase，constructor 自动构 readonly model）
+│       └── sql/              # 【包内私有，package.json exports 不暴露】
+│           ├── table.ts      # 中立可移植 SQL 表与 fg_ 索引定义（defineSqlTable，通吃 OceanBase/MySQL/PG）
+│           └── repo.ts       # SqlAppRepository（extends SqlRepositoryBase, implements AppRepository）
+│
+└── service/core/             # 后端业务编排（不可在前端引用，直接消费 @fastgpt/dal 公开 Token 与 repo.type）
     ├── app/
-    │   ├── repo.type.ts      # 领域仓储契约 type、Write Schema、Normalized Read Schema 及 .pick() 窄 DTO
-    │   ├── mongo/
-    │   │   ├── schema.ts     # Mongoose Schema + defineIndex + 惰性 getAppMongoModel()
-    │   │   └── repo.ts       # MongoAppRepository（extends MongoRepositoryBase, implements AppRepository）
-    │   ├── sql/
-    │   │   ├── table.ts      # 中立可移植 SQL 表与 B-Tree 索引定义（defineSqlTable，通吃 PG/OceanBase/MySQL）
-    │   │   └── repo.ts       # SqlAppRepository（extends SqlRepositoryBase, implements AppRepository）
-    │   ├── noop/             # 仅独立日志库（log）子域提供：NoopXxxRepository 空对象降级实现
-    │   │   └── repo.ts
-    │   ├── repo.ts           # 调用 defineRepoToken / defineLogRepoToken 导出 AppRepoToken
     │   ├── service.ts        # AppService 类（构造函数 deps 注入仓储与协同服务，默认回退 injectRepo）+ 导出单例
     │   ├── auth.ts           # 鉴权相关（如有）
     │   ├── utils.ts          # 纯函数工具，无副作用，可独立单测
     │   ├── version/
-    │   │   ├── repo.type.ts
-    │   │   ├── mongo/
-    │   │   ├── sql/
-    │   │   ├── repo.ts
     │   │   ├── service.ts
     │   │   └── utils.ts
     │   ├── evaluation/
@@ -57,23 +54,22 @@ packages/
 
 ### 叶子目录固定文件说明
 
-> 架构设计详见 [多数据库适配与领域仓储重构设计](../design/common/dal/multi-db-repository-architecture.md)。存量 `entity.ts` 处于渐进收口阶段，所有新增与重构模块一律采用以下领域仓储结构：
+> 架构设计详见 [多数据库适配与领域仓储重构设计](../design/common/dal/multi-db-repository-architecture.md)。存量 `entity.ts` / 旧 `schema.ts` 处于渐进收口阶段，所有新增与重构模块一律采用以下领域仓储结构：
 
 | 文件 | 职责 |
 |------|------|
-| `repo.type.ts` | 领域仓储 `type` 契约、严进 Write Schema、宽出归一化 Read Schema 及 `.pick()` 窄 DTO（严禁泄漏 `FilterQuery`、空格投影字符串等驱动类型） |
-| `mongo/schema.ts` | Mongoose Schema 与 `defineIndex` 声明，通过惰性工厂获取 Model，严禁模块顶层注册副作用 |
-| `mongo/repo.ts` | 继承 `@fastgpt/dal/db/mongo/base` 的 `MongoRepositoryBase`，内部封闭 `.lean()`、`ObjectId` 转换与软删除/租户过滤，出口统一经过 `parseRow` / `parseList` |
-| `sql/table.ts` & `sql/repo.ts` | 跨 PG 与 OceanBase/MySQL 可移植的 `defineSqlTable` 表定义，以及继承 `@fastgpt/dal/db/sql/base` `SqlRepositoryBase`（基于 Kysely）的同构策略实现；严禁 GIN、数组列、`ILIKE`、`RETURNING` 与部分唯一索引 |
-| `noop/repo.ts` | 仅 `log` 数据源子域提供：未配置 `logWriteUrl` 时的 Null Object 空实现（写静默跳过、读返回空） |
-| `repo.ts` | 通过 `defineRepoToken`（或 `defineLogRepoToken`）定义并导出仓储 DI Token（`{ mongo, sql }`） |
-| `service.ts` | 业务编排类 `XxxService`：构造函数通过 `deps: XxxServiceDeps = {}` 注入仓储与协同 Service（默认回退 `injectRepo(Token)`），导出默认实例；严禁引入 `mongoose` / `kysely` / `pg` / `mysql2` |
-| `utils.ts` | 纯函数工具，无副作用，可独立单测 |
+| `packages/dal/db/repos/<domain>/repo.type.ts` | 领域仓储 `type` 契约、严进 Write Schema、宽出归一化 Read Schema 及 `.pick()` 窄 DTO（严禁泄漏 `FilterQuery`、空格投影字符串等驱动类型） |
+| `packages/dal/db/repos/<domain>/mongo/schema.ts` | 原生 `new Schema(...)` + `defineMongoCollection`（纯声明、零模块加载副作用，含物理集合名常量与索引，严禁字段内联 `index: true / unique: true`） |
+| `packages/dal/db/repos/<domain>/mongo/repo.ts` | 继承 `@fastgpt/dal/db/mongo/base` 的 `MongoRepositoryBase`，`constructor` 自动按 `DbRuntime` 构出 `readonly model`，内部封闭 `.lean()`、`ObjectId` 转换与软删除/租户过滤，出口统一经过 `parseRow` / `parseList` |
+| `packages/dal/db/repos/<domain>/sql/table.ts` & `sql/repo.ts` | 跨 OceanBase / MySQL 8+（P0）与 PG（P1）可移植的 `defineSqlTable` 表定义，以及继承 `@fastgpt/dal/db/sql/base` `SqlRepositoryBase`（基于 Kysely）的同构策略实现；严禁 GIN、数组列、`ILIKE`、`RETURNING` 与部分唯一索引 |
+| `packages/dal/db/repos/<domain>/repo.ts` | 统一通过 `defineRepoToken` 定义并导出仓储 DI Token（`{ mongo, sql }`）；日志类仓储未配置 `logWriteUrl` 时透明回退复用主库连接池，无需 `Noop` 实现 |
+| `packages/service/<domain>/service.ts` | 业务编排类 `XxxService`：构造函数通过 `deps: XxxServiceDeps = {}` 注入仓储与协同 Service（默认回退 `injectRepo(Token)`），导出默认实例；严禁引入 `mongoose` / `kysely` / `pg` / `mysql2` |
+| `packages/service/<domain>/utils.ts` | 纯函数工具，无副作用，可独立单测 |
 
 ```typescript
-// repo.ts —— 注册方言工厂，模块加载期零副作用
+// packages/dal/db/repos/app/repo.ts —— 注册方言工厂，模块加载期零副作用
 export const AppRepoToken = defineRepoToken<AppRepository>('AppRepository', {
-  mongo: () => new MongoAppRepository(),
+  mongo: (runtime) => new MongoAppRepository(runtime),
   sql: () => new SqlAppRepository()
 });
 
