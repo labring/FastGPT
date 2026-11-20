@@ -96,6 +96,7 @@
   "dataset_config_item_externalReadUrl": "External preview URL",
   "dataset_config_item_apiDatasetServer": "Third-party source configuration",
   "dataset_config_item_autoSync": "Auto sync",
+  "dataset_config_item_syncAll": "Sync new root items",
   "dataset_config_item_chunkSettings": "Chunk settings",
   "dataset_config_item_fileParseConfig": "File parsing configuration",
   "create_department": "Create a sub-department",

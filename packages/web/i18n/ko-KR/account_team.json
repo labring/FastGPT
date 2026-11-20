@@ -92,6 +92,7 @@
   "dataset_config_item_externalReadUrl": "외부 미리보기 주소",
   "dataset_config_item_apiDatasetServer": "타사 소스 설정",
   "dataset_config_item_autoSync": "자동 동기화",
+  "dataset_config_item_syncAll": "루트 새 항목 동기화",
   "dataset_config_item_chunkSettings": "청크 설정",
   "dataset_config_item_fileParseConfig": "파일 파싱 설정",
   "create_department": "하위 부서 생성",

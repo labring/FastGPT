@@ -194,4 +194,23 @@ describe('authApiFileImportChanges', () => {
     await acl(String(source._id), ManageRoleVal);
     await expect(call({ moves: [{ ...move, newParentId: null }] })).rejects.toBeDefined();
   });
+
+  it('开启 Dataset.syncAll 要求知识库 Manage 权限，仅 Write 时拒绝', async () => {
+    const { call, acl, datasetId } = await fixture();
+    await expect(call({ enableDatasetSyncAll: true })).rejects.toBe(
+      DatasetErrEnum.unAuthDataset
+    );
+    await acl(datasetId, ManageRoleVal, PerResourceTypeEnum.dataset);
+    await expect(call({ enableDatasetSyncAll: true })).resolves.toBeUndefined();
+  });
+
+  it('恢复暂停目录 syncChildren 要求该目录 Manage 权限，仅 Write 时拒绝', async () => {
+    const { call, acl, source } = await fixture();
+    await acl(String(source._id), WriteRoleVal);
+    await expect(call({ reEnableSyncFolderIds: [String(source._id)] })).rejects.toBe(
+      DatasetErrEnum.unAuthDatasetCollection
+    );
+    await acl(String(source._id), ManageRoleVal);
+    await expect(call({ reEnableSyncFolderIds: [String(source._id)] })).resolves.toBeUndefined();
+  });
 });

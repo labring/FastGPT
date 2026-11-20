@@ -189,6 +189,10 @@ const DatasetSchema = new Schema({
   },
 
   autoSync: Boolean,
+  syncAll: {
+    type: Boolean,
+    default: false
+  },
   /** @deprecated */
   externalReadUrl: String,
   /** @deprecated */

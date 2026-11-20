@@ -1,5 +1,4 @@
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import { toApiFileDirId, type ApiFileRecord } from './tree';
 import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 
@@ -11,6 +10,7 @@ export type ApiFileLocalCollection = {
   parentId?: unknown;
   type: DatasetCollectionTypeEnum;
   inheritPermission?: boolean;
+  syncChildren?: boolean;
   metadata?: Record<string, unknown>;
 };
 
@@ -190,25 +190,25 @@ export const resolveApiFileRecordParent = ({
   record,
   idMap,
   targetParentId,
-  rootCollectionId,
-  rootParentIds
+  rootParentIds,
+  syncAll = false
 }: {
   record: ApiFileRecord;
   idMap: Map<string, string>;
   targetParentId?: string | null;
-  rootCollectionId?: string;
-  /** 旧正文转换为叶子时，首次创建沿用其原目录位置；显式目标和整库哨兵仍优先。 */
+  /** 旧正文转换为叶子时，首次创建沿用其原目录位置；显式目标仍优先。 */
   rootParentIds?: Map<string, string | null>;
+  /** 整库同步（Dataset.syncAll=true）时根级记录明确归属知识库根，需校正脱离旧父级。 */
+  syncAll?: boolean;
 }) => ({
   parentId:
     record.parentDirId === null
       ? targetParentId !== undefined
         ? targetParentId
-        : (rootCollectionId ?? rootParentIds?.get(record.sourceId) ?? null)
+        : (rootParentIds?.get(record.sourceId) ?? null)
       : idMap.get(record.parentDirId),
-  apiFileParentId: record.apiFileParentId ?? (rootCollectionId ? RootCollectionId : null),
-  preserveExistingPlacement:
-    record.parentDirId === null && targetParentId === undefined && !rootCollectionId
+  apiFileParentId: record.apiFileParentId ?? null,
+  preserveExistingPlacement: !syncAll && record.parentDirId === null && targetParentId === undefined
 });
 
 /** 从远端记录和本地快照生成幂等移动计划；缺失父目录时保留原位，根字段通过 null 表达 unset。 */
@@ -267,6 +267,7 @@ export const buildApiFileParentUpdates = ({
   });
 };
 
+/**
 /**
  * 构建本地集合到真实远端源身份的解析器。
  * 新派生目录保存 metadata.apiFileSourceId；历史派生目录仅在本地挂载关系能证明来源时归并，
@@ -339,9 +340,7 @@ export const getApiFileSyncRootIds = (collections: ApiFileLocalCollection[]): st
     ...new Set(
       collections.flatMap((item) => {
         const sourceId = getSourceId(item);
-        return sourceId &&
-          sourceId !== RootCollectionId &&
-          (!item.apiFileParentId || !sourceIds.has(item.apiFileParentId))
+        return sourceId && (!item.apiFileParentId || !sourceIds.has(item.apiFileParentId))
           ? [sourceId]
           : [];
       })

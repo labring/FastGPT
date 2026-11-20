@@ -3,6 +3,7 @@ import {
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { authDatasetCollectionMoves } from '../../../support/permission/collection/moveAuth';
+import { authDataset } from '../../../support/permission/dataset/auth';
 import type { AuthModeType } from '../../../support/permission/type';
 import type { ApiFileParentUpdate } from './utils';
 
@@ -13,11 +14,15 @@ export type ApiFileImportChanges = {
   moves: ApiFileParentUpdate[];
   /** 兼容转换会复用旧目录权限，必须有该目录的 manage。 */
   permissionSourceIds?: string[];
+  /** 重新恢复自动同步（syncChildren: false -> true）的已有目录 ID，必须具备目录 manage 权限。 */
+  reEnableSyncFolderIds?: string[];
+  /** 开启知识库根级 syncAll 开关，必须具备知识库 manage 权限。 */
+  enableDatasetSyncAll?: boolean;
 };
 
 /**
- * 对实际导入计划鉴权：新建要求真实父级 write，移动沿用普通移动的源/目标 manage 与根目录团队权限。
- * 本轮新建目录的 owner 是调用者，创建授权通过后无需查询尚未落库的目录；已有目录必须独立鉴权。
+ * 对实际导入计划鉴权：新建要求真实父级 write，移动沿用普通移动的源/目标 manage 与根目录团队权限；
+ * 恢复暂停目录的 syncChildren 或开启 Dataset.syncAll 均要求对应资源的 manage 权限。
  */
 export const authApiFileImportChanges = async ({
   datasetId,
@@ -25,8 +30,19 @@ export const authApiFileImportChanges = async ({
   newFolderIds,
   moves,
   permissionSourceIds = [],
+  reEnableSyncFolderIds = [],
+  enableDatasetSyncAll = false,
   ...auth
 }: AuthModeType & ApiFileImportChanges & { datasetId: string }): Promise<void> => {
+  if (enableDatasetSyncAll) {
+    await authDataset({
+      ...auth,
+      datasetId,
+      per: ManagePermissionVal
+    });
+  }
+
+  const manageCollectionIds = [...new Set([...permissionSourceIds, ...reEnableSyncFolderIds])];
   await authDatasetCollectionMoves({
     ...auth,
     datasetId,
@@ -40,7 +56,7 @@ export const authApiFileImportChanges = async ({
       ...moves
         .filter((item) => item.oldParentId === item.newParentId)
         .map((item) => ({ collectionId: item._id, per: WritePermissionVal })),
-      ...permissionSourceIds.map((collectionId) => ({ collectionId, per: ManagePermissionVal }))
+      ...manageCollectionIds.map((collectionId) => ({ collectionId, per: ManagePermissionVal }))
     ]
   });
 };

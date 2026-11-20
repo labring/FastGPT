@@ -1286,6 +1286,69 @@ it('rejects moving a leaf beneath another leaf without changing its parent', asy
   expect((await MongoDataset.findById(source._id).lean())?.parentId).toBeNull();
 });
 
+describe('update dataset syncAll', () => {
+  it('updates syncAll for API datasets with Manage permission and rejects non-API datasets', async () => {
+    const { owner, members } = await getFakeUsers(1);
+    const writeMember = members[0];
+    const teamId = String(owner.teamId);
+
+    const normalDataset = await createDatasetWithOwnerSnapshot({
+      teamId,
+      tmbId: String(owner.tmbId),
+      name: 'normal-dataset',
+      type: DatasetTypeEnum.dataset
+    });
+    const rejectedNormal = await Call<UpdateDatasetBody, Record<string, never>, string>(
+      updateHandler,
+      {
+        auth: owner,
+        body: { id: String(normalDataset._id), syncAll: true }
+      }
+    );
+    expect(rejectedNormal.error).toBe(CommonErrEnum.invalidParams);
+
+    const apiDataset = await MongoDataset.create({
+      teamId,
+      tmbId: String(owner.tmbId),
+      name: 'api-dataset-sync-all',
+      type: DatasetTypeEnum.apiDataset,
+      syncAll: false,
+      apiDatasetServer: {
+        apiServer: { baseUrl: 'https://api.example.com' }
+      }
+    });
+    await setDatasetCollaborators({
+      datasetId: String(apiDataset._id),
+      teamId,
+      type: apiDataset.type,
+      collaborators: [
+        { tmbId: String(owner.tmbId), permission: OwnerRoleVal },
+        { tmbId: String(writeMember.tmbId), permission: WriteRoleVal }
+      ]
+    });
+
+    const deniedWrite = await Call<UpdateDatasetBody, Record<string, never>, string>(
+      updateHandler,
+      {
+        auth: writeMember,
+        body: { id: String(apiDataset._id), syncAll: true }
+      }
+    );
+    expect(deniedWrite.code).not.toBe(200);
+    expect((await MongoDataset.findById(apiDataset._id).lean())?.syncAll).toBe(false);
+
+    const allowedOwner = await Call<UpdateDatasetBody, Record<string, never>, string>(
+      updateHandler,
+      {
+        auth: owner,
+        body: { id: String(apiDataset._id), syncAll: true }
+      }
+    );
+    expect(allowedOwner.code).toBe(200);
+    expect((await MongoDataset.findById(apiDataset._id).lean())?.syncAll).toBe(true);
+  });
+});
+
 describe('configured move depth', () => {
   it('enforces configured depth for Dataset moves', async () => {
     const folderType = DatasetTypeEnum.folder;

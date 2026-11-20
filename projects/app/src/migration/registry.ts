@@ -12,6 +12,7 @@ import { initializeDatasetVectorIndexes } from './tasks/4180/20261022_initialize
 import { backfillChatPublishSource } from './tasks/4180/20261104_backfill_chat_publish_source';
 import { backfillOpenApiKeyType } from './tasks/4180/20261104_backfill_openapi_key_type';
 import { migrateModelPricing } from './tasks/4180/20261120_migrate_model_pricing';
+import { cleanApiDatasetSystemRoot } from './tasks/4180/20261120_clean_api_dataset_system_root';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -233,6 +234,30 @@ export const systemMigrations = [
       }
     ],
     run: backfillOpenApiKeyType
+  },
+  {
+    id: '20261120_clean_api_dataset_system_root',
+    version: '4.18.0',
+    nameKey: i18nT('system_migration:migrations.20261120_clean_api_dataset_system_root.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261120_clean_api_dataset_system_root.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261120_clean_api_dataset_system_root.result'),
+    progressSteps: [
+      {
+        key: 'migrate',
+        labelKey: i18nT('system_migration:migrations.20261120_clean_api_dataset_system_root.migrate')
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261120_clean_api_dataset_system_root.validation'
+        )
+      }
+    ],
+    // 新版 API 知识库逻辑已彻底移除 SYSTEM_ROOT 哨兵，业务启动前必须完成清洗与 syncAll 回填。
+    blockStartup: true,
+    run: cleanApiDatasetSystemRoot
   }
 ] as const satisfies readonly SystemMigration[];
 

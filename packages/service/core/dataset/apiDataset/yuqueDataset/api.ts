@@ -386,7 +386,7 @@ export const useYuqueDatasetRequest = ({
           return toApiDatasetError({ code: 'NOT_FOUND', message: '文件不存在', status: 404 });
         }
         const parentfile = data.find((item) => item.uuid === file.parent_uuid);
-        const parentId = `${repoId}-${parentfile?.id}-${parentfile?.uuid}`;
+        const parentId = parentfile ? `${repoId}-${parentfile.id}-${parentfile.uuid}` : repoId;
         const id = `${repoId}-${file.id}-${file.uuid}`;
 
         //判断如果parent_uuid为空，则认为是知识库的根目录，返回知识库
