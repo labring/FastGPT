@@ -2,6 +2,7 @@ name: 'Test FastGPT'
 on:
   pull_request:
     paths:
+      - 'packages/dal/**'
       - 'packages/global/**'
       - 'packages/service/**'
       - 'packages/web/**'
@@ -39,6 +40,7 @@ jobs:
       pull-requests: read
     outputs:
       run_global: ${{ steps.scope.outputs.run_global }}
+      run_dal: ${{ steps.scope.outputs.run_dal }}
       run_service: ${{ steps.scope.outputs.run_service }}
       run_web: ${{ steps.scope.outputs.run_web }}
       run_app: ${{ steps.scope.outputs.run_app }}
@@ -52,9 +54,10 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const setOutputs = ({ global, service, web, app, workflowCore, cli }) => {
-              const shouldReport = global || service || web || app || workflowCore || cli;
+            const setOutputs = ({ global, dal, service, web, app, workflowCore, cli }) => {
+              const shouldReport = global || dal || service || web || app || workflowCore || cli;
               core.setOutput('run_global', global ? 'true' : 'false');
+              core.setOutput('run_dal', dal ? 'true' : 'false');
               core.setOutput('run_service', service ? 'true' : 'false');
               core.setOutput('run_web', web ? 'true' : 'false');
               core.setOutput('run_app', app ? 'true' : 'false');
@@ -62,12 +65,12 @@ jobs:
               core.setOutput('run_cli', cli ? 'true' : 'false');
               core.setOutput('should_report', shouldReport ? 'true' : 'false');
               core.info(
-                `Test scopes selected: global=${global}, service=${service}, web=${web}, app=${app}, workflowCore=${workflowCore}, cli=${cli}`
+                `Test scopes selected: global=${global}, dal=${dal}, service=${service}, web=${web}, app=${app}, workflowCore=${workflowCore}, cli=${cli}`
               );
             };
 
             if (context.eventName !== 'pull_request') {
-              setOutputs({ global: true, service: true, web: true, app: true, workflowCore: true, cli: true });
+              setOutputs({ global: true, dal: true, service: true, web: true, app: true, workflowCore: true, cli: true });
               return;
             }
 
@@ -97,10 +100,12 @@ jobs:
             ]);
 
             const runGlobal = affectsAll || hasPath(['packages/global']);
-            const runService = affectsAll || hasPath(['packages/global', 'packages/service', 'sdk']);
+            const runDal = affectsAll || hasPath(['packages/global', 'packages/dal', 'sdk']);
+            const runService = affectsAll || hasPath(['packages/global', 'packages/dal', 'packages/service', 'sdk']);
             const runWeb = affectsAll || hasPath(['packages/global', 'packages/web']);
             const runApp = affectsAll || hasPath([
               'packages/global',
+              'packages/dal',
               'packages/service',
               'packages/web',
               'packages/workflow-core',
@@ -117,6 +122,7 @@ jobs:
 
             setOutputs({
               global: runGlobal,
+              dal: runDal,
               service: runService,
               web: runWeb,
               app: runApp,
@@ -160,6 +166,59 @@ jobs:
           path: |
             packages/global/coverage/coverage-final.json
             packages/global/coverage/coverage-summary.json
+
+  test-dal:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.run_dal == 'true' }}
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: fastgpt_test_root
+          MYSQL_DATABASE: fastgpt_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pfastgpt_test_root"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name ||
+            github.repository }}
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: 'Install Deps'
+        run: pnpm install --frozen-lockfile
+
+      - name: 'Typecheck DAL'
+        run: pnpm --filter @fastgpt/dal typecheck
+
+      - name: 'Test DAL (Mongo + PGlite + MySQL 8 + Anti-Drift)'
+        env:
+          FASTGPT_TEST_SCOPE: dal
+          FASTGPT_TEST_MYSQL_URI: mysql://root:fastgpt_test_root@127.0.0.1:3306/fastgpt_test
+        run: pnpm test
+
+      - name: 'Upload Coverage (DAL)'
+        if: always() && hashFiles('packages/dal/coverage/coverage-summary.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-dal
+          path: |
+            packages/dal/coverage/coverage-final.json
+            packages/dal/coverage/coverage-summary.json
 
   test-service:
     needs: detect-changes
@@ -359,6 +418,7 @@ jobs:
       [
         detect-changes,
         test-global,
+        test-dal,
         test-service,
         test-web,
         test-app,
@@ -389,6 +449,7 @@ jobs:
             const marker = '<!-- fastgpt-coverage-report -->';
             const packages = [
               { name: 'Global', dir: 'coverage-global' },
+              { name: 'DAL', dir: 'coverage-dal' },
               { name: 'Service', dir: 'coverage-service' },
               { name: 'Web', dir: 'coverage-web' },
               { name: 'App', dir: 'coverage-app' },
@@ -472,6 +533,8 @@ jobs:
         run: |
           if { [ "${{ needs.test-global.result }}" != "success" ] &&
                [ "${{ needs.test-global.result }}" != "skipped" ]; } ||
+             { [ "${{ needs.test-dal.result }}" != "success" ] &&
+               [ "${{ needs.test-dal.result }}" != "skipped" ]; } ||
              { [ "${{ needs.test-service.result }}" != "success" ] &&
                [ "${{ needs.test-service.result }}" != "skipped" ]; } ||
              { [ "${{ needs.test-web.result }}" != "success" ] &&
