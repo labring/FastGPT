@@ -493,6 +493,7 @@
   "audit_detail_dataset_tag_rename": "Tag: {{oldName}} → {{newName}}",
   "audit_detail_index_rebuild": "Index model: {{oldModelName}} → {{newModelName}}",
   "audit_detail_collection_dataset": "Knowledge base: {{datasetName}}",
+  "audit_detail_dataset_deleted": "Knowledge base has been deleted",
   "audit_detail_collection_location": "Location: {{location}}",
   "audit_detail_invitation_link": "Link name: {{link}}",
   "audit_detail_export_audit_logs": "Time range: {{dateStart}} to {{dateEnd}}\nMembers: {{tmbIds}}\nTypes: {{events}}\nTotal: {{total}}"

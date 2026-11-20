@@ -686,42 +686,76 @@ describe('audit presenter summary', () => {
     }
   });
 
-  it('omits duplicate dataset summary and protects dataset resource when collection logs bind dataset first', () => {
-    const datasetResource = {
-      type: AuditResourceTypeEnum.dataset,
-      id: '68ad85a7463006c963799b01',
-      name: '产品手册'
-    };
-    const collectionResource = {
+  it('places live datasetName or deleted dataset notice first in collection detail summary while keeping resource column collection-only', () => {
+    const liveCollectionResource = {
       type: AuditResourceTypeEnum.collection,
       id: '68ad85a7463006c963799c01',
-      parentId: '68ad85a7463006c963799b01',
+      datasetId: '68ad85a7463006c963799b01',
       name: '接入指南.pdf',
-      deleted: true
+      datasetName: '产品手册（最新）'
+    };
+    const deletedDatasetCollectionResource = {
+      type: AuditResourceTypeEnum.collection,
+      id: '68ad85a7463006c963799c01',
+      datasetId: '68ad85a7463006c963799b01',
+      name: '接入指南.pdf',
+      deleted: true,
+      datasetDeleted: true
     };
 
-    const deletePresented = resolveAuditResources({
-      event: AuditEventEnum.DELETE_COLLECTION,
-      resources: [datasetResource, collectionResource]
+    const presented = resolveAuditResources({
+      event: DatasetAuditEventEnum.DATASET_COLLECTION_SYNC,
+      resources: [liveCollectionResource]
     });
-    expect(deletePresented[0]).toMatchObject({
-      type: AuditResourceTypeEnum.dataset,
-      name: '产品手册',
-      href: '/dataset/detail?datasetId=68ad85a7463006c963799b01'
+    expect(presented).toHaveLength(1);
+    expect(presented[0]).toMatchObject({
+      type: AuditResourceTypeEnum.collection,
+      name: '接入指南.pdf',
+      href: '/dataset/detail?datasetId=68ad85a7463006c963799b01&currentTab=dataCard&collectionId=68ad85a7463006c963799c01'
     });
-    expect(deletePresented[0].deleted).toBeUndefined();
-    expect(deletePresented[1].deleted).toBe(true);
-    expect(deletePresented[1].href).toBeUndefined();
 
     expect(
       formatAuditSummary({
-        event: AuditEventEnum.DELETE_COLLECTION,
-        resources: [datasetResource, collectionResource],
-        metadata: { datasetName: '旧知识库名', collectionName: '接入指南.pdf' },
+        event: DatasetAuditEventEnum.DATASET_COLLECTION_SYNC,
+        resources: [liveCollectionResource],
+        t
+      })
+    ).toBe('account_team:audit_detail_collection_dataset(datasetName=产品手册（最新）)');
+
+    expect(
+      formatAuditSummary({
+        event: DatasetAuditEventEnum.DATASET_COLLECTION_SYNC,
+        resources: [deletedDatasetCollectionResource],
+        t
+      })
+    ).toBe(
+      'account_team:audit_detail_collection_dataset(datasetName=account_team:audit_detail_dataset_deleted)'
+    );
+
+    expect(
+      formatAuditSummary({
+        event: DatasetAuditEventEnum.DATASET_COLLECTION_TAG_ADD,
+        resources: [liveCollectionResource],
+        metadata: { tagName: '已审核' },
         t
       })
     ).toBe(
       [
+        'account_team:audit_detail_collection_dataset(datasetName=产品手册（最新）)',
+        'account_team:audit_detail_dataset_tag(tagName=已审核)'
+      ].join('\n')
+    );
+
+    expect(
+      formatAuditSummary({
+        event: AuditEventEnum.DELETE_COLLECTION,
+        resources: [{ ...liveCollectionResource, deleted: true }],
+        metadata: { collectionName: '接入指南.pdf' },
+        t
+      })
+    ).toBe(
+      [
+        'account_team:audit_detail_collection_dataset(datasetName=产品手册（最新）)',
         'account_team:audit_detail_resource_name(name=接入指南.pdf)',
         'account_team:audit_detail_resource_id(id=68ad85a7463006c963799c01)'
       ].join('\n')
@@ -729,50 +763,17 @@ describe('audit presenter summary', () => {
 
     expect(
       formatAuditSummary({
-        event: DatasetAuditEventEnum.DATASET_COLLECTION_SYNC,
-        resources: [datasetResource, { ...collectionResource, deleted: undefined }],
-        metadata: { datasetName: '旧知识库名' },
-        t
-      })
-    ).toBe('-');
-
-    expect(
-      formatAuditSummary({
-        event: DatasetAuditEventEnum.DATASET_COLLECTION_TAG_ADD,
-        resources: [datasetResource, { ...collectionResource, deleted: undefined }],
-        metadata: {
-          datasetName: '旧知识库名',
-          tagName: '已审核'
-        },
-        t
-      })
-    ).toBe('account_team:audit_detail_dataset_tag(tagName=已审核)');
-
-    expect(
-      formatAuditSummary({
         event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
-        resources: [datasetResource, { ...collectionResource, deleted: undefined }],
-        metadata: { parentResource: '产品手册' },
+        resources: [liveCollectionResource],
+        metadata: { parentResource: '产品手册（最新）' },
         t
       })
     ).toBe(
       [
         'account_team:audit_detail_resource_type(type=account_team:audit_resource_type_collection)',
-        'account_team:audit_detail_inherit_parent(parentResource=产品手册)'
+        'account_team:audit_detail_collection_dataset(datasetName=产品手册（最新）)',
+        'account_team:audit_detail_inherit_parent(parentResource=产品手册（最新）)'
       ].join('\n')
-    );
-
-    const deletedWithoutSnapshot = resolveAuditResources({
-      event: DatasetAuditEventEnum.DATASET_COLLECTION_SYNC,
-      resources: [
-        { type: AuditResourceTypeEnum.dataset, id: '68ad85a7463006c963799b01', deleted: true },
-        { ...collectionResource, deleted: undefined }
-      ]
-    });
-    expect(deletedWithoutSnapshot[0].name).toBe('-');
-    expect(deletedWithoutSnapshot[0].nameMissing).toBe(true);
-    expect(formatAuditResourcesText(deletedWithoutSnapshot, t)).toBe(
-      'account_team:audit_resource_deleted\n接入指南.pdf'
     );
 
     const deletedNamedDash = resolveAuditResources({
@@ -789,15 +790,5 @@ describe('audit presenter summary', () => {
     expect(deletedNamedDash[0].name).toBe('-');
     expect(deletedNamedDash[0].nameMissing).toBeUndefined();
     expect(formatAuditResourcesText(deletedNamedDash, t)).toBe('-');
-
-    const deletedWithLegacyMetadata = resolveAuditResources({
-      event: AuditEventEnum.DELETE_COLLECTION,
-      resources: [
-        { type: AuditResourceTypeEnum.dataset, id: '68ad85a7463006c963799b01', deleted: true },
-        collectionResource
-      ],
-      metadata: { datasetName: '历史知识库快照' }
-    });
-    expect(deletedWithLegacyMetadata[0].name).toBe('历史知识库快照');
   });
 });

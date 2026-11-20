@@ -492,7 +492,8 @@
   "audit_detail_dataset_tag": "태그: {{tagName}}",
   "audit_detail_dataset_tag_rename": "태그: {{oldName}} → {{newName}}",
   "audit_detail_index_rebuild": "인덱스 모델: {{oldModelName}} → {{newModelName}}",
-  "audit_detail_collection_dataset": "소속 지식 베이스: {{datasetName}}",
+  "audit_detail_collection_dataset": "지식 베이스: {{datasetName}}",
+  "audit_detail_dataset_deleted": "지식 베이스가 삭제되었습니다",
   "audit_detail_collection_location": "위치: {{location}}",
   "audit_detail_invitation_link": "링크 이름: {{link}}",
   "audit_detail_export_audit_logs": "시간 범위: {{dateStart}} ~ {{dateEnd}}\n멤버: {{tmbIds}}\n유형: {{events}}\n일치 건수: {{total}}"

@@ -11,7 +11,6 @@ import {
   AuditResourceTypeEnum,
   isCollectionAuditResource,
   normalizeAuditListResources,
-  normalizeStoredAuditResources,
   type AuditListResourceType,
   type AuditResourceType
 } from '@fastgpt/global/support/user/audit/type';
@@ -409,14 +408,9 @@ export const resolveAuditResources = ({
     const forceDeleted = DELETE_TARGET_EVENTS.has(event);
 
     return normalized.map((rawItem, index) => {
-      const shouldForceDelete =
-        forceDeleted &&
-        (event !== AuditEventEnum.DELETE_COLLECTION ||
-          rawItem.type === AuditResourceTypeEnum.collection ||
-          rawItem.type === AuditResourceTypeEnum.collectionFolder);
       const item: AuditListResourceType = {
         ...rawItem,
-        ...(shouldForceDelete ? { deleted: true } : {})
+        ...(forceDeleted ? { deleted: true } : {})
       };
       const datasetFallbackName =
         item.type === AuditResourceTypeEnum.dataset ||
@@ -610,18 +604,36 @@ const formatResourceTypeLine = ({
   resources,
   t
 }: {
-  resources?: AuditResourceType[];
+  resources?: AuditListResourceType[];
   t: AuditTranslator;
 }): string | undefined => {
-  const collectionTarget = resources?.find(
-    (item) =>
-      item.type === AuditResourceTypeEnum.collection ||
-      item.type === AuditResourceTypeEnum.collectionFolder
-  );
+  const collectionTarget = resources?.find(isCollectionAuditResource);
   const resourceType = collectionTarget?.type ?? resources?.[0]?.type;
   const label = resourceType ? resolveResourceTypeLabel(resourceType, t) : undefined;
   if (!label) return undefined;
   return t('account_team:audit_detail_resource_type', { type: label });
+};
+
+/** 为集合审计事件生成首行「知识库：...」，优先展示实时名称，知识库已删时展示「知识库已被删除」。 */
+const formatCollectionDatasetLine = ({
+  resources,
+  metadataDatasetName,
+  t
+}: {
+  resources?: AuditListResourceType[];
+  metadataDatasetName?: string;
+  t: AuditTranslator;
+}): string | undefined => {
+  const collectionItem = resources?.find(isCollectionAuditResource);
+  if (collectionItem?.datasetDeleted) {
+    return t('account_team:audit_detail_collection_dataset', {
+      datasetName: t('account_team:audit_detail_dataset_deleted')
+    });
+  }
+  const datasetName = asNonEmptyString(collectionItem?.datasetName) ?? metadataDatasetName;
+  return datasetName
+    ? t('account_team:audit_detail_collection_dataset', { datasetName })
+    : undefined;
 };
 
 /**
@@ -646,15 +658,8 @@ export const formatAuditSummary = ({
     return metadata && Object.keys(metadata).length > 0 ? JSON.stringify(metadata) : '-';
   }
   const hasMetadata = Boolean(metadata && Object.keys(metadata).length > 0);
-  const normalizedResources = normalizeStoredAuditResources(resources);
+  const normalizedResources = normalizeAuditListResources(resources);
   const hasResources = Boolean(normalizedResources && normalizedResources.length > 0);
-  const hasDatasetResource = Boolean(
-    normalizedResources?.some(
-      (item) =>
-        item.type === AuditResourceTypeEnum.dataset ||
-        item.type === AuditResourceTypeEnum.datasetFolder
-    )
-  );
   if (!hasMetadata && !hasResources) {
     return '-';
   }
@@ -667,6 +672,11 @@ export const formatAuditSummary = ({
         formatTime
       })
     : {};
+  const collectionDatasetLine = formatCollectionDatasetLine({
+    resources: normalizedResources,
+    metadataDatasetName: asNonEmptyString(processed.datasetName),
+    t
+  });
 
   switch (event) {
     case AuditEventEnum.EXPORT_AUDIT_LOGS:
@@ -725,11 +735,18 @@ export const formatAuditSummary = ({
     }
 
     case AuditEventEnum.RESUME_INHERIT_PERMISSION: {
+      const lines: string[] = [];
       const typeLine = formatResourceTypeLine({ resources: normalizedResources, t });
-      const inheritLine = t('account_team:audit_detail_inherit_parent', {
-        parentResource: processed.parentResource ?? '-'
-      });
-      return typeLine ? `${typeLine}\n${inheritLine}` : inheritLine;
+      if (typeLine) lines.push(typeLine);
+      if (normalizedResources?.some(isCollectionAuditResource) && collectionDatasetLine) {
+        lines.push(collectionDatasetLine);
+      }
+      lines.push(
+        t('account_team:audit_detail_inherit_parent', {
+          parentResource: processed.parentResource ?? '-'
+        })
+      );
+      return lines.join('\n');
     }
 
     case AuditEventEnum.UPDATE_APP_INFO:
@@ -875,6 +892,7 @@ export const formatAuditSummary = ({
 
     case DatasetAuditEventEnum.DATASET_COLLECTION_CREATE: {
       const lines: string[] = [];
+      if (collectionDatasetLine) lines.push(collectionDatasetLine);
       const objectType = asNonEmptyString(processed.objectType);
       const location = asNonEmptyString(processed.location);
       if (objectType) {
@@ -887,27 +905,32 @@ export const formatAuditSummary = ({
     }
 
     case DatasetAuditEventEnum.DATASET_COLLECTION_RENAME: {
+      const lines: string[] = [];
+      if (collectionDatasetLine) lines.push(collectionDatasetLine);
       const oldName = asNonEmptyString(processed.oldName);
       const newName = asNonEmptyString(processed.newName);
-      return oldName && newName ? t('account_team:audit_detail_rename', { oldName, newName }) : '-';
+      if (oldName && newName) {
+        lines.push(t('account_team:audit_detail_rename', { oldName, newName }));
+      }
+      return lines.length > 0 ? lines.join('\n') : '-';
     }
 
     case DatasetAuditEventEnum.DATASET_COLLECTION_MOVE: {
+      const lines: string[] = [];
+      if (collectionDatasetLine) lines.push(collectionDatasetLine);
       const oldPath = asNonEmptyString(processed.oldPath);
       const newPath = asNonEmptyString(processed.newPath);
-      return oldPath && newPath
-        ? t('account_team:audit_detail_rename', { oldName: oldPath, newName: newPath })
-        : '-';
+      if (oldPath && newPath) {
+        lines.push(t('account_team:audit_detail_rename', { oldName: oldPath, newName: newPath }));
+      }
+      return lines.length > 0 ? lines.join('\n') : '-';
     }
 
     case DatasetAuditEventEnum.DATASET_COLLECTION_TAG_ADD:
     case DatasetAuditEventEnum.DATASET_COLLECTION_TAG_REMOVE: {
       const lines: string[] = [];
-      const datasetName = asNonEmptyString(processed.datasetName);
+      if (collectionDatasetLine) lines.push(collectionDatasetLine);
       const tagName = asNonEmptyString(processed.tagName);
-      if (!hasDatasetResource && datasetName) {
-        lines.push(t('account_team:audit_detail_collection_dataset', { datasetName }));
-      }
       if (tagName) {
         lines.push(t('account_team:audit_detail_dataset_tag', { tagName }));
       }
@@ -916,10 +939,7 @@ export const formatAuditSummary = ({
 
     case DatasetAuditEventEnum.DATASET_COLLECTION_PERMISSION_INHERITANCE_RESUME: {
       const lines: string[] = [];
-      const datasetName = asNonEmptyString(processed.datasetName);
-      if (!hasDatasetResource && datasetName) {
-        lines.push(t('account_team:audit_detail_collection_dataset', { datasetName }));
-      }
+      if (collectionDatasetLine) lines.push(collectionDatasetLine);
       lines.push(
         t('account_team:audit_detail_inherit_parent', {
           parentResource: processed.parentResource ?? '-'
@@ -930,10 +950,7 @@ export const formatAuditSummary = ({
 
     case AuditEventEnum.DELETE_COLLECTION: {
       const lines: string[] = [];
-      const datasetName = asNonEmptyString(processed.datasetName);
-      if (!hasDatasetResource && datasetName) {
-        lines.push(t('account_team:audit_detail_collection_dataset', { datasetName }));
-      }
+      if (collectionDatasetLine) lines.push(collectionDatasetLine);
       lines.push(
         ...formatDeletedResourceLines({
           event,
@@ -959,9 +976,7 @@ export const formatAuditSummary = ({
     case DatasetAuditEventEnum.DATASET_COLLECTION_TRAINING_RETRY:
     case DatasetAuditEventEnum.DATASET_TRAINING_TASK_RETRY:
     case DatasetAuditEventEnum.DATASET_TRAINING_RECORD_DELETE: {
-      if (hasDatasetResource) return '-';
-      const datasetName = asNonEmptyString(processed.datasetName);
-      return datasetName ? t('account_team:audit_detail_collection_dataset', { datasetName }) : '-';
+      return collectionDatasetLine ?? '-';
     }
 
     default:

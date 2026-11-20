@@ -116,10 +116,20 @@ const AuditListCurrentTypeField = {
   })
 };
 
+const CollectionAuditListExtraFields = {
+  ...AuditListCurrentTypeField,
+  datasetName: z.string().optional().meta({
+    description: '列表与导出实时补齐的集合所属知识库最新名称，用于详情列首行展示'
+  }),
+  datasetDeleted: z.boolean().optional().meta({
+    description: '集合所属知识库是否已删除，用于详情列展示知识库已被删除'
+  })
+};
+
 /** 列表响应中的资源项：从持久化快照派生并扩展可选实时导航类型，未知导航枚举单独降级省略。 */
 export const AuditListResourceSchema = z
   .union([
-    CollectionAuditResourceBaseSchema.extend(AuditListCurrentTypeField),
+    CollectionAuditResourceBaseSchema.extend(CollectionAuditListExtraFields),
     GeneralAuditResourceBaseSchema.extend(AuditListCurrentTypeField)
   ])
   .refine(hasAuditResourceIdentity, auditResourceIdentityRefine);
@@ -407,10 +417,22 @@ export const normalizeAuditListResources = (raw: unknown): AuditListResourceType
   const normalizeItem = (item: unknown): AuditListResourceType | undefined => {
     const stored = normalizeStoredAuditResource(item);
     if (!stored || !item || typeof item !== 'object') return stored;
-    const parsedCurrentType = AuditResourceTypeSchema.safeParse(
-      (item as Record<string, unknown>).currentType
-    );
-    return parsedCurrentType.success ? { ...stored, currentType: parsedCurrentType.data } : stored;
+    const record = item as Record<string, unknown>;
+    const parsedCurrentType = AuditResourceTypeSchema.safeParse(record.currentType);
+    const withCurrentType: AuditListResourceType = parsedCurrentType.success
+      ? { ...stored, currentType: parsedCurrentType.data }
+      : stored;
+    if (!isCollectionAuditResource(withCurrentType)) return withCurrentType;
+    const datasetName =
+      typeof record.datasetName === 'string' && record.datasetName.trim()
+        ? record.datasetName.trim()
+        : undefined;
+    const datasetDeleted = record.datasetDeleted === true ? true : undefined;
+    return {
+      ...withCurrentType,
+      ...(datasetName ? { datasetName } : {}),
+      ...(datasetDeleted ? { datasetDeleted } : {})
+    };
   };
 
   return raw.map(normalizeItem).filter((item): item is AuditListResourceType => item !== undefined);

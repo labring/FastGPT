@@ -492,7 +492,8 @@
   "audit_detail_dataset_tag": "標籤：{{tagName}}",
   "audit_detail_dataset_tag_rename": "標籤：{{oldName}} → {{newName}}",
   "audit_detail_index_rebuild": "索引模型：{{oldModelName}} → {{newModelName}}",
-  "audit_detail_collection_dataset": "所屬知識庫：{{datasetName}}",
+  "audit_detail_collection_dataset": "知識庫：{{datasetName}}",
+  "audit_detail_dataset_deleted": "知識庫已被刪除",
   "audit_detail_collection_location": "位置：{{location}}",
   "audit_detail_invitation_link": "連結名：{{link}}",
   "audit_detail_export_audit_logs": "時間範圍：{{dateStart}} 至 {{dateEnd}}\n成員：{{tmbIds}}\n類型：{{events}}\n符合筆數：{{total}}"
