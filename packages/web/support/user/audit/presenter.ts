@@ -614,7 +614,7 @@ const formatResourceTypeLine = ({
   return t('account_team:audit_detail_resource_type', { type: label });
 };
 
-/** 为集合审计事件生成首行「知识库：...」，优先展示实时名称，知识库已删时展示「知识库已被删除」。 */
+/** 为集合审计事件生成首行「知识库：...」；已有历史 metadata.datasetName 快照优先保留，新事件按实时知识库名或「知识库已被删除」展示。 */
 const formatCollectionDatasetLine = ({
   resources,
   metadataDatasetName,
@@ -624,13 +624,18 @@ const formatCollectionDatasetLine = ({
   metadataDatasetName?: string;
   t: AuditTranslator;
 }): string | undefined => {
+  if (metadataDatasetName) {
+    return t('account_team:audit_detail_collection_dataset', {
+      datasetName: metadataDatasetName
+    });
+  }
   const collectionItem = resources?.find(isCollectionAuditResource);
   if (collectionItem?.datasetDeleted) {
     return t('account_team:audit_detail_collection_dataset', {
       datasetName: t('account_team:audit_detail_dataset_deleted')
     });
   }
-  const datasetName = asNonEmptyString(collectionItem?.datasetName) ?? metadataDatasetName;
+  const datasetName = asNonEmptyString(collectionItem?.datasetName);
   return datasetName
     ? t('account_team:audit_detail_collection_dataset', { datasetName })
     : undefined;

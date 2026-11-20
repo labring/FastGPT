@@ -761,6 +761,22 @@ describe('audit presenter summary', () => {
       ].join('\n')
     );
 
+    // 已有 metadata.datasetName 的旧集合删除日志保留操作时的知识库名，不被实时改名或删除提示覆盖。
+    expect(
+      formatAuditSummary({
+        event: AuditEventEnum.DELETE_COLLECTION,
+        resources: [deletedDatasetCollectionResource],
+        metadata: { datasetName: '历史知识库快照', collectionName: '接入指南.pdf' },
+        t
+      })
+    ).toBe(
+      [
+        'account_team:audit_detail_collection_dataset(datasetName=历史知识库快照)',
+        'account_team:audit_detail_resource_name(name=接入指南.pdf)',
+        'account_team:audit_detail_resource_id(id=68ad85a7463006c963799c01)'
+      ].join('\n')
+    );
+
     expect(
       formatAuditSummary({
         event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
