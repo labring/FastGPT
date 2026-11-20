@@ -330,10 +330,12 @@ describe('handleS3ProxyUploadPart', () => {
       const res = {
         destroyed: false,
         closed: false,
+        writableEnded: false,
         headersSent: false,
         status: vi.fn(),
         json: vi.fn(),
-        end: vi.fn()
+        end: vi.fn(),
+        destroy: vi.fn()
       };
 
       expect(
@@ -342,6 +344,7 @@ describe('handleS3ProxyUploadPart', () => {
           error: new Error(message)
         })
       ).toBeUndefined();
+      expect(res.destroy).toHaveBeenCalledTimes(1);
       expect(res.status).not.toHaveBeenCalled();
       expect(res.json).not.toHaveBeenCalled();
       expect(res.end).not.toHaveBeenCalled();
@@ -377,6 +380,7 @@ describe('handleS3ProxyUpload', () => {
       headers: { 'content-length': '5' },
       aborted: false
     });
+    const res = createResponse() as any;
     const uploadObject = vi.fn().mockResolvedValue({});
     global.s3BucketMap = {
       'fastgpt-private': {
@@ -386,6 +390,7 @@ describe('handleS3ProxyUpload', () => {
 
     const uploadPromise = handleS3ProxyUpload({
       req,
+      res,
       payload: {
         bucketName: 'fastgpt-private',
         objectKey: 'dataset/team/%E6%96%87%E6%A1%A3.txt',
@@ -425,6 +430,7 @@ describe('handleS3ProxyUpload', () => {
       headers: { 'content-length': '100' },
       aborted: false
     });
+    const res = createResponse() as any;
     const uploadObject = vi.fn();
     global.s3BucketMap = {
       'fastgpt-private': {
@@ -434,6 +440,7 @@ describe('handleS3ProxyUpload', () => {
 
     const uploadPromise = handleS3ProxyUpload({
       req,
+      res,
       payload: {
         bucketName: 'fastgpt-private',
         objectKey: 'dataset/team/file.txt',
@@ -465,6 +472,7 @@ describe('handleS3ProxyUpload', () => {
       headers: { 'content-length': String(8192) },
       aborted: false
     });
+    const res = createResponse() as any;
     let uploadSignal: AbortSignal | undefined;
     let markUploadStarted!: () => void;
     const uploadStarted = new Promise<void>((resolve) => {
@@ -486,6 +494,7 @@ describe('handleS3ProxyUpload', () => {
 
     const uploadPromise = handleS3ProxyUpload({
       req,
+      res,
       payload: {
         bucketName: 'fastgpt-private',
         objectKey: 'dataset/team/file.txt',
@@ -507,5 +516,59 @@ describe('handleS3ProxyUpload', () => {
 
     await expect(uploadPromise).rejects.toThrow('Upload request aborted');
     expect(uploadSignal?.aborted).toBe(true);
+  });
+
+  it('aborts an in-flight storage upload when the client disconnects after request body ends', async () => {
+    const req = new PassThrough() as any;
+    Object.assign(req, {
+      headers: { 'content-length': '5' },
+      aborted: false
+    });
+    const res = createResponse() as any;
+    let uploadSignal: AbortSignal | undefined;
+    let markUploadStarted!: () => void;
+    const uploadStarted = new Promise<void>((resolve) => {
+      markUploadStarted = resolve;
+    });
+    const uploadObject = vi.fn(
+      ({ abortSignal }: { abortSignal: AbortSignal }) =>
+        new Promise<never>((_resolve, reject) => {
+          uploadSignal = abortSignal;
+          markUploadStarted();
+          abortSignal.addEventListener('abort', () => reject(abortSignal.reason), { once: true });
+        })
+    );
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        client: { uploadObject }
+      }
+    } as any;
+
+    const uploadPromise = handleS3ProxyUpload({
+      req,
+      res,
+      payload: {
+        bucketName: 'fastgpt-private',
+        objectKey: 'dataset/team/small.txt',
+        maxSize: 1024,
+        uploadPolicy: {
+          defaultContentType: 'text/plain'
+        },
+        fileHint: {
+          filename: 'small.txt',
+          contentType: 'text/plain',
+          source: 'local-file'
+        }
+      }
+    });
+
+    req.end(Buffer.from('hello'));
+    await uploadStarted;
+    expect(req.readableEnded).toBe(true);
+    res.destroy();
+
+    await expect(uploadPromise).rejects.toThrow('Upload request aborted');
+    expect(uploadSignal?.aborted).toBe(true);
+    expect(res.listenerCount('close')).toBe(0);
   });
 });

@@ -434,13 +434,15 @@ describe('CosStorageAdapter.uploadObject', () => {
     expect(putObject).not.toHaveBeenCalled();
   });
 
-  it('aborts an in-flight upload through the body error channel', async () => {
+  it('aborts an in-flight upload via COS task cancellation and destroys the body stream', async () => {
     const adapter = createAdapter();
     const body = new PassThrough();
-    const putObject = vi.fn((params, callback) => {
-      params.Body.once('error', (error) => callback(error));
+    const cancelTask = vi.fn();
+    const putObject = vi.fn((params) => {
+      params.onTaskReady?.('cos-task-1');
     });
     (adapter as any).client.putObject = putObject;
+    (adapter as any).client.cancelTask = cancelTask;
     const controller = new AbortController();
 
     const uploadPromise = adapter.uploadObject({
@@ -453,6 +455,11 @@ describe('CosStorageAdapter.uploadObject', () => {
 
     await expect(uploadPromise).rejects.toMatchObject({ name: 'AbortError' });
     expect(body.destroyed).toBe(true);
+    expect(cancelTask).toHaveBeenCalledWith('cos-task-1');
     expect(putObject).toHaveBeenCalledTimes(1);
+    expect(putObject).toHaveBeenCalledWith(
+      expect.objectContaining({ Body: body }),
+      expect.any(Function)
+    );
   });
 });

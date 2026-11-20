@@ -573,6 +573,7 @@ describe('AwsS3StorageAdapter.uploadObject', () => {
       send
     };
     const controller = new AbortController();
+    const abortReason = new Error('client aborted');
 
     const uploadPromise = adapter.uploadObject({
       key: 'dataset/team/file.txt',
@@ -580,8 +581,8 @@ describe('AwsS3StorageAdapter.uploadObject', () => {
       abortSignal: controller.signal
     });
     await vi.waitFor(() => expect(send).toHaveBeenCalled());
-    controller.abort();
+    controller.abort(abortReason);
 
-    await expect(uploadPromise).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(uploadPromise).rejects.toBe(abortReason);
   });
 });

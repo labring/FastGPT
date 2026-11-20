@@ -411,9 +411,11 @@ export const handleS3RedirectDownload = async ({
  */
 export const handleS3ProxyUpload = async ({
   req,
+  res,
   payload
 }: {
   req: NextApiRequest;
+  res: NextApiResponse;
   payload: S3ProxyUploadPayload;
 }) => {
   const { objectKey, bucketName, maxSize, uploadPolicy, fileHint, metadata } = payload;
@@ -427,7 +429,9 @@ export const handleS3ProxyUpload = async ({
   if (contentLength && contentLength > maxSize) {
     throw new Error('EntityTooLarge');
   }
-  if (req.aborted) {
+  const isRequestDisconnectedBeforeEnd =
+    Boolean(req.destroyed) && !req.complete && !req.readableEnded;
+  if (req.aborted || res.destroyed || isRequestDisconnectedBeforeEnd) {
     throw new Error(UPLOAD_REQUEST_ABORTED);
   }
 
@@ -439,25 +443,38 @@ export const handleS3ProxyUpload = async ({
   });
 
   let clientAborted = false;
-  const abortController = new AbortController();
+  const abortContext = createS3ProxyAbortContext({ req, res });
+  const destroyGuardStream = () => {
+    if (!guardStream.destroyed) guardStream.destroy();
+  };
+
+  /**
+   * 响应在 finish 前关闭（例如小文件或大文件发完 body 后等待对象存储响应期间客户端取消）
+   * 会通过 abortContext.signal 通知此处与底层存储 SDK。
+   */
+  const handleAbortSignal = () => {
+    clientAborted = true;
+    destroyGuardStream();
+  };
+
   /**
    * `req.pipe` 不会把 source 的 close 传递给 destination。客户端中断后若不主动销毁 guard
    * stream，`validatedUpload` 会永久 pending，请求上下文和已缓冲数据无法释放。
    * 与 multipart 路径一致，只关闭 stream，不注入 error，避免 SDK 产生额外 rejected Promise。
    */
-  const abortUpload = () => {
-    // 正常请求结束也会触发 close；只有未完整读取的请求需要销毁上传流。
+  const handleRequestDisconnect = () => {
+    // 正常请求体读取结束也会触发 req 的 close；后续等待存储响应阶段由 res.close 接管。
     if (req.complete || req.readableEnded) return;
 
     clientAborted = true;
-    // 已开始消费 body 的 provider 需要显式取消信号，避免 COS 等 SDK 在 clean close 后继续等待。
-    abortController.abort(new Error(UPLOAD_REQUEST_ABORTED));
-    if (!guardStream.destroyed) guardStream.destroy();
+    abortContext.abort(new Error(UPLOAD_REQUEST_ABORTED));
+    destroyGuardStream();
   };
 
-  req.once('aborted', abortUpload);
-  req.once('error', abortUpload);
-  req.once('close', abortUpload);
+  abortContext.signal.addEventListener('abort', handleAbortSignal, { once: true });
+  req.once('aborted', handleRequestDisconnect);
+  req.once('error', handleRequestDisconnect);
+  req.once('close', handleRequestDisconnect);
 
   try {
     req.pipe(guardStream);
@@ -476,20 +493,23 @@ export const handleS3ProxyUpload = async ({
         metadata,
         filename: validatedFile.filename
       }),
-      abortSignal: abortController.signal
+      abortSignal: abortContext.signal
     });
 
     return { success: true };
   } catch (error) {
+    destroyGuardStream();
     // 客户端已断开时上传注定无法完成，统一转为可识别的取消错误，避免误记服务端异常。
-    if (clientAborted) {
+    if (clientAborted || abortContext.isClientAborted()) {
       throw new Error(UPLOAD_REQUEST_ABORTED);
     }
     throw error;
   } finally {
-    req.off('aborted', abortUpload);
-    req.off('error', abortUpload);
-    req.off('close', abortUpload);
+    req.off('aborted', handleRequestDisconnect);
+    req.off('error', handleRequestDisconnect);
+    req.off('close', handleRequestDisconnect);
+    abortContext.signal.removeEventListener('abort', handleAbortSignal);
+    abortContext.cleanup();
   }
 };
 
@@ -788,6 +808,10 @@ export function handleS3ProxyRouteError({ res, error }: { res: NextApiResponse; 
   // 客户端主动取消后连接已经断开，不应再写响应，更不能把预期取消记成服务端异常。
   const errorKey = getProxyErrorKey(error);
   if (errorKey === MULTIPART_UPLOAD_REQUEST_ABORTED || errorKey === UPLOAD_REQUEST_ABORTED) {
+    // 防止 res 尚未在同 tick 标记 destroyed 时被 NextAPI 误当正常返回写入 HTTP 200。
+    if (!res.destroyed && !res.writableEnded && typeof res.destroy === 'function') {
+      res.destroy();
+    }
     return;
   }
 

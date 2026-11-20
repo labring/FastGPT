@@ -376,6 +376,7 @@ describe('provider upload abort transport integration', () => {
       credentials: { accessKeyId: 'access-key', secretAccessKey: 'secret-key' }
     });
     const controller = new AbortController();
+    const abortReason = new Error('client aborted');
     const body = new PassThrough({ autoDestroy: false });
     const uploadPromise = storage.uploadObject({
       key: 'abort/upload.bin',
@@ -390,10 +391,10 @@ describe('provider upload abort transport integration', () => {
     body.end(Buffer.from('test'));
     await withTimeout(requestReceived, 'AWS upload body was not sent');
 
-    controller.abort(new Error('client aborted'));
+    controller.abort(abortReason);
 
     const error = await withTimeout(uploadSettled, 'AWS upload did not settle after abort');
-    expect(error).toMatchObject({ name: 'AbortError' });
+    expect(error).toBe(abortReason);
     expect(body.destroyed).toBe(true);
     await expect.poll(() => sockets.size, { timeout: 1000 }).toBe(0);
     await storage.destroy();
@@ -413,6 +414,7 @@ describe('provider upload abort transport integration', () => {
       credentials: { accessKeyId: 'access-key', secretAccessKey: 'secret-key' }
     });
     const controller = new AbortController();
+    const abortReason = new Error('client aborted');
     const body = new PassThrough({ autoDestroy: false });
     const uploadPromise = storage.uploadObject({
       key: 'abort/upload.bin',
@@ -427,16 +429,137 @@ describe('provider upload abort transport integration', () => {
     body.write(Buffer.alloc(6 * 1024 * 1024));
     await withTimeout(partReceived, 'AWS multipart part did not reach the local server');
 
-    controller.abort(new Error('client aborted'));
+    controller.abort(abortReason);
 
     const error = await withTimeout(
       uploadSettled,
       'AWS multipart upload did not settle after abort'
     );
-    expect(error).toMatchObject({ name: 'AbortError' });
+    expect(error).toBe(abortReason);
     expect(body.destroyed).toBe(true);
     await withTimeout(partClosed, 'AWS multipart part socket did not close after abort');
     await withTimeout(abortReceived, 'AWS did not send AbortMultipartUpload after cancel');
+    await storage.destroy();
+    await closeServer(server);
+  });
+
+  it('aborts a queued COS upload past FileParallelLimit without uncaught stream errors', async () => {
+    const { server, sockets } = createStalledUploadServer();
+    const port = await listen(server);
+    const storage = new CosStorageAdapter({
+      vendor: 'cos',
+      bucket: 'test-bucket-1250000000',
+      region: 'ap-guangzhou',
+      protocol: 'http:',
+      domain: `127.0.0.1:${port}`,
+      credentials: { accessKeyId: 'secret-id', secretAccessKey: 'secret-key' }
+    });
+    const activeControllers = [new AbortController(), new AbortController(), new AbortController()];
+    const queuedController = new AbortController();
+    const abortReason = new Error('queued upload aborted');
+
+    const activeUploads = activeControllers.map((controller, index) => {
+      const activeBody = new PassThrough();
+      const upload = storage
+        .uploadObject({
+          key: `abort/active-${index}.bin`,
+          body: activeBody,
+          contentLength: 4,
+          abortSignal: controller.signal
+        })
+        .catch(() => undefined);
+      activeBody.write(Buffer.from('test'));
+      return upload;
+    });
+    await expect.poll(() => sockets.size, { timeout: 1000 }).toBe(3);
+
+    const queuedBody = new PassThrough();
+    const queuedUpload = storage.uploadObject({
+      key: 'abort/queued.bin',
+      body: queuedBody,
+      contentLength: 4,
+      abortSignal: queuedController.signal
+    });
+    queuedController.abort(abortReason);
+
+    await expect(withTimeout(queuedUpload, 'Queued COS upload did not settle')).rejects.toBe(
+      abortReason
+    );
+    expect(queuedBody.destroyed).toBe(true);
+
+    for (const controller of activeControllers) controller.abort();
+    await Promise.all(activeUploads);
+    await expect.poll(() => sockets.size, { timeout: 1000 }).toBe(0);
+    await storage.destroy();
+    await closeServer(server);
+  });
+
+  it('preserves Content-Length for COS Buffer uploads with an abortSignal', async () => {
+    let observedContentLength: string | undefined;
+    const server = http.createServer((request, response) => {
+      observedContentLength = request.headers['content-length'];
+      request.resume();
+      request.on('end', () => {
+        response.writeHead(200, { ETag: '"etag-1"' });
+        response.end();
+      });
+    });
+    const port = await listen(server);
+    const storage = new CosStorageAdapter({
+      vendor: 'cos',
+      bucket: 'test-bucket-1250000000',
+      region: 'ap-guangzhou',
+      protocol: 'http:',
+      domain: `127.0.0.1:${port}`,
+      credentials: { accessKeyId: 'secret-id', secretAccessKey: 'secret-key' }
+    });
+
+    await storage.uploadObject({
+      key: 'abort/buffer.bin',
+      body: Buffer.from('hello'),
+      abortSignal: new AbortController().signal
+    });
+
+    expect(observedContentLength).toBe('5');
+    await storage.destroy();
+    await closeServer(server);
+  });
+
+  it('reuses keep-alive connections for sequential OSS uploads with an abortSignal', async () => {
+    let connectionCount = 0;
+    const server = http.createServer((request, response) => {
+      request.resume();
+      request.on('end', () => {
+        response.writeHead(200, { ETag: '"etag-1"' });
+        response.end();
+      });
+    });
+    server.on('connection', () => {
+      connectionCount += 1;
+    });
+    const port = await listen(server);
+    const storage = new OssStorageAdapter({
+      vendor: 'oss',
+      bucket: 'test-bucket',
+      region: 'oss-cn-hangzhou',
+      endpoint: `http://127.0.0.1:${port}`,
+      cname: true,
+      secure: false,
+      credentials: { accessKeyId: 'access-key', secretAccessKey: 'secret-key' }
+    });
+
+    await storage.uploadObject({
+      key: 'abort/reuse-1.bin',
+      body: Buffer.from('one'),
+      abortSignal: new AbortController().signal
+    });
+    await storage.uploadObject({
+      key: 'abort/reuse-2.bin',
+      body: Buffer.from('two'),
+      abortSignal: new AbortController().signal
+    });
+
+    expect(connectionCount).toBe(1);
     await storage.destroy();
     await closeServer(server);
   });

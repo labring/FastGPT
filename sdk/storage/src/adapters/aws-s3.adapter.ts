@@ -11,6 +11,7 @@ import {
   bindAbortSignalToReadable,
   encodeObjectKeyPath,
   formatHttpByteRangeHeader,
+  getAbortSignalError,
   throwIfStorageAborted,
   throwIfStorageDownloadAborted
 } from '../utils';
@@ -143,9 +144,9 @@ export class AwsS3StorageAdapter implements IStorage {
     throwIfStorageAborted(abortSignal);
 
     const meta = toAwsMetadata(metadata);
-    const uploadAbortController = new AbortController();
+    const uploadAbortController = abortSignal ? new AbortController() : undefined;
     const abortUpload = () => {
-      uploadAbortController.abort();
+      uploadAbortController?.abort(abortSignal?.reason);
       // lib-storage 不会销毁调用方传入的 Readable；取消时主动停止继续读取。
       if (body instanceof Readable && !body.destroyed) body.destroy();
     };
@@ -153,28 +154,34 @@ export class AwsS3StorageAdapter implements IStorage {
 
     // lib-storage 不把 abortSignal 传给实际的 S3 命令；用代理客户端为每个 send 注入，
     // 这样单 PUT、分片和多段完成的在途 HTTP 请求都会随取消关闭。
-    const uploadClient = new Proxy(this.client, {
-      get: (target, property, receiver) => {
-        if (property === 'send') {
-          return (command: any, options?: any) => {
-            // lib-storage 在失败/取消后会发送 AbortMultipartUploadCommand 清理分片；
-            // 该请求不能复用已取消的信号，否则 provider 的 Multipart 会话会残留。
-            if (command instanceof AWS.AbortMultipartUploadCommand) {
-              const cleanupOptions = { ...options };
-              delete cleanupOptions.abortSignal;
-              return target.send(command, cleanupOptions);
+    const uploadClient = uploadAbortController
+      ? new Proxy(this.client, {
+          get: (target, property) => {
+            if (property === 'send') {
+              return (command: any, options?: any) => {
+                // lib-storage 在失败/取消后会发送 AbortMultipartUploadCommand 清理分片；
+                // 该请求不能复用已取消的信号，否则 provider 的 Multipart 会话会残留。
+                if (command instanceof AWS.AbortMultipartUploadCommand) {
+                  const cleanupOptions = { ...options };
+                  delete cleanupOptions.abortSignal;
+                  return target.send(command, cleanupOptions);
+                }
+                return target.send(command, {
+                  ...options,
+                  abortSignal: uploadAbortController.signal
+                });
+              };
             }
-            return target.send(command, { ...options, abortSignal: uploadAbortController.signal });
-          };
-        }
-        return Reflect.get(target, property, receiver);
-      }
-    });
+            const value = Reflect.get(target, property, target);
+            return typeof value === 'function' ? value.bind(target) : value;
+          }
+        })
+      : this.client;
 
     try {
       const upload = new Upload({
         client: uploadClient,
-        abortController: uploadAbortController,
+        ...(uploadAbortController ? { abortController: uploadAbortController } : {}),
         params: {
           Bucket: this.options.bucket,
           Key: key,
@@ -187,6 +194,12 @@ export class AwsS3StorageAdapter implements IStorage {
       });
 
       await upload.done();
+    } catch (error) {
+      // lib-storage 的 __abortTimeout 固定抛内置 AbortError，这里统一按 SDK 契约透传调用方原因。
+      if (abortSignal?.aborted) {
+        throw getAbortSignalError(abortSignal);
+      }
+      throw error;
     } finally {
       abortSignal?.removeEventListener('abort', abortUpload);
     }

@@ -2,8 +2,7 @@ import OSS from 'ali-oss';
 import type { IOssStorageOptions, IStorage } from '../interface';
 import type * as Storage from '../types';
 import { Readable } from 'node:stream';
-import { Agent as HttpAgent } from 'node:http';
-import { Agent as HttpsAgent } from 'node:https';
+import type { ClientRequest } from 'node:http';
 import { camelCase, chunk, difference, kebabCase } from 'es-toolkit';
 import { DEFAULT_PRESIGNED_URL_EXPIRED_SECONDS } from '../constants';
 import {
@@ -28,9 +27,19 @@ import {
   isNoSuchMultipartUploadError
 } from '../assert';
 
-type OssClientOverrides = Partial<OSS.Options> & {
-  agent?: HttpAgent;
-  httpsAgent?: HttpsAgent;
+type UrllibRequestCallback = (
+  err: Error | null,
+  data: unknown,
+  res: { statusCode?: number; headers?: Record<string, unknown> }
+) => void;
+
+type OssUrllib = {
+  request: (url: string, params: Record<string, unknown>) => Promise<unknown>;
+  requestWithCallback?: (
+    url: string,
+    params: Record<string, unknown>,
+    callback: UrllibRequestCallback
+  ) => ClientRequest;
 };
 
 export class OssStorageAdapter implements IStorage {
@@ -41,23 +50,15 @@ export class OssStorageAdapter implements IStorage {
       throw new Error('Invalid storage vendor: expected "oss"');
     }
 
-    this.client = this.createClient();
-  }
-
-  /** 创建 OSS 客户端；可注入单次上传专用 agent，以便取消时关闭所有在途 socket。 */
-  private createClient(overrides: OssClientOverrides = {}): OSS {
-    const { credentials, ...options } = this.options;
-
-    return new OSS({
-      accessKeyId: credentials.accessKeyId,
-      accessKeySecret: credentials.secretAccessKey,
+    this.client = new OSS({
+      accessKeyId: options.credentials.accessKeyId,
+      accessKeySecret: options.credentials.secretAccessKey,
       region: options.region,
       endpoint: options.endpoint,
       bucket: options.bucket,
       cname: options.cname,
       internal: options.internal,
-      secure: options.secure,
-      ...overrides
+      secure: options.secure
     });
   }
 
@@ -159,17 +160,55 @@ export class OssStorageAdapter implements IStorage {
     }
 
     /**
-     * ali-oss 的 put 不暴露底层请求句柄，body 读完后也无法再通过流错误中止等待响应。
-     * 携带取消信号时使用独立 agent 的客户端，取消时直接销毁 agent 关闭所有在途 socket。
+     * ali-oss 的 put 不暴露取消参数，但底层通过 this.urllib.request 发请求，而
+     * urllib.requestWithCallback 会同步返回 http.ClientRequest。
+     * 基于 Object.create(this.client) 仅覆写单次调用的 urllib，既可精准销毁本次请求
+     * （含 body 发送完毕后等待响应阶段），又完整保留全局 AgentKeepalive 连接池复用。
      */
-    const httpAgent = abortSignal ? new HttpAgent({ keepAlive: true }) : undefined;
-    const httpsAgent = abortSignal ? new HttpsAgent({ keepAlive: true }) : undefined;
+    const activeRequests = new Set<ClientRequest>();
+    const baseUrllib = (this.client as unknown as { urllib?: OssUrllib }).urllib;
     const uploadClient =
-      httpAgent && httpsAgent ? this.createClient({ agent: httpAgent, httpsAgent }) : this.client;
+      abortSignal && baseUrllib?.requestWithCallback
+        ? Object.assign(Object.create(this.client) as OSS, {
+            urllib: {
+              ...baseUrllib,
+              request: (url: string, reqParams: Record<string, unknown>) =>
+                new Promise((resolve, reject) => {
+                  if (abortSignal.aborted) {
+                    reject(getAbortSignalError(abortSignal));
+                    return;
+                  }
+                  const req = baseUrllib.requestWithCallback!(url, reqParams, (err, data, res) => {
+                    if (req) activeRequests.delete(req);
+                    if (err) {
+                      reject(err);
+                      return;
+                    }
+                    resolve({
+                      data,
+                      status: res?.statusCode,
+                      headers: res?.headers,
+                      res
+                    });
+                  });
+                  if (req) {
+                    activeRequests.add(req);
+                    if (abortSignal.aborted) req.destroy();
+                  }
+                })
+            }
+          })
+        : this.client;
+
     const abortUpload = () => {
-      httpAgent?.destroy();
-      httpsAgent?.destroy();
-      if (uploadBody instanceof Readable && !uploadBody.destroyed) uploadBody.destroy();
+      if (activeRequests.size > 0) {
+        // 优先销毁底层 ClientRequest，由 urllib/pump 统一收尾，避免同时销毁流触发 callback twice。
+        for (const req of activeRequests) {
+          req.destroy();
+        }
+      } else if (uploadBody instanceof Readable && !uploadBody.destroyed) {
+        uploadBody.destroy();
+      }
     };
     abortSignal?.addEventListener('abort', abortUpload, { once: true });
 
@@ -186,9 +225,10 @@ export class OssStorageAdapter implements IStorage {
       throw abortSignal?.aborted ? getAbortSignalError(abortSignal) : error;
     } finally {
       abortSignal?.removeEventListener('abort', abortUpload);
-      // 单次上传的 agent 不保留空闲连接，避免取消/完成后 socket 滞留。
-      httpAgent?.destroy();
-      httpsAgent?.destroy();
+      activeRequests.clear();
+      if (abortSignal?.aborted && uploadBody instanceof Readable && !uploadBody.destroyed) {
+        uploadBody.destroy();
+      }
     }
 
     return {
