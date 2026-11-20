@@ -336,21 +336,4 @@ describe('s3 storage constants', () => {
     // 值变化时返回 true，供调用方重建 bucket
     expect(applyRuntimeStorageConfig({ downloadMode: 'short-redirect' })).toBe(true);
   });
-
-  it('falls back to short-proxy for R2 short-redirect when a legacy externalEndpoint is still saved', async () => {
-    vi.stubEnv('STORAGE_VENDOR', 'r2');
-    vi.stubEnv('STORAGE_R2_PUBLIC_ENDPOINT', 'https://pub.example.r2.dev');
-    try {
-      const { getStorageDownloadUrlMode } = await loadConstants();
-      getTestInstanceConfig().storage.downloadMode = 'short-redirect';
-      getTestInstanceConfig().storage.externalEndpoint = 'https://legacy-gateway.example.com';
-
-      expect(getStorageDownloadUrlMode()).toBe('short-proxy');
-
-      getTestInstanceConfig().storage.externalEndpoint = '';
-      expect(getStorageDownloadUrlMode()).toBe('short-redirect');
-    } finally {
-      vi.unstubAllEnvs();
-    }
-  });
 });

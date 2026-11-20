@@ -1112,7 +1112,6 @@
   "storage_external_endpoint_tip": "使用者可直接存取的物件儲存位址。MinIO 使用重新導向存取模式時必填。",
   "storage_cdn_endpoint": "CDN 加速位址",
   "storage_cdn_endpoint_tip": "選填。重新導向存取時使用此 CDN 位址（MinIO 須同時設定儲存服務外部存取端點）。測試會建立臨時檔案並驗證 CDN 實際讀取，完成後清理。",
-  "storage_r2_legacy_external_endpoint_notice": "偵測到歷史儲存的外部存取端點。Cloudflare R2 不再使用該欄位簽發重新導向連結，目前下載已自動降級為代理模式；請點擊「儲存」清理舊設定後恢復直連重新導向。",
   "revision_conflict_refresh_required": "配置已被他人修改，請先保留目前的修改，再重新整理頁面、重新編輯並儲存。",
   "feature_section_display": "展示設定",
   "page_title_inform": "通知管理",

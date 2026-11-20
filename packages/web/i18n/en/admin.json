@@ -1112,7 +1112,6 @@
   "storage_external_endpoint_tip": "Object storage address that users can access directly. Required for MinIO in redirect access mode.",
   "storage_cdn_endpoint": "CDN Endpoint",
   "storage_cdn_endpoint_tip": "Optional CDN address for redirect access (MinIO also requires a storage service external endpoint). The test creates a temporary file, checks retrieval through the CDN, and cleans it up.",
-  "storage_r2_legacy_external_endpoint_notice": "A legacy external endpoint is still saved. Cloudflare R2 no longer uses it for redirect signing, so downloads are temporarily falling back to proxy mode; click Save to clear the legacy setting and restore redirect mode.",
   "revision_conflict_refresh_required": "The configuration was modified elsewhere. Copy any edits you want to keep, then refresh the page and review your changes before saving again.",
   "feature_section_display": "Display Configuration",
   "page_title_inform": "Notifications",

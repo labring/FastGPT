@@ -390,9 +390,6 @@ describe('system configuration secret forms', () => {
       expect(container.textContent).toContain(
         `admin:object_storage_backend_read_only:${capabilities.vendor}`
       );
-      expect(
-        container.textContent?.includes('admin:storage_r2_legacy_external_endpoint_notice') ?? false
-      ).toBe(capabilities.vendor === 'r2');
       expect(container.querySelector('[name="externalEndpoint"]') !== null).toBe(expectExternal);
       expect(container.querySelector('[name="cdnEndpoint"][data-service="cdn"]') !== null).toBe(
         expectCdn
