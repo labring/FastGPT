@@ -9,9 +9,15 @@ import { describe, expect, it, beforeEach, vi } from 'vitest';
 import * as listApi from '@/pages/api/core/app/logs/list';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import {
+  AppVersionCollectionName,
+  MongoAppVersion
+} from '@fastgpt/service/core/app/version/schema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
-import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
+import {
+  ChatItemCollectionName,
+  ChatItemResponseCollectionName
+} from '@fastgpt/service/core/chat/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
@@ -24,7 +30,7 @@ import type {
 } from '@fastgpt/global/openapi/core/app/log/api';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { Types } from '@fastgpt/service/common/mongo';
+import { ReadPreference, Types } from '@fastgpt/service/common/mongo';
 
 vi.unmock('@fastgpt/service/common/response');
 vi.mock('@fastgpt/service/common/rateLimit/interface/member', async (importOriginal) => ({
@@ -1143,7 +1149,6 @@ describe('logs list API - errorFilter', () => {
 
     const chatAggregateSpy = vi.spyOn(MongoChat, 'aggregate');
     const versionFindSpy = vi.spyOn(MongoAppVersion, 'find');
-    const responseAggregateSpy = vi.spyOn(MongoChatItemResponse, 'aggregate');
     try {
       const exported = await StreamCall(exportLogs, {
         auth: authUser,
@@ -1165,10 +1170,22 @@ describe('logs list API - errorFilter', () => {
       expect(exported.raw).toContain('\nchat-numeric-version,,');
       expect(exported.raw).toContain('\nchat-short-string-version,,');
 
-      expect(chatAggregateSpy).not.toHaveBeenCalled();
-      // 存在 1 个已删版本 ID：首次从库批量查询未命中后，回主库确认一次再写入负缓存
+      // 同一次从库聚合中保留 chatitems，移除大文档 app_versions，未选 points 时跳过 chatitemresponses
+      const pipeline = chatAggregateSpy.mock.calls[0]?.[0] as any[];
+      expect(
+        pipeline.some((stage) => stage?.$lookup?.from === ChatItemCollectionName)
+      ).toBe(true);
+      expect(
+        pipeline.some((stage) => stage?.$lookup?.from === AppVersionCollectionName)
+      ).toBe(false);
+      expect(
+        pipeline.some((stage) => stage?.$lookup?.from === ChatItemResponseCollectionName)
+      ).toBe(false);
+      // 存在 1 个已删版本 ID：首次从库批量查询未命中后，显式以 PRIMARY 回主库确认一次再写入负缓存
       expect(versionFindSpy).toHaveBeenCalledTimes(2);
-      expect(responseAggregateSpy).not.toHaveBeenCalled();
+      expect(versionFindSpy.mock.calls[1]?.[2]).toEqual({
+        readPreference: ReadPreference.PRIMARY
+      });
 
       versionFindSpy.mockClear();
       const exportedWithoutVersion = await StreamCall(exportLogs, {
@@ -1185,11 +1202,9 @@ describe('logs list API - errorFilter', () => {
       });
       expect(exportedWithoutVersion.code).toBe(200);
       expect(versionFindSpy).not.toHaveBeenCalled();
-      expect(responseAggregateSpy).not.toHaveBeenCalled();
     } finally {
       chatAggregateSpy.mockRestore();
       versionFindSpy.mockRestore();
-      responseAggregateSpy.mockRestore();
     }
   });
 
@@ -1218,14 +1233,16 @@ describe('logs list API - errorFilter', () => {
 
     const originalFind = MongoAppVersion.find.bind(MongoAppVersion);
     let findCalls = 0;
+    const readPreferences: unknown[] = [];
     const versionFindSpy = vi.spyOn(MongoAppVersion, 'find').mockImplementation(((
       filter: any,
       projection: any,
       options: any
     ) => {
       findCalls++;
-      // 模拟首次从库查询因复制延迟查空，后续主库确认返回真实数据
-      if (findCalls === 1 && options?.readPreference) {
+      readPreferences.push(options?.readPreference);
+      // 模拟首次从库查询因复制延迟查空，后续显式主库确认返回真实数据
+      if (findCalls === 1 && options?.readPreference === ReadPreference.SECONDARY_PREFERRED) {
         return { lean: async () => [] } as any;
       }
       return originalFind(filter, projection, options);
@@ -1250,6 +1267,33 @@ describe('logs list API - errorFilter', () => {
       expect(dataRows.every((line) => line.includes(',v-replica-sync,'))).toBe(true);
       // 第 1 批：1 次从库(空) + 1 次主库(命中)；第 2 批命中缓存 0 次查库
       expect(findCalls).toBe(2);
+      expect(readPreferences).toEqual([
+        ReadPreference.SECONDARY_PREFERRED,
+        ReadPreference.PRIMARY
+      ]);
+
+      // 同步验证日志列表分页也对从库短暂查空的版本 ID 显式以 PRIMARY 回主库补查
+      findCalls = 0;
+      readPreferences.length = 0;
+      const listed = await Call(listApi.default, {
+        auth: authUser,
+        headers: {},
+        body: {
+          appId: testAppId,
+          dateStart: '2020-01-01',
+          dateEnd: '2099-01-01',
+          pageSize: 5,
+          offset: 0
+        }
+      });
+      expect(listed.code).toBe(200);
+      expect(listed.data.list.every((item: any) => item.versionName === 'v-replica-sync')).toBe(
+        true
+      );
+      expect(readPreferences).toEqual([
+        ReadPreference.SECONDARY_PREFERRED,
+        ReadPreference.PRIMARY
+      ]);
     } finally {
       versionFindSpy.mockRestore();
     }

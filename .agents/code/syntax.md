@@ -425,11 +425,17 @@ export const createAppAndInitVersion = async (
 - **避免大文档重复 `FETCH`**：被关联集合单文档较大（如 `app_versions` 含完整 `nodes`/`edges`）且无覆盖索引时，逐条 `$lookup` 会触发大量重复读取与裁切。
 - **按需跳过与全版本兼容**：可选列未启用时直接不查库、不投影外键；同时规避 `localField/foreignField + pipeline` 在 MongoDB 4.4 报错及 `let + $expr` 缺失外键退化 `COLLSCAN` 的问题。
 - **严格校验 `ObjectId`**：统一使用 `parseObjectId(value)`（仅接受 `ObjectId` 实例或 24 位 hex 字符串），避免 BSON 数字（如 `123`）或 12 字符短串绕过 `Types.ObjectId.isValid` 后在构造 `ObjectId` 时抛 `BSONError`。
-- **从库读取与负缓存一致性**：主查询与补充查询均使用 `readFromSecondary` 时，跨从库复制延迟可能导致短暂查空。做跨批次负缓存前，需先对从库未命中的 ID 回主库批量确认，仅缓存主库确认缺失的空值。
+- **从库读取与一致性边界**：
+  - 需要同一行内多个事实表统计口径一致（如会话 + 消息数 + 积分）且走 `readFromSecondary` 时，应保留在同一次聚合管道内确保同节点一致视图，避免拆成多次独立从库读导致跨滞后副本混读。
+  - 对维表（如 `app_versions`）做从库批量查询与负缓存前，未命中 ID 必须显式传入 `readFromPrimary`（`{ readPreference: ReadPreference.PRIMARY }`）回主库确认，避免继承连接串的 `readPreference=secondaryPreferred` 再次落到滞后从库。
 - **ObjectId 显式还原**：全局 `find` post hook（`convertObjectIds`）会将顶层 `ObjectId` 转为 `string`，而 `aggregate` 的 `$match` 不做 Mongoose 自动转型；将 `find` 得到的 ID 传给后续 `aggregate` `$match` 时必须显式还原为 `Types.ObjectId`。
 
 ```typescript
-import { parseObjectId, readFromSecondary } from '@fastgpt/service/common/mongo/utils';
+import {
+  parseObjectId,
+  readFromPrimary,
+  readFromSecondary
+} from '@fastgpt/service/common/mongo/utils';
 import { type Types } from '@fastgpt/service/common/mongo';
 
 // Good —— 严格校验 ObjectId、最小投影批量查询、从库未命中回主库确认后再负缓存
@@ -463,7 +469,8 @@ const loadVersionNames = async (batch: Array<{ appVersionId?: unknown }>) => {
   if (missingMap.size > 0) {
     const primaryVersions = await MongoAppVersion.find(
       { _id: { $in: Array.from(missingMap.values()) } },
-      { _id: 1, versionName: 1 }
+      { _id: 1, versionName: 1 },
+      readFromPrimary
     ).lean();
     for (const version of primaryVersions) {
       const idStr = String(version._id);
