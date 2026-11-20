@@ -664,39 +664,44 @@ describe('parseFileContentFromUrls (external fetch)', () => {
     });
   });
 
-  it('短链解析时使用 alias 记录里的文件名推断后缀，不把短链 token 当文件名', async () => {
-    const signedAlias = 'itmq831ey0kc0xmklk1rik.hp436.0rpC9RtnHmPy_CVri9pBq8';
-    const shortUrl = `https://files.example.com/api/system/file/d/${signedAlias}`;
-    mockVerifyS3DownloadAccess.mockResolvedValue({
-      bucketName: 'fastgpt-private',
-      objectKey: 'chat/app/app1/u1/c1/random-key',
-      filename: 'report.pdf',
-      expiresAt: new Date('2099-01-01T00:00:00.000Z')
-    });
-    mockAxiosGet.mockResolvedValue({
-      data: Buffer.from('%PDF-1.7'),
-      headers: {
-        'content-type': 'application/octet-stream'
-      }
-    });
+  it.each([
+    'itmq831ey0kc0xmklk1rik.hp436.0rpC9RtnHmPy_CVri9pBq8',
+    'v2-itmq831ey0kc0xmklk1rik-hp436-0rpC9RtnHmPyCVri9pBq8A.pdf'
+  ])(
+    '短链 %s 解析时使用 alias 记录里的文件名推断后缀，不把短链 token 当文件名',
+    async (signedAlias) => {
+      const shortUrl = `https://files.example.com/api/system/file/d/${signedAlias}`;
+      mockVerifyS3DownloadAccess.mockResolvedValue({
+        bucketName: 'fastgpt-private',
+        objectKey: 'chat/app/app1/u1/c1/random-key',
+        filename: 'report.pdf',
+        expiresAt: new Date('2099-01-01T00:00:00.000Z')
+      });
+      mockAxiosGet.mockResolvedValue({
+        data: Buffer.from('%PDF-1.7'),
+        headers: {
+          'content-type': 'application/octet-stream'
+        }
+      });
 
-    const result = await parseFileContentFromUrls({
-      urls: [shortUrl],
-      maxFiles: 20,
-      teamId: 'team-1',
-      tmbId: 'tmb-1'
-    });
+      const result = await parseFileContentFromUrls({
+        urls: [shortUrl],
+        maxFiles: 20,
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      });
 
-    expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(signedAlias);
-    expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
-      expect.objectContaining({ extension: 'pdf' })
-    );
-    expect(result[0]).toMatchObject({
-      success: true,
-      name: 'report.pdf',
-      url: shortUrl
-    });
-  });
+      expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(signedAlias);
+      expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
+        expect.objectContaining({ extension: 'pdf' })
+      );
+      expect(result[0]).toMatchObject({
+        success: true,
+        name: 'report.pdf',
+        url: shortUrl
+      });
+    }
+  );
 
   it.each(['/api/system/file/d/', '/f/'])(
     '工作流未登记的 %s 短链使用真实文件名解析，不把签名后缀登记为外链格式',

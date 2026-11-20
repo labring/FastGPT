@@ -3,10 +3,15 @@ import {
   S3AccessLinkErrCode,
   S3AccessLinkError,
   S3_DOWNLOAD_URL_BATCH_MAX_SIZE,
+  createDefaultIdGenerator,
   createMemoryS3AccessLinkStores,
   createS3AccessLinkCrypto,
   createS3AccessLinkService,
   encodeExpiresAtMinute,
+  formatSignedS3DownloadAlias,
+  normalizeS3DownloadExtension,
+  parseSignedS3DownloadAlias,
+  resolveS3DownloadExtension,
   type S3DownloadAliasStore
 } from '../../src/access-link';
 
@@ -61,6 +66,9 @@ describe('S3 access link SDK core', () => {
     const secondUrl = await service.createDownloadUrl(params);
 
     expect(firstUrl).toBe(secondUrl);
+    expect(firstUrl).toMatch(
+      /^https:\/\/file\.example\.com\/d\/v2-AliasId12345678-[0-9a-z]+-[A-Za-z0-9]{22}\.png$/
+    );
     expect(stores.downloadAliases.size).toBe(1);
 
     const payload = await service.verifyDownloadAlias(extractLastPathSegment(firstUrl));
@@ -288,10 +296,28 @@ describe('S3 access link SDK core', () => {
     const crypto = createS3AccessLinkCrypto({ secret: 'test-secret' });
     const aliasId = 'AliasId12345678';
     const expMinute36 = encodeExpiresAtMinute(getFutureDate(-10));
-    const signedAlias = `${aliasId}.${expMinute36}.${crypto.signDownloadAlias({
+    const v2SignedAlias = formatSignedS3DownloadAlias({
       aliasId,
-      expMinute36
-    })}`;
+      expMinute36,
+      sig: crypto.signDownloadAlias({
+        aliasId,
+        expMinute36,
+        extension: 'png',
+        version: 'v2'
+      }),
+      extension: 'png',
+      version: 'v2'
+    });
+    const v1SignedAlias = formatSignedS3DownloadAlias({
+      aliasId,
+      expMinute36,
+      sig: crypto.signDownloadAlias({
+        aliasId,
+        expMinute36,
+        version: 'v1'
+      }),
+      version: 'v1'
+    });
     const service = createS3AccessLinkService({
       secret: 'test-secret',
       routes: {
@@ -308,17 +334,32 @@ describe('S3 access link SDK core', () => {
       clock: () => baseNow
     });
 
-    await expect(service.verifyDownloadAlias(signedAlias)).rejects.toMatchObject({
+    await expect(service.verifyDownloadAlias(v2SignedAlias)).rejects.toMatchObject({
+      code: S3AccessLinkErrCode.expiredSignedAlias
+    });
+    await expect(service.verifyDownloadAlias(v1SignedAlias)).rejects.toMatchObject({
       code: S3AccessLinkErrCode.expiredSignedAlias
     });
     expect(findByAliasId).not.toHaveBeenCalled();
   });
 
-  it('rejects tampered download alias signatures before querying the store', async () => {
+  it('rejects tampered download alias signatures and extensions before querying the store', async () => {
     const findByAliasId = vi.fn<S3DownloadAliasStore['findByAliasId']>();
     const stores = createMemoryS3AccessLinkStores();
+    const crypto = createS3AccessLinkCrypto({ secret: 'test-secret' });
     const aliasId = 'AliasId12345678';
     const expMinute36 = encodeExpiresAtMinute(getFutureDate(10));
+    const v2PngSig = crypto.signDownloadAlias({
+      aliasId,
+      expMinute36,
+      extension: 'png',
+      version: 'v2'
+    });
+    const v2NoExtSig = crypto.signDownloadAlias({
+      aliasId,
+      expMinute36,
+      version: 'v2'
+    });
     const service = createS3AccessLinkService({
       secret: 'test-secret',
       routes: {
@@ -335,12 +376,123 @@ describe('S3 access link SDK core', () => {
       clock: () => baseNow
     });
 
+    // v2 篡改签名、篡改后缀、去掉后缀、为无后缀签名追加后缀均须在查 store 前拒绝。
+    await expect(
+      service.verifyDownloadAlias(`v2-${aliasId}-${expMinute36}-InvalidSignature123456.png`)
+    ).rejects.toMatchObject({
+      code: S3AccessLinkErrCode.invalidSignedAliasSignature
+    });
+    await expect(
+      service.verifyDownloadAlias(`v2-${aliasId}-${expMinute36}-${v2PngSig}.jpg`)
+    ).rejects.toMatchObject({
+      code: S3AccessLinkErrCode.invalidSignedAliasSignature
+    });
+    await expect(
+      service.verifyDownloadAlias(`v2-${aliasId}-${expMinute36}-${v2PngSig}`)
+    ).rejects.toMatchObject({
+      code: S3AccessLinkErrCode.invalidSignedAliasSignature
+    });
+    await expect(
+      service.verifyDownloadAlias(`v2-${aliasId}-${expMinute36}-${v2NoExtSig}.png`)
+    ).rejects.toMatchObject({
+      code: S3AccessLinkErrCode.invalidSignedAliasSignature
+    });
+    // 存量 v1 篡改签名同样拒绝。
     await expect(
       service.verifyDownloadAlias(`${aliasId}.${expMinute36}.InvalidSignature1234`)
     ).rejects.toMatchObject({
       code: S3AccessLinkErrCode.invalidSignedAliasSignature
     });
     expect(findByAliasId).not.toHaveBeenCalled();
+  });
+
+  it('omits extension when file has no safe extension and supports legacy v1 verification and hyphenated aliasIds', async () => {
+    const stores = createMemoryS3AccessLinkStores();
+    const crypto = createS3AccessLinkCrypto({ secret: 'test-secret' });
+    const legacyAliasId = 'legacy-alias_1234';
+    const { service } = createDeterministicService({
+      stores: {
+        downloadAlias: stores.downloadAliasStore,
+        uploadSession: stores.uploadSessionStore
+      },
+      idGenerator: {
+        aliasId: () => legacyAliasId
+      }
+    });
+
+    // 无扩展名对象：v2 整段不含 '.'
+    const noExtUrl = await service.createDownloadUrl({
+      bucketName: 'private',
+      objectKey: 'dataset/team-1/raw-object',
+      filename: 'report.2026',
+      expiredTime: getFutureDate(10)
+    });
+    const noExtAlias = extractLastPathSegment(noExtUrl);
+    expect(noExtAlias).toMatch(/^v2-legacy-alias_1234-[0-9a-z]+-[A-Za-z0-9]{22}$/);
+    expect(noExtAlias).not.toContain('.');
+    const parsedNoExt = parseSignedS3DownloadAlias(noExtAlias);
+    expect(parsedNoExt).toMatchObject({
+      version: 'v2',
+      aliasId: legacyAliasId
+    });
+    expect(parsedNoExt.extension).toBeUndefined();
+    await expect(service.verifyDownloadAlias(noExtAlias)).resolves.toMatchObject({
+      bucketName: 'private',
+      objectKey: 'dataset/team-1/raw-object'
+    });
+
+    // 同一 aliasId 的历史 v1 点分链接依然可验证通过
+    const expMinute36 = encodeExpiresAtMinute(getFutureDate(10));
+    const v1SignedAlias = formatSignedS3DownloadAlias({
+      aliasId: legacyAliasId,
+      expMinute36,
+      sig: crypto.signDownloadAlias({
+        aliasId: legacyAliasId,
+        expMinute36,
+        version: 'v1'
+      }),
+      version: 'v1'
+    });
+    expect(parseSignedS3DownloadAlias(v1SignedAlias)).toMatchObject({
+      version: 'v1',
+      aliasId: legacyAliasId
+    });
+    await expect(service.verifyDownloadAlias(v1SignedAlias)).resolves.toMatchObject({
+      bucketName: 'private',
+      objectKey: 'dataset/team-1/raw-object'
+    });
+  });
+
+  it('generates Base62 default aliasIds and normalizes safe extensions', () => {
+    const idGenerator = createDefaultIdGenerator();
+    for (let index = 0; index < 32; index++) {
+      expect(idGenerator.aliasId()).toMatch(/^[A-Za-z0-9]{16}$/);
+    }
+
+    expect(normalizeS3DownloadExtension('.PNG')).toBe('png');
+    expect(normalizeS3DownloadExtension('7z')).toBe('7z');
+    expect(normalizeS3DownloadExtension('..png')).toBe('');
+    expect(normalizeS3DownloadExtension('2026')).toBe('');
+    expect(normalizeS3DownloadExtension('tar.gz')).toBe('');
+    expect(
+      resolveS3DownloadExtension({
+        filename: '显示名无后缀',
+        objectKey: 'dataset/team/photo%201.JPEG'
+      })
+    ).toBe('jpeg');
+    expect(
+      resolveS3DownloadExtension({
+        extension: '.webp',
+        filename: 'photo.png',
+        objectKey: 'dataset/team/photo.jpg'
+      })
+    ).toBe('webp');
+    expect(
+      resolveS3DownloadExtension({
+        filename: '.env',
+        objectKey: 'dataset/folder.v1/noext'
+      })
+    ).toBe('');
   });
 
   it('stores upload token hashes and verifies upload payloads', async () => {

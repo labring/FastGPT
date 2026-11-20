@@ -74,10 +74,13 @@ describe('parseUrlToChatFileType', () => {
     }
   );
 
-  it.each(['/api/system/file/d/', '/f/', '/'])(
-    '短链 %s 使用响应元数据分类，不把签名中的点号当成文件后缀',
-    async (prefix) => {
-      const shortUrl = `https://files.example.com${prefix}workflowFileAlias.hscf3.ExampleSignatureValue1234`;
+  it.each([
+    'workflowFileAlias.hscf3.ExampleSignatureValue1234',
+    'v2-workflowFileAlias-hscf3-ExampleSignatureValue1.txt',
+    'v2-workflowFileAlias-hscf3-ExampleSignatureValue1'
+  ])('短链凭证 %s 使用响应元数据分类，不把签名片段当成真实文件名', async (signedAlias) => {
+    for (const prefix of ['/api/system/file/d/', '/f/', '/']) {
+      const shortUrl = `https://files.example.com${prefix}${signedAlias}`;
       vi.mocked(axios.head).mockResolvedValueOnce({
         headers: {
           'content-type': 'text/plain; charset=utf-8',
@@ -93,13 +96,25 @@ describe('parseUrlToChatFileType', () => {
         type: FileType.document,
         filename: 'test_file.txt'
       });
-      expect(axios.head).toHaveBeenCalledTimes(1);
     }
-  );
+    expect(axios.head).toHaveBeenCalledTimes(3);
+  });
 
   it.each([
     [
       'https://testdev.fastgpt.cn/api/system/file/d/',
+      'q7aJkh7F0FB2FI3C.hskff.6JjpblHZ0hOyMbEq4frV0A',
+      {
+        objectKey: 'chat/app/app1/u1/c1/opaque-object',
+        filename: 'diagram.png',
+        responseContentType: 'image/png'
+      },
+      FileType.image,
+      'diagram.png'
+    ],
+    [
+      'https://testdev.fastgpt.cn/api/system/file/d/',
+      'v2-q7aJkh7F0FB2FI3C-hskff-6JjpblHZ0hOyMbEq4frV0A.png',
       {
         objectKey: 'chat/app/app1/u1/c1/opaque-object',
         filename: 'diagram.png',
@@ -110,6 +125,7 @@ describe('parseUrlToChatFileType', () => {
     ],
     [
       'https://files.example.com/f/',
+      'v2-q7aJkh7F0FB2FI3C-hskff-6JjpblHZ0hOyMbEq4frV0A.mp3',
       {
         objectKey: 'chat/app/app1/u1/c1/recording.mp3',
         filename: 'Recording'
@@ -118,9 +134,8 @@ describe('parseUrlToChatFileType', () => {
       'Recording'
     ]
   ])(
-    '本机签发的短链 %s 优先使用下载别名元数据或对象键后缀分类，不发起远端 HTTP 探测',
-    async (prefix, resolved, expectedType, expectedFilename) => {
-      const signedAlias = 'q7aJkh7F0FB2FI3C.hskff.6JjpblHZ0hOyMbEq4frV0A';
+    '本机签发的短链 %s (%s) 优先使用下载别名元数据或对象键后缀分类，不发起远端 HTTP 探测',
+    async (prefix, signedAlias, resolved, expectedType, expectedFilename) => {
       const shortUrl = `${prefix}${signedAlias}`;
       vi.spyOn(s3AccessLinkService, 'verifyDownloadAlias').mockResolvedValueOnce({
         bucketName: 'fastgpt-private',

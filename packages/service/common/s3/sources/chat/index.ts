@@ -18,6 +18,7 @@ import { createUploadConstraints } from '../../utils/uploadConstraints';
 import { encodeS3ObjectKeySegment } from '../../keySanitizer';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getLogger, LogCategories } from '../../../logger';
+import { resolveS3DownloadFallbackExtension } from '../../accessLink/utils';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 const getChatFileScope = ({
@@ -125,10 +126,18 @@ export class S3ChatSource extends S3PrivateBucket {
         : undefined;
 
     if (external) {
+      const resolvedFilename = filename || fileMetadata?.filename;
+      const fallbackExtension = resolveS3DownloadFallbackExtension({
+        filename: resolvedFilename,
+        objectKey: key,
+        contentType: fileMetadata?.contentType
+      });
+
       return await this.createExternalUrl({
         key,
         expiredHours,
-        filename: filename || fileMetadata?.filename
+        filename: resolvedFilename,
+        ...(fallbackExtension ? { extension: fallbackExtension } : {})
       });
     }
     return await this.createPreviewUrl({ key, expiredHours });

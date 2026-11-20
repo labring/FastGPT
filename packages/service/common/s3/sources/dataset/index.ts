@@ -19,6 +19,7 @@ import { addHours } from 'date-fns';
 import { getLogger, LogCategories } from '../../../logger';
 import { readFileContentBySource } from '../../../file/read/utils';
 import { ensureTextContentTypeCharset, isTextLikeFile, resolveMimeType } from '../../utils/mime';
+import { resolveS3DownloadFallbackExtension } from '../../accessLink/utils';
 import { createUploadConstraints, datasetAllowedExtensions } from '../../utils/uploadConstraints';
 import { getFileS3Key } from '../../utils';
 import { isAuthorizedDatasetFileS3Key } from './key';
@@ -60,11 +61,19 @@ export class S3DatasetSource extends S3PrivateBucket {
         : undefined;
 
     if (external) {
+      // 无后缀的对象（如老数据或无扩展名上传的图片）仍可借助 S3 对象 MIME 为短链补充真实扩展名。
+      const fallbackExtension = resolveS3DownloadFallbackExtension({
+        filename: fileMetadata?.filename,
+        objectKey: key,
+        contentType: fileMetadata?.contentType
+      });
+
       return await this.createExternalUrl({
         key,
         expiredHours,
         responseContentType,
-        filename: fileMetadata?.filename
+        filename: fileMetadata?.filename,
+        ...(fallbackExtension ? { extension: fallbackExtension } : {})
       });
     }
     return await this.createPreviewUrl({ key, expiredHours, responseContentType });

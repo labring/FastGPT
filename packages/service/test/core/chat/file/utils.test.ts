@@ -10,8 +10,15 @@ import {
 describe('isSignedDownloadAlias', () => {
   it.each<[string, boolean]>([
     ['workflowFileAlias.hscf3.ExampleSignatureValue1234', true],
+    ['v2-workflowFileAlias-hscf3-ExampleSignatureValue1', true],
+    ['v2-workflowFileAlias-hscf3-ExampleSignatureValue1.png', true],
+    ['v2-legacy-alias_1234-hscf3-ExampleSignatureValue1.mp3', true],
     ['report.pdf', false],
+    ['my-project-doc-2026-annualsummaryreport.pdf', false],
     ['workflowFileAlias.hscf3.ExampleSignatureValue1234.txt', false],
+    ['v2-workflowFileAlias-hscf3-ExampleSignatureValue1.2026', false],
+    ['v2-workflowFileAlias-hscf3-ExampleSignatureValue1.tar.gz', false],
+    ['v2-workflowFileAlias-hscf3-Example_SignatureValue1.png', false],
     ['%invalid', false],
     ['', false]
   ])('区分短链凭证与文件名：%s', (value, expected) =>

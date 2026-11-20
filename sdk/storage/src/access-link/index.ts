@@ -3,10 +3,16 @@ export {
   S3_DOWNLOAD_ALIAS_LEASE_REFRESH_MARGIN_MS,
   S3_DOWNLOAD_ALIAS_ID_LENGTH,
   S3_DOWNLOAD_ALIAS_SIGN_VERSION,
+  S3_DOWNLOAD_ALIAS_SIGN_VERSION_V1,
+  S3_DOWNLOAD_ALIAS_SIGN_VERSION_V2,
+  S3_DOWNLOAD_EXTENSION_PATTERN,
   S3_DOWNLOAD_URL_BATCH_MAX_SIZE,
   S3_DOWNLOAD_EXPIRE_BUCKET_MS,
   S3_DOWNLOAD_EXPIRE_BUCKET_THRESHOLD_MS,
   S3_DOWNLOAD_SIGNATURE_LENGTH,
+  S3_SIGNED_DOWNLOAD_ALIAS_PATTERN,
+  S3_SIGNED_DOWNLOAD_ALIAS_V1_PATTERN,
+  S3_SIGNED_DOWNLOAD_ALIAS_V2_PATTERN,
   S3_UPLOAD_TOKEN_LENGTH
 } from './constants';
 export {
@@ -18,9 +24,11 @@ export {
 export {
   decodeExpiresAtMinute,
   encodeExpiresAtMinute,
+  formatSignedS3DownloadAlias,
   parseSignedS3DownloadAlias,
   resolveDownloadExpiresAt
 } from './download';
+export { normalizeS3DownloadExtension, resolveS3DownloadExtension } from './extension';
 export {
   S3AccessLinkErrCode,
   S3AccessLinkError,
@@ -45,6 +53,7 @@ export type {
   S3AccessLinkService,
   S3AccessLinkStores,
   S3DownloadAliasRecord,
+  S3DownloadAliasSignVersion,
   S3DownloadUrlTiming,
   S3ProxyDownloadPayload,
   S3ProxyUploadPayload,

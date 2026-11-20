@@ -1,9 +1,13 @@
 import {
   S3_ACCESS_LINK_PURGE_GRACE_HOURS,
-  S3_DOWNLOAD_ALIAS_LEASE_REFRESH_MARGIN_MS,
   S3_DOWNLOAD_ALIAS_ID_LENGTH,
+  S3_DOWNLOAD_ALIAS_LEASE_REFRESH_MARGIN_MS,
+  S3_DOWNLOAD_ALIAS_SIGN_VERSION,
+  S3_DOWNLOAD_ALIAS_SIGN_VERSION_V1,
+  S3_DOWNLOAD_ALIAS_SIGN_VERSION_V2,
+  S3_DOWNLOAD_SIGNATURE_LENGTH,
   S3_DOWNLOAD_URL_BATCH_MAX_SIZE,
-  S3_DOWNLOAD_SIGNATURE_LENGTH
+  S3_SIGNED_DOWNLOAD_ALIAS_V2_PATTERN
 } from './constants';
 import type { S3AccessLinkCrypto } from './crypto';
 import { constantTimeEqual } from './crypto';
@@ -14,6 +18,7 @@ import {
   resolveDownloadExpiresAt
 } from './date';
 import { S3AccessLinkErrCode, S3AccessLinkError, isS3AccessLinkError } from './errors';
+import { normalizeS3DownloadExtension, resolveS3DownloadExtension } from './extension';
 import {
   assertCreateDownloadParams,
   assertDownloadPayload,
@@ -24,6 +29,7 @@ import type {
   ParsedS3SignedDownloadAlias,
   ResolvedS3AccessLinkServiceOptions,
   S3DownloadAliasRecord,
+  S3DownloadAliasSignVersion,
   S3DownloadUrlTiming,
   S3VerifiedDownloadPayload
 } from './types';
@@ -40,8 +46,70 @@ const emitDownloadUrlTiming = (
   }
 };
 
+/** 组装对外下载短链中的 signedAlias 片段；默认产出 v2 连字符格式并按需附带安全后缀。 */
+export const formatSignedS3DownloadAlias = ({
+  aliasId,
+  expMinute36,
+  sig,
+  extension,
+  version = S3_DOWNLOAD_ALIAS_SIGN_VERSION
+}: {
+  aliasId: string;
+  expMinute36: string;
+  sig: string;
+  extension?: string;
+  version?: S3DownloadAliasSignVersion;
+}) => {
+  if (version === S3_DOWNLOAD_ALIAS_SIGN_VERSION_V1) {
+    return `${aliasId}.${expMinute36}.${sig}`;
+  }
+
+  const normalizedExtension = normalizeS3DownloadExtension(extension);
+  return normalizedExtension
+    ? `${S3_DOWNLOAD_ALIAS_SIGN_VERSION_V2}-${aliasId}-${expMinute36}-${sig}.${normalizedExtension}`
+    : `${S3_DOWNLOAD_ALIAS_SIGN_VERSION_V2}-${aliasId}-${expMinute36}-${sig}`;
+};
+
 const parseSignedS3DownloadAliasValue = (value: string): ParsedS3SignedDownloadAlias => {
   assertSignedAliasFormat(value);
+
+  if (S3_SIGNED_DOWNLOAD_ALIAS_V2_PATTERN.test(value)) {
+    const withoutPrefix = value.slice(`${S3_DOWNLOAD_ALIAS_SIGN_VERSION_V2}-`.length);
+    const dotIndex = withoutPrefix.indexOf('.');
+    const tokenPart = dotIndex >= 0 ? withoutPrefix.slice(0, dotIndex) : withoutPrefix;
+    const extension = dotIndex >= 0 ? withoutPrefix.slice(dotIndex + 1) : undefined;
+
+    // v2 的 sig（Base62）和 expMinute36（Base36）均不含 '-'，从右向左拆可兼容存量含 '-' 的 aliasId。
+    const lastDashIndex = tokenPart.lastIndexOf('-');
+    const secondLastDashIndex = tokenPart.lastIndexOf('-', lastDashIndex - 1);
+    const aliasId = secondLastDashIndex > 0 ? tokenPart.slice(0, secondLastDashIndex) : '';
+    const expMinute36 =
+      secondLastDashIndex > 0 && lastDashIndex > secondLastDashIndex
+        ? tokenPart.slice(secondLastDashIndex + 1, lastDashIndex)
+        : '';
+    const sig = lastDashIndex >= 0 ? tokenPart.slice(lastDashIndex + 1) : '';
+
+    if (
+      aliasId.length < 12 ||
+      aliasId.length > 32 ||
+      expMinute36.length === 0 ||
+      expMinute36.length > 8 ||
+      sig.length < 16 ||
+      sig.length > 64
+    ) {
+      throw new S3AccessLinkError(S3AccessLinkErrCode.invalidSignedAlias);
+    }
+
+    return {
+      version: S3_DOWNLOAD_ALIAS_SIGN_VERSION_V2,
+      aliasId,
+      expMinute36,
+      sig,
+      ...(extension ? { extension } : {})
+    };
+  }
+
+  // 兼容存量 v1 点分格式：<aliasId>.<expMinute36>.<sig>
   const [aliasId = '', expMinute36 = '', sig = ''] = value.split('.');
 
   if (
@@ -55,7 +123,12 @@ const parseSignedS3DownloadAliasValue = (value: string): ParsedS3SignedDownloadA
     throw new S3AccessLinkError(S3AccessLinkErrCode.invalidSignedAlias);
   }
 
-  return { aliasId, expMinute36, sig };
+  return {
+    version: S3_DOWNLOAD_ALIAS_SIGN_VERSION_V1,
+    aliasId,
+    expMinute36,
+    sig
+  };
 };
 
 export const createDownloadAliasSignatureAssert = ({
@@ -75,7 +148,9 @@ export const createDownloadAliasSignatureAssert = ({
 
     const expectedSig = crypto.signDownloadAlias({
       aliasId: parsed.aliasId,
-      expMinute36: parsed.expMinute36
+      expMinute36: parsed.expMinute36,
+      extension: parsed.extension,
+      version: parsed.version
     });
 
     if (!constantTimeEqual(parsed.sig, expectedSig)) {
@@ -94,6 +169,7 @@ type PreparedDownloadUrl = {
   aliasKey: string;
   expiresAt: Date;
   expMinute36: string;
+  extension: string;
   purgeAt: Date;
 };
 
@@ -151,6 +227,11 @@ export const createDownloadUrlsHandler =
         aliasKey: crypto.buildDownloadAliasKey(parsed),
         expiresAt,
         expMinute36: encodeExpiresAtMinute(expiresAt),
+        extension: resolveS3DownloadExtension({
+          extension: parsed.extension,
+          filename: parsed.filename,
+          objectKey: parsed.objectKey
+        }),
         purgeAt: addHours(expiresAt, S3_ACCESS_LINK_PURGE_GRACE_HOURS)
       };
     });
@@ -256,10 +337,20 @@ export const createDownloadUrlsHandler =
       const alias = aliasesByKey.get(item.aliasKey)!;
       const sig = crypto.signDownloadAlias({
         aliasId: alias.aliasId,
-        expMinute36: item.expMinute36
+        expMinute36: item.expMinute36,
+        extension: item.extension,
+        version: S3_DOWNLOAD_ALIAS_SIGN_VERSION_V2
       });
 
-      return routes.buildDownloadUrl(`${alias.aliasId}.${item.expMinute36}.${sig}`);
+      return routes.buildDownloadUrl(
+        formatSignedS3DownloadAlias({
+          aliasId: alias.aliasId,
+          expMinute36: item.expMinute36,
+          sig,
+          extension: item.extension,
+          version: S3_DOWNLOAD_ALIAS_SIGN_VERSION_V2
+        })
+      );
     });
     const signatureHmacDurationMs = performance.now() - signatureHmacStartedAt;
     const hmacDurationMs = aliasKeyHmacDurationMs + signatureHmacDurationMs;

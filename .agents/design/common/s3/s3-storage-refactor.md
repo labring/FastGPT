@@ -43,16 +43,18 @@ flowchart LR
 
 ### 3.1 下载
 
-默认 URL：
+默认 URL（v2）：
 
 ```text
-/api/system/file/d/<aliasId>.<expMinute36>.<sig>
+/api/system/file/d/v2-<aliasId>-<expMinute36>-<sig>[.<ext>]
 ```
 
-- `aliasId`：16 位随机 Base64URL ID，用于查询对象映射。
+- `v2-`：显式版本前缀，避免与普通连字符外链文件名冲突，并为后续协议演进预留版本位。
+- `aliasId`：16 位随机 Base62 ID，用于查询对象映射（兼容存量含 `-` / `_` 的 aliasId）。
 - `expMinute36`：Unix 分钟的 36 进制编码，过期时间直接参与签名。
-- `sig`：`HMAC-SHA256(FILE_TOKEN_KEY, version + aliasId + expiry)` 的前 22 位 Base64URL。
-- `.` 是 URL path-safe 分隔符，三段长度固定且易于严格解析。
+- `sig`：`HMAC-SHA256(FILE_TOKEN_KEY, "s3-download:v2:" + aliasId + ":" + expMinute36 + ":" + ext)` 的前 22 位 Base62（不含 `.` / `-` / `_`），防止上游把签名误识别为扩展名，也避免 `-` 分隔符冲突。
+- `.<ext>`：可选真实扩展名，按显式 `extension` → `filename` → `objectKey` basename → 明确 MIME 推导，统一小写且满足 `/^(?=[a-z0-9]*[a-z])[a-z0-9]{1,16}$/`；参与 HMAC 签名防止篡改，无合法扩展名时省略。
+- 校验端同时向后兼容存量 `v1` 点分格式（`<aliasId>.<expMinute36>.<sig>`，`base64url` 签名）。
 
 Mongo 集合 `s3_download_aliases` 只保存对象映射，不保存可直接使用的 bearer URL：
 
@@ -117,7 +119,7 @@ Mongo 是跨实例一致性的必要状态，不使用进程内缓存。性能�
 使用 nginx 缩短公开下载路径时，可配置：
 
 ```nginx
-location ~ ^/([A-Za-z0-9_-]{12,32}\.[0-9a-z]{1,8}\.[A-Za-z0-9_-]{16,64})$ {
+location ~ ^/((?:v2-[A-Za-z0-9_-]{12,32}-[0-9a-z]{1,8}-[A-Za-z0-9]{16,64}(?:\.[a-z0-9]{1,16})?|[A-Za-z0-9_-]{12,32}\.[0-9a-z]{1,8}\.[A-Za-z0-9_-]{16,64}))$ {
   proxy_pass http://host.docker.internal:3000/api/system/file/d/$1;
   proxy_set_header Host $host;
   proxy_set_header X-Forwarded-Proto $scheme;

@@ -166,7 +166,8 @@ export const CreateGetPresignedUrlParamsSchema = z.object({
   key: StorageObjectKeySchema,
   expiredHours: z.number().positive().optional(),
   responseContentType: z.string().nonempty().optional(),
-  filename: z.string().min(1).optional()
+  filename: z.string().min(1).optional(),
+  extension: z.string().min(1).optional()
 });
 export type createPreviewUrlParams = z.infer<typeof CreateGetPresignedUrlParamsSchema>;
 

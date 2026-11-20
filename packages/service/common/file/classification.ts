@@ -238,7 +238,7 @@ export const classifyUrlMediaType = async ({
         ? path.basename(url)
         : (getFileNameFromUrl(url) ?? path.basename(parsedUrl.pathname));
       const isShortAlias = isSignedDownloadAlias(basename);
-      // 短链中的点号分隔 alias、过期时间与签名；交给响应元数据推测，不能作为已知后缀跳过探测。
+      // 短链凭证（旧 v1 点分格式与新 v2 带可选后缀格式）不能作为真实文件名跳过探测，统一交由别名校验或响应元数据解析。
       const filename = isShortAlias
         ? ''
         : (url.startsWith('chat/') ? undefined : parsedUrl.searchParams.get('filename')?.trim()) ||

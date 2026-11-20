@@ -251,6 +251,11 @@ export const assertCreateDownloadParams = (
             S3AccessLinkErrCode.invalidSignedAlias
           )
         }
+      : {}),
+    ...(params.extension !== undefined
+      ? {
+          extension: assertNonEmptyString(params.extension, S3AccessLinkErrCode.invalidSignedAlias)
+        }
       : {})
   };
 };

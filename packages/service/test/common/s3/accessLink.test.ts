@@ -89,6 +89,7 @@ describe('s3 access link', () => {
   it('creates stable short download URLs backed by one alias document', async () => {
     const {
       createS3DownloadAccessUrl,
+      parseSignedS3DownloadAlias,
       verifyS3DownloadAccess,
       revokeS3DownloadAlias,
       MongoS3DownloadAlias
@@ -106,7 +107,7 @@ describe('s3 access link', () => {
 
     expect(firstUrl).toBe(secondUrl);
     expect(firstUrl).toMatch(
-      /^https:\/\/files\.example\.com\/fastgpt\/api\/system\/file\/d\/[A-Za-z0-9_-]{16}\.[0-9a-z]+\.[A-Za-z0-9_-]{22}$/
+      /^https:\/\/files\.example\.com\/fastgpt\/api\/system\/file\/d\/v2-[A-Za-z0-9]{16}-[0-9a-z]+-[A-Za-z0-9]{22}\.png$/
     );
     expect(firstUrl).not.toContain(params.objectKey);
 
@@ -116,7 +117,8 @@ describe('s3 access link', () => {
     expect(aliases[0]?.objectKey).toBe(params.objectKey);
     expect(aliases[0]?.purgeAt.getTime()).toBeGreaterThan(params.expiredTime.getTime());
 
-    const verified = await verifyS3DownloadAccess(extractLastPathSegment(firstUrl));
+    const signedAlias = extractLastPathSegment(firstUrl);
+    const verified = await verifyS3DownloadAccess(signedAlias);
     expect(verified).toMatchObject({
       bucketName: params.bucketName,
       objectKey: params.objectKey,
@@ -125,12 +127,10 @@ describe('s3 access link', () => {
     });
     expect(verified.expiresAt).toBeInstanceOf(Date);
 
-    const aliasId = extractLastPathSegment(firstUrl).split('.')[0] || '';
+    const { aliasId } = parseSignedS3DownloadAlias(signedAlias);
     await revokeS3DownloadAlias(aliasId);
 
-    await expect(verifyS3DownloadAccess(extractLastPathSegment(firstUrl))).rejects.toThrow(
-      'DownloadAliasRevoked'
-    );
+    await expect(verifyS3DownloadAccess(signedAlias)).rejects.toThrow('DownloadAliasRevoked');
   });
 
   it('uses one Mongo batch lookup and insert for unique download aliases', async () => {
@@ -215,7 +215,7 @@ describe('s3 access link', () => {
     });
 
     expect(downloadUrl).toMatch(
-      /^https:\/\/files\.example\.com\/[A-Za-z0-9_-]{16}\.[0-9a-z]+\.[A-Za-z0-9_-]{22}$/
+      /^https:\/\/files\.example\.com\/v2-[A-Za-z0-9]{16}-[0-9a-z]+-[A-Za-z0-9]{22}\.png$/
     );
     expect(uploadUrl).toMatch(
       /^https:\/\/app\.example\.com\/fastgpt\/api\/system\/file\/u\/[A-Za-z0-9_-]{22}$/
@@ -246,7 +246,7 @@ describe('s3 access link', () => {
     });
 
     expect(downloadUrl).toMatch(
-      /^https:\/\/files\.example\.com\/f\/[A-Za-z0-9_-]{16}\.[0-9a-z]+\.[A-Za-z0-9_-]{22}$/
+      /^https:\/\/files\.example\.com\/f\/v2-[A-Za-z0-9]{16}-[0-9a-z]+-[A-Za-z0-9]{22}\.png$/
     );
   });
 
@@ -275,24 +275,102 @@ describe('s3 access link', () => {
   });
 
   it('rejects expired or tampered signed aliases before alias lookup', async () => {
-    const { assertS3DownloadAliasSignature, encodeExpiresAtMinute, signS3DownloadAlias } =
-      await loadAccessLinkModules();
+    const {
+      assertS3DownloadAliasSignature,
+      encodeExpiresAtMinute,
+      formatSignedS3DownloadAlias,
+      signS3DownloadAlias
+    } = await loadAccessLinkModules();
     const aliasId = 'R7mQG0Yh2kVxP9Za';
     const expMinute36 = encodeExpiresAtMinute(getFutureDate(10));
-    const sig = signS3DownloadAlias({ aliasId, expMinute36 });
+    const sig = signS3DownloadAlias({ aliasId, expMinute36, extension: 'png' });
     const tamperedExpMinute36 = (Number.parseInt(expMinute36, 36) + 60).toString(36);
     const expiredExpMinute36 = encodeExpiresAtMinute(getFutureDate(-10));
     const expiredSig = signS3DownloadAlias({
       aliasId,
-      expMinute36: expiredExpMinute36
+      expMinute36: expiredExpMinute36,
+      extension: 'png'
+    });
+    const v1Sig = signS3DownloadAlias({ aliasId, expMinute36, version: 'v1' });
+    const v1ExpiredSig = signS3DownloadAlias({
+      aliasId,
+      expMinute36: expiredExpMinute36,
+      version: 'v1'
     });
 
+    // v2 合法签名通过，篡改过期时间、篡改扩展名与过期链接均拒绝
+    expect(
+      assertS3DownloadAliasSignature(
+        formatSignedS3DownloadAlias({ aliasId, expMinute36, sig, extension: 'png' })
+      )
+    ).toMatchObject({ version: 'v2', aliasId, extension: 'png' });
     expect(() =>
-      assertS3DownloadAliasSignature(`${aliasId}.${tamperedExpMinute36}.${sig}`)
+      assertS3DownloadAliasSignature(
+        formatSignedS3DownloadAlias({
+          aliasId,
+          expMinute36: tamperedExpMinute36,
+          sig,
+          extension: 'png'
+        })
+      )
     ).toThrow('InvalidSignedAliasSignature');
     expect(() =>
-      assertS3DownloadAliasSignature(`${aliasId}.${expiredExpMinute36}.${expiredSig}`)
+      assertS3DownloadAliasSignature(
+        formatSignedS3DownloadAlias({ aliasId, expMinute36, sig, extension: 'jpg' })
+      )
+    ).toThrow('InvalidSignedAliasSignature');
+    expect(() =>
+      assertS3DownloadAliasSignature(
+        formatSignedS3DownloadAlias({
+          aliasId,
+          expMinute36: expiredExpMinute36,
+          sig: expiredSig,
+          extension: 'png'
+        })
+      )
     ).toThrow('ExpiredSignedAlias');
+
+    // 存量 v1 点分格式仍兼容校验
+    expect(assertS3DownloadAliasSignature(`${aliasId}.${expMinute36}.${v1Sig}`)).toMatchObject({
+      version: 'v1',
+      aliasId
+    });
+    expect(() =>
+      assertS3DownloadAliasSignature(`${aliasId}.${tamperedExpMinute36}.${v1Sig}`)
+    ).toThrow('InvalidSignedAliasSignature');
+    expect(() =>
+      assertS3DownloadAliasSignature(`${aliasId}.${expiredExpMinute36}.${v1ExpiredSig}`)
+    ).toThrow('ExpiredSignedAlias');
+  });
+
+  it('derives extension from responseContentType when key and filename lack one, and omits it for octet-stream', async () => {
+    const { createS3DownloadAccessUrl, verifyS3DownloadAccess } = await loadAccessLinkModules();
+
+    const imageUrl = await createS3DownloadAccessUrl({
+      bucketName: 'fastgpt-private',
+      objectKey: 'dataset/team-1/opaque-image',
+      expiredTime: getFutureDate(10),
+      filename: 'cover',
+      responseContentType: 'image/webp'
+    });
+    expect(imageUrl).toMatch(
+      /^https:\/\/files\.example\.com\/fastgpt\/api\/system\/file\/d\/v2-[A-Za-z0-9]{16}-[0-9a-z]+-[A-Za-z0-9]{22}\.webp$/
+    );
+    await expect(verifyS3DownloadAccess(extractLastPathSegment(imageUrl))).resolves.toMatchObject({
+      objectKey: 'dataset/team-1/opaque-image',
+      responseContentType: 'image/webp'
+    });
+
+    const binaryUrl = await createS3DownloadAccessUrl({
+      bucketName: 'fastgpt-private',
+      objectKey: 'dataset/team-1/raw-binary',
+      expiredTime: getFutureDate(10),
+      responseContentType: 'application/octet-stream'
+    });
+    expect(binaryUrl).toMatch(
+      /^https:\/\/files\.example\.com\/fastgpt\/api\/system\/file\/d\/v2-[A-Za-z0-9]{16}-[0-9a-z]+-[A-Za-z0-9]{22}$/
+    );
+    expect(extractLastPathSegment(binaryUrl)).not.toContain('.');
   });
 
   it('stores upload session payload behind a short hashed token', async () => {

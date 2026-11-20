@@ -80,18 +80,23 @@ export type CreateS3DownloadAliasRecord = Omit<
   updateTime?: Date;
 };
 
+export type S3DownloadAliasSignVersion = 'v1' | 'v2';
+
 export type CreateS3DownloadAccessUrlParams = {
   bucketName: string;
   objectKey: string;
   expiredTime: Date;
   filename?: string;
   responseContentType?: string;
+  extension?: string;
 };
 
 export type ParsedS3SignedDownloadAlias = {
+  version: S3DownloadAliasSignVersion;
   aliasId: string;
   expMinute36: string;
   sig: string;
+  extension?: string;
 };
 
 export type S3ProxyDownloadPayload = {
