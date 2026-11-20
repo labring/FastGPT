@@ -113,14 +113,23 @@ const fill = async (key: string, value: string) => {
 
 describe('ModelPriceTiersTable', () => {
   it('rounds visible input and output prices while preserving precise tier boundaries', async () => {
-    await render([{ maxInputTokens: 0.000125, inputPrice: 2, outputPrice: 4 }]);
+    await render([{ maxInputTokens: 32, inputPrice: 2, outputPrice: 4 }]);
+    const headers = Array.from(container.querySelectorAll('thead th'));
+    expect(headers.map((th) => th.textContent)).toEqual([
+      'common:model.price_tier_range',
+      'common:model.input_price',
+      'common:model.output_price',
+      'config_model:model.action'
+    ]);
+    expect(getComputedStyle(headers[1]).textTransform).toBe('none');
+    expect(getComputedStyle(headers[2]).textTransform).toBe('none');
     await fill('inputPrice', '0.125');
     await fill('outputPrice', '1.005');
     expect(input('inputPrice').value).toBe('0.13');
     expect(input('outputPrice').value).toBe('1.01');
     await act(async () => container.querySelector('form')!.requestSubmit());
     expect(ModelPricingSchema.parse(save.mock.calls[0][0].pricing).tiers![0]).toMatchObject({
-      maxInputTokens: 0.000125,
+      maxInputTokens: 32,
       inputPrice: 0.13,
       outputPrice: 1.01
     });
@@ -131,10 +140,10 @@ describe('ModelPriceTiersTable', () => {
     expect(form.getValues('pricing.tiers')).toEqual([
       { maxInputTokens: undefined, inputPrice: undefined, outputPrice: undefined }
     ]);
-    await fill('maxInputTokens', '0.0041');
+    await fill('maxInputTokens', '272');
     await act(async () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
     expect(form.getValues('pricing.tiers')).toHaveLength(2);
-    expect(input('maxInputTokens').value).toBe('0.0041');
+    expect(input('maxInputTokens').value).toBe('272');
     await act(async () => clear().click());
     expect(form.getValues('pricing.tiers')).toEqual([
       { maxInputTokens: undefined, inputPrice: undefined, outputPrice: undefined }

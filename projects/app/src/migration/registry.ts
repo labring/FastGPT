@@ -11,7 +11,7 @@ import type { ZodType } from 'zod';
 import { initializeDatasetVectorIndexes } from './tasks/4180/20261022_initialize_dataset_vector_indexes';
 import { backfillChatPublishSource } from './tasks/4180/20261104_backfill_chat_publish_source';
 import { backfillOpenApiKeyType } from './tasks/4180/20261104_backfill_openapi_key_type';
-import { backfillSTTPricingType } from './tasks/4180/20261112_backfill_stt_pricing_type';
+import { migrateModelPricing } from './tasks/4180/20261120_migrate_model_pricing';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -99,6 +99,64 @@ export type SystemMigration = {
  */
 export const systemMigrations = [
   {
+    id: systemConfigMigrationId,
+    version: '4.18.0',
+    nameKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261116_migrate_system_configs.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.result'),
+    progressSteps: [
+      {
+        key: 'inspect',
+        labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.inspect')
+      },
+      {
+        key: 'migrate',
+        labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.migrate')
+      },
+      {
+        key: 'cleanup',
+        labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.cleanup')
+      },
+      {
+        key: 'backfill',
+        labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.backfill')
+      },
+      {
+        key: 'validate',
+        labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.validate')
+      }
+    ],
+    // 系统配置先迁移成功，后续模型加载与业务启动才能读取完整的生效配置。
+    blockStartup: true,
+    run: migrateSystemConfigs
+  },
+  {
+    id: '20261120_migrate_model_pricing',
+    version: '4.18.0',
+    // 启动配置迁移完成后在后台独立执行，不阻塞业务启动或等待其他长任务。
+    independent: true,
+    nameKey: i18nT('system_migration:migrations.20261120_migrate_model_pricing.name'),
+    descriptionKey: i18nT('system_migration:migrations.20261120_migrate_model_pricing.description'),
+    resultKey: i18nT('system_migration:migrations.20261120_migrate_model_pricing.result'),
+    progressSteps: [
+      {
+        key: 'stt',
+        labelKey: i18nT('system_migration:migrations.20261120_migrate_model_pricing.stt')
+      },
+      {
+        key: 'llmTiers',
+        labelKey: i18nT('system_migration:migrations.20261120_migrate_model_pricing.llmTiers')
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT('system_migration:migrations.20261120_migrate_model_pricing.validation')
+      }
+    ],
+    run: migrateModelPricing
+  },
+  {
     id: '20261022_initialize_dataset_vector_indexes',
     version: '4.18.0',
     nameKey: i18nT('system_migration:migrations.20261022_initialize_dataset_vector_indexes.name'),
@@ -175,62 +233,6 @@ export const systemMigrations = [
       }
     ],
     run: backfillOpenApiKeyType
-  },
-  {
-    id: '20261112_backfill_stt_pricing_type',
-    version: '4.18.0',
-    // 价格类型在后台回填，升级期间不为 STT 计费准确性阻塞业务启动。
-    blockStartup: false,
-    nameKey: i18nT('system_migration:migrations.20261112_backfill_stt_pricing_type.name'),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20261112_backfill_stt_pricing_type.description'
-    ),
-    resultKey: i18nT('system_migration:migrations.20261112_backfill_stt_pricing_type.result'),
-    progressSteps: [
-      {
-        key: 'models',
-        labelKey: i18nT('system_migration:migrations.20261112_backfill_stt_pricing_type.models')
-      },
-      {
-        key: 'validation',
-        labelKey: i18nT('system_migration:migrations.20261112_backfill_stt_pricing_type.validation')
-      }
-    ],
-    run: backfillSTTPricingType
-  },
-  {
-    id: systemConfigMigrationId,
-    version: '4.18.0',
-    nameKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.name'),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20261116_migrate_system_configs.description'
-    ),
-    resultKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.result'),
-    progressSteps: [
-      {
-        key: 'inspect',
-        labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.inspect')
-      },
-      {
-        key: 'migrate',
-        labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.migrate')
-      },
-      {
-        key: 'cleanup',
-        labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.cleanup')
-      },
-      {
-        key: 'backfill',
-        labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.backfill')
-      },
-      {
-        key: 'validate',
-        labelKey: i18nT('system_migration:migrations.20261116_migrate_system_configs.validate')
-      }
-    ],
-    // 系统配置先迁移成功，后续模型加载与业务启动才能读取完整的生效配置。
-    blockStartup: true,
-    run: migrateSystemConfigs
   }
 ] as const satisfies readonly SystemMigration[];
 

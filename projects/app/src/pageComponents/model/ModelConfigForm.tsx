@@ -100,24 +100,32 @@ const removeNaNValues = (value: unknown): void => {
 const Section = ({
   title,
   children,
-  showBorder = true
+  showBorder = true,
+  vertical = false
 }: {
   title: string;
   children: React.ReactNode;
   showBorder?: boolean;
+  vertical?: boolean;
 }) => (
   <Grid
-    templateColumns={['1fr', '160px minmax(0, 1fr)']}
+    templateColumns={vertical ? '1fr' : ['1fr', '160px minmax(0, 1fr)']}
     rowGap={[3, 4]}
     columnGap={'32px'}
     py={6}
     borderBottom={showBorder ? '1px solid' : 'none'}
     borderColor={'myGray.200'}
   >
-    <Box fontSize={'14px'} w={'160px'} fontWeight={'600'} color={'myGray.900'} lineHeight={1.2}>
+    <Box
+      fontSize={'14px'}
+      w={vertical ? 'auto' : '160px'}
+      fontWeight={'600'}
+      color={'myGray.900'}
+      lineHeight={1.2}
+    >
       {title}
     </Box>
-    <Box>{children}</Box>
+    <Box minW={0}>{children}</Box>
   </Grid>
 );
 
@@ -493,8 +501,14 @@ const ModelConfigForm = ({
         }
 
         const tiers = getRuntimeResolvedPriceTiers(data);
-        // 清洗已保证单价完整、上限递增且无限档位于末尾；表单另要求首档上限大于零。
-        if (tiers[0]?.maxInputTokens === 0) {
+        // 清洗已保证单价完整、上限递增且无限档位于末尾；表单另要求有限阶梯上限为正整数（K Tokens）。
+        if (
+          tiers.some(
+            (tier) =>
+              tier.maxInputTokens !== undefined &&
+              (!Number.isInteger(tier.maxInputTokens) || tier.maxInputTokens <= 0)
+          )
+        ) {
           return Promise.reject(t('config_model:model.price_tier_range_invalid'));
         }
 
@@ -776,7 +790,7 @@ const ModelConfigForm = ({
       )}
 
       {priceUnit && feConfigs?.isPlus && !isTeamModel && (
-        <Section title={t('config_model:model.price_config_section')}>
+        <Section title={t('config_model:model.price_config_section')} vertical>
           {isLLMModel ? (
             <ModelPriceTiersTable
               control={control}

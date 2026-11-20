@@ -14,13 +14,13 @@ const createMigration = (id: string): SystemMigration => ({
 });
 
 describe('validateSystemMigrationRegistry', () => {
-  it('appends system configuration migration while prioritizing it in the startup plan', () => {
+  it('places system configuration migration first and follows with model pricing and remaining background tasks', () => {
     expect(systemMigrations.map(({ id }) => id)).toEqual([
+      '20261116_migrate_system_configs',
+      '20261120_migrate_model_pricing',
       '20261022_initialize_dataset_vector_indexes',
       '20261104_backfill_chat_publish_source',
-      '20261104_backfill_openapi_key_type',
-      '20261112_backfill_stt_pricing_type',
-      '20261116_migrate_system_configs'
+      '20261104_backfill_openapi_key_type'
     ]);
     const tasks: readonly SystemMigration[] = systemMigrations;
     expect(tasks.filter((task) => task.blockStartup).map(({ id }) => id)).toEqual([
@@ -46,10 +46,10 @@ describe('validateSystemMigrationRegistry', () => {
     const plan = createSystemMigrationPlan(tasks);
     expect(plan.startupMigrations.map(({ id }) => id)).toEqual(['20261116_migrate_system_configs']);
     expect(plan.backgroundMigrations.map(({ id }) => id)).toEqual([
+      '20261120_migrate_model_pricing',
       '20261022_initialize_dataset_vector_indexes',
       '20261104_backfill_chat_publish_source',
-      '20261104_backfill_openapi_key_type',
-      '20261112_backfill_stt_pricing_type'
+      '20261104_backfill_openapi_key_type'
     ]);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
@@ -98,26 +98,21 @@ describe('validateSystemMigrationRegistry', () => {
     expect(task).not.toHaveProperty('delay');
   });
 
-  it('appends STT pricing backfill as non-blocking background work', () => {
-    expect(
-      systemMigrations.find(({ id }) => id === '20261112_backfill_stt_pricing_type')
-    ).toMatchObject({
-      id: '20261112_backfill_stt_pricing_type',
+  it('registers unified model pricing migration as independent multi-step background work', () => {
+    const task = systemMigrations.find(({ id }) => id === '20261120_migrate_model_pricing');
+    expect(task).toMatchObject({
+      id: '20261120_migrate_model_pricing',
       version: '4.18.0',
-      blockStartup: false,
-      progressSteps: [{ key: 'models' }, { key: 'validation' }]
+      independent: true,
+      progressSteps: [{ key: 'stt' }, { key: 'llmTiers' }, { key: 'validation' }]
     });
-    expect(
-      systemMigrations.find(({ id }) => id === '20261112_backfill_stt_pricing_type')
-    ).not.toHaveProperty('dependsOn');
-    expect(
-      systemMigrations.find(({ id }) => id === '20261112_backfill_stt_pricing_type')
-    ).not.toHaveProperty('independent');
+    expect(task).not.toHaveProperty('blockStartup', true);
   });
 
   it('runs only the selected production tasks independently', () => {
     const independentTasks = systemMigrations.filter((task: SystemMigration) => task.independent);
     expect(independentTasks.map((task) => task.id)).toEqual([
+      '20261120_migrate_model_pricing',
       '20261104_backfill_chat_publish_source',
       '20261104_backfill_openapi_key_type'
     ]);
