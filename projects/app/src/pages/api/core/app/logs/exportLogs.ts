@@ -258,9 +258,15 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       {
         $lookup: {
           from: AppVersionCollectionName,
-          localField: 'appVersionId',
-          foreignField: '_id',
+          // localField/foreignField 不能与 pipeline 同时使用：MongoDB 4.4 或 FCV=4.4 会直接
+          // 拒绝该聚合，导致导出恒为空表头。改用 let + $match $expr，全版本兼容。
+          let: { versionId: '$appVersionId' },
           pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ['$_id', '$$versionId'] }
+              }
+            },
             {
               $project: {
                 versionName: 1,
