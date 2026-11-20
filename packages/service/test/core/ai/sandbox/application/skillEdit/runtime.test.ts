@@ -266,6 +266,7 @@ describe('packageSkillInSandbox', () => {
     await expect(packageSkillInSandbox({ sandboxId: 'sandbox-1' })).rejects.toThrow(
       'missingSkillMd'
     );
+    expect(mocks.logger.error).not.toHaveBeenCalled();
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
   });
 });

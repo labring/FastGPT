@@ -16,9 +16,8 @@
 
 import JSZip from 'jszip';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
-import { extractSkillNameFromSkillMd } from '../utils';
+import { extractSkillNameFromSkillMd, findSkillMdEntries } from '../utils';
 import { DEFAULT_GITIGNORE_CONTENT } from './constants';
-import { findSkillMdEntries } from './skillEntryScan';
 
 export type CreateSkillPackageParams = {
   name: string;
@@ -40,30 +39,48 @@ export type SkillDirInfo = {
   skillMdContent: string;
 };
 
-export type ZipValidationResult = {
-  valid: boolean;
-  hasSkillMd: boolean;
-  files: string[];
-  error?: string;
-  errorCode?: SkillErrEnum;
-  skillMdPath?: string;
-  totalUncompressedBytes?: number;
-};
+export type ZipValidationResult =
+  | {
+      valid: true;
+      hasSkillMd: true;
+      files: string[];
+      skillMdPath: string;
+      totalUncompressedBytes: number;
+    }
+  | {
+      valid: false;
+      hasSkillMd: false;
+      files: string[];
+      error: string;
+      errorCode: SkillErrEnum;
+      totalUncompressedBytes?: number;
+    };
 
-export type DeployableSkillWorkspaceValidationResult = {
-  valid: boolean;
-  files: string[];
-  error?: string;
-  errorCode?: SkillErrEnum;
-};
+export type DeployableSkillWorkspaceValidationResult =
+  | {
+      valid: true;
+      files: string[];
+    }
+  | {
+      valid: false;
+      files: string[];
+      error: string;
+      errorCode: SkillErrEnum;
+    };
 
-type ZipSafetyValidationResult = {
-  valid: boolean;
-  files: string[];
-  error?: string;
-  errorCode?: SkillErrEnum;
-  totalUncompressedBytes?: number;
-};
+type ZipSafetyValidationResult =
+  | {
+      valid: true;
+      files: string[];
+      totalUncompressedBytes: number;
+    }
+  | {
+      valid: false;
+      files: string[];
+      error: string;
+      errorCode: SkillErrEnum;
+      totalUncompressedBytes?: number;
+    };
 
 export type ExtractSkillPackageResult = {
   success: boolean;
@@ -395,7 +412,7 @@ export async function extractSkillPackage(zipBuffer: Buffer): Promise<ExtractSki
   try {
     // 先校验结构，避免后续读取空包或缺少入口文件时抛出不清晰的错误。
     const validation = await validateZipStructure(zipBuffer);
-    if (!validation.valid || !validation.skillMdPath) {
+    if (!validation.valid) {
       return {
         success: false,
         error: validation.error

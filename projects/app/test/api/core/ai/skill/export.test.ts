@@ -4,7 +4,8 @@ import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { getRootUser } from '@test/datas/users';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR } from '@fastgpt/service/core/ai/sandbox/constants';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
@@ -98,29 +99,28 @@ describe('GET /api/core/ai/skill/export', () => {
     return skill;
   };
 
-  it('编辑沙盒未运行时应返回 404', async () => {
+  it('编辑沙盒未运行时应交由 NextAPI 返回 editSandboxNotRunning 错误', async () => {
     const user = await getRootUser();
     const skill = await createPersonalSkill({ user, name: 'skill-without-sandbox' });
     const skillId = String(skill._id);
+    const notRunningError = new UserError(SkillErrEnum.editSandboxNotRunning);
 
-    skillExportMocks.packageSkillEditWorkspaceMock.mockRejectedValueOnce(
-      new Error(SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR)
-    );
+    skillExportMocks.packageSkillEditWorkspaceMock.mockRejectedValueOnce(notRunningError);
 
     const res = makeMockRes();
     const req = makeMockReq({ auth: user, query: { skillId } });
 
-    await handler(req, res);
+    await expect(handler(req, res)).resolves.toMatchObject({
+      code: 500,
+      error: notRunningError
+    });
 
     expect(skillExportMocks.packageSkillEditWorkspaceMock).toHaveBeenCalledWith({
       skillId,
       teamId: user.teamId,
       validationMode: 'basicZip'
     });
-    expect(mockJsonRes).toHaveBeenCalledWith(res, {
-      code: 404,
-      error: SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR
-    });
+    expect(mockJsonRes).not.toHaveBeenCalled();
   });
 
   it('同 team 用户可成功导出 edit sandbox 工作区内容', async () => {
@@ -164,31 +164,6 @@ describe('GET /api/core/ai/skill/export', () => {
         params: expect.objectContaining({ skillName: 'workspace-skill' })
       })
     );
-  });
-
-  it('sandbox team 不匹配时应返回 404', async () => {
-    const user = await getRootUser();
-    const skill = await createPersonalSkill({ user, name: 'workspace-skill-team-mismatch' });
-    const skillId = String(skill._id);
-
-    skillExportMocks.packageSkillEditWorkspaceMock.mockRejectedValueOnce(
-      new Error(SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR)
-    );
-
-    const res = makeMockRes();
-    const req = makeMockReq({ auth: user, query: { skillId } });
-
-    await handler(req, res);
-
-    expect(skillExportMocks.packageSkillEditWorkspaceMock).toHaveBeenCalledWith({
-      skillId,
-      teamId: user.teamId,
-      validationMode: 'basicZip'
-    });
-    expect(mockJsonRes).toHaveBeenCalledWith(res, {
-      code: 404,
-      error: SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR
-    });
   });
 
   it('工作区打包失败时应继续抛出原始错误', async () => {

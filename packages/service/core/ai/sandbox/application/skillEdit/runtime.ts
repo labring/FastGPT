@@ -4,7 +4,6 @@
  * 本文件统一处理镜像版本、归档状态和运行态实例的业务判断；外部 Skill 业务直接引用
  * 本模块的业务能力，不直接依赖 provider、repository 或 archive 原子能力。
  */
-import { SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR } from '../../constants';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
 import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
@@ -496,8 +495,8 @@ export async function packageSkillInSandbox(params: {
               maxUncompressedBytes: maxBytes
             });
       if (!validation.valid) {
-        throw new UserError(validation.errorCode || SkillErrEnum.invalidSkillPackage, undefined, {
-          cause: validation.error ? new Error(validation.error) : undefined
+        throw new UserError(validation.errorCode, undefined, {
+          cause: new Error(validation.error)
         });
       }
 
@@ -523,10 +522,12 @@ export async function packageSkillInSandbox(params: {
         });
     }
   } catch (error) {
-    addLog.error('[Sandbox] Failed to package skill', {
-      sandboxId,
-      error
-    });
+    if (!(error instanceof UserError)) {
+      addLog.error('[Sandbox] Failed to package skill', {
+        sandboxId,
+        error
+      });
+    }
     throw error;
   } finally {
     if (sandbox) {
@@ -573,14 +574,16 @@ export async function ensureSkillEditRuntimeSandbox(params: { skillId: string; t
   const context = await getSkillEditRuntimeContext(params);
   const status = await getSkillEditRuntimeStatus({ context });
   if (status.status !== 'readyToInit') {
-    throw new Error(status.lastError || SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR);
+    throw new UserError(SkillErrEnum.editSandboxNotRunning, undefined, {
+      cause: status.lastError ? new Error(status.lastError) : undefined
+    });
   }
 
   await initSkillEditRuntimeSandbox({ context });
 
   const ready = await getRunningSkillEditSandbox(params);
   if (!ready) {
-    throw new Error(SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR);
+    throw new UserError(SkillErrEnum.editSandboxNotRunning);
   }
   return ready;
 }

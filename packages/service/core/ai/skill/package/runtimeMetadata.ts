@@ -3,8 +3,11 @@ import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import type { RuntimeSkillMetadataType } from '@fastgpt/global/core/ai/skill/type';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { extractSkillMetadataFromMarkdown } from '../utils';
-import { findSkillMdEntries, normalizeSkillScanEntryPath } from './skillEntryScan';
+import {
+  extractSkillMetadataFromMarkdown,
+  findSkillMdEntries,
+  normalizeSkillScanEntryPath
+} from '../utils';
 import { validateZipSafety } from './zipBuilder';
 
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
@@ -38,8 +41,8 @@ export async function extractRuntimeSkillsFromPackage(
 
   const safety = validateZipSafety(zip);
   if (!safety.valid) {
-    throw new UserError(safety.errorCode || SkillErrEnum.invalidSkillPackage, undefined, {
-      cause: safety.error ? new Error(safety.error) : undefined
+    throw new UserError(safety.errorCode, undefined, {
+      cause: new Error(safety.error)
     });
   }
 

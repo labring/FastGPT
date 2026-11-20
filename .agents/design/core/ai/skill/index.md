@@ -38,8 +38,7 @@
 
 扫描与元数据解析规则各只有一份实现：
 
-- 入口扫描：`packages/service/core/ai/skill/package/skillEntryScan.ts`（`RUNTIME_SKILL_SCAN_PRUNE_DIRS` / `findSkillMdEntries`）。
-- 元数据解析：`packages/service/core/ai/skill/utils.ts`（`extractSkillMetadataFromMarkdown`），包级聚合入口为 `packages/service/core/ai/skill/package/runtimeMetadata.ts`（`extractRuntimeSkillsFromPackage`）。
+- 入口扫描与元数据解析：`packages/service/core/ai/skill/utils.ts`（`RUNTIME_SKILL_SCAN_PRUNE_DIRS` / `findSkillMdEntries` / `extractSkillMetadataFromMarkdown`），包级聚合入口为 `packages/service/core/ai/skill/package/runtimeMetadata.ts`（`extractRuntimeSkillsFromPackage`）。
 
 发布结构校验、版本元数据解析和运行态扫描共用同一套口径：运行时把版本包整包解压到 `projects/<versionId>/` 后，
 用 `find ... -type f -iname "SKILL.md"` 递归扫描（同样跳过 `node_modules/.venv/venv`），跳过解析失败或缺少 `name` 的文件，

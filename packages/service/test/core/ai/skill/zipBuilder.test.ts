@@ -369,9 +369,11 @@ ${largeMarkdown}`;
       const buffer = await zip.generateAsync({ type: 'nodebuffer' });
       const result = await validateZipStructure(buffer);
 
-      expect(result.valid).toBe(true);
-      expect(result.hasSkillMd).toBe(true);
-      expect(result.skillMdPath).toBe('SKILL.md');
+      expect(result).toMatchObject({
+        valid: true,
+        hasSkillMd: true,
+        skillMdPath: 'SKILL.md'
+      });
     });
 
     it('should validate zip with SKILL.md in a subfolder', async () => {
@@ -381,9 +383,11 @@ ${largeMarkdown}`;
       const buffer = await zip.generateAsync({ type: 'nodebuffer' });
       const result = await validateZipStructure(buffer);
 
-      expect(result.valid).toBe(true);
-      expect(result.hasSkillMd).toBe(true);
-      expect(result.skillMdPath).toBe('my-skill/SKILL.md');
+      expect(result).toMatchObject({
+        valid: true,
+        hasSkillMd: true,
+        skillMdPath: 'my-skill/SKILL.md'
+      });
     });
 
     it('should validate zip with SKILL.md in nested subfolders (workspace root style)', async () => {
@@ -393,9 +397,11 @@ ${largeMarkdown}`;
       const buffer = await zip.generateAsync({ type: 'nodebuffer' });
       const result = await validateZipStructure(buffer);
 
-      expect(result.valid).toBe(true);
-      expect(result.hasSkillMd).toBe(true);
-      expect(result.skillMdPath).toBe('skills/my-skill/SKILL.md');
+      expect(result).toMatchObject({
+        valid: true,
+        hasSkillMd: true,
+        skillMdPath: 'skills/my-skill/SKILL.md'
+      });
     });
 
     it('should invalidate zip without SKILL.md', async () => {
@@ -405,9 +411,14 @@ ${largeMarkdown}`;
       const buffer = await zip.generateAsync({ type: 'nodebuffer' });
       const result = await validateZipStructure(buffer);
 
-      expect(result.valid).toBe(false);
-      expect(result.hasSkillMd).toBe(false);
-      expect(result.error).toContain('SKILL.md');
+      expect(result).toMatchObject({
+        valid: false,
+        hasSkillMd: false,
+        errorCode: SkillErrEnum.missingSkillMd
+      });
+      if (!result.valid) {
+        expect(result.error).toContain('SKILL.md');
+      }
     });
 
     it('should reject unsafe zip entry paths', async () => {
@@ -418,8 +429,13 @@ ${largeMarkdown}`;
       const buffer = await zip.generateAsync({ type: 'nodebuffer' });
       const result = await validateZipStructure(buffer);
 
-      expect(result.valid).toBe(false);
-      expect(result.error).toContain('Unsafe ZIP entry path');
+      expect(result).toMatchObject({
+        valid: false,
+        errorCode: SkillErrEnum.invalidSkillPackage
+      });
+      if (!result.valid) {
+        expect(result.error).toContain('Unsafe ZIP entry path');
+      }
     });
   });
 
@@ -429,8 +445,13 @@ ${largeMarkdown}`;
       const buffer = await createBlankSkillWorkspacePackage();
       const result = await validateDeployableSkillWorkspacePackage(buffer);
 
-      expect(result.valid).toBe(false);
-      expect(result.error).toContain('at least one SKILL.md');
+      expect(result).toMatchObject({
+        valid: false,
+        errorCode: SkillErrEnum.missingSkillMd
+      });
+      if (!result.valid) {
+        expect(result.error).toContain('at least one SKILL.md');
+      }
     });
 
     it('should accept a workspace with at least one skill folder containing SKILL.md', async () => {
@@ -471,8 +492,10 @@ ${largeMarkdown}`;
         await zip.generateAsync({ type: 'nodebuffer' })
       );
 
-      expect(result.valid).toBe(false);
-      expect(result.errorCode).toBe(SkillErrEnum.missingSkillMd);
+      expect(result).toMatchObject({
+        valid: false,
+        errorCode: SkillErrEnum.missingSkillMd
+      });
     });
 
     it('should accept workspace entries prefixed by ./ from sandbox zip command', async () => {
@@ -541,9 +564,13 @@ ${largeMarkdown}`;
       const buffer = await zip.generateAsync({ type: 'nodebuffer' });
       const result = await validateDeployableSkillWorkspacePackage(buffer);
 
-      expect(result.valid).toBe(false);
-      expect(result.error).toContain('Unsafe ZIP entry path');
-      expect(result.errorCode).toBe(SkillErrEnum.invalidSkillPackage);
+      expect(result).toMatchObject({
+        valid: false,
+        errorCode: SkillErrEnum.invalidSkillPackage
+      });
+      if (!result.valid) {
+        expect(result.error).toContain('Unsafe ZIP entry path');
+      }
     });
   });
 

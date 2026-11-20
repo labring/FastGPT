@@ -7,8 +7,10 @@ import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { MongoAgentSkillsVersion } from '../../../../skill/version/schema';
 import { downloadSkillPackageStream } from '../../../../skill/package';
-import { RUNTIME_SKILL_SCAN_PRUNE_DIRS } from '../../../../skill/package/skillEntryScan';
-import { extractSkillMetadataFromMarkdown } from '../../../../skill/utils';
+import {
+  extractSkillMetadataFromMarkdown,
+  RUNTIME_SKILL_SCAN_PRUNE_DIRS
+} from '../../../../skill/utils';
 import { getLogger, LogCategories } from '../../../../../../common/logger';
 import type { DeployedSkillInfo, DeployedSkillVersion } from './types';
 import { getAgentSandboxSkillMaxBytes } from '../../../config';
@@ -29,7 +31,7 @@ const parseCommandOutputNulls = (stdout: string) => stdout.split('\0').filter(Bo
 const getRuntimeSkillsRootPath = (workDirectory: string): string =>
   joinSandboxPath(workDirectory, 'projects');
 
-// 扫描规则与发布校验同源：prune 目录列表来自 skill/package，避免两端规则漂移。
+// 扫描规则与发布校验同源：prune 目录列表来自 skill/utils，避免两端规则漂移。
 const buildSkillInfoFindCommand = (dir: string) => {
   const pruneClause = RUNTIME_SKILL_SCAN_PRUNE_DIRS.map((name) => `-name ${shellQuote(name)}`).join(
     ' -o '
