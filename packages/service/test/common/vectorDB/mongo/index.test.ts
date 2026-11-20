@@ -127,37 +127,25 @@ describe('MongoVectorCtrl CRUD', () => {
 describe('MongoVectorCtrl.embRecall', () => {
   beforeEach(() => vi.restoreAllMocks());
 
-  it('pre-filters scopes and rescores, orders and truncates candidates by exact dot product', async () => {
+  it('builds the rescore, sort and limit pipeline and preserves raw scores without normalization', async () => {
     const controller = createCtrl();
     const queryVector = [0.6, 0.8, ...Array(1534).fill(0)];
-    // 保留 Schema 外的模拟近似分数，确保未执行精排时无法误通过断言。
-    await model.insertMany(
-      [
-        { _id: 'low', vector: [0, -1, ...Array(1534).fill(0)], score: 0.99 },
-        { _id: 'tie-a', vector, score: 0.98 },
-        { _id: 'tie-Z', vector, score: 0.97 },
-        { _id: 'tie-2', vector, score: 0.965 },
-        { _id: 'tie-10', vector, score: 0.96 },
-        { _id: 'tie-\uE000', vector, score: 0.955 },
-        { _id: 'tie-\u{10000}', vector, score: 0.95 },
-        { _id: 'best', vector: queryVector, score: 0.95 }
-      ].map((candidate) => ({
-        ...candidate,
-        teamId: 'team',
-        datasetId: 'dataset',
-        collectionId: 'allowed',
-        createTime: new Date()
-      })),
-      { lean: true }
-    );
+    await model.create({
+      _id: 'seed',
+      teamId: 'team',
+      datasetId: 'dataset',
+      collectionId: 'allowed',
+      vector: queryVector,
+      createTime: new Date()
+    });
 
-    // 只替代依赖 mongot 的首阶段；原始内积、排序和截断仍交给真实 MongoDB。
-    const aggregateCandidates = model.aggregate.bind(model);
-    const aggregate = vi
-      .spyOn(model, 'aggregate')
-      .mockImplementation((pipeline = []) =>
-        aggregateCandidates([{ $sort: { score: -1 } }, ...pipeline.slice(1)])
-      );
+    // 真实 $similarityDotProduct 聚合依赖 MongoDB 8.3+，在集成测试中执行；单测校验完整管线与原始分数透传。
+    const aggregate = vi.spyOn(model, 'aggregate').mockResolvedValue([
+      { _id: 'best', collectionId: 'allowed', score: 1 },
+      { _id: 'tiny', collectionId: 'allowed', score: 1e-17 },
+      { _id: 'zero', collectionId: 'allowed', score: 0 },
+      { _id: 'negative', collectionId: 'allowed', score: -1 }
+    ]);
     const result = await controller.embRecall({
       teamId: 'team',
       datasetIds: ['dataset'],
@@ -168,69 +156,35 @@ describe('MongoVectorCtrl.embRecall', () => {
     });
     expect(result.results).toEqual([
       { id: 'best', collectionId: 'allowed', score: 1 },
-      { id: 'tie-10', collectionId: 'allowed', score: 0.6 },
-      { id: 'tie-2', collectionId: 'allowed', score: 0.6 },
-      { id: 'tie-Z', collectionId: 'allowed', score: 0.6 },
-      { id: 'tie-a', collectionId: 'allowed', score: 0.6 },
-      { id: 'tie-\uE000', collectionId: 'allowed', score: 0.6 },
-      { id: 'tie-\u{10000}', collectionId: 'allowed', score: 0.6 }
+      { id: 'tiny', collectionId: 'allowed', score: 1e-17 },
+      { id: 'zero', collectionId: 'allowed', score: 0 },
+      { id: 'negative', collectionId: 'allowed', score: -1 }
     ]);
-    const pipeline = aggregate.mock.calls[0][0];
-    expect(pipeline?.[0]).toMatchObject({
-      $vectorSearch: {
-        queryVector,
-        exact: true,
-        limit: 7,
-        filter: {
-          teamId: 'team',
-          datasetId: { $in: ['dataset'] },
-          collectionId: { $in: ['allowed', 'denied'], $nin: ['denied'] }
+    expect(aggregate).toHaveBeenCalledExactlyOnceWith([
+      {
+        $vectorSearch: {
+          index: 'embedding_int8',
+          path: 'vector',
+          queryVector,
+          exact: true,
+          limit: 7,
+          filter: {
+            teamId: 'team',
+            datasetId: { $in: ['dataset'] },
+            collectionId: { $in: ['allowed', 'denied'], $nin: ['denied'] }
+          }
         }
-      }
-    });
-    expect(pipeline?.[1]).toEqual({
-      $project: {
-        _id: 1,
-        collectionId: 1,
-        score: { $similarityDotProduct: ['$vector', { $literal: queryVector }] }
-      }
-    });
-  });
-
-  it('keeps raw negative and near-zero dot products without score normalization', async () => {
-    const controller = createCtrl();
-    const queryVector = [Math.SQRT1_2, 1e-17, -Math.SQRT1_2, ...Array(1533).fill(0)];
-    const third = 1 / Math.sqrt(3);
-    await model.insertMany(
-      [
-        { _id: 'cancel', vector: [third, third, third, ...Array(1533).fill(0)] },
-        { _id: 'tiny', vector: [0, 1, ...Array(1534).fill(0)] },
-        { _id: 'negative', vector: queryVector.map((value) => -value) },
-        { _id: 'best', vector: queryVector }
-      ].map((candidate) => ({
-        ...candidate,
-        teamId: 'a',
-        datasetId: 'd',
-        collectionId: 'c',
-        createTime: new Date()
-      }))
-    );
-    const aggregateCandidates = model.aggregate.bind(model);
-    vi.spyOn(model, 'aggregate').mockImplementation((pipeline = []) =>
-      aggregateCandidates(pipeline.slice(1))
-    );
-    const { results } = await controller.embRecall({
-      teamId: 'a',
-      datasetIds: ['d'],
-      vector: queryVector,
-      limit: 4,
-      forbidCollectionIdList: []
-    });
-    expect(results.map(({ id }) => id)).toEqual(['best', 'tiny', 'cancel', 'negative']);
-    expect(results[1].score).toBe(1e-17);
-    expect(results[2].score).toBeCloseTo(0, 15);
-    expect(results[0].score).toBeCloseTo(1, 15);
-    expect(results[3].score).toBeCloseTo(-1, 15);
+      },
+      {
+        $project: {
+          _id: 1,
+          collectionId: 1,
+          score: { $similarityDotProduct: ['$vector', { $literal: queryVector }] }
+        }
+      },
+      { $sort: { score: -1, _id: 1 } },
+      { $limit: 7 }
+    ]);
   });
 
   it('propagates search failures without retrying the query', async () => {
