@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Divider, Flex } from '@chakra-ui/react';
 import type { GridProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
@@ -13,6 +13,8 @@ export type GroupTab<ValueType = string> = {
   label: string;
   icon?: string;
   children?: GroupTab<ValueType>[];
+  /** 在该菜单项下方渲染分隔线（列表末项自动忽略） */
+  dividerAfter?: boolean;
 };
 
 export type Props<ValueType = string> = Omit<GridProps, 'onChange'> & {
@@ -127,43 +129,47 @@ const SideTabsGroup = <ValueType = string,>({
 
   return (
     <Box ref={scrollRef} onScroll={handleScroll} fontSize={sizeMap.fontSize} {...props}>
-      {list.map((item) => {
+      {list.map((item, index) => {
         const hasChildren = !!item.children && item.children.length > 0;
         const isExpanded = expandValues.includes(item.value);
+        const showDividerAfter = Boolean(item.dividerAfter) && index < list.length - 1;
+        const itemBottomMargin = showDividerAfter ? 0 : 2;
 
         // 单级项：与 SideTabs 行为一致
         if (!hasChildren) {
           return (
-            <Flex
-              key={item.value as string}
-              py={sizeMap.inlineP}
-              borderRadius={'md'}
-              px={3}
-              mb={2}
-              fontWeight={'medium'}
-              alignItems={'center'}
-              {...(isActive(item.value)
-                ? {
-                    bg: 'primary.100 !important',
-                    color: 'primary.600',
-                    cursor: 'default'
-                  }
-                : {
-                    cursor: 'pointer',
-                    color: 'myGray.600'
-                  })}
-              _hover={{
-                color: 'primary.600',
-                bg: 'myGray.100'
-              }}
-              onClick={() => {
-                if (isActive(item.value)) return;
-                onChange(item.value);
-              }}
-            >
-              {item.icon && <MyIcon mr={2} name={item.icon as IconNameType} w={'20px'} />}
-              {item.label}
-            </Flex>
+            <React.Fragment key={item.value as string}>
+              <Flex
+                py={sizeMap.inlineP}
+                borderRadius={'md'}
+                px={3}
+                mb={itemBottomMargin}
+                fontWeight={'medium'}
+                alignItems={'center'}
+                {...(isActive(item.value)
+                  ? {
+                      bg: 'primary.100 !important',
+                      color: 'primary.600',
+                      cursor: 'default'
+                    }
+                  : {
+                      cursor: 'pointer',
+                      color: 'myGray.600'
+                    })}
+                _hover={{
+                  color: 'primary.600',
+                  bg: 'myGray.100'
+                }}
+                onClick={() => {
+                  if (isActive(item.value)) return;
+                  onChange(item.value);
+                }}
+              >
+                {item.icon && <MyIcon mr={2} name={item.icon as IconNameType} w={'20px'} />}
+                {item.label}
+              </Flex>
+              {showDividerAfter && <Divider my={2.5} borderColor={'myGray.200'} opacity={1} />}
+            </React.Fragment>
           );
         }
 
@@ -176,7 +182,7 @@ const SideTabsGroup = <ValueType = string,>({
               py={sizeMap.inlineP}
               borderRadius={'md'}
               px={3}
-              mb={2}
+              mb={!isExpanded ? itemBottomMargin : 2}
               fontWeight={'medium'}
               alignItems={'center'}
               cursor={'pointer'}
@@ -203,7 +209,7 @@ const SideTabsGroup = <ValueType = string,>({
               />
             </Flex>
             {isExpanded && (
-              <Box mb={2}>
+              <Box mb={itemBottomMargin}>
                 {children.map((child) => (
                   <Flex
                     key={child.value as string}
@@ -239,6 +245,7 @@ const SideTabsGroup = <ValueType = string,>({
                 ))}
               </Box>
             )}
+            {showDividerAfter && <Divider my={2.5} borderColor={'myGray.200'} opacity={1} />}
           </Box>
         );
       })}

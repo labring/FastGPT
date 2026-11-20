@@ -2,9 +2,7 @@ import { authDatasetCollectionCreate } from '@fastgpt/service/support/permission
 import { createOneCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { NextAPI } from '@/service/middleware/entry';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
-import { buildCollectionAuditResource } from '@fastgpt/global/support/user/audit/type';
-import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { buildCollectionCreateAuditLog } from '@fastgpt/service/core/dataset/audit/collection';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -34,26 +32,19 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionResponseTy
     tmbId
   });
 
-  (async () => {
-    addAuditLog({
-      tmbId,
+  void addAuditLog(
+    await buildCollectionCreateAuditLog({
       teamId,
-      event: AuditEventEnum.CREATE_COLLECTION,
-      resources: [
-        buildCollectionAuditResource({
-          _id,
-          datasetId: dataset._id,
-          name: body.name,
-          type: body.type
-        })
-      ],
-      params: {
-        collectionName: body.name,
-        datasetName: dataset.name,
-        datasetType: getI18nDatasetType(dataset.type)
+      tmbId,
+      dataset,
+      collection: {
+        _id,
+        name: body.name,
+        type: body.type,
+        parentId: body.parentId
       }
-    });
-  })();
+    })
+  );
 
   return CreateCollectionResponseSchema.parse(_id);
 }

@@ -4,6 +4,26 @@
  * value 使用点分小写资源路径和动作名，直接写入 operationLogs.event；修改已有值会影响历史日志展示。
  */
 export enum DatasetAuditEventEnum {
+  /** 创建集合；导入文件按「一个文件一条日志」逐条写入。 */
+  DATASET_COLLECTION_CREATE = 'dataset.collection.create',
+  /** 重命名集合。 */
+  DATASET_COLLECTION_RENAME = 'dataset.collection.rename',
+  /** 移动集合。 */
+  DATASET_COLLECTION_MOVE = 'dataset.collection.move',
+  /** 启用集合。 */
+  DATASET_COLLECTION_ENABLE = 'dataset.collection.enable',
+  /** 禁用集合。 */
+  DATASET_COLLECTION_DISABLE = 'dataset.collection.disable',
+  /** 查看集合原始内容。 */
+  DATASET_COLLECTION_SOURCE_READ = 'dataset.collection.source.read',
+  /** 导出集合问答。 */
+  DATASET_COLLECTION_QA_EXPORT = 'dataset.collection.qa.export',
+  /** 同步集合：只记录发起的同步操作，不区分同步结果。 */
+  DATASET_COLLECTION_SYNC = 'dataset.collection.sync',
+  DATASET_COLLECTION_TAG_ADD = 'dataset.collection.tag.add',
+  DATASET_COLLECTION_TAG_REMOVE = 'dataset.collection.tag.remove',
+  /** 集合恢复权限继承的独立事件；上级可能是父目录或知识库，与通用资源恢复继承事件分开记录。 */
+  DATASET_COLLECTION_PERMISSION_INHERITANCE_RESUME = 'dataset.collection.permission.inheritance_resume',
   /** 修改知识库配置；每个实际变化的配置项写一条日志，不做多字段合并。 */
   DATASET_CONFIG_UPDATE = 'dataset.config.update',
   /** 创建知识库标签定义（不是给集合打标签）。 */

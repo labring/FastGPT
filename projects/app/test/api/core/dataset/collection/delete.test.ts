@@ -121,7 +121,7 @@ describe('delete collection permission', () => {
           type: item.type === DatasetCollectionTypeEnum.folder ? 'collectionFolder' : 'collection',
           id: String(item._id),
           name: item.name,
-          parentId: String(dataset._id),
+          datasetId: String(dataset._id),
           collectionType: item.type,
           deleted: true
         }))

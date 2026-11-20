@@ -39,6 +39,28 @@ export const classifyAppAuditResourceType = (
 
 const AuditResourceTypeSchema = z.enum(AuditResourceTypeEnum);
 
+const CollectionAuditResourceTypeSchema = z.enum([
+  AuditResourceTypeEnum.collection,
+  AuditResourceTypeEnum.collectionFolder
+]);
+
+const GeneralAuditResourceTypeSchema = z.enum([
+  AuditResourceTypeEnum.app,
+  AuditResourceTypeEnum.tool,
+  AuditResourceTypeEnum.appFolder,
+  AuditResourceTypeEnum.toolFolder,
+  AuditResourceTypeEnum.dataset,
+  AuditResourceTypeEnum.datasetFolder,
+  AuditResourceTypeEnum.skill,
+  AuditResourceTypeEnum.skillFolder,
+  AuditResourceTypeEnum.member,
+  AuditResourceTypeEnum.department,
+  AuditResourceTypeEnum.group,
+  AuditResourceTypeEnum.team,
+  AuditResourceTypeEnum.apiKey,
+  AuditResourceTypeEnum.enterprise
+]);
+
 const hasAuditResourceIdentity = (item: { id?: string; name?: string }) =>
   Boolean(item.id || item.name?.trim());
 
@@ -46,40 +68,82 @@ const auditResourceIdentityRefine = {
   message: 'Each audit resource must provide an id or a non-empty name'
 };
 
-const AuditResourceBaseSchema = z.strictObject({
-  type: AuditResourceTypeSchema.meta({ description: '操作时的关联资源类型快照' }),
+const AuditResourceCommonFields = {
   id: z.string().trim().min(1).optional().meta({ description: '关联资源 ID' }),
   name: z.string().optional().meta({ description: '操作时的资源名称快照' }),
   avatar: z.string().optional().meta({ description: '资源头像或内置图标' }),
+  deleted: z.boolean().optional().meta({
+    description: '资源是否已删除或不存在；已删除资源仅展示文本不跳转'
+  })
+};
+
+const CollectionAuditResourceBaseSchema = z.strictObject({
+  type: CollectionAuditResourceTypeSchema.meta({ description: '操作时的集合资源类型快照' }),
+  ...AuditResourceCommonFields,
+  datasetId: ObjectIdSchema.optional().meta({
+    description: '集合所属知识库 ID，用于列表/导出补齐知识库与构造详情页跳转',
+    example: '68ad85a7463006c963799a05'
+  }),
   parentId: ObjectIdSchema.optional().meta({
-    description: '父级资源 ID（集合所属知识库 ID，用于构造详情页跳转）',
+    description: '历史父级资源 ID（兼容旧集合记录所属知识库 ID）',
     example: '68ad85a7463006c963799a05'
   }),
   collectionType: z.enum(DatasetCollectionTypeEnum).optional().meta({
     description: '操作时的集合类型，用于区分目录跳转和文件图标',
     example: DatasetCollectionTypeEnum.file
-  }),
-  deleted: z.boolean().optional().meta({
-    description: '资源是否已删除或不存在；已删除资源仅展示文本不跳转'
   })
 });
 
+const GeneralAuditResourceBaseSchema = z.strictObject({
+  type: GeneralAuditResourceTypeSchema.meta({ description: '操作时的关联资源类型快照' }),
+  ...AuditResourceCommonFields
+});
+
 /** 持久化审计资源快照：写入时记录名称/头像等快照字段，与 MongoDB 严格子文档保持一致。 */
-export const AuditResourceSchema = AuditResourceBaseSchema.refine(
-  hasAuditResourceIdentity,
-  auditResourceIdentityRefine
-);
+export const AuditResourceSchema = z
+  .union([CollectionAuditResourceBaseSchema, GeneralAuditResourceBaseSchema])
+  .refine(hasAuditResourceIdentity, auditResourceIdentityRefine);
 export type AuditResourceType = z.infer<typeof AuditResourceSchema>;
+export type CollectionAuditResourceType = Extract<
+  AuditResourceType,
+  { type: AuditResourceTypeEnum.collection | AuditResourceTypeEnum.collectionFolder }
+>;
 export const AuditResourcesSchema = z.array(AuditResourceSchema);
 
-/** 列表响应中的资源项：从持久化快照派生并扩展可选实时导航类型，未知导航枚举单独降级省略。 */
-export const AuditListResourceSchema = AuditResourceBaseSchema.extend({
+const AuditListCurrentTypeField = {
   currentType: AuditResourceTypeSchema.optional().catch(undefined).meta({
     description: '资源当前实时类型；仅当列表实时补查发现类型已变化时返回，用于构造跳转路由'
   })
-}).refine(hasAuditResourceIdentity, auditResourceIdentityRefine);
+};
+
+const CollectionAuditListExtraFields = {
+  ...AuditListCurrentTypeField,
+  datasetName: z.string().optional().meta({
+    description: '列表与导出实时补齐的集合所属知识库最新名称，用于详情列首行展示'
+  }),
+  datasetDeleted: z.boolean().optional().meta({
+    description: '集合所属知识库是否已删除，用于详情列展示知识库已被删除'
+  })
+};
+
+/** 列表响应中的资源项：从持久化快照派生并扩展可选实时导航类型，未知导航枚举单独降级省略。 */
+export const AuditListResourceSchema = z
+  .union([
+    CollectionAuditResourceBaseSchema.extend(CollectionAuditListExtraFields),
+    GeneralAuditResourceBaseSchema.extend(AuditListCurrentTypeField)
+  ])
+  .refine(hasAuditResourceIdentity, auditResourceIdentityRefine);
 export type AuditListResourceType = z.infer<typeof AuditListResourceSchema>;
 export const AuditListResourcesSchema = z.array(AuditListResourceSchema);
+
+export const isCollectionAuditResource = <T extends { type: AuditResourceTypeEnum }>(
+  item: T
+): item is Extract<
+  T,
+  { type: AuditResourceTypeEnum.collection | AuditResourceTypeEnum.collectionFolder }
+> =>
+  item.type === AuditResourceTypeEnum.collection ||
+  item.type === AuditResourceTypeEnum.collectionFolder;
 
 const toOptionalIdString = (value: unknown): string | undefined => {
   if (value === undefined || value === null) return undefined;
@@ -148,7 +212,7 @@ export const buildCollectionAuditResource = (
   },
   options?: { deleted?: boolean }
 ): AuditResourceType => {
-  const parentId = toOptionalObjectIdString(collection.datasetId);
+  const datasetId = toOptionalObjectIdString(collection.datasetId);
   return {
     type:
       collection.type === DatasetCollectionTypeEnum.folder
@@ -158,7 +222,7 @@ export const buildCollectionAuditResource = (
       ? { id: toOptionalIdString(collection._id ?? collection.id) }
       : {}),
     ...(toOptionalText(collection.name) ? { name: toOptionalText(collection.name) } : {}),
-    ...(parentId ? { parentId } : {}),
+    ...(datasetId ? { datasetId } : {}),
     ...(collection.type ? { collectionType: collection.type } : {}),
     ...(options?.deleted ? { deleted: true } : {})
   };
@@ -224,6 +288,9 @@ export const normalizeStoredAuditResource = (raw: unknown): AuditResourceType | 
       ...(toOptionalIdString(record.id) ? { id: toOptionalIdString(record.id) } : {}),
       ...(typeof record.name === 'string' && record.name ? { name: record.name } : {}),
       ...(typeof record.avatar === 'string' && record.avatar ? { avatar: record.avatar } : {}),
+      ...(toOptionalIdString(record.datasetId)
+        ? { datasetId: toOptionalIdString(record.datasetId) }
+        : {}),
       ...(toOptionalIdString(record.parentId)
         ? { parentId: toOptionalIdString(record.parentId) }
         : {}),
@@ -253,7 +320,7 @@ export const normalizeStoredAuditResource = (raw: unknown): AuditResourceType | 
           ? AuditResourceTypeEnum.collectionFolder
           : AuditResourceTypeEnum.collection,
       id: collectionId,
-      ...(datasetId ? { parentId: datasetId } : {}),
+      ...(datasetId ? { datasetId } : {}),
       ...(collectionType ? { collectionType } : {})
     });
     return parsed.success ? parsed.data : undefined;
@@ -350,10 +417,22 @@ export const normalizeAuditListResources = (raw: unknown): AuditListResourceType
   const normalizeItem = (item: unknown): AuditListResourceType | undefined => {
     const stored = normalizeStoredAuditResource(item);
     if (!stored || !item || typeof item !== 'object') return stored;
-    const parsedCurrentType = AuditResourceTypeSchema.safeParse(
-      (item as Record<string, unknown>).currentType
-    );
-    return parsedCurrentType.success ? { ...stored, currentType: parsedCurrentType.data } : stored;
+    const record = item as Record<string, unknown>;
+    const parsedCurrentType = AuditResourceTypeSchema.safeParse(record.currentType);
+    const withCurrentType: AuditListResourceType = parsedCurrentType.success
+      ? { ...stored, currentType: parsedCurrentType.data }
+      : stored;
+    if (!isCollectionAuditResource(withCurrentType)) return withCurrentType;
+    const datasetName =
+      typeof record.datasetName === 'string' && record.datasetName.trim()
+        ? record.datasetName.trim()
+        : undefined;
+    const datasetDeleted = record.datasetDeleted === true ? true : undefined;
+    return {
+      ...withCurrentType,
+      ...(datasetName ? { datasetName } : {}),
+      ...(datasetDeleted ? { datasetDeleted } : {})
+    };
   };
 
   return raw.map(normalizeItem).filter((item): item is AuditListResourceType => item !== undefined);
