@@ -2,6 +2,7 @@ import { defineIndex, Schema, getMongoLogModel } from '../../../common/mongo';
 import {
   AuditResourcesSchema,
   AuditResourceTypeEnum,
+  isCollectionAuditResource,
   type AuditResourceType,
   type TeamAuditSchemaType
 } from '@fastgpt/global/support/user/audit/type';
@@ -57,6 +58,7 @@ const TeamAuditSchema = new Schema({
           id: String,
           name: String,
           avatar: String,
+          datasetId: Schema.Types.ObjectId,
           parentId: Schema.Types.ObjectId,
           collectionType: { type: String, enum: Object.values(DatasetCollectionTypeEnum) },
           deleted: Boolean
@@ -66,12 +68,17 @@ const TeamAuditSchema = new Schema({
     ],
     default: undefined,
     validate: {
-      // Mongoose 子文档含内部属性且 parentId 为 ObjectId，转为普通对象后统一复用共享 schema 校验。
+      // Mongoose 子文档含内部属性且 datasetId/parentId 为 ObjectId，转为普通对象后统一复用共享 schema 校验。
       validator: (resources: Types.DocumentArray<AuditResourceType>) =>
         AuditResourcesSchema.safeParse(
           resources.toObject().map((item: AuditResourceType) => ({
             ...item,
-            ...(item.parentId ? { parentId: String(item.parentId) } : {})
+            ...(isCollectionAuditResource(item) && item.datasetId
+              ? { datasetId: String(item.datasetId) }
+              : {}),
+            ...(isCollectionAuditResource(item) && item.parentId
+              ? { parentId: String(item.parentId) }
+              : {})
           }))
         ).success,
       message: 'Each audit resource must contain a valid type and an id or name'
