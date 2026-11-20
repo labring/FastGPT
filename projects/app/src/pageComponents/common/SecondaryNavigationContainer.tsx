@@ -11,6 +11,8 @@ export type SecondaryNavigationTab<ValueType extends string> = {
   value: ValueType;
   /** 分组子项：有 children 时渲染为可展开的分组父级，否则为单级项（兼容账号页） */
   children?: SecondaryNavigationTab<ValueType>[];
+  /** 在该菜单项下方渲染分隔线 */
+  dividerAfter?: boolean;
 };
 
 type SecondaryNavigationContainerProps<ValueType extends string> = {
