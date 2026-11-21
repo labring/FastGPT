@@ -14,6 +14,11 @@ set -euo pipefail
 
 export PATH=/config/.nvm/versions/node/v22.23.2/bin:${PATH}
 
+# E2E_AS_MODE=real 时切换到真实授权服务器套件（desktop 106）。
+if [ "${E2E_AS_MODE:-fixture}" = "real" ]; then
+  exec "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../real/run.sh" "$@"
+fi
+
 REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)
 E2E_DIR="$REPO_ROOT/test/e2e/mcpOAuth/v24"
 APP_DIR="$REPO_ROOT/projects/app"
