@@ -44,8 +44,9 @@ type AgentSkillListItemType = ListSkillsResponse['list'][number];
 type SkillPickerPageParams = Parameters<SkillOptionPageLoader>[0];
 const SKILL_PICKER_PAGE_SIZE = 20;
 
-const getSkillId = (id?: string, source?: string) =>
-  source ? getToolIdentityKey(id, source) : id || '';
+// 统一按身份键登记工具：缺省 source 的系统工具得到 `system:<id>`，
+// 与团队版同 ID 时编辑器不会把裸键精确匹配到任意一方。
+const getSkillId = (id?: string, source?: string) => (id ? getToolIdentityKey(id, source) : '');
 
 const isSubApp = (flowNodeType: FlowNodeTypeEnum) => {
   const subAppTypeMap: Record<string, boolean> = {

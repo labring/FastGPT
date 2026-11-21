@@ -338,7 +338,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     const {
       completionTools: agentCompletionTools,
       subAppsMap: agentSubAppsMap,
-      promptToolReferenceInfoMap
+      promptToolReferenceInfoMap,
+      ambiguousPromptToolReferenceIds
     } = await getSubapps({
       tools: selectedTools,
       tmbId: runningUserInfo.tmbId,
@@ -352,7 +353,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     // PromptEditor 保存的是工具 ID，进入主 Agent 前转换为具体名称，避免模型看到不可调用的 ID。
     const formattedUserSystemPrompt = replaceAgentPromptToolReferences({
       text: systemPrompt,
-      resolveName: (id) => promptToolReferenceInfoMap.get(id) || getSubAppInfo(id).name || undefined
+      resolveName: (id) =>
+        promptToolReferenceInfoMap.get(id) || getSubAppInfo(id).name || undefined,
+      // 歧义裸键直接保留原文，不再回退到派生候选（如 `report`）命中某个来源的运行时 ID。
+      isAmbiguousReference: (id) => ambiguousPromptToolReferenceIds.has(id)
     });
 
     // providerState 统一保存 provider 内部恢复信息。

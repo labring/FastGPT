@@ -26,7 +26,6 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { ChatAgentHelperTypeEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
@@ -37,7 +36,11 @@ import { cardStyles } from '../../constants';
 import { AppContext } from '../../context';
 import { useChatTest } from '../../useChatTest';
 import type { Form2WorkflowFnType } from '../FormComponent/type';
-import { loadGeneratedTools } from './utils';
+import {
+  formatAuxiliaryGenerationPrompt,
+  getAuxiliaryGenerationToolKey,
+  loadGeneratedTools
+} from './utils';
 import { checkAgentSandboxIssues } from '@/web/core/workflow/check/resource';
 import { WorkflowCheckIssueCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 
@@ -188,10 +191,11 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   // 构建 ChatAgentHelper metadata，从 appForm 中提取配置。
   const chatAgentHelperMetadata = useMemo(
     () => ({
-      systemPrompt: appForm.aiSettings.systemPrompt,
-      selectedTools: appForm.selectedTools.map((tool) =>
-        tool.source ? getToolIdentityKey(tool.id, tool.source) : tool.id
-      ),
+      systemPrompt: formatAuxiliaryGenerationPrompt({
+        systemPrompt: appForm.aiSettings.systemPrompt,
+        tools: appForm.selectedTools
+      }),
+      selectedTools: appForm.selectedTools.map((tool) => getAuxiliaryGenerationToolKey(tool)),
       selectedDatasets: appForm.dataset.datasets.map((dataset) => dataset.datasetId),
       selectedAgentSkills: appForm.selectedAgentSkills || [],
       fileUpload: appForm.chatConfig.fileSelectConfig?.canSelectFile || false,

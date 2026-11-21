@@ -726,7 +726,8 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].version).toBe('');
     expect(tools[0].toolConfig).not.toHaveProperty('mcpToolSet');
     expect(tools[0].promptReference).toEqual({
-      id: 'mcp_app',
+      id: 'system:mcp_app',
+      legacyId: 'mcp_app',
       name: 'mcp_app name'
     });
   });
@@ -960,7 +961,8 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].toolConfig?.httpTool?.toolId).toBe('http-http_app/create');
     expect(tools[0].version).toBe('');
     expect(tools[0].promptReference).toEqual({
-      id: 'http_app',
+      id: 'system:http_app',
+      legacyId: 'http_app',
       name: 'http_app name'
     });
   });
@@ -1229,7 +1231,8 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(tools[0].name).toBe('搜索网页');
     expect(tools[0].promptReference).toEqual({
-      id: 'systemTool-metaso',
+      id: 'system:systemTool-metaso',
+      legacyId: 'systemTool-metaso',
       name: '秘塔搜索'
     });
   });
