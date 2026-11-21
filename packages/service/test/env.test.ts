@@ -254,6 +254,31 @@ describe('serviceEnv bootstrap configuration', () => {
       }
     });
   });
+  it.each([
+    [undefined, 'v2'],
+    ['', 'v2'],
+    ['v1', 'v1'],
+    ['v2', 'v2']
+  ] as const)('parses STORAGE_DOWNLOAD_SIGN_VERSION=%s as %s', async (value, expected) => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+    vi.stubEnv('STORAGE_DOWNLOAD_SIGN_VERSION', value);
+
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: {
+        STORAGE_DOWNLOAD_SIGN_VERSION: expected
+      }
+    });
+  });
+  it('rejects unsupported STORAGE_DOWNLOAD_SIGN_VERSION values', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+    vi.stubEnv('STORAGE_DOWNLOAD_SIGN_VERSION', 'v3');
+
+    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
+  });
   it('uses PRO_TOKEN only when configured or running tests', async () => {
     vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
     vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');

@@ -7,6 +7,7 @@ const originalEnv = {
   fileDomain: getTestInstanceConfig().storage.fileDomain,
   publicUrl: getTestInstanceConfig().site.publicUrl,
   FILE_DOWNLOAD_PUBLIC_URL_PREFIX: process.env.FILE_DOWNLOAD_PUBLIC_URL_PREFIX,
+  STORAGE_DOWNLOAD_SIGN_VERSION: process.env.STORAGE_DOWNLOAD_SIGN_VERSION,
   FE_DOMAIN: process.env.FE_DOMAIN,
   NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL
 };
@@ -15,6 +16,7 @@ const loadAccessLinkModules = async (
   env: {
     fileDomain?: string;
     fileDownloadPublicUrlPrefix?: string;
+    storageDownloadSignVersion?: 'v1' | 'v2';
     publicUrl?: string;
     nextPublicBaseUrl?: string;
   } = {}
@@ -23,6 +25,7 @@ const loadAccessLinkModules = async (
   vi.stubEnv('FILE_TOKEN_KEY', strongFileTokenKey);
   getTestInstanceConfig().storage.fileDomain = env.fileDomain ?? 'https://files.example.com/';
   vi.stubEnv('FILE_DOWNLOAD_PUBLIC_URL_PREFIX', env.fileDownloadPublicUrlPrefix);
+  vi.stubEnv('STORAGE_DOWNLOAD_SIGN_VERSION', env.storageDownloadSignVersion);
   getTestInstanceConfig().site.publicUrl = env.publicUrl ?? 'https://app.example.com';
   vi.stubEnv('FE_DOMAIN', 'https://ignored-legacy.test');
   vi.stubEnv('NEXT_PUBLIC_BASE_URL', env.nextPublicBaseUrl ?? '/fastgpt');
@@ -54,6 +57,7 @@ describe('s3 access link', () => {
     getTestInstanceConfig().storage.fileDomain = originalEnv.fileDomain;
     getTestInstanceConfig().site.publicUrl = originalEnv.publicUrl;
     vi.stubEnv('FILE_DOWNLOAD_PUBLIC_URL_PREFIX', originalEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX);
+    vi.stubEnv('STORAGE_DOWNLOAD_SIGN_VERSION', originalEnv.STORAGE_DOWNLOAD_SIGN_VERSION);
     vi.stubEnv('FE_DOMAIN', originalEnv.FE_DOMAIN);
     vi.stubEnv('NEXT_PUBLIC_BASE_URL', originalEnv.NEXT_PUBLIC_BASE_URL);
     vi.restoreAllMocks();
@@ -89,6 +93,7 @@ describe('s3 access link', () => {
   it('creates stable short download URLs backed by one alias document', async () => {
     const {
       createS3DownloadAccessUrl,
+      parseSignedS3DownloadAlias,
       verifyS3DownloadAccess,
       revokeS3DownloadAlias,
       MongoS3DownloadAlias
@@ -106,7 +111,7 @@ describe('s3 access link', () => {
 
     expect(firstUrl).toBe(secondUrl);
     expect(firstUrl).toMatch(
-      /^https:\/\/files\.example\.com\/fastgpt\/api\/system\/file\/d\/[A-Za-z0-9_-]{16}\.[0-9a-z]+\.[A-Za-z0-9_-]{22}$/
+      /^https:\/\/files\.example\.com\/fastgpt\/api\/system\/file\/d\/v2-[A-Za-z0-9]{16}-[0-9a-z]+-[A-Za-z0-9]{22}\.png$/
     );
     expect(firstUrl).not.toContain(params.objectKey);
 
@@ -116,7 +121,8 @@ describe('s3 access link', () => {
     expect(aliases[0]?.objectKey).toBe(params.objectKey);
     expect(aliases[0]?.purgeAt.getTime()).toBeGreaterThan(params.expiredTime.getTime());
 
-    const verified = await verifyS3DownloadAccess(extractLastPathSegment(firstUrl));
+    const signedAlias = extractLastPathSegment(firstUrl);
+    const verified = await verifyS3DownloadAccess(signedAlias);
     expect(verified).toMatchObject({
       bucketName: params.bucketName,
       objectKey: params.objectKey,
@@ -125,12 +131,10 @@ describe('s3 access link', () => {
     });
     expect(verified.expiresAt).toBeInstanceOf(Date);
 
-    const aliasId = extractLastPathSegment(firstUrl).split('.')[0] || '';
+    const { aliasId } = parseSignedS3DownloadAlias(signedAlias);
     await revokeS3DownloadAlias(aliasId);
 
-    await expect(verifyS3DownloadAccess(extractLastPathSegment(firstUrl))).rejects.toThrow(
-      'DownloadAliasRevoked'
-    );
+    await expect(verifyS3DownloadAccess(signedAlias)).rejects.toThrow('DownloadAliasRevoked');
   });
 
   it('uses one Mongo batch lookup and insert for unique download aliases', async () => {
@@ -215,7 +219,7 @@ describe('s3 access link', () => {
     });
 
     expect(downloadUrl).toMatch(
-      /^https:\/\/files\.example\.com\/[A-Za-z0-9_-]{16}\.[0-9a-z]+\.[A-Za-z0-9_-]{22}$/
+      /^https:\/\/files\.example\.com\/v2-[A-Za-z0-9]{16}-[0-9a-z]+-[A-Za-z0-9]{22}\.png$/
     );
     expect(uploadUrl).toMatch(
       /^https:\/\/app\.example\.com\/fastgpt\/api\/system\/file\/u\/[A-Za-z0-9_-]{22}$/
@@ -246,7 +250,7 @@ describe('s3 access link', () => {
     });
 
     expect(downloadUrl).toMatch(
-      /^https:\/\/files\.example\.com\/f\/[A-Za-z0-9_-]{16}\.[0-9a-z]+\.[A-Za-z0-9_-]{22}$/
+      /^https:\/\/files\.example\.com\/f\/v2-[A-Za-z0-9]{16}-[0-9a-z]+-[A-Za-z0-9]{22}\.png$/
     );
   });
 
@@ -279,20 +283,325 @@ describe('s3 access link', () => {
       await loadAccessLinkModules();
     const aliasId = 'R7mQG0Yh2kVxP9Za';
     const expMinute36 = encodeExpiresAtMinute(getFutureDate(10));
-    const sig = signS3DownloadAlias({ aliasId, expMinute36 });
+    const sig = signS3DownloadAlias({ aliasId, expMinute36, extension: 'png' });
     const tamperedExpMinute36 = (Number.parseInt(expMinute36, 36) + 60).toString(36);
     const expiredExpMinute36 = encodeExpiresAtMinute(getFutureDate(-10));
     const expiredSig = signS3DownloadAlias({
       aliasId,
-      expMinute36: expiredExpMinute36
+      expMinute36: expiredExpMinute36,
+      extension: 'png'
+    });
+    const v1Sig = signS3DownloadAlias({ aliasId, expMinute36, version: 'v1' });
+    const v1ExpiredSig = signS3DownloadAlias({
+      aliasId,
+      expMinute36: expiredExpMinute36,
+      version: 'v1'
     });
 
+    // v2 合法签名通过，篡改过期时间、篡改扩展名与过期链接均拒绝
+    expect(assertS3DownloadAliasSignature(`v2-${aliasId}-${expMinute36}-${sig}.png`)).toMatchObject(
+      { version: 'v2', aliasId, extension: 'png' }
+    );
     expect(() =>
-      assertS3DownloadAliasSignature(`${aliasId}.${tamperedExpMinute36}.${sig}`)
+      assertS3DownloadAliasSignature(`v2-${aliasId}-${tamperedExpMinute36}-${sig}.png`)
+    ).toThrow('InvalidSignedAliasSignature');
+    expect(() => assertS3DownloadAliasSignature(`v2-${aliasId}-${expMinute36}-${sig}.jpg`)).toThrow(
+      'InvalidSignedAliasSignature'
+    );
+    expect(() =>
+      assertS3DownloadAliasSignature(`v2-${aliasId}-${expiredExpMinute36}-${expiredSig}.png`)
+    ).toThrow('ExpiredSignedAlias');
+
+    // 存量 v1 点分格式（含离线冻结的旧版样本）仍兼容校验
+    expect(
+      assertS3DownloadAliasSignature('R7mQG0Yh2kVxP9Za.200000.42NZcU3jc37asuRDQ0BStA')
+    ).toMatchObject({
+      version: 'v1',
+      aliasId: 'R7mQG0Yh2kVxP9Za',
+      expMinute36: '200000',
+      sig: '42NZcU3jc37asuRDQ0BStA'
+    });
+    expect(assertS3DownloadAliasSignature(`${aliasId}.${expMinute36}.${v1Sig}`)).toMatchObject({
+      version: 'v1',
+      aliasId
+    });
+    expect(() =>
+      assertS3DownloadAliasSignature(`${aliasId}.${tamperedExpMinute36}.${v1Sig}`)
     ).toThrow('InvalidSignedAliasSignature');
     expect(() =>
-      assertS3DownloadAliasSignature(`${aliasId}.${expiredExpMinute36}.${expiredSig}`)
+      assertS3DownloadAliasSignature(`${aliasId}.${expiredExpMinute36}.${v1ExpiredSig}`)
     ).toThrow('ExpiredSignedAlias');
+  });
+
+  it('resolves signed download aliases only from configured download routes and public prefixes', async () => {
+    const v2Alias = 'v2-R7mQG0Yh2kVxP9Za-200000-4k9LmN2pQrStUvWxYz12Ab.pdf';
+    const externalCdnUrl =
+      'https://cdn.example.com/reports/v2-quarterlyreport-2026-A1B2C3D4E5F6G7H8I9J0K1.pdf';
+
+    await loadAccessLinkModules({
+      fileDomain: 'https://files.example.com/',
+      publicUrl: 'https://app.example.com',
+      fileDownloadPublicUrlPrefix: 'https://short.example.com/f/',
+      nextPublicBaseUrl: '/fastgpt'
+    });
+    const { resolveS3DownloadAliasFromUrl } =
+      await import('@fastgpt/service/common/s3/accessLink/url');
+
+    expect(
+      resolveS3DownloadAliasFromUrl(
+        `https://files.example.com/fastgpt/api/system/file/d/${v2Alias}`
+      )
+    ).toBe(v2Alias);
+    expect(
+      resolveS3DownloadAliasFromUrl(`https://app.example.com/fastgpt/api/system/file/d/${v2Alias}`)
+    ).toBe(v2Alias);
+    expect(resolveS3DownloadAliasFromUrl(`/fastgpt/api/system/file/d/${v2Alias}`)).toBe(v2Alias);
+    expect(resolveS3DownloadAliasFromUrl(`https://short.example.com/f/${v2Alias}`)).toBe(v2Alias);
+
+    // 非本实例域名、缺少 NEXT_PUBLIC_BASE_URL 的同域其他服务路径、嵌套子路径及普通外部 CDN 上形如 v2 的文件名均不识别为本实例短链
+    expect(
+      resolveS3DownloadAliasFromUrl(`https://app.example.com/api/system/file/d/${v2Alias}`)
+    ).toBe('');
+    expect(
+      resolveS3DownloadAliasFromUrl(`https://short.example.com/api/system/file/d/${v2Alias}`)
+    ).toBe('');
+    expect(resolveS3DownloadAliasFromUrl(externalCdnUrl)).toBe('');
+    expect(resolveS3DownloadAliasFromUrl(`https://short.example.com/f/nested/${v2Alias}`)).toBe('');
+    expect(resolveS3DownloadAliasFromUrl(`https://short.example.com/${v2Alias}`)).toBe('');
+    expect(
+      resolveS3DownloadAliasFromUrl(
+        `https://other-fastgpt.example.com/api/system/file/d/${v2Alias}`
+      )
+    ).toBe('');
+  });
+
+  it('only matches relative download routes when no public domain or prefix is configured', async () => {
+    const v2Alias = 'v2-R7mQG0Yh2kVxP9Za-200000-4k9LmN2pQrStUvWxYz12Ab.pdf';
+    const v1Alias = 'R7mQG0Yh2kVxP9Za.200000.42NZcU3jc37asuRDQ0BStA';
+
+    // 默认未配置 storage.fileDomain、site.publicUrl 和 FILE_DOWNLOAD_PUBLIC_URL_PREFIX
+    await loadAccessLinkModules({
+      fileDomain: '',
+      publicUrl: '',
+      fileDownloadPublicUrlPrefix: '',
+      nextPublicBaseUrl: ''
+    });
+    const defaultUrlMod = await import('@fastgpt/service/common/s3/accessLink/url');
+    const defaultIssued = defaultUrlMod.buildS3AccessLinkDownloadUrl(v2Alias);
+    expect(defaultIssued).toBe(`/api/system/file/d/${v2Alias}`);
+    expect(defaultUrlMod.resolveS3DownloadAliasFromUrl(defaultIssued)).toBe(v2Alias);
+    expect(defaultUrlMod.resolveS3DownloadAliasFromUrl(`/api/system/file/d/${v1Alias}`)).toBe(
+      v1Alias
+    );
+    // 未配置公开域名时不猜测任意外部 origin 的归属，避免误拦跨实例短链
+    expect(
+      defaultUrlMod.resolveS3DownloadAliasFromUrl(
+        `https://other-fastgpt.example.com/api/system/file/d/${v2Alias}`
+      )
+    ).toBe('');
+    expect(
+      defaultUrlMod.resolveS3DownloadAliasFromUrl(
+        `https://other-fastgpt.example.com/api/system/file/d/${v1Alias}`
+      )
+    ).toBe('');
+    expect(
+      defaultUrlMod.isSignedDownloadAliasFilename({
+        url: `https://other-fastgpt.example.com/api/system/file/d/${v2Alias}`,
+        filename: v2Alias
+      })
+    ).toBe(false);
+    expect(
+      defaultUrlMod.isSignedDownloadAliasFilename({
+        url: `https://other-fastgpt.example.com/api/system/file/d/${v1Alias}`,
+        filename: v1Alias
+      })
+    ).toBe(true);
+    expect(
+      defaultUrlMod.isSignedDownloadAliasFilename({
+        url: defaultIssued,
+        filename: v2Alias
+      })
+    ).toBe(true);
+    expect(
+      defaultUrlMod.isSignedDownloadAliasFilename({
+        url: defaultIssued,
+        filename: 'report.pdf'
+      })
+    ).toBe(false);
+
+    // 配置了 NEXT_PUBLIC_BASE_URL 但未配置公开域名时同样仅匹配相对路径
+    await loadAccessLinkModules({
+      fileDomain: '',
+      publicUrl: '',
+      fileDownloadPublicUrlPrefix: '',
+      nextPublicBaseUrl: '/fastgpt'
+    });
+    const basePathUrlMod = await import('@fastgpt/service/common/s3/accessLink/url');
+    const basePathIssued = basePathUrlMod.buildS3AccessLinkDownloadUrl(v2Alias);
+    expect(basePathIssued).toBe(`/fastgpt/api/system/file/d/${v2Alias}`);
+    expect(basePathUrlMod.resolveS3DownloadAliasFromUrl(basePathIssued)).toBe(v2Alias);
+    expect(
+      basePathUrlMod.resolveS3DownloadAliasFromUrl(
+        `https://other-fastgpt.example.com/fastgpt/api/system/file/d/${v2Alias}`
+      )
+    ).toBe('');
+  });
+
+  it('round-trips build and resolve consistently for path-prefixed fileDomain, publicUrl, and short prefixes', async () => {
+    const v2Alias = 'v2-R7mQG0Yh2kVxP9Za-200000-4k9LmN2pQrStUvWxYz12Ab.png';
+
+    // 1. storage.fileDomain 带网关路径且 NEXT_PUBLIC_BASE_URL 为空
+    await loadAccessLinkModules({
+      fileDomain: 'https://files.example.com/gateway',
+      publicUrl: 'https://app.example.com',
+      fileDownloadPublicUrlPrefix: '',
+      nextPublicBaseUrl: ''
+    });
+    const gatewayUrlMod = await import('@fastgpt/service/common/s3/accessLink/url');
+    const gatewayFileContextMod = await import('@fastgpt/service/core/chat/fileContext');
+    const gatewayIssued = gatewayUrlMod.buildS3AccessLinkDownloadUrl(v2Alias);
+    expect(gatewayIssued).toBe(`https://files.example.com/gateway/api/system/file/d/${v2Alias}`);
+    expect(gatewayUrlMod.resolveS3DownloadAliasFromUrl(gatewayIssued)).toBe(v2Alias);
+    expect(gatewayFileContextMod.resolveSignedDownloadAliasFromUrl(gatewayIssued)).toBe(v2Alias);
+    expect(
+      gatewayUrlMod.resolveS3DownloadAliasFromUrl(`/gateway/api/system/file/d/${v2Alias}`)
+    ).toBe(v2Alias);
+    // 同域名根路径、非下载路由与其他域名同路径均不误判
+    expect(
+      gatewayUrlMod.resolveS3DownloadAliasFromUrl(
+        `https://files.example.com/api/system/file/d/${v2Alias}`
+      )
+    ).toBe('');
+    expect(
+      gatewayUrlMod.resolveS3DownloadAliasFromUrl(
+        `https://files.example.com/gateway/reports/${v2Alias}`
+      )
+    ).toBe('');
+    expect(
+      gatewayUrlMod.resolveS3DownloadAliasFromUrl(
+        `https://other.example.com/gateway/api/system/file/d/${v2Alias}`
+      )
+    ).toBe('');
+
+    // 2. storage.fileDomain 带首尾空白与路径 + 非空 NEXT_PUBLIC_BASE_URL，不把同网关相邻服务路径误判为本实例
+    await loadAccessLinkModules({
+      fileDomain: '  https://files.example.com/docs/  ',
+      publicUrl: '',
+      fileDownloadPublicUrlPrefix: '',
+      nextPublicBaseUrl: '/fastgpt'
+    });
+    const combinedUrlMod = await import('@fastgpt/service/common/s3/accessLink/url');
+    const combinedIssued = combinedUrlMod.buildS3AccessLinkDownloadUrl(v2Alias);
+    expect(combinedIssued).toBe(
+      `https://files.example.com/docs/fastgpt/api/system/file/d/${v2Alias}`
+    );
+    expect(combinedUrlMod.resolveS3DownloadAliasFromUrl(combinedIssued)).toBe(v2Alias);
+    expect(
+      combinedUrlMod.resolveS3DownloadAliasFromUrl(
+        `https://files.example.com/docs/api/system/file/d/${v2Alias}`
+      )
+    ).toBe('');
+    expect(
+      combinedUrlMod.resolveS3DownloadAliasFromUrl(
+        `https://files.example.com/fastgpt/api/system/file/d/${v2Alias}`
+      )
+    ).toBe('');
+    expect(
+      combinedUrlMod.resolveS3DownloadAliasFromUrl(
+        `https://files.example.com/api/system/file/d/${v2Alias}`
+      )
+    ).toBe('');
+
+    // 3. 仅配置带路径的 site.publicUrl（含大写协议与尾斜杠）
+    await loadAccessLinkModules({
+      fileDomain: '',
+      publicUrl: 'HTTPS://app.example.com/portal/',
+      fileDownloadPublicUrlPrefix: '',
+      nextPublicBaseUrl: ''
+    });
+    const publicUrlMod = await import('@fastgpt/service/common/s3/accessLink/url');
+    const publicUrlIssued = publicUrlMod.buildS3AccessLinkDownloadUrl(v2Alias);
+    expect(publicUrlIssued).toBe(`HTTPS://app.example.com/portal/api/system/file/d/${v2Alias}`);
+    expect(publicUrlMod.resolveS3DownloadAliasFromUrl(publicUrlIssued)).toBe(v2Alias);
+
+    // 4. 配置多段路径的 FILE_DOWNLOAD_PUBLIC_URL_PREFIX
+    await loadAccessLinkModules({
+      fileDomain: 'https://files.example.com/gateway',
+      publicUrl: 'https://app.example.com',
+      fileDownloadPublicUrlPrefix: 'https://short.example.com/gateway/f/',
+      nextPublicBaseUrl: ''
+    });
+    const shortPrefixMod = await import('@fastgpt/service/common/s3/accessLink/url');
+    const shortPrefixIssued = shortPrefixMod.buildS3AccessLinkDownloadUrl(v2Alias);
+    expect(shortPrefixIssued).toBe(`https://short.example.com/gateway/f/${v2Alias}`);
+    expect(shortPrefixMod.resolveS3DownloadAliasFromUrl(shortPrefixIssued)).toBe(v2Alias);
+  });
+
+  it('supports STORAGE_DOWNLOAD_SIGN_VERSION=v1 for staged rollout while still verifying v2 aliases', async () => {
+    const v2Modules = await loadAccessLinkModules({ storageDownloadSignVersion: 'v2' });
+    const params = {
+      bucketName: 'fastgpt-private',
+      objectKey: 'dataset/team-1/staged.png',
+      expiredTime: getFutureDate(30),
+      filename: 'staged.png'
+    };
+    const v2Url = await v2Modules.createS3DownloadAccessUrl(params);
+    const v2Alias = extractLastPathSegment(v2Url);
+
+    const v1Modules = await loadAccessLinkModules({ storageDownloadSignVersion: 'v1' });
+    const v1Url = await v1Modules.createS3DownloadAccessUrl(params);
+    const v1Alias = extractLastPathSegment(v1Url);
+
+    expect(v1Url).toMatch(
+      /^https:\/\/files\.example\.com\/fastgpt\/api\/system\/file\/d\/[A-Za-z0-9]{16}\.[0-9a-z]+\.[A-Za-z0-9_-]{22}$/
+    );
+    await expect(v1Modules.verifyS3DownloadAccess(v1Alias)).resolves.toMatchObject({
+      objectKey: params.objectKey
+    });
+    await expect(v1Modules.verifyS3DownloadAccess(v2Alias)).resolves.toMatchObject({
+      objectKey: params.objectKey
+    });
+  });
+
+  it('derives extension from responseContentType when key and filename lack one, ignores literal %2E, and omits it for octet-stream', async () => {
+    const { createS3DownloadAccessUrl, verifyS3DownloadAccess } = await loadAccessLinkModules();
+
+    const imageUrl = await createS3DownloadAccessUrl({
+      bucketName: 'fastgpt-private',
+      objectKey: 'dataset/team-1/opaque-image',
+      expiredTime: getFutureDate(10),
+      filename: 'cover',
+      responseContentType: 'image/webp'
+    });
+    expect(imageUrl).toMatch(
+      /^https:\/\/files\.example\.com\/fastgpt\/api\/system\/file\/d\/v2-[A-Za-z0-9]{16}-[0-9a-z]+-[A-Za-z0-9]{22}\.webp$/
+    );
+    await expect(verifyS3DownloadAccess(extractLastPathSegment(imageUrl))).resolves.toMatchObject({
+      objectKey: 'dataset/team-1/opaque-image',
+      responseContentType: 'image/webp'
+    });
+
+    const literalPercentUrl = await createS3DownloadAccessUrl({
+      bucketName: 'fastgpt-private',
+      objectKey: 'dataset/team-1/opaque-jpeg',
+      expiredTime: getFutureDate(10),
+      filename: 'report%2Epng',
+      responseContentType: 'image/jpeg'
+    });
+    expect(literalPercentUrl).toMatch(
+      /^https:\/\/files\.example\.com\/fastgpt\/api\/system\/file\/d\/v2-[A-Za-z0-9]{16}-[0-9a-z]+-[A-Za-z0-9]{22}\.jpg$/
+    );
+
+    const binaryUrl = await createS3DownloadAccessUrl({
+      bucketName: 'fastgpt-private',
+      objectKey: 'dataset/team-1/raw-binary',
+      expiredTime: getFutureDate(10),
+      responseContentType: 'application/octet-stream'
+    });
+    expect(binaryUrl).toMatch(
+      /^https:\/\/files\.example\.com\/fastgpt\/api\/system\/file\/d\/v2-[A-Za-z0-9]{16}-[0-9a-z]+-[A-Za-z0-9]{22}$/
+    );
+    expect(extractLastPathSegment(binaryUrl)).not.toContain('.');
   });
 
   it('stores upload session payload behind a short hashed token', async () => {
