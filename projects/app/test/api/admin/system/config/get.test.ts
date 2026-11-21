@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { updateDomainConfig } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
+import { serviceEnv } from '@fastgpt/service/env';
 import type { GetDomainConfigResponse } from '@fastgpt/global/openapi/admin/system/instanceConfig/api';
 
 vi.mock('@/service/middleware/entry', () => ({ NextAPI: (handler: unknown) => handler }));
@@ -66,5 +67,35 @@ describe('instance config get API', () => {
     expect(response).not.toContain('private-api-key');
     expect(response).not.toContain(cipher?.secret ?? '');
     expect(response).not.toContain('******');
+  });
+
+  it('returns runtime storageCapabilities for domain=storage based on STORAGE_VENDOR', async () => {
+    const getConfig = handler as unknown as (request: {
+      query: { domain: string };
+    }) => Promise<GetDomainConfigResponse>;
+    const originalVendor = serviceEnv.STORAGE_VENDOR;
+
+    try {
+      Object.assign(serviceEnv, { STORAGE_VENDOR: 'r2' });
+      const r2Result = await getConfig({ query: { domain: 'storage' } });
+      expect(r2Result.storageCapabilities).toEqual({
+        vendor: 'r2',
+        supportsExternalEndpoint: false,
+        supportsCdnEndpoint: false
+      });
+
+      Object.assign(serviceEnv, { STORAGE_VENDOR: 'oss' });
+      const ossResult = await getConfig({ query: { domain: 'storage' } });
+      expect(ossResult.storageCapabilities).toEqual({
+        vendor: 'oss',
+        supportsExternalEndpoint: false,
+        supportsCdnEndpoint: true
+      });
+
+      const siteResult = await getConfig({ query: { domain: 'site' } });
+      expect(siteResult.storageCapabilities).toBeUndefined();
+    } finally {
+      Object.assign(serviceEnv, { STORAGE_VENDOR: originalVendor });
+    }
   });
 });

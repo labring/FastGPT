@@ -142,6 +142,7 @@ export const useDomainConfig = <T extends SystemInstanceConfigDomainKey>(domain:
     revision,
     effectiveConfig: effectiveConfig as SystemInstanceConfigDomainMap[T],
     overrides,
+    storageCapabilities: data?.storageCapabilities,
     isSecretConfigured,
     updatedAt: data?.updatedAt,
     updatedBy: data?.updatedBy,

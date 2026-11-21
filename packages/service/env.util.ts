@@ -1,7 +1,6 @@
 import type { SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 import { agentSandboxProviderList } from '@fastgpt/global/core/ai/sandbox/constants';
-import type z from 'zod';
-import type { StorageVendorSchema } from './env.const';
+import type { StorageVendor } from '@fastgpt/global/common/system/config/schemas/storage';
 
 const TEST_INVOKE_TOKEN_SECRET = 'fastgpt_test_invoke_token_secret_32';
 const TEST_PRO_TOKEN = 'fastgpt_test_pro_token_32_chars_min';
@@ -27,7 +26,7 @@ export const getRuntimeEnv = (): NodeJS.ProcessEnv => ({
 /* ===== S3 ===== */
 /** 只校验对象存储基础设施 ENV；下载模式、external endpoint、CDN 的约束由实例配置校验负责。 */
 export const validateS3Env = (env: {
-  STORAGE_VENDOR: z.infer<typeof StorageVendorSchema>;
+  STORAGE_VENDOR: StorageVendor;
   STORAGE_R2_PUBLIC_ENDPOINT?: string;
 }): void => {
   if (env.STORAGE_VENDOR === 'r2' && !env.STORAGE_R2_PUBLIC_ENDPOINT) {
