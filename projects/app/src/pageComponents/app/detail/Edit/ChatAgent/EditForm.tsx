@@ -23,7 +23,7 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
 import { TTSTypeEnum } from '@/web/core/app/constants';
-import { useUserStore } from '@/web/support/user/useUserStore';
+import { useAgentSandboxCapability } from '../../hooks/useAgentSandboxCapability';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
@@ -70,10 +70,7 @@ const EditForm = ({
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
-  const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
-  const showSandbox = feConfigs.show_agent_sandbox;
-  const canUseSandbox = Boolean(showSandbox && enableSandbox);
+  const { showSandbox, enableSandbox, canUseSandbox } = useAgentSandboxCapability();
   const appId = useContextSelector(AppContext, (v) => v.appId);
 
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);

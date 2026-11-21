@@ -19,7 +19,7 @@ import { useSkillManager } from '@/pageComponents/app/detail/Edit/ChatAgent/hook
 import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserStore } from '@/web/support/user/useUserStore';
+import { useAgentSandboxCapability } from '@/pageComponents/app/detail/hooks/useAgentSandboxCapability';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import { getEditorVariables } from '../../../utils';
@@ -31,7 +31,7 @@ const useAgentNodeInputs = ({ nodeId, inputs }: FlowNodeItemType) => {
   const { getNodeById, edges } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const { feConfigs } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
+  const { showSandbox, enableSandbox } = useAgentSandboxCapability();
   const inputMap = useMemo(() => new Map(inputs.map((input) => [input.key, input])), [inputs]);
   const selectedTools = useMemo<SelectedToolItemType[]>(() => {
     const value = inputMap.get(NodeInputKeyEnum.selectedTools)?.value;
@@ -79,8 +79,8 @@ const useAgentNodeInputs = ({ nodeId, inputs }: FlowNodeItemType) => {
   const skillSelection = useAgentSkillSelect({
     selectedAgentSkills,
     useAgentSandbox,
-    showSandbox: feConfigs.show_agent_sandbox,
-    enableSandbox: !teamPlanStatus?.standard || !!teamPlanStatus.standard.enableSandbox,
+    showSandbox,
+    enableSandbox,
     onUpdateSkills,
     onUpdateSandbox
   });
