@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { convertMessages } from '@mariozechner/pi-ai/openai-completions';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import {
+  LLM_TOOL_CALL_ARGUMENTS_TRUNCATED_RESPONSE,
+  ModelTypeEnum
+} from '@fastgpt/global/core/ai/constants';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
@@ -42,6 +46,7 @@ const {
           name: string;
           callId: string;
           args: Record<string, unknown>;
+          stopReason?: string;
         }
       | undefined
   },
@@ -178,27 +183,36 @@ vi.mock('@mariozechner/pi-agent-core', () => ({
               }
             });
           });
+          const assistantMessage = {
+            role: 'assistant',
+            content: [
+              {
+                type: 'toolCall',
+                id: pendingTool.callId,
+                name: pendingTool.name,
+                arguments: pendingTool.args
+              }
+            ],
+            usage: {
+              input: 3,
+              output: 2
+            },
+            stopReason: pendingTool.stopReason ?? 'toolUse'
+          };
           subscribers.forEach((subscriber) => {
             subscriber({
               type: 'message_end',
-              message: {
-                role: 'assistant',
-                content: [
-                  {
-                    type: 'toolCall',
-                    id: pendingTool.callId,
-                    name: pendingTool.name,
-                    arguments: pendingTool.args
-                  }
-                ],
-                usage: {
-                  input: 3,
-                  output: 2
-                },
-                stopReason: 'toolUse'
-              }
+              message: assistantMessage
             });
           });
+          // 与 pi-agent-core 一致：beforeToolCall 拦截后不再执行工具。
+          const beforeResult = await args.beforeToolCall?.({
+            assistantMessage,
+            toolCall: assistantMessage.content[0],
+            args: pendingTool.args,
+            context: {}
+          });
+          if (beforeResult?.block) return;
           const tool = args.initialState.tools.find((item: any) => item.name === pendingTool.name);
           await tool.execute(pendingTool.callId, pendingTool.args);
           return;
@@ -1201,6 +1215,59 @@ describe('runPiAgentLoop', () => {
       role: 'tool',
       tool_call_id: 'call_empty_response',
       content: 'none'
+    });
+  });
+
+  it('does not execute tool calls from a response truncated by the output token limit', async () => {
+    const events: any[] = [];
+    // pi-ai 会用 partial-json 把截断的 {"q":"incomp 补成 {"q":"incomp"}。
+    agentToolToExecute.value = {
+      name: 'search',
+      callId: 'call_truncated',
+      args: { q: 'incomp' },
+      stopReason: 'length'
+    };
+    const executeTool = vi.fn().mockResolvedValue({
+      response: 'Search completed.',
+      assistantMessages: [],
+      usages: []
+    });
+
+    const result = await runPiAgentLoop({
+      input: {
+        messages: [{ role: 'user', content: 'hello' }]
+      },
+      runtime: {
+        lang: 'en',
+        llmParams: { model: 'gpt-5' },
+        toolCatalog: {
+          runtimeTools: [
+            {
+              type: 'function',
+              function: {
+                name: 'search',
+                description: 'Search',
+                parameters: { type: 'object', properties: { q: { type: 'string' } } }
+              }
+            }
+          ]
+        },
+        executeTool,
+        checkIsStopping: vi.fn(() => false),
+        emitEvent: (event) => events.push(event)
+      }
+    });
+
+    const response = parseI18nString(LLM_TOOL_CALL_ARGUMENTS_TRUNCATED_RESPONSE, 'en');
+    expect(executeTool).not.toHaveBeenCalled();
+    expect(events.find((event) => event.type === 'tool_run_end')).toMatchObject({
+      response,
+      errorMessage: response
+    });
+    expect(result.completeMessages).toContainEqual({
+      role: 'tool',
+      tool_call_id: 'call_truncated',
+      content: response
     });
   });
 
