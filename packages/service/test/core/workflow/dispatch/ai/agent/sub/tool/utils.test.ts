@@ -845,6 +845,16 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(tools[0].name).toBe('search');
     expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-mcp_app/search' });
+    expect(tools[0].promptReference).toEqual({
+      name: 'search',
+      ref: {
+        type: 'app',
+        source: 'team',
+        id: 'mcp_app/search',
+        parentId: 'mcp_app',
+        childId: 'search'
+      }
+    });
   });
 
   it('prefixes tool function name only when the runtime tool id starts with a number', async () => {

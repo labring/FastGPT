@@ -140,12 +140,6 @@ export const getAgentRuntimeTools = async ({
     };
   };
 
-  const findToolByName = <T extends { name: string }>(toolList: T[], toolName: string) => {
-    return getToolNameCandidates(toolName)
-      .map((name) => toolList.find((item) => item.name === name))
-      .find(Boolean);
-  };
-
   /**
    * 系统工具和商业工具来自 SystemToolRepo，不需要 App 鉴权和版本查询。
    * associatedPluginId 表示这个系统能力最终应按插件工作流执行。
@@ -284,6 +278,12 @@ export const getAgentRuntimeTools = async ({
       ...version,
       nodes: version.nodes
     };
+  };
+
+  const findToolByName = <T extends { name: string }>(toolList: T[], toolName: string) => {
+    return getToolNameCandidates(toolName)
+      .map((name) => toolList.find((item) => item.name === name))
+      .find(Boolean);
   };
 
   /**
@@ -672,7 +672,19 @@ export const getAgentRuntimeTools = async ({
         })();
 
         // toolset 展开后的子工具统一走 tool 执行；params 仍继承父工具配置。
-        const promptRef = refFromTool({ id: tool.id, source: runtimeSource }) ?? undefined;
+        // 单子工具以实际加载出的规范 toolConfig.*.toolId 登记引用，避免旧候选回退把缺失子工具的 V2 键误绑到替代工具。
+        const resolvedPromptToolId =
+          toolNode.flowNodeType === FlowNodeTypeEnum.toolSet
+            ? tool.id
+            : (toolNode.toolConfig?.mcpTool && 'toolId' in toolNode.toolConfig.mcpTool
+                ? toolNode.toolConfig.mcpTool.toolId
+                : undefined) ||
+              (toolNode.toolConfig?.httpTool && 'toolId' in toolNode.toolConfig.httpTool
+                ? toolNode.toolConfig.httpTool.toolId
+                : undefined) ||
+              tool.id;
+        const promptRef =
+          refFromTool({ id: resolvedPromptToolId, source: runtimeSource }) ?? undefined;
         const promptReference = promptRef
           ? {
               name: toolNode.name,
