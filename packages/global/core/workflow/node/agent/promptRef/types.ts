@@ -33,6 +33,8 @@ export type ParsedLegacyPromptRef = {
   rawKey: string;
   /** 可无状态确定还原的旧格式（如 system:systemTool-x、teamId:tid:x、dataset_search、personal-id） */
   deterministicRef?: AgentPromptRef;
+  /** 仅历史三段式 mcp-appId/toolsetName/toolName 允许同 appId 下按末段回退，避免 HTTP 路径误绑。 */
+  allowLegacyToolsetSegmentFallback?: boolean;
   /** 需目录消歧的裸键（如裸 24 位 ObjectId、极老裸插件名） */
   bareId?: string;
 };

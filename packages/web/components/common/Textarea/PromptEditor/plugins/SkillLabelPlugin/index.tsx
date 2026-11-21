@@ -13,12 +13,9 @@ import { mergeRegister } from '@lexical/utils';
 import { registerLexicalTextEntity } from '../../utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
-import { AGENT_PROMPT_REF_REGEXP } from '@fastgpt/global/core/workflow/node/agent/promptRef/text';
+import { findAgentPromptRefEntityMatch } from '@fastgpt/global/core/workflow/node/agent/promptRef/text';
 import type { AgentPromptRefRegistry } from '@fastgpt/global/core/workflow/node/agent/promptRef/registry';
-
-const SKILL_MATCH_REGEX = new RegExp(AGENT_PROMPT_REF_REGEXP.source);
-
-const AMBIGUOUS_TOOL_TIP = '存在多个同名不同来源工具，请点击删除后重新 @ 选择';
+import { useTranslation } from 'next-i18next';
 
 export type SkillLabelItemType = Partial<SelectedToolItemType> & {
   id: string;
@@ -41,10 +38,12 @@ function SkillLabelPlugin({
   onClickSkill: (id: string, source?: string) => void;
   pendingSkillsRef: React.MutableRefObject<Map<string, SkillLabelItemType>>;
 }) {
+  const { t } = useTranslation();
   const [editor] = useLexicalComposerContext();
   const selectedSkillsRef = useRef(selectedSkills);
   const promptRefRegistryRef = useRef(promptRefRegistry);
   const onClickSkillRef = useRef(onClickSkill);
+  const ambiguousToolTip = t('common:tool_ambiguous_click_delete_tip');
 
   const resolveSkillDisplay = useCallback(
     (
@@ -68,7 +67,7 @@ function SkillLabelPlugin({
         if (result.status === 'ambiguous') {
           return {
             status: 'invalid',
-            tooltip: AMBIGUOUS_TOOL_TIP
+            tooltip: ambiguousToolTip
           };
         }
       } else {
@@ -94,7 +93,7 @@ function SkillLabelPlugin({
 
       return { status: 'invalid' };
     },
-    [pendingSkillsRef]
+    [ambiguousToolTip, pendingSkillsRef]
   );
 
   useEffect(() => {
@@ -124,17 +123,9 @@ function SkillLabelPlugin({
   }, [editor]);
 
   const getSkillMatch = useCallback((text: string) => {
-    const matches = SKILL_MATCH_REGEX.exec(text);
-    if (!matches) return null;
-
-    const skillLength = matches[0].length;
-    const startOffset = matches.index;
-    const endOffset = startOffset + skillLength;
-
-    return {
-      end: endOffset,
-      start: startOffset
-    };
+    const match = findAgentPromptRefEntityMatch(text);
+    if (!match) return null;
+    return { start: match.start, end: match.end };
   }, []);
 
   const visitSkillNodes = useCallback((handler: (node: SkillNode) => void) => {
@@ -191,12 +182,14 @@ function SkillLabelPlugin({
   useEffect(() => {
     const createSkillPlugin = (textNode: TextNode): SkillNode => {
       const textContent = textNode.getTextContent();
-      const skillId = textContent.slice(3, -3);
+      const entityMatch = findAgentPromptRefEntityMatch(textContent);
+      const skillId = entityMatch ? entityMatch.key : textContent.slice(3, -3);
 
       const { tool, status, tooltip } = resolveSkillDisplay(skillId);
 
       return $createSkillNode({
         id: skillId,
+        rawText: textContent,
         name: tool?.name ?? skillId,
         icon: tool?.avatar,
         skillType: tool?.flowNodeType ?? FlowNodeTypeEnum.tool,

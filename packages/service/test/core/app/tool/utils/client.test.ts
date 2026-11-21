@@ -663,4 +663,115 @@ describe('getClientToolPreviewNode', () => {
       deleteTime: null
     });
   });
+
+  it('resolves untyped V2 child tool ids for MCP and HTTP toolsets including leading-slash HTTP paths', async () => {
+    const mcpParentId = '507f1f77bcf86cd799439031';
+    const httpParentId = '507f1f77bcf86cd799439032';
+    mocks.findOne
+      .mockReturnValueOnce({
+        lean: vi.fn().mockResolvedValue({
+          _id: mcpParentId,
+          teamId: '507f1f77bcf86cd799439012',
+          type: AppTypeEnum.mcpToolSet,
+          name: 'MCP Set',
+          avatar: 'mcp.svg',
+          intro: '',
+          modules: [
+            {
+              toolConfig: {
+                mcpToolSet: {
+                  url: 'https://mcp.example.com',
+                  toolList: [
+                    {
+                      name: 'get-weather',
+                      description: 'Weather',
+                      inputSchema: { type: 'object', properties: {} }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        })
+      })
+      .mockReturnValueOnce({
+        lean: vi.fn().mockResolvedValue({
+          _id: httpParentId,
+          teamId: '507f1f77bcf86cd799439012',
+          type: AppTypeEnum.httpToolSet,
+          name: 'HTTP Set',
+          avatar: 'http.svg',
+          intro: '',
+          modules: [
+            {
+              toolConfig: {
+                httpToolSet: {
+                  toolList: [
+                    {
+                      name: '/api/v1/users',
+                      description: 'List users',
+                      path: '/api/v1/users',
+                      method: 'GET',
+                      inputSchema: { type: 'object', properties: {} }
+                    },
+                    {
+                      name: 'users',
+                      description: 'Other users',
+                      path: '/users',
+                      method: 'GET',
+                      inputSchema: { type: 'object', properties: {} }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        })
+      })
+      .mockReturnValueOnce({
+        lean: vi.fn().mockResolvedValue({
+          _id: httpParentId,
+          teamId: '507f1f77bcf86cd799439012',
+          type: AppTypeEnum.httpToolSet,
+          name: 'HTTP Set',
+          avatar: 'http.svg',
+          intro: '',
+          modules: [
+            {
+              toolConfig: {
+                httpToolSet: {
+                  toolList: [
+                    {
+                      name: 'users',
+                      description: 'Other users',
+                      path: '/users',
+                      method: 'GET',
+                      inputSchema: { type: 'object', properties: {} }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        })
+      });
+
+    const mcpPreview = await getClientToolPreviewNode({ appId: `${mcpParentId}/get-weather` });
+    expect(mcpPreview.pluginId).toBe(`mcp-${mcpParentId}/get-weather`);
+    expect(mcpPreview.intro).toBe('Weather');
+    expect(mcpPreview.toolConfig).toEqual({
+      mcpTool: { toolId: `mcp-${mcpParentId}/get-weather` }
+    });
+
+    const httpPreview = await getClientToolPreviewNode({ appId: `${httpParentId}//api/v1/users` });
+    expect(httpPreview.pluginId).toBe(`http-${httpParentId}//api/v1/users`);
+    expect(httpPreview.intro).toBe('List users');
+    expect(httpPreview.toolConfig).toEqual({
+      httpTool: { toolId: `http-${httpParentId}//api/v1/users` }
+    });
+
+    await expect(getClientToolPreviewNode({ appId: `${httpParentId}//api/v1/users` })).rejects.toBe(
+      PluginErrEnum.unExist
+    );
+  });
 });

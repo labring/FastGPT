@@ -443,10 +443,24 @@ export const loadGeneratedTools = async ({
 
         const generatedTool = generatedSelectedTools.find(isSameTool);
         const inheritedTool = inheritToolInputConfig({ tool, sourceTool: generatedTool });
+        const previewToolId =
+          tool.pluginId ||
+          (tool.toolConfig?.mcpTool && 'toolId' in tool.toolConfig.mcpTool
+            ? tool.toolConfig.mcpTool.toolId
+            : undefined) ||
+          (tool.toolConfig?.httpTool && 'toolId' in tool.toolConfig.httpTool
+            ? tool.toolConfig.httpTool.toolId
+            : undefined) ||
+          tool.id;
+        const resolvedToolId =
+          toolId.includes('/') &&
+          (previewToolId.startsWith('mcp-') || previewToolId.startsWith('http-'))
+            ? previewToolId
+            : toolId;
 
         return {
           ...inheritedTool,
-          id: toolId,
+          id: resolvedToolId,
           source
         };
       })

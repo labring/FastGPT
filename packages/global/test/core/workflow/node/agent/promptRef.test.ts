@@ -12,10 +12,12 @@ import {
 } from '@fastgpt/global/core/workflow/node/agent/promptRef/legacy';
 import {
   extractAgentPromptRefs,
+  findAgentPromptRefEntityMatch,
   hasDebugPromptRef,
   normalizeDoubleWrappedRefs,
   stripAgentPromptRefs
 } from '@fastgpt/global/core/workflow/node/agent/promptRef/text';
+import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import {
   isBuiltinPromptRefKey,
   refFromBuiltin,
@@ -377,5 +379,65 @@ describe('AgentPromptRefRegistry invariants', () => {
     expect(isBuiltinPromptRefKey('read_files')).toBe(true);
     expect(isBuiltinPromptRefKey('plugin:system:metaso')).toBe(false);
     expect(parseAgentPromptRefKey('').kind).toBe('invalid');
+  });
+
+  it('prevents deleted legacy HTTP child paths from cross-binding to another tool sharing the last segment', () => {
+    const httpAppId = '66f100000000000000000055';
+    const registry = AgentPromptRefRegistry.create([
+      {
+        ref: {
+          type: 'app',
+          source: 'team',
+          id: `${httpAppId}/users`,
+          parentId: httpAppId,
+          childId: 'users'
+        },
+        displayName: 'Users Tool',
+        meta: { label: 'users' }
+      }
+    ]);
+
+    expect(registry.resolve(`http-${httpAppId}//api/v1/users`).status).toBe('unresolved');
+    expect(registry.resolve(`app:team:${httpAppId}//api/v1/users`).status).toBe('unresolved');
+    expect(registry.resolve(`mcp-${httpAppId}/LegacyToolset/users`)).toMatchObject({
+      status: 'resolved',
+      matchedBy: 'deterministic_legacy',
+      entry: { displayName: 'Users Tool' }
+    });
+  });
+
+  it('matches paired double-wrapped prompt ref entities without eating adjacent JSON braces', () => {
+    expect(findAgentPromptRefEntityMatch('调用 {{{{@builtin:read_files@}}}} 完成')).toEqual({
+      start: 3,
+      end: 31,
+      raw: '{{{{@builtin:read_files@}}}}',
+      key: 'builtin:read_files'
+    });
+    expect(findAgentPromptRefEntityMatch('{"a":{"b":{{@builtin:read_files@}}}}')).toEqual({
+      start: 10,
+      end: 34,
+      raw: '{{@builtin:read_files@}}',
+      key: 'builtin:read_files'
+    });
+    expect(findAgentPromptRefEntityMatch('{{{{@builtin:read_files@}}')).toEqual({
+      start: 2,
+      end: 26,
+      raw: '{{@builtin:read_files@}}',
+      key: 'builtin:read_files'
+    });
+  });
+
+  it('parses untyped V2 child tool lookup ids in splitCombineToolId', () => {
+    const parentId = '66f100000000000000000088';
+    expect(splitCombineToolId(`${parentId}/get-weather`)).toEqual({
+      source: 'personal',
+      pluginId: `${parentId}/get-weather`,
+      authAppId: parentId
+    });
+    expect(splitCombineToolId(`${parentId}//api/v1/users`)).toEqual({
+      source: 'personal',
+      pluginId: `${parentId}//api/v1/users`,
+      authAppId: parentId
+    });
   });
 });

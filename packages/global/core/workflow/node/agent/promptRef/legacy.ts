@@ -151,14 +151,20 @@ export const parseLegacyRefKey = (rawKey: string): ParsedLegacyPromptRef => {
   if (inner.startsWith('mcp-') || inner.startsWith('http-')) {
     const id = inner.slice(inner.indexOf('-') + 1);
     if (id) {
+      const { parentId, childId } = splitParentChildId(id);
+      const allowLegacyToolsetSegmentFallback =
+        inner.startsWith('mcp-') &&
+        Boolean(childId && childId.includes('/') && !childId.startsWith('/'));
       return {
         kind: 'legacy',
         rawKey: trimmed,
+        ...(allowLegacyToolsetSegmentFallback ? { allowLegacyToolsetSegmentFallback: true } : {}),
         deterministicRef: {
           type: 'app',
           source: 'team',
           id,
-          ...splitParentChildId(id)
+          parentId,
+          ...(childId ? { childId } : {})
         }
       };
     }

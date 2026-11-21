@@ -118,8 +118,10 @@ export class AgentPromptRefRegistry<TMeta = unknown> {
         return { status: 'resolved', entry: hit, matchedBy: 'deterministic_legacy' };
       }
 
-      // 兼容旧三段式 mcp-appId/toolsetName/toolName：仅在同 appId 下回退最后一段。
+      // 仅对明确带 mcp- 前缀的旧三段式 mcp-appId/toolsetName/toolName 做同 appId 末段回退，
+      // 防止缺失的 HTTP 路径子工具（如 http-appId//api/v1/users）误绑定到同名末段工具。
       if (
+        parsed.allowLegacyToolsetSegmentFallback &&
         parsed.deterministicRef.type === 'app' &&
         parsed.deterministicRef.childId &&
         parsed.deterministicRef.childId.includes('/')

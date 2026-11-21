@@ -1300,6 +1300,7 @@
   "textarea_variable_picker_tip": "Enter \"/\" to select a variable",
   "to_dataset": "To dataset",
   "tool_invalid": "Tool has expired",
+  "tool_ambiguous_click_delete_tip": "Multiple tools share this name across sources. Click to delete and re-select with @",
   "tool_invalid_click_delete_tip": "Click delete",
   "total_num": "Total: {{num}}",
   "ui.textarea.Magnifying": "Magnifying",
