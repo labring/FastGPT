@@ -14,8 +14,7 @@ vi.mock('@/service/middleware/entry', () => ({
 // 测试进程的 serviceEnv 在 setup 阶段已初始化（MCP_OAUTH_ENABLED 默认 false），
 // 这里只放开开关断言，其余服务实现保持真实。
 vi.mock('@fastgpt/service/core/app/mcpOAuth', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@fastgpt/service/core/app/mcpOAuth')>();
+  const actual = await importOriginal<typeof import('@fastgpt/service/core/app/mcpOAuth')>();
   return { ...actual, assertMcpOAuthEnabled: () => {} };
 });
 
@@ -131,6 +130,28 @@ describe('POST /api/core/app/mcpTools/oauth/start', () => {
 
     const ledger = await MongoMcpOAuthState.findOne({ appId: fixture.appId });
     expect(ledger?.consumedAt).toBeUndefined();
+  });
+
+  it('normalizes legacy cimd/dcr body modes to auto and still negotiates CIMD first', async () => {
+    const fixture = await setup();
+    mockDiscovery();
+
+    const res = await callRoute(startApi.default, {
+      method: 'POST',
+      body: { appId: fixture.appId, nodeId: fixture.nodeId, clientMode: 'dcr' as never }
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      clientMode: 'auto',
+      clientSource: 'cimd'
+    });
+
+    const oauth = await readToolsetOAuth(fixture.versionId);
+    expect(oauth).toMatchObject({
+      clientMode: 'auto',
+      clientSource: 'cimd'
+    });
   });
 
   it('rejects a non-toolset app before any network call', async () => {

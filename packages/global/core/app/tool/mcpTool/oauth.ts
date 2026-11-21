@@ -11,9 +11,24 @@ import z from 'zod';
 export const McpOAuthAuthModeSchema = z.enum(['headers', 'oauth']);
 export type McpOAuthAuthMode = z.infer<typeof McpOAuthAuthModeSchema>;
 
-/** 用户偏好；`auto` 固定按 CIMD → DCR → manual 顺序尝试。 */
-export const McpOAuthClientModeSchema = z.enum(['auto', 'cimd', 'dcr', 'manual']);
+/**
+ * 用户偏好：`auto` 由服务端固定按 CIMD → DCR → manual 自动协商，`manual` 使用手工 Client。
+ *
+ * 不提供 CIMD/DCR 作为用户可选项。历史节点可能写入过 `cimd`/`dcr`；按“不做数据迁移、
+ * 只容忍旧值读取”的约束，读侧统一归一为 `auto`，未知值仍然拒绝。
+ */
+export const MCP_OAUTH_CLIENT_MODES = ['auto', 'manual'] as const;
+export const McpOAuthClientModeSchema = z.preprocess(
+  (value) => (value === 'cimd' || value === 'dcr' ? 'auto' : value),
+  z.enum(MCP_OAUTH_CLIENT_MODES)
+);
 export type McpOAuthClientMode = z.infer<typeof McpOAuthClientModeSchema>;
+
+/** 读侧兜底：无法解析的存量值按 `auto` 处理，写路径仍由 schema 拒绝非法值。 */
+export const normalizeMcpOAuthClientMode = (value: unknown): McpOAuthClientMode => {
+  const parsed = McpOAuthClientModeSchema.safeParse(value);
+  return parsed.success ? parsed.data : 'auto';
+};
 
 /** start 成功后写入的实际 client 来源，后续只读。 */
 export const McpOAuthClientSourceSchema = z.enum(['cimd', 'dcr', 'manual']);

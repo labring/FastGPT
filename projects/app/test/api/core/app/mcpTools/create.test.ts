@@ -57,10 +57,13 @@ describe('mcpTools create api', () => {
       toolList: []
     };
 
-    const res = await Call<CreateMcpToolsBodyType, Record<string, never>, string>(createApi.default, {
-      auth: user,
-      body
-    });
+    const res = await Call<CreateMcpToolsBodyType, Record<string, never>, string>(
+      createApi.default,
+      {
+        auth: user,
+        body
+      }
+    );
 
     expect(res.error).toBeUndefined();
     expect(res.code).toBe(200);
@@ -93,15 +96,18 @@ describe('mcpTools create api', () => {
       name: 'oauth-toolset-scoped',
       url: 'https://mcp.example.com/mcp',
       authMode: 'oauth',
-      clientMode: 'dcr',
+      clientMode: 'manual',
       scope: 'read write',
       toolList: []
     };
 
-    const res = await Call<CreateMcpToolsBodyType, Record<string, never>, string>(createApi.default, {
-      auth: user,
-      body
-    });
+    const res = await Call<CreateMcpToolsBodyType, Record<string, never>, string>(
+      createApi.default,
+      {
+        auth: user,
+        body
+      }
+    );
 
     expect(res.error).toBeUndefined();
     expect(res.code).toBe(200);
@@ -109,8 +115,39 @@ describe('mcpTools create api', () => {
     const toolSet = await readStoredToolSet(res.data);
     expect(toolSet.oauth).toMatchObject({
       schemaVersion: 1,
-      clientMode: 'dcr',
+      clientMode: 'manual',
       scope: 'read write',
+      credentialSeq: 0
+    });
+  });
+
+  it('normalizes legacy cimd/dcr client mode to auto on create', async () => {
+    const users = await getFakeUsers(1);
+    const user = users.members[0];
+    await grantCreatePermission(user.teamId, user.tmbId);
+
+    const res = await Call<CreateMcpToolsBodyType, Record<string, never>, string>(
+      createApi.default,
+      {
+        auth: user,
+        body: {
+          name: 'oauth-toolset-legacy-mode',
+          url: 'https://mcp.example.com/mcp',
+          authMode: 'oauth',
+          // 旧客户端可能仍提交 cimd/dcr；服务端读侧归一为 auto，不做数据迁移。
+          clientMode: 'dcr' as never,
+          toolList: []
+        }
+      }
+    );
+
+    expect(res.error).toBeUndefined();
+    expect(res.code).toBe(200);
+
+    const toolSet = await readStoredToolSet(res.data);
+    expect(toolSet.oauth).toMatchObject({
+      schemaVersion: 1,
+      clientMode: 'auto',
       credentialSeq: 0
     });
   });
@@ -120,15 +157,18 @@ describe('mcpTools create api', () => {
     const user = users.members[0];
     await grantCreatePermission(user.teamId, user.tmbId);
 
-    const res = await Call<CreateMcpToolsBodyType, Record<string, never>, string>(createApi.default, {
-      auth: user,
-      body: {
-        name: 'headers-toolset',
-        url: 'https://mcp.example.com/mcp',
-        authMode: 'headers',
-        toolList: []
+    const res = await Call<CreateMcpToolsBodyType, Record<string, never>, string>(
+      createApi.default,
+      {
+        auth: user,
+        body: {
+          name: 'headers-toolset',
+          url: 'https://mcp.example.com/mcp',
+          authMode: 'headers',
+          toolList: []
+        }
       }
-    });
+    );
 
     expect(res.code).toBe(500);
     expect(res.error).toBeTruthy();

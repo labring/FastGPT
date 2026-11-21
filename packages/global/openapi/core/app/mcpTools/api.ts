@@ -25,7 +25,7 @@ export const CreateMcpToolsBodySchema = CreateAppBodyBaseSchema.omit({
       description: '鉴权模式；oauth 时运行期忽略 headerSecret'
     }),
     clientMode: McpOAuthClientModeSchema.optional().meta({
-      description: 'OAuth client 偏好；auto 固定 CIMD → DCR → manual'
+      description: 'OAuth client 偏好：auto 或 manual；auto 由服务端固定 CIMD → DCR → manual'
     }),
     scope: z.string().max(1024).optional().meta({
       description: 'OAuth 请求 scope；默认未设置'
@@ -75,7 +75,7 @@ export const UpdateMcpToolsBodySchema = z
       description: '鉴权模式；oauth 时运行期忽略 headerSecret'
     }),
     clientMode: McpOAuthClientModeSchema.optional().meta({
-      description: 'OAuth client 偏好；auto 固定 CIMD → DCR → manual'
+      description: 'OAuth client 偏好：auto 或 manual；auto 由服务端固定 CIMD → DCR → manual'
     }),
     scope: z.string().max(1024).optional().meta({
       description: 'OAuth 请求 scope；默认未设置'

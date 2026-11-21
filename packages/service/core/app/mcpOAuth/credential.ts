@@ -5,6 +5,7 @@ import type { McpOAuthStatusResponseType } from '@fastgpt/global/openapi/core/ap
 import {
   McpOAuthErrorCodeEnum,
   McpOAuthStatusEnum,
+  normalizeMcpOAuthClientMode,
   type McpOAuthAuthMode,
   type McpOAuthClientMode
 } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
@@ -235,7 +236,7 @@ export const deriveMcpOAuthStatus = ({
   hasPendingState?: boolean;
   now?: number;
 }): McpOAuthStatusResponseType => {
-  const clientMode: McpOAuthClientMode = oauth?.clientMode ?? 'auto';
+  const clientMode: McpOAuthClientMode = normalizeMcpOAuthClientMode(oauth?.clientMode);
   const clientSource = oauth?.clientSource ?? null;
   const issuer = oauth?.issuer ?? null;
   const resource = oauth?.resource ?? null;

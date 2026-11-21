@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { McpOAuthClientModeSchema } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
 import { MCP_OAUTH_USER_FACING_ERROR_CODES } from '@/pageComponents/app/detail/Edit/MCPTools/oauth/errorCodes';
 import {
   MCP_OAUTH_CALLBACK_QUERY_KEYS,
@@ -12,7 +13,7 @@ import {
   MCP_OAUTH_STATUS_STATES,
   buildMcpOAuthScopeCandidates,
   buildMcpOAuthStartBody,
-  getMcpOAuthAutoStepStates,
+  getMcpOAuthClientSourceI18nKey,
   getMcpOAuthErrorCode,
   getMcpOAuthErrorCopy,
   getMcpOAuthStateI18nKey,
@@ -295,10 +296,18 @@ describe('start 请求体与回调参数', () => {
     expect(stripMcpOAuthCallbackQuery({ oauth: 'success' })).toEqual({});
   });
 
-  it('auto 链路展示顺序固定', () => {
-    const steps = getMcpOAuthAutoStepStates({ clientSource: 'dcr' });
-    expect(steps.map((item) => item.step)).toEqual(['cimd', 'dcr', 'manual']);
-    expect(steps.map((item) => item.state)).toEqual(['skipped', 'done', 'pending']);
+  it('clientMode 只接受 auto/manual，旧值 cimd/dcr 归一为 auto', () => {
+    expect(McpOAuthClientModeSchema.parse('auto')).toBe('auto');
+    expect(McpOAuthClientModeSchema.parse('manual')).toBe('manual');
+    expect(McpOAuthClientModeSchema.parse('cimd')).toBe('auto');
+    expect(McpOAuthClientModeSchema.parse('dcr')).toBe('auto');
+    expect(McpOAuthClientModeSchema.safeParse('rollback').success).toBe(false);
+  });
+
+  it('clientSource 仅用于展示自动协商结果', () => {
+    expect(getMcpOAuthClientSourceI18nKey('cimd')).toBe('mcpOAuth.client_source_cimd');
+    expect(getMcpOAuthClientSourceI18nKey('dcr')).toBe('mcpOAuth.client_source_dcr');
+    expect(getMcpOAuthClientSourceI18nKey('manual')).toBe('mcpOAuth.client_source_manual');
   });
 });
 
@@ -330,6 +339,21 @@ describe('内联节点隔离与前端硬性检查', () => {
     expect(source).not.toContain('scopeAllowlist');
     expect(source).not.toContain('scope_allowlist');
     expect(source).not.toContain('scope_not_allowed');
+  });
+
+  it('前端不提供 CIMD/DCR 客户端模式选项', () => {
+    const sources = [
+      readSource('pageComponents/app/detail/Edit/MCPTools/oauth/McpOAuthConfig.tsx'),
+      readSource('pages/dashboard/create/index.tsx')
+    ];
+    for (const source of sources) {
+      expect(source).not.toContain("value: 'cimd'");
+      expect(source).not.toContain("value: 'dcr'");
+      expect(source).not.toContain('client_mode_cimd');
+      expect(source).not.toContain('client_mode_dcr');
+      expect(source).toContain("{ title: 'mcpOAuth.client_mode_auto', value: 'auto' }");
+      expect(source).toContain("{ title: 'mcpOAuth.client_mode_manual', value: 'manual' }");
+    }
   });
 
   it('去授权前保存、回调后拉取工具并落库', () => {
@@ -373,6 +397,10 @@ describe('MCP OAuth i18n 四语言完整性', () => {
         expect(dict[`mcpOAuth.state.${state}`], `${lang} state.${state}`).toBeTruthy();
         expect(dict[`mcpOAuth.state_hint.${state}`], `${lang} state_hint.${state}`).toBeTruthy();
       }
+      expect(dict['mcpOAuth.auto_client_source_result'], `${lang} auto result`).toBeTruthy();
+      // 已删除的可选 CIMD/DCR 模式文案不得回流。
+      expect(dict['mcpOAuth.client_mode_cimd']).toBeUndefined();
+      expect(dict['mcpOAuth.client_mode_dcr']).toBeUndefined();
     }
   });
 

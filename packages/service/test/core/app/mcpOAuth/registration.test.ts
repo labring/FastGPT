@@ -11,11 +11,13 @@ import {
   setMcpOAuthFetchImpl,
   type McpOAuthServerMetadataType
 } from '@fastgpt/service/core/app/mcpOAuth';
-import { McpOAuthApiError } from '@fastgpt/service/core/app/mcpOAuth/errors';
+import type { McpOAuthApiError } from '@fastgpt/service/core/app/mcpOAuth/errors';
 import { decryptSecretValue, encryptSecretValue } from '@fastgpt/service/common/secret/utils';
 import { McpOAuthErrorCodeEnum } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
 
-const server = (overrides: Partial<McpOAuthServerMetadataType> = {}): McpOAuthServerMetadataType => ({
+const server = (
+  overrides: Partial<McpOAuthServerMetadataType> = {}
+): McpOAuthServerMetadataType => ({
   issuer: 'https://example.org/',
   authorizationEndpoint: 'https://example.org/authorize',
   tokenEndpoint: 'https://example.org/token',
@@ -148,6 +150,28 @@ describe('mcpOAuth registration', () => {
     expect(decryptSecretValue(result.client.registrationAccessToken)).toBe('registration-token');
   });
 
+  it('auto never tries DCR before CIMD', async () => {
+    let fetchCalls = 0;
+    setMcpOAuthFetchImpl(async () => {
+      fetchCalls += 1;
+      throw new Error('DCR must not be attempted before CIMD');
+    });
+
+    const result = await selectMcpOAuthClient({
+      server: server({
+        clientIdMetadataDocumentSupported: true,
+        registrationEndpoint: 'https://example.org/register'
+      }),
+      clientMode: 'auto',
+      redirectUri: 'https://example.com/callback',
+      cimdClientId: 'https://example.com/client-metadata.json',
+      cimdAvailable: true
+    });
+
+    expect(result.source).toBe('cimd');
+    expect(fetchCalls).toBe(0);
+  });
+
   it('selects client_secret_basic by default when the AS does not declare methods', async () => {
     let registrationBody: any;
     setMcpOAuthFetchImpl(async (_url, init) => {
@@ -162,7 +186,7 @@ describe('mcpOAuth registration', () => {
 
     const result = await selectMcpOAuthClient({
       server: server({ registrationEndpoint: 'https://example.org/register' }),
-      clientMode: 'dcr',
+      clientMode: 'auto',
       redirectUri: 'https://example.com/callback',
       cimdClientId: 'https://example.com/client-metadata.json',
       cimdAvailable: false
@@ -190,7 +214,7 @@ describe('mcpOAuth registration', () => {
     const error = await asOAuthError(
       selectMcpOAuthClient({
         server: server({ registrationEndpoint: 'https://example.org/register' }),
-        clientMode: 'dcr',
+        clientMode: 'auto',
         redirectUri: 'https://example.com/callback',
         cimdClientId: 'https://example.com/client-metadata.json',
         cimdAvailable: false
