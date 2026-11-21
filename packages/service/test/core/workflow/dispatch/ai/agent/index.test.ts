@@ -576,7 +576,7 @@ describe('dispatchRunAgent user context', () => {
       }
     ];
     props.params.systemPrompt =
-      '工具 {{@plugin:system:metaso@}}，技能 {{@skill:team:68b2000000000000000000aa@}}，越权 {{@skill:team:68b2000000000000000000ee@}}，知识库 {{@builtin:dataset_search@}}';
+      '工具 {{@plugin:system:metaso@}}，技能 {{@skill:team:68b2000000000000000000aa@}}，越权 {{@skill:team:68b2000000000000000000ee@}}，知识库 {{@builtin:dataset_search@}}，虚拟机 {{@builtin:agent_sandbox@}}';
     props.params.agent_selectedTools = [{ id: 'systemTool-metaso', source: 'system', config: {} }];
 
     let resultPromise: Promise<any>;
@@ -591,6 +591,33 @@ describe('dispatchRunAgent user context', () => {
     expect(systemPrompt).toContain('越权 {{@skill:team:68b2000000000000000000ee@}}');
     expect(systemPrompt).toContain('知识库 {{');
     expect(systemPrompt).not.toContain('{{@builtin:dataset_search@}}');
+    expect(systemPrompt).not.toContain('{{@builtin:agent_sandbox@}}');
+  });
+
+  it('does not resolve builtin:agent_sandbox or skills when sandbox is disabled', async () => {
+    getTestInstanceConfig().subservice.agentSandbox.provider = 'none';
+    const props = createProps();
+    props.params.useAgentSandbox = true;
+    props.params.skills = [
+      {
+        skillId: '68b2000000000000000000aa',
+        source: 'personal',
+        name: 'PDF深度分析技能',
+        description: ''
+      }
+    ];
+    props.params.systemPrompt =
+      '虚拟机 {{@builtin:agent_sandbox@}}，技能 {{@skill:team:68b2000000000000000000aa@}}';
+
+    let resultPromise: Promise<any>;
+    runWithContext({ mcpClientMemory: {} }, () => {
+      resultPromise = dispatchRunAgent(props);
+    });
+    await resultPromise!;
+
+    const systemPrompt = runAgentLoopMock.mock.calls[0][0].input.systemPrompt;
+    expect(systemPrompt).toContain('虚拟机 {{@builtin:agent_sandbox@}}');
+    expect(systemPrompt).toContain('技能 {{@skill:team:68b2000000000000000000aa@}}');
   });
 
   it('uses the default agent system prompt when the user prompt is omitted', async () => {

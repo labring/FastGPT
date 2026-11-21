@@ -61,6 +61,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   const { teamPlanStatus } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
   const showSandbox = feConfigs.show_agent_sandbox;
+  const canUseSandbox = Boolean(showSandbox && enableSandbox);
   const isAgentSkillSandboxUnavailable =
     checkAgentSandboxIssues({
       hasSkills: Boolean(appForm.selectedAgentSkills?.length),
@@ -202,14 +203,14 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
           }) || (tool.source ? getToolIdentityKey(tool.id, tool.source) : tool.id)
       ),
       selectedDatasets: appForm.dataset.datasets.map((dataset) => dataset.datasetId),
-      selectedAgentSkills: appForm.selectedAgentSkills || [],
+      selectedAgentSkills: canUseSandbox ? appForm.selectedAgentSkills || [] : [],
       fileUpload: appForm.chatConfig.fileSelectConfig?.canSelectFile || false,
-      enableSandbox: appForm.aiSettings.useAgentSandbox || false,
+      ...(canUseSandbox ? { enableSandbox: appForm.aiSettings.useAgentSandbox || false } : {}),
       modelConfig: {
         modelId: helperSelectedModel
       }
     }),
-    [appForm, helperSelectedModel]
+    [appForm, canUseSandbox, helperSelectedModel]
   );
 
   return (
@@ -297,12 +298,15 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
 
                   setAppForm((prev) => {
                     const fileUploadEnabled = !!formData.fileUploadEnabled;
-                    const enableSandboxEnabled = !!formData.enableSandboxEnabled;
+                    const nextSelectedAgentSkills = canUseSandbox
+                      ? formData.selectedAgentSkills || []
+                      : [];
+                    const enableSandboxEnabled = canUseSandbox && !!formData.enableSandboxEnabled;
 
                     const newForm: AppFormEditFormType = {
                       ...prev,
                       selectedTools: [...newTools],
-                      selectedAgentSkills: formData.selectedAgentSkills || [],
+                      selectedAgentSkills: nextSelectedAgentSkills,
                       dataset: {
                         ...prev.dataset,
                         datasets: formData.datasets ?? []
@@ -310,8 +314,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                       aiSettings: {
                         ...prev.aiSettings,
                         systemPrompt: formData.systemPrompt || prev.aiSettings.systemPrompt,
-                        useAgentSandbox:
-                          enableSandboxEnabled || (formData.selectedAgentSkills?.length || 0) > 0
+                        useAgentSandbox: enableSandboxEnabled || nextSelectedAgentSkills.length > 0
                       },
                       chatConfig: {
                         ...prev.chatConfig,
