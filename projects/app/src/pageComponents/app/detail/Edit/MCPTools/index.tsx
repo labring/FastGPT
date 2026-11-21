@@ -14,7 +14,7 @@ import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getMCPTools, postUpdateMCPTools } from '@/web/core/app/api/mcpTools';
 import { useMcpOAuthStatus } from './oauth/useMcpOAuthStatus';
-import { parseMcpOAuthCallbackQuery } from './oauth/utils';
+import { parseMcpOAuthCallbackQuery, stripMcpOAuthCallbackQuery } from './oauth/utils';
 
 const MCPTools = () => {
   const { t } = useTranslation();
@@ -52,7 +52,11 @@ const MCPTools = () => {
   );
   const [callbackErrorCode, setCallbackErrorCode] = useState<string | null>(null);
 
-  const { status, loading: statusLoading, refresh: refreshStatus } = useMcpOAuthStatus({
+  const {
+    status,
+    loading: statusLoading,
+    refresh: refreshStatus
+  } = useMcpOAuthStatus({
     appId,
     nodeId,
     enabled: authMode === 'oauth'
@@ -87,15 +91,15 @@ const MCPTools = () => {
     if (!callback || callbackHandledRef.current) return;
     callbackHandledRef.current = true;
 
-    // 移除一次性 query，避免刷新页面重复执行。
-    const nextQuery = { ...router.query };
-    delete nextQuery.oauth;
-    delete nextQuery.code;
+    // 立即移除一次性 query，避免刷新页面重复执行（handoff 主流程 5/6）。
+    const nextQuery = stripMcpOAuthCallbackQuery(router.query);
     void router.replace({ pathname: router.pathname, query: nextQuery }, undefined, {
       shallow: true
     });
 
     if (callback.kind === 'error') {
+      // 一次性 query 已在上面移除，错误码只在此处落入本地状态。
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 回调 query 绑定的一次性外部事件
       setCallbackErrorCode(callback.code ?? null);
       return;
     }
@@ -107,7 +111,7 @@ const MCPTools = () => {
         setCurrentTool(tools[0]);
         await saveCurrent({ authMode: 'oauth', toolList: tools });
         toast({ title: t('mcpOAuth.callback_success'), status: 'success' });
-      } catch (error) {
+      } catch {
         toast({ title: t('mcpOAuth.callback_fetch_tools_failed'), status: 'error' });
       } finally {
         await refreshStatus();

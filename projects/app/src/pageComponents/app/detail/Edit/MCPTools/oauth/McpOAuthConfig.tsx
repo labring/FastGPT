@@ -27,6 +27,7 @@ import {
   getMcpOAuthErrorCode,
   getMcpOAuthErrorCopy,
   getMcpOAuthStateI18nKey,
+  getMcpOAuthStatePresentation,
   isMcpOAuthManualClientRequiredCode,
   isMcpOAuthPollingState,
   parseMcpOAuthScopeList,
@@ -34,6 +35,7 @@ import {
   toggleMcpOAuthScope,
   validateMcpOAuthManualClient,
   type McpOAuthManualAuthMethod,
+  type McpOAuthStateTone,
   type McpOAuthTranslate
 } from './utils';
 
@@ -65,6 +67,16 @@ const AUTH_METHOD_LIST: { title: string; value: McpOAuthManualAuthMethod }[] = [
   { title: 'mcpOAuth.manual_auth_method_client_secret_basic', value: 'client_secret_basic' },
   { title: 'mcpOAuth.manual_auth_method_client_secret_post', value: 'client_secret_post' }
 ];
+
+/** 8 态状态徽标的固定配色（与 utils 的 tone 一一对应）。 */
+const STATE_TONE_STYLES: Record<McpOAuthStateTone, { bg: string; color: string; border: string }> =
+  {
+    neutral: { bg: 'myGray.100', color: 'myGray.700', border: 'myGray.250' },
+    info: { bg: 'blue.50', color: 'blue.600', border: 'blue.200' },
+    success: { bg: 'green.50', color: 'green.600', border: 'green.200' },
+    warning: { bg: 'orange.50', color: 'orange.600', border: 'orange.200' },
+    danger: { bg: 'red.50', color: 'red.600', border: 'red.200' }
+  };
 
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <Flex alignItems={'center'} minH={'28px'} gap={2}>
@@ -151,11 +163,14 @@ const McpOAuthConfig = ({
   const manualRequiredError =
     isMcpOAuthManualClientRequiredCode(startErrorCode) ||
     isMcpOAuthManualClientRequiredCode(status?.lastError?.code);
-  const showManualForm = shouldShowMcpOAuthManualForm({
-    clientMode,
-    errorCode: startErrorCode ?? status?.lastError?.code,
-    manuallyOpened: manualOpen
-  });
+  const state = status?.state;
+  const presentation = getMcpOAuthStatePresentation(state);
+  const showManualForm =
+    shouldShowMcpOAuthManualForm({
+      clientMode,
+      errorCode: startErrorCode ?? status?.lastError?.code,
+      manuallyOpened: manualOpen
+    }) || presentation.manualForm;
   const autoStepStates = useMemo(
     () => getMcpOAuthAutoStepStates({ clientSource: status?.clientSource }),
     [status?.clientSource]
@@ -225,9 +240,7 @@ const McpOAuthConfig = ({
           manualClient: manualClient
             ? {
                 clientId: manualClient.clientId,
-                ...(manualClient.clientSecret
-                  ? { clientSecret: manualClient.clientSecret }
-                  : {}),
+                ...(manualClient.clientSecret ? { clientSecret: manualClient.clientSecret } : {}),
                 tokenEndpointAuthMethod: manualClient.tokenEndpointAuthMethod
               }
             : undefined
@@ -298,11 +311,11 @@ const McpOAuthConfig = ({
     })();
   };
 
-  const state = status?.state;
-  const isReauth = state === 'reauth_required' || !!callbackErrorCode;
-  const canStart = canManage && (status?.canStart ?? true);
-  const canDisconnect = canManage && (status?.canDisconnect ?? false);
-  const canResetClient = canManage && (status?.canResetClient ?? false);
+  const isReauth = presentation.startActionKey === 'mcpOAuth.action_reauth' || !!callbackErrorCode;
+  const canStart = canManage && (!status || presentation.showStart) && (status?.canStart ?? true);
+  const canDisconnect =
+    canManage && presentation.showDisconnect && (status?.canDisconnect ?? false);
+  const canResetClient = canManage && presentation.showReset && (status?.canResetClient ?? false);
   const clientSource = status?.clientSource;
   const issuer = status?.issuer;
 
@@ -531,6 +544,24 @@ const McpOAuthConfig = ({
             </Flex>
 
             <Box mt={2}>
+              <Flex alignItems={'center'} gap={2} mb={2}>
+                <Box
+                  px={2}
+                  py={0.5}
+                  borderRadius={'sm'}
+                  fontSize={'xs'}
+                  fontWeight={'medium'}
+                  bg={STATE_TONE_STYLES[presentation.tone].bg}
+                  color={STATE_TONE_STYLES[presentation.tone].color}
+                  border={'1px solid'}
+                  borderColor={STATE_TONE_STYLES[presentation.tone].border}
+                >
+                  {status ? t(getMcpOAuthStateI18nKey(state)) : '-'}
+                </Box>
+                <Box fontSize={'xs'} color={'myGray.500'} flex={1}>
+                  {t(presentation.hintKey)}
+                </Box>
+              </Flex>
               <Field label={t('mcpOAuth.status_state')}>
                 {status ? t(getMcpOAuthStateI18nKey(status.state)) : '-'}
               </Field>

@@ -74,7 +74,7 @@ canResetClient, updatedAt`
 
 - 现状：状态卡只显示 `state` 文案；按钮文案只在 `reauth_required`/回调错误时变「重新授权」；`client_missing` 依赖 `autoStepStates` 与 manual 表单，`refresh_due` 无明确“可解析工具”提示。
 - **差距**：缺少一份显式的「8 态 → 展示/动作」映射，无法用单测锁定。
-- **处置**：在 `utils.ts` 新增 `MCP_OAUTH_STATE_PRESENTATION`（labelKey / hintKey / tone / showStart / showDisconnect / showReset / showManualForm / startActionKey），供 `McpOAuthConfig` 渲染；为 8 态各补一条四语言 hint。
+- **处置**：在 `utils.ts` 新增 `MCP_OAUTH_STATE_PRESENTATION`（hintKey / tone / showStart / showDisconnect / showReset / manualForm / parseEnabled / startActionKey），供 `McpOAuthConfig` 渲染；为 8 态各补一条四语言 hint。
 
 ### 2.4 i18n
 
@@ -155,3 +155,4 @@ canResetClient, updatedAt`
 | D3 | 保留 `client_missing` 在状态派生中的较高优先级 | 否则首次启用 OAuth 时状态不可达，manual 表单无法按截图展开；列为已知偏差 |
 | D4 | 不恢复 `backup/pre-drop-9c1bc69` 的 modal 结构 | 用户明确要求丢弃；handoff §9.2 采用详情页内联配置 |
 | D5 | 创建页只保留 `authMode/clientMode/scope`，不提交 manual client | 设计 §8.4：创建后不自动 start，manual 在详情页 start 时提交 |
+| D6 | `client_missing/pending/authorized/refresh_due/refreshing/reauth_required` 展示重置，但是否可点仍以服务端 `canResetClient` 为准（断开同理） | 状态表只规定部分按钮的显隐；服务端 `can*` 字段是权限与可用性权威，前端 presentation 只负责布局提示 |
