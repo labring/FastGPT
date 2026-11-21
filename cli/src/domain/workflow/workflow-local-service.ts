@@ -1,7 +1,4 @@
-import {
-  VariableItemTypeSchema,
-  type VariableItemType
-} from '@fastgpt/global/core/app/variable/type';
+import { VariableItemTypeSchema } from '@fastgpt/global/core/app/variable/type';
 import {
   VariableInputEnum,
   WorkflowIOValueTypeEnum,
@@ -35,6 +32,10 @@ import {
   getChatConfigDescriptor,
   listChatConfigDescriptors
 } from '@fastgpt/workflow-core/config/descriptor';
+import type {
+  AddGlobalVariableInput,
+  UpdateGlobalVariablePatch
+} from '@fastgpt/workflow-core/config/type';
 import { getWorkflowChecksum } from '@fastgpt/workflow-core/domain/checksum';
 import {
   createDefaultWorkflowDocument,
@@ -143,7 +144,7 @@ export type WorkflowLocalService = {
   variableAdd: (params: {
     dir: string;
     locale: string;
-    key: string;
+    key?: string;
     valueType: WorkflowIOValueTypeEnum;
     type?: string;
     label?: string;
@@ -165,7 +166,6 @@ export type WorkflowLocalService = {
     dir: string;
     locale: string;
     key: string;
-    newKey?: string;
     valueType?: WorkflowIOValueTypeEnum;
     type?: string;
     label?: string;
@@ -592,7 +592,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
     max?: string;
     maxLength?: string;
     timeGranularity?: 'day' | 'hour' | 'minute' | 'second';
-  }): Promise<Partial<VariableItemType>> {
+  }) {
     if (!configInput) {
       return {};
     }
@@ -1008,10 +1008,10 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
         ? await readValueFromInput({ valueInput: valueInput!, valueType })
         : undefined;
       const config = await readVariableConfig(configInput);
-      const variable: VariableItemType = {
+      const variable: AddGlobalVariableInput = {
         ...config,
-        key,
-        label: label ?? key,
+        ...(key !== undefined ? { key } : {}),
+        label: label ?? key ?? '',
         description: description ?? '',
         valueType,
         type,
@@ -1031,7 +1031,6 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
       dir,
       locale,
       key,
-      newKey,
       valueType,
       type: rawType,
       label,
@@ -1077,9 +1076,8 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
       const defaultValue = hasValue
         ? await readValueFromInput({ valueInput: valueInput!, valueType: nextValueType })
         : undefined;
-      const patch: Partial<VariableItemType> = {
+      const patch: UpdateGlobalVariablePatch = {
         ...config,
-        key: newKey,
         label,
         description,
         valueType,
@@ -1089,7 +1087,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
       };
       const cleanPatch = Object.fromEntries(
         Object.entries(patch).filter(([, value]) => value !== undefined)
-      ) as Partial<VariableItemType>;
+      ) as UpdateGlobalVariablePatch;
       return runMutation({
         operation: 'workflow-build variable update',
         dir,

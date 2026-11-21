@@ -106,6 +106,21 @@ describe('WorkflowLocalService', () => {
     expect((varList.data as Array<{ key: string; label: string }>)[0].label).toBe('City Name');
     await service.variableRemove({ dir, locale: 'en', key: 'city' });
 
+    await service.variableAdd({
+      dir,
+      locale: 'en',
+      label: 'Auto Key Var',
+      valueType: WorkflowIOValueTypeEnum.string
+    });
+    const autoVarList = (await service.variableList({ dir })).data as Array<{
+      key: string;
+      label: string;
+    }>;
+    expect(autoVarList).toHaveLength(1);
+    expect(autoVarList[0].key).toMatch(/^[A-Za-z0-9]{8}$/);
+    expect(autoVarList[0].label).toBe('Auto Key Var');
+    await service.variableRemove({ dir, locale: 'en', key: autoVarList[0].key });
+
     const templates = await service.templateList({ locale: 'en', kind: 'builtin' });
     expect((templates.data as { total: number }).total).toBeGreaterThan(5);
     const aiTpl = await service.templateShow({ locale: 'en', template: 'builtin:ai-chat' });
@@ -299,6 +314,16 @@ describe('WorkflowLocalService', () => {
             nodeId: 'chat1',
             template: { kind: 'builtin', templateId: 'ai-chat' },
             connectFrom: { kind: 'next', nodeId: 'start' }
+          },
+          {
+            type: 'variable.add',
+            variable: {
+              label: 'Planned Auto Var',
+              description: '',
+              type: 'input',
+              valueType: WorkflowIOValueTypeEnum.string,
+              required: false
+            }
           }
         ]
       })
@@ -342,6 +367,13 @@ describe('WorkflowLocalService', () => {
     expect((nodesAfter.data as Array<{ nodeId: string }>).some((n) => n.nodeId === 'chat1')).toBe(
       true
     );
+    const varsAfter = (await service.variableList({ dir })).data as Array<{
+      key: string;
+      label: string;
+    }>;
+    expect(varsAfter).toHaveLength(1);
+    expect(varsAfter[0].label).toBe('Planned Auto Var');
+    expect(varsAfter[0].key).toMatch(/^[A-Za-z0-9]{8}$/);
   });
 
   it('loads the template bundle once per template list', async () => {

@@ -274,7 +274,12 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
       options: [
         WORKFLOW_DIR_OPTION,
         WORKFLOW_LOCALE_OPTION,
-        { name: 'key', flags: '--key <key>', takesValue: true, description: 'Variable key' },
+        {
+          name: 'key',
+          flags: '--key <key>',
+          takesValue: true,
+          description: 'Variable key (auto-generated if omitted)'
+        },
         {
           name: 'type',
           flags: '--type <type>',
@@ -325,7 +330,11 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
         }
       ],
       execute: ({ options, container }) => {
-        const key = requireNonEmptyOption({ options, key: 'key', flagName: '--key' });
+        const key = optionalNonEmptyOption(options, 'key');
+        const label = optionalNonEmptyOption(options, 'label');
+        if (!key && !label) {
+          throw new CliArgumentError('Either --key or --label is required.');
+        }
         const valueType = requireNonEmptyOption({
           options,
           key: 'valueType',
@@ -349,7 +358,7 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
           key,
           valueType: z.enum(WorkflowIOValueTypeEnum).parse(valueType),
           type: varType,
-          label: optionalNonEmptyOption(options, 'label'),
+          label,
           description: typeof options.description === 'string' ? options.description : undefined,
           required: options.required === true,
           valueInput: extractValueInput(options),
@@ -373,7 +382,6 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
           takesValue: true,
           description: 'Existing variable key'
         },
-        { name: 'newKey', flags: '--new-key <key>', takesValue: true, description: 'New key' },
         {
           name: 'type',
           flags: '--type <type>',
@@ -438,7 +446,6 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
         }
         const configInput = parseVariableConfigOptions(options);
         const hasUpdate = [
-          options.newKey,
           options.type,
           options.valueType,
           options.label,
@@ -465,7 +472,6 @@ export function createWorkflowMetaConfigCommandSpecs(): CliCommandSpec[] {
           dir: resolveWorkflowDir(options, container.env),
           locale: resolveWorkflowLocale(options, container.env),
           key,
-          newKey: optionalNonEmptyOption(options, 'newKey'),
           valueType: valueType ? z.enum(WorkflowIOValueTypeEnum).parse(valueType) : undefined,
           type: varType,
           label: optionalNonEmptyOption(options, 'label'),
