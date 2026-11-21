@@ -14,7 +14,8 @@ import {
   extractSkillMetadataFromMarkdown,
   findSkillMdEntries,
   normalizeSkillScanEntryPath,
-  parseGitignoreRules
+  parseGitignoreRules,
+  RUNTIME_SKILL_SCAN_PRUNE_DIRS
 } from '../../../skill/utils';
 import { resolveSandboxHome } from '../runtime/home';
 import { joinSandboxPath } from '../../utils';
@@ -385,22 +386,41 @@ export async function initSkillEditRuntimeSandbox({
 const UNZIP_UNSAFE_PATH_CHARACTER_PATTERN = /[\x00-\x1f\x7f]/;
 
 /**
+ * 候选入口正文的读取预算：扫描会刻意进入随后被排除的目录，先按 stat 体积拦截，
+ * 避免为这些候选整体缓冲正文。
+ */
+const SKILL_ENTRY_READ_MAX_FILE_BYTES = 256 * 1024;
+const SKILL_ENTRY_READ_MAX_TOTAL_BYTES = 1024 * 1024;
+
+// 发布扫描的 prune 目录与运行态同源，避免两端规则漂移。
+const buildSkillEntryFindCommand = () => {
+  const pruneClause = RUNTIME_SKILL_SCAN_PRUNE_DIRS.map((name) => `-name ${shellQuote(name)}`).join(
+    ' -o '
+  );
+  return `find . \\( ${pruneClause} \\) -prune -o -type f -iname "SKILL.md" -print0`;
+};
+
+/**
  * 打包前扫描工作区中有效的 SKILL.md 入口（不使用业务排除规则）。
  *
  * 打包的 `-x` 排除会静默丢掉有效入口，发布前必须确认工作区里的入口都进了包。
+ * 扫描或读取不完整时入口清单会变小、让留存检查失效，因此这里必须终止发布。
  */
 async function listValidSkillEntriesInWorkspace(
   sandbox: ISandbox,
   targetDir: string
 ): Promise<string[]> {
-  const findCommand = `find . \\( -name node_modules -o -name .venv -o -name venv \\) -prune -o -type f -iname "SKILL.md" -print0 2>/dev/null`;
-  const result = await sandbox.execute(findCommand, { workingDirectory: targetDir });
+  const result = await sandbox.execute(buildSkillEntryFindCommand(), {
+    workingDirectory: targetDir
+  });
   if (result.exitCode !== 0) {
-    addLog.warn('[Sandbox] Failed to scan SKILL.md entries before packaging', {
-      targetDir,
-      error: result.stderr || result.stdout
+    throw new UserError(SkillErrEnum.invalidSkillPackage, undefined, {
+      cause: new Error(
+        `Failed to scan SKILL.md entries in workspace: ${
+          result.stderr || result.stdout || `find exited with code ${result.exitCode}`
+        }`
+      )
     });
-    return [];
   }
 
   const entryPaths = Array.from(
@@ -414,17 +434,43 @@ async function listValidSkillEntriesInWorkspace(
   if (entryPaths.length === 0) return [];
 
   const absolutePaths = entryPaths.map((path) => joinSandboxPath(targetDir, path));
+  const fileInfo = await sandbox.getFileInfo(absolutePaths);
+  let totalBytes = 0;
+  for (const absolutePath of absolutePaths) {
+    const size = fileInfo.get(absolutePath)?.size;
+    if (typeof size !== 'number') continue;
+    if (size > SKILL_ENTRY_READ_MAX_FILE_BYTES) {
+      throw new UserError(SkillErrEnum.archiveTooLarge, undefined, {
+        cause: new Error(
+          `SKILL.md entry ${absolutePath} is ${size} bytes, exceeds the ${SKILL_ENTRY_READ_MAX_FILE_BYTES} bytes per-file read limit`
+        )
+      });
+    }
+    totalBytes += size;
+    if (totalBytes > SKILL_ENTRY_READ_MAX_TOTAL_BYTES) {
+      throw new UserError(SkillErrEnum.archiveTooLarge, undefined, {
+        cause: new Error(
+          `Candidate SKILL.md entries exceed the ${SKILL_ENTRY_READ_MAX_TOTAL_BYTES} bytes total read limit at ${absolutePath}`
+        )
+      });
+    }
+  }
+
   const files = await sandbox.readFiles(absolutePaths);
   const fileByPath = new Map(files.map((file) => [file.path, file]));
 
   return entryPaths.filter((path, index) => {
-    const file = fileByPath.get(absolutePaths[index]) ?? files[index];
-    if (!file || file.error) {
-      addLog.warn('[Sandbox] Failed to read SKILL.md entry before packaging', {
-        path,
-        error: file?.error
+    const absolutePath = absolutePaths[index];
+    const file = fileByPath.get(absolutePath) ?? files[index];
+    if (!file) {
+      throw new UserError(SkillErrEnum.invalidSkillPackage, undefined, {
+        cause: new Error(`Failed to read SKILL.md entry ${absolutePath}: no content returned`)
       });
-      return false;
+    }
+    if (file.error) {
+      throw new UserError(SkillErrEnum.invalidSkillPackage, undefined, {
+        cause: new Error(`Failed to read SKILL.md entry ${absolutePath}: ${file.error.message}`)
+      });
     }
     const content =
       typeof file.content === 'string' ? file.content : Buffer.from(file.content).toString('utf-8');
@@ -485,32 +531,15 @@ export async function packageSkillInSandbox(params: {
     const zipFilePath = joinSandboxPath(packageTempDir, packageZipFilename);
     await newSandbox.createDirectories([packageTempDir]);
 
-    const requiredSkillEntries =
-      validationMode === 'deployableWorkspace'
-        ? await listValidSkillEntriesInWorkspace(newSandbox, targetDir)
-        : [];
-    const unpackUnsafeEntry = requiredSkillEntries.find((path) =>
-      UNZIP_UNSAFE_PATH_CHARACTER_PATTERN.test(path)
-    );
-    if (unpackUnsafeEntry) {
-      throw new UserError(SkillErrEnum.invalidSkillPackage, undefined, {
-        cause: new Error(
-          `Unsupported SKILL.md path with control characters (rejected by sandbox unzip): ${unpackUnsafeEntry}`
-        )
-      });
-    }
-
+    // 体积检查必须先于任何正文读取：用 cat 读配置，超限工作区不为候选入口付出传输和内存。
     let gitignoreContents: string[] = [];
     try {
-      const rootGitignorePath = joinSandboxPath(targetDir, '.gitignore');
-      const [rootGitignore] = await newSandbox.readFiles([rootGitignorePath]);
-
-      if (rootGitignore && !rootGitignore.error) {
-        gitignoreContents = [
-          typeof rootGitignore.content === 'string'
-            ? rootGitignore.content
-            : Buffer.from(rootGitignore.content).toString('utf-8')
-        ];
+      const rootGitignoreResult = await newSandbox.execute(
+        `cat ${shellQuote(joinSandboxPath(targetDir, '.gitignore'))}`,
+        { workingDirectory: targetDir }
+      );
+      if (rootGitignoreResult.exitCode === 0) {
+        gitignoreContents = [rootGitignoreResult.stdout];
       }
     } catch (err) {
       addLog.warn('[Sandbox] Failed to read root .gitignore file', {
@@ -541,6 +570,21 @@ export async function packageSkillInSandbox(params: {
           )
         });
       }
+    }
+
+    const requiredSkillEntries =
+      validationMode === 'deployableWorkspace'
+        ? await listValidSkillEntriesInWorkspace(newSandbox, targetDir)
+        : [];
+    const unpackUnsafeEntry = requiredSkillEntries.find((path) =>
+      UNZIP_UNSAFE_PATH_CHARACTER_PATTERN.test(path)
+    );
+    if (unpackUnsafeEntry) {
+      throw new UserError(SkillErrEnum.invalidSkillPackage, undefined, {
+        cause: new Error(
+          `Unsupported SKILL.md path with control characters (rejected by sandbox unzip): ${unpackUnsafeEntry}`
+        )
+      });
     }
 
     const excludeArgs = allExcludes.map((pattern) => `-x ${shellQuote(pattern)}`).join(' ');
