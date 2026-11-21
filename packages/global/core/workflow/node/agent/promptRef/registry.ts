@@ -1,6 +1,6 @@
 import { formatRefKey, parseV2RefKey } from './codec';
 import { deriveBareLegacyKeys, parseLegacyRefKey } from './legacy';
-import { AGENT_PROMPT_REF_REGEXP, formatPromptRefToken, normalizeDoubleWrappedRefs } from './text';
+import { AGENT_PROMPT_REF_REGEXP, formatPromptRefToken } from './text';
 import {
   type AgentPromptRef,
   type AgentPromptRefEntry,
@@ -186,8 +186,7 @@ export class AgentPromptRefRegistry<TMeta = unknown> {
   }): string {
     if (!text) return text;
 
-    const normalized = normalizeDoubleWrappedRefs(text);
-    return normalized.replace(AGENT_PROMPT_REF_REGEXP, (raw, innerKey: string) => {
+    return text.replace(AGENT_PROMPT_REF_REGEXP, (raw, innerKey: string) => {
       const result = this.resolve(innerKey);
       if (result.status === 'resolved') {
         if (result.matchedBy !== 'canonical') {
@@ -222,7 +221,7 @@ export class AgentPromptRefRegistry<TMeta = unknown> {
   }
 
   /**
-   * 后端（Pro 辅助生成）安全拼接：将计划中的 `@id` / `@[id]` / `@id@` / `{{@id@}}` / `{{{{@id@}}}}`
+   * 后端（Pro 辅助生成）安全拼接：将计划中的 `@id` / `@[id]` / `@id@` / `{{@id@}}`
    * 一次性单层规范化为 `{{@<targetKey>@}}`，彻底杜绝二次包裹。
    */
   composePromptText({
@@ -236,7 +235,7 @@ export class AgentPromptRefRegistry<TMeta = unknown> {
   }): string {
     if (!text) return text;
 
-    let output = normalizeDoubleWrappedRefs(text);
+    let output = text;
 
     // 按 rawId 长度降序处理，防止短 ID 误截断包含相同前缀的长 ID。
     const sortedMentions = [...mentions]
@@ -270,6 +269,6 @@ export class AgentPromptRefRegistry<TMeta = unknown> {
       });
     }
 
-    return normalizeDoubleWrappedRefs(output);
+    return output;
   }
 }

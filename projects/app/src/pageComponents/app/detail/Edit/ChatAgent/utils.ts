@@ -33,11 +33,6 @@ import { getNewToolPreviewNode } from '@/web/core/app/api/tool';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { inheritToolInputConfig } from '../FormComponent/ToolSelector/utils';
-import type { ChatAgentConfigFormDataType } from '@fastgpt/global/core/ai/auxiliaryGeneration/type';
-import { AGENT_SANDBOX_TOOLSET_ID } from '@fastgpt/global/core/ai/sandbox/tools';
-import { formatRefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/codec';
-import { refFromBuiltin } from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
-import { extractAgentPromptRefs } from '@fastgpt/global/core/workflow/node/agent/promptRef/text';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import { parseV2RefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/codec';
 import { toLegacyToolLookup } from '@fastgpt/global/core/workflow/node/agent/promptRef/legacy';
@@ -473,89 +468,4 @@ export const loadGeneratedTools = async ({
   ).filter((item) => item !== undefined);
 
   return results;
-};
-
-const SANDBOX_CANONICAL_KEY = formatRefKey(refFromBuiltin(AGENT_SANDBOX_TOOLSET_ID));
-
-/** 检测辅助生成交付的配置中是否包含虚拟机或技能依赖。 */
-export const hasHelperSandboxOrSkillConfig = (formData: ChatAgentConfigFormDataType): boolean => {
-  if (formData.enableSandboxEnabled || (formData.selectedAgentSkills?.length ?? 0) > 0) {
-    return true;
-  }
-  if (
-    (formData.tools || []).some((tool) => {
-      const key = typeof tool === 'string' ? tool : tool.id;
-      return key === AGENT_SANDBOX_TOOLSET_ID || key === SANDBOX_CANONICAL_KEY;
-    })
-  ) {
-    return true;
-  }
-  return extractAgentPromptRefs(formData.systemPrompt || '').some(({ parsed }) => {
-    const ref =
-      parsed.kind === 'v2'
-        ? parsed.ref
-        : parsed.kind === 'legacy'
-          ? parsed.deterministicRef
-          : undefined;
-    return (
-      ref?.type === 'skill' || (ref?.type === 'builtin' && ref.id === AGENT_SANDBOX_TOOLSET_ID)
-    );
-  });
-};
-
-/**
- * 应用辅助生成配置到 ChatAgent 表单：
- * 沙盒不可用时保留历史已选技能与虚拟机开关，避免套餐降级或系统临时关闭时静默清空历史配置。
- */
-export const applyChatAgentHelperFormData = ({
-  prev,
-  formData,
-  newTools,
-  canUseSandbox
-}: {
-  prev: AppFormEditFormType;
-  formData: ChatAgentConfigFormDataType;
-  newTools: SelectedToolItemType[];
-  canUseSandbox: boolean;
-}): AppFormEditFormType => {
-  const fileUploadEnabled = !!formData.fileUploadEnabled;
-  const nextSelectedAgentSkills = canUseSandbox
-    ? formData.selectedAgentSkills || []
-    : prev.selectedAgentSkills;
-  const nextUseAgentSandbox = canUseSandbox
-    ? !!formData.enableSandboxEnabled || (formData.selectedAgentSkills?.length || 0) > 0
-    : prev.aiSettings.useAgentSandbox;
-
-  return {
-    ...prev,
-    selectedTools: [...newTools],
-    selectedAgentSkills: nextSelectedAgentSkills,
-    dataset: {
-      ...prev.dataset,
-      datasets: formData.datasets ?? []
-    },
-    aiSettings: {
-      ...prev.aiSettings,
-      systemPrompt: formData.systemPrompt || prev.aiSettings.systemPrompt,
-      useAgentSandbox: nextUseAgentSandbox
-    },
-    chatConfig: {
-      ...prev.chatConfig,
-      fileSelectConfig: fileUploadEnabled
-        ? {
-            ...prev.chatConfig.fileSelectConfig,
-            canSelectFile: true
-          }
-        : {
-            maxFiles: undefined,
-            canSelectFile: false,
-            customPdfParse: false,
-            canSelectImg: false,
-            canSelectVideo: false,
-            canSelectAudio: false,
-            canSelectCustomFileExtension: false,
-            customFileExtensionList: []
-          }
-    }
-  };
 };
