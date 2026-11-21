@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
+import { DatasetCollectionTypeEnum } from '../../../../core/dataset/constants';
 import {
   APIFileItemSchema,
   ApiDatasetServerSchema
@@ -100,3 +101,35 @@ export const GetApiDatasetFileListExistIdResponseSchema = z.array(z.string()).me
 export type GetApiDatasetFileListExistIdResponse = z.infer<
   typeof GetApiDatasetFileListExistIdResponseSchema
 >;
+
+/* ============================================================================
+ * API: 获取第三方知识库本地同步范围状态
+ * Route: GET /api/core/dataset/apiDataset/syncState
+ * ============================================================================ */
+export const GetApiDatasetSyncStateQuerySchema = z.object({
+  datasetId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '知识库 ID'
+  })
+});
+export type GetApiDatasetSyncStateQuery = z.infer<typeof GetApiDatasetSyncStateQuerySchema>;
+
+export const ApiDatasetSyncStateCollectionItemSchema = z.object({
+  collectionId: ObjectIdSchema.meta({ description: '本地集合 ID' }),
+  apiFileId: z.string().meta({ description: '本地存储的 apiFileId（派生目录含 #dir 后缀）' }),
+  sourceId: z.string().meta({ description: '对应的真实远端节点 ID' }),
+  type: z.enum(DatasetCollectionTypeEnum).meta({ description: '本地集合类型' }),
+  syncChildren: z.boolean().meta({ description: '是否自动同步新增直属子级' }),
+  parentId: ObjectIdSchema.nullable().meta({ description: '本地父集合 ID' })
+});
+export type ApiDatasetSyncStateCollectionItem = z.infer<
+  typeof ApiDatasetSyncStateCollectionItemSchema
+>;
+
+export const GetApiDatasetSyncStateResponseSchema = z.object({
+  syncAll: z.boolean().meta({ description: '是否自动同步远端根目录下的新增文件与文件夹' }),
+  collections: z
+    .array(ApiDatasetSyncStateCollectionItemSchema)
+    .meta({ description: '知识库内已导入的 API 集合及其同步状态' })
+});
+export type GetApiDatasetSyncStateResponse = z.infer<typeof GetApiDatasetSyncStateResponseSchema>;

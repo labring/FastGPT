@@ -1,6 +1,8 @@
 import { findCollectionAndChild } from '@fastgpt/service/core/dataset/collection/utils';
 import { delCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { parseHeaderCert } from '@fastgpt/service/support/permission/auth/common';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -8,7 +10,6 @@ import { NextAPI } from '@/service/middleware/entry';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { buildCollectionAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -39,9 +40,6 @@ async function handler(req: ApiRequestProps) {
 
     const { datasetId, apiFileIds } = body;
     // 外部集成只知道 API 文件身份：用请求头 teamId + datasetId 定位内部 _id，后续复用原有删除流程
-    if (apiFileIds.includes(RootCollectionId)) {
-      return Promise.reject(CommonErrEnum.invalidParams);
-    }
     const { teamId } = await parseHeaderCert({ req, authToken: true, authApiKey: true });
     // apiFileId 可以标识远端文件或目录。带子文档的文件会生成「派生目录 + 正文」，
     // 派生目录用 metadata.apiFileSourceId 关联远端 ID，必须一起命中才能删除完整子树。
@@ -127,7 +125,7 @@ async function handler(req: ApiRequestProps) {
         teamId,
         datasetId: collection.datasetId,
         collectionId,
-        fields: '_id teamId name type datasetId fileId metadata'
+        fields: '_id teamId name type datasetId fileId metadata parentId apiFileId'
       });
     })
   ).then((res) => {
@@ -140,15 +138,52 @@ async function handler(req: ApiRequestProps) {
     return uniqueCollections;
   });
 
+  // 仅针对本次主动删除的边界 API 节点收口其直接父级的自动同步范围（不级联上翻祖先，且仅限用户删除入口）
+  const deletingIdSet = new Set(collections.map((item) => String(item._id)));
+  const disableSyncFolderIds = new Set<string>();
+  const disableSyncAllDatasetIds = new Set<string>();
+  for (const item of collections) {
+    if (!item.apiFileId) continue;
+    const parentIdStr = item.parentId ? String(item.parentId) : null;
+    if (parentIdStr && deletingIdSet.has(parentIdStr)) continue;
+    if (parentIdStr) {
+      disableSyncFolderIds.add(parentIdStr);
+    } else {
+      disableSyncAllDatasetIds.add(String(item.datasetId));
+    }
+  }
+
   // delete
-  await mongoSessionRun((session) =>
-    delCollection({
+  await mongoSessionRun(async (session) => {
+    await delCollection({
       collections,
       delImg: true,
       delFile: true,
       session
-    })
-  );
+    });
+
+    if (disableSyncFolderIds.size > 0) {
+      await MongoDatasetCollection.updateMany(
+        {
+          _id: { $in: [...disableSyncFolderIds] },
+          teamId,
+          datasetId: collection.datasetId,
+          type: DatasetCollectionTypeEnum.folder,
+          apiFileId: { $exists: true, $ne: null }
+        },
+        { $set: { syncChildren: false } },
+        { session }
+      );
+    }
+
+    if (disableSyncAllDatasetIds.size > 0) {
+      await MongoDataset.updateMany(
+        { _id: { $in: [...disableSyncAllDatasetIds] }, teamId },
+        { $set: { syncAll: false } },
+        { session }
+      );
+    }
+  });
 
   // 仅记录实际删除的显式选中项；隐式删除的后代不展开，避免大型目录生成过大的日志。
   const deletedCollections = new Map(collections.map((item) => [String(item._id), item]));

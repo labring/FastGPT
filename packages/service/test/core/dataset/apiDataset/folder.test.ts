@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
-import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import {
   createApiFileFolders,
   planApiFileFolders
@@ -72,11 +71,11 @@ describe('createApiFileFolders', () => {
       { depth: 1, created: 1, failed: 0, skipped: 1 }
     ]);
   });
-  it('复用目标父级/同步哨兵及明确继承策略，保留真实远端来源', async () => {
-    const rootCollectionId = String(new Types.ObjectId());
+  it('复用目标父级、写入 syncChildren 及明确继承策略，保留真实远端来源', async () => {
     const idMap = new Map<string, string>();
-    const record = { ...folder('doc#dir', null, 0), sourceId: 'doc' };
-    const folders = planApiFileFolders({ records: [record], idMap });
+    const placeholder = { ...folder('ancestor', null, 0), syncChildren: false };
+    const record = { ...folder('doc#dir', 'ancestor', 1), sourceId: 'doc' };
+    const folders = planApiFileFolders({ records: [placeholder, record], idMap });
     const insertFolders = vi.fn(async (docs: BulkInsertCollectionDoc[]) => ({
       successApiFileIds: docs.map((doc) => doc.apiFileId),
       failedApiFileIds: []
@@ -84,19 +83,30 @@ describe('createApiFileFolders', () => {
     await createApiFileFolders({
       folders,
       idMap,
-      rootCollectionId,
-      inheritPermissionOf: () => false,
+      inheritPermissionOf: (item) => (item.apiFileId === 'doc#dir' ? false : undefined),
       insertFolders
     });
     expect(insertFolders.mock.calls[0][0][0]).toMatchObject({
+      apiFileId: 'ancestor',
+      parentId: null,
+      syncChildren: false,
+      inheritPermission: undefined
+    });
+    expect(insertFolders.mock.calls[1][0][0]).toMatchObject({
       metadata: { apiFileSourceId: 'doc' },
-      apiFileParentId: RootCollectionId,
-      parentId: new Types.ObjectId(rootCollectionId),
+      apiFileParentId: 'ancestor',
+      parentId: new Types.ObjectId(idMap.get('ancestor')!),
+      syncChildren: true,
       inheritPermission: false
     });
     const targetParentId = String(new Types.ObjectId());
-    await createApiFileFolders({ folders, idMap: new Map(), targetParentId, insertFolders });
-    expect(String(insertFolders.mock.calls[1][0][0].parentId)).toBe(targetParentId);
+    await createApiFileFolders({
+      folders: planApiFileFolders({ records: [{ ...folder('top', null, 0) }], idMap: new Map() }),
+      idMap: new Map(),
+      targetParentId,
+      insertFolders
+    });
+    expect(String(insertFolders.mock.calls[2][0][0].parentId)).toBe(targetParentId);
   });
   it('空计划和父级全部失败的层不执行空写入，写入异常上抛', async () => {
     const idMap = new Map<string, string>();

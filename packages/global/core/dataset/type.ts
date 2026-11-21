@@ -188,6 +188,10 @@ export const DatasetSchema = z
     deleteTime: z.coerce.date().nullish().meta({ description: '删除时间' }),
 
     autoSync: z.boolean().optional().meta({ description: '自动同步' }),
+    syncAll: z
+      .boolean()
+      .optional()
+      .meta({ description: '是否同步第三方知识库根目录下的新增文件与文件夹' }),
     externalReadUrl: z.string().optional().meta({ description: '外部读取 URL', deprecated: true }),
     defaultPermission: z.number().optional().meta({ description: '默认权限', deprecated: true }),
     apiServer: APIFileServerSchema.optional().meta({
@@ -241,6 +245,10 @@ export const DatasetCollectionSchema = ChunkSettingsSchema.omit({
   externalFileId: z.string().optional().meta({ description: '外部文件 ID' }),
   apiFileId: z.string().optional().meta({ description: 'API 文件 ID' }),
   apiFileParentId: z.string().optional().meta({ description: 'API 文件父级 ID' }),
+  syncChildren: z
+    .boolean()
+    .optional()
+    .meta({ description: 'API 集合是否自动同步新增直属子级；缺省兼容存量视为 true' }),
   externalFileUrl: z.string().optional().meta({ description: '外部文件 URL' }),
 
   rawTextLength: z.number().optional().meta({ description: '原始文本长度' }),

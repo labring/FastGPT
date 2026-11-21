@@ -39,6 +39,7 @@ import { useRouter } from 'next/router';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import {
+  ApiDatasetTypeMap,
   DatasetCollectionTypeEnum,
   DatasetTypeEnum,
   DatasetStatusEnum,
@@ -60,7 +61,11 @@ import CollectionListHeaderMenu from './CollectionListHeaderMenu';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import { collectionCanSync } from '@fastgpt/global/core/dataset/collection/utils';
+import {
+  collectionCanSync,
+  isCollectionSyncChildrenEnabled
+} from '@fastgpt/global/core/dataset/collection/utils';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import TagsPopOver from './TagsPopOver';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -201,6 +206,8 @@ const CollectionCard = () => {
     return trainingErrorRequest.deactivate;
   }, [trainingErrorRequest]);
 
+  const isApiDataset = Boolean(datasetDetail.type && ApiDatasetTypeMap[datasetDetail.type]);
+
   const { runAsync: onUpdateCollection, loading: isUpdating } = useRequest(
     putDatasetCollectionById,
     {
@@ -208,6 +215,24 @@ const CollectionCard = () => {
         refreshCollections();
       },
       successToast: t('common:update_success')
+    }
+  );
+
+  const { runAsync: onToggleSyncChildren, loading: isUpdatingSyncChildren } = useRequest(
+    async ({ id, syncChildren }: { id: string; syncChildren: boolean }) => {
+      await putDatasetCollectionById({ id, syncChildren });
+      return syncChildren;
+    },
+    {
+      onSuccess(syncChildren) {
+        getData(pageNum);
+        toast({
+          status: 'success',
+          title: syncChildren
+            ? t('dataset:sync_children_enabled_next_sync_tip')
+            : t('dataset:sync_children_paused_tip')
+        });
+      }
     }
   );
 
@@ -225,6 +250,9 @@ const CollectionCard = () => {
       onSuccess() {
         refreshCollections();
         refreshDatasetTrainingError().catch(() => undefined);
+        if (isApiDataset) {
+          loadDatasetDetail(datasetDetail._id).catch(() => undefined);
+        }
       },
       successToast: t('common:delete_success'),
       errorToast: t('common:delete_failed')
@@ -353,7 +381,8 @@ const CollectionCard = () => {
     }
   });
 
-  const isLoading = isUpdating || isSyncing || isDropping || isEnablingCollectionPer;
+  const isLoading =
+    isUpdating || isUpdatingSyncChildren || isSyncing || isDropping || isEnablingCollectionPer;
 
   const onBatchDownload = () => {
     batchDownloadSubmitterRef.current.submit({
@@ -477,6 +506,14 @@ const CollectionCard = () => {
                   />
                 </Th>
                 <Th py={4}>{t('common:Status')}</Th>
+                {isApiDataset && (
+                  <Th py={4}>
+                    <HStack spacing={1}>
+                      <Box>{t('dataset:sync_new_children')}</Box>
+                      <QuestionTip label={t('dataset:sync_new_children_tip')} />
+                    </HStack>
+                  </Th>
+                )}
                 <Th py={4}>{t('dataset:Enable')}</Th>
                 <Th py={4} />
               </Tr>
@@ -493,7 +530,7 @@ const CollectionCard = () => {
                         <Skeleton h={4} w="60%" minW="100px" borderRadius="sm" />
                       </HStack>
                     </Td>
-                    {[16, 12, 28, 20, 8, 4].map((width, column) => (
+                    {[16, 12, 28, 20, ...(isApiDataset ? [10] : []), 8, 4].map((width, column) => (
                       <Td key={column} py={4}>
                         <Skeleton h={4} w={width} borderRadius="sm" />
                       </Td>
@@ -578,6 +615,19 @@ const CollectionCard = () => {
                               {collection.name}
                             </Box>
                           </MyTooltip>
+                          {isApiDataset &&
+                            !collection.isNavigableFolder &&
+                            collection.type === DatasetCollectionTypeEnum.folder &&
+                            Boolean(collection.apiFileId) &&
+                            !isCollectionSyncChildrenEnabled(collection) && (
+                              <MyTooltip label={t('dataset:sync_children_paused_tip')}>
+                                <Box ml={2} flexShrink={0}>
+                                  <MyTag colorSchema={'gray'} type={'fill'} fontSize={'mini'}>
+                                    {t('dataset:sync_children_paused_tag')}
+                                  </MyTag>
+                                </Box>
+                              </MyTooltip>
+                            )}
                         </Flex>
                         {feConfigs?.isPlus && !!collection.tags?.length && (
                           <TagsPopOver currentCollection={collection} />
@@ -635,6 +685,37 @@ const CollectionCard = () => {
                       </MyTag>
                     </MyTooltip>
                   </Td>
+                  {isApiDataset && (
+                    <Td py={2} onClick={(e) => e.stopPropagation()}>
+                      {!collection.isNavigableFolder &&
+                        (collection.type === DatasetCollectionTypeEnum.folder &&
+                        Boolean(collection.apiFileId) ? (
+                          <MyTooltip
+                            label={
+                              !collection.permission.hasManagePer
+                                ? t('common:no_operation_permission')
+                                : undefined
+                            }
+                          >
+                            <Box display={'inline-flex'}>
+                              <Switch
+                                isChecked={isCollectionSyncChildrenEnabled(collection)}
+                                isDisabled={!collection.permission.hasManagePer}
+                                size={'sm'}
+                                onChange={(e) =>
+                                  onToggleSyncChildren({
+                                    id: collection._id,
+                                    syncChildren: e.target.checked
+                                  })
+                                }
+                              />
+                            </Box>
+                          </MyTooltip>
+                        ) : (
+                          <Box color={'myGray.400'}>-</Box>
+                        ))}
+                    </Td>
+                  )}
                   <Td py={2} onClick={(e) => e.stopPropagation()}>
                     <Switch
                       visibility={collection.isNavigableFolder ? 'hidden' : 'visible'}

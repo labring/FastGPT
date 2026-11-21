@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import {
   buildApiFileRecords,
   buildApiFileTree,
@@ -56,21 +55,48 @@ describe('buildApiFileTree', () => {
     ]);
   });
 
-  it.each(['base-path', undefined])('显式 listId=%s 决定哨兵枚举位置', async (listId) => {
+  it.each(['base-path', undefined])('显式 listId=%s 决定目录枚举位置', async (listId) => {
     listFiles.mockResolvedValue([]);
     const nodes = await buildApiFileTree({
       request,
-      seeds: [{ ...file(RootCollectionId, 'folder', true), listId }]
+      seeds: [{ ...file('custom-root', 'folder', true), listId }]
     });
     expect(listFiles).toHaveBeenCalledExactlyOnceWith({ parentId: listId });
     expect(nodes).toEqual([
       expect.objectContaining({
-        serverId: RootCollectionId,
+        serverId: 'custom-root',
         type: 'folder',
-        name: `name-${RootCollectionId}`,
+        name: 'name-custom-root',
         depth: 0,
         serverParentId: null
       })
+    ]);
+  });
+
+  it('syncChildren=false 且 expandChildren=false 的占位祖先种子不展开子级，但显式子种子会挂到其下', async () => {
+    listFiles.mockImplementation(async ({ parentId }: { parentId: string }) => {
+      if (parentId === 'child') return [file('leaf', 'file')];
+      return [];
+    });
+    const nodes = await buildApiFileTree({
+      request,
+      seeds: [
+        { ...file('ancestor', 'folder', true), syncChildren: false, expandChildren: false },
+        { ...file('child', 'folder', true), serverParentId: 'ancestor' }
+      ]
+    });
+    expect(listFiles).toHaveBeenCalledExactlyOnceWith({ parentId: 'child' });
+    expect(
+      nodes.map(({ serverId, serverParentId, depth, syncChildren }) => [
+        serverId,
+        serverParentId,
+        depth,
+        syncChildren
+      ])
+    ).toEqual([
+      ['ancestor', null, 0, false],
+      ['child', 'ancestor', 1, undefined],
+      ['leaf', 'child', 2, undefined]
     ]);
   });
 
@@ -170,6 +196,43 @@ describe('buildApiFileTree', () => {
       ['b', 'a', 1]
     ]);
     expect(listFiles).toHaveBeenCalledTimes(2);
+  });
+
+  it('verifyFolderChildren=true 时对 hasChild=false 的目录仍调用 listFiles 核实子项', async () => {
+    listFiles.mockImplementation(async ({ parentId }: { parentId: string }) => {
+      if (parentId === 'non-empty') return [file('child', 'file')];
+      return [];
+    });
+
+    const nodes = await buildApiFileTree({
+      request,
+      seeds: [
+        file('non-empty', 'folder', false),
+        file('really-empty', 'folder', false),
+        file('leaf-file', 'file', false),
+        { ...file('paused-ancestor', 'folder', false), expandChildren: false }
+      ],
+      verifyFolderChildren: true
+    });
+
+    expect(listFiles.mock.calls.map(([args]) => args.parentId)).toEqual([
+      'non-empty',
+      'really-empty'
+    ]);
+    expect(
+      nodes.map(({ serverId, type, hasChild, serverParentId }) => [
+        serverId,
+        type,
+        hasChild,
+        serverParentId
+      ])
+    ).toEqual([
+      ['non-empty', 'folder', true, null],
+      ['really-empty', 'folder', false, null],
+      ['leaf-file', 'file', false, null],
+      ['paused-ancestor', 'folder', false, null],
+      ['child', 'file', false, 'non-empty']
+    ]);
   });
 
   it('T1-8: listFiles reject 时异常上抛', async () => {

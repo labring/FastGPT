@@ -22,13 +22,12 @@ export const planApiFileFolders = ({
 /**
  * 导入和同步共用目录补建：只用已提交的父级按层写入，成功后再更新 idMap。
  * 预分配 ID 不代表创建成功；父层失败时跳过其后代，不回退到根。返回失败与跳过供调用方统计。
- * 写入能力由调用方注入，权限继承及同步根哨兵作为明确的上下文传入。
+ * 写入能力由调用方注入，权限继承作为明确的上下文传入。
  */
 export const createApiFileFolders = async ({
   folders,
   idMap,
   targetParentId,
-  rootCollectionId,
   inheritPermissionOf,
   insertFolders,
   onLayer
@@ -36,7 +35,6 @@ export const createApiFileFolders = async ({
   folders: ReturnType<typeof planApiFileFolders>;
   idMap: Map<string, string>;
   targetParentId?: string | null;
-  rootCollectionId?: string;
   inheritPermissionOf?: (record: ApiFileRecord) => boolean | undefined;
   insertFolders: (
     docs: BulkInsertCollectionDoc[]
@@ -61,8 +59,7 @@ export const createApiFileFolders = async ({
       const { parentId, apiFileParentId } = resolveApiFileRecordParent({
         record,
         idMap,
-        targetParentId,
-        rootCollectionId
+        targetParentId
       });
       if (parentId === undefined) {
         skippedIds.push(record.apiFileId);
@@ -77,6 +74,7 @@ export const createApiFileFolders = async ({
         metadata: { apiFileSourceId: record.sourceId },
         apiFileParentId: apiFileParentId ?? undefined,
         parentId: parentId ? new Types.ObjectId(parentId) : null,
+        syncChildren: record.syncChildren ?? true,
         inheritPermission: inheritPermissionOf?.(record)
       });
     }

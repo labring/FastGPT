@@ -1,5 +1,4 @@
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import { toApiFileDirId, type ApiFileRecord } from './tree';
 import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 
@@ -11,6 +10,7 @@ export type ApiFileLocalCollection = {
   parentId?: unknown;
   type: DatasetCollectionTypeEnum;
   inheritPermission?: boolean;
+  syncChildren?: boolean;
   metadata?: Record<string, unknown>;
 };
 
@@ -29,6 +29,17 @@ export type LegacyApiFileFolderMigration = {
   directoryId: string;
   oldParentId: string | null;
   inheritPermission?: boolean;
+};
+
+/** 沿用请求 factory 的配置优先级，判断当前是否启用自定义 API 文件库 Provider。 */
+export const usesCustomApiDataset = (apiDatasetServer?: ApiDatasetServerType) => {
+  return Boolean(apiDatasetServer?.apiServer);
+};
+
+/** 沿用请求 factory 的配置优先级，判断当前是否启用飞书 Provider（飞书 getFileDetail 不返回 parentId）。 */
+export const usesFeishuDataset = (apiDatasetServer?: ApiDatasetServerType) => {
+  const { apiServer, yuqueServer, feishuServer } = apiDatasetServer ?? {};
+  return Boolean(feishuServer && !apiServer && !yuqueServer);
 };
 
 /** 沿用请求 factory 的配置优先级，旧目录正文兼容只适用于实际启用的钉钉 Provider。 */
@@ -141,25 +152,25 @@ export const resolveApiFileRecordParent = ({
   record,
   idMap,
   targetParentId,
-  rootCollectionId,
-  rootParentIds
+  rootParentIds,
+  syncAll = false
 }: {
   record: ApiFileRecord;
   idMap: Map<string, string>;
   targetParentId?: string | null;
-  rootCollectionId?: string;
-  /** 旧正文转换为叶子时，首次创建沿用其原目录位置；显式目标和整库哨兵仍优先。 */
+  /** 旧正文转换为叶子时，首次创建沿用其原目录位置；显式目标仍优先。 */
   rootParentIds?: Map<string, string | null>;
+  /** 整库同步（Dataset.syncAll=true）时根级记录明确归属知识库根，需校正脱离旧父级。 */
+  syncAll?: boolean;
 }) => ({
   parentId:
     record.parentDirId === null
       ? targetParentId !== undefined
         ? targetParentId
-        : (rootCollectionId ?? rootParentIds?.get(record.sourceId) ?? null)
+        : (rootParentIds?.get(record.sourceId) ?? null)
       : idMap.get(record.parentDirId),
-  apiFileParentId: record.apiFileParentId ?? (rootCollectionId ? RootCollectionId : null),
-  preserveExistingPlacement:
-    record.parentDirId === null && targetParentId === undefined && !rootCollectionId
+  apiFileParentId: record.apiFileParentId ?? null,
+  preserveExistingPlacement: !syncAll && record.parentDirId === null && targetParentId === undefined
 });
 
 /** 从远端记录和本地快照生成幂等移动计划；缺失父目录时保留原位，根字段通过 null 表达 unset。 */
@@ -219,10 +230,11 @@ export const buildApiFileParentUpdates = ({
 };
 
 /**
- * 同步只查询真实远端 ID。新派生目录保存 sourceId，正文尚未落库时也能恢复同步；
- * 历史目录仅在本地挂载关系能证明来源时兼容，不盲目裁剪 provider ID 的后缀。
+ * 统一解析本地 API collection 对应的真实远端 ID（sourceId）。
+ * 新派生目录保存 metadata.apiFileSourceId；历史派生目录仅在本地挂载关系能证明来源时兼容，
+ * 不盲目裁剪 provider ID 的 `#dir` 后缀。
  */
-export const getApiFileSyncRootIds = (collections: ApiFileLocalCollection[]): string[] => {
+export const buildApiCollectionSourceIdResolver = (collections: ApiFileLocalCollection[]) => {
   const localByApiId = new Map(
     collections.filter((item) => item.apiFileId).map((item) => [item.apiFileId!, item])
   );
@@ -247,22 +259,29 @@ export const getApiFileSyncRootIds = (collections: ApiFileLocalCollection[]): st
       remoteParentsByLocalParent.get(String(directory._id))?.has(item.apiFileId);
     if (isDerived) legacySources.set(dirId, item.apiFileId);
   }
-  const sourceIdOf = (item: ApiFileLocalCollection) => {
+
+  return (item: ApiFileLocalCollection): string | undefined => {
     if (!item.apiFileId) return undefined;
     if (item.type !== DatasetCollectionTypeEnum.folder) return item.apiFileId;
     const sourceId = item.metadata?.apiFileSourceId;
     return typeof sourceId === 'string' && sourceId
       ? sourceId
-      : (legacySources.get(item.apiFileId ?? '') ?? item.apiFileId);
+      : (legacySources.get(item.apiFileId) ?? item.apiFileId);
   };
+};
+
+/**
+ * 同步只查询真实远端 ID。新派生目录保存 sourceId，正文尚未落库时也能恢复同步；
+ * 历史目录仅在本地挂载关系能证明来源时兼容，不盲目裁剪 provider ID 的后缀。
+ */
+export const getApiFileSyncRootIds = (collections: ApiFileLocalCollection[]): string[] => {
+  const sourceIdOf = buildApiCollectionSourceIdResolver(collections);
   const sourceIds = new Set(collections.map(sourceIdOf).filter(Boolean));
   return [
     ...new Set(
       collections.flatMap((item) => {
         const sourceId = sourceIdOf(item);
-        return sourceId &&
-          sourceId !== RootCollectionId &&
-          (!item.apiFileParentId || !sourceIds.has(item.apiFileParentId))
+        return sourceId && (!item.apiFileParentId || !sourceIds.has(item.apiFileParentId))
           ? [sourceId]
           : [];
       })

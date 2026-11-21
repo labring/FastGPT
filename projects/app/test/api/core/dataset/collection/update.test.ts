@@ -796,3 +796,52 @@ it('rejects moving into a leaf even when the target is manageable', async () => 
   expect(res.error).toBe(CommonErrEnum.invalidParams);
   expect((await MongoDatasetCollection.findById(source._id).lean())?.parentId).toBeNull();
 });
+
+describe('update collection syncChildren', () => {
+  it('updates syncChildren on an API folder with Manage permission and rejects Write-only', async () => {
+    const { actor, owner, datasetId, grant } = await fixture();
+    const apiFolder = await MongoDatasetCollection.create({
+      teamId: actor.teamId,
+      datasetId,
+      tmbId: owner.tmbId,
+      name: 'api-folder',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'remote-dir',
+      syncChildren: true,
+      inheritPermission: false
+    });
+    await grant(String(apiFolder._id), WriteRoleVal);
+
+    const denied = await Call(updateHandler, {
+      auth: actor,
+      body: { id: String(apiFolder._id), syncChildren: false }
+    });
+    expect(denied.error).toBe(DatasetErrEnum.unAuthDatasetCollection);
+    expect((await MongoDatasetCollection.findById(apiFolder._id).lean())?.syncChildren).toBe(true);
+
+    await grant(String(apiFolder._id), ManageRoleVal);
+    const allowed = await Call(updateHandler, {
+      auth: actor,
+      body: { id: String(apiFolder._id), syncChildren: false }
+    });
+    expect(allowed.code).toBe(200);
+    expect((await MongoDatasetCollection.findById(apiFolder._id).lean())?.syncChildren).toBe(false);
+  });
+
+  it('rejects syncChildren updates on non-API folders and non-folder files', async () => {
+    const { owner, source, file } = await fixture();
+    await MongoDatasetCollection.updateOne({ _id: file._id }, { $set: { apiFileId: 'remote-file' } });
+
+    const manualFolderRes = await Call(updateHandler, {
+      auth: owner,
+      body: { id: String(source._id), syncChildren: false }
+    });
+    expect(manualFolderRes.error).toBe(CommonErrEnum.invalidParams);
+
+    const apiFileRes = await Call(updateHandler, {
+      auth: owner,
+      body: { id: String(file._id), syncChildren: false }
+    });
+    expect(apiFileRes.error).toBe(CommonErrEnum.invalidParams);
+  });
+});

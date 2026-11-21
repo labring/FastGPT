@@ -1,4 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
@@ -53,6 +54,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       externalReadUrl,
       apiDatasetServer,
       autoSync,
+      syncAll,
       sangforFileParseConfig,
       chunkSettings: rawChunkSettings
     }
@@ -84,6 +86,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     externalReadUrl !== undefined ||
     apiDatasetServer !== undefined ||
     autoSync !== undefined ||
+    syncAll !== undefined ||
     sangforFileParseConfig !== undefined ||
     rawChunkSettings !== undefined;
 
@@ -100,6 +103,10 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     datasetId: id,
     per: ManagePermissionVal
   });
+
+  if (typeof syncAll === 'boolean' && !dataset.apiDatasetServer && !apiDatasetServer) {
+    return Promise.reject(CommonErrEnum.invalidParams);
+  }
 
   const modelHandle = await getTeamModelHandle({ teamId });
   const chunkSettings = rawChunkSettings
@@ -173,6 +180,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
         value: apiDatasetServerPatch?.effectiveValue
       },
       autoSync,
+      syncAll,
       chunkSettings,
       chunkSettingsEnabled: rawChunkSettings !== undefined,
       fileParseConfig: sangforFileParseConfig
@@ -232,6 +240,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
         ...(intro !== undefined && { intro }),
         ...(externalReadUrl !== undefined && { externalReadUrl }),
         ...(typeof autoSync === 'boolean' && { autoSync }),
+        ...(typeof syncAll === 'boolean' && { syncAll }),
         // 传空对象等价于恢复全部开关默认值(读取层补全),旧文件已固化的解析结果不受影响
         ...(sangforFileParseConfig !== undefined && { sangforFileParseConfig }),
         ...apiDatasetParams,

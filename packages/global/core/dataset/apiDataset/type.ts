@@ -90,6 +90,7 @@ export type ApiDatasetErrorCode =
   | 'NETWORK_ERROR'
   | 'SERVER_ERROR'
   | 'INVALID_PARAMS'
+  | 'INVALID_RESPONSE'
   | 'UNKNOWN_ERROR';
 
 export type ApiDatasetResult<T> =

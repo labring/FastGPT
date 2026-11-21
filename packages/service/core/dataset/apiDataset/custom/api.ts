@@ -10,6 +10,7 @@ import {
   toApiDatasetError,
   toApiDatasetSuccess
 } from '@fastgpt/global/core/dataset/apiDataset/utils';
+import { getErrorMessage } from '@fastgpt/global/common/error/utils';
 import type { IultmzhFileParseConfigType } from '@fastgpt/global/core/dataset/type';
 import { type Method } from 'axios';
 import { createProxyAxios } from '../../../../common/api/axios';
@@ -57,7 +58,13 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
     if (data === undefined) {
       logger.warn('API dataset response data is empty');
       return Promise.reject('服务器异常');
-    } else if (!data.success) {
+    }
+    // 拦截网关 HTML 或非协议对象响应，避免文本里的 "not found" 被误分类为 NOT_FOUND 触发误删。
+    if (typeof data !== 'object' || data === null || typeof data.success !== 'boolean') {
+      logger.warn('API dataset response format is invalid');
+      return Promise.reject({ code: 'INVALID_RESPONSE', message: '服务器返回格式异常' });
+    }
+    if (!data.success) {
       return Promise.reject(data);
     }
     return data.data;
@@ -154,7 +161,18 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
     if (!Array.isArray(files)) {
       return Promise.reject('Invalid file list format');
     }
-    if (files.some((file) => !file.id || !file.name || typeof file.type === 'undefined')) {
+    if (
+      files.some(
+        (file) =>
+          !file ||
+          typeof file !== 'object' ||
+          typeof file.id !== 'string' ||
+          !file.id ||
+          typeof file.name !== 'string' ||
+          !file.name ||
+          (file.type !== 'file' && file.type !== 'folder')
+      )
+    ) {
       return Promise.reject('Invalid file data format');
     }
 
@@ -163,7 +181,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
       rawId: file.id,
       // 自定义接口特殊：folder 可以没有子级、file 也可以挂子级（语雀一类），
       // 因此只在对方没给 hasChild 时才回退到 type，不能反过来由 type 覆盖
-      hasChild: file.hasChild ?? file.type === 'folder'
+      hasChild: typeof file.hasChild === 'boolean' ? file.hasChild : file.type === 'folder'
     }));
 
     return formattedFiles;
@@ -278,23 +296,95 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
         'GET'
       );
 
-      if (fileData) {
-        return toApiDatasetSuccess({
-          id: fileData.id,
-          rawId: apiFileId,
-          name: fileData.name,
-          parentId: fileData.parentId === null ? '' : fileData.parentId,
-          type: fileData.type,
-          // 与 listFiles 同一口径。同步拿它当根种子：漏了 hasChild 会退化为 false，
-          // 子树不再被遍历 → 后代全部落入删除集，整棵删掉
-          hasChild: fileData.hasChild ?? fileData.type === 'folder',
-          updateTime: fileData.updateTime,
-          createTime: fileData.createTime
+      // success:true 但 data 为空或非对象时，删除证据不足，不能归类为 NOT_FOUND 以免误删本地集合。
+      if (!fileData || typeof fileData !== 'object' || Array.isArray(fileData)) {
+        return toApiDatasetError({
+          code: 'INVALID_RESPONSE',
+          message: 'Invalid file detail response: empty data'
         });
       }
 
-      return toApiDatasetError({ code: 'NOT_FOUND', message: 'File not found', status: 404 });
+      // 校验详情对象关键字段：错误 id、缺失 name 或非法 type 均视为无效响应。
+      if (typeof fileData.id !== 'string' || !fileData.id || fileData.id !== apiFileId) {
+        return toApiDatasetError({
+          code: 'INVALID_RESPONSE',
+          message: 'Invalid file detail response: mismatched id'
+        });
+      }
+      if (typeof fileData.name !== 'string' || !fileData.name) {
+        return toApiDatasetError({
+          code: 'INVALID_RESPONSE',
+          message: 'Invalid file detail response: missing name'
+        });
+      }
+      if (fileData.type !== 'file' && fileData.type !== 'folder') {
+        return toApiDatasetError({
+          code: 'INVALID_RESPONSE',
+          message: 'Invalid file detail response: invalid type'
+        });
+      }
+
+      return toApiDatasetSuccess({
+        id: fileData.id,
+        rawId: apiFileId,
+        name: fileData.name,
+        parentId: fileData.parentId === null ? '' : fileData.parentId,
+        type: fileData.type,
+        // 与 listFiles 同一口径。同步拿它当根种子：漏了 hasChild 会退化为 false，
+        // 子树不再被遍历 → 后代全部落入删除集，整棵删掉
+        hasChild:
+          typeof fileData.hasChild === 'boolean' ? fileData.hasChild : fileData.type === 'folder',
+        updateTime: fileData.updateTime,
+        createTime: fileData.createTime
+      });
     } catch (err: any) {
+      // 网关/框架路由缺失 404（HTML、Express Cannot GET、Go 404、FastAPI {"detail":"Not Found"} 等非协议体）
+      // 不能归类为资源级 NOT_FOUND，避免触发同步删除。
+      const isRouteMissingDetailError = (error: unknown): boolean => {
+        if (!error || typeof error !== 'object') return false;
+        const record = error as Record<string, unknown>;
+        const response =
+          record.response && typeof record.response === 'object'
+            ? (record.response as Record<string, unknown>)
+            : undefined;
+        const status = response?.status ?? record.status ?? record.statusCode;
+        if (status !== 404) return false;
+
+        const body = response?.data;
+        if (typeof body === 'string') {
+          return /(?:cannot\s+(?:get|post|put|delete|patch)\b|<!doctype\s+html|<html[\s>]|404\s+page\s+not\s+found|(?:route|endpoint|path|api|method)\s+not\s+found)/i.test(
+            body
+          );
+        }
+        if (body && typeof body === 'object' && !Array.isArray(body)) {
+          const bodyRecord = body as Record<string, unknown>;
+          if (
+            bodyRecord.success === undefined &&
+            bodyRecord.message === undefined &&
+            bodyRecord.msg === undefined &&
+            typeof bodyRecord.detail === 'string' &&
+            /^not found$/i.test(bodyRecord.detail.trim())
+          ) {
+            return true;
+          }
+          if (
+            bodyRecord.success === undefined &&
+            bodyRecord.message === undefined &&
+            typeof bodyRecord.path === 'string' &&
+            bodyRecord.path.includes('/v1/file/detail')
+          ) {
+            return true;
+          }
+        }
+        return false;
+      };
+      if (isRouteMissingDetailError(err)) {
+        return toApiDatasetError({
+          code: 'INVALID_RESPONSE',
+          message: getErrorMessage(err) || 'Detail endpoint not found',
+          status: 404
+        });
+      }
       return classifyApiDatasetError(err);
     }
   };

@@ -1,6 +1,10 @@
 import React from 'react';
-import { Box, Flex, Button, Link, useDisclosure, HStack } from '@chakra-ui/react';
-import { postDatasetCollection, putDatasetCollectionById } from '@/web/core/dataset/api/collection';
+import { Box, Flex, Button, Link, useDisclosure, HStack, Switch } from '@chakra-ui/react';
+import {
+  getDatasetCollectionById,
+  postDatasetCollection,
+  putDatasetCollectionById
+} from '@/web/core/dataset/api/collection';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
@@ -33,6 +37,8 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import TagManageModal from './TagManageModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { isCollectionSyncChildrenEnabled } from '@fastgpt/global/core/dataset/collection/utils';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const FileSourceSelector = dynamic(() => import('../Import/components/FileSourceSelector'));
 const BackupImportModal = dynamic(() => import('./BackupImportModal'));
@@ -69,6 +75,7 @@ const Header = ({
   const { isPc } = useSystem();
 
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
+  const updateDataset = useContextSelector(DatasetPageContext, (v) => v.updateDataset);
   const paths = useContextSelector(DatasetPageContext, (v) => v.collectionPaths);
   const collectionFolderAccessMode = useContextSelector(
     DatasetPageContext,
@@ -148,7 +155,66 @@ const Header = ({
   );
 
   const isWebSite = datasetDetail?.type === DatasetTypeEnum.websiteDataset;
+  const isApiDataset = Boolean(datasetDetail?.type && ApiDatasetTypeMap[datasetDetail.type]);
   const isIndexModelAvailable = datasetDetail.vectorModel?.isActive === true;
+
+  const { data: currentFolderDetail, runAsync: refreshCurrentFolderDetail } = useRequest(
+    async () => {
+      if (!isApiDataset || !parentId || collectionFolderAccessMode !== 'read') return undefined;
+      return getDatasetCollectionById(parentId);
+    },
+    {
+      manual: false,
+      refreshDeps: [isApiDataset, parentId, collectionFolderAccessMode, total]
+    }
+  );
+
+  const { runAsync: onToggleSyncAll, loading: isUpdatingSyncAll } = useRequest(
+    async (syncAll: boolean) => {
+      await updateDataset({
+        id: datasetDetail._id,
+        syncAll
+      });
+      return syncAll;
+    },
+    {
+      onSuccess(syncAll) {
+        toast({
+          status: 'success',
+          title: syncAll
+            ? t('dataset:sync_root_enabled_next_sync_tip')
+            : t('dataset:sync_root_paused_tip')
+        });
+      }
+    }
+  );
+
+  const { runAsync: onResumeCurrentFolderSync, loading: isResumingFolderSync } = useRequest(
+    async () => {
+      if (!parentId) return;
+      await putDatasetCollectionById({
+        id: parentId,
+        syncChildren: true
+      });
+      await refreshCurrentFolderDetail();
+      getData(pageNum);
+    },
+    {
+      onSuccess() {
+        toast({
+          status: 'success',
+          title: t('dataset:sync_children_enabled_next_sync_tip')
+        });
+      }
+    }
+  );
+
+  const showPausedFolderBanner =
+    isApiDataset &&
+    Boolean(parentId) &&
+    currentFolderDetail?.type === DatasetCollectionTypeEnum.folder &&
+    Boolean(currentFolderDetail?.apiFileId) &&
+    !isCollectionSyncChildrenEnabled(currentFolderDetail);
   const blockMissingIndexModel = (onClick?: () => void) => () => {
     if (isIndexModelAvailable) return onClick?.();
     toast({
@@ -158,7 +224,8 @@ const Header = ({
   };
 
   return (
-    <MyBox display={['block', 'flex']} alignItems={'center'} gap={3}>
+    <>
+      <MyBox display={['block', 'flex']} alignItems={'center'} gap={3}>
       <HStack flex={1} minW={0} gap={3}>
         <Box flex={'0 1 auto'} minW={0} maxW={'100%'} fontWeight={'500'} color={'myGray.900'}>
           <FolderPath
@@ -235,6 +302,40 @@ const Header = ({
         {/* Tag */}
         {datasetDetail.type !== DatasetTypeEnum.websiteDataset && feConfigs?.isPlus && (
           <DatasetTagFilter />
+        )}
+
+        {/* API Dataset root syncAll toggle */}
+        {isApiDataset && !parentId && (
+          <HStack
+            spacing={1.5}
+            px={2.5}
+            h={'36px'}
+            border={'base'}
+            borderRadius={'sm'}
+            bg={'myGray.50'}
+            flexShrink={0}
+          >
+            <Box fontSize={'xs'} color={'myGray.700'} whiteSpace={'nowrap'}>
+              {t('dataset:sync_root_new_items')}
+            </Box>
+            <QuestionTip label={t('dataset:sync_root_new_items_tip')} />
+            <MyTooltip
+              label={
+                !datasetDetail.permission.hasManagePer
+                  ? t('common:no_operation_permission')
+                  : undefined
+              }
+            >
+              <Box display={'inline-flex'}>
+                <Switch
+                  size={'sm'}
+                  isChecked={!!datasetDetail.syncAll}
+                  isDisabled={!datasetDetail.permission.hasManagePer || isUpdatingSyncAll}
+                  onChange={(e) => onToggleSyncAll(e.target.checked)}
+                />
+              </Box>
+            </MyTooltip>
+          </HStack>
         )}
       </HStack>
 
@@ -622,7 +723,40 @@ const Header = ({
           }}
         />
       )}
-    </MyBox>
+      </MyBox>
+
+      {showPausedFolderBanner && (
+        <Flex
+          mt={2.5}
+          px={3}
+          py={2}
+          bg={'myGray.50'}
+          border={'base'}
+          borderRadius={'md'}
+          alignItems={'center'}
+          justifyContent={'space-between'}
+          gap={3}
+        >
+          <HStack spacing={2} minW={0}>
+            <MyIcon name={'common/info'} w={'16px'} color={'myGray.600'} flexShrink={0} />
+            <Box fontSize={'xs'} color={'myGray.700'}>
+              {t('dataset:current_folder_sync_paused_banner')}
+            </Box>
+          </HStack>
+          {currentFolderDetail?.permission?.hasManagePer && (
+            <Button
+              size={'xs'}
+              variant={'whitePrimary'}
+              flexShrink={0}
+              isLoading={isResumingFolderSync}
+              onClick={onResumeCurrentFolderSync}
+            >
+              {t('dataset:resume_sync_children')}
+            </Button>
+          )}
+        </Flex>
+      )}
+    </>
   );
 };
 
