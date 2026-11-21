@@ -113,20 +113,43 @@ export class AgentPromptRefRegistry<TMeta = unknown> {
         return { status: 'resolved', entry: hit, matchedBy: 'deterministic_legacy' };
       }
 
-      // 仅对明确带 mcp- 前缀的旧三段式 mcp-appId/toolsetName/toolName 做同 appId 末段回退，
-      // 防止缺失的 HTTP 路径子工具（如 http-appId//api/v1/users）误绑定到同名末段工具。
+      // 仅对明确带 mcp- 前缀且首段匹配父工具集名（或单选子工具 displayName）的旧三段式回退，
+      // 防止已删带斜线子工具（如 mcp-appId/catalog/search）误绑到另一个同名末段工具 search。
       if (
         parsed.allowLegacyToolsetSegmentFallback &&
         parsed.deterministicRef.type === 'app' &&
         parsed.deterministicRef.childId &&
         parsed.deterministicRef.childId.includes('/')
       ) {
-        const lastSegment = parsed.deterministicRef.childId.split('/').at(-1);
-        if (lastSegment) {
-          const fallbackKey = `app:team:${parsed.deterministicRef.parentId}/${lastSegment}`;
-          const fallbackHit = this.canonicalMap.get(fallbackKey);
-          if (fallbackHit) {
-            return { status: 'resolved', entry: fallbackHit, matchedBy: 'deterministic_legacy' };
+        const { parentId, childId } = parsed.deterministicRef;
+        const parentEntry = this.canonicalMap.get(`app:team:${parentId}`);
+        if (parentEntry?.displayName) {
+          const prefix = `${parentEntry.displayName}/`;
+          if (childId.startsWith(prefix)) {
+            const strippedToolName = childId.slice(prefix.length);
+            const fallbackHit = strippedToolName
+              ? this.canonicalMap.get(`app:team:${parentId}/${strippedToolName}`)
+              : undefined;
+            if (fallbackHit) {
+              return {
+                status: 'resolved',
+                entry: fallbackHit,
+                matchedBy: 'deterministic_legacy'
+              };
+            }
+          }
+        } else {
+          const firstSlash = childId.indexOf('/');
+          const strippedToolName = firstSlash > 0 ? childId.slice(firstSlash + 1) : '';
+          const fallbackHit = strippedToolName
+            ? this.canonicalMap.get(`app:team:${parentId}/${strippedToolName}`)
+            : undefined;
+          if (fallbackHit && fallbackHit.displayName === childId) {
+            return {
+              status: 'resolved',
+              entry: fallbackHit,
+              matchedBy: 'deterministic_legacy'
+            };
           }
         }
       }

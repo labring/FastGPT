@@ -35,7 +35,10 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
   }
 }));
 
-import { getClientToolPreviewNode } from '@fastgpt/service/core/app/tool/utils/client';
+import {
+  getClientToolPreviewNode,
+  parseUntypedV2ChildToolLookupId
+} from '@fastgpt/service/core/app/tool/utils/client';
 
 const runtimeSchemaFieldNames = new Set([
   'inputSchema',
@@ -664,10 +667,46 @@ describe('getClientToolPreviewNode', () => {
     });
   });
 
-  it('resolves untyped V2 child tool ids for MCP and HTTP toolsets including leading-slash HTTP paths', async () => {
+  it('resolves untyped V2 child tool ids strictly by full name for MCP and HTTP toolsets', async () => {
     const mcpParentId = '507f1f77bcf86cd799439031';
     const httpParentId = '507f1f77bcf86cd799439032';
+    expect(parseUntypedV2ChildToolLookupId(`${mcpParentId}/get-weather`)).toEqual({
+      parentId: mcpParentId,
+      toolName: 'get-weather'
+    });
+    expect(parseUntypedV2ChildToolLookupId(`${httpParentId}//api/v1/users`)).toEqual({
+      parentId: httpParentId,
+      toolName: '/api/v1/users'
+    });
+    expect(parseUntypedV2ChildToolLookupId(`mcp-${mcpParentId}/get-weather`)).toBeNull();
+
     mocks.findOne
+      .mockReturnValueOnce({
+        lean: vi.fn().mockResolvedValue({
+          _id: mcpParentId,
+          teamId: '507f1f77bcf86cd799439012',
+          type: AppTypeEnum.mcpToolSet,
+          name: 'MCP Set',
+          avatar: 'mcp.svg',
+          intro: '',
+          modules: [
+            {
+              toolConfig: {
+                mcpToolSet: {
+                  url: 'https://mcp.example.com',
+                  toolList: [
+                    {
+                      name: 'get-weather',
+                      description: 'Weather',
+                      inputSchema: { type: 'object', properties: {} }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        })
+      })
       .mockReturnValueOnce({
         lean: vi.fn().mockResolvedValue({
           _id: mcpParentId,
@@ -762,6 +801,9 @@ describe('getClientToolPreviewNode', () => {
     expect(mcpPreview.toolConfig).toEqual({
       mcpTool: { toolId: `mcp-${mcpParentId}/get-weather` }
     });
+    await expect(
+      getClientToolPreviewNode({ appId: `${mcpParentId}/catalog/get-weather` })
+    ).rejects.toBe(PluginErrEnum.unExist);
 
     const httpPreview = await getClientToolPreviewNode({ appId: `${httpParentId}//api/v1/users` });
     expect(httpPreview.pluginId).toBe(`http-${httpParentId}//api/v1/users`);
