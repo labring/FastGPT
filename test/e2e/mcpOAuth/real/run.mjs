@@ -36,6 +36,7 @@ const CFG = {
     process.env.E2E_AS_RESOURCE || 'http://host.docker.internal:18200/mcp'
   ).replace(/\/+$/, ''),
   asLogPath: process.env.E2E_AS_PROXY_LOG || '/tmp/mcp-oauth-e2e/as-proxy.log',
+  tlsProxyLog: process.env.E2E_TLS_PROXY_LOG || '/tmp/mcp-oauth-e2e/tls-proxy.log',
   mongoUri:
     process.env.MONGODB_URI ||
     'mongodb://127.0.0.1:27017/fastgpt_mcp_oauth_real_e2e?replicaSet=rs0',
@@ -139,6 +140,22 @@ const readAsLog = () => {
 };
 
 const asCount = (predicate) => readAsLog().filter(predicate).length;
+const readJsonl = (filePath) => {
+  if (!filePath || !fs.existsSync(filePath)) return [];
+  return fs
+    .readFileSync(filePath, 'utf8')
+    .split('\n')
+    .filter(Boolean)
+    .flatMap((line) => {
+      try {
+        return [JSON.parse(line)];
+      } catch {
+        return [];
+      }
+    });
+};
+/** TLS 反代边界日志（AS 回源 FastGPT 的 POST/GET 请求）。 */
+const readTlsProxyLog = () => readJsonl(CFG.tlsProxyLog);
 const isRegister = (entry) => entry.method === 'POST' && entry.path === '/register';
 const isAuthorize = (entry) => entry.method === 'GET' && entry.path === '/authorize';
 const isConsent = (entry) => entry.method === 'GET' && entry.path === '/consent';
@@ -806,6 +823,267 @@ const runCimdPhase = async () => {
   });
 };
 
+/* ------------------------------ 用例：CIMD 直接成功 ------------------------------ */
+
+/**
+ * `phase=cimd-success`：白名单 AS + TLS 反代下的完整 CIMD 链路。
+ *
+ * 与 `phase=cimd` 的区别：AS 不是 106 上那台（它拒绝跨主机 CIMD），
+ * 而是同一份上游源码在 109 上的测试启动器（`local-as/launcher.mjs`）：
+ *   - `client_id` 主机名 `fastgpt-e2e.internal` 通过 `validateClientIdUrl` 白名单；
+ *   - AS 回源 `https://fastgpt-e2e.internal:18443/...`，由 `local-as/tlsProxy.mjs` 终结 TLS
+ *     并透传 Host，满足 client-metadata 路由的 Host 白名单。
+ */
+const runCimdSuccessPhase = async () => {
+  const appA = {};
+  const phaseStart = captureAsCounters();
+  const proxyStart = readTlsProxyLog().length;
+  const feHost = new URL(CFG.feDomain).host;
+  const proxyHost = new URL(CFG.feDomain).hostname;
+
+  await runCase('cimd-ok-00-topology', '拓扑前置：FE_DOMAIN=https 非 loopback，AS 为独立 https 源', async () => {
+    check('FE_DOMAIN 是 https 且非 loopback', CFG.feDomain.startsWith('https://') &&
+      !/^(localhost|127\.|\[::1\])/.test(proxyHost), { feDomain: CFG.feDomain });
+    check('AS 是 https 且与 FE_DOMAIN 不同源', CFG.asBase.startsWith('https://') &&
+      new URL(CFG.asBase).origin !== new URL(CFG.feDomain).origin, {
+        asBase: CFG.asBase
+      });
+  });
+
+  await runCase('cimd-ok-01-create', '创建 mcpToolSet（白名单 AS 的 MCP 资源）', async () => {
+    await clearRateLimits();
+    const { res, appId } = await createApp({
+      name: `E2E cimd-success ${Date.now()}`,
+      url: mcpUrl,
+      clientMode: 'auto',
+      scope: 'mcp:tools'
+    });
+    check('create -> HTTP 200', res.status === 200, { status: res.status });
+    check('create -> appId returned', typeof appId === 'string' && /^[0-9a-f]{24}$/.test(appId));
+    const { node, oauth } = await nodeOauth(appId);
+    check('节点 authMode=oauth', node?.toolConfig?.mcpToolSet?.authMode === 'oauth');
+    check('节点 clientMode=auto', oauth?.clientMode === 'auto', { clientMode: oauth?.clientMode });
+    check('节点 scope=mcp:tools', oauth?.scope === 'mcp:tools', { scope: oauth?.scope });
+    check('节点 MCP URL 指向白名单 AS 资源', node?.toolConfig?.mcpToolSet?.url === mcpUrl);
+    check('创建时尚未生成 client', oauth?.client === undefined);
+    appA.appId = appId;
+  });
+
+  await runCase('cimd-ok-02-start', 'start 直接选择 CIMD，无 DCR', async () => {
+    await clearRateLimits();
+    const before = captureAsCounters();
+    const started = await startOAuth(appA.appId, { clientMode: 'auto', scope: 'mcp:tools' });
+    appA.start = started;
+    const delta = asDelta(before);
+    check('start -> HTTP 200', started.res.status === 200, { status: started.res.status });
+    check('clientSource=cimd', started.body?.clientSource === 'cimd', {
+      clientSource: started.body?.clientSource
+    });
+    check('clientMode 归一为 auto', started.body?.clientMode === 'auto');
+    check('issuer 来自白名单 AS metadata', started.body?.issuer === CFG.asIssuer, {
+      issuer: started.body?.issuer
+    });
+    check('resource = AS 声明的 MCP 资源', started.body?.resource === CFG.asResource, {
+      resource: started.body?.resource
+    });
+    check('Set-Cookie 下发绑定 Cookie', !!started.cookieValue);
+    check('state 台账 1 条', (await pendingStates(appA.appId)) === 1);
+    check('AS /register delta = 0（未走 DCR）', delta.register === 0, { register: delta.register });
+    check('AS /authorize delta = 0（start 不发起跳转）', delta.authorize === 0, {
+      authorize: delta.authorize
+    });
+    const { oauth } = await nodeOauth(appA.appId);
+    check('节点保存 CIMD client_id（本站公开文档 URL）',
+      oauth?.client?.clientId === cimdClientId(), {
+        matches: oauth?.client?.clientId === cimdClientId()
+      });
+    check('节点 clientSource=cimd', oauth?.clientSource === 'cimd', {
+      clientSource: oauth?.clientSource
+    });
+    check('token_endpoint_auth_method=none', oauth?.client?.tokenEndpointAuthMethod === 'none');
+    const authUrl = new URL(started.body?.authorizationUrl ?? 'http://invalid/');
+    check('授权 URL 指向白名单 AS /authorize',
+      authUrl.origin === new URL(CFG.asBase).origin && authUrl.pathname === '/authorize');
+    check('授权 URL 使用 response_type=code + PKCE S256',
+      authUrl.searchParams.get('response_type') === 'code' &&
+        authUrl.searchParams.get('code_challenge_method') === 'S256' &&
+        !!authUrl.searchParams.get('code_challenge'));
+    check('授权 URL 携带真实 resource', authUrl.searchParams.get('resource') === CFG.asResource);
+    check('授权 URL 的 redirect_uri 由 FE_DOMAIN 派生',
+      authUrl.searchParams.get('redirect_uri') === redirectUri());
+    check('授权 URL 的 client_id 是本站 CIMD 文档 URL',
+      authUrl.searchParams.get('client_id') === cimdClientId());
+    check('start 响应不含 clientSecret/secret',
+      !hasForbiddenKeys(started.body,
+        new Set(['clientSecret', 'secret', 'access_token', 'refresh_token'])));
+  });
+
+  await runCase('cimd-ok-03-authorize-302-cimd-fetch',
+    'AS 真实回源 client-metadata 200 -> /authorize 302（不是 400）', async () => {
+    await clearRateLimits();
+    const before = captureAsCounters();
+    const flow = await performAuthorization(appA.start.body.authorizationUrl);
+    appA.flow = flow;
+    const delta = asDelta(before);
+
+    check('AS /authorize 被真实命中', delta.authorize === 1, { authorize: delta.authorize });
+    check('AS /authorize 返回 302（不是 400）', flow.authorize.status === 302, {
+      status: flow.authorize.status,
+      error: flow.authorize.json?.error
+    });
+    check('302 目标为 AS /consent', /\/consent/.test(flow.authorize.location ?? ''), {
+      locationPath: flow.authorize.location ? new URL(flow.authorize.location).pathname : undefined
+    });
+
+    // 一手证据 1：AS 进程内的回源抓取结果（CIMD 文档被解析出 client_name）。
+    const cimdFetches = readAsLog().filter((entry) => entry.kind === 'cimd-fetch');
+    const latestFetch = cimdFetches[cimdFetches.length - 1];
+    check('AS 真实回源 GET client-metadata.json -> 200', latestFetch?.status === 200, {
+      path: latestFetch?.path,
+      status: latestFetch?.status
+    });
+    check('AS 回源的主机是 FE_DOMAIN', latestFetch?.host === feHost, { host: latestFetch?.host });
+    check('CIMD 文档被解析（client_name=FastGPT）', latestFetch?.clientName === 'FastGPT', {
+      clientName: latestFetch?.clientName
+    });
+
+    // 一手证据 2：TLS 反代边界日志确认请求确实从 AS 到达 FastGPT 的 https 入口。
+    const proxyEntries = readTlsProxyLog().slice(proxyStart);
+    const cimdEntry = proxyEntries.find(
+      (entry) => entry.clientMetadata === true && entry.status === 200
+    );
+    check('TLS 反代记录 GET client-metadata.json -> 200', !!cimdEntry, {
+      path: cimdEntry?.path,
+      status: cimdEntry?.status,
+      host: cimdEntry?.host
+    });
+    check('反代透传 Host = FE_DOMAIN', cimdEntry?.host === feHost, { host: cimdEntry?.host });
+
+    check('进入 /consent', delta.consent === 1, { consent: delta.consent });
+    check('AS /consent 返回 HTML 同意页',
+      flow.consent?.status === 200 && /<form/i.test(flow.consent.text));
+    check('AS /confirm -> 302 回调地址', flow.confirm?.status === 302);
+    check('回调携带 code/state/iss', !!flow.code && !!flow.state && !!flow.iss);
+    check('iss 等于白名单 AS issuer', flow.iss === CFG.asIssuer);
+    note('CIMD 成功：AS 回源抓取本站 https 文档并解析，授权请求进入 /consent。');
+  });
+
+  await runCase('cimd-ok-04-callback-token', 'callback -> 真实 /token 交换，token 加密落库', async () => {
+    await clearRateLimits();
+    const before = captureAsCounters();
+    const flow = appA.flow;
+    const outcome = await doCallback({
+      state: flow.state,
+      code: flow.code,
+      iss: flow.iss,
+      cookie: `${appA.start.cookieName}=${appA.start.cookieValue}`
+    });
+    appA.outcome = outcome;
+    const delta = asDelta(before);
+    check('callback -> HTTP 302', outcome.redirected, { status: outcome.status });
+    check('callback 跳转 oauth=success', outcome.oauth === 'success', {
+      oauth: outcome.oauth,
+      appIdMatches: outcome.appId === appA.appId
+    });
+    check('AS /token(authorization_code) 恰好 1 次', delta.tokenAuthorizationCode === 1, {
+      token: delta.tokenAuthorizationCode
+    });
+    check('state 一次性消费', (await consumedStates(appA.appId)) >= 1);
+
+    const { oauth } = await nodeOauth(appA.appId);
+    check('token 加密落库（iv:hex:hex）', /^[0-9a-f]+:[0-9a-f]+:[0-9a-f]+$/.test(
+      oauth?.token?.secret?.access_token?.secret ?? ''
+    ));
+    check('refresh_token 已落库', !!oauth?.token?.secret?.refresh_token?.secret);
+    check('credentialSeq 递增', (oauth?.credentialSeq ?? 0) > 0, {
+      credentialSeq: oauth?.credentialSeq
+    });
+    check('授予 scope = mcp:tools', oauth?.scope === 'mcp:tools', { scope: oauth?.scope });
+    check('最终 clientSource=cimd', oauth?.clientSource === 'cimd', {
+      clientSource: oauth?.clientSource
+    });
+    check('无 DCR 降级标记', oauth?.autoDcrFallback === undefined);
+    check('AS /register 仍为 0（全链路未走 DCR）', delta.register === 0, {
+      register: delta.register
+    });
+  });
+
+  await runCase('cimd-ok-05-status-db', 'status=authorized，DB clientSource=cimd 且无明文 token',
+    async () => {
+    await clearRateLimits();
+    const { res, status } = await statusOf(appA.appId);
+    check('status -> HTTP 200', res.status === 200);
+    check('state=authorized', status?.state === 'authorized', { state: status?.state });
+    check('authorized=true', status?.authorized === true);
+    check('hasAccessToken=true', status?.hasAccessToken === true);
+    check('status.clientSource=cimd', status?.clientSource === 'cimd', {
+      clientSource: status?.clientSource
+    });
+    check('status.scope = mcp:tools', status?.scope === 'mcp:tools');
+    check('status 响应无 token/secret 字段',
+      !hasForbiddenKeys(status,
+        new Set(['access_token', 'refresh_token', 'clientSecret', 'secret', 'codeVerifier'])));
+    const { oauth } = await nodeOauth(appA.appId);
+    check('DB token 为密文', /^[0-9a-f]+:[0-9a-f]+:[0-9a-f]+$/.test(
+      oauth?.token?.secret?.access_token?.secret ?? ''
+    ));
+    const stateDoc = await db.collection('mcp_oauth_states').findOne(
+      { appId: appA.appId, clientSource: 'cimd', consumedAt: { $exists: true } }
+    );
+    check('CIMD state 台账已消费且未降级',
+      !!stateDoc && stateDoc.downgradedAt === undefined, {
+        consumed: !!stateDoc?.consumedAt
+      });
+  });
+
+  await runCase('cimd-ok-06-get-tools', '真实 Bearer 调用 tools/list（whoami/echo）', async () => {
+    await clearRateLimits();
+    const before = captureAsCounters();
+    const res = await getTools(appA.appId);
+    const tools = apiData(res);
+    check('getTools -> HTTP 200', res.status === 200, { status: res.status });
+    check('返回工具数组', Array.isArray(tools), { count: tools?.length });
+    check('包含 echo / whoami', tools?.some((tool) => tool.name === 'echo') &&
+      tools?.some((tool) => tool.name === 'whoami'), {
+        tools: tools?.map((tool) => tool.name)
+      });
+    check('AS /mcp 被真实命中且 2xx', readAsLog().slice(before.logLength).some(
+      (entry) => isMcp(entry) && entry.status >= 200 && entry.status < 300
+    ));
+  });
+
+  await runCase('cimd-ok-07-run-tool', '真实 Bearer 调用 tools/call（echo）', async () => {
+    await clearRateLimits();
+    const res = await runTool(appA.appId);
+    check('runTool -> HTTP 200', res.status === 200, { status: res.status });
+    check('echo 返回 hello-e2e', apiData(res)?.content?.[0]?.text === 'hello-e2e', {
+      text: apiData(res)?.content?.[0]?.text
+    });
+    check('runTool 响应不含 Bearer/refresh_token 明文',
+      !/Bearer\s+[A-Za-z0-9._~-]{16,}/.test(res.text) &&
+        !hasForbiddenKeys(res.json, new Set(['access_token', 'refresh_token'])));
+  });
+
+  await runCase('cimd-ok-08-register-delta-zero', '全链路 /register delta=0（证明是 CIMD 而非 DCR）',
+    async () => {
+    const delta = asDelta(phaseStart);
+    check('AS /register delta = 0', delta.register === 0, { register: delta.register });
+    check('AS /authorize delta = 1', delta.authorize === 1, { authorize: delta.authorize });
+    check('AS /token(authorization_code) delta = 1', delta.tokenAuthorizationCode === 1, {
+      token: delta.tokenAuthorizationCode
+    });
+    const stats = await asRequest('/debug/stats');
+    check('/debug/stats 可读', stats.status === 200 && stats.json?.ok === true);
+    check('AS 统计 register=0', stats.json?.requests?.register === 0, {
+      register: stats.json?.requests?.register
+    });
+    check('AS 统计 CIMD 回源成功（200 + client_name）',
+      stats.json?.cimdFetches?.some(
+        (entry) => entry.status === 200 && entry.clientName === 'FastGPT'
+      ), { cimdFetches: stats.json?.cimdFetches?.length });
+  });
+};
+
 /* ------------------------------ 用例：DCR 阶段 ------------------------------ */
 
 const runDcrPhase = async () => {
@@ -1249,7 +1527,8 @@ const main = async () => {
       `[real-e2e] seeded session team=${seeded.teamId.slice(-6)} tmb=${seeded.tmbId.slice(-6)}`
     );
 
-    if (CFG.phase === 'cimd') await runCimdPhase();
+    if (CFG.phase === 'cimd-success') await runCimdSuccessPhase();
+    else if (CFG.phase === 'cimd') await runCimdPhase();
     else await runDcrPhase();
   } finally {
     const summary = {

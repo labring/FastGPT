@@ -176,6 +176,7 @@ real-cimd-06: clientSource=dcr         AS /register delta = 0
 因此本套件对 CIMD 的断言是：**FastGPT 侧正确声明并持久化 CIMD 客户端、首次失败不即时改写状态、
 下一次 start 一次性降级 DCR 并走通完整真实授权**；“CIMD 在 AS 侧成功授权”这一跳仍需要一台把
 `FE_DOMAIN` 列入 CIMD 白名单（或允许公网抓取）的 AS，当前环境不具备。
+**该遗留已由第 9 节的测试 AS + TLS 反代补齐（`phase=cimd-success`，73/73 断言通过）。**
 
 ## 7. 与 fixture 版的差异
 
@@ -193,7 +194,8 @@ real-cimd-06: clientSource=dcr         AS /register delta = 0
 
 - **CIMD 成功授权未端到端验证**：只验证了 CIMD 声明/持久化、AS 拒绝原因，以及拒绝后的
   一次性自动降级与 DCR 成功授权；需要 CIMD 白名单匹配部署域名的 AS 才能验证 CIMD 直接成功。
-  属环境限制，不是代码缺陷。
+  属环境限制，不是代码缺陷。**（已由第 9 节 `phase=cimd-success` 补齐：测试 AS + TLS 反代，
+  73/73 断言通过。）**
 - **AS 限流**：连续重复跑会消耗 `/register` 配额（20/小时）；本轮每轮 4 次（CIMD 阶段降级 1 +
   DCR 阶段 3）。建议串行、间隔运行。
 - **AS 日志**：106 的 `/workspace/outputs/mcp-oauth/e2e/logs/oauth-server.log` 在 109 不可读，
@@ -206,3 +208,110 @@ real-cimd-06: clientSource=dcr         AS /register delta = 0
 - **SSRF 默认值未放宽**：依赖既有 `CHECK_INTERNAL_IP=false`（默认）放行 RFC1918；
   loopback / 云元数据仍拒绝。新增单测 `packages/global/test/common/system/network.test.ts`
   锁定该边界（6/6 通过），未新增任何生产开关。
+
+## 9. 补充：CIMD 直接成功（`phase=cimd-success`）
+
+> 本节补齐第 6、8 节遗留的「CIMD 在 AS 侧成功授权」这一跳。做法是给测试拓扑加一台
+> **测试专用 AS + TLS 反代**，FastGPT 生产代码零改动；desktop 106 仍是只读，不参与本轮。
+
+### 9.1 拓扑
+
+```
+desktop 109
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │ FastGPT production  next start :13101                                │
+  │   FE_DOMAIN=https://fastgpt-e2e.internal:18443                       │
+  │        ▲ http 127.0.0.1:13101                                        │
+  │   TLS 反代 :18443  (Host 固定为 fastgpt-e2e.internal:18443)          │
+  │        ▲ https（自签 CA，SAN DNS:fastgpt-e2e.internal, IP:172.17.0.34）│
+  │   测试 AS :18300  (wille/mcp-oauth-server@8035903，同一份上游源码)     │
+  │     issuer=https://172.17.0.34:18300/                                │
+  │     clientIdMetadataDocuments.validateClientIdUrl ->                │
+  │        url.hostname === 'fastgpt-e2e.internal'                       │
+  │        └─ AS 回源 GET .../client-metadata.json -> TLS 反代 -> 200    │
+  └─────────────────────────────────────────────────────────────────────┘
+```
+
+- `/etc/hosts` 仅临时增加 `172.17.0.34 fastgpt-e2e.internal`，`runCimdSuccess.sh` 退出时
+  从备份还原；本轮已确认 `getent hosts fastgpt-e2e.internal` 无条目。
+- 上游源码只克隆到 `/tmp/mcp-oauth-upstream`（固定 `8035903`），**不提交进仓库**；
+  测试启动器与反代位于 `test/e2e/mcpOAuth/real/local-as/`。
+- 证书由脚本幂等生成在测试状态目录，退出时删除；只通过 `NODE_EXTRA_CA_CERTS`
+  注入 AS / FastGPT / 驱动三个**测试进程**。没有使用 `NODE_TLS_REJECT_UNAUTHORIZED=0`，
+  也没有放宽 FastGPT 的 HTTPS/SSRF/Host 校验。
+
+### 9.2 为什么必须用域名 + TLS 反代
+
+1. 上游 `ClientIdMetadataDocumentFetcher` 在调用 `validateClientIdUrl` **之前** 就拒绝
+   IP 字面量与 localhost（`src/cimd.ts`），所以 `client_id` 不能是 `https://172.17.0.34:...`，
+   必须是域名。
+2. FastGPT 的 `client-metadata.json` 路由只允许 `Host === new URL(FE_DOMAIN).host`；
+   反代必须把 Host 透传为 `fastgpt-e2e.internal:18443`。
+3. `FE_DOMAIN` 由生产规则要求是 https 且非 loopback；`isMcpOAuthCimdAvailable` 只检查
+   AS 声明 `client_id_metadata_document_supported` 且 `FE_DOMAIN` 是 https，
+   因此拓扑上用域名 + 自签 TLS 即可命中真实生产判定，不需要任何开关。
+
+### 9.3 一条命令
+
+```bash
+export PATH=/config/.nvm/versions/node/v22.23.2/bin:$PATH
+E2E_ENV_FILE=/tmp/mcp-oauth-e2e/app.env \
+MCP_OAUTH_UPSTREAM_DIR=/tmp/mcp-oauth-upstream \
+  ./test/e2e/mcpOAuth/real/runCimdSuccess.sh
+
+# 实测（2026-11-21 12:35，exit 0）：
+# phase=cimd-success cases=9 assertions=73 passed=73 failed=0
+# [cimd-success] PASS
+# [cimd-success] /etc/hosts restored; getent: no entry
+```
+
+退出码约定与 `run.sh` 一致：`0` 全通过、`1` 断言失败、`2` env 不满足、`3` 栈未就绪、
+`4` 端口被占用。脚本会按需克隆/安装上游（仅 `/tmp`，测试依赖），证书生成与 hosts
+写入均为幂等操作。
+
+### 9.4 一手证据
+
+AS 进程日志（`as-local.log`，只含 method/path/status 与 CIMD 公开元数据）：
+
+```json
+{"kind":"cimd-fetch","method":"GET","path":"/api/core/app/mcpTools/oauth/client-metadata.json","host":"fastgpt-e2e.internal:18443","status":200,"clientName":"FastGPT"}
+{"kind":"request","method":"GET","path":"/authorize","status":302}
+{"kind":"request","method":"GET","path":"/consent","status":200}
+{"kind":"request","method":"POST","path":"/confirm","status":302}
+{"kind":"request","method":"POST","path":"/token","status":200,"grantType":"authorization_code"}
+{"kind":"request","method":"POST","path":"/mcp","status":200}
+```
+
+TLS 反代日志（`tls-proxy.log`，证明 AS 的 https 请求确实到达 FastGPT）：
+
+```json
+{"method":"GET","path":"/api/core/app/mcpTools/oauth/client-metadata.json","status":200,"host":"fastgpt-e2e.internal:18443","clientMetadata":true}
+```
+
+用例断言（73/73）覆盖：
+
+| 断言组 | 结果 |
+| --- | --- |
+| `start` → `clientSource=cimd`、节点保存本站 CIMD `client_id`、`/register` delta 0 | PASS |
+| AS 回源 `client-metadata.json` → 200、解析出 `client_name=FastGPT`；反代 Host 命中 | PASS |
+| `/authorize` → **302** `/consent`（不是 400）→ `/confirm` → callback `oauth=success` | PASS |
+| 真实 `/token` code 交换 1 次；`credentialSeq=1`、`scope=mcp:tools`、token 为 `iv:hex:tag` 密文 | PASS |
+| `status=authorized`、`clientSource=cimd`；DB CIMD state 已消费且无 `downgradedAt` | PASS |
+| 真实 `tools/list` 返回 `whoami`/`echo`；`tools/call` echo 返回 `hello-e2e` | PASS |
+| 全链路 AS `/register` delta = 0、`/debug/stats.register=0`（证明是 CIMD，不是 DCR） | PASS |
+
+产物：`/workspace/outputs/mcp-oauth/cimd-success/`（`evidence.json`、`as-local.log`、
+`tls-proxy.log`、`run.log`）。
+
+### 9.5 与 106 那台的差异
+
+| 维度 | desktop 106（上一轮） | 本轮测试 AS（109 本地） |
+| --- | --- | --- |
+| 进程/文件 | 只读、不可改 | 同版本上游源码，由本仓库测试启动器拉起 |
+| CIMD 主机策略 | 只接受 loopback（无法改） | `validateClientIdUrl` 白名单 `fastgpt-e2e.internal` |
+| 传输 | AS=http，FastGPT→AS 需 `MCP_OAUTH_ALLOW_INSECURE_HTTP=true` | AS 与 FE 均为 https，**不需要**该开关 |
+| CIMD 结果 | `/authorize` 400 → 下一次 start 降级 DCR | `/authorize` 302 → 完整授权成功 |
+| 用途 | 验证真实第三方 AS 边界与降级 | 验证 CIMD 直接成功链路 |
+
+两者互补：106 证明「真实不可控 AS + 自动降级」，本轮证明「白名单 AS + CIMD 首跳成功」。
+两套夹具都只存在于 `test/e2e/**`，不进入发布产物；生产默认行为未改变。
