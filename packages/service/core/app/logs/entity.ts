@@ -146,11 +146,9 @@ export const findChatResponsePointsMap = async ({
   return new Map(stats.map((item) => [item._id, item.totalPointsFromResponse || 0]));
 };
 
-/** 按有效 ObjectId 批量回表查询应用版本名，返回小写 hex 键的映射。 */
-export const findAppVersionNameMap = async (
-  rawVersionIds: Iterable<unknown>
+const queryAppVersionNamesByIds = async (
+  versionIds: Types.ObjectId[]
 ): Promise<Map<string, string | null>> => {
-  const versionIds = collectUniqueObjectIds(rawVersionIds);
   if (versionIds.length === 0) return new Map();
 
   const versions = await MongoAppVersion.find(
@@ -167,37 +165,63 @@ export const findAppVersionNameMap = async (
   );
 };
 
+/** 按有效 ObjectId 批量回表查询应用版本名，返回小写 hex 键的映射。 */
+export const findAppVersionNameMap = (
+  rawVersionIds: Iterable<unknown>
+): Promise<Map<string, string | null>> =>
+  queryAppVersionNamesByIds(collectUniqueObjectIds(rawVersionIds));
+
 /**
  * 面向多批次流式导出的版本名加载器：
- * - 命中结果直接跨批次缓存；
- * - 从库查空最多重试 `maxMissRetries` 次（默认 1 次），兼顾短暂复制延迟追平与防止已删历史版本在数百批次中反复空查。
+ * - 仅将从库实际命中的结果写入长期缓存；
+ * - 从库未命中 ID 不做永久负缓存，而是按批次指数退避（1 -> 2 -> 4 -> ... -> maxMissBackoffBatches）
+ *   或在超过 missRetryTtlMs 后重新探测，兼顾跨多批复制延迟追平与已删历史版本查询降频。
  */
 export const createAppVersionNameLoader = ({
-  maxMissRetries = 1
-}: { maxMissRetries?: number } = {}) => {
+  maxMissBackoffBatches = 64,
+  missRetryTtlMs = 5000,
+  now = () => Date.now()
+}: {
+  maxMissBackoffBatches?: number;
+  missRetryTtlMs?: number;
+  now?: () => number;
+} = {}) => {
   const resolvedMap = new Map<string, string>();
-  const missAttempts = new Map<string, number>();
+  const missState = new Map<
+    string,
+    { missCount: number; nextRetryBatch: number; nextRetryAt: number }
+  >();
+  let batchIndex = 0;
 
   const preload = async (rawVersionIds: Iterable<unknown>) => {
-    const missingIds = collectUniqueObjectIds(rawVersionIds, { exclude: resolvedMap });
-    if (missingIds.length === 0) return;
+    batchIndex += 1;
+    const currentTime = now();
+    const queryIds = collectUniqueObjectIds(rawVersionIds, { exclude: resolvedMap }).filter(
+      (objectId) => {
+        const state = missState.get(objectId.toHexString());
+        return !state || batchIndex >= state.nextRetryBatch || currentTime >= state.nextRetryAt;
+      }
+    );
+    if (queryIds.length === 0) return;
 
-    const fetchedMap = await findAppVersionNameMap(missingIds);
+    const fetchedMap = await queryAppVersionNamesByIds(queryIds);
+    const finishedAt = now();
+    const cappedMaxBackoff = Math.max(1, maxMissBackoffBatches);
 
-    for (const requestedId of missingIds) {
+    for (const requestedId of queryIds) {
       const idHex = requestedId.toHexString();
       if (fetchedMap.has(idHex)) {
         resolvedMap.set(idHex, fetchedMap.get(idHex) || '');
-        missAttempts.delete(idHex);
+        missState.delete(idHex);
         continue;
       }
-      const attempts = (missAttempts.get(idHex) ?? 0) + 1;
-      if (attempts > maxMissRetries) {
-        resolvedMap.set(idHex, '');
-        missAttempts.delete(idHex);
-      } else {
-        missAttempts.set(idHex, attempts);
-      }
+      const missCount = (missState.get(idHex)?.missCount ?? 0) + 1;
+      const backoffBatches = Math.min(cappedMaxBackoff, 2 ** Math.min(missCount - 1, 30));
+      missState.set(idHex, {
+        missCount,
+        nextRetryBatch: batchIndex + backoffBatches,
+        nextRetryAt: finishedAt + missRetryTtlMs
+      });
     }
   };
 

@@ -1304,11 +1304,77 @@ describe('logs list API - errorFilter', () => {
     }
   });
 
-  it('导出版本名对已删除历史版本有限重试后固化负缓存，避免数百批次反复空查', async () => {
+  it('导出版本名在连续两批从库查空后不永久负缓存，后续退避探测追平并复用缓存', async () => {
+    const version = await MongoAppVersion.create({
+      tmbId: testTmbId,
+      appId: testAppId,
+      versionName: 'v-recovered-2x',
+      nodes: [],
+      edges: []
+    });
+    const baseTime = Date.now();
+    await MongoChat.collection.insertMany(
+      Array.from({ length: 803 }, (_, idx) => ({
+        appId: new Types.ObjectId(testAppId),
+        teamId: new Types.ObjectId(testTeamId),
+        tmbId: new Types.ObjectId(testTmbId),
+        chatId: `chat-recover2x-${idx}`,
+        sourceType: ChatSourceTypeEnum.app,
+        source: 'api',
+        appVersionId: version._id,
+        createTime: new Date(baseTime - idx * 1000),
+        updateTime: new Date(baseTime - idx * 1000)
+      })) as any
+    );
+
+    const originalFind = MongoAppVersion.find.bind(MongoAppVersion);
+    let findCalls = 0;
+    const versionFindSpy = vi.spyOn(MongoAppVersion, 'find').mockImplementation(((
+      filter: any,
+      projection: any,
+      options: any
+    ) => {
+      findCalls++;
+      // 模拟第 1、2 批连续选中滞后从库查空；第 3 批退避跳过；第 4 批探测时从库已追平并写入命中缓存
+      if (findCalls <= 2) {
+        return { lean: async () => [] } as any;
+      }
+      return originalFind(filter, projection, options);
+    }) as any);
+
+    try {
+      const exported = await StreamCall(exportLogs, {
+        auth: authUser,
+        headers: {},
+        body: {
+          appId: testAppId,
+          dateStart: '2020-01-01',
+          dateEnd: '2099-01-01',
+          title: 'Session,Version',
+          sourcesMap: {},
+          logKeys: [AppLogKeysEnum.SESSION_ID, AppLogKeysEnum.VERSION_NAME]
+        }
+      });
+      expect(exported.code).toBe(200);
+      const dataRows = exported.raw.split('\n').slice(1);
+      expect(dataRows).toHaveLength(803);
+      // 前 3 批（600 行）查空或退避留空；第 4/5 批（203 行）在追平后恢复为 v-recovered-2x
+      expect(dataRows.slice(0, 600).every((line) => line.split(',')[1] === '')).toBe(true);
+      expect(dataRows.slice(600).every((line) => line.split(',')[1] === 'v-recovered-2x')).toBe(
+        true
+      );
+      // 共查 3 次：第 1、2 批查空 + 第 4 批命中并缓存；第 3 批退避跳过，第 5 批直接命中缓存
+      expect(findCalls).toBe(3);
+    } finally {
+      versionFindSpy.mockRestore();
+    }
+  });
+
+  it('导出版本名对已删除历史版本按批次指数退避降频查询，避免数百批次线性空查', async () => {
     const deletedVersionId = new Types.ObjectId();
     const baseTime = Date.now();
     await MongoChat.collection.insertMany(
-      Array.from({ length: 603 }, (_, idx) => ({
+      Array.from({ length: 1003 }, (_, idx) => ({
         appId: new Types.ObjectId(testAppId),
         teamId: new Types.ObjectId(testTeamId),
         tmbId: new Types.ObjectId(testTmbId),
@@ -1338,10 +1404,10 @@ describe('logs list API - errorFilter', () => {
       });
       expect(exported.code).toBe(200);
       const dataRows = exported.raw.split('\n').slice(1);
-      expect(dataRows).toHaveLength(603);
+      expect(dataRows).toHaveLength(1003);
       expect(dataRows.every((line) => line.split(',')[1] === '')).toBe(true);
-      // 603 行共 4 批：仅前 2 批查询（首次 + 1 次重试），第 3/4 批命中负缓存不再查库
-      expect(versionFindSpy).toHaveBeenCalledTimes(2);
+      // 1003 行共 6 批：按 1 -> 2 -> 4 批次指数退避，仅在第 1/2/4 批查库（3 次而非 6 次）
+      expect(versionFindSpy).toHaveBeenCalledTimes(3);
     } finally {
       versionFindSpy.mockRestore();
     }
