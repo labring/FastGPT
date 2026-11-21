@@ -64,6 +64,11 @@ const UserSchema = new Schema({
     enum: UserTagsSchema.enum
   },
   meta: Object,
+  /** 外部同步来源；pro 同步按此字段圈定来源账号，不再依赖 username 前缀。 */
+  syncSource: {
+    type: String,
+    required: false
+  },
   /** @deprecated */
   avatar: String
 });
@@ -77,5 +82,7 @@ defineIndex(UserSchema, {
 defineIndex(UserSchema, { key: { status: 1, _id: -1 } });
 // Admin charts
 defineIndex(UserSchema, { key: { createTime: -1 } });
+// 外部同步按来源筛选成员（存量数据已有 syncSource 字段与索引，声明需与之一致）。
+defineIndex(UserSchema, { key: { syncSource: 1 } });
 
 export const MongoUser = getMongoModel<UserModelSchema>(userCollectionName, UserSchema);
