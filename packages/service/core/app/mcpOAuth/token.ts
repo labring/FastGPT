@@ -30,9 +30,7 @@ const TokenResponseSchema = z
     // RFC 6749 允许 AS 返回数字或数字字符串（`"3600"`）；非数字字符串仍交给 schema 拒绝。
     expires_in: z.preprocess(
       (value) =>
-        typeof value === 'string' && /^\d+(?:\.\d+)?$/.test(value.trim())
-          ? Number(value)
-          : value,
+        typeof value === 'string' && /^\d+(?:\.\d+)?$/.test(value.trim()) ? Number(value) : value,
       z.number().nonnegative().max(31_536_000).optional()
     ),
     refresh_token: z
@@ -171,10 +169,9 @@ const postTokenEndpoint = async ({
 
   if (response.status < 200 || response.status >= 300) {
     const oauthError = parseErrorCode(response.body);
+    // 响应体只允许固定文案：AS 的 error / error_description 原文不得回显给客户端。
     throw new McpOAuthApiError(tokenErrorCode(flavor, oauthError), {
-      message: oauthError
-        ? `Token endpoint error: ${oauthError}`
-        : `Token endpoint returned ${response.status}`,
+      message: 'Token endpoint rejected the request',
       retryAfterMs: parseRetryAfterMs(response.headers)
     });
   }

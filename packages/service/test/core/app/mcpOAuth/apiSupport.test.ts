@@ -17,8 +17,54 @@ vi.mock('@fastgpt/service/common/rateLimit/interface/mcpOAuth', () => ({
 
 import {
   assertMcpOAuthRateLimit,
-  normalizeMcpOAuthBasePath
+  normalizeMcpOAuthBasePath,
+  trySendMcpOAuthRuntimeError
 } from '@fastgpt/service/core/app/mcpOAuth';
+import { McpOAuthApiError } from '@fastgpt/service/core/app/mcpOAuth/errors';
+import { McpOAuthErrorCodeEnum } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
+import { PRIVATE_URL_TEXT } from '@fastgpt/global/common/system/network';
+
+const createRes = () => {
+  const headers: Record<string, string> = {};
+  let statusCode = 200;
+  let body: any;
+  let ended = false;
+  const res = {
+    status(code: number) {
+      statusCode = code;
+      return res;
+    },
+    setHeader(key: string, value: string) {
+      headers[key.toLowerCase()] = value;
+      return res;
+    },
+    json(value: unknown) {
+      body = value;
+      ended = true;
+      return value;
+    },
+    end() {
+      ended = true;
+      return res;
+    },
+    get writableEnded() {
+      return ended;
+    },
+    get headersSent() {
+      return ended;
+    }
+  };
+  return {
+    res,
+    headers,
+    get status() {
+      return statusCode;
+    },
+    get body() {
+      return body;
+    }
+  };
+};
 
 describe('mcpOAuth apiSupport', () => {
   beforeEach(() => {
@@ -65,5 +111,49 @@ describe('mcpOAuth apiSupport', () => {
 
     expect(actual.getMcpOAuthIpRateLimitSegment('203.0.113.7')).toMatch(/^[a-f0-9]{64}$/);
     expect(() => actual.getMcpOAuthIpRateLimitSegment('')).toThrow(/non-empty client IP/);
+  });
+
+  describe('trySendMcpOAuthRuntimeError', () => {
+    const req = { headers: { 'x-request-id': 'req-123' } };
+
+    it('writes the fixed oauth envelope for McpOAuthApiError', () => {
+      const target = createRes();
+      const sent = trySendMcpOAuthRuntimeError({
+        req,
+        res: target.res,
+        error: new McpOAuthApiError(McpOAuthErrorCodeEnum.reauthRequired, {
+          message: 'remote error_description="secret detail"'
+        })
+      });
+
+      expect(sent).toBe(true);
+      expect(target.status).toBe(401);
+      expect(target.body).toMatchObject({
+        code: 401,
+        statusText: 'error',
+        data: {
+          oauthCode: McpOAuthErrorCodeEnum.reauthRequired,
+          requestId: 'req-123',
+          retryable: false
+        }
+      });
+      expect(target.headers['cache-control']).toBe('no-store');
+    });
+
+    it('maps the private-url precheck text to mcp_oauth_private_url', () => {
+      const target = createRes();
+      expect(trySendMcpOAuthRuntimeError({ req, res: target.res, error: PRIVATE_URL_TEXT })).toBe(
+        true
+      );
+      expect(target.status).toBe(400);
+      expect(target.body.data.oauthCode).toBe(McpOAuthErrorCodeEnum.privateUrl);
+    });
+
+    it('returns false for unrelated errors so the generic 500 pipeline keeps working', () => {
+      const target = createRes();
+      const error = new Error('database offline');
+      expect(trySendMcpOAuthRuntimeError({ req, res: target.res, error })).toBe(false);
+      expect(target.body).toBeUndefined();
+    });
   });
 });

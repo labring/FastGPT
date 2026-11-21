@@ -5,6 +5,7 @@ import { getLogger, LogCategories } from '../../../common/logger';
 import { serviceEnv } from '../../../env';
 import { McpOAuthApiError, toApiError } from './errors';
 import { McpOAuthErrorCodeEnum } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
+import { PRIVATE_URL_TEXT } from '@fastgpt/global/common/system/network';
 import {
   assertMcpOAuthCallbackByAppRateLimit,
   assertMcpOAuthCallbackByIpRateLimit,
@@ -121,6 +122,44 @@ export const sendMcpOAuthJson = ({
 
 export type McpOAuthApiHandler<Req, Res> = (req: Req, res: Res) => Promise<unknown> | unknown;
 
+type McpOAuthErrorRequestLike = { headers?: Record<string, unknown> };
+
+/**
+ * 统一的 OAuth 错误回包：固定 envelope + `Retry-After`（仅限流）。
+ *
+ * 只输出 `oauthCode`/`requestId` 与固定文案；AS 的 `error_description`、URL、header
+ * 原文都不会进入响应体（v2.4 §8.3）。
+ */
+const sendMcpOAuthErrorEnvelope = ({
+  req,
+  res,
+  error
+}: {
+  req: McpOAuthErrorRequestLike;
+  res: NodeApiResponseLike;
+  error: McpOAuthApiError;
+}) => {
+  const requestId = getMcpOAuthRequestId(req);
+
+  logger.warn('MCP OAuth API failed', {
+    requestId,
+    oauthCode: error.oauthCode,
+    retryable: error.retryable
+  });
+
+  const headers: Record<string, string> = {};
+  if (error.oauthCode === McpOAuthErrorCodeEnum.rateLimited) {
+    headers['Retry-After'] = String(Math.max(1, Math.ceil((error.retryAfterMs ?? 60_000) / 1000)));
+  }
+
+  return sendMcpOAuthJson({
+    res,
+    status: error.httpStatus,
+    body: toApiError(error, requestId),
+    headers
+  });
+};
+
 /**
  * 捕获 `McpOAuthApiError` 并输出 v2.4 统一 envelope；原始响应（302/405/304）直接返回。
  */
@@ -133,33 +172,69 @@ export const createMcpOAuthApiHandler =
       return await handler(req, res);
     } catch (error) {
       if (res.writableEnded || res.headersSent) return;
-      const requestId = getMcpOAuthRequestId(req);
       const apiError =
         error instanceof McpOAuthApiError
           ? error
           : new McpOAuthApiError(McpOAuthErrorCodeEnum.internalError, { cause: error });
 
-      logger.warn('MCP OAuth API failed', {
-        requestId,
-        oauthCode: apiError.oauthCode,
-        retryable: apiError.retryable
-      });
-
-      const headers: Record<string, string> = {};
-      if (apiError.oauthCode === McpOAuthErrorCodeEnum.rateLimited) {
-        headers['Retry-After'] = String(
-          Math.max(1, Math.ceil((apiError.retryAfterMs ?? 60_000) / 1000))
-        );
-      }
-
-      return sendMcpOAuthJson({
-        res,
-        status: apiError.httpStatus,
-        body: toApiError(apiError, requestId),
-        headers
-      });
+      return sendMcpOAuthErrorEnvelope({ req, res, error: apiError });
     }
   };
+
+/** 私有地址预检（`assertMCPUrlNotInternal`）以固定文案 reject，需要单独识别。 */
+const isPrivateUrlError = (error: unknown): boolean => {
+  const visited = new Set<unknown>();
+  let current: unknown = error;
+  while (current !== undefined && current !== null && !visited.has(current)) {
+    visited.add(current);
+    if (typeof current === 'string') return current === PRIVATE_URL_TEXT;
+    if (current instanceof Error) {
+      if (current.message === PRIVATE_URL_TEXT) return true;
+    } else if (typeof current === 'object' && 'message' in current) {
+      if ((current as { message?: unknown }).message === PRIVATE_URL_TEXT) return true;
+    }
+    current =
+      typeof current === 'object' && 'cause' in (current as object)
+        ? (current as { cause?: unknown }).cause
+        : undefined;
+  }
+  return false;
+};
+
+/** 运行期异常 → OAuth 固定错误码；无法归类时返回 undefined（保持既有通用错误管线）。 */
+export const toMcpOAuthRuntimeApiError = (error: unknown): McpOAuthApiError | undefined => {
+  if (error instanceof McpOAuthApiError) return error;
+  if (isPrivateUrlError(error)) {
+    return new McpOAuthApiError(McpOAuthErrorCodeEnum.privateUrl, {
+      message: 'MCP URL resolves to a private address',
+      cause: error
+    });
+  }
+  return undefined;
+};
+
+/**
+ * 普通路由（`getTools` / `runTool`）oauth 分支的运行期错误映射。
+ *
+ * 命中 OAuth 契约时直接写回 v2.4 envelope 并返回 `true`；其余异常返回 `false`，
+ * 继续走 `createApiEntry` 的通用错误处理。调用方只允许在 `authMode === 'oauth'`
+ * 分支使用它，保证 headers 模式行为零变化。
+ */
+export const trySendMcpOAuthRuntimeError = ({
+  req,
+  res,
+  error
+}: {
+  req: McpOAuthErrorRequestLike;
+  res: NodeApiResponseLike;
+  error: unknown;
+}): boolean => {
+  const apiError = toMcpOAuthRuntimeApiError(error);
+  if (!apiError) return false;
+  if (res.writableEnded || res.headersSent) return true;
+  sendMcpOAuthErrorEnvelope({ req, res, error: apiError });
+  return true;
+};
 
 export type McpOAuthRateLimitPolicy =
   | 'start-app'

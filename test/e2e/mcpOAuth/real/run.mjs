@@ -111,6 +111,14 @@ const api = (apiPath, options = {}) => request(`${CFG.appBase}${apiPath}`, optio
 const apiData = (res) => (res.json && typeof res.json === 'object' ? res.json.data : undefined);
 const asRequest = (asPath, options = {}) => request(`${CFG.asBase}${asPath}`, options);
 
+/** 只保留固定错误契约字段；requestId 为一次性定位串，写证据前替换为占位符。 */
+const sanitizedBody = (json) => {
+  if (!json || typeof json !== 'object') return '(none)';
+  const data = json.data && typeof json.data === 'object' ? { ...json.data } : undefined;
+  if (data && 'requestId' in data) data.requestId = '<request-id>';
+  return JSON.stringify({ ...json, ...(data ? { data } : {}) });
+};
+
 const hasForbiddenKeys = (value, keys, seen = new WeakSet()) => {
   if (!value || typeof value !== 'object') return false;
   if (seen.has(value)) return false;
@@ -1505,6 +1513,185 @@ const runDcrPhase = async () => {
     check('clientMode=dcr → clientSource=dcr', startDcr.body?.clientSource === 'dcr');
     check('再次复用，无新 /register', deltaDcr.register === 0, { register: deltaDcr.register });
   });
+
+  /** 新建应用 + 完整真实授权；scope 传 undefined 时不申请任何 scope（AS 会签发无 scope 的 token）。 */
+  const authorizeFreshApp = async ({ name, scope }) => {
+    await clearRateLimits();
+    const { res, appId } = await createApp({
+      name: `${name} ${Date.now()}`,
+      url: mcpUrl,
+      clientMode: 'auto',
+      ...(scope !== undefined ? { scope } : {})
+    });
+    check('create -> HTTP 200', res.status === 200, { status: res.status });
+    if (!appId) return { appId: undefined };
+
+    const start = await startOAuth(appId, {
+      clientMode: 'auto',
+      ...(scope !== undefined ? { scope } : {})
+    });
+    check('start -> HTTP 200', start.res.status === 200, { status: start.res.status });
+    const flow = await performAuthorization(start.body.authorizationUrl);
+    const outcome = await doCallback({
+      state: flow.state,
+      code: flow.code,
+      iss: flow.iss,
+      cookie: `${start.cookieName}=${start.cookieValue}`
+    });
+    check('真实授权回调 oauth=success', outcome.oauth === 'success', {
+      oauth: outcome.oauth,
+      code: outcome.code
+    });
+    return { appId, start, flow, outcome };
+  };
+
+  await runCase(
+    'real-dcr-16-run-time-reauth-required',
+    '运行期 401 + refresh 被拒 → 结构化 mcp_oauth_reauth_required（非 500）',
+    async () => {
+      const { appId } = await authorizeFreshApp({ name: 'E2E real-reauth', scope: 'mcp:tools' });
+      check('已创建并授权应用', !!appId);
+      if (!appId) return;
+
+      const { oauth } = await nodeOauth(appId);
+      const clientId = oauth?.client?.clientId ?? '';
+      const accessToken = decryptStoredSecret(oauth?.token?.secret?.access_token);
+      const refreshToken = decryptStoredSecret(oauth?.token?.secret?.refresh_token);
+      check('可在内存中取得 AT/RT', !!accessToken && !!refreshToken);
+
+      // 让 AT 与 RT 同时失效：先 401，再让强制刷新得到 invalid_grant。
+      const revokeAt = await asRequest('/revoke', {
+        method: 'POST',
+        form: new URLSearchParams({
+          token: accessToken,
+          client_id: clientId,
+          token_type_hint: 'access_token'
+        })
+      });
+      const revokeRt = await asRequest('/revoke', {
+        method: 'POST',
+        form: new URLSearchParams({
+          token: refreshToken,
+          client_id: clientId,
+          token_type_hint: 'refresh_token'
+        })
+      });
+      check('真实 /revoke(AT) -> 2xx', revokeAt.status >= 200 && revokeAt.status < 300, {
+        status: revokeAt.status
+      });
+      check('真实 /revoke(RT) -> 2xx', revokeRt.status >= 200 && revokeRt.status < 300, {
+        status: revokeRt.status
+      });
+
+      await clearRateLimits();
+      const before = captureAsCounters();
+      const res = await runTool(appId);
+      const delta = asDelta(before);
+      const mcpEntries = readAsLog().slice(before.logLength).filter(isMcp);
+      const oauthCode = res.json?.data?.oauthCode;
+
+      check('runTool -> HTTP 401（不是通用 500）', res.status === 401, { status: res.status });
+      check(
+        'data.oauthCode = mcp_oauth_reauth_required',
+        oauthCode === 'mcp_oauth_reauth_required',
+        {
+          oauthCode
+        }
+      );
+      check(
+        '响应含固定 requestId',
+        typeof res.json?.data?.requestId === 'string' && res.json.data.requestId.length > 0
+      );
+      check(
+        '响应不含 token / client_secret / AS 原文',
+        !/Bearer\s+[A-Za-z0-9._~-]{8,}/.test(res.text) &&
+          !hasForbiddenKeys(
+            res.json,
+            new Set(['access_token', 'refresh_token', 'client_secret', 'error_description'])
+          ) &&
+          !/invalid_grant|error_description/i.test(res.text)
+      );
+      check(
+        'AS /mcp 至少返回一次 401',
+        mcpEntries.some((entry) => entry.status === 401),
+        {
+          unauthorized: mcpEntries.filter((entry) => entry.status === 401).length
+        }
+      );
+      check('强制刷新最多 1 次', delta.tokenRefresh <= 1, { refresh: delta.tokenRefresh });
+      const cleared = await nodeOauth(appId);
+      check('reauth_required 后本地 token 已清除', cleared.oauth?.token === undefined);
+      note(
+        'AT 与 RT 同时 revoke 后，运行期首次 401 触发一次强制刷新，刷新被 AS 拒绝后映射为 reauth_required。'
+      );
+      note(`响应体（requestId 脱敏）=${sanitizedBody(res.json)}`);
+    }
+  );
+
+  await runCase(
+    'real-dcr-17-run-time-insufficient-scope',
+    '运行期真实 403 insufficient_scope → 结构化 oauthCode 且不刷新',
+    async () => {
+      const { appId, start } = await authorizeFreshApp({
+        name: 'E2E real-insufficient-scope',
+        scope: undefined
+      });
+      check('已创建并授权应用（未申请 scope）', !!appId);
+      if (!appId) return;
+
+      const authUrl = new URL(start.body.authorizationUrl);
+      check('授权 URL 未携带 scope（token 不含 mcp:tools）', !authUrl.searchParams.get('scope'), {
+        scope: authUrl.searchParams.get('scope')
+      });
+      const { oauth } = await nodeOauth(appId);
+      check('无 scope 的 token 已落库', !!oauth?.token);
+      const atFingerprint = tokenFingerprint(oauth?.token?.secret?.access_token);
+
+      await clearRateLimits();
+      const before = captureAsCounters();
+      const res = await runTool(appId);
+      const delta = asDelta(before);
+      const mcpEntries = readAsLog().slice(before.logLength).filter(isMcp);
+      const oauthCode = res.json?.data?.oauthCode;
+
+      check('runTool -> HTTP 403（不是通用 500）', res.status === 403, { status: res.status });
+      check(
+        'data.oauthCode = mcp_oauth_insufficient_scope',
+        oauthCode === 'mcp_oauth_insufficient_scope',
+        {
+          oauthCode
+        }
+      );
+      check(
+        'AS /mcp 返回真实 403',
+        mcpEntries.some((entry) => entry.status === 403),
+        {
+          forbidden: mcpEntries.filter((entry) => entry.status === 403).length
+        }
+      );
+      check('insufficient_scope 不触发刷新', delta.tokenRefresh === 0, {
+        refresh: delta.tokenRefresh
+      });
+      check(
+        '响应不含 token / client_secret / AS 原文',
+        !/Bearer\s+[A-Za-z0-9._~-]{8,}/.test(res.text) &&
+          !hasForbiddenKeys(
+            res.json,
+            new Set(['access_token', 'refresh_token', 'client_secret', 'error_description'])
+          ) &&
+          !/insufficient scope|error_description/i.test(res.text)
+      );
+      const after = await nodeOauth(appId);
+      check(
+        'insufficient_scope 不清除 token（只提示补 scope）',
+        tokenFingerprint(after.oauth?.token?.secret?.access_token) === atFingerprint
+      );
+      note(
+        'AS 仅支持 mcp:tools；不申请 scope 时签发的 token 被 /mcp 以 403 insufficient_scope 拒绝，FastGPT 不刷新。'
+      );
+      note(`响应体（requestId 脱敏）=${sanitizedBody(res.json)}`);
+    }
+  );
 };
 
 /* ------------------------------ 主流程 ------------------------------ */

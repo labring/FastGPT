@@ -14,7 +14,12 @@ import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getMCPTools, postUpdateMCPTools } from '@/web/core/app/api/mcpTools';
 import { useMcpOAuthStatus } from './oauth/useMcpOAuthStatus';
-import { parseMcpOAuthCallbackQuery, stripMcpOAuthCallbackQuery } from './oauth/utils';
+import {
+  getMcpOAuthErrorCode,
+  getMcpOAuthErrorCopy,
+  parseMcpOAuthCallbackQuery,
+  stripMcpOAuthCallbackQuery
+} from './oauth/utils';
 
 const MCPTools = () => {
   const { t } = useTranslation();
@@ -111,8 +116,18 @@ const MCPTools = () => {
         setCurrentTool(tools[0]);
         await saveCurrent({ authMode: 'oauth', toolList: tools });
         toast({ title: t('mcpOAuth.callback_success'), status: 'success' });
-      } catch {
-        toast({ title: t('mcpOAuth.callback_fetch_tools_failed'), status: 'error' });
+      } catch (error) {
+        const code = getMcpOAuthErrorCode(error);
+        if (code) {
+          const copy = getMcpOAuthErrorCopy(code, t);
+          toast({
+            title: copy.message,
+            description: copy.suggestion || undefined,
+            status: 'error'
+          });
+        } else {
+          toast({ title: t('mcpOAuth.callback_fetch_tools_failed'), status: 'error' });
+        }
       } finally {
         await refreshStatus();
       }

@@ -126,6 +126,7 @@ const Edit = ({
             appId={appId}
             nodeId={nodeId}
             authMode={authMode}
+            onReauthRequired={() => void refreshStatus()}
           />
         </Box>
       )}

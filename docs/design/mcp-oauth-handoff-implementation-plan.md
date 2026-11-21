@@ -159,3 +159,68 @@ canResetClient, updatedAt`
 | D7 | 前端 clientMode 只暴露 `auto`/`manual`，不提供 CIMD/DCR 选项；auto 固定由服务端按 CIMD → DCR → manual 协商；存量 `cimd`/`dcr` 读侧归一为 `auto`，`clientSource` 仅作诊断展示 | 用户追加需求优先于 handoff 中「可选 auto/CIMD/DCR/manual」的表述：协议顺序必须自动协商，不能让用户选协议。为兼容旧数据仅做读取归一，不迁移、不新增存储字段 |
 | D8 | 增加「CIMD 单次自动降级 DCR」：仅 `clientMode=auto`；触发条件为 ① 同一 `appId+nodeId+tmbId` 的 state 台账存在 `clientSource=cimd`、未消费、未 `downgradedAt` 的上一次尝试（不要求未过期：过期只代表无法再回调，仍属未走完的尝试），或 ② 节点已有粘性标记 `oauth.autoDcrFallback=true`。触发后本次 start 强制 `forceDcr`，并在旧台账写 `downgradedAt`、在节点写粘性标记；同一授权链后续 start 持续 DCR，不再回到 CIMD。真实授权成功（token 落库）或 `client/reset` 时清除粘性标记。callback 仅在 `clientSource=cimd` 且错误属于 `invalid_client`/`invalid_request`/`unauthorized_client` 时自动重新 start + 302；`access_denied` 与 DCR/manual 不降级，返回固定错误码 | 真实 AS 的 CIMD 失败发生在 `/authorize` 并直接 400，不产生回调，因此 callback-only 回退是死代码；降级依据必须落在「上一次 CIMD 尝试未完成」的台账上，并由下一次 start 执行。台账是 v2.4 新增集合可自由扩展；`autoDcrFallback` 与 `downgradedAt` 均为可选字段，不做迁移、不加必填字段、不进 status 22 字段契约；manual 永不降级，前端仍无 CIMD/DCR 选项 |
 | D9 | 「CIMD 直接成功」的验收使用**测试专用 AS 启动器 + TLS 反代**，不修改 desktop 106，也不改 FastGPT 生产代码：启动器复用上游 `wille/mcp-oauth-server@8035903`，通过 `clientIdMetadataDocuments.validateClientIdUrl` 白名单 `fastgpt-e2e.internal`；TLS 反代把 `https://fastgpt-e2e.internal:18443/*` 转到应用 HTTP 端口并透传 Host | 上游 CIMD 在调用白名单钩子**之前**就拒绝 IP 字面量/localhost，所以 `FE_DOMAIN` 必须是域名；本套件用 `/etc/hosts` 把该域名指向 109 自身，并用自签 CA（`NODE_EXTRA_CA_CERTS`，仅测试进程）打通「AS 回源 FastGPT 文档」与「FastGPT 访问 AS」两条 https 链路。生产默认不变：`FE_DOMAIN` 仍是真实 https 域名，CIMD 可用性判定、Host 白名单、SSRF/HTTPS 校验均未放宽；测试夹具只在 `/tmp` 与本仓库 `test/e2e/**` 中，不进入发布产物 |
+| D10 | `getTools` / `runTool` 的 **oauth 分支**运行期失败改为结构化固定错误码，不再返回通用 500：捕获 `McpOAuthApiError`（以及私有地址预检的 `PRIVATE_URL_TEXT`）后经 `trySendMcpOAuthRuntimeError` 输出 `{ code: <httpStatus>, statusText: "error", message: <固定文案>, data: { oauthCode, requestId, retryable, retryAfterMs } }`，HTTP 状态沿用 `MCP_OAUTH_ERROR_META`（不新增第二套映射）。**只包裹 oauth 分支**，`authMode=headers` 的错误路径不经过该 wrapper，行为零变化；未识别为 OAuth 契约的异常仍交给 `createApiEntry` 的通用管线。响应只含固定错误码/requestId，不透出 AS 的 `error_description`、URL、header 原文或 token | 真实 E2E 暴露的缺陷：运行期 401/403 经 `NextAPI` 通用 `try/catch` 变成 `HTTP 500 {"code":500}`，前端无法区分「需要重新授权」与「服务器真故障」，也违背 handoff「错误响应只返回固定错误码 + requestId」的约定。复用 `errors.ts` 既有 46 码元数据 + `apiSupport.ts` envelope，避免 routes 与 `oauth/*` 契约漂移；只 scope 到 oauth 分支是为了满足 headers 模式零回归这一硬约束。运行期语义不变：transport 401 先强制刷新一次再决定 `reauth_required`，403 `insufficient_scope` 不刷新 |
+
+### 5.1 D10：运行期错误码 → HTTP 状态映射（完整 46 码）
+
+来源唯一：`packages/service/core/app/mcpOAuth/errors.ts` 的 `MCP_OAUTH_ERROR_META`。
+`getTools` / `runTool` 的 oauth 分支直接复用它，**不允许**在路由里另写状态映射。
+
+| oauthCode | HTTP | retryable |
+|---|---|---|
+| `mcp_oauth_disabled` | 403 | false |
+| `mcp_oauth_not_toolset` | 400 | false |
+| `mcp_oauth_app_missing` | 404 | false |
+| `mcp_oauth_node_not_found` | 400 | false |
+| `mcp_oauth_node_ambiguous` | 400 | false |
+| `mcp_oauth_node_too_large` | 413 | false |
+| `mcp_oauth_not_oauth_mode` | 400 | false |
+| `mcp_oauth_url_mismatch` | 400 | false |
+| `mcp_oauth_state_missing` | 400 | false |
+| `mcp_oauth_state_invalid` | 400 | false |
+| `mcp_oauth_state_expired` | 400 | false |
+| `mcp_oauth_state_replayed` | 409 | false |
+| `mcp_oauth_state_cookie_missing` | 400 | false |
+| `mcp_oauth_state_binding_mismatch` | 400 | false |
+| `mcp_oauth_state_context_changed` | 409 | false |
+| `mcp_oauth_state_storage_failed` | 503 | true |
+| `mcp_oauth_discovery_failed` | 502 | true |
+| `mcp_oauth_prm_resource_mismatch` | 400 | false |
+| `mcp_oauth_issuer_mismatch` | 400 | false |
+| `mcp_oauth_issuer_changed` | 409 | false |
+| `mcp_oauth_endpoint_insecure` | 400 | false |
+| `mcp_oauth_private_url` | 400 | false |
+| `mcp_oauth_proxy_forbidden` | 400 | false |
+| `mcp_oauth_response_too_large` | 502 | false |
+| `mcp_oauth_unsupported_flow` | 400 | false |
+| `mcp_oauth_cimd_unsupported` | 400 | false |
+| `mcp_oauth_cimd_unavailable` | 502 | true |
+| `mcp_oauth_registration_unsupported` | 400 | false |
+| `mcp_oauth_registration_rejected` | 400 | false |
+| `mcp_oauth_registration_failed` | 502 | true |
+| `mcp_oauth_client_missing` | 400 | false |
+| `mcp_oauth_client_required` | 400 | false |
+| `mcp_oauth_client_rejected` | 401 | false |
+| `mcp_oauth_pkce_unsupported` | 400 | false |
+| `mcp_oauth_scope_invalid` | 400 | false |
+| `mcp_oauth_scope_widened` | 400 | false |
+| `mcp_oauth_access_denied` | 400 | false |
+| `mcp_oauth_exchange_failed` | 502 | true |
+| `mcp_oauth_token_persist_failed` | 503 | true |
+| `mcp_oauth_reauth_required` | 401 | false |
+| `mcp_oauth_insufficient_scope` | 403 | false |
+| `mcp_oauth_refresh_transient` | 503 | true |
+| `mcp_oauth_client_reset_failed` | 502 | true |
+| `mcp_oauth_conflict` | 409 | true |
+| `mcp_oauth_rate_limited` | 429 | true |
+| `mcp_oauth_internal_error` | 500 | true |
+
+映射语义要点：
+
+- **重授权**：`reauth_required`（401，`retryable=false`）——前端据此展示「重新授权」引导；运行期只有「首次 401 → 强制刷新一次 → 仍 401 / 刷新被 AS 拒绝」才会产生。
+- **权限不足**：`insufficient_scope`（403，`retryable=false`）——首次 403 即返回，**不发生刷新**；前端提示补充 scope 后重新授权。
+- **配置/私有地址**：`private_url`、`proxy_forbidden`、`endpoint_insecure`、issuer/resource 不匹配等 → 400，属于用户可修正配置错误。
+- **上游/传输**：`discovery_failed`、`exchange_failed`、`registration_failed`、`response_too_large` 等 → 502；`refresh_transient` / `token_persist_failed` / `state_storage_failed` → 503，`retryable=true`。
+- **不泄漏**：`message` 只使用服务层构造的固定文案；AS 的 `error_description`、原始 URL、`WWW-Authenticate` 原文与任何 token/secret 都不会进入响应体或日志。
+
+headers 模式（`authMode=headers`）不走上述 wrapper：`McpOAuthApiError`/私有地址断言仍按原路径抛出，由通用 500 管线处理，保持既有行为（路由级回归测试覆盖）。
