@@ -11,9 +11,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/agent/promptRef/legacy';
 import {
   extractAgentPromptRefs,
-  findAgentPromptRefEntityMatch,
   hasDebugPromptRef,
-  normalizeDoubleWrappedRefs,
   stripAgentPromptRefs
 } from '@fastgpt/global/core/workflow/node/agent/promptRef/text';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
@@ -308,23 +306,23 @@ describe('AgentPromptRefRegistry invariants', () => {
     expect(otherApp.status).toBe('unresolved');
   });
 
-  it('protects JSON 3-brace endings and folds paired double-wrapped refs in renderForModel', () => {
+  it('protects JSON 3-brace endings in renderForModel', () => {
     const registry = createRegistry();
     const input =
       'JSON: {"tool": {{@app:team:66f100000000000000000022/ns:get-issue@}}, "http": {{@app:team:66f100000000000000000022//api/v1/users@}}}\n' +
-      'Double: {{{{@builtin:read_files@}}}} + {{@dataset_search@}} + {{@metaso@}} + {{@builtin:future_cap@}}';
+      'Refs: {{@builtin:read_files@}} + {{@dataset_search@}} + {{@metaso@}} + {{@builtin:future_cap@}}';
 
     const rendered = registry.renderForModel({ text: input });
     expect(rendered).toBe(
       'JSON: {"tool": {{GitHub查Issue}}, "http": {{HTTP查用户}}}\n' +
-        'Double: {{文件解析}} + {{知识库检索}} + {{@metaso@}} + {{@builtin:future_cap@}}'
+        'Refs: {{文件解析}} + {{知识库检索}} + {{@metaso@}} + {{@builtin:future_cap@}}'
     );
   });
 
   it('composes Pro prompts without double wrapping and strips non-ref switches', () => {
     const registry = createRegistry();
     const composed = registry.composePromptText({
-      text: '用 @plugin:system:metaso 与 {{@plugin:system:feishu@}} 和 {{{{@builtin:read_files@}}}}，查 @kb_1，开启 @file_upload 与 @[sandbox]',
+      text: '用 @plugin:system:metaso 与 {{@plugin:system:feishu@}} 和 {{@builtin:read_files@}}，查 @kb_1，开启 @file_upload 与 @[sandbox]',
       mentions: [
         { rawId: 'plugin:system:metaso', targetKey: 'plugin:system:metaso' },
         { rawId: 'plugin:system:feishu', targetKey: 'plugin:system:feishu' },
@@ -338,13 +336,10 @@ describe('AgentPromptRefRegistry invariants', () => {
     expect(composed).not.toContain('{{{{');
   });
 
-  it('detects debug refs, double-wrap normalization, stripping, and builtin predicates', () => {
+  it('detects debug refs, stripping, and builtin predicates', () => {
     expect(hasDebugPromptRef('{{@debug:tmbId:u1:systemTool-x@}}')).toBe(true);
     expect(hasDebugPromptRef('{{@plugin:debug:u1:x@}}')).toBe(true);
     expect(hasDebugPromptRef('{{@plugin:system:x@}}')).toBe(false);
-    expect(normalizeDoubleWrappedRefs('{"a": {{@plugin:system:x@}}}')).toBe(
-      '{"a": {{@plugin:system:x@}}}'
-    );
     expect(stripAgentPromptRefs('使用 {{@plugin:system:x@}} 和 {{$start.q$}}')).toBe(
       '使用  和 {{$start.q$}}'
     );
@@ -377,27 +372,6 @@ describe('AgentPromptRefRegistry invariants', () => {
       status: 'resolved',
       matchedBy: 'deterministic_legacy',
       entry: { displayName: 'Users Tool' }
-    });
-  });
-
-  it('matches paired double-wrapped prompt ref entities without eating adjacent JSON braces', () => {
-    expect(findAgentPromptRefEntityMatch('调用 {{{{@builtin:read_files@}}}} 完成')).toEqual({
-      start: 3,
-      end: 31,
-      raw: '{{{{@builtin:read_files@}}}}',
-      key: 'builtin:read_files'
-    });
-    expect(findAgentPromptRefEntityMatch('{"a":{"b":{{@builtin:read_files@}}}}')).toEqual({
-      start: 10,
-      end: 34,
-      raw: '{{@builtin:read_files@}}',
-      key: 'builtin:read_files'
-    });
-    expect(findAgentPromptRefEntityMatch('{{{{@builtin:read_files@}}')).toEqual({
-      start: 2,
-      end: 26,
-      raw: '{{@builtin:read_files@}}',
-      key: 'builtin:read_files'
     });
   });
 

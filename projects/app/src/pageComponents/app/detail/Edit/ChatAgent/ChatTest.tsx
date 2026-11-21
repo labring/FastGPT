@@ -38,11 +38,7 @@ import { cardStyles } from '../../constants';
 import { AppContext } from '../../context';
 import { useChatTest } from '../../useChatTest';
 import type { Form2WorkflowFnType } from '../FormComponent/type';
-import {
-  applyChatAgentHelperFormData,
-  hasHelperSandboxOrSkillConfig,
-  loadGeneratedTools
-} from './utils';
+import { loadGeneratedTools } from './utils';
 import { checkAgentSandboxIssues } from '@/web/core/workflow/check/resource';
 import { WorkflowCheckIssueCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 
@@ -278,18 +274,6 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                 metadata={chatAgentHelperMetadata}
                 InputLeftComponent={HelperModelSelectorInput}
                 onApply={async (formData) => {
-                  if (!canUseSandbox && hasHelperSandboxOrSkillConfig(formData)) {
-                    toast({
-                      status: 'warning',
-                      title: t(
-                        !showSandbox
-                          ? 'skill:sandbox_system_not_configured_toast'
-                          : 'app:sandbox_free_not_support'
-                      )
-                    });
-                    return;
-                  }
-
                   // Filter internal tools
                   const filteredTools = (formData.tools || []).filter((tool) => {
                     const key = typeof tool === 'string' ? tool : tool.id;
@@ -302,14 +286,46 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                     fileSelectConfig: appForm.chatConfig.fileSelectConfig
                   });
 
-                  setAppForm((prev) =>
-                    applyChatAgentHelperFormData({
-                      prev,
-                      formData,
-                      newTools,
-                      canUseSandbox
-                    })
-                  );
+                  const fileUploadEnabled = !!formData.fileUploadEnabled;
+                  const nextSelectedAgentSkills = canUseSandbox
+                    ? formData.selectedAgentSkills || []
+                    : [];
+                  const nextUseAgentSandbox =
+                    canUseSandbox &&
+                    (!!formData.enableSandboxEnabled || nextSelectedAgentSkills.length > 0);
+
+                  setAppForm((prev) => ({
+                    ...prev,
+                    selectedTools: [...newTools],
+                    selectedAgentSkills: nextSelectedAgentSkills,
+                    dataset: {
+                      ...prev.dataset,
+                      datasets: formData.datasets ?? []
+                    },
+                    aiSettings: {
+                      ...prev.aiSettings,
+                      systemPrompt: formData.systemPrompt || prev.aiSettings.systemPrompt,
+                      useAgentSandbox: nextUseAgentSandbox
+                    },
+                    chatConfig: {
+                      ...prev.chatConfig,
+                      fileSelectConfig: fileUploadEnabled
+                        ? {
+                            ...prev.chatConfig.fileSelectConfig,
+                            canSelectFile: true
+                          }
+                        : {
+                            maxFiles: undefined,
+                            canSelectFile: false,
+                            customPdfParse: false,
+                            canSelectImg: false,
+                            canSelectVideo: false,
+                            canSelectAudio: false,
+                            canSelectCustomFileExtension: false,
+                            customFileExtensionList: []
+                          }
+                    }
+                  }));
                 }}
               />
             </Box>

@@ -16,7 +16,6 @@ import type { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/consta
 
 export type SkillLabelNodeBasicType = {
   id: string;
-  rawText?: string;
   name: string;
   icon?: string;
   skillType: FlowNodeTypeEnum;
@@ -27,7 +26,6 @@ export type SkillLabelNodeBasicType = {
 export type SerializedSkillNode = Spread<
   {
     id: string;
-    rawText?: string;
     name: string;
     icon?: string;
     skillType: FlowNodeTypeEnum;
@@ -39,7 +37,6 @@ export type SerializedSkillNode = Spread<
 export class SkillNode extends DecoratorNode<JSX.Element> {
   __format: number | TextFormatType = 0;
   __id: string;
-  __rawText?: string;
   __name: string;
   __icon?: string;
   __skillType: FlowNodeTypeEnum;
@@ -48,12 +45,11 @@ export class SkillNode extends DecoratorNode<JSX.Element> {
   __onClick: (id: string, nodeKey?: NodeKey) => void;
 
   constructor(
-    { id, rawText, name, icon, skillType, status, tooltip, onClick }: SkillLabelNodeBasicType,
+    { id, name, icon, skillType, status, tooltip, onClick }: SkillLabelNodeBasicType,
     key?: NodeKey
   ) {
     super(key);
     this.__id = id;
-    this.__rawText = rawText;
     this.__name = name;
     this.__icon = icon;
     this.__skillType = skillType;
@@ -70,7 +66,6 @@ export class SkillNode extends DecoratorNode<JSX.Element> {
     const newNode = new SkillNode(
       {
         id: node.__id,
-        rawText: node.__rawText,
         name: node.__name,
         icon: node.__icon,
         skillType: node.__skillType,
@@ -86,7 +81,6 @@ export class SkillNode extends DecoratorNode<JSX.Element> {
   static importJSON(serializedNode: SerializedSkillNode): SkillNode {
     const node = $createSkillNode({
       id: serializedNode.id,
-      rawText: serializedNode.rawText,
       name: serializedNode.name,
       icon: serializedNode.icon,
       skillType: serializedNode.skillType,
@@ -111,7 +105,6 @@ export class SkillNode extends DecoratorNode<JSX.Element> {
       version: 1,
       format: this.__format || 0,
       id: this.__id,
-      ...(this.__rawText ? { rawText: this.__rawText } : {}),
       name: this.__name,
       icon: this.__icon,
       skillType: this.__skillType,
@@ -154,7 +147,7 @@ export class SkillNode extends DecoratorNode<JSX.Element> {
     _includeInert?: boolean | undefined,
     _includeDirectionless?: false | undefined
   ): string {
-    return this.__rawText ?? `{{@${this.__id}@}}`;
+    return `{{@${this.__id}@}}`;
   }
 
   decorate(_editor: LexicalEditor, _config: EditorConfig): JSX.Element {
