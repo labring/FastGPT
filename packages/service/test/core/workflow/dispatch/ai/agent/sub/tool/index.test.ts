@@ -550,6 +550,7 @@ describe('dispatchTool runtime toolset auth', () => {
       systemKeyCost: 0,
       secretsVal: {}
     });
+    getSystemToolDetailMock.mockResolvedValue({ inputSchema: undefined });
     runToolStreamMock.mockResolvedValue({ output: { ok: true } });
   });
 
@@ -832,5 +833,44 @@ describe('dispatchTool runtime toolset auth', () => {
     const [, payload] = token.split('.');
     const tokenPayload = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
     expect(tokenPayload.usageId).toBe('usage-dispatch-1');
+  });
+
+  it('strips null and non-string empty strings from optional Agent system tool inputs while preserving raw nodeResponse', async () => {
+    getSystemToolDetailMock.mockResolvedValueOnce({
+      inputSchema: {
+        type: 'object',
+        properties: {
+          keyword: { type: 'string' },
+          limit: { type: 'number' },
+          offset: { type: 'number' },
+          note: { type: 'string' },
+          nullableMeta: { type: ['object', 'null'] }
+        },
+        required: ['keyword']
+      }
+    });
+
+    const rawParams = {
+      keyword: 'fastgpt',
+      limit: null,
+      offset: '',
+      note: '',
+      nullableMeta: null
+    };
+    const result = await dispatchTool(
+      createDispatchToolProps({ systemTool: { toolId: 'systemTool-search' } }, rawParams)
+    );
+
+    expect(result.errorMessage).toBeUndefined();
+    expect(runToolStreamMock).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        input: {
+          keyword: 'fastgpt',
+          note: '',
+          nullableMeta: null
+        }
+      })
+    );
+    expect(result.nodeResponse?.toolInput).toEqual(rawParams);
   });
 });
