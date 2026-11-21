@@ -34,8 +34,7 @@ import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { ListSkillsResponse } from '@fastgpt/global/core/ai/skill/api';
 import { inheritToolInputConfig } from '../../FormComponent/ToolSelector/utils';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserStore } from '@/web/support/user/useUserStore';
+import { useAgentSandboxCapability } from '../../../hooks/useAgentSandboxCapability';
 import { formatRefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/codec';
 import { getCanonicalKeyForTool } from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
 import {
@@ -122,11 +121,7 @@ export const useSkillManager = ({
 }) => {
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
-  const { feConfigs } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
-  const isSandboxSupported =
-    Boolean(feConfigs.show_agent_sandbox) &&
-    (!teamPlanStatus?.standard || Boolean(teamPlanStatus.standard.enableSandbox));
+  const { canUseSandbox: isSandboxSupported } = useAgentSandboxCapability();
   const effectiveUseAgentSandbox = isSandboxSupported && useAgentSandbox;
   const {
     promptRefRegistry,
