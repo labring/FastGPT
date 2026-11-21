@@ -173,12 +173,12 @@ const mergeDefinitions = ({
 }) =>
   keys
     .filter((key, index) => keys.indexOf(key) === index)
-    .map((key, index) => ({
-      key,
-      valueType:
-        documented.find((item) => item.key === key)?.valueType ??
-        (documented.length === keys.length ? documented[index]?.valueType : undefined)
-    }));
+    .map((key, index) => {
+      const named = documented.find((item) => item.key === key);
+      const annotation =
+        named ?? (documented.length === keys.length ? documented[index] : undefined);
+      return { key, valueType: annotation?.valueType };
+    });
 
 /** 提取 main 函数的静态参数名；无法识别动态参数对象时返回 undefined。 */
 export const extractCodeInputDefinitions = (code: string): CodeIoDefinition[] | undefined => {

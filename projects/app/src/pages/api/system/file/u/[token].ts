@@ -48,7 +48,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       throw new Error('Multipart upload requires partNumber');
     }
 
-    return await handleS3ProxyUpload({ req, payload });
+    return await handleS3ProxyUpload({ req, res, payload });
   } catch (error) {
     return handleS3ProxyRouteError({ res, error });
   }

@@ -9,6 +9,8 @@ import {
 } from '@fastgpt/global/openapi/admin/system/instanceConfig/api';
 import { systemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/service';
 import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
+import { serviceEnv } from '@fastgpt/service/env';
+import { getStorageVendorCapabilities } from '@fastgpt/global/common/system/config/schemas/storage';
 
 /**
  * Admin API - 获取单个 Domain 的实例配置与生效快照
@@ -36,7 +38,10 @@ async function handler(req: ApiRequestProps): Promise<GetDomainConfigResponse> {
     effectiveConfig: result.effectiveConfig,
     overrides: result.overrides,
     updatedAt: result.updatedAt,
-    updatedBy: result.updatedBy
+    updatedBy: result.updatedBy,
+    ...(domain === 'storage'
+      ? { storageCapabilities: getStorageVendorCapabilities(serviceEnv.STORAGE_VENDOR) }
+      : {})
   });
 }
 

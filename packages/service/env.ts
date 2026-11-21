@@ -2,8 +2,9 @@ import { createEnv } from '@t3-oss/env-core';
 import z from 'zod';
 import { isPhaseProductionBuild } from '@fastgpt/global/common/system/constants';
 import { BoolSchema, IntSchema, NumSchema, UrlSchema } from '@fastgpt/global/common/zod';
+import { StorageVendorSchema } from '@fastgpt/global/common/system/config/schemas/storage';
 import { getRuntimeEnv, validateS3Env, validateAgentUsersEnv } from './env.util';
-import { LogLevelSchema, StorageVendorSchema, StorageCosProtocolSchema } from './env.const';
+import { LogLevelSchema, StorageCosProtocolSchema } from './env.const';
 
 export const serviceEnv = createEnv({
   skipValidation: isPhaseProductionBuild,

@@ -1,5 +1,6 @@
 import { S3BaseBucket } from './base';
 import { createDefaultStorageOptions } from '../config/constants';
+import { getStorageVendorCapabilities } from '@fastgpt/global/common/system/config/schemas/storage';
 import {
   type IAwsS3CompatibleStorageOptions,
   type IR2StorageOptions,
@@ -16,9 +17,10 @@ export class S3PrivateBucket extends S3BaseBucket {
   constructor() {
     const storageOptions = createDefaultStorageOptions();
     const { vendor, privateBucket, externalEndpoint, credentials, region } = storageOptions;
+    const { supportsExternalEndpoint } = getStorageVendorCapabilities(vendor);
 
     const getConfig = () => {
-      if (vendor === 'minio') {
+      if (vendor === 'minio' || vendor === 'aws-s3') {
         const config = {
           region,
           vendor,
@@ -30,27 +32,13 @@ export class S3PrivateBucket extends S3BaseBucket {
         } as Omit<IAwsS3CompatibleStorageOptions, 'bucket'>;
         return {
           config,
-          externalConfig: {
-            ...config,
-            endpoint: externalEndpoint
-          }
-        };
-      } else if (vendor === 'aws-s3') {
-        const config = {
-          region,
-          vendor,
-          credentials,
-          endpoint: storageOptions.endpoint,
-          maxRetries: storageOptions.maxRetries,
-          forcePathStyle: storageOptions.forcePathStyle,
-          publicAccessExtraSubPath: storageOptions.publicAccessExtraSubPath
-        } as Omit<IAwsS3CompatibleStorageOptions, 'bucket'>;
-        return {
-          config,
-          externalConfig: {
-            ...config,
-            endpoint: externalEndpoint
-          }
+          externalConfig:
+            supportsExternalEndpoint && externalEndpoint
+              ? {
+                  ...config,
+                  endpoint: externalEndpoint
+                }
+              : undefined
         };
       } else if (vendor === 'r2') {
         const config = {
@@ -63,11 +51,7 @@ export class S3PrivateBucket extends S3BaseBucket {
           publicAccessExtraSubPath: storageOptions.publicAccessExtraSubPath
         } as Omit<IR2StorageOptions, 'bucket'>;
         return {
-          config,
-          externalConfig: {
-            ...config,
-            endpoint: externalEndpoint || storageOptions.endpoint
-          }
+          config
         };
       } else if (vendor === 'cos') {
         return {
@@ -102,7 +86,7 @@ export class S3PrivateBucket extends S3BaseBucket {
     const client = createStorage({ bucket: privateBucket, ...config });
 
     let externalClient: ReturnType<typeof createStorage> | undefined = undefined;
-    if (externalEndpoint) {
+    if (externalConfig) {
       externalClient = createStorage({
         bucket: privateBucket,
         ...externalConfig
