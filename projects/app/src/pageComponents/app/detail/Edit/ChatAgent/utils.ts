@@ -34,6 +34,9 @@ import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/conf
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { inheritToolInputConfig } from '../FormComponent/ToolSelector/utils';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import { parseV2RefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/codec';
+import { toLegacyToolLookup } from '@fastgpt/global/core/workflow/node/agent/promptRef/legacy';
+import { getCanonicalKeyForTool } from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
 
 /* format app nodes to edit form */
 export const appWorkflow2AgentForm = ({
@@ -306,8 +309,9 @@ export function agentForm2AppWorkflow(
                     label: '',
                     valueType: WorkflowIOValueTypeEnum.arrayObject,
                     value: data.selectedAgentSkills.map(
-                      ({ skillId, name, description, avatar }) => ({
+                      ({ skillId, source, name, description, avatar }) => ({
                         skillId,
+                        ...(source ? { source } : {}),
                         name,
                         description,
                         ...(avatar === undefined ? {} : { avatar })
@@ -363,7 +367,7 @@ export const getEmptyAgentConfig = (t: any) => {
   );
 };
 
-/** 加载辅助生成的工具，按来源复用已有配置；旧引用未记录来源时按 system 匹配。 */
+/** 加载辅助生成的工具，同时兼容 V2 canonicalKey 与旧格式 { id, source } / string 引用。 */
 export const loadGeneratedTools = async ({
   newToolIds,
   existsTools = [],
@@ -378,15 +382,38 @@ export const loadGeneratedTools = async ({
   const results = (
     await Promise.all(
       newToolIds.map<Promise<SelectedToolItemType | undefined>>(async (toolRef) => {
-        const toolId = typeof toolRef === 'string' ? toolRef : toolRef.id;
-        const source = typeof toolRef === 'string' ? undefined : toolRef.source;
+        const { toolId, source } = (() => {
+          if (typeof toolRef === 'string') {
+            const v2Ref = parseV2RefKey(toolRef);
+            if (v2Ref) {
+              const legacyLookup = toLegacyToolLookup(v2Ref);
+              return legacyLookup
+                ? { toolId: legacyLookup.appId, source: legacyLookup.source }
+                : { toolId: '', source: undefined };
+            }
+            return { toolId: toolRef, source: undefined };
+          }
+          return { toolId: toolRef.id, source: toolRef.source };
+        })();
+        if (!toolId) return;
+
         const identityKey = getToolIdentityKey(toolId, source);
+        const canonicalKey = getCanonicalKeyForTool({ id: toolId, source });
+        const isSameTool = (tool: SelectedToolItemType) => {
+          if (getToolIdentityKey(tool.pluginId, tool.source) === identityKey) return true;
+          if (canonicalKey) {
+            return (
+              getCanonicalKeyForTool({ id: tool.pluginId ?? tool.id, source: tool.source }) ===
+              canonicalKey
+            );
+          }
+          return false;
+        };
+
         // 已经存在的工具，直接返回
-        const existTool = existsTools.find(
-          (tool) => getToolIdentityKey(tool.pluginId, tool.source) === identityKey
-        );
+        const existTool = existsTools.find(isSameTool);
         if (existTool) {
-          // 新提示词使用带来源的引用；复用旧配置时也要补齐来源，才能与运行时引用一致。
+          // 复用旧配置时补齐显式来源，保持与运行时引用一致。
           if (source === 'system' && !existTool.source) {
             return { ...existTool, source };
           }
@@ -414,14 +441,26 @@ export const loadGeneratedTools = async ({
           return;
         }
 
-        const generatedTool = generatedSelectedTools.find(
-          (item) => getToolIdentityKey(item.pluginId, item.source) === identityKey
-        );
+        const generatedTool = generatedSelectedTools.find(isSameTool);
         const inheritedTool = inheritToolInputConfig({ tool, sourceTool: generatedTool });
+        const previewToolId =
+          tool.pluginId ||
+          (tool.toolConfig?.mcpTool && 'toolId' in tool.toolConfig.mcpTool
+            ? tool.toolConfig.mcpTool.toolId
+            : undefined) ||
+          (tool.toolConfig?.httpTool && 'toolId' in tool.toolConfig.httpTool
+            ? tool.toolConfig.httpTool.toolId
+            : undefined) ||
+          tool.id;
+        const resolvedToolId =
+          toolId.includes('/') &&
+          (previewToolId.startsWith('mcp-') || previewToolId.startsWith('http-'))
+            ? previewToolId
+            : toolId;
 
         return {
           ...inheritedTool,
-          id: toolId,
+          id: resolvedToolId,
           source
         };
       })

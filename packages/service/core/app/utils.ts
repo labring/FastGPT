@@ -255,14 +255,16 @@ export async function rewriteAppWorkflowToDetail({
           ...(isRoot ? {} : { $or: [{ teamId }, { source: AgentSkillSourceEnum.system }] })
         }).lean(),
       unAuthError: SkillErrEnum.unAuthSkill,
-      formatLive: (skill) => ({
+      formatLive: (skill): SelectedAgentSkillItemType => ({
         skillId: String(skill._id),
+        source: skill.source,
         name: skill.name,
         description: skill.description,
         avatar: skill.avatar
       }),
-      formatFallback: (snapshot, error) => ({
+      formatFallback: (snapshot, error): SelectedAgentSkillItemType => ({
         skillId: snapshot.skillId,
+        ...(snapshot.source ? { source: snapshot.source } : {}),
         name: snapshot.name ?? 'Invalid',
         description: snapshot.description ?? '',
         avatar: snapshot.avatar,

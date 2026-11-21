@@ -19,6 +19,13 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { mergeToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
+import { formatRefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/codec';
+import type { AgentPromptRefEntry } from '@fastgpt/global/core/workflow/node/agent/promptRef/types';
+
+export type RuntimePromptRefMeta = {
+  name: string;
+  modelToolNames?: string[];
+};
 
 /**
  * 收集 Agent 节点可用的 workflow runtime tools 和用户选择的子应用工具。
@@ -35,27 +42,47 @@ export const getSubapps = async ({
 }): Promise<{
   completionTools: ChatCompletionTool[];
   subAppsMap: Map<string, SubAppRuntimeType>;
-  promptToolReferenceInfoMap: Map<string, string>;
+  promptToolRefEntries: AgentPromptRefEntry<RuntimePromptRefMeta>[];
 }> => {
   const completionTools: ChatCompletionTool[] = [];
 
   /* User tools */
   const subAppsMap = new Map<string, SubAppRuntimeType>();
-  const promptToolReferenceInfoMap = new Map<string, string>();
+  const promptToolRefEntryMap = new Map<string, AgentPromptRefEntry<RuntimePromptRefMeta>>();
   const formatTools = await getAgentRuntimeTools({
     tools,
     tmbId,
     lang
   });
-  formatTools.forEach((tool) => {
-    if (tool.promptReference) {
-      promptToolReferenceInfoMap.set(tool.promptReference.id, tool.promptReference.name);
-      // 兼容旧版 PromptEditor 持久化的原始工具 ID。
-      promptToolReferenceInfoMap.set(
-        tool.promptReference.legacyId || tool.promptReference.id,
-        tool.promptReference.name
-      );
+  const registerPromptReference = (
+    promptReference: (typeof formatTools)[number]['promptReference'],
+    modelToolName?: string
+  ) => {
+    if (!promptReference) return;
+
+    const { ref, name } = promptReference;
+    const canonicalKey = formatRefKey(ref);
+    const existing = promptToolRefEntryMap.get(canonicalKey);
+    if (existing) {
+      if (modelToolName && !existing.meta.modelToolNames?.includes(modelToolName)) {
+        existing.meta.modelToolNames = [...(existing.meta.modelToolNames ?? []), modelToolName];
+      }
+      return;
     }
+    promptToolRefEntryMap.set(canonicalKey, {
+      ref,
+      canonicalKey,
+      displayName: name,
+      meta: {
+        name,
+        ...(modelToolName ? { modelToolNames: [modelToolName] } : {})
+      }
+    });
+  };
+  formatTools.forEach((tool) => {
+    const modelToolName = tool.requestSchema?.function?.name;
+    registerPromptReference(tool.promptReference, modelToolName);
+    registerPromptReference(tool.childPromptReference, modelToolName);
     completionTools.push(tool.requestSchema);
     subAppsMap.set(tool.id, {
       type: tool.type,
@@ -73,7 +100,7 @@ export const getSubapps = async ({
   return {
     completionTools,
     subAppsMap,
-    promptToolReferenceInfoMap
+    promptToolRefEntries: Array.from(promptToolRefEntryMap.values())
   };
 };
 

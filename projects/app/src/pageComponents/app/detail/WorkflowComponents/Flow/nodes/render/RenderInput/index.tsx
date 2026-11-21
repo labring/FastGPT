@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic';
 import InputLabel from './Label';
 import type { RenderInputProps } from './type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useAgentSandboxCapability } from '@/pageComponents/app/detail/hooks/useAgentSandboxCapability';
 import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import CommonInputForm from './templates/CommonInputForm';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
@@ -170,6 +171,7 @@ const RenderInput = ({
   onChangeSandbox
 }: Props) => {
   const { feConfigs } = useSystemStore();
+  const { canUseSandbox } = useAgentSandboxCapability();
 
   const filterProInputs = useMemoEnhance(() => {
     return flowInputList.filter((input) => {
@@ -191,6 +193,13 @@ const RenderInput = ({
         return false;
 
       if (
+        input.key === NodeInputKeyEnum.skills &&
+        !canUseSandbox &&
+        (!Array.isArray(input.value) || input.value.length === 0)
+      )
+        return false;
+
+      if (
         renderType === FlowNodeInputTypeEnum.hidden ||
         renderType === FlowNodeInputTypeEnum.off ||
         isDynamic
@@ -199,7 +208,7 @@ const RenderInput = ({
 
       return true;
     });
-  }, [filterProInputs]);
+  }, [canUseSandbox, filterProInputs]);
 
   return (
     <>

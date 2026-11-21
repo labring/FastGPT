@@ -1296,6 +1296,7 @@
   "textarea_variable_picker_tip": "输入\"/\"可选择变量",
   "to_dataset": "前往知识库",
   "tool_invalid": "工具已失效",
+  "tool_ambiguous_click_delete_tip": "存在多个同名不同来源工具，请点击删除后重新 @ 选择",
   "tool_invalid_click_delete_tip": "点击删除",
   "total_num": "总数: {{num}}",
   "ui.textarea.Magnifying": "放大",

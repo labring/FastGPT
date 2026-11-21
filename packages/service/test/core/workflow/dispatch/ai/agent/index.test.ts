@@ -12,6 +12,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
 import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/application/runtime';
@@ -501,8 +502,14 @@ describe('dispatchRunAgent user context', () => {
         avatar: 'search.svg',
         params: {},
         promptReference: {
-          id: 'mcp-app_1/search',
-          name: 'Search documentation'
+          name: 'Search documentation',
+          ref: {
+            type: 'app',
+            source: 'team',
+            id: 'app_1/search',
+            parentId: 'app_1',
+            childId: 'search'
+          }
         },
         requestSchema: {
           type: 'function',
@@ -517,7 +524,7 @@ describe('dispatchRunAgent user context', () => {
       }
     ]);
     const props = createProps();
-    props.params.systemPrompt = '优先使用 {{@mcp-app_1/search@}}';
+    props.params.systemPrompt = '优先使用 {{@mcp-app_1/search@}}，缺失保持 {{@missing@}}';
     props.params.agent_selectedTools = [{ id: 'mcp-app_1/search', config: {} }];
 
     let resultPromise: Promise<any>;
@@ -534,6 +541,219 @@ describe('dispatchRunAgent user context', () => {
     const systemPrompt = runAgentLoopMock.mock.calls[0][0].input.systemPrompt;
     expect(systemPrompt).toContain('{{Search documentation}}');
     expect(systemPrompt).not.toContain('{{@mcp-app_1/search@}}');
+    expect(systemPrompt).toContain('缺失保持 {{@missing@}}');
+  });
+
+  it('resolves V2 and legacy tool/skill/builtin prompt refs while keeping deleted or errored skills unresolved', async () => {
+    const skillId = '68b2000000000000000000aa';
+    const unavailableSkillId = '68b2000000000000000000bb';
+    authSkillByTmbIdMock
+      .mockResolvedValueOnce({
+        skill: { _id: skillId, name: 'PDF深度分析技能', source: 'personal' }
+      })
+      .mockRejectedValueOnce(SkillErrEnum.unAuthSkill);
+    getAgentSkillInfosMock.mockResolvedValueOnce([
+      {
+        id: './skills/pdf/SKILL.md',
+        name: 'pdf-analyzer',
+        description: 'Analyze PDF',
+        directory: './skills/pdf',
+        skillMdPath: './skills/pdf/SKILL.md',
+        appId: skillId,
+        appName: 'PDF深度分析技能',
+        appSource: 'personal'
+      }
+    ]);
+    getAgentRuntimeToolsMock.mockResolvedValue([
+      {
+        type: 'tool',
+        id: 'sys_metaso',
+        name: '秘塔官方',
+        inputs: [],
+        agentGeneratedInputKeys: [],
+        promptReference: {
+          name: '秘塔官方',
+          ref: {
+            type: 'plugin',
+            source: 'system',
+            id: 'metaso',
+            parentId: 'metaso'
+          }
+        },
+        params: {},
+        requestSchema: {
+          type: 'function',
+          function: {
+            name: 'sys_metaso',
+            description: '秘塔官方',
+            parameters: { type: 'object' }
+          }
+        }
+      }
+    ]);
+
+    const props = createProps();
+    props.params.useAgentSandbox = true;
+    props.params.skills = [
+      {
+        skillId,
+        source: 'personal',
+        name: 'PDF深度分析技能',
+        description: ''
+      },
+      {
+        skillId: unavailableSkillId,
+        source: 'personal',
+        name: '未部署技能',
+        description: ''
+      }
+    ];
+    props.params.systemPrompt =
+      '工具 {{@plugin:system:metaso@}}，技能 {{@skill:team:68b2000000000000000000aa@}}，未部署 {{@skill:team:68b2000000000000000000bb@}}，越权 {{@skill:team:68b2000000000000000000ee@}}，知识库 {{@builtin:dataset_search@}}，虚拟机 {{@builtin:agent_sandbox@}}';
+    props.params.agent_selectedTools = [{ id: 'systemTool-metaso', source: 'system', config: {} }];
+
+    let resultPromise: Promise<any>;
+    runWithContext({ mcpClientMemory: {} }, () => {
+      resultPromise = dispatchRunAgent(props);
+    });
+    await resultPromise!;
+
+    const systemPrompt = runAgentLoopMock.mock.calls[0][0].input.systemPrompt;
+    expect(systemPrompt).toContain('工具 {{秘塔官方}}');
+    expect(systemPrompt).toContain('技能 {{PDF深度分析技能}}');
+    expect(systemPrompt).toContain('未部署 {{@skill:team:68b2000000000000000000bb@}}');
+    expect(systemPrompt).toContain('越权 {{@skill:team:68b2000000000000000000ee@}}');
+    expect(systemPrompt).toContain('知识库 {{');
+    expect(systemPrompt).not.toContain('{{@builtin:dataset_search@}}');
+    expect(systemPrompt).not.toContain('{{@builtin:agent_sandbox@}}');
+  });
+
+  it('disambiguates same-name plugins from different sources using model function names', async () => {
+    getAgentRuntimeToolsMock.mockResolvedValue([
+      {
+        type: 'tool',
+        id: 'getTime',
+        name: 'Get Time',
+        inputs: [],
+        agentGeneratedInputKeys: [],
+        promptReference: {
+          name: 'Get Time',
+          ref: {
+            type: 'plugin',
+            source: 'system',
+            id: 'getTime',
+            parentId: 'getTime'
+          }
+        },
+        params: {},
+        requestSchema: {
+          type: 'function',
+          function: {
+            name: 'getTime',
+            description: 'Get Time',
+            parameters: { type: 'object' }
+          }
+        }
+      },
+      {
+        type: 'tool',
+        id: 'team_fn_get_time',
+        name: 'Get Time',
+        inputs: [],
+        agentGeneratedInputKeys: [],
+        promptReference: {
+          name: 'Get Time',
+          ref: {
+            type: 'plugin',
+            source: 'team',
+            teamId: '67a100000000000000000001',
+            id: 'getTime',
+            parentId: 'getTime'
+          }
+        },
+        params: {},
+        requestSchema: {
+          type: 'function',
+          function: {
+            name: 'team_fn_get_time',
+            description: 'Get Time',
+            parameters: { type: 'object' }
+          }
+        }
+      },
+      {
+        type: 'tool',
+        id: 'debug_fn_get_time',
+        name: 'Get Time',
+        inputs: [],
+        agentGeneratedInputKeys: [],
+        promptReference: {
+          name: 'Get Time',
+          ref: {
+            type: 'plugin',
+            source: 'debug',
+            tmbId: '67d300000000000000000002',
+            id: 'getTime',
+            parentId: 'getTime'
+          }
+        },
+        params: {},
+        requestSchema: {
+          type: 'function',
+          function: {
+            name: 'debug_fn_get_time',
+            description: 'Get Time',
+            parameters: { type: 'object' }
+          }
+        }
+      }
+    ]);
+
+    const props = createProps();
+    props.params.systemPrompt =
+      '系统 {{@plugin:system:getTime@}}，团队 {{@plugin:team:67a100000000000000000001:getTime@}}，调试 {{@plugin:debug:67d300000000000000000002:getTime@}}';
+    props.params.agent_selectedTools = [
+      { id: 'systemTool-getTime', source: 'system', config: {} },
+      { id: 'systemTool-getTime', source: 'teamId:67a100000000000000000001', config: {} },
+      { id: 'systemTool-getTime', source: 'debug:tmbId:67d300000000000000000002', config: {} }
+    ];
+
+    let resultPromise: Promise<any>;
+    runWithContext({ mcpClientMemory: {} }, () => {
+      resultPromise = dispatchRunAgent(props);
+    });
+    await resultPromise!;
+
+    const loopInput = runAgentLoopMock.mock.calls[0][0].input;
+    expect(loopInput.systemPrompt).toContain('系统 {{Get Time (getTime)}}');
+    expect(loopInput.systemPrompt).toContain('团队 {{Get Time (team_fn_get_time)}}');
+    expect(loopInput.systemPrompt).toContain('调试 {{Get Time (debug_fn_get_time)}}');
+  });
+
+  it('does not resolve builtin:agent_sandbox or skills when sandbox is disabled', async () => {
+    getTestInstanceConfig().subservice.agentSandbox.provider = 'none';
+    const props = createProps();
+    props.params.useAgentSandbox = true;
+    props.params.skills = [
+      {
+        skillId: '68b2000000000000000000aa',
+        source: 'personal',
+        name: 'PDF深度分析技能',
+        description: ''
+      }
+    ];
+    props.params.systemPrompt =
+      '虚拟机 {{@builtin:agent_sandbox@}}，技能 {{@skill:team:68b2000000000000000000aa@}}';
+
+    let resultPromise: Promise<any>;
+    runWithContext({ mcpClientMemory: {} }, () => {
+      resultPromise = dispatchRunAgent(props);
+    });
+    await resultPromise!;
+
+    const systemPrompt = runAgentLoopMock.mock.calls[0][0].input.systemPrompt;
+    expect(systemPrompt).toContain('虚拟机 {{@builtin:agent_sandbox@}}');
+    expect(systemPrompt).toContain('技能 {{@skill:team:68b2000000000000000000aa@}}');
   });
 
   it('uses the default agent system prompt when the user prompt is omitted', async () => {

@@ -504,6 +504,7 @@ description: Latest current skill
         name: 'GlobalSystemSkill',
         description: '',
         avatar: undefined,
+        source: AgentSkillSourceEnum.system,
         versionId: String(versionId),
         targetDir
       }
@@ -568,6 +569,7 @@ description: Latest current skill
         name: 'CachedVersion',
         description: '',
         avatar: undefined,
+        source: AgentSkillSourceEnum.personal,
         versionId: String(currentVersionId),
         targetDir: currentTargetDir
       }

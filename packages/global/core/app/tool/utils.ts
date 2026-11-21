@@ -4,6 +4,7 @@ import { FlowNodeTypeEnum } from '../../workflow/node/constant';
 import type { NodeToolConfigType, StoreNodeItemType } from '../../workflow/type/node';
 import type { SelectedToolItemType } from '../formEdit/type';
 import { hashStr } from '../../../common/string/tools';
+import { hasDebugPromptRef } from '../../workflow/node/agent/promptRef/text';
 
 /**
   Tool id rule:
@@ -83,6 +84,23 @@ export function splitCombineToolId(id: string): {
 
   throw new Error('Invalid tool id');
 }
+
+/**
+ * 预览接口边界专用的无类型 V2 子工具反查解析器（如 `<parentId>/<toolName>` 或 `<parentId>//api/v1/users`）。
+ * 独立于 splitCombineToolId，避免资源快照和运行时把子工具误归为父级 personal 应用。
+ */
+export const parseUntypedV2ChildToolLookupId = (
+  appId: string
+): { parentId: string; toolName: string } | null => {
+  const slashIndex = appId.indexOf('/');
+  if (slashIndex <= 0 || slashIndex === appId.length - 1) return null;
+  const parentId = appId.slice(0, slashIndex);
+  if (parentId.includes('-')) return null;
+  return {
+    parentId,
+    toolName: appId.slice(slashIndex + 1)
+  };
+};
 
 /**
  * 判断工具是否允许使用旧版 toolDescription 推断 AI 参数。
@@ -179,7 +197,19 @@ export function hasDebugToolInNodes(nodes?: StoreNodeItemType[] | null) {
         ? (selectedToolsInput.value as SelectedToolItemType[])
         : [];
 
-      return hasDebugToolInSelectedTools(selectedTools);
+      if (hasDebugToolInSelectedTools(selectedTools)) return true;
+
+      // Agent 节点系统提示词可能残留已删工具的 debug 引用，发布前一并拦截。
+      if (node.flowNodeType === FlowNodeTypeEnum.agent) {
+        const promptInput = node.inputs.find(
+          (input) => input.key === NodeInputKeyEnum.aiSystemPrompt
+        );
+        if (typeof promptInput?.value === 'string' && hasDebugPromptRef(promptInput.value)) {
+          return true;
+        }
+      }
+
+      return false;
     }) ?? false
   );
 }

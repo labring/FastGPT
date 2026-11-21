@@ -726,8 +726,23 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].version).toBe('');
     expect(tools[0].toolConfig).not.toHaveProperty('mcpToolSet');
     expect(tools[0].promptReference).toEqual({
-      id: 'mcp_app',
-      name: 'mcp_app name'
+      name: 'mcp_app name',
+      ref: {
+        type: 'app',
+        source: 'team',
+        id: 'mcp_app',
+        parentId: 'mcp_app'
+      }
+    });
+    expect(tools[0].childPromptReference).toEqual({
+      name: 'mcp_app name/search',
+      ref: {
+        type: 'app',
+        source: 'team',
+        id: 'mcp_app/search',
+        parentId: 'mcp_app',
+        childId: 'search'
+      }
     });
   });
 
@@ -819,6 +834,17 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].id).toBe('mcp_slash_apptest');
     expect(tools[0].name).toBe('/test');
     expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-mcp_slash_app//test' });
+  });
+
+  it('keeps legacy 3-segment MCP tool id compatibility when loading a persisted single child tool', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'mcp-mcp_app/catalog/search', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].name).toBe('search');
+    expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-mcp_app/search' });
   });
 
   it('prefixes tool function name only when the runtime tool id starts with a number', async () => {
@@ -960,8 +986,23 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].toolConfig?.httpTool?.toolId).toBe('http-http_app/create');
     expect(tools[0].version).toBe('');
     expect(tools[0].promptReference).toEqual({
-      id: 'http_app',
-      name: 'http_app name'
+      name: 'http_app name',
+      ref: {
+        type: 'app',
+        source: 'team',
+        id: 'http_app',
+        parentId: 'http_app'
+      }
+    });
+    expect(tools[0].childPromptReference).toEqual({
+      name: 'http_app name/create',
+      ref: {
+        type: 'app',
+        source: 'team',
+        id: 'http_app/create',
+        parentId: 'http_app',
+        childId: 'create'
+      }
     });
   });
 
@@ -1229,8 +1270,23 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(tools[0].name).toBe('搜索网页');
     expect(tools[0].promptReference).toEqual({
-      id: 'systemTool-metaso',
-      name: '秘塔搜索'
+      name: '秘塔搜索',
+      ref: {
+        type: 'plugin',
+        source: 'system',
+        id: 'metaso',
+        parentId: 'metaso'
+      }
+    });
+    expect(tools[0].childPromptReference).toEqual({
+      name: '搜索网页',
+      ref: {
+        type: 'plugin',
+        source: 'system',
+        id: 'metaso/search',
+        parentId: 'metaso',
+        childId: 'search'
+      }
     });
   });
 

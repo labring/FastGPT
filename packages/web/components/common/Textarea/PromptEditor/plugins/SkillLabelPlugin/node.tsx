@@ -20,6 +20,7 @@ export type SkillLabelNodeBasicType = {
   icon?: string;
   skillType: FlowNodeTypeEnum;
   status: SkillLabelItemType['configStatus'];
+  tooltip?: string;
   onClick: (id: string, nodeKey?: NodeKey) => void;
 };
 export type SerializedSkillNode = Spread<
@@ -40,10 +41,11 @@ export class SkillNode extends DecoratorNode<JSX.Element> {
   __icon?: string;
   __skillType: FlowNodeTypeEnum;
   __status: SkillLabelItemType['configStatus'];
+  __tooltip?: string;
   __onClick: (id: string, nodeKey?: NodeKey) => void;
 
   constructor(
-    { id, name, icon, skillType, status, onClick }: SkillLabelNodeBasicType,
+    { id, name, icon, skillType, status, tooltip, onClick }: SkillLabelNodeBasicType,
     key?: NodeKey
   ) {
     super(key);
@@ -52,6 +54,7 @@ export class SkillNode extends DecoratorNode<JSX.Element> {
     this.__icon = icon;
     this.__skillType = skillType;
     this.__status = status;
+    this.__tooltip = tooltip;
     this.__onClick = onClick;
   }
 
@@ -67,6 +70,7 @@ export class SkillNode extends DecoratorNode<JSX.Element> {
         icon: node.__icon,
         skillType: node.__skillType,
         status: node.__status,
+        tooltip: node.__tooltip,
         onClick: node.__onClick
       },
       node.__key
@@ -146,7 +150,7 @@ export class SkillNode extends DecoratorNode<JSX.Element> {
     return `{{@${this.__id}@}}`;
   }
 
-  decorate(_editor: LexicalEditor, config: EditorConfig): JSX.Element {
+  decorate(_editor: LexicalEditor, _config: EditorConfig): JSX.Element {
     return (
       <SkillLabel
         id={this.__id}
@@ -154,6 +158,7 @@ export class SkillNode extends DecoratorNode<JSX.Element> {
         icon={this.__icon}
         skillType={this.__skillType}
         status={this.__status}
+        tooltip={this.__tooltip}
         onClick={this.__onClick}
         nodeKey={this.getKey()}
       />

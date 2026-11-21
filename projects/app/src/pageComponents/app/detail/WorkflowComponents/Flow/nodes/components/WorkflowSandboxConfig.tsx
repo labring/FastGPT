@@ -6,8 +6,7 @@ import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import SandboxConfigButton from '@/pageComponents/app/detail/components/SandboxConfigButton';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserStore } from '@/web/support/user/useUserStore';
+import { useAgentSandboxCapability } from '@/pageComponents/app/detail/hooks/useAgentSandboxCapability';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 import type { RenderInputProps } from '../render/RenderInput/type';
 
@@ -31,11 +30,8 @@ const WorkflowSandboxConfig = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { feConfigs } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const showSandbox = Boolean(feConfigs.show_agent_sandbox);
-  const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus.standard.enableSandbox;
+  const { showSandbox, enableSandbox } = useAgentSandboxCapability();
   const entrypointInput = inputs.find((input) => input.key === NodeInputKeyEnum.sandboxEntrypoint);
 
   return (

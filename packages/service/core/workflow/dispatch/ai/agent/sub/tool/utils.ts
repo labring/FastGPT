@@ -2,7 +2,6 @@ import { AgentToolInputConfigSchema, type AgentToolType } from '@fastgpt/global/
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import {
   getToolNameCandidates,
-  getToolIdentityKey,
   isSystemOrCommercialToolId,
   isDebugToolSource,
   isTeamPluginSource,
@@ -69,6 +68,7 @@ import {
   assertTeamPluginSourceAccess,
   getRawPluginIdFromSystemToolId
 } from '../../../../../../plugin/teamPluginPolicy';
+import { refFromTool } from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
 
 type AgentRuntimeNode = RuntimeNodeItemType & {
   currentCost?: number;
@@ -138,6 +138,12 @@ export const getAgentRuntimeTools = async ({
       outputs: toolSetNode?.outputs || [],
       toolConfig: toolSetNode?.toolConfig
     };
+  };
+
+  const findToolByName = <T extends { name: string }>(toolList: T[], toolName: string) => {
+    return getToolNameCandidates(toolName)
+      .map((name) => toolList.find((item) => item.name === name))
+      .find(Boolean);
   };
 
   /**
@@ -278,12 +284,6 @@ export const getAgentRuntimeTools = async ({
       ...version,
       nodes: version.nodes
     };
-  };
-
-  const findToolByName = <T extends { name: string }>(toolList: T[], toolName: string) => {
-    return getToolNameCandidates(toolName)
-      .map((name) => toolList.find((item) => item.name === name))
-      .find(Boolean);
   };
 
   /**
@@ -672,16 +672,13 @@ export const getAgentRuntimeTools = async ({
         })();
 
         // toolset 展开后的子工具统一走 tool 执行；params 仍继承父工具配置。
-        const promptReference = runtimeSource
+        const promptRef = refFromTool({ id: tool.id, source: runtimeSource }) ?? undefined;
+        const promptReference = promptRef
           ? {
-              id: getToolIdentityKey(tool.id, runtimeSource),
-              legacyId: tool.id,
-              name: toolNode.name
+              name: toolNode.name,
+              ref: promptRef
             }
-          : {
-              id: tool.id,
-              name: toolNode.name
-            };
+          : undefined;
         const buildSubApp = (child: RuntimeNodeItemType, id = child.nodeId): SubAppInitType => {
           const runtimeId = getAgentRuntimeToolId({ pluginId: id, source: runtimeSource });
           const isHttpToolChild = Boolean(child.toolConfig?.httpTool);
@@ -703,6 +700,24 @@ export const getAgentRuntimeTools = async ({
             jsonSchema: child.jsonSchema,
             fixedInputBindings: filterToolConfiguredParams({ params: configuredParams, inputs })
           });
+          const childToolId =
+            child.toolConfig?.systemTool?.toolId ||
+            (child.toolConfig?.mcpTool && 'toolId' in child.toolConfig.mcpTool
+              ? child.toolConfig.mcpTool.toolId
+              : undefined) ||
+            (child.toolConfig?.httpTool && 'toolId' in child.toolConfig.httpTool
+              ? child.toolConfig.httpTool.toolId
+              : undefined) ||
+            child.pluginId;
+          const childPromptRef = childToolId
+            ? (refFromTool({ id: childToolId, source: runtimeSource }) ?? undefined)
+            : undefined;
+          const childPromptReference = childPromptRef
+            ? {
+                name: child.name,
+                ref: childPromptRef
+              }
+            : undefined;
 
           return {
             type: 'tool',
@@ -718,6 +733,7 @@ export const getAgentRuntimeTools = async ({
             inputs,
             agentGeneratedInputKeys: compiledRuntime.agentGeneratedKeys,
             promptReference,
+            ...(childPromptReference ? { childPromptReference } : {}),
             params: compiledRuntime.fixedInputBindings,
             requestSchema: compiledRuntime.modelTool
           };

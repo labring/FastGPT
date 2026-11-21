@@ -15,7 +15,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../../types/runtime';
 import { useUserContext } from './adapter/userContext';
-import { getAgentDatasetParams, getSubapps } from './sub/utils';
+import { getAgentDatasetParams, getSubapps, type RuntimePromptRefMeta } from './sub/utils';
 
 import { buildDefaultAgentSystemPrompt } from '../../../../ai/llm/agentLoop/interface';
 import {
@@ -41,7 +41,14 @@ import {
   runAgentLoopCoreWithSummary
 } from '../agentLoopCore/interface';
 import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
-import { replaceAgentPromptToolReferences } from './adapter/prompt';
+import { SubAppIds, getSystemToolInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
+import { AGENT_SANDBOX_TOOLSET_ID } from '@fastgpt/global/core/ai/sandbox/tools';
+import {
+  refFromBuiltin,
+  refFromSkill
+} from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
+import { AgentPromptRefRegistry } from '@fastgpt/global/core/workflow/node/agent/promptRef/registry';
+import type { AgentPromptRefEntry } from '@fastgpt/global/core/workflow/node/agent/promptRef/types';
 import { createWorkflowAgentLoopRuntime } from './adapter/runtime';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
 import { ensureAgentSandboxRuntime } from './sub/sandbox/prepare';
@@ -338,7 +345,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     const {
       completionTools: agentCompletionTools,
       subAppsMap: agentSubAppsMap,
-      promptToolReferenceInfoMap
+      promptToolRefEntries
     } = await getSubapps({
       tools: selectedTools,
       tmbId: runningUserInfo.tmbId,
@@ -348,11 +355,80 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       subAppsMap: agentSubAppsMap,
       lang
     });
+    // 统一注册 Tools + 已授权部署的 Skills + Builtins，一步完成 V2/旧格式双读解析。
+    const selectedSkillSourceMap = new Map(
+      effectiveSelectedSkills
+        .filter((skill) => !skill.error && skill.source)
+        .map((skill) => [skill.skillId, skill.source])
+    );
+    const seenSkillIds = new Set<string>();
+    const runtimeSkillEntries: AgentPromptRefEntry<RuntimePromptRefMeta>[] = [];
+    skillInfos.forEach((info) => {
+      if (!info.appId || seenSkillIds.has(info.appId)) return;
+      seenSkillIds.add(info.appId);
+      const authoritativeSource = info.appSource ?? selectedSkillSourceMap.get(info.appId);
+      const { ref, sourceInferred } = refFromSkill({
+        skillId: info.appId,
+        source: authoritativeSource
+      });
+      const displayName = info.appName || info.name;
+      if (!displayName) return;
+      runtimeSkillEntries.push({
+        ref,
+        displayName,
+        sourceInferred,
+        meta: { name: displayName }
+      });
+    });
+
+    const runtimeBuiltinEntries: AgentPromptRefEntry<RuntimePromptRefMeta>[] = [
+      SubAppIds.datasetSearch,
+      SubAppIds.readFiles,
+      ...(effectiveUseAgentSandbox ? [AGENT_SANDBOX_TOOLSET_ID] : [])
+    ].flatMap((builtinId) => {
+      const displayName =
+        getSubAppInfo(builtinId).name || getSystemToolInfo(builtinId, lang)?.name || '';
+      if (!displayName) return [];
+      return [
+        {
+          ref: refFromBuiltin(builtinId),
+          displayName,
+          meta: { name: displayName }
+        }
+      ];
+    });
+
+    const runtimeRefRegistry = AgentPromptRefRegistry.create([
+      ...promptToolRefEntries,
+      ...runtimeSkillEntries,
+      ...runtimeBuiltinEntries
+    ]);
+    const displayNameCount = new Map<string, number>();
+    runtimeRefRegistry.entries().forEach((entry) => {
+      displayNameCount.set(entry.displayName, (displayNameCount.get(entry.displayName) ?? 0) + 1);
+    });
     // 历史里的 system 只作为外部噪音过滤；最终 systemPrompt 在创建 runtime 后按工具能力构建。
-    // PromptEditor 保存的是工具 ID，进入主 Agent 前转换为具体名称，避免模型看到不可调用的 ID。
-    const formattedUserSystemPrompt = replaceAgentPromptToolReferences({
+    // PromptEditor 保存的是引用键，进入主 Agent 前转换为具体名称；同名不同源工具附带函数名消歧。
+    const formattedUserSystemPrompt = runtimeRefRegistry.renderForModel({
       text: systemPrompt,
-      resolveName: (id) => promptToolReferenceInfoMap.get(id) || getSubAppInfo(id).name || undefined
+      formatResolved: (entry) => {
+        if ((displayNameCount.get(entry.displayName) ?? 0) > 1) {
+          const modelToolNames = entry.meta.modelToolNames?.filter(Boolean) ?? [];
+          if (modelToolNames.length > 0) {
+            return `{{${entry.displayName} (${modelToolNames.join(', ')})}}`;
+          }
+          return `{{${entry.displayName} (${entry.canonicalKey})}}`;
+        }
+        return `{{${entry.displayName}}}`;
+      },
+      onDiagnostic: (event) => {
+        if (event.type === 'ambiguous') {
+          getLogger(LogCategories.MODULE.AI.AGENT).warn('[Agent] ambiguous prompt ref', {
+            rawKey: event.rawKey,
+            candidates: event.candidates.map((item) => item.canonicalKey)
+          });
+        }
+      }
     });
 
     // providerState 统一保存 provider 内部恢复信息。
