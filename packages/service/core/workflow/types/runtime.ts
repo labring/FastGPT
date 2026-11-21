@@ -92,6 +92,8 @@ export type ModuleDispatchProps<T> = WorkflowDispatchProps & {
   runtimeNodesMap: Map<string, RuntimeNodeItemType>;
   runtimeEdges: RuntimeEdgeItemType[];
   params: T;
+  /** 单步运行使用 test 模式的副作用约定，节点仍需识别用户手填的调试值。 */
+  isDebugMode?: boolean;
 
   usagePush: (usages: ChatNodeUsageType[]) => void;
   nodeSummary: NodeSummaryCollector;

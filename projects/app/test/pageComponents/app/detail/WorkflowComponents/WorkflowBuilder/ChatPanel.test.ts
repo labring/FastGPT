@@ -130,7 +130,7 @@ vi.mock('@/pageComponents/app/detail/WorkflowComponents/context/workflowInitCont
 });
 vi.mock('@/pageComponents/app/detail/WorkflowComponents/adapters/document', () => ({
   appDetailToWorkflowDocumentApp: vi.fn(),
-  reactFlowStateToWorkflowDocument: vi.fn()
+  workflowRuntimeToWorkflowDocument: vi.fn()
 }));
 vi.mock('@chakra-ui/react', () => {
   const Container = ({ children }: { children: React.ReactNode }) =>

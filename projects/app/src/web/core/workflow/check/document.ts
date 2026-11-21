@@ -11,7 +11,8 @@ import {
   type WorkflowDiagnostic
 } from '@fastgpt/workflow-core/domain/diagnostic';
 import { decompileStoreEdge } from '@fastgpt/workflow-core/edge/compiler';
-import type { Edge, Node } from 'reactflow';
+import { decodeWorkflowNodeReferences } from '@fastgpt/workflow-core/reference/codec';
+import type { Edge, Node } from '@xyflow/react';
 
 /**
  * 无损投影校验快照：保留失效引用和资源标记，不复用保存时的清理流程，不修改画布。
@@ -23,19 +24,21 @@ export const createWorkflowCheckDocument = ({
   chatConfig = {}
 }: {
   nodes: Node<FlowNodeItemType, string | undefined>[];
-  edges: Edge[];
+  edges: Pick<Edge, 'source' | 'target' | 'sourceHandle' | 'targetHandle'>[];
   chatConfig?: AppChatConfigType;
 }) => {
   const document: WorkflowDocument = {
     schemaVersion: WORKFLOW_DOCUMENT_SCHEMA_VERSION,
     app: {},
     chatConfig,
-    nodes: nodes.map(({ data }) => ({
-      ...data,
-      name: data.name ?? '',
-      // 输出条件包含 UI 函数，不属于领域数据；值与引用原样交给 Core 校验。
-      outputs: data.outputs.map(({ invalidCondition: _, ...output }) => output)
-    })),
+    // 先剥离画布回调，再将存储引用解码为 Core 校验使用的文档选择器。
+    nodes: decodeWorkflowNodeReferences(
+      nodes.map(({ data: { isShowInContext: _isShowInContext, ...data } }) => ({
+        ...data,
+        name: data.name ?? '',
+        outputs: data.outputs.map(({ invalidCondition: _, ...output }) => output)
+      }))
+    ),
     executionEdges: []
   };
   const diagnostics: WorkflowDiagnostic[] = [];

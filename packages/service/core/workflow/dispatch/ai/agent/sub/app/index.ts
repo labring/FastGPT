@@ -8,9 +8,9 @@ import { runWorkflow } from '../../../../../../../core/workflow/dispatch';
 import {
   getWorkflowEntryNodeIds,
   rewriteNodeOutputByHistories,
-  storeEdges2RuntimeEdges,
-  storeNodes2RuntimeNodes
+  storeEdges2RuntimeEdges
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import {
   FlowNodeInputTypeEnum,

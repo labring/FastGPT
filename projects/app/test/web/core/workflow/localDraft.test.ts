@@ -1,191 +1,139 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { JSDOM } from 'jsdom';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   checkWorkflowLocalDraft,
   getWorkflowLocalDraftDetailRoute,
   readWorkflowLocalDraft,
   removeWorkflowLocalDraft,
   saveWorkflowLocalDraft,
-  WORKFLOW_LOCAL_DRAFT_STORAGE_KEY
+  WORKFLOW_LOCAL_DRAFT_STORAGE_KEY,
+  type WorkflowLocalDraft
 } from '../../../../src/web/core/workflow/localDraft/storage';
 
-const storageMap = new Map<string, string>();
-const localStorageMock = {
-  getItem: vi.fn((key: string) => storageMap.get(key) ?? null),
-  setItem: vi.fn((key: string, value: string) => {
-    storageMap.set(key, value);
-  }),
-  removeItem: vi.fn((key: string) => {
-    storageMap.delete(key);
-  })
-};
-
-const draftData = {
-  nodes: [{ nodeId: 'node-1' }] as any,
-  edges: [] as any,
-  chatConfig: { welcomeText: 'hello' } as any
+const scope = { appId: 'app-1', tmbId: 'tmb-a' };
+const draftData: WorkflowLocalDraft['data'] = {
+  nodes: [
+    {
+      nodeId: 'node-1',
+      name: 'Start',
+      flowNodeType: FlowNodeTypeEnum.workflowStart,
+      inputs: [],
+      outputs: []
+    }
+  ],
+  edges: [],
+  chatConfig: { welcomeText: 'hello' }
 };
 
 describe('workflow local draft', () => {
+  let dom: JSDOM;
+
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.clearAllMocks();
-    storageMap.clear();
-    vi.stubGlobal('window', {
-      localStorage: localStorageMock,
-      location: {
-        pathname: '/app/detail',
-        search: '?appId=app-1&currentTab=appEdit'
-      }
-    });
     vi.setSystemTime(new Date('2026-05-11T00:00:00.000Z'));
+    dom = new JSDOM('', { url: 'https://example.test/app/detail?appId=another-app' });
+    vi.stubGlobal('window', dom.window);
   });
 
   afterEach(() => {
+    dom.window.close();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
     vi.useRealTimers();
   });
 
-  it('should build canonical app detail route from draft appId', () => {
+  it('builds a canonical detail route from the draft app ID', () => {
     expect(getWorkflowLocalDraftDetailRoute('app-1')).toBe('/app/detail?appId=app-1');
     expect(getWorkflowLocalDraftDetailRoute('')).toBe('');
     expect(getWorkflowLocalDraftDetailRoute('app-1&currentTab=logs')).toBe('');
   });
 
-  it('should save and match draft with tmbId', () => {
-    const saved = saveWorkflowLocalDraft({
-      appId: 'app-1',
-      tmbId: 'tmb-a',
-      data: draftData
+  it('matches a saved draft by member regardless of the current route', () => {
+    const saved = saveWorkflowLocalDraft({ ...scope, data: draftData });
+
+    expect(saved).toMatchObject({ ...scope, data: draftData });
+    expect(saved).not.toHaveProperty('username');
+    expect(saved).not.toHaveProperty('teamId');
+    expect(saved).not.toHaveProperty('route');
+    expect(checkWorkflowLocalDraft(scope.tmbId)).toEqual({
+      status: 'matched',
+      draft: saved,
+      route: '/app/detail?appId=app-1'
     });
-
-    expect(saved).toBe(true);
-
-    const result = checkWorkflowLocalDraft();
-
-    expect(result.status).toBe('matched');
-    if (result.status === 'matched') {
-      expect(result.draft.appId).toBe('app-1');
-      expect(result.draft.tmbId).toBe('tmb-a');
-      expect(result.draft).not.toHaveProperty('username');
-      expect(result.draft).not.toHaveProperty('teamId');
-      expect(result.draft).not.toHaveProperty('route');
-      expect(result.route).toBe('/app/detail?appId=app-1');
-    }
   });
 
-  it('should clear stored draft without tmbId', () => {
-    saveWorkflowLocalDraft({
-      appId: 'app-1',
-      tmbId: 'tmb-a',
-      data: draftData
-    });
-    const savedDraft = JSON.parse(storageMap.get(WORKFLOW_LOCAL_DRAFT_STORAGE_KEY)!);
-    delete savedDraft.tmbId;
-    storageMap.set(WORKFLOW_LOCAL_DRAFT_STORAGE_KEY, JSON.stringify(savedDraft));
+  it('removes a legacy draft without a member ID', () => {
+    const saved = saveWorkflowLocalDraft({ ...scope, data: draftData });
+    window.localStorage.clear();
+    window.localStorage.setItem(
+      WORKFLOW_LOCAL_DRAFT_STORAGE_KEY,
+      JSON.stringify({ ...saved, tmbId: undefined })
+    );
 
-    const draft = readWorkflowLocalDraft();
-
-    expect(draft).toBeNull();
-    expect(storageMap.has(WORKFLOW_LOCAL_DRAFT_STORAGE_KEY)).toBe(false);
-  });
-
-  it('should match draft without checking the login fallback route', () => {
-    saveWorkflowLocalDraft({
-      appId: 'app-1',
-      tmbId: 'tmb-a',
-      data: draftData
-    });
-
-    const matchedResult = checkWorkflowLocalDraft();
-    expect(matchedResult.status).toBe('matched');
-  });
-
-  it('should replace stale same-app draft with the latest write', () => {
-    saveWorkflowLocalDraft({
-      appId: 'app-1',
-      tmbId: 'tmb-a',
-      data: draftData
-    });
-
-    const saved = saveWorkflowLocalDraft({
-      appId: 'app-1',
-      tmbId: 'tmb-a',
-      data: {
-        ...draftData,
-        nodes: [{ nodeId: 'node-latest' }] as any
-      }
-    });
-
-    expect(saved).toBe(true);
-    expect(readWorkflowLocalDraft()?.data.nodes[0]?.nodeId).toBe('node-latest');
-  });
-
-  it('should clear stale same-app draft when the latest write is unavailable', () => {
-    saveWorkflowLocalDraft({
-      appId: 'app-1',
-      tmbId: 'tmb-a',
-      data: draftData
-    });
-
-    const saved = saveWorkflowLocalDraft({
-      appId: 'app-1',
-      tmbId: 'tmb-a',
-      data: {
-        ...draftData,
-        nodes: []
-      }
-    });
-
-    expect(saved).toBe(false);
     expect(readWorkflowLocalDraft()).toBeNull();
+    expect(window.localStorage.getItem(WORKFLOW_LOCAL_DRAFT_STORAGE_KEY)).toBeNull();
   });
 
-  it('should keep another app draft when an invalid write belongs to a different app', () => {
-    saveWorkflowLocalDraft({
-      appId: 'app-1',
-      tmbId: 'tmb-a',
-      data: draftData
-    });
+  it('replaces the previous same-app draft when an edit removes every node', () => {
+    saveWorkflowLocalDraft({ ...scope, data: draftData });
+    const empty = saveWorkflowLocalDraft({ ...scope, data: { ...draftData, nodes: [] } });
 
-    const saved = saveWorkflowLocalDraft({
-      appId: 'app-2',
-      tmbId: 'tmb-a',
-      data: {
-        ...draftData,
-        nodes: []
-      }
-    });
-
-    expect(saved).toBe(false);
-    expect(readWorkflowLocalDraft()?.appId).toBe('app-1');
+    expect(empty?.data.nodes).toEqual([]);
+    expect(readWorkflowLocalDraft(scope)).toEqual(empty);
   });
 
-  it('should clear malformed or expired drafts', () => {
-    storageMap.set(WORKFLOW_LOCAL_DRAFT_STORAGE_KEY, '{bad-json');
+  it('keeps the previous draft when replacing storage fails', () => {
+    const previous = saveWorkflowLocalDraft({ ...scope, data: draftData });
+    vi.spyOn(dom.window.Storage.prototype, 'setItem').mockImplementationOnce(() => {
+      throw new Error('quota exceeded');
+    });
+
+    const saved = saveWorkflowLocalDraft({ ...scope, data: { ...draftData, nodes: [] } });
+
+    expect(saved).toBeUndefined();
+    expect(readWorkflowLocalDraft(scope)).toEqual(previous);
+  });
+
+  it('stores drafts independently by app and member', () => {
+    const otherApp = { ...scope, appId: 'app-2' };
+    const otherMember = { ...scope, tmbId: 'tmb-b' };
+    const first = saveWorkflowLocalDraft({ ...scope, data: draftData });
+    const second = saveWorkflowLocalDraft({ ...otherApp, data: { ...draftData, nodes: [] } });
+    const third = saveWorkflowLocalDraft({ ...otherMember, data: draftData });
+
+    expect(readWorkflowLocalDraft(scope)).toEqual(first);
+    expect(readWorkflowLocalDraft(otherApp)).toEqual(second);
+    expect(readWorkflowLocalDraft(otherMember)).toEqual(third);
+  });
+
+  it('keeps leave-page backups available to the editor without restoring them on login', () => {
+    const saved = saveWorkflowLocalDraft({ ...scope, data: draftData, restoreAfterLogin: false });
+
+    expect(checkWorkflowLocalDraft(scope.tmbId)).toEqual({ status: 'empty' });
+    expect(readWorkflowLocalDraft(scope)).toEqual(saved);
+  });
+
+  it('clears malformed and expired drafts', () => {
+    window.localStorage.setItem(WORKFLOW_LOCAL_DRAFT_STORAGE_KEY, '{bad-json');
     expect(readWorkflowLocalDraft()).toBeNull();
-    expect(storageMap.has(WORKFLOW_LOCAL_DRAFT_STORAGE_KEY)).toBe(false);
+    expect(window.localStorage.length).toBe(0);
 
-    saveWorkflowLocalDraft({
-      appId: 'app-1',
-      tmbId: 'tmb-a',
-      data: draftData
-    });
+    saveWorkflowLocalDraft({ ...scope, data: draftData });
     vi.setSystemTime(new Date('2026-05-19T00:00:01.000Z'));
 
-    const result = checkWorkflowLocalDraft();
-
-    expect(result.status).toBe('expired');
-    expect(readWorkflowLocalDraft()).toBeNull();
+    expect(checkWorkflowLocalDraft(scope.tmbId)).toEqual({ status: 'empty' });
+    expect(window.localStorage.length).toBe(0);
   });
 
-  it('should remove current draft explicitly', () => {
-    saveWorkflowLocalDraft({
-      appId: 'app-1',
-      tmbId: 'tmb-a',
-      data: draftData
-    });
+  it('removes only the specified draft snapshot', () => {
+    const oldDraft = saveWorkflowLocalDraft({ ...scope, data: draftData })!;
+    const current = saveWorkflowLocalDraft({ ...scope, data: { ...draftData, nodes: [] } })!;
 
-    removeWorkflowLocalDraft();
+    removeWorkflowLocalDraft(oldDraft);
+    expect(readWorkflowLocalDraft(scope)).toEqual(current);
 
-    expect(readWorkflowLocalDraft()).toBeNull();
+    removeWorkflowLocalDraft(current);
+    expect(readWorkflowLocalDraft(scope)).toBeNull();
   });
 });

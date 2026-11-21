@@ -1,8 +1,12 @@
-import { WorkflowCheckIssueCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
+import {
+  WorkflowCheckIssueCodeEnum,
+  WorkflowDiagnosticCodeEnum
+} from '@fastgpt/global/core/workflow/diagnostic/constants';
+import { WorkflowIssueCode } from '@fastgpt/global/core/workflow/editor/issueCode';
+import { getWorkflowInputNameParams } from '@fastgpt/global/common/workflow/editor/utils';
 import type { WorkflowCheckIssue, FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { TFunction } from 'next-i18next';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { type PluginStatusType, PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import appErrList from '@fastgpt/global/common/error/code/app';
 import pluginErrList from '@fastgpt/global/common/error/code/plugin';
@@ -12,6 +16,15 @@ import { resolvePluginDataErrorIssueCode } from './error';
 import type { WorkflowRuleIssue } from '@/web/core/workflow/type';
 
 type WorkflowCheckMessageParams = { inputName?: string; model?: string; nodeName?: string };
+
+/** 字段名只翻译显式提供的模板键。 */
+export const getWorkflowInputName = (
+  params: { inputName?: string; inputNameKey?: string } | undefined,
+  t?: TFunction
+) => {
+  const key = params?.inputNameKey;
+  return params?.inputName ?? (key && (t ? t(key as ParseKeys, { defaultValue: key }) : key));
+};
 
 const fieldLabelKeys = {
   variable: i18nT('common:core.workflow.variable'),
@@ -99,14 +112,15 @@ const workflowCheckMessageKeys = {
 type WorkflowCheckMessageCode = keyof typeof workflowCheckMessageKeys;
 
 /** 只声明问题代码与展示文案不一致的别名，其他代码直接使用对应文案。 */
-const WORKFLOW_CHECK_MESSAGE_ALIASES: Partial<
-  Record<WorkflowCheckIssue['code'], WorkflowCheckMessageCode>
-> = {
+const WORKFLOW_CHECK_MESSAGE_ALIASES: Partial<Record<string, WorkflowCheckMessageCode>> = {
   [WorkflowCheckIssueCodeEnum.isolatedNode]: WorkflowCheckIssueCodeEnum.noUpstream,
   [WorkflowCheckIssueCodeEnum.unreachableFromStart]: WorkflowCheckIssueCodeEnum.noUpstream,
+  [WorkflowDiagnosticCodeEnum.nodeNotReachable]: WorkflowCheckIssueCodeEnum.noUpstream,
   [WorkflowCheckIssueCodeEnum.toolWaitingConfig]: WorkflowCheckIssueCodeEnum.toolInactive,
   [WorkflowCheckIssueCodeEnum.toolOffline]: WorkflowCheckIssueCodeEnum.toolMissing,
   [WorkflowCheckIssueCodeEnum.loopRunMissingBreak]: WorkflowCheckIssueCodeEnum.ifElseIncomplete,
+  [WorkflowIssueCode.sandboxNotConfigured]: WorkflowCheckIssueCodeEnum.sandboxSystemUnavailable,
+  [WorkflowIssueCode.sandboxPlanNotSupported]: WorkflowCheckIssueCodeEnum.sandboxPlanUnavailable,
   [WorkflowCheckIssueCodeEnum.variableUpdateIncomplete]:
     WorkflowCheckIssueCodeEnum.codeInputIncomplete
 };
@@ -270,27 +284,15 @@ export const formatWorkflowRuleIssue = ({
 }): WorkflowCheckIssue => {
   const translateLabel = (label: string) => (t ? t(label as ParseKeys) : label);
 
-  /** 优先取 label，空则取 debugLabel 或槽位默认标签，并走 i18n 翻译，避免展示 quoteQA 等内部 key。 */
-  const getInputLabel = (input: FlowNodeInputItemType, fallbackLabel?: string) => {
-    const nonEmptyLabel = typeof input.label === 'string' && input.label ? input.label : undefined;
-    const nonEmptyDebugLabel =
-      typeof input.debugLabel === 'string' && input.debugLabel ? input.debugLabel : undefined;
-    const rawLabel = nonEmptyLabel ?? nonEmptyDebugLabel ?? fallbackLabel ?? input.key;
-
-    return rawLabel ? translateLabel(rawLabel) : rawLabel;
-  };
-
   const inputName = (() => {
     if (issue.fieldLabel) {
       return translateLabel(fieldLabelKeys[issue.fieldLabel]);
     }
-    if (issue.input) {
-      return getInputLabel(issue.input, issue.fallbackLabel);
-    }
-    if (issue.fallbackLabel) {
-      return translateLabel(issue.fallbackLabel);
-    }
-    return undefined;
+    return (
+      getWorkflowInputName(issue.params, t) ??
+      getWorkflowInputName(getWorkflowInputNameParams({ node, input: issue.input }), t) ??
+      (issue.fallbackLabel ? translateLabel(issue.fallbackLabel) : issue.input?.key)
+    );
   })();
 
   return {
@@ -300,6 +302,7 @@ export const formatWorkflowRuleIssue = ({
     level: issue.level ?? 'error',
     code: issue.code,
     inputKey: node ? issue.inputKey : inputName,
+    params: issue.params,
     message:
       issue.message ??
       getWorkflowCheckIssueMessage({

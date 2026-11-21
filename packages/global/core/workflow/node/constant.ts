@@ -187,11 +187,20 @@ export enum FlowNodeTypeEnum {
   runApp = 'app'
 }
 
+type FlowValueTypeLabel = (t: (key: string) => string) => string;
+
+/** 静态声明可翻译类型名，同时保留配置和导出的原始标签。 */
+const translatedFlowValueTypeLabel = (translateLabel: FlowValueTypeLabel) => ({
+  label: translateLabel(i18nT),
+  translateLabel
+});
+
 // node IO value type
 export const FlowValueTypeMap: Record<
   WorkflowIOValueTypeEnum,
   {
     label: string;
+    translateLabel?: FlowValueTypeLabel;
     value: WorkflowIOValueTypeEnum;
     abandon?: boolean;
   }
@@ -237,19 +246,19 @@ export const FlowValueTypeMap: Record<
     value: WorkflowIOValueTypeEnum.any
   },
   [WorkflowIOValueTypeEnum.chatHistory]: {
-    label: i18nT('common:core.chat.History'),
+    ...translatedFlowValueTypeLabel((t) => t(i18nT('common:core.chat.History'))),
     value: WorkflowIOValueTypeEnum.chatHistory
   },
   [WorkflowIOValueTypeEnum.datasetQuote]: {
-    label: i18nT('common:core.workflow.Dataset quote'),
+    ...translatedFlowValueTypeLabel((t) => t(i18nT('common:core.workflow.Dataset quote'))),
     value: WorkflowIOValueTypeEnum.datasetQuote
   },
   [WorkflowIOValueTypeEnum.selectDataset]: {
-    label: i18nT('common:core.chat.Select dataset'),
+    ...translatedFlowValueTypeLabel((t) => t(i18nT('common:core.chat.Select dataset'))),
     value: WorkflowIOValueTypeEnum.selectDataset
   },
   [WorkflowIOValueTypeEnum.dynamic]: {
-    label: i18nT('common:core.workflow.dynamic_input'),
+    ...translatedFlowValueTypeLabel((t) => t(i18nT('common:core.workflow.dynamic_input'))),
     value: WorkflowIOValueTypeEnum.dynamic
   },
   [WorkflowIOValueTypeEnum.selectApp]: {
@@ -262,7 +271,7 @@ export const FlowValueTypeMap: Record<
 export const getFlowValueTypeMeta = (
   valueType?: WorkflowIOValueTypeEnum | string | null
 ): (typeof FlowValueTypeMap)[WorkflowIOValueTypeEnum] => {
-  if (valueType == null || valueType === '') {
+  if (valueType === null || valueType === undefined || valueType === '') {
     return FlowValueTypeMap[WorkflowIOValueTypeEnum.any];
   }
   const meta = FlowValueTypeMap[valueType as WorkflowIOValueTypeEnum];

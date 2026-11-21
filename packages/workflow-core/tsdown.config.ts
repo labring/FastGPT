@@ -17,6 +17,7 @@ export default defineConfig({
     'edge/parser': 'src/edge/parser.ts',
     'edge/validation': 'src/edge/validation.ts',
     'node/removal': 'src/node/removal.ts',
+    'reference/codec': 'src/reference/codec.ts',
     'reference/query': 'src/reference/query.ts',
     'reference/type': 'src/reference/type.ts',
     'reference/validation': 'src/reference/validation.ts',

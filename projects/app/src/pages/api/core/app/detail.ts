@@ -34,7 +34,8 @@ async function handler(req: NextApiRequest): Promise<GetAppDetailResponseType> {
       intro: app.intro ?? '',
       nodes: [],
       edges: [],
-      chatConfig: undefined
+      chatConfig: undefined,
+      referenceSnapshots: undefined
     });
   }
 
@@ -55,7 +56,8 @@ async function handler(req: NextApiRequest): Promise<GetAppDetailResponseType> {
     intro: app.intro ?? '',
     nodes: workflow.nodes,
     edges: workflow.edges,
-    chatConfig: workflow.chatConfig
+    chatConfig: workflow.chatConfig,
+    referenceSnapshots: workflow.referenceSnapshots
   });
 }
 

@@ -66,6 +66,7 @@ export const LoopRunStartNode: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.any
     },
     {
+      // Core/CLI 直接从模板创建输出，编辑器 Runtime 再按当前循环模式收窄。
       id: NodeOutputKeyEnum.currentIteration,
       key: NodeOutputKeyEnum.currentIteration,
       label: i18nT('workflow:current_iteration'),

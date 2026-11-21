@@ -13,9 +13,9 @@ import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import {
   formatVariableValByType,
-  getReferenceVariableValue,
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import { getReferenceVariableValue } from '@fastgpt/global/common/workflow/runtime';
 import json5 from 'json5';
 import { JSONPath } from 'jsonpath-plus';
 import { getSecretValue } from '../../../../common/secret/utils';

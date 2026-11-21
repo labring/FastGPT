@@ -5,6 +5,7 @@ import type { EditorVariableLabelPickerType } from '../../Textarea/PromptEditor/
 import type { EditorVariablePickerType } from '@fastgpt/global/core/workflow/type/io';
 import Editor from './Editor';
 import { editorStateToText } from '../../Textarea/PromptEditor/utils';
+import { VariableLabelContext } from '../../Textarea/PromptEditor/context';
 
 const HttpInput = ({
   variables = [],
@@ -45,7 +46,7 @@ const HttpInput = ({
   );
 
   return (
-    <>
+    <VariableLabelContext.Provider value={variableLabels}>
       <Editor
         variables={variables}
         variableLabels={variableLabels}
@@ -58,7 +59,7 @@ const HttpInput = ({
         tabIndex={tabIndex}
         resetOnValueChange={resetOnValueChange}
       />
-    </>
+    </VariableLabelContext.Provider>
   );
 };
 export default React.memo(HttpInput);

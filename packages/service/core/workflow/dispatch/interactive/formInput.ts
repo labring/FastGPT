@@ -16,10 +16,11 @@ import { checkOutputTextModeration } from '../../../plugin/moderation/output';
 import { getNodeErrResponse } from '../utils';
 import { getDispatchModerationContext } from '../utils/runtime';
 import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
+import { getWorkflowReferenceItems } from '@fastgpt/global/common/workflow/reference';
 import { getWorkflowContext } from '../context';
 import type { WorkflowFileRegister } from '../context/file';
 import { getModuleFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
-import { resolveDynamicOptionStrings } from './dynamicOptions';
+import { createDynamicOptionResolver } from './dynamicOptions';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.INTERACTIVE);
@@ -77,21 +78,15 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
   const {
     histories,
     node,
-    runtimeNodesMap,
     params: { description, userInputForms },
     query,
     lastInteractive
   } = props;
-  const { variableContext: variableState } = getWorkflowContext();
   const { isEntry } = node;
 
   // Interactive node is not the entry node, return interactive result
   if (!isEntry || lastInteractive?.type !== 'userInput') {
-    let runtimeVariables: Record<string, unknown> | undefined;
-    const getRuntimeVariables = () => {
-      runtimeVariables ??= variableState?.toRuntimeRecord?.() ?? {};
-      return runtimeVariables;
-    };
+    const resolveOptions = createDynamicOptionResolver(props);
 
     const resolvedInputForms: UserInputFormItemType[] = [];
     for (const item of userInputForms) {
@@ -100,11 +95,7 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
         continue;
       }
 
-      const list = resolveDynamicOptionStrings({
-        value: item.listReference,
-        runtimeNodesMap,
-        variables: getRuntimeVariables()
-      }).map((value) => ({
+      const list = resolveOptions(item.listReference).map((value) => ({
         label: value,
         value
       }));
@@ -121,6 +112,7 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
       resolvedInputForms.push({
         ...item,
         defaultValue: undefined,
+        listReference: getWorkflowReferenceItems(item.listReference),
         list
       });
     }

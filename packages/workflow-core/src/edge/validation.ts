@@ -12,21 +12,27 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { isToolWorkflowConnectionAllowed } from '@fastgpt/global/common/workflow/connection';
+import {
+  isToolWorkflowConnectionAllowed,
+  normalizeWorkflowSourceHandle,
+  normalizeWorkflowTargetHandle
+} from '@fastgpt/global/common/workflow/connection';
 import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
-import { nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
+import {
+  areWorkflowNodesInSameScope,
+  nodeInputIsReference
+} from '@fastgpt/global/common/workflow/reference';
 import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
 import { getIfElseBranchHandleKey } from '@fastgpt/global/common/workflow/condition';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { getDocumentNode } from '../nesting/service';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
+import { buildNodeTemplateContext } from '@fastgpt/global/common/workflow/editor/utils';
 import {
-  buildNodeTemplateContext,
   getNodeContainerCheckError,
   isTemplateVisible
 } from '@fastgpt/global/core/workflow/template/context';
-import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import {
   NODE_TYPES_WITHOUT_NEXT_PORT,
   NODE_TYPES_WITHOUT_TARGET_PORT,
@@ -236,19 +242,18 @@ export const checkExecutionConnection = ({
     });
     const compiled = assertExecutionEdgeRules({ document, edge, graphEdges, getNodeById });
 
-    // 普通入口的历史左右 handle 等价；工具出口 ID 全局相同，必须同时比较 source 节点。
+    // 历史普通端口按投影后的方向判重，同时保留真实命名出口和工具端口的区别。
     const duplicated =
       checkDuplicate &&
       edges.some((item) => {
         if (isExecutionEdge(item)) return executionEdgesEqual(item, edge);
-        const existing = item;
+        if (item.source !== compiled.source || item.target !== compiled.target) return false;
+
         return (
-          existing.source === compiled.source &&
-          existing.target === compiled.target &&
-          existing.sourceHandle === compiled.sourceHandle &&
-          (existing.targetHandle === compiled.targetHandle ||
-            (edge.target.kind === 'target' &&
-              existing.targetHandle === getHandleId(existing.target, 'target', 'right')))
+          normalizeWorkflowSourceHandle(item.sourceHandle ?? '', sourceNode) ===
+            compiled.sourceHandle &&
+          normalizeWorkflowTargetHandle(item.targetHandle ?? '', item.target) ===
+            compiled.targetHandle
         );
       });
     if (duplicated) {
@@ -286,7 +291,7 @@ const assertExecutionEdgeRules = ({
       }
     ]);
   }
-  if (sourceNode.parentNodeId !== targetNode.parentNodeId) {
+  if (!areWorkflowNodesInSameScope(sourceNode, targetNode)) {
     throw new WorkflowCommandError([
       { code: WorkflowDiagnosticCodeEnum.edgeCrossScope, severity: 'error', params: { edge } }
     ]);

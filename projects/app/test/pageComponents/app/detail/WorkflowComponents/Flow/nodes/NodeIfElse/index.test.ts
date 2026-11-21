@@ -4,8 +4,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import type { ReactElement, ReactNode } from 'react';
 
 const mocks = vi.hoisted(() => ({
-  onChangeNode: vi.fn(),
-  draggableDisabledStates: [] as boolean[]
+  draggableDisabledStates: [] as boolean[],
+  ifElseList: [] as unknown[]
 }));
 
 vi.mock('react', async () => {
@@ -17,9 +17,6 @@ vi.mock('react', async () => {
     useMemo: <T>(factory: () => T) => factory()
   };
 });
-vi.mock('reactflow', () => ({
-  Position: { Right: 'right' }
-}));
 vi.mock(
   '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/Handle/useNodeHandleDrag',
   () => ({
@@ -33,13 +30,36 @@ vi.mock(
 vi.mock('next-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key })
 }));
-vi.mock('@chakra-ui/react', () => {
+vi.mock('@chakra-ui/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@chakra-ui/react')>();
   const Container = ({ children }: { children?: ReactNode }) => children;
-  return { Box: Container, Button: Container, Flex: Container };
+  return {
+    ...actual,
+    Box: Container,
+    Button: Container,
+    Flex: Container
+  };
 });
-vi.mock('use-context-selector', () => ({
-  useContextSelector: (_context: unknown, selector: (value: any) => unknown) =>
-    selector({ onChangeNode: mocks.onChangeNode })
+vi.mock('@/web/core/workflow/editor/react/useField', () => ({
+  useField: (_query: unknown, selector?: (field: any) => unknown) =>
+    selector
+      ? selector({ data: { kind: 'input', input: { value: mocks.ifElseList } } })
+      : { value: mocks.ifElseList }
+}));
+vi.mock('@/web/core/workflow/editor/react/useNode', () => ({
+  useNodeActions: () => undefined
+}));
+vi.mock('@/web/core/workflow/editor/react/useWorkflow', () => ({
+  useWorkflowActions: () => ({ getEdges: vi.fn() })
+}));
+vi.mock(
+  '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/useWorkflowDocument',
+  () => ({
+    useWorkflowSnapshotGetter: () => () => null
+  })
+);
+vi.mock('@/web/core/workflow/editor/WorkflowFieldScope', () => ({
+  WorkflowFieldScope: ({ children }: { children?: ReactNode }) => children
 }));
 vi.mock('@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/NodeCard', () => ({
   default: ({ children }: { children?: ReactNode }) => children
@@ -71,9 +91,6 @@ vi.mock('@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeIfElse/Li
   default: () => null
 }));
 vi.mock('@fastgpt/web/components/common/Icon', () => ({ default: 'span' }));
-vi.mock('@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext', () => ({
-  WorkflowActionsContext: {}
-}));
 
 import NodeIfElse from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeIfElse';
 
@@ -85,6 +102,11 @@ const renderNode = ({
   condition?: string;
 } = {}) => {
   const Component = (NodeIfElse as unknown as { type: (props: any) => ReactElement }).type;
+  mocks.ifElseList = branchIds.map((branchId) => ({
+    branchId,
+    condition: 'AND',
+    list: [{ condition, valueType: 'input' }]
+  }));
 
   const result = Component({
     data: {
@@ -92,11 +114,7 @@ const renderNode = ({
       inputs: [
         {
           key: NodeInputKeyEnum.ifElseList,
-          value: branchIds.map((branchId) => ({
-            branchId,
-            condition: 'AND',
-            list: [{ condition, valueType: 'input' }]
-          }))
+          value: mocks.ifElseList
         }
       ]
     },

@@ -69,20 +69,28 @@ describe('compileExecutionEdge', () => {
     expect(decompileStoreEdge(stored, document)).toEqual(edge);
   });
 
-  it('imports historical right target handles and normalizes them on export', () => {
-    const stored = {
-      source: 'start',
-      sourceHandle: 'start-source-right',
-      target: 'ai',
-      targetHandle: 'ai-target-right'
-    };
-    const edge = decompileStoreEdge(stored, document);
-    expect(edge).toEqual(document.executionEdges[0]);
-    expect(compileExecutionEdge(edge, document)).toEqual({
-      ...stored,
-      targetHandle: 'ai-target-left'
-    });
-  });
+  it.each([
+    ['left', 'right'],
+    ['top', 'bottom'],
+    ['bottom', 'top']
+  ])(
+    'imports an ordinary edge with historical %s source and %s target handles',
+    (sourceSide, targetSide) => {
+      const stored = {
+        source: 'start',
+        sourceHandle: `start-source-${sourceSide}`,
+        target: 'ai',
+        targetHandle: `ai-target-${targetSide}`
+      };
+      const edge = decompileStoreEdge(stored, document);
+      expect(edge).toEqual(document.executionEdges[0]);
+      expect(compileExecutionEdge(edge, document)).toEqual({
+        ...stored,
+        sourceHandle: 'start-source-right',
+        targetHandle: 'ai-target-left'
+      });
+    }
+  );
 
   it('rejects missing nodes and unsupported handles', () => {
     expect(() =>
