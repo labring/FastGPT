@@ -67,6 +67,7 @@ export type ErrorHttpStatus =
   | 422
   | 429
   | 500
+  | 501
   | 502
   | 503
   | 504;

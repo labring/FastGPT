@@ -1,0 +1,675 @@
+import { describe, expect, it } from 'vitest';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { defaultProvider } from '@fastgpt/global/core/ai/model/provider';
+import { computedMaxToken } from '@fastgpt/service/core/ai/utils';
+import {
+  classifyChannelModels,
+  createBlankModelData as createChannelBlankModelData
+} from '@fastgpt/service/core/ai/model/importFromChannelUtils';
+import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
+import type {
+  ApplyChangesBody,
+  ModelConfigListItem,
+  PreviewImportFromChannelResponse
+} from '@fastgpt/global/openapi/core/ai/model/api';
+import {
+  buildBlankChannelModelData,
+  buildChannelImportOperation,
+  filterChannelImportPreviewItems,
+  getChannelImportCandidate,
+  getBlankChannelImportDraft
+} from '@/pageComponents/model/channelImport';
+import {
+  resolveModelTestTarget,
+  resolveRowSelection
+} from '@/pageComponents/model/ImportModelFromChannelModal/ModelPreviewStep';
+
+type ImportRow = PreviewImportFromChannelResponse['items'][number];
+type ImportItem = ImportRow['candidates'][number];
+
+const createModelData = (type: ModelTypeEnum): AIModelDocumentDataType => {
+  const base = {
+    provider: 'provider',
+    model: 'model',
+    name: 'Model',
+    scope: ModelScopeEnum.system,
+    charsPointsPrice: 0,
+    isActive: false
+  };
+
+  if (type === ModelTypeEnum.llm) {
+    return {
+      ...base,
+      type,
+      config: {
+        maxContext: 64000,
+        maxResponse: 16000,
+        quoteMaxToken: 0,
+        maxTemperature: undefined
+      }
+    };
+  }
+  if (type === ModelTypeEnum.embedding) {
+    return {
+      ...base,
+      type,
+      config: { defaultToken: 512, maxToken: 8192, weight: 0, batchSize: 1 }
+    };
+  }
+  if (type === ModelTypeEnum.rerank) {
+    return { ...base, type, config: { maxToken: 8000 } };
+  }
+  if (type === ModelTypeEnum.tts) {
+    return { ...base, type, config: { voices: [] } };
+  }
+  return { ...base, type: ModelTypeEnum.stt, config: {} };
+};
+
+const createBlankModelData = (type: ModelTypeEnum): AIModelDocumentDataType => {
+  const modelData = createModelData(type);
+  return modelData.type === ModelTypeEnum.llm
+    ? { ...modelData, config: { ...modelData.config, quoteMaxToken: Number.NaN } }
+    : modelData;
+};
+
+const sourceModel = createModelData(ModelTypeEnum.llm);
+
+describe('resolveRowSelection', () => {
+  it('keeps each row override together while preserving preview defaults', () => {
+    const row: ImportRow = {
+      providerModelSlug: 'remote/model',
+      candidates: [
+        {
+          category: 'template',
+          template: { type: ModelTypeEnum.llm, model: 'template-model' },
+          modelData: sourceModel
+        }
+      ]
+    };
+    const catalog = { installedModelById: new Map(), templateMap: new Map() };
+
+    expect(resolveRowSelection({ row, catalog })).toMatchObject({
+      presetKey: 'llm:template-model',
+      modelType: ModelTypeEnum.llm,
+      isActive: true
+    });
+    expect(
+      resolveRowSelection({
+        row,
+        catalog,
+        selection: {
+          selected: true,
+          presetKey: '__blank__',
+          modelType: ModelTypeEnum.embedding,
+          isActive: false
+        }
+      })
+    ).toMatchObject({
+      presetKey: '__blank__',
+      modelType: ModelTypeEnum.embedding,
+      isActive: false
+    });
+  });
+});
+
+describe('resolveModelTestTarget', () => {
+  it('uses the upstream model slug to test an existing model before its alias is installed', () => {
+    const installedModel = {
+      ...sourceModel,
+      modelId: 'local-model-id',
+      model: 'gpt-4o',
+      name: 'GPT-4o',
+      channels: []
+    } satisfies ModelConfigListItem;
+    const row: ImportRow = {
+      providerModelSlug: 'vendor/gpt-4o',
+      candidates: [{ category: 'existing', modelId: installedModel.modelId }]
+    };
+    const catalog = {
+      installedModelById: new Map([[installedModel.modelId, installedModel]]),
+      templateMap: new Map(),
+      createModelData
+    };
+    const target = resolveModelTestTarget({
+      row,
+      ...resolveRowSelection({ row, catalog }),
+      catalog
+    });
+
+    expect(target).toMatchObject({ source: 'draft' });
+    if (target?.source !== 'draft') {
+      throw new Error('Expected the import test to use a model draft');
+    }
+    expect(target.getModelData()).toMatchObject({
+      model: 'vendor/gpt-4o',
+      config: installedModel.config
+    });
+  });
+
+  it('uses upstream limits when switching an existing model to blank', () => {
+    const row: ImportRow = {
+      providerModelSlug: 'vendor/gpt-4o',
+      contextLength: 32000,
+      maxCompletionTokens: 4096,
+      candidates: [{ category: 'existing', modelId: 'local-model-id' }]
+    };
+    const catalog = {
+      installedModelById: new Map(),
+      templateMap: new Map(),
+      createModelData
+    };
+    const target = resolveModelTestTarget({
+      row,
+      ...resolveRowSelection({
+        row,
+        catalog,
+        selection: { presetKey: '__blank__', modelType: ModelTypeEnum.llm }
+      }),
+      catalog
+    });
+
+    expect(target).toMatchObject({ source: 'draft' });
+    if (target?.source !== 'draft') {
+      throw new Error('Expected the import test to use a blank model draft');
+    }
+    expect(target.getModelData()).toMatchObject({
+      model: 'vendor/gpt-4o',
+      config: { maxContext: 32000, maxResponse: 4096 }
+    });
+  });
+});
+
+describe('getChannelImportCandidate', () => {
+  it('always uses the first ranked candidate', () => {
+    const row: ImportRow = {
+      providerModelSlug: 'remote/model',
+      candidates: [
+        { category: 'existing', modelId: 'first-id' },
+        {
+          category: 'template',
+          template: { type: ModelTypeEnum.llm, model: 'second-model' },
+          modelData: sourceModel
+        }
+      ]
+    };
+
+    expect(getChannelImportCandidate(row)).toBe(row.candidates[0]);
+    expect(() =>
+      getChannelImportCandidate({ providerModelSlug: 'remote/empty', candidates: [] })
+    ).toThrow('Channel import preview item must include a candidate');
+  });
+});
+
+describe('filterChannelImportPreviewItems', () => {
+  it('filters and searches by the first ranked candidate only', () => {
+    const alternateTemplate = createModelData(ModelTypeEnum.embedding);
+    const items: ImportRow[] = [
+      {
+        providerModelSlug: 'remote/chat',
+        candidates: [
+          { category: 'existing', modelId: 'local-chat' },
+          {
+            category: 'template',
+            template: { type: ModelTypeEnum.embedding, model: 'alternate-embedding' },
+            modelData: { ...alternateTemplate, model: 'alternate-embedding' }
+          }
+        ]
+      },
+      {
+        providerModelSlug: 'remote/embedding',
+        candidates: [{ category: 'blank', modelType: ModelTypeEnum.embedding }]
+      }
+    ];
+    const installedModels = [
+      {
+        modelId: 'local-chat',
+        model: 'internal-chat-id',
+        name: 'Friendly chat',
+        type: ModelTypeEnum.llm
+      }
+    ];
+
+    expect(
+      filterChannelImportPreviewItems({
+        items,
+        modelType: ModelTypeEnum.llm,
+        search: 'FRIENDLY',
+        installedModels
+      }).map((item) => item.providerModelSlug)
+    ).toEqual(['remote/chat']);
+    expect(
+      filterChannelImportPreviewItems({
+        items,
+        modelType: ModelTypeEnum.embedding,
+        search: 'remote/embedding',
+        installedModels
+      }).map((item) => item.providerModelSlug)
+    ).toEqual(['remote/embedding']);
+    expect(
+      filterChannelImportPreviewItems({
+        items,
+        modelType: ModelTypeEnum.embedding,
+        search: '',
+        installedModels
+      }).map((item) => item.providerModelSlug)
+    ).toEqual(['remote/embedding']);
+    expect(
+      filterChannelImportPreviewItems({
+        items,
+        modelType: '',
+        search: 'alternate-embedding',
+        installedModels
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('getBlankChannelImportDraft', () => {
+  it('uses upstream template fallback data without leaking template type or provider', () => {
+    const item: Extract<ImportItem, { category: 'template' }> = {
+      category: 'template',
+      template: { type: ModelTypeEnum.llm, model: 'template-model' },
+      modelData: sourceModel,
+      blankModelData: {
+        type: ModelTypeEnum.embedding,
+        provider: 'upstream-provider',
+        model: 'upstream/model',
+        name: 'Upstream model',
+        config: { maxToken: 4096 }
+      },
+      contextLength: 8192
+    };
+
+    expect(getBlankChannelImportDraft(item)).toEqual({
+      modelData: item.blankModelData,
+      modelType: ModelTypeEnum.embedding,
+      provider: 'upstream-provider',
+      contextLength: 8192
+    });
+  });
+
+  it('keeps inferred fields empty instead of using the matched template', () => {
+    const item: Extract<ImportItem, { category: 'template' }> = {
+      category: 'template',
+      template: { type: ModelTypeEnum.llm, model: 'template-model' },
+      modelData: sourceModel,
+      blankModelData: {},
+      contextLength: 8192
+    };
+
+    expect(getBlankChannelImportDraft(item)).toEqual({
+      modelData: item.blankModelData,
+      modelType: undefined,
+      provider: undefined,
+      contextLength: 8192
+    });
+  });
+});
+
+describe('buildBlankChannelModelData', () => {
+  it('requires model type and defaults a missing provider to Other', () => {
+    expect(
+      buildBlankChannelModelData({
+        providerModelSlug: 'upstream/model',
+        provider: 'provider',
+        createModelData
+      })
+    ).toBeUndefined();
+
+    expect(
+      buildBlankChannelModelData({
+        providerModelSlug: 'upstream/model',
+        modelType: ModelTypeEnum.llm,
+        createModelData
+      })
+    ).toMatchObject({ provider: defaultProvider.id });
+  });
+
+  it('keeps inferred LLM values and preserves the default response limit', () => {
+    const modelData = buildBlankChannelModelData({
+      providerModelSlug: 'upstream/model',
+      modelType: ModelTypeEnum.llm,
+      provider: ' provider ',
+      modelData: { config: { maxContext: 16384 } },
+      createModelData
+    });
+
+    expect(modelData).toMatchObject({
+      model: 'upstream/model',
+      name: 'upstream/model',
+      provider: 'provider',
+      config: { maxContext: 16384, maxResponse: 16000 }
+    });
+  });
+
+  it('keeps a blank LLM response default through runtime token capping when upstream omits it', () => {
+    const blankDraft = createChannelBlankModelData({
+      id: 'upstream/model',
+      context_length: 32000,
+      architecture: { output_modalities: ['text'] }
+    });
+    const modelData = buildBlankChannelModelData({
+      providerModelSlug: 'upstream/model',
+      modelType: blankDraft.modelType,
+      modelData: blankDraft.modelData,
+      contextLength: blankDraft.contextLength,
+      createModelData
+    });
+
+    if (modelData?.type !== ModelTypeEnum.llm) {
+      throw new Error('Expected an LLM model from the upstream text modality');
+    }
+
+    expect(modelData.config.maxResponse).toBe(16000);
+    expect(computedMaxToken({ maxToken: 2048, model: modelData })).toBe(2048);
+  });
+
+  it('keeps blank LLM defaults when upstream omits its limits', () => {
+    const blankDraft = createChannelBlankModelData({
+      id: 'upstream/model',
+      architecture: { output_modalities: ['text'] }
+    });
+    const modelData = buildBlankChannelModelData({
+      providerModelSlug: 'upstream/model',
+      modelType: blankDraft.modelType,
+      modelData: blankDraft.modelData,
+      contextLength: blankDraft.contextLength,
+      createModelData
+    });
+
+    expect(modelData).toMatchObject({ config: { maxContext: 64000, maxResponse: 16000 } });
+  });
+
+  it('uses the upstream response limit when LLM is selected for an ambiguous model type', () => {
+    const [row] = classifyChannelModels({
+      channelModels: [
+        {
+          id: 'upstream/model',
+          context_length: 32000,
+          architecture: { output_modalities: ['text', 'audio'] },
+          top_provider: { max_completion_tokens: 2048 }
+        }
+      ],
+      localModels: [],
+      targetChannelModels: [],
+      targetModelMappings: {},
+      otherChannelModels: [],
+      templates: []
+    });
+    const draft = getBlankChannelImportDraft(getChannelImportCandidate(row));
+    const modelData = buildBlankChannelModelData({
+      providerModelSlug: row.providerModelSlug,
+      modelType: ModelTypeEnum.llm,
+      modelData: draft.modelData,
+      contextLength: draft.contextLength,
+      maxCompletionTokens: row.maxCompletionTokens,
+      createModelData
+    });
+
+    expect(row.maxCompletionTokens).toBe(2048);
+    expect(draft.modelType).toBeUndefined();
+    if (modelData?.type !== ModelTypeEnum.llm) {
+      throw new Error('Expected an LLM model after manual type selection');
+    }
+
+    expect(modelData.config).toMatchObject({ maxContext: 32000, maxResponse: 2048 });
+    expect(computedMaxToken({ maxToken: 8192, model: modelData })).toBe(2048);
+  });
+
+  it('defaults a blank LLM quote limit from its context length', () => {
+    const modelData = buildBlankChannelModelData({
+      providerModelSlug: 'upstream/model',
+      modelType: ModelTypeEnum.llm,
+      provider: 'provider',
+      modelData: { config: { maxContext: 10000 } },
+      createModelData: createBlankModelData
+    });
+
+    expect(modelData).toMatchObject({ config: { maxContext: 10000, quoteMaxToken: 8000 } });
+  });
+
+  it.each([
+    [ModelTypeEnum.embedding, { defaultToken: 128, maxToken: 4096 }],
+    [ModelTypeEnum.rerank, { maxToken: 512 }]
+  ] as const)('maps context limits for %s', (modelType, config) => {
+    const modelData = buildBlankChannelModelData({
+      providerModelSlug: 'upstream/model',
+      modelType,
+      provider: 'provider',
+      modelData: { config },
+      createModelData
+    });
+
+    expect(modelData?.config).toMatchObject(config);
+  });
+
+  it('keeps the blank embedding default when upstream omits its context limit', () => {
+    const blankDraft = createChannelBlankModelData({
+      id: 'upstream/embedding',
+      architecture: { output_modalities: ['embedding'] }
+    });
+    const modelData = buildBlankChannelModelData({
+      providerModelSlug: 'upstream/embedding',
+      modelType: blankDraft.modelType,
+      modelData: blankDraft.modelData,
+      contextLength: blankDraft.contextLength,
+      createModelData
+    });
+
+    expect(modelData).toMatchObject({ config: { maxToken: 8192 } });
+  });
+
+  it.each([
+    [ModelTypeEnum.llm, { maxContext: 16384 }],
+    [ModelTypeEnum.embedding, { maxToken: 16384 }],
+    [ModelTypeEnum.rerank, { maxToken: 16384 }]
+  ] as const)('maps known context length to %s config', (modelType, config) => {
+    const modelData = buildBlankChannelModelData({
+      providerModelSlug: 'upstream/model',
+      modelType,
+      provider: 'provider',
+      modelData: { config: {} },
+      contextLength: 16384,
+      createModelData
+    });
+
+    expect(modelData?.config).toMatchObject(config);
+  });
+
+  it('preserves upstream completion limits while applying context length', () => {
+    const modelData = buildBlankChannelModelData({
+      providerModelSlug: 'upstream/model',
+      modelType: ModelTypeEnum.llm,
+      provider: 'provider',
+      modelData: { config: { maxResponse: 2048 } },
+      contextLength: 16384,
+      createModelData
+    });
+
+    expect(modelData).toMatchObject({ config: { maxContext: 16384, maxResponse: 2048 } });
+  });
+
+  it('ignores malformed config arrays and preserves the selected TTS defaults', () => {
+    const malformedData = JSON.parse('{"type":"llm","provider":"provider","config":[]}');
+    const modelData = buildBlankChannelModelData({
+      providerModelSlug: 'upstream/tts',
+      modelType: ModelTypeEnum.tts,
+      provider: 'provider',
+      modelData: malformedData,
+      createModelData
+    });
+
+    expect(modelData).toMatchObject({
+      type: ModelTypeEnum.tts,
+      config: { voices: [] }
+    });
+  });
+});
+
+describe('buildChannelImportOperation', () => {
+  it('associates existing model by stable id', () => {
+    const item: ImportItem = {
+      category: 'existing',
+      modelId: 'model-id'
+    };
+
+    expect(buildChannelImportOperation({ providerModelSlug: 'remote/model', item })).toEqual({
+      action: 'associate',
+      providerModelSlug: 'remote/model',
+      modelId: 'model-id',
+      isActive: true
+    });
+    expect(
+      buildChannelImportOperation({ providerModelSlug: 'remote/model', item, isActive: false })
+    ).toMatchObject({ isActive: false });
+  });
+
+  it('uses provider model slug for template-created model identifier', () => {
+    const item: ImportItem = {
+      category: 'template',
+      template: { type: ModelTypeEnum.llm, model: 'template-model' },
+      modelData: sourceModel
+    };
+    const templateData = { ...sourceModel, model: 'selected-template' };
+
+    expect(
+      buildChannelImportOperation({
+        providerModelSlug: 'remote/model',
+        item,
+        templateData,
+        contextLength: 64000
+      })
+    ).toEqual({
+      action: 'create',
+      providerModelSlug: 'remote/model',
+      modelData: { ...templateData, model: 'remote/model' },
+      isActive: true
+    });
+    expect(
+      buildChannelImportOperation({
+        providerModelSlug: 'remote/model',
+        item,
+        templateData,
+        contextLength: 64000,
+        isActive: false
+      })
+    ).toMatchObject({ isActive: false });
+    expect(
+      buildChannelImportOperation({ providerModelSlug: 'remote/model', item })
+    ).toBeUndefined();
+  });
+
+  it('keeps an exact channel binding unless a different template is selected', () => {
+    const associated: ImportItem = { category: 'associated', modelId: 'model-id' };
+    const templateData = { ...sourceModel, model: 'selected-template' };
+
+    expect(
+      buildChannelImportOperation({ providerModelSlug: 'remote/model', item: associated })
+    ).toEqual({
+      action: 'associate',
+      providerModelSlug: 'remote/model',
+      modelId: 'model-id',
+      isActive: true
+    });
+    expect(
+      buildChannelImportOperation({
+        providerModelSlug: 'remote/model',
+        item: associated,
+        templateData,
+        contextLength: 64000
+      })
+    ).toEqual({
+      action: 'create',
+      providerModelSlug: 'remote/model',
+      modelData: { ...templateData, model: 'remote/model' },
+      isActive: true
+    });
+  });
+
+  it('merges upstream limits into the selected template only when building the operation', () => {
+    const item: ImportItem = {
+      category: 'template',
+      template: { type: ModelTypeEnum.llm, model: 'first-template' },
+      modelData: sourceModel
+    };
+    const selectedTemplate = {
+      ...sourceModel,
+      model: 'second-template',
+      config: { ...sourceModel.config, maxContext: 16384, maxResponse: 8192 }
+    };
+
+    expect(
+      buildChannelImportOperation({
+        providerModelSlug: 'remote/model',
+        item,
+        templateData: selectedTemplate,
+        contextLength: 4096,
+        maxCompletionTokens: 1024
+      })
+    ).toMatchObject({
+      action: 'create',
+      modelData: {
+        model: 'remote/model',
+        config: { maxContext: 4096, maxResponse: 1024, quoteMaxToken: 0 }
+      }
+    });
+    expect(selectedTemplate.config).toMatchObject({ maxContext: 16384, maxResponse: 8192 });
+    expect(
+      buildChannelImportOperation({
+        providerModelSlug: 'remote/model',
+        item,
+        templateData: selectedTemplate
+      })
+    ).toMatchObject({ modelData: { config: { maxContext: 16384, maxResponse: 8192 } } });
+  });
+
+  it('preserves a template context limit through preview and apply when upstream omits it', () => {
+    const templateData = {
+      ...sourceModel,
+      model: 'remote/model',
+      config: { ...sourceModel.config, maxContext: 128000 }
+    };
+    const [row] = classifyChannelModels({
+      channelModels: [{ id: 'remote/model' }],
+      localModels: [],
+      targetChannelModels: [],
+      targetModelMappings: {},
+      otherChannelModels: [],
+      templates: [templateData]
+    });
+    const operation = buildChannelImportOperation({
+      providerModelSlug: row.providerModelSlug,
+      item: getChannelImportCandidate(row),
+      templateData,
+      contextLength: row.contextLength,
+      maxCompletionTokens: row.maxCompletionTokens
+    });
+
+    expect(row.contextLength).toBeUndefined();
+    expect(operation).toMatchObject({
+      action: 'create',
+      modelData: { model: 'remote/model', config: { maxContext: 128000 } }
+    });
+  });
+
+  it('creates blank candidates only when model data is available', () => {
+    const blank: ImportItem = { category: 'blank' };
+    const operation: ApplyChangesBody['operations'][number] = {
+      action: 'create',
+      providerModelSlug: 'remote/model',
+      modelData: sourceModel,
+      isActive: true
+    };
+
+    expect(
+      buildChannelImportOperation({
+        providerModelSlug: 'remote/model',
+        item: blank,
+        modelData: sourceModel
+      })
+    ).toEqual(operation);
+    expect(
+      buildChannelImportOperation({ providerModelSlug: 'remote/model', item: blank })
+    ).toBeUndefined();
+  });
+});
