@@ -34,7 +34,7 @@ type ModelPricingCheckpoint = z.infer<typeof CheckpointSchema>;
 /**
  * 独立后台模型价格迁移（三阶段）：
  * 1. `stt`：分批断点回填缺少计价类型的 STT 模型为 `duration`；
- * 2. `llmTiers`：单事务将系统 LLM 阶梯输入上限从 M Tokens 乘以 1000 四舍五入为正整数 K Tokens（>10 跳过）；
+ * 2. `llmTiers`：单事务回填缺失 `tierUnit` 的系统 LLM 阶梯（含 `< 1` 上限乘千转 K，其余仅回填 `tierUnit: 'K'`；已标 `K` 跳过）；
  * 3. `validation`：联合校验全库 STT 计价类型与系统 LLM 阶梯上限。
  */
 export const migrateModelPricing = async (context: SystemMigrationContext) => {
