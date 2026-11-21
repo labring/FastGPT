@@ -27,6 +27,10 @@ import { ChatAgentHelperTypeEnum } from '@fastgpt/global/core/ai/auxiliaryGenera
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import {
+  getCanonicalKeyForTool,
+  isBuiltinPromptRefKey
+} from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
 import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
@@ -189,8 +193,13 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   const chatAgentHelperMetadata = useMemo(
     () => ({
       systemPrompt: appForm.aiSettings.systemPrompt,
-      selectedTools: appForm.selectedTools.map((tool) =>
-        tool.source ? getToolIdentityKey(tool.id, tool.source) : tool.id
+      selectedTools: appForm.selectedTools.map(
+        (tool) =>
+          getCanonicalKeyForTool({
+            id: tool.id,
+            pluginId: tool.pluginId,
+            source: tool.source
+          }) || (tool.source ? getToolIdentityKey(tool.id, tool.source) : tool.id)
       ),
       selectedDatasets: appForm.dataset.datasets.map((dataset) => dataset.datasetId),
       selectedAgentSkills: appForm.selectedAgentSkills || [],
@@ -275,9 +284,10 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                 InputLeftComponent={HelperModelSelectorInput}
                 onApply={async (formData) => {
                   // Filter internal tools
-                  const filteredTools = (formData.tools || []).filter(
-                    (tool) => !((typeof tool === 'string' ? tool : tool.id) in systemSubInfo)
-                  );
+                  const filteredTools = (formData.tools || []).filter((tool) => {
+                    const key = typeof tool === 'string' ? tool : tool.id;
+                    return !(key in systemSubInfo) && !isBuiltinPromptRefKey(key);
+                  });
 
                   const newTools = await loadGeneratedTools({
                     newToolIds: filteredTools,

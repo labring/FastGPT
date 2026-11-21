@@ -10,6 +10,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
+import { stripAgentPromptRefs } from '@fastgpt/global/core/workflow/node/agent/promptRef/text';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import type { FlowNodeTemplateOutputItemType } from '@fastgpt/global/core/workflow/template/output';
 import { EmptyNode } from '@fastgpt/global/core/workflow/template/system/emptyNode';
@@ -533,7 +534,7 @@ export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
           input.key === NodeInputKeyEnum.aiSystemPrompt &&
           typeof input.value === 'string'
         ) {
-          input.value = input.value.replace(/\{\{@[^@{}]+@\}\}/g, '');
+          input.value = stripAgentPromptRefs(input.value);
         }
       });
     }

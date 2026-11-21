@@ -727,7 +727,25 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].toolConfig).not.toHaveProperty('mcpToolSet');
     expect(tools[0].promptReference).toEqual({
       id: 'mcp_app',
-      name: 'mcp_app name'
+      name: 'mcp_app name',
+      ref: {
+        type: 'app',
+        source: 'team',
+        id: 'mcp_app',
+        parentId: 'mcp_app'
+      }
+    });
+    expect(tools[0].childPromptReference).toEqual({
+      id: 'mcp-mcp_app/search',
+      legacyId: 'mcp-mcp_app/search',
+      name: 'mcp_app name/search',
+      ref: {
+        type: 'app',
+        source: 'team',
+        id: 'mcp_app/search',
+        parentId: 'mcp_app',
+        childId: 'search'
+      }
     });
   });
 
@@ -961,7 +979,25 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].version).toBe('');
     expect(tools[0].promptReference).toEqual({
       id: 'http_app',
-      name: 'http_app name'
+      name: 'http_app name',
+      ref: {
+        type: 'app',
+        source: 'team',
+        id: 'http_app',
+        parentId: 'http_app'
+      }
+    });
+    expect(tools[0].childPromptReference).toEqual({
+      id: 'http-http_app/create',
+      legacyId: 'http-http_app/create',
+      name: 'http_app name/create',
+      ref: {
+        type: 'app',
+        source: 'team',
+        id: 'http_app/create',
+        parentId: 'http_app',
+        childId: 'create'
+      }
     });
   });
 
@@ -1230,7 +1266,25 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].name).toBe('搜索网页');
     expect(tools[0].promptReference).toEqual({
       id: 'systemTool-metaso',
-      name: '秘塔搜索'
+      name: '秘塔搜索',
+      ref: {
+        type: 'plugin',
+        source: 'system',
+        id: 'metaso',
+        parentId: 'metaso'
+      }
+    });
+    expect(tools[0].childPromptReference).toEqual({
+      id: 'systemTool-metaso/search',
+      legacyId: 'systemTool-metaso/search',
+      name: '搜索网页',
+      ref: {
+        type: 'plugin',
+        source: 'system',
+        id: 'metaso/search',
+        parentId: 'metaso',
+        childId: 'search'
+      }
     });
   });
 

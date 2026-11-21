@@ -69,6 +69,7 @@ import {
   assertTeamPluginSourceAccess,
   getRawPluginIdFromSystemToolId
 } from '../../../../../../plugin/teamPluginPolicy';
+import { refFromTool } from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
 
 type AgentRuntimeNode = RuntimeNodeItemType & {
   currentCost?: number;
@@ -672,15 +673,18 @@ export const getAgentRuntimeTools = async ({
         })();
 
         // toolset 展开后的子工具统一走 tool 执行；params 仍继承父工具配置。
+        const promptRef = refFromTool({ id: tool.id, source: runtimeSource }) ?? undefined;
         const promptReference = runtimeSource
           ? {
               id: getToolIdentityKey(tool.id, runtimeSource),
               legacyId: tool.id,
-              name: toolNode.name
+              name: toolNode.name,
+              ref: promptRef
             }
           : {
               id: tool.id,
-              name: toolNode.name
+              name: toolNode.name,
+              ref: promptRef
             };
         const buildSubApp = (child: RuntimeNodeItemType, id = child.nodeId): SubAppInitType => {
           const runtimeId = getAgentRuntimeToolId({ pluginId: id, source: runtimeSource });
@@ -703,6 +707,27 @@ export const getAgentRuntimeTools = async ({
             jsonSchema: child.jsonSchema,
             fixedInputBindings: filterToolConfiguredParams({ params: configuredParams, inputs })
           });
+          const childToolId =
+            child.toolConfig?.systemTool?.toolId ||
+            (child.toolConfig?.mcpTool && 'toolId' in child.toolConfig.mcpTool
+              ? child.toolConfig.mcpTool.toolId
+              : undefined) ||
+            (child.toolConfig?.httpTool && 'toolId' in child.toolConfig.httpTool
+              ? child.toolConfig.httpTool.toolId
+              : undefined) ||
+            child.pluginId;
+          const childPromptRef = childToolId
+            ? (refFromTool({ id: childToolId, source: runtimeSource }) ?? undefined)
+            : undefined;
+          const childPromptReference =
+            childToolId && childPromptRef
+              ? {
+                  id: runtimeSource ? getToolIdentityKey(childToolId, runtimeSource) : childToolId,
+                  legacyId: childToolId,
+                  name: child.name,
+                  ref: childPromptRef
+                }
+              : undefined;
 
           return {
             type: 'tool',
@@ -718,6 +743,7 @@ export const getAgentRuntimeTools = async ({
             inputs,
             agentGeneratedInputKeys: compiledRuntime.agentGeneratedKeys,
             promptReference,
+            ...(childPromptReference ? { childPromptReference } : {}),
             params: compiledRuntime.fixedInputBindings,
             requestSchema: compiledRuntime.modelTool
           };

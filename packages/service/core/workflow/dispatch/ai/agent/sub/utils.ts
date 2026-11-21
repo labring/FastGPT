@@ -19,6 +19,9 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { mergeToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
+import { refFromTool } from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
+import { parseAgentPromptRefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/legacy';
+import type { AgentPromptRefEntry } from '@fastgpt/global/core/workflow/node/agent/promptRef/types';
 
 /**
  * 收集 Agent 节点可用的 workflow runtime tools 和用户选择的子应用工具。
@@ -36,26 +39,49 @@ export const getSubapps = async ({
   completionTools: ChatCompletionTool[];
   subAppsMap: Map<string, SubAppRuntimeType>;
   promptToolReferenceInfoMap: Map<string, string>;
+  promptToolRefEntries: AgentPromptRefEntry<{ name: string }>[];
 }> => {
   const completionTools: ChatCompletionTool[] = [];
 
   /* User tools */
   const subAppsMap = new Map<string, SubAppRuntimeType>();
   const promptToolReferenceInfoMap = new Map<string, string>();
+  const promptToolRefEntries: AgentPromptRefEntry<{ name: string }>[] = [];
   const formatTools = await getAgentRuntimeTools({
     tools,
     tmbId,
     lang
   });
-  formatTools.forEach((tool) => {
-    if (tool.promptReference) {
-      promptToolReferenceInfoMap.set(tool.promptReference.id, tool.promptReference.name);
-      // 兼容旧版 PromptEditor 持久化的原始工具 ID。
-      promptToolReferenceInfoMap.set(
-        tool.promptReference.legacyId || tool.promptReference.id,
-        tool.promptReference.name
-      );
+  const registerPromptReference = (
+    promptReference?: (typeof formatTools)[number]['promptReference']
+  ) => {
+    if (!promptReference) return;
+
+    promptToolReferenceInfoMap.set(promptReference.id, promptReference.name);
+    if (promptReference.legacyId) {
+      promptToolReferenceInfoMap.set(promptReference.legacyId, promptReference.name);
     }
+
+    const parsedFromId = parseAgentPromptRefKey(promptReference.id);
+    const ref =
+      promptReference.ref ??
+      (parsedFromId.kind === 'v2'
+        ? parsedFromId.ref
+        : parsedFromId.kind === 'legacy'
+          ? parsedFromId.deterministicRef
+          : undefined) ??
+      refFromTool({ id: promptReference.legacyId || promptReference.id });
+    if (ref) {
+      promptToolRefEntries.push({
+        ref,
+        displayName: promptReference.name,
+        meta: { name: promptReference.name }
+      });
+    }
+  };
+  formatTools.forEach((tool) => {
+    registerPromptReference(tool.promptReference);
+    registerPromptReference(tool.childPromptReference);
     completionTools.push(tool.requestSchema);
     subAppsMap.set(tool.id, {
       type: tool.type,
@@ -73,7 +99,8 @@ export const getSubapps = async ({
   return {
     completionTools,
     subAppsMap,
-    promptToolReferenceInfoMap
+    promptToolReferenceInfoMap,
+    promptToolRefEntries
   };
 };
 

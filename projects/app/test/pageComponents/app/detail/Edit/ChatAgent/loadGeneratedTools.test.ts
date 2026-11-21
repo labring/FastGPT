@@ -1,0 +1,70 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+
+const { getNewToolPreviewNodeMock } = vi.hoisted(() => ({
+  getNewToolPreviewNodeMock: vi.fn()
+}));
+
+vi.mock('@/web/core/app/api/tool', () => ({
+  getNewToolPreviewNode: getNewToolPreviewNodeMock
+}));
+
+import { loadGeneratedTools } from '@/pageComponents/app/detail/Edit/ChatAgent/utils';
+
+describe('loadGeneratedTools V2 & legacy compatibility', () => {
+  beforeEach(() => {
+    getNewToolPreviewNodeMock.mockReset();
+  });
+
+  it('loads V2 canonical plugin/team/app keys and reuses existing tools without duplicate fetch', async () => {
+    getNewToolPreviewNodeMock.mockImplementation(async ({ appId, source }) => ({
+      id: appId,
+      pluginId: appId,
+      source,
+      name: `Tool ${appId}`,
+      avatar: '',
+      intro: '',
+      flowNodeType: FlowNodeTypeEnum.tool,
+      templateType: 'tools',
+      inputs: [],
+      outputs: []
+    }));
+
+    const existingTeamTool = {
+      id: 'systemTool-metaso',
+      pluginId: 'systemTool-metaso',
+      source: 'teamId:67a100000000000000000001',
+      name: '团队秘塔(已配置)',
+      avatar: '',
+      intro: '',
+      flowNodeType: FlowNodeTypeEnum.tool,
+      templateType: 'tools',
+      inputs: [],
+      outputs: []
+    } as any;
+
+    const result = await loadGeneratedTools({
+      newToolIds: [
+        'plugin:system:metaso',
+        'plugin:team:67a100000000000000000001:metaso',
+        'app:team:66f100000000000000000011',
+        'builtin:read_files'
+      ],
+      existsTools: [existingTeamTool]
+    });
+
+    expect(result).toHaveLength(3);
+    expect(result[0]).toMatchObject({ id: 'systemTool-metaso', source: 'system' });
+    expect(result[1]).toBe(existingTeamTool);
+    expect(result[2]).toMatchObject({ id: '66f100000000000000000011', source: undefined });
+    expect(getNewToolPreviewNodeMock).toHaveBeenCalledTimes(2);
+    expect(getNewToolPreviewNodeMock).toHaveBeenCalledWith({
+      appId: 'systemTool-metaso',
+      source: 'system'
+    });
+    expect(getNewToolPreviewNodeMock).toHaveBeenCalledWith({
+      appId: '66f100000000000000000011',
+      source: undefined
+    });
+  });
+});

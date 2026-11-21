@@ -536,6 +536,63 @@ describe('dispatchRunAgent user context', () => {
     expect(systemPrompt).not.toContain('{{@mcp-app_1/search@}}');
   });
 
+  it('resolves V2 and legacy tool/skill/builtin prompt refs while keeping deleted or errored skills unresolved', async () => {
+    const skillId = '68b2000000000000000000aa';
+    authSkillByTmbIdMock.mockResolvedValueOnce({
+      skill: { _id: skillId, name: 'PDF深度分析技能', source: 'personal' }
+    });
+    getAgentRuntimeToolsMock.mockResolvedValue([
+      {
+        type: 'tool',
+        id: 'sys_metaso',
+        name: '秘塔官方',
+        inputs: [],
+        agentGeneratedInputKeys: [],
+        promptReference: {
+          id: 'system:systemTool-metaso',
+          legacyId: 'systemTool-metaso',
+          name: '秘塔官方'
+        },
+        params: {},
+        requestSchema: {
+          type: 'function',
+          function: {
+            name: 'sys_metaso',
+            description: '秘塔官方',
+            parameters: { type: 'object' }
+          }
+        }
+      }
+    ]);
+
+    const props = createProps();
+    props.params.useAgentSandbox = true;
+    props.params.skills = [
+      {
+        skillId,
+        source: 'personal',
+        name: 'PDF深度分析技能',
+        description: ''
+      }
+    ];
+    props.params.systemPrompt =
+      '工具 {{@plugin:system:metaso@}}，技能 {{@skill:team:68b2000000000000000000aa@}}，越权 {{@skill:team:68b2000000000000000000ee@}}，知识库 {{@builtin:dataset_search@}}';
+    props.params.agent_selectedTools = [{ id: 'systemTool-metaso', source: 'system', config: {} }];
+
+    let resultPromise: Promise<any>;
+    runWithContext({ mcpClientMemory: {} }, () => {
+      resultPromise = dispatchRunAgent(props);
+    });
+    await resultPromise!;
+
+    const systemPrompt = runAgentLoopMock.mock.calls[0][0].input.systemPrompt;
+    expect(systemPrompt).toContain('工具 {{秘塔官方}}');
+    expect(systemPrompt).toContain('技能 {{PDF深度分析技能}}');
+    expect(systemPrompt).toContain('越权 {{@skill:team:68b2000000000000000000ee@}}');
+    expect(systemPrompt).toContain('知识库 {{');
+    expect(systemPrompt).not.toContain('{{@builtin:dataset_search@}}');
+  });
+
   it('uses the default agent system prompt when the user prompt is omitted', async () => {
     const props = createProps();
     delete props.params.systemPrompt;
