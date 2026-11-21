@@ -80,7 +80,10 @@ describe('model dashboard million-unit pricing', () => {
     {
       name: 'K tiers selected by total input',
       pricing: {
-        pricing: { tiers: [{ maxInputTokens: 5, inputPrice: 1, outputPrice: 1 }, tier] }
+        pricing: {
+          tierUnit: 'K',
+          tiers: [{ maxInputTokens: 5, inputPrice: 1, outputPrice: 1 }, tier]
+        }
       } satisfies PriceType,
       expected: 28,
       displayedTotal: 56
