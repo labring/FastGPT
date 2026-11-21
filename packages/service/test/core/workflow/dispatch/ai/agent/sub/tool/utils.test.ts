@@ -836,6 +836,15 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-mcp_slash_app//test' });
   });
 
+  it('does not fall back to another MCP child tool when a deleted slash-named tool shares the last segment', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'mcp-mcp_app/catalog/search', config: {} }]
+    });
+
+    expect(tools).toEqual([]);
+  });
+
   it('prefixes tool function name only when the runtime tool id starts with a number', async () => {
     const tools = await getAgentRuntimeTools({
       tmbId: 'tmb_1',

@@ -104,54 +104,13 @@ export class AgentPromptRefRegistry<TMeta = unknown> {
     };
   }
 
-  /** 纯旧格式查表：先处理确定性旧键（含同 App 三段式末段回退），再查冲突熔断表与裸键表。 */
+  /** 纯旧格式查表：先按完整规范键匹配确定性旧键，再查冲突熔断表与裸键表。 */
   resolveLegacy(parsed: ParsedLegacyPromptRef): ResolvePromptRefResult<TMeta> {
     if (parsed.deterministicRef) {
       const canonicalKey = formatRefKey(parsed.deterministicRef);
       const hit = this.canonicalMap.get(canonicalKey);
       if (hit) {
         return { status: 'resolved', entry: hit, matchedBy: 'deterministic_legacy' };
-      }
-
-      // 仅对明确带 mcp- 前缀且首段匹配父工具集名（或单选子工具 displayName）的旧三段式回退，
-      // 防止已删带斜线子工具（如 mcp-appId/catalog/search）误绑到另一个同名末段工具 search。
-      if (
-        parsed.allowLegacyToolsetSegmentFallback &&
-        parsed.deterministicRef.type === 'app' &&
-        parsed.deterministicRef.childId &&
-        parsed.deterministicRef.childId.includes('/')
-      ) {
-        const { parentId, childId } = parsed.deterministicRef;
-        const parentEntry = this.canonicalMap.get(`app:team:${parentId}`);
-        if (parentEntry?.displayName) {
-          const prefix = `${parentEntry.displayName}/`;
-          if (childId.startsWith(prefix)) {
-            const strippedToolName = childId.slice(prefix.length);
-            const fallbackHit = strippedToolName
-              ? this.canonicalMap.get(`app:team:${parentId}/${strippedToolName}`)
-              : undefined;
-            if (fallbackHit) {
-              return {
-                status: 'resolved',
-                entry: fallbackHit,
-                matchedBy: 'deterministic_legacy'
-              };
-            }
-          }
-        } else {
-          const firstSlash = childId.indexOf('/');
-          const strippedToolName = firstSlash > 0 ? childId.slice(firstSlash + 1) : '';
-          const fallbackHit = strippedToolName
-            ? this.canonicalMap.get(`app:team:${parentId}/${strippedToolName}`)
-            : undefined;
-          if (fallbackHit && fallbackHit.displayName === childId) {
-            return {
-              status: 'resolved',
-              entry: fallbackHit,
-              matchedBy: 'deterministic_legacy'
-            };
-          }
-        }
       }
 
       return { status: 'unresolved', rawKey: parsed.rawKey, parsed };
