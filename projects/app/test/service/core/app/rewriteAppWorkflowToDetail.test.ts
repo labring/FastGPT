@@ -21,6 +21,11 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { OpenAPIStoreNodeItemTypeSchema } from '@fastgpt/global/openapi/core/workflow/node';
 import { getUser } from '@test/datas/users';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import {
+  getPromptRefToolId,
+  refFromTool
+} from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
+import { AgentPromptRefRegistry } from '@fastgpt/global/core/workflow/node/agent/promptRef/registry';
 
 const { getClientToolPreviewNodeMock, authAppByTmbIdMock } = vi.hoisted(() => ({
   getClientToolPreviewNodeMock: vi.fn(),
@@ -2210,5 +2215,93 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         error: 'resource_missing'
       }
     ]);
+  });
+
+  it('refreshes mcpTool/httpTool reference toolConfig from preview on reload so deleted V2 child refs stay unresolved in editor', async () => {
+    const appId = '507f1f77bcf86cd799439031';
+    const savedTool = serializeAgentTool({
+      tool: {
+        id: `mcp-${appId}/catalog/search`,
+        pluginId: `mcp-${appId}/catalog/search`,
+        name: 'catalog/search',
+        avatar: 'mcp.svg',
+        intro: '',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        templateType: 'tools',
+        inputs: [],
+        outputs: [],
+        toolConfig: {
+          mcpTool: {
+            toolId: `mcp-${appId}/catalog/search`
+          }
+        }
+      } as any
+    });
+
+    getClientToolPreviewNodeMock.mockResolvedValueOnce({
+      id: `mcp-${appId}/catalog/search`,
+      pluginId: `mcp-${appId}/catalog/search`,
+      name: 'search',
+      avatar: 'mcp.svg',
+      intro: 'Search',
+      flowNodeType: FlowNodeTypeEnum.tool,
+      templateType: 'tools',
+      inputs: [],
+      outputs: [],
+      version: '',
+      isLatestVersion: true,
+      toolConfig: {
+        mcpTool: {
+          toolId: `mcp-${appId}/search`
+        }
+      }
+    });
+
+    const nodes: StoreNodeItemType[] = [
+      {
+        nodeId: 'agent-node',
+        name: 'Agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            valueType: WorkflowIOValueTypeEnum.arrayObject,
+            label: 'Tools',
+            renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+            value: [savedTool]
+          }
+        ],
+        outputs: []
+      }
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: true
+    });
+
+    const reloadedTool = nodes[0].inputs[0].value[0];
+    expect(reloadedTool.id).toBe(`mcp-${appId}/catalog/search`);
+    expect(reloadedTool.toolConfig).toEqual({
+      mcpTool: {
+        toolId: `mcp-${appId}/search`
+      }
+    });
+
+    const ref = refFromTool({
+      id: getPromptRefToolId(reloadedTool),
+      source: reloadedTool.source
+    })!;
+    const editorRegistry = AgentPromptRefRegistry.create([
+      {
+        ref,
+        displayName: reloadedTool.name,
+        meta: reloadedTool
+      }
+    ]);
+    expect(editorRegistry.resolve(`app:team:${appId}/catalog/search`).status).toBe('unresolved');
+    expect(editorRegistry.resolve(`app:team:${appId}/search`).status).toBe('resolved');
   });
 });

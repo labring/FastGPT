@@ -558,7 +558,9 @@ export async function rewriteAppWorkflowToDetail({
                   source: tool.source ?? data.source,
                   toolConfig:
                     (tool.toolConfig?.mcpToolSet && 'toolId' in tool.toolConfig.mcpToolSet) ||
-                    (tool.toolConfig?.httpToolSet && 'toolId' in tool.toolConfig.httpToolSet)
+                    (tool.toolConfig?.httpToolSet && 'toolId' in tool.toolConfig.httpToolSet) ||
+                    (tool.toolConfig?.mcpTool && 'toolId' in tool.toolConfig.mcpTool) ||
+                    (tool.toolConfig?.httpTool && 'toolId' in tool.toolConfig.httpTool)
                       ? data.toolConfig
                       : (tool.toolConfig ?? data.toolConfig),
                   inputs: mergedInputs
