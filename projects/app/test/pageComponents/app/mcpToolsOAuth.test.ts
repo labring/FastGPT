@@ -4,8 +4,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MCP_OAUTH_USER_FACING_ERROR_CODES } from '@/pageComponents/app/detail/Edit/MCPTools/oauth/errorCodes';
 import {
+  MCP_OAUTH_CALLBACK_QUERY_KEYS,
   MCP_OAUTH_POLL_INTERVAL_MS,
   MCP_OAUTH_POLL_MAX_DURATION_MS,
+  MCP_OAUTH_POLLING_STATES,
+  MCP_OAUTH_STATE_PRESENTATION,
   MCP_OAUTH_STATUS_STATES,
   buildMcpOAuthScopeCandidates,
   buildMcpOAuthStartBody,
@@ -13,12 +16,14 @@ import {
   getMcpOAuthErrorCode,
   getMcpOAuthErrorCopy,
   getMcpOAuthStateI18nKey,
+  getMcpOAuthStatePresentation,
   isMcpOAuthPollingState,
   normalizeMcpOAuthScope,
   parseMcpOAuthCallbackQuery,
   parseMcpOAuthScopeList,
   shouldPollMcpOAuthStatus,
   shouldShowMcpOAuthManualForm,
+  stripMcpOAuthCallbackQuery,
   toggleMcpOAuthScope,
   validateMcpOAuthManualClient,
   type McpOAuthTranslate
@@ -71,41 +76,90 @@ describe('MCP OAuth scope 规范化（无 allowlist）', () => {
   });
 });
 
-describe('MCP OAuth 轮询判定', () => {
-  it('使用 5s 间隔，最长 5 分钟', () => {
-    expect(MCP_OAUTH_POLL_INTERVAL_MS).toBe(5000);
+describe('MCP OAuth 轮询判定（handoff §9.3）', () => {
+  it('使用 2s 间隔，最长 5 分钟', () => {
+    expect(MCP_OAUTH_POLL_INTERVAL_MS).toBe(2000);
     expect(MCP_OAUTH_POLL_MAX_DURATION_MS).toBe(300_000);
   });
 
-  it('仅可见页面 + 进行中状态轮询', () => {
-    expect(
-      shouldPollMcpOAuthStatus({ state: 'pending_authorization', documentVisible: true })
-    ).toBe(true);
-    expect(shouldPollMcpOAuthStatus({ state: 'refreshing', documentVisible: true })).toBe(true);
-    expect(shouldPollMcpOAuthStatus({ state: 'refresh_due', documentVisible: true })).toBe(true);
-    expect(shouldPollMcpOAuthStatus({ state: 'revoking', documentVisible: true })).toBe(true);
+  it('仅 pending_authorization / refreshing 两个服务端状态轮询', () => {
+    expect(MCP_OAUTH_POLLING_STATES).toEqual(['pending_authorization', 'refreshing']);
+    expect(shouldPollMcpOAuthStatus({ state: 'pending_authorization' })).toBe(true);
+    expect(shouldPollMcpOAuthStatus({ state: 'refreshing' })).toBe(true);
+    // refresh_due 是可用态，不是进行中态；revoking 不是 v2.4 服务端状态。
+    expect(shouldPollMcpOAuthStatus({ state: 'refresh_due' })).toBe(false);
+    expect(shouldPollMcpOAuthStatus({ state: 'revoking' })).toBe(false);
   });
 
-  it('隐藏页面、终态与超时都停止', () => {
-    expect(
-      shouldPollMcpOAuthStatus({ state: 'pending_authorization', documentVisible: false })
-    ).toBe(false);
-    for (const state of ['authorized', 'reauth_required', 'config_error', 'headers']) {
-      expect(shouldPollMcpOAuthStatus({ state, documentVisible: true })).toBe(false);
+  it('终态与超时都停止', () => {
+    for (const state of [
+      'headers',
+      'config_error',
+      'client_missing',
+      'authorized',
+      'refresh_due',
+      'reauth_required'
+    ]) {
+      expect(shouldPollMcpOAuthStatus({ state })).toBe(false);
     }
     expect(
       shouldPollMcpOAuthStatus({
         state: 'pending_authorization',
-        documentVisible: true,
         elapsedMs: MCP_OAUTH_POLL_MAX_DURATION_MS
       })
     ).toBe(false);
   });
 
   it('进行中状态集合与判定函数一致', () => {
-    expect(isMcpOAuthPollingState('refresh_due')).toBe(true);
+    expect(isMcpOAuthPollingState('pending_authorization')).toBe(true);
+    expect(isMcpOAuthPollingState('refreshing')).toBe(true);
     expect(isMcpOAuthPollingState('authorized')).toBe(false);
     expect(isMcpOAuthPollingState(null)).toBe(false);
+  });
+});
+
+describe('MCP OAuth 8 态渲染映射', () => {
+  it('8 个服务端状态都有独立展示配置与 hint key', () => {
+    expect(Object.keys(MCP_OAUTH_STATE_PRESENTATION).sort()).toEqual(
+      [...MCP_OAUTH_STATUS_STATES].sort()
+    );
+    const hints = new Set<string>();
+    for (const state of MCP_OAUTH_STATUS_STATES) {
+      const presentation = getMcpOAuthStatePresentation(state);
+      expect(presentation.hintKey).toBe(`mcpOAuth.state_hint.${state}`);
+      hints.add(presentation.hintKey);
+    }
+    expect(hints.size).toBe(8);
+  });
+
+  it('每态的动作显隐符合 handoff 状态机', () => {
+    expect(getMcpOAuthStatePresentation('headers').showStart).toBe(false);
+    expect(getMcpOAuthStatePresentation('config_error').showStart).toBe(false);
+    expect(getMcpOAuthStatePresentation('client_missing')).toMatchObject({
+      showStart: true,
+      manualForm: true,
+      parseEnabled: false
+    });
+    expect(getMcpOAuthStatePresentation('pending_authorization')).toMatchObject({
+      showStart: true,
+      parseEnabled: false
+    });
+    expect(getMcpOAuthStatePresentation('authorized')).toMatchObject({
+      showStart: false,
+      showDisconnect: true,
+      showReset: true,
+      parseEnabled: true
+    });
+    expect(getMcpOAuthStatePresentation('refresh_due')).toMatchObject({
+      showDisconnect: true,
+      parseEnabled: true
+    });
+    expect(getMcpOAuthStatePresentation('refreshing').showStart).toBe(false);
+    expect(getMcpOAuthStatePresentation('reauth_required')).toMatchObject({
+      showStart: true,
+      startActionKey: 'mcpOAuth.action_reauth'
+    });
+    expect(getMcpOAuthStatePresentation('weird').hintKey).toBe('mcpOAuth.state_hint.config_error');
   });
 });
 
@@ -199,12 +253,18 @@ describe('manual client 表单校验', () => {
 
 describe('start 请求体与回调参数', () => {
   it('scope 为空时不发送；nodeId 仅在存在时携带', () => {
-    expect(
-      buildMcpOAuthStartBody({ appId: 'app', clientMode: 'auto', scope: '  ' })
-    ).toEqual({ appId: 'app', clientMode: 'auto' });
+    expect(buildMcpOAuthStartBody({ appId: 'app', clientMode: 'auto', scope: '  ' })).toEqual({
+      appId: 'app',
+      clientMode: 'auto'
+    });
 
     expect(
-      buildMcpOAuthStartBody({ appId: 'app', nodeId: 'node', clientMode: 'manual', scope: 'a  b a' })
+      buildMcpOAuthStartBody({
+        appId: 'app',
+        nodeId: 'node',
+        clientMode: 'manual',
+        scope: 'a  b a'
+      })
     ).toEqual({ appId: 'app', nodeId: 'node', clientMode: 'manual', scope: 'a b' });
   });
 
@@ -226,6 +286,15 @@ describe('start 请求体与回调参数', () => {
     expect(parseMcpOAuthCallbackQuery({})).toBeNull();
   });
 
+  it('立即清理 oauth/code query，保留其它参数', () => {
+    expect(MCP_OAUTH_CALLBACK_QUERY_KEYS).toEqual(['oauth', 'code']);
+    const query = { appId: 'app-1', oauth: 'error', code: 'mcp_oauth_access_denied' };
+    expect(stripMcpOAuthCallbackQuery(query)).toEqual({ appId: 'app-1' });
+    // 不修改入参（避免 router.query 被就地改写）。
+    expect(query.oauth).toBe('error');
+    expect(stripMcpOAuthCallbackQuery({ oauth: 'success' })).toEqual({});
+  });
+
   it('auto 链路展示顺序固定', () => {
     const steps = getMcpOAuthAutoStepStates({ clientSource: 'dcr' });
     expect(steps.map((item) => item.step)).toEqual(['cimd', 'dcr', 'manual']);
@@ -235,7 +304,9 @@ describe('start 请求体与回调参数', () => {
 
 describe('内联节点隔离与前端硬性检查', () => {
   it('工作流内联 NodeToolSet 不渲染 OAuth 配置', () => {
-    const source = readSource('pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeToolSet.tsx');
+    const source = readSource(
+      'pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeToolSet.tsx'
+    );
     expect(source).not.toContain('McpOAuthConfig');
     expect(source).not.toContain('mcpToolsOAuth');
     expect(source).not.toContain('mcpOAuth');
@@ -264,13 +335,64 @@ describe('内联节点隔离与前端硬性检查', () => {
   it('去授权前保存、回调后拉取工具并落库', () => {
     const config = readSource('pageComponents/app/detail/Edit/MCPTools/oauth/McpOAuthConfig.tsx');
     expect(config).toContain('onBeforeStart');
-    expect(config.indexOf('await onBeforeStart()')).toBeLessThan(
-      config.indexOf('await runStart(')
-    );
+    expect(config.indexOf('await onBeforeStart()')).toBeLessThan(config.indexOf('await runStart('));
 
     const page = readSource('pageComponents/app/detail/Edit/MCPTools/index.tsx');
     expect(page).toContain('parseMcpOAuthCallbackQuery');
-    expect(page).toContain('await getMCPTools(');
-    expect(page).toContain("saveCurrent({ authMode: 'oauth', toolList: tools })");
+    expect(page).toContain('stripMcpOAuthCallbackQuery');
+    // 成功回调顺序：拉取工具 → 保存 toolList → 刷新 status。
+    const fetchIdx = page.indexOf('await getMCPTools(');
+    const saveIdx = page.indexOf("saveCurrent({ authMode: 'oauth', toolList: tools })");
+    const refreshIdx = page.indexOf('await refreshStatus()');
+    expect(fetchIdx).toBeGreaterThan(-1);
+    expect(saveIdx).toBeGreaterThan(fetchIdx);
+    expect(refreshIdx).toBeGreaterThan(saveIdx);
+  });
+
+  it('8 态状态徽标由 presentation 驱动，不再硬编码按钮显隐', () => {
+    const config = readSource('pageComponents/app/detail/Edit/MCPTools/oauth/McpOAuthConfig.tsx');
+    expect(config).toContain('getMcpOAuthStatePresentation');
+    expect(config).toContain('presentation.hintKey');
+    expect(config).toContain('presentation.showStart');
+    expect(config).toContain('presentation.showDisconnect');
+  });
+});
+
+describe('MCP OAuth i18n 四语言完整性', () => {
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
+  const locales = ['en', 'zh-CN', 'zh-Hant', 'ko-KR'] as const;
+  const readLocale = (lang: string) =>
+    JSON.parse(
+      fs.readFileSync(path.resolve(repoRoot, 'packages/web/i18n', lang, 'common.json'), 'utf8')
+    ) as Record<string, string>;
+
+  it('8 个状态与状态 hint 在四语言中都存在且非空', () => {
+    for (const lang of locales) {
+      const dict = readLocale(lang);
+      for (const state of MCP_OAUTH_STATUS_STATES) {
+        expect(dict[`mcpOAuth.state.${state}`], `${lang} state.${state}`).toBeTruthy();
+        expect(dict[`mcpOAuth.state_hint.${state}`], `${lang} state_hint.${state}`).toBeTruthy();
+      }
+    }
+  });
+
+  it('所有用户可见错误码在四语言都有固定文案', () => {
+    for (const lang of locales) {
+      const dict = readLocale(lang);
+      for (const code of MCP_OAUTH_USER_FACING_ERROR_CODES) {
+        expect(dict[`mcpOAuth.error.${code}`], `${lang} error.${code}`).toBeTruthy();
+      }
+      expect(dict['mcpOAuth.errorSuggestion.unknown']).toBeTruthy();
+    }
+  });
+
+  it('四语言 mcpOAuth.* key 集合完全一致', () => {
+    const keySets = locales.map(
+      (lang) => new Set(Object.keys(readLocale(lang)).filter((key) => key.startsWith('mcpOAuth.')))
+    );
+    const reference = [...keySets[0]].sort();
+    for (let i = 1; i < keySets.length; i++) {
+      expect([...keySets[i]].sort()).toEqual(reference);
+    }
   });
 });

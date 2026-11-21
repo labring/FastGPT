@@ -12,17 +12,18 @@ import type { McpOAuthStatusResponseType } from '@fastgpt/global/openapi/core/ap
  * - manual client 表单校验
  */
 
-/** 进行中状态才轮询；终态不轮询（设计 §9.3）。 */
-export const MCP_OAUTH_POLLING_STATES = [
-  'pending_authorization',
-  'refreshing',
-  'refresh_due',
-  'revoking'
-] as const;
+/**
+ * 进行中状态才轮询（handoff「状态机」/设计 §9.3）。
+ *
+ * 只允许服务端 8 态中的 `pending_authorization` 与 `refreshing`；
+ * `refresh_due` 是可用态，`revoking` 不是 v2.4 服务端状态。
+ */
+export const MCP_OAUTH_POLLING_STATES = ['pending_authorization', 'refreshing'] as const;
 
 export type McpOAuthPollingState = (typeof MCP_OAUTH_POLLING_STATES)[number];
 
-export const MCP_OAUTH_POLL_INTERVAL_MS = 5000;
+/** handoff：每 2 秒轮询。 */
+export const MCP_OAUTH_POLL_INTERVAL_MS = 2000;
 
 /** 轮询最长 5 分钟；超时后停止，等待用户手动刷新（设计 §9.3）。 */
 export const MCP_OAUTH_POLL_MAX_DURATION_MS = 5 * 60 * 1000;
@@ -30,17 +31,15 @@ export const MCP_OAUTH_POLL_MAX_DURATION_MS = 5 * 60 * 1000;
 export const isMcpOAuthPollingState = (state?: string | null): boolean =>
   !!state && (MCP_OAUTH_POLLING_STATES as readonly string[]).includes(state);
 
-/** 页面可见 + 进行中状态 + 未超过最长时长才轮询；隐藏页/终态一律停止。 */
+/** 进行中状态 + 未超过最长时长才轮询；终态/超时一律停止。 */
 export const shouldPollMcpOAuthStatus = ({
   state,
-  documentVisible,
   elapsedMs
 }: {
   state?: string | null;
-  documentVisible: boolean;
   elapsedMs?: number;
 }): boolean => {
-  if (!documentVisible || !isMcpOAuthPollingState(state)) return false;
+  if (!isMcpOAuthPollingState(state)) return false;
   if (typeof elapsedMs === 'number' && elapsedMs >= MCP_OAUTH_POLL_MAX_DURATION_MS) return false;
   return true;
 };
@@ -294,6 +293,136 @@ export const getMcpOAuthStateI18nKey = (state?: string | null): string => {
       ? state
       : 'config_error';
   return `mcpOAuth.state.${resolved}`;
+};
+
+export type McpOAuthStateTone = 'neutral' | 'info' | 'success' | 'warning' | 'danger';
+
+/**
+ * 8 态 → 详情页展示与动作（handoff「状态机」表）。
+ *
+ * 服务端只返回 8 态；前端不根据 detail 里的 oauth 凭据推断授权状态。
+ */
+export const MCP_OAUTH_STATE_PRESENTATION: Record<
+  McpOAuthStatus,
+  {
+    /** 状态说明文案 key（四语言齐全）。 */
+    hintKey: string;
+    tone: McpOAuthStateTone;
+    /** 是否显示主授权按钮。 */
+    showStart: boolean;
+    /** 主授权按钮文案 key：首次连接 / 重新授权。 */
+    startActionKey: 'mcpOAuth.action_connect' | 'mcpOAuth.action_reauth';
+    showDisconnect: boolean;
+    showReset: boolean;
+    /** 是否展开 manual client 表单。 */
+    manualForm: boolean;
+    /** 是否允许解析/刷新工具列表。 */
+    parseEnabled: boolean;
+  }
+> = {
+  headers: {
+    hintKey: 'mcpOAuth.state_hint.headers',
+    tone: 'neutral',
+    showStart: false,
+    startActionKey: 'mcpOAuth.action_connect',
+    showDisconnect: false,
+    showReset: false,
+    manualForm: false,
+    parseEnabled: false
+  },
+  config_error: {
+    hintKey: 'mcpOAuth.state_hint.config_error',
+    tone: 'danger',
+    showStart: false,
+    startActionKey: 'mcpOAuth.action_connect',
+    showDisconnect: false,
+    showReset: false,
+    manualForm: false,
+    parseEnabled: false
+  },
+  client_missing: {
+    hintKey: 'mcpOAuth.state_hint.client_missing',
+    tone: 'warning',
+    showStart: true,
+    startActionKey: 'mcpOAuth.action_connect',
+    showDisconnect: false,
+    showReset: true,
+    manualForm: true,
+    parseEnabled: false
+  },
+  pending_authorization: {
+    hintKey: 'mcpOAuth.state_hint.pending_authorization',
+    tone: 'info',
+    showStart: true,
+    startActionKey: 'mcpOAuth.action_reauth',
+    showDisconnect: false,
+    showReset: true,
+    manualForm: false,
+    parseEnabled: false
+  },
+  authorized: {
+    hintKey: 'mcpOAuth.state_hint.authorized',
+    tone: 'success',
+    showStart: false,
+    startActionKey: 'mcpOAuth.action_connect',
+    showDisconnect: true,
+    showReset: true,
+    manualForm: false,
+    parseEnabled: true
+  },
+  refresh_due: {
+    hintKey: 'mcpOAuth.state_hint.refresh_due',
+    tone: 'info',
+    showStart: false,
+    startActionKey: 'mcpOAuth.action_connect',
+    showDisconnect: true,
+    showReset: true,
+    manualForm: false,
+    parseEnabled: true
+  },
+  refreshing: {
+    hintKey: 'mcpOAuth.state_hint.refreshing',
+    tone: 'info',
+    showStart: false,
+    startActionKey: 'mcpOAuth.action_connect',
+    showDisconnect: false,
+    showReset: true,
+    manualForm: false,
+    parseEnabled: false
+  },
+  reauth_required: {
+    hintKey: 'mcpOAuth.state_hint.reauth_required',
+    tone: 'danger',
+    showStart: true,
+    startActionKey: 'mcpOAuth.action_reauth',
+    showDisconnect: false,
+    showReset: true,
+    manualForm: false,
+    parseEnabled: false
+  }
+};
+
+/** 未知状态降级为 config_error，保证 UI 不空白。 */
+export const getMcpOAuthStatePresentation = (state?: string | null) =>
+  MCP_OAUTH_STATE_PRESENTATION[
+    (state && (MCP_OAUTH_STATUS_STATES as readonly string[]).includes(state)
+      ? state
+      : 'config_error') as McpOAuthStatus
+  ];
+
+/** 回调落地后立即清理的一次性 query 参数（handoff 主流程 5/6）。 */
+export const MCP_OAUTH_CALLBACK_QUERY_KEYS = ['oauth', 'code'] as const;
+
+/**
+ * 移除 `?oauth=&code=`，保留其它 query（如 `appId`）。
+ * 返回新对象，便于在 `router.replace` 前做浅比较。
+ */
+export const stripMcpOAuthCallbackQuery = <T extends Record<string, unknown>>(query: T): T => {
+  const next = { ...query };
+  for (const key of MCP_OAUTH_CALLBACK_QUERY_KEYS) {
+    delete next[key];
+  }
+  return next;
 };
 
 export const formatMcpOAuthTime = (value?: number | null): string =>

@@ -11,11 +11,11 @@ import {
 } from './utils';
 
 /**
- * MCP OAuth 状态查询与有限轮询（设计 §9.3）。
+ * MCP OAuth 状态查询与有限轮询（handoff「状态机」/设计 §9.3）。
  *
  * - 进入页面 / 回调后立即查一次；
- * - 仅页面可见且 state ∈ {pending_authorization, refreshing, refresh_due} 时每 5s 轮询；
- * - 页面隐藏、终态、超过 5 分钟或组件卸载都会停止并清理定时器；
+ * - 仅 `pending_authorization` / `refreshing` 每 2s 轮询；
+ * - 最长 5 分钟；终态、超时或组件卸载都会停止并清理定时器；
  * - in-flight 去重，轮询请求不并发叠加；
  * - 查询失败不覆盖已有 status，避免一次网络抖动显示成「未授权」。
  */
@@ -34,9 +34,6 @@ export const useMcpOAuthStatus = ({
   const [status, setStatus] = useState<McpOAuthStatusResponseType | null>(null);
   const [loading, setLoading] = useState(false);
   const [pollStopped, setPollStopped] = useState(false);
-  const [documentVisible, setDocumentVisible] = useState(
-    () => typeof document === 'undefined' || document.visibilityState !== 'hidden'
-  );
 
   const inFlightRef = useRef(false);
   const pollStartedAtRef = useRef<number | null>(null);
@@ -72,17 +69,11 @@ export const useMcpOAuthStatus = ({
     return refresh();
   }, [refresh]);
 
-  // 页面可见性变化时立即生效；隐藏页不轮询。
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-    const onChange = () => setDocumentVisible(document.visibilityState !== 'hidden');
-    document.addEventListener('visibilitychange', onChange);
-    return () => document.removeEventListener('visibilitychange', onChange);
-  }, []);
-
   // 进入 oauth 模式 / 切换节点时拉一次。
   useEffect(() => {
     if (!enabled || !appId) {
+      // 关闭 oauth 模式时清空状态，避免下次进入显示上一次的授权态。
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 模式切换需同步重置外部状态
       setStatus(null);
       setPollStopped(false);
       pollStartedAtRef.current = null;
@@ -93,14 +84,14 @@ export const useMcpOAuthStatus = ({
     // refresh 只依赖 appId/nodeId，切换节点时重新拉取。
   }, [enabled, appId, nodeId, refresh]);
 
-  // 5s 轮询：仅可见 + 进行中状态 + 未因失败/超时停止。
+  // 2s 轮询：仅进行中状态 + 未因失败/超时停止。
   const pollingState = status?.state;
   useEffect(() => {
     if (!enabled || pollStopped) return;
     if (pollStartedAtRef.current === null) pollStartedAtRef.current = Date.now();
 
     const elapsedMs = Date.now() - pollStartedAtRef.current;
-    if (!shouldPollMcpOAuthStatus({ state: pollingState, documentVisible, elapsedMs })) return;
+    if (!shouldPollMcpOAuthStatus({ state: pollingState, elapsedMs })) return;
 
     const timer = setInterval(() => {
       const startedAt = pollStartedAtRef.current ?? Date.now();
@@ -111,7 +102,7 @@ export const useMcpOAuthStatus = ({
       void refresh();
     }, MCP_OAUTH_POLL_INTERVAL_MS);
     return () => clearInterval(timer);
-  }, [enabled, documentVisible, pollStopped, pollingState, refresh]);
+  }, [enabled, pollStopped, pollingState, refresh]);
 
   return {
     status,
