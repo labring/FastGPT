@@ -59,7 +59,7 @@ const createSkillFilesystemMocks = (directoryPaths: string[] = []) => ({
   moveFiles: vi.fn(async (_entries: Array<{ source: string; destination: string }>) => undefined)
 });
 
-const WORKSPACE_SKILL_INFO_FIND_COMMAND = `find '/workspace' \\( -name 'node_modules' -o -name '.venv' -o -name 'venv' \\) -prune -o -iname "SKILL.md" -print0 2>/dev/null`;
+const WORKSPACE_SKILL_INFO_FIND_COMMAND = `find '/workspace' \\( -name 'node_modules' -o -name '.venv' -o -name 'venv' \\) -prune -o -type f -iname "SKILL.md" -print0 2>/dev/null`;
 
 describe('runtime skill deploy and scan integration', () => {
   it('scans every recursive skill.md from every selected version directory', async () => {
@@ -278,6 +278,17 @@ description: Zeta skill
     expect(findSkillCommands.some((c) => c.includes(`'${skill1TargetDir}'`))).toBe(true);
     expect(findSkillCommands.some((c) => c.includes(`'${skill2TargetDir}'`))).toBe(true);
     expect(findSkillCommands).not.toContain(WORKSPACE_SKILL_INFO_FIND_COMMAND);
+    expect(
+      findSkillCommands.every((command) => command.includes(`-prune -o -type f -iname "SKILL.md"`))
+    ).toBe(true);
+    expect(
+      findSkillCommands.every(
+        (command) =>
+          command.includes("-name 'node_modules'") &&
+          command.includes("-name '.venv'") &&
+          command.includes("-name 'venv'")
+      )
+    ).toBe(true);
     expect(result).toHaveLength(6);
     expect(result.map((item) => item.name)).toEqual(
       expect.arrayContaining(['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta'])
@@ -822,6 +833,110 @@ description: Read webpages
         description: 'Read webpages',
         directory: '/workspace/.skills/version_1/fetch-webpage',
         skillMdPath: '/workspace/.skills/version_1/fetch-webpage/SKILL.md'
+      }
+    ]);
+  });
+});
+
+describe('getAgentSkillInfos recursive scan', () => {
+  const makeScanSandbox = (
+    pathsByDirectory: Record<string, string[]>,
+    contentByPath: Record<string, string>
+  ) => ({
+    execute: vi.fn(async (command: string) => {
+      const dir = Object.keys(pathsByDirectory)
+        .sort((a, b) => b.length - a.length)
+        .find((candidate) => command.includes(`'${candidate}'`));
+      if (!dir) throw new Error(`Unexpected command: ${command}`);
+      return {
+        exitCode: 0,
+        stdout: pathsByDirectory[dir].map((path) => `${path}\0`).join(''),
+        stderr: ''
+      };
+    }),
+    readFiles: vi.fn(async (paths: string[]) =>
+      paths.map((path) => ({ path, content: contentByPath[path] ?? '', error: null }))
+    )
+  });
+
+  const skillMarkdown = (name: string, description = 'Skill description') => `---
+name: ${name}
+description: ${description}
+---
+
+# ${name}`;
+
+  it('keeps valid skills across all depths and skips invalid or unnamed SKILL.md files', async () => {
+    const root = '/workspace/projects/version-mixed';
+    const rootEntry = `${root}/SKILL.md`;
+    const standardEntry = `${root}/skills/writer/SKILL.md`;
+    const deepEntry = `${root}/skills/writer/helpers/review/SKILL.md`;
+    const draftEntry = `${root}/skills/writer/examples/template/SKILL.md`;
+    const unnamedEntry = `${root}/drafts/SKILL.md`;
+
+    const sandbox = makeScanSandbox(
+      { [root]: [rootEntry, standardEntry, deepEntry, draftEntry, unnamedEntry] },
+      {
+        [rootEntry]: skillMarkdown('root-skill', 'Root skill'),
+        [standardEntry]: skillMarkdown('writer', 'Writer skill'),
+        [deepEntry]: skillMarkdown('reviewer', 'Review helper skill'),
+        [draftEntry]: '# Example template without frontmatter',
+        [unnamedEntry]: '---\ndescription: Missing name\n---\n'
+      }
+    );
+
+    const skillInfos = await getAgentSkillInfos({
+      skillDirectories: [root],
+      sandbox: sandbox as any
+    });
+
+    expect(
+      skillInfos
+        .map(({ name, description, skillMdPath }) => ({ name, description, skillMdPath }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+    ).toEqual([
+      { name: 'reviewer', description: 'Review helper skill', skillMdPath: deepEntry },
+      { name: 'root-skill', description: 'Root skill', skillMdPath: rootEntry },
+      { name: 'writer', description: 'Writer skill', skillMdPath: standardEntry }
+    ]);
+  });
+
+  it('keeps skills with duplicate names when their file paths differ', async () => {
+    const root = '/workspace/projects/version-same-name';
+    const firstPath = `${root}/skills/a/SKILL.md`;
+    const secondPath = `${root}/skills/b/SKILL.md`;
+    const sandbox = makeScanSandbox(
+      { [root]: [firstPath, secondPath] },
+      {
+        [firstPath]: skillMarkdown('same', 'First description'),
+        [secondPath]: skillMarkdown('same', 'Second description')
+      }
+    );
+
+    const skillInfos = await getAgentSkillInfos({
+      skillDirectories: [root],
+      sandbox: sandbox as any
+    });
+
+    expect(
+      skillInfos.map(({ id, name, description, skillMdPath }) => ({
+        id,
+        name,
+        description,
+        skillMdPath
+      }))
+    ).toEqual([
+      {
+        id: firstPath,
+        name: 'same',
+        description: 'First description',
+        skillMdPath: firstPath
+      },
+      {
+        id: secondPath,
+        name: 'same',
+        description: 'Second description',
+        skillMdPath: secondPath
       }
     ]);
   });

@@ -1,4 +1,5 @@
 /** Sandbox 内部状态、运行策略与限制常量；时间策略默认使用毫秒，其他单位在名称中明确。 */
+
 // 生命周期状态与操作
 export const sandboxInstanceStatusList = [
   'provisioning',
@@ -142,6 +143,3 @@ export const MB_BYTES = 1024 * 1024;
 export const RESERVED_DISK_MB = 150;
 export const MAX_ARCHIVE_DEPTH = 20;
 export const SESSION_VOLUME_GENERATION_LENGTH = 8;
-
-// Skill Edit 对外错误约定
-export const SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR = 'Edit sandbox not found or not running';

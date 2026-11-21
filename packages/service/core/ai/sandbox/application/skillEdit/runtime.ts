@@ -4,7 +4,6 @@
  * 本文件统一处理镜像版本、归档状态和运行态实例的业务判断；外部 Skill 业务直接引用
  * 本模块的业务能力，不直接依赖 provider、repository 或 archive 原子能力。
  */
-import { SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR } from '../../constants';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
 import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
@@ -32,6 +31,7 @@ import type {
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import {
   connectToSandbox,
   disconnectSandbox,
@@ -376,15 +376,24 @@ export async function initSkillEditRuntimeSandbox({
 /**
  * 将编辑态 sandbox 内的 skill 目录打包成 zip。
  *
- * 保存发布时只读取指定 workDirectory，默认会先做目录大小检查，避免把过大的编辑工作区
- * 直接压入对象存储。调用方负责后续 SKILL.md 解析、版本写入和对象存储上传。
+ * 默认会先按忽略规则（系统默认规则 + 工作区根目录 `.gitignore`）过滤并做目录大小检查，
+ * 避免发布包把 `.venv`/`node_modules` 等目录或过大的工作区直接压入对象存储。
+ * 导出完整编辑工作区时可传 `applyIgnoreRules: false` 跳过忽略规则（仍排除临时 `package.zip` 并保留体积与 ZIP 结构校验），
+ * 此时额外跳过符号链接：`.venv` 等可重建依赖目录常含符号链接，归档符号链接无法通过 ZIP 安全校验。
+ * 调用方负责后续 SKILL.md 解析、版本写入和对象存储上传。
  */
 export async function packageSkillInSandbox(params: {
   sandboxId: string;
   workDirectory?: string;
   validationMode?: 'basicZip' | 'deployableWorkspace';
+  applyIgnoreRules?: boolean;
 }): Promise<Buffer> {
-  const { sandboxId, workDirectory, validationMode = 'deployableWorkspace' } = params;
+  const {
+    sandboxId,
+    workDirectory,
+    validationMode = 'deployableWorkspace',
+    applyIgnoreRules = true
+  } = params;
   const maxBytes = getAgentSandboxSkillMaxBytes();
 
   const providerConfig = getSandboxProviderConfig();
@@ -412,30 +421,35 @@ export async function packageSkillInSandbox(params: {
     const zipFilePath = joinSandboxPath(packageTempDir, packageZipFilename);
     await newSandbox.createDirectories([packageTempDir]);
 
-    let gitignoreContents: string[] = [];
-    try {
-      const rootGitignorePath = joinSandboxPath(targetDir, '.gitignore');
-      const [rootGitignore] = await newSandbox.readFiles([rootGitignorePath]);
+    let customExcludes: string[] = [];
+    let pruneClause = '';
 
-      if (rootGitignore && !rootGitignore.error) {
-        gitignoreContents = [
-          typeof rootGitignore.content === 'string'
-            ? rootGitignore.content
-            : Buffer.from(rootGitignore.content).toString('utf-8')
-        ];
+    if (applyIgnoreRules) {
+      let gitignoreContents: string[] = [];
+      try {
+        const rootGitignorePath = joinSandboxPath(targetDir, '.gitignore');
+        const [rootGitignore] = await newSandbox.readFiles([rootGitignorePath]);
+
+        if (rootGitignore && !rootGitignore.error) {
+          gitignoreContents = [
+            typeof rootGitignore.content === 'string'
+              ? rootGitignore.content
+              : Buffer.from(rootGitignore.content).toString('utf-8')
+          ];
+        }
+      } catch (err) {
+        addLog.warn('[Sandbox] Failed to read root .gitignore file', {
+          sandboxId,
+          error: getErrText(err)
+        });
       }
-    } catch (err) {
-      addLog.warn('[Sandbox] Failed to read root .gitignore file', {
-        sandboxId,
-        error: getErrText(err)
-      });
-    }
 
-    // 发布包必须始终套用系统默认忽略规则，避免没有 .gitignore 的工作区把 .venv/node_modules 打进版本包。
-    const { customExcludes, pruneClause } = parseGitignoreRules([
-      DEFAULT_GITIGNORE_CONTENT,
-      ...gitignoreContents
-    ]);
+      // 发布包必须始终套用系统默认忽略规则，避免没有 .gitignore 的工作区把 .venv/node_modules 打进版本包。
+      ({ customExcludes, pruneClause } = parseGitignoreRules([
+        DEFAULT_GITIGNORE_CONTENT,
+        ...gitignoreContents
+      ]));
+    }
     const packageZipExcludes = ['package.zip', '*/package.zip'];
     const allExcludes = Array.from(new Set([...packageZipExcludes, ...customExcludes]));
     const packageZipNameExcludeClause = `! -name ${shellQuote('package.zip')}`;
@@ -447,21 +461,42 @@ export async function packageSkillInSandbox(params: {
     if (sizeResult.exitCode === 0 && sizeResult.stdout.trim()) {
       const dirBytes = parseInt(sizeResult.stdout.trim(), 10);
       if (!isNaN(dirBytes) && dirBytes > maxBytes) {
-        throw new Error(
-          `Skill directory size (${(dirBytes / 1024 / 1024).toFixed(2)}MB) exceeds maximum allowed size (${(maxBytes / 1024 / 1024).toFixed(2)}MB)`
-        );
+        throw new UserError(SkillErrEnum.archiveTooLarge, undefined, {
+          cause: new Error(
+            `Skill directory size (${(dirBytes / 1024 / 1024).toFixed(2)}MB) exceeds maximum allowed size (${(maxBytes / 1024 / 1024).toFixed(2)}MB)`
+          )
+        });
       }
     }
 
     const excludeArgs = allExcludes.map((pattern) => `-x ${shellQuote(pattern)}`).join(' ');
-    const zipCommand = `zip -r -y ${shellQuote(zipFilePath)} . ${excludeArgs}`;
-    const zipResult = await newSandbox.execute(zipCommand, { workingDirectory: targetDir });
 
-    if (zipResult.exitCode !== 0) {
-      throw new Error(`Failed to package skill directory: ${zipResult.stderr || zipResult.stdout}`);
-    }
-
+    // 清单创建、打包、读取和校验共用同一个 try：任一步提前失败时，`finally` 都会清理临时文件。
+    let symlinkListFile: string | undefined;
     try {
+      // 完整导出时按清单排除符号链接：`find` 输出去掉 `./` 前缀并转义 Info-ZIP 通配符，`-x@<file>` 逐行读取。
+      let symlinkExcludeArg = '';
+      if (!applyIgnoreRules) {
+        symlinkListFile = joinSandboxPath(packageTempDir, `${packageZipFilename}.symlinks`);
+        const listCommand = `find . -type l | awk '{ sub(/^\\.\\//, ""); gsub(/[][*?\\\\]/, "\\\\\\\\&"); print }' > ${shellQuote(symlinkListFile)}`;
+        const listResult = await newSandbox.execute(listCommand, { workingDirectory: targetDir });
+        if (listResult.exitCode !== 0) {
+          throw new Error(
+            `Failed to list skill directory symlinks: ${listResult.stderr || listResult.stdout}`
+          );
+        }
+        symlinkExcludeArg = ` -x@${shellQuote(symlinkListFile)}`;
+      }
+
+      const zipCommand = `zip -r -y ${shellQuote(zipFilePath)} . ${excludeArgs}${symlinkExcludeArg}`;
+      const zipResult = await newSandbox.execute(zipCommand, { workingDirectory: targetDir });
+
+      if (zipResult.exitCode !== 0) {
+        throw new Error(
+          `Failed to package skill directory: ${zipResult.stderr || zipResult.stdout}`
+        );
+      }
+
       const files = await newSandbox.readFiles([zipFilePath]);
       const file = files?.[0];
 
@@ -477,9 +512,11 @@ export async function packageSkillInSandbox(params: {
         content instanceof Uint8Array ? content : Buffer.from(content, 'utf-8')
       );
       if (zipBuffer.length > maxBytes) {
-        throw new Error(
-          `Skill package size (${(zipBuffer.length / 1024 / 1024).toFixed(2)}MB) exceeds maximum allowed size (${(maxBytes / 1024 / 1024).toFixed(2)}MB)`
-        );
+        throw new UserError(SkillErrEnum.archiveTooLarge, undefined, {
+          cause: new Error(
+            `Skill package size (${(zipBuffer.length / 1024 / 1024).toFixed(2)}MB) exceeds maximum allowed size (${(maxBytes / 1024 / 1024).toFixed(2)}MB)`
+          )
+        });
       }
 
       const validation =
@@ -491,35 +528,43 @@ export async function packageSkillInSandbox(params: {
               maxUncompressedBytes: maxBytes
             });
       if (!validation.valid) {
-        throw new Error(validation.error || 'Invalid skill package structure');
+        throw new UserError(validation.errorCode ?? SkillErrEnum.invalidSkillPackage, undefined, {
+          cause: new Error(validation.error)
+        });
       }
 
       return zipBuffer;
     } finally {
-      await newSandbox
-        .deleteFiles([zipFilePath])
-        .then(([cleanupResult]) => {
+      // 导出模式下清单可能未真正创建，但路径已确定，仍需尝试清理；发布模式只有 zip。
+      const cleanupPaths = symlinkListFile ? [zipFilePath, symlinkListFile] : [zipFilePath];
+      try {
+        const cleanupResults = await newSandbox.deleteFiles(cleanupPaths);
+        cleanupPaths.forEach((cleanupPath, index) => {
+          const cleanupResult = cleanupResults?.[index];
           if (cleanupResult?.success && !cleanupResult.error) return;
 
-          addLog.warn('[Sandbox] Failed to cleanup package zip', {
+          addLog.warn('[Sandbox] Failed to cleanup package file', {
             sandboxId,
-            zipFilePath,
+            path: cleanupPath,
             error: cleanupResult?.error ?? new Error('Delete did not succeed')
           });
-        })
-        .catch((cleanupError) => {
-          addLog.warn('[Sandbox] Failed to cleanup package zip', {
-            sandboxId,
-            zipFilePath,
-            error: cleanupError
-          });
         });
+      } catch (cleanupError) {
+        // 清理失败只记录，保留最初的导出错误。
+        addLog.warn('[Sandbox] Failed to cleanup package files', {
+          sandboxId,
+          paths: cleanupPaths,
+          error: cleanupError
+        });
+      }
     }
   } catch (error) {
-    addLog.error('[Sandbox] Failed to package skill', {
-      sandboxId,
-      error
-    });
+    if (!(error instanceof UserError)) {
+      addLog.error('[Sandbox] Failed to package skill', {
+        sandboxId,
+        error
+      });
+    }
     throw error;
   } finally {
     if (sandbox) {
@@ -566,14 +611,16 @@ export async function ensureSkillEditRuntimeSandbox(params: { skillId: string; t
   const context = await getSkillEditRuntimeContext(params);
   const status = await getSkillEditRuntimeStatus({ context });
   if (status.status !== 'readyToInit') {
-    throw new Error(status.lastError || SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR);
+    throw new UserError(SkillErrEnum.editSandboxNotRunning, undefined, {
+      cause: status.lastError ? new Error(status.lastError) : undefined
+    });
   }
 
   await initSkillEditRuntimeSandbox({ context });
 
   const ready = await getRunningSkillEditSandbox(params);
   if (!ready) {
-    throw new Error(SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR);
+    throw new UserError(SkillErrEnum.editSandboxNotRunning);
   }
   return ready;
 }
@@ -587,6 +634,7 @@ export async function packageSkillEditWorkspace(params: {
   skillId: string;
   teamId: string;
   validationMode?: Parameters<typeof packageSkillInSandbox>[0]['validationMode'];
+  applyIgnoreRules?: boolean;
 }) {
   const sandboxInfo = await ensureSkillEditRuntimeSandbox(params);
 
@@ -594,6 +642,7 @@ export async function packageSkillEditWorkspace(params: {
   return packageSkillInSandbox({
     sandboxId: sandboxInfo.sandboxId,
     workDirectory: runtimeProfile.workDirectory,
-    validationMode: params.validationMode
+    validationMode: params.validationMode,
+    applyIgnoreRules: params.applyIgnoreRules
   });
 }

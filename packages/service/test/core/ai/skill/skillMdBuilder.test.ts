@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildSkillMd,
+  extractSkillMetadataFromMarkdown,
   extractSkillNameFromSkillMd,
   parseSkillMarkdown,
   parseGitignoreRules
@@ -101,6 +102,31 @@ description: 123
       expect(result.error).toBeUndefined();
       expect(result.frontmatter.name).toBe('212');
       expect(result.frontmatter.description).toBe('123');
+    });
+  });
+
+  // ==================== extractSkillMetadataFromMarkdown ====================
+  describe('extractSkillMetadataFromMarkdown', () => {
+    it('should extract trimmed name and optional description', () => {
+      expect(
+        extractSkillMetadataFromMarkdown(
+          '---\nname:   writer  \ndescription:   Write docs  \n---\n# Body'
+        )
+      ).toEqual({ valid: true, name: 'writer', description: 'Write docs' });
+
+      expect(extractSkillMetadataFromMarkdown('---\nname: minimal\n---\n')).toEqual({
+        valid: true,
+        name: 'minimal',
+        description: ''
+      });
+    });
+
+    it('should fail when frontmatter is missing or name is blank', () => {
+      expect(extractSkillMetadataFromMarkdown('# No frontmatter')).toMatchObject({ valid: false });
+      expect(extractSkillMetadataFromMarkdown('---\nname:   \ndescription: Desc\n---\n')).toEqual({
+        valid: false,
+        error: 'frontmatter name is required'
+      });
     });
   });
 
