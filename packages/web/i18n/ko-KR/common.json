@@ -1287,6 +1287,7 @@
   "textarea_variable_picker_tip": "\"/\"를 입력하여 변수 선택",
   "to_dataset": "데이터셋로 이동",
   "tool_invalid": "도구가 만료되었습니다",
+  "tool_ambiguous_click_delete_tip": "동일한 이름의 다른 출처 도구가 여러 개 있습니다. 클릭하여 삭제한 후 @로 다시 선택하세요",
   "tool_invalid_click_delete_tip": "클릭하여 삭제",
   "total_num": "총계: {{num}}",
   "ui.textarea.Magnifying": "확대",

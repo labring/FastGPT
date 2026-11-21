@@ -119,7 +119,8 @@ export const getAgentSkillInfos = async ({
           ? {
               appId: deployedVersion.skillId,
               appName: deployedVersion.name,
-              appDescription: deployedVersion.description
+              appDescription: deployedVersion.description,
+              appSource: deployedVersion.source
             }
           : {})
       };
@@ -314,6 +315,7 @@ export const injectAgentSkillFilesToSandbox = async ({
     name: skill.name,
     description: skill.description || '',
     avatar: skill.avatar,
+    source: skill.source,
     versionId,
     targetDir
   }));

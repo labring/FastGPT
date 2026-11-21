@@ -9,6 +9,37 @@ const PAIRED_DOUBLE_WRAP_REGEXP = /\{\{(\{\{@[^@{}]+@\}\})\}\}/g;
 const MAX_UNWRAP_PASSES = 5;
 
 /**
+ * 查找编辑器中下一个完整的提示词引用实体范围：
+ * 将成对外层 `{{...}}`（如 `{{{{@x@}}}}`）并入单个实体范围，
+ * 同时保护非成对的 JSON 相邻大括号（如 `{"a":{"b":{{@x@}}}}`）。
+ */
+export const findAgentPromptRefEntityMatch = (
+  text: string
+): { start: number; end: number; raw: string; key: string } | null => {
+  const regex = new RegExp(AGENT_PROMPT_REF_REGEXP.source);
+  const match = regex.exec(text);
+  if (!match) return null;
+
+  let start = match.index;
+  let end = start + match[0].length;
+  for (let pass = 0; pass < MAX_UNWRAP_PASSES; pass++) {
+    if (text.slice(start - 2, start) === '{{' && text.slice(end, end + 2) === '}}') {
+      start -= 2;
+      end += 2;
+    } else {
+      break;
+    }
+  }
+
+  return {
+    start,
+    end,
+    raw: text.slice(start, end),
+    key: match[1]
+  };
+};
+
+/**
  * 仅对称折叠成对多余包裹（如 `{{{{@x@}}}}` -> `{{@x@}}`），
  * 保护 JSON 场景 `{"tool": {{@x@}}}` 末尾的 3 个右括号不被破坏。
  */

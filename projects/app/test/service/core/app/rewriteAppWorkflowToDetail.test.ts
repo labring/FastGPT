@@ -1238,6 +1238,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
     expect(rewrittenSkills).toEqual([
       {
         skillId: String(activeSkill._id),
+        source: activeSkill.source,
         name: 'Current Skill Name',
         description: 'Current skill description',
         avatar: 'current-avatar'

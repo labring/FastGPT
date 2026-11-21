@@ -22,6 +22,16 @@ export function splitCombineToolId(id: string): {
   pluginId: string;
   authAppId?: string;
 } {
+  // V2 `app:team:<parentId>/<childName>` 反查时可能传入无 mcp-/http- 前缀的组合 ID。
+  const slashIndex = id.indexOf('/');
+  if (slashIndex > 0 && !id.slice(0, slashIndex).includes('-')) {
+    return {
+      source: AppToolSourceEnum.personal,
+      pluginId: id,
+      authAppId: id.slice(0, slashIndex)
+    };
+  }
+
   const splitRes = id.split('-');
   if (splitRes.length === 1) {
     // app id
