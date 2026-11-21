@@ -151,6 +151,7 @@ export enum NodeInputKeyEnum {
   addInputParam = 'system_addInputParam',
   forbidStream = 'system_forbid_stream',
   headerSecret = 'system_header_secret',
+  httpProxy = 'system_httpProxy',
   systemInputConfig = 'system_input_config',
 
   // history

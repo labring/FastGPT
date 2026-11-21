@@ -132,6 +132,8 @@
   "http_extract_output": "출력 필드 추출",
   "http_extract_output_description": "JSONPath 문법으로 응답 값에서 지정된 필드를 추출할 수 있습니다",
   "http_raw_response_description": "원본 HTTP 응답입니다. 문자열 또는 JSON 타입의 응답 데이터만 허용합니다.",
+  "http_proxy": "HTTP 프록시",
+  "http_proxy_description": "이 노드에 사용할 선택적 HTTP(S) 프록시 URL입니다. user:password 인증을 지원합니다. 비워 두면 기존 네트워크 설정을 사용합니다.",
   "http_request": "HTTP",
   "ifelse.Input value": "입력 값",
   "ifelse.Select value": "선택 값",

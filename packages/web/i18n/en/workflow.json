@@ -155,6 +155,8 @@
   "http_extract_output": "Output field extraction",
   "http_extract_output_description": "Specified fields in the response value can be extracted through JSONPath syntax",
   "http_raw_response_description": "Raw HTTP response. Only accepts string or JSON type response data.",
+  "http_proxy": "HTTP proxy",
+  "http_proxy_description": "Optional HTTP(S) proxy URL for this node. Supports user:password authentication. Leave empty to use the existing network configuration.",
   "http_request": "HTTP",
   "ifelse.Input value": "Input Value",
   "ifelse.Select value": "Select Value",

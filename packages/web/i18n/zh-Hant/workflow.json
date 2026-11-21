@@ -155,6 +155,8 @@
   "http_extract_output": "輸出欄位擷取",
   "http_extract_output_description": "可以透過 JSONPath 語法來擷取回應值中的指定欄位",
   "http_raw_response_description": "HTTP 請求的原始回應。僅接受字串或 JSON 類型回應資料。",
+  "http_proxy": "HTTP 代理",
+  "http_proxy_description": "可選的節點獨立 HTTP(S) 代理位址，支援 user:password 驗證。留空時沿用現有網路設定。",
   "http_request": "HTTP 請求",
   "ifelse.Input value": "輸入值",
   "ifelse.Select value": "選擇值",
