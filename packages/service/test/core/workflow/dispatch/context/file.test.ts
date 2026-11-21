@@ -1175,6 +1175,29 @@ describe('prepareWorkflowFileContext — 外链登记与派生', () => {
     expect(materialized.metadata.filename).toBe('file');
   });
 
+  it('外部 CDN 上形如 v2 短链的普通文件名在工作流读取时保留文件名与扩展名', async () => {
+    const url =
+      'https://cdn.example.com/reports/v2-quarterlyreport-2026-A1B2C3D4E5F6G7H8I9J0K1.pdf';
+    axiosGetMock.mockImplementation(async () => ({
+      status: 200,
+      data: Readable.from([Buffer.from('%PDF-1.7')]),
+      headers: { 'content-type': 'application/octet-stream' }
+    }));
+    const { fileContext } = await prepare();
+    await fileContext.register({
+      file: { url, name: url, type: ChatFileTypeEnum.file },
+      source: 'variable'
+    });
+
+    const { source } = await fileContext.getSource(url);
+    const materialized = await source.materialize({ signal: new AbortController().signal });
+    expect(materialized.metadata.filename).toBe(
+      'v2-quarterlyreport-2026-A1B2C3D4E5F6G7H8I9J0K1.pdf'
+    );
+    expect(resolveFileSourceExtension(materialized)).toBe('pdf');
+    expect(axiosHeadMock).not.toHaveBeenCalled();
+  });
+
   it('classifies query and history before registration and shares concurrent requests', async () => {
     const url = 'https://files.example.com/opaque';
     const file = createFile({ url, name: 'photo', type: ChatFileTypeEnum.file });
