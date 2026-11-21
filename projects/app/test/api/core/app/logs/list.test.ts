@@ -1136,9 +1136,7 @@ describe('logs list API - errorFilter', () => {
       { ...base, chatId: 'chat-with-version-1', appVersionId: version._id },
       { ...base, chatId: 'chat-with-version-2', appVersionId: version._id },
       { ...base, chatId: 'chat-without-version' },
-      { ...base, chatId: 'chat-deleted-version', appVersionId: new Types.ObjectId() },
-      { ...base, chatId: 'chat-numeric-version', appVersionId: 123 },
-      { ...base, chatId: 'chat-short-string-version', appVersionId: '123456789012' }
+      { ...base, chatId: 'chat-deleted-version', appVersionId: new Types.ObjectId() }
     ] as any);
 
     const chatAggregateSpy = vi.spyOn(MongoChat, 'aggregate');
@@ -1162,8 +1160,6 @@ describe('logs list API - errorFilter', () => {
       expect(exported.raw).toContain('\nchat-with-version-2,version-with-id,');
       expect(exported.raw).toContain('\nchat-without-version,,');
       expect(exported.raw).toContain('\nchat-deleted-version,,');
-      expect(exported.raw).toContain('\nchat-numeric-version,,');
-      expect(exported.raw).toContain('\nchat-short-string-version,,');
 
       expect(chatAggregateSpy).not.toHaveBeenCalled();
       expect(versionFindSpy).toHaveBeenCalledTimes(1);

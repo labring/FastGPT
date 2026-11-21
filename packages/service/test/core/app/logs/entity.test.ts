@@ -27,7 +27,7 @@ describe('core/app/logs/entity helpers', () => {
       nodes: [],
       edges: []
     });
-    const versionUpperHex = String(version._id).toUpperCase();
+    const versionIdStr = String(version._id);
     const deletedVersionId = new Types.ObjectId();
 
     const originalFind = MongoAppVersion.find.bind(MongoAppVersion);
@@ -45,7 +45,7 @@ describe('core/app/logs/entity helpers', () => {
       return originalFind(filter, projection, options);
     }) as any);
 
-    let clock = 1000;
+    const clock = 1000;
     const loader = createAppVersionNameLoader({
       maxMissBackoffBatches: 64,
       missRetryTtlMs: 5000,
@@ -53,33 +53,33 @@ describe('core/app/logs/entity helpers', () => {
     });
 
     // 第 1 批：两类 ID 均查空（miss #1 -> 下次重试第 2 批）
-    await loader.preload([versionUpperHex, deletedVersionId, 123, 'short-id']);
+    await loader.preload([versionIdStr, deletedVersionId, undefined, null]);
     expect(callCount).toBe(1);
-    expect(loader.get(versionUpperHex)).toBe('');
+    expect(loader.get(versionIdStr)).toBe('');
     expect(loader.get(deletedVersionId)).toBe('');
-    expect(loader.get(123)).toBe('');
+    expect(loader.get(undefined)).toBe('');
 
     // 第 2 批：继续滞后查空（miss #2 -> 指数退避 2 批，下次重试第 4 批）
     await loader.preload([version._id, deletedVersionId]);
     expect(callCount).toBe(2);
-    expect(loader.get(versionUpperHex)).toBe('');
+    expect(loader.get(versionIdStr)).toBe('');
 
     // 第 3 批：未到退避窗口且未超过 TTL，跳过查询
     await loader.preload([version._id, deletedVersionId]);
     expect(callCount).toBe(2);
-    expect(loader.get(versionUpperHex)).toBe('');
+    expect(loader.get(versionIdStr)).toBe('');
 
     // 第 4 批：退避窗口到期重新探测，真实版本恢复并写入长期缓存；已删版本继续退避（下次重试第 8 批）
     await loader.preload([version._id, deletedVersionId]);
     expect(callCount).toBe(3);
-    expect(loader.get(versionUpperHex)).toBe('v-sync');
+    expect(loader.get(versionIdStr)).toBe('v-sync');
     expect(loader.get(version._id)).toBe('v-sync');
     expect(loader.get(deletedVersionId)).toBe('');
 
     // 第 5~16 批：真实版本恒定走缓存，已删版本仅在第 8、16 批探测（共 5 次而非 16 次）
     for (let batch = 5; batch <= 16; batch++) {
-      await loader.preload([versionUpperHex, deletedVersionId]);
-      expect(loader.get(versionUpperHex)).toBe('v-sync');
+      await loader.preload([versionIdStr, deletedVersionId]);
+      expect(loader.get(versionIdStr)).toBe('v-sync');
       expect(loader.get(deletedVersionId)).toBe('');
     }
     expect(callCount).toBe(5);

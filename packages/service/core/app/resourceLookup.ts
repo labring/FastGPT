@@ -1,5 +1,4 @@
 import type { AppResourceType, AppSchemaType } from '@fastgpt/global/core/app/type';
-import { collectUniqueObjectIds, parseObjectId, toObjectIdHex } from '../../common/mongo/utils';
 import { MongoApp } from './schema';
 import { MongoAppVersion } from './version/schema';
 import { buildAppResourceMongoQuery } from './resource/utils';
@@ -55,10 +54,9 @@ const findMatchedTeamAppsByPublishedResources = async ({
   });
   if (resourceQueries.length === 0) return [];
 
-  const teamObjectId = parseObjectId(teamId) ?? teamId;
   const apps = await MongoApp.find(
     {
-      teamId: teamObjectId,
+      teamId,
       deleteTime: null,
       publishedVersionId: { $exists: true, $ne: null }
     },
@@ -76,7 +74,7 @@ const findMatchedTeamAppsByPublishedResources = async ({
   ).lean();
   if (apps.length === 0) return [];
 
-  const versionIds = collectUniqueObjectIds(apps.map((app) => app.publishedVersionId));
+  const versionIds = Array.from(new Set(apps.map((app) => String(app.publishedVersionId))));
   if (versionIds.length === 0) return [];
 
   const matchedVersions = await MongoAppVersion.find(
@@ -90,14 +88,13 @@ const findMatchedTeamAppsByPublishedResources = async ({
 
   const resourcesByVersionId = new Map<string, PublishedAppResource[]>(
     matchedVersions.map((version) => [
-      toObjectIdHex(version._id) ?? String(version._id),
+      String(version._id),
       (version.resources ?? []) as PublishedAppResource[]
     ])
   );
 
   return apps.flatMap((app) => {
-    const versionIdHex = toObjectIdHex(app.publishedVersionId);
-    const publishedResources = versionIdHex ? resourcesByVersionId.get(versionIdHex) : undefined;
+    const publishedResources = resourcesByVersionId.get(String(app.publishedVersionId));
     if (!publishedResources) return [];
     return [{ ...app, publishedResources } as MatchedPublishedApp];
   });

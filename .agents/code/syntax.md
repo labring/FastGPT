@@ -425,20 +425,18 @@ export const createAppAndInitVersion = async (
    - 可缺省外键在 `let` 中必须用 `$ifNull: ['$field', null]` 归一化，防止 MongoDB 4.4/5.0 因 missing 字段跳过索引改写退化为全表扫描。
 
 2. **应用层按需批量回表**（跨集合补充展示字段，且满足外键高度重复、被关联文档较大无覆盖索引、或展示列可选时优先采用）：
-   - 统一使用 `@fastgpt/service/common/mongo/utils` 的 `parseObjectId`、`toObjectIdHex` 与 `collectUniqueObjectIds`，禁止各业务复制正则或手写去重循环；收集外键与构建/查询 `Map` 必须统一经 `toObjectIdHex` 归一小写，同时避免 BSON 数字或 12 字符短串绕过 `Types.ObjectId.isValid` 抛 `BSONError`。
-   - 全局 `find` post hook（`convertObjectIds`）会将顶层 `ObjectId` 转为 `string`，而 `aggregate` 的 `$match` 不做自动转型；将 `find` 结果传给后续 `aggregate` `$match` 时必须经 `collectUniqueObjectIds` / `parseObjectId` 显式还原为 `Types.ObjectId`。
+   - 入库已由 Mongoose `Schema.Types.ObjectId` 强约束的字段，业务读取与构建/查询 `Map` 直接使用 `String(id)`，不做多余的二次类型校验。
+   - 全局 `find` post hook（`convertObjectIds`）会将顶层 `ObjectId` 转为 `string`：传给后续 `find({ _id: { $in } })` 时由 Mongoose 自动转型，传给 `aggregate` `$match` 时需显式 `new Types.ObjectId(id)`（`aggregate` 不做自动转型）。
    - 多批次弱一致性从库读取（如日志流式导出）可统一走 `readFromSecondary`；跨批次缓存应**仅持久化实际命中的结果**，不得将从库查空永久固化为整次导出内已确认的缺失。对未命中 ID 可采用**批次指数退避 + TTL 过期重查**（如 `createAppVersionNameLoader`），兼顾跨多批复制延迟自动追平与防止已删除历史外键在数百批次中线性空查。
    - 同一业务域（如列表与导出）的底层批量查询与统计口径应沉淀在 `entity.ts` 共用，避免在 API 路由层双写导致口径漂移。
 
 ```typescript
-import {
-  collectUniqueObjectIds,
-  readFromSecondary,
-  toObjectIdHex
-} from '@fastgpt/service/common/mongo/utils';
+import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 
-// Good —— 使用统一原语收集去重 ObjectId，并与小写 hex 键对齐回表
-const versionIds = collectUniqueObjectIds(rows.map((row) => row.appVersionId));
+// Good —— Schema 已强约束为 ObjectId，直接去重回表并用 String(id) 建 Map
+const versionIds = Array.from(
+  new Set(rows.map((row) => row.appVersionId).filter(Boolean).map(String))
+);
 const versions =
   versionIds.length > 0
     ? await MongoAppVersion.find(
@@ -448,6 +446,6 @@ const versions =
       ).lean()
     : [];
 const versionNameMap = new Map(
-  versions.map((version) => [toObjectIdHex(version._id) ?? String(version._id), version.versionName ?? null])
+  versions.map((version) => [String(version._id), version.versionName ?? null])
 );
 ```

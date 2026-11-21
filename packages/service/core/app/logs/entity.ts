@@ -2,12 +2,7 @@ import { MongoChat } from '../../chat/chatSchema';
 import { MongoChatItem } from '../../chat/chatItemSchema';
 import { MongoChatItemResponse } from '../../chat/chatItemResponseSchema';
 import { Types } from '../../../common/mongo';
-import {
-  collectUniqueObjectIds,
-  parseObjectId,
-  readFromSecondary,
-  toObjectIdHex
-} from '../../../common/mongo/utils';
+import { readFromSecondary } from '../../../common/mongo/utils';
 import { MongoAppVersion } from '../../app/version/schema';
 import type { AppLogsListItemType } from '@fastgpt/global/openapi/core/app/log/api';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -59,7 +54,7 @@ const chatItemLegacyPointsGroupField = {
 
 /** 构造按 appId + chatIds 批量聚合 chatitems / chatitemresponses 的统一过滤条件。 */
 const buildAppChatItemBatchFilter = (appId: string, chatIds: string[]) => ({
-  appId: parseObjectId(appId) ?? new Types.ObjectId(appId),
+  appId: new Types.ObjectId(appId),
   chatId: { $in: chatIds },
   $or: [{ sourceType: ChatSourceTypeEnum.app }, { sourceType: { $exists: false } }]
 });
@@ -100,7 +95,7 @@ export type AppChatLogExportDoc = Pick<
   | 'outLinkUid'
   | 'tmbId'
 > & {
-  appVersionId?: unknown;
+  appVersionId?: string | Types.ObjectId;
   variables?: Record<string, any>;
   metadata?: { originIp?: string };
 };
@@ -116,6 +111,52 @@ export type ExportChatItemBatchStats = {
   userBadFeedbackItems?: Array<{ _id: Types.ObjectId; userBadFeedback: any }>;
   customFeedbackItems?: Array<{ _id: Types.ObjectId; customFeedbacks: any }>;
   markItems?: Array<{ _id: Types.ObjectId; adminFeedback: any }>;
+};
+
+/** 批量统计一页会话在 chatitems 中的消息、耗时、反馈与历史内联积分（弱一致性只读从库）。 */
+const findChatItemPageStatsMap = async ({
+  appId,
+  chatIds
+}: {
+  appId: string;
+  chatIds: string[];
+}): Promise<Map<string, ChatItemPageStats>> => {
+  if (chatIds.length === 0) return new Map();
+
+  const stats = await MongoChatItem.aggregate<ChatItemPageStats>(
+    [
+      { $match: buildAppChatItemBatchFilter(appId, chatIds) },
+      {
+        $group: {
+          _id: '$chatId',
+          messageCount: { $sum: 1 },
+          ...chatItemResponseTimeGroupFields,
+          adminMark: {
+            $sum: {
+              $cond: [{ $ifNull: ['$adminFeedback', false] }, 1, 0]
+            }
+          },
+          goodFeedback: {
+            $sum: {
+              $cond: [{ $ifNull: ['$userGoodFeedback', false] }, 1, 0]
+            }
+          },
+          badFeedback: {
+            $sum: {
+              $cond: [{ $ifNull: ['$userBadFeedback', false] }, 1, 0]
+            }
+          },
+          customFeedback: {
+            $sum: { $size: { $ifNull: ['$customFeedbacks', []] } }
+          },
+          ...chatItemLegacyPointsGroupField
+        }
+      }
+    ],
+    { ...readFromSecondary }
+  );
+
+  return new Map(stats.map((item) => [item._id, item]));
 };
 
 /** 批量统计一组会话在 chatitemresponses 中的节点总积分（弱一致性只读从库）。 */
@@ -147,7 +188,7 @@ export const findChatResponsePointsMap = async ({
 };
 
 const queryAppVersionNamesByIds = async (
-  versionIds: Types.ObjectId[]
+  versionIds: string[]
 ): Promise<Map<string, string | null>> => {
   if (versionIds.length === 0) return new Map();
 
@@ -157,19 +198,22 @@ const queryAppVersionNamesByIds = async (
     readFromSecondary
   ).lean();
 
-  return new Map(
-    versions.map((version) => [
-      toObjectIdHex(version._id) ?? String(version._id),
-      version.versionName ?? null
-    ])
-  );
+  return new Map(versions.map((version) => [String(version._id), version.versionName ?? null]));
 };
 
-/** 按有效 ObjectId 批量回表查询应用版本名，返回小写 hex 键的映射。 */
+/** 批量回表查询应用版本名映射。 */
 export const findAppVersionNameMap = (
-  rawVersionIds: Iterable<unknown>
-): Promise<Map<string, string | null>> =>
-  queryAppVersionNamesByIds(collectUniqueObjectIds(rawVersionIds));
+  rawVersionIds: Iterable<string | Types.ObjectId | null | undefined>
+): Promise<Map<string, string | null>> => {
+  const versionIds = Array.from(
+    new Set(
+      Array.from(rawVersionIds)
+        .filter((id): id is string | Types.ObjectId => Boolean(id))
+        .map((id) => String(id))
+    )
+  );
+  return queryAppVersionNamesByIds(versionIds);
+};
 
 /**
  * 面向多批次流式导出的版本名加载器：
@@ -193,15 +237,20 @@ export const createAppVersionNameLoader = ({
   >();
   let batchIndex = 0;
 
-  const preload = async (rawVersionIds: Iterable<unknown>) => {
+  const preload = async (rawVersionIds: Iterable<string | Types.ObjectId | null | undefined>) => {
     batchIndex += 1;
     const currentTime = now();
-    const queryIds = collectUniqueObjectIds(rawVersionIds, { exclude: resolvedMap }).filter(
-      (objectId) => {
-        const state = missState.get(objectId.toHexString());
-        return !state || batchIndex >= state.nextRetryBatch || currentTime >= state.nextRetryAt;
+    const queryIdSet = new Set<string>();
+    for (const rawId of rawVersionIds) {
+      if (!rawId) continue;
+      const id = String(rawId);
+      if (resolvedMap.has(id) || queryIdSet.has(id)) continue;
+      const state = missState.get(id);
+      if (!state || batchIndex >= state.nextRetryBatch || currentTime >= state.nextRetryAt) {
+        queryIdSet.add(id);
       }
-    );
+    }
+    const queryIds = Array.from(queryIdSet);
     if (queryIds.length === 0) return;
 
     const fetchedMap = await queryAppVersionNamesByIds(queryIds);
@@ -209,15 +258,14 @@ export const createAppVersionNameLoader = ({
     const cappedMaxBackoff = Math.max(1, maxMissBackoffBatches);
 
     for (const requestedId of queryIds) {
-      const idHex = requestedId.toHexString();
-      if (fetchedMap.has(idHex)) {
-        resolvedMap.set(idHex, fetchedMap.get(idHex) || '');
-        missState.delete(idHex);
+      if (fetchedMap.has(requestedId)) {
+        resolvedMap.set(requestedId, fetchedMap.get(requestedId) || '');
+        missState.delete(requestedId);
         continue;
       }
-      const missCount = (missState.get(idHex)?.missCount ?? 0) + 1;
+      const missCount = (missState.get(requestedId)?.missCount ?? 0) + 1;
       const backoffBatches = Math.min(cappedMaxBackoff, 2 ** Math.min(missCount - 1, 30));
-      missState.set(idHex, {
+      missState.set(requestedId, {
         missCount,
         nextRetryBatch: batchIndex + backoffBatches,
         nextRetryAt: finishedAt + missRetryTtlMs
@@ -225,9 +273,9 @@ export const createAppVersionNameLoader = ({
     }
   };
 
-  const get = (rawVersionId: unknown): string => {
-    const idHex = toObjectIdHex(rawVersionId);
-    return idHex ? (resolvedMap.get(idHex) ?? '') : '';
+  const get = (rawVersionId: string | Types.ObjectId | null | undefined): string => {
+    if (!rawVersionId) return '';
+    return resolvedMap.get(String(rawVersionId)) ?? '';
   };
 
   return { preload, get };
@@ -405,46 +453,11 @@ export const findAppChatLogPage = async ({
 
   const chatIds = Array.from(new Set(chats.map((chat) => chat.chatId).filter(Boolean)));
 
-  const [chatItemStats, responsePointsMap, versionNameMap] = await Promise.all([
-    chatIds.length > 0
-      ? MongoChatItem.aggregate<ChatItemPageStats>(
-          [
-            { $match: buildAppChatItemBatchFilter(appId, chatIds) },
-            {
-              $group: {
-                _id: '$chatId',
-                messageCount: { $sum: 1 },
-                ...chatItemResponseTimeGroupFields,
-                adminMark: {
-                  $sum: {
-                    $cond: [{ $ifNull: ['$adminFeedback', false] }, 1, 0]
-                  }
-                },
-                goodFeedback: {
-                  $sum: {
-                    $cond: [{ $ifNull: ['$userGoodFeedback', false] }, 1, 0]
-                  }
-                },
-                badFeedback: {
-                  $sum: {
-                    $cond: [{ $ifNull: ['$userBadFeedback', false] }, 1, 0]
-                  }
-                },
-                customFeedback: {
-                  $sum: { $size: { $ifNull: ['$customFeedbacks', []] } }
-                },
-                ...chatItemLegacyPointsGroupField
-              }
-            }
-          ],
-          { ...readFromSecondary }
-        )
-      : Promise.resolve([]),
+  const [itemStatsMap, responsePointsMap, versionNameMap] = await Promise.all([
+    findChatItemPageStatsMap({ appId, chatIds }),
     findChatResponsePointsMap({ appId, chatIds }),
     findAppVersionNameMap(chats.map((chat) => chat.appVersionId))
   ]);
-
-  const itemStatsMap = new Map(chatItemStats.map((item) => [item._id, item]));
 
   return chats.map((chat): AppLogsListItemType => {
     const itemStats = itemStatsMap.get(chat.chatId);
@@ -454,8 +467,9 @@ export const findAppChatLogPage = async ({
     );
     const totalPoints =
       (itemStats?.totalPointsFromChatItem ?? 0) + (responsePointsMap.get(chat.chatId) ?? 0);
-    const versionIdHex = toObjectIdHex(chat.appVersionId);
-    const versionName = versionIdHex ? (versionNameMap.get(versionIdHex) ?? null) : null;
+    const versionName = chat.appVersionId
+      ? (versionNameMap.get(String(chat.appVersionId)) ?? null)
+      : null;
 
     return {
       _id: String(chat._id),
