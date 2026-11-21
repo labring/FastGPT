@@ -1,14 +1,11 @@
 import { formatRefKey, parseV2RefKey } from './codec';
-import { deriveBareLegacyKeys, parseAgentPromptRefKey, parseLegacyRefKey } from './legacy';
+import { deriveBareLegacyKeys, parseLegacyRefKey } from './legacy';
 import { AGENT_PROMPT_REF_REGEXP, formatPromptRefToken, normalizeDoubleWrappedRefs } from './text';
 import {
-  DEFAULT_AGENT_PROMPT_REF_WRITE_MODE,
   type AgentPromptRef,
   type AgentPromptRefEntry,
-  type AgentPromptRefWriteMode,
   type NormalizedAgentPromptRefEntry,
   type ParsedLegacyPromptRef,
-  type PromptRefAuditResult,
   type PromptRefDiagnosticEvent,
   type ResolvePromptRefResult
 } from './types';
@@ -177,22 +174,6 @@ export class AgentPromptRefRegistry<TMeta = unknown> {
     return this.resolveLegacy(parseLegacyRefKey(trimmed));
   }
 
-  /** 按当前灰度模式返回写态键（V2 返回 canonicalKey，legacy 优先返回 legacyWriteKey）。 */
-  getWriteKey({
-    canonicalKey,
-    mode = DEFAULT_AGENT_PROMPT_REF_WRITE_MODE
-  }: {
-    canonicalKey: string;
-    mode?: AgentPromptRefWriteMode;
-  }): string {
-    const entry = this.canonicalMap.get(canonicalKey);
-    if (!entry) return canonicalKey;
-    if (mode === 'legacy' && entry.legacyWriteKey) {
-      return entry.legacyWriteKey;
-    }
-    return entry.canonicalKey;
-  }
-
   /** 后端运行时渲染：折叠成对双括号 → 逐个结构化解析 → 替换为模型可读的 `{{displayName}}`。 */
   renderForModel({
     text,
@@ -290,79 +271,5 @@ export class AgentPromptRefRegistry<TMeta = unknown> {
     }
 
     return normalizeDoubleWrappedRefs(output);
-  }
-
-  /** 存量提示词无损升级：仅升级唯一命中的旧引用（及双括号修复），未命中或歧义保持原样。 */
-  upgradePrompt(text: string): { text: string; upgradedCount: number } {
-    if (!text) return { text, upgradedCount: 0 };
-
-    const normalized = normalizeDoubleWrappedRefs(text);
-    let upgradedCount = 0;
-
-    const upgraded = normalized.replace(AGENT_PROMPT_REF_REGEXP, (raw, innerKey: string) => {
-      const result = this.resolve(innerKey);
-      if (result.status !== 'resolved') return raw;
-
-      const nextToken = formatPromptRefToken(result.entry.canonicalKey);
-      if (nextToken !== raw) {
-        upgradedCount += 1;
-      }
-      return nextToken;
-    });
-
-    return {
-      text: upgraded,
-      upgradedCount
-    };
-  }
-
-  /** 发布校验与观测审计：一次性检出 debug 引用、旧格式命中、歧义引用与未解析引用。 */
-  auditPrompt(text: string): PromptRefAuditResult {
-    const debugRefs: string[] = [];
-    const legacyRefs: string[] = [];
-    const ambiguousRefs: Array<{ rawKey: string; candidates: string[] }> = [];
-    const unresolvedRefs: Array<{ rawKey: string; inferredType?: AgentPromptRef['type'] }> = [];
-
-    if (!text) {
-      return { debugRefs, legacyRefs, ambiguousRefs, unresolvedRefs };
-    }
-
-    const normalized = normalizeDoubleWrappedRefs(text);
-    for (const match of normalized.matchAll(AGENT_PROMPT_REF_REGEXP)) {
-      const rawKey = match[1].trim();
-      const parsed = parseAgentPromptRefKey(rawKey);
-      const parsedRef =
-        parsed.kind === 'v2'
-          ? parsed.ref
-          : parsed.kind === 'legacy'
-            ? parsed.deterministicRef
-            : undefined;
-
-      if (parsedRef?.type === 'plugin' && parsedRef.source === 'debug') {
-        debugRefs.push(rawKey);
-      }
-
-      const result = this.resolve(rawKey);
-      if (result.status === 'resolved') {
-        if (result.entry.ref.type === 'plugin' && result.entry.ref.source === 'debug') {
-          if (!debugRefs.includes(rawKey)) debugRefs.push(rawKey);
-        }
-        if (result.matchedBy !== 'canonical') {
-          legacyRefs.push(rawKey);
-        }
-      } else if (result.status === 'ambiguous') {
-        ambiguousRefs.push({
-          rawKey: result.rawKey,
-          candidates: result.candidates.map((item) => item.canonicalKey)
-        });
-      } else {
-        unresolvedRefs.push({
-          rawKey: result.rawKey,
-          inferredType: parsedRef?.type
-        });
-      }
-    }
-
-    return { debugRefs, legacyRefs, ambiguousRefs, unresolvedRefs };
   }
 }

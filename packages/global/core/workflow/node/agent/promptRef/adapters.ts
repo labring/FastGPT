@@ -1,15 +1,11 @@
-import {
-  getToolIdentityKey,
-  parseDebugToolSource,
-  parseTeamPluginSource
-} from '../../../../app/tool/utils';
+import { parseDebugToolSource, parseTeamPluginSource } from '../../../../app/tool/utils';
 import { AgentSkillSourceEnum } from '../../../../ai/skill/constants';
 import { formatRefKey, parseV2RefKey, splitParentChildId } from './codec';
 import { parseLegacyRefKey, stripLegacyPluginPrefix } from './legacy';
 import type { AgentPromptRef } from './types';
 
 /** 将 Skill 的业务 source（system / personal）归一为提示词引用协议 source（system / team）。 */
-export const normalizeSkillPromptRefSource = (
+const normalizeSkillPromptRefSource = (
   source?: AgentSkillSourceEnum | 'system' | 'team' | 'personal'
 ): 'system' | 'team' => (source === AgentSkillSourceEnum.system ? 'system' : 'team');
 
@@ -149,21 +145,6 @@ export const refFromTool = ({
     id: rawId,
     ...splitParentChildId(rawId)
   };
-};
-
-/** 生成工具在 legacy 写态模式下对应的历史键。 */
-export const getLegacyWriteKeyForTool = ({
-  id,
-  pluginId,
-  source
-}: {
-  id?: string;
-  pluginId?: string;
-  source?: string;
-}): string => {
-  const rawId = (pluginId || id || '').trim();
-  if (!rawId) return '';
-  return source ? getToolIdentityKey(rawId, source) : rawId;
 };
 
 /** 判断任意工具引用（V2 或旧格式）是否为 builtin 类型。 */

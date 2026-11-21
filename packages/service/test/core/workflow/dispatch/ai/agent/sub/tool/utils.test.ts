@@ -737,7 +737,6 @@ describe('getAgentRuntimeTools schema loading', () => {
     });
     expect(tools[0].childPromptReference).toEqual({
       id: 'mcp-mcp_app/search',
-      legacyId: 'mcp-mcp_app/search',
       name: 'mcp_app name/search',
       ref: {
         type: 'app',
@@ -989,7 +988,6 @@ describe('getAgentRuntimeTools schema loading', () => {
     });
     expect(tools[0].childPromptReference).toEqual({
       id: 'http-http_app/create',
-      legacyId: 'http-http_app/create',
       name: 'http_app name/create',
       ref: {
         type: 'app',
@@ -1276,7 +1274,6 @@ describe('getAgentRuntimeTools schema loading', () => {
     });
     expect(tools[0].childPromptReference).toEqual({
       id: 'systemTool-metaso/search',
-      legacyId: 'systemTool-metaso/search',
       name: '搜索网页',
       ref: {
         type: 'plugin',

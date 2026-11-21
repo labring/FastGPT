@@ -674,18 +674,11 @@ export const getAgentRuntimeTools = async ({
 
         // toolset 展开后的子工具统一走 tool 执行；params 仍继承父工具配置。
         const promptRef = refFromTool({ id: tool.id, source: runtimeSource }) ?? undefined;
-        const promptReference = runtimeSource
-          ? {
-              id: getToolIdentityKey(tool.id, runtimeSource),
-              legacyId: tool.id,
-              name: toolNode.name,
-              ref: promptRef
-            }
-          : {
-              id: tool.id,
-              name: toolNode.name,
-              ref: promptRef
-            };
+        const promptReference = {
+          id: runtimeSource ? getToolIdentityKey(tool.id, runtimeSource) : tool.id,
+          name: toolNode.name,
+          ref: promptRef
+        };
         const buildSubApp = (child: RuntimeNodeItemType, id = child.nodeId): SubAppInitType => {
           const runtimeId = getAgentRuntimeToolId({ pluginId: id, source: runtimeSource });
           const isHttpToolChild = Boolean(child.toolConfig?.httpTool);
@@ -723,7 +716,6 @@ export const getAgentRuntimeTools = async ({
             childToolId && childPromptRef
               ? {
                   id: runtimeSource ? getToolIdentityKey(childToolId, runtimeSource) : childToolId,
-                  legacyId: childToolId,
                   name: child.name,
                   ref: childPromptRef
                 }

@@ -44,17 +44,10 @@ export type ParsedAgentPromptRef =
   | ParsedLegacyPromptRef
   | { kind: 'invalid'; rawKey: string; reason: string };
 
-export type AgentPromptRefWriteMode = 'legacy' | 'v2';
-
-/** 默认写态协议：切为 V2，按需可回退为 legacy 实现灰度切换。 */
-export const DEFAULT_AGENT_PROMPT_REF_WRITE_MODE: AgentPromptRefWriteMode = 'v2';
-
 export type AgentPromptRefEntry<TMeta = unknown> = {
   ref: AgentPromptRef;
   canonicalKey?: string;
   displayName: string;
-  /** 写态回退 legacy 时的兼容键；切换 V2 后仅用于回滚兜底。 */
-  legacyWriteKey?: string;
   /** 历史 Skill 快照缺少 source 时标记为 true，允许按全局唯一 ObjectId 跨 system/team 命中。 */
   sourceInferred?: boolean;
   /** 额外历史裸键或旧三段式候选键。 */
@@ -69,13 +62,11 @@ export type NormalizedAgentPromptRefEntry<TMeta = unknown> = Omit<
   canonicalKey: string;
 };
 
-export type ResolvePromptRefMatchedBy = 'canonical' | 'deterministic_legacy' | 'legacy_lookup';
-
 export type ResolvePromptRefResult<TMeta = unknown> =
   | {
       status: 'resolved';
       entry: NormalizedAgentPromptRefEntry<TMeta>;
-      matchedBy: ResolvePromptRefMatchedBy;
+      matchedBy: 'canonical' | 'deterministic_legacy' | 'legacy_lookup';
     }
   | {
       status: 'ambiguous';
@@ -105,10 +96,3 @@ export type PromptRefDiagnosticEvent<TMeta = unknown> =
       rawKey: string;
       parsed: ParsedAgentPromptRef;
     };
-
-export type PromptRefAuditResult = {
-  debugRefs: string[];
-  legacyRefs: string[];
-  ambiguousRefs: Array<{ rawKey: string; candidates: string[] }>;
-  unresolvedRefs: Array<{ rawKey: string; inferredType?: AgentPromptRef['type'] }>;
-};
