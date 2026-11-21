@@ -68,7 +68,10 @@ import {
   assertTeamPluginSourceAccess,
   getRawPluginIdFromSystemToolId
 } from '../../../../../../plugin/teamPluginPolicy';
-import { refFromTool } from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
+import {
+  getPromptRefToolId,
+  refFromTool
+} from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
 
 type AgentRuntimeNode = RuntimeNodeItemType & {
   currentCost?: number;
@@ -672,17 +675,11 @@ export const getAgentRuntimeTools = async ({
         })();
 
         // toolset 展开后的子工具统一走 tool 执行；params 仍继承父工具配置。
-        // 单子工具以实际加载出的规范 toolConfig.*.toolId 登记引用，避免旧候选回退把缺失子工具的 V2 键误绑到替代工具。
-        const resolvedPromptToolId =
-          toolNode.flowNodeType === FlowNodeTypeEnum.toolSet
-            ? tool.id
-            : (toolNode.toolConfig?.mcpTool && 'toolId' in toolNode.toolConfig.mcpTool
-                ? toolNode.toolConfig.mcpTool.toolId
-                : undefined) ||
-              (toolNode.toolConfig?.httpTool && 'toolId' in toolNode.toolConfig.httpTool
-                ? toolNode.toolConfig.httpTool.toolId
-                : undefined) ||
-              tool.id;
+        const resolvedPromptToolId = getPromptRefToolId({
+          id: tool.id,
+          flowNodeType: toolNode.flowNodeType,
+          toolConfig: toolNode.toolConfig
+        });
         const promptRef =
           refFromTool({ id: resolvedPromptToolId, source: runtimeSource }) ?? undefined;
         const promptReference = promptRef

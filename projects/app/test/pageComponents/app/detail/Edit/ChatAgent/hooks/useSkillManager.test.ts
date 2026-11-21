@@ -180,4 +180,43 @@ describe('useSkillManager sandbox & skill visibility', () => {
     const skillEntry = manager.promptRefRegistry.resolve('skill:team:skill-1');
     expect(skillEntry.status === 'resolved' && skillEntry.entry.meta.configStatus).toBe('invalid');
   });
+
+  it('uses resolved toolConfig.toolId so deleted slash-named V2 child refs stay unresolved in editor just like runtime', () => {
+    const appId = '507f1f77bcf86cd799439031';
+    const manager = useSkillManager({
+      selectedTools: [
+        {
+          id: `mcp-${appId}/catalog/search`,
+          pluginId: `mcp-${appId}/catalog/search`,
+          name: 'search',
+          avatar: '',
+          intro: '',
+          flowNodeType: 'tool' as any,
+          templateType: 'tools' as any,
+          inputs: [],
+          outputs: [],
+          toolConfig: {
+            mcpTool: {
+              toolId: `mcp-${appId}/search`
+            }
+          }
+        } as any
+      ],
+      onUpdateOrAddTool: vi.fn(),
+      onAddAgentSkill: vi.fn(() => true),
+      onEnableSandbox: vi.fn(),
+      canUploadFile: true,
+      hasSelectedDataset: true,
+      useAgentSandbox: true
+    });
+
+    expect(manager.promptRefRegistry.resolve(`app:team:${appId}/catalog/search`).status).toBe(
+      'unresolved'
+    );
+    const actualEntry = manager.promptRefRegistry.resolve(`app:team:${appId}/search`);
+    expect(actualEntry.status).toBe('resolved');
+    if (actualEntry.status === 'resolved') {
+      expect(actualEntry.entry.displayName).toBe('search');
+    }
+  });
 });

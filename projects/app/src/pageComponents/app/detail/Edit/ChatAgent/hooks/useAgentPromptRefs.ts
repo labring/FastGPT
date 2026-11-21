@@ -13,6 +13,7 @@ import { AGENT_SANDBOX_TOOLSET_ID } from '@fastgpt/global/core/ai/sandbox/tools'
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { formatRefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/codec';
 import {
+  getPromptRefToolId,
   refFromBuiltin,
   refFromSkill,
   refFromTool
@@ -97,8 +98,7 @@ export const useAgentPromptRefs = ({
 
     selectedTools.forEach((tool) => {
       const ref = refFromTool({
-        id: tool.id,
-        pluginId: tool.pluginId,
+        id: getPromptRefToolId(tool),
         source: tool.source
       });
       if (!ref) return;

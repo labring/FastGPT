@@ -36,7 +36,10 @@ import { inheritToolInputConfig } from '../../FormComponent/ToolSelector/utils';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import { useAgentSandboxCapability } from '../../../hooks/useAgentSandboxCapability';
 import { formatRefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/codec';
-import { getCanonicalKeyForTool } from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
+import {
+  getCanonicalKeyForTool,
+  getPromptRefToolId
+} from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
 import {
   buildAgentSkillLabelItem,
   buildToolSkillLabelItem,
@@ -645,8 +648,7 @@ export const useSkillManager = ({
           : undefined;
       const tool = selectedTools.find((item) => {
         const itemKey = getCanonicalKeyForTool({
-          id: item.id,
-          pluginId: item.pluginId,
+          id: getPromptRefToolId(item),
           source: item.source
         });
         return (

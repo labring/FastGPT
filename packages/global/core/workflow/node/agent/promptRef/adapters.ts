@@ -1,5 +1,7 @@
 import { parseDebugToolSource, parseTeamPluginSource } from '../../../../app/tool/utils';
 import { AgentSkillSourceEnum } from '../../../../ai/skill/constants';
+import { FlowNodeTypeEnum } from '../../constant';
+import type { NodeToolConfigType } from '../../../type/node';
 import { formatRefKey, parseV2RefKey, splitParentChildId } from './codec';
 import { parseLegacyRefKey, parsePrefixedLegacyToolRef, stripLegacyPluginPrefix } from './legacy';
 import type { AgentPromptRef } from './types';
@@ -30,6 +32,36 @@ export const refFromSkill = ({
   },
   sourceInferred: !source
 });
+
+/**
+ * 解析工具在提示词引用中的规范 ID：
+ * 非工具集的单 MCP/HTTP 子工具优先取实际加载出的 toolConfig.*.toolId，
+ * 保证前端编辑器与后端运行时在历史候选回退后登记完全一致的引用身份。
+ */
+export const getPromptRefToolId = ({
+  id,
+  pluginId,
+  flowNodeType,
+  toolConfig
+}: {
+  id?: string;
+  pluginId?: string;
+  flowNodeType?: FlowNodeTypeEnum;
+  toolConfig?: NodeToolConfigType;
+}): string => {
+  if (flowNodeType !== FlowNodeTypeEnum.toolSet) {
+    const resolvedChildId =
+      (toolConfig?.mcpTool && 'toolId' in toolConfig.mcpTool
+        ? toolConfig.mcpTool.toolId
+        : undefined) ||
+      (toolConfig?.httpTool && 'toolId' in toolConfig.httpTool
+        ? toolConfig.httpTool.toolId
+        : undefined);
+    if (resolvedChildId) return resolvedChildId;
+  }
+
+  return pluginId || id || '';
+};
 
 /**
  * 从工具配置（SelectedToolItemType / AgentToolType / 模板项）构造 V2 引用对象。
