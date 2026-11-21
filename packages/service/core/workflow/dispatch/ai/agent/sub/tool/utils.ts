@@ -1,6 +1,7 @@
 import { AgentToolInputConfigSchema, type AgentToolType } from '@fastgpt/global/core/app/tool/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import {
+  getToolNameCandidates,
   isSystemOrCommercialToolId,
   isDebugToolSource,
   isTeamPluginSource,
@@ -137,6 +138,12 @@ export const getAgentRuntimeTools = async ({
       outputs: toolSetNode?.outputs || [],
       toolConfig: toolSetNode?.toolConfig
     };
+  };
+
+  const findToolByName = <T extends { name: string }>(toolList: T[], toolName: string) => {
+    return getToolNameCandidates(toolName)
+      .map((name) => toolList.find((item) => item.name === name))
+      .find(Boolean);
   };
 
   /**
@@ -375,7 +382,7 @@ export const getAgentRuntimeTools = async ({
     const { toolName } = splitToolsetToolPluginId(pluginId);
     // 单个子工具已按 toolName 完成快照或成员鉴权，直接读取完整定义。
     const toolList = await getMCPChildren(app);
-    const tool = toolList.find((item) => item.name === toolName);
+    const tool = findToolByName(toolList, toolName);
     if (!tool) return Promise.reject(PluginErrEnum.unExist);
 
     const node = getMCPToolRuntimeNode({
@@ -409,7 +416,9 @@ export const getAgentRuntimeTools = async ({
     const { toolName } = splitToolsetToolPluginId(pluginId);
     const version = await getVersionNodes({ app, versionId: undefined });
     const toolList = version.nodes[0]?.toolConfig?.httpToolSet?.toolList ?? [];
-    const tool = toolList.find((item) => item.name === toolName);
+    const tool = getToolNameCandidates(toolName)
+      .map((name) => toolList.find((item) => item.name === name))
+      .find(Boolean);
     if (!tool) return Promise.reject(PluginErrEnum.unExist);
 
     const node = getHTTPToolRuntimeNode({

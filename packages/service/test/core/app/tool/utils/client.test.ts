@@ -803,6 +803,7 @@ describe('getClientToolPreviewNode', () => {
       getClientToolPreviewNode({ appId: `${mcpParentId}/catalog/get-weather` })
     ).rejects.toBe(PluginErrEnum.unExist);
 
+    // 带类型前缀的旧三段式 mcp-appId/toolsetName/toolName 保持与主干一致的历史兼容（v4.14.8）
     mocks.findById.mockReturnValueOnce({
       lean: vi.fn().mockResolvedValue({
         _id: mcpParentId,
@@ -829,9 +830,13 @@ describe('getClientToolPreviewNode', () => {
         ]
       })
     });
-    await expect(
-      getClientToolPreviewNode({ appId: `mcp-${mcpParentId}/catalog/get-weather` })
-    ).rejects.toBe(PluginErrEnum.unExist);
+    const legacyTypedPreview = await getClientToolPreviewNode({
+      appId: `mcp-${mcpParentId}/catalog/get-weather`
+    });
+    expect(legacyTypedPreview.pluginId).toBe(`mcp-${mcpParentId}/catalog/get-weather`);
+    expect(legacyTypedPreview.toolConfig).toEqual({
+      mcpTool: { toolId: `mcp-${mcpParentId}/get-weather` }
+    });
 
     const httpPreview = await getClientToolPreviewNode({ appId: `${httpParentId}//api/v1/users` });
     expect(httpPreview.pluginId).toBe(`http-${httpParentId}//api/v1/users`);
