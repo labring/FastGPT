@@ -248,14 +248,23 @@ describe('packageSkillInSandbox', () => {
 
     const executedCommands = sandbox.execute.mock.calls.map(([cmd]: [string]) => cmd);
     const sizeCheckCmd = executedCommands.find((cmd: string) => cmd.includes("awk '{s+=$7}"));
+    const symlinkListCmd = executedCommands.find((cmd: string) => cmd.startsWith('find . -type l'));
     const zipCmd = executedCommands.find((cmd: string) => cmd.startsWith('zip -r -y '));
 
     expect(sizeCheckCmd).toBeDefined();
     expect(sizeCheckCmd).not.toContain('-prune');
+    expect(symlinkListCmd).toContain('.symlinks');
+    expect(symlinkListCmd).toContain('sub(/^\\.\\//');
     expect(zipCmd).toBeDefined();
     expect(zipCmd).toContain("-x 'package.zip' -x '*/package.zip'");
+    expect(zipCmd).toContain("-x@'/home/sandbox/.fastgpt/tmp/");
     expect(zipCmd).not.toContain('node_modules');
     expect(zipCmd).not.toContain('.venv');
+    expect(mocks.validateZipStructure).toHaveBeenCalledTimes(1);
+    expect(sandbox.deleteFiles).toHaveBeenCalledWith([
+      expect.stringMatching(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-/),
+      expect.stringMatching(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-.*\.symlinks$/)
+    ]);
   });
 
   it('applies default and root .gitignore rules during publish packaging', async () => {
@@ -280,6 +289,11 @@ describe('packageSkillInSandbox', () => {
     expect(zipCmd).toContain('node_modules');
     expect(zipCmd).toContain('.venv');
     expect(zipCmd).toContain('drafts');
+    expect(zipCmd).not.toContain('-x@');
+    expect(executedCommands.some((cmd: string) => cmd.includes('-type l'))).toBe(false);
+    expect(sandbox.deleteFiles).toHaveBeenCalledWith([
+      expect.stringMatching(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-/)
+    ]);
   });
 
   it('propagates read failures and still disconnects', async () => {

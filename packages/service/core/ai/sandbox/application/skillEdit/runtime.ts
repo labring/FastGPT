@@ -378,7 +378,8 @@ export async function initSkillEditRuntimeSandbox({
  *
  * 默认会先按忽略规则（系统默认规则 + 工作区根目录 `.gitignore`）过滤并做目录大小检查，
  * 避免发布包把 `.venv`/`node_modules` 等目录或过大的工作区直接压入对象存储。
- * 导出完整编辑工作区时可传 `applyIgnoreRules: false` 跳过忽略规则（仍排除临时 `package.zip` 并保留体积与 ZIP 结构校验）。
+ * 导出完整编辑工作区时可传 `applyIgnoreRules: false` 跳过忽略规则（仍排除临时 `package.zip` 并保留体积与 ZIP 结构校验），
+ * 此时额外跳过符号链接：`.venv` 等可重建依赖目录常含符号链接，归档符号链接无法通过 ZIP 安全校验。
  * 调用方负责后续 SKILL.md 解析、版本写入和对象存储上传。
  */
 export async function packageSkillInSandbox(params: {
@@ -422,6 +423,7 @@ export async function packageSkillInSandbox(params: {
 
     let customExcludes: string[] = [];
     let pruneClause = '';
+    let symlinkListFile: string | undefined;
 
     if (applyIgnoreRules) {
       let gitignoreContents: string[] = [];
@@ -469,7 +471,22 @@ export async function packageSkillInSandbox(params: {
     }
 
     const excludeArgs = allExcludes.map((pattern) => `-x ${shellQuote(pattern)}`).join(' ');
-    const zipCommand = `zip -r -y ${shellQuote(zipFilePath)} . ${excludeArgs}`;
+
+    // 完整导出时按清单排除符号链接：`find` 输出去掉 `./` 前缀并转义 Info-ZIP 通配符，`-x@<file>` 逐行读取。
+    let symlinkExcludeArg = '';
+    if (!applyIgnoreRules) {
+      symlinkListFile = joinSandboxPath(packageTempDir, `${packageZipFilename}.symlinks`);
+      const listCommand = `find . -type l | awk '{ sub(/^\\.\\//, ""); gsub(/[][*?\\\\]/, "\\\\\\\\&"); print }' > ${shellQuote(symlinkListFile)}`;
+      const listResult = await newSandbox.execute(listCommand, { workingDirectory: targetDir });
+      if (listResult.exitCode !== 0) {
+        throw new Error(
+          `Failed to list skill directory symlinks: ${listResult.stderr || listResult.stdout}`
+        );
+      }
+      symlinkExcludeArg = ` -x@${shellQuote(symlinkListFile)}`;
+    }
+
+    const zipCommand = `zip -r -y ${shellQuote(zipFilePath)} . ${excludeArgs}${symlinkExcludeArg}`;
     const zipResult = await newSandbox.execute(zipCommand, { workingDirectory: targetDir });
 
     if (zipResult.exitCode !== 0) {
@@ -515,8 +532,9 @@ export async function packageSkillInSandbox(params: {
 
       return zipBuffer;
     } finally {
+      const cleanupPaths = symlinkListFile ? [zipFilePath, symlinkListFile] : [zipFilePath];
       await newSandbox
-        .deleteFiles([zipFilePath])
+        .deleteFiles(cleanupPaths)
         .then(([cleanupResult]) => {
           if (cleanupResult?.success && !cleanupResult.error) return;
 

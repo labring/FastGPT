@@ -2,7 +2,8 @@ import JSZip from 'jszip';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import type { RuntimeSkillMetadataType } from '@fastgpt/global/core/ai/skill/type';
-import { getLogger, LogCategories } from '../../../../common/logger';
+import { getLogger } from '../../../../common/logger/client';
+import { LogCategories } from '../../../../common/logger/categories';
 import {
   extractSkillMetadataFromMarkdown,
   findSkillMdEntries,
