@@ -1,6 +1,6 @@
 ---
 name: pr-review
-description: 仅在用户主动调用 $pr-review 并提供 FastGPT PR 地址时使用。先核验需求说明（缺失则直接拒绝），再基于最新 upstream main 创建含 pro 的独立 worktree 拉取 PR，按需求边界审查功能、方案、质量与规范；复审严格拒绝补丁式修复。默认只输出报告，用户明确要求时才提交 COMMENT Review。
+description: 仅在用户主动调用 $pr-review 并提供 FastGPT PR 地址时使用。先核验需求说明（缺失则直接拒绝），再使用已预置或基于最新目标分支创建的含 pro 独立 worktree 审查 PR，按需求边界审查功能、方案、质量与规范；复审严格拒绝补丁式修复。默认只输出报告，用户明确要求时才提交 COMMENT Review。
 ---
 
 # PR 审查
@@ -26,9 +26,20 @@ description: 仅在用户主动调用 $pr-review 并提供 FastGPT PR 地址时�
 
 只有标题、空模板、"fix bug" 等无法回答上述问题，或链接不可访问时，结论为 `rejected`：列出缺少的要素和需要补充的内容，**不进入代码审查**，也不根据代码自行补全需求。
 
-## 3. 基于最新 upstream main 准备 worktree
+## 3. 准备或复用审查 worktree
 
 审查对象是"PR 合入最新目标分支后的代码"，不在用户当前工作区审查，也不改动用户已有分支和 `pro` 检出状态。目标分支通常为 `main`；PR 指向维护分支时使用实际的 `baseRefName`。
+
+### 情况 A：已提供独立审查 worktree（自动任务或复用槽位，禁止二次创建）
+
+- 若调用上下文已提供准备好的独立 worktree，直接在该目录执行审查与验证，**严禁再执行 `mktemp`、`git worktree add`、`git clone` 或切换分支**。
+- 只核对：当前目录不是用户日常工作区、`HEAD` 等于 `EXPECTED_HEAD`、`pro` 等于 `HEAD:pro`，且 tracked 文件干净（使用 `git status --porcelain --untracked-files=no`，忽略宿主预置或槽位复用保留的 `node_modules` 与构建缓存）。
+- 直接使用已同步的 `BASE_SHA` 与 `MERGE_BASE`（仅本地缺少对应提交时再 `fetch`），不在该 worktree 内强行执行 `git merge`；用只读 `git merge-tree --write-tree "$BASE_SHA" "$HEAD_SHA"` 检查是否冲突（非 0 则列为必须修复），并用 `git diff "$MERGE_BASE" "$BASE_SHA" -- <PR 涉及路径>` 检查同区域语义冲突。
+- 审查结束后**不要删除**宿主管理的 worktree。
+
+### 情况 B：未预先提供 worktree（人工直接调用）
+
+在隔离临时目录基于最新 `BASE_SHA` 创建独立 detached worktree 并合并 `HEAD_SHA`、检出 `pro`：
 
 ```bash
 set -e
@@ -48,11 +59,13 @@ git -C "$WORKTREE" -c user.name=codex-review -c user.email=codex-review@local \
 git -C "$WORKTREE" submodule update --init --recursive -- pro
 ```
 
-- **合并冲突**：中止合并（`merge --abort`），列为必须修复（需基于最新目标分支 rebase），改在 `HEAD_SHA` 上检出继续审查并注明。
-- **审查范围**：PR 自身改动以 `git diff $MERGE_BASE $HEAD_SHA` 为准；上下文阅读与验证使用合并后的 worktree。`MERGE_BASE` 落后于 `BASE_SHA` 时，用 `git diff $MERGE_BASE $BASE_SHA -- <PR 涉及路径>` 检查目标分支的同区域改动是否造成语义冲突。
+### 通用规则
+
+- **合并冲突**：情况 B 需中止合并（`merge --abort`），列为必须修复（需基于最新目标分支 rebase），改在 `HEAD_SHA` 上检出继续审查并注明；情况 A 通过只读 `merge-tree` 发现冲突同样列为必须修复。
+- **审查范围**：PR 自身改动以 `git diff $MERGE_BASE $HEAD_SHA` 为准；上下文阅读与验证优先使用合并后代码（情况 B）或已检出 `HEAD_SHA` worktree（情况 A）。`MERGE_BASE` 落后于 `BASE_SHA` 时，均需用 `git diff $MERGE_BASE $BASE_SHA -- <PR 涉及路径>` 检查目标分支的同区域改动是否造成语义冲突。
 - **pro**：比较 `$MERGE_BASE:pro` 与 `$HEAD_SHA:pro`。指针变化时在 pro 仓库阅读两端真实 diff；不变时也要检出，用于跨仓库调用链核查。`.gitmodules` 地址被改为不可信来源时不拉取。
 - 无法获取固定提交或 pro 时结论为 `blocked`，不能退回用户工作区或省略 pro 后宣称通过。
-- 只在 worktree 中按风险运行受影响的局部测试、类型检查或 lint，不跑全量测试。确认工作区与 pro 均干净且无运行中的进程后，再清理自己创建的 worktree；无法安全清理时保留并报告路径。
+- 只在 worktree 中按风险运行受影响的局部测试、类型检查或 lint，不跑全量测试。仅在情况 B 确认工作区与 pro 的 tracked 文件干净且无运行中进程后，清理自己创建的临时 worktree；无法安全清理时保留并报告路径。
 
 ## 4. 需求边界
 
