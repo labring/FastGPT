@@ -86,6 +86,23 @@ export function splitCombineToolId(id: string): {
 }
 
 /**
+ * 预览接口边界专用的无类型 V2 子工具反查解析器（如 `<parentId>/<toolName>` 或 `<parentId>//api/v1/users`）。
+ * 独立于 splitCombineToolId，避免资源快照和运行时把子工具误归为父级 personal 应用。
+ */
+export const parseUntypedV2ChildToolLookupId = (
+  appId: string
+): { parentId: string; toolName: string } | null => {
+  const slashIndex = appId.indexOf('/');
+  if (slashIndex <= 0 || slashIndex === appId.length - 1) return null;
+  const parentId = appId.slice(0, slashIndex);
+  if (parentId.includes('-')) return null;
+  return {
+    parentId,
+    toolName: appId.slice(slashIndex + 1)
+  };
+};
+
+/**
  * 判断工具是否允许使用旧版 toolDescription 推断 AI 参数。
  * 该兼容仅覆盖工作流工具和旧系统/商业工具，其他工具继续使用自身 schema annotation。
  */

@@ -20,6 +20,7 @@ import {
   getToolNameCandidates,
   isDebugToolSource,
   isTeamPluginSource,
+  parseUntypedV2ChildToolLookupId,
   splitCombineToolId,
   splitToolsetToolPluginId
 } from '@fastgpt/global/core/app/tool/utils';
@@ -249,23 +250,6 @@ export async function getClientSystemToolPreviewNode({
         })
   } satisfies FlowNodeTemplateType;
 }
-
-/**
- * 预览接口边界专用的无类型 V2 子工具反查解析器（如 `<parentId>/<toolName>` 或 `<parentId>//api/v1/users`）。
- * 不放进共享 splitCombineToolId，避免资源快照和运行时把子工具误归为父级 personal 应用。
- */
-export const parseUntypedV2ChildToolLookupId = (
-  appId: string
-): { parentId: string; toolName: string } | null => {
-  const slashIndex = appId.indexOf('/');
-  if (slashIndex <= 0 || slashIndex === appId.length - 1) return null;
-  const parentId = appId.slice(0, slashIndex);
-  if (parentId.includes('-')) return null;
-  return {
-    parentId,
-    toolName: appId.slice(slashIndex + 1)
-  };
-};
 
 /**
  * 构建返回给客户端的工具预览节点。
