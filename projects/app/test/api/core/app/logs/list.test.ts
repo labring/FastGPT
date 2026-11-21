@@ -1303,4 +1303,47 @@ describe('logs list API - errorFilter', () => {
       versionFindSpy.mockRestore();
     }
   });
+
+  it('导出版本名对已删除历史版本有限重试后固化负缓存，避免数百批次反复空查', async () => {
+    const deletedVersionId = new Types.ObjectId();
+    const baseTime = Date.now();
+    await MongoChat.collection.insertMany(
+      Array.from({ length: 603 }, (_, idx) => ({
+        appId: new Types.ObjectId(testAppId),
+        teamId: new Types.ObjectId(testTeamId),
+        tmbId: new Types.ObjectId(testTmbId),
+        chatId: `chat-deleted-ver-${idx}`,
+        sourceType: ChatSourceTypeEnum.app,
+        source: 'api',
+        appVersionId: deletedVersionId,
+        createTime: new Date(baseTime - idx * 1000),
+        updateTime: new Date(baseTime - idx * 1000)
+      })) as any
+    );
+
+    const versionFindSpy = vi.spyOn(MongoAppVersion, 'find');
+
+    try {
+      const exported = await StreamCall(exportLogs, {
+        auth: authUser,
+        headers: {},
+        body: {
+          appId: testAppId,
+          dateStart: '2020-01-01',
+          dateEnd: '2099-01-01',
+          title: 'Session,Version',
+          sourcesMap: {},
+          logKeys: [AppLogKeysEnum.SESSION_ID, AppLogKeysEnum.VERSION_NAME]
+        }
+      });
+      expect(exported.code).toBe(200);
+      const dataRows = exported.raw.split('\n').slice(1);
+      expect(dataRows).toHaveLength(603);
+      expect(dataRows.every((line) => line.split(',')[1] === '')).toBe(true);
+      // 603 行共 4 批：仅前 2 批查询（首次 + 1 次重试），第 3/4 批命中负缓存不再查库
+      expect(versionFindSpy).toHaveBeenCalledTimes(2);
+    } finally {
+      versionFindSpy.mockRestore();
+    }
+  });
 });

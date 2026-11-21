@@ -10,6 +10,7 @@ import {
 } from '@fastgpt/global/openapi/admin/team/api';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { Types } from '@fastgpt/service/common/mongo';
+import { parseObjectId } from '@fastgpt/service/common/mongo/utils';
 import { normalizePagination } from '@fastgpt/service/common/api/pagination';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
@@ -53,10 +54,7 @@ async function handler(
     ...(search ? { name: { $regex: new RegExp(replaceRegChars(search), 'i') } } : {})
   };
   const currentUserObjectId = new Types.ObjectId(currentUserId);
-  const currentTeamObjectId =
-    !search && currentTeamId && Types.ObjectId.isValid(currentTeamId)
-      ? new Types.ObjectId(currentTeamId)
-      : null;
+  const currentTeamObjectId = !search ? parseObjectId(currentTeamId) : null;
 
   // 2. 在数据库内分页统计并查询“自有团队”分段、当前非自有团队及全站总数。
   const [[ownedFacet], currentTeamDoc, total] = await Promise.all([

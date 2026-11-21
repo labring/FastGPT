@@ -1,6 +1,5 @@
 import type { AppResourceType, AppSchemaType } from '@fastgpt/global/core/app/type';
-import { Types } from '../../common/mongo';
-import { parseObjectId } from '../../common/mongo/utils';
+import { collectUniqueObjectIds, parseObjectId, toObjectIdHex } from '../../common/mongo/utils';
 import { MongoApp } from './schema';
 import { MongoAppVersion } from './version/schema';
 import { buildAppResourceMongoQuery } from './resource/utils';
@@ -56,7 +55,7 @@ const findMatchedTeamAppsByPublishedResources = async ({
   });
   if (resourceQueries.length === 0) return [];
 
-  const teamObjectId = Types.ObjectId.isValid(teamId) ? new Types.ObjectId(teamId) : teamId;
+  const teamObjectId = parseObjectId(teamId) ?? teamId;
   const apps = await MongoApp.find(
     {
       teamId: teamObjectId,
@@ -77,18 +76,12 @@ const findMatchedTeamAppsByPublishedResources = async ({
   ).lean();
   if (apps.length === 0) return [];
 
-  const versionIdMap = new Map<string, Types.ObjectId>();
-  for (const app of apps) {
-    const oid = parseObjectId(app.publishedVersionId);
-    if (oid) {
-      versionIdMap.set(oid.toString(), oid);
-    }
-  }
-  if (versionIdMap.size === 0) return [];
+  const versionIds = collectUniqueObjectIds(apps.map((app) => app.publishedVersionId));
+  if (versionIds.length === 0) return [];
 
   const matchedVersions = await MongoAppVersion.find(
     {
-      _id: { $in: Array.from(versionIdMap.values()) },
+      _id: { $in: versionIds },
       $or: resourceQueries
     },
     { _id: 1, resources: 1 }
@@ -97,15 +90,14 @@ const findMatchedTeamAppsByPublishedResources = async ({
 
   const resourcesByVersionId = new Map<string, PublishedAppResource[]>(
     matchedVersions.map((version) => [
-      String(version._id),
+      toObjectIdHex(version._id) ?? String(version._id),
       (version.resources ?? []) as PublishedAppResource[]
     ])
   );
 
   return apps.flatMap((app) => {
-    const publishedResources = app.publishedVersionId
-      ? resourcesByVersionId.get(String(app.publishedVersionId))
-      : undefined;
+    const versionIdHex = toObjectIdHex(app.publishedVersionId);
+    const publishedResources = versionIdHex ? resourcesByVersionId.get(versionIdHex) : undefined;
     if (!publishedResources) return [];
     return [{ ...app, publishedResources } as MatchedPublishedApp];
   });

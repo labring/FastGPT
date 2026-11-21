@@ -272,4 +272,45 @@ describe('findTeamAppsByPublishedResource', () => {
 
     expect(counts.get('dataset-1')).toBe(101);
   });
+
+  it('matches uppercase hex publishedVersionId and safely ignores malformed BSON values', async () => {
+    const malformedAppId = new Types.ObjectId('65f000000000000000000091');
+    await MongoApp.collection.insertMany([
+      {
+        _id: appId,
+        teamId,
+        tmbId,
+        name: 'App with uppercase version hex',
+        type: 'workflow',
+        publishedVersionId: publishedVersionId.toHexString().toUpperCase(),
+        deleteTime: null
+      },
+      {
+        _id: malformedAppId,
+        teamId,
+        tmbId,
+        name: 'App with malformed version id',
+        type: 'workflow',
+        publishedVersionId: 12345,
+        deleteTime: null
+      }
+    ] as any);
+    await MongoAppVersion.collection.insertOne({
+      _id: publishedVersionId,
+      appId,
+      tmbId,
+      time: new Date(),
+      isPublish: true,
+      resources: [{ type: 'dataset', id: 'dataset-upper' }]
+    });
+
+    const result = await findTeamAppsByPublishedResource({
+      teamId: String(teamId),
+      type: 'dataset',
+      ids: 'dataset-upper'
+    });
+
+    expect(result.apps.map((item) => String(item._id))).toEqual([String(appId)]);
+    expect(result.counts.get('dataset-upper')).toBe(1);
+  });
 });

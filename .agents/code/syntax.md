@@ -418,45 +418,36 @@ export const createAppAndInitVersion = async (
 
 ---
 
-### 关联查询按场景选用应用层按需批量查询与缓存
+### MongoDB 关联查询兼容性与批量回表规范
 
-在批量导出、分页列表等跨集合补充展示字段（如版本名、成员名、渠道名）的场景中，若满足**外键高度重复、被关联文档较大且无覆盖索引、或展示列可选**，优先采用**应用层按需收集外键 + `_id $in` 最小投影批量查询 + 内存 `Map` 缓存**替代聚合管道中的 `$lookup`。涉及数据库侧跨表过滤/排序/分页，或小文档、强同节点一致性场景，按索引、往返次数和一致性要求权衡选型。
+1. **MongoDB 4.4 `$lookup` 兼容硬规则**（数据库侧过滤/排序/分页必须保留 `$lookup` 时遵守）：
+   - 禁止在同一个 `$lookup` 中混用 `localField`/`foreignField` 与 `pipeline`（MongoDB 4.4 / FCV=4.4 会直接报错），必须改用 `let + pipeline + $match($expr)`。
+   - 可缺省外键在 `let` 中必须用 `$ifNull: ['$field', null]` 归一化，防止 MongoDB 4.4/5.0 因 missing 字段跳过索引改写退化为全表扫描。
 
-- **避免大文档重复 `FETCH`**：被关联集合单文档较大（如 `app_versions` 含完整 `nodes`/`edges`）且无覆盖索引时，逐条 `$lookup` 会触发大量重复读取与裁切。
-- **按需跳过与全版本兼容**：可选列未启用时直接不查库、不投影外键；同时规避 `localField/foreignField + pipeline` 在 MongoDB 4.4 报错及 `let + $expr` 缺失外键退化 `COLLSCAN` 的问题。
-- **严格校验 `ObjectId`**：统一使用 `parseObjectId(value)`（仅接受 `ObjectId` 实例或 24 位 hex 字符串），避免 BSON 数字（如 `123`）或 12 字符短串绕过 `Types.ObjectId.isValid` 后在构造 `ObjectId` 时抛 `BSONError`。
-- **从库读取与缓存策略**：日志列表、CSV 导出等弱一致性只读分析场景可全链路使用 `readFromSecondary` 分流从库压力并接受短暂复制延迟（无需强制回主库）；但跨批次缓存应**只缓存命中结果**，不对从库查空做整次导出的永久负缓存，确保副本追平后后续批次可自动恢复。仅强一致性业务（如计费扣减、权限写入前校验）才要求主库读或同视图读取。
-- **ObjectId 显式还原**：全局 `find` post hook（`convertObjectIds`）会将顶层 `ObjectId` 转为 `string`，而 `aggregate` 的 `$match` 不做 Mongoose 自动转型；将 `find` 得到的 ID 传给后续 `aggregate` `$match` 时必须显式还原为 `Types.ObjectId`。
+2. **应用层按需批量回表**（跨集合补充展示字段，且满足外键高度重复、被关联文档较大无覆盖索引、或展示列可选时优先采用）：
+   - 统一使用 `@fastgpt/service/common/mongo/utils` 的 `parseObjectId`、`toObjectIdHex` 与 `collectUniqueObjectIds`，禁止各业务复制正则或手写去重循环；收集外键与构建/查询 `Map` 必须统一经 `toObjectIdHex` 归一小写，同时避免 BSON 数字或 12 字符短串绕过 `Types.ObjectId.isValid` 抛 `BSONError`。
+   - 全局 `find` post hook（`convertObjectIds`）会将顶层 `ObjectId` 转为 `string`，而 `aggregate` 的 `$match` 不做自动转型；将 `find` 结果传给后续 `aggregate` `$match` 时必须经 `collectUniqueObjectIds` / `parseObjectId` 显式还原为 `Types.ObjectId`。
+   - 多批次弱一致性从库读取（如日志流式导出）可统一走 `readFromSecondary`；跨批次缓存对未命中 ID 应做**有限重试后负缓存**（如 `createAppVersionNameLoader` 默认最多重试 1 次），兼顾短暂副本延迟自动恢复与防止已删除历史外键在数百批次中反复空查。
+   - 同一业务域（如列表与导出）的底层批量查询与统计口径应沉淀在 `entity.ts` 共用，避免在 API 路由层双写导致口径漂移。
 
 ```typescript
-import { parseObjectId, readFromSecondary } from '@fastgpt/service/common/mongo/utils';
-import { type Types } from '@fastgpt/service/common/mongo';
+import {
+  collectUniqueObjectIds,
+  readFromSecondary,
+  toObjectIdHex
+} from '@fastgpt/service/common/mongo/utils';
 
-// Good —— 严格校验 ObjectId、最小投影批量查询与命中结果跨批次缓存（弱一致性分析读统一走从库）
-const versionNameMap = new Map<string, string>();
-
-const loadVersionNames = async (batch: Array<{ appVersionId?: unknown }>) => {
-  if (!needVersionName) return;
-
-  const missingMap = new Map<string, Types.ObjectId>();
-  for (const doc of batch) {
-    const oid = parseObjectId(doc.appVersionId);
-    if (!oid) continue;
-    const idStr = oid.toString();
-    if (!versionNameMap.has(idStr) && !missingMap.has(idStr)) {
-      missingMap.set(idStr, oid);
-    }
-  }
-  if (missingMap.size === 0) return;
-
-  // 仅缓存命中记录，避免将从库短暂查空永久固化到后续批次
-  const versions = await MongoAppVersion.find(
-    { _id: { $in: Array.from(missingMap.values()) } },
-    { _id: 1, versionName: 1 },
-    readFromSecondary
-  ).lean();
-  for (const version of versions) {
-    versionNameMap.set(String(version._id), version.versionName || '');
-  }
-};
+// Good —— 使用统一原语收集去重 ObjectId，并与小写 hex 键对齐回表
+const versionIds = collectUniqueObjectIds(rows.map((row) => row.appVersionId));
+const versions =
+  versionIds.length > 0
+    ? await MongoAppVersion.find(
+        { _id: { $in: versionIds } },
+        { _id: 1, versionName: 1 },
+        readFromSecondary
+      ).lean()
+    : [];
+const versionNameMap = new Map(
+  versions.map((version) => [toObjectIdHex(version._id) ?? String(version._id), version.versionName ?? null])
+);
 ```
