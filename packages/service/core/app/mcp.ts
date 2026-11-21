@@ -22,9 +22,10 @@ import { isUserConfigError, UserError, UserConfigError } from '@fastgpt/global/c
 import { ZodError } from 'zod';
 import $RefParser from '@apidevtools/json-schema-ref-parser';
 import { getLogger, LogCategories } from '../../common/logger';
+import { AsyncLocalStorage } from 'async_hooks';
 import dns from 'dns/promises';
-import { isIP, type LookupFunction } from 'net';
-import { Agent, type Dispatcher } from 'undici';
+import { isIP, type LookupFunction, type Socket } from 'net';
+import { Agent, Pool, buildConnector, errors, fetch as undiciFetch, type Dispatcher } from 'undici';
 import { getProxyForUrl } from 'proxy-from-env';
 import {
   isInternalAddress,
@@ -46,6 +47,7 @@ type McpChildToolType = McpToolConfigType & {
 };
 
 const MCP_SAFE_FETCH_MAX_REDIRECTS = 5;
+const MCP_PROXY_CONNECT_TIMEOUT = 10_000;
 const MCP_REDIRECT_STATUS_CODES = new Set([301, 302, 303, 307, 308]);
 const MCP_SENSITIVE_REDIRECT_HEADERS = new Set(['authorization', 'cookie', 'proxy-authorization']);
 const MCP_NETWORK_ERROR_CODES = new Set([
@@ -62,8 +64,23 @@ const MCP_NETWORK_ERROR_CODES = new Set([
   'UND_ERR_BODY_TIMEOUT',
   'CERT_HAS_EXPIRED',
   'DEPTH_ZERO_SELF_SIGNED_CERT',
-  'ERR_TLS_CERT_ALTNAME_INVALID'
+  'ERR_TLS_CERT_ALTNAME_INVALID',
+  'UND_ERR_PRX_TLS',
+  'MCP_PROXY_TUNNEL_ERROR'
 ]);
+
+/** HTTP/HTTPS 代理隧道建连失败（如非 200 CONNECT 响应或不支持的代理协议），按外部/配置故障分类。 */
+class McpProxyTunnelError extends Error {
+  readonly code = 'MCP_PROXY_TUNNEL_ERROR';
+
+  constructor(
+    message: string,
+    readonly statusCode?: number
+  ) {
+    super(message);
+    this.name = 'McpProxyTunnelError';
+  }
+}
 
 type McpRequestInit = RequestInit & {
   dispatcher?: Dispatcher;
@@ -271,18 +288,217 @@ const getMcpRedirectRequestInit = ({
  * 这会让“初始 URL 合法，Location 跳到内网地址”的场景绕过 SSRF 防护。
  * 该 fetch 通过 `redirect: manual` 接管重定向流程，并对每一跳目标重新执行
  * 内网地址校验；跨 host/protocol 跳转时还会移除鉴权类 header，避免 MCP 密钥泄露。
- * 直连请求还会把最终校验过的 DNS 地址固定到 undici dispatcher，避免
- * “检查时是公网 IP、建连时变成内网 IP”的 DNS rebinding TOCTOU。
+ * 直连请求（含命中 NO_PROXY 的目标）会把最终校验过的 DNS 地址固定到 undici Agent，
+ * 避免“检查时是公网 IP、建连时变成内网 IP”的 DNS rebinding TOCTOU；
+ * 命中环境代理时同样先在本机解析并复检目标 IP，再向代理发起 `CONNECT <IP>:<port>`
+ * 隧道建连，避免代理端自行解析域名引发 DNS rebinding，同时保留原始请求 URL 的
+ * `Host` 头与 HTTPS TLS `servername`（SNI）及证书校验。
  */
 export const createMcpSafeFetch = ({
   maxRedirects = MCP_SAFE_FETCH_MAX_REDIRECTS,
-  fetchImpl = fetch as McpFetch
+  fetchImpl = undiciFetch as unknown as McpFetch
 }: {
   maxRedirects?: number;
   fetchImpl?: McpFetch;
 } = {}): McpSafeFetch => {
   const redirectLimit = Math.max(0, maxRedirects);
   const dispatchers = new Map<string, Dispatcher>();
+  const proxyPools = new Map<string, Pool>();
+  const closeController = new AbortController();
+  const connectSignalStorage = new AsyncLocalStorage<AbortSignal | undefined>();
+  const endpointConnector = buildConnector({ timeout: MCP_PROXY_CONNECT_TIMEOUT });
+
+  /**
+   * 构造通过 HTTP 代理建立固定 IP 隧道的 Agent。
+   *
+   * 为什么 `CONNECT` 使用已校验 IP 而 `Host`/SNI 保留原始域名：
+   * 1. 若向代理发送 `CONNECT hostname:port`，代理会自行重新解析域名，应用侧的
+   *    SSRF 预检与代理侧实际建连之间存在 DNS rebinding / split-horizon 绕过窗口；
+   * 2. 发送 `CONNECT <resolvedIP>:<port>` 强制代理只能连接到本机校验后的目标 IP，
+   *    而内层请求继续保留原始 URL，使虚拟主机 `Host` 头与 TLS `servername`（SNI）
+   *    及证书域名校验保持正确。
+   */
+  const createPinnedProxyAgent = (proxyUrl: string): Dispatcher => {
+    const parsedProxyUrl = new URL(proxyUrl);
+    if (parsedProxyUrl.protocol !== 'http:' && parsedProxyUrl.protocol !== 'https:') {
+      throw new McpProxyTunnelError(`Unsupported MCP proxy protocol: ${parsedProxyUrl.protocol}`);
+    }
+
+    const proxyHeaders: Record<string, string> = {};
+    if (parsedProxyUrl.username || parsedProxyUrl.password) {
+      const credentials = `${decodeURIComponent(parsedProxyUrl.username)}:${decodeURIComponent(
+        parsedProxyUrl.password
+      )}`;
+      proxyHeaders['proxy-authorization'] = `Basic ${Buffer.from(credentials).toString('base64')}`;
+    }
+
+    const activeProxyPool = (() => {
+      const existingPool = proxyPools.get(parsedProxyUrl.origin);
+      if (existingPool) return existingPool;
+
+      const newPool = new Pool(parsedProxyUrl.origin, {
+        connectTimeout: MCP_PROXY_CONNECT_TIMEOUT
+      });
+      proxyPools.set(parsedProxyUrl.origin, newPool);
+      return newPool;
+    })();
+
+    return new Agent({
+      connect: (connectOpts, callback) => {
+        const callerSignal = connectSignalStorage.getStore();
+        const signals: AbortSignal[] = [
+          AbortSignal.timeout(MCP_PROXY_CONNECT_TIMEOUT),
+          closeController.signal
+        ];
+        if (callerSignal) {
+          signals.push(callerSignal);
+        }
+        const tunnelSignal = AbortSignal.any(signals);
+
+        const toAbortError = (reason: unknown): Error => {
+          return reason instanceof Error
+            ? reason
+            : new Error(String(reason ?? 'Proxy tunnel aborted'));
+        };
+
+        let settled = false;
+        let activeRawSocket: Socket | undefined;
+        let activeTlsSocket: Socket | undefined;
+        let onTunnelAbort: (() => void) | undefined;
+        let onTlsClose: (() => void) | undefined;
+
+        // 保证每次 connect 只回调一次 undici，并在完成后及时清理监听，避免重复回调或内存泄漏。
+        const finish = (...args: Parameters<typeof callback>) => {
+          if (settled) return;
+          settled = true;
+          if (onTunnelAbort) {
+            tunnelSignal.removeEventListener('abort', onTunnelAbort);
+          }
+          if (onTlsClose && activeTlsSocket) {
+            activeTlsSocket.removeListener('close', onTlsClose);
+          }
+          callback(...args);
+        };
+
+        void (async () => {
+          try {
+            tunnelSignal.throwIfAborted();
+
+            // 每次新建隧道连接都重新解析并校验目标 IP，防止代理路径上的 DNS rebinding。
+            const resolved = await resolveMcpConnectAddress(connectOpts.hostname);
+            tunnelSignal.throwIfAborted();
+
+            const targetPort = connectOpts.port
+              ? String(connectOpts.port)
+              : connectOpts.protocol === 'https:'
+                ? '443'
+                : '80';
+            const connectAuthority =
+              resolved.family === 6
+                ? `[${resolved.address}]:${targetPort}`
+                : `${resolved.address}:${targetPort}`;
+
+            const { socket, statusCode } = await activeProxyPool
+              .connect({
+                path: connectAuthority,
+                headers: {
+                  ...proxyHeaders,
+                  host: connectAuthority,
+                  'proxy-connection': 'keep-alive'
+                },
+                signal: tunnelSignal
+              })
+              .catch((proxyConnectError: unknown) => {
+                // undici Client#handleConnectError 对 ERR_TLS_CERT_ALTNAME_INVALID 按目标 servername 匹配队列；
+                // 对 http:// 目标走 https:// 代理时两者不等会导致死循环重试，按 ProxyAgent 同款包装为 SecureProxyConnectionError。
+                if (
+                  proxyConnectError instanceof Error &&
+                  'code' in proxyConnectError &&
+                  proxyConnectError.code === 'ERR_TLS_CERT_ALTNAME_INVALID'
+                ) {
+                  throw new errors.SecureProxyConnectionError(proxyConnectError);
+                }
+                throw proxyConnectError;
+              });
+
+            const rawSocket = socket as Socket;
+            activeRawSocket = rawSocket;
+
+            if (statusCode !== 200) {
+              rawSocket.on('error', () => {}).destroy();
+              finish(
+                new McpProxyTunnelError(
+                  `Proxy response (${statusCode}) !== 200 when HTTP Tunneling`,
+                  statusCode
+                ),
+                null
+              );
+              return;
+            }
+
+            if (tunnelSignal.aborted) {
+              rawSocket.on('error', () => {}).destroy();
+              finish(toAbortError(tunnelSignal.reason), null);
+              return;
+            }
+
+            if (connectOpts.protocol !== 'https:') {
+              finish(null, rawSocket);
+              return;
+            }
+
+            onTunnelAbort = () => {
+              const abortError = toAbortError(tunnelSignal.reason);
+              // 先通过 finish 结束 undici Client 的 connecting 状态，再销毁 TLS/底层 socket 并清理超时定时器；
+              // 仅调用无参 socket.destroy() 不会触发 buildConnector 的 error 回调，会导致 Agent.close() 永远挂起。
+              finish(abortError, null);
+              activeTlsSocket?.on('error', () => {}).destroy(abortError);
+              rawSocket.on('error', () => {}).destroy();
+            };
+
+            onTlsClose = () => {
+              // 兜底：若 TLS socket 未触发 secureConnect/error 即关闭，必须结束 connect 回调防止 Client 卡死。
+              finish(new Error('TLS socket closed before handshake completed'), null);
+              rawSocket.on('error', () => {}).destroy();
+            };
+
+            // IP 字面量不写入 SNI（RFC 6066），域名则保留原 servername 完成虚拟主机与证书校验。
+            const rawHostname = connectOpts.hostname.replace(/^\[|\]$/g, '');
+            const servername = connectOpts.servername
+              ? connectOpts.servername
+              : isIP(rawHostname)
+                ? undefined
+                : rawHostname;
+
+            activeTlsSocket = endpointConnector(
+              {
+                ...connectOpts,
+                servername,
+                httpSocket: rawSocket
+              },
+              (...args) => {
+                finish(...args);
+              }
+            ) as unknown as Socket | undefined;
+
+            if (!settled) {
+              activeTlsSocket?.once('close', onTlsClose);
+              tunnelSignal.addEventListener('abort', onTunnelAbort, { once: true });
+              if (tunnelSignal.aborted) {
+                onTunnelAbort();
+              }
+            }
+          } catch (error) {
+            if (!settled) {
+              activeTlsSocket?.on('error', () => {}).destroy();
+              activeRawSocket?.on('error', () => {}).destroy();
+            }
+            finish(error instanceof Error ? error : new Error(String(error)), null);
+          }
+        })();
+      }
+    });
+  };
 
   const getDispatcher = async (url: string): Promise<Dispatcher> => {
     const parsedUrl = new URL(url);
@@ -290,9 +506,16 @@ export const createMcpSafeFetch = ({
       throw new Error('MCP URL only supports http/https protocol');
     }
 
-    // 代理端会重新解析目标域名，本进程无法保证它连接的是已校验的 IP；必须拒绝。
-    if (getProxyForUrl(url)) {
-      throw new Error('MCP requests through an HTTP proxy are not supported by SSRF protection');
+    // 优先按 proxy-from-env 判断是否走环境代理（已内置 NO_PROXY / no_proxy 匹配）；命中直连返回空串。
+    const proxyUrl = getProxyForUrl(url);
+    if (proxyUrl !== '') {
+      const key = `proxy|${proxyUrl}`;
+      const existing = dispatchers.get(key);
+      if (existing) return existing;
+
+      const dispatcher = createPinnedProxyAgent(proxyUrl);
+      dispatchers.set(key, dispatcher);
+      return dispatcher;
     }
 
     const resolved = await resolveMcpConnectAddress(parsedUrl.hostname);
@@ -310,9 +533,15 @@ export const createMcpSafeFetch = ({
   };
 
   const close = async () => {
+    closeController.abort(new DOMException('MCP fetch closed', 'AbortError'));
     const currentDispatchers = [...dispatchers.values()];
+    const currentProxyPools = [...proxyPools.values()];
     dispatchers.clear();
-    await Promise.all(currentDispatchers.map((dispatcher) => dispatcher.close().catch(() => {})));
+    proxyPools.clear();
+    await Promise.all([
+      ...currentDispatchers.map((dispatcher) => dispatcher.close().catch(() => {})),
+      ...currentProxyPools.map((pool) => pool.close().catch(() => {}))
+    ]);
   };
 
   const safeFetch = (async (url, init) => {
@@ -327,10 +556,24 @@ export const createMcpSafeFetch = ({
 
       const dispatcher = await getDispatcher(currentUrl);
       // dispatcher 必须覆盖调用方传入值，避免自定义 dispatcher 绕过安全 lookup。
-      const response = await fetchImpl(currentUrl, {
-        ...currentInit,
-        dispatcher
-      });
+      let response: Response;
+      try {
+        response = await connectSignalStorage.run(currentInit.signal ?? undefined, () =>
+          fetchImpl(currentUrl, {
+            ...currentInit,
+            dispatcher
+          })
+        );
+      } catch (error) {
+        if (
+          error instanceof TypeError &&
+          error.message === 'fetch failed' &&
+          error.cause instanceof Error
+        ) {
+          throw error.cause;
+        }
+        throw error;
+      }
 
       if (!isMcpRedirectResponse(response)) {
         return response;
