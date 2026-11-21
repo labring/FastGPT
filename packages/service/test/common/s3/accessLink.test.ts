@@ -375,6 +375,78 @@ describe('s3 access link', () => {
     ).toBe('');
   });
 
+  it('only matches relative download routes when no public domain or prefix is configured', async () => {
+    const v2Alias = 'v2-R7mQG0Yh2kVxP9Za-200000-4k9LmN2pQrStUvWxYz12Ab.pdf';
+    const v1Alias = 'R7mQG0Yh2kVxP9Za.200000.42NZcU3jc37asuRDQ0BStA';
+
+    // 默认未配置 storage.fileDomain、site.publicUrl 和 FILE_DOWNLOAD_PUBLIC_URL_PREFIX
+    await loadAccessLinkModules({
+      fileDomain: '',
+      publicUrl: '',
+      fileDownloadPublicUrlPrefix: '',
+      nextPublicBaseUrl: ''
+    });
+    const defaultUrlMod = await import('@fastgpt/service/common/s3/accessLink/url');
+    const defaultIssued = defaultUrlMod.buildS3AccessLinkDownloadUrl(v2Alias);
+    expect(defaultIssued).toBe(`/api/system/file/d/${v2Alias}`);
+    expect(defaultUrlMod.resolveS3DownloadAliasFromUrl(defaultIssued)).toBe(v2Alias);
+    expect(defaultUrlMod.resolveS3DownloadAliasFromUrl(`/api/system/file/d/${v1Alias}`)).toBe(
+      v1Alias
+    );
+    // 未配置公开域名时不猜测任意外部 origin 的归属，避免误拦跨实例短链
+    expect(
+      defaultUrlMod.resolveS3DownloadAliasFromUrl(
+        `https://other-fastgpt.example.com/api/system/file/d/${v2Alias}`
+      )
+    ).toBe('');
+    expect(
+      defaultUrlMod.resolveS3DownloadAliasFromUrl(
+        `https://other-fastgpt.example.com/api/system/file/d/${v1Alias}`
+      )
+    ).toBe('');
+    expect(
+      defaultUrlMod.isSignedDownloadAliasFilename({
+        url: `https://other-fastgpt.example.com/api/system/file/d/${v2Alias}`,
+        filename: v2Alias
+      })
+    ).toBe(false);
+    expect(
+      defaultUrlMod.isSignedDownloadAliasFilename({
+        url: `https://other-fastgpt.example.com/api/system/file/d/${v1Alias}`,
+        filename: v1Alias
+      })
+    ).toBe(true);
+    expect(
+      defaultUrlMod.isSignedDownloadAliasFilename({
+        url: defaultIssued,
+        filename: v2Alias
+      })
+    ).toBe(true);
+    expect(
+      defaultUrlMod.isSignedDownloadAliasFilename({
+        url: defaultIssued,
+        filename: 'report.pdf'
+      })
+    ).toBe(false);
+
+    // 配置了 NEXT_PUBLIC_BASE_URL 但未配置公开域名时同样仅匹配相对路径
+    await loadAccessLinkModules({
+      fileDomain: '',
+      publicUrl: '',
+      fileDownloadPublicUrlPrefix: '',
+      nextPublicBaseUrl: '/fastgpt'
+    });
+    const basePathUrlMod = await import('@fastgpt/service/common/s3/accessLink/url');
+    const basePathIssued = basePathUrlMod.buildS3AccessLinkDownloadUrl(v2Alias);
+    expect(basePathIssued).toBe(`/fastgpt/api/system/file/d/${v2Alias}`);
+    expect(basePathUrlMod.resolveS3DownloadAliasFromUrl(basePathIssued)).toBe(v2Alias);
+    expect(
+      basePathUrlMod.resolveS3DownloadAliasFromUrl(
+        `https://other-fastgpt.example.com/fastgpt/api/system/file/d/${v2Alias}`
+      )
+    ).toBe('');
+  });
+
   it('round-trips build and resolve consistently for path-prefixed fileDomain, publicUrl, and short prefixes', async () => {
     const v2Alias = 'v2-R7mQG0Yh2kVxP9Za-200000-4k9LmN2pQrStUvWxYz12Ab.png';
 

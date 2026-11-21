@@ -1,14 +1,10 @@
 import { stripUrlTrailingSlash } from '@fastgpt/global/common/string/url';
+import { parseSignedS3DownloadAlias } from '@fastgpt-sdk/storage/access-link';
 import { serviceEnv } from '../../../env';
 import { getStorageFileDomain } from '../config/constants';
 import { getSystemInstanceConfig } from '../../system/systemInstanceConfig/runtime';
 import { S3_ACCESS_LINK_ROUTES } from './constants';
 import { S3SignedDownloadAliasValueSchema } from './type';
-
-type ParsedUrlPrefix = {
-  origin: string;
-  pathname: string;
-};
 
 const normalizePathPrefix = (value?: string) => {
   const stripped = stripUrlTrailingSlash(value?.trim());
@@ -29,34 +25,19 @@ const getS3AccessLinkEndpointUrl = () => {
   return buildS3AccessLinkEndpointUrl(domain);
 };
 
-const parseUrlPrefix = (rawUrl?: string): ParsedUrlPrefix | undefined => {
-  const normalized = stripUrlTrailingSlash(rawUrl?.trim());
-  if (!normalized) return;
-
-  try {
-    const parsed = new URL(normalized);
-    return {
-      origin: parsed.origin,
-      pathname: stripUrlTrailingSlash(parsed.pathname)
-    };
-  } catch {
-    return;
-  }
-};
-
-const extractSingleTrailingSegment = (pathname: string, prefixPath: string) => {
-  const normalizedPrefix = prefixPath ? `${stripUrlTrailingSlash(prefixPath)}/` : '/';
-  if (!pathname.startsWith(normalizedPrefix)) return '';
-
-  const rest = pathname.slice(normalizedPrefix.length);
-  if (!rest || rest.includes('/')) return '';
-
-  return decodeURIComponent(rest);
-};
-
 const extractSignedAliasFromPrefixes = (pathname: string, prefixes: Iterable<string>) => {
+  const extractSingleTrailingSegment = (prefixPath: string) => {
+    const normalizedPrefix = prefixPath ? `${stripUrlTrailingSlash(prefixPath)}/` : '/';
+    if (!pathname.startsWith(normalizedPrefix)) return '';
+
+    const rest = pathname.slice(normalizedPrefix.length);
+    if (!rest || rest.includes('/')) return '';
+
+    return decodeURIComponent(rest);
+  };
+
   for (const prefixPath of prefixes) {
-    const candidate = extractSingleTrailingSegment(pathname, prefixPath);
+    const candidate = extractSingleTrailingSegment(prefixPath);
     if (candidate && S3SignedDownloadAliasValueSchema.safeParse(candidate).success) {
       return candidate;
     }
@@ -66,6 +47,21 @@ const extractSignedAliasFromPrefixes = (pathname: string, prefixes: Iterable<str
 };
 
 const getConfiguredDownloadRouteRules = () => {
+  const parseUrlPrefix = (rawUrl?: string) => {
+    const normalized = stripUrlTrailingSlash(rawUrl?.trim());
+    if (!normalized) return;
+
+    try {
+      const parsed = new URL(normalized);
+      return {
+        origin: parsed.origin,
+        pathname: stripUrlTrailingSlash(parsed.pathname)
+      };
+    } catch {
+      return;
+    }
+  };
+
   const nextBasePath = normalizePathPrefix(serviceEnv.NEXT_PUBLIC_BASE_URL);
   const defaultAppRoutePath = `${nextBasePath}${S3_ACCESS_LINK_ROUTES.download}`;
   const publicPrefix = parseUrlPrefix(serviceEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX);
@@ -87,7 +83,6 @@ const getConfiguredDownloadRouteRules = () => {
   }
 
   return {
-    defaultAppRoutePath,
     publicPrefix,
     relativeRoutePrefixes,
     originRoutePrefixes
@@ -98,14 +93,15 @@ const getConfiguredDownloadRouteRules = () => {
  * 仅从当前实例的下载路由或已配置的 `FILE_DOWNLOAD_PUBLIC_URL_PREFIX` 提取 signed alias。
  *
  * 与 `buildS3AccessLinkDownloadUrl` 共享含路径的完整端点规则（兼容带路径前缀的 `storage.fileDomain`
- * 与 `site.publicUrl`），同时不会把同网关其他服务路径或外部 CDN 上恰巧命中 `v2-...` 形状的文件
- * 误判为本实例短链，避免在进入外链读取前因本地验签失败而被拒绝。
+ * 与 `site.publicUrl`）：相对路径匹配本实例下载路由；绝对 URL 必须精确命中已配置的公开端点。
+ * 未配置任何公开域名或短路径前缀时，本实例只签发相对链接，不对任意外部 origin 的绝对 URL 做归属猜测，
+ * 避免把其他 FastGPT 实例或外部 CDN 的 v2 链接误送本地验签而阻断外链读取。
  */
 export const resolveS3DownloadAliasFromUrl = (url: string) => {
   try {
     const isRelativeUrl = url.startsWith('/') && !url.startsWith('//');
     const parsedUrl = new URL(url, 'http://localhost:3000');
-    const { defaultAppRoutePath, publicPrefix, relativeRoutePrefixes, originRoutePrefixes } =
+    const { publicPrefix, relativeRoutePrefixes, originRoutePrefixes } =
       getConfiguredDownloadRouteRules();
 
     // 1. 已配置公开短路径前缀：{FILE_DOWNLOAD_PUBLIC_URL_PREFIX}/{signedAlias}
@@ -123,10 +119,6 @@ export const resolveS3DownloadAliasFromUrl = (url: string) => {
       return extractSignedAliasFromPrefixes(parsedUrl.pathname, relativeRoutePrefixes);
     }
 
-    if (originRoutePrefixes.size === 0 && !publicPrefix) {
-      return extractSignedAliasFromPrefixes(parsedUrl.pathname, [defaultAppRoutePath]);
-    }
-
     const allowedRoutes = originRoutePrefixes.get(parsedUrl.origin);
     if (!allowedRoutes) {
       return '';
@@ -136,6 +128,41 @@ export const resolveS3DownloadAliasFromUrl = (url: string) => {
   } catch {
     return '';
   }
+};
+
+/**
+ * 识别跨实例的存量 v1 点分短链（`<aliasId>.<expMinute36>.<sig>`）。
+ * v1 的末段是 22 位签名而非扩展名，读取边界需显式剥离以免误判为未知扩展名或覆盖远端真实文件名。
+ */
+export const isLegacyV1SignedDownloadAlias = (value?: string): boolean => {
+  if (!value) return false;
+
+  try {
+    return parseSignedS3DownloadAlias(value).version === 'v1';
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * 判断从链接提取出的文件名片段是否属于不可作为真实文件名的短链凭证：
+ * 仅命中本实例短链路由（含 v1/v2）或跨实例旧 v1 点分格式时返回 true；
+ * 外部 CDN 上形如 `v2-...pdf` 的普通文件与跨实例 v2 链接保留真实文件名及后缀。
+ */
+export const isSignedDownloadAliasFilename = ({
+  url,
+  filename,
+  localSignedAlias
+}: {
+  url: string;
+  filename?: string;
+  localSignedAlias?: string;
+}): boolean => {
+  if (!filename) return false;
+  if (isLegacyV1SignedDownloadAlias(filename)) return true;
+
+  const resolvedAlias = localSignedAlias ?? resolveS3DownloadAliasFromUrl(url);
+  return Boolean(resolvedAlias) && filename === resolvedAlias;
 };
 
 /**

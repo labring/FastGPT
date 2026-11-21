@@ -81,6 +81,7 @@ describe('parseUrlToChatFileType', () => {
     'v2-workflowFileAlias-hscf3-ExampleSignatureValue1'
   ])('短链凭证 %s 使用响应元数据分类，不把签名片段当成真实文件名', async (signedAlias) => {
     const originalPublicPrefix = serviceEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX;
+    getTestInstanceConfig().storage.fileDomain = 'https://files.example.com';
     try {
       for (const [prefix, publicPrefix] of [
         ['/api/system/file/d/', undefined],
@@ -128,6 +129,39 @@ describe('parseUrlToChatFileType', () => {
     expect(axios.head).not.toHaveBeenCalled();
   });
 
+  it('默认未配置公开域名时，跨实例 v2 文档短链直接按后缀分类，跨实例旧 v1 短链回退远端探测', async () => {
+    const verifySpy = vi.spyOn(s3AccessLinkService, 'verifyDownloadAlias');
+    const foreignV2Url =
+      'https://other-fastgpt.example.com/api/system/file/d/v2-q7aJkh7F0FB2FI3C-hskff-6JjpblHZ0hOyMbEq4frV0A.pdf';
+    const foreignV1Url =
+      'https://other-fastgpt.example.com/api/system/file/d/q7aJkh7F0FB2FI3C.hskff.6JjpblHZ0hOyMbEq4frV0A';
+
+    expect(await parseUrlToChatFileType({ url: foreignV2Url })).toEqual({
+      url: foreignV2Url,
+      name: 'v2-q7aJkh7F0FB2FI3C-hskff-6JjpblHZ0hOyMbEq4frV0A.pdf',
+      type: FileType.document
+    });
+    expect(verifySpy).not.toHaveBeenCalled();
+    expect(axios.head).not.toHaveBeenCalled();
+
+    vi.mocked(axios.head).mockResolvedValueOnce({
+      headers: {
+        'content-type': 'application/pdf',
+        'content-disposition': 'inline; filename="legacy-report.pdf"'
+      }
+    });
+    expect(
+      await parseUrlToChatFileType({ url: foreignV1Url, name: foreignV1Url, type: FileType.file })
+    ).toEqual({
+      url: foreignV1Url,
+      name: foreignV1Url,
+      type: FileType.document,
+      filename: 'legacy-report.pdf'
+    });
+    expect(verifySpy).not.toHaveBeenCalled();
+    expect(axios.head).toHaveBeenCalledTimes(1);
+  });
+
   it.each([
     [
       'https://testdev.fastgpt.cn/api/system/file/d/',
@@ -168,6 +202,9 @@ describe('parseUrlToChatFileType', () => {
     '本机签发的短链 %s (%s) 优先使用下载别名元数据或对象键后缀分类，不发起远端 HTTP 探测',
     async (prefix, publicPrefix, signedAlias, resolved, expectedType, expectedFilename) => {
       const originalPublicPrefix = serviceEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX;
+      if (!publicPrefix) {
+        getTestInstanceConfig().site.publicUrl = new URL(prefix).origin;
+      }
       (serviceEnv as { FILE_DOWNLOAD_PUBLIC_URL_PREFIX?: string }).FILE_DOWNLOAD_PUBLIC_URL_PREFIX =
         publicPrefix;
       try {

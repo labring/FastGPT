@@ -55,6 +55,7 @@ flowchart LR
 - `sig`：`HMAC-SHA256(FILE_TOKEN_KEY, "s3-download:v2:" + aliasId + ":" + expMinute36 + ":" + ext)` 数值对 `62^22` 取模并固定编码为 22 位 Base62（不含 `.` / `-` / `_`），防止上游把签名误识别为扩展名，也避免 `-` 分隔符冲突。
 - `.<ext>`：可选真实扩展名，按原始 `filename` → URI 解码后的 `objectKey` basename → 明确 MIME 兜底推导，统一小写且满足 `/^(?=[a-z0-9]*[a-z])[a-z0-9]{1,16}$/`；参与 HMAC 签名防止篡改，无合法扩展名时省略。
 - 校验端同时向后兼容存量 `v1` 点分格式（`<aliasId>.<expMinute36>.<sig>`，`base64url` 签名）。可通过 `STORAGE_DOWNLOAD_SIGN_VERSION=v1` 在滚动发布或代理过渡期暂维持 v1 签发。
+- 本实例短链识别（`resolveS3DownloadAliasFromUrl`）与签发端共用完整端点规则：相对路径匹配本实例下载路由，绝对 URL 仅精确匹配已配置的 `storage.fileDomain`、`site.publicUrl` 或 `FILE_DOWNLOAD_PUBLIC_URL_PREFIX`；未配置公开域名时不对任意外部 origin 做归属猜测，避免误拦其他 FastGPT 实例或外部 CDN 的 v2 链接。
 
 Mongo 集合 `s3_download_aliases` 只保存对象映射，不保存可直接使用的 bearer URL：
 

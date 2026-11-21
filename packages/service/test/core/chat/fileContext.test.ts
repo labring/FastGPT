@@ -672,36 +672,43 @@ describe('parseFileContentFromUrls (external fetch)', () => {
   ])(
     '短链 %s 解析时使用 alias 记录里的文件名推断后缀，不把短链 token 当文件名',
     async (signedAlias) => {
-      const shortUrl = `https://files.example.com/api/system/file/d/${signedAlias}`;
-      mockVerifyS3DownloadAccess.mockResolvedValue({
-        bucketName: 'fastgpt-private',
-        objectKey: 'chat/app/app1/u1/c1/random-key',
-        filename: 'report.pdf',
-        expiresAt: new Date('2099-01-01T00:00:00.000Z')
-      });
-      mockAxiosGet.mockResolvedValue({
-        data: Buffer.from('%PDF-1.7'),
-        headers: {
-          'content-type': 'application/octet-stream'
-        }
-      });
+      const savedConfig = global.systemInstanceConfig;
+      global.systemInstanceConfig = createDefaultInstanceConfig();
+      getTestInstanceConfig().storage.fileDomain = 'https://files.example.com';
+      try {
+        const shortUrl = `https://files.example.com/api/system/file/d/${signedAlias}`;
+        mockVerifyS3DownloadAccess.mockResolvedValue({
+          bucketName: 'fastgpt-private',
+          objectKey: 'chat/app/app1/u1/c1/random-key',
+          filename: 'report.pdf',
+          expiresAt: new Date('2099-01-01T00:00:00.000Z')
+        });
+        mockAxiosGet.mockResolvedValue({
+          data: Buffer.from('%PDF-1.7'),
+          headers: {
+            'content-type': 'application/octet-stream'
+          }
+        });
 
-      const result = await parseFileContentFromUrls({
-        urls: [shortUrl],
-        maxFiles: 20,
-        teamId: 'team-1',
-        tmbId: 'tmb-1'
-      });
+        const result = await parseFileContentFromUrls({
+          urls: [shortUrl],
+          maxFiles: 20,
+          teamId: 'team-1',
+          tmbId: 'tmb-1'
+        });
 
-      expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(signedAlias);
-      expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
-        expect.objectContaining({ extension: 'pdf' })
-      );
-      expect(result[0]).toMatchObject({
-        success: true,
-        name: 'report.pdf',
-        url: shortUrl
-      });
+        expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(signedAlias);
+        expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
+          expect.objectContaining({ extension: 'pdf' })
+        );
+        expect(result[0]).toMatchObject({
+          success: true,
+          name: 'report.pdf',
+          url: shortUrl
+        });
+      } finally {
+        global.systemInstanceConfig = savedConfig;
+      }
     }
   );
 
@@ -711,7 +718,12 @@ describe('parseFileContentFromUrls (external fetch)', () => {
   ] as const)(
     '工作流未登记的 %s 短链使用真实文件名解析，不把签名后缀登记为外链格式',
     async (prefix, publicPrefix) => {
+      const savedConfig = global.systemInstanceConfig;
       const originalPublicPrefix = serviceEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX;
+      global.systemInstanceConfig = createDefaultInstanceConfig();
+      if (!publicPrefix) {
+        getTestInstanceConfig().storage.fileDomain = 'https://files.example.com';
+      }
       (serviceEnv as { FILE_DOWNLOAD_PUBLIC_URL_PREFIX?: string }).FILE_DOWNLOAD_PUBLIC_URL_PREFIX =
         publicPrefix;
       try {
@@ -748,6 +760,7 @@ describe('parseFileContentFromUrls (external fetch)', () => {
         expect(fileContext.resolve(shortUrl)).toBeUndefined();
         expect(mockAxiosGet).not.toHaveBeenCalled();
       } finally {
+        global.systemInstanceConfig = savedConfig;
         (
           serviceEnv as { FILE_DOWNLOAD_PUBLIC_URL_PREFIX?: string }
         ).FILE_DOWNLOAD_PUBLIC_URL_PREFIX = originalPublicPrefix;
@@ -862,6 +875,67 @@ describe('parseFileContentFromUrls (external fetch)', () => {
     expect(mockVerifyS3DownloadAccess).not.toHaveBeenCalled();
   });
 
+  it('默认未配置公开域名时，其他实例的绝对 v2 文档短链走外链流程，不触发本地验签失败', async () => {
+    const savedConfig = global.systemInstanceConfig;
+    const originalPublicPrefix = serviceEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX;
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    (serviceEnv as { FILE_DOWNLOAD_PUBLIC_URL_PREFIX?: string }).FILE_DOWNLOAD_PUBLIC_URL_PREFIX =
+      undefined;
+    try {
+      const foreignAlias = 'v2-R7mQG0Yh2kVxP9Za-200000-4k9LmN2pQrStUvWxYz12Ab.pdf';
+      const foreignUrl = `https://other-fastgpt.example.com/api/system/file/d/${foreignAlias}`;
+      mockVerifyS3DownloadAccess.mockRejectedValue(new Error('InvalidSignedAliasSignature'));
+      mockAxiosGet.mockResolvedValue({
+        data: Buffer.from('%PDF-1.7'),
+        headers: {
+          'content-type': 'application/pdf',
+          'content-disposition': 'inline; filename="partner-report.pdf"'
+        }
+      });
+
+      // 本实例相对路径仍可识别，跨实例绝对短链不归属本实例
+      expect(resolveSignedDownloadAliasFromUrl(`/api/system/file/d/${foreignAlias}`)).toBe(
+        foreignAlias
+      );
+      expect(resolveSignedDownloadAliasFromUrl(foreignUrl)).toBe('');
+
+      const normalized = await normalizeReadableFileUrl({
+        url: foreignUrl,
+        fileContext: createEmptyWorkflowFileContext()
+      });
+      expect(normalized).toBe(foreignUrl);
+      expect(mockVerifyS3DownloadAccess).not.toHaveBeenCalled();
+
+      const fileInfo = await getFileInfoFromUrl({
+        teamId: 'team-1',
+        url: foreignUrl
+      });
+      expect(fileInfo.isChatExternalUrl).toBe(true);
+      expect(mockVerifyS3DownloadAccess).not.toHaveBeenCalled();
+
+      const result = await parseFileContentFromUrls({
+        urls: [foreignUrl],
+        maxFiles: 20,
+        teamId: 'team-1',
+        tmbId: 'tmb-1',
+        fileContext: createEmptyWorkflowFileContext()
+      });
+      expect(result).toEqual([
+        {
+          success: true,
+          name: 'partner-report.pdf',
+          url: foreignUrl,
+          content: 'parsed text'
+        }
+      ]);
+      expect(mockVerifyS3DownloadAccess).not.toHaveBeenCalled();
+    } finally {
+      global.systemInstanceConfig = savedConfig;
+      (serviceEnv as { FILE_DOWNLOAD_PUBLIC_URL_PREFIX?: string }).FILE_DOWNLOAD_PUBLIC_URL_PREFIX =
+        originalPublicPrefix;
+    }
+  });
+
   it('nginx 根路径短链解析时也使用 alias 文件名，不把签名最后一段当后缀', async () => {
     const originalPublicPrefix = serviceEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX;
     (serviceEnv as { FILE_DOWNLOAD_PUBLIC_URL_PREFIX?: string }).FILE_DOWNLOAD_PUBLIC_URL_PREFIX =
@@ -908,33 +982,40 @@ describe('parseFileContentFromUrls (external fetch)', () => {
   });
 
   it('短链没有 filename 时回退到 objectKey 文件名推断后缀', async () => {
-    const signedAlias = 'abc123def456ghi789.hp436.abcdefghijklmnop';
-    const shortUrl = `http://localhost:3000/api/system/file/d/${signedAlias}`;
-    mockVerifyS3DownloadAccess.mockResolvedValue({
-      bucketName: 'fastgpt-private',
-      objectKey: 'chat/app/app1/u1/c1/readme.md',
-      expiresAt: new Date('2099-01-01T00:00:00.000Z')
-    });
-    mockAxiosGet.mockResolvedValue({
-      data: Buffer.from('# Readme', 'utf8'),
-      headers: {}
-    });
+    const savedConfig = global.systemInstanceConfig;
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    getTestInstanceConfig().storage.fileDomain = 'http://localhost:3000';
+    try {
+      const signedAlias = 'abc123def456ghi789.hp436.abcdefghijklmnop';
+      const shortUrl = `http://localhost:3000/api/system/file/d/${signedAlias}`;
+      mockVerifyS3DownloadAccess.mockResolvedValue({
+        bucketName: 'fastgpt-private',
+        objectKey: 'chat/app/app1/u1/c1/readme.md',
+        expiresAt: new Date('2099-01-01T00:00:00.000Z')
+      });
+      mockAxiosGet.mockResolvedValue({
+        data: Buffer.from('# Readme', 'utf8'),
+        headers: {}
+      });
 
-    const result = await parseFileContentFromUrls({
-      urls: [shortUrl],
-      maxFiles: 20,
-      teamId: 'team-1',
-      tmbId: 'tmb-1'
-    });
+      const result = await parseFileContentFromUrls({
+        urls: [shortUrl],
+        maxFiles: 20,
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      });
 
-    expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
-      expect.objectContaining({ extension: 'md' })
-    );
-    expect(result[0]).toMatchObject({
-      success: true,
-      name: 'readme.md',
-      url: shortUrl
-    });
+      expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
+        expect.objectContaining({ extension: 'md' })
+      );
+      expect(result[0]).toMatchObject({
+        success: true,
+        name: 'readme.md',
+        url: shortUrl
+      });
+    } finally {
+      global.systemInstanceConfig = savedConfig;
+    }
   });
 
   it('pathname 没有最后一段时，文件名回退为 "file"', async () => {
@@ -1061,40 +1142,47 @@ describe('formatAIChatUserQueryWithFiles', () => {
   it.each(['image/jpeg', 'application/pdf', 'error', 'missing'])(
     '短链通过授权对象元数据恢复媒体类型；%s 不误分类',
     async (outcome) => {
-      const alias = 'xWqlYoPSsRIoFtHP.hpagc.bpCySSj7HPRrPtWbcAlqxd';
-      if (outcome === 'error')
-        mockVerifyS3DownloadAccess.mockRejectedValueOnce(new Error('expired'));
-      else
-        mockVerifyS3DownloadAccess.mockResolvedValueOnce(
-          outcome === 'missing'
-            ? undefined
-            : {
-                objectKey: outcome === 'image/jpeg' ? 'chat/photo.jpeg' : 'chat/report.pdf',
-                responseContentType: outcome,
-                filename: outcome === 'image/jpeg' ? '原图.jpeg' : 'report.pdf'
-              }
+      const savedConfig = global.systemInstanceConfig;
+      global.systemInstanceConfig = createDefaultInstanceConfig();
+      getTestInstanceConfig().storage.fileDomain = 'https://files.example.com';
+      try {
+        const alias = 'xWqlYoPSsRIoFtHP.hpagc.bpCySSj7HPRrPtWbcAlqxd';
+        if (outcome === 'error')
+          mockVerifyS3DownloadAccess.mockRejectedValueOnce(new Error('expired'));
+        else
+          mockVerifyS3DownloadAccess.mockResolvedValueOnce(
+            outcome === 'missing'
+              ? undefined
+              : {
+                  objectKey: outcome === 'image/jpeg' ? 'chat/photo.jpeg' : 'chat/report.pdf',
+                  responseContentType: outcome,
+                  filename: outcome === 'image/jpeg' ? '原图.jpeg' : 'report.pdf'
+                }
+          );
+        const file = attachment(
+          `https://files.example.com/api/system/file/d/${alias}`,
+          ChatFileTypeEnum.file
         );
-      const file = attachment(
-        `https://files.example.com/api/system/file/d/${alias}`,
-        ChatFileTypeEnum.file
-      );
-      file.file!.name = '';
-      const parseFileFn = vi.fn(async () => []);
-      const result = await formatAIChatUserQueryWithFiles({ userQuery: [file], parseFileFn });
-      expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(alias);
-      if (outcome === 'image/jpeg') {
-        expect(result[0].file).toMatchObject({ name: '原图.jpeg', type: ChatFileTypeEnum.image });
-        expect(file.file?.type).toBe(ChatFileTypeEnum.file);
-        expect(parseFileFn).not.toHaveBeenCalled();
-      } else if (outcome === 'application/pdf') {
-        expect(result[0].file).toMatchObject({
-          name: 'report.pdf',
-          type: ChatFileTypeEnum.document
-        });
-        expect(parseFileFn).toHaveBeenCalledWith([file.file!.url]);
-      } else {
-        expect(result[0].file?.type).toBe(ChatFileTypeEnum.unknown);
-        expect(parseFileFn).not.toHaveBeenCalled();
+        file.file!.name = '';
+        const parseFileFn = vi.fn(async () => []);
+        const result = await formatAIChatUserQueryWithFiles({ userQuery: [file], parseFileFn });
+        expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(alias);
+        if (outcome === 'image/jpeg') {
+          expect(result[0].file).toMatchObject({ name: '原图.jpeg', type: ChatFileTypeEnum.image });
+          expect(file.file?.type).toBe(ChatFileTypeEnum.file);
+          expect(parseFileFn).not.toHaveBeenCalled();
+        } else if (outcome === 'application/pdf') {
+          expect(result[0].file).toMatchObject({
+            name: 'report.pdf',
+            type: ChatFileTypeEnum.document
+          });
+          expect(parseFileFn).toHaveBeenCalledWith([file.file!.url]);
+        } else {
+          expect(result[0].file?.type).toBe(ChatFileTypeEnum.unknown);
+          expect(parseFileFn).not.toHaveBeenCalled();
+        }
+      } finally {
+        global.systemInstanceConfig = savedConfig;
       }
     }
   );

@@ -56,10 +56,10 @@ import {
   markS3MultipartUploadCompleteFailed,
   markS3MultipartUploadCompleting,
   markS3MultipartUploadCompleted,
-  resolveS3DownloadMimeFallbackExtension,
   retryS3MultipartUploadCompleting,
   verifyS3MultipartUploadSessionToken
 } from '../accessLink';
+import { resolveS3DownloadMimeFallbackExtension } from '../accessLink/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MULTIPART_OBJECT_MARKER_METADATA_KEY } from '@fastgpt/global/common/file/constants';
 import { randomUUID } from 'node:crypto';

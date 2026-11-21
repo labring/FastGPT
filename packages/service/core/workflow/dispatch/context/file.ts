@@ -19,6 +19,7 @@ import { S3Buckets } from '../../../../common/s3/config/constants';
 import { createChatFilePreviewUrlGetter } from '../../../../common/s3/sources/chat';
 import { isAuthorizedChatFileS3Key } from '../../../../common/s3/sources/chat/key';
 import type { ChatS3SourceType } from '../../../../common/s3/sources/chat/type';
+import { isSignedDownloadAliasFilename } from '../../../../common/s3/accessLink/url';
 import { validateFileUrlDomain } from '../../../../common/security/fileUrlValidator';
 import type { RawChatFileValue } from '../../../chat/fileStoreValue';
 import {
@@ -31,7 +32,6 @@ import {
   isAbsoluteHttpUrl,
   getFileUrlIdentity,
   getFileNameFromUrl,
-  isSignedDownloadAlias,
   selectFileInputs
 } from '../../../chat/file/utils';
 import { filterWorkflowQueryFiles } from '../../utils/fileLimits';
@@ -247,8 +247,15 @@ const createWorkflowExternalFileSource = ({
   const inputFilename = isAbsoluteHttpUrl(name)
     ? (getFileNameFromUrl(name) ?? 'file')
     : name || getFileNameFromUrl(url) || 'file';
-  // 手动输入链接时 name 默认也是 URL；短链签名不能覆盖探测或下载响应提供的真实文件名。
-  const displayFilename = isSignedDownloadAlias(inputFilename) ? 'file' : inputFilename;
+  const nameSourceUrl = isAbsoluteHttpUrl(name) ? name : url;
+  // 手动输入链接时 name 默认也是 URL；本实例短链或跨实例旧 v1 签名不能覆盖探测或下载响应提供的真实文件名，
+  // 但外部 CDN 上形如 v2-...pdf 的普通文件需保留其文件名与扩展名。
+  const displayFilename = isSignedDownloadAliasFilename({
+    url: nameSourceUrl,
+    filename: inputFilename
+  })
+    ? 'file'
+    : inputFilename;
   const displayExtension = path.extname(displayFilename);
   const filename =
     displayExtension && displayExtension !== '.'
