@@ -1,7 +1,4 @@
-import {
-  VariableItemTypeSchema,
-  type VariableItemType
-} from '@fastgpt/global/core/app/variable/type';
+import { VariableItemTypeSchema } from '@fastgpt/global/core/app/variable/type';
 import {
   VariableInputEnum,
   WorkflowIOValueTypeEnum,
@@ -35,6 +32,10 @@ import {
   getChatConfigDescriptor,
   listChatConfigDescriptors
 } from '@fastgpt/workflow-core/config/descriptor';
+import type {
+  AddGlobalVariableInput,
+  UpdateGlobalVariablePatch
+} from '@fastgpt/workflow-core/config/type';
 import { getWorkflowChecksum } from '@fastgpt/workflow-core/domain/checksum';
 import {
   createDefaultWorkflowDocument,
@@ -591,7 +592,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
     max?: string;
     maxLength?: string;
     timeGranularity?: 'day' | 'hour' | 'minute' | 'second';
-  }): Promise<Partial<VariableItemType>> {
+  }) {
     if (!configInput) {
       return {};
     }
@@ -1007,9 +1008,9 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
         ? await readValueFromInput({ valueInput: valueInput!, valueType })
         : undefined;
       const config = await readVariableConfig(configInput);
-      const variable = {
+      const variable: AddGlobalVariableInput = {
         ...config,
-        ...(key ? { key } : {}),
+        ...(key !== undefined ? { key } : {}),
         label: label ?? key ?? '',
         description: description ?? '',
         valueType,
@@ -1075,7 +1076,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
       const defaultValue = hasValue
         ? await readValueFromInput({ valueInput: valueInput!, valueType: nextValueType })
         : undefined;
-      const patch: Omit<Partial<VariableItemType>, 'key'> = {
+      const patch: UpdateGlobalVariablePatch = {
         ...config,
         label,
         description,
@@ -1086,7 +1087,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
       };
       const cleanPatch = Object.fromEntries(
         Object.entries(patch).filter(([, value]) => value !== undefined)
-      ) as Omit<Partial<VariableItemType>, 'key'>;
+      ) as UpdateGlobalVariablePatch;
       return runMutation({
         operation: 'workflow-build variable update',
         dir,

@@ -614,6 +614,23 @@ describe('global variable references', () => {
           type: SystemToolSecretInputTypeEnum.system,
           value: { staleToken: { ref: [VARIABLE_NODE_ID, 'tenantId'] } }
         }
+      },
+      {
+        key: NodeInputKeyEnum.selectedTools,
+        label: 'Selected Tools',
+        renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+        valueType: WorkflowIOValueTypeEnum.arrayObject,
+        value: [
+          {
+            id: 'systemTool-demo',
+            config: {
+              [NodeInputKeyEnum.systemInputConfig]: {
+                type: SystemToolSecretInputTypeEnum.manual,
+                value: { apiKey: { ref: [VARIABLE_NODE_ID, 'tenantId'] } }
+              }
+            }
+          }
+        ]
       }
     ];
     read.toolConfig = {
@@ -621,6 +638,21 @@ describe('global variable references', () => {
         url: 'https://example.com/mcp',
         toolList: [],
         headerSecret: { 'X-Tenant': { ref: [VARIABLE_NODE_ID, 'tenantId'] } }
+      },
+      httpToolSet: {
+        baseUrl: 'https://example.com',
+        apiSchemaStr: '{}',
+        toolList: [
+          {
+            name: 'list',
+            description: 'list',
+            path: '/list',
+            method: 'get',
+            inputSchema: { type: 'object', properties: {} },
+            outputSchema: { type: 'object', properties: {} },
+            headerSecret: { 'X-Child-Tenant': { ref: [VARIABLE_NODE_ID, 'tenantId'] } }
+          }
+        ]
       }
     };
 
@@ -636,7 +668,9 @@ describe('global variable references', () => {
               { nodeId: 'read', inputKey: 'legacyPassword' },
               { nodeId: 'read', inputKey: NodeInputKeyEnum.headerSecret },
               { nodeId: 'read', inputKey: NodeInputKeyEnum.systemInputConfig },
-              { nodeId: 'read', inputKey: 'toolConfig.mcpToolSet.headerSecret' }
+              { nodeId: 'read', inputKey: NodeInputKeyEnum.selectedTools },
+              { nodeId: 'read', inputKey: 'toolConfig.mcpToolSet.headerSecret' },
+              { nodeId: 'read', inputKey: 'toolConfig.httpToolSet.toolList[0].headerSecret' }
             ]
           })
         })

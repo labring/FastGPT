@@ -325,7 +325,7 @@ describe('WorkflowChangeSet', () => {
     const changeSet = await createChangeSet(
       [
         { type: 'variable.add', variable },
-        { type: 'variable.add', variable: { ...variable, key: 'explicit' } },
+        { type: 'variable.add', variable: { ...variable, key: ' explicit ' } },
         { type: 'meta.update', name: 'Updated' },
         { type: 'variable.add', variable: { ...variable, key: ' ' } }
       ],

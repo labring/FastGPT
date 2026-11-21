@@ -6,6 +6,7 @@ import {
   type WorkflowChangeSetChunk,
   type WorkflowCommand
 } from './type';
+import { normalizeOptionalVariableKey } from '../config/service';
 
 export class WorkflowChangeSetMergeError extends Error {
   readonly code: WorkflowDiagnosticCodeEnum;
@@ -50,10 +51,12 @@ export const getWorkflowCommandTarget = (command: WorkflowCommand): string | und
     case 'config.set':
     case 'config.unset':
       return `config:${command.path}`;
-    case 'variable.add':
-      return command.variable.key
-        ? `variable:${command.variable.key}`
+    case 'variable.add': {
+      const normalizedKey = normalizeOptionalVariableKey(command.variable.key);
+      return normalizedKey !== undefined
+        ? `variable:${normalizedKey}`
         : `variable:add:${stableJson(command.variable)}`;
+    }
     case 'variable.update':
     case 'variable.remove':
       return `variable:${command.key}`;

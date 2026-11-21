@@ -16,6 +16,7 @@ import {
 
 export type WorkflowChangeSetResult = {
   document: WorkflowDocument;
+  changeSet: WorkflowChangeSet;
   changes: WorkflowChangeSummary[];
   warnings: WorkflowDiagnostic[];
   diagnostics: WorkflowDiagnostic[];
@@ -54,12 +55,14 @@ export const applyWorkflowChangeSet = async ({
   }
 
   let nextDocument = structuredClone(document);
+  const normalizedCommands: WorkflowChangeSet['commands'] = [];
   const changes: WorkflowChangeSummary[] = [];
   const warnings: WorkflowDiagnostic[] = [];
   for (const [commandIndex, command] of changeSet.commands.entries()) {
     try {
       const result = await applyWorkflowCommand({ document: nextDocument, command, dependencies });
       nextDocument = result.document;
+      normalizedCommands.push(result.command);
       changes.push(...result.changes);
       warnings.push(...result.warnings);
     } catch (error) {
@@ -83,6 +86,7 @@ export const applyWorkflowChangeSet = async ({
   const diagnostics = validateWorkflow(nextDocument, { invalidReferencePolicy: 'error' });
   return {
     document: nextDocument,
+    changeSet: { ...changeSet, commands: normalizedCommands },
     changes,
     warnings,
     diagnostics,
@@ -109,20 +113,11 @@ export const planWorkflowChangeSet = async ({
     changeSet,
     dependencies
   });
-  // 记录预演中生成的变量 key，使应用计划时重放同一组命令能得到相同的校验和。
-  const variableAdds = result.changes.filter((change) => change.type === 'variable.add');
-  let variableAddIndex = 0;
-  const commands = changeSet.commands.map((command) => {
-    if (command.type !== 'variable.add') return command;
-    const { key } = variableAdds[variableAddIndex++];
-    if (command.variable.key?.trim()) return command;
-    return { ...command, variable: { ...command.variable, key } };
-  });
   const plan = WorkflowPlanSchema.parse({
     schemaVersion: WORKFLOW_PLAN_SCHEMA_VERSION,
     baseChecksum: changeSet.baseChecksum,
     targetChecksum: result.checksum,
-    changeSet: { ...changeSet, commands },
+    changeSet: result.changeSet,
     changes: result.changes,
     diagnostics: result.diagnostics
   });

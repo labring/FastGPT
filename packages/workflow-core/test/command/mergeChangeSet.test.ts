@@ -1,4 +1,8 @@
 import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
+import {
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { describe, expect, it } from 'vitest';
 import staticWorkflowFixture from '../fixtures/basic-static/workflow.json';
 import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
@@ -376,5 +380,51 @@ describe('mergeWorkflowChangeSetChunks', () => {
         ]
       })
     ).toThrow(/cycle/);
+  });
+
+  it('normalizes trimmed variable.add keys consistently when checking chunk conflicts', () => {
+    const baseVariable = {
+      description: '',
+      type: VariableInputEnum.input,
+      valueType: WorkflowIOValueTypeEnum.string,
+      required: false
+    };
+
+    const merged = mergeWorkflowChangeSetChunks({
+      baseChecksum,
+      chunks: [
+        chunk({
+          chunkId: 'a',
+          commands: [{ type: 'variable.add', variable: { ...baseVariable, key: ' ', label: 'A' } }]
+        }),
+        chunk({
+          chunkId: 'b',
+          commands: [
+            { type: 'variable.add', variable: { ...baseVariable, key: '   ', label: 'B' } }
+          ]
+        })
+      ]
+    });
+    expect(merged.commands).toHaveLength(2);
+
+    expect(() =>
+      mergeWorkflowChangeSetChunks({
+        baseChecksum,
+        chunks: [
+          chunk({
+            chunkId: 'first',
+            commands: [
+              { type: 'variable.add', variable: { ...baseVariable, key: ' tenantId ', label: 'A' } }
+            ]
+          }),
+          chunk({
+            chunkId: 'second',
+            commands: [
+              { type: 'variable.add', variable: { ...baseVariable, key: 'tenantId', label: 'B' } }
+            ]
+          })
+        ]
+      })
+    ).toThrow(WorkflowChangeSetMergeError);
   });
 });

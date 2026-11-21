@@ -7,12 +7,12 @@ import { VariableRefSchema, parseVariableRef } from '../reference/type';
 import { parseNodeTemplateRef } from '../template/type';
 import { NodeTemplateRefSchema } from '@fastgpt/global/core/workflow/template/type';
 
-import { VariableItemTypeSchema } from '@fastgpt/global/core/app/variable/type';
 import {
   FlowNodeInputItemTypeSchema,
   FlowNodeOutputItemTypeSchema
 } from '@fastgpt/global/core/workflow/type/io';
 import { WorkflowDiagnosticSchema } from '../domain/diagnostic';
+import { AddGlobalVariableInputSchema, UpdateGlobalVariablePatchSchema } from '../config/type';
 
 const CompatibleNodeTemplateRefSchema = z.preprocess((val) => {
   if (typeof val === 'string') {
@@ -188,19 +188,13 @@ const ConfigUnsetCommandSchema = z.object({
 
 const VariableAddCommandSchema = z.object({
   type: z.literal('variable.add'),
-  variable: VariableItemTypeSchema.extend({
-    key: z.string().optional()
-  })
+  variable: AddGlobalVariableInputSchema
 });
 
 const VariableUpdateCommandSchema = z.object({
   type: z.literal('variable.update'),
   key: z.string().min(1),
-  patch: VariableItemTypeSchema.omit({ key: true })
-    .partial()
-    .extend({
-      key: z.never({ message: 'Variable key cannot be modified' }).optional()
-    })
+  patch: UpdateGlobalVariablePatchSchema
 });
 
 const VariableRemoveCommandSchema = z.object({
