@@ -1,5 +1,3 @@
-import JSZip from 'jszip';
-import { UserError } from '@fastgpt/global/common/error/utils';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -166,27 +164,7 @@ const createContext = (
   } as any;
 };
 
-const createSkillMd = (name: string) => `---\nname: ${name}\ndescription: ${name}\n---\n`;
-
-const buildZipBuffer = async (files: Record<string, string>) => {
-  const zip = new JSZip();
-  for (const [path, content] of Object.entries(files)) {
-    zip.file(path, content);
-  }
-  return new Uint8Array(await zip.generateAsync({ type: 'uint8array' }));
-};
-
-const createPackageSandbox = (
-  options: {
-    readResult?: { content: Uint8Array; error: Error | null };
-    findResult?: { stdout?: string; stderr?: string; exitCode?: number };
-    findOutput?: string;
-    workspaceFiles?: Record<string, string>;
-    workspaceFileErrors?: Record<string, Error>;
-    workspaceFileSizes?: Record<string, number>;
-    zippedFiles?: Record<string, string>;
-  } = {}
-) => ({
+const createPackageSandbox = (readResult?: { content: Uint8Array; error: Error | null }) => ({
   execute: vi.fn(async (command: string) => {
     if (command === 'printf "%s" "$HOME"') {
       return { stdout: '/home/sandbox', stderr: '', exitCode: 0 };
@@ -194,54 +172,25 @@ const createPackageSandbox = (
     if (command.includes("awk '{s+=$7}")) {
       return { stdout: '12', stderr: '', exitCode: 0 };
     }
-    if (command.includes('-print0')) {
-      return {
-        stdout: options.findResult?.stdout ?? options.findOutput ?? '',
-        stderr: options.findResult?.stderr ?? '',
-        exitCode: options.findResult?.exitCode ?? 0
-      };
-    }
     return { stdout: '', stderr: '', exitCode: 0 };
   }),
   getFileInfo: vi.fn(
     async (paths: string[]) =>
-      new Map(
-        paths.map((path) => [
-          path,
-          path.endsWith('/SKILL.md')
-            ? {
-                path,
-                isDirectory: false,
-                isFile: true,
-                size:
-                  options.workspaceFileSizes?.[path] ??
-                  Buffer.byteLength(options.workspaceFiles?.[path] ?? '')
-              }
-            : { path, isDirectory: true, isFile: false }
-        ])
-      )
+      new Map(paths.map((path) => [path, { path, isDirectory: true, isFile: false }]))
   ),
   createDirectories: vi.fn(async () => undefined),
   deleteFiles: vi.fn(async (paths: string[]) =>
     paths.map((path) => ({ path, success: true, error: null }))
   ),
   readFiles: vi.fn(async (paths: string[]) => {
-    if (paths.length === 1 && paths[0]?.endsWith('.zip')) {
-      return [
-        {
-          path: paths[0],
-          content: options.zippedFiles
-            ? await buildZipBuffer(options.zippedFiles)
-            : (options.readResult?.content ?? new Uint8Array([1, 2, 3])),
-          error: options.readResult?.error ?? null
-        }
-      ];
-    }
-    return paths.map((path) => ({
-      path,
-      content: options.workspaceFiles?.[path] ?? '',
-      error: options.workspaceFileErrors?.[path] ?? null
-    }));
+    if (paths[0]?.endsWith('.gitignore')) return [];
+    return [
+      {
+        path: paths[0],
+        content: readResult?.content ?? new Uint8Array([1, 2, 3]),
+        error: readResult?.error ?? null
+      }
+    ];
   })
 });
 
@@ -283,31 +232,20 @@ describe('packageSkillInSandbox', () => {
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
   });
 
-  it('uses basic zip validation for export and ignores entry scan failures', async () => {
-    const sandbox = createPackageSandbox({
-      findOutput: './dist/SKILL.md\0',
-      findResult: { stdout: '', stderr: 'permission denied', exitCode: 2 }
-    });
+  it('uses basic zip validation for export', async () => {
+    const sandbox = createPackageSandbox();
     mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
 
-    await expect(
-      packageSkillInSandbox({ sandboxId: 'sandbox-1', validationMode: 'basicZip' })
-    ).resolves.toBeInstanceOf(Buffer);
+    await packageSkillInSandbox({ sandboxId: 'sandbox-1', validationMode: 'basicZip' });
 
-    expect(sandbox.execute).not.toHaveBeenCalledWith(
-      expect.stringContaining('-print0'),
-      expect.anything()
-    );
     expect(mocks.validateZipStructure).toHaveBeenCalledTimes(1);
     expect(mocks.validateDeployableSkillWorkspacePackage).not.toHaveBeenCalled();
   });
 
   it('propagates read failures and still disconnects', async () => {
     const sandbox = createPackageSandbox({
-      readResult: {
-        content: new Uint8Array(),
-        error: new Error('read failed')
-      }
+      content: new Uint8Array(),
+      error: new Error('read failed')
     });
     mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
 
@@ -330,180 +268,6 @@ describe('packageSkillInSandbox', () => {
     );
     expect(mocks.logger.error).not.toHaveBeenCalled();
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
-  });
-
-  it('rejects when packaging excludes drop valid SKILL.md entries', async () => {
-    const sandbox = createPackageSandbox({
-      findOutput: './writer/SKILL.md\0./dist/SKILL.md\0',
-      workspaceFiles: {
-        '/workspace/writer/SKILL.md': createSkillMd('writer'),
-        '/workspace/dist/SKILL.md': createSkillMd('dist')
-      },
-      zippedFiles: { 'writer/SKILL.md': createSkillMd('writer') }
-    });
-    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
-
-    const error = await packageSkillInSandbox({ sandboxId: 'sandbox-1' }).catch((err) => err);
-
-    expect(error).toBeInstanceOf(UserError);
-    expect(error.message).toBe('invalidSkillPackage');
-    expect(error.cause?.message).toContain('dist/SKILL.md');
-  });
-
-  it('rejects SKILL.md entry paths with control characters', async () => {
-    const sandbox = createPackageSandbox({
-      findOutput: './bad\nname/SKILL.md\0',
-      workspaceFiles: { '/workspace/bad\nname/SKILL.md': createSkillMd('bad') },
-      zippedFiles: { 'bad\nname/SKILL.md': createSkillMd('bad') }
-    });
-    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
-
-    const error = await packageSkillInSandbox({ sandboxId: 'sandbox-1' }).catch((err) => err);
-
-    expect(error).toBeInstanceOf(UserError);
-    expect(error.message).toBe('invalidSkillPackage');
-    expect(error.cause?.message).toContain('Unsupported SKILL.md path with control characters');
-  });
-
-  it('keeps leading spaces in SKILL.md entry paths without false positives', async () => {
-    const sandbox = createPackageSandbox({
-      findOutput: './ Notes/SKILL.md\0',
-      workspaceFiles: { '/workspace/ Notes/SKILL.md': createSkillMd('notes') },
-      zippedFiles: { ' Notes/SKILL.md': createSkillMd('notes') }
-    });
-    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
-
-    await expect(packageSkillInSandbox({ sandboxId: 'sandbox-1' })).resolves.toBeInstanceOf(Buffer);
-  });
-
-  it('passes when every valid SKILL.md entry is packaged', async () => {
-    const sandbox = createPackageSandbox({
-      findOutput: './writer/SKILL.md\0./nested/deep/SKILL.md\0',
-      workspaceFiles: {
-        '/workspace/writer/SKILL.md': createSkillMd('writer'),
-        '/workspace/nested/deep/SKILL.md': createSkillMd('deep')
-      },
-      zippedFiles: {
-        'writer/SKILL.md': createSkillMd('writer'),
-        'nested/deep/SKILL.md': createSkillMd('deep')
-      }
-    });
-    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
-
-    await expect(packageSkillInSandbox({ sandboxId: 'sandbox-1' })).resolves.toBeInstanceOf(Buffer);
-    expect(mocks.validateDeployableSkillWorkspacePackage).toHaveBeenCalledTimes(1);
-  });
-
-  it('fails publish when the workspace entry scan exits non-zero', async () => {
-    const sandbox = createPackageSandbox({
-      findResult: { stdout: 'partial', stderr: 'permission denied', exitCode: 2 }
-    });
-    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
-
-    const error = await packageSkillInSandbox({ sandboxId: 'sandbox-1' }).catch((err) => err);
-
-    expect(error).toBeInstanceOf(UserError);
-    expect(error.message).toBe('invalidSkillPackage');
-    expect(error.cause?.message).toContain('permission denied');
-    expect(sandbox.execute).not.toHaveBeenCalledWith(
-      expect.stringMatching(/^zip -r -y /),
-      expect.anything()
-    );
-    expect(mocks.validateDeployableSkillWorkspacePackage).not.toHaveBeenCalled();
-  });
-
-  it('fails publish when a candidate SKILL.md cannot be read', async () => {
-    const sandbox = createPackageSandbox({
-      findOutput: './writer/SKILL.md\0./dist/SKILL.md\0',
-      workspaceFiles: {
-        '/workspace/writer/SKILL.md': createSkillMd('writer'),
-        '/workspace/dist/SKILL.md': createSkillMd('dist')
-      },
-      workspaceFileErrors: { '/workspace/dist/SKILL.md': new Error('transport reset') }
-    });
-    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
-
-    const error = await packageSkillInSandbox({ sandboxId: 'sandbox-1' }).catch((err) => err);
-
-    expect(error).toBeInstanceOf(UserError);
-    expect(error.message).toBe('invalidSkillPackage');
-    expect(error.cause?.message).toContain('/workspace/dist/SKILL.md');
-    expect(error.cause?.message).toContain('transport reset');
-    expect(sandbox.execute).not.toHaveBeenCalledWith(
-      expect.stringMatching(/^zip -r -y /),
-      expect.anything()
-    );
-  });
-
-  it('enforces the per-file read budget before reading candidate entries', async () => {
-    const sandbox = createPackageSandbox({
-      findOutput: './writer/SKILL.md\0',
-      workspaceFileSizes: { '/workspace/writer/SKILL.md': 300 * 1024 }
-    });
-    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
-
-    const error = await packageSkillInSandbox({ sandboxId: 'sandbox-1' }).catch((err) => err);
-
-    expect(error).toBeInstanceOf(UserError);
-    expect(error.message).toBe('archiveTooLarge');
-    expect(error.cause?.message).toContain('/workspace/writer/SKILL.md');
-    expect(error.cause?.message).toContain('per-file read limit');
-    expect(sandbox.readFiles).not.toHaveBeenCalledWith(
-      expect.arrayContaining([expect.stringMatching(/SKILL\.md$/)])
-    );
-  });
-
-  it('enforces the cumulative read budget before reading candidate entries', async () => {
-    const entries = Array.from({ length: 5 }, (_, index) => `./skill-${index}/SKILL.md`);
-    const sandbox = createPackageSandbox({
-      findOutput: entries.map((entry) => `${entry}\0`).join(''),
-      workspaceFileSizes: Object.fromEntries(
-        entries.map((entry) => [`/workspace/${entry.slice(2)}`, 250 * 1024])
-      )
-    });
-    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
-
-    const error = await packageSkillInSandbox({ sandboxId: 'sandbox-1' }).catch((err) => err);
-
-    expect(error).toBeInstanceOf(UserError);
-    expect(error.message).toBe('archiveTooLarge');
-    expect(error.cause?.message).toContain('total read limit');
-    expect(error.cause?.message).toContain('/workspace/skill-4/SKILL.md');
-    expect(sandbox.readFiles).not.toHaveBeenCalledWith(
-      expect.arrayContaining([expect.stringMatching(/SKILL\.md$/)])
-    );
-  });
-
-  it('checks directory size before scanning and reading entries', async () => {
-    const sandbox = createPackageSandbox({
-      findOutput: './writer/SKILL.md\0',
-      workspaceFiles: { '/workspace/writer/SKILL.md': createSkillMd('writer') },
-      zippedFiles: { 'writer/SKILL.md': createSkillMd('writer') }
-    });
-    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
-
-    await packageSkillInSandbox({ sandboxId: 'sandbox-1' });
-
-    const sizeCheckIndex = sandbox.execute.mock.calls.findIndex(([command]) =>
-      command.includes("awk '{s+=$7}")
-    );
-    const findIndex = sandbox.execute.mock.calls.findIndex(([command]) =>
-      command.includes('-print0')
-    );
-    const skillReadIndex = sandbox.readFiles.mock.calls.findIndex(([paths]) =>
-      paths.some((path: string) => path.endsWith('/SKILL.md'))
-    );
-    const [sizeCheckOrder, findOrder] = [
-      sandbox.execute.mock.invocationCallOrder[sizeCheckIndex],
-      sandbox.execute.mock.invocationCallOrder[findIndex]
-    ];
-    const skillReadOrder = sandbox.readFiles.mock.invocationCallOrder[skillReadIndex];
-    const firstReadOrder = sandbox.readFiles.mock.invocationCallOrder[0];
-
-    expect(skillReadIndex).toBeGreaterThanOrEqual(0);
-    expect(sizeCheckOrder).toBeLessThan(findOrder);
-    expect(sizeCheckOrder).toBeLessThan(firstReadOrder);
-    expect(sizeCheckOrder).toBeLessThan(skillReadOrder);
   });
 });
 

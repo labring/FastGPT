@@ -411,14 +411,10 @@ ${largeMarkdown}`;
       const buffer = await zip.generateAsync({ type: 'nodebuffer' });
       const result = await validateZipStructure(buffer);
 
-      expect(result).toMatchObject({
-        valid: false,
-        hasSkillMd: false,
-        errorCode: SkillErrEnum.missingSkillMd
-      });
-      if (!result.valid) {
-        expect(result.error).toContain('SKILL.md');
-      }
+      expect(result.valid).toBe(false);
+      expect(result.hasSkillMd).toBe(false);
+      expect(result.errorCode).toBe(SkillErrEnum.missingSkillMd);
+      expect(result.error).toContain('SKILL.md');
     });
 
     it('should reject unsafe zip entry paths', async () => {
@@ -429,13 +425,29 @@ ${largeMarkdown}`;
       const buffer = await zip.generateAsync({ type: 'nodebuffer' });
       const result = await validateZipStructure(buffer);
 
-      expect(result).toMatchObject({
-        valid: false,
-        errorCode: SkillErrEnum.invalidSkillPackage
-      });
-      if (!result.valid) {
-        expect(result.error).toContain('Unsafe ZIP entry path');
-      }
+      expect(result.valid).toBe(false);
+      expect(result.errorCode).toBe(SkillErrEnum.invalidSkillPackage);
+      expect(result.error).toContain('Unsafe ZIP entry path');
+    });
+
+    it('should reject entry paths containing ASCII control characters while keeping leading spaces', async () => {
+      const invalidZip = new JSZip();
+      invalidZip.file('bad\nname/SKILL.md', '---\nname: bad\n---');
+      const invalidResult = await validateDeployableSkillWorkspacePackage(
+        await invalidZip.generateAsync({ type: 'nodebuffer' })
+      );
+
+      expect(invalidResult.valid).toBe(false);
+      expect(invalidResult.errorCode).toBe(SkillErrEnum.invalidSkillPackage);
+      expect(invalidResult.error).toContain('Unsafe ZIP entry path');
+
+      const spacedZip = new JSZip();
+      spacedZip.file(' leading-space/SKILL.md', '---\nname: spaced\n---');
+      const spacedResult = await validateDeployableSkillWorkspacePackage(
+        await spacedZip.generateAsync({ type: 'nodebuffer' })
+      );
+
+      expect(spacedResult.valid).toBe(true);
     });
   });
 
@@ -445,13 +457,9 @@ ${largeMarkdown}`;
       const buffer = await createBlankSkillWorkspacePackage();
       const result = await validateDeployableSkillWorkspacePackage(buffer);
 
-      expect(result).toMatchObject({
-        valid: false,
-        errorCode: SkillErrEnum.missingSkillMd
-      });
-      if (!result.valid) {
-        expect(result.error).toContain('at least one SKILL.md');
-      }
+      expect(result.valid).toBe(false);
+      expect(result.errorCode).toBe(SkillErrEnum.missingSkillMd);
+      expect(result.error).toContain('at least one SKILL.md');
     });
 
     it('should accept a workspace with at least one skill folder containing SKILL.md', async () => {
@@ -564,13 +572,9 @@ ${largeMarkdown}`;
       const buffer = await zip.generateAsync({ type: 'nodebuffer' });
       const result = await validateDeployableSkillWorkspacePackage(buffer);
 
-      expect(result).toMatchObject({
-        valid: false,
-        errorCode: SkillErrEnum.invalidSkillPackage
-      });
-      if (!result.valid) {
-        expect(result.error).toContain('Unsafe ZIP entry path');
-      }
+      expect(result.valid).toBe(false);
+      expect(result.errorCode).toBe(SkillErrEnum.invalidSkillPackage);
+      expect(result.error).toContain('Unsafe ZIP entry path');
     });
   });
 

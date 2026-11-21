@@ -39,48 +39,30 @@ export type SkillDirInfo = {
   skillMdContent: string;
 };
 
-export type ZipValidationResult =
-  | {
-      valid: true;
-      hasSkillMd: true;
-      files: string[];
-      skillMdPath: string;
-      totalUncompressedBytes: number;
-    }
-  | {
-      valid: false;
-      hasSkillMd: false;
-      files: string[];
-      error: string;
-      errorCode: SkillErrEnum;
-      totalUncompressedBytes?: number;
-    };
+export type ZipValidationResult = {
+  valid: boolean;
+  hasSkillMd: boolean;
+  files: string[];
+  error?: string;
+  errorCode?: SkillErrEnum;
+  skillMdPath?: string;
+  totalUncompressedBytes?: number;
+};
 
-export type DeployableSkillWorkspaceValidationResult =
-  | {
-      valid: true;
-      files: string[];
-    }
-  | {
-      valid: false;
-      files: string[];
-      error: string;
-      errorCode: SkillErrEnum;
-    };
+export type DeployableSkillWorkspaceValidationResult = {
+  valid: boolean;
+  files: string[];
+  error?: string;
+  errorCode?: SkillErrEnum;
+};
 
-type ZipSafetyValidationResult =
-  | {
-      valid: true;
-      files: string[];
-      totalUncompressedBytes: number;
-    }
-  | {
-      valid: false;
-      files: string[];
-      error: string;
-      errorCode: SkillErrEnum;
-      totalUncompressedBytes?: number;
-    };
+type ZipSafetyValidationResult = {
+  valid: boolean;
+  files: string[];
+  error?: string;
+  errorCode?: SkillErrEnum;
+  totalUncompressedBytes?: number;
+};
 
 export type ExtractSkillPackageResult = {
   success: boolean;
@@ -375,7 +357,12 @@ export function validateZipSafety(
 }
 
 function isSafeZipEntryPath(path: string): boolean {
-  if (!path || path.includes('\0')) return false;
+  if (!path) return false;
+  // 拒绝 ASCII 控制字符（含 \0、\n、\r 等），避免解包改名或命令解析歧义，同时保留普通空格。
+  for (let i = 0; i < path.length; i++) {
+    const code = path.charCodeAt(i);
+    if (code <= 0x1f || code === 0x7f) return false;
+  }
   if (path.startsWith('/') || path.startsWith('\\')) return false;
   if (/^[A-Za-z]:[\\/]/.test(path)) return false;
 
@@ -412,7 +399,7 @@ export async function extractSkillPackage(zipBuffer: Buffer): Promise<ExtractSki
   try {
     // 先校验结构，避免后续读取空包或缺少入口文件时抛出不清晰的错误。
     const validation = await validateZipStructure(zipBuffer);
-    if (!validation.valid) {
+    if (!validation.valid || !validation.skillMdPath) {
       return {
         success: false,
         error: validation.error
