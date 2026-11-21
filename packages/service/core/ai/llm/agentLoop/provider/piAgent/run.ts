@@ -5,7 +5,11 @@ import type {
   ChatCompletionToolMessageContentPart,
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import {
+  ChatCompletionRequestMessageRoleEnum,
+  LLM_TOOL_CALL_ARGUMENTS_TRUNCATED_RESPONSE
+} from '@fastgpt/global/core/ai/constants';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { isTeamModel } from '@fastgpt/global/core/ai/model/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { AgentAskPayload } from '@fastgpt/global/core/ai/agent/type';
@@ -545,6 +549,30 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     // pi-agent-core 只提供 parallel/sequential 两档。统一使用串行，确保不超过 runtime 的并发上限，
     // 同时避免 plan/ask 和普通工具在同一轮并行修改状态。
     toolExecution: 'sequential',
+    // length 时 pi-ai 已用 partial-json 补全截断的参数，同轮任何工具参数都不可信，不能执行。
+    // 与 fastAgent 一致：回填未执行说明后继续模型循环。
+    beforeToolCall: async ({ assistantMessage, toolCall }) => {
+      if (assistantMessage.stopReason !== 'length') return;
+      const response = parseI18nString(LLM_TOOL_CALL_ARGUMENTS_TRUNCATED_RESPONSE, runtime.lang);
+      const call: ChatCompletionMessageToolCall = {
+        id: toolCall.id,
+        type: 'function',
+        function: { name: toolCall.name, arguments: stringifyJson(toolCall.arguments) }
+      };
+      if (emittedToolCallIds.has(call.id)) {
+        runtime.emitEvent?.({
+          type: 'tool_run_end',
+          call,
+          response,
+          errorMessage: response,
+          assistantMessages: [],
+          usages: [],
+          seconds: 0
+        });
+      }
+      recordToolResult({ call, response });
+      return { block: true, reason: response };
+    },
     getApiKey: () => getModelApiKey(modelData, runtime.llmParams.userKey),
     onPayload: (payload) => {
       if (requestIndex >= maxRunAgentTimes) {
