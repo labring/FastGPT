@@ -3,6 +3,7 @@ import {
   extractCodeOutputDefinitions,
   extractReturnedObjectKeys
 } from '../../src/code/io';
+import { SandboxCodeTypeEnum } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
 import { describe, expect, it } from 'vitest';
 
 describe('code IO parser', () => {
@@ -49,6 +50,169 @@ describe('code IO parser', () => {
       'currency'
     ]);
     expect(extractReturnedObjectKeys(code)).toEqual(['amount', 'currency']);
+  });
+
+  it('keeps Python outputs that follow a floor division', () => {
+    const multiline = `
+      def main(total, count=10 // 2, unit="s"):
+        return {
+          "average": total // count,
+          "remainder": total % count
+        }
+    `;
+    const inline = `
+      def main(total, count):
+        return {"average": total // count, "remainder": total % count}
+    `;
+
+    expect(extractCodeInputDefinitions(multiline)?.map(({ key }) => key)).toEqual([
+      'total',
+      'count',
+      'unit'
+    ]);
+    expect(extractReturnedObjectKeys(multiline)).toEqual(['average', 'remainder']);
+    expect(extractReturnedObjectKeys(inline)).toEqual(['average', 'remainder']);
+  });
+
+  it('detects the language from the main definition, not from comments', () => {
+    const python = `
+      # port of function main({ total })
+      # def main(legacy):
+      def main(total, count):
+        return {
+          "average": total // count,
+          "remainder": total % count
+        }
+    `;
+    const javascript = `
+      // was: def main(total)
+      function main({ total }) {
+        return { half: total / 2, // rounded later
+          ok: /}/.test(total) };
+      }
+    `;
+
+    expect(extractCodeInputDefinitions(python)?.map(({ key }) => key)).toEqual(['total', 'count']);
+    expect(extractReturnedObjectKeys(python)).toEqual(['average', 'remainder']);
+    expect(extractCodeInputDefinitions(javascript)?.map(({ key }) => key)).toEqual(['total']);
+    expect(extractReturnedObjectKeys(javascript)).toEqual(['half', 'ok']);
+  });
+
+  it('ignores Python signatures quoted inside JavaScript comments and strings', () => {
+    const blockComment = `
+      /*
+      def main(legacy):
+      */
+      function main({ total, count }) {
+        return { average: total / count, // rounded later
+          remainder: total % count };
+      }
+    `;
+    const templateString = `
+      function main({ total, count }) {
+        const example = \`
+      def main(legacy):
+        \`;
+        return { average: total / count, // rounded later
+          remainder: total % count };
+      }
+    `;
+
+    [blockComment, templateString].forEach((code) => {
+      expect(extractCodeInputDefinitions(code)?.map(({ key }) => key)).toEqual(['total', 'count']);
+      expect(extractReturnedObjectKeys(code)).toEqual(['average', 'remainder']);
+    });
+  });
+
+  it('ignores JavaScript signatures quoted inside Python docstrings', () => {
+    const code = `
+      def main(total, count):
+        """Port of function main({ legacy })."""
+        return {"average": total // count, "remainder": total % count}
+    `;
+
+    expect(extractCodeInputDefinitions(code)?.map(({ key }) => key)).toEqual(['total', 'count']);
+    expect(extractReturnedObjectKeys(code)).toEqual(['average', 'remainder']);
+  });
+
+  it('skips a whole Python triple-quoted string that contains quotes', () => {
+    const code = `
+      def main(total, count):
+        """The old entry was "function main({ legacy })" in JavaScript."""
+        return {
+          "average": total // count,
+          "remainder": total % count
+        }
+    `;
+
+    expect(extractCodeInputDefinitions(code)?.map(({ key }) => key)).toEqual(['total', 'count']);
+    expect(extractReturnedObjectKeys(code)).toEqual(['average', 'remainder']);
+  });
+
+  it('finds the JavaScript entry after a division by a keyword-named member', () => {
+    const code = `
+      const limits = { in: 4 };
+      const scale = limits.in / 2;
+      function main({ total }) {
+        return { scaled: total / scale, limit: limits.in };
+      }
+    `;
+
+    expect(extractCodeInputDefinitions(code)?.map(({ key }) => key)).toEqual(['total']);
+    expect(extractReturnedObjectKeys(code)).toEqual(['scaled', 'limit']);
+  });
+
+  it('finds the JavaScript entry after a nested template literal', () => {
+    const code = `
+      const label = (total) => \`Report: \${total > 0 ? \`Today's total is \${total}\` : 'none'}\`;
+      function main({ total }) {
+        return { label: label(total) };
+      }
+    `;
+
+    expect(extractCodeInputDefinitions(code)?.map(({ key }) => key)).toEqual(['total']);
+    expect(extractReturnedObjectKeys(code)).toEqual(['label']);
+  });
+
+  it('prefers the configured language over a quoted entry of the other language', () => {
+    // 按 JS 规则扫描时 `//` 会把三引号的开头当成注释，字符串里的示例签名就成了代码。
+    const code = `
+      def main(total, count):
+        half = total // 2; note = """
+        function main({ legacy })
+        """
+        return {"average": total // count, "half": half}
+    `;
+
+    expect(
+      extractCodeInputDefinitions(code, SandboxCodeTypeEnum.py)?.map(({ key }) => key)
+    ).toEqual(['total', 'count']);
+    expect(
+      extractCodeOutputDefinitions(code, SandboxCodeTypeEnum.py)?.map(({ key }) => key)
+    ).toEqual(['average', 'half']);
+  });
+
+  it('falls back to the source when the configured language has no entry', () => {
+    const code = `
+      def main(total, count):
+        return {"average": total // count, "remainder": total % count}
+    `;
+
+    expect(
+      extractCodeInputDefinitions(code, SandboxCodeTypeEnum.js)?.map(({ key }) => key)
+    ).toEqual(['total', 'count']);
+    expect(
+      extractCodeOutputDefinitions(code, SandboxCodeTypeEnum.js)?.map(({ key }) => key)
+    ).toEqual(['average', 'remainder']);
+  });
+
+  it('keeps Python inputs that follow a positional-only marker', () => {
+    const code = `
+      def main(total, /, count):
+        return {"average": total / count}
+    `;
+
+    expect(extractCodeInputDefinitions(code)?.map(({ key }) => key)).toEqual(['total', 'count']);
   });
 
   it('extracts JavaScript inputs and return outputs with documented types', () => {

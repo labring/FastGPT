@@ -16,6 +16,7 @@ import {
   type FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
+import { SandboxCodeTypeEnum } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
 import { WorkflowCommandError } from '../domain/diagnostic';
 import { getDocumentNode } from '../nesting/service';
 import { extractCodeInputDefinitions, extractCodeOutputDefinitions } from '../code/io';
@@ -223,7 +224,10 @@ export const syncCodeNodeIO = ({
     };
   }
 
-  const inputDefinitions = extractCodeInputDefinitions(code);
+  // 节点配置的语言比源码推断可靠：字符串或注释里引用另一种语言的入口时不会误判。
+  const codeTypeValue = node.inputs.find((input) => input.key === NodeInputKeyEnum.codeType)?.value;
+  const codeType = Object.values(SandboxCodeTypeEnum).find((item) => item === codeTypeValue);
+  const inputDefinitions = extractCodeInputDefinitions(code, codeType);
   const addedInputKeys: string[] = [];
   const removedInputKeys: string[] = [];
   if (inputDefinitions) {
@@ -267,7 +271,7 @@ export const syncCodeNodeIO = ({
     });
   }
 
-  const outputDefinitions = extractCodeOutputDefinitions(code);
+  const outputDefinitions = extractCodeOutputDefinitions(code, codeType);
   const addedOutputKeys: string[] = [];
   const removedOutputs: Array<{
     outputKey: string;
