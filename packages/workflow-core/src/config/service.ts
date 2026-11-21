@@ -4,14 +4,22 @@ import {
   VariableItemTypeSchema,
   type VariableItemType
 } from '@fastgpt/global/core/app/variable/type';
-import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeTypeEnum,
+  workflowSystemVariables
+} from '@fastgpt/global/core/workflow/node/constant';
 import { userFilesInput } from '@fastgpt/global/core/workflow/template/output';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { areWorkflowValueTypesCompatible } from '@fastgpt/global/common/workflow/reference';
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import { WorkflowCommandError } from '../domain/diagnostic';
-import { getWorkflowReferenceValues } from '../reference/service';
-import { CHAT_CONFIG_PATHS } from './type';
+import {
+  CHAT_CONFIG_PATHS,
+  type AddGlobalVariableInput,
+  type UpdateGlobalVariablePatch
+} from './type';
+import { getGlobalVariableReferences } from './variableReference';
 
 const assertConfigPath = (path: string) => {
   if (!(CHAT_CONFIG_PATHS as readonly string[]).includes(path)) {
@@ -148,43 +156,49 @@ export const unsetChatConfigValue = ({
 
 const getVariables = (document: WorkflowDocument) => document.chatConfig.variables ?? [];
 
-/** 收集引用指定全局变量的节点输入及其原始引用元组。 */
-const getGlobalVariableReferences = ({
-  document,
-  key
-}: {
-  document: WorkflowDocument;
-  key: string;
-}) =>
-  document.nodes.flatMap((node) =>
-    node.inputs.flatMap((input) => {
-      const references = (getWorkflowReferenceValues(input.value) ?? []).filter(
-        ([sourceNodeId, outputKey]) => sourceNodeId === VARIABLE_NODE_ID && outputKey === key
-      );
-      return references.length > 0 ? [{ node, input, references }] : [];
-    })
-  );
+/** 统一归一化可选变量 key，空白字符串视为未指定。 */
+export const normalizeOptionalVariableKey = (key?: string): string | undefined => {
+  const trimmedKey = key?.trim();
+  return trimmedKey !== undefined && trimmedKey !== '' ? trimmedKey : undefined;
+};
+
+const generateUniqueVariableKey = (variables: VariableItemType[]): string => {
+  const usedKeys = new Set([
+    ...variables.map((item) => item.key),
+    ...workflowSystemVariables.map((item) => item.key)
+  ]);
+  let candidate = getNanoid(8);
+  while (usedKeys.has(candidate)) {
+    candidate = getNanoid(8);
+  }
+  return candidate;
+};
 
 export const addGlobalVariable = ({
   document,
   variable
 }: {
   document: WorkflowDocument;
-  variable: VariableItemType;
+  variable: AddGlobalVariableInput;
 }) => {
-  if (getVariables(document).some((item) => item.key === variable.key)) {
+  const variables = getVariables(document);
+  const resolvedKey =
+    normalizeOptionalVariableKey(variable.key) ?? generateUniqueVariableKey(variables);
+  if (variables.some((item) => item.key === resolvedKey)) {
     throw new WorkflowCommandError([
       {
         code: WorkflowDiagnosticCodeEnum.variableKeyDuplicated,
         severity: 'error',
-        params: { key: variable.key }
+        params: { key: resolvedKey }
       }
     ]);
   }
-  document.chatConfig.variables = [
-    ...getVariables(document),
-    VariableItemTypeSchema.parse(variable)
-  ];
+  const parsedVariable = VariableItemTypeSchema.parse({
+    ...variable,
+    key: resolvedKey
+  });
+  document.chatConfig.variables = [...variables, parsedVariable];
+  return parsedVariable.key;
 };
 
 export const updateGlobalVariable = ({
@@ -194,7 +208,7 @@ export const updateGlobalVariable = ({
 }: {
   document: WorkflowDocument;
   key: string;
-  patch: Partial<VariableItemType>;
+  patch: UpdateGlobalVariablePatch;
 }) => {
   const variables = getVariables(document);
   const index = variables.findIndex((item) => item.key === key);
@@ -203,24 +217,16 @@ export const updateGlobalVariable = ({
       { code: WorkflowDiagnosticCodeEnum.variableNotFound, severity: 'error', params: { key } }
     ]);
   }
-  const nextKey = patch.key ?? key;
-  if (nextKey !== key && variables.some((item) => item.key === nextKey)) {
-    throw new WorkflowCommandError([
-      {
-        code: WorkflowDiagnosticCodeEnum.variableKeyDuplicated,
-        severity: 'error',
-        params: { key: nextKey }
-      }
-    ]);
-  }
   const nextValueType = patch.valueType ?? variables[index].valueType;
   const references = getGlobalVariableReferences({ document, key });
-  const incompatibleReference = references.find(
-    ({ input }) =>
-      !areWorkflowValueTypesCompatible({
-        expected: input.valueType,
-        actual: nextValueType
-      })
+  const incompatibleReference = references.find(({ matches }) =>
+    matches.some(
+      ({ expectedValueType }) =>
+        !areWorkflowValueTypesCompatible({
+          expected: expectedValueType,
+          actual: nextValueType
+        })
+    )
   );
   if (incompatibleReference) {
     throw new WorkflowCommandError([
@@ -228,21 +234,19 @@ export const updateGlobalVariable = ({
         code: WorkflowDiagnosticCodeEnum.variableTypeChangeIncompatible,
         severity: 'error',
         nodeId: incompatibleReference.node.nodeId,
-        inputKey: incompatibleReference.input.key,
+        inputKey: incompatibleReference.inputKey,
         params: { key, valueType: nextValueType }
       }
     ]);
   }
   const next = [...variables];
-  next[index] = VariableItemTypeSchema.parse({ ...variables[index], ...structuredClone(patch) });
+  // 全局变量 key 创建后不可变，仅允许修改 label / valueType / 配置项等属性。
+  next[index] = VariableItemTypeSchema.parse({
+    ...variables[index],
+    ...structuredClone(patch),
+    key: variables[index].key
+  });
   document.chatConfig.variables = next;
-  if (nextKey !== key) {
-    for (const { references: matchedReferences } of references) {
-      for (const reference of matchedReferences) {
-        reference[1] = nextKey;
-      }
-    }
-  }
 };
 
 export const removeGlobalVariable = ({
@@ -266,9 +270,9 @@ export const removeGlobalVariable = ({
         severity: 'error',
         params: {
           key,
-          references: references.map(({ node, input }) => ({
+          references: references.map(({ node, inputKey }) => ({
             nodeId: node.nodeId,
-            inputKey: input.key
+            inputKey
           }))
         }
       }

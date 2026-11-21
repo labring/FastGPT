@@ -16,6 +16,7 @@ import {
 
 export type WorkflowChangeSetResult = {
   document: WorkflowDocument;
+  changeSet: WorkflowChangeSet;
   changes: WorkflowChangeSummary[];
   warnings: WorkflowDiagnostic[];
   diagnostics: WorkflowDiagnostic[];
@@ -54,12 +55,14 @@ export const applyWorkflowChangeSet = async ({
   }
 
   let nextDocument = structuredClone(document);
+  const normalizedCommands: WorkflowChangeSet['commands'] = [];
   const changes: WorkflowChangeSummary[] = [];
   const warnings: WorkflowDiagnostic[] = [];
   for (const [commandIndex, command] of changeSet.commands.entries()) {
     try {
       const result = await applyWorkflowCommand({ document: nextDocument, command, dependencies });
       nextDocument = result.document;
+      normalizedCommands.push(result.command);
       changes.push(...result.changes);
       warnings.push(...result.warnings);
     } catch (error) {
@@ -83,6 +86,7 @@ export const applyWorkflowChangeSet = async ({
   const diagnostics = validateWorkflow(nextDocument, { invalidReferencePolicy: 'error' });
   return {
     document: nextDocument,
+    changeSet: { ...changeSet, commands: normalizedCommands },
     changes,
     warnings,
     diagnostics,
@@ -113,7 +117,7 @@ export const planWorkflowChangeSet = async ({
     schemaVersion: WORKFLOW_PLAN_SCHEMA_VERSION,
     baseChecksum: changeSet.baseChecksum,
     targetChecksum: result.checksum,
-    changeSet,
+    changeSet: result.changeSet,
     changes: result.changes,
     diagnostics: result.diagnostics
   });
