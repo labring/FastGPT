@@ -30,19 +30,16 @@ export type SkillLabelItemType = Partial<SelectedToolItemType> & {
 };
 
 function SkillLabelPlugin({
-  selectedSkills = [],
   promptRefRegistry,
   onClickSkill,
   pendingSkillsRef
 }: {
-  selectedSkills: SkillLabelItemType[];
-  promptRefRegistry?: AgentPromptRefRegistry<SkillLabelItemType>;
+  promptRefRegistry: AgentPromptRefRegistry<SkillLabelItemType>;
   onClickSkill: (id: string, source?: string) => void;
   pendingSkillsRef: React.MutableRefObject<Map<string, SkillLabelItemType>>;
 }) {
   const { t } = useTranslation();
   const [editor] = useLexicalComposerContext();
-  const selectedSkillsRef = useRef(selectedSkills);
   const promptRefRegistryRef = useRef(promptRefRegistry);
   const onClickSkillRef = useRef(onClickSkill);
   const ambiguousToolTip = t('common:tool_ambiguous_click_delete_tip');
@@ -55,33 +52,20 @@ function SkillLabelPlugin({
       status: SkillLabelItemType['configStatus'];
       tooltip?: string;
     } => {
-      const registry = promptRefRegistryRef.current;
-      if (registry) {
-        const result = registry.resolve(rawKey);
-        if (result.status === 'resolved') {
-          pendingSkillsRef.current.delete(rawKey);
-          return {
-            tool: result.entry.meta,
-            status: result.entry.meta.configStatus ?? 'noConfig',
-            tooltip: result.entry.meta.tooltip
-          };
-        }
-        if (result.status === 'ambiguous') {
-          return {
-            status: 'invalid',
-            tooltip: ambiguousToolTip
-          };
-        }
-      } else {
-        const selectedTool = selectedSkillsRef.current.find((item) => item.id === rawKey);
-        if (selectedTool) {
-          pendingSkillsRef.current.delete(rawKey);
-          return {
-            tool: selectedTool,
-            status: selectedTool.configStatus ?? 'noConfig',
-            tooltip: selectedTool.tooltip
-          };
-        }
+      const result = promptRefRegistryRef.current.resolve(rawKey);
+      if (result.status === 'resolved') {
+        pendingSkillsRef.current.delete(rawKey);
+        return {
+          tool: result.entry.meta,
+          status: result.entry.meta.configStatus ?? 'noConfig',
+          tooltip: result.entry.meta.tooltip
+        };
+      }
+      if (result.status === 'ambiguous') {
+        return {
+          status: 'invalid',
+          tooltip: ambiguousToolTip
+        };
       }
 
       const pendingTool = pendingSkillsRef.current.get(rawKey);
@@ -99,16 +83,12 @@ function SkillLabelPlugin({
   );
 
   useEffect(() => {
-    selectedSkillsRef.current = selectedSkills;
     promptRefRegistryRef.current = promptRefRegistry;
 
-    selectedSkills.forEach((skill) => {
-      pendingSkillsRef.current.delete(skill.id);
-    });
-    promptRefRegistry?.entries().forEach((entry) => {
+    promptRefRegistry.entries().forEach((entry) => {
       pendingSkillsRef.current.delete(entry.canonicalKey);
     });
-  }, [pendingSkillsRef, promptRefRegistry, selectedSkills]);
+  }, [pendingSkillsRef, promptRefRegistry]);
 
   useEffect(() => {
     onClickSkillRef.current = onClickSkill;
@@ -202,7 +182,7 @@ function SkillLabelPlugin({
     return unregister;
   }, [editor, getSkillMatch, handleSkillClick, resolveSkillDisplay]);
 
-  // Update existing SkillNode properties when selectedSkills change
+  // Update existing SkillNode properties when promptRefRegistry changes
   // Sync tool name, avatar, status and configure handler for each skill node
   useEffect(() => {
     editor.update(() => {
@@ -229,14 +209,7 @@ function SkillLabelPlugin({
         }
       });
     });
-  }, [
-    selectedSkills,
-    promptRefRegistry,
-    editor,
-    handleSkillClick,
-    resolveSkillDisplay,
-    visitSkillNodes
-  ]);
+  }, [promptRefRegistry, editor, handleSkillClick, resolveSkillDisplay, visitSkillNodes]);
 
   return null;
 }

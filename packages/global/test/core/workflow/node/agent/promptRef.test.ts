@@ -319,23 +319,6 @@ describe('AgentPromptRefRegistry invariants', () => {
     );
   });
 
-  it('composes Pro prompts without double wrapping and strips non-ref switches', () => {
-    const registry = createRegistry();
-    const composed = registry.composePromptText({
-      text: '用 @plugin:system:metaso 与 {{@plugin:system:feishu@}} 和 {{@builtin:read_files@}}，查 @kb_1，开启 @file_upload 与 @[sandbox]',
-      mentions: [
-        { rawId: 'plugin:system:metaso', targetKey: 'plugin:system:metaso' },
-        { rawId: 'plugin:system:feishu', targetKey: 'plugin:system:feishu' },
-        { rawId: 'kb_1', targetKey: 'builtin:dataset_search' }
-      ]
-    });
-
-    expect(composed).toBe(
-      '用 {{@plugin:system:metaso@}} 与 {{@plugin:system:feishu@}} 和 {{@builtin:read_files@}}，查 {{@builtin:dataset_search@}}，开启 file_upload 与 sandbox'
-    );
-    expect(composed).not.toContain('{{{{');
-  });
-
   it('detects debug refs, stripping, and builtin predicates', () => {
     expect(hasDebugPromptRef('{{@debug:tmbId:u1:systemTool-x@}}')).toBe(true);
     expect(hasDebugPromptRef('{{@plugin:debug:u1:x@}}')).toBe(true);

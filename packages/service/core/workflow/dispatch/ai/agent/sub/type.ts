@@ -7,9 +7,8 @@ import type { AgentPromptRef } from '@fastgpt/global/core/workflow/node/agent/pr
 import type { SubAppRuntimeType } from '../type';
 
 export type SubAppPromptReferenceType = {
-  id: string;
   name: string;
-  ref?: AgentPromptRef;
+  ref: AgentPromptRef;
 };
 
 export type SubAppInitType = {

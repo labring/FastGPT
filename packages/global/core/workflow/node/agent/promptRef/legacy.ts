@@ -25,6 +25,85 @@ export const stripLegacyPluginPrefix = (id: string): string => {
 };
 
 /**
+ * 统一解析带历史前缀的工具 ID（commercial-/systemTool-/community-/personal-/mcp-/http-）。
+ * 由 parseLegacyRefKey 与 adapters.refFromTool 共享，避免同一套前缀规则维护两份。
+ */
+export const parsePrefixedLegacyToolRef = (
+  rawId: string
+): { ref: AgentPromptRef; allowLegacyToolsetSegmentFallback?: boolean } | null => {
+  if (rawId === 'commercial-dalle3') {
+    return {
+      ref: {
+        type: 'plugin',
+        source: 'system',
+        id: 'dalle3',
+        parentId: 'dalle3'
+      }
+    };
+  }
+
+  if (rawId.startsWith('systemTool-') || rawId.startsWith('community-')) {
+    const id = stripLegacyPluginPrefix(rawId);
+    if (!id) return null;
+    return {
+      ref: {
+        type: 'plugin',
+        source: 'system',
+        id,
+        ...splitParentChildId(id)
+      }
+    };
+  }
+
+  if (rawId.startsWith('commercial-')) {
+    const id = stripLegacyPluginPrefix(rawId);
+    if (!id) return null;
+    return {
+      ref: {
+        type: 'plugin',
+        source: 'commercial',
+        id,
+        ...splitParentChildId(id)
+      }
+    };
+  }
+
+  if (rawId.startsWith('personal-')) {
+    const id = rawId.slice('personal-'.length);
+    if (!id) return null;
+    return {
+      ref: {
+        type: 'app',
+        source: 'team',
+        id,
+        ...splitParentChildId(id)
+      }
+    };
+  }
+
+  if (rawId.startsWith('mcp-') || rawId.startsWith('http-')) {
+    const id = rawId.slice(rawId.indexOf('-') + 1);
+    if (!id) return null;
+    const { parentId, childId } = splitParentChildId(id);
+    const allowLegacyToolsetSegmentFallback =
+      rawId.startsWith('mcp-') &&
+      Boolean(childId && childId.includes('/') && !childId.startsWith('/'));
+    return {
+      ...(allowLegacyToolsetSegmentFallback ? { allowLegacyToolsetSegmentFallback: true } : {}),
+      ref: {
+        type: 'app',
+        source: 'team',
+        id,
+        parentId,
+        ...(childId ? { childId } : {})
+      }
+    };
+  }
+
+  return null;
+};
+
+/**
  * 独立旧格式解析器（零 V2 耦合，存量退场后可整文件移除）。
  * - 能无状态确定来源与类型的旧键，直接还原为 deterministicRef；
  * - 裸 ObjectId / 极老裸插件名返回 bareId，交由 Registry 按目录消歧与冲突熔断。
@@ -87,87 +166,16 @@ export const parseLegacyRefKey = (rawKey: string): ParsedLegacyPromptRef => {
   const hasSystemPrefix = trimmed.startsWith('system:');
   const inner = hasSystemPrefix ? trimmed.slice('system:'.length) : trimmed;
 
-  if (inner === 'commercial-dalle3') {
+  const prefixedRef = parsePrefixedLegacyToolRef(inner);
+  if (prefixedRef) {
     return {
       kind: 'legacy',
       rawKey: trimmed,
-      deterministicRef: {
-        type: 'plugin',
-        source: 'system',
-        id: 'dalle3',
-        parentId: 'dalle3'
-      }
+      ...(prefixedRef.allowLegacyToolsetSegmentFallback
+        ? { allowLegacyToolsetSegmentFallback: true }
+        : {}),
+      deterministicRef: prefixedRef.ref
     };
-  }
-
-  if (inner.startsWith('systemTool-') || inner.startsWith('community-')) {
-    const id = stripLegacyPluginPrefix(inner);
-    if (id) {
-      return {
-        kind: 'legacy',
-        rawKey: trimmed,
-        deterministicRef: {
-          type: 'plugin',
-          source: 'system',
-          id,
-          ...splitParentChildId(id)
-        }
-      };
-    }
-  }
-
-  if (inner.startsWith('commercial-')) {
-    const id = stripLegacyPluginPrefix(inner);
-    if (id) {
-      return {
-        kind: 'legacy',
-        rawKey: trimmed,
-        deterministicRef: {
-          type: 'plugin',
-          source: 'commercial',
-          id,
-          ...splitParentChildId(id)
-        }
-      };
-    }
-  }
-
-  if (inner.startsWith('personal-')) {
-    const id = inner.slice('personal-'.length);
-    if (id) {
-      return {
-        kind: 'legacy',
-        rawKey: trimmed,
-        deterministicRef: {
-          type: 'app',
-          source: 'team',
-          id,
-          ...splitParentChildId(id)
-        }
-      };
-    }
-  }
-
-  if (inner.startsWith('mcp-') || inner.startsWith('http-')) {
-    const id = inner.slice(inner.indexOf('-') + 1);
-    if (id) {
-      const { parentId, childId } = splitParentChildId(id);
-      const allowLegacyToolsetSegmentFallback =
-        inner.startsWith('mcp-') &&
-        Boolean(childId && childId.includes('/') && !childId.startsWith('/'));
-      return {
-        kind: 'legacy',
-        rawKey: trimmed,
-        ...(allowLegacyToolsetSegmentFallback ? { allowLegacyToolsetSegmentFallback: true } : {}),
-        deterministicRef: {
-          type: 'app',
-          source: 'team',
-          id,
-          parentId,
-          ...(childId ? { childId } : {})
-        }
-      };
-    }
   }
 
   // 历史 getToolIdentityKey(id, undefined) 可能对裸 ObjectId 生成 system:<24hex>；按 bareId 交由目录消歧。

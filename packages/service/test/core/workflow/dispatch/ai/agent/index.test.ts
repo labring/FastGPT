@@ -502,8 +502,14 @@ describe('dispatchRunAgent user context', () => {
         avatar: 'search.svg',
         params: {},
         promptReference: {
-          id: 'mcp-app_1/search',
-          name: 'Search documentation'
+          name: 'Search documentation',
+          ref: {
+            type: 'app',
+            source: 'team',
+            id: 'app_1/search',
+            parentId: 'app_1',
+            childId: 'search'
+          }
         },
         requestSchema: {
           type: 'function',
@@ -566,8 +572,13 @@ describe('dispatchRunAgent user context', () => {
         inputs: [],
         agentGeneratedInputKeys: [],
         promptReference: {
-          id: 'system:systemTool-metaso',
-          name: '秘塔官方'
+          name: '秘塔官方',
+          ref: {
+            type: 'plugin',
+            source: 'system',
+            id: 'metaso',
+            parentId: 'metaso'
+          }
         },
         params: {},
         requestSchema: {
@@ -626,8 +637,13 @@ describe('dispatchRunAgent user context', () => {
         inputs: [],
         agentGeneratedInputKeys: [],
         promptReference: {
-          id: 'system:systemTool-getTime',
-          name: 'Get Time'
+          name: 'Get Time',
+          ref: {
+            type: 'plugin',
+            source: 'system',
+            id: 'getTime',
+            parentId: 'getTime'
+          }
         },
         params: {},
         requestSchema: {
@@ -646,8 +662,14 @@ describe('dispatchRunAgent user context', () => {
         inputs: [],
         agentGeneratedInputKeys: [],
         promptReference: {
-          id: 'teamId:67a100000000000000000001:systemTool-getTime',
-          name: 'Get Time'
+          name: 'Get Time',
+          ref: {
+            type: 'plugin',
+            source: 'team',
+            teamId: '67a100000000000000000001',
+            id: 'getTime',
+            parentId: 'getTime'
+          }
         },
         params: {},
         requestSchema: {
@@ -666,8 +688,14 @@ describe('dispatchRunAgent user context', () => {
         inputs: [],
         agentGeneratedInputKeys: [],
         promptReference: {
-          id: 'debug:tmbId:67d300000000000000000002:systemTool-getTime',
-          name: 'Get Time'
+          name: 'Get Time',
+          ref: {
+            type: 'plugin',
+            source: 'debug',
+            tmbId: '67d300000000000000000002',
+            id: 'getTime',
+            parentId: 'getTime'
+          }
         },
         params: {},
         requestSchema: {

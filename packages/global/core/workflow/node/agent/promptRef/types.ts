@@ -50,8 +50,6 @@ export type AgentPromptRefEntry<TMeta = unknown> = {
   displayName: string;
   /** 历史 Skill 快照缺少 source 时标记为 true，允许按全局唯一 ObjectId 跨 system/team 命中。 */
   sourceInferred?: boolean;
-  /** 额外历史裸键或旧三段式候选键。 */
-  extraLegacyKeys?: string[];
   meta: TMeta;
 };
 

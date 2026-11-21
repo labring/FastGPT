@@ -92,7 +92,6 @@ export type EditorProps = {
 
   skillOption?: SkillOptionItemType;
   onClickSkill?: (id: string) => void;
-  selectedSkills?: SkillLabelItemType[];
   promptRefRegistry?: AgentPromptRefRegistry<SkillLabelItemType>;
 
   showOpenModal?: boolean;
@@ -125,7 +124,6 @@ export default function Editor({
   variableLabels = [],
   // @选择技能
   skillOption,
-  selectedSkills,
   promptRefRegistry,
   onClickSkill,
 
@@ -293,10 +291,9 @@ export default function Editor({
             </>
           )}
 
-          {skillOption && onClickSkill && selectedSkills && (
+          {skillOption && onClickSkill && promptRefRegistry && (
             <>
               <SkillLabelPlugin
-                selectedSkills={selectedSkills}
                 promptRefRegistry={promptRefRegistry}
                 onClickSkill={onClickSkill}
                 pendingSkillsRef={pendingSkillsRef}

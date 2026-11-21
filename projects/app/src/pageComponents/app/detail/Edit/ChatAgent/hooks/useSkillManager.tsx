@@ -123,20 +123,15 @@ export const useSkillManager = ({
   const { toast } = useToast();
   const { canUseSandbox: isSandboxSupported } = useAgentSandboxCapability();
   const effectiveUseAgentSandbox = isSandboxSupported && useAgentSandbox;
-  const {
-    promptRefRegistry,
-    selectedSkills,
-    getToolWriteKey,
-    getSkillWriteKey,
-    getBuiltinWriteKey
-  } = useAgentPromptRefs({
-    selectedTools,
-    selectedAgentSkills,
-    canUploadFile,
-    hasSelectedDataset,
-    useAgentSandbox: effectiveUseAgentSandbox,
-    lang: i18n.language
-  });
+  const { promptRefRegistry, getToolWriteKey, getSkillWriteKey, getBuiltinWriteKey } =
+    useAgentPromptRefs({
+      selectedTools,
+      selectedAgentSkills,
+      canUploadFile,
+      hasSelectedDataset,
+      useAgentSandbox: effectiveUseAgentSandbox,
+      lang: i18n.language
+    });
 
   /* ===== System tool ===== */
   const onFolderLoadSystemTools = useCallback(
@@ -669,7 +664,6 @@ export const useSkillManager = ({
   );
   return {
     skillOption,
-    selectedSkills,
     promptRefRegistry,
     onClickSkill,
     onOpenConfigTool: setConfigTool,

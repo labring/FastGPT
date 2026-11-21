@@ -1,7 +1,7 @@
 import { parseDebugToolSource, parseTeamPluginSource } from '../../../../app/tool/utils';
 import { AgentSkillSourceEnum } from '../../../../ai/skill/constants';
 import { formatRefKey, parseV2RefKey, splitParentChildId } from './codec';
-import { parseLegacyRefKey, stripLegacyPluginPrefix } from './legacy';
+import { parseLegacyRefKey, parsePrefixedLegacyToolRef, stripLegacyPluginPrefix } from './legacy';
 import type { AgentPromptRef } from './types';
 
 /** 将 Skill 的业务 source（system / personal）归一为提示词引用协议 source（system / team）。 */
@@ -76,58 +76,8 @@ export const refFromTool = ({
     };
   }
 
-  if (rawId === 'commercial-dalle3') {
-    return {
-      type: 'plugin',
-      source: 'system',
-      id: 'dalle3',
-      parentId: 'dalle3'
-    };
-  }
-
-  if (rawId.startsWith('commercial-')) {
-    const cleanId = stripLegacyPluginPrefix(rawId);
-    if (!cleanId) return null;
-    return {
-      type: 'plugin',
-      source: 'commercial',
-      id: cleanId,
-      ...splitParentChildId(cleanId)
-    };
-  }
-
-  if (rawId.startsWith('systemTool-') || rawId.startsWith('community-')) {
-    const cleanId = stripLegacyPluginPrefix(rawId);
-    if (!cleanId) return null;
-    return {
-      type: 'plugin',
-      source: 'system',
-      id: cleanId,
-      ...splitParentChildId(cleanId)
-    };
-  }
-
-  if (rawId.startsWith('personal-')) {
-    const cleanId = rawId.slice('personal-'.length);
-    if (!cleanId) return null;
-    return {
-      type: 'app',
-      source: 'team',
-      id: cleanId,
-      ...splitParentChildId(cleanId)
-    };
-  }
-
-  if (rawId.startsWith('mcp-') || rawId.startsWith('http-')) {
-    const cleanId = rawId.slice(rawId.indexOf('-') + 1);
-    if (!cleanId) return null;
-    return {
-      type: 'app',
-      source: 'team',
-      id: cleanId,
-      ...splitParentChildId(cleanId)
-    };
-  }
+  const prefixedRef = parsePrefixedLegacyToolRef(rawId);
+  if (prefixedRef) return prefixedRef.ref;
 
   if (source === 'system') {
     return {

@@ -726,7 +726,6 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].version).toBe('');
     expect(tools[0].toolConfig).not.toHaveProperty('mcpToolSet');
     expect(tools[0].promptReference).toEqual({
-      id: 'mcp_app',
       name: 'mcp_app name',
       ref: {
         type: 'app',
@@ -736,7 +735,6 @@ describe('getAgentRuntimeTools schema loading', () => {
       }
     });
     expect(tools[0].childPromptReference).toEqual({
-      id: 'mcp-mcp_app/search',
       name: 'mcp_app name/search',
       ref: {
         type: 'app',
@@ -977,7 +975,6 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].toolConfig?.httpTool?.toolId).toBe('http-http_app/create');
     expect(tools[0].version).toBe('');
     expect(tools[0].promptReference).toEqual({
-      id: 'http_app',
       name: 'http_app name',
       ref: {
         type: 'app',
@@ -987,7 +984,6 @@ describe('getAgentRuntimeTools schema loading', () => {
       }
     });
     expect(tools[0].childPromptReference).toEqual({
-      id: 'http-http_app/create',
       name: 'http_app name/create',
       ref: {
         type: 'app',
@@ -1263,7 +1259,6 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(tools[0].name).toBe('搜索网页');
     expect(tools[0].promptReference).toEqual({
-      id: 'systemTool-metaso',
       name: '秘塔搜索',
       ref: {
         type: 'plugin',
@@ -1273,7 +1268,6 @@ describe('getAgentRuntimeTools schema loading', () => {
       }
     });
     expect(tools[0].childPromptReference).toEqual({
-      id: 'systemTool-metaso/search',
       name: '搜索网页',
       ref: {
         type: 'plugin',
