@@ -19,9 +19,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { mergeToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
-import { refFromTool } from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
 import { formatRefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/codec';
-import { parseAgentPromptRefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/legacy';
 import type { AgentPromptRefEntry } from '@fastgpt/global/core/workflow/node/agent/promptRef/types';
 
 export type RuntimePromptRefMeta = {
@@ -62,34 +60,24 @@ export const getSubapps = async ({
   ) => {
     if (!promptReference) return;
 
-    const parsedFromId = parseAgentPromptRefKey(promptReference.id);
-    const ref =
-      promptReference.ref ??
-      (parsedFromId.kind === 'v2'
-        ? parsedFromId.ref
-        : parsedFromId.kind === 'legacy'
-          ? parsedFromId.deterministicRef
-          : undefined) ??
-      refFromTool({ id: promptReference.id });
-    if (ref) {
-      const canonicalKey = formatRefKey(ref);
-      const existing = promptToolRefEntryMap.get(canonicalKey);
-      if (existing) {
-        if (modelToolName && !existing.meta.modelToolNames?.includes(modelToolName)) {
-          existing.meta.modelToolNames = [...(existing.meta.modelToolNames ?? []), modelToolName];
-        }
-        return;
+    const { ref, name } = promptReference;
+    const canonicalKey = formatRefKey(ref);
+    const existing = promptToolRefEntryMap.get(canonicalKey);
+    if (existing) {
+      if (modelToolName && !existing.meta.modelToolNames?.includes(modelToolName)) {
+        existing.meta.modelToolNames = [...(existing.meta.modelToolNames ?? []), modelToolName];
       }
-      promptToolRefEntryMap.set(canonicalKey, {
-        ref,
-        canonicalKey,
-        displayName: promptReference.name,
-        meta: {
-          name: promptReference.name,
-          ...(modelToolName ? { modelToolNames: [modelToolName] } : {})
-        }
-      });
+      return;
     }
+    promptToolRefEntryMap.set(canonicalKey, {
+      ref,
+      canonicalKey,
+      displayName: name,
+      meta: {
+        name,
+        ...(modelToolName ? { modelToolNames: [modelToolName] } : {})
+      }
+    });
   };
   formatTools.forEach((tool) => {
     const modelToolName = tool.requestSchema?.function?.name;

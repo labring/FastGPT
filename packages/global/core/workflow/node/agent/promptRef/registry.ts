@@ -1,6 +1,6 @@
 import { formatRefKey, parseV2RefKey } from './codec';
 import { deriveBareLegacyKeys, parseLegacyRefKey } from './legacy';
-import { AGENT_PROMPT_REF_REGEXP, formatPromptRefToken } from './text';
+import { AGENT_PROMPT_REF_REGEXP } from './text';
 import {
   type AgentPromptRef,
   type AgentPromptRefEntry,
@@ -9,8 +9,6 @@ import {
   type PromptRefDiagnosticEvent,
   type ResolvePromptRefResult
 } from './types';
-
-const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
  * 前后端同构的 Agent 提示词引用不可变注册表。
@@ -41,7 +39,7 @@ export class AgentPromptRefRegistry<TMeta = unknown> {
         this.inferredSkillIdMap.set(entry.ref.id, normalized);
       }
 
-      const bareKeys = [...deriveBareLegacyKeys(entry.ref), ...(entry.extraLegacyKeys ?? [])];
+      const bareKeys = deriveBareLegacyKeys(entry.ref);
       for (const bareKey of bareKeys) {
         if (!bareKey) continue;
 
@@ -218,57 +216,5 @@ export class AgentPromptRefRegistry<TMeta = unknown> {
       });
       return raw;
     });
-  }
-
-  /**
-   * 后端（Pro 辅助生成）安全拼接：将计划中的 `@id` / `@[id]` / `@id@` / `{{@id@}}`
-   * 一次性单层规范化为 `{{@<targetKey>@}}`，彻底杜绝二次包裹。
-   */
-  composePromptText({
-    text,
-    mentions,
-    stripNonRefMentions = ['file_upload', 'sandbox']
-  }: {
-    text: string;
-    mentions: Array<{ rawId: string; targetKey: string }>;
-    stripNonRefMentions?: string[];
-  }): string {
-    if (!text) return text;
-
-    let output = text;
-
-    // 按 rawId 长度降序处理，防止短 ID 误截断包含相同前缀的长 ID。
-    const sortedMentions = [...mentions]
-      .filter((item) => item.rawId.trim().length > 0 && item.targetKey.trim().length > 0)
-      .sort((a, b) => b.rawId.length - a.rawId.length);
-
-    for (const mention of sortedMentions) {
-      const rawId = mention.rawId.trim();
-      const resolvedTarget = this.resolve(mention.targetKey);
-      const finalKey =
-        resolvedTarget.status === 'resolved'
-          ? resolvedTarget.entry.canonicalKey
-          : mention.targetKey.trim();
-      const escapedId = escapeRegExp(rawId);
-      // 同一正则同时吞掉已带 {{@...@}} 和裸 @id / @[id] / @id@，保证永远只包裹一层。
-      const mentionRegex = new RegExp(
-        `\\{\\{@${escapedId}@\\}\\}|@\\[${escapedId}\\]|@${escapedId}@?(?![A-Za-z0-9_:\\/-])`,
-        'g'
-      );
-      output = output.replace(mentionRegex, formatPromptRefToken(finalKey));
-    }
-
-    if (stripNonRefMentions.length > 0) {
-      const namesPattern = stripNonRefMentions.map(escapeRegExp).join('|');
-      const nonRefRegex = new RegExp(
-        `(?<!\\{\\{)@(?:\\[(${namesPattern})\\]|(${namesPattern})@?(?![A-Za-z0-9_:\\/-]))(?!\\}\\})`,
-        'g'
-      );
-      output = output.replace(nonRefRegex, (_match, bracketed?: string, plain?: string) => {
-        return bracketed ?? plain ?? '';
-      });
-    }
-
-    return output;
   }
 }

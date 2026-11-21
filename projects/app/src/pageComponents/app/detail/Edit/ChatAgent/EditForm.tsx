@@ -157,7 +157,7 @@ const EditForm = ({
       onOpenKbSelect();
     }
   });
-  const { skillOption, selectedSkills, promptRefRegistry, onClickSkill } = skillManager;
+  const { skillOption, promptRefRegistry, onClickSkill } = skillManager;
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -281,7 +281,6 @@ const EditForm = ({
                 placeholder={t('workflow:agent.prompt_placeholder')}
                 variableLabels={formatVariables}
                 skillOption={skillOption}
-                selectedSkills={selectedSkills}
                 promptRefRegistry={promptRefRegistry}
                 onClickSkill={onClickSkill}
                 value={appForm.aiSettings.systemPrompt}

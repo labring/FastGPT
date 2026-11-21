@@ -2,7 +2,6 @@ import { AgentToolInputConfigSchema, type AgentToolType } from '@fastgpt/global/
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import {
   getToolNameCandidates,
-  getToolIdentityKey,
   isSystemOrCommercialToolId,
   isDebugToolSource,
   isTeamPluginSource,
@@ -674,11 +673,12 @@ export const getAgentRuntimeTools = async ({
 
         // toolset 展开后的子工具统一走 tool 执行；params 仍继承父工具配置。
         const promptRef = refFromTool({ id: tool.id, source: runtimeSource }) ?? undefined;
-        const promptReference = {
-          id: runtimeSource ? getToolIdentityKey(tool.id, runtimeSource) : tool.id,
-          name: toolNode.name,
-          ref: promptRef
-        };
+        const promptReference = promptRef
+          ? {
+              name: toolNode.name,
+              ref: promptRef
+            }
+          : undefined;
         const buildSubApp = (child: RuntimeNodeItemType, id = child.nodeId): SubAppInitType => {
           const runtimeId = getAgentRuntimeToolId({ pluginId: id, source: runtimeSource });
           const isHttpToolChild = Boolean(child.toolConfig?.httpTool);
@@ -712,14 +712,12 @@ export const getAgentRuntimeTools = async ({
           const childPromptRef = childToolId
             ? (refFromTool({ id: childToolId, source: runtimeSource }) ?? undefined)
             : undefined;
-          const childPromptReference =
-            childToolId && childPromptRef
-              ? {
-                  id: runtimeSource ? getToolIdentityKey(childToolId, runtimeSource) : childToolId,
-                  name: child.name,
-                  ref: childPromptRef
-                }
-              : undefined;
+          const childPromptReference = childPromptRef
+            ? {
+                name: child.name,
+                ref: childPromptRef
+              }
+            : undefined;
 
           return {
             type: 'tool',

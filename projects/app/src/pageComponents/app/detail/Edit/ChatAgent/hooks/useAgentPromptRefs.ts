@@ -242,14 +242,8 @@ export const useAgentPromptRefs = ({
     lang
   ]);
 
-  const selectedSkills = useMemoEnhance<SkillLabelItemType[]>(
-    () => promptRefRegistry.entries().map((entry) => entry.meta),
-    [promptRefRegistry]
-  );
-
   return {
     promptRefRegistry,
-    selectedSkills,
     getToolWriteKey,
     getSkillWriteKey,
     getBuiltinWriteKey
