@@ -26,7 +26,10 @@ import { useAgentSandboxCapability } from '../../hooks/useAgentSandboxCapability
 import { ChatAgentHelperTypeEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import {
+  getToolIdentityKey,
+  isSystemOrCommercialToolId
+} from '@fastgpt/global/core/app/tool/utils';
 import { isBuiltinPromptRefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
 import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -189,9 +192,12 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
     () => ({
       systemPrompt: appForm.aiSettings.systemPrompt,
       // 发送兼容键：同时兼容旧版固定 Pro 目录与新版 Pro V2 规范化解析，避免跨仓升级期拒收。
-      selectedTools: appForm.selectedTools.map((tool) =>
-        tool.source ? getToolIdentityKey(tool.id, tool.source) : tool.id
-      ),
+      selectedTools: appForm.selectedTools.map((tool) => {
+        if (tool.source) return getToolIdentityKey(tool.id, tool.source);
+        return isSystemOrCommercialToolId(tool.id)
+          ? getToolIdentityKey(tool.id, 'system')
+          : tool.id;
+      }),
       selectedDatasets: appForm.dataset.datasets.map((dataset) => dataset.datasetId),
       selectedAgentSkills: canUseSandbox ? appForm.selectedAgentSkills || [] : [],
       fileUpload: appForm.chatConfig.fileSelectConfig?.canSelectFile || false,

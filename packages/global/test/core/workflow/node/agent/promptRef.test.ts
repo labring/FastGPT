@@ -14,7 +14,6 @@ import {
   hasDebugPromptRef,
   stripAgentPromptRefs
 } from '@fastgpt/global/core/workflow/node/agent/promptRef/text';
-import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import {
   isBuiltinPromptRefKey,
   refFromBuiltin,
@@ -225,6 +224,11 @@ describe('AgentPromptRefRegistry invariants', () => {
         meta: { tag: 'feishu-2' }
       },
       {
+        ref: refFromTool({ id: '66f100000000000000000022' })!,
+        displayName: 'githubSet',
+        meta: { tag: 'gh-set' }
+      },
+      {
         ref: refFromTool({ id: 'mcp-66f100000000000000000022/ns:get-issue' })!,
         displayName: 'GitHub查Issue',
         meta: { tag: 'gh-issue' }
@@ -333,9 +337,19 @@ describe('AgentPromptRefRegistry invariants', () => {
     expect(parseAgentPromptRefKey('').kind).toBe('invalid');
   });
 
-  it('prevents deleted legacy HTTP child paths from cross-binding to another tool sharing the last segment', () => {
+  it('prevents deleted legacy HTTP and slash-named MCP child tools from cross-binding to another tool sharing the last segment', () => {
     const httpAppId = '66f100000000000000000055';
     const registry = AgentPromptRefRegistry.create([
+      {
+        ref: {
+          type: 'app',
+          source: 'team',
+          id: httpAppId,
+          parentId: httpAppId
+        },
+        displayName: 'LegacyToolset',
+        meta: { label: 'set' }
+      },
       {
         ref: {
           type: 'app',
@@ -351,24 +365,11 @@ describe('AgentPromptRefRegistry invariants', () => {
 
     expect(registry.resolve(`http-${httpAppId}//api/v1/users`).status).toBe('unresolved');
     expect(registry.resolve(`app:team:${httpAppId}//api/v1/users`).status).toBe('unresolved');
+    expect(registry.resolve(`mcp-${httpAppId}/catalog/users`).status).toBe('unresolved');
     expect(registry.resolve(`mcp-${httpAppId}/LegacyToolset/users`)).toMatchObject({
       status: 'resolved',
       matchedBy: 'deterministic_legacy',
       entry: { displayName: 'Users Tool' }
-    });
-  });
-
-  it('parses untyped V2 child tool lookup ids in splitCombineToolId', () => {
-    const parentId = '66f100000000000000000088';
-    expect(splitCombineToolId(`${parentId}/get-weather`)).toEqual({
-      source: 'personal',
-      pluginId: `${parentId}/get-weather`,
-      authAppId: parentId
-    });
-    expect(splitCombineToolId(`${parentId}//api/v1/users`)).toEqual({
-      source: 'personal',
-      pluginId: `${parentId}//api/v1/users`,
-      authAppId: parentId
     });
   });
 });

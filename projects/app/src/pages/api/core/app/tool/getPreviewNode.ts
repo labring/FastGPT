@@ -1,7 +1,10 @@
 /*
   get plugin preview modules
  */
-import { getClientToolPreviewNode } from '@fastgpt/service/core/app/tool/utils/client';
+import {
+  getClientToolPreviewNode,
+  parseUntypedV2ChildToolLookupId
+} from '@fastgpt/service/core/app/tool/utils/client';
 import { type FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
@@ -31,7 +34,8 @@ async function handler(
     querySchema: GetPreviewNodeQuerySchema
   });
 
-  const { authAppId } = splitCombineToolId(appId);
+  const authAppId =
+    parseUntypedV2ChildToolLookupId(appId)?.parentId ?? splitCombineToolId(appId).authAppId;
   if (authAppId) {
     await authApp({ req, authToken: true, appId: authAppId, per: ReadPermissionVal });
   }

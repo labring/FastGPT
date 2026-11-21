@@ -251,6 +251,23 @@ export async function getClientSystemToolPreviewNode({
 }
 
 /**
+ * 预览接口边界专用的无类型 V2 子工具反查解析器（如 `<parentId>/<toolName>` 或 `<parentId>//api/v1/users`）。
+ * 不放进共享 splitCombineToolId，避免资源快照和运行时把子工具误归为父级 personal 应用。
+ */
+export const parseUntypedV2ChildToolLookupId = (
+  appId: string
+): { parentId: string; toolName: string } | null => {
+  const slashIndex = appId.indexOf('/');
+  if (slashIndex <= 0 || slashIndex === appId.length - 1) return null;
+  const parentId = appId.slice(0, slashIndex);
+  if (parentId.includes('-')) return null;
+  return {
+    parentId,
+    toolName: appId.slice(slashIndex + 1)
+  };
+};
+
+/**
  * 构建返回给客户端的工具预览节点。
  *
  * 该结果只用于前端 UI 展示、工具选择和插入画布。运行时 JSON Schema
@@ -271,7 +288,10 @@ export async function getClientToolPreviewNode({
   source?: string;
   teamId?: string;
 }): Promise<FlowNodeTemplateType> {
-  const { source: idSource, pluginId } = splitCombineToolId(appId);
+  const untypedChildLookup = parseUntypedV2ChildToolLookupId(appId);
+  const { source: idSource, pluginId } = untypedChildLookup
+    ? { source: AppToolSourceEnum.personal, pluginId: appId }
+    : splitCombineToolId(appId);
 
   const data = await (async () => {
     if (idSource === AppToolSourceEnum.systemTool || idSource === AppToolSourceEnum.commercial) {
@@ -287,15 +307,12 @@ export async function getClientToolPreviewNode({
 
     // 存在 app 里面的插件的情况
     const app: AppToolType = await (async () => {
-      const isChildToolsetLookup =
-        idSource === AppToolSourceEnum.mcp ||
-        idSource === AppToolSourceEnum.http ||
-        (idSource === AppToolSourceEnum.personal && pluginId.includes('/'));
+      const isTypedPrefix =
+        idSource === AppToolSourceEnum.mcp || idSource === AppToolSourceEnum.http;
+      const isChildToolsetLookup = isTypedPrefix || Boolean(untypedChildLookup);
 
       if (isChildToolsetLookup) {
-        const { parentId, toolName } = splitToolsetToolPluginId(pluginId);
-        const isTypedPrefix =
-          idSource === AppToolSourceEnum.mcp || idSource === AppToolSourceEnum.http;
+        const { parentId, toolName } = untypedChildLookup ?? splitToolsetToolPluginId(pluginId);
         const item = isTypedPrefix
           ? await MongoApp.findById(parentId).lean()
           : await MongoApp.findOne({ _id: parentId, deleteTime: null }).lean();
@@ -311,10 +328,7 @@ export async function getClientToolPreviewNode({
               : undefined;
         if (!childKind) return Promise.reject(PluginErrEnum.unExist);
 
-        const candidates =
-          childKind === AppToolSourceEnum.http && !isTypedPrefix
-            ? [toolName]
-            : getToolNameCandidates(toolName);
+        const candidates = isTypedPrefix ? getToolNameCandidates(toolName) : [toolName];
 
         if (childKind === AppToolSourceEnum.mcp) {
           const mcpChildren = await getMCPChildren(item);
