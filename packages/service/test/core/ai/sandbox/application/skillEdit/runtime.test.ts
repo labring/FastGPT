@@ -267,6 +267,104 @@ describe('packageSkillInSandbox', () => {
     ]);
   });
 
+  it('cleans up the symlink list when listing symlinks fails before packaging', async () => {
+    const sandbox = createPackageSandbox();
+    sandbox.execute.mockImplementation(async (command: string) => {
+      if (command === 'printf "%s" "$HOME"') {
+        return { stdout: '/home/sandbox', stderr: '', exitCode: 0 };
+      }
+      if (command.includes("awk '{s+=$7}")) {
+        return { stdout: '12', stderr: '', exitCode: 0 };
+      }
+      if (command.startsWith('find . -type l')) {
+        return { stdout: '', stderr: 'find failed', exitCode: 2 };
+      }
+      return { stdout: '', stderr: '', exitCode: 0 };
+    });
+    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
+
+    await expect(
+      packageSkillInSandbox({ sandboxId: 'sandbox-1', applyIgnoreRules: false })
+    ).rejects.toThrow('Failed to list skill directory symlinks: find failed');
+
+    expect(sandbox.deleteFiles).toHaveBeenCalledWith([
+      expect.stringMatching(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-/),
+      expect.stringMatching(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-.*\.symlinks$/)
+    ]);
+    expect(sandbox.execute).not.toHaveBeenCalledWith(
+      expect.stringMatching(/^zip -r -y /),
+      expect.anything()
+    );
+  });
+
+  it('cleans up the symlink list when zip packaging fails', async () => {
+    const sandbox = createPackageSandbox();
+    sandbox.execute.mockImplementation(async (command: string) => {
+      if (command === 'printf "%s" "$HOME"') {
+        return { stdout: '/home/sandbox', stderr: '', exitCode: 0 };
+      }
+      if (command.includes("awk '{s+=$7}")) {
+        return { stdout: '12', stderr: '', exitCode: 0 };
+      }
+      if (command.startsWith('zip -r -y ')) {
+        return { stdout: '', stderr: 'zip failed', exitCode: 1 };
+      }
+      return { stdout: '', stderr: '', exitCode: 0 };
+    });
+    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
+
+    await expect(
+      packageSkillInSandbox({ sandboxId: 'sandbox-1', applyIgnoreRules: false })
+    ).rejects.toThrow('Failed to package skill directory: zip failed');
+
+    expect(sandbox.deleteFiles).toHaveBeenCalledWith([
+      expect.stringMatching(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-/),
+      expect.stringMatching(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-.*\.symlinks$/)
+    ]);
+  });
+
+  it('logs each cleanup failure without masking the export result', async () => {
+    const sandbox = createPackageSandbox();
+    const symlinkCleanupError = new Error('delete symlink list failed');
+    sandbox.deleteFiles.mockImplementationOnce(async (paths: string[]) => [
+      { path: paths[0], success: true, error: null },
+      { path: paths[1], success: false, error: symlinkCleanupError }
+    ]);
+    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
+
+    await expect(
+      packageSkillInSandbox({ sandboxId: 'sandbox-1', applyIgnoreRules: false })
+    ).resolves.toEqual(Buffer.from([1, 2, 3]));
+
+    expect(mocks.logger.warn).toHaveBeenCalledTimes(1);
+    expect(mocks.logger.warn).toHaveBeenCalledWith(
+      '[Sandbox] Failed to cleanup package file',
+      expect.objectContaining({
+        sandboxId: 'sandbox-1',
+        path: expect.stringMatching(/\.symlinks$/),
+        error: symlinkCleanupError
+      })
+    );
+  });
+
+  it('returns the zip and removes both temp files for a full export', async () => {
+    const sandbox = createPackageSandbox();
+    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
+
+    await expect(
+      packageSkillInSandbox({
+        sandboxId: 'sandbox-1',
+        validationMode: 'basicZip',
+        applyIgnoreRules: false
+      })
+    ).resolves.toEqual(Buffer.from([1, 2, 3]));
+
+    expect(sandbox.deleteFiles).toHaveBeenCalledWith([
+      expect.stringMatching(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-/),
+      expect.stringMatching(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-.*\.symlinks$/)
+    ]);
+  });
+
   it('applies default and root .gitignore rules during publish packaging', async () => {
     const sandbox = createPackageSandbox();
     sandbox.readFiles.mockImplementation(async (paths: string[]) => {

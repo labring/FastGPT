@@ -423,7 +423,6 @@ export async function packageSkillInSandbox(params: {
 
     let customExcludes: string[] = [];
     let pruneClause = '';
-    let symlinkListFile: string | undefined;
 
     if (applyIgnoreRules) {
       let gitignoreContents: string[] = [];
@@ -472,28 +471,32 @@ export async function packageSkillInSandbox(params: {
 
     const excludeArgs = allExcludes.map((pattern) => `-x ${shellQuote(pattern)}`).join(' ');
 
-    // 完整导出时按清单排除符号链接：`find` 输出去掉 `./` 前缀并转义 Info-ZIP 通配符，`-x@<file>` 逐行读取。
-    let symlinkExcludeArg = '';
-    if (!applyIgnoreRules) {
-      symlinkListFile = joinSandboxPath(packageTempDir, `${packageZipFilename}.symlinks`);
-      const listCommand = `find . -type l | awk '{ sub(/^\\.\\//, ""); gsub(/[][*?\\\\]/, "\\\\\\\\&"); print }' > ${shellQuote(symlinkListFile)}`;
-      const listResult = await newSandbox.execute(listCommand, { workingDirectory: targetDir });
-      if (listResult.exitCode !== 0) {
+    // 清单创建、打包、读取和校验共用同一个 try：任一步提前失败时，`finally` 都会清理临时文件。
+    let symlinkListFile: string | undefined;
+    try {
+      // 完整导出时按清单排除符号链接：`find` 输出去掉 `./` 前缀并转义 Info-ZIP 通配符，`-x@<file>` 逐行读取。
+      let symlinkExcludeArg = '';
+      if (!applyIgnoreRules) {
+        symlinkListFile = joinSandboxPath(packageTempDir, `${packageZipFilename}.symlinks`);
+        const listCommand = `find . -type l | awk '{ sub(/^\\.\\//, ""); gsub(/[][*?\\\\]/, "\\\\\\\\&"); print }' > ${shellQuote(symlinkListFile)}`;
+        const listResult = await newSandbox.execute(listCommand, { workingDirectory: targetDir });
+        if (listResult.exitCode !== 0) {
+          throw new Error(
+            `Failed to list skill directory symlinks: ${listResult.stderr || listResult.stdout}`
+          );
+        }
+        symlinkExcludeArg = ` -x@${shellQuote(symlinkListFile)}`;
+      }
+
+      const zipCommand = `zip -r -y ${shellQuote(zipFilePath)} . ${excludeArgs}${symlinkExcludeArg}`;
+      const zipResult = await newSandbox.execute(zipCommand, { workingDirectory: targetDir });
+
+      if (zipResult.exitCode !== 0) {
         throw new Error(
-          `Failed to list skill directory symlinks: ${listResult.stderr || listResult.stdout}`
+          `Failed to package skill directory: ${zipResult.stderr || zipResult.stdout}`
         );
       }
-      symlinkExcludeArg = ` -x@${shellQuote(symlinkListFile)}`;
-    }
 
-    const zipCommand = `zip -r -y ${shellQuote(zipFilePath)} . ${excludeArgs}${symlinkExcludeArg}`;
-    const zipResult = await newSandbox.execute(zipCommand, { workingDirectory: targetDir });
-
-    if (zipResult.exitCode !== 0) {
-      throw new Error(`Failed to package skill directory: ${zipResult.stderr || zipResult.stdout}`);
-    }
-
-    try {
       const files = await newSandbox.readFiles([zipFilePath]);
       const file = files?.[0];
 
@@ -532,25 +535,28 @@ export async function packageSkillInSandbox(params: {
 
       return zipBuffer;
     } finally {
+      // 导出模式下清单可能未真正创建，但路径已确定，仍需尝试清理；发布模式只有 zip。
       const cleanupPaths = symlinkListFile ? [zipFilePath, symlinkListFile] : [zipFilePath];
-      await newSandbox
-        .deleteFiles(cleanupPaths)
-        .then(([cleanupResult]) => {
+      try {
+        const cleanupResults = await newSandbox.deleteFiles(cleanupPaths);
+        cleanupPaths.forEach((cleanupPath, index) => {
+          const cleanupResult = cleanupResults?.[index];
           if (cleanupResult?.success && !cleanupResult.error) return;
 
-          addLog.warn('[Sandbox] Failed to cleanup package zip', {
+          addLog.warn('[Sandbox] Failed to cleanup package file', {
             sandboxId,
-            zipFilePath,
+            path: cleanupPath,
             error: cleanupResult?.error ?? new Error('Delete did not succeed')
           });
-        })
-        .catch((cleanupError) => {
-          addLog.warn('[Sandbox] Failed to cleanup package zip', {
-            sandboxId,
-            zipFilePath,
-            error: cleanupError
-          });
         });
+      } catch (cleanupError) {
+        // 清理失败只记录，保留最初的导出错误。
+        addLog.warn('[Sandbox] Failed to cleanup package files', {
+          sandboxId,
+          paths: cleanupPaths,
+          error: cleanupError
+        });
+      }
     }
   } catch (error) {
     if (!(error instanceof UserError)) {
