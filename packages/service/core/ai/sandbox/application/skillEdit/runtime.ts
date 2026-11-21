@@ -376,15 +376,23 @@ export async function initSkillEditRuntimeSandbox({
 /**
  * 将编辑态 sandbox 内的 skill 目录打包成 zip。
  *
- * 保存发布时只读取指定 workDirectory，默认会先做目录大小检查，避免把过大的编辑工作区
- * 直接压入对象存储。调用方负责后续 SKILL.md 解析、版本写入和对象存储上传。
+ * 默认会先按忽略规则（系统默认规则 + 工作区根目录 `.gitignore`）过滤并做目录大小检查，
+ * 避免发布包把 `.venv`/`node_modules` 等目录或过大的工作区直接压入对象存储。
+ * 导出完整编辑工作区时可传 `applyIgnoreRules: false` 跳过忽略规则（仍排除临时 `package.zip` 并保留体积与 ZIP 结构校验）。
+ * 调用方负责后续 SKILL.md 解析、版本写入和对象存储上传。
  */
 export async function packageSkillInSandbox(params: {
   sandboxId: string;
   workDirectory?: string;
   validationMode?: 'basicZip' | 'deployableWorkspace';
+  applyIgnoreRules?: boolean;
 }): Promise<Buffer> {
-  const { sandboxId, workDirectory, validationMode = 'deployableWorkspace' } = params;
+  const {
+    sandboxId,
+    workDirectory,
+    validationMode = 'deployableWorkspace',
+    applyIgnoreRules = true
+  } = params;
   const maxBytes = getAgentSandboxSkillMaxBytes();
 
   const providerConfig = getSandboxProviderConfig();
@@ -412,30 +420,35 @@ export async function packageSkillInSandbox(params: {
     const zipFilePath = joinSandboxPath(packageTempDir, packageZipFilename);
     await newSandbox.createDirectories([packageTempDir]);
 
-    let gitignoreContents: string[] = [];
-    try {
-      const rootGitignorePath = joinSandboxPath(targetDir, '.gitignore');
-      const [rootGitignore] = await newSandbox.readFiles([rootGitignorePath]);
+    let customExcludes: string[] = [];
+    let pruneClause = '';
 
-      if (rootGitignore && !rootGitignore.error) {
-        gitignoreContents = [
-          typeof rootGitignore.content === 'string'
-            ? rootGitignore.content
-            : Buffer.from(rootGitignore.content).toString('utf-8')
-        ];
+    if (applyIgnoreRules) {
+      let gitignoreContents: string[] = [];
+      try {
+        const rootGitignorePath = joinSandboxPath(targetDir, '.gitignore');
+        const [rootGitignore] = await newSandbox.readFiles([rootGitignorePath]);
+
+        if (rootGitignore && !rootGitignore.error) {
+          gitignoreContents = [
+            typeof rootGitignore.content === 'string'
+              ? rootGitignore.content
+              : Buffer.from(rootGitignore.content).toString('utf-8')
+          ];
+        }
+      } catch (err) {
+        addLog.warn('[Sandbox] Failed to read root .gitignore file', {
+          sandboxId,
+          error: getErrText(err)
+        });
       }
-    } catch (err) {
-      addLog.warn('[Sandbox] Failed to read root .gitignore file', {
-        sandboxId,
-        error: getErrText(err)
-      });
-    }
 
-    // 发布包必须始终套用系统默认忽略规则，避免没有 .gitignore 的工作区把 .venv/node_modules 打进版本包。
-    const { customExcludes, pruneClause } = parseGitignoreRules([
-      DEFAULT_GITIGNORE_CONTENT,
-      ...gitignoreContents
-    ]);
+      // 发布包必须始终套用系统默认忽略规则，避免没有 .gitignore 的工作区把 .venv/node_modules 打进版本包。
+      ({ customExcludes, pruneClause } = parseGitignoreRules([
+        DEFAULT_GITIGNORE_CONTENT,
+        ...gitignoreContents
+      ]));
+    }
     const packageZipExcludes = ['package.zip', '*/package.zip'];
     const allExcludes = Array.from(new Set([...packageZipExcludes, ...customExcludes]));
     const packageZipNameExcludeClause = `! -name ${shellQuote('package.zip')}`;
@@ -597,6 +610,7 @@ export async function packageSkillEditWorkspace(params: {
   skillId: string;
   teamId: string;
   validationMode?: Parameters<typeof packageSkillInSandbox>[0]['validationMode'];
+  applyIgnoreRules?: boolean;
 }) {
   const sandboxInfo = await ensureSkillEditRuntimeSandbox(params);
 
@@ -604,6 +618,7 @@ export async function packageSkillEditWorkspace(params: {
   return packageSkillInSandbox({
     sandboxId: sandboxInfo.sandboxId,
     workDirectory: runtimeProfile.workDirectory,
-    validationMode: params.validationMode
+    validationMode: params.validationMode,
+    applyIgnoreRules: params.applyIgnoreRules
   });
 }

@@ -44,7 +44,8 @@ async function handler(req: ApiRequestProps, res: ApiResponseType<any>) {
   const zipBuffer = await packageSkillEditWorkspace({
     skillId,
     teamId,
-    validationMode: 'basicZip'
+    validationMode: 'basicZip',
+    applyIgnoreRules: false
   });
 
   const filename = `${skill.name}.zip`;

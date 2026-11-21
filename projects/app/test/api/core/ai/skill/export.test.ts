@@ -118,7 +118,8 @@ describe('GET /api/core/ai/skill/export', () => {
     expect(skillExportMocks.packageSkillEditWorkspaceMock).toHaveBeenCalledWith({
       skillId,
       teamId: user.teamId,
-      validationMode: 'basicZip'
+      validationMode: 'basicZip',
+      applyIgnoreRules: false
     });
     expect(mockJsonRes).not.toHaveBeenCalled();
   });
@@ -140,7 +141,8 @@ describe('GET /api/core/ai/skill/export', () => {
     expect(skillExportMocks.packageSkillEditWorkspaceMock).toHaveBeenCalledWith({
       skillId,
       teamId: user.teamId,
-      validationMode: 'basicZip'
+      validationMode: 'basicZip',
+      applyIgnoreRules: false
     });
     expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/zip');
     expect(res.setHeader).toHaveBeenCalledWith(

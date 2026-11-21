@@ -232,14 +232,54 @@ describe('packageSkillInSandbox', () => {
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
   });
 
-  it('uses basic zip validation for export', async () => {
+  it('uses basic zip validation and skips ignore rules for full workspace export', async () => {
     const sandbox = createPackageSandbox();
     mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
 
-    await packageSkillInSandbox({ sandboxId: 'sandbox-1', validationMode: 'basicZip' });
+    await packageSkillInSandbox({
+      sandboxId: 'sandbox-1',
+      validationMode: 'basicZip',
+      applyIgnoreRules: false
+    });
 
     expect(mocks.validateZipStructure).toHaveBeenCalledTimes(1);
     expect(mocks.validateDeployableSkillWorkspacePackage).not.toHaveBeenCalled();
+    expect(sandbox.readFiles).not.toHaveBeenCalledWith(['/workspace/.gitignore']);
+
+    const executedCommands = sandbox.execute.mock.calls.map(([cmd]: [string]) => cmd);
+    const sizeCheckCmd = executedCommands.find((cmd: string) => cmd.includes("awk '{s+=$7}"));
+    const zipCmd = executedCommands.find((cmd: string) => cmd.startsWith('zip -r -y '));
+
+    expect(sizeCheckCmd).toBeDefined();
+    expect(sizeCheckCmd).not.toContain('-prune');
+    expect(zipCmd).toBeDefined();
+    expect(zipCmd).toContain("-x 'package.zip' -x '*/package.zip'");
+    expect(zipCmd).not.toContain('node_modules');
+    expect(zipCmd).not.toContain('.venv');
+  });
+
+  it('applies default and root .gitignore rules during publish packaging', async () => {
+    const sandbox = createPackageSandbox();
+    sandbox.readFiles.mockImplementation(async (paths: string[]) => {
+      if (paths[0] === '/workspace/.gitignore') {
+        return [{ path: paths[0], content: 'drafts/\n', error: null }];
+      }
+      return [{ path: paths[0], content: new Uint8Array([1, 2, 3]), error: null }];
+    });
+    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
+
+    await packageSkillInSandbox({ sandboxId: 'sandbox-1' });
+
+    expect(sandbox.readFiles).toHaveBeenCalledWith(['/workspace/.gitignore']);
+    const executedCommands = sandbox.execute.mock.calls.map(([cmd]: [string]) => cmd);
+    const sizeCheckCmd = executedCommands.find((cmd: string) => cmd.includes("awk '{s+=$7}"));
+    const zipCmd = executedCommands.find((cmd: string) => cmd.startsWith('zip -r -y '));
+
+    expect(sizeCheckCmd).toContain('-prune');
+    expect(sizeCheckCmd).toContain('drafts');
+    expect(zipCmd).toContain('node_modules');
+    expect(zipCmd).toContain('.venv');
+    expect(zipCmd).toContain('drafts');
   });
 
   it('propagates read failures and still disconnects', async () => {
