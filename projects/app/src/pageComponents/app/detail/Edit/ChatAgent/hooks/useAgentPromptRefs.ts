@@ -55,17 +55,19 @@ export const buildToolSkillLabelItem = ({
 /** 将 Skill 投影为 PromptEditor 展示标签；无权限/已删除时按 invalid 渲染。 */
 export const buildAgentSkillLabelItem = ({
   skill,
-  writeKey
+  writeKey,
+  sandboxUnavailable = false
 }: {
   skill: SelectedAgentSkillItemType;
   writeKey: string;
+  sandboxUnavailable?: boolean;
 }): SkillLabelItemType => ({
   id: writeKey,
   name: skill.name,
   avatar: skill.avatar || 'core/skill/default',
   intro: skill.description,
   flowNodeType: FlowNodeTypeEnum.tool,
-  configStatus: skill.error ? 'invalid' : 'noConfig'
+  configStatus: skill.error || sandboxUnavailable ? 'invalid' : 'noConfig'
 });
 
 /**
@@ -253,7 +255,11 @@ export const useAgentPromptRefs = ({
         displayName: skill.name,
         legacyWriteKey: skill.skillId,
         sourceInferred,
-        meta: buildAgentSkillLabelItem({ skill, writeKey })
+        meta: buildAgentSkillLabelItem({
+          skill,
+          writeKey,
+          sandboxUnavailable: !useAgentSandbox
+        })
       });
     });
 

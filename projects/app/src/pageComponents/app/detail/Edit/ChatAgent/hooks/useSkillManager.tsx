@@ -34,6 +34,8 @@ import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { ListSkillsResponse } from '@fastgpt/global/core/ai/skill/api';
 import { inheritToolInputConfig } from '../../FormComponent/ToolSelector/utils';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { formatRefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/codec';
 import { getCanonicalKeyForTool } from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
 import {
@@ -120,6 +122,12 @@ export const useSkillManager = ({
 }) => {
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
+  const { feConfigs } = useSystemStore();
+  const { teamPlanStatus } = useUserStore();
+  const isSandboxSupported =
+    Boolean(feConfigs.show_agent_sandbox) &&
+    (!teamPlanStatus?.standard || Boolean(teamPlanStatus.standard.enableSandbox));
+  const effectiveUseAgentSandbox = isSandboxSupported && useAgentSandbox;
   const {
     promptRefRegistry,
     selectedSkills,
@@ -131,7 +139,7 @@ export const useSkillManager = ({
     selectedAgentSkills,
     canUploadFile,
     hasSelectedDataset,
-    useAgentSandbox,
+    useAgentSandbox: effectiveUseAgentSandbox,
     lang: i18n.language
   });
 
@@ -183,7 +191,7 @@ export const useSkillManager = ({
       }
 
       const sandboxToolInfo = systemSubInfo[AGENT_SANDBOX_TOOLSET_ID];
-      if (sandboxToolInfo) {
+      if (sandboxToolInfo && isSandboxSupported) {
         apiTools.unshift({
           id: AGENT_SANDBOX_TOOLSET_ID,
           label: parseI18nString(sandboxToolInfo.name, i18n.language),
@@ -197,7 +205,7 @@ export const useSkillManager = ({
     },
     {
       manual: false,
-      refreshDeps: [i18n.language]
+      refreshDeps: [i18n.language, isSandboxSupported]
     }
   );
   const onLoadSystemTool = useCallback(
@@ -307,9 +315,10 @@ export const useSkillManager = ({
   const lastOnAddAgentSkill = useLatest(onAddAgentSkill);
   const lastOnUpdateOrAddTool = useLatest(onUpdateOrAddTool);
   const lastOnEnableSandbox = useLatest(onEnableSandbox);
-  const hasAgentSkillSupport = Boolean(onAddAgentSkill);
+  const hasAgentSkillSupport = Boolean(onAddAgentSkill) && isSandboxSupported;
   const onAddSkill = useCallback(
     async (skillId: string): Promise<SkillClickResult | undefined> => {
+      if (!hasAgentSkillSupport) return;
       const existsSkill = lastSelectedAgentSkills.current?.find((item) => item.skillId === skillId);
       if (existsSkill) {
         const writeKey = getSkillWriteKey({
@@ -347,7 +356,7 @@ export const useSkillManager = ({
         skill
       };
     },
-    [getSkillWriteKey, lastOnAddAgentSkill, lastSelectedAgentSkills]
+    [getSkillWriteKey, hasAgentSkillSupport, lastOnAddAgentSkill, lastSelectedAgentSkills]
   );
 
   const onAddAppOrTool = useCallback(
@@ -378,8 +387,11 @@ export const useSkillManager = ({
         if (!subToolInfo) return;
 
         // 提示词 @虚拟机 时，同步尝试打开虚拟机开关。
-        if (toolId === AGENT_SANDBOX_TOOLSET_ID && !useAgentSandbox) {
-          lastOnEnableSandbox.current?.();
+        if (toolId === AGENT_SANDBOX_TOOLSET_ID) {
+          if (!isSandboxSupported) return;
+          if (!useAgentSandbox) {
+            lastOnEnableSandbox.current?.();
+          }
         }
 
         const configStatus: SkillLabelItemType['configStatus'] = (() => {
@@ -392,7 +404,7 @@ export const useSkillManager = ({
           }
 
           if (toolId === AGENT_SANDBOX_TOOLSET_ID) {
-            return useAgentSandbox ? 'noConfig' : 'invalid';
+            return 'noConfig';
           }
 
           return 'noConfig';
@@ -462,6 +474,7 @@ export const useSkillManager = ({
       getToolWriteKey,
       hasSelectedDataset,
       i18n.language,
+      isSandboxSupported,
       lastOnEnableSandbox,
       lastOnUpdateOrAddTool,
       lastSelectedTools,
@@ -568,7 +581,7 @@ export const useSkillManager = ({
           return loadMyTools();
         } else if (id === 'agent') {
           return loadMyAgents();
-        } else if (id === 'agentSkill') {
+        } else if (id === 'agentSkill' && hasAgentSkillSupport) {
           return loadAgentSkills();
         }
         return undefined;

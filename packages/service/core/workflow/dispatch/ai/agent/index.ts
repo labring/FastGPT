@@ -386,7 +386,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     const runtimeBuiltinEntries: AgentPromptRefEntry<{ name: string }>[] = [
       SubAppIds.datasetSearch,
       SubAppIds.readFiles,
-      AGENT_SANDBOX_TOOLSET_ID
+      ...(effectiveUseAgentSandbox ? [AGENT_SANDBOX_TOOLSET_ID] : [])
     ].flatMap((builtinId) => {
       const displayName =
         getSubAppInfo(builtinId).name || getSystemToolInfo(builtinId, lang)?.name || '';

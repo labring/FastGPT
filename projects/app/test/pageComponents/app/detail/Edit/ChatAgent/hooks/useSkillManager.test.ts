@@ -1,0 +1,183 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AGENT_SANDBOX_TOOLSET_ID } from '@fastgpt/global/core/ai/sandbox/tools';
+import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
+
+const mocks = vi.hoisted(() => ({
+  feConfigs: { show_agent_sandbox: false } as Record<string, any>,
+  teamPlanStatus: undefined as Record<string, any> | undefined,
+  systemToolsData: [] as any[],
+  getAppToolTemplates: vi.fn(async () => []),
+  getSkillListV2: vi.fn(async () => ({ list: [], total: 0 })),
+  toast: vi.fn()
+}));
+
+vi.mock('react', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('react')>()),
+  useCallback: (fn: unknown) => fn,
+  useMemo: (fn: () => unknown) => fn(),
+  useRef: (initial: unknown) => ({ current: initial }),
+  useState: (initial: unknown) => [initial, vi.fn()]
+}));
+vi.mock('@fastgpt/web/hooks/useMemoEnhance', () => ({
+  useMemoEnhance: (fn: () => unknown) => fn()
+}));
+vi.mock('ahooks', () => ({
+  useLatest: (value: unknown) => ({ current: value })
+}));
+vi.mock('@fastgpt/web/hooks/useRequest', () => ({
+  useRequest: (fn: () => Promise<any>) => {
+    mocks.systemToolsData = [];
+    void fn().then((res) => {
+      mocks.systemToolsData = res;
+    });
+    return { data: mocks.systemToolsData };
+  }
+}));
+vi.mock('next/dynamic', () => ({ default: () => () => null }));
+vi.mock('next-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'zh-CN' } })
+}));
+vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
+vi.mock('@/web/common/system/useSystemStore', () => ({
+  useSystemStore: () => ({ feConfigs: mocks.feConfigs })
+}));
+vi.mock('@/web/support/user/useUserStore', () => ({
+  useUserStore: () => ({ teamPlanStatus: mocks.teamPlanStatus })
+}));
+vi.mock('@/web/core/app/api/tool', () => ({
+  getAppToolTemplates: mocks.getAppToolTemplates,
+  getNewToolPreviewNode: vi.fn(),
+  getTeamAppTemplatesV2: vi.fn(async () => ({ list: [], total: 0 }))
+}));
+vi.mock('@/web/core/skill/api', () => ({
+  getSkillListV2: mocks.getSkillListV2
+}));
+
+import { buildAgentSkillLabelItem } from '@/pageComponents/app/detail/Edit/ChatAgent/hooks/useAgentPromptRefs';
+import { useSkillManager } from '@/pageComponents/app/detail/Edit/ChatAgent/hooks/useSkillManager';
+
+describe('useSkillManager sandbox & skill visibility', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.feConfigs = { show_agent_sandbox: false };
+    mocks.teamPlanStatus = undefined;
+    mocks.systemToolsData = [];
+  });
+
+  it('hides sandbox tool and associated skills from @ menu when system sandbox is disabled', async () => {
+    const onEnableSandbox = vi.fn();
+    const manager = useSkillManager({
+      selectedTools: [],
+      selectedAgentSkills: [
+        { skillId: 'skill-1', source: 'personal', name: '演示技能', description: '' }
+      ],
+      onUpdateOrAddTool: vi.fn(),
+      onAddAgentSkill: vi.fn(() => true),
+      onEnableSandbox,
+      canUploadFile: true,
+      hasSelectedDataset: true,
+      useAgentSandbox: true
+    });
+
+    expect(manager.skillOption.list.map((item) => item.id)).toEqual([
+      'systemTool',
+      'myTools',
+      'agent'
+    ]);
+    expect(await manager.skillOption.onSelect('agentSkill')).toBeUndefined();
+    expect(mocks.getSkillListV2).not.toHaveBeenCalled();
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const ids = mocks.systemToolsData.map((item) => item.id);
+    expect(ids).toContain(SubAppIds.readFiles);
+    expect(ids).toContain(SubAppIds.datasetSearch);
+    expect(ids).not.toContain(AGENT_SANDBOX_TOOLSET_ID);
+
+    const sandboxEntry = manager.promptRefRegistry.resolve('builtin:agent_sandbox');
+    expect(sandboxEntry.status === 'resolved' && sandboxEntry.entry.meta.configStatus).toBe(
+      'invalid'
+    );
+    const skillEntry = manager.promptRefRegistry.resolve('skill:team:skill-1');
+    expect(skillEntry.status === 'resolved' && skillEntry.entry.meta.configStatus).toBe('invalid');
+  });
+
+  it('shows sandbox tool and associated skills when system and plan support sandbox', async () => {
+    mocks.feConfigs = { show_agent_sandbox: true };
+    mocks.teamPlanStatus = { standard: { enableSandbox: true } };
+    const onEnableSandbox = vi.fn();
+
+    const manager = useSkillManager({
+      selectedTools: [],
+      selectedAgentSkills: [
+        { skillId: 'skill-1', source: 'personal', name: '演示技能', description: '' }
+      ],
+      onUpdateOrAddTool: vi.fn(),
+      onAddAgentSkill: vi.fn(() => true),
+      onEnableSandbox,
+      canUploadFile: true,
+      hasSelectedDataset: true,
+      useAgentSandbox: true
+    });
+
+    expect(manager.skillOption.list.map((item) => item.id)).toEqual([
+      'systemTool',
+      'myTools',
+      'agent',
+      'agentSkill'
+    ]);
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(mocks.systemToolsData.map((item) => item.id)).toContain(AGENT_SANDBOX_TOOLSET_ID);
+
+    const sandboxEntry = manager.promptRefRegistry.resolve('builtin:agent_sandbox');
+    expect(sandboxEntry.status === 'resolved' && sandboxEntry.entry.meta.configStatus).toBe(
+      'noConfig'
+    );
+    const skillEntry = manager.promptRefRegistry.resolve('skill:team:skill-1');
+    expect(skillEntry.status === 'resolved' && skillEntry.entry.meta.configStatus).toBe('noConfig');
+  });
+
+  it('marks skill label invalid when sandbox is unavailable', () => {
+    const item = buildAgentSkillLabelItem({
+      skill: { skillId: 'skill-1', name: '演示技能', description: '' },
+      writeKey: 'skill:team:skill-1',
+      sandboxUnavailable: true
+    });
+    expect(item.configStatus).toBe('invalid');
+  });
+
+  it('hides sandbox tool and associated skills when team plan disables sandbox', async () => {
+    mocks.feConfigs = { show_agent_sandbox: true };
+    mocks.teamPlanStatus = { standard: { enableSandbox: false } };
+
+    const manager = useSkillManager({
+      selectedTools: [],
+      selectedAgentSkills: [
+        { skillId: 'skill-1', source: 'personal', name: '演示技能', description: '' }
+      ],
+      onUpdateOrAddTool: vi.fn(),
+      onAddAgentSkill: vi.fn(() => true),
+      onEnableSandbox: vi.fn(),
+      canUploadFile: true,
+      hasSelectedDataset: true,
+      useAgentSandbox: true
+    });
+
+    expect(manager.skillOption.list.map((item) => item.id)).toEqual([
+      'systemTool',
+      'myTools',
+      'agent'
+    ]);
+    expect(await manager.skillOption.onSelect('agentSkill')).toBeUndefined();
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(mocks.systemToolsData.map((item) => item.id)).not.toContain(AGENT_SANDBOX_TOOLSET_ID);
+
+    const sandboxEntry = manager.promptRefRegistry.resolve('builtin:agent_sandbox');
+    expect(sandboxEntry.status === 'resolved' && sandboxEntry.entry.meta.configStatus).toBe(
+      'invalid'
+    );
+    const skillEntry = manager.promptRefRegistry.resolve('skill:team:skill-1');
+    expect(skillEntry.status === 'resolved' && skillEntry.entry.meta.configStatus).toBe('invalid');
+  });
+});
