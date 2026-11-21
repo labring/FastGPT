@@ -1,4 +1,5 @@
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { SandboxCodeTypeEnum } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
 
 export type CodeIoDefinition = {
   key: string;
@@ -13,15 +14,26 @@ const toWorkflowValueType = (value: string | undefined) =>
 const isIdentifierCharacter = (value: string | undefined) =>
   value !== undefined && /[\p{L}\p{N}_$]/u.test(value);
 
-const skipQuotedValue = (source: string, start: number) => {
+/**
+ * 返回 start 处字符串的结束位置。
+ * 三引号字符串按整体跳过，内部的单个引号不会提前结束；模板字符串的 `${}` 按 JS 代码扫描，以跳过嵌套的模板和字符串。
+ */
+const skipQuotedValue = (source: string, start: number): number => {
   const quote = source[start];
-  let index = start + 1;
+  const isTemplate = quote === '`';
+  const delimiter =
+    !isTemplate && source.startsWith(quote.repeat(3), start) ? quote.repeat(3) : quote;
+  let index = start + delimiter.length;
   while (index < source.length) {
     if (source[index] === '\\') {
       index += 2;
       continue;
     }
-    if (source[index] === quote) return index + 1;
+    if (source.startsWith(delimiter, index)) return index + delimiter.length;
+    if (isTemplate && source.startsWith('${', index)) {
+      index = skipTemplateExpression(source, index + 2);
+      continue;
+    }
     index += 1;
   }
   return source.length;
@@ -61,13 +73,16 @@ const isRegexLiteralStart = ({ source, start, language }: ScanPosition) => {
   return (
     previous === undefined ||
     ['(', '[', '{', ':', ',', ';', '=', '!', '?', '&', '|'].includes(previous) ||
-    /\b(?:return|case|throw|typeof|instanceof|in|of|yield)$/.test(prefix)
+    // `limits.in / 2` 里的 `in` 是成员名，后面的 `/` 是除号。
+    /(?<![.\p{L}\p{N}_$])(?:return|case|throw|typeof|instanceof|in|of|yield)$/u.test(prefix)
   );
 };
 
 const skipRegexLiteral = (source: string, start: number) => {
   let inCharacterClass = false;
   for (let index = start + 1; index < source.length; index += 1) {
+    // 正则字面量不能跨行；到行尾仍未闭合说明这是除号，只跳过它本身。
+    if (source[index] === '\n') return start + 1;
     if (source[index] === '\\') {
       index += 1;
       continue;
@@ -93,15 +108,37 @@ const skipNonCode = (position: ScanPosition) => {
   return start;
 };
 
+/** 返回模板字符串中 `${` 对应的 `}` 之后的位置，start 指向 `${` 之后。 */
+const skipTemplateExpression = (source: string, start: number): number => {
+  let depth = 1;
+  let index = start;
+  while (index < source.length) {
+    const codeEnd = skipNonCode({ source, start: index, language: 'js' });
+    if (codeEnd !== index) {
+      index = codeEnd;
+      continue;
+    }
+    if (source[index] === '{') depth += 1;
+    if (source[index] === '}') {
+      depth -= 1;
+      if (depth === 0) return index + 1;
+    }
+    index += 1;
+  }
+  return source.length;
+};
+
 const jsMainPattern = /(?:async\s+)?function\s+main\s*\(\s*/y;
 const pythonMainPattern = /[ \t]*(?:async[ \t]+)?def[ \t]+main[ \t]*\(/y;
 
 /**
  * 定位真实的 main 定义并据此判断语言，返回参数列表的起始位置（JS 为 `(` 之后，Python 为 `(`）。
  * 注释和字符串里的示例签名不参与判断；两种入口都找不到时返回 undefined，由调用方保留现有 IO。
+ * codeType 是节点配置的语言：先按它查找，另一种语言的示例签名就不会抢先命中。
  */
 const findMainEntry = (
-  code: string
+  code: string,
+  codeType?: SandboxCodeTypeEnum
 ): { language: CodeLanguage; paramsStart: number } | undefined => {
   const findSignatureEnd = (language: CodeLanguage) => {
     const pattern = language === 'js' ? jsMainPattern : pythonMainPattern;
@@ -123,11 +160,16 @@ const findMainEntry = (
     }
   };
 
-  // JS 规则会把 Python 的 `#` 注释和字符串一并跳过，所以先按 JS 查找不会误判 Python 源码。
-  const jsEnd = findSignatureEnd('js');
-  if (jsEnd !== undefined) return { language: 'js', paramsStart: jsEnd };
-  const pythonEnd = findSignatureEnd('python');
-  if (pythonEnd !== undefined) return { language: 'python', paramsStart: pythonEnd - 1 };
+  const toEntry = (language: CodeLanguage) => {
+    const end = findSignatureEnd(language);
+    if (end === undefined) return;
+    return { language, paramsStart: language === 'js' ? end : end - 1 };
+  };
+
+  // 语言和源码可能分两次命令更新，配置的语言找不到入口时再按另一种语言查找。
+  // 没有配置时先按 JS 查找：JS 规则会把 Python 的 `#` 注释和字符串一并跳过，不会误判 Python 源码。
+  if (codeType === SandboxCodeTypeEnum.py) return toEntry('python') ?? toEntry('js');
+  return toEntry('js') ?? toEntry('python');
 };
 
 const findMatchingCharacter = ({
@@ -226,10 +268,13 @@ const mergeDefinitions = ({
       return { key, valueType: annotation?.valueType };
     });
 
-/** 提取 main 函数的静态参数名；无法识别动态参数对象时返回 undefined。 */
-export const extractCodeInputDefinitions = (code: string): CodeIoDefinition[] | undefined => {
+/** 提取 main 函数的静态参数名；无法识别动态参数对象时返回 undefined。codeType 为节点配置的语言。 */
+export const extractCodeInputDefinitions = (
+  code: string,
+  codeType?: SandboxCodeTypeEnum
+): CodeIoDefinition[] | undefined => {
   const documented = getDocumentedDefinitions(code, 'param');
-  const entry = findMainEntry(code);
+  const entry = findMainEntry(code, codeType);
   if (!entry) return undefined;
   const { paramsStart } = entry;
 
@@ -272,8 +317,11 @@ export const extractCodeInputDefinitions = (code: string): CodeIoDefinition[] | 
   return mergeDefinitions({ keys, documented });
 };
 
-const extractReturnedObjectKeysOrUndefined = (code: string): string[] | undefined => {
-  const language = findMainEntry(code)?.language ?? 'js';
+const extractReturnedObjectKeysOrUndefined = (
+  code: string,
+  codeType?: SandboxCodeTypeEnum
+): string[] | undefined => {
+  const language = findMainEntry(code, codeType)?.language ?? 'js';
   const keys: string[] = [];
   let foundReturnObject = false;
   for (let index = 0; index < code.length; index += 1) {
@@ -319,8 +367,11 @@ export const extractReturnedObjectKeys = (code: string): string[] =>
   extractReturnedObjectKeysOrUndefined(code) ?? [];
 
 /** return 对象是输出事实源，JSDoc 只补充可选的类型信息。 */
-export const extractCodeOutputDefinitions = (code: string): CodeIoDefinition[] | undefined => {
-  const keys = extractReturnedObjectKeysOrUndefined(code);
+export const extractCodeOutputDefinitions = (
+  code: string,
+  codeType?: SandboxCodeTypeEnum
+): CodeIoDefinition[] | undefined => {
+  const keys = extractReturnedObjectKeysOrUndefined(code, codeType);
   if (!keys) return;
   return mergeDefinitions({ keys, documented: getDocumentedDefinitions(code, 'property') });
 };

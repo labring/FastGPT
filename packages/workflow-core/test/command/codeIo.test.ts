@@ -161,6 +161,93 @@ describe('code node IO synchronization', () => {
     expect(result.warnings).toEqual([]);
   });
 
+  it('syncs JavaScript inputs when ordinary statements precede the entry', async () => {
+    const setCode = async (
+      document: Awaited<ReturnType<typeof createCodeDocument>>,
+      value: string
+    ) =>
+      (
+        await applyWorkflowCommand({
+          document,
+          command: { type: 'input.set', nodeId: 'code', inputKey: 'code', value },
+          dependencies
+        })
+      ).document;
+    const getEditableInputs = (document: Awaited<ReturnType<typeof createCodeDocument>>) =>
+      document.nodes
+        .find((node) => node.nodeId === 'code')!
+        .inputs.filter((input) => input.canEdit)
+        .map((input) => input.key);
+    const preludes = [
+      // 成员名 `in` 后面的 `/` 是除号。
+      'const limits = { in: 4 };\nconst scale = limits.in / 2;',
+      // 内层模板里的撇号不是字符串开头。
+      "const label = `Report: ${`Today's total`}`;"
+    ];
+
+    for (const prelude of preludes) {
+      const document = await setCode(
+        await createCodeDocument(),
+        'function main({ total, count }) { return { average: total / count }; }'
+      );
+      expect(getEditableInputs(document)).toEqual(['total', 'count']);
+
+      const nextDocument = await setCode(
+        document,
+        `${prelude}\nfunction main({ total }) { return { average: total }; }`
+      );
+      expect(getEditableInputs(nextDocument)).toEqual(['total']);
+    }
+  });
+
+  it('keeps Python IO when a docstring quotes a JavaScript signature', async () => {
+    const run = async (
+      document: Awaited<ReturnType<typeof createCodeDocument>>,
+      command: { inputKey: string; value: string }
+    ) =>
+      applyWorkflowCommand({
+        document,
+        command: { type: 'input.set', nodeId: 'code', ...command },
+        dependencies
+      });
+    const getEditableIO = (document: Awaited<ReturnType<typeof createCodeDocument>>) => {
+      const codeNode = document.nodes.find((node) => node.nodeId === 'code')!;
+      return {
+        inputs: codeNode.inputs.filter((input) => input.canEdit).map((input) => input.key),
+        outputs: codeNode.outputs
+          .filter(
+            (output) =>
+              output.type === FlowNodeOutputTypeEnum.dynamic &&
+              output.key !== 'system_addOutputParam'
+          )
+          .map((output) => output.key)
+      };
+    };
+    const getCode = (docstring: string) =>
+      [
+        'def main(total, count):',
+        docstring,
+        '    return {',
+        '        "average": total // count,',
+        '        "remainder": total % count',
+        '    }'
+      ].join('\n');
+
+    let { document } = await run(await createCodeDocument(), { inputKey: 'codeType', value: 'py' });
+    ({ document } = await run(document, { inputKey: 'code', value: getCode('    pass') }));
+    expect(getEditableIO(document)).toEqual({
+      inputs: ['total', 'count'],
+      outputs: ['average', 'remainder']
+    });
+
+    const result = await run(document, {
+      inputKey: 'code',
+      value: getCode('    """The old entry was "function main({ legacy })" in JavaScript."""')
+    });
+    expect(getEditableIO(result.document)).toEqual(getEditableIO(document));
+    expect(result.warnings).toEqual([]);
+  });
+
   it('removes all editable IO for an explicitly empty signature and return object', async () => {
     let document = await createCodeDocument();
 

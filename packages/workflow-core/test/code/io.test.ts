@@ -3,6 +3,7 @@ import {
   extractCodeOutputDefinitions,
   extractReturnedObjectKeys
 } from '../../src/code/io';
+import { SandboxCodeTypeEnum } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
 import { describe, expect, it } from 'vitest';
 
 describe('code IO parser', () => {
@@ -132,6 +133,77 @@ describe('code IO parser', () => {
 
     expect(extractCodeInputDefinitions(code)?.map(({ key }) => key)).toEqual(['total', 'count']);
     expect(extractReturnedObjectKeys(code)).toEqual(['average', 'remainder']);
+  });
+
+  it('skips a whole Python triple-quoted string that contains quotes', () => {
+    const code = `
+      def main(total, count):
+        """The old entry was "function main({ legacy })" in JavaScript."""
+        return {
+          "average": total // count,
+          "remainder": total % count
+        }
+    `;
+
+    expect(extractCodeInputDefinitions(code)?.map(({ key }) => key)).toEqual(['total', 'count']);
+    expect(extractReturnedObjectKeys(code)).toEqual(['average', 'remainder']);
+  });
+
+  it('finds the JavaScript entry after a division by a keyword-named member', () => {
+    const code = `
+      const limits = { in: 4 };
+      const scale = limits.in / 2;
+      function main({ total }) {
+        return { scaled: total / scale, limit: limits.in };
+      }
+    `;
+
+    expect(extractCodeInputDefinitions(code)?.map(({ key }) => key)).toEqual(['total']);
+    expect(extractReturnedObjectKeys(code)).toEqual(['scaled', 'limit']);
+  });
+
+  it('finds the JavaScript entry after a nested template literal', () => {
+    const code = `
+      const label = (total) => \`Report: \${total > 0 ? \`Today's total is \${total}\` : 'none'}\`;
+      function main({ total }) {
+        return { label: label(total) };
+      }
+    `;
+
+    expect(extractCodeInputDefinitions(code)?.map(({ key }) => key)).toEqual(['total']);
+    expect(extractReturnedObjectKeys(code)).toEqual(['label']);
+  });
+
+  it('prefers the configured language over a quoted entry of the other language', () => {
+    // 按 JS 规则扫描时 `//` 会把三引号的开头当成注释，字符串里的示例签名就成了代码。
+    const code = `
+      def main(total, count):
+        half = total // 2; note = """
+        function main({ legacy })
+        """
+        return {"average": total // count, "half": half}
+    `;
+
+    expect(
+      extractCodeInputDefinitions(code, SandboxCodeTypeEnum.py)?.map(({ key }) => key)
+    ).toEqual(['total', 'count']);
+    expect(
+      extractCodeOutputDefinitions(code, SandboxCodeTypeEnum.py)?.map(({ key }) => key)
+    ).toEqual(['average', 'half']);
+  });
+
+  it('falls back to the source when the configured language has no entry', () => {
+    const code = `
+      def main(total, count):
+        return {"average": total // count, "remainder": total % count}
+    `;
+
+    expect(
+      extractCodeInputDefinitions(code, SandboxCodeTypeEnum.js)?.map(({ key }) => key)
+    ).toEqual(['total', 'count']);
+    expect(
+      extractCodeOutputDefinitions(code, SandboxCodeTypeEnum.js)?.map(({ key }) => key)
+    ).toEqual(['average', 'remainder']);
   });
 
   it('keeps Python inputs that follow a positional-only marker', () => {
