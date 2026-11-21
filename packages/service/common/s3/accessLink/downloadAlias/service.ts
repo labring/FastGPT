@@ -2,9 +2,21 @@ import {
   CreateS3DownloadAccessUrlParamsSchema,
   CreateS3DownloadAccessUrlsParamsSchema,
   VerifiedS3DownloadAccessSchema,
+  type CreateS3DownloadAccessUrlParams,
   type VerifiedS3DownloadAccess
 } from '../type';
 import { s3AccessLinkService } from '../accessLinkService';
+import { resolveS3DownloadMimeFallbackExtension } from '../utils';
+
+/** 当调用方未显式传入 fallbackExtension 时，用明确的 responseContentType 作为无后缀对象的兜底扩展名。 */
+const enrichDownloadExtensionFromMime = (
+  params: CreateS3DownloadAccessUrlParams
+): CreateS3DownloadAccessUrlParams => {
+  if (params.fallbackExtension) return params;
+
+  const mimeExtension = resolveS3DownloadMimeFallbackExtension(params.responseContentType);
+  return mimeExtension ? { ...params, fallbackExtension: mimeExtension } : params;
+};
 
 /**
  * 创建或复用下载 alias，并返回带过期时间与 HMAC 签名的短 URL。
@@ -14,7 +26,7 @@ import { s3AccessLinkService } from '../accessLinkService';
  */
 export const createS3DownloadAccessUrl = async (params: unknown) => {
   const parsed = CreateS3DownloadAccessUrlParamsSchema.parse(params);
-  return s3AccessLinkService.createDownloadUrl(parsed);
+  return s3AccessLinkService.createDownloadUrl(enrichDownloadExtensionFromMime(parsed));
 };
 
 /**
@@ -24,7 +36,7 @@ export const createS3DownloadAccessUrl = async (params: unknown) => {
  */
 export const createS3DownloadAccessUrls = async (params: unknown) => {
   const parsed = CreateS3DownloadAccessUrlsParamsSchema.parse(params);
-  return s3AccessLinkService.createDownloadUrls(parsed);
+  return s3AccessLinkService.createDownloadUrls(parsed.map(enrichDownloadExtensionFromMime));
 };
 
 /**

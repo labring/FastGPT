@@ -125,6 +125,32 @@ describe('S3DatasetSource FileSource lifecycle', () => {
     );
   });
 
+  it('createGetDatasetFileURL 为无后缀但有明确 MIME 的对象补充短链扩展名', async () => {
+    const source = Object.create(S3DatasetSource.prototype) as InstanceType<typeof S3DatasetSource>;
+    const createExternalUrl = vi.fn().mockResolvedValue({ url: 'https://files.test/signed' });
+    const getFileMetadata = vi.fn().mockResolvedValue({
+      filename: 'cover',
+      contentType: 'image/png',
+      contentLength: 10
+    });
+    Object.assign(source, { createExternalUrl, getFileMetadata });
+
+    await source.createGetDatasetFileURL({
+      key: `dataset/${datasetId}/opaque-image`,
+      datasetId,
+      expiredHours: 1,
+      external: true
+    });
+
+    expect(createExternalUrl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: `dataset/${datasetId}/opaque-image`,
+        filename: 'cover',
+        fallbackExtension: 'png'
+      })
+    );
+  });
+
   it('HEAD 后返回可信 S3 source，直到物化时才打开对象流', async () => {
     const source = Object.create(S3DatasetSource.prototype) as InstanceType<typeof S3DatasetSource>;
     const key = `dataset/${datasetId}/file.pdf`;
