@@ -315,3 +315,86 @@ TLS 反代日志（`tls-proxy.log`，证明 AS 的 https 请求确实到达 Fast
 
 两者互补：106 证明「真实不可控 AS + 自动降级」，本轮证明「白名单 AS + CIMD 首跳成功」。
 两套夹具都只存在于 `test/e2e/**`，不进入发布产物；生产默认行为未改变。
+
+## 10. 补充：运行期结构化错误（D10，真实 AS）
+
+设计决策见 `mcp-oauth-handoff-implementation-plan.md` §5/§5.1（D10）。本节只记录
+**真实 AS** 上新增的两条运行期证据。
+
+### 10.1 一条命令
+
+```bash
+E2E_ENV_FILE=/tmp/mcp-oauth-e2e/app.env \
+E2E_AS_MODE=real \
+E2E_STATE_DIR=/tmp/mcp-oauth-e2e/state \
+  ./test/e2e/mcpOAuth/real/run.sh
+```
+
+```text
+EXIT=0
+real-as E2E: cases=27 assertions=238 passed=238 failed=0
+  phase=cimd cases=10 assertions=85 failed=0
+  phase=dcr  cases=17 assertions=153 failed=0
+[e2e-real] PASS
+[e2e-real] /etc/hosts restored; getent: no entry
+```
+
+### 10.2 `reauth_required`（AT+RT 被真实 `/revoke`）
+
+步骤：新建应用 → 真实授权（scope=`mcp:tools`）→ 在内存中解密 AT/RT → 用真实
+`/revoke` 依次吊销 AT 与 RT → `runTool`。
+
+| 断言 | 实测 |
+| --- | --- |
+| `runTool` HTTP 状态 | `401`（不是通用 500） |
+| `data.oauthCode` | `mcp_oauth_reauth_required` |
+| `data.requestId` | 存在（响应中已脱敏为 `<request-id>`） |
+| AS `/mcp` | 至少 1 次真实 `401` |
+| 强制刷新次数 | `1`（401 → 刷新一次 → 刷新被拒 → reauth_required，不循环） |
+| 本地 token | 已清除 |
+| 泄漏检查 | 无 `Bearer <token>`、无 `access_token`/`refresh_token`/`client_secret`/`error_description`、无 AS 原文 |
+
+响应体（requestId 脱敏）：
+
+```json
+{"code":401,"statusText":"error","message":"Token endpoint rejected the request","data":{"oauthCode":"mcp_oauth_reauth_required","requestId":"<request-id>","retryable":false,"retryAfterMs":null}}
+```
+
+### 10.3 `insufficient_scope`（真实 403，不刷新）
+
+步骤：新建应用时**不申请 scope**（AS 只声明 `mcp:tools`，授权 URL 不带 `scope`）→
+真实授权成功、无 scope 的 token 落库 → `runTool`。
+
+| 断言 | 实测 |
+| --- | --- |
+| `runTool` HTTP 状态 | `403`（不是通用 500） |
+| `data.oauthCode` | `mcp_oauth_insufficient_scope` |
+| AS `/mcp` | 真实 `403` 1 次 |
+| 刷新次数 | `0`（403 不触发刷新） |
+| 本地 token | 指纹不变（不清除，仅提示补 scope） |
+| 泄漏检查 | 无 token/secret/`error_description`/AS 原文 |
+
+响应体（requestId 脱敏）：
+
+```json
+{"code":403,"statusText":"error","message":"MCP server requires additional scope","data":{"oauthCode":"mcp_oauth_insufficient_scope","requestId":"<request-id>","retryable":false,"retryAfterMs":null}}
+```
+
+### 10.4 AS 边界计数（`as-proxy.log`，只记录 method/path/status）
+
+```text
+POST /token (refresh_token): 3 {"200":2,"400":1}   ← 唯一一次 400 即 invalid_grant
+POST /mcp: 37 {"200":14,"202":7,"401":15,"403":1}  ← 401 来自吊销后的 AT；403 来自无 scope token
+POST /revoke: 5 {"200":5}
+```
+
+### 10.5 本轮发现并修复的泄漏
+
+首次跑该用例时断言 `响应不含 token / client_secret / AS 原文` 失败：刷新失败分支把
+AS 的 `error` 字段拼进了 `message`（`Token endpoint error: invalid_grant`）。该文案会被
+运行期 envelope 原样回显。已改为固定文案 `Token endpoint rejected the request`（错误码
+映射仍由 `invalid_grant → reauth_required` 完成），并在 `token.test.ts` 增加
+`error_description` 不泄漏的断言；重建生产包后本套件 238/238 通过。
+
+产物：`/tmp/mcp-oauth-e2e/state/evidence*.json`、`run3.log`、
+`/workspace/outputs/fastgpt-mcp-oauth/real-e2e-v24/`（只含脱敏证据，不含 token/secret）。

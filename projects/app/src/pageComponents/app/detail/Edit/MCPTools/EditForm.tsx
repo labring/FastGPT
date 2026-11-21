@@ -18,9 +18,12 @@ import HeaderAuthConfig from '@/components/common/secret/HeaderAuthConfig';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import type { JsonSchemaPropertiesItemType } from '@fastgpt/global/core/app/jsonschema';
 import type { McpOAuthClientMode } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
+import { McpOAuthErrorCodeEnum } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
 import type { McpToolSetOAuthConfigType } from '@fastgpt/global/core/app/tool/mcpTool/oauthConfig';
 import type { McpOAuthStatusResponseType } from '@fastgpt/global/openapi/core/app/mcpTools/oauth';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import McpOAuthConfig from './oauth/McpOAuthConfig';
+import { getMcpOAuthErrorCode, getMcpOAuthErrorCopy } from './oauth/utils';
 
 const EditForm = ({
   appId,
@@ -86,7 +89,29 @@ const EditForm = ({
         setToolList(res);
         setCurrentTool(res[0]);
       },
-      errorToast: t('app:MCP_tools_parse_failed')
+      // 自定义 onError：oauth 模式优先按固定错误码出文案；无码时退回原有通用提示。
+      errorToast: '',
+      onError: (error) => {
+        const code = getMcpOAuthErrorCode(error);
+        if (!code) {
+          toast({
+            title: t(getErrText(error, t('app:MCP_tools_parse_failed'))),
+            status: 'error'
+          });
+          return;
+        }
+
+        const copy = getMcpOAuthErrorCopy(code, t);
+        toast({
+          title: copy.message,
+          description: copy.suggestion || undefined,
+          status: 'error'
+        });
+        if (code === McpOAuthErrorCodeEnum.reauthRequired) {
+          // 复用既有状态卡：刷新后显示「重新授权」按钮，不新增 CIMD/DCR 选择。
+          void refreshStatus();
+        }
+      }
     }
   );
 

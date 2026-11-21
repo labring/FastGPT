@@ -149,9 +149,20 @@ describe('mcpOAuth token', () => {
   });
 
   it('maps invalid_grant to reauth_required', async () => {
-    setMcpOAuthFetchImpl(async () => json({ error: 'invalid_grant' }, 400));
+    setMcpOAuthFetchImpl(async () =>
+      json(
+        {
+          error: 'invalid_grant',
+          error_description: 'refresh token was revoked at the authorization server'
+        },
+        400
+      )
+    );
     const error = await asOAuthError(refreshMcpOAuthAccessToken({ ...base, refreshToken: 'dead' }));
     expect(error.oauthCode).toBe(McpOAuthErrorCodeEnum.reauthRequired);
+    // AS 原文不得进入可回显的 message（运行期 envelope 会原样输出 message）。
+    expect(error.message).toBe('Token endpoint rejected the request');
+    expect(error.message).not.toMatch(/invalid_grant|error_description|revoked/i);
   });
 
   it('maps 429/5xx to refresh_transient with Retry-After', async () => {

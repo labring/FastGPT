@@ -12,9 +12,21 @@ import type {
 } from '@fastgpt/global/openapi/core/app/mcpTools/api';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { CreateAppResponseType } from '@fastgpt/global/openapi/core/app/common/api';
+import { getMcpOAuthErrorCode } from '@/pageComponents/app/detail/Edit/MCPTools/oauth/utils';
 
-/** 将 MCP JSON-RPC 错误中的 FastGPT i18n key 提取出来，交给 useRequest 翻译显示。 */
+/**
+ * 运行期错误归一化。
+ *
+ * oauth 模式失败时服务端返回固定 `data.oauthCode`，这里转成既有
+ * `mcpOAuth.error.<code>` i18n key（由 `useRequest` 统一 `t()`），并把 `oauthCode`
+ * 一并抛给调用方用于「重新授权」引导；没有 `oauthCode` 时保持原有 MCP 错误处理。
+ */
 const normalizeMcpError = (error: unknown): never => {
+  const oauthCode = getMcpOAuthErrorCode(error);
+  if (oauthCode) {
+    throw { message: `mcpOAuth.error.${oauthCode}`, oauthCode };
+  }
+
   const message = String(getErrText(error));
   const match = message.match(/^MCP error -?\d+: (.+)$/);
 

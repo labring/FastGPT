@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps } from '@fastgpt/next/type';
+import type { ApiRequestProps, NextApiResponse } from '@fastgpt/next/type';
 import { assertMCPUrlNotInternal, MCPClient } from '@fastgpt/service/core/app/mcp';
 import { getSecretValue } from '@fastgpt/service/common/secret/utils';
 import {
@@ -20,11 +20,13 @@ import {
 } from '@fastgpt/service/core/app/mcpOAuth/credential';
 import { withMcpOAuthRetry } from '@fastgpt/service/core/app/mcpOAuth/runtime';
 import { McpOAuthApiError } from '@fastgpt/service/core/app/mcpOAuth/errors';
+import { trySendMcpOAuthRuntimeError } from '@fastgpt/service/core/app/mcpOAuth/apiSupport';
 import { McpOAuthErrorCodeEnum } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
 
 async function handler(
-  req: ApiRequestProps<GetMcpToolsBodyType>
-): Promise<GetMcpToolsResponseType> {
+  req: ApiRequestProps<GetMcpToolsBodyType>,
+  res: NextApiResponse
+): Promise<GetMcpToolsResponseType | undefined> {
   const {
     body: { appId, nodeId, url, headerSecret }
   } = parseApiInput({
@@ -72,23 +74,32 @@ async function handler(
   }
 
   const effectiveNodeId = String(node.nodeId);
-  await assertMCPUrlNotInternal(toolSet.url);
 
   if (toolSet.authMode === 'oauth') {
-    return GetMcpToolsResponseSchema.parse(
-      await withMcpOAuthRetry({
-        appId: String(appId),
-        nodeId: effectiveNodeId,
-        run: async (headers) => {
-          const mcpClient = new MCPClient({
-            url: toolSet.url!,
-            headers
-          });
-          return mcpClient.getTools();
-        }
-      })
-    );
+    // 运行期 OAuth 失败必须返回固定 `oauthCode` + `requestId`，不能落到通用 500；
+    // 只包裹 oauth 分支，headers 模式的错误路径保持原样。
+    try {
+      await assertMCPUrlNotInternal(toolSet.url);
+      return GetMcpToolsResponseSchema.parse(
+        await withMcpOAuthRetry({
+          appId: String(appId),
+          nodeId: effectiveNodeId,
+          run: async (headers) => {
+            const mcpClient = new MCPClient({
+              url: toolSet.url!,
+              headers
+            });
+            return mcpClient.getTools();
+          }
+        })
+      );
+    } catch (error) {
+      if (trySendMcpOAuthRuntimeError({ req, res, error })) return;
+      throw error;
+    }
   }
+
+  await assertMCPUrlNotInternal(toolSet.url);
 
   // appId 分支只使用已发布节点中的密钥，忽略请求体传入的 headerSecret。
   const headers = getSecretValue({
