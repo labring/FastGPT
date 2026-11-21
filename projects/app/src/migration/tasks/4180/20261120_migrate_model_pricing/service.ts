@@ -12,8 +12,9 @@ import { z } from 'zod';
 import { systemMigrationBatchSize } from '@/migration/constants';
 import {
   convertTierMaxInputTokensToK,
-  MigratedTierListSchema,
-  type MigrationPriceTier
+  MigratedTierPricingSchema,
+  type MigrationPriceTier,
+  type MigrationTierUnit
 } from './utils';
 
 // 冻结 STT 迁移的最小价格契约，避免未来业务 Schema 改动影响断点重放。
@@ -28,12 +29,15 @@ const llmTierScopeFilter = {
   'pricing.tiers': { $exists: true }
 };
 
-const extractRawTiers = (pricing: unknown) => {
+const extractRawTierPricing = (pricing: unknown) => {
   const pricingObj =
     typeof pricing === 'object' && pricing !== null && !Array.isArray(pricing)
       ? (pricing as Record<string, unknown>)
       : undefined;
-  return pricingObj?.tiers;
+  return {
+    tiers: pricingObj?.tiers,
+    tierUnit: pricingObj?.tierUnit
+  };
 };
 
 /**
@@ -112,7 +116,7 @@ export const migrateTierMaxInputTokensInTransaction = async ({
       const models = await MongoAIModel.collection
         .find(llmTierScopeFilter, {
           session,
-          projection: { _id: 1, 'pricing.tiers': 1 }
+          projection: { _id: 1, 'pricing.tiers': 1, 'pricing.tierUnit': 1 }
         })
         .sort({ _id: 1 })
         .toArray();
@@ -123,14 +127,19 @@ export const migrateTierMaxInputTokensInTransaction = async ({
       const updates: Array<{
         updateOne: {
           filter: Record<string, unknown>;
-          update: { $set: { 'pricing.tiers': MigrationPriceTier[] } };
+          update: {
+            $set: {
+              'pricing.tiers': MigrationPriceTier[];
+              'pricing.tierUnit'?: MigrationTierUnit;
+            };
+          };
         };
       }> = [];
 
       for (const model of models) {
-        const rawTiers = extractRawTiers(model.pricing);
+        const rawPricing = extractRawTierPricing(model.pricing);
         try {
-          const { tiers, changed } = convertTierMaxInputTokensToK(rawTiers);
+          const { tiers, tierUnit, changed } = convertTierMaxInputTokensToK(rawPricing);
           if (!changed) continue;
           updates.push({
             updateOne: {
@@ -138,9 +147,17 @@ export const migrateTierMaxInputTokensInTransaction = async ({
                 _id: model._id,
                 scope: ModelScopeEnum.system,
                 type: ModelTypeEnum.llm,
-                'pricing.tiers': rawTiers
+                'pricing.tiers': rawPricing.tiers,
+                ...(rawPricing.tierUnit === undefined
+                  ? { 'pricing.tierUnit': { $exists: false } }
+                  : { 'pricing.tierUnit': rawPricing.tierUnit })
               },
-              update: { $set: { 'pricing.tiers': tiers } }
+              update: {
+                $set: {
+                  'pricing.tiers': tiers,
+                  ...(tierUnit === undefined ? {} : { 'pricing.tierUnit': tierUnit })
+                }
+              }
             }
           });
         } catch {
@@ -195,21 +212,21 @@ export const validateBackfilledSTTPricingTypes = async (): Promise<
   }));
 };
 
-/** 校验全部系统 LLM 阶梯均合法且有限输入上限均为正整数 K Tokens（或 > 10 跳过项）。 */
+/** 校验全部系统 LLM 阶梯均合法、非空阶梯具备 `tierUnit: 'K'` 且有限输入上限均为正整数 K Tokens。 */
 export const validateMigratedTierMaxInputTokens = async (): Promise<
   SystemMigrationFailedRecord[]
 > => {
   const persistedModels = await MongoAIModel.collection
-    .find(llmTierScopeFilter, { projection: { _id: 1, 'pricing.tiers': 1 } })
+    .find(llmTierScopeFilter, { projection: { _id: 1, 'pricing.tiers': 1, 'pricing.tierUnit': 1 } })
     .sort({ _id: 1 })
     .toArray();
   const validationFailures: SystemMigrationFailedRecord[] = [];
 
   for (const model of persistedModels) {
     const id = String(model._id);
-    const rawTiers = extractRawTiers(model.pricing);
+    const rawPricing = extractRawTierPricing(model.pricing);
     try {
-      MigratedTierListSchema.parse(rawTiers);
+      MigratedTierPricingSchema.parse(rawPricing);
     } catch {
       validationFailures.push({
         stageKey: 'validation',

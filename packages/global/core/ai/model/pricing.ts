@@ -63,25 +63,31 @@ export const normalizeModelPricingForSave = (
   model: AIModelDocumentDataType
 ): AIModelDocumentDataType => {
   /** 统一单价精度，不改变阶梯边界或未配置状态。 */
-  const roundModelPricing = (pricing: ModelPricingType): ModelPricingType => ({
-    ...(pricing.type === undefined ? {} : { type: pricing.type }),
-    ...(pricing.unitPrice === undefined ? {} : { unitPrice: roundModelPrice(pricing.unitPrice) }),
-    ...(pricing.inputPrice === undefined
-      ? {}
-      : { inputPrice: roundModelPrice(pricing.inputPrice) }),
-    ...(pricing.outputPrice === undefined
-      ? {}
-      : { outputPrice: roundModelPrice(pricing.outputPrice) }),
-    ...(pricing.tiers === undefined
-      ? {}
-      : {
-          tiers: sanitizeModelPriceTiers(pricing.tiers).map((tier) => ({
+  const roundModelPricing = (pricing: ModelPricingType): ModelPricingType => {
+    const tiers =
+      pricing.tiers === undefined
+        ? undefined
+        : sanitizeModelPriceTiers(pricing.tiers).map((tier) => ({
             ...tier,
             inputPrice: roundModelPrice(tier.inputPrice),
             outputPrice: roundModelPrice(tier.outputPrice)
-          }))
-        })
-  });
+          }));
+
+    return {
+      ...(pricing.type === undefined ? {} : { type: pricing.type }),
+      ...(pricing.unitPrice === undefined ? {} : { unitPrice: roundModelPrice(pricing.unitPrice) }),
+      ...(pricing.inputPrice === undefined
+        ? {}
+        : { inputPrice: roundModelPrice(pricing.inputPrice) }),
+      ...(pricing.outputPrice === undefined
+        ? {}
+        : { outputPrice: roundModelPrice(pricing.outputPrice) }),
+      ...(tiers === undefined ? {} : { tiers }),
+      ...(model.type === ModelTypeEnum.llm && tiers && tiers.length > 0
+        ? { tierUnit: 'K' as const }
+        : {})
+    };
+  };
 
   // 清空价格仍保留已编辑状态；STT 同时保留所选计价口径，不恢复历史根字段。
   const pricing = roundModelPricing(model.pricing ?? {});
@@ -140,13 +146,15 @@ export const calculateModelPrice = ({
     })();
     return { totalPoints, tiers, matchedTier: undefined };
   }
-  // 阶梯上限按 K Tokens 匹配，实际积分单价按 M Tokens 结算。
+  // 无阶梯单位时不做区间计算，直接使用第一档；具备单位（K）时按 K Tokens 匹配阶梯上限，积分单价按 M Tokens 结算。
   const matchedTier =
-    tiers.find(
-      (tier) =>
-        tier.maxInputTokens === undefined ||
-        inputTokens / MODEL_PRICE_TIER_TOKEN_UNIT <= tier.maxInputTokens
-    ) ?? tiers.at(-1);
+    config?.pricing?.tierUnit === undefined
+      ? tiers[0]
+      : (tiers.find(
+          (tier) =>
+            tier.maxInputTokens === undefined ||
+            inputTokens / MODEL_PRICE_TIER_TOKEN_UNIT <= tier.maxInputTokens
+        ) ?? tiers.at(-1));
   const totalPoints =
     config?.scope !== ModelScopeEnum.system
       ? 0

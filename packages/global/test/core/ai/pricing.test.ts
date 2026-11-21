@@ -87,6 +87,7 @@ describe('calculateModelPrice', () => {
     const config = {
       ...model,
       pricing: {
+        tierUnit: 'K' as const,
         tiers: [
           { maxInputTokens: 4, inputPrice: 1000, outputPrice: 2000 },
           { maxInputTokens: 10, inputPrice: 3000, outputPrice: 4000 }
@@ -110,6 +111,7 @@ describe('calculateModelPrice', () => {
         config: {
           ...model,
           pricing: {
+            tierUnit: 'K',
             tiers: [
               { maxInputTokens: 272, inputPrice: 1680, outputPrice: 8400 },
               { inputPrice: 3360, outputPrice: 12600 }
@@ -123,11 +125,31 @@ describe('calculateModelPrice', () => {
       matchedTier: { maxInputTokens: 272, inputPrice: 1680, outputPrice: 8400 },
       totalPoints: 465.36
     });
+    // 缺少 tierUnit 时不做阶梯区间匹配，直接使用第一档计费。
     expect(
       calculateModelPrice({
         config: {
           ...model,
           pricing: {
+            tiers: [
+              { maxInputTokens: 4, inputPrice: 1000, outputPrice: 2000 },
+              { inputPrice: 3000, outputPrice: 4000 }
+            ]
+          }
+        },
+        inputTokens: 100000,
+        outputTokens: 1000
+      })
+    ).toMatchObject({
+      matchedTier: { maxInputTokens: 4, inputPrice: 1000, outputPrice: 2000 },
+      totalPoints: 102
+    });
+    expect(
+      calculateModelPrice({
+        config: {
+          ...model,
+          pricing: {
+            tierUnit: 'K',
             tiers: [
               { maxInputTokens: 0, inputPrice: 1, outputPrice: 1 },
               { inputPrice: 2, outputPrice: 3 }
@@ -211,7 +233,10 @@ const sttModel = {
 describe('normalizeModelPricingForRead', () => {
   it('rounds editing values without changing missing pricing, source rates or precise bounds', () => {
     expect(normalizeModelPricingForRead(model)).toBe(model);
-    expect(normalizeModelPricingForRead(tieredModel).pricing).toEqual({ tiers: roundedTiers });
+    expect(normalizeModelPricingForRead(tieredModel).pricing).toEqual({
+      tierUnit: 'K',
+      tiers: roundedTiers
+    });
     expect(normalizeModelPricingForRead(sttModel).pricing).toEqual({
       type: 'duration',
       unitPrice: 0.13
@@ -228,7 +253,11 @@ describe('normalizeModelPricingForRead', () => {
 describe('normalizeModelPricingForSave', () => {
   it('marks missing prices as configured and preserves empty or explicit free prices', () => {
     expect(normalizeModelPricingForSave(model).pricing).toEqual({});
-    for (const pricing of [{}, { tiers: [] }, { tiers: [{ inputPrice: 0, outputPrice: 0 }] }]) {
+    for (const pricing of [
+      {},
+      { tiers: [] },
+      { tierUnit: 'K' as const, tiers: [{ inputPrice: 0, outputPrice: 0 }] }
+    ]) {
       expect(normalizeModelPricingForSave({ ...model, pricing })).toEqual({ ...model, pricing });
     }
     expect(normalizeModelPricingForSave({ ...sttModel, pricing: undefined }).pricing).toEqual({
@@ -243,7 +272,10 @@ describe('normalizeModelPricingForSave', () => {
       type: 'duration',
       unitPrice: 0
     });
-    expect(normalizeModelPricingForSave(tieredModel).pricing).toEqual({ tiers: roundedTiers });
+    expect(normalizeModelPricingForSave(tieredModel).pricing).toEqual({
+      tierUnit: 'K',
+      tiers: roundedTiers
+    });
     expect(normalizeModelPricingForSave(sttModel).pricing).toEqual({
       type: 'duration',
       unitPrice: 0.13
