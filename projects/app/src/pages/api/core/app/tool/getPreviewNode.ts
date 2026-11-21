@@ -1,10 +1,7 @@
 /*
   get plugin preview modules
  */
-import {
-  getClientToolPreviewNode,
-  parseUntypedV2ChildToolLookupId
-} from '@fastgpt/service/core/app/tool/utils/client';
+import { getClientToolPreviewNode } from '@fastgpt/service/core/app/tool/utils/client';
 import { type FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
@@ -12,6 +9,7 @@ import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import {
   isDebugToolSource,
   isTeamPluginSource,
+  parseUntypedV2ChildToolLookupId,
   splitCombineToolId
 } from '@fastgpt/global/core/app/tool/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';

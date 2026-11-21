@@ -35,10 +35,8 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
   }
 }));
 
-import {
-  getClientToolPreviewNode,
-  parseUntypedV2ChildToolLookupId
-} from '@fastgpt/service/core/app/tool/utils/client';
+import { parseUntypedV2ChildToolLookupId } from '@fastgpt/global/core/app/tool/utils';
+import { getClientToolPreviewNode } from '@fastgpt/service/core/app/tool/utils/client';
 
 const runtimeSchemaFieldNames = new Set([
   'inputSchema',
