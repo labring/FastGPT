@@ -37,6 +37,31 @@ E2E_ENV_FILE=/tmp/mcp-oauth-e2e/app.env E2E_AS_MODE=real \
 
 退出码：`0` 全部断言通过，`1` 断言失败，`2` env 不满足，`3` 栈未就绪，`4` 端口被占用。
 
+## CIMD 直接成功（`phase=cimd-success`）
+
+上一节的 `real` 模式用 106 那台不可改的 AS，只能证明「CIMD 被拒 → 下一次 start 降级 DCR」。
+要把「CIMD 直接成功」这一跳也跑通，用 `local-as/` 下的测试夹具：
+
+```bash
+E2E_ENV_FILE=/tmp/mcp-oauth-e2e/app.env \
+MCP_OAUTH_UPSTREAM_DIR=/tmp/mcp-oauth-upstream \
+  ./test/e2e/mcpOAuth/real/runCimdSuccess.sh
+```
+
+- 测试 AS 复用上游 `wille/mcp-oauth-server@8035903`（自动克隆/安装到 `/tmp`，不入库），
+  以 https 监听 `172.17.0.34:18300`，issuer/resource 同源。
+- `clientIdMetadataDocuments.validateClientIdUrl` 只放行 `fastgpt-e2e.internal`。
+- TLS 反代 `172.17.0.34:18443` 把 `https://fastgpt-e2e.internal:18443/*` 转到应用 HTTP 端口，
+  并透传 `Host = fastgpt-e2e.internal:18443`；`/etc/hosts` 临时把该域名指向 109 自己。
+- 为什么不能直接用 IP：上游在调用白名单钩子**之前**就拒绝 IP 字面量/localhost，所以
+  CIMD `client_id` 必须是域名。
+- 证书自签（SAN `DNS:fastgpt-e2e.internal, IP:172.17.0.34`），只通过
+  `NODE_EXTRA_CA_CERTS` 注入测试进程；没有 `NODE_TLS_REJECT_UNAUTHORIZED=0`，
+  也不需要 `MCP_OAUTH_ALLOW_INSECURE_HTTP`。
+- 断言重点：`clientSource=cimd`、AS 回源 `client-metadata.json` 200、`/authorize` 302、
+  `/register` delta=0、真实 `/token`、`tools/list`（`whoami`/`echo`）、`tools/call`、
+  `status=authorized`、DB token 密文。实测 9 用例 / 73 断言全通过。
+
 ## 两个阶段（为什么必须两个进程）
 
 CIMD 可用性是生产规则：`isMcpOAuthCimdAvailable` 要求 AS 声明
@@ -85,3 +110,5 @@ state 重放 / Cookie / iss / scope / SSRF / 归一化负向。
   预检会拒绝），因此在这个拓扑里 CIMD 必然在 AS 侧失败。FastGPT 当前**不会**在
   `/authorize` 被拒后静默回退 DCR；DCR 依赖 `FE_DOMAIN` 非 https 的既有条件。
   报告见 `docs/design/mcp-oauth-e2e-real-report.md`。
+- CIMD 直接成功链路由 `runCimdSuccess.sh`（白名单测试 AS + TLS 反代）单独验证；
+  见上文「CIMD 直接成功」与报告第 9 节。
