@@ -221,31 +221,98 @@ describe('useSkillManager sandbox & skill visibility', () => {
     }
   });
 
-  it('rejects inserting a stale deleted MCP child menu item when preview falls back to another tool, and writes resolved canonical key for existing tool', async () => {
+  it('validates MCP/HTTP child menu items via live preview even when selectedTools still holds pre-deletion data, and reuses existing tool when confirmed', async () => {
     const appId = '507f1f77bcf86cd799439031';
+    const httpAppId = '507f1f77bcf86cd799439032';
     const onUpdateOrAddTool = vi.fn();
-    mocks.getNewToolPreviewNode.mockResolvedValueOnce({
-      id: `mcp-${appId}/catalog/search`,
-      pluginId: `mcp-${appId}/catalog/search`,
-      name: 'search',
-      avatar: '',
-      intro: '',
-      flowNodeType: 'tool',
-      templateType: 'tools',
-      inputs: [],
-      outputs: [],
-      toolConfig: {
-        mcpTool: {
-          toolId: `mcp-${appId}/search`
+    mocks.getNewToolPreviewNode
+      .mockResolvedValueOnce({
+        id: `mcp-${appId}/catalog/search`,
+        pluginId: `mcp-${appId}/catalog/search`,
+        name: 'search',
+        avatar: '',
+        intro: '',
+        flowNodeType: 'tool',
+        templateType: 'tools',
+        inputs: [],
+        outputs: [],
+        toolConfig: {
+          mcpTool: {
+            toolId: `mcp-${appId}/search`
+          }
         }
-      }
-    });
+      })
+      .mockResolvedValueOnce({
+        id: `http-${httpAppId}//api/v1/users`,
+        pluginId: `http-${httpAppId}//api/v1/users`,
+        name: 'users',
+        avatar: '',
+        intro: '',
+        flowNodeType: 'tool',
+        templateType: 'tools',
+        inputs: [],
+        outputs: [],
+        toolConfig: {
+          httpTool: {
+            toolId: `http-${httpAppId}/users`
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        id: `mcp-${appId}/search`,
+        pluginId: `mcp-${appId}/search`,
+        name: 'search',
+        avatar: '',
+        intro: '',
+        flowNodeType: 'tool',
+        templateType: 'tools',
+        inputs: [],
+        outputs: [],
+        toolConfig: {
+          mcpTool: {
+            toolId: `mcp-${appId}/search`
+          }
+        }
+      });
 
     const manager = useSkillManager({
       selectedTools: [
+        // 模拟未刷新编辑页中仍保留删除前的 toolConfig.toolId
         {
           id: `mcp-${appId}/catalog/search`,
           pluginId: `mcp-${appId}/catalog/search`,
+          name: 'catalog/search',
+          avatar: '',
+          intro: '',
+          flowNodeType: 'tool' as any,
+          templateType: 'tools' as any,
+          inputs: [],
+          outputs: [],
+          toolConfig: {
+            mcpTool: {
+              toolId: `mcp-${appId}/catalog/search`
+            }
+          }
+        } as any,
+        {
+          id: `http-${httpAppId}//api/v1/users`,
+          pluginId: `http-${httpAppId}//api/v1/users`,
+          name: '/api/v1/users',
+          avatar: '',
+          intro: '',
+          flowNodeType: 'tool' as any,
+          templateType: 'tools' as any,
+          inputs: [],
+          outputs: [],
+          toolConfig: {
+            httpTool: {
+              toolId: `http-${httpAppId}//api/v1/users`
+            }
+          }
+        } as any,
+        {
+          id: `mcp-${appId}/search`,
+          pluginId: `mcp-${appId}/search`,
           name: 'search',
           avatar: '',
           intro: '',
@@ -271,19 +338,24 @@ describe('useSkillManager sandbox & skill visibility', () => {
     const myToolsMenu = await manager.skillOption.onSelect('myTools');
     expect(myToolsMenu?.onClick).toBeDefined();
 
-    // 选中已删除的旧菜单项 mcp-appId/catalog/search：既不误命中已选工具，也不插入回退到的替代工具 search
-    const staleRes = await myToolsMenu!.onClick!(`mcp-${appId}/catalog/search`);
-    expect(staleRes).toBeUndefined();
+    // 选中已删除的旧菜单项（即使本地 selectedTools 仍持有删除前数据）：实时预览发现回退后拒绝插入
+    const staleMcpRes = await myToolsMenu!.onClick!(`mcp-${appId}/catalog/search`);
+    expect(staleMcpRes).toBeUndefined();
+    const staleHttpRes = await myToolsMenu!.onClick!(`http-${httpAppId}//api/v1/users`);
+    expect(staleHttpRes).toBeUndefined();
     expect(onUpdateOrAddTool).not.toHaveBeenCalled();
-    expect(mocks.toast).toHaveBeenCalledWith(
+    expect(mocks.toast).toHaveBeenCalledTimes(2);
+    expect(mocks.toast).toHaveBeenLastCalledWith(
       expect.objectContaining({
         title: 'common:core.workflow.check.tool_missing',
         status: 'warning'
       })
     );
 
-    // 选中真实存在的 mcp-appId/search：命中已选工具并写出与注册表一致的 V2 规范键
+    // 选中真实存在的 mcp-appId/search：实时校验通过后复用已有工具并写出与注册表一致的 V2 规范键
     const validRes = await myToolsMenu!.onClick!(`mcp-${appId}/search`);
+    expect(mocks.getNewToolPreviewNode).toHaveBeenCalledTimes(3);
+    expect(onUpdateOrAddTool).not.toHaveBeenCalled();
     expect(validRes?.id).toBe(`app:team:${appId}/search`);
     expect(manager.promptRefRegistry.resolve(validRes!.id).status).toBe('resolved');
   });

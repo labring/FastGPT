@@ -33,7 +33,10 @@ import { getNewToolPreviewNode } from '@/web/core/app/api/tool';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { inheritToolInputConfig } from '../FormComponent/ToolSelector/utils';
-import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import {
+  getToolIdentityKey,
+  isSystemOrCommercialToolId
+} from '@fastgpt/global/core/app/tool/utils';
 import { parseV2RefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/codec';
 import { toLegacyToolLookup } from '@fastgpt/global/core/workflow/node/agent/promptRef/legacy';
 import {
@@ -402,6 +405,8 @@ export const loadGeneratedTools = async ({
 
         const identityKey = getToolIdentityKey(toolId, source);
         const canonicalKey = getCanonicalKeyForTool({ id: toolId, source });
+        const isMcpOrHttpChildLookup =
+          toolId.includes('/') && !isSystemOrCommercialToolId(toolId) && !source;
         const isSameTool = (tool: SelectedToolItemType) => {
           const resolvedId = getPromptRefToolId(tool);
           if (canonicalKey) {
@@ -410,9 +415,9 @@ export const loadGeneratedTools = async ({
           return getToolIdentityKey(resolvedId, tool.source) === identityKey;
         };
 
-        // 已经存在的工具，直接返回
+        // 已经存在的工具，非 MCP/HTTP 子工具直接复用；子工具先经实时预览校验存在性再复用配置。
         const existTool = existsTools.find(isSameTool);
-        if (existTool) {
+        if (existTool && !isMcpOrHttpChildLookup) {
           // 复用旧配置时补齐显式来源，保持与运行时引用一致。
           if (source === 'system' && !existTool.source) {
             return { ...existTool, source };
@@ -425,6 +430,18 @@ export const loadGeneratedTools = async ({
           appId: toolId,
           source
         });
+        if (isMcpOrHttpChildLookup && canonicalKey) {
+          const previewCanonicalKey = getCanonicalKeyForTool({
+            id: getPromptRefToolId(tool),
+            source: tool.source ?? source
+          });
+          if (previewCanonicalKey !== canonicalKey) {
+            return;
+          }
+        }
+        if (existTool) {
+          return existTool;
+        }
         // 验证工具配置
         const toolValid = validateToolConfiguration({
           toolTemplate: tool,

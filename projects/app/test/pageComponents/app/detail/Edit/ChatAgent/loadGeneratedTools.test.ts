@@ -104,8 +104,24 @@ describe('loadGeneratedTools V2 & legacy compatibility', () => {
     expect(result[1]).toMatchObject({ id: `http-${httpParentId}//api/v1/users` });
   });
 
-  it('does not reuse a reloaded fallback tool when requesting a deleted V2 slash-named child key', async () => {
+  it('validates MCP/HTTP child tools via live preview before reusing existing config, rejecting stale deleted tools', async () => {
     const mcpParentId = '66f100000000000000000031';
+    const stalePreDeletionTool = {
+      id: `mcp-${mcpParentId}/catalog/search`,
+      pluginId: `mcp-${mcpParentId}/catalog/search`,
+      name: 'catalog/search',
+      avatar: '',
+      intro: '',
+      flowNodeType: FlowNodeTypeEnum.tool,
+      templateType: 'tools',
+      inputs: [],
+      outputs: [],
+      toolConfig: {
+        mcpTool: {
+          toolId: `mcp-${mcpParentId}/catalog/search`
+        }
+      }
+    } as any;
     const reloadedFallbackTool = {
       id: `mcp-${mcpParentId}/catalog/search`,
       pluginId: `mcp-${mcpParentId}/catalog/search`,
@@ -123,12 +139,28 @@ describe('loadGeneratedTools V2 & legacy compatibility', () => {
       }
     } as any;
 
-    getNewToolPreviewNodeMock.mockRejectedValueOnce(new Error('unExist'));
+    getNewToolPreviewNodeMock.mockRejectedValueOnce(new Error('unExist')).mockResolvedValueOnce({
+      id: 'preview-search',
+      pluginId: `mcp-${mcpParentId}/search`,
+      name: 'search',
+      avatar: '',
+      intro: '',
+      flowNodeType: FlowNodeTypeEnum.tool,
+      templateType: 'tools',
+      inputs: [],
+      outputs: [],
+      toolConfig: {
+        mcpTool: {
+          toolId: `mcp-${mcpParentId}/search`
+        }
+      }
+    });
 
+    // 即使本地 existsTools 仍持有删除前的旧配置，也要经实时精确预览拒绝
     await expect(
       loadGeneratedTools({
         newToolIds: [`app:team:${mcpParentId}/catalog/search`],
-        existsTools: [reloadedFallbackTool]
+        existsTools: [stalePreDeletionTool]
       })
     ).rejects.toThrow('unExist');
     expect(getNewToolPreviewNodeMock).toHaveBeenCalledWith({
