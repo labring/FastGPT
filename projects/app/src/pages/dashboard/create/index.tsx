@@ -115,7 +115,6 @@ const CreateAppsPage = () => {
   const mcpAuthMode = watch('mcpAuthMode') || 'headers';
   const mcpHeaderSecret = watch('mcpHeaderSecret');
   const mcpClientMode = watch('mcpClientMode') || 'auto';
-  const mcpScope = watch('mcpScope') || '';
   const mcpToolList = watch('mcpToolList');
 
   const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
