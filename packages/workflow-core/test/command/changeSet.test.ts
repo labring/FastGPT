@@ -1,4 +1,8 @@
 import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
+import {
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import staticWorkflowFixture from '../fixtures/basic-static/workflow.json';
 import { WORKFLOW_CHANGESET_SCHEMA_VERSION, type WorkflowChangeSet } from '../../src/command/type';
 import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
@@ -301,6 +305,45 @@ describe('WorkflowChangeSet', () => {
       dependencies
     });
     expect(plan.changeSet.commands).toEqual(changeSet.commands);
+    const recomputed = await planWorkflowChangeSet({
+      document,
+      changeSet: plan.changeSet,
+      dependencies
+    });
+    expect(JSON.stringify(recomputed.plan)).toBe(JSON.stringify(plan));
+  });
+
+  it('replays a plan with generated variable keys and preserves explicit keys', async () => {
+    const document = WorkflowDocumentSchema.parse(staticWorkflowFixture);
+    const variable = {
+      label: 'GitHub Org',
+      description: '',
+      type: VariableInputEnum.input,
+      valueType: WorkflowIOValueTypeEnum.string,
+      required: true
+    };
+    const changeSet = await createChangeSet(
+      [
+        { type: 'variable.add', variable },
+        { type: 'variable.add', variable: { ...variable, key: 'explicit' } },
+        { type: 'meta.update', name: 'Updated' },
+        { type: 'variable.add', variable: { ...variable, key: ' ' } }
+      ],
+      document
+    );
+
+    const { plan } = await planWorkflowChangeSet({ document, changeSet, dependencies });
+    expect(
+      plan.changeSet.commands.map((command) =>
+        command.type === 'variable.add' ? command.variable.key : command.type
+      )
+    ).toEqual([
+      expect.stringMatching(/^[A-Za-z0-9]{8}$/),
+      'explicit',
+      'meta.update',
+      expect.stringMatching(/^[A-Za-z0-9]{8}$/)
+    ]);
+
     const recomputed = await planWorkflowChangeSet({
       document,
       changeSet: plan.changeSet,

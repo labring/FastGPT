@@ -109,11 +109,20 @@ export const planWorkflowChangeSet = async ({
     changeSet,
     dependencies
   });
+  // 记录预演中生成的变量 key，使应用计划时重放同一组命令能得到相同的校验和。
+  const variableAdds = result.changes.filter((change) => change.type === 'variable.add');
+  let variableAddIndex = 0;
+  const commands = changeSet.commands.map((command) => {
+    if (command.type !== 'variable.add') return command;
+    const { key } = variableAdds[variableAddIndex++];
+    if (command.variable.key?.trim()) return command;
+    return { ...command, variable: { ...command.variable, key } };
+  });
   const plan = WorkflowPlanSchema.parse({
     schemaVersion: WORKFLOW_PLAN_SCHEMA_VERSION,
     baseChecksum: changeSet.baseChecksum,
     targetChecksum: result.checksum,
-    changeSet,
+    changeSet: { ...changeSet, commands },
     changes: result.changes,
     diagnostics: result.diagnostics
   });
