@@ -77,7 +77,7 @@ export const refFromTool = ({
   }
 
   const prefixedRef = parsePrefixedLegacyToolRef(rawId);
-  if (prefixedRef) return prefixedRef.ref;
+  if (prefixedRef) return prefixedRef;
 
   if (source === 'system') {
     return {

@@ -28,17 +28,13 @@ export const stripLegacyPluginPrefix = (id: string): string => {
  * 统一解析带历史前缀的工具 ID（commercial-/systemTool-/community-/personal-/mcp-/http-）。
  * 由 parseLegacyRefKey 与 adapters.refFromTool 共享，避免同一套前缀规则维护两份。
  */
-export const parsePrefixedLegacyToolRef = (
-  rawId: string
-): { ref: AgentPromptRef; allowLegacyToolsetSegmentFallback?: boolean } | null => {
+export const parsePrefixedLegacyToolRef = (rawId: string): AgentPromptRef | null => {
   if (rawId === 'commercial-dalle3') {
     return {
-      ref: {
-        type: 'plugin',
-        source: 'system',
-        id: 'dalle3',
-        parentId: 'dalle3'
-      }
+      type: 'plugin',
+      source: 'system',
+      id: 'dalle3',
+      parentId: 'dalle3'
     };
   }
 
@@ -46,12 +42,10 @@ export const parsePrefixedLegacyToolRef = (
     const id = stripLegacyPluginPrefix(rawId);
     if (!id) return null;
     return {
-      ref: {
-        type: 'plugin',
-        source: 'system',
-        id,
-        ...splitParentChildId(id)
-      }
+      type: 'plugin',
+      source: 'system',
+      id,
+      ...splitParentChildId(id)
     };
   }
 
@@ -59,12 +53,10 @@ export const parsePrefixedLegacyToolRef = (
     const id = stripLegacyPluginPrefix(rawId);
     if (!id) return null;
     return {
-      ref: {
-        type: 'plugin',
-        source: 'commercial',
-        id,
-        ...splitParentChildId(id)
-      }
+      type: 'plugin',
+      source: 'commercial',
+      id,
+      ...splitParentChildId(id)
     };
   }
 
@@ -72,12 +64,10 @@ export const parsePrefixedLegacyToolRef = (
     const id = rawId.slice('personal-'.length);
     if (!id) return null;
     return {
-      ref: {
-        type: 'app',
-        source: 'team',
-        id,
-        ...splitParentChildId(id)
-      }
+      type: 'app',
+      source: 'team',
+      id,
+      ...splitParentChildId(id)
     };
   }
 
@@ -85,18 +75,12 @@ export const parsePrefixedLegacyToolRef = (
     const id = rawId.slice(rawId.indexOf('-') + 1);
     if (!id) return null;
     const { parentId, childId } = splitParentChildId(id);
-    const allowLegacyToolsetSegmentFallback =
-      rawId.startsWith('mcp-') &&
-      Boolean(childId && childId.includes('/') && !childId.startsWith('/'));
     return {
-      ...(allowLegacyToolsetSegmentFallback ? { allowLegacyToolsetSegmentFallback: true } : {}),
-      ref: {
-        type: 'app',
-        source: 'team',
-        id,
-        parentId,
-        ...(childId ? { childId } : {})
-      }
+      type: 'app',
+      source: 'team',
+      id,
+      parentId,
+      ...(childId ? { childId } : {})
     };
   }
 
@@ -171,10 +155,7 @@ export const parseLegacyRefKey = (rawKey: string): ParsedLegacyPromptRef => {
     return {
       kind: 'legacy',
       rawKey: trimmed,
-      ...(prefixedRef.allowLegacyToolsetSegmentFallback
-        ? { allowLegacyToolsetSegmentFallback: true }
-        : {}),
-      deterministicRef: prefixedRef.ref
+      deterministicRef: prefixedRef
     };
   }
 

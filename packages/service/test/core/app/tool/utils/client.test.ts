@@ -803,6 +803,36 @@ describe('getClientToolPreviewNode', () => {
       getClientToolPreviewNode({ appId: `${mcpParentId}/catalog/get-weather` })
     ).rejects.toBe(PluginErrEnum.unExist);
 
+    mocks.findById.mockReturnValueOnce({
+      lean: vi.fn().mockResolvedValue({
+        _id: mcpParentId,
+        teamId: '507f1f77bcf86cd799439012',
+        type: AppTypeEnum.mcpToolSet,
+        name: 'catalog',
+        avatar: 'mcp.svg',
+        intro: '',
+        modules: [
+          {
+            toolConfig: {
+              mcpToolSet: {
+                url: 'https://mcp.example.com',
+                toolList: [
+                  {
+                    name: 'get-weather',
+                    description: 'Weather',
+                    inputSchema: { type: 'object', properties: {} }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      })
+    });
+    await expect(
+      getClientToolPreviewNode({ appId: `mcp-${mcpParentId}/catalog/get-weather` })
+    ).rejects.toBe(PluginErrEnum.unExist);
+
     const httpPreview = await getClientToolPreviewNode({ appId: `${httpParentId}//api/v1/users` });
     expect(httpPreview.pluginId).toBe(`http-${httpParentId}//api/v1/users`);
     expect(httpPreview.intro).toBe('List users');

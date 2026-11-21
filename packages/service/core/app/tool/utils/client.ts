@@ -17,7 +17,6 @@ import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import {
-  getToolNameCandidates,
   isDebugToolSource,
   isTeamPluginSource,
   parseUntypedV2ChildToolLookupId,
@@ -312,13 +311,9 @@ export async function getClientToolPreviewNode({
               : undefined;
         if (!childKind) return Promise.reject(PluginErrEnum.unExist);
 
-        const candidates = isTypedPrefix ? getToolNameCandidates(toolName) : [toolName];
-
         if (childKind === AppToolSourceEnum.mcp) {
           const mcpChildren = await getMCPChildren(item);
-          const tool = candidates
-            .map((name) => mcpChildren.find((entry) => entry.name === name))
-            .find(Boolean);
+          const tool = mcpChildren.find((entry) => entry.name === toolName);
           if (!tool) return Promise.reject(PluginErrEnum.unExist);
           return {
             avatar: item.avatar,
@@ -347,9 +342,7 @@ export async function getClientToolPreviewNode({
         }
 
         const httpTools = await getHTTPToolList(item);
-        const tool = candidates
-          .map((name) => httpTools.find((entry) => entry.name === name))
-          .find(Boolean);
+        const tool = httpTools.find((entry) => entry.name === toolName);
         if (!tool) return Promise.reject(PluginErrEnum.unExist);
         return {
           avatar: item.avatar,

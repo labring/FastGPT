@@ -298,14 +298,16 @@ describe('AgentPromptRefRegistry invariants', () => {
     expect(registry.resolve('skill:system:68b2000000000000000000bb').status).toBe('resolved');
   });
 
-  it('supports legacy 3-segment MCP fallback only within the same appId', () => {
+  it('matches MCP child tools strictly by full name regardless of toolset display name or rename', () => {
     const registry = createRegistry();
-    const sameApp = registry.resolve('mcp-66f100000000000000000022/githubSet/ns:get-issue');
-    expect(sameApp.status).toBe('resolved');
-    if (sameApp.status === 'resolved') {
-      expect(sameApp.entry.displayName).toBe('GitHub查Issue');
-    }
-
+    expect(registry.resolve('mcp-66f100000000000000000022/ns:get-issue')).toMatchObject({
+      status: 'resolved',
+      matchedBy: 'deterministic_legacy',
+      entry: { displayName: 'GitHub查Issue' }
+    });
+    expect(registry.resolve('mcp-66f100000000000000000022/githubSet/ns:get-issue').status).toBe(
+      'unresolved'
+    );
     const otherApp = registry.resolve('mcp-999900000000000000000099/githubSet/ns:get-issue');
     expect(otherApp.status).toBe('unresolved');
   });
@@ -337,7 +339,7 @@ describe('AgentPromptRefRegistry invariants', () => {
     expect(parseAgentPromptRefKey('').kind).toBe('invalid');
   });
 
-  it('prevents deleted legacy HTTP and slash-named MCP child tools from cross-binding to another tool sharing the last segment', () => {
+  it('prevents deleted legacy HTTP and slash-named MCP child tools from cross-binding even when toolset name matches prefix', () => {
     const httpAppId = '66f100000000000000000055';
     const registry = AgentPromptRefRegistry.create([
       {
@@ -347,7 +349,7 @@ describe('AgentPromptRefRegistry invariants', () => {
           id: httpAppId,
           parentId: httpAppId
         },
-        displayName: 'LegacyToolset',
+        displayName: 'catalog',
         meta: { label: 'set' }
       },
       {
@@ -366,7 +368,8 @@ describe('AgentPromptRefRegistry invariants', () => {
     expect(registry.resolve(`http-${httpAppId}//api/v1/users`).status).toBe('unresolved');
     expect(registry.resolve(`app:team:${httpAppId}//api/v1/users`).status).toBe('unresolved');
     expect(registry.resolve(`mcp-${httpAppId}/catalog/users`).status).toBe('unresolved');
-    expect(registry.resolve(`mcp-${httpAppId}/LegacyToolset/users`)).toMatchObject({
+    expect(registry.resolve(`app:team:${httpAppId}/catalog/users`).status).toBe('unresolved');
+    expect(registry.resolve(`mcp-${httpAppId}/users`)).toMatchObject({
       status: 'resolved',
       matchedBy: 'deterministic_legacy',
       entry: { displayName: 'Users Tool' }
