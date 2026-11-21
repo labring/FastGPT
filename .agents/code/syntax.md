@@ -415,3 +415,37 @@ export const createAppAndInitVersion = async (
   }
 };
 ```
+
+---
+
+### MongoDB 关联查询兼容性与批量回表规范
+
+1. **MongoDB 4.4 `$lookup` 兼容硬规则**（数据库侧过滤/排序/分页必须保留 `$lookup` 时遵守）：
+   - 禁止在同一个 `$lookup` 中混用 `localField`/`foreignField` 与 `pipeline`（MongoDB 4.4 / FCV=4.4 会直接报错），必须改用 `let + pipeline + $match($expr)`。
+   - 可缺省外键在 `let` 中必须用 `$ifNull: ['$field', null]` 归一化，防止 MongoDB 4.4/5.0 因 missing 字段跳过索引改写退化为全表扫描。
+
+2. **应用层按需批量回表**（跨集合补充展示字段，且满足外键高度重复、被关联文档较大无覆盖索引、或展示列可选时优先采用）：
+   - 入库已由 Mongoose `Schema.Types.ObjectId` 强约束的字段，业务读取与构建/查询 `Map` 直接使用 `String(id)`，不做多余的二次类型校验。
+   - 全局 `find` post hook（`convertObjectIds`）会将顶层 `ObjectId` 转为 `string`：传给后续 `find({ _id: { $in } })` 时由 Mongoose 自动转型，传给 `aggregate` `$match` 时需显式 `new Types.ObjectId(id)`（`aggregate` 不做自动转型）。
+   - 多批次弱一致性从库读取（如日志流式导出）可统一走 `readFromSecondary`；跨批次缓存应**仅持久化实际命中的结果**，不得将从库查空永久固化为整次导出内已确认的缺失。对未命中 ID 可采用**批次指数退避 + TTL 过期重查**（如 `createAppVersionNameLoader`），兼顾跨多批复制延迟自动追平与防止已删除历史外键在数百批次中线性空查。
+   - 同一业务域（如列表与导出）的底层批量查询与统计口径应沉淀在 `entity.ts` 共用，避免在 API 路由层双写导致口径漂移。
+
+```typescript
+import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
+
+// Good —— Schema 已强约束为 ObjectId，直接去重回表并用 String(id) 建 Map
+const versionIds = Array.from(
+  new Set(rows.map((row) => row.appVersionId).filter(Boolean).map(String))
+);
+const versions =
+  versionIds.length > 0
+    ? await MongoAppVersion.find(
+        { _id: { $in: versionIds } },
+        { _id: 1, versionName: 1 },
+        readFromSecondary
+      ).lean()
+    : [];
+const versionNameMap = new Map(
+  versions.map((version) => [String(version._id), version.versionName ?? null])
+);
+```
