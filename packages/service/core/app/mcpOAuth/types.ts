@@ -1,4 +1,5 @@
 import z from 'zod';
+import type { McpOAuthClientSource } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
 import type { McpOAuthServerMetadataType } from '@fastgpt/global/core/app/tool/mcpTool/oauthConfig';
 
 /**
@@ -42,6 +43,18 @@ export type McpOAuthStateRecordType = {
   expiresAt: Date;
   purgeAt: Date;
   consumedAt?: Date;
+  /**
+   * 本次授权尝试实际使用的 client 来源（可选）。
+   *
+   * 只用于判定「上一次 auto 选的 CIMD 没有走完」：该字段缺失（旧台账）时
+   * 一律视为来源未知，不会触发自动降级。
+   */
+  clientSource?: McpOAuthClientSource;
+  /**
+   * 该 CIMD attempt 已触发过一次「自动降级 DCR」；同一条台账只降级一次，
+   * 避免重复 start 在 CIMD/DCR 之间来回抖动。
+   */
+  downgradedAt?: Date;
 };
 
 /** 发现结果缓存：写回 `oauth.server`，并与授权流程共享 issuer/resource。 */

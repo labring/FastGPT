@@ -6,8 +6,10 @@ import {
   clearMcpOAuthBindCookie,
   consumeMcpOAuthState,
   expirePendingMcpOAuthStates,
+  findPendingCimdAttempt,
   getMcpOAuthBindCookieName,
   isMcpOAuthCallbackRedirectAllowed,
+  markMcpOAuthStateDowngraded,
   normalizeMcpOAuthBasePath,
   parseMcpOAuthState,
   readCookie,
@@ -107,6 +109,62 @@ describe('mcpOAuth state', () => {
 
     const error = await asOAuthError(consumeMcpOAuthState({ stateHash: first.stateHash }));
     expect(error.oauthCode).toBe(McpOAuthErrorCodeEnum.stateReplayed);
+  });
+
+  it('finds only an unconsumed, un-downgraded CIMD attempt and marks it once', async () => {
+    const base = ids();
+
+    // DCR attempt 不触发降级。
+    const dcr = build(base);
+    await writeMcpOAuthState({
+      payload: dcr.payload,
+      bindCookieHash: sha256Hex('c-dcr'),
+      clientSource: 'dcr'
+    });
+    expect(await findPendingCimdAttempt(base)).toBeNull();
+    await expirePendingMcpOAuthStates(base);
+
+    // 未消费的 CIMD attempt 是降级依据。
+    const cimd = build(base);
+    await writeMcpOAuthState({
+      payload: cimd.payload,
+      bindCookieHash: sha256Hex('c-cimd'),
+      clientSource: 'cimd'
+    });
+    const found = await findPendingCimdAttempt(base);
+    expect(found?._id).toBe(cimd.stateHash);
+
+    // 标记后同一条台账不再触发第二次降级。
+    expect(await markMcpOAuthStateDowngraded({ stateHash: cimd.stateHash })).toBe(true);
+    expect(await markMcpOAuthStateDowngraded({ stateHash: cimd.stateHash })).toBe(false);
+    expect(await findPendingCimdAttempt(base)).toBeNull();
+
+    // 另一个用户（tmbId 不同）不受这条台账影响。
+    const otherUser = { ...base, tmbId: new Types.ObjectId().toString() };
+    const otherCimd = build(otherUser);
+    await writeMcpOAuthState({
+      payload: otherCimd.payload,
+      bindCookieHash: sha256Hex('c-other'),
+      clientSource: 'cimd'
+    });
+    expect(await findPendingCimdAttempt(base)).toBeNull();
+    expect(await findPendingCimdAttempt(otherUser)).not.toBeNull();
+  });
+
+  it('treats an expired but unconsumed CIMD attempt as downgradable', async () => {
+    const base = ids();
+    const cimd = build({ ...base, ttlMs: 1000, now: 1_000_000 });
+    await writeMcpOAuthState({
+      payload: cimd.payload,
+      bindCookieHash: sha256Hex('c-expired'),
+      clientSource: 'cimd',
+      now: 1_000_000
+    });
+
+    // 过期只是不能再用于回调，不代表「上一次 CIMD 尝试已经走完」。
+    expect(await findPendingCimdAttempt(base)).not.toBeNull();
+    expect(await markMcpOAuthStateDowngraded({ stateHash: cimd.stateHash })).toBe(true);
+    expect(await findPendingCimdAttempt(base)).toBeNull();
   });
 
   it('round-trips the largest state that fits the HTTP header safe cap', () => {

@@ -79,6 +79,15 @@ export const McpOAuthStateSchema = new Schema<McpOAuthStateRecordType>(
     },
     consumedAt: {
       type: Date
+    },
+    /** 本次尝试的 client 来源；可选，旧台账没有该字段。 */
+    clientSource: {
+      type: String,
+      enum: ['cimd', 'dcr', 'manual']
+    },
+    /** 该 CIMD attempt 已自动降级过一次 DCR；可选。 */
+    downgradedAt: {
+      type: Date
     }
   },
   {

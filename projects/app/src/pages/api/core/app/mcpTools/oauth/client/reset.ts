@@ -99,7 +99,8 @@ async function handler(
       'server',
       'lastError',
       'refreshLease',
-      'revokeLease'
+      'revokeLease',
+      'autoDcrFallback'
     ],
     incrementSeq: true
   });

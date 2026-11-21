@@ -6,6 +6,7 @@ export * from './httpRuntime';
 export * from './discovery';
 export * from './registration';
 export * from './state';
+export * from './authorization';
 export * from './token';
 export * from './credential';
 export * from './runtime';

@@ -427,6 +427,7 @@ export const mergeMcpOAuthFromPublished = ({
         lastError,
         client,
         clientSource,
+        autoDcrFallback,
         issuer: previousIssuer,
         resource,
         ...rest
@@ -491,6 +492,7 @@ export const mergeMcpOAuthFromPublished = ({
     lastError,
     client,
     clientSource: previousClientSource,
+    autoDcrFallback,
     ...rest
   } = existingOAuth ?? {};
   return {
