@@ -61,6 +61,7 @@ describe('indexStatus schema contract', () => {
         _id: new Types.ObjectId(),
         datasetId: new Types.ObjectId(),
         collectionId: new Types.ObjectId(),
+        createTime: new Date(),
         q: 'question',
         indexStatus: DatasetDataIndexStatusEnum.indexing
       }).indexStatus

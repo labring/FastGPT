@@ -19,6 +19,7 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { Types } from '@fastgpt/service/common/mongo';
 import { createS3DownloadAccessUrl } from '@fastgpt/service/common/s3/accessLink';
 import {
   createDatasetFileS3KeyFilter,
@@ -57,7 +58,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDataListResponse
   const [list, total] = await Promise.all([
     MongoDatasetData.find(
       match,
-      '_id datasetId collectionId q a chunkIndex imageId indexStatus indexErrorMsg'
+      '_id datasetId collectionId createTime q a chunkIndex imageId indexStatus indexErrorMsg'
     )
       .sort({ chunkIndex: 1, _id: -1 })
       .skip(offset)
@@ -131,6 +132,8 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDataListResponse
 
       return {
         ...item,
+        // 历史数据没有 createTime 字段，用 ObjectId 的生成时间兜底，避免要求用户先做数据迁移。
+        createTime: item.createTime ?? new Types.ObjectId(String(item._id)).getTimestamp(),
         imageSize,
         imagePreviewUrl
       };

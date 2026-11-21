@@ -78,6 +78,10 @@ const DatasetDataSchema = new Schema({
     ],
     default: []
   },
+  createTime: {
+    type: Date,
+    default: () => new Date()
+  },
   updateTime: {
     type: Date,
     default: () => new Date()
