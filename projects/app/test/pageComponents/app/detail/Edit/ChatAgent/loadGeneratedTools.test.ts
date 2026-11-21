@@ -103,4 +103,43 @@ describe('loadGeneratedTools V2 & legacy compatibility', () => {
     expect(result[0]).toMatchObject({ id: `mcp-${mcpParentId}/search` });
     expect(result[1]).toMatchObject({ id: `http-${httpParentId}//api/v1/users` });
   });
+
+  it('does not reuse a reloaded fallback tool when requesting a deleted V2 slash-named child key', async () => {
+    const mcpParentId = '66f100000000000000000031';
+    const reloadedFallbackTool = {
+      id: `mcp-${mcpParentId}/catalog/search`,
+      pluginId: `mcp-${mcpParentId}/catalog/search`,
+      name: 'search',
+      avatar: '',
+      intro: '',
+      flowNodeType: FlowNodeTypeEnum.tool,
+      templateType: 'tools',
+      inputs: [],
+      outputs: [],
+      toolConfig: {
+        mcpTool: {
+          toolId: `mcp-${mcpParentId}/search`
+        }
+      }
+    } as any;
+
+    getNewToolPreviewNodeMock.mockRejectedValueOnce(new Error('unExist'));
+
+    await expect(
+      loadGeneratedTools({
+        newToolIds: [`app:team:${mcpParentId}/catalog/search`],
+        existsTools: [reloadedFallbackTool]
+      })
+    ).rejects.toThrow('unExist');
+    expect(getNewToolPreviewNodeMock).toHaveBeenCalledWith({
+      appId: `${mcpParentId}/catalog/search`,
+      source: undefined
+    });
+
+    const reusedResult = await loadGeneratedTools({
+      newToolIds: [`app:team:${mcpParentId}/search`],
+      existsTools: [reloadedFallbackTool]
+    });
+    expect(reusedResult).toEqual([reloadedFallbackTool]);
+  });
 });

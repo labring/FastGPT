@@ -78,9 +78,16 @@ export const useAgentPromptRefs = ({
   lang
 }: UseAgentPromptRefsParams) => {
   const getToolWriteKey = useCallback(
-    (params: { id?: string; pluginId?: string; source?: string }) => {
-      const ref = refFromTool(params);
-      return ref ? formatRefKey(ref) : (params.pluginId || params.id || '').trim();
+    (params: {
+      id?: string;
+      pluginId?: string;
+      flowNodeType?: FlowNodeTypeEnum;
+      toolConfig?: SelectedToolItemType['toolConfig'];
+      source?: string;
+    }) => {
+      const resolvedId = getPromptRefToolId(params);
+      const ref = refFromTool({ id: resolvedId, source: params.source });
+      return ref ? formatRefKey(ref) : resolvedId.trim();
     },
     []
   );

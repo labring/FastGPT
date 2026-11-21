@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   teamPlanStatus: undefined as Record<string, any> | undefined,
   systemToolsData: [] as any[],
   getAppToolTemplates: vi.fn(async () => []),
+  getNewToolPreviewNode: vi.fn(),
   getSkillListV2: vi.fn(async () => ({ list: [], total: 0 })),
   toast: vi.fn()
 }));
@@ -46,7 +47,7 @@ vi.mock('@/web/support/user/useUserStore', () => ({
 }));
 vi.mock('@/web/core/app/api/tool', () => ({
   getAppToolTemplates: mocks.getAppToolTemplates,
-  getNewToolPreviewNode: vi.fn(),
+  getNewToolPreviewNode: mocks.getNewToolPreviewNode,
   getTeamAppTemplatesV2: vi.fn(async () => ({ list: [], total: 0 }))
 }));
 vi.mock('@/web/core/skill/api', () => ({
@@ -218,5 +219,72 @@ describe('useSkillManager sandbox & skill visibility', () => {
     if (actualEntry.status === 'resolved') {
       expect(actualEntry.entry.displayName).toBe('search');
     }
+  });
+
+  it('rejects inserting a stale deleted MCP child menu item when preview falls back to another tool, and writes resolved canonical key for existing tool', async () => {
+    const appId = '507f1f77bcf86cd799439031';
+    const onUpdateOrAddTool = vi.fn();
+    mocks.getNewToolPreviewNode.mockResolvedValueOnce({
+      id: `mcp-${appId}/catalog/search`,
+      pluginId: `mcp-${appId}/catalog/search`,
+      name: 'search',
+      avatar: '',
+      intro: '',
+      flowNodeType: 'tool',
+      templateType: 'tools',
+      inputs: [],
+      outputs: [],
+      toolConfig: {
+        mcpTool: {
+          toolId: `mcp-${appId}/search`
+        }
+      }
+    });
+
+    const manager = useSkillManager({
+      selectedTools: [
+        {
+          id: `mcp-${appId}/catalog/search`,
+          pluginId: `mcp-${appId}/catalog/search`,
+          name: 'search',
+          avatar: '',
+          intro: '',
+          flowNodeType: 'tool' as any,
+          templateType: 'tools' as any,
+          inputs: [],
+          outputs: [],
+          toolConfig: {
+            mcpTool: {
+              toolId: `mcp-${appId}/search`
+            }
+          }
+        } as any
+      ],
+      onUpdateOrAddTool,
+      onAddAgentSkill: vi.fn(() => true),
+      onEnableSandbox: vi.fn(),
+      canUploadFile: true,
+      hasSelectedDataset: true,
+      useAgentSandbox: true
+    });
+
+    const myToolsMenu = await manager.skillOption.onSelect('myTools');
+    expect(myToolsMenu?.onClick).toBeDefined();
+
+    // 选中已删除的旧菜单项 mcp-appId/catalog/search：既不误命中已选工具，也不插入回退到的替代工具 search
+    const staleRes = await myToolsMenu!.onClick!(`mcp-${appId}/catalog/search`);
+    expect(staleRes).toBeUndefined();
+    expect(onUpdateOrAddTool).not.toHaveBeenCalled();
+    expect(mocks.toast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'common:core.workflow.check.tool_missing',
+        status: 'warning'
+      })
+    );
+
+    // 选中真实存在的 mcp-appId/search：命中已选工具并写出与注册表一致的 V2 规范键
+    const validRes = await myToolsMenu!.onClick!(`mcp-${appId}/search`);
+    expect(validRes?.id).toBe(`app:team:${appId}/search`);
+    expect(manager.promptRefRegistry.resolve(validRes!.id).status).toBe('resolved');
   });
 });

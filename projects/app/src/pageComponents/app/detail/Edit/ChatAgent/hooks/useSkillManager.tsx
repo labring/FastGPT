@@ -354,15 +354,17 @@ export const useSkillManager = ({
 
   const onAddAppOrTool = useCallback(
     async (toolId: string, source?: string): Promise<SkillClickResult | undefined> => {
-      // Check tool exists, if exists, not update/add tool
+      // 按实际解析身份判重，避免旧菜单项误命中经历史候选回退加载出的同名末段工具。
       const toolIdentityKey = getToolIdentityKey(toolId, source);
       const existsTool = lastSelectedTools.current?.find(
-        (tool) => getToolIdentityKey(tool.pluginId, tool.source) === toolIdentityKey
+        (tool) => getToolIdentityKey(getPromptRefToolId(tool), tool.source) === toolIdentityKey
       );
       if (existsTool) {
         const writeKey = getToolWriteKey({
           id: existsTool.id,
           pluginId: existsTool.pluginId,
+          flowNodeType: existsTool.flowNodeType,
+          toolConfig: existsTool.toolConfig,
           source: existsTool.source
         });
         const skill = buildToolSkillLabelItem({ tool: existsTool, writeKey });
@@ -450,8 +452,23 @@ export const useSkillManager = ({
       const writeKey = getToolWriteKey({
         id: tool.id,
         pluginId: tool.pluginId,
+        flowNodeType: tool.flowNodeType,
+        toolConfig: tool.toolConfig,
         source: tool.source ?? source
       });
+      const requestedCanonicalKey = getCanonicalKeyForTool({ id: toolId, source });
+      if (
+        (toolId.startsWith('mcp-') || toolId.startsWith('http-')) &&
+        requestedCanonicalKey &&
+        writeKey !== requestedCanonicalKey
+      ) {
+        // 所选旧菜单子工具已被删除且预览仅回退到末段同名工具时，拒绝插入替代工具。
+        toast({
+          title: t('common:core.workflow.check.tool_missing'),
+          status: 'warning'
+        });
+        return;
+      }
       const skill = buildToolSkillLabelItem({ tool, writeKey });
 
       lastOnUpdateOrAddTool.current?.(tool);

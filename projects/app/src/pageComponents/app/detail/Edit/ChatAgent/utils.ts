@@ -36,7 +36,10 @@ import { inheritToolInputConfig } from '../FormComponent/ToolSelector/utils';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import { parseV2RefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/codec';
 import { toLegacyToolLookup } from '@fastgpt/global/core/workflow/node/agent/promptRef/legacy';
-import { getCanonicalKeyForTool } from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
+import {
+  getCanonicalKeyForTool,
+  getPromptRefToolId
+} from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
 
 /* format app nodes to edit form */
 export const appWorkflow2AgentForm = ({
@@ -400,14 +403,11 @@ export const loadGeneratedTools = async ({
         const identityKey = getToolIdentityKey(toolId, source);
         const canonicalKey = getCanonicalKeyForTool({ id: toolId, source });
         const isSameTool = (tool: SelectedToolItemType) => {
-          if (getToolIdentityKey(tool.pluginId, tool.source) === identityKey) return true;
+          const resolvedId = getPromptRefToolId(tool);
           if (canonicalKey) {
-            return (
-              getCanonicalKeyForTool({ id: tool.pluginId ?? tool.id, source: tool.source }) ===
-              canonicalKey
-            );
+            return getCanonicalKeyForTool({ id: resolvedId, source: tool.source }) === canonicalKey;
           }
-          return false;
+          return getToolIdentityKey(resolvedId, tool.source) === identityKey;
         };
 
         // 已经存在的工具，直接返回
