@@ -51,7 +51,9 @@ export const getWorkflowCommandTarget = (command: WorkflowCommand): string | und
     case 'config.unset':
       return `config:${command.path}`;
     case 'variable.add':
-      return `variable:${command.variable.key}`;
+      return command.variable.key
+        ? `variable:${command.variable.key}`
+        : `variable:add:${stableJson(command.variable)}`;
     case 'variable.update':
     case 'variable.remove':
       return `variable:${command.key}`;

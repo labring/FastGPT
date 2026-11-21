@@ -188,13 +188,19 @@ const ConfigUnsetCommandSchema = z.object({
 
 const VariableAddCommandSchema = z.object({
   type: z.literal('variable.add'),
-  variable: VariableItemTypeSchema
+  variable: VariableItemTypeSchema.extend({
+    key: z.string().optional()
+  })
 });
 
 const VariableUpdateCommandSchema = z.object({
   type: z.literal('variable.update'),
   key: z.string().min(1),
-  patch: VariableItemTypeSchema.partial()
+  patch: VariableItemTypeSchema.omit({ key: true })
+    .partial()
+    .extend({
+      key: z.never({ message: 'Variable key cannot be modified' }).optional()
+    })
 });
 
 const VariableRemoveCommandSchema = z.object({

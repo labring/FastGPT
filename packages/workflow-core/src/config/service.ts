@@ -4,20 +4,36 @@ import {
   VariableItemTypeSchema,
   type VariableItemType
 } from '@fastgpt/global/core/app/variable/type';
+import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
+import { DatasetTagFilterValueModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { isDatasetTagFilterValue } from '@fastgpt/global/core/dataset/search/tagFilter/type';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
-  VARIABLE_NODE_ID
+  VARIABLE_NODE_ID,
+  WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum,
+  workflowSystemVariables
+} from '@fastgpt/global/core/workflow/node/constant';
 import { userFilesInput } from '@fastgpt/global/core/workflow/template/output';
+import { isReferenceOptionFormItem } from '@fastgpt/global/core/workflow/template/system/interactive/constants';
+import { getSecretReferenceValue } from '@fastgpt/global/common/secret/utils';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
   areWorkflowValueTypesCompatible,
+  getSelectedInputRenderType,
   nodeInputIsReference
 } from '@fastgpt/global/common/workflow/reference';
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import { WorkflowCommandError } from '../domain/diagnostic';
-import { getWorkflowReferenceValues, isWorkflowReferenceValue } from '../reference/service';
+import {
+  getWorkflowReferenceValues,
+  isWorkflowReferenceValue,
+  type WorkflowReferenceValue
+} from '../reference/service';
 import { CHAT_CONFIG_PATHS } from './type';
 
 const assertConfigPath = (path: string) => {
@@ -155,50 +171,385 @@ export const unsetChatConfigValue = ({
 
 const getVariables = (document: WorkflowDocument) => document.chatConfig.variables ?? [];
 
-/** 收集引用指定全局变量的节点输入及其原始引用元组。 */
+type AddGlobalVariableInput = Omit<VariableItemType, 'key'> & { key?: string };
+
+type UpdateGlobalVariablePatch = Omit<Partial<VariableItemType>, 'key'>;
+
+type GlobalVariableReferenceMatch = {
+  expectedValueType?: string;
+};
+
+type GlobalVariableReferenceLocation = {
+  node: WorkflowDocument['nodes'][number];
+  inputKey: string;
+  matches: GlobalVariableReferenceMatch[];
+};
+
+const generateUniqueVariableKey = (variables: VariableItemType[]): string => {
+  const usedKeys = new Set([
+    ...variables.map((item) => item.key),
+    ...workflowSystemVariables.map((item) => item.key)
+  ]);
+  let candidate = getNanoid(8);
+  while (usedKeys.has(candidate)) {
+    candidate = getNanoid(8);
+  }
+  return candidate;
+};
+
+const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const isFlowNodeInputType = (value: unknown): value is FlowNodeInputTypeEnum =>
+  typeof value === 'string' && (Object.values(FlowNodeInputTypeEnum) as string[]).includes(value);
+
+const isReferenceOptionListInputType = (
+  value: unknown
+): value is FlowNodeInputTypeEnum.input | FlowNodeInputTypeEnum.reference =>
+  value === FlowNodeInputTypeEnum.input || value === FlowNodeInputTypeEnum.reference;
+
+const getGlobalVariablePlaceholder = (key: string) => `{{$${VARIABLE_NODE_ID}.${key}$}}`;
+
+const collectTupleMatches = ({
+  references,
+  key,
+  expectedValueType
+}: {
+  references: WorkflowReferenceValue[] | undefined;
+  key: string;
+  expectedValueType?: string;
+}): GlobalVariableReferenceMatch[] =>
+  (references ?? []).flatMap((reference) =>
+    reference[0] === VARIABLE_NODE_ID && reference[1] === key ? [{ expectedValueType }] : []
+  );
+
+/** 仅匹配显式全局变量命名空间 `{{$VARIABLE_NODE_ID.key$}}`，避免误伤普通模板或节点自有动态参数 `{{key}}`。 */
+const collectTemplateMatches = ({
+  text,
+  key
+}: {
+  text: unknown;
+  key: string;
+}): GlobalVariableReferenceMatch[] => {
+  const placeholder = getGlobalVariablePlaceholder(key);
+  if (typeof text !== 'string' || !text.includes(placeholder)) return [];
+
+  return [{}];
+};
+
+/** 知识库标签过滤同时支持整项引用元组、表单条件行内引用元组以及字符串插值。 */
+const collectCollectionFilterMatches = ({
+  value,
+  key,
+  expectedWholeValueType
+}: {
+  value: unknown;
+  key: string;
+  expectedWholeValueType?: string;
+}): GlobalVariableReferenceMatch[] => {
+  if (isWorkflowReferenceValue(value)) {
+    return collectTupleMatches({
+      references: [value],
+      key,
+      expectedValueType: expectedWholeValueType
+    });
+  }
+  if (isDatasetTagFilterValue(value)) {
+    return value.conditions.flatMap((condition) =>
+      condition.valueMode === DatasetTagFilterValueModeEnum.reference &&
+      isWorkflowReferenceValue(condition.value)
+        ? collectTupleMatches({
+            references: [condition.value],
+            key
+          })
+        : []
+    );
+  }
+  return collectTemplateMatches({
+    text: value,
+    key
+  });
+};
+
+/** 凭据项可能以 `{ ref }` 对象或历史 JSON 字符串保存，复用共享凭据解析器提取引用。 */
+const collectSecretValueMatches = ({
+  value,
+  key,
+  expectedValueType
+}: {
+  value: unknown;
+  key: string;
+  expectedValueType?: string;
+}): GlobalVariableReferenceMatch[] => {
+  const parsedReference = getSecretReferenceValue(value);
+  if (!parsedReference) return [];
+
+  return collectTupleMatches({
+    references: getWorkflowReferenceValues(parsedReference),
+    key,
+    expectedValueType
+  });
+};
+
+const collectSecretRecordMatches = ({
+  value,
+  key
+}: {
+  value: unknown;
+  key: string;
+}): GlobalVariableReferenceMatch[] => {
+  if (!isPlainRecord(value)) return [];
+  return Object.values(value).flatMap((entryValue) =>
+    collectSecretValueMatches({
+      value: entryValue,
+      key
+    })
+  );
+};
+
+const collectIfElseMatches = ({
+  value,
+  key
+}: {
+  value: unknown;
+  key: string;
+}): GlobalVariableReferenceMatch[] => {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((branch) => {
+    if (!isPlainRecord(branch) || !Array.isArray(branch.list)) return [];
+    return branch.list.flatMap((condition) => {
+      if (!isPlainRecord(condition)) return [];
+      const leftMatches = isWorkflowReferenceValue(condition.variable)
+        ? collectTupleMatches({ references: [condition.variable], key })
+        : [];
+      const rightMatches =
+        condition.valueType === 'reference' && isWorkflowReferenceValue(condition.value)
+          ? collectTupleMatches({ references: [condition.value], key })
+          : [];
+      return [...leftMatches, ...rightMatches];
+    });
+  });
+};
+
+const collectUpdateListMatches = ({
+  value,
+  key
+}: {
+  value: unknown;
+  key: string;
+}): GlobalVariableReferenceMatch[] => {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!isPlainRecord(item)) return [];
+    const itemValueType = typeof item.valueType === 'string' ? item.valueType : undefined;
+    const targetMatches = isWorkflowReferenceValue(item.variable)
+      ? collectTupleMatches({
+          references: [item.variable],
+          key,
+          expectedValueType: itemValueType
+        })
+      : [];
+    const sourceMatches = (() => {
+      if (item.renderType === FlowNodeInputTypeEnum.reference) {
+        return collectTupleMatches({
+          references: getWorkflowReferenceValues(item.value),
+          key,
+          expectedValueType: itemValueType
+        });
+      } else if (
+        item.renderType === FlowNodeInputTypeEnum.input &&
+        Array.isArray(item.value) &&
+        typeof item.value[1] === 'string'
+      ) {
+        return collectTemplateMatches({
+          text: item.value[1],
+          key
+        });
+      } else {
+        return [];
+      }
+    })();
+    return [...targetMatches, ...sourceMatches];
+  });
+};
+
+const collectUserInputFormMatches = ({
+  value,
+  key
+}: {
+  value: unknown;
+  key: string;
+}): GlobalVariableReferenceMatch[] => {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!isPlainRecord(item) || !isFlowNodeInputType(item.type)) return [];
+    const listInputType = isReferenceOptionListInputType(item.listInputType)
+      ? item.listInputType
+      : undefined;
+    if (!isReferenceOptionFormItem({ type: item.type, listInputType })) return [];
+    return collectTupleMatches({
+      references: getWorkflowReferenceValues(item.listReference),
+      key
+    });
+  });
+};
+
+const collectHttpPropsTemplateMatches = ({
+  value,
+  key
+}: {
+  value: unknown;
+  key: string;
+}): GlobalVariableReferenceMatch[] => {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!isPlainRecord(item)) return [];
+    return [
+      ...collectTemplateMatches({
+        text: item.key,
+        key
+      }),
+      ...collectTemplateMatches({
+        text: item.value,
+        key
+      })
+    ];
+  });
+};
+
+/** 收集引用指定全局变量的节点输入与工具配置，与运行时各输入类型的引用解析规则对齐。 */
 const getGlobalVariableReferences = ({
   document,
   key
 }: {
   document: WorkflowDocument;
   key: string;
-}) =>
-  document.nodes.flatMap((node) =>
-    node.inputs.flatMap((input) => {
-      // 整项标签过滤由搜索参数归一化解析，且只接受顶层引用元组。
-      const inputReferences = nodeInputIsReference(input)
-        ? (getWorkflowReferenceValues(input.value) ?? [])
-        : input.key === NodeInputKeyEnum.collectionFilterMatch &&
-            isWorkflowReferenceValue(input.value)
-          ? [input.value]
-          : [];
-      const references = inputReferences.filter(
-        ([sourceNodeId, outputKey]) => sourceNodeId === VARIABLE_NODE_ID && outputKey === key
-      );
-      return references.length > 0 ? [{ node, input, references }] : [];
-    })
-  );
+}): GlobalVariableReferenceLocation[] =>
+  document.nodes.flatMap((node) => {
+    const inputLocations: GlobalVariableReferenceLocation[] = node.inputs.flatMap((input) => {
+      const selectedRenderType = getSelectedInputRenderType(input);
+      const matches = (() => {
+        // 1. 普通引用模式（reference / settingDatasetQuotePrompt）：支持单引用元组或一层引用数组
+        if (nodeInputIsReference(input)) {
+          return collectTupleMatches({
+            references: getWorkflowReferenceValues(input.value),
+            key,
+            expectedValueType: input.valueType
+          });
+        }
+        // 2. 知识库标签过滤（collectionFilterMatch / datasetTagFilter）：支持顶层整项引用、条件行内引用及文本插值
+        else if (
+          input.key === NodeInputKeyEnum.collectionFilterMatch ||
+          selectedRenderType === FlowNodeInputTypeEnum.datasetTagFilter
+        ) {
+          return collectCollectionFilterMatches({
+            value: input.value,
+            key,
+            expectedWholeValueType: input.valueType
+          });
+        }
+        // 3. 知识库聚合参数（datasetParams）：嵌套的 collectionFilterMatch 同样走标签过滤归一化器
+        else if (input.key === NodeInputKeyEnum.datasetParams) {
+          if (!isPlainRecord(input.value)) return [];
+          return collectCollectionFilterMatches({
+            value: input.value.collectionFilterMatch,
+            key,
+            expectedWholeValueType: WorkflowIOValueTypeEnum.string
+          });
+        }
+        // 4. 条件判断节点（ifElseList）：分支条件左值 variable 及引用模式右值 value
+        else if (input.key === NodeInputKeyEnum.ifElseList) {
+          return collectIfElseMatches({ value: input.value, key });
+        }
+        // 5. 变量更新节点（updateList）：赋值目标 variable、引用模式来源 value 及输入模式文本插值
+        else if (input.key === NodeInputKeyEnum.updateList) {
+          return collectUpdateListMatches({ value: input.value, key });
+        }
+        // 6. 表单输入节点（userInputForms）：单选/多选字段在引用模式下的动态选项 listReference
+        else if (input.key === NodeInputKeyEnum.userInputForms) {
+          return collectUserInputFormMatches({ value: input.value, key });
+        }
+        // 7. 密码输入（password）：凭据包装对象 { ref }
+        else if (selectedRenderType === FlowNodeInputTypeEnum.password) {
+          return collectSecretValueMatches({
+            value: input.value,
+            key,
+            expectedValueType: input.valueType
+          });
+        }
+        // 8. HTTP 请求头密钥（headerSecret）：键值映射表中的各项凭据 { [header]: { ref } }
+        else if (input.key === NodeInputKeyEnum.headerSecret) {
+          return collectSecretRecordMatches({ value: input.value, key });
+        }
+        // 9. 系统工具密钥配置（systemInputConfig）：仅 manual 模式的 value 映射表会解析凭据引用
+        else if (input.key === NodeInputKeyEnum.systemInputConfig) {
+          if (
+            !isPlainRecord(input.value) ||
+            input.value.type !== SystemToolSecretInputTypeEnum.manual
+          ) {
+            return [];
+          }
+          return collectSecretRecordMatches({ value: input.value.value, key });
+        }
+        // 10. HTTP 键值对数组输入（httpHeaders / httpParams / httpFormBody）：项内 key/value 的全局变量插值
+        else if (
+          input.key === NodeInputKeyEnum.httpHeaders ||
+          input.key === NodeInputKeyEnum.httpParams ||
+          input.key === NodeInputKeyEnum.httpFormBody
+        ) {
+          return collectHttpPropsTemplateMatches({ value: input.value, key });
+        }
+        // 11. 其他非引用模式输入：忽略与引用元组同形的普通字面量数组，仅识别字符串中的全局变量插值
+        else {
+          return collectTemplateMatches({
+            text: input.value,
+            key
+          });
+        }
+      })();
+
+      return matches.length > 0 ? [{ node, inputKey: input.key, matches }] : [];
+    });
+
+    // 内联 MCP / HTTP 工具配置中的 headerSecret 挂在 node.toolConfig 下，独立于 node.inputs
+    const toolConfigLocations: GlobalVariableReferenceLocation[] = [
+      { inputKey: 'toolConfig.mcpToolSet.headerSecret', config: node.toolConfig?.mcpToolSet },
+      { inputKey: 'toolConfig.httpToolSet.headerSecret', config: node.toolConfig?.httpToolSet },
+      { inputKey: 'toolConfig.mcpTool.headerSecret', config: node.toolConfig?.mcpTool },
+      { inputKey: 'toolConfig.httpTool.headerSecret', config: node.toolConfig?.httpTool }
+    ].flatMap(({ inputKey, config }) => {
+      if (!isPlainRecord(config) || !('headerSecret' in config)) return [];
+      const matches = collectSecretRecordMatches({ value: config.headerSecret, key });
+      return matches.length > 0 ? [{ node, inputKey, matches }] : [];
+    });
+
+    return [...inputLocations, ...toolConfigLocations];
+  });
 
 export const addGlobalVariable = ({
   document,
   variable
 }: {
   document: WorkflowDocument;
-  variable: VariableItemType;
+  variable: AddGlobalVariableInput;
 }) => {
-  if (getVariables(document).some((item) => item.key === variable.key)) {
+  const variables = getVariables(document);
+  const resolvedKey = variable.key?.trim() || generateUniqueVariableKey(variables);
+  if (variables.some((item) => item.key === resolvedKey)) {
     throw new WorkflowCommandError([
       {
         code: WorkflowDiagnosticCodeEnum.variableKeyDuplicated,
         severity: 'error',
-        params: { key: variable.key }
+        params: { key: resolvedKey }
       }
     ]);
   }
-  document.chatConfig.variables = [
-    ...getVariables(document),
-    VariableItemTypeSchema.parse(variable)
-  ];
+  const parsedVariable = VariableItemTypeSchema.parse({
+    ...variable,
+    key: resolvedKey
+  });
+  document.chatConfig.variables = [...variables, parsedVariable];
+  return parsedVariable.key;
 };
 
 export const updateGlobalVariable = ({
@@ -208,7 +559,7 @@ export const updateGlobalVariable = ({
 }: {
   document: WorkflowDocument;
   key: string;
-  patch: Partial<VariableItemType>;
+  patch: UpdateGlobalVariablePatch;
 }) => {
   const variables = getVariables(document);
   const index = variables.findIndex((item) => item.key === key);
@@ -217,24 +568,16 @@ export const updateGlobalVariable = ({
       { code: WorkflowDiagnosticCodeEnum.variableNotFound, severity: 'error', params: { key } }
     ]);
   }
-  const nextKey = patch.key ?? key;
-  if (nextKey !== key && variables.some((item) => item.key === nextKey)) {
-    throw new WorkflowCommandError([
-      {
-        code: WorkflowDiagnosticCodeEnum.variableKeyDuplicated,
-        severity: 'error',
-        params: { key: nextKey }
-      }
-    ]);
-  }
   const nextValueType = patch.valueType ?? variables[index].valueType;
   const references = getGlobalVariableReferences({ document, key });
-  const incompatibleReference = references.find(
-    ({ input }) =>
-      !areWorkflowValueTypesCompatible({
-        expected: input.valueType,
-        actual: nextValueType
-      })
+  const incompatibleReference = references.find(({ matches }) =>
+    matches.some(
+      ({ expectedValueType }) =>
+        !areWorkflowValueTypesCompatible({
+          expected: expectedValueType,
+          actual: nextValueType
+        })
+    )
   );
   if (incompatibleReference) {
     throw new WorkflowCommandError([
@@ -242,21 +585,19 @@ export const updateGlobalVariable = ({
         code: WorkflowDiagnosticCodeEnum.variableTypeChangeIncompatible,
         severity: 'error',
         nodeId: incompatibleReference.node.nodeId,
-        inputKey: incompatibleReference.input.key,
+        inputKey: incompatibleReference.inputKey,
         params: { key, valueType: nextValueType }
       }
     ]);
   }
   const next = [...variables];
-  next[index] = VariableItemTypeSchema.parse({ ...variables[index], ...structuredClone(patch) });
+  // 全局变量 key 创建后不可变，仅允许修改 label / valueType / 配置项等属性。
+  next[index] = VariableItemTypeSchema.parse({
+    ...variables[index],
+    ...structuredClone(patch),
+    key: variables[index].key
+  });
   document.chatConfig.variables = next;
-  if (nextKey !== key) {
-    for (const { references: matchedReferences } of references) {
-      for (const reference of matchedReferences) {
-        reference[1] = nextKey;
-      }
-    }
-  }
 };
 
 export const removeGlobalVariable = ({
@@ -280,9 +621,9 @@ export const removeGlobalVariable = ({
         severity: 'error',
         params: {
           key,
-          references: references.map(({ node, input }) => ({
+          references: references.map(({ node, inputKey }) => ({
             nodeId: node.nodeId,
-            inputKey: input.key
+            inputKey
           }))
         }
       }

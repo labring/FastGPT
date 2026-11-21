@@ -1,4 +1,8 @@
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
+import {
+  DatasetTagFilterLogicEnum,
+  DatasetTagFilterValueModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import {
   NodeInputKeyEnum,
@@ -7,6 +11,7 @@ import {
   VariableInputEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { applyWorkflowCommand } from '../../src/command/apply';
 import { builtinTemplateProvider } from '../template/provider';
 import { createWorkflowDocument } from '../../src/domain/document';
@@ -290,70 +295,40 @@ describe('fileSelectConfig output synchronization', () => {
 });
 
 describe('global variable references', () => {
-  it('rewrites whole-filter references and prevents deleting their variables', async () => {
-    const document = await createDocumentWithVariableReferenceArray();
-    const read = document.nodes.find((node) => node.nodeId === 'read');
-    if (!read) throw new Error('Read files node is unavailable');
-    read.inputs = [
-      {
-        key: NodeInputKeyEnum.collectionFilterMatch,
-        label: 'Tag filter',
-        renderTypeList: [FlowNodeInputTypeEnum.datasetTagFilter],
-        value: [VARIABLE_NODE_ID, 'tenantId']
+  it('auto-generates a unique key when variable.add omits key and rejects changing key on update', async () => {
+    const document = await createDocument();
+    const added = await apply(document, {
+      type: 'variable.add',
+      variable: {
+        label: 'GitHub Org',
+        description: '',
+        type: VariableInputEnum.input,
+        valueType: WorkflowIOValueTypeEnum.string,
+        required: true
       }
-    ];
-
-    const renamed = await apply(document, {
-      type: 'variable.update',
-      key: 'tenantId',
-      patch: { key: 'currentTenantId' }
     });
-    expect(renamed.document.nodes.find((node) => node.nodeId === 'read')?.inputs[0].value).toEqual([
-      VARIABLE_NODE_ID,
-      'currentTenantId'
-    ]);
+
+    const created = added.document.chatConfig.variables?.[0];
+    expect(created?.key).toMatch(/^[A-Za-z0-9]{8}$/);
+    expect(added.changes).toEqual([{ type: 'variable.add', key: created?.key }]);
+
+    const updated = await apply(added.document, {
+      type: 'variable.update',
+      key: created!.key,
+      patch: { label: 'GitHub Account' }
+    });
+    expect(updated.document.chatConfig.variables?.[0]).toMatchObject({
+      key: created!.key,
+      label: 'GitHub Account'
+    });
+
     await expect(
-      apply(renamed.document, { type: 'variable.remove', key: 'currentTenantId' })
-    ).rejects.toThrow(WorkflowDiagnosticCodeEnum.variableStillReferenced);
-  });
-
-  it('allows deleting a variable named in a literal array', async () => {
-    const document = await createDocumentWithVariableReferenceArray();
-    const read = document.nodes.find((node) => node.nodeId === 'read')!;
-    const literal = [VARIABLE_NODE_ID, 'tenantId'];
-    read.inputs = [
-      {
-        key: 'literal',
-        label: 'Literal',
-        renderTypeList: [FlowNodeInputTypeEnum.textarea],
-        value: literal
-      }
-    ];
-
-    const result = await apply(document, { type: 'variable.remove', key: 'tenantId' });
-
-    expect(result.document.chatConfig.variables).toEqual([]);
-    expect(result.document.nodes.find((node) => node.nodeId === 'read')?.inputs[0].value).toEqual(
-      literal
-    );
-  });
-
-  it('renames variables inside reference arrays without changing other references', async () => {
-    const document = await createDocumentWithVariableReferenceArray();
-    const result = await apply(document, {
-      type: 'variable.update',
-      key: 'tenantId',
-      patch: { key: 'currentTenantId' }
-    });
-
-    expect(
-      result.document.nodes
-        .find((node) => node.nodeId === 'read')
-        ?.inputs.find((input) => input.key === NodeInputKeyEnum.fileUrlList)?.value
-    ).toEqual([
-      [VARIABLE_NODE_ID, 'currentTenantId'],
-      ['start', NodeOutputKeyEnum.userFiles]
-    ]);
+      apply(updated.document, {
+        type: 'variable.update',
+        key: created!.key,
+        patch: { key: 'renamedKey' } as unknown as { label: string }
+      })
+    ).rejects.toThrow();
   });
 
   it('blocks removing variables referenced inside reference arrays', async () => {
@@ -390,6 +365,322 @@ describe('global variable references', () => {
           code: WorkflowDiagnosticCodeEnum.variableTypeChangeIncompatible,
           nodeId: 'read',
           inputKey: NodeInputKeyEnum.fileUrlList
+        })
+      ]
+    });
+  });
+
+  it('ignores literal arrays shaped like references on non-reference inputs', async () => {
+    const document = await createDocumentWithVariableReferenceArray();
+    const read = document.nodes.find((node) => node.nodeId === 'read')!;
+    const literal = [VARIABLE_NODE_ID, 'tenantId'];
+    read.inputs = [
+      {
+        key: 'literal',
+        label: 'Literal',
+        renderTypeList: [FlowNodeInputTypeEnum.textarea],
+        value: literal
+      },
+      {
+        key: 'bareTemplate',
+        label: 'Bare Template',
+        renderTypeList: [FlowNodeInputTypeEnum.textarea],
+        value: '{{tenantId}}'
+      }
+    ];
+
+    const removed = await apply(document, {
+      type: 'variable.remove',
+      key: 'tenantId'
+    });
+    expect(removed.document.chatConfig.variables).toEqual([]);
+    expect(removed.document.nodes.find((node) => node.nodeId === 'read')?.inputs[0].value).toEqual(
+      literal
+    );
+  });
+
+  it('blocks removing variables referenced by collectionFilterMatch and nested datasetParams', async () => {
+    const document = await createDocumentWithVariableReferenceArray();
+    const read = document.nodes.find((node) => node.nodeId === 'read')!;
+    read.inputs = [
+      {
+        key: NodeInputKeyEnum.collectionFilterMatch,
+        label: 'Whole filter',
+        renderTypeList: [FlowNodeInputTypeEnum.datasetTagFilter],
+        valueType: WorkflowIOValueTypeEnum.string,
+        value: [VARIABLE_NODE_ID, 'tenantId']
+      },
+      {
+        key: NodeInputKeyEnum.datasetParams,
+        label: 'Dataset params',
+        renderTypeList: [FlowNodeInputTypeEnum.hidden],
+        valueType: WorkflowIOValueTypeEnum.object,
+        value: {
+          collectionFilterMatch: {
+            logic: DatasetTagFilterLogicEnum.AND,
+            conditions: [
+              {
+                tag: 'tenant',
+                op: 'eq',
+                valueMode: DatasetTagFilterValueModeEnum.reference,
+                value: [VARIABLE_NODE_ID, 'tenantId']
+              }
+            ]
+          }
+        }
+      }
+    ];
+
+    await expect(
+      apply(document, { type: 'variable.remove', key: 'tenantId' })
+    ).rejects.toMatchObject({
+      diagnostics: [
+        expect.objectContaining({
+          code: WorkflowDiagnosticCodeEnum.variableStillReferenced,
+          params: expect.objectContaining({
+            references: [
+              { nodeId: 'read', inputKey: NodeInputKeyEnum.collectionFilterMatch },
+              { nodeId: 'read', inputKey: NodeInputKeyEnum.datasetParams }
+            ]
+          })
+        })
+      ]
+    });
+
+    await expect(
+      apply(document, {
+        type: 'variable.update',
+        key: 'tenantId',
+        patch: { valueType: WorkflowIOValueTypeEnum.object }
+      })
+    ).rejects.toMatchObject({
+      diagnostics: [
+        expect.objectContaining({
+          code: WorkflowDiagnosticCodeEnum.variableTypeChangeIncompatible,
+          inputKey: NodeInputKeyEnum.collectionFilterMatch
+        })
+      ]
+    });
+  });
+
+  it('blocks removing variables referenced by ifElseList, updateList, and userInputForms while ignoring input mode literals', async () => {
+    const document = await createDocumentWithVariableReferenceArray();
+    const read = document.nodes.find((node) => node.nodeId === 'read')!;
+    read.inputs = [
+      {
+        key: NodeInputKeyEnum.ifElseList,
+        label: 'IfElse',
+        renderTypeList: [FlowNodeInputTypeEnum.hidden],
+        valueType: WorkflowIOValueTypeEnum.any,
+        value: [
+          {
+            condition: 'AND',
+            list: [
+              {
+                variable: [VARIABLE_NODE_ID, 'tenantId'],
+                valueType: 'reference',
+                value: [VARIABLE_NODE_ID, 'tenantId']
+              }
+            ]
+          }
+        ]
+      },
+      {
+        key: NodeInputKeyEnum.updateList,
+        label: 'Update',
+        renderTypeList: [FlowNodeInputTypeEnum.hidden],
+        valueType: WorkflowIOValueTypeEnum.any,
+        value: [
+          {
+            variable: ['start', NodeOutputKeyEnum.userChatInput],
+            renderType: FlowNodeInputTypeEnum.input,
+            value: ['', `prefix-{{$${VARIABLE_NODE_ID}.tenantId$}}`]
+          }
+        ]
+      },
+      {
+        key: NodeInputKeyEnum.userInputForms,
+        label: 'Forms',
+        renderTypeList: [FlowNodeInputTypeEnum.custom],
+        valueType: WorkflowIOValueTypeEnum.any,
+        value: [
+          {
+            type: FlowNodeInputTypeEnum.select,
+            key: 'choice',
+            label: 'Choice',
+            listInputType: FlowNodeInputTypeEnum.reference,
+            listReference: [[VARIABLE_NODE_ID, 'tenantId']]
+          }
+        ]
+      }
+    ];
+
+    await expect(
+      apply(document, { type: 'variable.remove', key: 'tenantId' })
+    ).rejects.toMatchObject({
+      diagnostics: [
+        expect.objectContaining({
+          code: WorkflowDiagnosticCodeEnum.variableStillReferenced,
+          params: expect.objectContaining({
+            references: [
+              { nodeId: 'read', inputKey: NodeInputKeyEnum.ifElseList },
+              { nodeId: 'read', inputKey: NodeInputKeyEnum.updateList },
+              { nodeId: 'read', inputKey: NodeInputKeyEnum.userInputForms }
+            ]
+          })
+        })
+      ]
+    });
+
+    read.inputs = [
+      {
+        key: NodeInputKeyEnum.ifElseList,
+        label: 'IfElse',
+        renderTypeList: [FlowNodeInputTypeEnum.hidden],
+        value: [
+          {
+            condition: 'AND',
+            list: [
+              {
+                variable: ['start', NodeOutputKeyEnum.userChatInput],
+                valueType: 'input',
+                value: [VARIABLE_NODE_ID, 'tenantId']
+              }
+            ]
+          }
+        ]
+      },
+      {
+        key: NodeInputKeyEnum.userInputForms,
+        label: 'Forms',
+        renderTypeList: [FlowNodeInputTypeEnum.custom],
+        value: [
+          {
+            type: FlowNodeInputTypeEnum.select,
+            key: 'staticChoice',
+            label: 'Static',
+            listInputType: FlowNodeInputTypeEnum.input,
+            listReference: [[VARIABLE_NODE_ID, 'tenantId']]
+          }
+        ]
+      }
+    ];
+
+    const removed = await apply(document, { type: 'variable.remove', key: 'tenantId' });
+    expect(removed.document.chatConfig.variables).toEqual([]);
+  });
+
+  it('blocks removing variables referenced by password, headerSecret, manual systemInputConfig, and toolConfig', async () => {
+    const document = await createDocumentWithVariableReferenceArray();
+    const read = document.nodes.find((node) => node.nodeId === 'read')!;
+    read.inputs = [
+      {
+        key: 'apiPassword',
+        label: 'Password',
+        renderTypeList: [FlowNodeInputTypeEnum.password],
+        valueType: WorkflowIOValueTypeEnum.string,
+        value: { ref: [VARIABLE_NODE_ID, 'tenantId'] }
+      },
+      {
+        key: 'legacyPassword',
+        label: 'Legacy Password',
+        renderTypeList: [FlowNodeInputTypeEnum.password],
+        valueType: WorkflowIOValueTypeEnum.string,
+        value: JSON.stringify({ ref: [VARIABLE_NODE_ID, 'tenantId'] })
+      },
+      {
+        key: NodeInputKeyEnum.headerSecret,
+        label: 'Header Secret',
+        renderTypeList: [FlowNodeInputTypeEnum.hidden],
+        valueType: WorkflowIOValueTypeEnum.object,
+        value: { Authorization: { ref: [VARIABLE_NODE_ID, 'tenantId'] } }
+      },
+      {
+        key: NodeInputKeyEnum.systemInputConfig,
+        label: 'System Secret',
+        renderTypeList: [FlowNodeInputTypeEnum.hidden],
+        valueType: WorkflowIOValueTypeEnum.object,
+        value: {
+          type: SystemToolSecretInputTypeEnum.manual,
+          value: { token: { ref: [VARIABLE_NODE_ID, 'tenantId'] } }
+        }
+      },
+      {
+        key: NodeInputKeyEnum.systemInputConfig,
+        label: 'Platform Managed Secret',
+        renderTypeList: [FlowNodeInputTypeEnum.hidden],
+        valueType: WorkflowIOValueTypeEnum.object,
+        value: {
+          type: SystemToolSecretInputTypeEnum.system,
+          value: { staleToken: { ref: [VARIABLE_NODE_ID, 'tenantId'] } }
+        }
+      }
+    ];
+    read.toolConfig = {
+      mcpToolSet: {
+        url: 'https://example.com/mcp',
+        toolList: [],
+        headerSecret: { 'X-Tenant': { ref: [VARIABLE_NODE_ID, 'tenantId'] } }
+      }
+    };
+
+    await expect(
+      apply(document, { type: 'variable.remove', key: 'tenantId' })
+    ).rejects.toMatchObject({
+      diagnostics: [
+        expect.objectContaining({
+          code: WorkflowDiagnosticCodeEnum.variableStillReferenced,
+          params: expect.objectContaining({
+            references: [
+              { nodeId: 'read', inputKey: 'apiPassword' },
+              { nodeId: 'read', inputKey: 'legacyPassword' },
+              { nodeId: 'read', inputKey: NodeInputKeyEnum.headerSecret },
+              { nodeId: 'read', inputKey: NodeInputKeyEnum.systemInputConfig },
+              { nodeId: 'read', inputKey: 'toolConfig.mcpToolSet.headerSecret' }
+            ]
+          })
+        })
+      ]
+    });
+  });
+
+  it('blocks removing variables referenced by explicit templates in text and HTTP key-value inputs', async () => {
+    const document = await createDocumentWithVariableReferenceArray();
+    const read = document.nodes.find((node) => node.nodeId === 'read')!;
+    read.inputs = [
+      {
+        key: NodeInputKeyEnum.aiSystemPrompt,
+        label: 'Prompt',
+        renderTypeList: [FlowNodeInputTypeEnum.textarea],
+        valueType: WorkflowIOValueTypeEnum.string,
+        value: `Tenant={{$${VARIABLE_NODE_ID}.tenantId$}}`
+      },
+      {
+        key: NodeInputKeyEnum.httpHeaders,
+        label: 'Headers',
+        renderTypeList: [FlowNodeInputTypeEnum.hidden],
+        value: [
+          {
+            key: `X-{{$${VARIABLE_NODE_ID}.tenantId$}}`,
+            value: `Bearer {{$${VARIABLE_NODE_ID}.tenantId$}}`,
+            type: 'string'
+          }
+        ]
+      }
+    ];
+
+    await expect(
+      apply(document, { type: 'variable.remove', key: 'tenantId' })
+    ).rejects.toMatchObject({
+      diagnostics: [
+        expect.objectContaining({
+          code: WorkflowDiagnosticCodeEnum.variableStillReferenced,
+          params: expect.objectContaining({
+            references: [
+              { nodeId: 'read', inputKey: NodeInputKeyEnum.aiSystemPrompt },
+              { nodeId: 'read', inputKey: NodeInputKeyEnum.httpHeaders }
+            ]
+          })
         })
       ]
     });

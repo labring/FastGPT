@@ -437,8 +437,8 @@ export const applyWorkflowCommand = async ({
   }
 
   if (command.type === 'variable.add') {
-    addGlobalVariable({ document: nextDocument, variable: command.variable });
-    changes.push({ type: command.type, key: command.variable.key });
+    const addedKey = addGlobalVariable({ document: nextDocument, variable: command.variable });
+    changes.push({ type: command.type, key: addedKey });
   }
 
   if (command.type === 'variable.update') {

@@ -143,7 +143,7 @@ export type WorkflowLocalService = {
   variableAdd: (params: {
     dir: string;
     locale: string;
-    key: string;
+    key?: string;
     valueType: WorkflowIOValueTypeEnum;
     type?: string;
     label?: string;
@@ -165,7 +165,6 @@ export type WorkflowLocalService = {
     dir: string;
     locale: string;
     key: string;
-    newKey?: string;
     valueType?: WorkflowIOValueTypeEnum;
     type?: string;
     label?: string;
@@ -1008,10 +1007,10 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
         ? await readValueFromInput({ valueInput: valueInput!, valueType })
         : undefined;
       const config = await readVariableConfig(configInput);
-      const variable: VariableItemType = {
+      const variable = {
         ...config,
-        key,
-        label: label ?? key,
+        ...(key ? { key } : {}),
+        label: label ?? key ?? '',
         description: description ?? '',
         valueType,
         type,
@@ -1031,7 +1030,6 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
       dir,
       locale,
       key,
-      newKey,
       valueType,
       type: rawType,
       label,
@@ -1077,9 +1075,8 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
       const defaultValue = hasValue
         ? await readValueFromInput({ valueInput: valueInput!, valueType: nextValueType })
         : undefined;
-      const patch: Partial<VariableItemType> = {
+      const patch: Omit<Partial<VariableItemType>, 'key'> = {
         ...config,
-        key: newKey,
         label,
         description,
         valueType,
@@ -1089,7 +1086,7 @@ export function createWorkflowLocalService(deps: WorkflowLocalServiceDeps): Work
       };
       const cleanPatch = Object.fromEntries(
         Object.entries(patch).filter(([, value]) => value !== undefined)
-      ) as Partial<VariableItemType>;
+      ) as Omit<Partial<VariableItemType>, 'key'>;
       return runMutation({
         operation: 'workflow-build variable update',
         dir,
