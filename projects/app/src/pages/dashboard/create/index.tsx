@@ -474,14 +474,10 @@ const CreateAppsPage = () => {
                     <RadioGroup
                       list={[
                         { title: 'mcpOAuth.client_mode_auto', value: 'auto' },
-                        { title: 'mcpOAuth.client_mode_cimd', value: 'cimd' },
-                        { title: 'mcpOAuth.client_mode_dcr', value: 'dcr' },
                         { title: 'mcpOAuth.client_mode_manual', value: 'manual' }
                       ]}
                       value={mcpClientMode}
-                      onChange={(value) =>
-                        setValue('mcpClientMode', value as McpOAuthClientMode)
-                      }
+                      onChange={(value) => setValue('mcpClientMode', value as McpOAuthClientMode)}
                     />
                   </Flex>
                   <Box mt={4}>
@@ -625,9 +621,7 @@ const CreateAppsPage = () => {
               <Flex justifyContent={'end'}>
                 <Button
                   isLoading={isCreating}
-                  isDisabled={
-                    mcpAuthMode !== 'oauth' && (!mcpToolList || mcpToolList.length === 0)
-                  }
+                  isDisabled={mcpAuthMode !== 'oauth' && (!mcpToolList || mcpToolList.length === 0)}
                   onClick={handleSubmit((data) => onClickCreate(data))}
                   w={20}
                 >

@@ -36,7 +36,7 @@
 ### 1.2 现存前端（详情页）能力
 
 - `MCPTools/index.tsx`：解析唯一 toolSet 节点、初始化 `authMode/clientMode/scope`、回调 query 处理（success → `getTools` → 保存 toolList → 刷 status；error → 固定文案）。
-- `MCPTools/oauth/McpOAuthConfig.tsx`：认证模式、clientMode、auto 顺序、scope、状态卡、manual 表单、错误 Banner、断开/重置二次确认、高级操作。
+- `MCPTools/oauth/McpOAuthConfig.tsx`：认证模式、clientMode（仅 auto/manual）、auto 协商说明、scope、状态卡、manual 表单、错误 Banner、断开/重置二次确认、高级操作。
 - `MCPTools/oauth/useMcpOAuthStatus.ts`：status 查询 + 轮询。
 - `MCPTools/oauth/utils.ts`：scope、错误码、manual 校验、轮询判定、回调解析。
 - `MCPTools/oauth/errorCodes.ts`：直接复用全局错误码枚举。
@@ -113,7 +113,7 @@ canResetClient, updatedAt`
 | `.../oauth/useMcpOAuthStatus.ts` | 去掉 `visibilitychange` 依赖；按新判定轮询；保持 in-flight 去重、5 分钟上限、终态停止 |
 | `.../oauth/McpOAuthConfig.tsx` | 按 8 态映射渲染状态徽标/提示/按钮：`headers` 不渲染 OAuth 区块；`config_error` 禁用连接；`client_missing` 展开 manual；`pending/refreshing` 轮询提示；`authorized` 显示过期时间 + 断开；`refresh_due` 提示可解析工具；`reauth_required` 主按钮「重新授权」+ 最近错误 |
 | `.../MCPTools/index.tsx` | 使用 `stripMcpOAuthCallbackQuery` 清理 query；回调成功顺序保持 getTools → 保存 toolList → refresh status |
-| `projects/app/src/pages/dashboard/create/index.tsx` | 已支持 `authMode/clientMode/scope`，不改（01/02 仅参考） |
+| `projects/app/src/pages/dashboard/create/index.tsx` | 创建页 `authMode/clientMode/scope`；clientMode 只保留 auto/manual（按追加需求移除 CIMD/DCR 选项） |
 | `packages/web/i18n/{en,zh-CN,zh-Hant,ko-KR}/common.json` | 新增 8 条 `mcpOAuth.state_hint.*` |
 
 ### 3.2 测试
@@ -156,3 +156,4 @@ canResetClient, updatedAt`
 | D4 | 不恢复 `backup/pre-drop-9c1bc69` 的 modal 结构 | 用户明确要求丢弃；handoff §9.2 采用详情页内联配置 |
 | D5 | 创建页只保留 `authMode/clientMode/scope`，不提交 manual client | 设计 §8.4：创建后不自动 start，manual 在详情页 start 时提交 |
 | D6 | `client_missing/pending/authorized/refresh_due/refreshing/reauth_required` 展示重置，但是否可点仍以服务端 `canResetClient` 为准（断开同理） | 状态表只规定部分按钮的显隐；服务端 `can*` 字段是权限与可用性权威，前端 presentation 只负责布局提示 |
+| D7 | 前端 clientMode 只暴露 `auto`/`manual`，不提供 CIMD/DCR 选项；auto 固定由服务端按 CIMD → DCR → manual 协商；存量 `cimd`/`dcr` 读侧归一为 `auto`，`clientSource` 仅作诊断展示 | 用户追加需求优先于 handoff 中「可选 auto/CIMD/DCR/manual」的表述：协议顺序必须自动协商，不能让用户选协议。为兼容旧数据仅做读取归一，不迁移、不新增存储字段 |

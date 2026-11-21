@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Box, Button, Flex, Grid, Input, Text } from '@chakra-ui/react';
+import { Box, Button, Flex, Grid, Input } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -23,7 +23,7 @@ import {
   buildMcpOAuthScopeCandidates,
   buildMcpOAuthStartBody,
   formatMcpOAuthTime,
-  getMcpOAuthAutoStepStates,
+  getMcpOAuthClientSourceI18nKey,
   getMcpOAuthErrorCode,
   getMcpOAuthErrorCopy,
   getMcpOAuthStateI18nKey,
@@ -171,10 +171,6 @@ const McpOAuthConfig = ({
       errorCode: startErrorCode ?? status?.lastError?.code,
       manuallyOpened: manualOpen
     }) || presentation.manualForm;
-  const autoStepStates = useMemo(
-    () => getMcpOAuthAutoStepStates({ clientSource: status?.clientSource }),
-    [status?.clientSource]
-  );
 
   const startErrorMessage = getMcpOAuthErrorCopy(startErrorCode, t as McpOAuthTranslate);
   const callbackErrorMessage = getMcpOAuthErrorCopy(callbackErrorCode, t as McpOAuthTranslate);
@@ -345,8 +341,6 @@ const McpOAuthConfig = ({
             <RadioGroup
               list={[
                 { title: 'mcpOAuth.client_mode_auto', value: 'auto' },
-                { title: 'mcpOAuth.client_mode_cimd', value: 'cimd' },
-                { title: 'mcpOAuth.client_mode_dcr', value: 'dcr' },
                 { title: 'mcpOAuth.client_mode_manual', value: 'manual' }
               ]}
               value={clientMode}
@@ -354,51 +348,18 @@ const McpOAuthConfig = ({
             />
           </Flex>
 
-          {clientMode === 'auto' && (
-            <Box mt={3}>
-              <Text fontSize={'xs'} color={'myGray.500'}>
-                {t('mcpOAuth.auto_order_hint')}
-              </Text>
-              <Flex alignItems={'center'} gap={1} mt={1} wrap={'wrap'}>
-                {autoStepStates.map((item, index) => (
-                  <React.Fragment key={item.step}>
-                    {index > 0 && (
-                      <MyIcon name={'common/arrowRight'} w={'12px'} color={'myGray.400'} />
-                    )}
-                    <Box
-                      px={2}
-                      py={1}
-                      borderRadius={'sm'}
-                      fontSize={'xs'}
-                      bg={
-                        item.state === 'done'
-                          ? 'primary.50'
-                          : item.state === 'active'
-                            ? 'blue.50'
-                            : 'myGray.100'
-                      }
-                      color={
-                        item.state === 'done'
-                          ? 'primary.600'
-                          : item.state === 'active'
-                            ? 'blue.600'
-                            : 'myGray.500'
-                      }
-                    >
-                      {t(`mcpOAuth.auto_step_${item.step}`)}
-                      {' · '}
-                      {t(`mcpOAuth.auto_step_state_${item.state}`)}
-                    </Box>
-                  </React.Fragment>
-                ))}
-              </Flex>
+          {clientMode === 'auto' && clientSource && (
+            <Box mt={3} fontSize={'xs'} color={'myGray.500'}>
+              {t('mcpOAuth.auto_client_source_result', {
+                source: t(getMcpOAuthClientSourceI18nKey(clientSource))
+              })}
             </Box>
           )}
 
           <Box mt={4}>
             <Field label={t('mcpOAuth.issuer')}>{issuer || '-'}</Field>
             <Field label={t('mcpOAuth.client_source')}>
-              {clientSource ? t(`mcpOAuth.client_source_${clientSource}`) : '-'}
+              {clientSource ? t(getMcpOAuthClientSourceI18nKey(clientSource)) : '-'}
             </Field>
             <Field label={t('mcpOAuth.has_client_secret')}>
               {status ? (status.hasClientSecret ? t('mcpOAuth.yes') : t('mcpOAuth.no')) : '-'}

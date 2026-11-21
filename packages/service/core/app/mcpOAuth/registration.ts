@@ -20,7 +20,7 @@ import { assertMcpOAuthUrlSafe, requestMcpOAuthHttp } from './httpRuntime';
 /**
  * 客户端注册（v2.4 §5.4 / §5.5）。
  *
- * 模式顺序固定：CIMD → DCR → manual；显式模式不静默降级。
+ * `auto` 顺序固定：CIMD → DCR → manual；manual 为显式手工 Client，不做自动降级。
  * CIMD 的 `client_id` 是本站公开元数据 URL；DCR 使用 RFC 7591，
  * 注销使用 RFC 7592。
  */
@@ -403,11 +403,10 @@ export const selectMcpOAuthClient = async ({
     });
   };
 
-  if (clientMode === 'cimd') return selectCimd();
-  if (clientMode === 'dcr') return selectDcr();
   if (clientMode === 'manual') return selectManual();
 
-  // auto：严格 CIMD → DCR → manual，只有“不支持/不可用”才进入下一步。
+  // auto：固定 CIMD → DCR → manual，前端不暴露 CIMD/DCR 选择。
+  // 只有“不支持/不可用”才进入下一步。
   if (cimdAvailable) return selectCimd();
   if (server.registrationEndpoint) {
     try {

@@ -1,12 +1,16 @@
 import dayjs from 'dayjs';
-import type { McpOAuthStatus } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
+import type {
+  McpOAuthClientMode,
+  McpOAuthClientSource,
+  McpOAuthStatus
+} from '@fastgpt/global/core/app/tool/mcpTool/oauth';
 import type { McpOAuthStatusResponseType } from '@fastgpt/global/openapi/core/app/mcpTools/oauth';
 
 /**
  * MCP OAuth 前端纯逻辑（设计 §9）。
  *
  * 刻意不依赖 React / Chakra / 浏览器全局，便于在 vitest 中覆盖：
- * - 轮询判定（可见性 + 进行中状态 + 最长时长）
+ * - 轮询判定（进行中状态 + 最长时长）
  * - scope 规范化（无 allowlist，空即不申请）
  * - 错误码提取与文案映射
  * - manual client 表单校验
@@ -44,45 +48,12 @@ export const shouldPollMcpOAuthStatus = ({
   return true;
 };
 
-/** auto 模式的固定尝试顺序：CIMD → DCR → manual（不得调整）。 */
-export const MCP_OAUTH_AUTO_CLIENT_MODE_ORDER = ['cimd', 'dcr', 'manual'] as const;
-export type McpOAuthAutoStep = (typeof MCP_OAUTH_AUTO_CLIENT_MODE_ORDER)[number];
-
-export type McpOAuthAutoStepState = 'done' | 'active' | 'skipped' | 'pending';
-
-/** 依据 status 的实际 clientSource 推导 auto 链路展示进度，不臆造已尝试步骤。 */
-export const getMcpOAuthAutoStepStates = ({
-  clientSource
-}: {
-  clientSource?: 'cimd' | 'dcr' | 'manual' | null;
-}): { step: McpOAuthAutoStep; state: McpOAuthAutoStepState }[] => {
-  if (clientSource === 'cimd') {
-    return [
-      { step: 'cimd', state: 'done' },
-      { step: 'dcr', state: 'pending' },
-      { step: 'manual', state: 'pending' }
-    ];
-  }
-  if (clientSource === 'dcr') {
-    return [
-      { step: 'cimd', state: 'skipped' },
-      { step: 'dcr', state: 'done' },
-      { step: 'manual', state: 'pending' }
-    ];
-  }
-  if (clientSource === 'manual') {
-    return [
-      { step: 'cimd', state: 'skipped' },
-      { step: 'dcr', state: 'skipped' },
-      { step: 'manual', state: 'done' }
-    ];
-  }
-  return [
-    { step: 'cimd', state: 'active' },
-    { step: 'dcr', state: 'pending' },
-    { step: 'manual', state: 'pending' }
-  ];
-};
+/**
+ * clientSource 只用于展示服务端自动协商的结果，不是用户可选项。
+ * CIMD/DCR 的选择完全由服务端按 auto 策略决定。
+ */
+export const getMcpOAuthClientSourceI18nKey = (source: McpOAuthClientSource): string =>
+  `mcpOAuth.client_source_${source}`;
 
 /**
  * scope 按空格分隔、去重、保序；空值即空集。
@@ -465,7 +436,7 @@ export const buildMcpOAuthStartBody = ({
 }: {
   appId: string;
   nodeId?: string;
-  clientMode: 'auto' | 'cimd' | 'dcr' | 'manual';
+  clientMode: McpOAuthClientMode;
   scope?: string;
   manualClient?: {
     clientId: string;
@@ -475,7 +446,7 @@ export const buildMcpOAuthStartBody = ({
 }): {
   appId: string;
   nodeId?: string;
-  clientMode: 'auto' | 'cimd' | 'dcr' | 'manual';
+  clientMode: McpOAuthClientMode;
   scope?: string;
   manualClient?: {
     clientId: string;

@@ -4,6 +4,7 @@ import {
   type McpToolSetOAuthConfigType
 } from '@fastgpt/global/core/app/tool/mcpTool/oauthConfig';
 import {
+  MCP_OAUTH_CLIENT_MODES,
   McpOAuthClientModeSchema,
   McpOAuthErrorCodeSchema,
   McpOAuthStatusSchema,
@@ -243,14 +244,27 @@ describe('McpToolSetOAuthConfigSchema', () => {
     });
 
     expect(parsed.client?.clientId).toBe('client-1');
+    // 旧 clientMode 读取后归一为 auto，clientSource 仍保留真实来源。
+    expect(parsed.clientMode).toBe('auto');
+    expect(parsed.clientSource).toBe('dcr');
     expect(parsed.token?.secret.access_token).toEqual({ secret: 'encrypted-access-token' });
     expect(parsed.refreshLease).toEqual({ owner: 'worker-1', expiresAt: 2 });
   });
 });
 
 describe('MCP OAuth enums', () => {
-  it('supports manual client mode', () => {
-    expect(McpOAuthClientModeSchema.options).toEqual(['auto', 'cimd', 'dcr', 'manual']);
+  it('only offers auto/manual and normalizes legacy cimd/dcr to auto', () => {
+    expect(MCP_OAUTH_CLIENT_MODES).toEqual(['auto', 'manual']);
+    expect(McpOAuthClientModeSchema.parse('auto')).toBe('auto');
+    expect(McpOAuthClientModeSchema.parse('manual')).toBe('manual');
+    expect(McpOAuthClientModeSchema.parse('cimd')).toBe('auto');
+    expect(McpOAuthClientModeSchema.parse('dcr')).toBe('auto');
+    expect(McpOAuthClientModeSchema.safeParse('rollback').success).toBe(false);
+
+    // 存量节点读取：不迁移数据，旧值在 schema 层归一化。
+    expect(McpToolSetOAuthConfigSchema.parse({ clientMode: 'cimd' }).clientMode).toBe('auto');
+    expect(McpToolSetOAuthConfigSchema.parse({ clientMode: 'dcr' }).clientMode).toBe('auto');
+    expect(McpToolSetOAuthConfigSchema.parse({}).clientMode).toBe('auto');
   });
 
   it('exposes exactly the 8 status values', () => {
@@ -322,6 +336,16 @@ describe('MCP OAuth route schemas', () => {
         manualClient: { clientId: 'client-1' }
       }).success
     ).toBe(false);
+  });
+
+  it('normalizes legacy clientMode in start body and rejects unknown modes', () => {
+    const appId = '68ad85a7463006c963799a05';
+    expect(McpOAuthStartBodySchema.parse({ appId, clientMode: 'cimd' }).clientMode).toBe('auto');
+    expect(McpOAuthStartBodySchema.parse({ appId, clientMode: 'dcr' }).clientMode).toBe('auto');
+    expect(McpOAuthStartBodySchema.parse({ appId }).clientMode).toBe('auto');
+    expect(McpOAuthStartBodySchema.safeParse({ appId, clientMode: 'rollback' }).success).toBe(
+      false
+    );
   });
 
   it('accepts callback state up to the shared HTTP header safe cap', () => {
