@@ -647,11 +647,14 @@ describe('handleS3ProxyDownload missing object vs bucket errors', () => {
         name: 'NoSuchKey',
         $metadata: { httpStatusCode: 404 }
       });
-      const bucket = new S3BaseBucket({
-        bucketName: 'fastgpt-private',
-        downloadObject: vi.fn().mockRejectedValue(noSuchKeyError),
-        getObjectMetadata: vi.fn().mockRejectedValue(noSuchKeyError)
-      } as any);
+      const bucket = new S3BaseBucket(
+        {
+          bucketName: 'fastgpt-private',
+          downloadObject: vi.fn().mockRejectedValue(noSuchKeyError),
+          getObjectMetadata: vi.fn().mockRejectedValue(noSuchKeyError)
+        } as any,
+        undefined
+      );
 
       global.s3BucketMap = { 'fastgpt-private': bucket as any };
 
@@ -682,11 +685,14 @@ describe('handleS3ProxyDownload missing object vs bucket errors', () => {
         code: 'NoSuchBucket',
         $metadata: { httpStatusCode: 404 }
       });
-      const bucket = new S3BaseBucket({
-        bucketName: 'fastgpt-private',
-        downloadObject: vi.fn().mockRejectedValue(noSuchBucketError),
-        getObjectMetadata: vi.fn().mockRejectedValue(noSuchBucketError)
-      } as any);
+      const bucket = new S3BaseBucket(
+        {
+          bucketName: 'fastgpt-private',
+          downloadObject: vi.fn().mockRejectedValue(noSuchBucketError),
+          getObjectMetadata: vi.fn().mockRejectedValue(noSuchBucketError)
+        } as any,
+        undefined
+      );
 
       global.s3BucketMap = { 'fastgpt-private': bucket as any };
 
