@@ -7,25 +7,22 @@ import {
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { SANDBOX_USER_FILES_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
 import {
-  runWithContext,
-  type WorkflowSandboxContext
-} from '@fastgpt/service/core/workflow/utils/context';
+  runWithTestWorkflowContext as runWithContext,
+  createTestWorkflowFileContext
+} from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { type WorkflowSandboxContext } from '@fastgpt/service/core/workflow/dispatch/context';
 import { useToolMessages as useToolMessagesWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolMessages';
 
-const useToolMessages = (
+const useToolMessages = async (
   props: Parameters<typeof useToolMessagesWithoutContext>[0],
   sandboxContext?: WorkflowSandboxContext
 ) =>
   runWithContext(
     {
+      checkIsStopping: () => false,
       mcpClientMemory: {},
       sandboxContext,
-      fileContext: {
-        limits: { maxFileAmount: 20, maxBytesPerFile: 1024 },
-        resolve: () => undefined,
-        resolveChatFile: () => undefined,
-        getIdentity: () => undefined
-      } as any
+      fileContext: await createTestWorkflowFileContext()
     },
     () => useToolMessagesWithoutContext(props)
   );

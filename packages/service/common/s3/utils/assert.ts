@@ -67,6 +67,10 @@ export const isFileNotFoundError = (error: unknown): boolean => {
       statusCode?: unknown;
       $metadata?: { httpStatusCode?: unknown };
     };
+    // 具名 NoSuchBucket 属于服务端存储桶配置故障，虽然 provider 返回 HTTP 404，不能归类为对象缺失。
+    if ([value.code, value.name].some((item) => String(item) === 'NoSuchBucket')) {
+      return false;
+    }
     const statusCodes = [value.status, value.statusCode, value.$metadata?.httpStatusCode].map(
       (status) => Number(status)
     );

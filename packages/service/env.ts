@@ -2,8 +2,9 @@ import { createEnv } from '@t3-oss/env-core';
 import z from 'zod';
 import { isPhaseProductionBuild } from '@fastgpt/global/common/system/constants';
 import { BoolSchema, IntSchema, NumSchema, UrlSchema } from '@fastgpt/global/common/zod';
+import { StorageVendorSchema } from '@fastgpt/global/common/system/config/schemas/storage';
 import { getRuntimeEnv, validateS3Env, validateAgentUsersEnv } from './env.util';
-import { LogLevelSchema, StorageVendorSchema, StorageCosProtocolSchema } from './env.const';
+import { LogLevelSchema, StorageCosProtocolSchema } from './env.const';
 
 export const serviceEnv = createEnv({
   skipValidation: isPhaseProductionBuild,
@@ -112,6 +113,11 @@ export const serviceEnv = createEnv({
     MONGODB_LOG_URI: z.string().optional(),
 
     // VectorDB
+    SEARCH_MONGO_URL: z.string().optional().meta({
+      description:
+        '独立 MongoDB 8.3+ 检索库连接参数（需 mongot），默认库名 fastgpt_search；仅适用于新建存储（不含存量迁移），配置后优先启用且不复用业务主库连接',
+      example: 'mongodb://localhost:27017/fastgpt_search'
+    }),
     VECTOR_VQ_LEVEL: IntSchema.default(32).meta({
       description: '向量量化等级'
     }),

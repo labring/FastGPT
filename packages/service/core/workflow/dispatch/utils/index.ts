@@ -40,8 +40,8 @@ import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime
 import { getLogger, LogCategories } from '../../../../common/logger';
 
 import { getHTTPToolList } from '../../../app/http';
-import { getWorkflowResourceContext } from '../../utils/context';
-import { filterWorkflowToolList } from '../../resource/context';
+import { getWorkflowResourceContext } from '../context';
+import { filterWorkflowToolList } from '../context/resource';
 import { loadWorkflowAppResource } from '../../resource/service';
 import { axios } from '../../../../common/api/axios';
 import { getSecretValue } from '../../../../common/secret/utils';

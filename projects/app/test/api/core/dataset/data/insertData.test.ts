@@ -137,7 +137,7 @@ describe('POST /api/core/dataset/data/insertData', () => {
             type: 'collection',
             id: collectionId,
             name: 'Collection',
-            parentId: datasetId,
+            datasetId,
             collectionType: DatasetCollectionTypeEnum.virtual
           }
         ]

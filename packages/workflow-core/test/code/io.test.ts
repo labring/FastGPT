@@ -6,6 +6,29 @@ import {
 import { describe, expect, it } from 'vitest';
 
 describe('code IO parser', () => {
+  it('does not borrow a different field type when the named annotation is unsupported', () => {
+    const code = `
+      /**
+       * @param {custom} payload - Incoming payload
+       * @param {number} count - Count
+       * @property {custom} result - Result payload
+       * @property {number} total - Total
+       */
+      function main({ count, payload }) {
+        return { total: count, result: payload };
+      }
+    `;
+
+    expect(extractCodeInputDefinitions(code)).toEqual([
+      { key: 'count', valueType: 'number' },
+      { key: 'payload', valueType: undefined }
+    ]);
+    expect(extractCodeOutputDefinitions(code)).toEqual([
+      { key: 'total', valueType: 'number' },
+      { key: 'result', valueType: undefined }
+    ]);
+  });
+
   it('keeps static inputs and outputs that follow comments', () => {
     const code = `
       function main({

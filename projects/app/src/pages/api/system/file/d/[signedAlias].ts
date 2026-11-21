@@ -27,7 +27,8 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   try {
     const payload = await verifyS3DownloadAccess(signedAlias);
 
-    if (getStorageDownloadUrlMode() === 'short-redirect') {
+    const isShortRedirect = getStorageDownloadUrlMode() === 'short-redirect';
+    if (isShortRedirect && req.method !== 'HEAD') {
       return await handleS3RedirectDownload({
         req,
         res,
@@ -36,7 +37,12 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       });
     }
 
-    return await handleS3ProxyDownload({ req, res, payload });
+    return await handleS3ProxyDownload({
+      req,
+      res,
+      payload,
+      ...(isShortRedirect ? { cacheControl: 'no-store' } : {})
+    });
   } catch (error) {
     return handleS3ProxyRouteError({ res, error });
   }

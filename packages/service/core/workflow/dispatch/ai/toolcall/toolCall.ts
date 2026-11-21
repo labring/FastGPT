@@ -15,19 +15,19 @@ import {
   createAgentLoopCoreRuntimeEnvironment,
   createAgentLoopCoreRuntimeWithEnvironment,
   buildAgentLoopCoreInput,
-  runAgentLoopCoreWithSummary,
-  type AgentLoopCoreToolRunFlowResponse
+  runAgentLoopCoreWithSummary
 } from '../agentLoopCore/interface';
 import { createToolCallToolProvider } from './toolProvider';
 import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
 import { getDispatchModerationContext } from '../../utils/runtime';
-import { getWorkflowFileContext } from '../../../utils/context';
+import { getWorkflowContext, getWorkflowFileContext } from '../../context';
 
 type ResponseType = {
   requestIds: string[];
   firstTokenTime?: number;
   error?: unknown;
-  toolDispatchFlowResponses: AgentLoopCoreToolRunFlowResponse[];
+  /** 工具子流程实际运行次数，用于父队列扣减预算。 */
+  toolRunTimes: number;
   toolCallInputTokens: number;
   toolCallOutputTokens: number;
   toolCallTotalPoints: number; // 每次 LLM 调用单独计价后的累计价格（用于梯度计费）
@@ -38,15 +38,14 @@ type ResponseType = {
 };
 
 export const runToolCall = async (props: DispatchToolModuleProps): Promise<ResponseType> => {
+  const { checkIsStopping, workflowStreamResponse } = getWorkflowContext();
   const { messages, toolNodes, toolModel, childrenInteractiveParams, ...workflowProps } = props;
   const {
-    checkIsStopping,
     runtimeNodes,
     runtimeEdges,
     stream,
     retainDatasetCite = true,
     externalProvider,
-    workflowStreamResponse,
     usagePush,
     params: {
       temperature,
@@ -85,8 +84,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     workflowStreamResponse,
     streamAnswer: isResponseAnswerText,
     streamReasoning: aiChatReasoning,
-    getToolInfo,
-    collectToolRunResponses: true
+    getToolInfo
   });
   const toolProvider = await createToolCallToolProvider({
     messages,
@@ -96,7 +94,6 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     workflowProps,
     runtimeNodes,
     runtimeEdges,
-    cacheToolFlowResponse: runtimeEnvironment.cacheToolFlowResponse,
     onWorkflowRuntimeSummary: mergeChildWorkflowSummary
   });
   getProviderToolInfo = toolProvider.getToolInfo;
@@ -190,7 +187,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     requestIds: outputSummary.requestIds,
     firstTokenTime: outputSummary.firstTokenTime,
     error: coreResult.status === 'error' ? coreResult.error : undefined,
-    toolDispatchFlowResponses: runtimeEnvironment.toolRunResponses,
+    toolRunTimes: toolProvider.getToolRunTimes(),
     toolCallInputTokens: outputSummary.inputTokens,
     toolCallOutputTokens: outputSummary.outputTokens,
     toolCallTotalPoints: outputSummary.llmTotalPoints,

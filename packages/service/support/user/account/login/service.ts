@@ -132,12 +132,13 @@ export const finishPasswordLogin = async ({
   req: NodeHttpRequest;
   res: NodeHttpResponse;
 }) => {
+  const clientIp = getClientIpFromRequest(req);
   const token = await createUserSession({
     userId: user._id,
     teamId: userDetail.team.teamId,
     tmbId: userDetail.team.tmbId,
     isRoot: username === 'root',
-    ip: getClientIpFromRequest(req)
+    ip: clientIp
   });
 
   setCookie(res, token);
@@ -156,7 +157,8 @@ export const finishPasswordLogin = async ({
   void addAuditLog({
     tmbId: userDetail.team.tmbId,
     teamId: userDetail.team.teamId,
-    event: AuditEventEnum.LOGIN
+    event: AuditEventEnum.LOGIN,
+    ...(clientIp ? { params: { ip: clientIp } } : {})
   });
 
   return {

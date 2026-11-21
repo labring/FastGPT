@@ -59,18 +59,18 @@ describe('PriceTiersLabel', () => {
     const { visibleText, values } = render({
       pricing: {
         tiers: [
-          { maxInputTokens: 0.0041, inputPrice: 1.234, outputPrice: 2 },
+          { maxInputTokens: 4, inputPrice: 1.234, outputPrice: 2 },
           { inputPrice: 2.345, outputPrice: 4.125 }
         ]
       }
     });
     expect(visibleText).toContain('Input: 1.23~2.35 points/M Tokens');
     expect(values[0]).toEqual([
-      '0 < Input <= 0.0041',
-      '1.23 common:support.wallet.subscription.point',
-      '2 common:support.wallet.subscription.point'
+      '0 < Input <= 4',
+      '1.23 common:support.wallet.subscription.point/M Tokens',
+      '2 common:support.wallet.subscription.point/M Tokens'
     ]);
-    expect(values[1][0]).toContain('0.0041');
+    expect(values[1][0]).toContain('4');
   });
 
   it('retains the existing empty-price display', () => {
