@@ -71,6 +71,46 @@ const mockDiscovery = (issuer = 'https://example.org') => {
   });
 };
 
+/**
+ * 真实 CIMD 失败后的降级链路所需 mock：AS 同时声明 CIMD 与 DCR。
+ * 返回 `/register` 调用计数，用于断言「恰好一次」。
+ */
+const mockNegotiationWithDcr = (issuer = 'https://example.org') => {
+  const stats = { register: 0 };
+  setMcpOAuthFetchImpl(async (url, init) => {
+    const value = url.toString();
+    if (value === 'https://example.org/mcp' && init?.method === 'POST') {
+      return jsonResponse(
+        { jsonrpc: '2.0', error: { code: -32001, message: 'Unauthorized' }, id: 1 },
+        401,
+        { 'www-authenticate': 'Bearer resource_metadata="https://example.org/prm"' }
+      );
+    }
+    if (value === 'https://example.org/prm') {
+      return jsonResponse({
+        resource: 'https://example.org/mcp',
+        authorization_servers: [issuer]
+      });
+    }
+    if (value === `${issuer}/.well-known/oauth-authorization-server`) {
+      return jsonResponse({
+        issuer,
+        authorization_endpoint: `${issuer}/authorize`,
+        token_endpoint: `${issuer}/token`,
+        registration_endpoint: `${issuer}/register`,
+        code_challenge_methods_supported: ['S256'],
+        client_id_metadata_document_supported: true
+      });
+    }
+    if (value === `${issuer}/register` && init?.method === 'POST') {
+      stats.register += 1;
+      return jsonResponse({ client_id: 'dcr-client', token_endpoint_auth_method: 'none' }, 201);
+    }
+    return jsonResponse({}, 404);
+  });
+  return stats;
+};
+
 describe('POST /api/core/app/mcpTools/oauth/start', () => {
   afterEach(async () => {
     resetMcpOAuthFetchImpl();
@@ -191,5 +231,82 @@ describe('POST /api/core/app/mcpTools/oauth/start', () => {
 
     expect(res.status).toBe(409);
     expect(res.body.data.oauthCode).toBe('mcp_oauth_issuer_changed');
+  });
+
+  it('auto-degrades to DCR exactly once when the previous CIMD attempt was unconsumed', async () => {
+    const fixture = await setup();
+    const stats = mockNegotiationWithDcr();
+    const body = { appId: fixture.appId, nodeId: fixture.nodeId };
+
+    // 第 1 次 start：AS 声明支持 CIMD → 选 CIMD，不注册。
+    const first = await callRoute(startApi.default, { method: 'POST', body });
+    expect(first.status).toBe(200);
+    expect(first.body.clientSource).toBe('cimd');
+    expect(stats.register).toBe(0);
+
+    const cimdLedger = await MongoMcpOAuthState.findOne({
+      appId: fixture.appId,
+      clientSource: 'cimd'
+    });
+    expect(cimdLedger?.consumedAt).toBeUndefined();
+    expect(cimdLedger?.downgradedAt).toBeUndefined();
+
+    // 第 2 次 start：上一次 CIMD 未被消费 → 自动改用 DCR，/register 恰好 1 次。
+    const second = await callRoute(startApi.default, { method: 'POST', body });
+    expect(second.status).toBe(200);
+    expect(second.body.clientSource).toBe('dcr');
+    expect(stats.register).toBe(1);
+
+    const consumedCimd = await MongoMcpOAuthState.findById(cimdLedger!._id).lean();
+    expect(consumedCimd?.consumedAt).toBeTruthy();
+    expect(consumedCimd?.downgradedAt).toBeTruthy();
+
+    const dcrLedger = await MongoMcpOAuthState.findOne({
+      appId: fixture.appId,
+      clientSource: 'dcr'
+    });
+    expect(dcrLedger?.consumedAt).toBeUndefined();
+
+    const oauth = await readToolsetOAuth(fixture.versionId);
+    expect(oauth).toMatchObject({
+      clientMode: 'auto',
+      clientSource: 'dcr',
+      autoDcrFallback: true
+    });
+    expect(oauth?.client?.clientId).toBe('dcr-client');
+
+    // 第 3 次 start：粘性降级，继续复用 DCR，不再注册、也不回到 CIMD。
+    const third = await callRoute(startApi.default, { method: 'POST', body });
+    expect(third.status).toBe(200);
+    expect(third.body.clientSource).toBe('dcr');
+    expect(stats.register).toBe(1);
+    const authUrl = new URL(third.body.authorizationUrl);
+    expect(authUrl.searchParams.get('client_id')).toBe('dcr-client');
+  });
+
+  it('manual mode never downgrades even with an unconsumed CIMD attempt', async () => {
+    const fixture = await setup();
+    const stats = mockNegotiationWithDcr();
+    const body = { appId: fixture.appId, nodeId: fixture.nodeId };
+
+    const first = await callRoute(startApi.default, { method: 'POST', body });
+    expect(first.body.clientSource).toBe('cimd');
+
+    const manual = await callRoute(startApi.default, {
+      method: 'POST',
+      body: {
+        ...body,
+        clientMode: 'manual',
+        manualClient: { clientId: 'manual-client', tokenEndpointAuthMethod: 'none' }
+      }
+    });
+    expect(manual.status).toBe(200);
+    expect(manual.body.clientMode).toBe('manual');
+    expect(manual.body.clientSource).toBe('manual');
+    expect(stats.register).toBe(0);
+
+    const oauth = await readToolsetOAuth(fixture.versionId);
+    expect(oauth).toMatchObject({ clientMode: 'manual', clientSource: 'manual' });
+    expect(oauth?.autoDcrFallback).toBeUndefined();
   });
 });

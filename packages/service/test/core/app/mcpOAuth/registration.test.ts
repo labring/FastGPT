@@ -172,6 +172,82 @@ describe('mcpOAuth registration', () => {
     expect(fetchCalls).toBe(0);
   });
 
+  it('forceDcr skips CIMD and registers even when CIMD is available', async () => {
+    let fetchCalls = 0;
+    setMcpOAuthFetchImpl(async (url) => {
+      fetchCalls += 1;
+      expect(url.toString()).toBe('https://example.org/register');
+      return json({ client_id: 'dcr-client', token_endpoint_auth_method: 'none' }, 201);
+    });
+
+    const result = await selectMcpOAuthClient({
+      server: server({
+        clientIdMetadataDocumentSupported: true,
+        registrationEndpoint: 'https://example.org/register'
+      }),
+      clientMode: 'auto',
+      redirectUri: 'https://example.com/callback',
+      cimdClientId: 'https://example.com/client-metadata.json',
+      cimdAvailable: true,
+      forceDcr: true
+    });
+
+    expect(fetchCalls).toBe(1);
+    expect(result.source).toBe('dcr');
+    expect(result.client.clientId).toBe('dcr-client');
+  });
+
+  it('forceDcr reuses a saved DCR client without registering again', async () => {
+    let fetchCalls = 0;
+    setMcpOAuthFetchImpl(async () => {
+      fetchCalls += 1;
+      throw new Error('saved DCR client must be reused');
+    });
+
+    const result = await selectMcpOAuthClient({
+      server: server({
+        clientIdMetadataDocumentSupported: true,
+        registrationEndpoint: 'https://example.org/register'
+      }),
+      clientMode: 'auto',
+      redirectUri: 'https://example.com/callback',
+      cimdClientId: 'https://example.com/client-metadata.json',
+      cimdAvailable: true,
+      savedClient: { clientId: 'saved-dcr', tokenEndpointAuthMethod: 'none' },
+      savedClientSource: 'dcr',
+      forceDcr: true
+    });
+
+    expect(fetchCalls).toBe(0);
+    expect(result.source).toBe('dcr');
+    expect(result.client.clientId).toBe('saved-dcr');
+  });
+
+  it('manual mode never downgrades even when forceDcr is requested', async () => {
+    let fetchCalls = 0;
+    setMcpOAuthFetchImpl(async () => {
+      fetchCalls += 1;
+      throw new Error('manual mode must not touch the network');
+    });
+
+    const result = await selectMcpOAuthClient({
+      server: server({
+        clientIdMetadataDocumentSupported: true,
+        registrationEndpoint: 'https://example.org/register'
+      }),
+      clientMode: 'manual',
+      redirectUri: 'https://example.com/callback',
+      cimdClientId: 'https://example.com/client-metadata.json',
+      cimdAvailable: true,
+      manualClient: { clientId: 'manual-client', tokenEndpointAuthMethod: 'none' },
+      forceDcr: true
+    });
+
+    expect(fetchCalls).toBe(0);
+    expect(result.source).toBe('manual');
+    expect(result.client.clientId).toBe('manual-client');
+  });
+
   it('selects client_secret_basic by default when the AS does not declare methods', async () => {
     let registrationBody: any;
     setMcpOAuthFetchImpl(async (_url, init) => {

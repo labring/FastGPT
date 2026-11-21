@@ -616,7 +616,7 @@ const runCimdPhase = async () => {
     note('AS 的 CIMD 元数据主机白名单仅含 loopback；跨主机部署无法满足，见报告结论。');
   });
 
-  await runCase('real-cimd-04-authorize-rejected', '真实 /authorize 拒绝 CIMD client，FastGPT 不静默降级', async () => {
+  await runCase('real-cimd-04-authorize-rejected', '真实 /authorize 拒绝 CIMD client，单次失败不改写节点状态', async () => {
     await clearRateLimits();
     const before = captureAsCounters();
     const flow = await performAuthorization(appA.start.body.authorizationUrl);
@@ -632,30 +632,177 @@ const runCimdPhase = async () => {
     check('拒绝响应不包含 code/state', !/\"code\"|access_token/.test(flow.authorize.text));
     check('未进入 /consent', delta.consent === 0, { consent: delta.consent });
     check('未发生 code 交换', delta.tokenAuthorizationCode === 0);
-    check('无静默回退：/register delta 仍为 0', delta.register === 0, { register: delta.register });
+    check('无静默改写：单次 /authorize 失败本身不触发 /register', delta.register === 0, {
+      register: delta.register
+    });
     const { oauth } = await nodeOauth(appA.appId);
-    check('节点 clientSource 仍为 cimd（无静默改写）', oauth?.clientSource === 'cimd', {
+    check('节点 clientSource 仍为 cimd（失败请求不改写状态）', oauth?.clientSource === 'cimd', {
       clientSource: oauth?.clientSource
     });
     check('未写入 token', oauth?.token === undefined);
-    note('结论：CIMD 失败发生在 AS 侧，FastGPT 当前不会自动改用 DCR；DCR 走 FE_DOMAIN 非 https 的既有降级条件。');
+    note('结论：CIMD 失败发生在 AS 侧且没有回调；降级依据是「上一次 CIMD 台账未消费」，由下一次 start 触发。');
   });
 
-  await runCase('real-cimd-05-normalize', 'start 传 clientMode=dcr 仍按 auto 归一（CIMD 优先）', async () => {
+  await runCase('real-cimd-05-downgrade-start', '第二次 start 自动降级 DCR，/register 恰好 +1', async () => {
     await clearRateLimits();
-    const before = captureAsCounters();
-    const started = await startOAuth(appA.appId, { clientMode: 'dcr', scope: 'mcp:tools' });
-    const delta = asDelta(before);
-    check('start -> 200', started.res.status === 200, { status: started.res.status });
-    check('响应 clientMode=auto', started.body?.clientMode === 'auto', {
-      clientMode: started.body?.clientMode
+    // 上一次 CIMD 尝试没有回调（AS 直接 400），台账仍未消费。
+    const pendingCimd = await db.collection('mcp_oauth_states').findOne({
+      appId: appA.appId,
+      consumedAt: { $exists: false },
+      clientSource: 'cimd'
     });
-    check('clientSource 仍为 cimd', started.body?.clientSource === 'cimd', {
+    check('台账存在未消费的 CIMD attempt', !!pendingCimd);
+    check('该 attempt 尚未标记降级', pendingCimd?.downgradedAt === undefined);
+
+    const before = captureAsCounters();
+    const started = await startOAuth(appA.appId, { clientMode: 'auto', scope: 'mcp:tools' });
+    appA.start2 = started;
+    const delta = asDelta(before);
+    check('第 2 次 start -> HTTP 200', started.res.status === 200, {
+      status: started.res.status
+    });
+    check('自动 clientSource=dcr', started.body?.clientSource === 'dcr', {
       clientSource: started.body?.clientSource
     });
-    check('未因显式 dcr 触发 /register', delta.register === 0, { register: delta.register });
+    check('clientMode 仍为 auto', started.body?.clientMode === 'auto');
+    check('AS /register 恰好新增 1 次', delta.register === 1, { register: delta.register });
+
     const { oauth } = await nodeOauth(appA.appId);
-    check('节点 clientSource 保持 cimd', oauth?.clientSource === 'cimd');
+    check('节点 clientSource=dcr', oauth?.clientSource === 'dcr', {
+      clientSource: oauth?.clientSource
+    });
+    check('节点写入粘性降级标记 autoDcrFallback=true', oauth?.autoDcrFallback === true);
+    check('client_id 不再是 CIMD 文档 URL', oauth?.client?.clientId !== cimdClientId(), {
+      isCimd: oauth?.client?.clientId === cimdClientId()
+    });
+
+    const oldCimd = await db.collection('mcp_oauth_states').findOne({
+      appId: appA.appId,
+      clientSource: 'cimd'
+    });
+    check('旧 CIMD 台账已消费', !!oldCimd?.consumedAt);
+    check('旧 CIMD 台账已标记 downgradedAt', !!oldCimd?.downgradedAt);
+    const dcrState = await db.collection('mcp_oauth_states').findOne({
+      appId: appA.appId,
+      clientSource: 'dcr',
+      consumedAt: { $exists: false }
+    });
+    check('新的 DCR 台账已写入且未消费', !!dcrState);
+    check('state 台账未消费 1 条', (await pendingStates(appA.appId)) === 1);
+  });
+
+  await runCase('real-cimd-06-sticky-dcr', '连续 start 保持 DCR，不抖动且不再注册', async () => {
+    await clearRateLimits();
+    const before = captureAsCounters();
+    const started = await startOAuth(appA.appId, { clientMode: 'auto', scope: 'mcp:tools' });
+    appA.start3 = started;
+    const delta = asDelta(before);
+    check('第 3 次 start -> HTTP 200', started.res.status === 200, {
+      status: started.res.status
+    });
+    check('clientSource 仍为 dcr（不回到 CIMD）', started.body?.clientSource === 'dcr', {
+      clientSource: started.body?.clientSource
+    });
+    check('AS /register delta = 0（复用已保存 DCR client）', delta.register === 0, {
+      register: delta.register
+    });
+    const { oauth } = await nodeOauth(appA.appId);
+    const authUrl = new URL(started.body?.authorizationUrl ?? 'http://invalid/');
+    check('授权 URL 使用已保存的 DCR client_id',
+      authUrl.searchParams.get('client_id') === oauth?.client?.clientId);
+  });
+
+  await runCase('real-cimd-07-authorize-callback', '降级后真实 /authorize → /consent → /confirm → callback', async () => {
+    await clearRateLimits();
+    const before = captureAsCounters();
+    const flow = await performAuthorization(appA.start3.body.authorizationUrl);
+    appA.flow = flow;
+    check('AS /authorize 不再 400，返回 302 /consent',
+      flow.authorize.status === 302 && /\/consent/.test(flow.authorize.location ?? ''), {
+        status: flow.authorize.status
+      });
+    check('AS /consent 返回 HTML 同意页',
+      flow.consent?.status === 200 && /<form/i.test(flow.consent.text));
+    check('AS /confirm -> 302 回调地址', flow.confirm?.status === 302);
+    check('回调携带 code/state/iss', !!flow.code && !!flow.state && !!flow.iss);
+    check('iss 等于真实 AS issuer', flow.iss === CFG.asIssuer);
+
+    const outcome = await doCallback({
+      state: flow.state,
+      code: flow.code,
+      iss: flow.iss,
+      cookie: `${appA.start3.cookieName}=${appA.start3.cookieValue}`
+    });
+    appA.outcome = outcome;
+    const delta = asDelta(before);
+    check('callback -> HTTP 302', outcome.redirected, { status: outcome.status });
+    check('callback 跳转 oauth=success', outcome.oauth === 'success', {
+      oauth: outcome.oauth,
+      appIdMatches: outcome.appId === appA.appId
+    });
+    check('AS /token(authorization_code) 恰好 1 次', delta.tokenAuthorizationCode === 1, {
+      token: delta.tokenAuthorizationCode
+    });
+    check('state 一次性消费', (await consumedStates(appA.appId)) >= 1);
+
+    const { oauth } = await nodeOauth(appA.appId);
+    check('token 加密落库（iv:hex:hex）', /^[0-9a-f]+:[0-9a-f]+:[0-9a-f]+$/.test(
+      oauth?.token?.secret?.access_token?.secret ?? ''
+    ));
+    check('refresh_token 已落库', !!oauth?.token?.secret?.refresh_token?.secret);
+    check('credentialSeq 递增', (oauth?.credentialSeq ?? 0) > 0, {
+      credentialSeq: oauth?.credentialSeq
+    });
+    check('授予 scope = mcp:tools', oauth?.scope === 'mcp:tools', { scope: oauth?.scope });
+    check('授权成功后清除降级标记', oauth?.autoDcrFallback === undefined);
+    check('最终 clientSource=dcr', oauth?.clientSource === 'dcr');
+  });
+
+  await runCase('real-cimd-08-status-db', '降级授权后 status=authorized，DB 无明文 token', async () => {
+    await clearRateLimits();
+    const { res, status } = await statusOf(appA.appId);
+    check('status -> HTTP 200', res.status === 200);
+    check('state=authorized', status?.state === 'authorized', { state: status?.state });
+    check('authorized=true', status?.authorized === true);
+    check('hasAccessToken=true', status?.hasAccessToken === true);
+    check('clientSource=dcr', status?.clientSource === 'dcr');
+    check('status.scope = mcp:tools', status?.scope === 'mcp:tools');
+    check(
+      'status 响应无 token/secret 字段',
+      !hasForbiddenKeys(status, new Set(['access_token', 'refresh_token', 'clientSecret', 'secret', 'codeVerifier']))
+    );
+    const { node, oauth } = await nodeOauth(appA.appId);
+    check('DB token 为密文', /^[0-9a-f]+:[0-9a-f]+:[0-9a-f]+$/.test(
+      oauth?.token?.secret?.access_token?.secret ?? ''
+    ));
+    check('节点 id 一致', !!node?.nodeId);
+    check('DB 中无 autoDcrFallback', oauth?.autoDcrFallback === undefined);
+  });
+
+  await runCase('real-cimd-09-get-tools', '降级后用真实 Bearer 调用 tools/list', async () => {
+    await clearRateLimits();
+    const before = captureAsCounters();
+    const res = await getTools(appA.appId);
+    const tools = apiData(res);
+    check('getTools -> HTTP 200', res.status === 200, { status: res.status });
+    check('返回工具数组', Array.isArray(tools), { count: tools?.length });
+    check('包含 echo / whoami', tools?.some((tool) => tool.name === 'echo') &&
+      tools?.some((tool) => tool.name === 'whoami'));
+    check('AS /mcp 被真实命中且 2xx', readAsLog().slice(before.logLength).some(
+      (entry) => isMcp(entry) && entry.status >= 200 && entry.status < 300
+    ));
+  });
+
+  await runCase('real-cimd-10-run-tool', '降级后用真实 Bearer 调用 tools/call', async () => {
+    await clearRateLimits();
+    const res = await runTool(appA.appId);
+    check('runTool -> HTTP 200', res.status === 200, { status: res.status });
+    check('echo 返回 hello-e2e', apiData(res)?.content?.[0]?.text === 'hello-e2e', {
+      text: apiData(res)?.content?.[0]?.text
+    });
+    check('runTool 响应不含 Bearer/refresh_token 明文',
+      !/Bearer\s+[A-Za-z0-9._~-]{16,}/.test(res.text) &&
+        !hasForbiddenKeys(res.json, new Set(['access_token', 'refresh_token'])));
   });
 };
 

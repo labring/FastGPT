@@ -3,7 +3,8 @@ import { encryptSecret, decryptSecret } from '../../../common/secret/aes256gcm';
 import { McpOAuthApiError } from './errors';
 import {
   MCP_OAUTH_STATE_MAX_LENGTH,
-  McpOAuthErrorCodeEnum
+  McpOAuthErrorCodeEnum,
+  type McpOAuthClientSource
 } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
 import { MCP_OAUTH_STATE_PURGE_MS, MCP_OAUTH_STATE_TTL_MS, MongoMcpOAuthState } from './schema';
 import {
@@ -163,10 +164,13 @@ export const parseMcpOAuthState = (
 export const writeMcpOAuthState = async ({
   payload,
   bindCookieHash,
+  clientSource,
   now = Date.now()
 }: {
   payload: McpOAuthStatePayloadType;
   bindCookieHash: string;
+  /** 本次尝试实际选用的 client 来源；仅用于下一次 start 判定是否降级。 */
+  clientSource?: McpOAuthClientSource;
   now?: number;
 }): Promise<{ stateHash: string }> => {
   const stateHash = sha256Hex(payload.n);
@@ -183,6 +187,7 @@ export const writeMcpOAuthState = async ({
       resource: payload.resource,
       clientIdHash: payload.clientIdHash,
       redirectUri: payload.redirectUri,
+      ...(clientSource ? { clientSource } : {}),
       createdAt: new Date(now),
       expiresAt: new Date(payload.exp),
       purgeAt: new Date(now + MCP_OAUTH_STATE_PURGE_MS)
@@ -215,6 +220,57 @@ export const expirePendingMcpOAuthStates = async ({
     // 被误报为 state_invalid（consumedAt 过滤已能阻止复用）。
     { $set: { consumedAt: new Date(now) } }
   );
+};
+
+/**
+ * 查出「上一次 auto 选了 CIMD，但用户没有走完授权」的台账记录。
+ *
+ * 判定条件是台账仍未被消费，且该 CIMD attempt 尚未降级过。CIMD 在
+ * AS 侧被拒时可能根本没有任何回调（浏览器直接收到 AS 的 400），所以不能依赖
+ * callback 捕获错误；下一次 start 用这条记录作为降级依据。
+ *
+ * 不限定 `expiresAt`：上一个 attempt 即使已过期也仍是「没有走完的 CIMD 尝试」，
+ * 用户重新 start 时同样应降级；`downgradedAt` 保证同一条台账只触发一次。
+ * 旧台账没有 `clientSource` 字段，一律视为来源未知，不会触发降级。
+ */
+export const findPendingCimdAttempt = async ({
+  appId,
+  nodeId,
+  tmbId
+}: {
+  appId: string;
+  nodeId: string;
+  tmbId: string;
+}): Promise<McpOAuthStateRecordType | null> =>
+  (await MongoMcpOAuthState.findOne({
+    appId,
+    nodeId,
+    tmbId,
+    consumedAt: { $exists: false },
+    clientSource: 'cimd',
+    downgradedAt: { $exists: false }
+  })
+    .sort({ createdAt: -1 })
+    .lean()) as McpOAuthStateRecordType | null;
+
+/**
+ * 标记某条 CIMD attempt 已触发自动降级。
+ *
+ * 以 `downgradedAt` 不存在为条件，保证同一条台账最多降级一次；返回值表示
+ * 本次调用是否真正写入，便于测试断言「只降级一次」。
+ */
+export const markMcpOAuthStateDowngraded = async ({
+  stateHash,
+  now = Date.now()
+}: {
+  stateHash: string;
+  now?: number;
+}): Promise<boolean> => {
+  const result = await MongoMcpOAuthState.updateOne(
+    { _id: stateHash, downgradedAt: { $exists: false } },
+    { $set: { downgradedAt: new Date(now) } }
+  );
+  return result.modifiedCount === 1;
 };
 
 /**

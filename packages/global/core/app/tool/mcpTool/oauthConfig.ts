@@ -121,6 +121,14 @@ export const McpToolSetOAuthConfigSchema = z.object({
   revokeLease: McpOAuthLeaseSchema.nullish(),
   lastError: McpOAuthLastErrorSchema.nullish(),
   authorizedAt: z.number().nullish(),
-  authorizedBy: z.string().max(64).nullish()
+  authorizedBy: z.string().max(64).nullish(),
+  /**
+   * auto 模式下「CIMD 尝试未走完 → 已自动降级 DCR」的粘性标记。
+   *
+   * 可选字段：授权成功（token 落库）或 client/reset 时清除。它保证同一条授权链
+   * 只降级一次，后续 start 持续复用 DCR，不会在 CIMD/DCR 之间抖动。manual 模式
+   * 不使用该标记；不进入 status 契约（status 仍为 22 个顶层字段）。
+   */
+  autoDcrFallback: z.boolean().nullish()
 });
 export type McpToolSetOAuthConfigType = z.infer<typeof McpToolSetOAuthConfigSchema>;

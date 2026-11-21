@@ -342,6 +342,8 @@ export type McpOAuthClientSelection = {
  * 选择/复用 client。
  *
  * `savedClientSource` 来自节点 `oauth.clientSource`（client 本身不存 source）。
+ * `forceDcr` 用于 CIMD 失败后的自动降级：跳过 CIMD，只复用/注册 DCR client；
+ * manual 模式优先级最高，永远不会被自动降级改写。
  */
 export const selectMcpOAuthClient = async ({
   server,
@@ -352,6 +354,7 @@ export const selectMcpOAuthClient = async ({
   savedClient,
   savedClientSource,
   manualClient,
+  forceDcr = false,
   now = Date.now()
 }: {
   server: McpOAuthServerMetadataType;
@@ -362,6 +365,7 @@ export const selectMcpOAuthClient = async ({
   savedClient?: McpOAuthClientType;
   savedClientSource?: McpOAuthClientSource;
   manualClient?: McpOAuthManualClientType;
+  forceDcr?: boolean;
   now?: number;
 }): Promise<McpOAuthClientSelection> => {
   const reuse = (source: McpOAuthClientSource): McpOAuthClientSelection | null => {
@@ -404,6 +408,9 @@ export const selectMcpOAuthClient = async ({
   };
 
   if (clientMode === 'manual') return selectManual();
+
+  // 自动降级只允许 DCR：不复用 CIMD，也不静默转 manual。
+  if (forceDcr) return selectDcr();
 
   // auto：固定 CIMD → DCR → manual，前端不暴露 CIMD/DCR 选择。
   // 只有“不支持/不可用”才进入下一步。
