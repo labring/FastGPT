@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatRefKey,
-  isV2PromptRefKey,
   parseV2RefKey,
   splitParentChildId
 } from '@fastgpt/global/core/workflow/node/agent/promptRef/codec';
@@ -50,7 +49,7 @@ describe('agent promptRef V2 codec (parseV2RefKey / formatRefKey)', () => {
       const parsed = parseV2RefKey(key);
       expect(parsed).not.toBeNull();
       expect(formatRefKey(parsed!)).toBe(key);
-      expect(isV2PromptRefKey(key)).toBe(true);
+      expect(parseV2RefKey(key)).not.toBeNull();
     }
 
     expect(splitParentChildId('66f1/ns:get-issue')).toEqual({
@@ -206,7 +205,6 @@ describe('AgentPromptRefRegistry invariants', () => {
       {
         ref: refFromTool({ id: 'systemTool-metaso', source: 'system' })!,
         displayName: '秘塔搜索(官方)',
-        legacyWriteKey: 'system:systemTool-metaso',
         meta: { tag: 'sys-metaso' }
       },
       {
@@ -215,7 +213,6 @@ describe('AgentPromptRefRegistry invariants', () => {
           source: 'teamId:67a100000000000000000001'
         })!,
         displayName: '秘塔搜索(团队)',
-        legacyWriteKey: 'teamId:67a100000000000000000001:systemTool-metaso',
         meta: { tag: 'team-metaso' }
       },
       // ToolSet 展开多个子工具共享同一父级 canonicalKey，不应触发假歧义
@@ -263,13 +260,11 @@ describe('AgentPromptRefRegistry invariants', () => {
       {
         ref: refFromBuiltin('dataset_search'),
         displayName: '知识库检索',
-        legacyWriteKey: 'dataset_search',
         meta: { tag: 'kb' }
       },
       {
         ref: refFromBuiltin('read_files'),
         displayName: '文件解析',
-        legacyWriteKey: 'read_files',
         meta: { tag: 'rf' }
       }
     ]);
@@ -343,28 +338,7 @@ describe('AgentPromptRefRegistry invariants', () => {
     expect(composed).not.toContain('{{{{');
   });
 
-  it('losslessly upgrades resolved legacy refs while keeping ambiguous and unresolved intact', () => {
-    const registry = createRegistry();
-    const upgraded = registry.upgradePrompt(
-      '{{@systemTool-metaso@}} + {{@dataset_search@}} + {{@metaso@}} + {{@plugin:system:deleted@}}'
-    );
-    expect(upgraded).toEqual({
-      text: '{{@plugin:system:metaso@}} + {{@builtin:dataset_search@}} + {{@metaso@}} + {{@plugin:system:deleted@}}',
-      upgradedCount: 2
-    });
-  });
-
-  it('audits debug refs, legacy hits, ambiguous refs, and unresolved refs accurately', () => {
-    const registry = createRegistry();
-    const text =
-      '{{@plugin:debug:67d300000000000000000002:local_calc@}} {{@systemTool-metaso@}} {{@metaso@}} {{@plugin:system:removed@}}';
-    const audit = registry.auditPrompt(text);
-    expect(audit.debugRefs).toEqual(['plugin:debug:67d300000000000000000002:local_calc']);
-    expect(audit.legacyRefs).toEqual(['systemTool-metaso']);
-    expect(audit.ambiguousRefs).toHaveLength(1);
-    expect(audit.unresolvedRefs).toEqual([
-      { rawKey: 'plugin:system:removed', inferredType: 'plugin' }
-    ]);
+  it('detects debug refs, double-wrap normalization, stripping, and builtin predicates', () => {
     expect(hasDebugPromptRef('{{@debug:tmbId:u1:systemTool-x@}}')).toBe(true);
     expect(hasDebugPromptRef('{{@plugin:debug:u1:x@}}')).toBe(true);
     expect(hasDebugPromptRef('{{@plugin:system:x@}}')).toBe(false);

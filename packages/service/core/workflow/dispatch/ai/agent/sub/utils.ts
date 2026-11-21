@@ -70,7 +70,7 @@ export const getSubapps = async ({
         : parsedFromId.kind === 'legacy'
           ? parsedFromId.deterministicRef
           : undefined) ??
-      refFromTool({ id: promptReference.legacyId || promptReference.id });
+      refFromTool({ id: promptReference.id });
     if (ref) {
       const canonicalKey = formatRefKey(ref);
       const existing = promptToolRefEntryMap.get(canonicalKey);

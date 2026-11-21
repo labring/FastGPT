@@ -6,6 +6,12 @@ import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/
 import type { AgentPromptRef } from '@fastgpt/global/core/workflow/node/agent/promptRef/types';
 import type { SubAppRuntimeType } from '../type';
 
+export type SubAppPromptReferenceType = {
+  id: string;
+  name: string;
+  ref?: AgentPromptRef;
+};
+
 export type SubAppInitType = {
   type: SubAppRuntimeType['type'];
   id: string;
@@ -16,18 +22,8 @@ export type SubAppInitType = {
   inputs: RuntimeNodeItemType['inputs'];
   agentGeneratedInputKeys: string[];
   requestSchema: ChatCompletionTool;
-  childPromptReference?: {
-    id: string;
-    legacyId?: string;
-    name: string;
-    ref?: AgentPromptRef;
-  };
-  promptReference?: {
-    id: string;
-    legacyId?: string;
-    name: string;
-    ref?: AgentPromptRef;
-  };
+  childPromptReference?: SubAppPromptReferenceType;
+  promptReference?: SubAppPromptReferenceType;
   params: {
     [NodeInputKeyEnum.systemInputConfig]?: {
       type: SystemToolSecretInputTypeEnum;

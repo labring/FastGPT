@@ -567,7 +567,6 @@ describe('dispatchRunAgent user context', () => {
         agentGeneratedInputKeys: [],
         promptReference: {
           id: 'system:systemTool-metaso',
-          legacyId: 'systemTool-metaso',
           name: '秘塔官方'
         },
         params: {},
@@ -628,7 +627,6 @@ describe('dispatchRunAgent user context', () => {
         agentGeneratedInputKeys: [],
         promptReference: {
           id: 'system:systemTool-getTime',
-          legacyId: 'systemTool-getTime',
           name: 'Get Time'
         },
         params: {},
@@ -649,7 +647,6 @@ describe('dispatchRunAgent user context', () => {
         agentGeneratedInputKeys: [],
         promptReference: {
           id: 'teamId:67a100000000000000000001:systemTool-getTime',
-          legacyId: 'systemTool-getTime',
           name: 'Get Time'
         },
         params: {},
@@ -670,7 +667,6 @@ describe('dispatchRunAgent user context', () => {
         agentGeneratedInputKeys: [],
         promptReference: {
           id: 'debug:tmbId:67d300000000000000000002:systemTool-getTime',
-          legacyId: 'systemTool-getTime',
           name: 'Get Time'
         },
         params: {},

@@ -13,26 +13,20 @@ import { AGENT_SANDBOX_TOOLSET_ID } from '@fastgpt/global/core/ai/sandbox/tools'
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { formatRefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/codec';
 import {
-  getLegacyWriteKeyForTool,
   refFromBuiltin,
   refFromSkill,
   refFromTool
 } from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
 import { AgentPromptRefRegistry } from '@fastgpt/global/core/workflow/node/agent/promptRef/registry';
-import {
-  DEFAULT_AGENT_PROMPT_REF_WRITE_MODE,
-  type AgentPromptRefEntry,
-  type AgentPromptRefWriteMode
-} from '@fastgpt/global/core/workflow/node/agent/promptRef/types';
+import type { AgentPromptRefEntry } from '@fastgpt/global/core/workflow/node/agent/promptRef/types';
 
-export type UseAgentPromptRefsParams = {
+type UseAgentPromptRefsParams = {
   selectedTools: SelectedToolItemType[];
   selectedAgentSkills?: SelectedAgentSkillItemType[];
   canUploadFile: boolean;
   hasSelectedDataset: boolean;
   useAgentSandbox: boolean;
   lang: string;
-  writeMode?: AgentPromptRefWriteMode;
 };
 
 /** 将工具状态投影为 PromptEditor 展示标签；下线/无权限/缺失资源按 invalid 渲染。 */
@@ -72,7 +66,7 @@ export const buildAgentSkillLabelItem = ({
 
 /**
  * ChatAgent 与 NodeAgent 共用的提示词引用统一 Hook。
- * 负责构建同构 AgentPromptRefRegistry，并统一提供解析、标签投影、写入键生成与无损升级。
+ * 负责构建同构 AgentPromptRefRegistry，并统一提供标签投影与 V2 写入键生成。
  */
 export const useAgentPromptRefs = ({
   selectedTools,
@@ -80,34 +74,23 @@ export const useAgentPromptRefs = ({
   canUploadFile,
   hasSelectedDataset,
   useAgentSandbox,
-  lang,
-  writeMode = DEFAULT_AGENT_PROMPT_REF_WRITE_MODE
+  lang
 }: UseAgentPromptRefsParams) => {
   const getToolWriteKey = useCallback(
     (params: { id?: string; pluginId?: string; source?: string }) => {
-      const legacyKey = getLegacyWriteKeyForTool(params);
-      if (writeMode === 'legacy') return legacyKey;
       const ref = refFromTool(params);
-      return ref ? formatRefKey(ref) : legacyKey;
+      return ref ? formatRefKey(ref) : (params.pluginId || params.id || '').trim();
     },
-    [writeMode]
+    []
   );
 
   const getSkillWriteKey = useCallback(
-    (params: { skillId: string; source?: SelectedAgentSkillItemType['source'] }) => {
-      if (writeMode === 'legacy') return params.skillId;
-      return formatRefKey(refFromSkill(params).ref);
-    },
-    [writeMode]
+    (params: { skillId: string; source?: SelectedAgentSkillItemType['source'] }) =>
+      formatRefKey(refFromSkill(params).ref),
+    []
   );
 
-  const getBuiltinWriteKey = useCallback(
-    (id: string) => {
-      if (writeMode === 'legacy') return id;
-      return formatRefKey(refFromBuiltin(id));
-    },
-    [writeMode]
-  );
+  const getBuiltinWriteKey = useCallback((id: string) => formatRefKey(refFromBuiltin(id)), []);
 
   const promptRefRegistry = useMemoEnhance(() => {
     const entries: AgentPromptRefEntry<SkillLabelItemType>[] = [];
@@ -121,19 +104,12 @@ export const useAgentPromptRefs = ({
       if (!ref) return;
 
       const canonicalKey = formatRefKey(ref);
-      const legacyWriteKey = getLegacyWriteKeyForTool({
-        id: tool.id,
-        pluginId: tool.pluginId,
-        source: tool.source
-      });
-      const writeKey = writeMode === 'legacy' ? legacyWriteKey : canonicalKey;
 
       entries.push({
         ref,
         canonicalKey,
         displayName: tool.name,
-        legacyWriteKey,
-        meta: buildToolSkillLabelItem({ tool, writeKey })
+        meta: buildToolSkillLabelItem({ tool, writeKey: canonicalKey })
       });
 
       const childSpecs: Array<{ rawId: string; name: string }> = [];
@@ -174,13 +150,10 @@ export const useAgentPromptRefs = ({
         const childRef = refFromTool({ id: rawId, source: tool.source });
         if (!childRef) return;
         const childCanonicalKey = formatRefKey(childRef);
-        const childLegacyKey = getLegacyWriteKeyForTool({ id: rawId, source: tool.source });
-        const childWriteKey = writeMode === 'legacy' ? childLegacyKey : childCanonicalKey;
         entries.push({
           ref: childRef,
           canonicalKey: childCanonicalKey,
           displayName: name,
-          legacyWriteKey: childLegacyKey,
           meta: buildToolSkillLabelItem({
             tool: {
               ...tool,
@@ -188,7 +161,7 @@ export const useAgentPromptRefs = ({
               pluginId: rawId,
               name
             },
-            writeKey: childWriteKey
+            writeKey: childCanonicalKey
           })
         });
       });
@@ -218,16 +191,14 @@ export const useAgentPromptRefs = ({
 
       const ref = refFromBuiltin(id);
       const canonicalKey = formatRefKey(ref);
-      const writeKey = writeMode === 'legacy' ? id : canonicalKey;
       const displayName = parseI18nString(info.name, lang);
 
       entries.push({
         ref,
         canonicalKey,
         displayName,
-        legacyWriteKey: id,
         meta: {
-          id: writeKey,
+          id: canonicalKey,
           pluginId: id,
           name: displayName,
           avatar: info.avatar,
@@ -247,17 +218,15 @@ export const useAgentPromptRefs = ({
         source: skill.source
       });
       const canonicalKey = formatRefKey(ref);
-      const writeKey = writeMode === 'legacy' ? skill.skillId : canonicalKey;
 
       entries.push({
         ref,
         canonicalKey,
         displayName: skill.name,
-        legacyWriteKey: skill.skillId,
         sourceInferred,
         meta: buildAgentSkillLabelItem({
           skill,
-          writeKey,
+          writeKey: canonicalKey,
           sandboxUnavailable: !useAgentSandbox
         })
       });
@@ -270,8 +239,7 @@ export const useAgentPromptRefs = ({
     canUploadFile,
     hasSelectedDataset,
     useAgentSandbox,
-    lang,
-    writeMode
+    lang
   ]);
 
   const selectedSkills = useMemoEnhance<SkillLabelItemType[]>(
@@ -279,23 +247,11 @@ export const useAgentPromptRefs = ({
     [promptRefRegistry]
   );
 
-  const resolveRef = useCallback(
-    (rawKey: string) => promptRefRegistry.resolve(rawKey),
-    [promptRefRegistry]
-  );
-
-  const upgradePrompt = useCallback(
-    (text: string) => promptRefRegistry.upgradePrompt(text).text,
-    [promptRefRegistry]
-  );
-
   return {
     promptRefRegistry,
     selectedSkills,
-    resolveRef,
     getToolWriteKey,
     getSkillWriteKey,
-    getBuiltinWriteKey,
-    upgradePrompt
+    getBuiltinWriteKey
   };
 };

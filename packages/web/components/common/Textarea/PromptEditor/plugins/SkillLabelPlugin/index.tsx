@@ -105,9 +105,6 @@ function SkillLabelPlugin({
     });
     promptRefRegistry?.entries().forEach((entry) => {
       pendingSkillsRef.current.delete(entry.canonicalKey);
-      if (entry.legacyWriteKey) {
-        pendingSkillsRef.current.delete(entry.legacyWriteKey);
-      }
     });
   }, [pendingSkillsRef, promptRefRegistry, selectedSkills]);
 

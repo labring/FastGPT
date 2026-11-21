@@ -128,6 +128,3 @@ export const parseV2RefKey = (rawKey: string): AgentPromptRef | null => {
 
   return null;
 };
-
-/** 判断字符串是否为合法 V2 引用键。 */
-export const isV2PromptRefKey = (rawKey: string): boolean => parseV2RefKey(rawKey) !== null;
