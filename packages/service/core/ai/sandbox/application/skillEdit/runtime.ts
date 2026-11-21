@@ -4,12 +4,18 @@
  * 本文件统一处理镜像版本、归档状态和运行态实例的业务判断；外部 Skill 业务直接引用
  * 本模块的业务能力，不直接依赖 provider、repository 或 archive 原子能力。
  */
+import JSZip from 'jszip';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
 import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
 import { MongoAgentSkills } from '../../../skill/model/schema';
 import { MongoAgentSkillsVersion } from '../../../skill/version/schema';
-import { parseGitignoreRules } from '../../../skill/utils';
+import {
+  extractSkillMetadataFromMarkdown,
+  findSkillMdEntries,
+  normalizeSkillScanEntryPath,
+  parseGitignoreRules
+} from '../../../skill/utils';
 import { resolveSandboxHome } from '../runtime/home';
 import { joinSandboxPath } from '../../utils';
 import {
@@ -374,6 +380,73 @@ export async function initSkillEditRuntimeSandbox({
 }
 
 /**
+ * 沙盒 unzip 落盘会丢弃路径中的控制字符（含换行），导致解包后的目录名与包内不一致。
+ */
+const UNZIP_UNSAFE_PATH_CHARACTER_PATTERN = /[\x00-\x1f\x7f]/;
+
+/**
+ * 打包前扫描工作区中有效的 SKILL.md 入口（不使用业务排除规则）。
+ *
+ * 打包的 `-x` 排除会静默丢掉有效入口，发布前必须确认工作区里的入口都进了包。
+ */
+async function listValidSkillEntriesInWorkspace(
+  sandbox: ISandbox,
+  targetDir: string
+): Promise<string[]> {
+  const findCommand = `find . \\( -name node_modules -o -name .venv -o -name venv \\) -prune -o -type f -iname "SKILL.md" -print0 2>/dev/null`;
+  const result = await sandbox.execute(findCommand, { workingDirectory: targetDir });
+  if (result.exitCode !== 0) {
+    addLog.warn('[Sandbox] Failed to scan SKILL.md entries before packaging', {
+      targetDir,
+      error: result.stderr || result.stdout
+    });
+    return [];
+  }
+
+  const entryPaths = Array.from(
+    new Set(
+      result.stdout
+        .split('\0')
+        .map((path) => normalizeSkillScanEntryPath(path))
+        .filter((path) => path.length > 0)
+    )
+  );
+  if (entryPaths.length === 0) return [];
+
+  const absolutePaths = entryPaths.map((path) => joinSandboxPath(targetDir, path));
+  const files = await sandbox.readFiles(absolutePaths);
+  const fileByPath = new Map(files.map((file) => [file.path, file]));
+
+  return entryPaths.filter((path, index) => {
+    const file = fileByPath.get(absolutePaths[index]) ?? files[index];
+    if (!file || file.error) {
+      addLog.warn('[Sandbox] Failed to read SKILL.md entry before packaging', {
+        path,
+        error: file?.error
+      });
+      return false;
+    }
+    const content =
+      typeof file.content === 'string' ? file.content : Buffer.from(file.content).toString('utf-8');
+    return extractSkillMetadataFromMarkdown(content).valid;
+  });
+}
+
+/**
+ * 读取真实归档条目中的 SKILL.md 入口（不使用 `unzip -Z1` 的展示文本）。
+ */
+async function readPackagedSkillEntries(zipBuffer: Buffer): Promise<string[]> {
+  try {
+    const zip = await JSZip.loadAsync(zipBuffer);
+    return findSkillMdEntries(
+      Object.entries(zip.files).map(([path, file]) => ({ path, isDir: file.dir }))
+    );
+  } catch (error) {
+    throw new UserError(SkillErrEnum.invalidSkillPackage, undefined, { cause: error });
+  }
+}
+
+/**
  * 将编辑态 sandbox 内的 skill 目录打包成 zip。
  *
  * 保存发布时只读取指定 workDirectory，默认会先做目录大小检查，避免把过大的编辑工作区
@@ -411,6 +484,21 @@ export async function packageSkillInSandbox(params: {
       .slice(2)}.zip`;
     const zipFilePath = joinSandboxPath(packageTempDir, packageZipFilename);
     await newSandbox.createDirectories([packageTempDir]);
+
+    const requiredSkillEntries =
+      validationMode === 'deployableWorkspace'
+        ? await listValidSkillEntriesInWorkspace(newSandbox, targetDir)
+        : [];
+    const unpackUnsafeEntry = requiredSkillEntries.find((path) =>
+      UNZIP_UNSAFE_PATH_CHARACTER_PATTERN.test(path)
+    );
+    if (unpackUnsafeEntry) {
+      throw new UserError(SkillErrEnum.invalidSkillPackage, undefined, {
+        cause: new Error(
+          `Unsupported SKILL.md path with control characters (rejected by sandbox unzip): ${unpackUnsafeEntry}`
+        )
+      });
+    }
 
     let gitignoreContents: string[] = [];
     try {
@@ -484,6 +572,18 @@ export async function packageSkillInSandbox(params: {
             `Skill package size (${(zipBuffer.length / 1024 / 1024).toFixed(2)}MB) exceeds maximum allowed size (${(maxBytes / 1024 / 1024).toFixed(2)}MB)`
           )
         });
+      }
+
+      if (validationMode === 'deployableWorkspace' && requiredSkillEntries.length > 0) {
+        const packagedEntries = new Set(await readPackagedSkillEntries(zipBuffer));
+        const missingEntries = requiredSkillEntries.filter((path) => !packagedEntries.has(path));
+        if (missingEntries.length > 0) {
+          throw new UserError(SkillErrEnum.invalidSkillPackage, undefined, {
+            cause: new Error(
+              `Skill package is missing SKILL.md entries excluded by packaging rules: ${missingEntries.join(', ')}`
+            )
+          });
+        }
       }
 
       const validation =

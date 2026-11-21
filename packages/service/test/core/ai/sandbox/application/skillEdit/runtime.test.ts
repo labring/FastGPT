@@ -1,3 +1,5 @@
+import JSZip from 'jszip';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -164,13 +166,33 @@ const createContext = (
   } as any;
 };
 
-const createPackageSandbox = (readResult?: { content: Uint8Array; error: Error | null }) => ({
+const createSkillMd = (name: string) => `---\nname: ${name}\ndescription: ${name}\n---\n`;
+
+const buildZipBuffer = async (files: Record<string, string>) => {
+  const zip = new JSZip();
+  for (const [path, content] of Object.entries(files)) {
+    zip.file(path, content);
+  }
+  return new Uint8Array(await zip.generateAsync({ type: 'uint8array' }));
+};
+
+const createPackageSandbox = (
+  options: {
+    readResult?: { content: Uint8Array; error: Error | null };
+    findOutput?: string;
+    workspaceFiles?: Record<string, string>;
+    zippedFiles?: Record<string, string>;
+  } = {}
+) => ({
   execute: vi.fn(async (command: string) => {
     if (command === 'printf "%s" "$HOME"') {
       return { stdout: '/home/sandbox', stderr: '', exitCode: 0 };
     }
     if (command.includes("awk '{s+=$7}")) {
       return { stdout: '12', stderr: '', exitCode: 0 };
+    }
+    if (command.includes('-print0')) {
+      return { stdout: options.findOutput ?? '', stderr: '', exitCode: 0 };
     }
     return { stdout: '', stderr: '', exitCode: 0 };
   }),
@@ -184,13 +206,22 @@ const createPackageSandbox = (readResult?: { content: Uint8Array; error: Error |
   ),
   readFiles: vi.fn(async (paths: string[]) => {
     if (paths[0]?.endsWith('.gitignore')) return [];
-    return [
-      {
-        path: paths[0],
-        content: readResult?.content ?? new Uint8Array([1, 2, 3]),
-        error: readResult?.error ?? null
-      }
-    ];
+    if (paths.length === 1 && paths[0]?.endsWith('.zip')) {
+      return [
+        {
+          path: paths[0],
+          content: options.zippedFiles
+            ? await buildZipBuffer(options.zippedFiles)
+            : (options.readResult?.content ?? new Uint8Array([1, 2, 3])),
+          error: options.readResult?.error ?? null
+        }
+      ];
+    }
+    return paths.map((path) => ({
+      path,
+      content: options.workspaceFiles?.[path] ?? '',
+      error: null
+    }));
   })
 });
 
@@ -233,7 +264,7 @@ describe('packageSkillInSandbox', () => {
   });
 
   it('uses basic zip validation for export', async () => {
-    const sandbox = createPackageSandbox();
+    const sandbox = createPackageSandbox({ findOutput: './dist/SKILL.md\0' });
     mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
 
     await packageSkillInSandbox({ sandboxId: 'sandbox-1', validationMode: 'basicZip' });
@@ -244,8 +275,10 @@ describe('packageSkillInSandbox', () => {
 
   it('propagates read failures and still disconnects', async () => {
     const sandbox = createPackageSandbox({
-      content: new Uint8Array(),
-      error: new Error('read failed')
+      readResult: {
+        content: new Uint8Array(),
+        error: new Error('read failed')
+      }
     });
     mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
 
@@ -268,6 +301,68 @@ describe('packageSkillInSandbox', () => {
     );
     expect(mocks.logger.error).not.toHaveBeenCalled();
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
+  });
+
+  it('rejects when packaging excludes drop valid SKILL.md entries', async () => {
+    const sandbox = createPackageSandbox({
+      findOutput: './writer/SKILL.md\0./dist/SKILL.md\0',
+      workspaceFiles: {
+        '/workspace/writer/SKILL.md': createSkillMd('writer'),
+        '/workspace/dist/SKILL.md': createSkillMd('dist')
+      },
+      zippedFiles: { 'writer/SKILL.md': createSkillMd('writer') }
+    });
+    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
+
+    const error = await packageSkillInSandbox({ sandboxId: 'sandbox-1' }).catch((err) => err);
+
+    expect(error).toBeInstanceOf(UserError);
+    expect(error.message).toBe('invalidSkillPackage');
+    expect(error.cause?.message).toContain('dist/SKILL.md');
+  });
+
+  it('rejects SKILL.md entry paths with control characters', async () => {
+    const sandbox = createPackageSandbox({
+      findOutput: './bad\nname/SKILL.md\0',
+      workspaceFiles: { '/workspace/bad\nname/SKILL.md': createSkillMd('bad') },
+      zippedFiles: { 'bad\nname/SKILL.md': createSkillMd('bad') }
+    });
+    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
+
+    const error = await packageSkillInSandbox({ sandboxId: 'sandbox-1' }).catch((err) => err);
+
+    expect(error).toBeInstanceOf(UserError);
+    expect(error.message).toBe('invalidSkillPackage');
+    expect(error.cause?.message).toContain('Unsupported SKILL.md path with control characters');
+  });
+
+  it('keeps leading spaces in SKILL.md entry paths without false positives', async () => {
+    const sandbox = createPackageSandbox({
+      findOutput: './ Notes/SKILL.md\0',
+      workspaceFiles: { '/workspace/ Notes/SKILL.md': createSkillMd('notes') },
+      zippedFiles: { ' Notes/SKILL.md': createSkillMd('notes') }
+    });
+    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
+
+    await expect(packageSkillInSandbox({ sandboxId: 'sandbox-1' })).resolves.toBeInstanceOf(Buffer);
+  });
+
+  it('passes when every valid SKILL.md entry is packaged', async () => {
+    const sandbox = createPackageSandbox({
+      findOutput: './writer/SKILL.md\0./nested/deep/SKILL.md\0',
+      workspaceFiles: {
+        '/workspace/writer/SKILL.md': createSkillMd('writer'),
+        '/workspace/nested/deep/SKILL.md': createSkillMd('deep')
+      },
+      zippedFiles: {
+        'writer/SKILL.md': createSkillMd('writer'),
+        'nested/deep/SKILL.md': createSkillMd('deep')
+      }
+    });
+    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
+
+    await expect(packageSkillInSandbox({ sandboxId: 'sandbox-1' })).resolves.toBeInstanceOf(Buffer);
+    expect(mocks.validateDeployableSkillWorkspacePackage).toHaveBeenCalledTimes(1);
   });
 });
 
