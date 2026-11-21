@@ -159,7 +159,7 @@ const EditForm = ({
       onOpenKbSelect();
     }
   });
-  const { skillOption, selectedSkills, onClickSkill } = skillManager;
+  const { skillOption, selectedSkills, promptRefRegistry, onClickSkill } = skillManager;
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -284,6 +284,7 @@ const EditForm = ({
                 variableLabels={formatVariables}
                 skillOption={skillOption}
                 selectedSkills={selectedSkills}
+                promptRefRegistry={promptRefRegistry}
                 onClickSkill={onClickSkill}
                 value={appForm.aiSettings.systemPrompt}
                 onChange={(e) => {

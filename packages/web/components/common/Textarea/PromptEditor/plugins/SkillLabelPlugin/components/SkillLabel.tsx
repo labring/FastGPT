@@ -18,6 +18,7 @@ export default function SkillLabel({
   icon,
   skillType,
   status,
+  tooltip,
   onClick,
   nodeKey
 }: SkillLabelProps) {
@@ -58,6 +59,9 @@ export default function SkillLabel({
   }, [status, skillType]);
 
   const tipText = useMemo(() => {
+    if (tooltip) {
+      return tooltip;
+    }
     if (isInvalid) {
       return t('common:tool_invalid_click_delete_tip');
     }
@@ -67,7 +71,7 @@ export default function SkillLabel({
     if (isConfigured) {
       return t('common:Skill_Label_Click_To_Configure');
     }
-  }, [isInvalid, isUnconfigured, isConfigured, t]);
+  }, [tooltip, isInvalid, isUnconfigured, isConfigured, t]);
 
   return (
     <Box

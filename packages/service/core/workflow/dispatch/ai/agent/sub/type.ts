@@ -3,6 +3,7 @@ import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import type { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { AgentPromptRef } from '@fastgpt/global/core/workflow/node/agent/promptRef/types';
 import type { SubAppRuntimeType } from '../type';
 
 export type SubAppInitType = {
@@ -15,10 +16,17 @@ export type SubAppInitType = {
   inputs: RuntimeNodeItemType['inputs'];
   agentGeneratedInputKeys: string[];
   requestSchema: ChatCompletionTool;
+  childPromptReference?: {
+    id: string;
+    legacyId?: string;
+    name: string;
+    ref?: AgentPromptRef;
+  };
   promptReference?: {
     id: string;
     legacyId?: string;
     name: string;
+    ref?: AgentPromptRef;
   };
   params: {
     [NodeInputKeyEnum.systemInputConfig]?: {

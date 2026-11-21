@@ -4,6 +4,7 @@ import { FlowNodeTypeEnum } from '../../workflow/node/constant';
 import type { NodeToolConfigType, StoreNodeItemType } from '../../workflow/type/node';
 import type { SelectedToolItemType } from '../formEdit/type';
 import { hashStr } from '../../../common/string/tools';
+import { hasDebugPromptRef } from '../../workflow/node/agent/promptRef/text';
 
 /**
   Tool id rule:
@@ -179,7 +180,19 @@ export function hasDebugToolInNodes(nodes?: StoreNodeItemType[] | null) {
         ? (selectedToolsInput.value as SelectedToolItemType[])
         : [];
 
-      return hasDebugToolInSelectedTools(selectedTools);
+      if (hasDebugToolInSelectedTools(selectedTools)) return true;
+
+      // Agent 节点系统提示词可能残留已删工具的 debug 引用，发布前一并拦截。
+      if (node.flowNodeType === FlowNodeTypeEnum.agent) {
+        const promptInput = node.inputs.find(
+          (input) => input.key === NodeInputKeyEnum.aiSystemPrompt
+        );
+        if (typeof promptInput?.value === 'string' && hasDebugPromptRef(promptInput.value)) {
+          return true;
+        }
+      }
+
+      return false;
     }) ?? false
   );
 }

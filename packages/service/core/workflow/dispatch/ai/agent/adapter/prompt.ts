@@ -1,6 +1,8 @@
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
-
-const toolReferenceReg = /\{\{@([^@{}]+)@\}\}/g;
+import {
+  AGENT_PROMPT_REF_REGEXP,
+  normalizeDoubleWrappedRefs
+} from '@fastgpt/global/core/workflow/node/agent/promptRef/text';
 
 const getToolReferenceIdCandidates = (id: string) => {
   const trimmedId = id.trim();
@@ -30,7 +32,7 @@ export const replaceAgentPromptToolReferences = ({
   text: string;
   resolveName: (id: string) => string | undefined;
 }) =>
-  text.replace(toolReferenceReg, (raw, id: string) => {
+  normalizeDoubleWrappedRefs(text).replace(AGENT_PROMPT_REF_REGEXP, (raw, id: string) => {
     const name = getToolReferenceIdCandidates(id)
       .map((candidate) => resolveName(candidate))
       .find(Boolean);

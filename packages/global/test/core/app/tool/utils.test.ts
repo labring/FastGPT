@@ -18,6 +18,7 @@ import {
 } from '@fastgpt/global/core/app/tool/utils';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 describe('tool set child descriptions', () => {
   it('uses definitions for falsy values except an explicitly empty description', () => {
@@ -319,6 +320,50 @@ describe('debug tool detection', () => {
         } as any
       ])
     ).toBe(true);
+  });
+
+  it('detects debug tool references in Agent aiSystemPrompt for both V2 and legacy formats', () => {
+    expect(
+      hasDebugToolInNodes([
+        {
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiSystemPrompt,
+              value: '调试请用 {{@plugin:debug:tmb1:local_calc@}}'
+            }
+          ]
+        }
+      ] as any)
+    ).toBe(true);
+
+    expect(
+      hasDebugToolInNodes([
+        {
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiSystemPrompt,
+              value: '调试请用 {{@debug:tmbId:tmb1:systemTool-local_calc@}}'
+            }
+          ]
+        }
+      ] as any)
+    ).toBe(true);
+
+    expect(
+      hasDebugToolInNodes([
+        {
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiSystemPrompt,
+              value: '正式请用 {{@plugin:system:metaso@}}'
+            }
+          ]
+        }
+      ] as any)
+    ).toBe(false);
   });
 });
 

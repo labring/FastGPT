@@ -40,6 +40,7 @@ import {
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { rewriteAppWorkflowToDetail } from '@fastgpt/service/core/app/utils';
+import { hasDebugToolInNodes } from '@fastgpt/global/core/app/tool/utils';
 
 /** 保存或发布应用版本，资源归属和模型目录以目标应用团队为边界，ACL 保留实际操作者身份。 */
 async function handler(req: ApiRequestProps<PostPublishAppProps>): Promise<PublishAppResponseType> {
@@ -76,6 +77,9 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>): Promise<Publi
     }
     return migrateWorkflowToCurrent({ nodes, edges, chatConfig });
   })();
+  if (isPublish && hasDebugToolInNodes(normalizedWorkflow.nodes)) {
+    return Promise.reject(i18nT('app:publish_remove_debug_tool_tip'));
+  }
   const modelHandle = await getTeamModelHandle({ teamId });
   const authorizedIds = await getAuthorizedModelIds({
     actor: { teamId, tmbId, isRoot },
