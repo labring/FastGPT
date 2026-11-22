@@ -202,6 +202,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
       selectedAgentSkills: canUseSandbox ? appForm.selectedAgentSkills || [] : [],
       fileUpload: appForm.chatConfig.fileSelectConfig?.canSelectFile || false,
       ...(canUseSandbox ? { enableSandbox: appForm.aiSettings.useAgentSandbox || false } : {}),
+      promptRefVersion: 'v2' as const,
       modelConfig: {
         modelId: helperSelectedModel
       }
