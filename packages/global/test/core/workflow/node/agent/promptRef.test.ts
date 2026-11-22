@@ -375,4 +375,35 @@ describe('AgentPromptRefRegistry invariants', () => {
       entry: { displayName: 'Users Tool' }
     });
   });
+
+  it('resolves persisted legacy 3-segment MCP keys via legacyExactKeys without leaking into resolveV2', () => {
+    const appId = '66f100000000000000000077';
+    const registry = AgentPromptRefRegistry.create([
+      {
+        ref: {
+          type: 'app',
+          source: 'team',
+          id: `${appId}/search`,
+          parentId: appId,
+          childId: 'search'
+        },
+        displayName: 'search',
+        legacyExactKeys: [`mcp-${appId}/LegacyToolset/search`],
+        meta: { label: 'search' }
+      }
+    ]);
+
+    expect(registry.resolve(`mcp-${appId}/LegacyToolset/search`)).toMatchObject({
+      status: 'resolved',
+      matchedBy: 'deterministic_legacy',
+      entry: { displayName: 'search' }
+    });
+    expect(registry.resolve(`app:team:${appId}/LegacyToolset/search`).status).toBe('unresolved');
+    expect(registry.resolve(`mcp-${appId}/OtherSet/search`).status).toBe('unresolved');
+    expect(
+      registry.renderForModel({
+        text: `旧引用 {{@mcp-${appId}/LegacyToolset/search@}}，新缺失键 {{@app:team:${appId}/LegacyToolset/search@}}`
+      })
+    ).toBe(`旧引用 {{search}}，新缺失键 {{@app:team:${appId}/LegacyToolset/search@}}`);
+  });
 });

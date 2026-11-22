@@ -504,6 +504,7 @@ describe('dispatchRunAgent user context', () => {
         params: {},
         promptReference: {
           name: 'Search documentation',
+          legacyExactKeys: ['mcp-app_1/LegacyToolset/search'],
           ref: {
             type: 'app',
             source: 'team',
@@ -525,7 +526,8 @@ describe('dispatchRunAgent user context', () => {
       }
     ]);
     const props = createProps();
-    props.params.systemPrompt = '优先使用 {{@mcp-app_1/search@}}，缺失保持 {{@missing@}}';
+    props.params.systemPrompt =
+      '优先使用 {{@mcp-app_1/search@}} 与旧三段 {{@mcp-app_1/LegacyToolset/search@}}，缺失保持 {{@app:team:app_1/LegacyToolset/search@}} 和 {{@missing@}}';
     props.params.agent_selectedTools = [{ id: 'mcp-app_1/search', config: {} }];
 
     let resultPromise: Promise<any>;
@@ -540,9 +542,14 @@ describe('dispatchRunAgent user context', () => {
     await resultPromise!;
 
     const systemPrompt = runAgentLoopMock.mock.calls[0][0].input.systemPrompt;
-    expect(systemPrompt).toContain('{{Search documentation}}');
+    expect(systemPrompt).toContain(
+      '优先使用 {{Search documentation}} 与旧三段 {{Search documentation}}'
+    );
     expect(systemPrompt).not.toContain('{{@mcp-app_1/search@}}');
-    expect(systemPrompt).toContain('缺失保持 {{@missing@}}');
+    expect(systemPrompt).not.toContain('{{@mcp-app_1/LegacyToolset/search@}}');
+    expect(systemPrompt).toContain(
+      '缺失保持 {{@app:team:app_1/LegacyToolset/search@}} 和 {{@missing@}}'
+    );
   });
 
   it('resolves V2 and legacy tool/skill/builtin prompt refs while keeping deleted or errored skills unresolved', async () => {

@@ -60,12 +60,16 @@ export const getSubapps = async ({
   ) => {
     if (!promptReference) return;
 
-    const { ref, name } = promptReference;
+    const { ref, name, legacyExactKeys } = promptReference;
     const canonicalKey = formatRefKey(ref);
     const existing = promptToolRefEntryMap.get(canonicalKey);
     if (existing) {
       if (modelToolName && !existing.meta.modelToolNames?.includes(modelToolName)) {
         existing.meta.modelToolNames = [...(existing.meta.modelToolNames ?? []), modelToolName];
+      }
+      if (legacyExactKeys?.length) {
+        const mergedLegacyKeys = new Set([...(existing.legacyExactKeys ?? []), ...legacyExactKeys]);
+        existing.legacyExactKeys = Array.from(mergedLegacyKeys);
       }
       return;
     }
@@ -73,6 +77,7 @@ export const getSubapps = async ({
       ref,
       canonicalKey,
       displayName: name,
+      ...(legacyExactKeys?.length ? { legacyExactKeys: [...legacyExactKeys] } : {}),
       meta: {
         name,
         ...(modelToolName ? { modelToolNames: [modelToolName] } : {})

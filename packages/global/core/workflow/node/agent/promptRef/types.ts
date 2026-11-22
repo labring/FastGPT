@@ -48,6 +48,11 @@ export type AgentPromptRefEntry<TMeta = unknown> = {
   displayName: string;
   /** 历史 Skill 快照缺少 source 时标记为 true，允许按全局唯一 ObjectId 跨 system/team 命中。 */
   sourceInferred?: boolean;
+  /**
+   * 仅记录已保存历史工具的原始旧键（如 v4.14.8 三段式 `mcp-<appId>/<toolsetName>/<toolName>`），
+   * 仅由 `resolveLegacy` 按原始键精确命中，绝不进入 `resolveV2`。
+   */
+  legacyExactKeys?: string[];
   meta: TMeta;
 };
 

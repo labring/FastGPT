@@ -214,10 +214,17 @@ describe('useSkillManager sandbox & skill visibility', () => {
     expect(manager.promptRefRegistry.resolve(`app:team:${appId}/catalog/search`).status).toBe(
       'unresolved'
     );
+    const legacyEntry = manager.promptRefRegistry.resolve(`mcp-${appId}/catalog/search`);
+    expect(legacyEntry.status).toBe('resolved');
+    if (legacyEntry.status === 'resolved') {
+      expect(legacyEntry.entry.displayName).toBe('search');
+      expect(legacyEntry.entry.meta.configTarget?.id).toBe(`mcp-${appId}/catalog/search`);
+    }
     const actualEntry = manager.promptRefRegistry.resolve(`app:team:${appId}/search`);
     expect(actualEntry.status).toBe('resolved');
     if (actualEntry.status === 'resolved') {
       expect(actualEntry.entry.displayName).toBe('search');
+      expect(actualEntry.entry.meta.configTarget?.id).toBe(`mcp-${appId}/catalog/search`);
     }
   });
 

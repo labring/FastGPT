@@ -682,10 +682,12 @@ export const getAgentRuntimeTools = async ({
         });
         const promptRef =
           refFromTool({ id: resolvedPromptToolId, source: runtimeSource }) ?? undefined;
+        const legacyExactKeys = tool.id && tool.id !== resolvedPromptToolId ? [tool.id] : undefined;
         const promptReference = promptRef
           ? {
               name: toolNode.name,
-              ref: promptRef
+              ref: promptRef,
+              ...(legacyExactKeys ? { legacyExactKeys } : {})
             }
           : undefined;
         const buildSubApp = (child: RuntimeNodeItemType, id = child.nodeId): SubAppInitType => {

@@ -9,6 +9,7 @@ import type { SubAppRuntimeType } from '../type';
 export type SubAppPromptReferenceType = {
   name: string;
   ref: AgentPromptRef;
+  legacyExactKeys?: string[];
 };
 
 export type SubAppInitType = {

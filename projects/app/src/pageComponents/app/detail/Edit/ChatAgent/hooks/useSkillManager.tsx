@@ -10,19 +10,13 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { validateToolConfiguration } from '@fastgpt/global/core/app/formEdit/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
-import type { SkillLabelItemType } from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillLabelPlugin';
 import dynamic from 'next/dynamic';
 import type {
   SelectedAgentSkillItemType,
   SelectedToolItemType
 } from '@fastgpt/global/core/app/formEdit/type';
-import {
-  getAppToolTemplates,
-  getNewToolPreviewNode,
-  getTeamAppTemplatesV2
-} from '@/web/core/app/api/tool';
+import { getAppToolTemplates, getTeamAppTemplatesV2 } from '@/web/core/app/api/tool';
 import { AppTypeEnum, AppTypeList, ToolTypeList } from '@fastgpt/global/core/app/constants';
 import { useLatest } from 'ahooks';
 import { SubAppIds, systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
@@ -33,15 +27,11 @@ import { getSkillListV2 } from '@/web/core/skill/api';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { ListSkillsResponse } from '@fastgpt/global/core/ai/skill/api';
 import { inheritToolInputConfig } from '../../FormComponent/ToolSelector/utils';
-import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import { useAgentSandboxCapability } from '../../../hooks/useAgentSandboxCapability';
-import { formatRefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/codec';
-import {
-  getCanonicalKeyForTool,
-  getPromptRefToolId
-} from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
+import { resolveVerifiedToolPreview } from '../utils';
 import {
   buildAgentSkillLabelItem,
+  buildBuiltinSkillLabelItem,
   buildToolSkillLabelItem,
   useAgentPromptRefs
 } from './useAgentPromptRefs';
@@ -126,15 +116,14 @@ export const useSkillManager = ({
   const { toast } = useToast();
   const { canUseSandbox: isSandboxSupported } = useAgentSandboxCapability();
   const effectiveUseAgentSandbox = isSandboxSupported && useAgentSandbox;
-  const { promptRefRegistry, getToolWriteKey, getSkillWriteKey, getBuiltinWriteKey } =
-    useAgentPromptRefs({
-      selectedTools,
-      selectedAgentSkills,
-      canUploadFile,
-      hasSelectedDataset,
-      useAgentSandbox: effectiveUseAgentSandbox,
-      lang: i18n.language
-    });
+  const { promptRefRegistry, getToolWriteKey, getSkillWriteKey } = useAgentPromptRefs({
+    selectedTools,
+    selectedAgentSkills,
+    canUploadFile,
+    hasSelectedDataset,
+    useAgentSandbox: effectiveUseAgentSandbox,
+    lang: i18n.language
+  });
 
   /* ===== System tool ===== */
   const onFolderLoadSystemTools = useCallback(
@@ -354,33 +343,8 @@ export const useSkillManager = ({
 
   const onAddAppOrTool = useCallback(
     async (toolId: string, source?: string): Promise<SkillClickResult | undefined> => {
-      const isMcpOrHttpChild = toolId.startsWith('mcp-') || toolId.startsWith('http-');
-      const toolIdentityKey = getToolIdentityKey(toolId, source);
-      const existsTool = lastSelectedTools.current?.find(
-        (tool) => getToolIdentityKey(getPromptRefToolId(tool), tool.source) === toolIdentityKey
-      );
-      if (existsTool && !isMcpOrHttpChild) {
-        const writeKey = getToolWriteKey({
-          id: existsTool.id,
-          pluginId: existsTool.pluginId,
-          flowNodeType: existsTool.flowNodeType,
-          toolConfig: existsTool.toolConfig,
-          source: existsTool.source
-        });
-        const skill = buildToolSkillLabelItem({ tool: existsTool, writeKey });
-
-        return {
-          id: skill.id,
-          skill
-        };
-      }
-
       // Check if it's a sub agent tool
       if (toolId in systemSubInfo) {
-        const subToolInfo = systemSubInfo[toolId as keyof typeof systemSubInfo];
-
-        if (!subToolInfo) return;
-
         // 提示词 @虚拟机 时，同步尝试打开虚拟机开关。
         if (toolId === AGENT_SANDBOX_TOOLSET_ID) {
           if (!isSandboxSupported) return;
@@ -389,35 +353,14 @@ export const useSkillManager = ({
           }
         }
 
-        const configStatus: SkillLabelItemType['configStatus'] = (() => {
-          if (toolId === SubAppIds.datasetSearch) {
-            return hasSelectedDataset ? 'configured' : 'waitingForConfig';
-          }
-
-          if (toolId === SubAppIds.readFiles) {
-            return canUploadFile ? 'configured' : 'invalid';
-          }
-
-          if (toolId === AGENT_SANDBOX_TOOLSET_ID) {
-            return 'noConfig';
-          }
-
-          return 'noConfig';
-        })();
-
-        const writeKey = getBuiltinWriteKey(toolId);
-        const skill: SkillLabelItemType = {
-          id: writeKey,
-          pluginId: toolId,
-          name: parseI18nString(subToolInfo.name, i18n.language),
-          avatar: subToolInfo.avatar,
-          intro: subToolInfo.toolDescription,
-          flowNodeType: FlowNodeTypeEnum.tool,
-          templateType: FlowNodeTemplateTypeEnum.tools,
-          inputs: [],
-          outputs: [],
-          configStatus
-        };
+        const skill = buildBuiltinSkillLabelItem({
+          id: toolId,
+          hasSelectedDataset,
+          canUploadFile,
+          useAgentSandbox: toolId === AGENT_SANDBOX_TOOLSET_ID ? true : effectiveUseAgentSandbox,
+          lang: i18n.language
+        });
+        if (!skill) return;
 
         return {
           id: skill.id,
@@ -425,20 +368,12 @@ export const useSkillManager = ({
         };
       }
 
-      const toolTemplate = await getNewToolPreviewNode({
-        appId: toolId,
-        source
+      const verified = await resolveVerifiedToolPreview({
+        toolId,
+        source,
+        existsTools: lastSelectedTools.current ?? undefined
       });
-
-      const previewWriteKey = getToolWriteKey({
-        id: toolTemplate.pluginId ?? toolTemplate.id,
-        pluginId: toolTemplate.pluginId,
-        flowNodeType: toolTemplate.flowNodeType,
-        toolConfig: toolTemplate.toolConfig,
-        source: toolTemplate.source ?? source
-      });
-      const requestedCanonicalKey = getCanonicalKeyForTool({ id: toolId, source });
-      if (isMcpOrHttpChild && requestedCanonicalKey && previewWriteKey !== requestedCanonicalKey) {
+      if (verified.status === 'missing') {
         // 所选旧菜单子工具已被删除且预览仅回退到末段同名工具时，拒绝插入替代工具。
         toast({
           title: t('common:core.workflow.check.tool_missing'),
@@ -447,7 +382,8 @@ export const useSkillManager = ({
         return;
       }
 
-      if (existsTool) {
+      if (verified.status === 'existing') {
+        const existsTool = verified.tool;
         const writeKey = getToolWriteKey({
           id: existsTool.id,
           pluginId: existsTool.pluginId,
@@ -455,7 +391,11 @@ export const useSkillManager = ({
           toolConfig: existsTool.toolConfig,
           source: existsTool.source
         });
-        const skill = buildToolSkillLabelItem({ tool: existsTool, writeKey });
+        const skill = buildToolSkillLabelItem({
+          tool: existsTool,
+          writeKey,
+          configTarget: existsTool
+        });
 
         return {
           id: skill.id,
@@ -463,6 +403,7 @@ export const useSkillManager = ({
         };
       }
 
+      const toolTemplate = verified.tool;
       const toolValid = validateToolConfiguration({
         toolTemplate,
         canUploadFile,
@@ -489,7 +430,7 @@ export const useSkillManager = ({
         toolConfig: tool.toolConfig,
         source: tool.source ?? source
       });
-      const skill = buildToolSkillLabelItem({ tool, writeKey });
+      const skill = buildToolSkillLabelItem({ tool, writeKey, configTarget: tool });
 
       lastOnUpdateOrAddTool.current?.(tool);
 
@@ -500,7 +441,7 @@ export const useSkillManager = ({
     },
     [
       canUploadFile,
-      getBuiltinWriteKey,
+      effectiveUseAgentSandbox,
       getToolWriteKey,
       hasSelectedDataset,
       i18n.language,
@@ -665,7 +606,7 @@ export const useSkillManager = ({
       const resolved = promptRefRegistry.resolve(rawKey);
       if (resolved.status !== 'resolved') return;
 
-      const { ref, canonicalKey } = resolved.entry;
+      const { ref, meta } = resolved.entry;
       if (ref.type === 'skill') {
         return;
       }
@@ -675,31 +616,11 @@ export const useSkillManager = ({
         return;
       }
 
-      const parentCanonicalKey =
-        (ref.type === 'plugin' || ref.type === 'app') && ref.childId
-          ? formatRefKey({
-              ...ref,
-              id: ref.parentId,
-              childId: undefined
-            })
-          : undefined;
-      const tool = selectedTools.find((item) => {
-        const itemKey = getCanonicalKeyForTool({
-          id: getPromptRefToolId(item),
-          source: item.source
-        });
-        return (
-          itemKey === canonicalKey ||
-          (parentCanonicalKey !== undefined && itemKey === parentCanonicalKey)
-        );
-      });
-      if (!tool) return;
-
-      if (isSubApp(tool.flowNodeType)) {
-        setConfigTool(tool);
+      if (meta.configTarget && isSubApp(meta.configTarget.flowNodeType)) {
+        setConfigTool(meta.configTarget);
       }
     },
-    [onClickDatasetSearch, promptRefRegistry, selectedTools]
+    [onClickDatasetSearch, promptRefRegistry]
   );
   return {
     skillOption,

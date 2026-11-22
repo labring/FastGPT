@@ -5,7 +5,10 @@ import {
   type AppFormEditFormType
 } from '@fastgpt/global/core/app/formEdit/type';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type {
+  FlowNodeTemplateType,
+  StoreNodeItemType
+} from '@fastgpt/global/core/workflow/type/node';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -373,6 +376,66 @@ export const getEmptyAgentConfig = (t: any) => {
   );
 };
 
+export type VerifiedToolPreviewResult =
+  | { status: 'missing' }
+  | { status: 'existing'; tool: SelectedToolItemType }
+  | { status: 'preview'; tool: FlowNodeTemplateType };
+
+/**
+ * 统一解析并校验工具预览（@ 菜单与辅助生成共用）：
+ * - 非 MCP/HTTP 子工具命中已有配置时直接复用，避免重复请求；
+ * - MCP/HTTP 子工具先经实时预览校验规范身份，防止已删子工具借历史回退误复用或误插入。
+ */
+export const resolveVerifiedToolPreview = async ({
+  toolId,
+  source,
+  existsTools = []
+}: {
+  toolId: string;
+  source?: string;
+  existsTools?: SelectedToolItemType[];
+}): Promise<VerifiedToolPreviewResult> => {
+  const identityKey = getToolIdentityKey(toolId, source);
+  const canonicalKey = getCanonicalKeyForTool({ id: toolId, source });
+  const isMcpOrHttpChild =
+    toolId.startsWith('mcp-') ||
+    toolId.startsWith('http-') ||
+    (toolId.includes('/') && !isSystemOrCommercialToolId(toolId) && !source);
+
+  const isSameTool = (tool: SelectedToolItemType) => {
+    const resolvedId = getPromptRefToolId(tool);
+    if (canonicalKey) {
+      return getCanonicalKeyForTool({ id: resolvedId, source: tool.source }) === canonicalKey;
+    }
+    return getToolIdentityKey(resolvedId, tool.source) === identityKey;
+  };
+
+  const existTool = existsTools.find(isSameTool);
+  if (existTool && !isMcpOrHttpChild) {
+    return { status: 'existing', tool: existTool };
+  }
+
+  const preview = await getNewToolPreviewNode({
+    appId: toolId,
+    source
+  });
+  if (isMcpOrHttpChild && canonicalKey) {
+    const previewCanonicalKey = getCanonicalKeyForTool({
+      id: getPromptRefToolId(preview),
+      source: preview.source ?? source
+    });
+    if (previewCanonicalKey !== canonicalKey) {
+      return { status: 'missing' };
+    }
+  }
+
+  if (existTool) {
+    return { status: 'existing', tool: existTool };
+  }
+
+  return { status: 'preview', tool: preview };
+};
+
 /** 加载辅助生成的工具，同时兼容 V2 canonicalKey 与旧格式 { id, source } / string 引用。 */
 export const loadGeneratedTools = async ({
   newToolIds,
@@ -403,45 +466,21 @@ export const loadGeneratedTools = async ({
         })();
         if (!toolId) return;
 
-        const identityKey = getToolIdentityKey(toolId, source);
-        const canonicalKey = getCanonicalKeyForTool({ id: toolId, source });
-        const isMcpOrHttpChildLookup =
-          toolId.includes('/') && !isSystemOrCommercialToolId(toolId) && !source;
-        const isSameTool = (tool: SelectedToolItemType) => {
-          const resolvedId = getPromptRefToolId(tool);
-          if (canonicalKey) {
-            return getCanonicalKeyForTool({ id: resolvedId, source: tool.source }) === canonicalKey;
-          }
-          return getToolIdentityKey(resolvedId, tool.source) === identityKey;
-        };
-
-        // 已经存在的工具，非 MCP/HTTP 子工具直接复用；子工具先经实时预览校验存在性再复用配置。
-        const existTool = existsTools.find(isSameTool);
-        if (existTool && !isMcpOrHttpChildLookup) {
-          // 复用旧配置时补齐显式来源，保持与运行时引用一致。
-          if (source === 'system' && !existTool.source) {
-            return { ...existTool, source };
-          }
-          return existTool;
-        }
-
-        // 新工具，需要与已配置的 tool 进行 input 合并
-        const tool = await getNewToolPreviewNode({
-          appId: toolId,
-          source
+        const verified = await resolveVerifiedToolPreview({
+          toolId,
+          source,
+          existsTools
         });
-        if (isMcpOrHttpChildLookup && canonicalKey) {
-          const previewCanonicalKey = getCanonicalKeyForTool({
-            id: getPromptRefToolId(tool),
-            source: tool.source ?? source
-          });
-          if (previewCanonicalKey !== canonicalKey) {
-            return;
+        if (verified.status === 'missing') return;
+        if (verified.status === 'existing') {
+          // 复用旧配置时补齐显式来源，保持与运行时引用一致。
+          if (source === 'system' && !verified.tool.source) {
+            return { ...verified.tool, source };
           }
+          return verified.tool;
         }
-        if (existTool) {
-          return existTool;
-        }
+
+        const tool = verified.tool;
         // 验证工具配置
         const toolValid = validateToolConfiguration({
           toolTemplate: tool,
@@ -458,17 +497,16 @@ export const loadGeneratedTools = async ({
           return;
         }
 
-        const generatedTool = generatedSelectedTools.find(isSameTool);
+        const canonicalKey = getCanonicalKeyForTool({ id: toolId, source });
+        const identityKey = getToolIdentityKey(toolId, source);
+        const generatedTool = generatedSelectedTools.find((item) => {
+          const resolvedId = getPromptRefToolId(item);
+          return canonicalKey
+            ? getCanonicalKeyForTool({ id: resolvedId, source: item.source }) === canonicalKey
+            : getToolIdentityKey(resolvedId, item.source) === identityKey;
+        });
         const inheritedTool = inheritToolInputConfig({ tool, sourceTool: generatedTool });
-        const previewToolId =
-          tool.pluginId ||
-          (tool.toolConfig?.mcpTool && 'toolId' in tool.toolConfig.mcpTool
-            ? tool.toolConfig.mcpTool.toolId
-            : undefined) ||
-          (tool.toolConfig?.httpTool && 'toolId' in tool.toolConfig.httpTool
-            ? tool.toolConfig.httpTool.toolId
-            : undefined) ||
-          tool.id;
+        const previewToolId = getPromptRefToolId(tool);
         const resolvedToolId =
           toolId.includes('/') &&
           (previewToolId.startsWith('mcp-') || previewToolId.startsWith('http-'))

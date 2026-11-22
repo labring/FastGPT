@@ -33,20 +33,68 @@ type UseAgentPromptRefsParams = {
 /** 将工具状态投影为 PromptEditor 展示标签；下线/无权限/缺失资源按 invalid 渲染。 */
 export const buildToolSkillLabelItem = ({
   tool,
-  writeKey
+  writeKey,
+  configTarget
 }: {
   tool: SelectedToolItemType;
   writeKey: string;
+  configTarget?: SelectedToolItemType;
 }): SkillLabelItemType => {
   const status = getAgentToolRuntimeStatus(tool);
   return {
     ...tool,
     id: writeKey,
     name: tool.name,
-    configStatus: status === 'offline' ? 'invalid' : status
+    configStatus: status === 'offline' ? 'invalid' : status,
+    ...(configTarget ? { configTarget } : {})
   };
 };
 
+/** 将内置能力投影为 PromptEditor 展示标签，统一注册表与 @ 菜单的状态计算。 */
+export const buildBuiltinSkillLabelItem = ({
+  id,
+  hasSelectedDataset,
+  canUploadFile,
+  useAgentSandbox,
+  lang
+}: {
+  id: string;
+  hasSelectedDataset: boolean;
+  canUploadFile: boolean;
+  useAgentSandbox: boolean;
+  lang: string;
+}): SkillLabelItemType | null => {
+  const info = systemSubInfo[id];
+  if (!info) return null;
+
+  const canonicalKey = formatRefKey(refFromBuiltin(id));
+  const displayName = parseI18nString(info.name, lang);
+  const configStatus: SkillLabelItemType['configStatus'] = (() => {
+    if (id === SubAppIds.datasetSearch) {
+      return hasSelectedDataset ? 'configured' : 'waitingForConfig';
+    }
+    if (id === SubAppIds.readFiles) {
+      return canUploadFile ? 'configured' : 'invalid';
+    }
+    if (id === AGENT_SANDBOX_TOOLSET_ID) {
+      return useAgentSandbox ? 'noConfig' : 'invalid';
+    }
+    return 'noConfig';
+  })();
+
+  return {
+    id: canonicalKey,
+    pluginId: id,
+    name: displayName,
+    avatar: info.avatar,
+    intro: info.toolDescription,
+    flowNodeType: FlowNodeTypeEnum.tool,
+    templateType: FlowNodeTemplateTypeEnum.tools,
+    inputs: [],
+    outputs: [],
+    configStatus
+  };
+};
 /** 将 Skill 投影为 PromptEditor 展示标签；无权限/已删除时按 invalid 渲染。 */
 export const buildAgentSkillLabelItem = ({
   skill,
@@ -98,14 +146,16 @@ export const useAgentPromptRefs = ({
     []
   );
 
-  const getBuiltinWriteKey = useCallback((id: string) => formatRefKey(refFromBuiltin(id)), []);
-
   const promptRefRegistry = useMemoEnhance(() => {
     const entries: AgentPromptRefEntry<SkillLabelItemType>[] = [];
 
     selectedTools.forEach((tool) => {
+      const resolvedToolId = getPromptRefToolId(tool);
+      const savedToolId = (tool.pluginId || tool.id || '').trim();
+      const legacyExactKeys =
+        savedToolId && savedToolId !== resolvedToolId ? [savedToolId] : undefined;
       const ref = refFromTool({
-        id: getPromptRefToolId(tool),
+        id: resolvedToolId,
         source: tool.source
       });
       if (!ref) return;
@@ -116,7 +166,8 @@ export const useAgentPromptRefs = ({
         ref,
         canonicalKey,
         displayName: tool.name,
-        meta: buildToolSkillLabelItem({ tool, writeKey: canonicalKey })
+        ...(legacyExactKeys ? { legacyExactKeys } : {}),
+        meta: buildToolSkillLabelItem({ tool, writeKey: canonicalKey, configTarget: tool })
       });
 
       const childSpecs: Array<{ rawId: string; name: string }> = [];
@@ -168,54 +219,28 @@ export const useAgentPromptRefs = ({
               pluginId: rawId,
               name
             },
-            writeKey: childCanonicalKey
+            writeKey: childCanonicalKey,
+            configTarget: tool
           })
         });
       });
     });
 
-    const builtinDefinitions: Array<{
-      id: string;
-      configStatus: SkillLabelItemType['configStatus'];
-    }> = [
-      {
-        id: SubAppIds.datasetSearch,
-        configStatus: hasSelectedDataset ? 'configured' : 'waitingForConfig'
-      },
-      {
-        id: SubAppIds.readFiles,
-        configStatus: canUploadFile ? 'configured' : 'invalid'
-      },
-      {
-        id: AGENT_SANDBOX_TOOLSET_ID,
-        configStatus: useAgentSandbox ? 'noConfig' : 'invalid'
-      }
-    ];
-
-    builtinDefinitions.forEach(({ id, configStatus }) => {
-      const info = systemSubInfo[id];
-      if (!info) return;
-
-      const ref = refFromBuiltin(id);
-      const canonicalKey = formatRefKey(ref);
-      const displayName = parseI18nString(info.name, lang);
+    [SubAppIds.datasetSearch, SubAppIds.readFiles, AGENT_SANDBOX_TOOLSET_ID].forEach((id) => {
+      const meta = buildBuiltinSkillLabelItem({
+        id,
+        hasSelectedDataset,
+        canUploadFile,
+        useAgentSandbox,
+        lang
+      });
+      if (!meta) return;
 
       entries.push({
-        ref,
-        canonicalKey,
-        displayName,
-        meta: {
-          id: canonicalKey,
-          pluginId: id,
-          name: displayName,
-          avatar: info.avatar,
-          intro: info.toolDescription,
-          flowNodeType: FlowNodeTypeEnum.tool,
-          templateType: FlowNodeTemplateTypeEnum.tools,
-          inputs: [],
-          outputs: [],
-          configStatus
-        }
+        ref: refFromBuiltin(id),
+        canonicalKey: meta.id,
+        displayName: meta.name,
+        meta
       });
     });
 
@@ -252,7 +277,6 @@ export const useAgentPromptRefs = ({
   return {
     promptRefRegistry,
     getToolWriteKey,
-    getSkillWriteKey,
-    getBuiltinWriteKey
+    getSkillWriteKey
   };
 };

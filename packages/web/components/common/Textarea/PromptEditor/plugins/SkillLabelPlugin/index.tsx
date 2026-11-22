@@ -27,6 +27,8 @@ export type SkillLabelItemType = Partial<SelectedToolItemType> & {
   /** 仅用于编辑器展示，由工具或内置能力的当前配置推导。 */
   configStatus?: 'noConfig' | 'waitingForConfig' | 'configured' | 'invalid';
   tooltip?: string;
+  /** 点击工具或工具集子工具标签时直接打开的配置目标，避免二次反查。 */
+  configTarget?: SelectedToolItemType;
 };
 
 function SkillLabelPlugin({

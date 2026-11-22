@@ -847,6 +847,7 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].toolConfig?.mcpTool).toMatchObject({ toolId: 'mcp-mcp_app/search' });
     expect(tools[0].promptReference).toEqual({
       name: 'search',
+      legacyExactKeys: ['mcp-mcp_app/catalog/search'],
       ref: {
         type: 'app',
         source: 'team',

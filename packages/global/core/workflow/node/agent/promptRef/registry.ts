@@ -18,6 +18,7 @@ import {
 export class AgentPromptRefRegistry<TMeta = unknown> {
   private readonly canonicalMap = new Map<string, NormalizedAgentPromptRefEntry<TMeta>>();
   private readonly legacyMap = new Map<string, NormalizedAgentPromptRefEntry<TMeta>>();
+  private readonly legacyExactMap = new Map<string, NormalizedAgentPromptRefEntry<TMeta>>();
   private readonly ambiguousMap = new Map<string, NormalizedAgentPromptRefEntry<TMeta>[]>();
   private readonly inferredSkillIdMap = new Map<string, NormalizedAgentPromptRefEntry<TMeta>>();
   private readonly orderedEntries: NormalizedAgentPromptRefEntry<TMeta>[] = [];
@@ -37,6 +38,15 @@ export class AgentPromptRefRegistry<TMeta = unknown> {
 
       if (entry.ref.type === 'skill' && entry.sourceInferred) {
         this.inferredSkillIdMap.set(entry.ref.id, normalized);
+      }
+
+      if (entry.legacyExactKeys?.length) {
+        for (const legacyKey of entry.legacyExactKeys) {
+          const trimmedLegacyKey = legacyKey.trim();
+          if (trimmedLegacyKey && !this.legacyExactMap.has(trimmedLegacyKey)) {
+            this.legacyExactMap.set(trimmedLegacyKey, normalized);
+          }
+        }
       }
 
       const bareKeys = deriveBareLegacyKeys(entry.ref);
@@ -111,6 +121,11 @@ export class AgentPromptRefRegistry<TMeta = unknown> {
       const hit = this.canonicalMap.get(canonicalKey);
       if (hit) {
         return { status: 'resolved', entry: hit, matchedBy: 'deterministic_legacy' };
+      }
+
+      const legacyExactHit = this.legacyExactMap.get(parsed.rawKey);
+      if (legacyExactHit) {
+        return { status: 'resolved', entry: legacyExactHit, matchedBy: 'deterministic_legacy' };
       }
 
       return { status: 'unresolved', rawKey: parsed.rawKey, parsed };
