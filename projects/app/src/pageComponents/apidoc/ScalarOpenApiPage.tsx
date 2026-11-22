@@ -4,7 +4,7 @@ import { getScalarOpenApiReferenceConfig } from '@fastgpt/global/openapi/referen
 import { useRef, type ComponentType } from 'react';
 import { CompletionResponseExamples } from './CompletionResponseExamples';
 import { CompletionEventExamples } from './CompletionEventExamples';
-import { createUnionParameterCardPlugin } from './UnionParameterCard';
+import { createUnionParameterCardPlugin, type VuePluginRuntime } from './UnionParameterCard';
 
 type ScalarApiReferenceModule = {
   ApiReferenceReact: ComponentType<{ configuration: Record<string, unknown> }>;
@@ -15,8 +15,27 @@ type ScalarApiReferenceModule = {
 const ApiReferenceReact = dynamic(
   () =>
     Promise.all([
-      import('@scalar/api-reference-react' as string) as Promise<ScalarApiReferenceModule>
-    ]).then(([mod]) => mod.ApiReferenceReact),
+      import('@scalar/api-reference-react' as string) as Promise<ScalarApiReferenceModule>,
+      import('vue' as string) as Promise<VuePluginRuntime>
+    ]).then(([mod, vueMod]) => {
+      const unionPlugin = createUnionParameterCardPlugin(vueMod);
+      const ScalarApiReference = mod.ApiReferenceReact;
+      return function ScalarWithPlugins({
+        configuration
+      }: {
+        configuration: Record<string, unknown>;
+      }) {
+        const existingPlugins = Array.isArray(configuration.plugins) ? configuration.plugins : [];
+        return (
+          <ScalarApiReference
+            configuration={{
+              ...configuration,
+              plugins: [...existingPlugins, unionPlugin]
+            }}
+          />
+        );
+      };
+    }),
   { ssr: false }
 );
 
@@ -265,12 +284,7 @@ export const ScalarOpenApiPage = ({
 
   return (
     <Box ref={rootRef} w="100vw" h="100vh" overflow="auto">
-      <ApiReferenceReact
-        configuration={{
-          ...configuration,
-          plugins: [...configuration.plugins, createUnionParameterCardPlugin]
-        }}
-      />
+      <ApiReferenceReact configuration={configuration} />
       <CompletionResponseExamples rootRef={rootRef} />
       <CompletionEventExamples rootRef={rootRef} />
     </Box>

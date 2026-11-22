@@ -1,4 +1,4 @@
-import type { auditLogMap, adminAuditLogMap } from '../../../../web/support/user/audit/constants';
+import type { auditLogMap, adminAuditLogMap } from './logMap';
 import { DatasetAuditEventEnum } from '../../../core/dataset/audit/constants/event';
 
 export enum AdminAuditEventEnum {

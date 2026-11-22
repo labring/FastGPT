@@ -2,12 +2,6 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "paths": {
-      "@fastgpt-sdk/storage/access-link": ["../../sdk/storage/src/access-link/index.ts"],
-      "@fastgpt-sdk/storage": ["../../sdk/storage/src/index.ts"],
-      "@fastgpt-sdk/otel": ["../../sdk/otel/src/index.ts"],
-      "@fastgpt-sdk/otel/logger": ["../../sdk/otel/src/logger-entry.ts"],
-      "@fastgpt-sdk/otel/metrics": ["../../sdk/otel/src/metrics-entry.ts"],
-      "@fastgpt-sdk/otel/tracing": ["../../sdk/otel/src/tracing-entry.ts"],
       "@/*": ["./src/*"],
       "#fastgpt/app/test/*": ["./test/*"],
       "@test/*": ["../../test/*"]
@@ -16,6 +10,8 @@
   "include": [
     "next-env.d.ts",
     "next.config.ts",
+    "scripts/reset-root-password.ts",
+    "scripts/reset-root-password-utils.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
     "src/**/*.d.ts",
@@ -28,7 +24,10 @@
     "node_modules",
     "**/node_modules/**",
     "test/**",
-    "scripts/**",
+    "scripts/build-*.ts",
+    "scripts/migration/**",
+    "scripts/permission/**",
+    "scripts/dist/**",
     "worker/**",
     "**/*.test.ts",
     "**/*.test.tsx",
@@ -37,8 +36,10 @@
     "../../packages/**/tsdown.config.ts",
     "../../packages/**/test/**",
     "../../packages/**/dist/**",
+    "../../packages/**/.tsc-out/**",
     ".next",
     "dist",
-    "coverage"
+    "coverage",
+    ".tsc-out"
   ]
 }

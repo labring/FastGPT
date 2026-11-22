@@ -1,6 +1,6 @@
 {
   "extends": "../../tsconfig.json",
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.d.ts"],
+  "include": ["**/*.ts", "**/*.tsx", "**/*.d.ts"],
   "exclude": [
     "node_modules",
     "**/node_modules/**",
@@ -9,6 +9,7 @@
     "**/*.test.tsx",
     "vitest*.config.ts",
     "dist",
-    "coverage"
+    "coverage",
+    ".tsc-out"
   ]
 }

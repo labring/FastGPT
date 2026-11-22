@@ -275,3 +275,22 @@ export type {
   DeprecatedMongoIndexDefinition,
   DeprecatedMongoIndexOptions
 } from './schemaIndexes';
+
+export type MongoDeleteResult = {
+  acknowledged: boolean;
+  deletedCount: number;
+};
+
+export type MongoBulkWriteResult = {
+  ok?: number;
+  insertedCount: number;
+  matchedCount: number;
+  modifiedCount: number;
+  deletedCount: number;
+  upsertedCount: number;
+};
+
+export type MongoFindCursor<T = Record<string, unknown>> = AsyncIterable<T> & {
+  close: () => Promise<void>;
+  toArray: () => Promise<T[]>;
+};

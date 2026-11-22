@@ -34,7 +34,9 @@ export type ReadableSystemResourceInfo = {
  * 优先使用 `availableParallelism()`，其能够识别容器/cgroup CPU 配额及 CPU 亲和性，
  * 获取到的结果通过 `memoize` 在进程生命周期内缓存，避免高频任务调度时重复调用系统 API。
  */
-export const getSystemCpuInfo = memoize((): SystemCpuInfo => {
+export const getSystemCpuInfo: (() => SystemCpuInfo) & {
+  cache: { clear?: () => void };
+} = memoize((): SystemCpuInfo => {
   const cpuCount = (() => {
     try {
       const val = availableParallelism();

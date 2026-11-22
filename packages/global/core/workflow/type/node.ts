@@ -413,7 +413,7 @@ export type WorkflowCheckIssue = z.infer<typeof WorkflowCheckIssueSchema>;
 export type WorkflowCheckNodeIssueMap = Record<string, WorkflowCheckIssue[]>;
 
 // react flow node type
-export const FlowNodeItemSchema = FlowNodeTemplateTypeSchema.extend({
+const FlowNodeItemSchemaImpl = FlowNodeTemplateTypeSchema.extend({
   nodeId: z.string(),
   parentNodeId: z.string().optional(),
   isError: BoolSchema.optional(),
@@ -431,7 +431,14 @@ export const FlowNodeItemSchema = FlowNodeTemplateTypeSchema.extend({
     .optional(),
   isFolded: BoolSchema.optional()
 });
-export type FlowNodeItemType = z.infer<typeof FlowNodeItemSchema>;
+type FlowNodeItemRaw = z.infer<typeof FlowNodeItemSchemaImpl>;
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface FlowNodeItemType extends FlowNodeItemRaw {}
+type FlowNodeItemInputRaw = z.input<typeof FlowNodeItemSchemaImpl>;
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface FlowNodeItemInputType extends FlowNodeItemInputRaw {}
+export const FlowNodeItemSchema: z.ZodType<FlowNodeItemType, FlowNodeItemInputType> =
+  FlowNodeItemSchemaImpl;
 
 // store node type
 export const StoreNodeItemBaseSchema = FlowNodeCommonTypeSchema.extend({
@@ -445,7 +452,7 @@ export const StoreNodeItemBaseSchema = FlowNodeCommonTypeSchema.extend({
     .optional()
 });
 
-export const StoreNodeItemTypeSchema = StoreNodeItemBaseSchema.superRefine((node, ctx) => {
+const StoreNodeItemTypeSchemaImpl = StoreNodeItemBaseSchema.superRefine((node, ctx) => {
   if (
     node.flowNodeType !== FlowNodeTypeEnum.toolSet ||
     !node.toolConfig?.mcpToolSet ||
@@ -460,4 +467,11 @@ export const StoreNodeItemTypeSchema = StoreNodeItemBaseSchema.superRefine((node
     message: '工具集节点只能配置 MCP 或 HTTP 工具集'
   });
 });
-export type StoreNodeItemType = z.infer<typeof StoreNodeItemTypeSchema>;
+type StoreNodeItemRaw = z.infer<typeof StoreNodeItemTypeSchemaImpl>;
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface StoreNodeItemType extends StoreNodeItemRaw {}
+type StoreNodeItemInputRaw = z.input<typeof StoreNodeItemTypeSchemaImpl>;
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface StoreNodeItemInputType extends StoreNodeItemInputRaw {}
+export const StoreNodeItemTypeSchema: z.ZodType<StoreNodeItemType, StoreNodeItemInputType> =
+  StoreNodeItemTypeSchemaImpl;

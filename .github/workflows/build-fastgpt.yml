@@ -71,10 +71,15 @@ jobs:
       - name: Cache TypeScript build info
         uses: actions/cache@v4
         with:
-          path: projects/app/tsconfig.tsbuildinfo
-          key: tsc-app-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'tsconfig.json', 'projects/app/tsconfig.json') }}-${{ github.sha }}
+          path: |
+            packages/global/.tsc-out
+            packages/dal/.tsc-out
+            packages/web/.tsc-out
+            packages/service/.tsc-out
+            projects/app/.tsc-out
+          key: tsc-app-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'tsconfig.json', 'packages/*/tsconfig*.json', 'projects/app/tsconfig*.json') }}-${{ github.sha }}
           restore-keys: |
-            tsc-app-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'tsconfig.json', 'projects/app/tsconfig.json') }}-
+            tsc-app-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'tsconfig.json', 'packages/*/tsconfig*.json', 'projects/app/tsconfig*.json') }}-
             tsc-app-${{ runner.os }}-
 
       - name: Build workspace SDKs and workflow-core
@@ -84,7 +89,7 @@ jobs:
 
       - name: Typecheck app
         env:
-          NODE_OPTIONS: '--max-old-space-size=6144'
+          NODE_OPTIONS: '--max-old-space-size=4096'
         run: pnpm --filter @fastgpt/app typecheck
 
   build-fastgpt-images:

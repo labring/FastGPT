@@ -1,5 +1,6 @@
 import type { ClientSession } from 'mongoose';
 import type { Readable } from 'node:stream';
+import type { MongoDeleteResult } from '../../../mongo';
 import { S3PrivateBucket } from '../../buckets/private';
 import { removeS3TTL } from '../../utils';
 import { encodeS3ObjectKey } from '../../keySanitizer';
@@ -69,7 +70,7 @@ export class S3SkillSource extends S3PrivateBucket {
     });
   }
 
-  removePackageTTL(key: string, session?: ClientSession) {
+  removePackageTTL(key: string, session?: ClientSession): Promise<MongoDeleteResult> | undefined {
     return removeS3TTL({
       key,
       bucketName: 'private',

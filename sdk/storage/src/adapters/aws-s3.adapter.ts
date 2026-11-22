@@ -41,8 +41,18 @@ function toAwsMetadata(metadata?: Storage.StorageObjectMetadata): Storage.Storag
   return meta;
 }
 
+const awsS3ClientRegistry = new WeakMap<AwsS3StorageAdapter, AWS.S3Client>();
+
+export const getAwsS3Client = (adapter: AwsS3StorageAdapter): AWS.S3Client => {
+  const client = awsS3ClientRegistry.get(adapter);
+  if (!client) {
+    throw new Error('AWS S3 client is not initialized');
+  }
+  return client;
+};
+
 export class AwsS3StorageAdapter implements IStorage {
-  protected readonly client: AWS.S3Client;
+  private readonly client: AWS.S3Client;
 
   get bucketName(): string {
     return this.options.bucket;
@@ -67,6 +77,7 @@ export class AwsS3StorageAdapter implements IStorage {
 
       ...(options.vendor === 'r2' ? r2SpecifiedOptions : undefined)
     });
+    awsS3ClientRegistry.set(this, this.client);
   }
 
   async checkObjectExists(params: Storage.ExistsObjectParams): Promise<Storage.ExistsObjectResult> {

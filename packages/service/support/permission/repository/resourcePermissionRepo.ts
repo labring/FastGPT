@@ -1,4 +1,11 @@
-import { Types, type AnyBulkWriteOperation, type ClientSession } from '../../../common/mongo';
+import {
+  Types,
+  type AnyBulkWriteOperation,
+  type ClientSession,
+  type MongoBulkWriteResult,
+  type MongoDeleteResult,
+  type MongoFindCursor
+} from '../../../common/mongo';
 import { MongoTransactionConflictError } from '../../../common/mongo/sessionRun';
 import {
   CommonRolePerMap,
@@ -503,7 +510,8 @@ export const resourcePermissionRepo = {
   bulkWrite: (
     operations: AnyBulkWriteOperation<ResourcePermissionType>[],
     session?: ClientSession
-  ) => MongoResourcePermission.bulkWrite(operations, withSession(session)),
+  ): Promise<MongoBulkWriteResult> =>
+    MongoResourcePermission.bulkWrite(operations, withSession(session)),
 
   /** 更新一个协作者的单条 ACL；资源 ID 未传时兼容历史团队 ACL。 */
   updateCollaborator: async ({
@@ -582,7 +590,7 @@ export const resourcePermissionRepo = {
     resourceType,
     resourceId,
     session
-  }: ResourcePermissionQuery & { session?: ClientSession }) =>
+  }: ResourcePermissionQuery & { session?: ClientSession }): Promise<MongoDeleteResult> =>
     MongoResourcePermission.deleteMany(
       { teamId, resourceType, ...resourceIdFilter(resourceId) },
       withSession(session)
@@ -598,7 +606,7 @@ export const resourcePermissionRepo = {
     resourceType: PerResourceTypeEnum;
     resourceIds: string[];
     session?: ClientSession;
-  }) =>
+  }): Promise<MongoDeleteResult> =>
     MongoResourcePermission.deleteMany(
       { teamId, resourceType, resourceId: { $in: resourceIds } },
       withSession(session)
@@ -613,13 +621,13 @@ export const resourcePermissionRepo = {
     resourceType: PerResourceTypeEnum;
     resourceIds: string[];
     session?: ClientSession;
-  }) =>
+  }): Promise<MongoDeleteResult> =>
     MongoResourcePermission.deleteMany(
       { resourceType, resourceId: { $in: resourceIds } },
       withSession(session)
     ),
 
-  deleteByTeam: (teamId: string, session?: ClientSession) =>
+  deleteByTeam: (teamId: string, session?: ClientSession): Promise<MongoDeleteResult> =>
     MongoResourcePermission.deleteMany({ teamId }, withSession(session)),
 
   deleteCollaborator: ({
@@ -632,7 +640,7 @@ export const resourcePermissionRepo = {
     collaborator: CollaboratorIdType;
     resourceType?: PerResourceTypeEnum | PerResourceTypeEnum[];
     session?: ClientSession;
-  }) =>
+  }): Promise<MongoDeleteResult> =>
     MongoResourcePermission.deleteMany(
       {
         ...(teamId ? { teamId } : {}),
@@ -655,17 +663,17 @@ export const resourcePermissionRepo = {
     projection: Record<string, 0 | 1>;
     limit: number;
     batchSize: number;
-  }) =>
+  }): MongoFindCursor<Record<string, unknown>> =>
     MongoResourcePermission.collection
       .find(query as any, { projection })
       .sort({ _id: 1 })
       .limit(limit)
       .batchSize(batchSize),
 
-  deleteByFilter: (filter: unknown) =>
+  deleteByFilter: (filter: unknown): Promise<MongoDeleteResult> =>
     MongoResourcePermission.collection.deleteMany(filter as Record<string, unknown>),
 
-  findOneByFilter: <T>(filter: unknown, projection?: Record<string, 0 | 1>) =>
+  findOneByFilter: <T>(filter: unknown, projection?: Record<string, 0 | 1>): Promise<T | null> =>
     MongoResourcePermission.collection.findOne<T>(filter as Record<string, unknown>, {
       ...(projection ? { projection } : {})
     }),

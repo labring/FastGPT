@@ -1,7 +1,9 @@
 import z from 'zod';
 import {
   FlowNodeInputItemTypeSchema,
-  FlowNodeOutputItemTypeSchema
+  FlowNodeOutputItemTypeSchema,
+  type FlowNodeInputItemType,
+  type FlowNodeOutputItemType
 } from '../../../core/workflow/type/io';
 import { FlowNodeTypeEnum } from '../../../core/workflow/node/constant';
 import {
@@ -16,7 +18,7 @@ import {
 } from '../../../core/workflow/type/node';
 import { BoolSchema, NumSchema } from '../../../common/zod';
 
-export const OpenAPIFlowNodeInputItemTypeSchema = FlowNodeInputItemTypeSchema.omit({
+const OpenAPIFlowNodeInputItemTypeSchemaImpl = FlowNodeInputItemTypeSchema.omit({
   list: true,
   enums: true
 })
@@ -64,13 +66,52 @@ export const OpenAPIFlowNodeInputItemTypeSchema = FlowNodeInputItemTypeSchema.om
     description: '工作流节点输入配置'
   });
 
-export const OpenAPIFlowNodeOutputItemTypeSchema = FlowNodeOutputItemTypeSchema.meta({
+export interface OpenAPIFlowNodeInputItemType extends Omit<
+  FlowNodeInputItemType,
+  'list' | 'enums'
+> {
+  list?: Array<{
+    label: string;
+    value: string;
+    icon?: string;
+    description?: string;
+  }>;
+  enums?: Array<{
+    value: string;
+    label: string;
+  }>;
+}
+type OpenAPIFlowNodeInputItemInputRaw = z.input<typeof OpenAPIFlowNodeInputItemTypeSchemaImpl>;
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface OpenAPIFlowNodeInputItemInputType extends OpenAPIFlowNodeInputItemInputRaw {}
+export const OpenAPIFlowNodeInputItemTypeSchema: z.ZodType<
+  OpenAPIFlowNodeInputItemType,
+  OpenAPIFlowNodeInputItemInputType
+> = OpenAPIFlowNodeInputItemTypeSchemaImpl;
+
+type OpenAPIFlowNodeOutputItemOutputRaw = FlowNodeOutputItemType;
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface OpenAPIFlowNodeOutputItemType extends OpenAPIFlowNodeOutputItemOutputRaw {}
+type OpenAPIFlowNodeOutputItemInputRaw = z.input<typeof FlowNodeOutputItemTypeSchema>;
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface OpenAPIFlowNodeOutputItemInputType extends OpenAPIFlowNodeOutputItemInputRaw {}
+export const OpenAPIFlowNodeOutputItemTypeSchema: z.ZodType<
+  OpenAPIFlowNodeOutputItemType,
+  OpenAPIFlowNodeOutputItemInputType
+> = FlowNodeOutputItemTypeSchema.meta({
   description: '工作流节点输出配置'
 });
 
-const OpenAPIToolDataSchema = ToolDataSchema.meta({
-  description: '节点关联工具展示信息'
-});
+type OpenAPIToolDataRaw = z.infer<typeof ToolDataSchema>;
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface OpenAPIToolDataType extends OpenAPIToolDataRaw {}
+type OpenAPIToolDataInputRaw = z.input<typeof ToolDataSchema>;
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface OpenAPIToolDataInputType extends OpenAPIToolDataInputRaw {}
+const OpenAPIToolDataSchema: z.ZodType<OpenAPIToolDataType, OpenAPIToolDataInputType> =
+  ToolDataSchema.meta({
+    description: '节点关联工具展示信息'
+  });
 
 export const OpenAPIToolRefSchema = z
   .object({
@@ -85,7 +126,7 @@ export const OpenAPIToolRefSchema = z
     description: '节点引用的工具配置'
   });
 
-const OpenAPINodeToolConfigTypeSchema = NodeToolConfigTypeSchema.extend({
+export const OpenAPINodeToolConfigTypeSchema = NodeToolConfigTypeSchema.extend({
   mcpTool: z.union([OpenAPIToolRefSchema, McpToolRuntimeConfigSchema]).optional().meta({
     description: '节点绑定的 MCP 单工具引用或运行时内联配置'
   }),
@@ -99,7 +140,7 @@ const OpenAPINodeToolConfigTypeSchema = NodeToolConfigTypeSchema.extend({
   description: '节点工具配置'
 });
 
-export const OpenAPIStoreNodeItemTypeSchema = StoreNodeItemBaseSchema.omit({
+export const OpenAPIStoreNodeItemObjectSchema = StoreNodeItemBaseSchema.omit({
   inputs: true,
   outputs: true,
   pluginData: true,
@@ -197,6 +238,17 @@ export const OpenAPIStoreNodeItemTypeSchema = StoreNodeItemBaseSchema.omit({
     description: '应用工作流节点配置'
   });
 
+type OpenAPIStoreNodeItemRaw = z.infer<typeof OpenAPIStoreNodeItemObjectSchema>;
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface OpenAPIStoreNodeItemType extends OpenAPIStoreNodeItemRaw {}
+type OpenAPIStoreNodeItemInputRaw = z.input<typeof OpenAPIStoreNodeItemObjectSchema>;
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface OpenAPIStoreNodeItemInputType extends OpenAPIStoreNodeItemInputRaw {}
+export const OpenAPIStoreNodeItemTypeSchema: z.ZodType<
+  OpenAPIStoreNodeItemType,
+  OpenAPIStoreNodeItemInputType
+> = OpenAPIStoreNodeItemObjectSchema;
+
 const OpenAPIPersistedNodeToolConfigTypeSchema = OpenAPINodeToolConfigTypeSchema.extend({
   mcpTool: OpenAPIToolRefSchema.strict().optional().meta({
     description: '节点引用的 MCP 单工具配置'
@@ -215,7 +267,7 @@ const OpenAPIPersistedNodeToolConfigTypeSchema = OpenAPINodeToolConfigTypeSchema
     })
 });
 
-const PersistedOpenAPIStoreNodeItemTypeBaseSchema = OpenAPIStoreNodeItemTypeSchema.omit({
+export const PersistedOpenAPIStoreNodeItemObjectSchema = OpenAPIStoreNodeItemObjectSchema.omit({
   toolConfig: true
 }).safeExtend({
   inputs: z.array(OpenAPIFlowNodeInputItemTypeSchema).meta({
@@ -226,8 +278,8 @@ const PersistedOpenAPIStoreNodeItemTypeBaseSchema = OpenAPIStoreNodeItemTypeSche
   })
 });
 
-export const PersistedOpenAPIStoreNodeItemTypeSchema =
-  PersistedOpenAPIStoreNodeItemTypeBaseSchema.superRefine((node, ctx) => {
+const PersistedOpenAPIStoreNodeItemTypeSchemaImpl =
+  PersistedOpenAPIStoreNodeItemObjectSchema.superRefine((node, ctx) => {
     const isRecord = (value: unknown): value is Record<string, unknown> =>
       typeof value === 'object' && value !== null && !Array.isArray(value);
     const { pluginId } = node;
@@ -267,6 +319,15 @@ export const PersistedOpenAPIStoreNodeItemTypeSchema =
     });
   }).meta({ description: '持久化应用工作流节点配置' });
 
-export type PersistedOpenAPIStoreNodeItemType = z.infer<
-  typeof PersistedOpenAPIStoreNodeItemTypeSchema
+type PersistedOpenAPIStoreNodeItemRaw = z.infer<typeof PersistedOpenAPIStoreNodeItemTypeSchemaImpl>;
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface PersistedOpenAPIStoreNodeItemType extends PersistedOpenAPIStoreNodeItemRaw {}
+type PersistedOpenAPIStoreNodeItemInputRaw = z.input<
+  typeof PersistedOpenAPIStoreNodeItemTypeSchemaImpl
 >;
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface PersistedOpenAPIStoreNodeItemInputType extends PersistedOpenAPIStoreNodeItemInputRaw {}
+export const PersistedOpenAPIStoreNodeItemTypeSchema: z.ZodType<
+  PersistedOpenAPIStoreNodeItemType,
+  PersistedOpenAPIStoreNodeItemInputType
+> = PersistedOpenAPIStoreNodeItemTypeSchemaImpl;

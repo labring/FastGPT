@@ -14,8 +14,7 @@ type WorkflowCheckMessageParams = { inputName?: string; model?: string; nodeName
 
 export const translateDynamicKey = (
   t: TFunction,
-  key: string,
-  options?: Record<string, unknown>
+  { key, options }: { key: string; options?: Record<string, unknown> }
 ): string => (t as (key: string, options?: Record<string, unknown>) => string)(key, options);
 
 const fieldLabelKeys = {
@@ -254,7 +253,7 @@ export const getToolErrorMessage = ({
 
   const errorKey = appErrList[error]?.message ?? pluginErrList[error]?.message;
   if (errorKey) {
-    return translateDynamicKey(t, errorKey);
+    return translateDynamicKey(t, { key: errorKey });
   }
 
   return (
@@ -273,7 +272,7 @@ export const formatWorkflowRuleIssue = ({
   node?: FlowNodeItemType;
   t?: TFunction;
 }): WorkflowCheckIssue => {
-  const translateLabel = (label: string) => (t ? translateDynamicKey(t, label) : label);
+  const translateLabel = (label: string) => (t ? translateDynamicKey(t, { key: label }) : label);
 
   /** 优先取 label，空则取 debugLabel 或槽位默认标签，并走 i18n 翻译，避免展示 quoteQA 等内部 key。 */
   const getInputLabel = (input: FlowNodeInputItemType, fallbackLabel?: string) => {

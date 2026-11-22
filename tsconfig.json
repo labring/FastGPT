@@ -24,7 +24,8 @@
     "pro/admin/worker/**",
     "**/.next/**",
     "**/dist/**",
-    "**/coverage/**"
+    "**/coverage/**",
+    "**/.tsc-out/**"
   ],
   "include": [
     "*.ts",

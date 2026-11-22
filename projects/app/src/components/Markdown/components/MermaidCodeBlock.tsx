@@ -41,6 +41,15 @@ const prepareMermaidSvgForView = (rawSvg: string) => {
  * 2. 结束态错误提示：仅在整句流式输出结束后依然报错时，才展示统一错误卡片（此时不显示下载与全屏）；
  * 3. 正常完成态：展示全功能悬浮操作栏（复制代码、导出 SVG、导出 PNG、全屏图片级缩放灯箱）。
  */
+type MermaidModule = {
+  default: {
+    mermaidAPI: {
+      initialize: (config: Record<string, unknown>) => void;
+    };
+    render: (id: string, text: string) => Promise<{ svg: string }>;
+  };
+};
+
 const MermaidBlock = ({ code }: { code: string }) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
@@ -54,7 +63,7 @@ const MermaidBlock = ({ code }: { code: string }) => {
   useEffect(() => {
     let mounted = true;
 
-    import('mermaid')
+    (import('mermaid' as string) as Promise<MermaidModule>)
       .then((module) => {
         if (!mounted) return;
 

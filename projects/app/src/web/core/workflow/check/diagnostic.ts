@@ -267,7 +267,7 @@ export const formatWorkflowDiagnostic = ({
       nodeId: diagnostic.nodeId ?? node?.nodeId,
       inputName: (() => {
         const label = input?.label || input?.debugLabel || diagnostic.inputKey;
-        return label && t ? translateDynamicKey(t, label) : label;
+        return label && t ? translateDynamicKey(t, { key: label }) : label;
       })(),
       outputKey: params.outputKey,
       source: typeof edge?.source === 'string' ? edge.source : edge?.source?.nodeId,
@@ -276,7 +276,7 @@ export const formatWorkflowDiagnostic = ({
       targetHandle: edge?.targetHandle,
       path: diagnostic.path?.join('.')
     };
-    issue.message = t ? translateDynamicKey(t, messageKey, values) : messageKey;
+    issue.message = t ? translateDynamicKey(t, { key: messageKey, options: values }) : messageKey;
   } else if (
     !legacyIssueCodes[diagnostic.code] &&
     diagnostic.code !== WorkflowDiagnosticCodeEnum.branchConfigurationInvalid &&

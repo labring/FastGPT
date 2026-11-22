@@ -25,8 +25,11 @@ import { FlowNodeTypeEnum } from '../../../../core/workflow/node/constant';
 import {
   OpenAPIFlowNodeInputItemTypeSchema,
   OpenAPIFlowNodeOutputItemTypeSchema,
+  OpenAPINodeToolConfigTypeSchema,
+  OpenAPIStoreNodeItemObjectSchema,
   OpenAPIToolRefSchema,
   OpenAPIStoreNodeItemTypeSchema,
+  PersistedOpenAPIStoreNodeItemObjectSchema,
   PersistedOpenAPIStoreNodeItemTypeSchema
 } from '../../workflow/node';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
@@ -164,7 +167,7 @@ const OpenAPIVariableItemSchema = VariableItemTypeSchema.omit({
     description: '应用对话变量配置项'
   });
 
-export const OpenAPIAppChatConfigSchema = AppChatConfigTypeSchema.extend({
+const OpenAPIAppChatConfigObjectSchema = AppChatConfigTypeSchema.extend({
   variables: optionalNullToUndefined(z.array(OpenAPIVariableItemSchema)).meta({
     description: '应用启动对话前需要用户填写的变量列表'
   }),
@@ -177,9 +180,19 @@ export const OpenAPIAppChatConfigSchema = AppChatConfigTypeSchema.extend({
 }).meta({
   description: '应用对话运行配置，例如欢迎语、变量、语音和定时触发配置'
 });
+type OpenAPIAppChatConfigRaw = z.infer<typeof OpenAPIAppChatConfigObjectSchema>;
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface OpenAPIAppChatConfigType extends OpenAPIAppChatConfigRaw {}
+type OpenAPIAppChatConfigInputRaw = z.input<typeof OpenAPIAppChatConfigObjectSchema>;
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface OpenAPIAppChatConfigInputType extends OpenAPIAppChatConfigInputRaw {}
+export const OpenAPIAppChatConfigSchema: z.ZodType<
+  OpenAPIAppChatConfigType,
+  OpenAPIAppChatConfigInputType
+> = OpenAPIAppChatConfigObjectSchema;
 
 /** 普通客户端新写入稳定 modelId，同时在迁移期接收存量 model 配置。 */
-export const AppChatConfigInputSchema = OpenAPIAppChatConfigSchema.extend({
+const AppChatConfigInputObjectSchema = OpenAPIAppChatConfigObjectSchema.extend({
   questionGuide: optionalNullToUndefined(AppQuestionGuideInputSchema).meta({
     description: '问题引导配置'
   }),
@@ -187,6 +200,16 @@ export const AppChatConfigInputSchema = OpenAPIAppChatConfigSchema.extend({
     description: '语音播报配置'
   })
 });
+type AppChatConfigInputOutputRaw = z.infer<typeof AppChatConfigInputObjectSchema>;
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface AppChatConfigInputOutputType extends AppChatConfigInputOutputRaw {}
+type AppChatConfigInputRaw = z.input<typeof AppChatConfigInputObjectSchema>;
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface AppChatConfigInputType extends AppChatConfigInputRaw {}
+export const AppChatConfigInputSchema: z.ZodType<
+  AppChatConfigInputOutputType,
+  AppChatConfigInputType
+> = AppChatConfigInputObjectSchema;
 
 /* Create app */
 /**
@@ -221,14 +244,14 @@ const migrateCreateAppBodyWorkflow = (value: unknown) => {
   }
 };
 
-const CreateAppPersistedNodeSchema = PersistedOpenAPIStoreNodeItemTypeSchema.safeExtend({
+const CreateAppPersistedNodeSchema = PersistedOpenAPIStoreNodeItemObjectSchema.safeExtend({
   inputs: z.array(OpenAPIFlowNodeInputItemTypeSchema),
   outputs: z.array(OpenAPIFlowNodeOutputItemTypeSchema)
 });
 
 const CreateAppToolReferenceSchema = OpenAPIToolRefSchema.strict();
 
-const OpenAPINodeToolConfigSchema = OpenAPIStoreNodeItemTypeSchema.shape.toolConfig.unwrap();
+const OpenAPINodeToolConfigSchema = OpenAPINodeToolConfigTypeSchema;
 const CreateAppRuntimeToolConfigSchema = OpenAPINodeToolConfigSchema.safeExtend({
   mcpTool: z.union([CreateAppToolReferenceSchema, McpToolRuntimeConfigSchema]).optional(),
   httpTool: z.union([CreateAppToolReferenceSchema, HttpToolRuntimeConfigSchema]).optional(),
@@ -260,7 +283,7 @@ const CreateAppRuntimeNodeSchema = z.preprocess(
 
     return node;
   },
-  OpenAPIStoreNodeItemTypeSchema.safeExtend({
+  OpenAPIStoreNodeItemObjectSchema.safeExtend({
     toolConfig: CreateAppRuntimeToolConfigSchema.optional()
   })
 );
@@ -305,7 +328,7 @@ export const CreateAppBodyBaseSchema = z.object({
     example: [],
     description: '应用连线'
   }),
-  chatConfig: AppChatConfigInputSchema.strict().optional().meta({
+  chatConfig: AppChatConfigInputObjectSchema.strict().optional().meta({
     description: '聊天配置'
   }),
   templateId: z.string().optional().meta({

@@ -18,7 +18,7 @@ import {
 import { NodeInputKeyEnum } from '../../../../core/workflow/constants';
 import {
   OpenAPIFlowNodeInputItemTypeSchema,
-  OpenAPIStoreNodeItemTypeSchema
+  OpenAPIStoreNodeItemObjectSchema
 } from '../../workflow/node';
 import { AppChatConfigInputSchema } from '../../app/common/api';
 import { optionalNullToUndefined } from '../../../../common/zod';
@@ -42,7 +42,7 @@ const ChatTestNodeInputSchema = OpenAPIFlowNodeInputItemTypeSchema.superRefine((
   });
 });
 
-const ChatTestNodeSchema = OpenAPIStoreNodeItemTypeSchema.safeExtend({
+const ChatTestNodeSchema = OpenAPIStoreNodeItemObjectSchema.safeExtend({
   inputs: z.array(ChatTestNodeInputSchema)
 });
 
