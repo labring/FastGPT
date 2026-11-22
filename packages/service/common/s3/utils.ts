@@ -1,6 +1,7 @@
 import { isAfter } from 'date-fns';
 import { createHash } from 'node:crypto';
 import type { ClientSession } from 'mongoose';
+import type { MongoDeleteResult } from '../mongo';
 import { buffer as consumeStreamToBuffer } from 'node:stream/consumers';
 import type { Readable } from 'node:stream';
 import { MongoS3TTL } from './models/ttl';
@@ -130,7 +131,7 @@ export function removeS3TTL({
   key: string[] | string;
   bucketName: keyof typeof S3Buckets;
   session?: ClientSession;
-}) {
+}): Promise<MongoDeleteResult> | undefined {
   if (!key) return;
 
   if (Array.isArray(key)) {

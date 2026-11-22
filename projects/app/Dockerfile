@@ -28,6 +28,7 @@ WORKDIR /app
 
 ARG proxy
 ARG base_url
+ARG SKIP_TYPE_CHECK=false
 
 # copy common node_modules and one project node_modules
 COPY package.json pnpm-workspace.yaml .npmrc tsconfig.json eslint.config.mjs ./
@@ -43,6 +44,7 @@ RUN npm install -g pnpm@10.33.2
 
 ENV NODE_OPTIONS="--max-old-space-size=6144"
 ENV NEXT_PUBLIC_BASE_URL=$base_url
+ENV SKIP_TYPE_CHECK=$SKIP_TYPE_CHECK
 # Build SDK workspace packages first so subpath exports like
 # @fastgpt-sdk/otel/logger have generated dist type files.
 RUN pnpm build:sdks

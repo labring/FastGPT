@@ -483,3 +483,58 @@ const versionNameMap = new Map(
   versions.map((version) => [String(version._id), version.versionName ?? null])
 );
 ```
+
+## TypeScript 编译性能与 Composite 规范
+
+`packages/{global,dal,web,service}` 通过 `tsconfig.composite.json` 接入 Project References（`tsc -b`），用于将 `projects/app` 的类型检查拆分为分层增量构建。日常开发须遵守以下约定：
+
+### 保持包间单向依赖，禁止反向 `import type`
+
+- 包依赖必须保持有向无环图（`global → dal / web → service → app`），底层包禁止引用上层包，即使只用 `import type` 也会破坏 `composite` 编译边界。
+- 共享数据结构与参数契约下沉至 `packages/global`，上层包（如 `packages/web` 的 UI 展示文案映射）单向引用底层契约，且不留过渡性 re-export。
+
+### Composite 包导出须满足 `--declaration` 可序列化
+
+开启 `declaration: true` 后，TS 必须为每个导出符号生成可移植的 `.d.ts`。IDE 默认读取普通 `tsconfig.json`，不会提前报 `TS2883` / `TS7056`，改动 `packages/*` 导出签名后必须运行 `pnpm --filter @fastgpt/app typecheck` 验证。
+
+- **避免泄露 pnpm 传递依赖类型**：导出函数不得隐式返回未直接声明在当前包 `package.json` 的内部类型（如 `mongoose` 底层的 `mongodb.DeleteResult`、`multer` 底层的 `@types/express`、`lodash-es` 底层的 `@types/lodash`）。
+- **Mongo 返回值复用统一导出类型**：`packages/service` 中直接返回 `deleteOne` / `deleteMany` / `bulkWrite` / `collection.find` / `GridFS` 流的导出函数，统一标注 `packages/service/common/mongo` 导出的真实类型别名（`MongoDeleteResult`、`MongoBulkWriteResult`、`MongoFindCursor`、`MongoGridFSBucketReadStream`），不手写局部结构镜像，也不弱化为 `Record<string, unknown>`。
+- **遏制超长泛型推导**：含泛型 `.populate<T>().lean()` 的导出函数显式标注返回类型与 `.lean<...>()`（避免 `TS7056`）；`memoize`、Zustand 中间件、聚合 OpenAPI 文档（`oas31.OpenAPIObject`）等深度推导导出显式声明外部可见类型。
+
+```typescript
+import type { ClientSession, MongoDeleteResult } from '../../../common/mongo';
+
+// ❌ 不好的实践：隐式返回传递依赖 mongodb.DeleteResult，触发 TS2883
+export const cleanCountLimit = async ({ teamId }: { teamId: string }) =>
+  MongoCountLimit.deleteMany({ key: teamId });
+
+// ✅ 好的实践：显式标注 common/mongo 导出的真实驱动类型
+export const cleanCountLimit = async ({
+  teamId,
+  session
+}: {
+  teamId: string;
+  session?: ClientSession;
+}): Promise<MongoDeleteResult> => MongoCountLimit.deleteMany({ key: teamId }, { session });
+```
+
+### 规避高开销类型实例化热点，不以牺牲契约为代价
+
+- **动态 i18n Key 收窄调用边界**：项目 i18next 联合类型包含数千个 key，禁止对运行期动态字符串直接写 `t(dynamicKey as any)` 或 `t(dynamicKey as ParseKeys)`；应先将 `t` 收窄为 `(key: string, options?: Record<string, unknown>) => string` 或通过统一动态翻译 helper 调用。
+- **表单泛型剔除无关递归字段**：`useForm<T>()` 仅包含表单实际 `register` / `watch` 的字段，用 `Omit<...>` 排除深层递归字段（如 `workflow`），避免 `FieldPath<T>` 递归路径展开爆炸。
+- **严禁破坏公共类型契约的“伪优化”**：不得通过 `import('pkg' as string)` 绕过三方库类型检查，不得为压 `.d.ts` 体积将公开 Zod Object 强擦除为 `z.ZodType`（会丢失 `.shape` / `.strict()` / `.safeExtend()`），也不得破坏已发布 SDK 的 `protected` 继承契约。
+
+```typescript
+// ❌ 不好的实践：触发全量 6,000+ i18n key 重载分发
+const text = t(dynamicLabel as any);
+
+// ✅ 好的实践：在边界收窄动态翻译签名（静态字面量 key 仍直接调用 t('ns:key')）
+const translate = t as (key: string, options?: Record<string, unknown>) => string;
+const text = translate(dynamicLabel);
+```
+
+### `tsconfig.json` 与 `tsconfig.typecheck.json` 职责分离
+
+- 应用的 `tsconfig.json` 服务于 IDE 与 `next dev` / Turbopack，保留 `sdk/*/src` 源码 `paths` 映射以保证开发态联动，禁止写跨包宽泛 glob（如 `../../packages/**/*.ts`），并保持随镜像交付的 `scripts/**/*.ts` 纳入检查。
+- `tsconfig.typecheck.json` 专用于 `tsc -b` 增量检查，在此覆写 `paths` 消费预构建 SDK 声明并引用各包 `tsconfig.composite.json`。
+- 因 `tsdown` 声明构建不执行完整类型检查，凡被 `tsconfig.typecheck.json` 改为消费声明、但仍由镜像编译源码的 workspace SDK（如 `@fastgpt-sdk/storage`、`@fastgpt-sdk/otel`、`@fastgpt-sdk/sandbox-adapter`），其源码类型检查归属各自 workspace 的 `typecheck` 脚本，且必须同步接入所有启用 `SKIP_TYPE_CHECK=true` 的 CI `typecheck-app` 门禁。

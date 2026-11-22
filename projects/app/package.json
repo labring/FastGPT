@@ -22,7 +22,7 @@
     "test:watch": "vitest -c vitest.config.ts",
     "build:workers": "tsx scripts/build-workers.ts",
     "build:cli-scripts": "tsx scripts/build-cli-scripts.ts",
-    "typecheck": "tsc --noEmit --pretty",
+    "typecheck": "tsc -b tsconfig.typecheck.json --pretty",
     "lint": "eslint ./src",
     "build:workers:watch": "tsx scripts/build-workers.ts --watch"
   },

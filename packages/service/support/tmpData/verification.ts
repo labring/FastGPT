@@ -1,5 +1,5 @@
 import { MongoTmpData } from './schema';
-import type { ClientSession } from '../../common/mongo';
+import type { ClientSession, MongoDeleteResult } from '../../common/mongo';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import {
   VerificationTtlSeconds,
@@ -253,7 +253,9 @@ export const verification = {
   },
 
   /** 只删除仍有效且匹配当前材料内容的记录，避免清理并发请求新写入的验证码。 */
-  deleteIfMatch: async <T extends Type>(params: VerificationDeleteParams<T>) => {
+  deleteIfMatch: async <T extends Type>(
+    params: VerificationDeleteParams<T>
+  ): Promise<MongoDeleteResult> => {
     const { session, ...filterParams } = params;
 
     return MongoTmpData.deleteOne(getActiveFilter(filterParams), {

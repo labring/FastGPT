@@ -37,7 +37,13 @@ export class TrainingLeaseLostError extends Error {
  */
 export const claimTrainingTask = async <T = Record<string, never>>(
   options: FindAndLockTrainingTaskOptions
-) => {
+): Promise<
+  | {
+      data: Omit<DatasetTrainingSchemaType, keyof T> & T;
+      lease: TrainingTaskLease;
+    }
+  | undefined
+> => {
   const data = await findAndLockTrainingTask<T>(options);
   if (!data) return;
   return {
