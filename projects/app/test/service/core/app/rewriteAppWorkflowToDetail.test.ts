@@ -56,6 +56,54 @@ describe('rewriteAppWorkflowToDetail - current workflow tool inputs', () => {
     authAppByTmbIdMock.mockReset();
   });
 
+  it('loads a persisted team tool from its saved source even when a system tool shares its ID', async () => {
+    const id = 'systemTool-search';
+    const teamSource = 'teamId:team-1';
+    const teamToolConfig = {
+      systemTool: { toolId: id, source: teamSource }
+    };
+    getClientToolPreviewNodeMock.mockImplementation(async ({ appId, source }) => ({
+      pluginId: appId,
+      name: source === teamSource ? 'Team search' : 'System search',
+      inputs: [],
+      outputs: []
+    }));
+    const nodes: StoreNodeItemType[] = [
+      {
+        nodeId: 'agent',
+        name: 'Agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            label: 'Tools',
+            renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+            value: [
+              { id, config: {}, toolConfig: teamToolConfig },
+              { id, config: {}, source: 'system', toolConfig: teamToolConfig }
+            ]
+          }
+        ],
+        outputs: []
+      }
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(getClientToolPreviewNodeMock).toHaveBeenCalledWith(
+      expect.objectContaining({ appId: id, source: teamSource, teamId: 'team-1' })
+    );
+    expect(nodes[0].inputs[0].value).toMatchObject([
+      { id, source: teamSource, name: 'Team search' },
+      { id, source: 'system', name: 'System search' }
+    ]);
+  });
+
   it('protects historical Agent tool credentials in detail when the preview is unavailable', async () => {
     getClientToolPreviewNodeMock.mockRejectedValue(new Error('Tool deleted'));
     const nodes = [

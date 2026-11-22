@@ -1,6 +1,7 @@
 import { AgentToolInputConfigSchema, type AgentToolType } from '@fastgpt/global/core/app/tool/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import {
+  getAgentToolSource,
   getToolNameCandidates,
   isSystemOrCommercialToolId,
   isDebugToolSource,
@@ -529,10 +530,7 @@ export const getAgentRuntimeTools = async ({
     tools.map<Promise<SubAppInitType[]>>(async (tool) => {
       try {
         const { pluginId, authAppId, source: idSource } = splitCombineToolId(tool.id);
-        const runtimeSource =
-          tool.source ??
-          tool.toolConfig?.systemTool?.source ??
-          tool.toolConfig?.systemToolSet?.source;
+        const runtimeSource = getAgentToolSource(tool);
         // 工具间整体并发；单个 App 类工具必须先鉴权拿到 app，才能读取对应版本节点。
         const authAppPromise = authAppId
           ? loadWorkflowAppResource({

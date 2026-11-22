@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AGENT_SANDBOX_TOOLSET_ID } from '@fastgpt/global/core/ai/sandbox/tools';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 
 const mocks = vi.hoisted(() => ({
   feConfigs: { show_agent_sandbox: false } as Record<string, any>,
@@ -54,7 +56,10 @@ vi.mock('@/web/core/skill/api', () => ({
   getSkillListV2: mocks.getSkillListV2
 }));
 
-import { buildAgentSkillLabelItem } from '@/pageComponents/app/detail/Edit/ChatAgent/hooks/useAgentPromptRefs';
+import {
+  buildAgentSkillLabelItem,
+  useAgentPromptRefs
+} from '@/pageComponents/app/detail/Edit/ChatAgent/hooks/useAgentPromptRefs';
 import { useSkillManager } from '@/pageComponents/app/detail/Edit/ChatAgent/hooks/useSkillManager';
 
 describe('useSkillManager sandbox & skill visibility', () => {
@@ -180,6 +185,53 @@ describe('useSkillManager sandbox & skill visibility', () => {
     );
     const skillEntry = manager.promptRefRegistry.resolve('skill:team:skill-1');
     expect(skillEntry.status === 'resolved' && skillEntry.entry.meta.configStatus).toBe('invalid');
+  });
+
+  it('uses the saved toolset source and qualifies slash-named system children in the editor', () => {
+    const id = 'systemTool-search';
+    const systemToolSet = {
+      toolId: id,
+      toolList: [
+        { toolId: 'catalog/search', name: 'Search catalog' },
+        { toolId: `${id}/catalog/list`, name: 'List catalog' }
+      ]
+    };
+    const tool: SelectedToolItemType = {
+      id,
+      pluginId: id,
+      name: 'Search',
+      flowNodeType: FlowNodeTypeEnum.toolSet,
+      inputs: [],
+      outputs: [],
+      toolConfig: { systemToolSet }
+    };
+    const teamTool = {
+      ...tool,
+      toolConfig: {
+        systemToolSet: {
+          ...systemToolSet,
+          source: 'teamId:team-1'
+        }
+      }
+    };
+    const { promptRefRegistry, getToolWriteKey } = useAgentPromptRefs({
+      selectedTools: [tool, teamTool],
+      canUploadFile: true,
+      hasSelectedDataset: true,
+      useAgentSandbox: false,
+      lang: 'en'
+    });
+
+    expect(getToolWriteKey(teamTool)).toBe('plugin:team:team-1:search');
+    expect(promptRefRegistry.resolve('plugin:system:search/catalog/search')).toMatchObject({
+      status: 'resolved',
+      entry: { meta: { configTarget: tool } }
+    });
+    expect(promptRefRegistry.resolve('plugin:team:team-1:search/catalog/list')).toMatchObject({
+      status: 'resolved',
+      entry: { meta: { configTarget: teamTool } }
+    });
+    expect(promptRefRegistry.resolve('app:team:catalog/search').status).toBe('unresolved');
   });
 
   it('uses resolved toolConfig.toolId so deleted slash-named V2 child refs stay unresolved in editor just like runtime', () => {

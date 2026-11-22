@@ -28,6 +28,7 @@ import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { ListSkillsResponse } from '@fastgpt/global/core/ai/skill/api';
 import { inheritToolInputConfig } from '../../FormComponent/ToolSelector/utils';
 import { useAgentSandboxCapability } from '../../../hooks/useAgentSandboxCapability';
+import { getAgentToolSource } from '@fastgpt/global/core/app/tool/utils';
 import { resolveVerifiedToolPreview } from '../utils';
 import {
   buildAgentSkillLabelItem,
@@ -419,7 +420,7 @@ export const useSkillManager = ({
       });
       const writeKey = getToolWriteKey({
         ...tool,
-        source: tool.source ?? source
+        source: getAgentToolSource(tool) ?? source
       });
       const skill = buildToolSkillLabelItem({ tool, writeKey, configTarget: tool });
 

@@ -18,6 +18,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import {
+  getAgentToolSource,
   isSystemOrCommercialToolId,
   mergeToolSetChildDescriptions,
   splitCombineToolId
@@ -409,10 +410,7 @@ export async function rewriteAppWorkflowToDetail({
           versionId: node.version ?? '',
           resourceType: node.flowNodeType === FlowNodeTypeEnum.appModule ? 'agent' : 'tool',
           metadataLocale: node.metadataLocale,
-          source:
-            node.source ??
-            node.toolConfig?.systemTool?.source ??
-            node.toolConfig?.systemToolSet?.source
+          source: getAgentToolSource(node)
         });
         if (result.success) {
           const preview = result.data!;
@@ -499,10 +497,12 @@ export async function rewriteAppWorkflowToDetail({
             : [];
           const toolNodes = await Promise.all(
             tools.map(async (tool) => {
+              // 历史工具可能只保存配置内的来源，用它预览以避免加载同名系统工具。
+              const source = getAgentToolSource(tool);
               const result = await loadToolNode({
                 id: tool.id,
                 versionId: tool.version,
-                source: tool.source,
+                source,
                 resourceType: 'tool',
                 metadataLocale: tool.metadataLocale
               });
@@ -555,7 +555,7 @@ export async function rewriteAppWorkflowToDetail({
                     : {}),
                   name: tool.name ?? data.name,
                   avatar: tool.avatar ?? data.avatar,
-                  source: tool.source ?? data.source,
+                  source: source ?? getAgentToolSource(data),
                   toolConfig:
                     (tool.toolConfig?.mcpToolSet && 'toolId' in tool.toolConfig.mcpToolSet) ||
                     (tool.toolConfig?.httpToolSet && 'toolId' in tool.toolConfig.httpToolSet) ||
@@ -569,7 +569,7 @@ export async function rewriteAppWorkflowToDetail({
                 return {
                   id: tool.id,
                   pluginId: tool.id,
-                  source: tool.source,
+                  source,
                   version: tool.version ?? '',
                   metadataLocale: tool.metadataLocale,
                   toolConfig: tool.toolConfig,

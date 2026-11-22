@@ -37,6 +37,7 @@ import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/conf
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { inheritToolInputConfig } from '../FormComponent/ToolSelector/utils';
 import {
+  getAgentToolSource,
   getToolIdentityKey,
   isSystemOrCommercialToolId
 } from '@fastgpt/global/core/app/tool/utils';
@@ -387,10 +388,9 @@ const getToolIdentityMatcher = (toolId: string, source?: string) => {
   const identityKey = canonicalKey || getToolIdentityKey(toolId, source);
 
   const isSameTool = (tool: FlowNodeTemplateType | SelectedToolItemType) => {
-    const id = getPromptRefToolId(tool);
     const key = canonicalKey
-      ? getCanonicalKeyForTool({ id, source: tool.source })
-      : getToolIdentityKey(id, tool.source);
+      ? getCanonicalKeyForTool(tool)
+      : getToolIdentityKey(getPromptRefToolId(tool), getAgentToolSource(tool));
     return key === identityKey;
   };
 
@@ -429,7 +429,7 @@ export const resolveVerifiedToolPreview = async ({
   if (
     isMcpOrHttpChild &&
     canonicalKey &&
-    !isSameTool({ ...preview, source: preview.source ?? source })
+    !isSameTool({ ...preview, source: getAgentToolSource(preview) ?? source })
   ) {
     return { status: 'missing' };
   }

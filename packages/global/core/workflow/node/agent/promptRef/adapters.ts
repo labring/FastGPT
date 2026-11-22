@@ -1,10 +1,22 @@
-import { parseDebugToolSource, parseTeamPluginSource } from '../../../../app/tool/utils';
+import {
+  getAgentToolSource,
+  parseDebugToolSource,
+  parseTeamPluginSource
+} from '../../../../app/tool/utils';
 import { AgentSkillSourceEnum } from '../../../../ai/skill/constants';
 import { FlowNodeTypeEnum } from '../../constant';
 import type { NodeToolConfigType } from '../../../type/node';
 import { formatRefKey, parseV2RefKey, splitParentChildId } from './codec';
 import { parseLegacyRefKey, parsePrefixedLegacyToolRef, stripLegacyPluginPrefix } from './legacy';
 import type { AgentPromptRef } from './types';
+
+type PromptRefTool = {
+  id?: string;
+  pluginId?: string;
+  flowNodeType?: FlowNodeTypeEnum;
+  toolConfig?: NodeToolConfigType;
+  source?: string;
+};
 
 /** 将 Skill 的业务 source（system / personal）归一为提示词引用协议 source（system / team）。 */
 const normalizeSkillPromptRefSource = (
@@ -43,12 +55,7 @@ export const getPromptRefToolId = ({
   pluginId,
   flowNodeType,
   toolConfig
-}: {
-  id?: string;
-  pluginId?: string;
-  flowNodeType?: FlowNodeTypeEnum;
-  toolConfig?: NodeToolConfigType;
-}): string => {
+}: PromptRefTool): string => {
   if (flowNodeType !== FlowNodeTypeEnum.toolSet) {
     const resolvedChildId =
       (toolConfig?.mcpTool && 'toolId' in toolConfig.mcpTool
@@ -65,23 +72,16 @@ export const getPromptRefToolId = ({
 
 /**
  * 从工具配置（SelectedToolItemType / AgentToolType / 模板项）构造 V2 引用对象。
- * 优先信任显式 source（teamId: / debug:tmbId: / system），再按工具 ID 规则推断。
+ * 先读取保存的工具来源（含历史工具配置），再按工具 ID 规则推断。
  */
-export const refFromTool = ({
-  id,
-  pluginId,
-  source
-}: {
-  id?: string;
-  pluginId?: string;
-  source?: string;
-}): AgentPromptRef | null => {
-  const rawId = (pluginId || id || '').trim();
+export const refFromTool = (tool: PromptRefTool): AgentPromptRef | null => {
+  const rawId = getPromptRefToolId(tool).trim();
   if (!rawId) return null;
 
   const directV2 = parseV2RefKey(rawId);
   if (directV2) return directV2;
 
+  const source = getAgentToolSource(tool);
   const teamSource = parseTeamPluginSource(source);
   if (teamSource) {
     const cleanId = stripLegacyPluginPrefix(rawId);
@@ -139,11 +139,7 @@ export const isBuiltinPromptRefKey = (rawKey: string): boolean => {
 };
 
 /** 从工具对象直接生成标准 V2 canonicalKey；无法识别时返回空字符串。 */
-export const getCanonicalKeyForTool = (params: {
-  id?: string;
-  pluginId?: string;
-  source?: string;
-}): string => {
+export const getCanonicalKeyForTool = (params: PromptRefTool): string => {
   const ref = refFromTool(params);
   return ref ? formatRefKey(ref) : '';
 };

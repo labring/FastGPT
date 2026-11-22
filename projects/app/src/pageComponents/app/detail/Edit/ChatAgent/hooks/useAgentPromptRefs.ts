@@ -6,6 +6,7 @@ import type {
   SelectedToolItemType
 } from '@fastgpt/global/core/app/formEdit/type';
 import { getAgentToolRuntimeStatus } from '@fastgpt/global/core/app/formEdit/utils';
+import { getAgentToolSource, getSystemToolSetChildId } from '@fastgpt/global/core/app/tool/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { SubAppIds, systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
@@ -13,6 +14,7 @@ import { AGENT_SANDBOX_TOOLSET_ID } from '@fastgpt/global/core/ai/sandbox/tools'
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { formatRefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/codec';
 import {
+  getCanonicalKeyForTool,
   getPromptRefToolId,
   refFromBuiltin,
   refFromSkill,
@@ -126,17 +128,7 @@ export const useAgentPromptRefs = ({
   lang
 }: UseAgentPromptRefsParams) => {
   const getToolWriteKey = useCallback(
-    (params: {
-      id?: string;
-      pluginId?: string;
-      flowNodeType?: FlowNodeTypeEnum;
-      toolConfig?: SelectedToolItemType['toolConfig'];
-      source?: string;
-    }) => {
-      const resolvedId = getPromptRefToolId(params);
-      const ref = refFromTool({ id: resolvedId, source: params.source });
-      return ref ? formatRefKey(ref) : resolvedId.trim();
-    },
+    (tool: SelectedToolItemType) => getCanonicalKeyForTool(tool) || getPromptRefToolId(tool).trim(),
     []
   );
 
@@ -154,10 +146,7 @@ export const useAgentPromptRefs = ({
       const savedToolId = (tool.pluginId || tool.id || '').trim();
       const legacyExactKeys =
         savedToolId && savedToolId !== resolvedToolId ? [savedToolId] : undefined;
-      const ref = refFromTool({
-        id: resolvedToolId,
-        source: tool.source
-      });
+      const ref = refFromTool(tool);
       if (!ref) return;
 
       const canonicalKey = formatRefKey(ref);
@@ -175,9 +164,7 @@ export const useAgentPromptRefs = ({
       if (systemToolList?.length) {
         const parentToolId = tool.toolConfig?.systemToolSet?.toolId || tool.pluginId || tool.id;
         systemToolList.forEach((child) => {
-          const rawId = child.toolId.includes('/')
-            ? child.toolId
-            : `${parentToolId}/${child.toolId}`;
+          const rawId = getSystemToolSetChildId(parentToolId, child.toolId);
           childSpecs.push({ rawId, name: child.name || child.toolId });
         });
       }
@@ -204,8 +191,9 @@ export const useAgentPromptRefs = ({
         });
       }
 
+      const source = getAgentToolSource(tool);
       childSpecs.forEach(({ rawId, name }) => {
-        const childRef = refFromTool({ id: rawId, source: tool.source });
+        const childRef = refFromTool({ id: rawId, source });
         if (!childRef) return;
         const childCanonicalKey = formatRefKey(childRef);
         entries.push({

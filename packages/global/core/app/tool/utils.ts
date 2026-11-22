@@ -142,6 +142,21 @@ const TeamPluginSourcePrefix = 'teamId:';
 export const getToolIdentityKey = (id?: string, source?: string) =>
   `${source || 'system'}:${id || ''}`;
 
+/** 读取 Agent 工具来源，兼容仅在工具配置中保存来源的历史数据。 */
+export const getAgentToolSource = ({
+  source,
+  toolConfig
+}: {
+  source?: string;
+  toolConfig?: NodeToolConfigType;
+}) => source ?? toolConfig?.systemTool?.source ?? toolConfig?.systemToolSet?.source;
+
+/** 归一化系统工具集的子工具 ID，保留子工具名内部的斜线。 */
+export const getSystemToolSetChildId = (toolSetId: string, childId: string) => {
+  const prefix = `${toolSetId}/`;
+  return childId.startsWith(prefix) ? childId : `${prefix}${childId}`;
+};
+
 /** 构造 plugin service 使用的团队隔离 source。 */
 export const getTeamPluginSource = (teamId: string) => `${TeamPluginSourcePrefix}${teamId}`;
 

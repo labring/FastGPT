@@ -70,6 +70,21 @@ describe('loadGeneratedTools', () => {
     });
   });
 
+  it('reuses a team tool whose source is only stored in its tool config', async () => {
+    const source = 'teamId:team-1';
+    const teamTool = {
+      ...createTool(),
+      toolConfig: { systemTool: { toolId, source } }
+    };
+    const result = await loadGeneratedTools({
+      newToolIds: [{ id: toolId, source }],
+      existsTools: [createTool('system'), teamTool]
+    });
+
+    expect(result).toEqual([teamTool]);
+    expect(getNewToolPreviewNode).not.toHaveBeenCalled();
+  });
+
   it.each([undefined, 'system'])(
     'preserves existing system configuration when the saved source is %s',
     async (source) => {
