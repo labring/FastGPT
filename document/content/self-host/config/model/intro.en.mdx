@@ -150,7 +150,7 @@ Token model unit prices use M Tokens, while LLM tier input boundaries use K Toke
 
 Only system models use these prices; team models are free. Pricing is stored under `pricing`: LLMs use `tiers` with `inputPrice` and `outputPrice` (per M Tokens), plus an optional `maxInputTokens` upper limit in K Tokens. The lower limit is the prior upper limit; omit the final upper limit for an unlimited tier. Other model types use `unitPrice`: Embedding/Rerank per M Tokens, TTS per 1M characters, and STT per 60 seconds. Legacy root-level prices are read only by the migration and ignored by the new runtime. Missing `pricing` is free until migration completes.
 
-Each LLM tier under `pricing.tiers` also supports optional `cacheReadPrice` and `cacheCreationPrice` rates per M Tokens. Omitted rates inherit the tier's input price; an explicit `0` makes that cache category free. Total input, including cached tokens, selects the tier. Ordinary input, cache reads, cache creation, and output are billed separately, without charging cached tokens again as ordinary input. Price summaries show input and output; hover over or focus the input price to view cache rates.
+Each LLM tier can set `cacheReadPrice` and `cacheCreationPrice` in points per million tokens. An omitted price inherits the tier’s input price. Set a cache price to `0` to make that category free. With `tierUnit: "K"`, total input, including cached tokens, determines the tier. Configurations without a tier unit use the first tier. Billing prices uncached input, cache reads, cache creation, and output separately. Hover over or focus the input price in the summary to see cache prices.
 
 <Accordions>
 <Accordion title="Language Model Fields">

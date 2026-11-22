@@ -114,7 +114,10 @@ describe('model dashboard cache pricing', () => {
     {
       name: 'K tiers selected by total input including cache',
       pricing: {
-        pricing: { tierUnit: 'K', tiers: [{ maxInputTokens: 5, inputPrice: 1, outputPrice: 1 }, cacheTier] }
+        pricing: {
+          tierUnit: 'K',
+          tiers: [{ maxInputTokens: 5, inputPrice: 1, outputPrice: 1 }, cacheTier]
+        }
       } satisfies PriceType,
       usage: { cached_tokens: 6000, cache_creation_tokens: 1000 },
       expected: 17.7,

@@ -6,7 +6,10 @@ import type {
   DatasetSearchProps,
   DatasetSearchUsage
 } from '@fastgpt/service/core/dataset/search/type';
-import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type {
+  EmbeddingModelDataType,
+  LLMModelDataType
+} from '@fastgpt/global/core/ai/model/schema';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetSearchParamsSchema } from '@fastgpt/global/core/dataset/search/type';
@@ -57,6 +60,15 @@ const model: EmbeddingModelDataType = {
   type: ModelTypeEnum.embedding,
   config: { defaultToken: 512, maxToken: 8192, weight: 0 }
 };
+const imageCaptionModel: LLMModelDataType = {
+  provider: 'test',
+  model: 'image-caption',
+  name: 'Image caption',
+  modelId: 'caption',
+  scope: ModelScopeEnum.system,
+  type: ModelTypeEnum.llm,
+  config: { maxContext: 32000, maxResponse: 4096, quoteMaxToken: 16000 }
+};
 let usage: DatasetSearchUsage;
 
 beforeEach(() => {
@@ -83,6 +95,15 @@ beforeEach(() => {
 
 describe('search API business adapter', () => {
   it('checks policies before recording actual use and updates API Key consumption once', async () => {
+    usage.items.push({
+      phase: 'imageCaption',
+      model: imageCaptionModel,
+      inputTokens: 10,
+      outputTokens: 20,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 3,
+      usedUserOpenAIKey: false
+    });
     const onRateLimit = vi.fn();
     mocks.rate.mockResolvedValue({ limit: 100, remaining: 99, resetAt: 123456 });
     await searchDatasetForApi({ params, auth, onRateLimit });
@@ -97,11 +118,26 @@ describe('search API business adapter', () => {
       expect.objectContaining({
         source: 'api',
         appName: i18nT('account_usage:dataset_search'),
-        totalPoints: 10,
-        list: [expect.objectContaining({ modelId: 'model', inputTokens: 10, amount: 10 })]
+        totalPoints: 40,
+        list: [
+          expect.objectContaining({ modelId: 'model', inputTokens: 10, amount: 10 }),
+          expect.objectContaining({
+            modelId: 'caption',
+            cacheReadTokens: 0,
+            cacheCreationTokens: 3,
+            amount: 30
+          })
+        ]
       })
     );
-    expect(mocks.keyUsage).toHaveBeenCalledExactlyOnceWith({ apikey: 'test-key', totalPoints: 10 });
+    expect(mocks.price).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: imageCaptionModel,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 3
+      })
+    );
+    expect(mocks.keyUsage).toHaveBeenCalledExactlyOnceWith({ apikey: 'test-key', totalPoints: 40 });
     expect(mocks.audit).toHaveBeenCalledTimes(1);
     expect(vi.mocked(pushTrack.datasetSearch)).toHaveBeenCalledExactlyOnceWith({
       teamId: 'team',

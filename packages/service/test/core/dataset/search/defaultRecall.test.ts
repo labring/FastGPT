@@ -707,14 +707,14 @@ describe('default recall dataset search', () => {
     const originalLimit = serviceEnv.RETRIEVAL_RESULTS_LIMIT;
     const originalSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
     afterEach(() => {
-      Object.assign(serviceEnv, { RETRIEVAL_RESULTS_LIMIT: originalLimit });
-      Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: originalSynonymEnabled });
+      serviceEnv.RETRIEVAL_RESULTS_LIMIT = originalLimit;
+      serviceEnv.DATASET_SYNONYM_ENABLED = originalSynonymEnabled;
     });
 
     it('重排生效时产出重排前的召回快照，含被重排淘汰的候选，且同义词只装饰最终结果', async () => {
       arrangeTwoCandidates();
       serviceEnv.RETRIEVAL_RESULTS_LIMIT = 20;
-      Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: true });
+      serviceEnv.DATASET_SYNONYM_ENABLED = true;
 
       const result = await runSearch({ usingReRank: true, rerankWeight: 1 });
 
@@ -773,7 +773,7 @@ describe('default recall dataset search', () => {
 
     it('RETRIEVAL_RESULTS_LIMIT 为 0 时不产出候选集', async () => {
       arrangeTwoCandidates();
-      Object.assign(serviceEnv, { RETRIEVAL_RESULTS_LIMIT: 0 });
+      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 0;
 
       const result = await runSearch({ usingReRank: true, rerankWeight: 1 });
 
@@ -783,7 +783,7 @@ describe('default recall dataset search', () => {
 
     it('候选数超过上限时按上限截断', async () => {
       arrangeTwoCandidates();
-      Object.assign(serviceEnv, { RETRIEVAL_RESULTS_LIMIT: 1 });
+      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 1;
 
       const result = await runSearch({ usingReRank: true, rerankWeight: 1 });
 
