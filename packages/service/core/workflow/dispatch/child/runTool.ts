@@ -32,9 +32,9 @@ import {
 import { isWorkflowResourceError, loadWorkflowAppResource } from '../../resource/service';
 import {
   getToolNameCandidates,
-  getToolRawId,
   isDebugToolSource,
-  isTeamPluginSource
+  isTeamPluginSource,
+  parseToolsetToolId
 } from '@fastgpt/global/core/app/tool/utils';
 import { pluginClient } from '../../../../thirdProvider/fastgptPlugin';
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
@@ -288,12 +288,13 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           }).generateToken()
         : undefined;
 
-      const formatToolId = getToolRawId(toolConfig.systemTool!.toolId);
-      const childId = toolConfig.systemTool.toolId.split('/')[1];
+      const { parentId: pluginId, toolName: childId } = parseToolsetToolId(
+        toolConfig.systemTool.toolId
+      );
       let answerText = '';
 
       const res = await pluginClient.runToolStream({
-        pluginId: formatToolId,
+        pluginId,
         version: tool.version ?? version ?? '',
         source: runtimeToolSource,
         input: toolInput,

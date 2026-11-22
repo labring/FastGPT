@@ -237,8 +237,7 @@ export const getToolRawId = (id: string) => {
 };
 
 /**
- * 拆分 MCP/HTTP 子工具 pluginId，保留 toolName 内部的 `/`。
- * pluginId 格式为 appId/toolName；toolName 可能本身以 `/` 开头，例如 appId//test。
+ * 只用第一个 `/` 分隔工具集与子工具，保留完整的子工具名（含前导斜线）。
  */
 export const splitToolsetToolPluginId = (pluginId: string) => {
   const [parentId, ...toolNameParts] = pluginId.split('/');
@@ -249,7 +248,7 @@ export const splitToolsetToolPluginId = (pluginId: string) => {
 };
 
 /**
- * 从完整组合工具 ID 中解析 MCP/HTTP 子工具信息。
+ * 从组合工具 ID 中解析工具集和完整子工具名。
  */
 export const parseToolsetToolId = (id: string) => {
   const { pluginId } = splitCombineToolId(id);
