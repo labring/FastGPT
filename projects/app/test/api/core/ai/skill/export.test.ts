@@ -99,31 +99,6 @@ describe('GET /api/core/ai/skill/export', () => {
     return skill;
   };
 
-  it('编辑沙盒未运行时应交由 NextAPI 返回 editSandboxNotRunning 错误', async () => {
-    const user = await getRootUser();
-    const skill = await createPersonalSkill({ user, name: 'skill-without-sandbox' });
-    const skillId = String(skill._id);
-    const notRunningError = new UserError(SkillErrEnum.editSandboxNotRunning);
-
-    skillExportMocks.packageSkillEditWorkspaceMock.mockRejectedValueOnce(notRunningError);
-
-    const res = makeMockRes();
-    const req = makeMockReq({ auth: user, query: { skillId } });
-
-    await expect(handler(req, res)).resolves.toMatchObject({
-      code: 500,
-      error: notRunningError
-    });
-
-    expect(skillExportMocks.packageSkillEditWorkspaceMock).toHaveBeenCalledWith({
-      skillId,
-      teamId: user.teamId,
-      validationMode: 'basicZip',
-      applyIgnoreRules: false
-    });
-    expect(mockJsonRes).not.toHaveBeenCalled();
-  });
-
   it('同 team 用户可成功导出 edit sandbox 工作区内容', async () => {
     const user = await getRootUser();
     const skill = await createPersonalSkill({ user, name: 'workspace-skill' });
@@ -168,10 +143,10 @@ describe('GET /api/core/ai/skill/export', () => {
     );
   });
 
-  it('工作区打包失败时应继续抛出原始错误', async () => {
+  it('工作区打包失败时应透传原始错误交由 NextAPI 处理', async () => {
     const user = await getRootUser();
     const skill = await createPersonalSkill({ user, name: 'workspace-package-error' });
-    const packageError = new Error('package failed');
+    const packageError = new UserError(SkillErrEnum.editSandboxNotRunning);
 
     skillExportMocks.packageSkillEditWorkspaceMock.mockRejectedValueOnce(packageError);
 

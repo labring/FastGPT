@@ -3,6 +3,7 @@ import {
   buildSkillMd,
   extractSkillMetadataFromMarkdown,
   extractSkillNameFromSkillMd,
+  findSkillMdEntries,
   parseSkillMarkdown,
   parseGitignoreRules
 } from '@fastgpt/service/core/ai/skill/utils';
@@ -212,6 +213,41 @@ description: 123
 
       // Standard file matchings shouldn't be put into find's -prune directories list
       expect(result.pruneClause).toBe('');
+    });
+  });
+
+  // ==================== findSkillMdEntries ====================
+  describe('findSkillMdEntries', () => {
+    it('should match SKILL.md recursively across depths, normalize ./, deduplicate, and sort', () => {
+      const result = findSkillMdEntries([
+        { path: 'skills/writer/helpers/review/SKILL.md', isDir: false, tag: 'deep' },
+        { path: './SKILL.md', isDir: false, tag: 'root-first' },
+        { path: 'SKILL.md', isDir: false, tag: 'root-dup' },
+        { path: 'foo/skill.md', isDir: false, tag: 'lower' },
+        { path: 'SKILLS/upper/SKILL.MD', isDir: false, tag: 'upper' },
+        { path: 'README.md', isDir: false, tag: 'other' }
+      ]);
+
+      expect(result).toEqual([
+        { path: 'foo/skill.md', isDir: false, tag: 'lower' },
+        { path: 'SKILL.md', isDir: false, tag: 'root-first' },
+        { path: 'SKILLS/upper/SKILL.MD', isDir: false, tag: 'upper' },
+        { path: 'skills/writer/helpers/review/SKILL.md', isDir: false, tag: 'deep' }
+      ]);
+    });
+
+    it('should skip pruned directories, directory entries, and literal backslash names', () => {
+      const result = findSkillMdEntries([
+        { path: 'node_modules/a/SKILL.md', isDir: false },
+        { path: 'pkg/.venv/b/SKILL.md', isDir: false },
+        { path: 'venv/c/SKILL.md', isDir: false },
+        { path: 'skills/example/SKILL.md', isDir: true },
+        { path: 'skills/trailing/SKILL.md/', isDir: false },
+        { path: 'notes\\SKILL.md', isDir: false },
+        { path: 'kept/SKILL.md', isDir: false }
+      ]);
+
+      expect(result.map((entry) => entry.path)).toEqual(['kept/SKILL.md']);
     });
   });
 });

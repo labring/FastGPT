@@ -4,11 +4,7 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import type { RuntimeSkillMetadataType } from '@fastgpt/global/core/ai/skill/type';
 import { getLogger } from '../../../../common/logger/client';
 import { LogCategories } from '../../../../common/logger/categories';
-import {
-  extractSkillMetadataFromMarkdown,
-  findSkillMdEntries,
-  normalizeSkillScanEntryPath
-} from '../utils';
+import { extractSkillMetadataFromMarkdown, findSkillMdEntries } from '../utils';
 import { validateZipSafety } from './zipBuilder';
 
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
@@ -47,20 +43,11 @@ export async function extractRuntimeSkillsFromPackage(
     });
   }
 
-  const fileByNormalizedPath = new Map<string, JSZip.JSZipObject>();
-  for (const [path, file] of Object.entries(zip.files)) {
-    if (file.dir) continue;
-    const normalizedPath = normalizeSkillScanEntryPath(path);
-    if (!fileByNormalizedPath.has(normalizedPath)) {
-      fileByNormalizedPath.set(normalizedPath, file);
-    }
-  }
-
-  const skillMdPaths = findSkillMdEntries(
-    Object.entries(zip.files).map(([path, file]) => ({ path, isDir: file.dir }))
+  const skillMdEntries = findSkillMdEntries(
+    Object.entries(zip.files).map(([path, file]) => ({ path, isDir: file.dir, file }))
   );
 
-  if (skillMdPaths.length === 0) {
+  if (skillMdEntries.length === 0) {
     if (options.allowEmpty) return [];
     throw new UserError(SkillErrEnum.missingSkillMd);
   }
@@ -68,10 +55,7 @@ export async function extractRuntimeSkillsFromPackage(
   const runtimeSkills: RuntimeSkillMetadataType[] = [];
   const invalidReasons: string[] = [];
 
-  for (const path of skillMdPaths) {
-    const file = fileByNormalizedPath.get(path);
-    if (!file) continue;
-
+  for (const { path, file } of skillMdEntries) {
     const content = await file.async('string');
     const parsed = extractSkillMetadataFromMarkdown(content);
 

@@ -1,5 +1,4 @@
 /** Sandbox 内部状态、运行策略与限制常量；时间策略默认使用毫秒，其他单位在名称中明确。 */
-
 // 生命周期状态与操作
 export const sandboxInstanceStatusList = [
   'provisioning',

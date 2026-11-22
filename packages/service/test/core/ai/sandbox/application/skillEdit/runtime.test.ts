@@ -1,3 +1,5 @@
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -6,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   mongoSkillFindOne: vi.fn(),
   mongoVersionFindOne: vi.fn(),
   validateDeployableSkillWorkspacePackage: vi.fn(),
-  validateZipStructure: vi.fn(),
+  validateZipPackageSafety: vi.fn(),
   connectToSandbox: vi.fn(),
   disconnectSandbox: vi.fn(),
   getReadySandboxInfo: vi.fn(),
@@ -34,7 +36,7 @@ vi.mock('@fastgpt/service/core/ai/skill/version/schema', () => ({
 vi.mock('@fastgpt/service/core/ai/skill/package', () => ({
   DEFAULT_GITIGNORE_CONTENT: '.venv/\nnode_modules/\n',
   validateDeployableSkillWorkspacePackage: mocks.validateDeployableSkillWorkspacePackage,
-  validateZipStructure: mocks.validateZipStructure
+  validateZipPackageSafety: mocks.validateZipPackageSafety
 }));
 
 vi.mock('@fastgpt/service/core/ai/skill/edit/config', () => ({
@@ -164,7 +166,10 @@ const createContext = (
   } as any;
 };
 
-const createPackageSandbox = (readResult?: { content: Uint8Array; error: Error | null }) => ({
+const createPackageSandbox = (options?: {
+  readResult?: { content: Uint8Array; error: Error | null };
+  zipExecuteResult?: { stdout: string; stderr: string; exitCode: number };
+}) => ({
   execute: vi.fn(async (command: string) => {
     if (command === 'printf "%s" "$HOME"') {
       return { stdout: '/home/sandbox', stderr: '', exitCode: 0 };
@@ -172,7 +177,7 @@ const createPackageSandbox = (readResult?: { content: Uint8Array; error: Error |
     if (command.includes("awk '{s+=$7}")) {
       return { stdout: '12', stderr: '', exitCode: 0 };
     }
-    return { stdout: '', stderr: '', exitCode: 0 };
+    return options?.zipExecuteResult ?? { stdout: '', stderr: '', exitCode: 0 };
   }),
   getFileInfo: vi.fn(
     async (paths: string[]) =>
@@ -187,8 +192,8 @@ const createPackageSandbox = (readResult?: { content: Uint8Array; error: Error |
     return [
       {
         path: paths[0],
-        content: readResult?.content ?? new Uint8Array([1, 2, 3]),
-        error: readResult?.error ?? null
+        content: options?.readResult?.content ?? new Uint8Array([1, 2, 3]),
+        error: options?.readResult?.error ?? null
       }
     ];
   })
@@ -198,7 +203,7 @@ describe('packageSkillInSandbox', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.validateDeployableSkillWorkspacePackage.mockResolvedValue({ valid: true, files: [] });
-    mocks.validateZipStructure.mockResolvedValue({ valid: true, hasSkillMd: true, files: [] });
+    mocks.validateZipPackageSafety.mockResolvedValue({ valid: true, files: [] });
     mocks.disconnectSandbox.mockResolvedValue(undefined);
   });
 
@@ -232,122 +237,7 @@ describe('packageSkillInSandbox', () => {
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
   });
 
-  it('uses basic zip validation and skips ignore rules for full workspace export', async () => {
-    const sandbox = createPackageSandbox();
-    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
-
-    await packageSkillInSandbox({
-      sandboxId: 'sandbox-1',
-      validationMode: 'basicZip',
-      applyIgnoreRules: false
-    });
-
-    expect(mocks.validateZipStructure).toHaveBeenCalledTimes(1);
-    expect(mocks.validateDeployableSkillWorkspacePackage).not.toHaveBeenCalled();
-    expect(sandbox.readFiles).not.toHaveBeenCalledWith(['/workspace/.gitignore']);
-
-    const executedCommands = sandbox.execute.mock.calls.map(([cmd]: [string]) => cmd);
-    const sizeCheckCmd = executedCommands.find((cmd: string) => cmd.includes("awk '{s+=$7}"));
-    const symlinkListCmd = executedCommands.find((cmd: string) => cmd.startsWith('find . -type l'));
-    const zipCmd = executedCommands.find((cmd: string) => cmd.startsWith('zip -r -y '));
-
-    expect(sizeCheckCmd).toBeDefined();
-    expect(sizeCheckCmd).not.toContain('-prune');
-    expect(symlinkListCmd).toContain('.symlinks');
-    expect(symlinkListCmd).toContain('sub(/^\\.\\//');
-    expect(zipCmd).toBeDefined();
-    expect(zipCmd).toContain("-x 'package.zip' -x '*/package.zip'");
-    expect(zipCmd).toContain("-x@'/home/sandbox/.fastgpt/tmp/");
-    expect(zipCmd).not.toContain('node_modules');
-    expect(zipCmd).not.toContain('.venv');
-    expect(mocks.validateZipStructure).toHaveBeenCalledTimes(1);
-    expect(sandbox.deleteFiles).toHaveBeenCalledWith([
-      expect.stringMatching(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-/),
-      expect.stringMatching(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-.*\.symlinks$/)
-    ]);
-  });
-
-  it('cleans up the symlink list when listing symlinks fails before packaging', async () => {
-    const sandbox = createPackageSandbox();
-    sandbox.execute.mockImplementation(async (command: string) => {
-      if (command === 'printf "%s" "$HOME"') {
-        return { stdout: '/home/sandbox', stderr: '', exitCode: 0 };
-      }
-      if (command.includes("awk '{s+=$7}")) {
-        return { stdout: '12', stderr: '', exitCode: 0 };
-      }
-      if (command.startsWith('find . -type l')) {
-        return { stdout: '', stderr: 'find failed', exitCode: 2 };
-      }
-      return { stdout: '', stderr: '', exitCode: 0 };
-    });
-    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
-
-    await expect(
-      packageSkillInSandbox({ sandboxId: 'sandbox-1', applyIgnoreRules: false })
-    ).rejects.toThrow('Failed to list skill directory symlinks: find failed');
-
-    expect(sandbox.deleteFiles).toHaveBeenCalledWith([
-      expect.stringMatching(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-/),
-      expect.stringMatching(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-.*\.symlinks$/)
-    ]);
-    expect(sandbox.execute).not.toHaveBeenCalledWith(
-      expect.stringMatching(/^zip -r -y /),
-      expect.anything()
-    );
-  });
-
-  it('cleans up the symlink list when zip packaging fails', async () => {
-    const sandbox = createPackageSandbox();
-    sandbox.execute.mockImplementation(async (command: string) => {
-      if (command === 'printf "%s" "$HOME"') {
-        return { stdout: '/home/sandbox', stderr: '', exitCode: 0 };
-      }
-      if (command.includes("awk '{s+=$7}")) {
-        return { stdout: '12', stderr: '', exitCode: 0 };
-      }
-      if (command.startsWith('zip -r -y ')) {
-        return { stdout: '', stderr: 'zip failed', exitCode: 1 };
-      }
-      return { stdout: '', stderr: '', exitCode: 0 };
-    });
-    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
-
-    await expect(
-      packageSkillInSandbox({ sandboxId: 'sandbox-1', applyIgnoreRules: false })
-    ).rejects.toThrow('Failed to package skill directory: zip failed');
-
-    expect(sandbox.deleteFiles).toHaveBeenCalledWith([
-      expect.stringMatching(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-/),
-      expect.stringMatching(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-.*\.symlinks$/)
-    ]);
-  });
-
-  it('logs each cleanup failure without masking the export result', async () => {
-    const sandbox = createPackageSandbox();
-    const symlinkCleanupError = new Error('delete symlink list failed');
-    sandbox.deleteFiles.mockImplementationOnce(async (paths: string[]) => [
-      { path: paths[0], success: true, error: null },
-      { path: paths[1], success: false, error: symlinkCleanupError }
-    ]);
-    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
-
-    await expect(
-      packageSkillInSandbox({ sandboxId: 'sandbox-1', applyIgnoreRules: false })
-    ).resolves.toEqual(Buffer.from([1, 2, 3]));
-
-    expect(mocks.logger.warn).toHaveBeenCalledTimes(1);
-    expect(mocks.logger.warn).toHaveBeenCalledWith(
-      '[Sandbox] Failed to cleanup package file',
-      expect.objectContaining({
-        sandboxId: 'sandbox-1',
-        path: expect.stringMatching(/\.symlinks$/),
-        error: symlinkCleanupError
-      })
-    );
-  });
-
-  it('returns the zip and removes both temp files for a full export', async () => {
+  it('uses basic zip safety validation and streams non-symlink entries to zip for full export', async () => {
     const sandbox = createPackageSandbox();
     mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
 
@@ -359,10 +249,115 @@ describe('packageSkillInSandbox', () => {
       })
     ).resolves.toEqual(Buffer.from([1, 2, 3]));
 
+    expect(mocks.validateZipPackageSafety).toHaveBeenCalledWith(
+      Buffer.from([1, 2, 3]),
+      expect.any(Object)
+    );
+    expect(mocks.validateDeployableSkillWorkspacePackage).not.toHaveBeenCalled();
+    expect(sandbox.readFiles).not.toHaveBeenCalledWith(['/workspace/.gitignore']);
+
+    const executedCommands = sandbox.execute.mock.calls.map(([cmd]: [string]) => cmd);
+    const sizeCheckCmd = executedCommands.find((cmd: string) => cmd.includes("awk '{s+=$7}"));
+    const exportZipCmd = executedCommands.find((cmd: string) => cmd.includes('zip -q -y -@'));
+
+    expect(executedCommands).toHaveLength(3);
+    expect(sizeCheckCmd).toBeDefined();
+    expect(sizeCheckCmd).not.toContain('-prune');
+    expect(exportZipCmd).toContain('find . -type l -prune');
+    expect(exportZipCmd).toContain("! -name 'package.zip'");
+    expect(exportZipCmd).not.toContain('node_modules');
+    expect(exportZipCmd).not.toContain('.venv');
     expect(sandbox.deleteFiles).toHaveBeenCalledWith([
-      expect.stringMatching(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-/),
-      expect.stringMatching(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-.*\.symlinks$/)
+      expect.stringMatching(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-.*\.zip$/)
     ]);
+  });
+
+  it('maps empty workspace exit code 12 to archiveEmpty without deleting non-created zip', async () => {
+    const sandbox = createPackageSandbox({
+      zipExecuteResult: { stdout: 'zip error: Nothing to do!', stderr: '', exitCode: 12 }
+    });
+    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
+
+    const err = await packageSkillInSandbox({
+      sandboxId: 'sandbox-1',
+      validationMode: 'basicZip',
+      applyIgnoreRules: false
+    }).catch((error) => error);
+
+    expect(err).toBeInstanceOf(UserError);
+    expect(err.message).toBe(SkillErrEnum.archiveEmpty);
+    expect(mocks.logger.error).not.toHaveBeenCalled();
+    expect(sandbox.deleteFiles).not.toHaveBeenCalled();
+  });
+
+  it('maps control-character export path failures to invalidSkillPackage and silently cleans up zip', async () => {
+    const sandbox = createPackageSandbox({
+      zipExecuteResult: {
+        stdout: '',
+        stderr: 'Unsafe ZIP entry path contains control character\n',
+        exitCode: 1
+      }
+    });
+    sandbox.deleteFiles.mockResolvedValueOnce([
+      { path: '/home/sandbox/.fastgpt/tmp/skill-package.zip', success: false, error: null }
+    ]);
+    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
+
+    const err = await packageSkillInSandbox({
+      sandboxId: 'sandbox-1',
+      validationMode: 'basicZip',
+      applyIgnoreRules: false
+    }).catch((error) => error);
+
+    expect(err).toBeInstanceOf(UserError);
+    expect(err.message).toBe(SkillErrEnum.invalidSkillPackage);
+    expect(mocks.logger.error).not.toHaveBeenCalled();
+    expect(mocks.logger.warn).not.toHaveBeenCalled();
+    expect(sandbox.deleteFiles).toHaveBeenCalledWith([
+      expect.stringMatching(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-.*\.zip$/)
+    ]);
+  });
+
+  it('cleans up the temp zip when export packaging or find fails', async () => {
+    const sandbox = createPackageSandbox({
+      zipExecuteResult: {
+        stdout: '',
+        stderr: "find: './secret': Permission denied",
+        exitCode: 1
+      }
+    });
+    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
+
+    await expect(
+      packageSkillInSandbox({ sandboxId: 'sandbox-1', applyIgnoreRules: false })
+    ).rejects.toThrow("Failed to package skill directory: find: './secret': Permission denied");
+
+    expect(sandbox.deleteFiles).toHaveBeenCalledWith([
+      expect.stringMatching(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-.*\.zip$/)
+    ]);
+  });
+
+  it('logs cleanup failure without masking the export result', async () => {
+    const sandbox = createPackageSandbox();
+    const cleanupError = new Error('delete zip failed');
+    sandbox.deleteFiles.mockRejectedValueOnce(cleanupError);
+    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
+
+    await expect(
+      packageSkillInSandbox({ sandboxId: 'sandbox-1', applyIgnoreRules: false })
+    ).resolves.toEqual(Buffer.from([1, 2, 3]));
+
+    expect(mocks.logger.warn).toHaveBeenCalledTimes(1);
+    expect(mocks.logger.warn).toHaveBeenCalledWith(
+      '[Sandbox] Failed to cleanup package zip',
+      expect.objectContaining({
+        sandboxId: 'sandbox-1',
+        zipFilePath: expect.stringMatching(
+          /^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-.*\.zip$/
+        ),
+        error: cleanupError
+      })
+    );
   });
 
   it('applies default and root .gitignore rules during publish packaging', async () => {
@@ -387,7 +382,6 @@ describe('packageSkillInSandbox', () => {
     expect(zipCmd).toContain('node_modules');
     expect(zipCmd).toContain('.venv');
     expect(zipCmd).toContain('drafts');
-    expect(zipCmd).not.toContain('-x@');
     expect(executedCommands.some((cmd: string) => cmd.includes('-type l'))).toBe(false);
     expect(sandbox.deleteFiles).toHaveBeenCalledWith([
       expect.stringMatching(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-/)
@@ -396,8 +390,10 @@ describe('packageSkillInSandbox', () => {
 
   it('propagates read failures and still disconnects', async () => {
     const sandbox = createPackageSandbox({
-      content: new Uint8Array(),
-      error: new Error('read failed')
+      readResult: {
+        content: new Uint8Array(),
+        error: new Error('read failed')
+      }
     });
     mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
 
@@ -412,11 +408,11 @@ describe('packageSkillInSandbox', () => {
       valid: false,
       files: [],
       error: 'Skill package must contain at least one SKILL.md',
-      errorCode: 'missingSkillMd'
+      errorCode: SkillErrEnum.missingSkillMd
     });
 
     await expect(packageSkillInSandbox({ sandboxId: 'sandbox-1' })).rejects.toThrow(
-      'missingSkillMd'
+      SkillErrEnum.missingSkillMd
     );
     expect(mocks.logger.error).not.toHaveBeenCalled();
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);

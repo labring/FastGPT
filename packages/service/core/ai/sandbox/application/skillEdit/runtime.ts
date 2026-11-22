@@ -15,7 +15,7 @@ import { joinSandboxPath } from '../../utils';
 import {
   DEFAULT_GITIGNORE_CONTENT,
   validateDeployableSkillWorkspacePackage,
-  validateZipStructure
+  validateZipPackageSafety
 } from '../../../skill/package';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID, getEditDebugSandboxId } from '../../../skill/edit/config';
 import {
@@ -378,7 +378,7 @@ export async function initSkillEditRuntimeSandbox({
  *
  * 默认会先按忽略规则（系统默认规则 + 工作区根目录 `.gitignore`）过滤并做目录大小检查，
  * 避免发布包把 `.venv`/`node_modules` 等目录或过大的工作区直接压入对象存储。
- * 导出完整编辑工作区时可传 `applyIgnoreRules: false` 跳过忽略规则（仍排除临时 `package.zip` 并保留体积与 ZIP 结构校验），
+ * 导出完整编辑工作区时可传 `applyIgnoreRules: false` 跳过忽略规则（仍排除临时 `package.zip` 并保留体积与 ZIP 安全校验，不校验 `SKILL.md`），
  * 此时额外跳过符号链接：`.venv` 等可重建依赖目录常含符号链接，归档符号链接无法通过 ZIP 安全校验。
  * 调用方负责后续 SKILL.md 解析、版本写入和对象存储上传。
  */
@@ -450,8 +450,6 @@ export async function packageSkillInSandbox(params: {
         ...gitignoreContents
       ]));
     }
-    const packageZipExcludes = ['package.zip', '*/package.zip'];
-    const allExcludes = Array.from(new Set([...packageZipExcludes, ...customExcludes]));
     const packageZipNameExcludeClause = `! -name ${shellQuote('package.zip')}`;
     const sizeCheckCmd = pruneClause
       ? `find . \\( ${pruneClause} \\) -prune -o -type f ${packageZipNameExcludeClause} -ls 2>/dev/null | awk '{s+=$7} END {print s+0}'`
@@ -469,33 +467,59 @@ export async function packageSkillInSandbox(params: {
       }
     }
 
-    const excludeArgs = allExcludes.map((pattern) => `-x ${shellQuote(pattern)}`).join(' ');
+    const unsafeExportPathMarker = 'Unsafe ZIP entry path contains control character';
+    // 完整导出直接由 find 枚举普通文件与目录并流式交给 zip -q -y -@：
+    // 1. 天然跳过符号链接及特殊文件，省去临时 .symlinks 清单、awk 转义和 -x@ 的 O(文件数×软链数) 匹配开销；
+    // 2. 在 LC_ALL=C 下前置拦截含 ASCII 控制字符的非软链路径，防止文件名中的 \n 经 zip -@ 注入任意路径；
+    // 3. 保留 -y 防 TOCTOU 软链跟随，并用 POSIX fd 3/4 透传 find 退出码（避免 dash 吞码，且 12 仅表示空包）。
+    const buildExportZipCommand = (zipPath: string) => {
+      const controlCharRejectScript = `printf "${unsafeExportPathMarker}\\n" >&2; exit 1`;
+      const findCmd = [
+        'LC_ALL=C find . -type l -prune',
+        `-o -name ${shellQuote('*[[:cntrl:]]*')} -prune -exec sh -c ${shellQuote(controlCharRejectScript)} _ {} +`,
+        `-o \\( -type f ${packageZipNameExcludeClause} -o -type d ! -name . \\) -print`
+      ].join(' ');
+      return [
+        `{ find_status=$({ { ${findCmd}; printf '%s' "$?" >&4; } | zip -q -y -@ ${shellQuote(zipPath)} >&3; } 4>&1); zip_status=$?; } 3>&1;`,
+        'if [ "$zip_status" -ne 0 ] && [ "$zip_status" -ne 12 ]; then exit "$zip_status"; fi;',
+        'if [ "$find_status" -ne 0 ]; then exit 1; fi;',
+        'exit "$zip_status"'
+      ].join(' ');
+    };
 
-    // 清单创建、打包、读取和校验共用同一个 try：任一步提前失败时，`finally` 都会清理临时文件。
-    let symlinkListFile: string | undefined;
+    const zipCommand = applyIgnoreRules
+      ? (() => {
+          const packageZipExcludes = ['package.zip', '*/package.zip'];
+          const allExcludes = Array.from(new Set([...packageZipExcludes, ...customExcludes]));
+          const excludeArgs = allExcludes.map((pattern) => `-x ${shellQuote(pattern)}`).join(' ');
+          return `zip -r -y -q ${shellQuote(zipFilePath)} . ${excludeArgs}`;
+        })()
+      : buildExportZipCommand(zipFilePath);
+
+    // 打包、读取和校验共用同一个 try：即使 find 在写入部分 zip 后报错，finally 也会清理临时 zip。
+    let shouldCleanupZip = true;
+    let zipCreated = false;
     try {
-      // 完整导出时按清单排除符号链接：`find` 输出去掉 `./` 前缀并转义 Info-ZIP 通配符，`-x@<file>` 逐行读取。
-      let symlinkExcludeArg = '';
-      if (!applyIgnoreRules) {
-        symlinkListFile = joinSandboxPath(packageTempDir, `${packageZipFilename}.symlinks`);
-        const listCommand = `find . -type l | awk '{ sub(/^\\.\\//, ""); gsub(/[][*?\\\\]/, "\\\\\\\\&"); print }' > ${shellQuote(symlinkListFile)}`;
-        const listResult = await newSandbox.execute(listCommand, { workingDirectory: targetDir });
-        if (listResult.exitCode !== 0) {
-          throw new Error(
-            `Failed to list skill directory symlinks: ${listResult.stderr || listResult.stdout}`
-          );
-        }
-        symlinkExcludeArg = ` -x@${shellQuote(symlinkListFile)}`;
-      }
-
-      const zipCommand = `zip -r -y ${shellQuote(zipFilePath)} . ${excludeArgs}${symlinkExcludeArg}`;
       const zipResult = await newSandbox.execute(zipCommand, { workingDirectory: targetDir });
 
       if (zipResult.exitCode !== 0) {
-        throw new Error(
-          `Failed to package skill directory: ${zipResult.stderr || zipResult.stdout}`
-        );
+        const output = [zipResult.stderr, zipResult.stdout].filter(Boolean).join('\n');
+        // Info-ZIP 退出码 12 表示无可打包条目（空工作区或仅剩软链/忽略项），此时不会生成临时 zip。
+        if (zipResult.exitCode === 12) {
+          shouldCleanupZip = false;
+          throw new UserError(SkillErrEnum.archiveEmpty, undefined, {
+            cause: new Error(output || 'Nothing to package')
+          });
+        }
+        if (output.includes(unsafeExportPathMarker)) {
+          throw new UserError(SkillErrEnum.invalidSkillPackage, undefined, {
+            cause: new Error(output)
+          });
+        }
+        throw new Error(`Failed to package skill directory: ${output}`);
       }
+
+      zipCreated = true;
 
       const files = await newSandbox.readFiles([zipFilePath]);
       const file = files?.[0];
@@ -524,7 +548,7 @@ export async function packageSkillInSandbox(params: {
           ? await validateDeployableSkillWorkspacePackage(zipBuffer, {
               maxUncompressedBytes: maxBytes
             })
-          : await validateZipStructure(zipBuffer, {
+          : await validateZipPackageSafety(zipBuffer, {
               maxUncompressedBytes: maxBytes
             });
       if (!validation.valid) {
@@ -535,27 +559,28 @@ export async function packageSkillInSandbox(params: {
 
       return zipBuffer;
     } finally {
-      // 导出模式下清单可能未真正创建，但路径已确定，仍需尝试清理；发布模式只有 zip。
-      const cleanupPaths = symlinkListFile ? [zipFilePath, symlinkListFile] : [zipFilePath];
-      try {
-        const cleanupResults = await newSandbox.deleteFiles(cleanupPaths);
-        cleanupPaths.forEach((cleanupPath, index) => {
-          const cleanupResult = cleanupResults?.[index];
-          if (cleanupResult?.success && !cleanupResult.error) return;
+      if (shouldCleanupZip) {
+        await newSandbox
+          .deleteFiles([zipFilePath])
+          .then(([cleanupResult]) => {
+            // 打包命令非 0 退出时可能尚未生成 zip，静默跳过删除未命中，避免产生误导性告警。
+            if (!zipCreated || (cleanupResult?.success && !cleanupResult.error)) return;
 
-          addLog.warn('[Sandbox] Failed to cleanup package file', {
-            sandboxId,
-            path: cleanupPath,
-            error: cleanupResult?.error ?? new Error('Delete did not succeed')
+            addLog.warn('[Sandbox] Failed to cleanup package zip', {
+              sandboxId,
+              zipFilePath,
+              error: cleanupResult?.error ?? new Error('Delete did not succeed')
+            });
+          })
+          .catch((cleanupError) => {
+            if (!zipCreated) return;
+            // 清理失败只记录，保留最初的打包/导出错误。
+            addLog.warn('[Sandbox] Failed to cleanup package zip', {
+              sandboxId,
+              zipFilePath,
+              error: cleanupError
+            });
           });
-        });
-      } catch (cleanupError) {
-        // 清理失败只记录，保留最初的导出错误。
-        addLog.warn('[Sandbox] Failed to cleanup package files', {
-          sandboxId,
-          paths: cleanupPaths,
-          error: cleanupError
-        });
       }
     }
   } catch (error) {

@@ -56,7 +56,7 @@ export type DeployableSkillWorkspaceValidationResult = {
   errorCode?: SkillErrEnum;
 };
 
-type ZipSafetyValidationResult = {
+export type ZipSafetyValidationResult = {
   valid: boolean;
   files: string[];
   error?: string;
@@ -159,6 +159,28 @@ async function generateZipBuffer(zip: JSZip): Promise<Buffer> {
       level: 6
     }
   });
+}
+
+/**
+ * 校验 ZIP Buffer 本身的完整性与安全性（非空、无路径穿越/控制字符、无符号链接、解压总大小受限）。
+ *
+ * 不要求包含 `SKILL.md`，适用于完整工作区导出等任意内容打包场景。
+ */
+export async function validateZipPackageSafety(
+  zipBuffer: Buffer,
+  options: { maxUncompressedBytes?: number } = {}
+): Promise<ZipSafetyValidationResult> {
+  try {
+    const zip = await JSZip.loadAsync(zipBuffer);
+    return validateZipSafety(zip, options);
+  } catch (error) {
+    return {
+      valid: false,
+      files: [],
+      error: `Invalid ZIP archive: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      errorCode: SkillErrEnum.invalidSkillPackage
+    };
+  }
 }
 
 /**

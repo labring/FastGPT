@@ -839,79 +839,30 @@ description: Read webpages
 });
 
 describe('getAgentSkillInfos recursive scan', () => {
-  const makeScanSandbox = (
-    pathsByDirectory: Record<string, string[]>,
-    contentByPath: Record<string, string>
-  ) => ({
-    execute: vi.fn(async (command: string) => {
-      const dir = Object.keys(pathsByDirectory)
-        .sort((a, b) => b.length - a.length)
-        .find((candidate) => command.includes(`'${candidate}'`));
-      if (!dir) throw new Error(`Unexpected command: ${command}`);
-      return {
-        exitCode: 0,
-        stdout: pathsByDirectory[dir].map((path) => `${path}\0`).join(''),
-        stderr: ''
-      };
-    }),
-    readFiles: vi.fn(async (paths: string[]) =>
-      paths.map((path) => ({ path, content: contentByPath[path] ?? '', error: null }))
-    )
-  });
-
-  const skillMarkdown = (name: string, description = 'Skill description') => `---
-name: ${name}
-description: ${description}
----
-
-# ${name}`;
-
-  it('keeps valid skills across all depths and skips invalid or unnamed SKILL.md files', async () => {
+  it('keeps valid skills across depths including duplicate names and skips invalid or unnamed SKILL.md', async () => {
     const root = '/workspace/projects/version-mixed';
-    const rootEntry = `${root}/SKILL.md`;
-    const standardEntry = `${root}/skills/writer/SKILL.md`;
-    const deepEntry = `${root}/skills/writer/helpers/review/SKILL.md`;
-    const draftEntry = `${root}/skills/writer/examples/template/SKILL.md`;
-    const unnamedEntry = `${root}/drafts/SKILL.md`;
+    const contentByPath: Record<string, string> = {
+      [`${root}/SKILL.md`]: '---\nname: root-skill\ndescription: Root skill\n---\n',
+      [`${root}/skills/a/SKILL.md`]: '---\nname: same\ndescription: First\n---\n',
+      [`${root}/skills/b/SKILL.md`]: '---\nname: same\ndescription: Second\n---\n',
+      [`${root}/skills/writer/helpers/review/SKILL.md`]:
+        '---\nname: reviewer\ndescription: Review helper\n---\n',
+      [`${root}/examples/template/SKILL.md`]: '# Missing frontmatter',
+      [`${root}/drafts/SKILL.md`]: '---\ndescription: Missing name\n---\n'
+    };
 
-    const sandbox = makeScanSandbox(
-      { [root]: [rootEntry, standardEntry, deepEntry, draftEntry, unnamedEntry] },
-      {
-        [rootEntry]: skillMarkdown('root-skill', 'Root skill'),
-        [standardEntry]: skillMarkdown('writer', 'Writer skill'),
-        [deepEntry]: skillMarkdown('reviewer', 'Review helper skill'),
-        [draftEntry]: '# Example template without frontmatter',
-        [unnamedEntry]: '---\ndescription: Missing name\n---\n'
-      }
-    );
-
-    const skillInfos = await getAgentSkillInfos({
-      skillDirectories: [root],
-      sandbox: sandbox as any
-    });
-
-    expect(
-      skillInfos
-        .map(({ name, description, skillMdPath }) => ({ name, description, skillMdPath }))
-        .sort((a, b) => a.name.localeCompare(b.name))
-    ).toEqual([
-      { name: 'reviewer', description: 'Review helper skill', skillMdPath: deepEntry },
-      { name: 'root-skill', description: 'Root skill', skillMdPath: rootEntry },
-      { name: 'writer', description: 'Writer skill', skillMdPath: standardEntry }
-    ]);
-  });
-
-  it('keeps skills with duplicate names when their file paths differ', async () => {
-    const root = '/workspace/projects/version-same-name';
-    const firstPath = `${root}/skills/a/SKILL.md`;
-    const secondPath = `${root}/skills/b/SKILL.md`;
-    const sandbox = makeScanSandbox(
-      { [root]: [firstPath, secondPath] },
-      {
-        [firstPath]: skillMarkdown('same', 'First description'),
-        [secondPath]: skillMarkdown('same', 'Second description')
-      }
-    );
+    const sandbox = {
+      execute: vi.fn(async () => ({
+        exitCode: 0,
+        stdout: Object.keys(contentByPath)
+          .map((path) => `${path}\0`)
+          .join(''),
+        stderr: ''
+      })),
+      readFiles: vi.fn(async (paths: string[]) =>
+        paths.map((path) => ({ path, content: contentByPath[path] ?? '', error: null }))
+      )
+    };
 
     const skillInfos = await getAgentSkillInfos({
       skillDirectories: [root],
@@ -927,16 +878,28 @@ description: ${description}
       }))
     ).toEqual([
       {
-        id: firstPath,
-        name: 'same',
-        description: 'First description',
-        skillMdPath: firstPath
+        id: `${root}/SKILL.md`,
+        name: 'root-skill',
+        description: 'Root skill',
+        skillMdPath: `${root}/SKILL.md`
       },
       {
-        id: secondPath,
+        id: `${root}/skills/a/SKILL.md`,
         name: 'same',
-        description: 'Second description',
-        skillMdPath: secondPath
+        description: 'First',
+        skillMdPath: `${root}/skills/a/SKILL.md`
+      },
+      {
+        id: `${root}/skills/b/SKILL.md`,
+        name: 'same',
+        description: 'Second',
+        skillMdPath: `${root}/skills/b/SKILL.md`
+      },
+      {
+        id: `${root}/skills/writer/helpers/review/SKILL.md`,
+        name: 'reviewer',
+        description: 'Review helper',
+        skillMdPath: `${root}/skills/writer/helpers/review/SKILL.md`
       }
     ]);
   });
