@@ -4,6 +4,7 @@ import { Flex, Box, Table, Thead, Tbody, Tr, Th, Td } from '@chakra-ui/react';
 import { type UsageListItemType } from '@fastgpt/global/support/wallet/usage/type';
 import dayjs from 'dayjs';
 import { UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
+import { getUsedCacheTokens } from '@fastgpt/global/support/wallet/usage/tools';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -40,7 +41,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
     let hasPages = false;
     let hasCount = false;
 
-    usage.list.forEach((item) => {
+    filterBillList.forEach((item) => {
       if (item.modelId !== undefined || item.model !== undefined) {
         hasModel = true;
       }
@@ -54,8 +55,8 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
       if (typeof item.outputTokens === 'number') {
         hasOutputToken = true;
       }
-      if (typeof item.cacheReadTokens === 'number') hasCacheReadToken = true;
-      if (typeof item.cacheCreationTokens === 'number') hasCacheCreationToken = true;
+      if (getUsedCacheTokens(item.cacheReadTokens) !== undefined) hasCacheReadToken = true;
+      if (getUsedCacheTokens(item.cacheCreationTokens) !== undefined) hasCacheCreationToken = true;
       if (typeof item.charsLength === 'number') {
         hasCharsLen = true;
       }
@@ -82,7 +83,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
       hasPages,
       hasCount
     };
-  }, [usage.list]);
+  }, [filterBillList]);
 
   return (
     <MyModal isOpen={true} onClose={onClose} title={t('account_usage:usage_detail')} w={'1000px'}>
@@ -123,8 +124,12 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
                 {hasToken && <Th>{t('account_usage:token_length')}</Th>}
                 {hasInputToken && <Th>{t('account_usage:input_token_length')}</Th>}
                 {hasOutputToken && <Th>{t('account_usage:output_token_length')}</Th>}
-                {hasCacheReadToken && <Th>{t('account_usage:cache_read_token_length')}</Th>}
-                {hasCacheCreationToken && <Th>{t('account_usage:cache_creation_token_length')}</Th>}
+                {hasCacheReadToken && (
+                  <Th textTransform="none">{t('account_usage:cache_read_token_length')}</Th>
+                )}
+                {hasCacheCreationToken && (
+                  <Th textTransform="none">{t('account_usage:cache_creation_token_length')}</Th>
+                )}
                 {hasCount && <Th>{t('account_usage:count')}</Th>}
                 {hasCharsLen && <Th>{t('account_usage:text_length')}</Th>}
                 {hasDuration && <Th>{t('account_usage:duration_seconds')}</Th>}
@@ -140,8 +145,8 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
                   {hasToken && <Td>{item.totalTokens ?? item.tokens ?? '-'}</Td>}
                   {hasInputToken && <Td>{item.inputTokens ?? '-'}</Td>}
                   {hasOutputToken && <Td>{item.outputTokens ?? '-'}</Td>}
-                  {hasCacheReadToken && <Td>{item.cacheReadTokens ?? '-'}</Td>}
-                  {hasCacheCreationToken && <Td>{item.cacheCreationTokens ?? '-'}</Td>}
+                  {hasCacheReadToken && <Td>{getUsedCacheTokens(item.cacheReadTokens)}</Td>}
+                  {hasCacheCreationToken && <Td>{getUsedCacheTokens(item.cacheCreationTokens)}</Td>}
                   {hasCount && <Td>{item.count ?? '-'}</Td>}
                   {hasCharsLen && <Td>{item.charsLength ?? '-'}</Td>}
                   {hasDuration && <Td>{item.duration ?? '-'}</Td>}

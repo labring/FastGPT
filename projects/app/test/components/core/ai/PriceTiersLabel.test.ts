@@ -13,6 +13,7 @@ vi.mock('next-i18next', () => ({
       ({
         'common:Input': 'Input',
         'common:Output': 'Output',
+        'common:model.price_tier_range': 'Input interval: K Tokens',
         'common:model.cache_read_price': 'Cache read',
         'common:model.cache_creation_price': 'Cache creation'
       })[key] ?? key
@@ -37,7 +38,10 @@ const render = (config: PriceType & { scope?: ModelScopeEnum }) => {
   );
   const dom = new JSDOM(markup);
   dom.window.document.querySelectorAll('style').forEach((style) => style.remove());
-  const text = dom.window.document.body.textContent?.replace(/\s+/g, ' ') ?? '';
+  const headers = Array.from(
+    dom.window.document.querySelectorAll('th'),
+    (cell) => cell.textContent
+  );
   const rows = dom.window.document.querySelectorAll('tbody tr');
   const values = Array.from(rows, (row) =>
     Array.from(row.querySelectorAll('td'), (cell) => cell.textContent)
@@ -49,7 +53,7 @@ const render = (config: PriceType & { scope?: ModelScopeEnum }) => {
   dom.window.document.querySelectorAll('aside').forEach((tip) => tip.remove());
   const visibleText = dom.window.document.body.textContent?.replace(/\s+/g, ' ') ?? '';
   dom.window.close();
-  return { text, visibleText, values, tooltips };
+  return { visibleText, headers, values, tooltips };
 };
 
 describe('PriceTiersLabel', () => {
@@ -62,32 +66,10 @@ describe('PriceTiersLabel', () => {
     expect(tooltips).toEqual([]);
   });
   it('shows a dash for an unavailable cache price without inheriting the input price', () => {
-    const { tooltips } = render({
+    const { values } = render({
       pricing: { tiers: [{ inputPrice: 2, outputPrice: 4, cacheReadPrice: 0.2 }] }
     });
-    expect(tooltips).toEqual([
-      {
-        trigger: 'Input: 2 points/M Tokens',
-        text: 'Cache read: 0.2 points/M TokensCache creation: -'
-      }
-    ]);
-  });
-
-  it('hides cache prices from the summary and exposes them only on input hover', () => {
-    const { visibleText, tooltips } = render({
-      pricing: {
-        tiers: [{ inputPrice: 2, outputPrice: 4, cacheReadPrice: 0.2, cacheCreationPrice: 2.5 }]
-      }
-    });
-    expect(visibleText).toContain('Input: 2 points/M Tokens');
-    expect(visibleText).toContain('Output: 4 points/M Tokens');
-    expect(visibleText).not.toContain('Cache');
-    expect(tooltips).toEqual([
-      {
-        trigger: 'Input: 2 points/M Tokens',
-        text: 'Cache read: 0.2 points/M TokensCache creation: 2.5 points/M Tokens'
-      }
-    ]);
+    expect(values).toEqual([['0 ≤ Input', '2', '4', '0.2', '-']]);
   });
 
   it.each([{}, { cacheReadPrice: 0.004, cacheCreationPrice: 0 }])(
@@ -103,14 +85,12 @@ describe('PriceTiersLabel', () => {
   );
 
   it('shows zero cache reads as a dash and rounds positive creation prices', () => {
-    const { text } = render({
+    const { values } = render({
       pricing: {
         tiers: [{ inputPrice: 2, outputPrice: 4, cacheReadPrice: 0, cacheCreationPrice: 0.125 }]
       }
     });
-    expect(text).toContain('Cache read: -');
-    expect(text).not.toContain('Cache read: 0');
-    expect(text).toContain('Cache creation: 0.13 points/M Tokens');
+    expect(values).toEqual([['0 ≤ Input', '2', '4', '-', '0.13']]);
   });
 
   it('rounds summary and tooltip prices to at most two decimals', () => {
@@ -129,12 +109,10 @@ describe('PriceTiersLabel', () => {
       }
     });
     for (const price of ['1.23', '2']) expect(visibleText).toContain(`${price} points/M Tokens`);
-    expect(values[0].slice(1).map((value) => value?.split(' ')[0])).toEqual([
-      '1.23',
-      '0.13',
-      '2.35'
+    expect(values).toEqual([
+      ['0 ≤ Input ≤ 10', '1.23', '2', '0.13', '2.35'],
+      ['10 < Input', '1.23', '2', '0.13', '2.35']
     ]);
-    expect(values[2][1]?.split(' ')[0]).toBe('2');
     expect(visibleText).not.toContain('~');
   });
 
@@ -151,21 +129,8 @@ describe('PriceTiersLabel', () => {
     expect(tooltips).toEqual([]);
   });
 
-  it('shows a dash for zero input while retaining a positive cache creation tooltip', () => {
-    const { visibleText, tooltips } = render({
-      pricing: {
-        tiers: [{ inputPrice: 0, outputPrice: 4, cacheReadPrice: 0, cacheCreationPrice: 2 }]
-      }
-    });
-    expect(visibleText).toBe('Input: -Output: 4 points/M Tokens');
-    expect(tooltips[0]).toEqual({
-      trigger: 'Input: -',
-      text: 'Cache read: -Cache creation: 2 points/M Tokens'
-    });
-  });
-
-  it('keeps tiered cache prices on input hover and only output prices on output hover', () => {
-    const { visibleText, values, tooltips } = render({
+  it('groups both summary rows under one tooltip with all prices and both token units', () => {
+    const { visibleText, headers, values, tooltips } = render({
       pricing: {
         tiers: [
           { maxInputTokens: 32, inputPrice: 2, outputPrice: 4, cacheReadPrice: 0.2 },
@@ -173,23 +138,24 @@ describe('PriceTiersLabel', () => {
         ]
       }
     });
-    expect(visibleText).toContain('Input: 2~4 points/M Tokens');
-    expect(visibleText).toContain('Output: 4~6 points/M Tokens');
-    expect(visibleText).not.toContain('Cache');
-    expect(tooltips[0].trigger).toBe('Input: 2~4 points/M Tokens');
-    expect(tooltips[0].text).toContain('Cache read');
-    expect(tooltips[0].text).toContain('Cache creation');
-    expect(tooltips[1].trigger).toBe('Output: 4~6 points/M Tokens');
-    expect(tooltips[1].text).not.toContain('Cache');
-    expect(values).toHaveLength(4);
-    expect(values[0]).toHaveLength(4);
-    expect(values[0][0]).toContain('0 ≤');
-    expect(values[0][3]).toBe('-');
-    expect(values[1][2]).toBe('-');
-    expect(values[2]).toHaveLength(2);
+    expect(visibleText).toBe('Input: 2~4 points/M TokensOutput: 4~6 points/M Tokens');
+    expect(tooltips).toHaveLength(1);
+    expect(tooltips[0].trigger).toBe(visibleText);
+    expect(tooltips[0].text).toContain('points / M Tokens');
+    expect(headers).toEqual([
+      'Input interval: K Tokens',
+      'Input',
+      'Output',
+      'Cache read',
+      'Cache creation'
+    ]);
+    expect(values).toEqual([
+      ['0 ≤ Input ≤ 32', '2', '4', '0.2', '-'],
+      ['32 < Input', '4', '6', '-', '5']
+    ]);
   });
 
-  it('hides a tiered input tooltip without cache prices and keeps output tier details', () => {
+  it('shows tier details when cache prices are unavailable', () => {
     const { visibleText, tooltips, values } = render({
       pricing: {
         tiers: [
@@ -200,8 +166,6 @@ describe('PriceTiersLabel', () => {
     });
     expect(visibleText).toBe('Input: -~2 points/M TokensOutput: -~4 points/M Tokens');
     expect(tooltips).toHaveLength(1);
-    expect(tooltips[0].trigger).toBe('Output: -~4 points/M Tokens');
-    expect(tooltips[0].text).not.toContain('Cache');
-    expect(values[0][1]).toBe('-');
+    expect(values[0]).toEqual(['0 ≤ Input ≤ 32', '-', '-', '-', '-']);
   });
 });

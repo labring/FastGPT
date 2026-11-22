@@ -99,3 +99,29 @@ describe('UsageDetail STT quantities', () => {
     expect(cells).toEqual(['Old STT', '77', '-', '1.25', 'Duration STT', '-', '0', '0']);
   });
 });
+
+describe('UsageDetail cache token columns', () => {
+  it('hides both cache columns when every module has missing or zero usage', () => {
+    const { headers } = renderTable([
+      { moduleName: 'Historical zero', amount: 0, cacheReadTokens: 0, cacheCreationTokens: 0 },
+      { moduleName: 'No cache', amount: 1 }
+    ]);
+    expect(headers).toEqual(['account_usage:module_name', 'account_usage:total_points_consumed']);
+  });
+
+  it.each([
+    ['cacheReadTokens', 'account_usage:cache_read_token_length'],
+    ['cacheCreationTokens', 'account_usage:cache_creation_token_length']
+  ] as const)('shows %s only when used and leaves other modules blank', (key, header) => {
+    const { headers, cells } = renderTable([
+      { moduleName: 'Cached', amount: 1, [key]: 128 },
+      { moduleName: 'Uncached', amount: 2, cacheReadTokens: 0, cacheCreationTokens: 0 }
+    ]);
+    expect(headers).toEqual([
+      'account_usage:module_name',
+      header,
+      'account_usage:total_points_consumed'
+    ]);
+    expect(cells).toEqual(['Cached', '128', '1', 'Uncached', '', '2']);
+  });
+});

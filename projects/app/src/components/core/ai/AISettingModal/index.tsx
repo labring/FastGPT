@@ -352,6 +352,7 @@ const AIChatSettingsModal = ({
                           config={selectedModel}
                           unitLabel={t('common:support.wallet.subscription.point') + ' / M Tokens'}
                           fontSize={'mini'}
+                          showCachePrices
                         />
                       )}
                     </Td>
