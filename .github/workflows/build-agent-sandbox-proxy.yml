@@ -1,14 +1,9 @@
-name: Release IDE-Agent, Agent-sandbox-proxy
+name: Release Agent-sandbox-proxy
 
 on:
   workflow_dispatch:
     inputs:
-      ide_agent_tag:
-        description: 'fastgpt-ide-agent image tag'
-        required: false
-        default: latest
-        type: string
-      agent_sandbox_proxy_tag:
+      tag:
         description: 'fastgpt-agent-sandbox-proxy image tag'
         required: false
         default: latest
@@ -18,56 +13,38 @@ env:
   FASTGPT_ALI_IMAGE_USER: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
 
 jobs:
-  build-fastgpt-agent-helper-images:
+  build-fastgpt-agent-sandbox-proxy-images:
     permissions:
       packages: write
       contents: read
     strategy:
       matrix:
         include:
-          - image: fastgpt-ide-agent
-            context: projects/fastgpt-ide-agent
-            dockerfile: projects/fastgpt-ide-agent/Dockerfile
-            description: fastgpt-ide-agent image
-            arch: amd64
-          - image: fastgpt-ide-agent
-            context: projects/fastgpt-ide-agent
-            dockerfile: projects/fastgpt-ide-agent/Dockerfile
-            description: fastgpt-ide-agent image
-            arch: arm64
-            runs-on: ubuntu-24.04-arm
-          - image: fastgpt-agent-sandbox-proxy
-            context: projects/agent-sandbox-proxy
-            dockerfile: projects/agent-sandbox-proxy/Dockerfile
-            description: fastgpt-agent-sandbox-proxy image
-            arch: amd64
-          - image: fastgpt-agent-sandbox-proxy
-            context: projects/agent-sandbox-proxy
-            dockerfile: projects/agent-sandbox-proxy/Dockerfile
-            description: fastgpt-agent-sandbox-proxy image
-            arch: arm64
+          - arch: amd64
+          - arch: arm64
             runs-on: ubuntu-24.04-arm
     runs-on: ${{ matrix.runs-on || 'ubuntu-24.04' }}
     timeout-minutes: 120
     steps:
-      # install env
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
           driver-opts: |
             network=host
+
       - name: Cache Docker layers
         uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-${{ matrix.image }}-buildx-${{ github.sha }}
+          key: ${{ runner.os }}-fastgpt-agent-sandbox-proxy-buildx-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.image }}-buildx-
+            ${{ runner.os }}-fastgpt-agent-sandbox-proxy-buildx-
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -77,7 +54,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to Ali Hub
-        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' && matrix.image == 'fastgpt-agent-sandbox-proxy' }}
+        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
         uses: docker/login-action@v3
         with:
           registry: registry.cn-hangzhou.aliyuncs.com
@@ -88,30 +65,30 @@ jobs:
         id: build-ghcr
         uses: docker/build-push-action@v6
         with:
-          context: ${{ matrix.context }}
-          file: ${{ matrix.dockerfile }}
+          context: projects/agent-sandbox-proxy
+          file: projects/agent-sandbox-proxy/Dockerfile
           platforms: linux/${{ matrix.arch }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.description=${{ matrix.description }}
-          outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}",push-by-digest=true,push=true
+            org.opencontainers.image.description=fastgpt-agent-sandbox-proxy image
+          outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/fastgpt-agent-sandbox-proxy",push-by-digest=true,push=true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
       - name: Build for Ali Hub ${{ matrix.arch }}
-        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' && matrix.image == 'fastgpt-agent-sandbox-proxy' }}
+        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
         id: build-aliyun
         uses: docker/build-push-action@v6
         with:
-          context: ${{ matrix.context }}
-          file: ${{ matrix.dockerfile }}
+          context: projects/agent-sandbox-proxy
+          file: projects/agent-sandbox-proxy/Dockerfile
           platforms: linux/${{ matrix.arch }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.description=${{ matrix.description }}
+            org.opencontainers.image.description=fastgpt-agent-sandbox-proxy image
           provenance: false
           sbom: false
-          outputs: type=image,"name=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/${{ matrix.image }}",push-by-digest=true,push=true
+          outputs: type=image,"name=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-agent-sandbox-proxy",push-by-digest=true,push=true
           cache-from: type=local,src=/tmp/.buildx-cache
 
       - name: Export digest
@@ -119,7 +96,7 @@ jobs:
           mkdir -p ${{ runner.temp }}/digests/ghcr
           ghcr_digest="${{ steps.build-ghcr.outputs.digest }}"
           touch "${{ runner.temp }}/digests/ghcr/${ghcr_digest#sha256:}"
-          if [[ -n "$FASTGPT_ALI_IMAGE_USER" && "${{ matrix.image }}" == "fastgpt-agent-sandbox-proxy" ]]; then
+          if [[ -n "$FASTGPT_ALI_IMAGE_USER" ]]; then
             mkdir -p ${{ runner.temp }}/digests/aliyun
             aliyun_digest="${{ steps.build-aliyun.outputs.digest }}"
             touch "${{ runner.temp }}/digests/aliyun/${aliyun_digest#sha256:}"
@@ -128,32 +105,25 @@ jobs:
       - name: Upload GHCR digest
         uses: actions/upload-artifact@v4
         with:
-          name: ghcr-digests-${{ matrix.image }}-${{ github.sha }}-${{ matrix.arch }}
+          name: ghcr-digests-fastgpt-agent-sandbox-proxy-${{ github.sha }}-${{ matrix.arch }}
           path: ${{ runner.temp }}/digests/ghcr/*
           if-no-files-found: error
           retention-days: 1
 
       - name: Upload Ali Hub digest
-        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' && matrix.image == 'fastgpt-agent-sandbox-proxy' }}
+        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: aliyun-digests-${{ matrix.image }}-${{ github.sha }}-${{ matrix.arch }}
+          name: aliyun-digests-fastgpt-agent-sandbox-proxy-${{ github.sha }}-${{ matrix.arch }}
           path: ${{ runner.temp }}/digests/aliyun/*
           if-no-files-found: error
           retention-days: 1
 
-  release-fastgpt-agent-helper-images:
+  release-fastgpt-agent-sandbox-proxy-images:
     permissions:
       packages: write
       contents: read
-    needs: build-fastgpt-agent-helper-images
-    strategy:
-      matrix:
-        include:
-          - image: fastgpt-ide-agent
-            tag: ${{ inputs.ide_agent_tag || 'latest' }}
-          - image: fastgpt-agent-sandbox-proxy
-            tag: ${{ inputs.agent_sandbox_proxy_tag || 'latest' }}
+    needs: build-fastgpt-agent-sandbox-proxy-images
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     steps:
@@ -163,26 +133,28 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Login to Ali Hub
-        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' && matrix.image == 'fastgpt-agent-sandbox-proxy' }}
+        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
         uses: docker/login-action@v3
         with:
           registry: registry.cn-hangzhou.aliyuncs.com
           username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
           password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
+
       - name: Download digests
         uses: actions/download-artifact@v4
         with:
           path: ${{ runner.temp }}/digests/ghcr
-          pattern: ghcr-digests-${{ matrix.image }}-${{ github.sha }}-*
+          pattern: ghcr-digests-fastgpt-agent-sandbox-proxy-${{ github.sha }}-*
           merge-multiple: true
 
       - name: Download Ali Hub digests
-        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' && matrix.image == 'fastgpt-agent-sandbox-proxy' }}
+        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
         uses: actions/download-artifact@v4
         with:
           path: ${{ runner.temp }}/digests/aliyun
-          pattern: aliyun-digests-${{ matrix.image }}-${{ github.sha }}-*
+          pattern: aliyun-digests-fastgpt-agent-sandbox-proxy-${{ github.sha }}-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
@@ -190,16 +162,17 @@ jobs:
 
       - name: Set image name and tag
         run: |
-          echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ matrix.tag }}" >> $GITHUB_ENV
-          if [[ "${{ matrix.image }}" == "fastgpt-agent-sandbox-proxy" ]]; then
-            echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/${{ matrix.image }}:${{ matrix.tag }}" >> $GITHUB_ENV
+          TAG="${{ inputs.tag || 'latest' }}"
+          echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/fastgpt-agent-sandbox-proxy:${TAG}" >> "$GITHUB_ENV"
+          if [[ -n "$FASTGPT_ALI_IMAGE_USER" ]]; then
+            echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-agent-sandbox-proxy:${TAG}" >> "$GITHUB_ENV"
           fi
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         run: |
           set -euo pipefail
-          GHCR_IMAGE="ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}"
+          GHCR_IMAGE="ghcr.io/${{ github.repository_owner }}/fastgpt-agent-sandbox-proxy"
           GHCR_SOURCES=()
           for digest_file in ghcr/*; do
             [[ -f "$digest_file" ]] || continue
@@ -213,7 +186,7 @@ jobs:
           sleep 5
 
           if [[ -n "$FASTGPT_ALI_IMAGE_USER" && -n "${Ali_Tag:-}" ]]; then
-            ALI_IMAGE="${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/${{ matrix.image }}"
+            ALI_IMAGE="${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-agent-sandbox-proxy"
             ALI_SOURCES=()
             for digest_file in aliyun/*; do
               [[ -f "$digest_file" ]] || continue

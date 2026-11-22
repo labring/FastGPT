@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs';
 import { Agent } from 'undici';
+import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 import {
   SandboxVolumeNameSchema,
@@ -9,6 +10,7 @@ import {
 import type { IVolumeDriver } from './IVolumeDriver';
 import { env } from '../env';
 import { logDebug } from '../utils/logger';
+import { FASTGPT_VOLUME_LABELS, canAdoptLegacyLabels, isManagedLabels } from '../utils/ownership';
 
 const K8S_API = 'https://kubernetes.default.svc';
 const TOKEN_PATH = '/var/run/secrets/kubernetes.io/serviceaccount/token';
@@ -19,41 +21,27 @@ const DEFAULT_PVC_POLL_INTERVAL_MS = 500;
 
 const K8sPvcSchema = z.object({
   metadata: z.object({
+    name: z.string().min(1).optional(),
     uid: z.string().min(1),
-    deletionTimestamp: z.string().nullable().optional()
+    deletionTimestamp: z.string().nullable().optional(),
+    labels: z.record(z.string(), z.string()).optional()
   })
+});
+
+const K8sPvcListSchema = z.object({
+  items: z.array(K8sPvcSchema)
 });
 
 type K8sPvcState =
   | { state: 'absent' }
-  | { state: 'active'; uid: string }
-  | { state: 'deleting'; uid: string };
+  | { state: 'active'; uid: string; managed: boolean; legacyAdoptable: boolean }
+  | { state: 'deleting'; uid: string; managed: boolean; legacyAdoptable: boolean };
 
 export type K8sVolumeDriverOptions = {
   namespace?: string;
   waitTimeoutMs?: number;
   pollIntervalMs?: number;
 };
-
-function readToken(): string {
-  return readFileSync(TOKEN_PATH, 'utf-8').trim();
-}
-
-function pvcBody(params: { name: string; storageSize: string; namespace: string }): object {
-  return {
-    apiVersion: 'v1',
-    kind: 'PersistentVolumeClaim',
-    metadata: {
-      name: params.name,
-      namespace: params.namespace
-    },
-    spec: {
-      accessModes: ['ReadWriteOnce'],
-      resources: { requests: { storage: params.storageSize } },
-      storageClassName: env.VM_K8S_PVC_STORAGE_CLASS
-    }
-  };
-}
 
 export class K8sVolumeDriver implements IVolumeDriver {
   private readonly namespace: string;
@@ -71,18 +59,21 @@ export class K8sVolumeDriver implements IVolumeDriver {
     }
   }
 
-  private fetchOpts(extra: RequestInit = {}): RequestInit & { dispatcher: Agent } {
+  private k8sFetch(url: string, init: RequestInit = {}): Promise<Response> {
     // Kubernetes in-cluster CA 是服务账号挂载文件，按实例懒加载，避免模块初始化依赖运行环境。
     this.dispatcher ??= new Agent({ connect: { ca: readFileSync(CA_PATH, 'utf-8') } });
-    return { ...extra, dispatcher: this.dispatcher } as RequestInit & { dispatcher: Agent };
-  }
-
-  private headers(): Record<string, string> {
-    return {
-      Authorization: `Bearer ${readToken()}`,
-      'Content-Type': 'application/json',
-      Accept: 'application/json'
-    };
+    const token = readFileSync(TOKEN_PATH, 'utf-8').trim();
+    return fetch(url, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        ...init.headers
+      },
+      signal: AbortSignal.timeout(30_000),
+      dispatcher: this.dispatcher
+    } as RequestInit & { dispatcher: Agent });
   }
 
   private pvcUrl(name?: string): string {
@@ -94,10 +85,13 @@ export class K8sVolumeDriver implements IVolumeDriver {
   private async readPvc(name: string): Promise<K8sPvcState> {
     const url = this.pvcUrl(name);
     logDebug(`K8s GET PVC url=${url}`);
-    const res = await fetch(url, this.fetchOpts({ headers: this.headers() }));
+    const res = await this.k8sFetch(url);
     logDebug(`K8s GET PVC status=${res.status}`);
 
-    if (res.status === 404) return { state: 'absent' };
+    if (res.status === 404) {
+      await res.body?.cancel().catch(() => undefined);
+      return { state: 'absent' };
+    }
     if (!res.ok) {
       const text = await res.text().catch(() => '');
       throw new Error(`K8s PVC GET failed (${res.status}): ${text}`);
@@ -108,8 +102,12 @@ export class K8sVolumeDriver implements IVolumeDriver {
     if (!parsed.success) {
       throw new Error(`K8s PVC GET returned invalid metadata for ${this.namespace}/${name}`);
     }
-    const { uid, deletionTimestamp } = parsed.data.metadata;
-    return deletionTimestamp ? { state: 'deleting', uid } : { state: 'active', uid };
+    const { uid, deletionTimestamp, labels } = parsed.data.metadata;
+    const managed = isManagedLabels(labels);
+    const legacyAdoptable = canAdoptLegacyLabels(labels);
+    return deletionTimestamp
+      ? { state: 'deleting', uid, managed, legacyAdoptable }
+      : { state: 'active', uid, managed, legacyAdoptable };
   }
 
   /**
@@ -136,19 +134,57 @@ export class K8sVolumeDriver implements IVolumeDriver {
   private async waitForPoll(deadline: number, timeoutMessage: string): Promise<void> {
     const remainingMs = deadline - Date.now();
     if (remainingMs <= 0) {
-      throw new Error(timeoutMessage);
+      throw new HTTPException(504, { message: timeoutMessage });
     }
     await new Promise((resolve) => setTimeout(resolve, Math.min(this.pollIntervalMs, remainingMs)));
   }
 
+  private assertPvcOwnership({
+    name,
+    current,
+    allowLegacyUnlabeled
+  }: {
+    name: string;
+    current: Exclude<K8sPvcState, { state: 'absent' }>;
+    allowLegacyUnlabeled?: boolean;
+  }): void {
+    // [4.18.0 legacy compat, remove in >= 4.19.0] allowLegacyUnlabeled && legacyAdoptable 允许接管/清理无标签历史 PVC
+    if (!current.managed && !(allowLegacyUnlabeled && current.legacyAdoptable)) {
+      throw new HTTPException(403, {
+        message: `Refusing to manage K8s PVC ${this.namespace}/${name}: missing fastgpt-volume-manager ownership labels`
+      });
+    }
+  }
+
+  /** 只读核验 PVC 是否存在、处于活跃态且归属当前 volume-manager（绝不触发新建 PVC）。 */
+  async exists(name: string, options?: { allowLegacyUnlabeled?: boolean }): Promise<boolean> {
+    const current = await this.readPvc(name);
+    if (current.state === 'absent') return false;
+    this.assertPvcOwnership({
+      name,
+      current,
+      allowLegacyUnlabeled: options?.allowLegacyUnlabeled
+    });
+    return current.state === 'active';
+  }
+
   async ensure(params: SandboxVolumeEnsureRequest): Promise<SandboxVolumeEnsureResponse> {
-    const name = SandboxVolumeNameSchema.parse(params.claimName);
+    const name = params.claimName;
     const storageSize = params.storageSize ?? DEFAULT_PVC_STORAGE_SIZE;
     const deadline = Date.now() + this.waitTimeoutMs;
 
     while (true) {
       const current = await this.readPvc(name);
+      if (current.state !== 'absent') {
+        this.assertPvcOwnership({
+          name,
+          current,
+          allowLegacyUnlabeled: params.allowLegacyUnlabeled
+        });
+      }
       if (current.state === 'active') {
+        // [4.18.0 legacy compat, remove in >= 4.19.0]
+        // K8s RBAC 仅授予 get/list/create/delete 权限，已核验的存量无标签 PVC 原地直接复用，待后续归档/重建自然换代打标。
         return { claimName: name, created: false };
       }
       if (current.state === 'deleting') {
@@ -156,28 +192,37 @@ export class K8sVolumeDriver implements IVolumeDriver {
         continue;
       }
 
+      const pvcPayload = {
+        apiVersion: 'v1',
+        kind: 'PersistentVolumeClaim',
+        metadata: {
+          name,
+          namespace: this.namespace,
+          labels: { ...FASTGPT_VOLUME_LABELS }
+        },
+        spec: {
+          accessModes: ['ReadWriteOnce'],
+          resources: { requests: { storage: storageSize } },
+          ...(env.VM_K8S_PVC_STORAGE_CLASS
+            ? { storageClassName: env.VM_K8S_PVC_STORAGE_CLASS }
+            : {})
+        }
+      };
+
       const postUrl = this.pvcUrl();
       logDebug(`K8s POST PVC url=${postUrl} name=${name}`);
-      const createRes = await fetch(
-        postUrl,
-        this.fetchOpts({
-          method: 'POST',
-          headers: this.headers(),
-          body: JSON.stringify(
-            pvcBody({
-              name,
-              storageSize,
-              namespace: this.namespace
-            })
-          )
-        })
-      );
+      const createRes = await this.k8sFetch(postUrl, {
+        method: 'POST',
+        body: JSON.stringify(pvcPayload)
+      });
       logDebug(`K8s POST PVC status=${createRes.status}`);
 
       if (createRes.ok) {
+        await createRes.body?.cancel().catch(() => undefined);
         return { claimName: name, created: true };
       }
       if (createRes.status === 409) {
+        await createRes.body?.cancel().catch(() => undefined);
         await this.waitForPoll(deadline, `Timed out ensuring K8s PVC ${this.namespace}/${name}`);
         continue;
       }
@@ -187,10 +232,14 @@ export class K8sVolumeDriver implements IVolumeDriver {
     }
   }
 
-  async remove(claimName: string): Promise<void> {
-    const name = SandboxVolumeNameSchema.parse(claimName);
+  async remove(name: string, options?: { allowLegacyUnlabeled?: boolean }): Promise<void> {
     const current = await this.readPvc(name);
     if (current.state === 'absent') return;
+    this.assertPvcOwnership({
+      name,
+      current,
+      allowLegacyUnlabeled: options?.allowLegacyUnlabeled
+    });
 
     const targetUid = current.uid;
     const deadline = Date.now() + this.waitTimeoutMs;
@@ -202,32 +251,62 @@ export class K8sVolumeDriver implements IVolumeDriver {
     const delUrl = this.pvcUrl(name);
 
     logDebug(`K8s DELETE PVC url=${delUrl}`);
-    const res = await fetch(
-      delUrl,
-      this.fetchOpts({
-        method: 'DELETE',
-        headers: this.headers(),
-        body: JSON.stringify({
-          apiVersion: 'v1',
-          kind: 'DeleteOptions',
-          preconditions: { uid: targetUid }
-        })
+    const res = await this.k8sFetch(delUrl, {
+      method: 'DELETE',
+      body: JSON.stringify({
+        apiVersion: 'v1',
+        kind: 'DeleteOptions',
+        preconditions: { uid: targetUid }
       })
-    );
+    });
     logDebug(`K8s DELETE PVC status=${res.status}`);
 
-    if (res.status === 404) return;
+    if (res.status === 404) {
+      await res.body?.cancel().catch(() => undefined);
+      return;
+    }
     if (res.status === 409) {
+      const text = await res.text().catch(() => '');
       const latest = await this.readPvc(name);
       if (latest.state === 'absent' || latest.uid !== targetUid) return;
-      const text = await res.text().catch(() => '');
-      throw new Error(`K8s PVC delete failed (${res.status}): ${text}`);
+      throw new HTTPException(409, { message: `K8s PVC delete failed (${res.status}): ${text}` });
     }
     if (!res.ok) {
       const text = await res.text().catch(() => '');
       throw new Error(`K8s PVC delete failed (${res.status}): ${text}`);
     }
+    await res.body?.cancel().catch(() => undefined);
 
     await this.waitForPvcGenerationEnd({ name, uid: targetUid, deadline });
+  }
+
+  /** 列出由 fastgpt-volume-manager 管理的活跃 PVC 名称（跳过正在删除与标签不匹配的 PVC）。 */
+  async list(): Promise<string[]> {
+    const labelSelector = encodeURIComponent(
+      `app=${FASTGPT_VOLUME_LABELS.app},managed-by=${FASTGPT_VOLUME_LABELS['managed-by']}`
+    );
+    const url = `${this.pvcUrl()}?labelSelector=${labelSelector}`;
+    logDebug(`K8s LIST PVC url=${url}`);
+    const res = await this.k8sFetch(url);
+    logDebug(`K8s LIST PVC status=${res.status}`);
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`K8s PVC LIST failed (${res.status}): ${text}`);
+    }
+
+    const body: unknown = await res.json();
+    const parsed = K8sPvcListSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new Error(`K8s PVC LIST returned invalid metadata for ${this.namespace}`);
+    }
+
+    return parsed.data.items.flatMap((item) => {
+      const { name, deletionTimestamp } = item.metadata;
+      if (deletionTimestamp || !name || !SandboxVolumeNameSchema.safeParse(name).success) {
+        return [];
+      }
+      return [name];
+    });
   }
 }

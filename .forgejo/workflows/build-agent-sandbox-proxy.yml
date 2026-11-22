@@ -1,55 +1,29 @@
-name: Release IDE-Agent, Agent-sandbox-proxy
+name: Release Agent-sandbox-proxy
 
 on:
   workflow_dispatch:
     inputs:
-      ide_agent_tag:
-        description: 'fastgpt-ide-agent image tag'
-        required: false
-        default: latest
-        type: string
-      agent_sandbox_proxy_tag:
+      tag:
         description: 'fastgpt-agent-sandbox-proxy image tag'
         required: false
         default: latest
         type: string
 
 jobs:
-  build-fastgpt-agent-helper-images:
+  build-fastgpt-agent-sandbox-proxy-images:
     permissions:
       packages: write
       contents: read
     strategy:
       matrix:
         include:
-          - image: fastgpt-ide-agent
-            context: projects/fastgpt-ide-agent
-            dockerfile: projects/fastgpt-ide-agent/Dockerfile
-            description: fastgpt-ide-agent image
-            arch: amd64
+          - arch: amd64
             runs-on: ubuntu-24.04
-          - image: fastgpt-ide-agent
-            context: projects/fastgpt-ide-agent
-            dockerfile: projects/fastgpt-ide-agent/Dockerfile
-            description: fastgpt-ide-agent image
-            arch: arm64
-            runs-on: ubuntu-24.04-arm
-          - image: fastgpt-agent-sandbox-proxy
-            context: projects/agent-sandbox-proxy
-            dockerfile: projects/agent-sandbox-proxy/Dockerfile
-            description: fastgpt-agent-sandbox-proxy image
-            arch: amd64
-            runs-on: ubuntu-24.04
-          - image: fastgpt-agent-sandbox-proxy
-            context: projects/agent-sandbox-proxy
-            dockerfile: projects/agent-sandbox-proxy/Dockerfile
-            description: fastgpt-agent-sandbox-proxy image
-            arch: arm64
+          - arch: arm64
             runs-on: ubuntu-24.04-arm
     runs-on: ${{ matrix.runs-on }}
     timeout-minutes: 120
     steps:
-      # install env
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -96,9 +70,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-${{ matrix.image }}-buildx-${{ github.sha }}
+          key: ${{ runner.os }}-fastgpt-agent-sandbox-proxy-buildx-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.image }}-buildx-
+            ${{ runner.os }}-fastgpt-agent-sandbox-proxy-buildx-
 
       - name: Set platform variables
         run: |
@@ -121,8 +95,8 @@ jobs:
         env:
           GODEBUG: madvdontneed=0
         with:
-          context: ${{ matrix.context }}
-          file: ${{ matrix.dockerfile }}
+          context: projects/agent-sandbox-proxy
+          file: projects/agent-sandbox-proxy/Dockerfile
           platforms: linux/${{ matrix.arch }}
           build-args: |
             HTTP_PROXY=${{ env.HTTP_PROXY }}
@@ -134,8 +108,8 @@ jobs:
             NPM_REGISTRY=${{ env.NPM_REGISTRY }}
           labels: |
             org.opencontainers.image.source=${{ env.SOURCE_URL }}
-            org.opencontainers.image.description=${{ matrix.description }}
-          outputs: type=image,"name=${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}",push-by-digest=true,push=true
+            org.opencontainers.image.description=fastgpt-agent-sandbox-proxy image
+          outputs: type=image,"name=${{ env.REGISTRY }}/${{ github.repository_owner }}/fastgpt-agent-sandbox-proxy",push-by-digest=true,push=true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
@@ -148,23 +122,16 @@ jobs:
       - name: Upload digest
         uses: forgejo/upload-artifact@v4
         with:
-          name: digests-${{ matrix.image }}-${{ github.sha }}-${{ matrix.arch }}
+          name: digests-fastgpt-agent-sandbox-proxy-${{ github.sha }}-${{ matrix.arch }}
           path: ${{ runner.temp }}/digests/*
           if-no-files-found: error
           retention-days: 1
 
-  release-fastgpt-agent-helper-images:
+  release-fastgpt-agent-sandbox-proxy-images:
     permissions:
       packages: write
       contents: read
-    needs: build-fastgpt-agent-helper-images
-    strategy:
-      matrix:
-        include:
-          - image: fastgpt-ide-agent
-            tag: ${{ inputs.ide_agent_tag || 'latest' }}
-          - image: fastgpt-agent-sandbox-proxy
-            tag: ${{ inputs.agent_sandbox_proxy_tag || 'latest' }}
+    needs: build-fastgpt-agent-sandbox-proxy-images
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     steps:
@@ -211,13 +178,13 @@ jobs:
       - name: Download digests
         uses: forgejo/download-artifact@v4
         with:
-          name: digests-${{ matrix.image }}-${{ github.sha }}-amd64
+          name: digests-fastgpt-agent-sandbox-proxy-${{ github.sha }}-amd64
           path: ${{ runner.temp }}/digests
 
       - name: Download digests
         uses: forgejo/download-artifact@v4
         with:
-          name: digests-${{ matrix.image }}-${{ github.sha }}-arm64
+          name: digests-fastgpt-agent-sandbox-proxy-${{ github.sha }}-arm64
           path: ${{ runner.temp }}/digests
 
       - name: Set up Docker Buildx
@@ -232,13 +199,22 @@ jobs:
 
       - name: Set image name and tag
         run: |
-          echo "Git_Tag=${REGISTRY}/${{ github.repository_owner }}/${{ matrix.image }}:${{ matrix.tag }}" >> $GITHUB_ENV
+          TAG="${{ inputs.tag || 'latest' }}"
+          echo "Git_Tag=${REGISTRY}/${{ github.repository_owner }}/fastgpt-agent-sandbox-proxy:${TAG}" >> "$GITHUB_ENV"
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         run: |
-          for TAG in "${Git_Tag}"; do
-            docker buildx imagetools create -t "${TAG}" \
-              $(printf "${REGISTRY}/${{ github.repository_owner }}/${{ matrix.image }}@sha256:%s " *)
-            sleep 5
+          set -euo pipefail
+          IMAGE_REF="${REGISTRY}/${{ github.repository_owner }}/fastgpt-agent-sandbox-proxy"
+          SOURCES=()
+          for digest_file in ./*; do
+            [[ -f "$digest_file" ]] || continue
+            SOURCES+=("${IMAGE_REF}@sha256:$(basename "$digest_file")")
           done
+          if [[ "${#SOURCES[@]}" -ne 2 ]]; then
+            echo "Expected two digests"
+            exit 1
+          fi
+          docker buildx imagetools create -t "${Git_Tag}" "${SOURCES[@]}"
+          sleep 5
