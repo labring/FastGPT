@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { WechatRequestPolicyError } from '@fastgpt/service/support/outLink/wechat/request';
 
 const mocks = vi.hoisted(() => ({
   authOutLinkCrud: vi.fn(),
@@ -257,5 +259,26 @@ describe('GET /api/support/outLink/wechat/qrcode/status', () => {
     ).resolves.toEqual({ status: 'expired' });
     expect(mocks.repositoryGet).not.toHaveBeenCalled();
     expect(mocks.getQRCodeStatus).not.toHaveBeenCalled();
+  });
+
+  it('maps raw upstream status failures to a localized UserError while keeping policy errors', async () => {
+    const policyError = new WechatRequestPolicyError('private_address');
+    mocks.getQRCodeStatus.mockRejectedValueOnce(policyError);
+    await expect(handler({ query: { outLinkId, attemptId } } as any, createRes())).rejects.toBe(
+      policyError
+    );
+
+    mocks.getQRCodeStatus.mockRejectedValueOnce(
+      new Error('iLink GET ilink/bot/get_qrcode_status failed: TypeError: fetch failed')
+    );
+    const caughtUpstream = await handler(
+      { query: { outLinkId, attemptId } } as any,
+      createRes()
+    ).catch((err) => err);
+    expect(caughtUpstream).toBeInstanceOf(UserError);
+    expect(caughtUpstream).toMatchObject({
+      displayMessage: 'publish:wechat.status_check_failed'
+    });
+    expect(mocks.updateOne).not.toHaveBeenCalled();
   });
 });

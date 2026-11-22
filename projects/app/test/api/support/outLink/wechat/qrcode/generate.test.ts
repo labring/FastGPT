@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.unmock('@fastgpt/service/common/response');
+
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { jsonRes } from '@fastgpt/service/common/response';
+import { WechatRequestPolicyError } from '@fastgpt/service/support/outLink/wechat/request';
+import { resolveWechatQrErrorMessage } from '@/pageComponents/app/detail/Publish/Wechat/QRLoginModal';
+
 const mocks = vi.hoisted(() => ({
   authOutLinkCrud: vi.fn(),
   assertWechatOutLink: vi.fn(),
@@ -104,5 +111,68 @@ describe('POST /api/support/outLink/wechat/qrcode/generate', () => {
     expect(mocks.authOutLinkCrud).not.toHaveBeenCalled();
     expect(mocks.getQRCode).not.toHaveBeenCalled();
     expect(mocks.repositorySet).not.toHaveBeenCalled();
+  });
+
+  it('preserves policy errors and maps raw upstream failures to controlled localized errors', async () => {
+    const serializeError = (error: unknown) => {
+      let payload: unknown;
+      const res = {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn((body: unknown) => {
+          payload = body;
+        })
+      } as any;
+      jsonRes(res, { error });
+      return payload as Record<string, unknown>;
+    };
+
+    const policyError = new WechatRequestPolicyError('private_address');
+    mocks.getQRCode.mockRejectedValueOnce(policyError);
+
+    const caughtPolicy = await handler({ body: { outLinkId } } as any).catch((err) => err);
+    expect(caughtPolicy).toBe(policyError);
+    const policyPayload = serializeError(caughtPolicy);
+    expect(policyPayload).toMatchObject({
+      message: 'publish:wechat.error.private_address',
+      errorType: 'UserError'
+    });
+    expect(
+      resolveWechatQrErrorMessage({
+        error: policyPayload,
+        fallback: 'fallback',
+        translate: (key) => (key === 'publish:wechat.error.private_address' ? 'DNS 异常' : key)
+      })
+    ).toBe('DNS 异常');
+
+    mocks.getQRCode.mockRejectedValueOnce(
+      new Error(
+        'iLink POST ilink/bot/get_bot_qrcode failed: Error: HTTP 502: <html>Bad Gateway</html>'
+      )
+    );
+
+    const caughtUpstream = await handler({ body: { outLinkId } } as any).catch((err) => err);
+    expect(caughtUpstream).toBeInstanceOf(UserError);
+    const upstreamPayload = serializeError(caughtUpstream);
+    expect(upstreamPayload).toMatchObject({
+      message: 'publish:wechat.qr_generate_failed',
+      errorType: 'UserError'
+    });
+    expect(
+      resolveWechatQrErrorMessage({
+        error: upstreamPayload,
+        fallback: 'fallback',
+        translate: (key) => (key === 'publish:wechat.qr_generate_failed' ? '生成失败' : key)
+      })
+    ).toBe('生成失败');
+
+    // 未经业务边界包装的普通底层错误不会透出原始诊断文案
+    const rawPayload = serializeError(new Error('HTTP 502: <html>Bad Gateway</html>'));
+    expect(
+      resolveWechatQrErrorMessage({
+        error: rawPayload,
+        fallback: '生成失败',
+        translate: (key) => key
+      })
+    ).toBe('生成失败');
   });
 });

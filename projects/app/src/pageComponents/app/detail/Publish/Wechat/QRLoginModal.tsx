@@ -17,6 +17,27 @@ import { delay, retryFn } from '@fastgpt/global/common/system/utils';
 
 type QRStatus = 'loading' | 'wait' | 'scanned' | 'confirmed' | 'expired' | 'error';
 
+/** 仅透出受控业务错误（UserError 或已登记业务码），避免将上游 HTML 或底层诊断展示给用户。 */
+export const resolveWechatQrErrorMessage = ({
+  error,
+  fallback,
+  lang,
+  translate
+}: {
+  error: unknown;
+  fallback: string;
+  lang?: localeType;
+  translate: (key: string) => string;
+}): string => {
+  const err = error && typeof error === 'object' ? (error as Record<string, unknown>) : undefined;
+  const isControlledError =
+    err?.errorType === 'UserError' ||
+    (typeof err?.statusText === 'string' && err.statusText !== '' && err.statusText !== 'error');
+
+  if (!isControlledError) return fallback;
+  return translate(getErrText(error, fallback, lang));
+};
+
 const QRLoginModal = ({
   outLinkId,
   onSuccess,
@@ -37,7 +58,12 @@ const QRLoginModal = ({
 
   const getErrorText = useCallback(
     (error: unknown, fallback: string) =>
-      t(getErrText(error, fallback, i18n.language as localeType)),
+      resolveWechatQrErrorMessage({
+        error,
+        fallback,
+        lang: i18n.language as localeType,
+        translate: t
+      }),
     [i18n.language, t]
   );
 

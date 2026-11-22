@@ -1,14 +1,18 @@
 import { randomUUID } from 'node:crypto';
 import { WECHAT_QR_LOGIN_TTL_SECONDS, wechatQrLoginCache } from '@fastgpt/dal/redis/caches';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
 import { WechatAppSchema, type OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
+import { getLogger, LogCategories } from '../../../common/logger';
 import type { ClientSession } from '../../../common/mongo';
 import { MongoOutLink } from '../schema';
 import { ILinkClient, type QRStatusResponse } from './ilinkClient';
 import { startWechatPolling } from './mq';
-import { getWechatBaseUrl } from './request';
+import { getWechatBaseUrl, WechatRequestPolicyError } from './request';
 
+const logger = getLogger(LogCategories.MODULE.OUTLINK.WECHAT);
 const QrAttemptSchema = WechatAppSchema.pick({ qrAttemptId: true, bindingId: true });
 
 /** 先登记会话，再向微信取码。迟到的旧请求只能写入自己的缓存。 */
@@ -26,7 +30,19 @@ export async function generateWechatQrCode({
   );
   if (!result.matchedCount) throw OutLinkErrEnum.unExist;
 
-  const qr = await new ILinkClient().getQRCode();
+  const qr = await (async () => {
+    try {
+      return await new ILinkClient().getQRCode();
+    } catch (error) {
+      if (error instanceof WechatRequestPolicyError) throw error;
+      logger.error('Wechat QR code request failed', { outLinkId, error: String(error) });
+      throw new UserError(
+        'WeChat QR code request failed',
+        i18nT('publish:wechat.qr_generate_failed'),
+        { cause: error }
+      );
+    }
+  })();
   if (typeof qr.qrcode_img_content !== 'string' || qr.qrcode_img_content.length === 0) {
     throw new Error('iLink returned invalid QR image content');
   }
@@ -55,7 +71,19 @@ export async function getWechatQrStatus({
   if (!qr) return 'expired';
 
   if (app.bindingId !== attemptId) {
-    const confirmation = await new ILinkClient().getQRCodeStatus(qr.qrcode);
+    const confirmation = await (async () => {
+      try {
+        return await new ILinkClient().getQRCodeStatus(qr.qrcode);
+      } catch (error) {
+        if (error instanceof WechatRequestPolicyError) throw error;
+        logger.error('Wechat QR status request failed', { outLinkId, error: String(error) });
+        throw new UserError(
+          'WeChat QR status request failed',
+          i18nT('publish:wechat.status_check_failed'),
+          { cause: error }
+        );
+      }
+    })();
     if (confirmation.status !== 'confirmed') return confirmation.status;
     if (!confirmation.bot_token || !confirmation.ilink_bot_id) {
       throw new Error('iLink confirmed the QR code without binding credentials');
