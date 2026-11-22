@@ -140,7 +140,14 @@ const Wechat = ({
             {shareChatList.map((item) => (
               <Tr key={item._id}>
                 <Td>{item.name}</Td>
-                <Td>{statusBadge(item.app?.status)}</Td>
+                <Td>
+                  {statusBadge(item.app.status)}
+                  {item.app.errorReason && (
+                    <Box mt={1} fontSize={'xs'} color={'myGray.600'}>
+                      {t('publish:wechat.error.' + item.app.errorReason)}
+                    </Box>
+                  )}
+                </Td>
                 <Td>{Math.round(item.usagePoints)}</Td>
                 <Td>
                   {item.lastTime ? t(formatTimeToChatTime(item.lastTime)) : t('common:un_used')}

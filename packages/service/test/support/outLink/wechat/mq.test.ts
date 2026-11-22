@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getWorker: vi.fn(),
@@ -51,28 +51,6 @@ vi.mock('../../../../support/outLink/schema', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/support/outLink/wechat/ilinkClient', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@fastgpt/service/support/outLink/wechat/ilinkClient')>();
-  return {
-    ...actual,
-    ILinkClient: class {
-      getUpdates = mocks.getUpdates;
-    }
-  };
-});
-
-vi.mock('../../../../support/outLink/wechat/ilinkClient', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('../../../../support/outLink/wechat/ilinkClient')>();
-  return {
-    ...actual,
-    ILinkClient: class {
-      getUpdates = mocks.getUpdates;
-    }
-  };
-});
-
 vi.mock('@fastgpt/service/support/outLink/wechat/provider', () => ({
   wechatOutlinkProvider: vi.fn()
 }));
@@ -103,15 +81,26 @@ vi.mock('@fastgpt/global/common/system/utils', async (importOriginal) => {
 });
 
 import { initWechatPollWorker } from '@fastgpt/service/support/outLink/wechat/mq';
+import { ILinkClient } from '@fastgpt/service/support/outLink/wechat/ilinkClient';
+import { WechatRequestPolicyError } from '@fastgpt/service/support/outLink/wechat/request';
 
 const outLink = {
   shareId: 'share-1',
   app: {
     status: 'online',
     token: 'token',
+    loginTime: '2026-11-22T07:00:00.000Z',
     baseUrl: 'https://ilinkai.weixin.qq.com',
     syncBuf: 'cursor'
   }
+};
+
+const currentConnectionFilter = {
+  shareId: outLink.shareId,
+  'app.status': 'online',
+  'app.baseUrl': outLink.app.baseUrl,
+  'app.token': outLink.app.token,
+  'app.loginTime': outLink.app.loginTime
 };
 
 const job = {
@@ -136,13 +125,16 @@ describe('Wechat polling failure counter integration', () => {
     });
     mocks.find.mockReturnValue({ lean: vi.fn().mockResolvedValue([]) });
     mocks.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(outLink) });
-    mocks.updateOne.mockResolvedValue(undefined);
+    mocks.updateOne.mockResolvedValue({ modifiedCount: 1 });
+    vi.spyOn(ILinkClient.prototype, 'getUpdates').mockImplementation(mocks.getUpdates);
     mocks.getUpdates.mockResolvedValue({ ret: 0, msgs: [] });
     mocks.increment.mockResolvedValue(1);
     mocks.reset.mockResolvedValue(undefined);
     mocks.clear.mockResolvedValue(true);
     mocks.queueAdd.mockResolvedValue(undefined);
   });
+
+  afterEach(() => vi.restoreAllMocks());
 
   const getPollProcessor = async () => {
     await initWechatPollWorker();
@@ -171,15 +163,42 @@ describe('Wechat polling failure counter integration', () => {
     await expect(processor?.(job)).rejects.toThrow('outside the allowed endpoints');
     expect(mocks.getUpdates).not.toHaveBeenCalled();
     expect(mocks.updateOne).toHaveBeenCalledWith(
-      {
-        shareId: outLink.shareId,
-        'app.status': 'online',
-        'app.baseUrl': baseUrl,
-        'app.token': outLink.app.token
-      },
-      { $set: { 'app.status': 'error', 'app.lastError': '请重新扫码绑定微信渠道' } }
+      { ...currentConnectionFilter, 'app.baseUrl': baseUrl },
+      { $set: { 'app.status': 'error', 'app.lastError': 'invalid_url' } }
     );
   });
+
+  it('pauses polling immediately for an address policy rejection', async () => {
+    const rejection = new WechatRequestPolicyError('private_address');
+    mocks.getUpdates.mockRejectedValue(rejection);
+    const processor = await getPollProcessor();
+
+    await expect(processor?.(job)).rejects.toBe(rejection);
+    expect(mocks.increment).not.toHaveBeenCalled();
+    expect(mocks.updateOne).toHaveBeenCalledWith(currentConnectionFilter, {
+      $set: { 'app.status': 'error', 'app.lastError': 'private_address' }
+    });
+  });
+
+  it.each([1, 5])(
+    'counts transport failures and applies the threshold (count %d)',
+    async (count) => {
+      const rejection = new Error('network temporarily unavailable');
+      mocks.getUpdates.mockRejectedValue(rejection);
+      mocks.increment.mockResolvedValue(count);
+      const processor = await getPollProcessor();
+
+      await expect(processor?.(job)).rejects.toBe(rejection);
+      expect(mocks.increment).toHaveBeenCalledWith(outLink.shareId);
+      if (count < 5) {
+        expect(mocks.updateOne).not.toHaveBeenCalled();
+      } else {
+        expect(mocks.updateOne).toHaveBeenCalledWith(currentConnectionFilter, {
+          $set: { 'app.status': 'error', 'app.lastError': 'request_failed' }
+        });
+      }
+    }
+  );
 
   it('uses the atomic cache increment for API failures', async () => {
     mocks.getUpdates.mockResolvedValue({ ret: 500, errmsg: 'upstream failed' });
@@ -241,10 +260,9 @@ describe('Wechat polling failure counter integration', () => {
     const processor = await getPollProcessor();
 
     await expect(processor?.(job)).rejects.toThrow('getUpdates API error: ret=500');
-    expect(mocks.updateOne).toHaveBeenCalledWith(
-      { shareId: 'share-1' },
-      { $set: { 'app.status': 'error', 'app.lastError': 'upstream failed' } }
-    );
+    expect(mocks.updateOne).toHaveBeenCalledWith(currentConnectionFilter, {
+      $set: { 'app.status': 'error', 'app.lastError': 'upstream failed' }
+    });
     expect(mocks.clear).toHaveBeenCalledWith('share-1');
   });
 });

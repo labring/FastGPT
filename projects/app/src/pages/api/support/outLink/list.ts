@@ -11,7 +11,7 @@ import {
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { normalizeShareOutLinkAllowAnonymous } from '@fastgpt/service/support/outLink/compatibility';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
-import { WechatAppSchema } from '@fastgpt/global/support/outLink/type';
+import { WechatAppSchema, WechatConnectionErrorSchema } from '@fastgpt/global/support/outLink/type';
 
 // 查询应用的所有 OutLink
 export async function handler(req: ApiRequestProps): Promise<OutLinkListResponseType> {
@@ -41,12 +41,16 @@ export async function handler(req: ApiRequestProps): Promise<OutLinkListResponse
       : result.map(({ allowAnonymous: _allowAnonymous, isShowBrand: _isShowBrand, ...item }) => {
           if (item.type !== PublishChannelEnum.wechat) return item;
 
-          const app = WechatAppSchema.pick({ status: true, token: true }).safeParse(item.app);
+          const { data: app } = WechatAppSchema.pick({ status: true, token: true })
+            .extend({ lastError: WechatConnectionErrorSchema.optional().catch(undefined) })
+            .safeParse(item.app);
+          const status = app?.status ?? 'offline';
           return {
             ...item,
             app: {
-              status: app.data?.status ?? 'offline',
-              isBound: Boolean(app.data?.token)
+              status,
+              isBound: Boolean(app?.token),
+              errorReason: status === 'error' ? app?.lastError : undefined
             }
           };
         })

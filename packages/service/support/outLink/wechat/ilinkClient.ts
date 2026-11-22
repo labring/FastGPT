@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import { fetchWechat, getWechatBaseUrl } from './request';
+import { fetchWechat, getWechatBaseUrl, WechatRequestPolicyError } from './request';
 
 const CHANNEL_VERSION = '1.0.0';
 const ILINK_APP_ID = 'bot';
@@ -189,7 +189,12 @@ export class ILinkClient {
       return text;
     } catch (err) {
       clearTimeout(timer);
-      if (err instanceof Error && err.name === 'AbortError') throw err;
+      if (
+        err instanceof WechatRequestPolicyError ||
+        (err instanceof Error && err.name === 'AbortError')
+      ) {
+        throw err;
+      }
       throw new Error(`iLink POST ${endpoint} failed: ${formatFetchError(err)}`);
     }
   }

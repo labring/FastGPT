@@ -1,7 +1,7 @@
 import z from 'zod';
 import { OpenObjectOpenApiMeta } from '../../../common/zod/openapi';
 import { PublishChannelEnum } from '../../../support/outLink/constant';
-import { WechatAppSchema } from '../../../support/outLink/type';
+import { WechatAppSchema, WechatConnectionErrorSchema } from '../../../support/outLink/type';
 import { OutLinkBrandConfigSchema } from '../../../support/outLink/branding';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 
@@ -113,10 +113,19 @@ export const OutLinkListQuerySchema = z.object({
 export type OutLinkListQueryType = z.infer<typeof OutLinkListQuerySchema>;
 
 const WechatOutLinkListItemSchema = OutLinkSchema.extend({
-  type: z.literal(PublishChannelEnum.wechat),
+  type: z
+    .literal(PublishChannelEnum.wechat)
+    .meta({ description: '发布渠道类型', example: 'wechat' }),
   app: z.object({
-    status: WechatAppSchema.shape.status.meta({ description: '微信渠道连接状态' }),
-    isBound: z.boolean().meta({ example: true, description: '是否已绑定微信账号' })
+    status: WechatAppSchema.shape.status.meta({
+      description: '微信渠道连接状态',
+      example: 'online'
+    }),
+    isBound: z.boolean().meta({ example: true, description: '是否已绑定微信账号' }),
+    errorReason: WechatConnectionErrorSchema.optional().meta({
+      description: '服务端识别的微信连接异常原因',
+      example: 'request_failed'
+    })
   })
 });
 export type WechatOutLinkListItemType = z.infer<typeof WechatOutLinkListItemSchema>;
@@ -126,7 +135,10 @@ export const OutLinkListResponseSchema = z
     z.discriminatedUnion('type', [
       WechatOutLinkListItemSchema,
       OutLinkSchema.extend({
-        type: z.enum(PublishChannelEnum).exclude([PublishChannelEnum.wechat])
+        type: OutLinkSchema.shape.type.exclude([PublishChannelEnum.wechat]).meta({
+          description: '发布渠道类型',
+          example: 'share'
+        })
       })
     ])
   )

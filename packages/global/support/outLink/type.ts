@@ -84,6 +84,13 @@ export const WechatAppSchema = z.object({
 });
 export type WechatAppType = z.infer<typeof WechatAppSchema>;
 
+export const WechatConnectionErrorSchema = z.enum([
+  'invalid_url',
+  'private_address',
+  'request_failed'
+]);
+export type WechatConnectionErrorType = z.infer<typeof WechatConnectionErrorSchema>;
+
 /**
  * WeChat Official Account app config.
  * @see https://developers.weixin.qq.com/doc/service/guide/dev/api/

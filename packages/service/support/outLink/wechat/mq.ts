@@ -8,7 +8,7 @@ import {
 } from '@fastgpt/dal/redis/bullmq';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { ILinkClient } from './ilinkClient';
-import { getWechatBaseUrl, WechatUrlNotAllowedError } from './request';
+import { WechatRequestPolicyError } from './request';
 import type { OutLinkSchemaType, WechatAppType } from '@fastgpt/global/support/outLink/type';
 import { MongoOutLink } from '../../../support/outLink/schema';
 import { wechatPollingFailureCache } from '@fastgpt/dal/redis/caches';
@@ -81,28 +81,42 @@ async function pollImpl(job: Job<WechatPollJobData>): Promise<boolean> {
     throw new Error('No token');
   }
 
-  const baseUrl = await (async () => {
+  // 仅修改本轮使用的连接，避免失败的旧请求把已重新绑定的渠道置为异常。
+  const stopPollingWithError = async (lastError: string) => {
+    const result = await MongoOutLink.updateOne(
+      {
+        shareId,
+        'app.status': 'online',
+        'app.baseUrl': app.baseUrl ?? null,
+        'app.token': app.token,
+        'app.loginTime': app.loginTime ?? null
+      },
+      { $set: { 'app.status': 'error', 'app.lastError': lastError } }
+    );
+    if (result.modifiedCount > 0) await wechatPollingFailureCache.clear(shareId);
+  };
+
+  const recordPollingFailure = async (lastError: string) => {
+    const failures = await wechatPollingFailureCache.increment(shareId);
+    if (failures < MAX_CONSECUTIVE_FAILURES) return;
+    await stopPollingWithError(lastError);
+    logger.error('Too many failures, stop polling', { shareId, failures });
+  };
+
+  const resp = await (async () => {
     try {
-      return getWechatBaseUrl(app.baseUrl);
+      const client = new ILinkClient(app.baseUrl, app.token);
+      return await client.getUpdates(app.syncBuf || '');
     } catch (error) {
-      if (error instanceof WechatUrlNotAllowedError) {
-        // 旧地址不可用时暂停轮询，同时避免覆盖另一请求刚完成的扫码登录。
-        await MongoOutLink.updateOne(
-          { shareId, 'app.status': 'online', 'app.baseUrl': app.baseUrl, 'app.token': app.token },
-          { $set: { 'app.status': 'error', 'app.lastError': '请重新扫码绑定微信渠道' } }
-        );
+      logger.error('Wechat getUpdates request failed', { shareId, error: String(error) });
+      if (error instanceof WechatRequestPolicyError) {
+        await stopPollingWithError(error.reason);
+      } else {
+        await recordPollingFailure('request_failed');
       }
       throw error;
     }
   })();
-  const client = new ILinkClient(baseUrl, app.token);
-  const resp = await client.getUpdates(app.syncBuf || '').catch((error) => {
-    logger.error('Wechat getUpdates request failed', {
-      shareId,
-      error: String(error)
-    });
-    throw error;
-  });
   logger.debug('Wechat getUpdates returned', {
     shareId,
     msgCount: resp.msgs?.length ?? 0,
@@ -123,16 +137,7 @@ async function pollImpl(job: Job<WechatPollJobData>): Promise<boolean> {
       errmsg: resp.errmsg
     });
 
-    const failures = await wechatPollingFailureCache.increment(shareId);
-
-    if (failures >= MAX_CONSECUTIVE_FAILURES) {
-      await MongoOutLink.updateOne(
-        { shareId },
-        { $set: { 'app.status': 'error', 'app.lastError': resp.errmsg || 'Too many failures' } }
-      );
-      logger.error('Too many failures, stop polling', { shareId, failures });
-      await wechatPollingFailureCache.clear(shareId);
-    }
+    await recordPollingFailure(resp.errmsg || 'Too many failures');
 
     // 抛错走 'failed' 事件 → 续链带退避
     throw new Error(`getUpdates API error: ret=${resp.ret} errcode=${resp.errcode}`);
@@ -328,6 +333,7 @@ export const startWechatPolling = async (shareId: string): Promise<void> => {
     });
   });
 
+  await wechatPollingFailureCache.clear(shareId);
   await scheduleNextPoll(shareId);
   logger.info('Wechat polling started', { shareId });
 };
