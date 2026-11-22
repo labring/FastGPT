@@ -422,6 +422,46 @@ const addResponseSizeLimitInterceptor = (instance: AxiosInstance) => {
   return instance;
 };
 
+export type ProxyAxiosInstance = Omit<
+  AxiosInstance,
+  'request' | 'get' | 'delete' | 'head' | 'options' | 'post' | 'put' | 'patch'
+> & {
+  <T = any, R = AxiosResponse<T>, D = any>(config: AxiosRequestConfig<D>): Promise<R>;
+  <T = any, R = AxiosResponse<T>, D = any>(url: string, config?: AxiosRequestConfig<D>): Promise<R>;
+  request<T = any, R = AxiosResponse<T>, D = any>(config: AxiosRequestConfig<D>): Promise<R>;
+  get<T = any, R = AxiosResponse<T>, D = any>(
+    url: string,
+    config?: AxiosRequestConfig<D>
+  ): Promise<R>;
+  delete<T = any, R = AxiosResponse<T>, D = any>(
+    url: string,
+    config?: AxiosRequestConfig<D>
+  ): Promise<R>;
+  head<T = any, R = AxiosResponse<T>, D = any>(
+    url: string,
+    config?: AxiosRequestConfig<D>
+  ): Promise<R>;
+  options<T = any, R = AxiosResponse<T>, D = any>(
+    url: string,
+    config?: AxiosRequestConfig<D>
+  ): Promise<R>;
+  post<T = any, R = AxiosResponse<T>, D = any>(
+    url: string,
+    data?: D,
+    config?: AxiosRequestConfig<D>
+  ): Promise<R>;
+  put<T = any, R = AxiosResponse<T>, D = any>(
+    url: string,
+    data?: D,
+    config?: AxiosRequestConfig<D>
+  ): Promise<R>;
+  patch<T = any, R = AxiosResponse<T>, D = any>(
+    url: string,
+    data?: D,
+    config?: AxiosRequestConfig<D>
+  ): Promise<R>;
+};
+
 /**
  * 创建共享 axios 实例。
  *
@@ -430,7 +470,10 @@ const addResponseSizeLimitInterceptor = (instance: AxiosInstance) => {
  * 流式响应保持调用方或业务层自己的配额限制。
  * 这里不限制 maxBodyLength：共享实例还承担大文件上传（文档解析、API 数据集等）。
  */
-export function createProxyAxios(config?: AxiosRequestConfig, ssrfCheck = true) {
+export function createProxyAxios(
+  config?: AxiosRequestConfig,
+  ssrfCheck = true
+): ProxyAxiosInstance {
   const agent = createProxyAgent();
 
   const instance = isDevEnv
@@ -450,7 +493,9 @@ export function createProxyAxios(config?: AxiosRequestConfig, ssrfCheck = true) 
 
   const instanceWithSizeLimit = addResponseSizeLimitInterceptor(instance);
 
-  return ssrfCheck ? addSSRFInterceptor(instanceWithSizeLimit) : instanceWithSizeLimit;
+  return (ssrfCheck
+    ? addSSRFInterceptor(instanceWithSizeLimit)
+    : instanceWithSizeLimit) as unknown as ProxyAxiosInstance;
 }
 
 /** @see https://github.com/axios/axios/issues/4531 */
