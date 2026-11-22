@@ -18,7 +18,7 @@ import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { getShareChatList, delShareChatById } from '@/web/support/outLink/api';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { defaultOutLinkForm } from '@/web/core/app/constants';
-import type { WechatAppType, OutLinkEditType } from '@fastgpt/global/support/outLink/type';
+import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -44,7 +44,7 @@ const Wechat = ({
   const { t } = useSafeTranslation();
   const { Loading, setIsLoading } = useLoading();
   const { feConfigs } = useSystemStore();
-  const [editData, setEditData] = useState<OutLinkEditType<WechatAppType>>();
+  const [editData, setEditData] = useState<Omit<OutLinkEditType, 'app'>>();
   const [isEdit, setIsEdit] = useState(false);
   const [loginOutLinkId, setLoginOutLinkId] = useState<string>();
 
@@ -52,13 +52,10 @@ const Wechat = ({
     data: shareChatList = [],
     loading: isFetching,
     runAsync: refetch
-  } = useRequest(
-    () => getShareChatList<WechatAppType>({ appId, type: PublishChannelEnum.wechat }),
-    {
-      manual: false,
-      refreshDeps: [appId]
-    }
-  );
+  } = useRequest(() => getShareChatList({ appId, type: PublishChannelEnum.wechat }), {
+    manual: false,
+    refreshDeps: [appId]
+  });
 
   const { runAsync: onDelShareChat, loading: isDeleting } = useRequest(
     async (id: string) => {
@@ -149,7 +146,7 @@ const Wechat = ({
                   {item.lastTime ? t(formatTimeToChatTime(item.lastTime)) : t('common:un_used')}
                 </Td>
                 <Td display={'flex'} alignItems={'center'}>
-                  {!item.app?.token ? (
+                  {!item.app.isBound ? (
                     <Button
                       size={'sm'}
                       mr={3}
@@ -213,7 +210,6 @@ const Wechat = ({
                                 _id: item._id,
                                 name: item.name,
                                 limit: item.limit,
-                                app: item.app,
                                 defaultResponse: item.defaultResponse,
                                 immediateResponse: item.immediateResponse
                               });

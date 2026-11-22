@@ -67,6 +67,22 @@ describe('list outlink anonymous access', () => {
     expect(result[0]).not.toHaveProperty('isShowBrand');
   });
 
+  it('only exposes WeChat binding status to the editor', async () => {
+    mockList({
+      ...baseOutLink,
+      type: PublishChannelEnum.wechat,
+      app: {
+        status: 'online',
+        token: 'stored-token',
+        baseUrl: 'https://ilinkai.weixin.qq.com',
+        syncBuf: 'stored-cursor'
+      }
+    });
+
+    const result = await handler({ query: { appId: id, type: PublishChannelEnum.wechat } } as any);
+    expect(result[0].app).toEqual({ isBound: true, status: 'online' });
+  });
+
   it('removes allowAnonymous from non-share channel responses', async () => {
     mockList({
       ...baseOutLink,

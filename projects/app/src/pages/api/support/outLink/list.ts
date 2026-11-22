@@ -11,6 +11,7 @@ import {
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { normalizeShareOutLinkAllowAnonymous } from '@fastgpt/service/support/outLink/compatibility';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
+import { WechatAppSchema } from '@fastgpt/global/support/outLink/type';
 
 // 查询应用的所有 OutLink
 export async function handler(req: ApiRequestProps): Promise<OutLinkListResponseType> {
@@ -37,9 +38,18 @@ export async function handler(req: ApiRequestProps): Promise<OutLinkListResponse
   return OutLinkListResponseSchema.parse(
     type === PublishChannelEnum.share
       ? result.map(normalizeShareOutLinkAllowAnonymous)
-      : result.map(
-          ({ allowAnonymous: _allowAnonymous, isShowBrand: _isShowBrand, ...item }) => item
-        )
+      : result.map(({ allowAnonymous: _allowAnonymous, isShowBrand: _isShowBrand, ...item }) => {
+          if (item.type !== PublishChannelEnum.wechat) return item;
+
+          const app = WechatAppSchema.pick({ status: true, token: true }).safeParse(item.app);
+          return {
+            ...item,
+            app: {
+              status: app.data?.status ?? 'offline',
+              isBound: Boolean(app.data?.token)
+            }
+          };
+        })
   );
 }
 

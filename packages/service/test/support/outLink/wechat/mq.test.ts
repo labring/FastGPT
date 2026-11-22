@@ -109,7 +109,7 @@ const outLink = {
   app: {
     status: 'online',
     token: 'token',
-    baseUrl: 'https://wechat.example.com',
+    baseUrl: 'https://ilinkai.weixin.qq.com',
     syncBuf: 'cursor'
   }
 };
@@ -159,6 +159,26 @@ describe('Wechat polling failure counter integration', () => {
         expect.objectContaining({ concurrency: 1000 })
       );
     }
+  });
+
+  it('pauses polling for a legacy channel with a disallowed server address', async () => {
+    const baseUrl = 'https://example.invalid';
+    mocks.findOne.mockReturnValue({
+      lean: vi.fn().mockResolvedValue({ ...outLink, app: { ...outLink.app, baseUrl } })
+    });
+    const processor = await getPollProcessor();
+
+    await expect(processor?.(job)).rejects.toThrow('outside the allowed endpoints');
+    expect(mocks.getUpdates).not.toHaveBeenCalled();
+    expect(mocks.updateOne).toHaveBeenCalledWith(
+      {
+        shareId: outLink.shareId,
+        'app.status': 'online',
+        'app.baseUrl': baseUrl,
+        'app.token': outLink.app.token
+      },
+      { $set: { 'app.status': 'error', 'app.lastError': '请重新扫码绑定微信渠道' } }
+    );
   });
 
   it('uses the atomic cache increment for API failures', async () => {

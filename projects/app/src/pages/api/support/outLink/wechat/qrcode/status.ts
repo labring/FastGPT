@@ -2,6 +2,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { wechatQrLoginCache } from '@fastgpt/dal/redis/caches';
 import { NextAPI } from '@/service/middleware/entry';
 import { ILinkClient } from '@fastgpt/service/support/outLink/wechat/ilinkClient';
+import { getWechatBaseUrl } from '@fastgpt/service/support/outLink/wechat/request';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { startWechatPolling } from '@fastgpt/service/support/outLink/wechat/mq';
 import { authOutLinkCrud } from '@fastgpt/service/support/permission/publish/authLink';
@@ -43,12 +44,13 @@ async function handler(
   const statusData = await client.getQRCodeStatus(qrData.qrcode);
 
   if (statusData.status === 'confirmed' && statusData.bot_token && statusData.ilink_bot_id) {
+    const baseUrl = getWechatBaseUrl(statusData.baseurl);
     await MongoOutLink.updateOne(
       { _id: outLink._id },
       {
         $set: {
           'app.token': statusData.bot_token,
-          'app.baseUrl': statusData.baseurl || 'https://ilinkai.weixin.qq.com',
+          'app.baseUrl': baseUrl,
           'app.accountId': statusData.ilink_bot_id,
           'app.userId': statusData.ilink_user_id || '',
           'app.status': 'online',

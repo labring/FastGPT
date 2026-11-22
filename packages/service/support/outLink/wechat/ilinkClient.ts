@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+import { fetchWechat, getWechatBaseUrl } from './request';
 
-const DEFAULT_BASE_URL = 'https://ilinkai.weixin.qq.com';
 const CHANNEL_VERSION = '1.0.0';
 const ILINK_APP_ID = 'bot';
 const ILINK_APP_CLIENT_VERSION = String(1 << 16);
@@ -139,7 +139,7 @@ export class ILinkClient {
   private token?: string;
 
   constructor(baseUrl?: string, token?: string) {
-    this.baseUrl = (baseUrl || DEFAULT_BASE_URL).replace(/\/$/, '');
+    this.baseUrl = getWechatBaseUrl(baseUrl);
     this.token = token;
   }
 
@@ -174,12 +174,15 @@ export class ILinkClient {
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: this.buildHeaders(),
-        body,
-        signal: controller.signal
-      });
+      const res = await fetchWechat(
+        { url, endpoint: 'ilink' },
+        {
+          method: 'POST',
+          headers: this.buildHeaders(),
+          body,
+          signal: controller.signal
+        }
+      );
       clearTimeout(timer);
       const text = await res.text();
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`);
@@ -205,10 +208,13 @@ export class ILinkClient {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), LONG_POLL_TIMEOUT_MS);
     try {
-      const res = await fetch(url, {
-        headers: this.buildCommonHeaders(),
-        signal: controller.signal
-      });
+      const res = await fetchWechat(
+        { url, endpoint: 'ilink' },
+        {
+          headers: this.buildCommonHeaders(),
+          signal: controller.signal
+        }
+      );
       clearTimeout(timer);
       if (!res.ok) throw new Error(`QR status failed: ${res.status}`);
       return res.json();

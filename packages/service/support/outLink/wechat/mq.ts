@@ -8,6 +8,7 @@ import {
 } from '@fastgpt/dal/redis/bullmq';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { ILinkClient } from './ilinkClient';
+import { getWechatBaseUrl, WechatUrlNotAllowedError } from './request';
 import type { OutLinkSchemaType, WechatAppType } from '@fastgpt/global/support/outLink/type';
 import { MongoOutLink } from '../../../support/outLink/schema';
 import { wechatPollingFailureCache } from '@fastgpt/dal/redis/caches';
@@ -80,11 +81,24 @@ async function pollImpl(job: Job<WechatPollJobData>): Promise<boolean> {
     throw new Error('No token');
   }
 
-  const client = new ILinkClient(app.baseUrl, app.token);
+  const baseUrl = await (async () => {
+    try {
+      return getWechatBaseUrl(app.baseUrl);
+    } catch (error) {
+      if (error instanceof WechatUrlNotAllowedError) {
+        // 旧地址不可用时暂停轮询，同时避免覆盖另一请求刚完成的扫码登录。
+        await MongoOutLink.updateOne(
+          { shareId, 'app.status': 'online', 'app.baseUrl': app.baseUrl, 'app.token': app.token },
+          { $set: { 'app.status': 'error', 'app.lastError': '请重新扫码绑定微信渠道' } }
+        );
+      }
+      throw error;
+    }
+  })();
+  const client = new ILinkClient(baseUrl, app.token);
   const resp = await client.getUpdates(app.syncBuf || '').catch((error) => {
     logger.error('Wechat getUpdates request failed', {
       shareId,
-      baseUrl: app.baseUrl,
       error: String(error)
     });
     throw error;

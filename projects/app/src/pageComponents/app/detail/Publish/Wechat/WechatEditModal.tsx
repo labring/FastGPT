@@ -1,8 +1,8 @@
 import React from 'react';
-import { Box, Button, Flex, Grid, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
+import { Button, Flex, Grid, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
-import type { WechatAppType, OutLinkEditType } from '@fastgpt/global/support/outLink/type';
+import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { createShareChat, updateShareChat } from '@/web/support/outLink/api';
@@ -19,7 +19,7 @@ const WechatEditModal = ({
   isEdit = false
 }: {
   appId: string;
-  defaultData: OutLinkEditType<WechatAppType>;
+  defaultData: Omit<OutLinkEditType, 'app'>;
   onClose: () => void;
   onCreate: (shareId: string) => Promise<string | undefined>;
   onEdit: () => void;

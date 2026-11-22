@@ -31,6 +31,7 @@ import {
   type ILinkClient,
   type MessageItem
 } from './ilinkClient';
+import { fetchWechat } from './request';
 
 const logger = getLogger(LogCategories.MODULE.OUTLINK.WECHAT);
 const WECHAT_CDN_BASE_URL = 'https://novac2c.cdn.weixin.qq.com/c2c';
@@ -94,7 +95,10 @@ export const createWechatOutlinkAdapter = ({
     const allowedBytes = encrypted ? maxBytes + 16 : maxBytes;
 
     try {
-      const response = await fetch(getMediaUrl(media), { signal: controller.signal });
+      const response = await fetchWechat(
+        { url: getMediaUrl(media), endpoint: 'media' },
+        { signal: controller.signal }
+      );
       if (!response.ok) throw new Error(`Wechat CDN download failed: HTTP ${response.status}`);
       if (!response.body) throw new Error('Wechat CDN response body is empty');
 

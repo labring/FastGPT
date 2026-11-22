@@ -109,7 +109,7 @@ describe('GET /api/support/outLink/wechat/qrcode/status', () => {
       status: 'confirmed',
       bot_token: 'bot-token',
       ilink_bot_id: 'bot-id',
-      baseurl: 'https://wechat.example.com',
+      baseurl: 'https://ilinkai.weixin.qq.com',
       ilink_user_id: 'user-id'
     });
 
@@ -122,7 +122,7 @@ describe('GET /api/support/outLink/wechat/qrcode/status', () => {
       {
         $set: {
           'app.token': 'bot-token',
-          'app.baseUrl': 'https://wechat.example.com',
+          'app.baseUrl': 'https://ilinkai.weixin.qq.com',
           'app.accountId': 'bot-id',
           'app.userId': 'user-id',
           'app.status': 'online',
@@ -154,6 +154,21 @@ describe('GET /api/support/outLink/wechat/qrcode/status', () => {
         })
       })
     );
+  });
+
+  it('does not bind credentials to an unapproved service address', async () => {
+    mocks.getQRCodeStatus.mockResolvedValue({
+      status: 'confirmed',
+      bot_token: 'bot-token',
+      ilink_bot_id: 'bot-id',
+      baseurl: 'https://example.invalid'
+    });
+
+    await expect(handler({ query: { outLinkId } } as any, createRes())).rejects.toThrow(
+      'outside the allowed endpoints'
+    );
+    expect(mocks.updateOne).not.toHaveBeenCalled();
+    expect(mocks.startWechatPolling).not.toHaveBeenCalled();
   });
 
   it.each([

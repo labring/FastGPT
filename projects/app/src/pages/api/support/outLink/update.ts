@@ -82,7 +82,8 @@ export async function handler(
     showSkillReferences,
     showFullText,
     limit,
-    app
+    // 微信连接由扫码和轮询维护。旧客户端可能回传整个 app，编辑时不能覆盖连接状态。
+    ...(outLink.type !== PublishChannelEnum.wechat && app !== undefined ? { app } : {})
   });
 
   (async () => {
