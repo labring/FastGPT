@@ -41,7 +41,7 @@ RUN [ -z "$proxy" ] || sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/
 
 RUN npm install -g pnpm@10.33.2
 
-ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV NODE_OPTIONS="--max-old-space-size=6144"
 ENV NEXT_PUBLIC_BASE_URL=$base_url
 # Build SDK workspace packages first so subpath exports like
 # @fastgpt-sdk/otel/logger have generated dist type files.
