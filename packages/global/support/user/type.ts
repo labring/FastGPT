@@ -16,6 +16,16 @@ export type UserMetaType = {
   isActivatedWecomLicense?: boolean;
 };
 
+/** 系统保留的同步管理标记来源：外部输入（同步协议/SSO 登录/管理端绑定）禁止使用 */
+export const SYSTEM_SYNC_ACCOUNT_SOURCE = 'system-sync';
+
+/** 外部身份绑定行（V3 极简模型）：(source, id) 全局唯一，登录点查与同步圈人共用 */
+export type UserAccountItem = {
+  source: string;
+  id: string;
+  status: 'active' | 'disabled';
+};
+
 export type UserModelSchema = {
   _id: string;
   username: string;
@@ -31,6 +41,7 @@ export type UserModelSchema = {
   contact?: string | null;
   tags: UserTagsType[];
   meta?: UserMetaType;
+  accounts?: UserAccountItem[];
 };
 
 export const UserSchema = z.object({
