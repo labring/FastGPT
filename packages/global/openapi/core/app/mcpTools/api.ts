@@ -2,11 +2,11 @@ import z from 'zod';
 import { OpenObjectOpenApiMeta } from '../../../../common/zod/openapi';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { StoreSecretValueTypeApiInputSchema } from '../../../../common/secret/utils';
-import { CreateAppBodySchema } from '../common/api';
+import { CreateAppBodyBaseSchema } from '../common/api';
 import { McpToolConfigSchema } from '../../../../core/app/tool/mcpTool/type';
 
 // Create mcp tool
-export const CreateMcpToolsBodySchema = CreateAppBodySchema.omit({
+export const CreateMcpToolsBodySchema = CreateAppBodyBaseSchema.omit({
   type: true,
   nodes: true,
   edges: true,
