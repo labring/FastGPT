@@ -220,13 +220,40 @@ export class ILinkClient {
     }
   }
 
+  /** 在协议解析边界将畸形响应转为不含正文的错误，避免原始 HTML 或上游内容进入日志。 */
+  private parseJson<T>(
+    operation: string,
+    raw: string,
+    reviver?: (key: string, value: unknown, context: { source: string }) => unknown
+  ): T {
+    try {
+      const parsed = reviver
+        ? (
+            JSON.parse as (
+              text: string,
+              reviver: (key: string, value: unknown, context: { source: string }) => unknown
+            ) => T
+          )(raw, reviver)
+        : (JSON.parse(raw) as T);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error(`iLink ${operation} returned unexpected JSON payload`);
+      }
+      return parsed;
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith(`iLink ${operation} returned`)) {
+        throw error;
+      }
+      throw new Error(`iLink ${operation} returned invalid JSON`);
+    }
+  }
+
   async getQRCode(): Promise<QRCodeResponse> {
     const raw = await this.post(
       `ilink/bot/get_bot_qrcode?bot_type=${BOT_TYPE}`,
       JSON.stringify({ local_token_list: [] }),
       SEND_TIMEOUT_MS
     );
-    return JSON.parse(raw);
+    return this.parseJson<QRCodeResponse>('get_bot_qrcode', raw);
   }
 
   async getQRCodeStatus(qrcode: string): Promise<QRStatusResponse> {
@@ -238,7 +265,7 @@ export class ILinkClient {
           timeoutMs: LONG_POLL_TIMEOUT_MS
         }
       );
-      return JSON.parse(raw);
+      return this.parseJson<QRStatusResponse>('get_qrcode_status', raw);
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return { status: 'wait' };
       throw err;
@@ -254,12 +281,7 @@ export class ILinkClient {
     try {
       const raw = await this.post('ilink/bot/getupdates', body, LONG_POLL_TIMEOUT_MS);
       // ! JSON.parse reviver context.source requires Node.js >=22.
-      return (
-        JSON.parse as (
-          text: string,
-          reviver: (key: string, value: unknown, context: { source: string }) => unknown
-        ) => GetUpdatesResponse
-      )(raw, (key, value, context) => {
+      return this.parseJson<GetUpdatesResponse>('getupdates', raw, (key, value, context) => {
         if (key !== 'message_id' || typeof value !== 'number') return value;
         return context.source;
       });
@@ -293,7 +315,7 @@ export class ILinkClient {
     });
     const send = async () => {
       const raw = await this.post('ilink/bot/sendmessage', body, SEND_TIMEOUT_MS);
-      const resp = JSON.parse(raw) as Pick<GetUpdatesResponse, 'ret' | 'errmsg'>;
+      const resp = this.parseJson<Pick<GetUpdatesResponse, 'ret' | 'errmsg'>>('sendmessage', raw);
       if (resp.ret && resp.ret !== 0) {
         throw new Error(`sendMessage ret=${resp.ret} errmsg=${resp.errmsg ?? '(none)'}`);
       }

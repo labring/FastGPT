@@ -140,4 +140,32 @@ describe('ILinkClient', () => {
       vi.unstubAllGlobals();
     }
   });
+
+  it('turns malformed 2xx HTML responses into safe protocol errors without body snippets', async () => {
+    const html = '<html><body>Proxy Auth Required: secret-banner</body></html>';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: vi.fn().mockResolvedValue(html)
+      })
+    );
+    try {
+      for (const action of [
+        () => new ILinkClient().getQRCode(),
+        () => new ILinkClient().getQRCodeStatus('qr-1')
+      ]) {
+        const caught = await action().catch((err) => err);
+        expect(caught).toBeInstanceOf(Error);
+        expect(caught.message).toContain('returned invalid JSON');
+        expect(caught.message).not.toContain('<html>');
+        expect(caught.message).not.toContain('secret-banner');
+        expect(caught.stack ?? '').not.toContain('<html>');
+        expect(caught.cause).toBeUndefined();
+      }
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });

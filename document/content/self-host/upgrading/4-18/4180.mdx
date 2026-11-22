@@ -57,6 +57,7 @@ upgradeTags:
 ### 兼容说明
 
 - **出站代理**。使用代理运行工作流 HTTP 节点、HTTP 工具或其他受保护的 HTTP 请求时，升级前请按[环境变量说明](/self-host/config/env4180)验证本地 DNS 与代理的 `CONNECT` 能力。SOCKS 和仅支持普通 HTTP 转发的代理需切换到兼容代理。
+- **微信个人号出网与升级**：微信个人号渠道改为由 App 容器直连微信服务（不继承 `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY`，禁止重定向并校验公网 IP），仅允许访问 `ilinkai.weixin.qq.com`（及其子域）和 `cdn.weixin.qq.com`（及其子域，默认媒体下载使用 `novac2c.cdn.weixin.qq.com`）。原依赖代理出网的部署升级前，请在 App 容器内验证上述域名解析到公网地址且不经代理的 HTTPS 直连可用（如 `curl --noproxy '*' -I https://ilinkai.weixin.qq.com` 与媒体主机）；调整网络或 DNS 后，升级时先停止全部旧版 App 实例再启动新版，重新扫码登录（如有异常或待确认二维码）并分别验证消息收发与媒体下载。
 - **系统配置自动化接入**：旧 `/api/proApi/admin/system/updateConfig` 已移除，调用它的管理脚本需改用主服务的 `/api/admin/system/config/get` 和 `/api/admin/system/config/update`。
 - **管理后台搜索参数**：商业版应用列表的 `searchKey` 改用 `appName` 或 `appId`；团队、套餐及发票列表不再读取 `search`，已有管理脚本需改传对应的 `username` 或 `teamName`。
 - **支付记录筛选**：商业版支付记录的 `username` 现在仅匹配实际付款人，不再返回该用户所在团队的全部订单；依赖原范围的管理脚本需改按团队筛选。
