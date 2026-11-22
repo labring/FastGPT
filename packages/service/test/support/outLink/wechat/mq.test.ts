@@ -317,38 +317,50 @@ describe('Wechat polling failure counter integration', () => {
     ]);
   });
 
-  it('keeps rich message items in the reply job', async () => {
-    const items = [{ type: 1, text_item: { text: 'hello' } }];
-    mocks.getUpdates.mockResolvedValue({
-      ret: 0,
-      msgs: [
-        {
-          message_type: 1,
-          message_id: '18446744073709551615',
-          from_user_id: 'user-1',
-          context_token: 'context-token',
-          item_list: items
-        }
-      ]
-    });
-    const processor = await getPollProcessor();
+  it.each([
+    { storedBindingId: bindingId, jobPrefix: `wechat-reply:share-1:${bindingId}` },
+    { storedBindingId: undefined, jobPrefix: 'wechat-reply:share-1' }
+  ])(
+    'keeps rich items and the compatible reply ID for $jobPrefix',
+    async ({ storedBindingId, jobPrefix }) => {
+      mocks.findOne.mockReturnValue({
+        lean: vi.fn().mockResolvedValue({
+          ...outLink,
+          app: { ...outLink.app, bindingId: storedBindingId }
+        })
+      });
+      const items = [{ type: 1, text_item: { text: 'hello' } }];
+      mocks.getUpdates.mockResolvedValue({
+        ret: 0,
+        msgs: [
+          {
+            message_type: 1,
+            message_id: '18446744073709551615',
+            from_user_id: 'user-1',
+            context_token: 'context-token',
+            item_list: items
+          }
+        ]
+      });
+      const processor = await getPollProcessor();
 
-    await expect(processor?.(job)).resolves.toBe('messages');
-    expect(mocks.queueAdd).toHaveBeenCalledWith(
-      {
-        shareId: 'share-1',
-        bindingKey: bindingId,
-        userId: 'user-1',
-        items,
-        contextToken: 'context-token',
-        lastMsgId: '18446744073709551615'
-      },
-      {
-        jobId: `wechat-reply:share-1:${bindingId}:18446744073709551615`,
-        backoff: { type: 'fixed', delay: 2000 }
-      }
-    );
-  });
+      await expect(processor?.(job)).resolves.toBe('messages');
+      expect(mocks.queueAdd).toHaveBeenCalledWith(
+        {
+          shareId: 'share-1',
+          bindingKey: storedBindingId ?? expect.stringMatching(/^[a-f0-9]{64}$/),
+          userId: 'user-1',
+          items,
+          contextToken: 'context-token',
+          lastMsgId: '18446744073709551615'
+        },
+        {
+          jobId: `${jobPrefix}:18446744073709551615`,
+          backoff: { type: 'fixed', delay: 2000 }
+        }
+      );
+    }
+  );
 
   it('clears the counter and marks the channel after the threshold', async () => {
     mocks.getUpdates.mockResolvedValue({ ret: 500, errmsg: 'upstream failed' });

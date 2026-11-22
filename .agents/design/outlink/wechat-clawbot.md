@@ -105,6 +105,8 @@ Poll job 主要等待约 35 秒的长轮询，不执行工作流。入队检查�
 
 Reply processor 使用 provider adapter 调用 `runOutlinkRuntime`，并以稳定的 `messageId=lastMsgId` 由聊天写入层保证业务幂等。队列 jobId 解决重复入队，messageId 解决 stalled retry 或 processor 重试后的副作用重复。
 
+旧记录在重新绑定前保留原任务 ID `wechat-reply:${shareId}:${lastMsgId}`，以便重拉时与升级前的队列任务去重。
+
 ## 5. Poll 处理顺序
 
 一次成功 poll 的顺序固定为：

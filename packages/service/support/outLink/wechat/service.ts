@@ -3,6 +3,7 @@ import { WECHAT_QR_LOGIN_TTL_SECONDS, wechatQrLoginCache } from '@fastgpt/dal/re
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
 import { WechatAppSchema, type OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
+import type { ClientSession } from '../../../common/mongo';
 import { MongoOutLink } from '../schema';
 import { ILinkClient, type QRStatusResponse } from './ilinkClient';
 import { startWechatPolling } from './mq';
@@ -92,12 +93,13 @@ export async function getWechatQrStatus({
 }
 
 /** 下线同时撤销待确认的扫码会话，队列中的轮询会在读取状态后结束。 */
-export async function logoutWechatChannel(outLinkId: string) {
+export async function logoutWechatChannel(outLinkId: string, session?: ClientSession) {
   await MongoOutLink.updateOne(
     { _id: outLinkId, type: PublishChannelEnum.wechat },
     {
       $set: { 'app.status': 'offline', 'app.token': '', 'app.lastError': '' },
       $unset: { 'app.qrAttemptId': 1 }
-    }
+    },
+    { session }
   );
 }

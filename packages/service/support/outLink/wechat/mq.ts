@@ -154,6 +154,10 @@ async function pollImpl(job: Job<WechatPollJobData>, signal: AbortSignal): Promi
   // 1) 先分发回复任务。失败则下次重拉，队列按绑定和消息 ID 去重。
   if (messages.length > 0) {
     const groups = groupMessagesByUser(messages);
+    // 历史绑定继续使用旧任务 ID，升级时重拉消息可与队列里尚未消费的旧任务去重。
+    const replyJobPrefix = app.bindingId
+      ? `wechat-reply:${shareId}:${app.bindingId}`
+      : `wechat-reply:${shareId}`;
     logger.debug('Dispatch reply jobs', {
       shareId,
       totalMsgs: messages.length,
@@ -172,7 +176,7 @@ async function pollImpl(job: Job<WechatPollJobData>, signal: AbortSignal): Promi
             lastMsgId: g.lastMsgId
           },
           {
-            jobId: `wechat-reply:${shareId}:${bindingKey}:${g.lastMsgId}`,
+            jobId: `${replyJobPrefix}:${g.lastMsgId}`,
             backoff: { type: 'fixed', delay: 2000 }
           }
         )
