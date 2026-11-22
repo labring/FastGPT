@@ -1471,24 +1471,48 @@ describe('loadRequestMessages function tests', () => {
       expect(result[1].content).toBe('Part 1\nPart 2');
     });
 
-    it('should not merge assistant messages when one has tool calls', async () => {
-      const messages: ChatCompletionMessageParam[] = [
-        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
-        { role: ChatCompletionRequestMessageRoleEnum.Assistant, content: 'Text response' },
-        {
-          role: ChatCompletionRequestMessageRoleEnum.Assistant,
-          content: null,
-          tool_calls: [
-            { id: 'call1', type: 'function', function: { name: 'tool', arguments: '{}' } }
-          ]
-        }
-      ];
+    it.each(['modern', 'legacy'] as const)(
+      'keeps a %s call on a text-bearing assistant adjacent to plain text',
+      async (kind) => {
+        const functionCall = { name: 'weather', arguments: '{}' };
+        const toolFields =
+          kind === 'modern'
+            ? { tool_calls: [{ id: 'call1', type: 'function' as const, function: functionCall }] }
+            : { function_call: functionCall };
+        const toolMessage = {
+          role: 'assistant' as const,
+          content: 'Checking weather',
+          ...toolFields
+        };
+        const messages: ChatCompletionMessageParam[] = [
+          { role: 'user', content: 'Hello' },
+          { role: 'assistant', content: 'Text response' },
+          toolMessage
+        ];
 
+        const result = await loadRequestMessages({ messages });
+
+        expect(result).toHaveLength(3);
+        expect(result[1].content).toBe('Text response');
+        expect(result[2]).toMatchObject(toolMessage);
+      }
+    );
+
+    it('merges adjacent system, user and assistant text without mutating reused history', async () => {
+      const messages: ChatCompletionMessageParam[] = [
+        { role: 'system', content: 'System 1' },
+        { role: 'system', content: 'System 2' },
+        { role: 'user', content: 'Question 1' },
+        { role: 'user', content: 'Question 2' },
+        { role: 'assistant', content: 'Answer 1' },
+        { role: 'assistant', content: 'Answer 2' }
+      ];
+      const original = structuredClone(messages);
       const result = await loadRequestMessages({ messages });
 
-      expect(result).toHaveLength(3); // Should not merge
-      expect(result[1].content).toBe('Text response');
-      expect((result[2] as any).tool_calls).toHaveLength(1);
+      expect(messages).toEqual(original);
+      expect(await loadRequestMessages({ messages })).toEqual(result);
+      expect(result.map(({ role }) => role)).toEqual(['system', 'user', 'assistant']);
     });
   });
 

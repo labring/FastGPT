@@ -197,46 +197,61 @@ export const mergeAssistantFieldMessages = (
   return mergedMessages;
 };
 
-const hasAssistantContent = (
-  content: Extract<ChatCompletionMessageParam, { role: 'assistant' }>['content']
-) => (typeof content === 'string' || Array.isArray(content) ? content.length > 0 : false);
-
-const hasAssistantPayload = (message: Extract<ChatCompletionMessageParam, { role: 'assistant' }>) =>
-  hasAssistantContent(message.content) ||
-  Boolean(message.tool_calls?.length) ||
-  Boolean(message.function_call) ||
-  Boolean(message.audio) ||
-  Boolean(message.refusal);
-
+/**
+ * 按当前节点的工具名称过滤继承历史，保留同一调用组内的调用与结果。
+ * 相邻 assistant 可能是同一组的拆分片段，结果段结束后重新配对。
+ */
 export const filterToolMessages = (
   messages: ChatCompletionMessageParam[],
   toolFilter: (toolName: string) => boolean
 ): ChatCompletionMessageParam[] => {
-  const keptToolCallIds = new Set<string>();
+  type AssistantMessage = Extract<ChatCompletionMessageParam, { role: 'assistant' }>;
+
+  const hasAssistantContent = (content: AssistantMessage['content']) =>
+    (typeof content === 'string' || Array.isArray(content)) && content.length > 0;
+  const hasAssistantPayload = (message: AssistantMessage) =>
+    hasAssistantContent(message.content) ||
+    Boolean(message.tool_calls?.length) ||
+    Boolean(message.function_call) ||
+    Boolean(message.interactive) ||
+    Boolean(message.audio) ||
+    Boolean(message.refusal);
+
+  const pendingToolCallIds = new Set<string>();
+  let pendingFunctionName: string | undefined;
+  const resetCallGroup = () => {
+    pendingToolCallIds.clear();
+    pendingFunctionName = undefined;
+  };
   const filtered: ChatCompletionMessageParam[] = [];
 
-  for (const message of messages) {
+  for (const [index, message] of messages.entries()) {
     if (message.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
-      let nextMessage = message;
+      if (messages[index - 1]?.role !== ChatCompletionRequestMessageRoleEnum.Assistant) {
+        resetCallGroup();
+      }
 
-      if (nextMessage.tool_calls?.length) {
-        const keptToolCalls = nextMessage.tool_calls.filter((toolCall) => {
-          const allowed = toolFilter(toolCall.function.name);
-          if (allowed) {
-            keptToolCallIds.add(toolCall.id);
-          }
-          return allowed;
+      let nextMessage = message;
+      if (message.tool_calls?.length) {
+        const keptToolCalls = message.tool_calls.filter((toolCall) => {
+          if (!toolFilter(toolCall.function.name)) return false;
+          pendingToolCallIds.add(toolCall.id);
+          return true;
         });
 
-        if (keptToolCalls.length !== nextMessage.tool_calls.length) {
-          const { tool_calls: _droppedToolCalls, ...rest } = nextMessage;
+        if (keptToolCalls.length !== message.tool_calls.length) {
+          const { tool_calls: _droppedToolCalls, ...rest } = message;
           nextMessage = keptToolCalls.length ? { ...rest, tool_calls: keptToolCalls } : rest;
         }
       }
 
-      if (nextMessage.function_call && !toolFilter(nextMessage.function_call.name)) {
-        const { function_call: _droppedFunctionCall, ...rest } = nextMessage;
-        nextMessage = rest;
+      if (message.function_call) {
+        if (toolFilter(message.function_call.name)) {
+          pendingFunctionName = message.function_call.name;
+        } else {
+          const { function_call: _droppedFunctionCall, ...rest } = nextMessage;
+          nextMessage = rest;
+        }
       }
 
       if (nextMessage === message || hasAssistantPayload(nextMessage)) {
@@ -246,19 +261,21 @@ export const filterToolMessages = (
     }
 
     if (message.role === ChatCompletionRequestMessageRoleEnum.Tool) {
-      if (keptToolCallIds.has(message.tool_call_id)) {
+      if (pendingToolCallIds.delete(message.tool_call_id)) {
         filtered.push(message);
       }
       continue;
     }
 
     if (message.role === ChatCompletionRequestMessageRoleEnum.Function) {
-      if (toolFilter(message.name)) {
+      if (pendingFunctionName === message.name) {
         filtered.push(message);
+        pendingFunctionName = undefined;
       }
       continue;
     }
 
+    resetCallGroup();
     filtered.push(message);
   }
 
@@ -338,14 +355,12 @@ export const chats2GPTMessages = ({
   messages,
   reserveId,
   reserveTool = false,
-  toolFilter,
   reserveReason = true,
   reserveSelect = false
 }: {
   messages: ChatItemMiniType[];
   reserveId: boolean;
   reserveTool?: boolean;
-  toolFilter?: (toolName: string) => boolean;
   reserveReason?: boolean;
   /** ChatBox 请求传输保留结构化输入；发送给模型时转换为文本或工具结果。 */
   reserveSelect?: boolean;
@@ -904,7 +919,7 @@ export const chats2GPTMessages = ({
     }
   });
 
-  return toolFilter ? filterToolMessages(results, toolFilter) : results;
+  return results;
 };
 
 /**

@@ -1,13 +1,18 @@
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { mergeAssistantFieldMessages } from '@fastgpt/global/core/chat/adapt';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import { loadRequestMessages } from '@fastgpt/service/core/ai/llm/utils';
 import {
   buildAgentLoopCoreInputFilesPrompt,
   buildAgentLoopCoreInput,
-  buildAgentLoopCoreRequestMessages,
   buildAgentLoopCoreSkillsPrompt,
-  buildAgentLoopCoreUserReminderInput,
-  createAgentLoopCoreToolFilter
+  buildAgentLoopCoreUserReminderInput
 } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/context';
+import {
+  buildAgentLoopCoreRequestMessages,
+  createAgentLoopCoreToolFilter
+} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/context/messages';
 import { createAgentLoopCoreAssistantEventCollector } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/assistantResponses/eventCollector';
 import { describe, expect, it } from 'vitest';
 
@@ -198,6 +203,44 @@ describe('buildAgentLoopCoreRequestMessages', () => {
         tool_call_id: 'call_weather',
         content: 'cloudy'
       }
+    ]);
+  });
+
+  it('keeps the next historical call paired after removing a text-bearing tool turn', async () => {
+    const history: ChatItemMiniType[] = [
+      { obj: ChatRoleEnum.Human, value: [{ text: { content: 'Check inventory and shipping' } }] },
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            modelResponseId: 'inventory_reply',
+            text: { content: 'Checking inventory' },
+            tools: [{ id: 'call_0', functionName: 'inventory', params: '{}', response: 'In stock' }]
+          },
+          {
+            modelResponseId: 'shipping_reply',
+            text: { content: 'Checking shipping' },
+            tools: [{ id: 'call_0', functionName: 'shipping', params: '{}', response: 'Two days' }]
+          }
+        ]
+      }
+    ];
+
+    const entryMessages = buildAgentLoopCoreRequestMessages({
+      messages: history,
+      toolFilter: createAgentLoopCoreToolFilter({ toolNames: ['shipping'] })
+    });
+    const outbound = mergeAssistantFieldMessages(
+      await loadRequestMessages({ messages: entryMessages })
+    );
+
+    expect(outbound).toMatchObject([
+      { role: 'user' },
+      {
+        role: 'assistant',
+        tool_calls: [{ id: 'call_0', function: { name: 'shipping' } }]
+      },
+      { role: 'tool', tool_call_id: 'call_0', content: 'Two days' }
     ]);
   });
 });

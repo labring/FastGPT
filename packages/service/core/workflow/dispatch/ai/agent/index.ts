@@ -33,14 +33,16 @@ import {
   buildAgentLoopCoreFinalAssistantOutput,
   buildAgentLoopCoreInput,
   buildAgentLoopCorePausedMemories,
-  buildAgentLoopCoreRequestMessages,
   createAgentLoopCoreChildInteractiveParams,
-  createAgentLoopCoreToolFilter,
   prepareAgentLoopCoreProviderRunState,
   readAgentLoopCoreActivePlan,
   readAgentLoopCoreProviderStateMemory,
   runAgentLoopCoreWithSummary
 } from '../agentLoopCore/interface';
+import {
+  buildAgentLoopCoreRequestMessages,
+  createAgentLoopCoreToolFilter
+} from '../agentLoopCore/application/context/messages';
 import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
 import { replaceAgentPromptToolReferences } from './adapter/prompt';
 import { createWorkflowAgentLoopRuntime } from './adapter/runtime';

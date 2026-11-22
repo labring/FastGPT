@@ -1,14 +1,14 @@
-import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
+import { chats2GPTMessages, filterToolMessages } from '@fastgpt/global/core/chat/adapt';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
+import { askUserToolName } from '../../../../../../ai/llm/agentLoop/domain/systemTool/ask';
+import { DATASET_SEARCH_TOOL_NAME } from '../../../../../../ai/llm/agentLoop/domain/systemTool/datasetSearch';
+import { READ_FILES_TOOL_NAME } from '../../../../../../ai/llm/agentLoop/domain/systemTool/readFile';
+import { getAgentLoopSandboxToolNames } from '../../../../../../ai/llm/agentLoop/domain/systemTool/sandbox';
 import {
-  askUserToolName,
-  DATASET_SEARCH_TOOL_NAME,
-  getAgentLoopSandboxToolNames,
-  READ_FILES_TOOL_NAME,
   setPlanToolName,
   updatePlanToolName
-} from '../../../../../../ai/llm/agentLoop/interface';
+} from '../../../../../../ai/llm/agentLoop/domain/systemTool/plan';
 
 export type BuildAgentLoopCoreRequestMessagesParams = {
   messages: ChatItemMiniType[];
@@ -26,7 +26,7 @@ export type CreateAgentLoopCoreToolFilterParams = {
 };
 
 /**
- * 按当前节点实际暴露给模型的工具集合（业务工具 + 启用的系统内置工具）构建历史工具过滤器。
+ * 按当前工作流节点的工具集合（业务工具 + 启用的系统内置工具）构建历史工具过滤器。
  */
 export const createAgentLoopCoreToolFilter = ({
   toolNames = [],
@@ -62,6 +62,7 @@ export const createAgentLoopCoreToolFilter = ({
  * 将 workflow chat items 转成 agent-loop 请求 messages。
  *
  * Workflow Agent 和 ToolCall 都需要保留 tool_call/tool_response 来恢复多轮工具上下文；
+ * 节点提供工具目录时，仅在这里过滤一次继承历史。
  * 历史里的 system message 默认过滤，由节点外壳通过 systemPrompt 单独注入，避免重复系统提示。
  */
 export const buildAgentLoopCoreRequestMessages = ({
@@ -69,12 +70,14 @@ export const buildAgentLoopCoreRequestMessages = ({
   removeSystemMessages = true,
   toolFilter
 }: BuildAgentLoopCoreRequestMessagesParams): ChatCompletionMessageParam[] => {
-  const requestMessages = chats2GPTMessages({
+  const adaptedMessages = chats2GPTMessages({
     messages,
     reserveId: false,
-    reserveTool: true,
-    toolFilter
+    reserveTool: true
   });
+  const requestMessages = toolFilter
+    ? filterToolMessages(adaptedMessages, toolFilter)
+    : adaptedMessages;
 
   return removeSystemMessages
     ? requestMessages.filter((message) => message.role !== 'system')
