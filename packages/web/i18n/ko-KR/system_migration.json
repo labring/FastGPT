@@ -83,5 +83,20 @@
   "migrations.20261120_migrate_model_pricing.stt": "STT 과금 유형 채우기",
   "migrations.20261120_migrate_model_pricing.llmTiers": "LLM 계층 상한 변환",
   "migrations.20261120_migrate_model_pricing.validation": "모델 가격 검증",
-  "migrations.20261120_migrate_model_pricing.result": "STT 모델 {{sttModels}}개를 검사하고 시스템 LLM 모델 {{llmModels}}개의 계층 상한을 K Tokens로 변환했습니다."
+  "migrations.20261120_migrate_model_pricing.result": "STT 모델 {{sttModels}}개를 검사하고 시스템 LLM 모델 {{llmModels}}개의 계층 상한을 K Tokens로 변환했습니다.",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.name": "기존 샌드박스를 OpenSandbox(.tar.zst)로 마이그레이션",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.description": "이전 버전의 모든 Pod가 종료된 것을 확인한 후 수동으로 실행하세요. 실행 중 Devbox, 중지된 Devbox, 기존 S3 package.zip 순서로 .tar.zst 아카이브로 스트리밍 변환하며 롤백을 위해 기존 리소스를 유지합니다.",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.result": "실행 중 Devbox {{runningDevbox}}개, 중지된 Devbox {{stoppedDevbox}}개, 기존 zip 아카이브 {{legacyArchives}}개 마이그레이션 완료",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.preflight": "사전 환경 및 대상 점검",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.runningDevbox": "실행 중 Devbox 정지 마이그레이션",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.stoppedDevbox": "중지된 Devbox 마이그레이션",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.legacyArchives": "기존 package.zip 스트리밍 변환",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.validation": "마이그레이션 결과 검증",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.name": "이전 샌드박스 잔여 리소스 정리",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.description": "OpenSandbox 마이그레이션 완료 및 안정화 확인 후 수동으로 실행하세요. 미마이그레이션 활성 레코드가 없는지 검증한 뒤 원격 Sealos Devbox, 검증된 기존 package.zip, 소프트 삭제된 고아 레코드를 정리합니다.",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.result": "원격 Devbox {{deletedDevboxes}}개, 기존 zip {{deletedZips}}개, 고아 레코드 {{deletedOrphans}}개 정리 완료",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.preflight": "마이그레이션 상태 안전 검증",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupDevboxes": "원격 Devbox 및 고아 레코드 정리",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupLegacyZips": "기존 zip 아카이브 검증 및 삭제",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.validation": "정리 결과 검증"
 }

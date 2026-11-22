@@ -83,5 +83,20 @@
   "migrations.20261120_migrate_model_pricing.stt": "Backfill STT pricing types",
   "migrations.20261120_migrate_model_pricing.llmTiers": "Convert LLM tier limits",
   "migrations.20261120_migrate_model_pricing.validation": "Validate model pricing",
-  "migrations.20261120_migrate_model_pricing.result": "Scanned {{sttModels}} STT models and converted tier limits to K Tokens for {{llmModels}} system LLM models."
+  "migrations.20261120_migrate_model_pricing.result": "Scanned {{sttModels}} STT models and converted tier limits to K Tokens for {{llmModels}} system LLM models.",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.name": "Migrate legacy sandboxes to OpenSandbox (.tar.zst)",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.description": "Run manually after all legacy app pods are offline. Quiesces running Sealos Devboxes, migrates stopped Devboxes, and stream-transcodes legacy S3 package.zip archives into .tar.zst while preserving legacy resources for rollback.",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.result": "Migrated {{runningDevbox}} running Devboxes, {{stoppedDevbox}} stopped Devboxes, and {{legacyArchives}} legacy zip archives",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.preflight": "Preflight check",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.runningDevbox": "Quiesce running Devboxes",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.stoppedDevbox": "Migrate stopped Devboxes",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.legacyArchives": "Transcode legacy package.zip",
+  "migrations.20261117_migrate_sandbox_to_opensandbox.validation": "Validate migration",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.name": "Clean up legacy sandbox resources",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.description": "Run manually after verifying the OpenSandbox migration in production. Enforces zero unmigrated active records, then deletes remote legacy Sealos Devboxes, verified legacy package.zip objects, and soft-deleted orphan records.",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.result": "Cleaned up {{deletedDevboxes}} remote Devboxes, {{deletedZips}} legacy zip objects, and {{deletedOrphans}} orphan records",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.preflight": "Safety guard verification",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupDevboxes": "Delete remote Devboxes & orphans",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupLegacyZips": "Verify & delete legacy zip objects",
+  "migrations.20261117_cleanup_legacy_sandbox_resources.validation": "Validate cleanup"
 }

@@ -57,13 +57,11 @@ Configure the proxy WebSocket URL, HTTP preview URL, and shared secret together 
 Configure these variables in the Compose file's `x-agent-sandbox-config` anchor so `fastgpt-app` and `fastgpt-pro` share the OpenSandbox settings:
 
 ```dotenv
-AGENT_SANDBOX_PROVIDER=opensandbox
-
 # Internal OpenSandbox Server URL and API key
 AGENT_SANDBOX_OPENSANDBOX_BASEURL=http://fastgpt-opensandbox-server:8090
 AGENT_SANDBOX_OPENSANDBOX_API_KEY=replace_with_opensandbox_api_key
 AGENT_SANDBOX_OPENSANDBOX_RUNTIME=docker
-AGENT_SANDBOX_OPENSANDBOX_IMAGE=ghcr.io/labring/fastgpt-agent-sandbox:v0.4.0
+AGENT_SANDBOX_OPENSANDBOX_IMAGE=ghcr.io/labring/fastgpt-agent-sandbox:v0.5.0
 AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY=true
 
 # Volume Manager URL, token, and persistent volume name prefix
@@ -87,8 +85,17 @@ Each official image tag includes both `amd64` and `arm64` variants. Both archite
 
 | Use case | Image                                               |
 | -------- | --------------------------------------------------- |
-| Non-root | `ghcr.io/labring/fastgpt-agent-sandbox:v0.4.0`      |
-| Root     | `ghcr.io/labring/fastgpt-agent-sandbox-root:v0.4.0` |
+| Non-root | `ghcr.io/labring/fastgpt-agent-sandbox:v0.5.0`      |
+| Root     | `ghcr.io/labring/fastgpt-agent-sandbox-root:v0.5.0` |
+
+<Alert icon="⚠️" context="warning">
+  Starting in FastGPT 4.18.0, persistent sandbox volumes mount at `/home/sandbox` (workspace at
+  `/home/sandbox/workspace`), and runtime containers require the built-in `fastgpt-ide-agent` and
+  `/usr/local/bin/entrypoint.sh`. Before upgrading to 4.18.0 or running
+  `20261117_migrate_sandbox_to_opensandbox` in System Migration, update
+  `AGENT_SANDBOX_OPENSANDBOX_IMAGE` (including custom derived images),
+  `fastgpt-agent-volume-manager`, and `fastgpt-agent-sandbox-proxy` to `v0.5.0+`.
+</Alert>
 
 For China Mainland registries, replace `ghcr.io/labring` with `registry.cn-hangzhou.aliyuncs.com/fastgpt`. If you use a private registry, make sure each tag preserves both the `amd64` and `arm64` manifests. If the registry provides only a single-architecture image, set `AGENT_SANDBOX_OPENSANDBOX_IMAGE` to an image matching the architecture of the OpenSandbox Server host.
 
@@ -115,43 +122,43 @@ Configure package registries in both `fastgpt-app` and `fastgpt-pro` when sandbo
 ```dotenv
 AGENT_SANDBOX_NPM_REGISTRY=https://registry.npmmirror.com
 AGENT_SANDBOX_PYPI_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
-# Ubuntu amd64 example; use ubuntu-ports for Ubuntu arm64 as described below
-AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu
+# Official Debian 13 (trixie) example; debian-security is derived automatically as .../debian-security
+AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/debian
 ```
 
-`AGENT_SANDBOX_NPM_REGISTRY` and `AGENT_SANDBOX_PYPI_INDEX_URL` apply to all runtime images. `AGENT_SANDBOX_APT_MIRROR` is effective only for root Agent sandboxes and must point directly to the apt repository root.
+`AGENT_SANDBOX_NPM_REGISTRY` and `AGENT_SANDBOX_PYPI_INDEX_URL` apply to all runtime images. `AGENT_SANDBOX_APT_MIRROR` is effective only for root Agent sandboxes and must point directly to the apt repository root rather than `dists` or a specific release path.
 
-The apt mirror URL is not selected automatically based on the runtime image architecture. Select the corresponding Ubuntu repository path:
+For the official Debian 13 (`trixie`) image, simply configure a standard `/debian` repository root: FastGPT automatically derives the `debian-security` URL from the same mirror prefix when `AGENT_SANDBOX_APT_MIRROR` ends with `/debian`.
+
+Only when using a custom Ubuntu image do you need to select the repository path manually by runtime architecture (apt mirror URLs are not switched automatically by architecture):
 
 ```dotenv
-# Ubuntu amd64 / x86_64
+# Custom Ubuntu image (amd64 / x86_64)
 AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu
 
-# Ubuntu arm64 / aarch64
+# Custom Ubuntu image (arm64 / aarch64)
 AGENT_SANDBOX_APT_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports
 ```
 
-Use the [Ubuntu mirror guide](https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu/) and [Ubuntu Ports mirror guide](https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu-ports/) to confirm paths for other Ubuntu releases. With another mirror provider, use its standard Ubuntu or Ubuntu Ports repository path for the target architecture.
+Use the [Debian mirror guide](https://mirrors.tuna.tsinghua.edu.cn/help/debian/), [Ubuntu mirror guide](https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu/), and [Ubuntu Ports mirror guide](https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu-ports/) to confirm repository paths. With another mirror provider, use its standard Debian repository or architecture-matched Ubuntu repository path.
 
-FastGPT reads `/etc/os-release` and generates or overwrites `/etc/apt/sources.list.d/ubuntu.sources` based on the Ubuntu version and codename. The file includes the main repository, updates, backports, and security. Before overwriting an existing sources file, FastGPT creates a `.copy` backup. When the variable is removed, files with a backup are restored and files without a backup are left unchanged. Initialization does not run `apt-get update`.
+FastGPT reads `/etc/os-release` and updates apt sources based on the detected OS and codename: for Debian images it generates or overwrites `/etc/apt/sources.list.d/debian.sources` with the main repository, updates, and `debian-security`; for custom Ubuntu images it generates or overwrites `/etc/apt/sources.list.d/ubuntu.sources` with the main repository, updates, backports, and security. Before overwriting an existing sources file, FastGPT creates a `.copy` backup. When the variable is removed, files with a backup are restored and files without a backup are left unchanged. Initialization does not run `apt-get update`.
 
 ### Resource and Lifecycle Settings
 
-In the Agent Sandbox admin form, select OpenSandbox and the Kubernetes runtime to show the CPU and memory overcommit factors, both defaulting to `1`. They are stored as `subservice.agentSandbox.opensandbox.cpuOvercommitFactor` and `memoryOvercommitFactor`. OpenSandbox Server v0.2.1 or later is required. Factors must be finite numbers of at least `1`. CPU requests are rounded down to millicores with a minimum of `1m`; memory requests are rounded down to MiB with a minimum of `1Mi`. Limits stay unchanged. The legacy `AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR` and `AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR` variables are read only once during the App upgrade migration, preserving existing form values. After migration, they are no longer runtime configuration sources.
+In the Agent Sandbox admin form, enable Agent Sandbox and select the Kubernetes runtime to display the CPU and memory overcommit factors, defaulting to `1` and `1` respectively. They are stored under `subservice.agentSandbox.opensandbox.cpuOvercommitFactor` and `memoryOvercommitFactor`. OpenSandbox Server v0.2.1 or later is required. CPU and memory factors must be finite numbers of at least `1`; CPU requests are rounded down to millicores with a minimum of `1m`, memory requests are rounded down to MiB with a minimum of `1Mi`, and limits stay unchanged. Container local `ephemeral-storage` is left to Kubernetes cluster policies (such as `LimitRange`) and is not emitted by FastGPT. Legacy `AGENT_SANDBOX_CPU_OVERCOMMIT_FACTOR` and `AGENT_SANDBOX_MEMORY_OVERCOMMIT_FACTOR` variables are read only once during the App upgrade migration, preserving existing form values; after migration they are no longer runtime configuration sources.
 
-After you change the factors, running sandboxes keep their existing resource settings. Newly created sandboxes automatically use the current factors, including sandboxes recreated after deletion or archival. Connecting to or resuming an existing sandbox does not reapply the factors.
+After you change these settings, running sandboxes keep their existing resource configuration. Newly created sandboxes automatically use the updated values, including sandboxes recreated after deletion or archival. Connecting to or resuming an existing sandbox does not reapply these settings.
 
-| Variable                                                     | Default    | Description                                                                                                                                                                |
-| ------------------------------------------------------------ | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AGENT_SANDBOX_CPU_COUNT`                                    | `1`        | Maximum CPU count for each Agent Sandbox.                                                                                                                                  |
-| `AGENT_SANDBOX_MEMORY_MIB`                                   | `2048`     | Maximum memory for each Agent Sandbox, in MiB.                                                                                                                             |
-| `AGENT_SANDBOX_STORAGE_SIZE_GI`                              | `1`        | Sandbox storage capacity, in Gi.                                                                                                                                           |
-| `subservice.agentSandbox.opensandbox.cpuOvercommitFactor`    | `1`        | Kubernetes runtime CPU overcommit factor: cpu requests = limits / factor. Values greater than 1 create Burstable QoS pods. Only applies to the opensandbox provider.       |
-| `subservice.agentSandbox.opensandbox.memoryOvercommitFactor` | `1`        | Kubernetes runtime memory overcommit factor: memory requests = limits / factor. Values greater than 1 create Burstable QoS pods. Only applies to the opensandbox provider. |
-| `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES`                         | `67108864` | Maximum IDE Agent WebSocket message size.                                                                                                                                  |
-| `AGENT_SANDBOX_WS_MAX_FRAME_BYTES`                           | `16777216` | Maximum IDE Agent WebSocket frame size.                                                                                                                                    |
-| `AGENT_SANDBOX_SUSPEND_MINUTES`                              | `60`       | Inactive minutes before a running sandbox is suspended.                                                                                                                    |
-| `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS`                        | `7`        | Inactive days before a suspended sandbox is archived.                                                                                                                      |
+| Setting / Variable                                           | Default | Description                                                                                                                      |
+| ------------------------------------------------------------ | ------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `AGENT_SANDBOX_CPU_COUNT`                                    | `1`     | Maximum CPU count for each Agent Sandbox.                                                                                        |
+| `AGENT_SANDBOX_MEMORY_MIB`                                   | `2048`  | Maximum memory for each Agent Sandbox, in MiB.                                                                                   |
+| `AGENT_SANDBOX_STORAGE_SIZE_GI`                              | `1`     | Persistent sandbox volume storage capacity, in Gi (mounted at `/home/sandbox`, workspace at `/home/sandbox/workspace`).          |
+| `subservice.agentSandbox.opensandbox.cpuOvercommitFactor`    | `1`     | Kubernetes runtime CPU overcommit factor: cpu requests = limits / factor. Values greater than 1 create Burstable QoS pods.       |
+| `subservice.agentSandbox.opensandbox.memoryOvercommitFactor` | `1`     | Kubernetes runtime memory overcommit factor: memory requests = limits / factor. Values greater than 1 create Burstable QoS pods. |
+| `AGENT_SANDBOX_SUSPEND_MINUTES`                              | `60`    | Inactive minutes before a running sandbox is suspended.                                                                          |
+| `AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS`                        | `7`     | Inactive days before a suspended sandbox is archived.                                                                            |
 
 ## Configuration and Connection Troubleshooting
 
