@@ -40,12 +40,12 @@ import {
   getAgentToolSource,
   isSystemOrCommercialToolId
 } from '@fastgpt/global/core/app/tool/utils';
-import { parseV2RefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/codec';
+import { parseV2RefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/protocol';
 import { toLegacyToolLookup } from '@fastgpt/global/core/workflow/node/agent/promptRef/legacy';
 import {
   getAgentToolIdentityKey,
   getPromptRefToolId
-} from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
+} from '@fastgpt/global/core/workflow/node/agent/promptRef/registry';
 
 /* format app nodes to edit form */
 export const appWorkflow2AgentForm = ({

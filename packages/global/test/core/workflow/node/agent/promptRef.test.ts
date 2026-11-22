@@ -1,31 +1,28 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatRefKey,
+  hasDebugPromptRef,
   parseV2RefKey,
-  splitParentChildId
-} from '@fastgpt/global/core/workflow/node/agent/promptRef/codec';
+  stripAgentPromptRefs
+} from '@fastgpt/global/core/workflow/node/agent/promptRef/protocol';
 import {
+  isBuiltinPromptRefKey,
   parseAgentPromptRefKey,
   parseLegacyRefKey,
   toLegacyToolLookup
 } from '@fastgpt/global/core/workflow/node/agent/promptRef/legacy';
 import {
-  extractAgentPromptRefs,
-  hasDebugPromptRef,
-  stripAgentPromptRefs
-} from '@fastgpt/global/core/workflow/node/agent/promptRef/text';
-import {
+  AgentPromptRefRegistry,
   getAgentToolIdentityKey,
-  isBuiltinPromptRefKey,
+  getToolSetChildPromptRefs,
   refFromBuiltin,
   refFromSkill,
   refFromTool
-} from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
+} from '@fastgpt/global/core/workflow/node/agent/promptRef/registry';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { AgentPromptRefRegistry } from '@fastgpt/global/core/workflow/node/agent/promptRef/registry';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 
-describe('agent promptRef V2 codec (parseV2RefKey / formatRefKey)', () => {
+describe('agent promptRef V2 protocol (parseV2RefKey / formatRefKey)', () => {
   it('parses and roundtrips all V2 ref kinds including complex childIds with : and /', () => {
     const cases = [
       'builtin:dataset_search',
@@ -49,15 +46,6 @@ describe('agent promptRef V2 codec (parseV2RefKey / formatRefKey)', () => {
       expect(parsed).not.toBeNull();
       expect(formatRefKey(parsed!)).toBe(key);
     }
-
-    expect(splitParentChildId('66f1/ns:get-issue')).toEqual({
-      parentId: '66f1',
-      childId: 'ns:get-issue'
-    });
-    expect(splitParentChildId('66f1//api/v1/users')).toEqual({
-      parentId: '66f1',
-      childId: '/api/v1/users'
-    });
   });
 
   it('rejects malformed or legacy keys in pure V2 parser', () => {
@@ -90,32 +78,27 @@ describe('agent promptRef independent legacy parser (parseLegacyRefKey)', () => 
     expect(parseLegacyRefKey('system:systemTool-metaso').deterministicRef).toEqual({
       type: 'plugin',
       source: 'system',
-      id: 'metaso',
-      parentId: 'metaso'
+      id: 'metaso'
     });
     expect(parseLegacyRefKey('systemTool-metaso').deterministicRef).toEqual({
       type: 'plugin',
       source: 'system',
-      id: 'metaso',
-      parentId: 'metaso'
+      id: 'metaso'
     });
     expect(parseLegacyRefKey('community-wiki').deterministicRef).toEqual({
       type: 'plugin',
       source: 'system',
-      id: 'wiki',
-      parentId: 'wiki'
+      id: 'wiki'
     });
     expect(parseLegacyRefKey('commercial-dalle3').deterministicRef).toEqual({
       type: 'plugin',
       source: 'system',
-      id: 'dalle3',
-      parentId: 'dalle3'
+      id: 'dalle3'
     });
     expect(parseLegacyRefKey('commercial-67c200000000000000000009').deterministicRef).toEqual({
       type: 'plugin',
       source: 'commercial',
-      id: '67c200000000000000000009',
-      parentId: '67c200000000000000000009'
+      id: '67c200000000000000000009'
     });
     expect(
       parseLegacyRefKey('teamId:67a100000000000000000001:systemTool-metaso').deterministicRef
@@ -123,8 +106,7 @@ describe('agent promptRef independent legacy parser (parseLegacyRefKey)', () => 
       type: 'plugin',
       source: 'team',
       teamId: '67a100000000000000000001',
-      id: 'metaso',
-      parentId: 'metaso'
+      id: 'metaso'
     });
     expect(
       parseLegacyRefKey('debug:tmbId:67d300000000000000000002:systemTool-calc').deterministicRef
@@ -132,22 +114,18 @@ describe('agent promptRef independent legacy parser (parseLegacyRefKey)', () => 
       type: 'plugin',
       source: 'debug',
       tmbId: '67d300000000000000000002',
-      id: 'calc',
-      parentId: 'calc'
+      id: 'calc'
     });
     expect(parseLegacyRefKey('personal-66f100000000000000000011').deterministicRef).toEqual({
       type: 'app',
       source: 'team',
-      id: '66f100000000000000000011',
-      parentId: '66f100000000000000000011'
+      id: '66f100000000000000000011'
     });
     expect(parseLegacyRefKey('mcp-66f100000000000000000022/ns:get-issue').deterministicRef).toEqual(
       {
         type: 'app',
         source: 'team',
-        id: '66f100000000000000000022/ns:get-issue',
-        parentId: '66f100000000000000000022',
-        childId: 'ns:get-issue'
+        id: '66f100000000000000000022/ns:get-issue'
       }
     );
     expect(
@@ -155,9 +133,7 @@ describe('agent promptRef independent legacy parser (parseLegacyRefKey)', () => 
     ).toEqual({
       type: 'app',
       source: 'team',
-      id: '66f100000000000000000022//api/v1/users',
-      parentId: '66f100000000000000000022',
-      childId: '/api/v1/users'
+      id: '66f100000000000000000022//api/v1/users'
     });
     expect(parseLegacyRefKey('66f100000000000000000011')).toEqual({
       kind: 'legacy',
@@ -275,8 +251,7 @@ describe('AgentPromptRefRegistry invariants', () => {
   it('prevents cross-source bleed for V2 keys and trips circuit breaker on ambiguous bare keys', () => {
     const registry = createRegistry();
 
-    const wrongTeam = registry.resolve('plugin:team:otherTeam:metaso');
-    expect(wrongTeam.status).toBe('unresolved');
+    expect(registry.resolve('plugin:team:otherTeam:metaso').status).toBe('unresolved');
 
     const bareMetaso = registry.resolve('metaso');
     expect(bareMetaso.status).toBe('ambiguous');
@@ -309,11 +284,12 @@ describe('AgentPromptRefRegistry invariants', () => {
     expect(registry.resolve('mcp-66f100000000000000000022/githubSet/ns:get-issue').status).toBe(
       'unresolved'
     );
-    const otherApp = registry.resolve('mcp-999900000000000000000099/githubSet/ns:get-issue');
-    expect(otherApp.status).toBe('unresolved');
+    expect(registry.resolve('mcp-999900000000000000000099/githubSet/ns:get-issue').status).toBe(
+      'unresolved'
+    );
   });
 
-  it('protects JSON 3-brace endings and preserves nested opening braces', () => {
+  it('protects JSON 3-brace endings, nested opening braces, and multiline text', () => {
     const registry = createRegistry();
     const nested = '{{{{@builtin:read_files@}}}}';
     const input =
@@ -321,13 +297,23 @@ describe('AgentPromptRefRegistry invariants', () => {
       'Refs: {{@builtin:read_files@}} + {{@dataset_search@}} + {{@metaso@}} + {{@builtin:future_cap@}}\n' +
       nested;
 
-    const rendered = registry.renderForModel({ text: input });
-    expect(rendered).toBe(
+    expect(registry.renderForModel({ text: input })).toBe(
       'JSON: {"tool": {{GitHub查Issue}}, "http": {{HTTP查用户}}}\n' +
         'Refs: {{文件解析}} + {{知识库检索}} + {{@metaso@}} + {{@builtin:future_cap@}}\n' +
         nested
     );
     expect(stripAgentPromptRefs(nested)).toBe(nested);
+
+    const multilineLf =
+      'line1 {{@builtin:read_files\nline2 middle\nline3 @}} {{@builtin:read_files@}}';
+    const multilineCrlf = 'a {{@foo\r\nbar@}} b';
+    expect(stripAgentPromptRefs(multilineLf)).toBe(
+      'line1 {{@builtin:read_files\nline2 middle\nline3 @}} '
+    );
+    expect(stripAgentPromptRefs(multilineCrlf)).toBe(multilineCrlf);
+    expect(registry.renderForModel({ text: multilineLf })).toBe(
+      'line1 {{@builtin:read_files\nline2 middle\nline3 @}} {{文件解析}}'
+    );
   });
 
   it('detects debug refs, stripping, and builtin predicates', () => {
@@ -337,34 +323,22 @@ describe('AgentPromptRefRegistry invariants', () => {
     expect(stripAgentPromptRefs('使用 {{@plugin:system:x@}} 和 {{$start.q$}}')).toBe(
       '使用  和 {{$start.q$}}'
     );
-    expect(extractAgentPromptRefs('{{@builtin:dataset_search@}}')).toHaveLength(1);
     expect(isBuiltinPromptRefKey('builtin:read_files')).toBe(true);
     expect(isBuiltinPromptRefKey('read_files')).toBe(true);
     expect(isBuiltinPromptRefKey('plugin:system:metaso')).toBe(false);
     expect(parseAgentPromptRefKey('').kind).toBe('invalid');
   });
 
-  it('prevents deleted legacy HTTP and slash-named MCP child tools from cross-binding even when toolset name matches prefix', () => {
+  it('prevents deleted legacy HTTP and slash-named MCP child tools from cross-binding', () => {
     const httpAppId = '66f100000000000000000055';
     const registry = AgentPromptRefRegistry.create([
       {
-        ref: {
-          type: 'app',
-          source: 'team',
-          id: httpAppId,
-          parentId: httpAppId
-        },
+        ref: { type: 'app', source: 'team', id: httpAppId },
         displayName: 'catalog',
         meta: { label: 'set' }
       },
       {
-        ref: {
-          type: 'app',
-          source: 'team',
-          id: `${httpAppId}/users`,
-          parentId: httpAppId,
-          childId: 'users'
-        },
+        ref: { type: 'app', source: 'team', id: `${httpAppId}/users` },
         displayName: 'Users Tool',
         meta: { label: 'users' }
       }
@@ -385,13 +359,7 @@ describe('AgentPromptRefRegistry invariants', () => {
     const appId = '66f100000000000000000077';
     const registry = AgentPromptRefRegistry.create([
       {
-        ref: {
-          type: 'app',
-          source: 'team',
-          id: `${appId}/search`,
-          parentId: appId,
-          childId: 'search'
-        },
+        ref: { type: 'app', source: 'team', id: `${appId}/search` },
         displayName: 'search',
         legacyExactKeys: [`mcp-${appId}/LegacyToolset/search`],
         meta: { label: 'search' }
@@ -407,26 +375,21 @@ describe('AgentPromptRefRegistry invariants', () => {
     expect(registry.resolve(`mcp-${appId}/OtherSet/search`).status).toBe('unresolved');
   });
 
-  it('does not match prompt ref tokens across line breaks', () => {
-    const registry = createRegistry();
-    const multilineLf =
-      'line1 {{@builtin:read_files\nline2 middle\nline3 @}} {{@builtin:read_files@}}';
-    const multilineCrlf = 'a {{@foo\r\nbar@}} b';
-
-    expect(extractAgentPromptRefs(multilineLf).map((item) => item.rawKey)).toEqual([
-      'builtin:read_files'
-    ]);
-    expect(stripAgentPromptRefs(multilineLf)).toBe(
-      'line1 {{@builtin:read_files\nline2 middle\nline3 @}} '
-    );
-    expect(stripAgentPromptRefs(multilineCrlf)).toBe(multilineCrlf);
-    expect(registry.renderForModel({ text: multilineLf })).toBe(
-      'line1 {{@builtin:read_files\nline2 middle\nline3 @}} {{文件解析}}'
-    );
-  });
-
-  it('computes consistent canonical tool identity keys across implicit sources and resolved child IDs', () => {
+  it('expands toolset children and computes consistent canonical tool identity keys', () => {
     const appId = '66f100000000000000000022';
+
+    expect(
+      getToolSetChildPromptRefs({
+        id: 'systemTool-search',
+        toolConfig: {
+          systemToolSet: {
+            toolId: 'systemTool-search',
+            source: 'teamId:team-1',
+            toolList: [{ toolId: 'catalog/search', name: 'Search catalog', description: '' }]
+          }
+        }
+      }).map((item) => formatRefKey(item.ref))
+    ).toEqual(['plugin:team:team-1:search/catalog/search']);
 
     expect(
       getAgentToolIdentityKey({

@@ -1,94 +1,75 @@
-import { formatRefKey, parseV2RefKey, splitParentChildId } from './codec';
-import type {
-  AgentPromptRef,
-  KnownBuiltinPromptRefId,
-  ParsedAgentPromptRef,
-  ParsedLegacyPromptRef
-} from './types';
+import { AppToolSourceEnum } from '../../../../app/tool/constants';
+import { splitCombineToolId } from '../../../../app/tool/utils';
+import { formatRefKey, parseV2RefKey, type AgentPromptRef } from './protocol';
+
+export type ParsedLegacyPromptRef = {
+  kind: 'legacy';
+  rawKey: string;
+  /** 可无状态确定还原的旧格式（如 system:systemTool-x、teamId:tid:x、dataset_search、personal-id） */
+  deterministicRef?: AgentPromptRef;
+  /** 需目录消歧的裸键（如裸 24 位 ObjectId、极老裸插件名） */
+  bareId?: string;
+};
+
+export type ParsedAgentPromptRef =
+  | { kind: 'v2'; ref: AgentPromptRef; canonicalKey: string }
+  | ParsedLegacyPromptRef
+  | { kind: 'invalid'; rawKey: string; reason: string };
 
 /** 仅历史无前缀裸名内置能力需要白名单；新增内置能力统一走 V2 builtin: 前缀。 */
-const LEGACY_BUILTIN_ID_SET = new Set<string>([
-  'dataset_search',
-  'read_files',
-  'agent_sandbox'
-] satisfies KnownBuiltinPromptRefId[]);
+const LEGACY_BUILTIN_ID_SET = new Set<string>(['dataset_search', 'read_files', 'agent_sandbox']);
 
 const OBJECT_ID_RE = /^[a-f0-9]{24}$/i;
 
-/** 剥离历史插件 ID 前缀，保持与 splitCombineToolId 一致的语义。 */
+/** 剥离历史插件 ID 前缀（systemTool-/community-/commercial-），直接复用 splitCombineToolId 口径。 */
 export const stripLegacyPluginPrefix = (id: string): string => {
-  if (id === 'commercial-dalle3') return 'dalle3';
-  if (id.startsWith('systemTool-')) return id.slice('systemTool-'.length);
-  if (id.startsWith('community-')) return id.slice('community-'.length);
-  if (id.startsWith('commercial-')) return id.slice('commercial-'.length);
+  if (!id.includes('-')) return id;
+
+  try {
+    const { source, pluginId } = splitCombineToolId(id);
+    if (source === AppToolSourceEnum.systemTool || source === AppToolSourceEnum.commercial) {
+      return pluginId;
+    }
+  } catch {
+    // 非标准组合前缀保留原值（如裸自定义插件 ID 含连字符）
+  }
+
   return id;
 };
 
 /**
  * 统一解析带历史前缀的工具 ID（commercial-/systemTool-/community-/personal-/mcp-/http-）。
- * 由 parseLegacyRefKey 与 adapters.refFromTool 共享，避免同一套前缀规则维护两份。
+ * 直接复用 splitCombineToolId，避免同一套前缀规则维护两份。
  */
 export const parsePrefixedLegacyToolRef = (rawId: string): AgentPromptRef | null => {
-  if (rawId === 'commercial-dalle3') {
-    return {
-      type: 'plugin',
-      source: 'system',
-      id: 'dalle3',
-      parentId: 'dalle3'
-    };
-  }
+  if (!rawId.includes('-')) return null;
 
-  if (rawId.startsWith('systemTool-') || rawId.startsWith('community-')) {
-    const id = stripLegacyPluginPrefix(rawId);
-    if (!id) return null;
-    return {
-      type: 'plugin',
-      source: 'system',
-      id,
-      ...splitParentChildId(id)
-    };
-  }
+  try {
+    const { source, pluginId } = splitCombineToolId(rawId);
+    if (!pluginId) return null;
 
-  if (rawId.startsWith('commercial-')) {
-    const id = stripLegacyPluginPrefix(rawId);
-    if (!id) return null;
-    return {
-      type: 'plugin',
-      source: 'commercial',
-      id,
-      ...splitParentChildId(id)
-    };
-  }
-
-  if (rawId.startsWith('personal-')) {
-    const id = rawId.slice('personal-'.length);
-    if (!id) return null;
-    return {
-      type: 'app',
-      source: 'team',
-      id,
-      ...splitParentChildId(id)
-    };
-  }
-
-  if (rawId.startsWith('mcp-') || rawId.startsWith('http-')) {
-    const id = rawId.slice(rawId.indexOf('-') + 1);
-    if (!id) return null;
-    const { parentId, childId } = splitParentChildId(id);
-    return {
-      type: 'app',
-      source: 'team',
-      id,
-      parentId,
-      ...(childId ? { childId } : {})
-    };
+    if (source === AppToolSourceEnum.systemTool) {
+      return { type: 'plugin', source: 'system', id: pluginId };
+    }
+    if (source === AppToolSourceEnum.commercial) {
+      return { type: 'plugin', source: 'commercial', id: pluginId };
+    }
+    if (
+      source === AppToolSourceEnum.personal ||
+      source === AppToolSourceEnum.mcp ||
+      source === AppToolSourceEnum.http
+    ) {
+      return { type: 'app', source: 'team', id: pluginId };
+    }
+  } catch {
+    // 非历史组合前缀交由上层按裸键或团队应用处理
   }
 
   return null;
 };
 
 /**
- * 独立旧格式解析器（零 V2 耦合，存量退场后可整文件移除）。
+ * 独立旧格式解析器（存量退场后可整文件移除）。
  * - 能无状态确定来源与类型的旧键，直接还原为 deterministicRef；
  * - 裸 ObjectId / 极老裸插件名返回 bareId，交由 Registry 按目录消歧与冲突熔断。
  */
@@ -99,29 +80,19 @@ export const parseLegacyRefKey = (rawKey: string): ParsedLegacyPromptRef => {
     return {
       kind: 'legacy',
       rawKey: trimmed,
-      deterministicRef: {
-        type: 'builtin',
-        id: trimmed
-      }
+      deterministicRef: { type: 'builtin', id: trimmed }
     };
   }
 
   // 1. 团队隔离插件：teamId:<teamId>:<pluginId>
   const teamMatch = /^teamId:([^:]+):(.+)$/.exec(trimmed);
   if (teamMatch) {
-    const teamId = teamMatch[1];
     const id = stripLegacyPluginPrefix(teamMatch[2]);
     if (id) {
       return {
         kind: 'legacy',
         rawKey: trimmed,
-        deterministicRef: {
-          type: 'plugin',
-          source: 'team',
-          teamId,
-          id,
-          ...splitParentChildId(id)
-        }
+        deterministicRef: { type: 'plugin', source: 'team', teamId: teamMatch[1], id }
       };
     }
   }
@@ -129,19 +100,12 @@ export const parseLegacyRefKey = (rawKey: string): ParsedLegacyPromptRef => {
   // 2. 本地调试插件：debug:tmbId:<tmbId>:<pluginId>
   const debugMatch = /^debug:tmbId:([^:]+):(.+)$/.exec(trimmed);
   if (debugMatch) {
-    const tmbId = debugMatch[1];
     const id = stripLegacyPluginPrefix(debugMatch[2]);
     if (id) {
       return {
         kind: 'legacy',
         rawKey: trimmed,
-        deterministicRef: {
-          type: 'plugin',
-          source: 'debug',
-          tmbId,
-          id,
-          ...splitParentChildId(id)
-        }
+        deterministicRef: { type: 'plugin', source: 'debug', tmbId: debugMatch[1], id }
       };
     }
   }
@@ -162,30 +126,17 @@ export const parseLegacyRefKey = (rawKey: string): ParsedLegacyPromptRef => {
   // 历史 getToolIdentityKey(id, undefined) 可能对裸 ObjectId 生成 system:<24hex>；按 bareId 交由目录消歧。
   if (hasSystemPrefix && inner) {
     if (OBJECT_ID_RE.test(inner)) {
-      return {
-        kind: 'legacy',
-        rawKey: trimmed,
-        bareId: inner
-      };
+      return { kind: 'legacy', rawKey: trimmed, bareId: inner };
     }
     return {
       kind: 'legacy',
       rawKey: trimmed,
-      deterministicRef: {
-        type: 'plugin',
-        source: 'system',
-        id: inner,
-        ...splitParentChildId(inner)
-      }
+      deterministicRef: { type: 'plugin', source: 'system', id: inner }
     };
   }
 
   // 4. 上下文相关的裸键（裸 24 位 appId/skillId 或极老裸插件名）
-  return {
-    kind: 'legacy',
-    rawKey: trimmed,
-    bareId: trimmed
-  };
+  return { kind: 'legacy', rawKey: trimmed, bareId: trimmed };
 };
 
 /** 统一薄分发入口：优先调用纯 V2 解析，未命中再调用独立旧解析。 */
@@ -207,10 +158,12 @@ export const parseAgentPromptRefKey = (raw: string): ParsedAgentPromptRef => {
   return parseLegacyRefKey(rawKey);
 };
 
-/** 从结构化引用派生需要注册到 legacyMap 的裸键候选（不包含确定性前缀键，避免污染歧义表）。 */
-export const deriveBareLegacyKeys = (ref: AgentPromptRef): string[] => {
-  if (ref.type === 'builtin') return [];
-  return [ref.id];
+/** 判断任意引用（V2 或旧格式）是否为 builtin 类型。 */
+export const isBuiltinPromptRefKey = (rawKey: string): boolean => {
+  const v2Ref = parseV2RefKey(rawKey);
+  if (v2Ref) return v2Ref.type === 'builtin';
+
+  return parseLegacyRefKey(rawKey).deterministicRef?.type === 'builtin';
 };
 
 /**
@@ -220,39 +173,12 @@ export const deriveBareLegacyKeys = (ref: AgentPromptRef): string[] => {
 export const toLegacyToolLookup = (
   ref: AgentPromptRef
 ): { appId: string; source?: string } | null => {
-  if (ref.type === 'builtin' || ref.type === 'skill') {
-    return null;
-  }
-
-  if (ref.type === 'app') {
-    return {
-      appId: ref.id
-    };
-  }
-
-  if (ref.source === 'system') {
-    return {
-      appId: `systemTool-${ref.id}`,
-      source: 'system'
-    };
-  }
-
-  if (ref.source === 'commercial') {
-    return {
-      appId: `commercial-${ref.id}`,
-      source: 'system'
-    };
-  }
-
+  if (ref.type === 'builtin' || ref.type === 'skill') return null;
+  if (ref.type === 'app') return { appId: ref.id };
+  if (ref.source === 'system') return { appId: `systemTool-${ref.id}`, source: 'system' };
+  if (ref.source === 'commercial') return { appId: `commercial-${ref.id}`, source: 'system' };
   if (ref.source === 'team') {
-    return {
-      appId: `systemTool-${ref.id}`,
-      source: `teamId:${ref.teamId}`
-    };
+    return { appId: `systemTool-${ref.id}`, source: `teamId:${ref.teamId}` };
   }
-
-  return {
-    appId: `systemTool-${ref.id}`,
-    source: `debug:tmbId:${ref.tmbId}`
-  };
+  return { appId: `systemTool-${ref.id}`, source: `debug:tmbId:${ref.tmbId}` };
 };

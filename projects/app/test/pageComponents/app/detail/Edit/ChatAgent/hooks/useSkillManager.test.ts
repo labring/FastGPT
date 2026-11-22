@@ -56,7 +56,7 @@ vi.mock('@/web/core/skill/api', () => ({
   getSkillListV2: mocks.getSkillListV2
 }));
 
-import { useAgentPromptRefs } from '@/pageComponents/app/detail/Edit/ChatAgent/hooks/useAgentPromptRefs';
+import { getCanonicalKeyForTool } from '@fastgpt/global/core/workflow/node/agent/promptRef/registry';
 import { useSkillManager } from '@/pageComponents/app/detail/Edit/ChatAgent/hooks/useSkillManager';
 
 describe('useSkillManager sandbox & skill visibility', () => {
@@ -165,15 +165,15 @@ describe('useSkillManager sandbox & skill visibility', () => {
         }
       }
     };
-    const { promptRefRegistry, getToolWriteKey } = useAgentPromptRefs({
+    const { promptRefRegistry } = useSkillManager({
       selectedTools: [tool, teamTool],
+      onUpdateOrAddTool: vi.fn(),
       canUploadFile: true,
       hasSelectedDataset: true,
-      useAgentSandbox: false,
-      lang: 'en'
+      useAgentSandbox: false
     });
 
-    expect(getToolWriteKey(teamTool)).toBe('plugin:team:team-1:search');
+    expect(getCanonicalKeyForTool(teamTool)).toBe('plugin:team:team-1:search');
     expect(promptRefRegistry.resolve('plugin:system:search/catalog/search')).toMatchObject({
       status: 'resolved',
       entry: { meta: { configTarget: tool } }

@@ -31,7 +31,7 @@ import {
   getToolIdentityKey,
   isSystemOrCommercialToolId
 } from '@fastgpt/global/core/app/tool/utils';
-import { isBuiltinPromptRefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
+import { isBuiltinPromptRefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/legacy';
 import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';

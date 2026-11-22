@@ -511,9 +511,7 @@ describe('dispatchRunAgent user context', () => {
           ref: {
             type: 'app',
             source: 'team',
-            id: 'app_1/search',
-            parentId: 'app_1',
-            childId: 'search'
+            id: 'app_1/search'
           }
         },
         requestSchema: {
@@ -582,8 +580,7 @@ describe('dispatchRunAgent user context', () => {
           ref: {
             type: 'plugin',
             source: 'system',
-            id: 'metaso',
-            parentId: 'metaso'
+            id: 'metaso'
           }
         },
         params: {},
@@ -647,8 +644,7 @@ describe('dispatchRunAgent user context', () => {
           ref: {
             type: 'plugin',
             source: 'system',
-            id: 'getTime',
-            parentId: 'getTime'
+            id: 'getTime'
           }
         },
         params: {},
@@ -673,8 +669,7 @@ describe('dispatchRunAgent user context', () => {
             type: 'plugin',
             source: 'team',
             teamId: '67a100000000000000000001',
-            id: 'getTime',
-            parentId: 'getTime'
+            id: 'getTime'
           }
         },
         params: {},
@@ -699,8 +694,7 @@ describe('dispatchRunAgent user context', () => {
             type: 'plugin',
             source: 'debug',
             tmbId: '67d300000000000000000002',
-            id: 'getTime',
-            parentId: 'getTime'
+            id: 'getTime'
           }
         },
         params: {},

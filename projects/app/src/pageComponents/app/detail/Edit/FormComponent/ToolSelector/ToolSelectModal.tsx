@@ -41,7 +41,7 @@ import { AppTypeEnum, AppTypeList } from '@fastgpt/global/core/app/constants';
 import { hasEnabledFileSelect } from '@fastgpt/global/core/app/utils';
 import { validateToolConfiguration } from '@fastgpt/global/core/app/formEdit/utils';
 import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
-import { getAgentToolIdentityKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
+import { getAgentToolIdentityKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/registry';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 import SystemToolTag from '@fastgpt/web/components/core/plugin/tool/SystemToolTag';
 import { inheritToolInputConfig } from './utils';

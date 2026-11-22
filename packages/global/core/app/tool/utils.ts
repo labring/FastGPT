@@ -4,8 +4,7 @@ import { FlowNodeTypeEnum } from '../../workflow/node/constant';
 import type { NodeToolConfigType, StoreNodeItemType } from '../../workflow/type/node';
 import type { SelectedToolItemType } from '../formEdit/type';
 import { hashStr } from '../../../common/string/tools';
-import { splitParentChildId } from '../../workflow/node/agent/promptRef/codec';
-import { hasDebugPromptRef } from '../../workflow/node/agent/promptRef/text';
+import { hasDebugPromptRef } from '../../workflow/node/agent/promptRef/protocol';
 
 /**
   Tool id rule:
@@ -93,8 +92,8 @@ export function splitCombineToolId(id: string): {
 export const parseUntypedV2ChildToolLookupId = (
   appId: string
 ): { parentId: string; toolName: string } | null => {
-  const { parentId, childId } = splitParentChildId(appId);
-  return childId && !parentId.includes('-') ? { parentId, toolName: childId } : null;
+  const { parentId, toolName } = splitToolsetToolPluginId(appId);
+  return parentId && toolName && !parentId.includes('-') ? { parentId, toolName } : null;
 };
 
 /**
@@ -264,6 +263,20 @@ export const getToolNameCandidates = (toolName?: string) => {
   }
 
   return candidates;
+};
+
+/** 按候选工具名顺序匹配子工具；exactOnly=true 时仅精确匹配完整工具名。 */
+export const findToolByNameCandidates = <T extends { name: string }>({
+  tools,
+  toolName,
+  exactOnly = false
+}: {
+  tools: T[];
+  toolName: string;
+  exactOnly?: boolean;
+}): T | undefined => {
+  const candidates = exactOnly ? [toolName] : getToolNameCandidates(toolName);
+  return candidates.map((name) => tools.find((entry) => entry.name === name)).find(Boolean);
 };
 
 /** 返回工具集子工具的有效描述；主动保存空字符串时保留空字符串。 */

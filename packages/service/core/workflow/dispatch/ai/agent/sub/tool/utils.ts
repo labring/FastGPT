@@ -1,8 +1,8 @@
 import { AgentToolInputConfigSchema, type AgentToolType } from '@fastgpt/global/core/app/tool/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import {
+  findToolByNameCandidates,
   getAgentToolSource,
-  getToolNameCandidates,
   isSystemOrCommercialToolId,
   isDebugToolSource,
   isTeamPluginSource,
@@ -73,7 +73,7 @@ import {
   getPromptRefToolId,
   getToolPromptReference,
   refFromTool
-} from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
+} from '@fastgpt/global/core/workflow/node/agent/promptRef/registry';
 
 type AgentRuntimeNode = RuntimeNodeItemType & {
   currentCost?: number;
@@ -285,12 +285,6 @@ export const getAgentRuntimeTools = async ({
     };
   };
 
-  const findToolByName = <T extends { name: string }>(toolList: T[], toolName: string) => {
-    return getToolNameCandidates(toolName)
-      .map((name) => toolList.find((item) => item.name === name))
-      .find(Boolean);
-  };
-
   /**
    * 普通 App 需要根据当前版本节点形态判断运行时类型：
    * - pluginInput: 插件工作流
@@ -387,7 +381,7 @@ export const getAgentRuntimeTools = async ({
     const { toolName } = splitToolsetToolPluginId(pluginId);
     // 单个子工具已按 toolName 完成快照或成员鉴权，直接读取完整定义。
     const toolList = await getMCPChildren(app);
-    const tool = findToolByName(toolList, toolName);
+    const tool = findToolByNameCandidates({ tools: toolList, toolName });
     if (!tool) return Promise.reject(PluginErrEnum.unExist);
 
     const node = getMCPToolRuntimeNode({
@@ -421,9 +415,7 @@ export const getAgentRuntimeTools = async ({
     const { toolName } = splitToolsetToolPluginId(pluginId);
     const version = await getVersionNodes({ app, versionId: undefined });
     const toolList = version.nodes[0]?.toolConfig?.httpToolSet?.toolList ?? [];
-    const tool = getToolNameCandidates(toolName)
-      .map((name) => toolList.find((item) => item.name === name))
-      .find(Boolean);
+    const tool = findToolByNameCandidates({ tools: toolList, toolName });
     if (!tool) return Promise.reject(PluginErrEnum.unExist);
 
     const node = getHTTPToolRuntimeNode({

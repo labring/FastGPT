@@ -13,7 +13,7 @@ import { mergeRegister } from '@lexical/utils';
 import { registerLexicalTextEntity } from '../../utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
-import { AGENT_PROMPT_REF_REGEXP } from '@fastgpt/global/core/workflow/node/agent/promptRef/text';
+import { AGENT_PROMPT_REF_REGEXP } from '@fastgpt/global/core/workflow/node/agent/promptRef/protocol';
 import type { AgentPromptRefRegistry } from '@fastgpt/global/core/workflow/node/agent/promptRef/registry';
 import { useTranslation } from 'next-i18next';
 

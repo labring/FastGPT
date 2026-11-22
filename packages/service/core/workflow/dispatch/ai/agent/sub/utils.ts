@@ -19,8 +19,8 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { mergeToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
-import { formatRefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/codec';
-import type { AgentPromptRefEntry } from '@fastgpt/global/core/workflow/node/agent/promptRef/types';
+import { formatRefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/protocol';
+import type { AgentPromptRefEntry } from '@fastgpt/global/core/workflow/node/agent/promptRef/registry';
 
 export type RuntimePromptRefMeta = {
   modelToolNames?: string[];

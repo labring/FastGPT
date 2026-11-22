@@ -13,7 +13,7 @@ import {
 import SkillLabel from './components/SkillLabel';
 import type { SkillLabelItemType } from '.';
 import type { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { formatPromptRefToken } from '@fastgpt/global/core/workflow/node/agent/promptRef/text';
+import { formatPromptRefToken } from '@fastgpt/global/core/workflow/node/agent/promptRef/protocol';
 
 export type SkillLabelNodeBasicType = {
   id: string;

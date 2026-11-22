@@ -50,11 +50,11 @@ import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
 import { SubAppIds, getSystemToolInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { AGENT_SANDBOX_TOOLSET_ID } from '@fastgpt/global/core/ai/sandbox/tools';
 import {
+  AgentPromptRefRegistry,
   refFromBuiltin,
-  refFromSkill
-} from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
-import { AgentPromptRefRegistry } from '@fastgpt/global/core/workflow/node/agent/promptRef/registry';
-import type { AgentPromptRefEntry } from '@fastgpt/global/core/workflow/node/agent/promptRef/types';
+  refFromSkill,
+  type AgentPromptRefEntry
+} from '@fastgpt/global/core/workflow/node/agent/promptRef/registry';
 import { createWorkflowAgentLoopRuntime } from './adapter/runtime';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
 import { ensureAgentSandboxRuntime } from './sub/sandbox/prepare';
@@ -437,13 +437,11 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         }
         return `{{${entry.displayName}}}`;
       },
-      onDiagnostic: (event) => {
-        if (event.type === 'ambiguous') {
-          getLogger(LogCategories.MODULE.AI.AGENT).warn('[Agent] ambiguous prompt ref', {
-            rawKey: event.rawKey,
-            candidates: event.candidates.map((item) => item.canonicalKey)
-          });
-        }
+      onAmbiguous: (rawKey, candidates) => {
+        getLogger(LogCategories.MODULE.AI.AGENT).warn('[Agent] ambiguous prompt ref', {
+          rawKey,
+          candidates: candidates.map((item) => item.canonicalKey)
+        });
       }
     });
 

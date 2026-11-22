@@ -17,7 +17,7 @@ import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import {
-  getToolNameCandidates,
+  findToolByNameCandidates,
   isDebugToolSource,
   isTeamPluginSource,
   parseUntypedV2ChildToolLookupId,
@@ -313,65 +313,60 @@ export async function getClientToolPreviewNode({
         if (!childKind) return Promise.reject(PluginErrEnum.unExist);
 
         // 无类型 V2 反查严格按完整工具名匹配；带类型前缀的旧 mcp-/http- 保留主干历史三段式候选兼容（v4.14.8）。
-        const candidates = isTypedPrefix ? getToolNameCandidates(toolName) : [toolName];
-
-        if (childKind === AppToolSourceEnum.mcp) {
-          const mcpChildren = await getMCPChildren(item);
-          const tool = candidates
-            .map((name) => mcpChildren.find((entry) => entry.name === name))
-            .find(Boolean);
-          if (!tool) return Promise.reject(PluginErrEnum.unExist);
-          return {
-            avatar: item.avatar,
-            id: isTypedPrefix ? appId : `${AppToolSourceEnum.mcp}-${String(item._id)}/${tool.name}`,
-            name: tool.name,
-            templateType: FlowNodeTemplateTypeEnum.tools,
-            workflow: {
-              nodes: [
-                getMCPToolRuntimeNode({
-                  nodeId: getNanoid(6),
-                  toolSetId: item._id,
-                  toolsetName: item.name,
-                  avatar: item.avatar,
-                  tool: {
-                    description: tool.description,
-                    inputSchema: tool.inputSchema,
-                    name: tool.name
-                  }
-                })
-              ],
-              edges: []
-            },
-            version: '',
-            isLatestVersion: true
-          };
-        }
-
-        const httpTools = await getHTTPToolList(item);
-        const tool = candidates
-          .map((name) => httpTools.find((entry) => entry.name === name))
-          .find(Boolean);
-        if (!tool) return Promise.reject(PluginErrEnum.unExist);
-        return {
-          avatar: item.avatar,
-          id: isTypedPrefix ? appId : `${AppToolSourceEnum.http}-${String(item._id)}/${tool.name}`,
-          name: tool.name,
-          templateType: FlowNodeTemplateTypeEnum.tools,
-          workflow: {
-            nodes: [
-              getHTTPToolRuntimeNode({
+        const { toolName: matchedName, runtimeNode } = await (async () => {
+          if (childKind === AppToolSourceEnum.mcp) {
+            const tool = findToolByNameCandidates({
+              tools: await getMCPChildren(item),
+              toolName,
+              exactOnly: !isTypedPrefix
+            });
+            if (!tool) return Promise.reject(PluginErrEnum.unExist);
+            return {
+              toolName: tool.name,
+              runtimeNode: getMCPToolRuntimeNode({
                 nodeId: getNanoid(6),
                 toolSetId: item._id,
                 toolsetName: item.name,
+                avatar: item.avatar,
                 tool: {
                   description: tool.description,
                   inputSchema: tool.inputSchema,
-                  outputSchema: tool.outputSchema,
                   name: tool.name
-                },
-                avatar: item.avatar
+                }
               })
-            ],
+            };
+          }
+
+          const tool = findToolByNameCandidates({
+            tools: await getHTTPToolList(item),
+            toolName,
+            exactOnly: !isTypedPrefix
+          });
+          if (!tool) return Promise.reject(PluginErrEnum.unExist);
+          return {
+            toolName: tool.name,
+            runtimeNode: getHTTPToolRuntimeNode({
+              nodeId: getNanoid(6),
+              toolSetId: item._id,
+              toolsetName: item.name,
+              avatar: item.avatar,
+              tool: {
+                description: tool.description,
+                inputSchema: tool.inputSchema,
+                outputSchema: tool.outputSchema,
+                name: tool.name
+              }
+            })
+          };
+        })();
+
+        return {
+          avatar: item.avatar,
+          id: isTypedPrefix ? appId : `${childKind}-${String(item._id)}/${matchedName}`,
+          name: matchedName,
+          templateType: FlowNodeTemplateTypeEnum.tools,
+          workflow: {
+            nodes: [runtimeNode],
             edges: []
           },
           version: '',

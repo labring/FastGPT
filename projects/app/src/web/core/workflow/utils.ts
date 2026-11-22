@@ -10,7 +10,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { stripAgentPromptRefs } from '@fastgpt/global/core/workflow/node/agent/promptRef/text';
+import { stripAgentPromptRefs } from '@fastgpt/global/core/workflow/node/agent/promptRef/protocol';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import type { FlowNodeTemplateOutputItemType } from '@fastgpt/global/core/workflow/template/output';
 import { EmptyNode } from '@fastgpt/global/core/workflow/template/system/emptyNode';

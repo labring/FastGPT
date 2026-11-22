@@ -730,8 +730,7 @@ describe('getAgentRuntimeTools schema loading', () => {
       ref: {
         type: 'app',
         source: 'team',
-        id: 'mcp_app',
-        parentId: 'mcp_app'
+        id: 'mcp_app'
       }
     });
     expect(tools[0].childPromptReference).toEqual({
@@ -739,9 +738,7 @@ describe('getAgentRuntimeTools schema loading', () => {
       ref: {
         type: 'app',
         source: 'team',
-        id: 'mcp_app/search',
-        parentId: 'mcp_app',
-        childId: 'search'
+        id: 'mcp_app/search'
       }
     });
   });
@@ -851,9 +848,7 @@ describe('getAgentRuntimeTools schema loading', () => {
       ref: {
         type: 'app',
         source: 'team',
-        id: 'mcp_app/search',
-        parentId: 'mcp_app',
-        childId: 'search'
+        id: 'mcp_app/search'
       }
     });
   });
@@ -1001,8 +996,7 @@ describe('getAgentRuntimeTools schema loading', () => {
       ref: {
         type: 'app',
         source: 'team',
-        id: 'http_app',
-        parentId: 'http_app'
+        id: 'http_app'
       }
     });
     expect(tools[0].childPromptReference).toEqual({
@@ -1010,9 +1004,7 @@ describe('getAgentRuntimeTools schema loading', () => {
       ref: {
         type: 'app',
         source: 'team',
-        id: 'http_app/create',
-        parentId: 'http_app',
-        childId: 'create'
+        id: 'http_app/create'
       }
     });
   });
@@ -1285,8 +1277,7 @@ describe('getAgentRuntimeTools schema loading', () => {
       ref: {
         type: 'plugin',
         source: 'system',
-        id: 'metaso',
-        parentId: 'metaso'
+        id: 'metaso'
       }
     });
     expect(tools[0].childPromptReference).toEqual({
@@ -1294,9 +1285,7 @@ describe('getAgentRuntimeTools schema loading', () => {
       ref: {
         type: 'plugin',
         source: 'system',
-        id: 'metaso/search',
-        parentId: 'metaso',
-        childId: 'search'
+        id: 'metaso/search'
       }
     });
   });

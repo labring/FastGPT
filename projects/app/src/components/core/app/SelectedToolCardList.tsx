@@ -11,7 +11,7 @@ import { getAgentToolSource, isDebugToolSource } from '@fastgpt/global/core/app/
 import {
   getAgentToolIdentityKey,
   getPromptRefToolId
-} from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
+} from '@fastgpt/global/core/workflow/node/agent/promptRef/registry';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
