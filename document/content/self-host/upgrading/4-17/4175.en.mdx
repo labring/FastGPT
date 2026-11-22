@@ -10,3 +10,16 @@ sidebarTag: In dev
 2. Fixed incorrect permission checks when creating HTTP tools in tool folders.
 3. Fixed missing permission checks when moving apps, Datasets, Skills, and Collections from the root directory.
 4. Fixed workflow detail pages failing to load when an end node in a loop or parallel execution has an invalid reference, and aggregate output types failing to reset.
+
+## Network checks for the WeChat personal account channel
+
+WeChat API and media requests need a direct connection from the FastGPT App container to Tencent. Before upgrading, allow outbound TCP port 443 from the container to iLink and the WeChat CDN. If your deployment relies on an environment proxy for outbound traffic, set up direct access to these services first.
+
+Run these checks from your Docker Compose directory. If you renamed the service, replace `fastgpt-app` with your App service name.
+
+```bash
+docker compose exec fastgpt-app node -e 'for (const host of process.argv.slice(1)) require("node:dns").lookup(host, { all: true }, (error, addresses) => console.log(host, error ?? addresses))' ilinkai.weixin.qq.com novac2c.cdn.weixin.qq.com
+docker compose exec fastgpt-app curl --noproxy '*' -sS --connect-timeout 5 --max-time 10 -w '%{url_effective} %{http_code}\n' -o /dev/null https://ilinkai.weixin.qq.com/ -o /dev/null https://novac2c.cdn.weixin.qq.com/
+```
+
+DNS should return public IP addresses. If your resolver returns Fake-IP addresses such as `198.18.0.0/15`, configure it to return public DNS answers for the WeChat domains. An HTTP status code confirms that the TLS connection succeeded, even if the root path returns `404`. Once connectivity is restored, select **Log in again** in the WeChat channel.

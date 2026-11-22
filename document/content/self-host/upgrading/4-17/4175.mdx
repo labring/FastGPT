@@ -10,3 +10,16 @@ sidebarTag: 开发中
 2. 修复工具文件夹中创建 HTTP 工具时的权限校验错误。
 3. 修复根目录下应用、知识库、技能及知识库集合移动时的权限校验遗漏问题。
 4. 修复循环或并行执行中结束节点引用失效时工作流详情页白屏，以及聚合输出类型未重置的问题。
+
+## 微信个人号网络检查
+
+微信个人号的 API 与媒体请求需要从 FastGPT App 容器直连腾讯服务。升级前放通容器到 iLink 和微信 CDN 的 TCP 443 出站流量。若部署依赖环境代理出网，请先为这两个服务配置直连。
+
+在 Docker Compose 部署目录执行以下检查。若修改过服务名，请将 `fastgpt-app` 换成 App 服务名。
+
+```bash
+docker compose exec fastgpt-app node -e 'for (const host of process.argv.slice(1)) require("node:dns").lookup(host, { all: true }, (error, addresses) => console.log(host, error ?? addresses))' ilinkai.weixin.qq.com novac2c.cdn.weixin.qq.com
+docker compose exec fastgpt-app curl --noproxy '*' -sS --connect-timeout 5 --max-time 10 -w '%{url_effective} %{http_code}\n' -o /dev/null https://ilinkai.weixin.qq.com/ -o /dev/null https://novac2c.cdn.weixin.qq.com/
+```
+
+DNS 应返回公网 IP。若返回 `198.18.0.0/15` 等 Fake-IP，请为微信域名配置真实 DNS 解析。HTTPS 返回状态码说明 TLS 已连通，根路径返回 `404` 也表示连接成功。网络恢复后，在微信个人号渠道点击「重新登录」。
