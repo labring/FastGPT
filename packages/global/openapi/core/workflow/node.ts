@@ -10,7 +10,7 @@ import {
   McpToolRuntimeConfigSchema,
   McpToolSetNodeConfigSchema,
   NodeToolConfigTypeSchema,
-  StoreNodeItemTypeSchema,
+  StoreNodeItemBaseSchema,
   ToolDataSchema,
   ToolSetPreviewReferenceSchema
 } from '../../../core/workflow/type/node';
@@ -99,7 +99,7 @@ const OpenAPINodeToolConfigTypeSchema = NodeToolConfigTypeSchema.extend({
   description: '节点工具配置'
 });
 
-export const OpenAPIStoreNodeItemTypeSchema = StoreNodeItemTypeSchema.omit({
+export const OpenAPIStoreNodeItemTypeSchema = StoreNodeItemBaseSchema.omit({
   inputs: true,
   outputs: true,
   pluginData: true,
@@ -110,7 +110,7 @@ export const OpenAPIStoreNodeItemTypeSchema = StoreNodeItemTypeSchema.omit({
     parentNodeId: z.string().optional().meta({
       description: '父节点 ID，用于循环、分组等嵌套节点场景'
     }),
-    flowNodeType: StoreNodeItemTypeSchema.shape.flowNodeType.meta({
+    flowNodeType: StoreNodeItemBaseSchema.shape.flowNodeType.meta({
       description: '工作流节点类型'
     }),
     abandon: BoolSchema.optional().meta({
@@ -122,7 +122,7 @@ export const OpenAPIStoreNodeItemTypeSchema = StoreNodeItemTypeSchema.omit({
     avatarLinear: z.string().optional().meta({
       description: '节点头像渐变色配置'
     }),
-    colorSchema: StoreNodeItemTypeSchema.shape.colorSchema.meta({
+    colorSchema: StoreNodeItemBaseSchema.shape.colorSchema.meta({
       description: '节点在编辑器中的配色方案'
     }),
     name: z.string().meta({

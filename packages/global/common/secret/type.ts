@@ -45,16 +45,30 @@ export const SecretValueTypeSchema = z.union([StaticSecretValueSchema, SecretRef
 });
 export type SecretValueType = z.infer<typeof SecretValueTypeSchema>;
 
-// 复用当前字段定义接纳旧双字段结构，strict 保证附带业务字段的对象不会被当作凭据。
-const SecretValueInputSchema = z.preprocess(
-  (value) => {
+const parseSecretObjectInput = (value: unknown) => {
+  const parsed = (() => {
     if (typeof value !== 'string') return value;
     try {
       return JSON.parse(value);
     } catch {
       return value;
     }
-  },
+  })();
+
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return parsed;
+  }
+
+  const keys = Object.keys(parsed);
+  const validKeys =
+    'ref' in parsed ? keys.length === 1 : keys.every((key) => key === 'value' || key === 'secret');
+
+  return validKeys ? parsed : null;
+};
+
+// 复用当前字段定义接纳旧双字段结构，strict 保证附带业务字段的对象不会被当作凭据。
+const SecretValueInputSchema = z.preprocess(
+  parseSecretObjectInput,
   z.union([
     SecretRefValueSchema,
     SecretPlainValueSchema.extend(SecretCipherValueSchema.shape).partial()
@@ -81,14 +95,7 @@ export const SecretValueParseSchema = SecretValueInputSchema.refine(
 /** 仅在已确认的凭据边界兼容旧空 wrapper；API 与迁移共用相同转换规则。 */
 export const CompatibleSecretValueSchema = z
   .preprocess(
-    (value) => {
-      if (typeof value !== 'string') return value;
-      try {
-        return JSON.parse(value);
-      } catch {
-        return value;
-      }
-    },
+    parseSecretObjectInput,
     z.union([
       SecretRefValueSchema,
       z.object({ value: z.unknown().optional(), secret: z.string().optional() }).strict()

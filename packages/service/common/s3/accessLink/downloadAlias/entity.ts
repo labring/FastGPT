@@ -1,5 +1,6 @@
 import { MongoS3DownloadAlias } from './schema';
 import type { S3DownloadAliasType } from '../type';
+import type { MongoDeleteResult } from '../../../mongo';
 
 type CreateS3DownloadAliasData = Omit<S3DownloadAliasType, 'createTime' | 'updateTime'> & {
   createTime?: Date;
@@ -79,7 +80,7 @@ export const deleteS3DownloadAliasByObject = ({
 }: {
   bucketName: string;
   objectKey: string;
-}) => {
+}): Promise<MongoDeleteResult> => {
   return MongoS3DownloadAlias.deleteMany({
     bucketName,
     objectKey
@@ -92,7 +93,7 @@ export const deleteS3DownloadAliasByObjects = ({
 }: {
   bucketName: string;
   objectKeys: string[];
-}) => {
+}): Promise<MongoDeleteResult | void> => {
   if (objectKeys.length === 0) return Promise.resolve();
 
   return MongoS3DownloadAlias.deleteMany({

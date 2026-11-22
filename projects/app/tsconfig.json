@@ -15,19 +15,33 @@
   },
   "include": [
     "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    "../../packages/**/*.ts",
-    "../../packages/**/*.tsx",
-    "../../packages/**/*.d.ts"
+    "next.config.ts",
+    "scripts/**/*.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.d.ts",
+    "../../packages/web/i18n/i18next.ts",
+    "../../packages/global/**/*.d.ts",
+    "../../packages/service/**/*.d.ts",
+    "../../packages/web/**/*.d.ts"
   ],
   "exclude": [
+    "node_modules",
+    "**/node_modules/**",
+    "test/**",
+    "scripts/dist/**",
+    "worker/**",
     "**/*.test.ts",
     "**/*.test.tsx",
+    "vitest*.config.ts",
     "../../packages/**/vitest*.config.ts",
+    "../../packages/**/tsdown.config.ts",
     "../../packages/**/test/**",
+    "../../packages/**/dist/**",
+    "../../packages/**/.tsc-out/**",
     ".next",
     "dist",
-    "coverage"
+    "coverage",
+    ".tsc-out"
   ]
 }

@@ -1,6 +1,6 @@
 import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
 import { MongoImage } from './schema';
-import { type ClientSession, Types } from '../../../common/mongo';
+import { type ClientSession, type MongoDeleteResult, Types } from '../../../common/mongo';
 import { guessBase64ImageType } from './utils';
 import { readFromSecondary } from '../../mongo/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -119,7 +119,7 @@ export async function delImgByRelatedId({
   teamId: string;
   relateIds: string[];
   session?: ClientSession;
-}) {
+}): Promise<MongoDeleteResult | undefined> {
   if (relateIds.length === 0) return;
 
   return MongoImage.deleteMany(
