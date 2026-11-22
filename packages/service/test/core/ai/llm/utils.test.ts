@@ -1498,6 +1498,24 @@ describe('loadRequestMessages function tests', () => {
       }
     );
 
+    it.each([undefined, '', 'First reasoning. '])(
+      'preserves the second assistant reasoning when merging text (first: %j)',
+      async (firstReasoning) => {
+        const messages: ChatCompletionMessageParam[] = [
+          { role: 'assistant', content: 'First', reasoning_content: firstReasoning },
+          { role: 'assistant', content: 'Second', reasoning_content: 'Second reasoning.' }
+        ];
+
+        expect(await loadRequestMessages({ messages, supportReason: true })).toMatchObject([
+          {
+            role: 'assistant',
+            content: 'First\nSecond',
+            reasoning_content: `${firstReasoning ?? ''}Second reasoning.`
+          }
+        ]);
+      }
+    );
+
     it('merges adjacent system, user and assistant text without mutating reused history', async () => {
       const messages: ChatCompletionMessageParam[] = [
         { role: 'system', content: 'System 1' },

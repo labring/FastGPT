@@ -1,5 +1,4 @@
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType } from '../../../types/runtime';
 
@@ -23,10 +22,7 @@ import {
   removeUnfinishedInteractiveHistories
 } from '../../utils';
 import { getDispatchModerationContext } from '../../utils/runtime';
-import {
-  buildAgentLoopCoreRequestMessages,
-  createAgentLoopCoreToolFilter
-} from '../agentLoopCore/application/context/messages';
+import { buildAgentLoopCoreRequestMessages } from '../agentLoopCore/application/context/messages';
 import { createAgentLoopCoreChildInteractiveParams } from '../agentLoopCore/adapter/interactive/child';
 import { createAgentLoopCoreToolCallNodeResponse } from '../agentLoopCore/adapter/nodeResponse/toolCallNodeResponse';
 import { getAgentLoopCorePersistedTextOutput } from '../agentLoopCore/application/output/assistantResponses';
@@ -143,19 +139,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
     const adaptMessages = buildAgentLoopCoreRequestMessages({
       messages,
-      removeSystemMessages: false,
-      toolFilter: createAgentLoopCoreToolFilter({
-        toolNames: toolNodes
-          .filter((item) => item.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode)
-          .map((item) => item.nodeId),
-        planEnabled: false,
-        askEnabled: false,
-        sandboxEnabled: useSandbox,
-        readFileEnabled: true,
-        datasetSearchEnabled: toolNodes.some(
-          (item) => item.flowNodeType === FlowNodeTypeEnum.datasetSearchNode
-        )
-      })
+      removeSystemMessages: false
     });
 
     // 锚点 2：对发给 AI 的本轮初始上下文（跳过历史消息）进行一次统一拦截，违规直接节点报错

@@ -4437,6 +4437,55 @@ describe('filterToolMessages', () => {
     ]);
   });
 
+  it('drops ambiguous IDs in adjacent ChatItem fragments and keeps unrelated pairs', () => {
+    const history: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            agentPlanUpdate: { id: 'call_0', functionName: 'update_plan', params: '{}' }
+          },
+          {
+            modelResponseId: 'tool-turn',
+            tools: [
+              { id: 'call_0', functionName: 'stock', params: '{}', response: 'Stock price' },
+              { id: 'call_1', functionName: 'weather', params: '{}', response: 'Sunny' }
+            ]
+          }
+        ]
+      }
+    ];
+    const messages = chats2GPTMessages({ messages: history, reserveId: false, reserveTool: true });
+
+    expect(
+      filterToolMessages(messages, (name) => name === 'update_plan' || allowsWeather(name))
+    ).toEqual([
+      expect.objectContaining({ role: 'assistant', tool_calls: [call('call_1', 'weather')] }),
+      expect.objectContaining(toolResult('call_1', 'Sunny'))
+    ]);
+  });
+
+  it.each([
+    { content: undefined },
+    { content: '  \n ' },
+    {
+      content: [
+        { type: 'text' as const, text: '' },
+        { type: 'text' as const, text: '   ' }
+      ]
+    }
+  ])('drops removed tool shells with no visible content (%j)', ({ content }) => {
+    const assistant = {
+      role: 'assistant' as const,
+      content,
+      tool_calls: [call('call_0', 'stock')]
+    };
+
+    expect(
+      filterToolMessages([user, assistant, toolResult('call_0', 'Stock')], allowsWeather)
+    ).toEqual([user]);
+  });
+
   it('drops tool-only shells with an empty allowlist and retains assistant interaction payloads', () => {
     const shell = {
       role: 'assistant' as const,

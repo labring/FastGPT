@@ -208,7 +208,11 @@ export const filterToolMessages = (
   type AssistantMessage = Extract<ChatCompletionMessageParam, { role: 'assistant' }>;
 
   const hasAssistantContent = (content: AssistantMessage['content']) =>
-    (typeof content === 'string' || Array.isArray(content)) && content.length > 0;
+    typeof content === 'string'
+      ? content.trim().length > 0
+      : (content?.some(
+          (part) => (part.type === 'text' ? part.text : part.refusal).trim().length > 0
+        ) ?? false);
   const hasAssistantPayload = (message: AssistantMessage) =>
     hasAssistantContent(message.content) ||
     Boolean(message.tool_calls?.length) ||
@@ -218,23 +222,42 @@ export const filterToolMessages = (
     Boolean(message.refusal);
 
   const pendingToolCallIds = new Set<string>();
+  const conflictingToolCallIds = new Set<string>();
   let pendingFunctionName: string | undefined;
   const resetCallGroup = () => {
     pendingToolCallIds.clear();
+    conflictingToolCallIds.clear();
     pendingFunctionName = undefined;
   };
+
+  // 同组复用 ID 时结果无法唯一归属，整组中的该 ID 调用与结果一起剔除。
+  const startCallGroup = (index: number) => {
+    resetCallGroup();
+    const seenIds = new Set<string>();
+    for (let cursor = index; cursor < messages.length; cursor++) {
+      const message = messages[cursor];
+      if (message.role !== ChatCompletionRequestMessageRoleEnum.Assistant) break;
+      for (const { id } of message.tool_calls ?? []) {
+        if (seenIds.has(id)) conflictingToolCallIds.add(id);
+        seenIds.add(id);
+      }
+    }
+  };
+
   const filtered: ChatCompletionMessageParam[] = [];
 
   for (const [index, message] of messages.entries()) {
     if (message.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
       if (messages[index - 1]?.role !== ChatCompletionRequestMessageRoleEnum.Assistant) {
-        resetCallGroup();
+        startCallGroup(index);
       }
 
       let nextMessage = message;
       if (message.tool_calls?.length) {
         const keptToolCalls = message.tool_calls.filter((toolCall) => {
-          if (!toolFilter(toolCall.function.name)) return false;
+          if (conflictingToolCallIds.has(toolCall.id) || !toolFilter(toolCall.function.name)) {
+            return false;
+          }
           pendingToolCallIds.add(toolCall.id);
           return true;
         });

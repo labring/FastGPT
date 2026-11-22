@@ -57,6 +57,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
   } = args;
   const { messages, useVision, useAudio, useVideo, extractFiles, tools, toolCallMode } = body;
   const model = body.model;
+  const usePromptToolCall = toolCallMode === 'prompt' && !!tools?.length;
 
   // 先把 messages 中的文件/图片等 FastGPT 扩展结构加载成模型可直接消费的消息。
   const requestMessages = await loadRequestMessages({
@@ -68,22 +69,22 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     fileContext: args.fileContext,
     supportReason: model.config.reasoning
   });
-  const rewriteMessages = (() => {
-    if (tools?.length && toolCallMode === 'prompt') {
-      // prompt tool 模式不把 tools 直接传给模型，而是把工具协议写进 prompt。
-      return promptToolCallMessageRewrite(requestMessages, tools);
-    }
-    return requestMessages;
-  })();
+  // prompt 工具协议的每条 assistant 消息含独立的 0:/1: 前缀。
+  const rewriteMessages = usePromptToolCall
+    ? promptToolCallMessageRewrite(requestMessages, tools)
+    : requestMessages;
+  const normalizeRequestMessages = (messages: ChatCompletionMessageParam[]) =>
+    usePromptToolCall ? messages : mergeAssistantFieldMessages(messages);
+
   // 统一处理模型别名、默认配置、支持参数裁剪和字段映射。
   const { requestBody, modelData } = await llmCompletionsBodyFormat({
     ...body,
     messages: rewriteMessages
   });
   const accumulator = useLLMResponseAccumulator({ supportReason: model.config.reasoning });
-  const initialRequestMessages = mergeAssistantFieldMessages(
+  const initialRequestMessages = normalizeRequestMessages(
     requestBody.messages as ChatCompletionMessageParam[]
-  ) as ChatCompletionMessageParam[];
+  );
   let currentMessages: ChatCompletionMessageParam[] = [...initialRequestMessages];
   let continuationCount = 0;
   let aiRequestMeta: AIApiRequestMeta = {
@@ -308,11 +309,11 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
 
       if (accumulator.shouldContinue()) {
         // 继续输出时，用原始 requestBody.messages 做基础，避免把 rewrite 前 messages 混回上下文。
-        currentMessages = mergeAssistantFieldMessages(
+        currentMessages = normalizeRequestMessages(
           accumulator.buildContinuationMessages({
             baseMessages: requestBody.messages as ChatCompletionMessageParam[]
           })
-        ) as ChatCompletionMessageParam[];
+        );
 
         logger.debug(`Continue LLM response due to length limit`, {
           continuationCount,

@@ -3,6 +3,7 @@ import { once } from 'node:events';
 import { setImmediate } from 'node:timers/promises';
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { filterToolMessages } from '@fastgpt/global/core/chat/adapt';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type {
   ChatCompletionMessageParam,
@@ -265,6 +266,45 @@ const body = (stream: boolean) => ({
 });
 
 describe('createLLMResponse HTTP/SSE contract', () => {
+  it('keeps prompt tool protocol messages separate in initial and length continuation requests', async () => {
+    rounds.push({ text: '0: Partial', finish: 'length' }, { text: '0: complete.', finish: 'stop' });
+    const searchCall = call('search');
+    const messages = filterToolMessages(
+      [
+        { role: 'user', content: message },
+        {
+          role: 'assistant',
+          content: 'Checking the old index.',
+          tool_calls: [{ ...call('old_index'), id: 'old_call' }]
+        },
+        { role: 'tool', tool_call_id: 'old_call', content: 'Old data' },
+        { role: 'assistant', tool_calls: [searchCall] },
+        { role: 'tool', tool_call_id: searchCall.id, content: 'Search result' },
+        { role: 'user', content: 'Summarize.' }
+      ],
+      (name) => name === 'search'
+    );
+
+    const response = await createLLMResponse({
+      teamId,
+      maxRetries: 0,
+      maxContinuations: 2,
+      saveLLMResponseRecord: false,
+      body: { ...body(false), toolCallMode: 'prompt', messages }
+    });
+
+    expect(response.error).toBeUndefined();
+    expect(received).toHaveLength(2);
+    for (const request of received) {
+      expect(request.tools).toBeUndefined();
+      expect(request.messages?.slice(2, 5)).toMatchObject([
+        { role: 'assistant', content: '0: Checking the old index.' },
+        { role: 'assistant', content: `1: ${JSON.stringify(searchCall.function)}` },
+        { role: 'user', content: '<ToolResponse>\nSearch result\n</ToolResponse>' }
+      ]);
+    }
+  });
+
   it.each([true, false])(
     'preserves reasoning through tool rounds and serialized resume: stream=%s',
     async (stream) => {

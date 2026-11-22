@@ -11,12 +11,18 @@ import {
 } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/context';
 import {
   buildAgentLoopCoreRequestMessages,
-  createAgentLoopCoreToolFilter
+  filterAgentLoopCoreHistoryTools
 } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/context/messages';
 import { createAgentLoopCoreAssistantEventCollector } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/assistantResponses/eventCollector';
 import { describe, expect, it } from 'vitest';
 
 describe('buildAgentLoopCoreRequestMessages', () => {
+  const runtimeWithTools = (name: string) => ({
+    toolCatalog: {
+      runtimeTools: [{ type: 'function' as const, function: { name } }]
+    }
+  });
+
   it('keeps tool context and removes system messages by default', () => {
     const messages = buildAgentLoopCoreRequestMessages({
       messages: [
@@ -141,25 +147,7 @@ describe('buildAgentLoopCoreRequestMessages', () => {
     ]);
   });
 
-  it('filters historical tools with createAgentLoopCoreToolFilter across business and system tools', () => {
-    const toolFilter = createAgentLoopCoreToolFilter({
-      toolNames: ['weather_tool'],
-      planEnabled: true,
-      askEnabled: false,
-      sandboxEnabled: false,
-      readFileEnabled: true,
-      datasetSearchEnabled: true
-    });
-
-    expect(toolFilter('weather_tool')).toBe(true);
-    expect(toolFilter('set_plan')).toBe(true);
-    expect(toolFilter('update_plan')).toBe(true);
-    expect(toolFilter('read_files')).toBe(true);
-    expect(toolFilter('dataset_search')).toBe(true);
-    expect(toolFilter('ask_user')).toBe(false);
-    expect(toolFilter('sandbox_shell')).toBe(false);
-    expect(toolFilter('other_tool')).toBe(false);
-
+  it('filters historical calls using the runtime tool catalog', () => {
     const messages = buildAgentLoopCoreRequestMessages({
       messages: [
         {
@@ -183,11 +171,10 @@ describe('buildAgentLoopCoreRequestMessages', () => {
             }
           ]
         }
-      ],
-      toolFilter
+      ]
     });
 
-    expect(messages).toEqual([
+    expect(filterAgentLoopCoreHistoryTools(messages, runtimeWithTools('weather_tool'))).toEqual([
       {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
         tool_calls: [
@@ -226,10 +213,10 @@ describe('buildAgentLoopCoreRequestMessages', () => {
       }
     ];
 
-    const entryMessages = buildAgentLoopCoreRequestMessages({
-      messages: history,
-      toolFilter: createAgentLoopCoreToolFilter({ toolNames: ['shipping'] })
-    });
+    const entryMessages = filterAgentLoopCoreHistoryTools(
+      buildAgentLoopCoreRequestMessages({ messages: history }),
+      runtimeWithTools('shipping')
+    );
     const outbound = mergeAssistantFieldMessages(
       await loadRequestMessages({ messages: entryMessages })
     );

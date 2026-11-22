@@ -885,7 +885,11 @@ export const loadRequestMessages = async ({
 
           mergedMessages[lastIndex] = {
             ...lastMessage,
-            content: [...lastContent, ...currentContent]
+            content: [...lastContent, ...currentContent],
+            reasoning_content:
+              lastMessage.reasoning_content === undefined
+                ? currentMessage.reasoning_content
+                : lastMessage.reasoning_content + (currentMessage.reasoning_content ?? '')
           };
         } else {
           mergedMessages.push(currentMessage);

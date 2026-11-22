@@ -41,7 +41,7 @@ import {
 } from '../agentLoopCore/interface';
 import {
   buildAgentLoopCoreRequestMessages,
-  createAgentLoopCoreToolFilter
+  filterAgentLoopCoreHistoryTools
 } from '../agentLoopCore/application/context/messages';
 import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
 import { replaceAgentPromptToolReferences } from './adapter/prompt';
@@ -343,18 +343,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       tmbId: runningUserInfo.tmbId,
       lang
     });
-    const loopMessages = buildAgentLoopCoreRequestMessages({
-      messages: requestMessages,
-      removeSystemMessages: true,
-      toolFilter: createAgentLoopCoreToolFilter({
-        toolNames: agentCompletionTools.map((tool) => tool.function.name),
-        planEnabled: true,
-        askEnabled: true,
-        sandboxEnabled: !!sandboxClient,
-        readFileEnabled: true,
-        datasetSearchEnabled: Boolean(datasetParams?.datasets?.length)
-      })
-    });
+    const loopMessages = buildAgentLoopCoreRequestMessages({ messages: requestMessages });
     const { getSubAppInfo, getSubApp } = createAgentSubAppLookup({
       subAppsMap: agentSubAppsMap,
       lang
@@ -453,7 +442,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       provider,
       runtime,
       input: buildAgentLoopCoreInput({
-        messages: loopMessages,
+        messages: filterAgentLoopCoreHistoryTools(loopMessages, runtime),
         systemPrompt: agentSystemPrompt,
         activePlan,
         providerState: provider === 'fastAgent' ? undefined : runtimeProviderState,

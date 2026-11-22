@@ -17,6 +17,7 @@ import {
   buildAgentLoopCoreInput,
   runAgentLoopCoreWithSummary
 } from '../agentLoopCore/interface';
+import { filterAgentLoopCoreHistoryTools } from '../agentLoopCore/application/context/messages';
 import { createToolCallToolProvider } from './toolProvider';
 import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
 import { getDispatchModerationContext } from '../../utils/runtime';
@@ -109,73 +110,75 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     (message) => message.role !== ChatCompletionRequestMessageRoleEnum.System
   );
 
+  const runtime = createAgentLoopCoreRuntimeWithEnvironment<WorkflowInteractiveResponseType>({
+    teamId: workflowProps.runningUserInfo.teamId,
+    fileContext: getWorkflowFileContext(),
+    environment: runtimeEnvironment,
+    llmParams: {
+      model: toolModel,
+      maxTokens: maxToken,
+      stream,
+      temperature,
+      topP: aiChatTopP,
+      stop: aiChatStopSign,
+      reasoningEffort: aiChatReasoningEffort,
+      responseFormat: {
+        type: aiChatResponseFormat,
+        json_schema: aiChatJsonSchema
+      },
+      useVision: aiChatVision,
+      useAudio: aiChatAudio,
+      useVideo: aiChatVideo,
+      extractFiles: aiChatExtractFiles,
+      userKey: externalProvider.openaiAccount
+    },
+    responseParams: {
+      retainDatasetCite
+    },
+    lang: workflowProps.lang,
+    systemTools: {
+      planEnabled: false,
+      askEnabled: false,
+      sandboxClient: useAgentSandbox ? workflowProps.sandboxClient : undefined,
+      readFile: toolProvider.readFileExecutor
+        ? {
+            enabled: true,
+            maxFileAmount: toolProvider.readFileMaxFileAmount,
+            execute: toolProvider.readFileExecutor
+          }
+        : undefined,
+      datasetSearch: toolProvider.datasetSearchExecutor
+        ? {
+            enabled: true,
+            currentInputFiles: fileUrlList,
+            execute: toolProvider.datasetSearchExecutor
+          }
+        : undefined
+    },
+    maxRunAgentTimes: 50,
+    checkIsStopping,
+    toolRuntime: {
+      toolProvider,
+      context: getDispatchModerationContext(workflowProps),
+      /**
+       * ToolCall 节点内部工具执行依赖流式输出、交互状态和 nodeResponse 顺序，
+       * 这里显式保持串行；普通 Agent 入口再按 batchToolSize 控制并发。
+       */
+      batchToolSize: 1,
+      normalizeInteractiveUsages: normalizeAgentLoopUsages
+    },
+    usagePush
+  });
+
   const { result: coreResult, summary: outputSummary } =
     await runAgentLoopCoreWithSummary<WorkflowInteractiveResponseType>({
       provider: 'fastAgent',
       input: buildAgentLoopCoreInput({
-        messages: loopMessages,
+        messages: filterAgentLoopCoreHistoryTools(loopMessages, runtime),
         systemPrompt,
         childrenInteractiveParams
       }),
-      runtime: createAgentLoopCoreRuntimeWithEnvironment({
-        teamId: workflowProps.runningUserInfo.teamId,
-        fileContext: getWorkflowFileContext(),
-        environment: runtimeEnvironment,
-        llmParams: {
-          model: toolModel,
-          maxTokens: maxToken,
-          stream,
-          temperature,
-          topP: aiChatTopP,
-          stop: aiChatStopSign,
-          reasoningEffort: aiChatReasoningEffort,
-          responseFormat: {
-            type: aiChatResponseFormat,
-            json_schema: aiChatJsonSchema
-          },
-          useVision: aiChatVision,
-          useAudio: aiChatAudio,
-          useVideo: aiChatVideo,
-          extractFiles: aiChatExtractFiles,
-          userKey: externalProvider.openaiAccount
-        },
-        responseParams: {
-          retainDatasetCite
-        },
-        lang: workflowProps.lang,
-        systemTools: {
-          planEnabled: false,
-          askEnabled: false,
-          sandboxClient: useAgentSandbox ? workflowProps.sandboxClient : undefined,
-          readFile: toolProvider.readFileExecutor
-            ? {
-                enabled: true,
-                maxFileAmount: toolProvider.readFileMaxFileAmount,
-                execute: toolProvider.readFileExecutor
-              }
-            : undefined,
-          datasetSearch: toolProvider.datasetSearchExecutor
-            ? {
-                enabled: true,
-                currentInputFiles: fileUrlList,
-                execute: toolProvider.datasetSearchExecutor
-              }
-            : undefined
-        },
-        maxRunAgentTimes: 50,
-        checkIsStopping,
-        toolRuntime: {
-          toolProvider,
-          context: getDispatchModerationContext(workflowProps),
-          /**
-           * ToolCall 节点内部工具执行依赖流式输出、交互状态和 nodeResponse 顺序，
-           * 这里显式保持串行；普通 Agent 入口再按 batchToolSize 控制并发。
-           */
-          batchToolSize: 1,
-          normalizeInteractiveUsages: normalizeAgentLoopUsages
-        },
-        usagePush
-      }),
+      runtime,
       assistantResponses: {
         persistInputContext: !childrenInteractiveParams,
         showReasoning: aiChatReasoning,
