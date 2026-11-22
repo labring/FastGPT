@@ -57,7 +57,7 @@ describe('POST /api/support/outLink/wechat/qrcode/generate', () => {
     mocks.updateOne.mockResolvedValue({ matchedCount: 1 });
   });
 
-  it('stores generated QR data and returns the Cache TTL', async () => {
+  it('returns the QR image and TTL while caching the QR identifier', async () => {
     const req = { body: { outLinkId } } as any;
 
     const result = (await handler(req)) as { attemptId: string };
@@ -78,8 +78,17 @@ describe('POST /api/support/outLink/wechat/qrcode/generate', () => {
       outLinkId,
       tmbId: 'tmb-1',
       attemptId: result.attemptId,
-      data: qrData
+      data: { qrcode: qrData.qrcode }
     });
+  });
+
+  it('does not cache a QR code when iLink omits the image content', async () => {
+    mocks.getQRCode.mockResolvedValue({ qrcode: qrData.qrcode });
+
+    await expect(handler({ body: { outLinkId } } as any)).rejects.toThrow(
+      'invalid QR image content'
+    );
+    expect(mocks.repositorySet).not.toHaveBeenCalled();
   });
 
   it('propagates Cache write failures instead of returning an unusable QR code', async () => {

@@ -21,17 +21,18 @@ export const getWechatBindingIdentity = (
 ) => {
   const fingerprint = getWechatLoginFingerprint(app);
   const id = app.bindingFingerprint === fingerprint ? app.bindingId : undefined;
-  return { id, key: id ?? fingerprint, loggedInAt: Date.parse(app.loginTime ?? '') };
+  return { id, key: id ?? fingerprint, loginTime: app.loginTime };
 };
 
-/** 旧版任务没有绑定键，按入队时间判断是否属于当前登录。 */
+/** 仅历史绑定兼容无绑定键的旧任务，入队时间用于排除明显早于当前登录的任务。 */
 export const matchesWechatReplyBinding = (
   binding: ReturnType<typeof getWechatBindingIdentity>,
   job: { bindingKey?: string; timestamp: number }
 ) => {
   if (job.bindingKey !== undefined) return job.bindingKey === binding.key;
-  if (!Number.isFinite(binding.loggedInAt)) return binding.id === undefined;
-  return job.timestamp >= binding.loggedInAt;
+  if (binding.id !== undefined) return false;
+  const loggedInAt = Date.parse(binding.loginTime ?? '');
+  return !Number.isFinite(loggedInAt) || job.timestamp >= loggedInAt;
 };
 
 /**

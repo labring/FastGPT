@@ -34,7 +34,10 @@ export async function generateWechatQrCode({
   if (!result.matchedCount) throw OutLinkErrEnum.unExist;
 
   const qr = await new ILinkClient().getQRCode();
-  await wechatQrLoginCache.set({ outLinkId, tmbId, attemptId, data: qr });
+  if (typeof qr.qrcode_img_content !== 'string' || qr.qrcode_img_content.length === 0) {
+    throw new Error('iLink returned invalid QR image content');
+  }
+  await wechatQrLoginCache.set({ outLinkId, tmbId, attemptId, data: { qrcode: qr.qrcode } });
   return { ...qr, attemptId, expireTime: WECHAT_QR_LOGIN_TTL_SECONDS };
 }
 

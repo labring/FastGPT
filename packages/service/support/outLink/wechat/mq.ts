@@ -9,18 +9,18 @@ import {
 import { getLogger, LogCategories } from '../../../common/logger';
 import { ILinkClient } from './ilinkClient';
 import { WechatRequestPolicyError } from './request';
-import type { OutLinkSchemaType, WechatAppType } from '@fastgpt/global/support/outLink/type';
-import { MongoOutLink } from '../../../support/outLink/schema';
+import type {
+  OutLinkSchemaType,
+  WechatAppType,
+  WechatConnectionErrorType
+} from '@fastgpt/global/support/outLink/type';
+import { MongoOutLink } from '../schema';
 import { wechatPollingFailureCache } from '@fastgpt/dal/redis/caches';
 import { groupMessagesByUser } from './messageParser';
 import { batchRun, retryFn, withTimeout } from '@fastgpt/global/common/system/utils';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { wechatOutlinkProvider } from './provider';
-import {
-  getWechatBindingIdentity,
-  isActiveWechatConnection,
-  matchesWechatReplyBinding
-} from './utils';
+import { getWechatBindingIdentity, isActiveWechatConnection } from './utils';
 
 const logger = getLogger(LogCategories.MODULE.OUTLINK.WECHAT);
 
@@ -86,7 +86,7 @@ async function pollImpl(job: Job<WechatPollJobData>, signal: AbortSignal): Promi
     'app.loginTime': app.loginTime ?? null
   };
 
-  const stopPollingWithError = async (lastError: string) => {
+  const stopPollingWithError = async (lastError: WechatConnectionErrorType) => {
     signal.throwIfAborted();
     const result = await MongoOutLink.updateOne(bindingFilter, {
       $set: { 'app.status': 'error', 'app.lastError': lastError }
@@ -96,10 +96,10 @@ async function pollImpl(job: Job<WechatPollJobData>, signal: AbortSignal): Promi
     return result.modifiedCount > 0;
   };
 
-  const recordPollingFailure = async (lastError: string) => {
+  const recordPollingFailure = async () => {
     const failures = await wechatPollingFailureCache.increment(shareId, bindingKey);
     if (failures < MAX_CONSECUTIVE_FAILURES) return;
-    if (await stopPollingWithError(lastError)) {
+    if (await stopPollingWithError('request_failed')) {
       logger.error('Too many failures, stop polling', { shareId, failures });
     }
   };
@@ -114,7 +114,7 @@ async function pollImpl(job: Job<WechatPollJobData>, signal: AbortSignal): Promi
       if (error instanceof WechatRequestPolicyError) {
         await stopPollingWithError(error.reason);
       } else {
-        await recordPollingFailure('request_failed');
+        await recordPollingFailure();
       }
       throw error;
     }
@@ -145,13 +145,13 @@ async function pollImpl(job: Job<WechatPollJobData>, signal: AbortSignal): Promi
       errmsg: resp.errmsg
     });
 
-    await recordPollingFailure(resp.errmsg || 'Too many failures');
+    await recordPollingFailure();
 
     // 抛错走 'failed' 事件 → 续链带退避
     throw new Error(`getUpdates API error: ret=${resp.ret} errcode=${resp.errcode}`);
   }
 
-  await wechatPollingFailureCache.reset(shareId, bindingKey);
+  await wechatPollingFailureCache.clear(shareId, bindingKey);
   signal.throwIfAborted();
 
   const messages = resp.msgs ?? [];
@@ -165,37 +165,17 @@ async function pollImpl(job: Job<WechatPollJobData>, signal: AbortSignal): Promi
       userGroups: groups.length
     });
 
+    // 首次升级时，历史绑定沿用原队列键，BullMQ 可与升级前的存量去重。
+    const jobPrefix = bindingId
+      ? `wechat-reply:${shareId}:${bindingId}`
+      : `wechat-reply:${shareId}`;
     await Promise.all(
-      groups.map(async (group) => {
-        const legacyJobId = `wechat-reply:${shareId}:${group.lastMsgId}`;
-        if (bindingId) {
-          // 回滚期间可沿用同一个登录。再次升级重拉时，复用属于该登录的旧版任务。
-          const queued = await wechatMQService.getReplyJob(legacyJobId);
-          if (
-            queued &&
-            matchesWechatReplyBinding(binding, {
-              bindingKey: queued.data.bindingKey,
-              timestamp: queued.timestamp
-            })
-          ) {
-            return;
-          }
-        }
-        signal.throwIfAborted();
-        await wechatMQService.addReplyJob(
-          {
-            shareId,
-            bindingKey,
-            ...group
-          },
-          {
-            jobId: bindingId
-              ? `wechat-reply:${shareId}:${bindingId}:${group.lastMsgId}`
-              : legacyJobId,
-            backoff: { type: 'fixed', delay: 2000 }
-          }
-        );
-      })
+      groups.map((group) =>
+        wechatMQService.addReplyJob(
+          { shareId, bindingKey, ...group },
+          { jobId: `${jobPrefix}:${group.lastMsgId}` }
+        )
+      )
     );
   }
 
@@ -237,9 +217,7 @@ async function scheduleNextPoll(shareId: string, delayMs?: number): Promise<void
     { shareId },
     {
       jobId: pollJobId(shareId),
-      ...(delayMs ? { delay: delayMs } : {}),
-      removeOnComplete: true,
-      removeOnFail: true
+      delay: delayMs
     }
   );
   logger.debug('Wechat poll job scheduled', {
@@ -279,9 +257,7 @@ export const initWechatPollWorker = async () => {
     // poll job 主要阻塞在 getUpdates 长轮询 I/O（~30s），不吃 CPU
     concurrency: WECHAT_WORKER_CONCURRENCY,
     lockDuration: POLL_LOCK_MS, // 120s 防止 job 被误判为 stalled
-    stalledInterval: 30_000, // 30s 检查下是否活跃
-    removeOnComplete: { count: 0 },
-    removeOnFail: { count: 0 }
+    stalledInterval: 30_000 // 30s 检查下是否活跃
   });
 
   // 成功完成：续链。事件内 add 因 job 已被移除，不会冲突。

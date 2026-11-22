@@ -10,8 +10,7 @@ const key = {
 const logicalKey = 'cache:publish:wechat:qrcode:out-link-1:tmb-1:attempt-1';
 const physicalKey = `fastgpt:${logicalKey}`;
 const qrData = {
-  qrcode: 'qr-id',
-  qrcode_img_content: 'qr-content'
+  qrcode: 'qr-id'
 };
 
 describe('WechatQrLoginCache', () => {
@@ -58,14 +57,11 @@ describe('WechatQrLoginCache', () => {
     expect(redis.get).toHaveBeenCalledWith(logicalKey);
   });
 
-  it('decodes valid data and preserves additional upstream fields', async () => {
-    redis.get.mockResolvedValue(JSON.stringify({ ...qrData, upstream_trace_id: 'trace-1' }));
+  it('reads the QR identifier from a cache entry containing legacy QR image data', async () => {
+    redis.get.mockResolvedValue(JSON.stringify({ ...qrData, qrcode_img_content: 'qr-content' }));
     const cache = new WechatQrLoginCache({ redis: redis as any });
 
-    await expect(cache.get(key)).resolves.toEqual({
-      ...qrData,
-      upstream_trace_id: 'trace-1'
-    });
+    await expect(cache.get(key)).resolves.toEqual(qrData);
   });
 
   it('rejects invalid data before writing it to Redis', async () => {
@@ -74,7 +70,7 @@ describe('WechatQrLoginCache', () => {
     await expect(
       cache.set({
         ...key,
-        data: { qrcode: '', qrcode_img_content: 'qr-content' }
+        data: { qrcode: '' }
       })
     ).rejects.toMatchObject({
       name: 'RedisInvalidArgumentError',
@@ -95,8 +91,8 @@ describe('WechatQrLoginCache', () => {
     });
   });
 
-  it('rejects JSON with missing QR fields as an invalid Redis response', async () => {
-    redis.get.mockResolvedValue(JSON.stringify({ qrcode: 'qr-id' }));
+  it('rejects JSON with a missing QR identifier as an invalid Redis response', async () => {
+    redis.get.mockResolvedValue(JSON.stringify({ qrcode_img_content: 'qr-content' }));
     const cache = new WechatQrLoginCache({ redis: redis as any });
 
     await expect(cache.get(key)).rejects.toMatchObject({

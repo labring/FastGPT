@@ -1,5 +1,6 @@
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getChatFileTypeByFilename } from '@fastgpt/global/core/chat/file/utils';
+import type { WechatReplyItem, WechatReplyMedia } from '@fastgpt/dal/redis/bullmq/services/wechat';
 import {
   WechatMessageItemType,
   WechatMessageType,
@@ -8,28 +9,19 @@ import {
   type WeixinMessage
 } from './ilinkClient';
 
-export type ParsedMessageGroup = {
+type ParsedMessageGroup = {
   userId: string;
-  items: MessageItem[];
+  messageItems: WechatReplyItem[];
   contextToken: string;
   lastMsgId: string;
 };
 
-export type WechatMediaResource = {
-  media: CDNMedia;
-  imageAesKey?: string;
-  filename?: string;
-  fileType: ChatFileTypeEnum;
-  defaultName: 'image' | 'file' | 'video';
+const getMediaSource = (media?: CDNMedia): WechatReplyMedia['source'] | undefined => {
+  if (media?.full_url) return { url: media.full_url };
+  if (media?.encrypt_query_param) return { encryptedQuery: media.encrypt_query_param };
 };
 
-type ParsedWechatItem = { text: string } | WechatMediaResource;
-
-const hasDownloadUrl = (media?: CDNMedia): media is CDNMedia =>
-  Boolean(media?.encrypt_query_param || media?.full_url);
-
-/** 入队与消费共用消息项解析规则，媒体字段始终从声明的消息类型读取。 */
-export const parseWechatMessageItem = (item: MessageItem): ParsedWechatItem | undefined => {
+const parseWechatMessageItem = (item: MessageItem): WechatReplyItem | undefined => {
   switch (item.type) {
     case WechatMessageItemType.TEXT:
     case WechatMessageItemType.VOICE: {
@@ -40,9 +32,12 @@ export const parseWechatMessageItem = (item: MessageItem): ParsedWechatItem | un
     }
     case WechatMessageItemType.IMAGE: {
       const image = item.image_item;
-      if (!image || !hasDownloadUrl(image.media)) return;
+      if (!image) return;
+      const source = getMediaSource(image.media);
+      if (!source) return;
       return {
-        media: image.media,
+        source,
+        aesKey: image.media?.aes_key,
         imageAesKey: image.aeskey,
         fileType: ChatFileTypeEnum.image,
         defaultName: 'image'
@@ -52,9 +47,13 @@ export const parseWechatMessageItem = (item: MessageItem): ParsedWechatItem | un
     case WechatMessageItemType.VIDEO: {
       const isFile = item.type === WechatMessageItemType.FILE;
       const resource = isFile ? item.file_item : item.video_item;
-      if (!resource || !resource.media?.aes_key || !hasDownloadUrl(resource.media)) return;
+      const aesKey = resource?.media?.aes_key;
+      if (!resource || !aesKey) return;
+      const source = getMediaSource(resource.media);
+      if (!source) return;
       return {
-        media: resource.media,
+        source,
+        aesKey,
         filename: resource.file_name,
         fileType: isFile ? getChatFileTypeByFilename(resource.file_name) : ChatFileTypeEnum.video,
         defaultName: isFile ? 'file' : 'video'
@@ -63,6 +62,14 @@ export const parseWechatMessageItem = (item: MessageItem): ParsedWechatItem | un
   }
 };
 
+/** 将 iLink 消息投影为回复任务所需的文本和附件，附件下载留给回复 Worker。 */
+export const parseWechatMessageItems = (items: MessageItem[]): WechatReplyItem[] =>
+  items.flatMap((item) => {
+    const parsed = parseWechatMessageItem(item);
+    return parsed ? [parsed] : [];
+  });
+
+/** 按发送人聚合可处理的消息，并保留最后一条消息的 ID 和最后一个有效的上下文 token。 */
 export function groupMessagesByUser(msgs: WeixinMessage[]): ParsedMessageGroup[] {
   const groups = new Map<string, ParsedMessageGroup>();
 
@@ -72,16 +79,14 @@ export function groupMessagesByUser(msgs: WeixinMessage[]): ParsedMessageGroup[]
     if (msg.message_id === undefined) continue;
     const messageId = msg.message_id;
 
-    const items = (msg.item_list ?? []).filter(
-      (item) => parseWechatMessageItem(item) !== undefined
-    );
-    if (items.length === 0) continue;
+    const messageItems = parseWechatMessageItems(msg.item_list ?? []);
+    if (messageItems.length === 0) continue;
 
     const userId = msg.from_user_id ?? 'unknown';
     const existing = groups.get(userId);
 
     if (existing) {
-      existing.items.push(...items);
+      existing.messageItems.push(...messageItems);
       existing.lastMsgId = messageId;
       if (msg.context_token) {
         existing.contextToken = msg.context_token;
@@ -89,7 +94,7 @@ export function groupMessagesByUser(msgs: WeixinMessage[]): ParsedMessageGroup[]
     } else {
       groups.set(userId, {
         userId,
-        items,
+        messageItems,
         contextToken: msg.context_token ?? '',
         lastMsgId: messageId
       });

@@ -60,10 +60,11 @@ describe('WeChat reply binding', () => {
       admitted: false
     },
     {
-      name: 'was queued on the old release without replacing the current binding',
+      name: 'has no key even though it was queued after the new binding began',
       app: upgradedBinding,
       queuedKey: undefined,
-      admitted: true
+      queuedAt: Date.parse(login.loginTime) + 1000,
+      admitted: false
     },
     {
       name: 'belongs to a legacy channel',

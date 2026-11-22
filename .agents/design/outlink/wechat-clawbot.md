@@ -87,7 +87,7 @@ Worker 每次执行前读取可运行的 MongoOutLink。渠道不可运行是正
 | Stalled interval | 30 秒 |
 | Terminal retention | completed/failed 立即删除 |
 
-Poll job 主要等待约 35 秒的长轮询，不执行工作流。入队检查和回复消费复用同一套消息项解析规则，历史 reply job 的消息项格式保持兼容。
+Poll job 主要等待约 35 秒的长轮询，不执行工作流。入队前按消息类型提取文本和媒体描述，回复 Worker 直接消费这一结构，在获得工作流文件限制后再下载媒体。旧任务的原始消息项只在消费时解析。
 
 有消息时 completed listener 立即续链；空响应延迟 10 秒，避免上游秒回空包形成热循环；failed listener 在渠道仍 online 时延迟 10 秒重试。
 
@@ -97,16 +97,16 @@ Poll job 主要等待约 35 秒的长轮询，不执行工作流。入队检查�
 | --- | --- |
 | Queue | `wechatReply` |
 | Job name | `wechatPublishReply` |
-| Job data | `shareId`、`bindingKey`、`userId`、`items`、`contextToken`、`lastMsgId` |
+| Job data | `shareId`、`bindingKey`、`userId`、`messageItems`、`contextToken`、`lastMsgId` |
 | Job ID | `wechat-reply:${shareId}:${bindingKey}:${lastMsgId}` |
 | Concurrency | 固定 `1000` |
 | Lock | 30 分钟 |
 | Stalled interval | 60 秒 |
-| Failed retention | 500 条或 7 天 |
+| Failed retention | 最近 10,000 条 |
 
-Reply processor 使用 provider adapter 调用 `runOutlinkRuntime`，并以稳定的 `messageId=lastMsgId` 由聊天写入层保证业务幂等。队列 jobId 解决重复入队，messageId 解决 stalled retry 或 processor 重试后的副作用重复。
+Reply processor 使用 provider adapter 调用 `runOutlinkRuntime`，并传入稳定的 `messageId=lastMsgId`。BullMQ 以 jobId 为仍在队列中的任务去重。任务完成移除后，普通消息由工作流入口检查对话历史。重置命令先于这项检查执行。
 
-旧记录在重新绑定前保留原任务 ID `wechat-reply:${shareId}:${lastMsgId}`，以便重拉时与升级前的队列任务去重。回滚期间沿用一个新版绑定时，再升级后也会识别属于该绑定的旧版任务 ID。
+旧记录在重新绑定前保留原任务 ID `wechat-reply:${shareId}:${lastMsgId}`，以便重拉时与首次升级前仍在队列中的任务去重。每组只投递一个确定的 ID。回滚及其后的再次升级按存量任务和游标交接处理。
 
 ## 5. Poll 处理顺序
 
@@ -122,7 +122,7 @@ Reply processor 使用 provider adapter 调用 `runOutlinkRuntime`，并以稳�
 7. completed listener 调度下一条 poll job
 ```
 
-第五步失败时不得推进 `syncBuf`。下一次 poll 会重新拉取同一批消息，回复任务按绑定和消息 ID 去重，从而形成 at-least-once 摄入和幂等消费。
+第五步失败时不得推进 `syncBuf`。下一次 poll 会重新拉取同一批消息，仍在队列中的回复任务可按确定的 jobId 去重。
 
 poll processor 本身不续链。续链统一由 Worker 的 completed/failed listener 负责，避免 return、throw 和 timeout 分支各自维护调度逻辑。
 
@@ -131,25 +131,25 @@ poll processor 本身不续链。续链统一由 Worker 的 completed/failed lis
 `groupMessagesByUser` 在单个 poll 响应内按 `userId` 聚合：
 
 - 文本使用换行拼接。
-- `contextToken` 和 `lastMsgId` 使用该用户最后一条消息的值。
+- `lastMsgId` 使用该用户最后一条有效消息的 ID，`contextToken` 使用最后一个非空值。
 - 同一用户在同一 poll 周期只生成一个 reply job 和一次合并回复。
 - 跨 poll 周期生成独立 reply job，但共享 `chatId=wechat_${shareId}_${userId}`，上下文连续。
 - 多个用户生成多个 reply job，并行处理。
 
-引用消息先转换成带引用前缀的 query item，再与当前消息合并。图片、文件和语音分别通过现有 OutLink 文件/文本处理流程进入工作流。
+图片、文件和视频按声明的消息类型进入 OutLink 文件处理流程。语音使用微信提供的转写文本。
 
 ## 7. Redis 与持久化合同
 
 | 数据 | Physical key / 存储 | TTL/语义 |
 | --- | --- | --- |
-| QR Login | `fastgpt:cache:publish:wechat:qrcode:${outLinkId}:${tmbId}:${attemptId}` | QR JSON，480 秒 |
+| QR Login | `fastgpt:cache:publish:wechat:qrcode:${outLinkId}:${tmbId}:${attemptId}` | 二维码标识 JSON，480 秒 |
 | Poll failure | `fastgpt:cache:wechat:publish:failures:${shareId}:${bindingKey}` | integer，300 秒 |
 | 渠道配置 | `MongoOutLink.app` | token、syncBuf、status 的事实来源 |
 
-失败计数使用 `INCRBY + EXPIRE NX`，后续失败保留原有 TTL。收到成功响应将值重置为带 TTL 的字符串 `0`。本地在收到响应头前达到长轮询时限时继续轮询，保留已有计数。连续失败达到 5 次时：
+失败计数使用 `INCRBY + EXPIRE NX`，从首次失败开始计时，后续失败保留原有 TTL。收到成功响应删除计数键。收到响应头前达到长轮询时限时继续轮询，保留已有计数。连续失败达到 5 次时：
 
 1. 将 Mongo `app.status` 设为 `error`。
-2. 写入 `app.lastError`。
+2. 写入 `app.lastError` 受控错误码，上游详情保留在日志。
 3. 删除失败计数 key。
 4. 抛错进入 failed listener；listener 因渠道已非 online 不再续链。
 
@@ -158,8 +158,8 @@ poll processor 本身不续链。续链统一由 Worker 的 completed/failed lis
 ## 8. 并发与恢复
 
 - `pollJobId` 保证多实例启动、重复扫码和启动恢复不会并行创建两条 poll 链。
-- 回复任务的 jobId 保证同一绑定的同一消息不会重复排队。
-- 失败计数、游标和排队的回复归属于当轮绑定。无有效绑定标识的记录使用登录时间和 token 的哈希作为绑定键。游标更新还比较拉取前的游标，回复任务开始时校验绑定。缺少绑定键的旧任务在入队时间不早于当前登录时消费；历史连接没有有效登录时间时沿用已有处理。
+- 相同 jobId 的回复任务仍在队列中时，BullMQ 会合并重复投递。
+- 失败计数、游标和排队的回复归属于当轮绑定。无有效绑定标识的记录使用登录时间和 token 的哈希作为绑定键。游标更新还比较拉取前的游标，回复任务开始时校验绑定。缺少绑定键的旧任务仅在历史绑定上兼容，并跳过入队时间早于当前登录的任务。旧版本未记录发起轮询时的归属，重绑后的迟到旧任务无法仅凭入队时间区分。
 - `syncBuf` 只在 reply jobs 全部入队后推进，避免 enqueue 失败丢消息。
 - 服务启动时扫描 online 渠道并调用幂等调度；已有 active/waiting job 时 BullMQ 保持原任务。
 - 登出撤销待确认二维码，由 worker 读取离线状态后结束轮询。删除渠道后清理等待中的 poll job。
@@ -191,4 +191,4 @@ Mock 覆盖取码、待扫码、已扫码、确认、轮询收消息、获取并
 
 验证必须覆盖重复启动、重复扫码、多实例恢复、空响应退避、enqueue 失败不推进 syncBuf、stalled retry 不重复回复、连续失败转 error、主动停止不再续链，以及慢回复期间 poll 仍能持续摄入。
 
-回滚不得依赖长期双队列双写。队列名、jobId 和 Mongo 字段保持兼容时，可以回退 processor/调度实现；如果调整失败窗口、锁时长或消息合并语义，必须作为独立业务变化发布。
+回滚前需要核对 Redis 存量任务和已推进的 Mongo 游标。v4.17.4 的消费者读取原始消息项，也无法核对新版的绑定身份。保留待处理消息时，应交接队列和游标后再切换版本。首次升级前若已有旧版本重绑后的在途轮询，交接时也需考虑旧任务的归属。

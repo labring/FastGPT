@@ -9,32 +9,14 @@ const mocks = vi.hoisted(() => ({
   exists: vi.fn(),
   updateOne: vi.fn(),
   increment: vi.fn(),
-  reset: vi.fn(),
   clear: vi.fn(),
-  getReplyJob: vi.fn(),
   queueAdd: vi.fn()
 }));
 
-vi.mock('@fastgpt/dal/redis/bullmq', () => ({
+vi.mock('@fastgpt/dal/redis/bullmq/binding', () => ({
   bullMQ: {
     getWorker: mocks.getWorker,
     getQueue: mocks.getQueue
-  },
-  wechatMQService: {
-    getPollWorker: (processor: unknown, opts: unknown) =>
-      mocks.getWorker('wechatPoll', processor, opts),
-    getReplyWorker: (processor: unknown, opts: unknown) =>
-      mocks.getWorker('wechatReply', processor, opts),
-    addPollJob: (...args: unknown[]) => mocks.getQueue('wechatPoll')?.add?.(...args),
-    addReplyJob: (...args: unknown[]) => mocks.getQueue('wechatReply')?.add?.(...args),
-    getReplyJob: mocks.getReplyJob,
-    removePollJob: (jobId: string) => mocks.getQueue('wechatPoll')?.remove?.(jobId)
-  },
-  WECHAT_POLL_JOB_NAME: 'wechatPublishPoll',
-  defaultWorkerOptions: { removeOnFail: { count: 10000 } },
-  QueueNames: {
-    wechatPoll: 'wechatPoll',
-    wechatReply: 'wechatReply'
   }
 }));
 
@@ -47,20 +29,7 @@ vi.mock('@fastgpt/service/support/outLink/schema', () => ({
   }
 }));
 
-vi.mock('../../../../support/outLink/schema', () => ({
-  MongoOutLink: {
-    find: mocks.find,
-    findOne: mocks.findOne,
-    exists: mocks.exists,
-    updateOne: mocks.updateOne
-  }
-}));
-
 vi.mock('@fastgpt/service/support/outLink/wechat/provider', () => ({
-  wechatOutlinkProvider: vi.fn()
-}));
-
-vi.mock('../../../../support/outLink/wechat/provider', () => ({
   wechatOutlinkProvider: vi.fn()
 }));
 
@@ -70,7 +39,6 @@ vi.mock('@fastgpt/dal/redis/caches', async (importOriginal) => {
     ...actual,
     wechatPollingFailureCache: {
       increment: mocks.increment,
-      reset: mocks.reset,
       clear: mocks.clear
     }
   };
@@ -143,10 +111,8 @@ describe('Wechat polling failure counter integration', () => {
     vi.spyOn(ILinkClient.prototype, 'getUpdates').mockImplementation(mocks.getUpdates);
     mocks.getUpdates.mockResolvedValue({ ret: 0, msgs: [] });
     mocks.increment.mockResolvedValue(1);
-    mocks.reset.mockResolvedValue(undefined);
     mocks.clear.mockResolvedValue(true);
     mocks.queueAdd.mockResolvedValue({ id: 'poll-job' });
-    mocks.getReplyJob.mockResolvedValue(undefined);
     mocks.exists.mockResolvedValue(null);
   });
 
@@ -183,8 +149,13 @@ describe('Wechat polling failure counter integration', () => {
     mocks.exists.mockResolvedValue({ _id: 'rebound-channel' });
     await completed(finishedJob, 'stopped');
     expect(mocks.queueAdd).toHaveBeenCalledWith(
+      'wechatPublishPoll',
       { shareId: outLink.shareId },
-      expect.objectContaining({ jobId: `wechat-poll:${outLink.shareId}` })
+      expect.objectContaining({
+        jobId: `wechat-poll:${outLink.shareId}`,
+        removeOnComplete: true,
+        removeOnFail: true
+      })
     );
   });
 
@@ -242,15 +213,15 @@ describe('Wechat polling failure counter integration', () => {
 
     await expect(processor?.(job)).rejects.toThrow('getUpdates API error: ret=500');
     expect(mocks.increment).toHaveBeenCalledWith('share-1', bindingId);
-    expect(mocks.reset).not.toHaveBeenCalled();
+    expect(mocks.clear).not.toHaveBeenCalled();
   });
 
-  it('resets the counter after a successful poll', async () => {
+  it('clears the failure window after a successful poll', async () => {
     mocks.getUpdates.mockResolvedValue({ ret: 0, msgs: [], get_updates_buf: 'next-cursor' });
     const processor = await getPollProcessor();
 
     await expect(processor?.(job)).resolves.toBe('idle');
-    expect(mocks.reset).toHaveBeenCalledWith('share-1', bindingId);
+    expect(mocks.clear).toHaveBeenCalledWith('share-1', bindingId);
     expect(mocks.updateOne).toHaveBeenCalledWith(
       { ...currentConnectionFilter, 'app.syncBuf': 'cursor' },
       { $set: { 'app.syncBuf': 'next-cursor' } }
@@ -263,7 +234,7 @@ describe('Wechat polling failure counter integration', () => {
 
     await expect(processor?.(job)).resolves.toBe('idle');
     expect(mocks.increment).not.toHaveBeenCalled();
-    expect(mocks.reset).not.toHaveBeenCalled();
+    expect(mocks.clear).not.toHaveBeenCalled();
     expect(mocks.updateOne).not.toHaveBeenCalled();
   });
 
@@ -286,7 +257,7 @@ describe('Wechat polling failure counter integration', () => {
       response.resolve({ ret: 0, get_updates_buf: 'late-cursor' });
       await vi.advanceTimersByTimeAsync(0);
 
-      expect(mocks.reset).not.toHaveBeenCalled();
+      expect(mocks.clear).not.toHaveBeenCalled();
       expect(mocks.updateOne).not.toHaveBeenCalled();
     } finally {
       vi.useRealTimers();
@@ -335,7 +306,7 @@ describe('Wechat polling failure counter integration', () => {
       hasCurrentId: false
     }
   ])(
-    'keeps rich items and the compatible reply ID for $jobPrefix',
+    'queues parsed message items with the compatible reply ID for $jobPrefix',
     async ({ app, jobPrefix, hasCurrentId }) => {
       mocks.findOne.mockReturnValue({
         lean: vi.fn().mockResolvedValue({ ...outLink, app })
@@ -357,17 +328,17 @@ describe('Wechat polling failure counter integration', () => {
 
       await expect(processor?.(job)).resolves.toBe('messages');
       expect(mocks.queueAdd).toHaveBeenCalledWith(
+        'wechatPublishReply',
         {
           shareId: 'share-1',
           bindingKey: hasCurrentId ? bindingId : getWechatLoginFingerprint(app),
           userId: 'user-1',
-          items,
+          messageItems: [{ text: 'hello' }],
           contextToken: 'context-token',
           lastMsgId: '18446744073709551615'
         },
         {
-          jobId: `${jobPrefix}:18446744073709551615`,
-          backoff: { type: 'fixed', delay: 2000 }
+          jobId: `${jobPrefix}:18446744073709551615`
         }
       );
     }
@@ -380,37 +351,48 @@ describe('Wechat polling failure counter integration', () => {
 
     await expect(processor?.(job)).rejects.toThrow('getUpdates API error: ret=500');
     expect(mocks.updateOne).toHaveBeenCalledWith(currentConnectionFilter, {
-      $set: { 'app.status': 'error', 'app.lastError': 'upstream failed' }
+      $set: { 'app.status': 'error', 'app.lastError': 'request_failed' }
     });
     expect(mocks.clear).toHaveBeenCalledWith('share-1', bindingId);
   });
 
-  it.each([false, true])(
-    'reuses a legacy queue task only for the same login (%s)',
-    async (sameLogin) => {
-      const msgId = 'message-1';
-      const legacyId = `wechat-reply:${outLink.shareId}:${msgId}`;
-      mocks.getReplyJob.mockResolvedValue({
-        id: legacyId,
-        timestamp: Date.parse(login.loginTime) + (sameLogin ? 1 : -1),
-        data: {}
-      });
-      mocks.getUpdates.mockResolvedValue({
-        ret: 0,
-        msgs: [
-          {
-            message_type: 1,
-            message_id: msgId,
-            from_user_id: 'user-1',
-            item_list: [{ type: 1, text_item: { text: 'hello' } }]
-          }
-        ]
-      });
-      const processor = await getPollProcessor();
-      await expect(processor?.(job)).resolves.toBe('messages');
+  it('keeps the cursor and retries the same reply key if enqueue fails', async () => {
+    const error = new Error('reply queue unavailable');
+    mocks.queueAdd.mockRejectedValueOnce(error);
+    mocks.getUpdates.mockResolvedValue({
+      ret: 0,
+      get_updates_buf: 'next-cursor',
+      msgs: [
+        {
+          message_type: 1,
+          message_id: 'message-1',
+          from_user_id: 'user-1',
+          item_list: [{ type: 1, text_item: { text: 'hello' } }]
+        }
+      ]
+    });
+    const processor = await getPollProcessor();
 
-      expect(mocks.getReplyJob).toHaveBeenCalledWith(legacyId);
-      expect(mocks.queueAdd).toHaveBeenCalledTimes(sameLogin ? 0 : 1);
-    }
-  );
+    await expect(processor?.(job)).rejects.toBe(error);
+    expect(mocks.updateOne).not.toHaveBeenCalled();
+
+    await expect(processor?.(job)).resolves.toBe('messages');
+    const opts = { jobId: `wechat-reply:${outLink.shareId}:${bindingId}:message-1` };
+    expect(mocks.queueAdd).toHaveBeenNthCalledWith(
+      1,
+      'wechatPublishReply',
+      expect.any(Object),
+      opts
+    );
+    expect(mocks.queueAdd).toHaveBeenNthCalledWith(
+      2,
+      'wechatPublishReply',
+      expect.any(Object),
+      opts
+    );
+    expect(mocks.updateOne).toHaveBeenCalledWith(
+      { ...currentConnectionFilter, 'app.syncBuf': 'cursor' },
+      { $set: { 'app.syncBuf': 'next-cursor' } }
+    );
+  });
 });

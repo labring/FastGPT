@@ -14,15 +14,13 @@ const physicalKey = `fastgpt:${logicalKey}`;
 describe('WechatPollingFailureCache', () => {
   const redis = {
     delete: vi.fn(),
-    incrementIntegerWithTtl: vi.fn(),
-    set: vi.fn()
+    incrementIntegerWithTtl: vi.fn()
   } as any;
 
   beforeEach(() => {
     vi.clearAllMocks();
     redis.delete.mockResolvedValue(true);
     redis.incrementIntegerWithTtl.mockResolvedValue(1);
-    redis.set.mockResolvedValue(undefined);
   });
 
   it('uses separate keys per binding and keeps the 300 second TTL', () => {
@@ -42,17 +40,11 @@ describe('WechatPollingFailureCache', () => {
     });
   });
 
-  it('resets to zero with the historical TTL and clears after threshold', async () => {
+  it('removes the counter so the next failure starts a new window', async () => {
     const cache = new WechatPollingFailureCache({ redis });
 
-    await cache.reset(shareId, bindingKey);
     await expect(cache.clear(shareId, bindingKey)).resolves.toBe(true);
 
-    expect(redis.set).toHaveBeenCalledWith({
-      key: asRedisLogicalKey(logicalKey),
-      value: '0',
-      ttlMs: 300_000
-    });
     expect(redis.delete).toHaveBeenCalledWith(asRedisLogicalKey(logicalKey));
   });
 

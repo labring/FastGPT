@@ -39,15 +39,7 @@ export class WechatPollingFailureCache {
       ttlSeconds: WECHAT_POLLING_FAILURE_TTL_SECONDS
     });
 
-  /** 成功轮询后将计数归零并刷新 300 秒 TTL，保持历史 value 合同。 */
-  reset = (shareId: string, bindingKey: string) =>
-    this.redis.set({
-      key: getWechatPollingFailureKey(shareId, bindingKey),
-      value: '0',
-      ttlMs: WECHAT_POLLING_FAILURE_TTL_SECONDS * 1000
-    });
-
-  /** 达到阈值后删除计数 key；删除结果由调用方按需处理。 */
+  /** 结束当前计数窗口，下次失败时重新建立 TTL。 */
   clear = (shareId: string, bindingKey: string) =>
     this.redis.delete(getWechatPollingFailureKey(shareId, bindingKey));
 }

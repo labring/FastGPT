@@ -4,9 +4,8 @@ import { RedisInvalidArgumentError, RedisInvalidResponseError } from '../runtime
 
 export const WECHAT_QR_LOGIN_TTL_SECONDS = 8 * 60;
 
-const WechatQrLoginDataSchema = z.looseObject({
-  qrcode: z.string().min(1),
-  qrcode_img_content: z.string().min(1)
+const WechatQrLoginDataSchema = z.object({
+  qrcode: z.string().min(1)
 });
 
 export type WechatQrLoginData = z.infer<typeof WechatQrLoginDataSchema>;
@@ -24,7 +23,7 @@ type WechatQrLoginKey = {
 /**
  * 微信二维码登录 Cache。
  *
- * Cache 按扫码会话隔离，JSON value 保留 480 秒。Redis miss 返回 undefined；
+ * Cache 按扫码会话隔离，二维码标识保留 480 秒。Redis miss 返回 undefined；
  * Redis 操作错误和损坏的缓存数据均 fail-closed，由应用边界处理。
  */
 export class WechatQrLoginCache {
@@ -37,7 +36,7 @@ export class WechatQrLoginCache {
   private getKey = ({ outLinkId, tmbId, attemptId }: WechatQrLoginKey) =>
     asRedisLogicalKey(`cache:publish:wechat:qrcode:${outLinkId}:${tmbId}:${attemptId}`);
 
-  /** 校验并保存 iLink 二维码响应；上游响应不合法时不会写入损坏缓存。 */
+  /** 校验并保存查询 iLink 状态所需的二维码标识。 */
   async set({
     outLinkId,
     tmbId,

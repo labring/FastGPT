@@ -1,3 +1,4 @@
+import type { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { bullMQ, type BullMQBinding } from '../binding';
 import { QueueNames } from '../names';
 import type { Processor, Queue, Worker, WorkerOptions } from '../types';
@@ -6,14 +7,38 @@ export type WechatPollJobData = {
   shareId: string;
 };
 
-export type WechatReplyJobData = {
+export type WechatReplyMedia = {
+  source: { url: string } | { encryptedQuery: string };
+  aesKey?: string;
+  imageAesKey?: string;
+  filename?: string;
+  fileType: ChatFileTypeEnum;
+  defaultName: 'image' | 'file' | 'video';
+};
+
+export type WechatReplyItem = { text: string } | WechatReplyMedia;
+
+type WechatReplyJobFields = {
   shareId: string;
-  bindingKey?: string;
   userId: string;
-  items?: unknown[];
   contextToken: string;
   lastMsgId: string;
 };
+
+type NewWechatReplyJobData = WechatReplyJobFields & {
+  bindingKey: string;
+  messageItems: WechatReplyItem[];
+  items?: never;
+};
+
+/** 已排队的旧任务仍可能携带原始 iLink 消息项，首次升级时继续读取。 */
+export type WechatReplyJobData =
+  | NewWechatReplyJobData
+  | (WechatReplyJobFields & {
+      bindingKey?: string;
+      items?: unknown[];
+      messageItems?: never;
+    });
 
 export const WECHAT_POLL_JOB_NAME = 'wechatPublishPoll';
 export const WECHAT_REPLY_JOB_NAME = 'wechatPublishReply';
@@ -22,16 +47,12 @@ export const WECHAT_REPLY_JOB_NAME = 'wechatPublishReply';
 export class WechatMQService {
   constructor(private readonly binding: BullMQBinding = bullMQ) {}
 
-  getPollQueue(): Queue<WechatPollJobData> {
+  private getPollQueue(): Queue<WechatPollJobData> {
     return this.binding.getQueue<WechatPollJobData>(QueueNames.wechatPoll);
   }
 
-  getReplyQueue(): Queue<WechatReplyJobData> {
+  private getReplyQueue(): Queue<WechatReplyJobData> {
     return this.binding.getQueue<WechatReplyJobData>(QueueNames.wechatReply);
-  }
-
-  getReplyJob(jobId: string) {
-    return this.getReplyQueue().getJob(jobId);
   }
 
   /** 创建微信轮询 Worker，轮询 processor 的返回值用于 completed 续链策略。 */
@@ -55,27 +76,18 @@ export class WechatMQService {
   }
 
   /** 投递微信回复任务，具体幂等键由调用方根据消息 id 生成。 */
-  addReplyJob(
-    data: WechatReplyJobData,
-    opts: {
-      jobId: string;
-      backoff?: { type: 'fixed'; delay: number };
-    }
-  ) {
+  addReplyJob(data: NewWechatReplyJobData, opts: { jobId: string }) {
     return this.getReplyQueue().add(WECHAT_REPLY_JOB_NAME, data, opts);
   }
 
   /** 投递下一轮微信轮询任务。 */
-  addPollJob(
-    data: WechatPollJobData,
-    opts: {
-      jobId: string;
-      delay?: number;
-      removeOnComplete?: boolean;
-      removeOnFail?: boolean;
-    }
-  ) {
-    return this.getPollQueue().add(WECHAT_POLL_JOB_NAME, data, opts);
+  addPollJob(data: WechatPollJobData, opts: { jobId: string; delay?: number }) {
+    // 固定 jobId 必须在终态立即释放，Worker 事件才能投递下一轮。
+    return this.getPollQueue().add(WECHAT_POLL_JOB_NAME, data, {
+      ...opts,
+      removeOnComplete: true,
+      removeOnFail: true
+    });
   }
 
   /** 删除指定渠道的轮询任务。active 任务由 BullMQ 自身状态决定是否可移除。 */

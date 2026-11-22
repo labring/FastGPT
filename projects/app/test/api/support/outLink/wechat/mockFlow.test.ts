@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => ({
   getReplyWorker: vi.fn(),
   enqueuePoll: vi.fn(),
   enqueueReply: vi.fn(),
-  resetFailures: vi.fn(),
+  clearFailures: vi.fn(),
   upload: vi.fn(),
   runWorkflow: vi.fn()
 }));
@@ -42,7 +42,7 @@ vi.mock('@fastgpt/service/support/outLink/schema', () => ({
 vi.mock('@fastgpt/dal/redis/caches', () => ({
   WECHAT_QR_LOGIN_TTL_SECONDS: 480,
   wechatQrLoginCache: { get: mocks.readQr, set: mocks.saveQr },
-  wechatPollingFailureCache: { reset: mocks.resetFailures }
+  wechatPollingFailureCache: { clear: mocks.clearFailures }
 }));
 vi.mock('@fastgpt/dal/redis/bullmq', () => ({
   defaultWorkerOptions: {},
@@ -51,8 +51,7 @@ vi.mock('@fastgpt/dal/redis/bullmq', () => ({
     getPollWorker: mocks.getPollWorker,
     getReplyWorker: mocks.getReplyWorker,
     addPollJob: mocks.enqueuePoll,
-    addReplyJob: mocks.enqueueReply,
-    getReplyJob: async () => undefined
+    addReplyJob: mocks.enqueueReply
   }
 }));
 vi.mock('@fastgpt/service/support/outLink/runtime/service', () => ({
