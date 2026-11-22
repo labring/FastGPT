@@ -10,7 +10,7 @@ import {
   HttpToolSetRuntimeConfigSchema,
   McpToolSetNodeConfigSchema,
   McpToolSetRuntimeConfigSchema,
-  StoreNodeItemTypeSchema,
+  StoreNodeItemBaseSchema,
   ToolSetPreviewReferenceSchema
 } from '../../type/node';
 
@@ -63,7 +63,7 @@ export const LegacyFlowNodeInputItemSchema = FlowNodeInputItemTypeSchema.omit({
 export type LegacyFlowNodeInputItem = z.infer<typeof LegacyFlowNodeInputItemSchema>;
 
 /** 历史工作流节点，输入允许携带 selectedTypeIndex。 */
-const LegacyStoreNodeItemBaseSchema = StoreNodeItemTypeSchema.omit({
+const LegacyStoreNodeItemBaseSchema = StoreNodeItemBaseSchema.omit({
   flowNodeType: true,
   inputs: true
 }).safeExtend({
