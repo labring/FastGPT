@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import JSZip from 'jszip';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { extractRuntimeSkillsFromPackage } from '@fastgpt/service/core/ai/skill/package/runtimeMetadata';
 import {
   createBlankSkillWorkspacePackage,
   createSkillPackage,
@@ -8,9 +9,8 @@ import {
   validateZipPackageSafety,
   validateZipStructure,
   extractSkillPackage,
-  standardizeSkillPackageBySkillMdName,
-  extractRuntimeSkillsFromPackage
-} from '@fastgpt/service/core/ai/skill/package';
+  standardizeSkillPackageBySkillMdName
+} from '@fastgpt/service/core/ai/skill/package/zipBuilder';
 
 describe('zipBuilder', () => {
   // ==================== createSkillPackage ====================

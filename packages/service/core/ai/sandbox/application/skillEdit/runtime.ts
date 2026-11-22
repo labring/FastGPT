@@ -12,11 +12,11 @@ import { MongoAgentSkillsVersion } from '../../../skill/version/schema';
 import { parseGitignoreRules } from '../../../skill/utils';
 import { resolveSandboxHome } from '../runtime/home';
 import { joinSandboxPath } from '../../utils';
+import { DEFAULT_GITIGNORE_CONTENT } from '../../../skill/package/constants';
 import {
-  DEFAULT_GITIGNORE_CONTENT,
   validateDeployableSkillWorkspacePackage,
   validateZipPackageSafety
-} from '../../../skill/package';
+} from '../../../skill/package/zipBuilder';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID, getEditDebugSandboxId } from '../../../skill/edit/config';
 import {
   getSandboxProviderConfig,
@@ -498,7 +498,6 @@ export async function packageSkillInSandbox(params: {
 
     // 打包、读取和校验共用同一个 try：即使 find 在写入部分 zip 后报错，finally 也会清理临时 zip。
     let shouldCleanupZip = true;
-    let zipCreated = false;
     try {
       const zipResult = await newSandbox.execute(zipCommand, { workingDirectory: targetDir });
 
@@ -518,8 +517,6 @@ export async function packageSkillInSandbox(params: {
         }
         throw new Error(`Failed to package skill directory: ${output}`);
       }
-
-      zipCreated = true;
 
       const files = await newSandbox.readFiles([zipFilePath]);
       const file = files?.[0];
@@ -560,27 +557,36 @@ export async function packageSkillInSandbox(params: {
       return zipBuffer;
     } finally {
       if (shouldCleanupZip) {
-        await newSandbox
-          .deleteFiles([zipFilePath])
-          .then(([cleanupResult]) => {
-            // 打包命令非 0 退出时可能尚未生成 zip，静默跳过删除未命中，避免产生误导性告警。
-            if (!zipCreated || (cleanupResult?.success && !cleanupResult.error)) return;
+        const isFileNotFoundError = (error: unknown) => {
+          const err = error as
+            | { code?: unknown; message?: unknown; error?: { code?: unknown; message?: unknown } }
+            | null
+            | undefined;
+          const code = err?.code ?? err?.error?.code;
+          if (code === 'ENOENT' || code === 'FILE_NOT_FOUND') return true;
+          const msg = err?.message || err?.error?.message;
+          return (
+            code !== 'SANDBOX_NOT_FOUND' &&
+            typeof msg === 'string' &&
+            /\b(?:enoent|file_not_found)\b|no such file|does not exist|file not found/i.test(msg)
+          );
+        };
 
-            addLog.warn('[Sandbox] Failed to cleanup package zip', {
-              sandboxId,
-              zipFilePath,
-              error: cleanupResult?.error ?? new Error('Delete did not succeed')
-            });
-          })
-          .catch((cleanupError) => {
-            if (!zipCreated) return;
-            // 清理失败只记录，保留最初的打包/导出错误。
+        try {
+          const [cleanupResult] = await newSandbox.deleteFiles([zipFilePath]);
+          if (!(cleanupResult?.success && !cleanupResult.error)) {
+            throw cleanupResult?.error ?? new Error('Delete did not succeed');
+          }
+        } catch (cleanupError) {
+          // 仅静默明确的文件不存在，其余清理失败均告警并保留原始打包错误。
+          if (!isFileNotFoundError(cleanupError)) {
             addLog.warn('[Sandbox] Failed to cleanup package zip', {
               sandboxId,
               zipFilePath,
               error: cleanupError
             });
-          });
+          }
+        }
       }
     }
   } catch (error) {

@@ -1,3 +1,4 @@
+import { FileOperationError, SandboxNotFoundError } from '@fastgpt-sdk/sandbox-adapter';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -33,8 +34,11 @@ vi.mock('@fastgpt/service/core/ai/skill/version/schema', () => ({
   MongoAgentSkillsVersion: { findOne: mocks.mongoVersionFindOne }
 }));
 
-vi.mock('@fastgpt/service/core/ai/skill/package', () => ({
-  DEFAULT_GITIGNORE_CONTENT: '.venv/\nnode_modules/\n',
+vi.mock('@fastgpt/service/core/ai/skill/package/constants', () => ({
+  DEFAULT_GITIGNORE_CONTENT: '.venv/\nnode_modules/\n'
+}));
+
+vi.mock('@fastgpt/service/core/ai/skill/package/zipBuilder', () => ({
   validateDeployableSkillWorkspacePackage: mocks.validateDeployableSkillWorkspacePackage,
   validateZipPackageSafety: mocks.validateZipPackageSafety
 }));
@@ -290,7 +294,7 @@ describe('packageSkillInSandbox', () => {
     expect(sandbox.deleteFiles).not.toHaveBeenCalled();
   });
 
-  it('maps control-character export path failures to invalidSkillPackage and silently cleans up zip', async () => {
+  it('maps control-character export path failures to invalidSkillPackage and silences file-not-found cleanup', async () => {
     const sandbox = createPackageSandbox({
       zipExecuteResult: {
         stdout: '',
@@ -299,7 +303,11 @@ describe('packageSkillInSandbox', () => {
       }
     });
     sandbox.deleteFiles.mockResolvedValueOnce([
-      { path: '/home/sandbox/.fastgpt/tmp/skill-package.zip', success: false, error: null }
+      {
+        path: '/home/sandbox/.fastgpt/tmp/skill-package.zip',
+        success: false,
+        error: new FileOperationError('No such file', '/tmp/skill-package.zip', 'FILE_NOT_FOUND')
+      }
     ]);
     mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
 
@@ -332,9 +340,36 @@ describe('packageSkillInSandbox', () => {
       packageSkillInSandbox({ sandboxId: 'sandbox-1', applyIgnoreRules: false })
     ).rejects.toThrow("Failed to package skill directory: find: './secret': Permission denied");
 
+    expect(mocks.logger.warn).not.toHaveBeenCalled();
     expect(sandbox.deleteFiles).toHaveBeenCalledWith([
       expect.stringMatching(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-.*\.zip$/)
     ]);
+  });
+
+  it.each([
+    {
+      name: 'error result',
+      result: [{ path: '/tmp/a.zip', success: false, error: new Error('Permission denied') }]
+    },
+    { name: 'null error', result: [{ path: '/tmp/a.zip', success: false, error: null }] },
+    { name: 'rejected', error: new SandboxNotFoundError('Sandbox not found') }
+  ])('logs cleanup warning on early packaging failure ($name)', async ({ result, error }) => {
+    const sandbox = createPackageSandbox({
+      zipExecuteResult: { stdout: '', stderr: "find: './secret': Permission denied", exitCode: 1 }
+    });
+    if (result) sandbox.deleteFiles.mockResolvedValueOnce(result);
+    else sandbox.deleteFiles.mockRejectedValueOnce(error);
+    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
+
+    await expect(
+      packageSkillInSandbox({ sandboxId: 'sandbox-1', applyIgnoreRules: false })
+    ).rejects.toThrow("Failed to package skill directory: find: './secret': Permission denied");
+
+    expect(mocks.logger.warn).toHaveBeenCalledTimes(1);
+    expect(mocks.logger.warn).toHaveBeenCalledWith(
+      '[Sandbox] Failed to cleanup package zip',
+      expect.objectContaining({ sandboxId: 'sandbox-1' })
+    );
   });
 
   it('logs cleanup failure without masking the export result', async () => {
