@@ -783,31 +783,40 @@ describe('axios.ts', () => {
       }
     });
 
-    it('does not reuse credentials when a redirect switches proxies', async () => {
-      process.env.HTTP_PROXY = 'http://first-proxy.example.test:8080';
-      process.env.HTTPS_PROXY = 'http://other-proxy.example.test:8080';
-      const credential = `Basic ${Buffer.from('test:fixture').toString('base64')}`;
-      const firstUrl = `http://${targetHostname}/start`;
-      const nextUrl = `https://${targetHostname}/end`;
-      const adapter = vi.fn().mockImplementation(async (config) => ({
-        config,
-        data: 'ready',
-        ...(config.url === firstUrl
-          ? { status: 302, headers: { location: nextUrl } }
-          : { status: 200, headers: {} })
-      }));
-      await createProxyAxios({ adapter }).get(firstUrl, {
-        headers: { 'Proxy-Authorization': credential }
-      });
+    it.each(['request', 'instance default'] as const)(
+      'does not reuse %s proxy credentials when a redirect switches proxies',
+      async (source) => {
+        process.env.HTTP_PROXY = 'http://first-proxy.example.test:8080';
+        process.env.HTTPS_PROXY = 'http://other-proxy.example.test:8080';
+        const credential = `Basic ${Buffer.from('test:fixture').toString('base64')}`;
+        const firstUrl = `http://${targetHostname}/start`;
+        const nextUrl = `https://${targetHostname}/end`;
+        const adapter = vi.fn().mockImplementation(async (config) => ({
+          config,
+          data: 'ready',
+          ...(config.url === firstUrl
+            ? { status: 302, headers: { location: nextUrl } }
+            : { status: 200, headers: {} })
+        }));
+        const client = createProxyAxios({ adapter });
+        const headers = { 'Proxy-Authorization': credential };
+        if (source === 'instance default') {
+          Object.assign(client.defaults.headers.common, headers);
+        }
+        await client.get(firstUrl, source === 'request' ? { headers } : undefined);
 
-      const [firstRequest, redirectedRequest] = adapter.mock.calls.map(([config]) => config);
-      expect(firstRequest.httpAgent.proxyHeaders()).toEqual({ 'Proxy-Authorization': credential });
-      expect(
-        JSON.stringify(new AxiosError('test', undefined, firstRequest).toJSON())
-      ).not.toContain(credential);
-      expect(redirectedRequest.httpsAgent.proxyHeaders).toEqual({});
-      expect(redirectedRequest.headers.has('Proxy-Authorization')).toBe(false);
-    });
+        const [firstRequest, redirectedRequest] = adapter.mock.calls.map(([config]) => config);
+        expect(firstRequest.httpAgent.proxyHeaders()).toEqual({
+          'Proxy-Authorization': credential
+        });
+        expect(
+          JSON.stringify(new AxiosError('test', undefined, firstRequest).toJSON())
+        ).not.toContain(credential);
+        expect(firstRequest.headers.has('Proxy-Authorization')).toBe(false);
+        expect(redirectedRequest.httpsAgent.proxyHeaders).toEqual({});
+        expect(redirectedRequest.headers.has('Proxy-Authorization')).toBe(false);
+      }
+    );
 
     it('surfaces a proxy that rejects CONNECT without trying forward HTTP', async () => {
       const requestMethods: (string | undefined)[] = [];

@@ -303,11 +303,11 @@ const attachPinnedAgent = async (
   const proxyUrl = resolveProxyUrl(requestUrl, config.proxy);
   const rejectUnauthorized = config.__safeAxios?.rejectUnauthorized ?? true;
 
-  // 代理认证头只发给选中的代理。同一代理的下一跳可复用，切换或绕过代理时不会转发。
+  // Axios 每次跳转都会重新合并默认请求头。代理认证只在首跳绑定，每跳都从目标请求移除。
   const proxyHeader = config.headers.get(PROXY_AUTHORIZATION);
   config.headers.delete(PROXY_AUTHORIZATION);
   const redirectState = config.__safeRedirect;
-  if (redirectState && proxyUrl && typeof proxyHeader === 'string') {
+  if (redirectState?.count === 0 && proxyUrl && typeof proxyHeader === 'string') {
     http.validateHeaderValue(PROXY_AUTHORIZATION, proxyHeader);
     const proxyOrigin = proxyUrl.origin;
     // 凭据保存在闭包里，避免出现在 Axios 可序列化的请求配置中。
