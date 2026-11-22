@@ -18,11 +18,6 @@ export type WechatReplyJobData = {
 export const WECHAT_POLL_JOB_NAME = 'wechatPublishPoll';
 export const WECHAT_REPLY_JOB_NAME = 'wechatPublishReply';
 
-const replyCompletionRetention = {
-  age: 24 * 60 * 60,
-  count: 10_000
-};
-
 /** 微信轮询和回复队列的业务服务。 */
 export class WechatMQService {
   constructor(private readonly binding: BullMQBinding = bullMQ) {}
@@ -55,24 +50,15 @@ export class WechatMQService {
     return this.binding.getWorker<WechatReplyJobData>(QueueNames.wechatReply, processor, opts);
   }
 
-  /** 沿用旧版任务 ID，并在游标提交失败后的重拉中复用已完成的任务。 */
-  async addReplyJob(data: WechatReplyJobData & { bindingKey: string; items: unknown[] }) {
-    const queue = this.getReplyQueue();
-    const legacyJobId = `wechat-reply:${data.shareId}:${data.lastMsgId}`;
-    const bindingJobId = `wechat-reply:${data.shareId}:${data.bindingKey}:${data.lastMsgId}`;
-    // 之前已因冲突使用绑定键的回复，在旧键清理后重拉时仍沿用绑定键。
-    const existingBindingJob = await queue.getJob(bindingJobId);
-    if (existingBindingJob) return existingBindingJob;
-
-    const opts = { removeOnComplete: replyCompletionRetention };
-    await queue.add(WECHAT_REPLY_JOB_NAME, data, { ...opts, jobId: legacyJobId });
-    // BullMQ add 返回的是本次传入的数据。发生 ID 冲突时，读取 Redis 中真正占用该 ID 的任务。
-    const stored = await queue.getJob(legacyJobId);
-    if (!stored) throw new Error('Wechat reply job was not retained');
-    if (stored.data.bindingKey === data.bindingKey) return stored;
-
-    // 绑定可能复用消息 ID。旧任务保留原键，当前轮询重新拉取的消息用其已知绑定入队。
-    return queue.add(WECHAT_REPLY_JOB_NAME, data, { ...opts, jobId: bindingJobId });
+  /** 投递微信回复任务，具体幂等键由调用方根据绑定与消息 id 生成。 */
+  addReplyJob(
+    data: WechatReplyJobData,
+    opts: {
+      jobId: string;
+      backoff?: { type: 'fixed'; delay: number };
+    }
+  ) {
+    return this.getReplyQueue().add(WECHAT_REPLY_JOB_NAME, data, opts);
   }
 
   /** 投递下一轮微信轮询任务。 */

@@ -9,20 +9,11 @@ export const isActiveWechatConnection = (
 ): app is { status: 'online'; token: string } =>
   app?.status === 'online' && typeof app.token === 'string' && app.token !== '';
 
-/** 只保存登录快照的哈希，避免凭据进入 Redis key 或队列。 */
-export const getWechatLoginFingerprint = (app: Pick<WechatAppType, 'loginTime' | 'token'>) =>
+/** 使用登录快照哈希作为不透明绑定键，隔离不同登录的失败计数与回复，且不将凭据写入 Redis。 */
+export const getWechatBindingKey = (app: Pick<WechatAppType, 'loginTime' | 'token'>) =>
   createHash('sha256')
     .update(JSON.stringify([app.loginTime ?? null, app.token]))
     .digest('hex');
-
-/** 旧版重绑会改写登录快照，但不会清理新增字段。只使用仍对应当前登录的绑定 ID。 */
-export const getWechatBindingIdentity = (
-  app: Pick<WechatAppType, 'bindingId' | 'bindingFingerprint' | 'loginTime' | 'token'>
-) => {
-  const fingerprint = getWechatLoginFingerprint(app);
-  const id = app.bindingFingerprint === fingerprint ? app.bindingId : undefined;
-  return { id, key: id ?? fingerprint };
-};
 
 /**
  * 确保后台微信接口只能操作微信发布渠道。

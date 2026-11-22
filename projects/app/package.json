@@ -19,7 +19,6 @@
     "migrate:auth-code": "tsx scripts/migration/authCodeToTmpData.ts",
     "reset:root-psw": "pnpm run build:cli-scripts && node ./scripts/dist/reset-root-password.cjs",
     "test": "vitest run -c vitest.config.ts",
-    "test:wechat": "vitest run -c vitest.wechat.config.ts",
     "test:watch": "vitest -c vitest.config.ts",
     "build:workers": "tsx scripts/build-workers.ts",
     "build:cli-scripts": "tsx scripts/build-cli-scripts.ts",

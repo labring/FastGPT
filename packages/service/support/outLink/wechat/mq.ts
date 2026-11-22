@@ -19,8 +19,11 @@ import { wechatPollingFailureCache } from '@fastgpt/dal/redis/caches';
 import { groupMessagesByUser } from './messageParser';
 import { batchRun, retryFn, withTimeout } from '@fastgpt/global/common/system/utils';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
+import { setCron } from '../../../common/system/cron';
+import { TimerIdEnum } from '../../../common/system/timerLock/constants';
+import { checkTimerLock } from '../../../common/system/timerLock/utils';
 import { wechatOutlinkProvider } from './provider';
-import { getWechatBindingIdentity, isActiveWechatConnection } from './utils';
+import { getWechatBindingKey, isActiveWechatConnection } from './utils';
 
 const logger = getLogger(LogCategories.MODULE.OUTLINK.WECHAT);
 
@@ -40,6 +43,18 @@ const POLL_HARD_TIMEOUT_MS = 120_000;
 // 确定 jobId → BullMQ 自动保证同 shareId 同一时刻只存在一个 poll job（singleton）
 // 续链在 worker 'completed' / 'failed' 事件里发起，此时 job 已从 Redis 删除，add 不会冲突
 const pollJobId = (shareId: string) => `wechat-poll:${shareId}`;
+const replyJobId = ({
+  shareId,
+  lastMsgId,
+  bindingKey
+}: {
+  shareId: string;
+  lastMsgId: string;
+  bindingKey?: string;
+}) =>
+  bindingKey
+    ? `wechat-reply:${shareId}:${bindingKey}:${lastMsgId}`
+    : `wechat-reply:${shareId}:${lastMsgId}`;
 const activeChannelFilter = {
   type: PublishChannelEnum.wechat,
   'app.status': 'online',
@@ -74,12 +89,11 @@ async function pollImpl(job: Job<WechatPollJobData>, signal: AbortSignal): Promi
     return 'stopped';
   }
 
-  // Redis 使用有效绑定身份，Mongo 比较本轮读取的原始登录快照。
-  const { key: bindingKey } = getWechatBindingIdentity(app);
+  // Redis 与回复队列使用登录快照哈希隔离不同绑定，Mongo 更新条件校验同一登录快照。
+  const bindingKey = getWechatBindingKey(app);
   const bindingFilter = {
     shareId,
     'app.status': 'online',
-    'app.bindingId': app.bindingId ?? null,
     'app.baseUrl': app.baseUrl ?? null,
     'app.token': app.token,
     'app.loginTime': app.loginTime ?? null
@@ -171,7 +185,24 @@ async function pollImpl(job: Job<WechatPollJobData>, signal: AbortSignal): Promi
     });
 
     await Promise.all(
-      groups.map((group) => wechatMQService.addReplyJob({ shareId, bindingKey, ...group }))
+      groups.map((group) =>
+        wechatMQService.addReplyJob(
+          {
+            shareId,
+            bindingKey,
+            ...group
+          },
+          {
+            // 未重新绑定的历史渠道沿用旧 jobId，确保升级瞬间与旧队列任务去重；新绑定按 bindingKey 隔离。
+            jobId: replyJobId({
+              shareId,
+              lastMsgId: group.lastMsgId,
+              bindingKey: app.bindingId ? bindingKey : undefined
+            }),
+            backoff: { type: 'fixed', delay: 2000 }
+          }
+        )
+      )
     );
   }
 
@@ -284,17 +315,17 @@ export const initWechatPollWorker = async () => {
     ...defaultWorkerOptions
   });
 
-  await resumeAllWechatPolling();
   logger.info('Wechat poll/reply workers initialized');
 };
 
 /**
- * 服务启动时恢复所有 online 渠道的轮询
+ * 扫描所有在线微信渠道并幂等补齐轮询任务，供定时巡检兜底恢复意外中断的轮询链。
  */
-async function resumeAllWechatPolling(): Promise<void> {
+export async function resumeAllWechatPolling(): Promise<void> {
   const onlineChannels = await MongoOutLink.find(activeChannelFilter, { shareId: 1 }).lean();
+  if (onlineChannels.length === 0) return;
 
-  logger.info('Resuming wechat polling', { count: onlineChannels.length });
+  logger.debug('Reconciling wechat polling', { count: onlineChannels.length });
 
   await batchRun(
     onlineChannels,
@@ -304,6 +335,24 @@ async function resumeAllWechatPolling(): Promise<void> {
     100
   );
 }
+
+/**
+ * 每 10 分钟巡检在线微信渠道，通过分布式锁避免多实例重复扫描。
+ */
+export const wechatPollingReconcileCron = () => {
+  setCron('*/10 * * * *', async () => {
+    const locked = await checkTimerLock({
+      timerId: TimerIdEnum.wechatPollingReconcile,
+      // MongoDB TTL 清理间隔约 60 秒，8 分钟锁既阻止同轮多副本竞争，又确保下轮巡检前释放。
+      lockMinuted: 8
+    });
+    if (!locked) return;
+
+    await resumeAllWechatPolling().catch((error) => {
+      logger.error('Wechat polling reconcile cron failed', { error: String(error) });
+    });
+  });
+};
 
 /**
  * 幂等启动轮询。已在队列中的任务会读取执行时的最新绑定。

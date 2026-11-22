@@ -18,8 +18,7 @@ vi.mock('@fastgpt/service/support/permission/publish/authLink', () => ({
   authOutLinkCrud: mocks.authOutLinkCrud
 }));
 
-vi.mock('@fastgpt/service/support/outLink/wechat/utils', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@fastgpt/service/support/outLink/wechat/utils')>()),
+vi.mock('@fastgpt/service/support/outLink/wechat/utils', () => ({
   assertWechatOutLink: mocks.assertWechatOutLink
 }));
 
@@ -47,11 +46,9 @@ vi.mock('@fastgpt/service/support/outLink/wechat/mq', () => ({
 }));
 
 import handler from '@/pages/api/support/outLink/wechat/qrcode/status';
-import { getWechatLoginFingerprint } from '@fastgpt/service/support/outLink/wechat/utils';
 
 const outLinkId = '68ad85a7463006c963799a05';
 const attemptId = 'eab36734-81b6-4346-a623-fd3821712cd6';
-const login = { token: 'bot-token', loginTime: '2026-07-22T06:00:00.000Z' };
 const outLink = {
   _id: outLinkId,
   shareId: 'share-1',
@@ -136,7 +133,6 @@ describe('GET /api/support/outLink/wechat/qrcode/status', () => {
           'app.userId': 'user-id',
           'app.status': 'online',
           'app.bindingId': attemptId,
-          'app.bindingFingerprint': getWechatLoginFingerprint(login),
           'app.loginTime': '2026-07-22T06:00:00.000Z',
           'app.syncBuf': '',
           'app.lastError': ''
@@ -244,15 +240,7 @@ describe('GET /api/support/outLink/wechat/qrcode/status', () => {
   it('recovers queue scheduling after the binding was already saved', async () => {
     mocks.authOutLinkCrud.mockResolvedValue({
       tmbId: 'tmb-1',
-      outLink: {
-        ...outLink,
-        app: {
-          ...outLink.app,
-          ...login,
-          bindingId: attemptId,
-          bindingFingerprint: getWechatLoginFingerprint(login)
-        }
-      }
+      outLink: { ...outLink, app: { ...outLink.app, bindingId: attemptId } }
     });
     mocks.startWechatPolling.mockRejectedValueOnce(new Error('queue unavailable'));
     const req = { query: { outLinkId, attemptId } } as any;
@@ -260,29 +248,6 @@ describe('GET /api/support/outLink/wechat/qrcode/status', () => {
     await expect(handler(req, createRes())).resolves.toEqual({ status: 'confirmed' });
     expect(mocks.getQRCodeStatus).not.toHaveBeenCalled();
     expect(mocks.updateOne).not.toHaveBeenCalled();
-  });
-
-  it('expires a saved QR attempt after an older release has replaced its login', async () => {
-    mocks.authOutLinkCrud.mockResolvedValue({
-      tmbId: 'tmb-1',
-      outLink: {
-        ...outLink,
-        app: {
-          ...outLink.app,
-          ...login,
-          token: 'older-release-new-token',
-          bindingId: attemptId,
-          bindingFingerprint: getWechatLoginFingerprint(login)
-        }
-      }
-    });
-    await expect(handler({ query: { outLinkId, attemptId } } as any, createRes())).resolves.toEqual(
-      {
-        status: 'expired'
-      }
-    );
-    expect(mocks.getQRCodeStatus).not.toHaveBeenCalled();
-    expect(mocks.startWechatPolling).not.toHaveBeenCalled();
   });
 
   it('rejects a request for an old attempt without reading Redis or iLink', async () => {

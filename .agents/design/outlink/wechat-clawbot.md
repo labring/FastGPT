@@ -51,8 +51,7 @@ wechatPoll Queue ---- getUpdates ---- groupMessagesByUser
 | `accountId`、`userId` | 登录身份 |
 | `syncBuf` | 下一次 `getUpdates` 的消费游标 |
 | `status` | `online`、`offline`、`error` |
-| `bindingId` | 每次扫码绑定生成的唯一标识，旧记录可无此字段 |
-| `bindingFingerprint` | 该绑定对应的登录快照哈希，用于识别旧版本重绑后残留的绑定标识 |
+| `bindingId` | 每次扫码绑定生成的唯一标识，用于扫码确认幂等，旧记录可无此字段 |
 | `qrAttemptId` | 当前可确认的扫码会话。登出撤销该会话 |
 | `loginTime` | 最近登录时间 |
 | `lastError` | 停止轮询的最近错误 |
@@ -98,14 +97,14 @@ Poll job 主要等待约 35 秒的长轮询，不执行工作流。入队筛选�
 | Queue | `wechatReply` |
 | Job name | `wechatPublishReply` |
 | Job data | `shareId`、`bindingKey`、`userId`、`items`、`contextToken`、`lastMsgId` |
-| Job ID | `wechat-reply:${shareId}:${lastMsgId}`，撞到其他绑定或无绑定的存量任务时使用 `wechat-reply:${shareId}:${bindingKey}:${lastMsgId}` |
+| Job ID | 新绑定为 `wechat-reply:${shareId}:${bindingKey}:${lastMsgId}`，未重绑历史渠道沿用 `wechat-reply:${shareId}:${lastMsgId}` |
 | Concurrency | 固定 `1000` |
 | Lock | 30 分钟 |
 | Stalled interval | 60 秒 |
-| Completed retention | 最长 24 小时，最多 10,000 条 |
+| Completed retention | 立即删除 |
 | Failed retention | 最近 10,000 条 |
 
-Reply processor 使用 provider adapter 调用 `runOutlinkRuntime`，并传入稳定的 `messageId=lastMsgId`。正常任务 ID 与 v4.17.4 一致，游标写入失败后重拉时，BullMQ 可以复用仍在队列中的任务或已完成记录。完成保留策略设置在任务上，停机回滚后的旧 Worker 也能保留该记录。同一消息 ID 被另一绑定占用时，新轮询确认归属后按自己的绑定入队，已有任务继续保留。
+Reply processor 使用 provider adapter 调用 `runOutlinkRuntime`，并以稳定的 `messageId=lastMsgId` 由聊天写入层保证业务幂等。队列 jobId 解决重复入队，messageId 解决 stalled retry 或 processor 重试后的副作用重复。
 
 ## 5. Poll 处理顺序
 
@@ -121,7 +120,7 @@ Reply processor 使用 provider adapter 调用 `runOutlinkRuntime`，并传入�
 7. completed listener 调度下一条 poll job
 ```
 
-第五步失败时不得推进 `syncBuf`。下一次 poll 会从原游标重新拉取，BullMQ 按任务 ID 复用仍在队列中的任务或已完成记录。
+第五步失败时不得推进 `syncBuf`。下一次 poll 会从原游标重新拉取，BullMQ 按任务 ID 合并仍在队列中的任务。
 
 poll processor 本身不续链。续链统一由 Worker 的 completed/failed listener 负责，避免 return、throw 和 timeout 分支各自维护调度逻辑。
 
@@ -156,11 +155,11 @@ poll processor 本身不续链。续链统一由 Worker 的 completed/failed lis
 
 ## 8. 并发与恢复
 
-- `pollJobId` 保证多实例启动、重复扫码和启动恢复不会并行创建两条 poll 链。
+- `pollJobId` 保证定时巡检与重复扫码不会并行创建两条 poll 链。
 - 相同 jobId 的回复任务仍在队列中时，BullMQ 会合并重复投递。
-- 失败计数、游标和排队的回复归属于拉取时的绑定。没有有效绑定 ID 的历史连接，进行新轮询时用登录时间和 token 的哈希标记任务。投递和更新游标都检查拉取前的绑定和游标。回复开始时校验绑定，缺少绑定键的旧任务进入失败队列，保留待核对。
+- 失败计数、游标和排队的回复统一按登录快照哈希（`bindingKey`）归属于拉取时的绑定。投递和更新游标都检查拉取前的登录快照和游标。回复开始时校验绑定：历史无 `bindingKey` 任务在渠道尚未重新绑定前继续消费，重绑后丢弃。
 - `syncBuf` 只在 reply jobs 全部入队后推进，避免 enqueue 失败丢消息。
-- 服务启动时扫描 online 渠道并调用幂等调度；已有 active/waiting job 时 BullMQ 保持原任务。
+- 移除了服务启动时的全量扫描恢复，改为每 10 分钟通过 `wechatPollingReconcileCron`（配合 `TimerIdEnum.wechatPollingReconcile` 分布式锁）巡检所有 online 渠道并幂等补入缺失的 poll job；已有 active/waiting job 时 BullMQ 自动保持原任务。
 - 登出撤销待确认二维码，由 worker 读取离线状态后结束轮询。删除渠道后清理等待中的 poll job。
 - Poll hard timeout 防止 processor 卡住后固定 jobId 永久占用。已发出的 I/O 可能结束，后续阶段会在计数、入队和游标写入前检查任务是否已过期。
 - Reply 使用长 lock 避免慢回复被误判为 stalled。普通消息还由工作流入口按 messageId 和对话历史检查重复。
@@ -180,14 +179,6 @@ poll processor 本身不续链。续链统一由 Worker 的 completed/failed lis
 
 ## 10. 验证与回滚原则
 
-无需微信、MongoDB 或 Redis 即可运行 iLink Mock 回归：
+验证必须覆盖重复启动、重复扫码、定时巡检恢复、空响应退避、enqueue 失败不推进 syncBuf、stalled retry 不重复回复、连续失败转 error、主动停止不再续链，以及慢回复期间 poll 仍能持续摄入。
 
-```sh
-pnpm --dir projects/app test:wechat
-```
-
-Mock 覆盖取码、待扫码、已扫码、确认、轮询收消息、获取并解密媒体、回发和登出。测试调用路由处理函数、iLink 客户端和微信 worker，使用测试替身提供鉴权、数据库、队列与工作流结果。实际连接地址检查由独立请求策略用例覆盖。
-
-验证必须覆盖重复启动、重复扫码、多实例恢复、空响应退避、enqueue 失败不推进 syncBuf、stalled retry 不重复回复、连续失败转 error、主动停止不再续链，以及慢回复期间 poll 仍能持续摄入。
-
-停机切换按 [V4.17.5 升级说明](../../../document/content/self-host/upgrading/4-17/4175.mdx) 核对 Redis 存量回复任务和 Mongo 游标。v4.17.4 能读取原始消息项，但不会校验绑定键。回滚前先在新版确认失败批次的游标已补交、回复已处理，并保留两边共用的 Mongo 和 Redis 数据。完成记录达到保留边界后，不能再靠队列记录验证去重。
+回滚不得依赖长期双队列双写。队列名、jobId 和 Mongo 字段保持兼容时，可以回退 processor/调度实现；如果调整失败窗口、锁时长或消息合并语义，必须作为独立业务变化发布。
