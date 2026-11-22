@@ -82,9 +82,9 @@ export const isStreamCompletionResponse = (
 };
 
 /**
- * 归一化兼容渠道缓存用量。cache_write_tokens 遵循 Agent SDK 的约定，
- * cached_tokens 含本次创建量；显式 cache_read_tokens 则直接代表读取量。
- * 各数量限制在总输入内，避免渠道异常值造成重复收费。
+ * 归一化 OpenAI 兼容渠道缓存用量，与 Pi SDK 补丁保持一致。
+ * AIProxy 的 cached_tokens 是独立的读取量，两个明细创建别名按 AIProxy 规则取较大值。
+ * 缓存读取和创建均包含在总输入内，异常值也不得超过总输入。
  */
 export const normalizeLLMCacheUsage = (usage: LLMCompletionUsage) => {
   const safeCount = (value?: number) =>
@@ -94,16 +94,13 @@ export const normalizeLLMCacheUsage = (usage: LLMCompletionUsage) => {
   const cacheCreationTokens = Math.min(
     inputTokens,
     safeCount(
-      usage.cache_creation_tokens ?? details?.cache_creation_tokens ?? details?.cache_write_tokens
+      usage.cache_creation_tokens ??
+        Math.max(safeCount(details?.cache_creation_tokens), safeCount(details?.cache_write_tokens))
     )
   );
   const cacheReadTokens = Math.min(
     inputTokens - cacheCreationTokens,
-    safeCount(
-      details?.cache_read_tokens ??
-        usage.prompt_cache_hit_tokens ??
-        Math.max(0, safeCount(details?.cached_tokens) - safeCount(details?.cache_write_tokens))
-    )
+    safeCount(details?.cache_read_tokens ?? usage.prompt_cache_hit_tokens ?? details?.cached_tokens)
   );
   return { cacheReadTokens, cacheCreationTokens };
 };

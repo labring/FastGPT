@@ -80,7 +80,7 @@ describe('useLLMResponseAccumulator', () => {
       prompt_tokens: 13,
       completion_tokens: 6,
       total_tokens: 19,
-      cache_read_tokens: 7,
+      cache_read_tokens: 8,
       cache_write_tokens: 2
     });
     expect(response.toolCalls).toEqual([

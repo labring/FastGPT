@@ -123,7 +123,18 @@ describe('normalizeLLMCacheUsage', () => {
     [{}, [0, 0]],
     [{ prompt_tokens_details: { cached_tokens: 600 } }, [600, 0]],
     [{ cache_creation_tokens: 200, prompt_tokens_details: { cached_tokens: 600 } }, [600, 200]],
-    [{ prompt_tokens_details: { cached_tokens: 600, cache_write_tokens: 200 } }, [400, 200]],
+    [{ prompt_tokens_details: { cached_tokens: 600, cache_write_tokens: 200 } }, [600, 200]],
+    [
+      {
+        prompt_tokens: 2006,
+        prompt_tokens_details: {
+          cached_tokens: 1920,
+          cache_creation_tokens: 32,
+          cache_write_tokens: 64
+        }
+      },
+      [1920, 64]
+    ],
     [
       {
         prompt_tokens_details: {
