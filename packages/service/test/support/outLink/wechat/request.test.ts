@@ -52,7 +52,12 @@ describe('WeChat request policy', () => {
 
     await expect(
       fetchWechat({ url: 'https://example.invalid/media', endpoint: 'media' }, {})
-    ).rejects.toThrow('outside the allowed endpoints');
+    ).rejects.toMatchObject({
+      name: 'WechatRequestPolicyError',
+      reason: 'invalid_url',
+      message: expect.stringContaining('outside the allowed endpoints'),
+      displayMessage: 'publish:wechat.error.invalid_url'
+    });
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -75,7 +80,8 @@ describe('WeChat request policy', () => {
 
     await expect(new ILinkClient().getUpdates('')).rejects.toMatchObject({
       name: 'WechatRequestPolicyError',
-      reason: 'private_address'
+      reason: 'private_address',
+      displayMessage: 'publish:wechat.error.private_address'
     });
     expect(mockLookup).toHaveBeenCalledTimes(1);
     expect(dial).not.toHaveBeenCalled();

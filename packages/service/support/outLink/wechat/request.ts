@@ -1,5 +1,7 @@
 import dns from 'node:dns';
 import { Agent } from 'undici';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
   createInternalAddressChecker,
   PRIVATE_URL_TEXT
@@ -13,12 +15,15 @@ const CDN_DOMAIN = 'cdn.weixin.qq.com';
 
 type WechatEndpoint = 'ilink' | 'media';
 
-export class WechatRequestPolicyError extends Error {
+export class WechatRequestPolicyError extends UserError {
   constructor(public readonly reason: Exclude<WechatConnectionErrorType, 'request_failed'>) {
     super(
       reason === 'private_address'
         ? PRIVATE_URL_TEXT
-        : 'WeChat request URL is outside the allowed endpoints'
+        : 'WeChat request URL is outside the allowed endpoints',
+      reason === 'private_address'
+        ? i18nT('publish:wechat.error.private_address')
+        : i18nT('publish:wechat.error.invalid_url')
     );
     this.name = 'WechatRequestPolicyError';
   }

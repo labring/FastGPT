@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Box, Button, Flex, Text } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { POST, GET } from '@/web/common/api/request';
 import QRCode from 'qrcode';
@@ -11,6 +11,8 @@ import type {
   WechatQrcodeGenerateResponseType,
   WechatQrcodeStatusResponseType
 } from '@fastgpt/global/openapi/support/outLink/provider/wechat';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { delay, retryFn } from '@fastgpt/global/common/system/utils';
 
 type QRStatus = 'loading' | 'wait' | 'scanned' | 'confirmed' | 'expired' | 'error';
@@ -24,7 +26,7 @@ const QRLoginModal = ({
   onSuccess: () => void;
   onClose: () => void;
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useSafeTranslation();
   const { toast } = useToast();
   const [status, setStatus] = useState<QRStatus>('loading');
   const [qrText, setQrText] = useState('');
@@ -32,6 +34,12 @@ const QRLoginModal = ({
   const canvasRef = useRef<HTMLDivElement>(null);
   const sessionRef = useRef<AbortController>();
   const successTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const getErrorText = useCallback(
+    (error: unknown, fallback: string) =>
+      t(getErrText(error, fallback, i18n.language as localeType)),
+    [i18n.language, t]
+  );
 
   const stopPolling = useCallback(() => {
     sessionRef.current?.abort();
@@ -72,10 +80,10 @@ const QRLoginModal = ({
               setStatus('expired');
               return;
           }
-        } catch {
+        } catch (error) {
           if (session.signal.aborted) return;
           setStatus('error');
-          setErrMsg(t('publish:wechat.status_check_failed'));
+          setErrMsg(getErrorText(error, t('publish:wechat.status_check_failed')));
           return;
         }
 
@@ -126,10 +134,10 @@ const QRLoginModal = ({
       setStatus('wait');
 
       startPolling(session, data.attemptId);
-    } catch {
+    } catch (error) {
       if (session.signal.aborted) return;
       setStatus('error');
-      setErrMsg(t('publish:wechat.qr_generate_failed'));
+      setErrMsg(getErrorText(error, t('publish:wechat.qr_generate_failed')));
     }
   });
 
@@ -213,11 +221,18 @@ const QRLoginModal = ({
         );
       case 'error':
         return (
-          <Flex direction="column" align="center" justify="center" minH="350px">
+          <Flex
+            direction="column"
+            align="center"
+            justify="center"
+            minH="350px"
+            px={6}
+            textAlign="center"
+          >
             <Text fontSize="60px" h={'60px'}>
               ❌
             </Text>
-            <Text mt={4} color="red.500">
+            <Text mt={4} color="red.500" wordBreak="break-word">
               {errMsg}
             </Text>
             <Button mt={4} colorScheme="blue" onClick={generateQR}>
