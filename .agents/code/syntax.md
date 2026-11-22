@@ -537,3 +537,4 @@ const text = translate(dynamicLabel);
 
 - 应用的 `tsconfig.json` 服务于 IDE 与 `next dev` / Turbopack，保留 `sdk/*/src` 源码 `paths` 映射以保证开发态联动，禁止写跨包宽泛 glob（如 `../../packages/**/*.ts`），并保持随镜像交付的 `scripts/**/*.ts` 纳入检查。
 - `tsconfig.typecheck.json` 专用于 `tsc -b` 增量检查，在此覆写 `paths` 消费预构建 SDK 声明并引用各包 `tsconfig.composite.json`。
+- 因 `tsdown` 声明构建不执行完整类型检查，凡被 `tsconfig.typecheck.json` 改为消费声明、但仍由镜像编译源码的 workspace SDK（如 `@fastgpt-sdk/storage`、`@fastgpt-sdk/otel`、`@fastgpt-sdk/sandbox-adapter`），其源码类型检查归属各自 workspace 的 `typecheck` 脚本，且必须同步接入所有启用 `SKIP_TYPE_CHECK=true` 的 CI `typecheck-app` 门禁。

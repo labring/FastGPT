@@ -82,10 +82,11 @@ jobs:
             tsc-app-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'tsconfig.json', 'packages/*/tsconfig*.json', 'projects/app/tsconfig*.json') }}-
             tsc-app-${{ runner.os }}-
 
-      - name: Build workspace SDKs and workflow-core
+      - name: Typecheck workspace SDKs
         run: |
-          pnpm build:sdks
-          pnpm --filter @fastgpt/workflow-core build
+          pnpm --filter @fastgpt-sdk/storage typecheck
+          pnpm --filter @fastgpt-sdk/otel typecheck
+          pnpm --filter @fastgpt-sdk/sandbox-adapter typecheck
 
       - name: Typecheck app
         env:
