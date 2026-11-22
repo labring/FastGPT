@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { getClientIpFromRequest } from '../../../common/security/clientIp';
+import { getSystemInstanceConfig } from '../../../common/system/systemInstanceConfig/runtime';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { serviceEnv } from '../../../env';
 import { McpOAuthApiError, toApiError } from './errors';
@@ -60,13 +61,23 @@ export const normalizeMcpOAuthBasePath = (basePath: string | undefined) => {
 export const MCP_OAUTH_CALLBACK_PATH = '/api/core/app/mcpTools/oauth/callback';
 export const MCP_OAUTH_CLIENT_METADATA_PATH = '/api/core/app/mcpTools/oauth/client-metadata.json';
 
-export const getMcpOAuthRouteConfig = (): McpOAuthRouteConfig => ({
-  enabled: serviceEnv.MCP_OAUTH_ENABLED,
-  runtimeEnabled: serviceEnv.MCP_OAUTH_RUNTIME_ENABLED,
-  feDomain: serviceEnv.FE_DOMAIN.replace(/\/+$/, ''),
-  basePath: normalizeMcpOAuthBasePath(serviceEnv.NEXT_PUBLIC_BASE_URL),
-  allowInsecureHttp: isMcpOAuthInsecureHttpAllowed()
-});
+/** OAuth 回调只能使用实例配置的公开地址，不能从请求头推断。 */
+export const getMcpOAuthRouteConfig = (): McpOAuthRouteConfig => {
+  const publicUrl = getSystemInstanceConfig().site.publicUrl;
+  if (!publicUrl) {
+    throw new McpOAuthApiError(McpOAuthErrorCodeEnum.internalError, {
+      message: 'Configure the public site URL before using MCP OAuth'
+    });
+  }
+  const { origin, pathname } = new URL(publicUrl);
+  return {
+    enabled: serviceEnv.MCP_OAUTH_ENABLED,
+    runtimeEnabled: serviceEnv.MCP_OAUTH_RUNTIME_ENABLED,
+    feDomain: origin,
+    basePath: normalizeMcpOAuthBasePath(serviceEnv.NEXT_PUBLIC_BASE_URL || pathname),
+    allowInsecureHttp: isMcpOAuthInsecureHttpAllowed()
+  };
+};
 
 export const assertMcpOAuthEnabled = () => {
   if (!serviceEnv.MCP_OAUTH_ENABLED) {
