@@ -272,29 +272,13 @@ describe('runToolCall compression node responses', () => {
         { role: 'user', content: 'Continue' }
       ];
 
-      await runToolCall(
-        createProps({
-          messages: history,
-          toolNodes: [
-            {
-              nodeId: 'weather_node',
-              name: 'Weather',
-              flowNodeType: FlowNodeTypeEnum.pluginModule,
-              inputs: []
-            },
-            ...(hasDataset
-              ? [
-                  {
-                    nodeId: 'dataset_node',
-                    name: 'Dataset',
-                    flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
-                    inputs: []
-                  }
-                ]
-              : [])
-          ]
-        })
-      );
+      const toolNodes = [
+        { nodeId: 'weather_node', flowNodeType: FlowNodeTypeEnum.pluginModule },
+        ...(hasDataset
+          ? [{ nodeId: 'dataset_node', flowNodeType: FlowNodeTypeEnum.datasetSearchNode }]
+          : [])
+      ].map((node) => ({ ...node, name: node.nodeId, inputs: [] }));
+      await runToolCall(createProps({ messages: history, toolNodes }));
 
       const [{ input, runtime }] = runAgentLoopMock.mock.calls[0];
       const allowed = ['weather_node', ...(hasDataset ? ['dataset_search'] : []), 'read_files'];

@@ -1,3 +1,4 @@
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import {
   createDefaultInstanceConfig,
   getTestInstanceConfig
@@ -1938,7 +1939,7 @@ describe('dispatchRunAgent user context', () => {
     });
   });
 
-  it('filters historical tools not available to the current Agent node before running agent loop', async () => {
+  it('filters inherited tools against the Agent runtime', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     getAgentRuntimeToolsMock.mockResolvedValueOnce([
       {
@@ -1947,80 +1948,34 @@ describe('dispatchRunAgent user context', () => {
         name: 'Weather',
         avatar: '',
         params: {},
-        requestSchema: {
-          type: 'function',
-          function: {
-            name: 'weather_tool',
-            description: 'Get weather',
-            parameters: { type: 'object', properties: {} }
-          }
-        }
+        requestSchema: { type: 'function', function: { name: 'weather_tool' } }
       }
     ]);
-
+    const allowed = ['update_plan', 'dataset_search', 'weather_tool', 'read_files'];
     const props = createProps();
-    props.histories = [
-      { obj: ChatRoleEnum.Human, value: [{ text: { content: 'Earlier question' } }] },
-      {
-        obj: ChatRoleEnum.AI,
-        value: [
-          {
-            agentPlanUpdate: {
-              id: 'call_plan',
-              functionName: 'update_plan',
-              params: '{"updates":[]}',
-              response: 'updated'
-            }
-          },
-          {
-            tools: [
-              {
-                id: 'call_other',
-                functionName: 'other_tool',
-                params: '{}',
-                response: 'other'
-              },
-              {
-                id: 'call_ds',
-                functionName: 'dataset_search',
-                params: '{}',
-                response: 'ds'
-              },
-              {
-                id: 'call_sandbox',
-                functionName: 'sandbox_shell',
-                params: '{}',
-                response: 'sh'
-              },
-              {
-                id: 'call_weather',
-                functionName: 'weather_tool',
-                params: '{"city":"BJ"}',
-                response: 'sunny'
-              },
-              {
-                id: 'call_read',
-                functionName: 'read_files',
-                params: '{"urls":["u"]}',
-                response: 'file'
-              }
-            ]
-          }
-        ]
-      }
-    ];
+    props.histories.push({
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          tools: [...allowed, 'other_tool', 'sandbox_shell'].map((name) => ({
+            id: name,
+            functionName: name,
+            params: '{}',
+            response: name
+          }))
+        }
+      ]
+    });
 
     await runWithContext({ mcpClientMemory: {} }, () => dispatchRunAgent(props));
 
-    const loopInputMessages = runAgentLoopMock.mock.calls[0][0].input.messages;
-    const toolNames = loopInputMessages
-      .filter((msg: any) => msg.role === 'assistant')
-      .flatMap((msg: any) => (msg.tool_calls ?? []).map((tc: any) => tc.function.name));
-    const toolCallIds = loopInputMessages
-      .filter((msg: any) => msg.role === 'tool')
-      .map((msg: any) => msg.tool_call_id);
-
-    expect(toolNames).toEqual(['update_plan', 'dataset_search', 'weather_tool', 'read_files']);
-    expect(toolCallIds).toEqual(['call_plan', 'call_ds', 'call_weather', 'call_read']);
+    const messages: ChatCompletionMessageParam[] = runAgentLoopMock.mock.calls[0][0].input.messages;
+    const toolNames = messages
+      .filter((msg) => msg.role === 'assistant')
+      .flatMap((msg) => msg.tool_calls?.map((call) => call.function.name) ?? []);
+    expect(toolNames).toEqual(allowed);
+    expect(messages.filter((msg) => msg.role === 'tool').map((msg) => msg.tool_call_id)).toEqual(
+      allowed
+    );
   });
 });

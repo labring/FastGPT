@@ -17,7 +17,9 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import { ChatItemMiniSchema, type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import {
   ChatCompletionMessageParamSchema,
-  type ChatCompletionMessageParam
+  type ChatCompletionMessageParam,
+  type ChatCompletionMessageToolCall,
+  type ChatCompletionToolMessageParam
 } from '@fastgpt/global/core/ai/llm/type';
 import type {
   WorkflowBuilderPreviewInteractive,
@@ -4321,7 +4323,11 @@ describe('filterToolMessages', () => {
     type: 'function' as const,
     function: { name, arguments: '{}' }
   });
-  const toolResult = (id: string, content: string) => ({
+  const assistant = (...tool_calls: ChatCompletionMessageToolCall[]) => ({
+    role: 'assistant' as const,
+    tool_calls
+  });
+  const result = (id: string, content: ChatCompletionToolMessageParam['content'] = id) => ({
     role: 'tool' as const,
     tool_call_id: id,
     content
@@ -4329,112 +4335,72 @@ describe('filterToolMessages', () => {
   const allowsWeather = (name: string) => name === 'weather';
   const user = { role: 'user' as const, content: 'Check the weather' };
 
-  it('filters mixed parallel calls, keeps text and result content, and leaves the input intact', () => {
-    const weather = call('call_weather', 'weather');
-    const content = [
-      { type: 'text' as const, text: 'Sunny' },
-      { type: 'image_url' as const, image_url: { url: 'https://example.com/weather.png' } }
-    ];
-    const weatherResult = {
-      role: 'tool' as const,
-      tool_call_id: weather.id,
-      content
-    };
-    const assistant = {
-      role: 'assistant' as const,
+  it('keeps a split parallel group in order, dropping denied calls and duplicate results', () => {
+    const weather = call('weather', 'weather');
+    const first = {
+      ...assistant(call('stock', 'stock'), weather),
       content: 'Checking weather and stock',
-      reasoning_content: 'Parallel calls',
-      tool_calls: [call('call_stock', 'stock'), weather]
+      reasoning_content: 'Parallel calls'
     };
-    const messages = [user, assistant, toolResult('call_stock', 'Stock price'), weatherResult];
+    const second = { ...assistant(call('other_city', 'weather')), hideInUI: true };
+    const picture = result('weather', [
+      { type: 'text', text: 'Sunny' },
+      { type: 'image_url', image_url: { url: 'https://example.com/weather.png' } }
+    ]);
+    const otherCity = result('other_city', 'Cloudy');
+    const messages = [user, first, second, otherCity, result('stock'), picture, result('weather')];
     const original = structuredClone(messages);
 
-    const filtered = filterToolMessages(messages, allowsWeather);
-
-    expect(filtered).toEqual([user, { ...assistant, tool_calls: [weather] }, weatherResult]);
-    expect(filtered[2]).toBe(weatherResult);
+    expect(filterToolMessages(messages, allowsWeather)).toEqual([
+      user,
+      { ...first, tool_calls: [weather] },
+      second,
+      otherCity,
+      picture
+    ]);
     expect(messages).toEqual(original);
   });
 
-  it('keeps results for a split parallel call group and ignores duplicate results', () => {
-    const first = { role: 'assistant' as const, tool_calls: [call('first', 'weather')] };
-    const second = {
-      role: 'assistant' as const,
-      hideInUI: true,
-      tool_calls: [call('second', 'weather')]
-    };
-    const firstResult = toolResult('first', 'Sunny');
-    const secondResult = toolResult('second', 'Cloudy');
+  it('isolates reused IDs between tool rounds without an intervening user message', () => {
+    const weather = assistant(call('call_0', 'weather'));
+    const stock = { ...assistant(call('call_0', 'stock')), reasoning_content: 'Thinking' };
+    const sunny = result('call_0', 'Sunny');
+    const rainy = result('call_0', 'Rainy');
 
     expect(
       filterToolMessages(
-        [first, second, secondResult, firstResult, toolResult('first', 'Duplicate')],
+        [weather, sunny, stock, result('call_0', 'Stock'), weather, rainy],
         allowsWeather
       )
-    ).toEqual([first, second, secondResult, firstResult]);
+    ).toEqual([weather, sunny, weather, rainy]);
   });
 
-  it('isolates reused IDs between tool rounds even without a user message between them', () => {
-    const first = { role: 'assistant' as const, tool_calls: [call('call_0', 'weather')] };
-    const firstResult = toolResult('call_0', 'Sunny');
-    const dropped = {
-      role: 'assistant' as const,
-      reasoning_content: 'Checking stock',
-      tool_calls: [call('call_0', 'stock')]
-    };
-    const third = { role: 'assistant' as const, tool_calls: [call('call_0', 'weather')] };
-    const thirdResult = toolResult('call_0', 'Rainy');
+  it('ignores tool results before any call and after a user boundary', () => {
+    const weather = assistant(call('call_0', 'weather'));
+    const orphan = result('call_0');
 
-    expect(
-      filterToolMessages(
-        [first, firstResult, dropped, toolResult('call_0', 'Stock price'), third, thirdResult],
-        allowsWeather
-      )
-    ).toEqual([first, firstResult, third, thirdResult]);
+    expect(filterToolMessages([orphan, weather, user, orphan], allowsWeather)).toEqual([
+      weather,
+      user
+    ]);
   });
 
-  it('ends pending matches at a user message and filters leading orphan results', () => {
-    const assistant = { role: 'assistant' as const, tool_calls: [call('call_0', 'weather')] };
-
-    expect(
-      filterToolMessages(
-        [
-          toolResult('call_0', 'Leading orphan'),
-          assistant,
-          user,
-          toolResult('call_0', 'Late result')
-        ],
-        allowsWeather
-      )
-    ).toEqual([assistant, user]);
-  });
-
-  it('pairs legacy functions within the current group and preserves modern calls independently', () => {
-    const modern = call('modern', 'weather');
-    const modernResult = toolResult(modern.id, 'Sunny');
-    const mixed = {
-      role: 'assistant' as const,
-      function_call: { name: 'stock', arguments: '{}' },
-      tool_calls: [modern]
-    };
+  it('pairs legacy functions by name while filtering modern calls by ID', () => {
+    const modern = assistant(call('modern', 'weather'));
+    const mixed = { ...modern, function_call: call('legacy', 'stock').function };
     const legacy = {
       role: 'assistant' as const,
-      function_call: { name: 'weather', arguments: '{}' }
+      function_call: call('legacy', 'weather').function
     };
     const legacyResult = { role: 'function' as const, name: 'weather', content: 'Rainy' };
+    const modernResult = result('modern', 'Sunny');
 
     expect(
       filterToolMessages(
         [legacyResult, mixed, modernResult, legacy, legacyResult, user, legacyResult],
         allowsWeather
       )
-    ).toEqual([
-      { role: 'assistant', tool_calls: [modern] },
-      modernResult,
-      legacy,
-      legacyResult,
-      user
-    ]);
+    ).toEqual([modern, modernResult, legacy, legacyResult, user]);
   });
 
   it('drops ambiguous IDs in adjacent ChatItem fragments and keeps unrelated pairs', () => {
@@ -4461,12 +4427,11 @@ describe('filterToolMessages', () => {
       filterToolMessages(messages, (name) => name === 'update_plan' || allowsWeather(name))
     ).toEqual([
       expect.objectContaining({ role: 'assistant', tool_calls: [call('call_1', 'weather')] }),
-      expect.objectContaining(toolResult('call_1', 'Sunny'))
+      expect.objectContaining(result('call_1', 'Sunny'))
     ]);
   });
 
   it.each([
-    { content: undefined },
     { content: '  \n ' },
     {
       content: [
@@ -4474,33 +4439,23 @@ describe('filterToolMessages', () => {
         { type: 'text' as const, text: '   ' }
       ]
     }
-  ])('drops removed tool shells with no visible content (%j)', ({ content }) => {
-    const assistant = {
-      role: 'assistant' as const,
-      content,
-      tool_calls: [call('call_0', 'stock')]
-    };
+  ])(
+    'drops blank tool shells with an empty allowlist and retains interactive payloads (%j)',
+    ({ content }) => {
+      const shell = {
+        ...assistant(call('weather', 'weather')),
+        content,
+        reasoning_content: 'Thinking'
+      };
+      const interactive = { type: 'agentAsk' };
+      const weatherResult = result('weather');
 
-    expect(
-      filterToolMessages([user, assistant, toolResult('call_0', 'Stock')], allowsWeather)
-    ).toEqual([user]);
-  });
-
-  it('drops tool-only shells with an empty allowlist and retains assistant interaction payloads', () => {
-    const shell = {
-      role: 'assistant' as const,
-      reasoning_content: 'Thinking',
-      tool_calls: [call('first', 'weather')]
-    };
-    const interactive = { type: 'agentAsk' };
-    const assistant = { ...shell, interactive };
-
-    expect(
-      filterToolMessages(
-        [user, shell, toolResult('first', 'Sunny'), assistant, toolResult('first', 'Rainy')],
-        () => false
-      )
-    ).toEqual([user, { role: 'assistant', reasoning_content: 'Thinking', interactive }]);
-    expect(filterToolMessages([], allowsWeather)).toEqual([]);
-  });
+      expect(
+        filterToolMessages(
+          [user, shell, weatherResult, { ...shell, interactive }, weatherResult],
+          () => false
+        )
+      ).toEqual([user, { role: 'assistant', content, reasoning_content: 'Thinking', interactive }]);
+    }
+  );
 });

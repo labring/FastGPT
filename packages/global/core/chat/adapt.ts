@@ -221,25 +221,21 @@ export const filterToolMessages = (
     Boolean(message.audio) ||
     Boolean(message.refusal);
 
-  const pendingToolCallIds = new Set<string>();
-  const conflictingToolCallIds = new Set<string>();
+  const keepByCallId = new Map<string, boolean>();
   let pendingFunctionName: string | undefined;
   const resetCallGroup = () => {
-    pendingToolCallIds.clear();
-    conflictingToolCallIds.clear();
+    keepByCallId.clear();
     pendingFunctionName = undefined;
   };
 
   // 同组复用 ID 时结果无法唯一归属，整组中的该 ID 调用与结果一起剔除。
   const startCallGroup = (index: number) => {
     resetCallGroup();
-    const seenIds = new Set<string>();
     for (let cursor = index; cursor < messages.length; cursor++) {
       const message = messages[cursor];
       if (message.role !== ChatCompletionRequestMessageRoleEnum.Assistant) break;
-      for (const { id } of message.tool_calls ?? []) {
-        if (seenIds.has(id)) conflictingToolCallIds.add(id);
-        seenIds.add(id);
+      for (const call of message.tool_calls ?? []) {
+        keepByCallId.set(call.id, !keepByCallId.has(call.id) && toolFilter(call.function.name));
       }
     }
   };
@@ -254,13 +250,7 @@ export const filterToolMessages = (
 
       let nextMessage = message;
       if (message.tool_calls?.length) {
-        const keptToolCalls = message.tool_calls.filter((toolCall) => {
-          if (conflictingToolCallIds.has(toolCall.id) || !toolFilter(toolCall.function.name)) {
-            return false;
-          }
-          pendingToolCallIds.add(toolCall.id);
-          return true;
-        });
+        const keptToolCalls = message.tool_calls.filter(({ id }) => keepByCallId.get(id));
 
         if (keptToolCalls.length !== message.tool_calls.length) {
           const { tool_calls: _droppedToolCalls, ...rest } = message;
@@ -284,7 +274,8 @@ export const filterToolMessages = (
     }
 
     if (message.role === ChatCompletionRequestMessageRoleEnum.Tool) {
-      if (pendingToolCallIds.delete(message.tool_call_id)) {
+      if (keepByCallId.get(message.tool_call_id)) {
+        keepByCallId.delete(message.tool_call_id);
         filtered.push(message);
       }
       continue;

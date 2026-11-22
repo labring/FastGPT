@@ -266,44 +266,64 @@ const body = (stream: boolean) => ({
 });
 
 describe('createLLMResponse HTTP/SSE contract', () => {
-  it('keeps prompt tool protocol messages separate in initial and length continuation requests', async () => {
-    rounds.push({ text: '0: Partial', finish: 'length' }, { text: '0: complete.', finish: 'stop' });
-    const searchCall = call('search');
-    const messages = filterToolMessages(
-      [
-        { role: 'user', content: message },
-        {
-          role: 'assistant',
-          content: 'Checking the old index.',
-          tool_calls: [{ ...call('old_index'), id: 'old_call' }]
-        },
-        { role: 'tool', tool_call_id: 'old_call', content: 'Old data' },
-        { role: 'assistant', tool_calls: [searchCall] },
-        { role: 'tool', tool_call_id: searchCall.id, content: 'Search result' },
-        { role: 'user', content: 'Summarize.' }
-      ],
-      (name) => name === 'search'
-    );
+  it.each(['toolChoice', 'prompt'] as const)(
+    'sends paired filtered history on %s initial and continuation requests',
+    async (toolCallMode) => {
+      rounds.push({ text: 'Partial', finish: 'length' }, { text: 'Complete.', finish: 'stop' });
+      const prompt = toolCallMode === 'prompt';
+      const searchCall = call('search');
+      const messages = filterToolMessages(
+        [
+          { role: 'user', content: message },
+          {
+            role: 'assistant',
+            content: 'Checking the old index.',
+            tool_calls: [call('old_index')]
+          },
+          { role: 'tool', tool_call_id: searchCall.id, content: 'Old data' },
+          {
+            role: 'assistant',
+            ...(prompt ? {} : { content: 'Searching.' }),
+            tool_calls: [searchCall]
+          },
+          { role: 'tool', tool_call_id: searchCall.id, content: 'Search result' },
+          { role: 'user', content: 'Summarize.' }
+        ],
+        (name) => name === 'search'
+      );
 
-    const response = await createLLMResponse({
-      teamId,
-      maxRetries: 0,
-      maxContinuations: 2,
-      saveLLMResponseRecord: false,
-      body: { ...body(false), toolCallMode: 'prompt', messages }
-    });
+      const response = await createLLMResponse({
+        teamId,
+        maxRetries: 0,
+        maxContinuations: 2,
+        saveLLMResponseRecord: false,
+        body: { ...body(false), toolCallMode, messages }
+      });
 
-    expect(response.error).toBeUndefined();
-    expect(received).toHaveLength(2);
-    for (const request of received) {
-      expect(request.tools).toBeUndefined();
-      expect(request.messages?.slice(2, 5)).toMatchObject([
-        { role: 'assistant', content: '0: Checking the old index.' },
-        { role: 'assistant', content: `1: ${JSON.stringify(searchCall.function)}` },
-        { role: 'user', content: '<ToolResponse>\nSearch result\n</ToolResponse>' }
-      ]);
+      expect(response.error).toBeUndefined();
+      expect(received).toHaveLength(2);
+      for (const request of received) {
+        expect(request.tools).toEqual(prompt ? undefined : tools);
+        const history = request.messages?.slice(prompt ? 2 : 1, prompt ? 5 : 3);
+        expect(history).toMatchObject(
+          prompt
+            ? [
+                { role: 'assistant', content: '0: Checking the old index.' },
+                { role: 'assistant', content: `1: ${JSON.stringify(searchCall.function)}` },
+                { role: 'user', content: '<ToolResponse>\nSearch result\n</ToolResponse>' }
+              ]
+            : [
+                {
+                  role: 'assistant',
+                  content: 'Checking the old index.Searching.',
+                  tool_calls: [searchCall]
+                },
+                { role: 'tool', tool_call_id: searchCall.id, content: 'Search result' }
+              ]
+        );
+      }
     }
-  });
+  );
 
   it.each([true, false])(
     'preserves reasoning through tool rounds and serialized resume: stream=%s',
