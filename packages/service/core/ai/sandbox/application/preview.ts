@@ -16,9 +16,9 @@ import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { asRedisLogicalKey, redisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import { getAgentSandboxProxyConfig } from '../config';
-import { resolveSandboxWorkspacePath } from './file';
-import { getSandboxRuntimeProfile } from '../infrastructure/provider/runtimeProfile';
-import { trimSandboxPathRight } from '../utils';
+import { getSandboxStaticRuntimePaths } from '../infrastructure/opensandbox/runtimeProfile';
+import { resolveSandboxRuntimePath, trimSandboxPathRight } from '../utils';
+import { normalizeLegacyWorkspacePath, parseLegacySandboxPreviewCredential } from '../legacy';
 const SANDBOX_PREVIEW_SESSION_KEY_PREFIX = 'sandbox:preview';
 const CREATE_SANDBOX_PREVIEW_SESSION_SCRIPT = `
 redis.call("zremrangebyscore", KEYS[1], "-inf", ARGV[1])
@@ -35,7 +35,6 @@ const SandboxPreviewSessionIdSchema = z
   .string()
   .length(SANDBOX_PREVIEW_SESSION_ID_LENGTH)
   .regex(new RegExp(`^[a-z][a-zA-Z0-9]{${SANDBOX_PREVIEW_SESSION_ID_LENGTH - 1}}$`));
-const LegacySandboxPreviewSandboxIdSchema = z.string().regex(/^(?:app|skilledit)-[a-f0-9]{16}$/);
 
 const SandboxPreviewSessionSchema = z.object({
   sandboxId: z.string().min(1),
@@ -113,25 +112,16 @@ export async function createSandboxPreviewSession(context: SandboxPreviewSession
 export async function resolveSandboxPreviewSession(
   credential: string
 ): Promise<SandboxPreviewSession> {
-  const { sessionKey, legacySandboxId } = (() => {
-    if (!credential.includes(':')) {
-      const sessionId = SandboxPreviewSessionIdSchema.parse(credential);
-      return { sessionKey: getPreviewSessionKey(sessionId), legacySandboxId: undefined };
-    }
-
-    const [rawSandboxId, rawSessionId, ...extraSegments] = credential.split(':');
-    if (extraSegments.length > 0) {
-      throw new Error('Invalid sandbox preview session');
-    }
-    const legacySandboxId = LegacySandboxPreviewSandboxIdSchema.parse(rawSandboxId);
-    const sessionId = SandboxPreviewSessionIdSchema.parse(rawSessionId);
-    return {
-      sessionKey: asRedisLogicalKey(
-        `${SANDBOX_PREVIEW_SESSION_KEY_PREFIX}:${legacySandboxId}:${sessionId}`
-      ),
-      legacySandboxId
-    };
-  })();
+  const { sessionKey, legacySandboxId } = credential.includes(':')
+    ? parseLegacySandboxPreviewCredential({
+        credential,
+        keyPrefix: SANDBOX_PREVIEW_SESSION_KEY_PREFIX,
+        sessionIdSchema: SandboxPreviewSessionIdSchema
+      })
+    : {
+        sessionKey: getPreviewSessionKey(SandboxPreviewSessionIdSchema.parse(credential)),
+        legacySandboxId: undefined
+      };
   const serializedContext = await redisCacheAdapter.get(sessionKey);
 
   if (!serializedContext) {
@@ -158,11 +148,19 @@ export function resolveSandboxPreviewPath(filePath: string): {
     throw new Error('Invalid sandbox preview path');
   }
 
-  const workDirectory = trimSandboxPathRight(getSandboxRuntimeProfile().workDirectory);
-  const providerPath = resolveSandboxWorkspacePath(filePath, workDirectory || '/', {
-    allowAbsolutePath: true,
-    allowOutsideWorkspace: false
-  });
+  const workDirectory = trimSandboxPathRight(getSandboxStaticRuntimePaths().workDirectory);
+  const normalizedFilePath = normalizeLegacyWorkspacePath(filePath, workDirectory);
+  const providerPath = resolveSandboxRuntimePath(
+    normalizedFilePath,
+    {
+      workspaceRoot: workDirectory,
+      sessionWorkDirectory: workDirectory
+    },
+    {
+      allowAbsolutePath: true,
+      allowOutsideWorkspace: false
+    }
+  );
   const relativePath = providerPath.slice(workDirectory.length).replace(/^\/+/, '');
   const segments = relativePath.split('/');
   if (
@@ -187,29 +185,29 @@ const getSandboxPreviewProxyBaseUrl = () => {
   return url.toString().replace(/\/+$/, '');
 };
 
+type SandboxPreviewTarget =
+  | { relativePath: string; filePath?: never }
+  | { filePath: string; relativePath?: never };
+
 /** 使用已创建的 Preview session 构建一个 workspace 文件 URL。 */
-export function buildSandboxPreviewFileUrl({
-  sessionId,
-  filePath
-}: {
-  sessionId: string;
-  filePath: string;
-}): string {
-  const { relativePath } = resolveSandboxPreviewPath(filePath);
+export function buildSandboxPreviewFileUrl(
+  params: { sessionId: string } & SandboxPreviewTarget
+): string {
+  const relativePath =
+    params.relativePath !== undefined
+      ? params.relativePath
+      : resolveSandboxPreviewPath(params.filePath).relativePath;
   const encodedPath = relativePath.split('/').map(encodeURIComponent).join('/');
-  return `${getSandboxPreviewProxyBaseUrl()}/preview/${encodeURIComponent(sessionId)}/${encodedPath}`;
+  return `${getSandboxPreviewProxyBaseUrl()}/preview/${encodeURIComponent(params.sessionId)}/${encodedPath}`;
 }
 
 /** 为一个 workspace 文件创建 session 并返回完整 direct preview URL。 */
 export async function createSandboxPreviewFileUrl({
   context,
-  filePath
-}: {
-  context: SandboxPreviewSession;
-  filePath: string;
-}): Promise<string> {
+  ...target
+}: { context: SandboxPreviewSession } & SandboxPreviewTarget): Promise<string> {
   return buildSandboxPreviewFileUrl({
     sessionId: await createSandboxPreviewSession(context),
-    filePath
+    ...target
   });
 }

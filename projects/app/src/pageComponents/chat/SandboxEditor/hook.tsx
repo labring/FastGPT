@@ -22,8 +22,8 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { TreeNode } from './components/FileTree';
 import type { OpenedFile } from './components/FileTabs';
 import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
+import { OPEN_SANDBOX_DEFAULT_ROOT_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
 import { getSandboxTargetId, tryResolveSandboxTarget } from './types';
-import type { ExecuteResult } from '@fastgpt-sdk/sandbox-adapter';
 import {
   getLanguageByFileName,
   getIsBinaryByLanguage,
@@ -41,6 +41,7 @@ import {
   applySandboxMoveOperationsToExpandedDirs,
   getSandboxIdeSessionRoot,
   scopeSandboxIdeRpcParams,
+  isValidSandboxPathSegment,
   type SandboxMoveOperation
 } from './utils';
 
@@ -48,9 +49,9 @@ const SYSTEM_FILE_NAMES = ['.DS_Store'];
 const INITIAL_TREE_MAX_DEPTH = 20;
 const RPC_TIMEOUT_MS = 30000;
 const DEFAULT_MAX_FILE_SIZE_MB = 10;
-const INVALID_PATH_SEGMENT_CHARS = /[\/\\\u0000]/;
 const RPC_READ_FILE_HTTP_MIN_BYTES = 5 * 1024 * 1024;
 const SANDBOX_RPC_FILE_TOO_LARGE_CODE = -32004;
+const SANDBOX_RPC_DISK_QUOTA_EXCEEDED_CODE = -32005;
 
 type RefreshWorkspaceOptions = {
   preserveExpandedDirs?: boolean;
@@ -112,9 +113,6 @@ const createSandboxRpcError = (message: string, rpcCode?: number): SandboxRpcErr
   Object.assign(new Error(message), {
     ...(typeof rpcCode === 'number' ? { rpcCode } : {})
   });
-
-const isValidPathSegment = (name: string) =>
-  !!name && name !== '.' && name !== '..' && !INVALID_PATH_SEGMENT_CHARS.test(name);
 
 /**
  * useSandboxEditor —— UI Hook
@@ -440,6 +438,9 @@ export const useSandboxFileStore = ({
   const { toast } = useToast();
   const sandboxTargetId = getSandboxTargetId(sandboxTarget);
   const [maxFileBytes, setMaxFileBytes] = useState(DEFAULT_MAX_FILE_SIZE_MB * 1024 * 1024);
+  const [sessionWorkDirectory, setSessionWorkDirectory] = useState<string>(
+    OPEN_SANDBOX_DEFAULT_ROOT_PATH
+  );
   const maxFileSizeMB = Math.ceil(maxFileBytes / 1024 / 1024);
 
   const [fileTree, setFileTree] = useState<TreeNode[]>([]);
@@ -834,6 +835,7 @@ export const useSandboxFileStore = ({
         });
         if (isDestroyed) return;
         setMaxFileBytes(res.maxFileBytes);
+        setSessionWorkDirectory(res.sessionWorkDirectory);
 
         ideSessionRootRef.current = getSandboxIdeSessionRoot(
           res.workspaceRoot,
@@ -864,12 +866,11 @@ export const useSandboxFileStore = ({
               if (pending) {
                 pendingRpcRequests.delete(rpcId);
                 if (data.error) {
-                  pending.reject(
-                    createSandboxRpcError(
-                      data.error.message || 'Sandbox RPC failed',
-                      data.error.code
-                    )
-                  );
+                  const errorMessage =
+                    data.error.code === SANDBOX_RPC_DISK_QUOTA_EXCEEDED_CODE
+                      ? t('common:code_error.sandbox_error.agent_sandbox_disk_quota_exceeded')
+                      : data.error.message || 'Sandbox RPC failed';
+                  pending.reject(createSandboxRpcError(errorMessage, data.error.code));
                 } else {
                   pending.resolve(data.result);
                 }
@@ -1338,7 +1339,7 @@ export const useSandboxFileStore = ({
   // 新建文件/目录 (乐观更新)
   const onCreateNode = useCallback(
     async (parentPath: string, name: string, type: 'file' | 'directory') => {
-      if (!isValidPathSegment(name)) {
+      if (!isValidSandboxPathSegment(name)) {
         toast({
           title: t('chat:sandbox_create_failed'),
           description: t('chat:sandbox_invalid_file_name'),
@@ -1431,7 +1432,7 @@ export const useSandboxFileStore = ({
   // 重命名完成 (乐观更新)
   const onRenameComplete = useCallback(
     async (oldPath: string, newName: string) => {
-      if (!isValidPathSegment(newName)) {
+      if (!isValidSandboxPathSegment(newName)) {
         toast({
           title: t('chat:sandbox_rename_failed'),
           description: t('chat:sandbox_invalid_file_name'),
@@ -1595,20 +1596,6 @@ export const useSandboxFileStore = ({
     [rpcCall, toast, t]
   );
 
-  const onExecCommand = useCallback(
-    async (command: string, timeoutMs?: number) => {
-      const execTimeoutMs = timeoutMs ?? RPC_TIMEOUT_MS;
-      return rpcCall<ExecuteResult>(
-        'fs/exec',
-        { command, timeoutMs },
-        {
-          timeoutMs: execTimeoutMs + 1000
-        }
-      );
-    },
-    [rpcCall]
-  );
-
   // 上传文件
   const onUploadFiles = useCallback(
     async (files: FileList, targetDirPath: string) => {
@@ -1616,7 +1603,7 @@ export const useSandboxFileStore = ({
       const pendingPaths = new Set<string>();
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        if (!isValidPathSegment(file.name)) {
+        if (!isValidSandboxPathSegment(file.name)) {
           toast({
             title: t('chat:sandbox_upload_failed'),
             description: t('chat:sandbox_invalid_file_name'),
@@ -1754,7 +1741,7 @@ export const useSandboxFileStore = ({
     onMoveFiles,
     onDeleteFile,
     onUploadFiles,
-    onExecCommand,
+    sessionWorkDirectory,
     toggleDirectory
   };
 };

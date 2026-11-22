@@ -285,7 +285,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     });
 
     // 初始化 sandbox：初始化、注入 skills、files。命中 Version 快照的 Skill 由快照授权，未命中的检查运行人权限。
-    const prepareRuntime = () =>
+    const prepareRuntime = (runtimeOptions?: {
+      onUpgrade?: () => void;
+      onUpgradeComplete?: () => void;
+    }) =>
       ensureAgentSandboxRuntime({
         sourceType: sandboxSourceType,
         sourceId: sandboxSourceId,
@@ -299,7 +302,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         selectedSkills: effectiveSelectedSkills,
         editSkillId,
         prepareActions: agentSandboxPrepareActions,
-        currentFiles: skipSandboxInputFiles ? [] : userContext.currentFiles
+        currentFiles: skipSandboxInputFiles ? [] : userContext.currentFiles,
+        onUpgrade: runtimeOptions?.onUpgrade,
+        onUpgradeComplete: runtimeOptions?.onUpgradeComplete
       });
     const { sandboxClient, currentWorkingDirectory, skillInfos } = effectiveUseAgentSandbox
       ? await ensureWorkflowSandboxReadyForUse({

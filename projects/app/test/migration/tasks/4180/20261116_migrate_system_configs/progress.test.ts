@@ -573,10 +573,13 @@ describe('system configuration migration with the real runner', () => {
     }
   });
 
-  it('migrates 4.17 env with enabled agentSandbox provider without dropping subservice before proxy backfill', async () => {
+  it('migrates 4.17 env with enabled agentSandbox without dropping subservice before proxy backfill', async () => {
     await seedLegacySources();
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'sealosdevbox');
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', 'https://devbox.example.test');
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'https://sandbox.example.test');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', 'opensandbox-api-key');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE', 'fastgpt-agent-sandbox:latest');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL', 'https://volume.example.test');
     const runner = createRunner('system-config-417-enabled-sandbox');
     try {
       await runner.start();
@@ -584,8 +587,8 @@ describe('system configuration migration with the real runner', () => {
       const subservice = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
       expect(decryptDomainSecrets('subservice', subservice?.overrides)).toMatchObject({
         agentSandbox: {
-          provider: 'sealosdevbox',
-          sealosdevbox: { baseUrl: 'https://devbox.example.test' },
+          enabled: true,
+          opensandbox: { baseUrl: 'https://sandbox.example.test' },
           proxy: {
             wsUrl: 'wss://proxy.example.test',
             previewUrl: 'https://preview.example.test',
@@ -599,7 +602,7 @@ describe('system configuration migration with the real runner', () => {
     }
   });
 
-  it('migrates existing pre-proxy subservice with enabled sandbox provider and deprecated fields', async () => {
+  it('migrates existing pre-proxy subservice with enabled sandbox and deprecated fields', async () => {
     await seedLegacySources();
     await MongoSystemInstanceConfig.collection.insertOne({
       domain: 'subservice',
@@ -608,8 +611,8 @@ describe('system configuration migration with the real runner', () => {
       overrides: {
         plugin: { remoteDebug: true },
         agentSandbox: {
-          provider: 'sealosdevbox',
-          sealosdevbox: { baseUrl: 'https://devbox.example.test' },
+          enabled: true,
+          opensandbox: { baseUrl: 'https://sandbox.example.test' },
           common: { entrypointTimeoutSeconds: 15 }
         }
       },
@@ -628,8 +631,8 @@ describe('system configuration migration with the real runner', () => {
           token: 'synthetic-code-token'
         },
         agentSandbox: {
-          provider: 'sealosdevbox',
-          sealosdevbox: { baseUrl: 'https://devbox.example.test' },
+          enabled: true,
+          opensandbox: { baseUrl: 'https://sandbox.example.test' },
           proxy: {
             wsUrl: 'wss://proxy.example.test',
             previewUrl: 'https://preview.example.test',

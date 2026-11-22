@@ -33,9 +33,13 @@ import {
   assertCompletableMultipartSession,
   assertCompleteMultipartParts,
   getExpectedMultipartPartLength,
-  isFileNotFoundError
+  getStorageKeyCandidates,
+  isFileNotFoundError,
+  withStorageKeyFallback
 } from '../utils/assert';
 import path from 'node:path';
+import type { Readable } from 'node:stream';
+import { getAbortError, throwIfAborted } from '@fastgpt/global/common/system/utils';
 import { MongoS3TTL } from '../models/ttl';
 import { addHours, addMinutes, differenceInHours, differenceInSeconds } from 'date-fns';
 import { getLogger, LogCategories } from '../../logger';
@@ -67,44 +71,8 @@ import { decodeS3Filename, encodeS3Filename, getS3UploadContentDisposition } fro
 
 const logger = getLogger(LogCategories.INFRA.S3);
 
-const getStorageKeyCandidates = (key: string): string[] => {
-  assertStorageObjectKey(key);
-  const decodedSegments = key.split('/').map((segment) => {
-    try {
-      return decodeURIComponent(segment);
-    } catch {
-      return segment;
-    }
-  });
-
-  // Legacy fallback 只能还原段内字符，不能让编码内容改变对象路径层级。
-  if (decodedSegments.some((segment) => segment.includes('/'))) return [key];
-
-  const legacyKey = decodedSegments.join('/');
-
-  if (legacyKey === key) return [key];
-  try {
-    assertStorageObjectKey(legacyKey, 'legacyKey');
-    return [key, legacyKey];
-  } catch {
-    return [key];
-  }
-};
-
-const withStorageKeyFallback = async <T>(
-  key: string,
-  operation: (candidate: string) => Promise<T>
-): Promise<T> => {
-  const candidates = getStorageKeyCandidates(key);
-  try {
-    return await operation(candidates[0]);
-  } catch (error) {
-    if (candidates.length === 1 || !isFileNotFoundError(error)) throw error;
-    return operation(candidates[1]);
-  }
-};
-
 /** Decode an encoded key basename for download links when the caller has no original filename. */
+const S3_STREAM_MULTIPART_PART_SIZE_BYTES = 5 * 1024 * 1024;
 const getDownloadFilenameFromKey = (key: string) => {
   const filename = path.basename(key);
   try {
@@ -1042,6 +1010,42 @@ export class S3BaseBucket {
     });
   }
 
+  protected async uploadObjectWithTTL(params: {
+    key: string;
+    body: string | Buffer | Readable;
+    filename: string;
+    contentType?: string;
+    contentLength?: number;
+    expiredTime: Date;
+    signal?: AbortSignal;
+  }): Promise<void> {
+    assertStorageObjectKey(params.key);
+    throwIfAborted(params.signal);
+
+    await MongoS3TTL.create({
+      minioKey: params.key,
+      bucketName: this.bucketName,
+      expiredTime: params.expiredTime
+    });
+    throwIfAborted(params.signal);
+
+    await this.client.uploadObject({
+      key: params.key,
+      body: params.body,
+      contentType: params.contentType ?? 'application/octet-stream',
+      contentLength: params.contentLength,
+      contentDisposition: getS3UploadContentDisposition({
+        filename: params.filename,
+        type: 'attachment'
+      }),
+      metadata: {
+        originFilename: encodeS3Filename(params.filename),
+        uploadTime: new Date().toISOString()
+      },
+      ...(params.signal ? { abortSignal: params.signal } : {})
+    });
+  }
+
   async uploadFileByBody(params: UploadFileByBodyParams) {
     const {
       key,
@@ -1051,24 +1055,14 @@ export class S3BaseBucket {
       contentLength,
       expiredTime = addHours(new Date(), 1)
     } = UploadFileByBodySchema.parse(params);
-    assertStorageObjectKey(key);
 
-    await MongoS3TTL.create({
-      minioKey: key,
-      bucketName: this.bucketName,
-      expiredTime
-    });
-
-    await this.client.uploadObject({
+    await this.uploadObjectWithTTL({
       key,
       body,
-      contentType: contentType ?? 'application/octet-stream',
+      filename,
+      contentType,
       contentLength,
-      contentDisposition: getS3UploadContentDisposition({ filename, type: 'attachment' }),
-      metadata: {
-        originFilename: encodeS3Filename(filename),
-        uploadTime: new Date().toISOString()
-      }
+      expiredTime
     });
 
     const fallbackExtension = resolveS3DownloadMimeFallbackExtension(contentType);
@@ -1123,5 +1117,244 @@ export class S3BaseBucket {
     if (!downloadResponse) return;
 
     return downloadResponse.body;
+  }
+
+  /**
+   * 未知总长流的自适应分片上传：
+   * - 总大小 `<= 5 MiB` 走单次 `uploadObject`；
+   * - `> 5 MiB` 自动走多厂商统一的 S3 Multipart Upload，按分片实时推流并在失败/中断时主动 abort；
+   * - 若提供 `expiredTime`，会先登记 `MongoS3TTL` 以便失败或未提交的孤立对象由清理任务自动回收。
+   */
+  protected async uploadStreamWithMultipart(params: {
+    key: string;
+    body: Readable;
+    contentType: string;
+    filename?: string;
+    expiredTime?: Date;
+    signal?: AbortSignal;
+  }): Promise<{ sizeBytes: number }> {
+    // 1. 在任何校验或异步数据库写入（如 MongoS3TTL.create）之前立即接管上游流错误与中断信号，避免前置窗口泄漏流或抛出 uncaughtException。
+    let bodyError: Error | undefined;
+    const onBodyError = (error: unknown) => {
+      if (!bodyError) {
+        bodyError = error instanceof Error ? error : new Error(String(error));
+      }
+    };
+    params.body.on('error', onBodyError);
+
+    const onAbort = () => {
+      if (!params.body.destroyed) {
+        params.body.destroy(getAbortError(params.signal!));
+      }
+    };
+    params.signal?.addEventListener('abort', onAbort, { once: true });
+
+    let uploadId: string | undefined;
+    let ttlRecordId: unknown;
+    let hasTemporaryMultipartTtl = false;
+
+    const clearMultipartTtlMarker = async () => {
+      if (!ttlRecordId) return;
+      if (hasTemporaryMultipartTtl) {
+        await MongoS3TTL.deleteOne({ _id: ttlRecordId }).catch(() => undefined);
+      } else {
+        await MongoS3TTL.updateOne({ _id: ttlRecordId }, { $unset: { multipart: '' } }).catch(
+          () => undefined
+        );
+      }
+    };
+
+    try {
+      assertStorageObjectKey(params.key);
+      throwIfAborted(params.signal);
+
+      const partSizeBytes = S3_STREAM_MULTIPART_PART_SIZE_BYTES;
+      if (params.expiredTime) {
+        const ttlDoc = await MongoS3TTL.create({
+          minioKey: params.key,
+          bucketName: this.bucketName,
+          expiredTime: params.expiredTime
+        });
+        ttlRecordId = ttlDoc._id;
+      }
+
+      throwIfAborted(params.signal);
+      if (bodyError) throw bodyError;
+
+      const contentDisposition = params.filename
+        ? getS3UploadContentDisposition({ filename: params.filename, type: 'attachment' })
+        : undefined;
+      const metadata = params.filename
+        ? {
+            uploadTime: new Date().toISOString(),
+            originFilename: encodeS3Filename(params.filename)
+          }
+        : undefined;
+
+      const pendingChunks: Buffer[] = [];
+      let pendingBytes = 0;
+      let totalBytes = 0;
+      let partNumber = 0;
+      const parts: Array<{ partNumber: number; etag: string }> = [];
+
+      const toChunkBuffer = (rawChunk: unknown): Buffer => {
+        if (Buffer.isBuffer(rawChunk)) return rawChunk;
+        if (rawChunk instanceof Uint8Array) {
+          return Buffer.from(rawChunk.buffer, rawChunk.byteOffset, rawChunk.byteLength);
+        }
+        if (typeof rawChunk === 'string') return Buffer.from(rawChunk, 'utf8');
+        throw new TypeError('Unsupported upload stream chunk type');
+      };
+
+      const combinePendingChunks = (): Buffer =>
+        pendingBytes === 0
+          ? Buffer.alloc(0)
+          : pendingChunks.length === 1
+            ? pendingChunks[0]
+            : Buffer.concat(pendingChunks, pendingBytes);
+
+      const pullPartBuffer = (targetSize: number): Buffer => {
+        const combined = combinePendingChunks();
+        const part = combined.subarray(0, targetSize);
+        const rest = combined.subarray(targetSize);
+        pendingChunks.length = 0;
+        // 复制剩余切片，避免在整块传完后继续引用上一个 5 MiB slab。
+        if (rest.length > 0) pendingChunks.push(Buffer.from(rest));
+        pendingBytes = rest.length;
+        return part;
+      };
+
+      // 2. 逐块推流：<= partSizeBytes 单次上传，超出后自动切换 S3 Multipart Upload。
+      for await (const rawChunk of params.body) {
+        throwIfAborted(params.signal);
+        if (bodyError) throw bodyError;
+        const buf = toChunkBuffer(rawChunk);
+        if (buf.length === 0) continue;
+
+        pendingChunks.push(buf);
+        pendingBytes += buf.length;
+        totalBytes += buf.length;
+
+        while (pendingBytes > partSizeBytes) {
+          throwIfAborted(params.signal);
+          if (!uploadId) {
+            const initiated = await this.client.createMultipartUpload({
+              key: params.key,
+              contentType: params.contentType,
+              ...(contentDisposition ? { contentDisposition } : {}),
+              ...(metadata ? { metadata } : {})
+            });
+            uploadId = initiated.uploadId;
+
+            if (ttlRecordId) {
+              await MongoS3TTL.updateOne(
+                { _id: ttlRecordId },
+                { $set: { multipart: { uploadId } } }
+              ).catch((ttlError) => {
+                logger.warn('Failed to attach multipart uploadId to S3 TTL record', {
+                  key: params.key,
+                  uploadId,
+                  error: ttlError
+                });
+              });
+            } else {
+              try {
+                const tempTtlDoc = await MongoS3TTL.create({
+                  minioKey: params.key,
+                  bucketName: this.bucketName,
+                  expiredTime: addHours(new Date(), S3_MULTIPART_SESSION_EXPIRE_HOURS),
+                  multipart: { uploadId }
+                });
+                ttlRecordId = tempTtlDoc._id;
+                hasTemporaryMultipartTtl = true;
+              } catch (ttlError) {
+                logger.warn('Failed to persist temporary multipart TTL record', {
+                  key: params.key,
+                  uploadId,
+                  error: ttlError
+                });
+              }
+            }
+          }
+
+          partNumber += 1;
+          const partBuffer = pullPartBuffer(partSizeBytes);
+          const uploaded = await this.client.uploadMultipartPart({
+            key: params.key,
+            uploadId,
+            partNumber,
+            body: partBuffer,
+            contentLength: partBuffer.length,
+            ...(params.signal ? { abortSignal: params.signal } : {})
+          });
+          parts.push({ partNumber, etag: uploaded.etag });
+        }
+      }
+
+      throwIfAborted(params.signal);
+      if (bodyError) throw bodyError;
+
+      if (!uploadId) {
+        const singleBuffer = combinePendingChunks();
+        await this.client.uploadObject({
+          key: params.key,
+          body: singleBuffer,
+          contentType: params.contentType,
+          contentLength: singleBuffer.length,
+          ...(contentDisposition ? { contentDisposition } : {}),
+          ...(metadata ? { metadata } : {})
+        });
+        return { sizeBytes: totalBytes };
+      }
+
+      if (pendingBytes > 0) {
+        partNumber += 1;
+        const tailBuffer = combinePendingChunks();
+        const uploadedTail = await this.client.uploadMultipartPart({
+          key: params.key,
+          uploadId,
+          partNumber,
+          body: tailBuffer,
+          contentLength: tailBuffer.length,
+          ...(params.signal ? { abortSignal: params.signal } : {})
+        });
+        parts.push({ partNumber, etag: uploadedTail.etag });
+      }
+
+      await this.client.completeMultipartUpload({
+        key: params.key,
+        uploadId,
+        parts
+      });
+      await clearMultipartTtlMarker();
+      return { sizeBytes: totalBytes };
+    } catch (error) {
+      if (uploadId) {
+        let abortedOnProvider = false;
+        try {
+          await this.client.abortMultipartUpload({ key: params.key, uploadId });
+          abortedOnProvider = true;
+        } catch (abortError) {
+          if (isNoSuchMultipartUploadError(abortError)) {
+            abortedOnProvider = true;
+          } else {
+            logger.warn('Failed to abort streaming multipart upload; keeping TTL marker for GC', {
+              key: params.key,
+              uploadId,
+              error: abortError
+            });
+          }
+        }
+        if (abortedOnProvider) {
+          await clearMultipartTtlMarker();
+        }
+      }
+      throw error;
+    } finally {
+      params.signal?.removeEventListener('abort', onAbort);
+      if (!params.body.destroyed) {
+        params.body.destroy();
+      }
+    }
   }
 }

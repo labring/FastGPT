@@ -1,7 +1,8 @@
 import {
   hasDamagedSecurityOverrides,
   LegacyBooleanSchema,
-  readMigrationDomainConfig
+  readMigrationDomainConfig,
+  resolveAgentSandboxProxyFromEnv
 } from './validation';
 import { readLegacyInstanceConfigEnv } from './env';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
@@ -408,7 +409,37 @@ export const buildLegacyDomainOverrides = ({
 
   // ---------- subservice ----------
   const codeSandboxBaseUrl = optionalText(legacyEnv.CODE_SANDBOX_URL);
-  const agentSandboxProvider = optionalText(legacyEnv.AGENT_SANDBOX_PROVIDER);
+  const rawEnv = legacyEnv as unknown as Record<string, unknown>;
+  const readExtraLegacyEnv = (key: string) =>
+    Object.hasOwn(rawEnv, key) ? rawEnv[key] : process.env[key];
+  const rawSandboxProvider = readExtraLegacyEnv('AGENT_SANDBOX_PROVIDER');
+  const normalizedSandboxProvider =
+    typeof rawSandboxProvider === 'string' ? rawSandboxProvider.trim().toLowerCase() : undefined;
+  const openSandboxBaseUrl = optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL);
+  const openSandboxApiKey = optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY);
+  const openSandboxImage = optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE);
+  const volumeManagerUrl = optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL);
+  const validSandboxProxy = resolveAgentSandboxProxyFromEnv(readExtraLegacyEnv);
+  const isLegacyEnvTemplatePlaceholder =
+    openSandboxBaseUrl === 'http://localhost:8090' &&
+    validSandboxProxy?.wsUrl === 'ws://localhost:3006' &&
+    validSandboxProxy?.previewUrl === 'http://localhost:3006' &&
+    validSandboxProxy?.secret === 'default_fastgpt_agent_sandbox_proxy_secret';
+  // 旧版若显式声明 AGENT_SANDBOX_PROVIDER，仅在 opensandbox 时启用，保留 "" / none / sealosdevbox 的禁用语义；
+  // 新版 Helm / Compose 已移除该变量，未声明时凭完整控制面+代理凭据启用，但排除旧 .env.template 默认占位值。
+  const providerAllowsOpenSandbox =
+    normalizedSandboxProvider === undefined
+      ? !isLegacyEnvTemplatePlaceholder
+      : normalizedSandboxProvider === 'opensandbox';
+  const agentSandboxEnabled = Boolean(
+    providerAllowsOpenSandbox &&
+    openSandboxBaseUrl &&
+    openSandboxApiKey &&
+    openSandboxImage &&
+    volumeManagerUrl &&
+    validSandboxProxy
+  );
+  const resolvedSandboxProxy = agentSandboxEnabled ? validSandboxProxy : undefined;
 
   overrides.subservice = compact({
     codeSandbox: compact({
@@ -423,7 +454,8 @@ export const buildLegacyDomainOverrides = ({
       sseProxyUrl: optionalText(legacyEnv.SSE_MCP_SERVER_PROXY_ENDPOINT)
     }),
     agentSandbox: compact({
-      provider: agentSandboxProvider,
+      enabled: agentSandboxEnabled ? true : undefined,
+      proxy: resolvedSandboxProxy,
       common: compact({
         cpuCount: optionalNumber(legacyEnv.AGENT_SANDBOX_CPU_COUNT),
         memoryMiB: optionalNumber(legacyEnv.AGENT_SANDBOX_MEMORY_MIB),
@@ -442,19 +474,13 @@ export const buildLegacyDomainOverrides = ({
         pypiIndexUrl: optionalText(legacyEnv.AGENT_SANDBOX_PYPI_INDEX_URL),
         aptMirror: optionalText(legacyEnv.AGENT_SANDBOX_APT_MIRROR)
       }),
-      sealosdevbox: compact({
-        baseUrl: optionalText(legacyEnv.AGENT_SANDBOX_SEALOS_BASEURL),
-        token: optionalText(legacyEnv.AGENT_SANDBOX_SEALOS_TOKEN),
-        workDirectory: optionalText(legacyEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY),
-        image: optionalText(legacyEnv.AGENT_SANDBOX_SEALOS_IMAGE)
-      }),
       opensandbox: compact({
-        baseUrl: optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL),
-        apiKey: optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY),
+        baseUrl: openSandboxBaseUrl,
+        apiKey: openSandboxApiKey,
         runtime: optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_RUNTIME),
-        image: optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE),
+        image: openSandboxImage,
         useServerProxy: optionalBool(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY),
-        volumeManagerUrl: optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL),
+        volumeManagerUrl,
         volumeManagerToken: optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN),
         volumeNamePrefix: optionalText(legacyEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX)
       })
@@ -914,6 +940,26 @@ const missingLegacyDefaultPaths = ({
   declared.filter((path) => !existingPaths.has(path) && !hasOverridePath(existingOverrides, path));
 
 /**
+ * 识别存量域文档中尚未清理但具有明确默认禁用语义的旧字段（如 `agentSandbox.provider = 'none' | 'sealosdevbox'`），
+ * 防止 Stage 2 环境变量补缺在 Stage 3 废弃字段清理前误把 `agentSandbox.enabled` 翻转为 `true`。
+ */
+const deriveImplicitLegacyDisabledPaths = (
+  domain: SystemInstanceConfigDomainKey,
+  existingOverrides: Record<string, unknown>
+): string[] => {
+  if (
+    domain === 'subservice' &&
+    isPlainObject(existingOverrides.agentSandbox) &&
+    typeof existingOverrides.agentSandbox.provider === 'string' &&
+    existingOverrides.agentSandbox.provider !== 'opensandbox' &&
+    !Object.hasOwn(existingOverrides.agentSandbox, 'enabled')
+  ) {
+    return ['agentSandbox.enabled'];
+  }
+  return [];
+};
+
+/**
  * 读取旧配置来源并生成迁移计划。
  * 仅当 11 个业务域均为空时读取 App defaultConfig.json；Pro ENV scope 不参与判空。
  *
@@ -1009,18 +1055,23 @@ export const inspectInstanceConfigMigration = async () => {
     if (!existingEntry || existingEntry.damagedSecurityOverrides) return false;
 
     const declaredExplicit = legacyExplicitDefaultPaths[domain] ?? [];
+    const implicitDisabledPaths = deriveImplicitLegacyDisabledPaths(
+      domain,
+      existingEntry.overrides
+    );
+    const effectiveExistingPaths = new Set([
+      ...existingEntry.explicitDefaultPaths,
+      ...implicitDisabledPaths
+    ]);
     const missingExplicitPaths = missingLegacyDefaultPaths({
       declared: declaredExplicit,
       existingOverrides: existingEntry.overrides,
-      existingPaths: existingEntry.explicitDefaultPaths
+      existingPaths: effectiveExistingPaths
     });
     const missing = computeMissingOverrides({
       existing: existingEntry.overrides,
       target: targetOverrides,
-      explicitDefaultPaths: new Set([
-        ...existingEntry.explicitDefaultPaths,
-        ...missingExplicitPaths
-      ])
+      explicitDefaultPaths: new Set([...effectiveExistingPaths, ...missingExplicitPaths])
     });
     if (!missing && missingExplicitPaths.length === 0) return false;
 
@@ -1104,15 +1155,17 @@ export const applyInstanceConfigMigration = async ({
           : []
       );
       const declaredExplicitDefaultPaths = explicitDefaultPaths?.[domain] ?? [];
+      const implicitDisabledPaths = deriveImplicitLegacyDisabledPaths(domain, existingOverrides);
+      const effectiveExistingPaths = new Set([
+        ...existingExplicitDefaultPaths,
+        ...implicitDisabledPaths
+      ]);
       const missingExplicitPaths = missingLegacyDefaultPaths({
         declared: declaredExplicitDefaultPaths,
         existingOverrides,
-        existingPaths: existingExplicitDefaultPaths
+        existingPaths: effectiveExistingPaths
       });
-      const explicitDefaultPathsSet = new Set([
-        ...existingExplicitDefaultPaths,
-        ...missingExplicitPaths
-      ]);
+      const explicitDefaultPathsSet = new Set([...effectiveExistingPaths, ...missingExplicitPaths]);
       const missing = computeMissingOverrides({
         existing: existingOverrides,
         target: targetOverrides,

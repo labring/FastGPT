@@ -7,7 +7,7 @@ import type {
 } from '@fastgpt/global/core/ai/skill/type';
 import { Types } from '../../../../common/mongo';
 import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
-import { removeSkillPackageTTL, uploadSkillPackageStream } from '../package';
+import { removeSkillPackageTTL, uploadSkillPackageStream } from '../package/storage';
 import { MongoAgentSkills } from '../model/schema';
 import { createVersion } from '../version';
 import { updateCurrentVersion } from './update';
@@ -24,13 +24,11 @@ type ImportSkillParams = {
 };
 
 /**
- * 校验父级文件夹链后，将不透明的包流导入为 Skill 初始版本。
+ * 校验父级文件夹链后，将上传的不透明 `.zip` 包流直接存入 S3 并导入为 Skill 初始版本。
  *
- * Import intentionally does not parse or validate package contents. This function uploads the
- * package before opening the Mongo transaction, then creates the default ACL, binds currentVersionId,
- * and removes the temporary S3 TTL inside the transaction. If Mongo fails, the uploaded package
- * keeps its TTL and is cleaned by the shared S3 cleanup flow.
- * Runtime metadata remains empty until the workspace is saved and deployed from the edit sandbox.
+ * 与 upstream/main 保持一致：导入阶段不拆包或校验 ZIP 内部结构（在后续沙盒加载解压时校验），
+ * 仅在流式上传 S3（写入临时 TTL）后开启 Mongo 事务创建权限、绑定版本并移除 TTL；
+ * 事务或上传失败时未入库对象保留 TTL，由 S3 清理任务自动回收。
  */
 export async function importSkill({
   skill,
@@ -49,21 +47,9 @@ export async function importSkill({
 
   const runtimeSkills: RuntimeSkillMetadataType[] = [];
 
-  const newSkill = new MongoAgentSkills({
-    parentId: parentId || null,
-    type: AgentSkillTypeEnum.skill,
-    source: AgentSkillSourceEnum.personal,
-    name: skill.name,
-    description: skill.description,
-    category: skill.category,
-    avatar: skill.avatar,
-    teamId,
-    tmbId,
-    createTime: new Date(),
-    updateTime: new Date()
-  });
-
-  const newSkillId = newSkill._id.toString();
+  // 预先生成 _id 供 S3 对象 key 使用；文档实例放入事务回调内构造，避免事务重试时因 $isNew=false 触发 DocumentNotFoundError
+  const newSkillIdObj = new Types.ObjectId();
+  const newSkillId = newSkillIdObj.toString();
   const versionId = new Types.ObjectId().toString();
 
   const storageInfo = await uploadSkillPackageStream({
@@ -71,10 +57,25 @@ export async function importSkill({
     skillId: newSkillId,
     packageObjectId: versionId,
     packageStream,
-    contentLength
+    contentLength,
+    extension: 'zip'
   });
 
   return mongoSessionRun(async (session) => {
+    const newSkill = new MongoAgentSkills({
+      _id: newSkillIdObj,
+      parentId: parentId || null,
+      type: AgentSkillTypeEnum.skill,
+      source: AgentSkillSourceEnum.personal,
+      name: skill.name,
+      description: skill.description,
+      category: skill.category,
+      avatar: skill.avatar,
+      teamId,
+      tmbId,
+      createTime: new Date(),
+      updateTime: new Date()
+    });
     await newSkill.save({ session });
 
     await createResourcePermissions({

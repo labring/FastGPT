@@ -2,7 +2,6 @@
 // 生命周期状态与操作
 export const sandboxInstanceStatusList = [
   'provisioning',
-  'legacyMigrating',
   'running',
   'stopping',
   'stopped',
@@ -14,7 +13,6 @@ export const sandboxInstanceStatusList = [
 
 export const SandboxInstanceStatusEnum = {
   provisioning: 'provisioning',
-  legacyMigrating: 'legacyMigrating',
   running: 'running',
   stopping: 'stopping',
   stopped: 'stopped',
@@ -27,22 +25,19 @@ export const SandboxInstanceStatusEnum = {
 export const sandboxStableStatusList = ['running', 'stopped', 'archived'] as const;
 
 /**
- * 计入沙箱 Quota 的实例状态：占用 provider 资源，或正在创建/恢复远端资源。
+ * 计入沙箱 Quota 的实例状态：占用或正在激活/释放计算容器，不含 stopped/archived/deleting 以及正在冷归档回收的 archiving。
  * 系统总上限与团队配额共用同一个计数池（忽略 provider 与 sourceType）。
- * 不计入 stopped/archived（无远端计算资源）与 deleting（释放路径中的终态，不得被 Quota 阻塞）。
+ * archiving 与 deleting 同样处于资源下线释放路径，不得被 Quota 阻塞。
  */
 export const sandboxActiveStatusList = [
   'provisioning',
-  'legacyMigrating',
   'running',
   'stopping',
-  'archiving',
   'restoring'
 ] as const satisfies readonly (typeof sandboxInstanceStatusList)[number][];
 
 export const sandboxOperationTypeList = [
   'provision',
-  'legacyMigration',
   'stop',
   'archive',
   'restore',
@@ -51,7 +46,6 @@ export const sandboxOperationTypeList = [
 
 export const SandboxOperationTypeEnum = {
   provision: 'provision',
-  legacyMigration: 'legacyMigration',
   stop: 'stop',
   archive: 'archive',
   restore: 'restore',
@@ -63,7 +57,6 @@ export const expectedOperationByStatus = {
   stopped: undefined,
   archived: undefined,
   provisioning: 'provision',
-  legacyMigrating: 'legacyMigration',
   stopping: 'stop',
   archiving: 'archive',
   restoring: 'restore',
@@ -73,36 +66,57 @@ export const expectedOperationByStatus = {
   (typeof sandboxOperationTypeList)[number] | undefined
 >;
 
-/** 远端结果未知时的接管隔离时间：provision/stop 为 5 分钟，其余为 20 分钟。 */
-export const SANDBOX_OPERATION_ISOLATION_MS = {
-  provision: 300_000,
-  legacyMigration: 1_200_000,
-  stop: 300_000,
-  archive: 1_200_000,
-  restore: 1_200_000,
-  delete: 1_200_000
-} as const satisfies Record<(typeof sandboxOperationTypeList)[number], number>;
+// OpenSandbox HTTP 响应头超时（秒）：常规控制面保持 SDK 默认 30s；POST /sandboxes 在 Docker/K8s
+// 端会同步阻塞到镜像拉取/Pod 就绪，单独放宽到 210s 以覆盖 Docker 默认 180s api_timeout。
+export const OPEN_SANDBOX_REQUEST_TIMEOUT_SECONDS = 30;
+export const OPEN_SANDBOX_CREATE_REQUEST_TIMEOUT_SECONDS = 210;
 
-/** 含旧版 rollbackProviderDeleted；这些阶段只能沿持久化的清理方向续跑。 */
+/**
+ * 孤儿或控制面传输未决操作的安全接管超时窗口与运行期持久化心跳刷新间隔（15s）：
+ * - OpenSandbox 1.2.1 的 `POST /sandboxes` 会同步等待容器创建/拉镜像（Docker 后台 daemon thread 默认 180s、K8s 等待 Pod 就绪默认 60s）后才返回 `202`；
+ *   常规控制面请求保持 30s 超时，`Sandbox.create` 单独使用 210s 超时并透传 `lease.signal`；
+ * - 正常长耗时步骤持有 30s 自动续租 Redis Lease 期间，每 15s 刷新一次 Mongo `operation.heartbeatAt`；
+ * - 确定性业务/数据面失败写入 `retryAfter = now` 允许立即接管回滚；非创建阶段或已推进到创建之后的阶段等待 60s（`SANDBOX_STALE_OPERATION_TIMEOUT_MS`）；
+ * - 仍可能存在未决 `POST /sandboxes` 在途线程的阶段（如 `provisioning:claimed` / `restoring:volumeAssigned` / 静态起容 `archiving:claimed`）遭遇崩溃或控制面传输未决异常时，
+ *   等待 240s（`210s` create 超时 + `30s` 余量）后接管，并结合 `metadata.operationId` 围栏主动回收任何迟到旧容器。
+ */
+export const SANDBOX_STALE_OPERATION_TIMEOUT_MS = 60_000;
+export const SANDBOX_CREATE_UNCERTAIN_TIMEOUT_MS =
+  (OPEN_SANDBOX_CREATE_REQUEST_TIMEOUT_SECONDS + 30) * 1000;
+export const SANDBOX_OPERATION_HEARTBEAT_INTERVAL_MS = 15_000;
+
+/** 当前版本恢复（`restoring`）激活的正向阶段列表；旧版清理阶段在 `legacy/index.ts` 中额外兼容。 */
+export const SANDBOX_RESTORE_FORWARD_PHASES = [
+  'claimed',
+  'volumeAssigned',
+  'archiveInstalled'
+] as const;
+
+/** 已进入激活回滚的持久化阶段；这些阶段只能沿持久化的清理方向续跑（旧版 `rollbackProviderDeleted` 已收口至 `legacy/index.ts`）。 */
 export const SANDBOX_ACTIVATION_ROLLBACK_PHASES = [
   'rollbackClaimed',
   'rollbackProviderReleased',
-  'rollbackVolumeReleased',
-  'rollbackProviderDeleted'
+  'rollbackVolumeReleased'
+] as const;
+
+/** 未到达 `archiveUploaded` 前允许安全退回 `stopped` 的预上传阶段（`archiving` 恢复与回滚共用）。 */
+export const SANDBOX_ARCHIVING_ROLLBACK_PHASES = [
+  'claimed',
+  'rollbackClaimed',
+  'rollbackProviderReleased'
 ] as const;
 
 // 归档与资源清理批量策略
-export const SANDBOX_ARCHIVE_BATCH_SIZE = 5;
+export const SANDBOX_ARCHIVE_CONCURRENCY = 2;
 export const SANDBOX_ARCHIVE_CURSOR_BATCH_SIZE = 100;
 export const SOURCE_DELETE_CONCURRENCY = 10;
 
-// 归档命令最长 10 分钟，目录创建最长 1 分钟。
-export const SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS = 600_000;
-export const SANDBOX_ARCHIVE_DIRECTORY_TIMEOUT_MS = 60_000;
+// 孤儿持久卷两阶段观察与优雅窗口
+export const ORPHAN_VOLUME_OBSERVATION_TTL_SECONDS = 7_200;
+export const ORPHAN_VOLUME_GRACE_PERIOD_MS = 1_800_000;
 
-// 配置准备最多等待 45 分钟，每秒重试；等待上限独立于远端操作隔离策略。
-export const SANDBOX_RUNTIME_CONFIGURATION_TIMEOUT_MS = 2_700_000;
-export const SANDBOX_RUNTIME_CONFIGURATION_RETRY_INTERVAL_MS = 1_000;
+// 归档与恢复 HTTP 流超时上限（10 分钟）
+export const SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS = 600_000;
 
 // 预览会话限制；TTL 使用 Redis EX 接口要求的秒
 export const SANDBOX_PREVIEW_SESSION_TTL_SECONDS = 7_200;
@@ -127,18 +141,16 @@ export const SANDBOX_ENTRYPOINT_STATE_HASH_KEY = 'sandboxEntrypoint';
 export const SKILL_ENTRYPOINT_STATE_LIST_KEY = 'skillEntrypoints';
 export const MAX_ENTRYPOINT_OUTPUT_BYTES = 8 * 1024;
 export const MAX_LOG_OUTPUT_LENGTH = 4000;
-export const SANDBOX_INIT_LEASE_TTL_MS = 180_000;
-export const SANDBOX_INIT_LEASE_RENEW_INTERVAL_MS = 30_000;
-export const SANDBOX_INIT_LEASE_WAIT_TIMEOUT_MS = SANDBOX_INIT_LEASE_TTL_MS;
-export const SANDBOX_INIT_LEASE_RETRY_INTERVAL_MS = 50;
-
-// 分布式租约
-export const SANDBOX_SOURCE_MUTATION_LEASE_TTL_MS = 660_000;
-export const SANDBOX_LIFECYCLE_LEASE_TTL_MS = 660_000;
-export const LEGACY_MIGRATION_JOB_LEASE_TTL_MS = 180_000;
+// 统一可重入分布式租约（短 TTL + 自动续租：活进程自动续期，Pod 崩溃最多 30s 释放锁；前台指数退避有界排队，后台 cron 非阻塞）
+export const SANDBOX_LEASE_TTL_MS = 30_000;
+export const SANDBOX_LEASE_RENEW_INTERVAL_MS = 5_000;
+export const SANDBOX_LEASE_WAIT_TIMEOUT_MS = 180_000;
+export const SANDBOX_LEASE_RETRY_INITIAL_MS = 40;
+export const SANDBOX_LEASE_RETRY_MAX_MS = 400;
 
 // 容量与目录打包限制
-export const MB_BYTES = 1024 * 1024;
-export const RESERVED_DISK_MB = 150;
 export const MAX_ARCHIVE_DEPTH = 20;
 export const SESSION_VOLUME_GENERATION_LENGTH = 8;
+export const MANAGED_SESSION_VOLUME_CLAIM_REST_RE = new RegExp(
+  `^(.+)-(?:0|[0-9a-f]{${SESSION_VOLUME_GENERATION_LENGTH}})$`
+);

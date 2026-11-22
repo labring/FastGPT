@@ -167,4 +167,38 @@ describe('buildSystemFrontendConfig', () => {
     config.subservice.codeSandbox.token = 'synthetic-token';
     expect(buildSystemFrontendConfig(config).codeSandboxEnabled).toBe(true);
   });
+
+  it('derives skillSandboxMaxBytes directly from full storageSizeGi without half-capacity reserve', () => {
+    const config = resolveSystemInstanceConfig({
+      subservice: {
+        agentSandbox: { common: { storageSizeGi: 2 } }
+      }
+    });
+    expect(buildSystemFrontendConfig(config).limit?.skillSandboxMaxBytes).toBe(2048 * 1024 * 1024);
+  });
+
+  it('derives show_agent_sandbox from subservice.agentSandbox.enabled', () => {
+    const disabled = resolveSystemInstanceConfig({});
+    expect(buildSystemFrontendConfig(disabled).show_agent_sandbox).toBe(false);
+
+    const enabled = resolveSystemInstanceConfig({
+      subservice: {
+        agentSandbox: {
+          enabled: true,
+          opensandbox: {
+            baseUrl: 'https://sandbox.example.test',
+            apiKey: 'osb-key',
+            image: 'fastgpt/agent-sandbox:v0.5.0',
+            volumeManagerUrl: 'http://volume-manager:8081'
+          },
+          proxy: {
+            wsUrl: 'wss://proxy.example.test',
+            previewUrl: 'https://preview.example.test',
+            secret: 'proxy_secret_32_characters_minimum'
+          }
+        }
+      }
+    });
+    expect(buildSystemFrontendConfig(enabled).show_agent_sandbox).toBe(true);
+  });
 });

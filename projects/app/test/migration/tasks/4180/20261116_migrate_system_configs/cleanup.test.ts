@@ -56,7 +56,9 @@ describe('deprecatedOverridePaths', () => {
         'commercial.billingNotify.paymentReceived',
         'subservice.plugin',
         'subservice.codeSandbox.baseUrl',
-        'subservice.aiProxy'
+        'subservice.aiProxy',
+        'subservice.agentSandbox.sealosdevbox',
+        'subservice.agentSandbox.provider'
       ])
     );
   });
@@ -209,6 +211,7 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
     domain?: string;
     revision: number;
     overrides: Record<string, unknown>;
+    explicitDefaultPaths?: string[];
   }) => {
     const domain = doc.domain ?? doc._id;
     await MongoSystemInstanceConfig.collection.insertOne({
@@ -216,6 +219,7 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
       schemaVersion: 1,
       revision: doc.revision,
       overrides: doc.overrides,
+      ...(doc.explicitDefaultPaths ? { explicitDefaultPaths: doc.explicitDefaultPaths } : {}),
       updatedBy: { actor: 'system' },
       createdAt: new Date(),
       updatedAt: new Date()
@@ -421,15 +425,15 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
     expect((await verifyInstanceConfigDeprecatedFields()).remainingDocuments).toEqual([]);
   });
 
-  it('cleans deprecated subservice fields for an enabled sandbox provider before proxy backfill', async () => {
+  it('cleans deprecated subservice fields for an enabled sandbox before proxy backfill', async () => {
     await seedDirtyDoc({
       domain: 'subservice',
       revision: 1,
       overrides: {
         plugin: { remoteDebug: true },
         agentSandbox: {
-          provider: 'sealosdevbox',
-          sealosdevbox: { baseUrl: 'https://devbox.example.test' },
+          enabled: true,
+          opensandbox: { baseUrl: 'https://sandbox.example.test' },
           proxy: { httpUrl: 'https://legacy-http-proxy.example.test' }
         }
       }
@@ -442,25 +446,24 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
     const doc = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
     expect(doc?.overrides).toEqual({
       agentSandbox: {
-        provider: 'sealosdevbox',
-        sealosdevbox: { baseUrl: 'https://devbox.example.test' }
+        enabled: true,
+        opensandbox: { baseUrl: 'https://sandbox.example.test' }
       }
     });
 
-    // verify 阶段在 backfill 之后运行，仍要求完整代理配置
     const beforeProxyBackfill = await verifyInstanceConfigDeprecatedFields();
     expect(beforeProxyBackfill.remainingDocuments).toEqual([]);
     expect(beforeProxyBackfill.invalidDomains).toEqual([]);
   });
 
-  it('does not reject invalid provider baseUrl or proxy secret length on migration reads', () => {
+  it('does not reject invalid opensandbox baseUrl or proxy secret length on migration reads', () => {
     expect(() =>
       readMigrationDomainConfig({
         domain: 'subservice',
         overrides: {
           agentSandbox: {
-            provider: 'sealosdevbox',
-            sealosdevbox: { baseUrl: '' }
+            enabled: true,
+            opensandbox: { baseUrl: '' }
           }
         }
       })
@@ -471,12 +474,188 @@ describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
         domain: 'subservice',
         overrides: {
           agentSandbox: {
-            provider: 'sealosdevbox',
-            sealosdevbox: { baseUrl: 'https://devbox.example.test' },
+            enabled: true,
+            opensandbox: { baseUrl: 'https://sandbox.example.test' },
             proxy: { secret: 'too-short' }
           }
         }
       })
     ).not.toThrow();
+  });
+
+  it('promotes provider=opensandbox to enabled=true while stripping provider and leaves disabled/incomplete providers off', async () => {
+    const storedSecret = 'proxy_secret_32_characters_minimum';
+    await seedDirtyDoc({
+      domain: 'subservice',
+      revision: 2,
+      overrides: encryptDomainSecrets({
+        domain: 'subservice',
+        data: {
+          agentSandbox: {
+            provider: 'opensandbox',
+            proxy: {
+              wsUrl: 'wss://proxy.example.test',
+              previewUrl: 'https://preview.example.test',
+              secret: storedSecret
+            },
+            opensandbox: {
+              baseUrl: 'https://sandbox.example.test',
+              apiKey: 'opensandbox-api-key',
+              image: 'fastgpt-agent-sandbox:latest',
+              volumeManagerUrl: 'https://volume.example.test'
+            }
+          }
+        }
+      })
+    });
+
+    const result = await cleanupInstanceConfigDeprecatedFields({ logger });
+    expect(result.updatedDomains).toEqual(['subservice']);
+
+    const cleanedDoc = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
+    expect(decryptDomainSecrets('subservice', cleanedDoc?.overrides)).toEqual({
+      agentSandbox: {
+        enabled: true,
+        proxy: {
+          wsUrl: 'wss://proxy.example.test',
+          previewUrl: 'https://preview.example.test',
+          secret: storedSecret
+        },
+        opensandbox: {
+          baseUrl: 'https://sandbox.example.test',
+          apiKey: 'opensandbox-api-key',
+          image: 'fastgpt-agent-sandbox:latest',
+          volumeManagerUrl: 'https://volume.example.test'
+        }
+      }
+    });
+    expect((await verifyInstanceConfigDeprecatedFields()).remainingDocuments).toEqual([]);
+
+    // 缺少必填 opensandbox 凭据（apiKey/image/volumeManagerUrl）时不自动开启 enabled=true。
+    await MongoSystemInstanceConfig.deleteMany({});
+    await seedDirtyDoc({
+      domain: 'subservice',
+      revision: 1,
+      overrides: {
+        agentSandbox: {
+          provider: 'opensandbox',
+          proxy: {
+            wsUrl: 'wss://proxy.example.test',
+            previewUrl: 'https://preview.example.test',
+            secret: storedSecret
+          },
+          opensandbox: { baseUrl: 'https://sandbox.example.test' }
+        }
+      }
+    });
+
+    await cleanupInstanceConfigDeprecatedFields({ logger });
+    const incompleteDoc = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
+    expect(incompleteDoc?.overrides).not.toHaveProperty('agentSandbox.enabled');
+
+    await MongoSystemInstanceConfig.deleteMany({});
+    await seedDirtyDoc({
+      domain: 'subservice',
+      revision: 1,
+      overrides: {
+        agentSandbox: {
+          provider: 'none',
+          opensandbox: { baseUrl: 'https://sandbox.example.test' }
+        }
+      }
+    });
+
+    await cleanupInstanceConfigDeprecatedFields({ logger });
+    const disabledDoc = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
+    expect(disabledDoc?.overrides).toEqual({
+      agentSandbox: { opensandbox: { baseUrl: 'https://sandbox.example.test' } }
+    });
+    expect((await verifyInstanceConfigDeprecatedFields()).invalidDomains).toEqual([]);
+  });
+
+  it('strips legacy proxy.httpUrl before ENV proxy fallback and honors explicitDefaultPaths', async () => {
+    vi.stubEnv('AGENT_SANDBOX_PROXY_URL', 'wss://env-proxy.example.test');
+    vi.stubEnv('AGENT_SANDBOX_PREVIEW_PROXY_URL', 'https://env-preview.example.test');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', 'env_proxy_secret_32_characters_min');
+    try {
+      await seedDirtyDoc({
+        domain: 'subservice',
+        revision: 1,
+        overrides: encryptDomainSecrets({
+          domain: 'subservice',
+          data: {
+            agentSandbox: {
+              provider: 'opensandbox',
+              proxy: { httpUrl: 'https://legacy-http-proxy.example.test' },
+              opensandbox: {
+                baseUrl: 'https://sandbox.example.test',
+                apiKey: 'opensandbox-api-key',
+                image: 'fastgpt-agent-sandbox:latest',
+                volumeManagerUrl: 'https://volume.example.test'
+              }
+            }
+          }
+        })
+      });
+
+      await cleanupInstanceConfigDeprecatedFields({ logger });
+      const promotedDoc = await MongoSystemInstanceConfig.findOne({ domain: 'subservice' }).lean();
+      expect(decryptDomainSecrets('subservice', promotedDoc?.overrides)).toEqual({
+        agentSandbox: {
+          enabled: true,
+          proxy: {
+            wsUrl: 'wss://env-proxy.example.test',
+            previewUrl: 'https://env-preview.example.test',
+            secret: 'env_proxy_secret_32_characters_min'
+          },
+          opensandbox: {
+            baseUrl: 'https://sandbox.example.test',
+            apiKey: 'opensandbox-api-key',
+            image: 'fastgpt-agent-sandbox:latest',
+            volumeManagerUrl: 'https://volume.example.test'
+          }
+        }
+      });
+
+      // 若管理员曾显式清空 proxy.secret，不得在清理阶段从 ENV 复活代理配置或自动开启。
+      await MongoSystemInstanceConfig.deleteMany({});
+      await seedDirtyDoc({
+        domain: 'subservice',
+        revision: 1,
+        explicitDefaultPaths: ['agentSandbox.proxy.secret'],
+        overrides: encryptDomainSecrets({
+          domain: 'subservice',
+          data: {
+            agentSandbox: {
+              provider: 'opensandbox',
+              proxy: { httpUrl: 'https://legacy-http-proxy.example.test' },
+              opensandbox: {
+                baseUrl: 'https://sandbox.example.test',
+                apiKey: 'opensandbox-api-key',
+                image: 'fastgpt-agent-sandbox:latest',
+                volumeManagerUrl: 'https://volume.example.test'
+              }
+            }
+          }
+        })
+      });
+
+      await cleanupInstanceConfigDeprecatedFields({ logger });
+      const clearedProxyDoc = await MongoSystemInstanceConfig.findOne({
+        domain: 'subservice'
+      }).lean();
+      expect(decryptDomainSecrets('subservice', clearedProxyDoc?.overrides)).toEqual({
+        agentSandbox: {
+          opensandbox: {
+            baseUrl: 'https://sandbox.example.test',
+            apiKey: 'opensandbox-api-key',
+            image: 'fastgpt-agent-sandbox:latest',
+            volumeManagerUrl: 'https://volume.example.test'
+          }
+        }
+      });
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

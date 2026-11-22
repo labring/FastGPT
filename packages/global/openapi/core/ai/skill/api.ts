@@ -10,7 +10,6 @@ import {
   AgentSkillSourceSchema,
   AgentSkillTypeSchema,
   ExtractedSkillPackageSchema,
-  SandboxProviderStatusSchema,
   SkillPackageSchema,
   ZipEntryInfoSchema
 } from '../../../../core/ai/skill/type';
@@ -34,7 +33,6 @@ import {
 } from '../../../api';
 
 const IdSchema = z.string().min(1).meta({ description: '资源 ID' });
-const SandboxInstanceKeySchema = z.string().min(1).describe('FastGPT sandbox instance key');
 const NullableParentIdSchema = ParentIdSchema.meta({
   description: '父级目录 ID'
 });
@@ -348,31 +346,6 @@ export const SkillRuntimeInitEventSchema = z
   })
   .describe('Skill Edit runtime init SSE sandboxStatus event');
 export type SkillRuntimeInitEvent = z.infer<typeof SkillRuntimeInitEventSchema>;
-
-export const GetSandboxInfoQuerySchema = z.object({
-  sandboxId: SandboxInstanceKeySchema
-});
-export type GetSandboxInfoQuery = z.infer<typeof GetSandboxInfoQuerySchema>;
-
-export const GetSandboxInfoResponseSchema = z.object({
-  sandboxId: SandboxInstanceKeySchema,
-  skillId: z.string(),
-  type: z.string(),
-  status: SandboxProviderStatusSchema.pick({
-    state: true,
-    message: true
-  }),
-  createTime: z.string()
-});
-export type GetSandboxInfoResponse = z.infer<typeof GetSandboxInfoResponseSchema>;
-
-export const DeleteSandboxBodySchema = z.object({
-  sandboxId: SandboxInstanceKeySchema
-});
-export type DeleteSandboxBody = z.infer<typeof DeleteSandboxBodySchema>;
-
-export const DeleteSandboxResponseSchema = z.void();
-export type DeleteSandboxResponse = z.infer<typeof DeleteSandboxResponseSchema>;
 
 export const SaveDeploySkillBodySchema = z.object({
   skillId: IdSchema,

@@ -8,7 +8,7 @@ import { removeImageByPath } from '../../../../common/file/image/controller';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { resourcePermissionRepo } from '../../../../support/permission/repository/resourcePermissionRepo';
 import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
-import { deleteSkillAllPackages } from '../package';
+import { deleteSkillAllPackages } from '../package/storage';
 import { MongoAgentSkills } from '../model/schema';
 import { MongoAgentSkillsVersion } from '../version/schema';
 import { findSkillAndAllChildren } from '../manage/folder';

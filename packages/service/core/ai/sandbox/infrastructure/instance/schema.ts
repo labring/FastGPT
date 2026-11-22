@@ -5,13 +5,12 @@
  */
 import { connectionMongo, defineIndex, getMongoModel } from '../../../../../common/mongo';
 const { Schema } = connectionMongo;
+import { SandboxImageConfigSchema } from '@fastgpt/global/core/ai/sandbox/type';
 import type { SandboxInstanceSchemaType } from '../../type';
 import {
+  SANDBOX_PROVIDER,
   SandboxInstanceStatusSchema,
-  SandboxImageSchema,
-  SandboxLimitSchema,
   SandboxOperationTypeSchema,
-  SandboxProviderSchema,
   SandboxSourceTypeSchema
 } from '../../type';
 import { expectedOperationByStatus } from '../../constants';
@@ -46,12 +45,25 @@ const SandboxImageMongoSchema = new Schema(
   { _id: false, strict: 'throw' }
 );
 
+const SandboxLimitMongoSchema = new Schema(
+  {
+    cpuCount: Number,
+    memoryMiB: Number
+  },
+  { _id: false }
+);
+
 const SandboxInstanceSchema = new Schema(
   {
     provider: {
       type: String,
-      enum: SandboxProviderSchema.options,
+      enum: [SANDBOX_PROVIDER],
+      default: SANDBOX_PROVIDER,
       required: true
+    },
+    // 物理 OpenSandbox 容器/Pod ID（运行态懒回填，用于 skipHealthCheck 快路径直连）
+    instanceId: {
+      type: String
     },
     // sourceType 前缀 + sourceId/userId hash，和 Provider 物理资源 ID 保持一致。
     sandboxId: {
@@ -87,16 +99,14 @@ const SandboxInstanceSchema = new Schema(
       default: () => new Date(),
       required: true
     },
-    limit: {
-      type: SandboxLimitSchema.shape
-    },
+    limit: SandboxLimitMongoSchema,
     storage: {
       type: Schema.Types.Mixed
     },
     teamId: String,
     image: {
       type: SandboxImageMongoSchema,
-      set: (value: unknown) => SandboxImageSchema.parse(value)
+      set: (value: unknown) => SandboxImageConfigSchema.parse(value)
     },
     versionId: String,
     operation: SandboxOperationMongoSchema
@@ -143,6 +153,9 @@ defineIndex(SandboxInstanceSchema, {
 defineIndex(SandboxInstanceSchema, {
   key: { status: 1, 'metadata.operation.heartbeatAt': 1 },
   deprecated: true
+});
+defineIndex(SandboxInstanceSchema, {
+  key: { 'storage.volumes.claimName': 1 }
 });
 
 /**

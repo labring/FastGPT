@@ -1,21 +1,54 @@
 import { describe, it, expect, vi } from 'vitest';
+import type { Readable } from 'node:stream';
 import JSZip from 'jszip';
+
+const ideAgentMocks = vi.hoisted(() => ({
+  extractToSandboxDirectory: vi.fn(
+    async ({
+      sandbox,
+      targetDirectory,
+      openBody
+    }: {
+      sandbox: {
+        writeFiles: (
+          entries: Array<{ path: string; data: Buffer }>
+        ) => Promise<Array<{ error?: Error | null }>>;
+      };
+      targetDirectory: string;
+      openBody: () => Promise<Readable>;
+    }) => {
+      const { readTarZstEntries } = await import('@test/utils/tarZst');
+      const fileEntries = (await readTarZstEntries(await openBody()))
+        .filter((entry) => entry.type === 'file')
+        .map((entry) => ({ path: `${targetDirectory}/${entry.path}`, data: entry.content }));
+
+      if (fileEntries.length > 0) {
+        const writeResults = await sandbox.writeFiles(fileEntries);
+        const firstErr = writeResults.find((item) => item.error)?.error;
+        if (firstErr) {
+          throw new Error(`Failed to write extracted skill file: ${firstErr.message}`);
+        }
+      }
+    }
+  )
+}));
+
+vi.mock('@fastgpt/service/core/ai/sandbox/application/ideAgent', () => ({
+  extractToSandboxDirectory: ideAgentMocks.extractToSandboxDirectory
+}));
+
 import {
   getAgentSkillInfos,
   injectAgentSkillFilesToSandbox
 } from '@fastgpt/service/core/ai/sandbox/application/runtime/skill/core';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoAgentSkillsVersion } from '@fastgpt/service/core/ai/skill/version/schema';
-import { uploadSkillPackage } from '@fastgpt/service/core/ai/skill/package';
+import { uploadSkillPackage } from '@fastgpt/service/core/ai/skill/package/storage';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { Types } from '@fastgpt/service/common/mongo';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 import { getUser } from '@test/datas/users';
-
-vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/home', () => ({
-  resolveSandboxHome: async () => '/home/test'
-}));
 
 const makePackage = async (entries: Array<{ path: string; name: string; description: string }>) => {
   const zip = new JSZip();
@@ -56,11 +89,11 @@ const createSkillFilesystemMocks = (directoryPaths: string[] = []) => ({
   deleteFiles: vi.fn(async (paths: string[]) =>
     paths.map((path) => ({ path, success: true, error: null }))
   ),
-  moveFiles: vi.fn(async (_entries: Array<{ source: string; destination: string }>) => undefined)
+  moveFiles: vi.fn(async (_entries: Array<{ src: string; dest: string }>) => undefined)
 });
 
-const WORKSPACE_SKILL_INFO_FIND_COMMAND = `find '/workspace' \\( -name 'node_modules' -o -name '.venv' -o -name 'venv' \\) -prune -o -type f -iname "SKILL.md" -print0 2>/dev/null`;
-
+const WORKSPACE_SKILL_INFO_FIND_COMMAND =
+  'for d in \'/workspace\'; do [ -d "$d" ] && set -- "$@" "$d"; done';
 describe('runtime skill deploy and scan integration', () => {
   it('scans every recursive skill.md from every selected version directory', async () => {
     const user = await getUser(`runtime-skill-scan-${getNanoid(6)}`);
@@ -105,13 +138,15 @@ describe('runtime skill deploy and scan integration', () => {
         teamId,
         skillId: String(skill1._id),
         packageObjectId: 'skill1-v0',
-        zipBuffer: skill1Package
+        packageBuffer: skill1Package,
+        extension: 'zip'
       }),
       uploadSkillPackage({
         teamId,
         skillId: String(skill2._id),
         packageObjectId: 'skill2-v0',
-        zipBuffer: skill2Package
+        packageBuffer: skill2Package,
+        extension: 'zip'
       })
     ]);
 
@@ -191,14 +226,6 @@ description: Zeta skill
         makeWriteResults(entries)
       ),
       execute: vi.fn(async (command: string) => {
-        if (command.includes('unzip')) {
-          return {
-            exitCode: 0,
-            stdout: '',
-            stderr: ''
-          };
-        }
-
         if (command.includes('-iname "SKILL.md"')) {
           const matchedPaths = skillMdPaths.filter((path) => {
             return command.includes(path.split('/')[3]);
@@ -237,37 +264,34 @@ description: Zeta skill
     expect(skill1TargetDir).not.toBe(skill2TargetDir);
     const writeEntries = sandbox.writeFiles.mock.calls.flatMap(([entries]) => entries);
     const writtenFilePaths = writeEntries.map((entry: { path: string }) => entry.path);
-    expect(
-      writeEntries.every((entry: { data: unknown }) => entry.data instanceof ReadableStream)
-    ).toBe(true);
+    expect(writeEntries.every((entry: { data: unknown }) => Buffer.isBuffer(entry.data))).toBe(
+      true
+    );
     expect(writtenFilePaths).toEqual(
       expect.arrayContaining([
-        expect.stringContaining(`/workspace/projects/.tmp-${String(skill1VersionId)}`),
-        expect.stringContaining(`/workspace/projects/.tmp-${String(skill2VersionId)}`)
+        expect.stringMatching(
+          new RegExp(`^/workspace/projects/\\.tmp-${String(skill1VersionId)}-.*/skill1/skill\\.md$`)
+        ),
+        expect.stringMatching(
+          new RegExp(`^/workspace/projects/\\.tmp-${String(skill2VersionId)}-.*/skill1/skill\\.md$`)
+        )
       ])
     );
-    expect(writtenFilePaths.every((path: string) => path.endsWith('/package.zip'))).toBe(true);
-    const unzipCommands = sandbox.execute.mock.calls
-      .map(([command]) => command)
-      .filter((command) => command.includes('unzip'));
-    expect(unzipCommands).toHaveLength(1);
-    for (const zipPath of writtenFilePaths) {
-      expect(unzipCommands[0]).toContain(`unzip -Z -t '${zipPath}'`);
-      expect(unzipCommands[0]).toContain(`unzip -Z1 '${zipPath}'`);
-      expect(unzipCommands[0]).toContain(`unzip -o -q '${zipPath}'`);
-    }
-    expect(sandbox.deleteFiles).toHaveBeenCalledWith(writtenFilePaths);
+    expect(sandbox.execute.mock.calls.some(([command]) => String(command).includes('unzip'))).toBe(
+      false
+    );
+    expect(sandbox.deleteFiles).not.toHaveBeenCalled();
     const [moveEntries] = sandbox.moveFiles.mock.calls[0];
     expect(moveEntries).toHaveLength(2);
     expect(moveEntries).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          source: expect.stringContaining(`/workspace/projects/.tmp-${String(skill1VersionId)}`),
-          destination: skill1TargetDir
+          src: expect.stringContaining(`/workspace/projects/.tmp-${String(skill1VersionId)}`),
+          dest: skill1TargetDir
         }),
         expect.objectContaining({
-          source: expect.stringContaining(`/workspace/projects/.tmp-${String(skill2VersionId)}`),
-          destination: skill2TargetDir
+          src: expect.stringContaining(`/workspace/projects/.tmp-${String(skill2VersionId)}`),
+          dest: skill2TargetDir
         })
       ])
     );
@@ -277,9 +301,11 @@ description: Zeta skill
       .filter((command) => command.includes('-iname "SKILL.md"'));
     expect(findSkillCommands.some((c) => c.includes(`'${skill1TargetDir}'`))).toBe(true);
     expect(findSkillCommands.some((c) => c.includes(`'${skill2TargetDir}'`))).toBe(true);
-    expect(findSkillCommands).not.toContain(WORKSPACE_SKILL_INFO_FIND_COMMAND);
+    expect(findSkillCommands.some((c) => c.includes(WORKSPACE_SKILL_INFO_FIND_COMMAND))).toBe(
+      false
+    );
     expect(
-      findSkillCommands.every((command) => command.includes(`-prune -o -type f -iname "SKILL.md"`))
+      findSkillCommands.every((command) => command.includes('-prune -o -type f -iname "SKILL.md"'))
     ).toBe(true);
     expect(
       findSkillCommands.every(
@@ -351,13 +377,15 @@ describe('injectAgentSkillFilesToSandbox', () => {
         teamId,
         skillId: String(skill._id),
         packageObjectId: 'old-current-version',
-        zipBuffer: oldPackage
+        packageBuffer: oldPackage,
+        extension: 'zip'
       }),
       uploadSkillPackage({
         teamId,
         skillId: String(skill._id),
         packageObjectId: 'latest-current-version',
-        zipBuffer: latestPackage
+        packageBuffer: latestPackage,
+        extension: 'zip'
       })
     ]);
 
@@ -389,14 +417,6 @@ describe('injectAgentSkillFilesToSandbox', () => {
         makeWriteResults(entries)
       ),
       execute: vi.fn(async (command: string) => {
-        if (command.includes('unzip')) {
-          return {
-            exitCode: 0,
-            stdout: '',
-            stderr: ''
-          };
-        }
-
         if (command.includes('-iname "SKILL.md"')) {
           return {
             exitCode: 0,
@@ -443,10 +463,10 @@ description: Latest current skill
       ])
     );
     expect(sandbox.moveFiles).toHaveBeenCalledWith([
-      expect.objectContaining({ destination: latestTargetDir })
+      expect.objectContaining({ dest: latestTargetDir })
     ]);
     const movedDestinations = sandbox.moveFiles.mock.calls.flatMap(([entries]) =>
-      entries.map(({ destination }) => destination)
+      entries.map(({ dest }) => dest)
     );
     expect(movedDestinations).not.toContain(oldTargetDir);
     expect(result).toEqual([
@@ -478,7 +498,8 @@ description: Latest current skill
       teamId,
       skillId: String(skill._id),
       packageObjectId: 'runtime-system-version',
-      zipBuffer: skillPackage
+      packageBuffer: skillPackage,
+      extension: 'zip'
     });
     await MongoAgentSkillsVersion.create({
       _id: versionId,
@@ -493,11 +514,7 @@ description: Latest current skill
       ...createSkillFilesystemMocks(),
       writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer }>) =>
         makeWriteResults(entries)
-      ),
-      execute: vi.fn(async (command: string) => {
-        if (command.includes('unzip')) return { exitCode: 0, stdout: '', stderr: '' };
-        throw new Error(`Unexpected command: ${command}`);
-      })
+      )
     };
 
     const staticVersions = await injectAgentSkillFilesToSandbox({
@@ -541,7 +558,8 @@ description: Latest current skill
       teamId,
       skillId: String(skill._id),
       packageObjectId: 'cached-current-version',
-      zipBuffer: skillPackage
+      packageBuffer: skillPackage,
+      extension: 'zip'
     });
 
     await MongoAgentSkillsVersion.create({
@@ -609,7 +627,8 @@ description: Latest current skill
       teamId,
       skillId: String(skill._id),
       packageObjectId: 'rebuild',
-      zipBuffer: await makePackage([{ path: 'SKILL.md', name: 'Rebuilt', description: '' }])
+      packageBuffer: await makePackage([{ path: 'SKILL.md', name: 'Rebuilt', description: '' }]),
+      extension: 'zip'
     });
     await MongoAgentSkillsVersion.create({
       _id: versionId,
@@ -665,7 +684,8 @@ description: Latest current skill
       teamId,
       skillId: String(skill._id),
       packageObjectId: 'broken-v0',
-      zipBuffer: skillPackage
+      packageBuffer: skillPackage,
+      extension: 'zip'
     });
 
     const skillVersionId = new Types.ObjectId();
@@ -702,7 +722,7 @@ description: Latest current skill
           deleteTime: null
         }).lean()
       })
-    ).rejects.toThrow('Failed to write skill ZIP package: write failed');
+    ).rejects.toThrow('Failed to write extracted skill file: write failed');
     expect(sandbox.deleteDirectories).toHaveBeenCalledWith([
       expect.stringContaining(`/workspace/projects/.tmp-${String(skillVersionId)}`)
     ]);
@@ -776,7 +796,13 @@ description: Write reports
       sandbox: sandbox as any
     });
 
-    expect(sandbox.execute).toHaveBeenCalledWith(WORKSPACE_SKILL_INFO_FIND_COMMAND);
+    expect(sandbox.execute).toHaveBeenCalledTimes(1);
+    const executedFindCommand = String(sandbox.execute.mock.calls[0][0]);
+    expect(executedFindCommand).toContain("'/workspace'");
+    expect(executedFindCommand).toContain('-iname "SKILL.md"');
+    expect(executedFindCommand).toContain("-name '.fastgpt'");
+    expect(executedFindCommand).toContain("-name 'lost+found'");
+    expect(executedFindCommand).toContain("-name 'node_modules'");
     expect(sandbox.readFiles).toHaveBeenCalledWith(['/workspace/Report/SKILL.md']);
     expect(skillInfos).toEqual([
       {
@@ -835,6 +861,33 @@ description: Read webpages
         skillMdPath: '/workspace/.skills/version_1/fetch-webpage/SKILL.md'
       }
     ]);
+  });
+
+  it('returns empty skill list for whitespace-only directories and prefixes leading dash directories', async () => {
+    const emptySandbox = {
+      execute: vi.fn(async () => ({ stdout: '', stderr: '', exitCode: 0 })),
+      readFiles: vi.fn(async () => [])
+    };
+
+    await expect(
+      getAgentSkillInfos({
+        skillDirectories: ['   ', '\t'],
+        sandbox: emptySandbox as any
+      })
+    ).resolves.toEqual([]);
+    expect(emptySandbox.execute).toHaveBeenCalledWith('true');
+
+    const dashSandbox = {
+      execute: vi.fn(async () => ({ stdout: '', stderr: '', exitCode: 0 })),
+      readFiles: vi.fn(async () => [])
+    };
+    await getAgentSkillInfos({
+      skillDirectories: ['-dash-dir'],
+      sandbox: dashSandbox as any
+    });
+    const cmd = dashSandbox.execute.mock.calls[0][0] as string;
+    expect(cmd).toContain("'./-dash-dir'");
+    expect(cmd).not.toContain("'-dash-dir'");
   });
 });
 

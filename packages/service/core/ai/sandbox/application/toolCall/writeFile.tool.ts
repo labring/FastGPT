@@ -6,26 +6,28 @@
 import z from 'zod';
 import { defineTool } from './type';
 
-export const SandboxWriteFileToolSchema = z.object({
+const SandboxWriteFileToolSchema = z.object({
   path: z.string(),
   content: z.string()
 });
 
 export const sandboxWriteFileTool = defineTool({
   zodSchema: SandboxWriteFileToolSchema,
+  requiresWritableDisk: true,
   execute: async ({ sandboxInstance, params }) => {
-    await sandboxInstance.ensureAvailable();
     const providerPath = sandboxInstance.resolveRuntimePath(params.path, {
       allowAbsolutePath: true
     });
-    const [file] = await sandboxInstance.provider.writeFiles([
+    const [file] = await sandboxInstance.opensandbox.writeFiles([
       {
         path: providerPath,
         data: params.content
       }
     ]);
     if (!file || file.error) {
-      throw new Error(`Failed to write file: ${file?.error?.message || params.path}`);
+      throw new Error(`Failed to write file: ${file?.error?.message || params.path}`, {
+        cause: file?.error
+      });
     }
 
     return {

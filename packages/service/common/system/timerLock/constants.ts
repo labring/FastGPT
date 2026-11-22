@@ -17,6 +17,7 @@ export enum TimerIdEnum {
   stopInactiveSandboxes = 'stopInactiveSandboxes',
   archiveInactiveSandboxes = 'archiveInactiveSandboxes',
   recoverStaleSandboxOperations = 'recoverStaleSandboxOperations',
+  reconcileOrphanSandboxResources = 'reconcileOrphanSandboxResources',
   enterpriseAuthTaskCleanup = 'enterpriseAuthTaskCleanup',
   accountCancellationReminder = 'accountCancellationReminder',
   accountCancellationFinalize = 'accountCancellationFinalize',

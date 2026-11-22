@@ -15,7 +15,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
-import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/application/runtime';
+import { getSandboxStaticRuntimePaths } from '@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox/runtimeProfile';
 import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import {
   createTestWorkflowFileContext,
@@ -69,7 +69,6 @@ const {
   getAgentSkillInfosMock,
   injectAgentSkillFilesToSandboxMock,
   checkTeamSandboxPermissionMock,
-  ensureAppSandboxRuntimeReadyMock,
   markChatSandboxEnabledMock,
   authSkillByTmbIdMock,
   getLLMModelDataMock
@@ -77,11 +76,9 @@ const {
   runAgentLoopMock: vi.fn(),
   serviceEnvMock: {
     AGENT_ENGINE: 'fastAgent',
-    AGENT_SANDBOX_PROVIDER: 'opensandbox',
     AGENT_SANDBOX_OPENSANDBOX_RUNTIME: 'docker',
     AGENT_SANDBOX_OPENSANDBOX_IMAGE: 'fastgpt-agent-sandbox:latest',
     AGENT_SANDBOX_MAX_SESSION_RUNTIME: 300,
-    AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: '/home/devbox/workspace',
     STREAM_RESUME_TTL_SECONDS: 300,
     STREAM_RESUME_POST_COMPLETE_TTL_SECONDS: 30,
     STREAM_RESUME_REDIS_MAXMEMORY_RATIO: 0.5,
@@ -97,7 +94,6 @@ const {
   getAgentSkillInfosMock: vi.fn(),
   injectAgentSkillFilesToSandboxMock: vi.fn(),
   checkTeamSandboxPermissionMock: vi.fn(),
-  ensureAppSandboxRuntimeReadyMock: vi.fn(),
   markChatSandboxEnabledMock: vi.fn(),
   authSkillByTmbIdMock: vi.fn(),
   getLLMModelDataMock: vi.fn()
@@ -155,18 +151,10 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime', async (importOri
     ...original,
     prepareAgentSandboxRuntime: vi.fn(async (params) => ({
       sandboxClient: await getSandboxClientMock(params),
-      workspaceRoot: original.getSandboxRuntimeProfile().workDirectory,
-      workDirectory: original.getSandboxRuntimeProfile().workDirectory
+      workspaceRoot: getSandboxStaticRuntimePaths().workDirectory,
+      workDirectory: getSandboxStaticRuntimePaths().workDirectory
     }))
   };
-});
-vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/upgrade', async (importOriginal) => {
-  const original =
-    await importOriginal<
-      typeof import('@fastgpt/service/core/ai/sandbox/application/runtime/upgrade')
-    >();
-
-  return { ...original, ensureAppSandboxRuntimeReady: ensureAppSandboxRuntimeReadyMock };
 });
 vi.mock(
   '@fastgpt/service/core/ai/sandbox/application/runtime/skill/core',
@@ -346,12 +334,12 @@ const createProps = () =>
     }
   }) as any;
 
-const getSandboxWorkDirectory = () => getSandboxRuntimeProfile().workDirectory;
+const getSandboxWorkDirectory = () => getSandboxStaticRuntimePaths().workDirectory;
 
 describe('dispatchRunAgent user context', () => {
   beforeEach(async () => {
     global.systemInstanceConfig = createDefaultInstanceConfig();
-    Object.assign(getTestInstanceConfig().subservice.agentSandbox, { provider: 'opensandbox' });
+    Object.assign(getTestInstanceConfig().subservice.agentSandbox, { enabled: true });
     Object.assign(getTestInstanceConfig().subservice.agentSandbox.opensandbox, {
       runtime: 'docker',
       image: 'fastgpt-agent-sandbox:latest'
@@ -373,16 +361,15 @@ describe('dispatchRunAgent user context', () => {
       }
     }));
     checkTeamSandboxPermissionMock.mockResolvedValue(undefined);
-    ensureAppSandboxRuntimeReadyMock.mockResolvedValue(false);
     markChatSandboxEnabledMock.mockResolvedValue(undefined);
     getTestInstanceConfig().feature.agentEngine = 'fastAgent';
-    getTestInstanceConfig().subservice.agentSandbox.provider = 'opensandbox';
+    getTestInstanceConfig().subservice.agentSandbox.enabled = true;
     sandboxCreateDirectoriesMock.mockResolvedValue(undefined);
     sandboxWriteFilesMock.mockResolvedValue([]);
     sandboxGetFileInfoMock.mockResolvedValue(new Map());
     sandboxClientExecMock.mockResolvedValue({
       exitCode: 0,
-      stdout: '/workspace\n',
+      stdout: `${getSandboxWorkDirectory()}\n`,
       stderr: ''
     });
     axiosGetMock.mockResolvedValue({
@@ -391,7 +378,7 @@ describe('dispatchRunAgent user context', () => {
     });
     getAgentRuntimeToolsMock.mockResolvedValue([]);
     getSandboxClientMock.mockResolvedValue({
-      provider: {
+      opensandbox: {
         createDirectories: sandboxCreateDirectoriesMock,
         writeFiles: sandboxWriteFilesMock,
         getFileInfo: sandboxGetFileInfoMock,
@@ -399,6 +386,7 @@ describe('dispatchRunAgent user context', () => {
         execute: sandboxClientExecMock
       },
       exec: sandboxClientExecMock,
+      runWithRecovery: vi.fn(async <T>(fn: () => Promise<T>) => fn()),
       getSandboxId: () => 'sandbox_prepared'
     });
     getAgentSkillInfosMock.mockResolvedValue([
@@ -598,17 +586,20 @@ describe('dispatchRunAgent user context', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app_1',
       userId: 'user_1',
-      chatId: 'chat_1'
+      chatId: 'chat_1',
+      onUpgrade: expect.any(Function),
+      onUpgradeComplete: expect.any(Function)
     });
     expect(sandboxReadyBeforeLoop).toBe(true);
-    expect(sandboxCreateDirectoriesMock).toHaveBeenCalledWith(['/workspace/user_files']);
+    const workDir = getSandboxWorkDirectory();
+    expect(sandboxCreateDirectoriesMock).toHaveBeenCalledWith([`${workDir}/user_files`]);
     const inputFilesWriteCallIndex = sandboxWriteFilesMock.mock.calls.findIndex(([files]) =>
-      files.some((file: { path: string }) => file.path === '/workspace/user_files/current.pdf')
+      files.some((file: { path: string }) => file.path === `${workDir}/user_files/current.pdf`)
     );
     expect(inputFilesWriteCallIndex).toBeGreaterThanOrEqual(0);
     const inputFilesWrite = sandboxWriteFilesMock.mock.calls[inputFilesWriteCallIndex][0];
     expect(inputFilesWrite.map((file: { path: string }) => file.path)).toEqual([
-      '/workspace/user_files/current.pdf'
+      `${workDir}/user_files/current.pdf`
     ]);
     expect(sandboxCreateDirectoriesMock.mock.invocationCallOrder[0]).toBeLessThan(
       sandboxWriteFilesMock.mock.invocationCallOrder[inputFilesWriteCallIndex]
@@ -616,9 +607,9 @@ describe('dispatchRunAgent user context', () => {
     const loopInput = runAgentLoopMock.mock.calls[0][0].input;
     expect(loopInput.systemPrompt).toContain('<sandbox_capability>');
     expect(loopInput.systemPrompt).toContain('</sandbox_capability>');
-    expect(loopInput.systemPrompt).not.toContain('pwd: /workspace');
+    expect(loopInput.systemPrompt).not.toContain(`pwd: ${workDir}`);
     expect(getMessageTextForTest(loopInput.messages.at(-1)?.content)).toContain(
-      '当前沙盒的工作目录: /workspace'
+      `当前沙盒的工作目录: ${workDir}`
     );
     const loopRuntime = runAgentLoopMock.mock.calls[0][0].runtime;
     expect(runAgentLoopMock.mock.calls[0][0].provider).toBe('fastAgent');
@@ -635,7 +626,9 @@ describe('dispatchRunAgent user context', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app_1',
       userId: 'user_1',
-      chatId: 'chat_1'
+      chatId: 'chat_1',
+      onUpgrade: expect.any(Function),
+      onUpgradeComplete: expect.any(Function)
     });
     expect(getSandboxClientMock).toHaveBeenCalledTimes(1);
   });
@@ -671,12 +664,14 @@ describe('dispatchRunAgent user context', () => {
     );
   });
 
-  it('streams upgrading and continues the same workflow after silent App sandbox migration', async () => {
+  it('streams upgrading and continues the same workflow after silent App sandbox image upgrade', async () => {
     const props = createProps();
     props.params.useAgentSandbox = true;
-    ensureAppSandboxRuntimeReadyMock.mockImplementationOnce(async ({ onUpgrade }) => {
-      onUpgrade?.();
-      return true;
+    const defaultClient = getSandboxClientMock.getMockImplementation();
+    getSandboxClientMock.mockImplementationOnce(async (params) => {
+      params.onUpgrade?.();
+      params.onUpgradeComplete?.();
+      return defaultClient!(params);
     });
 
     let resultPromise: Promise<any> | undefined;
@@ -690,7 +685,6 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await resultPromise!;
 
-    expect(ensureAppSandboxRuntimeReadyMock).toHaveBeenCalledOnce();
     const sandboxStatusEvents = props.workflowStreamResponse.mock.calls
       .map(([event]: [{ event: string; data: unknown }]) => event)
       .filter((event: { event: string }) => event.event === 'sandboxStatus');
@@ -712,10 +706,10 @@ describe('dispatchRunAgent user context', () => {
     expect(result.error).toBeUndefined();
   });
 
-  it('returns the concrete silent migration failure reason', async () => {
+  it('returns the concrete sandbox runtime initialization failure reason', async () => {
     const props = createProps();
     props.params.useAgentSandbox = true;
-    ensureAppSandboxRuntimeReadyMock.mockRejectedValueOnce(new Error('archive upload failed'));
+    getSandboxClientMock.mockRejectedValueOnce(new Error('archive upload failed'));
 
     let resultPromise: Promise<any> | undefined;
     runWithContext(
@@ -728,7 +722,6 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await resultPromise!;
 
-    expect(getSandboxClientMock).not.toHaveBeenCalled();
     expect(runAgentLoopMock).not.toHaveBeenCalled();
     expect(
       props.workflowStreamResponse.mock.calls
@@ -762,7 +755,9 @@ describe('dispatchRunAgent user context', () => {
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: 'edit_skill_1',
       userId: 'user_1',
-      chatId: 'chat_1'
+      chatId: 'chat_1',
+      onUpgrade: expect.any(Function),
+      onUpgradeComplete: expect.any(Function)
     });
     expect(getAgentSkillInfosMock).toHaveBeenCalledWith({
       sandbox: expect.any(Object),
@@ -1759,7 +1754,7 @@ describe('dispatchRunAgent user context', () => {
       configure: (props: ReturnType<typeof createProps>) => {
         props.params.useAgentSandbox = true;
         props.params.skills = [{ skillId: 'skill_1', name: 'Report' }];
-        getTestInstanceConfig().subservice.agentSandbox.provider = 'none';
+        getTestInstanceConfig().subservice.agentSandbox.enabled = false;
       }
     }
   ])('continues without sandbox or skills when $name', async ({ configure }) => {
@@ -1796,7 +1791,7 @@ describe('dispatchRunAgent user context', () => {
     props.runningAppInfo.sourceType = ChatSourceTypeEnum.skillEdit;
     props.runningAppInfo.sourceId = 'skill_1';
     props.params.editSkillId = 'skill_1';
-    getTestInstanceConfig().subservice.agentSandbox.provider = 'none';
+    getTestInstanceConfig().subservice.agentSandbox.enabled = false;
 
     let promise: Promise<any>;
     runWithContext(
@@ -1928,7 +1923,9 @@ describe('dispatchRunAgent user context', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'parent_app_id',
       userId: 'user_1',
-      chatId: 'chat_1'
+      chatId: 'chat_1',
+      onUpgrade: expect.any(Function),
+      onUpgradeComplete: expect.any(Function)
     });
     expect(props.nodeSummary.hasAgentSandbox).toBe(true);
     expect(markChatSandboxEnabledMock).toHaveBeenCalledWith({

@@ -954,4 +954,76 @@ describe('S3BaseBucket historical key compatibility', () => {
     expect(caught).toBe(notFoundError);
     expect(isFileNotFoundError(caught)).toBe(true);
   });
+
+  it('destroys body and catches pre-consumption stream errors during uploadStreamWithMultipart TTL setup without uncaughtException', async () => {
+    const storage = createVitestStorageMock({
+      vi,
+      bucketName: 'fastgpt-private',
+      baseUrl: 'https://storage.example.com'
+    });
+
+    class TestStreamBucket extends S3BaseBucket {
+      uploadTestStream(params: {
+        key: string;
+        body: Readable;
+        expiredTime?: Date;
+        signal?: AbortSignal;
+      }) {
+        return this.uploadStreamWithMultipart({
+          key: params.key,
+          body: params.body,
+          contentType: 'application/zstd',
+          expiredTime: params.expiredTime,
+          signal: params.signal
+        });
+      }
+    }
+
+    const bucket = new TestStreamBucket(storage, undefined);
+    const uncaughtErrors: unknown[] = [];
+    const onUncaught = (error: unknown) => uncaughtErrors.push(error);
+    process.on('uncaughtException', onUncaught);
+
+    try {
+      // 1. Key 校验前置抛错也必须销毁 body 流。
+      const invalidKeyStream = new Readable({ read() {} });
+      await expect(
+        bucket.uploadTestStream({
+          key: 'dataset//bad.tar.zst',
+          body: invalidKeyStream
+        })
+      ).rejects.toThrow('consecutive slashes');
+      expect(invalidKeyStream.destroyed).toBe(true);
+
+      // 2. 在 MongoS3TTL.create 异步等待窗口内，上游流提前 destroy(err) 不应触发 uncaughtException。
+      let releaseTtlCreate!: () => void;
+      const ttlGate = new Promise<void>((resolve) => {
+        releaseTtlCreate = resolve;
+      });
+      const origCreate = MongoS3TTL.create.bind(MongoS3TTL);
+      const createSpy = vi.spyOn(MongoS3TTL, 'create').mockImplementationOnce((async (
+        doc: Parameters<typeof origCreate>[0]
+      ) => {
+        await ttlGate;
+        return origCreate(doc);
+      }) as typeof MongoS3TTL.create);
+
+      const earlyErrStream = new Readable({ read() {} });
+      const uploadPromise = bucket.uploadTestStream({
+        key: 'dataset/team-1/stream.tar.zst',
+        body: earlyErrStream,
+        expiredTime: new Date(Date.now() + 60_000)
+      });
+
+      earlyErrStream.destroy(new Error('upstream-pack-aborted-during-ttl'));
+      await new Promise((resolve) => setTimeout(resolve, 15));
+      releaseTtlCreate();
+
+      await expect(uploadPromise).rejects.toThrow('upstream-pack-aborted-during-ttl');
+      expect(uncaughtErrors).toEqual([]);
+      createSpy.mockRestore();
+    } finally {
+      process.off('uncaughtException', onUncaught);
+    }
+  });
 });

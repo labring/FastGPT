@@ -43,17 +43,22 @@ const sessionContext = {
 
 describe('sandbox preview application', () => {
   beforeEach(() => {
-    // Provider 和代理地址统一从当前实例配置读取。
+    // 启用开关、服务地址和代理地址统一从当前实例配置读取。
     global.systemInstanceConfig = resolveSystemInstanceConfig({
       subservice: {
         agentSandbox: {
-          provider: 'opensandbox',
+          enabled: true,
           proxy: {
             wsUrl: 'wss://agent-proxy.example.com/base/',
             previewUrl: 'https://agent-preview.example.com:3007/base/',
             secret: 'test-agent-sandbox-proxy-secret-32-characters'
           },
-          opensandbox: { baseUrl: 'https://sandbox.example.com' }
+          opensandbox: {
+            baseUrl: 'https://sandbox.example.com',
+            apiKey: 'test-api-key',
+            image: 'fastgpt/sandbox:latest',
+            volumeManagerUrl: 'http://volume-manager.example.com'
+          }
         }
       }
     });
@@ -220,13 +225,17 @@ describe('sandbox preview application', () => {
     ).toThrow('Agent Sandbox preview proxy URL is not configured');
   });
 
-  it('normalizes relative and workspace absolute paths', () => {
+  it('normalizes relative and workspace absolute paths (including legacy /workspace alias)', () => {
     expect(resolveSandboxPreviewPath('./dir/file.txt')).toEqual({
-      providerPath: '/workspace/dir/file.txt',
+      providerPath: '/home/sandbox/workspace/dir/file.txt',
+      relativePath: 'dir/file.txt'
+    });
+    expect(resolveSandboxPreviewPath('/home/sandbox/workspace/dir/file.txt')).toEqual({
+      providerPath: '/home/sandbox/workspace/dir/file.txt',
       relativePath: 'dir/file.txt'
     });
     expect(resolveSandboxPreviewPath('/workspace/dir/file.txt')).toEqual({
-      providerPath: '/workspace/dir/file.txt',
+      providerPath: '/home/sandbox/workspace/dir/file.txt',
       relativePath: 'dir/file.txt'
     });
   });
