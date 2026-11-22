@@ -1,4 +1,3 @@
-import type { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { bullMQ, type BullMQBinding } from '../binding';
 import { QueueNames } from '../names';
 import type { Processor, Queue, Worker, WorkerOptions } from '../types';
@@ -7,38 +6,14 @@ export type WechatPollJobData = {
   shareId: string;
 };
 
-export type WechatReplyMedia = {
-  source: { url: string } | { encryptedQuery: string };
-  aesKey?: string;
-  imageAesKey?: string;
-  filename?: string;
-  fileType: ChatFileTypeEnum;
-  defaultName: 'image' | 'file' | 'video';
-};
-
-export type WechatReplyItem = { text: string } | WechatReplyMedia;
-
-type WechatReplyJobFields = {
+export type WechatReplyJobData = {
   shareId: string;
+  bindingKey?: string;
   userId: string;
+  items?: unknown[];
   contextToken: string;
   lastMsgId: string;
 };
-
-type NewWechatReplyJobData = WechatReplyJobFields & {
-  bindingKey: string;
-  messageItems: WechatReplyItem[];
-  items?: never;
-};
-
-/** 已排队的旧任务仍可能携带原始 iLink 消息项，首次升级时继续读取。 */
-export type WechatReplyJobData =
-  | NewWechatReplyJobData
-  | (WechatReplyJobFields & {
-      bindingKey?: string;
-      items?: unknown[];
-      messageItems?: never;
-    });
 
 export const WECHAT_POLL_JOB_NAME = 'wechatPublishPoll';
 export const WECHAT_REPLY_JOB_NAME = 'wechatPublishReply';
@@ -75,8 +50,11 @@ export class WechatMQService {
     return this.binding.getWorker<WechatReplyJobData>(QueueNames.wechatReply, processor, opts);
   }
 
-  /** 投递微信回复任务，具体幂等键由调用方根据消息 id 生成。 */
-  addReplyJob(data: NewWechatReplyJobData, opts: { jobId: string }) {
+  /** 投递带绑定身份的回复任务，原始 items 需能被停机回滚后的旧 Worker 读取。 */
+  addReplyJob(
+    data: WechatReplyJobData & { bindingKey: string; items: unknown[] },
+    opts: { jobId: string }
+  ) {
     return this.getReplyQueue().add(WECHAT_REPLY_JOB_NAME, data, opts);
   }
 

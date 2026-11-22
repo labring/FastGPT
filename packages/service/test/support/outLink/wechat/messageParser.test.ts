@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   WechatMessageItemType,
   WechatMessageType
@@ -52,12 +51,7 @@ describe('groupMessagesByUser', () => {
     ).toEqual([
       expect.objectContaining({
         userId: 'user-a',
-        messageItems: [
-          expect.objectContaining({
-            fileType: ChatFileTypeEnum.video,
-            source: { url: 'https://example.com/video' }
-          })
-        ]
+        items: [expect.objectContaining({ type: WechatMessageItemType.VIDEO })]
       })
     ]);
   });

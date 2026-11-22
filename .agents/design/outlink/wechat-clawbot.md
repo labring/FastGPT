@@ -87,7 +87,7 @@ Worker 每次执行前读取可运行的 MongoOutLink。渠道不可运行是正
 | Stalled interval | 30 秒 |
 | Terminal retention | completed/failed 立即删除 |
 
-Poll job 主要等待约 35 秒的长轮询，不执行工作流。入队前按消息类型提取文本和媒体描述，回复 Worker 直接消费这一结构，在获得工作流文件限制后再下载媒体。旧任务的原始消息项只在消费时解析。
+Poll job 主要等待约 35 秒的长轮询，不执行工作流。入队筛选和回复消费复用同一套消息项解析规则。队列保存原始 iLink 消息项，供 v4.17.4 的回复 Worker 读取。媒体在获得工作流文件限制后下载。
 
 有消息时 completed listener 立即续链；空响应延迟 10 秒，避免上游秒回空包形成热循环；failed listener 在渠道仍 online 时延迟 10 秒重试。
 
@@ -97,7 +97,7 @@ Poll job 主要等待约 35 秒的长轮询，不执行工作流。入队前按�
 | --- | --- |
 | Queue | `wechatReply` |
 | Job name | `wechatPublishReply` |
-| Job data | `shareId`、`bindingKey`、`userId`、`messageItems`、`contextToken`、`lastMsgId` |
+| Job data | `shareId`、`bindingKey`、`userId`、`items`、`contextToken`、`lastMsgId` |
 | Job ID | `wechat-reply:${shareId}:${bindingKey}:${lastMsgId}` |
 | Concurrency | 固定 `1000` |
 | Lock | 30 分钟 |
@@ -159,7 +159,7 @@ poll processor 本身不续链。续链统一由 Worker 的 completed/failed lis
 
 - `pollJobId` 保证多实例启动、重复扫码和启动恢复不会并行创建两条 poll 链。
 - 相同 jobId 的回复任务仍在队列中时，BullMQ 会合并重复投递。
-- 失败计数、游标和排队的回复归属于当轮绑定。无有效绑定标识的记录使用登录时间和 token 的哈希作为绑定键。游标更新还比较拉取前的游标，回复任务开始时校验绑定。缺少绑定键的旧任务仅在历史绑定上兼容，并跳过入队时间早于当前登录的任务。旧版本未记录发起轮询时的归属，重绑后的迟到旧任务无法仅凭入队时间区分。
+- 失败计数、游标和排队的回复归属于当轮绑定。无有效绑定标识的记录使用登录时间和 token 的哈希作为绑定键。游标更新还比较拉取前的游标，回复任务开始时校验绑定。缺少绑定键的旧任务按当前登录时间兼容读取。旧版本未记录发起轮询时的归属，重绑后的迟到旧任务无法仅凭入队时间区分。
 - `syncBuf` 只在 reply jobs 全部入队后推进，避免 enqueue 失败丢消息。
 - 服务启动时扫描 online 渠道并调用幂等调度；已有 active/waiting job 时 BullMQ 保持原任务。
 - 登出撤销待确认二维码，由 worker 读取离线状态后结束轮询。删除渠道后清理等待中的 poll job。
@@ -191,4 +191,4 @@ Mock 覆盖取码、待扫码、已扫码、确认、轮询收消息、获取并
 
 验证必须覆盖重复启动、重复扫码、多实例恢复、空响应退避、enqueue 失败不推进 syncBuf、stalled retry 不重复回复、连续失败转 error、主动停止不再续链，以及慢回复期间 poll 仍能持续摄入。
 
-回滚前需要核对 Redis 存量任务和已推进的 Mongo 游标。v4.17.4 的消费者读取原始消息项，也无法核对新版的绑定身份。保留待处理消息时，应交接队列和游标后再切换版本。首次升级前若已有旧版本重绑后的在途轮询，交接时也需考虑旧任务的归属。
+回滚前需要核对 Redis 存量任务和已推进的 Mongo 游标。v4.17.4 能读取原始消息项，其消费者缺少新版绑定校验，生产者也沿用旧版去重键。保留待处理消息时，应交接队列和游标后再切换版本。首次升级前若旧版本曾在长轮询期间重绑，交接时也需考虑未携带绑定的待处理任务。

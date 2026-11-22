@@ -22,12 +22,9 @@ import type {
   OutlinkQueryResolveOptions,
   OutlinkResponder
 } from '../../../support/outLink/runtime/type';
-import type {
-  WechatReplyJobData,
-  WechatReplyMedia
-} from '@fastgpt/dal/redis/bullmq/services/wechat';
-import type { ILinkClient, MessageItem } from './ilinkClient';
-import { parseWechatMessageItems } from './messageParser';
+import type { WechatReplyJobData } from '@fastgpt/dal/redis/bullmq';
+import type { CDNMedia, ILinkClient, MessageItem } from './ilinkClient';
+import { parseWechatMessageItem, type WechatMediaResource } from './messageParser';
 import { fetchWechat } from './request';
 
 const logger = getLogger(LogCategories.MODULE.OUTLINK.WECHAT);
@@ -47,6 +44,7 @@ export const createWechatOutlinkAdapter = ({
   appId
 }: CreateWechatOutlinkAdapterProps) => {
   const chatId = `wechat_${jobData.shareId}_${jobData.userId}`;
+  const items = (jobData.items ?? []) as MessageItem[];
 
   /** 将微信媒体字段的两种 AES key 编码还原为 AES-128-ECB 原始密钥。 */
   const parseAesKey = (aesKey: string) => {
@@ -58,26 +56,33 @@ export const createWechatOutlinkAdapter = ({
     throw new Error('Invalid Wechat CDN AES key');
   };
 
+  const getMediaUrl = (media: CDNMedia) => {
+    if (media.full_url) return media.full_url;
+    if (media.encrypt_query_param) {
+      return `${WECHAT_CDN_BASE_URL}/download?encrypted_query_param=${encodeURIComponent(media.encrypt_query_param)}`;
+    }
+    throw new Error('Wechat media download URL is missing');
+  };
+
   /** 下载受限的 CDN 媒体；AES 文件仅多允许一个 PKCS7 block 的密文开销。 */
   const downloadMedia = async ({
-    source,
+    media,
     maxBytes,
     encrypted
   }: {
-    source: WechatReplyMedia['source'];
+    media: CDNMedia;
     maxBytes: number;
     encrypted: boolean;
   }) => {
-    const url =
-      'url' in source
-        ? source.url
-        : `${WECHAT_CDN_BASE_URL}/download?encrypted_query_param=${encodeURIComponent(source.encryptedQuery)}`;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), WECHAT_MEDIA_TIMEOUT_MS);
     const allowedBytes = encrypted ? maxBytes + 16 : maxBytes;
 
     try {
-      const response = await fetchWechat({ url, endpoint: 'media' }, { signal: controller.signal });
+      const response = await fetchWechat(
+        { url: getMediaUrl(media), endpoint: 'media' },
+        { signal: controller.signal }
+      );
       if (!response.ok) throw new Error(`Wechat CDN download failed: HTTP ${response.status}`);
       if (!response.body) throw new Error('Wechat CDN response body is empty');
 
@@ -107,25 +112,23 @@ export const createWechatOutlinkAdapter = ({
   };
 
   const query: UserChatItemValueItemType[] = [];
-  const resources: WechatReplyMedia[] = [];
-  // 旧队列仍可能有原始 iLink 消息项。存量消费完后可移除这条读取路径。
-  const items =
-    jobData.messageItems ?? parseWechatMessageItems((jobData.items ?? []) as MessageItem[]);
+  const resources: WechatMediaResource[] = [];
   for (const item of items) {
-    if ('text' in item) query.push({ text: { content: item.text } });
-    else resources.push(item);
+    const parsed = parseWechatMessageItem(item);
+    if (!parsed) continue;
+    if ('text' in parsed) query.push({ text: { content: parsed.text } });
+    else resources.push(parsed);
   }
 
   const resolveResource = async ({
-    source,
-    aesKey: cdnAesKey,
+    media,
     imageAesKey,
     filename: suppliedFilename,
     defaultName,
     fileType,
     maxBytes,
     fileSelectConfig
-  }: WechatReplyMedia & {
+  }: WechatMediaResource & {
     maxBytes: number;
     fileSelectConfig?: AppFileSelectConfigType;
   }): Promise<UserChatItemValueItemType> => {
@@ -136,10 +139,10 @@ export const createWechatOutlinkAdapter = ({
             throw new Error('Invalid Wechat image AES key');
           return Buffer.from(imageAesKey, 'hex');
         }
-        return cdnAesKey ? parseAesKey(cdnAesKey) : undefined;
+        return media.aes_key ? parseAesKey(media.aes_key) : undefined;
       })();
       const { buffer: downloaded, contentType } = await downloadMedia({
-        source,
+        media,
         maxBytes,
         encrypted: Boolean(aesKey)
       });

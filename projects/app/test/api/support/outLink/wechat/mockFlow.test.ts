@@ -195,6 +195,17 @@ describe('WeChat personal channel with mock iLink', () => {
     expect(ilink.requests[0].get_updates_buf).toBe('');
     expect(app.syncBuf).toBe('cursor-1');
     expect(replies).toHaveLength(1);
+    // v4.17.4 回滚后的回复 Worker 仍从原始 items 读取消息内容。
+    expect(replies[0].items).toEqual([
+      { type: 1, text_item: { text: 'please read' } },
+      expect.objectContaining({
+        type: 4,
+        file_item: {
+          file_name: 'report.pdf',
+          media: { full_url: mediaUrl, aes_key: key.toString('base64') }
+        }
+      })
+    ]);
     await runReply({ data: replies[0], timestamp: Date.now() });
     expect(mocks.upload).toHaveBeenCalledWith(expect.objectContaining({ source: plain }));
     expect(ilink.replies).toEqual([

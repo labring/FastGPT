@@ -24,15 +24,14 @@ export const getWechatBindingIdentity = (
   return { id, key: id ?? fingerprint, loginTime: app.loginTime };
 };
 
-/** 仅历史绑定兼容无绑定键的旧任务，入队时间用于排除明显早于当前登录的任务。 */
+/** v4.17.4 未记录绑定键，入队时间只能排除明显早于当前登录的任务。 */
 export const matchesWechatReplyBinding = (
   binding: ReturnType<typeof getWechatBindingIdentity>,
   job: { bindingKey?: string; timestamp: number }
 ) => {
   if (job.bindingKey !== undefined) return job.bindingKey === binding.key;
-  if (binding.id !== undefined) return false;
   const loggedInAt = Date.parse(binding.loginTime ?? '');
-  return !Number.isFinite(loggedInAt) || job.timestamp >= loggedInAt;
+  return Number.isFinite(loggedInAt) ? job.timestamp >= loggedInAt : binding.id === undefined;
 };
 
 /**

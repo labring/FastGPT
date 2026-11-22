@@ -302,7 +302,7 @@ describe('Wechat polling failure counter integration', () => {
       hasCurrentId: false
     }
   ])(
-    'queues parsed message items with the compatible reply ID for $jobPrefix',
+    'preserves legacy-readable message items and the reply ID for $jobPrefix',
     async ({ app, jobPrefix, hasCurrentId }) => {
       mocks.findOne.mockReturnValue({
         lean: vi.fn().mockResolvedValue({ ...outLink, app })
@@ -329,7 +329,7 @@ describe('Wechat polling failure counter integration', () => {
           shareId: 'share-1',
           bindingKey: hasCurrentId ? bindingId : getWechatLoginFingerprint(app),
           userId: 'user-1',
-          messageItems: [{ text: 'hello' }],
+          items,
           contextToken: 'context-token',
           lastMsgId: '18446744073709551615'
         },
