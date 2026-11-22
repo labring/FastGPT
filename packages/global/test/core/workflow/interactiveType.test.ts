@@ -27,6 +27,19 @@ describe('UserInputFormItemSchema', () => {
       canUrlUpload: true
     });
   });
+
+  it('accepts a JSON-persisted form item without a value property', () => {
+    const parsed = UserInputFormItemSchema.parse({
+      type: FlowNodeInputTypeEnum.input,
+      key: 'name',
+      label: 'Name',
+      valueType: WorkflowIOValueTypeEnum.string,
+      required: false,
+      defaultValue: 'Alice'
+    });
+    expect(parsed).toMatchObject({ key: 'name', defaultValue: 'Alice' });
+    expect(parsed).not.toHaveProperty('value');
+  });
 });
 
 describe('interactive description', () => {
