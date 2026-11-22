@@ -128,9 +128,12 @@ export const normalizeModelPricingForSave = (
 };
 
 /**
- * 仅系统模型计费；按总输入匹配档位，再分别计算普通输入、缓存读取、缓存创建和输出。
- * 输入包含缓存，缓存数量不得超过总输入；缺省缓存价沿用输入价，显式 0 免费。
+ * 系统 LLM 按总输入匹配档位。总输入包含普通输入、缓存读取和缓存创建。
+ * 读取和创建独立计量。普通输入 = 总输入 - 缓存读取 - 缓存创建，每个输入 Token 只计费一次。
+ * 各缓存单价缺省时沿用该档输入价，显式 0 表示该项免费。输出独立计费。
  * STT 使用独立计量口径，团队模型免费。
+ *
+ * @see https://developers.openai.com/api/docs/guides/prompt-caching
  */
 export const calculateModelPrice = ({
   config,

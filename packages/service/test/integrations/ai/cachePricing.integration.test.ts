@@ -43,6 +43,7 @@ beforeEach(async () => {
       prompt_tokens: 10000,
       completion_tokens: 2000,
       total_tokens: 12000,
+      // OpenAI 将 7000 个读取 Tokens 和 1000 个创建 Tokens 分别上报。
       prompt_tokens_details: { cached_tokens: 7000, cache_write_tokens: 1000 }
     };
     const metadata = { id: 'cache-test', created: 1, model: body.model };
@@ -124,15 +125,15 @@ describe('cache pricing with real HTTP/SSE and MongoDB', () => {
       expect(result.usage).toEqual({
         inputTokens: 10000,
         outputTokens: 2000,
-        cacheReadTokens: 6000,
+        cacheReadTokens: 7000,
         cacheCreationTokens: 1000,
         usedUserOpenAIKey: false
       });
-      expect(formatModelChars2Points({ model, ...result.usage }).totalPoints).toBeCloseTo(17.7);
+      expect(formatModelChars2Points({ model, ...result.usage }).totalPoints).toBeCloseTo(15.9);
       await Promise.all(writes.mock.results.map(({ value }) => value));
       const record = await MongoLLMRequestRecord.findOne({ requestId: result.requestId }).lean();
       expect(record?.response.usage).toMatchObject({
-        cacheReadTokens: 6000,
+        cacheReadTokens: 7000,
         cacheCreationTokens: 1000
       });
       expect(LLMModelPricingSchema.parse(stored?.pricing).tiers?.[0]).toMatchObject({
@@ -164,7 +165,7 @@ describe('cache pricing with real HTTP/SSE and MongoDB', () => {
     expect(result.usage).toMatchObject({
       inputTokens: 20000,
       outputTokens: 4000,
-      cacheReadTokens: 12000,
+      cacheReadTokens: 14000,
       cacheCreationTokens: 2000
     });
     expect(formatModelChars2Points({ model, ...result.usage }).totalPoints).toBe(56);
@@ -210,13 +211,13 @@ it.each([false, true])(
     expect(result).toMatchObject({
       inputTokens: 10000,
       outputTokens: 2000,
-      cacheReadTokens: 6000,
+      cacheReadTokens: 7000,
       cacheCreationTokens: 1000
     });
-    expect(result.llmTotalPoints).toBeCloseTo(userKey ? 0 : 17.7);
+    expect(result.llmTotalPoints).toBeCloseTo(userKey ? 0 : 15.9);
     expect(onLLMRequestEnd).toHaveBeenCalledWith(
       expect.objectContaining({
-        usage: expect.objectContaining({ cacheReadTokens: 6000, cacheCreationTokens: 1000 })
+        usage: expect.objectContaining({ cacheReadTokens: 7000, cacheCreationTokens: 1000 })
       })
     );
     await Promise.all(writes.mock.results.map(({ value }) => value));

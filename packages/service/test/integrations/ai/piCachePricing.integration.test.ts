@@ -97,7 +97,7 @@ describe('Pi cache billing through the real SDK', () => {
     {
       name: 'output totals already include reasoning tokens',
       fields: {
-        prompt_tokens_details: { cached_tokens: 700, cache_write_tokens: 100 },
+        prompt_tokens_details: { cached_tokens: 600, cache_write_tokens: 100 },
         completion_tokens_details: { reasoning_tokens: 8 }
       },
       read: 600,
@@ -105,11 +105,11 @@ describe('Pi cache billing through the real SDK', () => {
       points: 1.05
     },
     {
-      name: 'cached tokens including current writes',
+      name: 'OpenAI cache reads and writes are reported independently',
       fields: { prompt_tokens_details: { cached_tokens: 700, cache_write_tokens: 100 } },
-      read: 600,
+      read: 700,
       write: 100,
-      points: 1.05
+      points: 0.87
     },
     {
       name: 'explicit zero overrides fallback fields',

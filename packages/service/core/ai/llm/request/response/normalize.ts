@@ -83,7 +83,8 @@ export const isStreamCompletionResponse = (
 
 /**
  * 归一化 OpenAI 兼容渠道缓存用量，与 Pi SDK 补丁保持一致。
- * AIProxy 的 cached_tokens 是独立的读取量，两个明细创建别名按 AIProxy 规则取较大值。
+ * OpenAI 和 AIProxy 的 cached_tokens 表示缓存读取，cache_write_tokens 表示缓存创建。
+ * 两个明细创建别名按 AIProxy 规则取较大值，只记录一次创建量。
  * 缓存读取和创建均包含在总输入内，异常值也不得超过总输入。
  */
 export const normalizeLLMCacheUsage = (usage: LLMCompletionUsage) => {
