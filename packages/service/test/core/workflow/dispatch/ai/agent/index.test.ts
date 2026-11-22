@@ -1,3 +1,4 @@
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import {
   createDefaultInstanceConfig,
   getTestInstanceConfig
@@ -1936,5 +1937,45 @@ describe('dispatchRunAgent user context', () => {
       chatId: 'chat_1',
       teamId: 'team_1'
     });
+  });
+
+  it('filters inherited tools against the Agent runtime', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    getAgentRuntimeToolsMock.mockResolvedValueOnce([
+      {
+        type: 'tool',
+        id: 'weather_tool',
+        name: 'Weather',
+        avatar: '',
+        params: {},
+        requestSchema: { type: 'function', function: { name: 'weather_tool' } }
+      }
+    ]);
+    const allowed = ['update_plan', 'dataset_search', 'weather_tool', 'read_files'];
+    const props = createProps();
+    props.histories.push({
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          tools: [...allowed, 'other_tool', 'sandbox_shell'].map((name) => ({
+            id: name,
+            functionName: name,
+            params: '{}',
+            response: name
+          }))
+        }
+      ]
+    });
+
+    await runWithContext({ mcpClientMemory: {} }, () => dispatchRunAgent(props));
+
+    const messages: ChatCompletionMessageParam[] = runAgentLoopMock.mock.calls[0][0].input.messages;
+    const toolNames = messages
+      .filter((msg) => msg.role === 'assistant')
+      .flatMap((msg) => msg.tool_calls?.map((call) => call.function.name) ?? []);
+    expect(toolNames).toEqual(allowed);
+    expect(messages.filter((msg) => msg.role === 'tool').map((msg) => msg.tool_call_id)).toEqual(
+      allowed
+    );
   });
 });

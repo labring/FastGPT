@@ -3,6 +3,7 @@ import {
   getTestInstanceConfig
 } from '@test/utils/instanceConfigSnapshot';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getWorkflowContext } from '@fastgpt/service/core/workflow/dispatch/context';
 import { SANDBOX_SHELL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
@@ -247,6 +248,48 @@ describe('runToolCall compression node responses', () => {
     expect(runtime.checkIsStopping()).toBe(true);
     expect(props).not.toHaveProperty('checkIsStopping');
   });
+
+  it.each([true, false])(
+    'filters inherited tools from the attached runtime (dataset: %s)',
+    async (hasDataset) => {
+      runAgentLoopMock.mockResolvedValue(createLoopResult());
+      const names = [
+        'weather_node',
+        'dataset_search',
+        'read_files',
+        'update_plan',
+        'sandbox_shell',
+        'other_node'
+      ];
+      const calls = names.map((name) => ({
+        id: name,
+        type: 'function' as const,
+        function: { name, arguments: '{}' }
+      }));
+      const history: ChatCompletionMessageParam[] = [
+        { role: 'assistant', tool_calls: calls },
+        ...calls.map(({ id }) => ({ role: 'tool' as const, tool_call_id: id, content: id })),
+        { role: 'user', content: 'Continue' }
+      ];
+
+      const toolNodes = [
+        { nodeId: 'weather_node', flowNodeType: FlowNodeTypeEnum.pluginModule },
+        ...(hasDataset
+          ? [{ nodeId: 'dataset_node', flowNodeType: FlowNodeTypeEnum.datasetSearchNode }]
+          : [])
+      ].map((node) => ({ ...node, name: node.nodeId, inputs: [] }));
+      await runToolCall(createProps({ messages: history, toolNodes }));
+
+      const [{ input, runtime }] = runAgentLoopMock.mock.calls[0];
+      const allowed = ['weather_node', ...(hasDataset ? ['dataset_search'] : []), 'read_files'];
+      expect(runtime.systemTools.datasetSearch?.enabled ?? false).toBe(hasDataset);
+      expect(input.messages).toMatchObject([
+        { role: 'assistant', tool_calls: calls.filter(({ id }) => allowed.includes(id)) },
+        ...allowed.map((id) => ({ role: 'tool', tool_call_id: id })),
+        { role: 'user', content: 'Continue' }
+      ]);
+    }
+  );
 
   it('passes the extracted system prompt separately from conversation messages', async () => {
     runAgentLoopMock.mockResolvedValue(createLoopResult());

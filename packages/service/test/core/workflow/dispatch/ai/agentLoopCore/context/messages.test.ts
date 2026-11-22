@@ -3,10 +3,10 @@ import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/consta
 import {
   buildAgentLoopCoreInputFilesPrompt,
   buildAgentLoopCoreInput,
-  buildAgentLoopCoreRequestMessages,
   buildAgentLoopCoreSkillsPrompt,
   buildAgentLoopCoreUserReminderInput
 } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/context';
+import { buildAgentLoopCoreRequestMessages } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/context/messages';
 import { createAgentLoopCoreAssistantEventCollector } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/assistantResponses/eventCollector';
 import { describe, expect, it } from 'vitest';
 

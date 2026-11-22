@@ -1426,70 +1426,63 @@ describe('loadRequestMessages function tests', () => {
   });
 
   describe('Message merging behavior', () => {
-    it('should merge consecutive system messages', async () => {
+    it('merges system, user and assistant text and reasoning without mutating reused history', async () => {
       const messages: ChatCompletionMessageParam[] = [
-        { role: ChatCompletionRequestMessageRoleEnum.System, content: 'System 1' },
-        { role: ChatCompletionRequestMessageRoleEnum.System, content: 'System 2' },
-        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' }
+        { role: 'system', content: 'System 1' },
+        { role: 'system', content: 'System 2' },
+        { role: 'user', content: 'Question 1' },
+        { role: 'user', content: 'Question 2' },
+        { role: 'assistant', content: 'Answer 1', reasoning_content: 'Reason 1. ' },
+        { role: 'assistant', content: 'Answer 2', reasoning_content: 'Reason 2.' }
       ];
+      const original = structuredClone(messages);
+      const result = await loadRequestMessages({ messages, supportReason: true });
 
-      const result = await loadRequestMessages({ messages });
-
-      expect(result).toHaveLength(2);
-      expect(result[0].role).toBe(ChatCompletionRequestMessageRoleEnum.System);
-      // System messages when merged get converted to concatenated string
-      expect(typeof result[0].content).toBe('string');
-      expect(result[0].content).toBe('System 1\n\nSystem 2');
-    });
-
-    it('should merge consecutive user messages', async () => {
-      const messages: ChatCompletionMessageParam[] = [
-        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Message 1' },
-        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Message 2' },
-        { role: ChatCompletionRequestMessageRoleEnum.Assistant, content: 'Response' }
-      ];
-
-      const result = await loadRequestMessages({ messages });
-
-      expect(result).toHaveLength(2);
-      expect(result[0].role).toBe(ChatCompletionRequestMessageRoleEnum.User);
-      // User messages get merged - final format may be array or string
-      expect(result[0].content).toBeDefined();
-    });
-
-    it('should merge consecutive assistant messages with content', async () => {
-      const messages: ChatCompletionMessageParam[] = [
-        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
-        { role: ChatCompletionRequestMessageRoleEnum.Assistant, content: 'Part 1' },
-        { role: ChatCompletionRequestMessageRoleEnum.Assistant, content: 'Part 2' }
-      ];
-
-      const result = await loadRequestMessages({ messages });
-
-      expect(result).toHaveLength(2);
-      expect(result[1].role).toBe(ChatCompletionRequestMessageRoleEnum.Assistant);
-      expect(result[1].content).toBe('Part 1\nPart 2');
-    });
-
-    it('should not merge assistant messages when one has tool calls', async () => {
-      const messages: ChatCompletionMessageParam[] = [
-        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
-        { role: ChatCompletionRequestMessageRoleEnum.Assistant, content: 'Text response' },
+      expect(result).toMatchObject([
+        { role: 'system', content: 'System 1\n\nSystem 2' },
         {
-          role: ChatCompletionRequestMessageRoleEnum.Assistant,
-          content: null,
-          tool_calls: [
-            { id: 'call1', type: 'function', function: { name: 'tool', arguments: '{}' } }
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Question 1' },
+            { type: 'text', text: 'Question 2' }
           ]
+        },
+        {
+          role: 'assistant',
+          content: 'Answer 1\nAnswer 2',
+          reasoning_content: 'Reason 1. Reason 2.'
         }
-      ];
-
-      const result = await loadRequestMessages({ messages });
-
-      expect(result).toHaveLength(3); // Should not merge
-      expect(result[1].content).toBe('Text response');
-      expect((result[2] as any).tool_calls).toHaveLength(1);
+      ]);
+      expect(messages).toEqual(original);
+      expect(await loadRequestMessages({ messages, supportReason: true })).toEqual(result);
     });
+
+    it.each(['modern', 'legacy'] as const)(
+      'keeps a %s call on a text-bearing assistant adjacent to plain text',
+      async (kind) => {
+        const functionCall = { name: 'weather', arguments: '{}' };
+        const toolFields =
+          kind === 'modern'
+            ? { tool_calls: [{ id: 'call1', type: 'function' as const, function: functionCall }] }
+            : { function_call: functionCall };
+        const toolMessage = {
+          role: 'assistant' as const,
+          content: 'Checking weather',
+          ...toolFields
+        };
+        const messages: ChatCompletionMessageParam[] = [
+          { role: 'user', content: 'Hello' },
+          { role: 'assistant', content: 'Text response' },
+          toolMessage
+        ];
+
+        const result = await loadRequestMessages({ messages });
+
+        expect(result).toHaveLength(3);
+        expect(result[1].content).toBe('Text response');
+        expect(result[2]).toMatchObject(toolMessage);
+      }
+    );
   });
 
   describe('Other message types', () => {
