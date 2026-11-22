@@ -8,6 +8,8 @@ import dns from 'dns/promises';
 import http from 'http';
 import https from 'https';
 import { isIP } from 'net';
+import { checkServerIdentity } from 'tls';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import { ProxyAgent, type ProxyAgentOptions } from 'proxy-agent';
 import { getProxyForUrl } from 'proxy-from-env';
 import { isDevEnv } from '@fastgpt/global/common/system/constants';
@@ -41,6 +43,7 @@ const addSSRFInterceptor = (instance: AxiosInstance) => {
       __safeRedirect: preparedConfig.__safeRedirect ?? {
         count: 0,
         maxRedirects,
+        proxy: safeConfig.proxy,
         validateStatus: preparedConfig.validateStatus
       }
     };
@@ -70,6 +73,7 @@ const addSSRFInterceptor = (instance: AxiosInstance) => {
 
     const nextConfig: SafeRedirectConfig = {
       ...redirectConfig,
+      proxy: redirectState.proxy,
       validateStatus: redirectState.validateStatus,
       __safeRedirect: {
         ...redirectState,
@@ -102,12 +106,14 @@ export type SafeAxiosRequestConfig = AxiosRequestConfig & {
  * 手动重定向状态。
  *
  * count/maxRedirects 用于替代 axios/follow-redirects 的跳转次数控制。
+ * proxy 保存显式代理设置，避免下一跳继承为关闭 axios 自动代理设置的 false。
  * validateStatus 保存调用方原始成功状态判定,因为 request interceptor 会临时允许
  * 3xx 进入 response interceptor,最终非重定向响应仍需按调用方语义判断成功/失败。
  */
 type SafeRedirectState = {
   count: number;
   maxRedirects: number;
+  proxy?: AxiosRequestConfig['proxy'];
   validateStatus?: AxiosRequestConfig['validateStatus'];
 };
 
@@ -117,11 +123,7 @@ type SafeRedirectConfig = AxiosRequestConfig & {
 };
 
 type SafeRedirectInternalConfig = InternalAxiosRequestConfig & {
-  __safeRedirect?: {
-    count: number;
-    maxRedirects: number;
-    validateStatus?: AxiosRequestConfig['validateStatus'];
-  };
+  __safeRedirect?: SafeRedirectState;
   __safeAxios?: SafeAxiosRequestOptions;
 };
 
@@ -137,10 +139,9 @@ type LookupCallback = (
 ) => void;
 
 /**
- * 对 safe axios 的请求做统一 SSRF 预检，并在直连路径固定 DNS 解析结果。
+ * 对 safe axios 的请求做统一 SSRF 预检，并在每次建连时使用经过校验的目标地址。
  *
- * 代理路径只做本机 isInternalAddress() best-effort 检查；最终 DNS 解析由代理侧负责。
- * 直连路径必须覆盖调用方 agent，避免自定义 lookup 在建连阶段重新指向内部地址。
+ * 覆盖调用方 agent；直连使用受控 lookup，代理使用以 IP 为目标的 CONNECT 隧道。
  */
 const prepareSafeRequestConfig = async (
   config: SafeRedirectInternalConfig
@@ -156,31 +157,59 @@ const prepareSafeRequestConfig = async (
     return Promise.reject(new Error(PRIVATE_URL_TEXT));
   }
 
-  if (isRequestUsingProxy(requestUrl, config)) {
-    return config;
-  }
-
   return attachPinnedAgent(config, requestUrl);
 };
 
 /**
- * 判断当前请求是否应保留代理链路。
+ * 根据原始请求 URL 选择显式代理或命中的环境代理。
  *
- * 显式 axios proxy 和 proxy-from-env 命中的环境代理都视为代理路径；其它自定义
- * httpAgent/httpsAgent 不再被 safe axios 信任，直连路径会统一覆盖。
+ * 工厂默认的 proxy: false 仅用于关闭 axios 自动代理，环境变量由共享 agent 处理。
  */
-const isRequestUsingProxy = (requestUrl: string, config: AxiosRequestConfig): boolean => {
-  if (config.proxy) {
-    return true;
+const resolveProxyUrl = (requestUrl: string, explicitProxy: AxiosRequestConfig['proxy']) => {
+  if (!explicitProxy) {
+    const proxyUrl = getProxyForUrl(requestUrl);
+    return proxyUrl ? new URL(proxyUrl) : undefined;
   }
 
-  try {
-    return getProxyForUrl(requestUrl).length > 0;
-  } catch {
-    // 代理判断失败时按可能走代理处理，避免误覆盖代理配置。
-    return true;
+  const { host, port, auth, protocol = 'http' } = explicitProxy;
+  const proxyHost = isIP(host) === 6 ? `[${host}]` : host;
+  const proxyUrl = new URL(`${protocol.replace(/:$/, '')}://${proxyHost}`);
+  if (port) proxyUrl.port = String(port);
+  if (auth) {
+    proxyUrl.username = encodeURIComponent(auth.username ?? '');
+    proxyUrl.password = encodeURIComponent(auth.password ?? '');
   }
+  return proxyUrl;
 };
+
+/**
+ * CONNECT 只使用已检查的 IP。请求仍使用原始 URL，以保留 Host、TLS 身份和重定向语义。
+ */
+class PinnedProxyAgent extends HttpsProxyAgent<string> {
+  constructor(
+    proxyUrl: URL,
+    private readonly target: { address: string; hostname: string; rejectUnauthorized: boolean }
+  ) {
+    super(proxyUrl);
+  }
+
+  override connect(
+    request: http.ClientRequest,
+    options: Parameters<HttpsProxyAgent<string>['connect']>[1]
+  ) {
+    const { address, hostname, rejectUnauthorized } = this.target;
+    if (!options.secureEndpoint) {
+      return super.connect(request, { ...options, host: address });
+    }
+    return super.connect(request, {
+      ...options,
+      host: address,
+      servername: isIP(hostname) ? '' : hostname,
+      rejectUnauthorized,
+      checkServerIdentity: (_hostname, certificate) => checkServerIdentity(hostname, certificate)
+    });
+  }
+}
 
 const attachPinnedAgent = async (
   config: SafeRedirectInternalConfig,
@@ -197,17 +226,32 @@ const attachPinnedAgent = async (
     return config;
   }
 
-  const resolved = await resolveSafeConnectAddress(parsedUrl.hostname);
-  const lookup = createPinnedLookup(resolved);
-  const isHttps = parsedUrl.protocol === 'https:';
-  const agent = isHttps
-    ? new https.Agent({
-        lookup,
-        rejectUnauthorized: config.__safeAxios?.rejectUnauthorized ?? true
-      })
-    : new http.Agent({
-        lookup
+  const hostname = parsedUrl.hostname.replace(/^\[|\]$/g, '');
+  const proxyUrl = resolveProxyUrl(requestUrl, config.proxy);
+  const rejectUnauthorized = config.__safeAxios?.rejectUnauthorized ?? true;
+  const resolved = await resolveSafeConnectAddress(hostname);
+  const agent = (() => {
+    if (proxyUrl) {
+      if (proxyUrl.protocol !== 'http:' && proxyUrl.protocol !== 'https:') {
+        throw new Error('SSRF-protected requests require an HTTP or HTTPS CONNECT proxy');
+      }
+      if (config.httpVersion === 2 || config.transport || config.socketPath) {
+        throw new Error('SSRF-protected proxy requests require the standard HTTP/1.1 transport');
+      }
+      return new PinnedProxyAgent(proxyUrl, {
+        address: resolved.address,
+        hostname,
+        rejectUnauthorized
       });
+    }
+
+    const lookup = createPinnedLookup(resolved);
+    return parsedUrl.protocol === 'https:'
+      ? new https.Agent({ lookup, rejectUnauthorized })
+      : new http.Agent({ lookup });
+  })();
+
+  const isHttps = parsedUrl.protocol === 'https:';
 
   return {
     ...config,

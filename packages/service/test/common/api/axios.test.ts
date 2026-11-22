@@ -1,6 +1,7 @@
 import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 import http from 'http';
+import net from 'net';
 import os from 'os';
 import dns from 'dns/promises';
 import zlib from 'node:zlib';
@@ -496,28 +497,91 @@ describe('axios.ts', () => {
       expect(adapter).not.toHaveBeenCalled();
     });
 
-    it('走代理且 isInternalAddress 返回 false 时应保留代理路径并跳过 pinning lookup', async () => {
+    it('走代理时无法取得可校验的目标地址就应拒绝请求', async () => {
+      clearProxyEnv();
       process.env.HTTP_PROXY = 'http://proxy.example:8080';
-      getTestInstanceConfig().security.checkInternalIp = false;
 
       vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
       vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
-      const lookupSpy = vi.spyOn(dns, 'lookup');
-      const adapter = vi.fn().mockResolvedValue({
-        data: { ok: true },
-        status: 200,
-        statusText: 'OK',
-        headers: {},
-        config: {}
-      });
+      vi.spyOn(dns, 'lookup').mockRejectedValue(new Error('DNS unavailable'));
+      const adapter = vi.fn();
       const instance = createProxyAxios({ adapter });
 
-      const response = await instance.get('http://proxy-only-fastgpt.test/resource');
-
-      expect(response.data).toEqual({ ok: true });
-      expect(adapter).toHaveBeenCalled();
-      expect(lookupSpy).not.toHaveBeenCalled();
+      await expect(instance.get('http://proxy-only-fastgpt.test/resource')).rejects.toThrow(
+        'DNS unavailable'
+      );
+      expect(adapter).not.toHaveBeenCalled();
     });
+
+    it.each(['环境代理', '显式代理'])(
+      '%s应逐跳连接已检查的 IP，并向目标服务保留原始 Host',
+      async (proxyMode) => {
+        clearProxyEnv();
+        getTestInstanceConfig().security.checkInternalIp = true;
+        const firstHostname = 'first.example.test';
+        const finalHostname = 'final.example.test';
+        const firstIp = '93.184.216.34';
+        const finalIp = '93.184.216.35';
+        vi.spyOn(dns, 'resolve4').mockImplementation(async (hostname) => [
+          hostname === firstHostname ? firstIp : finalIp
+        ]);
+        vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
+        vi.spyOn(dns, 'lookup').mockImplementation(
+          async (hostname) =>
+            [{ address: hostname === firstHostname ? firstIp : finalIp, family: 4 }] as any
+        );
+
+        let targetPort = 0;
+        const hostHeaders: (string | undefined)[] = [];
+        const target = await listen((req, res) => {
+          hostHeaders.push(req.headers.host);
+          if (req.url === '/start') {
+            res.writeHead(302, { Location: `http://${finalHostname}:${targetPort}/ready` });
+          }
+          res.end('ready');
+        });
+        targetPort = getServerPort(target);
+
+        const authorities: string[] = [];
+        const proxy = await listen((_req, res) => res.writeHead(405).end());
+        proxy.on('connect', (req, client) => {
+          const authority = req.url ?? '';
+          authorities.push(authority);
+          if (
+            authority !== `${firstIp}:${targetPort}` &&
+            authority !== `${finalIp}:${targetPort}`
+          ) {
+            client.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
+            return;
+          }
+          // DNS 和代理的公网目标均为测试输入，代理只连接此用例启动的回显服务。
+          const upstream = net.connect(targetPort, '127.0.0.1', () => {
+            client.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+            client.pipe(upstream).pipe(client);
+          });
+          upstream.on('error', () => client.destroy());
+          client.on('close', () => upstream.destroy());
+        });
+
+        const proxyPort = getServerPort(proxy);
+        const proxyConfig =
+          proxyMode === '显式代理' ? { host: '127.0.0.1', port: proxyPort } : undefined;
+        if (!proxyConfig) process.env.HTTP_PROXY = `http://127.0.0.1:${proxyPort}`;
+
+        try {
+          const instance = createProxyAxios({ proxy: proxyConfig, timeout: 4000 });
+          const response = await instance.get(`http://${firstHostname}:${targetPort}/start`);
+          expect(response.data).toBe('ready');
+          expect(authorities).toEqual([`${firstIp}:${targetPort}`, `${finalIp}:${targetPort}`]);
+          expect(hostHeaders).toEqual([
+            `${firstHostname}:${targetPort}`,
+            `${finalHostname}:${targetPort}`
+          ]);
+        } finally {
+          await Promise.all([closeServer(proxy), closeServer(target)]);
+        }
+      }
+    );
 
     it('直连路径 DNS lookup 失败时应该失败', async () => {
       clearProxyEnv();
