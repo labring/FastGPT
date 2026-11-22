@@ -44,6 +44,9 @@ const optimizedPackageImports = [
 const nextConfig: NextConfig = {
   agentRules: false,
   basePath: webEnv.NEXT_PUBLIC_BASE_URL || undefined,
+  typescript: {
+    ignoreBuildErrors: process.env.SKIP_TYPE_CHECK === 'true'
+  },
   i18n: {
     defaultLocale: 'en',
     locales: ['en', 'zh-CN', 'zh-Hant', 'ko-KR'],

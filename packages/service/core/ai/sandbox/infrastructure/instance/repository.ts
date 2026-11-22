@@ -3,6 +3,7 @@
  *
  * Repository 只负责 v2 记录查询和 `status + operation.id` CAS，不执行任何远端副作用。
  */
+import type { MongoDeleteResult } from '../../../../../common/mongo';
 import {
   SANDBOX_ARCHIVE_CURSOR_BATCH_SIZE,
   sandboxActiveStatusList,
@@ -254,7 +255,7 @@ export async function completeSandboxOperation(params: {
 export async function deleteClaimedSandboxRecord(params: {
   resource: SandboxResourceRef;
   operationId: string;
-}) {
+}): Promise<MongoDeleteResult> {
   return MongoSandboxInstance.deleteOne({
     ...buildSandboxResourceRecordFilter(params.resource),
     status: SandboxInstanceStatusEnum.deleting,

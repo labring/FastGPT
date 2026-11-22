@@ -1,0 +1,27 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "rootDir": ".",
+    "outDir": "./.tsc-out",
+    "tsBuildInfoFile": "./.tsc-out/tsconfig.tsbuildinfo"
+  },
+  "references": [
+    { "path": "../global/tsconfig.composite.json" }
+  ],
+  "include": ["**/*.ts", "**/*.tsx", "**/*.d.ts", "**/*.json"],
+  "exclude": [
+    "node_modules",
+    "**/node_modules/**",
+    "**/test/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "vitest*.config.ts",
+    "dist",
+    "coverage",
+    ".tsc-out"
+  ]
+}

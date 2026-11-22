@@ -15,6 +15,8 @@ import type { startSystemConfigPolling } from './polling';
 import type { ClientSession } from '../../mongo';
 
 type UpdateConfigInput = Parameters<typeof batchUpdateDomainConfigs>[0];
+type ReadForEditArgs = Parameters<typeof getDomainConfigForAdmin>;
+type StartSystemConfigPollingOptions = Parameters<typeof startSystemConfigPolling>[0];
 
 /**
  * 配置的统一入口。同步方法只读取唯一 global 快照，异步命令才加载数据库依赖。
@@ -78,13 +80,13 @@ export class SystemInstanceConfigManager {
   }
 
   /** 管理表单从主库取 overrides 和 revision，业务读取不使用此异步接口。 */
-  async readForEdit(...args: Parameters<typeof getDomainConfigForAdmin>) {
+  async readForEdit(...args: ReadForEditArgs) {
     const { getDomainConfigForAdmin } = await import('./controller');
     return getDomainConfigForAdmin(...args);
   }
 
   /** 沿用进程级轮询；调用方仅提供本进程需重新应用的资源刷新，不注入配置来源。 */
-  async startPolling(options: Parameters<typeof startSystemConfigPolling>[0]) {
+  async startPolling(options: StartSystemConfigPollingOptions) {
     const { startSystemConfigPolling } = await import('./polling');
     return startSystemConfigPolling(options);
   }
