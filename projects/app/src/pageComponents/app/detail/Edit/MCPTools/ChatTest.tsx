@@ -10,6 +10,10 @@ import { useTranslation } from 'next-i18next';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import { useForm } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { McpOAuthErrorCodeEnum } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
+import { getMcpOAuthErrorCode, getMcpOAuthErrorCopy } from './oauth/utils';
 import Markdown from '@/components/Markdown';
 import { postRunMCPTool } from '@/web/core/app/api/mcpTools';
 import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
@@ -23,13 +27,23 @@ import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 const ChatTest = ({
   currentTool,
   url,
-  headerSecret
+  headerSecret,
+  appId,
+  nodeId,
+  authMode = 'headers',
+  onReauthRequired
 }: {
   currentTool?: McpToolConfigType;
   url: string;
   headerSecret: StoreSecretValueType;
+  appId?: string;
+  nodeId?: string;
+  authMode?: 'headers' | 'oauth';
+  /** oauth 模式运行期返回 reauth_required 时刷新既有状态卡（显示「重新授权」）。 */
+  onReauthRequired?: () => void;
 }) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
 
   const [output, setOutput] = useState<string>('');
 
@@ -58,6 +72,16 @@ const ChatTest = ({
         }
       );
 
+      // oauth 模式由服务端按已保存节点注入/刷新 token，不传 headerSecret。
+      if (authMode === 'oauth' && appId) {
+        return await postRunMCPTool({
+          params: data,
+          appId,
+          ...(nodeId ? { nodeId } : {}),
+          toolName: currentTool.name
+        });
+      }
+
       return await postRunMCPTool({
         params: data,
         url,
@@ -72,6 +96,24 @@ const ChatTest = ({
           setOutput(resStr);
         } catch (error) {
           console.error(error);
+        }
+      },
+      // oauth 模式运行期失败按固定错误码出文案；无码时保持原有通用错误提示。
+      errorToast: '',
+      onError: (error) => {
+        const code = getMcpOAuthErrorCode(error);
+        if (!code) {
+          toast({ title: t(getErrText(error, 'Error')), status: 'error' });
+          return;
+        }
+        const copy = getMcpOAuthErrorCopy(code, t);
+        toast({
+          title: copy.message,
+          description: copy.suggestion || undefined,
+          status: 'error'
+        });
+        if (code === McpOAuthErrorCodeEnum.reauthRequired) {
+          onReauthRequired?.();
         }
       }
     }
@@ -163,11 +205,19 @@ const ChatTest = ({
 const Render = ({
   currentTool,
   url,
-  headerSecret
+  headerSecret,
+  appId,
+  nodeId,
+  authMode = 'headers',
+  onReauthRequired
 }: {
   currentTool?: McpToolConfigType;
   url: string;
   headerSecret: StoreSecretValueType;
+  appId?: string;
+  nodeId?: string;
+  authMode?: 'headers' | 'oauth';
+  onReauthRequired?: () => void;
 }) => {
   const { chatId } = useChatStore();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
@@ -191,7 +241,15 @@ const Render = ({
       showWholeResponse={true}
     >
       <ChatRecordContextProvider params={chatRecordProviderParams}>
-        <ChatTest currentTool={currentTool} url={url} headerSecret={headerSecret} />
+        <ChatTest
+          currentTool={currentTool}
+          url={url}
+          headerSecret={headerSecret}
+          appId={appId}
+          nodeId={nodeId}
+          authMode={authMode}
+          onReauthRequired={onReauthRequired}
+        />
       </ChatRecordContextProvider>
     </ChatItemContextProvider>
   );

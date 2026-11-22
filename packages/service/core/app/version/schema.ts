@@ -41,6 +41,11 @@ const AppVersionSchema = new Schema(
       type: Array,
       default: []
     },
+    /** 节点级 OAuth 凭证围栏计数；声明后版本写入可保持 strict 校验。 */
+    nodesRevision: {
+      type: Number,
+      default: 0
+    },
     edges: {
       type: Array,
       default: []

@@ -39,6 +39,7 @@ type TeamAppTemplatesV2Query = PaginationType &
 type AppListItem = ListAppV2ResponseType['list'][number];
 
 const mapAppToTeamTemplate = (app: AppListItem) => ({
+  mcpAuthorizationRequired: app.mcpAuthorizationRequired,
   tmbId: app.tmbId,
   id: app._id,
   pluginId: app._id,

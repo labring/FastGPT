@@ -483,6 +483,9 @@ export const AppListItemSchema = z
     private: BoolSchema.optional().meta({ description: '是否仅自己可见' }),
     sourceMember: SourceMemberSchema.meta({ description: '创建者信息' }),
     hasInteractiveNode: BoolSchema.optional().meta({ description: '是否包含交互节点' }),
+    mcpAuthorizationRequired: BoolSchema.optional().meta({
+      description: 'MCP 工具集需要授权，不能添加为新引用'
+    }),
     relatedAppCount: IntSchema.optional().meta({
       example: 0,
       description: '被正式应用引用的 App 或工具数量，仅非文件夹资源 Owner 且显式请求时返回'

@@ -134,11 +134,15 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
   }, [teamTemplates]);
 
   const isLoading = isTeamTemplate ? isTeamLoading : isSystemLoading;
-  const rawTemplates = isTeamTemplate ? teamTemplates : systemTemplates;
+  const availableTeamTemplates = useMemo(
+    () => teamTemplates.filter((item) => !item.mcpAuthorizationRequired),
+    [teamTemplates]
+  );
+  const rawTemplates = isTeamTemplate ? availableTeamTemplates : systemTemplates;
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
-    list: teamTemplates,
+    list: availableTeamTemplates,
     listKey: `${templateType}:${parentId ?? ''}:${searchKey}`,
     scrollContainerRef,
     defaultColumnCount: 2,

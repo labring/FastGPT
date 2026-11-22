@@ -35,6 +35,12 @@ const connectTestMongo = async (props: { db: Mongoose; url: string; connectedCb?
       maxPoolSize: 4,
       minPoolSize: 0,
       retryWrites: false,
+      // 测试库在本机单节点副本集上，无持久化要求。副本集隐含默认写关注是
+      // `w:"majority"` + `j:true`，每次写入都要等 journal fsync；慢盘上单次写入可达
+      // 25–120ms，顺序写较多的用例会因此撞上默认 30s 的 test/hook 超时。这里降到
+      // `w:1, j:false`：仍由主节点确认、读己之写语义不变，只是不等待落盘/多数派，
+      // 避免用放大超时掩盖真实的写延迟。
+      writeConcern: { w: 1, j: false },
       serverSelectionTimeoutMS: 10000
     });
     // UUID 已保证首次连接的数据库独立；连接后删库会与 Mongoose 自动建表竞争。

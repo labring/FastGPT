@@ -1,0 +1,134 @@
+import z from 'zod';
+import { SecretValueTypeSchema, StoreSecretValueTypeSchema } from '../../../../common/secret/type';
+import {
+  McpOAuthClientModeSchema,
+  McpOAuthClientSourceSchema,
+  McpOAuthErrorCodeSchema,
+  isValidMcpOAuthScope
+} from './oauth';
+
+/**
+ * MCP 工具集 OAuth 存储字段的唯一来源（v2.4 §2.2）。
+ *
+ * 明确不存在：`mode`、`rollback`、`credentialVersion`、`refreshBackoff`、
+ * `server.configHash`、`scopeAllowlist`。任何代码不得读取或写入这些键。
+ */
+
+/** 同步 URL 形状校验；DNS/私网检查仍由写路径的 assertMcpOAuthUrlSafe 负责。 */
+export const isValidMcpOAuthEndpointUrl = (value: string): boolean => {
+  try {
+    const url = new URL(value);
+    return (
+      (url.protocol === 'https:' || url.protocol === 'http:') &&
+      !url.username &&
+      !url.password &&
+      !url.hash
+    );
+  } catch {
+    return false;
+  }
+};
+
+export const McpOAuthUrlSchema = z
+  .string()
+  .max(2048)
+  .refine(isValidMcpOAuthEndpointUrl, { message: 'mcp_oauth_endpoint_insecure' });
+
+/**
+ * 可选字段读侧兼容：历史/第三方数据可能把可选字段写成 `null`（典型来源是 AS metadata
+ * 中的 `client_id_metadata_document_supported: null`；Stage K10 另见持久化节点里的
+ * `oauth.clientSource: null`），而旧契约只允许 `undefined` 或值本身。
+ *
+ * 这里只放宽读侧（`.nullish()`），不引入 transform：该 schema 参与 OpenAPI 响应文档生成，
+ * transform 会被 zod-openapi 拒绝。写路径负责把 null 归一为 undefined / `$unset`。
+ *
+ * 注意：带 `.default()` 的必填字段（schemaVersion/clientMode/credentialSeq、metadata.source）
+ * 不接受 null——它们从不由可选写入路径产生，保持 fail-closed。
+ */
+export const McpOAuthServerMetadataSchema = z.object({
+  issuer: McpOAuthUrlSchema,
+  authorizationEndpoint: McpOAuthUrlSchema,
+  tokenEndpoint: McpOAuthUrlSchema,
+  registrationEndpoint: McpOAuthUrlSchema.nullish(),
+  revocationEndpoint: McpOAuthUrlSchema.nullish(),
+  tokenEndpointAuthMethodsSupported: z.array(z.string().max(64)).max(16).nullish(),
+  codeChallengeMethodsSupported: z.array(z.string().max(32)).max(16).nullish(),
+  clientIdMetadataDocumentSupported: z.boolean().nullish(),
+  scopesSupported: z.array(z.string().max(256)).max(64).nullish(),
+  source: z.enum(['discovered', 'manual']).default('discovered'),
+  fetchedAt: z.number()
+});
+export type McpOAuthServerMetadataType = z.infer<typeof McpOAuthServerMetadataSchema>;
+
+export const McpOAuthClientSchema = z.object({
+  clientId: z.string().min(1).max(2048),
+  /** 加密保存；manual 或 DCR 的 client secret。 */
+  clientSecret: SecretValueTypeSchema.nullish(),
+  tokenEndpointAuthMethod: z.enum(['none', 'client_secret_post', 'client_secret_basic']),
+  registeredAt: z.number().nullish(),
+  /** RFC 7592 注册客户端管理地址。 */
+  registrationClientUri: McpOAuthUrlSchema.nullish(),
+  /** RFC 7592 注册访问令牌，加密保存。 */
+  registrationAccessToken: SecretValueTypeSchema.nullish()
+});
+export type McpOAuthClientType = z.infer<typeof McpOAuthClientSchema>;
+
+export const McpOAuthTokenSchema = z.object({
+  /** { access_token: { secret }, refresh_token?: { secret } } */
+  secret: StoreSecretValueTypeSchema,
+  tokenType: z.string().max(32).nullish(),
+  /** AS 实际授予的 scope。 */
+  scope: z.string().max(1024).nullish(),
+  /** epoch ms；0 表示 AS 未给 expires_in。 */
+  expiresAt: z.number(),
+  obtainedAt: z.number()
+});
+export type McpOAuthTokenType = z.infer<typeof McpOAuthTokenSchema>;
+
+export const McpOAuthLastErrorSchema = z.object({
+  code: McpOAuthErrorCodeSchema,
+  at: z.number(),
+  retryable: z.boolean(),
+  retryAfterMs: z.number().min(0).max(86_400_000).nullish()
+});
+export type McpOAuthLastErrorType = z.infer<typeof McpOAuthLastErrorSchema>;
+
+export const McpOAuthLeaseSchema = z.object({
+  owner: z.string().max(64),
+  expiresAt: z.number()
+});
+export type McpOAuthLeaseType = z.infer<typeof McpOAuthLeaseSchema>;
+
+export const McpToolSetOAuthConfigSchema = z.object({
+  schemaVersion: z.literal(1).default(1),
+  clientMode: McpOAuthClientModeSchema.default('auto'),
+  clientSource: McpOAuthClientSourceSchema.nullish(),
+  issuer: McpOAuthUrlSchema.nullish(),
+  resource: McpOAuthUrlSchema.nullish(),
+  /** 请求值；默认未设置。 */
+  scope: z
+    .string()
+    .max(1024)
+    .refine(isValidMcpOAuthScope, { message: 'mcp_oauth_scope_invalid' })
+    .nullish(),
+  /** 发现结果缓存（端点与能力），非密。 */
+  server: McpOAuthServerMetadataSchema.nullish(),
+  client: McpOAuthClientSchema.nullish(),
+  token: McpOAuthTokenSchema.nullish(),
+  /** 唯一 fencing token；每次凭证变更 +1；缺省 0。 */
+  credentialSeq: z.number().int().nonnegative().default(0),
+  refreshLease: McpOAuthLeaseSchema.nullish(),
+  revokeLease: McpOAuthLeaseSchema.nullish(),
+  lastError: McpOAuthLastErrorSchema.nullish(),
+  authorizedAt: z.number().nullish(),
+  authorizedBy: z.string().max(64).nullish(),
+  /**
+   * auto 模式下「CIMD 尝试未走完 → 已自动降级 DCR」的粘性标记。
+   *
+   * 可选字段：授权成功（token 落库）或 client/reset 时清除。它保证同一条授权链
+   * 只降级一次，后续 start 持续复用 DCR，不会在 CIMD/DCR 之间抖动。manual 模式
+   * 不使用该标记；不进入 status 契约（status 仍为 22 个顶层字段）。
+   */
+  autoDcrFallback: z.boolean().nullish()
+});
+export type McpToolSetOAuthConfigType = z.infer<typeof McpToolSetOAuthConfigSchema>;

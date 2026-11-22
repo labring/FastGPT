@@ -1,5 +1,5 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { SSEClientTransport, SseError } from '@modelcontextprotocol/sdk/client/sse.js';
+import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import {
   StreamableHTTPClientTransport,
   StreamableHTTPError
@@ -35,6 +35,21 @@ import { decodeMcpToolSetNodesFromStorage } from './jsonSchemaStorage';
 import { McpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/type/node';
 import { getAppLatestVersion, type AppPublishedWorkflow } from './version/controller';
 import { profileStage } from '../../common/profiling';
+import {
+  getMcpTransportHttpStatus,
+  McpAuthRequiredError,
+  McpHttpStatusError,
+  MCP_WWW_AUTHENTICATE_MAX_HEADER_LENGTH
+} from './mcpAuthError';
+
+export {
+  McpAuthRequiredError,
+  McpHttpStatusError,
+  isMcpAuthRequiredError,
+  parseMcpWWWAuthenticate,
+  getMcpOAuthChallenge
+} from './mcpAuthError';
+export type { McpOAuthChallenge } from './mcpAuthError';
 
 const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
 
@@ -74,6 +89,9 @@ type McpFetch = (url: string | URL, init?: McpRequestInit) => Promise<Response>;
 type McpSafeFetch = McpFetch & {
   close: () => Promise<void>;
 };
+
+/** 静态 headers（兼容旧调用）或每次连接时解析的异步 header 提供者（OAuth）。 */
+export type McpClientHeaders = Record<string, any> | (() => Promise<Record<string, any>>);
 
 type ResolvedAddress = {
   address: string;
@@ -361,14 +379,64 @@ export const createMcpSafeFetch = ({
   return safeFetch;
 };
 
-const shouldFallbackToSSE = (error: unknown): boolean => {
+/**
+ * v2.4 §6.3：401/403 是鉴权挑战，必须原样抛出（保留 `WWW-Authenticate`），
+ * 不能像 404/405 一样当作“服务端不支持 Streamable HTTP”回退 SSE。
+ */
+export const shouldFallbackToSSE = (error: unknown): boolean => {
   return (
     error instanceof StreamableHTTPError &&
     typeof error.code === 'number' &&
     error.code >= 400 &&
     error.code < 500 &&
+    error.code !== 401 &&
+    error.code !== 403 &&
     error.code !== 429
   );
+};
+
+type McpAuthChallengeState = {
+  wwwAuthenticate?: string;
+};
+
+/**
+ * `StreamableHTTPError` 只保留状态码，不携带响应头。这里在 fetch 边界记录
+ * 最近一次 401/403 的 `WWW-Authenticate`，供 `McpAuthRequiredError` 保留挑战。
+ */
+const createMcpAuthChallengeCapture = (
+  fetchImpl: McpSafeFetch,
+  state: McpAuthChallengeState
+): McpSafeFetch => {
+  const wrappedFetch = (async (url, init) => {
+    const response = await fetchImpl(url, init);
+    if (response.status === 401 || response.status === 403) {
+      const header = response.headers.get('www-authenticate');
+      // 挑战是逐响应的：没有 header 时必须清空，避免下一次 401 复用陈旧 scope/resource_metadata。
+      // 先保留整条 header（到 Node 的 header 上限），由解析器按挑战拆分后再逐个截断。
+      state.wwwAuthenticate = header
+        ? header.slice(0, MCP_WWW_AUTHENTICATE_MAX_HEADER_LENGTH)
+        : undefined;
+    }
+    return response;
+  }) as McpSafeFetch;
+  wrappedFetch.close = () => fetchImpl.close();
+  return wrappedFetch;
+};
+
+const toMcpAuthRequiredError = (
+  error: unknown,
+  state?: McpAuthChallengeState
+): McpAuthRequiredError | undefined => {
+  if (error instanceof McpAuthRequiredError) return error;
+  // 只认 transport 层的 401/403。工具级错误即使恰好带 `status: 401` 也只是业务错误，
+  // 不能触发 OAuth 强制刷新（与 `normalizeMcpClientError` 使用同一 transport 判定）。
+  const status = getMcpTransportHttpStatus(error);
+  if (status !== 401 && status !== 403) return undefined;
+  return new McpAuthRequiredError(status, {
+    message: getErrorMessage(error),
+    wwwAuthenticate: state?.wwwAuthenticate,
+    cause: error
+  });
 };
 
 const getErrorMessage = (error: unknown) => {
@@ -378,22 +446,6 @@ const getErrorMessage = (error: unknown) => {
 
   return String(error);
 };
-
-/** 保留 SSE transport 内部丢弃的 HTTP 状态码，供 MCP 错误分类统一读取。 */
-class McpHttpStatusError extends Error {
-  constructor(
-    readonly code: number,
-    statusText?: string,
-    readonly responseBody?: string
-  ) {
-    super(
-      `MCP HTTP request failed: ${code}${statusText ? ` ${statusText}` : ''}${
-        responseBody ? `: ${responseBody}` : ''
-      }`
-    );
-    this.name = 'McpHttpStatusError';
-  }
-}
 
 /**
  * SSE transport 在 send() 中会把非 2xx POST 转成无状态码的普通 Error。
@@ -413,29 +465,6 @@ export const createMcpSseFetch = (fetchImpl: McpFetch): McpFetch => {
 
     return response;
   };
-};
-
-/**
- * 提取 MCP transport 暴露的 HTTP 状态码。
- * MCP 工具请求的目标地址由用户配置，上游返回任何 4xx/5xx 都属于外部服务问题。
- */
-const getMcpHttpStatus = (error: unknown, visited = new Set<unknown>()): number | undefined => {
-  if (typeof error !== 'object' || error === null || visited.has(error)) {
-    return;
-  }
-  visited.add(error);
-
-  if (
-    (error instanceof StreamableHTTPError ||
-      error instanceof McpHttpStatusError ||
-      error instanceof SseError) &&
-    typeof error.code === 'number'
-  ) {
-    return error.code;
-  }
-  if ('cause' in error) {
-    return getMcpHttpStatus(error.cause, visited);
-  }
 };
 
 /**
@@ -527,7 +556,7 @@ const isMcpExternalFailure = (error: unknown): boolean => {
   if (isUserConfigError(error)) return true;
   if (isMcpJsonRpcError(error)) return true;
   if (isMcpResponseFormatError(error)) return true;
-  if ((getMcpHttpStatus(error) ?? 0) >= 400) return true;
+  if ((getMcpTransportHttpStatus(error) ?? 0) >= 400) return true;
   if (isMcpNetworkFailure(error)) return true;
   return false;
 };
@@ -542,6 +571,15 @@ const getMcpLogHost = (url: string) => {
 };
 
 const normalizeMcpClientError = (error: unknown) => {
+  // 仅 transport 层的 401/403 需要保留给 OAuth 运行时决定是否刷新；
+  // 普通对象上的工具级 401/403 继续走配置错误归一化，避免误触发重新授权。
+  if (error instanceof McpAuthRequiredError) {
+    return error;
+  }
+  const transportStatus = getMcpTransportHttpStatus(error);
+  if (transportStatus === 401 || transportStatus === 403) {
+    return error;
+  }
   if (isUserConfigError(error)) {
     return error;
   }
@@ -565,17 +603,24 @@ const toMcpProtocolUserError = (error: unknown): UserError => {
 export class MCPClient {
   private client: Client;
   private url: string;
-  private headers: Record<string, any> = {};
+  /** 静态 headers（旧行为）或异步 header 提供者（OAuth 懒刷新）。 */
+  private headers: McpClientHeaders;
   private connectionPromise: Promise<Client> | null = null;
   private safeFetch: McpSafeFetch | null = null;
+  private lastAuthChallenge: McpAuthChallengeState = {};
 
-  constructor(config: { url: string; headers: Record<string, any> }) {
+  constructor(config: { url: string; headers: McpClientHeaders }) {
     this.url = config.url;
     this.headers = config.headers;
     this.client = new Client({
       name: 'FastGPT-MCP-client',
       version: '1.0.0'
     });
+  }
+
+  private async resolveHeaders(): Promise<Record<string, any>> {
+    const headers = typeof this.headers === 'function' ? await this.headers() : this.headers;
+    return headers ?? {};
   }
 
   private async getConnection(): Promise<Client> {
@@ -597,7 +642,10 @@ export class MCPClient {
 
     // 避免连接重复，强制关闭一次
     await this.client.close().catch(() => {});
-    const safeFetch = createMcpSafeFetch();
+    const headers = await this.resolveHeaders();
+    const challengeState: McpAuthChallengeState = {};
+    this.lastAuthChallenge = challengeState;
+    const safeFetch = createMcpAuthChallengeCapture(createMcpSafeFetch(), challengeState);
     this.safeFetch = safeFetch;
 
     logger.debug('Start connect mcp client', { urlHost: getMcpLogHost(this.url) });
@@ -606,11 +654,20 @@ export class MCPClient {
         const transport = new StreamableHTTPClientTransport(new URL(this.url), {
           fetch: safeFetch,
           requestInit: {
-            headers: this.headers
+            headers
           }
         });
         await this.client.connect(transport);
       } catch (streamableError: any) {
+        // 401/403 保留状态码与挑战，交由 OAuth 运行时处理，不降级成配置错误。
+        const authError = toMcpAuthRequiredError(streamableError, challengeState);
+        if (authError) {
+          // 不得缓存 rejected promise：OAuth 刷新后重试必须重新建连并读取新 Bearer。
+          this.connectionPromise = null;
+          await this.closeSafeFetch();
+          throw authError;
+        }
+
         // 外部 server 返回不合规响应时，直接转换为用户配置错误，避免继续探测 SSE。
         if (isMcpResponseFormatError(streamableError)) {
           await this.closeSafeFetch();
@@ -632,12 +689,18 @@ export class MCPClient {
             new SSEClientTransport(new URL(this.url), {
               fetch: sseFetch,
               requestInit: {
-                headers: this.headers
+                headers
               }
             })
           );
         } catch (sseError: any) {
           await this.closeSafeFetch();
+          const sseAuthError = toMcpAuthRequiredError(sseError, challengeState);
+          if (sseAuthError) {
+            // 与 Streamable HTTP 分支一致：鉴权失败不缓存 rejected promise。
+            this.connectionPromise = null;
+            throw sseAuthError;
+          }
           if (isMcpResponseFormatError(sseError)) {
             throw toMcpProtocolUserError(sseError);
           }
@@ -760,7 +823,13 @@ export class MCPClient {
       // @ts-ignore
       return tools;
     } catch (error) {
-      const normalizedError = normalizeMcpClientError(error);
+      const authError = toMcpAuthRequiredError(error, this.lastAuthChallenge);
+      if (authError) {
+        // 鉴权失败后丢弃已建立的连接缓存，刷新 token 的重试才能带上新请求头。
+        this.connectionPromise = null;
+        void this.closeSafeFetch();
+      }
+      const normalizedError = authError ?? normalizeMcpClientError(error);
       logger.warn('MCP client failed to get tools', {
         urlHost: getMcpLogHost(this.url),
         error: normalizedError
@@ -807,7 +876,13 @@ export class MCPClient {
         )
       );
     } catch (error) {
-      const normalizedError = normalizeMcpClientError(error);
+      const authError = toMcpAuthRequiredError(error, this.lastAuthChallenge);
+      if (authError) {
+        // 工具调用返回 401/403 时同样清空连接缓存，OAuth 刷新后的重试必须重新建连。
+        this.connectionPromise = null;
+        void this.closeSafeFetch();
+      }
+      const normalizedError = authError ?? normalizeMcpClientError(error);
       logger.warn('MCP client tool call failed', {
         urlHost: getMcpLogHost(this.url),
         toolName,

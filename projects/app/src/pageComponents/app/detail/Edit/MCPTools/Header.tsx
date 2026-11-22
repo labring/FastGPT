@@ -8,20 +8,9 @@ import { getAppFolderPath } from '@/web/core/app/api/app';
 import { useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
-import { postUpdateMCPTools } from '@/web/core/app/api/mcpTools';
-import { type StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
-const Header = ({
-  url,
-  toolList,
-  headerSecret
-}: {
-  url: string;
-  toolList: McpToolConfigType[];
-  headerSecret: StoreSecretValueType;
-}) => {
+const Header = ({ onSave }: { onSave: () => Promise<void> }) => {
   const { t } = useTranslation();
   const appId = useContextSelector(AppContext, (v) => v.appId);
   const router = useRouter();
@@ -50,9 +39,7 @@ const Header = ({
   );
 
   const { runAsync: saveMCPTools, loading: isSavingMCPTools } = useRequest(
-    async () => {
-      return await postUpdateMCPTools({ appId, url, toolList, headerSecret });
-    },
+    async () => await onSave(),
     {
       successToast: t('common:update_success')
     }
@@ -60,11 +47,6 @@ const Header = ({
 
   return (
     <Box h={14}>
-      {/* {!isPc && (
-        <Flex justifyContent={'center'}>
-          <RouteTab />
-        </Flex>
-      )} */}
       <Flex w={'full'} alignItems={'center'} position={'relative'} h={'full'}>
         <Box flex={'1'}>
           <FolderPath
@@ -75,11 +57,6 @@ const Header = ({
             fontSize={'14px'}
           />
         </Box>
-        {/* {isPc && (
-          <Box position={'absolute'} left={'50%'} transform={'translateX(-50%)'}>
-            <RouteTab />
-          </Box>
-        )} */}
         <Button size={'sm'} isLoading={isSavingMCPTools} onClick={() => saveMCPTools()}>
           {t('common:Save')}
         </Button>

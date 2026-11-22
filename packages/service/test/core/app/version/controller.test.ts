@@ -184,6 +184,8 @@ describe('normalizeAppWorkflow', () => {
 
     expect(result.nodes[0].toolConfig?.mcpToolSet).toEqual({
       url: 'https://example.com/mcp',
+      // v2.4 RuntimeConfig 默认补全 authMode；headers 行为不变。
+      authMode: 'headers',
       headerSecret: { Authorization: { secret: 'encrypted' } },
       toolList: [tool]
     });
@@ -438,6 +440,8 @@ describe('getAppLatestVersion', () => {
 
     expect(result.nodes[0].toolConfig?.mcpToolSet).toEqual({
       url: toolSetConfig.url,
+      // v2.4 RuntimeConfig 默认补全 authMode；headers 行为不变。
+      authMode: 'headers',
       toolList: toolSetConfig.toolList
     });
   });
@@ -880,6 +884,114 @@ describe('updateAppPublishedVersion', () => {
         nodes: [],
         resources: [],
         session
+      })
+    ).rejects.toBeInstanceOf(MongoTransactionConflictError);
+  });
+
+  it('fences whole-node writes by credentialSeq and bumps nodesRevision', async () => {
+    const session = {} as ClientSession;
+    findAppByIdMock.mockReturnValue({
+      session: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue({
+        _id: 'app-id',
+        publishedVersionId: '507f1f77bcf86cd799439011'
+      })
+    });
+    findOneMock.mockReturnValue({
+      session: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue({ _id: '507f1f77bcf86cd799439011' })
+    });
+    updateVersionMock.mockResolvedValue({ matchedCount: 1 });
+    updateAppMock.mockResolvedValue({ matchedCount: 1 });
+
+    await updateAppPublishedVersion({
+      appId: 'app-id',
+      nodes: [],
+      resources: [],
+      session,
+      nodeFence: { nodeId: 'toolset-root', credentialSeq: 0 }
+    });
+
+    expect(updateVersionMock).toHaveBeenCalledWith(
+      {
+        _id: '507f1f77bcf86cd799439011',
+        appId: 'app-id',
+        nodes: {
+          $elemMatch: {
+            nodeId: 'toolset-root',
+            'toolConfig.mcpToolSet.authMode': 'oauth',
+            $and: [
+              {
+                $or: [
+                  { 'toolConfig.mcpToolSet.oauth.credentialSeq': 0 },
+                  { 'toolConfig.mcpToolSet.oauth.credentialSeq': { $exists: false } }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        $set: { nodes: [], resources: [] },
+        $inc: { nodesRevision: 1 }
+      },
+      { session }
+    );
+  });
+
+  it('does not fence the first oauth enable (node has no oauth credentialSeq yet)', async () => {
+    const session = {} as ClientSession;
+    findAppByIdMock.mockReturnValue({
+      session: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue({
+        _id: 'app-id',
+        publishedVersionId: '507f1f77bcf86cd799439011'
+      })
+    });
+    findOneMock.mockReturnValue({
+      session: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue({ _id: '507f1f77bcf86cd799439011' })
+    });
+    updateVersionMock.mockResolvedValue({ matchedCount: 1 });
+    updateAppMock.mockResolvedValue({ matchedCount: 1 });
+
+    // 首次启用 oauth：handler 不传 nodeFence，过滤条件不得包含 nodes/authMode，
+    // 也不得 bump nodesRevision，否则存库节点尚未带 oauth 字段会永远匹配失败。
+    await updateAppPublishedVersion({
+      appId: 'app-id',
+      nodes: [],
+      resources: [],
+      session
+    });
+
+    const [filter, update, options] = updateVersionMock.mock.calls[0];
+    expect(filter).toEqual({ _id: '507f1f77bcf86cd799439011', appId: 'app-id' });
+    expect(update.$inc).toBeUndefined();
+    expect(options).toEqual({ session });
+  });
+
+  it('raises a transaction conflict when the node fence does not match', async () => {
+    const session = {} as ClientSession;
+    findAppByIdMock.mockReturnValue({
+      session: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue({
+        _id: 'app-id',
+        publishedVersionId: '507f1f77bcf86cd799439011'
+      })
+    });
+    findOneMock.mockReturnValue({
+      session: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockResolvedValue({ _id: '507f1f77bcf86cd799439011' })
+    });
+    updateVersionMock.mockResolvedValue({ matchedCount: 0 });
+
+    await expect(
+      updateAppPublishedVersion({
+        appId: 'app-id',
+        nodes: [],
+        resources: [],
+        session,
+        nodeFence: { nodeId: 'toolset-root', credentialSeq: 7 }
       })
     ).rejects.toBeInstanceOf(MongoTransactionConflictError);
   });

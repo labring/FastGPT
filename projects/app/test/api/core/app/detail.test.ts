@@ -23,6 +23,7 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { getFakeUsers, getUser } from '@test/datas/users';
 import { getModelTestDefaults } from '@test/modelCache';
 import { Call } from '@test/utils/request';
+import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
 import { describe, expect, it } from 'vitest';
 
 describe('get app detail api', () => {
@@ -165,6 +166,207 @@ describe('get app detail api', () => {
       ]);
     }
   );
+
+  it('strips OAuth credentials from MCP toolset detail', async () => {
+    const owner = await getUser(`detail-oauth-owner-${getNanoid(6)}`);
+    const appId = await onCreateApp({
+      name: 'oauth toolset detail',
+      type: AppTypeEnum.mcpToolSet,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      nodes: [
+        {
+          nodeId: 'mcp-node',
+          flowNodeType: FlowNodeTypeEnum.toolSet,
+          name: 'MCP',
+          toolConfig: {
+            mcpToolSet: {
+              url: 'https://example.com/mcp',
+              authMode: 'oauth',
+              toolList: [],
+              oauth: {
+                schemaVersion: 1,
+                clientMode: 'auto',
+                credentialSeq: 2,
+                token: {
+                  secret: {
+                    access_token: storeSecretValue({ value: 'access-token-value' }),
+                    refresh_token: storeSecretValue({ value: 'refresh-token-value' })
+                  },
+                  expiresAt: 0,
+                  obtainedAt: 1
+                },
+                client: {
+                  clientId: 'client-id',
+                  tokenEndpointAuthMethod: 'none',
+                  clientSecret: storeSecretValue({ value: 'client-secret-value' }),
+                  registrationAccessToken: storeSecretValue({
+                    value: 'registration-access-token-value'
+                  })
+                }
+              }
+            }
+          },
+          inputs: [],
+          outputs: []
+        }
+      ]
+    });
+
+    const res = await Call<Record<string, never>, GetAppDetailQueryType, GetAppDetailResponseType>(
+      handler,
+      { auth: owner, headers: {}, query: { appId } }
+    );
+    expect(res.code).toBe(200);
+
+    const serialized = JSON.stringify(res.data);
+    expect(serialized).not.toContain('access-token-value');
+    expect(serialized).not.toContain('refresh-token-value');
+    expect(serialized).not.toContain('client-secret-value');
+    expect(serialized).not.toContain('registration-access-token-value');
+    expect(serialized).not.toContain('"token"');
+    expect(serialized).not.toContain('clientSecret');
+    expect(serialized).not.toContain('registrationAccessToken');
+
+    const mcpToolSet = (res.data.nodes[0]?.toolConfig as any)?.mcpToolSet;
+    expect(mcpToolSet?.oauth).toMatchObject({
+      schemaVersion: 1,
+      credentialSeq: 2,
+      client: { clientId: 'client-id' }
+    });
+
+    // 脱敏只作用于响应副本；持久化的凭据（含 token/client secret/registration token）必须原样保留。
+    const storedVersion = await MongoAppVersion.findOne({ appId }).lean();
+    const storedOAuth = (storedVersion?.nodes[0]?.toolConfig as any)?.mcpToolSet?.oauth;
+    expect(storedOAuth?.token?.secret?.access_token).toBeDefined();
+    expect(storedOAuth?.token?.secret?.refresh_token).toBeDefined();
+    expect(storedOAuth?.client?.clientSecret).toBeDefined();
+    expect(storedOAuth?.client?.registrationAccessToken).toBeDefined();
+  });
+
+  it('returns OAuth toolset detail when persisted server metadata contains null optionals', async () => {
+    // 回归（Stage K3）：Mongo 中 `oauth.server.clientIdMetadataDocumentSupported = null`
+    // 曾使 LegacyStoreNodeItemSchema 拒绝节点，detail 返回 500。
+    const owner = await getUser(`detail-oauth-null-owner-${getNanoid(6)}`);
+    const appId = await onCreateApp({
+      name: 'oauth toolset detail with null metadata',
+      type: AppTypeEnum.mcpToolSet,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      nodes: [
+        {
+          nodeId: 'mcp-node',
+          flowNodeType: FlowNodeTypeEnum.toolSet,
+          name: 'MCP',
+          toolConfig: {
+            mcpToolSet: {
+              url: 'https://example.com/mcp',
+              authMode: 'oauth',
+              toolList: [],
+              oauth: {
+                schemaVersion: 1,
+                clientMode: 'dcr',
+                credentialSeq: 7,
+                issuer: 'https://as.example.org/',
+                resource: 'https://example.com/mcp',
+                server: {
+                  issuer: 'https://as.example.org/',
+                  authorizationEndpoint: 'https://as.example.org/authorize',
+                  tokenEndpoint: 'https://as.example.org/token',
+                  registrationEndpoint: null,
+                  revocationEndpoint: null,
+                  tokenEndpointAuthMethodsSupported: null,
+                  codeChallengeMethodsSupported: null,
+                  clientIdMetadataDocumentSupported: null,
+                  scopesSupported: null,
+                  source: 'discovered',
+                  fetchedAt: 1
+                },
+                refreshLease: null
+              }
+            }
+          },
+          inputs: [],
+          outputs: []
+        }
+      ]
+    });
+
+    const res = await Call<Record<string, never>, GetAppDetailQueryType, GetAppDetailResponseType>(
+      handler,
+      { auth: owner, headers: {}, query: { appId } }
+    );
+
+    expect(res.code).toBe(200);
+    const mcpToolSet = (res.data.nodes[0]?.toolConfig as any)?.mcpToolSet;
+    expect(mcpToolSet?.authMode).toBe('oauth');
+    expect(mcpToolSet?.oauth?.server).toMatchObject({
+      issuer: 'https://as.example.org/',
+      authorizationEndpoint: 'https://as.example.org/authorize'
+    });
+    // 详情必须 200；null 读侧被容忍（历史数据原样保留，新写入由 discovery 归一）。
+    expect(mcpToolSet?.oauth?.server?.clientIdMetadataDocumentSupported).toBeNull();
+    expect(mcpToolSet?.oauth?.server?.registrationEndpoint).toBeNull();
+  });
+
+  it('returns OAuth toolset detail when persisted optional oauth fields are null', async () => {
+    // 回归（Stage K10）：旧版 client reset 把 `oauth.clientSource` 写成 null，
+    // 导致 rootToolSet 解析失败并落入 legacy 摘要校验，detail 返回 500。
+    const owner = await getUser(`detail-oauth-client-source-null-${getNanoid(6)}`);
+    const appId = await onCreateApp({
+      name: 'oauth toolset detail with null clientSource',
+      type: AppTypeEnum.mcpToolSet,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      nodes: [
+        {
+          nodeId: 'mcp-node',
+          flowNodeType: FlowNodeTypeEnum.toolSet,
+          name: 'MCP',
+          toolConfig: {
+            mcpToolSet: {
+              url: 'https://example.com/mcp',
+              authMode: 'oauth',
+              toolList: [
+                { name: 'whoami', description: 'Who am I', inputSchema: { type: 'object' } }
+              ],
+              oauth: {
+                schemaVersion: 1,
+                clientMode: 'manual',
+                credentialSeq: 4,
+                clientSource: null,
+                issuer: null,
+                resource: 'https://example.com/mcp',
+                scope: null,
+                authorizedAt: null,
+                authorizedBy: null,
+                server: null,
+                client: null,
+                token: null,
+                lastError: null,
+                refreshLease: null
+              }
+            }
+          },
+          inputs: [],
+          outputs: []
+        }
+      ]
+    });
+
+    const res = await Call<Record<string, never>, GetAppDetailQueryType, GetAppDetailResponseType>(
+      handler,
+      { auth: owner, headers: {}, query: { appId } }
+    );
+
+    expect(res.code).toBe(200);
+    const mcpToolSet = (res.data.nodes[0]?.toolConfig as any)?.mcpToolSet;
+    expect(mcpToolSet?.authMode).toBe('oauth');
+    expect(mcpToolSet?.toolList).toHaveLength(1);
+    // null 读侧被容忍并原样保留；写路径不会再产生 null。
+    expect(mcpToolSet?.oauth?.clientSource).toBeNull();
+    expect(mcpToolSet?.oauth?.resource).toBe('https://example.com/mcp');
+  });
 
   it('does not expose workflow configuration to a read-only collaborator', async () => {
     const owner = await getUser(`detail-owner-${getNanoid(6)}`);
