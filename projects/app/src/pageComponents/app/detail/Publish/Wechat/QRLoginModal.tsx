@@ -11,13 +11,14 @@ import type {
   WechatQrcodeGenerateResponseType,
   WechatQrcodeStatusResponseType
 } from '@fastgpt/global/openapi/support/outLink/provider/wechat';
+import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { delay, retryFn } from '@fastgpt/global/common/system/utils';
 
 type QRStatus = 'loading' | 'wait' | 'scanned' | 'confirmed' | 'expired' | 'error';
 
-/** 仅透出受控业务错误（UserError 或已登记业务码），避免将上游 HTML 或底层诊断展示给用户。 */
+/** 仅透出受控 FastGPT 业务错误（UserError 或已登记业务码），避免网关等非受控响应绕过兜底文案。 */
 export const resolveWechatQrErrorMessage = ({
   error,
   fallback,
@@ -30,11 +31,14 @@ export const resolveWechatQrErrorMessage = ({
   translate: (key: string) => string;
 }): string => {
   const err = error && typeof error === 'object' ? (error as Record<string, unknown>) : undefined;
-  const isControlledError =
-    err?.errorType === 'UserError' ||
-    (typeof err?.statusText === 'string' && err.statusText !== '' && err.statusText !== 'error');
+  const isUserError = err?.errorType === 'UserError' && typeof err.code === 'number';
+  const isRegisteredBusinessError =
+    typeof err?.statusText === 'string' &&
+    typeof err.code === 'number' &&
+    Object.hasOwn(ERROR_RESPONSE, err.statusText) &&
+    ERROR_RESPONSE[err.statusText]?.code === err.code;
 
-  if (!isControlledError) return fallback;
+  if (!isUserError && !isRegisteredBusinessError) return fallback;
   return translate(getErrText(error, fallback, lang));
 };
 

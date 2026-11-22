@@ -114,4 +114,30 @@ describe('ILinkClient', () => {
       vi.useRealTimers();
     }
   });
+
+  it('omits raw upstream HTML body on non-2xx responses while preserving error cause', async () => {
+    const cancel = vi.fn().mockResolvedValue(undefined);
+    const text = vi.fn();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 502,
+        statusText: 'Bad Gateway',
+        body: { cancel },
+        text
+      })
+    );
+    try {
+      const caught = await new ILinkClient().getQRCode().catch((err) => err);
+      expect(caught).toBeInstanceOf(Error);
+      expect(caught.message).toContain('iLink POST ilink/bot/get_bot_qrcode failed');
+      expect(caught.message).toContain('HTTP 502 Bad Gateway');
+      expect(caught.cause).toBeInstanceOf(Error);
+      expect(cancel).toHaveBeenCalledTimes(1);
+      expect(text).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });

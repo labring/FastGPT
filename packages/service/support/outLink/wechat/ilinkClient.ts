@@ -181,6 +181,8 @@ export class ILinkClient {
     { init, timeoutMs }: { init: RequestInit; timeoutMs: number }
   ): Promise<string> {
     const url = `${this.baseUrl}/${endpoint}`;
+    const method = init.method ?? 'GET';
+    const path = endpoint.split('?', 1)[0];
     const controller = new AbortController();
     let timer = setTimeout(() => controller.abort(), timeoutMs);
     let receivedHeaders = false;
@@ -194,12 +196,15 @@ export class ILinkClient {
         }
       );
       receivedHeaders = true;
+      if (res.ok === false) {
+        // 非 2xx 不将原始响应体拼入异常文本，避免 HTML 或上游正文进入日志与告警。
+        await res.body?.cancel().catch(() => {});
+        throw new Error(`HTTP ${res.status}${res.statusText ? ` ${res.statusText}` : ''}`);
+      }
       // 响应头可能在长轮询时限末尾到达，响应体使用独立的读取时限。
       clearTimeout(timer);
       timer = setTimeout(() => controller.abort(), RESPONSE_BODY_TIMEOUT_MS);
-      const text = await res.text();
-      if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`);
-      return text;
+      return await res.text();
     } catch (err) {
       if (
         err instanceof WechatRequestPolicyError ||
@@ -207,9 +212,9 @@ export class ILinkClient {
       ) {
         throw err;
       }
-      throw new Error(
-        `iLink ${init.method ?? 'GET'} ${endpoint.split('?', 1)[0]} failed: ${formatFetchError(err)}`
-      );
+      throw new Error(`iLink ${method} ${path} failed: ${formatFetchError(err)}`, {
+        cause: err
+      });
     } finally {
       clearTimeout(timer);
     }

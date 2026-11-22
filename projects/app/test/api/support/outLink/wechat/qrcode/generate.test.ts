@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.unmock('@fastgpt/service/common/response');
 
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { WechatRequestPolicyError } from '@fastgpt/service/support/outLink/wechat/request';
 import { resolveWechatQrErrorMessage } from '@/pageComponents/app/detail/Publish/Wechat/QRLoginModal';
@@ -165,11 +166,35 @@ describe('POST /api/support/outLink/wechat/qrcode/generate', () => {
       })
     ).toBe('生成失败');
 
-    // 未经业务边界包装的普通底层错误不会透出原始诊断文案
+    // 已登记的 FastGPT 业务码可正常展示
+    const businessPayload = serializeError(OutLinkErrEnum.unExist);
+    expect(
+      resolveWechatQrErrorMessage({
+        error: businessPayload,
+        fallback: '生成失败',
+        translate: (key) => (key === businessPayload.message ? '分享链接不存在' : key)
+      })
+    ).toBe('分享链接不存在');
+
+    // 未经业务边界包装的普通错误、网关非 FastGPT JSON 及不匹配的业务码均回退本地化兜底
     const rawPayload = serializeError(new Error('HTTP 502: <html>Bad Gateway</html>'));
     expect(
       resolveWechatQrErrorMessage({
         error: rawPayload,
+        fallback: '生成失败',
+        translate: (key) => key
+      })
+    ).toBe('生成失败');
+    expect(
+      resolveWechatQrErrorMessage({
+        error: { code: 502, statusText: 'Bad Gateway', message: 'upstream gateway error' },
+        fallback: '生成失败',
+        translate: (key) => key
+      })
+    ).toBe('生成失败');
+    expect(
+      resolveWechatQrErrorMessage({
+        error: { code: 502, statusText: OutLinkErrEnum.unExist, message: 'spoofed' },
         fallback: '生成失败',
         translate: (key) => key
       })

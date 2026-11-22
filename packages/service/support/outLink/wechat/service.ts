@@ -35,7 +35,7 @@ export async function generateWechatQrCode({
       return await new ILinkClient().getQRCode();
     } catch (error) {
       if (error instanceof WechatRequestPolicyError) throw error;
-      logger.error('Wechat QR code request failed', { outLinkId, error: String(error) });
+      logger.error('Wechat QR code request failed', { outLinkId, error });
       throw new UserError(
         'WeChat QR code request failed',
         i18nT('publish:wechat.qr_generate_failed'),
@@ -76,7 +76,7 @@ export async function getWechatQrStatus({
         return await new ILinkClient().getQRCodeStatus(qr.qrcode);
       } catch (error) {
         if (error instanceof WechatRequestPolicyError) throw error;
-        logger.error('Wechat QR status request failed', { outLinkId, error: String(error) });
+        logger.error('Wechat QR status request failed', { outLinkId, error });
         throw new UserError(
           'WeChat QR status request failed',
           i18nT('publish:wechat.status_check_failed'),
