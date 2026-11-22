@@ -1,4 +1,14 @@
 {
   "extends": "../../tsconfig.json",
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"]
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.d.ts"],
+  "exclude": [
+    "node_modules",
+    "**/node_modules/**",
+    "**/test/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "vitest*.config.ts",
+    "dist",
+    "coverage"
+  ]
 }

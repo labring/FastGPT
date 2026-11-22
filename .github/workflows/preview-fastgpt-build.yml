@@ -21,6 +21,7 @@ jobs:
       pull-requests: read
     outputs:
       should_build: ${{ steps.preview_matrix.outputs.should_build }}
+      should_typecheck_app: ${{ steps.preview_matrix.outputs.should_typecheck_app }}
       matrix: ${{ steps.preview_matrix.outputs.matrix }}
 
     steps:
@@ -87,7 +88,52 @@ jobs:
 
             core.info(`Preview images selected: ${images.map((image) => image.image).join(', ') || 'none'}`);
             core.setOutput('should_build', images.length > 0 ? 'true' : 'false');
+            core.setOutput(
+              'should_typecheck_app',
+              images.some((image) => image.image === 'fastgpt') ? 'true' : 'false'
+            );
             core.setOutput('matrix', JSON.stringify(matrix));
+
+  typecheck-app:
+    needs: detect_changes
+    if: ${{ needs.detect_changes.outputs.should_typecheck_app == 'true' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Cache TypeScript build info
+        uses: actions/cache@v4
+        with:
+          path: projects/app/tsconfig.tsbuildinfo
+          key: tsc-app-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'tsconfig.json', 'projects/app/tsconfig.json') }}-${{ github.sha }}
+          restore-keys: |
+            tsc-app-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'tsconfig.json', 'projects/app/tsconfig.json') }}-
+            tsc-app-${{ runner.os }}-
+
+      - name: Build workspace SDKs and workflow-core
+        run: |
+          pnpm build:sdks
+          pnpm --filter @fastgpt/workflow-core build
+
+      - name: Typecheck app
+        env:
+          NODE_OPTIONS: '--max-old-space-size=6144'
+        run: pnpm --filter @fastgpt/app typecheck
 
   build:
     needs: detect_changes
@@ -116,6 +162,8 @@ jobs:
           file: ${{ matrix.dockerfile }}
           platforms: linux/amd64
           push: false
+          build-args: |
+            ${{ matrix.image == 'fastgpt' && 'SKIP_TYPE_CHECK=true' || '' }}
           tags: ${{ matrix.image_name }}-pr:${{ github.event.pull_request.head.sha }}
           provenance: false
           sbom: false

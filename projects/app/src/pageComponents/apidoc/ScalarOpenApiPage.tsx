@@ -1,15 +1,22 @@
 import { Box } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import { getScalarOpenApiReferenceConfig } from '@fastgpt/global/openapi/reference';
-import { useRef } from 'react';
+import { useRef, type ComponentType } from 'react';
 import { CompletionResponseExamples } from './CompletionResponseExamples';
 import { CompletionEventExamples } from './CompletionEventExamples';
 import { createUnionParameterCardPlugin } from './UnionParameterCard';
 
+type ScalarApiReferenceModule = {
+  ApiReferenceReact: ComponentType<{ configuration: Record<string, unknown> }>;
+};
+
 // 动态加载 @scalar/api-reference-react，避免其 CSS side-effect 在 Node 端
 // (next build 的 collecting page data 阶段) 被解析导致 ERR_UNKNOWN_FILE_EXTENSION。
 const ApiReferenceReact = dynamic(
-  () => Promise.all([import('@scalar/api-reference-react')]).then(([mod]) => mod.ApiReferenceReact),
+  () =>
+    Promise.all([
+      import('@scalar/api-reference-react' as string) as Promise<ScalarApiReferenceModule>
+    ]).then(([mod]) => mod.ApiReferenceReact),
   { ssr: false }
 );
 

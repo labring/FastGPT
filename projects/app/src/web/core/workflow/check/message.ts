@@ -7,11 +7,16 @@ import { type PluginStatusType, PluginStatusEnum } from '@fastgpt/global/core/pl
 import appErrList from '@fastgpt/global/common/error/code/app';
 import pluginErrList from '@fastgpt/global/common/error/code/plugin';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import type { ParseKeys } from '@fastgpt/web/i18n/i18next';
 import { resolvePluginDataErrorIssueCode } from './error';
 import type { WorkflowRuleIssue } from '@/web/core/workflow/type';
 
 type WorkflowCheckMessageParams = { inputName?: string; model?: string; nodeName?: string };
+
+export const translateDynamicKey = (
+  t: TFunction,
+  key: string,
+  options?: Record<string, unknown>
+): string => (t as (key: string, options?: Record<string, unknown>) => string)(key, options);
 
 const fieldLabelKeys = {
   variable: i18nT('common:core.workflow.variable'),
@@ -249,7 +254,7 @@ export const getToolErrorMessage = ({
 
   const errorKey = appErrList[error]?.message ?? pluginErrList[error]?.message;
   if (errorKey) {
-    return t(errorKey as ParseKeys);
+    return translateDynamicKey(t, errorKey);
   }
 
   return (
@@ -268,7 +273,7 @@ export const formatWorkflowRuleIssue = ({
   node?: FlowNodeItemType;
   t?: TFunction;
 }): WorkflowCheckIssue => {
-  const translateLabel = (label: string) => (t ? t(label as ParseKeys) : label);
+  const translateLabel = (label: string) => (t ? translateDynamicKey(t, label) : label);
 
   /** 优先取 label，空则取 debugLabel 或槽位默认标签，并走 i18n 翻译，避免展示 quoteQA 等内部 key。 */
   const getInputLabel = (input: FlowNodeInputItemType, fallbackLabel?: string) => {

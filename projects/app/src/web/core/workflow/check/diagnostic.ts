@@ -11,7 +11,7 @@ import type { TFunction } from 'next-i18next';
 import type { ParseKeys } from '@fastgpt/web/i18n/i18next';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { WorkflowRuleIssue } from '../type';
-import { formatWorkflowRuleIssue } from './message';
+import { formatWorkflowRuleIssue, translateDynamicKey } from './message';
 
 const legacyIssueCodes: Partial<Record<WorkflowDiagnosticCodeEnum, WorkflowCheckIssueCodeEnum>> = {
   [WorkflowDiagnosticCodeEnum.requiredInputMissing]: WorkflowCheckIssueCodeEnum.requiredInputEmpty,
@@ -267,7 +267,7 @@ export const formatWorkflowDiagnostic = ({
       nodeId: diagnostic.nodeId ?? node?.nodeId,
       inputName: (() => {
         const label = input?.label || input?.debugLabel || diagnostic.inputKey;
-        return label && t ? t(label as ParseKeys) : label;
+        return label && t ? translateDynamicKey(t, label) : label;
       })(),
       outputKey: params.outputKey,
       source: typeof edge?.source === 'string' ? edge.source : edge?.source?.nodeId,
@@ -276,7 +276,7 @@ export const formatWorkflowDiagnostic = ({
       targetHandle: edge?.targetHandle,
       path: diagnostic.path?.join('.')
     };
-    issue.message = t ? t(messageKey, values) : messageKey;
+    issue.message = t ? translateDynamicKey(t, messageKey, values) : messageKey;
   } else if (
     !legacyIssueCodes[diagnostic.code] &&
     diagnostic.code !== WorkflowDiagnosticCodeEnum.branchConfigurationInvalid &&
