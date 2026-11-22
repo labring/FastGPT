@@ -3,7 +3,8 @@ import { once } from 'node:events';
 import { setImmediate } from 'node:timers/promises';
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { filterToolMessages } from '@fastgpt/global/core/chat/adapt';
+import { chats2GPTMessages, filterToolMessages } from '@fastgpt/global/core/chat/adapt';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type {
   ChatCompletionMessageParam,
@@ -273,22 +274,32 @@ describe('createLLMResponse HTTP/SSE contract', () => {
       const prompt = toolCallMode === 'prompt';
       const searchCall = call('search');
       const messages = filterToolMessages(
-        [
-          { role: 'user', content: message },
-          {
-            role: 'assistant',
-            content: 'Checking the old index.',
-            tool_calls: [call('old_index')]
-          },
-          { role: 'tool', tool_call_id: searchCall.id, content: 'Old data' },
-          {
-            role: 'assistant',
-            ...(prompt ? {} : { content: 'Searching.' }),
-            tool_calls: [searchCall]
-          },
-          { role: 'tool', tool_call_id: searchCall.id, content: 'Search result' },
-          { role: 'user', content: 'Summarize.' }
-        ],
+        chats2GPTMessages({
+          reserveId: false,
+          reserveTool: true,
+          messages: [
+            { obj: ChatRoleEnum.Human, value: [{ text: { content: message } }] },
+            {
+              obj: ChatRoleEnum.AI,
+              value: [
+                { name: 'old_index', text: 'Checking the old index.', response: 'Old data' },
+                { name: 'search', text: 'Searching.', response: 'Search result' }
+              ].map(({ name, text, response }) => ({
+                modelResponseId: name,
+                text: { content: text },
+                tools: [
+                  {
+                    id: searchCall.id,
+                    functionName: name,
+                    params: searchCall.function.arguments,
+                    response
+                  }
+                ]
+              }))
+            },
+            { obj: ChatRoleEnum.Human, value: [{ text: { content: 'Summarize.' } }] }
+          ]
+        }),
         (name) => name === 'search'
       );
 
@@ -304,11 +315,17 @@ describe('createLLMResponse HTTP/SSE contract', () => {
       expect(received).toHaveLength(2);
       for (const request of received) {
         expect(request.tools).toEqual(prompt ? undefined : tools);
-        const history = request.messages?.slice(prompt ? 2 : 1, prompt ? 5 : 3);
+        if (prompt) {
+          expect(
+            request.messages?.some((message) => message.role === 'assistant' && message.tool_calls)
+          ).toBe(false);
+        }
+        const history = request.messages?.slice(prompt ? 2 : 1, prompt ? 6 : 3);
         expect(history).toMatchObject(
           prompt
             ? [
                 { role: 'assistant', content: '0: Checking the old index.' },
+                { role: 'assistant', content: '0: Searching.' },
                 { role: 'assistant', content: `1: ${JSON.stringify(searchCall.function)}` },
                 { role: 'user', content: '<ToolResponse>\nSearch result\n</ToolResponse>' }
               ]
