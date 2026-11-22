@@ -52,7 +52,7 @@ export async function handler(req: ApiRequestProps): Promise<OutLinkListResponse
           const status = app?.status ?? 'offline';
           return {
             ...item,
-            // v4.17.5 按同版本 App 切换。旧写实例会将此摘要写回连接配置，发布时需避免新旧实例混跑。
+            // 升级时按同版本 App 切换。旧写实例会将此摘要写回连接配置，发布时需避免新旧实例混跑。
             app: {
               status,
               isBound: Boolean(app?.token),
