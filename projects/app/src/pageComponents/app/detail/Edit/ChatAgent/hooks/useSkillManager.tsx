@@ -384,13 +384,7 @@ export const useSkillManager = ({
 
       if (verified.status === 'existing') {
         const existsTool = verified.tool;
-        const writeKey = getToolWriteKey({
-          id: existsTool.id,
-          pluginId: existsTool.pluginId,
-          flowNodeType: existsTool.flowNodeType,
-          toolConfig: existsTool.toolConfig,
-          source: existsTool.source
-        });
+        const writeKey = getToolWriteKey(existsTool);
         const skill = buildToolSkillLabelItem({
           tool: existsTool,
           writeKey,
@@ -424,10 +418,7 @@ export const useSkillManager = ({
         }
       });
       const writeKey = getToolWriteKey({
-        id: tool.id,
-        pluginId: tool.pluginId,
-        flowNodeType: tool.flowNodeType,
-        toolConfig: tool.toolConfig,
+        ...tool,
         source: tool.source ?? source
       });
       const skill = buildToolSkillLabelItem({ tool, writeKey, configTarget: tool });

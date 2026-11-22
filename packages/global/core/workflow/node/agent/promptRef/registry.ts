@@ -1,10 +1,10 @@
-import { formatRefKey, parseV2RefKey } from './codec';
-import { deriveBareLegacyKeys, parseLegacyRefKey } from './legacy';
+import { formatRefKey } from './codec';
+import { deriveBareLegacyKeys, parseAgentPromptRefKey } from './legacy';
 import { AGENT_PROMPT_REF_REGEXP } from './text';
 import {
-  type AgentPromptRef,
   type AgentPromptRefEntry,
   type NormalizedAgentPromptRefEntry,
+  type ParsedAgentPromptRef,
   type ParsedLegacyPromptRef,
   type PromptRefDiagnosticEvent,
   type ResolvePromptRefResult
@@ -21,7 +21,6 @@ export class AgentPromptRefRegistry<TMeta = unknown> {
   private readonly legacyExactMap = new Map<string, NormalizedAgentPromptRefEntry<TMeta>>();
   private readonly ambiguousMap = new Map<string, NormalizedAgentPromptRefEntry<TMeta>[]>();
   private readonly inferredSkillIdMap = new Map<string, NormalizedAgentPromptRefEntry<TMeta>>();
-  private readonly orderedEntries: NormalizedAgentPromptRefEntry<TMeta>[] = [];
 
   private constructor(entries: AgentPromptRefEntry<TMeta>[]) {
     for (const entry of entries) {
@@ -33,7 +32,6 @@ export class AgentPromptRefRegistry<TMeta = unknown> {
 
       if (!this.canonicalMap.has(canonicalKey)) {
         this.canonicalMap.set(canonicalKey, normalized);
-        this.orderedEntries.push(normalized);
       }
 
       if (entry.ref.type === 'skill' && entry.sourceInferred) {
@@ -84,17 +82,15 @@ export class AgentPromptRefRegistry<TMeta = unknown> {
 
   /** 返回去重后的全部规范化条目快照。 */
   entries(): NormalizedAgentPromptRefEntry<TMeta>[] {
-    return this.orderedEntries;
-  }
-
-  /** 按 canonicalKey 精确获取条目。 */
-  getByCanonicalKey(canonicalKey: string): NormalizedAgentPromptRefEntry<TMeta> | undefined {
-    return this.canonicalMap.get(canonicalKey);
+    return Array.from(this.canonicalMap.values());
   }
 
   /** 纯 V2 查表：只查 canonicalMap（+无 source 旧 Skill 兜底），严禁降级查 legacyMap 防串源。 */
-  resolveV2(ref: AgentPromptRef, rawKey?: string): ResolvePromptRefResult<TMeta> {
-    const canonicalKey = formatRefKey(ref);
+  private resolveV2(
+    parsed: Extract<ParsedAgentPromptRef, { kind: 'v2' }>,
+    rawKey: string
+  ): ResolvePromptRefResult<TMeta> {
+    const { ref, canonicalKey } = parsed;
     const hit = this.canonicalMap.get(canonicalKey);
     if (hit) {
       return { status: 'resolved', entry: hit, matchedBy: 'canonical' };
@@ -109,23 +105,18 @@ export class AgentPromptRefRegistry<TMeta = unknown> {
 
     return {
       status: 'unresolved',
-      rawKey: rawKey ?? canonicalKey,
-      parsed: { kind: 'v2', ref, canonicalKey }
+      rawKey: rawKey.trim(),
+      parsed
     };
   }
 
   /** 纯旧格式查表：先按完整规范键匹配确定性旧键，再查冲突熔断表与裸键表。 */
-  resolveLegacy(parsed: ParsedLegacyPromptRef): ResolvePromptRefResult<TMeta> {
+  private resolveLegacy(parsed: ParsedLegacyPromptRef): ResolvePromptRefResult<TMeta> {
     if (parsed.deterministicRef) {
       const canonicalKey = formatRefKey(parsed.deterministicRef);
-      const hit = this.canonicalMap.get(canonicalKey);
+      const hit = this.canonicalMap.get(canonicalKey) ?? this.legacyExactMap.get(parsed.rawKey);
       if (hit) {
         return { status: 'resolved', entry: hit, matchedBy: 'deterministic_legacy' };
-      }
-
-      const legacyExactHit = this.legacyExactMap.get(parsed.rawKey);
-      if (legacyExactHit) {
-        return { status: 'resolved', entry: legacyExactHit, matchedBy: 'deterministic_legacy' };
       }
 
       return { status: 'unresolved', rawKey: parsed.rawKey, parsed };
@@ -152,24 +143,23 @@ export class AgentPromptRefRegistry<TMeta = unknown> {
 
   /** 统一薄路由入口：先走纯 V2 解析与查表，未命中 V2 语法再走独立旧链路。 */
   resolve(rawKey: string): ResolvePromptRefResult<TMeta> {
-    const trimmed = rawKey.trim();
-    if (!trimmed) {
+    const parsed = parseAgentPromptRefKey(rawKey);
+    if (parsed.kind === 'invalid') {
       return {
         status: 'unresolved',
-        rawKey: trimmed,
-        parsed: { kind: 'invalid', rawKey: trimmed, reason: 'empty' }
+        rawKey: parsed.rawKey,
+        parsed
       };
     }
 
-    const v2Ref = parseV2RefKey(trimmed);
-    if (v2Ref) {
-      return this.resolveV2(v2Ref, trimmed);
+    if (parsed.kind === 'v2') {
+      return this.resolveV2(parsed, rawKey);
     }
 
-    return this.resolveLegacy(parseLegacyRefKey(trimmed));
+    return this.resolveLegacy(parsed);
   }
 
-  /** 后端运行时渲染：折叠成对双括号 → 逐个结构化解析 → 替换为模型可读的 `{{displayName}}`。 */
+  /** 逐个解析标准引用，替换为模型可读的 `{{displayName}}`。 */
   renderForModel({
     text,
     formatResolved,

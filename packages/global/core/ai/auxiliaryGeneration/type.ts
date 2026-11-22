@@ -14,6 +14,12 @@ export const AuxiliaryGenerationChatFileSchema = z.object({
 });
 export type AuxiliaryGenerationChatFileType = z.infer<typeof AuxiliaryGenerationChatFileSchema>;
 
+export const ChatAgentPromptRefVersionSchema = z.enum(['v1', 'v2']).meta({
+  description: '客户端支持的提示词引用协议版本，缺省时返回旧格式',
+  example: 'v2'
+});
+export type ChatAgentPromptRefVersion = z.infer<typeof ChatAgentPromptRefVersionSchema>;
+
 export const ChatAgentHelperMetadataSchema = z.object({
   role: z.string().nullish(),
   taskObject: z.string().nullish(),
@@ -23,8 +29,7 @@ export const ChatAgentHelperMetadataSchema = z.object({
   selectedAgentSkills: z.array(SelectedAgentSkillItemTypeSchema).nullish(),
   fileUpload: z.boolean().nullish(),
   enableSandbox: z.boolean().nullish(),
-  /** 提示词引用协议版本：新版 App 显式传 'v2'，旧版 App 缺省时 Pro 输出兼容旧键。 */
-  promptRefVersion: z.enum(['v1', 'v2']).optional(),
+  promptRefVersion: ChatAgentPromptRefVersionSchema.optional(),
   modelConfig: z
     .object({
       modelId: z.string().optional().meta({

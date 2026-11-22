@@ -377,7 +377,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         ref,
         displayName,
         sourceInferred,
-        meta: { name: displayName }
+        meta: {}
       });
     });
 
@@ -393,7 +393,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         {
           ref: refFromBuiltin(builtinId),
           displayName,
-          meta: { name: displayName }
+          meta: {}
         }
       ];
     });

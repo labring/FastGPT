@@ -23,7 +23,6 @@ import { formatRefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef
 import type { AgentPromptRefEntry } from '@fastgpt/global/core/workflow/node/agent/promptRef/types';
 
 export type RuntimePromptRefMeta = {
-  name: string;
   modelToolNames?: string[];
 };
 
@@ -78,10 +77,7 @@ export const getSubapps = async ({
       canonicalKey,
       displayName: name,
       ...(legacyExactKeys?.length ? { legacyExactKeys: [...legacyExactKeys] } : {}),
-      meta: {
-        name,
-        ...(modelToolName ? { modelToolNames: [modelToolName] } : {})
-      }
+      meta: modelToolName ? { modelToolNames: [modelToolName] } : {}
     });
   };
   formatTools.forEach((tool) => {

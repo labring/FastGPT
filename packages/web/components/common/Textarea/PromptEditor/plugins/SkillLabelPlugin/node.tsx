@@ -13,6 +13,7 @@ import {
 import SkillLabel from './components/SkillLabel';
 import type { SkillLabelItemType } from '.';
 import type { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { formatPromptRefToken } from '@fastgpt/global/core/workflow/node/agent/promptRef/text';
 
 export type SkillLabelNodeBasicType = {
   id: string;
@@ -147,7 +148,7 @@ export class SkillNode extends DecoratorNode<JSX.Element> {
     _includeInert?: boolean | undefined,
     _includeDirectionless?: false | undefined
   ): string {
-    return `{{@${this.__id}@}}`;
+    return formatPromptRefToken(this.__id);
   }
 
   decorate(_editor: LexicalEditor, _config: EditorConfig): JSX.Element {

@@ -381,6 +381,22 @@ export type VerifiedToolPreviewResult =
   | { status: 'existing'; tool: SelectedToolItemType }
   | { status: 'preview'; tool: FlowNodeTemplateType };
 
+/** 预览、已选工具和生成配置按解析后的同一工具身份匹配。 */
+const getToolIdentityMatcher = (toolId: string, source?: string) => {
+  const canonicalKey = getCanonicalKeyForTool({ id: toolId, source });
+  const identityKey = canonicalKey || getToolIdentityKey(toolId, source);
+
+  const isSameTool = (tool: FlowNodeTemplateType | SelectedToolItemType) => {
+    const id = getPromptRefToolId(tool);
+    const key = canonicalKey
+      ? getCanonicalKeyForTool({ id, source: tool.source })
+      : getToolIdentityKey(id, tool.source);
+    return key === identityKey;
+  };
+
+  return { canonicalKey, isSameTool };
+};
+
 /**
  * 统一解析并校验工具预览（@ 菜单与辅助生成共用）：
  * - 非 MCP/HTTP 子工具命中已有配置时直接复用，避免重复请求；
@@ -395,20 +411,11 @@ export const resolveVerifiedToolPreview = async ({
   source?: string;
   existsTools?: SelectedToolItemType[];
 }): Promise<VerifiedToolPreviewResult> => {
-  const identityKey = getToolIdentityKey(toolId, source);
-  const canonicalKey = getCanonicalKeyForTool({ id: toolId, source });
+  const { canonicalKey, isSameTool } = getToolIdentityMatcher(toolId, source);
   const isMcpOrHttpChild =
     toolId.startsWith('mcp-') ||
     toolId.startsWith('http-') ||
     (toolId.includes('/') && !isSystemOrCommercialToolId(toolId) && !source);
-
-  const isSameTool = (tool: SelectedToolItemType) => {
-    const resolvedId = getPromptRefToolId(tool);
-    if (canonicalKey) {
-      return getCanonicalKeyForTool({ id: resolvedId, source: tool.source }) === canonicalKey;
-    }
-    return getToolIdentityKey(resolvedId, tool.source) === identityKey;
-  };
 
   const existTool = existsTools.find(isSameTool);
   if (existTool && !isMcpOrHttpChild) {
@@ -419,14 +426,12 @@ export const resolveVerifiedToolPreview = async ({
     appId: toolId,
     source
   });
-  if (isMcpOrHttpChild && canonicalKey) {
-    const previewCanonicalKey = getCanonicalKeyForTool({
-      id: getPromptRefToolId(preview),
-      source: preview.source ?? source
-    });
-    if (previewCanonicalKey !== canonicalKey) {
-      return { status: 'missing' };
-    }
+  if (
+    isMcpOrHttpChild &&
+    canonicalKey &&
+    !isSameTool({ ...preview, source: preview.source ?? source })
+  ) {
+    return { status: 'missing' };
   }
 
   if (existTool) {
@@ -497,14 +502,8 @@ export const loadGeneratedTools = async ({
           return;
         }
 
-        const canonicalKey = getCanonicalKeyForTool({ id: toolId, source });
-        const identityKey = getToolIdentityKey(toolId, source);
-        const generatedTool = generatedSelectedTools.find((item) => {
-          const resolvedId = getPromptRefToolId(item);
-          return canonicalKey
-            ? getCanonicalKeyForTool({ id: resolvedId, source: item.source }) === canonicalKey
-            : getToolIdentityKey(resolvedId, item.source) === identityKey;
-        });
+        const { isSameTool } = getToolIdentityMatcher(toolId, source);
+        const generatedTool = generatedSelectedTools.find(isSameTool);
         const inheritedTool = inheritToolInputConfig({ tool, sourceTool: generatedTool });
         const previewToolId = getPromptRefToolId(tool);
         const resolvedToolId =

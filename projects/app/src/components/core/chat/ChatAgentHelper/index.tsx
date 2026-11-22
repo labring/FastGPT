@@ -212,7 +212,8 @@ const ChatAgentHelper = (props: ChatAgentHelperProps) => {
         const { formData } = await loadChatAgentConfig({
           appId: props.appId,
           chatId,
-          responseChatItemId
+          responseChatItemId,
+          promptRefVersion: 'v2'
         });
         await props.onApply(formData);
         toast({ status: 'success', title: t('app:chat_agent_config_applied') });
