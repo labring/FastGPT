@@ -32,6 +32,7 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import { resolveAppResourcesByPermission } from '@fastgpt/service/core/app/resource/service';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
+import { buildAppAuditResource } from '@fastgpt/global/support/user/audit/type';
 import {
   normalizeAppVersionWorkflow,
   normalizeAppWorkflow
@@ -164,11 +165,11 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>): Promise<Publi
     addAuditLog({
       tmbId,
       teamId,
-      event: AuditEventEnum.UPDATE_PUBLISH_APP,
+      event: AuditEventEnum.SAVE_APP,
+      resources: [buildAppAuditResource(app)],
       params: {
         appName: app.name,
-        operationName: i18nT('account_team:update'),
-        appId,
+        appId: String(app._id),
         appType: getI18nAppType(app.type)
       }
     });
@@ -254,13 +255,11 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>): Promise<Publi
     addAuditLog({
       tmbId,
       teamId,
-      event: AuditEventEnum.UPDATE_PUBLISH_APP,
+      event: isPublish ? AuditEventEnum.PUBLISH_APP : AuditEventEnum.SAVE_APP,
+      resources: [buildAppAuditResource(app)],
       params: {
         appName: app.name,
-        operationName: isPublish
-          ? i18nT('account_team:save_and_publish')
-          : i18nT('account_team:update'),
-        appId,
+        appId: String(app._id),
         appType: getI18nAppType(app.type)
       }
     });

@@ -14,6 +14,7 @@ import {
   createS3DownloadAccessUrl,
   createS3UploadAccessUrl,
   encodeExpiresAtMinute,
+  parseSignedS3DownloadAlias,
   revokeS3UploadSessionToken,
   signS3DownloadAlias
 } from '@fastgpt/service/common/s3/accessLink';
@@ -127,15 +128,24 @@ const extractLastPathSegment = (url: string) => url.split('/').pop() || '';
 
 const buildSignedAlias = ({
   aliasId = 'R7mQG0Yh2kVxP9Za',
-  expiresAt = getFutureDate(10)
+  expiresAt = getFutureDate(10),
+  extension,
+  version = 'v2'
 }: {
   aliasId?: string;
   expiresAt?: Date;
+  extension?: string;
+  version?: 'v1' | 'v2';
 } = {}) => {
   const expMinute36 = encodeExpiresAtMinute(expiresAt);
-  const sig = signS3DownloadAlias({ aliasId, expMinute36 });
+  const sig = signS3DownloadAlias({ aliasId, expMinute36, extension, version });
 
-  return `${aliasId}.${expMinute36}.${sig}`;
+  if (version === 'v1') {
+    return `${aliasId}.${expMinute36}.${sig}`;
+  }
+  return extension
+    ? `v2-${aliasId}-${expMinute36}-${sig}.${extension}`
+    : `v2-${aliasId}-${expMinute36}-${sig}`;
 };
 
 const createTranslator = () =>
@@ -210,17 +220,24 @@ describe('s3 short access link api', () => {
     expect(res.body.statusText).toBe(CommonErrEnum.unAuthFile);
   });
 
-  it('returns 403 for tampered signed alias expiry', async () => {
+  it('returns 403 for tampered signed alias expiry or extension', async () => {
     const aliasId = 'R7mQG0Yh2kVxP9Za';
     const expMinute36 = encodeExpiresAtMinute(getFutureDate(10));
-    const sig = signS3DownloadAlias({ aliasId, expMinute36 });
+    const sig = signS3DownloadAlias({ aliasId, expMinute36, extension: 'png' });
     const tamperedExpMinute36 = (Number.parseInt(expMinute36, 36) + 60).toString(36);
-    const res = makeMockRes() as any;
 
-    await downloadAccessHandler(createDownloadReq(`${aliasId}.${tamperedExpMinute36}.${sig}`), res);
+    for (const tamperedAlias of [
+      `v2-${aliasId}-${tamperedExpMinute36}-${sig}.png`,
+      `v2-${aliasId}-${expMinute36}-${sig}.jpg`,
+      `v2-${aliasId}-${expMinute36}-${sig}`
+    ]) {
+      const res = makeMockRes() as any;
 
-    expect(res.statusCode).toBe(403);
-    expect(res.body.statusText).toBe(CommonErrEnum.unAuthFile);
+      await downloadAccessHandler(createDownloadReq(tamperedAlias), res);
+
+      expect(res.statusCode).toBe(403);
+      expect(res.body.statusText).toBe(CommonErrEnum.unAuthFile);
+    }
   });
 
   it('returns 403 when the signed alias has no backing document', async () => {
@@ -277,8 +294,41 @@ describe('s3 short access link api', () => {
 
     await downloadAccessHandler(createDownloadReq(signedAlias), res);
 
+    expect(signedAlias).toMatch(/^v2-[A-Za-z0-9]{16}-[0-9a-z]+-[A-Za-z0-9]{22}\.md$/);
     expect(res.headers['Content-Type']).toBe('text/markdown; charset=utf-8');
     expect(res.headers['Content-Length']).toBe(5);
+    expect(Buffer.concat(res.chunks).toString()).toBe('hello');
+  });
+
+  it('continues streaming legacy v1 dot-separated signed download aliases backed by the same alias document', async () => {
+    const url = await createS3DownloadAccessUrl({
+      bucketName: 'fastgpt-private',
+      objectKey: 'dataset/team/legacy-page.png',
+      expiredTime: getFutureDate(10),
+      filename: 'legacy-page.png'
+    });
+    const { aliasId } = parseSignedS3DownloadAlias(extractLastPathSegment(url));
+    const legacyV1Alias = buildSignedAlias({
+      aliasId,
+      expiresAt: getFutureDate(10),
+      version: 'v1'
+    });
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        getFileStream: vi.fn().mockResolvedValue(makeMockStream()),
+        getFileMetadata: vi.fn().mockResolvedValue({
+          filename: 'legacy-page.png',
+          contentType: 'image/png',
+          contentLength: 5
+        })
+      }
+    } as any;
+    const res = makeMockRes() as any;
+
+    await downloadAccessHandler(createDownloadReq(legacyV1Alias), res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['Content-Type']).toBe('image/png');
     expect(Buffer.concat(res.chunks).toString()).toBe('hello');
   });
 
@@ -338,6 +388,21 @@ describe('s3 short access link api', () => {
         expiredSeconds: 30,
         responseContentType: 'text/markdown; charset=utf-8'
       });
+
+      const headReq = Object.assign(createDownloadReq(signedAlias), { method: 'HEAD' });
+      const headRes = makeMockRes() as any;
+      global.s3BucketMap['fastgpt-private'].getFileMetadata = vi.fn().mockResolvedValue({
+        filename: 'page.md',
+        contentType: 'text/markdown',
+        contentLength: 5
+      });
+      await redirectDownloadAccessHandler(headReq, headRes);
+
+      expect(headRes.statusCode).toBe(200);
+      expect(headRes.headers['Content-Length']).toBe(5);
+      expect(headRes.headers['Cache-Control']).toBe('no-store');
+      expect(headRes.headers.Location).toBeUndefined();
+      expect(generatePresignedGetUrl).toHaveBeenCalledTimes(1);
     } finally {
       vi.resetModules();
     }
@@ -353,6 +418,7 @@ describe('s3 short access link api', () => {
         {
           createS3DownloadAccessUrl,
           encodeExpiresAtMinute,
+          parseSignedS3DownloadAlias,
           revokeS3DownloadAlias,
           signS3DownloadAlias
         },
@@ -371,7 +437,7 @@ describe('s3 short access link api', () => {
       setupJsonResMock(freshJsonRes);
       const aliasId = 'R7mQG0Yh2kVxP9Za';
       const expMinute36 = encodeExpiresAtMinute(getFutureDate(10));
-      const sig = signS3DownloadAlias({ aliasId, expMinute36 });
+      const sig = signS3DownloadAlias({ aliasId, expMinute36, extension: 'md' });
       const tamperedExpMinute36 = (Number.parseInt(expMinute36, 36) + 60).toString(36);
       const revokedUrl = await createS3DownloadAccessUrl({
         bucketName: 'fastgpt-private',
@@ -380,10 +446,10 @@ describe('s3 short access link api', () => {
         filename: 'revoked.md'
       });
       const revokedAlias = extractLastPathSegment(revokedUrl);
-      await revokeS3DownloadAlias(revokedAlias.split('.')[0] || '');
+      await revokeS3DownloadAlias(parseSignedS3DownloadAlias(revokedAlias).aliasId);
       const cases = [
-        buildSignedAlias({ expiresAt: getFutureDate(-10) }),
-        `${aliasId}.${tamperedExpMinute36}.${sig}`,
+        buildSignedAlias({ expiresAt: getFutureDate(-10), extension: 'md' }),
+        `v2-${aliasId}-${tamperedExpMinute36}-${sig}.md`,
         revokedAlias
       ];
       const generatePresignedGetUrl = vi.fn();

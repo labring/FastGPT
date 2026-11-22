@@ -12,7 +12,7 @@ import {
   getWorkflowFinalResponseError,
   shouldRetainWorkflowNodeResponses
 } from '@/service/core/workflow/nodeResponse';
-import { createModerationFilteredWorkflowResponse } from '@fastgpt/service/core/workflow/utils/streamResponseContext';
+import { createModerationFilteredWorkflowResponse } from '@fastgpt/service/core/workflow/dispatch/context/streamResponse';
 
 describe('completion moderation visibility', () => {
   const child: ChatHistoryItemResType = {

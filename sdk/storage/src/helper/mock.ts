@@ -13,7 +13,11 @@ import {
   assertStorageObjectPrefix,
   assertRequiredStorageObjectPrefix
 } from '../assert';
-import { bindAbortSignalToReadable, throwIfStorageDownloadAborted } from '../utils';
+import {
+  bindAbortSignalToReadable,
+  throwIfStorageAborted,
+  throwIfStorageDownloadAborted
+} from '../utils';
 
 type MockFunction<T extends (...args: any[]) => any> = T & {
   mock: unknown;
@@ -111,6 +115,7 @@ export function createVitestStorageMock(params: CreateVitestStorageMockParams): 
   const uploadObject = vi.fn(
     async (p: Storage.UploadObjectParams): Promise<Storage.UploadObjectResult> => {
       assertStorageObjectKey(p.key);
+      throwIfStorageAborted(p.abortSignal);
       const buf = await bodyToBuffer(p.body);
       const contentLength = p.contentLength ?? buf.length;
       objects.set(p.key, {

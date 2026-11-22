@@ -1,14 +1,43 @@
 # 代码规范
 
-## 基础代码组织模式
+## 目录与分层
 
-采用 DDD 架构，按业务域 → 子功能 → 固定文件三层划分。
+采用 DDD 分层架构，跨实例协作使用**依赖注入**（Dependency Injection，遵循依赖倒置原则）：下层不感知上层，同层实例互不引用，需要其他实例的能力时由上层以函数参数传入。新代码必须遵守；存量代码在修改时逐步迁移，不在无关 PR 中批量重构。
+
+### 分层架构
+
+"实例"指拥有独立 `schema.ts` 的业务对象，例如 App、AppVersion、Dataset、Chat；没有独立 schema、只为拆分文件而建的子目录，与上级属于同一实例。
+
+| 层 | 文件 | 职责 |
+| --- | --- | --- |
+| 1. 实例原子层（实体 / 仓储） | `global/core/<域>/type.ts`、`constants.ts` | 前后端共享的类型与常量 |
+| | `schema.ts` | Mongoose Schema 定义，导出 Model 和 SchemaType |
+| | `entity.ts` | 单次、不可再分的读写，如 `findById`、`create`、`updateById`，不含业务判断 |
+| | `utils.ts` | 纯函数工具，无副作用，可独立单测 |
+| 2. 实例业务层（领域服务） | `service.ts` | 把本实例的原子操作组合成更高阶的业务操作，承载本实例的业务规则 |
+| 3. 业务编排层（应用服务 / 用例） | `orchestration.ts` | 组合多个实例业务层，向上暴露完整用例；开启事务并注入依赖；只涉及单个实例时不创建 |
+| 4. API 层（接口层） | `projects/*/src/pages/api/**`，契约在 `global/openapi/**` | 鉴权、入参校验与出参组装，调用编排层或单个实例业务层 |
+
+- `orchestration.ts` 放在用例主导业务域目录下；只被单个应用使用且依赖其私有能力时，放在该应用的 `src/service/<域>/`。
+- `auth.ts` 封装资源鉴权，只供 API 层或编排层入口调用。
+
+依赖规则：
+
+- 只能向下依赖，禁止反向依赖上层。原子层和实例业务层禁止 import 其他实例的 `schema.ts`、`entity.ts`、`service.ts`。
+- 注入的依赖优先传**操作函数**，不传另一个实例的模块对象、Model 或整个 service；函数签名由使用方在本实例内用 `type` 声明所需的最小契约，不用 `typeof` 引用其他实例的实现。
+- 只涉及单个实例的用例，API 层直接调用该实例业务层，不为凑满分层新增只做透传的编排函数；上层也可直接调用下层已有能力。
+- 事务由发起组合的层（通常是编排层）通过 `mongoSessionRun` 开启，`session` 沿参数逐层传递，见[数据写操作函数支持可选 session 参数](#数据写操作函数支持可选-session-参数)。
+- 鉴权与权限判断放在 API 层或编排层入口；实例业务层接收已确认的 `teamId`、`tmbId` 等可信参数。
+- `global/core/` 只放类型和常量，**禁止**引入 mongoose、服务端 SDK；`service/core/` 只在服务端使用，**禁止**被 `packages/web/` 或前端页面直接引用。
+- 不新增 `controller.ts`。存量 `controller.ts` 按实际职责归入以上各层，在修改相关代码时迁移。
 
 ### 目录结构
 
+按业务域 → 子功能 → 固定文件组织：
+
 ```
 packages/
-├── global/core/              # 类型、常量（前后端共享）
+├── global/core/              # 原子层：类型、常量（前后端共享）
 │   ├── app/
 │   │   ├── type.ts           # 顶层聚合类型
 │   │   ├── constants.ts
@@ -24,24 +53,25 @@ packages/
 │   └── plugin/
 │
 └── service/core/             # 后端业务逻辑（不可在前端引用）
-    ├── app/
-    │   ├── schema.ts         # App 主表 Mongoose Schema
-    │   ├── entity.ts         # findById / create / updateById 等基础操作封装
-    │   ├── service.ts        # 聚合业务逻辑（跨子功能协调），不允许互相引用，只允许单向依赖，跨 service 的协调需由上层通过 props 传入另一个 service 或者衍生方法
-    │   ├── auth.ts           # 鉴权相关（如有）
-    │   ├── utils.ts          # 纯函数工具，无副作用，可独立单测
-    │   ├── version/
+    ├── app/                  # App 实例
+    │   ├── schema.ts         # 原子层：App 主表 Schema
+    │   ├── entity.ts         # 原子层：App 单次读写
+    │   ├── utils.ts          # 原子层：纯函数
+    │   ├── service.ts        # 实例业务层：只组合 App 自身操作，其他实例通过参数注入
+    │   ├── orchestration.ts  # 业务编排层（如有）：组合 App、AppVersion、Chat 等实例业务层
+    │   ├── auth.ts           # 鉴权（如有）：供 API 层或编排层入口调用
+    │   ├── version/          # AppVersion 实例（有独立 schema），与 App 互不引用
     │   │   ├── schema.ts
     │   │   ├── entity.ts
     │   │   ├── service.ts
     │   │   └── utils.ts
-    │   ├── evaluation/
-    │   │   ├── schema.ts     # 合并多个 schema 到单文件
+    │   ├── evaluation/       # 多个 schema 合并到单个 schema.ts
+    │   │   ├── schema.ts
     │   │   ├── entity.ts
     │   │   ├── service.ts
     │   │   └── utils.ts
     │   ├── logs/
-    │   └── tool/
+    │   └── tool/             # 无独立 schema，属于 App 实例的业务拆分
     │       ├── service.ts
     │       └── utils.ts
     ├── chat/
@@ -49,46 +79,117 @@ packages/
     └── plugin/
 ```
 
-### 叶子目录固定文件说明
+- 子功能目录不超过 **3 层**嵌套。
+- 无需拆子功能时，目录内直接放 `schema.ts` + `entity.ts` + `service.ts` + `utils.ts`，需要跨实例组合时再加 `orchestration.ts`。
+- 多个 schema 文件（如 `evalSchema.ts` + `evalItemSchema.ts`）**合并**到单个 `schema.ts`。
 
-| 文件 | 职责 |
-|------|------|
-| `schema.ts` | Mongoose Schema 定义，导出 Model 和 SchemaType |
-| `entity.ts` | 数据访问封装：`findById`、`create`、`updateById` 等基础操作 |
-| `service.ts` | 业务逻辑：调用 entity，跨模块协调，处理业务规则 |
-| `utils.ts` | 纯函数工具，无副作用，可独立单测 |
+### 跨实例依赖通过函数注入
 
 ```typescript
-// entity.ts 示例 —— 只做数据访问，不含业务判断
-export const findAppById = (id: string) =>
-  MongoApp.findById(id).lean();
-export const createApp = (data: AppCreateParams, session?: ClientSession) =>
-  MongoApp.create([data], { session });
+// ❌ 不好的实践：App 实例业务层直接引入 Chat、AppVersion 实例
+import { deleteChatsByAppId } from '../chat/service';
+import { MongoAppVersion } from './version/schema';
 
-// service.ts 示例 —— 调用 entity，处理业务规则
-export const createAppAndInitVersion = async (data: AppCreateParams, session?: ClientSession) => {
-  const app = await createApp(data, session);
-  await createVersion({ appId: app._id, ... }, session);
-  return app;
+export const deleteApp = async (appId: string, session?: ClientSession) => {
+  await deleteChatsByAppId({ appId, session });
+  await MongoAppVersion.deleteMany({ appId }, { session });
+  await deleteAppById(appId, session);
 };
 
-// service 需协同，通过 props 传入另一个 service 或者衍生方法。
-const service1 = xxxx
-const service2 = (props: {id:string; service1: typeof service1 }) => {
-  const data = findAppById(id)
-  return props.service1(data);
+// ✅ 好的实践
+// app/service.ts —— 实例业务层：在本实例声明所需的函数契约，由上层注入
+type CleanupAppRelationsFn = (params: { appId: string; session: ClientSession }) => Promise<void>;
+
+export const deleteApp = async (props: {
+  appId: string;
+  session: ClientSession;
+  cleanupRelations: CleanupAppRelationsFn[];
+}) => {
+  const { appId, session, cleanupRelations } = props;
+
+  // 1. 先清理关联数据，再删除 App 本身，避免残留孤儿数据。
+  for (const cleanup of cleanupRelations) {
+    await cleanup({ appId, session });
+  }
+
+  // 2. 删除 App 主记录。
+  await deleteAppById(appId, session);
 };
+
+// app/orchestration.ts —— 业务编排层：组合多个实例业务层，开启事务并注入依赖
+export const deleteAppWithRelations = (appId: string) =>
+  mongoSessionRun((session) =>
+    deleteApp({
+      appId,
+      session,
+      cleanupRelations: [deleteChatsByAppId, deleteVersionsByAppId]
+    })
+  );
+
+// pages/api/core/app/del.ts —— API 层：鉴权、校验入参后调用编排层
+const { appId } = parseApiInput({ req, query: DeleteAppQuerySchema });
+await authApp({ req, appId, per: OwnerPermissionVal });
+await deleteAppWithRelations(appId);
 ```
 
-### 层级约束
+注入函数也是测试接缝：实例业务层的单测直接传入 fake 函数，无需 mock 其他实例的模块。
 
-- `global/core/` 只放类型和常量，**禁止**引入 mongoose、服务端 SDK
-- `service/core/` 只在服务端使用，**禁止**被 `packages/web/` 或前端页面直接引用
-- 子功能目录不超过 **3 层**嵌套
-- 一个目录内无需拆子功能时，直接放 `schema.ts` + `entity.ts` + `service.ts` + `utils.ts`
-- 多个 schema 文件（如 `evalSchema.ts` + `evalItemSchema.ts`）**合并**到单个 `schema.ts`
+### 禁止 re-export
 
-## 代码风格
+禁止使用 `export { ... } from '...'`、`export type { ... } from '...'` 或 `export * from '...'` 转导其他模块的成员，包括 `index.ts` barrel、目录聚合入口和兼容旧路径的转发文件。
+
+- 每个导出只能由其实际定义文件提供，使用方直接从定义模块导入
+- `index.ts` 可以包含自身的实现和定义，但不能聚合导出其他文件
+- 移动定义时，直接修改所有使用方的 import；确认旧路径无引用后删除旧文件
+- 不为缩短 import 路径、隐藏目录结构或兼容旧路径新增转导层，避免依赖来源不明确、循环依赖和无效模块加载
+
+```typescript
+// ❌ 不好的实践：通过目录入口转导其他模块
+export { createLLMResponse } from './createLLMResponse';
+export type { LLMResponse } from './type';
+export * from './constants';
+
+// ✅ 好的实践：使用方直接引用成员的定义模块
+import { createLLMResponse } from '@fastgpt/service/core/ai/llm/createLLMResponse';
+import type { LLMResponse } from '@fastgpt/global/core/ai/llm/type';
+```
+
+## TypeScript 写法
+
+### 使用 `type` 进行类型声明，不使用 `interface`
+
+```typescript
+// ❌ 不好的实践
+interface User {
+  id: string;
+  name: string;
+}
+
+// ✅ 好的实践
+type User = {
+  id: string;
+  name: string;
+}
+```
+
+### 类型守卫
+
+用 `is` 关键字收窄 `unknown` / `any` 类型，替代强制断言。
+
+```typescript
+// ❌ 不好的实践
+function process(value: unknown) {
+  const n = value as number; // 不安全
+}
+
+// ✅ 好的实践
+const isValidNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
+
+if (isValidNumber(value)) {
+  // 此处 value 安全收窄为 number
+}
+```
 
 ### 使用严格相等比较
 
@@ -114,6 +215,83 @@ if (maxInputTokens !== null && maxInputTokens !== undefined) {
   return currentInputTokens <= maxInputTokens;
 }
 ```
+
+### 空值合并取默认值
+
+用 `??` 取代 `||` 处理默认值，避免 `0`、`false`、`''` 被错误覆盖。
+
+```typescript
+// ❌ 不好的实践
+const version = lastVersion?.version || 0;  // version 为 0 时被误覆盖
+const text = item?.value || '';
+
+// ✅ 好的实践
+const version = (lastVersion?.version ?? -1) + 1;
+const text = item?.value ?? '';
+```
+
+### 可选链调用回调
+
+用 `?.()` 调用可选回调，取代 `if (fn) fn()` 的冗余写法。
+
+```typescript
+// ❌ 不好的实践
+if (onProgress) {
+  onProgress({ phase: 'creatingContainer' });
+}
+
+// ✅ 好的实践
+onProgress?.({ phase: 'creatingContainer' });
+```
+
+### 使用 IIFE 取代 if/else 进行变量条件赋值
+
+```typescript
+// ❌ 不好的实践
+if (condition) {
+  value = true;
+} else {
+  value = false;
+}
+
+// ✅ 好的实践
+const value = (() => {
+  if (condition) {
+    return true;
+  }
+  return false;
+})();
+```
+
+### 解构重命名
+
+同名变量来自多个来源时，解构时重命名，避免命名冲突。
+
+```typescript
+// ❌ 不好的实践
+const r1 = await getSkillGuidance(...);
+const r2 = await createLLMResponse(...);
+const inputTokens = r1.usage.inputTokens + r2.usage.inputTokens;
+
+// ✅ 好的实践
+const { usage: guidanceUsage } = await getSkillGuidance(...);
+const { usage: generateUsage } = await createLLMResponse(...);
+const inputTokens = guidanceUsage.inputTokens + generateUsage.inputTokens;
+```
+
+### 函数参数不超过 2 个，多参数用对象传递
+
+独立参数不超过 2 个，超过时改为对象参数，便于扩展且无需关心顺序。
+
+```typescript
+// ❌ 不好的实践
+function createVersion(skillId: string, teamId: string, tmbId: string, version: number) {}
+
+// ✅ 好的实践
+function createVersion(data: { skillId: string; teamId: string; tmbId: string; version: number }) {}
+```
+
+## 流程组织与错误处理
 
 ### 按处理步骤分段，使用空行和注释说明流程
 
@@ -143,64 +321,23 @@ await commitIndexPatch({ snapshot, patch });
 await cleanupReplacedVectors(oldVectorIds);
 ```
 
-### 禁止 re-export
+### 非关键清理用 `.catch()` 链
 
-禁止使用 `export { ... } from '...'`、`export type { ... } from '...'` 或 `export * from '...'` 转导其他模块的成员，包括 `index.ts` barrel、目录聚合入口和兼容旧路径的转发文件。
-
-- 每个导出只能由其实际定义文件提供，使用方直接从定义模块导入
-- `index.ts` 可以包含自身的实现和定义，但不能聚合导出其他文件
-- 移动定义时，直接修改所有使用方的 import；确认旧路径无引用后删除旧文件
-- 不为缩短 import 路径、隐藏目录结构或兼容旧路径新增转导层，避免依赖来源不明确、循环依赖和无效模块加载
-
-```typescript
-// ❌ 不好的实践：通过目录入口转导其他模块
-export { createLLMResponse } from './createLLMResponse';
-export type { LLMResponse } from './type';
-export * from './constants';
-
-// ✅ 好的实践：使用方直接引用成员的定义模块
-import { createLLMResponse } from '@fastgpt/service/core/ai/llm/createLLMResponse';
-import type { LLMResponse } from '@fastgpt/global/core/ai/llm/type';
-```
-
-### 使用 `type` 进行类型声明，不使用 `interface`
+次要的清理操作（不影响主流程）用 `.catch()` 吞掉错误，不污染主 try/catch。
 
 ```typescript
 // ❌ 不好的实践
-interface User {
-  id: string;
-  name: string;
+try {
+  await client.delete();
+} catch {
+  // 清理失败，主流程中断
 }
 
 // ✅ 好的实践
-type User = {
-  id: string;
-  name: string;
-}
+await client.delete().catch(() => {});
 ```
 
----
-
-### 使用 IIFE 写法来取代 if/else 进行变量条件赋值。
-
-```typescript
-// ❌ 不好的实践
-if (condition) {
-  value = true;
-} else {
-  value = false;
-}
-
-// ✅ 好的实践
-const value = (() => {
-  if (condition) {
-    return true;
-  }
-  return false;
-})();
-```
-
----
+## Zod 与 API 契约
 
 ### 类型推导：Zod schema 同时承担校验和类型
 
@@ -215,8 +352,6 @@ const MessageParamSchema = z.object({ role: z.enum(['user', 'assistant']), conte
 export const MessageParamSchema = z.discriminatedUnion('role', [...]);
 export type MessageParam = z.infer<typeof MessageParamSchema>;
 ```
-
----
 
 ### Zod Schema 与 OpenAPI 风格
 
@@ -280,110 +415,7 @@ const StoredStatusSchema = StoredStatusEnum.catch('unknown');
 const RequiredStoredStatusSchema = z.string().min(1).pipe(StoredStatusSchema);
 ```
 
----
-
-## 可选链调用回调
-
-用 `?.()` 调用可选回调，取代 `if (fn) fn()` 的冗余写法。
-
-```typescript
-// ❌ 不好的实践
-if (onProgress) {
-  onProgress({ phase: 'creatingContainer' });
-}
-
-// ✅ 好的实践
-onProgress?.({ phase: 'creatingContainer' });
-```
-
----
-
-### 空值合并取默认值
-
-用 `??` 取代 `||` 处理默认值，避免 `0`、`false`、`''` 被错误覆盖。
-
-```typescript
-// ❌ 不好的实践
-const version = lastVersion?.version || 0;  // version 为 0 时被误覆盖
-const text = item?.value || '';
-
-// ✅ 好的实践
-const version = (lastVersion?.version ?? -1) + 1;
-const text = item?.value ?? '';
-```
-
----
-
-### 解构重命名
-
-同名变量来自多个来源时，解构时重命名，避免命名冲突。
-
-```typescript
-// ❌ 不好的实践
-const r1 = await getSkillGuidance(...);
-const r2 = await createLLMResponse(...);
-const inputTokens = r1.usage.inputTokens + r2.usage.inputTokens;
-
-// ✅ 好的实践
-const { usage: guidanceUsage } = await getSkillGuidance(...);
-const { usage: generateUsage } = await createLLMResponse(...);
-const inputTokens = guidanceUsage.inputTokens + generateUsage.inputTokens;
-```
-
----
-
-### 类型守卫
-
-用 `is` 关键字收窄 `unknown` / `any` 类型，替代强制断言。
-
-```typescript
-// ❌ 不好的实践
-function process(value: unknown) {
-  const n = value as number; // 不安全
-}
-
-// ✅ 好的实践
-const isValidNumber = (value: unknown): value is number =>
-  typeof value === 'number' && Number.isFinite(value);
-
-if (isValidNumber(value)) {
-  // 此处 value 安全收窄为 number
-}
-```
-
----
-
-### 非关键清理用 `.catch()` 链
-
-次要的清理操作（不影响主流程）用 `.catch()` 吞掉错误，不污染主 try/catch。
-
-```typescript
-// ❌ 不好的实践
-try {
-  await client.delete();
-} catch {
-  // 清理失败，主流程中断
-}
-
-// ✅ 好的实践
-await client.delete().catch(() => {});
-```
-
----
-
-### 函数参数不超过 2 个，多参数用对象传递
-
-独立参数不超过 2 个，超过时改为对象参数，便于扩展且无需关心顺序。
-
-```typescript
-// ❌ 不好的实践
-function createVersion(skillId: string, teamId: string, tmbId: string, version: number) {}
-
-// ✅ 好的实践
-function createVersion(data: { skillId: string; teamId: string; tmbId: string; version: number }) {}
-```
-
----
+## MongoDB 数据访问
 
 ### 数据写操作函数支持可选 session 参数
 
@@ -414,4 +446,40 @@ export const createAppAndInitVersion = async (
     return mongoSessionRun(create);
   }
 };
+```
+
+### MongoDB 4.4 `$lookup` 兼容
+
+数据库侧过滤、排序或分页必须保留 `$lookup` 时遵守：
+
+- 禁止在同一个 `$lookup` 中混用 `localField`/`foreignField` 与 `pipeline`（MongoDB 4.4 / FCV=4.4 会直接报错），必须改用 `let + pipeline + $match($expr)`。
+- 可缺省外键在 `let` 中必须用 `$ifNull: ['$field', null]` 归一化，防止 MongoDB 4.4/5.0 因 missing 字段跳过索引改写退化为全表扫描。
+
+### 跨集合补充字段优先应用层批量回表
+
+跨集合补充展示字段，且外键高度重复、被关联文档较大无覆盖索引，或展示列可选时，优先在应用层按需批量回表：
+
+- 入库已由 Mongoose `Schema.Types.ObjectId` 强约束的字段，业务读取与构建/查询 `Map` 直接使用 `String(id)`，不做多余的二次类型校验。
+- 全局 `find` post hook（`convertObjectIds`）会将顶层 `ObjectId` 转为 `string`：传给后续 `find({ _id: { $in } })` 时由 Mongoose 自动转型，传给 `aggregate` `$match` 时需显式 `new Types.ObjectId(id)`（`aggregate` 不做自动转型）。
+- 多批次弱一致性从库读取（如日志流式导出）可统一走 `readFromSecondary`；跨批次缓存应**仅持久化实际命中的结果**，不得将从库查空永久固化为整次导出内已确认的缺失。对未命中 ID 可采用**批次指数退避 + TTL 过期重查**（如 `createAppVersionNameLoader`），兼顾跨多批复制延迟自动追平与防止已删除历史外键在数百批次中线性空查。
+- 同一业务域（如列表与导出）的底层批量查询与统计口径应沉淀在 `entity.ts` 共用，避免在 API 路由层双写导致口径漂移。
+
+```typescript
+import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
+
+// ✅ 好的实践：Schema 已强约束为 ObjectId，直接去重回表并用 String(id) 建 Map
+const versionIds = Array.from(
+  new Set(rows.map((row) => row.appVersionId).filter(Boolean).map(String))
+);
+const versions =
+  versionIds.length > 0
+    ? await MongoAppVersion.find(
+        { _id: { $in: versionIds } },
+        { _id: 1, versionName: 1 },
+        readFromSecondary
+      ).lean()
+    : [];
+const versionNameMap = new Map(
+  versions.map((version) => [String(version._id), version.versionName ?? null])
+);
 ```

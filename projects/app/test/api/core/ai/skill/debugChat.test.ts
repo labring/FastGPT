@@ -69,7 +69,7 @@ vi.mock('@fastgpt/service/support/user/team/utils', () => ({
   getRunningUserInfoByTmbId: debugChatMocks.getRunningUserInfoByTmbId
 }));
 
-vi.mock('@fastgpt/service/core/workflow/utils/streamResponseContext', () => ({
+vi.mock('@fastgpt/service/core/workflow/dispatch/context/streamResponse', () => ({
   createWorkflowStreamResponseContext: debugChatMocks.createWorkflowStreamResponseContext
 }));
 
@@ -119,16 +119,19 @@ describe('buildDebugRuntimeNodes', () => {
       expect(input.value).toBe('');
     });
 
-    it('should have exactly one userChatInput output with static type', () => {
+    it('should declare userChatInput and userFiles outputs', () => {
       const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL_ID, SYSTEM_PROMPT);
       const startNode = runtimeNodes[0];
 
-      expect(startNode.outputs).toHaveLength(1);
-      const output = startNode.outputs[0];
+      expect(startNode.outputs).toHaveLength(2);
+      const output = startNode.outputs.find((o) => o.key === NodeOutputKeyEnum.userChatInput)!;
       expect(output.key).toBe(NodeOutputKeyEnum.userChatInput);
       expect(output.id).toBe(NodeOutputKeyEnum.userChatInput);
       expect(output.type).toBe(FlowNodeOutputTypeEnum.static);
       expect(output.valueType).toBe(WorkflowIOValueTypeEnum.string);
+      expect(startNode.outputs.find((o) => o.key === NodeOutputKeyEnum.userFiles)?.valueType).toBe(
+        WorkflowIOValueTypeEnum.arrayString
+      );
     });
   });
 
@@ -153,6 +156,15 @@ describe('buildDebugRuntimeNodes', () => {
       // Reference format: [nodeId, outputKey]
       expect(userInput!.value).toEqual([START_NODE_ID, NodeOutputKeyEnum.userChatInput]);
       expect(userInput!.renderTypeList).toContain(FlowNodeInputTypeEnum.reference);
+    });
+
+    it('fileUrlList input should reference start node userFiles output', () => {
+      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL_ID, SYSTEM_PROMPT);
+      const fileInput = runtimeNodes[1].inputs.find((i) => i.key === NodeInputKeyEnum.fileUrlList);
+      expect(fileInput).toMatchObject({
+        value: [START_NODE_ID, NodeOutputKeyEnum.userFiles],
+        renderTypeList: expect.arrayContaining([FlowNodeInputTypeEnum.reference])
+      });
     });
 
     it('aiModelId input should carry the provided model ID', () => {

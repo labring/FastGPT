@@ -4,7 +4,9 @@ import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import SecondaryNavigationContainer from '@/pageComponents/common/SecondaryNavigationContainer';
+import SecondaryNavigationContainer, {
+  type SecondaryNavigationTab
+} from '@/pageComponents/common/SecondaryNavigationContainer';
 
 export enum TabEnum {
   'info' = 'info',
@@ -42,7 +44,7 @@ const AccountContainer = ({
     return router.pathname.split('/').pop() as TabEnum;
   }, [router.pathname]);
 
-  const tabList = [
+  const primaryTabs: SecondaryNavigationTab<TabEnum>[] = [
     {
       icon: 'support/user/userLight',
       label: t('account:personal_information'),
@@ -106,8 +108,10 @@ const AccountContainer = ({
             value: TabEnum.apikey
           }
         ]
-      : []),
+      : [])
+  ];
 
+  const secondaryTabs: SecondaryNavigationTab<TabEnum>[] = [
     ...(feConfigs.isPlus
       ? [
           {
@@ -127,6 +131,13 @@ const AccountContainer = ({
       label: t('account:logout'),
       value: TabEnum.loginout
     }
+  ];
+
+  const tabList: SecondaryNavigationTab<TabEnum>[] = [
+    ...primaryTabs.map((item, index) =>
+      index === primaryTabs.length - 1 ? { ...item, dividerAfter: true } : item
+    ),
+    ...secondaryTabs
   ];
 
   const { openConfirm, ConfirmModal } = useConfirm({

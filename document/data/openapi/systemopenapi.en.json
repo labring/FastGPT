@@ -62,6 +62,7 @@
   "paths": {
     "/core/app/logs/list": {
       "post": {
+        "deprecated": true,
         "summary": "List App Chat Logs",
         "description": "Retrieve paginated application chat logs with filters for time range, source, feedback status, errors, and users.",
         "tags": [
@@ -880,6 +881,692 @@
                       },
                       "required": [
                         "total",
+                        "list"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "statusText",
+                    "message",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/core/app/logs/search": {
+      "post": {
+        "summary": "Search app logs",
+        "description": "Search app chat logs with cursor-based pagination. The page size is fixed at 50 and the response does not include a total count.",
+        "tags": [
+          "App Logs"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "anyOf": [
+                      {
+                        "title": "Explicit App ID",
+                        "description": "Personal API keys and login sessions must pass `appId`; an App API Key always uses the bound application.",
+                        "type": "object",
+                        "properties": {
+                          "appId": {
+                            "allOf": [
+                              {
+                                "example": "68ad85a7463006c963799a05",
+                                "description": "Application ID",
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            ],
+                            "x-fastgpt-union-parameter": {
+                              "label": "",
+                              "position": "only"
+                            }
+                          }
+                        },
+                        "required": [
+                          "appId"
+                        ]
+                      },
+                      {
+                        "title": "App API Key (no appId required)",
+                        "description": "When authorizing with an app-bound App API Key, omit `appId` and `sourceType`; the server resolves the bound app with `sourceType` fixed to `app`. Personal keys and login sessions cannot omit `appId`, and an explicit `appId` does not override an App API Key binding.",
+                        "type": "object",
+                        "properties": {}
+                      }
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "feedbackType": {
+                        "example": "good",
+                        "description": "Feedback filter: `all` (all logs), `has_feedback` (logs with feedback), `good` (likes), `bad` (dislikes)",
+                        "type": "string",
+                        "enum": [
+                          "all",
+                          "has_feedback",
+                          "good",
+                          "bad"
+                        ]
+                      },
+                      "unreadOnly": {
+                        "example": false,
+                        "description": "Whether to return only unread feedback (ignored when `feedbackType` is `all`)",
+                        "type": "boolean"
+                      },
+                      "errorFilter": {
+                        "example": "has_error",
+                        "description": "Error filter: `all` (all logs), `has_error` (error logs only)",
+                        "type": "string",
+                        "enum": [
+                          "all",
+                          "has_error"
+                        ]
+                      },
+                      "dateStart": {
+                        "example": "2024-01-01T00:00:00.000Z",
+                        "description": "Start time",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z||([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          },
+                          {
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          {
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "dateEnd": {
+                        "example": "2024-12-31T23:59:59.999Z",
+                        "description": "End time",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z||([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          },
+                          {
+                            "type": "string",
+                            "format": "date",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                          },
+                          {
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "sources": {
+                        "example": [
+                          "api",
+                          "online"
+                        ],
+                        "description": "Chat source filter",
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "test",
+                            "online",
+                            "share",
+                            "api",
+                            "cronJob",
+                            "feishu",
+                            "official_account",
+                            "wecom",
+                            "wechat",
+                            "mcp",
+                            "dingtalk",
+                            "unknown"
+                          ]
+                        }
+                      },
+                      "tmbIds": {
+                        "example": [
+                          "tmb123",
+                          "tmb456"
+                        ],
+                        "description": "List of team member IDs",
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "outLinkUids": {
+                        "example": [
+                          "user123",
+                          "user456"
+                        ],
+                        "description": "List of external user IDs",
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "chatSearch": {
+                        "example": "chat123",
+                        "description": "Search term. Use with `searchType` to search titles or match a session ID exactly.",
+                        "type": "string"
+                      },
+                      "searchType": {
+                        "description": "Search mode. Use `title` to search titles or `chatId` to match a session ID exactly. Omit this field to use the legacy search behavior.",
+                        "example": "title",
+                        "type": "string",
+                        "enum": [
+                          "title",
+                          "chatId"
+                        ]
+                      },
+                      "cursor": {
+                        "example": {
+                          "timestamp": 1735689600000,
+                          "id": "68ad85a7463006c963799a05"
+                        },
+                        "description": "The `nextCursor` from the previous response. Omit this field on the first page and pass the cursor unchanged for subsequent pages.",
+                        "type": "object",
+                        "properties": {
+                          "timestamp": {
+                            "example": 1735689600000,
+                            "description": "Cursor timestamp in milliseconds",
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "id": {
+                            "example": "68ad85a7463006c963799a05",
+                            "description": "Log ID in the cursor",
+                            "type": "string",
+                            "pattern": "^[a-f\\d]{24}$"
+                          }
+                        },
+                        "required": [
+                          "timestamp",
+                          "id"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "dateStart",
+                      "dateEnd"
+                    ]
+                  }
+                ]
+              },
+              "example": {
+                "appId": "68ad85a7463006c963799a05",
+                "dateStart": "2024-01-01T00:00:00.000Z",
+                "dateEnd": "2024-12-31T23:59:59.999Z"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "App log search completed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "description": "Standard FastGPT HTTP JSON response envelope.",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 200,
+                      "description": "Business status code (200 indicates success)."
+                    },
+                    "statusText": {
+                      "type": "string",
+                      "example": "",
+                      "description": "Status text (empty string on success)."
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "",
+                      "description": "Response message (empty string on success)."
+                    },
+                    "data": {
+                      "example": {
+                        "list": []
+                      },
+                      "description": "App chat log search results",
+                      "type": "object",
+                      "properties": {
+                        "list": {
+                          "description": "Chat log records for this page. The page size is fixed at 50.",
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "publishSource": {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "description": "Channel type of the latest run; falls back to `unknown` if unrecognized",
+                                    "example": "api",
+                                    "default": "unknown",
+                                    "type": "string",
+                                    "enum": [
+                                      "test",
+                                      "online",
+                                      "share",
+                                      "api",
+                                      "cronJob",
+                                      "feishu",
+                                      "official_account",
+                                      "wecom",
+                                      "wechat",
+                                      "mcp",
+                                      "dingtalk",
+                                      "unknown"
+                                    ]
+                                  },
+                                  "id": {
+                                    "description": "Database ID of the channel record; omitted for internal entry points or legacy data without recoverable references",
+                                    "example": "6909d3c4b6a72185d0f08101",
+                                    "type": "string",
+                                    "pattern": "^[0-9a-fA-F]{24}$"
+                                  },
+                                  "name": {
+                                    "description": "Current channel name, compatible with legacy source names",
+                                    "example": "Support Backend",
+                                    "type": "string"
+                                  }
+                                },
+                                "additionalProperties": false
+                              },
+                              "_id": {
+                                "example": "68ad85a7463006c963799a05",
+                                "description": "Chat log ID",
+                                "type": "string"
+                              },
+                              "chatId": {
+                                "example": "chat123",
+                                "description": "Chat ID",
+                                "type": "string",
+                                "maxLength": 1024
+                              },
+                              "title": {
+                                "example": "User Conversation",
+                                "description": "Chat title",
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "customTitle": {
+                                "example": "Custom Title",
+                                "description": "Custom chat title",
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "source": {
+                                "deprecated": true,
+                                "description": "Legacy channel type retained for compatibility; use `publishSource.type` instead",
+                                "example": "api",
+                                "default": "unknown",
+                                "type": "string",
+                                "enum": [
+                                  "test",
+                                  "online",
+                                  "share",
+                                  "api",
+                                  "cronJob",
+                                  "feishu",
+                                  "official_account",
+                                  "wecom",
+                                  "wechat",
+                                  "mcp",
+                                  "dingtalk",
+                                  "unknown"
+                                ]
+                              },
+                              "sourceName": {
+                                "example": "Support Backend",
+                                "deprecated": true,
+                                "description": "Legacy channel name retained for compatibility; use `publishSource.name` instead",
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "updateTime": {
+                                "example": "2024-01-01T00:30:00.000Z",
+                                "description": "Update time",
+                                "type": "string"
+                              },
+                              "createTime": {
+                                "example": "2024-01-01T00:00:00.000Z",
+                                "description": "Creation time",
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "messageCount": {
+                                "example": 10,
+                                "description": "Message count",
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "userGoodFeedbackCount": {
+                                "example": 3,
+                                "description": "Positive feedback count",
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "userBadFeedbackCount": {
+                                "example": 1,
+                                "description": "Negative feedback count",
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "customFeedbacksCount": {
+                                "example": 2,
+                                "description": "Custom feedback count",
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "markCount": {
+                                "example": 0,
+                                "description": "Marked count",
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "averageResponseTime": {
+                                "example": 1500,
+                                "description": "Average response time (ms)",
+                                "anyOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "errorCount": {
+                                "example": 0,
+                                "description": "Error count",
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "totalPoints": {
+                                "example": 150.5,
+                                "description": "Total credit points consumed",
+                                "anyOf": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "outLinkUid": {
+                                "example": "outLink123",
+                                "description": "End-user ID from a share link visitor or API `customUid`; takes precedence over `tmbId` when non-empty",
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "tmbId": {
+                                "example": "tmb123",
+                                "description": "Effective authenticated team member ID (or proxied member ID when using `authProxy`)",
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "sourceMember": {
+                                "description": "Source member details (compatibility field; may represent a guest for share-link traffic)",
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "example": "Alice",
+                                        "description": "Member name",
+                                        "type": "string"
+                                      },
+                                      "avatar": {
+                                        "description": "Member avatar",
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "status": {
+                                        "example": "active",
+                                        "description": "Member status",
+                                        "type": "string",
+                                        "enum": [
+                                          "active",
+                                          "leave",
+                                          "forbidden"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "name",
+                                      "status"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "authMember": {
+                                "description": "Authenticated member metadata resolved by `tmbId`, for display only",
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "example": "Alice",
+                                        "description": "Member name",
+                                        "type": "string"
+                                      },
+                                      "avatar": {
+                                        "description": "Member avatar",
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "status": {
+                                        "example": "active",
+                                        "description": "Member status",
+                                        "type": "string",
+                                        "enum": [
+                                          "active",
+                                          "leave",
+                                          "forbidden"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "name",
+                                      "status"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "versionName": {
+                                "example": "v1.0.0",
+                                "description": "Version name",
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "originIp": {
+                                "example": "192.168.1.1",
+                                "description": "Origin IP address",
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "region": {
+                                "example": "US",
+                                "description": "Region",
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "_id",
+                              "chatId",
+                              "source",
+                              "updateTime"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "nextCursor": {
+                          "description": "Cursor for the next page. This field is absent when no more results are available.",
+                          "type": "object",
+                          "properties": {
+                            "timestamp": {
+                              "example": 1735689600000,
+                              "description": "Cursor timestamp in milliseconds",
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "id": {
+                              "example": "68ad85a7463006c963799a05",
+                              "description": "Log ID in the cursor",
+                              "type": "string",
+                              "pattern": "^[a-f\\d]{24}$"
+                            }
+                          },
+                          "required": [
+                            "timestamp",
+                            "id"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
                         "list"
                       ],
                       "additionalProperties": false

@@ -15,7 +15,12 @@ import type { AgentLoopInteractiveToolExecuteParams } from '../../../../../../ai
 import type { AgentLoopDatasetSearchExecutor } from '../../../../../../ai/llm/agentLoop/interface';
 import { parseJsonArgs } from '../../../../../../ai/utils';
 import type { AgentLoopCoreToolInfo, AgentLoopCoreToolRunResult } from '../../domain/toolProvider';
-import type { AgentLoopCoreToolRunFlowResponse } from '../../adapter/nodeResponse/toolRunCollector';
+import {
+  convertMcpToolContentToToolContent,
+  extractAgentLoopCoreToolContent,
+  maskToolImagePayload,
+  unwrapPluginToolResponse
+} from '../../domain/toolContent';
 import { normalizeAgentLoopCoreDatasetSearchResult } from './systemToolHelpers';
 import { cloneDeep } from 'lodash-es';
 import { compileToolRuntime, mergeToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
@@ -23,10 +28,7 @@ import {
   rewriteNodeOutputByHistories,
   storeEdges2RuntimeEdges
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import {
-  createContainerRunStateSnapshot,
-  syncContainerRunState
-} from '../../../../utils/containerRunState';
+import { WorkflowRunStateSnapshot } from '../../../../utils/containerRunState';
 import { MODERATION_BLOCKED_REPLACE_TEXT } from '@fastgpt/global/core/plugin/moderation/constants';
 import { markToolResultModerated } from '../../../../../../plugin/moderation/modelInput';
 
@@ -34,7 +36,6 @@ export type AgentLoopCoreWorkflowToolRunResponse<TChildrenResponse = unknown> = 
   flowResponses: NonNullable<DispatchFlowResponse['flatNodeResponses']>;
   workflowRuntimeSummary?: DispatchFlowResponse['workflowRuntimeSummary'];
   flowUsages: DispatchFlowResponse['flowUsages'];
-  runTimes?: DispatchFlowResponse[DispatchNodeResponseKeyEnum.runTimes];
   assistantResponses: DispatchFlowResponse[DispatchNodeResponseKeyEnum.assistantResponses];
   workflowInteractiveResponse?: TChildrenResponse;
   toolResponses: DispatchFlowResponse[DispatchNodeResponseKeyEnum.toolResponse];
@@ -50,10 +51,6 @@ export type CreateAgentLoopCoreWorkflowToolRunnerParams<TChildrenResponse = unkn
     runtimeEdges: RuntimeEdgeItemType[];
     lastInteractive?: TChildrenResponse;
   }) => Promise<AgentLoopCoreWorkflowToolRunResponse<TChildrenResponse>>;
-  cacheToolFlowResponse?: (args: {
-    callId: string;
-    flowResponse?: AgentLoopCoreToolRunFlowResponse;
-  }) => void;
 };
 
 export type CreateAgentLoopCoreWorkflowSystemToolExecutorParams<TChildrenResponse = unknown> = {
@@ -61,7 +58,6 @@ export type CreateAgentLoopCoreWorkflowSystemToolExecutorParams<TChildrenRespons
   runtimeEdges: RuntimeEdgeItemType[];
   entryNodeIds: string[];
   runWorkflowTool: CreateAgentLoopCoreWorkflowToolRunnerParams<TChildrenResponse>['runWorkflowTool'];
-  cacheToolFlowResponse?: CreateAgentLoopCoreWorkflowToolRunnerParams<TChildrenResponse>['cacheToolFlowResponse'];
 };
 
 export const updateAgentLoopCoreWorkflowToolInputValue = ({
@@ -157,38 +153,59 @@ const getAssistantMessages = (
     reserveTool: true
   });
 
-const toFlowResponse = (
-  toolRunResponse: AgentLoopCoreWorkflowToolRunResponse
-): AgentLoopCoreToolRunFlowResponse => ({
-  flowResponses: toolRunResponse.flowResponses,
-  workflowRuntimeSummary: toolRunResponse.workflowRuntimeSummary,
-  flowUsages: toolRunResponse.flowUsages,
-  runTimes: toolRunResponse.runTimes ?? 0
-});
-
+/** 将工作流工具结果转换为 Agent 响应，并保留结构化媒体内容和交互状态。 */
 const toToolRunResult = <TChildrenResponse = unknown>(
   toolRunResponse: AgentLoopCoreWorkflowToolRunResponse<TChildrenResponse>
-): {
-  result: AgentLoopCoreToolRunResult<TChildrenResponse>;
-  flowResponse: AgentLoopCoreToolRunFlowResponse;
-} => {
+): AgentLoopCoreToolRunResult<TChildrenResponse> => {
   const hasModerationBlock = !!toolRunResponse.workflowRuntimeSummary?.hasModerationBlock;
   const errorMessage =
     !hasModerationBlock && !!toolRunResponse.workflowRuntimeSummary?.errorCount
       ? toolRunResponse.workflowRuntimeSummary?.errorText || 'Tool execution failed'
       : undefined;
 
-  const rawToolResponses = toolRunResponse.toolResponses;
-  const hasToolResponses =
-    rawToolResponses !== undefined && rawToolResponses !== null && rawToolResponses !== '';
+  const { response, content } = (() => {
+    const pluginResponse = unwrapPluginToolResponse(toolRunResponse.toolResponses);
+    const rawResponse = pluginResponse?.result ?? toolRunResponse.toolResponses;
+    const hasResponse = rawResponse !== undefined && rawResponse !== null && rawResponse !== '';
+    // 没有结果的失败调用必须返回错误，而不是用空结果掩盖失败原因。
+    const formatResponse = (value: unknown) =>
+      hasResponse || !errorMessage ? formatAgentLoopCoreToolResponse(value) : errorMessage;
+
+    if (pluginResponse) {
+      // 插件执行时已按 outputSchema 投影，直接使用完整 content，不能再猜测业务字段。
+      return {
+        response: formatResponse(maskToolImagePayload(rawResponse)),
+        content: pluginResponse.content.length > 0 ? pluginResponse.content : undefined
+      };
+    }
+
+    // MCP 原生图片需先转为 image_url；HTTP 和 workflow 使用已有 content 契约。
+    const mcpContent =
+      rawResponse && typeof rawResponse === 'object' && 'content' in rawResponse
+        ? rawResponse.content
+        : undefined;
+    const imageParts =
+      convertMcpToolContentToToolContent(mcpContent) ??
+      extractAgentLoopCoreToolContent(rawResponse);
+    // 图片走结构化通道时，文本中的内联数据需遮蔽，避免重复发送。
+    const response = formatResponse(
+      maskToolImagePayload(rawResponse, { maskDataUrlParts: Boolean(imageParts) })
+    );
+    return {
+      response,
+      content: imageParts
+        ? [
+            { type: 'text' as const, text: response },
+            ...imageParts.filter((part) => part.type === 'image_url')
+          ]
+        : undefined
+    };
+  })();
 
   const result: AgentLoopCoreToolRunResult<TChildrenResponse> = {
     // 工具失败时把错误原因返回给模型；'none' 会掩盖失败原因；内容审核命中时返回统一脱敏提示且不携带 errorMessage。
-    response: hasModerationBlock
-      ? MODERATION_BLOCKED_REPLACE_TEXT
-      : hasToolResponses || !errorMessage
-        ? formatAgentLoopCoreToolResponse(rawToolResponses)
-        : errorMessage,
+    response: hasModerationBlock ? MODERATION_BLOCKED_REPLACE_TEXT : response,
+    ...(!hasModerationBlock && content ? { content } : {}),
     ...(errorMessage ? { errorMessage } : {}),
     assistantMessages: hasModerationBlock
       ? []
@@ -206,10 +223,7 @@ const toToolRunResult = <TChildrenResponse = unknown>(
     markToolResultModerated(result);
   }
 
-  return {
-    result,
-    flowResponse: toFlowResponse(toolRunResponse)
-  };
+  return result;
 };
 
 /** 合并每个知识库节点的独立 toolResponse，避免 workflow 只保留最后一个结果。 */
@@ -256,8 +270,7 @@ export const createAgentLoopCoreWorkflowSystemToolExecutor = <TChildrenResponse 
   runtimeNodes,
   runtimeEdges,
   entryNodeIds,
-  runWorkflowTool,
-  cacheToolFlowResponse
+  runWorkflowTool
 }: CreateAgentLoopCoreWorkflowSystemToolExecutorParams<TChildrenResponse>) => {
   const execute: AgentLoopDatasetSearchExecutor = async ({ call }) => {
     const params = parseJsonArgs<Record<string, unknown>>(call.function.arguments) ?? {};
@@ -300,19 +313,9 @@ export const createAgentLoopCoreWorkflowSystemToolExecutor = <TChildrenResponse 
         });
       })
     );
-    const flowResponses = toolRunResponses.map(toFlowResponse);
-    const mergedFlowResponse: AgentLoopCoreToolRunFlowResponse = {
-      flowResponses: flowResponses.flatMap((item) => item.flowResponses),
-      flowUsages: flowResponses.flatMap((item) => item.flowUsages),
-      runTimes: flowResponses.reduce((sum, item) => sum + (item.runTimes ?? 0), 0)
-    };
-    cacheToolFlowResponse?.({
-      callId: call.id,
-      flowResponse: mergedFlowResponse
-    });
-    const datasetNodeResponses = mergedFlowResponse.flowResponses.filter((item) =>
-      entryNodeIds.includes(item.nodeId)
-    );
+    const datasetNodeResponses = toolRunResponses
+      .flatMap((item) => item.flowResponses)
+      .filter((item) => entryNodeIds.includes(item.nodeId));
     const hasModerationBlock = toolRunResponses.some(
       (item) => item.workflowRuntimeSummary?.hasModerationBlock
     );
@@ -329,7 +332,7 @@ export const createAgentLoopCoreWorkflowSystemToolExecutor = <TChildrenResponse 
             entryNodeIds,
             toolRunResponses
           }),
-      usages: mergedFlowResponse.flowUsages,
+      usages: toolRunResponses.flatMap((item) => item.flowUsages),
       nodeResponse: mergeDatasetSearchNodeResponses(datasetNodeResponses)
     });
     if (hasModerationBlock || allModerated) {
@@ -345,17 +348,16 @@ export const createAgentLoopCoreWorkflowSystemToolExecutor = <TChildrenResponse 
  * 创建 workflow 子工具执行器。
  *
  * ToolCall 和未来的简化 Agent 都可以把“某个 runtime node 作为工具入口运行”的能力交给这里。
- * 节点外壳只负责提供实际 runWorkflow 函数、展示信息和缓存/流式回调。
+ * 节点外壳只负责提供实际 runWorkflow 函数和展示信息；子流程运行次数由该函数的适配器统计。
  *
  * 普通调用和交互恢复均隔离输入、入口和连线状态；本次改变的节点输出显式回写父图。
- * 全局变量继续使用调用方传入的共享 variableState，不随 runtime graph 复制。
+ * 变量作用域及提交策略由实际 runWorkflowTool 适配器管理，不随 runtime graph 在此处复制。
  */
 export const createAgentLoopCoreWorkflowToolRunner = <TChildrenResponse = unknown>({
   runtimeNodes,
   runtimeEdges,
   getToolInfo,
-  runWorkflowTool,
-  cacheToolFlowResponse
+  runWorkflowTool
 }: CreateAgentLoopCoreWorkflowToolRunnerParams<TChildrenResponse>) => {
   /**
    * 在独立子图上执行，并提交本轮改变的输出值。Workflow Tool 没有容器专属的节点集合，
@@ -375,9 +377,11 @@ export const createAgentLoopCoreWorkflowToolRunner = <TChildrenResponse = unknow
   }) => {
     const isolatedRuntimeNodes = cloneDeep(runtimeNodes);
     const isolatedRuntimeEdges = cloneDeep(runtimeEdges);
-    const stateSnapshot = createContainerRunStateSnapshot({
-      nodes: isolatedRuntimeNodes,
-      childrenNodeIdList: []
+    const stateSnapshot = new WorkflowRunStateSnapshot({
+      nodeOutputs: {
+        sourceNodes: isolatedRuntimeNodes,
+        targetNodes: runtimeNodes
+      }
     });
     if (lastInteractive) {
       const interactive = lastInteractive as {
@@ -402,13 +406,8 @@ export const createAgentLoopCoreWorkflowToolRunner = <TChildrenResponse = unknow
         ...(lastInteractive !== undefined ? { lastInteractive } : {})
       });
     } finally {
-      // 暂停或后续执行失败也保留已经发生的输出更新，与全局变量的即时写入语义一致。
-      await syncContainerRunState({
-        sourceNodes: isolatedRuntimeNodes,
-        targetNodes: runtimeNodes,
-        childrenNodeIdList: [],
-        stateSnapshot
-      });
+      // 暂停或后续执行失败也保留已完成的节点输出；变量提交由适配器按成功策略独立处理。
+      await stateSnapshot.commit();
     }
   };
 
@@ -443,23 +442,13 @@ export const createAgentLoopCoreWorkflowToolRunner = <TChildrenResponse = unknow
     }
 
     const startParams = parseJsonArgs(call.function.arguments) ?? {};
-    const toolRunResponse = await runIsolatedWorkflowTool({
-      callId: call.id,
-      entryNodeIds: [toolInfo.rawData.nodeId],
-      startParams
-    });
-    const { result, flowResponse } = toToolRunResult<TChildrenResponse>(toolRunResponse);
-
-    /**
-     * 这里只缓存真实工具/子流程的运行详情。
-     * 最终 tool response 可能还会被 agentLoop 压缩，统一由 onToolRunEnd 落 nodeResponse。
-     */
-    cacheToolFlowResponse?.({
-      callId: call.id,
-      flowResponse
-    });
-
-    return result;
+    return toToolRunResult<TChildrenResponse>(
+      await runIsolatedWorkflowTool({
+        callId: call.id,
+        entryNodeIds: [toolInfo.rawData.nodeId],
+        startParams
+      })
+    );
   };
 
   const runInteractiveTool = async ({
@@ -470,21 +459,15 @@ export const createAgentLoopCoreWorkflowToolRunner = <TChildrenResponse = unknow
     const entryNodeIds = (childrenResponse as { entryNodeIds?: string[] }).entryNodeIds ?? [];
     const startParams = parseJsonArgs(call?.function?.arguments) ?? {};
 
-    // 交互恢复沿用原 toolCallId，最终仍由统一 tool_run_end 落 SSE 和运行详情。
-    const toolRunResponse = await runIsolatedWorkflowTool({
-      callId: toolCallId,
-      entryNodeIds,
-      startParams,
-      lastInteractive: childrenResponse
-    });
-    const { result, flowResponse } = toToolRunResult<TChildrenResponse>(toolRunResponse);
-
-    cacheToolFlowResponse?.({
-      callId: toolCallId,
-      flowResponse
-    });
-
-    return result;
+    // 交互恢复沿用原 toolCallId，最终仍由统一 tool_run_end 推送 SSE。
+    return toToolRunResult<TChildrenResponse>(
+      await runIsolatedWorkflowTool({
+        callId: toolCallId,
+        entryNodeIds,
+        startParams,
+        lastInteractive: childrenResponse
+      })
+    );
   };
 
   return {

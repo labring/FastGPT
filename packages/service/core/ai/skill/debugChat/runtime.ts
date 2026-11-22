@@ -3,6 +3,8 @@ import {
   NodeOutputKeyEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
+import { Input_Template_File_Link } from '@fastgpt/global/core/workflow/template/input';
+import { userFilesInput } from '@fastgpt/global/core/workflow/template/output';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import {
@@ -56,7 +58,9 @@ export function buildDebugRuntimeNodes(
           label: 'User Question',
           type: FlowNodeOutputTypeEnum.static,
           valueType: WorkflowIOValueTypeEnum.string
-        }
+        },
+        // 与正常应用一致：Start 节点声明 userFiles 输出，下游 fileUrlList 引用才有值
+        { ...userFilesInput }
       ]
     },
     {
@@ -104,6 +108,11 @@ export function buildDebugRuntimeNodes(
           valueType: WorkflowIOValueTypeEnum.string,
           label: 'Edit Skill ID',
           value: skillId
+        },
+        {
+          ...Input_Template_File_Link,
+          // 复用 Workflow Start 的 userFiles 输出（query 文件 + fileUrlList 变量）
+          value: [START_NODE_ID, NodeOutputKeyEnum.userFiles]
         }
       ],
       outputs: [

@@ -243,6 +243,59 @@ describe('synonym search result enrichment', () => {
     expect(results[0].synonymMappings).toEqual({});
   });
 
+  /**
+   * 回归背景（2026-11-20 同义词验证）：同组同义词互斥出现。词表同一组「标准词
+   * standard-a ← 同义词 alias-b / alias-c」；问题写 alias-b，分块正文写同组另一个
+   * 同义词 alias-c。分块自身命中 alias-c→standard-a，问题侧 alias-b→standard-a
+   * 属于同一映射组（logicalMappingId 相同），必须一并并入；不同映射组（standard-x）
+   * 不得因为问题命中而被带进来。
+   */
+  it('attaches query-hit mappings when the chunk hits another synonym of the same group', async () => {
+    mocks.matcher.mockResolvedValue({
+      hasMappings: true,
+      ...buildSynonymMatcher([
+        {
+          logicalMappingId: '654a4107c32f3bf5f9984533',
+          datasetId,
+          fileVersion: 1,
+          standardizedTerm: 'standard-a',
+          normalizedStandardizedTerm: 'standard-a',
+          synonymTerms: ['alias-b', 'alias-c'],
+          normalizedSynonymTerms: ['alias-b', 'alias-c']
+        },
+        {
+          logicalMappingId: '654a4107c32f3bf5f9984534',
+          datasetId,
+          fileVersion: 1,
+          standardizedTerm: 'standard-x',
+          normalizedStandardizedTerm: 'standard-x',
+          synonymTerms: ['alias-y'],
+          normalizedSynonymTerms: ['alias-y']
+        }
+      ])
+    });
+
+    const sameGroup = await attachSynonymMappingsToSearchResults({
+      teamId,
+      datasetIds: [datasetId],
+      results: [item('alias-c only body')],
+      queries: ['alias-b question']
+    });
+    expect(sameGroup[0].synonymMappings).toEqual({
+      'alias-c': 'standard-a',
+      'alias-b': 'standard-a'
+    });
+
+    // 不同映射组不得串组：分块只保留自身命中的 alias-y→standard-x。
+    const otherGroup = await attachSynonymMappingsToSearchResults({
+      teamId,
+      datasetIds: [datasetId],
+      results: [item('alias-y only body')],
+      queries: ['alias-b question']
+    });
+    expect(otherGroup[0].synonymMappings).toEqual({ 'alias-y': 'standard-x' });
+  });
+
   it('merges query-hit mappings without duplicating chunk-side entries', async () => {
     // 分块正文同时含原词 alias 与标准词 standard-1：分块侧给出 ALIAS/alias 两条，
     // 问题侧 alias 与之分块侧重复，合并后不得出现第三条或覆盖分块侧大小写保留。

@@ -3,7 +3,7 @@ import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { buildSandboxClientQueryFromChatSource } from '../../../ai/sandbox/interface/runtime';
 import { ensureAppSandboxRuntimeReady } from '../../../ai/sandbox/application/runtime/upgrade';
 import { getRunningSandboxId } from '../../../ai/sandbox/utils/id';
-import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
+import { getWorkflowContext } from '../context';
 import { markChatSandboxEnabled } from '../../../chat/sandbox/service';
 
 /**
@@ -14,7 +14,6 @@ import { markChatSandboxEnabled } from '../../../chat/sandbox/service';
  * 任何阶段失败都向上传递错误，不误报就绪。其他 source 的生命周期仍由节点负责。
  */
 export async function ensureWorkflowSandboxReadyForUse<T>({
-  workflowStreamResponse,
   sourceType,
   sourceId,
   userId,
@@ -22,7 +21,6 @@ export async function ensureWorkflowSandboxReadyForUse<T>({
   teamId,
   prepareRuntime
 }: {
-  workflowStreamResponse?: WorkflowResponseType;
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   userId: string;
@@ -30,6 +28,7 @@ export async function ensureWorkflowSandboxReadyForUse<T>({
   teamId: string;
   prepareRuntime: () => Promise<T>;
 }): Promise<T> {
+  const { workflowStreamResponse } = getWorkflowContext();
   const sandboxId = getRunningSandboxId({ sourceType, sourceId, userId });
   let reportedPhase: 'lazyInit' | 'upgrading' | 'ready' | undefined;
 

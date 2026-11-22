@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
-import type { WorkflowVariableStateLike } from '@fastgpt/service/core/workflow/types/runtime';
+import { createTestWorkflowDispatch } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import {
   createNodeSummary,
   createWorkflowRuntimeSummary
@@ -13,21 +13,9 @@ const { childRun } = vi.hoisted(() => ({ childRun: vi.fn() }));
 // 只替换子工作流边界，保留生产 batchRun、并发钳制、快照 getter 和结果汇总。
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({ runWorkflow: childRun }));
 
-import { dispatchParallelRun } from '@fastgpt/service/core/workflow/dispatch/parallelRun/runParallelRun';
+import { dispatchParallelRun as dispatchNode } from '@fastgpt/service/core/workflow/dispatch/parallelRun/runParallelRun';
 
-/** 每个子任务独占变量副本，保证真实并行调度不依赖共享可变状态。 */
-const createVariableState = (values: Record<string, unknown> = {}): WorkflowVariableStateLike => ({
-  get: (key) => values[key],
-  set: async (key, value) => {
-    values[key] = value;
-    return value;
-  },
-  getStoreValue: (key) => values[key],
-  getFileStoreValueByRuntimeUrl: () => undefined,
-  toRuntimeRecord: () => ({ ...values }),
-  toStoreRecord: () => ({ ...values }),
-  clone: () => createVariableState({ ...values })
-});
+const dispatchParallelRun = createTestWorkflowDispatch(dispatchNode);
 
 describe('dispatchParallelRun runtime concurrency', () => {
   it('uses the current instance cap in the real task pool and preserves every result', async () => {
@@ -92,10 +80,8 @@ describe('dispatchParallelRun runtime concurrency', () => {
           runtimeNodes: [node],
           runtimeNodesMap: new Map([[node.nodeId, node]]),
           runtimeEdges: [],
-          variableState: createVariableState(),
           usagePush: vi.fn(),
-          nodeSummary: createNodeSummary(),
-          checkIsStopping: () => false
+          nodeSummary: createNodeSummary()
         } as any);
 
         // 任务必须真正停在子运行里；没有释放前，只能领取实例配置允许的数量。

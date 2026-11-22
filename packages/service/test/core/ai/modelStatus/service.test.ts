@@ -5,6 +5,7 @@ import {
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { EmbeddingRequestError } from '../../../../core/ai/embedding/error';
 import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -144,6 +145,51 @@ describe('probeModelStatus', () => {
       attempts: 4,
       error: 'Test model: Model test timed out after 60000ms'
     });
+  });
+
+  it('records machine error code and HTTP status for normalized embedding errors without raw i18n keys', async () => {
+    const authErr = new EmbeddingRequestError(ModelErrEnum.authFailed, {
+      category: 'authFailed',
+      retryable: false,
+      errorCode: ModelErrEnum.authFailed,
+      upstreamStatus: 401
+    });
+    const test = vi.fn().mockRejectedValue(authErr);
+
+    const result = await probeModelStatus({
+      model,
+      test
+    });
+
+    expect(result).toMatchObject({
+      status: 'red',
+      attempts: 4,
+      error: 'Test model: modelAuthFailed (HTTP 401)'
+    });
+    expect(result.error).not.toContain('common:code_error');
+  });
+
+  it('records error code directly for registered business errors without HTTP status', async () => {
+    const test = vi.fn().mockRejectedValue(new UserError(ModelErrEnum.noAvailableChannel));
+
+    const result = await probeModelStatus({
+      model,
+      test
+    });
+
+    expect(result).toMatchObject({
+      status: 'red',
+      attempts: 4,
+      error: 'Test model: modelNoAvailableChannel'
+    });
+    expect(result.error).not.toContain('common:code_error');
+  });
+
+  it('preserves plain upstream error messages containing colons such as Rerank 401', async () => {
+    const test = vi.fn().mockRejectedValue(new Error('Unauthorized: Invalid API key'));
+
+    const result = await probeModelStatus({ model, test });
+    expect(result.error).toBe('Test model: Unauthorized: Invalid API key');
   });
 
   it('declares the model-time lookup index and 30-day TTL index', () => {

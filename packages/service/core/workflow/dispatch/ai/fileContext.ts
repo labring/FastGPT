@@ -2,7 +2,7 @@ import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/consta
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
 import { getSafeSandboxInputFilename } from '../../../ai/sandbox/utils';
-import { prepareWorkflowFiles } from '../../utils/context';
+import { getWorkflowContext } from '../context';
 import {
   rewriteAgentLoopCoreUserMessageWithFiles,
   type AgentLoopCoreInputFile,
@@ -46,7 +46,7 @@ export const parseWorkflowAIInputFiles = async ({
   files,
   maxFileAmount
 }: ParseWorkflowAIInputFilesParams): Promise<AgentLoopCoreInputFile[]> => {
-  const parsedFiles = await prepareWorkflowFiles({
+  const parsedFiles = await getWorkflowContext().fileContext.prepareFiles({
     files,
     maxFiles: maxFileAmount,
     allowDataUrl: false

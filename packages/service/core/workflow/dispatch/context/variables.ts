@@ -1,0 +1,469 @@
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
+import { EntryPointItemsTypeSchema } from '@fastgpt/global/core/app/type';
+import type { EntryPointItemType } from '@fastgpt/global/core/app/type';
+import { ENTRY_POINT_VARIABLE_KEY } from '@fastgpt/global/core/app/constants';
+import type { ChatFileStoreValue } from '@fastgpt/global/core/chat/type';
+import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import type { WorkflowDispatchProps } from '../../types/runtime';
+import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
+import { getSystemTime } from '@fastgpt/global/common/time/timezone';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { encryptSecret } from '../../../../common/secret/aes256gcm';
+import { anyValueDecrypt } from '../../../../common/secret/utils';
+import { createChatFilePreviewUrlGetter } from '../../../../common/s3/sources/chat';
+import {
+  type ChatFileRuntimeValue,
+  type ChatFileRuntimeValueItem,
+  assertChatFileRuntimeValue,
+  normalizeChatFileStoreValue
+} from '../../../chat/fileStoreValue';
+import { getWorkflowFileContext } from './index';
+import { isAbsoluteHttpUrl } from '../../../chat/file/utils';
+import { getModuleFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
+import { cloneDeep } from 'lodash-es';
+
+const DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES = 5;
+
+/** 运行作用域中的变量能力；实现统一维护运行值、存储值和文件原始 metadata。 */
+export type WorkflowVariableStateLike = {
+  get: (key: string) => unknown;
+  set: (key: string, value: unknown) => Promise<unknown>;
+  getStoreValue: (key: string) => unknown;
+  getFileStoreValueByRuntimeUrl: (url: string) => ChatFileStoreValue | undefined;
+  toRuntimeRecord: () => Record<string, unknown>;
+  toStoreRecord: () => Record<string, unknown>;
+  clone: () => WorkflowVariableStateLike;
+};
+
+export const getEntryPointRuntimeVariables = ({
+  entryPoints = [],
+  inputVariables = {}
+}: {
+  entryPoints?: EntryPointItemType[];
+  inputVariables?: Record<string, unknown>;
+}): Partial<Record<typeof ENTRY_POINT_VARIABLE_KEY, string>> => {
+  const selectedEntryPoint = inputVariables[ENTRY_POINT_VARIABLE_KEY];
+  const parsedEntryPoints = EntryPointItemsTypeSchema.safeParse(entryPoints);
+  const configuredEntryPoints = parsedEntryPoints.success ? parsedEntryPoints.data : [];
+  if (
+    typeof selectedEntryPoint !== 'string' ||
+    !configuredEntryPoints.some((entryPoint) => entryPoint.name === selectedEntryPoint)
+  ) {
+    return {};
+  }
+
+  return { [ENTRY_POINT_VARIABLE_KEY]: selectedEntryPoint };
+};
+
+type WorkflowVariableRuntimeConfig = VariableItemType & {
+  maxFiles: number;
+};
+
+/**
+ * 工作流全局变量状态管理器。
+ *
+ * 这里统一维护同一份变量的两种形态：
+ * - storeValue：可持久化到数据库、可返回给前端继续编辑的值。
+ * - runtimeValue：节点运行时直接消费的值，例如 file 变量会被转换成 string[] URL。
+ *
+ * 变量读取统一走 `get()`，变量更新统一走 `set()`，最终保存统一走 `toStoreRecord()`。
+ *
+ * 特殊变量处理也集中在这里：
+ * - file：store 里保存 `{ key, name, type } | { url, name, type }`，runtime 里使用 URL 数组。
+ * - password：store 里保存加密结构，runtime 里使用明文。
+ * - runtimeOnly：系统变量、外部注入变量等只参与运行，不进入最终存储。
+ *
+ * child workflow 如果收到 parent 传下来的 file runtime URL，可以通过 `sourceVariableState`
+ * 找回 parent 中的原始 file store metadata，避免把临时预览 URL 错写成外链。
+ */
+export type WorkflowVariableStateItem = {
+  key: string;
+  config?: WorkflowVariableRuntimeConfig;
+  storeValue: unknown;
+  runtimeValue: unknown;
+  runtimeOnly?: boolean;
+};
+
+export type WorkflowVariableStateCreateProps = {
+  // 系统级别变量，不需要额外加工
+  timezone: string;
+  runningAppInfo: WorkflowDispatchProps['runningAppInfo'];
+  uid: WorkflowDispatchProps['uid'];
+  chatId: WorkflowDispatchProps['chatId'];
+  responseChatItemId?: WorkflowDispatchProps['responseChatItemId'];
+  histories?: WorkflowDispatchProps['histories'];
+  externalVariables?: Record<string, unknown>;
+  // 运行时级别变量，不需要额外加工
+  runtimeOnlyVariables?: Record<string, unknown>;
+
+  // 全局变量配置
+  variablesConfig?: AppChatConfigType['variables'];
+  // 外部传入的变量，需要基于 variablesConfig 加工
+  inputVariables?: Record<string, unknown>;
+  /** 从服务端记忆恢复的 canonical key -> store value；优先于旧调用参数及其 label 别名。 */
+  checkpointVariables?: Record<string, unknown>;
+  // 源变量状态，用于复制变量状态
+  sourceVariableState?: WorkflowVariableStateLike;
+  // 根 Workflow 创建状态时尚未进入 AsyncLocalStorage，需要显式传入请求级文件数量限制。
+  maxFileAmount?: number;
+  // 只在入口初始化全局文件变量时登记可信文件，节点运行时 set 不得扩展文件 Context。
+  resolveInputFile?: (file: ChatFileStoreValue) => Promise<string | undefined>;
+};
+
+/** 交互恢复优先读取 canonical store 值；其余场景兼容 API label 入参与前端 key 入参。 */
+const getVariableInputValue = ({
+  variables,
+  item,
+  checkpointVariables
+}: {
+  variables: Record<string, unknown>;
+  item: VariableItemType;
+  checkpointVariables?: Record<string, unknown>;
+}) => {
+  if (checkpointVariables && Object.hasOwn(checkpointVariables, item.key)) {
+    return checkpointVariables[item.key];
+  }
+  if (item.label && variables[item.label] !== undefined) return variables[item.label];
+  if (variables[item.key] !== undefined) return variables[item.key];
+  return item.defaultValue;
+};
+
+/** 从已知文件字段的运行值中提取文件输入。 */
+export const getWorkflowFileInputsFromValue = (
+  value: unknown,
+  moduleMaxFileAmount?: number,
+  userMaxFileAmount = getWorkflowFileContext()?.limits.maxFileAmount ??
+    DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES
+) =>
+  Array.isArray(value)
+    ? assertChatFileRuntimeValue(value as ChatFileRuntimeValueItem[]).slice(
+        0,
+        getModuleFileAmountLimit({
+          userMaxFileAmount,
+          moduleMaxFileAmount,
+          defaultModuleMaxFileAmount: DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES
+        })
+      )
+    : [];
+
+/** 收集 Child 全局文件变量的实际输入，只用于派生请求级文件 Context。 */
+export const getWorkflowFileVariableInputs = ({
+  variablesConfig = [],
+  inputVariables = {},
+  checkpointVariables,
+  maxFileAmount = getWorkflowFileContext()?.limits.maxFileAmount
+}: Pick<
+  WorkflowVariableStateCreateProps,
+  'variablesConfig' | 'inputVariables' | 'checkpointVariables' | 'maxFileAmount'
+>) =>
+  variablesConfig.flatMap((item) => {
+    if (item.type !== VariableInputEnum.file) return [];
+    const value = getVariableInputValue({ variables: inputVariables, item, checkpointVariables });
+    return getWorkflowFileInputsFromValue(value, item.maxFiles, maxFileAmount);
+  });
+
+/** 将文件存储值转换为运行时 URL，并记录 URL 到 store metadata 的映射。 */
+const fileStoreValuesToRuntimeUrls = async ({
+  files,
+  fileMetaMap,
+  resolveInputFile,
+  getPreviewUrl = createChatFilePreviewUrlGetter()
+}: {
+  files: ChatFileStoreValue[];
+  fileMetaMap: Map<string, ChatFileStoreValue>;
+  resolveInputFile?: (file: ChatFileStoreValue) => Promise<string | undefined>;
+  getPreviewUrl?: (key: string) => Promise<string>;
+}) => {
+  const urls = await Promise.all(
+    files.map(async (file) => {
+      if (resolveInputFile) {
+        const url = await resolveInputFile(file);
+        if (!url) return;
+        fileMetaMap.set(url, file);
+        return url;
+      }
+
+      if ('key' in file) {
+        const url = await getPreviewUrl(file.key);
+        fileMetaMap.set(url, file);
+        return url;
+      }
+
+      fileMetaMap.set(file.url, file);
+      return file.url;
+    })
+  );
+
+  return urls.filter((url): url is string => typeof url === 'string' && !!url);
+};
+
+export class WorkflowVariableState implements WorkflowVariableStateLike {
+  /**
+   * 构造函数保持私有，外部必须通过 create 初始化。
+   * 这样可以保证 file 预签名、password 解密、系统变量注入都在创建阶段完成。
+   */
+  private constructor(
+    private readonly state: Map<string, WorkflowVariableStateItem>,
+    private readonly fileMetaMap: Map<string, ChatFileStoreValue>,
+    private readonly sourceVariableState?: WorkflowVariableStateLike
+  ) {}
+
+  /** 创建完整变量状态，包含用户全局变量、系统变量和运行时临时变量。 */
+  static async create({
+    timezone,
+    runningAppInfo,
+    uid,
+    chatId,
+    responseChatItemId,
+    histories = [],
+    variablesConfig = [],
+    inputVariables = {},
+    checkpointVariables,
+    externalVariables = {},
+    runtimeOnlyVariables = {},
+    sourceVariableState,
+    maxFileAmount = getWorkflowFileContext()?.limits.maxFileAmount ??
+      DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES,
+    resolveInputFile
+  }: WorkflowVariableStateCreateProps) {
+    const state = new WorkflowVariableState(new Map(), new Map(), sourceVariableState);
+
+    for (const item of variablesConfig) {
+      const config: WorkflowVariableRuntimeConfig = {
+        ...item,
+        maxFiles: getModuleFileAmountLimit({
+          userMaxFileAmount: maxFileAmount,
+          moduleMaxFileAmount: item.maxFiles,
+          defaultModuleMaxFileAmount: DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES
+        })
+      };
+      const value = getVariableInputValue({
+        variables: inputVariables,
+        item: config,
+        checkpointVariables
+      });
+      await state.initConfiguredVariable(config, value, resolveInputFile);
+    }
+
+    const internalVariableKeys = new Set(
+      variablesConfig
+        .filter((item) => item.type === VariableInputEnum.internal)
+        .map((item) => item.key)
+    );
+    state.setRuntimeOnlyVariables(
+      Object.fromEntries(
+        Object.entries(externalVariables).filter(([key]) => !internalVariableKeys.has(key))
+      )
+    );
+    const appId = runningAppInfo.sourceType === 'app' ? String(runningAppInfo.sourceId) : undefined;
+
+    state.setRuntimeOnlyVariables({
+      userId: uid,
+      ...(appId ? { appId } : {}),
+      chatId,
+      responseChatItemId,
+      histories,
+      cTime: getSystemTime(timezone)
+    });
+    state.setRuntimeOnlyVariables(runtimeOnlyVariables);
+
+    return state;
+  }
+
+  /** 读取运行时值，节点执行、引用变量替换都应该读这个值。 */
+  get(key: string) {
+    return this.state.get(key)?.runtimeValue;
+  }
+
+  /** 读取可存储值，主要用于少量需要查看原始 store value 的内部逻辑。 */
+  getStoreValue(key: string) {
+    return this.state.get(key)?.storeValue;
+  }
+
+  /** 根据运行时 URL 找回文件 store metadata，child workflow 会向 parent state 递归查询。 */
+  getFileStoreValueByRuntimeUrl(url: string) {
+    return (
+      this.fileMetaMap.get(url) || this.sourceVariableState?.getFileStoreValueByRuntimeUrl(url)
+    );
+  }
+
+  /** 更新变量值，并按变量类型同步刷新 storeValue 与 runtimeValue。 */
+  async set(key: string, value: unknown) {
+    const item = this.state.get(key);
+    const config = item?.config;
+
+    if (item?.runtimeOnly) {
+      this.state.set(key, {
+        ...item,
+        runtimeValue: value
+      });
+      return value;
+    }
+
+    if (config?.type === VariableInputEnum.file) {
+      if (!Array.isArray(value)) throw new UserError('File variable value must be an array');
+      const files = value.slice(0, config.maxFiles).map((url) => {
+        if (!isAbsoluteHttpUrl(url)) {
+          throw new UserError('File variable updates only accept absolute HTTP(S) URLs');
+        }
+
+        const storeValue =
+          this.getFileStoreValueByRuntimeUrl(url) ?? normalizeChatFileStoreValue({ url });
+        if (!storeValue) {
+          throw new UserError('Invalid external file URL');
+        }
+
+        return { runtimeUrl: url, storeValue };
+      });
+      files.forEach(({ runtimeUrl, storeValue }) => {
+        this.fileMetaMap.set(runtimeUrl, storeValue);
+      });
+      const storeValue = files.map((file) => file.storeValue);
+      const runtimeValue = files.map((file) => file.runtimeUrl);
+      this.state.set(key, {
+        key,
+        config,
+        storeValue,
+        runtimeValue
+      });
+      return runtimeValue;
+    }
+
+    if (config?.type === VariableInputEnum.password && typeof value === 'string') {
+      const storeValue = {
+        secret: encryptSecret(value)
+      };
+      this.state.set(key, {
+        key,
+        config,
+        storeValue,
+        runtimeValue: value
+      });
+      return value;
+    }
+
+    const runtimeValue = valueTypeFormat(
+      value,
+      config?.valueType,
+      config?.type === VariableInputEnum.password
+    );
+    this.state.set(key, {
+      key,
+      config,
+      storeValue: runtimeValue,
+      runtimeValue
+    });
+    return runtimeValue;
+  }
+
+  /** 输出节点运行可直接消费的变量记录，包含 runtimeOnly 变量。 */
+  toRuntimeRecord() {
+    return Array.from(this.state.values()).reduce<Record<string, unknown>>((acc, item) => {
+      acc[item.key] = item.runtimeValue;
+      return acc;
+    }, {});
+  }
+
+  /** 输出最终可持久化变量记录，不包含 runtimeOnly 变量。 */
+  toStoreRecord() {
+    return Array.from(this.state.values()).reduce<Record<string, unknown>>((acc, item) => {
+      if (!item.runtimeOnly) {
+        acc[item.key] = item.storeValue;
+      }
+      return acc;
+    }, {});
+  }
+
+  /** 深拷贝变量值及文件 metadata，避免子运行原地修改对象或数组时提前污染父状态。 */
+  clone() {
+    // 一次复制保留本实例中 store/runtime 值与 metadata 的内部引用关系。
+    const { state, fileMetaMap } = cloneDeep({ state: this.state, fileMetaMap: this.fileMetaMap });
+    return new WorkflowVariableState(state, fileMetaMap, this.sourceVariableState);
+  }
+
+  /** 根据变量配置初始化单个用户变量，并完成特殊类型的 store/runtime 转换。 */
+  private async initConfiguredVariable(
+    config: WorkflowVariableRuntimeConfig,
+    value: unknown,
+    resolveInputFile?: (file: ChatFileStoreValue) => Promise<string | undefined>
+  ) {
+    if (config.type === VariableInputEnum.file) {
+      const storeValue = Array.isArray(value)
+        ? this.runtimeFileValueToStoreValue(
+            assertChatFileRuntimeValue(value as ChatFileRuntimeValueItem[]).slice(
+              0,
+              config.maxFiles
+            )
+          )
+        : [];
+      const runtimeValue = await fileStoreValuesToRuntimeUrls({
+        files: storeValue,
+        fileMetaMap: this.fileMetaMap,
+        resolveInputFile
+      });
+      this.state.set(config.key, {
+        key: config.key,
+        config,
+        storeValue,
+        runtimeValue
+      });
+      return;
+    }
+
+    if (config.type === VariableInputEnum.password) {
+      const runtimeValue = anyValueDecrypt(value);
+      const storeValue =
+        typeof runtimeValue === 'string'
+          ? {
+              secret: encryptSecret(runtimeValue)
+            }
+          : value;
+
+      this.state.set(config.key, {
+        key: config.key,
+        config,
+        storeValue,
+        runtimeValue
+      });
+      return;
+    }
+
+    const runtimeValue = valueTypeFormat(value, config.valueType);
+    this.state.set(config.key, {
+      key: config.key,
+      config,
+      storeValue: runtimeValue,
+      runtimeValue
+    });
+  }
+
+  /** 注入只参与运行、不进入存储的变量。 */
+  private setRuntimeOnlyVariables(variables: Record<string, unknown>) {
+    Object.entries(variables).forEach(([key, value]) => {
+      if (value === undefined) return;
+      this.state.set(key, {
+        key,
+        storeValue: undefined,
+        runtimeValue: value,
+        runtimeOnly: true
+      });
+    });
+  }
+
+  /** 初始化文件变量时恢复原始 store metadata。 */
+  private runtimeFileValueToStoreValue(value: ChatFileRuntimeValue): ChatFileStoreValue[] {
+    return value
+      .map((item) => {
+        if (typeof item === 'string') {
+          if (!item || item.startsWith('data:')) return;
+          const knownFile = this.getFileStoreValueByRuntimeUrl(item);
+          if (knownFile) return knownFile;
+          return normalizeChatFileStoreValue({ url: item });
+        }
+
+        return normalizeChatFileStoreValue(item);
+      })
+      .filter((file): file is ChatFileStoreValue => Boolean(file));
+  }
+}

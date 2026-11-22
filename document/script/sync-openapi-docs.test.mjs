@@ -17,13 +17,14 @@ const { getAllDocLastModifiedTimes } = require('./initDocTime.js');
 
 const HAN_REGEX = /\p{Script=Han}/u;
 
-/** 锁定全部 50 个 System OpenAPI 接口的规范 URL Slug，防止 Tag 重命名或重构破坏已收录路径。 */
+/** 锁定 System OpenAPI 接口的规范 URL Slug，防止 Tag 重命名或重构破坏已收录路径。 */
 const LOCKED_OPERATION_SLUGS = {
   'POST /core/ai/model/summary': '/openapi/reference/model/summary',
   'GET /core/ai/model/list': '/openapi/reference/model/list',
   'GET /core/ai/model/catalog': '/openapi/reference/model/catalog',
 
   'POST /core/app/logs/list': '/openapi/reference/app-log/list',
+  'POST /core/app/logs/search': '/openapi/reference/app-log/search',
   'GET /proApi/core/app/logs/getTotalData': '/openapi/reference/app-log/get-total-data',
   'POST /proApi/core/app/logs/getChartData': '/openapi/reference/app-log/get-chart-data',
   'POST /core/app/logs/getUsers': '/openapi/reference/app-log/get-users',
@@ -90,12 +91,11 @@ const LOCKED_OPERATION_SLUGS = {
   'POST /core/dataset/search': '/openapi/reference/dataset-search/search'
 };
 
-test('OpenAPI docs generator matches on-disk artifacts with zero drift and locks all 50 slugs', async () => {
+test('OpenAPI docs generator matches on-disk artifacts with zero drift and locks every slug', async () => {
   const bundle = await generateOpenApiDocs();
 
-  // 1. 校验 50 个接口映射与 11 个模块顺序完全匹配锁定列表。
-  assert.equal(Object.keys(LOCKED_OPERATION_SLUGS).length, 50);
-  assert.equal(bundle.pages.length, 50);
+  // 1. 校验接口映射与模块顺序，防止新增接口漏入参考文档。
+  assert.equal(bundle.pages.length, Object.keys(LOCKED_OPERATION_SLUGS).length);
   assert.equal(MODULE_ORDER.length, 11);
 
   const actualSlugMap = Object.fromEntries(bundle.pages.map((p) => [p.opKey, p.urlSlug]));
@@ -166,7 +166,7 @@ test('OpenAPI docs generator matches on-disk artifacts with zero drift and locks
     }
   }
 
-  // 4. 校验全部 50 组（100 份）MDX 文档内容、前置门禁、零汉字、废弃状态与 SSE 示例静态展开。
+  // 4. 校验全部双语 MDX 文档内容、前置门禁、零汉字、废弃状态与 SSE 示例静态展开。
   const docLastModified = JSON.parse(
     fs.readFileSync(path.join(DOCUMENT_ROOT, 'data', 'doc-last-modified.json'), 'utf8')
   );

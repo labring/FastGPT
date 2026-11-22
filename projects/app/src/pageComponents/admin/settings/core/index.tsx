@@ -116,6 +116,11 @@ const CoreSettingComponent = () => {
 
   const documentParseProvider = useWatch({ control, name: 'documentParse.provider' });
   const downloadMode = useWatch({ control, name: 'downloadMode' });
+  const storageCapabilities = storage.storageCapabilities;
+  const supportsExternalEndpoint = storageCapabilities?.supportsExternalEndpoint ?? true;
+  const supportsCdnEndpoint = storageCapabilities?.supportsCdnEndpoint ?? true;
+  const showRedirectEndpoints =
+    downloadMode === 'short-redirect' && (supportsExternalEndpoint || supportsCdnEndpoint);
   // 与订阅套餐开关一致：无套餐或空套餐均不展示计费，开源版始终隐藏。
   const showPdfPrice =
     isPro &&
@@ -244,8 +249,8 @@ const CoreSettingComponent = () => {
               filterConfigData('storage', {
                 fileDomain: formData.fileDomain,
                 downloadMode: formData.downloadMode,
-                externalEndpoint: formData.externalEndpoint || '',
-                cdnEndpoint: formData.cdnEndpoint || ''
+                externalEndpoint: supportsExternalEndpoint ? formData.externalEndpoint || '' : '',
+                cdnEndpoint: supportsCdnEndpoint ? formData.cdnEndpoint || '' : ''
               })
             )
           }
@@ -356,6 +361,25 @@ const CoreSettingComponent = () => {
 
       {/* 2. 文件系统 */}
       <AdminSettingSection id="download" title={t('admin:core_section_download')} showDivider>
+        {storageCapabilities?.vendor && (
+          <HStack mb={4} spacing={2} data-storage-vendor={storageCapabilities.vendor}>
+            <Text fontSize={'sm'} color={'myGray.600'}>
+              {t('admin:object_storage_backend_read_only')}:
+            </Text>
+            <Box
+              px={2}
+              py={0.5}
+              borderRadius={'sm'}
+              bg={'myGray.100'}
+              color={'myGray.800'}
+              fontSize={'xs'}
+              fontWeight={'medium'}
+              fontFamily={'mono'}
+            >
+              {storageCapabilities.vendor}
+            </Box>
+          </HStack>
+        )}
         <AdminFormItem
           label={t('admin:file_service_domain')}
           tooltip={t('admin:file_service_domain_tip')}
@@ -411,38 +435,46 @@ const CoreSettingComponent = () => {
           />
         </AdminFormItem>
 
-        {downloadMode === 'short-redirect' && (
-          <SimpleGrid columns={[1, 2]} spacing={5} mt={4}>
-            <AdminFormItem
-              label={t('admin:storage_external_endpoint')}
-              tooltip={t('admin:storage_external_endpoint_tip')}
-              mb={0}
-            >
-              <Input
-                isInvalid={Boolean(form.getFieldState('externalEndpoint', form.formState).error)}
-                {...register('externalEndpoint')}
-                placeholder="https://storage.example.com"
-              />
-            </AdminFormItem>
-            <AdminFormItem
-              label={t('admin:storage_cdn_endpoint')}
-              tooltip={t('admin:storage_cdn_endpoint_tip')}
-              mb={0}
-            >
-              <Controller
-                name="cdnEndpoint"
-                control={control}
-                render={({ field }) => (
-                  <ConnectivityTestInput
-                    isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
-                    {...field}
-                    isEditable
-                    service="cdn"
-                    placeholder="https://cdn.example.com"
-                  />
-                )}
-              />
-            </AdminFormItem>
+        {showRedirectEndpoints && (
+          <SimpleGrid
+            columns={[1, supportsExternalEndpoint && supportsCdnEndpoint ? 2 : 1]}
+            spacing={5}
+            mt={4}
+          >
+            {supportsExternalEndpoint && (
+              <AdminFormItem
+                label={t('admin:storage_external_endpoint')}
+                tooltip={t('admin:storage_external_endpoint_tip')}
+                mb={0}
+              >
+                <Input
+                  isInvalid={Boolean(form.getFieldState('externalEndpoint', form.formState).error)}
+                  {...register('externalEndpoint')}
+                  placeholder="https://storage.example.com"
+                />
+              </AdminFormItem>
+            )}
+            {supportsCdnEndpoint && (
+              <AdminFormItem
+                label={t('admin:storage_cdn_endpoint')}
+                tooltip={t('admin:storage_cdn_endpoint_tip')}
+                mb={0}
+              >
+                <Controller
+                  name="cdnEndpoint"
+                  control={control}
+                  render={({ field }) => (
+                    <ConnectivityTestInput
+                      isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
+                      {...field}
+                      isEditable
+                      service="cdn"
+                      placeholder="https://cdn.example.com"
+                    />
+                  )}
+                />
+              </AdminFormItem>
+            )}
           </SimpleGrid>
         )}
       </AdminSettingSection>

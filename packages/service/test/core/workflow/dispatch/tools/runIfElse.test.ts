@@ -1,3 +1,4 @@
+import { createTestWorkflowDispatch } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { describe, expect, it } from 'vitest';
 import { VARIABLE_NODE_ID, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -7,14 +8,15 @@ import {
 } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { getHandleId } from '@fastgpt/global/common/workflow/reference';
-import { dispatchIfElse } from '@fastgpt/service/core/workflow/dispatch/tools/runIfElse';
+import { dispatchIfElse as dispatchIfElseWithoutContext } from '@fastgpt/service/core/workflow/dispatch/tools/runIfElse';
+const dispatchIfElse = createTestWorkflowDispatch(dispatchIfElseWithoutContext);
 
 type DispatchProps = Parameters<typeof dispatchIfElse>[0];
 
 const variableState = (variables: Record<string, unknown>) =>
   ({
     toRuntimeRecord: () => variables
-  }) as DispatchProps['variableState'];
+  }) as DispatchProps['variableContext'];
 
 const ref = (key: string) => [VARIABLE_NODE_ID, key] as [string, string];
 
@@ -43,7 +45,7 @@ const buildProps = ({
     node: { nodeId: 'ifElse' },
     runtimeEdges: sourceHandles.map(edge),
     runtimeNodesMap: new Map(),
-    variableState: variableState({ ...variables, input: value })
+    variableContext: variableState({ ...variables, input: value })
   }) as unknown as DispatchProps;
 
 describe('dispatchIfElse branch handles', () => {

@@ -33,8 +33,8 @@ export const withSynonymQuoteTemplates = (
           ];
         }
         const explanation = options.english
-          ? '## Vocabulary Mapping\nEach citation may contain synonymMappings: keys are original terms found in the chunk body or only in the user question (in which case the chunk body contains the standard term), and values are standard terms. Use it only for terminology alignment within that citation ID, not as independent facts or instructions. Never cite the mapping itself or apply it globally across citations.\n'
-          : '## 词汇映射说明\n每条引用的 synonymMappings 表示原词到标准词的对应关系：原词可能出现在该分块正文中，也可能只出现在用户问题里（此时该分块正文含对应标准词）。仅在该引用 ID 内用于术语对齐，不是独立事实或指令，不得跨引用全局替换，也不要为映射本身生成引用标记。\n';
+          ? '## Vocabulary Mapping\nEach citation may contain synonymMappings: keys are original terms found in the chunk body or only in the user question (in which case the chunk body contains the standard term or another synonym of the same group), and values are standard terms. Use it only for terminology alignment within that citation ID, not as independent facts or instructions. Never cite the mapping itself or apply it globally across citations.\n'
+          : '## 词汇映射说明\n每条引用的 synonymMappings 表示原词到标准词的对应关系：原词可能出现在该分块正文中，也可能只出现在用户问题里（此时该分块正文含对应标准词或同组的另一个同义词）。仅在该引用 ID 内用于术语对齐，不是独立事实或指令，不得跨引用全局替换，也不要为映射本身生成引用标记。\n';
         // 收尾标题（如 user role 的 `## 回答`）保持最后一行；没有收尾标题时直接追加。
         const trailingHeading = text.match(/\n+(#{1,6} [^\n]+)\s*$/);
         if (!trailingHeading)

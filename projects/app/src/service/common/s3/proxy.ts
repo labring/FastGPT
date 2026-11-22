@@ -23,6 +23,7 @@ import {
   DEFAULT_CONTENT_TYPE,
   ensureTextContentTypeCharset
 } from '@fastgpt/service/common/s3/utils/mime';
+import { isFileNotFoundError } from '@fastgpt/service/common/s3/utils/assert';
 import {
   canUseStorageDownloadRedirect,
   replaceS3UrlWithCdnEndpoint,
@@ -41,6 +42,7 @@ import {
 
 const logger = getLogger(LogCategories.INFRA.FILE);
 const MULTIPART_UPLOAD_REQUEST_ABORTED = 'Multipart upload request aborted';
+const UPLOAD_REQUEST_ABORTED = 'Upload request aborted';
 
 type GuardStreamOptions = {
   maxSize: number;
@@ -274,11 +276,13 @@ const resolveProxyUploadFileHint = ({
 export const handleS3ProxyDownload = async ({
   req,
   res,
-  payload
+  payload,
+  cacheControl = 'public, max-age=31536000'
 }: {
   req: NextApiRequest;
   res: NextApiResponse;
   payload: S3ProxyDownloadPayload;
+  cacheControl?: string;
 }) => {
   const { objectKey, bucketName } = payload;
   const bucket = global.s3BucketMap[bucketName];
@@ -306,7 +310,7 @@ export const handleS3ProxyDownload = async ({
       res.setHeader('Content-Length', metadata.contentLength);
     }
     res.setHeader('Content-Disposition', getContentDisposition({ filename, type: 'inline' }));
-    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    res.setHeader('Cache-Control', cacheControl);
     for (const [name, value] of Object.entries(
       getFilePreviewSecurityHeaders({ contentType, filename })
     )) {
@@ -323,15 +327,23 @@ export const handleS3ProxyDownload = async ({
     }
 
     const [downloadStream, metadata] = await Promise.all([
-      bucket.getFileStream(objectKey, { abortSignal: abortContext.signal }).then((value) => {
-        stream = value;
-        value?.once('error', (error) => {
-          if (!abortContext.isClientAborted() && !req.aborted && !res.destroyed) {
-            logger.error('Error reading proxy download stream', { objectKey, bucketName, error });
+      bucket
+        .getFileStream(objectKey, { abortSignal: abortContext.signal })
+        .then((value) => {
+          stream = value;
+          value?.once('error', (error) => {
+            if (!abortContext.isClientAborted() && !req.aborted && !res.destroyed) {
+              logger.error('Error reading proxy download stream', { objectKey, bucketName, error });
+            }
+          });
+          return value;
+        })
+        .catch((error) => {
+          if (isFileNotFoundError(error)) {
+            throw CommonErrEnum.fileNotFound;
           }
-        });
-        return value;
-      }),
+          throw error;
+        }),
       bucket.getFileMetadata(objectKey)
     ]);
 
@@ -431,9 +443,11 @@ export const handleS3RedirectDownload = async ({
  */
 export const handleS3ProxyUpload = async ({
   req,
+  res,
   payload
 }: {
   req: NextApiRequest;
+  res: NextApiResponse;
   payload: S3ProxyUploadPayload;
 }) => {
   const { objectKey, bucketName, maxSize, uploadPolicy, fileHint, metadata } = payload;
@@ -447,6 +461,11 @@ export const handleS3ProxyUpload = async ({
   if (contentLength && contentLength > maxSize) {
     throw new Error('EntityTooLarge');
   }
+  const isRequestDisconnectedBeforeEnd =
+    Boolean(req.destroyed) && !req.complete && !req.readableEnded;
+  if (req.aborted || res.destroyed || isRequestDisconnectedBeforeEnd) {
+    throw new Error(UPLOAD_REQUEST_ABORTED);
+  }
 
   const resolvedFileHint = resolveProxyUploadFileHint({ objectKey, metadata, fileHint });
   const { stream: guardStream, validatedUpload } = createUploadGuardStream({
@@ -455,25 +474,61 @@ export const handleS3ProxyUpload = async ({
     fileHint: resolvedFileHint
   });
 
-  req.pipe(guardStream);
-  const validatedFile = await validatedUpload;
+  const abortContext = createS3ProxyAbortContext({ req, res });
+  const destroyGuardStream = () => {
+    if (!guardStream.destroyed) guardStream.destroy();
+  };
 
-  await bucket.client.uploadObject({
-    key: objectKey,
-    body: guardStream,
-    contentType: validatedFile.contentType,
-    contentLength,
-    contentDisposition: getS3UploadContentDisposition({
-      filename: validatedFile.filename,
-      type: 'attachment'
-    }),
-    metadata: buildS3UploadMetadata({
-      metadata,
-      filename: validatedFile.filename
-    })
-  });
+  /**
+   * `req.pipe` 不会把 source 的 close 传递给 destination。客户端中断后若不主动销毁 guard
+   * stream，`validatedUpload` 会永久 pending，请求上下文和已缓冲数据无法释放。
+   * 与 multipart 路径一致，只关闭 stream，不注入 error，避免 SDK 产生额外 rejected Promise。
+   */
+  const handleRequestDisconnect = () => {
+    // 正常请求体读取结束也会触发 req 的 close；后续等待存储响应阶段由 res.close 接管。
+    if (req.complete || req.readableEnded) return;
 
-  return { success: true };
+    abortContext.abort(new Error(UPLOAD_REQUEST_ABORTED));
+  };
+
+  abortContext.signal.addEventListener('abort', destroyGuardStream, { once: true });
+  req.once('error', handleRequestDisconnect);
+  req.once('close', handleRequestDisconnect);
+
+  try {
+    req.pipe(guardStream);
+    const validatedFile = await validatedUpload;
+
+    await bucket.client.uploadObject({
+      key: objectKey,
+      body: guardStream,
+      contentType: validatedFile.contentType,
+      contentLength,
+      contentDisposition: getS3UploadContentDisposition({
+        filename: validatedFile.filename,
+        type: 'attachment'
+      }),
+      metadata: buildS3UploadMetadata({
+        metadata,
+        filename: validatedFile.filename
+      }),
+      abortSignal: abortContext.signal
+    });
+
+    return { success: true };
+  } catch (error) {
+    destroyGuardStream();
+    // 客户端已断开时上传注定无法完成，统一转为可识别的取消错误，避免误记服务端异常。
+    if (abortContext.signal.aborted) {
+      throw new Error(UPLOAD_REQUEST_ABORTED);
+    }
+    throw error;
+  } finally {
+    req.off('error', handleRequestDisconnect);
+    req.off('close', handleRequestDisconnect);
+    abortContext.signal.removeEventListener('abort', destroyGuardStream);
+    abortContext.cleanup();
+  }
 };
 
 const resolveExpectedMultipartPartLength = ({
@@ -732,6 +787,7 @@ export function resolveS3ProxyErrorResponse(error: unknown): {
     errorKey === 'Multipart part length does not match session' ||
     errorKey === 'Multipart part number is out of range' ||
     errorKey === MULTIPART_UPLOAD_REQUEST_ABORTED ||
+    errorKey === UPLOAD_REQUEST_ABORTED ||
     errorKey === 'Multipart upload requires partNumber' ||
     errorKey === 'Multipart parts count does not match total size' ||
     errorKey?.startsWith('Multipart parts must be') ||
@@ -768,7 +824,12 @@ export function resolveS3ProxyErrorResponse(error: unknown): {
  */
 export function handleS3ProxyRouteError({ res, error }: { res: NextApiResponse; error: unknown }) {
   // 客户端主动取消后连接已经断开，不应再写响应，更不能把预期取消记成服务端异常。
-  if (getProxyErrorKey(error) === MULTIPART_UPLOAD_REQUEST_ABORTED) {
+  const errorKey = getProxyErrorKey(error);
+  if (errorKey === MULTIPART_UPLOAD_REQUEST_ABORTED || errorKey === UPLOAD_REQUEST_ABORTED) {
+    // 防止 res 尚未在同 tick 标记 destroyed 时被 NextAPI 误当正常返回写入 HTTP 200。
+    if (!res.destroyed && !res.writableEnded && typeof res.destroy === 'function') {
+      res.destroy();
+    }
     return;
   }
 

@@ -13,13 +13,16 @@ import * as serviceMod from '../../../../core/plugin/moderation/service';
 import {
   StreamModerationBuffer,
   checkOutputTextModeration,
-  checkToolParamsModeration,
-  createStreamModerationBuffer
+  checkToolParamsModeration
 } from '../../../../core/plugin/moderation/output';
-import { dispatchAnswer } from '../../../../core/workflow/dispatch/tools/answer';
-import { dispatchUserSelect } from '../../../../core/workflow/dispatch/interactive/userSelect';
+import { dispatchAnswer as dispatchAnswerWithoutContext } from '../../../../core/workflow/dispatch/tools/answer';
+import { dispatchUserSelect as dispatchUserSelectWithoutContext } from '../../../../core/workflow/dispatch/interactive/userSelect';
+import { createTestWorkflowDispatch } from '../../workflow/dispatch/context/fixtures';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+
+const dispatchAnswer = createTestWorkflowDispatch(dispatchAnswerWithoutContext);
+const dispatchUserSelect = createTestWorkflowDispatch(dispatchUserSelectWithoutContext);
 
 describe('Output / Stream Guard (Anchor 3)', () => {
   afterEach(() => {

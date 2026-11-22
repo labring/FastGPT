@@ -23,6 +23,21 @@ export async function privateDatabase(context, c) {
   return value;
 }
 
+/** 压力用例的 Redis 准入检查；分离 marker 读取，使自检无需连接或配置任何实例。 */
+export async function assertPrivateRedisInstance(c, redis) {
+  if (c.fixture.environment === 'local-dev')
+    throw new Blocked('共享 dev 不注入全局 Redis 故障；该项归底层专项测试');
+  const config = required(c.fixture.privateEnvironment, 'privateEnvironment');
+  // 独占实例 run_id 只由操作者预先指定，不能从本轮连接自动采信或从逻辑 DB 推断。
+  const expected = required(
+    c.secret('FASTGPT_TEST_DEDICATED_REDIS_RUN_ID'),
+    'FASTGPT_TEST_DEDICATED_REDIS_RUN_ID'
+  );
+  const actual = (await redis.info('server')).match(/^run_id:([a-f0-9]{40})\r?$/m)?.[1];
+  if (actual !== expected) throw new Blocked('Redis 实例与获准使用的独占测试实例不符');
+  assert.equal(await redis.get('fgtest:environment:' + config.id), c.secret(config.nonceEnv));
+}
+
 /** 当前 DAL 模块和 Redis 客户端使用同一 tsx 加载器，避免重复加载 CJS default。 */
 export async function redisTools(context, c) {
   if (context.resources.has('redis-tools')) return context.resources.get('redis-tools');
@@ -74,10 +89,7 @@ export async function redisTools(context, c) {
     mirrorKeys,
     async assertPrivate() {
       await privateDatabase(context, c);
-      if (c.fixture.environment === 'local-dev')
-        throw new Blocked('共享 dev 不注入全局 Redis 故障；该项归底层专项测试');
-      const config = required(c.fixture.privateEnvironment, 'privateEnvironment');
-      assert.equal(await client.get('fgtest:environment:' + config.id), c.secret(config.nonceEnv));
+      await assertPrivateRedisInstance(c, client);
     },
     async observe(source) {
       const key = leaseKey(source),

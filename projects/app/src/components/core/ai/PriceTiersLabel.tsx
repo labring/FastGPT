@@ -84,7 +84,7 @@ const TierBreakdownTable = ({ tiers }: { tiers: ModelPriceTierType[] }) => {
             <Table
               size={'sm'}
               boxShadow={'none'}
-              minW={'400px'}
+              minW={'480px'}
               sx={{
                 tableLayout: 'fixed',
                 width: `${headerTableWidth} !important`,
@@ -99,7 +99,7 @@ const TierBreakdownTable = ({ tiers }: { tiers: ModelPriceTierType[] }) => {
               }}
             >
               <colgroup>
-                <col style={{ width: '210px' }} />
+                <col style={{ width: '200px' }} />
                 <col />
                 <col />
               </colgroup>
@@ -107,7 +107,7 @@ const TierBreakdownTable = ({ tiers }: { tiers: ModelPriceTierType[] }) => {
                 <Tr bg={'#F8FAFC'}>
                   <Th
                     textTransform={'none'}
-                    w={'210px'}
+                    w={'200px'}
                     py={2}
                     textAlign={'center'}
                     borderRight={'1px solid'}
@@ -145,7 +145,7 @@ const TierBreakdownTable = ({ tiers }: { tiers: ModelPriceTierType[] }) => {
             <Table
               size={'sm'}
               boxShadow={'none'}
-              minW={'400px'}
+              minW={'480px'}
               w={'100%'}
               sx={{
                 tableLayout: 'fixed',
@@ -160,7 +160,7 @@ const TierBreakdownTable = ({ tiers }: { tiers: ModelPriceTierType[] }) => {
               }}
             >
               <colgroup>
-                <col style={{ width: '210px' }} />
+                <col style={{ width: '200px' }} />
                 <col />
                 <col />
               </colgroup>
@@ -199,7 +199,7 @@ const TierBreakdownTable = ({ tiers }: { tiers: ModelPriceTierType[] }) => {
                       borderColor={'myGray.200'}
                       whiteSpace={'nowrap'}
                     >
-                      {`${roundModelPrice(tier.inputPrice)} ${t('common:support.wallet.subscription.point')}`}
+                      {`${roundModelPrice(tier.inputPrice)} ${t('common:support.wallet.subscription.point')}/M Tokens`}
                     </Td>
                     <Td
                       px={3}
@@ -209,7 +209,7 @@ const TierBreakdownTable = ({ tiers }: { tiers: ModelPriceTierType[] }) => {
                       borderColor={'myGray.200'}
                       whiteSpace={'nowrap'}
                     >
-                      {`${roundModelPrice(tier.outputPrice)} ${t('common:support.wallet.subscription.point')}`}
+                      {`${roundModelPrice(tier.outputPrice)} ${t('common:support.wallet.subscription.point')}/M Tokens`}
                     </Td>
                   </Tr>
                 ))}
@@ -235,7 +235,7 @@ const TierTooltip = ({
     label={tiers.length > 1 ? <TierBreakdownTable tiers={tiers} /> : null}
     px={0}
     py={0}
-    maxW={'420px'}
+    maxW={'520px'}
   >
     <Box cursor={'default'} color={color}>
       {children}

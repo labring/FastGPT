@@ -85,8 +85,7 @@ const Header = ({
     searchText,
     setSearchText,
     total,
-    getData,
-    pageNum,
+    refreshCollections,
     onOpenWebsiteModal,
     openDatasetSyncConfirm
   } = useContextSelector(CollectionPageContext, (v) => v);
@@ -141,7 +140,7 @@ const Header = ({
     },
     {
       onSuccess() {
-        getData(pageNum);
+        refreshCollections();
       },
       successToast: t('common:create_success'),
       errorToast: t('common:create_failed')
@@ -582,7 +581,7 @@ const Header = ({
                   id: editFolderData.id,
                   name
                 });
-                getData(pageNum);
+                refreshCollections();
               } else {
                 onCreateCollection({
                   name,
@@ -602,7 +601,7 @@ const Header = ({
       {isOpenBackupImportModal && (
         <BackupImportModal
           onFinish={() => {
-            getData(1);
+            refreshCollections({ firstPage: true });
           }}
           onClose={onCloseBackupImportModal}
         />
@@ -610,7 +609,7 @@ const Header = ({
       {isOpenTemplateImportModal && (
         <TemplateImportModal
           onFinish={() => {
-            getData(1);
+            refreshCollections({ firstPage: true });
           }}
           onClose={onCloseTemplateImportModal}
         />
@@ -619,7 +618,7 @@ const Header = ({
         <TagManageModal
           onClose={() => {
             onCloseTagManageModal();
-            getData(1);
+            refreshCollections({ firstPage: true });
           }}
         />
       )}

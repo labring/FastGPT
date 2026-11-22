@@ -38,6 +38,7 @@ import {
 } from '../../utils';
 import { getRunningSandboxId, getSandboxUserId } from '../../utils/id';
 import { createToolRunner, type SandboxToolCallValidator } from './type';
+import type { ChatCompletionToolMessageContentPart } from '@fastgpt/global/core/ai/llm/type';
 
 const ToolMap = {
   [SANDBOX_EDIT_FILE_TOOL_NAME]: createToolRunner(sandboxEditFileTool),
@@ -55,6 +56,8 @@ export type SandboxToolCallResult = {
   input: Record<string, unknown>;
   response: string;
   durationSeconds: number;
+  /** 工具主动返回的结构化 content（text / image_url parts）。 */
+  content?: ChatCompletionToolMessageContentPart[];
 };
 
 /**
@@ -116,7 +119,8 @@ export const runSandboxTools = async ({
     success: true,
     input: result.input,
     response: result.response,
-    durationSeconds: getDuration()
+    durationSeconds: getDuration(),
+    ...(result.content?.length ? { content: result.content } : {})
   };
 };
 

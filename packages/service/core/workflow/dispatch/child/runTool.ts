@@ -23,7 +23,7 @@ import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import { pushTrack } from '../../../../common/middle/tracks/utils';
 import { getNodeErrResponse } from '../utils';
 import { getHTTPToolList, runHTTPTool } from '../../../app/http';
-import { getWorkflowContext } from '../../utils/context';
+import { getWorkflowContext } from '../context';
 import { getAppVersionById } from '../../../app/version/controller';
 import {
   HttpToolSetRuntimeConfigSchema,
@@ -46,6 +46,10 @@ import {
   assertTeamPluginSourceAccess,
   getRawPluginIdFromSystemToolId
 } from '../../../plugin/teamPluginPolicy';
+import {
+  createPluginToolResponse,
+  projectPluginModelContent
+} from '../ai/agentLoopCore/domain/toolContent';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -75,10 +79,9 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     params,
     runningUserInfo,
     runningAppInfo,
-    variableState,
-    workflowStreamResponse,
     node: { name, avatar, toolConfig, version, catchError }
   } = props;
+  const { variableContext: variableState, workflowStreamResponse } = getWorkflowContext();
   const cTime = String(variableState.get('cTime') ?? '');
   const logger = getLogger(LogCategories.MODULE.APP.TOOL);
 
@@ -377,16 +380,27 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         msg: String(res.error || '')
       });
 
+      const projected = projectPluginModelContent({
+        result,
+        outputSchema: toolDetail.outputSchema,
+        onInvalidField: (field, reason) =>
+          logger.warn('Invalid plugin model content field', { field, reason })
+      });
       return {
-        data: result,
+        data: projected.workflowResult as Record<string, any>,
         [DispatchNodeResponseKeyEnum.answerText]: answerText,
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
           toolInput,
-          toolRes: result,
+          toolRes: projected.workflowResult,
           moduleLogo: avatar,
           totalPoints: usagePoints
         },
-        [DispatchNodeResponseKeyEnum.toolResponse]: result
+        [DispatchNodeResponseKeyEnum.toolResponse]: getWorkflowContext().runtimeControl.isToolCall
+          ? createPluginToolResponse({
+              result: projected.responseResult,
+              content: projected.content
+            })
+          : projected.workflowResult
       };
     } else if (toolConfig?.mcpTool) {
       const mcpTool = toolConfig.mcpTool;

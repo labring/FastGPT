@@ -18,6 +18,7 @@ import { createVersion } from '@fastgpt/service/core/ai/skill/version';
 import { MongoAgentSkillsVersion } from '@fastgpt/service/core/ai/skill/version/schema';
 import { createResourcePermissions } from '@fastgpt/service/support/permission/resourcePermissionService';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
+import { buildSkillAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
@@ -160,6 +161,20 @@ async function handler(req: ApiRequestProps<CopySkillBody>): Promise<CopySkillRe
       tmbId,
       teamId,
       event: AuditEventEnum.COPY_SKILL,
+      resources: [
+        buildSkillAuditResource({
+          _id: skillId,
+          name: skill.name,
+          avatar: skill.avatar,
+          type: skill.type
+        }),
+        buildSkillAuditResource({
+          _id: newSkillId,
+          name: copyName,
+          avatar: skill.avatar,
+          type: skill.type
+        })
+      ],
       params: { skillName: skill.name, skillType: getI18nSkillType(skill.type) }
     });
   })();

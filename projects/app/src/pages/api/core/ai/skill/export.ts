@@ -6,6 +6,7 @@ import { ExportSkillQuerySchema } from '@fastgpt/global/openapi/core/ai/skill/ap
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
+import { buildSkillAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
@@ -71,6 +72,14 @@ async function handler(req: ApiRequestProps, res: ApiResponseType<any>) {
       tmbId,
       teamId,
       event: AuditEventEnum.EXPORT_SKILL,
+      resources: [
+        buildSkillAuditResource({
+          _id: skillId,
+          name: skill.name,
+          avatar: skill.avatar,
+          type: skill.type
+        })
+      ],
       params: {
         skillName: skill.name,
         skillType: getI18nSkillType(skill.type)
