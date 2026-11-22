@@ -7,6 +7,7 @@ import { runOutlinkRuntime } from '../runtime/service';
 import type { OutlinkProviderMessageHandler } from '../runtime/type';
 import { ILinkClient } from './ilinkClient';
 import { createWechatOutlinkAdapter } from './adapter';
+import { getWechatBindingKey, isActiveWechatConnection } from './utils';
 import type { WechatReplyJobData } from '@fastgpt/dal/redis/bullmq';
 
 const logger = getLogger(LogCategories.MODULE.OUTLINK.WECHAT);
@@ -35,8 +36,19 @@ export const createWechatOutlinkProvider =
 
     if (!outLinkConfig) return;
 
-    if (outLinkConfig.app.status !== 'online' || !outLinkConfig.app.token) {
+    if (!isActiveWechatConnection(outLinkConfig.app)) {
       logger.warn('Wechat channel is unavailable', { shareId: jobData.shareId });
+      return;
+    }
+
+    // 历史队列任务可以在原有渠道继续消费。重新扫码后只接收带当前标识的任务。
+    const bindingKey = jobData.bindingKey;
+    if (
+      bindingKey === undefined
+        ? outLinkConfig.app.bindingId !== undefined
+        : bindingKey !== getWechatBindingKey(outLinkConfig.app)
+    ) {
+      logger.debug('Ignoring reply from an earlier Wechat binding', { shareId: jobData.shareId });
       return;
     }
 

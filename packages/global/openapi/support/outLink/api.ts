@@ -116,17 +116,22 @@ const WechatOutLinkListItemSchema = OutLinkSchema.extend({
   type: z
     .literal(PublishChannelEnum.wechat)
     .meta({ description: '发布渠道类型', example: 'wechat' }),
-  app: z.object({
-    status: WechatAppSchema.shape.status.meta({
-      description: '微信渠道连接状态',
-      example: 'online'
-    }),
-    isBound: z.boolean().meta({ example: true, description: '是否已绑定微信账号' }),
-    errorReason: WechatConnectionErrorSchema.optional().meta({
-      description: '服务端识别的微信连接异常原因',
-      example: 'request_failed'
+  app: z
+    .object({
+      status: WechatAppSchema.shape.status.meta({
+        description: '微信渠道连接状态',
+        example: 'online'
+      }),
+      isBound: z.boolean().meta({ example: true, description: '是否已绑定微信账号' }),
+      errorReason: WechatConnectionErrorSchema.optional().meta({
+        description: '服务端识别的微信连接异常原因',
+        example: 'request_failed'
+      })
     })
-  })
+    .meta({
+      description: '微信渠道只读连接摘要，仅用于展示连接状态和绑定情况',
+      example: { status: 'online', isBound: true }
+    })
 });
 export type WechatOutLinkListItemType = z.infer<typeof WechatOutLinkListItemSchema>;
 

@@ -1,8 +1,6 @@
 import crypto from 'node:crypto';
 import { Readable } from 'node:stream';
 import { buffer } from 'node:stream/consumers';
-import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { getChatFileTypeByFilename } from '@fastgpt/global/core/chat/file/utils';
 import { isChatFileAllowedBySelectConfig } from '@fastgpt/global/core/app/constants';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
@@ -25,27 +23,13 @@ import type {
   OutlinkResponder
 } from '../../../support/outLink/runtime/type';
 import type { WechatReplyJobData } from '@fastgpt/dal/redis/bullmq';
-import {
-  WechatMessageItemType,
-  type CDNMedia,
-  type ILinkClient,
-  type MessageItem
-} from './ilinkClient';
+import type { CDNMedia, ILinkClient, MessageItem } from './ilinkClient';
+import { parseWechatMessageItem, type WechatMediaResource } from './messageParser';
 import { fetchWechat } from './request';
 
 const logger = getLogger(LogCategories.MODULE.OUTLINK.WECHAT);
 const WECHAT_CDN_BASE_URL = 'https://novac2c.cdn.weixin.qq.com/c2c';
 const WECHAT_MEDIA_TIMEOUT_MS = 30_000;
-
-type WechatMediaResource = {
-  item: MessageItem;
-  fileType: ChatFileTypeEnum;
-};
-
-type ParsedWechatItems = {
-  query: UserChatItemValueItemType[];
-  resources: WechatMediaResource[];
-};
 
 type CreateWechatOutlinkAdapterProps = {
   client: ILinkClient;
@@ -127,41 +111,20 @@ export const createWechatOutlinkAdapter = ({
     return Buffer.concat([decipher.update(encrypted), decipher.final()]);
   };
 
-  /** 解析当前消息项。 */
-  const parseItems = (sourceItems: MessageItem[]): ParsedWechatItems => {
-    const query: UserChatItemValueItemType[] = [];
-    const resources: WechatMediaResource[] = [];
-
-    for (const item of sourceItems) {
-      if (item.type === WechatMessageItemType.TEXT && item.text_item?.text) {
-        query.push({ text: { content: item.text_item.text } });
-      } else if (item.type === WechatMessageItemType.VOICE) {
-        // iLink 当前通过 voice_item.text 提供上游转写结果，v1 仅使用该文本。
-        if (item.voice_item?.text) query.push({ text: { content: item.voice_item.text } });
-        // 缺少文本时暂不下载、转码或调用 STT；后续应复用 runtime 媒体解析和 aiTranscriptions 计费链路。
-      } else if (item.type === WechatMessageItemType.IMAGE && item.image_item?.media) {
-        resources.push({ item, fileType: ChatFileTypeEnum.image });
-      } else if (item.type === WechatMessageItemType.FILE && item.file_item?.media?.aes_key) {
-        // 微信 FILE 是消息通道，可能承载文档、媒体或未知格式，入口直接归类为聊天文件类型。
-        resources.push({ item, fileType: getChatFileTypeByFilename(item.file_item.file_name) });
-      } else if (item.type === WechatMessageItemType.VIDEO && item.video_item?.media?.aes_key) {
-        resources.push({ item, fileType: ChatFileTypeEnum.video });
-      }
-    }
-
-    return { query, resources };
-  };
-
-  /**
-   * As of 2026.7.31, WeChat does not provide a way to get referenced messages.
-   * @see https://github.com/Tencent/openclaw-weixin/issues/222
-   *
-   * @todo Add support for message refs.
-   */
-  const current = parseItems(items);
+  const query: UserChatItemValueItemType[] = [];
+  const resources: WechatMediaResource[] = [];
+  for (const item of items) {
+    const parsed = parseWechatMessageItem(item);
+    if (!parsed) continue;
+    if ('text' in parsed) query.push({ text: { content: parsed.text } });
+    else resources.push(parsed);
+  }
 
   const resolveResource = async ({
-    item,
+    media,
+    imageAesKey,
+    filename: suppliedFilename,
+    defaultName,
     fileType,
     maxBytes,
     fileSelectConfig
@@ -170,10 +133,6 @@ export const createWechatOutlinkAdapter = ({
     fileSelectConfig?: AppFileSelectConfigType;
   }): Promise<UserChatItemValueItemType> => {
     try {
-      const media = item.image_item?.media ?? item.file_item?.media ?? item.video_item?.media;
-      if (!media) throw new Error('Wechat media is missing');
-
-      const imageAesKey = item.image_item?.aeskey;
       const aesKey = (() => {
         if (imageAesKey) {
           if (!/^[0-9a-fA-F]{32}$/.test(imageAesKey))
@@ -190,15 +149,11 @@ export const createWechatOutlinkAdapter = ({
       const fileBuffer = aesKey ? decryptAesEcb(downloaded, aesKey) : downloaded;
       if (fileBuffer.length > maxBytes) throw new OutLinkFileSizeExceededError(maxBytes);
 
-      const filename = (() => {
-        if (item.type === WechatMessageItemType.FILE) return item.file_item?.file_name || 'file';
-        if (item.type === WechatMessageItemType.VIDEO) {
-          return (
-            item.video_item?.file_name || `video${resolveMimeExtension(contentType) || '.mp4'}`
-          );
-        }
-        return `image${resolveMimeExtension(contentType) || '.jpg'}`;
-      })();
+      const filename =
+        suppliedFilename ||
+        (defaultName === 'file'
+          ? defaultName
+          : `${defaultName}${resolveMimeExtension(contentType) || (defaultName === 'video' ? '.mp4' : '.jpg')}`);
       const resolvedContentType = contentType || resolveMimeType([filename]);
       if (
         fileSelectConfig &&
@@ -245,8 +200,6 @@ export const createWechatOutlinkAdapter = ({
   };
 
   const normalizeMessage = async (): Promise<OutlinkMessage> => {
-    const query = current.query;
-
     return {
       chatId,
       messageId: jobData.lastMsgId,
@@ -258,7 +211,7 @@ export const createWechatOutlinkAdapter = ({
         fileSelectConfig
       }: OutlinkQueryResolveOptions) => {
         const fileLimit = Math.max(0, Math.floor(maxFileAmount));
-        const currentResources = current.resources.slice(0, fileLimit);
+        const currentResources = resources.slice(0, fileLimit);
 
         const currentFiles = [] as UserChatItemValueItemType[];
         for (const resource of currentResources) {
@@ -266,7 +219,7 @@ export const createWechatOutlinkAdapter = ({
             await resolveResource({ ...resource, maxBytes: maxBytesPerFile, fileSelectConfig })
           );
         }
-        return composeOutLinkQuery(current.query, currentFiles);
+        return composeOutLinkQuery(query, currentFiles);
       }
     };
   };

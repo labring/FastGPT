@@ -4,9 +4,10 @@ import { WECHAT_QR_LOGIN_TTL_SECONDS, WechatQrLoginCache } from '@fastgpt/dal/re
 
 const key = {
   outLinkId: 'out-link-1',
-  tmbId: 'tmb-1'
+  tmbId: 'tmb-1',
+  attemptId: 'attempt-1'
 };
-const logicalKey = 'cache:publish:wechat:qrcode:out-link-1:tmb-1';
+const logicalKey = 'cache:publish:wechat:qrcode:out-link-1:tmb-1:attempt-1';
 const physicalKey = `fastgpt:${logicalKey}`;
 const qrData = {
   qrcode: 'qr-id',
@@ -16,29 +17,25 @@ const qrData = {
 describe('WechatQrLoginCache', () => {
   const redis = {
     get: vi.fn(),
-    set: vi.fn(),
-    delete: vi.fn()
+    set: vi.fn()
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
     redis.get.mockResolvedValue(null);
     redis.set.mockResolvedValue(undefined);
-    redis.delete.mockResolvedValue(false);
   });
 
-  it('preserves the physical key, JSON value and 480 second TTL', async () => {
+  it('isolates the physical key by attempt and keeps the JSON value and 480 second TTL', async () => {
     const commandClient = {
       get: vi.fn().mockResolvedValue(JSON.stringify(qrData)),
-      set: vi.fn().mockResolvedValue('OK'),
-      del: vi.fn().mockResolvedValue(1)
+      set: vi.fn().mockResolvedValue('OK')
     };
     const adapter = new RedisCacheAdapter({ getCommandClient: () => commandClient as any });
     const cache = new WechatQrLoginCache({ redis: adapter });
 
     await cache.set({ ...key, data: qrData });
     await expect(cache.get(key)).resolves.toEqual(qrData);
-    await expect(cache.delete(key)).resolves.toBe(true);
 
     expect(WECHAT_QR_LOGIN_TTL_SECONDS).toBe(480);
     expect(commandClient.set).toHaveBeenCalledWith(
@@ -48,7 +45,10 @@ describe('WechatQrLoginCache', () => {
       480_000
     );
     expect(commandClient.get).toHaveBeenCalledWith(physicalKey);
-    expect(commandClient.del).toHaveBeenCalledWith(physicalKey);
+    await cache.get({ ...key, attemptId: 'attempt-2' });
+    expect(commandClient.get).toHaveBeenLastCalledWith(
+      'fastgpt:cache:publish:wechat:qrcode:out-link-1:tmb-1:attempt-2'
+    );
   });
 
   it('returns undefined only when Redis reports a missing key', async () => {
@@ -108,13 +108,11 @@ describe('WechatQrLoginCache', () => {
 
   it.each([
     ['read', () => new WechatQrLoginCache({ redis: redis as any }).get(key)],
-    ['write', () => new WechatQrLoginCache({ redis: redis as any }).set({ ...key, data: qrData })],
-    ['delete', () => new WechatQrLoginCache({ redis: redis as any }).delete(key)]
+    ['write', () => new WechatQrLoginCache({ redis: redis as any }).set({ ...key, data: qrData })]
   ])('propagates Redis %s errors', async (operation, action) => {
     const error = new Error(`${operation} failed`);
     redis.get.mockRejectedValue(error);
     redis.set.mockRejectedValue(error);
-    redis.delete.mockRejectedValue(error);
 
     await expect(action()).rejects.toBe(error);
   });

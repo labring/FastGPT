@@ -4,15 +4,17 @@ import { asRedisLogicalKey, redisCacheAdapter, type RedisCacheAdapter } from '..
 export const WECHAT_POLLING_FAILURE_TTL_SECONDS = 300;
 
 const WECHAT_POLLING_FAILURE_NAMESPACE = 'cache:wechat:publish:failures';
-const ShareIdSchema = z.string().min(1);
+const KeyPartSchema = z.string().min(1);
 
 export type WechatPollingFailureCacheOptions = {
   redis?: RedisCacheAdapter;
 };
 
 /** 构造 Wechat polling failure counter 的逻辑 key，物理前缀由 Redis adapter 统一添加。 */
-export const getWechatPollingFailureKey = (shareId: string) =>
-  asRedisLogicalKey(`${WECHAT_POLLING_FAILURE_NAMESPACE}:${ShareIdSchema.parse(shareId)}`);
+export const getWechatPollingFailureKey = (shareId: string, bindingKey: string) =>
+  asRedisLogicalKey(
+    `${WECHAT_POLLING_FAILURE_NAMESPACE}:${KeyPartSchema.parse(shareId)}:${KeyPartSchema.parse(bindingKey)}`
+  );
 
 /**
  * Wechat polling failure counter Cache。
@@ -30,23 +32,24 @@ export class WechatPollingFailureCache {
   getKey = getWechatPollingFailureKey;
 
   /** 原子递增连续失败次数；首次递增建立 300 秒 TTL，后续递增保留原 TTL。 */
-  increment = (shareId: string) =>
+  increment = (shareId: string, bindingKey: string) =>
     this.redis.incrementIntegerWithTtl({
-      key: getWechatPollingFailureKey(shareId),
+      key: getWechatPollingFailureKey(shareId, bindingKey),
       increment: 1,
       ttlSeconds: WECHAT_POLLING_FAILURE_TTL_SECONDS
     });
 
   /** 成功轮询后将计数归零并刷新 300 秒 TTL，保持历史 value 合同。 */
-  reset = (shareId: string) =>
+  reset = (shareId: string, bindingKey: string) =>
     this.redis.set({
-      key: getWechatPollingFailureKey(shareId),
+      key: getWechatPollingFailureKey(shareId, bindingKey),
       value: '0',
       ttlMs: WECHAT_POLLING_FAILURE_TTL_SECONDS * 1000
     });
 
   /** 达到阈值后删除计数 key；删除结果由调用方按需处理。 */
-  clear = (shareId: string) => this.redis.delete(getWechatPollingFailureKey(shareId));
+  clear = (shareId: string, bindingKey: string) =>
+    this.redis.delete(getWechatPollingFailureKey(shareId, bindingKey));
 }
 
 export const wechatPollingFailureCache = new WechatPollingFailureCache();

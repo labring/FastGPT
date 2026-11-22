@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ILinkClient } from '@fastgpt/service/support/outLink/wechat/ilinkClient';
+import { WechatRequestPolicyError } from '@fastgpt/service/support/outLink/wechat/request';
 
 describe('ILinkClient', () => {
   it('preserves adjacent uint64 message IDs as exact strings', async () => {
@@ -11,6 +12,39 @@ describe('ILinkClient', () => {
     await expect(client.getUpdates('')).resolves.toMatchObject({
       msgs: [{ message_id: '9007199254740992' }, { message_id: '9007199254740993' }]
     });
+  });
+
+  it.each([false, true])('distinguishes timeout before and after headers (%s)', async (headers) => {
+    vi.useFakeTimers();
+    const fetch = vi.fn((_url, { signal }: RequestInit) => {
+      const pending = new Promise<never>((_, reject) => {
+        signal?.addEventListener('abort', () => reject(signal.reason), { once: true });
+      });
+      return headers ? Promise.resolve({ text: () => pending }) : pending;
+    });
+    vi.stubGlobal('fetch', fetch);
+    try {
+      const polling = new ILinkClient().getUpdates('cursor');
+      const result = headers
+        ? expect(polling).rejects.toThrow('iLink POST ilink/bot/getupdates failed: AbortError')
+        : expect(polling).resolves.toBeUndefined();
+      await vi.advanceTimersByTimeAsync(headers ? 15_000 : 35_000);
+      await result;
+    } finally {
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not retry a request policy rejection when sending', async () => {
+    const client = new ILinkClient();
+    const error = new WechatRequestPolicyError('private_address');
+    const post = vi.spyOn(client as any, 'post').mockRejectedValue(error);
+
+    await expect(
+      client.sendMessage({ to_user_id: 'user-1', text: 'hello', context_token: 'context-1' })
+    ).rejects.toBe(error);
+    expect(post).toHaveBeenCalledTimes(1);
   });
 
   it('retries sending once with the same client ID after a transient failure', async () => {

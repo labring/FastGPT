@@ -18,12 +18,13 @@ export type WechatQrLoginCacheOptions = {
 type WechatQrLoginKey = {
   outLinkId: string;
   tmbId: string;
+  attemptId: string;
 };
 
 /**
  * 微信二维码登录 Cache。
  *
- * Cache 保持历史物理 key、JSON value 和 480 秒 TTL。Redis miss 返回 undefined；
+ * Cache 按扫码会话隔离，JSON value 保留 480 秒。Redis miss 返回 undefined；
  * Redis 操作错误和损坏的缓存数据均 fail-closed，由应用边界处理。
  */
 export class WechatQrLoginCache {
@@ -33,13 +34,14 @@ export class WechatQrLoginCache {
     this.redis = redis;
   }
 
-  private getKey = ({ outLinkId, tmbId }: WechatQrLoginKey) =>
-    asRedisLogicalKey(`cache:publish:wechat:qrcode:${outLinkId}:${tmbId}`);
+  private getKey = ({ outLinkId, tmbId, attemptId }: WechatQrLoginKey) =>
+    asRedisLogicalKey(`cache:publish:wechat:qrcode:${outLinkId}:${tmbId}:${attemptId}`);
 
   /** 校验并保存 iLink 二维码响应；上游响应不合法时不会写入损坏缓存。 */
   async set({
     outLinkId,
     tmbId,
+    attemptId,
     data
   }: WechatQrLoginKey & {
     data: WechatQrLoginData;
@@ -53,15 +55,15 @@ export class WechatQrLoginCache {
     }
 
     await this.redis.set({
-      key: this.getKey({ outLinkId, tmbId }),
+      key: this.getKey({ outLinkId, tmbId, attemptId }),
       value: JSON.stringify(parsed.data),
       ttlMs: WECHAT_QR_LOGIN_TTL_SECONDS * 1000
     });
   }
 
   /** 读取并校验缓存；只有 Redis 中不存在该 key 时才返回 undefined。 */
-  async get({ outLinkId, tmbId }: WechatQrLoginKey) {
-    const raw = await this.redis.get(this.getKey({ outLinkId, tmbId }));
+  async get(key: WechatQrLoginKey) {
+    const raw = await this.redis.get(this.getKey(key));
     if (raw === null) return undefined;
 
     const data = (() => {
@@ -84,10 +86,6 @@ export class WechatQrLoginCache {
 
     return parsed.data;
   }
-
-  /** 删除已确认的二维码状态；删除失败继续向上抛出，保持 fail-closed 语义。 */
-  delete = ({ outLinkId, tmbId }: WechatQrLoginKey) =>
-    this.redis.delete(this.getKey({ outLinkId, tmbId }));
 }
 
 export const wechatQrLoginCache = new WechatQrLoginCache();

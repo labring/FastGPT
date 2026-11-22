@@ -26,7 +26,7 @@ Wechat Publish UI
 QR Login API ---- WechatQrLoginCache
       |
       v
-MongoOutLink.app = { token, baseUrl, syncBuf, status }
+MongoOutLink.app = { bindingId, token, baseUrl, syncBuf, status }
       |
       v
 wechatPoll Queue ---- getUpdates ---- groupMessagesByUser
@@ -51,6 +51,8 @@ wechatPoll Queue ---- getUpdates ---- groupMessagesByUser
 | `accountId`、`userId` | 登录身份 |
 | `syncBuf` | 下一次 `getUpdates` 的消费游标 |
 | `status` | `online`、`offline`、`error` |
+| `bindingId` | 每次扫码绑定生成的唯一标识，旧记录可无此字段 |
+| `qrAttemptId` | 当前可确认的扫码会话。登出撤销该会话 |
 | `loginTime` | 最近登录时间 |
 | `lastError` | 停止轮询的最近错误 |
 
@@ -64,7 +66,9 @@ offline --扫码确认--> online --主动登出/停用--> offline
 offline/error --重新扫码--> 清空 syncBuf --> online
 ```
 
-Worker 每次执行前读取 MongoOutLink。记录不存在、渠道非 online 或 token 缺失时停止处理；completed/failed listener 只有确认渠道仍可用时才续链。
+扫码先登记新的会话标识，再把二维码写入该会话的 Redis key。确认只更新仍指向该会话的渠道，同一会话只绑定一次。缓存保留至 TTL 到期，便于在落库成功但入队失败时重试。升级前在途的二维码需要重新生成。
+
+Worker 每次执行前读取可运行的 MongoOutLink。渠道不可运行是正常结束。遇到正常结束或异常时，事件处理器重新检查当前绑定，避免旧任务结束时漏掉并行完成的重绑。
 
 ## 4. Queue 合同
 
@@ -82,7 +86,7 @@ Worker 每次执行前读取 MongoOutLink。记录不存在、渠道非 online �
 | Stalled interval | 30 秒 |
 | Terminal retention | completed/failed 立即删除 |
 
-Poll job 主要等待约 35 秒的长轮询，不执行工作流。拉到消息后只负责解析、分组和投递 reply job。
+Poll job 主要等待约 35 秒的长轮询，不执行工作流。入队检查和回复消费复用同一套消息项解析规则，历史 reply job 的消息项格式保持兼容。
 
 有消息时 completed listener 立即续链；空响应延迟 10 秒，避免上游秒回空包形成热循环；failed listener 在渠道仍 online 时延迟 10 秒重试。
 
@@ -92,8 +96,8 @@ Poll job 主要等待约 35 秒的长轮询，不执行工作流。拉到消息�
 | --- | --- |
 | Queue | `wechatReply` |
 | Job name | `wechatPublishReply` |
-| Job data | `shareId`、`userId`、`items`、`contextToken`、`lastMsgId` |
-| Job ID | `wechat-reply:${shareId}:${lastMsgId}` |
+| Job data | `shareId`、`bindingKey`、`userId`、`items`、`contextToken`、`lastMsgId` |
+| Job ID | `wechat-reply:${shareId}:${bindingKey}:${lastMsgId}` |
 | Concurrency | 固定 `1000` |
 | Lock | 30 分钟 |
 | Stalled interval | 60 秒 |
@@ -115,7 +119,7 @@ Reply processor 使用 provider adapter 调用 `runOutlinkRuntime`，并以稳�
 7. completed listener 调度下一条 poll job
 ```
 
-第五步失败时不得推进 `syncBuf`。下一次 poll 会重新拉取同一批消息，`replyJobId` 负责去重，从而形成 at-least-once 摄入和幂等消费。
+第五步失败时不得推进 `syncBuf`。下一次 poll 会重新拉取同一批消息，回复任务按绑定和消息 ID 去重，从而形成 at-least-once 摄入和幂等消费。
 
 poll processor 本身不续链。续链统一由 Worker 的 completed/failed listener 负责，避免 return、throw 和 timeout 分支各自维护调度逻辑。
 
@@ -135,11 +139,11 @@ poll processor 本身不续链。续链统一由 Worker 的 completed/failed lis
 
 | 数据 | Physical key / 存储 | TTL/语义 |
 | --- | --- | --- |
-| QR Login | `fastgpt:cache:publish:wechat:qrcode:${outLinkId}:${tmbId}` | QR JSON，480 秒 |
-| Poll failure | `fastgpt:cache:wechat:publish:failures:${shareId}` | integer，300 秒 |
+| QR Login | `fastgpt:cache:publish:wechat:qrcode:${outLinkId}:${tmbId}:${attemptId}` | QR JSON，480 秒 |
+| Poll failure | `fastgpt:cache:wechat:publish:failures:${shareId}:${bindingKey}` | integer，300 秒 |
 | 渠道配置 | `MongoOutLink.app` | token、syncBuf、status 的事实来源 |
 
-失败计数使用 `INCRBY + EXPIRE NX`，从第一次失败起固定 300 秒，不在后续失败时刷新 TTL。成功 poll 将值重置为带 TTL 的字符串 `0`。连续失败达到 5 次时：
+失败计数使用 `INCRBY + EXPIRE NX`，后续失败保留原有 TTL。收到成功响应将值重置为带 TTL 的字符串 `0`。本地在收到响应头前达到长轮询时限时继续轮询，保留已有计数。连续失败达到 5 次时：
 
 1. 将 Mongo `app.status` 设为 `error`。
 2. 写入 `app.lastError`。
@@ -151,11 +155,12 @@ poll processor 本身不续链。续链统一由 Worker 的 completed/failed lis
 ## 8. 并发与恢复
 
 - `pollJobId` 保证多实例启动、重复扫码和启动恢复不会并行创建两条 poll 链。
-- `replyJobId` 保证同一消息不会重复排队。
+- 回复任务的 jobId 保证同一绑定的同一消息不会重复排队。
+- 失败计数、游标和排队的回复归属于当轮绑定。旧记录用登录时间和 token 的哈希作为绑定键。游标更新还比较拉取前的游标，回复任务开始时校验绑定。升级前已排队且缺少绑定键的回复只会在尚未重新绑定的旧渠道消费。
 - `syncBuf` 只在 reply jobs 全部入队后推进，避免 enqueue 失败丢消息。
 - 服务启动时扫描 online 渠道并调用幂等调度；已有 active/waiting job 时 BullMQ 保持原任务。
-- 主动停止会尝试删除非 active poll job；active job 通过渠道状态检查停止续链。
-- Poll hard timeout 防止 processor hang 后固定 jobId 永久占用。
+- 登出撤销待确认二维码，由 worker 读取离线状态后结束轮询。删除渠道后清理等待中的 poll job。
+- Poll hard timeout 防止 processor 卡住后固定 jobId 永久占用。已发出的 I/O 可能结束，后续阶段会在计数、入队和游标写入前检查任务是否已过期。
 - Reply 使用长 lock 并依赖工作流 messageId 幂等，避免慢回复被 stalled 后重复发送。
 
 ## 9. 故障与观测
@@ -172,6 +177,14 @@ poll processor 本身不续链。续链统一由 Worker 的 completed/failed lis
 核心观测项包括 poll/reply waiting、active、failed 数量，poll 延迟，reply 处理时长，连续失败渠道数和 syncBuf 更新错误。基础设施告警按 DAL SigNoz 手册配置，业务失败按渠道 dashboard 和 SLA 处理。
 
 ## 10. 验证与回滚原则
+
+无需微信、MongoDB 或 Redis 即可运行 iLink Mock 回归：
+
+```sh
+pnpm --dir projects/app test:wechat
+```
+
+Mock 覆盖取码、待扫码、已扫码、确认、轮询收消息、获取并解密媒体、回发和登出。测试调用路由处理函数、iLink 客户端和微信 worker，使用测试替身提供鉴权、数据库、队列与工作流结果。实际连接地址检查由独立请求策略用例覆盖。
 
 验证必须覆盖重复启动、重复扫码、多实例恢复、空响应退避、enqueue 失败不推进 syncBuf、stalled retry 不重复回复、连续失败转 error、主动停止不再续链，以及慢回复期间 poll 仍能持续摄入。
 

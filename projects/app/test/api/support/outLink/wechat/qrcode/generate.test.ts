@@ -4,7 +4,8 @@ const mocks = vi.hoisted(() => ({
   authOutLinkCrud: vi.fn(),
   assertWechatOutLink: vi.fn(),
   getQRCode: vi.fn(),
-  repositorySet: vi.fn()
+  repositorySet: vi.fn(),
+  updateOne: vi.fn()
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
@@ -24,6 +25,11 @@ vi.mock('@fastgpt/service/support/outLink/wechat/ilinkClient', () => ({
     getQRCode = mocks.getQRCode;
   }
 }));
+
+vi.mock('@fastgpt/service/support/outLink/schema', () => ({
+  MongoOutLink: { updateOne: mocks.updateOne }
+}));
+vi.mock('@fastgpt/service/support/outLink/wechat/mq', () => ({ startWechatPolling: vi.fn() }));
 
 vi.mock('@fastgpt/dal/redis/caches', () => ({
   WECHAT_QR_LOGIN_TTL_SECONDS: 480,
@@ -48,12 +54,18 @@ describe('POST /api/support/outLink/wechat/qrcode/generate', () => {
     mocks.assertWechatOutLink.mockResolvedValue(undefined);
     mocks.getQRCode.mockResolvedValue(qrData);
     mocks.repositorySet.mockResolvedValue(undefined);
+    mocks.updateOne.mockResolvedValue({ matchedCount: 1 });
   });
 
   it('stores generated QR data and returns the Cache TTL', async () => {
     const req = { body: { outLinkId } } as any;
 
-    await expect(handler(req)).resolves.toEqual({ ...qrData, expireTime: 480 });
+    const result = (await handler(req)) as { attemptId: string };
+    expect(result).toEqual({ ...qrData, expireTime: 480, attemptId: expect.any(String) });
+    expect(mocks.updateOne).toHaveBeenCalledWith(
+      { _id: outLinkId, type: 'wechat' },
+      { $set: { 'app.qrAttemptId': result.attemptId } }
+    );
 
     expect(mocks.authOutLinkCrud).toHaveBeenCalledWith({
       req,
@@ -65,6 +77,7 @@ describe('POST /api/support/outLink/wechat/qrcode/generate', () => {
     expect(mocks.repositorySet).toHaveBeenCalledWith({
       outLinkId,
       tmbId: 'tmb-1',
+      attemptId: result.attemptId,
       data: qrData
     });
   });

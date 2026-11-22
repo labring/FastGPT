@@ -46,13 +46,13 @@ describe('WeChat request policy', () => {
     );
   });
 
-  it('does not contact domains outside the media policy', () => {
+  it('does not contact domains outside the media policy', async () => {
     const fetch = vi.fn();
     vi.stubGlobal('fetch', fetch);
 
-    expect(() =>
+    await expect(
       fetchWechat({ url: 'https://example.invalid/media', endpoint: 'media' }, {})
-    ).toThrow('outside the allowed endpoints');
+    ).rejects.toThrow('outside the allowed endpoints');
     expect(fetch).not.toHaveBeenCalled();
   });
 

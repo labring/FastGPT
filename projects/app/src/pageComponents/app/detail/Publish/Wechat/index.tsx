@@ -19,6 +19,7 @@ import { getShareChatList, delShareChatById } from '@/web/support/outLink/api';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { defaultOutLinkForm } from '@/web/core/app/constants';
 import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type';
+import type { WechatOutLinkListItemType } from '@fastgpt/global/openapi/support/outLink/api';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -68,14 +69,20 @@ const Wechat = ({
     }
   );
 
-  const statusBadge = (status?: string) => {
-    const map: Record<string, { colorSchema: ColorSchemaType; label: string }> = {
+  const statusBadge = (status: WechatOutLinkListItemType['app']['status']) => {
+    const map: Record<typeof status, { colorSchema: ColorSchemaType; label: string }> = {
       online: { colorSchema: 'green', label: t('publish:wechat.status.online') },
       offline: { colorSchema: 'gray', label: t('publish:wechat.status.offline') },
       error: { colorSchema: 'red', label: t('publish:wechat.status.error') }
     };
-    const cfg = map[status || 'offline'] ?? map['offline'];
+    const cfg = map[status];
     return <MyTag colorSchema={cfg.colorSchema}>{cfg.label}</MyTag>;
+  };
+
+  const connectionErrors = {
+    invalid_url: t('publish:wechat.error.invalid_url'),
+    private_address: t('publish:wechat.error.private_address'),
+    request_failed: t('publish:wechat.error.request_failed')
   };
 
   return (
@@ -144,7 +151,7 @@ const Wechat = ({
                   {statusBadge(item.app.status)}
                   {item.app.errorReason && (
                     <Box mt={1} fontSize={'xs'} color={'myGray.600'}>
-                      {t('publish:wechat.error.' + item.app.errorReason)}
+                      {connectionErrors[item.app.errorReason]}
                     </Box>
                   )}
                 </Td>
@@ -153,18 +160,7 @@ const Wechat = ({
                   {item.lastTime ? t(formatTimeToChatTime(item.lastTime)) : t('common:un_used')}
                 </Td>
                 <Td display={'flex'} alignItems={'center'}>
-                  {!item.app.isBound ? (
-                    <Button
-                      size={'sm'}
-                      mr={3}
-                      colorScheme="green"
-                      onClick={() => {
-                        setLoginOutLinkId(item._id);
-                      }}
-                    >
-                      {t('publish:wechat.login')}
-                    </Button>
-                  ) : item.app.status === 'online' ? (
+                  {item.app.isBound && item.app.status === 'online' ? (
                     <Button
                       size={'sm'}
                       mr={3}
@@ -187,12 +183,14 @@ const Wechat = ({
                     <Button
                       size={'sm'}
                       mr={3}
-                      variant={'whitePrimary'}
+                      {...(item.app.isBound
+                        ? { variant: 'whitePrimary' }
+                        : { colorScheme: 'green' })}
                       onClick={() => {
                         setLoginOutLinkId(item._id);
                       }}
                     >
-                      {t('publish:wechat.relogin')}
+                      {item.app.isBound ? t('publish:wechat.relogin') : t('publish:wechat.login')}
                     </Button>
                   )}
                   <MyMenu
@@ -247,10 +245,7 @@ const Wechat = ({
           appId={appId}
           defaultData={editData}
           isEdit={isEdit}
-          onCreate={async (shareId) => {
-            const [newList] = await Promise.all([refetch(), onRefreshOutLinkCounts()]);
-            return newList?.find((i) => i.shareId === shareId)?._id;
-          }}
+          onCreate={() => Promise.all([refetch(), onRefreshOutLinkCounts()])}
           onEdit={() => refetch()}
           onClose={() => setEditData(undefined)}
         />

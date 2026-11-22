@@ -8,6 +8,7 @@ export type WechatPollJobData = {
 
 export type WechatReplyJobData = {
   shareId: string;
+  bindingKey?: string;
   userId: string;
   items?: unknown[];
   contextToken: string;

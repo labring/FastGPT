@@ -100,6 +100,21 @@ describe('list outlink anonymous access', () => {
     expect(item.app).not.toHaveProperty('lastError');
   });
 
+  it('preserves the error status and reason when a stored token is malformed', async () => {
+    mockList({
+      ...baseOutLink,
+      type: PublishChannelEnum.wechat,
+      app: { status: 'error', token: null, lastError: 'private_address' }
+    });
+
+    const [item] = await handler({ query: { appId: id, type: PublishChannelEnum.wechat } } as any);
+    expect(item.app).toEqual({
+      status: 'error',
+      isBound: false,
+      errorReason: 'private_address'
+    });
+  });
+
   it('removes allowAnonymous from non-share channel responses', async () => {
     mockList({
       ...baseOutLink,

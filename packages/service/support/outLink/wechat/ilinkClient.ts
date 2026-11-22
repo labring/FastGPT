@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { retryFn } from '@fastgpt/global/common/system/utils';
+import { delay } from '@fastgpt/global/common/system/utils';
 import { fetchWechat, getWechatBaseUrl, WechatRequestPolicyError } from './request';
 
 const CHANNEL_VERSION = '1.0.0';
@@ -8,7 +8,7 @@ const ILINK_APP_CLIENT_VERSION = String(1 << 16);
 const BOT_TYPE = '3';
 const LONG_POLL_TIMEOUT_MS = 35_000;
 const SEND_TIMEOUT_MS = 15_000;
-const SEND_RETRY_ATTEMPTS = 1;
+const RESPONSE_BODY_TIMEOUT_MS = 15_000;
 
 export const WechatMessageType = {
   USER: 1,
@@ -169,33 +169,49 @@ export class ILinkClient {
   }
 
   private async post(endpoint: string, body: string, timeoutMs: number): Promise<string> {
+    return this.request(endpoint, {
+      timeoutMs,
+      init: { method: 'POST', headers: this.buildHeaders(), body }
+    });
+  }
+
+  /** 分别限制等待响应头与读取响应体的时间，保留上游请求的错误类别。 */
+  private async request(
+    endpoint: string,
+    { init, timeoutMs }: { init: RequestInit; timeoutMs: number }
+  ): Promise<string> {
     const url = `${this.baseUrl}/${endpoint}`;
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    let timer = setTimeout(() => controller.abort(), timeoutMs);
+    let receivedHeaders = false;
 
     try {
       const res = await fetchWechat(
         { url, endpoint: 'ilink' },
         {
-          method: 'POST',
-          headers: this.buildHeaders(),
-          body,
+          ...init,
           signal: controller.signal
         }
       );
+      receivedHeaders = true;
+      // 响应头可能在长轮询时限末尾到达，响应体使用独立的读取时限。
       clearTimeout(timer);
+      timer = setTimeout(() => controller.abort(), RESPONSE_BODY_TIMEOUT_MS);
       const text = await res.text();
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`);
       return text;
     } catch (err) {
-      clearTimeout(timer);
       if (
         err instanceof WechatRequestPolicyError ||
-        (err instanceof Error && err.name === 'AbortError')
+        (controller.signal.aborted && !receivedHeaders)
       ) {
         throw err;
       }
-      throw new Error(`iLink POST ${endpoint} failed: ${formatFetchError(err)}`);
+      throw new Error(
+        `iLink ${init.method ?? 'GET'} ${endpoint.split('?', 1)[0]} failed: ${formatFetchError(err)}`
+      );
+    } finally {
+      clearTimeout(timer);
     }
   }
 
@@ -209,28 +225,23 @@ export class ILinkClient {
   }
 
   async getQRCodeStatus(qrcode: string): Promise<QRStatusResponse> {
-    const url = `${this.baseUrl}/ilink/bot/get_qrcode_status?qrcode=${encodeURIComponent(qrcode)}`;
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), LONG_POLL_TIMEOUT_MS);
     try {
-      const res = await fetchWechat(
-        { url, endpoint: 'ilink' },
+      const raw = await this.request(
+        `ilink/bot/get_qrcode_status?qrcode=${encodeURIComponent(qrcode)}`,
         {
-          headers: this.buildCommonHeaders(),
-          signal: controller.signal
+          init: { headers: this.buildCommonHeaders() },
+          timeoutMs: LONG_POLL_TIMEOUT_MS
         }
       );
-      clearTimeout(timer);
-      if (!res.ok) throw new Error(`QR status failed: ${res.status}`);
-      return res.json();
+      return JSON.parse(raw);
     } catch (err) {
-      clearTimeout(timer);
       if (err instanceof Error && err.name === 'AbortError') return { status: 'wait' };
       throw err;
     }
   }
 
-  async getUpdates(buf: string): Promise<GetUpdatesResponse> {
+  /** 返回上游响应，或以 undefined 表示本地在收到响应头前达到长轮询时限。 */
+  async getUpdates(buf: string): Promise<GetUpdatesResponse | undefined> {
     const body = JSON.stringify({
       get_updates_buf: buf,
       base_info: { channel_version: CHANNEL_VERSION }
@@ -249,7 +260,8 @@ export class ILinkClient {
       });
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
-        return { ret: 0, msgs: [], get_updates_buf: buf };
+        // 腾讯参考客户端此时继续轮询。按失败停用可能误停空闲渠道，因此持续无响应也不会触发停用。
+        return undefined;
       }
       throw err;
     }
@@ -274,12 +286,20 @@ export class ILinkClient {
       },
       base_info: { channel_version: CHANNEL_VERSION }
     });
-    await retryFn(async () => {
+    const send = async () => {
       const raw = await this.post('ilink/bot/sendmessage', body, SEND_TIMEOUT_MS);
       const resp = JSON.parse(raw) as Pick<GetUpdatesResponse, 'ret' | 'errmsg'>;
       if (resp.ret && resp.ret !== 0) {
         throw new Error(`sendMessage ret=${resp.ret} errmsg=${resp.errmsg ?? '(none)'}`);
       }
-    }, SEND_RETRY_ATTEMPTS);
+    };
+
+    try {
+      await send();
+    } catch (error) {
+      if (error instanceof WechatRequestPolicyError) throw error;
+      await delay(500);
+      await send();
+    }
   }
 }

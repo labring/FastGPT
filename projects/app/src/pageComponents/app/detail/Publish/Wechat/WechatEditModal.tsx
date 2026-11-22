@@ -21,12 +21,12 @@ const WechatEditModal = ({
   appId: string;
   defaultData: Omit<OutLinkEditType, 'app'>;
   onClose: () => void;
-  onCreate: (shareId: string) => Promise<string | undefined>;
+  onCreate: () => Promise<unknown>;
   onEdit: () => void;
   isEdit?: boolean;
 }) => {
   const { t } = useTranslation();
-  const { register, setValue, handleSubmit } = useForm({
+  const { register, handleSubmit } = useForm({
     defaultValues: defaultData
   });
 
@@ -40,9 +40,8 @@ const WechatEditModal = ({
     {
       errorToast: t('common:create_failed'),
       successToast: t('common:create_success'),
-      onSuccess: async (shareId) => {
-        const _id = await onCreate(shareId);
-        if (_id) setValue('_id', _id);
+      onSuccess: async () => {
+        await onCreate();
         onClose();
       }
     }

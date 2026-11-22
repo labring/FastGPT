@@ -13,6 +13,13 @@ import { normalizeShareOutLinkAllowAnonymous } from '@fastgpt/service/support/ou
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { WechatAppSchema, WechatConnectionErrorSchema } from '@fastgpt/global/support/outLink/type';
 
+// 历史连接记录逐字段降级，读取不到 token 时仍保留可识别的状态和错误原因。
+const StoredWechatListAppSchema = WechatAppSchema.pick({ status: true, token: true }).extend({
+  status: WechatAppSchema.shape.status.catch('offline'),
+  token: WechatAppSchema.shape.token.catch(''),
+  lastError: WechatConnectionErrorSchema.optional().catch(undefined)
+});
+
 // 查询应用的所有 OutLink
 export async function handler(req: ApiRequestProps): Promise<OutLinkListResponseType> {
   const { appId, type } = parseApiInput({
@@ -41,12 +48,11 @@ export async function handler(req: ApiRequestProps): Promise<OutLinkListResponse
       : result.map(({ allowAnonymous: _allowAnonymous, isShowBrand: _isShowBrand, ...item }) => {
           if (item.type !== PublishChannelEnum.wechat) return item;
 
-          const { data: app } = WechatAppSchema.pick({ status: true, token: true })
-            .extend({ lastError: WechatConnectionErrorSchema.optional().catch(undefined) })
-            .safeParse(item.app);
+          const { data: app } = StoredWechatListAppSchema.safeParse(item.app);
           const status = app?.status ?? 'offline';
           return {
             ...item,
+            // v4.17.5 按同版本 App 切换。旧写实例会将此摘要写回连接配置，发布时需避免新旧实例混跑。
             app: {
               status,
               isBound: Boolean(app?.token),

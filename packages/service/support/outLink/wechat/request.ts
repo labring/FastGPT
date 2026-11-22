@@ -30,6 +30,7 @@ const parseWechatUrl = (value: string, endpoint: WechatEndpoint): URL => {
     throw new WechatRequestPolicyError('invalid_url');
   }
 
+  // 微信下发的区域端点需先确认实际使用的域名，再纳入对应白名单。
   const allowedDomain = endpoint === 'ilink' ? ILINK_HOST : CDN_DOMAIN;
   if (url.hostname !== allowedDomain && !url.hostname.endsWith('.' + allowedDomain)) {
     throw new WechatRequestPolicyError('invalid_url');
@@ -52,7 +53,7 @@ const { isInternalResolvedIP } = createInternalAddressChecker({
   nodeEnv: 'production'
 });
 
-// 微信请求始终使用已校验的公网地址建连，避免由代理或后续 DNS 查询重新选址。
+// 微信渠道需要 App 容器直连。环境代理可自行解析目标，应用无法校验代理实际建连的 IP。
 const wechatDispatcher = new Agent({
   connect: {
     lookup(hostname, options, callback) {
@@ -73,17 +74,19 @@ const wechatDispatcher = new Agent({
 });
 
 /** 仅访问指定的微信服务。凭据与媒体请求均禁止重定向。 */
-export const fetchWechat = (
+export const fetchWechat = async (
   target: { url: string; endpoint: WechatEndpoint },
   init: RequestInit
 ): Promise<Response> => {
   const url = parseWechatUrl(target.url, target.endpoint);
   const options = { ...init, redirect: 'error' as const, dispatcher: wechatDispatcher };
-  return fetch(url.href, options).catch((error: unknown) => {
+  try {
+    return await fetch(url.href, options);
+  } catch (error) {
     // fetch 将建连失败包装在 cause 中，保留可区分的策略拒绝。
     if (error instanceof Error && error.cause instanceof WechatRequestPolicyError) {
       throw error.cause;
     }
     throw error;
-  });
+  }
 };
