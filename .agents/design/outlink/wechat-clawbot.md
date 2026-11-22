@@ -52,6 +52,7 @@ wechatPoll Queue ---- getUpdates ---- groupMessagesByUser
 | `syncBuf` | 下一次 `getUpdates` 的消费游标 |
 | `status` | `online`、`offline`、`error` |
 | `bindingId` | 每次扫码绑定生成的唯一标识，旧记录可无此字段 |
+| `bindingFingerprint` | 该绑定对应的登录快照哈希，用于识别旧版本重绑后残留的绑定标识 |
 | `qrAttemptId` | 当前可确认的扫码会话。登出撤销该会话 |
 | `loginTime` | 最近登录时间 |
 | `lastError` | 停止轮询的最近错误 |
@@ -105,7 +106,7 @@ Poll job 主要等待约 35 秒的长轮询，不执行工作流。入队检查�
 
 Reply processor 使用 provider adapter 调用 `runOutlinkRuntime`，并以稳定的 `messageId=lastMsgId` 由聊天写入层保证业务幂等。队列 jobId 解决重复入队，messageId 解决 stalled retry 或 processor 重试后的副作用重复。
 
-旧记录在重新绑定前保留原任务 ID `wechat-reply:${shareId}:${lastMsgId}`，以便重拉时与升级前的队列任务去重。
+旧记录在重新绑定前保留原任务 ID `wechat-reply:${shareId}:${lastMsgId}`，以便重拉时与升级前的队列任务去重。回滚期间沿用一个新版绑定时，再升级后也会识别属于该绑定的旧版任务 ID。
 
 ## 5. Poll 处理顺序
 
@@ -158,7 +159,7 @@ poll processor 本身不续链。续链统一由 Worker 的 completed/failed lis
 
 - `pollJobId` 保证多实例启动、重复扫码和启动恢复不会并行创建两条 poll 链。
 - 回复任务的 jobId 保证同一绑定的同一消息不会重复排队。
-- 失败计数、游标和排队的回复归属于当轮绑定。旧记录用登录时间和 token 的哈希作为绑定键。游标更新还比较拉取前的游标，回复任务开始时校验绑定。升级前已排队且缺少绑定键的回复只会在尚未重新绑定的旧渠道消费。
+- 失败计数、游标和排队的回复归属于当轮绑定。无有效绑定标识的记录使用登录时间和 token 的哈希作为绑定键。游标更新还比较拉取前的游标，回复任务开始时校验绑定。缺少绑定键的旧任务在入队时间不早于当前登录时消费；历史连接没有有效登录时间时沿用已有处理。
 - `syncBuf` 只在 reply jobs 全部入队后推进，避免 enqueue 失败丢消息。
 - 服务启动时扫描 online 渠道并调用幂等调度；已有 active/waiting job 时 BullMQ 保持原任务。
 - 登出撤销待确认二维码，由 worker 读取离线状态后结束轮询。删除渠道后清理等待中的 poll job。

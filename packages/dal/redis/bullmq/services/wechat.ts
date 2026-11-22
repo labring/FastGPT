@@ -30,6 +30,10 @@ export class WechatMQService {
     return this.binding.getQueue<WechatReplyJobData>(QueueNames.wechatReply);
   }
 
+  getReplyJob(jobId: string) {
+    return this.getReplyQueue().getJob(jobId);
+  }
+
   /** 创建微信轮询 Worker，轮询 processor 的返回值用于 completed 续链策略。 */
   getPollWorker<ReturnType = boolean>(
     processor: Processor<WechatPollJobData, ReturnType>,

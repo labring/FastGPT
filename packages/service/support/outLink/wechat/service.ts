@@ -8,8 +8,15 @@ import { MongoOutLink } from '../schema';
 import { ILinkClient, type QRStatusResponse } from './ilinkClient';
 import { startWechatPolling } from './mq';
 import { getWechatBaseUrl } from './request';
+import { getWechatBindingIdentity, getWechatLoginFingerprint } from './utils';
 
-const QrAttemptSchema = WechatAppSchema.pick({ qrAttemptId: true, bindingId: true });
+const QrAttemptSchema = WechatAppSchema.pick({
+  qrAttemptId: true,
+  bindingId: true,
+  bindingFingerprint: true,
+  loginTime: true,
+  token: true
+});
 
 /** 先登记会话，再向微信取码。迟到的旧请求只能写入自己的缓存。 */
 export async function generateWechatQrCode({
@@ -51,7 +58,9 @@ export async function getWechatQrStatus({
   const qr = await wechatQrLoginCache.get({ outLinkId, tmbId, attemptId });
   if (!qr) return 'expired';
 
-  if (app.bindingId !== attemptId) {
+  if (app.bindingId === attemptId) {
+    if (getWechatBindingIdentity(app).id !== attemptId) return 'expired';
+  } else {
     const confirmation = await new ILinkClient().getQRCodeStatus(qr.qrcode);
     if (confirmation.status !== 'confirmed') return confirmation.status;
     if (!confirmation.bot_token || !confirmation.ilink_bot_id) {
@@ -63,6 +72,7 @@ export async function getWechatQrStatus({
       type: PublishChannelEnum.wechat,
       'app.qrAttemptId': attemptId
     };
+    const loginTime = new Date().toISOString();
     const result = await MongoOutLink.updateOne(
       { ...currentAttempt, 'app.bindingId': { $ne: attemptId } },
       {
@@ -73,7 +83,11 @@ export async function getWechatQrStatus({
           'app.userId': confirmation.ilink_user_id ?? '',
           'app.status': 'online',
           'app.bindingId': attemptId,
-          'app.loginTime': new Date().toISOString(),
+          'app.bindingFingerprint': getWechatLoginFingerprint({
+            token: confirmation.bot_token,
+            loginTime
+          }),
+          'app.loginTime': loginTime,
           'app.syncBuf': '',
           'app.lastError': ''
         }

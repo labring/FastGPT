@@ -51,7 +51,8 @@ vi.mock('@fastgpt/dal/redis/bullmq', () => ({
     getPollWorker: mocks.getPollWorker,
     getReplyWorker: mocks.getReplyWorker,
     addPollJob: mocks.enqueuePoll,
-    addReplyJob: mocks.enqueueReply
+    addReplyJob: mocks.enqueueReply,
+    getReplyJob: async () => undefined
   }
 }));
 vi.mock('@fastgpt/service/support/outLink/runtime/service', () => ({
@@ -73,7 +74,7 @@ describe('WeChat personal channel with mock iLink', () => {
   let ilink: ReturnType<typeof createMockIlink>;
   let app: Partial<WechatAppType>;
   let runPoll: (job: { data: { shareId: string } }) => Promise<unknown>;
-  let runReply: (job: { data: WechatReplyJobData }) => Promise<void>;
+  let runReply: (job: { data: WechatReplyJobData; timestamp: number }) => Promise<void>;
   let replies: WechatReplyJobData[];
 
   beforeEach(async () => {
@@ -195,7 +196,7 @@ describe('WeChat personal channel with mock iLink', () => {
     expect(ilink.requests[0].get_updates_buf).toBe('');
     expect(app.syncBuf).toBe('cursor-1');
     expect(replies).toHaveLength(1);
-    await runReply({ data: replies[0] });
+    await runReply({ data: replies[0], timestamp: Date.now() });
     expect(mocks.upload).toHaveBeenCalledWith(expect.objectContaining({ source: plain }));
     expect(ilink.replies).toEqual([
       expect.objectContaining({

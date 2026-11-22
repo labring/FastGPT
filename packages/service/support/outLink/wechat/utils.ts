@@ -9,14 +9,30 @@ export const isActiveWechatConnection = (
 ): app is { status: 'online'; token: string } =>
   app?.status === 'online' && typeof app.token === 'string' && app.token !== '';
 
-/** 历史渠道重新扫码前使用登录快照的哈希，Redis 和队列只存不透明绑定标识。 */
-export const getWechatBindingKey = (
-  app: Pick<WechatAppType, 'bindingId' | 'loginTime' | 'token'>
-) =>
-  app.bindingId ??
+/** 只保存登录快照的哈希，避免凭据进入 Redis key 或队列。 */
+export const getWechatLoginFingerprint = (app: Pick<WechatAppType, 'loginTime' | 'token'>) =>
   createHash('sha256')
     .update(JSON.stringify([app.loginTime ?? null, app.token]))
     .digest('hex');
+
+/** 旧版重绑会改写登录快照，但不会清理新增字段。只使用仍对应当前登录的绑定 ID。 */
+export const getWechatBindingIdentity = (
+  app: Pick<WechatAppType, 'bindingId' | 'bindingFingerprint' | 'loginTime' | 'token'>
+) => {
+  const fingerprint = getWechatLoginFingerprint(app);
+  const id = app.bindingFingerprint === fingerprint ? app.bindingId : undefined;
+  return { id, key: id ?? fingerprint, loggedInAt: Date.parse(app.loginTime ?? '') };
+};
+
+/** 旧版任务没有绑定键，按入队时间判断是否属于当前登录。 */
+export const matchesWechatReplyBinding = (
+  binding: ReturnType<typeof getWechatBindingIdentity>,
+  job: { bindingKey?: string; timestamp: number }
+) => {
+  if (job.bindingKey !== undefined) return job.bindingKey === binding.key;
+  if (!Number.isFinite(binding.loggedInAt)) return binding.id === undefined;
+  return job.timestamp >= binding.loggedInAt;
+};
 
 /**
  * 确保后台微信接口只能操作微信发布渠道。

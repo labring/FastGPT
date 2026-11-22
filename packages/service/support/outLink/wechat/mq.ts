@@ -16,7 +16,11 @@ import { groupMessagesByUser } from './messageParser';
 import { batchRun, retryFn, withTimeout } from '@fastgpt/global/common/system/utils';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { wechatOutlinkProvider } from './provider';
-import { getWechatBindingKey, isActiveWechatConnection } from './utils';
+import {
+  getWechatBindingIdentity,
+  isActiveWechatConnection,
+  matchesWechatReplyBinding
+} from './utils';
 
 const logger = getLogger(LogCategories.MODULE.OUTLINK.WECHAT);
 
@@ -70,8 +74,9 @@ async function pollImpl(job: Job<WechatPollJobData>, signal: AbortSignal): Promi
     return 'stopped';
   }
 
-  // 计数与写入绑定到本轮连接。历史记录无 bindingId，仍用原登录快照作条件。
-  const bindingKey = getWechatBindingKey(app);
+  // Redis 使用有效绑定身份，Mongo 比较本轮读取的原始登录快照。
+  const binding = getWechatBindingIdentity(app);
+  const { id: bindingId, key: bindingKey } = binding;
   const bindingFilter = {
     shareId,
     'app.status': 'online',
@@ -154,10 +159,6 @@ async function pollImpl(job: Job<WechatPollJobData>, signal: AbortSignal): Promi
   // 1) 先分发回复任务。失败则下次重拉，队列按绑定和消息 ID 去重。
   if (messages.length > 0) {
     const groups = groupMessagesByUser(messages);
-    // 历史绑定继续使用旧任务 ID，升级时重拉消息可与队列里尚未消费的旧任务去重。
-    const replyJobPrefix = app.bindingId
-      ? `wechat-reply:${shareId}:${app.bindingId}`
-      : `wechat-reply:${shareId}`;
     logger.debug('Dispatch reply jobs', {
       shareId,
       totalMsgs: messages.length,
@@ -165,22 +166,36 @@ async function pollImpl(job: Job<WechatPollJobData>, signal: AbortSignal): Promi
     });
 
     await Promise.all(
-      groups.map((g) =>
-        wechatMQService.addReplyJob(
+      groups.map(async (group) => {
+        const legacyJobId = `wechat-reply:${shareId}:${group.lastMsgId}`;
+        if (bindingId) {
+          // 回滚期间可沿用同一个登录。再次升级重拉时，复用属于该登录的旧版任务。
+          const queued = await wechatMQService.getReplyJob(legacyJobId);
+          if (
+            queued &&
+            matchesWechatReplyBinding(binding, {
+              bindingKey: queued.data.bindingKey,
+              timestamp: queued.timestamp
+            })
+          ) {
+            return;
+          }
+        }
+        signal.throwIfAborted();
+        await wechatMQService.addReplyJob(
           {
             shareId,
             bindingKey,
-            userId: g.userId,
-            items: g.items,
-            contextToken: g.contextToken,
-            lastMsgId: g.lastMsgId
+            ...group
           },
           {
-            jobId: `${replyJobPrefix}:${g.lastMsgId}`,
+            jobId: bindingId
+              ? `wechat-reply:${shareId}:${bindingId}:${group.lastMsgId}`
+              : legacyJobId,
             backoff: { type: 'fixed', delay: 2000 }
           }
-        )
-      )
+        );
+      })
     );
   }
 
@@ -200,7 +215,7 @@ async function pollImpl(job: Job<WechatPollJobData>, signal: AbortSignal): Promi
 /* ============ Reply Worker ============ */
 async function processWechatReplyJob(job: Job<WechatReplyJobData>): Promise<void> {
   try {
-    await wechatOutlinkProvider(job.data);
+    await wechatOutlinkProvider(job.data, job.timestamp);
   } catch (error) {
     logger.error('Reply job failed', {
       shareId: job.data.shareId,

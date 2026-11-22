@@ -80,6 +80,7 @@ export const WechatAppSchema = z.object({
   syncBuf: z.string().default(''),
   status: z.enum(['online', 'offline', 'error']).default('offline'),
   bindingId: z.uuid().optional(),
+  bindingFingerprint: z.string().optional(),
   qrAttemptId: z.uuid().optional(),
   loginTime: z.string().optional(),
   lastError: z.string().optional()

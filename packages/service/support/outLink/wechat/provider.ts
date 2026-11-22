@@ -7,12 +7,16 @@ import { runOutlinkRuntime } from '../runtime/service';
 import type { OutlinkProviderMessageHandler } from '../runtime/type';
 import { ILinkClient } from './ilinkClient';
 import { createWechatOutlinkAdapter } from './adapter';
-import { getWechatBindingKey, isActiveWechatConnection } from './utils';
+import {
+  getWechatBindingIdentity,
+  isActiveWechatConnection,
+  matchesWechatReplyBinding
+} from './utils';
 import type { WechatReplyJobData } from '@fastgpt/dal/redis/bullmq';
 
 const logger = getLogger(LogCategories.MODULE.OUTLINK.WECHAT);
 
-type WechatOutlinkProvider = (jobData: WechatReplyJobData) => Promise<void>;
+type WechatOutlinkProvider = (jobData: WechatReplyJobData, queuedAt: number) => Promise<void>;
 
 /** 创建 iLink 回复任务 Provider，连接渠道配置、消息 Adapter 和共享 runtime。 */
 export const createWechatOutlinkProvider =
@@ -21,7 +25,7 @@ export const createWechatOutlinkProvider =
   }: {
     onMessage: OutlinkProviderMessageHandler<WechatAppType>;
   }): WechatOutlinkProvider =>
-  async (jobData) => {
+  async (jobData, queuedAt) => {
     const outLinkConfig = await loadOutlinkProviderConfig<WechatAppType>({
       shareId: jobData.shareId,
       channel: PublishChannelEnum.wechat,
@@ -41,12 +45,9 @@ export const createWechatOutlinkProvider =
       return;
     }
 
-    // 历史队列任务可以在原有渠道继续消费。重新扫码后只接收带当前标识的任务。
-    const bindingKey = jobData.bindingKey;
+    const binding = getWechatBindingIdentity(outLinkConfig.app);
     if (
-      bindingKey === undefined
-        ? outLinkConfig.app.bindingId !== undefined
-        : bindingKey !== getWechatBindingKey(outLinkConfig.app)
+      !matchesWechatReplyBinding(binding, { bindingKey: jobData.bindingKey, timestamp: queuedAt })
     ) {
       logger.debug('Ignoring reply from an earlier Wechat binding', { shareId: jobData.shareId });
       return;

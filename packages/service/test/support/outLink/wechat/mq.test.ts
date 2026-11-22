@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   increment: vi.fn(),
   reset: vi.fn(),
   clear: vi.fn(),
+  getReplyJob: vi.fn(),
   queueAdd: vi.fn()
 }));
 
@@ -26,6 +27,7 @@ vi.mock('@fastgpt/dal/redis/bullmq', () => ({
       mocks.getWorker('wechatReply', processor, opts),
     addPollJob: (...args: unknown[]) => mocks.getQueue('wechatPoll')?.add?.(...args),
     addReplyJob: (...args: unknown[]) => mocks.getQueue('wechatReply')?.add?.(...args),
+    getReplyJob: mocks.getReplyJob,
     removePollJob: (jobId: string) => mocks.getQueue('wechatPoll')?.remove?.(jobId)
   },
   WECHAT_POLL_JOB_NAME: 'wechatPublishPoll',
@@ -86,15 +88,17 @@ vi.mock('@fastgpt/global/common/system/utils', async (importOriginal) => {
 import { initWechatPollWorker } from '@fastgpt/service/support/outLink/wechat/mq';
 import { ILinkClient } from '@fastgpt/service/support/outLink/wechat/ilinkClient';
 import { WechatRequestPolicyError } from '@fastgpt/service/support/outLink/wechat/request';
+import { getWechatLoginFingerprint } from '@fastgpt/service/support/outLink/wechat/utils';
 
 const bindingId = 'eab36734-81b6-4346-a623-fd3821712cd6';
+const login = { token: 'token', loginTime: '2026-11-22T07:00:00.000Z' };
 const outLink = {
   shareId: 'share-1',
   app: {
     status: 'online',
-    token: 'token',
+    ...login,
     bindingId,
-    loginTime: '2026-11-22T07:00:00.000Z',
+    bindingFingerprint: getWechatLoginFingerprint(login),
     baseUrl: 'https://ilinkai.weixin.qq.com',
     syncBuf: 'cursor'
   }
@@ -142,6 +146,7 @@ describe('Wechat polling failure counter integration', () => {
     mocks.reset.mockResolvedValue(undefined);
     mocks.clear.mockResolvedValue(true);
     mocks.queueAdd.mockResolvedValue({ id: 'poll-job' });
+    mocks.getReplyJob.mockResolvedValue(undefined);
     mocks.exists.mockResolvedValue(null);
   });
 
@@ -318,16 +323,22 @@ describe('Wechat polling failure counter integration', () => {
   });
 
   it.each([
-    { storedBindingId: bindingId, jobPrefix: `wechat-reply:share-1:${bindingId}` },
-    { storedBindingId: undefined, jobPrefix: 'wechat-reply:share-1' }
+    { app: outLink.app, jobPrefix: `wechat-reply:share-1:${bindingId}`, hasCurrentId: true },
+    {
+      app: { ...outLink.app, bindingId: undefined },
+      jobPrefix: 'wechat-reply:share-1',
+      hasCurrentId: false
+    },
+    {
+      app: { ...outLink.app, token: 'token-after-rollback' },
+      jobPrefix: 'wechat-reply:share-1',
+      hasCurrentId: false
+    }
   ])(
     'keeps rich items and the compatible reply ID for $jobPrefix',
-    async ({ storedBindingId, jobPrefix }) => {
+    async ({ app, jobPrefix, hasCurrentId }) => {
       mocks.findOne.mockReturnValue({
-        lean: vi.fn().mockResolvedValue({
-          ...outLink,
-          app: { ...outLink.app, bindingId: storedBindingId }
-        })
+        lean: vi.fn().mockResolvedValue({ ...outLink, app })
       });
       const items = [{ type: 1, text_item: { text: 'hello' } }];
       mocks.getUpdates.mockResolvedValue({
@@ -348,7 +359,7 @@ describe('Wechat polling failure counter integration', () => {
       expect(mocks.queueAdd).toHaveBeenCalledWith(
         {
           shareId: 'share-1',
-          bindingKey: storedBindingId ?? expect.stringMatching(/^[a-f0-9]{64}$/),
+          bindingKey: hasCurrentId ? bindingId : getWechatLoginFingerprint(app),
           userId: 'user-1',
           items,
           contextToken: 'context-token',
@@ -373,4 +384,33 @@ describe('Wechat polling failure counter integration', () => {
     });
     expect(mocks.clear).toHaveBeenCalledWith('share-1', bindingId);
   });
+
+  it.each([false, true])(
+    'reuses a legacy queue task only for the same login (%s)',
+    async (sameLogin) => {
+      const msgId = 'message-1';
+      const legacyId = `wechat-reply:${outLink.shareId}:${msgId}`;
+      mocks.getReplyJob.mockResolvedValue({
+        id: legacyId,
+        timestamp: Date.parse(login.loginTime) + (sameLogin ? 1 : -1),
+        data: {}
+      });
+      mocks.getUpdates.mockResolvedValue({
+        ret: 0,
+        msgs: [
+          {
+            message_type: 1,
+            message_id: msgId,
+            from_user_id: 'user-1',
+            item_list: [{ type: 1, text_item: { text: 'hello' } }]
+          }
+        ]
+      });
+      const processor = await getPollProcessor();
+      await expect(processor?.(job)).resolves.toBe('messages');
+
+      expect(mocks.getReplyJob).toHaveBeenCalledWith(legacyId);
+      expect(mocks.queueAdd).toHaveBeenCalledTimes(sameLogin ? 0 : 1);
+    }
+  );
 });
