@@ -7,7 +7,10 @@ import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { MongoAgentSkillsVersion } from '../../../../skill/version/schema';
 import { downloadSkillPackageStream } from '../../../../skill/package';
-import { parseSkillMarkdown } from '../../../../skill/utils';
+import {
+  extractSkillMetadataFromMarkdown,
+  RUNTIME_SKILL_SCAN_PRUNE_DIRS
+} from '../../../../skill/utils';
 import { getLogger, LogCategories } from '../../../../../../common/logger';
 import type { DeployedSkillInfo, DeployedSkillVersion } from './types';
 import { getAgentSandboxSkillMaxBytes } from '../../../config';
@@ -24,17 +27,17 @@ import {
 
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 const parseCommandOutputNulls = (stdout: string) => stdout.split('\0').filter(Boolean);
-const SKILL_INFO_SCAN_PRUNE_DIRS = ['node_modules', '.venv', 'venv'];
 
 const getRuntimeSkillsRootPath = (workDirectory: string): string =>
   joinSandboxPath(workDirectory, 'projects');
 
+// 扫描规则与发布校验同源：prune 目录列表来自 skill/utils，避免两端规则漂移。
 const buildSkillInfoFindCommand = (dir: string) => {
-  const pruneClause = SKILL_INFO_SCAN_PRUNE_DIRS.map((name) => `-name ${shellQuote(name)}`).join(
+  const pruneClause = RUNTIME_SKILL_SCAN_PRUNE_DIRS.map((name) => `-name ${shellQuote(name)}`).join(
     ' -o '
   );
 
-  return `find ${shellQuote(dir)} \\( ${pruneClause} \\) -prune -o -iname "SKILL.md" -print0 2>/dev/null`;
+  return `find ${shellQuote(dir)} \\( ${pruneClause} \\) -prune -o -type f -iname "SKILL.md" -print0 2>/dev/null`;
 };
 
 type GetAgentSkillInfosParams = {
@@ -48,7 +51,7 @@ type GetAgentSkillInfosParams = {
  * 读取传入 sandbox 工作区内可用的 skill 信息。
  *
  * 普通运行和 edit-debug 都以 sandbox 工作区为准：普通运行先注入 skill 包，
- * edit-debug 复用编辑器正在运行的 sandbox，然后统一扫描 SKILL.md。
+ * edit-debug 复用编辑器正在运行的 sandbox，然后统一递归扫描 `SKILL.md` 并跳过无效项。
  */
 export const getAgentSkillInfos = async ({
   workDirectory,
@@ -61,7 +64,7 @@ export const getAgentSkillInfos = async ({
     deployedSkillVersions?.map((version) => [normalizeSandboxDir(version.targetDir), version]) || []
   );
 
-  // 并发 find 所有目录，过滤出错目录，避免级联报错
+  // 并发 find 所有目录，单个目录失败时忽略，避免级联报错。
   const findResults = await Promise.all(
     scanDirectories.map(async (dir) => {
       const { exitCode, stdout, stderr } = await sandbox.execute(buildSkillInfoFindCommand(dir));
@@ -79,7 +82,7 @@ export const getAgentSkillInfos = async ({
   const files = await sandbox.readFiles(paths);
 
   return files
-    .map((file) => {
+    .map((file): DeployedSkillInfo | null => {
       if (file.error) {
         logger.error('[Agent Skills] Failed to read skill.md file', {
           path: file.path,
@@ -93,14 +96,13 @@ export const getAgentSkillInfos = async ({
           ? new TextDecoder('utf-8').decode(file.content)
           : String(file.content);
 
-      const { frontmatter, error: parseError } = parseSkillMarkdown(content);
-      if (!frontmatter.name) {
+      const parsed = extractSkillMetadataFromMarkdown(content);
+      if (!parsed.valid) {
         logger.warn(
           '[Agent Skills] Skill parsed without a valid name or has malformed frontmatter',
           {
             path: file.path,
-            parseError,
-            frontmatter
+            error: parsed.error
           }
         );
         return null;
@@ -111,8 +113,8 @@ export const getAgentSkillInfos = async ({
 
       return {
         id: file.path,
-        name: String(frontmatter.name),
-        description: frontmatter.description ? String(frontmatter.description) : '',
+        name: parsed.name,
+        description: parsed.description,
         directory,
         skillMdPath: file.path,
         ...(deployedVersion
