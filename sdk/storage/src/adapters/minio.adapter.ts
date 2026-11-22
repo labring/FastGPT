@@ -3,7 +3,7 @@ import * as http from 'node:http';
 import * as https from 'node:https';
 import type { IMinioStorageOptions, IStorage } from '../interface';
 import type * as Storage from '../types';
-import { AwsS3StorageAdapter, getAwsS3Client } from './aws-s3.adapter';
+import { AwsS3StorageAdapter } from './aws-s3.adapter';
 import * as AWS from '@aws-sdk/client-s3';
 import { chunk } from 'es-toolkit';
 import {
@@ -93,7 +93,7 @@ const getFailedKeysFromMinioRemove = ({
  * @see https://github.com/aws/aws-sdk-net/issues/3641
  */
 export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage {
-  private readonly minioClient: Minio.Client;
+  protected readonly minioClient: Minio.Client;
 
   constructor(protected readonly options: IMinioStorageOptions) {
     if (options.vendor !== 'minio') {
@@ -200,7 +200,7 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
       const abortController = new AbortController();
       const listResponse = await this._withListRequestTimeout({
         prefix,
-        promise: getAwsS3Client(this).send(
+        promise: this.client.send(
           new AWS.ListObjectsV2Command({
             Bucket: bucket,
             Prefix: prefix,
@@ -281,7 +281,7 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
         throw error;
       }
 
-      await getAwsS3Client(this).send(new AWS.CreateBucketCommand({ Bucket: this.options.bucket }));
+      await this.client.send(new AWS.CreateBucketCommand({ Bucket: this.options.bucket }));
 
       return {
         exists: false,
@@ -304,7 +304,7 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
       ]
     };
 
-    await getAwsS3Client(this).send(
+    await this.client.send(
       new AWS.PutBucketPolicyCommand({
         Bucket: this.options.bucket,
         Policy: JSON.stringify(policy)
@@ -314,8 +314,6 @@ export class MinioStorageAdapter extends AwsS3StorageAdapter implements IStorage
 
   /** 仅用于清理历史遗留规则；业务上传流程不会创建或读取 lifecycle rules。 */
   async removeBucketLifecycle(): Promise<void> {
-    await getAwsS3Client(this).send(
-      new AWS.DeleteBucketLifecycleCommand({ Bucket: this.options.bucket })
-    );
+    await this.client.send(new AWS.DeleteBucketLifecycleCommand({ Bucket: this.options.bucket }));
   }
 }

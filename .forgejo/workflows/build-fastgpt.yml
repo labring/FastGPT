@@ -94,7 +94,7 @@ jobs:
 
       - name: Typecheck app
         env:
-          NODE_OPTIONS: '--max-old-space-size=4096'
+          NODE_OPTIONS: '--max-old-space-size=5120'
         run: pnpm --filter @fastgpt/app typecheck
 
   build-fastgpt-images:

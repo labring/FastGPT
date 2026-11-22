@@ -252,7 +252,7 @@ export type AdminFbkType = z.infer<typeof AdminFbkSchema>;
 export const ContextCheckpointValueSchema = z.string();
 export type ContextCheckpointValueType = z.infer<typeof ContextCheckpointValueSchema>;
 
-const AIChatItemValueSchemaImpl = z.object({
+export const AIChatItemValueSchema = z.object({
   userMessage: z
     .object({ content: z.string(), source: z.literal('server') })
     .optional()
@@ -312,16 +312,7 @@ const AIChatItemValueSchemaImpl = z.object({
   hideInUI: z.boolean().optional()
 });
 
-type AIChatItemValueItemRaw = z.infer<typeof AIChatItemValueSchemaImpl>;
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface AIChatItemValueItemType extends AIChatItemValueItemRaw {}
-type AIChatItemValueItemInputRaw = z.input<typeof AIChatItemValueSchemaImpl>;
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface AIChatItemValueItemInputType extends AIChatItemValueItemInputRaw {}
-export const AIChatItemValueSchema: z.ZodType<
-  AIChatItemValueItemType,
-  AIChatItemValueItemInputType
-> = AIChatItemValueSchemaImpl;
+export type AIChatItemValueItemType = z.infer<typeof AIChatItemValueSchema>;
 
 export const AIChatItemSchema = z.object({
   obj: z.literal(ChatRoleEnum.AI),

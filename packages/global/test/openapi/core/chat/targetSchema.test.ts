@@ -9,7 +9,6 @@ import {
 import {
   ClearChatHistoriesSchema,
   DelChatHistorySchema,
-  GetHistoriesBodyRawSchema,
   GetHistoriesBodySchema,
   GetHistoryStatusBodySchema,
   MarkChatReadBodySchema
@@ -694,22 +693,5 @@ describe('openapi/core/chat target schema', () => {
       }
     });
     expect('skillId' in runtimeData).toBe(false);
-  });
-
-  it('preserves ObjectId-like inputs and union .options on chat target schemas', () => {
-    const objectIdLike = { toString: () => appId };
-    const skillObjectIdLike = { toString: () => skillId };
-
-    const appInput: z.input<typeof GetHistoriesBodyRawSchema> = { appId: objectIdLike };
-    const skillInput: z.input<typeof GetHistoriesBodyRawSchema> = { skillId: skillObjectIdLike };
-
-    const parsedApp: z.output<typeof GetHistoriesBodyRawSchema> =
-      GetHistoriesBodyRawSchema.parse(appInput);
-    const parsedSkill: z.output<typeof GetHistoriesBodyRawSchema> =
-      GetHistoriesBodyRawSchema.parse(skillInput);
-
-    expect(parsedApp.appId).toBe(appId);
-    expect(parsedSkill.skillId).toBe(skillId);
-    expect(GetHistoriesBodyRawSchema.options.length).toBeGreaterThanOrEqual(3);
   });
 });

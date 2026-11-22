@@ -2,7 +2,12 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": true,
-    "tsBuildInfoFile": "./.tsc-out/tsconfig.typecheck.tsbuildinfo"
+    "tsBuildInfoFile": "./.tsc-out/tsconfig.typecheck.tsbuildinfo",
+    "paths": {
+      "@/*": ["./src/*"],
+      "#fastgpt/app/test/*": ["./test/*"],
+      "@test/*": ["../../test/*"]
+    }
   },
   "references": [
     { "path": "../../packages/global/tsconfig.composite.json" },

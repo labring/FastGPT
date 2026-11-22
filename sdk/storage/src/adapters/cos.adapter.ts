@@ -27,7 +27,7 @@ import {
 } from '../assert';
 
 export class CosStorageAdapter implements IStorage {
-  private readonly client: COS;
+  protected readonly client: COS;
 
   get bucketName(): string {
     return this.options.bucket;

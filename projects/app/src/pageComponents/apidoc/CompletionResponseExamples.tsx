@@ -13,21 +13,6 @@ type ExampleTarget = {
   version: CompletionExampleVersion;
   contentType: 'application/json' | 'text/event-stream';
 };
-type VueAppInstance = {
-  config: { idPrefix?: string };
-  mount: (element: Element) => void;
-  unmount: () => void;
-};
-
-type VueRuntimeModule = {
-  createApp: (rootComponent: { render: () => unknown }) => VueAppInstance;
-  h: (component: unknown, props?: Record<string, unknown>) => unknown;
-};
-
-type ScalarCodeBlockModule = {
-  ScalarCodeBlock: unknown;
-};
-
 /** 复用 Scalar 自带的代码块：由其负责高亮、复制和滚动，React 只负责挂载及回收 Vue 实例。 */
 const ScalarResponseCode = ({ content, language }: { content: string; language: string }) => {
   const codeRef = useRef<HTMLDivElement>(null);
@@ -37,21 +22,20 @@ const ScalarResponseCode = ({ content, language }: { content: string; language: 
     const element = codeRef.current;
     if (!element) return;
     let disposed = false;
-    let app: VueAppInstance | undefined;
+    let app: import('vue').App | undefined;
 
     // 延迟加载，避免 Vue 的 DOM 运行时和 Scalar 代码块参与服务端渲染。
-    void Promise.all([
-      import('vue' as string) as Promise<VueRuntimeModule>,
-      import('@scalar/components/code-block' as string) as Promise<ScalarCodeBlockModule>
-    ]).then(([{ createApp, h }, { ScalarCodeBlock }]) => {
-      if (disposed) return;
-      app = createApp({
-        render: () =>
-          h(ScalarCodeBlock, { prettyPrintedContent: content, lang: language, copy: 'always' })
-      });
-      app.config.idPrefix = `completion-code-${id}`;
-      app.mount(element);
-    });
+    void Promise.all([import('vue'), import('@scalar/components/code-block')]).then(
+      ([{ createApp, h }, { ScalarCodeBlock }]) => {
+        if (disposed) return;
+        app = createApp({
+          render: () =>
+            h(ScalarCodeBlock, { prettyPrintedContent: content, lang: language, copy: 'always' })
+        });
+        app.config.idPrefix = `completion-code-${id}`;
+        app.mount(element);
+      }
+    );
 
     return () => {
       disposed = true;

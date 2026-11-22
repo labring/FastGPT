@@ -7,6 +7,7 @@ import React, {
   useState,
   useContext
 } from 'react';
+import type { ECharts } from 'echarts';
 import { Box, HStack, IconButton, Skeleton } from '@chakra-ui/react';
 import json5 from 'json5';
 import { useMount } from 'ahooks';
@@ -17,27 +18,12 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { MarkdownRendererRuntimeContext } from '../utils/runtimeContext';
 import CodeBlockErrorCard from './CodeBlockErrorCard';
 
-type EChartsInstance = {
-  dispose: () => void;
-  setOption: (option: Record<string, unknown>) => void;
-  resize: () => void;
-  getDataURL: (opts: {
-    type: 'png' | 'jpeg' | 'svg';
-    pixelRatio?: number;
-    backgroundColor?: string;
-  }) => string;
-};
-
-type EChartsModule = {
-  init: (dom: HTMLElement) => EChartsInstance;
-};
-
 const EChartsCodeBlock = ({ code }: { code: string }) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
   const { showAnimation } = useContext(MarkdownRendererRuntimeContext);
   const chartRef = useRef<HTMLDivElement>(null);
-  const eChart = useRef<EChartsInstance>();
+  const eChart = useRef<ECharts>();
   const [hasRenderError, setHasRenderError] = useState(false);
 
   useMount(() => {
@@ -75,7 +61,7 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
 
     let isMounted = true;
 
-    (import('echarts' as string) as Promise<EChartsModule>)
+    import('echarts')
       .then((module) => {
         if (!isMounted || !chartRef.current) return;
 

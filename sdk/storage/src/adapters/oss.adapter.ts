@@ -43,7 +43,7 @@ type OssUrllib = {
 };
 
 export class OssStorageAdapter implements IStorage {
-  private readonly client: OSS;
+  protected readonly client: OSS;
 
   constructor(protected readonly options: IOssStorageOptions) {
     if (options.vendor !== 'oss') {

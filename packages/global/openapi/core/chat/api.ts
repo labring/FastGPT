@@ -11,7 +11,7 @@ import {
 } from '../../../support/permission/chat';
 import z from 'zod';
 import type { ZodOpenApiMetadata } from 'zod-openapi';
-import { createPaginationSchema, type PaginationType } from '../../api';
+import { createPaginationSchema } from '../../api';
 
 export const ChatGenerateStatusSchema = z
   .enum(ChatGenerateStatusEnum)
@@ -64,177 +64,6 @@ type ChatTargetInput = {
   outLinkAuthData?: unknown;
   [key: string]: unknown;
 };
-
-type ShapeOutput<T extends z.ZodRawShape> = [keyof T] extends [never]
-  ? unknown
-  : z.output<z.ZodObject<T>>;
-type ShapeInput<T extends z.ZodRawShape> = [keyof T] extends [never]
-  ? unknown
-  : z.input<z.ZodObject<T>>;
-type ObjectIdOutput = z.output<typeof ObjectIdSchema>;
-type ObjectIdInput = z.input<typeof ObjectIdSchema>;
-type OutLinkChatAuthOutput = z.output<typeof OutLinkChatAuthSchema>;
-type OutLinkChatAuthInput = z.input<typeof OutLinkChatAuthSchema>;
-type OutLinkChatAuthQueryInput = z.input<typeof OutLinkChatAuthQuerySchema>;
-type ChatSourceTypeOption = NonNullable<z.output<typeof ChatTargetInputShape.sourceType>>;
-type ChatSourceTypeInput = NonNullable<z.input<typeof ChatTargetInputShape.sourceType>>;
-export type ChatUnionSchema<TOutput, TInput = TOutput> = z.ZodType<TOutput, TInput> & {
-  readonly options: readonly z.ZodType[];
-};
-type ChatUserIdentityOutput = {
-  customUid?: z.output<typeof ChatCustomUidSchema>;
-  authProxy?: z.output<typeof ChatAuthProxySchema>;
-};
-type ChatUserIdentityInput = {
-  customUid?: z.input<typeof ChatCustomUidSchema>;
-  authProxy?: z.input<typeof ChatAuthProxySchema>;
-};
-type ChatUserIdentityQueryInput = {
-  customUid?: z.input<typeof ChatCustomUidSchema>;
-  authProxy?: z.input<typeof ChatAuthProxyQuerySchema>;
-};
-type NoChatUserIdentity = {
-  customUid?: never;
-  authProxy?: never;
-};
-type ChatTargetAppFields<TId = ObjectIdOutput, TSourceType = ChatSourceTypeOption> = {
-  appId: TId;
-  skillId?: never;
-  sourceType?: TSourceType;
-};
-type ChatTargetSkillFields<TId = ObjectIdOutput> = {
-  appId?: never;
-  skillId: TId;
-  sourceType?: never;
-};
-type ChatTargetAppApiKeyFields = {
-  appId?: never;
-  skillId?: never;
-  sourceType?: ChatSourceTypeEnum.app;
-  source?: never;
-  shareId?: never;
-  outLinkUid?: never;
-};
-type NoOutLinkAuthField = {
-  outLinkAuthData?: never;
-};
-type OutLinkShareFields<TOutLink> = {
-  appId?: never;
-  skillId?: never;
-  sourceType?: never;
-  outLinkAuthData: TOutLink;
-} & NoChatUserIdentity;
-type NoChatTargetFields = {
-  appId?: never;
-  skillId?: never;
-  sourceType?: never;
-  outLinkAuthData?: never;
-} & NoChatUserIdentity;
-type LegacyChatSourceFields<TOutLink, TId = ObjectIdOutput> = {
-  sourceType: ChatSourceTypeEnum;
-  sourceId: TId;
-  appId?: never;
-  skillId?: never;
-  outLinkAuthData?: TOutLink;
-};
-
-type ChatTargetUnion<TShape, TIdentity, TId = ObjectIdOutput, TSourceType = ChatSourceTypeOption> =
-  | (TShape & TIdentity & ChatTargetAppFields<TId, TSourceType>)
-  | (TShape & ChatTargetSkillFields<TId> & NoChatUserIdentity)
-  | (TShape & TIdentity & ChatTargetAppApiKeyFields);
-
-type ChatManagementTargetUnion<TShape, TId = ObjectIdOutput, TSourceType = ChatSourceTypeOption> =
-  | (TShape & ChatTargetAppFields<TId, TSourceType>)
-  | (TShape & ChatTargetSkillFields<TId>)
-  | (TShape & ChatTargetAppApiKeyFields);
-
-type OptionalChatTargetUnion<
-  TShape,
-  TIdentity,
-  TId = ObjectIdOutput,
-  TSourceType = ChatSourceTypeOption
-> = (TShape & NoChatTargetFields) | ChatTargetUnion<TShape, TIdentity, TId, TSourceType>;
-
-type OutLinkChatTargetUnion<
-  TShape,
-  TIdentity,
-  TOutLink,
-  TId = ObjectIdOutput,
-  TSourceType = ChatSourceTypeOption
-> =
-  | (TShape & TIdentity & ChatTargetAppFields<TId, TSourceType> & NoOutLinkAuthField)
-  | (TShape & ChatTargetSkillFields<TId> & NoChatUserIdentity & NoOutLinkAuthField)
-  | (TShape & OutLinkShareFields<TOutLink>)
-  | (TShape & TIdentity & ChatTargetAppApiKeyFields & NoOutLinkAuthField);
-
-type OptionalOutLinkChatTargetUnion<
-  TShape,
-  TIdentity,
-  TOutLink,
-  TId = ObjectIdOutput,
-  TSourceType = ChatSourceTypeOption
-> =
-  | (TShape & NoChatTargetFields)
-  | OutLinkChatTargetUnion<TShape, TIdentity, TOutLink, TId, TSourceType>;
-
-type PaginationInputFields =
-  | { offset: number | string; pageNum?: never; pageSize?: number | string }
-  | { offset?: never; pageNum?: number | string; pageSize?: number | string };
-
-type ChatSourceUnion<
-  TShape,
-  TIdentity,
-  TOutLink,
-  TId = ObjectIdOutput,
-  TSourceType = ChatSourceTypeOption
-> =
-  | (TShape & TIdentity & LegacyChatSourceFields<TOutLink, TId>)
-  | (TShape &
-      TIdentity &
-      ChatTargetAppFields<TId, TSourceType> &
-      NoOutLinkAuthField & { sourceId?: never })
-  | (TShape &
-      ChatTargetSkillFields<TId> &
-      NoChatUserIdentity &
-      NoOutLinkAuthField & { sourceId?: never })
-  | (TShape & OutLinkShareFields<TOutLink> & { sourceId?: never })
-  | (TShape & TIdentity & ChatTargetAppApiKeyFields & NoOutLinkAuthField & { sourceId?: never });
-
-type TransformedChatTargetOutput<T extends z.ZodRawShape> = Omit<
-  ShapeOutput<T>,
-  'appId' | 'skillId' | 'sourceType'
-> &
-  ChatUserIdentityOutput & {
-    sourceType: ChatSourceTypeEnum;
-    sourceId: string | undefined;
-  };
-
-type TransformedChatAuthTargetOutput<T extends z.ZodRawShape> = Omit<
-  ShapeOutput<T>,
-  'appId' | 'skillId' | 'sourceType' | 'outLinkAuthData'
-> &
-  ChatUserIdentityOutput & {
-    outLinkAuthData?: OutLinkChatAuthProps;
-    sourceType: ChatSourceTypeEnum;
-    sourceId: string | undefined;
-  };
-
-type TransformedOptionalChatTargetOutput<T extends z.ZodRawShape> = Omit<
-  ShapeOutput<T>,
-  'appId' | 'skillId' | 'sourceType' | 'outLinkAuthData'
-> &
-  ChatUserIdentityOutput & {
-    outLinkAuthData?: OutLinkChatAuthProps;
-  } & (
-    | {
-        sourceType: ChatSourceTypeEnum;
-        sourceId: string | undefined;
-      }
-    | {
-        sourceType: undefined;
-        sourceId: undefined;
-      }
-  );
 
 export type ChatTargetInputType =
   | {
@@ -594,7 +423,8 @@ const createNoChatTargetSchema = <T extends z.ZodRawShape>(shape: T) =>
       }
     } satisfies ZodOpenApiMetadata);
 
-const buildChatTargetInputSchema = <T extends z.ZodRawShape>(
+/** 资源 target 共用具名 union，兼容 skillId 优先；运行时转换为 sourceType/sourceId。 */
+export const createChatTargetInputSchema = <T extends z.ZodRawShape>(
   shape: T,
   { allowAppApiKey = true }: { allowAppApiKey?: boolean } = {}
 ) => {
@@ -608,30 +438,12 @@ const buildChatTargetInputSchema = <T extends z.ZodRawShape>(
   ]);
 };
 
-/** 资源 target 共用具名 union，兼容 skillId 优先；运行时转换为 sourceType/sourceId。 */
-export const createChatTargetInputSchema = <T extends z.ZodRawShape>(
-  shape: T,
-  options: { allowAppApiKey?: boolean } = {}
-): ChatUnionSchema<
-  ChatTargetUnion<ShapeOutput<T>, ChatUserIdentityOutput>,
-  ChatTargetUnion<ShapeInput<T>, ChatUserIdentityInput, ObjectIdInput, ChatSourceTypeInput>
-> => buildChatTargetInputSchema(shape, options) as any;
-
 /** 资源管理接口只解析目标，不解析会话使用者身份。 */
-export const createChatManagementTargetInputSchema = <T extends z.ZodRawShape>(
-  shape: T
-): ChatUnionSchema<
-  ChatManagementTargetUnion<ShapeOutput<T>>,
-  ChatManagementTargetUnion<ShapeInput<T>, ObjectIdInput, ChatSourceTypeInput>
-> => z.union(createChatTargetBranches(z.object({ ...ChatTargetInputShape, ...shape }))) as any;
+export const createChatManagementTargetInputSchema = <T extends z.ZodRawShape>(shape: T) =>
+  z.union(createChatTargetBranches(z.object({ ...ChatTargetInputShape, ...shape })));
 
 /** 不含外链的 Query 同样用 JSON 字符串传递代理身份。 */
-export const createChatTargetQuerySchema = <T extends z.ZodRawShape>(
-  shape: T
-): ChatUnionSchema<
-  ChatTargetUnion<ShapeOutput<T>, ChatUserIdentityOutput>,
-  ChatTargetUnion<ShapeInput<T>, ChatUserIdentityQueryInput, ObjectIdInput, ChatSourceTypeInput>
-> => {
+export const createChatTargetQuerySchema = <T extends z.ZodRawShape>(shape: T) => {
   const [app, skill, appKey] = createChatTargetBranches(
     z.object({
       ...ChatUserIdentityInputShape,
@@ -644,108 +456,59 @@ export const createChatTargetQuerySchema = <T extends z.ZodRawShape>(
     withChatApiIdentity(app, { query: true }),
     skill.extend(NoChatUserIdentityShape).meta(skill.meta() ?? {}),
     withChatApiIdentity(appKey, { query: true, showProxy: false })
-  ]) as any;
+  ]);
 };
 
 /** 用于可以直接按资源权限访问、也可以携带会话上下文的接口。 */
-export const createOptionalChatTargetInputSchema = <T extends z.ZodRawShape>(
-  shape: T
-): ChatUnionSchema<
-  OptionalChatTargetUnion<ShapeOutput<T>, ChatUserIdentityOutput>,
-  OptionalChatTargetUnion<ShapeInput<T>, ChatUserIdentityInput, ObjectIdInput, ChatSourceTypeInput>
-> =>
-  z.union([createNoChatTargetSchema(shape), ...buildChatTargetInputSchema(shape).options]) as any;
-
-const buildOutLinkChatTargetInputSchema = <T extends z.ZodRawShape>(
-  shape: T,
-  { requiredIdentityFields = [] }: { requiredIdentityFields?: string[] } = {}
-) => {
-  const [app, skill, share, appKey] = createOutLinkChatTargetBranches(shape, OutLinkChatAuthSchema);
-  return z.union([
-    withChatApiIdentity(app, { requiredIdentityFields }),
-    skill,
-    share,
-    withChatApiIdentity(appKey, { showProxy: false, requiredIdentityFields })
-  ]);
-};
+export const createOptionalChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) =>
+  z.union([createNoChatTargetSchema(shape), ...createChatTargetInputSchema(shape).options]);
 
 /** 外链、Skill、App 按原优先级选择，应用 Key 可省略目标；登录态可与外链数据共存。 */
 export const createOutLinkChatTargetInputSchema = <T extends z.ZodRawShape>(
   shape: T,
-  options: { requiredIdentityFields?: string[] } = {}
-): ChatUnionSchema<
-  OutLinkChatTargetUnion<ShapeOutput<T>, ChatUserIdentityOutput, OutLinkChatAuthOutput>,
-  OutLinkChatTargetUnion<
-    ShapeInput<T>,
-    ChatUserIdentityInput,
-    OutLinkChatAuthInput,
-    ObjectIdInput,
-    ChatSourceTypeInput
-  >
-> => buildOutLinkChatTargetInputSchema(shape, options) as any;
+  { requiredIdentityFields = [] }: { requiredIdentityFields?: string[] } = {}
+) =>
+  (() => {
+    const [app, skill, share, appKey] = createOutLinkChatTargetBranches(
+      shape,
+      OutLinkChatAuthSchema
+    );
+    return z.union([
+      withChatApiIdentity(app, { requiredIdentityFields }),
+      skill,
+      share,
+      withChatApiIdentity(appKey, { showProxy: false, requiredIdentityFields })
+    ]);
+  })();
 
 /** Query 使用 JSON 字符串传输外链身份，解析后仍复用对象身份与相同的分支优先级。 */
-export const createOutLinkChatTargetQuerySchema = <T extends z.ZodRawShape>(
-  shape: T
-): ChatUnionSchema<
-  OutLinkChatTargetUnion<ShapeOutput<T>, ChatUserIdentityOutput, OutLinkChatAuthOutput>,
-  OutLinkChatTargetUnion<
-    ShapeInput<T>,
-    ChatUserIdentityQueryInput,
-    OutLinkChatAuthQueryInput,
-    ObjectIdInput,
-    ChatSourceTypeInput
-  >
-> => {
-  const [app, skill, share, appKey] = createOutLinkChatTargetBranches(
-    shape,
-    OutLinkChatAuthQuerySchema,
-    true
-  );
-  return z.union([
-    withChatApiIdentity(app, { query: true }),
-    skill,
-    share,
-    withChatApiIdentity(appKey, { query: true, showProxy: false })
-  ]) as any;
-};
+export const createOutLinkChatTargetQuerySchema = <T extends z.ZodRawShape>(shape: T) =>
+  (() => {
+    const [app, skill, share, appKey] = createOutLinkChatTargetBranches(
+      shape,
+      OutLinkChatAuthQuerySchema,
+      true
+    );
+    return z.union([
+      withChatApiIdentity(app, { query: true }),
+      skill,
+      share,
+      withChatApiIdentity(appKey, { query: true, showProxy: false })
+    ]);
+  })();
 
 /** 资源直接访问或会话上下文；错误的显式鉴权数据不会降级为直接访问。 */
 export const createOptionalOutLinkChatTargetInputSchema = <T extends z.ZodRawShape>(
   shape: T,
   options: { requiredIdentityFields?: string[] } = {}
-): ChatUnionSchema<
-  OptionalOutLinkChatTargetUnion<ShapeOutput<T>, ChatUserIdentityOutput, OutLinkChatAuthOutput>,
-  OptionalOutLinkChatTargetUnion<
-    ShapeInput<T>,
-    ChatUserIdentityInput,
-    OutLinkChatAuthInput,
-    ObjectIdInput,
-    ChatSourceTypeInput
-  >
-> =>
+) =>
   z.union([
     createNoChatTargetSchema(shape),
-    ...buildOutLinkChatTargetInputSchema(shape, options).options
-  ]) as any;
+    ...createOutLinkChatTargetInputSchema(shape, options).options
+  ]);
 
 /** 先选择会话身份，再展示分页方式及参数，最后展示业务筛选；保留身份优先级和 offset 优先规则。 */
-export const createPaginatedChatTargetInputSchema = <T extends z.ZodRawShape>(
-  shape: T
-): ChatUnionSchema<
-  OutLinkChatTargetUnion<
-    ShapeOutput<T> & PaginationType,
-    ChatUserIdentityOutput,
-    OutLinkChatAuthOutput
-  >,
-  OutLinkChatTargetUnion<
-    ShapeInput<T> & PaginationInputFields,
-    ChatUserIdentityInput,
-    OutLinkChatAuthInput,
-    ObjectIdInput,
-    ChatSourceTypeInput
-  >
-> => {
+export const createPaginatedChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) => {
   const [app, skill, outLink, appApiKey] = createOutLinkChatTargetBranches(
     {},
     OutLinkChatAuthSchema
@@ -763,7 +526,7 @@ export const createPaginatedChatTargetInputSchema = <T extends z.ZodRawShape>(
       z.intersection(appApiKeyFilters, createPaginationSchema()).meta(appApiKey.meta() ?? {}),
       { showProxy: false }
     )
-  ]) as any;
+  ]);
 };
 
 /**
@@ -795,54 +558,23 @@ export const createChatTargetQueryParameters = (schema: z.ZodType) => {
  * OpenAPI path 不应直接注册该 schema；它会 transform 输出为内部
  * `sourceType/sourceId`，用于 API handler 之后的业务层调用。
  */
-export const withChatTarget = <T extends z.ZodRawShape>(
-  shape: T
-): z.ZodType<
-  TransformedChatTargetOutput<T>,
-  ChatTargetUnion<ShapeInput<T>, ChatUserIdentityInput, ObjectIdInput, ChatSourceTypeInput>
-> => createChatTargetInputSchema(shape).transform(transformChatTargetInput) as any;
+export const withChatTarget = <T extends z.ZodRawShape>(shape: T) =>
+  createChatTargetInputSchema(shape).transform(transformChatTargetInput);
 
 /**
  * 少数允许缺省 chat target 的接口使用。必填 target 的标准 chat API
  * 不能使用该 helper，避免绕过 chat target 互斥校验。
  */
-export const withOptionalChatTarget = <T extends z.ZodRawShape>(
-  shape: T
-): z.ZodType<
-  TransformedOptionalChatTargetOutput<T>,
-  OptionalChatTargetUnion<ShapeInput<T>, ChatUserIdentityInput, ObjectIdInput, ChatSourceTypeInput>
-> => createOptionalChatTargetInputSchema(shape).transform(transformOptionalChatTargetInput) as any;
+export const withOptionalChatTarget = <T extends z.ZodRawShape>(shape: T) =>
+  createOptionalChatTargetInputSchema(shape).transform(transformOptionalChatTargetInput);
 
 /** 包含外链鉴权字段的必填 chat target runtime schema helper。 */
-export const withOutLinkChatTarget = <T extends z.ZodRawShape>(
-  shape: T
-): z.ZodType<
-  TransformedChatAuthTargetOutput<T>,
-  OutLinkChatTargetUnion<
-    ShapeInput<T>,
-    ChatUserIdentityInput,
-    OutLinkChatAuthInput,
-    ObjectIdInput,
-    ChatSourceTypeInput
-  >
-> => createOutLinkChatTargetInputSchema(shape).transform(transformChatAuthTargetInput) as any;
+export const withOutLinkChatTarget = <T extends z.ZodRawShape>(shape: T) =>
+  createOutLinkChatTargetInputSchema(shape).transform(transformChatAuthTargetInput);
 
 /** 包含外链鉴权字段的可选 chat target runtime schema helper。 */
-export const withOptionalOutLinkChatTarget = <T extends z.ZodRawShape>(
-  shape: T
-): z.ZodType<
-  TransformedOptionalChatTargetOutput<T>,
-  OptionalOutLinkChatTargetUnion<
-    ShapeInput<T>,
-    ChatUserIdentityInput,
-    OutLinkChatAuthInput,
-    ObjectIdInput,
-    ChatSourceTypeInput
-  >
-> =>
-  createOptionalOutLinkChatTargetInputSchema(shape).transform(
-    transformOptionalChatAuthTargetInput
-  ) as any;
+export const withOptionalOutLinkChatTarget = <T extends z.ZodRawShape>(shape: T) =>
+  createOptionalOutLinkChatTargetInputSchema(shape).transform(transformOptionalChatAuthTargetInput);
 
 /* Recently Used Apps */
 export const GetRecentlyUsedAppsResponseSchema = z.array(
@@ -855,18 +587,7 @@ export const GetRecentlyUsedAppsResponseSchema = z.array(
 export type GetRecentlyUsedAppsResponseType = z.infer<typeof GetRecentlyUsedAppsResponseSchema>;
 
 /** 兼容旧 sourceType/sourceId 请求，同时公开与其他对话接口一致的应用 Key union。 */
-export const createChatSourceInputSchema = <T extends z.ZodRawShape>(
-  shape: T
-): ChatUnionSchema<
-  ChatSourceUnion<ShapeOutput<T>, ChatUserIdentityOutput, OutLinkChatAuthOutput>,
-  ChatSourceUnion<
-    ShapeInput<T>,
-    ChatUserIdentityInput,
-    OutLinkChatAuthInput,
-    ObjectIdInput,
-    ChatSourceTypeInput
-  >
-> => {
+export const createChatSourceInputSchema = <T extends z.ZodRawShape>(shape: T) => {
   const [app, skill, share, appKey] = createOutLinkChatTargetBranches(shape, OutLinkChatAuthSchema);
   const noLegacyId = { sourceId: z.never().optional() };
   return z.union([
@@ -897,7 +618,7 @@ export const createChatSourceInputSchema = <T extends z.ZodRawShape>(
     skill.extend(noLegacyId).meta(skill.meta() ?? {}),
     share.extend(noLegacyId).meta(share.meta() ?? {}),
     withChatApiIdentity(appKey.extend(noLegacyId).meta(appKey.meta() ?? {}), { showProxy: false })
-  ]) as any;
+  ]);
 };
 
 /** 只在 API 边界保留旧 source ID 协议；内部始终返回同一组标准来源字段。 */

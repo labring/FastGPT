@@ -1,41 +1,15 @@
 import { Box } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import { getScalarOpenApiReferenceConfig } from '@fastgpt/global/openapi/reference';
-import { useRef, type ComponentType } from 'react';
+import { useRef } from 'react';
 import { CompletionResponseExamples } from './CompletionResponseExamples';
 import { CompletionEventExamples } from './CompletionEventExamples';
-import { createUnionParameterCardPlugin, type VuePluginRuntime } from './UnionParameterCard';
-
-type ScalarApiReferenceModule = {
-  ApiReferenceReact: ComponentType<{ configuration: Record<string, unknown> }>;
-};
+import { createUnionParameterCardPlugin } from './UnionParameterCard';
 
 // 动态加载 @scalar/api-reference-react，避免其 CSS side-effect 在 Node 端
 // (next build 的 collecting page data 阶段) 被解析导致 ERR_UNKNOWN_FILE_EXTENSION。
 const ApiReferenceReact = dynamic(
-  () =>
-    Promise.all([
-      import('@scalar/api-reference-react' as string) as Promise<ScalarApiReferenceModule>,
-      import('vue' as string) as Promise<VuePluginRuntime>
-    ]).then(([mod, vueMod]) => {
-      const unionPlugin = createUnionParameterCardPlugin(vueMod);
-      const ScalarApiReference = mod.ApiReferenceReact;
-      return function ScalarWithPlugins({
-        configuration
-      }: {
-        configuration: Record<string, unknown>;
-      }) {
-        const existingPlugins = Array.isArray(configuration.plugins) ? configuration.plugins : [];
-        return (
-          <ScalarApiReference
-            configuration={{
-              ...configuration,
-              plugins: [...existingPlugins, unionPlugin]
-            }}
-          />
-        );
-      };
-    }),
+  () => Promise.all([import('@scalar/api-reference-react')]).then(([mod]) => mod.ApiReferenceReact),
   { ssr: false }
 );
 
@@ -284,7 +258,12 @@ export const ScalarOpenApiPage = ({
 
   return (
     <Box ref={rootRef} w="100vw" h="100vh" overflow="auto">
-      <ApiReferenceReact configuration={configuration} />
+      <ApiReferenceReact
+        configuration={{
+          ...configuration,
+          plugins: [...configuration.plugins, createUnionParameterCardPlugin]
+        }}
+      />
       <CompletionResponseExamples rootRef={rootRef} />
       <CompletionEventExamples rootRef={rootRef} />
     </Box>
