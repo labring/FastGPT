@@ -16,6 +16,7 @@ import {
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { findAppsPage } from '@fastgpt/service/core/app/entity';
 import { getInteractiveAppIdSet } from '@fastgpt/service/core/app/version/controller';
+import { getUnavailableMcpAppIds } from '@fastgpt/service/core/app/mcpOAuth/credential';
 import { AppRolePerMap } from '@fastgpt/global/support/permission/app/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
@@ -266,7 +267,10 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
     teamId,
     resourceIds: myApps.map((app) => String(app._id))
   });
-  const interactiveAppIds = await getInteractiveAppIdSet(myApps);
+  const [interactiveAppIds, unavailableMcpIds] = await Promise.all([
+    getInteractiveAppIdSet(myApps),
+    getUnavailableMcpAppIds(myApps)
+  ]);
   const roleListMap = new Map<string, (typeof pageRoleList)[number][]>();
   pageRoleList.forEach((item) => {
     const resourceId = String(item.resourceId);
@@ -311,6 +315,7 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
       permission: Per,
       private: privateApp,
       hasInteractiveNode: interactiveAppIds.has(String(app._id)),
+      ...(unavailableMcpIds.has(String(app._id)) ? { mcpAuthorizationRequired: true } : {}),
       ...(folderAccessModeMap.has(String(app._id))
         ? { folderAccessMode: folderAccessModeMap.get(String(app._id)) }
         : {})

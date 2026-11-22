@@ -46,12 +46,17 @@ const SelectedToolCardList = React.memo(function SelectedToolCardList({
       {selectedTools.map((item) => {
         const status = item.status ?? item.pluginData?.status;
         const runtimeStatus = getAgentToolRuntimeStatus(item);
-        const toolError = getToolErrorMessage({
-          status,
-          error: item.pluginData?.error,
-          t
-        });
-        const hasToolError = runtimeStatus === 'invalid' || runtimeStatus === 'offline';
+        const toolError = item.mcpAuthorizationRequired
+          ? t('common:mcpOAuth.authorization_required')
+          : getToolErrorMessage({
+              status,
+              error: item.pluginData?.error,
+              t
+            });
+        const hasToolError =
+          item.mcpAuthorizationRequired ||
+          runtimeStatus === 'invalid' ||
+          runtimeStatus === 'offline';
         const isUnconfigured = runtimeStatus === 'waitingForConfig';
         const isDebugTool = isDebugToolSource(item.source);
         const isSoonOffline = status === PluginStatusEnum.SoonOffline;

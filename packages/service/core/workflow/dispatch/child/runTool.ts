@@ -441,6 +441,9 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         const url = mcpToolSet.url ?? referencedTool.url;
         const headerSecret = mcpToolSet.headerSecret ?? referencedTool.headerSecret;
         if (!url) throw new Error('MCP tool set URL is missing');
+        if (mcpToolSet.authMode === 'oauth' && !workflow.nodes[0]?.nodeId) {
+          throw new Error('MCP OAuth tool set is missing the workflow node context');
+        }
         const oauth =
           mcpToolSet.authMode === 'oauth' && workflow.nodes[0]?.nodeId
             ? { appId: parentId, nodeId: String(workflow.nodes[0].nodeId) }

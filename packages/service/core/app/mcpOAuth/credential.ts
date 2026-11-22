@@ -391,6 +391,40 @@ export const getMcpOAuthStatus = async ({
   return { version, node, toolSet, status };
 };
 
+/** 引用方只读取已发布工具集的可用性，不传递凭据，也不在列举工具时触发刷新。 */
+export function needsMcpAuthorization(version: Pick<AppVersionSchemaType, 'nodes'>) {
+  return getToolSetNodes(version).some((node) => {
+    const toolSet = getNodeMcpToolSet(node);
+    if (toolSet?.authMode !== 'oauth') return false;
+    const status = deriveMcpOAuthStatus({ authMode: 'oauth', toolSet, oauth: toolSet.oauth });
+    return !status.authorized && status.state !== McpOAuthStatusEnum.refreshing;
+  });
+}
+
+/** 仅为本页有权限的 MCP 应用匹配其发布版本。 */
+export async function getUnavailableMcpAppIds(
+  apps: { _id: unknown; type: AppTypeEnum; publishedVersionId?: unknown }[]
+) {
+  const sources = apps.filter(
+    (app) => app.type === AppTypeEnum.mcpToolSet && app.publishedVersionId
+  );
+  if (!sources.length) return new Set<string>();
+  const pointers = new Map(sources.map((app) => [String(app._id), String(app.publishedVersionId)]));
+  const versions = await MongoAppVersion.find(
+    { _id: { $in: [...pointers.values()] } },
+    'appId nodes.flowNodeType nodes.nodeId nodes.toolConfig.mcpToolSet.authMode nodes.toolConfig.mcpToolSet.url nodes.toolConfig.mcpToolSet.oauth'
+  ).lean();
+  return new Set(
+    versions
+      .filter(
+        (version) =>
+          pointers.get(String(version.appId)) === String(version._id) &&
+          needsMcpAuthorization(version)
+      )
+      .map((version) => String(version.appId))
+  );
+}
+
 /**
  * 用户保存时的 OAuth 合并（v2.4 §7.3）。纯函数，便于 I4 的 update 复用。
  */

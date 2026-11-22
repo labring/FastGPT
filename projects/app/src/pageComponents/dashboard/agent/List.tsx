@@ -265,9 +265,14 @@ const List = () => {
                 </MyTooltip>
               )
             ) : (
-              <Box mr={-5}>
+              <Flex mr={-5} gap={1} align="center">
+                {app.mcpAuthorizationRequired && (
+                  <Box px={1.5} borderRadius="sm" bg="orange.50" color="orange.600" fontSize="xs">
+                    {t('common:mcpOAuth.state.pending_authorization')}
+                  </Box>
+                )}
                 <AppTypeTag type={app.type} />
-              </Box>
+              </Flex>
             )}
           </Box>
         </Grid>

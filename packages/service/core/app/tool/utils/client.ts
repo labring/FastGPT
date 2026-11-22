@@ -53,6 +53,7 @@ import { projectExternalVariableInput } from '@fastgpt/global/common/workflow/in
 import { Types } from 'mongoose';
 import { getHTTPToolList } from '../../http';
 import { getMCPChildren } from '../../mcp';
+import { needsMcpAuthorization } from '../../mcpOAuth/credential';
 import { MongoApp } from '../../schema';
 import { getAppVersionById, checkIsLatestVersion } from '../../version/controller';
 import { SystemToolRepo } from '../systemTool/systemTool.repo';
@@ -69,6 +70,7 @@ import {
 } from '../../../plugin/teamPluginPolicy';
 
 type AppToolType = WorkflowTemplateType & {
+  mcpAuthorizationRequired?: boolean;
   type?: AppTypeEnum;
   status?: PluginStatusType;
   // FastGPT-plugin tool
@@ -316,6 +318,8 @@ export async function getClientToolPreviewNode({
           id: String(item._id),
           teamId: String(item.teamId),
           type: item.type,
+          mcpAuthorizationRequired:
+            item.type === AppTypeEnum.mcpToolSet && needsMcpAuthorization(version),
           name: item.name,
           avatar: item.avatar,
           intro: item.intro,
@@ -344,19 +348,21 @@ export async function getClientToolPreviewNode({
         const item = await MongoApp.findById(parentId).lean();
         if (!item) return Promise.reject(PluginErrEnum.unExist);
 
+        const version = await getAppVersionById({ appId: parentId, app: item });
         const tool = await (async () => {
           const matchTool = <T extends { name: string }>(tools: T[]) =>
             getToolNameCandidates(toolName)
               .map((name) => tools.find((item) => item.name === name))
               .find(Boolean);
 
-          return matchTool(await getMCPChildren(item));
+          return matchTool(await getMCPChildren(item, version));
         })();
         if (!tool) return Promise.reject(PluginErrEnum.unExist);
         return {
           avatar: item.avatar,
           id: appId,
           name: tool.name,
+          mcpAuthorizationRequired: needsMcpAuthorization(version),
           templateType: FlowNodeTemplateTypeEnum.tools,
           workflow: {
             nodes: [
@@ -487,6 +493,7 @@ export async function getClientToolPreviewNode({
     return {
       id: getNanoid(),
       pluginId: app.id,
+      ...(app.mcpAuthorizationRequired ? { mcpAuthorizationRequired: true } : {}),
       source:
         isDebugToolSource(toolSource) || isTeamPluginSource(toolSource) ? toolSource : undefined,
       flowNodeType,

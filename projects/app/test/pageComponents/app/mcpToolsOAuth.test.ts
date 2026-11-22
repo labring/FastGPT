@@ -351,9 +351,10 @@ describe('内联节点隔离与前端硬性检查', () => {
       expect(source).not.toContain("value: 'dcr'");
       expect(source).not.toContain('client_mode_cimd');
       expect(source).not.toContain('client_mode_dcr');
-      expect(source).toContain("{ title: 'mcpOAuth.client_mode_auto', value: 'auto' }");
-      expect(source).toContain("{ title: 'mcpOAuth.client_mode_manual', value: 'manual' }");
+      expect(source).toContain('<McpRegistrationSwitch');
     }
+    const controls = readSource('components/core/app/McpAuthControls.tsx');
+    expect(controls).toContain("event.target.checked ? 'auto' : 'manual'");
   });
 
   it('去授权前保存、回调后拉取工具并落库', () => {

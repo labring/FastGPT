@@ -123,6 +123,7 @@ export const buildSystemFrontendConfig = (
       isValidServiceBaseUrl(instanceConfig.subservice.mcp.sseProxyUrl)
         ? instanceConfig?.subservice?.mcp?.sseProxyUrl?.trim()
         : undefined,
+    mcpOAuthEnabled: serviceEnv.MCP_OAUTH_ENABLED,
     codeSandboxEnabled:
       instanceConfig?.subservice?.codeSandbox?.enabled &&
       typeof instanceConfig?.subservice?.codeSandbox?.url === 'string' &&

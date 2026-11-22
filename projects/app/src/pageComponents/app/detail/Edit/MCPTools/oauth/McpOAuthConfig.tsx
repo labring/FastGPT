@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Box, Button, Flex, Grid, Input } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import { McpAuthTabs, McpRegistrationSwitch } from '@/components/core/app/McpAuthControls';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
@@ -165,12 +165,11 @@ const McpOAuthConfig = ({
     isMcpOAuthManualClientRequiredCode(status?.lastError?.code);
   const state = status?.state;
   const presentation = getMcpOAuthStatePresentation(state);
-  const showManualForm =
-    shouldShowMcpOAuthManualForm({
-      clientMode,
-      errorCode: startErrorCode ?? status?.lastError?.code,
-      manuallyOpened: manualOpen
-    }) || presentation.manualForm;
+  const showManualForm = shouldShowMcpOAuthManualForm({
+    clientMode,
+    errorCode: startErrorCode ?? callbackErrorCode ?? status?.lastError?.code,
+    manuallyOpened: manualOpen
+  });
 
   const startErrorMessage = getMcpOAuthErrorCopy(startErrorCode, t as McpOAuthTranslate);
   const callbackErrorMessage = getMcpOAuthErrorCopy(callbackErrorCode, t as McpOAuthTranslate);
@@ -308,46 +307,28 @@ const McpOAuthConfig = ({
   };
 
   const isReauth = presentation.startActionKey === 'mcpOAuth.action_reauth' || !!callbackErrorCode;
-  const canStart = canManage && (!status || presentation.showStart) && (status?.canStart ?? true);
+  const canStart =
+    canManage &&
+    (state === 'headers' || ((!status || presentation.showStart) && (status?.canStart ?? true)));
   const canDisconnect =
     canManage && presentation.showDisconnect && (status?.canDisconnect ?? false);
   const canResetClient = canManage && presentation.showReset && (status?.canResetClient ?? false);
   const clientSource = status?.clientSource;
-  const issuer = status?.issuer;
 
   return (
     <Box mt={5} pt={5} borderTop={'1px solid'} borderColor={'myGray.150'}>
-      <Flex alignItems={'center'}>
-        <MyIcon name={'key'} w={'20px'} />
-        <FormLabel ml={2} flex={1}>
-          {t('mcpOAuth.auth_mode')}
-        </FormLabel>
-        <RadioGroup
-          list={[
-            { title: 'mcpOAuth.auth_mode_headers', value: 'headers' },
-            { title: 'mcpOAuth.auth_mode_oauth', value: 'oauth' }
-          ]}
-          value={authMode}
-          onChange={(value) => setAuthMode(value as 'headers' | 'oauth')}
-        />
-      </Flex>
-
+      <McpAuthTabs value={authMode} onChange={setAuthMode} />
       {authMode === 'oauth' && (
-        <Box mt={4} px={4} py={4} bg={'myGray.50'} borderRadius={'md'}>
-          <Flex alignItems={'center'} wrap={'wrap'} gap={2}>
-            <Box fontSize={'sm'} color={'myGray.700'} fontWeight={'medium'}>
-              {t('mcpOAuth.client_mode')}
-            </Box>
-            <RadioGroup
-              list={[
-                { title: 'mcpOAuth.client_mode_auto', value: 'auto' },
-                { title: 'mcpOAuth.client_mode_manual', value: 'manual' }
-              ]}
-              value={clientMode}
-              onChange={(value) => setClientMode(value as McpOAuthClientMode)}
-            />
-          </Flex>
-
+        <Box mt={4}>
+          <McpRegistrationSwitch
+            value={clientMode}
+            onChange={(mode) => {
+              setClientMode(mode);
+              setManualOpen(false);
+              setStartErrorCode(null);
+              clearCallbackError();
+            }}
+          />
           {clientMode === 'auto' && clientSource && (
             <Box mt={3} fontSize={'xs'} color={'myGray.500'}>
               {t('mcpOAuth.auto_client_source_result', {
@@ -355,16 +336,6 @@ const McpOAuthConfig = ({
               })}
             </Box>
           )}
-
-          <Box mt={4}>
-            <Field label={t('mcpOAuth.issuer')}>{issuer || '-'}</Field>
-            <Field label={t('mcpOAuth.client_source')}>
-              {clientSource ? t(getMcpOAuthClientSourceI18nKey(clientSource)) : '-'}
-            </Field>
-            <Field label={t('mcpOAuth.has_client_secret')}>
-              {status ? (status.hasClientSecret ? t('mcpOAuth.yes') : t('mcpOAuth.no')) : '-'}
-            </Field>
-          </Box>
 
           <Box mt={4}>
             <Flex alignItems={'center'} gap={2}>
@@ -523,34 +494,41 @@ const McpOAuthConfig = ({
                   {t(presentation.hintKey)}
                 </Box>
               </Flex>
-              <Field label={t('mcpOAuth.status_state')}>
-                {status ? t(getMcpOAuthStateI18nKey(status.state)) : '-'}
-              </Field>
-              <Field label={t('mcpOAuth.issuer')}>{status?.issuer || '-'}</Field>
-              <Field label={t('mcpOAuth.resource')}>{status?.resource || '-'}</Field>
-              <Field label={t('mcpOAuth.status_scope')}>{status?.scope || '-'}</Field>
-              <Field label={t('mcpOAuth.status_expires_at')}>
-                {formatMcpOAuthTime(status?.expiresAt)}
-              </Field>
-              <Field label={t('mcpOAuth.status_refresh_due_at')}>
-                {formatMcpOAuthTime(status?.refreshDueAt)}
-              </Field>
-              {status?.lastError && (
-                <Field label={t('mcpOAuth.status_last_error')}>
-                  <Box color={'red.500'}>
-                    {getMcpOAuthErrorCopy(status.lastError.code, t as McpOAuthTranslate).message}
-                  </Box>
-                </Field>
+              {showAdvanced && (
+                <>
+                  <Field label={t('mcpOAuth.status_state')}>
+                    {status ? t(getMcpOAuthStateI18nKey(status.state)) : '-'}
+                  </Field>
+                  <Field label={t('mcpOAuth.issuer')}>{status?.issuer || '-'}</Field>
+                  <Field label={t('mcpOAuth.resource')}>{status?.resource || '-'}</Field>
+                  <Field label={t('mcpOAuth.status_scope')}>{status?.scope || '-'}</Field>
+                  <Field label={t('mcpOAuth.status_expires_at')}>
+                    {formatMcpOAuthTime(status?.expiresAt)}
+                  </Field>
+                  <Field label={t('mcpOAuth.status_refresh_due_at')}>
+                    {formatMcpOAuthTime(status?.refreshDueAt)}
+                  </Field>
+                  {status?.lastError && (
+                    <Field label={t('mcpOAuth.status_last_error')}>
+                      <Box color={'red.500'}>
+                        {
+                          getMcpOAuthErrorCopy(status.lastError.code, t as McpOAuthTranslate)
+                            .message
+                        }
+                      </Box>
+                    </Field>
+                  )}
+                  <Field label={t('mcpOAuth.status_can_start')}>
+                    {status ? (status.canStart ? t('mcpOAuth.yes') : t('mcpOAuth.no')) : '-'}
+                  </Field>
+                  <Field label={t('mcpOAuth.status_can_disconnect')}>
+                    {status ? (status.canDisconnect ? t('mcpOAuth.yes') : t('mcpOAuth.no')) : '-'}
+                  </Field>
+                  <Field label={t('mcpOAuth.status_can_reset_client')}>
+                    {status ? (status.canResetClient ? t('mcpOAuth.yes') : t('mcpOAuth.no')) : '-'}
+                  </Field>
+                </>
               )}
-              <Field label={t('mcpOAuth.status_can_start')}>
-                {status ? (status.canStart ? t('mcpOAuth.yes') : t('mcpOAuth.no')) : '-'}
-              </Field>
-              <Field label={t('mcpOAuth.status_can_disconnect')}>
-                {status ? (status.canDisconnect ? t('mcpOAuth.yes') : t('mcpOAuth.no')) : '-'}
-              </Field>
-              <Field label={t('mcpOAuth.status_can_reset_client')}>
-                {status ? (status.canResetClient ? t('mcpOAuth.yes') : t('mcpOAuth.no')) : '-'}
-              </Field>
             </Box>
           </Box>
 
@@ -571,7 +549,7 @@ const McpOAuthConfig = ({
                   {t('mcpOAuth.action_disconnect')}
                 </Button>
               )}
-              {(canResetClient || showAdvanced) && (
+              {canResetClient && showAdvanced && (
                 <Button
                   size={'sm'}
                   variant={'whiteDanger'}
@@ -582,11 +560,16 @@ const McpOAuthConfig = ({
                 </Button>
               )}
               <Box flex={1} />
-              {!canResetClient && !showAdvanced && (
-                <Button size={'sm'} variant={'grayGhost'} onClick={() => setShowAdvanced(true)}>
+              {
+                <Button
+                  size={'sm'}
+                  variant={'grayGhost'}
+                  aria-expanded={showAdvanced}
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                >
                   {t('mcpOAuth.action_advanced')}
                 </Button>
-              )}
+              }
             </Flex>
           )}
         </Box>

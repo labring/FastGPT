@@ -161,6 +161,7 @@ const EditForm = ({
             variant={'whitePrimary'}
             h={8}
             isLoading={isGettingTools}
+            isDisabled={!url.trim() || (authMode === 'oauth' && !status?.authorized)}
             onClick={() => void onParse()}
           >
             {t('common:Parse')}

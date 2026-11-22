@@ -14,7 +14,9 @@ import {
   McpOAuthErrorCodeEnum,
   McpOAuthStatusEnum
 } from '@fastgpt/global/core/app/tool/mcpTool/oauth';
-import { McpOAuthApiError } from '@fastgpt/service/core/app/mcpOAuth/errors';
+import type { McpOAuthApiError } from '@fastgpt/service/core/app/mcpOAuth/errors';
+import { getUnavailableMcpAppIds } from '@fastgpt/service/core/app/mcpOAuth/credential';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 const appIds: Types.ObjectId[] = [];
 
@@ -63,6 +65,26 @@ const readVersion = async (versionId: Types.ObjectId) =>
   MongoAppVersion.collection.findOne({ _id: versionId });
 
 describe('mcpOAuth credential', () => {
+  it('only marks the pending OAuth source, not a static-header source', async () => {
+    const pending = await createFixture({});
+    const headers = await createFixture({
+      nodes: [
+        {
+          nodeId: 'static',
+          flowNodeType: 'toolSet',
+          toolConfig: { mcpToolSet: { url: 'https://example.org/mcp', authMode: 'headers' } }
+        }
+      ]
+    });
+    const unavailable = await getUnavailableMcpAppIds(
+      [pending, headers].map(({ appId, versionId }) => ({
+        _id: appId,
+        publishedVersionId: versionId,
+        type: AppTypeEnum.mcpToolSet
+      }))
+    );
+    expect([...unavailable]).toEqual([pending.appId]);
+  });
   afterEach(async () => {
     await MongoAppVersion.deleteMany({});
     await MongoApp.deleteMany({ _id: { $in: appIds } });

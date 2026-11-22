@@ -310,6 +310,7 @@ const HandleTypeSchema = z.object({
 
 // system template
 export const FlowNodeTemplateTypeSchema = FlowNodeCommonTypeSchema.extend({
+  mcpAuthorizationRequired: BoolSchema.optional(),
   id: z.string(),
   outputs: z.array(FlowNodeTemplateOutputItemTypeSchema),
   status: PluginStatusSchema.optional(),
@@ -365,6 +366,7 @@ export type NodeTemplateContextPredicate = (ctx: NodeTemplateContext | null) => 
 
 // Api response
 export const NodeTemplateListItemTypeSchema = z.object({
+  mcpAuthorizationRequired: BoolSchema.optional(),
   id: z.string(), // 系统节点-系统节点的 id， 系统插件-插件的 id，团队应用的 id
   source: z.string().optional(), // 系统插件运行来源，例如 debug source
   flowNodeType: z.enum(FlowNodeTypeEnum), // render node card

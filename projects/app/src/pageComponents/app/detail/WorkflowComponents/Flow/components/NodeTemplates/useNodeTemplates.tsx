@@ -231,11 +231,13 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
       );
     }
     const templateList = isTeamTemplate ? teamTemplates : systemTools;
-    return (templateList || []).filter((item) =>
-      context?.handleId === NodeOutputKeyEnum.selectedTools
-        ? 'isTool' in item && item.isTool === true
-        : true
-    );
+    return (templateList || [])
+      .filter((item) => !item.mcpAuthorizationRequired)
+      .filter((item) =>
+        context?.handleId === NodeOutputKeyEnum.selectedTools
+          ? 'isTool' in item && item.isTool === true
+          : true
+      );
   }, [basicNodes, context?.handleId, isTeamTemplate, systemTools, teamTemplates, templateType]);
 
   return {

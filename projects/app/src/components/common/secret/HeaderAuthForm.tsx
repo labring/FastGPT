@@ -221,12 +221,14 @@ const HeaderAuthForm = ({
   onChange,
   fontWeight = 'medium',
   bg = 'myGray.50',
+  customOnly = false,
   renderReference
 }: {
   headerSecretValue: HeaderSecretConfigType;
   onChange: (secret: HeaderSecretConfigType) => void;
   fontWeight?: string;
   bg?: string;
+  customOnly?: boolean;
   renderReference?: SecretReferenceRenderer;
 }) => {
   const { t } = useTranslation();
@@ -249,8 +251,8 @@ const HeaderAuthForm = ({
     }
   ];
   const currentAuthType = useMemo(() => {
-    return getSecretType(headerSecretValue);
-  }, [headerSecretValue]);
+    return customOnly ? HeaderSecretTypeEnum.Custom : getSecretType(headerSecretValue);
+  }, [customOnly, headerSecretValue]);
 
   const BearerValue = headerSecretValue.Bearer;
   const BasicValue = headerSecretValue.Basic;
@@ -290,27 +292,31 @@ const HeaderAuthForm = ({
 
   return (
     <>
-      <Box fontSize={'14px'} fontWeight={fontWeight} color={'myGray.900'} mb={2}>
-        {t('common:auth_type')}
-      </Box>
-      <MySelect
-        bg={bg}
-        value={currentAuthType}
-        onChange={(val) => {
-          if (val === HeaderSecretTypeEnum.None) {
-            onChange({});
-          } else if (val === HeaderSecretTypeEnum.Custom) {
-            onChange({
-              customs: headerSecretValue.customs || [{ key: '', value: { value: '' } }]
-            });
-          } else {
-            onChange({
-              [val]: headerSecretValue[val] || { value: '' }
-            });
-          }
-        }}
-        list={headerSecretList}
-      />
+      {!customOnly && (
+        <>
+          <Box fontSize={'14px'} fontWeight={fontWeight} color={'myGray.900'} mb={2}>
+            {t('common:auth_type')}
+          </Box>
+          <MySelect
+            bg={bg}
+            value={currentAuthType}
+            onChange={(val) => {
+              if (val === HeaderSecretTypeEnum.None) {
+                onChange({});
+              } else if (val === HeaderSecretTypeEnum.Custom) {
+                onChange({
+                  customs: headerSecretValue.customs || [{ key: '', value: { value: '' } }]
+                });
+              } else {
+                onChange({
+                  [val]: headerSecretValue[val] || { value: '' }
+                });
+              }
+            }}
+            list={headerSecretList}
+          />
+        </>
+      )}
       {currentAuthType !== HeaderSecretTypeEnum.None && (
         <Flex
           alignItems={'center'}
@@ -323,7 +329,7 @@ const HeaderAuthForm = ({
         >
           {currentAuthType === HeaderSecretTypeEnum.Custom && (
             <Box lineHeight={1} w={0.3}>
-              {t('common:key')}
+              {customOnly ? t('common:Name') : t('common:key')}
             </Box>
           )}
           <Box lineHeight={1}>{t('common:value')}</Box>
@@ -447,7 +453,7 @@ const HeaderAuthForm = ({
                           bg={bg}
                         />
                       </Box>
-                      {customHeaders.length > 1 && (
+                      {(customOnly || customHeaders.length > 1) && (
                         <IconButton
                           aria-label="Remove header"
                           icon={<MyIcon name="delete" w="16px" />}
@@ -456,7 +462,7 @@ const HeaderAuthForm = ({
                           color={'myGray.500'}
                           flexShrink={0}
                           _hover={{ color: 'red.500' }}
-                          isDisabled={customHeaders.length <= 1}
+                          isDisabled={!customOnly && customHeaders.length <= 1}
                           onClick={() => {
                             setCustomHeaderIds((prev) => prev.filter((_, i) => i !== index));
                             setValueModes((prev) => {
