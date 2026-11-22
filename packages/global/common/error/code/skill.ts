@@ -18,7 +18,12 @@ export enum SkillErrEnum {
   archiveExtractionFailed = 'archiveExtractionFailed',
   archiveTooLarge = 'archiveTooLarge',
   missingImageRepository = 'missingImageRepository',
-  skillNameTooLong = 'skillNameTooLong'
+  skillNameTooLong = 'skillNameTooLong',
+  missingSkillMd = 'missingSkillMd',
+  noValidSkillMd = 'noValidSkillMd',
+  archiveSymlinkNotAllowed = 'archiveSymlinkNotAllowed',
+  editSandboxNotRunning = 'editSandboxNotRunning',
+  deployFailed = 'skillDeployFailed'
 }
 const skillErrList: Array<{
   statusText: SkillErrEnum;
@@ -109,6 +114,31 @@ const skillErrList: Array<{
     statusText: SkillErrEnum.skillNameTooLong,
     message: i18nT('common:code_error.skill_error.skill_name_too_long'),
     httpStatus: 400
+  },
+  {
+    statusText: SkillErrEnum.missingSkillMd,
+    message: i18nT('common:code_error.skill_error.missing_skill_md'),
+    httpStatus: 400
+  },
+  {
+    statusText: SkillErrEnum.noValidSkillMd,
+    message: i18nT('common:code_error.skill_error.no_valid_skill_md'),
+    httpStatus: 400
+  },
+  {
+    statusText: SkillErrEnum.archiveSymlinkNotAllowed,
+    message: i18nT('common:code_error.skill_error.archive_symlink_not_allowed'),
+    httpStatus: 400
+  },
+  {
+    statusText: SkillErrEnum.editSandboxNotRunning,
+    message: i18nT('common:code_error.skill_error.edit_sandbox_not_running'),
+    httpStatus: 404
+  },
+  {
+    statusText: SkillErrEnum.deployFailed,
+    message: i18nT('skill:deploy_failed'),
+    httpStatus: 500
   }
 ];
 export default skillErrList.reduce((acc, cur, index) => {

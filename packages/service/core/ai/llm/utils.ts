@@ -814,11 +814,12 @@ export const loadRequestMessages = async ({
 
   /**
    * 合并相邻同角色消息，减少发送给供应商的消息数量。
-   * assistant 的工具调用不能合并，否则会破坏 tool call 和 tool response 的对应关系。
+   * 单独保留带工具调用的 assistant，合并时写入副本以便 Agent 后续请求复用原始历史。
    */
   const mergeMessages = ((messages: ChatCompletionMessageParam[]): ChatCompletionMessageParam[] => {
     return messages.reduce((mergedMessages: ChatCompletionMessageParam[], currentMessage) => {
-      const lastMessage = mergedMessages[mergedMessages.length - 1];
+      const lastIndex = mergedMessages.length - 1;
+      const lastMessage = mergedMessages[lastIndex];
 
       if (!lastMessage) {
         return [currentMessage];
@@ -836,7 +837,10 @@ export const loadRequestMessages = async ({
         )
           ? currentMessage.content
           : [{ type: 'text', text: currentMessage.content || '' }];
-        lastMessage.content = [...lastContent, ...currentContent];
+        mergedMessages[lastIndex] = {
+          ...lastMessage,
+          content: [...lastContent, ...currentContent]
+        };
       } // Handle user messages
       else if (
         lastMessage.role === ChatCompletionRequestMessageRoleEnum.User &&
@@ -848,13 +852,19 @@ export const loadRequestMessages = async ({
         const currentContent: ChatCompletionContentPart[] = Array.isArray(currentMessage.content)
           ? currentMessage.content
           : [{ type: 'text', text: currentMessage.content }];
-        lastMessage.content = [...lastContent, ...currentContent];
+        mergedMessages[lastIndex] = {
+          ...lastMessage,
+          content: [...lastContent, ...currentContent]
+        };
       } else if (
         lastMessage.role === ChatCompletionRequestMessageRoleEnum.Assistant &&
         currentMessage.role === ChatCompletionRequestMessageRoleEnum.Assistant
       ) {
-        // Content 不为空的对象，或者是交互节点
         if (
+          !lastMessage.tool_calls?.length &&
+          !lastMessage.function_call &&
+          !currentMessage.tool_calls?.length &&
+          !currentMessage.function_call &&
           (typeof lastMessage.content === 'string' ||
             Array.isArray(lastMessage.content) ||
             lastMessage.interactive) &&
@@ -873,9 +883,15 @@ export const loadRequestMessages = async ({
             ? currentMessage.content
             : [{ type: 'text', text: currentMessage.content || '' }];
 
-          lastMessage.content = [...lastContent, ...currentContent];
+          mergedMessages[lastIndex] = {
+            ...lastMessage,
+            content: [...lastContent, ...currentContent],
+            reasoning_content:
+              lastMessage.reasoning_content === undefined
+                ? currentMessage.reasoning_content
+                : lastMessage.reasoning_content + (currentMessage.reasoning_content ?? '')
+          };
         } else {
-          // 有其中一个没有 content，说明不是连续的文本输出
           mergedMessages.push(currentMessage);
         }
       } else {

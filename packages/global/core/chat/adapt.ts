@@ -197,6 +197,105 @@ export const mergeAssistantFieldMessages = (
   return mergedMessages;
 };
 
+/**
+ * 按当前节点的工具名称过滤继承历史，保留同一调用组内的调用与结果。
+ * 相邻 assistant 可能是同一组的拆分片段，结果段结束后重新配对。
+ */
+export const filterToolMessages = (
+  messages: ChatCompletionMessageParam[],
+  toolFilter: (toolName: string) => boolean
+): ChatCompletionMessageParam[] => {
+  type AssistantMessage = Extract<ChatCompletionMessageParam, { role: 'assistant' }>;
+
+  const hasAssistantContent = (content: AssistantMessage['content']) =>
+    typeof content === 'string'
+      ? content.trim().length > 0
+      : (content?.some(
+          (part) => (part.type === 'text' ? part.text : part.refusal).trim().length > 0
+        ) ?? false);
+  const hasAssistantPayload = (message: AssistantMessage) =>
+    hasAssistantContent(message.content) ||
+    Boolean(message.tool_calls?.length) ||
+    Boolean(message.function_call) ||
+    Boolean(message.interactive) ||
+    Boolean(message.audio) ||
+    Boolean(message.refusal);
+
+  const keepByCallId = new Map<string, boolean>();
+  let pendingFunctionName: string | undefined;
+  const resetCallGroup = () => {
+    keepByCallId.clear();
+    pendingFunctionName = undefined;
+  };
+
+  // 同组复用 ID 时结果无法唯一归属，整组中的该 ID 调用与结果一起剔除。
+  const startCallGroup = (index: number) => {
+    resetCallGroup();
+    for (let cursor = index; cursor < messages.length; cursor++) {
+      const message = messages[cursor];
+      if (message.role !== ChatCompletionRequestMessageRoleEnum.Assistant) break;
+      for (const call of message.tool_calls ?? []) {
+        keepByCallId.set(call.id, !keepByCallId.has(call.id) && toolFilter(call.function.name));
+      }
+    }
+  };
+
+  const filtered: ChatCompletionMessageParam[] = [];
+
+  for (const [index, message] of messages.entries()) {
+    if (message.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
+      if (messages[index - 1]?.role !== ChatCompletionRequestMessageRoleEnum.Assistant) {
+        startCallGroup(index);
+      }
+
+      let nextMessage = message;
+      if (message.tool_calls?.length) {
+        const keptToolCalls = message.tool_calls.filter(({ id }) => keepByCallId.get(id));
+
+        if (keptToolCalls.length !== message.tool_calls.length) {
+          const { tool_calls: _droppedToolCalls, ...rest } = message;
+          nextMessage = keptToolCalls.length ? { ...rest, tool_calls: keptToolCalls } : rest;
+        }
+      }
+
+      if (message.function_call) {
+        if (toolFilter(message.function_call.name)) {
+          pendingFunctionName = message.function_call.name;
+        } else {
+          const { function_call: _droppedFunctionCall, ...rest } = nextMessage;
+          nextMessage = rest;
+        }
+      }
+
+      if (nextMessage === message || hasAssistantPayload(nextMessage)) {
+        filtered.push(nextMessage);
+      }
+      continue;
+    }
+
+    if (message.role === ChatCompletionRequestMessageRoleEnum.Tool) {
+      if (keepByCallId.get(message.tool_call_id)) {
+        keepByCallId.delete(message.tool_call_id);
+        filtered.push(message);
+      }
+      continue;
+    }
+
+    if (message.role === ChatCompletionRequestMessageRoleEnum.Function) {
+      if (pendingFunctionName === message.name) {
+        filtered.push(message);
+        pendingFunctionName = undefined;
+      }
+      continue;
+    }
+
+    resetCallGroup();
+    filtered.push(message);
+  }
+
+  return filtered;
+};
+
 const isPureTextAiValue = (item: AIChatItemValueItemType) =>
   !!item.text &&
   !item.modelResponseId &&

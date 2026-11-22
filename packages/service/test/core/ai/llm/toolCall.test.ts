@@ -612,34 +612,33 @@ describe('promptToolCallMessageRewrite function tests', () => {
       expect(result[2].content).toBeNull();
     });
 
-    it('should handle assistant message with multiple tool calls (only first one used)', () => {
+    it('pairs parallel prompt calls with their results by ID in call order', () => {
+      const first = { name: 'tool1', arguments: '{}' };
+      const second = { name: 'tool2', arguments: '{}' };
       const messages: ChatCompletionMessageParam[] = [
         { role: 'user', content: 'Hello' },
         {
           role: 'assistant',
-          content: null,
+          reasoning_content: 'Planning both calls.',
           tool_calls: [
-            {
-              id: 'call_1',
-              type: 'function',
-              function: { name: 'tool1', arguments: '{"param": "value1"}' }
-            },
-            {
-              id: 'call_2',
-              type: 'function',
-              function: { name: 'tool2', arguments: '{"param": "value2"}' }
-            }
+            { id: 'call_1', type: 'function', function: first },
+            { id: 'call_2', type: 'function', function: second }
           ]
-        }
+        },
+        { role: 'tool', tool_call_id: 'call_2', content: 'Result 2' },
+        { role: 'tool', tool_call_id: 'call_1', content: 'Result 1' }
       ];
-      const tools: ChatCompletionTool[] = [];
 
-      const result = promptToolCallMessageRewrite(messages, tools);
-
-      expect(result[2].content).toBe(
-        '1: {"name":"tool1","arguments":"{\\"param\\": \\"value1\\"}"}'
-      );
-      expect(result[2]).not.toHaveProperty('tool_calls');
+      expect(promptToolCallMessageRewrite(messages, []).slice(2)).toEqual([
+        {
+          role: 'assistant',
+          content: `1: ${JSON.stringify(first)}`,
+          reasoning_content: 'Planning both calls.'
+        },
+        { role: 'user', content: '<ToolResponse>\nResult 1\n</ToolResponse>' },
+        { role: 'assistant', content: `1: ${JSON.stringify(second)}`, reasoning_content: '' },
+        { role: 'user', content: '<ToolResponse>\nResult 2\n</ToolResponse>' }
+      ]);
     });
   });
 

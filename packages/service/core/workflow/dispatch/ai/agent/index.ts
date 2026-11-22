@@ -33,13 +33,16 @@ import {
   buildAgentLoopCoreFinalAssistantOutput,
   buildAgentLoopCoreInput,
   buildAgentLoopCorePausedMemories,
-  buildAgentLoopCoreRequestMessages,
   createAgentLoopCoreChildInteractiveParams,
   prepareAgentLoopCoreProviderRunState,
   readAgentLoopCoreActivePlan,
   readAgentLoopCoreProviderStateMemory,
   runAgentLoopCoreWithSummary
 } from '../agentLoopCore/interface';
+import {
+  buildAgentLoopCoreRequestMessages,
+  filterAgentLoopCoreHistoryTools
+} from '../agentLoopCore/application/context/messages';
 import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
 import { replaceAgentPromptToolReferences } from './adapter/prompt';
 import { createWorkflowAgentLoopRuntime } from './adapter/runtime';
@@ -329,10 +332,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         : lastInteractive
           ? baseHistories
           : [...baseHistories, currentUserMessage];
-    const loopMessages = buildAgentLoopCoreRequestMessages({
-      messages: requestMessages,
-      removeSystemMessages: true
-    });
     // 汇总用户选择工具和知识库 runtime tool。
     // plan/ask/sandbox/readFile 由 agentLoop provider 根据 systemTools 注入，不混入业务 completionTools。
     const {
@@ -344,6 +343,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       tmbId: runningUserInfo.tmbId,
       lang
     });
+    const loopMessages = buildAgentLoopCoreRequestMessages({ messages: requestMessages });
     const { getSubAppInfo, getSubApp } = createAgentSubAppLookup({
       subAppsMap: agentSubAppsMap,
       lang
@@ -442,7 +442,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       provider,
       runtime,
       input: buildAgentLoopCoreInput({
-        messages: loopMessages,
+        messages: filterAgentLoopCoreHistoryTools(loopMessages, runtime),
         systemPrompt: agentSystemPrompt,
         activePlan,
         providerState: provider === 'fastAgent' ? undefined : runtimeProviderState,
