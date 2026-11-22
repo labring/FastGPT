@@ -44,19 +44,20 @@ const useHtmlCodeBlockViewMode = ({
   };
 };
 
+const htmlPreviewFrameOptions = {
+  sandbox: 'allow-popups allow-scripts',
+  referrerPolicy: 'no-referrer',
+  style: {
+    display: 'block',
+    width: '100%',
+    height: '100%',
+    border: 'none',
+    background: 'white'
+  }
+} as const;
+
 const HtmlPreviewIframe = ({ code }: { code: string }) => (
-  <iframe
-    srcDoc={code}
-    sandbox="allow-popups allow-scripts"
-    referrerPolicy="no-referrer"
-    style={{
-      display: 'block',
-      width: '100%',
-      height: '100%',
-      border: 'none',
-      background: 'white'
-    }}
-  />
+  <iframe srcDoc={code} {...htmlPreviewFrameOptions} />
 );
 
 /**
@@ -211,22 +212,33 @@ const IframeHtmlCodeBlock = ({
     node.scrollTop = node.scrollHeight;
   }, [code, isPreview, showStreamingSourceCode]);
 
-  // 在独立新标签页中打开预览
+  // 新标签页仅承载预览容器，HTML 始终在与内嵌预览同样隔离的 iframe 中运行。
   const handleOpenInNewTab = useCallback(() => {
     try {
-      const blob = new Blob([code], { type: 'text/html;charset=utf-8' });
+      const previewDocument = document.implementation.createHTMLDocument(t('common:Preview'));
+      const iframe = previewDocument.createElement('iframe');
+      iframe.setAttribute('sandbox', htmlPreviewFrameOptions.sandbox);
+      iframe.setAttribute('referrerpolicy', htmlPreviewFrameOptions.referrerPolicy);
+      iframe.title = previewDocument.title;
+      iframe.srcdoc = code;
+      Object.assign(iframe.style, htmlPreviewFrameOptions.style, { position: 'fixed', inset: '0' });
+      previewDocument.body.append(iframe);
+
+      const blob = new Blob(['<!doctype html>', previewDocument.documentElement.outerHTML], {
+        type: 'text/html;charset=utf-8'
+      });
       const url = URL.createObjectURL(blob);
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 10000);
       const newWin = window.open(url, '_blank', 'noopener,noreferrer');
       if (newWin) {
         newWin.opener = null;
       }
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-      }, 10000);
     } catch (err) {
       console.error('Failed to open in new tab:', err);
     }
-  }, [code]);
+  }, [code, t]);
 
   if (codeBlock) {
     return (
