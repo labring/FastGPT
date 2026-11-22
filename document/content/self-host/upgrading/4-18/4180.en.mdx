@@ -55,6 +55,7 @@ These migrations run automatically; no manual execution is required.
 
 ### Compatibility notes
 
+- **Outbound proxies**. If Workflow HTTP Nodes, HTTP Tools, or other protected requests use a proxy, verify before upgrading that FastGPT can resolve the destination hostname and the proxy allows `CONNECT` to the resolved IP address and port. Replace SOCKS and forward-only HTTP proxies with a compatible HTTP or HTTPS proxy. See the [environment variable guide](/en/self-host/config/env4180).
 - **System configuration automation**: The old `/api/proApi/admin/system/updateConfig` endpoint has been removed. Admin scripts that call it must switch to the main service's `/api/admin/system/config/get` and `/api/admin/system/config/update` endpoints.
 - **Admin search parameters**: In the Commercial edition, App lists replace `searchKey` with `appName` or `appId`. Team, Plan, and invoice lists no longer read `search`; update existing admin scripts to use the appropriate `username` or `teamName` field.
 - **Payment record filtering**: In the Commercial edition, `username` now matches the actual payer rather than all orders from that user’s Teams. Admin scripts that depend on the previous scope must filter by Team instead.

@@ -55,6 +55,7 @@ upgradeTags:
 
 ### 兼容说明
 
+- **出站代理**。工作流 HTTP 节点、HTTP 工具及其他受保护的请求通过代理发送时，请在升级前按[环境变量说明](/self-host/config/env4180)确认 FastGPT 能解析目标域名，且代理允许向解析后的 IP 和端口发起 `CONNECT`。SOCKS 和仅支持普通 HTTP 转发的代理需切换到兼容的 HTTP 或 HTTPS 代理。
 - **系统配置自动化接入**：旧 `/api/proApi/admin/system/updateConfig` 已移除，调用它的管理脚本需改用主服务的 `/api/admin/system/config/get` 和 `/api/admin/system/config/update`。
 - **管理后台搜索参数**：商业版应用列表的 `searchKey` 改用 `appName` 或 `appId`；团队、套餐及发票列表不再读取 `search`，已有管理脚本需改传对应的 `username` 或 `teamName`。
 - **支付记录筛选**：商业版支付记录的 `username` 现在仅匹配实际付款人，不再返回该用户所在团队的全部订单；依赖原范围的管理脚本需改按团队筛选。

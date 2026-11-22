@@ -131,6 +131,10 @@ Configure the **File service domain** in **Admin → Core settings → Download 
 | `NO_PROXY`             | Empty   | Address list that bypasses proxies.                                                                                        |
 | `ALL_PROXY`            | Unset   | Proxy for outbound clients that support this variable. Default fetch/OpenAI clients require `HTTP_PROXY` or `HTTPS_PROXY`. |
 
+Protected requests through the shared HTTP client include Workflow HTTP Nodes, HTTP tools, and the chat channels and file operations that use this client. When these requests use a proxy, the FastGPT runtime must be able to resolve the destination, and the HTTP or HTTPS proxy must allow `CONNECT` to the resolved IP and port. Switch SOCKS and forward-only HTTP proxies to a compatible proxy. Destinations matched by `NO_PROXY` use a direct connection and still undergo address checks. If no request timeout is set, the proxy handshake has a 30-second deadline.
+
+Before upgrading, use your actual Workflows and channels in a test environment to verify proxy authentication, DNS resolution, and `CONNECT` policy. If you switch proxies, update the applicable `HTTP_PROXY`, `HTTPS_PROXY`, or `ALL_PROXY` setting and restart the affected processes.
+
 ### Feature controls and service limits
 
 | Variable                                 | Default | Description                                                                                                                                                                                                                                                                                      |
