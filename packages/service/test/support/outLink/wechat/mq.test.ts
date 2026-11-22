@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { bullMQ } from '@fastgpt/dal/redis/bullmq';
 
 const mocks = vi.hoisted(() => ({
   getWorker: vi.fn(),
@@ -11,13 +12,6 @@ const mocks = vi.hoisted(() => ({
   increment: vi.fn(),
   clear: vi.fn(),
   queueAdd: vi.fn()
-}));
-
-vi.mock('@fastgpt/dal/redis/bullmq/binding', () => ({
-  bullMQ: {
-    getWorker: mocks.getWorker,
-    getQueue: mocks.getQueue
-  }
 }));
 
 vi.mock('@fastgpt/service/support/outLink/schema', () => ({
@@ -96,6 +90,8 @@ describe('Wechat polling failure counter integration', () => {
     vi.clearAllMocks();
     workers.length = 0;
 
+    vi.spyOn(bullMQ, 'getWorker').mockImplementation(mocks.getWorker);
+    vi.spyOn(bullMQ, 'getQueue').mockImplementation(mocks.getQueue);
     mocks.getWorker.mockImplementation((_queueName: string, processor: any) => {
       const on = vi.fn();
       workers.push({ processor, on });
