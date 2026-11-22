@@ -1,5 +1,6 @@
 import {
   getAgentToolSource,
+  getToolIdentityKey,
   parseDebugToolSource,
   parseTeamPluginSource
 } from '../../../../app/tool/utils';
@@ -151,3 +152,12 @@ export const getCanonicalKeyForTool = (params: PromptRefTool): string => {
   const ref = refFromTool(params);
   return ref ? formatRefKey(ref) : '';
 };
+
+/**
+ * 计算工具的规范身份键，供工具列表去重、增删、选中态与预览复用统一口径。
+ * 优先使用 V2 canonicalKey（自动归一化隐式 toolConfig.source 与已解析的单子工具 toolId），
+ * 无法解析为 V2 键时回退到 source-aware 组合键。
+ */
+export const getAgentToolIdentityKey = (tool: PromptRefTool): string =>
+  getCanonicalKeyForTool(tool) ||
+  getToolIdentityKey(getPromptRefToolId(tool).trim(), getAgentToolSource(tool));

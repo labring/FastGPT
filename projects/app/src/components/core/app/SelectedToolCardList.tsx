@@ -7,7 +7,11 @@ import {
   PluginStatusMap,
   type PluginStatusType
 } from '@fastgpt/global/core/plugin/type';
-import { isDebugToolSource, getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import { getAgentToolSource, isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import {
+  getAgentToolIdentityKey,
+  getPromptRefToolId
+} from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
@@ -53,13 +57,14 @@ const SelectedToolCardList = React.memo(function SelectedToolCardList({
         });
         const hasToolError = runtimeStatus === 'invalid' || runtimeStatus === 'offline';
         const isUnconfigured = runtimeStatus === 'waitingForConfig';
-        const isDebugTool = isDebugToolSource(item.source);
+        const toolSource = getAgentToolSource(item);
+        const isDebugTool = isDebugToolSource(toolSource);
         const isSoonOffline = status === PluginStatusEnum.SoonOffline;
         const hasStatusTag = isSoonOffline || isUnconfigured || isDebugTool;
 
         return (
           <FormResourceCard
-            key={getToolIdentityKey(item.pluginId || item.id, item.source)}
+            key={getAgentToolIdentityKey(item)}
             compact={compact}
             avatar={
               <Avatar
@@ -109,7 +114,7 @@ const SelectedToolCardList = React.memo(function SelectedToolCardList({
                   hoverColor="red.600"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onRemoveTool((item.pluginId || item.id)!, item.source);
+                    onRemoveTool(getPromptRefToolId(item), toolSource);
                   }}
                 />
               </>

@@ -26,7 +26,7 @@ import { TTSTypeEnum } from '@/web/core/app/constants';
 import { useAgentSandboxCapability } from '../../hooks/useAgentSandboxCapability';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
-import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import { hasEnabledFileSelect } from '@fastgpt/global/core/app/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -41,6 +41,7 @@ import { useAppDatasetTagFilter } from '../FormComponent/useAppDatasetTagFilter'
 import { useInitializeQueryExtensionModel } from '../FormComponent/useInitializeQueryExtensionModel';
 import { useAgentSkillSelect } from './hooks/useAgentSkillSelect';
 import { useSkillManager } from './hooks/useSkillManager';
+import { removeSelectedTool, upsertSelectedTool } from './utils';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -114,38 +115,15 @@ const EditForm = ({
     selectedTools: appForm.selectedTools,
     selectedAgentSkills,
     onUpdateOrAddTool: (tool) => {
-      setAppForm((state) => {
-        const toolKey = getToolIdentityKey(tool.pluginId, tool.source);
-        const index = state.selectedTools.findIndex(
-          (item) => getToolIdentityKey(item.pluginId, item.source) === toolKey
-        );
-
-        if (index === -1) {
-          return {
-            ...state,
-            selectedTools: [tool, ...(state.selectedTools || [])]
-          };
-        } else {
-          return {
-            ...state,
-            selectedTools:
-              state.selectedTools?.map((item) =>
-                getToolIdentityKey(item.pluginId, item.source) === toolKey ? tool : item
-              ) || []
-          };
-        }
-      });
+      setAppForm((state) => ({
+        ...state,
+        selectedTools: upsertSelectedTool(state.selectedTools || [], tool)
+      }));
     },
     onAddAgentSkill,
     onEnableSandbox: () => onChangeAgentSandbox(true),
     currentAppId: appId,
-    canUploadFile: !!(
-      appForm.chatConfig.fileSelectConfig?.canSelectFile ||
-      appForm.chatConfig.fileSelectConfig?.canSelectImg ||
-      appForm.chatConfig.fileSelectConfig?.canSelectVideo ||
-      appForm.chatConfig.fileSelectConfig?.canSelectAudio ||
-      appForm.chatConfig.fileSelectConfig?.canSelectCustomFileExtension
-    ),
+    canUploadFile: hasEnabledFileSelect(appForm.chatConfig.fileSelectConfig),
     hasSelectedDataset: (appForm.dataset.datasets?.length || 0) > 0,
     useAgentSandbox: !!appForm.aiSettings.useAgentSandbox,
     onClickDatasetSearch: () => {
@@ -387,19 +365,14 @@ const EditForm = ({
             onAddTool={(e) => {
               setAppForm((state) => ({
                 ...state,
-                selectedTools: [e, ...(state.selectedTools || [])]
+                selectedTools: upsertSelectedTool(state.selectedTools || [], e)
               }));
             }}
             onConfigTool={skillManager.onOpenConfigTool}
             onRemoveTool={(id, source) => {
               setAppForm((state) => ({
                 ...state,
-                selectedTools:
-                  state.selectedTools?.filter(
-                    (item) =>
-                      getToolIdentityKey(item.pluginId, item.source) !==
-                      getToolIdentityKey(id, source)
-                  ) || []
+                selectedTools: removeSelectedTool(state.selectedTools || [], { id, source })
               }));
             }}
           />

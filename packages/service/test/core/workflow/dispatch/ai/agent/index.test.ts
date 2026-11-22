@@ -10,7 +10,10 @@ import {
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
@@ -757,6 +760,81 @@ describe('dispatchRunAgent user context', () => {
     const systemPrompt = runAgentLoopMock.mock.calls[0][0].input.systemPrompt;
     expect(systemPrompt).toContain('虚拟机 {{@builtin:agent_sandbox@}}');
     expect(systemPrompt).toContain('技能 {{@skill:team:68b2000000000000000000aa@}}');
+  });
+
+  it('does not register dataset_search or read_files builtins when disabled in ChatAgent or Workflow NodeAgent', async () => {
+    // 1. ChatAgent 简易模式：关闭文件上传、清空知识库且关闭沙盒，三类内置能力均不注册。
+    const chatAgentProps = createProps();
+    chatAgentProps.chatConfig = {
+      fileSelectConfig: {
+        canSelectFile: false,
+        canSelectImg: false,
+        canSelectVideo: false,
+        canSelectAudio: false,
+        canSelectCustomFileExtension: false
+      }
+    };
+    chatAgentProps.params.agent_datasetParams = {
+      ...chatAgentProps.params.agent_datasetParams,
+      datasets: []
+    };
+    chatAgentProps.params.useAgentSandbox = false;
+    chatAgentProps.params.systemPrompt =
+      '知识库 {{@builtin:dataset_search@}}，文件 {{@builtin:read_files@}}，虚拟机 {{@builtin:agent_sandbox@}}';
+
+    let chatAgentPromise: Promise<any>;
+    runWithContext({ mcpClientMemory: {} }, () => {
+      chatAgentPromise = dispatchRunAgent(chatAgentProps);
+    });
+    await chatAgentPromise!;
+
+    const chatAgentPrompt = runAgentLoopMock.mock.calls[0][0].input.systemPrompt;
+    expect(chatAgentPrompt).toContain(
+      '知识库 {{@builtin:dataset_search@}}，文件 {{@builtin:read_files@}}，虚拟机 {{@builtin:agent_sandbox@}}'
+    );
+
+    // 2. Workflow NodeAgent 模式：未配置 fileUrlList 与 datasetSelectList 时不注册；配置后恢复解析。
+    const workflowProps = createProps();
+    delete (workflowProps.params as any).agent_datasetParams;
+    workflowProps.node.inputs = [{ key: NodeInputKeyEnum.fileUrlList, value: [] } as any];
+    workflowProps.params.systemPrompt =
+      '知识库 {{@builtin:dataset_search@}}，文件 {{@builtin:read_files@}}';
+
+    let workflowPromise: Promise<any>;
+    runWithContext({ mcpClientMemory: {} }, () => {
+      workflowPromise = dispatchRunAgent(workflowProps);
+    });
+    await workflowPromise!;
+
+    const disabledWorkflowPrompt = runAgentLoopMock.mock.calls[1][0].input.systemPrompt;
+    expect(disabledWorkflowPrompt).toContain(
+      '知识库 {{@builtin:dataset_search@}}，文件 {{@builtin:read_files@}}'
+    );
+
+    const enabledWorkflowProps = createProps();
+    delete (enabledWorkflowProps.params as any).agent_datasetParams;
+    enabledWorkflowProps.params[NodeInputKeyEnum.datasetSelectList] = [
+      { datasetId: 'dataset_1', name: 'KB 1', avatar: '', vectorModel: { model: 'embed' } }
+    ] as any;
+    enabledWorkflowProps.node.inputs = [
+      {
+        key: NodeInputKeyEnum.fileUrlList,
+        selectedType: FlowNodeInputTypeEnum.agentGenerated,
+        value: []
+      } as any
+    ];
+    enabledWorkflowProps.params.systemPrompt =
+      '知识库 {{@builtin:dataset_search@}}，文件 {{@builtin:read_files@}}';
+
+    let enabledWorkflowPromise: Promise<any>;
+    runWithContext({ mcpClientMemory: {} }, () => {
+      enabledWorkflowPromise = dispatchRunAgent(enabledWorkflowProps);
+    });
+    await enabledWorkflowPromise!;
+
+    const enabledWorkflowPrompt = runAgentLoopMock.mock.calls[2][0].input.systemPrompt;
+    expect(enabledWorkflowPrompt).not.toContain('{{@builtin:dataset_search@}}');
+    expect(enabledWorkflowPrompt).not.toContain('{{@builtin:read_files@}}');
   });
 
   it('uses the default agent system prompt when the user prompt is omitted', async () => {

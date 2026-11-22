@@ -11,6 +11,9 @@ import type {
   ChatItemMiniType
 } from '@fastgpt/global/core/chat/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
+import { hasEnabledFileSelect } from '@fastgpt/global/core/app/utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../../types/runtime';
@@ -143,11 +146,14 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   // 简易模式（对话 Agent 表单转化出的单节点工作流）固定携带 agent_datasetParams，
   // Skill 调试模式固定使用 skillEdit sourceType 或 editSkillId；这两类入口保持内部步骤平铺在顶层，
   // 仅工作流画布上的 Agent 节点生成外层 Agent 根响应并收纳内部步骤。
+  const isSimpleChatAgent = Boolean(
+    props.params[NodeInputKeyEnum.datasetParams] ||
+    inputs.some((input) => input.key === NodeInputKeyEnum.datasetParams)
+  );
   const shouldWrapNodeResponses =
     runningAppInfo.sourceType !== ChatSourceTypeEnum.skillEdit &&
     !editSkillId &&
-    !props.params[NodeInputKeyEnum.datasetParams] &&
-    !inputs.some((input) => input.key === NodeInputKeyEnum.datasetParams);
+    !isSimpleChatAgent;
 
   // assistantResponses 贯穿整轮 dispatch；Agent 内部 nodeResponse 由 sink 逐条发布。
   const assistantResponses: AIChatItemValueItemType[] = [];
@@ -381,9 +387,19 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       });
     });
 
+    const hasDatasetSearch = Boolean(datasetParams?.datasets?.length);
+    // 简易模式固定绑定 userFiles，文件能力以 chatConfig.fileSelectConfig 开关为准；
+    // 工作流模式以节点 fileUrlList 是否配置或交由 AI 生成为准，与前端编辑器判定口径保持一致。
+    const hasReadFiles = isSimpleChatAgent
+      ? hasEnabledFileSelect(props.chatConfig?.fileSelectConfig)
+      : fileUrlInput
+        ? getSelectedInputRenderType(fileUrlInput) === FlowNodeInputTypeEnum.agentGenerated ||
+          parseHistoryFiles
+        : true;
+
     const runtimeBuiltinEntries: AgentPromptRefEntry<RuntimePromptRefMeta>[] = [
-      SubAppIds.datasetSearch,
-      SubAppIds.readFiles,
+      ...(hasDatasetSearch ? [SubAppIds.datasetSearch] : []),
+      ...(hasReadFiles ? [SubAppIds.readFiles] : []),
       ...(effectiveUseAgentSandbox ? [AGENT_SANDBOX_TOOLSET_ID] : [])
     ].flatMap((builtinId) => {
       const displayName =

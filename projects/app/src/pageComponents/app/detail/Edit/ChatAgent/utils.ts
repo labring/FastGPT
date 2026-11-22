@@ -24,7 +24,7 @@ import { userFilesInput } from '@fastgpt/global/core/workflow/template/output';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent/index';
-import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
+import { getDefaultAppForm, hasEnabledFileSelect } from '@fastgpt/global/core/app/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import { Input_Template_File_Link } from '@fastgpt/global/core/workflow/template/input';
@@ -38,13 +38,12 @@ import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { inheritToolInputConfig } from '../FormComponent/ToolSelector/utils';
 import {
   getAgentToolSource,
-  getToolIdentityKey,
   isSystemOrCommercialToolId
 } from '@fastgpt/global/core/app/tool/utils';
 import { parseV2RefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/codec';
 import { toLegacyToolLookup } from '@fastgpt/global/core/workflow/node/agent/promptRef/legacy';
 import {
-  getCanonicalKeyForTool,
+  getAgentToolIdentityKey,
   getPromptRefToolId
 } from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
 
@@ -377,6 +376,27 @@ export const getEmptyAgentConfig = (t: any) => {
   );
 };
 
+/** 按规范工具身份键更新或头插已选工具，避免隐式 source 或旧三段式子工具 ID 导致重复或误覆盖。 */
+export const upsertSelectedTool = (
+  selectedTools: SelectedToolItemType[],
+  tool: SelectedToolItemType
+): SelectedToolItemType[] => {
+  const toolKey = getAgentToolIdentityKey(tool);
+  const exists = selectedTools.some((item) => getAgentToolIdentityKey(item) === toolKey);
+  return exists
+    ? selectedTools.map((item) => (getAgentToolIdentityKey(item) === toolKey ? tool : item))
+    : [tool, ...selectedTools];
+};
+
+/** 按规范工具身份键从已选工具列表中移除目标工具。 */
+export const removeSelectedTool = (
+  selectedTools: SelectedToolItemType[],
+  target: { id?: string; pluginId?: string; source?: string }
+): SelectedToolItemType[] => {
+  const targetKey = getAgentToolIdentityKey(target);
+  return selectedTools.filter((item) => getAgentToolIdentityKey(item) !== targetKey);
+};
+
 export type VerifiedToolPreviewResult =
   | { status: 'missing' }
   | { status: 'existing'; tool: SelectedToolItemType }
@@ -396,15 +416,8 @@ export const resolveVerifiedToolPreview = async ({
   source?: string;
   existsTools?: SelectedToolItemType[];
 }): Promise<VerifiedToolPreviewResult> => {
-  const canonicalKey = getCanonicalKeyForTool({ id: toolId, source });
-  const identityKey = canonicalKey || getToolIdentityKey(toolId, source);
-
-  const isSameTool = (tool: FlowNodeTemplateType) => {
-    const key = canonicalKey
-      ? getCanonicalKeyForTool(tool)
-      : getToolIdentityKey(getPromptRefToolId(tool), getAgentToolSource(tool));
-    return key === identityKey;
-  };
+  const identityKey = getAgentToolIdentityKey({ id: toolId, source });
+  const isSameTool = (tool: FlowNodeTemplateType) => getAgentToolIdentityKey(tool) === identityKey;
 
   const isMcpOrHttpChild =
     toolId.startsWith('mcp-') ||
@@ -422,7 +435,6 @@ export const resolveVerifiedToolPreview = async ({
   });
   if (
     isMcpOrHttpChild &&
-    canonicalKey &&
     !isSameTool({ ...preview, source: getAgentToolSource(preview) ?? source })
   ) {
     return { status: 'missing' };
@@ -482,13 +494,7 @@ export const loadGeneratedTools = async ({
         const toolValid = validateToolConfiguration({
           toolTemplate: tool,
           isAppTool: true,
-          canUploadFile: !!(
-            fileSelectConfig?.canSelectFile ||
-            fileSelectConfig?.canSelectImg ||
-            fileSelectConfig?.canSelectVideo ||
-            fileSelectConfig?.canSelectAudio ||
-            fileSelectConfig?.canSelectCustomFileExtension
-          )
+          canUploadFile: hasEnabledFileSelect(fileSelectConfig)
         });
         if (!toolValid) {
           return;

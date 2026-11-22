@@ -11,7 +11,10 @@ import type {
   SelectedAgentSkillItemType,
   SelectedToolItemType
 } from '@fastgpt/global/core/app/formEdit/type';
-import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import {
+  removeSelectedTool,
+  upsertSelectedTool
+} from '@/pageComponents/app/detail/Edit/ChatAgent/utils';
 import { useTranslation } from 'next-i18next';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useAgentSkillSelect } from '@/pageComponents/app/detail/Edit/ChatAgent/hooks/useAgentSkillSelect';
@@ -108,23 +111,13 @@ const useAgentNodeInputs = ({ nodeId, inputs }: FlowNodeItemType) => {
     (tool: SelectedToolItemType) => {
       const id = tool.pluginId ?? tool.id;
       const nextTool = { ...tool, id, pluginId: id };
-      const key = getToolIdentityKey(id, tool.source);
-      const matches = (item: SelectedToolItemType) =>
-        getToolIdentityKey(item.pluginId ?? item.id, item.source) === key;
-      updateTools((tools) =>
-        tools.some(matches)
-          ? tools.map((item) => (matches(item) ? nextTool : item))
-          : [nextTool, ...tools]
-      );
+      updateTools((tools) => upsertSelectedTool(tools, nextTool));
     },
     [updateTools]
   );
   const onDeleteTool = useCallback(
     (id: string, source?: string) => {
-      const key = getToolIdentityKey(id, source);
-      updateTools((tools) =>
-        tools.filter((tool) => getToolIdentityKey(tool.pluginId ?? tool.id, tool.source) !== key)
-      );
+      updateTools((tools) => removeSelectedTool(tools, { id, source }));
     },
     [updateTools]
   );

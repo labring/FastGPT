@@ -15,11 +15,13 @@ import {
   stripAgentPromptRefs
 } from '@fastgpt/global/core/workflow/node/agent/promptRef/text';
 import {
+  getAgentToolIdentityKey,
   isBuiltinPromptRefKey,
   refFromBuiltin,
   refFromSkill,
   refFromTool
 } from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AgentPromptRefRegistry } from '@fastgpt/global/core/workflow/node/agent/promptRef/registry';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 
@@ -403,5 +405,46 @@ describe('AgentPromptRefRegistry invariants', () => {
     });
     expect(registry.resolve(`app:team:${appId}/LegacyToolset/search`).status).toBe('unresolved');
     expect(registry.resolve(`mcp-${appId}/OtherSet/search`).status).toBe('unresolved');
+  });
+
+  it('does not match prompt ref tokens across line breaks', () => {
+    const registry = createRegistry();
+    const multilineLf =
+      'line1 {{@builtin:read_files\nline2 middle\nline3 @}} {{@builtin:read_files@}}';
+    const multilineCrlf = 'a {{@foo\r\nbar@}} b';
+
+    expect(extractAgentPromptRefs(multilineLf).map((item) => item.rawKey)).toEqual([
+      'builtin:read_files'
+    ]);
+    expect(stripAgentPromptRefs(multilineLf)).toBe(
+      'line1 {{@builtin:read_files\nline2 middle\nline3 @}} '
+    );
+    expect(stripAgentPromptRefs(multilineCrlf)).toBe(multilineCrlf);
+    expect(registry.renderForModel({ text: multilineLf })).toBe(
+      'line1 {{@builtin:read_files\nline2 middle\nline3 @}} {{文件解析}}'
+    );
+  });
+
+  it('computes consistent canonical tool identity keys across implicit sources and resolved child IDs', () => {
+    const appId = '66f100000000000000000022';
+
+    expect(
+      getAgentToolIdentityKey({
+        pluginId: 'systemTool-metaso',
+        toolConfig: { systemTool: { toolId: 'systemTool-metaso', source: 'teamId:team-1' } }
+      })
+    ).toBe('plugin:team:team-1:metaso');
+    expect(getAgentToolIdentityKey({ pluginId: 'systemTool-metaso' })).toBe('plugin:system:metaso');
+    expect(getAgentToolIdentityKey({ id: 'commercial-abc', source: 'system' })).toBe(
+      getAgentToolIdentityKey({ id: 'commercial-abc', source: 'commercial' })
+    );
+    expect(
+      getAgentToolIdentityKey({
+        id: `mcp-${appId}/LegacySet/search`,
+        pluginId: `mcp-${appId}/LegacySet/search`,
+        flowNodeType: FlowNodeTypeEnum.tool,
+        toolConfig: { mcpTool: { toolId: `mcp-${appId}/search` } }
+      })
+    ).toBe(getAgentToolIdentityKey({ id: `mcp-${appId}/search` }));
   });
 });

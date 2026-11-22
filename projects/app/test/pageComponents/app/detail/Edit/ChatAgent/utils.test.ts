@@ -2,7 +2,9 @@ import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   agentForm2AppWorkflow,
-  appWorkflow2AgentForm
+  appWorkflow2AgentForm,
+  removeSelectedTool,
+  upsertSelectedTool
 } from '@/pageComponents/app/detail/Edit/ChatAgent/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { describe, expect, it } from 'vitest';
@@ -236,5 +238,82 @@ describe('agentForm2AppWorkflow model reference', () => {
     expect(
       agentNode?.inputs.find((input) => input.key === NodeInputKeyEnum.history)
     ).toBeUndefined();
+  });
+
+  it('upserts and removes selectedTools by canonical identity across implicit sources and legacy 3-segment child IDs', () => {
+    const appId = '66f100000000000000000022';
+    const teamTool = {
+      id: 'systemTool-metaso',
+      pluginId: 'systemTool-metaso',
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: '团队秘塔',
+      toolConfig: {
+        systemTool: {
+          toolId: 'systemTool-metaso',
+          source: 'teamId:team-1'
+        }
+      },
+      inputs: [],
+      outputs: []
+    };
+    const systemTool = {
+      id: 'systemTool-metaso',
+      pluginId: 'systemTool-metaso',
+      source: 'system',
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: '官方秘塔',
+      inputs: [],
+      outputs: []
+    };
+    const legacyMcpChild = {
+      id: `mcp-${appId}/OldSet/search`,
+      pluginId: `mcp-${appId}/OldSet/search`,
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: '旧三段式搜索',
+      toolConfig: {
+        mcpTool: {
+          toolId: `mcp-${appId}/search`
+        }
+      },
+      inputs: [],
+      outputs: []
+    };
+    const updatedMcpChild = {
+      id: `mcp-${appId}/search`,
+      pluginId: `mcp-${appId}/search`,
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: '规范两段式搜索',
+      toolConfig: {
+        mcpTool: {
+          toolId: `mcp-${appId}/search`
+        }
+      },
+      inputs: [],
+      outputs: []
+    };
+
+    // 系统同名工具不能误覆盖仅在 toolConfig 保存来源的团队插件
+    const afterAddSystem = upsertSelectedTool([teamTool, legacyMcpChild], systemTool);
+    expect(afterAddSystem).toHaveLength(3);
+    expect(afterAddSystem.map((item) => item.name)).toEqual([
+      '官方秘塔',
+      '团队秘塔',
+      '旧三段式搜索'
+    ]);
+
+    // 规范两段式子工具应精准更新历史三段式子工具，而不是重复追加
+    const afterUpdateChild = upsertSelectedTool(afterAddSystem, updatedMcpChild);
+    expect(afterUpdateChild).toHaveLength(3);
+    expect(afterUpdateChild[2].name).toBe('规范两段式搜索');
+
+    // 按规范两段式 ID 或 team source 移除时精准命中对应条目
+    const afterRemoveChild = removeSelectedTool(afterUpdateChild, { id: `mcp-${appId}/search` });
+    expect(afterRemoveChild.map((item) => item.name)).toEqual(['官方秘塔', '团队秘塔']);
+
+    const afterRemoveTeam = removeSelectedTool(afterRemoveChild, {
+      id: 'systemTool-metaso',
+      source: 'teamId:team-1'
+    });
+    expect(afterRemoveTeam.map((item) => item.name)).toEqual(['官方秘塔']);
   });
 });

@@ -1,8 +1,8 @@
 import { parseAgentPromptRefKey } from './legacy';
 import type { ParsedAgentPromptRef } from './types';
 
-/** 只匹配双花括号开头，保留 JSON 中紧邻引用的闭合括号。 */
-export const AGENT_PROMPT_REF_REGEXP = /(?<!\{)\{\{@([^@{}]+)@\}\}/g;
+/** 只匹配双花括号开头且不跨行，保留 JSON 中紧邻引用的闭合括号并防止跨行误匹配。 */
+export const AGENT_PROMPT_REF_REGEXP = /(?<!\{)\{\{@([^@{}\r\n]+)@\}\}/g;
 
 /** 生成标准提示词引用包装文本 `{{@key@}}`。 */
 export const formatPromptRefToken = (key: string): string => `{{@${key}@}}`;

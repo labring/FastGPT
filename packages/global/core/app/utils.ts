@@ -1,4 +1,5 @@
 import type { AppFormEditFormType } from './formEdit/type';
+import type { AppFileSelectConfigType } from './type/config.schema';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 import { rerankCandidateNumRange } from '../dataset/search/utils';
 import { NodeInputKeyEnum } from '../workflow/constants';
@@ -17,6 +18,16 @@ const deletedPluginErrorList = new Set([
 /** 判断工具错误是否代表工具已被删除、卸载或当前来源不可用。 */
 export const isToolNotExistError = (error?: unknown) =>
   typeof error === 'string' && deletedPluginErrorList.has(error);
+
+/** 判断应用文件选择配置是否开启了任一上传类型，统一前后端文件能力判定口径。 */
+export const hasEnabledFileSelect = (fileSelectConfig?: AppFileSelectConfigType) =>
+  Boolean(
+    fileSelectConfig?.canSelectFile ||
+    fileSelectConfig?.canSelectImg ||
+    fileSelectConfig?.canSelectVideo ||
+    fileSelectConfig?.canSelectAudio ||
+    fileSelectConfig?.canSelectCustomFileExtension
+  );
 
 export const getDefaultAppForm = (): AppFormEditFormType => {
   return {
