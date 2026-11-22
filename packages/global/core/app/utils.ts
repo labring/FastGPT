@@ -1,11 +1,14 @@
-import type { AppFormEditFormType } from './formEdit/type';
+import type { AppFormEditFormType, SelectedToolItemType } from './formEdit/type';
 import type { AppFileSelectConfigType } from './type/config.schema';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 import { rerankCandidateNumRange } from '../dataset/search/utils';
 import { NodeInputKeyEnum } from '../workflow/constants';
 import { FlowNodeTypeEnum } from '../workflow/node/constant';
 import { type WorkflowTemplateBasicType } from '../workflow/type';
+import type { StoreNodeItemType } from '../workflow/type/node';
+import { hasDebugPromptRef } from '../workflow/node/agent/promptRef/legacy';
 import { AppTypeEnum } from './constants';
+import { hasDebugToolInSelectedTools, isDebugToolSource } from './tool/utils';
 
 const deletedPluginErrorList = new Set([
   'plugin.team_not_installed',
@@ -28,6 +31,43 @@ export const hasEnabledFileSelect = (fileSelectConfig?: AppFileSelectConfigType)
     fileSelectConfig?.canSelectAudio ||
     fileSelectConfig?.canSelectCustomFileExtension
   );
+
+/**
+ * 检查发布数据中是否包含本地调试工具。
+ * 需要同时覆盖普通工具节点、工具集配置、Agent 节点 selectedTools 与系统提示词中的残留 debug 引用，避免调试 source 被发布到线上版本。
+ */
+export function hasDebugToolInNodes(nodes?: StoreNodeItemType[] | null) {
+  return (
+    nodes?.some((node) => {
+      if (isDebugToolSource(node.source)) return true;
+
+      const toolConfig = node.toolConfig;
+      if (isDebugToolSource(toolConfig?.systemTool?.source)) return true;
+      if (isDebugToolSource(toolConfig?.systemToolSet?.source)) return true;
+
+      const selectedToolsInput = node.inputs.find(
+        (input) => input.key === NodeInputKeyEnum.selectedTools
+      );
+      const selectedTools = Array.isArray(selectedToolsInput?.value)
+        ? (selectedToolsInput.value as SelectedToolItemType[])
+        : [];
+
+      if (hasDebugToolInSelectedTools(selectedTools)) return true;
+
+      // Agent 节点系统提示词可能残留已删工具的 debug 引用，发布前一并拦截。
+      if (node.flowNodeType === FlowNodeTypeEnum.agent) {
+        const promptInput = node.inputs.find(
+          (input) => input.key === NodeInputKeyEnum.aiSystemPrompt
+        );
+        if (typeof promptInput?.value === 'string' && hasDebugPromptRef(promptInput.value)) {
+          return true;
+        }
+      }
+
+      return false;
+    }) ?? false
+  );
+}
 
 export const getDefaultAppForm = (): AppFormEditFormType => {
   return {

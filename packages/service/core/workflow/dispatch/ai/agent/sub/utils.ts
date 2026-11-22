@@ -126,7 +126,6 @@ export type ToolDispatchContext = Pick<
   runtimeNodesMap?: DispatchAgentModuleProps['runtimeNodesMap'];
   modelData: import('@fastgpt/global/core/ai/model/schema').LLMModelDataType;
   nodeResponseParentId?: string;
-  systemPrompt?: string;
   getSubAppInfo: GetSubAppInfoFnType;
   getSubApp: (id: string) => SubAppRuntimeType | undefined;
   completionTools: ChatCompletionTool[];

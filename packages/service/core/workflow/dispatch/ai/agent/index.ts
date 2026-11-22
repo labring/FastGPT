@@ -11,9 +11,6 @@ import type {
   ChatItemMiniType
 } from '@fastgpt/global/core/chat/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
-import { hasEnabledFileSelect } from '@fastgpt/global/core/app/utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../../types/runtime';
@@ -361,7 +358,30 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       subAppsMap: agentSubAppsMap,
       lang
     });
-    // 统一注册 Tools + 已授权部署的 Skills + Builtins，一步完成 V2/旧格式双读解析。
+    // 2. 创建 workflow adapter，获取本轮真正暴露给模型的 systemTools，确保内置引用注册与实际工具目录同源。
+    // 通用 agent loop 不感知 workflow；工具执行、SSE、usage、nodeResponse 都通过 runtime 参数回调进来。
+    // Agent 自身暂停态仍使用父层节点键；仅内部工具绑定派生后的记忆作用域。
+    const toolContext = getWorkflowContext().getChildContext({ memoryContext: agentMemoryContext });
+    const { runtime, artifacts } = runWithContext(toolContext, () =>
+      createWorkflowAgentLoopRuntime({
+        context: {
+          ...props,
+          modelData: agentModel,
+          getSubAppInfo,
+          getSubApp,
+          completionTools: agentCompletionTools,
+          currentFiles: userContext.currentFiles,
+          sandboxClient
+        },
+        usagePush,
+        assistantResponses,
+        appendNodeResponse: appendAgentNodeResponse,
+        onToolResult: (result) => {
+          props.nodeSummary.mergeNodeSummary(stripNodeSummaryErrorFields(result.nodeSummary));
+        }
+      })
+    );
+    // 统一注册 Tools + 已授权部署的 Skills + runtime 实际启用的 Builtins，一步完成 V2/旧格式双读解析。
     const selectedSkillSourceMap = new Map(
       effectiveSelectedSkills
         .filter((skill) => !skill.error && skill.source)
@@ -387,20 +407,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       });
     });
 
-    const hasDatasetSearch = Boolean(datasetParams?.datasets?.length);
-    // 简易模式固定绑定 userFiles，文件能力以 chatConfig.fileSelectConfig 开关为准；
-    // 工作流模式以节点 fileUrlList 是否配置或交由 AI 生成为准，与前端编辑器判定口径保持一致。
-    const hasReadFiles = isSimpleChatAgent
-      ? hasEnabledFileSelect(props.chatConfig?.fileSelectConfig)
-      : fileUrlInput
-        ? getSelectedInputRenderType(fileUrlInput) === FlowNodeInputTypeEnum.agentGenerated ||
-          parseHistoryFiles
-        : true;
-
     const runtimeBuiltinEntries: AgentPromptRefEntry<RuntimePromptRefMeta>[] = [
-      ...(hasDatasetSearch ? [SubAppIds.datasetSearch] : []),
-      ...(hasReadFiles ? [SubAppIds.readFiles] : []),
-      ...(effectiveUseAgentSandbox ? [AGENT_SANDBOX_TOOLSET_ID] : [])
+      ...(runtime.systemTools?.datasetSearch?.enabled ? [SubAppIds.datasetSearch] : []),
+      ...(runtime.systemTools?.readFile?.enabled ? [SubAppIds.readFiles] : []),
+      ...(runtime.systemTools?.sandbox?.enabled ? [AGENT_SANDBOX_TOOLSET_ID] : [])
     ].flatMap((builtinId) => {
       const displayName =
         getSubAppInfo(builtinId).name || getSystemToolInfo(builtinId, lang)?.name || '';
@@ -423,7 +433,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     runtimeRefRegistry.entries().forEach((entry) => {
       displayNameCount.set(entry.displayName, (displayNameCount.get(entry.displayName) ?? 0) + 1);
     });
-    // 历史里的 system 只作为外部噪音过滤；最终 systemPrompt 在创建 runtime 后按工具能力构建。
+    // 历史里的 system 只作为外部噪音过滤；最终 systemPrompt 在创建 runtime 后按实际工具能力构建。
     // PromptEditor 保存的是引用键，进入主 Agent 前转换为具体名称；同名不同源工具附带函数名消歧。
     const formattedUserSystemPrompt = runtimeRefRegistry.renderForModel({
       text: systemPrompt,
@@ -497,33 +507,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       };
     }
 
-    // 2. 创建 workflow adapter。
-    // 通用 agent loop 不感知 workflow；工具执行、SSE、usage、nodeResponse 都通过 runtime 参数回调进来。
-    // Agent 自身暂停态仍使用父层节点键；仅内部工具绑定派生后的记忆作用域。
-    const toolContext = getWorkflowContext().getChildContext({ memoryContext: agentMemoryContext });
-    const { runtime, artifacts } = runWithContext(toolContext, () =>
-      createWorkflowAgentLoopRuntime({
-        context: {
-          ...props,
-          modelData: agentModel,
-          systemPrompt: formattedUserSystemPrompt,
-          getSubAppInfo,
-          getSubApp,
-          completionTools: agentCompletionTools,
-          currentFiles: userContext.currentFiles,
-          sandboxClient
-        },
-        usagePush,
-        assistantResponses,
-        appendNodeResponse: appendAgentNodeResponse,
-        onToolResult: (result) => {
-          props.nodeSummary.mergeNodeSummary(stripNodeSummaryErrorFields(result.nodeSummary));
-        }
-      })
-    );
     const agentSystemPrompt = buildDefaultAgentSystemPrompt({
       userSystemPrompt: formattedUserSystemPrompt,
-      sandboxEnabled: !!sandboxClient
+      sandboxEnabled: Boolean(runtime.systemTools?.sandbox?.enabled)
     });
 
     // 3. 运行单主 loop。

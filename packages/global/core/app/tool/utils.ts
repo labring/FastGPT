@@ -1,10 +1,8 @@
 import { AppToolSourceEnum } from '../tool/constants';
-import { NodeInputKeyEnum } from '../../workflow/constants';
 import { FlowNodeTypeEnum } from '../../workflow/node/constant';
-import type { NodeToolConfigType, StoreNodeItemType } from '../../workflow/type/node';
+import type { NodeToolConfigType } from '../../workflow/type/node';
 import type { SelectedToolItemType } from '../formEdit/type';
 import { hashStr } from '../../../common/string/tools';
-import { hasDebugPromptRef } from '../../workflow/node/agent/promptRef/protocol';
 
 /**
   Tool id rule:
@@ -184,43 +182,6 @@ export function parseDebugToolSource(source?: string): { tmbId: string } | undef
 
 export function hasDebugToolInSelectedTools(selectedTools?: SelectedToolItemType[] | null) {
   return selectedTools?.some((tool) => isDebugToolSource(getAgentToolSource(tool))) ?? false;
-}
-
-/**
- * 检查发布数据中是否包含本地调试工具。
- * 需要同时覆盖普通工具节点、工具集配置和 Agent 节点 selectedTools 输入，避免调试 source 被发布到线上版本。
- */
-export function hasDebugToolInNodes(nodes?: StoreNodeItemType[] | null) {
-  return (
-    nodes?.some((node) => {
-      if (isDebugToolSource(node.source)) return true;
-
-      const toolConfig = node.toolConfig;
-      if (isDebugToolSource(toolConfig?.systemTool?.source)) return true;
-      if (isDebugToolSource(toolConfig?.systemToolSet?.source)) return true;
-
-      const selectedToolsInput = node.inputs.find(
-        (input) => input.key === NodeInputKeyEnum.selectedTools
-      );
-      const selectedTools = Array.isArray(selectedToolsInput?.value)
-        ? (selectedToolsInput.value as SelectedToolItemType[])
-        : [];
-
-      if (hasDebugToolInSelectedTools(selectedTools)) return true;
-
-      // Agent 节点系统提示词可能残留已删工具的 debug 引用，发布前一并拦截。
-      if (node.flowNodeType === FlowNodeTypeEnum.agent) {
-        const promptInput = node.inputs.find(
-          (input) => input.key === NodeInputKeyEnum.aiSystemPrompt
-        );
-        if (typeof promptInput?.value === 'string' && hasDebugPromptRef(promptInput.value)) {
-          return true;
-        }
-      }
-
-      return false;
-    }) ?? false
-  );
 }
 
 export const getToolRawId = (id: string) => {

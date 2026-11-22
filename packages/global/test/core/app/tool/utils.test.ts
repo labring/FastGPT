@@ -5,7 +5,6 @@ import {
   getToolNameCandidates,
   getToolRawId,
   getToolSetChildDescription,
-  hasDebugToolInNodes,
   hasDebugToolInSelectedTools,
   isTeamPluginSource,
   mergeToolSetChildDescriptions,
@@ -16,6 +15,7 @@ import {
   splitCombineToolId,
   splitToolsetToolPluginId
 } from '@fastgpt/global/core/app/tool/utils';
+import { hasDebugToolInNodes } from '@fastgpt/global/core/app/utils';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';

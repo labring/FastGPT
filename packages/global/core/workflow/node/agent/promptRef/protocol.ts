@@ -13,7 +13,6 @@ export type AgentPromptRef =
   | { type: 'app'; source: 'team'; id: string };
 
 const INVALID_REF_SEGMENT_RE = /[@{}\r\n]/;
-const LEGACY_DEBUG_REF_RE = /^debug:tmbId:[^:]+:.+$/;
 
 /** 只匹配双花括号开头且不跨行，保留 JSON 中紧邻引用的闭合括号并防止跨行误匹配。 */
 export const AGENT_PROMPT_REF_REGEXP = /(?<!\{)\{\{@([^@{}\r\n]+)@\}\}/g;
@@ -94,19 +93,4 @@ export const parseV2RefKey = (rawKey: string): AgentPromptRef | null => {
 export const stripAgentPromptRefs = (text: string): string => {
   if (!text) return text;
   return text.replace(AGENT_PROMPT_REF_REGEXP, '');
-};
-
-/** 检测提示词正文中是否残留本地调试插件引用（同时覆盖 V2 与旧 debug:tmbId:* 格式）。 */
-export const hasDebugPromptRef = (text?: string | null): boolean => {
-  if (!text) return false;
-
-  for (const match of text.matchAll(AGENT_PROMPT_REF_REGEXP)) {
-    const rawKey = match[1].trim();
-    const v2Ref = parseV2RefKey(rawKey);
-    if (v2Ref?.type === 'plugin' && v2Ref.source === 'debug') return true;
-    // 兼容历史 debug:tmbId:<tmbId>:<pluginId> 提示词引用，存量退场后可移除。
-    if (!v2Ref && LEGACY_DEBUG_REF_RE.test(rawKey)) return true;
-  }
-
-  return false;
 };

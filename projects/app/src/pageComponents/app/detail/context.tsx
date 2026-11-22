@@ -24,7 +24,7 @@ import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { AppTypeList } from '@fastgpt/global/core/app/constants';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { hasDebugToolInNodes } from '@fastgpt/global/core/app/tool/utils';
+import { hasDebugToolInNodes } from '@fastgpt/global/core/app/utils';
 import { ToastHandledError } from '@fastgpt/global/common/error/utils';
 
 const InfoModal = dynamic(() => import('./InfoModal'));

@@ -1,6 +1,11 @@
 import { AppToolSourceEnum } from '../../../../app/tool/constants';
 import { splitCombineToolId } from '../../../../app/tool/utils';
-import { formatRefKey, parseV2RefKey, type AgentPromptRef } from './protocol';
+import {
+  AGENT_PROMPT_REF_REGEXP,
+  formatRefKey,
+  parseV2RefKey,
+  type AgentPromptRef
+} from './protocol';
 
 export type ParsedLegacyPromptRef = {
   kind: 'legacy';
@@ -164,6 +169,24 @@ export const isBuiltinPromptRefKey = (rawKey: string): boolean => {
   if (v2Ref) return v2Ref.type === 'builtin';
 
   return parseLegacyRefKey(rawKey).deterministicRef?.type === 'builtin';
+};
+
+/** 检测提示词正文中是否残留本地调试插件引用（统一复用新旧解析入口，避免发布守卫与运行时分叉）。 */
+export const hasDebugPromptRef = (text?: string | null): boolean => {
+  if (!text) return false;
+
+  for (const match of text.matchAll(AGENT_PROMPT_REF_REGEXP)) {
+    const parsed = parseAgentPromptRefKey(match[1]);
+    const ref =
+      parsed.kind === 'v2'
+        ? parsed.ref
+        : parsed.kind === 'legacy'
+          ? parsed.deterministicRef
+          : undefined;
+    if (ref?.type === 'plugin' && ref.source === 'debug') return true;
+  }
+
+  return false;
 };
 
 /**

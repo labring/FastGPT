@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatRefKey,
-  hasDebugPromptRef,
   parseV2RefKey,
   stripAgentPromptRefs
 } from '@fastgpt/global/core/workflow/node/agent/promptRef/protocol';
 import {
+  hasDebugPromptRef,
   isBuiltinPromptRefKey,
   parseAgentPromptRefKey,
   parseLegacyRefKey,
@@ -319,6 +319,8 @@ describe('AgentPromptRefRegistry invariants', () => {
   it('detects debug refs, stripping, and builtin predicates', () => {
     expect(hasDebugPromptRef('{{@debug:tmbId:u1:systemTool-x@}}')).toBe(true);
     expect(hasDebugPromptRef('{{@plugin:debug:u1:x@}}')).toBe(true);
+    expect(hasDebugPromptRef('{{@debug:tmbId:u1:@}}')).toBe(false);
+    expect(hasDebugPromptRef('{{@plugin:debug:u1/bad:x@}}')).toBe(false);
     expect(hasDebugPromptRef('{{@plugin:system:x@}}')).toBe(false);
     expect(stripAgentPromptRefs('使用 {{@plugin:system:x@}} 和 {{$start.q$}}')).toBe(
       '使用  和 {{$start.q$}}'
