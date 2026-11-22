@@ -16,6 +16,7 @@ import { formatRefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef
 import {
   getCanonicalKeyForTool,
   getPromptRefToolId,
+  getToolPromptReference,
   refFromBuiltin,
   refFromSkill,
   refFromTool
@@ -142,20 +143,14 @@ export const useAgentPromptRefs = ({
     const entries: AgentPromptRefEntry<SkillLabelItemType>[] = [];
 
     selectedTools.forEach((tool) => {
-      const resolvedToolId = getPromptRefToolId(tool);
-      const savedToolId = (tool.pluginId || tool.id || '').trim();
-      const legacyExactKeys =
-        savedToolId && savedToolId !== resolvedToolId ? [savedToolId] : undefined;
-      const ref = refFromTool(tool);
-      if (!ref) return;
+      const reference = getToolPromptReference(tool);
+      if (!reference) return;
 
-      const canonicalKey = formatRefKey(ref);
-
+      const canonicalKey = formatRefKey(reference.ref);
       entries.push({
-        ref,
+        ...reference,
         canonicalKey,
         displayName: tool.name,
-        ...(legacyExactKeys ? { legacyExactKeys } : {}),
         meta: buildToolSkillLabelItem({ tool, writeKey: canonicalKey, configTarget: tool })
       });
 

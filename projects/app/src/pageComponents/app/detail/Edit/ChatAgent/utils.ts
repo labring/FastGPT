@@ -382,21 +382,6 @@ export type VerifiedToolPreviewResult =
   | { status: 'existing'; tool: SelectedToolItemType }
   | { status: 'preview'; tool: FlowNodeTemplateType };
 
-/** 预览、已选工具和生成配置按解析后的同一工具身份匹配。 */
-const getToolIdentityMatcher = (toolId: string, source?: string) => {
-  const canonicalKey = getCanonicalKeyForTool({ id: toolId, source });
-  const identityKey = canonicalKey || getToolIdentityKey(toolId, source);
-
-  const isSameTool = (tool: FlowNodeTemplateType | SelectedToolItemType) => {
-    const key = canonicalKey
-      ? getCanonicalKeyForTool(tool)
-      : getToolIdentityKey(getPromptRefToolId(tool), getAgentToolSource(tool));
-    return key === identityKey;
-  };
-
-  return { canonicalKey, isSameTool };
-};
-
 /**
  * 统一解析并校验工具预览（@ 菜单与辅助生成共用）：
  * - 非 MCP/HTTP 子工具命中已有配置时直接复用，避免重复请求；
@@ -411,7 +396,16 @@ export const resolveVerifiedToolPreview = async ({
   source?: string;
   existsTools?: SelectedToolItemType[];
 }): Promise<VerifiedToolPreviewResult> => {
-  const { canonicalKey, isSameTool } = getToolIdentityMatcher(toolId, source);
+  const canonicalKey = getCanonicalKeyForTool({ id: toolId, source });
+  const identityKey = canonicalKey || getToolIdentityKey(toolId, source);
+
+  const isSameTool = (tool: FlowNodeTemplateType) => {
+    const key = canonicalKey
+      ? getCanonicalKeyForTool(tool)
+      : getToolIdentityKey(getPromptRefToolId(tool), getAgentToolSource(tool));
+    return key === identityKey;
+  };
+
   const isMcpOrHttpChild =
     toolId.startsWith('mcp-') ||
     toolId.startsWith('http-') ||
@@ -445,12 +439,10 @@ export const resolveVerifiedToolPreview = async ({
 export const loadGeneratedTools = async ({
   newToolIds,
   existsTools = [],
-  generatedSelectedTools = [],
   fileSelectConfig
 }: {
   newToolIds: Array<string | { id: string; source?: string }>; // 新的，完整的 toolId
   existsTools?: SelectedToolItemType[];
-  generatedSelectedTools?: SelectedToolItemType[];
   fileSelectConfig?: AppFileSelectConfigType;
 }): Promise<SelectedToolItemType[]> => {
   const results = (
@@ -502,9 +494,7 @@ export const loadGeneratedTools = async ({
           return;
         }
 
-        const { isSameTool } = getToolIdentityMatcher(toolId, source);
-        const generatedTool = generatedSelectedTools.find(isSameTool);
-        const inheritedTool = inheritToolInputConfig({ tool, sourceTool: generatedTool });
+        const inheritedTool = inheritToolInputConfig({ tool });
         const previewToolId = getPromptRefToolId(tool);
         const resolvedToolId =
           toolId.includes('/') &&

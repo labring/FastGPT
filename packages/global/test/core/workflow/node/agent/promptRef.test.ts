@@ -46,7 +46,6 @@ describe('agent promptRef V2 codec (parseV2RefKey / formatRefKey)', () => {
       const parsed = parseV2RefKey(key);
       expect(parsed).not.toBeNull();
       expect(formatRefKey(parsed!)).toBe(key);
-      expect(parseV2RefKey(key)).not.toBeNull();
     }
 
     expect(splitParentChildId('66f1/ns:get-issue')).toEqual({
@@ -312,17 +311,21 @@ describe('AgentPromptRefRegistry invariants', () => {
     expect(otherApp.status).toBe('unresolved');
   });
 
-  it('protects JSON 3-brace endings in renderForModel', () => {
+  it('protects JSON 3-brace endings and preserves nested opening braces', () => {
     const registry = createRegistry();
+    const nested = '{{{{@builtin:read_files@}}}}';
     const input =
       'JSON: {"tool": {{@app:team:66f100000000000000000022/ns:get-issue@}}, "http": {{@app:team:66f100000000000000000022//api/v1/users@}}}\n' +
-      'Refs: {{@builtin:read_files@}} + {{@dataset_search@}} + {{@metaso@}} + {{@builtin:future_cap@}}';
+      'Refs: {{@builtin:read_files@}} + {{@dataset_search@}} + {{@metaso@}} + {{@builtin:future_cap@}}\n' +
+      nested;
 
     const rendered = registry.renderForModel({ text: input });
     expect(rendered).toBe(
       'JSON: {"tool": {{GitHub查Issue}}, "http": {{HTTP查用户}}}\n' +
-        'Refs: {{文件解析}} + {{知识库检索}} + {{@metaso@}} + {{@builtin:future_cap@}}'
+        'Refs: {{文件解析}} + {{知识库检索}} + {{@metaso@}} + {{@builtin:future_cap@}}\n' +
+        nested
     );
+    expect(stripAgentPromptRefs(nested)).toBe(nested);
   });
 
   it('detects debug refs, stripping, and builtin predicates', () => {
@@ -400,10 +403,5 @@ describe('AgentPromptRefRegistry invariants', () => {
     });
     expect(registry.resolve(`app:team:${appId}/LegacyToolset/search`).status).toBe('unresolved');
     expect(registry.resolve(`mcp-${appId}/OtherSet/search`).status).toBe('unresolved');
-    expect(
-      registry.renderForModel({
-        text: `旧引用 {{@mcp-${appId}/LegacyToolset/search@}}，新缺失键 {{@app:team:${appId}/LegacyToolset/search@}}`
-      })
-    ).toBe(`旧引用 {{search}}，新缺失键 {{@app:team:${appId}/LegacyToolset/search@}}`);
   });
 });

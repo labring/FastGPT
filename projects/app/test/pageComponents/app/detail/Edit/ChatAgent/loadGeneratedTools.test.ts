@@ -1,47 +1,136 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
+import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
+import { getNewToolPreviewNode } from '@/web/core/app/api/tool';
+import {
+  agentForm2AppWorkflow,
+  loadGeneratedTools
+} from '@/pageComponents/app/detail/Edit/ChatAgent/utils';
 
-const { getNewToolPreviewNodeMock } = vi.hoisted(() => ({
-  getNewToolPreviewNodeMock: vi.fn()
-}));
+vi.mock('@/web/core/app/api/tool', () => ({ getNewToolPreviewNode: vi.fn() }));
 
-vi.mock('@/web/core/app/api/tool', () => ({
-  getNewToolPreviewNode: getNewToolPreviewNodeMock
-}));
+const createTool = (
+  id: string,
+  override: Partial<SelectedToolItemType> = {}
+): SelectedToolItemType => ({
+  id,
+  pluginId: id,
+  name: 'Shared tool',
+  flowNodeType: FlowNodeTypeEnum.tool,
+  inputs: [],
+  outputs: [],
+  ...override
+});
 
-import { loadGeneratedTools } from '@/pageComponents/app/detail/Edit/ChatAgent/utils';
-
-describe('loadGeneratedTools V2 & legacy compatibility', () => {
+describe('loadGeneratedTools', () => {
   beforeEach(() => {
-    getNewToolPreviewNodeMock.mockReset();
+    vi.mocked(getNewToolPreviewNode).mockReset();
+    vi.mocked(getNewToolPreviewNode).mockImplementation(async ({ appId, source }) =>
+      createTool(appId, { source })
+    );
+  });
+  const toolId = 'systemTool-shared';
+  it('loads team tools from their own source without reusing a same-ID system tool', async () => {
+    const systemTool = createTool(toolId, { source: 'system' });
+    const teamSource = 'teamId:team-1';
+    const result = await loadGeneratedTools({
+      newToolIds: [
+        { id: toolId, source: 'system' },
+        { id: toolId, source: teamSource }
+      ],
+      existsTools: [systemTool]
+    });
+
+    expect(result[0]).toBe(systemTool);
+    expect(result[1]).toMatchObject({ id: toolId, source: teamSource });
+    expect(getNewToolPreviewNode).toHaveBeenCalledExactlyOnceWith({
+      appId: toolId,
+      source: teamSource
+    });
+    const form = getDefaultAppForm();
+    form.selectedTools = result;
+    const workflow = agentForm2AppWorkflow(form, (key: string) => key);
+    const savedTools = workflow.nodes
+      .find((node) => node.flowNodeType === FlowNodeTypeEnum.agent)
+      ?.inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools)?.value;
+    expect(savedTools).toEqual([
+      expect.objectContaining({ id: toolId, source: 'system' }),
+      expect.objectContaining({ id: toolId, source: teamSource })
+    ]);
   });
 
-  it('loads V2 canonical plugin/team/app keys and reuses existing tools without duplicate fetch', async () => {
-    getNewToolPreviewNodeMock.mockImplementation(async ({ appId, source }) => ({
-      id: appId,
-      pluginId: appId,
-      source,
-      name: `Tool ${appId}`,
-      avatar: '',
-      intro: '',
-      flowNodeType: FlowNodeTypeEnum.tool,
-      templateType: 'tools',
-      inputs: [],
-      outputs: []
-    }));
+  it('continues loading legacy string tool references', async () => {
+    const result = await loadGeneratedTools({ newToolIds: [toolId] });
 
-    const existingTeamTool = {
-      id: 'systemTool-metaso',
-      pluginId: 'systemTool-metaso',
-      source: 'teamId:67a100000000000000000001',
-      name: '团队秘塔(已配置)',
-      avatar: '',
-      intro: '',
-      flowNodeType: FlowNodeTypeEnum.tool,
-      templateType: 'tools',
-      inputs: [],
-      outputs: []
-    } as any;
+    expect(result).toEqual([expect.objectContaining({ id: toolId })]);
+    expect(getNewToolPreviewNode).toHaveBeenCalledExactlyOnceWith({
+      appId: toolId,
+      source: undefined
+    });
+  });
+
+  it('reuses a team tool whose source is only stored in its tool config', async () => {
+    const source = 'teamId:team-1';
+    const teamTool = {
+      ...createTool(toolId),
+      toolConfig: { systemTool: { toolId, source } }
+    };
+    const result = await loadGeneratedTools({
+      newToolIds: [{ id: toolId, source }],
+      existsTools: [createTool(toolId, { source: 'system' }), teamTool]
+    });
+
+    expect(result).toEqual([teamTool]);
+    expect(getNewToolPreviewNode).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, 'system'])(
+    'preserves existing system configuration when the saved source is %s',
+    async (source) => {
+      const tool = {
+        ...createTool(toolId, { source }),
+        version: 'saved-version',
+        inputs: [
+          {
+            key: 'apiKey',
+            label: '',
+            renderTypeList: [],
+            value: 'saved-api-key'
+          }
+        ]
+      };
+      const result = await loadGeneratedTools({
+        newToolIds: [{ id: toolId, source: 'system' }],
+        existsTools: [tool]
+      });
+
+      expect(result).toEqual([{ ...tool, source: 'system' }]);
+      expect(result[0].inputs).toBe(tool.inputs);
+      expect(tool.source).toBe(source);
+      expect(getNewToolPreviewNode).not.toHaveBeenCalled();
+
+      const form = getDefaultAppForm();
+      form.selectedTools = result;
+      const savedTools = agentForm2AppWorkflow(form, (key: string) => key)
+        .nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.agent)
+        ?.inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools)?.value;
+      expect(savedTools).toEqual([
+        expect.objectContaining({
+          id: toolId,
+          source: 'system',
+          version: 'saved-version',
+          config: { apiKey: 'saved-api-key' }
+        })
+      ]);
+    }
+  );
+
+  it('loads V2 plugin and app references and reuses existing tools', async () => {
+    const existingTeamTool = createTool('systemTool-metaso', {
+      source: 'teamId:67a100000000000000000001'
+    });
 
     const result = await loadGeneratedTools({
       newToolIds: [
@@ -57,121 +146,60 @@ describe('loadGeneratedTools V2 & legacy compatibility', () => {
     expect(result[0]).toMatchObject({ id: 'systemTool-metaso', source: 'system' });
     expect(result[1]).toBe(existingTeamTool);
     expect(result[2]).toMatchObject({ id: '66f100000000000000000011', source: undefined });
-    expect(getNewToolPreviewNodeMock).toHaveBeenCalledTimes(2);
-    expect(getNewToolPreviewNodeMock).toHaveBeenCalledWith({
+    expect(getNewToolPreviewNode).toHaveBeenCalledTimes(2);
+    expect(getNewToolPreviewNode).toHaveBeenCalledWith({
       appId: 'systemTool-metaso',
       source: 'system'
     });
-    expect(getNewToolPreviewNodeMock).toHaveBeenCalledWith({
+    expect(getNewToolPreviewNode).toHaveBeenCalledWith({
       appId: '66f100000000000000000011',
       source: undefined
     });
   });
 
-  it('preserves canonical mcp-/http- ids returned by preview lookup for unselected V2 child tools', async () => {
-    const mcpParentId = '66f100000000000000000021';
-    const httpParentId = '66f100000000000000000022';
-    getNewToolPreviewNodeMock
-      .mockResolvedValueOnce({
-        id: 'preview-node-id-1',
-        pluginId: `mcp-${mcpParentId}/search`,
-        name: 'search',
-        avatar: '',
-        intro: '',
-        flowNodeType: FlowNodeTypeEnum.tool,
-        templateType: 'tools',
-        inputs: [],
-        outputs: []
-      })
-      .mockResolvedValueOnce({
-        id: 'preview-node-id-2',
-        pluginId: `http-${httpParentId}//api/v1/users`,
-        name: '/api/v1/users',
-        avatar: '',
-        intro: '',
-        flowNodeType: FlowNodeTypeEnum.tool,
-        templateType: 'tools',
-        inputs: [],
-        outputs: []
-      });
+  it.each([
+    { type: 'mcp', toolName: 'search' },
+    { type: 'http', toolName: '/api/v1/users' }
+  ])('returns the canonical $type child ID from preview', async ({ type, toolName }) => {
+    const parentId = '66f100000000000000000021';
+    const childId = type + '-' + parentId + '/' + toolName;
+    vi.mocked(getNewToolPreviewNode).mockResolvedValueOnce(
+      createTool('preview-node', { pluginId: childId })
+    );
 
-    const result = await loadGeneratedTools({
-      newToolIds: [`app:team:${mcpParentId}/search`, `app:team:${httpParentId}//api/v1/users`]
-    });
-
-    expect(result).toHaveLength(2);
-    expect(result[0]).toMatchObject({ id: `mcp-${mcpParentId}/search` });
-    expect(result[1]).toMatchObject({ id: `http-${httpParentId}//api/v1/users` });
+    await expect(
+      loadGeneratedTools({ newToolIds: ['app:team:' + parentId + '/' + toolName] })
+    ).resolves.toEqual([expect.objectContaining({ id: childId })]);
   });
 
-  it('validates MCP/HTTP child tools via live preview before reusing existing config, rejecting stale deleted tools', async () => {
-    const mcpParentId = '66f100000000000000000031';
-    const stalePreDeletionTool = {
-      id: `mcp-${mcpParentId}/catalog/search`,
-      pluginId: `mcp-${mcpParentId}/catalog/search`,
-      name: 'catalog/search',
-      avatar: '',
-      intro: '',
-      flowNodeType: FlowNodeTypeEnum.tool,
-      templateType: 'tools',
-      inputs: [],
-      outputs: [],
-      toolConfig: {
-        mcpTool: {
-          toolId: `mcp-${mcpParentId}/catalog/search`
-        }
-      }
-    } as any;
-    const reloadedFallbackTool = {
-      id: `mcp-${mcpParentId}/catalog/search`,
-      pluginId: `mcp-${mcpParentId}/catalog/search`,
-      name: 'search',
-      avatar: '',
-      intro: '',
-      flowNodeType: FlowNodeTypeEnum.tool,
-      templateType: 'tools',
-      inputs: [],
-      outputs: [],
-      toolConfig: {
-        mcpTool: {
-          toolId: `mcp-${mcpParentId}/search`
-        }
-      }
-    } as any;
+  it('rejects a stale MCP child and reuses existing config after a confirmed preview', async () => {
+    const parentId = '66f100000000000000000031';
+    const savedId = 'mcp-' + parentId + '/catalog/search';
+    const actualId = 'mcp-' + parentId + '/search';
+    const createMcpTool = (id: string, toolId: string) =>
+      createTool(id, { toolConfig: { mcpTool: { toolId } } });
+    const staleTool = createMcpTool(savedId, savedId);
+    const reloadedTool = createMcpTool(savedId, actualId);
+    vi.mocked(getNewToolPreviewNode)
+      .mockRejectedValueOnce(new Error('unExist'))
+      .mockResolvedValueOnce(createMcpTool(actualId, actualId));
 
-    getNewToolPreviewNodeMock.mockRejectedValueOnce(new Error('unExist')).mockResolvedValueOnce({
-      id: 'preview-search',
-      pluginId: `mcp-${mcpParentId}/search`,
-      name: 'search',
-      avatar: '',
-      intro: '',
-      flowNodeType: FlowNodeTypeEnum.tool,
-      templateType: 'tools',
-      inputs: [],
-      outputs: [],
-      toolConfig: {
-        mcpTool: {
-          toolId: `mcp-${mcpParentId}/search`
-        }
-      }
-    });
-
-    // 即使本地 existsTools 仍持有删除前的旧配置，也要经实时精确预览拒绝
     await expect(
       loadGeneratedTools({
-        newToolIds: [`app:team:${mcpParentId}/catalog/search`],
-        existsTools: [stalePreDeletionTool]
+        newToolIds: ['app:team:' + parentId + '/catalog/search'],
+        existsTools: [staleTool]
       })
     ).rejects.toThrow('unExist');
-    expect(getNewToolPreviewNodeMock).toHaveBeenCalledWith({
-      appId: `${mcpParentId}/catalog/search`,
+    expect(getNewToolPreviewNode).toHaveBeenCalledWith({
+      appId: parentId + '/catalog/search',
       source: undefined
     });
 
-    const reusedResult = await loadGeneratedTools({
-      newToolIds: [`app:team:${mcpParentId}/search`],
-      existsTools: [reloadedFallbackTool]
-    });
-    expect(reusedResult).toEqual([reloadedFallbackTool]);
+    await expect(
+      loadGeneratedTools({
+        newToolIds: ['app:team:' + parentId + '/search'],
+        existsTools: [reloadedTool]
+      })
+    ).resolves.toEqual([reloadedTool]);
   });
 });

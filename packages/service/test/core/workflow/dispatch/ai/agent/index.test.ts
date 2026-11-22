@@ -543,12 +543,7 @@ describe('dispatchRunAgent user context', () => {
 
     const systemPrompt = runAgentLoopMock.mock.calls[0][0].input.systemPrompt;
     expect(systemPrompt).toContain(
-      '优先使用 {{Search documentation}} 与旧三段 {{Search documentation}}'
-    );
-    expect(systemPrompt).not.toContain('{{@mcp-app_1/search@}}');
-    expect(systemPrompt).not.toContain('{{@mcp-app_1/LegacyToolset/search@}}');
-    expect(systemPrompt).toContain(
-      '缺失保持 {{@app:team:app_1/LegacyToolset/search@}} 和 {{@missing@}}'
+      '优先使用 {{Search documentation}} 与旧三段 {{Search documentation}}，缺失保持 {{@app:team:app_1/LegacyToolset/search@}} 和 {{@missing@}}'
     );
   });
 

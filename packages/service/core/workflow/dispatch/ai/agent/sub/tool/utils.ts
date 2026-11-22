@@ -71,6 +71,7 @@ import {
 } from '../../../../../../plugin/teamPluginPolicy';
 import {
   getPromptRefToolId,
+  getToolPromptReference,
   refFromTool
 } from '@fastgpt/global/core/workflow/node/agent/promptRef/adapters';
 
@@ -672,22 +673,14 @@ export const getAgentRuntimeTools = async ({
           return 'tool';
         })();
 
-        // toolset 展开后的子工具统一走 tool 执行；params 仍继承父工具配置。
-        const resolvedPromptToolId = getPromptRefToolId({
+        const reference = getToolPromptReference({
           id: tool.id,
           flowNodeType: toolNode.flowNodeType,
-          toolConfig: toolNode.toolConfig
+          toolConfig: toolNode.toolConfig,
+          source: runtimeSource
         });
-        const promptRef =
-          refFromTool({ id: resolvedPromptToolId, source: runtimeSource }) ?? undefined;
-        const legacyExactKeys = tool.id && tool.id !== resolvedPromptToolId ? [tool.id] : undefined;
-        const promptReference = promptRef
-          ? {
-              name: toolNode.name,
-              ref: promptRef,
-              ...(legacyExactKeys ? { legacyExactKeys } : {})
-            }
-          : undefined;
+        const promptReference = reference ? { ...reference, name: toolNode.name } : undefined;
+        // 工具集子工具共用父工具配置，提示词仍登记各自的身份。
         const buildSubApp = (child: RuntimeNodeItemType, id = child.nodeId): SubAppInitType => {
           const runtimeId = getAgentRuntimeToolId({ pluginId: id, source: runtimeSource });
           const isHttpToolChild = Boolean(child.toolConfig?.httpTool);
@@ -709,15 +702,7 @@ export const getAgentRuntimeTools = async ({
             jsonSchema: child.jsonSchema,
             fixedInputBindings: filterToolConfiguredParams({ params: configuredParams, inputs })
           });
-          const childToolId =
-            child.toolConfig?.systemTool?.toolId ||
-            (child.toolConfig?.mcpTool && 'toolId' in child.toolConfig.mcpTool
-              ? child.toolConfig.mcpTool.toolId
-              : undefined) ||
-            (child.toolConfig?.httpTool && 'toolId' in child.toolConfig.httpTool
-              ? child.toolConfig.httpTool.toolId
-              : undefined) ||
-            child.pluginId;
+          const childToolId = child.toolConfig?.systemTool?.toolId || getPromptRefToolId(child);
           const childPromptRef = childToolId
             ? (refFromTool({ id: childToolId, source: runtimeSource }) ?? undefined)
             : undefined;

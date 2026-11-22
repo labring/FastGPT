@@ -303,37 +303,24 @@ export const useSkillManager = ({
     async (skillId: string): Promise<SkillClickResult | undefined> => {
       if (!hasAgentSkillSupport) return;
       const existsSkill = lastSelectedAgentSkills.current?.find((item) => item.skillId === skillId);
-      if (existsSkill) {
-        const writeKey = getSkillWriteKey({
-          skillId: existsSkill.skillId,
-          source: existsSkill.source
-        });
-        const skill = buildAgentSkillLabelItem({ skill: existsSkill, writeKey });
+      const selectedSkill =
+        existsSkill ??
+        (() => {
+          const targetSkill = agentSkillMapRef.current.get(skillId);
+          if (!targetSkill) return;
 
-        return {
-          id: skill.id,
-          skill
-        };
-      }
+          return {
+            skillId: targetSkill._id,
+            source: targetSkill.source,
+            name: targetSkill.name,
+            description: targetSkill.description,
+            avatar: targetSkill.avatar
+          };
+        })();
+      if (!selectedSkill || (!existsSkill && !lastOnAddAgentSkill.current?.(selectedSkill))) return;
 
-      const targetSkill = agentSkillMapRef.current.get(skillId);
-
-      if (!targetSkill) return;
-
-      const selectedSkill: SelectedAgentSkillItemType = {
-        skillId: targetSkill._id,
-        source: targetSkill.source,
-        name: targetSkill.name,
-        description: targetSkill.description,
-        avatar: targetSkill.avatar
-      };
-      if (!lastOnAddAgentSkill.current?.(selectedSkill)) return;
-      const writeKey = getSkillWriteKey({
-        skillId: selectedSkill.skillId,
-        source: selectedSkill.source
-      });
+      const writeKey = getSkillWriteKey(selectedSkill);
       const skill = buildAgentSkillLabelItem({ skill: selectedSkill, writeKey });
-
       return {
         id: skill.id,
         skill
@@ -383,48 +370,31 @@ export const useSkillManager = ({
         return;
       }
 
-      if (verified.status === 'existing') {
-        const existsTool = verified.tool;
-        const writeKey = getToolWriteKey(existsTool);
-        const skill = buildToolSkillLabelItem({
-          tool: existsTool,
-          writeKey,
-          configTarget: existsTool
-        });
+      const tool = (() => {
+        if (verified.status === 'existing') return verified.tool;
 
-        return {
-          id: skill.id,
-          skill
-        };
-      }
-
-      const toolTemplate = verified.tool;
-      const toolValid = validateToolConfiguration({
-        toolTemplate,
-        canUploadFile,
-        isAppTool: true
-      });
-      if (!toolValid) {
-        toast({
-          title: t('app:simple_tool_tips'),
-          status: 'warning'
-        });
-        return;
-      }
-
-      const tool = inheritToolInputConfig({
-        tool: {
-          ...toolTemplate,
-          id: toolTemplate.pluginId!
+        const toolTemplate = verified.tool;
+        if (!validateToolConfiguration({ toolTemplate, canUploadFile, isAppTool: true })) {
+          toast({
+            title: t('app:simple_tool_tips'),
+            status: 'warning'
+          });
+          return;
         }
-      });
-      const writeKey = getToolWriteKey({
-        ...tool,
-        source: getAgentToolSource(tool) ?? source
-      });
-      const skill = buildToolSkillLabelItem({ tool, writeKey, configTarget: tool });
 
-      lastOnUpdateOrAddTool.current?.(tool);
+        return inheritToolInputConfig({
+          tool: { ...toolTemplate, id: toolTemplate.pluginId! }
+        });
+      })();
+      if (!tool) return;
+
+      const writeKey = getToolWriteKey(
+        verified.status === 'existing'
+          ? tool
+          : { ...tool, source: getAgentToolSource(tool) ?? source }
+      );
+      const skill = buildToolSkillLabelItem({ tool, writeKey, configTarget: tool });
+      if (verified.status !== 'existing') lastOnUpdateOrAddTool.current?.(tool);
 
       return {
         id: skill.id,

@@ -4,6 +4,7 @@ import { FlowNodeTypeEnum } from '../../workflow/node/constant';
 import type { NodeToolConfigType, StoreNodeItemType } from '../../workflow/type/node';
 import type { SelectedToolItemType } from '../formEdit/type';
 import { hashStr } from '../../../common/string/tools';
+import { splitParentChildId } from '../../workflow/node/agent/promptRef/codec';
 import { hasDebugPromptRef } from '../../workflow/node/agent/promptRef/text';
 
 /**
@@ -92,14 +93,8 @@ export function splitCombineToolId(id: string): {
 export const parseUntypedV2ChildToolLookupId = (
   appId: string
 ): { parentId: string; toolName: string } | null => {
-  const slashIndex = appId.indexOf('/');
-  if (slashIndex <= 0 || slashIndex === appId.length - 1) return null;
-  const parentId = appId.slice(0, slashIndex);
-  if (parentId.includes('-')) return null;
-  return {
-    parentId,
-    toolName: appId.slice(slashIndex + 1)
-  };
+  const { parentId, childId } = splitParentChildId(appId);
+  return childId && !parentId.includes('-') ? { parentId, toolName: childId } : null;
 };
 
 /**
@@ -189,7 +184,7 @@ export function parseDebugToolSource(source?: string): { tmbId: string } | undef
 }
 
 export function hasDebugToolInSelectedTools(selectedTools?: SelectedToolItemType[] | null) {
-  return selectedTools?.some((tool) => isDebugToolSource(tool.source)) ?? false;
+  return selectedTools?.some((tool) => isDebugToolSource(getAgentToolSource(tool))) ?? false;
 }
 
 /**

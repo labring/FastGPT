@@ -70,18 +70,12 @@ export const getPromptRefToolId = ({
   return pluginId || id || '';
 };
 
-/**
- * 从工具配置（SelectedToolItemType / AgentToolType / 模板项）构造 V2 引用对象。
- * 先读取保存的工具来源（含历史工具配置），再按工具 ID 规则推断。
- */
-export const refFromTool = (tool: PromptRefTool): AgentPromptRef | null => {
-  const rawId = getPromptRefToolId(tool).trim();
+const refFromToolId = (rawId: string, source?: string): AgentPromptRef | null => {
   if (!rawId) return null;
 
   const directV2 = parseV2RefKey(rawId);
   if (directV2) return directV2;
 
-  const source = getAgentToolSource(tool);
   const teamSource = parseTeamPluginSource(source);
   if (teamSource) {
     const cleanId = stripLegacyPluginPrefix(rawId);
@@ -127,6 +121,20 @@ export const refFromTool = (tool: PromptRefTool): AgentPromptRef | null => {
     id: rawId,
     ...splitParentChildId(rawId)
   };
+};
+
+/** 从实际工具 ID 和有效来源构造 V2 引用。 */
+export const refFromTool = (tool: PromptRefTool): AgentPromptRef | null =>
+  refFromToolId(getPromptRefToolId(tool).trim(), getAgentToolSource(tool));
+
+/** 为编辑器和运行时登记实际工具身份，旧保存 ID 仅作为精确旧别名。 */
+export const getToolPromptReference = (tool: PromptRefTool) => {
+  const savedId = (tool.pluginId || tool.id || '').trim();
+  const resolvedId = getPromptRefToolId(tool).trim();
+  const ref = refFromToolId(resolvedId, getAgentToolSource(tool));
+  if (!ref) return;
+
+  return savedId && savedId !== resolvedId ? { ref, legacyExactKeys: [savedId] } : { ref };
 };
 
 /** 判断任意工具引用（V2 或旧格式）是否为 builtin 类型。 */

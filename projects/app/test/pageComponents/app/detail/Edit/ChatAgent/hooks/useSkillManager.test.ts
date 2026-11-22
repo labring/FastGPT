@@ -56,10 +56,7 @@ vi.mock('@/web/core/skill/api', () => ({
   getSkillListV2: mocks.getSkillListV2
 }));
 
-import {
-  buildAgentSkillLabelItem,
-  useAgentPromptRefs
-} from '@/pageComponents/app/detail/Edit/ChatAgent/hooks/useAgentPromptRefs';
+import { useAgentPromptRefs } from '@/pageComponents/app/detail/Edit/ChatAgent/hooks/useAgentPromptRefs';
 import { useSkillManager } from '@/pageComponents/app/detail/Edit/ChatAgent/hooks/useSkillManager';
 
 describe('useSkillManager sandbox & skill visibility', () => {
@@ -70,122 +67,76 @@ describe('useSkillManager sandbox & skill visibility', () => {
     mocks.systemToolsData = [];
   });
 
-  it('hides sandbox tool and associated skills from @ menu when system sandbox is disabled', async () => {
-    const onEnableSandbox = vi.fn();
-    const manager = useSkillManager({
-      selectedTools: [],
-      selectedAgentSkills: [
-        { skillId: 'skill-1', source: 'personal', name: '演示技能', description: '' }
-      ],
-      onUpdateOrAddTool: vi.fn(),
-      onAddAgentSkill: vi.fn(() => true),
-      onEnableSandbox,
-      canUploadFile: true,
-      hasSelectedDataset: true,
-      useAgentSandbox: true
-    });
+  it.each([
+    {
+      name: 'system disabled',
+      systemEnabled: false,
+      planEnabled: undefined,
+      showSkills: false,
+      status: 'invalid'
+    },
+    {
+      name: 'plan disabled',
+      systemEnabled: true,
+      planEnabled: false,
+      showSkills: false,
+      status: 'invalid'
+    },
+    {
+      name: 'system and plan enabled',
+      systemEnabled: true,
+      planEnabled: true,
+      showSkills: true,
+      status: 'noConfig'
+    }
+  ])(
+    'reflects sandbox availability with $name',
+    async ({ systemEnabled, planEnabled, showSkills, status }) => {
+      mocks.feConfigs = { show_agent_sandbox: systemEnabled };
+      mocks.teamPlanStatus =
+        planEnabled === undefined ? undefined : { standard: { enableSandbox: planEnabled } };
 
-    expect(manager.skillOption.list.map((item) => item.id)).toEqual([
-      'systemTool',
-      'myTools',
-      'agent'
-    ]);
-    expect(await manager.skillOption.onSelect('agentSkill')).toBeUndefined();
-    expect(mocks.getSkillListV2).not.toHaveBeenCalled();
+      const manager = useSkillManager({
+        selectedTools: [],
+        selectedAgentSkills: [
+          { skillId: 'skill-1', source: 'personal', name: '演示技能', description: '' }
+        ],
+        onUpdateOrAddTool: vi.fn(),
+        onAddAgentSkill: vi.fn(() => true),
+        onEnableSandbox: vi.fn(),
+        canUploadFile: true,
+        hasSelectedDataset: true,
+        useAgentSandbox: true
+      });
 
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    const ids = mocks.systemToolsData.map((item) => item.id);
-    expect(ids).toContain(SubAppIds.readFiles);
-    expect(ids).toContain(SubAppIds.datasetSearch);
-    expect(ids).not.toContain(AGENT_SANDBOX_TOOLSET_ID);
+      expect(manager.skillOption.list.map((item) => item.id)).toEqual([
+        'systemTool',
+        'myTools',
+        'agent',
+        ...(showSkills ? ['agentSkill'] : [])
+      ]);
+      if (!showSkills) {
+        expect(await manager.skillOption.onSelect('agentSkill')).toBeUndefined();
+        expect(mocks.getSkillListV2).not.toHaveBeenCalled();
+      }
 
-    const sandboxEntry = manager.promptRefRegistry.resolve('builtin:agent_sandbox');
-    expect(sandboxEntry.status === 'resolved' && sandboxEntry.entry.meta.configStatus).toBe(
-      'invalid'
-    );
-    const skillEntry = manager.promptRefRegistry.resolve('skill:team:skill-1');
-    expect(skillEntry.status === 'resolved' && skillEntry.entry.meta.configStatus).toBe('invalid');
-  });
+      await vi.waitFor(() =>
+        expect(mocks.systemToolsData.map((item) => item.id)).toEqual(
+          expect.arrayContaining([SubAppIds.readFiles, SubAppIds.datasetSearch])
+        )
+      );
+      expect(mocks.systemToolsData.some((item) => item.id === AGENT_SANDBOX_TOOLSET_ID)).toBe(
+        showSkills
+      );
 
-  it('shows sandbox tool and associated skills when system and plan support sandbox', async () => {
-    mocks.feConfigs = { show_agent_sandbox: true };
-    mocks.teamPlanStatus = { standard: { enableSandbox: true } };
-    const onEnableSandbox = vi.fn();
-
-    const manager = useSkillManager({
-      selectedTools: [],
-      selectedAgentSkills: [
-        { skillId: 'skill-1', source: 'personal', name: '演示技能', description: '' }
-      ],
-      onUpdateOrAddTool: vi.fn(),
-      onAddAgentSkill: vi.fn(() => true),
-      onEnableSandbox,
-      canUploadFile: true,
-      hasSelectedDataset: true,
-      useAgentSandbox: true
-    });
-
-    expect(manager.skillOption.list.map((item) => item.id)).toEqual([
-      'systemTool',
-      'myTools',
-      'agent',
-      'agentSkill'
-    ]);
-
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(mocks.systemToolsData.map((item) => item.id)).toContain(AGENT_SANDBOX_TOOLSET_ID);
-
-    const sandboxEntry = manager.promptRefRegistry.resolve('builtin:agent_sandbox');
-    expect(sandboxEntry.status === 'resolved' && sandboxEntry.entry.meta.configStatus).toBe(
-      'noConfig'
-    );
-    const skillEntry = manager.promptRefRegistry.resolve('skill:team:skill-1');
-    expect(skillEntry.status === 'resolved' && skillEntry.entry.meta.configStatus).toBe('noConfig');
-  });
-
-  it('marks skill label invalid when sandbox is unavailable', () => {
-    const item = buildAgentSkillLabelItem({
-      skill: { skillId: 'skill-1', name: '演示技能', description: '' },
-      writeKey: 'skill:team:skill-1',
-      sandboxUnavailable: true
-    });
-    expect(item.configStatus).toBe('invalid');
-  });
-
-  it('hides sandbox tool and associated skills when team plan disables sandbox', async () => {
-    mocks.feConfigs = { show_agent_sandbox: true };
-    mocks.teamPlanStatus = { standard: { enableSandbox: false } };
-
-    const manager = useSkillManager({
-      selectedTools: [],
-      selectedAgentSkills: [
-        { skillId: 'skill-1', source: 'personal', name: '演示技能', description: '' }
-      ],
-      onUpdateOrAddTool: vi.fn(),
-      onAddAgentSkill: vi.fn(() => true),
-      onEnableSandbox: vi.fn(),
-      canUploadFile: true,
-      hasSelectedDataset: true,
-      useAgentSandbox: true
-    });
-
-    expect(manager.skillOption.list.map((item) => item.id)).toEqual([
-      'systemTool',
-      'myTools',
-      'agent'
-    ]);
-    expect(await manager.skillOption.onSelect('agentSkill')).toBeUndefined();
-
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(mocks.systemToolsData.map((item) => item.id)).not.toContain(AGENT_SANDBOX_TOOLSET_ID);
-
-    const sandboxEntry = manager.promptRefRegistry.resolve('builtin:agent_sandbox');
-    expect(sandboxEntry.status === 'resolved' && sandboxEntry.entry.meta.configStatus).toBe(
-      'invalid'
-    );
-    const skillEntry = manager.promptRefRegistry.resolve('skill:team:skill-1');
-    expect(skillEntry.status === 'resolved' && skillEntry.entry.meta.configStatus).toBe('invalid');
-  });
+      for (const key of ['builtin:agent_sandbox', 'skill:team:skill-1']) {
+        expect(manager.promptRefRegistry.resolve(key)).toMatchObject({
+          status: 'resolved',
+          entry: { meta: { configStatus: status } }
+        });
+      }
+    }
+  );
 
   it('uses the saved toolset source and qualifies slash-named system children in the editor', () => {
     const id = 'systemTool-search';

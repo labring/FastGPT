@@ -27,6 +27,7 @@ import { ChatAgentHelperTypeEnum } from '@fastgpt/global/core/ai/auxiliaryGenera
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import {
+  getAgentToolSource,
   getToolIdentityKey,
   isSystemOrCommercialToolId
 } from '@fastgpt/global/core/app/tool/utils';
@@ -193,7 +194,8 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
       systemPrompt: appForm.aiSettings.systemPrompt,
       // 发送兼容键：同时兼容旧版固定 Pro 目录与新版 Pro V2 规范化解析，避免跨仓升级期拒收。
       selectedTools: appForm.selectedTools.map((tool) => {
-        if (tool.source) return getToolIdentityKey(tool.id, tool.source);
+        const source = getAgentToolSource(tool);
+        if (source) return getToolIdentityKey(tool.id, source);
         return isSystemOrCommercialToolId(tool.id)
           ? getToolIdentityKey(tool.id, 'system')
           : tool.id;

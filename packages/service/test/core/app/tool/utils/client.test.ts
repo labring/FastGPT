@@ -35,7 +35,6 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
   }
 }));
 
-import { parseUntypedV2ChildToolLookupId } from '@fastgpt/global/core/app/tool/utils';
 import { getClientToolPreviewNode } from '@fastgpt/service/core/app/tool/utils/client';
 
 const runtimeSchemaFieldNames = new Set([
@@ -668,130 +667,57 @@ describe('getClientToolPreviewNode', () => {
   it('resolves untyped V2 child tool ids strictly by full name for MCP and HTTP toolsets', async () => {
     const mcpParentId = '507f1f77bcf86cd799439031';
     const httpParentId = '507f1f77bcf86cd799439032';
-    expect(parseUntypedV2ChildToolLookupId(`${mcpParentId}/get-weather`)).toEqual({
-      parentId: mcpParentId,
-      toolName: 'get-weather'
+    const teamId = '507f1f77bcf86cd799439012';
+    const inputSchema = { type: 'object', properties: {} };
+    const mcpApp = {
+      _id: mcpParentId,
+      teamId,
+      type: AppTypeEnum.mcpToolSet,
+      name: 'MCP Set',
+      avatar: 'mcp.svg',
+      intro: '',
+      modules: [
+        {
+          toolConfig: {
+            mcpToolSet: {
+              url: 'https://mcp.example.com',
+              toolList: [{ name: 'get-weather', description: 'Weather', inputSchema }]
+            }
+          }
+        }
+      ]
+    };
+    const httpApp = {
+      _id: httpParentId,
+      teamId,
+      type: AppTypeEnum.httpToolSet,
+      name: 'HTTP Set',
+      avatar: 'http.svg',
+      intro: ''
+    };
+    const users = {
+      name: 'users',
+      description: 'Other users',
+      path: '/users',
+      method: 'GET',
+      inputSchema
+    };
+    const fullPathUsers = {
+      ...users,
+      name: '/api/v1/users',
+      description: 'List users',
+      path: '/api/v1/users'
+    };
+    const withHttpTools = (toolList: (typeof users)[]) => ({
+      ...httpApp,
+      modules: [{ toolConfig: { httpToolSet: { toolList } } }]
     });
-    expect(parseUntypedV2ChildToolLookupId(`${httpParentId}//api/v1/users`)).toEqual({
-      parentId: httpParentId,
-      toolName: '/api/v1/users'
-    });
-    expect(parseUntypedV2ChildToolLookupId(`mcp-${mcpParentId}/get-weather`)).toBeNull();
-
+    const lean = (document: object) => ({ lean: vi.fn().mockResolvedValue(document) });
     mocks.findOne
-      .mockReturnValueOnce({
-        lean: vi.fn().mockResolvedValue({
-          _id: mcpParentId,
-          teamId: '507f1f77bcf86cd799439012',
-          type: AppTypeEnum.mcpToolSet,
-          name: 'MCP Set',
-          avatar: 'mcp.svg',
-          intro: '',
-          modules: [
-            {
-              toolConfig: {
-                mcpToolSet: {
-                  url: 'https://mcp.example.com',
-                  toolList: [
-                    {
-                      name: 'get-weather',
-                      description: 'Weather',
-                      inputSchema: { type: 'object', properties: {} }
-                    }
-                  ]
-                }
-              }
-            }
-          ]
-        })
-      })
-      .mockReturnValueOnce({
-        lean: vi.fn().mockResolvedValue({
-          _id: mcpParentId,
-          teamId: '507f1f77bcf86cd799439012',
-          type: AppTypeEnum.mcpToolSet,
-          name: 'MCP Set',
-          avatar: 'mcp.svg',
-          intro: '',
-          modules: [
-            {
-              toolConfig: {
-                mcpToolSet: {
-                  url: 'https://mcp.example.com',
-                  toolList: [
-                    {
-                      name: 'get-weather',
-                      description: 'Weather',
-                      inputSchema: { type: 'object', properties: {} }
-                    }
-                  ]
-                }
-              }
-            }
-          ]
-        })
-      })
-      .mockReturnValueOnce({
-        lean: vi.fn().mockResolvedValue({
-          _id: httpParentId,
-          teamId: '507f1f77bcf86cd799439012',
-          type: AppTypeEnum.httpToolSet,
-          name: 'HTTP Set',
-          avatar: 'http.svg',
-          intro: '',
-          modules: [
-            {
-              toolConfig: {
-                httpToolSet: {
-                  toolList: [
-                    {
-                      name: '/api/v1/users',
-                      description: 'List users',
-                      path: '/api/v1/users',
-                      method: 'GET',
-                      inputSchema: { type: 'object', properties: {} }
-                    },
-                    {
-                      name: 'users',
-                      description: 'Other users',
-                      path: '/users',
-                      method: 'GET',
-                      inputSchema: { type: 'object', properties: {} }
-                    }
-                  ]
-                }
-              }
-            }
-          ]
-        })
-      })
-      .mockReturnValueOnce({
-        lean: vi.fn().mockResolvedValue({
-          _id: httpParentId,
-          teamId: '507f1f77bcf86cd799439012',
-          type: AppTypeEnum.httpToolSet,
-          name: 'HTTP Set',
-          avatar: 'http.svg',
-          intro: '',
-          modules: [
-            {
-              toolConfig: {
-                httpToolSet: {
-                  toolList: [
-                    {
-                      name: 'users',
-                      description: 'Other users',
-                      path: '/users',
-                      method: 'GET',
-                      inputSchema: { type: 'object', properties: {} }
-                    }
-                  ]
-                }
-              }
-            }
-          ]
-        })
-      });
+      .mockReturnValueOnce(lean(mcpApp))
+      .mockReturnValueOnce(lean(mcpApp))
+      .mockReturnValueOnce(lean(withHttpTools([fullPathUsers, users])))
+      .mockReturnValueOnce(lean(withHttpTools([users])));
 
     const mcpPreview = await getClientToolPreviewNode({ appId: `${mcpParentId}/get-weather` });
     expect(mcpPreview.pluginId).toBe(`mcp-${mcpParentId}/get-weather`);
@@ -804,32 +730,7 @@ describe('getClientToolPreviewNode', () => {
     ).rejects.toBe(PluginErrEnum.unExist);
 
     // 带类型前缀的旧三段式 mcp-appId/toolsetName/toolName 保持与主干一致的历史兼容（v4.14.8）
-    mocks.findById.mockReturnValueOnce({
-      lean: vi.fn().mockResolvedValue({
-        _id: mcpParentId,
-        teamId: '507f1f77bcf86cd799439012',
-        type: AppTypeEnum.mcpToolSet,
-        name: 'catalog',
-        avatar: 'mcp.svg',
-        intro: '',
-        modules: [
-          {
-            toolConfig: {
-              mcpToolSet: {
-                url: 'https://mcp.example.com',
-                toolList: [
-                  {
-                    name: 'get-weather',
-                    description: 'Weather',
-                    inputSchema: { type: 'object', properties: {} }
-                  }
-                ]
-              }
-            }
-          }
-        ]
-      })
-    });
+    mocks.findById.mockReturnValueOnce(lean({ ...mcpApp, name: 'catalog' }));
     const legacyTypedPreview = await getClientToolPreviewNode({
       appId: `mcp-${mcpParentId}/catalog/get-weather`
     });
