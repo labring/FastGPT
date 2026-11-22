@@ -558,18 +558,9 @@ export async function packageSkillInSandbox(params: {
     } finally {
       if (shouldCleanupZip) {
         const isFileNotFoundError = (error: unknown) => {
-          const err = error as
-            | { code?: unknown; message?: unknown; error?: { code?: unknown; message?: unknown } }
-            | null
-            | undefined;
+          const err = error as { code?: unknown; error?: { code?: unknown } } | null | undefined;
           const code = err?.code ?? err?.error?.code;
-          if (code === 'ENOENT' || code === 'FILE_NOT_FOUND') return true;
-          const msg = err?.message || err?.error?.message;
-          return (
-            code !== 'SANDBOX_NOT_FOUND' &&
-            typeof msg === 'string' &&
-            /\b(?:enoent|file_not_found)\b|no such file|does not exist|file not found/i.test(msg)
-          );
+          return code === 'ENOENT' || code === 'FILE_NOT_FOUND';
         };
 
         try {
@@ -578,7 +569,7 @@ export async function packageSkillInSandbox(params: {
             throw cleanupResult?.error ?? new Error('Delete did not succeed');
           }
         } catch (cleanupError) {
-          // 仅静默明确的文件不存在，其余清理失败均告警并保留原始打包错误。
+          // 仅按结构化错误码静默明确的文件不存在，其余清理失败均告警并保留原始打包错误。
           if (!isFileNotFoundError(cleanupError)) {
             addLog.warn('[Sandbox] Failed to cleanup package zip', {
               sandboxId,
