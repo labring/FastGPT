@@ -75,8 +75,7 @@ async function pollImpl(job: Job<WechatPollJobData>, signal: AbortSignal): Promi
   }
 
   // Redis 使用有效绑定身份，Mongo 比较本轮读取的原始登录快照。
-  const binding = getWechatBindingIdentity(app);
-  const { id: bindingId, key: bindingKey } = binding;
+  const { key: bindingKey } = getWechatBindingIdentity(app);
   const bindingFilter = {
     shareId,
     'app.status': 'online',
@@ -156,8 +155,14 @@ async function pollImpl(job: Job<WechatPollJobData>, signal: AbortSignal): Promi
 
   const messages = resp.msgs ?? [];
 
-  // 1) 先分发回复任务。失败则下次重拉，队列按绑定和消息 ID 去重。
+  const cursorFilter = { ...bindingFilter, 'app.syncBuf': app.syncBuf ?? null };
+
+  // 1) 先分发回复任务。长轮询期间已变更的连接不再分发旧消息。
   if (messages.length > 0) {
+    const current = await MongoOutLink.exists(cursorFilter);
+    signal.throwIfAborted();
+    if (!current) return 'stopped';
+
     const groups = groupMessagesByUser(messages);
     logger.debug('Dispatch reply jobs', {
       shareId,
@@ -165,27 +170,19 @@ async function pollImpl(job: Job<WechatPollJobData>, signal: AbortSignal): Promi
       userGroups: groups.length
     });
 
-    // 首次升级时，历史绑定沿用原队列键，BullMQ 可与升级前的存量去重。
-    const jobPrefix = bindingId
-      ? `wechat-reply:${shareId}:${bindingId}`
-      : `wechat-reply:${shareId}`;
     await Promise.all(
-      groups.map((group) =>
-        wechatMQService.addReplyJob(
-          { shareId, bindingKey, ...group },
-          { jobId: `${jobPrefix}:${group.lastMsgId}` }
-        )
-      )
+      groups.map((group) => wechatMQService.addReplyJob({ shareId, bindingKey, ...group }))
     );
   }
 
   // 2) 全部入队成功后再推进 syncBuf
   signal.throwIfAborted();
   if (resp.get_updates_buf) {
-    await MongoOutLink.updateOne(
-      { ...bindingFilter, 'app.syncBuf': app.syncBuf ?? null },
-      { $set: { 'app.syncBuf': resp.get_updates_buf } }
-    );
+    const result = await MongoOutLink.updateOne(cursorFilter, {
+      $set: { 'app.syncBuf': resp.get_updates_buf }
+    });
+    if (result.matchedCount === 0) return 'stopped';
+    logger.debug('Wechat poll cursor saved', { shareId, jobId: job.id });
   }
 
   // 3) 不在这里续链，交给 worker 'completed' 事件处理器
@@ -195,7 +192,7 @@ async function pollImpl(job: Job<WechatPollJobData>, signal: AbortSignal): Promi
 /* ============ Reply Worker ============ */
 async function processWechatReplyJob(job: Job<WechatReplyJobData>): Promise<void> {
   try {
-    await wechatOutlinkProvider(job.data, job.timestamp);
+    await wechatOutlinkProvider(job.data);
   } catch (error) {
     logger.error('Reply job failed', {
       shareId: job.data.shareId,

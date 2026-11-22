@@ -11,7 +11,8 @@ const mocks = vi.hoisted(() => ({
   updateOne: vi.fn(),
   increment: vi.fn(),
   clear: vi.fn(),
-  queueAdd: vi.fn()
+  queueAdd: vi.fn(),
+  getReplyJob: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/support/outLink/schema', () => ({
@@ -99,6 +100,7 @@ describe('Wechat polling failure counter integration', () => {
     });
     mocks.getQueue.mockReturnValue({
       add: mocks.queueAdd,
+      getJob: mocks.getReplyJob,
       remove: vi.fn()
     });
     mocks.find.mockReturnValue({ lean: vi.fn().mockResolvedValue([]) });
@@ -108,8 +110,13 @@ describe('Wechat polling failure counter integration', () => {
     mocks.getUpdates.mockResolvedValue({ ret: 0, msgs: [] });
     mocks.increment.mockResolvedValue(1);
     mocks.clear.mockResolvedValue(true);
-    mocks.queueAdd.mockResolvedValue({ id: 'poll-job' });
-    mocks.exists.mockResolvedValue(null);
+    const jobs = new Map<string, unknown>();
+    mocks.queueAdd.mockImplementation(async (_name, data, { jobId }) => {
+      if (!jobs.has(jobId)) jobs.set(jobId, { data });
+      return { id: jobId };
+    });
+    mocks.getReplyJob.mockImplementation(async (id) => jobs.get(id));
+    mocks.exists.mockResolvedValue({ _id: 'channel-1' });
   });
 
   afterEach(() => vi.restoreAllMocks());
@@ -133,6 +140,7 @@ describe('Wechat polling failure counter integration', () => {
 
   it('rechecks a stopped channel and resumes only if it was rebound', async () => {
     mocks.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
+    mocks.exists.mockResolvedValue(null);
     const processor = await getPollProcessor();
     await expect(processor?.(job)).resolves.toBe('stopped');
     expect(mocks.getUpdates).not.toHaveBeenCalled();
@@ -290,20 +298,20 @@ describe('Wechat polling failure counter integration', () => {
   });
 
   it.each([
-    { app: outLink.app, jobPrefix: `wechat-reply:share-1:${bindingId}`, hasCurrentId: true },
+    { name: 'current binding', app: outLink.app, hasCurrentId: true },
     {
+      name: 'legacy binding',
       app: { ...outLink.app, bindingId: undefined },
-      jobPrefix: 'wechat-reply:share-1',
       hasCurrentId: false
     },
     {
+      name: 'channel rebound on v4.17.4',
       app: { ...outLink.app, token: 'token-after-rollback' },
-      jobPrefix: 'wechat-reply:share-1',
       hasCurrentId: false
     }
   ])(
-    'preserves legacy-readable message items and the reply ID for $jobPrefix',
-    async ({ app, jobPrefix, hasCurrentId }) => {
+    'preserves legacy-readable message items and job identity for a $name',
+    async ({ app, hasCurrentId }) => {
       mocks.findOne.mockReturnValue({
         lean: vi.fn().mockResolvedValue({ ...outLink, app })
       });
@@ -334,7 +342,8 @@ describe('Wechat polling failure counter integration', () => {
           lastMsgId: '18446744073709551615'
         },
         {
-          jobId: `${jobPrefix}:18446744073709551615`
+          jobId: 'wechat-reply:share-1:18446744073709551615',
+          removeOnComplete: { age: 86400, count: 10000 }
         }
       );
     }
@@ -352,9 +361,52 @@ describe('Wechat polling failure counter integration', () => {
     expect(mocks.clear).toHaveBeenCalledWith('share-1', bindingId);
   });
 
-  it('keeps the cursor and retries the same reply key if enqueue fails', async () => {
-    const error = new Error('reply queue unavailable');
-    mocks.queueAdd.mockRejectedValueOnce(error);
+  it.each(['enqueue', 'cursor save'] as const)(
+    'retries the same reply key if %s fails',
+    async (phase) => {
+      const error = new Error(`${phase} unavailable`);
+      if (phase === 'enqueue') {
+        mocks.queueAdd.mockRejectedValueOnce(error);
+      } else {
+        mocks.updateOne.mockRejectedValueOnce(error);
+      }
+      mocks.getUpdates.mockResolvedValue({
+        ret: 0,
+        get_updates_buf: 'next-cursor',
+        msgs: [
+          {
+            message_type: 1,
+            message_id: 'message-1',
+            from_user_id: 'user-1',
+            item_list: [{ type: 1, text_item: { text: 'hello' } }]
+          }
+        ]
+      });
+      const processor = await getPollProcessor();
+
+      await expect(processor?.(job)).rejects.toBe(error);
+      expect(mocks.updateOne).toHaveBeenCalledTimes(phase === 'enqueue' ? 0 : 1);
+
+      await expect(processor?.(job)).resolves.toBe('messages');
+      const opts = {
+        jobId: `wechat-reply:${outLink.shareId}:message-1`,
+        removeOnComplete: { age: 86400, count: 10000 }
+      };
+      expect(mocks.queueAdd.mock.calls).toEqual([
+        ['wechatPublishReply', expect.any(Object), opts],
+        ['wechatPublishReply', expect.any(Object), opts]
+      ]);
+      expect(mocks.updateOne).toHaveBeenLastCalledWith(
+        { ...currentConnectionFilter, 'app.syncBuf': 'cursor' },
+        { $set: { 'app.syncBuf': 'next-cursor' } }
+      );
+    }
+  );
+
+  it('preserves the old job and queues an independently verified reply if the ID is occupied', async () => {
+    mocks.getReplyJob
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({ data: { bindingKey: 'previous-binding' } });
     mocks.getUpdates.mockResolvedValue({
       ret: 0,
       get_updates_buf: 'next-cursor',
@@ -369,26 +421,50 @@ describe('Wechat polling failure counter integration', () => {
     });
     const processor = await getPollProcessor();
 
-    await expect(processor?.(job)).rejects.toBe(error);
-    expect(mocks.updateOne).not.toHaveBeenCalled();
-
     await expect(processor?.(job)).resolves.toBe('messages');
-    const opts = { jobId: `wechat-reply:${outLink.shareId}:${bindingId}:message-1` };
+
+    const data = expect.objectContaining({ bindingKey: bindingId, lastMsgId: 'message-1' });
     expect(mocks.queueAdd).toHaveBeenNthCalledWith(
       1,
       'wechatPublishReply',
-      expect.any(Object),
-      opts
+      data,
+      expect.objectContaining({ jobId: 'wechat-reply:share-1:message-1' })
     );
     expect(mocks.queueAdd).toHaveBeenNthCalledWith(
       2,
       'wechatPublishReply',
-      expect.any(Object),
-      opts
+      data,
+      expect.objectContaining({ jobId: `wechat-reply:share-1:${bindingId}:message-1` })
     );
-    expect(mocks.updateOne).toHaveBeenCalledWith(
-      { ...currentConnectionFilter, 'app.syncBuf': 'cursor' },
-      { $set: { 'app.syncBuf': 'next-cursor' } }
-    );
+    expect(mocks.updateOne).toHaveBeenCalledOnce();
+
+    // 同一轮询重拉沿用已选绑定键，即使原键的占用记录已经清理。
+    await expect(processor?.(job)).resolves.toBe('messages');
+    expect(mocks.queueAdd).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not enqueue or write a cursor after the polling binding is replaced', async () => {
+    mocks.exists.mockResolvedValueOnce(null);
+    mocks.getUpdates.mockResolvedValue({
+      ret: 0,
+      get_updates_buf: 'next-cursor',
+      msgs: [
+        {
+          message_type: 1,
+          message_id: 'message-1',
+          item_list: [{ type: 1, text_item: { text: 'hello' } }]
+        }
+      ]
+    });
+    const processor = await getPollProcessor();
+
+    await expect(processor?.(job)).resolves.toBe('stopped');
+
+    expect(mocks.exists).toHaveBeenCalledWith({
+      ...currentConnectionFilter,
+      'app.syncBuf': 'cursor'
+    });
+    expect(mocks.queueAdd).not.toHaveBeenCalled();
+    expect(mocks.updateOne).not.toHaveBeenCalled();
   });
 });

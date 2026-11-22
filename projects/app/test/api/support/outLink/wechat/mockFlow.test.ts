@@ -86,6 +86,7 @@ describe('WeChat personal channel with mock iLink', () => {
     const qrCache = new Map<string, unknown>();
     mocks.auth.mockImplementation(async () => ({ outLink: getChannel(), tmbId: 'mock-member' }));
     mocks.findChannel.mockImplementation(async () => getChannel());
+    mocks.exists.mockResolvedValue({ _id: outLinkId });
     mocks.providerConfig.mockImplementation(async ({ appSchema }) => ({
       ...getChannel(),
       app: appSchema.parse(app)

@@ -98,15 +98,14 @@ Poll job 主要等待约 35 秒的长轮询，不执行工作流。入队筛选�
 | Queue | `wechatReply` |
 | Job name | `wechatPublishReply` |
 | Job data | `shareId`、`bindingKey`、`userId`、`items`、`contextToken`、`lastMsgId` |
-| Job ID | `wechat-reply:${shareId}:${bindingKey}:${lastMsgId}` |
+| Job ID | `wechat-reply:${shareId}:${lastMsgId}`，撞到其他绑定或无绑定的存量任务时使用 `wechat-reply:${shareId}:${bindingKey}:${lastMsgId}` |
 | Concurrency | 固定 `1000` |
 | Lock | 30 分钟 |
 | Stalled interval | 60 秒 |
+| Completed retention | 最长 24 小时，最多 10,000 条 |
 | Failed retention | 最近 10,000 条 |
 
-Reply processor 使用 provider adapter 调用 `runOutlinkRuntime`，并传入稳定的 `messageId=lastMsgId`。BullMQ 以 jobId 为仍在队列中的任务去重。任务完成移除后，普通消息由工作流入口检查对话历史。重置命令先于这项检查执行。
-
-旧记录在重新绑定前保留原任务 ID `wechat-reply:${shareId}:${lastMsgId}`，以便重拉时与首次升级前仍在队列中的任务去重。每组只投递一个确定的 ID。回滚及其后的再次升级按存量任务和游标交接处理。
+Reply processor 使用 provider adapter 调用 `runOutlinkRuntime`，并传入稳定的 `messageId=lastMsgId`。正常任务 ID 与 v4.17.4 一致，游标写入失败后重拉时，BullMQ 可以复用仍在队列中的任务或已完成记录。完成保留策略设置在任务上，停机回滚后的旧 Worker 也能保留该记录。同一消息 ID 被另一绑定占用时，新轮询确认归属后按自己的绑定入队，已有任务继续保留。
 
 ## 5. Poll 处理顺序
 
@@ -116,13 +115,13 @@ Reply processor 使用 provider adapter 调用 `runOutlinkRuntime`，并传入�
 1. 校验渠道状态和 token
 2. 使用当前 syncBuf 调用 getUpdates
 3. 判断 API ret/errcode
-4. 按 userId 聚合消息
+4. 核对拉取时的登录和游标仍然有效，按 userId 聚合消息
 5. 并行投递 reply jobs
 6. 全部投递成功后更新 Mongo syncBuf
 7. completed listener 调度下一条 poll job
 ```
 
-第五步失败时不得推进 `syncBuf`。下一次 poll 会重新拉取同一批消息，仍在队列中的回复任务可按确定的 jobId 去重。
+第五步失败时不得推进 `syncBuf`。下一次 poll 会从原游标重新拉取，BullMQ 按任务 ID 复用仍在队列中的任务或已完成记录。
 
 poll processor 本身不续链。续链统一由 Worker 的 completed/failed listener 负责，避免 return、throw 和 timeout 分支各自维护调度逻辑。
 
@@ -159,12 +158,12 @@ poll processor 本身不续链。续链统一由 Worker 的 completed/failed lis
 
 - `pollJobId` 保证多实例启动、重复扫码和启动恢复不会并行创建两条 poll 链。
 - 相同 jobId 的回复任务仍在队列中时，BullMQ 会合并重复投递。
-- 失败计数、游标和排队的回复归属于当轮绑定。无有效绑定标识的记录使用登录时间和 token 的哈希作为绑定键。游标更新还比较拉取前的游标，回复任务开始时校验绑定。缺少绑定键的旧任务按当前登录时间兼容读取。旧版本未记录发起轮询时的归属，重绑后的迟到旧任务无法仅凭入队时间区分。
+- 失败计数、游标和排队的回复归属于拉取时的绑定。没有有效绑定 ID 的历史连接，进行新轮询时用登录时间和 token 的哈希标记任务。投递和更新游标都检查拉取前的绑定和游标。回复开始时校验绑定，缺少绑定键的旧任务进入失败队列，保留待核对。
 - `syncBuf` 只在 reply jobs 全部入队后推进，避免 enqueue 失败丢消息。
 - 服务启动时扫描 online 渠道并调用幂等调度；已有 active/waiting job 时 BullMQ 保持原任务。
 - 登出撤销待确认二维码，由 worker 读取离线状态后结束轮询。删除渠道后清理等待中的 poll job。
 - Poll hard timeout 防止 processor 卡住后固定 jobId 永久占用。已发出的 I/O 可能结束，后续阶段会在计数、入队和游标写入前检查任务是否已过期。
-- Reply 使用长 lock 并依赖工作流 messageId 幂等，避免慢回复被 stalled 后重复发送。
+- Reply 使用长 lock 避免慢回复被误判为 stalled。普通消息还由工作流入口按 messageId 和对话历史检查重复。
 
 ## 9. 故障与观测
 
@@ -191,4 +190,4 @@ Mock 覆盖取码、待扫码、已扫码、确认、轮询收消息、获取并
 
 验证必须覆盖重复启动、重复扫码、多实例恢复、空响应退避、enqueue 失败不推进 syncBuf、stalled retry 不重复回复、连续失败转 error、主动停止不再续链，以及慢回复期间 poll 仍能持续摄入。
 
-回滚前需要核对 Redis 存量任务和已推进的 Mongo 游标。v4.17.4 能读取原始消息项，其消费者缺少新版绑定校验，生产者也沿用旧版去重键。保留待处理消息时，应交接队列和游标后再切换版本。首次升级前若旧版本曾在长轮询期间重绑，交接时也需考虑未携带绑定的待处理任务。
+停机切换按 [V4.17.5 升级说明](../../../document/content/self-host/upgrading/4-17/4175.mdx) 核对 Redis 存量回复任务和 Mongo 游标。v4.17.4 能读取原始消息项，但不会校验绑定键。回滚前先在新版确认失败批次的游标已补交、回复已处理，并保留两边共用的 Mongo 和 Redis 数据。完成记录达到保留边界后，不能再靠队列记录验证去重。

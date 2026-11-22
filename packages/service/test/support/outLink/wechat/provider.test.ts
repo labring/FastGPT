@@ -53,57 +53,48 @@ describe('WeChat reply binding', () => {
       admitted: false
     },
     {
-      name: 'was queued without a key before the current binding',
-      app: upgradedBinding,
-      queuedKey: undefined,
-      queuedAt: Date.parse(login.loginTime) - 1,
-      admitted: false
-    },
-    {
-      name: 'was queued on the old release without replacing the current binding',
-      app: upgradedBinding,
-      queuedKey: undefined,
-      admitted: true
-    },
-    {
-      name: 'belongs to a legacy channel',
+      name: 'matches a legacy binding fingerprint',
       app: { status: 'online', ...login },
-      queuedKey: undefined,
+      queuedKey: getWechatLoginFingerprint(login),
       admitted: true
     },
     {
-      name: 'was enqueued by the old release after it rebound the channel',
+      name: 'matches the login established by v4.17.4',
       app: reboundOnOldVersion,
-      queuedKey: undefined,
+      queuedKey: getWechatLoginFingerprint(reboundOnOldVersion),
       admitted: true
     },
     {
-      name: 'still carries the key from before rollback',
+      name: 'carries a stale binding ID after a login on v4.17.4',
       app: reboundOnOldVersion,
       queuedKey: bindingId,
       admitted: false
-    },
-    {
-      name: 'has no key and was queued before the old release rebound the channel',
-      app: reboundOnOldVersion,
-      queuedAt: Date.parse(login.loginTime),
-      queuedKey: undefined,
-      admitted: false
     }
-  ])(
-    'accepts a reply according to its binding when it $name',
-    async ({ app, queuedKey, queuedAt, admitted }) => {
-      mocks.loadConfig.mockResolvedValue({
-        appId: 'app-1',
-        app
-      });
+  ])('checks provenance when the job $name', async ({ app, queuedKey, admitted }) => {
+    mocks.loadConfig.mockResolvedValue({ appId: 'app-1', app });
+    const onMessage = vi.fn();
+    const provider = createWechatOutlinkProvider({ onMessage });
+
+    await provider({ ...job, bindingKey: queuedKey });
+
+    expect(onMessage).toHaveBeenCalledTimes(admitted ? 1 : 0);
+    expect(mocks.normalizeMessage).toHaveBeenCalledTimes(admitted ? 1 : 0);
+  });
+
+  it.each([undefined, ''])(
+    'retains an unverifiable job (key %s) as an unrecoverable failure',
+    async (bindingKey) => {
       const onMessage = vi.fn();
       const provider = createWechatOutlinkProvider({ onMessage });
 
-      await provider({ ...job, bindingKey: queuedKey }, queuedAt ?? Date.parse(app.loginTime));
+      await expect(provider({ ...job, bindingKey })).rejects.toMatchObject({
+        name: 'UnrecoverableError',
+        message: 'Wechat reply has no verified binding'
+      });
 
-      expect(onMessage).toHaveBeenCalledTimes(admitted ? 1 : 0);
-      expect(mocks.normalizeMessage).toHaveBeenCalledTimes(admitted ? 1 : 0);
+      expect(mocks.loadConfig).not.toHaveBeenCalled();
+      expect(mocks.normalizeMessage).not.toHaveBeenCalled();
+      expect(onMessage).not.toHaveBeenCalled();
     }
   );
 });

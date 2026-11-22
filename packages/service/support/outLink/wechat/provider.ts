@@ -7,16 +7,12 @@ import { runOutlinkRuntime } from '../runtime/service';
 import type { OutlinkProviderMessageHandler } from '../runtime/type';
 import { ILinkClient } from './ilinkClient';
 import { createWechatOutlinkAdapter } from './adapter';
-import {
-  getWechatBindingIdentity,
-  isActiveWechatConnection,
-  matchesWechatReplyBinding
-} from './utils';
-import type { WechatReplyJobData } from '@fastgpt/dal/redis/bullmq';
+import { getWechatBindingIdentity, isActiveWechatConnection } from './utils';
+import { UnrecoverableError, type WechatReplyJobData } from '@fastgpt/dal/redis/bullmq';
 
 const logger = getLogger(LogCategories.MODULE.OUTLINK.WECHAT);
 
-type WechatOutlinkProvider = (jobData: WechatReplyJobData, queuedAt: number) => Promise<void>;
+type WechatOutlinkProvider = (jobData: WechatReplyJobData) => Promise<void>;
 
 /** 创建 iLink 回复任务 Provider，连接渠道配置、消息 Adapter 和共享 runtime。 */
 export const createWechatOutlinkProvider =
@@ -25,7 +21,12 @@ export const createWechatOutlinkProvider =
   }: {
     onMessage: OutlinkProviderMessageHandler<WechatAppType>;
   }): WechatOutlinkProvider =>
-  async (jobData, queuedAt) => {
+  async (jobData) => {
+    // 旧 Worker 的入队时间无法证明发起轮询时使用了哪次登录。
+    if (!jobData.bindingKey) {
+      throw new UnrecoverableError('Wechat reply has no verified binding');
+    }
+
     const outLinkConfig = await loadOutlinkProviderConfig<WechatAppType>({
       shareId: jobData.shareId,
       channel: PublishChannelEnum.wechat,
@@ -45,10 +46,7 @@ export const createWechatOutlinkProvider =
       return;
     }
 
-    const binding = getWechatBindingIdentity(outLinkConfig.app);
-    if (
-      !matchesWechatReplyBinding(binding, { bindingKey: jobData.bindingKey, timestamp: queuedAt })
-    ) {
+    if (jobData.bindingKey !== getWechatBindingIdentity(outLinkConfig.app).key) {
       logger.debug('Ignoring reply from an earlier Wechat binding', { shareId: jobData.shareId });
       return;
     }
