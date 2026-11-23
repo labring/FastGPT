@@ -9,11 +9,13 @@ sidebarTag: In dev
 ### Image updates
 
 - Update the main FastGPT service (`fastgpt-app`) image tag to `v4.17.5`. For the commercial edition, also update `fastgpt-pro` to `v4.17.5`.
-- The latest [Docker Compose deployment templates](/en/self-host/deploy/docker) update the bundled MongoDB image to `8.0.38` for compatibility with some recent Ubuntu kernels. Keep your MongoDB data volume when upgrading in place. If you use an external MongoDB instance, see the [MongoDB kernel compatibility notes](https://www.mongodb.com/docs/manual/administration/production-notes/#platform-support-notes).
+- The latest [Docker Compose deployment templates](/en/self-host/deploy/docker) update the bundled MongoDB image to `8.0.38` for compatibility with some recent Ubuntu kernels. If you already run MongoDB 8.0, keep your existing data volume when applying this patch in place. If you use an external MongoDB instance, see the [MongoDB kernel compatibility notes](https://www.mongodb.com/docs/manual/administration/production-notes/#platform-support-notes).
 
 ### Configuration and data
 
 Upgrading FastGPT from v4.17.4 requires no new environment variables or application upgrade scripts. For custom Compose deployments, update the applicable image tags in your existing configuration.
+
+If your deployment uses MongoDB 5.x or MinIO, keep your existing Compose file and update the FastGPT images. Before changing the MongoDB major version or moving from MinIO to RustFS, follow the [data backup and migration guide](/en/self-host/migration/docker_db).
 
 ## Security fixes
 
