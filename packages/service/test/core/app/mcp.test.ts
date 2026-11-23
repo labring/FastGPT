@@ -1722,6 +1722,122 @@ describe('createMcpSafeFetch', () => {
     }
   });
 
+  it('should abort a stalled HTTPS proxy TLS handshake when safeFetch.close() is called and release the proxy socket', async () => {
+    vi.spyOn(dns, 'resolve4').mockResolvedValue(['198.51.100.12']);
+    vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
+    vi.spyOn(dns, 'lookup').mockResolvedValue([{ address: '198.51.100.12', family: 4 }]);
+
+    const stalledProxy = await startStalledTlsServer();
+    const safeFetch = createMcpSafeFetch();
+
+    try {
+      vi.stubEnv('HTTPS_PROXY', `https://127.0.0.1:${stalledProxy.port}`);
+      vi.stubEnv('NO_PROXY', '');
+      vi.stubEnv('no_proxy', '');
+
+      const requestPromise = safeFetch('https://close-during-proxy-tls.example.test/mcp');
+      await stalledProxy.clientHelloSeen;
+
+      await expect(
+        Promise.race([
+          safeFetch.close().then(() => 'closed'),
+          new Promise<string>((_, reject) =>
+            setTimeout(
+              () => reject(new Error('safeFetch.close hung during HTTPS proxy TLS handshake')),
+              2000
+            )
+          )
+        ])
+      ).resolves.toBe('closed');
+      await expect(
+        Promise.race([
+          requestPromise,
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error('request hung after close during HTTPS proxy TLS handshake')),
+              2000
+            )
+          )
+        ])
+      ).rejects.toMatchObject({
+        cause: expect.objectContaining({
+          name: 'AbortError',
+          message: 'MCP fetch closed'
+        })
+      });
+      await expect(
+        Promise.race([
+          stalledProxy.upstreamClosed.then(() => 'socket-closed'),
+          new Promise<string>((_, reject) =>
+            setTimeout(
+              () => reject(new Error('proxy socket stayed open after safeFetch.close')),
+              2000
+            )
+          )
+        ])
+      ).resolves.toBe('socket-closed');
+    } finally {
+      await safeFetch.close();
+      await stalledProxy.close();
+    }
+  });
+
+  it('should cancel a stalled HTTPS proxy TLS handshake when caller AbortSignal aborts and close cleanly', async () => {
+    vi.spyOn(dns, 'resolve4').mockResolvedValue(['198.51.100.12']);
+    vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
+    vi.spyOn(dns, 'lookup').mockResolvedValue([{ address: '198.51.100.12', family: 4 }]);
+
+    const stalledProxy = await startStalledTlsServer();
+    const safeFetch = createMcpSafeFetch();
+    const controller = new AbortController();
+
+    try {
+      vi.stubEnv('HTTPS_PROXY', `https://127.0.0.1:${stalledProxy.port}`);
+      vi.stubEnv('NO_PROXY', '');
+      vi.stubEnv('no_proxy', '');
+
+      const requestPromise = safeFetch('https://abort-during-proxy-tls.example.test/mcp', {
+        signal: controller.signal
+      });
+      await stalledProxy.clientHelloSeen;
+      controller.abort(new DOMException('Caller aborted', 'AbortError'));
+
+      await expect(
+        Promise.race([
+          requestPromise,
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error('request hung after abort during HTTPS proxy TLS handshake')),
+              2000
+            )
+          )
+        ])
+      ).rejects.toMatchObject({ name: 'AbortError' });
+      await expect(
+        Promise.race([
+          stalledProxy.upstreamClosed.then(() => 'socket-closed'),
+          new Promise<string>((_, reject) =>
+            setTimeout(() => reject(new Error('proxy socket stayed open after caller abort')), 2000)
+          )
+        ])
+      ).resolves.toBe('socket-closed');
+      await expect(
+        Promise.race([
+          safeFetch.close().then(() => 'closed'),
+          new Promise<string>((_, reject) =>
+            setTimeout(
+              () => reject(new Error('safeFetch.close hung after HTTPS proxy TLS abort')),
+              2000
+            )
+          )
+        ])
+      ).resolves.toBe('closed');
+    } finally {
+      await safeFetch.close();
+      await stalledProxy.close();
+    }
+  });
+
   it('should initiate TLS handshake to an https proxy URL with proxy servername', async () => {
     vi.spyOn(dns, 'resolve4').mockResolvedValue(['198.51.100.12']);
     vi.spyOn(dns, 'resolve6').mockResolvedValue([]);

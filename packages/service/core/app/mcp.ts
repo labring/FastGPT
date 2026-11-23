@@ -306,7 +306,13 @@ export const createMcpSafeFetch = ({
   const proxyPools = new Map<string, Pool>();
   const closeController = new AbortController();
   const connectSignalStorage = new AsyncLocalStorage<AbortSignal | undefined>();
+  const proxyConnectSignalStorage = new AsyncLocalStorage<AbortSignal | undefined>();
   const endpointConnector = buildConnector({ timeout: MCP_PROXY_CONNECT_TIMEOUT });
+  const proxyConnector = buildConnector({ timeout: MCP_PROXY_CONNECT_TIMEOUT });
+
+  const toAbortError = (reason: unknown, fallbackMessage: string): Error => {
+    return reason instanceof Error ? reason : new Error(String(reason ?? fallbackMessage));
+  };
 
   /**
    * 构造通过 HTTP 代理建立固定 IP 隧道的 Agent。
@@ -337,7 +343,64 @@ export const createMcpSafeFetch = ({
       if (existingPool) return existingPool;
 
       const newPool = new Pool(parsedProxyUrl.origin, {
-        connectTimeout: MCP_PROXY_CONNECT_TIMEOUT
+        // 代理 TCP/TLS 握手尚未交付给 CONNECT handler 时，Pool.connect 的 signal 无法中止底层建连；
+        // 在 Pool 建连层显式绑定隧道/关闭取消信号，确保 safeFetch.close() 或调用方取消时立即释放代理 socket。
+        connect: (proxyConnectOpts, proxyCallback) => {
+          // tunnelSignal 已组合 closeController.signal、callerSignal 与建连超时；
+          // 若在上下文外触发建连，则至少兜底绑定 closeController.signal。
+          const proxyConnectSignal = proxyConnectSignalStorage.getStore() ?? closeController.signal;
+
+          let settled = false;
+          let activeProxySocket: Socket | undefined;
+
+          // 保证每次代理建连只回调一次 undici，并在结束后清理监听，避免重复回调或泄漏。
+          const finishProxyConnect = (...args: Parameters<typeof proxyCallback>) => {
+            if (settled) return;
+            settled = true;
+            proxyConnectSignal.removeEventListener('abort', onProxyConnectAbort);
+            if (activeProxySocket) {
+              activeProxySocket.removeListener('close', onProxySocketClose);
+            }
+            proxyCallback(...args);
+          };
+
+          const onProxyConnectAbort = () => {
+            const abortError = toAbortError(proxyConnectSignal.reason, 'Proxy connection aborted');
+            finishProxyConnect(abortError, null);
+            activeProxySocket?.on('error', () => {}).destroy(abortError);
+          };
+
+          const onProxySocketClose = () => {
+            // 兜底：若代理 socket 在握手完成前关闭且未触发 error，必须结束回调防止 Pool.close() 挂起。
+            finishProxyConnect(new Error('Proxy socket closed before handshake completed'), null);
+          };
+
+          if (proxyConnectSignal.aborted) {
+            onProxyConnectAbort();
+            return;
+          }
+          proxyConnectSignal.addEventListener('abort', onProxyConnectAbort, { once: true });
+
+          try {
+            activeProxySocket = proxyConnector(proxyConnectOpts, (...args) => {
+              if (settled) {
+                args[1]?.on('error', () => {}).destroy();
+                return;
+              }
+              finishProxyConnect(...args);
+            }) as unknown as Socket | undefined;
+          } catch (error) {
+            finishProxyConnect(error instanceof Error ? error : new Error(String(error)), null);
+            return;
+          }
+
+          if (!settled) {
+            activeProxySocket?.once('close', onProxySocketClose);
+          } else if (proxyConnectSignal.aborted) {
+            const abortError = toAbortError(proxyConnectSignal.reason, 'Proxy connection aborted');
+            activeProxySocket?.on('error', () => {}).destroy(abortError);
+          }
+        }
       });
       proxyPools.set(parsedProxyUrl.origin, newPool);
       return newPool;
@@ -355,19 +418,13 @@ export const createMcpSafeFetch = ({
         }
         const tunnelSignal = AbortSignal.any(signals);
 
-        const toAbortError = (reason: unknown): Error => {
-          return reason instanceof Error
-            ? reason
-            : new Error(String(reason ?? 'Proxy tunnel aborted'));
-        };
-
         let settled = false;
         let activeRawSocket: Socket | undefined;
         let activeTlsSocket: Socket | undefined;
         let onTlsClose: (() => void) | undefined;
 
         const onTunnelAbort = () => {
-          const abortError = toAbortError(tunnelSignal.reason);
+          const abortError = toAbortError(tunnelSignal.reason, 'Proxy tunnel aborted');
           // 无论处于 DNS 解析、代理 CONNECT 还是 TLS 握手阶段，超时/关闭/取消都先通过 finish 结束
           // undici Client 的 connecting 状态，再销毁已建立的 TLS/底层 socket；
           // 仅调用无参 socket.destroy() 不会触发 buildConnector 的 error 回调，会导致 Agent.close() 永远挂起。
@@ -398,7 +455,7 @@ export const createMcpSafeFetch = ({
             // 每次新建隧道连接都重新解析并校验目标 IP，防止代理路径上的 DNS rebinding。
             const resolved = await resolveMcpConnectAddress(connectOpts.hostname);
             if (settled || tunnelSignal.aborted) {
-              finish(toAbortError(tunnelSignal.reason), null);
+              finish(toAbortError(tunnelSignal.reason, 'Proxy tunnel aborted'), null);
               return;
             }
 
@@ -412,16 +469,18 @@ export const createMcpSafeFetch = ({
                 ? `[${resolved.address}]:${targetPort}`
                 : `${resolved.address}:${targetPort}`;
 
-            const { socket, statusCode } = await activeProxyPool
-              .connect({
-                path: connectAuthority,
-                headers: {
-                  ...proxyHeaders,
-                  host: connectAuthority,
-                  'proxy-connection': 'keep-alive'
-                },
-                signal: tunnelSignal
-              })
+            const { socket, statusCode } = await proxyConnectSignalStorage
+              .run(tunnelSignal, () =>
+                activeProxyPool.connect({
+                  path: connectAuthority,
+                  headers: {
+                    ...proxyHeaders,
+                    host: connectAuthority,
+                    'proxy-connection': 'keep-alive'
+                  },
+                  signal: tunnelSignal
+                })
+              )
               .catch((proxyConnectError: unknown) => {
                 // undici Client#handleConnectError 对 ERR_TLS_CERT_ALTNAME_INVALID 按目标 servername 匹配队列；
                 // 对 http:// 目标走 https:// 代理时两者不等会导致死循环重试，按 ProxyAgent 同款包装为 SecureProxyConnectionError。
@@ -438,7 +497,7 @@ export const createMcpSafeFetch = ({
             const rawSocket = socket as Socket;
             if (settled || tunnelSignal.aborted) {
               rawSocket.on('error', () => {}).destroy();
-              finish(toAbortError(tunnelSignal.reason), null);
+              finish(toAbortError(tunnelSignal.reason, 'Proxy tunnel aborted'), null);
               return;
             }
             activeRawSocket = rawSocket;
@@ -488,7 +547,7 @@ export const createMcpSafeFetch = ({
             if (!settled) {
               activeTlsSocket?.once('close', onTlsClose);
             } else if (tunnelSignal.aborted) {
-              const abortError = toAbortError(tunnelSignal.reason);
+              const abortError = toAbortError(tunnelSignal.reason, 'Proxy tunnel aborted');
               activeTlsSocket?.on('error', () => {}).destroy(abortError);
               rawSocket.on('error', () => {}).destroy();
             }

@@ -22,7 +22,7 @@
 5. **代理鉴权、错误分类与资源清理**：
    - 支持从代理 URL 解析并 URL-decode `username`/`password` 生成 `Proxy-Authorization: Basic ...`；不对代理自身做 SSRF 限制（允许本地或内网代理地址）。
    - 代理非 200 CONNECT 响应（含 `407`、`403` 等）与不支持的代理协议抛出 `McpProxyTunnelError`（`MCP_PROXY_TUNNEL_ERROR`），归类为 `UserConfigError`；来自 HTTPS 代理自身的 `ERR_TLS_CERT_ALTNAME_INVALID` 按 `undici.ProxyAgent` 惯例包装为 `SecureProxyConnectionError`（`UND_ERR_PRX_TLS`），避免 `undici` `Client` 在 `http://` 目标上无限重试。
-   - 非 200 响应、超时、`AbortSignal` 取消及 `safeFetch.close()` 时立即销毁对应 socket 并关闭所有 `Agent` 与代理 `Pool`。
+   - 非 200 响应、超时、`AbortSignal` 取消及 `safeFetch.close()` 在整个建连生命周期（目标 DNS 解析、外层代理 TCP/TLS 建连、代理 `CONNECT` 等待及目标 TLS 握手）均通过一次性回调结束连接状态，立即销毁尚未交付或已建立的 socket，并及时关闭所有 `Agent` 与代理 `Pool`。
 
 ## 行为变更与部署注意事项
 
