@@ -16,6 +16,7 @@ import EmptyTip from '../EmptyTip';
 import MyLoading from '../MyLoading';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../../common/Icon';
+import FilterSearchInput, { filterSelectOptionsBySearch } from '../TagFilter/FilterSearchInput';
 import { useMenuListPresence } from './useMenuListPresence';
 import { CanvasMenuList, useCanvasMenuModifiers } from './CanvasMenuList';
 import { useCloseOnFlowNodeDragAreaPointerDown } from '../../../hooks/useCloseOnFlowNodeDragAreaPointerDown';
@@ -104,10 +105,14 @@ const RenderList = React.memo(function RenderList({
               cursor={'pointer'}
               px={1.5}
               borderRadius={'sm'}
-              _hover={{
-                bg: 'primary.50'
-              }}
+              _hover={{ bg: 'primary.50' }}
+              _focusVisible={{ bg: 'primary.50' }}
               onClick={() => {
+                if (item.value === selectedValue && !changeOnEverySelect) {
+                  if (!hasChildren) onClose();
+                  return;
+                }
+
                 const newValue = [...safeCloneValue];
                 // 父级节点只负责展开列，不能被当成叶子清空；这样单选可重新进入当前来源。
                 if (hasChildren) {
@@ -303,6 +308,7 @@ const ArrayRenderList = React.memo(function ArrayRenderList({
 
 type MultipleRowSelectProps = MultipleSelectProps & {
   rowMinWidth?: string;
+  isSearch?: boolean;
 };
 
 const MultipleRowSelect = React.memo(function MultipleRowSelect({
@@ -318,12 +324,21 @@ const MultipleRowSelect = React.memo(function MultipleRowSelect({
   onOpenFunc,
   onCloseFunc,
   changeOnEverySelect = false,
-  rowMinWidth = 'auto'
+  rowMinWidth = 'auto',
+  isSearch = false
 }: MultipleRowSelectProps) {
+  const { t } = useTranslation();
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [search, setSearch] = useState('');
   const ButtonRef = useRef<HTMLButtonElement>(null);
   const OutsideClickRef = useRef<HTMLDivElement>(null);
 
-  const { isOpen, onOpen, onClose } = useDisclosure({ onClose: onCloseFunc });
+  const { isOpen, onOpen, onClose } = useDisclosure({
+    onClose: () => {
+      setSearch('');
+      onCloseFunc?.();
+    }
+  });
   const [cloneValue, setCloneValue] = useState<(string | undefined)[]>(() =>
     Array.isArray(value) ? value : []
   );
@@ -333,17 +348,26 @@ const MultipleRowSelect = React.memo(function MultipleRowSelect({
   const MenuListRef = useRef<HTMLDivElement>(null);
   const [menuWidth, setMenuWidth] = useState<number>();
   const [triggerWidth, setTriggerWidth] = useState(0);
+  const visibleList = useMemo(() => {
+    if (!search.trim()) return list;
+
+    return list.flatMap((item) => {
+      if (!item.children?.length) return filterSelectOptionsBySearch([item], search);
+      const children = filterSelectOptionsBySearch(item.children, search);
+      return children.length ? [{ ...item, children }] : [];
+    });
+  }, [list, search]);
 
   // 异步列表加载完成或从单列切换为分组时，使用外部 value 恢复完整路径；有效的手动路径保持不变。
   const safeValue = Array.isArray(value) ? value : [];
   const safeCloneValue = Array.isArray(cloneValue) ? cloneValue : [];
-  const selectedFirstColumn = list.find((item) => item.value === safeCloneValue[0]);
-  const valueFirstColumn = list.find((item) => item.value === safeValue[0]);
+  const selectedFirstColumn = visibleList.find((item) => item.value === safeCloneValue[0]);
+  const valueFirstColumn = visibleList.find((item) => item.value === safeValue[0]);
   // 列表原地刷新后旧路径可能失效；优先恢复外部值的完整路径，再回落到新列表首项。
   const resolvedCloneValue = (() => {
     if (!isOpen || selectedFirstColumn) return safeCloneValue;
     if (valueFirstColumn) return safeValue;
-    if (safeCloneValue[0] && list[0]) return [list[0].value];
+    if ((safeCloneValue[0] || search.trim()) && visibleList[0]) return [visibleList[0].value];
     return safeCloneValue;
   })();
   const { isMounted, mount, onAnimationComplete, modifiers } = useMenuListPresence(isOpen);
@@ -412,6 +436,23 @@ const MultipleRowSelect = React.memo(function MultipleRowSelect({
     </Flex>
   );
 
+  const menuOptions = (
+    <RenderList
+      isOpen={isOpen}
+      list={visibleList}
+      index={0}
+      cloneValue={resolvedCloneValue}
+      setCloneValue={setCloneValue}
+      onSelect={onSelect}
+      onClose={onCloseSelect}
+      changeOnEverySelect={changeOnEverySelect}
+      emptyTip={emptyTip}
+      maxH={maxH}
+      rowMinWidth={rowMinWidth}
+      MenuRef={MenuRef}
+      SelectedItemRef={SelectedItemRef}
+    />
+  );
   const menuList = isMounted ? (
     <CanvasMenuList
       ref={MenuListRef}
@@ -426,6 +467,7 @@ const MultipleRowSelect = React.memo(function MultipleRowSelect({
       overflowX={'hidden'}
       overflowY={'auto'}
       display={'flex'}
+      flexDirection={isSearch ? 'column' : undefined}
       userSelect={'none'}
       minW={`min(${menuWidth ?? triggerWidth}px, calc(100vw - 24px))`}
       rootProps={
@@ -441,6 +483,16 @@ const MultipleRowSelect = React.memo(function MultipleRowSelect({
       motionProps={{ initial: 'exit' }}
       {...menuListAnimationProps}
     >
+      {isSearch && (
+        <Box mx={2} mb={1} flexShrink={0}>
+          <FilterSearchInput
+            ref={searchInputRef}
+            value={search}
+            placeholder={t('common:Search')}
+            onChange={setSearch}
+          />
+        </Box>
+      )}
       {isLoading ? (
         <Box
           data-preserve-width
@@ -452,22 +504,10 @@ const MultipleRowSelect = React.memo(function MultipleRowSelect({
         >
           <MyLoading fixed={false} size="md" bg="transparent" />
         </Box>
+      ) : isSearch ? (
+        <Flex minW={0}>{menuOptions}</Flex>
       ) : (
-        <RenderList
-          isOpen={isOpen}
-          list={list}
-          index={0}
-          cloneValue={resolvedCloneValue}
-          setCloneValue={setCloneValue}
-          onSelect={onSelect}
-          onClose={onCloseSelect}
-          changeOnEverySelect={changeOnEverySelect}
-          emptyTip={emptyTip}
-          maxH={maxH}
-          rowMinWidth={rowMinWidth}
-          MenuRef={MenuRef}
-          SelectedItemRef={SelectedItemRef}
-        />
+        menuOptions
       )}
     </CanvasMenuList>
   ) : null;
@@ -486,7 +526,8 @@ const MultipleRowSelect = React.memo(function MultipleRowSelect({
       })}
     >
       <Menu
-        autoSelect={false}
+        autoSelect={isSearch}
+        initialFocusRef={isSearch ? searchInputRef : undefined}
         isOpen={isOpen}
         onOpen={handleOpen}
         onClose={onCloseSelect}

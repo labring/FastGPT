@@ -654,4 +654,53 @@ describe('MultipleRowSelect', () => {
     });
     expect(document.activeElement).toBe(first);
   });
+
+  it('searches across provider groups and only submits a selected template', async () => {
+    const onSelect = vi.fn();
+    const list = [
+      {
+        value: 'openai',
+        label: 'OpenAI',
+        children: [{ value: 'gpt', label: 'GPT' }]
+      },
+      {
+        value: 'claude',
+        label: 'Claude',
+        children: [
+          { value: 'opus', label: 'Opus' },
+          { value: 'sonnet', label: 'Sonnet' }
+        ]
+      }
+    ];
+    await renderSelect(
+      inChakra(React.createElement(MultipleRowSelect, {
+        list,
+        value: ['claude', 'opus'],
+        isSearch: true,
+        onSelect
+      }))
+    );
+    const trigger = host.querySelector<HTMLButtonElement>('button')!;
+    await act(async () => trigger.click());
+
+    const getMenuItems = () => [...host.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')];
+    const openAIButton = getMenuItems().find((item) => item.textContent === 'OpenAI')!;
+    await act(async () => openAIButton.click());
+    await act(async () => openAIButton.click());
+    expect(getMenuItems().map((item) => item.textContent)).toEqual(['OpenAI', 'Claude', 'GPT']);
+    expect(onSelect).not.toHaveBeenCalled();
+
+    const input = host.querySelector<HTMLInputElement>('[role="menu"] input')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(
+        input,
+        'sonnet'
+      );
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    expect(getMenuItems().map((item) => item.textContent)).toEqual(['Claude', 'Sonnet']);
+    await act(async () => getMenuItems()[1].click());
+    expect(onSelect).toHaveBeenCalledExactlyOnceWith(['claude', 'sonnet']);
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+  });
 });

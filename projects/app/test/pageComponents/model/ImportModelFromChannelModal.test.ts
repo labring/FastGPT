@@ -97,6 +97,9 @@ vi.mock('@fastgpt/web/components/common/MySelect', () => ({
     'aria-label'?: string;
   }) => React.createElement('select', { disabled: isDisabled, 'aria-label': ariaLabel })
 }));
+vi.mock('@fastgpt/web/components/common/MySelect/MultipleRowSelect', () => ({
+  default: () => null
+}));
 vi.mock('@fastgpt/web/components/common/Tag', () => ({
   default: ({ children }: React.PropsWithChildren) => React.createElement('span', null, children)
 }));

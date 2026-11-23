@@ -16,7 +16,10 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
-import type { ModelProviderItemType } from '@fastgpt/global/core/ai/model/provider';
+import {
+  defaultProvider,
+  type ModelProviderItemType
+} from '@fastgpt/global/core/ai/model/provider';
 import type {
   ImportPreviewItem,
   ModelChannelSummary,
@@ -28,6 +31,8 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
+import type { ListItemType } from '@fastgpt/web/components/common/MySelect/type';
 import { SingleSelectFilter } from '@fastgpt/web/components/common/TagFilter';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useStaticVirtualList } from '@fastgpt/web/hooks/useVirtualList';
@@ -87,6 +92,7 @@ type RowCatalog = {
 
 const noPreviewItems: ImportPreviewRow[] = [];
 const blankTemplateValue = '__blank__';
+const getTemplateProviderKey = (providerId: string) => `provider:${providerId}`;
 const getTemplateKey = ({ type, model }: { type: ModelTypeEnum; model: string }) =>
   [type, model].join(':');
 const getTemplateDataForKey = ({
@@ -253,26 +259,43 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
     isActive: rowIsActive
   } = resolveRowSelection({ row, selection, catalog });
   const isBlank = selectedPresetKey === blankTemplateValue;
-  const templateOptions = [...catalog.availableTemplates];
-  if (
-    item.category === 'template' &&
-    !templateOptions.some((template) => getTemplateKey(template) === getTemplateKey(item.template))
-  ) {
-    templateOptions.unshift(item.modelData);
-  }
-  const templateSelectOptions = [
-    {
-      value: blankTemplateValue,
-      label: t('config_model:channel_import_blank_template')
-    },
-    ...templateOptions
-      .filter((template) => !modelType || template.type === modelType)
-      .map((template) => ({
-        value: getTemplateKey(template),
-        label: template.name.trim(),
-        icon: catalog.providerById.get(template.provider)?.avatar
-      }))
-  ];
+  const blankTemplateLabel = t('config_model:channel_import_blank_template');
+  const templateGroups = (() => {
+    const templates =
+      item.category === 'template' && !catalog.templateMap.has(getTemplateKey(item.template))
+        ? [item.modelData, ...catalog.availableTemplates]
+        : catalog.availableTemplates;
+    const groups = new Map<string, ListItemType[]>();
+
+    for (const template of templates) {
+      if (modelType && template.type !== modelType) continue;
+
+      const option = { value: getTemplateKey(template), label: template.name };
+      const group = groups.get(template.provider);
+      if (group) group.push(option);
+      else groups.set(template.provider, [option]);
+    }
+
+    return [...groups]
+      .sort(
+        ([left], [right]) =>
+          (catalog.providerById.get(left)?.order ?? defaultProvider.order) -
+          (catalog.providerById.get(right)?.order ?? defaultProvider.order)
+      )
+      .map(([providerId, children]) => {
+        const provider = catalog.providerById.get(providerId);
+        return {
+          value: getTemplateProviderKey(providerId),
+          label: (
+            <Flex alignItems="center" gap={2}>
+              <Avatar w="1rem" src={provider?.avatar || defaultProvider.avatar} />
+              <Box>{provider?.name ?? providerId}</Box>
+            </Flex>
+          ),
+          children
+        };
+      });
+  })();
   const candidateProvider = item.modelData?.provider;
   const candidateAvatar = candidateProvider
     ? catalog.providerById.get(candidateProvider)?.avatar
@@ -292,7 +315,11 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
       cursor="pointer"
       onClick={(event) => {
         const target = event.target;
-        if (!(target instanceof Element) || target.closest('button, label, input, select')) return;
+        if (
+          !(target instanceof Element) ||
+          target.closest('button, label, input, select, [role="menu"]')
+        )
+          return;
         onToggleSelected(row.providerModelSlug);
       }}
     >
@@ -333,18 +360,46 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
         />
       </Td>
       <Td>
-        <MySelect
-          size="sm"
-          h="32px"
-          width="100%"
-          value={selectedPresetKey}
-          list={templateSelectOptions}
+        <MultipleRowSelect
+          label={
+            selectedPresetData ? (
+              <Flex alignItems="center" gap={2} minW={0} mr={2}>
+                <Avatar
+                  w="1rem"
+                  flexShrink={0}
+                  src={
+                    catalog.providerById.get(selectedPresetData.provider)?.avatar ||
+                    defaultProvider.avatar
+                  }
+                />
+                <Box flex="1 1 auto" minW={0} isTruncated>
+                  {selectedPresetData.name}
+                </Box>
+              </Flex>
+            ) : isBlank ? (
+              blankTemplateLabel
+            ) : undefined
+          }
+          value={
+            selectedPresetData
+              ? [getTemplateProviderKey(selectedPresetData.provider), selectedPresetKey]
+              : [templateGroups[0]?.value ?? blankTemplateValue]
+          }
+          list={[{ value: blankTemplateValue, label: blankTemplateLabel }, ...templateGroups]}
           placeholder={t('config_model:select_model_template')}
+          rowMinWidth="160px"
           isSearch
-          isDisabled={catalog.templateLoading}
-          aria-label={t('config_model:channel_import_preset_template')}
-          onChange={(selectedKey) => {
-            if (selectedKey === selectedPresetKey) return;
+          ButtonProps={{
+            size: 'sm',
+            h: '32px',
+            width: '100%',
+            isDisabled: catalog.templateLoading,
+            'aria-label': t('config_model:channel_import_preset_template')
+          }}
+          onSelect={([providerId, templateKey]) => {
+            const selectedKey =
+              providerId === blankTemplateValue ? blankTemplateValue : templateKey;
+            if (typeof selectedKey !== 'string' || selectedKey === selectedPresetKey) return;
             const nextPresetData = getTemplateDataForKey({
               item,
               key: selectedKey,
