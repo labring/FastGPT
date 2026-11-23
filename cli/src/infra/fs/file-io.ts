@@ -20,6 +20,11 @@ export type FileIoAdapter = {
     content: string;
     baseDir?: string;
   }) => Promise<string>;
+  writeBinaryAtomic: (params: {
+    filePath: string;
+    content: Uint8Array;
+    baseDir?: string;
+  }) => Promise<string>;
   createTextFiles: (params: {
     baseDir: string;
     files: Array<{ filePath: string; content: string }>;
@@ -95,12 +100,14 @@ export function createNodeFileIoAdapter({ cwd }: { cwd: string }): FileIoAdapter
       }
     },
     writeTextAtomic: ({ filePath, content, baseDir }) =>
-      writeTextFile({ absolutePath: resolvePath(filePath, baseDir), content }),
+      writeAtomicFile({ absolutePath: resolvePath(filePath, baseDir), content }),
+    writeBinaryAtomic: ({ filePath, content, baseDir }) =>
+      writeAtomicFile({ absolutePath: resolvePath(filePath, baseDir), content }),
     createTextFiles: async ({ baseDir, files }) => {
       const created: string[] = [];
       try {
         for (const { filePath, content } of files) {
-          const path = await writeTextFile({
+          const path = await writeAtomicFile({
             absolutePath: resolvePath(filePath, baseDir),
             content,
             exclusive: true
@@ -116,14 +123,14 @@ export function createNodeFileIoAdapter({ cwd }: { cwd: string }): FileIoAdapter
   };
 }
 
-/** 将完整内容从临时文件发布到目标路径，初始化时使用独占写入防止覆盖现有文件。 */
-async function writeTextFile({
+/** 将完整文本或二进制内容从临时文件原子发布到目标路径，初始化时使用独占写入防止覆盖现有文件。 */
+async function writeAtomicFile({
   absolutePath,
   content,
   exclusive = false
 }: {
   absolutePath: string;
-  content: string;
+  content: string | Uint8Array;
   exclusive?: boolean;
 }): Promise<string> {
   const directory = dirname(absolutePath);
@@ -135,7 +142,11 @@ async function writeTextFile({
 
   const handle = await open(temporaryPath, 'wx');
   try {
-    await handle.writeFile(content, 'utf8');
+    if (typeof content === 'string') {
+      await handle.writeFile(content, 'utf8');
+    } else {
+      await handle.writeFile(content);
+    }
     await handle.sync();
     await handle.close();
     if (exclusive) {

@@ -4,6 +4,7 @@ import type { CliContainer } from './container';
 import { executeCommandWithPipeline, type CliCommandSpec } from './pipeline';
 
 const GROUP_DESCRIPTIONS: Record<string, string> = {
+  api: 'Inspect OpenAPI schemas and invoke FastGPT APIs directly',
   auth: 'Manage profiles, auth status, and active team sessions',
   config: 'Inspect and update CLI configuration values',
   dataset: 'Manage datasets, collections, chunks, and OpenAPI search',
@@ -58,7 +59,16 @@ function attachCommandSpec({
   }
 
   for (const opt of spec.options) {
-    cmd.option(opt.flags, opt.description);
+    if (opt.repeatable === true) {
+      cmd.option(
+        opt.flags,
+        opt.description,
+        (val: string, prev: string[] = []) => [...prev, val],
+        []
+      );
+    } else {
+      cmd.option(opt.flags, opt.description);
+    }
   }
 
   const examplesText = (spec.examples ?? [])

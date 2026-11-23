@@ -1,3 +1,8 @@
+import { createApiCallerService, type ApiCallerService } from '../domain/api/api-caller-service';
+import {
+  createOpenapiCacheService,
+  type OpenapiCacheService
+} from '../domain/api/openapi-cache-service';
 import {
   createAuthService,
   type AuthService,
@@ -37,6 +42,7 @@ import {
   type WorkflowSyncService
 } from '../domain/workflow/workflow-sync-service';
 import { createWorkflowTemplateLoader } from '../infra/workflow/template-loader';
+import { createFileApidocCacheStore } from '../infra/cache/apidoc-cache-store';
 import {
   createFileConfigRepository,
   resolveConfigDir,
@@ -87,6 +93,8 @@ export type CliContainer = {
   readonly modelService: ModelService;
   readonly workflowLocalService: WorkflowLocalService;
   readonly workflowSyncService: WorkflowSyncService;
+  readonly openapiCacheService: OpenapiCacheService;
+  readonly apiCallerService: ApiCallerService;
   readonly readJsonInput: (params: { file?: string; stdin?: boolean }) => Promise<unknown>;
   readonly stdout: (value: string) => void;
   readonly stderr: (value: string) => void;
@@ -200,6 +208,14 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
     env: deps.env,
     readStdin: deps.readStdin
   });
+  const apidocCacheStore = createFileApidocCacheStore({ configDir });
+  const openapiCacheService = createOpenapiCacheService({ cacheStore: apidocCacheStore });
+  const apiCallerService = createApiCallerService({
+    openapiCacheService,
+    fileIo,
+    prompter,
+    readStdin: deps.readStdin
+  });
 
   return {
     env: deps.env,
@@ -220,6 +236,8 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
     modelService: createModelService(),
     workflowLocalService,
     workflowSyncService,
+    openapiCacheService,
+    apiCallerService,
     readJsonInput: (params) =>
       readJsonInput({ ...params, cwd: deps.cwd, readStdin: deps.readStdin }),
     stdout: deps.stdout,

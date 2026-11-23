@@ -1,4 +1,5 @@
 import type { CliAuthModeRequirement, CliRiskLevel, CommandMeta } from '../shared/types';
+import { createApiCommandSpecs } from './commands/api';
 import { createAppCommandSpecs } from './commands/app';
 import { createAuthCommandSpecs } from './commands/auth';
 import { createChatCommandSpecs } from './commands/chat';
@@ -42,6 +43,7 @@ export function getCliCommandSpecs(): CliCommandSpec[] {
     createPluginToolListCommandSpec(),
     ...createWorkflowBuildCommandSpecs(),
     ...createWorkflowSyncCommandSpecs(),
+    ...createApiCommandSpecs(),
     createDoctorCommandSpec(),
     createCommandsManifestCommandSpec()
   ];
