@@ -511,6 +511,21 @@ describe('API Escape Hatch Domain Services', () => {
       hint: expect.stringContaining('--token')
     });
 
+    await expect(
+      caller.execute({
+        client,
+        input: {
+          method: 'GET',
+          path: '/core/dataset/detail',
+          queryPairs: ['id=1'],
+          headerPairs: ['rootkey: secret']
+        }
+      })
+    ).rejects.toMatchObject({
+      code: 'CLI_ARGUMENT_INVALID',
+      hint: expect.stringContaining('--token')
+    });
+
     // 4. TTY 下取消破坏性请求不发送任何 HTTP 请求
     const cancelPrompter: Prompter = {
       ...createNonTtyPrompter(),

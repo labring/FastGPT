@@ -17,6 +17,7 @@ function makeFileIo(overrides: Partial<FileIoAdapter> = {}): FileIoAdapter {
     readTextFile: vi.fn(),
     readBinaryFile: vi.fn(),
     writeTextAtomic: vi.fn().mockImplementation(async ({ filePath }) => `/workspace/${filePath}`),
+    writeBinaryAtomic: vi.fn().mockImplementation(async ({ filePath }) => `/workspace/${filePath}`),
     createTextFiles: vi.fn(),
     ...overrides
   };

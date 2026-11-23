@@ -21,7 +21,7 @@ const DESTRUCTIVE_PATH_TOKENS = new Set<string>([
   'drop',
   'reset'
 ]);
-const BLOCKED_AUTH_HEADERS = new Set<string>(['authorization', 'token', 'cookie']);
+const BLOCKED_AUTH_HEADERS = new Set<string>(['authorization', 'token', 'cookie', 'rootkey']);
 const HEADER_NAME_REG = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
 
 export type ApiCallInput = {
