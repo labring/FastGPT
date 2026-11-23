@@ -151,7 +151,7 @@ services:
       - 'fastgpt-milvus-etcd'
       - 'fastgpt-milvus-minio'
   fastgpt-mongo:
-    image: mongo:8.0.34 # x86_64 CPU 需满足 MongoDB 8.0 的指令集要求
+    image: mongo:8.0.38 # x86_64 CPU 需满足 MongoDB 8.0 的指令集要求
     container_name: fastgpt-mongo
     restart: always
     networks:
@@ -271,7 +271,7 @@ services:
 
   fastgpt-app:
     container_name: fastgpt-app
-    image: ghcr.io/labring/fastgpt:v4.17.4
+    image: ghcr.io/labring/fastgpt:v4.17.5
     ports:
       - 3000:3000
     networks:
