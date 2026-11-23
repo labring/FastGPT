@@ -11,6 +11,7 @@ import { createLoginCommandSpec } from './commands/login';
 import { createLogoutCommandSpec } from './commands/logout';
 import { createModelCommandSpecs } from './commands/model';
 import { createPluginToolListCommandSpec } from './commands/plugin';
+import { createSkillsCommandSpecs } from './commands/skills';
 import { createWorkflowBuildCommandSpecs } from './commands/workflow-build';
 import { createWorkflowSyncCommandSpecs } from './commands/workflow/sync';
 import { createWhoamiCommandSpec } from './commands/whoami';
@@ -40,6 +41,7 @@ export function getCliCommandSpecs(): CliCommandSpec[] {
     createCodeSandboxCommandSpec(),
     ...createModelCommandSpecs(),
     createPluginToolListCommandSpec(),
+    ...createSkillsCommandSpecs(),
     ...createWorkflowBuildCommandSpecs(),
     ...createWorkflowSyncCommandSpecs(),
     createDoctorCommandSpec(),

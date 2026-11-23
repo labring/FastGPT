@@ -17,6 +17,7 @@ const GROUP_DESCRIPTIONS: Record<string, string> = {
   plugin: 'Discover FastGPT plugins',
   'plugin tool': 'Discover plugin-backed system tools',
   'code-sandbox': 'Inspect the FastGPT code sandbox',
+  skills: 'List, install, update, and verify bundled FastGPT Agent skills',
   workflow: 'Compare and debug FastGPT workflows',
   'workflow-build': 'Author, validate, and compile local workflows',
   'workflow-build meta': 'Inspect and update workflow application metadata',
