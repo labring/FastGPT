@@ -1,4 +1,4 @@
-import React, { forwardRef, useEffect, useRef, useState } from 'react';
+import React, { forwardRef, useCallback, useRef, useState } from 'react';
 import { Flex, Input } from '@chakra-ui/react';
 import MyIconButton from '../Icon/button';
 import { shadowLight } from '../../../styles/theme';
@@ -28,17 +28,49 @@ type Props = {
   onChange: (next: string) => void;
 };
 
+/** 输入框显示组合中的文本，搜索只接收已确认的值。 */
+export const useComposedSearchInput = (value: string, onChange: (next: string) => void) => {
+  const [draft, setDraft] = useState<string>();
+  const isComposingRef = useRef(false);
+  const resetInput = useCallback(() => {
+    isComposingRef.current = false;
+    setDraft(undefined);
+  }, []);
+
+  const updateInput = (next: string) => {
+    if (isComposingRef.current) {
+      setDraft(next);
+    } else {
+      resetInput();
+      onChange(next);
+    }
+  };
+
+  return {
+    inputValue: draft ?? value,
+    isComposingRef,
+    resetInput,
+    updateInput,
+    compositionProps: {
+      onCompositionStart: () => {
+        isComposingRef.current = true;
+      },
+      onCompositionEnd: (event: React.CompositionEvent<HTMLInputElement>) => {
+        isComposingRef.current = false;
+        updateInput(event.currentTarget.value);
+      },
+      onChange: (event: React.ChangeEvent<HTMLInputElement>) =>
+        updateInput(event.currentTarget.value)
+    }
+  };
+};
+
 /** TagFilter 下拉里 32px 搜索框，有内容时显示清空，并在中文输入法组合结束后再触发搜索。 */
 const FilterSearchInput = forwardRef<HTMLInputElement, Props>(function FilterSearchInput(
   { value, placeholder, onChange },
   ref
 ) {
-  const [inputValue, setInputValue] = useState(value);
-  const isComposingRef = useRef(false);
-
-  useEffect(() => {
-    setInputValue(value);
-  }, [value]);
+  const { inputValue, resetInput, compositionProps } = useComposedSearchInput(value, onChange);
 
   return (
     <Flex
@@ -74,22 +106,7 @@ const FilterSearchInput = forwardRef<HTMLInputElement, Props>(function FilterSea
         lineHeight={'16px'}
         value={inputValue}
         placeholder={placeholder}
-        onCompositionStart={() => {
-          isComposingRef.current = true;
-        }}
-        onCompositionEnd={(e) => {
-          isComposingRef.current = false;
-          const next = e.currentTarget.value;
-          setInputValue(next);
-          onChange(next);
-        }}
-        onChange={(e) => {
-          const next = e.target.value;
-          setInputValue(next);
-          if (!isComposingRef.current) {
-            onChange(next);
-          }
-        }}
+        {...compositionProps}
       />
       {!!inputValue && (
         <MyIconButton
@@ -100,8 +117,7 @@ const FilterSearchInput = forwardRef<HTMLInputElement, Props>(function FilterSea
           size={'14px'}
           hoverColor={'myGray.700'}
           onClick={() => {
-            isComposingRef.current = false;
-            setInputValue('');
+            resetInput();
             onChange('');
           }}
         />

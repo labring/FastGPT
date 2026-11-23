@@ -5,12 +5,8 @@ import { getModelDefault } from '@/web/core/ai/model/modelData';
 import { Box, Button, CloseButton, Flex } from '@chakra-ui/react';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
-import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { ArrayTypeMap, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeOutputTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   JS_TEMPLATE,
   SandboxCodeTypeEnum
@@ -19,6 +15,8 @@ import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
+import type { DeepReadonly } from '@fastgpt/global/core/workflow/editor/types';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
@@ -28,12 +26,17 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { nanoid } from 'nanoid';
 import { useTranslation } from 'next-i18next';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '../../../../context';
-import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
-import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import { getEditorVariables } from '../../../utils';
 import { extractCodeFromMarkdown } from './parser';
+import {
+  getCopilotUpdatedInputs,
+  getConcurrentWorkflowOutputKeys,
+  getCopilotRemovedOutputKeys
+} from './copilotUtils';
+import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
+import { useNodeWorkflowDocument } from '../render/useWorkflowDocument';
+import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
 export type OnOptimizeCodeProps = {
   optimizerInput: string;
@@ -56,12 +59,29 @@ const NodeCopilot = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { edges, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
+  // 变量列表只读本节点与其上游来源闭包：窄订阅让无关字段的提交不重算也不重渲染。
+  const { workflow, getNodeById, graph } = useNodeWorkflowDocument({ nodeId });
+  const nodeActions = useNodeActions(nodeId);
+  // 边集合只在应用生成代码的回调里读，走非订阅 getter：点击时取当前值，组件不订阅结构变更。
+  const { getEdges } = useWorkflowActions();
+  const getOutputConnectionSnapshot = (edges: ReturnType<typeof getEdges>, outputKey: string) =>
+    JSON.stringify(
+      edges
+        .filter(
+          (edge) =>
+            edge.source === nodeId && edge.sourceHandle === getHandleId(nodeId, 'source', outputKey)
+        )
+        .map((edge) => `${edge.target}\0${edge.targetHandle ?? ''}`)
+        .sort()
+    );
 
   const [optimizerInput, setOptimizerInput] = useState('');
   const [codeResult, setCodeResult] = useState('');
+  const requestedDynamicKeysRef = useRef<{
+    inputs: ReadonlyMap<string, DeepReadonly<FlowNodeInputItemType>>;
+    outputs: ReadonlyMap<string, DeepReadonly<FlowNodeOutputItemType>>;
+    outputConnections: ReadonlyMap<string, string>;
+  }>();
   const [selectedModel, setSelectedModel] = useState('');
   const [conversationHistory, setConversationHistory] = useState<ChatCompletionMessageParam[]>([]);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
@@ -70,14 +90,15 @@ const NodeCopilot = ({
   const isInputEmpty = !optimizerInput.trim();
 
   const editorVariables = useMemoEnhance(() => {
+    if (!workflow || !graph) return [];
     return getEditorVariables({
       nodeId,
       getNodeById,
-      edges,
-      appDetail,
-      t
+      chatConfig: workflow.chatConfig,
+      t,
+      getSourceNodeIds: (sourceNodeId) => graph.getSourceNodeIds({ nodeId: sourceNodeId })
     }).filter((item) => item.parent.id !== nodeId);
-  }, [nodeId, getNodeById, edges, appDetail, t]);
+  }, [nodeId, getNodeById, graph, workflow, t]);
 
   const { codeType, code, dynamicInputs, dynamicOutputs } = useMemo(() => {
     const codeTypeInput = realTimeInputs?.find((input) => input.key === NodeInputKeyEnum.codeType);
@@ -161,6 +182,42 @@ const NodeCopilot = ({
   const { runAsync: handleSendOptimization, loading } = useRequest(async () => {
     if (isInputEmpty) return;
 
+    const requestNode = getNodeById(nodeId);
+    if (requestNode) {
+      const requestEdges = getEdges();
+      const outputConnections = new Map(
+        requestNode.outputs
+          .filter(
+            (output) =>
+              !['system_rawResponse', 'error', 'system_addOutputParam'].includes(output.key)
+          )
+          .map((output) => [output.key, getOutputConnectionSnapshot(requestEdges, output.key)])
+      );
+      requestedDynamicKeysRef.current = {
+        inputs: new Map(
+          requestNode.inputs
+            .filter(
+              (input) =>
+                ![
+                  'system_addInputParam',
+                  NodeInputKeyEnum.codeType,
+                  NodeInputKeyEnum.code
+                ].includes(input.key)
+            )
+            .map((input) => [input.key, input])
+        ),
+        outputs: new Map(
+          requestNode.outputs
+            .filter(
+              (output) =>
+                !['system_rawResponse', 'error', 'system_addOutputParam'].includes(output.key)
+            )
+            .map((output) => [output.key, output])
+        ),
+        outputConnections
+      };
+    }
+
     const processedInput = replaceVariables(optimizerInput);
 
     setCodeResult('');
@@ -199,92 +256,109 @@ const NodeCopilot = ({
     }
     setAbortController(null);
   });
+  /**
+   * 应用 Copilot 生成的代码：代码、动态入参、动态出参一次改写。
+   * 全部字段同一事务提交（被删出参的连线同事务断开），撤销一次回到应用前。
+   */
   const handleApplyCode = () => {
     try {
+      const latestNode = getNodeById(nodeId);
+      if (!latestNode) throw new Error('Workflow node is unavailable');
       const extractedResult = extractCodeFromMarkdown(codeResult);
-      const { code, inputs, outputs } = extractedResult;
-      const codeInput = realTimeInputs?.find((input) => input.key === NodeInputKeyEnum.code);
-      if (!codeInput) return;
-      onChangeNode({
-        nodeId,
-        type: 'updateInput',
-        key: NodeInputKeyEnum.code,
-        value: { ...codeInput, value: code }
-      });
+      const { outputs } = extractedResult;
 
-      dynamicInputs.forEach((input) => {
-        onChangeNode({ nodeId, type: 'delInput', key: input.key });
-      });
-      inputs.forEach((input) => {
-        const referenceValue = (() => {
-          if (input.reference) {
-            const [sourceNodeId, outputKey] = input.reference.split('.');
-            if (sourceNodeId && outputKey) {
-              return [sourceNodeId, outputKey];
-            }
-          }
-          return [];
-        })();
+      const requestedDynamicInputs =
+        requestedDynamicKeysRef.current?.inputs ??
+        new Map(dynamicInputs.map((input) => [input.key, input]));
 
-        onChangeNode({
-          nodeId,
-          type: 'addInput',
-          value: {
-            renderTypeList: [FlowNodeInputTypeEnum.reference],
-            valueType: input.type as WorkflowIOValueTypeEnum,
-            canEdit: true,
-            key: input.key,
-            label: input.key,
-            value: referenceValue,
-            customInputConfig: {
-              selectValueTypeList: Object.values(ArrayTypeMap),
-              showDescription: false,
-              showDefaultValue: true
-            },
-            required: true
-          }
-        });
+      const requestedDynamicOutputs =
+        requestedDynamicKeysRef.current?.outputs ??
+        new Map(dynamicOutputs.map((output) => [output.key, output]));
+      const currentEdges = getEdges();
+      const requestedOutputConnections =
+        requestedDynamicKeysRef.current?.outputConnections ??
+        new Map(
+          [...requestedDynamicOutputs.keys()].map((outputKey) => [
+            outputKey,
+            getOutputConnectionSnapshot(currentEdges, outputKey)
+          ])
+        );
+      const currentOutputConnections = new Map(
+        latestNode.outputs.map((output) => [
+          output.key,
+          getOutputConnectionSnapshot(currentEdges, output.key)
+        ])
+      );
+      const concurrentOutputKeys = getConcurrentWorkflowOutputKeys({
+        requested: requestedDynamicOutputs,
+        current: latestNode.outputs,
+        requestedConnections: requestedOutputConnections,
+        currentConnections: currentOutputConnections
       });
-      const existingOutputIdMap = new Map(dynamicOutputs.map((output) => [output.key, output.id]));
-      const nextOutputKeys = new Set(outputs.map((output) => output.key));
-      dynamicOutputs.forEach((output) => {
-        if (!nextOutputKeys.has(output.key)) {
-          onChangeNode({ nodeId, type: 'delOutput', key: output.key });
-        }
-      });
-      outputs.forEach((output) => {
-        const existingId = existingOutputIdMap.get(output.key);
-        if (existingId) {
-          onChangeNode({
-            nodeId,
-            type: 'updateOutput',
-            key: output.key,
-            value: {
-              id: existingId,
+      // 没有端口注解时保留现有输出和连线，避免将缺失的元数据当成删除指令。
+      const removedOutputKeys =
+        outputs.length > 0
+          ? getCopilotRemovedOutputKeys({
+              requested: requestedDynamicOutputs,
+              current: latestNode.outputs,
+              generatedKeys: new Set(outputs.map((output) => output.key)),
+              concurrentKeys: concurrentOutputKeys
+            })
+          : [];
+      const buildOutputs = (currentOutputs: readonly DeepReadonly<FlowNodeOutputItemType>[]) => {
+        const existingOutputKeys = new Set(currentOutputs.map((output) => output.key));
+        return currentOutputs
+          .filter((output) => !removedOutputKeys.includes(output.key))
+          .map((output) => {
+            if (concurrentOutputKeys.has(output.key)) return output;
+            const extracted = outputs.find((item) => item.key === output.key);
+            if (!extracted) return output;
+            return {
+              ...output,
               type: FlowNodeOutputTypeEnum.dynamic,
-              key: output.key,
-              valueType: output.type as WorkflowIOValueTypeEnum,
-              label: output.key,
+              valueType: extracted.type,
+              label: extracted.key,
               valueDesc: '',
               description: ''
-            }
-          });
-        } else {
-          onChangeNode({
-            nodeId,
-            type: 'addOutput',
-            value: {
-              id: nanoid(),
-              type: FlowNodeOutputTypeEnum.dynamic,
-              key: output.key,
-              valueType: output.type as WorkflowIOValueTypeEnum,
-              label: output.key,
-              valueDesc: '',
-              description: ''
-            }
-          });
+            };
+          })
+          .concat(
+            outputs
+              .filter((output) => !concurrentOutputKeys.has(output.key))
+              .filter((output) => !existingOutputKeys.has(output.key))
+              .map((output) => ({
+                id: nanoid(),
+                type: FlowNodeOutputTypeEnum.dynamic,
+                key: output.key,
+                valueType: output.type,
+                label: output.key,
+                valueDesc: '',
+                description: ''
+              }))
+          );
+      };
+
+      // 同一事务内逐条删边会移动后续下标，合并后统一按降序给出。
+      const disconnectEdges = removedOutputKeys
+        .flatMap((outputKey) =>
+          getOutputDisconnectCommands({ edges: currentEdges, nodeId, outputKey })
+        )
+        .sort((a, b) => b.index - a.index);
+
+      const result = nodeActions?.updateNode(
+        (current) => ({
+          inputs: getCopilotUpdatedInputs({
+            current: current.inputs,
+            requested: requestedDynamicInputs,
+            result: extractedResult
+          }),
+          outputs: buildOutputs(current.outputs)
+        }),
+        {
+          disconnectEdges
         }
-      });
+      );
+      if (!result?.ok) throw new Error(result?.error?.message ?? 'Workflow update is unavailable');
       setOptimizerInput('');
 
       toast({
@@ -304,6 +378,7 @@ const NodeCopilot = ({
       setAbortController(null);
     }
   };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       const typeaheadSelectors = [

@@ -21,7 +21,10 @@ import {
   runWorkflow as runWorkflowWithoutContext
 } from '@fastgpt/service/core/workflow/dispatch/index';
 import { WorkflowQueue } from '@fastgpt/service/core/workflow/dispatch/queue';
-import { getWorkflowNodeRunParams } from '@fastgpt/service/core/workflow/dispatch/utils/runtime';
+import {
+  createRuntimeReferenceGraph,
+  getWorkflowNodeRunParams
+} from '@fastgpt/service/core/workflow/dispatch/utils/runtime';
 import { createClientAbortTracker } from '@fastgpt/service/core/workflow/dispatch/utils/clientAbort';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { createNode, createEdge } from '../utils';
@@ -178,6 +181,383 @@ describe('dispatchWorkFlow SSE initialization guard', () => {
       } as any)
     ).rejects.toThrow('Workflow SSE response must be initialized before dispatchWorkFlow');
   });
+});
+
+describe('runWorkflow single-step debug', () => {
+  type StepProps = Parameters<typeof runWorkflow>[0];
+  type DebugResponse = Awaited<ReturnType<typeof runWorkflow>>['debugResponse'];
+  type InteractiveInput = Pick<StepProps, 'lastInteractive' | 'query'>;
+  const actor = { teamId: '507f1f77bcf86cd799439013', tmbId: '507f1f77bcf86cd799439014' };
+  const runStep = ({
+    runtimeNodes,
+    runtimeEdges = [],
+    defaultSkipNodeQueue,
+    lastInteractive,
+    query = [],
+    mode = 'debug',
+    apiVersion
+  }: Pick<StepProps, 'runtimeNodes'> &
+    Partial<Pick<StepProps, 'runtimeEdges' | 'defaultSkipNodeQueue' | 'mode' | 'apiVersion'>> &
+    Partial<InteractiveInput>) =>
+    runWorkflow({
+      apiVersion,
+      mode,
+      timezone: 'UTC',
+      runningAppInfo: {
+        ...actor,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: '507f1f77bcf86cd799439012',
+        name: 'Single-step debug'
+      },
+      runningUserInfo: actor,
+      uid: actor.tmbId,
+      chatId: 'single-step-debug',
+      responseChatItemId: 'single-step-debug-response',
+      histories: [],
+      query,
+      externalProvider: {},
+      workflowDispatchDeep: 0,
+      maxRunTimes: 10,
+      stream: false,
+      runtimeNodes,
+      runtimeEdges,
+      defaultSkipNodeQueue,
+      lastInteractive
+    });
+  const nextStep = (response: DebugResponse, input?: InteractiveInput) =>
+    runStep({
+      ...input,
+      runtimeNodes: response.memoryNodes.map((node) => ({
+        ...node,
+        isEntry: response.entryNodeIds.includes(node.nodeId)
+      })),
+      runtimeEdges: response.memoryEdges.map((edge) => ({ ...edge })),
+      defaultSkipNodeQueue: response.skipNodeQueue
+    });
+  const branch = (nodeId: string): ReturnType<typeof createNode> => ({
+    ...createNode(nodeId, FlowNodeTypeEnum.ifElseNode),
+    inputs: [
+      {
+        key: NodeInputKeyEnum.ifElseList,
+        renderTypeList: [FlowNodeInputTypeEnum.hidden],
+        value: []
+      }
+    ]
+  });
+  const select = (nodeId: string) => ({
+    ...createNode(nodeId, FlowNodeTypeEnum.userSelect),
+    inputs: [
+      {
+        key: NodeInputKeyEnum.userSelectOptions,
+        renderTypeList: [FlowNodeInputTypeEnum.custom],
+        value: [{ key: 'choice', value: 'Choice' }]
+      }
+    ]
+  });
+
+  beforeEach(() => vi.spyOn(teamLimit, 'checkTeamAIPoints').mockResolvedValue(undefined));
+  afterEach(() => vi.restoreAllMocks());
+
+  it.each([
+    ['removed', undefined],
+    ['kept', 'previous result']
+  ])(
+    'resolves ordinary inputs through the %s branch in a restored graph',
+    async (branch, value) => {
+      const classifier = createNode('classify', FlowNodeTypeEnum.classifyQuestion);
+      classifier.inputs = [
+        {
+          key: NodeInputKeyEnum.agents,
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: [{ key: 'kept', value: 'Kept' }]
+        }
+      ];
+      classifier.outputs = [
+        {
+          id: 'result',
+          key: 'result',
+          type: FlowNodeOutputTypeEnum.static,
+          value: 'previous result'
+        }
+      ];
+      const target = createNode('target', FlowNodeTypeEnum.textEditor);
+      target.isEntry = true;
+      target.inputs = [
+        {
+          key: NodeInputKeyEnum.textareaInput,
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          value: ['classify', 'result']
+        }
+      ];
+      const dispatchTextEditor = vi.spyOn(callbackMap, FlowNodeTypeEnum.textEditor);
+      await runStep({
+        apiVersion: 'v2',
+        mode: 'chat',
+        runtimeNodes: [classifier, target],
+        runtimeEdges: [createEdge('classify', 'target', 'active', `classify-source-${branch}`)]
+      });
+
+      expect(dispatchTextEditor).toHaveBeenCalledOnce();
+      expect(dispatchTextEditor.mock.calls[0][0].params[NodeInputKeyEnum.textareaInput]).toBe(
+        value
+      );
+    }
+  );
+
+  it.each(['debug', 'test'] as const)('respects the queue run mode %s', async (mode) => {
+    const input = {
+      key: NodeInputKeyEnum.userSelectOptions,
+      label: 'Options',
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      valueType: WorkflowIOValueTypeEnum.any,
+      value: ['red', 'blue'],
+      debugValueOverride: true
+    };
+    const result = await runStep({
+      apiVersion: 'v2',
+      mode,
+      runtimeNodes: [
+        { ...createNode('select', FlowNodeTypeEnum.userSelect), isEntry: true, inputs: [input] }
+      ]
+    });
+
+    if (mode === 'debug') {
+      expect(result.workflowInteractiveResponse).toMatchObject({
+        type: 'userSelect',
+        params: { userSelectOptions: [{ value: 'red' }, { value: 'blue' }] }
+      });
+    } else {
+      expect(result.workflowInteractiveResponse).toBeUndefined();
+    }
+  });
+
+  it('preserves the branch status on every edge into the next node and resumes an interactive step', async () => {
+    const result = await runStep({
+      runtimeNodes: [{ ...branch('branch'), isEntry: true }, select('select')],
+      runtimeEdges: [
+        createEdge('branch', 'select', 'waiting', 'branch-source-IF', 'select-target-right'),
+        createEdge('branch', 'select', 'waiting', 'branch-source-ELSE')
+      ]
+    });
+
+    expect(result.debugResponse.entryNodeIds).toEqual(['select']);
+    expect(result.debugResponse.memoryEdges).toMatchObject([
+      { sourceHandle: 'branch-source-IF', targetHandle: 'select-target-right', status: 'skipped' },
+      { sourceHandle: 'branch-source-ELSE', targetHandle: 'select-target-left', status: 'active' }
+    ]);
+
+    const paused = await nextStep(result.debugResponse);
+    expect(paused.debugResponse.entryNodeIds).toEqual(['select']);
+    expect(paused.workflowInteractiveResponse).toMatchObject({ type: 'userSelect' });
+    expect(paused.debugResponse.memoryEdges).toEqual(result.debugResponse.memoryEdges);
+    expect(paused.workflowInteractiveResponse?.memoryEdges).toEqual(
+      result.debugResponse.memoryEdges
+    );
+    const resumed = await nextStep(paused.debugResponse, {
+      lastInteractive: paused.workflowInteractiveResponse,
+      query: [{ text: { content: 'Choice' } }]
+    });
+    expect(resumed.debugResponse.nodeResponses.select.response).toMatchObject({
+      userSelectResult: 'Choice'
+    });
+    expect(resumed.debugResponse.entryNodeIds).toEqual([]);
+  });
+
+  it('keeps both paused cards addressable and applies an answer only to its card', async () => {
+    const form = {
+      ...createNode('form', FlowNodeTypeEnum.formInput),
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userInputForms,
+          label: 'Form fields',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          value: [
+            {
+              key: 'answer',
+              label: 'Answer',
+              type: FlowNodeInputTypeEnum.input,
+              valueType: WorkflowIOValueTypeEnum.string,
+              required: true,
+              value: ''
+            }
+          ]
+        }
+      ]
+    };
+    const start = await runStep({
+      runtimeNodes: [
+        { ...createNode('start', FlowNodeTypeEnum.workflowStart), isEntry: true },
+        select('choice'),
+        form
+      ],
+      runtimeEdges: [createEdge('start', 'choice'), createEdge('start', 'form')]
+    });
+    const paused = (await nextStep(start.debugResponse)).debugResponse;
+    expect(paused.entryNodeIds.toSorted()).toEqual(['choice', 'form']);
+    expect(paused.memoryEdges.map(({ status }) => status)).toEqual(['active', 'active']);
+    expect(paused.nodeResponses.form.interactiveResponse?.type).toBe('userInput');
+    const answer = paused.nodeResponses.choice.interactiveResponse;
+    expect(answer?.type).toBe('userSelect');
+    const afterChoice = (
+      await nextStep(paused, {
+        lastInteractive: { ...answer!, entryNodeIds: ['choice'], memoryEdges: [], nodeOutputs: [] },
+        query: [{ text: { content: 'Choice' } }]
+      })
+    ).debugResponse;
+    expect(afterChoice.nodeResponses.choice.response).toMatchObject({ userSelectResult: 'Choice' });
+    expect(afterChoice.nodeResponses.form.interactiveResponse?.type).toBe('userInput');
+    expect(afterChoice.entryNodeIds).toEqual(['form']);
+  });
+
+  it.each([
+    ['ELSE', 'skipped', 'active'],
+    ['IF', 'active', 'skipped']
+  ] as const)(
+    'keeps the new state of %s when another node runs in the same step as an interactive pause',
+    async (branchKey, originalStatus, finalStatus) => {
+      const result = await runStep({
+        runtimeNodes: [
+          { ...select('select'), isEntry: true },
+          { ...branch('next'), isEntry: true },
+          createNode('earlier', FlowNodeTypeEnum.textEditor)
+        ],
+        runtimeEdges: [
+          createEdge('earlier', 'select', 'active'),
+          createEdge('next', 'select', originalStatus, `next-source-${branchKey}`)
+        ]
+      });
+
+      expect(result.debugResponse.entryNodeIds).toEqual(['select']);
+      expect(result.debugResponse.memoryEdges.map(({ status }) => status)).toEqual([
+        'active',
+        finalStatus
+      ]);
+    }
+  );
+
+  it('resumes a choice even when a concurrent loop skips its only incoming edge', async () => {
+    const firstBranch = Promise.withResolvers<void>();
+    const dispatchBranch = callbackMap[FlowNodeTypeEnum.ifElseNode];
+    const dispatchTextEditor = callbackMap[FlowNodeTypeEnum.textEditor];
+    vi.spyOn(callbackMap, FlowNodeTypeEnum.ifElseNode).mockImplementation(async (props) => {
+      const result = await dispatchBranch(props);
+      firstBranch.resolve();
+      return result;
+    });
+    vi.spyOn(callbackMap, FlowNodeTypeEnum.textEditor).mockImplementation(async (props) => {
+      await firstBranch.promise;
+      return dispatchTextEditor(props);
+    });
+    const loop = branch('loop');
+    loop.inputs[0].value = [
+      {
+        branchId: 'IF',
+        condition: 'AND',
+        list: [{ variable: ['marker', NodeOutputKeyEnum.text], condition: 'isEmpty' }]
+      }
+    ];
+    const marker = createNode('marker', FlowNodeTypeEnum.textEditor);
+    marker.inputs = [
+      {
+        key: NodeInputKeyEnum.textareaInput,
+        renderTypeList: [FlowNodeInputTypeEnum.textarea],
+        value: 'visited'
+      }
+    ];
+    marker.outputs = [
+      {
+        id: NodeOutputKeyEnum.text,
+        key: NodeOutputKeyEnum.text,
+        type: FlowNodeOutputTypeEnum.static
+      }
+    ];
+    const start = await runStep({
+      runtimeNodes: [
+        select('select'),
+        loop,
+        marker,
+        { ...createNode('start', FlowNodeTypeEnum.workflowStart), isEntry: true }
+      ],
+      runtimeEdges: [
+        createEdge('start', 'loop'),
+        createEdge('start', 'marker'),
+        createEdge('loop', 'select', 'waiting', 'loop-source-IF'),
+        createEdge('loop', 'marker', 'waiting', 'loop-source-IF'),
+        createEdge('marker', 'loop')
+      ]
+    });
+
+    const initialBranch = await nextStep(start.debugResponse);
+    expect(initialBranch.debugResponse.entryNodeIds.toSorted()).toEqual(['loop', 'select']);
+    const paused = await nextStep(initialBranch.debugResponse);
+    expect(paused.workflowInteractiveResponse?.entryNodeIds).toEqual(['select']);
+    expect(paused.debugResponse.entryNodeIds).toEqual(['select']);
+    expect(paused.debugResponse.memoryEdges.find(({ target }) => target === 'select')?.status).toBe(
+      'skipped'
+    );
+
+    const resumed = await nextStep(paused.debugResponse, {
+      // 兼容旧请求携带额外历史 ID，只有实际排入本步的节点可以续跑。
+      lastInteractive: {
+        ...paused.workflowInteractiveResponse!,
+        entryNodeIds: ['select', 'marker']
+      },
+      query: [{ text: { content: 'Choice' } }]
+    });
+    expect(resumed.debugResponse.nodeResponses.select).toMatchObject({
+      type: 'run',
+      response: { userSelectResult: 'Choice' }
+    });
+    expect(resumed.debugResponse.nodeResponses.marker?.type).not.toBe('run');
+  });
+
+  it.each(['skip', 'run'] as const)(
+    'leaves a merge waiting until the longer branch resolves to %s',
+    async (longPath) => {
+      const end =
+        longPath === 'skip' ? branch('end') : createNode('end', FlowNodeTypeEnum.textEditor);
+      const lastUpstreamId = longPath === 'skip' ? 'ignored' : 'end';
+      const start = await runStep({
+        runtimeNodes: [
+          { ...createNode('start', FlowNodeTypeEnum.workflowStart), isEntry: true },
+          ...['short', 'long', 'merge'].map((id) => createNode(id, FlowNodeTypeEnum.textEditor)),
+          end,
+          ...(longPath === 'skip' ? [createNode('ignored', FlowNodeTypeEnum.textEditor)] : [])
+        ],
+        runtimeEdges: [
+          createEdge('start', 'short'),
+          createEdge('start', 'long'),
+          createEdge('short', 'merge'),
+          createEdge('long', 'end'),
+          ...(longPath === 'skip'
+            ? [createEdge('end', 'ignored', 'waiting', 'end-source-IF')]
+            : []),
+          createEdge(lastUpstreamId, 'merge')
+        ]
+      });
+
+      const forked = await nextStep(start.debugResponse);
+      expect(forked.debugResponse.entryNodeIds).toEqual(['end']);
+      expect(
+        forked.debugResponse.memoryEdges.filter(({ target }) => target === 'merge')
+      ).toMatchObject([
+        { source: 'short', status: 'active' },
+        { source: lastUpstreamId, status: 'waiting' }
+      ]);
+
+      const ready = await nextStep(forked.debugResponse);
+      expect(ready.debugResponse.entryNodeIds).toEqual(['merge']);
+      expect(ready.debugResponse.nodeResponses.merge).toBeUndefined();
+      if (longPath === 'skip') expect(ready.debugResponse.nodeResponses.ignored.type).toBe('skip');
+      expect(
+        ready.debugResponse.memoryEdges.find(({ source }) => source === lastUpstreamId)?.status
+      ).toBe(longPath === 'skip' ? 'skipped' : 'active');
+
+      const done = await nextStep(ready.debugResponse);
+      expect(done.debugResponse.nodeResponses.merge.type).toBe('run');
+      expect(done.debugResponse.entryNodeIds).toEqual([]);
+    }
+  );
 });
 
 describe('dispatchWorkFlow explicit stop lifecycle', () => {
@@ -831,6 +1211,47 @@ describe('getWorkflowNodeRunParams', () => {
     };
   };
 
+  it.each([FlowNodeTypeEnum.userSelect, FlowNodeTypeEnum.formInput])(
+    'uses the default configuration when %s has a null option value',
+    (flowNodeType) => {
+      const node = createNode('choices', flowNodeType);
+      const isUserSelect = flowNodeType === FlowNodeTypeEnum.userSelect;
+      const key = isUserSelect
+        ? NodeInputKeyEnum.userSelectOptions
+        : NodeInputKeyEnum.userInputForms;
+      const listReference = [[VARIABLE_NODE_ID, 'options']];
+      const defaultValue = isUserSelect
+        ? listReference
+        : [
+            {
+              type: FlowNodeInputTypeEnum.select,
+              listInputType: FlowNodeInputTypeEnum.reference,
+              listReference
+            }
+          ];
+      const input = {
+        key,
+        label: 'Options',
+        renderTypeList: [
+          isUserSelect ? FlowNodeInputTypeEnum.reference : FlowNodeInputTypeEnum.custom
+        ],
+        valueType: WorkflowIOValueTypeEnum.any,
+        value: null,
+        defaultValue,
+        debugValueOverride: true
+      };
+      node.inputs = [input];
+      const runtimeArgs = {
+        node,
+        runtimeNodesMap: new Map(),
+        variableState: createVariableState().state
+      };
+
+      expect(getWorkflowNodeRunParams(runtimeArgs)[key]).toEqual(defaultValue);
+      expect(getWorkflowNodeRunParams({ ...runtimeArgs, isDebugMode: true })[key]).toBeNull();
+    }
+  );
+
   it('resolves the same whole-filter reference in Agent inputs and legacy nested settings', () => {
     const filterJson = '{"tags":{"$and":[{"department":{"$in":["finance"]}}]}}';
     const node = createNode('agent', FlowNodeTypeEnum.agent);
@@ -1072,6 +1493,112 @@ describe('getWorkflowNodeRunParams', () => {
 
     expect(params.payload).toBe(refValue);
     expect(variableState.getToRuntimeRecordCount()).toBe(1);
+  });
+
+  it.each(['previous', 'first'])(
+    'visits one incoming bucket per node when a chain refers to the %s node',
+    (source) => {
+      const nodes = Array.from({ length: 240 }, (_, index) => {
+        const node = createNode(String(index), FlowNodeTypeEnum.textEditor);
+        node.inputs = [
+          {
+            key: 'payload',
+            label: '',
+            renderTypeList: [FlowNodeInputTypeEnum.reference],
+            value: [String(source === 'first' ? 0 : index - 1), 'payload'],
+            valueType: WorkflowIOValueTypeEnum.number
+          }
+        ];
+        node.outputs = [
+          {
+            id: 'payload',
+            key: 'payload',
+            type: FlowNodeOutputTypeEnum.static,
+            value: index,
+            valueType: WorkflowIOValueTypeEnum.number
+          }
+        ];
+        return node;
+      });
+      const runtimeNodesMap = new Map(nodes.map((node) => [node.nodeId, node]));
+      const graph = createRuntimeReferenceGraph({
+        runtimeNodesMap,
+        runtimeEdges: nodes.slice(1).map((node, index) => createEdge(String(index), node.nodeId))
+      });
+      const getIncomingEdges = vi.spyOn(graph, 'getIncomingEdges');
+      const variableState = createTestVariableContext();
+      for (const [index, node] of nodes.slice(1).entries()) {
+        expect(
+          getWorkflowNodeRunParams({
+            node,
+            runtimeNodesMap,
+            variableState,
+            getReferenceGraph: () => graph
+          }).payload
+        ).toBe(source === 'first' ? 0 : index);
+      }
+      expect(getIncomingEdges).toHaveBeenCalledTimes(nodes.length - 1);
+    }
+  );
+
+  it.each([
+    { label: 'string', value: 'debug value', valueType: WorkflowIOValueTypeEnum.string },
+    { label: 'number', value: 42, valueType: WorkflowIOValueTypeEnum.number },
+    { label: 'boolean', value: false, valueType: WorkflowIOValueTypeEnum.boolean },
+    { label: 'object', value: { nested: true }, valueType: WorkflowIOValueTypeEnum.object },
+    {
+      label: 'array',
+      value: ['first', 'second'],
+      valueType: WorkflowIOValueTypeEnum.arrayString
+    }
+  ])('preserves $label debug overrides on reference inputs', ({ value, valueType }) => {
+    const node = createNode('target', FlowNodeTypeEnum.textEditor);
+    node.inputs = [
+      Object.assign(
+        {
+          key: 'payload',
+          label: '',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          value,
+          valueType
+        },
+        { debugValueOverride: true }
+      )
+    ];
+
+    expect(
+      getWorkflowNodeRunParams({
+        node,
+        runtimeNodesMap: new Map(),
+        variableState: createTestVariableContext(),
+        isDebugMode: true
+      }).payload
+    ).toEqual(value);
+  });
+
+  it('keeps legacy unmarked debug literals while clearing a saved reference', () => {
+    const value = ['first', 'second'];
+    const node = createNode('target', FlowNodeTypeEnum.textEditor);
+    const args = {
+      node,
+      runtimeNodesMap: new Map(),
+      variableState: createTestVariableContext(),
+      isDebugMode: true,
+      getReferenceGraph: () => ({ getIncomingEdges: () => [] })
+    };
+    const input = {
+      key: 'payload',
+      label: '',
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      value,
+      valueType: WorkflowIOValueTypeEnum.arrayString
+    };
+    node.inputs = [input];
+    expect(getWorkflowNodeRunParams(args).payload).toEqual(value);
+
+    node.inputs = [Object.assign({}, input, { debugValueOverride: false })];
+    expect(getWorkflowNodeRunParams(args).payload).toBeUndefined();
   });
 
   it('同节点引用工具参数时不读取 input value', () => {

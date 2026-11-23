@@ -4,6 +4,8 @@ import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils'
 import { AppFolderTypeList, AppTypeEnum, ToolTypeList } from '@fastgpt/global/core/app/constants';
 import type { AppResourcesType, AppSchemaType } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
+import { assertWorkflowDocumentStructure } from '@fastgpt/global/common/workflow/connection';
+import { compactWorkflowReferenceSnapshots } from '@fastgpt/global/common/workflow/editor/runtime/documentRules';
 import { formatModels } from '@fastgpt/global/common/workflow/model';
 import {
   CreateAppRequestBodySchema,
@@ -63,6 +65,7 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     nodes,
     edges,
     chatConfig,
+    referenceSnapshots,
     templateId,
     utmParams,
     inheritPermission
@@ -100,6 +103,7 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     nodes,
     edges,
     chatConfig,
+    referenceSnapshots,
     teamId,
     tmbId,
     userAvatar: tmb?.avatar,
@@ -137,6 +141,7 @@ const formatAppWorkflowForSave = async ({
   nodes,
   edges,
   chatConfig,
+  referenceSnapshots,
   teamId,
   tmbId,
   isRoot,
@@ -146,6 +151,7 @@ const formatAppWorkflowForSave = async ({
   nodes?: unknown[];
   edges?: AppVersionSchemaType['edges'];
   chatConfig?: AppVersionSchemaType['chatConfig'];
+  referenceSnapshots?: AppVersionSchemaType['referenceSnapshots'];
   teamId: string;
   tmbId: string;
   isRoot?: boolean;
@@ -154,10 +160,12 @@ const formatAppWorkflowForSave = async ({
     {
       nodes: nodes ?? [],
       edges: edges ?? [],
-      chatConfig
+      chatConfig,
+      referenceSnapshots
     },
     appType
   );
+  assertWorkflowDocumentStructure(workflow);
   const modelHandle = await getTeamModelHandle({ teamId });
   const authorizedIds = await getAuthorizedModelIds({
     actor: { teamId, tmbId, isRoot: Boolean(isRoot) },
@@ -171,6 +179,7 @@ const formatAppWorkflowForSave = async ({
     modelReferencePolicy: 'fallback'
   });
   await beforeUpdateAppFormat({ nodes: workflow.nodes, teamId });
+  workflow.referenceSnapshots = compactWorkflowReferenceSnapshots(workflow);
 
   return { workflow, modelHandle };
 };
@@ -190,6 +199,7 @@ export const onCreateApp = async ({
   storageNodes,
   edges,
   chatConfig,
+  referenceSnapshots,
   teamId,
   tmbId,
   pluginData,
@@ -208,6 +218,7 @@ export const onCreateApp = async ({
   storageNodes?: AppVersionSchemaType['nodes'];
   edges?: AppVersionSchemaType['edges'];
   chatConfig?: AppVersionSchemaType['chatConfig'];
+  referenceSnapshots?: AppVersionSchemaType['referenceSnapshots'];
   intro?: string;
   teamId: string;
   tmbId: string;
@@ -252,6 +263,7 @@ export const onCreateApp = async ({
           nodes,
           edges,
           chatConfig,
+          referenceSnapshots,
           teamId,
           tmbId,
           isRoot
@@ -332,6 +344,7 @@ export const onCreateApp = async ({
             nodes: storageNodes ?? preparedVersion.workflow.nodes,
             edges: preparedVersion.workflow.edges,
             chatConfig: preparedVersion.workflow.chatConfig,
+            referenceSnapshots: preparedVersion.workflow.referenceSnapshots,
             versionName: name,
             username,
             avatar: userAvatar,
@@ -401,6 +414,7 @@ export const onUpdateAppWorkflow = async ({
   nodes,
   edges,
   chatConfig,
+  referenceSnapshots,
   resources,
   teamId,
   tmbId,
@@ -411,6 +425,7 @@ export const onUpdateAppWorkflow = async ({
   nodes?: AppVersionSchemaType['nodes'];
   edges?: AppVersionSchemaType['edges'];
   chatConfig?: AppVersionSchemaType['chatConfig'];
+  referenceSnapshots?: AppVersionSchemaType['referenceSnapshots'];
   resources: AppResourcesType;
   teamId: string;
   tmbId: string;
@@ -421,6 +436,7 @@ export const onUpdateAppWorkflow = async ({
     nodes,
     edges,
     chatConfig,
+    referenceSnapshots,
     teamId,
     tmbId,
     isRoot
@@ -435,6 +451,7 @@ export const onUpdateAppWorkflow = async ({
       nodes: workflow.nodes,
       edges: workflow.edges,
       chatConfig: workflow.chatConfig,
+      referenceSnapshots: workflow.referenceSnapshots,
       time: new Date(),
       resources
     },

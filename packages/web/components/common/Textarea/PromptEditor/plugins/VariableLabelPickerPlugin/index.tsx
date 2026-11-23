@@ -76,12 +76,14 @@ export default function VariableLabelPickerPlugin({
     }
   }, [currentIndex]);
 
+  const filteredVariables = variableFilter(variables, queryString ?? '');
+
   return (
     <LexicalTypeaheadMenuPlugin
       onQueryChange={setQueryString}
       onSelectOption={onSelectOption}
       triggerFn={checkForTriggerMatch}
-      options={variableFilter(variables, queryString || '')}
+      options={filteredVariables}
       menuRenderFn={(anchorElementRef, { selectedIndex, selectOptionAndCleanUp }) => {
         if (anchorElementRef.current == null) {
           return null;
@@ -104,11 +106,11 @@ export default function VariableLabelPickerPlugin({
                 overflow={'auto'}
                 zIndex={99999}
               >
-                {variableFilter(variables, queryString || '').length === variables.length && (
+                {filteredVariables.length === variables.length && (
                   <Box fontSize={'xs'}>{t('workflow:variable_picker_tips')}</Box>
                 )}
-                {variableFilter(variables, queryString || '').length > 0 ? (
-                  transformVariables(variableFilter(variables, queryString || '')).map((item) => {
+                {filteredVariables.length > 0 ? (
+                  transformVariables(filteredVariables).map((item) => {
                     return (
                       <Flex
                         key={item.id}
@@ -134,7 +136,7 @@ export default function VariableLabelPickerPlugin({
                             color={'myGray.600'}
                             fontWeight={'semibold'}
                           >
-                            {t(item.label as any)}
+                            {item.label}
                           </Box>
                         </Flex>
                         {item.children?.map((child) => (

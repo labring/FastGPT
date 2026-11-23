@@ -36,6 +36,7 @@ import {
 } from './service';
 import { WorkflowRunStateSnapshot } from '../utils/containerRunState';
 import { getWorkflowContext, runWithContext } from '../context';
+import { createRuntimeReferenceGraph } from '../utils/runtime';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum;
@@ -99,6 +100,10 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   const isolatedEdges = cloneDeep(runtimeEdges);
 
   const customOutputInputs = pickCustomOutputInputs(node.inputs, node.outputs);
+  const referenceGraph = createRuntimeReferenceGraph({
+    runtimeEdges,
+    runtimeNodesMap: props.runtimeNodesMap
+  });
 
   let interactiveData =
     lastInteractive?.type === 'loopRunInteractive' ? lastInteractive.params : undefined;
@@ -262,7 +267,9 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       runtimeNodes: isolatedNodes,
       variableState: iterationVariableState,
       finishedNodeIds,
-      childrenNodeIdList
+      childrenNodeIdList,
+      referenceScope: { node, chatConfig: props.chatConfig, ...referenceGraph },
+      isDebugMode: props.isDebugMode
     });
 
     // Wrap this iteration as a virtual task node so the whole-response tree

@@ -18,7 +18,7 @@ export default function Variable({ variableLabel }: { variableLabel: string }) {
           : { bg: 'red.50', color: 'red.600' })}
       >
         {variableLabel ? (
-          <Flex alignItems={'center'}>{t(variableLabel as any)}</Flex>
+          <Flex alignItems={'center'}>{variableLabel}</Flex>
         ) : (
           <Box>{t('common:invalid_variable')}</Box>
         )}

@@ -76,7 +76,9 @@ export const GetDatasetSynonymDetailQuerySchema = z.object({
 });
 export const GetDatasetSynonymDetailResponseSchema = z.object({
   // S4：emptyVersions 是内部重建辅助字段，不暴露进公开 DevAPI 契约。
-  file: DatasetSynonymConfigSchema.omit({ emptyVersions: true }).optional().meta({ description: '当前同义词文件配置' }),
+  file: DatasetSynonymConfigSchema.omit({ emptyVersions: true })
+    .optional()
+    .meta({ description: '当前同义词文件配置' }),
   rebuilding: z.boolean().meta({ description: '知识库是否仍有待处理的重建数据或训练任务' })
 });
 export type GetDatasetSynonymDetailResponse = z.infer<typeof GetDatasetSynonymDetailResponseSchema>;

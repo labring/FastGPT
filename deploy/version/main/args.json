@@ -26,12 +26,12 @@
   },
   "images": {
     "cn": {
-      "fastgpt": "registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt",
-      "fastgpt-plugin": "registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin",
-      "fastgpt-code-sandbox": "registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox",
-      "volume-manager": "registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-volume-manager",
-      "agent-sandbox-image": "registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox",
-      "agent-sandbox-proxy": "registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-proxy",
+      "fastgpt": "ghcr.dockerproxy.net/labring/fastgpt",
+      "fastgpt-plugin": "ghcr.dockerproxy.net/labring/fastgpt-plugin",
+      "fastgpt-code-sandbox": "ghcr.dockerproxy.net/labring/fastgpt-code-sandbox",
+      "volume-manager": "ghcr.dockerproxy.net/labring/fastgpt-agent-volume-manager",
+      "agent-sandbox-image": "ghcr.dockerproxy.net/labring/fastgpt-agent-sandbox",
+      "agent-sandbox-proxy": "ghcr.dockerproxy.net/labring/fastgpt-agent-sandbox-proxy",
       "opensandbox-server": "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/server",
       "opensandbox-execd": "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd",
       "opensandbox-egress": "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress",

@@ -6,6 +6,7 @@ import {
 } from '../../core/workflow/constants';
 import {
   StoredSelectedDatasetSchema,
+  type InputConfigType,
   type FlowNodeInputItemType
 } from '../../core/workflow/type/io';
 import type { VariableItemType } from '../../core/app/variable/type';
@@ -51,6 +52,15 @@ export const getWorkflowSecretInputKind = ({
   }
   return undefined;
 };
+
+export const inputTypeValueTypeMap: Record<InputConfigType['inputType'], WorkflowIOValueTypeEnum> =
+  {
+    input: WorkflowIOValueTypeEnum.string,
+    numberInput: WorkflowIOValueTypeEnum.number,
+    secret: WorkflowIOValueTypeEnum.string,
+    switch: WorkflowIOValueTypeEnum.boolean,
+    select: WorkflowIOValueTypeEnum.string
+  };
 
 export const getOrInitModuleInputValue = (input: FlowNodeInputItemType) => {
   if (input.value !== undefined || !input.valueType) return input.value;
