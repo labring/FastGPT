@@ -5,7 +5,7 @@ description: Install FastGPT CLI, sign in on the user's behalf with their creden
 
 # FastGPT CLI 初始化引导
 
-帮助用户完成安装、登录验证和身份确认，最后介绍当前 CLI 的能力。具体命令用法按需查看 `--help`。
+帮助用户完成安装、登录验证和身份确认，最后介绍当前 CLI 的能力。具体命令用法按需查看 `--help` 或 `fastgpt commands --compact --format json`。
 
 ## 1. 安装
 
@@ -43,16 +43,21 @@ fastgpt login --base-url <baseURL> --username <username> --password-stdin --form
 
 登录后运行 `fastgpt whoami --format json` 验证，并读取实际服务地址、用户和团队信息；缺失的信息如实说明。
 
-## 3. 获取能力并汇报
+## 3. 获取能力并按需安装内置 Skills
 
 ```bash
 fastgpt doctor --format json
-fastgpt commands --format json
+fastgpt commands --compact --format json
+fastgpt skills catalog --format json
 ```
 
 按实际发现的命令简要介绍能力，重点包括：
 
-- **知识库（`dataset`）**：知识库及集合管理，文本、链接和文件导入，数据块维护，以及单个或多个知识库搜索。
-- **App 会话（`chat`）**：调用、初始化和停止 App 对话，查询和管理会话，读取消息与响应详情，以及游标分页和消息定位。
+- **通用 OpenAPI 逃生口（`api`）**：通过 `fastgpt api schema` 检索在线/缓存 OpenAPI 契约，并使用 `fastgpt api get` / `fastgpt api post` / `fastgpt api put` / `fastgpt api delete` / `fastgpt api call` 安全调用尚未封装的接口。
+- **知识库（`dataset`）**：知识库及集合管理，文本、链接和文件导入，数据块维护，以及单个或多个知识库检索。
+- **App 会话与反馈（`chat`）**：调用、初始化和停止 App 对话，查询和管理会话，游标分页读取消息与响应详情，以及提交用户赞/踩反馈。
+- **应用生命周期与日志（`app`）**：查询应用列表，拉取、保存、发布与测试应用，运行或导出对话日志与统计图表，以及查询插件工具与代码沙盒依赖。
+- **工作流编辑与调试（`workflow`、`workflow-build`）**：本地工作流 DSL 编辑、ChangeSet 校验应用、工作流比对调试，以及通过 `fastgpt workflow-build skills` 读取离线搭建文档。
+- **模型目录与本地 Skills（`model`、`skills`）**：通过 `fastgpt model list --format json` 查看可用模型，并按需通过 `fastgpt skills install --target agents --scope project` 安装随 CLI 打包的 5 套官方 Agent Skills。
 
 最后仅汇总一次：CLI 版本、服务地址、当前用户与团队、验证结果，以及当前 CLI 能做哪些事。能力介绍以命令元数据和当前凭据的能力信息为准，简要归纳即可，不逐项复述参数或输出完整用法。存在失败项时说明问题，不宣称初始化全部完成。

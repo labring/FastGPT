@@ -33,6 +33,7 @@ import { createDatasetService, type DatasetService } from '../domain/dataset/dat
 import { createChatService, type ChatService } from '../domain/chat/chat-service';
 import { createModelService, type ModelService } from '../domain/model/model-service';
 import { createProfileService, type ProfileService } from '../domain/profile/profile-service';
+import { createSkillsService, type SkillsService } from '../domain/skills/skills-service';
 import {
   createWorkflowLocalService,
   type WorkflowLocalService
@@ -41,6 +42,8 @@ import {
   createWorkflowSyncService,
   type WorkflowSyncService
 } from '../domain/workflow/workflow-sync-service';
+import { createNodeSkillInstaller } from '../infra/fs/skill-installer';
+import { loadCliSkills } from '../infra/skills/cli-skill-catalog';
 import { createWorkflowTemplateLoader } from '../infra/workflow/template-loader';
 import { createFileApidocCacheStore } from '../infra/cache/apidoc-cache-store';
 import {
@@ -91,6 +94,7 @@ export type CliContainer = {
   readonly datasetDataService: DatasetDataService;
   readonly chatService: ChatService;
   readonly modelService: ModelService;
+  readonly skillsService: SkillsService;
   readonly workflowLocalService: WorkflowLocalService;
   readonly workflowSyncService: WorkflowSyncService;
   readonly openapiCacheService: OpenapiCacheService;
@@ -216,6 +220,24 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
     prompter,
     readStdin: deps.readStdin
   });
+  const skillHome = (() => {
+    if (deps.env.HOME && deps.env.HOME.trim().length > 0) {
+      return deps.env.HOME.trim();
+    }
+    if (deps.env.USERPROFILE && deps.env.USERPROFILE.trim().length > 0) {
+      return deps.env.USERPROFILE.trim();
+    }
+    return undefined;
+  })();
+  const skillsService = createSkillsService({
+    loadSkills: loadCliSkills,
+    installer: createNodeSkillInstaller({
+      cwd: deps.cwd,
+      ...(skillHome !== undefined ? { homedir: skillHome } : {})
+    }),
+    prompter,
+    cliVersion
+  });
 
   return {
     env: deps.env,
@@ -234,6 +256,7 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
     datasetDataService,
     chatService: createChatService(),
     modelService: createModelService(),
+    skillsService,
     workflowLocalService,
     workflowSyncService,
     openapiCacheService,
