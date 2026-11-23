@@ -1389,6 +1389,20 @@ const registerRunnableTopologySuite = ({
 };
 
 /**
+ * 构造绑定目标物理集合或表身份的日志拓扑套件标题，避免多日志域共享同名套件标题而互代。
+ */
+export const formatLogTopologySuiteTitle = ({
+  family,
+  targetName
+}: {
+  family: 'mongodb' | 'sql_pglite';
+  targetName: string;
+}): string =>
+  family === 'mongodb'
+    ? `[Log Topology: MongoDB (shared + separate) | ${targetName}]`
+    : `[Log Topology: SQL PGlite (shared + separate) | ${targetName}]`;
+
+/**
  * 声明可复用的日志域双态（`shared` / `separate`）物理隔离标准契约套件。
  *
  * 强制验证写入/读回与物理落库位置，杜绝测试中仅断言 `expect(harness.logDb).toBeDefined()`
@@ -1422,11 +1436,27 @@ export const registerLogTopologyContractSuite = ({
     );
   }
 
+  const normalizedMongoCollection = mongoCollectionName.trim();
+  const normalizedSqlTable = sqlTableName.trim();
+  if (includeMongo && normalizedMongoCollection.length === 0) {
+    throw new DbConfigurationError(
+      'registerLogTopologyContractSuite requires a non-empty mongoCollectionName'
+    );
+  }
+  if (includePGlite && normalizedSqlTable.length === 0) {
+    throw new DbConfigurationError(
+      'registerLogTopologyContractSuite requires a non-empty sqlTableName'
+    );
+  }
+
   if (includeMongo) {
     registerRunnableTopologySuite({
       describeFn,
       itFn,
-      suiteTitle: '[Log Topology: MongoDB (shared + separate)]',
+      suiteTitle: formatLogTopologySuiteTitle({
+        family: 'mongodb',
+        targetName: normalizedMongoCollection
+      }),
       expectedCases: 2,
       register: () => {
         itFn(
@@ -1438,7 +1468,7 @@ export const registerLogTopologyContractSuite = ({
               logCollections,
               writeLogRecord,
               readLogRecord,
-              mongoCollectionName,
+              mongoCollectionName: normalizedMongoCollection,
               idField
             });
           },
@@ -1453,7 +1483,7 @@ export const registerLogTopologyContractSuite = ({
               logCollections,
               writeLogRecord,
               readLogRecord,
-              mongoCollectionName,
+              mongoCollectionName: normalizedMongoCollection,
               idField
             });
           },
@@ -1467,7 +1497,10 @@ export const registerLogTopologyContractSuite = ({
     registerRunnableTopologySuite({
       describeFn,
       itFn,
-      suiteTitle: '[Log Topology: SQL PGlite (shared + separate)]',
+      suiteTitle: formatLogTopologySuiteTitle({
+        family: 'sql_pglite',
+        targetName: normalizedSqlTable
+      }),
       expectedCases: 2,
       register: () => {
         itFn(
@@ -1479,7 +1512,7 @@ export const registerLogTopologyContractSuite = ({
               logTables,
               writeLogRecord,
               readLogRecord,
-              sqlTableName,
+              sqlTableName: normalizedSqlTable,
               idField
             });
           },
@@ -1494,7 +1527,7 @@ export const registerLogTopologyContractSuite = ({
               logTables,
               writeLogRecord,
               readLogRecord,
-              sqlTableName,
+              sqlTableName: normalizedSqlTable,
               idField
             });
           },

@@ -11,6 +11,8 @@ import {
   analyzeSchemaIndexes,
   analyzeSqlRepoDatasource,
   analyzeSqlTableDefinitions,
+  buildDomainTestExecutionPlan,
+  buildRequiredLogTopologyCases,
   discoverMongoSchemas,
   extractDefineIndexes,
   findDomainServiceUnitTestFiles,
@@ -1471,6 +1473,14 @@ test('Finding #18: rejects property-existence spoofs on real harnesses and requi
         `,
         extraFiles: {
           'repo.ts': `export const AuditLogRepoToken = defineRepoToken('AuditLog', { mongo, sql });\n`,
+          'sql/table.ts': `
+            export const auditLogSqlTable = defineSqlTable({
+              name: 'audit_logs',
+              columns: {
+                _id: { kind: 'entityId', primaryKey: true }
+              }
+            });
+          `,
           'sql/repo.ts': `export class SqlAuditLogRepo { protected override readonly datasource = 'log'; }\n`
         }
       },
@@ -1964,102 +1974,112 @@ test('Finding #18: rejects property-existence spoofs on real harnesses and requi
           assert.equal(envWrappedDescribeCheck.ok, false);
           assert.match(envWrappedDescribeCheck.details, /must be registered unconditionally/);
 
-          // Runtime JSON execution report verification: rejects missing / skipped cases, accepts all 4 passed
-          const missingRuntimeCases = verifyExecutedLogTopologyReports([
+          // Runtime JSON execution report verification: binds both file identity and target suite titles
+          const auditExpectedSuites = [
             {
-              testResults: [
-                {
-                  assertionResults: [
-                    {
-                      ancestorTitles: ['AuditLog contract'],
-                      title: 'creates and reads entries',
-                      status: 'passed'
-                    }
-                  ]
-                }
-              ]
+              relPath: splitTopologyContractRel,
+              mongoCollectionName: 'audit_logs',
+              sqlTableName: 'audit_logs'
             }
-          ]);
+          ];
+          const auditRequiredCases = buildRequiredLogTopologyCases({
+            mongoCollectionName: 'audit_logs',
+            sqlTableName: 'audit_logs'
+          });
+          const missingRuntimeCases = verifyExecutedLogTopologyReports({
+            repoRoot,
+            expectedSuites: auditExpectedSuites,
+            reports: [
+              {
+                testResults: [
+                  {
+                    name: path.join(repoRoot, splitTopologyContractRel),
+                    assertionResults: [
+                      {
+                        ancestorTitles: ['AuditLog contract'],
+                        title: 'creates and reads entries',
+                        status: 'passed'
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          });
           assert.equal(missingRuntimeCases.ok, false);
           assert.equal(missingRuntimeCases.missingOrNotPassed.length, 4);
 
-          const skippedRuntimeCases = verifyExecutedLogTopologyReports([
-            {
-              testResults: [
-                {
-                  assertionResults: [
-                    {
-                      ancestorTitles: ['[Log Topology: MongoDB (shared + separate)]'],
-                      title: 'routes log reads/writes through main physical DB in shared mode',
-                      status: 'skipped'
-                    },
-                    {
-                      ancestorTitles: ['[Log Topology: MongoDB (shared + separate)]'],
-                      title: 'isolates log reads/writes into separate log physical DB without touching main DB',
-                      status: 'passed'
-                    },
-                    {
-                      ancestorTitles: ['[Log Topology: SQL PGlite (shared + separate)]'],
-                      title: 'routes log reads/writes through main physical DB in shared mode',
-                      status: 'passed'
-                    },
-                    {
-                      ancestorTitles: ['[Log Topology: SQL PGlite (shared + separate)]'],
-                      title: 'isolates log reads/writes into separate log physical DB without touching main DB',
-                      status: 'passed'
-                    }
-                  ]
-                }
-              ]
-            }
-          ]);
+          const skippedRuntimeCases = verifyExecutedLogTopologyReports({
+            repoRoot,
+            expectedSuites: auditExpectedSuites,
+            reports: [
+              {
+                testResults: [
+                  {
+                    name: path.join(repoRoot, splitTopologyContractRel),
+                    assertionResults: [
+                      {
+                        ancestorTitles: [auditRequiredCases[0].suiteTitle],
+                        title: auditRequiredCases[0].caseTitle,
+                        status: 'skipped'
+                      },
+                      {
+                        ancestorTitles: [auditRequiredCases[1].suiteTitle],
+                        title: auditRequiredCases[1].caseTitle,
+                        status: 'passed'
+                      },
+                      {
+                        ancestorTitles: [auditRequiredCases[2].suiteTitle],
+                        title: auditRequiredCases[2].caseTitle,
+                        status: 'passed'
+                      },
+                      {
+                        ancestorTitles: [auditRequiredCases[3].suiteTitle],
+                        title: auditRequiredCases[3].caseTitle,
+                        status: 'passed'
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          });
           assert.equal(skippedRuntimeCases.ok, false);
           assert.equal(skippedRuntimeCases.missingOrNotPassed.length, 1);
           assert.match(skippedRuntimeCases.missingOrNotPassed[0], /^skipped:/);
 
-          const validRuntimeCases = verifyExecutedLogTopologyReports([
-            {
-              testResults: [
-                {
-                  assertionResults: [
-                    {
-                      ancestorTitles: ['AuditLog'],
-                      title: 'normal crud',
+          const validRuntimeCases = verifyExecutedLogTopologyReports({
+            repoRoot,
+            expectedSuites: auditExpectedSuites,
+            reports: [
+              {
+                testResults: [
+                  {
+                    name: path.join(repoRoot, splitCrudContractRel),
+                    assertionResults: [
+                      {
+                        ancestorTitles: ['AuditLog'],
+                        title: 'normal crud',
+                        status: 'passed'
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                testResults: [
+                  {
+                    name: path.join(repoRoot, splitTopologyContractRel),
+                    assertionResults: auditRequiredCases.map((req) => ({
+                      ancestorTitles: ['Outer', req.suiteTitle],
+                      title: req.caseTitle,
                       status: 'passed'
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              testResults: [
-                {
-                  assertionResults: [
-                    {
-                      ancestorTitles: ['Outer', '[Log Topology: MongoDB (shared + separate)]'],
-                      title: 'routes log reads/writes through main physical DB in shared mode',
-                      status: 'passed'
-                    },
-                    {
-                      ancestorTitles: ['Outer', '[Log Topology: MongoDB (shared + separate)]'],
-                      title: 'isolates log reads/writes into separate log physical DB without touching main DB',
-                      status: 'passed'
-                    },
-                    {
-                      ancestorTitles: ['Outer', '[Log Topology: SQL PGlite (shared + separate)]'],
-                      title: 'routes log reads/writes through main physical DB in shared mode',
-                      status: 'passed'
-                    },
-                    {
-                      ancestorTitles: ['Outer', '[Log Topology: SQL PGlite (shared + separate)]'],
-                      title: 'isolates log reads/writes into separate log physical DB without touching main DB',
-                      status: 'passed'
-                    }
-                  ]
-                }
-              ]
-            }
-          ]);
+                    }))
+                  }
+                ]
+              }
+            ]
+          });
           assert.equal(validRuntimeCases.ok, true);
           assert.equal(validRuntimeCases.passedCases.length, 4);
         } finally {
@@ -2335,6 +2355,575 @@ test('supports --domain and --no-test flags and recognizes both service.unit.tes
     assert.equal(legacyNameCliRes.status, 0, legacyNameCliRes.stderr);
     assert.doesNotMatch(legacyNameCliRes.stdout, /No Service L0 unit test found/);
   } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('binds log topology static checks, execution plan, and real Vitest JSON runtime reports to the target domain', () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'fastgpt-log-domain-binding-'));
+  const vitestProbeRelBilling = 'packages/dal/test/db/.billing-log-topology-probe.test.ts';
+  const vitestProbeRelAudit = 'packages/dal/test/db/.audit-log-topology-probe.test.ts';
+  const vitestProbeAbsBilling = path.join(repoRoot, vitestProbeRelBilling);
+  const vitestProbeAbsAudit = path.join(repoRoot, vitestProbeRelAudit);
+  const billingReportJsonAbs = path.join(tmpRoot, 'vitest-billing-only.json');
+  const bothReportJsonAbs = path.join(tmpRoot, 'vitest-both.json');
+
+  try {
+    fs.writeFileSync(path.join(tmpRoot, 'pnpm-workspace.yaml'), 'packages: []\n');
+
+    const auditRel = 'packages/dal/db/repos/auditLogProbe';
+    const auditAbs = path.join(tmpRoot, auditRel);
+    const auditTestDirRel = 'packages/dal/test/db/repos/auditLogProbe';
+    const auditTestDirAbs = path.join(tmpRoot, auditTestDirRel);
+    const billingRel = 'packages/dal/db/repos/billingLogProbe';
+    const billingAbs = path.join(tmpRoot, billingRel);
+    const billingTestDirRel = 'packages/dal/test/db/repos/billingLogProbe';
+    const billingTestDirAbs = path.join(tmpRoot, billingTestDirRel);
+
+    for (const dir of [
+      path.join(auditAbs, 'mongo'),
+      path.join(auditAbs, 'sql'),
+      auditTestDirAbs,
+      path.join(billingAbs, 'mongo'),
+      path.join(billingAbs, 'sql'),
+      billingTestDirAbs
+    ]) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    // Domain A: auditLog -> audit_logs / AuditLogRepoToken
+    fs.writeFileSync(path.join(auditAbs, 'repo.type.ts'), 'export type AuditLogRepo = {};\n');
+    fs.writeFileSync(
+      path.join(auditAbs, 'repo.ts'),
+      `export const AuditLogRepoToken = defineRepoToken('AuditLog', { mongo, sql });\n`
+    );
+    fs.writeFileSync(
+      path.join(auditAbs, 'mongo/schema.ts'),
+      `
+        export const auditLogCollection = defineMongoCollection({
+          name: 'audit_logs',
+          datasource: 'log',
+          schema: AuditSchema,
+          indexes: [{ key: { teamId: 1 } }]
+        });
+      `
+    );
+    fs.writeFileSync(
+      path.join(auditAbs, 'mongo/repo.ts'),
+      'export class MongoAuditLogRepo {}\n'
+    );
+    fs.writeFileSync(
+      path.join(auditAbs, 'sql/table.ts'),
+      `
+        export const auditLogSqlTable = defineSqlTable({
+          name: 'audit_logs',
+          columns: { _id: { kind: 'entityId', primaryKey: true } }
+        });
+      `
+    );
+    fs.writeFileSync(
+      path.join(auditAbs, 'sql/repo.ts'),
+      `export class SqlAuditLogRepo { protected override readonly datasource = 'log'; }\n`
+    );
+
+    // Domain B: billingLog -> billing_logs / BillingLogRepoToken
+    fs.writeFileSync(path.join(billingAbs, 'repo.type.ts'), 'export type BillingLogRepo = {};\n');
+    fs.writeFileSync(
+      path.join(billingAbs, 'repo.ts'),
+      `export const BillingLogRepoToken = defineRepoToken('BillingLog', { mongo, sql });\n`
+    );
+    fs.writeFileSync(
+      path.join(billingAbs, 'mongo/schema.ts'),
+      `
+        export const billingLogCollection = defineMongoCollection({
+          name: 'billing_logs',
+          datasource: 'log',
+          schema: BillingSchema,
+          indexes: [{ key: { teamId: 1 } }]
+        });
+      `
+    );
+    fs.writeFileSync(
+      path.join(billingAbs, 'mongo/repo.ts'),
+      'export class MongoBillingLogRepo {}\n'
+    );
+    fs.writeFileSync(
+      path.join(billingAbs, 'sql/table.ts'),
+      `
+        export const billingLogSqlTable = defineSqlTable({
+          name: 'billing_logs',
+          columns: { _id: { kind: 'entityId', primaryKey: true } }
+        });
+      `
+    );
+    fs.writeFileSync(
+      path.join(billingAbs, 'sql/repo.ts'),
+      `export class SqlBillingLogRepo { protected override readonly datasource = 'log'; }\n`
+    );
+
+    const auditCrudContractRel = `${auditTestDirRel}/repo.contract.test.ts`;
+    const auditDedicatedTopologyRel = `${auditTestDirRel}/log-topology.contract.test.ts`;
+    const billingContractRel = `${billingTestDirRel}/repo.contract.test.ts`;
+    const billingDedicatedTopologyRel = `${billingTestDirRel}/log-topology.contract.test.ts`;
+
+    const auditCrudOnlySource = `
+      import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+      import { injectRepo } from '@fastgpt/dal/db/container';
+      import { createContractBackends, registerMultiDialectContractSuite } from '@fastgpt/dal/db/testing';
+      import { AuditLogRepoToken } from '${auditRel}/repo';
+      registerMultiDialectContractSuite({
+        backends: createContractBackends({ collections: [], logCollections: [auditLogCollection], tables: [], logTables: [auditLogSqlTable], logMode: 'separate' }),
+        beforeAllFn: beforeAll,
+        afterAllFn: afterAll,
+        registerTests: () => {
+          const repo = injectRepo(AuditLogRepoToken);
+          it('creates audit log entries', async () => {
+            expect(await repo.create({})).toBeDefined();
+          });
+        }
+      });
+    `;
+
+    const billingFullSource = `
+      import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+      import { injectRepo } from '@fastgpt/dal/db/container';
+      import { createContractBackends, registerLogTopologyContractSuite, registerMultiDialectContractSuite } from '@fastgpt/dal/db/testing';
+      import { BillingLogRepoToken } from '${billingRel}/repo';
+      registerLogTopologyContractSuite({
+        describeFn: describe,
+        itFn: it,
+        logCollections: [billingLogCollection],
+        logTables: [billingLogSqlTable],
+        mongoCollectionName: 'billing_logs',
+        sqlTableName: 'billing_logs',
+        writeLogRecord: async () => injectRepo(BillingLogRepoToken).create({}),
+        readLogRecord: async ({ id }) => injectRepo(BillingLogRepoToken).findById({ id })
+      });
+      registerMultiDialectContractSuite({
+        backends: createContractBackends({ collections: [], logCollections: [billingLogCollection], tables: [], logTables: [billingLogSqlTable], logMode: 'separate' }),
+        beforeAllFn: beforeAll,
+        afterAllFn: afterAll,
+        registerTests: () => {
+          const repo = injectRepo(BillingLogRepoToken);
+          it('creates billing log entries', async () => {
+            expect(await repo.create({})).toBeDefined();
+          });
+        }
+      });
+    `;
+
+    const billingDedicatedTopologySource = `
+      import { describe, it } from 'vitest';
+      import { injectRepo } from '@fastgpt/dal/db/container';
+      import { registerLogTopologyContractSuite } from '@fastgpt/dal/db/testing';
+      import { BillingLogRepoToken } from '${billingRel}/repo';
+      registerLogTopologyContractSuite({
+        describeFn: describe,
+        itFn: it,
+        logCollections: [billingLogCollection],
+        logTables: [billingLogSqlTable],
+        mongoCollectionName: 'billing_logs',
+        sqlTableName: 'billing_logs',
+        writeLogRecord: async () => injectRepo(BillingLogRepoToken).create({}),
+        readLogRecord: async ({ id }) => injectRepo(BillingLogRepoToken).findById({ id })
+      });
+    `;
+
+    const auditDedicatedTopologySource = `
+      import { describe, it } from 'vitest';
+      import { injectRepo } from '@fastgpt/dal/db/container';
+      import { registerLogTopologyContractSuite } from '@fastgpt/dal/db/testing';
+      import { auditLogCollection } from '../../../db/repos/auditLogProbe/mongo/schema';
+      import { auditLogSqlTable } from '../../../db/repos/auditLogProbe/sql/table';
+      import { AuditLogRepoToken } from '../../../db/repos/auditLogProbe/repo';
+      registerLogTopologyContractSuite({
+        describeFn: describe,
+        itFn: it,
+        logCollections: [auditLogCollection],
+        logTables: [auditLogSqlTable],
+        mongoCollectionName: auditLogCollection.name,
+        sqlTableName: auditLogSqlTable.name,
+        writeLogRecord: async () => injectRepo(AuditLogRepoToken).create({}),
+        readLogRecord: async ({ id }) => injectRepo(AuditLogRepoToken).findById({ id })
+      });
+    `;
+
+    fs.writeFileSync(path.join(tmpRoot, auditCrudContractRel), auditCrudOnlySource);
+    fs.writeFileSync(path.join(tmpRoot, billingContractRel), billingFullSource);
+    fs.writeFileSync(path.join(tmpRoot, billingDedicatedTopologyRel), billingDedicatedTopologySource);
+
+    // 1. Static negative: verifying auditLog with CRUD-only audit file + full billingLog file MUST FAIL
+    const auditMongoInfo = analyzeMongoSchemaDatasource({
+      sourceText: fs.readFileSync(path.join(auditAbs, 'mongo/schema.ts'), 'utf8'),
+      sourceRelPath: `${auditRel}/mongo/schema.ts`
+    });
+    const auditSqlInfo = analyzeSqlTableDefinitions(
+      fs.readFileSync(path.join(auditAbs, 'sql/table.ts'), 'utf8'),
+      { sourceRelPath: `${auditRel}/sql/table.ts` }
+    );
+    const crossDomainSubstituteStatic = analyzeLogDualModeTestCoverage({
+      testFiles: [
+        { relPath: auditCrudContractRel, raw: auditCrudOnlySource },
+        { relPath: billingContractRel, raw: billingFullSource }
+      ],
+      domainRepoSymbols: new Set(['AuditLogRepoToken', 'MongoAuditLogRepo', 'SqlAuditLogRepo']),
+      domainMongoCollections: new Set(auditMongoInfo.logCollectionNames),
+      domainSqlTables: new Set(auditSqlInfo.tables.map((t) => t.name)),
+      domainCollectionExportNames: auditMongoInfo.collectionExportNames,
+      domainTableExportNames: auditSqlInfo.tableExportNames,
+      domainTestDir: auditTestDirRel
+    });
+    assert.equal(crossDomainSubstituteStatic.ok, false);
+    assert.deepEqual(crossDomainSubstituteStatic.validSuiteEntries, []);
+    assert.deepEqual(crossDomainSubstituteStatic.otherDomainValidSuiteFiles, [billingContractRel]);
+    assert.match(
+      crossDomainSubstituteStatic.details,
+      /only other-domain log topology suite\(s\) were provided/
+    );
+
+    const cliSubstituteRes = runVerify(
+      ['--domain', auditRel, '--no-test', '--test', billingContractRel],
+      { cwd: tmpRoot }
+    );
+    assert.equal(cliSubstituteRes.status, 1);
+    assert.match(cliSubstituteRes.stderr, /only other-domain log topology suite\(s\) were provided/);
+
+    // 2. Static negative: partial table mismatch & wrong domain repo token inside current domain
+    const mismatchedTableStatic = analyzeLogDualModeTestCoverage({
+      testFiles: [
+        {
+          relPath: auditDedicatedTopologyRel,
+          raw: `
+            import { describe, it } from 'vitest';
+            import { injectRepo } from '@fastgpt/dal/db/container';
+            import { registerLogTopologyContractSuite } from '@fastgpt/dal/db/testing';
+            registerLogTopologyContractSuite({
+              describeFn: describe,
+              itFn: it,
+              logCollections: [auditLogCollection],
+              logTables: [auditLogSqlTable],
+              mongoCollectionName: 'audit_logs',
+              sqlTableName: 'billing_logs',
+              writeLogRecord: async () => injectRepo(AuditLogRepoToken).create({}),
+              readLogRecord: async ({ id }) => injectRepo(AuditLogRepoToken).findById({ id })
+            });
+          `
+        }
+      ],
+      domainRepoSymbols: new Set(['AuditLogRepoToken']),
+      domainMongoCollections: new Set(['audit_logs']),
+      domainSqlTables: new Set(['audit_logs']),
+      domainTestDir: auditTestDirRel
+    });
+    assert.equal(mismatchedTableStatic.ok, false);
+    assert.match(
+      mismatchedTableStatic.details,
+      /sqlTableName "billing_logs" does not match current domain SQL table\(s\)/
+    );
+
+    const wrongRepoTokenStatic = analyzeLogDualModeTestCoverage({
+      testFiles: [
+        {
+          relPath: auditDedicatedTopologyRel,
+          raw: `
+            import { describe, it } from 'vitest';
+            import { injectRepo } from '@fastgpt/dal/db/container';
+            import { registerLogTopologyContractSuite } from '@fastgpt/dal/db/testing';
+            registerLogTopologyContractSuite({
+              describeFn: describe,
+              itFn: it,
+              logCollections: [auditLogCollection],
+              logTables: [auditLogSqlTable],
+              mongoCollectionName: 'audit_logs',
+              sqlTableName: 'audit_logs',
+              writeLogRecord: async () => injectRepo(BillingLogRepoToken).create({}),
+              readLogRecord: async ({ id }) => injectRepo(BillingLogRepoToken).findById({ id })
+            });
+          `
+        }
+      ],
+      domainRepoSymbols: new Set(['AuditLogRepoToken']),
+      domainMongoCollections: new Set(['audit_logs']),
+      domainSqlTables: new Set(['audit_logs']),
+      domainTestDir: auditTestDirRel
+    });
+    assert.equal(wrongRepoTokenStatic.ok, false);
+    assert.match(wrongRepoTokenStatic.details, /must exercise current domain repository/);
+
+    // 3. Static positive: current domain dedicated topology (using imported Collection/SqlTable `.name`) + sibling billing regression
+    fs.writeFileSync(path.join(tmpRoot, auditDedicatedTopologyRel), auditDedicatedTopologySource);
+    const validMixedStatic = analyzeLogDualModeTestCoverage({
+      testFiles: [
+        { relPath: auditCrudContractRel, raw: auditCrudOnlySource },
+        { relPath: auditDedicatedTopologyRel, raw: auditDedicatedTopologySource },
+        { relPath: billingDedicatedTopologyRel, raw: billingDedicatedTopologySource }
+      ],
+      domainRepoSymbols: new Set(['AuditLogRepoToken', 'MongoAuditLogRepo', 'SqlAuditLogRepo']),
+      domainMongoCollections: new Set(auditMongoInfo.logCollectionNames),
+      domainSqlTables: new Set(auditSqlInfo.tables.map((t) => t.name)),
+      domainCollectionExportNames: auditMongoInfo.collectionExportNames,
+      domainTableExportNames: auditSqlInfo.tableExportNames,
+      domainTestDir: auditTestDirRel
+    });
+    assert.equal(validMixedStatic.ok, true, validMixedStatic.details);
+    assert.deepEqual(validMixedStatic.validSuiteEntries, [
+      {
+        relPath: auditDedicatedTopologyRel,
+        mongoCollectionName: 'audit_logs',
+        sqlTableName: 'audit_logs'
+      }
+    ]);
+    assert.deepEqual(validMixedStatic.otherDomainValidSuiteFiles, [billingDedicatedTopologyRel]);
+
+    const cliValidWithBillingRegression = runVerify(
+      [
+        '--domain',
+        auditRel,
+        '--no-test',
+        '--test',
+        auditDedicatedTopologyRel,
+        '--test',
+        billingDedicatedTopologyRel
+      ],
+      { cwd: tmpRoot }
+    );
+    assert.equal(
+      cliValidWithBillingRegression.status,
+      0,
+      cliValidWithBillingRegression.stderr
+    );
+
+    // 4. Execution plan unit checks: merges auto-discovered domain topology file & preserves non-unit routing
+    const planWithOtherExplicit = buildDomainTestExecutionPlan({
+      explicitTestTargets: [billingContractRel],
+      isLogDomain: true,
+      validLogSuiteFiles: [auditCrudContractRel]
+    });
+    assert.deepEqual(planWithOtherExplicit.executionTargets, [
+      billingContractRel,
+      auditCrudContractRel
+    ]);
+    assert.deepEqual(planWithOtherExplicit.dalTargets, [
+      'test/db/repos/billingLogProbe/repo.contract.test.ts',
+      'test/db/repos/auditLogProbe/repo.contract.test.ts'
+    ]);
+
+    const serviceTopologyRel = 'packages/service/test/core/audit/log.unit.test.ts';
+    const planServiceLogTopology = buildDomainTestExecutionPlan({
+      explicitTestTargets: [billingContractRel, serviceTopologyRel],
+      isLogDomain: true,
+      validLogSuiteFiles: [serviceTopologyRel]
+    });
+    assert.deepEqual(planServiceLogTopology.serviceUnitTargets, []);
+    assert.deepEqual(planServiceLogTopology.rootTargets, [serviceTopologyRel]);
+
+    // 5. Runtime JSON report unit checks: rejects other-domain-only green reports, file mismatch, or target mismatch
+    const billingCases = buildRequiredLogTopologyCases({
+      mongoCollectionName: 'billing_logs',
+      sqlTableName: 'billing_logs'
+    });
+    const auditCases = buildRequiredLogTopologyCases({
+      mongoCollectionName: 'audit_logs',
+      sqlTableName: 'audit_logs'
+    });
+    const expectedAuditSuites = [
+      {
+        relPath: auditDedicatedTopologyRel,
+        mongoCollectionName: 'audit_logs',
+        sqlTableName: 'audit_logs'
+      }
+    ];
+
+    const otherDomainOnlyRuntime = verifyExecutedLogTopologyReports({
+      repoRoot: tmpRoot,
+      expectedSuites: expectedAuditSuites,
+      reports: [
+        {
+          testResults: [
+            {
+              name: path.join(tmpRoot, billingDedicatedTopologyRel),
+              assertionResults: billingCases.map((c) => ({
+                ancestorTitles: ['BillingLog', c.suiteTitle],
+                title: c.caseTitle,
+                status: 'passed'
+              }))
+            }
+          ]
+        }
+      ]
+    });
+    assert.equal(otherDomainOnlyRuntime.ok, false);
+    assert.equal(otherDomainOnlyRuntime.missingOrNotPassed.length, 4);
+    assert.ok(otherDomainOnlyRuntime.missingOrNotPassed.every((msg) => msg.startsWith('missing (not executed):')));
+
+    const wrongFileEmittingAuditTitle = verifyExecutedLogTopologyReports({
+      repoRoot: tmpRoot,
+      expectedSuites: expectedAuditSuites,
+      reports: [
+        {
+          testResults: [
+            {
+              name: path.join(tmpRoot, billingDedicatedTopologyRel),
+              assertionResults: auditCases.map((c) => ({
+                ancestorTitles: ['Spoofed', c.suiteTitle],
+                title: c.caseTitle,
+                status: 'passed'
+              }))
+            }
+          ]
+        }
+      ]
+    });
+    assert.equal(wrongFileEmittingAuditTitle.ok, false);
+    assert.equal(wrongFileEmittingAuditTitle.missingOrNotPassed.length, 4);
+
+    const wrongTargetInCurrentFile = verifyExecutedLogTopologyReports({
+      repoRoot: tmpRoot,
+      expectedSuites: expectedAuditSuites,
+      reports: [
+        {
+          testResults: [
+            {
+              name: path.join(tmpRoot, auditDedicatedTopologyRel),
+              assertionResults: billingCases.map((c) => ({
+                ancestorTitles: ['WrongTarget', c.suiteTitle],
+                title: c.caseTitle,
+                status: 'passed'
+              }))
+            }
+          ]
+        }
+      ]
+    });
+    assert.equal(wrongTargetInCurrentFile.ok, false);
+    assert.equal(wrongTargetInCurrentFile.missingOrNotPassed.length, 4);
+
+    assert.equal(
+      verifyExecutedLogTopologyReports({
+        repoRoot: tmpRoot,
+        expectedSuites: [],
+        reports: []
+      }).ok,
+      false
+    );
+
+    const bothPresentRuntime = verifyExecutedLogTopologyReports({
+      repoRoot: tmpRoot,
+      expectedSuites: expectedAuditSuites,
+      reports: [
+        {
+          testResults: [
+            {
+              name: path.join(tmpRoot, billingDedicatedTopologyRel),
+              assertionResults: billingCases.map((c) => ({
+                ancestorTitles: ['BillingLog', c.suiteTitle],
+                title: c.caseTitle,
+                status: 'passed'
+              }))
+            },
+            {
+              name: path.join(tmpRoot, auditDedicatedTopologyRel),
+              assertionResults: auditCases.map((c) => ({
+                ancestorTitles: ['AuditLog', c.suiteTitle],
+                title: c.caseTitle,
+                status: 'passed'
+              }))
+            }
+          ]
+        }
+      ]
+    });
+    assert.equal(bothPresentRuntime.ok, true);
+    assert.equal(bothPresentRuntime.passedCases.length, 4);
+
+    // 6. Real Vitest JSON reporter end-to-end verification (reproduces cross-domain substitution via real Vitest output)
+    const makeVitestProbeFile = (targetName) => `
+      import { describe, expect, it } from 'vitest';
+      import { formatLogTopologySuiteTitle } from '@fastgpt/dal/db/testing';
+
+      describe(formatLogTopologySuiteTitle({ family: 'mongodb', targetName: '${targetName}' }), () => {
+        it('routes log reads/writes through main physical DB in shared mode', () => {
+          expect(true).toBe(true);
+        });
+        it('isolates log reads/writes into separate log physical DB without touching main DB', () => {
+          expect(true).toBe(true);
+        });
+      });
+
+      describe(formatLogTopologySuiteTitle({ family: 'sql_pglite', targetName: '${targetName}' }), () => {
+        it('routes log reads/writes through main physical DB in shared mode', () => {
+          expect(true).toBe(true);
+        });
+        it('isolates log reads/writes into separate log physical DB without touching main DB', () => {
+          expect(true).toBe(true);
+        });
+      });
+    `;
+    fs.writeFileSync(vitestProbeAbsBilling, makeVitestProbeFile('billing_logs'));
+    fs.writeFileSync(vitestProbeAbsAudit, makeVitestProbeFile('audit_logs'));
+
+    execFileSync(
+      'pnpm',
+      [
+        '--filter',
+        '@fastgpt/dal',
+        'exec',
+        'vitest',
+        'run',
+        '-c',
+        'vitest.config.ts',
+        '--coverage.enabled=false',
+        vitestProbeRelBilling.slice('packages/dal/'.length),
+        '--reporter=json',
+        `--outputFile=${billingReportJsonAbs}`
+      ],
+      { cwd: repoRoot, stdio: 'pipe' }
+    );
+    const realBillingOnlyReport = JSON.parse(fs.readFileSync(billingReportJsonAbs, 'utf8'));
+    const realAuditExpected = [
+      {
+        relPath: vitestProbeRelAudit,
+        mongoCollectionName: 'audit_logs',
+        sqlTableName: 'audit_logs'
+      }
+    ];
+    const realBillingOnlyVerdict = verifyExecutedLogTopologyReports({
+      repoRoot,
+      expectedSuites: realAuditExpected,
+      reports: [realBillingOnlyReport]
+    });
+    assert.equal(realBillingOnlyVerdict.ok, false);
+    assert.equal(realBillingOnlyVerdict.missingOrNotPassed.length, 4);
+
+    execFileSync(
+      'pnpm',
+      [
+        '--filter',
+        '@fastgpt/dal',
+        'exec',
+        'vitest',
+        'run',
+        '-c',
+        'vitest.config.ts',
+        '--coverage.enabled=false',
+        vitestProbeRelBilling.slice('packages/dal/'.length),
+        vitestProbeRelAudit.slice('packages/dal/'.length),
+        '--reporter=json',
+        `--outputFile=${bothReportJsonAbs}`
+      ],
+      { cwd: repoRoot, stdio: 'pipe' }
+    );
+    const realBothReport = JSON.parse(fs.readFileSync(bothReportJsonAbs, 'utf8'));
+    const realBothVerdict = verifyExecutedLogTopologyReports({
+      repoRoot,
+      expectedSuites: realAuditExpected,
+      reports: [realBothReport]
+    });
+    assert.equal(realBothVerdict.ok, true, JSON.stringify(realBothVerdict));
+    assert.equal(realBothVerdict.passedCases.length, 4);
+  } finally {
+    fs.rmSync(vitestProbeAbsBilling, { force: true });
+    fs.rmSync(vitestProbeAbsAudit, { force: true });
     fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
 });

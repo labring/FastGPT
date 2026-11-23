@@ -13,6 +13,7 @@ import {
   createPostgresSqlTestHarness,
   disableTestMongoIndexReadiness,
   enableTestMongoIndexReadiness,
+  formatLogTopologySuiteTitle,
   parseRequiredSqlDialects,
   registerDualDialectContractSuite,
   registerLogTopologyContractSuite,
@@ -584,6 +585,59 @@ describe('@fastgpt/dal/db/testing harness reliability & contract guardrails', ()
       readLogRecord: async () => ({})
     });
     expect(() => noOpItFactory?.()).toThrow(/expected 2 runnable test cases/);
+
+    // 套件标题必须携带物理目标集合/表名，且禁止空白集合名/表名
+    const capturedTitles: string[] = [];
+    registerLogTopologyContractSuite({
+      describeFn: (title, fn) => {
+        capturedTitles.push(title);
+        fn();
+        return undefined;
+      },
+      itFn: () => undefined,
+      logCollections: [sampleLogCollection],
+      logTables: [sampleLogTable],
+      mongoCollectionName: '  sample_log_records  ',
+      sqlTableName: '  sample_log_table  ',
+      writeLogRecord: async () => ({ id: createEntityId() }),
+      readLogRecord: async () => ({})
+    });
+    expect(capturedTitles).toEqual([
+      formatLogTopologySuiteTitle({
+        family: 'mongodb',
+        targetName: 'sample_log_records'
+      }),
+      formatLogTopologySuiteTitle({
+        family: 'sql_pglite',
+        targetName: 'sample_log_table'
+      })
+    ]);
+
+    expect(() =>
+      registerLogTopologyContractSuite({
+        describeFn: (_title, fn) => fn(),
+        itFn: () => undefined,
+        logCollections: [sampleLogCollection],
+        logTables: [sampleLogTable],
+        mongoCollectionName: '   ',
+        sqlTableName: 'sample_log_records',
+        writeLogRecord: async () => ({ id: createEntityId() }),
+        readLogRecord: async () => ({})
+      })
+    ).toThrow(/non-empty mongoCollectionName/);
+
+    expect(() =>
+      registerLogTopologyContractSuite({
+        describeFn: (_title, fn) => fn(),
+        itFn: () => undefined,
+        logCollections: [sampleLogCollection],
+        logTables: [sampleLogTable],
+        mongoCollectionName: 'sample_log_records',
+        sqlTableName: '',
+        writeLogRecord: async () => ({ id: createEntityId() }),
+        readLogRecord: async () => ({})
+      })
+    ).toThrow(/non-empty sqlTableName/);
 
     expect(typeof verifyMongoLogTopologyIsolation).toBe('function');
     expect(insertedByDb).toBeInstanceOf(WeakMap);

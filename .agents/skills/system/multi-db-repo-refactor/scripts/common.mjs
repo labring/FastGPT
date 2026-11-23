@@ -4275,6 +4275,39 @@ export const createStaticScopeResolver = ({
 };
 
 /**
+ * 收集源码中 `const <ident> [: type] = ...` 绑定的等号 token 索引到变量名的映射，
+ * 用于把 `defineMongoCollection(...)` / `defineSqlTable(...)` 等声明关联到导出变量名。
+ */
+const collectConstAssigneeByEqIndex = ({ tokens, matchIdx }) => {
+  const assigneeByEqIdx = new Map();
+  for (let i = 0; i < tokens.length; i += 1) {
+    const tok = tokens[i];
+    const prev = i > 0 ? tokens[i - 1] : undefined;
+    if (!isIdentTok(tok, 'const') || isPunctTok(prev, '.') || isPunctTok(prev, '?.')) {
+      continue;
+    }
+    const nameTok = tokens[i + 1];
+    if (nameTok?.type !== 'ident') {
+      continue;
+    }
+    let eqIdx = i + 2;
+    if (isPunctTok(tokens[eqIdx], ':')) {
+      eqIdx = skipTypeAnnotation({
+        tokens,
+        matchIdx,
+        startTok: eqIdx + 1,
+        rangeEnd: tokens.length,
+        stopPuncts: new Set(['=', ';', ','])
+      });
+    }
+    if (isPunctTok(tokens[eqIdx], '=')) {
+      assigneeByEqIdx.set(eqIdx, nameTok.value);
+    }
+  }
+  return assigneeByEqIdx;
+};
+
+/**
  * 静态解析 `mongo/schema.ts` 的数据源归属（`'main'` | `'log'`）：
  * - 支持 `defineMongoCollection({ datasource: 'log' })`、对象简写 `{ datasource }`、同文件/导入常量与本地 `const` 描述符；
  * - 遇到无法静态解析的描述符、动态 `datasource` 表达式、非法值或被遮蔽变量时显式报错，绝不静默回退 `'main'`。
@@ -4303,7 +4336,13 @@ export const analyzeMongoSchemaDatasource = ({
     }
   }
 
+  const constVarByEqIdx = collectConstAssigneeByEqIndex({
+    tokens: resolver.tokens,
+    matchIdx: resolver.matchIdx
+  });
   const collections = [];
+  const logCollectionNames = new Set();
+  const collectionExportNames = {};
   const errors = [];
 
   for (const call of findFunctionCalls({
@@ -4344,14 +4383,22 @@ export const analyzeMongoSchemaDatasource = ({
       nameEntry !== undefined
         ? resolver.resolveValue({ rawExpr: nameEntry.rawValue, scopePos: nameEntry.scopePos })
         : { ok: false };
-    const colLabel =
-      resolvedName.ok && typeof resolvedName.value === 'string'
-        ? `"${resolvedName.value}"`
-        : '(unnamed)';
+    const collectionName =
+      resolvedName.ok &&
+      typeof resolvedName.value === 'string' &&
+      resolvedName.value.trim().length > 0
+        ? resolvedName.value.trim()
+        : null;
+    const colLabel = collectionName !== null ? `"${collectionName}"` : '(unnamed)';
+
+    const assignee = constVarByEqIdx.get(call.calleeIdx - 1);
+    if (assignee !== undefined && collectionName !== null) {
+      collectionExportNames[assignee] = collectionName;
+    }
 
     const dsEntry = objRes.props.get('datasource');
     if (dsEntry === undefined) {
-      collections.push({ name: colLabel, datasource: 'main' });
+      collections.push({ name: colLabel, collectionName, datasource: 'main' });
       continue;
     }
     if (dsEntry.isGetter) {
@@ -4373,7 +4420,7 @@ export const analyzeMongoSchemaDatasource = ({
       continue;
     }
     if (dsRes.value === undefined) {
-      collections.push({ name: colLabel, datasource: 'main' });
+      collections.push({ name: colLabel, collectionName, datasource: 'main' });
       continue;
     }
     if (dsRes.value !== 'main' && dsRes.value !== 'log') {
@@ -4382,7 +4429,10 @@ export const analyzeMongoSchemaDatasource = ({
       );
       continue;
     }
-    collections.push({ name: colLabel, datasource: dsRes.value });
+    collections.push({ name: colLabel, collectionName, datasource: dsRes.value });
+    if (dsRes.value === 'log' && collectionName !== null) {
+      logCollectionNames.add(collectionName);
+    }
   }
 
   const logModelCalls = findFunctionCalls({
@@ -4390,6 +4440,27 @@ export const analyzeMongoSchemaDatasource = ({
     matchIdx: resolver.matchIdx,
     calleeNames: logModelNames
   });
+  for (const call of logModelCalls) {
+    if (call.closeParenIdx === -1) {
+      continue;
+    }
+    const inner = resolver.clean.slice(
+      resolver.tokens[call.openParenIdx].end,
+      resolver.tokens[call.closeParenIdx].start
+    );
+    const callArgs = splitTopLevelComma(inner).filter((arg) => arg.trim().length > 0);
+    if (callArgs.length === 0) {
+      continue;
+    }
+    const colRes = resolver.resolveValue({
+      rawExpr: callArgs[0],
+      scopePos: skipWhitespace(resolver.clean, resolver.tokens[call.openParenIdx].end),
+      allowOpaqueIdentifier: false
+    });
+    if (colRes.ok && typeof colRes.value === 'string' && colRes.value.trim().length > 0) {
+      logCollectionNames.add(colRes.value.trim());
+    }
+  }
   const hasLegacyLogModel = logModelCalls.length > 0;
   const isLogDomain = hasLegacyLogModel || collections.some((c) => c.datasource === 'log');
 
@@ -4397,6 +4468,8 @@ export const analyzeMongoSchemaDatasource = ({
     datasource: isLogDomain ? 'log' : 'main',
     isLogDomain,
     collections,
+    logCollectionNames: [...logCollectionNames],
+    collectionExportNames,
     errors
   };
 };
@@ -4637,10 +4710,17 @@ export const analyzeSqlRepoDatasource = ({ sourceText, repoRoot, sourceRelPath }
  * - 禁止对 `text` / `json` 列建普通 B-Tree 索引；
  * - 校验单条普通/唯一复合索引在 `utf8mb4` 下的最大估算字节宽不超过 3072 字节。
  */
-export const analyzeSqlTableDefinitions = (sourceText) => {
-  const resolver = createStaticScopeResolver({ sourceText });
+export const analyzeSqlTableDefinitions = (sourceText, options = {}) => {
+  const resolver = createStaticScopeResolver({
+    sourceText,
+    repoRoot: options?.repoRoot,
+    sourceRelPath: options?.sourceRelPath,
+    gitRef: options?.gitRef
+  });
   const { clean, tokens, matchIdx, importedAliases } = resolver;
+  const constVarByEqIdx = collectConstAssigneeByEqIndex({ tokens, matchIdx });
   const tables = [];
+  const tableExportNames = {};
   const issues = [];
 
   const defineSqlTableNames = new Set(['defineSqlTable']);
@@ -4692,7 +4772,14 @@ export const analyzeSqlTableDefinitions = (sourceText) => {
     }
 
     const parsed = resolvedTable.value;
-    const tableName = typeof parsed.name === 'string' ? parsed.name : '(unnamed)';
+    const tableName =
+      typeof parsed.name === 'string' && parsed.name.trim().length > 0
+        ? parsed.name.trim()
+        : '(unnamed)';
+    const assignee = constVarByEqIdx.get(call.calleeIdx - 1);
+    if (assignee !== undefined && tableName !== '(unnamed)') {
+      tableExportNames[assignee] = tableName;
+    }
     if (
       parsed.columns === null ||
       parsed.columns === undefined ||
@@ -4801,7 +4888,7 @@ export const analyzeSqlTableDefinitions = (sourceText) => {
     }
   }
 
-  return { tables, issues };
+  return { tables, tableExportNames, issues };
 };
 
 const LOG_TOPOLOGY_SUITE_CALLEE = 'registerLogTopologyContractSuite';
@@ -4827,23 +4914,68 @@ export const extractExportedDomainRepoSymbols = (domainAbs) => {
 };
 
 /**
- * 按候选测试文件集合联合验收日志域是否接入标准双态物理隔离契约套件 `registerLogTopologyContractSuite`：
- * 1. 允许按职责拆分为多文件（例如常规 CRUD/事务契约文件 + 独立日志拓扑文件 + Service L0 单测），不再误拒不含拓扑套件的兄弟文件；
- * 2. 候选集合中必须至少有一个文件从 `@fastgpt/dal/db/testing` 导入并可执行调用 `registerLogTopologyContractSuite({ ... })`；
- * 3. 若任何文件出现本地 mock 遮蔽、置于 skip/todo 块内、关闭 `requireBothFamilies`/`includeMongo`/`includePGlite`，
- *    或 `writeLogRecord`/`readLogRecord` 未真实调用领域仓储/`injectRepo(...)`，均立即拒绝。
+ * 按候选测试文件集合联合验收当前日志域是否接入标准双态物理隔离契约套件 `registerLogTopologyContractSuite`：
+ * 1. 允许按职责拆分为多文件（例如常规 CRUD/事务契约文件 + 独立日志拓扑文件 + Service L0 单测 + 跨领域回归文件）；
+ * 2. 候选集合中必须至少有一个文件从 `@fastgpt/dal/db/testing` 导入并可执行调用指向当前域物理集合/表与仓储的 `registerLogTopologyContractSuite({ ... })`；
+ * 3. 若传入的其他域回归文件仅覆盖其他集合/表且未触及当前域，会将其隔离到 `otherDomainValidSuiteFiles` 而非当作当前域覆盖；
+ * 4. 若发生跨集合/跨表局部错配、调用非当前域仓储、条件门控、跳过块、本地遮蔽或关闭任意一族校验，立即 fail-closed 拒绝。
  */
 export const analyzeLogDualModeTestCoverage = ({
   testFiles,
-  domainRepoSymbols = new Set()
+  domainRepoSymbols = new Set(),
+  domainMongoCollections = new Set(),
+  domainSqlTables = new Set(),
+  domainCollectionExportNames = {},
+  domainTableExportNames = {},
+  domainTestDir,
+  repoRoot
 }) => {
+  const expectedMongoCollections = new Set(
+    [...(domainMongoCollections ?? [])]
+      .filter((name) => typeof name === 'string' && name.trim().length > 0)
+      .map((name) => name.trim())
+  );
+  const expectedSqlTables = new Set(
+    [...(domainSqlTables ?? [])]
+      .filter((name) => typeof name === 'string' && name.trim().length > 0)
+      .map((name) => name.trim())
+  );
+  const hasDomainMongoFilter = expectedMongoCollections.size > 0;
+  const hasDomainSqlFilter = expectedSqlTables.size > 0;
+  const hasCurrentDomainFilter = hasDomainMongoFilter || hasDomainSqlFilter;
+  const normalizedDomainTestDir =
+    typeof domainTestDir === 'string' && domainTestDir.trim().length > 0
+      ? toPosixPath(domainTestDir).replace(/^\.\//, '').replace(/\/$/, '')
+      : undefined;
+
   const validSuiteFiles = new Set();
+  const validSuiteEntries = [];
+  const validSuiteKeys = new Set();
+  const otherDomainValidSuiteFiles = new Set();
+  const otherDomainSuiteEntries = [];
   const invalidSuiteReasons = [];
   const missingImportFiles = [];
 
   for (const file of testFiles) {
-    const resolver = createStaticScopeResolver({ sourceText: file.raw });
+    const resolver = createStaticScopeResolver({
+      sourceText: file.raw,
+      repoRoot,
+      sourceRelPath: file.relPath
+    });
     const { clean, tokens, matchIdx, scopeTree, importedAliases } = resolver;
+    const normalizedRelPath = toPosixPath(file.relPath).replace(/^\.\//, '');
+    const isInCurrentDomainTestDir =
+      normalizedDomainTestDir !== undefined &&
+      (normalizedRelPath === normalizedDomainTestDir ||
+        normalizedRelPath.startsWith(`${normalizedDomainTestDir}/`));
+
+    // 将导出仓储符号与其在本文件中的 import 别名统一映射，防止 `import { AuditLogRepoToken as T }` 漏检或误拒
+    const effectiveDomainRepoSymbols = new Set(domainRepoSymbols);
+    for (const [localName, info] of importedAliases) {
+      if (domainRepoSymbols.has(info.importedName)) {
+        effectiveDomainRepoSymbols.add(localName);
+      }
+    }
 
     // 1. 解析从 @fastgpt/dal/db/testing 导入的 registerLogTopologyContractSuite 局部别名
     const suiteCallees = new Set();
@@ -4873,7 +5005,7 @@ export const analyzeLogDualModeTestCoverage = ({
       continue;
     }
 
-    // 收集 repoVars（如 `const repo = injectRepo(XxxToken)`）以便校验 writeLogRecord / readLogRecord 内部确实操作仓储
+    // 收集 repoVars（区分当前域仓储变量与任意仓储变量），以便精确识别跨领域回归与错用仓储回调
     const repoHelperNames = new Set(REPO_RUNTIME_HELPER_FNS);
     for (const [localName, info] of importedAliases) {
       if (REPO_RUNTIME_HELPER_FNS.has(info.importedName)) {
@@ -4881,7 +5013,8 @@ export const analyzeLogDualModeTestCoverage = ({
       }
     }
 
-    const repoVars = new Set();
+    const domainRepoVars = new Set();
+    const anyRepoVars = new Set();
     for (let i = 0; i < tokens.length; i += 1) {
       const tok = tokens[i];
       if (tok.type !== 'ident') continue;
@@ -4901,11 +5034,51 @@ export const analyzeLogDualModeTestCoverage = ({
       const rhsTok = tokens[rhsIdx];
       if (rhsTok === undefined) continue;
       if (rhsTok.type === 'ident' && repoHelperNames.has(rhsTok.value)) {
-        repoVars.add(tok.value);
+        anyRepoVars.add(tok.value);
+        let callOpenIdx = rhsIdx + 1;
+        if (isPunctTok(tokens[callOpenIdx], '<')) {
+          const closeAngle = tryMatchGenericAngle({
+            tokens,
+            matchIdx,
+            startIdx: callOpenIdx,
+            rangeEnd: tokens.length
+          });
+          if (closeAngle !== -1) {
+            callOpenIdx = closeAngle + 1;
+          }
+        }
+        if (isPunctTok(tokens[callOpenIdx], '(') && matchIdx[callOpenIdx] !== -1) {
+          const callCloseIdx = matchIdx[callOpenIdx];
+          let usesDomainSymbol = effectiveDomainRepoSymbols.size === 0;
+          for (let a = callOpenIdx + 1; a < callCloseIdx; a += 1) {
+            const argTok = tokens[a];
+            const prevArgTok = a > 0 ? tokens[a - 1] : undefined;
+            if (
+              argTok.type === 'ident' &&
+              !isPunctTok(prevArgTok, '.') &&
+              !isPunctTok(prevArgTok, '?.') &&
+              effectiveDomainRepoSymbols.has(argTok.value)
+            ) {
+              usesDomainSymbol = true;
+              break;
+            }
+          }
+          if (usesDomainSymbol) {
+            domainRepoVars.add(tok.value);
+          }
+        } else if (effectiveDomainRepoSymbols.size === 0) {
+          domainRepoVars.add(tok.value);
+        }
       } else if (isIdentTok(rhsTok, 'new') && tokens[rhsIdx + 1]?.type === 'ident') {
         const cls = tokens[rhsIdx + 1].value;
-        if (domainRepoSymbols.has(cls) || /Repo(?:sitory)?$/.test(cls)) {
-          repoVars.add(tok.value);
+        if (effectiveDomainRepoSymbols.has(cls)) {
+          anyRepoVars.add(tok.value);
+          domainRepoVars.add(tok.value);
+        } else if (/Repo(?:sitory)?$/.test(cls)) {
+          anyRepoVars.add(tok.value);
+          if (effectiveDomainRepoSymbols.size === 0) {
+            domainRepoVars.add(tok.value);
+          }
         }
       }
     }
@@ -4968,18 +5141,60 @@ export const analyzeLogDualModeTestCoverage = ({
     const isInsideSkipped = (tokIdx) =>
       skippedSpans.some((s) => tokIdx >= s.startTok && tokIdx <= s.endTok);
 
-    const callbackExercisesRepository = (rawValue) => {
-      const { tokens: cbTokens } = tokenizeCleanJsTs(stripCommentsPreserveStrings(rawValue));
+    const callbackExercisesRepo = ({ rawValue, restrictToCurrentDomain }) => {
+      const { tokens: cbTokens, matchIdx: cbMatchIdx } = tokenizeCleanJsTs(
+        stripCommentsPreserveStrings(rawValue)
+      );
+      const requireCurrentDomainSymbol =
+        restrictToCurrentDomain && effectiveDomainRepoSymbols.size > 0;
+
       for (let k = 0; k < cbTokens.length; k += 1) {
         const t = cbTokens[k];
         if (t.type !== 'ident') continue;
         const prev = k > 0 ? cbTokens[k - 1] : undefined;
         const next = k + 1 < cbTokens.length ? cbTokens[k + 1] : undefined;
-        if (repoHelperNames.has(t.value) && !isPunctTok(prev, '.') && isPunctTok(next, '(')) {
-          return true;
-        }
+
         if (
-          domainRepoSymbols.has(t.value) &&
+          repoHelperNames.has(t.value) &&
+          !isPunctTok(prev, '.') &&
+          !isPunctTok(prev, '?.')
+        ) {
+          let openIdx = k + 1;
+          if (isPunctTok(cbTokens[openIdx], '<')) {
+            const closeAngle = tryMatchGenericAngle({
+              tokens: cbTokens,
+              matchIdx: cbMatchIdx,
+              startIdx: openIdx,
+              rangeEnd: cbTokens.length
+            });
+            if (closeAngle !== -1) {
+              openIdx = closeAngle + 1;
+            }
+          }
+          if (isPunctTok(cbTokens[openIdx], '(')) {
+            if (!requireCurrentDomainSymbol) {
+              return true;
+            }
+            const closeIdx = cbMatchIdx[openIdx];
+            if (closeIdx !== -1) {
+              for (let a = openIdx + 1; a < closeIdx; a += 1) {
+                const argTok = cbTokens[a];
+                const prevArgTok = a > 0 ? cbTokens[a - 1] : undefined;
+                if (
+                  argTok.type === 'ident' &&
+                  !isPunctTok(prevArgTok, '.') &&
+                  !isPunctTok(prevArgTok, '?.') &&
+                  effectiveDomainRepoSymbols.has(argTok.value)
+                ) {
+                  return true;
+                }
+              }
+            }
+          }
+        }
+
+        if (
+          effectiveDomainRepoSymbols.has(t.value) &&
           (isIdentTok(prev, 'new') ||
             isPunctTok(next, '.') ||
             isPunctTok(next, '?.') ||
@@ -4987,14 +5202,71 @@ export const analyzeLogDualModeTestCoverage = ({
         ) {
           return true;
         }
-        if (repoVars.has(t.value) && !isPunctTok(prev, '.') && (isPunctTok(next, '.') || isPunctTok(next, '?.'))) {
+
+        if (
+          (requireCurrentDomainSymbol ? domainRepoVars : anyRepoVars).has(t.value) &&
+          !isPunctTok(prev, '.') &&
+          !isPunctTok(prev, '?.') &&
+          (isPunctTok(next, '.') || isPunctTok(next, '?.'))
+        ) {
           return true;
         }
       }
       return false;
     };
 
-    // 3. 扫描当前文件所有可执行的 registerLogTopologyContractSuite(...) 调用并按单次调用校验参数契约
+    const resolveSuiteTargetName = ({ entry, exportedNameMap }) => {
+      if (entry === undefined) {
+        return { ok: false, reason: 'missing option' };
+      }
+      const staticRes = resolver.resolveValue({
+        rawExpr: entry.rawValue,
+        scopePos: entry.scopePos,
+        allowOpaqueIdentifier: false
+      });
+      if (
+        staticRes.ok &&
+        typeof staticRes.value === 'string' &&
+        staticRes.value.trim().length > 0
+      ) {
+        return { ok: true, value: staticRes.value.trim() };
+      }
+
+      let expr = stripTsAssertion(entry.rawValue).trim();
+      while (expr.startsWith('(') && expr.endsWith(')')) {
+        const seg = scanBalancedSegment(expr, { startIdx: 0, openChar: '(', closeChar: ')' });
+        if (seg === null || seg.endIdx !== expr.length - 1) {
+          break;
+        }
+        expr = stripTsAssertion(seg.inner).trim();
+      }
+      const memberMatch = expr.match(/^([A-Za-z_$][A-Za-z0-9_$]*)\s*\.\s*name$/);
+      if (memberMatch !== null) {
+        const ident = memberMatch[1];
+        const binding = scopeTree.lookupBinding(ident, entry.scopePos);
+        if (binding.found && binding.binding.kind === 'import') {
+          const origName = importedAliases.get(ident)?.importedName ?? ident;
+          const mappedName = exportedNameMap?.[origName];
+          if (typeof mappedName === 'string' && mappedName.trim().length > 0) {
+            return { ok: true, value: mappedName.trim() };
+          }
+        } else if (binding.found) {
+          return {
+            ok: false,
+            reason: `identifier "${ident}" is shadowed by local ${binding.binding.kind}`
+          };
+        }
+      }
+
+      return {
+        ok: false,
+        reason: staticRes.ok
+          ? `expected non-empty string, received ${JSON.stringify(staticRes.value)}`
+          : (staticRes.reason ?? `cannot statically resolve "${entry.rawValue}"`)
+      };
+    };
+
+    // 3. 扫描当前文件所有可执行的 registerLogTopologyContractSuite(...) 调用并按单次调用校验参数与领域归属
     const calls = findFunctionCalls({
       tokens,
       matchIdx,
@@ -5220,21 +5492,108 @@ export const analyzeLogDualModeTestCoverage = ({
         expectedLabel: 'it/test'
       });
 
+      if (callReasons.length > 0) {
+        fileInvalidReasons.push(...callReasons);
+        continue;
+      }
+
+      const mongoRes = resolveSuiteTargetName({
+        entry: objRes.props.get('mongoCollectionName'),
+        exportedNameMap: domainCollectionExportNames
+      });
+      const sqlRes = resolveSuiteTargetName({
+        entry: objRes.props.get('sqlTableName'),
+        exportedNameMap: domainTableExportNames
+      });
+      const resolvedMongoCol = mongoRes.ok ? mongoRes.value : null;
+      const resolvedSqlTable = sqlRes.ok ? sqlRes.value : null;
+
       const writeEntry = objRes.props.get('writeLogRecord');
       const readEntry = objRes.props.get('readLogRecord');
-      if (writeEntry !== undefined && !callbackExercisesRepository(writeEntry.rawValue)) {
+      const writeCurrent =
+        writeEntry !== undefined &&
+        callbackExercisesRepo({ rawValue: writeEntry.rawValue, restrictToCurrentDomain: true });
+      const readCurrent =
+        readEntry !== undefined &&
+        callbackExercisesRepo({ rawValue: readEntry.rawValue, restrictToCurrentDomain: true });
+      const writeAny =
+        writeEntry !== undefined &&
+        callbackExercisesRepo({ rawValue: writeEntry.rawValue, restrictToCurrentDomain: false });
+      const readAny =
+        readEntry !== undefined &&
+        callbackExercisesRepo({ rawValue: readEntry.rawValue, restrictToCurrentDomain: false });
+
+      const matchesMongoCol = hasDomainMongoFilter
+        ? resolvedMongoCol !== null && expectedMongoCollections.has(resolvedMongoCol)
+        : true;
+      const matchesSqlTable = hasDomainSqlFilter
+        ? resolvedSqlTable !== null && expectedSqlTables.has(resolvedSqlTable)
+        : true;
+      const touchesCurrentDomainRepo =
+        effectiveDomainRepoSymbols.size > 0 && (writeCurrent || readCurrent);
+
+      // 位于当前域测试目录之外、合法运行其他物理集合/表且未引用当前域仓储的独立拓扑回归文件，
+      // 仅作跨领域回归放行（记录到 otherDomainValidSuiteFiles），绝不作为当前域拓扑证据。
+      if (
+        !isInCurrentDomainTestDir &&
+        hasCurrentDomainFilter &&
+        resolvedMongoCol !== null &&
+        resolvedSqlTable !== null &&
+        !matchesMongoCol &&
+        !matchesSqlTable &&
+        !touchesCurrentDomainRepo &&
+        writeAny &&
+        readAny
+      ) {
+        otherDomainSuiteEntries.push({
+          relPath: file.relPath,
+          mongoCollectionName: resolvedMongoCol,
+          sqlTableName: resolvedSqlTable
+        });
+        otherDomainValidSuiteFiles.add(file.relPath);
+        continue;
+      }
+
+      if (!mongoRes.ok) {
         callReasons.push(
-          `${file.relPath}: ${call.calleeName}.writeLogRecord must exercise domain repository / injectRepo()`
+          `${file.relPath}: ${call.calleeName}.mongoCollectionName ${mongoRes.reason}`
+        );
+      } else if (hasDomainMongoFilter && !expectedMongoCollections.has(resolvedMongoCol)) {
+        callReasons.push(
+          `${file.relPath}: ${call.calleeName}.mongoCollectionName "${resolvedMongoCol}" does not match current domain log collection(s) (${[...expectedMongoCollections].join(', ')})`
         );
       }
-      if (readEntry !== undefined && !callbackExercisesRepository(readEntry.rawValue)) {
+
+      if (!sqlRes.ok) {
+        callReasons.push(`${file.relPath}: ${call.calleeName}.sqlTableName ${sqlRes.reason}`);
+      } else if (hasDomainSqlFilter && !expectedSqlTables.has(resolvedSqlTable)) {
         callReasons.push(
-          `${file.relPath}: ${call.calleeName}.readLogRecord must exercise domain repository / injectRepo()`
+          `${file.relPath}: ${call.calleeName}.sqlTableName "${resolvedSqlTable}" does not match current domain SQL table(s) (${[...expectedSqlTables].join(', ')})`
+        );
+      }
+
+      if (writeEntry !== undefined && !writeCurrent) {
+        callReasons.push(
+          `${file.relPath}: ${call.calleeName}.writeLogRecord must exercise current domain repository / injectRepo(${[...domainRepoSymbols].join(' | ') || '...'})`
+        );
+      }
+      if (readEntry !== undefined && !readCurrent) {
+        callReasons.push(
+          `${file.relPath}: ${call.calleeName}.readLogRecord must exercise current domain repository / injectRepo(${[...domainRepoSymbols].join(' | ') || '...'})`
         );
       }
 
       if (callReasons.length === 0) {
         fileHasValidCall = true;
+        const entryKey = `${file.relPath}::${resolvedMongoCol}::${resolvedSqlTable}`;
+        if (!validSuiteKeys.has(entryKey)) {
+          validSuiteKeys.add(entryKey);
+          validSuiteEntries.push({
+            relPath: file.relPath,
+            mongoCollectionName: resolvedMongoCol,
+            sqlTableName: resolvedSqlTable
+          });
+        }
       } else {
         fileInvalidReasons.push(...callReasons);
       }
@@ -5247,80 +5606,241 @@ export const analyzeLogDualModeTestCoverage = ({
     }
   }
 
+  if (expectedMongoCollections.size > 0 && validSuiteEntries.length > 0) {
+    const coveredMongoCollections = new Set(
+      validSuiteEntries.map((entry) => entry.mongoCollectionName)
+    );
+    const uncovered = [...expectedMongoCollections].filter(
+      (col) => !coveredMongoCollections.has(col)
+    );
+    if (uncovered.length > 0) {
+      invalidSuiteReasons.push(
+        `missing ${LOG_TOPOLOGY_SUITE_CALLEE} coverage for current domain log collection(s): ${uncovered.join(', ')}`
+      );
+    }
+  }
+
+  const otherDomainSummary =
+    otherDomainSuiteEntries.length > 0
+      ? `only other-domain log topology suite(s) were provided (${otherDomainSuiteEntries
+          .map((e) => `${e.relPath} [mongo=${e.mongoCollectionName}, sql=${e.sqlTableName}]`)
+          .join(', ')})`
+      : '';
+
   return {
-    ok: validSuiteFiles.size > 0 && invalidSuiteReasons.length === 0,
+    ok: validSuiteEntries.length > 0 && invalidSuiteReasons.length === 0,
     validSuiteFiles: [...validSuiteFiles],
+    validSuiteEntries,
+    otherDomainValidSuiteFiles: [...otherDomainValidSuiteFiles],
+    otherDomainSuiteEntries,
     details:
       invalidSuiteReasons.length > 0
         ? invalidSuiteReasons.join('; ')
-        : missingImportFiles.length > 0
-          ? `none of the candidate test files (${missingImportFiles.join(', ')}) imports and invokes "${LOG_TOPOLOGY_SUITE_CALLEE}" from "@fastgpt/dal/db/testing"`
-          : `missing executable ${LOG_TOPOLOGY_SUITE_CALLEE}({ ... }) wiring shared + separate physical isolation checks`
+        : otherDomainSummary.length > 0
+          ? `${otherDomainSummary}; none targets current domain (${[...expectedMongoCollections].join(', ') || '...'} / ${[...expectedSqlTables].join(', ') || '...'})`
+          : missingImportFiles.length > 0
+            ? `none of the candidate test files (${missingImportFiles.join(', ')}) imports and invokes "${LOG_TOPOLOGY_SUITE_CALLEE}" from "@fastgpt/dal/db/testing"`
+            : `missing executable ${LOG_TOPOLOGY_SUITE_CALLEE}({ ... }) wiring shared + separate physical isolation checks`
   };
 };
 
-export const REQUIRED_LOG_TOPOLOGY_CASES = [
+/**
+ * 组装领域验证的实际测试执行计划：
+ * 日志域运行期必须合并静态识别到的本域拓扑文件与显式 `--test` 目标，防止仅执行其他域回归时漏跑当前域拓扑校验。
+ */
+export const buildDomainTestExecutionPlan = ({
+  explicitTestTargets = [],
+  isLogDomain = false,
+  validLogSuiteFiles = []
+}) => {
+  const seen = new Set();
+  const executionTargets = [];
+  const appendTarget = (target) => {
+    const normalized = toPosixPath(String(target ?? '')).replace(/^\.\//, '').trim();
+    if (normalized.length > 0 && !seen.has(normalized)) {
+      seen.add(normalized);
+      executionTargets.push(normalized);
+    }
+  };
+
+  for (const target of explicitTestTargets) {
+    appendTarget(target);
+  }
+  const normalizedLogSuiteFiles = new Set();
+  if (isLogDomain) {
+    for (const suiteFile of validLogSuiteFiles) {
+      const normalized = toPosixPath(String(suiteFile ?? '')).replace(/^\.\//, '').trim();
+      if (normalized.length > 0) {
+        normalizedLogSuiteFiles.add(normalized);
+        appendTarget(normalized);
+      }
+    }
+  }
+
+  const dalTargets = executionTargets
+    .filter((t) => t.startsWith('packages/dal/'))
+    .map((t) => t.slice('packages/dal/'.length));
+  const serviceUnitTargets = executionTargets
+    .filter(
+      (t) =>
+        !normalizedLogSuiteFiles.has(t) &&
+        t.startsWith('packages/service/test/') &&
+        t.endsWith('.unit.test.ts')
+    )
+    .map((t) => t.slice('packages/service/'.length));
+  const rootTargets = executionTargets.filter(
+    (t) =>
+      !t.startsWith('packages/dal/') &&
+      !(
+        !normalizedLogSuiteFiles.has(t) &&
+        t.startsWith('packages/service/test/') &&
+        t.endsWith('.unit.test.ts')
+      )
+  );
+
+  return {
+    executionTargets,
+    dalTargets,
+    serviceUnitTargets,
+    rootTargets
+  };
+};
+
+/**
+ * 按物理集合/表身份构造日志域双态 4 个必需拓扑用例标题描述符。
+ */
+export const buildRequiredLogTopologyCases = ({ mongoCollectionName, sqlTableName }) => [
   {
-    suiteTitle: '[Log Topology: MongoDB (shared + separate)]',
+    family: 'mongodb',
+    suiteTitle: `[Log Topology: MongoDB (shared + separate) | ${mongoCollectionName}]`,
     caseTitle: 'routes log reads/writes through main physical DB in shared mode'
   },
   {
-    suiteTitle: '[Log Topology: MongoDB (shared + separate)]',
+    family: 'mongodb',
+    suiteTitle: `[Log Topology: MongoDB (shared + separate) | ${mongoCollectionName}]`,
     caseTitle: 'isolates log reads/writes into separate log physical DB without touching main DB'
   },
   {
-    suiteTitle: '[Log Topology: SQL PGlite (shared + separate)]',
+    family: 'sql_pglite',
+    suiteTitle: `[Log Topology: SQL PGlite (shared + separate) | ${sqlTableName}]`,
     caseTitle: 'routes log reads/writes through main physical DB in shared mode'
   },
   {
-    suiteTitle: '[Log Topology: SQL PGlite (shared + separate)]',
+    family: 'sql_pglite',
+    suiteTitle: `[Log Topology: SQL PGlite (shared + separate) | ${sqlTableName}]`,
     caseTitle: 'isolates log reads/writes into separate log physical DB without touching main DB'
   }
 ];
 
+const normalizeIdentityPath = (filePath, baseDir = process.cwd()) => {
+  const raw = String(filePath ?? '').trim();
+  if (raw.length === 0) {
+    return '';
+  }
+  const resolved = path.isAbsolute(raw) ? path.resolve(raw) : path.resolve(baseDir, raw);
+  try {
+    return toPosixPath(fs.realpathSync.native(resolved));
+  } catch {
+    const parentDir = path.dirname(resolved);
+    try {
+      return toPosixPath(path.join(fs.realpathSync.native(parentDir), path.basename(resolved)));
+    } catch {
+      return toPosixPath(resolved);
+    }
+  }
+};
+
 /**
- * 核对 Vitest JSON 测试报告，确认日志域的两族双态 4 个标准隔离用例真实注册、实际执行且全部 passed（绝不放行 0 注册或跳过）。
+ * 按 Vitest JSON 报告的文件身份（`testResults[].name`）与目标集合/表绑定的套件标题，
+ * 逐一核对当前日志域每个预期拓扑套件的两族双态 4 个标准隔离用例是否真实执行且全部 `passed`。
  */
-export const verifyExecutedLogTopologyReports = (reports) => {
-  const assertionStatusByCase = new Map();
+export const verifyExecutedLogTopologyReports = ({ reports, expectedSuites, repoRoot }) => {
+  if (!Array.isArray(expectedSuites) || expectedSuites.length === 0) {
+    return {
+      ok: false,
+      passedCases: [],
+      missingOrNotPassed: ['missing expected log topology suite specification for current domain']
+    };
+  }
+
+  const baseDir = repoRoot ?? process.cwd();
+  const assertionsByFilePath = new Map();
 
   for (const report of reports ?? []) {
     if (!report || typeof report !== 'object' || !Array.isArray(report.testResults)) {
       continue;
     }
     for (const fileResult of report.testResults) {
-      if (!Array.isArray(fileResult?.assertionResults)) {
+      if (
+        typeof fileResult?.name !== 'string' ||
+        fileResult.name.trim().length === 0 ||
+        !Array.isArray(fileResult?.assertionResults)
+      ) {
         continue;
       }
-      for (const assertion of fileResult.assertionResults) {
-        const ancestors = Array.isArray(assertion?.ancestorTitles) ? assertion.ancestorTitles : [];
-        const title = typeof assertion?.title === 'string' ? assertion.title : '';
-        const status = typeof assertion?.status === 'string' ? assertion.status : 'unknown';
-
-        for (const req of REQUIRED_LOG_TOPOLOGY_CASES) {
-          if (title === req.caseTitle && ancestors.includes(req.suiteTitle)) {
-            const key = `${req.suiteTitle} :: ${req.caseTitle}`;
-            const prev = assertionStatusByCase.get(key);
-            if (prev !== 'passed') {
-              assertionStatusByCase.set(key, status);
-            }
-          }
-        }
+      const fileIdentity = normalizeIdentityPath(fileResult.name, baseDir);
+      if (fileIdentity.length === 0) {
+        continue;
       }
+      if (!assertionsByFilePath.has(fileIdentity)) {
+        assertionsByFilePath.set(fileIdentity, []);
+      }
+      assertionsByFilePath.get(fileIdentity).push(...fileResult.assertionResults);
     }
   }
 
   const passedCases = [];
   const missingOrNotPassed = [];
-  for (const req of REQUIRED_LOG_TOPOLOGY_CASES) {
-    const key = `${req.suiteTitle} :: ${req.caseTitle}`;
-    const status = assertionStatusByCase.get(key);
-    if (status === 'passed') {
-      passedCases.push(key);
-    } else if (status === undefined) {
-      missingOrNotPassed.push(`missing (not executed): ${key}`);
-    } else {
-      missingOrNotPassed.push(`${status}: ${key}`);
+
+  for (const spec of expectedSuites) {
+    const relPath =
+      typeof spec?.relPath === 'string' && spec.relPath.trim().length > 0
+        ? spec.relPath.trim()
+        : '';
+    const mongoCollectionName =
+      typeof spec?.mongoCollectionName === 'string' && spec.mongoCollectionName.trim().length > 0
+        ? spec.mongoCollectionName.trim()
+        : '';
+    const sqlTableName =
+      typeof spec?.sqlTableName === 'string' && spec.sqlTableName.trim().length > 0
+        ? spec.sqlTableName.trim()
+        : '';
+
+    if (!relPath || !mongoCollectionName || !sqlTableName) {
+      missingOrNotPassed.push(
+        `invalid expected log topology suite specification (${JSON.stringify(spec)})`
+      );
+      continue;
+    }
+
+    const expectedFileIdentity = normalizeIdentityPath(relPath, baseDir);
+    const fileAssertions = assertionsByFilePath.get(expectedFileIdentity) ?? [];
+    const requiredCases = buildRequiredLogTopologyCases({ mongoCollectionName, sqlTableName });
+
+    for (const req of requiredCases) {
+      let passedCount = 0;
+      const nonPassedStatuses = [];
+      for (const assertion of fileAssertions) {
+        const ancestors = Array.isArray(assertion?.ancestorTitles) ? assertion.ancestorTitles : [];
+        const title = typeof assertion?.title === 'string' ? assertion.title : '';
+        if (title === req.caseTitle && ancestors.includes(req.suiteTitle)) {
+          const status = typeof assertion?.status === 'string' ? assertion.status : 'unknown';
+          if (status === 'passed') {
+            passedCount += 1;
+          } else {
+            nonPassedStatuses.push(status);
+          }
+        }
+      }
+
+      const fullKey = `${relPath} :: ${req.suiteTitle} :: ${req.caseTitle}`;
+      if (passedCount >= 1 && nonPassedStatuses.length === 0) {
+        passedCases.push(fullKey);
+      } else if (nonPassedStatuses.length > 0) {
+        missingOrNotPassed.push(`${nonPassedStatuses[0]}: ${fullKey}`);
+      } else {
+        missingOrNotPassed.push(`missing (not executed): ${fullKey}`);
+      }
     }
   }
 

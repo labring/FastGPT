@@ -9,6 +9,7 @@ import {
   analyzeSchemaIndexes,
   analyzeSqlRepoDatasource,
   analyzeSqlTableDefinitions,
+  buildDomainTestExecutionPlan,
   extractDefineIndexes,
   extractExportedDomainRepoSymbols,
   extractExportedModelNames,
@@ -170,13 +171,36 @@ const mongoDatasourceInfo = checkFileExists('mongo/schema.ts')
       repoRoot,
       sourceRelPath: `${domainRel}/mongo/schema.ts`
     })
-  : { datasource: 'main', isLogDomain: false, collections: [], errors: [] };
+  : {
+      datasource: 'main',
+      isLogDomain: false,
+      collections: [],
+      logCollectionNames: [],
+      collectionExportNames: {},
+      errors: []
+    };
 
 for (const err of mongoDatasourceInfo.errors) {
   failures.push(`[Structure] ${domainRel}/mongo/schema.ts: ${err}`);
 }
 
 const isLogDomain = mongoDatasourceInfo.isLogDomain;
+const sqlTableRaw = checkFileExists('sql/table.ts')
+  ? fs.readFileSync(path.join(domainAbs, 'sql/table.ts'), 'utf8')
+  : null;
+const sqlTableInfo =
+  sqlTableRaw !== null
+    ? analyzeSqlTableDefinitions(sqlTableRaw, {
+        repoRoot,
+        sourceRelPath: `${domainRel}/sql/table.ts`
+      })
+    : { tables: [], tableExportNames: {}, issues: [] };
+const domainMongoLogCollections = new Set(mongoDatasourceInfo.logCollectionNames ?? []);
+const domainSqlTables = new Set(
+  sqlTableInfo.tables
+    .map((t) => t.name)
+    .filter((name) => typeof name === 'string' && name.length > 0 && name !== '(unnamed)')
+);
 if (checkFileExists('sql/repo.ts')) {
   const sqlDatasourceInfo = analyzeSqlRepoDatasource({
     sourceText: fs.readFileSync(path.join(domainAbs, 'sql/repo.ts'), 'utf8'),
@@ -322,8 +346,7 @@ const checkDomainStaticBoundaries = () => {
     }
 
     if (sqlRel === 'sql/table.ts') {
-      const tableCheck = analyzeSqlTableDefinitions(sqlFile.raw);
-      for (const issue of tableCheck.issues) {
+      for (const issue of sqlTableInfo.issues) {
         failures.push(`[SQL Portability] ${domainRel}/${sqlRel}: ${issue}`);
       }
     }
@@ -718,7 +741,7 @@ const checkContractTestGovernance = () => {
     failures.push(
       `[Tests] Missing multi-dialect contract test file (expected ${inferredTestDir}/repo.contract.test.ts or pass via --test)`
     );
-    return;
+    return { validLogSuiteFiles: [], validLogSuiteEntries: [] };
   }
 
   const logCoverage =
@@ -728,10 +751,17 @@ const checkContractTestGovernance = () => {
             relPath,
             raw: rawCodeByFile.get(relPath) ?? ''
           })),
-          domainRepoSymbols: extractExportedDomainRepoSymbols(domainAbs)
+          domainRepoSymbols: extractExportedDomainRepoSymbols(domainAbs),
+          domainMongoCollections: domainMongoLogCollections,
+          domainSqlTables,
+          domainCollectionExportNames: mongoDatasourceInfo.collectionExportNames ?? {},
+          domainTableExportNames: sqlTableInfo.tableExportNames ?? {},
+          domainTestDir: inferredTestDir,
+          repoRoot
         })
       : null;
   const validLogSuiteFiles = new Set(logCoverage?.validSuiteFiles ?? []);
+  const otherDomainValidLogSuiteFiles = new Set(logCoverage?.otherDomainValidSuiteFiles ?? []);
   let hasMultiDialectContractFile = false;
 
   for (const rel of contractTestFiles) {
@@ -747,7 +777,9 @@ const checkContractTestGovernance = () => {
     // 其 `describe/it/expect` 由 `registerLogTopologyContractSuite` 内部展开，不再要求重复调用多方言 CRUD 套件；
     // 但整个领域仍必须包含至少一个多方言 CRUD/事务契约文件（下方的 hasMultiDialectContractFile 守卫）。
     const isDedicatedLogTopologyFile =
-      isLogDomain && validLogSuiteFiles.has(rel) && !CONTRACT_SUITE_CALL_REGEX.test(execCode);
+      isLogDomain &&
+      (validLogSuiteFiles.has(rel) || otherDomainValidLogSuiteFiles.has(rel)) &&
+      !CONTRACT_SUITE_CALL_REGEX.test(execCode);
     if (isDedicatedLogTopologyFile) {
       continue;
     }
@@ -777,27 +809,26 @@ const checkContractTestGovernance = () => {
       `[Tests] Log domain ${domainRel} must register executable registerLogTopologyContractSuite(...) verifying shared/separate physical DB isolation (${logCoverage.details})`
     );
   }
+
+  return {
+    validLogSuiteFiles: [...validLogSuiteFiles],
+    validLogSuiteEntries: logCoverage?.validSuiteEntries ?? []
+  };
 };
 
-checkContractTestGovernance();
+const contractGovernance = checkContractTestGovernance();
 
 // 6. 运行契约与业务测试（静态门禁存在失败时 Fail-Fast，避免无效拉起 Vitest）
+const { executionTargets, dalTargets, serviceUnitTargets, rootTargets } =
+  buildDomainTestExecutionPlan({
+    explicitTestTargets: testTargets,
+    isLogDomain,
+    validLogSuiteFiles: contractGovernance.validLogSuiteFiles
+  });
+
 if (noTest) {
   warnings.push('[Tests] Skipped test execution (--no-test)');
 } else if (testTargets.length > 0 && failures.length === 0) {
-  const normalizedTargets = testTargets.map((t) => toPosixPath(t).replace(/^\.\//, ''));
-  const dalTargets = normalizedTargets
-    .filter((t) => t.startsWith('packages/dal/'))
-    .map((t) => t.slice('packages/dal/'.length));
-  const serviceUnitTargets = normalizedTargets
-    .filter((t) => t.startsWith('packages/service/test/') && t.endsWith('.unit.test.ts'))
-    .map((t) => t.slice('packages/service/'.length));
-  const rootTargets = normalizedTargets.filter(
-    (t) =>
-      !t.startsWith('packages/dal/') &&
-      !(t.startsWith('packages/service/test/') && t.endsWith('.unit.test.ts'))
-  );
-
   const tmpReportDir = isLogDomain
     ? fs.mkdtempSync(path.join(os.tmpdir(), 'fg-log-verify-'))
     : null;
@@ -880,7 +911,11 @@ if (noTest) {
       const parsedReports = jsonReportFiles
         .filter((filePath) => fs.existsSync(filePath))
         .map((filePath) => JSON.parse(fs.readFileSync(filePath, 'utf8')));
-      const execCheck = verifyExecutedLogTopologyReports(parsedReports);
+      const execCheck = verifyExecutedLogTopologyReports({
+        reports: parsedReports,
+        expectedSuites: contractGovernance.validLogSuiteEntries,
+        repoRoot
+      });
       if (!execCheck.ok) {
         failures.push(
           `[Tests] Log domain ${domainRel} runtime execution did not pass all 4 required log topology cases (${execCheck.missingOrNotPassed.join('; ')})`
@@ -888,7 +923,7 @@ if (noTest) {
       }
     }
   } catch {
-    failures.push(`[Tests] Targeted tests failed: ${testTargets.join(' ')}`);
+    failures.push(`[Tests] Targeted tests failed: ${executionTargets.join(' ')}`);
   } finally {
     if (tmpReportDir !== null) {
       fs.rmSync(tmpReportDir, { recursive: true, force: true });
@@ -896,7 +931,7 @@ if (noTest) {
   }
 } else if (testTargets.length > 0) {
   warnings.push(
-    `[Tests] Skipped executing --test (${testTargets.join(' ')}) until static verification issues above are fixed`
+    `[Tests] Skipped executing --test (${executionTargets.join(' ')}) until static verification issues above are fixed`
   );
 } else {
   warnings.push('[Tests] No --test target specified; skipped test execution');
