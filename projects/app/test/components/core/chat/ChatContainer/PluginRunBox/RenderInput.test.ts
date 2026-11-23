@@ -16,10 +16,13 @@ import type {
   ChatSiteItemType,
   ChatBoxInputFormType
 } from '@/components/core/chat/ChatContainer/ChatBox/type';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
-import { PluginRunContext } from '@/components/core/chat/ChatContainer/PluginRunBox/context';
+import PluginRunContextProvider, {
+  PluginRunContext
+} from '@/components/core/chat/ChatContainer/PluginRunBox/context';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import FileSelector from '@/components/core/app/FileSelector';
 import RenderInput from '@/components/core/chat/ChatContainer/PluginRunBox/components/RenderInput';
@@ -177,6 +180,7 @@ describe('PluginRunBox RenderInput clear input', () => {
     vi.stubGlobal('document', dom.window.document);
     vi.stubGlobal('HTMLElement', dom.window.HTMLElement);
     vi.stubGlobal('HTMLInputElement', dom.window.HTMLInputElement);
+    vi.stubGlobal('React', React);
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     container = document.createElement('div');
     document.body.appendChild(container);
@@ -192,14 +196,12 @@ describe('PluginRunBox RenderInput clear input', () => {
 
   it('clears an input with undefined defaultValue after Run -> switch back -> Restart', async () => {
     const promptInput = createPromptInput(undefined);
-    let latestFormValues: ChatBoxInputFormType | undefined;
+    const onSubmitSpy = vi.fn();
 
     const Harness = () => {
       const variablesForm = useForm<ChatBoxInputFormType>();
       const [chatRecords, setChatRecords] = useState<ChatSiteItemType[]>([]);
       const [mounted, setMounted] = useState(true);
-
-      latestFormValues = variablesForm.watch();
 
       return React.createElement(
         ChatItemContext.Provider,
@@ -242,6 +244,7 @@ describe('PluginRunBox RenderInput clear input', () => {
                   onStartChat: vi.fn(),
                   onNewChat: () => setChatRecords([]),
                   onSubmit: (formData: ChatBoxInputFormType) => {
+                    onSubmitSpy(formData);
                     setChatRecords([createHistoryRecord(promptInput, formData.variables?.prompt)]);
                     setMounted(false);
                   }
@@ -263,7 +266,7 @@ describe('PluginRunBox RenderInput clear input', () => {
       );
     };
 
-    // 1. 初始打开并输入 SS，点击运行（切到输出 Tab，RenderInput 卸载，variablesForm 仍保留 SS）
+    // 1. 初始打开并输入 SS，点击运行（切到输出 Tab，RenderInput 卸载）
     await act(async () => {
       root.render(React.createElement(Harness));
     });
@@ -274,7 +277,6 @@ describe('PluginRunBox RenderInput clear input', () => {
       inputEl!.value = 'SS';
       Simulate.change(inputEl!);
     });
-    expect(latestFormValues?.variables?.prompt).toBe('SS');
 
     const runBtn = Array.from(container.querySelectorAll('button')).find(
       (btn) => btn.textContent === 'common:Run'
@@ -282,8 +284,10 @@ describe('PluginRunBox RenderInput clear input', () => {
     await act(async () => {
       Simulate.click(runBtn);
     });
+    expect(onSubmitSpy).toHaveBeenCalledTimes(1);
+    expect(onSubmitSpy).toHaveBeenLastCalledWith({ variables: { prompt: 'SS' } });
 
-    // 2. 运行一轮后切回输入 Tab：RenderInput 在 histories 存在且 form 含 SS 时重新挂载
+    // 2. 运行一轮后切回输入 Tab：RenderInput 重新挂载并回显历史 SS
     const toggleBtn = container.querySelector<HTMLButtonElement>('[data-testid="toggle-mount"]')!;
     await act(async () => {
       Simulate.click(toggleBtn);
@@ -309,7 +313,7 @@ describe('PluginRunBox RenderInput clear input', () => {
     expect(afterRestart.disabled).toBe(false);
     expect(afterRestart.value).toBe('SS');
 
-    // 4. 点击清空输入确认：应清空回默认值 undefined，而不是被旧值 SS 卡住
+    // 4. 点击清空输入确认：应清空回默认值 undefined，且必填校验阻止提交旧值 SS
     const confirmClearBtn = container.querySelector<HTMLButtonElement>(
       '[data-testid="confirm-clear"]'
     )!;
@@ -321,7 +325,14 @@ describe('PluginRunBox RenderInput clear input', () => {
       '[data-testid="variables.prompt"]'
     )!;
     expect(afterClear.value).toBe('');
-    expect(latestFormValues?.variables?.prompt).toBeUndefined();
+
+    const runAfterClearBtn = Array.from(container.querySelectorAll('button')).find(
+      (btn) => btn.textContent === 'common:Run'
+    )!;
+    await act(async () => {
+      Simulate.click(runAfterClearBtn);
+    });
+    expect(onSubmitSpy).toHaveBeenCalledTimes(1);
   });
 
   it('restores explicit defaultValue on clear and clears stale value when switching histories', async () => {
@@ -439,7 +450,7 @@ describe('PluginRunBox RenderInput clear input', () => {
         type: ChatFileTypeEnum.image
       }
     ];
-    let latestFormValues: ChatBoxInputFormType | undefined;
+    const onSubmitSpy = vi.fn();
 
     const Harness = () => {
       const variablesForm = useForm<ChatBoxInputFormType>();
@@ -464,8 +475,6 @@ describe('PluginRunBox RenderInput clear input', () => {
           value: [{ text: { content: '' } }]
         }
       ]);
-
-      latestFormValues = variablesForm.watch();
 
       return React.createElement(
         ChatItemContext.Provider,
@@ -511,7 +520,7 @@ describe('PluginRunBox RenderInput clear input', () => {
                   instruction: '',
                   onStartChat: vi.fn(),
                   onNewChat: () => setChatRecords([]),
-                  onSubmit: vi.fn()
+                  onSubmit: onSubmitSpy
                 } as any
               },
               React.createElement(
@@ -529,7 +538,7 @@ describe('PluginRunBox RenderInput clear input', () => {
                                 {
                                   text: {
                                     content:
-                                      ((item.value?.[0] as any)?.text?.content || '') + 'chunk-'
+                                      ((item.value?.[0] as any)?.text?.content ?? '') + 'chunk-'
                                   }
                                 }
                               ]
@@ -593,7 +602,140 @@ describe('PluginRunBox RenderInput clear input', () => {
     await act(async () => {
       Simulate.click(confirmClearBtn);
     });
-    expect(latestFormValues?.variables?.files).toBeUndefined();
     expect(container.querySelector('[data-testid="file-preview"]')).toBeNull();
+
+    const runBtn = Array.from(container.querySelectorAll('button')).find(
+      (btn) => btn.textContent === 'common:Run'
+    )!;
+    await act(async () => {
+      Simulate.click(runBtn);
+    });
+    expect(onSubmitSpy).toHaveBeenCalledWith({
+      variables: { files: undefined, prompt: undefined }
+    });
+  });
+
+  it('preserves submitted plugin inputs and restart params when SSE updateVariables fires', async () => {
+    const promptInput = createPromptInput(undefined);
+    let latestGlobalVariables: Record<string, any> | undefined;
+    const setPluginRunTab = vi.fn();
+
+    const Harness = () => {
+      const variablesForm = useForm<ChatBoxInputFormType>();
+      const [chatRecords, setChatRecords] = useState<ChatSiteItemType[]>([]);
+
+      latestGlobalVariables = variablesForm.watch('variables');
+
+      const resetVariables = ({ variables = {} }: { variables?: Record<string, any> } = {}) => {
+        const values = variablesForm.getValues();
+        variablesForm.reset({
+          ...values,
+          variables
+        });
+      };
+
+      return React.createElement(
+        ChatItemContext.Provider,
+        {
+          value: {
+            chatBoxData: {
+              appId: 'app-1',
+              app: {
+                name: 'Flux',
+                avatar: '',
+                type: 'plugin' as any,
+                pluginInputs: [promptInput],
+                chatConfig: {}
+              }
+            },
+            variablesForm,
+            resetVariables,
+            setPluginRunTab
+          } as any
+        },
+        React.createElement(
+          ChatRecordContext.Provider,
+          {
+            value: {
+              chatRecords,
+              setChatRecords
+            } as any
+          },
+          React.createElement(
+            PluginRunContextProvider,
+            {
+              appId: 'app-1',
+              chatId: 'chat-1',
+              onNewChat: () => {
+                resetVariables({ variables: {} });
+                setChatRecords([]);
+              },
+              onStartChat: async ({ generatingMessage }) => {
+                generatingMessage({
+                  event: SseResponseEventEnum.updateVariables,
+                  variables: { runtimeOnly: 'updated-by-workflow' }
+                });
+                generatingMessage({
+                  event: SseResponseEventEnum.answer,
+                  text: 'done'
+                });
+                return { responseText: 'done' };
+              }
+            },
+            React.createElement(RenderInput)
+          )
+        )
+      );
+    };
+
+    await act(async () => {
+      root.render(React.createElement(Harness));
+    });
+
+    const inputEl = container.querySelector<HTMLInputElement>('[data-testid="variables.prompt"]')!;
+    await act(async () => {
+      inputEl.value = 'submitted prompt';
+      Simulate.change(inputEl);
+    });
+
+    const runBtn = Array.from(container.querySelectorAll('button')).find(
+      (btn) => btn.textContent === 'common:Run'
+    )!;
+    await act(async () => {
+      Simulate.click(runBtn);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // 全局会话变量表单收到运行时更新，但插件历史入参回显不被覆盖
+    expect(latestGlobalVariables).toEqual({ runtimeOnly: 'updated-by-workflow' });
+    const historyInput = container.querySelector<HTMLInputElement>(
+      '[data-testid="variables.prompt"]'
+    )!;
+    expect(historyInput.disabled).toBe(true);
+    expect(historyInput.value).toBe('submitted prompt');
+
+    // 点击重新运行（即使 onNewChat 同时重置全局 variablesForm）仍保留上次提交的参数
+    const restartBtn = Array.from(container.querySelectorAll('button')).find(
+      (btn) => btn.textContent === 'common:Restart'
+    )!;
+    await act(async () => {
+      Simulate.click(restartBtn);
+    });
+
+    const restartedInput = container.querySelector<HTMLInputElement>(
+      '[data-testid="variables.prompt"]'
+    )!;
+    expect(restartedInput.disabled).toBe(false);
+    expect(restartedInput.value).toBe('submitted prompt');
+
+    // 再点清空输入仍可正常清空
+    await act(async () => {
+      Simulate.click(container.querySelector('[data-testid="confirm-clear"]')!);
+    });
+    expect(
+      container.querySelector<HTMLInputElement>('[data-testid="variables.prompt"]')?.value
+    ).toBe('');
   });
 });

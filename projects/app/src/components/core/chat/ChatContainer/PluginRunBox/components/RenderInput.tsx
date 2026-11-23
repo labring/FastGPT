@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Controller, type DefaultValues } from 'react-hook-form';
+import { Controller, type DefaultValues, useForm } from 'react-hook-form';
 import { Box, Button, Flex, FormControl, FormErrorMessage } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
@@ -25,7 +25,11 @@ const RenderInput = () => {
   const { t } = useTranslation();
 
   const pluginInputs = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.pluginInputs);
-  const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
+
+  // 插件入参表单与会话级全局变量表单（ChatItemContext.variablesForm）语义不同：
+  // 后者会被 getInitChatInfo、clearChatRecords 及 SSE updateVariables 写入，且跨 Tab 卸载持续存活；
+  // 由 RenderInput 独立持有表单实例，既防止运行时变量覆盖已提交入参，也避免跨挂载残留旧值。
+  const inputForm = useForm<ChatBoxInputFormType>();
 
   const hasHistory = useContextSelector(ChatRecordContext, (v) => v.chatRecords.length > 0);
   const historyInputSnapshot = useContextSelector(ChatRecordContext, (v) => {
@@ -42,7 +46,7 @@ const RenderInput = () => {
   const instruction = useContextSelector(PluginRunContext, (v) => v.instruction);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
 
-  const { control, handleSubmit, reset } = variablesForm;
+  const { control, handleSubmit, reset } = inputForm;
 
   const parsedHistoryInputs = useMemoEnhance(() => {
     if (!hasHistory || !historyInputSnapshot) return undefined;
@@ -56,7 +60,7 @@ const RenderInput = () => {
   }, [hasHistory, historyInputSnapshot]);
 
   // Get plugin input components
-  const formatPluginInputs = parsedHistoryInputs || pluginInputs;
+  const formatPluginInputs = parsedHistoryInputs ?? pluginInputs;
 
   const [restartData, setRestartData] = useState<ChatBoxInputFormType>();
   const [fieldResetKeys, setFieldResetKeys] = useState<Record<string, number>>({});
@@ -70,7 +74,7 @@ const RenderInput = () => {
 
   const resetFormVariables = useCallback(
     (nextValues: DefaultValues<ChatBoxInputFormType>) => {
-      const nextVariables = nextValues.variables || {};
+      const nextVariables = nextValues.variables ?? {};
       reset(nextValues);
       // react-hook-form@7.43.1 的 Controller(useWatch) 在挂载时会把当时的字段值冻结为订阅闭包里的 defaultValue；
       // 仅当 reset 将字段设为 undefined 时，get(..., defaultValue) 会回退到旧值并被 register 写回。
@@ -83,7 +87,7 @@ const RenderInput = () => {
         setFieldResetKeys((prev) => {
           const next = { ...prev };
           keysToRemount.forEach((key) => {
-            next[key] = (prev[key] || 0) + 1;
+            next[key] = (prev[key] ?? 0) + 1;
           });
           return next;
         });
@@ -200,7 +204,7 @@ const RenderInput = () => {
                 )}
               </Flex>
               <Controller
-                key={`${inputKey}-${fieldResetKeys[input.key] || 0}`}
+                key={`${inputKey}-${fieldResetKeys[input.key] ?? 0}`}
                 control={control}
                 name={inputKey}
                 rules={{
@@ -240,7 +244,7 @@ const RenderInput = () => {
                         isDisabled={isDisabledInput}
                         isInvalid={!!error}
                         inputType={nodeInputTypeToInputType(input.renderTypeList)}
-                        form={variablesForm}
+                        form={inputForm}
                         fieldName={inputKey}
                         outLinkAuthData={outLinkAuthData}
                         isRichText={false}
