@@ -60,7 +60,6 @@ export const configureMongoDalRuntime = (options?: {
       }
     },
     mongoModelBinder: mongoDeps.mongoModelBinder,
-    healthChecker: mongoDeps.healthChecker,
     transactionRunner: options?.transactionRunner ?? mongoDeps.transactionRunner
   });
 };

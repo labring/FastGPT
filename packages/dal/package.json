@@ -31,21 +31,14 @@
     "./db/mongo/collection": "./db/mongo/collection.ts",
     "./db/mongo/indexSync": "./db/mongo/indexSync.ts",
     "./db/mongo/runtime": "./db/mongo/runtime.ts",
-    "./db/sql/base": "./db/sql/base.ts",
-    "./db/sql/ddl": "./db/sql/ddl.ts",
-    "./db/sql/observability": "./db/sql/observability.ts",
-    "./db/sql/migrations/types": "./db/sql/migrations/types.ts",
-    "./db/sql/migrations/helpers": "./db/sql/migrations/helpers.ts",
-    "./db/sql/migrations/runner": "./db/sql/migrations/runner.ts",
-    "./db/sql/dialects/postgres": "./db/sql/dialects/postgres.ts",
-    "./db/sql/dialects/mysql": "./db/sql/dialects/mysql.ts",
-    "./db/logTopologyContract": "./db/logTopologyContract.mjs",
+    "./db/oceanbase/base": "./db/oceanbase/base.ts",
+    "./db/oceanbase/runtime": "./db/oceanbase/runtime.ts",
     "./db/testing": "./db/testing.ts",
     "./db/repos/registry": "./db/repos/registry.ts",
     "./db/repos/appRegistration/repo": "./db/repos/appRegistration/repo.ts",
     "./db/repos/appRegistration/repo.type": "./db/repos/appRegistration/repo.type.ts",
     "./db/repos/*/mongo/*": null,
-    "./db/repos/*/sql/*": null
+    "./db/repos/*/oceanbase/*": null
   },
   "scripts": {
     "test": "vitest run -c vitest.config.ts",
@@ -65,13 +58,10 @@
     "kysely": "^0.29.9",
     "mongoose": "catalog:",
     "mysql2": "^3.23.1",
-    "pg": "^8.10.0",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.16",
     "@types/node": "catalog:",
-    "@types/pg": "^8.6.6",
     "mongodb-memory-server": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

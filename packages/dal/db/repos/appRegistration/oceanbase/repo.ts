@@ -1,5 +1,6 @@
 import { createEntityId, isValidEntityId } from '@fastgpt/global/common/string/entityId';
-import { SqlRepositoryBase } from '../../../sql/base';
+import { OceanBaseRepositoryBase } from '../../../oceanbase/base';
+import type { DbRuntime } from '../../../runtime';
 import type { DbSession } from '../../../types';
 import {
   AppRegistrationDomainReadSchema,
@@ -8,21 +9,30 @@ import {
   type AppRegistrationRepository,
   type CreateAppRegistrationWriteInput
 } from '../repo.type';
-import type { AppRegistrationDatabase, AppRegistrationSqlRow } from './table';
+import {
+  AppRegistrationTableName,
+  type AppRegistrationDatabase,
+  type AppRegistrationOceanBaseRow
+} from './table';
 
-/** AppRegistration 仓储的可移植 SQL（Kysely）策略实现，通吃 OceanBase/MySQL 与 PostgreSQL。 */
-export class SqlAppRegistrationRepository
-  extends SqlRepositoryBase<
+/** AppRegistration 仓储的 OceanBase（Kysely + mysql2）策略实现。 */
+export class OceanBaseAppRegistrationRepository
+  extends OceanBaseRepositoryBase<
     AppRegistrationDatabase,
-    'app_registrations',
+    typeof AppRegistrationTableName,
     typeof AppRegistrationDomainReadSchema
   >
   implements AppRegistrationRepository
 {
-  protected readonly tableName = 'app_registrations';
-  protected readonly readSchema = AppRegistrationDomainReadSchema;
+  constructor(runtime?: DbRuntime) {
+    super({
+      tableName: AppRegistrationTableName,
+      readSchema: AppRegistrationDomainReadSchema,
+      runtime
+    });
+  }
 
-  private mapRow(row: AppRegistrationSqlRow) {
+  private mapRow(row: AppRegistrationOceanBaseRow) {
     return {
       _id: row._id,
       teamId: row.team_id,
@@ -45,8 +55,8 @@ export class SqlAppRegistrationRepository
       return null;
     }
 
-    const row = await this.readDb(tx)
-      .selectFrom('app_registrations')
+    const row = await this.db(tx)
+      .selectFrom(AppRegistrationTableName)
       .selectAll()
       .where('_id', '=', this.normalizeId(id))
       .where('team_id', '=', this.normalizeId(teamId))
@@ -68,8 +78,8 @@ export class SqlAppRegistrationRepository
       return null;
     }
 
-    const row = await this.readDb(tx)
-      .selectFrom('app_registrations')
+    const row = await this.db(tx)
+      .selectFrom(AppRegistrationTableName)
       .selectAll()
       .where('team_id', '=', this.normalizeId(teamId))
       .where('app_id', '=', this.normalizeId(appId))
@@ -90,8 +100,8 @@ export class SqlAppRegistrationRepository
       return [];
     }
 
-    const rows = await this.readDb(tx)
-      .selectFrom('app_registrations')
+    const rows = await this.db(tx)
+      .selectFrom(AppRegistrationTableName)
       .selectAll()
       .where('team_id', '=', this.normalizeId(teamId))
       .orderBy('_id', 'desc')
@@ -105,8 +115,8 @@ export class SqlAppRegistrationRepository
       return 0;
     }
 
-    const row = await this.readDb(tx)
-      .selectFrom('app_registrations')
+    const row = await this.db(tx)
+      .selectFrom(AppRegistrationTableName)
       .select((eb) => eb.fn.countAll<string>().as('count'))
       .where('team_id', '=', this.normalizeId(teamId))
       .executeTakeFirstOrThrow();
@@ -126,7 +136,7 @@ export class SqlAppRegistrationRepository
     const createdAt = parsed.createdAt ?? new Date();
 
     await this.db(tx)
-      .insertInto('app_registrations')
+      .insertInto(AppRegistrationTableName)
       .values({
         _id: id,
         team_id: parsed.teamId,
@@ -159,11 +169,11 @@ export class SqlAppRegistrationRepository
     }
 
     const res = await this.db(tx)
-      .deleteFrom('app_registrations')
+      .deleteFrom(AppRegistrationTableName)
       .where('team_id', '=', this.normalizeId(teamId))
       .where('app_id', '=', this.normalizeId(appId))
       .executeTakeFirst();
 
-    return Number(res.numDeletedRows ?? 0);
+    return Number(res.numDeletedRows ?? 0n);
   }
 }

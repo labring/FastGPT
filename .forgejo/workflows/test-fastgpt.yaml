@@ -131,23 +131,10 @@ jobs:
       - name: 'Test DAL'
         env:
           FASTGPT_TEST_SCOPE: dal
-          FASTGPT_TEST_MYSQL_URI: ${{ vars.AB_TEST_MYSQL_URI }}
           FASTGPT_TEST_OCEANBASE_URI: ${{ vars.AB_TEST_OCEANBASE_URI }}
-          FASTGPT_TEST_PG_URI: ${{ vars.AB_TEST_PG_URI }}
         run: |
-          REQUIRED_SQL_DIALECTS=""
-          if [ -n "$(printf '%s' "${FASTGPT_TEST_MYSQL_URI}" | tr -d '[:space:]')" ]; then
-            REQUIRED_SQL_DIALECTS="${REQUIRED_SQL_DIALECTS:+${REQUIRED_SQL_DIALECTS},}mysql"
-          fi
           if [ -n "$(printf '%s' "${FASTGPT_TEST_OCEANBASE_URI}" | tr -d '[:space:]')" ]; then
-            REQUIRED_SQL_DIALECTS="${REQUIRED_SQL_DIALECTS:+${REQUIRED_SQL_DIALECTS},}oceanbase"
-          fi
-          if [ -n "$(printf '%s' "${FASTGPT_TEST_PG_URI}" | tr -d '[:space:]')" ]; then
-            REQUIRED_SQL_DIALECTS="${REQUIRED_SQL_DIALECTS:+${REQUIRED_SQL_DIALECTS},}postgres"
-          fi
-          if [ -n "${REQUIRED_SQL_DIALECTS}" ]; then
-            export FASTGPT_TEST_REQUIRED_SQL_DIALECTS="${REQUIRED_SQL_DIALECTS}"
-            echo "Requiring external SQL dialects: ${FASTGPT_TEST_REQUIRED_SQL_DIALECTS}"
+            export FASTGPT_TEST_REQUIRED_OCEANBASE=1
           fi
           pnpm test
 

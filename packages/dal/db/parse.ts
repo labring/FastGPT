@@ -17,32 +17,8 @@ const extractRecordId = (rawRow: unknown): string => {
 };
 
 /**
- * 归一化数据库 JSON 载荷字段。
- *
- * PostgreSQL `jsonb` 与 `mysql2` `json` 通常直接返回对象/数组，但部分兼容驱动或降级 TEXT 列
- * 可能返回 JSON 字符串；在 Read Schema 中包裹此 helper 可确保跨库输出形态完全一致。
- */
-export const jsonColumnSchema = <TSchema extends z.ZodTypeAny>(schema: TSchema) =>
-  z.preprocess((value) => {
-    if (typeof value !== 'string') {
-      return value;
-    }
-    const trimmed = value.trim();
-    if (trimmed.length === 0) {
-      return undefined;
-    }
-    try {
-      return JSON.parse(trimmed);
-    } catch {
-      return value;
-    }
-  }, schema);
-
-/**
  * 单条数据库记录出口校验与归一化（Fail-Fast 策略）。
- *
- * 用于 `findById`、`findOne`、`create` 等精确单行场景。若校验失败，立即记录结构化错误日志
- * 并抛出 `DbRecordCorruptedError`，阻断残缺或未归一化数据流入计费、权限等核心逻辑。
+ * 校验失败时记录错误日志并抛出 `DbRecordCorruptedError`，阻断脏数据进入核心业务。
  */
 export const parseRepoRow = <TSchema extends z.ZodTypeAny>({
   table,
@@ -78,10 +54,7 @@ export const parseRepoRow = <TSchema extends z.ZodTypeAny>({
 
 /**
  * 列表/批量数据库记录出口校验与脏数据隔离降级（Warn & Skip 策略）。
- *
- * 正常情况下走整批数组快速校验路径；当列表中混入远古历史脏数据时，自动退化为逐行校验：
- * 对坏行打印高优先级 `logger.error`（含表名、主键 ID 与 Zod issues），同时跳过坏行返回其余有效记录，
- * 避免单条历史脏数据导致整页列表 500 不可用。
+ * 正常走整批数组快路径；混入历史脏数据时退化为逐行校验，记录告警并跳过坏行。
  */
 export const parseRepoRows = <TSchema extends z.ZodTypeAny>({
   table,

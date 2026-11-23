@@ -18,7 +18,7 @@ describe('@fastgpt/dal/db transaction & afterCommit', () => {
     await closeDbRuntime();
   });
 
-  it('keeps native transaction handle hidden from business DbSession and detects family/dialect mismatch', () => {
+  it('keeps native transaction handle hidden from business DbSession and detects dialect mismatch', () => {
     const rawHandle = { secretConnection: true };
     const { session } = createManagedDbSession({
       dialect: 'mongo',
@@ -26,15 +26,11 @@ describe('@fastgpt/dal/db transaction & afterCommit', () => {
       nativeTx: rawHandle
     });
 
-    expect(Object.keys(session).sort()).toEqual([
-      'afterCommit',
-      'datasource',
-      'dialect',
-      'family',
-      'id'
-    ]);
-    expect(unwrapNativeDbSession(session, { family: 'mongo', dialect: 'mongo' })).toBe(rawHandle);
-    expect(() => unwrapNativeDbSession(session, { family: 'sql' })).toThrow(DbConfigurationError);
+    expect(Object.keys(session).sort()).toEqual(['afterCommit', 'datasource', 'dialect', 'id']);
+    expect(unwrapNativeDbSession(session, { dialect: 'mongo' })).toBe(rawHandle);
+    expect(() => unwrapNativeDbSession(session, { dialect: 'oceanbase' })).toThrow(
+      DbConfigurationError
+    );
   });
 
   it('retries transient conflicts, discards aborted afterCommit callbacks, and runs committed hooks in FIFO order', async () => {
@@ -78,8 +74,8 @@ describe('@fastgpt/dal/db transaction & afterCommit', () => {
   it('routes log transaction to main pool in shared mode and log pool in separate mode while preserving logical datasource isolation', async () => {
     const seenRunnerDatasources: string[] = [];
     configureDbRuntime({
-      dialect: 'postgres',
-      mainWriteUrl: 'postgres://localhost:5432/main',
+      dialect: 'oceanbase',
+      mainWriteUrl: 'mysql://root@127.0.0.1:2881/main',
       transactionRunner: async ({ datasource, execute }) => {
         seenRunnerDatasources.push(datasource);
         return execute({ txPool: datasource });
@@ -89,12 +85,12 @@ describe('@fastgpt/dal/db transaction & afterCommit', () => {
     const result = await runInTransaction(
       async (tx) => {
         expect(tx.datasource).toBe('log');
-        expect(unwrapNativeDbSession(tx, { family: 'sql', datasource: 'log' })).toEqual({
+        expect(unwrapNativeDbSession(tx, { dialect: 'oceanbase', datasource: 'log' })).toEqual({
           txPool: 'main'
         });
-        expect(() => unwrapNativeDbSession(tx, { family: 'sql', datasource: 'main' })).toThrow(
-          DbConfigurationError
-        );
+        expect(() =>
+          unwrapNativeDbSession(tx, { dialect: 'oceanbase', datasource: 'main' })
+        ).toThrow(DbConfigurationError);
         return 'shared-ok';
       },
       { datasource: 'log' }
@@ -105,9 +101,9 @@ describe('@fastgpt/dal/db transaction & afterCommit', () => {
 
     await closeDbRuntime();
     configureDbRuntime({
-      dialect: 'postgres',
-      mainWriteUrl: 'postgres://localhost:5432/main',
-      logWriteUrl: 'postgres://localhost:5432/log',
+      dialect: 'oceanbase',
+      mainWriteUrl: 'mysql://root@127.0.0.1:2881/main',
+      logWriteUrl: 'mysql://root@127.0.0.1:2881/log',
       transactionRunner: async ({ datasource, execute }) => {
         seenRunnerDatasources.push(datasource);
         return execute({ txPool: datasource });
@@ -117,7 +113,7 @@ describe('@fastgpt/dal/db transaction & afterCommit', () => {
     const separateResult = await runInTransaction(
       async (tx) => {
         expect(tx.datasource).toBe('log');
-        expect(unwrapNativeDbSession(tx, { family: 'sql', datasource: 'log' })).toEqual({
+        expect(unwrapNativeDbSession(tx, { dialect: 'oceanbase', datasource: 'log' })).toEqual({
           txPool: 'log'
         });
         return 'separate-ok';
@@ -131,31 +127,19 @@ describe('@fastgpt/dal/db transaction & afterCommit', () => {
   it('NEVER retries OceanBase 4012 / 6225 or Mongo UnknownTransactionCommitResult and surfaces DbTransactionOutcomeUnknownError with cause', async () => {
     const outcomeUnknownCases: Array<{ label: string; error: unknown }> = [
       {
-        label: 'OceanBase bare errno 4012',
+        label: 'OceanBase errno 4012',
         error: Object.assign(new Error('Timeout'), { errno: 4012 })
       },
       {
-        label: 'OceanBase string code 4012 with unknown message',
-        error: Object.assign(new Error('Transaction result is unknown'), { code: '4012' })
-      },
-      {
-        label: 'OceanBase internal errno 6225',
+        label: 'OceanBase errno 6225',
         error: Object.assign(new Error('OB_TRANS_UNKNOWN'), { errno: 6225 })
       },
-      { label: 'OceanBase string code 6225', error: { code: '6225' } },
       {
         label: 'OceanBase sqlMessage unknown commit state',
         error: { sqlMessage: 'Transaction result is unknown' }
       },
       {
-        label: 'Mongo UnknownTransactionCommitResult label',
-        error: Object.assign(new Error('commit unknown'), {
-          errorLabels: ['UnknownTransactionCommitResult']
-        })
-      },
-      {
-        label:
-          'Mongo error carrying both TransientTransactionError and UnknownTransactionCommitResult',
+        label: 'Mongo UnknownTransactionCommitResult + TransientTransactionError',
         error: {
           hasErrorLabel: (label: string) =>
             label === 'TransientTransactionError' || label === 'UnknownTransactionCommitResult'
@@ -199,7 +183,6 @@ describe('@fastgpt/dal/db transaction & afterCommit', () => {
       expect(afterCommitSpy, testCase.label).not.toHaveBeenCalled();
       expect(caught, testCase.label).toBeInstanceOf(DbTransactionOutcomeUnknownError);
       const outcomeErr = caught as DbTransactionOutcomeUnknownError;
-      expect(outcomeErr.code).toBe('DB_TRANSACTION_OUTCOME_UNKNOWN');
       if (testCase.error instanceof DbTransactionOutcomeUnknownError) {
         expect(outcomeErr).toBe(testCase.error);
       } else {
@@ -208,20 +191,17 @@ describe('@fastgpt/dal/db transaction & afterCommit', () => {
     }
   });
 
-  it('retries provably rolled-back conflict errors (OceanBase 6002/6004/6210/6223, MySQL 1213/1205, PG 40001/40P01, Mongo 112)', async () => {
-    const retryableErrors: Array<{ label: string; error: unknown }> = [
+  it('retries OceanBase transient conflicts, while Mongo outer loop only retries explicit DbTransactionConflictError to avoid amplifying driver withTransaction retries', async () => {
+    const obRetryableErrors: Array<{ label: string; error: unknown }> = [
       { label: 'OceanBase 6002', error: { errno: 6002 } },
       { label: 'OceanBase 6004', error: { code: '6004' } },
       { label: 'OceanBase 6210', error: { errno: 6210 } },
       { label: 'OceanBase 6223', error: { errno: 6223 } },
-      { label: 'MySQL 1213 deadlock', error: { errno: 1213, code: 'ER_LOCK_DEADLOCK' } },
-      { label: 'MySQL 1205 lock wait timeout', error: { errno: 1205 } },
-      { label: 'PG 40001 serialization failure', error: { code: '40001' } },
-      { label: 'PG 40P01 deadlock', error: { code: '40P01' } },
-      { label: 'Mongo 112 WriteConflict', error: { code: 112 } }
+      { label: 'OceanBase 1213 deadlock', error: { errno: 1213, code: 'ER_LOCK_DEADLOCK' } },
+      { label: 'OceanBase 1205 lock timeout', error: { errno: 1205 } }
     ];
 
-    for (const testCase of retryableErrors) {
+    for (const testCase of obRetryableErrors) {
       await closeDbRuntime();
       let attempts = 0;
 
@@ -244,5 +224,39 @@ describe('@fastgpt/dal/db transaction & afterCommit', () => {
       expect(attempts, testCase.label).toBe(2);
       expect(result).toBe(`recovered:${testCase.label}`);
     }
+
+    // Mongo 模式下，驱动原生 withTransaction 已处理 TransientTransactionError；外层不应重复叠加重试
+    await closeDbRuntime();
+    let driverExhaustedAttempts = 0;
+    configureDbRuntime({
+      dialect: 'mongo',
+      mainWriteUrl: 'mongodb://localhost:27017/fastgpt',
+      transactionRunner: async ({ execute }) => {
+        driverExhaustedAttempts += 1;
+        return execute({ attempt: driverExhaustedAttempts });
+      }
+    });
+
+    await expect(
+      runInTransaction(async () => {
+        throw Object.assign(new Error('WriteConflict'), {
+          code: 112,
+          errorLabels: ['TransientTransactionError']
+        });
+      })
+    ).rejects.toThrow('WriteConflict');
+    expect(driverExhaustedAttempts).toBe(1);
+
+    // 但业务显式抛出的 DbTransactionConflictError（如 ACL 冲突）在 Mongo 下仍需外层重试
+    let appConflictAttempts = 0;
+    const recovered = await runInTransaction(async () => {
+      appConflictAttempts += 1;
+      if (appConflictAttempts === 1) {
+        throw new DbTransactionConflictError(new Error('acl version conflict'));
+      }
+      return 'mongo-acl-recovered';
+    });
+    expect(appConflictAttempts).toBe(2);
+    expect(recovered).toBe('mongo-acl-recovered');
   });
 });

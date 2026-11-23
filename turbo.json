@@ -20,10 +20,8 @@
     },
     "test": {
       "env": [
-        "FASTGPT_TEST_MYSQL_URI",
         "FASTGPT_TEST_OCEANBASE_URI",
-        "FASTGPT_TEST_PG_URI",
-        "FASTGPT_TEST_REQUIRED_SQL_DIALECTS",
+        "FASTGPT_TEST_REQUIRED_OCEANBASE",
         "FASTGPT_TEST_REQUIRE_PRO_SCHEMA_GUARD"
       ],
       "passThroughEnv": [
@@ -38,10 +36,8 @@
     "@fastgpt/dal#test": {
       "cache": false,
       "env": [
-        "FASTGPT_TEST_MYSQL_URI",
         "FASTGPT_TEST_OCEANBASE_URI",
-        "FASTGPT_TEST_PG_URI",
-        "FASTGPT_TEST_REQUIRED_SQL_DIALECTS",
+        "FASTGPT_TEST_REQUIRED_OCEANBASE",
         "FASTGPT_TEST_REQUIRE_PRO_SCHEMA_GUARD"
       ],
       "passThroughEnv": [

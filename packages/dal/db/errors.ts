@@ -7,7 +7,7 @@ export type DbErrorCode =
   | 'DB_RECORD_CORRUPTED'
   | 'DB_OPERATION_FAILED';
 
-/** 数据库访问层统一错误基类，屏蔽 Mongoose、PostgreSQL 与 OceanBase/MySQL 驱动原始异常结构差异。 */
+/** 数据库访问层统一错误基类，屏蔽 Mongoose 与 OceanBase（mysql2）驱动原始异常结构差异。 */
 export class DbError extends Error {
   readonly code: DbErrorCode;
   override readonly cause?: unknown;
@@ -32,7 +32,7 @@ export class DbRuntimeNotConfiguredError extends DbError {
   }
 }
 
-/** 跨库统一的唯一索引冲突异常（对应 Mongo E11000、PG 23505 与 OceanBase/MySQL 1062/ER_DUP_ENTRY）。 */
+/** 跨库统一的唯一索引冲突异常（对应 Mongo E11000 与 OceanBase 1062/ER_DUP_ENTRY）。 */
 export class DbUniqueConflictError extends DbError {
   readonly table?: string;
   readonly constraint?: string;
@@ -55,9 +55,9 @@ export class DbUniqueConflictError extends DbError {
 }
 
 /**
- * 标记可重试的并发事务冲突异常（仅限服务端已确定回滚的场景：Mongo 112 WriteConflict / TransientTransactionError，
- * PG 40001 / 40P01，MySQL 1213 死锁 / 1205 锁超时，OceanBase 6002 / 6004 / 6210 / 6223，
- * 以及业务显式抛出的乐观并发冲突）。
+ * 标记可重试的并发事务冲突异常（仅限服务端已确定回滚的场景：Mongo 112 WriteConflict /
+ * TransientTransactionError，OceanBase 死锁/锁超时 1213/1205 与瞬态回滚错误码
+ * 6002/6004/6210/6223，以及业务显式抛出的乐观并发冲突）。
  */
 export class DbTransactionConflictError extends DbError {
   constructor(cause?: unknown, message = 'Database transaction write conflict') {
@@ -131,11 +131,7 @@ const getRawErrorIdentifiers = (
     }
   }
 
-  return {
-    codes,
-    messages,
-    cause: record.cause
-  };
+  return { codes, messages, cause: record.cause };
 };
 
 const collectErrorCodes = (error: unknown, depth = 0): Array<string | number> => {
@@ -196,20 +192,18 @@ const hasMongoErrorLabel = ({
 const TRANSACTION_OUTCOME_UNKNOWN_MESSAGE_REGEX =
   /transaction\s+(?:result|outcome|commit)\s+(?:is\s+)?unknown|unknown\s+transaction\s+commit/i;
 
-/** 识别 Mongo 11000、PostgreSQL 23505、OceanBase/MySQL 1062/ER_DUP_ENTRY 或已封装的 DbUniqueConflictError。 */
+/** 识别 Mongo 11000、OceanBase 1062/ER_DUP_ENTRY 或已封装的 DbUniqueConflictError。 */
 export const isDbUniqueConflictError = (error: unknown): boolean => {
   if (error instanceof DbUniqueConflictError) {
     return true;
   }
   const codes = collectErrorCodes(error);
-  return codes.some(
-    (code) => code === 11000 || code === '23505' || code === 1062 || code === 'ER_DUP_ENTRY'
-  );
+  return codes.some((code) => code === 11000 || code === 1062 || code === 'ER_DUP_ENTRY');
 };
 
 /**
  * 识别事务提交结果未知的歧义异常：
- * - OceanBase 内部错误 `6225`（Transaction result is unknown）及复用的 MySQL 协议错误码 `4012`；
+ * - OceanBase 内部错误 `6225`（Transaction result is unknown）及复用错误码 `4012`；
  * - MongoDB `UnknownTransactionCommitResult`；
  * - 已封装的 `DbTransactionOutcomeUnknownError` 或携带明确提交结果未知文案的驱动错误。
  */
@@ -229,7 +223,7 @@ export const isDbTransactionOutcomeUnknownError = (error: unknown): boolean => {
 };
 
 /**
- * 识别可由事务入口重新开启新会话安全重跑的瞬态写冲突、串行化失败、死锁或 OceanBase 已确定回滚错误。
+ * 识别可由事务入口重新开启新会话安全重跑的瞬态写冲突、死锁或 OceanBase 已确定回滚错误。
  *
  * 安全不变量：凡命中 `isDbTransactionOutcomeUnknownError`（含 OceanBase 6225 / 4012 及 Mongo
  * `UnknownTransactionCommitResult`）一律返回 `false`，防止对可能已提交的事务盲目重放。
@@ -246,8 +240,6 @@ export const isDbTransientConflictError = (error: unknown): boolean => {
     codes.some(
       (code) =>
         code === 112 ||
-        code === '40001' ||
-        code === '40P01' ||
         code === 1213 ||
         code === 'ER_LOCK_DEADLOCK' ||
         code === 1205 ||

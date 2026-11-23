@@ -139,7 +139,6 @@ const installDalMongoObservabilityMiddleware = (
 export type MongoRuntimeDeps = {
   transactionRunner: DbTransactionRunner;
   mongoModelBinder: MongoModelBinder;
-  healthChecker: (datasource: DbDatasource) => Promise<void>;
   closeHandler?: () => Promise<void>;
 };
 
@@ -201,13 +200,6 @@ export const createMongoRuntimeDeps = ({
       getLogClient
     }),
     mongoModelBinder,
-    healthChecker: async (effectiveDatasource) => {
-      const client = resolveClient(effectiveDatasource);
-      const db = client.connection.db;
-      if (db !== undefined) {
-        await db.admin().ping();
-      }
-    },
     ...(closeHandler !== undefined ? { closeHandler } : {})
   };
 };

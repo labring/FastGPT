@@ -1,25 +1,19 @@
 import { createEntityId } from '@fastgpt/global/common/string/entityId';
 import {
   DbConfigurationError,
+  DbTransactionConflictError,
   DbTransactionOutcomeUnknownError,
   isDbTransactionOutcomeUnknownError,
   isDbTransientConflictError
 } from './errors';
 import { getDbLogger, getDbRuntime } from './runtime';
-import {
-  getDbDialectFamily,
-  type DbDatasource,
-  type DbDialect,
-  type DbDialectFamily,
-  type DbSession
-} from './types';
+import type { DbDatasource, DbDialect, DbSession } from './types';
 
 export const DEFAULT_TRANSACTION_TIMEOUT_MS = 60_000;
 export const DEFAULT_MAX_CONFLICT_RETRIES = 3;
 
 type InternalSessionRecord = {
   dialect: DbDialect;
-  family: DbDialectFamily;
   datasource: DbDatasource;
   nativeTx: unknown;
 };
@@ -52,12 +46,10 @@ export const createManagedDbSession = ({
 } => {
   const callbacks: Array<() => Promise<void> | void> = [];
   const sessionId = createEntityId();
-  const family = getDbDialectFamily(dialect);
 
   const session = {
     id: sessionId,
     dialect,
-    family,
     datasource,
     afterCommit: (callback: () => Promise<void> | void) => {
       if (onAfterCommit !== undefined) {
@@ -68,7 +60,7 @@ export const createManagedDbSession = ({
     }
   } as unknown as DbSession;
 
-  nativeSessionRegistry.set(session, { dialect, family, datasource, nativeTx });
+  nativeSessionRegistry.set(session, { dialect, datasource, nativeTx });
 
   return {
     session,
@@ -82,7 +74,7 @@ export const createManagedDbSession = ({
         try {
           await callback();
         } catch (error) {
-          // 此时数据库事务已提交成功，afterCommit 副作用异常仅记录高优告警，不中断后续清理回调，也不触发事务重跑
+          // 数据库事务已提交成功，afterCommit 异常仅记录高优告警，不中断后续回调也不重跑事务
           logger.error('Database transaction afterCommit callback failed', {
             sessionId,
             dialect,
@@ -96,11 +88,11 @@ export const createManagedDbSession = ({
 };
 
 /**
- * 在方言基类内部解包底层驱动事务对象；若传入了跨实现族、跨方言或跨数据源的不匹配会话，立即抛配置异常。
+ * 在方言基类内部解包底层驱动事务对象；若传入跨方言或跨数据源的不匹配会话，立即抛配置异常。
  */
 export const unwrapNativeDbSession = <TNative = unknown>(
   tx: DbSession | undefined,
-  expected?: { dialect?: DbDialect; family?: DbDialectFamily; datasource?: DbDatasource }
+  expected?: { dialect?: DbDialect; datasource?: DbDatasource }
 ): TNative | undefined => {
   if (tx === undefined) {
     return undefined;
@@ -109,11 +101,6 @@ export const unwrapNativeDbSession = <TNative = unknown>(
   const record = nativeSessionRegistry.get(tx);
   if (record === undefined) {
     throw new DbConfigurationError('Invalid or unregistered DbSession instance');
-  }
-  if (expected?.family !== undefined && record.family !== expected.family) {
-    throw new DbConfigurationError(
-      `DbSession family mismatch: expected "${expected.family}", received "${record.family}"`
-    );
   }
   if (expected?.dialect !== undefined && record.dialect !== expected.dialect) {
     throw new DbConfigurationError(
@@ -138,11 +125,11 @@ export type RunInTransactionOptions = {
 /**
  * 在显式事务上下文中执行数据库编排逻辑。
  *
- * - 当 `datasource === 'log'` 且 `logMode === 'shared'`（默认回退复用主库）时，底层透明复用 `main` 连接池开启事务，
- *   但会话逻辑数据源仍标记为 `'log'`，防止业务代码把 `'main'` 与 `'log'` 仓储误混入同一事务导致切换 `separate` 后崩溃；
- * - 当捕获到 `DbTransactionConflictError` 或驱动层瞬态写冲突/死锁时，自动开启新会话重跑（默认最多重试 3 次），
- *   并在每次重跑前自动清空上一轮未提交的 `afterCommit` 队列；
- * - 事务成功 commit 后，按注册顺序依次执行最终轮次的 `afterCommit` 回调。
+ * - 当 `datasource === 'log'` 且 `logMode === 'shared'`（默认回退复用主库）时，底层复用 `main` 连接池，
+ *   但会话逻辑数据源仍标记为 `'log'`，防止业务把 `'main'` 与 `'log'` 仓储误混入同一事务；
+ * - 命中 `DbTransactionOutcomeUnknownError`（如 OceanBase 6225 / 4012、Mongo `UnknownTransactionCommitResult`）
+ *   时拒绝盲目重试，保留原始 cause 向上抛出；
+ * - 命中确定已回滚的并发冲突时自动重跑（默认最多 3 次），并在每次重跑前清空上一轮 `afterCommit` 队列。
  */
 export const runInTransaction = async <T>(
   fn: (tx: DbSession) => Promise<T>,
@@ -156,7 +143,6 @@ export const runInTransaction = async <T>(
 
   const runtime = getDbRuntime();
   const effectiveDatasource = runtime.resolveEffectiveDatasource(datasource);
-
   const runner = runtime.getTransactionRunner();
   const logger = runtime.getLogger();
   let conflictRetries = 0;
@@ -190,8 +176,6 @@ export const runInTransaction = async <T>(
           error instanceof DbTransactionOutcomeUnknownError
             ? error
             : new DbTransactionOutcomeUnknownError(error);
-        // 事务提交结果未知（如 OceanBase 6225 / 4012、Mongo UnknownTransactionCommitResult）：
-        // 服务端可能已经提交，绝不能自动重跑造成重复写入，统一抛出可对账异常并保留原始 cause。
         logger.error('Database transaction outcome is unknown; refusing to retry', {
           dialect: runtime.dialect,
           datasource,
@@ -200,7 +184,15 @@ export const runInTransaction = async <T>(
         throw outcomeError;
       }
 
-      if (isDbTransientConflictError(error) && conflictRetries < maxConflictRetries) {
+      // Mongo 驱动内置 `session.withTransaction` 已自带最长 120s 的 TransientTransactionError 重试；
+      // 外层在 Mongo 下仅重试业务显式抛出的 `DbTransactionConflictError`（与旧 `mongoSessionRun` 对齐），
+      // 避免驱动耗尽后又叠加 3 轮外层重试导致请求被阻塞放大至 4×120s。
+      const canRetryOuter =
+        runtime.dialect === 'mongo'
+          ? error instanceof DbTransactionConflictError
+          : isDbTransientConflictError(error);
+
+      if (canRetryOuter && conflictRetries < maxConflictRetries) {
         conflictRetries += 1;
         logger.warn('Database transaction conflict detected, retrying transaction', {
           dialect: runtime.dialect,

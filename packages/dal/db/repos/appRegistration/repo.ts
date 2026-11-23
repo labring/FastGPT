@@ -1,13 +1,13 @@
 import { defineRepoToken } from '../../container';
 import type { AppRegistrationRepository } from './repo.type';
 import { MongoAppRegistrationRepository } from './mongo/repo';
-import { SqlAppRegistrationRepository } from './sql/repo';
+import { OceanBaseAppRegistrationRepository } from './oceanbase/repo';
 
-/** AppRegistration 仓储 DI Token（按运行时自动路由至 Mongo 或通用 SQL 实现，构造期透传 DbRuntime）。 */
+/** AppRegistration 仓储 DI Token（按运行时方言路由至 MongoDB 或 OceanBase 实现）。 */
 export const AppRegistrationRepoToken = defineRepoToken<AppRegistrationRepository>(
   'AppRegistrationRepository',
   {
     mongo: (runtime) => new MongoAppRegistrationRepository(runtime),
-    sql: () => new SqlAppRegistrationRepository()
+    oceanbase: (runtime) => new OceanBaseAppRegistrationRepository(runtime)
   }
 );

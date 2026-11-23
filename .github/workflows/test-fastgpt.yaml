@@ -171,19 +171,6 @@ jobs:
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.run_dal == 'true' }}
     runs-on: ubuntu-latest
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: fastgpt_test_root
-          MYSQL_DATABASE: fastgpt_test
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pfastgpt_test_root"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -205,12 +192,15 @@ jobs:
       - name: 'Typecheck DAL'
         run: pnpm --filter @fastgpt/dal typecheck
 
-      - name: 'Test DAL (Mongo + PGlite + MySQL 8 + Anti-Drift)'
+      - name: 'Test DAL (Mongo + OceanBase/SeekDB + Anti-Drift)'
         env:
           FASTGPT_TEST_SCOPE: dal
-          FASTGPT_TEST_MYSQL_URI: mysql://root:fastgpt_test_root@127.0.0.1:3306/fastgpt_test
-          FASTGPT_TEST_REQUIRED_SQL_DIALECTS: mysql
-        run: pnpm test
+          FASTGPT_TEST_OCEANBASE_URI: ${{ vars.FASTGPT_TEST_OCEANBASE_URI }}
+        run: |
+          if [ -n "$(printf '%s' "${FASTGPT_TEST_OCEANBASE_URI}" | tr -d '[:space:]')" ]; then
+            export FASTGPT_TEST_REQUIRED_OCEANBASE=1
+          fi
+          pnpm test
 
       - name: 'Upload Coverage (DAL)'
         if: always() && hashFiles('packages/dal/coverage/coverage-summary.json') != ''

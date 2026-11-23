@@ -6,6 +6,8 @@ import { MongoRepositoryBase } from '@fastgpt/dal/db/mongo/base';
 import { defineMongoCollection } from '@fastgpt/dal/db/mongo/collection';
 import { createMongoRuntimeDeps } from '@fastgpt/dal/db/mongo/runtime';
 import { closeDbRuntime, configureDbRuntime, type DbRuntime } from '@fastgpt/dal/db/runtime';
+import { createManagedDbSession } from '@fastgpt/dal/db/transaction';
+import type { DbSession } from '@fastgpt/dal/db/types';
 
 const SimpleReadSchema = z.object({ _id: z.string() });
 
@@ -19,6 +21,10 @@ class DemoMongoRepo extends MongoRepositoryBase<Record<string, unknown>, typeof 
 
   getBoundModel() {
     return this.model;
+  }
+
+  inspectReadOpts(params?: { tx?: DbSession; useReadReplica?: boolean }) {
+    return this.readOpts(params);
   }
 }
 
@@ -134,5 +140,21 @@ describe('@fastgpt/dal/db/mongo collection & constructor model binding', () => {
     });
 
     expect(() => new DemoMongoRepo(logCol)).toThrow(DbConfigurationError);
+
+    // 4. readOpts：非事务允许 secondaryPreferred，活跃事务内强制忽略从库走主节点
+    const readRepo = new DemoMongoRepo(mainCol);
+    expect(readRepo.inspectReadOpts()).toEqual({});
+    expect(readRepo.inspectReadOpts({ useReadReplica: true })).toEqual({
+      readPreference: 'secondaryPreferred'
+    });
+    const fakeSession = { id: 'mongo-session' };
+    const { session } = createManagedDbSession({
+      dialect: 'mongo',
+      datasource: 'main',
+      nativeTx: fakeSession
+    });
+    expect(readRepo.inspectReadOpts({ tx: session, useReadReplica: true })).toEqual({
+      session: fakeSession
+    });
   });
 });

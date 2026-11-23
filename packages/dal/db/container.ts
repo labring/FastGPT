@@ -1,10 +1,9 @@
 import { getDbRuntime, type DbRuntime } from './runtime';
-import type { DbDialectFamily } from './types';
+import type { DbDialect } from './types';
 
 export type RepoProviders<TRepo extends object> = {
   mongo: (runtime: DbRuntime) => TRepo;
-  /** 统一覆盖 PostgreSQL、OceanBase、MySQL 等关系型方言实现。 */
-  sql: (runtime: DbRuntime) => TRepo;
+  oceanbase: (runtime: DbRuntime) => TRepo;
 };
 
 declare const repoTokenTypeBrand: unique symbol;
@@ -12,33 +11,24 @@ declare const repoTokenTypeBrand: unique symbol;
 export type RepoToken<TRepo extends object> = {
   readonly [repoTokenTypeBrand]?: TRepo;
   readonly name: string;
-  readonly resolveFactory: (family: DbDialectFamily) => (runtime: DbRuntime) => TRepo;
+  readonly resolveFactory: (dialect: DbDialect) => (runtime: DbRuntime) => TRepo;
 };
 
 /**
- * 定义领域仓储 DI Token（统一覆盖主库与日志库仓储）。
- *
- * 仅登记 `mongo` 与 `sql` 两族方言的惰性构造工厂，模块加载阶段不会执行任何实例化或驱动初始化；
- * 运行时由容器根据 `runtime.family`（mongo vs postgres/oceanbase/mysql -> sql）自动路由。
- * 日志类仓储在未配置独立 `logWriteUrl` 时自动回退复用 `main` 连接池，无需单独的 `Noop` 实现。
+ * 定义领域仓储 DI Token（1 对 1 映射 `mongo` 与 `oceanbase` 两套实现）。
+ * 模块加载期零副作用；运行时按 `runtime.dialect` 懒解析并按 `DbRuntime` 生命周期缓存单例。
  */
 export const defineRepoToken = <TRepo extends object>(
   name: string,
   providers: RepoProviders<TRepo>
 ): RepoToken<TRepo> => ({
   name,
-  resolveFactory: (family) => (family === 'sql' ? providers.sql : providers.mongo)
+  resolveFactory: (dialect) => (dialect === 'oceanbase' ? providers.oceanbase : providers.mongo)
 });
 
 const runtimeInstanceCache = new WeakMap<DbRuntime, Map<RepoToken<object>, object>>();
-const testOverrideRegistry = new Map<RepoToken<object>, object>();
 
 const resolveRepoInstance = <TRepo extends object>(token: RepoToken<TRepo>): TRepo => {
-  const testOverride = testOverrideRegistry.get(token as RepoToken<object>);
-  if (testOverride !== undefined) {
-    return testOverride as TRepo;
-  }
-
   const runtime = getDbRuntime();
   let scopedMap = runtimeInstanceCache.get(runtime);
   if (scopedMap === undefined) {
@@ -51,56 +41,27 @@ const resolveRepoInstance = <TRepo extends object>(token: RepoToken<TRepo>): TRe
     return cached as TRepo;
   }
 
-  const factory = token.resolveFactory(runtime.family);
+  const factory = token.resolveFactory(runtime.dialect);
   const instance = factory(runtime);
   scopedMap.set(token as RepoToken<object>, instance);
   return instance;
 };
 
 /**
- * 注入由容器托管的惰性领域仓储代理。
- *
- * 返回的轻量 Proxy 在模块顶层 `import` 或 `new XxxService()` 阶段零副作用（兼容 Next.js 构建期与 HMR）；
- * 实际调用仓储方法时才按当前激活的 `DbRuntime` 懒实例化并绑定 `this` 上下文。
+ * 注入由容器托管的惰性领域仓储代理（模块导入与 `new XxxService()` 阶段零副作用）。
  */
 export const injectRepo = <TRepo extends object>(token: RepoToken<TRepo>): TRepo =>
   new Proxy({} as TRepo, {
     get(_target, prop) {
-      // 避免 Promise 自动展开（await proxy）或调试器/序列化探测符号时在 Runtime 初始化前误触发解析
       if (prop === 'then') {
         return undefined;
       }
       if (typeof prop === 'symbol') {
-        if (prop === Symbol.toStringTag) {
-          return `InjectedRepo(${token.name})`;
-        }
-        return undefined;
+        return prop === Symbol.toStringTag ? `InjectedRepo(${token.name})` : undefined;
       }
 
       const instance = resolveRepoInstance(token);
       const value = Reflect.get(instance, prop, instance);
-      if (typeof value === 'function') {
-        return value.bind(instance);
-      }
-      return value;
+      return typeof value === 'function' ? value.bind(instance) : value;
     }
   });
-
-/**
- * 测试辅助：在容器层临时覆盖指定 Token 的仓储实现（常规 Service 单测优先使用构造函数显式传参）。
- */
-export const overrideRepoForTest = <TRepo extends object>(
-  token: RepoToken<TRepo>,
-  implementation: TRepo
-): (() => void) => {
-  testOverrideRegistry.set(token as RepoToken<object>, implementation);
-  return () => {
-    if (testOverrideRegistry.get(token as RepoToken<object>) === implementation) {
-      testOverrideRegistry.delete(token as RepoToken<object>);
-    }
-  };
-};
-
-export const clearRepoOverrides = (): void => {
-  testOverrideRegistry.clear();
-};

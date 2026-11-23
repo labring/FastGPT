@@ -2,7 +2,7 @@ import { Types, type ClientSession, type Model } from 'mongoose';
 import type z from 'zod';
 import { DbConfigurationError } from '../errors';
 import { parseRepoRow, parseRepoRows } from '../parse';
-import { getDbLogger, getDbRuntime, type DbRuntime } from '../runtime';
+import { getDbRuntime, type DbRuntime } from '../runtime';
 import { unwrapNativeDbSession } from '../transaction';
 import type { DbDatasource, DbSession, DbTransactionRunner } from '../types';
 import type { MongoCollectionDefinition } from './collection';
@@ -17,7 +17,6 @@ export const unwrapMongoSession = (
   datasource?: DbDatasource
 ): ClientSession | undefined =>
   unwrapNativeDbSession<ClientSession>(tx, {
-    family: 'mongo',
     dialect: 'mongo',
     ...(datasource !== undefined ? { datasource } : {})
   });
@@ -57,14 +56,14 @@ export const createMongoTransactionRunner = ({
 /**
  * MongoDB 领域仓储模板方法抽象基类。
  *
- * 在 `constructor` 内按当前 `DbRuntime` 生命周期自动幂等构出 `readonly model`（彻底告别模块级
- * `getMongoModel` / `let cachedModel`），并统一封装 `ObjectId` 转换、事务会话解包与出口 Zod
- * 归一化解析（单行 Fail-Fast、列表 Warn & Skip），子类只需聚焦集合查询与更新语义。
+ * 在 `constructor` 内绑定当前 `DbRuntime` 并幂等构出 `readonly model`，统一封装 `ObjectId` 转换、
+ * 事务会话解包、只读副本路由选项（`readOpts`）与出口 Zod 归一化解析。
  */
 export abstract class MongoRepositoryBase<
   TDoc = Record<string, unknown>,
   TReadSchema extends z.ZodTypeAny = z.ZodTypeAny
 > {
+  protected readonly runtime: DbRuntime;
   protected readonly model: Model<TDoc>;
   protected readonly tableName: string;
   protected readonly readSchema: TReadSchema;
@@ -80,6 +79,7 @@ export abstract class MongoRepositoryBase<
     runtime?: DbRuntime;
   }) {
     const activeRuntime = runtime ?? getDbRuntime();
+    this.runtime = activeRuntime;
     this.tableName = collection.name;
     this.readSchema = readSchema;
     this.datasource = collection.datasource;
@@ -99,11 +99,31 @@ export abstract class MongoRepositoryBase<
     return session !== undefined ? { session } : {};
   }
 
+  /**
+   * 构造只读查询选项：
+   * - 活跃事务内强制透传 `session` 且忽略 `useReadReplica`，保证读己之写；
+   * - 非事务且开启 `useReadReplica` 时附带 `readPreference: 'secondaryPreferred'`。
+   */
+  protected readOpts({
+    tx,
+    useReadReplica = false
+  }: {
+    tx?: DbSession;
+    useReadReplica?: boolean;
+  } = {}): { session?: ClientSession; readPreference?: 'secondaryPreferred' } {
+    const session = unwrapMongoSession(tx, this.datasource);
+    if (session !== undefined) {
+      return { session };
+    }
+    return useReadReplica ? { readPreference: 'secondaryPreferred' } : {};
+  }
+
   protected parseRow(doc: unknown): z.output<TReadSchema> {
     return parseRepoRow({
       table: this.tableName,
       schema: this.readSchema,
-      row: doc
+      row: doc,
+      logger: this.runtime.getLogger()
     });
   }
 
@@ -122,7 +142,7 @@ export abstract class MongoRepositoryBase<
       table: this.tableName,
       schema: (customSchema ?? this.readSchema) as TSchema,
       rows,
-      logger: getDbLogger()
+      logger: this.runtime.getLogger()
     });
   }
 }

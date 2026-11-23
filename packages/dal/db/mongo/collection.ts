@@ -50,7 +50,7 @@ const assertNoInlineFieldIndexes = (collectionName: string, schema: Schema): voi
 };
 
 /**
- * 声明一个纯内存、零副作用的 MongoDB 集合描述符（与 `defineSqlTable` 镜像对称）。
+ * 声明一个纯内存、零副作用的 MongoDB 集合描述符。
  *
  * - 直接接收原生 Mongoose `Schema`，完整保留 `.virtual()` / `.pre()` 等表达力；
  * - 模块导入阶段不触发数据库连接、不注册全局 Model、不发建索引命令；

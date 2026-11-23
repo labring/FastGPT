@@ -1,421 +1,96 @@
-import { Mongoose, Schema } from 'mongoose';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import z from 'zod';
-import { createEntityId, EntityIdSchema } from '@fastgpt/global/common/string/entityId';
-import { BoolSchema, optionalNullToUndefined } from '@fastgpt/global/common/zod';
-import {
-  clearRepoOverrides,
-  defineRepoToken,
-  injectRepo,
-  overrideRepoForTest
-} from '@fastgpt/dal/db/container';
-import { MongoRepositoryBase } from '@fastgpt/dal/db/mongo/base';
-import { defineMongoCollection } from '@fastgpt/dal/db/mongo/collection';
-import { createMongoRuntimeDeps } from '@fastgpt/dal/db/mongo/runtime';
-import { jsonColumnSchema } from '@fastgpt/dal/db/parse';
+import { defineRepoToken, injectRepo } from '@fastgpt/dal/db/container';
+import { OceanBaseRepositoryBase } from '@fastgpt/dal/db/oceanbase/base';
 import { closeDbRuntime, configureDbRuntime, type DbRuntime } from '@fastgpt/dal/db/runtime';
-import { SqlRepositoryBase } from '@fastgpt/dal/db/sql/base';
-import { compileSqlTableDDL, defineSqlTable } from '@fastgpt/dal/db/sql/ddl';
-import { createPGliteSqlTestHarness } from '@fastgpt/dal/db/testing';
-import { runInTransaction } from '@fastgpt/dal/db/transaction';
+import { createMockOceanBaseKysely } from '@fastgpt/dal/db/testing';
+import { createManagedDbSession } from '@fastgpt/dal/db/transaction';
 import type { DbSession } from '@fastgpt/dal/db/types';
 
-const ItemReadSchema = z.object({
-  _id: EntityIdSchema,
-  team_id: EntityIdSchema,
-  parent_id: z.string().nullable(),
-  name: z.string(),
-  enabled: BoolSchema,
-  tags: optionalNullToUndefined(jsonColumnSchema(z.array(z.string()))),
-  ancestor_path: z.string()
-});
-
-type ItemRow = {
-  _id: string;
-  team_id: string;
-  parent_id: string;
-  name: string;
-  enabled: boolean | number;
-  priority: number | null;
-  tags: unknown;
-  ancestor_path: string;
+type DemoDb = {
+  demo_items: { _id: string; name: string };
 };
 
-type TestDatabase = {
-  demo_items: ItemRow;
-};
+const DemoReadSchema = z.object({ _id: z.string(), name: z.string() });
 
-const demoItemsTable = defineSqlTable({
-  name: 'demo_items',
-  columns: {
-    _id: { kind: 'entityId', primaryKey: true },
-    team_id: { kind: 'entityId' },
-    parent_id: { kind: 'varchar', length: 24, defaultValue: '' },
-    name: { kind: 'varchar', length: 128 },
-    enabled: { kind: 'boolean', defaultValue: true },
-    priority: { kind: 'integer', nullable: true },
-    tags: { kind: 'json', nullable: true },
-    ancestor_path: { kind: 'varchar', length: 512, defaultValue: '' }
-  },
-  indexes: [
-    { name: 'fg_demo_team_parent_name', columns: ['team_id', 'parent_id', 'name'], unique: true },
-    {
-      name: 'fg_demo_team_ancestor',
-      columns: ['team_id', { column: 'ancestor_path', direction: 'desc' }]
-    }
-  ]
-});
-
-type ItemRepo = {
-  getTag: () => string;
-  upsertItem: (params: {
-    id?: string;
-    teamId: string;
-    parentId: string | null;
-    name: string;
-    enabled: boolean;
-    tags?: string[];
-    ancestorIds?: string[];
-    tx?: DbSession;
-  }) => Promise<z.output<typeof ItemReadSchema>>;
-  searchByName: (params: {
-    teamId: string;
-    keyword: string;
-  }) => Promise<z.output<typeof ItemReadSchema>[]>;
-  bulkInsert: (
-    rows: Array<
-      Partial<ItemRow> & Pick<ItemRow, '_id' | 'team_id' | 'parent_id' | 'name' | 'ancestor_path'>
-    >
-  ) => Promise<void>;
-  countAll: () => Promise<number>;
-};
-
-const demoItemsMongoCollection = defineMongoCollection<Record<string, unknown>>({
-  name: 'demo_items',
-  schema: new Schema({ name: String }, { versionKey: false }),
-  indexes: [{ key: { name: 1 } }]
-});
-
-class MongoItemRepo
-  extends MongoRepositoryBase<Record<string, unknown>, typeof ItemReadSchema>
-  implements ItemRepo
-{
+class DemoOceanBaseRepo extends OceanBaseRepositoryBase<
+  DemoDb,
+  'demo_items',
+  typeof DemoReadSchema
+> {
   constructor(runtime?: DbRuntime) {
-    super({
-      collection: demoItemsMongoCollection,
-      readSchema: ItemReadSchema,
-      runtime
-    });
+    super({ tableName: 'demo_items', readSchema: DemoReadSchema, runtime });
   }
 
-  getTag() {
-    return `mongo:${this.model.collection.collectionName}:${this.oid(createEntityId()).toHexString().length}`;
-  }
-
-  async upsertItem(): Promise<z.output<typeof ItemReadSchema>> {
-    throw new Error('Not needed in container routing test');
-  }
-
-  async searchByName() {
-    return [];
-  }
-
-  async bulkInsert() {
-    return;
-  }
-
-  async countAll() {
-    return 0;
-  }
-}
-
-class SqlItemRepo
-  extends SqlRepositoryBase<TestDatabase, 'demo_items', typeof ItemReadSchema>
-  implements ItemRepo
-{
-  protected readonly tableName = 'demo_items';
-  protected readonly readSchema = ItemReadSchema;
-
-  getTag() {
-    return `sql:${this.sqlDialect}`;
-  }
-
-  async upsertItem({
-    id,
-    teamId,
-    parentId,
-    name,
-    enabled,
-    tags,
-    ancestorIds,
-    tx
-  }: {
-    id?: string;
-    teamId: string;
-    parentId: string | null;
-    name: string;
-    enabled: boolean;
-    tags?: string[];
-    ancestorIds?: string[];
-    tx?: DbSession;
-  }) {
-    const _id = id ?? createEntityId();
-    await this.upsertRow({
-      values: {
-        _id,
-        team_id: teamId,
-        parent_id: this.toParentSentinel(parentId),
-        name,
-        enabled,
-        tags: this.toJsonParam(tags),
-        ancestor_path: this.encodeMaterializedPath(ancestorIds)
-      },
-      conflictKeys: ['team_id', 'parent_id', 'name'],
-      updateValues: {
-        enabled,
-        tags: this.toJsonParam(tags),
-        ancestor_path: this.encodeMaterializedPath(ancestorIds)
-      },
-      tx
-    });
-
+  public async findById(id: string, tx?: DbSession) {
     const row = await this.db(tx)
       .selectFrom('demo_items')
       .selectAll()
-      .where('team_id', '=', teamId)
-      .where('parent_id', '=', this.toParentSentinel(parentId))
-      .where('name', '=', name)
+      .where('_id', '=', this.normalizeId(id))
       .executeTakeFirst();
-
-    return {
-      ...this.parseRow(row),
-      parent_id: this.fromParentSentinel((row as ItemRow).parent_id)
-    };
-  }
-
-  async searchByName({ teamId, keyword }: { teamId: string; keyword: string }) {
-    const rows = await this.readDb()
-      .selectFrom('demo_items')
-      .selectAll()
-      .where('team_id', '=', teamId)
-      .where(this.caseInsensitiveLike('name', keyword))
-      .execute();
-
-    return this.parseList(rows);
-  }
-
-  async bulkInsert(
-    rows: Array<
-      Partial<ItemRow> & Pick<ItemRow, '_id' | 'team_id' | 'parent_id' | 'name' | 'ancestor_path'>
-    >
-  ) {
-    await this.insertChunked({
-      rows: rows.map((r) => ({
-        ...r,
-        ...(r.tags !== undefined ? { tags: this.toJsonParam(r.tags) } : {})
-      })),
-      maxParamsPerBatch: 21 // 最大 7 列 * 3 行，强制验证异构行键数下的自动分片逻辑
-    });
-  }
-
-  async countAll() {
-    const res = await this.readDb()
-      .selectFrom('demo_items')
-      .select((eb) => eb.fn.countAll<string>().as('cnt'))
-      .executeTakeFirstOrThrow();
-    return Number(res.cnt);
+    return this.parseNullable(row);
   }
 }
 
-type AuditLogRepo = {
-  mode: () => 'mongo' | 'sql';
-};
-
-describe('@fastgpt/dal/db DI container, portable SQL DDL, and PGlite integration', () => {
+describe('@fastgpt/dal/db DI container & OceanBaseRepositoryBase', () => {
   afterEach(async () => {
-    clearRepoOverrides();
     await closeDbRuntime();
   });
 
-  it('defers instantiation, prevents await .then trap, and routes postgres/oceanbase/mysql to sql factory', async () => {
-    const mongoSpy = vi.fn((runtime: DbRuntime) => new MongoItemRepo(runtime));
-    const sqlSpy = vi.fn(() => new SqlItemRepo());
-
-    const ItemRepoToken = defineRepoToken<ItemRepo>('ItemRepo', {
-      mongo: mongoSpy,
-      sql: sqlSpy
+  it('lazily resolves DI tokens per dialect/runtime without import-time side effects', async () => {
+    const mongoFactory = vi.fn(() => ({ kind: () => 'mongo' }));
+    const obFactory = vi.fn(() => ({ kind: () => 'oceanbase' }));
+    const token = defineRepoToken('DemoToken', {
+      mongo: mongoFactory,
+      oceanbase: obFactory
     });
 
-    const repo = injectRepo(ItemRepoToken);
-    expect(mongoSpy).not.toHaveBeenCalled();
-    expect(sqlSpy).not.toHaveBeenCalled();
+    const proxy = injectRepo(token);
+    expect(mongoFactory).not.toHaveBeenCalled();
+    expect(obFactory).not.toHaveBeenCalled();
+    expect(Reflect.get(proxy, 'then')).toBeUndefined();
 
-    const awaitedRepo = await Promise.resolve(repo);
-    expect(awaitedRepo).toBe(repo);
-    expect(mongoSpy).not.toHaveBeenCalled();
-
-    const fakeMongoConn = new Mongoose();
-    configureDbRuntime({
-      dialect: 'mongo',
-      mainWriteUrl: 'mongodb://localhost:27017/fastgpt',
-      ...createMongoRuntimeDeps({ getMainClient: () => fakeMongoConn })
-    });
-    expect(repo.getTag()).toBe('mongo:demo_items:24');
-    expect(mongoSpy).toHaveBeenCalledTimes(1);
+    configureDbRuntime({ dialect: 'oceanbase', mainWriteUrl: 'mysql://root@127.0.0.1:2881/app' });
+    expect(proxy.kind()).toBe('oceanbase');
+    expect(proxy.kind()).toBe('oceanbase');
+    expect(obFactory).toHaveBeenCalledTimes(1);
 
     await closeDbRuntime();
-    configureDbRuntime({
-      dialect: 'oceanbase',
-      mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt'
-    });
-    expect(repo.getTag()).toBe('sql:oceanbase');
-    expect(sqlSpy).toHaveBeenCalledTimes(1);
+    configureDbRuntime({ dialect: 'mongo', mainWriteUrl: 'mongodb://localhost:27017/app' });
+    expect(proxy.kind()).toBe('mongo');
+    expect(mongoFactory).toHaveBeenCalledTimes(1);
   });
 
-  it('routes log repositories uniformly via defineRepoToken across shared (main fallback) and separate topologies and supports test overrides', async () => {
-    const LogRepoToken = defineRepoToken<AuditLogRepo>('AuditLogRepo', {
-      mongo: () => ({ mode: () => 'mongo' }),
-      sql: () => ({ mode: () => 'sql' })
-    });
+  it('routes OceanBaseRepositoryBase queries through active tx and normalizes hex IDs', async () => {
+    const mainMock = createMockOceanBaseKysely(() => ({
+      rows: [{ _id: '68ee0bd23d17260b7829b137', name: 'main-row' }]
+    }));
+    const txMock = createMockOceanBaseKysely(() => ({
+      rows: [{ _id: '68ee0bd23d17260b7829b137', name: 'tx-row' }]
+    }));
 
-    const logRepo = injectRepo(LogRepoToken);
-
-    // 默认 shared 模式透明回退复用主库连接池，仍走真实 sql 仓储
-    configureDbRuntime({
+    const runtime = configureDbRuntime({
       dialect: 'oceanbase',
-      mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt'
+      mainWriteUrl: 'mysql://root@127.0.0.1:2881/app',
+      oceanBaseExecutorResolver: ({ nativeTx }) => (nativeTx !== undefined ? nativeTx : mainMock.db)
     });
-    expect(logRepo.mode()).toBe('sql');
 
-    // separate 模式使用独立日志库连接池
-    await closeDbRuntime();
-    configureDbRuntime({
+    const repo = new DemoOceanBaseRepo(runtime);
+    expect(await repo.findById('68EE0BD23D17260B7829B137')).toEqual({
+      _id: '68ee0bd23d17260b7829b137',
+      name: 'main-row'
+    });
+    expect(mainMock.queries[0].parameters).toEqual(['68ee0bd23d17260b7829b137']);
+
+    const { session } = createManagedDbSession({
       dialect: 'oceanbase',
-      mainWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt',
-      logWriteUrl: 'mysql://root@127.0.0.1:2881/fastgpt_log'
+      datasource: 'main',
+      nativeTx: txMock.db
     });
-    expect(logRepo.mode()).toBe('sql');
-
-    const restore = overrideRepoForTest(LogRepoToken, { mode: () => 'mongo' });
-    expect(logRepo.mode()).toBe('mongo');
-    restore();
-    expect(logRepo.mode()).toBe('sql');
-  });
-
-  it('compiles portable DDL for both PostgreSQL and OceanBase/MySQL without dialect leaks', () => {
-    const pgSql = compileSqlTableDDL(demoItemsTable, 'postgres').join('\n');
-    expect(pgSql).toContain('"tags" JSONB');
-    expect(pgSql).toContain('CREATE UNIQUE INDEX IF NOT EXISTS "fg_demo_team_parent_name"');
-    expect(pgSql).toContain('"ancestor_path" DESC');
-
-    const obSql = compileSqlTableDDL(demoItemsTable, 'oceanbase').join('\n');
-    expect(obSql).toContain('`tags` JSON');
-    expect(obSql).toContain('`enabled` TINYINT(1) NOT NULL DEFAULT 1');
-    expect(obSql).toContain('UNIQUE KEY `fg_demo_team_parent_name`');
-    expect(obSql).toContain('`ancestor_path` DESC');
-    expect(obSql).toContain('DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;');
-    expect(obSql).not.toContain('CREATE INDEX IF NOT EXISTS');
-  });
-
-  it('runs real SQL queries, JSON array persistence, sentinel uniqueness, LIKE escaping, chunked inserts, and transaction rollback on PGlite', async () => {
-    const harness = await createPGliteSqlTestHarness({ tables: [demoItemsTable] });
-    try {
-      const repo = injectRepo(
-        defineRepoToken<ItemRepo>('DemoItemRepo', {
-          mongo: () => new MongoItemRepo(),
-          sql: () => new SqlItemRepo()
-        })
-      );
-
-      const teamId = createEntityId();
-      const rootFolderId = createEntityId();
-      const afterCommitCalls: string[] = [];
-
-      // 1. 测试事务内 upsert + JSON 数组序列化（防止 pg array 字面量陷阱）+ afterCommit
-      const first = await runInTransaction(async (tx) => {
-        const created = await repo.upsertItem({
-          teamId,
-          parentId: null,
-          name: '100% Agent_Bot | Test',
-          enabled: true,
-          tags: ['alpha', 'beta'],
-          ancestorIds: [rootFolderId],
-          tx
-        });
-        tx.afterCommit(() => {
-          afterCommitCalls.push(created._id);
-        });
-        return created;
-      });
-
-      expect(first.parent_id).toBeNull();
-      expect(first.tags).toEqual(['alpha', 'beta']);
-      expect(first.ancestor_path).toBe(`${rootFolderId}/`);
-      expect(afterCommitCalls).toEqual([first._id]);
-
-      // 2. 验证空串哨兵值在根目录 parentId=null 下正确触发唯一键冲突更新（不产生重复行）
-      const upserted = await repo.upsertItem({
-        teamId,
-        parentId: null,
-        name: '100% Agent_Bot | Test',
-        enabled: false,
-        tags: ['updated']
-      });
-      expect(upserted._id).toBe(first._id);
-      expect(upserted.enabled).toBe(false);
-      expect(upserted.tags).toEqual(['updated']);
-      expect(await repo.countAll()).toBe(1);
-
-      // 3. 验证 caseInsensitiveLike 对 % _ | 通配符的严格转义
-      const matched = await repo.searchByName({ teamId, keyword: '100% agent_bot |' });
-      expect(matched).toHaveLength(1);
-      const unmatched = await repo.searchByName({ teamId, keyword: '100x agent' });
-      expect(unmatched).toHaveLength(0);
-
-      // 4. 验证异常回滚不落库且不触发 afterCommit
-      const rolledBackSpy = vi.fn();
-      await expect(
-        runInTransaction(async (tx) => {
-          await repo.upsertItem({
-            teamId,
-            parentId: rootFolderId,
-            name: 'Should Rollback',
-            enabled: true,
-            tx
-          });
-          tx.afterCommit(rolledBackSpy);
-          throw new Error('boom');
-        })
-      ).rejects.toThrow('boom');
-
-      expect(rolledBackSpy).not.toHaveBeenCalled();
-      expect(await repo.countAll()).toBe(1);
-
-      // 5. 验证 insertChunked 分批写入突破单批参数上限（含首行省略可选键的异构对象场景）
-      await repo.bulkInsert(
-        Array.from({ length: 7 }, (_, i) =>
-          i === 0
-            ? {
-                _id: createEntityId(),
-                team_id: teamId,
-                parent_id: rootFolderId,
-                name: `Batch-${i}`,
-                ancestor_path: ''
-              }
-            : {
-                _id: createEntityId(),
-                team_id: teamId,
-                parent_id: rootFolderId,
-                name: `Batch-${i}`,
-                enabled: true,
-                tags: ['b'],
-                ancestor_path: ''
-              }
-        )
-      );
-      expect(await repo.countAll()).toBe(8);
-    } finally {
-      await harness.close();
-    }
+    expect(await repo.findById('68ee0bd23d17260b7829b137', session)).toEqual({
+      _id: '68ee0bd23d17260b7829b137',
+      name: 'tx-row'
+    });
+    expect(txMock.queries).toHaveLength(1);
   });
 });

@@ -1,9 +1,10 @@
-const PRIVATE_DAL_REPO_IMPORT_RE = /^@fastgpt\/dal\/db\/repos\/.+\/(?:mongo|sql)(?:\/|[?#]|$)/;
+const PRIVATE_DAL_REPO_IMPORT_RE =
+  /^@fastgpt\/dal\/db\/repos\/.+\/(?:mongo|oceanbase)(?:\/|[?#]|$)/;
 const BLOCKED_PRIVATE_DAL_REPO_PREFIX = '\0blocked-private-dal-repo:';
 
 /**
  * 共享 Vitest / Vite 插件：阻断通过宽泛 `@fastgpt` 源码别名绕过
- * `packages/dal/package.json` `exports` 直接引用仓储私有 `mongo/*` 或 `sql/*` 路径。
+ * `packages/dal/package.json` `exports` 直接引用仓储私有 `mongo/*` 或 `oceanbase/*` 路径。
  *
  * 位于 `packages/dal/` 内以兼容独立 App Docker 构建上下文。
  */

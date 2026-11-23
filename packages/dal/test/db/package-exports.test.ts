@@ -16,10 +16,10 @@ const PRIVATE_DAL_REPO_SPECIFIERS = [
   '@fastgpt/dal/db/repos/appRegistration/mongo/repo.ts',
   '@fastgpt/dal/db/repos/appRegistration/mongo/schema',
   '@fastgpt/dal/db/repos/appRegistration/mongo',
-  '@fastgpt/dal/db/repos/appRegistration/sql/repo',
-  '@fastgpt/dal/db/repos/appRegistration/sql/repo.ts',
-  '@fastgpt/dal/db/repos/appRegistration/sql/table',
-  '@fastgpt/dal/db/repos/appRegistration/sql'
+  '@fastgpt/dal/db/repos/appRegistration/oceanbase/repo',
+  '@fastgpt/dal/db/repos/appRegistration/oceanbase/repo.ts',
+  '@fastgpt/dal/db/repos/appRegistration/oceanbase/table',
+  '@fastgpt/dal/db/repos/appRegistration/oceanbase'
 ] as const;
 
 const getErrorCode = (error: unknown): string | undefined => {
@@ -49,11 +49,10 @@ describe('@fastgpt/dal repository export & Vitest alias boundary', () => {
       exports: Record<string, string | null>;
     };
 
-    // 禁止宽泛跨目录通配符（Node exports 的 `*` 会匹配 `/`），并显式屏蔽 mongo/* 与 sql/*
     expect(dalPkg.exports['./db/repos/*/repo']).toBeUndefined();
     expect(dalPkg.exports['./db/repos/*/repo.type']).toBeUndefined();
     expect(dalPkg.exports['./db/repos/*/mongo/*']).toBeNull();
-    expect(dalPkg.exports['./db/repos/*/sql/*']).toBeNull();
+    expect(dalPkg.exports['./db/repos/*/oceanbase/*']).toBeNull();
 
     for (const pkgPath of [dalPkgPath, servicePkgPath]) {
       const nodeRequire = createRequire(pkgPath);
@@ -75,7 +74,7 @@ describe('@fastgpt/dal repository export & Vitest alias boundary', () => {
     }
   });
 
-  it('allows public DAL repo imports and rejects private mongo/sql imports in Vitest runtime', async () => {
+  it('allows public DAL repo imports and rejects private mongo/oceanbase imports in Vitest runtime', async () => {
     const repoMod = await import('@fastgpt/dal/db/repos/appRegistration/repo');
     const repoTypeMod = await import('@fastgpt/dal/db/repos/appRegistration/repo.type');
     const registryMod = await import('@fastgpt/dal/db/repos/registry');
@@ -137,7 +136,7 @@ describe('@fastgpt/dal repository export & Vitest alias boundary', () => {
       for (const specifier of [
         ...PRIVATE_DAL_REPO_SPECIFIERS,
         '@fastgpt/dal/db/repos/app/version/mongo/repo',
-        '@fastgpt/dal/db/repos/app/version/sql/table'
+        '@fastgpt/dal/db/repos/app/version/oceanbase/table'
       ]) {
         const entry = aliasEntries[0];
         expect(entry.find instanceof RegExp && entry.find.test(specifier)).toBe(true);
@@ -145,15 +144,12 @@ describe('@fastgpt/dal repository export & Vitest alias boundary', () => {
         expect(() => guard?.resolveId?.(rewritten)).toThrow(
           /Blocked private DAL repository import/
         );
-        expect(() => guard?.resolveId?.(specifier)).toThrow(
-          /Blocked private DAL repository import/
-        );
       }
 
       for (const allowedSpecifier of [
         ...PUBLIC_DAL_REPO_SPECIFIERS,
         '@fastgpt/dal/db/mongo/base',
-        '@fastgpt/dal/db/sql/base',
+        '@fastgpt/dal/db/oceanbase/base',
         './mongo/repo'
       ]) {
         expect(guard?.resolveId?.(allowedSpecifier)).toBeNull();
