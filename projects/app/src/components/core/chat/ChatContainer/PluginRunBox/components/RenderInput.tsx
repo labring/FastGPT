@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Controller } from 'react-hook-form';
+import { Controller, type DefaultValues } from 'react-hook-form';
 import { Box, Button, Flex, FormControl, FormErrorMessage } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
@@ -69,7 +69,7 @@ const RenderInput = () => {
   );
 
   const resetFormVariables = useCallback(
-    (nextValues: ChatBoxInputFormType) => {
+    (nextValues: DefaultValues<ChatBoxInputFormType>) => {
       const nextVariables = nextValues.variables || {};
       reset(nextValues);
       // react-hook-form@7.43.1 的 Controller(useWatch) 在挂载时会把当时的字段值冻结为订阅闭包里的 defaultValue；
