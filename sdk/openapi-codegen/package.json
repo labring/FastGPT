@@ -1,0 +1,23 @@
+{
+  "name": "@fastgpt-sdk/openapi-codegen",
+  "private": true,
+  "version": "0.1.0",
+  "description": "FastGPT OpenAPI to multi-language SDK IR compiler and TypeScript emitter",
+  "type": "module",
+  "scripts": {
+    "generate": "node ./scripts/run.mjs generate",
+    "check": "node ./scripts/run.mjs check",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "devDependencies": {
+    "@fastgpt/global": "workspace:*",
+    "@types/node": "catalog:",
+    "prettier": "catalog:lint",
+    "typescript": "catalog:",
+    "vite": "^6.4.4",
+    "vitest": "catalog:",
+    "zod": "catalog:"
+  }
+}

@@ -9,6 +9,7 @@ import {
   PaginationPageSizeSchema
 } from '../../../api';
 import {
+  ChatHistoryItemResSchema,
   ChatItemMiniSchema,
   UserChatItemSchema,
   SystemChatItemSchema,
@@ -48,6 +49,11 @@ export const GetResDataQuerySchema = GetResDataQueryRawSchema.transform(
 );
 export type GetResDataQueryType = z.infer<typeof GetResDataQueryRawSchema>;
 export type GetResDataQueryRuntimeType = z.infer<typeof GetResDataQuerySchema>;
+
+export const GetResDataResponseSchema = z
+  .array(ChatHistoryItemResSchema)
+  .meta({ description: '工作流各节点的执行响应详情列表' });
+export type GetResDataResponseType = z.infer<typeof GetResDataResponseSchema>;
 
 /* ============================================================================
  * API: 删除对话消息
