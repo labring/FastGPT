@@ -1,5 +1,5 @@
 import type { OpenAPIPath } from '../../../type';
-import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
+import { DevApiTagsMap } from '../../../tag';
 import {
   CreateQuestionGuideBodySchema,
   CreateQuestionGuideResponseSchema,
@@ -36,11 +36,7 @@ export const AgentPath: OpenAPIPath = {
     post: {
       summary: '创建会话问题引导',
       description: '基于指定会话历史生成推荐问题，支持普通 App、外链和 Skill Edit 调试',
-      tags: [DevApiTagsMap.aiCommon, SystemOpenApiTagMap.chatController],
-      'x-fastgpt-sdk': {
-        resource: 'chat',
-        method: 'createQuestionGuide'
-      },
+      tags: [DevApiTagsMap.aiCommon],
       requestBody: {
         content: {
           'application/json': {

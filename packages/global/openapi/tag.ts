@@ -137,24 +137,18 @@ export const DevApiTagsMap = {
 export const DevApiTagNameAliases: Record<string, string> = {};
 
 export const SystemOpenApiTagMap = {
-  system: 'systemOpenAPI:system',
-  model: 'systemOpenAPI:model',
-
   appLog: 'systemOpenAPI:appLog',
 
   chatHistory: 'systemOpenAPI:chatHistory',
   chat: 'systemOpenAPI:chat',
   chatFeedback: 'systemOpenAPI:chatFeedback',
   chatController: 'systemOpenAPI:chatController',
-  chatFile: 'systemOpenAPI:chatFile',
-  chatSandbox: 'systemOpenAPI:chatSandbox',
 
   dataset: 'systemOpenAPI:dataset',
   datasetCollection: 'systemOpenAPI:datasetCollection',
   datasetCollectionCreate: 'systemOpenAPI:datasetCollectionCreate',
   datasetData: 'systemOpenAPI:datasetData',
-  datasetFile: 'systemOpenAPI:datasetFile',
-  datasetTraining: 'systemOpenAPI:datasetTraining',
-  datasetSynonym: 'systemOpenAPI:datasetSynonym',
-  datasetSearch: 'systemOpenAPI:datasetSearch'
+  datasetSearch: 'systemOpenAPI:datasetSearch',
+
+  model: 'systemOpenAPI:model'
 };

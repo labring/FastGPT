@@ -14,9 +14,7 @@ import {
   GetRecordsV2BodyRawSchema,
   GetRecordsV2ResponseSchema,
   GetChatSpeechBodySchema,
-  GetChatSpeechResponseSchema,
-  AudioTranscriptionsFormRawSchema,
-  AudioTranscriptionsResponseSchema
+  AudioTranscriptionsFormRawSchema
 } from './api';
 
 export const ChatRecordPath: OpenAPIPath = {
@@ -187,11 +185,7 @@ export const ChatRecordPath: OpenAPIPath = {
     post: {
       summary: '获取语音合成',
       description: '将文本转换为语音，返回二进制音频数据流',
-      tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat],
-      'x-fastgpt-sdk': {
-        resource: 'chat.records',
-        method: 'synthesizeSpeech'
-      },
+      tags: [DevApiTagsMap.chatRecord],
       requestBody: {
         content: {
           'application/json': {
@@ -201,12 +195,7 @@ export const ChatRecordPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回二进制音频数据流',
-          content: {
-            'audio/mpeg': {
-              schema: GetChatSpeechResponseSchema
-            }
-          }
+          description: '成功返回二进制音频数据流'
         }
       }
     }
@@ -216,11 +205,7 @@ export const ChatRecordPath: OpenAPIPath = {
       summary: '语音转文字',
       description:
         '将 multipart/form-data 表单中的音频文件转换为文本。file 为音频文件，data 为 JSON 序列化后的对话鉴权参数。',
-      tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chatController],
-      'x-fastgpt-sdk': {
-        resource: 'chat',
-        method: 'transcribeAudio'
-      },
+      tags: [DevApiTagsMap.chatRecord],
       requestBody: {
         content: {
           'multipart/form-data': {
@@ -233,12 +218,7 @@ export const ChatRecordPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回识别文本',
-          content: {
-            'application/json': {
-              schema: AudioTranscriptionsResponseSchema
-            }
-          }
+          description: '成功返回识别文本'
         }
       }
     }

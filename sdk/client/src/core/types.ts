@@ -152,11 +152,3 @@ export type OperationSpec = {
   bodyParams: string[];
   binaryBodyField?: string;
 };
-
-export type RawRequestParams = {
-  method: HttpMethod;
-  path: string;
-  query?: Record<string, unknown>;
-  body?: unknown;
-  responseMode?: ResponseMode;
-};

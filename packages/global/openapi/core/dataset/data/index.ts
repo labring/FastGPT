@@ -6,9 +6,7 @@ import {
   UpdateDatasetDataBodySchema,
   DeleteDatasetDataQuerySchema,
   GetQuoteDataBodyRawSchema,
-  GetQuoteDataResponseSchema,
   InsertDataBodySchema,
-  InsertDataResponseSchema,
   InsertImagesBodySchema,
   PushDataBodySchema,
   PushDataResponseSchema,
@@ -211,11 +209,7 @@ export const DatasetDataPath: OpenAPIPath = {
     post: {
       summary: '获取引用数据',
       description: '获取数据详情用于展示引用，支持直接访问或通过对话鉴权',
-      tags: [DevApiTagsMap.datasetData, SystemOpenApiTagMap.datasetData],
-      'x-fastgpt-sdk': {
-        resource: 'datasets.data',
-        method: 'getQuote'
-      },
+      tags: [DevApiTagsMap.datasetData],
       requestBody: {
         content: {
           'application/json': {
@@ -225,12 +219,7 @@ export const DatasetDataPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回引用数据和所属集合信息',
-          content: {
-            'application/json': {
-              schema: GetQuoteDataResponseSchema
-            }
-          }
+          description: '成功返回引用数据和所属集合信息'
         }
       }
     }
@@ -239,11 +228,7 @@ export const DatasetDataPath: OpenAPIPath = {
     post: {
       summary: '插入单条数据',
       description: '立即插入一条数据到数据集并生成向量索引',
-      tags: [DevApiTagsMap.datasetData, SystemOpenApiTagMap.datasetData],
-      'x-fastgpt-sdk': {
-        resource: 'datasets.data',
-        method: 'insert'
-      },
+      tags: [DevApiTagsMap.datasetData],
       requestBody: {
         content: {
           'application/json': {
@@ -253,12 +238,7 @@ export const DatasetDataPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回新数据的 ID',
-          content: {
-            'application/json': {
-              schema: InsertDataResponseSchema
-            }
-          }
+          description: '成功返回新数据的 ID'
         }
       }
     }
@@ -267,11 +247,7 @@ export const DatasetDataPath: OpenAPIPath = {
     post: {
       summary: '插入图片',
       description: '上传图片文件并推送到训练队列（multipart/form-data）',
-      tags: [DevApiTagsMap.datasetData, SystemOpenApiTagMap.datasetData],
-      'x-fastgpt-sdk': {
-        resource: 'datasets.data',
-        method: 'insertImages'
-      },
+      tags: [DevApiTagsMap.datasetData],
       requestBody: {
         content: {
           'multipart/form-data': {

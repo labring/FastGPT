@@ -1,17 +1,13 @@
 import type { OpenAPIPath } from '../../../type';
-import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
+import { DevApiTagsMap } from '../../../tag';
 import {
   UpdateTrainingDataBodySchema,
   RebuildEmbeddingBodySchema,
   DeleteTrainingDataBodySchema,
   GetTrainingDataDetailBodySchema,
-  GetTrainingDataDetailResponseSchema,
   GetTrainingErrorBodySchema,
-  GetTrainingErrorResponseSchema,
   GetDatasetTrainingErrorBodySchema,
-  GetDatasetTrainingErrorResponseSchema,
   HasDatasetTrainingErrorQuerySchema,
-  HasDatasetTrainingErrorResponseSchema,
   GetDatasetTrainingQueueQuerySchema,
   GetDatasetTrainingQueueResponseSchema
 } from './api';
@@ -22,11 +18,7 @@ export const DatasetTrainingPath: OpenAPIPath = {
       summary: '更新训练数据或重试训练异常',
       description:
         '更新或重试训练异常：传 dataId 时重试或编辑后重训单个 chunk；不传 dataId 时，可按 collectionId 或 datasetId 重试全部最终/阻塞异常',
-      tags: [DevApiTagsMap.datasetTraining, SystemOpenApiTagMap.datasetTraining],
-      'x-fastgpt-sdk': {
-        resource: 'datasets.training',
-        method: 'retryOrUpdate'
-      },
+      tags: [DevApiTagsMap.datasetTraining],
       requestBody: {
         content: {
           'application/json': {
@@ -46,11 +38,7 @@ export const DatasetTrainingPath: OpenAPIPath = {
     post: {
       summary: '重建数据集向量索引',
       description: '切换向量模型并重建知识库所有数据的向量索引，需要所有者权限',
-      tags: [DevApiTagsMap.datasetTraining, SystemOpenApiTagMap.datasetTraining],
-      'x-fastgpt-sdk': {
-        resource: 'datasets.training',
-        method: 'rebuildEmbedding'
-      },
+      tags: [DevApiTagsMap.datasetTraining],
       requestBody: {
         content: {
           'application/json': {
@@ -71,11 +59,7 @@ export const DatasetTrainingPath: OpenAPIPath = {
       summary: '删除训练数据',
       description:
         '删除指定的训练任务，需要管理权限。索引重建任务会同时删除对应原始数据及全部索引；首次训练任务仅取消训练。',
-      tags: [DevApiTagsMap.datasetTraining, SystemOpenApiTagMap.datasetTraining],
-      'x-fastgpt-sdk': {
-        resource: 'datasets.training',
-        method: 'delete'
-      },
+      tags: [DevApiTagsMap.datasetTraining],
       requestBody: {
         content: {
           'application/json': {
@@ -95,11 +79,7 @@ export const DatasetTrainingPath: OpenAPIPath = {
     post: {
       summary: '获取训练数据详情',
       description: '获取单条训练数据的详细信息，包括图片预览 URL',
-      tags: [DevApiTagsMap.datasetTraining, SystemOpenApiTagMap.datasetTraining],
-      'x-fastgpt-sdk': {
-        resource: 'datasets.training',
-        method: 'getDetail'
-      },
+      tags: [DevApiTagsMap.datasetTraining],
       requestBody: {
         content: {
           'application/json': {
@@ -109,12 +89,7 @@ export const DatasetTrainingPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回训练数据详情，数据不存在时返回空',
-          content: {
-            'application/json': {
-              schema: GetTrainingDataDetailResponseSchema
-            }
-          }
+          description: '成功返回训练数据详情，数据不存在时返回空'
         }
       }
     }
@@ -124,11 +99,7 @@ export const DatasetTrainingPath: OpenAPIPath = {
     post: {
       summary: '获取集合训练错误列表',
       description: '分页查询集合内最终/阻塞异常训练记录',
-      tags: [DevApiTagsMap.datasetTraining, SystemOpenApiTagMap.datasetTraining],
-      'x-fastgpt-sdk': {
-        resource: 'datasets.training',
-        method: 'listCollectionErrors'
-      },
+      tags: [DevApiTagsMap.datasetTraining],
       requestBody: {
         content: {
           'application/json': {
@@ -138,12 +109,7 @@ export const DatasetTrainingPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回错误数据分页列表',
-          content: {
-            'application/json': {
-              schema: GetTrainingErrorResponseSchema
-            }
-          }
+          description: '成功返回错误数据分页列表'
         }
       }
     }
@@ -154,11 +120,7 @@ export const DatasetTrainingPath: OpenAPIPath = {
       summary: '获取知识库训练错误列表',
       description:
         '分页查询知识库内存在最终/阻塞异常的集合，并返回每个集合内的部分异常 chunk；传 collectionId 时加载该集合更多异常 chunk',
-      tags: [DevApiTagsMap.datasetTraining, SystemOpenApiTagMap.datasetTraining],
-      'x-fastgpt-sdk': {
-        resource: 'datasets.training',
-        method: 'listDatasetErrors'
-      },
+      tags: [DevApiTagsMap.datasetTraining],
       requestBody: {
         content: {
           'application/json': {
@@ -168,12 +130,7 @@ export const DatasetTrainingPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回知识库错误数据分页列表',
-          content: {
-            'application/json': {
-              schema: GetDatasetTrainingErrorResponseSchema
-            }
-          }
+          description: '成功返回知识库错误数据分页列表'
         }
       }
     }
@@ -183,22 +140,13 @@ export const DatasetTrainingPath: OpenAPIPath = {
     get: {
       summary: '检查知识库是否存在训练错误',
       description: '轻量检查知识库内是否存在最终/阻塞异常训练记录，用于列表徽章状态探测',
-      tags: [DevApiTagsMap.datasetTraining, SystemOpenApiTagMap.datasetTraining],
-      'x-fastgpt-sdk': {
-        resource: 'datasets.training',
-        method: 'hasErrors'
-      },
+      tags: [DevApiTagsMap.datasetTraining],
       requestParams: {
         query: HasDatasetTrainingErrorQuerySchema
       },
       responses: {
         200: {
-          description: '成功返回是否存在训练错误',
-          content: {
-            'application/json': {
-              schema: HasDatasetTrainingErrorResponseSchema
-            }
-          }
+          description: '成功返回是否存在训练错误'
         }
       }
     }
@@ -208,11 +156,7 @@ export const DatasetTrainingPath: OpenAPIPath = {
     get: {
       summary: '获取训练队列状态',
       description: '判断知识库是否存在普通训练任务或尚未处理完的重建数据，包含失败记录',
-      tags: [DevApiTagsMap.datasetTraining, SystemOpenApiTagMap.datasetTraining],
-      'x-fastgpt-sdk': {
-        resource: 'datasets.training',
-        method: 'getQueue'
-      },
+      tags: [DevApiTagsMap.datasetTraining],
       requestParams: {
         query: GetDatasetTrainingQueueQuerySchema
       },

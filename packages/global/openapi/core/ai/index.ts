@@ -1,6 +1,6 @@
 import { createChatTargetQueryParameters } from '../chat/api';
 import type { OpenAPIPath } from '../../type';
-import { DevApiTagsMap, SystemOpenApiTagMap } from '../../tag';
+import { DevApiTagsMap } from '../../tag';
 import {
   GetLLMRequestRecordParamsSchema,
   LLMRequestRecordSchema,
@@ -71,12 +71,7 @@ export const AIPath: OpenAPIPath = {
       summary: '恢复流式响应',
       description:
         '与 /v2/chat/completions 配套；GET query 传 appId、skillId 或 outLinkAuthData（三选一）以及 chatId。已完成对话可返回 JSON；若对话仍在生成中，则必须请求 SSE，否则返回 406。',
-      tags: [DevApiTagsMap.chatController, SystemOpenApiTagMap.chatController],
-      'x-fastgpt-sdk': {
-        resource: 'chat',
-        method: 'resume',
-        streamMethod: 'resumeStream'
-      },
+      tags: [DevApiTagsMap.chatController],
       parameters: createChatTargetQueryParameters(ResumeStreamParamsRawSchema),
       responses: {
         200: {

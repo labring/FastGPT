@@ -6,35 +6,26 @@ import { openAPIPaths } from '../path';
 import type { OpenAPIPath } from '../type';
 
 const ApiKeyTagNameMap: Record<string, string> = {
-  [SystemOpenApiTagMap.system]: '凭证与系统',
-  [SystemOpenApiTagMap.model]: '模型管理',
-
   [SystemOpenApiTagMap.appLog]: '应用日志',
 
   [SystemOpenApiTagMap.chatHistory]: '会话管理',
   [SystemOpenApiTagMap.chat]: '对话管理',
   [SystemOpenApiTagMap.chatFeedback]: '反馈管理',
   [SystemOpenApiTagMap.chatController]: '会话操作',
-  [SystemOpenApiTagMap.chatFile]: '对话文件',
-  [SystemOpenApiTagMap.chatSandbox]: '会话沙盒',
 
   [SystemOpenApiTagMap.dataset]: '知识库管理',
   [SystemOpenApiTagMap.datasetCollection]: '集合管理',
   [SystemOpenApiTagMap.datasetCollectionCreate]: '集合创建',
   [SystemOpenApiTagMap.datasetData]: '数据管理',
-  [SystemOpenApiTagMap.datasetFile]: '知识库文件',
-  [SystemOpenApiTagMap.datasetTraining]: '训练与索引',
-  [SystemOpenApiTagMap.datasetSynonym]: '同义词管理',
-  [SystemOpenApiTagMap.datasetSearch]: '知识库搜索'
+  [SystemOpenApiTagMap.datasetSearch]: '知识库搜索',
+
+  [SystemOpenApiTagMap.model]: '模型管理'
 };
 
 export const tagGroups = [
   {
     name: '基础功能',
-    tags: [
-      ApiKeyTagNameMap[SystemOpenApiTagMap.system],
-      ApiKeyTagNameMap[SystemOpenApiTagMap.model]
-    ]
+    tags: [ApiKeyTagNameMap[SystemOpenApiTagMap.model]]
   },
   {
     name: '应用管理',
@@ -43,12 +34,10 @@ export const tagGroups = [
   {
     name: '对话',
     tags: [
-      ApiKeyTagNameMap[SystemOpenApiTagMap.chatController],
       ApiKeyTagNameMap[SystemOpenApiTagMap.chatHistory],
       ApiKeyTagNameMap[SystemOpenApiTagMap.chat],
       ApiKeyTagNameMap[SystemOpenApiTagMap.chatFeedback],
-      ApiKeyTagNameMap[SystemOpenApiTagMap.chatFile],
-      ApiKeyTagNameMap[SystemOpenApiTagMap.chatSandbox]
+      ApiKeyTagNameMap[SystemOpenApiTagMap.chatController]
     ]
   },
   {
@@ -57,10 +46,7 @@ export const tagGroups = [
       ApiKeyTagNameMap[SystemOpenApiTagMap.dataset],
       ApiKeyTagNameMap[SystemOpenApiTagMap.datasetCollection],
       ApiKeyTagNameMap[SystemOpenApiTagMap.datasetCollectionCreate],
-      ApiKeyTagNameMap[SystemOpenApiTagMap.datasetFile],
       ApiKeyTagNameMap[SystemOpenApiTagMap.datasetData],
-      ApiKeyTagNameMap[SystemOpenApiTagMap.datasetTraining],
-      ApiKeyTagNameMap[SystemOpenApiTagMap.datasetSynonym],
       ApiKeyTagNameMap[SystemOpenApiTagMap.datasetSearch]
     ]
   }

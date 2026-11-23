@@ -275,12 +275,6 @@ export const GetChatSpeechBodySchema = createOutLinkChatTargetInputSchema({
 }).transform(transformChatAuthTargetInput);
 export type GetChatSpeechBodyType = z.infer<typeof GetChatSpeechBodySchema>;
 
-export const GetChatSpeechResponseSchema = z.string().meta({
-  format: 'binary',
-  description: '二进制音频数据流（audio/mpeg）'
-});
-export type GetChatSpeechResponseType = z.infer<typeof GetChatSpeechResponseSchema>;
-
 /* ============================================================================
  * API: 语音转文字
  * Route: POST /api/v1/audio/transcriptions
@@ -306,9 +300,3 @@ export const AudioTranscriptionsFormRawSchema = z.object({
   })
 });
 export type AudioTranscriptionsFormType = z.infer<typeof AudioTranscriptionsFormRawSchema>;
-
-export const AudioTranscriptionsResponseSchema = z.string().meta({
-  example: '你好，世界',
-  description: '语音识别转换后的文本结果'
-});
-export type AudioTranscriptionsResponseType = z.infer<typeof AudioTranscriptionsResponseSchema>;

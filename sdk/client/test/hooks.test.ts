@@ -46,31 +46,26 @@ describe('SDK Observability Hooks & Redacted Logger', () => {
             headers: { 'content-type': 'application/json', 'retry-after': '0' }
           });
         }
-        return new Response(
-          JSON.stringify({ code: 200, statusText: '', message: '', data: { ok: true } }),
-          {
-            status: 200,
-            headers: {
-              'content-type': 'application/json',
-              'x-request-id': 'req-hook-1'
-            }
+        return new Response(new Uint8Array([0x50, 0x4b, 0x03, 0x04]), {
+          status: 200,
+          headers: {
+            'content-type': 'application/zip',
+            'x-request-id': 'req-hook-1'
           }
-        );
+        });
       }
     });
 
-    const data = await client.rawRequest<{ ok: boolean }>({
-      method: 'GET',
-      path: '/system/file/u/verysecretopaquetoken12345',
-      query: { ticket: 'secret-ticket-888' }
+    const data = await client.datasets.collections.batchDownload({
+      ticket: 'secret-ticket-888'
     });
 
-    expect(data).toEqual({ ok: true });
+    expect(data).toBeInstanceOf(ArrayBuffer);
+    expect(Array.from(new Uint8Array(data))).toEqual([0x50, 0x4b, 0x03, 0x04]);
     expect(reqContexts).toHaveLength(2);
     expect(reqContexts[0]?.attempt).toBe(0);
     expect(reqContexts[1]?.attempt).toBe(1);
     expect(reqContexts[0]?.headers.authorization).not.toContain('supersecretkey9999');
-    expect(reqContexts[0]?.url).not.toContain('verysecretopaquetoken12345');
     expect(reqContexts[0]?.url).not.toContain('secret-ticket-888');
 
     expect(resContexts).toHaveLength(2);
@@ -82,7 +77,6 @@ describe('SDK Observability Hooks & Redacted Logger', () => {
     // 确认日志内容同样经过完整脱敏
     const serializedLogs = JSON.stringify(logEntries);
     expect(serializedLogs).not.toContain('supersecretkey9999');
-    expect(serializedLogs).not.toContain('verysecretopaquetoken12345');
     expect(serializedLogs).not.toContain('secret-ticket-888');
   });
 
@@ -115,9 +109,9 @@ describe('SDK Observability Hooks & Redacted Logger', () => {
         )
     });
 
-    await expect(client.system.health()).rejects.toThrow(FastGptServerError);
+    await expect(client.models.catalog()).rejects.toThrow(FastGptServerError);
     expect(errContexts).toHaveLength(1);
-    expect(errContexts[0]?.operationId).toBe('system.health');
+    expect(errContexts[0]?.operationId).toBe('models.catalog');
     expect(errContexts[0]?.error).toBeInstanceOf(FastGptServerError);
     expect(warnings.some((w) => w.includes('onRequest'))).toBe(true);
   });
@@ -128,7 +122,7 @@ describe('SDK Observability Hooks & Redacted Logger', () => {
 
     const rawCause = Object.assign(
       new Error(
-        'Upstream Bearer secretCauseToken9999 failed for fastgpt-causekey123456 at /api/system/file/u/secretuploadtok999?ticket=leak-ticket-1'
+        'Upstream Bearer secretCauseToken9999 failed for fastgpt-causekey123456 at /api/core/dataset/collection/batchDownload?ticket=leak-ticket-1'
       ),
       {
         headers: { authorization: 'Bearer rawHeaderSecret7777' },
@@ -160,7 +154,7 @@ describe('SDK Observability Hooks & Redacted Logger', () => {
 
     let caughtError: unknown;
     try {
-      await client.system.health();
+      await client.models.catalog();
     } catch (err) {
       caughtError = err;
     }
@@ -183,7 +177,6 @@ describe('SDK Observability Hooks & Redacted Logger', () => {
     });
     expect(serializedHookErr).not.toContain('secretCauseToken9999');
     expect(serializedHookErr).not.toContain('fastgpt-causekey123456');
-    expect(serializedHookErr).not.toContain('secretuploadtok999');
     expect(serializedHookErr).not.toContain('leak-ticket-1');
     expect(serializedHookErr).not.toContain('rawHeaderSecret7777');
     expect(serializedHookErr).not.toContain('fastgpt-rawpropkey8888');
@@ -230,7 +223,7 @@ describe('SDK Observability Hooks & Redacted Logger', () => {
 
     let caught: unknown;
     try {
-      await client.system.health();
+      await client.models.catalog();
     } catch (err) {
       caught = err;
     }
@@ -289,7 +282,7 @@ describe('SDK Observability Hooks & Redacted Logger', () => {
     });
 
     await expect(
-      explicitClient.system.health({
+      explicitClient.models.catalog(undefined, {
         headers: {
           Authorization: `Bearer ${explicitBearerSecret}`,
           'X-Api-Key': explicitRawAuthSecret
@@ -356,9 +349,9 @@ describe('SDK Observability Hooks & Redacted Logger', () => {
       }
     });
 
-    const slowPromise = rotatingClient.system.health().catch((err: unknown) => err);
+    const slowPromise = rotatingClient.models.catalog().catch((err: unknown) => err);
     // 先让 44 个携带全新密钥的请求并发完成（远超原 32 条上限）
-    await Promise.all(Array.from({ length: 44 }, () => rotatingClient.system.health()));
+    await Promise.all(Array.from({ length: 44 }, () => rotatingClient.models.catalog()));
     releaseSlowRequest();
 
     const slowErr = await slowPromise;

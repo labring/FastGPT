@@ -92,11 +92,6 @@ export const DeleteDatasetSynonymQuerySchema = z.object({
 export const DownloadDatasetSynonymQuerySchema = DeleteDatasetSynonymQuerySchema.omit({
   oldFileVersion: true
 });
-export const DownloadDatasetSynonymResponseSchema = z.string().meta({
-  format: 'binary',
-  description: '导出的同义词文件二进制流（跟随原上传扩展名输出 CSV、XLS 或 XLSX）'
-});
-export type DownloadDatasetSynonymResponse = z.infer<typeof DownloadDatasetSynonymResponseSchema>;
 export const DeleteDatasetSynonymResponseSchema = DatasetSynonymMutationResponseSchema.omit({
   fileName: true,
   size: true,

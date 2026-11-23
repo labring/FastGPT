@@ -14,7 +14,6 @@ import {
   CreateDatasetBodySchema,
   CreateDatasetResponseSchema,
   CreateDatasetWithFilesBodySchema,
-  CreateDatasetWithFilesResponseSchema,
   DeleteDatasetQuerySchema,
   GetDatasetDetailQuerySchema,
   GetDatasetDetailResponseSchema,
@@ -23,7 +22,6 @@ import {
   GetDatasetListV2BodySchema,
   GetDatasetListV2ResponseSchema,
   GetDatasetPathsQuerySchema,
-  GetDatasetPathsResponseSchema,
   UpdateDatasetBodySchema,
   ResumeDatasetInheritPermissionBodySchema,
   EnableCollectionPermissionBodySchema,
@@ -77,11 +75,7 @@ export const DatasetPath: OpenAPIPath = {
     post: {
       summary: '创建知识库并上传文件',
       description: '一步完成知识库创建和文件上传,自动创建集合并开始数据处理',
-      tags: [DevApiTagsMap.datasetCommon, SystemOpenApiTagMap.dataset],
-      'x-fastgpt-sdk': {
-        resource: 'datasets',
-        method: 'createWithFiles'
-      },
+      tags: [DevApiTagsMap.datasetCommon],
       requestBody: {
         content: {
           'application/json': {
@@ -91,12 +85,7 @@ export const DatasetPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回知识库信息和向量模型配置',
-          content: {
-            'application/json': {
-              schema: CreateDatasetWithFilesResponseSchema
-            }
-          }
+          description: '成功返回知识库信息和向量模型配置'
         }
       }
     }
@@ -185,12 +174,7 @@ export const DatasetPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回路径列表',
-          content: {
-            'application/json': {
-              schema: GetDatasetPathsResponseSchema
-            }
-          }
+          description: '成功返回路径列表'
         }
       }
     }

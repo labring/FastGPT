@@ -1,40 +1,35 @@
 import { describe, expect, it } from 'vitest';
 import { buildSdkIrDocument } from '../src/buildIr';
 import { checkSdkArtifactsDrift } from '../src/index';
+import { normalizeRequestSchemaToIr } from '../src/schemaNormalizer';
 
 describe('OpenAPI to SDK IR Compiler & Artifacts Drift', () => {
   const ir = buildSdkIrDocument();
 
-  it('compiles all 100 active SDK operations into 5 top-level domain resources', () => {
+  it('compiles all 47 active System OpenAPI operations into 4 top-level domain resources', () => {
     expect(ir.irVersion).toBe('1.0.0');
-    expect(ir.operations).toHaveLength(100);
+    expect(ir.operations).toHaveLength(47);
 
     const topResourceNames = ir.resources.map((node) => node.name);
-    expect(topResourceNames).toEqual(['apps', 'chat', 'datasets', 'models', 'system']);
+    expect(topResourceNames).toEqual(['apps', 'chat', 'datasets', 'models']);
 
     const datasetsNode = ir.resources.find((node) => node.name === 'datasets');
-    expect(datasetsNode?.children.map((c) => c.name)).toEqual([
-      'collections',
-      'data',
-      'files',
-      'synonyms',
-      'training'
-    ]);
+    expect(datasetsNode?.children.map((c) => c.name)).toEqual(['collections', 'data']);
 
     const appsLogsSearch = ir.operations.find((op) => op.id === 'apps.logs.search');
     expect(appsLogsSearch?.httpMethod).toBe('POST');
     expect(appsLogsSearch?.path).toBe('/core/app/logs/search');
+
+    // 已废弃接口与非 SystemOpenApiTagMap 站内接口不得进入生成层 SDK
     expect(ir.operations.find((op) => op.id === 'apps.logs.list')).toBeUndefined();
     expect(ir.operations.find((op) => op.path === '/core/app/logs/list')).toBeUndefined();
+    expect(ir.operations.find((op) => op.id === 'system.whoami')).toBeUndefined();
+    expect(ir.operations.find((op) => op.id === 'system.health')).toBeUndefined();
+    expect(ir.operations.find((op) => op.id === 'datasets.training.retryOrUpdate')).toBeUndefined();
+    expect(ir.operations.find((op) => op.id === 'chat.sandbox.upload')).toBeUndefined();
 
     const chatNode = ir.resources.find((node) => node.name === 'chat');
-    expect(chatNode?.children.map((c) => c.name)).toEqual([
-      'feedbacks',
-      'files',
-      'histories',
-      'records',
-      'sandbox'
-    ]);
+    expect(chatNode?.children.map((c) => c.name)).toEqual(['feedbacks', 'histories', 'records']);
   });
 
   it('flattens complex allOf/anyOf request unions and strips internal non-SDK fields', () => {
@@ -100,7 +95,7 @@ describe('OpenAPI to SDK IR Compiler & Artifacts Drift', () => {
     }
   });
 
-  it('preserves required-alternative and strict mutually exclusive request union branches', () => {
+  it('preserves required-alternative, mutually exclusive unions, and branch not.required never constraints', () => {
     const deleteCol = ir.operations.find((op) => op.id === 'datasets.collections.delete');
     expect(deleteCol).toBeDefined();
     expect(deleteCol?.queryParams).toEqual([]);
@@ -129,47 +124,60 @@ describe('OpenAPI to SDK IR Compiler & Artifacts Drift', () => {
     expect(updateCol?.hasRequiredInput).toBe(true);
     expect(updateCol?.requestSchema?.kind).toBe('union');
 
-    const retryTraining = ir.operations.find((op) => op.id === 'datasets.training.retryOrUpdate');
-    expect(retryTraining?.hasRequiredInput).toBe(true);
-    expect(retryTraining?.requestSchema?.kind).toBe('union');
-    if (retryTraining?.requestSchema?.kind === 'union') {
-      expect(retryTraining.requestSchema.variants).toHaveLength(3);
-      const dataIdVariant = retryTraining.requestSchema.variants.find((variant) =>
-        variant.properties.some((p) => p.name === 'dataId' && p.required)
-      );
-      const datasetIdVariant = retryTraining.requestSchema.variants.find((variant) =>
-        variant.properties.some((p) => p.name === 'datasetId' && p.required)
-      );
-      const collectionIdVariant = retryTraining.requestSchema.variants.find((variant) =>
-        variant.properties.some((p) => p.name === 'collectionId' && p.required)
-      );
-
-      expect(dataIdVariant).toBeDefined();
-      expect(dataIdVariant?.properties.find((p) => p.name === 'datasetId')?.schema.kind).not.toBe(
+    // 验证单键 not.required 与 not.anyOf（德摩根律）转换为分支内 never 字段
+    const normalizedMutualExclusion = normalizeRequestSchemaToIr({
+      rootDoc: {},
+      rawSchema: {
+        anyOf: [
+          {
+            type: 'object',
+            properties: {
+              dataId: { type: 'string' },
+              datasetId: { type: 'string' },
+              collectionId: { type: 'string' }
+            },
+            required: ['dataId']
+          },
+          {
+            type: 'object',
+            properties: {
+              datasetId: { type: 'string' },
+              collectionId: { type: 'string' }
+            },
+            required: ['datasetId'],
+            not: { required: ['collectionId'] }
+          },
+          {
+            type: 'object',
+            properties: {
+              dataId: { type: 'string' },
+              datasetId: { type: 'string' },
+              collectionId: { type: 'string' }
+            },
+            required: ['collectionId'],
+            not: { anyOf: [{ required: ['datasetId'] }, { required: ['dataId'] }] }
+          }
+        ]
+      }
+    });
+    expect(normalizedMutualExclusion.kind).toBe('union');
+    if (normalizedMutualExclusion.kind === 'union') {
+      expect(normalizedMutualExclusion.variants).toHaveLength(3);
+      const [vData, vDs, vCol] = normalizedMutualExclusion.variants;
+      expect(vData?.properties.find((p) => p.name === 'collectionId')?.schema.kind).not.toBe(
         'never'
       );
-      expect(
-        dataIdVariant?.properties.find((p) => p.name === 'collectionId')?.schema.kind
-      ).not.toBe('never');
-
-      expect(datasetIdVariant?.properties.find((p) => p.name === 'collectionId')?.schema.kind).toBe(
-        'never'
-      );
-      expect(collectionIdVariant?.properties.find((p) => p.name === 'datasetId')?.schema.kind).toBe(
-        'never'
-      );
+      expect(vDs?.properties.find((p) => p.name === 'collectionId')?.schema.kind).toBe('never');
+      expect(vCol?.properties.find((p) => p.name === 'datasetId')?.schema.kind).toBe('never');
+      expect(vCol?.properties.find((p) => p.name === 'dataId')?.schema.kind).toBe('never');
     }
   });
 
-  it('accurately classifies dual-mode stream, multipart, octet-stream, and all 5 response modes', () => {
+  it('accurately classifies dual-mode stream, multipart, binary, and void response modes', () => {
     const completions = ir.operations.find((op) => op.id === 'chat.completionsV2');
     expect(completions?.streamMethod).toBe('completionsV2Stream');
     expect(completions?.responseMode).toBe('rawJson');
     expect(completions?.bodyParams).not.toContain('stream');
-
-    const resume = ir.operations.find((op) => op.id === 'chat.resume');
-    expect(resume?.streamMethod).toBe('resumeStream');
-    expect(resume?.responseMode).toBe('envelope');
 
     const createLocalFile = ir.operations.find(
       (op) => op.id === 'datasets.collections.createByLocalFile'
@@ -177,13 +185,13 @@ describe('OpenAPI to SDK IR Compiler & Artifacts Drift', () => {
     expect(createLocalFile?.requestContentType).toBe('multipart');
     expect(createLocalFile?.multipartMode).toBe('fileAndJsonData');
 
-    const insertImages = ir.operations.find((op) => op.id === 'datasets.data.insertImages');
-    expect(insertImages?.requestContentType).toBe('multipart');
-    expect(insertImages?.multipartMode).toBe('flatFields');
+    const batchDownload = ir.operations.find(
+      (op) => op.id === 'datasets.collections.batchDownload'
+    );
+    expect(batchDownload?.responseMode).toBe('binary');
 
-    const sandboxUpload = ir.operations.find((op) => op.id === 'chat.sandbox.upload');
-    expect(sandboxUpload?.requestContentType).toBe('octet-stream');
-    expect(sandboxUpload?.binaryBodyField).toBe('file');
+    const deleteDataset = ir.operations.find((op) => op.id === 'datasets.delete');
+    expect(deleteDataset?.responseMode).toBe('void');
 
     // 所有非 void 接口均具备明确结构化或标量返回类型，不存在退化为 unknown 的顶层响应
     const unknownTopResponses = ir.operations.filter((op) => op.responseSchema?.kind === 'unknown');

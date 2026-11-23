@@ -4,8 +4,6 @@ import type { BaseClient } from '../core/baseClient';
 import type { ChatStream } from '../core/sse';
 import type { OperationSpec, RequestOptions } from '../core/types';
 import type {
-  AppsLogsExportReq,
-  AppsLogsExportRes,
   AppsLogsGetChartDataReq,
   AppsLogsGetChartDataRes,
   AppsLogsGetTotalDataReq,
@@ -16,19 +14,7 @@ import type {
   AppsLogsSearchRes,
   ChatCompletionsV2Req,
   ChatCompletionsV2Res,
-  ChatCreateQuestionGuideReq,
-  ChatCreateQuestionGuideRes,
-  ChatFeedbacksAdminUpdateReq,
-  ChatFeedbacksCloseCustomReq,
-  ChatFeedbacksListRecordIdsReq,
-  ChatFeedbacksListRecordIdsRes,
-  ChatFeedbacksUpdateReadStatusReq,
-  ChatFeedbacksUpdateReadStatusRes,
   ChatFeedbacksUpdateUserReq,
-  ChatFilesPresignPreviewUrlReq,
-  ChatFilesPresignPreviewUrlRes,
-  ChatFilesPresignUploadUrlReq,
-  ChatFilesPresignUploadUrlRes,
   ChatHistoriesBatchDeleteReq,
   ChatHistoriesClearReq,
   ChatHistoriesDeleteReq,
@@ -40,8 +26,6 @@ import type {
   ChatHistoriesUpdateReq,
   ChatInitReq,
   ChatInitRes,
-  ChatQueryInputGuideReq,
-  ChatQueryInputGuideRes,
   ChatRecordsDeleteReq,
   ChatRecordsGetCollectionQuotesReq,
   ChatRecordsGetCollectionQuotesRes,
@@ -53,42 +37,18 @@ import type {
   ChatRecordsListByAnchorRes,
   ChatRecordsListReq,
   ChatRecordsListRes,
-  ChatRecordsSynthesizeSpeechReq,
-  ChatRecordsSynthesizeSpeechRes,
-  ChatResumeReq,
-  ChatResumeRes,
-  ChatSandboxCheckExistReq,
-  ChatSandboxCheckExistRes,
-  ChatSandboxDownloadReq,
-  ChatSandboxDownloadRes,
-  ChatSandboxGetHtmlPreviewLinkReq,
-  ChatSandboxGetHtmlPreviewLinkRes,
-  ChatSandboxUploadReq,
-  ChatSandboxUploadRes,
   ChatStopReq,
   ChatStopRes,
-  ChatTranscribeAudioReq,
-  ChatTranscribeAudioRes,
   DatasetsBatchDeleteReq,
   DatasetsBatchDeleteRes,
   DatasetsBatchMoveReq,
   DatasetsBatchMoveRes,
   DatasetsCollectionsBatchDownloadReq,
   DatasetsCollectionsBatchDownloadRes,
-  DatasetsCollectionsCreateByApiDatasetReq,
-  DatasetsCollectionsCreateByApiDatasetRes,
-  DatasetsCollectionsCreateByBackupReq,
-  DatasetsCollectionsCreateByBackupRes,
-  DatasetsCollectionsCreateByFileIdReq,
-  DatasetsCollectionsCreateByFileIdRes,
-  DatasetsCollectionsCreateByImagesReq,
-  DatasetsCollectionsCreateByImagesRes,
   DatasetsCollectionsCreateByLinkReq,
   DatasetsCollectionsCreateByLinkRes,
   DatasetsCollectionsCreateByLocalFileReq,
   DatasetsCollectionsCreateByLocalFileRes,
-  DatasetsCollectionsCreateByTemplateReq,
-  DatasetsCollectionsCreateByTemplateRes,
   DatasetsCollectionsCreateByTextReq,
   DatasetsCollectionsCreateByTextRes,
   DatasetsCollectionsCreateReq,
@@ -96,35 +56,16 @@ import type {
   DatasetsCollectionsDeleteReq,
   DatasetsCollectionsDetailReq,
   DatasetsCollectionsDetailRes,
-  DatasetsCollectionsExportCsvReq,
-  DatasetsCollectionsExportCsvRes,
   DatasetsCollectionsGetDownloadTicketReq,
   DatasetsCollectionsGetDownloadTicketRes,
-  DatasetsCollectionsGetTagFilterOptionsReq,
-  DatasetsCollectionsGetTagFilterOptionsRes,
-  DatasetsCollectionsGetTrainingDetailReq,
-  DatasetsCollectionsGetTrainingDetailRes,
   DatasetsCollectionsListReq,
   DatasetsCollectionsListRes,
-  DatasetsCollectionsReadSourceReq,
-  DatasetsCollectionsReadSourceRes,
-  DatasetsCollectionsRetrainReq,
-  DatasetsCollectionsRetrainRes,
-  DatasetsCollectionsSyncReq,
-  DatasetsCollectionsSyncRes,
   DatasetsCollectionsUpdateReq,
   DatasetsCreateReq,
   DatasetsCreateRes,
-  DatasetsCreateWithFilesReq,
-  DatasetsCreateWithFilesRes,
   DatasetsDataDeleteReq,
   DatasetsDataDetailReq,
   DatasetsDataDetailRes,
-  DatasetsDataGetQuoteReq,
-  DatasetsDataGetQuoteRes,
-  DatasetsDataInsertImagesReq,
-  DatasetsDataInsertReq,
-  DatasetsDataInsertRes,
   DatasetsDataListReq,
   DatasetsDataListRes,
   DatasetsDataPushBatchReq,
@@ -134,83 +75,17 @@ import type {
   DatasetsDeleteReq,
   DatasetsDetailReq,
   DatasetsDetailRes,
-  DatasetsFilesAbortMultipartUploadReq,
-  DatasetsFilesCompleteMultipartUploadReq,
-  DatasetsFilesCompleteMultipartUploadRes,
-  DatasetsFilesPresignUploadUrlReq,
-  DatasetsFilesPresignUploadUrlRes,
-  DatasetsFilesUploadPartReq,
-  DatasetsFilesUploadPartRes,
   DatasetsListReq,
   DatasetsListRes,
   DatasetsSearchReq,
   DatasetsSearchRes,
-  DatasetsSynonymsDeleteReq,
-  DatasetsSynonymsDeleteRes,
-  DatasetsSynonymsDetailReq,
-  DatasetsSynonymsDetailRes,
-  DatasetsSynonymsDownloadReq,
-  DatasetsSynonymsDownloadRes,
-  DatasetsSynonymsListMappingsReq,
-  DatasetsSynonymsListMappingsRes,
-  DatasetsSynonymsUpdateFileReq,
-  DatasetsSynonymsUpdateFileRes,
-  DatasetsSynonymsUpdateReq,
-  DatasetsSynonymsUpdateRes,
-  DatasetsSynonymsUploadFileReq,
-  DatasetsSynonymsUploadFileRes,
-  DatasetsSynonymsUploadReq,
-  DatasetsSynonymsUploadRes,
-  DatasetsTrainingDeleteReq,
-  DatasetsTrainingGetDetailReq,
-  DatasetsTrainingGetDetailRes,
-  DatasetsTrainingGetQueueReq,
-  DatasetsTrainingGetQueueRes,
-  DatasetsTrainingHasErrorsReq,
-  DatasetsTrainingHasErrorsRes,
-  DatasetsTrainingListCollectionErrorsReq,
-  DatasetsTrainingListCollectionErrorsRes,
-  DatasetsTrainingListDatasetErrorsReq,
-  DatasetsTrainingListDatasetErrorsRes,
-  DatasetsTrainingRebuildEmbeddingReq,
-  DatasetsTrainingRetryOrUpdateReq,
   DatasetsUpdateReq,
   ModelsCatalogReq,
   ModelsCatalogRes,
   ModelsListRes,
   ModelsSummaryReq,
-  ModelsSummaryRes,
-  SystemHealthRes,
-  SystemWhoamiRes
+  ModelsSummaryRes
 } from './types';
-
-const APPS_LOGS_EXPORT_SPEC: OperationSpec = {
-  id: 'apps.logs.export',
-  httpMethod: 'POST',
-  path: '/core/app/logs/exportLogs',
-  requestContentType: 'json',
-  responseMode: 'text',
-  appIdCarrier: 'body',
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: [
-    'feedbackType',
-    'unreadOnly',
-    'errorFilter',
-    'appId',
-    'dateStart',
-    'dateEnd',
-    'sources',
-    'tmbIds',
-    'outLinkUids',
-    'chatSearch',
-    'searchType',
-    'title',
-    'sourcesMap',
-    'logKeys'
-  ]
-};
 
 const APPS_LOGS_GET_CHART_DATA_SPEC: OperationSpec = {
   id: 'apps.logs.getChartData',
@@ -320,81 +195,6 @@ const CHAT_COMPLETIONS_V2_SPEC: OperationSpec = {
   ]
 };
 
-const CHAT_CREATE_QUESTION_GUIDE_SPEC: OperationSpec = {
-  id: 'chat.createQuestionGuide',
-  httpMethod: 'POST',
-  path: '/core/ai/agent/v2/createQuestionGuide',
-  requestContentType: 'json',
-  responseMode: 'envelope',
-  appIdCarrier: 'body',
-  identityCarrier: 'body',
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['appId', 'chatId', 'questionGuide', 'customUid', 'authProxy']
-};
-
-const CHAT_FEEDBACKS_ADMIN_UPDATE_SPEC: OperationSpec = {
-  id: 'chat.feedbacks.adminUpdate',
-  httpMethod: 'POST',
-  path: '/core/chat/feedback/adminUpdate',
-  requestContentType: 'json',
-  responseMode: 'void',
-  appIdCarrier: 'body',
-  identityCarrier: 'body',
-  pathParams: [],
-  queryParams: [],
-  bodyParams: [
-    'appId',
-    'chatId',
-    'dataId',
-    'datasetId',
-    'feedbackDataId',
-    'q',
-    'a',
-    'customUid',
-    'authProxy'
-  ]
-};
-
-const CHAT_FEEDBACKS_CLOSE_CUSTOM_SPEC: OperationSpec = {
-  id: 'chat.feedbacks.closeCustom',
-  httpMethod: 'POST',
-  path: '/core/chat/feedback/closeCustom',
-  requestContentType: 'json',
-  responseMode: 'void',
-  appIdCarrier: 'body',
-  identityCarrier: 'body',
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['appId', 'chatId', 'dataId', 'index', 'customUid', 'authProxy']
-};
-
-const CHAT_FEEDBACKS_LIST_RECORD_IDS_SPEC: OperationSpec = {
-  id: 'chat.feedbacks.listRecordIds',
-  httpMethod: 'POST',
-  path: '/core/chat/feedback/getFeedbackRecordIds',
-  requestContentType: 'json',
-  responseMode: 'envelope',
-  appIdCarrier: 'body',
-  identityCarrier: 'body',
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['appId', 'chatId', 'feedbackType', 'unreadOnly', 'customUid', 'authProxy']
-};
-
-const CHAT_FEEDBACKS_UPDATE_READ_STATUS_SPEC: OperationSpec = {
-  id: 'chat.feedbacks.updateReadStatus',
-  httpMethod: 'POST',
-  path: '/core/chat/feedback/updateFeedbackReadStatus',
-  requestContentType: 'json',
-  responseMode: 'envelope',
-  appIdCarrier: 'body',
-  identityCarrier: 'body',
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['appId', 'chatId', 'dataId', 'isRead', 'customUid', 'authProxy']
-};
-
 const CHAT_FEEDBACKS_UPDATE_USER_SPEC: OperationSpec = {
   id: 'chat.feedbacks.updateUser',
   httpMethod: 'POST',
@@ -411,42 +211,6 @@ const CHAT_FEEDBACKS_UPDATE_USER_SPEC: OperationSpec = {
     'dataId',
     'userGoodFeedback',
     'userBadFeedback',
-    'customUid',
-    'authProxy'
-  ]
-};
-
-const CHAT_FILES_PRESIGN_PREVIEW_URL_SPEC: OperationSpec = {
-  id: 'chat.files.presignPreviewUrl',
-  httpMethod: 'POST',
-  path: '/core/chat/file/presignChatFileGetUrl',
-  requestContentType: 'json',
-  responseMode: 'envelope',
-  appIdCarrier: 'body',
-  identityCarrier: 'body',
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['appId', 'key', 'chatId', 'customUid', 'authProxy']
-};
-
-const CHAT_FILES_PRESIGN_UPLOAD_URL_SPEC: OperationSpec = {
-  id: 'chat.files.presignUploadUrl',
-  httpMethod: 'POST',
-  path: '/core/chat/file/presignChatFilePostUrl',
-  requestContentType: 'json',
-  responseMode: 'envelope',
-  appIdCarrier: 'body',
-  identityCarrier: 'body',
-  pathParams: [],
-  queryParams: [],
-  bodyParams: [
-    'appId',
-    'filename',
-    'contentType',
-    'declaredExtension',
-    'declaredFilename',
-    'size',
-    'chatId',
     'customUid',
     'authProxy'
   ]
@@ -566,19 +330,6 @@ const CHAT_INIT_SPEC: OperationSpec = {
   pathParams: [],
   queryParams: ['appId', 'chatId', 'loadCustomFeedbacks', 'customUid', 'authProxy'],
   bodyParams: []
-};
-
-const CHAT_QUERY_INPUT_GUIDE_SPEC: OperationSpec = {
-  id: 'chat.queryInputGuide',
-  httpMethod: 'POST',
-  path: '/core/chat/inputGuide/query',
-  requestContentType: 'json',
-  responseMode: 'envelope',
-  appIdCarrier: 'body',
-  identityCarrier: 'body',
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['appId', 'searchKey', 'customUid', 'authProxy']
 };
 
 const CHAT_RECORDS_DELETE_SPEC: OperationSpec = {
@@ -703,85 +454,6 @@ const CHAT_RECORDS_LIST_BY_ANCHOR_SPEC: OperationSpec = {
   ]
 };
 
-const CHAT_RECORDS_SYNTHESIZE_SPEECH_SPEC: OperationSpec = {
-  id: 'chat.records.synthesizeSpeech',
-  httpMethod: 'POST',
-  path: '/core/chat/record/getSpeech',
-  requestContentType: 'json',
-  responseMode: 'binary',
-  appIdCarrier: 'body',
-  identityCarrier: 'body',
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['appId', 'chatId', 'ttsConfig', 'input', 'customUid', 'authProxy']
-};
-
-const CHAT_RESUME_SPEC: OperationSpec = {
-  id: 'chat.resume',
-  httpMethod: 'GET',
-  path: '/core/chat/resume',
-  requestContentType: 'none',
-  responseMode: 'envelope',
-  appIdCarrier: 'query',
-  identityCarrier: 'query',
-  pathParams: [],
-  queryParams: ['appId', 'chatId', 'customUid', 'authProxy'],
-  bodyParams: []
-};
-
-const CHAT_SANDBOX_CHECK_EXIST_SPEC: OperationSpec = {
-  id: 'chat.sandbox.checkExist',
-  httpMethod: 'POST',
-  path: '/core/ai/sandbox/checkExist',
-  requestContentType: 'json',
-  responseMode: 'envelope',
-  appIdCarrier: 'body',
-  identityCarrier: 'body',
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['appId', 'chatId', 'customUid', 'authProxy']
-};
-
-const CHAT_SANDBOX_DOWNLOAD_SPEC: OperationSpec = {
-  id: 'chat.sandbox.download',
-  httpMethod: 'POST',
-  path: '/core/ai/sandbox/download',
-  requestContentType: 'json',
-  responseMode: 'binary',
-  appIdCarrier: 'body',
-  identityCarrier: 'body',
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['appId', 'chatId', 'path', 'customUid', 'authProxy']
-};
-
-const CHAT_SANDBOX_GET_HTML_PREVIEW_LINK_SPEC: OperationSpec = {
-  id: 'chat.sandbox.getHtmlPreviewLink',
-  httpMethod: 'POST',
-  path: '/core/ai/sandbox/getHtmlPreviewLink',
-  requestContentType: 'json',
-  responseMode: 'envelope',
-  appIdCarrier: 'body',
-  identityCarrier: 'body',
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['appId', 'chatId', 'filePath', 'customUid', 'authProxy']
-};
-
-const CHAT_SANDBOX_UPLOAD_SPEC: OperationSpec = {
-  id: 'chat.sandbox.upload',
-  httpMethod: 'POST',
-  path: '/core/ai/sandbox/upload',
-  requestContentType: 'octet-stream',
-  responseMode: 'envelope',
-  appIdCarrier: 'query',
-  identityCarrier: 'query',
-  pathParams: [],
-  queryParams: ['appId', 'chatId', 'path', 'customUid', 'authProxy'],
-  bodyParams: [],
-  binaryBodyField: 'file'
-};
-
 const CHAT_STOP_SPEC: OperationSpec = {
   id: 'chat.stop',
   httpMethod: 'POST',
@@ -793,20 +465,6 @@ const CHAT_STOP_SPEC: OperationSpec = {
   pathParams: [],
   queryParams: [],
   bodyParams: ['appId', 'chatId', 'customUid', 'authProxy']
-};
-
-const CHAT_TRANSCRIBE_AUDIO_SPEC: OperationSpec = {
-  id: 'chat.transcribeAudio',
-  httpMethod: 'POST',
-  path: '/v1/audio/transcriptions',
-  requestContentType: 'multipart',
-  multipartMode: 'fileAndJsonData',
-  responseMode: 'envelope',
-  appIdCarrier: 'multipartData',
-  identityCarrier: 'multipartData',
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['file', 'appId', 'chatId', 'customUid', 'authProxy']
 };
 
 const DATASETS_BATCH_DELETE_SPEC: OperationSpec = {
@@ -859,106 +517,6 @@ const DATASETS_COLLECTIONS_CREATE_SPEC: OperationSpec = {
   pathParams: [],
   queryParams: [],
   bodyParams: ['datasetId', 'parentId', 'name', 'type', 'tags', 'inheritPermission']
-};
-
-const DATASETS_COLLECTIONS_CREATE_BY_API_DATASET_SPEC: OperationSpec = {
-  id: 'datasets.collections.createByApiDataset',
-  httpMethod: 'POST',
-  path: '/core/dataset/collection/create/apiCollectionV2',
-  requestContentType: 'json',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: [
-    'trainingType',
-    'chunkTriggerType',
-    'chunkTriggerMinSize',
-    'dataEnhanceCollectionName',
-    'imageIndex',
-    'autoIndexes',
-    'indexPrefixTitle',
-    'chunkSettingMode',
-    'chunkSplitMode',
-    'paragraphChunkAIMode',
-    'paragraphChunkDeep',
-    'paragraphChunkMinSize',
-    'chunkSize',
-    'chunkSplitter',
-    'indexSize',
-    'qaPrompt',
-    'parentId',
-    'metadata',
-    'customPdfParse',
-    'datasetId',
-    'tags',
-    'apiFiles'
-  ]
-};
-
-const DATASETS_COLLECTIONS_CREATE_BY_BACKUP_SPEC: OperationSpec = {
-  id: 'datasets.collections.createByBackup',
-  httpMethod: 'POST',
-  path: '/core/dataset/collection/create/backup',
-  requestContentType: 'multipart',
-  multipartMode: 'fileAndJsonData',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['file', 'datasetId', 'parentId', 'tags']
-};
-
-const DATASETS_COLLECTIONS_CREATE_BY_FILE_ID_SPEC: OperationSpec = {
-  id: 'datasets.collections.createByFileId',
-  httpMethod: 'POST',
-  path: '/core/dataset/collection/create/fileId',
-  requestContentType: 'json',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: [
-    'trainingType',
-    'chunkTriggerType',
-    'chunkTriggerMinSize',
-    'dataEnhanceCollectionName',
-    'imageIndex',
-    'autoIndexes',
-    'indexPrefixTitle',
-    'chunkSettingMode',
-    'chunkSplitMode',
-    'paragraphChunkAIMode',
-    'paragraphChunkDeep',
-    'paragraphChunkMinSize',
-    'chunkSize',
-    'chunkSplitter',
-    'indexSize',
-    'qaPrompt',
-    'parentId',
-    'metadata',
-    'customPdfParse',
-    'datasetId',
-    'tags',
-    'fileId'
-  ]
-};
-
-const DATASETS_COLLECTIONS_CREATE_BY_IMAGES_SPEC: OperationSpec = {
-  id: 'datasets.collections.createByImages',
-  httpMethod: 'POST',
-  path: '/core/dataset/collection/create/images',
-  requestContentType: 'multipart',
-  multipartMode: 'fileAndJsonData',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['file', 'datasetId', 'parentId', 'collectionName', 'tags']
 };
 
 const DATASETS_COLLECTIONS_CREATE_BY_LINK_SPEC: OperationSpec = {
@@ -1034,20 +592,6 @@ const DATASETS_COLLECTIONS_CREATE_BY_LOCAL_FILE_SPEC: OperationSpec = {
   ]
 };
 
-const DATASETS_COLLECTIONS_CREATE_BY_TEMPLATE_SPEC: OperationSpec = {
-  id: 'datasets.collections.createByTemplate',
-  httpMethod: 'POST',
-  path: '/core/dataset/collection/create/template',
-  requestContentType: 'multipart',
-  multipartMode: 'fileAndJsonData',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['file', 'datasetId', 'parentId', 'tags', 'autoIndexes']
-};
-
 const DATASETS_COLLECTIONS_CREATE_BY_TEXT_SPEC: OperationSpec = {
   id: 'datasets.collections.createByText',
   httpMethod: 'POST',
@@ -1111,27 +655,6 @@ const DATASETS_COLLECTIONS_DETAIL_SPEC: OperationSpec = {
   bodyParams: []
 };
 
-const DATASETS_COLLECTIONS_EXPORT_CSV_SPEC: OperationSpec = {
-  id: 'datasets.collections.exportCsv',
-  httpMethod: 'POST',
-  path: '/core/dataset/collection/export',
-  requestContentType: 'json',
-  responseMode: 'text',
-  appIdCarrier: 'body',
-  identityCarrier: 'body',
-  pathParams: [],
-  queryParams: [],
-  bodyParams: [
-    'appId',
-    'collectionId',
-    'chatId',
-    'chatItemDataId',
-    'chatTime',
-    'customUid',
-    'authProxy'
-  ]
-};
-
 const DATASETS_COLLECTIONS_GET_DOWNLOAD_TICKET_SPEC: OperationSpec = {
   id: 'datasets.collections.getDownloadTicket',
   httpMethod: 'POST',
@@ -1143,32 +666,6 @@ const DATASETS_COLLECTIONS_GET_DOWNLOAD_TICKET_SPEC: OperationSpec = {
   pathParams: [],
   queryParams: [],
   bodyParams: ['datasetId', 'collectionIds']
-};
-
-const DATASETS_COLLECTIONS_GET_TAG_FILTER_OPTIONS_SPEC: OperationSpec = {
-  id: 'datasets.collections.getTagFilterOptions',
-  httpMethod: 'GET',
-  path: '/core/dataset/collection/tagFilterOptions',
-  requestContentType: 'none',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: ['datasetId'],
-  bodyParams: []
-};
-
-const DATASETS_COLLECTIONS_GET_TRAINING_DETAIL_SPEC: OperationSpec = {
-  id: 'datasets.collections.getTrainingDetail',
-  httpMethod: 'GET',
-  path: '/core/dataset/collection/trainingDetail',
-  requestContentType: 'none',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: ['collectionId'],
-  bodyParams: []
 };
 
 const DATASETS_COLLECTIONS_LIST_SPEC: OperationSpec = {
@@ -1194,66 +691,6 @@ const DATASETS_COLLECTIONS_LIST_SPEC: OperationSpec = {
     'simple',
     'pageNum'
   ]
-};
-
-const DATASETS_COLLECTIONS_READ_SOURCE_SPEC: OperationSpec = {
-  id: 'datasets.collections.readSource',
-  httpMethod: 'POST',
-  path: '/core/dataset/collection/read',
-  requestContentType: 'json',
-  responseMode: 'envelope',
-  appIdCarrier: 'body',
-  identityCarrier: 'body',
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['collectionId', 'chatId', 'chatItemDataId', 'appId', 'customUid', 'authProxy']
-};
-
-const DATASETS_COLLECTIONS_RETRAIN_SPEC: OperationSpec = {
-  id: 'datasets.collections.retrain',
-  httpMethod: 'POST',
-  path: '/core/dataset/collection/create/reTrainingCollection',
-  requestContentType: 'json',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: [
-    'trainingType',
-    'chunkTriggerType',
-    'chunkTriggerMinSize',
-    'dataEnhanceCollectionName',
-    'imageIndex',
-    'autoIndexes',
-    'indexPrefixTitle',
-    'chunkSettingMode',
-    'chunkSplitMode',
-    'paragraphChunkAIMode',
-    'paragraphChunkDeep',
-    'paragraphChunkMinSize',
-    'chunkSize',
-    'chunkSplitter',
-    'indexSize',
-    'qaPrompt',
-    'parentId',
-    'metadata',
-    'customPdfParse',
-    'collectionId'
-  ]
-};
-
-const DATASETS_COLLECTIONS_SYNC_SPEC: OperationSpec = {
-  id: 'datasets.collections.sync',
-  httpMethod: 'POST',
-  path: '/core/dataset/collection/sync',
-  requestContentType: 'json',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['collectionId']
 };
 
 const DATASETS_COLLECTIONS_UPDATE_SPEC: OperationSpec = {
@@ -1306,19 +743,6 @@ const DATASETS_CREATE_SPEC: OperationSpec = {
   ]
 };
 
-const DATASETS_CREATE_WITH_FILES_SPEC: OperationSpec = {
-  id: 'datasets.createWithFiles',
-  httpMethod: 'POST',
-  path: '/core/dataset/createWithFiles',
-  requestContentType: 'json',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['datasetParams', 'files']
-};
-
 const DATASETS_DATA_DELETE_SPEC: OperationSpec = {
   id: 'datasets.data.delete',
   httpMethod: 'DELETE',
@@ -1343,46 +767,6 @@ const DATASETS_DATA_DETAIL_SPEC: OperationSpec = {
   pathParams: [],
   queryParams: ['id'],
   bodyParams: []
-};
-
-const DATASETS_DATA_GET_QUOTE_SPEC: OperationSpec = {
-  id: 'datasets.data.getQuote',
-  httpMethod: 'POST',
-  path: '/core/dataset/data/getQuoteData',
-  requestContentType: 'json',
-  responseMode: 'envelope',
-  appIdCarrier: 'body',
-  identityCarrier: 'body',
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['id', 'chatId', 'chatItemDataId', 'appId', 'customUid', 'authProxy']
-};
-
-const DATASETS_DATA_INSERT_SPEC: OperationSpec = {
-  id: 'datasets.data.insert',
-  httpMethod: 'POST',
-  path: '/core/dataset/data/insertData',
-  requestContentType: 'json',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['a', 'imageId', 'chunkIndex', 'indexes', 'metadata', 'q', 'collectionId']
-};
-
-const DATASETS_DATA_INSERT_IMAGES_SPEC: OperationSpec = {
-  id: 'datasets.data.insertImages',
-  httpMethod: 'POST',
-  path: '/core/dataset/data/insertImages',
-  requestContentType: 'multipart',
-  multipartMode: 'flatFields',
-  responseMode: 'void',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['collectionId', 'file']
 };
 
 const DATASETS_DATA_LIST_SPEC: OperationSpec = {
@@ -1460,59 +844,6 @@ const DATASETS_DETAIL_SPEC: OperationSpec = {
   bodyParams: []
 };
 
-const DATASETS_FILES_ABORT_MULTIPART_UPLOAD_SPEC: OperationSpec = {
-  id: 'datasets.files.abortMultipartUpload',
-  httpMethod: 'POST',
-  path: '/system/file/u/{token}/abort',
-  requestContentType: 'none',
-  responseMode: 'void',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: ['token'],
-  queryParams: [],
-  bodyParams: []
-};
-
-const DATASETS_FILES_COMPLETE_MULTIPART_UPLOAD_SPEC: OperationSpec = {
-  id: 'datasets.files.completeMultipartUpload',
-  httpMethod: 'POST',
-  path: '/system/file/u/{token}/complete',
-  requestContentType: 'json',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: ['token'],
-  queryParams: [],
-  bodyParams: ['parts']
-};
-
-const DATASETS_FILES_PRESIGN_UPLOAD_URL_SPEC: OperationSpec = {
-  id: 'datasets.files.presignUploadUrl',
-  httpMethod: 'POST',
-  path: '/core/dataset/file/presignDatasetFilePostUrl',
-  requestContentType: 'json',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['filename', 'datasetId', 'size']
-};
-
-const DATASETS_FILES_UPLOAD_PART_SPEC: OperationSpec = {
-  id: 'datasets.files.uploadPart',
-  httpMethod: 'PUT',
-  path: '/system/file/u/{token}',
-  requestContentType: 'octet-stream',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: ['token'],
-  queryParams: ['partNumber'],
-  bodyParams: [],
-  binaryBodyField: 'file'
-};
-
 const DATASETS_LIST_SPEC: OperationSpec = {
   id: 'datasets.list',
   httpMethod: 'POST',
@@ -1549,224 +880,6 @@ const DATASETS_SEARCH_SPEC: OperationSpec = {
   pathParams: [],
   queryParams: [],
   bodyParams: ['scope', 'query', 'retrieval', 'rerank', 'queryExtension', 'result', 'usageScene']
-};
-
-const DATASETS_SYNONYMS_DELETE_SPEC: OperationSpec = {
-  id: 'datasets.synonyms.delete',
-  httpMethod: 'DELETE',
-  path: '/core/dataset/synonym/delete',
-  requestContentType: 'none',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: ['id', 'oldFileVersion'],
-  bodyParams: []
-};
-
-const DATASETS_SYNONYMS_DETAIL_SPEC: OperationSpec = {
-  id: 'datasets.synonyms.detail',
-  httpMethod: 'GET',
-  path: '/core/dataset/synonym/detail',
-  requestContentType: 'none',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: ['datasetId'],
-  bodyParams: []
-};
-
-const DATASETS_SYNONYMS_DOWNLOAD_SPEC: OperationSpec = {
-  id: 'datasets.synonyms.download',
-  httpMethod: 'GET',
-  path: '/core/dataset/synonym/download',
-  requestContentType: 'none',
-  responseMode: 'binary',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: ['id'],
-  bodyParams: []
-};
-
-const DATASETS_SYNONYMS_LIST_MAPPINGS_SPEC: OperationSpec = {
-  id: 'datasets.synonyms.listMappings',
-  httpMethod: 'POST',
-  path: '/core/dataset/synonym/mappings',
-  requestContentType: 'json',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['offset', 'pageSize', 'datasetId', 'search', 'pageNum']
-};
-
-const DATASETS_SYNONYMS_UPDATE_SPEC: OperationSpec = {
-  id: 'datasets.synonyms.update',
-  httpMethod: 'POST',
-  path: '/core/dataset/synonym/update',
-  requestContentType: 'json',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['datasetId', 'mappings', 'fileName', 'oldSynonymId', 'oldFileVersion']
-};
-
-const DATASETS_SYNONYMS_UPDATE_FILE_SPEC: OperationSpec = {
-  id: 'datasets.synonyms.updateFile',
-  httpMethod: 'POST',
-  path: '/core/dataset/synonym/updateFile',
-  requestContentType: 'multipart',
-  multipartMode: 'fileAndJsonData',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['file', 'datasetId', 'oldSynonymId', 'oldFileVersion']
-};
-
-const DATASETS_SYNONYMS_UPLOAD_SPEC: OperationSpec = {
-  id: 'datasets.synonyms.upload',
-  httpMethod: 'POST',
-  path: '/core/dataset/synonym/upload',
-  requestContentType: 'json',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['datasetId', 'mappings', 'fileName']
-};
-
-const DATASETS_SYNONYMS_UPLOAD_FILE_SPEC: OperationSpec = {
-  id: 'datasets.synonyms.uploadFile',
-  httpMethod: 'POST',
-  path: '/core/dataset/synonym/uploadFile',
-  requestContentType: 'multipart',
-  multipartMode: 'fileAndJsonData',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['file', 'datasetId']
-};
-
-const DATASETS_TRAINING_DELETE_SPEC: OperationSpec = {
-  id: 'datasets.training.delete',
-  httpMethod: 'POST',
-  path: '/core/dataset/training/deleteTrainingData',
-  requestContentType: 'json',
-  responseMode: 'void',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['collectionId', 'dataId']
-};
-
-const DATASETS_TRAINING_GET_DETAIL_SPEC: OperationSpec = {
-  id: 'datasets.training.getDetail',
-  httpMethod: 'POST',
-  path: '/core/dataset/training/getTrainingDataDetail',
-  requestContentType: 'json',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['collectionId', 'dataId']
-};
-
-const DATASETS_TRAINING_GET_QUEUE_SPEC: OperationSpec = {
-  id: 'datasets.training.getQueue',
-  httpMethod: 'GET',
-  path: '/core/dataset/training/getDatasetTrainingQueue',
-  requestContentType: 'none',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: ['datasetId'],
-  bodyParams: []
-};
-
-const DATASETS_TRAINING_HAS_ERRORS_SPEC: OperationSpec = {
-  id: 'datasets.training.hasErrors',
-  httpMethod: 'GET',
-  path: '/core/dataset/training/hasDatasetTrainingError',
-  requestContentType: 'none',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: ['datasetId'],
-  bodyParams: []
-};
-
-const DATASETS_TRAINING_LIST_COLLECTION_ERRORS_SPEC: OperationSpec = {
-  id: 'datasets.training.listCollectionErrors',
-  httpMethod: 'POST',
-  path: '/core/dataset/training/getTrainingError',
-  requestContentType: 'json',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['offset', 'pageSize', 'collectionId', 'pageNum']
-};
-
-const DATASETS_TRAINING_LIST_DATASET_ERRORS_SPEC: OperationSpec = {
-  id: 'datasets.training.listDatasetErrors',
-  httpMethod: 'POST',
-  path: '/core/dataset/training/getDatasetTrainingError',
-  requestContentType: 'json',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: [
-    'offset',
-    'pageSize',
-    'datasetId',
-    'collectionId',
-    'itemOffset',
-    'itemPageSize',
-    'pageNum'
-  ]
-};
-
-const DATASETS_TRAINING_REBUILD_EMBEDDING_SPEC: OperationSpec = {
-  id: 'datasets.training.rebuildEmbedding',
-  httpMethod: 'POST',
-  path: '/core/dataset/training/rebuildEmbedding',
-  requestContentType: 'json',
-  responseMode: 'void',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['datasetId', 'vectorModelId']
-};
-
-const DATASETS_TRAINING_RETRY_OR_UPDATE_SPEC: OperationSpec = {
-  id: 'datasets.training.retryOrUpdate',
-  httpMethod: 'PUT',
-  path: '/core/dataset/training/updateTrainingData',
-  requestContentType: 'json',
-  responseMode: 'void',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: ['datasetId', 'collectionId', 'dataId', 'q', 'a', 'chunkIndex']
 };
 
 const DATASETS_UPDATE_SPEC: OperationSpec = {
@@ -1837,49 +950,11 @@ const MODELS_SUMMARY_SPEC: OperationSpec = {
   bodyParams: ['modelIds', 'appId']
 };
 
-const SYSTEM_HEALTH_SPEC: OperationSpec = {
-  id: 'system.health',
-  httpMethod: 'GET',
-  path: '/support/openapi/health',
-  requestContentType: 'none',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: []
-};
-
-const SYSTEM_WHOAMI_SPEC: OperationSpec = {
-  id: 'system.whoami',
-  httpMethod: 'GET',
-  path: '/support/user/account/whoami',
-  requestContentType: 'none',
-  responseMode: 'envelope',
-  appIdCarrier: null,
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: []
-};
-
 export class AppsLogsResource {
   private readonly _client: BaseClient;
 
   constructor(client: BaseClient) {
     this._client = client;
-  }
-
-  /**
-   * 导出应用日志
-   * 导出应用的对话日志为 CSV 文件，支持自定义导出字段和筛选条件
-   */
-  export(req: AppsLogsExportReq, options?: RequestOptions): ApiPromise<AppsLogsExportRes> {
-    return this._client._request<AppsLogsExportRes>({
-      spec: APPS_LOGS_EXPORT_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
   }
 
   /**
@@ -1955,104 +1030,12 @@ export class ChatFeedbacksResource {
   }
 
   /**
-   * 标注反馈
-   * 为指定消息添加或更新标注反馈，包含数据集关联信息
-   */
-  adminUpdate(req: ChatFeedbacksAdminUpdateReq, options?: RequestOptions): ApiPromise<void> {
-    return this._client._request<void>({
-      spec: CHAT_FEEDBACKS_ADMIN_UPDATE_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 关闭自定义反馈
-   * 删除或关闭指定索引位置的自定义反馈条目
-   */
-  closeCustom(req: ChatFeedbacksCloseCustomReq, options?: RequestOptions): ApiPromise<void> {
-    return this._client._request<void>({
-      spec: CHAT_FEEDBACKS_CLOSE_CUSTOM_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 获取反馈记录ID列表
-   * 根据反馈类型和已读状态，获取符合条件的消息ID列表
-   */
-  listRecordIds(
-    req: ChatFeedbacksListRecordIdsReq,
-    options?: RequestOptions
-  ): ApiPromise<ChatFeedbacksListRecordIdsRes> {
-    return this._client._request<ChatFeedbacksListRecordIdsRes>({
-      spec: CHAT_FEEDBACKS_LIST_RECORD_IDS_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 更新反馈阅读状态
-   * 标记指定消息的反馈为已读或未读状态
-   */
-  updateReadStatus(
-    req: ChatFeedbacksUpdateReadStatusReq,
-    options?: RequestOptions
-  ): ApiPromise<ChatFeedbacksUpdateReadStatusRes> {
-    return this._client._request<ChatFeedbacksUpdateReadStatusRes>({
-      spec: CHAT_FEEDBACKS_UPDATE_READ_STATUS_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
    * 添加/更新用户反馈
    * 用户对消息添加或更新好评/差评反馈
    */
   updateUser(req: ChatFeedbacksUpdateUserReq, options?: RequestOptions): ApiPromise<void> {
     return this._client._request<void>({
       spec: CHAT_FEEDBACKS_UPDATE_USER_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-}
-
-export class ChatFilesResource {
-  private readonly _client: BaseClient;
-
-  constructor(client: BaseClient) {
-    this._client = client;
-  }
-
-  /**
-   * 获取文件预览地址
-   * 获取文件预览地址
-   */
-  presignPreviewUrl(
-    req: ChatFilesPresignPreviewUrlReq,
-    options?: RequestOptions
-  ): ApiPromise<ChatFilesPresignPreviewUrlRes> {
-    return this._client._request<ChatFilesPresignPreviewUrlRes>({
-      spec: CHAT_FILES_PRESIGN_PREVIEW_URL_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 获取文件上传 URL
-   * 获取文件上传 URL
-   */
-  presignUploadUrl(
-    req: ChatFilesPresignUploadUrlReq,
-    options?: RequestOptions
-  ): ApiPromise<ChatFilesPresignUploadUrlRes> {
-    return this._client._request<ChatFilesPresignUploadUrlRes>({
-      spec: CHAT_FILES_PRESIGN_UPLOAD_URL_SPEC,
       rawInput: req as Record<string, unknown> | undefined,
       requestOptions: options
     });
@@ -2244,103 +1227,19 @@ export class ChatRecordsResource {
       requestOptions: options
     });
   }
-
-  /**
-   * 获取语音合成
-   * 将文本转换为语音，返回二进制音频数据流
-   */
-  synthesizeSpeech(
-    req: ChatRecordsSynthesizeSpeechReq,
-    options?: RequestOptions
-  ): ApiPromise<ChatRecordsSynthesizeSpeechRes> {
-    return this._client._request<ChatRecordsSynthesizeSpeechRes>({
-      spec: CHAT_RECORDS_SYNTHESIZE_SPEECH_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-}
-
-export class ChatSandboxResource {
-  private readonly _client: BaseClient;
-
-  constructor(client: BaseClient) {
-    this._client = client;
-  }
-
-  /**
-   * 检查沙盒是否存在
-   * 根据 Chat 目标和有效用户检查对应的用户级沙盒实例是否存在
-   */
-  checkExist(
-    req: ChatSandboxCheckExistReq,
-    options?: RequestOptions
-  ): ApiPromise<ChatSandboxCheckExistRes> {
-    return this._client._request<ChatSandboxCheckExistRes>({
-      spec: CHAT_SANDBOX_CHECK_EXIST_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 下载沙盒文件或目录
-   * 下载当前 Chat Session 中的指定文件，或将目录打包为 ZIP 下载
-   */
-  download(
-    req: ChatSandboxDownloadReq,
-    options?: RequestOptions
-  ): ApiPromise<ChatSandboxDownloadRes> {
-    return this._client._request<ChatSandboxDownloadRes>({
-      spec: CHAT_SANDBOX_DOWNLOAD_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 获取 HTML 文件预览链接
-   * 校验文件后签发短期只读链接，由 agent-proxy 直接转发 sandbox workspace 内容，不复制到对象存储
-   */
-  getHtmlPreviewLink(
-    req: ChatSandboxGetHtmlPreviewLinkReq,
-    options?: RequestOptions
-  ): ApiPromise<ChatSandboxGetHtmlPreviewLinkRes> {
-    return this._client._request<ChatSandboxGetHtmlPreviewLinkRes>({
-      spec: CHAT_SANDBOX_GET_HTML_PREVIEW_LINK_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 上传文件到沙盒
-   * 将原始二进制请求流直接写入当前 Chat Session 路径，不在 FastGPT 节点生成临时文件
-   */
-  upload(req: ChatSandboxUploadReq, options?: RequestOptions): ApiPromise<ChatSandboxUploadRes> {
-    return this._client._request<ChatSandboxUploadRes>({
-      spec: CHAT_SANDBOX_UPLOAD_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
 }
 
 export class ChatResource {
   private readonly _client: BaseClient;
   readonly feedbacks: ChatFeedbacksResource;
-  readonly files: ChatFilesResource;
   readonly histories: ChatHistoriesResource;
   readonly records: ChatRecordsResource;
-  readonly sandbox: ChatSandboxResource;
 
   constructor(client: BaseClient) {
     this._client = client;
     this.feedbacks = new ChatFeedbacksResource(client);
-    this.files = new ChatFilesResource(client);
     this.histories = new ChatHistoriesResource(client);
     this.records = new ChatRecordsResource(client);
-    this.sandbox = new ChatSandboxResource(client);
   }
 
   /**
@@ -2368,21 +1267,6 @@ export class ChatResource {
   }
 
   /**
-   * 创建会话问题引导
-   * 基于指定会话历史生成推荐问题，支持普通 App、外链和 Skill Edit 调试
-   */
-  createQuestionGuide(
-    req: ChatCreateQuestionGuideReq,
-    options?: RequestOptions
-  ): ApiPromise<ChatCreateQuestionGuideRes> {
-    return this._client._request<ChatCreateQuestionGuideRes>({
-      spec: CHAT_CREATE_QUESTION_GUIDE_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
    * 初始化应用或 Skill 调试会话
    * 初始化应用会话或 Skill 编辑调试会话，返回会话配置、变量和已有会话状态。
    */
@@ -2395,63 +1279,12 @@ export class ChatResource {
   }
 
   /**
-   * 查询对话输入引导（公开接口）
-   * 根据搜索词查询对话输入引导，支持应用和分享链接鉴权
-   */
-  queryInputGuide(
-    req: ChatQueryInputGuideReq,
-    options?: RequestOptions
-  ): ApiPromise<ChatQueryInputGuideRes> {
-    return this._client._request<ChatQueryInputGuideRes>({
-      spec: CHAT_QUERY_INPUT_GUIDE_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 恢复流式响应
-   * 与 /v2/chat/completions 配套；GET query 传 appId、skillId 或 outLinkAuthData（三选一）以及 chatId。已完成对话可返回 JSON；若对话仍在生成中，则必须请求 SSE，否则返回 406。
-   */
-  resume(req: ChatResumeReq, options?: RequestOptions): ApiPromise<ChatResumeRes> {
-    return this._client._request<ChatResumeRes>({
-      spec: CHAT_RESUME_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /** 恢复流式响应（SSE 流式事件响应） */
-  resumeStream(req: ChatResumeReq, options?: RequestOptions): Promise<ChatStream> {
-    return this._client._requestStream({
-      spec: CHAT_RESUME_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
    * 停止会话
    * 为正在运行的会话写入停止标记并立即返回。客户端收到成功响应后应中断当前流式请求。
    */
   stop(req: ChatStopReq, options?: RequestOptions): ApiPromise<ChatStopRes> {
     return this._client._request<ChatStopRes>({
       spec: CHAT_STOP_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 语音转文字
-   * 将 multipart/form-data 表单中的音频文件转换为文本。file 为音频文件，data 为 JSON 序列化后的对话鉴权参数。
-   */
-  transcribeAudio(
-    req: ChatTranscribeAudioReq,
-    options?: RequestOptions
-  ): ApiPromise<ChatTranscribeAudioRes> {
-    return this._client._request<ChatTranscribeAudioRes>({
-      spec: CHAT_TRANSCRIBE_AUDIO_SPEC,
       rawInput: req as Record<string, unknown> | undefined,
       requestOptions: options
     });
@@ -2496,66 +1329,6 @@ export class DatasetsCollectionsResource {
   }
 
   /**
-   * 通过 API 数据集批量创建集合（V2）
-   * 支持传入文件列表或选择根目录，递归拉取 API 数据源文件并批量创建集合
-   */
-  createByApiDataset(
-    req: DatasetsCollectionsCreateByApiDatasetReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsCollectionsCreateByApiDatasetRes> {
-    return this._client._request<DatasetsCollectionsCreateByApiDatasetRes>({
-      spec: DATASETS_COLLECTIONS_CREATE_BY_API_DATASET_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 导入备份文件创建集合
-   * 上传 CSV 或 Excel 备份文件，恢复数据到知识库集合。表头由 q、a、index、metadata 组成，q/a/metadata 各一列，index 可多列且顺序任意，metadata 单元格为 JSON object；Excel 仅支持单工作表且不能包含合并单元格；同时兼容旧版 q、a、indexes 表头。`file` 为上传文件，`data` 为 JSON 序列化的集合参数对象
-   */
-  createByBackup(
-    req: DatasetsCollectionsCreateByBackupReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsCollectionsCreateByBackupRes> {
-    return this._client._request<DatasetsCollectionsCreateByBackupRes>({
-      spec: DATASETS_COLLECTIONS_CREATE_BY_BACKUP_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 通过文件 ID 创建集合
-   * 使用已上传至 S3 的文件对象键创建集合并触发训练
-   */
-  createByFileId(
-    req: DatasetsCollectionsCreateByFileIdReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsCollectionsCreateByFileIdRes> {
-    return this._client._request<DatasetsCollectionsCreateByFileIdRes>({
-      spec: DATASETS_COLLECTIONS_CREATE_BY_FILE_ID_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 上传图片集创建集合
-   * 通过 multipart/form-data 批量上传图片，使用 VLM 模型解析后创建集合。`file` 为多个图片文件（多选），`data` 为 JSON 序列化的集合参数对象
-   */
-  createByImages(
-    req: DatasetsCollectionsCreateByImagesReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsCollectionsCreateByImagesRes> {
-    return this._client._request<DatasetsCollectionsCreateByImagesRes>({
-      spec: DATASETS_COLLECTIONS_CREATE_BY_IMAGES_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
    * 通过链接创建集合
    * 抓取指定 URL 内容创建集合并触发训练
    */
@@ -2580,21 +1353,6 @@ export class DatasetsCollectionsResource {
   ): ApiPromise<DatasetsCollectionsCreateByLocalFileRes> {
     return this._client._request<DatasetsCollectionsCreateByLocalFileRes>({
       spec: DATASETS_COLLECTIONS_CREATE_BY_LOCAL_FILE_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 导入模板文件创建集合
-   * 上传 CSV 或 Excel 模板文件，批量导入数据到知识库集合。表头由 q、a、index、metadata 组成，q/a/metadata 各一列，index 可多列且顺序任意，metadata 单元格为 JSON object；Excel 仅支持单工作表且不能包含合并单元格；同时兼容旧版 q、a、indexes 表头。`file` 为上传文件，multipart filename 使用原始 UTF-8 文件名；`data` 为 JSON 序列化的集合参数对象
-   */
-  createByTemplate(
-    req: DatasetsCollectionsCreateByTemplateReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsCollectionsCreateByTemplateRes> {
-    return this._client._request<DatasetsCollectionsCreateByTemplateRes>({
-      spec: DATASETS_COLLECTIONS_CREATE_BY_TEMPLATE_SPEC,
       rawInput: req as Record<string, unknown> | undefined,
       requestOptions: options
     });
@@ -2643,21 +1401,6 @@ export class DatasetsCollectionsResource {
   }
 
   /**
-   * 下载集合的所有数据块
-   * 下载集合的所有数据块
-   */
-  exportCsv(
-    req: DatasetsCollectionsExportCsvReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsCollectionsExportCsvRes> {
-    return this._client._request<DatasetsCollectionsExportCsvRes>({
-      spec: DATASETS_COLLECTIONS_EXPORT_CSV_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
    * 申请知识库集合批量下载凭证
    * 校验并准备通用知识库集合批量下载所需的短效一次性凭证
    */
@@ -2673,36 +1416,6 @@ export class DatasetsCollectionsResource {
   }
 
   /**
-   * 获取知识库标签筛选项
-   * 获取知识库下当前已被文件使用的标签值
-   */
-  getTagFilterOptions(
-    req: DatasetsCollectionsGetTagFilterOptionsReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsCollectionsGetTagFilterOptionsRes> {
-    return this._client._request<DatasetsCollectionsGetTagFilterOptionsRes>({
-      spec: DATASETS_COLLECTIONS_GET_TAG_FILTER_OPTIONS_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 获取集合训练详情
-   * 获取集合的训练状态，包括各阶段排队、训练、错误数量及已完成的数据量。索引重建和同义词重建按 data.indexStatus 分别统计待重建、重建中和失败数量。
-   */
-  getTrainingDetail(
-    req: DatasetsCollectionsGetTrainingDetailReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsCollectionsGetTrainingDetailRes> {
-    return this._client._request<DatasetsCollectionsGetTrainingDetailRes>({
-      spec: DATASETS_COLLECTIONS_GET_TRAINING_DETAIL_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
    * 获取集合列表（分页）
    * 获取数据集集合列表，支持分页、搜索、标签过滤。需要数据集读权限；传入 parentId 时同时校验该文件夹读权限。知识库开启文件级权限后，列表按当前成员逐条可读的集合过滤，并返回每个集合的有效权限
    */
@@ -2712,51 +1425,6 @@ export class DatasetsCollectionsResource {
   ): ApiPromise<DatasetsCollectionsListRes> {
     return this._client._request<DatasetsCollectionsListRes>({
       spec: DATASETS_COLLECTIONS_LIST_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 获取集合资源 URL
-   * 获取集合原始文件的访问 URL，支持直接鉴权和对话中鉴权两种模式
-   */
-  readSource(
-    req: DatasetsCollectionsReadSourceReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsCollectionsReadSourceRes> {
-    return this._client._request<DatasetsCollectionsReadSourceRes>({
-      spec: DATASETS_COLLECTIONS_READ_SOURCE_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 重新训练集合
-   * 删除原集合并以新参数重新创建并训练，适用于调整分块策略后的重处理场景
-   */
-  retrain(
-    req: DatasetsCollectionsRetrainReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsCollectionsRetrainRes> {
-    return this._client._request<DatasetsCollectionsRetrainRes>({
-      spec: DATASETS_COLLECTIONS_RETRAIN_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 同步集合
-   * 重新拉取集合原始内容并更新数据，支持链接类型和 API 数据集类型
-   */
-  sync(
-    req: DatasetsCollectionsSyncReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsCollectionsSyncRes> {
-    return this._client._request<DatasetsCollectionsSyncRes>({
-      spec: DATASETS_COLLECTIONS_SYNC_SPEC,
       rawInput: req as Record<string, unknown> | undefined,
       requestOptions: options
     });
@@ -2807,45 +1475,6 @@ export class DatasetsDataResource {
   }
 
   /**
-   * 获取引用数据
-   * 获取数据详情用于展示引用，支持直接访问或通过对话鉴权
-   */
-  getQuote(
-    req: DatasetsDataGetQuoteReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsDataGetQuoteRes> {
-    return this._client._request<DatasetsDataGetQuoteRes>({
-      spec: DATASETS_DATA_GET_QUOTE_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 插入单条数据
-   * 立即插入一条数据到数据集并生成向量索引
-   */
-  insert(req: DatasetsDataInsertReq, options?: RequestOptions): ApiPromise<DatasetsDataInsertRes> {
-    return this._client._request<DatasetsDataInsertRes>({
-      spec: DATASETS_DATA_INSERT_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 插入图片
-   * 上传图片文件并推送到训练队列（multipart/form-data）
-   */
-  insertImages(req: DatasetsDataInsertImagesReq, options?: RequestOptions): ApiPromise<void> {
-    return this._client._request<void>({
-      spec: DATASETS_DATA_INSERT_IMAGES_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
    * 获取数据列表
    * 分页查询集合内的数据列表，支持关键词搜索，包含图片预览 URL
    */
@@ -2885,339 +1514,15 @@ export class DatasetsDataResource {
   }
 }
 
-export class DatasetsFilesResource {
-  private readonly _client: BaseClient;
-
-  constructor(client: BaseClient) {
-    this._client = client;
-  }
-
-  /**
-   * 取消知识库文件 Multipart 上传
-   * 取消未完成的 Multipart 上传并清理对象存储分片
-   */
-  abortMultipartUpload(
-    req: DatasetsFilesAbortMultipartUploadReq,
-    options?: RequestOptions
-  ): ApiPromise<void> {
-    return this._client._request<void>({
-      spec: DATASETS_FILES_ABORT_MULTIPART_UPLOAD_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 完成知识库文件 Multipart 上传
-   * 校验分片清单并合并生成最终对象
-   */
-  completeMultipartUpload(
-    req: DatasetsFilesCompleteMultipartUploadReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsFilesCompleteMultipartUploadRes> {
-    return this._client._request<DatasetsFilesCompleteMultipartUploadRes>({
-      spec: DATASETS_FILES_COMPLETE_MULTIPART_UPLOAD_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 获取知识库文件上传预签名 URL
-   * 为指定知识库生成 S3 上传预签名 URL，同时校验写权限并对上传频率进行限制
-   */
-  presignUploadUrl(
-    req: DatasetsFilesPresignUploadUrlReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsFilesPresignUploadUrlRes> {
-    return this._client._request<DatasetsFilesPresignUploadUrlRes>({
-      spec: DATASETS_FILES_PRESIGN_UPLOAD_URL_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 上传知识库文件 Multipart 分片
-   * 通过 presign 返回的 token 代理上传单个 Multipart 分片
-   */
-  uploadPart(
-    req: DatasetsFilesUploadPartReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsFilesUploadPartRes> {
-    return this._client._request<DatasetsFilesUploadPartRes>({
-      spec: DATASETS_FILES_UPLOAD_PART_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-}
-
-export class DatasetsSynonymsResource {
-  private readonly _client: BaseClient;
-
-  constructor(client: BaseClient) {
-    this._client = client;
-  }
-
-  /**
-   * 删除知识库同义词配置
-   * 立即停用同义词规则，并通过现有训练队列重建历史数据的原文 embedding
-   */
-  delete(
-    req: DatasetsSynonymsDeleteReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsSynonymsDeleteRes> {
-    return this._client._request<DatasetsSynonymsDeleteRes>({
-      spec: DATASETS_SYNONYMS_DELETE_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 获取知识库同义词配置
-   * 返回当前文件配置和向量重建进度
-   */
-  detail(
-    req: DatasetsSynonymsDetailReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsSynonymsDetailRes> {
-    return this._client._request<DatasetsSynonymsDetailRes>({
-      spec: DATASETS_SYNONYMS_DETAIL_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 下载知识库同义词文件
-   * 校验知识库读取权限后，根据当前生效 mappings 动态生成同义词文件
-   */
-  download(
-    req: DatasetsSynonymsDownloadReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsSynonymsDownloadRes> {
-    return this._client._request<DatasetsSynonymsDownloadRes>({
-      spec: DATASETS_SYNONYMS_DOWNLOAD_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 分页搜索当前同义词 mappings
-   * 按标准词和同义词文本搜索当前生效版本
-   */
-  listMappings(
-    req: DatasetsSynonymsListMappingsReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsSynonymsListMappingsRes> {
-    return this._client._request<DatasetsSynonymsListMappingsRes>({
-      spec: DATASETS_SYNONYMS_LIST_MAPPINGS_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 更新知识库同义词文件
-   * 提交完整 mappings 列表，规则立即生效并通过现有训练队列重建历史数据
-   */
-  update(
-    req: DatasetsSynonymsUpdateReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsSynonymsUpdateRes> {
-    return this._client._request<DatasetsSynonymsUpdateRes>({
-      spec: DATASETS_SYNONYMS_UPDATE_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 直接更新知识库同义词文件
-   * 直接解析 CSV/XLS/XLSX 请求文件，规则立即生效并重建历史数据
-   */
-  updateFile(
-    req: DatasetsSynonymsUpdateFileReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsSynonymsUpdateFileRes> {
-    return this._client._request<DatasetsSynonymsUpdateFileRes>({
-      spec: DATASETS_SYNONYMS_UPDATE_FILE_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 上传知识库同义词文件
-   * 提交完整 mappings 列表，规则立即生效并通过现有训练队列重建历史数据
-   */
-  upload(
-    req: DatasetsSynonymsUploadReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsSynonymsUploadRes> {
-    return this._client._request<DatasetsSynonymsUploadRes>({
-      spec: DATASETS_SYNONYMS_UPLOAD_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 直接上传知识库同义词文件
-   * 直接解析 CSV/XLS/XLSX 请求文件，规则立即生效并重建历史数据
-   */
-  uploadFile(
-    req: DatasetsSynonymsUploadFileReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsSynonymsUploadFileRes> {
-    return this._client._request<DatasetsSynonymsUploadFileRes>({
-      spec: DATASETS_SYNONYMS_UPLOAD_FILE_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-}
-
-export class DatasetsTrainingResource {
-  private readonly _client: BaseClient;
-
-  constructor(client: BaseClient) {
-    this._client = client;
-  }
-
-  /**
-   * 删除训练数据
-   * 删除指定的训练任务，需要管理权限。索引重建任务会同时删除对应原始数据及全部索引；首次训练任务仅取消训练。
-   */
-  delete(req: DatasetsTrainingDeleteReq, options?: RequestOptions): ApiPromise<void> {
-    return this._client._request<void>({
-      spec: DATASETS_TRAINING_DELETE_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 获取训练数据详情
-   * 获取单条训练数据的详细信息，包括图片预览 URL
-   */
-  getDetail(
-    req: DatasetsTrainingGetDetailReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsTrainingGetDetailRes> {
-    return this._client._request<DatasetsTrainingGetDetailRes>({
-      spec: DATASETS_TRAINING_GET_DETAIL_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 获取训练队列状态
-   * 判断知识库是否存在普通训练任务或尚未处理完的重建数据，包含失败记录
-   */
-  getQueue(
-    req: DatasetsTrainingGetQueueReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsTrainingGetQueueRes> {
-    return this._client._request<DatasetsTrainingGetQueueRes>({
-      spec: DATASETS_TRAINING_GET_QUEUE_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 检查知识库是否存在训练错误
-   * 轻量检查知识库内是否存在最终/阻塞异常训练记录，用于列表徽章状态探测
-   */
-  hasErrors(
-    req: DatasetsTrainingHasErrorsReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsTrainingHasErrorsRes> {
-    return this._client._request<DatasetsTrainingHasErrorsRes>({
-      spec: DATASETS_TRAINING_HAS_ERRORS_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 获取集合训练错误列表
-   * 分页查询集合内最终/阻塞异常训练记录
-   */
-  listCollectionErrors(
-    req: DatasetsTrainingListCollectionErrorsReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsTrainingListCollectionErrorsRes> {
-    return this._client._request<DatasetsTrainingListCollectionErrorsRes>({
-      spec: DATASETS_TRAINING_LIST_COLLECTION_ERRORS_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 获取知识库训练错误列表
-   * 分页查询知识库内存在最终/阻塞异常的集合，并返回每个集合内的部分异常 chunk；传 collectionId 时加载该集合更多异常 chunk
-   */
-  listDatasetErrors(
-    req: DatasetsTrainingListDatasetErrorsReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsTrainingListDatasetErrorsRes> {
-    return this._client._request<DatasetsTrainingListDatasetErrorsRes>({
-      spec: DATASETS_TRAINING_LIST_DATASET_ERRORS_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 重建数据集向量索引
-   * 切换向量模型并重建知识库所有数据的向量索引，需要所有者权限
-   */
-  rebuildEmbedding(
-    req: DatasetsTrainingRebuildEmbeddingReq,
-    options?: RequestOptions
-  ): ApiPromise<void> {
-    return this._client._request<void>({
-      spec: DATASETS_TRAINING_REBUILD_EMBEDDING_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 更新训练数据或重试训练异常
-   * 更新或重试训练异常：传 dataId 时重试或编辑后重训单个 chunk；不传 dataId 时，可按 collectionId 或 datasetId 重试全部最终/阻塞异常
-   */
-  retryOrUpdate(req: DatasetsTrainingRetryOrUpdateReq, options?: RequestOptions): ApiPromise<void> {
-    return this._client._request<void>({
-      spec: DATASETS_TRAINING_RETRY_OR_UPDATE_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-}
-
 export class DatasetsResource {
   private readonly _client: BaseClient;
   readonly collections: DatasetsCollectionsResource;
   readonly data: DatasetsDataResource;
-  readonly files: DatasetsFilesResource;
-  readonly synonyms: DatasetsSynonymsResource;
-  readonly training: DatasetsTrainingResource;
 
   constructor(client: BaseClient) {
     this._client = client;
     this.collections = new DatasetsCollectionsResource(client);
     this.data = new DatasetsDataResource(client);
-    this.files = new DatasetsFilesResource(client);
-    this.synonyms = new DatasetsSynonymsResource(client);
-    this.training = new DatasetsTrainingResource(client);
   }
 
   /**
@@ -3254,21 +1559,6 @@ export class DatasetsResource {
   create(req: DatasetsCreateReq, options?: RequestOptions): ApiPromise<DatasetsCreateRes> {
     return this._client._request<DatasetsCreateRes>({
       spec: DATASETS_CREATE_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 创建知识库并上传文件
-   * 一步完成知识库创建和文件上传,自动创建集合并开始数据处理
-   */
-  createWithFiles(
-    req: DatasetsCreateWithFilesReq,
-    options?: RequestOptions
-  ): ApiPromise<DatasetsCreateWithFilesRes> {
-    return this._client._request<DatasetsCreateWithFilesRes>({
-      spec: DATASETS_CREATE_WITH_FILES_SPEC,
       rawInput: req as Record<string, unknown> | undefined,
       requestOptions: options
     });
@@ -3378,45 +1668,16 @@ export class ModelsResource {
   }
 }
 
-export class SystemResource {
-  private readonly _client: BaseClient;
-
-  constructor(client: BaseClient) {
-    this._client = client;
-  }
-
-  /** 检查 API Key 是否健康 */
-  health(options?: RequestOptions): ApiPromise<SystemHealthRes> {
-    return this._client._request<SystemHealthRes>({
-      spec: SYSTEM_HEALTH_SPEC,
-      requestOptions: options
-    });
-  }
-
-  /**
-   * 获取当前鉴权凭据主体信息
-   * 支持通过 token/Cookie 传入 Session Token 或通过 Authorization: Bearer 传入个人/应用 API Key，统一返回当前凭据的主体身份、团队上下文、权限摘要与有效期/积分限额。
-   */
-  whoami(options?: RequestOptions): ApiPromise<SystemWhoamiRes> {
-    return this._client._request<SystemWhoamiRes>({
-      spec: SYSTEM_WHOAMI_SPEC,
-      requestOptions: options
-    });
-  }
-}
-
 export type GeneratedResources = {
   readonly apps: AppsResource;
   readonly chat: ChatResource;
   readonly datasets: DatasetsResource;
   readonly models: ModelsResource;
-  readonly system: SystemResource;
 };
 
 export const createGeneratedResources = (client: BaseClient): GeneratedResources => ({
   apps: new AppsResource(client),
   chat: new ChatResource(client),
   datasets: new DatasetsResource(client),
-  models: new ModelsResource(client),
-  system: new SystemResource(client)
+  models: new ModelsResource(client)
 });

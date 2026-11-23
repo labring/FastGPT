@@ -31,24 +31,14 @@ const VOID_SYSTEM_OPENAPI_OPERATIONS = new Set<string>([
   'POST /core/dataset/collection/delete',
   'POST /core/dataset/collection/update',
   'DELETE /core/dataset/delete',
-  'PUT /core/dataset/update',
-  'POST /core/dataset/data/insertImages',
-  'PUT /core/dataset/training/updateTrainingData',
-  'POST /core/dataset/training/rebuildEmbedding',
-  'POST /core/dataset/training/deleteTrainingData'
+  'PUT /core/dataset/update'
 ]);
 
 /**
  * 不使用常规请求头 API Key 鉴权、但属于开放集成闭环的特殊路由：
  * - /core/ai/model/list：公开免鉴权模型列表
- * - /system/file/u/*：使用 presignDatasetFilePostUrl 签发的短效路径 token 鉴权
  */
-const SPECIAL_AUTH_OPEN_ROUTES = new Set<string>([
-  '/core/ai/model/list',
-  '/system/file/u/{token}',
-  '/system/file/u/{token}/complete',
-  '/system/file/u/{token}/abort'
-]);
+const SPECIAL_AUTH_OPEN_ROUTES = new Set<string>(['/core/ai/model/list']);
 
 /**
  * 路由 handler 内部通过封装服务间接接入 authApiKey / authAppApiKey 的已知鉴权入口标识。
@@ -59,14 +49,11 @@ const API_KEY_CAPABLE_PATTERNS = [
   /\bauthChatTargetCrud\b/,
   /\bauthChatCompletionHeaderRequest\b/,
   /\bauthModelViewer\b/,
-  /\bauthSandboxSession\b/,
-  /\bauthSandboxRuntimeSession\b/,
   /\bbuildChatHistoryListMatch\b/,
   /\bbuildChatHistoryMatch\b/,
   /\bbuildClearChatHistoriesMatch\b/,
   /\bdeleteDataset\b/,
   /\bmoveDataset\b/,
-  /\bcreateDatasetSynonymMutation\b/,
   /\bgetAuthenticatedAppChatLogFilter\b/
 ];
 
@@ -133,8 +120,8 @@ describe('System OpenAPI & SDK contract governance', () => {
   const operations = collectSystemOpenApiOperations();
 
   it('builds System OpenAPI document and covers all rendered tags in tagGroups', () => {
-    expect(operations.length).toBeGreaterThan(70);
-    expect(Object.keys(apiDocOpenAPIDocument.paths ?? {}).length).toBeGreaterThan(60);
+    expect(operations).toHaveLength(51);
+    expect(Object.keys(apiDocOpenAPIDocument.paths ?? {}).length).toBeGreaterThanOrEqual(45);
 
     const groupedTags = new Set<string>(tagGroups.flatMap((group) => group.tags));
     for (const pathItem of Object.values(apiDocOpenAPIDocument.paths ?? {})) {
@@ -253,5 +240,27 @@ describe('System OpenAPI & SDK contract governance', () => {
     }
 
     expect(unverifiedRoutes).toEqual([]);
+  });
+
+  it('forbids declaring x-fastgpt-sdk on any route outside SystemOpenApiTagMap', () => {
+    const systemTags = new Set<string>(Object.values(SystemOpenApiTagMap));
+    const unexpectedSdkRoutes: string[] = [];
+
+    for (const [routePath, pathItem] of Object.entries(openAPIPaths)) {
+      if (pathItem === null || pathItem === undefined) continue;
+
+      for (const method of HTTP_METHODS) {
+        const operation = pathItem[method];
+        if (operation === null || operation === undefined) continue;
+
+        const tags = operation.tags ?? [];
+        const isSystemOpenApi = tags.some((tag) => systemTags.has(tag));
+        if (!isSystemOpenApi && operation['x-fastgpt-sdk'] !== undefined) {
+          unexpectedSdkRoutes.push(`${method.toUpperCase()} ${routePath}`);
+        }
+      }
+    }
+
+    expect(unexpectedSdkRoutes).toEqual([]);
   });
 });

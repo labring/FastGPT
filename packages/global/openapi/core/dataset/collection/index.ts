@@ -7,7 +7,6 @@ import {
   DeleteCollectionBodySchema,
   DeleteCollectionQuerySchema,
   ExportCollectionBodyRawSchema,
-  ExportCollectionResponseSchema,
   GetCollectionCollaboratorListQuerySchema,
   GetCollectionCollaboratorListResponseSchema,
   GetCollectionDetailQuerySchema,
@@ -20,10 +19,8 @@ import {
   GetTagFilterOptionsQuerySchema,
   GetTagFilterOptionsResponseSchema,
   ReadCollectionSourceBodyRawSchema,
-  ReadCollectionSourceResponseSchema,
   ResumeCollectionInheritPermissionBodySchema,
   SyncCollectionBodySchema,
-  SyncCollectionResponseSchema,
   UpdateCollectionCollaboratorBodySchema,
   UpdateCollectionCollaboratorResponseSchema,
   UpdateDatasetCollectionBodySchema
@@ -185,11 +182,7 @@ export const DatasetCollectionPath: OpenAPIPath = {
     get: {
       summary: '获取知识库标签筛选项',
       description: '获取知识库下当前已被文件使用的标签值',
-      tags: [DevApiTagsMap.datasetCollection, SystemOpenApiTagMap.datasetCollection],
-      'x-fastgpt-sdk': {
-        resource: 'datasets.collections',
-        method: 'getTagFilterOptions'
-      },
+      tags: [DevApiTagsMap.datasetCollection],
       requestParams: {
         query: GetTagFilterOptionsQuerySchema
       },
@@ -339,11 +332,7 @@ export const DatasetCollectionPath: OpenAPIPath = {
     post: {
       summary: '获取集合资源 URL',
       description: '获取集合原始文件的访问 URL，支持直接鉴权和对话中鉴权两种模式',
-      tags: [DevApiTagsMap.datasetCollection, SystemOpenApiTagMap.datasetCollection],
-      'x-fastgpt-sdk': {
-        resource: 'datasets.collections',
-        method: 'readSource'
-      },
+      tags: [DevApiTagsMap.datasetCollection],
       requestBody: {
         content: {
           'application/json': {
@@ -353,12 +342,7 @@ export const DatasetCollectionPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回资源 URL',
-          content: {
-            'application/json': {
-              schema: ReadCollectionSourceResponseSchema
-            }
-          }
+          description: '成功返回资源 URL'
         }
       }
     }
@@ -367,11 +351,7 @@ export const DatasetCollectionPath: OpenAPIPath = {
     post: {
       summary: '同步集合',
       description: '重新拉取集合原始内容并更新数据，支持链接类型和 API 数据集类型',
-      tags: [DevApiTagsMap.datasetCollection, SystemOpenApiTagMap.datasetCollection],
-      'x-fastgpt-sdk': {
-        resource: 'datasets.collections',
-        method: 'sync'
-      },
+      tags: [DevApiTagsMap.datasetCollection],
       requestBody: {
         content: {
           'application/json': {
@@ -381,12 +361,7 @@ export const DatasetCollectionPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回同步结果（success / sameRaw / failed）',
-          content: {
-            'application/json': {
-              schema: SyncCollectionResponseSchema
-            }
-          }
+          description: '成功返回同步结果（success / sameRaw / failed）'
         }
       }
     }
@@ -395,11 +370,7 @@ export const DatasetCollectionPath: OpenAPIPath = {
     post: {
       summary: '下载集合的所有数据块',
       description: '下载集合的所有数据块',
-      tags: [DevApiTagsMap.datasetCollection, SystemOpenApiTagMap.datasetCollection],
-      'x-fastgpt-sdk': {
-        resource: 'datasets.collections',
-        method: 'exportCsv'
-      },
+      tags: [DevApiTagsMap.datasetCollection],
       requestBody: {
         content: {
           'application/json': {
@@ -409,12 +380,7 @@ export const DatasetCollectionPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功导出并下载集合的所有数据块内容',
-          content: {
-            'text/csv': {
-              schema: ExportCollectionResponseSchema
-            }
-          }
+          description: '成功导出并下载集合的所有数据块内容'
         }
       }
     }
@@ -424,11 +390,7 @@ export const DatasetCollectionPath: OpenAPIPath = {
       summary: '获取集合训练详情',
       description:
         '获取集合的训练状态，包括各阶段排队、训练、错误数量及已完成的数据量。索引重建和同义词重建按 data.indexStatus 分别统计待重建、重建中和失败数量。',
-      tags: [DevApiTagsMap.datasetCollection, SystemOpenApiTagMap.datasetCollection],
-      'x-fastgpt-sdk': {
-        resource: 'datasets.collections',
-        method: 'getTrainingDetail'
-      },
+      tags: [DevApiTagsMap.datasetCollection],
       requestParams: {
         query: GetCollectionTrainingDetailQuerySchema
       },

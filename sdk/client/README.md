@@ -1,11 +1,11 @@
 # `@fastgpt/sdk`
 
-Official TypeScript / JavaScript SDK for FastGPT OpenAPI.
+Official TypeScript / JavaScript SDK for FastGPT System OpenAPI.
 
 - **Zero runtime dependencies** — built on standard Web Fetch, `FormData`, `Blob`, and `ReadableStream` (Node.js `>= 20`, Bun, Deno, Edge Runtime).
-- **Lark-style domain resource tree** — `client.chat.*`, `client.datasets.*`, `client.apps.logs.*`, `client.models.*`, `client.system.*`.
+- **Lark-style domain resource tree** — `client.chat.*`, `client.datasets.*`, `client.apps.logs.*`, `client.models.*` (strictly scoped to declared System OpenAPI operations).
 - **Direct typed responses** — `await` directly returns unwrapped business data `T`, with `.withRawResponse()` available whenever you need HTTP headers or `requestId`.
-- **First-class high-level helpers** — presigned Single/Multipart file upload, dataset training completion polling, multimodal chat attachments, workflow interactive pause/resume, async auto-pagination, and `@fastgpt/sdk/server` custom API dataset handler.
+- **Workflow & pagination helpers** — workflow interactive pause/resume (`client.chat.interactive`) and async auto-pagination (`*AutoPaging` / `@fastgpt/sdk/pagination`).
 
 ---
 
@@ -21,7 +21,7 @@ pnpm add @fastgpt/sdk
 
 ## Quick Start & Authentication
 
-FastGPT SDK supports both **Personal API Keys** (full OpenAPI access including datasets, multi-app chat, and model catalog) and **App API Keys** (scoped to a single bound app; `appId` is omitted automatically):
+FastGPT SDK supports both **Personal API Keys** (full System OpenAPI access including datasets, multi-app chat, and model catalog) and **App API Keys** (scoped to a single bound app; `appId` is omitted automatically):
 
 ```ts
 import { FastGPT } from '@fastgpt/sdk';
@@ -33,16 +33,16 @@ const client = new FastGPT({
   defaultAppId: process.env.FASTGPT_APP_ID // optional: auto-fills appId when using a personal key
 });
 
-// Check credential health and identity metadata
-const whoami = await client.system.whoami();
-console.log(whoami);
+// List available team/system models & check API Key connectivity
+const catalog = await client.models.catalog();
+console.log(catalog.version, catalog.data?.models.length ?? 0);
 ```
 
 > **Browser safety**: Instantiating `FastGPT` in a browser environment (`window.document`) is blocked by default to avoid leaking API Keys into frontend bundles. Pass `{ dangerouslyAllowBrowser: true }` only if you explicitly accept the risk.
 
 ### End-User Identity Isolation (`withIdentity`) & Per-Request Overrides
 
-FastGPT accepts `customUid` (external end-user isolation) or `authProxy` (team member proxy for personal keys with proxy enabled) in `query`, `body`, or `multipart` `data` depending on the endpoint. `client.withIdentity(...)` injects the identity into the exact contract carrier automatically:
+FastGPT accepts `customUid` (external end-user isolation) or `authProxy` (team member proxy for personal keys with proxy enabled) in `query` or `body` depending on the endpoint. `client.withIdentity(...)` injects the identity into the exact contract carrier automatically:
 
 ```ts
 const userClient = client.withIdentity({ customUid: 'customer_42' });
@@ -65,7 +65,7 @@ const detail = await client.datasets.detail(
 
 ## Chat Completions (Sync & SSE Streaming)
 
-Streaming and non-streaming methods are split into explicit pairs (`completionsV2` / `completionsV2Stream`, `resume` / `resumeStream`):
+Streaming and non-streaming variants of `/v2/chat/completions` are split into `completionsV2` and `completionsV2Stream`:
 
 ```ts
 // Non-streaming
@@ -95,29 +95,12 @@ const summary = await stream.finalResult();
 console.log('Quotes:', summary.quotes, 'Interactive:', summary.interactive);
 ```
 
-### Multimodal Attachments & Workflow Interactive Resume
+### Workflow Interactive Pause & Resume
 
 ```ts
-// 1. Upload a chat attachment (Single PUT or Multipart automatically)
-const uploaded = await userClient.chat.files.upload({
-  chatId: 'chat_001',
-  file: { data: pdfBuffer, filename: 'report.pdf', contentType: 'application/pdf' }
-});
-
-const reply = await userClient.chat.completionsV2({
-  chatId: 'chat_001',
-  messages: [
-    {
-      role: 'user',
-      content: [uploaded.toContentPart(), { type: 'text', text: 'Extract the key metrics.' }]
-    }
-  ]
-});
-
-// 2. Detect & resume workflow interactive pauses (userSelect / userInput)
-if (userClient.chat.interactive.isPending(reply)) {
+if (userClient.chat.interactive.isPending(completion)) {
   const prompt = userClient.chat.interactive.unwrap(
-    userClient.chat.interactive.extract(reply)!
+    userClient.chat.interactive.extract(completion)!
   );
 
   if (prompt.type === 'userSelect') {
@@ -136,23 +119,17 @@ if (userClient.chat.interactive.isPending(reply)) {
 
 ---
 
-## Datasets: One-Step File Upload, Training Wait & Auto-Pagination
+## Datasets: Collections & Auto-Pagination
 
 ```ts
-// Two-phase presigned upload (auto Single PUT / Multipart with retries + abort cleanup) + poll training
-const created = await client.datasets.collections.uploadFile({
+// Upload a local file directly to create a dataset collection (multipart/form-data)
+const created = await client.datasets.collections.createByLocalFile({
   datasetId: '68ad85a7463006c963799a05',
-  file: { data: markdownBytes, filename: 'handbook.md', contentType: 'text/markdown' },
   trainingType: 'chunk',
-  onUploadProgress: ({ percent }) => console.log(`Uploading: ${percent}%`),
-  waitForTraining: {
-    pollIntervalMs: 2_000,
-    onProgress: ({ queuedCount, trainingCount, trainedCount }) =>
-      console.log({ queuedCount, trainingCount, trainedCount })
-  }
+  file: { data: markdownBytes, filename: 'handbook.md', contentType: 'text/markdown' }
 });
 
-console.log('Collection ID:', created.collectionId, 'Errors:', created.training?.errors);
+console.log('Collection ID:', created.collectionId);
 
 // Auto-paginate any list endpoint (`for await`, `.pages()`, or `.toArray()`)
 for await (const chunk of client.datasets.data.listAutoPaging(
@@ -161,11 +138,22 @@ for await (const chunk of client.datasets.data.listAutoPaging(
 )) {
   console.log(chunk._id, chunk.q);
 }
+
+// Cursor-based auto-pagination for app chat logs (`POST /core/app/logs/search`)
+for await (const log of client.apps.logs.searchAutoPaging(
+  {
+    dateStart: '2026-01-01T00:00:00.000Z',
+    dateEnd: '2026-01-31T23:59:59.999Z'
+  },
+  { maxPages: 5 }
+)) {
+  console.log(log.chatId, log.title);
+}
 ```
 
 ---
 
-## Raw Responses, Escape Hatch, Observability & Errors
+## Raw Responses, Observability & Errors
 
 ```ts
 import { FastGPT } from '@fastgpt/sdk';
@@ -187,14 +175,8 @@ const client = new FastGPT({
 });
 
 // Inspect raw status, headers, and requestId
-const { data, response } = await client.system.health().withRawResponse();
-console.log(data, response.status, response.requestId);
-
-// Call a brand-new server endpoint before regenerating the SDK
-const custom = await client.rawRequest<{ ok: boolean }>({
-  method: 'GET',
-  path: '/support/openapi/health'
-});
+const { data, response } = await client.models.list().withRawResponse();
+console.log(data.models.length, response.status, response.requestId);
 
 try {
   await client.chat.histories.list();
@@ -221,62 +203,7 @@ Each capability is published directly from its defining module for minimal bundl
 - `@fastgpt/sdk/interactive` — `InteractivePayload`, `isUserSelectInteractive`, `isUserInputInteractive`, etc.
 - `@fastgpt/sdk/pagination` — `createOffsetPaginator`, `createPageNumPaginator`, `createCursorPaginator`, `AsyncPageIterable`
 - `@fastgpt/sdk/options` — `FastGptClientOptions`, `RequestOptions`, `FastGptHooks`, `FastGptLogger`
-- `@fastgpt/sdk/types` — generated OpenAPI `*Req` / `*Res` contract types
-- `@fastgpt/sdk/server` — reverse custom API dataset adapter (`createApiDatasetHandler`, `toNodeHttpHandler`)
-
----
-
-## Reverse Server Adapter (`@fastgpt/sdk/server`)
-
-Expose your own enterprise document store as a FastGPT **Custom API Dataset** (`/v1/file/list`, `/v1/file/content`, `/v1/file/detail`, `/v1/file/read`) with zero web framework lock-in. Authentication is **required by default** (fail-fast at startup if missing); pass `{ allowAnonymous: true }` only if you explicitly intend to run without Bearer auth:
-
-```ts
-import http from 'node:http';
-import { createApiDatasetHandler, toNodeHttpHandler } from '@fastgpt/sdk/server';
-
-const kbServerToken = process.env.KB_SERVER_TOKEN?.trim();
-if (!kbServerToken) {
-  throw new Error('Missing required environment variable: KB_SERVER_TOKEN');
-}
-
-const fetchHandler = createApiDatasetHandler({
-  authorization: kbServerToken,
-  basePath: '/api/fastgpt-kb', // optional mount prefix
-  provider: {
-    async listFiles({ parentId, searchKey }) {
-      return [
-        {
-          id: 'doc-1',
-          parentId: parentId ?? null,
-          name: 'Architecture.md',
-          type: 'file',
-          createTime: new Date(),
-          updateTime: new Date()
-        }
-      ];
-    },
-    async getFileDetail({ id }) {
-      return {
-        id,
-        parentId: null,
-        name: 'Architecture.md',
-        type: 'file',
-        createTime: new Date(),
-        updateTime: new Date()
-      };
-    },
-    async getFileContent({ id }) {
-      return { title: 'Architecture', content: `# Document ${id}` };
-    },
-    async getFileReadUrl({ id }) {
-      return `https://wiki.example.com/docs/${id}`;
-    }
-  }
-});
-
-// Mount directly in Next.js App Router / Hono / Bun / Deno / Workers, or Node http / Express:
-http.createServer(toNodeHttpHandler(fetchHandler)).listen(8080);
-```
+- `@fastgpt/sdk/types` — generated System OpenAPI `*Req` / `*Res` contract types
 
 ---
 

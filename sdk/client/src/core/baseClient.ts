@@ -21,7 +21,6 @@ import type {
   FastGptIdentity,
   FastGptLogger,
   OperationSpec,
-  RawRequestParams,
   RawResponseInfo,
   RequestOptions,
   WithRawResponseResult
@@ -280,33 +279,6 @@ export class BaseClient {
     return scope;
   }
 
-  /**
-   * 内部辅助：将服务端返回的绝对或相对接口路径（如 /api/system/file/u/{token}）
-   * 按当前 apiBaseUrl（含反向代理子路径）解析为完整可请求 URL。
-   */
-  _resolveEndpointUrl(targetUrl: string): string {
-    if (/^https?:\/\//i.test(targetUrl)) {
-      return targetUrl;
-    }
-    if (targetUrl.startsWith('/api/')) {
-      return `${this.apiBaseUrl}${targetUrl.slice(4)}`;
-    }
-    if (targetUrl.startsWith('/')) {
-      return new URL(targetUrl, this.apiBaseUrl).toString();
-    }
-    return `${this.apiBaseUrl}/${targetUrl}`;
-  }
-
-  /** 内部辅助：向高阶上传 Helper 共享客户端绑定的 fetch 实例。 */
-  _getFetch(): typeof globalThis.fetch {
-    return this._fetchFn;
-  }
-
-  /** 内部辅助：读取默认超时配置（毫秒）。 */
-  _getDefaultTimeoutMs(): number {
-    return this._options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  }
-
   private async _resolveApiKey(requestOptions?: RequestOptions): Promise<string | undefined> {
     if (requestOptions?.apiKey !== undefined) {
       return requestOptions.apiKey;
@@ -540,11 +512,7 @@ export class BaseClient {
 
     if (!hasExplicitAuth && apiKey !== undefined && apiKey.length > 0) {
       finalHeaders.authorization = apiKey.startsWith('Bearer ') ? apiKey : `Bearer ${apiKey}`;
-    } else if (
-      !hasExplicitAuth &&
-      spec.path !== '/core/ai/model/list' &&
-      !spec.path.startsWith('/system/file/u/')
-    ) {
+    } else if (!hasExplicitAuth && spec.path !== '/core/ai/model/list') {
       throw new FastGptAuthError({
         message:
           'Missing FastGPT API Key. Provide "apiKey" in new FastGPT({ apiKey }), RequestOptions, or FASTGPT_API_KEY env var.',
@@ -1165,91 +1133,5 @@ export class BaseClient {
       });
       throw err;
     }
-  }
-
-  private _prepareRawHttpCall({
-    params,
-    requestOptions,
-    acceptHeader
-  }: {
-    params: RawRequestParams;
-    requestOptions: RequestOptions | undefined;
-    acceptHeader: string;
-  }): PreparedHttpCall {
-    const normalizedRoutePath = params.path.startsWith('/api/')
-      ? params.path.slice(4)
-      : params.path.startsWith('/')
-        ? params.path
-        : `/${params.path}`;
-
-    const fullUrl = new URL(`${this.apiBaseUrl}${normalizedRoutePath}`);
-    if (params.query !== undefined) {
-      appendQueryParams(fullUrl, params.query);
-    }
-
-    const headers: Record<string, string> = {
-      accept: acceptHeader,
-      'x-fastgpt-client': `fastgpt-js-sdk/${SDK_VERSION}`,
-      ...(this._options.defaultHeaders ?? {}),
-      ...(requestOptions?.headers ?? {})
-    };
-
-    if (params.body === undefined) {
-      return { url: fullUrl.toString(), headers, isStreamBody: false };
-    }
-
-    if (typeof FormData !== 'undefined' && params.body instanceof FormData) {
-      return { url: fullUrl.toString(), headers, body: params.body, isStreamBody: false };
-    }
-
-    if (
-      params.body instanceof Blob ||
-      params.body instanceof ArrayBuffer ||
-      params.body instanceof Uint8Array ||
-      (typeof ReadableStream !== 'undefined' && params.body instanceof ReadableStream)
-    ) {
-      const { body, isStream } = toBinaryBodyInit(params.body);
-      return { url: fullUrl.toString(), headers, body, isStreamBody: isStream };
-    }
-
-    if (!hasHeaderIgnoreCase(headers, 'content-type')) {
-      headers['content-type'] = 'application/json';
-    }
-    return {
-      url: fullUrl.toString(),
-      headers,
-      body: JSON.stringify(params.body),
-      isStreamBody: false
-    };
-  }
-
-  /**
-   * 泛化逃生口：在服务端新增接口尚未进入 SDK 生成层时，直接复用 SDK 鉴权、重试与解包能力发起请求；
-   * 独立序列化 query 与 body，原样保留 JSON 数组、标量及 query/body 同名字段。
-   */
-  rawRequest<T = unknown>(params: RawRequestParams, options?: RequestOptions): ApiPromise<T> {
-    const spec: OperationSpec = {
-      id: `raw.${params.method.toLowerCase()}`,
-      httpMethod: params.method,
-      path: params.path,
-      requestContentType: params.body !== undefined ? 'json' : 'none',
-      responseMode: params.responseMode ?? 'envelope',
-      appIdCarrier: null,
-      identityCarrier: null,
-      pathParams: [],
-      queryParams: Object.keys(params.query ?? {}),
-      bodyParams: []
-    };
-
-    return this._executePreparedRequest<T>({
-      spec,
-      prepare: (acceptHeader) =>
-        this._prepareRawHttpCall({
-          params,
-          requestOptions: options,
-          acceptHeader
-        }),
-      requestOptions: options
-    });
   }
 }

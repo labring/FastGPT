@@ -122,11 +122,7 @@ export const AppLogPath: OpenAPIPath = {
     post: {
       summary: '导出应用日志',
       description: '导出应用的对话日志为 CSV 文件，支持自定义导出字段和筛选条件',
-      tags: [DevApiTagsMap.appLog, SystemOpenApiTagMap.appLog],
-      'x-fastgpt-sdk': {
-        resource: 'apps.logs',
-        method: 'export'
-      },
+      tags: [DevApiTagsMap.appLog],
       requestBody: {
         content: {
           'application/json': {

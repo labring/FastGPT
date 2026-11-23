@@ -15,8 +15,7 @@ import {
   CreateLinkCollectionBodySchema,
   CreateTemplateCollectionMultipartSchema,
   CreateTextCollectionBodySchema,
-  ReTrainingCollectionBodySchema,
-  ReTrainingCollectionResponseSchema
+  ReTrainingCollectionBodySchema
 } from './createApi';
 
 export const DatasetCollectionCreatePath: OpenAPIPath = {
@@ -59,11 +58,7 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
     post: {
       summary: '重新训练集合',
       description: '删除原集合并以新参数重新创建并训练，适用于调整分块策略后的重处理场景',
-      tags: [DevApiTagsMap.datasetCollectionCrteate, SystemOpenApiTagMap.datasetCollectionCreate],
-      'x-fastgpt-sdk': {
-        resource: 'datasets.collections',
-        method: 'retrain'
-      },
+      tags: [DevApiTagsMap.datasetCollectionCrteate],
       requestBody: {
         content: {
           'application/json': {
@@ -73,12 +68,7 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回新集合 ID',
-          content: {
-            'application/json': {
-              schema: ReTrainingCollectionResponseSchema
-            }
-          }
+          description: '成功返回新集合 ID'
         }
       }
     }
@@ -91,11 +81,7 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
     post: {
       summary: '通过文件 ID 创建集合',
       description: '使用已上传至 S3 的文件对象键创建集合并触发训练',
-      tags: [DevApiTagsMap.datasetCollectionCrteate, SystemOpenApiTagMap.datasetCollectionCreate],
-      'x-fastgpt-sdk': {
-        resource: 'datasets.collections',
-        method: 'createByFileId'
-      },
+      tags: [DevApiTagsMap.datasetCollectionCrteate],
       requestBody: {
         content: {
           'application/json': {
@@ -105,12 +91,7 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回集合 ID 及数据插入结果',
-          content: {
-            'application/json': {
-              schema: CreateCollectionWithResultResponseSchema
-            }
-          }
+          description: '成功返回集合 ID 及数据插入结果'
         }
       }
     }
@@ -252,11 +233,7 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
     post: {
       summary: '通过 API 数据集批量创建集合（V2）',
       description: '支持传入文件列表或选择根目录，递归拉取 API 数据源文件并批量创建集合',
-      tags: [DevApiTagsMap.datasetCollectionCrteate, SystemOpenApiTagMap.datasetCollectionCreate],
-      'x-fastgpt-sdk': {
-        resource: 'datasets.collections',
-        method: 'createByApiDataset'
-      },
+      tags: [DevApiTagsMap.datasetCollectionCrteate],
       requestBody: {
         content: {
           'application/json': {
@@ -285,11 +262,7 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
       summary: '上传图片集创建集合',
       description:
         '通过 multipart/form-data 批量上传图片，使用 VLM 模型解析后创建集合。`file` 为多个图片文件（多选），`data` 为 JSON 序列化的集合参数对象',
-      tags: [DevApiTagsMap.datasetCollectionCrteate, SystemOpenApiTagMap.datasetCollectionCreate],
-      'x-fastgpt-sdk': {
-        resource: 'datasets.collections',
-        method: 'createByImages'
-      },
+      tags: [DevApiTagsMap.datasetCollectionCrteate],
       requestBody: {
         content: {
           'multipart/form-data': {
@@ -302,12 +275,7 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回集合 ID 及数据插入结果',
-          content: {
-            'application/json': {
-              schema: CreateCollectionWithResultResponseSchema
-            }
-          }
+          description: '成功返回集合 ID 及数据插入结果'
         }
       }
     }
@@ -321,11 +289,7 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
       summary: '导入备份文件创建集合',
       description:
         '上传 CSV 或 Excel 备份文件，恢复数据到知识库集合。表头由 q、a、index、metadata 组成，q/a/metadata 各一列，index 可多列且顺序任意，metadata 单元格为 JSON object；Excel 仅支持单工作表且不能包含合并单元格；同时兼容旧版 q、a、indexes 表头。`file` 为上传文件，`data` 为 JSON 序列化的集合参数对象',
-      tags: [DevApiTagsMap.datasetCollectionCrteate, SystemOpenApiTagMap.datasetCollectionCreate],
-      'x-fastgpt-sdk': {
-        resource: 'datasets.collections',
-        method: 'createByBackup'
-      },
+      tags: [DevApiTagsMap.datasetCollectionCrteate],
       requestBody: {
         content: {
           'multipart/form-data': {
@@ -357,11 +321,7 @@ export const DatasetCollectionCreatePath: OpenAPIPath = {
       summary: '导入模板文件创建集合',
       description:
         '上传 CSV 或 Excel 模板文件，批量导入数据到知识库集合。表头由 q、a、index、metadata 组成，q/a/metadata 各一列，index 可多列且顺序任意，metadata 单元格为 JSON object；Excel 仅支持单工作表且不能包含合并单元格；同时兼容旧版 q、a、indexes 表头。`file` 为上传文件，multipart filename 使用原始 UTF-8 文件名；`data` 为 JSON 序列化的集合参数对象',
-      tags: [DevApiTagsMap.datasetCollectionCrteate, SystemOpenApiTagMap.datasetCollectionCreate],
-      'x-fastgpt-sdk': {
-        resource: 'datasets.collections',
-        method: 'createByTemplate'
-      },
+      tags: [DevApiTagsMap.datasetCollectionCrteate],
       requestBody: {
         content: {
           'multipart/form-data': {

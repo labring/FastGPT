@@ -1,6 +1,6 @@
 import { createChatTargetQueryParameters } from '../../chat/api';
 import type { OpenAPIPath } from '../../../type';
-import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
+import { DevApiTagsMap } from '../../../tag';
 import {
   SandboxDownloadBodyRawSchema,
   SandboxDownloadResponseSchema,
@@ -81,11 +81,7 @@ export const SandboxPath: OpenAPIPath = {
     post: {
       summary: '下载沙盒文件或目录',
       description: '下载当前 Chat Session 中的指定文件，或将目录打包为 ZIP 下载',
-      tags: [DevApiTagsMap.sandbox, SystemOpenApiTagMap.chatSandbox],
-      'x-fastgpt-sdk': {
-        resource: 'chat.sandbox',
-        method: 'download'
-      },
+      tags: [DevApiTagsMap.sandbox],
       requestBody: {
         content: {
           'application/json': {
@@ -110,11 +106,7 @@ export const SandboxPath: OpenAPIPath = {
       summary: '上传文件到沙盒',
       description:
         '将原始二进制请求流直接写入当前 Chat Session 路径，不在 FastGPT 节点生成临时文件',
-      tags: [DevApiTagsMap.sandbox, SystemOpenApiTagMap.chatSandbox],
-      'x-fastgpt-sdk': {
-        resource: 'chat.sandbox',
-        method: 'upload'
-      },
+      tags: [DevApiTagsMap.sandbox],
       parameters: createChatTargetQueryParameters(SandboxUploadQueryRawSchema),
       requestBody: {
         content: {
@@ -141,11 +133,7 @@ export const SandboxPath: OpenAPIPath = {
       summary: '获取 HTML 文件预览链接',
       description:
         '校验文件后签发短期只读链接，由 agent-proxy 直接转发 sandbox workspace 内容，不复制到对象存储',
-      tags: [DevApiTagsMap.sandbox, SystemOpenApiTagMap.chatSandbox],
-      'x-fastgpt-sdk': {
-        resource: 'chat.sandbox',
-        method: 'getHtmlPreviewLink'
-      },
+      tags: [DevApiTagsMap.sandbox],
       requestBody: {
         content: {
           'application/json': {
@@ -170,11 +158,7 @@ export const SandboxPath: OpenAPIPath = {
     post: {
       summary: '检查沙盒是否存在',
       description: '根据 Chat 目标和有效用户检查对应的用户级沙盒实例是否存在',
-      tags: [DevApiTagsMap.sandbox, SystemOpenApiTagMap.chatSandbox],
-      'x-fastgpt-sdk': {
-        resource: 'chat.sandbox',
-        method: 'checkExist'
-      },
+      tags: [DevApiTagsMap.sandbox],
       requestBody: {
         content: {
           'application/json': {

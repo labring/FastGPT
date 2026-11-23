@@ -24,18 +24,12 @@ const basePermission = {
 };
 
 describe('whoami OpenAPI contract', () => {
-  it('registers GET /support/user/account/whoami in Dev API and System OpenAPI', () => {
+  it('registers GET /support/user/account/whoami in Dev API without exposing it in System OpenAPI', () => {
     expect(openAPIPaths[whoamiPath]?.get).toBeDefined();
     expect(openAPIDocument.paths?.[whoamiPath]?.get?.tags).toEqual(['用户账号', 'API Key 管理']);
     expect(openAPIDocument.paths?.[whoamiPath]?.get?.parameters).toBeUndefined();
     expect(openAPIDocument.paths?.[whoamiPath]?.get?.requestBody).toBeUndefined();
-    expect(apiDocOpenAPIDocument.paths?.[whoamiPath]?.get).toMatchObject({
-      tags: ['凭证与系统'],
-      'x-fastgpt-sdk': {
-        resource: 'system',
-        method: 'whoami'
-      }
-    });
+    expect(apiDocOpenAPIDocument.paths?.[whoamiPath]).toBeUndefined();
   });
 
   it('validates session token responses', () => {

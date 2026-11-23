@@ -18,16 +18,6 @@
         "default": "./dist/index.cjs"
       }
     },
-    "./server": {
-      "import": {
-        "types": "./dist/server.d.mts",
-        "default": "./dist/server.mjs"
-      },
-      "require": {
-        "types": "./dist/server.d.cts",
-        "default": "./dist/server.cjs"
-      }
-    },
     "./errors": {
       "import": {
         "types": "./dist/errors.d.mts",

@@ -351,16 +351,7 @@ describe('Dataset OpenAPI contracts', () => {
     const group = apiDocOpenAPIDocument['x-tagGroups'].find(
       (group: { name: string }) => group.name === '知识库'
     );
-    expect(group.tags).toEqual([
-      '知识库管理',
-      '集合管理',
-      '集合创建',
-      '知识库文件',
-      '数据管理',
-      '训练与索引',
-      '同义词管理',
-      '知识库搜索'
-    ]);
+    expect(group.tags).toEqual(['知识库管理', '集合管理', '集合创建', '数据管理', '知识库搜索']);
     for (const action of ['create', 'update', 'delete']) {
       expect(apiDocOpenAPIDocument.paths).not.toHaveProperty(`/core/dataset/data/index/${action}`);
     }

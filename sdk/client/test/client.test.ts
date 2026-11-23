@@ -46,6 +46,15 @@ describe('FastGPT Core Client, Auth, Identity & Error Semantics', () => {
     );
   });
 
+  it('exposes only OpenAPI-declared domains and omits rawRequest escape hatch', () => {
+    const client = new FastGPT({ apiKey: 'fastgpt-key' });
+    expect('rawRequest' in client).toBe(false);
+    expect('system' in client).toBe(false);
+    expect(
+      Object.keys(client).filter((k) => ['apps', 'chat', 'datasets', 'models'].includes(k))
+    ).toEqual(['apps', 'chat', 'datasets', 'models']);
+  });
+
   it('blocks accidental browser instantiation unless dangerouslyAllowBrowser is true', () => {
     (globalThis as { window?: unknown }).window = { document: {} };
 
@@ -55,7 +64,7 @@ describe('FastGPT Core Client, Auth, Identity & Error Semantics', () => {
     ).not.toThrow();
   });
 
-  it('supports static apiKey, dynamic async credential provider, and public/token routes without apiKey', async () => {
+  it('supports static apiKey, dynamic async credential provider, and public /core/ai/model/list without apiKey', async () => {
     const calls: Array<{ url: string; auth: string | null }> = [];
     const mockFetch: typeof globalThis.fetch = async (input, init) => {
       const headers = new Headers(init?.headers);
@@ -64,7 +73,7 @@ describe('FastGPT Core Client, Auth, Identity & Error Semantics', () => {
         auth: headers.get('authorization')
       });
       return createJsonResponse({
-        body: { code: 200, statusText: '', message: '', data: { etag: 'etag-1' } }
+        body: { code: 200, statusText: '', message: '', data: { models: [], providers: [] } }
       });
     };
 
@@ -73,17 +82,11 @@ describe('FastGPT Core Client, Auth, Identity & Error Semantics', () => {
       baseUrl: 'https://api.example.com',
       fetch: mockFetch
     });
-    await expect(unauthClient.system.health()).rejects.toThrow(FastGptAuthError);
+    await expect(unauthClient.models.catalog()).rejects.toThrow(FastGptAuthError);
 
-    // 2. 公开模型列表与分片上传 token 接口允许无 API Key 访问
+    // 2. 公开模型列表接口允许无 API Key 访问
     await unauthClient.models.list();
-    await unauthClient.datasets.files.uploadPart({
-      token: 'tok-1',
-      partNumber: 1,
-      file: new Uint8Array([1, 2, 3])
-    });
     expect(calls[0]?.auth).toBeNull();
-    expect(calls[1]?.auth).toBeNull();
 
     // 3. 动态异步凭证提供器按需旋转密钥
     let seq = 0;
@@ -95,30 +98,26 @@ describe('FastGPT Core Client, Auth, Identity & Error Semantics', () => {
       },
       fetch: mockFetch
     });
-    await dynamicClient.system.health();
-    await dynamicClient.system.health();
-    expect(calls[2]?.auth).toBe('Bearer fastgpt-rotated-1');
-    expect(calls[3]?.auth).toBe('Bearer fastgpt-rotated-2');
+    await dynamicClient.models.catalog();
+    await dynamicClient.models.catalog();
+    expect(calls[1]?.auth).toBe('Bearer fastgpt-rotated-1');
+    expect(calls[2]?.auth).toBe('Bearer fastgpt-rotated-2');
   });
 
-  it('injects defaultAppId and derived withIdentity across query, JSON body, and multipartData without polluting unrelated routes', async () => {
+  it('injects defaultAppId and derived withIdentity across query and JSON body without polluting unrelated routes', async () => {
     const captured: Array<{
       url: string;
       jsonBody?: Record<string, unknown>;
-      formData?: FormData;
     }> = [];
 
     const mockFetch: typeof globalThis.fetch = async (input, init) => {
       const entry: {
         url: string;
         jsonBody?: Record<string, unknown>;
-        formData?: FormData;
       } = { url: String(input) };
 
       if (typeof init?.body === 'string') {
         entry.jsonBody = JSON.parse(init.body) as Record<string, unknown>;
-      } else if (init?.body instanceof FormData) {
-        entry.formData = init.body;
       }
       captured.push(entry);
 
@@ -150,24 +149,11 @@ describe('FastGPT Core Client, Auth, Identity & Error Semantics', () => {
       authProxy: { username: 'alice' }
     });
 
-    // 3. Multipart data JSON 字段载体注入（POST /v1/audio/transcriptions）
-    await userClient.chat.transcribeAudio({
-      file: { data: 'audio-bytes', filename: 'voice.mp3', contentType: 'audio/mpeg' },
-      chatId: 'chat-audio-1'
-    });
-    const mpDataRaw = captured[2]?.formData?.get('data');
-    expect(typeof mpDataRaw).toBe('string');
-    expect(JSON.parse(String(mpDataRaw))).toEqual({
-      chatId: 'chat-audio-1',
-      appId: '68ad85a7463006c963799a05',
-      customUid: 'end-user-42'
-    });
-
-    // 4. 非应用维度接口（datasets.list）绝不误注入 appId 或 customUid
+    // 3. 非应用维度接口（datasets.list）绝不误注入 appId 或 customUid
     await userClient.datasets.list({ searchKey: 'kb' });
-    expect(captured[3]?.jsonBody).toEqual({ searchKey: 'kb' });
+    expect(captured[2]?.jsonBody).toEqual({ searchKey: 'kb' });
 
-    // 5. 同时传入 customUid 与 authProxy 抛出客户端参数互斥异常
+    // 4. 同时传入 customUid 与 authProxy 抛出客户端参数互斥异常
     expect(() =>
       rootClient.withIdentity({
         customUid: 'u1',
@@ -181,7 +167,7 @@ describe('FastGPT Core Client, Auth, Identity & Error Semantics', () => {
     const mockFetch: typeof globalThis.fetch = async () => {
       fetchCount += 1;
       return createJsonResponse({
-        body: { code: 200, statusText: '', message: '', data: { ok: true } },
+        body: { code: 200, statusText: '', message: '', data: { version: 'v1', models: [] } },
         headers: { 'x-request-id': 'req-abc-999' }
       });
     };
@@ -192,15 +178,12 @@ describe('FastGPT Core Client, Auth, Identity & Error Semantics', () => {
       fetch: mockFetch
     });
 
-    const promise = client.rawRequest<{ ok: boolean }>({
-      method: 'GET',
-      path: '/support/openapi/health'
-    });
+    const promise = client.models.catalog();
 
     const [unwrapped, rawResult] = await Promise.all([promise, promise.withRawResponse()]);
     expect(fetchCount).toBe(1);
-    expect(unwrapped).toEqual({ ok: true });
-    expect(rawResult.data).toEqual({ ok: true });
+    expect(unwrapped).toEqual({ version: 'v1', models: [] });
+    expect(rawResult.data).toEqual({ version: 'v1', models: [] });
     expect(rawResult.response.status).toBe(200);
     expect(rawResult.response.requestId).toBe('req-abc-999');
   });
@@ -266,7 +249,7 @@ describe('FastGPT Core Client, Auth, Identity & Error Semantics', () => {
       },
       {
         httpStatus: 409,
-        body: { code: 409, message: 'Duplicate synonym term' },
+        body: { code: 409, message: 'Duplicate collection' },
         expectedClass: FastGptConflictError
       },
       {
@@ -316,7 +299,7 @@ describe('FastGPT Core Client, Auth, Identity & Error Semantics', () => {
 
       let caught: unknown;
       try {
-        await client.system.health();
+        await client.models.catalog();
       } catch (err) {
         caught = err;
       }
@@ -347,7 +330,7 @@ describe('FastGPT Core Client, Auth, Identity & Error Semantics', () => {
             });
           }
           return createJsonResponse({
-            body: { code: 200, statusText: '', message: '', data: 'ok' }
+            body: { code: 200, statusText: '', message: '', data: { version: 'v1' } }
           });
         }
 
@@ -359,7 +342,7 @@ describe('FastGPT Core Client, Auth, Identity & Error Semantics', () => {
       }
     });
 
-    await expect(client.system.health()).resolves.toBe('ok');
+    await expect(client.models.catalog()).resolves.toEqual({ version: 'v1' });
     expect(getAttempts).toBe(2);
 
     await expect(client.datasets.list({})).rejects.toThrow(FastGptServerError);
@@ -378,7 +361,7 @@ describe('FastGPT Core Client, Auth, Identity & Error Semantics', () => {
         })
     });
 
-    await expect(slowClient.system.health()).rejects.toThrow(FastGptTimeoutError);
+    await expect(slowClient.models.catalog()).rejects.toThrow(FastGptTimeoutError);
   });
 
   it('keeps timeoutMs and external AbortSignal active after response headers arrive for both body reads and SSE streams', async () => {
@@ -396,7 +379,12 @@ describe('FastGPT Core Client, Auth, Identity & Error Semantics', () => {
             const timer = setTimeout(() => {
               controller.enqueue(
                 encoder.encode(
-                  JSON.stringify({ code: 200, statusText: '', message: '', data: 'ok' })
+                  JSON.stringify({
+                    code: 200,
+                    statusText: '',
+                    message: '',
+                    data: { version: 'v1' }
+                  })
                 )
               );
               controller.close();
@@ -410,7 +398,7 @@ describe('FastGPT Core Client, Auth, Identity & Error Semantics', () => {
         });
       }
     });
-    await expect(slowBodyClient.system.health()).rejects.toThrow(FastGptTimeoutError);
+    await expect(slowBodyClient.models.catalog()).rejects.toThrow(FastGptTimeoutError);
 
     // 2. 普通响应在 headers 返回后由外部 AbortSignal 取消，必须中断响应体读取
     const externalJsonAbort = new AbortController();
@@ -432,7 +420,7 @@ describe('FastGPT Core Client, Auth, Identity & Error Semantics', () => {
       }
     });
     await expect(
-      abortableBodyClient.system.health({ signal: externalJsonAbort.signal })
+      abortableBodyClient.models.catalog(undefined, { signal: externalJsonAbort.signal })
     ).rejects.toThrow(FastGptError);
 
     // 3. SSE 流建连后（握手超时清理，不误杀慢流），外部 AbortSignal 触发仍能直达底层流并中止迭代
@@ -492,52 +480,5 @@ describe('FastGPT Core Client, Auth, Identity & Error Semantics', () => {
     expect(received).toEqual(['晚到分片']);
     expect(fetchSignalAborted).toBe(true);
     expect(stream.state).toBe('aborted');
-  });
-
-  it('preserves rawRequest query and JSON body independently for arrays, scalars, and overlapping keys', async () => {
-    const captured: Array<{ url: string; contentType: string | null; body: string | null }> = [];
-    const client = new FastGPT({
-      baseUrl: 'https://api.example.com',
-      apiKey: 'fastgpt-key',
-      fetch: async (input, init) => {
-        const headers = new Headers(init?.headers);
-        captured.push({
-          url: String(input),
-          contentType: headers.get('content-type'),
-          body: typeof init?.body === 'string' ? init.body : null
-        });
-        return createJsonResponse({
-          body: { code: 200, statusText: '', message: '', data: { ok: true } }
-        });
-      }
-    });
-
-    // 1. JSON 数组 body 原样序列化，不会退化为 {}
-    await client.rawRequest({
-      method: 'POST',
-      path: '/custom/batch',
-      body: [1, { name: 'a' }, 'x']
-    });
-    expect(captured[0]?.body).toBe('[1,{"name":"a"},"x"]');
-
-    // 2. JSON 标量 body 原样序列化
-    await client.rawRequest({
-      method: 'POST',
-      path: '/custom/scalar',
-      body: 'raw-text-value'
-    });
-    expect(captured[1]?.body).toBe('"raw-text-value"');
-
-    // 3. query 与 body 同名字段各自保留，互不覆盖与删减
-    await client.rawRequest({
-      method: 'POST',
-      path: '/custom/overlap',
-      query: { id: 'query-id', mode: 'fast' },
-      body: { id: 'body-id', extra: 42 }
-    });
-    const overlapUrl = new URL(captured[2]!.url);
-    expect(overlapUrl.searchParams.get('id')).toBe('query-id');
-    expect(overlapUrl.searchParams.get('mode')).toBe('fast');
-    expect(JSON.parse(captured[2]!.body!)).toEqual({ id: 'body-id', extra: 42 });
   });
 });
