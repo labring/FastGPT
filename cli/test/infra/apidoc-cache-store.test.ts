@@ -41,7 +41,7 @@ describe('FileApidocCacheStore & FileIoAdapter.writeBinaryAtomic', () => {
     };
 
     const writtenPath = await store.write(entry);
-    const expectedOriginHash = sha256Hex('https://cloud.fastgpt.cn').slice(0, 16);
+    const expectedOriginHash = sha256Hex('https://cloud.fastgpt.cn/api').slice(0, 16);
     expect(writtenPath).toBe(
       join(configDir, 'cache', 'apidoc', `${expectedOriginHash}-system.json`)
     );
@@ -52,11 +52,36 @@ describe('FileApidocCacheStore & FileIoAdapter.writeBinaryAtomic', () => {
       expect((await stat(writtenPath)).mode & 0o777).toBe(0o600);
     }
 
-    const loaded = await store.read({
-      baseUrl: 'https://cloud.fastgpt.cn/subpath/api',
+    // 同部署路径尾部斜杠规范化后命中同一缓存；不同子路径与 root 必须隔离。
+    const loadedNormalized = await store.read({
+      baseUrl: 'https://cloud.fastgpt.cn/api/',
       source: 'system'
     });
-    expect(loaded).toEqual(entry);
+    expect(loadedNormalized).toEqual(entry);
+
+    await expect(
+      store.read({
+        baseUrl: 'https://cloud.fastgpt.cn/subpath/api',
+        source: 'system'
+      })
+    ).resolves.toBeUndefined();
+
+    // 即使缓存文件落盘键相同，如果内容中声明的 baseUrl 不一致也必须视为未命中。
+    const mismatchedSubpathPath = store.getCachePath({
+      baseUrl: 'https://cloud.fastgpt.cn/other/api',
+      source: 'system'
+    });
+    await writeFile(
+      mismatchedSubpathPath,
+      JSON.stringify({ ...entry, baseUrl: 'https://cloud.fastgpt.cn/different/api' }),
+      'utf8'
+    );
+    await expect(
+      store.read({
+        baseUrl: 'https://cloud.fastgpt.cn/other/api',
+        source: 'system'
+      })
+    ).resolves.toBeUndefined();
 
     // dev 与 system 以及不同 origin 分别隔离缓存文件
     await expect(

@@ -515,26 +515,41 @@ export function createApiCallerService({
           headers: rawHeaders
         });
 
-        const bytes = new Uint8Array(await rawResponse.arrayBuffer());
         const contentType = rawResponse.headers.get('content-type') ?? 'application/octet-stream';
 
         if (input.output !== undefined) {
-          const outputPath = await fileIo.writeBinaryAtomic({
-            filePath: input.output,
-            content: bytes
-          });
+          const outputTarget = input.output;
+          const overwrite = input.overwrite === true;
+          const written = await (async (): Promise<{ outputPath: string; bytes: number }> => {
+            if (rawResponse.body) {
+              const streamed = await fileIo.writeStreamAtomic({
+                filePath: outputTarget,
+                stream: rawResponse.body,
+                overwrite
+              });
+              return { outputPath: streamed.path, bytes: streamed.bytes };
+            }
+            const bytes = new Uint8Array(await rawResponse.arrayBuffer());
+            const outputPath = await fileIo.writeBinaryAtomic({
+              filePath: outputTarget,
+              content: bytes,
+              overwrite
+            });
+            return { outputPath, bytes: bytes.byteLength };
+          })();
           return createChangedResult({
             data: {
-              outputPath,
-              bytes: bytes.byteLength,
+              outputPath: written.outputPath,
+              bytes: written.bytes,
               status: rawResponse.status,
               contentType
             },
-            message: `Saved ${bytes.byteLength} bytes to ${outputPath}.`,
+            message: `Saved ${written.bytes} bytes to ${written.outputPath}.`,
             ...(allWarnings.length > 0 ? { warnings: allWarnings } : {})
           });
         }
 
+        const bytes = new Uint8Array(await rawResponse.arrayBuffer());
         const isText = isTextContentType(contentType);
         const decodedBody = isText
           ? new TextDecoder('utf-8').decode(bytes)

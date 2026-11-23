@@ -228,4 +228,128 @@ describe('CLI bundled skills catalog & installer', () => {
     expect((uninstallRes.meta as { removed: number }).removed).toBe(5);
     expect(await readFile(join(targetDir, 'user-custom', 'SKILL.md'), 'utf8')).toBe('# keep me\n');
   });
+
+  it('protects locally modified SKILL.md on update without --force and preserves user files on uninstall', async () => {
+    const root = await makeTempDir();
+    const targetDir = join(root, '.agents', 'skills');
+    const installer = createNodeSkillInstaller({ cwd: root, homedir: root });
+    const bundled = await readCliSkillsSource();
+
+    const service = createSkillsService({
+      loadSkills: async () => bundled,
+      installer,
+      prompter: createNonTtyPrompter(),
+      cliVersion: '0.1.0-beta.5'
+    });
+
+    await service.install({
+      customDir: targetDir,
+      names: ['fastgpt-cli', 'fastgpt-app']
+    });
+
+    // 1. fastgpt-app 仅元数据版本过期（内容未改），fastgpt-cli 被用户本地编辑。
+    const appMetaPath = join(targetDir, 'fastgpt-app', SKILL_METADATA_FILE);
+    const oldAppMeta = JSON.parse(await readFile(appMetaPath, 'utf8'));
+    await writeFile(
+      appMetaPath,
+      JSON.stringify({ ...oldAppMeta, cliVersion: '0.1.0-beta.1' }),
+      'utf8'
+    );
+
+    const editedCliPath = join(targetDir, 'fastgpt-cli', 'SKILL.md');
+    await writeFile(editedCliPath, '# custom local notes\n', 'utf8');
+
+    const updateNoForce = await service.update({ customDir: targetDir });
+    expect(updateNoForce.changed).toBe(true);
+    expect(updateNoForce.meta).toMatchObject({
+      total: 2,
+      updated: 1,
+      unchanged: 0,
+      skippedModified: 1
+    });
+    expect(updateNoForce.warnings?.[0]).toContain('fastgpt-cli');
+    expect(await readFile(editedCliPath, 'utf8')).toBe('# custom local notes\n');
+
+    const updateWithForce = await service.update({ customDir: targetDir, force: true });
+    expect(updateWithForce.changed).toBe(true);
+    expect(await readFile(editedCliPath, 'utf8')).toContain('name: fastgpt-cli');
+
+    // 2. 在 fastgpt-cli 目录中写入用户自建文件与子目录；uninstall 仅删除 SKILL.md 和 .fastgpt-skill.json 并保留用户文件。
+    await writeFile(join(targetDir, 'fastgpt-cli', 'notes.txt'), 'keep my notes', 'utf8');
+    await mkdir(join(targetDir, 'fastgpt-cli', 'references'), { recursive: true });
+    await writeFile(
+      join(targetDir, 'fastgpt-cli', 'references', 'custom.md'),
+      'keep custom ref',
+      'utf8'
+    );
+
+    const dryUninstall = await service.uninstall({
+      customDir: targetDir,
+      names: ['fastgpt-cli', 'fastgpt-app'],
+      dryRun: true,
+      yes: true
+    });
+    const drySkills = (
+      dryUninstall.data as {
+        skills: Array<{ name: string; managedFiles: string[]; preservedEntries: string[] }>;
+      }
+    ).skills;
+    expect(drySkills[0]).toMatchObject({
+      name: 'fastgpt-cli',
+      managedFiles: ['SKILL.md', SKILL_METADATA_FILE],
+      preservedEntries: ['notes.txt', 'references']
+    });
+    expect(drySkills[1]).toMatchObject({
+      name: 'fastgpt-app',
+      managedFiles: ['SKILL.md', SKILL_METADATA_FILE],
+      preservedEntries: []
+    });
+
+    const uninstallRes = await service.uninstall({
+      customDir: targetDir,
+      names: ['fastgpt-cli', 'fastgpt-app'],
+      yes: true,
+      format: 'json'
+    });
+    expect(uninstallRes.changed).toBe(true);
+    expect(uninstallRes.warnings?.[0]).toContain('notes.txt, references');
+
+    const results = (
+      uninstallRes.data as {
+        results: Array<{
+          name: string;
+          status: string;
+          removedFiles?: string[];
+          preservedEntries?: string[];
+          directoryPreserved?: boolean;
+        }>;
+      }
+    ).results;
+    expect(results[0]).toMatchObject({
+      name: 'fastgpt-cli',
+      status: 'removed',
+      removedFiles: ['SKILL.md', SKILL_METADATA_FILE],
+      preservedEntries: ['notes.txt', 'references'],
+      directoryPreserved: true
+    });
+    expect(results[1]).toMatchObject({
+      name: 'fastgpt-app',
+      status: 'removed',
+      removedFiles: ['SKILL.md', SKILL_METADATA_FILE],
+      preservedEntries: [],
+      directoryPreserved: false
+    });
+
+    await expect(stat(editedCliPath)).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(stat(join(targetDir, 'fastgpt-cli', SKILL_METADATA_FILE))).rejects.toMatchObject({
+      code: 'ENOENT'
+    });
+    expect(await readFile(join(targetDir, 'fastgpt-cli', 'notes.txt'), 'utf8')).toBe(
+      'keep my notes'
+    );
+    expect(await readFile(join(targetDir, 'fastgpt-cli', 'references', 'custom.md'), 'utf8')).toBe(
+      'keep custom ref'
+    );
+    await expect(stat(join(targetDir, 'fastgpt-app'))).rejects.toMatchObject({ code: 'ENOENT' });
+  });
 });

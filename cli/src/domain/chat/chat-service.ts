@@ -28,6 +28,7 @@ import {
   type GetRecordsV2ResponseType
 } from '@fastgpt/global/openapi/core/chat/record/api';
 import type { ResolvedCredential } from '../auth/auth-resolver';
+import { assertAppChatTarget } from './chat-target-guard';
 import type { FastGptHttpClient } from '../../infra/http/fastgpt-http-client';
 import { CliArgumentError } from '../../shared/errors';
 import { redactValue } from '../../shared/redact';
@@ -131,44 +132,11 @@ export function createChatService(): ChatService {
       const definition = CHAT_OPERATIONS[operation];
       const payload = z.record(z.string(), z.unknown()).parse(input);
 
-      // 即使通过 JSON 文件调用，也不能切换到其他会话目标或内部运行参数。
-      const unsupported = [
-        'skillId',
-        'sourceType',
-        'sourceId',
-        'shareId',
-        'outLinkUid',
-        'outLinkAuthData'
-      ];
-      if (unsupported.some((key) => payload[key] !== undefined)) {
-        throw new CliArgumentError(
-          'Chat commands only accept App conversations. Use appId to select an App.'
-        );
-      }
-      if (
-        payload.appId === undefined &&
-        credential?.kind !== 'appKey' &&
-        credential?.kind !== 'unknownApiKey'
-      ) {
-        throw new CliArgumentError('--appId is required for a user session or personal API Key.');
-      }
-      if (
-        credential?.kind === 'appKey' &&
-        credential.boundAppId &&
-        payload.appId !== undefined &&
-        payload.appId !== credential.boundAppId
-      ) {
-        throw new CliArgumentError('--appId does not match the App bound to the active API Key.');
-      }
-      if (
-        payload.authProxy !== undefined &&
-        (credential?.kind === 'appKey' || credential?.kind === 'token')
-      ) {
-        throw new CliArgumentError('--authProxy requires an enabled personal API Key.');
-      }
-      if (payload.customUid !== undefined && credential?.kind === 'token') {
-        throw new CliArgumentError('--customUid requires an API Key.');
-      }
+      assertAppChatTarget({
+        payload,
+        credential,
+        domainLabel: 'Chat commands'
+      });
 
       if (operation === 'run') {
         if (payload.stream !== undefined && payload.stream !== false) {

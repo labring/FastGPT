@@ -174,6 +174,12 @@ export function createSkillsCommandSpecs(): CliCommandSpec[] {
       options: [
         ...TARGET_OPTIONS,
         {
+          name: 'force',
+          flags: '--force',
+          takesValue: false,
+          description: 'Overwrite managed skills that have local edits in SKILL.md'
+        },
+        {
           name: 'dryRun',
           flags: '--dry-run',
           takesValue: false,
@@ -191,6 +197,7 @@ export function createSkillsCommandSpecs(): CliCommandSpec[] {
           target: readOptionalString(options.target),
           scope: readOptionalString(options.scope),
           customDir: readOptionalString(options.dir),
+          force: options.force === true,
           dryRun: options.dryRun === true
         })
     },

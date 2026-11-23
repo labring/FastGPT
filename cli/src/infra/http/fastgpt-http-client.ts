@@ -21,6 +21,7 @@ export type SseEvent = {
 
 export type RawHttpResponse = {
   status: number;
+  url?: string;
   headers: Headers;
   body?: ReadableStream<Uint8Array> | null;
   text: () => Promise<string>;
@@ -104,7 +105,10 @@ export function buildAuthHeaders({
   return headers;
 }
 
-function mapServerError({
+/**
+ * 将服务端 HTTP 状态码与业务错误码映射为 CLI 统一认证或业务错误。
+ */
+export function mapServerError({
   httpStatus,
   serverCode,
   statusText,
@@ -197,6 +201,62 @@ function mapServerError({
     serverCode,
     statusText,
     details: { url: safeUrl }
+  });
+}
+
+/**
+ * 尝试从原始响应文本中提取 FastGPT 标准错误信封（兼容 HTTP 200 包装业务错误码的场景）。
+ */
+export function parseFastGptEnvelopeError({
+  httpStatus,
+  rawText,
+  url
+}: {
+  httpStatus: number;
+  rawText: string;
+  url: string;
+}): CliAuthError | CliApiError | undefined {
+  if (!rawText.trim()) {
+    return undefined;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawText);
+  } catch {
+    return undefined;
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return undefined;
+  }
+
+  const envelope = parsed as {
+    code?: unknown;
+    statusText?: unknown;
+    message?: unknown;
+  };
+  const serverCode = typeof envelope.code === 'number' ? envelope.code : undefined;
+  const statusText = typeof envelope.statusText === 'string' ? envelope.statusText : undefined;
+  const hasErrorShape =
+    httpStatus >= 400 ||
+    (serverCode !== undefined && serverCode >= 400) ||
+    statusText !== undefined ||
+    typeof envelope.message === 'string';
+
+  if (!hasErrorShape) {
+    return undefined;
+  }
+
+  const serverMessage =
+    typeof envelope.message === 'string' && envelope.message.length > 0
+      ? envelope.message
+      : statusText || `Request failed (HTTP ${httpStatus})`;
+
+  return mapServerError({
+    httpStatus,
+    serverCode,
+    statusText,
+    message: serverMessage,
+    url
   });
 }
 
@@ -618,6 +678,7 @@ export function createFastGptHttpClient({
 
       return {
         status: response.status,
+        url: finalUrl,
         headers: response.headers,
         body: response.body,
         text: () => response.text(),

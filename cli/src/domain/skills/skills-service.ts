@@ -1,8 +1,10 @@
-import type {
-  InstallSkillOutcome,
-  InstalledSkillEntry,
-  SkillInstaller,
-  UninstallSkillOutcome
+import {
+  evaluateSkillInstallPlan,
+  evaluateSkillUninstallPlan,
+  type InstallSkillOutcome,
+  type InstalledSkillEntry,
+  type SkillInstaller,
+  type UninstallSkillOutcome
 } from '../../infra/fs/skill-installer';
 import type { CliSkillBundleItem } from '../../infra/skills/cli-skill-catalog';
 import type { Prompter } from '../../infra/ui/prompter';
@@ -22,6 +24,15 @@ export type SkillsTargetInput = {
   scope?: string;
   customDir?: string;
 };
+
+export type SkillUpdateOutcome =
+  | InstallSkillOutcome
+  | {
+      name: string;
+      status: 'skipped_modified';
+      skillDir: string;
+      checksum?: string;
+    };
 
 export type SkillsService = {
   catalog: () => Promise<CliResult>;
@@ -44,6 +55,7 @@ export type SkillsService = {
   ) => Promise<CliResult>;
   update: (
     params: SkillsTargetInput & {
+      force?: boolean;
       dryRun?: boolean;
     }
   ) => Promise<CliResult>;
@@ -148,33 +160,21 @@ export function createSkillsService({
       if (dryRun) {
         const previewSkills = selected.map((skill) => {
           const existing = existingByName.get(skill.name);
-          const action = (() => {
-            if (!existing) {
-              return 'install';
-            }
-            if (
-              existing.managed &&
-              existing.hasSkillMarkdown &&
-              existing.currentChecksum === skill.checksum &&
-              existing.metadata?.checksum === skill.checksum &&
-              existing.metadata?.cliVersion === cliVersion &&
-              !force
-            ) {
-              return 'unchanged';
-            }
-            if (
-              force ||
-              (existing.managed &&
-                existing.hasSkillMarkdown &&
-                existing.currentChecksum === skill.checksum)
-            ) {
-              return 'update';
-            }
-            return 'conflict';
-          })();
+          const plan = evaluateSkillInstallPlan({
+            existing,
+            targetChecksum: skill.checksum,
+            cliVersion,
+            force
+          });
+          const action =
+            plan.action === 'conflict_modified' || plan.action === 'conflict_unmanaged'
+              ? 'conflict'
+              : plan.action;
           return {
             name: skill.name,
             action,
+            locallyModified: plan.locallyModified,
+            ...(plan.reason ? { reason: plan.reason } : {}),
             checksum: skill.checksum
           };
         });
@@ -196,21 +196,21 @@ export function createSkillsService({
       if (!force) {
         for (const skill of selected) {
           const existing = existingByName.get(skill.name);
-          if (!existing) {
-            continue;
-          }
-          const canSkipForce =
-            existing.managed &&
-            existing.hasSkillMarkdown &&
-            existing.currentChecksum === skill.checksum;
-          if (!canSkipForce) {
-            const reason = existing.managed
-              ? `Skill "${skill.name}" already exists at "${existing.skillDir}" with different content.`
-              : `Unmanaged directory "${existing.skillDir}" already exists.`;
+          const plan = evaluateSkillInstallPlan({
+            existing,
+            targetChecksum: skill.checksum,
+            cliVersion,
+            force
+          });
+          if (plan.action === 'conflict_modified' || plan.action === 'conflict_unmanaged') {
             throw new CliArgumentError(
-              reason,
-              { skillDir: existing.skillDir, managed: existing.managed },
-              'Pass --force to overwrite the existing skill directory.'
+              plan.reason ?? `Skill "${skill.name}" cannot be overwritten without --force.`,
+              {
+                skillDir: existing?.skillDir,
+                managed: existing?.managed ?? false,
+                locallyModified: plan.locallyModified
+              },
+              'Pass --force to overwrite the existing skill files.'
             );
           }
         }
@@ -282,17 +282,41 @@ export function createSkillsService({
       const bundled = await loadSkills();
       const bundledByName = new Map(bundled.map((skill) => [skill.name, skill]));
 
-      const targetNames = await (async (): Promise<string[]> => {
+      const installed = await installer.listInstalled({ targetDir });
+      const installedByName = new Map(installed.map((entry) => [entry.name, entry]));
+
+      const targetNames = ((): string[] => {
         if (!all) {
           return requested;
         }
-        const installed = await installer.listInstalled({ targetDir });
         return installed
-          .filter((entry) => entry.managed || bundledByName.has(entry.name))
+          .filter(
+            (entry) =>
+              evaluateSkillUninstallPlan({
+                existing: entry,
+                builtinChecksum: bundledByName.get(entry.name)?.checksum
+              }).allowed
+          )
           .map((entry) => entry.name);
       })();
 
       if (dryRun) {
+        const previewSkills = targetNames.map((name) => {
+          const entry = installedByName.get(name);
+          const plan = evaluateSkillUninstallPlan({
+            existing: entry,
+            builtinChecksum: bundledByName.get(name)?.checksum
+          });
+          return {
+            name,
+            action: !plan.exists ? 'not_found' : plan.allowed ? 'remove' : 'blocked',
+            managedFiles: plan.managedFiles,
+            preservedEntries: plan.preservedEntries,
+            locallyModified: plan.locallyModified,
+            ...(plan.reason ? { reason: plan.reason } : {})
+          };
+        });
+
         return createDryRunResult({
           operation: 'skills uninstall',
           risk: 'destructive',
@@ -300,7 +324,8 @@ export function createSkillsService({
             targetDir,
             target: labels.target,
             scope: labels.scope,
-            names: targetNames
+            names: targetNames,
+            skills: previewSkills
           }
         });
       }
@@ -337,6 +362,7 @@ export function createSkillsService({
       }
 
       const results: UninstallSkillOutcome[] = [];
+      const warnings: string[] = [];
       for (const name of targetNames) {
         const outcome = await installer.uninstallSkill({
           targetDir,
@@ -344,6 +370,11 @@ export function createSkillsService({
           builtinChecksum: bundledByName.get(name)?.checksum
         });
         results.push(outcome);
+        if (outcome.preservedEntries && outcome.preservedEntries.length > 0) {
+          warnings.push(
+            `Preserved unmanaged file(s) in "${outcome.skillDir}": ${outcome.preservedEntries.join(', ')}.`
+          );
+        }
       }
 
       const removedCount = results.filter((item) => item.status === 'removed').length;
@@ -364,11 +395,21 @@ export function createSkillsService({
         : `No matching skills found in ${targetDir}.`;
 
       return changed
-        ? createChangedResult({ data, meta, message })
-        : createSuccessResult({ data, meta, message });
+        ? createChangedResult({
+            data,
+            meta,
+            message,
+            ...(warnings.length > 0 ? { warnings } : {})
+          })
+        : createSuccessResult({
+            data,
+            meta,
+            message,
+            ...(warnings.length > 0 ? { warnings } : {})
+          });
     },
 
-    update: async ({ target, scope, customDir, dryRun = false }) => {
+    update: async ({ target, scope, customDir, force = false, dryRun = false }) => {
       const targetDir = installer.resolveTargetDir({ target, scope, customDir });
       const labels = resolveTargetLabels({ target, scope, customDir });
       const bundled = await loadSkills();
@@ -398,14 +439,22 @@ export function createSkillsService({
 
       if (dryRun) {
         const previewSkills = managedCandidates.map(({ entry, skill }) => {
-          const upToDate =
-            entry.hasSkillMarkdown &&
-            entry.currentChecksum === skill.checksum &&
-            entry.metadata?.checksum === skill.checksum &&
-            entry.metadata?.cliVersion === cliVersion;
+          const plan = evaluateSkillInstallPlan({
+            existing: entry,
+            targetChecksum: skill.checksum,
+            cliVersion,
+            force
+          });
+          const action = plan.action === 'conflict_modified' ? 'skip_modified' : plan.action;
+          if (action === 'skip_modified') {
+            warnings.push(
+              `Skipped locally modified skill "${skill.name}" (pass --force to overwrite local edits).`
+            );
+          }
           return {
             name: skill.name,
-            action: upToDate ? 'unchanged' : 'update',
+            action,
+            locallyModified: plan.locallyModified,
             fromVersion: entry.metadata?.cliVersion,
             toVersion: cliVersion,
             checksum: skill.checksum
@@ -419,20 +468,22 @@ export function createSkillsService({
             targetDir,
             target: labels.target,
             scope: labels.scope,
+            force,
             skills: previewSkills
           },
           ...(warnings.length > 0 ? { warnings } : {})
         });
       }
 
-      const results: InstallSkillOutcome[] = [];
+      const results: SkillUpdateOutcome[] = [];
       for (const { entry, skill } of managedCandidates) {
-        const upToDate =
-          entry.hasSkillMarkdown &&
-          entry.currentChecksum === skill.checksum &&
-          entry.metadata?.checksum === skill.checksum &&
-          entry.metadata?.cliVersion === cliVersion;
-        if (upToDate) {
+        const plan = evaluateSkillInstallPlan({
+          existing: entry,
+          targetChecksum: skill.checksum,
+          cliVersion,
+          force
+        });
+        if (plan.action === 'unchanged') {
           results.push({
             name: skill.name,
             status: 'unchanged',
@@ -441,37 +492,56 @@ export function createSkillsService({
           });
           continue;
         }
+        if (plan.action === 'conflict_modified') {
+          warnings.push(
+            `Skipped locally modified skill "${skill.name}" (pass --force to overwrite local edits).`
+          );
+          results.push({
+            name: skill.name,
+            status: 'skipped_modified',
+            skillDir: entry.skillDir,
+            ...(entry.currentChecksum ? { checksum: entry.currentChecksum } : {})
+          });
+          continue;
+        }
 
         const updated = await installer.installSkill({
           targetDir,
           skill,
           cliVersion,
-          force: true
+          force
         });
         results.push(updated);
       }
 
       const updatedCount = results.filter((item) => item.status === 'updated').length;
       const unchangedCount = results.filter((item) => item.status === 'unchanged').length;
+      const skippedModifiedCount = results.filter(
+        (item) => item.status === 'skipped_modified'
+      ).length;
       const changed = updatedCount > 0;
       const data = {
         targetDir,
         target: labels.target,
         scope: labels.scope,
         cliVersion,
+        force,
         results
       };
       const meta = {
         total: results.length,
         updated: updatedCount,
-        unchanged: unchangedCount
+        unchanged: unchangedCount,
+        skippedModified: skippedModifiedCount
       };
       const message =
         results.length === 0
           ? `No managed FastGPT skills installed in ${targetDir}.`
           : changed
             ? `Updated ${updatedCount} skill(s) in ${targetDir}.`
-            : `All ${unchangedCount} installed FastGPT skill(s) are up to date in ${targetDir}.`;
+            : skippedModifiedCount > 0
+              ? `Kept ${skippedModifiedCount} locally modified skill(s) untouched and ${unchangedCount} up to date in ${targetDir}.`
+              : `All ${unchangedCount} installed FastGPT skill(s) are up to date in ${targetDir}.`;
 
       return changed
         ? createChangedResult({
@@ -511,23 +581,30 @@ export function createSkillsService({
             skillDir: entry.skillDir,
             bundledChecksum: skill.checksum,
             ...(entry.currentChecksum ? { installedChecksum: entry.currentChecksum } : {}),
-            matchesBundled: entry.currentChecksum === skill.checksum
+            matchesBundled: entry.currentChecksum === skill.checksum,
+            ...(entry.unmanagedEntries.length > 0
+              ? { unmanagedEntries: entry.unmanagedEntries }
+              : {})
           };
         }
 
-        const upToDate =
-          entry.hasSkillMarkdown &&
-          entry.currentChecksum === skill.checksum &&
-          entry.metadata?.checksum === skill.checksum &&
-          entry.metadata?.cliVersion === cliVersion;
+        const plan = evaluateSkillInstallPlan({
+          existing: entry,
+          targetChecksum: skill.checksum,
+          cliVersion,
+          force: false
+        });
 
-        if (upToDate) {
+        if (plan.action === 'unchanged') {
           return {
             name: skill.name,
             status: 'ok' as const,
             skillDir: entry.skillDir,
             cliVersion: entry.metadata?.cliVersion,
-            checksum: skill.checksum
+            checksum: skill.checksum,
+            ...(entry.unmanagedEntries.length > 0
+              ? { unmanagedEntries: entry.unmanagedEntries }
+              : {})
           };
         }
 
@@ -539,9 +616,8 @@ export function createSkillsService({
           bundledVersion: cliVersion,
           ...(entry.currentChecksum ? { installedChecksum: entry.currentChecksum } : {}),
           bundledChecksum: skill.checksum,
-          locallyModified:
-            entry.metadata?.checksum !== undefined &&
-            entry.currentChecksum !== entry.metadata.checksum
+          locallyModified: plan.locallyModified,
+          ...(entry.unmanagedEntries.length > 0 ? { unmanagedEntries: entry.unmanagedEntries } : {})
         };
       });
 

@@ -433,11 +433,9 @@ function levenshteinDistance(a: string, b: string): number {
   return dp[m][n];
 }
 
-function suggestClosestPaths(
-  paths: Record<string, unknown>,
-  targetPath: string,
-  limit = 5
-): string[] {
+function suggestClosestPaths(paths: Record<string, unknown>, targetPath: string): string[] {
+  const MAX_SUGGESTED_PATHS = 5;
+  const limit = MAX_SUGGESTED_PATHS;
   const targetLower = targetPath.toLowerCase();
   const targetSegments = targetLower.split('/').filter(Boolean);
   const lastTargetSeg = targetSegments[targetSegments.length - 1] ?? '';

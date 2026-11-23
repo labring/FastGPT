@@ -126,13 +126,31 @@ describe('skills CLI commands', () => {
       unmanaged: 0
     });
 
-    // update 自动修复受管技能到最新版本。
-    const updateRes = await execCli({
+    // update 默认跳过本地已修改的 SKILL.md 并保留用户编辑，传 --force 才覆盖恢复。
+    const skipModifiedRes = await execCli({
       argv: ['skills', 'update', '--dir', targetDir, '--format', 'json'],
       cwd
     });
-    expect(updateRes.exitCode).toBe(0);
-    expect(JSON.parse(updateRes.stdout).changed).toBe(true);
+    expect(skipModifiedRes.exitCode).toBe(0);
+    const skipModifiedJson = JSON.parse(skipModifiedRes.stdout);
+    expect(skipModifiedJson.changed).toBe(false);
+    expect(skipModifiedJson.meta).toMatchObject({
+      total: 2,
+      updated: 0,
+      unchanged: 1,
+      skippedModified: 1
+    });
+    expect(skipModifiedJson.warnings[0]).toContain('--force');
+    expect(await readFile(join(targetDir, 'fastgpt-cli', 'SKILL.md'), 'utf8')).toBe(
+      '# locally edited\n'
+    );
+
+    const forceUpdateRes = await execCli({
+      argv: ['skills', 'update', '--dir', targetDir, '--force', '--format', 'json'],
+      cwd
+    });
+    expect(forceUpdateRes.exitCode).toBe(0);
+    expect(JSON.parse(forceUpdateRes.stdout).changed).toBe(true);
     expect(await readFile(join(targetDir, 'fastgpt-cli', 'SKILL.md'), 'utf8')).toContain(
       'name: fastgpt-cli'
     );

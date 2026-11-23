@@ -244,6 +244,19 @@ describe('createChatFeedbackService', () => {
       })
     ).rejects.toThrow('personal API Key');
 
+    await expect(
+      service.update({
+        client,
+        credential: { kind: 'unknownApiKey', boundAppId: APP_ID },
+        input: {
+          appId: OTHER_APP_ID,
+          chatId: 'chat-1',
+          dataId: 'data-1',
+          userGoodFeedback: 'ok'
+        }
+      })
+    ).rejects.toThrow('does not match');
+
     expect(client.request).not.toHaveBeenCalled();
   });
 

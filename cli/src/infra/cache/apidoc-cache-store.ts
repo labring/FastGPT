@@ -26,11 +26,19 @@ export type ApidocCacheStore = {
   write: (entry: CachedApidocEntry) => Promise<string>;
 };
 
-function extractOrigin(baseUrl: string): string {
+function normalizeCacheBaseUrl(rawBaseUrl: string): string {
   try {
-    return new URL(baseUrl).origin;
-  } catch {
-    throw new CliArgumentError(`Invalid baseUrl for OpenAPI cache key: "${baseUrl}".`);
+    const parsed = new URL(rawBaseUrl);
+    if (parsed.search || parsed.hash) {
+      throw new CliArgumentError(`Invalid baseUrl for OpenAPI cache key: "${rawBaseUrl}".`);
+    }
+    const normalizedPath = parsed.pathname.replace(/\/+$/, '');
+    return `${parsed.origin}${normalizedPath}`;
+  } catch (error) {
+    if (error instanceof CliArgumentError) {
+      throw error;
+    }
+    throw new CliArgumentError(`Invalid baseUrl for OpenAPI cache key: "${rawBaseUrl}".`);
   }
 }
 
@@ -43,7 +51,8 @@ export function createFileApidocCacheStore({ configDir }: { configDir: string })
 
   const getCachePath = ({ baseUrl, source }: { baseUrl: string; source: ApidocSource }): string => {
     const validSource = ApidocSourceSchema.parse(source);
-    const originHash = sha256Hex(extractOrigin(baseUrl)).slice(0, 16);
+    const normalizedBaseUrl = normalizeCacheBaseUrl(baseUrl);
+    const originHash = sha256Hex(normalizedBaseUrl).slice(0, 16);
     return join(cacheDir, `${originHash}-${validSource}.json`);
   };
 
@@ -51,10 +60,23 @@ export function createFileApidocCacheStore({ configDir }: { configDir: string })
     getCachePath,
 
     read: async ({ baseUrl, source }) => {
-      const cachePath = getCachePath({ baseUrl, source });
+      const normalizedBaseUrl = normalizeCacheBaseUrl(baseUrl);
+      const validSource = ApidocSourceSchema.parse(source);
+      const cachePath = getCachePath({ baseUrl: normalizedBaseUrl, source: validSource });
       try {
         const raw = await readFile(cachePath, 'utf8');
-        return CachedApidocEntrySchema.parse(JSON.parse(raw));
+        const parsedEntry = CachedApidocEntrySchema.parse(JSON.parse(raw));
+        const entryBaseUrl = (() => {
+          try {
+            return normalizeCacheBaseUrl(parsedEntry.baseUrl);
+          } catch {
+            return undefined;
+          }
+        })();
+        if (entryBaseUrl !== normalizedBaseUrl || parsedEntry.source !== validSource) {
+          return undefined;
+        }
+        return parsedEntry;
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
           return undefined;
@@ -72,9 +94,13 @@ export function createFileApidocCacheStore({ configDir }: { configDir: string })
 
     write: async (entry) => {
       const validated = CachedApidocEntrySchema.parse(entry);
+      const normalizedEntry = {
+        ...validated,
+        baseUrl: normalizeCacheBaseUrl(validated.baseUrl)
+      };
       const cachePath = getCachePath({
-        baseUrl: validated.baseUrl,
-        source: validated.source
+        baseUrl: normalizedEntry.baseUrl,
+        source: normalizedEntry.source
       });
 
       // 确保父级 cache 目录与 apidoc 子目录均保持 0700 私有权限。
@@ -83,7 +109,7 @@ export function createFileApidocCacheStore({ configDir }: { configDir: string })
       await ensureSecureDir(cacheDir);
 
       const tempPath = `${cachePath}.tmp-${process.pid}-${Date.now()}-${randomUUID()}`;
-      const serialized = `${JSON.stringify(validated)}\n`;
+      const serialized = `${JSON.stringify(normalizedEntry)}\n`;
 
       try {
         await writeFile(tempPath, serialized, { encoding: 'utf8', mode: 0o600 });

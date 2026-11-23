@@ -3,7 +3,10 @@ import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { apiDocOpenAPIDocument } from '@fastgpt/global/openapi/provider/systemopenapi';
+import { openAPIDocument as devOpenAPIDocument } from '@fastgpt/global/openapi/provider/devapi';
 import {
+  checkOpenapiApiExamples,
   runCommandDriftChecks,
   type DriftCommandSpec,
   type DriftSkillFile,
@@ -73,7 +76,11 @@ describe('CLI Registry, Skill & Architecture Drift Gate', () => {
     const report = runCommandDriftChecks({
       specs,
       skillFiles,
-      srcFiles
+      srcFiles,
+      openapiDocs: {
+        system: apiDocOpenAPIDocument,
+        dev: devOpenAPIDocument
+      }
     });
 
     expect(report.violations).toEqual([]);
@@ -220,5 +227,54 @@ describe('CLI Registry, Skill & Architecture Drift Gate', () => {
     expect(kinds).toContain('arch-domain-forbidden-import');
     expect(kinds).toContain('arch-forbidden-import');
     expect(kinds).toContain('arch-reexport');
+  });
+
+  it('detects invalid api CLI examples against System and Dev OpenAPI contracts', () => {
+    const violations = checkOpenapiApiExamples({
+      specs: [
+        {
+          path: ['api', 'get'],
+          summary: 'Call GET endpoint',
+          risk: 'read',
+          authModes: ['token'],
+          examples: [
+            {
+              description: 'Missing dev source',
+              args: ['api', 'get', '/core/dataset/exportAll', '--query', 'datasetId=1']
+            },
+            {
+              description: 'Missing required body fields',
+              args: ['api', 'post', '/core/dataset/create', '--body', '{"name":"only"}']
+            }
+          ]
+        }
+      ],
+      skillFiles: [
+        {
+          path: 'cli/skills/fastgpt-cli/SKILL.md',
+          content: [
+            '```bash',
+            'fastgpt api schema --tag App --method post',
+            'fastgpt api get /core/app/list --source dev',
+            'fastgpt api delete /core/app/del --source dev --query id=1',
+            'fastgpt api call POST /core/app/listV2 --source dev --query-json \'{"pageNum":1}\'',
+            '```'
+          ].join('\n')
+        }
+      ],
+      openapiDocs: {
+        system: apiDocOpenAPIDocument,
+        dev: devOpenAPIDocument
+      }
+    });
+
+    const messages = violations.map((v) => v.message);
+    expect(violations.every((v) => v.kind === 'openapi-invalid-example')).toBe(true);
+    expect(messages.some((m) => m.includes('--source dev'))).toBe(true);
+    expect(messages.some((m) => m.includes('missing required field(s): type, intro'))).toBe(true);
+    expect(messages.some((m) => m.includes('--tag "App"'))).toBe(true);
+    expect(messages.some((m) => m.includes('GET "/core/app/list" is not defined'))).toBe(true);
+    expect(messages.some((m) => m.includes('missing required query parameter "appId"'))).toBe(true);
+    expect(messages.some((m) => m.includes('belongs in the JSON request body'))).toBe(true);
   });
 });

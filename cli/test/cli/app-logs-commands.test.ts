@@ -2,6 +2,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
 import { getCliCommandSpecs } from '../../src/cli/registry';
 import { runCli } from '../../src/cli/run';
 import type { CliFetchFn } from '../../src/shared/types';
@@ -325,7 +326,7 @@ describe('app logs CLI commands', () => {
       const body = (await request.json()) as Record<string, unknown>;
       expect(body).toMatchObject({
         appId: APP_ID,
-        title: 'chat logs',
+        title: [...Object.values(AppLogKeysEnum), 'chatDetails'].join(','),
         sourcesMap: expect.objectContaining({ api: { label: 'api' } }),
         logKeys: expect.arrayContaining(['source', 'title', 'feedback'])
       });
@@ -343,6 +344,58 @@ describe('app logs CLI commands', () => {
     });
     expect(inlineRes.exitCode, inlineRes.stderr).toBe(0);
     expect(inlineRes.stdout).toContain('custom header');
+
+    // TOCTOU race: 目标文件在请求期间出现，未传 --overwrite 必须失败并保留原内容；传 --overwrite 成功替换。
+    const racePath = join(dir, 'race-logs.csv');
+    const raceFetchFn = vi.fn<CliFetchFn>(async () => {
+      await writeFile(racePath, 'existing-race-csv', 'utf8');
+      return new Response(csv, {
+        status: 200,
+        headers: { 'content-type': 'text/csv; charset=utf-8' }
+      });
+    });
+    const raceBlocked = await exec({
+      dir,
+      args: ['app', 'logs', 'export', APP_ID, '--days', '2', '--output', 'race-logs.csv'],
+      fetchFn: raceFetchFn
+    });
+    expect(raceBlocked.exitCode).toBe(2);
+    expect(await readFile(racePath, 'utf8')).toBe('existing-race-csv');
+
+    const raceOverwrite = await exec({
+      dir,
+      args: [
+        'app',
+        'logs',
+        'export',
+        APP_ID,
+        '--days',
+        '2',
+        '--output',
+        'race-logs.csv',
+        '--overwrite'
+      ],
+      fetchFn: raceFetchFn
+    });
+    expect(raceOverwrite.exitCode, raceOverwrite.stderr).toBe(0);
+    expect(await readFile(racePath, 'utf8')).toBe(csv);
+
+    // 200 HTML 反代错误页不能写入导出文件。
+    const htmlFetchFn = vi.fn<CliFetchFn>(async () => {
+      return new Response('<html>502 Bad Gateway</html>', {
+        status: 200,
+        headers: { 'content-type': 'text/html' }
+      });
+    });
+    const htmlRes = await exec({
+      dir,
+      args: ['app', 'logs', 'export', APP_ID, '--days', '2', '--output', 'bad-html.csv'],
+      fetchFn: htmlFetchFn
+    });
+    expect(htmlRes.exitCode).toBe(4);
+    await expect(readFile(join(dir, 'bad-html.csv'), 'utf8')).rejects.toMatchObject({
+      code: 'ENOENT'
+    });
   });
 
   it.each([

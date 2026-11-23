@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -608,5 +608,139 @@ describe('API Escape Hatch Domain Services', () => {
         input: { method: 'GET', path: '/core/dataset/detail', queryPairs: ['id=1'] }
       })
     ).rejects.toBeInstanceOf(CliApiError);
+  });
+
+  it('isolates subpath OpenAPI caches, closes TOCTOU --output overwrite race, and streams body without arrayBuffer', async () => {
+    const dir = await makeTempDir();
+    const cacheStore = createFileApidocCacheStore({ configDir: dir });
+    const cacheService = createOpenapiCacheService({ cacheStore });
+    const fetchCalls: string[] = [];
+
+    const clientA = createFastGptHttpClient({
+      baseUrl: 'https://proxy.example.com/tenant-a/api',
+      cliVersion: '0.1.0',
+      fetchFn: async (input) => {
+        const url = input instanceof Request ? input.url : String(input);
+        fetchCalls.push(url);
+        return new Response(
+          JSON.stringify({
+            openapi: '3.1.0',
+            paths: {
+              '/core/tenant-a/ping': { get: { summary: 'Tenant A ping', responses: { 200: {} } } }
+            }
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        );
+      }
+    });
+    const clientB = createFastGptHttpClient({
+      baseUrl: 'https://proxy.example.com/tenant-b/api',
+      cliVersion: '0.1.0',
+      fetchFn: async (input) => {
+        const url = input instanceof Request ? input.url : String(input);
+        fetchCalls.push(url);
+        return new Response(
+          JSON.stringify({
+            openapi: '3.1.0',
+            paths: {
+              '/core/tenant-b/ping': { get: { summary: 'Tenant B ping', responses: { 200: {} } } }
+            }
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        );
+      }
+    });
+
+    const schemaA = await cacheService.inspectSchema({ client: clientA });
+    const schemaB = await cacheService.inspectSchema({ client: clientB });
+    expect(schemaA.mode === 'list' && schemaA.endpoints.map((e) => e.path)).toEqual([
+      '/core/tenant-a/ping'
+    ]);
+    expect(schemaB.mode === 'list' && schemaB.endpoints.map((e) => e.path)).toEqual([
+      '/core/tenant-b/ping'
+    ]);
+    expect(fetchCalls).toHaveLength(2);
+
+    // TOCTOU race: 目标文件在 preflight exists() 返回 false 后、请求返回前被创建，未传 --overwrite 必须失败并保留原内容。
+    const fileIo = createNodeFileIoAdapter({ cwd: dir });
+    const raceClient = createFastGptHttpClient({
+      baseUrl: 'https://cloud.fastgpt.cn/api',
+      cliVersion: '0.1.0',
+      fetchFn: async () => {
+        await writeFile(join(dir, 'race.bin'), 'preexisting-winner', 'utf8');
+        return new Response('new-download', {
+          status: 200,
+          headers: { 'content-type': 'application/octet-stream' }
+        });
+      }
+    });
+    const caller = createApiCallerService({
+      openapiCacheService: cacheService,
+      fileIo,
+      prompter: createNonTtyPrompter(),
+      readStdin: async () => ''
+    });
+
+    await expect(
+      caller.execute({
+        client: raceClient,
+        input: { method: 'GET', path: '/core/export', validate: false, output: 'race.bin' }
+      })
+    ).rejects.toMatchObject({
+      code: 'CLI_ARGUMENT_INVALID',
+      hint: expect.stringContaining('--overwrite')
+    });
+    expect(await readFile(join(dir, 'race.bin'), 'utf8')).toBe('preexisting-winner');
+
+    const overwriteRes = await caller.execute({
+      client: raceClient,
+      input: {
+        method: 'GET',
+        path: '/core/export',
+        validate: false,
+        output: 'race.bin',
+        overwrite: true
+      }
+    });
+    expect(overwriteRes.data).toMatchObject({
+      outputPath: join(dir, 'race.bin'),
+      bytes: 12
+    });
+    expect(await readFile(join(dir, 'race.bin'), 'utf8')).toBe('new-download');
+
+    // rawResponse.body 存在时必须走流式写入而不调用 arrayBuffer() 缓冲整份响应。
+    const arrayBufferSpy = vi.fn(async () => new ArrayBuffer(0));
+    const streamClient = {
+      baseUrl: 'https://cloud.fastgpt.cn/api',
+      request: vi.fn(),
+      uploadMultipart: vi.fn(),
+      streamSse: vi.fn(),
+      requestRaw: vi.fn().mockResolvedValue({
+        status: 200,
+        headers: new Headers({ 'content-type': 'text/plain; charset=utf-8' }),
+        body: new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('streamed-part-1\n'));
+            controller.enqueue(new TextEncoder().encode('streamed-part-2\n'));
+            controller.close();
+          }
+        }),
+        text: vi.fn(),
+        arrayBuffer: arrayBufferSpy
+      })
+    };
+
+    const streamRes = await caller.execute({
+      client: streamClient,
+      input: { method: 'GET', path: '/core/export', validate: false, output: 'stream.txt' }
+    });
+    expect(arrayBufferSpy).not.toHaveBeenCalled();
+    expect(streamRes.data).toMatchObject({
+      outputPath: join(dir, 'stream.txt'),
+      bytes: 32
+    });
+    expect(await readFile(join(dir, 'stream.txt'), 'utf8')).toBe(
+      'streamed-part-1\nstreamed-part-2\n'
+    );
   });
 });

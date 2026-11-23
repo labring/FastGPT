@@ -518,7 +518,8 @@ export function createAppLogsCommandSpecs(): CliCommandSpec[] {
           name: 'title',
           flags: '--title <title>',
           takesValue: true,
-          description: 'CSV header title string (default "chat logs")'
+          description:
+            'Comma-separated CSV header prefix matching logKeys + chatDetails (auto-generated from logKeys by default)'
         },
         {
           name: 'sourcesMap',

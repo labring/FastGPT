@@ -9,6 +9,7 @@ import { redactValue } from '../../shared/redact';
 import { createChangedResult, createDryRunResult } from '../../shared/result';
 import type { CliResult } from '../../shared/types';
 import type { ResolvedCredential } from '../auth/auth-resolver';
+import { assertAppChatTarget } from './chat-target-guard';
 
 export type ChatFeedbackCredential = Pick<ResolvedCredential, 'kind' | 'boundAppId'>;
 
@@ -35,52 +36,11 @@ export function createChatFeedbackService(): ChatFeedbackService {
       }
       const clear = rawClear === true;
 
-      // 1. 仅支持普通 App 会话，禁止通过透传参数切换到 Skill/外链/辅助会话。
-      const unsupported = [
-        'skillId',
-        'sourceType',
-        'sourceId',
-        'shareId',
-        'outLinkUid',
-        'outLinkAuthData'
-      ];
-      if (unsupported.some((key) => payload[key] !== undefined)) {
-        throw new CliArgumentError(
-          'Chat feedback commands only accept App conversations. Use appId to select an App.'
-        );
-      }
-
-      if (
-        payload.appId === undefined &&
-        credential?.kind !== 'appKey' &&
-        credential?.kind !== 'unknownApiKey'
-      ) {
-        throw new CliArgumentError('--appId is required for a user session or personal API Key.');
-      }
-
-      if (
-        (credential?.kind === 'appKey' || credential?.kind === 'unknownApiKey') &&
-        credential.boundAppId &&
-        payload.appId !== undefined &&
-        payload.appId !== credential.boundAppId
-      ) {
-        throw new CliArgumentError('--appId does not match the App bound to the active API Key.');
-      }
-
-      if (payload.customUid !== undefined && payload.authProxy !== undefined) {
-        throw new CliArgumentError('--customUid and --authProxy are mutually exclusive.');
-      }
-
-      if (
-        payload.authProxy !== undefined &&
-        (credential?.kind === 'appKey' || credential?.kind === 'token')
-      ) {
-        throw new CliArgumentError('--authProxy requires an enabled personal API Key.');
-      }
-
-      if (payload.customUid !== undefined && credential?.kind === 'token') {
-        throw new CliArgumentError('--customUid requires an API Key.');
-      }
+      assertAppChatTarget({
+        payload,
+        credential,
+        domainLabel: 'Chat feedback commands'
+      });
 
       // 2. --clear 与 --good/--bad 互斥；清除时省略两个字段，触发服务端 $unset。
       const hasGood = payload.userGoodFeedback !== undefined;

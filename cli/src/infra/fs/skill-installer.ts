@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, open, readdir, readFile, rename, rm, stat } from 'node:fs/promises';
+import { mkdir, open, readdir, readFile, rename, rm, rmdir, stat } from 'node:fs/promises';
 import { homedir as osHomedir } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { z } from 'zod';
@@ -14,6 +14,9 @@ export type SkillScope = (typeof SKILL_SCOPES)[number];
 
 export const SKILL_METADATA_FILE = '.fastgpt-skill.json';
 export const SKILL_MANAGED_BY = '@fastgpt/cli';
+export const MANAGED_SKILL_FILES = ['SKILL.md', SKILL_METADATA_FILE] as const;
+
+const MANAGED_SKILL_FILE_SET = new Set<string>(MANAGED_SKILL_FILES);
 
 const InstalledSkillMetadataSchema = z.object({
   managedBy: z.string().min(1),
@@ -33,6 +36,7 @@ export type InstalledSkillEntry = {
   metadata?: InstalledSkillMetadata;
   currentChecksum?: string;
   invalidMetadata?: boolean;
+  unmanagedEntries: readonly string[];
 };
 
 export type InstallSkillOutcome = {
@@ -46,6 +50,31 @@ export type UninstallSkillOutcome = {
   name: string;
   status: 'removed' | 'not_found';
   skillDir: string;
+  removedFiles?: readonly string[];
+  preservedEntries?: readonly string[];
+  directoryPreserved?: boolean;
+};
+
+export type SkillInstallPlanAction =
+  | 'install'
+  | 'update'
+  | 'unchanged'
+  | 'conflict_modified'
+  | 'conflict_unmanaged';
+
+export type SkillInstallPlan = {
+  action: SkillInstallPlanAction;
+  locallyModified: boolean;
+  reason?: string;
+};
+
+export type SkillUninstallPlan = {
+  exists: boolean;
+  allowed: boolean;
+  managedFiles: readonly string[];
+  preservedEntries: readonly string[];
+  locallyModified: boolean;
+  reason?: string;
 };
 
 export type SkillInstaller = {
@@ -126,6 +155,124 @@ async function writeTextAtomic(filePath: string, content: string): Promise<void>
   }
 }
 
+/**
+ * 基于三方状态（当前磁盘 SKILL.md、上次安装校验和、目标包校验和与版本）判定安装或升级动作。
+ * 供 install、update、doctor 与 dry-run 共用同一状态转移规则。
+ */
+export function evaluateSkillInstallPlan({
+  existing,
+  targetChecksum,
+  cliVersion,
+  force = false
+}: {
+  existing?: InstalledSkillEntry;
+  targetChecksum: string;
+  cliVersion: string;
+  force?: boolean;
+}): SkillInstallPlan {
+  if (!existing) {
+    return { action: 'install', locallyModified: false };
+  }
+
+  if (!existing.managed) {
+    if (force) {
+      return { action: 'update', locallyModified: false };
+    }
+    return {
+      action: 'conflict_unmanaged',
+      locallyModified: false,
+      reason: `Unmanaged directory "${existing.skillDir}" already exists.`
+    };
+  }
+
+  const locallyModified =
+    !existing.hasSkillMarkdown ||
+    (existing.metadata?.checksum !== undefined &&
+      existing.currentChecksum !== existing.metadata.checksum);
+
+  if (locallyModified) {
+    if (force) {
+      return { action: 'update', locallyModified: true };
+    }
+    return {
+      action: 'conflict_modified',
+      locallyModified: true,
+      reason: `Skill "${existing.name}" at "${existing.skillDir}" has local modifications.`
+    };
+  }
+
+  const upToDate =
+    existing.hasSkillMarkdown &&
+    existing.currentChecksum === targetChecksum &&
+    existing.metadata?.checksum === targetChecksum &&
+    existing.metadata?.cliVersion === cliVersion;
+
+  if (upToDate && !force) {
+    return { action: 'unchanged', locallyModified: false };
+  }
+
+  return { action: 'update', locallyModified: false };
+}
+
+/**
+ * 基于受管文件清单判定卸载动作：仅清理 CLI 受管文件，严禁删除用户自建参考文档或脚本。
+ */
+export function evaluateSkillUninstallPlan({
+  existing,
+  builtinChecksum
+}: {
+  existing?: InstalledSkillEntry;
+  builtinChecksum?: string;
+}): SkillUninstallPlan {
+  if (!existing) {
+    return {
+      exists: false,
+      allowed: true,
+      managedFiles: [],
+      preservedEntries: [],
+      locallyModified: false
+    };
+  }
+
+  const isManagedByCli = existing.metadata?.managedBy === SKILL_MANAGED_BY;
+  const matchesBundledWithoutForeignOwner =
+    existing.metadata === undefined &&
+    !existing.invalidMetadata &&
+    builtinChecksum !== undefined &&
+    existing.hasSkillMarkdown &&
+    existing.currentChecksum === builtinChecksum;
+
+  const locallyModified =
+    isManagedByCli &&
+    (!existing.hasSkillMarkdown ||
+      (existing.metadata?.checksum !== undefined &&
+        existing.currentChecksum !== existing.metadata.checksum));
+
+  if (!isManagedByCli && !matchesBundledWithoutForeignOwner) {
+    return {
+      exists: true,
+      allowed: false,
+      managedFiles: [],
+      preservedEntries: [...existing.unmanagedEntries],
+      locallyModified: false,
+      reason: `Refusing to remove unmanaged skill directory "${existing.skillDir}".`
+    };
+  }
+
+  const managedFiles = [
+    ...(existing.hasSkillMarkdown ? ['SKILL.md'] : []),
+    ...(existing.metadata !== undefined || existing.invalidMetadata ? [SKILL_METADATA_FILE] : [])
+  ];
+
+  return {
+    exists: true,
+    allowed: true,
+    managedFiles,
+    preservedEntries: [...existing.unmanagedEntries],
+    locallyModified
+  };
+}
+
 async function inspectSkillDirectory({
   skillDir,
   name
@@ -150,19 +297,26 @@ async function inspectSkillDirectory({
   const skillMdPath = join(skillDir, 'SKILL.md');
   const metadataPath = join(skillDir, SKILL_METADATA_FILE);
 
-  const markdown = await readFile(skillMdPath, 'utf8').catch((error: NodeJS.ErrnoException) => {
-    if (error.code === 'ENOENT') {
-      return undefined;
-    }
-    throw error;
-  });
+  const [dirEntries, markdown, rawMeta] = await Promise.all([
+    readdir(skillDir, { withFileTypes: true }),
+    readFile(skillMdPath, 'utf8').catch((error: NodeJS.ErrnoException) => {
+      if (error.code === 'ENOENT') {
+        return undefined;
+      }
+      throw error;
+    }),
+    readFile(metadataPath, 'utf8').catch((error: NodeJS.ErrnoException) => {
+      if (error.code === 'ENOENT') {
+        return undefined;
+      }
+      throw error;
+    })
+  ]);
 
-  const rawMeta = await readFile(metadataPath, 'utf8').catch((error: NodeJS.ErrnoException) => {
-    if (error.code === 'ENOENT') {
-      return undefined;
-    }
-    throw error;
-  });
+  const unmanagedEntries = dirEntries
+    .map((entry) => entry.name)
+    .filter((entryName) => !MANAGED_SKILL_FILE_SET.has(entryName))
+    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 
   const parsedMeta = (() => {
     if (rawMeta === undefined) {
@@ -187,7 +341,8 @@ async function inspectSkillDirectory({
     managed: parsedMeta.metadata?.managedBy === SKILL_MANAGED_BY,
     ...(parsedMeta.metadata !== undefined ? { metadata: parsedMeta.metadata } : {}),
     ...(markdown !== undefined ? { currentChecksum: hashSkillMarkdown(markdown) } : {}),
-    ...(parsedMeta.invalid ? { invalidMetadata: true } : {})
+    ...(parsedMeta.invalid ? { invalidMetadata: true } : {}),
+    unmanagedEntries
   };
 }
 
@@ -271,41 +426,28 @@ export function createNodeSkillInstaller({
     installSkill: async ({ targetDir, skill, cliVersion, force = false }) => {
       const skillDir = resolveChildSkillDir({ targetDir, name: skill.name });
       const existing = await inspectSkillDirectory({ skillDir, name: skill.name });
+      const plan = evaluateSkillInstallPlan({
+        existing,
+        targetChecksum: skill.checksum,
+        cliVersion,
+        force
+      });
 
-      if (existing) {
-        const upToDate =
-          existing.managed &&
-          existing.hasSkillMarkdown &&
-          existing.currentChecksum === skill.checksum &&
-          existing.metadata?.checksum === skill.checksum &&
-          existing.metadata?.cliVersion === cliVersion;
+      if (plan.action === 'unchanged') {
+        return {
+          name: skill.name,
+          status: 'unchanged',
+          skillDir,
+          checksum: skill.checksum
+        };
+      }
 
-        if (upToDate && !force) {
-          return {
-            name: skill.name,
-            status: 'unchanged',
-            skillDir,
-            checksum: skill.checksum
-          };
-        }
-
-        // 未声明 --force 时，仅当已安装内容仍与目标内置包完全一致（可补充版本元数据）或完全未修改时才允许继续；
-        // 遇到未受管目录或本地已修改的 SKILL.md 必须拒绝覆盖，防止误删用户自定义技能。
-        const canSkipForce =
-          existing.managed &&
-          existing.hasSkillMarkdown &&
-          existing.currentChecksum === skill.checksum;
-
-        if (!force && !canSkipForce) {
-          const reason = existing.managed
-            ? `Skill "${skill.name}" already exists at "${skillDir}" with different content.`
-            : `Unmanaged directory "${skillDir}" already exists.`;
-          throw new CliArgumentError(
-            reason,
-            { skillDir, managed: existing.managed },
-            'Pass --force to overwrite the existing skill directory.'
-          );
-        }
+      if (plan.action === 'conflict_modified' || plan.action === 'conflict_unmanaged') {
+        throw new CliArgumentError(
+          plan.reason ?? `Skill "${skill.name}" cannot be overwritten without --force.`,
+          { skillDir, managed: existing?.managed ?? false, locallyModified: plan.locallyModified },
+          'Pass --force to overwrite the existing skill files.'
+        );
       }
 
       const metadata: InstalledSkillMetadata = {
@@ -325,7 +467,7 @@ export function createNodeSkillInstaller({
 
       return {
         name: skill.name,
-        status: existing ? 'updated' : 'installed',
+        status: plan.action === 'install' ? 'installed' : 'updated',
         skillDir,
         checksum: skill.checksum
       };
@@ -334,7 +476,9 @@ export function createNodeSkillInstaller({
     uninstallSkill: async ({ targetDir, name, builtinChecksum }) => {
       const skillDir = resolveChildSkillDir({ targetDir, name });
       const existing = await inspectSkillDirectory({ skillDir, name });
-      if (!existing) {
+      const plan = evaluateSkillUninstallPlan({ existing, builtinChecksum });
+
+      if (!plan.exists) {
         return {
           name,
           status: 'not_found',
@@ -342,28 +486,33 @@ export function createNodeSkillInstaller({
         };
       }
 
-      const isManagedByCli = existing.metadata?.managedBy === SKILL_MANAGED_BY;
-      const matchesBundledWithoutForeignOwner =
-        existing.metadata === undefined &&
-        !existing.invalidMetadata &&
-        builtinChecksum !== undefined &&
-        existing.hasSkillMarkdown &&
-        existing.currentChecksum === builtinChecksum;
-
-      // 安全护栏：仅允许删除带有 @fastgpt/cli 管理标记或内容与内置包完全一致的目录，严禁误删用户自建 Skill。
-      if (!isManagedByCli && !matchesBundledWithoutForeignOwner) {
+      // 安全护栏：仅允许删除受管文件清单，保留用户自建的参考文档与脚本，非空目录绝不整目录递归删除。
+      if (!plan.allowed) {
         throw new CliArgumentError(
-          `Refusing to remove unmanaged skill directory "${skillDir}".`,
-          { skillDir, managed: existing.managed },
+          plan.reason ?? `Refusing to remove unmanaged skill directory "${skillDir}".`,
+          { skillDir, managed: existing?.managed ?? false },
           `Only directories managed by ${SKILL_MANAGED_BY} (${SKILL_METADATA_FILE}) or matching a bundled skill can be uninstalled.`
         );
       }
 
-      await rm(skillDir, { recursive: true, force: true });
+      await Promise.all(
+        plan.managedFiles.map((fileName) => rm(join(skillDir, fileName), { force: true }))
+      );
+
+      const remainingEntries = (await readdir(skillDir)).sort((a, b) =>
+        a < b ? -1 : a > b ? 1 : 0
+      );
+      if (remainingEntries.length === 0) {
+        await rmdir(skillDir);
+      }
+
       return {
         name,
         status: 'removed',
-        skillDir
+        skillDir,
+        removedFiles: plan.managedFiles,
+        preservedEntries: remainingEntries,
+        directoryPreserved: remainingEntries.length > 0
       };
     }
   };

@@ -291,6 +291,8 @@ export function createApiCommandSpecs(): CliCommandSpec[] {
           'api',
           'get',
           '/core/dataset/exportAll',
+          '--source',
+          'dev',
           '--query',
           'datasetId=68ad85a7463006c963799a05',
           '--raw',
@@ -329,13 +331,20 @@ export function createApiCommandSpecs(): CliCommandSpec[] {
           'post',
           '/core/dataset/create',
           '--body',
-          '{"name":"My Dataset"}',
+          '{"name":"My Dataset","type":"dataset","intro":"Knowledge base"}',
           '--dry-run'
         ]
       },
       {
         description: 'Invoke a destructive POST endpoint non-interactively',
-        args: ['api', 'post', '/core/app/del', '--query', 'appId=68ad85a7463006c963799a05', '--yes']
+        args: [
+          'api',
+          'post',
+          '/core/chat/history/batchDelete',
+          '--body',
+          '{"appId":"68ad85a7463006c963799a05","chatIds":["chat_123456"]}',
+          '--yes'
+        ]
       }
     ],
     execute: (ctx) =>

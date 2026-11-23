@@ -4,7 +4,7 @@ import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { createAppLogsService } from '../../src/domain/app/app-logs-service';
 import type { FileIoAdapter } from '../../src/infra/fs/file-io';
 import type { FastGptHttpClient, RawHttpResponse } from '../../src/infra/http/fastgpt-http-client';
-import { CliApiError, CliArgumentError } from '../../src/shared/errors';
+import { CliApiError, CliArgumentError, CliAuthError } from '../../src/shared/errors';
 
 const APP_ID = '68ad85a7463006c963799a05';
 const OTHER_APP_ID = '68ad85a7463006c963799a06';
@@ -18,6 +18,9 @@ function makeFileIo(overrides: Partial<FileIoAdapter> = {}): FileIoAdapter {
     readBinaryFile: vi.fn(),
     writeTextAtomic: vi.fn().mockImplementation(async ({ filePath }) => `/workspace/${filePath}`),
     writeBinaryAtomic: vi.fn().mockImplementation(async ({ filePath }) => `/workspace/${filePath}`),
+    writeStreamAtomic: vi
+      .fn()
+      .mockImplementation(async ({ filePath }) => ({ path: `/workspace/${filePath}`, bytes: 0 })),
     createTextFiles: vi.fn(),
     ...overrides
   };
@@ -419,6 +422,7 @@ describe('createAppLogsService', () => {
   it('exports CSV with defaults, enforces overwrite guard, and writes atomically when outputPath is set', async () => {
     const csv = '\uFEFFchat logs\nrow1';
     const expectedBytes = new TextEncoder().encode(csv).byteLength;
+    const expectedDefaultTitle = [...Object.values(AppLogKeysEnum), 'chatDetails'].join(',');
     const fileIo = makeFileIo();
     const client = makeClient({ csvText: csv });
     const service = createAppLogsService({
@@ -439,7 +443,7 @@ describe('createAppLogsService', () => {
         appId: APP_ID,
         dateStart: '2026-11-16T12:00:00.000Z',
         dateEnd: '2026-11-23T12:00:00.000Z',
-        title: 'chat logs',
+        title: expectedDefaultTitle,
         sourcesMap: Object.fromEntries(
           Object.values(ChatSourceEnum).map((source) => [source, { label: source }])
         ),
@@ -448,6 +452,20 @@ describe('createAppLogsService', () => {
       timeoutMs: 120_000
     });
     expect(inlineRes.data).toEqual({ csv, bytes: expectedBytes });
+
+    // 自定义 logKeys 时默认 title 必须与所选列顺序一致，且末尾固定追加 chatDetails。
+    await service.exportLogs({
+      client,
+      credential: { kind: 'token' },
+      input: {
+        appId: APP_ID,
+        logKeys: [AppLogKeysEnum.SESSION_ID, AppLogKeysEnum.FEEDBACK, AppLogKeysEnum.POINTS]
+      }
+    });
+    const customCallBody = JSON.parse(
+      String(vi.mocked(client.requestRaw).mock.calls[1][0].body)
+    ) as { title: string; logKeys: string[] };
+    expect(customCallBody.title).toBe('sessionId,feedback,points,chatDetails');
 
     vi.mocked(fileIo.exists).mockResolvedValueOnce(true);
     await expect(
@@ -458,7 +476,7 @@ describe('createAppLogsService', () => {
         outputPath: 'logs.csv'
       })
     ).rejects.toBeInstanceOf(CliArgumentError);
-    expect(client.requestRaw).toHaveBeenCalledTimes(1);
+    expect(client.requestRaw).toHaveBeenCalledTimes(2);
 
     vi.mocked(fileIo.exists).mockResolvedValueOnce(true);
     const fileRes = await service.exportLogs({
@@ -470,11 +488,141 @@ describe('createAppLogsService', () => {
     });
     expect(fileIo.writeTextAtomic).toHaveBeenCalledWith({
       filePath: 'logs.csv',
-      content: csv
+      content: csv,
+      overwrite: true
     });
     expect(fileRes.data).toEqual({
       outputPath: '/workspace/logs.csv',
       bytes: expectedBytes
+    });
+  });
+
+  it('rejects non-CSV 200 HTML/JSON error responses before writing output and streams CSV bodies when present', async () => {
+    const fileIo = makeFileIo();
+    const service = createAppLogsService({
+      fileIo,
+      now: () => FIXED_NOW
+    });
+
+    const htmlClient: FastGptHttpClient = {
+      baseUrl: 'https://cloud.fastgpt.cn/api',
+      request: vi.fn(),
+      uploadMultipart: vi.fn(),
+      streamSse: vi.fn(),
+      requestRaw: vi.fn().mockResolvedValue({
+        status: 200,
+        url: 'https://cloud.fastgpt.cn/api/core/app/logs/exportLogs',
+        headers: new Headers({ 'content-type': 'text/html; charset=utf-8' }),
+        text: vi.fn().mockResolvedValue('<html><body>Login required</body></html>'),
+        arrayBuffer: vi.fn()
+      })
+    };
+    await expect(
+      service.exportLogs({
+        client: htmlClient,
+        credential: { kind: 'token' },
+        input: { appId: APP_ID },
+        outputPath: 'bad-html.csv'
+      })
+    ).rejects.toBeInstanceOf(CliApiError);
+    expect(fileIo.writeTextAtomic).not.toHaveBeenCalled();
+    expect(fileIo.writeStreamAtomic).not.toHaveBeenCalled();
+
+    const jsonAuthErrClient: FastGptHttpClient = {
+      baseUrl: 'https://cloud.fastgpt.cn/api',
+      request: vi.fn(),
+      uploadMultipart: vi.fn(),
+      streamSse: vi.fn(),
+      requestRaw: vi.fn().mockResolvedValue({
+        status: 200,
+        url: 'https://cloud.fastgpt.cn/api/core/app/logs/exportLogs',
+        headers: new Headers({ 'content-type': 'application/json' }),
+        text: vi
+          .fn()
+          .mockResolvedValue(
+            JSON.stringify({ code: 514, statusText: 'unAuthApiKey', message: 'APIKey invalid' })
+          ),
+        arrayBuffer: vi.fn()
+      })
+    };
+    await expect(
+      service.exportLogs({
+        client: jsonAuthErrClient,
+        credential: { kind: 'appKey', boundAppId: APP_ID },
+        input: {},
+        outputPath: 'bad-json.csv'
+      })
+    ).rejects.toBeInstanceOf(CliAuthError);
+    expect(fileIo.writeStreamAtomic).not.toHaveBeenCalled();
+
+    const jsonBizErrClient: FastGptHttpClient = {
+      baseUrl: 'https://cloud.fastgpt.cn/api',
+      request: vi.fn(),
+      uploadMultipart: vi.fn(),
+      streamSse: vi.fn(),
+      requestRaw: vi.fn().mockResolvedValue({
+        status: 200,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        text: vi
+          .fn()
+          .mockResolvedValue(
+            JSON.stringify({ code: 500, statusText: 'error', message: 'Export failed on server' })
+          ),
+        arrayBuffer: vi.fn()
+      })
+    };
+    await expect(
+      service.exportLogs({
+        client: jsonBizErrClient,
+        credential: { kind: 'token' },
+        input: { appId: APP_ID }
+      })
+    ).rejects.toBeInstanceOf(CliApiError);
+
+    const arrayBufferSpy = vi.fn();
+    const streamClient: FastGptHttpClient = {
+      baseUrl: 'https://cloud.fastgpt.cn/api',
+      request: vi.fn(),
+      uploadMultipart: vi.fn(),
+      streamSse: vi.fn(),
+      requestRaw: vi.fn().mockResolvedValue({
+        status: 200,
+        headers: new Headers({ 'content-type': 'text/csv; charset=utf-8' }),
+        body: new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('\uFEFFcol\n'));
+            controller.enqueue(new TextEncoder().encode('val\n'));
+            controller.close();
+          }
+        }),
+        text: vi.fn(),
+        arrayBuffer: arrayBufferSpy
+      })
+    };
+    const streamedFileIo = makeFileIo({
+      writeStreamAtomic: vi.fn().mockResolvedValue({
+        path: '/workspace/streamed.csv',
+        bytes: 11
+      })
+    });
+    const streamRes = await createAppLogsService({
+      fileIo: streamedFileIo,
+      now: () => FIXED_NOW
+    }).exportLogs({
+      client: streamClient,
+      credential: { kind: 'token' },
+      input: { appId: APP_ID },
+      outputPath: 'streamed.csv'
+    });
+    expect(arrayBufferSpy).not.toHaveBeenCalled();
+    expect(streamedFileIo.writeStreamAtomic).toHaveBeenCalledWith({
+      filePath: 'streamed.csv',
+      stream: expect.any(ReadableStream),
+      overwrite: false
+    });
+    expect(streamRes.data).toEqual({
+      outputPath: '/workspace/streamed.csv',
+      bytes: 11
     });
   });
 });

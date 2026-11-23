@@ -33,7 +33,7 @@ All `app logs` commands take `--app-id <appId>` (optional when authenticated wit
   - `fastgpt app logs stats --app-id <appId> --format json`
   - `fastgpt app logs chart --app-id <appId> --days 7 --format json`
 - CSV export (`token` or `appKey` only; `personalKey` is blocked at exit code `3`):
-  - `fastgpt app logs export --app-id <appId> --days 7 --output ./logs.csv --format json` (pass `--overwrite` to replace an existing file)
+  - `fastgpt app logs export --app-id <appId> --days 7 --output ./logs.csv --format json` (pass `--overwrite` to replace an existing file; `--title` defaults to headers matching `--log-keys` + `chatDetails`)
 
 ## 3. Plugin Tools & Code Sandbox (`plugin`, `code-sandbox`)
 

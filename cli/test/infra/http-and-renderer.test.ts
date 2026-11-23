@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -550,5 +550,100 @@ describe('FastGptHttpClient (ky) & OutputRenderer (picocolors)', () => {
 
     const finalContent = await readFile(join(dir, 'workflow.json'), 'utf8');
     expect(payloads).toContain(finalContent);
+  });
+
+  it('enforces atomic link/rename overwrite controls and streaming temp cleanup in FileIoAdapter', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'fastgpt-cli-fileio-atomic-'));
+    tempDirs.push(dir);
+    const fileIo = createNodeFileIoAdapter({ cwd: dir });
+
+    await writeFile(join(dir, 'existing.txt'), 'original-text', 'utf8');
+    await expect(
+      fileIo.writeTextAtomic({ filePath: 'existing.txt', content: 'new-text', overwrite: false })
+    ).rejects.toMatchObject({
+      code: 'CLI_ARGUMENT_INVALID',
+      hint: expect.stringContaining('--overwrite')
+    });
+    expect(await readFile(join(dir, 'existing.txt'), 'utf8')).toBe('original-text');
+
+    await fileIo.writeTextAtomic({
+      filePath: 'existing.txt',
+      content: 'new-text',
+      overwrite: true
+    });
+    expect(await readFile(join(dir, 'existing.txt'), 'utf8')).toBe('new-text');
+
+    await writeFile(join(dir, 'existing.bin'), new Uint8Array([1, 2, 3]));
+    await expect(
+      fileIo.writeBinaryAtomic({ filePath: 'existing.bin', content: new Uint8Array([9]) })
+    ).rejects.toBeInstanceOf(CliArgumentError);
+    expect(new Uint8Array(await readFile(join(dir, 'existing.bin')))).toEqual(
+      new Uint8Array([1, 2, 3])
+    );
+    await fileIo.writeBinaryAtomic({
+      filePath: 'existing.bin',
+      content: new Uint8Array([9, 8]),
+      overwrite: true
+    });
+    expect(new Uint8Array(await readFile(join(dir, 'existing.bin')))).toEqual(
+      new Uint8Array([9, 8])
+    );
+
+    const makeChunkStream = (chunks: Uint8Array[]) =>
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const chunk of chunks) {
+            controller.enqueue(chunk);
+          }
+          controller.close();
+        }
+      });
+
+    const streamed = await fileIo.writeStreamAtomic({
+      filePath: 'nested/streamed.csv',
+      stream: makeChunkStream([
+        new TextEncoder().encode('col1,col2\n'),
+        new TextEncoder().encode('a,b\n')
+      ])
+    });
+    expect(streamed).toEqual({
+      path: join(dir, 'nested/streamed.csv'),
+      bytes: 14
+    });
+    expect(await readFile(streamed.path, 'utf8')).toBe('col1,col2\na,b\n');
+
+    await expect(
+      fileIo.writeStreamAtomic({
+        filePath: 'nested/streamed.csv',
+        stream: makeChunkStream([new TextEncoder().encode('overwrite\n')])
+      })
+    ).rejects.toMatchObject({
+      code: 'CLI_ARGUMENT_INVALID',
+      hint: expect.stringContaining('--overwrite')
+    });
+    expect(await readFile(streamed.path, 'utf8')).toBe('col1,col2\na,b\n');
+
+    await fileIo.writeStreamAtomic({
+      filePath: 'nested/streamed.csv',
+      stream: makeChunkStream([new TextEncoder().encode('replaced\n')]),
+      overwrite: true
+    });
+    expect(await readFile(streamed.path, 'utf8')).toBe('replaced\n');
+
+    const failingStream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('partial'));
+        controller.error(new Error('network reset'));
+      }
+    });
+    await expect(
+      fileIo.writeStreamAtomic({
+        filePath: 'failed/broken.csv',
+        stream: failingStream
+      })
+    ).rejects.toThrow('network reset');
+
+    const failedDirEntries = await readdir(join(dir, 'failed'));
+    expect(failedDirEntries).toEqual([]);
   });
 });

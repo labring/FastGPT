@@ -4,6 +4,8 @@ import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+import { apiDocOpenAPIDocument } from '@fastgpt/global/openapi/provider/systemopenapi';
+import { openAPIDocument as devOpenAPIDocument } from '@fastgpt/global/openapi/provider/devapi';
 import {
   runCommandDriftChecks,
   type DriftCommandSpec,
@@ -106,7 +108,11 @@ async function main(): Promise<void> {
     specs,
     skillFiles,
     srcFiles,
-    allowedPendingCommands: []
+    allowedPendingCommands: [],
+    openapiDocs: {
+      system: apiDocOpenAPIDocument,
+      dev: devOpenAPIDocument
+    }
   });
 
   if (!report.ok) {

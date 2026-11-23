@@ -70,18 +70,19 @@ Use `api` when a FastGPT endpoint does not have a typed subcommand yet.
 - Inspect cached or live OpenAPI schemas (`--source system` default or `--source dev`):
   ```bash
   fastgpt api schema --search dataset --format json
-  fastgpt api schema --tag App --method post --format json
-  fastgpt api schema /core/app/list --format json
-  fastgpt api schema /core/app/list --offline --format json
+  fastgpt api schema --source dev --tag 应用基础管理 --method post --format json
+  fastgpt api schema /core/dataset/detail --format json
+  fastgpt api schema /core/app/list --source dev --format json
+  fastgpt api schema /core/dataset/detail --offline --format json
   ```
-- Invoke REST endpoints (`path` is relative to `/api`; leading `/api` is deduplicated):
-  - `fastgpt api get /core/app/list --query pageNum=1 --query pageSize=20 --format json`
+- Invoke REST endpoints (`path` is relative to `/api`; leading `/api` is deduplicated; endpoints outside `system` OpenAPI require `--source dev`):
+  - `fastgpt api get /core/dataset/detail --query id=<datasetId> --format json`
   - `fastgpt api post /core/dataset/listV2 --body '{"pageNum":1,"pageSize":10}' --format json`
-  - `fastgpt api put /core/app/update --file ./payload.json --dry-run --format json`
-  - `fastgpt api delete /core/app/del --query id=<appId> --yes --format json`
-  - `fastgpt api call POST /core/app/listV2 --query-json '{"pageNum":1}' --format json`
+  - `fastgpt api put /core/app/update --source dev --query appId=<appId> --file ./payload.json --dry-run --format json`
+  - `fastgpt api delete /core/app/del --source dev --query appId=<appId> --yes --format json`
+  - `fastgpt api call POST /core/app/listV2 --source dev --body '{"pageNum":1,"pageSize":20}' --format json`
 - Safety & transport options:
-  - Repeatable `--query <k=v>` and `--header <k:v>` (authorization/token/cookie headers are blocked; use `--token` or `--api-key`).
+  - Repeatable `--query <k=v>` and `--header <k:v>` (`authorization`/`token`/`cookie`/`rootkey` headers are blocked; use `--token` or `--api-key`).
   - Input payloads: `--body <json>`, `--file <path>`, or `--stdin`.
   - Validation: OpenAPI checks run by default; pass `--refresh` to refresh cache, `--no-validate` if `/apidoc` is unavailable or undocumented.
   - Raw/binary output: `--raw` or `--output <path>` (add `--overwrite` to replace an existing file).
@@ -95,5 +96,5 @@ Manage the 5 official FastGPT CLI skills locally (`authModes: ['none']`):
 - `fastgpt skills install --target agents --scope project --dry-run --format json`
 - `fastgpt skills install fastgpt-cli,fastgpt-knowledge --target claude --scope user`
 - `fastgpt skills doctor --dir ./.agents/skills --format json`
-- `fastgpt skills update --target agents --scope project`
-- `fastgpt skills uninstall fastgpt-cli --dir ./.agents/skills --yes` (only removes CLI-managed directories)
+- `fastgpt skills update --target agents --scope project` (pass `--force` to overwrite locally edited `SKILL.md` files)
+- `fastgpt skills uninstall fastgpt-cli --dir ./.agents/skills --yes` (only removes CLI-managed files and preserves user-added files)
