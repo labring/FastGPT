@@ -1,17 +1,22 @@
 import { defineIndex, connectionMongo, getMongoModel } from '../../common/mongo';
 const { Schema } = connectionMongo;
+import type { ClientSession } from 'mongoose';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { UserTagsSchema, type UserModelSchema } from '@fastgpt/global/support/user/type';
+import {
+  SYSTEM_SYNC_ACCOUNT_SOURCE,
+  UserAccountBindingStatusMap,
+  UserTagsSchema,
+  type UserAccountBindingStatus,
+  type UserModelSchema
+} from '@fastgpt/global/support/user/type';
 import { UserStatusEnum, userStatusMap } from '@fastgpt/global/support/user/constant';
 import { TeamMemberCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { LangEnum } from '@fastgpt/global/common/i18n/type';
 
 export const userCollectionName = 'users';
 
-// 外部身份绑定行（V3 极简模型）：(source, id) 全局唯一，由 UserSchema 上的 partial unique 索引强制。
-// source 为系统保留字 'system-sync' 时表示"此账号由外部同步管理"（系统维护，任何外部输入不得冒充）。
-export const SYSTEM_SYNC_ACCOUNT_SOURCE = 'system-sync';
-
+// 外部身份绑定行（V3 极简模型）：(source, id) 全局唯一，由 UserSchema 上的 partial unique 索引强制；
+// source 保留字与状态枚举统一从 global 共享定义取得，schema 不再维护第二份常量。
 const UserAccountItemSchema = new Schema(
   {
     source: {
@@ -24,8 +29,8 @@ const UserAccountItemSchema = new Schema(
     },
     status: {
       type: String,
-      enum: ['active', 'disabled'],
-      default: 'active'
+      enum: Object.keys(UserAccountBindingStatusMap),
+      default: UserAccountBindingStatusMap.active
     }
   },
   { _id: false }
@@ -116,3 +121,42 @@ defineIndex(UserSchema, {
 });
 
 export const MongoUser = getMongoModel<UserModelSchema>(userCollectionName, UserSchema);
+
+/**
+ * 统一原子入口：给用户补写一条 (source, id) 身份绑定行。
+ *
+ * 唯一索引只约束跨文档；同一文档内的同键重复由这里的 `$not: {$elemMatch}` 条件挡住，
+ * 并发首次认领时只有一个写入者拿到 matched，其余返回 'exists'（幂等，无需调用方加锁）。
+ * 同步认领、SSO 登录认领、存量回填都必须走本入口写入 accounts 行，禁止裸 $push。
+ */
+export const addUserAccountBinding = async ({
+  userId,
+  source,
+  id,
+  status = UserAccountBindingStatusMap.active,
+  session
+}: {
+  userId: string;
+  source: string;
+  id: string;
+  status?: UserAccountBindingStatus;
+  session?: ClientSession;
+}): Promise<'written' | 'exists'> => {
+  const result = await MongoUser.updateOne(
+    {
+      _id: userId,
+      accounts: { $not: { $elemMatch: { source, id } } }
+    },
+    {
+      $push: {
+        accounts: {
+          source,
+          id,
+          status
+        }
+      }
+    },
+    { session }
+  );
+  return result.matchedCount > 0 ? 'written' : 'exists';
+};

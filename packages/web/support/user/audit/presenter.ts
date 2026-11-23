@@ -978,6 +978,46 @@ export const formatAuditSummary = ({
       return collectionDatasetLine ?? '-';
     }
 
+    case AuditEventEnum.SYNC_ACCOUNT_CLAIM: {
+      const claimedUsername = asNonEmptyString(processed.claimedUsername);
+      const syncId = asNonEmptyString(processed.syncId);
+      if (!claimedUsername && !syncId) return '-';
+      const matchedBy = asNonEmptyString(processed.matchedBy);
+      return t('account_team:audit_detail_sync_account_claim', {
+        claimedUsername,
+        syncId,
+        matchedBy: matchedBy
+          ? t(
+              matchedBy === 'contact'
+                ? 'account_team:audit_detail_claim_by_contact'
+                : 'account_team:audit_detail_claim_by_username'
+            )
+          : '-'
+      });
+    }
+
+    case AuditEventEnum.SSO_ACCOUNT_CLAIM: {
+      const claimedUsername = asNonEmptyString(processed.claimedUsername);
+      const ssoId = asNonEmptyString(processed.ssoId);
+      if (!claimedUsername && !ssoId) return '-';
+      return t('account_team:audit_detail_sso_account_claim', {
+        claimedUsername,
+        ssoSource: asNonEmptyString(processed.ssoSource) || '-',
+        ssoId: ssoId || '-'
+      });
+    }
+
+    case AuditEventEnum.SYNC_ACCOUNT_CONFLICT: {
+      const syncId = asNonEmptyString(processed.syncId);
+      const username = asNonEmptyString(processed.username);
+      if (!syncId && !username) return '-';
+      return t('account_team:audit_detail_sync_account_conflict', {
+        username: username || '-',
+        syncId,
+        detail: asNonEmptyString(processed.detail) || '-'
+      });
+    }
+
     default:
       return '-';
   }

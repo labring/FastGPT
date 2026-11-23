@@ -19,11 +19,19 @@ export type UserMetaType = {
 /** 系统保留的同步管理标记来源：外部输入（同步协议/SSO 登录/管理端绑定）禁止使用 */
 export const SYSTEM_SYNC_ACCOUNT_SOURCE = 'system-sync';
 
+/** 身份绑定行启停状态：TS 类型与 Mongoose 枚举统一从这一份定义派生 */
+export const UserAccountBindingStatusMap = {
+  active: 'active',
+  disabled: 'disabled'
+} as const;
+export type UserAccountBindingStatus =
+  (typeof UserAccountBindingStatusMap)[keyof typeof UserAccountBindingStatusMap];
+
 /** 外部身份绑定行（V3 极简模型）：(source, id) 全局唯一，登录点查与同步圈人共用 */
 export type UserAccountItem = {
   source: string;
   id: string;
-  status: 'active' | 'disabled';
+  status: UserAccountBindingStatus;
 };
 
 export type UserModelSchema = {

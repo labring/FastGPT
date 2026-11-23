@@ -821,3 +821,97 @@ describe('audit presenter summary', () => {
     ).toBe('-');
   });
 });
+
+describe('audit presenter account claim details', () => {
+  const t = (key: string, options?: Record<string, any>) => {
+    if (!options) return key;
+    const pairs = Object.entries(options)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([k, v]) => `${k}=${v}`)
+      .join('|');
+    return `${key}(${pairs})`;
+  };
+
+  it('formats sync account claim with translated match method', () => {
+    expect(
+      formatAuditSummary({
+        event: AuditEventEnum.SYNC_ACCOUNT_CLAIM,
+        metadata: {
+          syncId: '77000136',
+          claimedUsername: 'wecom-wx_0136',
+          matchedBy: 'contact'
+        },
+        t
+      })
+    ).toBe(
+      'account_team:audit_detail_sync_account_claim(claimedUsername=wecom-wx_0136|matchedBy=account_team:audit_detail_claim_by_contact|syncId=77000136)'
+    );
+    expect(
+      formatAuditSummary({
+        event: AuditEventEnum.SYNC_ACCOUNT_CLAIM,
+        metadata: {
+          syncId: '77000122',
+          claimedUsername: '77000122',
+          matchedBy: 'username'
+        },
+        t
+      })
+    ).toBe(
+      'account_team:audit_detail_sync_account_claim(claimedUsername=77000122|matchedBy=account_team:audit_detail_claim_by_username|syncId=77000122)'
+    );
+    expect(
+      formatAuditSummary({
+        event: AuditEventEnum.SYNC_ACCOUNT_CLAIM,
+        metadata: {},
+        t
+      })
+    ).toBe('-');
+  });
+
+  it('formats sso account claim with external identity', () => {
+    expect(
+      formatAuditSummary({
+        event: AuditEventEnum.SSO_ACCOUNT_CLAIM,
+        metadata: {
+          ssoSource: 'weaver',
+          ssoId: '77000136',
+          claimedUsername: '77000136'
+        },
+        t
+      })
+    ).toBe(
+      'account_team:audit_detail_sso_account_claim(claimedUsername=77000136|ssoId=77000136|ssoSource=weaver)'
+    );
+    expect(
+      formatAuditSummary({
+        event: AuditEventEnum.SSO_ACCOUNT_CLAIM,
+        metadata: {},
+        t
+      })
+    ).toBe('-');
+  });
+
+  it('formats sync account conflict with reason detail', () => {
+    expect(
+      formatAuditSummary({
+        event: AuditEventEnum.SYNC_ACCOUNT_CONFLICT,
+        metadata: {
+          syncId: '77000136',
+          username: '77000136',
+          reason: 'ambiguous-contact',
+          detail: '2 candidates by contact 13800000136'
+        },
+        t
+      })
+    ).toBe(
+      'account_team:audit_detail_sync_account_conflict(detail=2 candidates by contact 13800000136|syncId=77000136|username=77000136)'
+    );
+    expect(
+      formatAuditSummary({
+        event: AuditEventEnum.SYNC_ACCOUNT_CONFLICT,
+        metadata: {},
+        t
+      })
+    ).toBe('-');
+  });
+});

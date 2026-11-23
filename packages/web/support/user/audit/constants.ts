@@ -1,5 +1,9 @@
 import type { ApiKeyAuditParams } from '@fastgpt/global/support/openapi/schema';
-import { AuditEventEnum, AdminAuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import {
+  AuditEventEnum,
+  AdminAuditEventEnum,
+  type AuditEventParamsType
+} from '@fastgpt/global/support/user/audit/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 export const adminAuditLogMap = {
@@ -846,20 +850,17 @@ export const auditLogMap = {
   [AuditEventEnum.SYNC_ACCOUNT_CLAIM]: {
     content: i18nT('account_team:log_sync_account_claim'),
     typeLabel: i18nT('account_team:sync_account_claim'),
-    params: {} as {
-      syncId: string;
-      claimedUsername: string;
-      matchedBy: 'username' | 'contact';
-    }
+    params: {} as AuditEventParamsType[AuditEventEnum.SYNC_ACCOUNT_CLAIM]
   },
   [AuditEventEnum.SSO_ACCOUNT_CLAIM]: {
     content: i18nT('account_team:log_sso_account_claim'),
     typeLabel: i18nT('account_team:sso_account_claim'),
-    params: {} as {
-      ssoSource: string;
-      ssoId: string;
-      claimedUsername: string;
-    }
+    params: {} as AuditEventParamsType[AuditEventEnum.SSO_ACCOUNT_CLAIM]
+  },
+  [AuditEventEnum.SYNC_ACCOUNT_CONFLICT]: {
+    content: i18nT('account_team:log_sync_account_conflict'),
+    typeLabel: i18nT('account_team:sync_account_conflict'),
+    params: {} as AuditEventParamsType[AuditEventEnum.SYNC_ACCOUNT_CONFLICT]
   },
   //Agent Skills
   [AuditEventEnum.CREATE_SKILL]: {
