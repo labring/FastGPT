@@ -38,7 +38,8 @@ upgradeTags:
   - 原自定义审核 URL（`customCensorURL`）用户可直接安装官方「旧版自定义审核兼容（`legacy-custom-censor`）」插件零代码迁移现有 HTTP 服务，或基于 `@fastgpt-plugin/sdk-factory` 开发原生 `moderation` 插件。
   - 新旧版本对比与配置映射见 [内容审核升级与迁移指南](/self-host/migration/content-moderation)，日常配置、测试与自定义插件开发见 [内容审核指南](/plugin/moderation)。
 
-- **全新部署**：`main` Compose 模板默认 MongoDB 更新为 `8.0.34`，初始化和健康检查统一使用 `mongosh`，副本集主节点就绪后再放行依赖服务。
+- **全新部署**：`main` Compose 模板默认 MongoDB 更新为 `8.0.38`，初始化和健康检查统一使用 `mongosh`，副本集主节点就绪后再放行依赖服务。
+- **OpenSandbox 宿主机访问**。Compose 模板为 OpenSandbox Server 增加 `host.docker.internal:host-gateway` 映射，使服务可访问沙盒对宿主机发布的端口。使用该主机名且尚未配置映射的自定义 Compose 部署，需将此映射加入 `fastgpt-opensandbox-server` 的 `extra_hosts`。
 
 ### 镜像更新
 

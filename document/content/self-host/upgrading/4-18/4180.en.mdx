@@ -38,7 +38,8 @@ upgradeTags:
   - If you used a custom moderation URL (`customCensorURL`), install the official **Legacy Custom Moderation (`legacy-custom-censor`)** Plugin to connect your existing HTTP service without code changes, or build a native `moderation` Plugin with `@fastgpt-plugin/sdk-factory`.
   - See the [Content moderation upgrade and migration guide](/en/self-host/migration/content-moderation) for legacy behavior comparisons and field mappings, and the [Content moderation guide](/en/plugin/moderation) for day-to-day configuration, testing, and custom Plugin development.
 
-- **New deployments**: The default MongoDB version in the `main` Compose templates is now `8.0.34`. Startup and health checks use `mongosh`, and dependent services wait for the replica set primary to become ready.
+- **New deployments**: The default MongoDB version in the `main` Compose templates is now `8.0.38`. Startup and health checks use `mongosh`, and dependent services wait for the replica set primary to become ready.
+- **OpenSandbox host access**. The Compose templates map `host.docker.internal:host-gateway` for OpenSandbox Server so it can reach sandbox ports published on the Docker host. If your custom Compose deployment uses this hostname and lacks the mapping, add it to `extra_hosts` on `fastgpt-opensandbox-server`.
 
 ### Image updates
 
