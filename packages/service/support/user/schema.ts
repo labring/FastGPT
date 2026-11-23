@@ -8,6 +8,29 @@ import { LangEnum } from '@fastgpt/global/common/i18n/type';
 
 export const userCollectionName = 'users';
 
+// 外部身份绑定行（V3 极简模型）：(source, id) 全局唯一，由 UserSchema 上的 partial unique 索引强制。
+// source 为系统保留字 'system-sync' 时表示"此账号由外部同步管理"（系统维护，任何外部输入不得冒充）。
+export const SYSTEM_SYNC_ACCOUNT_SOURCE = 'system-sync';
+
+const UserAccountItemSchema = new Schema(
+  {
+    source: {
+      type: String,
+      required: true
+    },
+    id: {
+      type: String,
+      required: true
+    },
+    status: {
+      type: String,
+      enum: ['active', 'disabled'],
+      default: 'active'
+    }
+  },
+  { _id: false }
+);
+
 // 历史缺失、null 和空字符串必须保留为“无密码”，不能被哈希成有效摘要。
 const hashPasswordValue = (value: unknown) =>
   typeof value === 'string' && value.length > 0 ? hashStr(value) : value;
@@ -64,6 +87,11 @@ const UserSchema = new Schema({
     enum: UserTagsSchema.enum
   },
   meta: Object,
+  /** 外部身份绑定数组：每行 (source, id) 为一个登录/同步身份入口；写入必须走统一原子 helper */
+  accounts: {
+    type: [UserAccountItemSchema],
+    default: undefined
+  },
   /** @deprecated */
   avatar: String
 });
@@ -77,5 +105,14 @@ defineIndex(UserSchema, {
 defineIndex(UserSchema, { key: { status: 1, _id: -1 } });
 // Admin charts
 defineIndex(UserSchema, { key: { createTime: -1 } });
+// 外部身份 (source, id) 全局唯一（跨用户）：partial 过滤无 accounts 的文档，
+// 同步圈人（source='system-sync'）与 SSO 登录点查 (source, id) 均走此索引。
+defineIndex(UserSchema, {
+  key: { 'accounts.source': 1, 'accounts.id': 1 },
+  options: {
+    unique: true,
+    partialFilterExpression: { 'accounts.source': { $gte: '' } }
+  }
+});
 
 export const MongoUser = getMongoModel<UserModelSchema>(userCollectionName, UserSchema);
