@@ -129,6 +129,19 @@ try {
   assert.equal(doctorOut.ok, true);
   assert.equal(doctorOut.data.ok, true);
 
+  const apiSchemaOut = JSON.parse(
+    await run(['api', 'schema', '--source', 'dev', '--format', 'json'])
+  );
+  assert.equal(apiSchemaOut.ok, true);
+  assert.equal(apiSchemaOut.data.mode, 'list');
+  assert.equal(apiSchemaOut.data.endpoints[0].path, '/support/user/account/whoami');
+
+  const apiGetOut = JSON.parse(
+    await run(['api', 'get', '/support/user/account/whoami', '--source', 'dev', '--format', 'json'])
+  );
+  assert.equal(apiGetOut.ok, true);
+  assert.equal(apiGetOut.data.user.username, 'smoke@fastgpt.in');
+
   const logoutOut = JSON.parse(await run(['logout', '--purge']));
   assert.equal(logoutOut.ok, true);
   assert.equal(logoutOut.data.purged, true);

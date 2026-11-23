@@ -15,25 +15,6 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const cliRoot = resolve(testDir, '../..');
 const repoRoot = resolve(cliRoot, '..');
 
-/**
- * 隔离分支临时白名单：仅包含本批次并行开发中的兄弟分支命令（待合入后由 Coordinator 清空为空数组）。
- */
-const PENDING_SIBLING_COMMANDS: readonly string[] = [
-  'api schema',
-  'api get',
-  'api post',
-  'api put',
-  'api delete',
-  'api call',
-  'app logs search',
-  'app logs list',
-  'app logs users',
-  'app logs stats',
-  'app logs chart',
-  'app logs export',
-  'chat feedback update'
-];
-
 async function readTsTree(dirPath: string): Promise<DriftSourceFile[]> {
   const entries = await readdir(dirPath, { withFileTypes: true });
   const files: DriftSourceFile[] = [];
@@ -92,8 +73,7 @@ describe('CLI Registry, Skill & Architecture Drift Gate', () => {
     const report = runCommandDriftChecks({
       specs,
       skillFiles,
-      srcFiles,
-      allowedPendingCommands: PENDING_SIBLING_COMMANDS
+      srcFiles
     });
 
     expect(report.violations).toEqual([]);
