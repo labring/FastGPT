@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "tsBuildInfoFile": "./.tsc-out/tsconfig.typecheck.tsbuildinfo",
+    "paths": {
+      "@/*": ["./src/*"],
+      "#fastgpt/app/test/*": ["./test/*"],
+      "@test/*": ["../../test/*"]
+    }
+  },
+  "references": [
+    { "path": "../../packages/global/tsconfig.composite.json" },
+    { "path": "../../packages/dal/tsconfig.composite.json" },
+    { "path": "../../packages/web/tsconfig.composite.json" },
+    { "path": "../../packages/service/tsconfig.composite.json" }
+  ]
+}

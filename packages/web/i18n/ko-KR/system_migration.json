@@ -70,11 +70,6 @@
   "migrations.20261104_backfill_openapi_key_type.result": "키 {{keys}}개 검색 완료",
   "migrations.20261104_backfill_openapi_key_type.keys": "키 유형",
   "migrations.20261104_backfill_openapi_key_type.validation": "결과 검증",
-  "migrations.20261112_backfill_stt_pricing_type.name": "STT 과금 유형 채우기",
-  "migrations.20261112_backfill_stt_pricing_type.description": "기존 STT 가격을 백그라운드에서 시간 기준으로 표시하며, 단가와 기존 토큰 과금 설정을 유지하고 서비스 시작을 차단하지 않습니다.",
-  "migrations.20261112_backfill_stt_pricing_type.result": "STT 모델 {{models}}개 검사 완료",
-  "migrations.20261112_backfill_stt_pricing_type.models": "모델 과금 유형",
-  "migrations.20261112_backfill_stt_pricing_type.validation": "결과 검증",
   "migrations.20261116_migrate_system_configs.name": "시스템 설정 마이그레이션",
   "migrations.20261116_migrate_system_configs.description": "기존 시스템 설정과 환경 변수를 이전하고 사용 중단 필드를 정리하며 관리 설정을 보완합니다. 모든 검증이 완료된 후 서비스를 시작합니다.",
   "migrations.20261116_migrate_system_configs.inspect": "설정 원본 확인",
@@ -82,5 +77,11 @@
   "migrations.20261116_migrate_system_configs.cleanup": "사용 중단 필드 정리",
   "migrations.20261116_migrate_system_configs.backfill": "설정 필드 보완",
   "migrations.20261116_migrate_system_configs.validate": "전체 설정 검증",
-  "migrations.20261116_migrate_system_configs.result": "설정 도메인 {{migratedDomainCount}}개를 이전하고 사용 중단 필드 {{removedFieldCount}}개를 정리했습니다. 기존 설정 {{skippedConfigCount}}개는 건너뛰었거나 확인이 필요합니다."
+  "migrations.20261116_migrate_system_configs.result": "설정 도메인 {{migratedDomainCount}}개를 이전하고 사용 중단 필드 {{removedFieldCount}}개를 정리했습니다. 기존 설정 {{skippedConfigCount}}개는 건너뛰었거나 확인이 필요합니다.",
+  "migrations.20261120_migrate_model_pricing.name": "모델 가격 마이그레이션",
+  "migrations.20261120_migrate_model_pricing.description": "시작 후 백그라운드에서 독립적으로 단계별 모델 가격 마이그레이션을 실행합니다. 먼저 기존 STT 과금 유형을 시간 기준으로 채우고, 시스템 LLM 계층 상한(maxInputTokens)을 M Tokens에서 양의 정수 K Tokens로 변환(>10 건너뜀)한 뒤 전체 가격 설정을 검증합니다.",
+  "migrations.20261120_migrate_model_pricing.stt": "STT 과금 유형 채우기",
+  "migrations.20261120_migrate_model_pricing.llmTiers": "LLM 계층 상한 변환",
+  "migrations.20261120_migrate_model_pricing.validation": "모델 가격 검증",
+  "migrations.20261120_migrate_model_pricing.result": "STT 모델 {{sttModels}}개를 검사하고 시스템 LLM 모델 {{llmModels}}개의 계층 상한을 K Tokens로 변환했습니다."
 }

@@ -10,6 +10,7 @@ import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { TeamApikeyCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { AuditResourceTypeEnum, type AuditResourceType, buildAppAuditResource, buildEntityAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/runtime';
 import { logInstanceConfigRead } from '@fastgpt/service/common/system/migrationCoverageLog';
@@ -57,10 +58,12 @@ export async function handler(
     }
 
     let boundAppId: string | undefined;
+    let boundAppResource: AuditResourceType | undefined;
     if (type === ApiKeyTypeEnum.app) {
       const { app } = await authAppByTmbId({ appId: appId!, tmbId, per: ManagePermissionVal });
       if (!AppTypeList.includes(app.type)) throw OpenApiErrEnum.unAuth;
       boundAppId = String(app._id);
+      boundAppResource = buildAppAuditResource(app);
     }
 
     const count = await MongoOpenApi.countDocuments({
@@ -110,10 +113,19 @@ export async function handler(
     });
 
     (async () => {
+      const resources = [
+        buildEntityAuditResource({
+          type: AuditResourceTypeEnum.apiKey,
+          id: key._id,
+          name
+        }),
+        boundAppResource
+      ].filter((item): item is AuditResourceType => Boolean(item));
       addAuditLog({
         tmbId,
         teamId,
         event: AuditEventEnum.CREATE_API_KEY,
+        resources,
         params: {
           keyName: name,
           keyId: String(key._id),

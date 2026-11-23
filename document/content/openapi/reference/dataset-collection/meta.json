@@ -1,0 +1,11 @@
+{
+  "title": "集合管理",
+  "pages": [
+    "get-download-ticket",
+    "batch-download",
+    "delete",
+    "detail",
+    "list-v2",
+    "update"
+  ]
+}

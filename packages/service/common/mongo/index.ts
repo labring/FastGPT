@@ -10,6 +10,7 @@ import type {
   AnyBulkWriteOperation,
   ClientSession,
   Model,
+  mongo,
   Mongoose as MongooseType,
   PipelineStage
 } from 'mongoose';
@@ -270,3 +271,8 @@ export type {
   DeprecatedMongoIndexDefinition,
   DeprecatedMongoIndexOptions
 } from './schemaIndexes';
+
+export type MongoDeleteResult = mongo.DeleteResult;
+export type MongoBulkWriteResult = mongo.BulkWriteResult;
+export type MongoFindCursor<T = Record<string, unknown>> = mongo.FindCursor<T>;
+export type MongoGridFSBucketReadStream = mongo.GridFSBucketReadStream;

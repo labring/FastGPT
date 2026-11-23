@@ -4,11 +4,9 @@ import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchPluginInput } from '@fastgpt/service/core/workflow/dispatch/plugin/runInput';
-import {
-  getWorkflowFileContext,
-  runWithContext
-} from '@fastgpt/service/core/workflow/utils/context';
-import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/utils/fileContext';
+import { getWorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context';
+import { runWithTestWorkflowContext as runWithContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
+import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/dispatch/context/file';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const { mockRegisterInputFile, mockResolveInputFile } = vi.hoisted(() => ({
@@ -34,13 +32,12 @@ describe('dispatchPluginInput', () => {
   const runWithMockFileContext = <T>(fn: () => Promise<T>, maxFileAmount = 5) =>
     runWithContext(
       {
+        checkIsStopping: () => false,
         mcpClientMemory: {},
         fileContext: {
           resolveInputFile: mockResolveInputFile,
-          limits: { maxFileAmount }
-        } as any,
-        fileRegistrar: {
-          registerInputFile: mockRegisterInputFile
+          limits: { maxFileAmount },
+          register: mockRegisterInputFile
         } as any
       },
       fn
@@ -243,7 +240,7 @@ describe('dispatchPluginInput', () => {
     const signedUrl = 'https://files.example.com/signed-report';
     const externalUrl = 'https://external.example.com/report.pdf';
     const getPreviewUrl = vi.fn().mockResolvedValue(signedUrl);
-    const { fileContext, fileRegistrar } = await prepareWorkflowFileContext({
+    const { fileContext } = await prepareWorkflowFileContext({
       query: [],
       histories: [],
       scope: {
@@ -257,11 +254,7 @@ describe('dispatchPluginInput', () => {
     });
 
     await runWithContext(
-      {
-        mcpClientMemory: {},
-        fileContext,
-        fileRegistrar
-      },
+      { checkIsStopping: () => false, mcpClientMemory: {}, fileContext },
       async () => {
         const result = await dispatchPluginInput({
           params: {
@@ -319,26 +312,28 @@ describe('dispatchPluginInput', () => {
   });
 
   it('keeps legacy userFiles from top-level query files', async () => {
-    const result = await dispatchPluginInput({
-      params: {},
-      query: [
-        {
-          file: {
-            type: ChatFileTypeEnum.file,
-            name: 'top.pdf',
-            url: 'https://query.example.com/top.pdf'
+    const result = await runWithMockFileContext(() =>
+      dispatchPluginInput({
+        params: {},
+        query: [
+          {
+            file: {
+              type: ChatFileTypeEnum.file,
+              name: 'top.pdf',
+              url: 'https://query.example.com/top.pdf'
+            }
+          },
+          {
+            text: {
+              content: 'ignored'
+            }
           }
-        },
-        {
-          text: {
-            content: 'ignored'
-          }
+        ],
+        node: {
+          inputs: []
         }
-      ],
-      node: {
-        inputs: []
-      }
-    } as any);
+      } as any)
+    );
 
     expect(result.data?.[NodeOutputKeyEnum.userFiles]).toEqual([
       'https://query.example.com/top.pdf'

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   createVersion: vi.fn(),
-  findSandboxInstanceBySandboxIdAndSource: vi.fn(),
+  getRunningSkillEditSandbox: vi.fn(),
   mongoAgentSkillsUpdateOne: vi.fn(),
   mongoSessionRun: vi.fn(async (fn: (session: unknown) => Promise<unknown>) =>
     fn({ id: 'mock-session' })
@@ -12,7 +12,6 @@ const mocks = vi.hoisted(() => ({
   updateSandboxInstanceRecordBySandboxId: vi.fn(),
   updateCurrentVersion: vi.fn(),
   uploadSkillPackage: vi.fn(),
-  validateZipStructure: vi.fn(),
   extractRuntimeSkillsFromPackage: vi.fn()
 }));
 
@@ -34,12 +33,12 @@ vi.mock('@fastgpt/service/core/ai/skill/package', async (importOriginal) => {
     ...actual,
     extractRuntimeSkillsFromPackage: mocks.extractRuntimeSkillsFromPackage,
     removeSkillPackageTTL: mocks.removeSkillPackageTTL,
-    uploadSkillPackage: mocks.uploadSkillPackage,
-    validateZipStructure: mocks.validateZipStructure
+    uploadSkillPackage: mocks.uploadSkillPackage
   };
 });
 
 vi.mock('@fastgpt/service/core/ai/sandbox/application/skillEdit/runtime', () => ({
+  getRunningSkillEditSandbox: mocks.getRunningSkillEditSandbox,
   packageSkillInSandbox: mocks.packageSkillInSandbox
 }));
 
@@ -58,14 +57,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile
   })
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/config', () => ({
-  getSandboxProviderConfig: () => ({
-    provider: 'test-provider'
-  })
-}));
-
 vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository', () => ({
-  findSandboxInstanceBySandboxIdAndSource: mocks.findSandboxInstanceBySandboxIdAndSource,
   updateSandboxInstanceRecordBySandboxId: mocks.updateSandboxInstanceRecordBySandboxId
 }));
 
@@ -80,21 +72,20 @@ vi.mock('@fastgpt/service/core/ai/skill/model/schema', async (importOriginal) =>
   };
 });
 
-import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { saveDeploySkillFromSandbox } from '@fastgpt/service/core/ai/sandbox/application/skillEdit/deploy';
-import { getEditDebugSandboxId } from '@fastgpt/service/core/ai/skill/edit/config';
 
 describe('saveDeploySkillFromSandbox', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mocks.findSandboxInstanceBySandboxIdAndSource.mockResolvedValue({
+    mocks.getRunningSkillEditSandbox.mockResolvedValue({
+      provider: 'test-provider',
       sandboxId: 'sandbox-1',
-      status: SandboxStatusEnum.running,
       teamId: 'team-1'
     });
     mocks.packageSkillInSandbox.mockResolvedValue(Buffer.from('mock zip'));
-    mocks.validateZipStructure.mockResolvedValue({ valid: true });
     mocks.extractRuntimeSkillsFromPackage.mockResolvedValue([
       {
         name: 'runtime-skill',
@@ -123,15 +114,12 @@ describe('saveDeploySkillFromSandbox', () => {
         teamId: 'team-1',
         tmbId: 'tmb-1'
       })
-    ).rejects.toThrow('Skill not found');
+    ).rejects.toThrow(SkillErrEnum.unExist);
 
     expect(mocks.uploadSkillPackage).toHaveBeenCalled();
-    expect(mocks.findSandboxInstanceBySandboxIdAndSource).toHaveBeenCalledWith({
-      provider: 'test-provider',
-      sandboxId: getEditDebugSandboxId('skill-1'),
-      sourceType: 'skillEdit',
-      sourceId: 'skill-1',
-      status: SandboxStatusEnum.running
+    expect(mocks.getRunningSkillEditSandbox).toHaveBeenCalledWith({
+      skillId: 'skill-1',
+      teamId: 'team-1'
     });
     expect(mocks.createVersion).not.toHaveBeenCalled();
     expect(mocks.mongoAgentSkillsUpdateOne).not.toHaveBeenCalled();
@@ -187,12 +175,8 @@ describe('saveDeploySkillFromSandbox', () => {
     );
   });
 
-  it('rejects sandbox records that do not belong to the deploying team', async () => {
-    mocks.findSandboxInstanceBySandboxIdAndSource.mockResolvedValueOnce({
-      sandboxId: 'sandbox-1',
-      status: SandboxStatusEnum.running,
-      teamId: 'team-other'
-    });
+  it('rejects when no running edit sandbox exists for the deploying team', async () => {
+    mocks.getRunningSkillEditSandbox.mockResolvedValueOnce(undefined);
 
     await expect(
       saveDeploySkillFromSandbox({
@@ -200,9 +184,41 @@ describe('saveDeploySkillFromSandbox', () => {
         teamId: 'team-1',
         tmbId: 'tmb-1'
       })
-    ).rejects.toThrow('Edit sandbox not found or not running');
+    ).rejects.toThrow(SkillErrEnum.editSandboxNotRunning);
 
     expect(mocks.packageSkillInSandbox).not.toHaveBeenCalled();
     expect(mocks.uploadSkillPackage).not.toHaveBeenCalled();
+  });
+
+  it('rethrows UserError and maps unexpected failures to non-UserError deployFailed', async () => {
+    mocks.packageSkillInSandbox.mockRejectedValueOnce(new UserError(SkillErrEnum.missingSkillMd));
+    await expect(
+      saveDeploySkillFromSandbox({ skillId: 'skill-1', teamId: 'team-1', tmbId: 'tmb-1' })
+    ).rejects.toThrow(SkillErrEnum.missingSkillMd);
+
+    mocks.packageSkillInSandbox.mockRejectedValueOnce(new Error('zip exited with 12'));
+    const packageErr = await saveDeploySkillFromSandbox({
+      skillId: 'skill-1',
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
+    }).catch((err) => err);
+    expect(packageErr).toBeInstanceOf(Error);
+    expect(packageErr).not.toBeInstanceOf(UserError);
+    expect(packageErr.message).toBe(SkillErrEnum.deployFailed);
+
+    mocks.uploadSkillPackage.mockRejectedValueOnce(new UserError(SkillErrEnum.archiveTooLarge));
+    await expect(
+      saveDeploySkillFromSandbox({ skillId: 'skill-1', teamId: 'team-1', tmbId: 'tmb-1' })
+    ).rejects.toThrow(SkillErrEnum.archiveTooLarge);
+
+    mocks.uploadSkillPackage.mockRejectedValueOnce(new Error('S3 timeout'));
+    const uploadErr = await saveDeploySkillFromSandbox({
+      skillId: 'skill-1',
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
+    }).catch((err) => err);
+    expect(uploadErr).toBeInstanceOf(Error);
+    expect(uploadErr).not.toBeInstanceOf(UserError);
+    expect(uploadErr.message).toBe(SkillErrEnum.deployFailed);
   });
 });

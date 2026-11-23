@@ -1,0 +1,46 @@
+---
+title: '获取集合详情'
+seoTitle: '获取集合详情 - GET /api/core/dataset/collection/detail | FastGPT OpenAPI'
+description: '根据集合 ID 获取集合元数据、源文件信息、向量索引统计、训练报错数量及当前成员的有效读写权限详情。'
+---
+
+## 端点概览
+
+- **HTTP 方法**：`GET`
+- **请求路径**：`/api/core/dataset/collection/detail`
+- **所属模块**：知识库 / 集合管理
+- **鉴权方式**：`Authorization: Bearer <apiKey>`—个人密钥（按归属团队成员资源权限校验）（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E9%9B%86%E5%90%88%E7%AE%A1%E7%90%86/GET/core/dataset/collection/detail)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E9%9B%86%E5%90%88%E7%AE%A1%E7%90%86/GET/core/dataset/collection/detail`）
+
+## 接口说明与注意事项
+
+获取集合详细信息，包括索引数量、错误数量、文件信息等。需要所属数据集读权限与集合读权限
+
+## 请求参数
+
+### Query 查询参数
+
+| 字段 | 类型     | 必填 | 默认值 | 约束与说明 |
+| ---- | -------- | ---- | ------ | ---------- |
+| `id` | `string` | 是   | -      | 集合 ID    |
+
+## 请求示例
+
+调用前请将 `YOUR_API_KEY` 与示例 ID 替换为真实值；私有化部署实例请将基础域名替换为 `<instance>/api`。
+
+### cURL 请求示例
+
+```bash
+curl --fail-with-body -X GET "https://cloud.fastgpt.cn/api/core/dataset/collection/detail?id=string" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## 响应结构与示例
+
+除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（若契约未声明具体载荷结构，请以上方状态描述及实际响应为准）。
+
+### HTTP 200
+
+成功返回集合详情
+
+返回 FastGPT 标准成功响应结构（`{ "code": 200, "statusText": "", "message": "", "data": ... }`）。当前 OpenAPI 契约暂未声明 `data` 的具体字段结构，请结合上方状态描述或实际返回结果处理。

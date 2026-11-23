@@ -1,0 +1,127 @@
+---
+title: 'List Datasets (Deprecated)'
+seoTitle: 'List Datasets (Deprecated) - POST /api/core/dataset/list | FastGPT OpenAPI'
+description: 'Legacy endpoint to list accessible datasets without pagination (deprecated; migrate to POST /api/core/dataset/listV2).'
+deprecated: true
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+<Alert icon="⚠️" context="warning">
+  **Deprecated Endpoint** : `POST /api/core/dataset/list` is deprecated. Migrate to [List Datasets
+  (V2)](/en/openapi/reference/dataset/list-v2) ( `POST /api/core/dataset/listV2` ) for paginated
+  queries and `datasetIds` batch lookup.
+</Alert>
+
+## Endpoint Overview
+
+- **Method** : `POST`
+- **Path** : `/api/core/dataset/list`
+- **Module** : Datasets / Datasets
+- **Authentication** : `Authorization: Bearer <apiKey>`—Personal API Key (access scoped by team member permissions) (see [API Getting Started](/en/openapi/intro) )
+- **Interactive Try-It-Out** : [Open in Scalar API Explorer](https://cloud.fastgpt.io/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E7%AE%A1%E7%90%86/POST/core/dataset/list) (self-hosted instances: replace the origin with `<instance>/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E7%AE%A1%E7%90%86/POST/core/dataset/list` )
+
+## Description & Notes
+
+Deprecated; use `POST /core/dataset/listV2` instead. Retained for backward compatibility and returns an array of accessible datasets filtered by type or keyword, whereas V2 returns `{ list, total }` .
+
+## Request Parameters
+
+### Request Body ( `application/json` )
+
+| Field       | Type              | Required | Default            | Constraints & Description                                                                                                                                                                                                                                                                                 |
+| ----------- | ----------------- | -------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `parentId`  | `string \| null`  | No       | -                  | Parent folder ID; `null` or omitted queries the root folder                                                                                                                                                                                                                                               |
+| `type`      | `string \| array` | No       | -                  | Dataset type filter                                                                                                                                                                                                                                                                                       |
+| `searchKey` | `string`          | No       | -                  | Search keyword matching dataset name and introduction                                                                                                                                                                                                                                                     |
+| `sort`      | `string` (enum)   | No       | `"updateTimeDesc"` | Sort order; defaults to most recently updated descending. Allowed values: `updateTimeDesc` (Sort by update time descending (most recently modified first, default)), `createTimeDesc` (Sort by creation time descending (newest first)), `createTimeAsc` (Sort by creation time ascending (oldest first)) |
+| `tmbIds`    | `string[]`        | No       | -                  | Filter by creator member IDs; an empty array returns an empty list                                                                                                                                                                                                                                        |
+
+## Request Examples
+
+Replace `YOUR_API_KEY` and placeholder IDs before running. Self-hosted users should replace the base URL with `<instance>/api` .
+
+### cURL Example
+
+```bash
+curl --fail-with-body -X POST "https://cloud.fastgpt.io/api/core/dataset/list" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{}'
+```
+
+### Minimal Valid JSON Body
+
+```json
+{}
+```
+
+## Response Schema & Examples
+
+Successful `/api/*` calls return the standard FastGPT envelope `{ "code": 200, "statusText": "", "message": "", "data": ... }` , where `data` matches the `200` schema below (when a payload schema is declared; otherwise refer to the status description for runtime `data` semantics).
+
+### HTTP 200
+
+Successfully returned dataset list
+
+**Content-Type** : `application/json`
+
+**Root Type** : Array ( `object[]` ). Each array item has the following fields:
+
+| Field                               | Type             | Required | Default            | Constraints & Description                                                                                                                                                                   |
+| ----------------------------------- | ---------------- | -------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `_id`                               | `string`         | Yes      | -                  | Dataset ID. pattern: `^[0-9a-fA-F]{24}$`                                                                                                                                                    |
+| `tmbId`                             | `string`         | Yes      | -                  | Team member ID. pattern: `^[0-9a-fA-F]{24}$`                                                                                                                                                |
+| `avatar`                            | `string`         | Yes      | `"/icon/logo.svg"` | Avatar                                                                                                                                                                                      |
+| `createTime`                        | `string`         | Yes      | -                  | Creation time                                                                                                                                                                               |
+| `updateTime`                        | `string`         | Yes      | -                  | Update time                                                                                                                                                                                 |
+| `name`                              | `string`         | Yes      | -                  | Name                                                                                                                                                                                        |
+| `intro`                             | `string`         | Yes      | -                  | Introduction                                                                                                                                                                                |
+| `type`                              | `string` (enum)  | Yes      | -                  | Dataset type. Allowed values: `folder` , `dataset` , `websiteDataset` , `externalFile` , `apiDataset` , `feishu` , `yuque` , `dingtalk`                                                     |
+| `permission`                        | `object`         | Yes      | -                  | Serialized permission object JSON structure                                                                                                                                                 |
+| `permission.role`                   | `integer`        | Yes      | -                  | Permission role bitmask value. min: -9007199254740991; max: 9007199254740991                                                                                                                |
+| `permission.isOwner`                | `boolean`        | Yes      | -                  | Whether the caller has owner permission                                                                                                                                                     |
+| `permission.hasManagePer`           | `boolean`        | Yes      | -                  | Whether the caller has manage permission                                                                                                                                                    |
+| `permission.hasWritePer`            | `boolean`        | Yes      | -                  | Whether the caller has write permission                                                                                                                                                     |
+| `permission.hasReadPer`             | `boolean`        | Yes      | -                  | Whether the caller has read permission                                                                                                                                                      |
+| `permission.hasManageRole`          | `boolean`        | Yes      | -                  | Whether manage role bit is set                                                                                                                                                              |
+| `permission.hasWriteRole`           | `boolean`        | Yes      | -                  | Whether write role bit is set                                                                                                                                                               |
+| `permission.hasReadRole`            | `boolean`        | Yes      | -                  | Whether read role bit is set                                                                                                                                                                |
+| `appCount`                          | `integer`        | No       | -                  | Count of published apps referencing this dataset (returned only to non-folder owners when enabled). min: 0; max: 9007199254740991                                                           |
+| `fileCount`                         | `integer`        | No       | -                  | Total non-folder collection count across all depths (unfiltered by file permissions; returned only when `withFileCount` is requested on non-folder datasets). min: 0; max: 9007199254740991 |
+| `vectorModel`                       | `object`         | No       | -                  | Embedding model info (empty for folders or deleted models; inactive models still return display metadata)                                                                                   |
+| `vectorModel.pricing`               | `object`         | No       | -                  | Credit price per fixed billing unit; omitted if free                                                                                                                                        |
+| `vectorModel.pricing.unitPrice`     | `number`         | No       | -                  | Composite credit price per million units (tokens/TTS) or per 60 seconds (STT). min: 0                                                                                                       |
+| `vectorModel.provider`              | `string`         | Yes      | -                  | minLength: 1                                                                                                                                                                                |
+| `vectorModel.model`                 | `string`         | Yes      | -                  | minLength: 1                                                                                                                                                                                |
+| `vectorModel.name`                  | `string`         | Yes      | -                  | minLength: 1                                                                                                                                                                                |
+| `vectorModel.scope`                 | `string` (enum)  | Yes      | `"system"`         | Allowed values: `system` , `team`                                                                                                                                                           |
+| `vectorModel.sortOrder`             | `integer`        | No       | -                  | Display rank within the same scope (smaller numbers appear first). min: 0; max: 9007199254740991                                                                                            |
+| `vectorModel.tmbId`                 | `string \| null` | No       | -                  | -                                                                                                                                                                                           |
+| `vectorModel.teamId`                | `string \| null` | No       | -                  | -                                                                                                                                                                                           |
+| `vectorModel.isActive`              | `boolean`        | No       | -                  | -                                                                                                                                                                                           |
+| `vectorModel.isUpcomingDeprecation` | `boolean`        | No       | -                  | Whether the model is scheduled for deprecation                                                                                                                                              |
+| `vectorModel.requestUrl`            | `string`         | No       | -                  | -                                                                                                                                                                                           |
+| `vectorModel.requestAuth`           | `string`         | No       | -                  | -                                                                                                                                                                                           |
+| `vectorModel.testMode`              | `boolean`        | No       | -                  | -                                                                                                                                                                                           |
+| `vectorModel.type`                  | `"embedding"`    | Yes      | -                  | Fixed: `"embedding"`                                                                                                                                                                        |
+| `vectorModel.config`                | `object`         | Yes      | -                  | -                                                                                                                                                                                           |
+| `vectorModel.config.defaultToken`   | `number`         | Yes      | -                  | -                                                                                                                                                                                           |
+| `vectorModel.config.maxToken`       | `number`         | Yes      | -                  | -                                                                                                                                                                                           |
+| `vectorModel.config.weight`         | `number`         | Yes      | `0`                | -                                                                                                                                                                                           |
+| `vectorModel.config.hidden`         | `boolean`        | No       | -                  | -                                                                                                                                                                                           |
+| `vectorModel.config.vision`         | `boolean`        | No       | -                  | -                                                                                                                                                                                           |
+| `vectorModel.config.normalization`  | `boolean`        | No       | -                  | -                                                                                                                                                                                           |
+| `vectorModel.config.batchSize`      | `number`         | No       | -                  | -                                                                                                                                                                                           |
+| `vectorModel.config.defaultConfig`  | `object`         | No       | -                  | -                                                                                                                                                                                           |
+| `vectorModel.config.dbConfig`       | `object`         | No       | -                  | -                                                                                                                                                                                           |
+| `vectorModel.config.queryConfig`    | `object`         | No       | -                  | -                                                                                                                                                                                           |
+| `vectorModel.modelId`               | `string`         | Yes      | -                  | -                                                                                                                                                                                           |
+| `vectorModel.avatar`                | `string`         | No       | -                  | -                                                                                                                                                                                           |
+| `inheritPermission`                 | `boolean`        | Yes      | -                  | Whether permissions are inherited from parent                                                                                                                                               |
+| `private`                           | `boolean`        | No       | -                  | Whether access is private to the owner                                                                                                                                                      |
+| `folderAccessMode`                  | `string` (enum)  | No       | -                  | Folder access mode; `navigate` allows traversing readable descendants without granting direct read permission. Allowed values: `read` , `navigate`                                          |
+| `sourceMember`                      | `object`         | No       | -                  | Source member                                                                                                                                                                               |
+| `sourceMember.name`                 | `string`         | Yes      | -                  | Member name                                                                                                                                                                                 |
+| `sourceMember.avatar`               | `string \| null` | No       | -                  | Member avatar                                                                                                                                                                               |
+| `sourceMember.status`               | `string` (enum)  | Yes      | -                  | Member status. Allowed values: `active` , `leave` , `forbidden`                                                                                                                             |

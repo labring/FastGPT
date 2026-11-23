@@ -434,7 +434,7 @@ export const FlowNodeItemSchema = FlowNodeTemplateTypeSchema.extend({
 export type FlowNodeItemType = z.infer<typeof FlowNodeItemSchema>;
 
 // store node type
-export const StoreNodeItemTypeSchema = FlowNodeCommonTypeSchema.extend({
+export const StoreNodeItemBaseSchema = FlowNodeCommonTypeSchema.extend({
   nodeId: z.string(),
   isFolded: BoolSchema.optional(),
   position: z
@@ -443,7 +443,9 @@ export const StoreNodeItemTypeSchema = FlowNodeCommonTypeSchema.extend({
       y: NumSchema
     })
     .optional()
-}).superRefine((node, ctx) => {
+});
+
+export const StoreNodeItemTypeSchema = StoreNodeItemBaseSchema.superRefine((node, ctx) => {
   if (
     node.flowNodeType !== FlowNodeTypeEnum.toolSet ||
     !node.toolConfig?.mcpToolSet ||

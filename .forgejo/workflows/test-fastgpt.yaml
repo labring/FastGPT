@@ -157,20 +157,29 @@ jobs:
 
       - name: Pre-download MongoDB binary
         run: |
-          MONGODB_VERSION="7.0.14"
-          CACHE_DIR="$HOME/.cache/mongodb-binaries/mongodb-linux-x86_64-ubuntu2204-${MONGODB_VERSION}"
-          if [ -f "${CACHE_DIR}/mongod" ]; then
-            echo "MongoDB binary already cached"
-            exit 0
+          MONGODB_VERSION="8.2.6"
+          UBUNTU_TAG="ubuntu2204"
+          if [ -r /etc/os-release ]; then
+            . /etc/os-release
+            case "${VERSION_ID%%.*}" in
+              24|26|28) UBUNTU_TAG="ubuntu2404" ;;
+            esac
           fi
-          mkdir -p "${CACHE_DIR}"
-          echo "Downloading MongoDB ${MONGODB_VERSION} via proxy..."
-          curl --proxy "${{ vars.AB_HTTP_PROXY }}" -sL \
-            "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-${MONGODB_VERSION}.tgz" \
-            | tar xz -C /tmp
-          cp /tmp/mongodb-linux-x86_64-ubuntu2204-${MONGODB_VERSION}/bin/mongod "${CACHE_DIR}/mongod"
-          rm -rf /tmp/mongodb-linux-x86_64-ubuntu2204-${MONGODB_VERSION}
-          echo "MongoDB binary cached at ${CACHE_DIR}/mongod"
+          ARCHIVE="mongodb-linux-x86_64-${UBUNTU_TAG}-${MONGODB_VERSION}"
+          CACHE_DIR="$HOME/.cache/mongodb-binaries/${ARCHIVE}"
+          if [ ! -f "${CACHE_DIR}/mongod" ]; then
+            mkdir -p "${CACHE_DIR}"
+            echo "Downloading MongoDB ${MONGODB_VERSION} (${UBUNTU_TAG}) via proxy..."
+            curl --proxy "${{ vars.AB_HTTP_PROXY }}" -fsSL \
+              "https://fastdl.mongodb.org/linux/${ARCHIVE}.tgz" \
+              | tar xz -C /tmp
+            cp "/tmp/${ARCHIVE}/bin/mongod" "${CACHE_DIR}/mongod"
+            rm -rf "/tmp/${ARCHIVE}"
+            echo "MongoDB binary cached at ${CACHE_DIR}/mongod"
+          else
+            echo "MongoDB binary already cached at ${CACHE_DIR}/mongod"
+          fi
+          echo "MONGOMS_SYSTEM_BINARY=${CACHE_DIR}/mongod" >> "$GITHUB_ENV"
 
       - name: 'Install Deps'
         run: pnpm install --frozen-lockfile
@@ -215,20 +224,29 @@ jobs:
 
       - name: Pre-download MongoDB binary
         run: |
-          MONGODB_VERSION="7.0.14"
-          CACHE_DIR="$HOME/.cache/mongodb-binaries/mongodb-linux-x86_64-ubuntu2204-${MONGODB_VERSION}"
-          if [ -f "${CACHE_DIR}/mongod" ]; then
-            echo "MongoDB binary already cached"
-            exit 0
+          MONGODB_VERSION="8.2.6"
+          UBUNTU_TAG="ubuntu2204"
+          if [ -r /etc/os-release ]; then
+            . /etc/os-release
+            case "${VERSION_ID%%.*}" in
+              24|26|28) UBUNTU_TAG="ubuntu2404" ;;
+            esac
           fi
-          mkdir -p "${CACHE_DIR}"
-          echo "Downloading MongoDB ${MONGODB_VERSION} via proxy..."
-          curl --proxy "${{ vars.AB_HTTP_PROXY }}" -sL \
-            "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-${MONGODB_VERSION}.tgz" \
-            | tar xz -C /tmp
-          cp /tmp/mongodb-linux-x86_64-ubuntu2204-${MONGODB_VERSION}/bin/mongod "${CACHE_DIR}/mongod"
-          rm -rf /tmp/mongodb-linux-x86_64-ubuntu2204-${MONGODB_VERSION}
-          echo "MongoDB binary cached at ${CACHE_DIR}/mongod"
+          ARCHIVE="mongodb-linux-x86_64-${UBUNTU_TAG}-${MONGODB_VERSION}"
+          CACHE_DIR="$HOME/.cache/mongodb-binaries/${ARCHIVE}"
+          if [ ! -f "${CACHE_DIR}/mongod" ]; then
+            mkdir -p "${CACHE_DIR}"
+            echo "Downloading MongoDB ${MONGODB_VERSION} (${UBUNTU_TAG}) via proxy..."
+            curl --proxy "${{ vars.AB_HTTP_PROXY }}" -fsSL \
+              "https://fastdl.mongodb.org/linux/${ARCHIVE}.tgz" \
+              | tar xz -C /tmp
+            cp "/tmp/${ARCHIVE}/bin/mongod" "${CACHE_DIR}/mongod"
+            rm -rf "/tmp/${ARCHIVE}"
+            echo "MongoDB binary cached at ${CACHE_DIR}/mongod"
+          else
+            echo "MongoDB binary already cached at ${CACHE_DIR}/mongod"
+          fi
+          echo "MONGOMS_SYSTEM_BINARY=${CACHE_DIR}/mongod" >> "$GITHUB_ENV"
 
       - name: 'Install Deps'
         run: pnpm install --frozen-lockfile

@@ -447,6 +447,48 @@ describe('llmCompletionsBodyFormat', () => {
     expect(requestBody).toHaveProperty('target', 'override');
   });
 
+  it('should keep an empty object parameters schema for zero-parameter tools', async () => {
+    const model = createModel();
+
+    const { requestBody } = await llmCompletionsBodyFormat({
+      model,
+      messages,
+      stream: false,
+      tools: [
+        {
+          type: 'function',
+          // 零入参工具（如零参数 MCP 工具）：运行时不会产出 parameters
+          function: { name: 'list_graphs', description: 'no params' }
+        },
+        {
+          type: 'function',
+          function: {
+            name: 'search',
+            description: 'with params',
+            parameters: {
+              type: 'object',
+              properties: { query: { type: 'string' } },
+              required: ['query']
+            }
+          }
+        }
+      ],
+      toolCallMode: 'toolChoice'
+    });
+
+    // 零入参工具必须带空对象 schema，否则严格实现的上游会 400 missing field parameters
+    expect(requestBody.tools?.[0].function.parameters).toEqual({
+      type: 'object',
+      properties: {}
+    });
+    // 已有 parameters 的工具不被改写
+    expect(requestBody.tools?.[1].function.parameters).toEqual({
+      type: 'object',
+      properties: { query: { type: 'string' } },
+      required: ['query']
+    });
+  });
+
   it('should throw when json schema cannot be parsed', async () => {
     const model = createModel();
 

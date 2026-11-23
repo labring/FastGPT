@@ -9,12 +9,14 @@ import { getLogger } from '../logger';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { formatI18nLocationToZhEn } from '@fastgpt/global/common/i18n/utils';
 import { getClientIpFromRequest } from '../security/clientIp';
+import { SimpleLRUCache } from '../cache/simpleLru';
 
 const logger = getLogger(['GEO']);
 
 let reader: ReaderModel | null = null;
 
-const locationIpMap = new Map<string, LocationName>();
+// 限制缓存容量与 TTL，避免未调用 initGeo() 的进程（如 Pro）在大量独立 IP 查询下内存无限增长。
+const locationIpMap = new SimpleLRUCache<string, LocationName>(10_000, cleanupIntervalMs);
 
 function loadGeoDB() {
   const dbBuffer = fs.readFileSync(dbPath);

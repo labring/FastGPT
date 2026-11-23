@@ -1,4 +1,4 @@
-import { type ErrType } from '../errorCode';
+import { type ErrorHttpStatus, type ErrType } from '../errorCode';
 import { i18nT } from '../../i18n/utils';
 /* dataset: 509000 */
 export enum SystemErrEnum {
@@ -9,10 +9,15 @@ export enum SystemErrEnum {
   licenseUserAmountLimit = 'licenseUserAmountLimit'
 }
 
-const systemErr = [
+const systemErr: Array<{
+  statusText: SystemErrEnum;
+  message: string;
+  httpStatus: ErrorHttpStatus;
+}> = [
   {
     statusText: SystemErrEnum.communityVersionNumLimit,
-    message: i18nT('common:code_error.system_error.community_version_num_limit')
+    message: i18nT('common:code_error.system_error.community_version_num_limit'),
+    httpStatus: 403
   },
   {
     statusText: SystemErrEnum.commercialFeature,
@@ -21,15 +26,18 @@ const systemErr = [
   },
   {
     statusText: SystemErrEnum.licenseAppAmountLimit,
-    message: i18nT('common:code_error.system_error.license_app_amount_limit')
+    message: i18nT('common:code_error.system_error.license_app_amount_limit'),
+    httpStatus: 403
   },
   {
     statusText: SystemErrEnum.licenseDatasetAmountLimit,
-    message: i18nT('common:code_error.system_error.license_dataset_amount_limit')
+    message: i18nT('common:code_error.system_error.license_dataset_amount_limit'),
+    httpStatus: 403
   },
   {
     statusText: SystemErrEnum.licenseUserAmountLimit,
-    message: i18nT('common:code_error.system_error.license_user_amount_limit')
+    message: i18nT('common:code_error.system_error.license_user_amount_limit'),
+    httpStatus: 403
   }
 ];
 

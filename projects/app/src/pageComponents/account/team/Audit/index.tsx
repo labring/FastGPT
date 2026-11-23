@@ -20,7 +20,10 @@ import {
   type MultiSelectFilterValue,
   useCommonFilterLabels
 } from '@fastgpt/web/components/common/TagFilter';
-import { processAuditMetadata } from '@fastgpt/web/support/user/audit/processors';
+import {
+  formatAuditSummary,
+  resolveAuditResources
+} from '@fastgpt/web/support/user/audit/presenter';
 import TeamMemberFilter from '@/components/support/user/TeamMemberFilter';
 import DateRangePicker, {
   type DateRangeType
@@ -32,6 +35,7 @@ import { downloadFetch } from '@/web/common/system/utils';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { parseLocale } from '@fastgpt/global/common/i18n/utils';
 import dayjs from 'dayjs';
+import AuditResourceLink from './AuditResourceLink';
 
 function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
   /** 最近七个本地自然日含今天，按日历日期计算并补齐首尾边界。 */
@@ -185,16 +189,19 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
           <Table w={'100%'} minW={['900px', '100%']} sx={{ tableLayout: 'fixed' }}>
             <Thead>
               <Tr bgColor={'white !important'}>
-                <Th w={'18%'} borderLeftRadius="6px" bgColor="myGray.100">
-                  {t('account_team:log_user')}
-                </Th>
-                <Th w={'20%'} bgColor="myGray.100">
+                <Th w={'16%'} borderLeftRadius="6px" bgColor="myGray.100">
                   {t('account_team:log_time')}
                 </Th>
-                <Th w={'18%'} bgColor="myGray.100">
+                <Th w={'14%'} bgColor="myGray.100">
+                  {t('account_team:log_user')}
+                </Th>
+                <Th w={'15%'} bgColor="myGray.100">
                   {t('account_team:log_type')}
                 </Th>
-                <Th w={'44%'} bgColor="myGray.100">
+                <Th w={'25%'} bgColor="myGray.100">
+                  {t('account_team:log_resource')}
+                </Th>
+                <Th w={'30%'} bgColor="myGray.100">
                   {t('account_team:log_details')}
                 </Th>
               </Tr>
@@ -202,34 +209,45 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
             <Tbody>
               {auditLog.length === 0 && !isLoading && (
                 <Tr>
-                  <Td colSpan={4}>
+                  <Td colSpan={5}>
                     <EmptyTip
                       text={
-                        <>
+                        <Flex direction="column" alignItems="center">
                           <Box>{t('account_team:audit_empty')}</Box>
                           <Button
-                            variant={'link'}
+                            variant={'whiteBase'}
                             mt={3}
-                            onClick={() => setDateRange(getDefaultAuditDateRange())}
+                            onClick={() => {
+                              setDateRange(getDefaultAuditDateRange());
+                              setMemberFilter(createMultiSelectFilter());
+                              setEventFilter(createMultiSelectFilter());
+                            }}
                           >
-                            {t('account_team:audit_reset_time')}
+                            {t('account_team:audit_reset_filters')}
                           </Button>
-                        </>
+                        </Flex>
                       }
                     />
                   </Td>
                 </Tr>
               )}
               {auditLog.map((log) => {
-                const i18nData = auditLogMap[log.event];
-                const metadata: Record<string, unknown> = processAuditMetadata({
+                const i18nData = log.event === 'unknown' ? undefined : auditLogMap[log.event];
+                const resources = resolveAuditResources({
                   event: log.event,
+                  resources: log.resources,
+                  metadata: log.metadata
+                });
+                const summary = formatAuditSummary({
+                  event: log.event,
+                  resources: log.resources,
                   metadata: log.metadata,
                   t
                 });
 
-                return i18nData ? (
+                return (
                   <Tr key={log._id} overflow={'unset'}>
+                    <Td>{formatTime2YMDHMS(log.timestamp)}</Td>
                     <Td>
                       <UserBox
                         sourceMember={log.sourceMember}
@@ -238,17 +256,27 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
                         spacing={0.5}
                       />
                     </Td>
-                    <Td>{formatTime2YMDHMS(log.timestamp)}</Td>
-                    <Td>{t(i18nData.typeLabel)}</Td>
+                    <Td>{i18nData ? t(i18nData.typeLabel) : log.event}</Td>
+                    <Td whiteSpace="normal" overflowWrap="anywhere">
+                      {resources.length > 0 ? (
+                        <Flex direction="column" align="flex-start" gap={1}>
+                          {resources.map((resource) => (
+                            <AuditResourceLink key={resource.key} resource={resource} />
+                          ))}
+                        </Flex>
+                      ) : (
+                        '-'
+                      )}
+                    </Td>
                     <Td
-                      whiteSpace={['nowrap', 'normal']}
+                      whiteSpace={['pre', 'pre-line']}
                       wordBreak={['normal', 'break-word']}
                       overflowWrap={['normal', 'anywhere']}
                     >
-                      {t(i18nData.content, metadata)}
+                      {summary}
                     </Td>
                   </Tr>
-                ) : null;
+                );
               })}
             </Tbody>
           </Table>

@@ -13,6 +13,7 @@ import type {
   DatasetTrainingSchemaType
 } from '@fastgpt/global/core/dataset/type';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { isEmbeddingRequestError } from '@fastgpt/service/core/ai/embedding/error';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import {
@@ -155,6 +156,11 @@ export async function generatePreCreatedData(): Promise<any> {
         } catch (err: any) {
           logger.error('Pre-created data task failed', {
             error: err,
+            ...(isEmbeddingRequestError(err) && {
+              errorCategory: err.category,
+              retryable: err.retryable,
+              errorCode: err.errorCode
+            }),
             trainingId: data._id,
             datasetId: data.datasetId,
             collectionId: data.collectionId,

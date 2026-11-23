@@ -13,20 +13,14 @@ import {
   removeSkillPackageTTL,
   uploadSkillPackage
 } from '../../../skill/package';
-import { packageSkillInSandbox } from './runtime';
-import { getEditDebugSandboxId } from '../../../skill/edit/config';
+import { getRunningSkillEditSandbox, packageSkillInSandbox } from './runtime';
 import { createVersion } from '../../../skill/version';
 import { getSandboxRuntimeProfile } from '../../infrastructure/provider/runtimeProfile';
-import { getSandboxProviderConfig } from '../../infrastructure/provider/config';
-import {
-  findSandboxInstanceBySandboxIdAndSource,
-  updateSandboxInstanceRecordBySandboxId
-} from '../../infrastructure/instance/repository';
+import { updateSandboxInstanceRecordBySandboxId } from '../../infrastructure/instance/repository';
 import { MongoAgentSkills } from '../../../skill/model/schema';
-import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
-import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import type { SaveDeploySkillResponse } from '@fastgpt/global/core/ai/skill/api';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 
@@ -51,32 +45,28 @@ export async function saveDeploySkillFromSandbox({
   tmbId,
   versionName
 }: SaveDeploySkillFromSandboxParams): Promise<SaveDeploySkillResponse> {
-  const providerConfig = getSandboxProviderConfig();
-  const sandboxInfo = await findSandboxInstanceBySandboxIdAndSource({
-    provider: providerConfig.provider,
-    sandboxId: getEditDebugSandboxId(skillId),
-    sourceType: ChatSourceTypeEnum.skillEdit,
-    sourceId: skillId,
-    status: SandboxStatusEnum.running
-  });
-
-  if (
-    !sandboxInfo ||
-    sandboxInfo.status !== SandboxStatusEnum.running ||
-    sandboxInfo.teamId !== teamId
-  ) {
-    return Promise.reject(new UserError('Edit sandbox not found or not running'));
+  const sandboxInfo = await getRunningSkillEditSandbox({ skillId, teamId });
+  if (!sandboxInfo) {
+    throw new UserError(SkillErrEnum.editSandboxNotRunning);
   }
 
   let packageBuffer: Buffer;
   try {
-    const runtimeProfile = getSandboxRuntimeProfile(providerConfig.provider);
+    const runtimeProfile = getSandboxRuntimeProfile(sandboxInfo.provider);
     packageBuffer = await packageSkillInSandbox({
       sandboxId: sandboxInfo.sandboxId,
       workDirectory: runtimeProfile.workDirectory
     });
   } catch (error) {
-    return Promise.reject(new UserError(`Failed to package skill directory: ${getErrText(error)}`));
+    if (error instanceof UserError) {
+      throw error;
+    }
+    logger.error('[Sandbox] Failed to package skill for deploy', {
+      skillId,
+      sandboxId: sandboxInfo.sandboxId,
+      error
+    });
+    throw new Error(SkillErrEnum.deployFailed, { cause: error });
   }
 
   const versionId = new Types.ObjectId().toString();
@@ -93,11 +83,15 @@ export async function saveDeploySkillFromSandbox({
       zipBuffer: packageBuffer
     });
   } catch (error) {
-    const errorText = getErrText(error);
-    if (errorText === SkillErrEnum.archiveTooLarge) {
-      return Promise.reject(SkillErrEnum.archiveTooLarge);
+    if (error instanceof UserError) {
+      throw error;
     }
-    throw new UserError(`Failed to upload package: ${errorText}`);
+    logger.error('[Sandbox] Failed to upload skill package', {
+      skillId,
+      versionId,
+      error
+    });
+    throw new Error(SkillErrEnum.deployFailed, { cause: error });
   }
 
   const deployResult = await mongoSessionRun(async (session) => {
@@ -109,7 +103,7 @@ export async function saveDeploySkillFromSandbox({
     });
     if (!isVersionLinked) {
       // skill 可能在打包上传期间被删除。此时不能移除 S3 TTL，让孤儿包继续走 TTL 清理。
-      throw new UserError('Skill not found');
+      throw new UserError(SkillErrEnum.unExist);
     }
 
     await createVersion(
@@ -145,7 +139,7 @@ export async function saveDeploySkillFromSandbox({
 
   // 发布新版本成功后，更新运行中沙盒实例的 versionId，保证后续版本切换时能够正确执行版本比对和容器重建
   const updatedSandboxInfo = await updateSandboxInstanceRecordBySandboxId({
-    provider: providerConfig.provider,
+    provider: sandboxInfo.provider,
     sandboxId: sandboxInfo.sandboxId,
     sourceType: ChatSourceTypeEnum.skillEdit,
     sourceId: skillId,

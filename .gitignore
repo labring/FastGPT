@@ -27,6 +27,7 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+**/.tsc-out
 next-env.d.ts
 platform.json
 testApi/

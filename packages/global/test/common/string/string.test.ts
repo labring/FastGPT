@@ -42,6 +42,19 @@ describe('parseFileExtensionFromUrl', () => {
     expect(parseFileExtensionFromUrl('/api/system/file/d/abc?name=report.%2570df')).toBe('%70df');
   });
 
+  it('should parse v2 signed download short links with and without extensions', () => {
+    expect(
+      parseFileExtensionFromUrl(
+        'https://cloud.fastgpt.cn/api/system/file/d/v2-nMIyXfAbYAhigFEW-ht9w3-4k9LmN2pQrStUvWxYz12Ab.png'
+      )
+    ).toBe('png');
+    expect(
+      parseFileExtensionFromUrl(
+        'https://cloud.fastgpt.cn/api/system/file/d/v2-nMIyXfAbYAhigFEW-ht9w3-4k9LmN2pQrStUvWxYz12Ab'
+      )
+    ).toBe('');
+  });
+
   it('should not handle hash in URL (returns extension with hash)', () => {
     expect(parseFileExtensionFromUrl('http://example.com/file.pdf#page=1')).toBe('pdf');
     expect(parseFileExtensionFromUrl('https://example.com/image.jpg#section')).toBe('jpg');

@@ -1,6 +1,8 @@
 import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
+import { createWorkflowRuntimeSummary } from '../utils/summary';
 
-import { runWorkflow, type RunWorkflowProps } from '../index';
+import { runWorkflow } from '../index';
+import type { RunWorkflowProps } from '../type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
@@ -21,14 +23,13 @@ import {
   removeUnfinishedInteractiveHistories,
   safePoints
 } from '../utils';
-import { getWorkflowFileVariableInputs, WorkflowVariableState } from '../utils/variables';
+import { getWorkflowFileVariableInputs, WorkflowVariableState } from '../context/variables';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { prepareWorkflowFiles, runWithDerivedWorkflowFileContext } from '../../utils/context';
+import { getWorkflowContext, runWithDerivedWorkflowFileContext, runWithContext } from '../context';
 import { loadChildWorkflowWithResource } from '../../resource/service';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { getWorkflowRuntimeSummary } from '../utils/summary';
-import { WorkflowMemoryState } from '../../memory/state';
 import { MODERATION_BLOCKED_REPLACE_TEXT } from '@fastgpt/global/core/plugin/moderation/constants';
 
 /**
@@ -50,10 +51,9 @@ export const runChildAppWorkflow = async ({
   ...workflowProps
 }: Omit<
   RunWorkflowProps,
-  'runtimeNodes' | 'runtimeEdges' | 'chatConfig' | 'memoryState' | 'histories' | 'stream'
+  'runtimeNodes' | 'runtimeEdges' | 'chatConfig' | 'histories' | 'stream'
 > & {
   stream?: boolean;
-  memoryState?: WorkflowMemoryState;
   histories?: ChatItemMiniType[];
   node?: { nodeId?: string };
   usagePush?: ModuleDispatchProps<any>['usagePush'];
@@ -78,7 +78,7 @@ export const runChildAppWorkflow = async ({
   const isChatAgent = appData.type === AppTypeEnum.chatAgent;
 
   if (!forbidStream && workflowProps.stream) {
-    workflowProps.workflowStreamResponse?.(workflowSseEvent.answerDelta('\n'));
+    getWorkflowContext().workflowStreamResponse?.(workflowSseEvent.answerDelta('\n'));
   }
 
   const resolvedVariables = isTool
@@ -90,7 +90,9 @@ export const runChildAppWorkflow = async ({
   const { fileUrlList, ...childrenAppVariables } = resolvedVariables;
   const resolvedInputFiles =
     isTool && Array.isArray(fileUrlList)
-      ? await prepareWorkflowFiles({ files: fileUrlList.map((url: string) => ({ url })) })
+      ? await getWorkflowContext().fileContext.prepareFiles({
+          files: fileUrlList.map((url: string) => ({ url }))
+        })
       : userInputFiles;
 
   const interactive = workflowProps.lastInteractive;
@@ -113,7 +115,7 @@ export const runChildAppWorkflow = async ({
     name: appData.name,
     isChildApp: true
   };
-  const parentMemoryState = WorkflowMemoryState.fromWorkflow(workflowProps);
+  const parentMemoryContext = getWorkflowContext().memoryContext;
   // ChatAgent 不支持外部配置聊天记录，运行时直接透传父级历史并由内部 AgentNode 应用默认 50 轮限制。
   const effectiveHistory = isChatAgent ? undefined : history;
   const parentHistories = workflowProps.histories ?? [];
@@ -123,12 +125,28 @@ export const runChildAppWorkflow = async ({
       ? parentHistories
       : getHistories(effectiveHistory, parentHistories);
 
+  // 变量与节点记忆使用同一调用路径；只在真实交互恢复时消费 checkpoint，普通新调用仍使用独立初值。
+  const childMemoryContext = isTool
+    ? parentMemoryContext.fork(`app:${childRunningAppInfo.sourceId}`)
+    : parentMemoryContext.fork(
+        workflowProps.node?.nodeId ? `node:${workflowProps.node.nodeId}` : undefined,
+        {
+          history: effectiveHistory,
+          histories: inputHistories,
+          hasInteractiveResume: !!interactive
+        }
+      );
+  const checkpointVariables = interactive
+    ? childMemoryContext.readVariableCheckpoint({ runningAppInfo: childRunningAppInfo })
+    : undefined;
+
   const workflowResult = await runWithDerivedWorkflowFileContext({
     query: theQuery,
     histories: inputHistories,
     files: getWorkflowFileVariableInputs({
       variablesConfig: chatConfig.variables ?? [],
-      inputVariables: childrenAppVariables
+      inputVariables: childrenAppVariables,
+      checkpointVariables
     }),
     resourceContext,
     fn: async ({ resolveInputFile, query: childQuery, histories: childHistories }) => {
@@ -141,38 +159,48 @@ export const runChildAppWorkflow = async ({
         uid: workflowProps.uid,
         variablesConfig: chatConfig.variables,
         inputVariables: childrenAppVariables,
+        checkpointVariables,
         externalVariables: externalProvider?.externalWorkflowVariables,
-        sourceVariableState: workflowProps.variableState,
+        sourceVariableState: getWorkflowContext().variableContext,
         resolveInputFile
       });
-      // 应用工具按 appId 隔离记忆作用域；画布子应用按节点隔离，并在自定义历史切片时跳过继承父级记忆。
-      const childMemoryState = isTool
-        ? parentMemoryState.fork(`app:${childRunningAppInfo.sourceId}`)
-        : parentMemoryState.fork(
-            workflowProps.node?.nodeId ? `node:${workflowProps.node.nodeId}` : undefined,
-            {
-              history: effectiveHistory,
-              histories: childHistories,
-              hasInteractiveResume: !!interactive
-            }
-          );
-
-      const result = await runWorkflow({
-        ...workflowProps,
-        memoryState: childMemoryState,
-        isToolCall: isTool ? true : workflowProps.isToolCall,
-        stream: forbidStream ? false : Boolean(workflowProps.stream),
+      // 统一入口同时服务画布子应用与 Agent 工具；继承根沙箱，独立变量和本层响应摘要。
+      const parentContext = getWorkflowContext();
+      const childContext = parentContext.getChildContext({
         ...(forbidStream ? { workflowStreamResponse: undefined } : {}),
-        runningAppInfo: childRunningAppInfo,
-        runtimeNodes,
-        runtimeEdges,
-        histories: childHistories,
-        variableState: childrenVariableState,
-        query: childQuery,
-        chatConfig
+        memoryContext: childMemoryContext,
+        runtimeControl: { isToolCall: isTool || parentContext.runtimeControl.isToolCall },
+        variableContext: childrenVariableState,
+        nodeResponseSink: parentContext.nodeResponseSink.getChildContext({
+          workflowRuntimeSummary: createWorkflowRuntimeSummary(),
+          ...(workflowProps.nodeResponseParentId !== undefined
+            ? { defaultParentId: workflowProps.nodeResponseParentId }
+            : {})
+        })
       });
+      const result = await runWithContext(childContext, () =>
+        runWorkflow({
+          ...workflowProps,
+          stream: forbidStream ? false : Boolean(workflowProps.stream),
+          runningAppInfo: childRunningAppInfo,
+          runtimeNodes,
+          runtimeEdges,
+          histories: childHistories,
+          query: childQuery,
+          chatConfig
+        })
+      );
       return {
         ...result,
+        system_memories: {
+          ...result.system_memories,
+          ...childMemoryContext.createVariableCheckpoint({
+            runningAppInfo: childRunningAppInfo,
+            variables: result.workflowInteractiveResponse
+              ? childrenVariableState.toStoreRecord()
+              : undefined
+          })
+        },
         completeMessages: childHistories.concat(
           interactive ? [] : [{ obj: ChatRoleEnum.Human, value: childQuery }],
           { obj: ChatRoleEnum.AI, value: result.assistantResponses }
@@ -181,7 +209,7 @@ export const runChildAppWorkflow = async ({
     }
   });
   if (isTool) {
-    parentMemoryState.merge(workflowResult.system_memories);
+    parentMemoryContext.merge(workflowResult.system_memories);
   }
 
   // ChatAgent 的 AgentNode 将包含工具中间轮次与交互恢复前序轮次的完整过程文本写入 toolResponse，
@@ -252,7 +280,9 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       ? lastInteractive.params.childrenResponse
       : undefined;
   const userInputFiles = fileUrlList
-    ? await prepareWorkflowFiles({ files: fileUrlList.map((url) => ({ url })) })
+    ? await getWorkflowContext().fileContext.prepareFiles({
+        files: fileUrlList.map((url) => ({ url }))
+      })
     : files;
 
   if (!childrenInteractive && !userChatInput && userInputFiles.length === 0) {
@@ -287,8 +317,10 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     });
 
     // 详情由子流程独立发布，父流程需要从摘要显式接收未捕获错误，才能触发自己的错误分支。
-    const isToolModerationBlocked = Boolean(props.isToolCall && runtimeSummary.hasModerationBlock);
-    if (props.isToolCall) {
+    const isToolModerationBlocked = Boolean(
+      getWorkflowContext().runtimeControl.isToolCall && runtimeSummary.hasModerationBlock
+    );
+    if (getWorkflowContext().runtimeControl.isToolCall) {
       props.nodeSummary?.mergeNodeSummary({
         ...(runtimeSummary.hasModerationBlock ? { hasModerationBlock: true } : {}),
         ...(runtimeSummary.hasToolResultModerated ? { hasToolResultModerated: true } : {})

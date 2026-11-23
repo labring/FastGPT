@@ -4,6 +4,8 @@ import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
 import {
   GetAppChatLogsBodySchema,
   GetAppChatLogsResponseSchema,
+  SearchAppChatLogsBodySchema,
+  SearchAppChatLogsResponseSchema,
   ExportChatLogsBodySchema,
   ExportChatLogsResponseSchema,
   GetChartDataBodySchema,
@@ -65,6 +67,7 @@ export const AppLogPath: OpenAPIPath = {
   },
   '/core/app/logs/list': {
     post: {
+      deprecated: true,
       summary: '获取应用日志列表',
       description: '分页获取应用的对话日志列表，支持按时间范围、来源、用户等条件筛选',
       tags: [DevApiTagsMap.appLog, SystemOpenApiTagMap.appLog],
@@ -81,6 +84,30 @@ export const AppLogPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: GetAppChatLogsResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/app/logs/search': {
+    post: {
+      summary: '搜索应用日志列表',
+      description: '按游标搜索应用的对话日志列表，每页固定 50 条且不查询总数',
+      tags: [DevApiTagsMap.appLog, SystemOpenApiTagMap.appLog],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: SearchAppChatLogsBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功搜索应用日志列表',
+          content: {
+            'application/json': {
+              schema: SearchAppChatLogsResponseSchema
             }
           }
         }

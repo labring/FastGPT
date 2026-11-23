@@ -8,6 +8,7 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type ClientSession } from 'mongoose';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildAppAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
@@ -94,7 +95,15 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
     });
   };
 
-  logAppUpdate({ tmbId, teamId, app, name, intro: intro ?? undefined });
+  logAppUpdate({
+    tmbId,
+    teamId,
+    app,
+    name,
+    avatar: avatar ?? undefined,
+    type,
+    intro: intro ?? undefined
+  });
 
   await onUpdate();
 }
@@ -106,26 +115,35 @@ const logAppUpdate = ({
   teamId,
   app,
   name,
+  avatar,
+  type,
   intro
 }: {
   tmbId: string;
   teamId: string;
   app: any;
   name?: string;
+  avatar?: string;
+  type?: AppTypeEnum;
   intro?: string;
 }) => {
   const getUpdateItems = () => {
     const names: string[] = [];
     const values: string[] = [];
 
-    if (name !== undefined) {
+    if (name && name !== app.name) {
       names.push(i18nT('common:name'));
       values.push(name);
     }
 
-    if (intro !== undefined) {
+    if (intro !== undefined && intro !== (app.intro ?? '')) {
       names.push(i18nT('common:Intro'));
       values.push(intro);
+    }
+
+    if (avatar && avatar !== (app.avatar ?? '')) {
+      names.push(i18nT('account_team:dataset_config_item_avatar'));
+      values.push('');
     }
 
     return {
@@ -140,6 +158,14 @@ const logAppUpdate = ({
     tmbId,
     teamId,
     event: AuditEventEnum.UPDATE_APP_INFO,
+    resources: [
+      buildAppAuditResource({
+        _id: app._id,
+        name: name ?? app.name,
+        avatar: avatar ?? app.avatar,
+        type: type ?? app.type
+      })
+    ],
     params: {
       appName: app.name,
       newItemNames: newItemNames,

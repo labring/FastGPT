@@ -80,18 +80,24 @@ export type CreateS3DownloadAliasRecord = Omit<
   updateTime?: Date;
 };
 
+export type S3DownloadAliasSignVersion = 'v1' | 'v2';
+
 export type CreateS3DownloadAccessUrlParams = {
   bucketName: string;
   objectKey: string;
   expiredTime: Date;
   filename?: string;
   responseContentType?: string;
+  /** filename 与 objectKey 均无法提取安全扩展名时的兜底扩展名（如由明确 MIME 推导）。 */
+  fallbackExtension?: string;
 };
 
 export type ParsedS3SignedDownloadAlias = {
+  version: S3DownloadAliasSignVersion;
   aliasId: string;
   expMinute36: string;
   sig: string;
+  extension?: string;
 };
 
 export type S3ProxyDownloadPayload = {
@@ -184,10 +190,18 @@ export type CreateS3AccessLinkServiceOptions = {
   clock?: S3AccessLinkClock;
   idGenerator?: Partial<S3AccessLinkIdGenerator>;
   uploadSessionUsePolicy?: UploadSessionUsePolicy;
+  /** 签发下载短链使用的协议版本（默认 v2）；校验端始终同时兼容 v1 与 v2。 */
+  downloadSignVersion?: S3DownloadAliasSignVersion;
   onDownloadUrlTiming?: (timing: S3DownloadUrlTiming) => void;
 };
 
 export type S3AccessLinkService = {
+  /** 按与签发完全一致的安全后缀规则，从文件名、对象键或兜底后缀推导短链扩展名。 */
+  resolveDownloadExtension: (params: {
+    filename?: string;
+    objectKey: string;
+    fallbackExtension?: string;
+  }) => string;
   createDownloadUrl: (params: CreateS3DownloadAccessUrlParams) => Promise<string>;
   createDownloadUrls: (params: CreateS3DownloadAccessUrlParams[]) => Promise<string[]>;
   verifyDownloadAlias: (signedAlias: string) => Promise<S3VerifiedDownloadPayload>;
@@ -217,9 +231,10 @@ export type S3AccessLinkService = {
 
 export type ResolvedS3AccessLinkServiceOptions = Omit<
   CreateS3AccessLinkServiceOptions,
-  'clock' | 'idGenerator' | 'uploadSessionUsePolicy'
+  'clock' | 'idGenerator' | 'uploadSessionUsePolicy' | 'downloadSignVersion'
 > & {
   clock: S3AccessLinkClock;
   idGenerator: S3AccessLinkIdGenerator;
   uploadSessionUsePolicy: UploadSessionUsePolicy;
+  downloadSignVersion: S3DownloadAliasSignVersion;
 };

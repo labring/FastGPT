@@ -26,6 +26,13 @@ const securityHeaders = [
   }
 ];
 
+const noIndexHeaders = [
+  {
+    key: 'X-Robots-Tag',
+    value: 'noindex, nofollow'
+  }
+];
+
 const optimizedPackageImports = [
   '@chakra-ui/react',
   '@chakra-ui/icons',
@@ -37,6 +44,9 @@ const optimizedPackageImports = [
 const nextConfig: NextConfig = {
   agentRules: false,
   basePath: webEnv.NEXT_PUBLIC_BASE_URL || undefined,
+  typescript: {
+    ignoreBuildErrors: process.env.SKIP_TYPE_CHECK === 'true'
+  },
   i18n: {
     defaultLocale: 'en',
     locales: ['en', 'zh-CN', 'zh-Hant', 'ko-KR'],
@@ -53,6 +63,14 @@ const nextConfig: NextConfig = {
       {
         source: '/((?!chat/share$).*)',
         headers: securityHeaders
+      },
+      {
+        source: '/apidoc/:path*',
+        headers: noIndexHeaders
+      },
+      {
+        source: '/api/apidoc/:path*',
+        headers: noIndexHeaders
       }
     ];
   },

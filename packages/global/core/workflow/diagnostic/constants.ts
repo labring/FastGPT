@@ -17,6 +17,7 @@ export enum WorkflowDiagnosticCodeEnum {
   changesetChunksEmpty = 'WORKFLOW_CHANGESET_CHUNKS_EMPTY',
   changesetChunkDependencyCycle = 'WORKFLOW_CHANGESET_CHUNK_DEPENDENCY_CYCLE',
   changesetChunkDependencyMissing = 'WORKFLOW_CHANGESET_CHUNK_DEPENDENCY_MISSING',
+  changesetChunkIdDuplicate = 'WORKFLOW_CHANGESET_CHUNK_ID_DUPLICATE',
   changesetCommandConflict = 'WORKFLOW_CHANGESET_COMMAND_CONFLICT',
   chatConfigPathNotAllowed = 'WORKFLOW_CHAT_CONFIG_PATH_NOT_ALLOWED',
   codeInputIncomplete = 'WORKFLOW_CODE_INPUT_INCOMPLETE',

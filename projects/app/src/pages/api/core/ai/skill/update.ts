@@ -14,7 +14,9 @@ import {
 } from '@fastgpt/global/openapi/core/ai/skill/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
+import { buildSkillAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { isValidObjectId } from 'mongoose';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
@@ -99,11 +101,48 @@ async function handler(req: ApiRequestProps<UpdateSkillBody>) {
   updateParentFoldersUpdateTime({ parentId: skill.parentId ?? null });
 
   (async () => {
+    const newItemNames: string[] = [];
+    const newItemValues: string[] = [];
+    if (updateData.name !== undefined && updateData.name !== skill.name) {
+      newItemNames.push(i18nT('common:name'));
+      newItemValues.push(updateData.name);
+    }
+    if (
+      updateData.description !== undefined &&
+      updateData.description !== (skill.description ?? '')
+    ) {
+      newItemNames.push(i18nT('common:Intro'));
+      newItemValues.push(updateData.description);
+    }
+    if (
+      updateData.category !== undefined &&
+      JSON.stringify(updateData.category) !== JSON.stringify(skill.category ?? [])
+    ) {
+      newItemNames.push(i18nT('common:classification'));
+      newItemValues.push(updateData.category.join(' / '));
+    }
+    if (updateData.avatar !== undefined && updateData.avatar !== (skill.avatar ?? '')) {
+      newItemNames.push(i18nT('account_team:dataset_config_item_avatar'));
+      newItemValues.push('');
+    }
+
     addAuditLog({
       tmbId,
       teamId,
       event: AuditEventEnum.UPDATE_SKILL,
-      params: { skillName: skill.name, skillType: getI18nSkillType(skill.type) }
+      resources: [
+        buildSkillAuditResource({
+          _id: skill._id,
+          name: updateData.name ?? skill.name,
+          avatar: updateData.avatar ?? skill.avatar,
+          type: skill.type
+        })
+      ],
+      params: {
+        skillName: skill.name,
+        skillType: getI18nSkillType(skill.type),
+        ...(newItemNames.length > 0 ? { newItemNames, newItemValues } : {})
+      }
     });
   })();
 }

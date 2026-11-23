@@ -13,6 +13,7 @@ import { ChatFileTypeEnum, ChatRoleEnum } from '../../core/chat/constants';
 import { normalizeChatFileType } from './file/utils';
 import type {
   ChatCompletionContentPart,
+  ChatCompletionContentPartText,
   ChatCompletionFunctionMessageParam,
   ChatCompletionMessageFunctionCall,
   ChatCompletionMessageParam,
@@ -28,7 +29,10 @@ import {
   getWorkflowBuilderPreviewToolResponse
 } from '../workflow/builder/utils';
 import { WORKFLOW_BUILDER_PREVIEW_TOOL_NAME } from '../workflow/builder/constants';
-import { ChatCompletionUserMessageParamSchema } from '../ai/llm/type';
+import {
+  ChatCompletionToolMessageContentPartSchema,
+  ChatCompletionUserMessageParamSchema
+} from '../ai/llm/type';
 import { AgentAskInteractiveSchema } from '../ai/agent/type';
 import { ToolCallChildrenInteractiveSchema } from '../workflow/template/system/interactive/type';
 import { extractDeepestInteractive } from '../workflow/runtime/utils';
@@ -193,6 +197,105 @@ export const mergeAssistantFieldMessages = (
   return mergedMessages;
 };
 
+/**
+ * 按当前节点的工具名称过滤继承历史，保留同一调用组内的调用与结果。
+ * 相邻 assistant 可能是同一组的拆分片段，结果段结束后重新配对。
+ */
+export const filterToolMessages = (
+  messages: ChatCompletionMessageParam[],
+  toolFilter: (toolName: string) => boolean
+): ChatCompletionMessageParam[] => {
+  type AssistantMessage = Extract<ChatCompletionMessageParam, { role: 'assistant' }>;
+
+  const hasAssistantContent = (content: AssistantMessage['content']) =>
+    typeof content === 'string'
+      ? content.trim().length > 0
+      : (content?.some(
+          (part) => (part.type === 'text' ? part.text : part.refusal).trim().length > 0
+        ) ?? false);
+  const hasAssistantPayload = (message: AssistantMessage) =>
+    hasAssistantContent(message.content) ||
+    Boolean(message.tool_calls?.length) ||
+    Boolean(message.function_call) ||
+    Boolean(message.interactive) ||
+    Boolean(message.audio) ||
+    Boolean(message.refusal);
+
+  const keepByCallId = new Map<string, boolean>();
+  let pendingFunctionName: string | undefined;
+  const resetCallGroup = () => {
+    keepByCallId.clear();
+    pendingFunctionName = undefined;
+  };
+
+  // 同组复用 ID 时结果无法唯一归属，整组中的该 ID 调用与结果一起剔除。
+  const startCallGroup = (index: number) => {
+    resetCallGroup();
+    for (let cursor = index; cursor < messages.length; cursor++) {
+      const message = messages[cursor];
+      if (message.role !== ChatCompletionRequestMessageRoleEnum.Assistant) break;
+      for (const call of message.tool_calls ?? []) {
+        keepByCallId.set(call.id, !keepByCallId.has(call.id) && toolFilter(call.function.name));
+      }
+    }
+  };
+
+  const filtered: ChatCompletionMessageParam[] = [];
+
+  for (const [index, message] of messages.entries()) {
+    if (message.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
+      if (messages[index - 1]?.role !== ChatCompletionRequestMessageRoleEnum.Assistant) {
+        startCallGroup(index);
+      }
+
+      let nextMessage = message;
+      if (message.tool_calls?.length) {
+        const keptToolCalls = message.tool_calls.filter(({ id }) => keepByCallId.get(id));
+
+        if (keptToolCalls.length !== message.tool_calls.length) {
+          const { tool_calls: _droppedToolCalls, ...rest } = message;
+          nextMessage = keptToolCalls.length ? { ...rest, tool_calls: keptToolCalls } : rest;
+        }
+      }
+
+      if (message.function_call) {
+        if (toolFilter(message.function_call.name)) {
+          pendingFunctionName = message.function_call.name;
+        } else {
+          const { function_call: _droppedFunctionCall, ...rest } = nextMessage;
+          nextMessage = rest;
+        }
+      }
+
+      if (nextMessage === message || hasAssistantPayload(nextMessage)) {
+        filtered.push(nextMessage);
+      }
+      continue;
+    }
+
+    if (message.role === ChatCompletionRequestMessageRoleEnum.Tool) {
+      if (keepByCallId.get(message.tool_call_id)) {
+        keepByCallId.delete(message.tool_call_id);
+        filtered.push(message);
+      }
+      continue;
+    }
+
+    if (message.role === ChatCompletionRequestMessageRoleEnum.Function) {
+      if (pendingFunctionName === message.name) {
+        filtered.push(message);
+        pendingFunctionName = undefined;
+      }
+      continue;
+    }
+
+    resetCallGroup();
+    filtered.push(message);
+  }
+
+  return filtered;
+};
+
 const isPureTextAiValue = (item: AIChatItemValueItemType) =>
   !!item.text &&
   !item.modelResponseId &&
@@ -297,15 +400,19 @@ export const chats2GPTMessages = ({
         if (parsed.success) inputContexts.set(index - 1, parsed.data);
       }
     });
-  const resumedToolResponses = new Map<string, string>();
+  const resumedToolResponses = new Map<
+    string,
+    {
+      response: string;
+      content?: ToolModuleResponseItemType['content'];
+    }
+  >();
   if (restoreAgentContext)
     sourceMessages.forEach((item) => {
       if (item.obj === ChatRoleEnum.AI)
         item.value.forEach((value) => {
           if (!value.displayOnly)
-            value.toolResponses?.forEach((result) =>
-              resumedToolResponses.set(result.id, result.response)
-            );
+            value.toolResponses?.forEach((result) => resumedToolResponses.set(result.id, result));
         });
     });
 
@@ -391,7 +498,8 @@ export const chats2GPTMessages = ({
     ) {
       return;
     }
-    const response = resumedToolResponses.get(tool.id) ?? tool.response;
+    const resumed = resumedToolResponses.get(tool.id);
+    const response = resumed?.response ?? tool.response;
     if (typeof response !== 'string') return;
 
     const id = tool.id.trim();
@@ -409,7 +517,9 @@ export const chats2GPTMessages = ({
       toolResponse: {
         tool_call_id: id,
         role: ChatCompletionRequestMessageRoleEnum.Tool,
-        content: normalizeToolResponseContent(response)
+        content: resumed
+          ? (resumed.content ?? normalizeToolResponseContent(response))
+          : (tool.content ?? normalizeToolResponseContent(response))
       }
     };
   };
@@ -827,6 +937,26 @@ export const chats2GPTMessages = ({
 };
 
 /**
+ * 提取工具响应的纯文本部分。
+ *
+ * tool content 允许是字符串或 parts 数组。折回 ChatItem 时只保留 text parts:
+ * 工具卡片展示与历史持久化都基于文本,image_url 等富媒体内容不进入这条链路,
+ * 避免把数组整体 JSON 化后污染展示与后续轮次读取。
+ */
+const getToolResponseText = (content: ChatCompletionMessageParam['content']): string => {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+  return content
+    .filter(
+      (part): part is ChatCompletionContentPartText =>
+        typeof part === 'object' && part !== null && part.type === 'text'
+    )
+    .map((part) => part.text)
+    .filter(Boolean)
+    .join('\n');
+};
+
+/**
  * 将 GPT messages 转回 FastGPT ChatItem。
  *
  * GPTMessages2Chats 会先清洗连续 assistant message，再做 message -> chat value 的结构转换。
@@ -957,14 +1087,15 @@ export const GPTMessages2Chats = ({
           const toolCalls = item.tool_calls as ChatCompletionMessageToolCall[];
 
           const tools = toolCalls.flatMap<ToolModuleResponseItemType>((tool) => {
-            let toolResponse =
-              normalizedMessages.find(
-                (msg) =>
-                  msg.role === ChatCompletionRequestMessageRoleEnum.Tool &&
-                  msg.tool_call_id === tool.id
-              )?.content || '';
-            toolResponse =
-              typeof toolResponse === 'string' ? toolResponse : JSON.stringify(toolResponse);
+            const toolMessage = normalizedMessages.find(
+              (msg) =>
+                msg.role === ChatCompletionRequestMessageRoleEnum.Tool &&
+                msg.tool_call_id === tool.id
+            );
+            const toolContent = toolMessage?.content;
+            const toolResponse = getToolResponseText(toolContent);
+            const parsedContent =
+              ChatCompletionToolMessageContentPartSchema.array().safeParse(toolContent);
 
             const toolInfo = getToolInfo?.(tool.function.name);
 
@@ -975,7 +1106,8 @@ export const GPTMessages2Chats = ({
                 toolAvatar: toolInfo?.avatar || '',
                 functionName: tool.function.name,
                 params: tool.function.arguments,
-                response: toolResponse as string
+                response: toolResponse as string,
+                ...(parsedContent.success ? { content: parsedContent.data } : {})
               }
             ];
           });

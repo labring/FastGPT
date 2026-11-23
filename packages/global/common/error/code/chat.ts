@@ -1,4 +1,4 @@
-import { type ErrType } from '../errorCode';
+import { type ErrorHttpStatus, type ErrType } from '../errorCode';
 import { i18nT } from '../../i18n/utils';
 import { MODERATION_BLOCKED_ERROR_MESSAGE } from '../../../core/plugin/moderation/constants';
 /* dataset: 504000 */
@@ -10,15 +10,17 @@ export enum ChatErrEnum {
 const errList: Array<{
   statusText: ChatErrEnum;
   message: string;
-  httpStatus?: number;
+  httpStatus: ErrorHttpStatus;
 }> = [
   {
     statusText: ChatErrEnum.unAuthChat,
-    message: i18nT('common:code_error.chat_error.un_auth')
+    message: i18nT('common:code_error.chat_error.un_auth'),
+    httpStatus: 403
   },
   {
     statusText: ChatErrEnum.chatIsGenerating,
-    message: i18nT('common:code_error.chat_error.chat_generating')
+    message: i18nT('common:code_error.chat_error.chat_generating'),
+    httpStatus: 409
   },
   {
     statusText: ChatErrEnum.chatEntryModerationBlocked,
@@ -34,7 +36,7 @@ export default errList.reduce((acc, cur, index) => {
       statusText: cur.statusText,
       message: cur.message,
       data: null,
-      ...(cur.httpStatus !== undefined ? { httpStatus: cur.httpStatus } : {})
+      httpStatus: cur.httpStatus
     }
   };
 }, {} as ErrType<`${ChatErrEnum}`>);

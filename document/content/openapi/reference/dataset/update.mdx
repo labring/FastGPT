@@ -1,0 +1,114 @@
+---
+title: '更新知识库'
+seoTitle: '更新知识库 - PUT /api/core/dataset/update | FastGPT OpenAPI'
+description: '更新知识库名称、简介、图标、Agent/VLM 模型配置、网站自动同步参数或文档解析开关，也可用于移动目录位置。'
+---
+
+## 端点概览
+
+- **HTTP 方法**：`PUT`
+- **请求路径**：`/api/core/dataset/update`
+- **所属模块**：知识库 / 知识库管理
+- **鉴权方式**：`Authorization: Bearer <apiKey>`—个人密钥（按归属团队成员资源权限校验）（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E7%AE%A1%E7%90%86/PUT/core/dataset/update)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E7%9F%A5%E8%AF%86%E5%BA%93%E7%AE%A1%E7%90%86/PUT/core/dataset/update`）
+
+## 接口说明与注意事项
+
+更新知识库信息、配置或移动知识库到其他目录
+
+## 请求参数
+
+### Request Body 请求体（`application/json`）
+
+| 字段                                            | 类型             | 必填 | 默认值 | 约束与说明                                                                                                  |
+| ----------------------------------------------- | ---------------- | ---- | ------ | ----------------------------------------------------------------------------------------------------------- |
+| `id`                                            | `string`         | 是   | -      | 知识库 ID。正则：`^[0-9a-fA-F]{24}$`                                                                        |
+| `parentId`                                      | `string \| null` | 否   | -      | 父级文件夹 ID,传 null 表示移动到根目录                                                                      |
+| `name`                                          | `string`         | 否   | -      | 知识库名称                                                                                                  |
+| `avatar`                                        | `string`         | 否   | -      | 知识库头像                                                                                                  |
+| `intro`                                         | `string`         | 否   | -      | 知识库简介                                                                                                  |
+| `agentModelId`                                  | `string`         | 否   | -      | 知识库 Agent 模型 ID；未传不修改，不允许清空。最小长度：1                                                   |
+| `agentModel`                                    | `string`         | 否   | -      | **已弃用**。旧版知识库 Agent 模型标识，仅未传 agentModelId 时使用。最小长度：1                              |
+| `vlmModelId`                                    | `string \| null` | 否   | -      | 视觉语言模型 ID；未传不修改，null 或空字符串表示清空                                                        |
+| `vlmModel`                                      | `string \| null` | 否   | -      | **已弃用**。旧版视觉语言模型标识，仅未传 vlmModelId 时使用；null 或空字符串表示清空                         |
+| `websiteConfig`                                 | `object`         | 否   | -      | 网站知识库配置                                                                                              |
+| `websiteConfig.url`                             | `string`         | 是   | -      | 网站 URL                                                                                                    |
+| `websiteConfig.selector`                        | `string`         | 是   | -      | 网站选择器                                                                                                  |
+| `externalReadUrl`                               | `string`         | 否   | -      | 外部读取 URL                                                                                                |
+| `apiDatasetServer`                              | `object`         | 否   | -      | 第三方知识库服务器配置(API/飞书/语雀/钉钉)                                                                  |
+| `apiDatasetServer.apiServer`                    | `object`         | 否   | -      | API 服务器配置                                                                                              |
+| `apiDatasetServer.apiServer.baseUrl`            | `string`         | 是   | -      | -                                                                                                           |
+| `apiDatasetServer.apiServer.authorization`      | `string`         | 否   | -      | -                                                                                                           |
+| `apiDatasetServer.apiServer.basePath`           | `string`         | 否   | -      | -                                                                                                           |
+| `apiDatasetServer.feishuServer`                 | `object`         | 否   | -      | 飞书服务器配置                                                                                              |
+| `apiDatasetServer.feishuServer.appId`           | `string`         | 是   | -      | -                                                                                                           |
+| `apiDatasetServer.feishuServer.appSecret`       | `string`         | 否   | -      | -                                                                                                           |
+| `apiDatasetServer.feishuServer.folderToken`     | `string`         | 是   | -      | -                                                                                                           |
+| `apiDatasetServer.yuqueServer`                  | `object`         | 否   | -      | 语雀服务器配置                                                                                              |
+| `apiDatasetServer.yuqueServer.userId`           | `string`         | 是   | -      | -                                                                                                           |
+| `apiDatasetServer.yuqueServer.token`            | `string`         | 否   | -      | -                                                                                                           |
+| `apiDatasetServer.yuqueServer.basePath`         | `string`         | 否   | -      | -                                                                                                           |
+| `apiDatasetServer.dingtalkServer`               | `object`         | 否   | -      | 钉钉知识库配置                                                                                              |
+| `apiDatasetServer.dingtalkServer.appKey`        | `string`         | 是   | -      | -                                                                                                           |
+| `apiDatasetServer.dingtalkServer.appSecret`     | `string`         | 否   | -      | -                                                                                                           |
+| `apiDatasetServer.dingtalkServer.userId`        | `string`         | 是   | -      | -                                                                                                           |
+| `apiDatasetServer.dingtalkServer.operatorId`    | `string`         | 否   | -      | -                                                                                                           |
+| `apiDatasetServer.dingtalkServer.workspaceId`   | `string`         | 否   | -      | -                                                                                                           |
+| `apiDatasetServer.dingtalkServer.rootNodeId`    | `string`         | 否   | -      | -                                                                                                           |
+| `apiDatasetServer.dingtalkServer.workspaceName` | `string`         | 否   | -      | -                                                                                                           |
+| `autoSync`                                      | `boolean`        | 否   | -      | 是否自动同步                                                                                                |
+| `chunkSettings`                                 | `object`         | 否   | -      | 分块配置                                                                                                    |
+| `chunkSettings.trainingType`                    | `string` (enum)  | 否   | -      | 训练类型。可选值：`chunk` , `qa` , `imageParse` , `backup` , `template` , `auto`                            |
+| `chunkSettings.chunkTriggerType`                | `string` (enum)  | 否   | -      | 分块触发时机。可选值：`minSize` , `forceChunk` , `maxSize`                                                  |
+| `chunkSettings.chunkTriggerMinSize`             | `number`         | 否   | -      | 分块触发最小大小                                                                                            |
+| `chunkSettings.dataEnhanceCollectionName`       | `boolean`        | 否   | -      | 增加集合名到分块里                                                                                          |
+| `chunkSettings.imageIndex`                      | `boolean`        | 否   | -      | 图片索引                                                                                                    |
+| `chunkSettings.autoIndexes`                     | `boolean`        | 否   | -      | 自动生成索引                                                                                                |
+| `chunkSettings.indexPrefixTitle`                | `boolean`        | 否   | -      | 索引前缀标题                                                                                                |
+| `chunkSettings.chunkSettingMode`                | `string` (enum)  | 否   | -      | 系统参数/自定义参数。可选值：`auto` , `custom` , `intelligent`                                              |
+| `chunkSettings.chunkSplitMode`                  | `string` (enum)  | 否   | -      | 分块拆分模式。可选值：`paragraph` , `size` , `char`                                                         |
+| `chunkSettings.paragraphChunkAIMode`            | `string` (enum)  | 否   | -      | 段落分块 AI 模式。可选值：`auto` , `force` , `forbid`                                                       |
+| `chunkSettings.paragraphChunkDeep`              | `number`         | 否   | -      | 段落分块深度                                                                                                |
+| `chunkSettings.paragraphChunkMinSize`           | `number`         | 否   | -      | 段落分块最小大小                                                                                            |
+| `chunkSettings.chunkSize`                       | `number`         | 否   | -      | 分块大小                                                                                                    |
+| `chunkSettings.chunkSplitter`                   | `string`         | 否   | -      | 自定义最高优先分割符号                                                                                      |
+| `chunkSettings.indexSize`                       | `number`         | 否   | -      | 索引大小                                                                                                    |
+| `chunkSettings.qaPrompt`                        | `string`         | 否   | -      | QA 拆分提示词                                                                                               |
+| `sangforFileParseConfig`                        | `object`         | 否   | -      | 外部文档解析开关(页眉页脚/附录/图片识别/图转表),仅对 customPdfParse 解析路径生效;编辑后仅对新解析的文件生效 |
+| `sangforFileParseConfig.keep_header_footer`     | `boolean`        | 否   | -      | 是否保留页眉页脚，默认关闭（删除页眉页脚）                                                                  |
+| `sangforFileParseConfig.keep_appendix`          | `boolean`        | 否   | -      | 是否保留附录，默认开启                                                                                      |
+| `sangforFileParseConfig.image_analysis`         | `boolean`        | 否   | -      | 是否保留图片识别（含印章）结果，默认关闭                                                                    |
+| `sangforFileParseConfig.chart_analysis`         | `boolean`        | 否   | -      | 是否保留图表转表格结果（同时保留原图片），默认关闭                                                          |
+
+## 请求示例
+
+调用前请将 `YOUR_API_KEY` 与示例 ID 替换为真实值；私有化部署实例请将基础域名替换为 `<instance>/api`。
+
+### cURL 请求示例
+
+```bash
+curl --fail-with-body -X PUT "https://cloud.fastgpt.cn/api/core/dataset/update" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw '{
+  "id": "68ad85a7463006c963799a05"
+}'
+```
+
+### 最小合法 JSON 请求体示例
+
+```json
+{
+  "id": "68ad85a7463006c963799a05"
+}
+```
+
+## 响应结构与示例
+
+除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（若契约未声明具体载荷结构，请以上方状态描述及实际响应为准）。
+
+### HTTP 200
+
+成功更新知识库
+
+返回 FastGPT 标准成功响应结构（`{ "code": 200, "statusText": "", "message": "", "data": ... }`）。当前 OpenAPI 契约暂未声明 `data` 的具体字段结构，请结合上方状态描述或实际返回结果处理。

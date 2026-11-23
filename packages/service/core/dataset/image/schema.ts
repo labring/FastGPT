@@ -24,7 +24,7 @@ defineIndex(MongoDatasetImage, {
 });
 defineIndex(MongoDatasetImage, { key: { 'metadata.expiredTime': -1 } });
 
-export const MongoDatasetImageSchema = getMongoModel<{
+export type DatasetImageSchemaType = {
   _id: Types.ObjectId;
   length: number;
   chunkSize: number;
@@ -37,4 +37,9 @@ export const MongoDatasetImageSchema = getMongoModel<{
     collectionId: string;
     expiredTime: Date;
   };
-}>(`${bucketName}.files`, MongoDatasetImage);
+};
+
+export const MongoDatasetImageSchema = getMongoModel<DatasetImageSchemaType>(
+  `${bucketName}.files`,
+  MongoDatasetImage
+);

@@ -27,6 +27,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
 
     return await handleS3ProxyUpload({
       req,
+      res,
       payload: {
         objectKey,
         bucketName,

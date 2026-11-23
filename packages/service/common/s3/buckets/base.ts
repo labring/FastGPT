@@ -59,6 +59,7 @@ import {
   retryS3MultipartUploadCompleting,
   verifyS3MultipartUploadSessionToken
 } from '../accessLink';
+import { resolveS3DownloadMimeFallbackExtension } from '../accessLink/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MULTIPART_OBJECT_MARKER_METADATA_KEY } from '@fastgpt/global/common/file/constants';
 import { randomUUID } from 'node:crypto';
@@ -1011,7 +1012,7 @@ export class S3BaseBucket {
   async createExternalUrl(params: createPreviewUrlParams) {
     const parsed = CreateGetPresignedUrlParamsSchema.parse(params);
 
-    const { key, expiredHours, responseContentType, filename } = parsed;
+    const { key, expiredHours, responseContentType, filename, fallbackExtension } = parsed;
     const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
 
     return {
@@ -1022,7 +1023,8 @@ export class S3BaseBucket {
         bucketName: this.bucketName,
         expiredTime: addMinutes(new Date(), Math.ceil(expires / 60)),
         filename: filename ?? getDownloadFilenameFromKey(key),
-        responseContentType
+        responseContentType,
+        ...(fallbackExtension ? { fallbackExtension } : {})
       })
     };
   }
@@ -1069,12 +1071,15 @@ export class S3BaseBucket {
       }
     });
 
+    const fallbackExtension = resolveS3DownloadMimeFallbackExtension(contentType);
+
     return {
       key,
       accessUrl: await this.createExternalUrl({
         key,
         expiredHours: Math.max(1, differenceInHours(expiredTime, new Date())),
-        filename
+        filename,
+        ...(fallbackExtension ? { fallbackExtension } : {})
       })
     };
   }

@@ -15,6 +15,7 @@ import {
   AgentSkillTypeEnum
 } from '@fastgpt/global/core/ai/skill/constants';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
+import { buildSkillAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import type { ApiRequestProps } from '@fastgpt/next/type';
@@ -83,6 +84,14 @@ async function handler(
     tmbId,
     teamId,
     event: AuditEventEnum.IMPORT_SKILL,
+    resources: [
+      buildSkillAuditResource({
+        _id: skillId,
+        name: skillName,
+        avatar: query.avatar,
+        type: AgentSkillTypeEnum.skill
+      })
+    ],
     params: {
       skillName,
       skillType: getI18nSkillType(AgentSkillTypeEnum.skill)

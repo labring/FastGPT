@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { runNodeCase } from '../../support/runtime.mjs';
+import { Blocked, runNodeCase } from '../../support/runtime.mjs';
 import { chatHarness, browserSession } from '../../support/chat.mjs';
 import { poll, success } from '../../support/scenario.mjs';
 
@@ -144,29 +144,27 @@ async function execute(context) {
     await waiting.finished;
     assert.ok(waiting.events.some((event) => event.event === 'resumeCompleted'));
     c.record('未启用镜像的等待补全', waiting.events);
-    const old = await redis.client.config('GET', 'maxmemory');
-    try {
-      const info = await redis.client.info('memory'),
-        used = Number(info.match(/^used_memory:(\d+)/m)[1]);
-      const maximum = Math.ceil(used * 1.5);
-      await redis.client.config('SET', 'maxmemory', maximum);
-      c.record('私有 Redis 实际内存阈值', { used, maxmemory: maximum, threshold: 0.5 });
-      const pressure = await h.start(),
-        state = await redis.observe(pressure);
-      assert.ok(state.lease);
-      assert.equal(state.active, null);
-      assert.ok(state.unavailable);
-      const stream = await h.resume(pressure);
-      await stream.wait((event) => event.event === 'resumeUnavailable');
-      await stream.wait((event) => event.event === 'comment' && event.data === 'ping');
-      await h.finish(pressure);
-      await stream.finished;
-      assert.ok(stream.events.some((event) => event.event === 'resumeCompleted'));
-      assert.ok(stream.events.some((event) => event.data === '[DONE]'));
-      c.record('实际内存保护恢复', { state, events: stream.events });
-    } finally {
-      await redis.client.config('SET', 'maxmemory', old[1]);
+    // 只观察预先配置的专用压力实例；失败或退出也不会在共享 Redis 上遗留配置。
+    const info = await redis.client.info('memory');
+    const used = Number(info.match(/^used_memory:(\d+)/m)?.[1]);
+    const maximum = Number(info.match(/^maxmemory:(\d+)/m)?.[1]);
+    if (!(maximum > 0 && used / maximum >= 0.5)) {
+      throw new Blocked('专用 Redis 尚未满足内存保护阈值；不会调整实例配置');
     }
+    c.record('私有 Redis 实际内存阈值', { used, maxmemory: maximum, threshold: 0.5 });
+    const pressure = await h.start(),
+      state = await redis.observe(pressure);
+    assert.ok(state.lease);
+    assert.equal(state.active, null);
+    assert.ok(state.unavailable);
+    const stream = await h.resume(pressure);
+    await stream.wait((event) => event.event === 'resumeUnavailable');
+    await stream.wait((event) => event.event === 'comment' && event.data === 'ping');
+    await h.finish(pressure);
+    await stream.finished;
+    assert.ok(stream.events.some((event) => event.event === 'resumeCompleted'));
+    assert.ok(stream.events.some((event) => event.data === '[DONE]'));
+    c.record('实际内存保护恢复', { state, events: stream.events });
     return '真实无镜像与实际私有 Redis 内存阈值两种等待均保持 lease，保护时有 unavailable/ping，完成后补持久化 records';
   }
   if (context.itemId === 'C6') {

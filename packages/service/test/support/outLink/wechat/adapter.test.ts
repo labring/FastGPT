@@ -64,7 +64,14 @@ describe('createWechatOutlinkAdapter', () => {
             type: 4,
             file_item: {
               file_name: filename,
-              media: { aes_key: key.toString('base64'), full_url: 'https://example.com/file' }
+              media: {
+                aes_key: key.toString('base64'),
+                full_url: 'https://novac2c.cdn.weixin.qq.com/c2c/file'
+              }
+            },
+            // 混合字段时仍只读取 FILE 对应的媒体，避免被 image_item 误覆盖。
+            image_item: {
+              media: { full_url: 'https://novac2c.cdn.weixin.qq.com/c2c/unused-image' }
             }
           }
         ]
@@ -105,7 +112,10 @@ describe('createWechatOutlinkAdapter', () => {
             type: 5,
             video_item: {
               file_name: 'video.mp4',
-              media: { aes_key: key.toString('base64'), full_url: 'https://example.com/video' }
+              media: {
+                aes_key: key.toString('base64'),
+                full_url: 'https://novac2c.cdn.weixin.qq.com/c2c/video'
+              }
             }
           }
         ]

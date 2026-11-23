@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useState } from 'react';
 import MultipleRowSelect from './MultipleRowSelect';
 import { useTranslation } from 'next-i18next';
 import { type MultipleSelectProps } from './type';
@@ -19,7 +19,9 @@ export const defaultCronString = '0 0 * * *';
 
 export const defaultValue = [CronJobTypeEnum.day, 0, 0];
 
-export const cronString2Fields = (cronString?: string) => {
+export const cronString2Fields = (
+  cronString?: string
+): (CronJobTypeEnum | number | string)[] | undefined => {
   if (!cronString) {
     return undefined;
   }
@@ -191,7 +193,7 @@ const CronSelector = ({
     [onChange]
   );
 
-  const cronSelectList = useRef<MultipleSelectProps['list']>([
+  const [cronSelectList] = useState<MultipleSelectProps['list']>(() => [
     {
       label: t('app:cron.every_day'),
       value: CronJobTypeEnum.day,
@@ -218,7 +220,7 @@ const CronSelector = ({
     <MultipleRowSelect
       label={formatLabel}
       value={cronField}
-      list={cronSelectList.current}
+      list={cronSelectList}
       onSelect={(e) => {
         cronConfig2cronString(e as CronFieldType);
       }}

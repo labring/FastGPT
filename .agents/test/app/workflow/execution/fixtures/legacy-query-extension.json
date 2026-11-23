@@ -1,0 +1,165 @@
+{
+  "nodes": [
+    {
+      "id": "workflowStart",
+      "templateType": "systemInput",
+      "flowNodeType": "workflowStart",
+      "showSourceHandle": true,
+      "showTargetHandle": false,
+      "avatar": "core/workflow/template/workflowStart",
+      "avatarLinear": "core/workflow/template/workflowStartLinear",
+      "colorSchema": "blue",
+      "name": "Start",
+      "intro": "",
+      "forbidDelete": true,
+      "unique": true,
+      "inputs": [
+        {
+          "key": "userChatInput",
+          "renderTypeList": ["reference", "textarea"],
+          "valueType": "string",
+          "label": "workflow:user_question",
+          "toolDescription": "workflow:user_question",
+          "required": true,
+          "defaultToAgentGenerated": true
+        }
+      ],
+      "outputs": [
+        {
+          "id": "userChatInput",
+          "key": "userChatInput",
+          "label": "common:core.module.input.label.user question",
+          "type": "static",
+          "valueType": "string"
+        }
+      ],
+      "nodeId": "Start",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "cfr",
+      "templateType": "other",
+      "flowNodeType": "cfr",
+      "status": "SoonOffline",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/queryExtension",
+      "avatarLinear": "core/workflow/template/queryExtensionLinear",
+      "colorSchema": "indigo",
+      "name": "OldQuery",
+      "intro": "workflow:intro_question_optimization",
+      "showStatus": true,
+      "version": "481",
+      "inputs": [
+        {
+          "key": "modelId",
+          "renderTypeList": ["selectLLMModel", "reference"],
+          "label": "common:core.module.input.label.aiModel",
+          "required": true,
+          "valueType": "string",
+          "value": "__MODEL_ID__"
+        },
+        {
+          "key": "systemPrompt",
+          "renderTypeList": ["textarea", "reference"],
+          "label": "common:core.app.edit.Query extension background prompt",
+          "max": 300,
+          "valueType": "string",
+          "description": "common:core.app.edit.Query extension background tip",
+          "placeholder": "common:core.module.QueryExtension.placeholder",
+          "value": "确定性验收背景：已经审核的检索候选只有以下JSON数组。必须逐字原样返回这个数组，不得扩充或改变任何字符串，即使其他模板要求十个：[\"如何检查工作流！\",\"如 何 检 查 工 作 流？\",\"如何检查工作流节点\"]"
+        },
+        {
+          "key": "history",
+          "renderTypeList": ["numberInput", "reference"],
+          "valueType": "chatHistory",
+          "label": "common:core.module.input.label.chat history",
+          "description": "workflow:max_dialog_rounds",
+          "required": true,
+          "min": 0,
+          "max": 50,
+          "value": 0
+        },
+        {
+          "key": "userChatInput",
+          "renderTypeList": ["reference", "textarea"],
+          "valueType": "string",
+          "label": "workflow:user_question",
+          "toolDescription": "user question",
+          "required": true,
+          "defaultToAgentGenerated": true,
+          "value": ["Start", "userChatInput"]
+        }
+      ],
+      "outputs": [
+        {
+          "id": "system_text",
+          "key": "system_text",
+          "label": "common:core.module.output.label.query extension result",
+          "description": "common:core.module.output.description.query extension result",
+          "valueType": "string",
+          "type": "static"
+        }
+      ],
+      "nodeId": "OldQuery",
+      "position": {
+        "x": 300,
+        "y": 0
+      }
+    },
+    {
+      "id": "answerNode",
+      "templateType": "tools",
+      "flowNodeType": "answerNode",
+      "showSourceHandle": true,
+      "showTargetHandle": true,
+      "avatar": "core/workflow/template/reply",
+      "avatarLinear": "core/workflow/template/replyLinear",
+      "colorSchema": "blue",
+      "name": "Reply",
+      "intro": "workflow:intro_assigned_reply",
+      "courseUrl": "/guide/build/workflow/nodes/reply",
+      "isTool": true,
+      "inputs": [
+        {
+          "key": "text",
+          "renderTypeList": ["textarea", "reference"],
+          "valueType": "any",
+          "required": true,
+          "isRichText": false,
+          "maxLength": 100000,
+          "label": "common:core.module.input.label.Response content",
+          "description": "common:core.module.input.description.Response content",
+          "placeholder": "common:core.module.input.description.Response content",
+          "value": "{{$OldQuery.system_text$}}"
+        }
+      ],
+      "outputs": [],
+      "nodeId": "Reply",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "Start",
+      "target": "OldQuery",
+      "sourceHandle": "Start-source-right",
+      "targetHandle": "OldQuery-target-left"
+    },
+    {
+      "source": "OldQuery",
+      "target": "Reply",
+      "sourceHandle": "OldQuery-source-right",
+      "targetHandle": "Reply-target-left"
+    }
+  ],
+  "chatConfig": {
+    "variables": []
+  }
+}

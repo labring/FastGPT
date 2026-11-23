@@ -10,11 +10,13 @@
  *   ├── skill-2/SKILL.md
  *   └── skill-3/SKILL.md
  *
- * 每个包含 SKILL.md 的一级目录会被视为一个独立 skill。
+ * 每个包含 SKILL.md 的目录（任意深度）会被视为一个独立 skill；`node_modules`、
+ * `.venv`、`venv` 下的 SKILL.md 会被跳过。
  */
 
 import JSZip from 'jszip';
-import { extractSkillNameFromSkillMd } from '../utils';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { extractSkillNameFromSkillMd, findSkillMdEntries } from '../utils';
 import { DEFAULT_GITIGNORE_CONTENT } from './constants';
 
 export type CreateSkillPackageParams = {
@@ -42,6 +44,7 @@ export type ZipValidationResult = {
   hasSkillMd: boolean;
   files: string[];
   error?: string;
+  errorCode?: SkillErrEnum;
   skillMdPath?: string;
   totalUncompressedBytes?: number;
 };
@@ -50,12 +53,14 @@ export type DeployableSkillWorkspaceValidationResult = {
   valid: boolean;
   files: string[];
   error?: string;
+  errorCode?: SkillErrEnum;
 };
 
-type ZipSafetyValidationResult = {
+export type ZipSafetyValidationResult = {
   valid: boolean;
   files: string[];
   error?: string;
+  errorCode?: SkillErrEnum;
   totalUncompressedBytes?: number;
 };
 
@@ -157,6 +162,28 @@ async function generateZipBuffer(zip: JSZip): Promise<Buffer> {
 }
 
 /**
+ * 校验 ZIP Buffer 本身的完整性与安全性（非空、无路径穿越/控制字符、无符号链接、解压总大小受限）。
+ *
+ * 不要求包含 `SKILL.md`，适用于完整工作区导出等任意内容打包场景。
+ */
+export async function validateZipPackageSafety(
+  zipBuffer: Buffer,
+  options: { maxUncompressedBytes?: number } = {}
+): Promise<ZipSafetyValidationResult> {
+  try {
+    const zip = await JSZip.loadAsync(zipBuffer);
+    return validateZipSafety(zip, options);
+  } catch (error) {
+    return {
+      valid: false,
+      files: [],
+      error: `Invalid ZIP archive: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      errorCode: SkillErrEnum.invalidSkillPackage
+    };
+  }
+}
+
+/**
  * 校验 skill ZIP 包结构。
  *
  * 兼容两种形态：历史单 skill 包（一个 SKILL.md）和多 skill 包（多个一级目录各自含 SKILL.md）。
@@ -176,7 +203,8 @@ export async function validateZipStructure(
         hasSkillMd: false,
         files,
         totalUncompressedBytes: safety.totalUncompressedBytes,
-        error: safety.error
+        error: safety.error,
+        errorCode: safety.errorCode
       };
     }
 
@@ -202,7 +230,8 @@ export async function validateZipStructure(
         valid: false,
         hasSkillMd: false,
         files,
-        error: 'Missing required file: SKILL.md (expected at root or inside a top-level directory)'
+        error: 'Missing required file: SKILL.md (expected at root or inside a top-level directory)',
+        errorCode: SkillErrEnum.missingSkillMd
       };
     }
 
@@ -218,7 +247,8 @@ export async function validateZipStructure(
       valid: false,
       hasSkillMd: false,
       files: [],
-      error: `Invalid ZIP archive: ${error instanceof Error ? error.message : 'Unknown error'}`
+      error: `Invalid ZIP archive: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      errorCode: SkillErrEnum.invalidSkillPackage
     };
   }
 }
@@ -226,8 +256,9 @@ export async function validateZipStructure(
 /**
  * 发布/保存版本时校验可部署工作区。
  *
- * 这里只校验 workspace 级最小结构，不解析 SKILL.md frontmatter。创建阶段的空白初始包
- * 不应调用该校验；用户主动发布时必须至少存在一个可执行 Skill 目录。
+ * 这里只校验 workspace 级最小结构（ZIP 安全性与至少存在一个 `SKILL.md` 文件），
+ * 不解析 SKILL.md frontmatter。创建阶段的空白初始包不应调用该校验；
+ * 扫描规则与运行态读取一致：任意深度递归、大小写不敏感、跳过 `node_modules/.venv/venv`。
  */
 export async function validateDeployableSkillWorkspacePackage(
   zipBuffer: Buffer,
@@ -242,56 +273,20 @@ export async function validateDeployableSkillWorkspacePackage(
       return {
         valid: false,
         files,
-        error: safety.error
+        error: safety.error,
+        errorCode: safety.errorCode
       };
     }
 
-    const hasSkillsDirectory = files.some((path) => {
-      const normalized = normalizeDeployableWorkspaceEntryPath(path);
-      return normalized === 'skills/' || normalized.startsWith('skills/');
-    });
-
-    if (!hasSkillsDirectory) {
-      return {
-        valid: false,
-        files,
-        error: 'Missing required directory: skills/'
-      };
-    }
-
-    const firstLevelSkillDirs = new Set<string>();
-    const executableSkillDirs = new Set<string>();
-
-    for (const path of files) {
-      const normalized = normalizeDeployableWorkspaceEntryPath(path);
-
-      const firstLevelDirMatch = normalized.match(/^skills\/([^/]+)(?:\/|$)/);
-      if (firstLevelDirMatch?.[1] && normalized !== `skills/${firstLevelDirMatch[1]}`) {
-        firstLevelSkillDirs.add(firstLevelDirMatch[1]);
-      }
-
-      const skillMdMatch = normalized.match(/^skills\/([^/]+)\/SKILL\.md$/i);
-      if (skillMdMatch?.[1]) {
-        executableSkillDirs.add(skillMdMatch[1]);
-      }
-    }
-
-    if (firstLevelSkillDirs.size === 0) {
-      return {
-        valid: false,
-        files,
-        error: 'The skills/ directory must contain at least one first-level skill folder'
-      };
-    }
-
-    const missingSkillMdDirs = [...firstLevelSkillDirs].filter(
-      (dir) => !executableSkillDirs.has(dir)
+    const skillMdEntries = findSkillMdEntries(
+      Object.entries(zip.files).map(([path, file]) => ({ path, isDir: file.dir }))
     );
-    if (missingSkillMdDirs.length > 0) {
+    if (skillMdEntries.length === 0) {
       return {
         valid: false,
         files,
-        error: `Each first-level skill folder under skills/ must contain SKILL.md: ${missingSkillMdDirs.join(', ')}`
+        error: 'Skill package must contain at least one SKILL.md',
+        errorCode: SkillErrEnum.missingSkillMd
       };
     }
 
@@ -303,13 +298,10 @@ export async function validateDeployableSkillWorkspacePackage(
     return {
       valid: false,
       files: [],
-      error: `Invalid ZIP archive: ${error instanceof Error ? error.message : 'Unknown error'}`
+      error: `Invalid ZIP archive: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      errorCode: SkillErrEnum.invalidSkillPackage
     };
   }
-}
-
-function normalizeDeployableWorkspaceEntryPath(path: string): string {
-  return path.replace(/\\/g, '/').replace(/^\.\/+/, '');
 }
 
 function isZipRootDirectoryEntry(path: string): boolean {
@@ -331,7 +323,8 @@ export function validateZipSafety(
     return {
       valid: false,
       files,
-      error: 'ZIP archive is empty'
+      error: 'ZIP archive is empty',
+      errorCode: SkillErrEnum.archiveEmpty
     };
   }
 
@@ -347,7 +340,8 @@ export function validateZipSafety(
       return {
         valid: false,
         files,
-        error: `Unsafe ZIP entry path: ${unsafePath}`
+        error: `Unsafe ZIP entry path: ${unsafePath}`,
+        errorCode: SkillErrEnum.invalidSkillPackage
       };
     }
 
@@ -355,7 +349,8 @@ export function validateZipSafety(
       return {
         valid: false,
         files,
-        error: `ZIP symlink entries are not allowed: ${unsafePath}`
+        error: `ZIP symlink entries are not allowed: ${unsafePath}`,
+        errorCode: SkillErrEnum.archiveSymlinkNotAllowed
       };
     }
 
@@ -369,7 +364,8 @@ export function validateZipSafety(
           valid: false,
           files,
           totalUncompressedBytes,
-          error: 'ZIP archive uncompressed size exceeds maximum allowed size'
+          error: 'ZIP archive uncompressed size exceeds maximum allowed size',
+          errorCode: SkillErrEnum.archiveTooLarge
         };
       }
     }
@@ -383,7 +379,12 @@ export function validateZipSafety(
 }
 
 function isSafeZipEntryPath(path: string): boolean {
-  if (!path || path.includes('\0')) return false;
+  if (!path) return false;
+  // 拒绝 ASCII 控制字符（含 \0、\n、\r 等），避免解包改名或命令解析歧义，同时保留普通空格。
+  for (let i = 0; i < path.length; i++) {
+    const code = path.charCodeAt(i);
+    if (code <= 0x1f || code === 0x7f) return false;
+  }
   if (path.startsWith('/') || path.startsWith('\\')) return false;
   if (/^[A-Za-z]:[\\/]/.test(path)) return false;
 

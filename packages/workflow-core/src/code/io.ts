@@ -134,8 +134,19 @@ const splitTopLevelItems = (value: string) => {
   return items;
 };
 
+/** 跳过条目开头的注释，再解析实际的静态参数或属性。 */
+const stripLeadingComments = (item: string): string => {
+  let value = item.trim();
+  let commentEnd = skipComment(value, 0);
+  while (commentEnd > 0) {
+    value = value.slice(commentEnd).trimStart();
+    commentEnd = skipComment(value, 0);
+  }
+  return value;
+};
+
 const getStaticPropertyKey = (property: string) => {
-  const value = property.trim();
+  const value = stripLeadingComments(property);
   if (!value || value.startsWith('...') || value.startsWith('[')) return;
   if (["'", '"'].includes(value[0])) {
     const end = skipQuotedValue(value, 0);
@@ -162,12 +173,12 @@ const mergeDefinitions = ({
 }) =>
   keys
     .filter((key, index) => keys.indexOf(key) === index)
-    .map((key, index) => ({
-      key,
-      valueType:
-        documented.find((item) => item.key === key)?.valueType ??
-        (documented.length === keys.length ? documented[index]?.valueType : undefined)
-    }));
+    .map((key, index) => {
+      const named = documented.find((item) => item.key === key);
+      const annotation =
+        named ?? (documented.length === keys.length ? documented[index] : undefined);
+      return { key, valueType: annotation?.valueType };
+    });
 
 /** 提取 main 函数的静态参数名；无法识别动态参数对象时返回 undefined。 */
 export const extractCodeInputDefinitions = (code: string): CodeIoDefinition[] | undefined => {
@@ -205,8 +216,7 @@ export const extractCodeInputDefinitions = (code: string): CodeIoDefinition[] | 
       const keys = splitTopLevelItems(code.slice(paramsStart + 1, paramsEnd))
         .map(
           (item) =>
-            item
-              .trim()
+            stripLeadingComments(item)
               .replace(/^\*+/, '')
               .match(/^([\p{L}_][\p{L}\p{N}_]*)/u)?.[1]
         )

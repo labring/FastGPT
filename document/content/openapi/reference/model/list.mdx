@@ -1,0 +1,60 @@
+---
+title: '获取公开系统模型'
+seoTitle: '获取公开系统模型 - GET /api/core/ai/model/list | FastGPT OpenAPI'
+description: '无需鉴权即可获取价格展示所需的最小化活跃系统模型清单与计费单价信息，适用于官网定价页或公开模型目录展示。'
+---
+
+## 端点概览
+
+- **HTTP 方法**：`GET`
+- **请求路径**：`/api/core/ai/model/list`
+- **所属模块**：基础功能 / 模型管理
+- **鉴权方式**：无需鉴权（公开接口）（详见 [API 入门：完成首次请求](/zh-CN/openapi/intro)）
+- **在线调试**：[在云服务 Scalar 调试台打开](https://cloud.fastgpt.cn/apidoc/systemopenapi#tag/%E6%A8%A1%E5%9E%8B%E7%AE%A1%E7%90%86/GET/core/ai/model/list)（自部署实例请将域名替换为 `<instance>/apidoc/systemopenapi#tag/%E6%A8%A1%E5%9E%8B%E7%AE%A1%E7%90%86/GET/core/ai/model/list`）
+
+## 接口说明与注意事项
+
+返回价格页展示所需的最小化 active 系统模型与价格信息，无需鉴权
+
+## 请求参数
+
+该接口无需额外请求参数或请求体。
+
+## 请求示例
+
+调用前请将 `YOUR_API_KEY` 与示例 ID 替换为真实值；私有化部署实例请将基础域名替换为 `<instance>/api`。
+
+### cURL 请求示例
+
+```bash
+curl --fail-with-body -X GET "https://cloud.fastgpt.cn/api/core/ai/model/list"
+```
+
+## 响应结构与示例
+
+除兼容 OpenAI 协议的对话补全或二进制下载接口外，成功响应统一包裹在 `{ "code": 200, "statusText": "", "message": "", "data": ... }` 标准结构中；下方 `200` 字段表对应 `data` 载荷结构（若契约未声明具体载荷结构，请以上方状态描述及实际响应为准）。
+
+### HTTP 200
+
+成功返回公开系统模型列表
+
+**Content-Type** : `application/json`
+
+| 字段                        | 类型       | 必填 | 默认值 | 约束与说明     |
+| --------------------------- | ---------- | ---- | ------ | -------------- |
+| `models`                    | `object[]` | 是   | -      | -              |
+| `providers`                 | `object[]` | 是   | -      | -              |
+| `providers[].provider`      | `string`   | 是   | -      | 模型提供商标识 |
+| `providers[].value`         | `object`   | 是   | -      | -              |
+| `providers[].value.en`      | `string`   | 是   | -      | -              |
+| `providers[].value.zh-CN`   | `string`   | 是   | -      | -              |
+| `providers[].value.zh-Hant` | `string`   | 是   | -      | -              |
+| `providers[].avatar`        | `string`   | 是   | -      | 模型提供商图标 |
+
+#### 多态字段明细：`models`
+
+- **变体 1** ( `type="llm"` ): `type` , `pricing` , `config` , `name` , `provider` , `testMode`
+- **变体 2** ( `type="embedding"` ): `type` , `pricing` , `config` , `name` , `provider` , `testMode`
+- **变体 3** ( `type="rerank"` ): `type` , `pricing` , `config` , `name` , `provider` , `testMode`
+- **变体 4** ( `type="tts"` ): `type` , `pricing` , `name` , `provider` , `testMode`
+- **变体 5** ( `type="stt"` ): `type` , `pricing` , `name` , `provider` , `testMode`

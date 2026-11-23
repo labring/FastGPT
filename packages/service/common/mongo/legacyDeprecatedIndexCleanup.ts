@@ -76,6 +76,13 @@ export const LEGACY_DEPRECATED_MONGO_INDEXES: readonly LegacyDeprecatedMongoInde
     reason: 'Replaced by Redis generation lease'
   },
   {
+    collectionName: 'chats',
+    datasource: 'main',
+    indexName: 'appId_1_updateTime_-1',
+    key: { appId: 1, updateTime: -1 },
+    reason: 'Strictly prefix-covered by { appId: 1, updateTime: -1, _id: -1 } cursor log index'
+  },
+  {
     collectionName: 'agent_sandbox_instances_v2',
     datasource: 'main',
     indexName: 'sourceType_1_status_1_provider_1',

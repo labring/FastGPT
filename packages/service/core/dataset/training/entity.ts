@@ -57,7 +57,9 @@ export const findAndLockTrainingTask = <T>({
   mode,
   filter = {},
   populate = []
-}: FindAndLockTrainingTaskOptions) =>
+}: FindAndLockTrainingTaskOptions): Promise<
+  (Omit<DatasetTrainingSchemaType, keyof T> & T) | null
+> =>
   MongoDatasetTraining.findOneAndUpdate(
     {
       ...filter,
@@ -69,4 +71,4 @@ export const findAndLockTrainingTask = <T>({
     { new: true }
   )
     .populate<T>(populate)
-    .lean();
+    .lean<(Omit<DatasetTrainingSchemaType, keyof T> & T) | null>();
