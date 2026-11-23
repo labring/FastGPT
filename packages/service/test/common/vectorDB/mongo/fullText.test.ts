@@ -1,117 +1,91 @@
-import { afterAll, beforeAll, expect, inject, it, vi } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vitest';
 import { mongoFullTextAdapter } from '@fastgpt/service/common/vectorDB/mongo/fullText';
-import {
-  embeddingMongo,
-  MongoDatasetDataEmbedding
-} from '@fastgpt/service/common/vectorDB/mongo/schema';
 
-vi.mock('@fastgpt/service/common/vectorDB/mongo/controller', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@fastgpt/service/common/vectorDB/mongo/controller')>()),
-  connectEmbeddingMongo: async () => {}
+const { aggregate, collation, read, exec, connect, ensureIndex } = vi.hoisted(() => ({
+  aggregate: vi.fn(),
+  collation: vi.fn(),
+  read: vi.fn(),
+  exec: vi.fn(),
+  connect: vi.fn(),
+  ensureIndex: vi.fn()
+}));
+vi.mock('@fastgpt/service/common/vectorDB/mongo/controller', () => ({
+  connectEmbeddingMongo: connect
+}));
+vi.mock('@fastgpt/service/common/vectorDB/mongo/fullTextIndex', () => ({
+  assertMongoFullTextIndex: vi.fn(),
+  ensureMongoFullTextIndex: ensureIndex,
+  MongoFullTextSearchIndexName: 'embedding_search_fulltext'
+}));
+vi.mock('@fastgpt/service/common/vectorDB/mongo/schema', () => ({
+  MongoDatasetDataEmbedding: { aggregate }
 }));
 
-const datasetIds = ['left', ...Array.from({ length: 8 }, (_, i) => `empty-${i}`), 'right', 'left'];
 const input = {
   teamId: 'team',
-  datasetIds,
+  datasetIds: ['left', 'right', 'left'],
   query: 'refund',
   limit: 3,
-  filterCollectionIdList: ['allowed', 'blocked'],
   forbidCollectionIdList: ['blocked']
 };
-const rows = [
-  { _id: '\u{10000}', datasetId: 'left', fulltextTokens: 'refund guide' },
-  { _id: '\uE000', datasetId: 'right', fulltextTokens: 'refund guide' },
-  { _id: 'best', datasetId: 'right', fulltextTokens: 'refund refund refund' },
-  { _id: 'low', datasetId: 'left', fulltextTokens: 'refund guide policy help' },
-  {
-    _id: 'blocked',
-    datasetId: 'right',
-    collectionId: 'blocked',
-    fulltextTokens: 'refund refund refund refund'
-  },
-  { _id: 'outside', datasetId: 'outside', fulltextTokens: 'refund refund refund refund' },
-  { _id: 'another-team', datasetId: 'right', teamId: 'another-team', fulltextTokens: 'refund' }
-].map((row) => ({
-  teamId: 'team',
-  collectionId: 'allowed',
-  createTime: new Date(),
-  vector: [],
-  ...row
-}));
 
-beforeAll(async () => {
-  const uri = new URL(inject('MONGODB_URI'));
-  uri.pathname += '_mongo_fulltext';
-  await embeddingMongo.connect(uri.toString());
+beforeEach(() => {
+  vi.clearAllMocks();
+  aggregate.mockReturnValue({ collation });
+  collation.mockReturnValue({ read });
+  read.mockReturnValue({ exec });
+  exec.mockResolvedValue([{ vectorId: 'first', collectionId: 'allowed', score: 1 }]);
 });
 
-afterAll(async () => {
-  await embeddingMongo.connection.db?.dropDatabase();
-  await embeddingMongo.disconnect();
-});
-
-it('matches single-query Mongo ranking across batches, including binary tie order', async () => {
-  const reference = embeddingMongo.connection.collection('team_fulltext_reference');
-  await reference.insertMany(rows);
-  await reference.createIndex(
-    { teamId: 1, fulltextTokens: 'text' },
-    { default_language: 'none', collation: { locale: 'simple' } }
-  );
-  await MongoDatasetDataEmbedding.insertMany(rows);
-
-  const expected = await reference
-    .aggregate(
-      [
-        {
-          $match: {
-            teamId: input.teamId,
-            datasetId: { $in: datasetIds },
-            collectionId: { $in: ['allowed'] },
-            $text: { $search: input.query }
-          }
-        },
-        { $project: { _id: 0, vectorId: '$_id', collectionId: 1, score: { $meta: 'textScore' } } },
-        { $sort: { score: -1, vectorId: 1 } },
-        { $limit: input.limit }
-      ],
-      { collation: { locale: 'simple' } }
-    )
-    .toArray();
-
-  expect(expected.map(({ vectorId }) => vectorId)).toEqual(['best', '\uE000', '\u{10000}']);
-  await expect(mongoFullTextAdapter.search(input)).resolves.toEqual(expected);
-});
-
-it('caps concurrent dataset queries across requests and propagates a query failure', async () => {
-  let active = 0;
-  let maxActive = 0;
-  const exec = vi.fn(async () => {
-    active++;
-    maxActive = Math.max(maxActive, active);
-    await new Promise<void>((resolve) => setImmediate(resolve));
-    active--;
-    return [];
+it('uses one search for multiple datasets and checks current collection scope before limiting', async () => {
+  const results = await mongoFullTextAdapter.search({
+    ...input,
+    filterCollectionIdList: ['allowed', 'blocked']
   });
-  const aggregate = vi.spyOn(MongoDatasetDataEmbedding, 'aggregate').mockReturnValue({
-    collation() {
-      return this;
-    },
-    read() {
-      return this;
-    },
-    exec
-  } as ReturnType<typeof MongoDatasetDataEmbedding.aggregate>);
-  try {
-    await Promise.all([mongoFullTextAdapter.search(input), mongoFullTextAdapter.search(input)]);
-    expect(maxActive).toBe(8);
-    expect(exec).toHaveBeenCalledTimes(20);
 
-    aggregate.mockClear();
-    exec.mockRejectedValueOnce(new Error('dataset query failed'));
-    await expect(mongoFullTextAdapter.search(input)).rejects.toThrow('dataset query failed');
-    expect(aggregate.mock.calls.length).toBeLessThanOrEqual(8);
-  } finally {
-    aggregate.mockRestore();
-  }
+  expect(results).toEqual([{ vectorId: 'first', collectionId: 'allowed', score: 1 }]);
+  expect(aggregate).toHaveBeenCalledExactlyOnceWith([
+    {
+      $search: {
+        index: 'embedding_search_fulltext',
+        compound: {
+          must: [{ text: { path: 'fulltextTokens', query: 'refund', matchCriteria: 'any' } }],
+          filter: [
+            { equals: { path: 'teamId', value: 'team' } },
+            { in: { path: 'datasetId', value: ['left', 'right'] } },
+            { in: { path: 'collectionId', value: ['allowed'] } }
+          ]
+        },
+        sort: { score: { $meta: 'searchScore' }, _id: 1 }
+      }
+    },
+    {
+      $match: {
+        teamId: 'team',
+        datasetId: { $in: ['left', 'right'] },
+        collectionId: { $in: ['allowed'] }
+      }
+    },
+    { $limit: 3 },
+    { $project: { _id: 0, vectorId: '$_id', collectionId: 1, score: { $meta: 'searchScore' } } }
+  ]);
+  expect(collation).toHaveBeenCalledWith({ locale: 'simple' });
+  expect(read).toHaveBeenCalledWith('primary');
+});
+
+it('enforces denied collections in both the search index and current documents', async () => {
+  await mongoFullTextAdapter.search(input);
+  const [search, currentScope] = aggregate.mock.calls[0][0];
+  expect(search.$search.compound.mustNot).toEqual([
+    { in: { path: 'collectionId', value: ['blocked'] } }
+  ]);
+  expect(currentScope.$match.collectionId).toEqual({ $nin: ['blocked'] });
+});
+
+it('skips MongoDB when no collections are allowed', async () => {
+  await expect(
+    mongoFullTextAdapter.search({ ...input, filterCollectionIdList: ['blocked'] })
+  ).resolves.toEqual([]);
+  expect(connect).not.toHaveBeenCalled();
+  expect(aggregate).not.toHaveBeenCalled();
 });

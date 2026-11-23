@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { connectionMongo, Types } from '@fastgpt/service/common/mongo';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
@@ -7,18 +7,35 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { getFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
 import { mongoFullTextAdapter } from '@fastgpt/service/common/vectorDB/mongo/fullText';
 import { MongoVectorCtrl } from '@fastgpt/service/common/vectorDB/mongo';
-import { MongoDatasetDataEmbedding } from '@fastgpt/service/common/vectorDB/mongo/schema';
+import {
+  connectEmbeddingMongo,
+  initEmbeddingMongo
+} from '@fastgpt/service/common/vectorDB/mongo/controller';
+import {
+  embeddingMongo,
+  MongoDatasetDataEmbedding
+} from '@fastgpt/service/common/vectorDB/mongo/schema';
 import { migrateSqlFullTextMigration } from '@/migration/tasks/4180/20261110_migrate_sql_fulltext';
 import type { SystemMigrationContext } from '@/migration/registry';
 import type { SystemMigrationFailedRecord } from '@fastgpt/global/migration/schema';
 
-const config = vi.hoisted(() => ({ compatibility: true }));
+const config = vi.hoisted(() => {
+  const endpoint = process.env.FASTGPT_MONGO_FULLTEXT_TEST_URL;
+  if (!endpoint) return { compatibility: true };
+  const url = new URL(endpoint);
+  if (!['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) {
+    throw new Error('Mongo full-text integration tests require an isolated loopback endpoint');
+  }
+  url.pathname = `/fastgpt_test_mongo_fulltext_${process.pid}_${Date.now()}`;
+  return { compatibility: true, searchUrl: url.toString() };
+});
 vi.mock('@fastgpt/service/env', async (original) => {
   const { serviceEnv, ...rest } = await original<typeof import('@fastgpt/service/env')>();
   return {
     ...rest,
     serviceEnv: {
       ...serviceEnv,
+      SEARCH_MONGO_URL: config.searchUrl,
       get TMP_MIGRATE_FULL_TEXT() {
         return config.compatibility;
       }
@@ -29,7 +46,7 @@ vi.mock('@fastgpt/service/common/vectorDB/constants', async (original) => ({
   ...(await original<typeof import('@fastgpt/service/common/vectorDB/constants')>()),
   getVectorType: () => 'mongo'
 }));
-// 真实 Mongo 文本索引和向量文档；本测试只替换独立连接与 mongot 的向量索引初始化。
+// 搜索索引、向量文档和迁移事务均使用真实数据库；补向量使用固定测试模型。
 vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (original) => ({
   ...(await original<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()),
@@ -38,22 +55,6 @@ vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (original) => ({
   })
 }));
 vi.unmock('@fastgpt/service/common/vectorDB/mongo');
-vi.mock('@fastgpt/service/common/vectorDB/mongo/controller', () => ({
-  connectEmbeddingMongo: async () => undefined,
-  initEmbeddingMongo: async () => undefined
-}));
-vi.mock('@fastgpt/service/common/vectorDB/mongo/schema', async (original) => {
-  const schema = await original<typeof import('@fastgpt/service/common/vectorDB/mongo/schema')>();
-  const { connectionMongo } = await import('@fastgpt/service/common/mongo');
-  return {
-    ...schema,
-    embeddingMongo: connectionMongo,
-    MongoDatasetDataEmbedding: connectionMongo.model(
-      'MongoFullTextMigrationTest',
-      schema.DatasetDataEmbeddingMongoSchema
-    )
-  };
-});
 
 const createContext = () => {
   let checkpoint: Record<string, unknown> | undefined;
@@ -106,12 +107,27 @@ const seed = async () => {
   return { scope, vectorId, dataId, query };
 };
 
-beforeEach(() => {
-  config.compatibility = true;
-  expect(connectionMongo.connection.readyState).toBe(1);
-});
+describe.skipIf(!config.searchUrl)('Mongo native full-text migration', () => {
+  beforeAll(async () => {
+    await connectEmbeddingMongo();
+    // 预览版的普通文本索引在滚动升级期间仍可供旧节点使用。
+    await MongoDatasetDataEmbedding.collection.createIndex(
+      { teamId: 1, datasetId: 1, fulltextTokens: 'text' },
+      { name: 'embedding_fulltext', default_language: 'none' }
+    );
+    await initEmbeddingMongo();
+  }, 200_000);
 
-describe('Mongo native full-text migration', () => {
+  beforeEach(() => {
+    config.compatibility = true;
+    expect(connectionMongo.connection.readyState).toBe(1);
+  });
+
+  afterAll(async () => {
+    await embeddingMongo.connection.db?.dropDatabase();
+    await embeddingMongo.disconnect();
+  });
+
   it('backfills legacy vector documents from index.text, switches reads, and follows new vector writes and deletes', async () => {
     const { scope, vectorId, dataId, query } = await seed();
     const fullText = getFullTextStore();
@@ -156,9 +172,9 @@ describe('Mongo native full-text migration', () => {
       { $set: { 'indexes.0.dataId': newId, 'indexes.0.text': 'replacementword' } }
     );
     expect(await fullText.search({ ...query, query: 'constellation' })).toEqual([]);
-    expect(await fullText.search({ ...query, query: 'replacementword' })).toMatchObject([
-      { dataId }
-    ]);
+    await expect
+      .poll(() => fullText.search({ ...query, query: 'replacementword' }), { timeout: 10_000 })
+      .toMatchObject([{ dataId }]);
     await store.delete({ teamId: scope.teamId, id: newId });
     expect(await fullText.search({ ...query, query: 'replacementword' })).toEqual([]);
   });
@@ -212,5 +228,48 @@ describe('Mongo native full-text migration', () => {
     expect(await MongoDatasetDataEmbedding.findById(vectorId).lean()).toMatchObject({
       fulltextTokens: 'conflict'
     });
+  });
+
+  it('searches multiple datasets and applies the current collection scope before top K', async () => {
+    const teamId = String(new Types.ObjectId());
+    const left = String(new Types.ObjectId());
+    const right = String(new Types.ObjectId());
+    const forbidden = String(new Types.ObjectId());
+    await store.insert({
+      teamId,
+      datasetId: left,
+      collectionId: left,
+      vectors: [vector],
+      texts: ['scopeword scopeword scopeword']
+    });
+    const {
+      insertIds: [rightId]
+    } = await store.insert({
+      teamId,
+      datasetId: right,
+      collectionId: right,
+      vectors: [vector],
+      texts: ['scopeword']
+    });
+    const query = {
+      teamId,
+      datasetIds: [left, right],
+      query: 'scopeword',
+      limit: 3,
+      forbidCollectionIdList: [forbidden]
+    };
+    await expect
+      .poll(() => mongoFullTextAdapter.search(query), { timeout: 10_000 })
+      .toHaveLength(2);
+    await MongoDatasetDataEmbedding.updateOne(
+      { teamId, datasetId: left },
+      { $set: { collectionId: forbidden } }
+    );
+    expect(await mongoFullTextAdapter.search({ ...query, limit: 1 })).toMatchObject([
+      { vectorId: rightId, collectionId: right }
+    ]);
+    expect((await MongoDatasetDataEmbedding.listIndexes()).map(({ name }) => name)).toContain(
+      'embedding_fulltext'
+    );
   });
 });

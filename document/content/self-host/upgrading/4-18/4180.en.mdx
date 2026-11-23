@@ -19,6 +19,8 @@ upgradeTags:
 
 Deployments using `SEARCH_MONGO_URL` store the new full-text tokens alongside the vectors. The migration rebuilds those tokens from the existing index text.
 
+Native full-text search for the MongoDB vector store uses `$search`. It uses the same MongoDB Search service as vector search and builds a separate full-text index in the background. Keep compatibility mode on until the migration verifies that the index is ready. After switching, new or updated content may take time to appear in full-text results.
+
 On MongoDB, PostgreSQL, OceanBase, SeekDB, and openGauss deployments, compatibility mode reads from the legacy full-text collection in the business database and writes to both stores during the upgrade, including while the manual migration is pending or has failed. Milvus and Zilliz keep their existing full-text search.
 
 1. Upgrade every instance and let legacy indexing jobs finish. On PostgreSQL, install and preload a `pg_search` extension compatible with your PostgreSQL version. The migration selects the index syntax based on the extension version and validates both the index and the search results. For other SQL vector stores, use OceanBase 4.3.5.1 or later in MySQL mode, SeekDB 1.0.1 or later, or openGauss 7.0.x RC2 or later with DataVec BM25. If your image lacks full-text support, keep compatibility mode enabled until the database meets these requirements.

@@ -56,6 +56,8 @@ export const verifySqlFullTextSearch = async ({
       throw new Error('SQL full-text probe rows could not be created');
 
     const scope = { teamId, datasetIds: [datasetId], limit: 10, forbidCollectionIdList: [] };
+    // MongoDB Search 异步消费写入。以探测行真正可检索作为验收条件，最多额外等待约 10 秒。
+    const retries = adapter.provider === 'mongo' ? 20 : undefined;
     await retryFn(async () => {
       await assertActive();
       const [unfiltered, allowed, filtered] = await Promise.all([
@@ -82,7 +84,7 @@ export const verifySqlFullTextSearch = async ({
         filtered[0].vectorId !== excludedId
       )
         throw new Error('SQL full-text smoke test failed to return expected scoped results');
-    });
+    }, retries);
   } finally {
     await vectorStore.delete({
       teamId,

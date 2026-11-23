@@ -1,5 +1,4 @@
 import { mongo } from 'mongoose';
-import pLimit from 'p-limit';
 import { SqlFullTextMetadataSchema } from '@fastgpt/global/core/dataset/fullText/schema';
 import {
   SQL_FULL_TEXT_ANALYZER_VERSION,
@@ -9,12 +8,13 @@ import { toSqlFullTextQueryTerms } from '../fullText/analyzer';
 import type { NativeFullTextAdapter, SqlFullTextHit } from '../fullText/type';
 import { normalizeSqlFullTextScope, SqlFullTextDataError } from '../fullText/utils';
 import { connectEmbeddingMongo } from './controller';
-import { assertMongoFullTextIndex, ensureMongoFullTextIndex } from './fullTextIndex';
+import {
+  assertMongoFullTextIndex,
+  ensureMongoFullTextIndex,
+  MongoFullTextSearchIndexName
+} from './fullTextIndex';
 import { embeddingMongo, MongoDatasetDataEmbedding } from './schema';
 import { toMongoFullTextTokens } from './utils';
-
-const datasetSearchConcurrency = 8;
-const limitDatasetSearch = pLimit(datasetSearchConcurrency);
 
 /** MongoDB 向量 ID 是字符串，早于全文迁移创建的行也使用此契约。 */
 export const assertMongoFullTextVectorId = (id: string) => {
@@ -30,7 +30,6 @@ export const mongoFullTextAdapter: NativeFullTextAdapter<'mongo'> = {
     signal?.throwIfAborted();
     await connectEmbeddingMongo();
     await ensureMongoFullTextIndex();
-    await this.assertCapability();
     signal?.throwIfAborted();
     return this.getMetadata();
   },
@@ -118,52 +117,40 @@ export const mongoFullTextAdapter: NativeFullTextAdapter<'mongo'> = {
     if (!terms.length) return [];
     await connectEmbeddingMongo();
     await ensureMongoFullTextIndex();
-    const scope = {
-      teamId: props.teamId,
-      $text: { $search: terms.join(' ') },
-      ...(allowed
-        ? { collectionId: { $in: allowed } }
-        : props.forbidCollectionIdList.length
-          ? {
-              collectionId: { $nin: props.forbidCollectionIdList }
-            }
-          : {})
-    };
     const datasetIds = [...new Set(props.datasetIds)];
-    const hits: SqlFullTextHit[] = [];
-    for (let start = 0; start < datasetIds.length; start += datasetSearchConcurrency) {
-      const batch = await Promise.all(
-        datasetIds.slice(start, start + datasetSearchConcurrency).map((datasetId) =>
-          limitDatasetSearch(() =>
-            MongoDatasetDataEmbedding.aggregate<SqlFullTextHit>([
-              { $match: { ...scope, datasetId } },
-              {
-                $project: {
-                  _id: 0,
-                  vectorId: '$_id',
-                  collectionId: 1,
-                  score: { $meta: 'textScore' }
-                }
-              },
-              { $sort: { score: -1, vectorId: 1 } },
-              { $limit: props.limit }
-            ])
-              .collation({ locale: 'simple' })
-              .read('primary')
-              .exec()
-          )
-        )
-      );
-
-      // 每批只保留当前全局 Top K。同分按 UTF-8 字节序比较，和 MongoDB simple collation 一致。
-      hits.push(...batch.flat());
-      hits.sort(
-        (left, right) =>
-          right.score - left.score ||
-          Buffer.compare(Buffer.from(left.vectorId), Buffer.from(right.vectorId))
-      );
-      hits.length = Math.min(hits.length, props.limit);
-    }
-    return hits;
+    const denied = allowed ? [] : props.forbidCollectionIdList;
+    return MongoDatasetDataEmbedding.aggregate<SqlFullTextHit>([
+      {
+        $search: {
+          index: MongoFullTextSearchIndexName,
+          compound: {
+            must: [
+              { text: { path: 'fulltextTokens', query: terms.join(' '), matchCriteria: 'any' } }
+            ],
+            filter: [
+              { equals: { path: 'teamId', value: props.teamId } },
+              { in: { path: 'datasetId', value: datasetIds } },
+              ...(allowed ? [{ in: { path: 'collectionId', value: allowed } }] : [])
+            ],
+            ...(denied.length && { mustNot: [{ in: { path: 'collectionId', value: denied } }] })
+          },
+          sort: { score: { $meta: 'searchScore' }, _id: 1 }
+        }
+      },
+      {
+        // mongot 异步更新，返回候选前按主库当前的团队、知识库和集合再次核对访问范围。
+        $match: {
+          teamId: props.teamId,
+          datasetId: { $in: datasetIds },
+          ...(allowed && { collectionId: { $in: allowed } }),
+          ...(denied.length && { collectionId: { $nin: denied } })
+        }
+      },
+      { $limit: props.limit },
+      { $project: { _id: 0, vectorId: '$_id', collectionId: 1, score: { $meta: 'searchScore' } } }
+    ])
+      .collation({ locale: 'simple' })
+      .read('primary')
+      .exec();
   }
 };

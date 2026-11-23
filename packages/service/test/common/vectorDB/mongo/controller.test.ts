@@ -21,7 +21,6 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock('@fastgpt/service/env', () => ({ serviceEnv: mocks.env }));
 vi.mock('@fastgpt/service/common/vectorDB/mongo/schema', () => ({
-  MongoFullTextIndex: { options: { name: 'embedding_fulltext' } },
   embeddingMongo: { connection: mocks.connection, connect: mocks.connect },
   MongoDatasetDataEmbedding: {
     collection: {
@@ -167,9 +166,7 @@ describe('Mongo embedding initialization', () => {
     await Promise.all([initEmbeddingMongo(), initEmbeddingMongo()]);
     await initEmbeddingMongo();
     expect(sync).toHaveBeenCalledTimes(2);
-    expect(sync).toHaveBeenLastCalledWith(
-      expect.objectContaining({ deferredIndexNames: ['embedding_fulltext'] })
-    );
+    expect(sync).toHaveBeenLastCalledWith(expect.objectContaining({ model: expect.any(Object) }));
     expect(mocks.ensureFullText).toHaveBeenCalledOnce();
   });
 });

@@ -19,6 +19,8 @@ upgradeTags:
 
 使用 `SEARCH_MONGO_URL` 的部署会在向量文档中存储新的全文词串。迁移根据已有索引文本重建词串。
 
+MongoDB 向量库的原生全文使用 `$search`。它复用向量检索所连接的 MongoDB Search 服务，并异步构建独立全文索引。等待升级任务验证索引已就绪后再切读。切换后，新增或更新的内容可能稍后才会出现在全文结果中。
+
 MongoDB、PostgreSQL、OceanBase、SeekDB 或 openGauss 部署开启兼容模式后，升级期间继续读取业务 MongoDB 中的旧全文，并向旧存储和当前向量库双写。手动迁移等待或失败时也保持兼容模式。Milvus/Zilliz 沿用原有全文检索。
 
 1. 确认所有实例已升级、旧索引任务已排空。PostgreSQL 需要安装并预加载与其版本兼容的 `pg_search`，迁移会按扩展版本选择索引语法，并验证索引和搜索结果。其他 SQL 向量库要求 OceanBase 4.3.5.1 及以上的 MySQL 模式、SeekDB 1.0.1 及以上，或带 DataVec BM25 的 openGauss 7.0.x RC2 及以上。所用镜像缺少全文能力时，保持兼容模式，待数据库满足要求后再运行迁移。

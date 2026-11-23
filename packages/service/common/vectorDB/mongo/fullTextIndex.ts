@@ -1,37 +1,36 @@
-import { MongoDatasetDataEmbedding, MongoFullTextIndex } from './schema';
+import { isDeepStrictEqual } from 'node:util';
+import { assertMongoSearchIndexReady, ensureMongoSearchIndex } from './searchIndex';
 
-let building: Promise<void> | undefined;
+export const MongoFullTextSearchIndexName = 'embedding_search_fulltext';
 
-/** 确认 Mongo 全文索引名称、字段和语言配置，避免依赖其他文本字段或分词规则。 */
-export const assertMongoFullTextIndex = async () => {
-  const index = (await MongoDatasetDataEmbedding.listIndexes()).find(
-    ({ name }) => name === MongoFullTextIndex.options.name
-  );
-  if (
-    !index ||
-    index.hidden ||
-    index.default_language !== 'none' ||
-    Object.keys(index.key).join(',') !== 'teamId,datasetId,_fts,_ftsx' ||
-    index.key.teamId !== 1 ||
-    index.key.datasetId !== 1 ||
-    index.key._fts !== 'text' ||
-    index.key._ftsx !== 1 ||
-    index.weights?.fulltextTokens !== 1 ||
-    Object.keys(index.weights).length !== 1 ||
-    index.partialFilterExpression ||
-    (index.collation && index.collation.locale !== 'simple')
-  ) {
-    throw new Error('MongoDB full-text index is missing or incompatible');
+const definition = {
+  mappings: {
+    dynamic: false,
+    fields: {
+      _id: { type: 'token' },
+      teamId: { type: 'token' },
+      datasetId: { type: 'token' },
+      collectionId: { type: 'token' },
+      fulltextTokens: { type: 'string', analyzer: 'lucene.whitespace' }
+    }
   }
 };
 
-/** 启动与迁移共享后台索引构建，失败后可重试；向量写入无需等待。 */
+const fullTextIndex = {
+  name: MongoFullTextSearchIndexName,
+  type: 'search' as const,
+  definition,
+  matchesDefinition: (actual: Record<string, unknown>) => isDeepStrictEqual(actual, definition)
+};
+
+let building: Promise<void> | undefined;
+
+/** 检查全文搜索索引的当前定义和就绪状态。 */
+export const assertMongoFullTextIndex = () => assertMongoSearchIndexReady(fullTextIndex);
+
+/** 全文读、启动与迁移共享后台构建，失败后可重试。 */
 export const ensureMongoFullTextIndex = () => {
-  building ??= (async () => {
-    const { key, options } = MongoFullTextIndex;
-    await MongoDatasetDataEmbedding.collection.createIndex(key, options);
-    await assertMongoFullTextIndex();
-  })().catch((error) => {
+  building ??= ensureMongoSearchIndex(fullTextIndex).catch((error) => {
     building = undefined;
     throw error;
   });
