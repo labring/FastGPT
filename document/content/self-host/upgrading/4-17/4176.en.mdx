@@ -15,3 +15,4 @@ Use `NO_PROXY` for trusted hosts that require direct connections. Direct request
 ## 🐛 Fixes
 
 1. Fixed MCP connections failing when an environment proxy is configured. Proxy tunnels now connect to a validated, pinned IP address to prevent proxy-side DNS resolution from bypassing SSRF protection. Also improved connection timeouts, cancellation, and resource cleanup.
+2. Fixed an issue where clearing inputs after restarting a plugin could leave stale values in some fields or fail to restore their defaults.
