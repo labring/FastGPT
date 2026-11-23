@@ -51,8 +51,9 @@ export const resolveInitialLoginPageType = ({
  * 按优先级计算登录页自动跳转 Provider：
  * 1. rootLogin 运维入口始终不自动跳转；
  * 2. 全局 sso.autoLogin 开启且 SSO 可用时，全终端（含企业微信客户端）均跳转 SSO，不受 wecomLoginAutoRedirect 限制；
- * 3. 在企业微信终端且开启 wecomLoginAutoRedirect 时，仅当 SSO 为企业微信 provider 才跳转 SSO，
- *    否则在配置了企业微信 OAuth 时跳转 wecom；非企业微信 SSO 不会在企业微信终端误触发自动跳转。
+ * 3. 在企业微信终端且开启 wecomLoginAutoRedirect 时，明确为非企业微信 SSO（isWecomSso === false）
+ *    不误跳 SSO，按需回退到企业微信 OAuth；明确为企业微信（true）或旧版/自建 SSO 无法确认（undefined）
+ *    时沿用既有企微端跳转 SSO 行为。
  * 返回 Provider 后调用方需保持页面处于 Loading，避免选择页在跳转前闪现。
  */
 export const resolveAutoLoginProvider = ({
@@ -67,7 +68,7 @@ export const resolveAutoLoginProvider = ({
   rootLogin: boolean;
   ssoAvailable: boolean;
   ssoAutoLogin: boolean;
-  isWecomSso: boolean;
+  isWecomSso?: boolean;
   wecomAvailable: boolean;
   isWecomTerminal: boolean;
   wecomLoginAutoRedirect: boolean;
@@ -75,7 +76,8 @@ export const resolveAutoLoginProvider = ({
   if (rootLogin) return;
   if (ssoAvailable && ssoAutoLogin) return 'sso';
   if (!isWecomTerminal || !wecomLoginAutoRedirect) return;
-  if (ssoAvailable && isWecomSso) return 'sso';
+  // 仅当明确探测为非企业微信 provider 时拦截，兼容未升级 Pro/SSO 与自建企业微信 SSO。
+  if (ssoAvailable && isWecomSso !== false) return 'sso';
   if (wecomAvailable) return 'wecom';
 };
 

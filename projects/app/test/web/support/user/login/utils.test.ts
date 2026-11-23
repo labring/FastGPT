@@ -103,6 +103,20 @@ describe('resolveAutoLoginProvider', () => {
     ).toBe('sso');
   });
 
+  it('preserves legacy WeCom terminal SSO redirect when isWecomSso is unknown (legacy Pro or custom SSO)', () => {
+    expect(
+      resolveAutoLoginProvider({
+        rootLogin: false,
+        ssoAvailable: true,
+        ssoAutoLogin: false,
+        isWecomSso: undefined,
+        wecomAvailable: true,
+        isWecomTerminal: true,
+        wecomLoginAutoRedirect: true
+      })
+    ).toBe('sso');
+  });
+
   it('does not redirect to non-WeCom SSO in WeCom terminal when global sso.autoLogin is off', () => {
     expect(
       resolveAutoLoginProvider({

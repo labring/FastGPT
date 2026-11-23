@@ -54,7 +54,7 @@ export const LoginContainer = ({
     rootLogin,
     ssoAvailable: feConfigs?.sso?.enabled === true,
     ssoAutoLogin: feConfigs?.sso?.autoLogin === true,
-    isWecomSso: feConfigs?.sso?.isWecom === true,
+    isWecomSso: feConfigs?.sso?.isWecom,
     wecomAvailable: Boolean(feConfigs?.oauth?.wecom),
     isWecomTerminal,
     wecomLoginAutoRedirect: feConfigs?.wecomLoginAutoRedirect === true

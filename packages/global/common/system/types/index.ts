@@ -249,9 +249,6 @@ export const FastGPTFeConfigsSchema = z.looseObject({
       enabled: BoolSchema.optional().meta({
         description: '是否接入 SSO，由 Pro 部署配置派生，不作为后端鉴权依据'
       }),
-      isWecom: BoolSchema.optional().meta({
-        description: '当前 SSO 是否为企业微信 provider，由 Pro 探测 SSO 服务派生'
-      }),
       autoLogin: z
         .boolean()
         .optional()

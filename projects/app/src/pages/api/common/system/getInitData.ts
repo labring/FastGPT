@@ -32,7 +32,7 @@ async function handler(
   // 展示可在 Pro 不可用时暂时隐藏入口；密码安全校验独立读取并拒绝未知状态。
   const ssoConfig = await getSsoConfig().catch(() => undefined);
   const ssoConfigured = ssoConfig?.enabled;
-  const ssoIsWecom = ssoConfig?.enabled === true && ssoConfig.isWecom === true;
+  const ssoIsWecom = ssoConfig?.enabled === true ? ssoConfig.isWecom : undefined;
 
   // 只有鉴权失败才降级为匿名响应，配置处理错误仍交给 API 中间件报告。
   const isAuthenticated = await authCert({ req, authToken: true })
@@ -97,10 +97,15 @@ async function handler(
       sso: (() => {
         if (!runtimeSnapshot.feConfigs?.sso && ssoConfigured !== true) return undefined;
         // 只信任 Pro 的部署能力与 provider 探测结果，旧库地址和存储的前端能力标志都不是权威来源。
+        const baseSso = runtimeSnapshot.feConfigs?.sso
+          ? Object.fromEntries(
+              Object.entries(runtimeSnapshot.feConfigs.sso).filter(([key]) => key !== 'isWecom')
+            )
+          : undefined;
         return {
-          ...runtimeSnapshot.feConfigs?.sso,
+          ...baseSso,
           enabled: ssoConfigured === true,
-          isWecom: ssoIsWecom
+          ...(ssoIsWecom !== undefined ? { isWecom: ssoIsWecom } : {})
         };
       })()
     };
@@ -168,15 +173,17 @@ async function handler(
       };
     }
 
-    // Pro 环境或 SSO provider 变化不改变 Mongo revision，必须把能力、类型及不可用状态加入匿名缓存标识。
+    // Pro 环境或 SSO provider 变化不改变 Mongo revision，必须把能力、类型及未知/不可用状态加入匿名缓存标识。
     const ssoVersion =
       ssoConfigured === undefined
         ? 'unavailable'
-        : ssoConfigured
-          ? ssoIsWecom
+        : !ssoConfigured
+          ? '0'
+          : ssoIsWecom === true
             ? '1_wecom'
-            : '1'
-          : '0';
+            : ssoIsWecom === false
+              ? '1_non_wecom'
+              : '1_unknown';
     const unAuthBufferId = runtimeSnapshot.systemInitBufferId
       ? `unAuth_v12_sso_${ssoVersion}_${runtimeSnapshot.systemInitBufferId}`
       : '';

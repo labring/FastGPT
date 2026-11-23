@@ -46,7 +46,6 @@ const publicConfig = {
     icon: '/sso.svg',
     title: 'Company SSO',
     enabled: true,
-    isWecom: false,
     autoLogin: true,
     disablePasswordForSsoUsers: true
   },
@@ -163,7 +162,7 @@ describe('getInitData anonymous configuration filtering', () => {
 
     expect(code).toBe(200);
     expect(data).toEqual({
-      bufferId: 'unAuth_v12_sso_1_config-1',
+      bufferId: 'unAuth_v12_sso_1_unknown_config-1',
       feConfigs: publicConfig
     });
     expect(global.feConfigs).toEqual(originalConfig);
@@ -190,7 +189,7 @@ describe('getInitData anonymous configuration filtering', () => {
     const { code, data } = await Call(handler, {
       auth,
       headers: {},
-      query: { bufferId: 'unAuth_v12_sso_1_config-1' }
+      query: { bufferId: 'unAuth_v12_sso_1_unknown_config-1' }
     });
 
     expect(code).toBe(200);
@@ -336,21 +335,22 @@ describe('getInitData anonymous configuration filtering', () => {
     'unAuth_v9_config-old',
     'unAuth_v10_sso_1_config-1',
     'unAuth_v11_sso_1_config-1',
+    'unAuth_v12_sso_1_config-1',
     'unAuth_v4_share_config-1'
   ])('refreshes stale or authenticated cache %s with filtered data', async (bufferId) => {
     const { data } = await Call(handler, { headers: {}, query: { bufferId } });
 
-    expect(data.bufferId).toBe('unAuth_v12_sso_1_config-1');
+    expect(data.bufferId).toBe('unAuth_v12_sso_1_unknown_config-1');
     expect(data.feConfigs).toEqual(publicConfig);
   });
 
   it('retains the anonymous cache-hit response only for the current policy version', async () => {
     const { data } = await Call(handler, {
       headers: {},
-      query: { bufferId: 'unAuth_v12_sso_1_config-1' }
+      query: { bufferId: 'unAuth_v12_sso_1_unknown_config-1' }
     });
 
-    expect(data).toEqual({ bufferId: 'unAuth_v12_sso_1_config-1' });
+    expect(data).toEqual({ bufferId: 'unAuth_v12_sso_1_unknown_config-1' });
   });
 
   it.each([
@@ -366,10 +366,10 @@ describe('getInitData anonymous configuration filtering', () => {
     async (referer) => {
       const { data } = await Call(handler, {
         headers: { referer },
-        query: { bufferId: 'unAuth_v12_sso_1_config-1', includeSubPlans: 'true' }
+        query: { bufferId: 'unAuth_v12_sso_1_unknown_config-1', includeSubPlans: 'true' }
       });
       expect(data).toEqual({
-        bufferId: 'unAuth_v12_sso_1_config-1',
+        bufferId: 'unAuth_v12_sso_1_unknown_config-1',
         subPlans: serviceEnv.PRO_URL ? getSystemInstanceConfig().commercial.subPlans : undefined
       });
     }
@@ -410,7 +410,7 @@ describe('getInitData anonymous configuration filtering', () => {
     expect(code).toBe(200);
     expect(data.feConfigs).toEqual({
       ...config,
-      ...('sso' in config && { sso: { ...config.sso, enabled: false, isWecom: false } })
+      ...('sso' in config && { sso: { ...config.sso, enabled: false } })
     });
   });
 
@@ -421,7 +421,7 @@ describe('getInitData anonymous configuration filtering', () => {
       headers: { referer: 'https://app.example.com/login' }
     });
 
-    expect(data.bufferId).toBe('unAuth_v12_sso_1_config-1');
+    expect(data.bufferId).toBe('unAuth_v12_sso_1_unknown_config-1');
     expect(data.feConfigs).not.toHaveProperty('payConfig');
   });
 
@@ -471,7 +471,7 @@ describe('getInitData anonymous configuration filtering', () => {
     async (includeSubPlans) => {
       const { data } = await Call(handler, { headers: {}, query: { includeSubPlans } });
       expect(data).toEqual({
-        bufferId: 'unAuth_v12_sso_1_config-1',
+        bufferId: 'unAuth_v12_sso_1_unknown_config-1',
         feConfigs: publicConfig,
         subPlans: serviceEnv.PRO_URL ? getSystemInstanceConfig().commercial.subPlans : undefined
       });
@@ -508,29 +508,44 @@ describe('getInitData anonymous configuration filtering', () => {
     }
   );
 
-  it('reports unavailable SSO even when stored display and password-policy switches are enabled', async () => {
+  it('reports unavailable SSO and strips any stored isWecom even when stored display and password-policy switches are enabled', async () => {
     global.feConfigs.sso = {
       enabled: true,
       isWecom: true,
       autoLogin: true,
       disablePasswordForSsoUsers: true
-    };
+    } as typeof global.feConfigs.sso;
     global.getSsoConfiguredHandler = () => false;
     const { data } = await Call(handler, { headers: {} });
     expect(data.feConfigs.sso).toEqual({
       enabled: false,
-      isWecom: false,
       autoLogin: true,
       disablePasswordForSsoUsers: true
     });
+    expect(data.feConfigs.sso).not.toHaveProperty('isWecom');
   });
 
-  it('propagates Pro SSO isWecom state and invalidates anonymous cache when provider type flips', async () => {
-    global.getSsoConfigHandler = () => ({ enabled: true, isWecom: false });
-    const nonWecom = await Call(handler, { headers: {} });
-    expect(nonWecom.data.feConfigs.sso.isWecom).toBe(false);
-    expect(nonWecom.data.bufferId).toBe('unAuth_v12_sso_1_config-1');
+  it('propagates tri-state Pro SSO isWecom and invalidates anonymous cache across unknown, non-wecom, and wecom transitions', async () => {
+    // 1. 未知态（如旧版 Pro 或探测失败），同时确保不会被存储中的伪造 isWecom 污染
+    global.feConfigs.sso = {
+      ...publicConfig.sso,
+      isWecom: true
+    } as typeof global.feConfigs.sso;
+    global.getSsoConfigHandler = () => ({ enabled: true });
+    const unknown = await Call(handler, { headers: {} });
+    expect(unknown.data.feConfigs.sso).not.toHaveProperty('isWecom');
+    expect(unknown.data.bufferId).toBe('unAuth_v12_sso_1_unknown_config-1');
 
+    // 2. 明确探测为非企微
+    global.getSsoConfigHandler = () => ({ enabled: true, isWecom: false });
+    const nonWecom = await Call(handler, {
+      headers: {},
+      query: { bufferId: unknown.data.bufferId }
+    });
+    expect(nonWecom.data.feConfigs.sso.isWecom).toBe(false);
+    expect(nonWecom.data.bufferId).toBe('unAuth_v12_sso_1_non_wecom_config-1');
+
+    // 3. 明确探测为企微
     global.getSsoConfigHandler = () => ({ enabled: true, isWecom: true });
     const wecom = await Call(handler, {
       headers: {},
@@ -700,7 +715,7 @@ describe('getInitData anonymous configuration filtering', () => {
       query: { includeSubPlans: true }
     });
     expect(first.code).toBe(200);
-    expect(first.data.bufferId).toBe('unAuth_v12_sso_1_config-v2');
+    expect(first.data.bufferId).toBe('unAuth_v12_sso_1_unknown_config-v2');
     expect(first.data.feConfigs?.systemTitle).toBe('New Title');
     expect(first.data.subPlans).toEqual({ extraDatasetSize: { price: 9 } });
   });
