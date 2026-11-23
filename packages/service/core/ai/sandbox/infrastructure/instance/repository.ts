@@ -205,6 +205,8 @@ export async function markSandboxOperationFailed(params: {
   operationId: string;
   status: Exclude<SandboxInstanceStatusType, SandboxStableStatusType>;
   error: string;
+  /** 结构化终止码；历史记录可能没有该字段，读取侧必须兼容。 */
+  errorCode?: string;
   retryAfter: Date;
 }) {
   return MongoSandboxInstance.updateOne(
@@ -217,6 +219,7 @@ export async function markSandboxOperationFailed(params: {
       $set: {
         'operation.failedAt': new Date(),
         'operation.error': params.error,
+        ...(params.errorCode ? { 'operation.errorCode': params.errorCode } : {}),
         'operation.retryAfter': params.retryAfter,
         'operation.heartbeatAt': new Date()
       }

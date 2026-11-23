@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   Sandbox,
   SandboxApiException,
+  SandboxException,
   SandboxManager,
   type SandboxInfo as SdkSandboxInfo,
   type ServerStreamEvent,
@@ -9,7 +10,12 @@ import {
 } from '@alibaba-group/opensandbox';
 import { createExecdClient, FilesystemAdapter } from '@alibaba-group/opensandbox/internal';
 import { OpenSandboxAdapter, type OpenSandboxConnectionConfig } from '@/adapters/opensandbox';
-import { SandboxNotFoundError, SandboxStateError } from '@/errors';
+import {
+  ConnectionError,
+  SandboxNotFoundError,
+  SandboxStateError,
+  SandboxTerminationError
+} from '@/errors';
 
 const CONNECTION: OpenSandboxConnectionConfig = {
   sessionId: 'session-1',
@@ -190,6 +196,64 @@ describe('OpenSandboxAdapter', () => {
   it('requires an image only when create is requested', async () => {
     const adapter = new OpenSandboxAdapter(CONNECTION);
     await expect(adapter.create()).rejects.toThrow('createConfig.image');
+  });
+
+  it('preserves provider termination evidence when SDK create fails', async () => {
+    // 复现真实 SDK 形态：通用异常外层，provider 终止原因在 cause 链。
+    const providerCause = new Error(
+      'KUBERNETES::POD_FAILED primary reason=ContainerFailed; container sandbox exited with code 127 (Error)'
+    );
+    vi.spyOn(Sandbox, 'create').mockRejectedValueOnce(
+      new SandboxException({ message: 'Sandbox create failed', cause: providerCause })
+    );
+    const adapter = new OpenSandboxAdapter(CONNECTION, {
+      image: { repository: 'node', tag: '20' }
+    });
+
+    const error = await adapter.create().catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(SandboxTerminationError);
+    expect((error as SandboxTerminationError).message).toBe('Failed to create sandbox');
+    expect((error as SandboxTerminationError).code).toBe('KUBERNETES::POD_FAILED');
+    expect((error as SandboxTerminationError).detail).toContain(
+      'container sandbox exited with code 127'
+    );
+    expect((error as SandboxTerminationError).cause).toBeInstanceOf(SandboxException);
+  });
+
+  it('keeps ready timeout as an unknown connection failure', async () => {
+    vi.spyOn(Sandbox, 'create').mockRejectedValueOnce(
+      new SandboxException({ message: 'KUBERNETES::POD_READY_TIMEOUT: pod not ready' })
+    );
+    const adapter = new OpenSandboxAdapter(CONNECTION, {
+      image: { repository: 'node', tag: '20' }
+    });
+
+    const error = await adapter.create().catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(ConnectionError);
+    expect(error).not.toBeInstanceOf(SandboxTerminationError);
+    expect((error as ConnectionError).message).toBe('Failed to create sandbox');
+  });
+
+  it('preserves termination evidence from an error-state session', async () => {
+    const errorInfo = {
+      ...sdkInfo('Error'),
+      status: {
+        state: 'Error',
+        message: 'KUBERNETES::POD_FAILED; container sandbox exited with code 1'
+      }
+    } as SdkSandboxInfo;
+    mockManager([errorInfo]);
+    const adapter = new OpenSandboxAdapter(CONNECTION);
+
+    const error = await adapter.ensureRunning().catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(SandboxTerminationError);
+    expect((error as SandboxTerminationError).code).toBe('KUBERNETES::POD_FAILED');
+    expect((error as SandboxTerminationError).message).toContain(
+      'Sandbox error: KUBERNETES::POD_FAILED'
+    );
   });
 
   it('reuses an already bound running SDK client', async () => {

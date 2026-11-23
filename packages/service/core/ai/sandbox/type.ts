@@ -72,7 +72,9 @@ export const SandboxOperationSchema = z.object({
   heartbeatAt: z.coerce.date(),
   failedAt: z.coerce.date().optional(),
   retryAfter: z.coerce.date().optional(),
-  error: z.string().optional()
+  error: z.string().optional(),
+  /** 结构化终止码；历史记录没有该字段，读取侧需回退到 error 文本。 */
+  errorCode: z.string().optional()
 });
 export type SandboxOperationTypeSchemaType = z.infer<typeof SandboxOperationSchema>;
 

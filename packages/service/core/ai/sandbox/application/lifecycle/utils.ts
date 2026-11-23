@@ -3,7 +3,7 @@ import {
   SANDBOX_ACTIVATION_ROLLBACK_PHASES,
   SANDBOX_OPERATION_ISOLATION_MS
 } from '../../constants';
-import { isSettledSandboxFailure } from '../../error';
+import { isSettledSandboxFailure, isSettledSandboxFailureCode } from '../../error';
 
 /** 回滚是已持久化的操作方向；兼容旧 checkpoint，不从错误文本推断方向。 */
 export const isSandboxActivationRollback = (resource: SandboxResourceDoc) =>
@@ -14,9 +14,15 @@ export const isSandboxActivationRollback = (resource: SandboxResourceDoc) =>
  *
  * 远端已明确结束的失败（容器非 0 退出、配额拒绝等）不存在“可能仍在执行”的歧义，
  * 不应继续受隔离窗口约束，否则用户会看到失败后一段时间内怎么重试都不生效。
+ * 新记录优先看结构化 errorCode；历史记录（无 errorCode）仅当 error 文本命中终止特征时
+ * 才提前恢复，避免把未知结果误判成确定失败。
  */
-const isSettledOperationFailure = (resource: SandboxResourceDoc) =>
-  Boolean(resource.operation?.error) && isSettledSandboxFailure(resource.operation?.error);
+const isSettledOperationFailure = (resource: SandboxResourceDoc) => {
+  const operation = resource.operation;
+  if (!operation) return false;
+  if (operation.errorCode) return isSettledSandboxFailureCode(operation.errorCode);
+  return Boolean(operation.error) && isSettledSandboxFailure(operation.error);
+};
 
 /** 明确结束的失败使用 retryAfter；历史错误和结果未知的失败等待 heartbeat 隔离窗口。 */
 export function canResumeSandboxOperation(resource: SandboxResourceDoc, now = new Date()) {

@@ -11,7 +11,7 @@ import {
 } from '../../infrastructure/instance/repository';
 import { type SandboxInstanceStatusType, type SandboxStableStatusType } from '../../type';
 import { expectedOperationByStatus, SANDBOX_OPERATION_ISOLATION_MS } from '../../constants';
-import { isSettledSandboxFailure } from '../../error';
+import { getSandboxFailureCode, isSettledSandboxFailure } from '../../error';
 import { SandboxOperationSettledError, SandboxOperationConflictError } from './error';
 
 type SandboxLifecycleStepContext = {
@@ -139,6 +139,8 @@ async function executeSandboxLifecycle<T>(
       operationId: operation.id,
       status: definition.status,
       error: getErrText(error),
+      // 结构化终止码随失败一起落库，恢复入口无需再猜文案。
+      errorCode: getSandboxFailureCode(error),
       retryAfter: new Date(
         Date.now() +
           (error instanceof SandboxOperationSettledError || isSettledSandboxFailure(error)

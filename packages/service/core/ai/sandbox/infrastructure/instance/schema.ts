@@ -33,7 +33,9 @@ const SandboxOperationMongoSchema = new Schema(
     heartbeatAt: { type: Date, required: true },
     failedAt: Date,
     retryAfter: Date,
-    error: String
+    error: String,
+    // 结构化终止码（如 KUBERNETES::POD_FAILED）；历史记录可能没有。
+    errorCode: String
   },
   { _id: false, strict: 'throw' }
 );

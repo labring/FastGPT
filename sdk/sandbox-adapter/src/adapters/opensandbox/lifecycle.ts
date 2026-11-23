@@ -13,7 +13,8 @@ import {
   ConnectionError,
   FeatureNotSupportedError,
   SandboxNotFoundError,
-  SandboxStateError
+  SandboxStateError,
+  SandboxTerminationError
 } from '../../errors';
 import type {
   ResourceLimits,
@@ -51,6 +52,76 @@ const STATE_MAP: Record<string, SandboxState> = {
   error: 'Error',
   paused: 'Stopped',
   deleted: 'UnExist'
+};
+
+/**
+ * provider 明确终止的特征及稳定终止码。
+ *
+ * 只有这些特征代表“远端已结束”，超时（如 KUBERNETES::POD_READY_TIMEOUT）和网络
+ * 错误仍是“结果未知”，必须留给上层保持隔离窗口。
+ */
+const SANDBOX_TERMINATION_PATTERNS: ReadonlyArray<{ code: string; pattern: string }> = [
+  { code: 'KUBERNETES::POD_FAILED', pattern: 'KUBERNETES::POD_FAILED' },
+  { code: 'KUBERNETES::QUOTA_EXCEEDED', pattern: 'KUBERNETES::QUOTA_EXCEEDED' },
+  { code: 'CONTAINER_FAILED', pattern: 'primary reason=ContainerFailed' },
+  { code: 'INIT_CONTAINER_FAILED', pattern: 'primary reason=InitContainerFailed' },
+  { code: 'CONTAINER_EXITED', pattern: 'container sandbox exited with code' }
+];
+
+/** 沿 cause/AggregateError/SDK error 字段收集结构化 code 与文本，避免只看到外层包装文案。 */
+const collectFailureEvidence = (
+  value: unknown,
+  evidence: { codes: string[]; texts: string[] },
+  seen = new Set<unknown>(),
+  depth = 0
+): void => {
+  if (depth > 8 || value === null || value === undefined) return;
+  if (typeof value === 'string') {
+    evidence.texts.push(value);
+    return;
+  }
+  if (typeof value !== 'object' || seen.has(value)) return;
+  seen.add(value);
+
+  const record = value as Record<string, unknown>;
+  for (const key of ['message', 'detail', 'reason', 'errorText', 'system_error_text']) {
+    const text = record[key];
+    if (typeof text === 'string') evidence.texts.push(text);
+  }
+  if (typeof record.code === 'string') evidence.codes.push(record.code);
+
+  // SDK 的 SandboxException.error 承载 { code, message }；AggregateError 用 errors。
+  collectFailureEvidence(record.error, evidence, seen, depth + 1);
+  if (Array.isArray(record.errors)) {
+    for (const nested of record.errors) collectFailureEvidence(nested, evidence, seen, depth + 1);
+  }
+  collectFailureEvidence(record.status, evidence, seen, depth + 1);
+  collectFailureEvidence(record.cause, evidence, seen, depth + 1);
+};
+
+/**
+ * 识别远端明确终止的证据，返回稳定终止码与详情。
+ *
+ * 优先读结构化 code，其次才回退到文本特征；两者都没有时返回 undefined，
+ * 让调用方按“结果未知”处理。
+ */
+export const detectSandboxTermination = (
+  error: unknown
+): { code: string; detail?: string } | undefined => {
+  const evidence = { codes: [] as string[], texts: [] as string[] };
+  collectFailureEvidence(error, evidence);
+
+  for (const { code, pattern } of SANDBOX_TERMINATION_PATTERNS) {
+    if (evidence.codes.some((value) => value.includes(pattern))) {
+      const detail = evidence.texts.find((text) => text.includes(pattern));
+      return { code, detail };
+    }
+  }
+  for (const { code, pattern } of SANDBOX_TERMINATION_PATTERNS) {
+    const detail = evidence.texts.find((text) => text.includes(pattern));
+    if (detail !== undefined) return { code, detail };
+  }
+  return undefined;
 };
 
 /** Owns the OpenSandbox SDK client and all remote lifecycle transitions. */
@@ -247,10 +318,14 @@ export class OpenSandboxLifecycle {
       this.setStatus(resolved.status);
       if (props.expectedStates.includes(currentState)) return resolved;
       if (currentState === 'Error') {
-        throw new ConnectionError(
-          `Sandbox ${props.sandboxId} entered an error state: ${resolved.status.message ?? 'unknown error'}`,
-          this.connectionConfig.baseUrl
-        );
+        const detail = resolved.status.message ?? 'unknown error';
+        const message = `Sandbox ${props.sandboxId} entered an error state: ${detail}`;
+        // 对外 message 保持原文，只把 provider 的终止证据结构化后随 cause 带出。
+        const termination = detectSandboxTermination(detail);
+        if (termination) {
+          throw new SandboxTerminationError(termination.code, termination.detail, { message });
+        }
+        throw new ConnectionError(message, this.connectionConfig.baseUrl);
       }
       await new Promise((resolve) => setTimeout(resolve, LIFECYCLE_POLL_INTERVAL_MS));
     }
@@ -323,11 +398,16 @@ export class OpenSandboxLifecycle {
         });
         await this.releaseSandbox();
         return this.create();
-      case 'Error':
-        throw new ConnectionError(
-          `Sandbox error: ${props.resolved.status.message ?? 'unknown error'}`,
-          this.connectionConfig.baseUrl
-        );
+      case 'Error': {
+        const detail = props.resolved.status.message ?? 'unknown error';
+        const message = `Sandbox error: ${detail}`;
+        // 对外 message 保持原文；终止码与详情交给上层，避免只看到通用包装文案。
+        const termination = detectSandboxTermination(detail);
+        if (termination) {
+          throw new SandboxTerminationError(termination.code, termination.detail, { message });
+        }
+        throw new ConnectionError(message, this.connectionConfig.baseUrl);
+      }
     }
   }
 
@@ -434,6 +514,15 @@ export class OpenSandboxLifecycle {
       this.setStatus({ state: 'Running' });
     } catch (error) {
       this.setStatus({ state: 'Error', message: String(error) });
+      // SDK 抛出的通用异常里，provider 的真实终止原因位于 cause/error 链；
+      // 对外 message 仍是原来的 “Failed to create sandbox”，只附加结构化终止证据。
+      const termination = detectSandboxTermination(error);
+      if (termination) {
+        throw new SandboxTerminationError(termination.code, termination.detail, {
+          message: 'Failed to create sandbox',
+          cause: error
+        });
+      }
       throw new ConnectionError('Failed to create sandbox', this.connectionConfig.baseUrl, error);
     }
   }

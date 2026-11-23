@@ -102,6 +102,7 @@ const makeResourceDoc = (params: {
   heartbeatAt?: Date;
   retryAfter?: Date;
   error?: string;
+  errorCode?: string;
 }) =>
   ({
     sandboxId,
@@ -123,7 +124,8 @@ const makeResourceDoc = (params: {
       startedAt: new Date(0),
       heartbeatAt: params.heartbeatAt ?? new Date(0),
       retryAfter: params.retryAfter,
-      error: params.error
+      error: params.error,
+      errorCode: params.errorCode
     }
   }) as repository.SandboxResourceDoc;
 const read = () => repository.findSandboxInstanceBySandboxId({ sandboxId });
@@ -190,6 +192,35 @@ describe('isSandboxActivationRecoverable / isSandboxActivationRollback', () => {
           heartbeatAt: now,
           retryAfter,
           error: 'sandbox request timeout'
+        }),
+        now
+      )
+    ).toBe(false);
+  });
+  it('prefers structured operation.errorCode regardless of the legacy message', () => {
+    const retryAfter = new Date(now.getTime() + 5 * 60 * 1000);
+    // 新记录：通用文案 + 结构化终止码，仍应立即恢复。
+    expect(
+      isSandboxActivationRecoverable(
+        makeResourceDoc({
+          status: 'provisioning',
+          heartbeatAt: now,
+          retryAfter,
+          error: 'Failed to create sandbox',
+          errorCode: 'KUBERNETES::POD_FAILED'
+        }),
+        now
+      )
+    ).toBe(true);
+    // errorCode 不是终止码时，即使 error 文本看起来像失败也不能提前恢复。
+    expect(
+      isSandboxActivationRecoverable(
+        makeResourceDoc({
+          status: 'provisioning',
+          heartbeatAt: now,
+          retryAfter,
+          error: 'container sandbox exited with code 127 (Error)',
+          errorCode: 'CONNECTION_ERROR'
         }),
         now
       )

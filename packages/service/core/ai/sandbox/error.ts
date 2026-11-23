@@ -51,19 +51,112 @@ export const createAgentSandboxTeamLimitReachedError = () =>
 /**
  * 判定“远端已明确结束”的沙箱失败（容器非 0 退出、配额拒绝等）。
  *
+ * provider 的真实终止原因常被通用 ConnectionError 包在 cause 里，只读外层 message
+ * 会丢掉证据。这里优先读取适配器边界保留的结构化 code，其次才回退到文本特征；
+ * 只有“可靠终止证据”才返回 true，超时/网络错误等未知结果必须保持 false。
  * 这类失败不是执行者失联导致的未知结果，重试语义明确，不需要再等操作隔离窗口；
  * 若仍按隔离窗口（provision 5 分钟）阻塞，会在用户侧表现为
  * “沙箱启动失败后一段时间内怎么点都失败、过一会儿又突然好了”。
  */
-const SETTLED_SANDBOX_FAILURE_PATTERNS = [
-  'KUBERNETES::POD_FAILED',
-  'primary reason=ContainerFailed',
-  'primary reason=InitContainerFailed',
-  'container sandbox exited with code',
-  'KUBERNETES::QUOTA_EXCEEDED'
+const SETTLED_SANDBOX_FAILURE_PATTERNS: ReadonlyArray<{ code: string; pattern: string }> = [
+  { code: 'KUBERNETES::POD_FAILED', pattern: 'KUBERNETES::POD_FAILED' },
+  { code: 'KUBERNETES::QUOTA_EXCEEDED', pattern: 'KUBERNETES::QUOTA_EXCEEDED' },
+  { code: 'CONTAINER_FAILED', pattern: 'primary reason=ContainerFailed' },
+  { code: 'INIT_CONTAINER_FAILED', pattern: 'primary reason=InitContainerFailed' },
+  { code: 'CONTAINER_EXITED', pattern: 'container sandbox exited with code' }
 ];
 
-export const isSettledSandboxFailure = (error: unknown) => {
-  const message = getErrText(error, '');
-  return SETTLED_SANDBOX_FAILURE_PATTERNS.some((pattern) => message.includes(pattern));
+/** 结构化终止码集合；历史 operation 记录没有 errorCode 时仍需文本匹配。 */
+export const SANDBOX_TERMINATION_ERROR_CODES: ReadonlySet<string> = new Set(
+  SETTLED_SANDBOX_FAILURE_PATTERNS.map(({ code }) => code)
+);
+
+type SandboxFailureEvidence = { code: string; detail?: string };
+
+type CollectedFailureEvidence = {
+  codes: string[];
+  names: string[];
+  texts: string[];
 };
+
+/**
+ * 沿 cause/AggregateError/SDK error 字段收集结构化 code 与文本。
+ *
+ * 兼容 Error.cause 嵌套、AggregateError.errors、SDK SandboxException.error
+ * 以及普通对象 { code, message } 四种形态。
+ */
+const collectFailureEvidence = (
+  value: unknown,
+  evidence: CollectedFailureEvidence,
+  seen = new Set<unknown>(),
+  depth = 0
+): void => {
+  if (depth > 8 || value === null || value === undefined) return;
+  if (typeof value === 'string') {
+    evidence.texts.push(value);
+    return;
+  }
+  if (typeof value !== 'object' || seen.has(value)) return;
+  seen.add(value);
+
+  const record = value as Record<string, unknown>;
+  if (typeof record.name === 'string') evidence.names.push(record.name);
+  if (typeof record.code === 'string') evidence.codes.push(record.code);
+  for (const key of ['message', 'detail', 'reason', 'errorText', 'system_error_text']) {
+    const text = record[key];
+    if (typeof text === 'string') evidence.texts.push(text);
+  }
+
+  collectFailureEvidence(record.error, evidence, seen, depth + 1);
+  if (Array.isArray(record.errors)) {
+    for (const nested of record.errors) {
+      collectFailureEvidence(nested, evidence, seen, depth + 1);
+    }
+  }
+  collectFailureEvidence(record.status, evidence, seen, depth + 1);
+  collectFailureEvidence(record.cause, evidence, seen, depth + 1);
+};
+
+/** 查找可靠终止证据：结构化 code 优先，其次才做文本匹配。 */
+const findSettledSandboxFailure = (error: unknown): SandboxFailureEvidence | undefined => {
+  const evidence: CollectedFailureEvidence = { codes: [], names: [], texts: [] };
+  collectFailureEvidence(error, evidence);
+
+  // 适配器边界显式标注的终止异常本身就是可靠证据。
+  if (evidence.names.includes('SandboxTerminationError')) {
+    const code = evidence.codes.find((value) => value !== 'CONNECTION_ERROR');
+    if (code) {
+      const detail = evidence.texts.find((text) =>
+        SETTLED_SANDBOX_FAILURE_PATTERNS.some(({ pattern }) => text.includes(pattern))
+      );
+      return { code, detail };
+    }
+  }
+
+  for (const { code, pattern } of SETTLED_SANDBOX_FAILURE_PATTERNS) {
+    if (evidence.codes.some((value) => value.includes(pattern))) {
+      return { code, detail: evidence.texts.find((text) => text.includes(pattern)) };
+    }
+  }
+
+  // getErrText 覆盖响应体等非 cause 协议字段，作为最后的文本回退。
+  const outerText = getErrText(error, '');
+  const texts = [...evidence.texts, outerText];
+  for (const { code, pattern } of SETTLED_SANDBOX_FAILURE_PATTERNS) {
+    const detail = texts.find((text) => text.includes(pattern));
+    if (detail !== undefined) return { code, detail };
+  }
+  return undefined;
+};
+
+/** 仅“可靠终止证据”返回 true；超时、网络错误等未知结果返回 false。 */
+export const isSettledSandboxFailure = (error: unknown): boolean =>
+  Boolean(findSettledSandboxFailure(error));
+
+/** 提取可持久化的结构化终止码；没有可靠证据时返回 undefined。 */
+export const getSandboxFailureCode = (error: unknown): string | undefined =>
+  findSettledSandboxFailure(error)?.code;
+
+/** 判断持久化的 errorCode 是否属于可靠终止码（历史记录文本回退另行处理）。 */
+export const isSettledSandboxFailureCode = (code?: string): boolean =>
+  Boolean(code && SANDBOX_TERMINATION_ERROR_CODES.has(code));

@@ -49,6 +49,28 @@ export class ConnectionError extends SandboxException {
   }
 }
 
+/**
+ * 远端已明确终止的结构化证据（容器非 0 退出、Pod 失败、配额拒绝等）。
+ *
+ * provider 的终止原因常被外层 `ConnectionError` 包在 `cause` 里，只读 message
+ * 会丢失证据。该异常把终止码与原始详情显式带到适配器边界之外，下游可沿 cause
+ * 链读取，用于判定“结果已确定”而不是“结果未知”。
+ *
+ * `code`/`detail` 是稳定的结构化字段；`options.message` 可覆盖对外文案，
+ * 让适配器保持历史错误 message 不变。
+ */
+export class SandboxTerminationError extends SandboxException {
+  constructor(
+    code: string,
+    public readonly detail?: string,
+    options?: { message?: string; cause?: unknown }
+  ) {
+    super(options?.message ?? detail ?? `Sandbox terminated: ${code}`, code, options?.cause);
+    this.name = 'SandboxTerminationError';
+    Object.setPrototypeOf(this, SandboxTerminationError.prototype);
+  }
+}
+
 export class FeatureNotSupportedError extends SandboxException {
   constructor(
     message: string,
