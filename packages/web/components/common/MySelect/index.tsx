@@ -10,7 +10,6 @@ import React, {
 } from 'react';
 import {
   Menu,
-  MenuList,
   MenuItem,
   Button,
   useDisclosure,
@@ -32,6 +31,7 @@ import {
   useComposedSearchInput
 } from '../TagFilter/FilterSearchInput';
 import { useMenuListPresence } from './useMenuListPresence';
+import { CanvasMenuList, useCanvasMenuModifiers } from './CanvasMenuList';
 
 /** 选择组件 Props 类型
  * value: 选中的值
@@ -228,6 +228,7 @@ const SelectMenu = React.memo(function SelectMenu({
   const blurCloseFrame = useRef<number>();
   const [menuWidth, setMenuWidth] = useState<number>();
   const { isMounted, mount, onAnimationComplete, modifiers } = useMenuListPresence(isOpen);
+  const canvasModifiers = useCanvasMenuModifiers(isOpen, ButtonRef, modifiers);
   const menuListAnimationProps = { onAnimationComplete } as {
     onAnimationComplete: () => void;
   };
@@ -438,7 +439,7 @@ const SelectMenu = React.memo(function SelectMenu({
         onClose={handleClose}
         strategy="fixed"
         placement={menuPlacement}
-        modifiers={modifiers}
+        modifiers={canvasModifiers}
         matchWidth
       >
         <MenuButton {...selectButtonProps} as={SelectButton}>
@@ -446,7 +447,7 @@ const SelectMenu = React.memo(function SelectMenu({
         </MenuButton>
 
         {isMounted && (
-          <MenuList
+          <CanvasMenuList
             ref={MenuListRef}
             className={props.className}
             w="100%"
@@ -534,7 +535,7 @@ const SelectMenu = React.memo(function SelectMenu({
             ) : (
               ListRender
             )}
-          </MenuList>
+          </CanvasMenuList>
         )}
       </Menu>
     </Box>

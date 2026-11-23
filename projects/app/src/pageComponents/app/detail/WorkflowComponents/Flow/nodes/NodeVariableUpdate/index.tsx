@@ -41,19 +41,17 @@ import { useField } from '@/web/core/workflow/editor/react/useField';
 import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 
-// 切换目标变量时按新类型生成默认操作字段与初值，
-// 保证 UI 初始显示与 runtime 默认行为一致（否则 boolean 会出现 UI 显示"是" / runtime 写 false 的错配）
+/** 切换目标变量时按新类型初始化操作。布尔默认值和手动输入模式必须一起写入。 */
 const getDefaultsForValueType = (valueType?: WorkflowIOValueTypeEnum): Partial<TUpdateListItem> => {
   const isArray = typeof valueType === 'string' && valueType.startsWith('array');
+  const isBoolean = valueType === WorkflowIOValueTypeEnum.boolean;
   return {
     valueType,
+    ...(isBoolean ? { renderType: FlowNodeInputTypeEnum.input } : {}),
     numberOperator: valueType === WorkflowIOValueTypeEnum.number ? '=' : undefined,
-    booleanMode: valueType === WorkflowIOValueTypeEnum.boolean ? 'true' : undefined,
+    booleanMode: isBoolean ? 'true' : undefined,
     arrayMode: isArray ? 'equal' : undefined,
-    value:
-      valueType === WorkflowIOValueTypeEnum.boolean
-        ? (['', true] as unknown as ReferenceValueType)
-        : (['', ''] as ReferenceValueType)
+    value: isBoolean ? (['', true] as unknown as ReferenceValueType) : ['', '']
   };
 };
 
@@ -208,9 +206,12 @@ const NodeVariableUpdate = ({ data, selected }: CanvasNodeProps) => {
             </FormLabel>
             <Box ml={2}>
               <NodeInputSelect
-                strategy="absolute"
                 renderTypeList={[inputType, FlowNodeInputTypeEnum.reference]}
-                selectedType={updateItem.renderType}
+                selectedType={
+                  updateItem.renderType === FlowNodeInputTypeEnum.reference
+                    ? FlowNodeInputTypeEnum.reference
+                    : inputType
+                }
                 onChange={(e) => {
                   const nt =
                     e === FlowNodeInputTypeEnum.reference

@@ -200,10 +200,13 @@ export const formatWorkflowDiagnostic = ({
     diagnostic.code === WorkflowDiagnosticCodeEnum.variableUpdateTargetMissing ||
     diagnostic.code === WorkflowDiagnosticCodeEnum.variableUpdateValueMissing
   ) {
-    issue.fieldLabel =
+    const field =
       diagnostic.code === WorkflowDiagnosticCodeEnum.variableUpdateTargetMissing
         ? 'variable'
         : 'value';
+    issue.fieldLabel = field;
+    // 两条必填诊断共用 code 和 inputKey，子字段参与提示去重。
+    issue.params = { field };
   }
   if (diagnostic.code === WorkflowDiagnosticCodeEnum.codeInputIncomplete)
     issue.inputKey = undefined;

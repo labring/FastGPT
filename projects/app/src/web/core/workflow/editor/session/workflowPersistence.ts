@@ -42,16 +42,21 @@ type WorkflowPersistenceArgs = {
   pendingSaveRevisionRef: PendingSaveRevisionRef;
 };
 
+type WorkflowIssueMessage = { issue: WorkflowIssueLike; message: string };
+
 /**
- * Core 与 Runtime 的展示文案可能不同，合并时按稳定语义键去重；不同 params 仍视为不同问题。
- * inputKey 与 params 使用 JSON 序列化，文案和 level 不参与身份。
+ * Core 和 Runtime 各自已去重。保留各自的明细，只跳过 Core 已覆盖的 Runtime 问题。
+ * 跨来源匹配使用稳定语义键，忽略展示参数和文案。
  */
-export const dedupeWorkflowIssueMessages = (
-  issues: readonly { issue: WorkflowIssueLike; message: string }[]
-): string[] => {
-  const seen = new Set<string>();
-  return issues.flatMap(({ issue, message }) => {
-    const key = getWorkflowIssueIdentity(
+export const dedupeWorkflowIssueMessages = ({
+  core,
+  runtime
+}: {
+  core: readonly WorkflowIssueMessage[];
+  runtime: readonly WorkflowIssueMessage[];
+}): string[] => {
+  const getIdentity = ({ issue }: WorkflowIssueMessage) =>
+    getWorkflowIssueIdentity(
       {
         nodeId: 'nodeId' in issue ? issue.nodeId : '',
         code: issue.code,
@@ -60,10 +65,10 @@ export const dedupeWorkflowIssueMessages = (
       },
       { ignoreDisplayParams: true }
     );
-    if (seen.has(key)) return [];
-    seen.add(key);
-    return [message];
-  });
+  const coreIssueKeys = new Set(core.map(getIdentity));
+  return core
+    .concat(runtime.filter((entry) => !coreIssueKeys.has(getIdentity(entry))))
+    .map(({ message }) => message);
 };
 
 /** 只接受当前 Session、Runtime、应用与请求 token 的保存响应。 */
@@ -199,13 +204,13 @@ export const serializeWorkflowAndCheckData = async ({
     toast({
       status: 'warning',
       title: t('common:core.workflow.Check Failed'),
-      description: dedupeWorkflowIssueMessages([
-        ...checked.errorIssueMessages,
-        ...errors.map((issue) => ({
+      description: dedupeWorkflowIssueMessages({
+        core: checked.errorIssueMessages,
+        runtime: errors.map((issue) => ({
           issue,
           message: renderWorkflowIssueMessage(issue, t)
         }))
-      ])
+      })
         .slice(0, 3)
         .join('\n')
     });

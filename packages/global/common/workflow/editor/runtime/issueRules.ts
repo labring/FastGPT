@@ -38,7 +38,6 @@ import { ModelTypeEnum } from '../../../../core/ai/constants';
 import { getModelReferenceValue, isEmptyModelValue } from '../../../../core/ai/model/reference';
 import {
   getWorkflowInputNameParams,
-  isConfiguredReferenceValue,
   isEmptyReferenceValue,
   isToolParamInput,
   type WorkflowInputNameSource
@@ -141,10 +140,18 @@ const skipGenericRequiredCheck = (input: FlowNodeInputItemType) => {
   return false;
 };
 
+/** 清除单选时可能只留下来源，输出为空，保存草稿后空输出可能变成 null。 */
+const isVariableUpdateReferenceEmpty = (value: unknown) =>
+  isEmptyReferenceValue(value) ||
+  (Array.isArray(value) &&
+    value.length <= 2 &&
+    typeof value[0] === 'string' &&
+    (value[1] === undefined || value[1] === null || value[1] === ''));
+
 /** 变量更新条目的值是否为空：引用型看引用是否配置，clear/boolean 模式恒有值。 */
 const isVariableUpdateValueEmpty = (item: TUpdateListItem) => {
   if (item.renderType === FlowNodeInputTypeEnum.reference) {
-    return !isConfiguredReferenceValue(item.value);
+    return isVariableUpdateReferenceEmpty(item.value);
   }
   if (item.arrayMode === 'clear' || item.booleanMode) return false;
   const value = item.value?.[1];
@@ -227,7 +234,6 @@ export const collectNodeIssues = (
             (sourceType === undefined || !DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES.includes(sourceType))
         )
     );
-  /** 同一节点上 code + inputKey 相同即视为同一条问题，重复命中只保留第一条。 */
   const addIssue = ({
     code,
     inputKey,
@@ -237,7 +243,6 @@ export const collectNodeIssues = (
     inputKey?: string;
     params?: Record<string, string>;
   }) => {
-    if (issues.some((issue) => issue.code === code && issue.inputKey === inputKey)) return;
     issues.push({
       nodeId,
       level: 'error',
@@ -713,6 +718,7 @@ export const collectNodeIssues = (
               ? `${NodeInputKeyEnum.updateList}[${index}].${field}`
               : NodeInputKeyEnum.updateList,
           params: {
+            field,
             inputNameKey: field === 'variable' ? 'common:core.workflow.variable' : 'common:value'
           }
         });
@@ -727,7 +733,7 @@ export const collectNodeIssues = (
             reference.getValueStatuses({ value: item.variable, targetNodeId: nodeId })
           );
           const variableType = reference.getReferenceValueType(item.variable);
-          if (!isConfiguredReferenceValue(item.variable)) {
+          if (isVariableUpdateReferenceEmpty(item.variable)) {
             addUpdateIssue({ field: 'variable', index, code: 'required_input_empty' });
           } else if (variableCode) {
             addUpdateIssue({ field: 'variable', index, code: variableCode });

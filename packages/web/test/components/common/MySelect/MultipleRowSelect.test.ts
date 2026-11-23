@@ -68,6 +68,35 @@ describe('MultipleRowSelect', () => {
     await vi.waitFor(() => expect(document.activeElement?.textContent).toBe('First option'));
   });
 
+  it('keeps the menu in the canvas scaling layer and selects an option', async () => {
+    const onSelect = vi.fn();
+    await renderSelect(
+      inChakra(
+        React.createElement(
+          'div',
+          { className: 'react-flow' },
+          React.createElement(
+            'div',
+            { className: 'react-flow__viewport', style: { transform: 'scale(3)' } },
+            React.createElement(MultipleRowSelect, {
+              list: [{ label: 'First option', value: 'first' }],
+              onSelect
+            })
+          )
+        )
+      )
+    );
+    const trigger = host.querySelector('button');
+    await act(async () => trigger?.click());
+
+    const option = host.querySelector<HTMLButtonElement>('.react-flow__viewport [role="menuitem"]');
+    expect(option).not.toBeNull();
+    await act(async () => option?.click());
+
+    expect(onSelect).toHaveBeenCalledWith(['first']);
+    expect(trigger?.getAttribute('aria-expanded')).toBe('false');
+  });
+
   it('mounts the loading overlay only after opening', async () => {
     await renderSelect(
       inChakra(

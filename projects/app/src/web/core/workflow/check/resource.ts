@@ -88,15 +88,17 @@ export const checkAgentResourceIssues = ({
       tool
     });
   }
-  for (const { items, inputKey, messageCode } of [
+  for (const { items, inputKey, resourceKind, messageCode } of [
     {
       items: datasets,
       inputKey: datasetInputKey,
+      resourceKind: 'dataset',
       messageCode: WorkflowCheckIssueCodeEnum.agentDatasetAbnormal
     },
     {
       items: skills,
       inputKey: NodeInputKeyEnum.skills,
+      resourceKind: 'skill',
       messageCode: WorkflowCheckIssueCodeEnum.agentSkillAbnormal
     }
   ]) {
@@ -108,6 +110,7 @@ export const checkAgentResourceIssues = ({
               ? WorkflowCheckIssueCodeEnum.resourceNoPermission
               : WorkflowCheckIssueCodeEnum.resourceMissing,
           inputKey,
+          params: { resourceKind },
           messageCode
         });
       }

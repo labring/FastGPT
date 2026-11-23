@@ -11,8 +11,9 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
+  getWorkflowBranchInputKey,
   isToolWorkflowConnectionAllowed,
   normalizeWorkflowSourceHandle,
   normalizeWorkflowTargetHandle
@@ -48,17 +49,11 @@ export const getDefaultExecutionSourcePort = (
   nodeId: string
 ): ExecutionSourcePortRef => {
   const node = getDocumentNode(document, nodeId);
-  if (node.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
-    return { kind: 'branch', nodeId, branchKey: IfElseResultEnum.ELSE };
-  }
-  if (
-    node.flowNodeType === FlowNodeTypeEnum.userSelect ||
-    node.flowNodeType === FlowNodeTypeEnum.classifyQuestion
-  ) {
-    const inputKey =
-      node.flowNodeType === FlowNodeTypeEnum.userSelect
-        ? NodeInputKeyEnum.userSelectOptions
-        : NodeInputKeyEnum.agents;
+  const inputKey = getWorkflowBranchInputKey(node.flowNodeType);
+  if (inputKey !== undefined) {
+    if (node.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
+      return { kind: 'branch', nodeId, branchKey: IfElseResultEnum.ELSE };
+    }
     const input = node.inputs.find((item) => item.key === inputKey);
     // 动态选项共用一个出口，不再按运行前未知的选项生成分支。
     if (node.flowNodeType === FlowNodeTypeEnum.userSelect && input && nodeInputIsReference(input)) {
@@ -81,20 +76,9 @@ export const getDefaultExecutionSourcePort = (
 
 /** 返回节点当前配置实际声明的分支端口，供连接校验和显式删除端口的边清理共用。 */
 export const getExecutionBranchKeys = (node: StoreNodeItemType): string[] => {
-  if (
-    ![
-      FlowNodeTypeEnum.ifElseNode,
-      FlowNodeTypeEnum.userSelect,
-      FlowNodeTypeEnum.classifyQuestion
-    ].includes(node.flowNodeType)
-  )
-    return [];
-  const inputKey =
-    node.flowNodeType === FlowNodeTypeEnum.ifElseNode
-      ? NodeInputKeyEnum.ifElseList
-      : node.flowNodeType === FlowNodeTypeEnum.userSelect
-        ? NodeInputKeyEnum.userSelectOptions
-        : NodeInputKeyEnum.agents;
+  const inputKey = getWorkflowBranchInputKey(node.flowNodeType);
+  if (inputKey === undefined) return [];
+
   const input = node.inputs.find((item) => item.key === inputKey);
   if (node.flowNodeType === FlowNodeTypeEnum.userSelect && input && nodeInputIsReference(input))
     return [USER_SELECT_REFERENCE_HANDLE_KEY];

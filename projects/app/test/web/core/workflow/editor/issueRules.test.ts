@@ -946,6 +946,70 @@ const realWorldFixture: Fixture = {
 const corpus = [...templateFixtures, ...codeFixtures, realWorldFixture];
 
 describe('workflow issue rules', () => {
+  it.each([undefined, null])('treats a cleared update target (%s) as required', (clearedOutput) => {
+    const store = uiWorkflow2StoreWorkflow(connectedNode(VariableUpdateNode, 'update'));
+    const canonical = migrateStoreWorkflow({ ...store, chatConfig: {} });
+    const runtime = createWorkflowEditor(canonical, { getEnvironment: () => defaultEnvironment });
+    const field = runtime.getFieldHandle({
+      nodeId: 'update',
+      fieldKey: NodeInputKeyEnum.updateList
+    });
+    const selectTarget = (output: string | null | undefined) =>
+      field?.setValue([
+        {
+          variable: ['start', output],
+          value: ['', 'updated value'],
+          renderType: FlowNodeInputTypeEnum.input
+        }
+      ]);
+    const targetIssues = () =>
+      runtime.getWorkflowIssues().issues.filter((issue) => issue.params?.field === 'variable');
+
+    expect(selectTarget(NodeOutputKeyEnum.userChatInput)?.ok).toBe(true);
+    expect(targetIssues()).toEqual([]);
+
+    expect(selectTarget(clearedOutput)?.ok).toBe(true);
+    expect(targetIssues()).toEqual([
+      expect.objectContaining({
+        code: 'required_input_empty',
+        params: { field: 'variable', inputNameKey: 'common:core.workflow.variable' }
+      })
+    ]);
+
+    expect(selectTarget('deleted-output')?.ok).toBe(true);
+    expect(targetIssues()).toEqual([expect.objectContaining({ code: 'invalid_reference' })]);
+    runtime.dispose();
+  });
+
+  it.each([0, 2])('reports both missing update fields with %i rows', (rowCount) => {
+    const store = uiWorkflow2StoreWorkflow(connectedNode(VariableUpdateNode, 'update'));
+    const canonical = migrateStoreWorkflow({ ...store, chatConfig: {} });
+    setValue({
+      canonical,
+      nodeId: 'update',
+      key: NodeInputKeyEnum.updateList,
+      value: Array.from({ length: rowCount }, () => ({
+        variable: ['', ''],
+        value: ['', ''],
+        renderType: FlowNodeInputTypeEnum.input
+      }))
+    });
+    const runtime = createWorkflowEditor(canonical, { getEnvironment: () => defaultEnvironment });
+    const { issues } = runtime.getWorkflowIssues();
+    runtime.dispose();
+
+    expect(
+      issues
+        .filter(
+          ({ nodeId, code, inputKey }) =>
+            nodeId === 'update' &&
+            code === 'required_input_empty' &&
+            inputKey === NodeInputKeyEnum.updateList
+        )
+        .map(({ params }) => params?.inputNameKey)
+    ).toEqual(['common:core.workflow.variable', 'common:value']);
+  });
+
   it('checks chat model defaults separately from stable IDs and legacy names', () => {
     const dialog = migrateStoreWorkflow({
       nodes: [],

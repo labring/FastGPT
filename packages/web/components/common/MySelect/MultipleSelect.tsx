@@ -8,7 +8,6 @@ import {
   MenuButton,
   MenuItem,
   type MenuItemProps,
-  MenuList,
   useDisclosure
 } from '@chakra-ui/react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -27,6 +26,7 @@ import FilterSearchInput, { filterSelectOptionsBySearch } from '../TagFilter/Fil
 import { useStaticVirtualList } from '../../../hooks/useVirtualList';
 import MyIconButton from '../Icon/button';
 import { useMenuListPresence } from './useMenuListPresence';
+import { CanvasMenuList, useCanvasMenuModifiers } from './CanvasMenuList';
 import { useCloseOnFlowNodeDragAreaPointerDown } from '../../../hooks/useCloseOnFlowNodeDragAreaPointerDown';
 
 const menuItemStyles: MenuItemProps = {
@@ -241,6 +241,7 @@ const MultipleSelectMenu = React.memo(function MultipleSelectMenu({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [menuWidth, setMenuWidth] = useState<number>();
   const { isMounted, mount, onAnimationComplete, modifiers } = useMenuListPresence(isOpen);
+  const canvasModifiers = useCanvasMenuModifiers(isOpen, triggerRef, modifiers);
   const visibleList = useMemo(
     () =>
       isMounted && canSearch && shouldFilterLocal
@@ -352,7 +353,7 @@ const MultipleSelectMenu = React.memo(function MultipleSelectMenu({
   const renderOptions = () => visibleList.map((item, index) => renderListItem({ item, index }));
 
   const menuList = isMounted && (
-    <MenuList
+    <CanvasMenuList
       className={triggerProps.className}
       w={'100%'}
       minW={menuWidth ? `${menuWidth}px` : undefined}
@@ -444,7 +445,7 @@ const MultipleSelectMenu = React.memo(function MultipleSelectMenu({
       )}
 
       {isLoading && <MyLoading fixed={false} />}
-    </MenuList>
+    </CanvasMenuList>
   );
 
   return (
@@ -455,7 +456,7 @@ const MultipleSelectMenu = React.memo(function MultipleSelectMenu({
       onOpen={handleOpen}
       onClose={onClose}
       strategy={'fixed'}
-      modifiers={modifiers}
+      modifiers={canvasModifiers}
       matchWidth
       closeOnSelect={false}
     >

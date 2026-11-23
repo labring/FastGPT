@@ -2,7 +2,7 @@ import {
   CanonicalWorkflowDataSchema,
   type CanonicalWorkflowData
 } from '../../../core/workflow/migration/schema';
-import { migrateWorkflowToCurrent } from '../migration';
+import { migrateWorkflowForEditor } from '../migration';
 import { StoreWorkflowInputSchema } from '../../../core/workflow/migration/legacy/schema';
 import { restoreRuntimeNodeOutputValidity } from './runtime/documentRules';
 import { createWorkflowEditor } from './runtime/runtime';
@@ -13,9 +13,9 @@ import type {
 
 export type StoreWorkflow = CanonicalWorkflowData;
 
-/** StoreWorkflow 输入边界；先迁移并严格 canonicalize，再创建新的 runtime。 */
+/** 编辑器输入边界，迁移历史结构并保留详情接口回填的工具字段。 */
 export const migrateStoreWorkflow = (input: unknown): CanonicalWorkflowData => {
-  return migrateWorkflowToCurrent(StoreWorkflowInputSchema.parse(input));
+  return migrateWorkflowForEditor(StoreWorkflowInputSchema.parse(input));
 };
 
 /** 从 StoreWorkflow 创建 fresh Runtime；迁移校验后恢复内存态输出回调，不改持久化形状。 */

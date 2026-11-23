@@ -432,10 +432,10 @@ test(`[${id}/C6] 自动保存网络中断后保留草稿及显式恢复`, async 
 
   const restored = await context.newPage();
   await openEditor(restored, app._id);
-  await expect(draftNotice(restored)).toBeVisible();
   await expect(
     restored.locator('.react-flow__node').getByText('Offline recoverable edit', { exact: true })
   ).toBeVisible();
+  await expect(draftNotice(restored)).toBeHidden();
   await restored
     .locator('.react-flow__node')
     .getByText('Offline recoverable edit', { exact: true })

@@ -135,7 +135,7 @@ export const createIssueModule = ({
    * 判定规则全在 issueRules，本函数只负责 scope、可达集合与结果身份复用。
    */
   const rebuildIssues = (onlyNodeIds?: ReadonlySet<string>) => {
-    /** 展示参数不参与身份；表单字段等定位参数用于区分同一输入下的不同子项。 */
+    /** 参数参与去重，同一字段下的不同子项可以分别提示。 */
     const dedupeIssues = <T extends WorkflowCheckIssue | WorkflowConfigIssue>(
       issues: readonly T[]
     ): T[] => {

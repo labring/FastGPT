@@ -9,7 +9,6 @@ import {
   css,
   Menu,
   MenuButton,
-  MenuList,
   type ButtonProps as ChakraButtonProps
 } from '@chakra-ui/react';
 import { type ListItemType, type MultipleArraySelectProps, type MultipleSelectProps } from './type';
@@ -18,6 +17,7 @@ import MyLoading from '../MyLoading';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../../common/Icon';
 import { useMenuListPresence } from './useMenuListPresence';
+import { CanvasMenuList, useCanvasMenuModifiers } from './CanvasMenuList';
 import { useCloseOnFlowNodeDragAreaPointerDown } from '../../../hooks/useCloseOnFlowNodeDragAreaPointerDown';
 
 type RenderListProps = {
@@ -347,6 +347,7 @@ const MultipleRowSelect = React.memo(function MultipleRowSelect({
     return safeCloneValue;
   })();
   const { isMounted, mount, onAnimationComplete, modifiers } = useMenuListPresence(isOpen);
+  const canvasModifiers = useCanvasMenuModifiers(isOpen, ButtonRef, modifiers);
 
   const onOpenSelect = useCallback(() => {
     setCloneValue(Array.isArray(value) ? value : []);
@@ -412,7 +413,7 @@ const MultipleRowSelect = React.memo(function MultipleRowSelect({
   );
 
   const menuList = isMounted ? (
-    <MenuList
+    <CanvasMenuList
       ref={MenuListRef}
       className={ButtonProps?.className}
       w={'max-content'}
@@ -468,7 +469,7 @@ const MultipleRowSelect = React.memo(function MultipleRowSelect({
           SelectedItemRef={SelectedItemRef}
         />
       )}
-    </MenuList>
+    </CanvasMenuList>
   ) : null;
   useCloseOnFlowNodeDragAreaPointerDown(OutsideClickRef, onClose, isOpen);
 
@@ -490,7 +491,7 @@ const MultipleRowSelect = React.memo(function MultipleRowSelect({
         onOpen={handleOpen}
         onClose={onCloseSelect}
         strategy={'fixed'}
-        modifiers={modifiers}
+        modifiers={canvasModifiers}
         closeOnSelect={false}
       >
         <MenuButton as={Button} ref={ButtonRef} {...triggerProps}>
@@ -518,6 +519,7 @@ const MultipleRowArraySelect = React.memo(function MultipleRowArraySelect({
   const ref = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const modifiers = useCanvasMenuModifiers(isOpen, buttonRef);
   const [triggerWidth, setTriggerWidth] = useState(0);
   const isTriggerDisabled = Boolean(
     ButtonProps?.isDisabled || (ButtonProps && 'disabled' in ButtonProps && ButtonProps.disabled)
@@ -551,6 +553,7 @@ const MultipleRowArraySelect = React.memo(function MultipleRowArraySelect({
         onOpen={onOpenSelect}
         onClose={onClose}
         strategy="fixed"
+        modifiers={modifiers}
         placement={popDirection === 'top' ? 'top-start' : 'bottom-start'}
         closeOnSelect={false}
       >
@@ -587,7 +590,7 @@ const MultipleRowArraySelect = React.memo(function MultipleRowArraySelect({
             {label ?? placeholder}
           </Box>
         </MenuButton>
-        <MenuList
+        <CanvasMenuList
           py={2}
           bg="white"
           border="1px solid #fff"
@@ -611,7 +614,7 @@ const MultipleRowArraySelect = React.memo(function MultipleRowArraySelect({
               onChange={onSelect}
             />
           </Flex>
-        </MenuList>
+        </CanvasMenuList>
       </Menu>
       {labelActions && !isTriggerDisabled && (
         <Box position="absolute" inset={0} zIndex={1} pointerEvents="none">

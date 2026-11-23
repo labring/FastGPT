@@ -26,62 +26,62 @@ const assertNode = (document: Pick<WorkflowDocument, 'nodes'>, nodeId: string) =
   return node;
 };
 
-const compileSourceHandle = (
-  port: ExecutionSourcePortRef,
-  document: Pick<WorkflowDocument, 'nodes'>
-): string => {
-  const node = assertNode(document, port.nodeId);
+/** 将语义出口编码为 StoreEdge 的 sourceHandle。 */
+export const getExecutionSourceHandle = (port: ExecutionSourcePortRef): string => {
   if (port.kind === 'next') return getHandleId(port.nodeId, 'source', 'right');
   if (port.kind === 'catch') return getHandleId(port.nodeId, 'source_catch', 'right');
   if (port.kind === 'selectedTools') return NodeOutputKeyEnum.selectedTools;
-  if (port.kind === 'branch') {
-    if (getWorkflowBranchInputKey(node.flowNodeType) === undefined) {
-      throw new WorkflowCommandError([
-        {
-          code: WorkflowDiagnosticCodeEnum.branchPortUnsupported,
-          severity: 'error',
-          nodeId: port.nodeId,
-          params: { branchKey: port.branchKey }
-        }
-      ]);
-    }
-    return getHandleId(port.nodeId, 'source', port.branchKey);
-  }
-
-  const output = node.outputs.find((item) => item.key === port.outputKey);
-  if (!output || output.type !== FlowNodeOutputTypeEnum.source || output.invalid === true) {
-    throw new WorkflowCommandError([
-      {
-        code: WorkflowDiagnosticCodeEnum.sourceOutputNotFound,
-        severity: 'error',
-        nodeId: port.nodeId,
-        params: { outputKey: port.outputKey }
-      }
-    ]);
-  }
+  if (port.kind === 'branch') return getHandleId(port.nodeId, 'source', port.branchKey);
   return getHandleId(port.nodeId, 'source', port.outputKey);
 };
 
-const compileTargetHandle = (
-  port: ExecutionTargetPortRef,
-  document: Pick<WorkflowDocument, 'nodes'>
-): string => {
-  assertNode(document, port.nodeId);
-  return port.kind === 'selectedTools'
+/** 将语义入口编码为 StoreEdge 的 targetHandle。 */
+export const getExecutionTargetHandle = (port: ExecutionTargetPortRef): string =>
+  port.kind === 'selectedTools'
     ? NodeOutputKeyEnum.selectedTools
     : getHandleId(port.nodeId, 'target', 'left');
-};
 
-/** 将稳定语义端口编译为 FastGPT 当前 StoreEdge handle。 */
+/** 校验边涉及的节点和源端口，再将语义边编译为 StoreEdge。 */
 export const compileExecutionEdge = (
-  edge: WorkflowExecutionEdge,
+  { source, target }: WorkflowExecutionEdge,
   document: Pick<WorkflowDocument, 'nodes'>
-): StoreEdgeItemType => ({
-  source: edge.source.nodeId,
-  sourceHandle: compileSourceHandle(edge.source, document),
-  target: edge.target.nodeId,
-  targetHandle: compileTargetHandle(edge.target, document)
-});
+): StoreEdgeItemType => {
+  const sourceNode = assertNode(document, source.nodeId);
+  if (
+    source.kind === 'branch' &&
+    getWorkflowBranchInputKey(sourceNode.flowNodeType) === undefined
+  ) {
+    throw new WorkflowCommandError([
+      {
+        code: WorkflowDiagnosticCodeEnum.branchPortUnsupported,
+        severity: 'error',
+        nodeId: source.nodeId,
+        params: { branchKey: source.branchKey }
+      }
+    ]);
+  }
+  if (source.kind === 'sourceOutput') {
+    const output = sourceNode.outputs.find((item) => item.key === source.outputKey);
+    if (!output || output.type !== FlowNodeOutputTypeEnum.source || output.invalid === true) {
+      throw new WorkflowCommandError([
+        {
+          code: WorkflowDiagnosticCodeEnum.sourceOutputNotFound,
+          severity: 'error',
+          nodeId: source.nodeId,
+          params: { outputKey: source.outputKey }
+        }
+      ]);
+    }
+  }
+  assertNode(document, target.nodeId);
+
+  return {
+    source: source.nodeId,
+    sourceHandle: getExecutionSourceHandle(source),
+    target: target.nodeId,
+    targetHandle: getExecutionTargetHandle(target)
+  };
+};
 
 /** 只解析源出口，供完整边导入和历史拓扑检查共用；不校验目标端口或当前分支配置。 */
 export const decompileStoreSourcePort = ({

@@ -57,16 +57,19 @@ describe('shared workflow resource rules', () => {
       {
         code: WorkflowCheckIssueCodeEnum.resourceNoPermission,
         inputKey: NodeInputKeyEnum.datasetSelectList,
+        params: { resourceKind: 'dataset' },
         messageCode: WorkflowCheckIssueCodeEnum.agentDatasetAbnormal
       },
       {
         code: WorkflowCheckIssueCodeEnum.resourceMissing,
         inputKey: NodeInputKeyEnum.datasetSelectList,
+        params: { resourceKind: 'dataset' },
         messageCode: WorkflowCheckIssueCodeEnum.agentDatasetAbnormal
       },
       {
         code: WorkflowCheckIssueCodeEnum.resourceNoPermission,
         inputKey: NodeInputKeyEnum.skills,
+        params: { resourceKind: 'skill' },
         messageCode: WorkflowCheckIssueCodeEnum.agentSkillAbnormal
       }
     ]);
@@ -100,6 +103,7 @@ describe('shared workflow resource rules', () => {
       {
         code: WorkflowCheckIssueCodeEnum.resourceNoPermission,
         inputKey: NodeInputKeyEnum.datasetParams,
+        params: { resourceKind: 'dataset' },
         messageCode: WorkflowCheckIssueCodeEnum.agentDatasetAbnormal
       }
     ]);

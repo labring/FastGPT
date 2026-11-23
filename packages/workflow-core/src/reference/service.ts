@@ -1,7 +1,6 @@
 import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import {
   NodeInputKeyEnum,
-  NodeOutputKeyEnum,
   VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
@@ -14,7 +13,6 @@ import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import {
   areWorkflowValueTypesCompatible,
   filterSelectableWorkflowNodeOutputs,
-  getHandleId,
   getSelectedInputRenderType,
   isWorkflowErrorBranchReachable,
   isWorkflowReferenceEdgeValid,
@@ -24,6 +22,7 @@ import {
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { WorkflowCommandError } from '../domain/diagnostic';
+import { getExecutionSourceHandle, getExecutionTargetHandle } from '../edge/compiler';
 import type { VariableRef } from './type';
 import { getInputAutomationMeta } from '@fastgpt/global/core/workflow/template/automationMeta';
 import { getNodeInputCapability, type NodeParameterInputMode } from '../template/descriptor';
@@ -113,14 +112,6 @@ type WorkflowReferenceIndex = {
   parentByNodeId: ReadonlyMap<string, string>;
 };
 
-const getExecutionSourceHandle = (source: WorkflowDocument['executionEdges'][number]['source']) => {
-  if (source.kind === 'next') return getHandleId(source.nodeId, 'source', 'right');
-  if (source.kind === 'catch') return getHandleId(source.nodeId, 'source_catch', 'right');
-  if (source.kind === 'selectedTools') return NodeOutputKeyEnum.selectedTools;
-  if (source.kind === 'branch') return getHandleId(source.nodeId, 'source', source.branchKey);
-  return getHandleId(source.nodeId, 'source', source.outputKey);
-};
-
 /** 将语义边投影为与编辑器相同的有效入边，供普通引用和异常引用共用。 */
 export const createWorkflowReferenceIndex = (
   document: Pick<WorkflowDocument, 'nodes' | 'executionEdges'>
@@ -152,10 +143,7 @@ export const createWorkflowReferenceIndex = (
       source,
       target,
       sourceHandle,
-      targetHandle:
-        edge.target.kind === 'selectedTools'
-          ? NodeOutputKeyEnum.selectedTools
-          : getHandleId(target, 'target', 'left')
+      targetHandle: getExecutionTargetHandle(edge.target)
     });
     incomingEdgesByNodeId.set(target, incomingEdges);
   }

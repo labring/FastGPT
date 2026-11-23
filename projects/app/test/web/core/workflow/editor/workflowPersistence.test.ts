@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { createInstance } from 'i18next';
 import { hydrateWorkflowEditor } from '@fastgpt/global/common/workflow/editor/protocol';
 import {
   NodeInputKeyEnum,
@@ -13,10 +14,17 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { AgentToolInputModeEnum } from '@fastgpt/global/core/app/tool/constants';
+import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
 import { FormInputNode } from '@fastgpt/global/core/workflow/template/system/interactive/formInput';
+import { VariableUpdateNode } from '@fastgpt/global/core/workflow/template/system/variableUpdate';
+import { WorkflowStart } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
+import commonZh from '@fastgpt/web/i18n/zh-CN/common.json';
 import { ensureModelCatalog } from '@/web/core/ai/model/modelData';
 import { getWorkflowModelCheckData } from '@/web/core/workflow/modelData';
+import { hydrateRuntime, serializeRuntime } from '@/web/core/workflow/editor/codec';
+import { runWorkflowTest } from '@/pageComponents/app/detail/Workflow/runWorkflowTest';
 import {
   dedupeWorkflowIssueMessages,
   serializeWorkflowAndCheckData
@@ -103,6 +111,192 @@ describe('serializeWorkflowAndCheckData', () => {
     );
     expect(gate.focusIssueNode).toHaveBeenCalledWith(undefined);
     expect(gate.toast).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { action: 'publish', rowCount: 0 },
+    { action: 'test run', rowCount: 2 }
+  ])('shows both missing variable update fields on $action', async ({ action, rowCount }) => {
+    const i18n = createInstance();
+    await i18n.init({ lng: 'zh-CN', resources: { 'zh-CN': { common: commonZh } } });
+    const runtime = hydrateWorkflowEditor({
+      nodes: [
+        { ...WorkflowStart, nodeId: 'start' },
+        {
+          ...VariableUpdateNode,
+          nodeId: 'update',
+          name: '变量更新',
+          inputs: VariableUpdateNode.inputs.map((input) => ({
+            ...input,
+            value: Array.from({ length: rowCount }, () => ({
+              variable: ['', ''],
+              value: ['', ''],
+              renderType: FlowNodeInputTypeEnum.input
+            }))
+          }))
+        }
+      ],
+      edges: [
+        {
+          source: 'start',
+          target: 'update',
+          sourceHandle: 'start-source-right',
+          targetHandle: 'update-target-left'
+        }
+      ],
+      chatConfig: {}
+    });
+    const gate = { ...createGate(runtime), t: i18n.t };
+    const check = () => serializeWorkflowAndCheckData(gate);
+
+    if (action === 'test run') {
+      const open = vi.fn();
+      expect(await runWorkflowTest({ serializeWorkflowAndCheck: check, open })).toBe(false);
+      expect(open).not.toHaveBeenCalled();
+    } else {
+      expect(await check()).toBeUndefined();
+    }
+
+    expect(gate.focusIssueNode).toHaveBeenCalledWith('update');
+    expect(gate.toast).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        status: 'warning',
+        description: '「变量更新」需填写必填项 变量\n「变量更新」需填写必填项 值'
+      })
+    );
+    runtime.dispose();
+  });
+
+  it('shows each Agent resource issue once in the Run panel', async () => {
+    const modelId = 'agent-model';
+    const i18n = createInstance();
+    await i18n.init({ lng: 'zh-CN', resources: { 'zh-CN': { common: commonZh } } });
+    const inputValues = new Map<string, unknown>([
+      [NodeInputKeyEnum.aiModelId, modelId],
+      [NodeInputKeyEnum.userChatInput, ['start', NodeOutputKeyEnum.userChatInput]],
+      [NodeInputKeyEnum.datasetSelectList, [{ datasetId: 'deleted', error: 'resource_missing' }]],
+      [NodeInputKeyEnum.skills, [{ skillId: 'restricted', error: 'resource_no_permission' }]],
+      [NodeInputKeyEnum.useAgentSandbox, true]
+    ]);
+    const runtime = hydrateWorkflowEditor({
+      nodes: [
+        { ...WorkflowStart, nodeId: 'start' },
+        {
+          ...AgentNode,
+          nodeId: 'agent',
+          name: 'Agent',
+          inputs: AgentNode.inputs.map((input) =>
+            inputValues.has(input.key) ? { ...input, value: inputValues.get(input.key) } : input
+          )
+        }
+      ],
+      edges: [
+        {
+          source: 'start',
+          target: 'agent',
+          sourceHandle: 'start-source-right',
+          targetHandle: 'agent-target-left'
+        }
+      ],
+      chatConfig: {}
+    });
+    vi.mocked(getWorkflowModelCheckData).mockResolvedValue({
+      references: [{ modelId, type: ModelTypeEnum.llm }],
+      defaultModelIds: {}
+    });
+    const gate = { ...createGate(runtime), t: i18n.t };
+    const open = vi.fn();
+    expect(
+      await runWorkflowTest({
+        serializeWorkflowAndCheck: () => serializeWorkflowAndCheckData(gate),
+        open
+      })
+    ).toBe(false);
+    expect(open).not.toHaveBeenCalled();
+    expect(gate.toast).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        description: '「Agent」引用的知识库存在异常，请处理\n「Agent」引用的技能存在异常，请处理'
+      })
+    );
+    runtime.dispose();
+  });
+
+  it('blocks the Run panel for a deleted Agent tool loaded from app detail', async () => {
+    const modelId = 'agent-model';
+    const fieldKey = NodeInputKeyEnum.selectedTools;
+    const storedTool = {
+      id: 'deleted-tool',
+      name: 'Deleted tool',
+      inputs: [{ key: 'query', mode: AgentToolInputModeEnum.manual }],
+      config: { query: 'saved value', constructor: 'fixed parameter' }
+    };
+    const detailTool = {
+      ...storedTool,
+      flowNodeType: FlowNodeTypeEnum.tool,
+      inputs: [],
+      rawInputs: storedTool.inputs,
+      outputs: [],
+      pluginData: { error: 'tool_missing' }
+    };
+    const inputValues = new Map<string, unknown>([
+      [NodeInputKeyEnum.aiModelId, modelId],
+      [NodeInputKeyEnum.userChatInput, ['start', NodeOutputKeyEnum.userChatInput]],
+      [fieldKey, [detailTool]]
+    ]);
+    const runtime = hydrateRuntime({
+      input: {
+        nodes: [
+          { ...WorkflowStart, nodeId: 'start' },
+          {
+            ...AgentNode,
+            nodeId: 'agent',
+            inputs: AgentNode.inputs.map((input) =>
+              inputValues.has(input.key) ? { ...input, value: inputValues.get(input.key) } : input
+            )
+          }
+        ],
+        edges: [
+          {
+            source: 'start',
+            target: 'agent',
+            sourceHandle: 'start-source-right',
+            targetHandle: 'agent-target-left'
+          }
+        ]
+      },
+      t: ((key: string) => key) as never
+    });
+    vi.mocked(getWorkflowModelCheckData).mockResolvedValue({
+      references: [{ modelId, type: ModelTypeEnum.llm }],
+      defaultModelIds: {}
+    });
+    const gate = createGate(runtime);
+    const open = vi.fn();
+    const run = () =>
+      runWorkflowTest({
+        serializeWorkflowAndCheck: () => serializeWorkflowAndCheckData(gate),
+        open
+      });
+    const field = { nodeId: 'agent', fieldKey };
+
+    expect(await run()).toBe(false);
+    expect(open).not.toHaveBeenCalled();
+    expect(runtime.getField(field)?.input?.value).toEqual([detailTool]);
+    expect(runtime.getWorkflowIssues().issues).toContainEqual(
+      expect.objectContaining({
+        nodeId: 'agent',
+        inputKey: fieldKey,
+        code: 'agent_tool_abnormal',
+        level: 'error'
+      })
+    );
+    const savedAgent = serializeRuntime(runtime).nodes.find(({ nodeId }) => nodeId === 'agent');
+    expect(savedAgent?.inputs.find(({ key }) => key === fieldKey)?.value).toEqual([storedTool]);
+
+    expect(runtime.getFieldHandle(field)?.setValue([]).ok).toBe(true);
+    expect(await run()).toBe(true);
+    expect(open).toHaveBeenCalledOnce();
+    runtime.dispose();
   });
 
   it.each([true, false])(
@@ -543,76 +737,66 @@ describe('serializeWorkflowAndCheckData', () => {
 });
 
 describe('dedupeWorkflowIssueMessages', () => {
-  it('keeps the first message for the same semantic issue across validators', () => {
+  it('keeps distinct Core field messages covered by one runtime summary', () => {
+    const formIssue = {
+      nodeId: 'form',
+      level: 'error',
+      code: 'required_input_empty',
+      inputKey: NodeInputKeyEnum.userInputForms
+    } as const;
+
     expect(
-      dedupeWorkflowIssueMessages([
-        {
-          issue: invalidAnswerReference,
-          message: '「Answer」core message'
-        },
-        {
-          issue: {
-            ...invalidAnswerReference,
+      dedupeWorkflowIssueMessages({
+        core: [
+          { issue: { ...formIssue, params: { inputName: 'City' } }, message: 'City is required' },
+          { issue: { ...formIssue, params: { inputName: 'Tags' } }, message: 'Tags is required' }
+        ],
+        runtime: [{ issue: formIssue, message: 'Form options are required' }]
+      })
+    ).toEqual(['City is required', 'Tags is required']);
+  });
+
+  it('keeps the Core message when only the display params differ', () => {
+    expect(
+      dedupeWorkflowIssueMessages({
+        core: [
+          {
+            issue: { ...invalidAnswerReference, params: { inputName: 'Answer' } },
+            message: '「Answer」core message'
+          }
+        ],
+        runtime: [
+          {
+            issue: { ...invalidAnswerReference, params: { inputNameKey: 'common:Answer' } },
             message: 'runtime message'
-          },
-          message: 'runtime message'
-        }
-      ])
+          }
+        ]
+      })
     ).toEqual(['「Answer」core message']);
   });
 
-  it('keeps distinct field locations and ignores display-only params', () => {
-    expect(
-      dedupeWorkflowIssueMessages([
-        {
-          issue: {
-            nodeId: 'answer',
-            level: 'error',
-            code: 'invalid_reference',
-            inputKey: NodeInputKeyEnum.userInputForms,
-            params: { fieldKey: 'first', inputName: 'First' }
-          },
-          message: 'first'
-        },
-        {
-          issue: {
-            nodeId: 'answer',
-            level: 'error',
-            code: 'invalid_reference',
-            inputKey: NodeInputKeyEnum.userInputForms,
-            params: { fieldKey: 'second', inputName: 'Second' }
-          },
-          message: 'second'
-        },
-        {
-          issue: {
-            nodeId: 'answer',
-            level: 'error',
-            code: 'user_select_empty',
-            inputKey: NodeInputKeyEnum.answerText
-          },
-          message: 'third'
-        }
-      ])
-    ).toEqual(['first', 'second', 'third']);
+  it('keeps runtime issues with a distinct field location or code', () => {
+    const formReferenceIssue = {
+      ...invalidAnswerReference,
+      inputKey: NodeInputKeyEnum.userInputForms
+    };
 
     expect(
-      dedupeWorkflowIssueMessages([
-        {
-          issue: {
-            ...invalidAnswerReference,
-            params: { inputName: 'Answer' }
+      dedupeWorkflowIssueMessages({
+        core: [
+          {
+            issue: { ...formReferenceIssue, params: { fieldKey: 'first', inputName: 'First' } },
+            message: 'first'
+          }
+        ],
+        runtime: [
+          {
+            issue: { ...formReferenceIssue, params: { fieldKey: 'second', inputName: 'Second' } },
+            message: 'second'
           },
-          message: 'core'
-        },
-        {
-          issue: {
-            ...invalidAnswerReference,
-            params: { inputNameKey: 'common:Answer' }
-          },
-          message: 'runtime'
-        }
-      ])
-    ).toEqual(['core']);
+          { issue: { ...formReferenceIssue, code: 'user_select_empty' }, message: 'third' }
+        ]
+      })
+    ).toEqual(['first', 'second', 'third']);
   });
 });

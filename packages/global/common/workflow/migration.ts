@@ -1,8 +1,10 @@
+import z from 'zod';
 import type { CanonicalWorkflowData } from '../../core/workflow/migration/schema';
 import {
-  CanonicalSelectedToolsValueSchema,
+  CanonicalSelectedAgentToolSchema,
   CanonicalWorkflowDataSchema
 } from '../../core/workflow/migration/schema';
+import { SelectedToolItemTypeSchema } from '../../core/app/formEdit/type';
 import type { LegacyWorkflowDataInput } from '../../core/workflow/migration/legacy/schema';
 import { normalizeAgentToolInputs } from '../../core/workflow/migration/agentToolInput';
 import { migrateLegacyWorkflowStructureToCurrent } from '../../core/workflow/migration/legacy/workflow';
@@ -81,12 +83,38 @@ export const normalizeWorkflowSnapshotArrayReferences = ({
   }
 };
 
-/**
- * 将外部 workflow 迁移为严格 canonical 数据。
- *
- * 工具输入只信任 JSON 中保存的 key/mode；工具 definition、权限和 schema 水合由边界层处理。
- */
-export const migrateWorkflowToCurrent = (input: LegacyWorkflowDataInput): CanonicalWorkflowData => {
+const StoredAgentToolMigrationSchema = z.preprocess((tool) => {
+  if (!tool || typeof tool !== 'object' || Array.isArray(tool)) return tool;
+
+  const { inputs, config } = normalizeAgentToolInputs({
+    rawInputs: 'inputs' in tool ? tool.inputs : undefined,
+    rawConfig: 'config' in tool ? tool.config : undefined
+  });
+  return { ...tool, inputs, config };
+}, CanonicalSelectedAgentToolSchema);
+
+const StoredAgentToolListSchema = z.array(StoredAgentToolMigrationSchema);
+const EditorAgentToolListSchema = z.array(
+  z.union([
+    SelectedToolItemTypeSchema.extend({
+      config: CanonicalSelectedAgentToolSchema.shape.config.optional()
+    }),
+    StoredAgentToolMigrationSchema
+  ])
+);
+
+/** 将外部工作流迁移为持久化结构，Agent 工具仅保留可保存的配置。 */
+export const migrateWorkflowToCurrent = (input: LegacyWorkflowDataInput): CanonicalWorkflowData =>
+  migrateWorkflow(input, StoredAgentToolListSchema);
+
+/** 将工作流载入编辑器，保留接口回填的 Agent 工具详情供卡片与资源校验使用。 */
+export const migrateWorkflowForEditor = (input: LegacyWorkflowDataInput): CanonicalWorkflowData =>
+  migrateWorkflow(input, EditorAgentToolListSchema);
+
+const migrateWorkflow = (
+  input: LegacyWorkflowDataInput,
+  agentToolListSchema: z.ZodType<unknown[]>
+): CanonicalWorkflowData => {
   // V1 工作流已不再支持，普通入口只接受 V2/current 数据。
   if (isLegacyV1Workflow(input.nodes)) {
     throw new Error('V1 workflows are no longer supported');
@@ -143,18 +171,9 @@ export const migrateWorkflowToCurrent = (input: LegacyWorkflowDataInput): Canoni
           return input;
         }
 
-        const value = rawSelectedTools.map((tool) => {
-          if (!tool || typeof tool !== 'object' || Array.isArray(tool)) return tool;
-
-          const { config: rawConfig, inputs: rawInputs, ...availableTool } = tool;
-          const { inputs, config } = normalizeAgentToolInputs({ rawInputs, rawConfig });
-
-          return { ...availableTool, inputs, config };
-        });
-
         return {
           ...input,
-          value: CanonicalSelectedToolsValueSchema.parse(value)
+          value: agentToolListSchema.parse(rawSelectedTools)
         };
       })
     };

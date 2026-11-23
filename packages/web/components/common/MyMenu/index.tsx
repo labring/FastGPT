@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Menu,
-  MenuList,
   MenuItem,
   Box,
   useOutsideClick,
@@ -19,6 +18,7 @@ import { useSystem } from '../../../hooks/useSystem';
 import { useCloseOnFlowNodeDragAreaPointerDown } from '../../../hooks/useCloseOnFlowNodeDragAreaPointerDown';
 import Avatar from '../Avatar';
 import MyTooltip from '../MyTooltip';
+import { CanvasMenuList, useCanvasMenuModifiers } from '../MySelect/CanvasMenuList';
 
 export type MenuItemType = 'primary' | 'danger' | 'gray' | 'grayBg';
 export type MenuSizeType = 'sm' | 'md' | 'xs' | 'mini';
@@ -214,15 +214,21 @@ const MyMenu = ({
 }: Props) => {
   const { isPc } = useSystem();
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<any>();
   const [isOpen, setIsOpen] = useState(false);
+  const modifiers = useCanvasMenuModifiers(isOpen, ref);
 
   const formatTrigger = !isPc ? 'click' : trigger;
 
   const closeOnOutsideClick = useCallback((event: Event) => {
-    const isIgnored = event.composedPath().some((target) => {
-      return target instanceof HTMLElement && target.dataset.myMenuIgnoreOutsideClick !== undefined;
-    });
+    const isIgnored = event
+      .composedPath()
+      .some(
+        (target) =>
+          target === menuRef.current ||
+          (target instanceof HTMLElement && target.dataset.myMenuIgnoreOutsideClick !== undefined)
+      );
     if (isIgnored) return;
     setIsOpen(false);
   }, []);
@@ -241,6 +247,7 @@ const MyMenu = ({
   return (
     <Menu
       strategy={strategy}
+      modifiers={modifiers}
       offset={computeOffset}
       isOpen={isOpen}
       autoSelect={false}
@@ -297,7 +304,8 @@ const MyMenu = ({
             {Button}
           </Box>
         </Box>
-        <MenuList
+        <CanvasMenuList
+          ref={menuRef}
           minW={isOpen ? `${width}px !important` : '80px'}
           zIndex={100}
           maxW={'300px'}
@@ -388,7 +396,7 @@ const MyMenu = ({
               </Box>
             );
           })}
-        </MenuList>
+        </CanvasMenuList>
       </Box>
     </Menu>
   );

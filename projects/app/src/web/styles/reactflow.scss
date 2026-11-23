@@ -1,5 +1,6 @@
 .react-flow {
-  overflow: visible;
+  // 画布通过 transform 平移，避免菜单聚焦触发外层原生滚动。
+  overflow: clip !important;
 
   & .nodrag {
     cursor: default;

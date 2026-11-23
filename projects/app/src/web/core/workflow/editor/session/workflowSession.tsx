@@ -847,7 +847,6 @@ export const WorkflowSessionProvider = ({
         }
         recoveredLocalDraftRef.current = draft;
         setRecoveryNeedsSave(true);
-        toast({ title: t('workflow:workflow_local_draft_restored'), status: 'info' });
       } catch {
         // 本地配置无法载入时保留副本与当前云端版本。
       }
