@@ -57,10 +57,16 @@ export const toApiFileDirId = (serverId: string, type: ApiFileTreeNode['type']) 
  */
 export const buildApiFileTree = async ({
   request,
-  seeds
+  seeds,
+  verifyFolderChildren = false
 }: {
   request: ApiDatasetRequest;
   seeds: ApiFileTreeSeed[];
+  /**
+   * 可选：对 type=folder 且 hasChild=false 的节点仍调用 listFiles 核实子项。
+   * 用于兜底详情或列表把有子项的目录误标为 hasChild=false 的第三方服务，避免漏同步或误删子项。
+   */
+  verifyFolderChildren?: boolean;
 }): Promise<ApiFileTreeNode[]> => {
   const nodes: ApiFileTreeNode[] = [];
   const nodeById = new Map<string, ApiFileTreeNode>();
@@ -72,6 +78,7 @@ export const buildApiFileTree = async ({
     serverParentId: string | null,
     depth: number
   ): Promise<void> => {
+    const shouldExpand = Boolean(seed.hasChild) || (verifyFolderChildren && seed.type === 'folder');
     if (visited.has(seed.id)) {
       const existing = nodeById.get(seed.id);
       const createsCycle = (() => {
@@ -119,11 +126,14 @@ export const buildApiFileTree = async ({
     nodes.push(node);
     nodeById.set(seed.id, node);
 
-    if (!seed.hasChild) return;
+    if (!shouldExpand) return;
 
     const children: APIFileItemType[] = await request.listFiles({
       parentId: Object.prototype.hasOwnProperty.call(seed, 'listId') ? seed.listId : seed.id
     });
+    if (children.length > 0) {
+      node.hasChild = true;
+    }
     for (const child of children) {
       await walk(child, seed.id, depth + 1);
     }

@@ -251,12 +251,27 @@ describe('classifyApiDatasetError', () => {
   });
 
   it.each([
+    'Cannot GET /v1/file/detail',
+    '<html>404 Not Found</html>',
+    '404 page not found',
+    'route not found',
+    '接口不存在'
+  ])('路由或接口缺失文案 %s 归类为 INVALID_RESPONSE 而非 NOT_FOUND', (message) => {
+    expect(classifyApiDatasetError({ message })).toMatchObject({
+      success: false,
+      code: 'INVALID_RESPONSE',
+      message
+    });
+  });
+
+  it.each([
     'NOT_FOUND',
     'RATE_LIMIT',
     'UNAUTHORIZED',
     'NETWORK_ERROR',
     'SERVER_ERROR',
     'INVALID_PARAMS',
+    'INVALID_RESPONSE',
     'UNKNOWN_ERROR'
   ])('已归一化协议 %s 不依赖文案再次判断', (code) => {
     expect(classifyApiDatasetError({ success: false, code, message: 'failed' })).toMatchObject({
