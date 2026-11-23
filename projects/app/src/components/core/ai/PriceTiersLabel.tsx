@@ -2,9 +2,35 @@ import React from 'react';
 import { Box, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import type { ModelPriceTierType, PriceType } from '@fastgpt/global/core/ai/model/schema';
-import { roundModelPrice } from '@fastgpt/global/core/ai/model/pricing';
+import {
+  getRuntimeResolvedPriceTiers,
+  roundModelPrice
+} from '@fastgpt/global/core/ai/model/pricing';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
+import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
+
+/** 翻译调用保留静态字面量，供 i18n 清理器识别真实使用的价格文案。 */
+const usePriceLabels = () => {
+  const { t } = useTranslation();
+  return {
+    input: t('common:Input'),
+    output: t('common:Output'),
+    cacheRead: t('common:model.cache_read_price'),
+    cacheCreation: t('common:model.cache_creation_price')
+  };
+};
+
+/** 只解析新 pricing；空配置使用免费占位，不读取历史根字段。 */
+const getDisplayPriceTiers = (config: PriceType): ModelPriceTierType[] => {
+  const priceTiers = getRuntimeResolvedPriceTiers(config);
+  return priceTiers.length ? priceTiers : [{ inputPrice: 0, outputPrice: 0 }];
+};
+
+/** 仅影响价格展示：未配置和舍入后为 0 的价格都视为无价格，不改变实际计费规则。 */
+const getDisplayPrice = (price?: number) => {
+  const roundedPrice = roundModelPrice(price);
+  return Number.isFinite(roundedPrice) && roundedPrice > 0 ? roundedPrice : undefined;
+};
 
 const formatPriceSummary = ({
   tiers,
@@ -12,15 +38,18 @@ const formatPriceSummary = ({
   unitLabel
 }: {
   tiers: ModelPriceTierType[];
-  priceKey: 'inputPrice' | 'outputPrice';
+  priceKey: 'inputPrice' | 'outputPrice' | 'cacheReadPrice' | 'cacheCreationPrice';
   unitLabel: string;
 }) => {
-  const prices = tiers.map((tier) => roundModelPrice(tier[priceKey]));
-  const minPrice = Math.min(...prices);
-  const maxPrice = Math.max(...prices);
+  const prices = tiers.map((tier) => getDisplayPrice(tier[priceKey]));
+  const availablePrices = prices.filter((price): price is number => price !== undefined);
+  if (availablePrices.length === 0) return <Box>-</Box>;
+
+  const minPrice = availablePrices.length === prices.length ? Math.min(...availablePrices) : '-';
+  const maxPrice = Math.max(...availablePrices);
   const compactUnitLabel = unitLabel.replace(/\s*\/\s*/g, '/').trim();
 
-  if (tiers.length === 1) {
+  if (minPrice === maxPrice) {
     return <Box>{`${prices[0]} ${compactUnitLabel}`}</Box>;
   }
 
@@ -47,234 +76,151 @@ const SummaryLine = ({
   fontSize
 }: {
   tiers: ModelPriceTierType[];
-  priceKey: 'input' | 'output';
+  priceKey: 'input' | 'output' | 'cacheRead' | 'cacheCreation';
   unitLabel: string;
   fontSize: string;
 }) => {
-  const { t } = useTranslation();
+  const priceLabels = usePriceLabels();
   return (
-    <Flex fontSize={fontSize} lineHeight={1.5} gap={0.5}>
-      <Box>{priceKey === 'input' ? t('common:Input') : t('common:Output')}:&nbsp;</Box>
+    <Flex fontSize={fontSize} lineHeight={1.5} gap={0.5} whiteSpace="nowrap">
+      <Box>
+        {priceLabels[priceKey]}
+        :&nbsp;
+      </Box>
       {formatPriceSummary({
         tiers,
-        priceKey: priceKey === 'input' ? 'inputPrice' : 'outputPrice',
+        priceKey: `${priceKey}Price`,
         unitLabel
       })}
     </Flex>
   );
 };
 
-const TierBreakdownTable = ({ tiers }: { tiers: ModelPriceTierType[] }) => {
+/** 阶梯上限以 K Tokens 展示，四类单价共用同一个百万 Tokens 单位说明。 */
+const TierBreakdownTable = ({
+  tiers,
+  unitLabel
+}: {
+  tiers: ModelPriceTierType[];
+  unitLabel: string;
+}) => {
   const { t } = useTranslation();
+  const priceLabels = usePriceLabels();
+  const priceKeys = ['input', 'output', 'cacheRead', 'cacheCreation'] as const;
+
   return (
-    <Box
-      p={2}
-      sx={{
-        '&, & *': {
-          fontSize: '12px'
-        }
-      }}
-    >
-      <Box borderRadius={'md'} overflow={'hidden'} border={'base'}>
-        <FixedTableLayout
-          scrollMode="normal"
-          rootProps={{ h: 'auto', maxH: '280px' }}
-          bodyProps={{ flex: '1 1 auto', overflow: 'auto' }}
-          renderHeader={({ headerTableWidth }) => (
-            <Table
-              size={'sm'}
-              boxShadow={'none'}
-              minW={'480px'}
-              sx={{
-                tableLayout: 'fixed',
-                width: `${headerTableWidth} !important`,
-                th: {
-                  borderBottom: 'none',
-                  verticalAlign: 'middle'
-                },
-                td: {
-                  borderBottom: 'none',
-                  verticalAlign: 'middle'
-                }
-              }}
-            >
-              <colgroup>
-                <col style={{ width: '200px' }} />
-                <col />
-                <col />
-              </colgroup>
-              <Thead>
-                <Tr bg={'#F8FAFC'}>
-                  <Th
-                    textTransform={'none'}
-                    w={'200px'}
-                    py={2}
-                    textAlign={'center'}
-                    borderRight={'1px solid'}
-                    borderColor={'myGray.200'}
-                    whiteSpace={'nowrap'}
-                  >
-                    {t('common:model.price_tier_range')}
-                  </Th>
-                  <Th
-                    textTransform={'none'}
-                    p={2}
-                    py={2}
-                    textAlign={'center'}
-                    borderRight={'1px solid'}
-                    borderColor={'myGray.200'}
-                    whiteSpace={'nowrap'}
-                  >
-                    {t('common:model.input_price')}
-                  </Th>
-                  <Th
-                    textTransform={'none'}
-                    p={2}
-                    py={2}
-                    textAlign={'center'}
-                    borderColor={'myGray.200'}
-                    whiteSpace={'nowrap'}
-                  >
-                    {t('common:model.output_price')}
-                  </Th>
+    <Box p={2} fontSize="12px">
+      <Box px={1} pb={2} color="myGray.700">
+        {unitLabel}
+      </Box>
+      <Box borderRadius="md" overflow="hidden" border="base">
+        <Table
+          size="sm"
+          w="100%"
+          sx={{
+            tableLayout: 'fixed',
+            'th, td': {
+              px: 1,
+              py: 2,
+              fontSize: '12px',
+              textAlign: 'center',
+              whiteSpace: 'normal',
+              overflowWrap: 'anywhere'
+            }
+          }}
+        >
+          <colgroup>
+            <col style={{ width: '28%' }} />
+            {priceKeys.map((key) => (
+              <col key={key} />
+            ))}
+          </colgroup>
+          <Thead bg="myGray.50">
+            <Tr>
+              <Th scope="col" textTransform="none">
+                {t('common:model.price_tier_range')}
+              </Th>
+              {priceKeys.map((key) => (
+                <Th key={key} scope="col" textTransform="none">
+                  {priceLabels[key]}
+                </Th>
+              ))}
+            </Tr>
+          </Thead>
+          <Tbody>
+            {tiers.map((tier, index) => {
+              const lowerBound = tiers[index - 1]?.maxInputTokens ?? 0;
+              const upperBound =
+                tier.maxInputTokens === undefined ? '' : ` ≤ ${tier.maxInputTokens}`;
+              return (
+                <Tr key={index}>
+                  <Td>
+                    {`${lowerBound} ${index === 0 ? '≤' : '<'} ${priceLabels.input}${upperBound}`}
+                  </Td>
+                  {priceKeys.map((key) => (
+                    <Td key={key}>{getDisplayPrice(tier[`${key}Price`]) ?? '-'}</Td>
+                  ))}
                 </Tr>
-              </Thead>
-            </Table>
-          )}
-          renderBody={() => (
-            <Table
-              size={'sm'}
-              boxShadow={'none'}
-              minW={'480px'}
-              w={'100%'}
-              sx={{
-                tableLayout: 'fixed',
-                th: {
-                  borderBottom: 'none',
-                  verticalAlign: 'middle'
-                },
-                td: {
-                  borderBottom: 'none',
-                  verticalAlign: 'middle'
-                }
-              }}
-            >
-              <colgroup>
-                <col style={{ width: '200px' }} />
-                <col />
-                <col />
-              </colgroup>
-              <Tbody>
-                {tiers.map((tier, index) => (
-                  <Tr key={`${tier.maxInputTokens ?? 'open'}-${index}`}>
-                    <Td
-                      px={3}
-                      py={2}
-                      color={'myGray.700'}
-                      borderTop={'1px solid'}
-                      borderRight={'1px solid'}
-                      borderColor={'myGray.200'}
-                      whiteSpace={'nowrap'}
-                    >
-                      <Flex
-                        gap={1}
-                        alignItems={'center'}
-                        justifyContent={'center'}
-                        color={'myGray.700'}
-                        whiteSpace={'nowrap'}
-                      >
-                        <Box>{`${tiers[index - 1]?.maxInputTokens ?? 0} < `}</Box>
-                        <Box>{t('common:Input')}</Box>
-                        {typeof tier.maxInputTokens === 'number' ? (
-                          <Box>{` <= ${tier.maxInputTokens}`}</Box>
-                        ) : null}
-                      </Flex>
-                    </Td>
-                    <Td
-                      px={3}
-                      py={2}
-                      textAlign={'center'}
-                      borderTop={'1px solid'}
-                      borderRight={'1px solid'}
-                      borderColor={'myGray.200'}
-                      whiteSpace={'nowrap'}
-                    >
-                      {`${roundModelPrice(tier.inputPrice)} ${t('common:support.wallet.subscription.point')}/M Tokens`}
-                    </Td>
-                    <Td
-                      px={3}
-                      py={2}
-                      textAlign={'center'}
-                      borderTop={'1px solid'}
-                      borderColor={'myGray.200'}
-                      whiteSpace={'nowrap'}
-                    >
-                      {`${roundModelPrice(tier.outputPrice)} ${t('common:support.wallet.subscription.point')}/M Tokens`}
-                    </Td>
-                  </Tr>
-                ))}
-              </Tbody>
-            </Table>
-          )}
-        />
+              );
+            })}
+          </Tbody>
+        </Table>
       </Box>
     </Box>
   );
 };
 
-const TierTooltip = ({
-  tiers,
-  color,
-  children
+/** 默认显示输入和输出摘要，模型选择弹窗可直接展示两类缓存价格。 */
+const PriceTiersLabel = ({
+  config,
+  unitLabel,
+  fontSize = 'sm',
+  showCachePrices = false
 }: {
-  tiers: ModelPriceTierType[];
-  color?: string;
-  children: React.ReactNode;
-}) => (
-  <MyTooltip
-    label={tiers.length > 1 ? <TierBreakdownTable tiers={tiers} /> : null}
-    px={0}
-    py={0}
-    maxW={'520px'}
-  >
-    <Box cursor={'default'} color={color}>
-      {children}
-    </Box>
-  </MyTooltip>
-);
-
-export const PriceLine = React.memo(
-  ({
-    config,
-    unitLabel,
-    priceKey,
-    fontSize = 'sm',
-    color
-  }: {
-    config: PriceType;
-    unitLabel: string;
-    priceKey: 'input' | 'output';
-    fontSize?: string;
-    color?: string;
-  }) => {
-    const tiers = config.pricing?.tiers ?? [];
-    if (tiers.length === 0) return <Box>-</Box>;
-    return (
-      <TierTooltip tiers={tiers} color={color}>
-        <SummaryLine tiers={tiers} priceKey={priceKey} unitLabel={unitLabel} fontSize={fontSize} />
-      </TierTooltip>
+  config: PriceType & { scope?: ModelScopeEnum };
+  unitLabel: string;
+  fontSize?: string;
+  showCachePrices?: boolean;
+}) => {
+  if (config.scope === ModelScopeEnum.team) return <Box>-</Box>;
+  const tiers = getDisplayPriceTiers(config);
+  const showDetails =
+    tiers.length > 1 ||
+    tiers.some(
+      (tier) =>
+        getDisplayPrice(tier.cacheReadPrice) !== undefined ||
+        getDisplayPrice(tier.cacheCreationPrice) !== undefined
     );
-  }
-);
 
-const PriceTiersLabel = ({ config, unitLabel }: { config: PriceType; unitLabel: string }) => {
-  const tiers = config.pricing?.tiers ?? [];
-  if (tiers.length === 0) return <Box>-</Box>;
   return (
-    <TierTooltip tiers={tiers} color={'myGray.700'}>
-      <SummaryLine tiers={tiers} priceKey={'input'} unitLabel={unitLabel} fontSize={'sm'} />
-      <SummaryLine tiers={tiers} priceKey={'output'} unitLabel={unitLabel} fontSize={'sm'} />
-    </TierTooltip>
+    <MyTooltip
+      label={showDetails ? <TierBreakdownTable tiers={tiers} unitLabel={unitLabel} /> : undefined}
+      shouldWrapChildren={false}
+      p={0}
+      w="520px"
+      maxW="calc(100vw - 24px)"
+      modifiers={[{ name: 'preventOverflow', options: { padding: 8, tether: false } }]}
+    >
+      <Box
+        color="myGray.700"
+        cursor={showDetails ? 'help' : 'default'}
+        w="fit-content"
+        tabIndex={showDetails ? 0 : undefined}
+      >
+        {(showCachePrices
+          ? (['input', 'output', 'cacheRead', 'cacheCreation'] as const)
+          : (['input', 'output'] as const)
+        ).map((priceKey) => (
+          <SummaryLine
+            key={priceKey}
+            tiers={tiers}
+            priceKey={priceKey}
+            unitLabel={unitLabel}
+            fontSize={fontSize}
+          />
+        ))}
+      </Box>
+    </MyTooltip>
   );
 };
 

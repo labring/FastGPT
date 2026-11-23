@@ -1,6 +1,6 @@
 {
   "tags": {
-    "fastgpt": "v4.17.4",
+    "fastgpt": "v4.17.5",
     "fastgpt-plugin": "v1.2.0",
     "fastgpt-code-sandbox": "v5.0.0",
 
@@ -14,7 +14,7 @@
     "aiproxy": "v0.7.7",
     "aiproxy-pg": "0.8.0-pg15",
 
-    "mongo": "8.0.34",
+    "mongo": "8.0.38",
     "redis": "7.2-alpine",
     "rustfs": "1.0.4",
     "pg": "0.8.0-pg15",

@@ -113,12 +113,22 @@ const fill = async (key: string, value: string) => {
 
 describe('ModelPriceTiersTable', () => {
   it('rounds visible input and output prices while preserving precise tier boundaries', async () => {
-    await render([{ maxInputTokens: 32, inputPrice: 2, outputPrice: 4 }]);
+    await render([
+      {
+        maxInputTokens: 32,
+        inputPrice: 2,
+        outputPrice: 4,
+        cacheReadPrice: 0,
+        cacheCreationPrice: 2.5
+      }
+    ]);
     const headers = Array.from(container.querySelectorAll('thead th'));
     expect(headers.map((th) => th.textContent)).toEqual([
       'common:model.price_tier_range',
       'common:model.input_price',
       'common:model.output_price',
+      'common:model.cache_read_price',
+      'common:model.cache_creation_price',
       'config_model:model.action'
     ]);
     expect(getComputedStyle(headers[1]).textTransform).toBe('none');
@@ -131,7 +141,9 @@ describe('ModelPriceTiersTable', () => {
     expect(ModelPricingSchema.parse(save.mock.calls[0][0].pricing).tiers![0]).toMatchObject({
       maxInputTokens: 32,
       inputPrice: 0.13,
-      outputPrice: 1.01
+      outputPrice: 1.01,
+      cacheReadPrice: 0,
+      cacheCreationPrice: 2.5
     });
 
     // 单档清空保留空行；重新填写上限后补一档，再清空原档应只留下新的空行。
@@ -156,5 +168,47 @@ describe('ModelPriceTiersTable', () => {
     await fill('outputPrice', '0');
     expect(form.getValues('pricing.tiers.0.inputPrice')).toBeUndefined();
     expect(form.getValues('pricing.tiers.0.outputPrice')).toBe(0);
+  });
+});
+
+describe('cache price editing', () => {
+  it('shows all prices and explains omitted cache prices', async () => {
+    await render();
+    expect(container.textContent).toContain('config_model:model.cache_price_tip');
+    for (const key of ['inputPrice', 'outputPrice', 'cacheReadPrice', 'cacheCreationPrice']) {
+      expect(input(key)).toBeDefined();
+    }
+    expect(input('cacheReadPrice').placeholder).toBe('common:model.cache_price_default');
+    expect(input('cacheReadPrice').value).toBe('');
+  });
+
+  it('saves free cache reads and rounded cache creation prices as numbers', async () => {
+    await render();
+    await fill('cacheReadPrice', '0');
+    await fill('cacheCreationPrice', '0.125');
+    expect(input('cacheCreationPrice').checkValidity()).toBe(true);
+    await act(async () => container.querySelector('form')!.requestSubmit());
+    expect(save.mock.calls[0][0].pricing.tiers[0]).toMatchObject({
+      inputPrice: 2,
+      outputPrice: 4,
+      cacheReadPrice: 0,
+      cacheCreationPrice: 0.13
+    });
+  });
+
+  it('restores input-price inheritance when a cache field is emptied', async () => {
+    await render([{ inputPrice: 2, outputPrice: 4, cacheReadPrice: 0.2 }]);
+    await fill('cacheReadPrice', '');
+    expect(form.getValues('pricing.tiers.0.cacheReadPrice')).toBeUndefined();
+    expect(input('cacheReadPrice').placeholder).toBe('common:model.cache_price_default');
+  });
+
+  it('rejects negative cache prices instead of rounding them into free caching', async () => {
+    await render();
+    await fill('cacheReadPrice', '-0.001');
+    expect(form.getValues('pricing.tiers.0.cacheReadPrice')).toBe(-0.001);
+    expect(input('cacheReadPrice').checkValidity()).toBe(false);
+    await act(async () => container.querySelector('form')!.requestSubmit());
+    expect(save).not.toHaveBeenCalled();
   });
 });

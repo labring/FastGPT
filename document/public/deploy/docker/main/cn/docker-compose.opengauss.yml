@@ -113,7 +113,7 @@ services:
       retries: 10
       start_period: 30s
   fastgpt-mongo:
-    image: docker.m.daocloud.io/library/mongo:8.0.34 # x86_64 CPU 需满足 MongoDB 8.0 的指令集要求
+    image: docker.m.daocloud.io/library/mongo:8.0.38 # x86_64 CPU 需满足 MongoDB 8.0 的指令集要求
     container_name: fastgpt-mongo
     restart: always
     networks:
@@ -233,7 +233,7 @@ services:
 
   fastgpt-app:
     container_name: fastgpt-app
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.17.4
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.17.5
     ports:
       - 3000:3000
     networks:
@@ -410,6 +410,9 @@ services:
     restart: always
     networks:
       - app
+    # 通过 Docker 宿主机访问运行时和 egress 容器映射的端口。
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     configs:

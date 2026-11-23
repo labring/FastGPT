@@ -1455,5 +1455,8 @@
   "puzzle_captcha_refreshed": "目前圖片已失效，請嘗試新圖片",
   "puzzle_captcha_retry": "未能完成驗證，請重新拖動",
   "puzzle_captcha_expired": "圖片已過期，請換一張",
-  "puzzle_captcha_load_failed": "圖片載入失敗，請點擊換一張"
+  "puzzle_captcha_load_failed": "圖片載入失敗，請點擊換一張",
+  "model.cache_read_price": "快取讀取",
+  "model.cache_creation_price": "快取建立",
+  "model.cache_price_default": "同輸入價"
 }

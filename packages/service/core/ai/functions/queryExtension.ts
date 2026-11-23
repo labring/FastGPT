@@ -135,6 +135,8 @@ export const queryExtension = async ({
   seconds: number;
   inputTokens: number;
   outputTokens: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
   usedUserOpenAIKey: boolean;
   embeddingTokens: number;
 }> => {
@@ -179,7 +181,7 @@ export const queryExtension = async ({
   const {
     answerText: answer,
     requestId,
-    usage: { inputTokens, outputTokens, usedUserOpenAIKey }
+    usage: { inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens, usedUserOpenAIKey }
   } = await createLLMResponse({
     userKey,
     teamId,
@@ -201,6 +203,8 @@ export const queryExtension = async ({
       seconds: getSeconds(),
       inputTokens: inputTokens,
       outputTokens: outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens,
       usedUserOpenAIKey,
       embeddingTokens: 0
     };
@@ -222,6 +226,8 @@ export const queryExtension = async ({
       seconds: getSeconds(),
       inputTokens: inputTokens,
       outputTokens: outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens,
       usedUserOpenAIKey,
       embeddingTokens: 0
     };
@@ -246,6 +252,8 @@ export const queryExtension = async ({
         seconds: getSeconds(),
         inputTokens,
         outputTokens,
+        cacheReadTokens,
+        cacheCreationTokens,
         usedUserOpenAIKey,
         embeddingTokens: 0
       };
@@ -266,6 +274,8 @@ export const queryExtension = async ({
         seconds: getSeconds(),
         inputTokens,
         outputTokens,
+        cacheReadTokens,
+        cacheCreationTokens,
         usedUserOpenAIKey,
         embeddingTokens: 0
       };
@@ -287,6 +297,8 @@ export const queryExtension = async ({
       seconds: getSeconds(),
       inputTokens,
       outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens,
       usedUserOpenAIKey,
       embeddingTokens
     };
@@ -304,6 +316,8 @@ export const queryExtension = async ({
       seconds: getSeconds(),
       inputTokens,
       outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens,
       usedUserOpenAIKey,
       embeddingTokens: 0
     };
