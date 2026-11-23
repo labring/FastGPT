@@ -62,7 +62,7 @@ AGENT_SANDBOX_PROVIDER=opensandbox
 AGENT_SANDBOX_OPENSANDBOX_BASEURL=http://fastgpt-opensandbox-server:8090
 AGENT_SANDBOX_OPENSANDBOX_API_KEY=replace_with_opensandbox_api_key
 AGENT_SANDBOX_OPENSANDBOX_RUNTIME=docker
-AGENT_SANDBOX_OPENSANDBOX_IMAGE=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.4.0
+AGENT_SANDBOX_OPENSANDBOX_IMAGE=ghcr.dockerproxy.net/labring/fastgpt-agent-sandbox:v0.4.0
 AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY=true
 
 # Volume Manager 地址、Token 和持久卷名称前缀
@@ -84,12 +84,12 @@ AGENT_SANDBOX_STORAGE_SIZE_GI=1
 
 官方镜像的同一 tag 同时包含 `amd64` 和 `arm64` 架构，两个架构使用相同的环境变量配置，Docker 会根据 OpenSandbox Server 所在宿主机的架构自动选择镜像：
 
-| 用途    | 镜像                                                                          |
-| ------- | ----------------------------------------------------------------------------- |
-| 非 root | `registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.4.0`      |
-| root    | `registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-root:v0.4.0` |
+| 用途    | 镜像                                                             |
+| ------- | ---------------------------------------------------------------- |
+| 非 root | `ghcr.dockerproxy.net/labring/fastgpt-agent-sandbox:v0.4.0`      |
+| root    | `ghcr.dockerproxy.net/labring/fastgpt-agent-sandbox-root:v0.4.0` |
 
-全球镜像源将 `registry.cn-hangzhou.aliyuncs.com/fastgpt` 替换为 `ghcr.io/labring`。如果使用私有镜像仓库，请确保镜像 tag 保留 `amd64` 和 `arm64` manifest；如果仓库只提供单架构镜像，请将 `AGENT_SANDBOX_OPENSANDBOX_IMAGE` 配置为与 OpenSandbox Server 宿主机架构匹配的镜像地址。
+上表的 FastGPT 运行态镜像使用全球镜像源时，将 `ghcr.dockerproxy.net/labring` 替换为 `ghcr.io/labring`。如果使用私有镜像仓库，请确保镜像 tag 保留 `amd64` 和 `arm64` manifest；如果仓库只提供单架构镜像，请将 `AGENT_SANDBOX_OPENSANDBOX_IMAGE` 配置为与 OpenSandbox Server 宿主机架构匹配的镜像地址。
 
 `AGENT_SANDBOX_OPENSANDBOX_API_KEY` 必须与 `[server].api_key` 一致，`AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN` 必须与 `x-volume-manager-auth-token` 一致，Agent Sandbox 管理页的共享密钥必须与独立 Proxy 服务的 `AGENT_SANDBOX_PROXY_SECRET` 一致。
 
