@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatRefKey,
+  hasV2RefNamespacePrefix,
   parseV2RefKey,
   stripAgentPromptRefs
 } from '@fastgpt/global/core/workflow/node/agent/promptRef/protocol';
@@ -66,6 +67,12 @@ describe('agent promptRef V2 protocol (parseV2RefKey / formatRefKey)', () => {
     for (const key of invalidKeys) {
       expect(parseV2RefKey(key)).toBeNull();
     }
+    expect(hasV2RefNamespacePrefix('plugin:unknown:metaso')).toBe(true);
+    expect(hasV2RefNamespacePrefix('skill:other:123')).toBe(true);
+    expect(hasV2RefNamespacePrefix('app:other:123')).toBe(true);
+    expect(hasV2RefNamespacePrefix('builtin:foo')).toBe(true);
+    expect(hasV2RefNamespacePrefix('system:systemTool-metaso')).toBe(false);
+    expect(hasV2RefNamespacePrefix('plain_word')).toBe(false);
   });
 });
 

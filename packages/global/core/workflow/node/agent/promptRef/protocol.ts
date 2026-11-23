@@ -13,6 +13,15 @@ export type AgentPromptRef =
   | { type: 'app'; source: 'team'; id: string };
 
 const INVALID_REF_SEGMENT_RE = /[@{}\r\n]/;
+const V2_REF_NAMESPACE_SET = new Set<AgentPromptRef['type']>(['builtin', 'plugin', 'skill', 'app']);
+
+/** 判断原始键是否以 V2 协议保留命名空间（`builtin:`/`plugin:`/`skill:`/`app:`）开头，用于识别来源或格式非法的协议引用。 */
+export const hasV2RefNamespacePrefix = (rawKey: string): boolean => {
+  const trimmed = rawKey.trim();
+  const firstColon = trimmed.indexOf(':');
+  if (firstColon <= 0) return false;
+  return V2_REF_NAMESPACE_SET.has(trimmed.slice(0, firstColon) as AgentPromptRef['type']);
+};
 
 /** 只匹配双花括号开头且不跨行，保留 JSON 中紧邻引用的闭合括号并防止跨行误匹配。 */
 export const AGENT_PROMPT_REF_REGEXP = /(?<!\{)\{\{@([^@{}\r\n]+)@\}\}/g;
