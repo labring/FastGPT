@@ -2,6 +2,7 @@ import z from 'zod';
 import { AppChatConfigTypeSchema } from '../../app/type';
 import { StoreNodeItemTypeSchema } from './node';
 import { WorkflowExecutionEdgeSchema } from './edge';
+import { WorkflowReferenceSnapshotsSchema } from './io';
 
 /** Core、CLI 和 API 共用的工作流静态契约；版本兼容和业务校验由 Core 处理。 */
 export const WORKFLOW_DOCUMENT_SCHEMA_VERSION = 'fastgpt-workflow/v1' as const;
@@ -21,7 +22,10 @@ export const WorkflowDocumentSchema = z.object({
     .meta({ description: '应用元数据' }),
   nodes: z.array(StoreNodeItemTypeSchema).meta({ description: '工作流节点' }),
   executionEdges: z.array(WorkflowExecutionEdgeSchema).meta({ description: '语义执行边' }),
-  chatConfig: AppChatConfigTypeSchema.meta({ description: '工作流对话配置' })
+  chatConfig: AppChatConfigTypeSchema.meta({ description: '工作流对话配置' }),
+  referenceSnapshots: WorkflowReferenceSnapshotsSchema.optional().meta({
+    description: '已删除引用来源的历史展示信息'
+  })
 });
 
 export type WorkflowDocument = z.infer<typeof WorkflowDocumentSchema>;

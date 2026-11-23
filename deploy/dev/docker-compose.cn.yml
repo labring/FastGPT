@@ -213,7 +213,7 @@ services:
       start_period: 40s
   fastgpt-code-sandbox:
     container_name: fastgpt-code-sandbox
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox:v5.0.0
+    image: ghcr.dockerproxy.net/labring/fastgpt-code-sandbox:v5.0.0
     ports:
       - 3002:3000
     networks:
@@ -274,7 +274,7 @@ services:
       timeout: 20s
       retries: 3
   fastgpt-plugin:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v1.2.0
+    image: ghcr.dockerproxy.net/labring/fastgpt-plugin:v1.2.0
     container_name: fastgpt-plugin
     restart: always
     network_mode: host
@@ -339,7 +339,7 @@ services:
 
   # 浏览器与 OpenSandbox 之间的 WebSocket 鉴权代理
   fastgpt-agent-sandbox-proxy:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-proxy:v0.4.0
+    image: ghcr.dockerproxy.net/labring/fastgpt-agent-sandbox-proxy:v0.4.0
     container_name: fastgpt-agent-sandbox-proxy
     restart: always
     ports:
@@ -362,7 +362,7 @@ services:
 
   # Pre-pull only: not started by `docker compose up` (uses profile `prepull`).
   opensandbox-agent-sandbox-image:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.4.0
+    image: ghcr.dockerproxy.net/labring/fastgpt-agent-sandbox:v0.4.0
     profiles:
       - prepull
   opensandbox-execd-image:
@@ -375,7 +375,7 @@ services:
       - prepull
   # 卷管理微服务：负责幂等创建/删除 Docker named volume 或 k8s PVC
   fastgpt-volume-manager:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-volume-manager:v0.4.0
+    image: ghcr.dockerproxy.net/labring/fastgpt-agent-volume-manager:v0.4.0
     container_name: fastgpt-volume-manager
     restart: always
     ports:

@@ -17,7 +17,12 @@ import { createWorkflowDocument } from '../../src/domain/document';
 import { getAvailableInputReferences } from '../../src/reference/query';
 import { instantiateNodeFromTemplate } from '../../src/template/instantiate';
 import { parseNodeTemplateRef } from '../../src/template/type';
-import { setInputReference, setInputValue } from '../../src/reference/service';
+import {
+  createWorkflowReferenceIndex,
+  isWorkflowReferenceOutputUpstream,
+  setInputReference,
+  setInputValue
+} from '../../src/reference/service';
 import { validateWorkflow } from '../../src/validation/index';
 import { addNodeFromTemplate } from '../../src/node/add';
 import { assertExecutionEdge } from '../../src/edge/validation';
@@ -35,9 +40,11 @@ describe('input mutation services', () => {
 
   it('does not offer or assign a disabled output', () => {
     const output = document.nodes.find((node) => node.nodeId === 'start')!.outputs[0];
-    output.invalid = true;
     const ref = { nodeId: 'start', outputKey: output.key };
     const params = { document, nodeId: 'ai', inputKey: 'userChatInput' };
+    expect(getAvailableInputReferences(params)).toContainEqual(expect.objectContaining({ ref }));
+
+    output.invalid = true;
 
     expect(getAvailableInputReferences(params)).not.toContainEqual(
       expect.objectContaining({ ref })
@@ -469,6 +476,66 @@ describe('input mutation services', () => {
         })
       ])
     );
+  });
+});
+
+describe('workflow error output reachability', () => {
+  const makeDocument = () => {
+    const document = WorkflowDocumentSchema.parse(aiWorkflow);
+    const [source, target] = ['start', 'ai'].map(
+      (nodeId) => document.nodes.find((node) => node.nodeId === nodeId)!
+    );
+    const container = (nodeId: string, parentNodeId?: string) => ({
+      nodeId,
+      name: nodeId,
+      parentNodeId,
+      flowNodeType: FlowNodeTypeEnum.parallelRun,
+      inputs: [],
+      outputs: []
+    });
+    return { document, source, target, container };
+  };
+
+  it('inherits catch reachability from a parent container', () => {
+    const { document, source, target, container } = makeDocument();
+    target.parentNodeId = 'container';
+    document.nodes = [source, container('container'), target];
+    document.executionEdges = [
+      {
+        source: { kind: 'catch', nodeId: 'start' },
+        target: { kind: 'target', nodeId: 'container' }
+      }
+    ];
+
+    expect(
+      isWorkflowReferenceOutputUpstream({
+        referenceIndex: createWorkflowReferenceIndex(document),
+        nodeId: target.nodeId,
+        sourceNodeId: source.nodeId,
+        isErrorOutput: true
+      })
+    ).toBe(true);
+  });
+
+  it('stops walking malformed parent cycles when checking error reachability', () => {
+    const { document, source, target, container } = makeDocument();
+    target.parentNodeId = 'parent';
+    document.nodes = [source, target, container('parent', target.nodeId), container('other')];
+    document.executionEdges = [
+      {
+        source: { kind: 'catch', nodeId: source.nodeId },
+        target: { kind: 'target', nodeId: 'other' }
+      }
+    ];
+
+    expect(
+      isWorkflowReferenceOutputUpstream({
+        referenceIndex: createWorkflowReferenceIndex(document),
+        nodeId: target.nodeId,
+        sourceNodeId: source.nodeId,
+        isErrorOutput: true
+      })
+    ).toBe(false);
   });
 });
 

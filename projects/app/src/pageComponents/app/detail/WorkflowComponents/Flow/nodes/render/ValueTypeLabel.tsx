@@ -23,7 +23,8 @@ const ValueTypeLabel = ({
   const datasetSynonymEnabled = useSystemStore(
     (state) => state.feConfigs?.datasetSynonymEnabled === true
   );
-  const label = valueType ? getFlowValueTypeMeta(valueType).label : '';
+  const meta = valueType ? getFlowValueTypeMeta(valueType) : undefined;
+  const label = meta?.translateLabel?.(t) ?? meta?.label;
   // 同义词字段只在能力开启的部署中展示，关闭时保持原始引用结构说明。
   const resolvedValueDesc =
     datasetSynonymEnabled && valueDesc === datasetQuoteValueDesc
@@ -46,7 +47,7 @@ const ValueTypeLabel = ({
         fontSize={'11px'}
         {...props}
       >
-        {t(label as any)}
+        {label}
       </Box>
     </MyTooltip>
   ) : null;

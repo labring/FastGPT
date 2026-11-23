@@ -1,66 +1,22 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
-import { type NodeProps } from 'reactflow';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from '../render/NodeCard';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
-import {
-  NodeInputKeyEnum,
-  NodeOutputKeyEnum,
-  WorkflowIOValueTypeEnum
-} from '@fastgpt/global/core/workflow/constants';
 import { Box, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
-import React, { useEffect, useMemo } from 'react';
+import React from 'react';
 import { FlowValueTypeMap } from '@fastgpt/global/core/workflow/node/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
-import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
 
-const arrayItemTypeMap: Partial<Record<WorkflowIOValueTypeEnum, WorkflowIOValueTypeEnum>> = {
-  [WorkflowIOValueTypeEnum.arrayString]: WorkflowIOValueTypeEnum.string,
-  [WorkflowIOValueTypeEnum.arrayNumber]: WorkflowIOValueTypeEnum.number,
-  [WorkflowIOValueTypeEnum.arrayBoolean]: WorkflowIOValueTypeEnum.boolean,
-  [WorkflowIOValueTypeEnum.arrayObject]: WorkflowIOValueTypeEnum.object,
-  [WorkflowIOValueTypeEnum.arrayAny]: WorkflowIOValueTypeEnum.any
-};
+const emptyOutputs: FlowNodeItemType['outputs'] = [];
 
-const NodeLoopRunStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeLoopRunStart = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
-  const { nodeId, outputs } = data;
-  const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-
-  const startNode = getNodeById(nodeId);
-  const parentNode = getNodeById(startNode?.parentNodeId);
-
-  const parentMode =
-    (parentNode?.inputs.find((i) => i.key === NodeInputKeyEnum.loopRunMode)?.value as
-      | LoopRunModeEnum
-      | undefined) ?? LoopRunModeEnum.array;
-
-  const currentItemType = useMemo(() => {
-    if (parentMode !== LoopRunModeEnum.array) return undefined;
-    const parentArrayInput = parentNode?.inputs.find(
-      (i) => i.key === NodeInputKeyEnum.loopRunInputArray
-    );
-    return arrayItemTypeMap[parentArrayInput?.valueType as keyof typeof arrayItemTypeMap];
-  }, [parentNode?.inputs, parentMode]);
-
-  // Output add/remove on mode switches lives in NodeLoopRun; this effect only
-  // keeps currentItem.valueType in sync with the inferred parent array type.
-  useEffect(() => {
-    if (parentMode !== LoopRunModeEnum.array || !currentItemType) return;
-    const currentItem = startNode?.outputs.find((o) => o.key === NodeOutputKeyEnum.currentItem);
-    if (currentItem && currentItem.valueType !== currentItemType) {
-      onChangeNode({
-        nodeId,
-        type: 'updateOutput',
-        key: NodeOutputKeyEnum.currentItem,
-        value: { ...currentItem, valueType: currentItemType }
-      });
-    }
-  }, [parentMode, currentItemType, nodeId, onChangeNode, startNode?.outputs]);
+  const { nodeId } = data;
+  const outputs =
+    useNode<FlowNodeItemType['outputs']>(nodeId, (current) => current?.data.outputs) ??
+    emptyOutputs;
 
   return (
     <NodeCard

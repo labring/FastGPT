@@ -3,17 +3,14 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
-import {
-  formatVariableValByType,
-  getReferenceVariableValue
-} from '@fastgpt/global/core/workflow/runtime/utils';
+import { formatVariableValByType } from '@fastgpt/global/core/workflow/runtime/utils';
+import { getReferenceVariableValue } from '@fastgpt/global/common/workflow/runtime';
+import { nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { WorkflowVariableStateLike } from '../context/variables';
-import type {
-  FlowNodeInputItemType,
-  FlowNodeOutputItemType
-} from '@fastgpt/global/core/workflow/type/io';
+import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { createRuntimeReferenceCheck, filterRuntimeReferenceInput } from '../utils/runtime';
 
 export type LoopRunHistoryItem = {
   iteration: number;
@@ -27,9 +24,9 @@ export type LoopRunHistoryItem = {
 // dynamic output 镜像」二次校验，确保只挑出真正被 NodeLoopRun.useEffect 镜像过
 // 的声明项。
 export const pickCustomOutputInputs = (
-  inputs: FlowNodeInputItemType[],
+  inputs: RuntimeNodeItemType['inputs'],
   outputs: FlowNodeOutputItemType[]
-): FlowNodeInputItemType[] => {
+): RuntimeNodeItemType['inputs'] => {
   const dynamicOutputKeys = new Set(
     outputs.filter((o) => o.type === FlowNodeOutputTypeEnum.dynamic).map((o) => o.key)
   );
@@ -48,20 +45,39 @@ export const readCustomOutputSnapshot = ({
   runtimeNodes,
   variableState,
   finishedNodeIds,
-  childrenNodeIdList
+  childrenNodeIdList,
+  referenceScope,
+  isDebugMode = false
 }: {
-  customOutputInputs: FlowNodeInputItemType[];
+  customOutputInputs: RuntimeNodeItemType['inputs'];
   runtimeNodes: RuntimeNodeItemType[];
   variableState: WorkflowVariableStateLike;
   finishedNodeIds?: Set<string>;
   childrenNodeIdList?: string[];
+  referenceScope: Omit<Parameters<typeof createRuntimeReferenceCheck>[0], 'runtimeNodesMap'>;
+  isDebugMode?: boolean;
 }): Record<string, any> => {
+  if (!customOutputInputs.length) return {};
+
   const nodesMap = new Map(runtimeNodes.map((n) => [n.nodeId, n]));
   const childrenSet = childrenNodeIdList ? new Set(childrenNodeIdList) : undefined;
+  const isSelectable = createRuntimeReferenceCheck({
+    ...referenceScope,
+    runtimeNodesMap: nodesMap
+  });
   const snapshot: Record<string, any> = {};
+  let variables: Record<string, unknown> | undefined;
 
   for (const item of customOutputInputs) {
-    const refValue = item.value;
+    if (isDebugMode && item.debugValueOverride === true) {
+      snapshot[item.key] = formatVariableValByType(item.value, item.valueType);
+      continue;
+    }
+    const isStoredReference = !isDebugMode || item.debugValueOverride === false;
+    const refValue =
+      isStoredReference && nodeInputIsReference(item) && Array.isArray(item.value)
+        ? filterRuntimeReferenceInput({ input: item, value: item.value, isSelectable })
+        : item.value;
 
     if (finishedNodeIds) {
       // Single reference: [nodeId, outputId?]  — refValue[0] is a string
@@ -90,7 +106,7 @@ export const readCustomOutputSnapshot = ({
     const resolved = getReferenceVariableValue({
       value: refValue,
       nodesMap,
-      variables: variableState.toRuntimeRecord()
+      variables: (variables ??= variableState.toRuntimeRecord())
     });
     snapshot[item.key] = formatVariableValByType(resolved, item.valueType);
   }

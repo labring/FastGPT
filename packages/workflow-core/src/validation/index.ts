@@ -21,25 +21,19 @@ import { assertExecutionEdge } from '../edge/validation';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { assertParentAssignment } from '../nesting/service';
+import { resolveWorkflowDocumentOutput } from '../reference/codec';
 import { getWorkflowReferenceValues } from '../reference/service';
 import {
+  createDynamicOptionReferenceCheck,
   resolveWorkflowReferenceDocument,
   type WorkflowInvalidReferencePolicy
 } from '../reference/validation';
 import { hasConfiguredValue } from '../template/defaultValue';
 import { validateNodeIO } from './io';
 import { checkWorkflowModels } from './model';
-import {
-  DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES,
-  getWorkflowReferenceSourceNodes,
-  getWorkflowReferenceVariables,
-  nodeInputIsReference,
-  workflowReferenceValueIsSelectable,
-  type WorkflowReferenceSourceNode
-} from '@fastgpt/global/common/workflow/reference';
+import { nodeInputIsReference } from '@fastgpt/global/common/workflow/reference';
 import { isReferenceOptionFormItem } from '@fastgpt/global/core/workflow/template/system/interactive/constants';
 import type { UserInputFormItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 
 /** 多个入口共享一次图遍历；嵌套起点与工具输入节点遵循 Web 的入口语义。 */
 const getReachableNodeIds = (document: WorkflowDocument, startNodeIds: string[]) => {
@@ -137,38 +131,6 @@ const validateSpecialNode = ({
   const getInputValue = (key: NodeInputKeyEnum) =>
     node.inputs.find((item) => item.key === key)?.value;
 
-  let dynamicOptionSources: WorkflowReferenceSourceNode[] | undefined;
-  /** 动态选项与画布选择器共用输出过滤规则，同一节点的多个表单项复用引用来源。 */
-  const dynamicOptionsAreSelectable = (value?: ReferenceValueType) => {
-    dynamicOptionSources ??= [
-      ...getWorkflowReferenceSourceNodes({
-        nodeId: node.nodeId,
-        getNodeById: (id) => document.nodes.find((item) => item.nodeId === id),
-        edges: document.executionEdges.map((edge) => ({
-          source: edge.source.nodeId,
-          target: edge.target.nodeId,
-          targetHandle:
-            edge.target.kind === 'selectedTools' ? NodeOutputKeyEnum.selectedTools : undefined
-        }))
-      }),
-      {
-        nodeId: VARIABLE_NODE_ID,
-        outputs: getWorkflowReferenceVariables({ chatConfig: document.chatConfig }).map((item) => ({
-          id: item.key,
-          key: item.key,
-          label: item.label,
-          type: FlowNodeOutputTypeEnum.static,
-          valueType: item.valueType
-        }))
-      }
-    ];
-    return workflowReferenceValueIsSelectable({
-      value,
-      sourceNodes: dynamicOptionSources,
-      excludeValueTypes: DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES
-    });
-  };
-
   // 这些缺项在 Web 中始终阻断，不依赖模型目录、权限或远端资源状态。
   if (
     node.flowNodeType === FlowNodeTypeEnum.httpRequest468 &&
@@ -219,11 +181,8 @@ const validateSpecialNode = ({
         return false;
       const [nodeId, outputKey] = value;
       if (nodeId === VARIABLE_NODE_ID) return true;
-      return (
-        document.nodes
-          .find((item) => item.nodeId === nodeId)
-          ?.outputs.some((output) => output.key === outputKey || output.id === outputKey) ?? false
-      );
+      const source = document.nodes.find((item) => item.nodeId === nodeId);
+      return !!source && !!resolveWorkflowDocumentOutput(source.outputs, outputKey).output;
     };
 
     /** 引用数组逐项校验；清空数组和固定布尔值无需预填 value。 */
@@ -362,7 +321,14 @@ const validateSpecialNode = ({
         )
       : [];
     const reason = (() => {
-      if (isDynamicOptions) return dynamicOptionsAreSelectable(options) ? undefined : 'empty';
+      if (isDynamicOptions) {
+        const isSelectable = createDynamicOptionReferenceCheck({
+          document,
+          nodeId: node.nodeId,
+          input
+        });
+        return isSelectable(options ?? input.defaultValue) ? undefined : 'empty';
+      }
       if (!Array.isArray(options) || options.length === 0) return 'empty';
       if (
         options.some(
@@ -392,8 +358,14 @@ const validateSpecialNode = ({
   }
 
   if (node.flowNodeType === FlowNodeTypeEnum.formInput) {
-    const forms = getInputValue(NodeInputKeyEnum.userInputForms);
-    if (Array.isArray(forms)) {
+    const formsInput = node.inputs.find((item) => item.key === NodeInputKeyEnum.userInputForms);
+    const forms = formsInput?.value ?? formsInput?.defaultValue;
+    if (formsInput && Array.isArray(forms)) {
+      const isSelectable = createDynamicOptionReferenceCheck({
+        document,
+        nodeId: node.nodeId,
+        input: formsInput
+      });
       forms.forEach((form, index) => {
         if (!form || typeof form !== 'object' || Array.isArray(form)) return;
         const field = form as Partial<UserInputFormItemType>;
@@ -402,7 +374,7 @@ const validateSpecialNode = ({
           !isReferenceOptionFormItem({ type: field.type, listInputType: field.listInputType })
         )
           return;
-        if (!dynamicOptionsAreSelectable(field.listReference)) {
+        if (!isSelectable(field.listReference)) {
           diagnostics.push({
             code: WorkflowDiagnosticCodeEnum.requiredInputMissing,
             severity: 'error',
@@ -460,7 +432,8 @@ const validateSpecialNode = ({
  * CLI、辅助生成及运行/发布入口统一执行完整检查，包括主入口与嵌套入口的孤立检查。
  * 返回诊断供调用方决定阻断或展示；保存草稿不调用此检查。
  * 仅显式传入 modelCheck 时检查模型；CLI 生成不传，Web 注入目录和模板。资源状态由 Web/服务端补充。
- * 调用方必须显式选择引用策略：error 保留失效引用报错；asEmpty 剔除失效项后再执行必填及模型检查。
+ * 调用方必须显式选择引用策略：error 保留失效引用报错；asEmpty 剔除普通失效项后再执行必填及模型检查。
+ * 结构化 Secret 引用不受 asEmpty 清理，发布校验仍会拒绝失效来源。
  */
 export const validateWorkflow = (
   sourceDocument: WorkflowDocument,

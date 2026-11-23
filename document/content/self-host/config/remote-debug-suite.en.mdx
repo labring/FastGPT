@@ -50,11 +50,11 @@ FastGPT exchanges the connection key and returns connection details to the CLI. 
 
 ## Deploy Connection Gateway
 
-Connection Gateway is maintained in the `fastgpt-plugin` repository. Choose the China Mainland or global image based on your network environment:
+Connection Gateway is maintained in the `fastgpt-plugin` repository. Choose the China Mainland mirror or the global registry based on your network environment:
 
 ```dotenv
-# China Mainland
-CONNECTION_GATEWAY_IMAGE=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin-connection-gateway:8a52896d1d5b866308778871526cfdff9d22c547
+# China Mainland mirror
+CONNECTION_GATEWAY_IMAGE=ghcr.dockerproxy.net/labring/fastgpt-plugin-connection-gateway:8a52896d1d5b866308778871526cfdff9d22c547
 
 # Global
 CONNECTION_GATEWAY_IMAGE=ghcr.io/labring/fastgpt-plugin-connection-gateway:8a52896d1d5b866308778871526cfdff9d22c547
@@ -83,11 +83,11 @@ services:
 
 Port notes:
 
-| Port   | Purpose                                                                                                | Exposure requirement                                                                                              |
-| ------ | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| Port   | Purpose                                                                                                | Exposure requirement                                                                                                        |
+| ------ | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
 | `3020` | Gateway HTTP API, mapped to container port `3000`, including `/health`, `/internal/*`, and `/metrics`. | Public exposure is not required. Plugin Server only needs private network access (avoids port `3010` used by dev AI Proxy). |
-| `3021` | Gateway WebSocket, mapped to container port `3001`, default path `/connection-gateway/v1`.             | Must be reachable from the developer's local CLI, usually exposed as a public `wss://` URL through reverse proxy. |
-| Redis  | Stores Gateway sessions, source owner leases, and mailboxes.                                           | Public exposure is not required. The Redis version must support Stream.                                           |
+| `3021` | Gateway WebSocket, mapped to container port `3001`, default path `/connection-gateway/v1`.             | Must be reachable from the developer's local CLI, usually exposed as a public `wss://` URL through reverse proxy.           |
+| Redis  | Stores Gateway sessions, source owner leases, and mailboxes.                                           | Public exposure is not required. The Redis version must support Stream.                                                     |
 
 ## Configure Plugin Server
 
