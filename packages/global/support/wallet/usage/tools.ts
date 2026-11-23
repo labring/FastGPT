@@ -11,6 +11,10 @@ export const formatStorePrice2Read = (val = 0, multiple = 1) => {
   return Number(((val / PRICE_SCALE) * multiple).toFixed(10));
 };
 
+/** 账单只记录实际发生的缓存用量，历史零值也按无用量显示。 */
+export const getUsedCacheTokens = (tokens = 0) =>
+  tokens > 0 && Number.isFinite(tokens) ? tokens : undefined;
+
 export const getUsageSourceByAuthType = ({
   shareId,
   authType

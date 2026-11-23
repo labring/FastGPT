@@ -59,8 +59,8 @@ const vlmModel = {
   provider: 'openai',
   model: 'mock-vlm-model',
   name: 'Mock VLM Model',
-  type: ModelTypeEnum.llm,
-  scope: 'system' as const,
+  type: ModelTypeEnum.llm as const,
+  scope: ModelScopeEnum.system,
   isActive: true,
   config: {
     maxContext: 128000,
@@ -308,6 +308,8 @@ describe('default recall dataset search', () => {
       usage: {
         inputTokens: 3,
         outputTokens: 2,
+        cacheReadTokens: 1,
+        cacheCreationTokens: 1,
         usedUserOpenAIKey: true
       }
     });
@@ -334,6 +336,8 @@ describe('default recall dataset search', () => {
       model: 'mock-vlm-model',
       inputTokens: 3,
       outputTokens: 2,
+      cacheReadTokens: 1,
+      cacheCreationTokens: 1,
       requestIds: ['req_image_caption_2'],
       seconds: expect.any(Number),
       usedUserOpenAIKey: true,

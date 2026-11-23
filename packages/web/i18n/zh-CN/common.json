@@ -1455,5 +1455,8 @@
   "puzzle_captcha_refreshed": "当前图片已失效，请尝试新图片",
   "puzzle_captcha_retry": "未能完成验证，请重新拖动",
   "puzzle_captcha_expired": "图片已过期，请换一张",
-  "puzzle_captcha_load_failed": "图片加载失败，请点击换一张"
+  "puzzle_captcha_load_failed": "图片加载失败，请点击换一张",
+  "model.cache_read_price": "缓存读取",
+  "model.cache_creation_price": "缓存创建",
+  "model.cache_price_default": "同输入价"
 }

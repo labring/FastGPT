@@ -352,5 +352,6 @@
   "model.stt_billing_duration": "按时长",
   "model.stt_billing_tokens": "按 Tokens",
   "model.stt_input_price": "输入价格（积分）",
-  "model.stt_output_price": "输出价格（积分）"
+  "model.stt_output_price": "输出价格（积分）",
+  "model.cache_price_tip": "价格单位：积分 / M Tokens，最多 2 位小数。缓存读取和缓存创建留空时沿用该档输入价，填 0 表示免费。"
 }

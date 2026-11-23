@@ -49,6 +49,10 @@ export type BillSchemaType = z.infer<typeof BillSchema>;
 export type ChatNodeUsageType = {
   inputTokens?: number;
   outputTokens?: number;
+  /** 包含在 inputTokens 中的缓存读取量。 */
+  cacheReadTokens?: number;
+  /** 包含在 inputTokens 中的缓存创建量。 */
+  cacheCreationTokens?: number;
   totalPoints: number;
   moduleName: string;
   modelId?: string;

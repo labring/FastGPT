@@ -156,7 +156,7 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
       }
     });
 
-    const { inputTokens, outputTokens } = llmResponse.usage;
+    const { inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens } = llmResponse.usage;
     responseWrite({
       res,
       event: SseResponseEventEnum.answer,
@@ -166,7 +166,9 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
     const { totalPoints } = formatModelChars2Points({
       model: modelData,
       inputTokens,
-      outputTokens
+      outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens
     });
 
     createUsage({
@@ -181,7 +183,9 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
           amount: totalPoints,
           modelId: modelData.modelId,
           inputTokens,
-          outputTokens
+          outputTokens,
+          cacheReadTokens,
+          cacheCreationTokens
         }
       ]
     });

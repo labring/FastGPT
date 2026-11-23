@@ -95,7 +95,9 @@ describe('admin settings model updateWithJson api', () => {
       ...buildStoredLlm('legacy-priced'),
       inputPrice: 0.001,
       outputPrice: 0.003,
-      pricing: { tiers: [{ inputPrice: 1, outputPrice: 3 }] }
+      pricing: {
+        tiers: [{ inputPrice: 1, outputPrice: 3, cacheReadPrice: 0, cacheCreationPrice: 0.125 }]
+      }
     });
     const root = await getRootUser();
     const exported = await Call<string>(getConfigJsonApi, { auth: root });
@@ -103,7 +105,7 @@ describe('admin settings model updateWithJson api', () => {
     expect(result.code).toBe(200);
     const saved = await MongoAIModel.findById(modelId).lean();
     expect(ModelPricingSchema.parse(saved?.pricing).tiers).toMatchObject([
-      { inputPrice: 1, outputPrice: 3 }
+      { inputPrice: 1, outputPrice: 3, cacheReadPrice: 0, cacheCreationPrice: 0.13 }
     ]);
     expect(saved).toMatchObject({ inputPrice: 0.001, outputPrice: 0.003 });
   });

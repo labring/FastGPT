@@ -1,5 +1,5 @@
 {
-  "active_model": "Available Models",
+  "active_model": "Available models",
   "max_response_tokens": "Maximum response Tokens",
   "voices_array_required": "Voices must be a non-empty array with label and value in each item",
   "select_model_provider_placeholder": "Select a provider",
@@ -109,7 +109,6 @@
   "video": "Video recognition",
   "video_tip": "Turn this on if the model supports video recognition.",
   "waiting_test": "Waiting for testing",
-  "active_model": "Available models",
   "channel": "Model provider",
   "config_model": "Model configuration",
   "create_model": "Add new model",
@@ -353,5 +352,6 @@
   "model.stt_billing_duration": "By duration",
   "model.stt_billing_tokens": "By tokens",
   "model.stt_input_price": "Input price (credits)",
-  "model.stt_output_price": "Output price (credits)"
+  "model.stt_output_price": "Output price (credits)",
+  "model.cache_price_tip": "Prices are in points / M tokens, with up to 2 decimal places. Leave cache read or creation blank to use the input price for that tier; enter 0 for free caching."
 }
