@@ -12,7 +12,9 @@ import {
  * 基于完整远端树和本地快照计算结构差量，不读写数据库。
  * 预分配目录 ID 用于验证最终树；idMap 只包含已存在节点，执行阶段提交成功后才能补入新目录。
  * 旧文件名单与新增文件分离，避免新增解析任务再次进入本轮内容同步。
- * 新增文件受父目录 `syncChildren` / 根级 `syncAll` 守卫约束，避免在暂停同步的目录（含 docA#dir）中重建已被用户删除的正文。
+ * 新增文件受全量开关 `syncAll` 与父目录 `syncChildren` 守卫约束：
+ * `syncAll === true` 时放行全库新增文件（优先级高于子目录残留的 `syncChildren: false`）；
+ * `syncAll === false` 时仅允许 `syncChildren !== false` 的父目录下新增文件，避免在暂停目录（含 docA#dir）中重建已被用户删除的正文。
  */
 export const buildApiFileSyncPlan = <T extends ApiFileLocalCollection & { name: string }>({
   records,
@@ -26,7 +28,7 @@ export const buildApiFileSyncPlan = <T extends ApiFileLocalCollection & { name: 
   collections: T[];
   transientFolderIds?: Set<string>;
   rootParentIds?: Map<string, string | null>;
-  /** 知识库根级同步开关（Dataset.syncAll），控制根级新增文件是否允许进入 missingFiles。 */
+  /** 知识库根级全量同步开关（Dataset.syncAll），为 true 时放行全库新增文件并覆盖残留 syncChildren=false。 */
   syncAll?: boolean;
   /** 允许绕过新增守卫的文件 apiFileId（例如旧钉钉目录转正文兼容迁移）。 */
   alwaysAllowNewFileIds?: Set<string>;
@@ -45,12 +47,10 @@ export const buildApiFileSyncPlan = <T extends ApiFileLocalCollection & { name: 
     plannedFolderByApiId.set(record.apiFileId, record);
   }
 
-  /** 判断新增文件是否允许落库：遵循直接父目录 syncChildren 或根级 syncAll。 */
+  /** 判断新增文件是否允许落库：syncAll=true 时放行全部新增文件（覆盖残留暂停目录）；否则遵循直接父目录 syncChildren。 */
   const canCreateNewFile = (record: ApiFileRecord): boolean => {
-    if (alwaysAllowNewFileIds.has(record.apiFileId)) return true;
-    if (record.parentDirId === null) {
-      return syncAll;
-    }
+    if (syncAll || alwaysAllowNewFileIds.has(record.apiFileId)) return true;
+    if (record.parentDirId === null) return false;
     const existingParent = existingByApiId.get(record.parentDirId);
     if (existingParent) {
       return isCollectionSyncChildrenEnabled(existingParent);

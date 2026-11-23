@@ -104,7 +104,7 @@ describe('buildApiFileSyncPlan', () => {
     expect(unchanged.renames).toEqual([]);
   });
 
-  it('syncAll 与父目录 syncChildren=false 守卫阻断新增文件落库，包含 docA#dir 删正文不重建', () => {
+  it('syncAll=false 时由父目录 syncChildren=false 阻断新增文件（含 docA#dir 删正文），syncAll=true 时覆盖残留暂停状态', () => {
     const pausedFolder = local('paused', { syncChildren: false });
     const derivedPaused = local('docA#dir', {
       syncChildren: false,
@@ -118,10 +118,20 @@ describe('buildApiFileSyncPlan', () => {
     const records = [
       record('rootNew', { type: 'file' }),
       record('paused'),
-      record('pausedNew', { type: 'file', parentDirId: 'paused', apiFileParentId: 'paused', depth: 1 }),
+      record('pausedNew', {
+        type: 'file',
+        parentDirId: 'paused',
+        apiFileParentId: 'paused',
+        depth: 1
+      }),
       record('docA#dir', { sourceId: 'docA' }),
       record('docA', { type: 'file', parentDirId: 'docA#dir', depth: 1 }),
-      record('childA', { type: 'file', parentDirId: 'docA#dir', apiFileParentId: 'docA', depth: 1 }),
+      record('childA', {
+        type: 'file',
+        parentDirId: 'docA#dir',
+        apiFileParentId: 'docA',
+        depth: 1
+      }),
       record('newChildA', {
         type: 'file',
         parentDirId: 'docA#dir',
@@ -143,7 +153,12 @@ describe('buildApiFileSyncPlan', () => {
       records,
       syncAll: true
     });
-    expect(planSyncAllOn.missingFiles.map((item) => item.apiFileId)).toEqual(['rootNew']);
+    expect(planSyncAllOn.missingFiles.map((item) => item.apiFileId)).toEqual([
+      'rootNew',
+      'pausedNew',
+      'docA',
+      'newChildA'
+    ]);
 
     const planWithBypass = buildApiFileSyncPlan({
       collections: [pausedFolder, derivedPaused, keptChild],
