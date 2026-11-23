@@ -54,6 +54,7 @@ const RenderInput = () => {
   }, [histories, pluginInputs]);
 
   const [restartData, setRestartData] = useState<ChatBoxInputFormType>();
+  const [resetCount, setResetCount] = useState(0);
   const onClickNewChat = useCallback(
     (e: ChatBoxInputFormType) => {
       setRestartData(e);
@@ -72,6 +73,10 @@ const RenderInput = () => {
         {} as Record<string, any>
       )
     });
+    // react-hook-form@7.43.1 的 Controller(useWatch) 在挂载时会把当时的字段值冻结为订阅闭包里的 defaultValue；
+    // 当字段未配置默认值（undefined）并再次 reset 时，get(..., defaultValue) 会回退到旧值并被 register 写回。
+    // 递增 key 重建 Controller，使订阅状态与 reset 后的表单值保持一致。
+    setResetCount((count) => count + 1);
   }, [reset, formatPluginInputs]);
 
   // Reset input value
@@ -81,6 +86,7 @@ const RenderInput = () => {
       if (restartData) {
         reset(restartData);
         setRestartData(undefined);
+        setResetCount((count) => count + 1);
         return;
       }
 
@@ -119,6 +125,7 @@ const RenderInput = () => {
     reset({
       variables: historyVariables
     });
+    setResetCount((count) => count + 1);
   }, [histories, formatPluginInputs]);
 
   const formFileUploading = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploading);
@@ -194,7 +201,7 @@ const RenderInput = () => {
                 )}
               </Flex>
               <Controller
-                key={inputKey}
+                key={`${inputKey}-${resetCount}`}
                 control={control}
                 name={inputKey}
                 rules={{
