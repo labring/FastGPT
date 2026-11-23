@@ -15,6 +15,7 @@ import { isProVersion } from '../system/constants';
 import { enqueueOpsPerfRecord, type RecordOpsPerfInput } from './collector';
 
 const MAX_SPANS_PER_STAGE = 64;
+const MAX_THROWN_ERRORS_PER_CONTEXT = 64;
 
 const statusSeverityRank = (status: OpsPerfEventStatus): number => {
   if (status === 'error') return 2;
@@ -42,9 +43,8 @@ export type PerfContextState<D extends OpsPerfDomain = OpsPerfDomain> = {
   status: OpsPerfEventStatus;
   errorCode?: OpsPerfErrorCode;
   errorCodeSeverity: OpsPerfEventStatus;
-  /** 仅记录最近一次未捕获向上抛出的异常对象与所在阶段，避免静默降级或已恢复重试污染后续异常归因。 */
-  lastThrownError?: unknown;
-  lastThrownStage?: string;
+  /** 按异常对象身份记录首次向上抛出的阶段，既支持并行分支各自报错不互覆，也防静默降级/已恢复重试串扰。 */
+  thrownStageByError: Map<unknown, string>;
   teamId?: string;
   resourceIds: string[];
   dims: Record<string, unknown>;
@@ -106,11 +106,11 @@ export const hasPerfContext = (domain: OpsPerfDomain): boolean => Boolean(getDom
 export const isOpsPerfActive = (domain?: OpsPerfDomain): boolean =>
   isProVersion() || (domain ? hasPerfContext(domain) : false);
 
-/** 记录向上抛出的阶段异常（嵌套阶段下保留最内层首次抛出阶段，避免外层覆写）。 */
+/** 按异常身份记录向上抛出的阶段（嵌套阶段下保留最内层首次抛出阶段，并行分支各自独立记录不互覆）。 */
 const recordThrownStage = (state: PerfContextState, stage: string, error: unknown) => {
-  if (state.lastThrownStage && Object.is(state.lastThrownError, error)) return;
-  state.lastThrownError = error;
-  state.lastThrownStage = stage;
+  if (state.thrownStageByError.has(error)) return;
+  if (state.thrownStageByError.size >= MAX_THROWN_ERRORS_PER_CONTEXT) return;
+  state.thrownStageByError.set(error, stage);
 };
 
 /** 将一次阶段调用区间写入累计器；超过上限时先压缩重叠区间防止极端循环膨胀内存。 */
@@ -215,6 +215,7 @@ export const withPerfContext = async <D extends OpsPerfDomain, T>(
     createTime: new Date(),
     status: 'ok',
     errorCodeSeverity: 'ok',
+    thrownStageByError: new Map(),
     teamId: options.teamId,
     resourceIds: [...(options.resourceIds ?? [])],
     dims: { ...(options.dims as Record<string, unknown>) },
@@ -239,13 +240,10 @@ export const withPerfContext = async <D extends OpsPerfDomain, T>(
     hasError = true;
     caughtError = error;
     state.status = 'error';
-    // 严格脱敏且按严重级别升级归因：仅当捕获对象与阶段抛出的异常一致时归因到该阶段，否则落到域默认错误码。
+    // 严格脱敏且按严重级别升级归因：按最终捕获异常身份精确匹配抛出阶段，并行分支报错互不覆盖。
     if (!state.errorCode || state.errorCodeSeverity !== 'error') {
       const domainConfig = OPS_PERF_DOMAIN_CONFIG[state.domain];
-      const matchedStage =
-        state.lastThrownStage && Object.is(state.lastThrownError, error)
-          ? state.lastThrownStage
-          : undefined;
+      const matchedStage = state.thrownStageByError.get(error);
       state.errorCode =
         (matchedStage ? domainConfig?.stageErrorCodes?.[matchedStage] : undefined) ??
         domainConfig?.defaultErrorCode;

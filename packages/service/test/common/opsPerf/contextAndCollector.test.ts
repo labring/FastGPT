@@ -404,6 +404,75 @@ describe('opsPerf context and collector', () => {
     expect(ev.errorCode).toBe('SEARCH_ERROR');
   });
 
+  it('preserves exact originating stage when parallel branches both throw in the same turn and keeps innermost stage on nesting', async () => {
+    await expect(
+      withPerfContext(
+        {
+          domain: 'dataset.search',
+          force: true,
+          dims: {
+            searchMode: 'mixedRecall',
+            indexScale: 'm_100k',
+            usingReRank: false,
+            usingExtension: false,
+            vectorEngine: 'pg'
+          }
+        },
+        async () => {
+          // Both branches reject on the same microtask turn before Promise.all resumes in withPerfContext;
+          // outer 'filter' wrapper additionally verifies innermost stage wins on nested throw.
+          const vectorBranch = trackPerfStage({ domain: 'dataset.search', stage: 'filter' }, () =>
+            trackPerfStage({ domain: 'dataset.search', stage: 'vectorHydrate' }, async () => {
+              throw new Error('vector hydrate mongo failure');
+            })
+          );
+          const fullTextBranch = trackPerfStage(
+            { domain: 'dataset.search', stage: 'fullTextHydrate' },
+            async () => {
+              // Align microtask depth with nested vectorBranch so fullTextBranch rejects right after vectorBranch in the same turn
+              await Promise.resolve();
+              throw new Error('fulltext hydrate mongo failure');
+            }
+          );
+          void fullTextBranch.catch(() => {});
+          await Promise.all([vectorBranch, fullTextBranch]);
+        }
+      )
+    ).rejects.toThrow('vector hydrate mongo failure');
+
+    const snapshot = getOpsPerfBufferSnapshotForTest();
+    expect(snapshot.events).toHaveLength(1);
+    expect(snapshot.events[0]?.status).toBe('error');
+    expect(snapshot.events[0]?.errorCode).toBe('VECTOR_RECALL_ERROR');
+  });
+
+  it('tracks droppedEventCount in hourly bucket metrics when burst error events exceed buffer capacity', () => {
+    const dims = {
+      searchMode: 'embedding' as const,
+      indexScale: 's_10k' as const,
+      usingReRank: false,
+      usingExtension: false,
+      vectorEngine: 'pg' as const
+    };
+
+    for (let i = 0; i < 501; i++) {
+      enqueueOpsPerfRecord({
+        domain: 'dataset.search',
+        force: true,
+        totalMs: 100,
+        status: 'error',
+        errorCode: 'EMBEDDING_ERROR',
+        dims
+      });
+    }
+
+    const snapshot = getOpsPerfBufferSnapshotForTest();
+    expect(snapshot.buckets).toHaveLength(1);
+    expect(snapshot.buckets[0]?.total.errorCount).toBe(501);
+    expect(snapshot.buckets[0]?.metrics.droppedEventCount).toBe(1);
+    expect(snapshot.events).toHaveLength(500);
+  });
+
   it('skips lazy options factory and timer registration in community edition', async () => {
     vi.spyOn(systemConstants, 'isProVersion').mockReturnValue(false);
     const optionsFactory = vi.fn(() => ({

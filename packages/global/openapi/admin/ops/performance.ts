@@ -127,15 +127,17 @@ export const GetDatasetSearchPerfResponseSchema = z.object({
     p50Ms: z.number().nonnegative().meta({ description: 'P50 耗时 (ms)' }),
     p95Ms: z.number().nonnegative().meta({ description: 'P95 耗时 (ms)' }),
     p99Ms: z.number().nonnegative().meta({ description: 'P99 耗时 (ms)' }),
-    dbAvgMs: z
-      .number()
-      .nonnegative()
-      .meta({
-        description: '数据库平均耗时（过滤 + 向量 + 全文 + 回表的时间区间并集均值）(ms)',
-        example: 145
-      }),
+    dbAvgMs: z.number().nonnegative().meta({
+      description: '数据库平均耗时（过滤 + 向量 + 全文 + 回表的时间区间并集均值）(ms)',
+      example: 145
+    }),
     errorCount: z.number().nonnegative().meta({ description: '失败次数' }),
     errorRate: z.number().min(0).max(1).meta({ description: '失败率' }),
+    droppedEventCount: z.number().int().nonnegative().default(0).meta({
+      description:
+        '突发高峰时因单点有界缓冲饱和而被省略的异常/降级单点明细条数（聚合统计不受影响）',
+      example: 0
+    }),
     rerankTriggerRate: z.number().min(0).max(1).meta({ description: 'Rerank 触发率' }),
     rerankAvgMs: z.number().nonnegative().meta({ description: 'Rerank 平均耗时 (ms)' }),
     rerankP95Ms: z.number().nonnegative().meta({ description: 'Rerank P95 耗时 (ms)' }),
@@ -187,7 +189,8 @@ export const DatasetSearchPerfEventItemSchema = z.object({
     example: '2026-11-23T08:30:00.000Z'
   }),
   reason: z.enum(OpsPerfEventReasonValues).meta({
-    description: '单点样本保留原因（error=异常全留痕，degraded=降级全留痕，sample=正常低比例采样）',
+    description:
+      '单点样本保留原因（error/degraded 在单刷盘窗口有界缓冲内优先留痕，突发溢出计入 summary.droppedEventCount；sample 为正常低比例采样）',
     example: 'degraded'
   }),
   status: z.enum(OpsPerfEventStatusValues).meta({

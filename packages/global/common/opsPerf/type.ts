@@ -145,7 +145,9 @@ export const DatasetSearchMetricsSchema = z.object({
   totalDatasetCount: z.number().nonnegative().optional(),
   totalResultCount: z.number().nonnegative().optional(),
   totalEmbeddingTokens: z.number().nonnegative().optional(),
-  totalRerankTokens: z.number().nonnegative().optional()
+  totalRerankTokens: z.number().nonnegative().optional(),
+  /** 单刷盘窗口单点缓冲饱和时被保护性丢弃的异常/降级单点明细数（聚合桶统计仍完整计入）。 */
+  droppedEventCount: z.number().nonnegative().optional()
 });
 export type DatasetSearchMetrics = z.infer<typeof DatasetSearchMetricsSchema>;
 

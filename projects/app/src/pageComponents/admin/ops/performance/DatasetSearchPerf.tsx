@@ -1089,6 +1089,24 @@ export default function DatasetSearchPerf(): JSX.Element {
               </HStack>
             </Flex>
 
+            {(overview?.summary.droppedEventCount ?? 0) > 0 && (
+              <Box
+                mb={3}
+                px={3}
+                py={2}
+                bg={'orange.50'}
+                borderWidth={'1px'}
+                borderColor={'orange.200'}
+                borderRadius={'md'}
+                fontSize={'xs'}
+                color={'orange.700'}
+              >
+                {t('admin:ops_perf_events_dropped_notice', {
+                  count: overview!.summary.droppedEventCount.toLocaleString()
+                })}
+              </Box>
+            )}
+
             <TableContainer>
               <Table size={'sm'} variant={'simple'}>
                 <Thead>

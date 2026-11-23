@@ -324,7 +324,9 @@ export const enqueueOpsPerfRecord = <D extends OpsPerfDomain>(
       }
     }
 
-    // 2. 按留痕策略决定是否入队单点样本（报错/降级 100% 留存 + 正常请求按 2% 限速采样）
+    // 2. 按有界优先级留痕策略决定是否入队单点样本：
+    // 异常/降级优先于正常 2% 采样保留；单刷盘窗口达到 MAX_EVENT_BUFFER_SIZE 且无可淘汰正常样本时，
+    // 保护性丢弃溢出单点（绝不反压阻塞检索主链路），同时在对应小时桶累加 droppedEventCount 供看板显式提示缺口。
     if (input.recordEvent === false) return;
 
     const reason = ((): OpsPerfEventReason | undefined => {
@@ -354,6 +356,9 @@ export const enqueueOpsPerfRecord = <D extends OpsPerfDomain>(
         state.events.splice(sampleIdx, 1);
       } else {
         state.droppedEvents += 1;
+        if (bucket) {
+          bucket.metrics.droppedEventCount = (bucket.metrics.droppedEventCount ?? 0) + 1;
+        }
         return;
       }
     }
@@ -409,6 +414,13 @@ export const enqueueOpsPerfRecord = <D extends OpsPerfDomain>(
       stages: cleanStages,
       detail: cleanDetail
     });
+
+    // 非单测环境下达到单点缓冲水位时，于所有同步写缓冲完成后异步提前刷盘以减少突发丢弃
+    if (!isTestRuntime() && state.events.length >= MAX_EVENT_BUFFER_SIZE) {
+      void flushOpsPerfBuffer().catch((error) => {
+        logger.error('Ops perf high-watermark flush failed', { error });
+      });
+    }
   } catch (error) {
     logger.warn('Failed to enqueue ops perf record', { error });
   }
