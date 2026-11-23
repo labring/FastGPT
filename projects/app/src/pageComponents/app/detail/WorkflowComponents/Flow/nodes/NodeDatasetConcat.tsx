@@ -143,6 +143,7 @@ const VariableSelector = ({
   inputChildren: FlowNodeInputItemType;
 }) => {
   const { t } = useTranslation();
+  const translate = t as (key: string) => string;
   const nodeActions = useNodeActions(nodeId);
   const quoteField = useFieldActions({
     nodeId,
@@ -174,7 +175,7 @@ const VariableSelector = ({
   return (
     <>
       <Flex alignItems={'center'} mb={1}>
-        <FormLabel required={inputChildren.required}>{t(inputChildren.label as any)}</FormLabel>
+        <FormLabel required={inputChildren.required}>{translate(inputChildren.label)}</FormLabel>
         {/* value */}
         <ValueTypeLabel valueType={inputChildren.valueType} valueDesc={inputChildren.valueDesc} />
 
@@ -191,10 +192,11 @@ const VariableSelector = ({
       </Flex>
       <WorkflowFieldScope nodeId={nodeId} fieldKey={inputChildren.key}>
         <ReferSelector
-          placeholder={t(
-            (inputChildren.referencePlaceholder as any) ||
-              t('common:core.module.Dataset quote.select')
-          )}
+          placeholder={
+            inputChildren.referencePlaceholder
+              ? translate(inputChildren.referencePlaceholder)
+              : t('common:core.module.Dataset quote.select')
+          }
           list={referenceList}
           value={inputChildren.value}
           onSelect={onSelect}

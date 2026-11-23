@@ -39,6 +39,7 @@ const inputColumns = 'minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr)';
  */
 const DynamicInputs = ({ item, inputs = [], nodeId }: RenderInputProps) => {
   const { t } = useSafeTranslation();
+  const translate: (key: string) => string = t;
   const nodeActions = useNodeActions(nodeId);
 
   const dynamicInputs = useMemoEnhance(() => inputs.filter((item) => item.canEdit), [inputs]);
@@ -50,8 +51,8 @@ const DynamicInputs = ({ item, inputs = [], nodeId }: RenderInputProps) => {
     <Box borderBottom={hideBottomDivider ? undefined : 'base'} pb={hideBottomDivider ? 0 : 3}>
       <HStack className="nodrag" cursor={'default'} position={'relative'}>
         <HStack spacing={1} position={'relative'} fontWeight={'medium'} color={'myGray.600'}>
-          <Box>{item.label ? t(item.label as any) : t('workflow:custom_input')}</Box>
-          {item.description && <QuestionTip label={t(item.description as any)} />}
+          <Box>{item.label ? translate(item.label) : t('workflow:custom_input')}</Box>
+          {item.description && <QuestionTip label={translate(item.description)} />}
 
           {item.deprecated && (
             <>
@@ -214,6 +215,7 @@ const Reference = ({
       inputs: current.inputs.filter((input) => input.key !== currentInput.key)
     }));
   }, [currentInput.key, nodeActions]);
+  const { label, translateLabel } = getFlowValueTypeMeta(currentInput.valueType);
 
   return (
     <Flex alignItems={'center'} mb={1} gap={2}>
@@ -268,7 +270,7 @@ const Reference = ({
           fontSize={'sm'}
           fontWeight={'medium'}
         >
-          {t(getFlowValueTypeMeta(currentInput.valueType).label)}
+          {translateLabel?.(t) ?? label}
         </Flex>
       </Grid>
       {!isEmptyItem && (

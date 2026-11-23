@@ -12,6 +12,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
+import { checkExecutionConnection } from '@fastgpt/workflow-core/edge/validation';
 import { decompileStoreWorkflow } from '@fastgpt/workflow-core/store/decompile';
 import { createWorkflowTemplateBundle } from '@fastgpt/workflow-core/template/bundle';
 import { createWorkflowLocalService } from '../../src/domain/workflow/workflow-local-service';
@@ -390,12 +391,17 @@ describe('WorkflowLocalService', () => {
     expect(varsAfter[0].key).toMatch(/^[A-Za-z0-9]{8}$/);
   });
 
-  it.each(['current', 'removed'])(
-    'keeps Web and CLI reference candidates in sync through a %s branch',
-    async (branchState) => {
+  it.each([
+    { branchState: 'current', branchKey: 'continue', configuredKey: 'continue' },
+    { branchState: 'removed', branchKey: 'continue', configuredKey: 'replacement' },
+    { branchState: 'legacy manual', branchKey: 'right', configuredKey: 'option1' }
+  ])(
+    'keeps Web and CLI reference candidates in sync through a $branchState branch',
+    async ({ branchState, branchKey, configuredKey }) => {
       const dir = await makeDir();
       const service = createLocalService(dir);
-      const current = branchState === 'current';
+      const reachable = branchState !== 'removed';
+      const legacyManual = branchState === 'legacy manual';
       const input = { dir, nodeId: 'target', key: 'parameter' };
       const workflow: CanonicalWorkflowData = {
         nodes: [
@@ -423,13 +429,15 @@ describe('WorkflowLocalService', () => {
           {
             nodeId: 'branch',
             name: 'Branch',
-            flowNodeType: FlowNodeTypeEnum.classifyQuestion,
+            flowNodeType: legacyManual
+              ? FlowNodeTypeEnum.userSelect
+              : FlowNodeTypeEnum.classifyQuestion,
             inputs: [
               {
-                key: NodeInputKeyEnum.agents,
+                key: legacyManual ? NodeInputKeyEnum.userSelectOptions : NodeInputKeyEnum.agents,
                 label: 'Branches',
                 renderTypeList: [],
-                value: [{ key: current ? 'continue' : 'replacement', value: 'Continue' }]
+                value: [{ key: configuredKey, value: 'Continue' }]
               }
             ],
             outputs: []
@@ -459,7 +467,7 @@ describe('WorkflowLocalService', () => {
           {
             source: 'branch',
             target: input.nodeId,
-            sourceHandle: getHandleId('branch', 'source', 'continue'),
+            sourceHandle: getHandleId('branch', 'source', branchKey),
             targetHandle: getHandleId(input.nodeId, 'target', 'left')
           }
         ],
@@ -473,13 +481,25 @@ describe('WorkflowLocalService', () => {
       editor.dispose();
 
       const document = decompileStoreWorkflow({ workflow });
+      if (legacyManual) {
+        expect(
+          checkExecutionConnection({
+            connection: workflow.edges[1],
+            edges: [],
+            getNodeById: (nodeId) => document.nodes.find((node) => node.nodeId === nodeId)
+          })
+        ).toMatchObject({
+          allowed: false,
+          reason: { code: WorkflowDiagnosticCodeEnum.branchKeyNotFound }
+        });
+      }
       await writeFile(join(dir, WORKFLOW_FILE_NAME), serializeWorkflowDocument(document));
       const { data: cliRefs } = await service.inputAvailable(input);
       for (const output of workflow.nodes[0].outputs) {
         const ref = { nodeId: 'source', outputKey: output.key };
         const setReference = () =>
           service.inputRef({ ...input, locale: 'en', from: `source.${output.key}` });
-        if (current) {
+        if (reachable) {
           expect(webRefs).toContainEqual(['source', output.id]);
           expect(cliRefs).toContainEqual(expect.objectContaining({ ref }));
           await expect(setReference()).resolves.toMatchObject({ changed: true });

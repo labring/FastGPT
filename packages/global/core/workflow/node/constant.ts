@@ -1,5 +1,5 @@
 import { i18nT } from '../../../common/i18n/utils';
-import { WorkflowIOValueTypeEnum } from '../constants';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '../constants';
 import type { EditorVariablePickerType } from '../type/io';
 export enum FlowNodeInputTypeEnum {
   // render ui
@@ -187,13 +187,20 @@ export enum FlowNodeTypeEnum {
   runApp = 'app'
 }
 
-type FlowValueTypeLabel = (t: (key: string) => string) => string;
+/** 动态分支节点用于声明出口的输入字段。 */
+export const workflowBranchInputKeys: ReadonlyMap<FlowNodeTypeEnum, NodeInputKeyEnum> = new Map([
+  [FlowNodeTypeEnum.ifElseNode, NodeInputKeyEnum.ifElseList],
+  [FlowNodeTypeEnum.userSelect, NodeInputKeyEnum.userSelectOptions],
+  [FlowNodeTypeEnum.classifyQuestion, NodeInputKeyEnum.agents]
+]);
+
+type FlowValueTypeLabel = (translate: (key: string) => string) => string;
 
 /** 静态声明可翻译类型名，同时保留配置和导出的原始标签。 */
-const translatedFlowValueTypeLabel = (translateLabel: FlowValueTypeLabel) => ({
-  label: translateLabel(i18nT),
-  translateLabel
-});
+const translatedFlowValueTypeLabel = (label: string) => {
+  const translateLabel: FlowValueTypeLabel = (translate) => translate(label);
+  return { label, translateLabel };
+};
 
 // node IO value type
 export const FlowValueTypeMap: Record<
@@ -246,19 +253,19 @@ export const FlowValueTypeMap: Record<
     value: WorkflowIOValueTypeEnum.any
   },
   [WorkflowIOValueTypeEnum.chatHistory]: {
-    ...translatedFlowValueTypeLabel((t) => t(i18nT('common:core.chat.History'))),
+    ...translatedFlowValueTypeLabel(i18nT('common:core.chat.History')),
     value: WorkflowIOValueTypeEnum.chatHistory
   },
   [WorkflowIOValueTypeEnum.datasetQuote]: {
-    ...translatedFlowValueTypeLabel((t) => t(i18nT('common:core.workflow.Dataset quote'))),
+    ...translatedFlowValueTypeLabel(i18nT('common:core.workflow.Dataset quote')),
     value: WorkflowIOValueTypeEnum.datasetQuote
   },
   [WorkflowIOValueTypeEnum.selectDataset]: {
-    ...translatedFlowValueTypeLabel((t) => t(i18nT('common:core.chat.Select dataset'))),
+    ...translatedFlowValueTypeLabel(i18nT('common:core.chat.Select dataset')),
     value: WorkflowIOValueTypeEnum.selectDataset
   },
   [WorkflowIOValueTypeEnum.dynamic]: {
-    ...translatedFlowValueTypeLabel((t) => t(i18nT('common:core.workflow.dynamic_input'))),
+    ...translatedFlowValueTypeLabel(i18nT('common:core.workflow.dynamic_input')),
     value: WorkflowIOValueTypeEnum.dynamic
   },
   [WorkflowIOValueTypeEnum.selectApp]: {

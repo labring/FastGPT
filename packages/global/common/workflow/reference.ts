@@ -2,7 +2,8 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum,
-  isNestedParentNodeType
+  isNestedParentNodeType,
+  workflowBranchInputKeys
 } from '../../core/workflow/node/constant';
 import { getIfElseBranchHandleKey } from './condition';
 import { getWorkflowGlobalVariables } from './editor/variables';
@@ -550,11 +551,7 @@ export const isWorkflowEdgeSourceHandleValid = (
   if (sourceHandle === getHandleId(nodeId, 'source_catch', 'right')) {
     return true;
   }
-  const branchInputKey = (() => {
-    if (flowNodeType === FlowNodeTypeEnum.ifElseNode) return NodeInputKeyEnum.ifElseList;
-    if (flowNodeType === FlowNodeTypeEnum.userSelect) return NodeInputKeyEnum.userSelectOptions;
-    if (flowNodeType === FlowNodeTypeEnum.classifyQuestion) return NodeInputKeyEnum.agents;
-  })();
+  const branchInputKey = workflowBranchInputKeys.get(flowNodeType);
   if (!branchInputKey) return true;
   if (!sourceHandle) return false;
 

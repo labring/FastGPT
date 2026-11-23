@@ -87,13 +87,14 @@ export const nodeTemplate2FlowNode = ({
   /** 新建业务显式解析后的默认 ID；恢复和复制不传。 */
   initialModelId?: string;
 }): Node<FlowNodeItemType, FlowNodeTypeEnum> => {
-  const name = t(template.name);
+  const translate = t as (key: string) => string;
+  const name = translate(template.name);
 
   // 用持久化节点数据覆盖模板默认值。
   const moduleItem: FlowNodeItemType = {
     ...template,
     name: formatName?.(name) ?? name,
-    intro: template.intro ? t(template.intro) : template.intro,
+    intro: template.intro ? translate(template.intro) : template.intro,
     nodeId: getNanoid(),
     parentNodeId
   };
@@ -131,7 +132,7 @@ export const nodeTemplate2FlowNode = ({
         ...input,
         value: (input.value as ClassifyQuestionAgentItemType[]).map((item) => ({
           ...item,
-          value: t(item.value)
+          value: translate(item.value)
         }))
       };
     });
@@ -172,6 +173,7 @@ export const storeNode2FlowNode = ({
   isTool = false,
   t
 }: StoreNode2FlowNodeProps): Node<FlowNodeItemType, FlowNodeTypeEnum> => {
+  const translate = t as (key: string) => string;
   // init some static data
   const nodeTemplate =
     (storeNode.flowNodeType === FlowNodeTypeEnum.toolSet &&
@@ -282,8 +284,10 @@ export const storeNode2FlowNode = ({
     // 连接柄由当前模板控制，避免存量数据重新开启已禁用的 source。
     showSourceHandle: nodeTemplate.showSourceHandle,
     name:
-      !isPluginNode && storeNode.name === nodeTemplate.name ? t(nodeTemplate.name) : storeNode.name,
-    intro: isPluginNode || !storeNode.intro ? storeNode.intro : t(storeNode.intro),
+      !isPluginNode && storeNode.name === nodeTemplate.name
+        ? translate(nodeTemplate.name)
+        : storeNode.name,
+    intro: isPluginNode || !storeNode.intro ? storeNode.intro : translate(storeNode.intro),
     avatar:
       isPluginNode && storeNode.flowNodeType === FlowNodeTypeEnum.toolSet
         ? storeNode.avatar || nodeTemplate.avatar
@@ -319,8 +323,9 @@ export const storeNode2FlowNode = ({
           ...storeInput,
           // 插件节点保留实例 IO 文案快照；内部节点继续使用当前模板和 i18n key。
           ...inputTemplate,
-          debugLabel: isPluginNode || !debugLabel ? debugLabel : t(debugLabel),
-          toolDescription: isPluginNode || !toolDescription ? toolDescription : t(toolDescription),
+          debugLabel: isPluginNode || !debugLabel ? debugLabel : translate(debugLabel),
+          toolDescription:
+            isPluginNode || !toolDescription ? toolDescription : translate(toolDescription),
           key: storeInput.key,
           label,
           description,
@@ -381,7 +386,7 @@ export const storeNode2FlowNode = ({
           ...outputTemplate,
           label: outputLabel,
           description:
-            isPluginNode || !outputDescription ? outputDescription : t(outputDescription),
+            isPluginNode || !outputDescription ? outputDescription : translate(outputDescription),
           id: storeOutput.id ?? outputTemplate.id,
           value: storeOutput.value ?? outputTemplate.value,
           // invalid 是编辑器层按当前模型能力计算的派生状态，不从持久化节点恢复。

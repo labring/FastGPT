@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { Box, Button, useDisclosure } from '@chakra-ui/react';
 import { getErrText, ToastHandledError } from '@fastgpt/global/common/error/utils';
+import { parseLocale } from '@fastgpt/global/common/i18n/utils';
 import type { SelectAppItemType } from '@fastgpt/global/core/workflow/template/system/abandoned/runApp/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -15,7 +16,7 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import { useWorkflowCanvasValue } from '../../../../canvas/workflowCanvasContext';
 
 const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const currentAppId = useContextSelector(AppContext, (ctx) => ctx.appDetail._id);
   const isMeasuring = useWorkflowCanvasValue((ctx) => ctx.measurementNodeIds.includes(nodeId));
@@ -38,10 +39,10 @@ const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
     enabled: !!value?.id && !isMeasuring,
     staleTime: 5 * 60 * 1000,
     cacheTime: 5 * 60 * 1000,
-    onError(error: any) {
+    onError(error: unknown) {
       fieldActions.setValue(undefined);
       if (error instanceof ToastHandledError) return;
-      const errorText = t(getErrText(error, 'Error') as any);
+      const errorText = getErrText(error, 'common:Error', parseLocale(i18n?.language));
       if (errorText) toast({ title: errorText, status: 'error' });
     }
   });

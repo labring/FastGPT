@@ -93,7 +93,7 @@ describe('VariableLabel', () => {
             outputLabel: 'common:Delete'
           }
         ],
-        t: (key) => (key === 'common:Input' ? '输入' : key === 'common:Delete' ? '删除' : t(key))
+        t: (key) => (key === 'common:Input' ? '输入' : key === 'common:Delete' ? '删除' : key)
       })
     ).toEqual({
       variableLabel: 'common:Input.common:Delete',

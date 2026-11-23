@@ -188,6 +188,7 @@ export const useLazyReferenceList = ({
  */
 const Reference = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useSafeTranslation();
+  const translate: (key: string) => string = t;
   const fieldData = useField({ nodeId, fieldKey: item.key, kind: 'input' }, (field) => field?.data);
   const fieldActions = useFieldActions({ nodeId, fieldKey: item.key, kind: 'input' });
   const flowNodeType = useNode(nodeId, (node) => node?.data.flowNodeType);
@@ -225,7 +226,7 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
       <Box position={'relative'}>
         <ReferSelector
           placeholder={
-            t(currentInput.referencePlaceholder as any) ||
+            (currentInput.referencePlaceholder && translate(currentInput.referencePlaceholder)) ||
             (isDynamicOptionsInput
               ? t('workflow:please_select_variable')
               : t('common:select_reference_variable'))

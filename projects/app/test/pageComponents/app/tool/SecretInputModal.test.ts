@@ -217,10 +217,15 @@ describe('SecretInputForm authorization output', () => {
   it('submits the original secret until the replacement is explicitly confirmed', async () => {
     const original = { type: 'manual', value: { apiKey: { secret: 'existing-ciphertext' } } };
     await render({ value: original as ToolParamsFormType, hasSystemSecret: false });
-    const click = async (label: 'Edit' | 'Close' | 'Save') => {
+    const actionLabels = {
+      Edit: translation.t('common:Edit'),
+      Close: translation.t('common:Close'),
+      Save: translation.t('common:Save')
+    };
+    const click = async (action: keyof typeof actionLabels) => {
       await act(async () =>
         dom.window.document
-          .querySelector<HTMLButtonElement>(`[aria-label="${translation.t(`common:${label}`)}"]`)!
+          .querySelector<HTMLButtonElement>(`[aria-label="${actionLabels[action]}"]`)!
           .click()
       );
     };

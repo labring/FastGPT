@@ -1,21 +1,17 @@
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '../../core/workflow/constants';
-import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../core/workflow/node/constant';
+import { NodeOutputKeyEnum } from '../../core/workflow/constants';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum,
+  workflowBranchInputKeys
+} from '../../core/workflow/node/constant';
 import type { StoreEdgeItemType } from '../../core/workflow/type/edge';
 import type { StoreNodeItemType } from '../../core/workflow/type/node';
 import { UserConfigError } from '../error/utils';
 import { getHandleId } from './reference';
 
 /** 只有声明该分支配置的节点类型才会用输入值生成连接端口。 */
-export const getWorkflowBranchInputKey = (nodeType: FlowNodeTypeEnum) => {
-  switch (nodeType) {
-    case FlowNodeTypeEnum.ifElseNode:
-      return NodeInputKeyEnum.ifElseList;
-    case FlowNodeTypeEnum.userSelect:
-      return NodeInputKeyEnum.userSelectOptions;
-    case FlowNodeTypeEnum.classifyQuestion:
-      return NodeInputKeyEnum.agents;
-  }
-};
+export const getWorkflowBranchInputKey = (nodeType: FlowNodeTypeEnum) =>
+  workflowBranchInputKeys.get(nodeType);
 
 const legacySourceDirections = ['left', 'top', 'bottom'];
 const legacyTargetDirections = ['right', 'top', 'bottom'];

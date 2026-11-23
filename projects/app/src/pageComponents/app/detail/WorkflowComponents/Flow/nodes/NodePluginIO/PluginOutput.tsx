@@ -102,6 +102,7 @@ function Reference({
   input: FlowNodeInputItemType;
 }) {
   const { t } = useTranslation();
+  const translate = t as (key: string) => string;
 
   const nodeActions = useNodeActions(nodeId);
   const fieldActions = useFieldActions({ nodeId, fieldKey: input.key, kind: 'input' });
@@ -193,7 +194,11 @@ function Reference({
       </Flex>
       <WorkflowFieldScope nodeId={nodeId} fieldKey={input.key}>
         <ReferSelector
-          placeholder={t((input.referencePlaceholder as any) || 'select_reference_variable')}
+          placeholder={
+            input.referencePlaceholder
+              ? translate(input.referencePlaceholder)
+              : t('common:select_reference_variable')
+          }
           list={referenceList}
           value={input.value}
           onSelect={onSelect}

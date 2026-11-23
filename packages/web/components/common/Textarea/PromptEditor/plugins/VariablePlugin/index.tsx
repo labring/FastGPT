@@ -12,7 +12,7 @@ const REGEX = new RegExp(getHashtagRegexString(), 'i');
 
 export default function VariablePlugin({ variables }: { variables: EditorVariablePickerType[] }) {
   const [editor] = useLexicalComposerContext();
-  const { t } = useSafeTranslation();
+  const { t: translate }: { t: (key: string) => string } = useSafeTranslation();
   useEffect(() => {
     if (!editor.hasNodes([VariableNode]))
       throw new Error('VariablePlugin: VariableNode not registered on editor');
@@ -27,10 +27,10 @@ export default function VariablePlugin({ variables }: { variables: EditorVariabl
       const currentVariable = variables.find(
         (item) => item.key === textNode.getTextContent().replace(/[{}]/g, '')
       );
-      const variableLabel = currentVariable?.label ? t(currentVariable.label as any) : undefined;
+      const variableLabel = currentVariable?.label ? translate(currentVariable.label) : undefined;
       return $createVariableNode(textNode.getTextContent(), variableLabel || '');
     },
-    [t, variables]
+    [translate, variables]
   );
 
   const getVariableMatch = useCallback(
