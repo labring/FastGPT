@@ -1,11 +1,12 @@
 import { Schema } from 'mongoose';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { DbConfigurationError } from '@fastgpt/dal/db/errors';
 import { defineMongoCollection } from '@fastgpt/dal/db/mongo/collection';
 import {
   dropManagedMongoIndexIfExists,
   inspectMongoIndexes,
-  syncMongoCollectionIndexes
+  syncMongoCollectionIndexes,
+  type LiveMongoIndexSpec
 } from '@fastgpt/dal/db/mongo/indexSync';
 import { createMongoTestHarness, type MongoTestHarness } from '@fastgpt/dal/db/testing';
 
@@ -177,5 +178,508 @@ describe('@fastgpt/dal/db/mongo additive index sync, collMod TTL, safe drops, an
     expect(attempts).toBe(3);
     expect(report.errors).toEqual([]);
     expect(report.created).toEqual([{ collection: 'retry_285_col', indexName: 'fg_retry_idx' }]);
+  });
+
+  it('does not let a live partial, unique, sparse, TTL, or collation index mask a missing full index', async () => {
+    const buildFakeClient = ({
+      liveIndexes,
+      createIndexImpl = vi.fn().mockResolvedValue('created')
+    }: {
+      liveIndexes: LiveMongoIndexSpec[];
+      createIndexImpl?: ReturnType<typeof vi.fn>;
+    }) => {
+      const command = vi.fn();
+      const client = {
+        connection: {
+          db: {
+            command,
+            collection: () => ({
+              indexes: vi.fn().mockResolvedValue(liveIndexes),
+              createIndex: createIndexImpl
+            })
+          }
+        }
+      } as any;
+      return { client, createIndex: createIndexImpl, command };
+    };
+
+    const fullDef = defineMongoCollection({
+      name: 'equiv_guard_col',
+      schema: new Schema({ teamId: String }, { versionKey: false }),
+      indexes: [{ key: { teamId: 1 }, options: { name: 'fg_equiv_team' } }]
+    });
+
+    // 1. 现网仅有同 key 异名的 partial 索引：既不满足全量索引声明，又可与全量索引共存 -> inspect 报缺失、sync 发起补建
+    {
+      const { client, createIndex } = buildFakeClient({
+        liveIndexes: [
+          { name: '_id_', key: { _id: 1 } },
+          {
+            name: 'teamId_partial_idx',
+            key: { teamId: 1 },
+            partialFilterExpression: { active: true }
+          }
+        ]
+      });
+
+      const inspect = await inspectMongoIndexes({ client, collections: [fullDef] });
+      expect(inspect.missingIndexes).toEqual([
+        { collection: 'equiv_guard_col', indexName: 'fg_equiv_team' }
+      ]);
+      expect(inspect.optionMismatches).toEqual([]);
+      expect(inspect.legacyOrCustomerIndexes).toEqual([
+        { collection: 'equiv_guard_col', indexName: 'teamId_partial_idx' }
+      ]);
+
+      const sync = await syncMongoCollectionIndexes({ client, collections: [fullDef] });
+      expect(createIndex).toHaveBeenCalledTimes(1);
+      expect(sync.created).toEqual([{ collection: 'equiv_guard_col', indexName: 'fg_equiv_team' }]);
+      expect(sync.skippedExisting).toEqual([]);
+    }
+
+    // 2. 现网仅有同 key 异名的 unique 索引（互斥不可共存）：inspect 必报 optionMismatches，sync 尝试建索引遇 85 记录漂移告警且绝不误记 skippedExisting
+    {
+      const conflictError = Object.assign(
+        new Error('An existing index has the same key with different options'),
+        { code: 85 }
+      );
+      const { client, createIndex } = buildFakeClient({
+        liveIndexes: [
+          { name: '_id_', key: { _id: 1 } },
+          { name: 'teamId_unique_idx', key: { teamId: 1 }, unique: true }
+        ],
+        createIndexImpl: vi.fn().mockRejectedValue(conflictError)
+      });
+
+      const inspect = await inspectMongoIndexes({ client, collections: [fullDef] });
+      expect(inspect.missingIndexes).toEqual([]);
+      expect(inspect.optionMismatches).toEqual([
+        {
+          collection: 'equiv_guard_col',
+          indexName: 'fg_equiv_team',
+          liveName: 'teamId_unique_idx',
+          reason: 'unique mismatch (declared=false, live=true)'
+        }
+      ]);
+
+      const sync = await syncMongoCollectionIndexes({ client, collections: [fullDef] });
+      expect(createIndex).toHaveBeenCalledTimes(1);
+      expect(sync.skippedExisting).toEqual([]);
+      expect(sync.created).toEqual([]);
+      expect(sync.optionDriftWarnings).toHaveLength(1);
+    }
+
+    // 3. 现网仅有同 key 异名的 sparse / unexpected-TTL 索引：inspect 必报 optionMismatches，绝不静默零漂移
+    for (const [liveSpec, expectedReason] of [
+      [
+        { name: 'teamId_sparse_idx', key: { teamId: 1 }, sparse: true },
+        'sparse mismatch (declared=false, live=true)'
+      ],
+      [
+        { name: 'teamId_ttl_idx', key: { teamId: 1 }, expireAfterSeconds: 300 },
+        'expireAfterSeconds mismatch (declared=undefined, live=300)'
+      ]
+    ] as const) {
+      const { client } = buildFakeClient({
+        liveIndexes: [{ name: '_id_', key: { _id: 1 } }, liveSpec]
+      });
+      const inspect = await inspectMongoIndexes({ client, collections: [fullDef] });
+      expect(inspect.optionMismatches).toEqual([
+        {
+          collection: 'equiv_guard_col',
+          indexName: 'fg_equiv_team',
+          liveName: liveSpec.name,
+          reason: expectedReason
+        }
+      ]);
+    }
+
+    // 4. 同名但现网为 partial 索引：inspect 报 optionMismatches，sync 报 optionDriftWarnings 且不调用 createIndex
+    {
+      const { client, createIndex } = buildFakeClient({
+        liveIndexes: [
+          { name: '_id_', key: { _id: 1 } },
+          {
+            name: 'fg_equiv_team',
+            key: { teamId: 1 },
+            partialFilterExpression: { active: true }
+          }
+        ]
+      });
+
+      const inspect = await inspectMongoIndexes({ client, collections: [fullDef] });
+      expect(inspect.missingIndexes).toEqual([]);
+      expect(inspect.optionMismatches).toEqual([
+        {
+          collection: 'equiv_guard_col',
+          indexName: 'fg_equiv_team',
+          liveName: 'fg_equiv_team',
+          reason: 'partialFilterExpression mismatch'
+        }
+      ]);
+
+      const sync = await syncMongoCollectionIndexes({ client, collections: [fullDef] });
+      expect(createIndex).not.toHaveBeenCalled();
+      expect(sync.skippedExisting).toEqual([]);
+      expect(sync.optionDriftWarnings).toEqual([
+        {
+          collection: 'equiv_guard_col',
+          indexName: 'fg_equiv_team',
+          reason: 'partialFilterExpression mismatch'
+        }
+      ]);
+    }
+
+    // 5. 同 key 同时存在全量索引与 partial 索引（全量索引在前、partial 在后）：绝不能因 Map 覆盖把全量索引顶掉
+    {
+      const { client, createIndex } = buildFakeClient({
+        liveIndexes: [
+          { name: '_id_', key: { _id: 1 } },
+          { name: 'teamId_1', key: { teamId: 1 } },
+          {
+            name: 'teamId_partial_idx',
+            key: { teamId: 1 },
+            partialFilterExpression: { deleted: false }
+          }
+        ]
+      });
+
+      const inspect = await inspectMongoIndexes({ client, collections: [fullDef] });
+      expect(inspect.missingIndexes).toEqual([]);
+      expect(inspect.optionMismatches).toEqual([]);
+      expect(inspect.legacyOrCustomerIndexes).toEqual([
+        { collection: 'equiv_guard_col', indexName: 'teamId_partial_idx' }
+      ]);
+
+      const sync = await syncMongoCollectionIndexes({ client, collections: [fullDef] });
+      expect(createIndex).not.toHaveBeenCalled();
+      expect(sync.optionDriftWarnings).toEqual([]);
+      expect(sync.skippedExisting).toEqual([
+        { collection: 'equiv_guard_col', indexName: 'fg_equiv_team', matchedLiveName: 'teamId_1' }
+      ]);
+    }
+
+    // 6. 现网 partial TTL 索引不能被 collMod 误当作全量 TTL 索引更新
+    {
+      const ttlDef = defineMongoCollection({
+        name: 'ttl_partial_guard_col',
+        schema: new Schema({ expireAt: Date }, { versionKey: false }),
+        indexes: [
+          { key: { expireAt: 1 }, options: { name: 'fg_ttl_full', expireAfterSeconds: 3600 } }
+        ]
+      });
+      const { client, createIndex, command } = buildFakeClient({
+        liveIndexes: [
+          { name: '_id_', key: { _id: 1 } },
+          {
+            name: 'expireAt_partial_ttl',
+            key: { expireAt: 1 },
+            expireAfterSeconds: 60,
+            partialFilterExpression: { active: true }
+          }
+        ]
+      });
+
+      const sync = await syncMongoCollectionIndexes({
+        client,
+        collections: [ttlDef],
+        allowCollModTtl: true
+      });
+      expect(command).not.toHaveBeenCalled();
+      expect(createIndex).toHaveBeenCalledTimes(1);
+      expect(sync.ttlUpdated).toEqual([]);
+      expect(sync.created).toEqual([
+        { collection: 'ttl_partial_guard_col', indexName: 'fg_ttl_full' }
+      ]);
+    }
+  });
+
+  it('compares full collation and text index options (weights, default_language, language_override)', async () => {
+    const buildClient = (liveIndexes: LiveMongoIndexSpec[]) =>
+      ({
+        connection: {
+          db: {
+            collection: () => ({
+              indexes: vi.fn().mockResolvedValue(liveIndexes),
+              createIndex: vi.fn().mockResolvedValue('created')
+            })
+          }
+        }
+      }) as any;
+
+    // 1. Collation 声明与 MongoDB 展开返回态（含默认项及 ICU version）等价，但 strength 不同必报错
+    const collationDef = defineMongoCollection({
+      name: 'collation_col',
+      schema: new Schema({ name: String }, { versionKey: false }),
+      indexes: [
+        {
+          key: { name: 1 },
+          options: { name: 'fg_name_en', collation: { locale: 'en', strength: 2 } }
+        }
+      ]
+    });
+
+    const expandedMatchingInspect = await inspectMongoIndexes({
+      client: buildClient([
+        {
+          name: 'fg_name_en',
+          key: { name: 1 },
+          collation: {
+            locale: 'en',
+            caseLevel: false,
+            caseFirst: 'off',
+            strength: 2,
+            numericOrdering: false,
+            alternate: 'non-ignorable',
+            maxVariable: 'punct',
+            normalization: false,
+            backwards: false,
+            version: '57.1'
+          }
+        }
+      ]),
+      collections: [collationDef]
+    });
+    expect(expandedMatchingInspect.missingIndexes).toEqual([]);
+    expect(expandedMatchingInspect.optionMismatches).toEqual([]);
+
+    const wrongStrengthInspect = await inspectMongoIndexes({
+      client: buildClient([
+        {
+          name: 'fg_name_en',
+          key: { name: 1 },
+          collation: { locale: 'en', strength: 1 }
+        }
+      ]),
+      collections: [collationDef]
+    });
+    expect(wrongStrengthInspect.optionMismatches).toEqual([
+      {
+        collection: 'collation_col',
+        indexName: 'fg_name_en',
+        liveName: 'fg_name_en',
+        reason: 'collation mismatch'
+      }
+    ]);
+
+    // 2. Text 索引 weights / default_language / language_override 漂移必须被识别
+    const textDef = defineMongoCollection({
+      name: 'text_opts_col',
+      schema: new Schema({ title: String, body: String }, { versionKey: false }),
+      indexes: [
+        {
+          key: { title: 'text', body: 'text' },
+          options: {
+            name: 'fg_text_search',
+            weights: { title: 10, body: 1 },
+            default_language: 'english',
+            language_override: 'lang'
+          }
+        }
+      ]
+    });
+
+    const driftedWeights = await inspectMongoIndexes({
+      client: buildClient([
+        {
+          name: 'legacy_text',
+          key: { _fts: 'text', _ftsx: 1 },
+          weights: { title: 1, body: 1 },
+          default_language: 'english',
+          language_override: 'lang'
+        }
+      ]),
+      collections: [textDef]
+    });
+    expect(driftedWeights.optionMismatches).toEqual([
+      {
+        collection: 'text_opts_col',
+        indexName: 'fg_text_search',
+        liveName: 'legacy_text',
+        reason: 'weights mismatch'
+      }
+    ]);
+
+    const driftedLanguage = await inspectMongoIndexes({
+      client: buildClient([
+        {
+          name: 'legacy_text',
+          key: { _fts: 'text', _ftsx: 1 },
+          weights: { title: 10, body: 1 },
+          default_language: 'none',
+          language_override: 'lang'
+        }
+      ]),
+      collections: [textDef]
+    });
+    expect(driftedLanguage.optionMismatches).toEqual([
+      {
+        collection: 'text_opts_col',
+        indexName: 'fg_text_search',
+        liveName: 'legacy_text',
+        reason: 'default_language mismatch (declared=english, live=none)'
+      }
+    ]);
+
+    const driftedOverride = await inspectMongoIndexes({
+      client: buildClient([
+        {
+          name: 'legacy_text',
+          key: { _fts: 'text', _ftsx: 1 },
+          weights: { title: 10, body: 1 },
+          default_language: 'english',
+          language_override: 'language'
+        }
+      ]),
+      collections: [textDef]
+    });
+    expect(driftedOverride.optionMismatches).toEqual([
+      {
+        collection: 'text_opts_col',
+        indexName: 'fg_text_search',
+        liveName: 'legacy_text',
+        reason: 'language_override mismatch (declared=lang, live=language)'
+      }
+    ]);
+  });
+
+  it('creates a declared full index alongside an existing coexistent partial index on real MongoDB', async () => {
+    const colName = 'fg_coexist_partial_full';
+    const nativeCol = harness.client.connection.db!.collection(colName);
+    await nativeCol.createIndex(
+      { teamId: 1 },
+      { name: 'customer_partial_team', partialFilterExpression: { active: true } }
+    );
+
+    const def = defineMongoCollection({
+      name: colName,
+      schema: new Schema({ teamId: String, active: Boolean }, { versionKey: false }),
+      indexes: [{ key: { teamId: 1 }, options: { name: 'fg_coexist_team_full' } }]
+    });
+
+    const beforeInspect = await inspectMongoIndexes({ client: harness.client, collections: [def] });
+    expect(beforeInspect.missingIndexes).toEqual([
+      { collection: colName, indexName: 'fg_coexist_team_full' }
+    ]);
+
+    const syncReport = await syncMongoCollectionIndexes({
+      client: harness.client,
+      collections: [def]
+    });
+    expect(syncReport.errors).toEqual([]);
+    expect(syncReport.created).toEqual([
+      { collection: colName, indexName: 'fg_coexist_team_full' }
+    ]);
+
+    const liveNames = (await nativeCol.indexes()).map((idx) => idx.name);
+    expect(liveNames).toContain('customer_partial_team');
+    expect(liveNames).toContain('fg_coexist_team_full');
+
+    const afterInspect = await inspectMongoIndexes({ client: harness.client, collections: [def] });
+    expect(afterInspect.missingIndexes).toEqual([]);
+    expect(afterInspect.optionMismatches).toEqual([]);
+    expect(afterInspect.legacyOrCustomerIndexes).toEqual([
+      { collection: colName, indexName: 'customer_partial_team' }
+    ]);
+  });
+
+  it('enforces full option signature in dropManagedMongoIndexIfExists even when expectedOptions is omitted or empty', async () => {
+    const buildDropClient = (live: LiveMongoIndexSpec) => {
+      const dropIndex = vi.fn().mockResolvedValue({ ok: 1 });
+      const client = {
+        connection: {
+          db: {
+            collection: () => ({
+              indexes: vi.fn().mockResolvedValue([{ name: '_id_', key: { _id: 1 } }, live]),
+              dropIndex
+            })
+          }
+        }
+      } as any;
+      return { client, dropIndex };
+    };
+
+    const unexpectedVariants: Array<{ label: string; live: LiveMongoIndexSpec }> = [
+      {
+        label: 'partialFilterExpression',
+        live: {
+          name: 'userId_1',
+          key: { userId: 1 },
+          partialFilterExpression: { status: 'active' }
+        }
+      },
+      {
+        label: 'unique',
+        live: { name: 'userId_1', key: { userId: 1 }, unique: true }
+      },
+      {
+        label: 'sparse',
+        live: { name: 'userId_1', key: { userId: 1 }, sparse: true }
+      },
+      {
+        label: 'expireAfterSeconds',
+        live: { name: 'userId_1', key: { userId: 1 }, expireAfterSeconds: 86400 }
+      },
+      {
+        label: 'collation',
+        live: {
+          name: 'userId_1',
+          key: { userId: 1 },
+          collation: { locale: 'en', strength: 2 }
+        }
+      }
+    ];
+
+    for (const { live } of unexpectedVariants) {
+      // 省略 expectedOptions 时必须按全默认普通索引比对，绝不跳过校验
+      const omittedCase = buildDropClient(live);
+      const omittedRes = await dropManagedMongoIndexIfExists({
+        client: omittedCase.client,
+        collectionName: 'team_members',
+        indexName: 'userId_1',
+        expectedKey: { userId: 1 }
+      });
+      expect(omittedRes.status).toBe('skipped_mismatch');
+      expect(omittedCase.dropIndex).not.toHaveBeenCalled();
+
+      // 显式传空对象 expectedOptions: {} 同样必须拒绝删除
+      const emptyCase = buildDropClient(live);
+      const emptyRes = await dropManagedMongoIndexIfExists({
+        client: emptyCase.client,
+        collectionName: 'team_members',
+        indexName: 'userId_1',
+        expectedKey: { userId: 1 },
+        expectedOptions: {}
+      });
+      expect(emptyRes.status).toBe('skipped_mismatch');
+      expect(emptyCase.dropIndex).not.toHaveBeenCalled();
+    }
+
+    // collation 完全一致（忽略服务端 ICU version）时才允许删除
+    const matchingCollation = buildDropClient({
+      name: 'userId_1',
+      key: { userId: 1 },
+      collation: {
+        locale: 'en',
+        strength: 2,
+        caseLevel: false,
+        caseFirst: 'off',
+        numericOrdering: false,
+        alternate: 'non-ignorable',
+        maxVariable: 'punct',
+        normalization: false,
+        backwards: false,
+        version: '57.1'
+      }
+    });
+    const droppedCollation = await dropManagedMongoIndexIfExists({
+      client: matchingCollation.client,
+      collectionName: 'team_members',
+      indexName: 'userId_1',
+      expectedKey: { userId: 1 },
+      expectedOptions: { collation: { locale: 'en', strength: 2 } }
+    });
+    expect(droppedCollation.status).toBe('dropped');
+    expect(matchingCollation.dropIndex).toHaveBeenCalledWith('userId_1');
   });
 });

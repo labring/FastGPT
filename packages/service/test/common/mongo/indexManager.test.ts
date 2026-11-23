@@ -10,7 +10,7 @@ import {
 } from '@fastgpt/service/common/mongo';
 import type { DeprecatedMongoIndexDefinition } from '@fastgpt/service/common/mongo/schemaIndexes';
 import { MongoIndexManager } from '@fastgpt/service/common/mongo/indexManager';
-import { withMongoDdlConnection } from '@fastgpt/service/common/mongo/init';
+import { withMongoDdlConnection } from '@fastgpt/dal/db/mongo/runtime';
 import {
   LEGACY_DEPRECATED_MONGO_INDEXES,
   runLegacyDeprecatedMongoIndexCleanup
@@ -814,7 +814,83 @@ describe('sandbox quota index migration', () => {
     expect(names).toContain('status_1_lastActiveAt_1');
     expect(names).toContain('sourceType_1_sourceId_1_userId_1');
     expect(names).toContain('customer_sandbox_source');
-    expect(LEGACY_DEPRECATED_MONGO_INDEXES).toHaveLength(17);
+    expect(LEGACY_DEPRECATED_MONGO_INDEXES).toHaveLength(18);
+  });
+});
+
+describe('legacy deprecated index explicit option signature protection', () => {
+  it('declares explicit options on every LEGACY_DEPRECATED_MONGO_INDEXES entry and refuses to drop customer-customized same-name same-key indexes', async () => {
+    expect(LEGACY_DEPRECATED_MONGO_INDEXES).toHaveLength(18);
+    for (const entry of LEGACY_DEPRECATED_MONGO_INDEXES) {
+      expect(entry.options).toBeDefined();
+      expect(typeof entry.options).toBe('object');
+    }
+
+    const userIdEntry = LEGACY_DEPRECATED_MONGO_INDEXES.find(
+      (entry) => entry.indexName === 'userId_1'
+    );
+    expect(userIdEntry).toBeDefined();
+    expect(userIdEntry?.options).toEqual({});
+
+    const chatCursorEntry = LEGACY_DEPRECATED_MONGO_INDEXES.find(
+      (entry) => entry.collectionName === 'chats' && entry.indexName === 'appId_1_updateTime_-1'
+    );
+    expect(chatCursorEntry).toBeDefined();
+    expect(chatCursorEntry?.options).toEqual({});
+
+    const customerVariants: Array<{
+      label: string;
+      createOptions: Record<string, unknown>;
+    }> = [
+      {
+        label: 'partial unique index',
+        createOptions: {
+          name: 'userId_1',
+          unique: true,
+          partialFilterExpression: { status: 'active' }
+        }
+      },
+      {
+        label: 'partial non-unique index',
+        createOptions: {
+          name: 'userId_1',
+          partialFilterExpression: { status: 'active' }
+        }
+      },
+      {
+        label: 'TTL index',
+        createOptions: {
+          name: 'userId_1',
+          expireAfterSeconds: 3600
+        }
+      },
+      {
+        label: 'collation index',
+        createOptions: {
+          name: 'userId_1',
+          collation: { locale: 'en', strength: 2 }
+        }
+      }
+    ];
+
+    for (const variant of customerVariants) {
+      const schema = new Schema({ userId: String, status: String }, { autoIndex: false });
+      const model = createModel({ schema, prefix: 'LegacyOptProtect' });
+      await model.collection.createIndex({ userId: 1 }, variant.createOptions as any);
+
+      const results = await runLegacyDeprecatedMongoIndexCleanup({
+        entries: [userIdEntry!],
+        collectionOverrides: { [userIdEntry!.collectionName]: model.collection.collectionName }
+      });
+
+      expect(results, `expected skipped_mismatch for ${variant.label}`).toEqual([
+        expect.objectContaining({
+          indexName: 'userId_1',
+          status: 'skipped_mismatch'
+        })
+      ]);
+      expect(await getIndexNames(model)).toContain('userId_1');
+    }
   });
 });
 

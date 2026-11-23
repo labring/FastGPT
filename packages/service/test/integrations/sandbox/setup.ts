@@ -23,8 +23,10 @@ configureRedisRuntime({
  */
 beforeAll(async () => {
   await getRedisRuntime().checkHealth();
-  await connectMongo({ db: connectionMongo, url: inject('MONGODB_URI') });
-  await connectMongo({ db: connectionLogMongo, url: inject('MONGODB_URI') });
+  const uniqueMongoClients = Array.from(new Set([connectionMongo, connectionLogMongo]));
+  for (const client of uniqueMongoClients) {
+    await connectMongo({ db: client, url: inject('MONGODB_URI') });
+  }
 
   initGlobalVariables();
   global.agentUserTmbIds = new Set();
@@ -33,9 +35,12 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await connectionMongo.connection.db?.dropDatabase();
-  await connectionLogMongo.connection.db?.dropDatabase();
-  await connectionMongo.disconnect();
-  await connectionLogMongo.disconnect();
+  const uniqueMongoClients = Array.from(new Set([connectionMongo, connectionLogMongo]));
+  for (const client of uniqueMongoClients) {
+    await client.connection.db?.dropDatabase();
+  }
+  for (const client of uniqueMongoClients) {
+    await client.disconnect();
+  }
   await closeRedisRuntime();
 });

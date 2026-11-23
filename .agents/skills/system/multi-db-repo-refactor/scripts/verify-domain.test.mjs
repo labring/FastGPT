@@ -6,10 +6,14 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  analyzeLogDualModeTestCoverage,
+  analyzeMongoSchemaDatasource,
   analyzeSchemaIndexes,
+  analyzeSqlRepoDatasource,
   analyzeSqlTableDefinitions,
   discoverMongoSchemas,
   extractDefineIndexes,
+  findDomainServiceUnitTestFiles,
   readGitLegacyFile
 } from './common.mjs';
 
@@ -1060,5 +1064,730 @@ test('resolves imported collection name constants from the same historical git r
     assert.equal(missingHistDepAnalysis.indexes[0].collection, null);
   } finally {
     fs.rmSync(tmpGitRepo, { recursive: true, force: true });
+  }
+});
+
+test('Finding #17: statically resolves same-file log datasource constants/shorthand in mongo/schema.ts and sql/repo.ts, failing closed on dynamic expressions', () => {
+  const shorthandLogSchema = `
+    import { Schema } from 'mongoose';
+    import { defineMongoCollection } from '@fastgpt/dal/db/mongo/collection';
+    const datasource = 'log';
+    const AuditSchema = new Schema({ teamId: String }, { versionKey: false });
+    export const auditCollection = defineMongoCollection({
+      name: 'audit_logs',
+      schema: AuditSchema,
+      datasource,
+      indexes: [{ key: { teamId: 1 } }]
+    });
+  `;
+  const constRefLogSchema = `
+    import { Schema } from 'mongoose';
+    import { defineMongoCollection } from '@fastgpt/dal/db/mongo/collection';
+    const LOG_DS = 'log' as const;
+    const AuditSchema = new Schema({ teamId: String }, { versionKey: false });
+    export const auditCollection = defineMongoCollection({
+      name: 'audit_logs',
+      schema: AuditSchema,
+      datasource: LOG_DS,
+      indexes: [{ key: { teamId: 1 } }]
+    });
+  `;
+  const dynamicDsSchema = `
+    import { Schema } from 'mongoose';
+    import { defineMongoCollection } from '@fastgpt/dal/db/mongo/collection';
+    const AuditSchema = new Schema({ teamId: String }, { versionKey: false });
+    export const auditCollection = defineMongoCollection({
+      name: 'audit_logs',
+      schema: AuditSchema,
+      datasource: getDs(),
+      indexes: [{ key: { teamId: 1 } }]
+    });
+  `;
+  const legacyLogSchema = `
+    const AuditSchema = new Schema({ teamId: String });
+    defineIndex(AuditSchema, { key: { teamId: 1 } });
+    export const MongoAuditLog = getMongoLogModel('audit_logs', AuditSchema);
+  `;
+
+  // Direct API checks
+  const shorthandParsed = analyzeMongoSchemaDatasource({ sourceText: shorthandLogSchema });
+  assert.deepEqual(shorthandParsed.errors, []);
+  assert.equal(shorthandParsed.datasource, 'log');
+  assert.equal(shorthandParsed.isLogDomain, true);
+
+  const constRefParsed = analyzeMongoSchemaDatasource({ sourceText: constRefLogSchema });
+  assert.deepEqual(constRefParsed.errors, []);
+  assert.equal(constRefParsed.datasource, 'log');
+
+  const dynamicParsed = analyzeMongoSchemaDatasource({ sourceText: dynamicDsSchema });
+  assert.ok(
+    dynamicParsed.errors.some((e) => e.includes('cannot statically resolve') && e.includes('getDs()'))
+  );
+
+  // Shadowed param in defineMongoCollection datasource must fail closed
+  const shadowedDsParsed = analyzeMongoSchemaDatasource({
+    sourceText: `
+      const datasource = 'main';
+      export function buildCol(datasource: any) {
+        return defineMongoCollection({ name: 'x', schema: S, datasource, indexes: [] });
+      }
+    `
+  });
+  assert.ok(
+    shadowedDsParsed.errors.some((e) => e.includes('shadowed by function parameter'))
+  );
+
+  // sql/repo.ts const resolution & spoof rejection
+  const sqlConstRes = analyzeSqlRepoDatasource({
+    sourceText: `
+      const DS = 'log' as const;
+      export class SqlAuditRepo {
+        private readonly cfg: { datasource: string } = { datasource: 'main' };
+        protected override readonly datasource = DS;
+      }
+    `
+  });
+  assert.deepEqual(sqlConstRes.errors, []);
+  assert.equal(sqlConstRes.hasLogDatasource, true);
+
+  const sqlOutsideVarRes = analyzeSqlRepoDatasource({
+    sourceText: `
+      const datasource = 'log';
+      export class SqlAuditRepo {
+        protected readonly tableName = 'audit_logs';
+      }
+    `
+  });
+  assert.equal(sqlOutsideVarRes.hasLogDatasource, false);
+
+  const sqlDynamicRes = analyzeSqlRepoDatasource({
+    sourceText: `
+      export class SqlAuditRepo {
+        protected override readonly datasource = getDs();
+      }
+    `
+  });
+  assert.ok(sqlDynamicRes.errors.some((e) => e.includes('cannot statically resolve sql/repo.ts datasource')));
+
+  // (a) Shorthand `const datasource = 'log'` WITHOUT `datasource = 'log'` in sql/repo.ts -> FAILS
+  withTempDomain(
+    {
+      legacySchema: legacyLogSchema,
+      newMongoSchema: shorthandLogSchema,
+      extraFiles: {
+        'repo.ts': `export const AuditRepoToken = defineRepoToken('Audit', { mongo, sql });\n`,
+        'sql/repo.ts': `export class SqlAuditRepo { protected readonly tableName = 'audit_logs'; }\n`
+      }
+    },
+    ({ domainRel, legacyRel }) => {
+      const res = runVerify(['--dir', domainRel, '--legacy-schema', legacyRel, '--allow-wip-slice1']);
+      assert.equal(res.status, 1);
+      assert.match(res.stderr, /\[Structure\] Log domain .*sql\/repo\.ts must override readonly datasource = 'log'/);
+    }
+  );
+
+  // (b) Same shorthand WITH matching `readonly datasource = 'log'` AND with `const DS = 'log'; readonly datasource = DS` -> PASSES
+  withTempDomain(
+    {
+      legacySchema: legacyLogSchema,
+      newMongoSchema: shorthandLogSchema,
+      extraFiles: {
+        'repo.ts': `export const AuditRepoToken = defineRepoToken('Audit', { mongo, sql });\n`,
+        'sql/repo.ts': `export class SqlAuditRepo { protected override readonly datasource = 'log'; }\n`
+      }
+    },
+    ({ domainDir, domainRel, legacyRel }) => {
+      const resLiteral = runVerify([
+        '--dir',
+        domainRel,
+        '--legacy-schema',
+        legacyRel,
+        '--allow-wip-slice1'
+      ]);
+      assert.equal(resLiteral.status, 0, resLiteral.stderr);
+
+      fs.writeFileSync(
+        path.join(domainDir, 'sql/repo.ts'),
+        `const DS = 'log' as const;\nexport class SqlAuditRepo { protected override readonly datasource = DS; }\n`
+      );
+      const resConst = runVerify([
+        '--dir',
+        domainRel,
+        '--legacy-schema',
+        legacyRel,
+        '--allow-wip-slice1'
+      ]);
+      assert.equal(resConst.status, 0, resConst.stderr);
+
+      // Dynamic sql/repo.ts datasource must FAIL explicitly
+      fs.writeFileSync(
+        path.join(domainDir, 'sql/repo.ts'),
+        `export class SqlAuditRepo { protected override readonly datasource = getDs(); }\n`
+      );
+      const resDynSql = runVerify([
+        '--dir',
+        domainRel,
+        '--legacy-schema',
+        legacyRel,
+        '--allow-wip-slice1'
+      ]);
+      assert.equal(resDynSql.status, 1);
+      assert.match(resDynSql.stderr, /cannot statically resolve sql\/repo\.ts datasource/);
+    }
+  );
+
+  // (c) Dynamic unresolvable `datasource: getDs()` in mongo/schema.ts -> FAILS explicitly
+  withTempDomain(
+    {
+      legacySchema: legacyLogSchema,
+      newMongoSchema: dynamicDsSchema,
+      extraFiles: {
+        'repo.ts': `export const AuditRepoToken = defineRepoToken('Audit', { mongo, sql });\n`,
+        'sql/repo.ts': `export class SqlAuditRepo { protected override readonly datasource = 'log'; }\n`
+      }
+    },
+    ({ domainRel, legacyRel }) => {
+      const res = runVerify(['--dir', domainRel, '--legacy-schema', legacyRel, '--allow-wip-slice1']);
+      assert.equal(res.status, 1);
+      assert.match(
+        res.stderr,
+        /\[Structure\] .*mongo\/schema\.ts: cannot statically resolve defineMongoCollection.*datasource "getDs\(\)"/
+      );
+    }
+  );
+});
+
+test('Finding #18: rejects plain-object or single-mode log topology spoofs and requires executable shared + separate harness verification with repo/DB assertions', () => {
+  const plainObjectSpoofTest = `
+    import { describe, expect, it } from 'vitest';
+    import { createContractBackends, registerMultiDialectContractSuite } from '@fastgpt/dal/db/testing';
+    registerMultiDialectContractSuite({
+      backends: createContractBackends({ collections: [logCol], tables: [logTable] }),
+      registerTests: () => {
+        it('fake plain object assertions', () => {
+          expect({ logMode: 'shared' }).toEqual({ logMode: 'shared' });
+          expect({ logMode: 'separate' }).toBeDefined();
+        });
+      }
+    });
+  `;
+
+  const sharedOnlyTest = `
+    import { describe, expect, it } from 'vitest';
+    import { injectRepo } from '@fastgpt/dal/db/container';
+    import {
+      createContractBackends,
+      createPGliteSqlTestHarness,
+      registerMultiDialectContractSuite
+    } from '@fastgpt/dal/db/testing';
+    describe('shared only', () => {
+      it('runs shared mode only', async () => {
+        const harness = await createPGliteSqlTestHarness({
+          tables: [],
+          logTables: [logTable],
+          logMode: 'shared'
+        });
+        const repo = injectRepo(AuditLogRepoToken);
+        const row = await repo.create({ data: { teamId: '000000000000000000000001' } });
+        expect(row._id).toBeDefined();
+        await harness.close();
+      });
+    });
+    registerMultiDialectContractSuite({
+      backends: createContractBackends({ collections: [logCol], tables: [logTable] }),
+      registerTests: () => {
+        const repo = injectRepo(AuditLogRepoToken);
+        it('runs default', async () => {
+          expect(await repo.findById({ id: '000000000000000000000001', teamId: '000000000000000000000001' })).toBeNull();
+        });
+      }
+    });
+  `;
+
+  const harnessNoRepoAssertionTest = `
+    import { describe, expect, it } from 'vitest';
+    import {
+      createContractBackends,
+      createPGliteSqlTestHarness,
+      registerMultiDialectContractSuite
+    } from '@fastgpt/dal/db/testing';
+    describe('dummy harness open/close without repo or DB assertions', () => {
+      it('opens both harnesses and asserts nothing about repo or DB', async () => {
+        const h1 = await createPGliteSqlTestHarness({ tables: [], logTables: [logTable], logMode: 'shared' });
+        const h2 = await createPGliteSqlTestHarness({ tables: [], logTables: [logTable], logMode: 'separate' });
+        expect(1).toBe(1);
+        await h1.close();
+        await h2.close();
+      });
+    });
+    registerMultiDialectContractSuite({
+      backends: createContractBackends({ collections: [logCol], tables: [logTable] }),
+      registerTests: () => {
+        it('noop', () => { expect(true).toBe(true); });
+      }
+    });
+  `;
+
+  const realDualModeTest = `
+    import { describe, expect, it } from 'vitest';
+    import { injectRepo } from '@fastgpt/dal/db/container';
+    import {
+      createContractBackends,
+      createPGliteSqlTestHarness,
+      registerMultiDialectContractSuite
+    } from '@fastgpt/dal/db/testing';
+    import { AuditLogRepoToken } from '../repo';
+
+    describe('AuditLogRepository shared & separate log topologies', () => {
+      it('routes to main pool in shared mode and isolates physically in separate mode', async () => {
+        const sharedHarness = await createPGliteSqlTestHarness({
+          tables: [],
+          logTables: [logTable],
+          logMode: 'shared'
+        });
+        try {
+          const repo = injectRepo(AuditLogRepoToken);
+          const created = await repo.create({ data: { teamId: '000000000000000000000001' } });
+          expect(sharedHarness.logDb).toBe(sharedHarness.db);
+          expect(await repo.findById({ id: created._id, teamId: created.teamId })).not.toBeNull();
+        } finally {
+          await sharedHarness.close();
+        }
+
+        const separateHarness = await createPGliteSqlTestHarness({
+          tables: [],
+          logTables: [logTable],
+          logMode: 'separate'
+        });
+        try {
+          const repo = injectRepo(AuditLogRepoToken);
+          const created = await repo.create({ data: { teamId: '000000000000000000000001' } });
+          expect(separateHarness.logDb).not.toBe(separateHarness.db);
+          expect(await repo.findById({ id: created._id, teamId: created.teamId })).not.toBeNull();
+        } finally {
+          await separateHarness.close();
+        }
+      });
+    });
+
+    registerMultiDialectContractSuite({
+      backends: createContractBackends({
+        collections: [],
+        logCollections: [logCol],
+        tables: [],
+        logTables: [logTable],
+        logMode: 'separate'
+      }),
+      registerTests: () => {
+        const repo = injectRepo(AuditLogRepoToken);
+        it('creates and reads log entries', async () => {
+          const created = await repo.create({ data: { teamId: '000000000000000000000001' } });
+          expect(created._id).toBeDefined();
+        });
+      }
+    });
+  `;
+
+  const loopDualModeTest = `
+    import { describe, expect, it } from 'vitest';
+    import { injectRepo } from '@fastgpt/dal/db/container';
+    import { createPGliteSqlTestHarness } from '@fastgpt/dal/db/testing';
+    describe('parameterized dual mode', () => {
+      for (const logMode of ['shared', 'separate'] as const) {
+        it(\`routes \${logMode}\`, async () => {
+          const harness = await createPGliteSqlTestHarness({
+            tables: [],
+            logTables: [logTable],
+            logMode
+          });
+          const repo = injectRepo(AuditLogRepoToken);
+          expect(await repo.create({ data: { teamId: '000000000000000000000001' } })).toBeDefined();
+          await harness.close();
+        });
+      }
+    });
+  `;
+
+  // Direct unit checks
+  const spoofCheck = analyzeLogDualModeTestCoverage({
+    testFiles: [{ relPath: 'fake.contract.test.ts', raw: plainObjectSpoofTest }]
+  });
+  assert.equal(spoofCheck.ok, false);
+  assert.equal(spoofCheck.hasShared, false);
+  assert.equal(spoofCheck.hasSeparate, false);
+
+  const sharedOnlyCheck = analyzeLogDualModeTestCoverage({
+    testFiles: [{ relPath: 'shared-only.contract.test.ts', raw: sharedOnlyTest }]
+  });
+  assert.equal(sharedOnlyCheck.ok, false);
+  assert.equal(sharedOnlyCheck.hasShared, true);
+  assert.equal(sharedOnlyCheck.hasSeparate, false);
+
+  const noAssertionCheck = analyzeLogDualModeTestCoverage({
+    testFiles: [{ relPath: 'no-assert.contract.test.ts', raw: harnessNoRepoAssertionTest }]
+  });
+  assert.equal(noAssertionCheck.ok, false);
+  assert.match(noAssertionCheck.details, /without repository\/DB assertions/);
+
+  const shadowedMockCheck = analyzeLogDualModeTestCoverage({
+    testFiles: [
+      {
+        relPath: 'mocked.contract.test.ts',
+        raw: `
+          const createPGliteSqlTestHarness = async () => ({ db: {}, logDb: {}, close: async () => {} });
+          it('mocked', async () => {
+            const h1 = await createPGliteSqlTestHarness({ logMode: 'shared' });
+            const h2 = await createPGliteSqlTestHarness({ logMode: 'separate' });
+            expect(h1.logDb).toBeDefined();
+            expect(h2.logDb).toBeDefined();
+          });
+        `
+      }
+    ]
+  });
+  assert.equal(shadowedMockCheck.ok, false);
+
+  const loopCheck = analyzeLogDualModeTestCoverage({
+    testFiles: [{ relPath: 'loop.contract.test.ts', raw: loopDualModeTest }]
+  });
+  assert.equal(loopCheck.ok, true);
+
+  // End-to-end CLI verification
+  const tmpFakeAbs = path.join(repoRoot, 'packages/service/test/.finding18-plain-obj.contract.test.ts');
+  const tmpSharedOnlyAbs = path.join(repoRoot, 'packages/service/test/.finding18-shared-only.contract.test.ts');
+  const tmpRealAbs = path.join(repoRoot, 'packages/service/test/.finding18-real-dual.contract.test.ts');
+  try {
+    fs.writeFileSync(tmpFakeAbs, plainObjectSpoofTest);
+    fs.writeFileSync(tmpSharedOnlyAbs, sharedOnlyTest);
+    fs.writeFileSync(tmpRealAbs, realDualModeTest);
+
+    withTempDomain(
+      {
+        legacySchema: `
+          defineIndex(S, { key: { teamId: 1 } });
+          export const MongoAuditLog = getMongoLogModel('audit_logs', S);
+        `,
+        newMongoSchema: `
+          export const auditLogCollection = defineMongoCollection({
+            name: 'audit_logs',
+            datasource: 'log',
+            schema: S,
+            indexes: [{ key: { teamId: 1 } }]
+          });
+        `,
+        extraFiles: {
+          'repo.ts': `export const AuditLogRepoToken = defineRepoToken('AuditLog', { mongo, sql });\n`,
+          'sql/repo.ts': `export class SqlAuditLogRepo { protected override readonly datasource = 'log'; }\n`
+        }
+      },
+      ({ domainRel, legacyRel }) => {
+        // (a) Plain object assertion spoof -> REJECTED
+        const fakeRes = runVerify([
+          '--dir',
+          domainRel,
+          '--legacy-schema',
+          legacyRel,
+          '--allow-wip-slice1',
+          '--no-test',
+          '--test',
+          'packages/service/test/.finding18-plain-obj.contract.test.ts'
+        ]);
+        assert.equal(fakeRes.status, 1);
+        assert.match(fakeRes.stderr, /must exercise shared\/separate log topology routing/);
+
+        // (b) Shared-only without separate -> REJECTED
+        const sharedOnlyRes = runVerify([
+          '--dir',
+          domainRel,
+          '--legacy-schema',
+          legacyRel,
+          '--allow-wip-slice1',
+          '--no-test',
+          '--test',
+          'packages/service/test/.finding18-shared-only.contract.test.ts'
+        ]);
+        assert.equal(sharedOnlyRes.status, 1);
+        assert.match(sharedOnlyRes.stderr, /'separate'/);
+
+        // (c) Real shared + separate harnesses with repo/DB isolation assertions -> PASSES
+        const realRes = runVerify([
+          '--dir',
+          domainRel,
+          '--legacy-schema',
+          legacyRel,
+          '--allow-wip-slice1',
+          '--no-test',
+          '--test',
+          'packages/service/test/.finding18-real-dual.contract.test.ts'
+        ]);
+        assert.equal(realRes.status, 0, realRes.stderr);
+      }
+    );
+  } finally {
+    fs.rmSync(tmpFakeAbs, { force: true });
+    fs.rmSync(tmpSharedOnlyAbs, { force: true });
+    fs.rmSync(tmpRealAbs, { force: true });
+  }
+});
+
+test('Finding #21: SQL static validation is scope-aware and rejects shadowed function parameters and inner block bindings', () => {
+  // (a1) Shadowed function parameter `defaultVal` hiding outer safe `const defaultVal = undefined`
+  const shadowedParamDefault = analyzeSqlTableDefinitions(`
+    const defaultVal = undefined;
+    export function buildTable(defaultVal: string) {
+      return defineSqlTable({
+        name: 'shadowed_default',
+        columns: {
+          _id: { kind: 'entityId', primaryKey: true },
+          body: { kind: 'text', defaultValue: defaultVal }
+        }
+      });
+    }
+  `);
+  assert.ok(
+    shadowedParamDefault.issues.some((i) =>
+      i.includes('identifier "defaultVal" is dynamically bound / shadowed by function parameter')
+    ),
+    JSON.stringify(shadowedParamDefault.issues)
+  );
+
+  // (a2) Shadowed arrow-function & destructured parameter `colDef`
+  const shadowedArrowParam = analyzeSqlTableDefinitions(`
+    const colDef = { kind: 'varchar', length: 64 } as const;
+    export const buildExpr = ({ col: colDef }: { col: any }) =>
+      defineSqlTable({
+        name: 'shadowed_arrow',
+        columns: {
+          _id: { kind: 'entityId', primaryKey: true },
+          body: colDef
+        }
+      });
+  `);
+  assert.ok(
+    shadowedArrowParam.issues.some((i) =>
+      i.includes('identifier "colDef" is dynamically bound / shadowed by arrow function parameter')
+    ),
+    JSON.stringify(shadowedArrowParam.issues)
+  );
+
+  // (a3) Shadowed index name parameter (must NOT leak through allowOpaqueIdentifier)
+  const shadowedIndexName = analyzeSqlTableDefinitions(`
+    const idxName = 'fg_safe_idx';
+    export const buildIdx = (idxName: string) =>
+      defineSqlTable({
+        name: 'shadowed_idx',
+        columns: {
+          _id: { kind: 'entityId', primaryKey: true },
+          code: { kind: 'varchar', length: 64 }
+        },
+        indexes: [{ name: idxName, columns: ['code'] }]
+      });
+  `);
+  assert.ok(
+    shadowedIndexName.issues.some((i) =>
+      i.includes('identifier "idxName" is dynamically bound / shadowed by arrow function parameter')
+    ),
+    JSON.stringify(shadowedIndexName.issues)
+  );
+
+  // (b1) Shadowed inner block `let` binding
+  const shadowedInnerLet = analyzeSqlTableDefinitions(`
+    const colDef = { kind: 'varchar', length: 64 } as const;
+    {
+      let colDef = { kind: 'varchar', length: 64 };
+      colDef = getRuntimeCol();
+      defineSqlTable({
+        name: 'shadowed_let',
+        columns: {
+          _id: { kind: 'entityId', primaryKey: true },
+          body: colDef
+        }
+      });
+    }
+  `);
+  assert.ok(
+    shadowedInnerLet.issues.some((i) =>
+      i.includes('identifier "colDef" is dynamically bound / shadowed by let declaration')
+    ),
+    JSON.stringify(shadowedInnerLet.issues)
+  );
+
+  // (b2) Shadowed inner block `const` with dynamic initializer (must NOT fall back to outer safe const)
+  const shadowedInnerDynamicConst = analyzeSqlTableDefinitions(`
+    const colDef = { kind: 'varchar', length: 64 } as const;
+    {
+      const colDef = buildColAtRuntime();
+      defineSqlTable({
+        name: 'shadowed_inner_const',
+        columns: {
+          _id: { kind: 'entityId', primaryKey: true },
+          body: colDef
+        }
+      });
+    }
+  `);
+  assert.ok(
+    shadowedInnerDynamicConst.issues.some((i) =>
+      i.includes('non-static expression "buildColAtRuntime()"')
+    ),
+    JSON.stringify(shadowedInnerDynamicConst.issues)
+  );
+
+  // (c) Legitimate unshadowed outer const (even when an unrelated sibling function has a same-named param) -> PASSES
+  const validOuterConst = analyzeSqlTableDefinitions(`
+    const safeCol = { kind: 'varchar', length: 64 } as const;
+    export const unrelatedHelper = (safeCol: string) => safeCol.trim();
+    export const okTable = defineSqlTable({
+      name: 'ok_outer_const',
+      columns: {
+        _id: { kind: 'entityId', primaryKey: true },
+        title: safeCol
+      },
+      indexes: [{ name: 'fg_ok_title', columns: ['title'] }]
+    });
+  `);
+  assert.deepEqual(validOuterConst.issues, []);
+
+  // End-to-end CLI verification for shadowed function parameter vs legitimate outer const
+  withTempDomain(
+    {
+      legacySchema: `defineIndex(S, { key: { teamId: 1 } });`,
+      newMongoSchema: `defineIndex(S, { key: { teamId: 1 } });`,
+      extraFiles: {
+        'sql/table.ts': `
+          const colDef = { kind: 'varchar', length: 64 } as const;
+          export function makeTable(colDef: any) {
+            return defineSqlTable({
+              name: 'shadowed_cli',
+              columns: {
+                _id: { kind: 'entityId', primaryKey: true },
+                body: colDef
+              }
+            });
+          }
+        `
+      }
+    },
+    ({ domainDir, domainRel, legacyRel }) => {
+      const badRes = runVerify(['--dir', domainRel, '--legacy-schema', legacyRel]);
+      assert.equal(badRes.status, 1);
+      assert.match(badRes.stderr, /shadowed by function parameter/);
+
+      fs.writeFileSync(
+        path.join(domainDir, 'sql/table.ts'),
+        `
+          const colDef = { kind: 'varchar', length: 64 } as const;
+          export const okTable = defineSqlTable({
+            name: 'unshadowed_cli',
+            columns: {
+              _id: { kind: 'entityId', primaryKey: true },
+              title: colDef
+            },
+            indexes: [{ name: 'fg_unshadowed_title', columns: ['title'] }]
+          });
+        `
+      );
+      const okRes = runVerify(['--dir', domainRel, '--legacy-schema', legacyRel]);
+      assert.equal(okRes.status, 0, okRes.stderr);
+    }
+  );
+});
+
+test('supports --domain and --no-test flags and recognizes both service.unit.test.ts and service.test.ts as valid Service L0 unit tests', () => {
+  // 1. Real pilot appRegistration via --domain and --no-test
+  const pilotRes = runVerify([
+    '--domain',
+    'packages/dal/db/repos/appRegistration',
+    '--no-test'
+  ]);
+  assert.equal(pilotRes.status, 0, pilotRes.stderr);
+  assert.match(pilotRes.stdout, /Domain verification PASSED for packages\/dal\/db\/repos\/appRegistration/);
+  assert.doesNotMatch(pilotRes.stdout, /No Service L0 unit test found/);
+
+  // 2. Both service.unit.test.ts and service.test.ts are recognized in DAL -> service paired lookup
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'fastgpt-service-unit-probe-'));
+  try {
+    fs.writeFileSync(path.join(tmpRoot, 'pnpm-workspace.yaml'), 'packages: []\n');
+    const dalDir = path.join(tmpRoot, 'packages/dal/db/repos/demoPilot');
+    const dalTestDir = path.join(tmpRoot, 'packages/dal/test/db/repos/demoPilot');
+    const svcDir = path.join(tmpRoot, 'packages/service/support/demoPilot');
+    const svcTestDir = path.join(tmpRoot, 'packages/service/test/support/demoPilot');
+
+    fs.mkdirSync(path.join(dalDir, 'mongo'), { recursive: true });
+    fs.mkdirSync(path.join(dalDir, 'sql'), { recursive: true });
+    fs.mkdirSync(dalTestDir, { recursive: true });
+    fs.mkdirSync(svcDir, { recursive: true });
+    fs.mkdirSync(svcTestDir, { recursive: true });
+
+    fs.writeFileSync(path.join(dalDir, 'repo.type.ts'), 'export type DemoRepo = {};\n');
+    fs.writeFileSync(path.join(dalDir, 'repo.ts'), 'export const DemoToken = defineRepoToken("Demo", { mongo, sql });\n');
+    fs.writeFileSync(
+      path.join(dalDir, 'mongo/schema.ts'),
+      `export const demoCol = defineMongoCollection({ name: 'demos', datasource: 'main', schema: S, indexes: [{ key: { teamId: 1 } }] });\n`
+    );
+    fs.writeFileSync(path.join(dalDir, 'mongo/repo.ts'), 'export class MongoDemoRepo {}\n');
+    fs.writeFileSync(
+      path.join(dalDir, 'sql/table.ts'),
+      `export const demoTable = defineSqlTable({ name: 'demos', columns: { _id: { kind: 'entityId', primaryKey: true } } });\n`
+    );
+    fs.writeFileSync(path.join(dalDir, 'sql/repo.ts'), 'export class SqlDemoRepo {}\n');
+    fs.writeFileSync(
+      path.join(dalTestDir, 'repo.contract.test.ts'),
+      `registerMultiDialectContractSuite({ backends: [], registerTests: () => { it('ok', () => { expect(1).toBe(1); }); } });\n`
+    );
+    fs.writeFileSync(path.join(svcDir, 'service.ts'), 'export class DemoService {}\n');
+
+    // (a) service.unit.test.ts recognized cleanly
+    fs.writeFileSync(
+      path.join(svcTestDir, 'service.unit.test.ts'),
+      `describe('DemoService', () => { it('works', () => { expect(1).toBe(1); }); });\n`
+    );
+    const unitLookup = findDomainServiceUnitTestFiles({
+      repoRoot: tmpRoot,
+      domainRel: 'packages/dal/db/repos/demoPilot'
+    });
+    assert.deepEqual(unitLookup.unitTestFiles, [
+      'packages/service/test/support/demoPilot/service.unit.test.ts'
+    ]);
+    const unitCliRes = runVerify(
+      ['--domain', 'packages/dal/db/repos/demoPilot', '--no-test'],
+      { cwd: tmpRoot }
+    );
+    assert.equal(unitCliRes.status, 0, unitCliRes.stderr);
+    assert.doesNotMatch(unitCliRes.stdout, /No Service L0 unit test found/);
+
+    // (b) Empty shell service.unit.test.ts fails governance check
+    fs.writeFileSync(
+      path.join(svcTestDir, 'service.unit.test.ts'),
+      `export const placeholder = true;\n`
+    );
+    const emptyUnitRes = runVerify(
+      ['--domain', 'packages/dal/db/repos/demoPilot', '--no-test'],
+      { cwd: tmpRoot }
+    );
+    assert.equal(emptyUnitRes.status, 1);
+    assert.match(emptyUnitRes.stderr, /Service L0 unit test .*service\.unit\.test\.ts must declare executable test case/);
+
+    // (c) service.test.ts also recognized cleanly
+    fs.rmSync(path.join(svcTestDir, 'service.unit.test.ts'));
+    fs.writeFileSync(
+      path.join(svcTestDir, 'service.test.ts'),
+      `describe('DemoService', () => { it('works', () => { expect(1).toBe(1); }); });\n`
+    );
+    const legacyNameLookup = findDomainServiceUnitTestFiles({
+      repoRoot: tmpRoot,
+      domainRel: 'packages/dal/db/repos/demoPilot'
+    });
+    assert.deepEqual(legacyNameLookup.unitTestFiles, [
+      'packages/service/test/support/demoPilot/service.test.ts'
+    ]);
+    const legacyNameCliRes = runVerify(
+      ['--domain', 'packages/dal/db/repos/demoPilot', '--no-test'],
+      { cwd: tmpRoot }
+    );
+    assert.equal(legacyNameCliRes.status, 0, legacyNameCliRes.stderr);
+    assert.doesNotMatch(legacyNameCliRes.stdout, /No Service L0 unit test found/);
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
 });

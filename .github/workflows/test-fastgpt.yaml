@@ -209,6 +209,7 @@ jobs:
         env:
           FASTGPT_TEST_SCOPE: dal
           FASTGPT_TEST_MYSQL_URI: mysql://root:fastgpt_test_root@127.0.0.1:3306/fastgpt_test
+          FASTGPT_TEST_REQUIRED_SQL_DIALECTS: mysql
         run: pnpm test
 
       - name: 'Upload Coverage (DAL)'

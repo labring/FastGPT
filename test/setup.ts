@@ -38,8 +38,10 @@ beforeAll(async () => {
     mainWriteUrl: mongoUri,
     logWriteUrl: process.env.MONGODB_LOG_URI
   });
-  await connectMongo({ db: connectionMongo, url: mongoUri });
-  await connectMongo({ db: connectionLogMongo, url: mongoUri });
+  const uniqueMongoClients = Array.from(new Set([connectionMongo, connectionLogMongo]));
+  for (const client of uniqueMongoClients) {
+    await connectMongo({ db: client, url: mongoUri });
+  }
 
   initGlobalVariables();
   global.agentUserTmbIds = new Set();
@@ -55,10 +57,16 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await closeDbRuntime();
-  await connectionMongo?.connection.db?.dropDatabase();
-  await connectionLogMongo?.connection.db?.dropDatabase();
-  await connectionMongo?.disconnect();
-  await connectionLogMongo?.disconnect();
+  // shared 模式下 connectionLogMongo 与 connectionMongo 指向同一物理实例，按去重后的句柄清理。
+  const uniqueMongoClients = Array.from(
+    new Set([connectionMongo, connectionLogMongo].filter(Boolean))
+  );
+  for (const client of uniqueMongoClients) {
+    await client.connection.db?.dropDatabase();
+  }
+  for (const client of uniqueMongoClients) {
+    await client.disconnect();
+  }
 });
 
 beforeEach(async () => {
@@ -70,10 +78,10 @@ beforeEach(async () => {
     clean();
 
     try {
-      await Promise.all([
-        clearMongoCollections(connectionMongo),
-        clearMongoCollections(connectionLogMongo)
-      ]);
+      const uniqueMongoClients = Array.from(
+        new Set([connectionMongo, connectionLogMongo].filter(Boolean))
+      );
+      await Promise.all(uniqueMongoClients.map((client) => clearMongoCollections(client)));
     } catch (error) {
       // Ignore errors during cleanup
       console.warn('Error during test cleanup:', error);

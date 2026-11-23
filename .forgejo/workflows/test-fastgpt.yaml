@@ -94,20 +94,33 @@ jobs:
 
       - name: Pre-download MongoDB binary
         run: |
-          MONGODB_VERSION="7.0.14"
-          CACHE_DIR="$HOME/.cache/mongodb-binaries/mongodb-linux-x86_64-ubuntu2204-${MONGODB_VERSION}"
-          if [ -f "${CACHE_DIR}/mongod" ]; then
-            echo "MongoDB binary already cached"
-            exit 0
+          MONGODB_VERSION="8.2.6"
+          UBUNTU_TAG="ubuntu2204"
+          if [ -r /etc/os-release ]; then
+            . /etc/os-release
+            case "${VERSION_ID%%.*}" in
+              24|26|28) UBUNTU_TAG="ubuntu2404" ;;
+            esac
           fi
-          mkdir -p "${CACHE_DIR}"
-          echo "Downloading MongoDB ${MONGODB_VERSION} via proxy..."
-          curl --proxy "${{ vars.AB_HTTP_PROXY }}" -sL \
-            "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-${MONGODB_VERSION}.tgz" \
-            | tar xz -C /tmp
-          cp /tmp/mongodb-linux-x86_64-ubuntu2204-${MONGODB_VERSION}/bin/mongod "${CACHE_DIR}/mongod"
-          rm -rf /tmp/mongodb-linux-x86_64-ubuntu2204-${MONGODB_VERSION}
-          echo "MongoDB binary cached at ${CACHE_DIR}/mongod"
+          ARCHIVE="mongodb-linux-x86_64-${UBUNTU_TAG}-${MONGODB_VERSION}"
+          CACHE_DIR="$HOME/.cache/mongodb-binaries/${ARCHIVE}"
+          if [ ! -f "${CACHE_DIR}/mongod" ]; then
+            mkdir -p "${CACHE_DIR}"
+            TMP_DIR="$(mktemp -d)"
+            echo "Downloading MongoDB ${MONGODB_VERSION} (${UBUNTU_TAG}) via proxy..."
+            curl --proxy "${{ vars.AB_HTTP_PROXY }}" -fsSL \
+              "https://fastdl.mongodb.org/linux/${ARCHIVE}.tgz" \
+              | tar xz -C "${TMP_DIR}"
+            cp "${TMP_DIR}/${ARCHIVE}/bin/mongod" "${CACHE_DIR}/mongod.$$.tmp"
+            chmod +x "${CACHE_DIR}/mongod.$$.tmp"
+            mv -f "${CACHE_DIR}/mongod.$$.tmp" "${CACHE_DIR}/mongod"
+            rm -rf "${TMP_DIR}"
+            echo "MongoDB binary cached at ${CACHE_DIR}/mongod"
+          else
+            echo "MongoDB binary already cached at ${CACHE_DIR}/mongod"
+          fi
+          chmod +x "${CACHE_DIR}/mongod"
+          echo "MONGOMS_SYSTEM_BINARY=${CACHE_DIR}/mongod" >> "$GITHUB_ENV"
 
       - name: 'Install Deps'
         run: pnpm install --frozen-lockfile
@@ -120,7 +133,23 @@ jobs:
           FASTGPT_TEST_SCOPE: dal
           FASTGPT_TEST_MYSQL_URI: ${{ vars.AB_TEST_MYSQL_URI }}
           FASTGPT_TEST_OCEANBASE_URI: ${{ vars.AB_TEST_OCEANBASE_URI }}
-        run: pnpm test
+          FASTGPT_TEST_PG_URI: ${{ vars.AB_TEST_PG_URI }}
+        run: |
+          REQUIRED_SQL_DIALECTS=""
+          if [ -n "$(printf '%s' "${FASTGPT_TEST_MYSQL_URI}" | tr -d '[:space:]')" ]; then
+            REQUIRED_SQL_DIALECTS="${REQUIRED_SQL_DIALECTS:+${REQUIRED_SQL_DIALECTS},}mysql"
+          fi
+          if [ -n "$(printf '%s' "${FASTGPT_TEST_OCEANBASE_URI}" | tr -d '[:space:]')" ]; then
+            REQUIRED_SQL_DIALECTS="${REQUIRED_SQL_DIALECTS:+${REQUIRED_SQL_DIALECTS},}oceanbase"
+          fi
+          if [ -n "$(printf '%s' "${FASTGPT_TEST_PG_URI}" | tr -d '[:space:]')" ]; then
+            REQUIRED_SQL_DIALECTS="${REQUIRED_SQL_DIALECTS:+${REQUIRED_SQL_DIALECTS},}postgres"
+          fi
+          if [ -n "${REQUIRED_SQL_DIALECTS}" ]; then
+            export FASTGPT_TEST_REQUIRED_SQL_DIALECTS="${REQUIRED_SQL_DIALECTS}"
+            echo "Requiring external SQL dialects: ${FASTGPT_TEST_REQUIRED_SQL_DIALECTS}"
+          fi
+          pnpm test
 
       - name: 'Upload Coverage (DAL)'
         if: always() && hashFiles('packages/dal/coverage/coverage-summary.json') != ''
@@ -169,16 +198,20 @@ jobs:
           CACHE_DIR="$HOME/.cache/mongodb-binaries/${ARCHIVE}"
           if [ ! -f "${CACHE_DIR}/mongod" ]; then
             mkdir -p "${CACHE_DIR}"
+            TMP_DIR="$(mktemp -d)"
             echo "Downloading MongoDB ${MONGODB_VERSION} (${UBUNTU_TAG}) via proxy..."
             curl --proxy "${{ vars.AB_HTTP_PROXY }}" -fsSL \
               "https://fastdl.mongodb.org/linux/${ARCHIVE}.tgz" \
-              | tar xz -C /tmp
-            cp "/tmp/${ARCHIVE}/bin/mongod" "${CACHE_DIR}/mongod"
-            rm -rf "/tmp/${ARCHIVE}"
+              | tar xz -C "${TMP_DIR}"
+            cp "${TMP_DIR}/${ARCHIVE}/bin/mongod" "${CACHE_DIR}/mongod.$$.tmp"
+            chmod +x "${CACHE_DIR}/mongod.$$.tmp"
+            mv -f "${CACHE_DIR}/mongod.$$.tmp" "${CACHE_DIR}/mongod"
+            rm -rf "${TMP_DIR}"
             echo "MongoDB binary cached at ${CACHE_DIR}/mongod"
           else
             echo "MongoDB binary already cached at ${CACHE_DIR}/mongod"
           fi
+          chmod +x "${CACHE_DIR}/mongod"
           echo "MONGOMS_SYSTEM_BINARY=${CACHE_DIR}/mongod" >> "$GITHUB_ENV"
 
       - name: 'Install Deps'
@@ -236,16 +269,20 @@ jobs:
           CACHE_DIR="$HOME/.cache/mongodb-binaries/${ARCHIVE}"
           if [ ! -f "${CACHE_DIR}/mongod" ]; then
             mkdir -p "${CACHE_DIR}"
+            TMP_DIR="$(mktemp -d)"
             echo "Downloading MongoDB ${MONGODB_VERSION} (${UBUNTU_TAG}) via proxy..."
             curl --proxy "${{ vars.AB_HTTP_PROXY }}" -fsSL \
               "https://fastdl.mongodb.org/linux/${ARCHIVE}.tgz" \
-              | tar xz -C /tmp
-            cp "/tmp/${ARCHIVE}/bin/mongod" "${CACHE_DIR}/mongod"
-            rm -rf "/tmp/${ARCHIVE}"
+              | tar xz -C "${TMP_DIR}"
+            cp "${TMP_DIR}/${ARCHIVE}/bin/mongod" "${CACHE_DIR}/mongod.$$.tmp"
+            chmod +x "${CACHE_DIR}/mongod.$$.tmp"
+            mv -f "${CACHE_DIR}/mongod.$$.tmp" "${CACHE_DIR}/mongod"
+            rm -rf "${TMP_DIR}"
             echo "MongoDB binary cached at ${CACHE_DIR}/mongod"
           else
             echo "MongoDB binary already cached at ${CACHE_DIR}/mongod"
           fi
+          chmod +x "${CACHE_DIR}/mongod"
           echo "MONGOMS_SYSTEM_BINARY=${CACHE_DIR}/mongod" >> "$GITHUB_ENV"
 
       - name: 'Install Deps'

@@ -218,9 +218,11 @@ export const createMongoRuntimeDeps = ({
  */
 export const withMongoDdlConnection = async <T>({
   url,
+  dbName,
   execute
 }: {
   url: string;
+  dbName?: string;
   execute: (ddlDb: Mongoose) => Promise<T>;
 }): Promise<T> => {
   const ddlDb = new Mongoose();
@@ -228,6 +230,7 @@ export const withMongoDdlConnection = async <T>({
   ddlDb.set('autoIndex', false);
 
   await ddlDb.connect(url, {
+    ...(dbName !== undefined && dbName.trim().length > 0 ? { dbName: dbName.trim() } : {}),
     bufferCommands: true,
     maxPoolSize: 2,
     minPoolSize: 0,

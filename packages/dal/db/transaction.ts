@@ -1,5 +1,10 @@
 import { createEntityId } from '@fastgpt/global/common/string/entityId';
-import { DbConfigurationError, isDbTransientConflictError } from './errors';
+import {
+  DbConfigurationError,
+  DbTransactionOutcomeUnknownError,
+  isDbTransactionOutcomeUnknownError,
+  isDbTransientConflictError
+} from './errors';
 import { getDbLogger, getDbRuntime } from './runtime';
 import {
   getDbDialectFamily,
@@ -180,6 +185,21 @@ export const runInTransaction = async <T>(
       await flushCommittedCallbacks?.();
       return result;
     } catch (error) {
+      if (isDbTransactionOutcomeUnknownError(error)) {
+        const outcomeError =
+          error instanceof DbTransactionOutcomeUnknownError
+            ? error
+            : new DbTransactionOutcomeUnknownError(error);
+        // 事务提交结果未知（如 OceanBase 6225 / 4012、Mongo UnknownTransactionCommitResult）：
+        // 服务端可能已经提交，绝不能自动重跑造成重复写入，统一抛出可对账异常并保留原始 cause。
+        logger.error('Database transaction outcome is unknown; refusing to retry', {
+          dialect: runtime.dialect,
+          datasource,
+          error: outcomeError
+        });
+        throw outcomeError;
+      }
+
       if (isDbTransientConflictError(error) && conflictRetries < maxConflictRetries) {
         conflictRetries += 1;
         logger.warn('Database transaction conflict detected, retrying transaction', {

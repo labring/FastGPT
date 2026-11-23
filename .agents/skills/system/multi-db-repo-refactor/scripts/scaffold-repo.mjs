@@ -567,8 +567,11 @@ const serviceTestRel = computeServiceTestPath();
 const serviceRelPath = serviceRelDir !== undefined ? `${serviceRelDir}/service.ts` : undefined;
 const serviceAlreadyExists =
   serviceRelPath !== undefined && fs.existsSync(path.resolve(repoRoot, serviceRelPath));
+const serviceUnitTestRel =
+  serviceTestBaseDir !== undefined ? `${serviceTestBaseDir}/service.unit.test.ts` : undefined;
 const serviceTestAlreadyExists =
-  serviceTestRel !== undefined && fs.existsSync(path.resolve(repoRoot, serviceTestRel));
+  (serviceTestRel !== undefined && fs.existsSync(path.resolve(repoRoot, serviceTestRel))) ||
+  (serviceUnitTestRel !== undefined && fs.existsSync(path.resolve(repoRoot, serviceUnitTestRel)));
 const shouldEmitService =
   !noService && serviceRelPath !== undefined && (force || !serviceAlreadyExists);
 // 仅在本次新建配套 service.ts 时才生成对应模板单测，避免原位保留旧 service.ts 时导入不存在的新类导致报错

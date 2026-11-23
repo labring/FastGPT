@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   DbConfigurationError,
   DbRuntimeNotConfiguredError,
+  DbTransactionOutcomeUnknownError,
+  isDbTransactionOutcomeUnknownError,
   isDbTransientConflictError,
   isDbUniqueConflictError
 } from '@fastgpt/dal/db/errors';
@@ -204,12 +206,32 @@ describe('@fastgpt/dal/db runtime & errors', () => {
     expect(isDbTransientConflictError({ code: '40P01' })).toBe(true);
     expect(isDbTransientConflictError({ code: 'ER_LOCK_DEADLOCK', errno: 1213 })).toBe(true);
     expect(isDbTransientConflictError({ errno: 1205 })).toBe(true);
-    expect(isDbTransientConflictError({ errno: 4012 })).toBe(true);
+    expect(isDbTransientConflictError({ errno: 4012 })).toBe(false);
+    expect(isDbTransientConflictError({ code: '4012' })).toBe(false);
+    expect(isDbTransientConflictError({ errno: 6225 })).toBe(false);
+    expect(isDbTransientConflictError({ code: '6225' })).toBe(false);
     expect(isDbTransientConflictError({ errno: 6002 })).toBe(true);
     expect(isDbTransientConflictError({ code: '6004' })).toBe(true);
     expect(isDbTransientConflictError({ errno: 6210 })).toBe(true);
     expect(isDbTransientConflictError({ errno: 6223 })).toBe(true);
     expect(isDbTransientConflictError({ errorLabels: ['TransientTransactionError'] })).toBe(true);
+    expect(isDbTransientConflictError({ errorLabels: ['UnknownTransactionCommitResult'] })).toBe(
+      false
+    );
     expect(isDbTransientConflictError(new Error('normal error'))).toBe(false);
+
+    expect(isDbTransactionOutcomeUnknownError({ errno: 4012 })).toBe(true);
+    expect(isDbTransactionOutcomeUnknownError({ code: '4012' })).toBe(true);
+    expect(isDbTransactionOutcomeUnknownError({ errno: 6225 })).toBe(true);
+    expect(isDbTransactionOutcomeUnknownError({ code: '6225' })).toBe(true);
+    expect(isDbTransactionOutcomeUnknownError({ message: 'Transaction result is unknown' })).toBe(
+      true
+    );
+    expect(
+      isDbTransactionOutcomeUnknownError({ errorLabels: ['UnknownTransactionCommitResult'] })
+    ).toBe(true);
+    expect(isDbTransactionOutcomeUnknownError(new DbTransactionOutcomeUnknownError())).toBe(true);
+    expect(isDbTransactionOutcomeUnknownError({ errno: 6002 })).toBe(false);
+    expect(isDbTransactionOutcomeUnknownError(new Error('normal error'))).toBe(false);
   });
 });

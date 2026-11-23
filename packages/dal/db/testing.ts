@@ -9,8 +9,8 @@ import type { MongoCollectionDefinition } from './mongo/collection';
 import { createMongoRuntimeDeps } from './mongo/runtime';
 import { closeDbRuntime, configureDbRuntime, getDbRuntime } from './runtime';
 import { compileSqlTableDDL, quoteSqlIdentifier, type SqlTableDefinition } from './sql/ddl';
-import { createMysqlKyselyRuntimeDeps } from './sql/dialects/mysql';
-import { createPostgresKyselyRuntimeDeps } from './sql/dialects/postgres';
+import { createMysqlKyselyRuntimeDeps, type MysqlRuntimeDeps } from './sql/dialects/mysql';
+import { createPostgresKyselyRuntimeDeps, type PostgresRuntimeDeps } from './sql/dialects/postgres';
 import { createSqlQueryLogger } from './sql/observability';
 import {
   getDbDialectFamily,
@@ -52,6 +52,12 @@ export type MongoTestHarness = {
   close: () => Promise<void>;
 };
 
+const EXTERNAL_SQL_URI_ENV_KEY: Record<SqlDialect, string> = {
+  mysql: 'FASTGPT_TEST_MYSQL_URI',
+  oceanbase: 'FASTGPT_TEST_OCEANBASE_URI',
+  postgres: 'FASTGPT_TEST_PG_URI'
+};
+
 const getWorkerToken = (): string => {
   const raw = process.env.VITEST_POOL_ID ?? process.env.VITEST_WORKER_ID ?? '0';
   const cleaned = raw.replace(/[^a-zA-Z0-9]/g, '');
@@ -84,6 +90,50 @@ const withPostgresSearchPathInUrl = (rawUri: string, schemaName: string): string
   return parsed.toString();
 };
 
+const getTrimmedEnv = (
+  env: Record<string, string | undefined>,
+  key: string
+): string | undefined => {
+  const val = env[key];
+  if (val === undefined) {
+    return undefined;
+  }
+  const trimmed = val.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+/**
+ * 解析 `FASTGPT_TEST_REQUIRED_SQL_DIALECTS`（逗号分隔的 `mysql` / `oceanbase` / `postgres`）。
+ *
+ * CI 开启该环境变量后，若对应真实 SQL 引擎 URI 缺失或后端未实际挂载，契约测试与防漂移守卫必须立即失败，
+ * 严禁静默降级跳过。
+ */
+export const parseRequiredSqlDialects = (
+  env: Record<string, string | undefined> = process.env
+): SqlDialect[] => {
+  const raw = getTrimmedEnv(env, 'FASTGPT_TEST_REQUIRED_SQL_DIALECTS');
+  if (raw === undefined) {
+    return [];
+  }
+
+  const result: SqlDialect[] = [];
+  for (const token of raw.split(',')) {
+    const normalized = token.trim().toLowerCase();
+    if (normalized.length === 0) {
+      continue;
+    }
+    if (normalized !== 'mysql' && normalized !== 'oceanbase' && normalized !== 'postgres') {
+      throw new DbConfigurationError(
+        `Invalid dialect "${token.trim()}" in FASTGPT_TEST_REQUIRED_SQL_DIALECTS (expected mysql, oceanbase, or postgres)`
+      );
+    }
+    if (!result.includes(normalized)) {
+      result.push(normalized);
+    }
+  }
+  return result;
+};
+
 const startMongoMemoryReplSetWithRetry = async (maxAttempts = 3) => {
   const { MongoMemoryReplSet } = await import('mongodb-memory-server');
   let lastError: unknown;
@@ -107,7 +157,8 @@ const startMongoMemoryReplSetWithRetry = async (maxAttempts = 3) => {
 /**
  * 为 `@fastgpt/dal` 独立契约测试创建零业务依赖的 MongoDB 副本集沙盒，并注册 `DbRuntime`。
  *
- * 优先复用外部传入 `uri` 或 `FASTGPT_TEST_MONGODB_URI`（按 Worker + 随机库名隔离，测试结束自动 dropDatabase）；
+ * 优先复用外部传入 `uri` 或 `FASTGPT_TEST_MONGODB_URI`（保持原始多节点副本集 URI 与 `authSource` 完整不改写，
+ * 仅通过 `connect(uri, { dbName })` 按 Worker + 随机库名隔离，测试结束自动 dropDatabase）；
  * 未提供外部副本集时按需动态拉起进程内 `MongoMemoryReplSet`（纯单测不触发启动开销）。
  */
 export const createMongoTestHarness = async ({
@@ -124,91 +175,129 @@ export const createMongoTestHarness = async ({
   await closeDbRuntime();
 
   const externalUri = uri ?? process.env.FASTGPT_TEST_MONGODB_URI;
+  const hasExternalUri = externalUri !== undefined && externalUri.trim().length > 0;
   let replSet: { stop: () => Promise<boolean> } | undefined;
-  let baseUri: string;
-
-  if (externalUri !== undefined && externalUri.trim().length > 0) {
-    baseUri = externalUri.trim();
-  } else {
-    const started = await startMongoMemoryReplSetWithRetry();
-    replSet = started;
-    baseUri = started.getUri();
-  }
-
-  const mainUrl = withDatabaseNameInUrl(baseUri, buildWorkerIsolatedDatabaseName('fg_dal_main'));
-  const logUrl =
-    logMode === 'separate'
-      ? withDatabaseNameInUrl(baseUri, buildWorkerIsolatedDatabaseName('fg_dal_log'))
-      : undefined;
-
-  const mainClient = new Mongoose();
-  mainClient.set('strictQuery', 'throw');
-  mainClient.set('autoIndex', false);
-  await mainClient.connect(mainUrl);
-
+  let mainClient: Mongoose | undefined;
   let logClient: Mongoose | undefined;
-  if (logUrl !== undefined) {
-    logClient = new Mongoose();
-    logClient.set('strictQuery', 'throw');
-    logClient.set('autoIndex', false);
-    await logClient.connect(logUrl);
-  }
+  let mainConnected = false;
+  let logConnected = false;
+  let runtimeConfigured = false;
 
-  const mongoDeps = createMongoRuntimeDeps({
-    getMainClient: () => mainClient,
-    getLogClient: () => logClient
-  });
+  try {
+    let baseUri: string;
+    if (hasExternalUri) {
+      baseUri = externalUri.trim();
+    } else {
+      const started = await startMongoMemoryReplSetWithRetry();
+      replSet = started;
+      baseUri = started.getUri();
+    }
 
-  const runtime = configureDbRuntime({
-    dialect: 'mongo',
-    mainWriteUrl: mainUrl,
-    ...(logUrl !== undefined ? { logWriteUrl: logUrl } : {}),
-    ...mongoDeps
-  });
+    const mainDbName = buildWorkerIsolatedDatabaseName('fg_dal_main');
+    const logDbName =
+      logMode === 'separate' ? buildWorkerIsolatedDatabaseName('fg_dal_log') : undefined;
 
-  const activeCollections: readonly MongoCollectionDefinition<any>[] = [
-    ...collections,
-    ...logCollections
-  ];
+    // 严禁使用 new URL(baseUri) 改写 Mongo URI：多节点副本集（h1:27017,h2:27017）不是合法 WHATWG URL，
+    // 且改写 pathname 会破坏默认 authSource；统一透传原串并用 Mongoose 原生 { dbName } 隔离库名。
+    mainClient = new Mongoose();
+    mainClient.set('strictQuery', 'throw');
+    mainClient.set('autoIndex', false);
+    await mainClient.connect(baseUri, { dbName: mainDbName });
+    mainConnected = true;
 
-  // Mongo 副本集多文档事务要求目标集合在事务开启前已存在
-  const boundModels = activeCollections.map((col) => runtime.bindMongoModel<any, Model<any>>(col));
-  for (const model of boundModels) {
-    await model.createCollection().catch(() => undefined);
-    await model.createIndexes().catch(() => undefined);
-  }
+    if (logDbName !== undefined) {
+      logClient = new Mongoose();
+      logClient.set('strictQuery', 'throw');
+      logClient.set('autoIndex', false);
+      await logClient.connect(baseUri, { dbName: logDbName });
+      logConnected = true;
+    }
 
-  return {
-    client: mainClient,
-    logClient,
-    getModel: <TDoc>(collection: MongoCollectionDefinition<TDoc>) =>
-      getDbRuntime().bindMongoModel<TDoc, Model<TDoc>>(collection),
-    insertRawRow: async ({ collection, doc, datasource = 'main' }) => {
-      const targetClient = datasource === 'log' && logClient !== undefined ? logClient : mainClient;
-      const db = targetClient.connection.db;
-      if (db === undefined) {
-        throw new DbConfigurationError('Mongo test harness connection is not ready');
+    const activeMainClient = mainClient;
+    const activeLogClient = logClient;
+    const mongoDeps = createMongoRuntimeDeps({
+      getMainClient: () => activeMainClient,
+      getLogClient: () => activeLogClient
+    });
+
+    const runtime = configureDbRuntime({
+      dialect: 'mongo',
+      mainWriteUrl: baseUri,
+      ...(logDbName !== undefined ? { logWriteUrl: baseUri } : {}),
+      ...mongoDeps
+    });
+    runtimeConfigured = true;
+
+    const activeCollections: readonly MongoCollectionDefinition<any>[] = [
+      ...collections,
+      ...logCollections
+    ];
+
+    // Mongo 副本集多文档事务要求目标集合在事务开启前已存在
+    const boundModels = activeCollections.map((col) =>
+      runtime.bindMongoModel<any, Model<any>>(col)
+    );
+    for (const model of boundModels) {
+      await model.createCollection().catch(() => undefined);
+      await model.createIndexes().catch(() => undefined);
+    }
+
+    return {
+      client: activeMainClient,
+      logClient: activeLogClient,
+      getModel: <TDoc>(collection: MongoCollectionDefinition<TDoc>) =>
+        getDbRuntime().bindMongoModel<TDoc, Model<TDoc>>(collection),
+      insertRawRow: async ({ collection, doc, datasource = 'main' }) => {
+        const targetClient =
+          datasource === 'log' && activeLogClient !== undefined
+            ? activeLogClient
+            : activeMainClient;
+        const db = targetClient.connection.db;
+        if (db === undefined) {
+          throw new DbConfigurationError('Mongo test harness connection is not ready');
+        }
+        await db.collection(collection).insertOne(doc);
+      },
+      clearAll: async () => {
+        for (const model of boundModels) {
+          await model.deleteMany({});
+        }
+      },
+      close: async () => {
+        await closeDbRuntime();
+        if (hasExternalUri) {
+          await activeMainClient.connection.dropDatabase().catch(() => undefined);
+          await activeLogClient?.connection.dropDatabase().catch(() => undefined);
+        }
+        await activeMainClient.disconnect().catch(() => undefined);
+        await activeLogClient?.disconnect().catch(() => undefined);
+        if (replSet !== undefined) {
+          await replSet.stop();
+        }
       }
-      await db.collection(collection).insertOne(doc);
-    },
-    clearAll: async () => {
-      for (const model of boundModels) {
-        await model.deleteMany({});
+    };
+  } catch (error) {
+    // 任意初始化步骤失败时按严格逆序回收已分配资源，防止泄漏外部测试库、连接或内存副本集进程
+    if (runtimeConfigured) {
+      await closeDbRuntime().catch(() => undefined);
+    }
+    if (logConnected && logClient !== undefined) {
+      if (hasExternalUri) {
+        await logClient.connection.dropDatabase().catch(() => undefined);
       }
-    },
-    close: async () => {
-      await closeDbRuntime();
-      if (externalUri !== undefined && externalUri.trim().length > 0) {
+      await logClient.disconnect().catch(() => undefined);
+    }
+    if (mainConnected && mainClient !== undefined) {
+      if (hasExternalUri) {
         await mainClient.connection.dropDatabase().catch(() => undefined);
-        await logClient?.connection.dropDatabase().catch(() => undefined);
       }
       await mainClient.disconnect().catch(() => undefined);
-      await logClient?.disconnect().catch(() => undefined);
-      if (replSet !== undefined) {
-        await replSet.stop();
-      }
     }
-  };
+    if (replSet !== undefined) {
+      await replSet.stop().catch(() => undefined);
+    }
+    throw error;
+  }
 };
 
 const createKyselyOverPGlite = async (
@@ -223,14 +312,18 @@ const createKyselyOverPGlite = async (
     log: createSqlQueryLogger(datasource)
   });
 
-  for (const table of tables) {
-    const statements = compileSqlTableDDL(table, 'postgres');
-    for (const stmt of statements) {
-      await sql.raw(stmt).execute(db);
+  try {
+    for (const table of tables) {
+      const statements = compileSqlTableDDL(table, 'postgres');
+      for (const stmt of statements) {
+        await sql.raw(stmt).execute(db);
+      }
     }
+    return { pglite, db };
+  } catch (error) {
+    await db.destroy().catch(() => undefined);
+    throw error;
   }
-
-  return { pglite, db };
 };
 
 /**
@@ -254,76 +347,100 @@ export const createPGliteSqlTestHarness = async ({
 
   const resolvedLogMode: DbLogMode = logMode ?? (withLogDatabase ? 'separate' : 'shared');
   const mainTables = resolvedLogMode === 'shared' ? [...tables, ...(logTables ?? [])] : tables;
-  const main = await createKyselyOverPGlite(mainTables, 'main');
-  const log =
-    resolvedLogMode === 'separate'
-      ? await createKyselyOverPGlite(logTables ?? [], 'log')
-      : undefined;
 
-  const resolveTargetDb = (datasource: DbDatasource): Kysely<any> => {
-    if (datasource === 'log') {
-      return log?.db ?? main.db;
-    }
-    return main.db;
-  };
+  let main: { pglite: PGlite; db: Kysely<any> } | undefined;
+  let log: { pglite: PGlite; db: Kysely<any> } | undefined;
+  let runtimeConfigured = false;
 
-  configureDbRuntime({
-    dialect: 'postgres',
-    mainWriteUrl: 'pglite://memory/main',
-    ...(resolvedLogMode === 'separate' ? { logWriteUrl: 'pglite://memory/log' } : {}),
-    sqlExecutorResolver: ({ datasource, nativeTx }) => {
-      if (nativeTx !== undefined) {
-        return nativeTx;
+  try {
+    main = await createKyselyOverPGlite(mainTables, 'main');
+    log =
+      resolvedLogMode === 'separate'
+        ? await createKyselyOverPGlite(logTables ?? [], 'log')
+        : undefined;
+
+    const mainDb = main.db;
+    const logDb = log?.db;
+
+    const resolveTargetDb = (datasource: DbDatasource): Kysely<any> => {
+      if (datasource === 'log') {
+        return logDb ?? mainDb;
       }
-      return resolveTargetDb(datasource);
-    },
-    transactionRunner: async ({ datasource, execute }) => {
-      const targetDb = resolveTargetDb(datasource);
-      return targetDb.transaction().execute(async (trx) => execute(trx));
-    },
-    healthChecker: async (datasource) => {
-      const targetDb = resolveTargetDb(datasource);
-      await sql`SELECT 1`.execute(targetDb);
-    }
-  });
+      return mainDb;
+    };
 
-  const managedTables = [
-    ...mainTables.map((t) => ({ name: t.name, target: main.db })),
-    ...(log !== undefined ? (logTables ?? []).map((t) => ({ name: t.name, target: log.db })) : [])
-  ];
-
-  const clearAll = async (): Promise<void> => {
-    for (const item of managedTables) {
-      await sql
-        .raw(`DELETE FROM ${quoteSqlIdentifier(item.name, 'postgres')}`)
-        .execute(item.target);
-    }
-  };
-
-  return {
-    dialect: 'postgres',
-    db: main.db,
-    logDb: log?.db ?? main.db,
-    clearAll,
-    truncateAll: clearAll,
-    insertRawRow: async ({ table, row, datasource = 'main' }) => {
-      await resolveTargetDb(datasource).insertInto(table).values(row).execute();
-    },
-    close: async () => {
-      await closeDbRuntime();
-      await main.db.destroy();
-      if (log !== undefined) {
-        await log.db.destroy();
+    configureDbRuntime({
+      dialect: 'postgres',
+      mainWriteUrl: 'pglite://memory/main',
+      ...(resolvedLogMode === 'separate' ? { logWriteUrl: 'pglite://memory/log' } : {}),
+      sqlExecutorResolver: ({ datasource, nativeTx }) => {
+        if (nativeTx !== undefined) {
+          return nativeTx;
+        }
+        return resolveTargetDb(datasource);
+      },
+      transactionRunner: async ({ datasource, execute }) => {
+        const targetDb = resolveTargetDb(datasource);
+        return targetDb.transaction().execute(async (trx) => execute(trx));
+      },
+      healthChecker: async (datasource) => {
+        const targetDb = resolveTargetDb(datasource);
+        await sql`SELECT 1`.execute(targetDb);
       }
+    });
+    runtimeConfigured = true;
+
+    const managedTables = [
+      ...mainTables.map((t) => ({ name: t.name, target: mainDb })),
+      ...(logDb !== undefined
+        ? (logTables ?? []).map((t) => ({ name: t.name, target: logDb }))
+        : [])
+    ];
+
+    const clearAll = async (): Promise<void> => {
+      for (const item of managedTables) {
+        await sql
+          .raw(`DELETE FROM ${quoteSqlIdentifier(item.name, 'postgres')}`)
+          .execute(item.target);
+      }
+    };
+
+    return {
+      dialect: 'postgres',
+      db: mainDb,
+      logDb: logDb ?? mainDb,
+      clearAll,
+      truncateAll: clearAll,
+      insertRawRow: async ({ table, row, datasource = 'main' }) => {
+        await resolveTargetDb(datasource).insertInto(table).values(row).execute();
+      },
+      close: async () => {
+        await closeDbRuntime();
+        await mainDb.destroy();
+        if (logDb !== undefined) {
+          await logDb.destroy();
+        }
+      }
+    };
+  } catch (error) {
+    if (runtimeConfigured) {
+      await closeDbRuntime().catch(() => undefined);
     }
-  };
+    if (log !== undefined) {
+      await log.db.destroy().catch(() => undefined);
+    }
+    if (main !== undefined) {
+      await main.db.destroy().catch(() => undefined);
+    }
+    throw error;
+  }
 };
 
 /**
  * 为真实 MySQL 8+ 或 OceanBase 4.3+ / SeekDB 创建按 Worker 隔离的独立库沙盒并注册 `DbRuntime`。
  *
  * 自动以 `utf8mb4_bin` 建库、执行 `compileSqlTableDDL`、用例间以无锁 `DELETE FROM` 清理，
- * 测试结束自动 `DROP DATABASE IF EXISTS` 并回收连接池。
+ * 初始化中途失败或测试结束均按逆序自动回收连接池并 `DROP DATABASE IF EXISTS`。
  */
 export const createMysqlSqlTestHarness = async ({
   dialect,
@@ -355,93 +472,127 @@ export const createMysqlSqlTestHarness = async ({
     })
   });
 
-  await sql
-    .raw(
-      `CREATE DATABASE IF NOT EXISTS ${quoteSqlIdentifier(mainDbName, dialect)} CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;`
-    )
-    .execute(adminDb);
-  if (logDbName !== undefined) {
+  let createdMainDb = false;
+  let createdLogDb = false;
+  let deps: MysqlRuntimeDeps | undefined;
+  let runtimeConfigured = false;
+
+  try {
     await sql
       .raw(
-        `CREATE DATABASE IF NOT EXISTS ${quoteSqlIdentifier(logDbName, dialect)} CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;`
+        `CREATE DATABASE IF NOT EXISTS ${quoteSqlIdentifier(mainDbName, dialect)} CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;`
       )
       .execute(adminDb);
-  }
+    createdMainDb = true;
 
-  const mainWriteUrl = withDatabaseNameInUrl(uri, mainDbName);
-  const logWriteUrl = logDbName !== undefined ? withDatabaseNameInUrl(uri, logDbName) : undefined;
-  const deps = createMysqlKyselyRuntimeDeps({
-    mainWriteUrl,
-    logWriteUrl,
-    maxConnections: 10
-  });
-
-  configureDbRuntime({
-    dialect,
-    mainWriteUrl,
-    ...(logWriteUrl !== undefined ? { logWriteUrl } : {}),
-    ...deps
-  });
-
-  const mainDb = deps.sqlExecutorResolver({ datasource: 'main', target: 'write' });
-  const logDb = deps.sqlExecutorResolver({ datasource: 'log', target: 'write' });
-
-  const mainTables = logMode === 'shared' ? [...tables, ...(logTables ?? [])] : tables;
-  for (const table of mainTables) {
-    for (const stmt of compileSqlTableDDL(table, dialect)) {
-      await sql.raw(stmt).execute(mainDb);
+    if (logDbName !== undefined) {
+      await sql
+        .raw(
+          `CREATE DATABASE IF NOT EXISTS ${quoteSqlIdentifier(logDbName, dialect)} CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;`
+        )
+        .execute(adminDb);
+      createdLogDb = true;
     }
-  }
-  if (logMode === 'separate') {
-    for (const table of logTables ?? []) {
+
+    const mainWriteUrl = withDatabaseNameInUrl(uri, mainDbName);
+    const logWriteUrl = logDbName !== undefined ? withDatabaseNameInUrl(uri, logDbName) : undefined;
+    deps = createMysqlKyselyRuntimeDeps({
+      mainWriteUrl,
+      logWriteUrl,
+      maxConnections: 10
+    });
+
+    configureDbRuntime({
+      dialect,
+      mainWriteUrl,
+      ...(logWriteUrl !== undefined ? { logWriteUrl } : {}),
+      ...deps
+    });
+    runtimeConfigured = true;
+
+    const mainDb = deps.sqlExecutorResolver({ datasource: 'main', target: 'write' });
+    const logDb = deps.sqlExecutorResolver({ datasource: 'log', target: 'write' });
+
+    const mainTables = logMode === 'shared' ? [...tables, ...(logTables ?? [])] : tables;
+    for (const table of mainTables) {
       for (const stmt of compileSqlTableDDL(table, dialect)) {
-        await sql.raw(stmt).execute(logDb);
+        await sql.raw(stmt).execute(mainDb);
       }
     }
-  }
-
-  const managedTables = [
-    ...mainTables.map((t) => ({ name: t.name, target: mainDb })),
-    ...(logMode === 'separate'
-      ? (logTables ?? []).map((t) => ({ name: t.name, target: logDb }))
-      : [])
-  ];
-
-  const clearAll = async (): Promise<void> => {
-    for (const item of managedTables) {
-      await sql.raw(`DELETE FROM ${quoteSqlIdentifier(item.name, dialect)}`).execute(item.target);
+    if (logMode === 'separate') {
+      for (const table of logTables ?? []) {
+        for (const stmt of compileSqlTableDDL(table, dialect)) {
+          await sql.raw(stmt).execute(logDb);
+        }
+      }
     }
-  };
 
-  return {
-    dialect,
-    db: mainDb,
-    logDb,
-    clearAll,
-    truncateAll: clearAll,
-    insertRawRow: async ({ table, row, datasource = 'main' }) => {
-      const target = datasource === 'log' ? logDb : mainDb;
-      await target.insertInto(table).values(row).execute();
-    },
-    close: async () => {
-      await closeDbRuntime();
+    const managedTables = [
+      ...mainTables.map((t) => ({ name: t.name, target: mainDb })),
+      ...(logMode === 'separate'
+        ? (logTables ?? []).map((t) => ({ name: t.name, target: logDb }))
+        : [])
+    ];
+
+    const clearAll = async (): Promise<void> => {
+      for (const item of managedTables) {
+        await sql.raw(`DELETE FROM ${quoteSqlIdentifier(item.name, dialect)}`).execute(item.target);
+      }
+    };
+
+    return {
+      dialect,
+      db: mainDb,
+      logDb,
+      clearAll,
+      truncateAll: clearAll,
+      insertRawRow: async ({ table, row, datasource = 'main' }) => {
+        const target = datasource === 'log' ? logDb : mainDb;
+        await target.insertInto(table).values(row).execute();
+      },
+      close: async () => {
+        await closeDbRuntime();
+        await sql
+          .raw(`DROP DATABASE IF EXISTS ${quoteSqlIdentifier(mainDbName, dialect)};`)
+          .execute(adminDb)
+          .catch(() => undefined);
+        if (logDbName !== undefined) {
+          await sql
+            .raw(`DROP DATABASE IF EXISTS ${quoteSqlIdentifier(logDbName, dialect)};`)
+            .execute(adminDb)
+            .catch(() => undefined);
+        }
+        await adminDb.destroy().catch(() => undefined);
+      }
+    };
+  } catch (error) {
+    // 严格逆序回收：先关闭业务连接池/Runtime，再删除已建隔离库，最后销毁 admin 连接池并重抛原异常
+    if (runtimeConfigured) {
+      await closeDbRuntime().catch(() => undefined);
+    } else if (deps !== undefined) {
+      await deps.closeHandler().catch(() => undefined);
+    }
+    if (createdLogDb && logDbName !== undefined) {
+      await sql
+        .raw(`DROP DATABASE IF EXISTS ${quoteSqlIdentifier(logDbName, dialect)};`)
+        .execute(adminDb)
+        .catch(() => undefined);
+    }
+    if (createdMainDb) {
       await sql
         .raw(`DROP DATABASE IF EXISTS ${quoteSqlIdentifier(mainDbName, dialect)};`)
         .execute(adminDb)
         .catch(() => undefined);
-      if (logDbName !== undefined) {
-        await sql
-          .raw(`DROP DATABASE IF EXISTS ${quoteSqlIdentifier(logDbName, dialect)};`)
-          .execute(adminDb)
-          .catch(() => undefined);
-      }
-      await adminDb.destroy().catch(() => undefined);
     }
-  };
+    await adminDb.destroy().catch(() => undefined);
+    throw error;
+  }
 };
 
 /**
  * 为真实 PostgreSQL >= 14 创建按 Worker 隔离的 Schema 沙盒并注册 `DbRuntime`。
+ *
+ * 初始化中途失败或测试结束均按逆序自动回收连接池并 `DROP SCHEMA IF EXISTS ... CASCADE`。
  */
 export const createPostgresSqlTestHarness = async ({
   uri,
@@ -466,88 +617,120 @@ export const createPostgresSqlTestHarness = async ({
     })
   });
 
-  await sql
-    .raw(`CREATE SCHEMA IF NOT EXISTS ${quoteSqlIdentifier(mainSchema, 'postgres')};`)
-    .execute(adminDb);
-  if (logSchema !== undefined) {
+  let createdMainSchema = false;
+  let createdLogSchema = false;
+  let deps: PostgresRuntimeDeps | undefined;
+  let runtimeConfigured = false;
+
+  try {
     await sql
-      .raw(`CREATE SCHEMA IF NOT EXISTS ${quoteSqlIdentifier(logSchema, 'postgres')};`)
+      .raw(`CREATE SCHEMA IF NOT EXISTS ${quoteSqlIdentifier(mainSchema, 'postgres')};`)
       .execute(adminDb);
-  }
+    createdMainSchema = true;
 
-  const mainWriteUrl = withPostgresSearchPathInUrl(uri, mainSchema);
-  const logWriteUrl =
-    logSchema !== undefined ? withPostgresSearchPathInUrl(uri, logSchema) : undefined;
-  const deps = createPostgresKyselyRuntimeDeps({
-    mainWriteUrl,
-    logWriteUrl,
-    maxConnections: 10
-  });
-
-  configureDbRuntime({
-    dialect: 'postgres',
-    mainWriteUrl,
-    ...(logWriteUrl !== undefined ? { logWriteUrl } : {}),
-    ...deps
-  });
-
-  const mainDb = deps.sqlExecutorResolver({ datasource: 'main', target: 'write' });
-  const logDb = deps.sqlExecutorResolver({ datasource: 'log', target: 'write' });
-
-  const mainTables = logMode === 'shared' ? [...tables, ...(logTables ?? [])] : tables;
-  for (const table of mainTables) {
-    for (const stmt of compileSqlTableDDL(table, 'postgres')) {
-      await sql.raw(stmt).execute(mainDb);
+    if (logSchema !== undefined) {
+      await sql
+        .raw(`CREATE SCHEMA IF NOT EXISTS ${quoteSqlIdentifier(logSchema, 'postgres')};`)
+        .execute(adminDb);
+      createdLogSchema = true;
     }
-  }
-  if (logMode === 'separate') {
-    for (const table of logTables ?? []) {
+
+    const mainWriteUrl = withPostgresSearchPathInUrl(uri, mainSchema);
+    const logWriteUrl =
+      logSchema !== undefined ? withPostgresSearchPathInUrl(uri, logSchema) : undefined;
+    deps = createPostgresKyselyRuntimeDeps({
+      mainWriteUrl,
+      logWriteUrl,
+      maxConnections: 10
+    });
+
+    configureDbRuntime({
+      dialect: 'postgres',
+      mainWriteUrl,
+      ...(logWriteUrl !== undefined ? { logWriteUrl } : {}),
+      ...deps
+    });
+    runtimeConfigured = true;
+
+    const mainDb = deps.sqlExecutorResolver({ datasource: 'main', target: 'write' });
+    const logDb = deps.sqlExecutorResolver({ datasource: 'log', target: 'write' });
+
+    const mainTables = logMode === 'shared' ? [...tables, ...(logTables ?? [])] : tables;
+    for (const table of mainTables) {
       for (const stmt of compileSqlTableDDL(table, 'postgres')) {
-        await sql.raw(stmt).execute(logDb);
+        await sql.raw(stmt).execute(mainDb);
       }
     }
-  }
-
-  const managedTables = [
-    ...mainTables.map((t) => ({ name: t.name, target: mainDb })),
-    ...(logMode === 'separate'
-      ? (logTables ?? []).map((t) => ({ name: t.name, target: logDb }))
-      : [])
-  ];
-
-  const clearAll = async (): Promise<void> => {
-    for (const item of managedTables) {
-      await sql
-        .raw(`DELETE FROM ${quoteSqlIdentifier(item.name, 'postgres')}`)
-        .execute(item.target);
+    if (logMode === 'separate') {
+      for (const table of logTables ?? []) {
+        for (const stmt of compileSqlTableDDL(table, 'postgres')) {
+          await sql.raw(stmt).execute(logDb);
+        }
+      }
     }
-  };
 
-  return {
-    dialect: 'postgres',
-    db: mainDb,
-    logDb,
-    clearAll,
-    truncateAll: clearAll,
-    insertRawRow: async ({ table, row, datasource = 'main' }) => {
-      const target = datasource === 'log' ? logDb : mainDb;
-      await target.insertInto(table).values(row).execute();
-    },
-    close: async () => {
-      await closeDbRuntime();
+    const managedTables = [
+      ...mainTables.map((t) => ({ name: t.name, target: mainDb })),
+      ...(logMode === 'separate'
+        ? (logTables ?? []).map((t) => ({ name: t.name, target: logDb }))
+        : [])
+    ];
+
+    const clearAll = async (): Promise<void> => {
+      for (const item of managedTables) {
+        await sql
+          .raw(`DELETE FROM ${quoteSqlIdentifier(item.name, 'postgres')}`)
+          .execute(item.target);
+      }
+    };
+
+    return {
+      dialect: 'postgres',
+      db: mainDb,
+      logDb,
+      clearAll,
+      truncateAll: clearAll,
+      insertRawRow: async ({ table, row, datasource = 'main' }) => {
+        const target = datasource === 'log' ? logDb : mainDb;
+        await target.insertInto(table).values(row).execute();
+      },
+      close: async () => {
+        await closeDbRuntime();
+        await sql
+          .raw(`DROP SCHEMA IF EXISTS ${quoteSqlIdentifier(mainSchema, 'postgres')} CASCADE;`)
+          .execute(adminDb)
+          .catch(() => undefined);
+        if (logSchema !== undefined) {
+          await sql
+            .raw(`DROP SCHEMA IF EXISTS ${quoteSqlIdentifier(logSchema, 'postgres')} CASCADE;`)
+            .execute(adminDb)
+            .catch(() => undefined);
+        }
+        await adminDb.destroy().catch(() => undefined);
+      }
+    };
+  } catch (error) {
+    // 严格逆序回收：先关闭业务连接池/Runtime，再删除已建 Schema，最后销毁 admin 连接池并重抛原异常
+    if (runtimeConfigured) {
+      await closeDbRuntime().catch(() => undefined);
+    } else if (deps !== undefined) {
+      await deps.closeHandler().catch(() => undefined);
+    }
+    if (createdLogSchema && logSchema !== undefined) {
+      await sql
+        .raw(`DROP SCHEMA IF EXISTS ${quoteSqlIdentifier(logSchema, 'postgres')} CASCADE;`)
+        .execute(adminDb)
+        .catch(() => undefined);
+    }
+    if (createdMainSchema) {
       await sql
         .raw(`DROP SCHEMA IF EXISTS ${quoteSqlIdentifier(mainSchema, 'postgres')} CASCADE;`)
         .execute(adminDb)
         .catch(() => undefined);
-      if (logSchema !== undefined) {
-        await sql
-          .raw(`DROP SCHEMA IF EXISTS ${quoteSqlIdentifier(logSchema, 'postgres')} CASCADE;`)
-          .execute(adminDb)
-          .catch(() => undefined);
-      }
-      await adminDb.destroy().catch(() => undefined);
     }
-  };
+    await adminDb.destroy().catch(() => undefined);
+    throw error;
+  }
 };
 
 export type RawRowInsertPayload = {
@@ -574,24 +757,14 @@ export type ContractBackendEntry = {
   insertRawRow?: (payload: RawRowInsertPayload) => Promise<void>;
 };
 
-const getTrimmedEnv = (
-  env: Record<string, string | undefined>,
-  key: string
-): string | undefined => {
-  const val = env[key];
-  if (val === undefined) {
-    return undefined;
-  }
-  const trimmed = val.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-};
-
 /**
  * 按当前环境变量动态装配多数据库契约测试矩阵（MongoDB + PGlite + 可选 MySQL 8 / OceanBase / PostgreSQL）。
  *
  * - 本地零配置默认挂载 MongoDB（副本集）与 SQL（PGlite）；
  * - CI 或本地配置 `FASTGPT_TEST_MYSQL_URI` / `FASTGPT_TEST_OCEANBASE_URI` / `FASTGPT_TEST_PG_URI` 后，
- *   同一份契约测试自动重放到真实关系型引擎，无需任何测试代码改动。
+ *   同一份契约测试自动重放到真实关系型引擎；
+ * - 若配置了 `FASTGPT_TEST_REQUIRED_SQL_DIALECTS`，强制校验对应真实引擎 URI 非空并已挂载，缺省时立即抛错；
+ * - 严禁产出空后端列表，若无任何可用后端直接抛出 `DbConfigurationError`。
  */
 export const createContractBackends = ({
   collections,
@@ -612,6 +785,16 @@ export const createContractBackends = ({
   includePGlite?: boolean;
   env?: Record<string, string | undefined>;
 }): ContractBackendEntry[] => {
+  const requiredSqlDialects = parseRequiredSqlDialects(env);
+  for (const requiredDialect of requiredSqlDialects) {
+    const uriEnvKey = EXTERNAL_SQL_URI_ENV_KEY[requiredDialect];
+    if (getTrimmedEnv(env, uriEnvKey) === undefined) {
+      throw new DbConfigurationError(
+        `FASTGPT_TEST_REQUIRED_SQL_DIALECTS requires "${requiredDialect}", but ${uriEnvKey} is missing or empty`
+      );
+    }
+  }
+
   const backends: ContractBackendEntry[] = [];
 
   if (includeMongo) {
@@ -788,11 +971,20 @@ export const createContractBackends = ({
     });
   }
 
+  if (backends.length === 0) {
+    throw new DbConfigurationError(
+      'createContractBackends produced zero backends; enable Mongo/PGlite or provide external SQL URIs'
+    );
+  }
+
   return backends;
 };
 
 /**
  * 声明多数据库共享契约测试矩阵（向测试回调提供统一 `ContractBackendContext`，含 `insertRawRow` 与并发能力标记）。
+ *
+ * 硬守卫：同步拒绝空 `backends`；默认（`requireBothFamilies = true`）同时要求覆盖 `mongo` 与 `sql` 双族，
+ * 防止错误配置或过滤条件把共享契约测试退化为空跑或单边绿灯。
  */
 export const registerMultiDialectContractSuite = ({
   describeFn,
@@ -800,6 +992,7 @@ export const registerMultiDialectContractSuite = ({
   beforeEachFn,
   afterAllFn,
   backends,
+  requireBothFamilies = true,
   registerTests
 }: {
   describeFn: (name: string, fn: () => void) => void;
@@ -807,8 +1000,24 @@ export const registerMultiDialectContractSuite = ({
   beforeEachFn?: (fn: () => Promise<void>) => void;
   afterAllFn: (fn: () => Promise<void>) => void;
   backends: readonly ContractBackendEntry[];
+  requireBothFamilies?: boolean;
   registerTests: (ctx: ContractBackendContext) => void;
 }): void => {
+  if (backends.length === 0) {
+    throw new DbConfigurationError(
+      'registerMultiDialectContractSuite requires at least one contract backend'
+    );
+  }
+
+  if (requireBothFamilies) {
+    const families = new Set(backends.map((backend) => getDbDialectFamily(backend.dialect)));
+    if (!families.has('mongo') || !families.has('sql')) {
+      throw new DbConfigurationError(
+        `registerMultiDialectContractSuite requires both "mongo" and "sql" dialect families (received: ${Array.from(families).join(', ')})`
+      );
+    }
+  }
+
   for (const backend of backends) {
     describeFn(`[${backend.label}]`, () => {
       beforeAllFn(backend.setup);
@@ -854,6 +1063,7 @@ export const registerDualDialectContractSuite = ({
   beforeEachFn,
   afterAllFn,
   backends,
+  requireBothFamilies = true,
   registerTests
 }: {
   describeFn: (name: string, fn: () => void) => void;
@@ -861,6 +1071,7 @@ export const registerDualDialectContractSuite = ({
   beforeEachFn?: (fn: () => Promise<void>) => void;
   afterAllFn: (fn: () => Promise<void>) => void;
   backends: readonly ContractBackendEntry[];
+  requireBothFamilies?: boolean;
   registerTests: (getDialect: () => DbDialect) => void;
 }): void => {
   registerMultiDialectContractSuite({
@@ -869,6 +1080,7 @@ export const registerDualDialectContractSuite = ({
     beforeEachFn,
     afterAllFn,
     backends,
+    requireBothFamilies,
     registerTests: (ctx) => registerTests(ctx.getDialect)
   });
 };

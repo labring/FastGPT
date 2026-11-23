@@ -4,7 +4,12 @@ import { createEntityId } from '@fastgpt/global/common/string/entityId';
 import { injectRepo } from '@fastgpt/dal/db/container';
 import { DbRecordCorruptedError } from '@fastgpt/dal/db/errors';
 import { compileSqlTableDDL } from '@fastgpt/dal/db/sql/ddl';
-import { createContractBackends, registerMultiDialectContractSuite } from '@fastgpt/dal/db/testing';
+import {
+  createContractBackends,
+  parseRequiredSqlDialects,
+  registerMultiDialectContractSuite
+} from '@fastgpt/dal/db/testing';
+import type { SqlDialect } from '@fastgpt/dal/db/types';
 import { runInTransaction } from '@fastgpt/dal/db/transaction';
 import { AppRegistrationRepoToken } from '@fastgpt/dal/db/repos/appRegistration/repo';
 import {
@@ -30,19 +35,35 @@ describe('AppRegistration portable SQL DDL', () => {
 });
 
 describe('AppRegistrationRepository multi-dialect contract', () => {
+  const requiredSqlDialects = parseRequiredSqlDialects(process.env);
+  const executedExternalSqlDialects = new Set<SqlDialect>();
+  const contractBackends = createContractBackends({
+    collections: [appRegistrationMongoCollection],
+    tables: [appRegistrationSqlTable]
+  });
+
+  afterAll(() => {
+    for (const required of requiredSqlDialects) {
+      expect(
+        executedExternalSqlDialects.has(required),
+        `FASTGPT_TEST_REQUIRED_SQL_DIALECTS requires "${required}", but its external contract backend did not execute`
+      ).toBe(true);
+    }
+  });
+
   registerMultiDialectContractSuite({
     describeFn: describe,
     beforeAllFn: beforeAll,
     beforeEachFn: beforeEach,
     afterAllFn: afterAll,
-    backends: createContractBackends({
-      collections: [appRegistrationMongoCollection],
-      tables: [appRegistrationSqlTable]
-    }),
+    backends: contractBackends,
     registerTests: (ctx) => {
       const repo = injectRepo(AppRegistrationRepoToken);
 
       it('normalizes IDs, dates, and nullable fields identically across dialects', async () => {
+        if (ctx.getFamily() === 'sql' && ctx.supportsMultiConnectionConcurrency()) {
+          executedExternalSqlDialects.add(ctx.getDialect() as SqlDialect);
+        }
         const teamId = createEntityId();
         const tmbId = createEntityId();
         const appId = createEntityId();

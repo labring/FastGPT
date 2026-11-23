@@ -1,7 +1,7 @@
 import {
   dropManagedMongoIndexIfExists,
   type DropMongoIndexResult,
-  type LiveMongoIndexSpec
+  type ExpectedMongoIndexOptions
 } from '@fastgpt/dal/db/mongo/indexSync';
 import type { DbDatasource } from '@fastgpt/dal/db/types';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
@@ -15,19 +15,17 @@ export type LegacyDeprecatedMongoIndexEntry = {
   datasource: DbDatasource;
   indexName: string;
   key: Record<string, unknown>;
-  options?: Pick<
-    LiveMongoIndexSpec,
-    'unique' | 'sparse' | 'expireAfterSeconds' | 'partialFilterExpression'
-  >;
+  /** 显式声明完整历史选项签名（普通非唯一非条件索引固定传 `{}`），防止误删客户同名定制索引。 */
+  options: ExpectedMongoIndexOptions;
   reason: string;
 };
 
 /**
- * 历史上曾登记在 11 个旧版 Schema 中的 17 条废弃 Mongo 索引显式一次性清理清单。
+ * 历史上曾登记在 11 个旧版 Schema 中的 18 条废弃 Mongo 索引显式一次性清理清单。
  *
- * 原则收敛后，所有 `schema.ts` 严禁再保留 `deprecated: true` 永久墓碑；既有 17 条历史废弃索引
+ * 原则收敛后，所有 `schema.ts` 严禁再保留 `deprecated: true` 永久墓碑；既有 18 条历史废弃索引
  * 统一收口到此一次性清理目录中，仅通过显式运维/一次性迁移调用 `runLegacyDeprecatedMongoIndexCleanup`
- * 按 `name + key + options` 精确匹配删除，100% 保护客户 DBA 自建索引。
+ * 按 `name + key + 完整 options` 精确匹配删除，100% 保护客户 DBA 自建索引。
  */
 export const LEGACY_DEPRECATED_MONGO_INDEXES: readonly LegacyDeprecatedMongoIndexEntry[] = [
   {
@@ -35,6 +33,7 @@ export const LEGACY_DEPRECATED_MONGO_INDEXES: readonly LegacyDeprecatedMongoInde
     datasource: 'main',
     indexName: 'userId_1',
     key: { userId: 1 },
+    options: {},
     reason: 'Replaced by compound team member lookup indexes'
   },
   {
@@ -61,6 +60,7 @@ export const LEGACY_DEPRECATED_MONGO_INDEXES: readonly LegacyDeprecatedMongoInde
     datasource: 'main',
     indexName: 'rebuilding_1_teamId_1_datasetId_1',
     key: { rebuilding: 1, teamId: 1, datasetId: 1 },
+    options: {},
     reason: 'Replaced by indexStatus_1_teamId_1_datasetId_1'
   },
   {
@@ -80,6 +80,7 @@ export const LEGACY_DEPRECATED_MONGO_INDEXES: readonly LegacyDeprecatedMongoInde
     datasource: 'main',
     indexName: 'appId_1_updateTime_-1',
     key: { appId: 1, updateTime: -1 },
+    options: {},
     reason: 'Strictly prefix-covered by { appId: 1, updateTime: -1, _id: -1 } cursor log index'
   },
   {
@@ -87,6 +88,7 @@ export const LEGACY_DEPRECATED_MONGO_INDEXES: readonly LegacyDeprecatedMongoInde
     datasource: 'main',
     indexName: 'sourceType_1_status_1_provider_1',
     key: { sourceType: 1, status: 1, provider: 1 },
+    options: {},
     reason: 'Replaced by teamId_1_status_1 quota index'
   },
   {
@@ -94,6 +96,7 @@ export const LEGACY_DEPRECATED_MONGO_INDEXES: readonly LegacyDeprecatedMongoInde
     datasource: 'main',
     indexName: 'status_1_metadata.operation.heartbeatAt_1',
     key: { status: 1, 'metadata.operation.heartbeatAt': 1 },
+    options: {},
     reason: 'Replaced by status_1_operation.heartbeatAt_1'
   },
   {
@@ -101,6 +104,7 @@ export const LEGACY_DEPRECATED_MONGO_INDEXES: readonly LegacyDeprecatedMongoInde
     datasource: 'main',
     indexName: 'appId_1_resources.type_1_resources.id_1',
     key: { appId: 1, 'resources.type': 1, 'resources.id': 1 },
+    options: {},
     reason: 'Retired resource lookup index on app_versions'
   },
   {
@@ -108,6 +112,7 @@ export const LEGACY_DEPRECATED_MONGO_INDEXES: readonly LegacyDeprecatedMongoInde
     datasource: 'log',
     indexName: 'teamId_1_appId_1_source_1_updateTime_-1',
     key: { teamId: 1, appId: 1, source: 1, updateTime: -1 },
+    options: {},
     reason: 'Retired app_chat_logs source chart index'
   },
   {
@@ -115,6 +120,7 @@ export const LEGACY_DEPRECATED_MONGO_INDEXES: readonly LegacyDeprecatedMongoInde
     datasource: 'log',
     indexName: 'teamId_1_appId_1_userId_1',
     key: { teamId: 1, appId: 1, userId: 1 },
+    options: {},
     reason: 'Retired app_chat_logs userId index'
   },
   {
@@ -122,6 +128,7 @@ export const LEGACY_DEPRECATED_MONGO_INDEXES: readonly LegacyDeprecatedMongoInde
     datasource: 'log',
     indexName: 'createTime_-1_appId_1_chatId_1',
     key: { createTime: -1, appId: 1, chatId: 1 },
+    options: {},
     reason: 'Retired app_chat_logs createTime index'
   },
   {
@@ -129,6 +136,7 @@ export const LEGACY_DEPRECATED_MONGO_INDEXES: readonly LegacyDeprecatedMongoInde
     datasource: 'main',
     indexName: 'modelId_1_testedAt_-1',
     key: { modelId: 1, testedAt: -1 },
+    options: {},
     reason: 'Replaced by modelId_1_requestEndedAt_-1'
   },
   {
@@ -144,6 +152,7 @@ export const LEGACY_DEPRECATED_MONGO_INDEXES: readonly LegacyDeprecatedMongoInde
     datasource: 'main',
     indexName: 'source_1_teamId_1_deleteTime_1_createTime_-1',
     key: { source: 1, teamId: 1, deleteTime: 1, createTime: -1 },
+    options: {},
     reason: 'Retired agent_skills listing index'
   },
   {
@@ -151,6 +160,7 @@ export const LEGACY_DEPRECATED_MONGO_INDEXES: readonly LegacyDeprecatedMongoInde
     datasource: 'main',
     indexName: 'teamId_1_datasetId_1_parentId_1_inheritPermission_1',
     key: { teamId: 1, datasetId: 1, parentId: 1, inheritPermission: 1 },
+    options: {},
     reason: 'Consolidated into type/directory composite index'
   },
   {
@@ -158,6 +168,7 @@ export const LEGACY_DEPRECATED_MONGO_INDEXES: readonly LegacyDeprecatedMongoInde
     datasource: 'main',
     indexName: 'teamId_1_datasetId_1_tags_1',
     key: { teamId: 1, datasetId: 1, tags: 1 },
+    options: {},
     reason: 'Replaced by structured tags.tagId / tags.value indexes'
   },
   {
@@ -165,6 +176,7 @@ export const LEGACY_DEPRECATED_MONGO_INDEXES: readonly LegacyDeprecatedMongoInde
     datasource: 'main',
     indexName: 'teamId_1_metadata.relatedImgId_1',
     key: { teamId: 1, 'metadata.relatedImgId': 1 },
+    options: {},
     reason: 'Retired after legacy image cleanup task removal'
   },
   {
@@ -172,6 +184,7 @@ export const LEGACY_DEPRECATED_MONGO_INDEXES: readonly LegacyDeprecatedMongoInde
     datasource: 'main',
     indexName: 'teamId_1',
     key: { teamId: 1 },
+    options: {},
     reason: 'Covered by leading teamId composite indexes on datasets'
   }
 ];

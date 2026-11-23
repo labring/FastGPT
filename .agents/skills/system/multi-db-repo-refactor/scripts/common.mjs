@@ -460,16 +460,59 @@ const gitExportedStringCache = new Map();
 
 const stripTsAssertion = (raw) => {
   let current = raw.trim();
-  while (true) {
-    const next = current
-      .replace(/\s+(?:as|satisfies)\s+[A-Za-z0-9_$.<>[\]\s|&]+$/, '')
-      .replace(/!$/, '')
-      .trim();
+  while (current.length > 0) {
+    let depthParen = 0;
+    let depthBrace = 0;
+    let depthBracket = 0;
+    let depthAngle = 0;
+    let inQuote = null;
+    let escaped = false;
+    let cutIdx = -1;
+
+    for (let i = 0; i < current.length; i += 1) {
+      const ch = current[i];
+      if (inQuote !== null) {
+        if (escaped) escaped = false;
+        else if (ch === '\\') escaped = true;
+        else if (ch === inQuote) inQuote = null;
+        continue;
+      }
+      if (ch === "'" || ch === '"' || ch === '`') {
+        inQuote = ch;
+        continue;
+      }
+      if (ch === '(') depthParen += 1;
+      else if (ch === ')' && depthParen > 0) depthParen -= 1;
+      else if (ch === '{') depthBrace += 1;
+      else if (ch === '}' && depthBrace > 0) depthBrace -= 1;
+      else if (ch === '[') depthBracket += 1;
+      else if (ch === ']' && depthBracket > 0) depthBracket -= 1;
+      else if (ch === '<') depthAngle += 1;
+      else if (ch === '>' && current[i - 1] !== '=' && depthAngle > 0) depthAngle -= 1;
+
+      if (depthParen === 0 && depthBrace === 0 && depthBracket === 0 && depthAngle === 0) {
+        const rest = current.slice(i);
+        const match = /^(as|satisfies)\s+/.exec(rest);
+        if (match !== null && i > 0 && /[\s)\]}"'`A-Za-z0-9_$!]/.test(current[i - 1])) {
+          const prevChar = current[i - 1];
+          if (!/[A-Za-z0-9_$]/.test(prevChar)) {
+            cutIdx = i;
+            break;
+          }
+        }
+      }
+    }
+
+    let next = cutIdx !== -1 ? current.slice(0, cutIdx).trim() : current;
+    if (next.endsWith('!') && !next.endsWith('!=') && !next.endsWith('!==')) {
+      next = next.slice(0, -1).trim();
+    }
     if (next === current) {
       return current;
     }
     current = next;
   }
+  return current;
 };
 
 const resolveStringTemplateExpr = ({ expr, localStringConsts, resolvedImportedStrings }) => {
@@ -1108,66 +1151,69 @@ const extractSchemaCollectionBindings = ({ sourceText, repoRoot, sourceRelPath, 
     });
   }
 
-  // 解析新版纯声明式 defineMongoCollection({ name, datasource, schema, indexes }) 绑定关系
-  for (const match of clean.matchAll(/\bdefineMongoCollection\b/g)) {
-    let cursor = match.index + match[0].length;
-    while (cursor < clean.length && /\s/.test(clean[cursor])) {
-      cursor += 1;
-    }
-    if (clean[cursor] === '<') {
-      const genericSeg = scanBalancedSegment(clean, {
-        startIdx: cursor,
-        openChar: '<',
-        closeChar: '>'
-      });
-      if (genericSeg === null) {
-        continue;
-      }
-      cursor = genericSeg.endIdx + 1;
-      while (cursor < clean.length && /\s/.test(clean[cursor])) {
-        cursor += 1;
-      }
-    }
-    if (clean[cursor] !== '(') {
-      continue;
-    }
-    const callSeg = scanBalancedSegment(clean, {
-      startIdx: cursor,
-      openChar: '(',
-      closeChar: ')'
-    });
-    if (callSeg === null) {
-      continue;
-    }
-
-    const argExpr = stripTsAssertion(callSeg.inner.trim());
-    if (!argExpr.startsWith('{') || !argExpr.endsWith('}')) {
+  // 解析新版纯声明式 defineMongoCollection({ name, datasource, schema, indexes }) 绑定关系（支持同文件 const 描述符与简写属性）
+  const collectionResolver = createStaticScopeResolver({
+    sourceText,
+    repoRoot,
+    sourceRelPath,
+    gitRef
+  });
+  for (const call of findFunctionCalls({
+    tokens: collectionResolver.tokens,
+    matchIdx: collectionResolver.matchIdx,
+    calleeNames: new Set(['defineMongoCollection'])
+  })) {
+    const callArgs = splitTopLevelComma(
+      collectionResolver.clean.slice(
+        collectionResolver.tokens[call.openParenIdx].end,
+        collectionResolver.tokens[call.closeParenIdx].start
+      )
+    ).filter((arg) => arg.trim().length > 0);
+    if (callArgs.length !== 1) {
       ownershipErrors.push(
-        `defineMongoCollection call must pass an inline object literal (found "${argExpr.slice(0, 60)}")`
+        `defineMongoCollection call expects 1 descriptor argument (received ${callArgs.length})`
       );
       continue;
     }
 
-    const propEntries = new Map(
-      splitTopLevelComma(argExpr.slice(1, -1)).map((entry) => {
-        const colonIdx = findTopLevelColon(entry);
-        if (colonIdx === -1) return [entry.trim(), entry.trim()];
-        return [
-          unquoteString(entry.slice(0, colonIdx)) ?? entry.slice(0, colonIdx).trim(),
-          entry.slice(colonIdx + 1).trim()
-        ];
-      })
+    const argStartPos = skipWhitespace(
+      collectionResolver.clean,
+      collectionResolver.tokens[call.openParenIdx].end
     );
-
-    const nameExpr = stripTsAssertion(propEntries.get('name') ?? '');
-    const schemaExpr = stripTsAssertion(propEntries.get('schema') ?? '');
-    const indexesExpr = stripTsAssertion(propEntries.get('indexes') ?? '');
-
-    const resolvedCol = resolveStringTemplateExpr({
-      expr: nameExpr,
-      localStringConsts,
-      resolvedImportedStrings
+    const objRes = collectionResolver.resolveObjectProperties({
+      rawExpr: callArgs[0],
+      scopePos: argStartPos
     });
+    if (!objRes.ok) {
+      ownershipErrors.push(
+        `defineMongoCollection call descriptor cannot be statically parsed (${objRes.reason})`
+      );
+      continue;
+    }
+
+    const nameEntry = objRes.props.get('name');
+    const schemaEntry = objRes.props.get('schema');
+    const indexesEntry = objRes.props.get('indexes');
+
+    const nameExpr = nameEntry !== undefined ? stripTsAssertion(nameEntry.rawValue) : '';
+    const schemaExpr = schemaEntry !== undefined ? stripTsAssertion(schemaEntry.rawValue) : '';
+    const indexesExpr = indexesEntry !== undefined ? stripTsAssertion(indexesEntry.rawValue) : '';
+
+    const resolvedNameRes =
+      nameEntry !== undefined
+        ? collectionResolver.resolveValue({
+            rawExpr: nameEntry.rawValue,
+            scopePos: nameEntry.scopePos
+          })
+        : { ok: false, reason: 'missing name property' };
+    const resolvedCol =
+      resolvedNameRes.ok && typeof resolvedNameRes.value === 'string'
+        ? resolvedNameRes.value
+        : resolveStringTemplateExpr({
+            expr: nameExpr,
+            localStringConsts,
+            resolvedImportedStrings
+          });
     if (resolvedCol === null || resolvedCol.length === 0) {
       ownershipErrors.push(
         `Cannot resolve static collection name "${nameExpr}" in defineMongoCollection(...)`
@@ -1188,13 +1234,13 @@ const extractSchemaCollectionBindings = ({ sourceText, repoRoot, sourceRelPath, 
       modelRegistrations.push({
         schemaVar,
         collection: resolvedCol,
-        callIndex: match.index
+        callIndex: collectionResolver.tokens[call.calleeIdx].start
       });
     } else {
       modelRegistrations.push({
         schemaVar: resolvedCol,
         collection: resolvedCol,
-        callIndex: match.index
+        callIndex: collectionResolver.tokens[call.calleeIdx].start
       });
     }
 
@@ -1202,7 +1248,10 @@ const extractSchemaCollectionBindings = ({ sourceText, repoRoot, sourceRelPath, 
       collection: resolvedCol,
       schemaVar,
       indexesExpr,
-      raw: clean.slice(match.index, callSeg.endIdx + 1)
+      raw: collectionResolver.clean.slice(
+        collectionResolver.tokens[call.calleeIdx].start,
+        collectionResolver.tokens[call.closeParenIdx].end
+      )
     });
   }
 
@@ -1742,10 +1791,11 @@ export const discoverMongoSchemas = (repoRoot) => {
         continue;
       }
 
-      const datasource =
-        /\bgetMongoLogModel\b/.test(clean) || /\bdatasource\s*:\s*['"]log['"]/.test(clean)
-          ? 'log'
-          : 'main';
+      const datasource = analyzeMongoSchemaDatasource({
+        sourceText: content,
+        repoRoot,
+        sourceRelPath: relPath
+      }).datasource;
       const indexes = extractDefineIndexes(content, { repoRoot, sourceRelPath: relPath });
       const hasSoftDelete = /\bdeleteTime\b/.test(clean);
       const hasTtl = /\bexpireAfterSeconds\b|\bexpires\s*:/.test(clean);
@@ -1921,57 +1971,1912 @@ export const stripImportsAndStrings = (src) => {
   return noStrings.replace(/^\s*import\s+(?:type\s+)?(?:[^;]*?\bfrom\s*)?""\s*;?/gm, '');
 };
 
-/** 提取同文件内 `const/let/var <ident> = <expr>` 的静态初始化表达式（供表定义局部变量展开）。 */
-const extractLocalConstInitializers = (clean) => {
-  const bindings = new Map();
-  const ambiguous = new Set();
+const REGEX_PRECEDING_KEYWORDS = new Set([
+  'return',
+  'throw',
+  'case',
+  'in',
+  'of',
+  'typeof',
+  'void',
+  'delete',
+  'await',
+  'yield',
+  'else',
+  'do',
+  'instanceof',
+  'new'
+]);
 
-  for (const match of clean.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\b/g)) {
-    const name = match[1];
-    const eqIdx = scanToTopLevelToken({
-      src: clean,
-      startIdx: match.index + match[0].length,
-      target: '='
-    });
-    if (eqIdx === -1) {
-      continue;
-    }
-    const exprStart = skipWhitespace(clean, eqIdx + 1);
-    if (exprStart >= clean.length) {
-      continue;
-    }
-    const exprEnd = scanArrowExprBodyEnd(clean, exprStart);
-    const exprText = clean.slice(exprStart, exprEnd).trim();
-    if (exprText.length === 0) {
-      continue;
-    }
+const CONTROL_PAREN_KEYWORDS = new Set([
+  'if',
+  'while',
+  'for',
+  'switch',
+  'with',
+  'catch',
+  'function'
+]);
 
-    if (bindings.has(name)) {
-      bindings.delete(name);
-      ambiguous.add(name);
-    } else if (!ambiguous.has(name)) {
-      bindings.set(name, exprText);
-    }
+const NON_METHOD_PREV_KEYWORDS = new Set([
+  ...CONTROL_PAREN_KEYWORDS,
+  'return',
+  'throw',
+  'new',
+  'await',
+  'typeof',
+  'void',
+  'delete',
+  'yield',
+  'case',
+  'in',
+  'of',
+  'else',
+  'do',
+  'export',
+  'default',
+  'as',
+  'satisfies',
+  'instanceof'
+]);
+
+const EXPR_CONTINUING_PREV_PUNCT = new Set([
+  '.',
+  '?.',
+  '?',
+  ':',
+  '=',
+  '=>',
+  '(',
+  '[',
+  '{',
+  ',',
+  '+',
+  '-',
+  '*',
+  '/',
+  '%',
+  '**',
+  '&&',
+  '||',
+  '??',
+  '===',
+  '!==',
+  '==',
+  '!=',
+  '<',
+  '<=',
+  '>',
+  '>=',
+  '&',
+  '|',
+  '^',
+  '<<',
+  '>>',
+  '>>>',
+  '!',
+  '~',
+  '+=',
+  '-=',
+  '*=',
+  '/=',
+  '%=',
+  '...'
+]);
+
+const EXPR_CONTINUING_PREV_KEYWORDS = new Set([
+  'return',
+  'await',
+  'typeof',
+  'void',
+  'delete',
+  'new',
+  'yield',
+  'as',
+  'satisfies',
+  'in',
+  'of',
+  'instanceof'
+]);
+
+const EXPR_CONTINUING_NEXT_PUNCT = new Set([
+  '.',
+  '?.',
+  '?',
+  ':',
+  '&&',
+  '||',
+  '??',
+  '+',
+  '-',
+  '*',
+  '/',
+  '%',
+  '**',
+  '===',
+  '!==',
+  '==',
+  '!=',
+  '<',
+  '<=',
+  '>',
+  '>=',
+  '&',
+  '|',
+  '^',
+  '<<',
+  '>>',
+  '>>>',
+  '(',
+  '['
+]);
+
+const EXPR_CONTINUING_NEXT_KEYWORDS = new Set(['as', 'satisfies', 'instanceof', 'in']);
+
+const MULTI_CHAR_PUNCTS = [
+  '===',
+  '!==',
+  '>>>',
+  '...',
+  '=>',
+  '?.',
+  '??',
+  '&&',
+  '||',
+  '==',
+  '!=',
+  '<=',
+  '>=',
+  '+=',
+  '-=',
+  '*=',
+  '/=',
+  '%=',
+  '**',
+  '<<',
+  '>>',
+  '++',
+  '--'
+];
+
+const canStartRegexLiteral = (prevTok) => {
+  if (prevTok === undefined) {
+    return true;
   }
-
-  return { bindings, ambiguous };
+  if (prevTok.type === 'punct') {
+    return (
+      prevTok.value !== ')' &&
+      prevTok.value !== ']' &&
+      prevTok.value !== '++' &&
+      prevTok.value !== '--'
+    );
+  }
+  if (prevTok.type === 'ident') {
+    return REGEX_PRECEDING_KEYWORDS.has(prevTok.value);
+  }
+  return false;
 };
 
 /**
- * 静态解析 `sql/table.ts` 中的全部 `defineSqlTable(...)` 声明并校验 OceanBase/MySQL 硬约束：
- * - 支持内联对象字面量、局部 `const` 变量、局部对象展开与 `as const` / `satisfies` 断言；
- * - 遇到无法静态确认的表定义、列集合或索引定义时 fail-closed 报错，严禁静默跳过；
- * - 禁止给 `text` / `json` 列声明 `defaultValue`（OB/MySQL `ERROR 1101`）；
- * - 禁止对 `text` / `json` 列建普通 B-Tree 索引；
- * - 校验单条普通/唯一复合索引在 `utf8mb4` 下的最大估算字节宽不超过 3072 字节。
+ * 将已去注释的 JS/TS 源码切分为带精确字符偏移与换行标记的 Token 流，并预计算 `()`/`{}`/`[]` 的 O(1) 配对表。
+ * 正确处理字符串字面量、嵌套 `${...}` 模板字符串与正则字面量，避免字符串内容干扰词法作用域与调用识别。
  */
-export const analyzeSqlTableDefinitions = (sourceText) => {
+const tokenizeCleanJsTs = (clean) => {
+  const tokens = [];
+  const templateBraceDepthStack = [];
+  let i = 0;
+  let lineBreakBefore = false;
+
+  const scanTemplateChunk = (startIdx, isContinuation) => {
+    let cursor = startIdx + 1;
+    let escaped = false;
+    while (cursor < clean.length) {
+      const ch = clean[cursor];
+      if (escaped) {
+        escaped = false;
+        cursor += 1;
+        continue;
+      }
+      if (ch === '\\') {
+        escaped = true;
+        cursor += 1;
+        continue;
+      }
+      if (ch === '`') {
+        const end = cursor + 1;
+        tokens.push({
+          type: isContinuation ? 'template_tail' : 'template',
+          value: clean.slice(startIdx, end),
+          start: startIdx,
+          end,
+          lineBreakBefore
+        });
+        lineBreakBefore = false;
+        return end;
+      }
+      if (ch === '$' && clean[cursor + 1] === '{') {
+        const end = cursor + 2;
+        tokens.push({
+          type: isContinuation ? 'template_middle' : 'template_head',
+          value: clean.slice(startIdx, end),
+          start: startIdx,
+          end,
+          lineBreakBefore
+        });
+        lineBreakBefore = false;
+        templateBraceDepthStack.push(0);
+        return end;
+      }
+      cursor += 1;
+    }
+    tokens.push({
+      type: isContinuation ? 'template_tail' : 'template',
+      value: clean.slice(startIdx),
+      start: startIdx,
+      end: clean.length,
+      lineBreakBefore
+    });
+    lineBreakBefore = false;
+    return clean.length;
+  };
+
+  while (i < clean.length) {
+    const ch = clean[i];
+
+    if (/\s/.test(ch)) {
+      if (ch === '\n' || ch === '\r') {
+        lineBreakBefore = true;
+      }
+      i += 1;
+      continue;
+    }
+
+    if (ch === "'" || ch === '"') {
+      const endQuote = skipQuotedLiteral(clean, i);
+      const end = Math.min(endQuote + 1, clean.length);
+      tokens.push({
+        type: 'string',
+        value: clean.slice(i, end),
+        start: i,
+        end,
+        lineBreakBefore
+      });
+      lineBreakBefore = false;
+      i = end;
+      continue;
+    }
+
+    if (ch === '`') {
+      i = scanTemplateChunk(i, false);
+      continue;
+    }
+
+    if (ch === '}' && templateBraceDepthStack.length > 0) {
+      const topDepth = templateBraceDepthStack[templateBraceDepthStack.length - 1];
+      if (topDepth === 0) {
+        templateBraceDepthStack.pop();
+        i = scanTemplateChunk(i, true);
+        continue;
+      }
+      templateBraceDepthStack[templateBraceDepthStack.length - 1] = topDepth - 1;
+      tokens.push({ type: 'punct', value: '}', start: i, end: i + 1, lineBreakBefore });
+      lineBreakBefore = false;
+      i += 1;
+      continue;
+    }
+
+    if (ch === '{' && templateBraceDepthStack.length > 0) {
+      templateBraceDepthStack[templateBraceDepthStack.length - 1] += 1;
+      tokens.push({ type: 'punct', value: '{', start: i, end: i + 1, lineBreakBefore });
+      lineBreakBefore = false;
+      i += 1;
+      continue;
+    }
+
+    if (ch === '/' && canStartRegexLiteral(tokens[tokens.length - 1])) {
+      let cursor = i + 1;
+      let inCharClass = false;
+      let escaped = false;
+      let closed = false;
+      while (cursor < clean.length) {
+        const c = clean[cursor];
+        if (c === '\n' || c === '\r') {
+          break;
+        }
+        if (escaped) {
+          escaped = false;
+        } else if (c === '\\') {
+          escaped = true;
+        } else if (c === '[') {
+          inCharClass = true;
+        } else if (c === ']') {
+          inCharClass = false;
+        } else if (c === '/' && !inCharClass) {
+          cursor += 1;
+          while (cursor < clean.length && /[a-z]/i.test(clean[cursor])) {
+            cursor += 1;
+          }
+          closed = true;
+          break;
+        }
+        cursor += 1;
+      }
+      if (closed) {
+        tokens.push({
+          type: 'regex',
+          value: clean.slice(i, cursor),
+          start: i,
+          end: cursor,
+          lineBreakBefore
+        });
+        lineBreakBefore = false;
+        i = cursor;
+        continue;
+      }
+    }
+
+    if (/[A-Za-z_$]/.test(ch)) {
+      let cursor = i + 1;
+      while (cursor < clean.length && /[A-Za-z0-9_$]/.test(clean[cursor])) {
+        cursor += 1;
+      }
+      tokens.push({
+        type: 'ident',
+        value: clean.slice(i, cursor),
+        start: i,
+        end: cursor,
+        lineBreakBefore
+      });
+      lineBreakBefore = false;
+      i = cursor;
+      continue;
+    }
+
+    if (/[0-9]/.test(ch) || (ch === '.' && /[0-9]/.test(clean[i + 1] ?? ''))) {
+      let cursor = i + 1;
+      while (cursor < clean.length && /[0-9A-Fa-f_xXoObBn.]/.test(clean[cursor])) {
+        cursor += 1;
+      }
+      if ((clean[cursor] === 'e' || clean[cursor] === 'E') && /[+-0-9]/.test(clean[cursor + 1] ?? '')) {
+        cursor += 2;
+        while (cursor < clean.length && /[0-9_]/.test(clean[cursor])) {
+          cursor += 1;
+        }
+      }
+      tokens.push({
+        type: 'number',
+        value: clean.slice(i, cursor),
+        start: i,
+        end: cursor,
+        lineBreakBefore
+      });
+      lineBreakBefore = false;
+      i = cursor;
+      continue;
+    }
+
+    let matchedPunct = null;
+    for (const p of MULTI_CHAR_PUNCTS) {
+      if (clean.startsWith(p, i)) {
+        matchedPunct = p;
+        break;
+      }
+    }
+    const punctVal = matchedPunct ?? ch;
+    tokens.push({
+      type: 'punct',
+      value: punctVal,
+      start: i,
+      end: i + punctVal.length,
+      lineBreakBefore
+    });
+    lineBreakBefore = false;
+    i += punctVal.length;
+  }
+
+  const matchIdx = new Array(tokens.length).fill(-1);
+  const stack = [];
+  const openToClose = { '(': ')', '{': '}', '[': ']' };
+
+  for (let idx = 0; idx < tokens.length; idx += 1) {
+    const tok = tokens[idx];
+    if (tok.type !== 'punct') {
+      continue;
+    }
+    if (tok.value === '(' || tok.value === '{' || tok.value === '[') {
+      stack.push({ idx, expectedClose: openToClose[tok.value] });
+    } else if (tok.value === ')' || tok.value === '}' || tok.value === ']') {
+      for (let s = stack.length - 1; s >= 0; s -= 1) {
+        if (stack[s].expectedClose === tok.value) {
+          const opened = stack[s];
+          stack.length = s;
+          matchIdx[opened.idx] = idx;
+          matchIdx[idx] = opened.idx;
+          break;
+        }
+      }
+    }
+  }
+
+  return { tokens, matchIdx };
+};
+
+const isIdentTok = (tok, name) =>
+  tok !== undefined && tok.type === 'ident' && (name === undefined || tok.value === name);
+
+const isPunctTok = (tok, val) =>
+  tok !== undefined && tok.type === 'punct' && (val === undefined || tok.value === val);
+
+/** 匹配平衡的 TypeScript 泛型参数 `<...>`；若中途遇到语句分隔符则返回 -1。 */
+const tryMatchGenericAngle = ({ tokens, matchIdx, startIdx, rangeEnd = tokens.length }) => {
+  if (!isPunctTok(tokens[startIdx], '<')) {
+    return -1;
+  }
+  let depthAngle = 0;
+  for (let i = startIdx; i < rangeEnd; i += 1) {
+    const tok = tokens[i];
+    if (isPunctTok(tok, '(') || isPunctTok(tok, '{') || isPunctTok(tok, '[')) {
+      const close = matchIdx[i];
+      if (close === -1 || close >= rangeEnd) {
+        return -1;
+      }
+      i = close;
+      continue;
+    }
+    if (isPunctTok(tok, '<')) {
+      depthAngle += 1;
+      continue;
+    }
+    if (isPunctTok(tok, '>') || isPunctTok(tok, '>>') || isPunctTok(tok, '>>>')) {
+      const count = tok.value.length;
+      depthAngle -= count;
+      if (depthAngle <= 0) {
+        return i;
+      }
+      continue;
+    }
+    if (isPunctTok(tok, ';')) {
+      return -1;
+    }
+    if (
+      tok.type === 'ident' &&
+      (tok.value === 'return' ||
+        tok.value === 'const' ||
+        tok.value === 'let' ||
+        tok.value === 'var' ||
+        tok.value === 'if' ||
+        tok.value === 'for' ||
+        tok.value === 'while' ||
+        tok.value === 'throw' ||
+        tok.value === 'function')
+    ) {
+      return -1;
+    }
+  }
+  return -1;
+};
+
+/** 扫描表达式结束位置（半开区间 `[startTok, endTok)`），支持自动分号插入（ASI）。 */
+const findExprEndTok = ({ tokens, matchIdx, startTok, rangeEnd, stopOnComma = true }) => {
+  let i = startTok;
+  while (i < rangeEnd) {
+    const tok = tokens[i];
+    if (i > startTok && tok.lineBreakBefore) {
+      const prev = tokens[i - 1];
+      const prevContinues =
+        (prev.type === 'punct' && EXPR_CONTINUING_PREV_PUNCT.has(prev.value)) ||
+        (prev.type === 'ident' && EXPR_CONTINUING_PREV_KEYWORDS.has(prev.value));
+      const nextContinues =
+        (tok.type === 'punct' && EXPR_CONTINUING_NEXT_PUNCT.has(tok.value)) ||
+        (tok.type === 'ident' && EXPR_CONTINUING_NEXT_KEYWORDS.has(tok.value));
+      if (!prevContinues && !nextContinues) {
+        return i;
+      }
+    }
+    if (
+      isPunctTok(tok, ';') ||
+      isPunctTok(tok, ')') ||
+      isPunctTok(tok, ']') ||
+      isPunctTok(tok, '}') ||
+      (stopOnComma && isPunctTok(tok, ','))
+    ) {
+      return i;
+    }
+    if (isPunctTok(tok, '(') || isPunctTok(tok, '{') || isPunctTok(tok, '[')) {
+      const close = matchIdx[i];
+      if (close !== -1 && close < rangeEnd) {
+        i = close + 1;
+        continue;
+      }
+    }
+    i += 1;
+  }
+  return rangeEnd;
+};
+
+/** 按顶层逗号切分 `[startTok, endTok)` 内的 token 子区间（忽略嵌套括号与尖括号）。 */
+const splitTokenRangeByComma = ({ tokens, matchIdx, startTok, endTok }) => {
+  const ranges = [];
+  let segStart = startTok;
+  let angleDepth = 0;
+
+  for (let i = startTok; i < endTok; i += 1) {
+    const tok = tokens[i];
+    if (isPunctTok(tok, '(') || isPunctTok(tok, '{') || isPunctTok(tok, '[')) {
+      const close = matchIdx[i];
+      if (close !== -1 && close < endTok) {
+        i = close;
+      }
+      continue;
+    }
+    if (isPunctTok(tok, '<')) {
+      angleDepth += 1;
+      continue;
+    }
+    if (isPunctTok(tok, '>') && angleDepth > 0) {
+      angleDepth -= 1;
+      continue;
+    }
+    if (isPunctTok(tok, ',') && angleDepth === 0) {
+      if (segStart < i) {
+        ranges.push([segStart, i]);
+      }
+      segStart = i + 1;
+    }
+  }
+  if (segStart < endTok) {
+    ranges.push([segStart, endTok]);
+  }
+  return ranges;
+};
+
+const findTopLevelPunctInRange = ({ tokens, matchIdx, startTok, endTok, punctVal }) => {
+  let angleDepth = 0;
+  for (let i = startTok; i < endTok; i += 1) {
+    const tok = tokens[i];
+    if (isPunctTok(tok, '(') || isPunctTok(tok, '{') || isPunctTok(tok, '[')) {
+      const close = matchIdx[i];
+      if (close !== -1 && close < endTok) {
+        i = close;
+      }
+      continue;
+    }
+    if (isPunctTok(tok, '<')) {
+      angleDepth += 1;
+      continue;
+    }
+    if (isPunctTok(tok, '>') && angleDepth > 0) {
+      angleDepth -= 1;
+      continue;
+    }
+    if (angleDepth === 0 && isPunctTok(tok, punctVal)) {
+      return i;
+    }
+  }
+  return -1;
+};
+
+/** 递归提取 JS/TS 绑定模式（标识符、对象/数组解构、重命名、默认值、剩余参数）中声明的全部变量名。 */
+const extractBindingPatternIds = ({ tokens, matchIdx, startTok, endTok }) => {
+  let s = startTok;
+  let e = endTok;
+  while (s < e && isPunctTok(tokens[s], '...')) {
+    s += 1;
+  }
+  while (e > s && isPunctTok(tokens[e - 1], '?')) {
+    e -= 1;
+  }
+  if (s >= e) {
+    return [];
+  }
+
+  const first = tokens[s];
+  if (first.type === 'ident' && s + 1 === e) {
+    return first.value === 'this' ? [] : [first.value];
+  }
+
+  if (isPunctTok(first, '{') && matchIdx[s] === e - 1) {
+    const ids = [];
+    for (const [entryStart, entryEnd] of splitTokenRangeByComma({
+      tokens,
+      matchIdx,
+      startTok: s + 1,
+      endTok: e - 1
+    })) {
+      if (isPunctTok(tokens[entryStart], '...')) {
+        ids.push(
+          ...extractBindingPatternIds({ tokens, matchIdx, startTok: entryStart + 1, endTok: entryEnd })
+        );
+        continue;
+      }
+      const eqIdx = findTopLevelPunctInRange({
+        tokens,
+        matchIdx,
+        startTok: entryStart,
+        endTok: entryEnd,
+        punctVal: '='
+      });
+      const colonIdx = findTopLevelPunctInRange({
+        tokens,
+        matchIdx,
+        startTok: entryStart,
+        endTok: entryEnd,
+        punctVal: ':'
+      });
+      if (colonIdx !== -1 && (eqIdx === -1 || colonIdx < eqIdx)) {
+        const targetEnd = eqIdx !== -1 ? eqIdx : entryEnd;
+        ids.push(
+          ...extractBindingPatternIds({ tokens, matchIdx, startTok: colonIdx + 1, endTok: targetEnd })
+        );
+      } else {
+        const targetEnd = eqIdx !== -1 ? eqIdx : entryEnd;
+        ids.push(
+          ...extractBindingPatternIds({ tokens, matchIdx, startTok: entryStart, endTok: targetEnd })
+        );
+      }
+    }
+    return ids;
+  }
+
+  if (isPunctTok(first, '[') && matchIdx[s] === e - 1) {
+    const ids = [];
+    for (const [elemStart, elemEnd] of splitTokenRangeByComma({
+      tokens,
+      matchIdx,
+      startTok: s + 1,
+      endTok: e - 1
+    })) {
+      const eqIdx = findTopLevelPunctInRange({
+        tokens,
+        matchIdx,
+        startTok: elemStart,
+        endTok: elemEnd,
+        punctVal: '='
+      });
+      const targetEnd = eqIdx !== -1 ? eqIdx : elemEnd;
+      ids.push(
+        ...extractBindingPatternIds({ tokens, matchIdx, startTok: elemStart, endTok: targetEnd })
+      );
+    }
+    return ids;
+  }
+
+  return [];
+};
+
+const PARAM_MODIFIER_KEYWORDS = new Set([
+  'public',
+  'private',
+  'protected',
+  'readonly',
+  'override'
+]);
+
+/** 从函数/箭头函数/方法/catch 参数列表 `(...)` 中提取全部形参绑定名（自动跳过 TS 类型注解与修饰符）。 */
+const extractParamListBindings = ({ tokens, matchIdx, openParenIdx, closeParenIdx }) => {
+  const ids = [];
+  for (const [paramStart, paramEnd] of splitTokenRangeByComma({
+    tokens,
+    matchIdx,
+    startTok: openParenIdx + 1,
+    endTok: closeParenIdx
+  })) {
+    let cursor = paramStart;
+    while (cursor < paramEnd) {
+      if (isPunctTok(tokens[cursor], '@')) {
+        cursor += 1;
+        while (
+          cursor < paramEnd &&
+          (tokens[cursor].type === 'ident' || isPunctTok(tokens[cursor], '.'))
+        ) {
+          cursor += 1;
+        }
+        if (cursor < paramEnd && isPunctTok(tokens[cursor], '(')) {
+          const close = matchIdx[cursor];
+          cursor = close !== -1 && close < paramEnd ? close + 1 : cursor + 1;
+        }
+        continue;
+      }
+      if (tokens[cursor].type === 'ident' && PARAM_MODIFIER_KEYWORDS.has(tokens[cursor].value)) {
+        cursor += 1;
+        continue;
+      }
+      break;
+    }
+    if (cursor >= paramEnd) {
+      continue;
+    }
+
+    const colonIdx = findTopLevelPunctInRange({
+      tokens,
+      matchIdx,
+      startTok: cursor,
+      endTok: paramEnd,
+      punctVal: ':'
+    });
+    const eqIdx = findTopLevelPunctInRange({
+      tokens,
+      matchIdx,
+      startTok: cursor,
+      endTok: paramEnd,
+      punctVal: '='
+    });
+    let patEnd = paramEnd;
+    if (colonIdx !== -1 && colonIdx < patEnd) patEnd = colonIdx;
+    if (eqIdx !== -1 && eqIdx < patEnd) patEnd = eqIdx;
+
+    ids.push(...extractBindingPatternIds({ tokens, matchIdx, startTok: cursor, endTok: patEnd }));
+  }
+  return ids;
+};
+
+const looksLikeParamList = ({ tokens, matchIdx, openParenIdx, closeParenIdx }) => {
+  const items = splitTokenRangeByComma({
+    tokens,
+    matchIdx,
+    startTok: openParenIdx + 1,
+    endTok: closeParenIdx
+  });
+  for (const [start, end] of items) {
+    let cursor = start;
+    while (
+      cursor < end &&
+      (isPunctTok(tokens[cursor], '...') ||
+        (tokens[cursor].type === 'ident' && PARAM_MODIFIER_KEYWORDS.has(tokens[cursor].value)))
+    ) {
+      cursor += 1;
+    }
+    if (cursor >= end) {
+      return false;
+    }
+    const first = tokens[cursor];
+    if (
+      first.type !== 'ident' &&
+      !isPunctTok(first, '{') &&
+      !isPunctTok(first, '[') &&
+      !isPunctTok(first, '@')
+    ) {
+      return false;
+    }
+    if (first.type === 'ident' && cursor + 1 < end) {
+      const after = tokens[cursor + 1];
+      if (
+        !isPunctTok(after, ':') &&
+        !isPunctTok(after, '?') &&
+        !isPunctTok(after, '=')
+      ) {
+        return false;
+      }
+    }
+  }
+  return true;
+};
+
+/** 跳过 TypeScript 类型注解直至顶层目标分隔符（自动平衡 `()`/`{}`/`[]`/`<>`）。 */
+const skipTypeAnnotation = ({ tokens, matchIdx, startTok, rangeEnd, stopPuncts }) => {
+  let angleDepth = 0;
+  for (let i = startTok; i < rangeEnd; i += 1) {
+    const tok = tokens[i];
+    if (angleDepth === 0 && tok.type === 'punct' && stopPuncts.has(tok.value)) {
+      return i;
+    }
+    if (isPunctTok(tok, '(') || isPunctTok(tok, '{') || isPunctTok(tok, '[')) {
+      const close = matchIdx[i];
+      if (close !== -1 && close < rangeEnd) {
+        i = close;
+      }
+      continue;
+    }
+    if (isPunctTok(tok, '<')) {
+      angleDepth += 1;
+      continue;
+    }
+    if (isPunctTok(tok, '>') || isPunctTok(tok, '>>') || isPunctTok(tok, '>>>')) {
+      if (angleDepth > 0) {
+        angleDepth = Math.max(0, angleDepth - tok.value.length);
+      }
+      continue;
+    }
+  }
+  return rangeEnd;
+};
+
+/** 判断 `(` 是否为箭头函数参数列表 `(params) [: ReturnType] =>`。 */
+const findArrowAfterParen = ({ tokens, matchIdx, openParenIdx, rangeEnd }) => {
+  const prev = openParenIdx > 0 ? tokens[openParenIdx - 1] : undefined;
+  if (prev !== undefined && prev.type === 'ident' && CONTROL_PAREN_KEYWORDS.has(prev.value)) {
+    return null;
+  }
+  const closeParenIdx = matchIdx[openParenIdx];
+  if (closeParenIdx === -1 || closeParenIdx >= rangeEnd) {
+    return null;
+  }
+  const next = tokens[closeParenIdx + 1];
+  if (isPunctTok(next, '=>')) {
+    return { closeParenIdx, arrowIdx: closeParenIdx + 1 };
+  }
+  if (
+    isPunctTok(next, ':') &&
+    !isPunctTok(prev, '?') &&
+    looksLikeParamList({ tokens, matchIdx, openParenIdx, closeParenIdx })
+  ) {
+    let angleDepth = 0;
+    let lastArrowIdx = -1;
+    for (let i = closeParenIdx + 2; i < rangeEnd; i += 1) {
+      const tok = tokens[i];
+      if (isPunctTok(tok, '(') || isPunctTok(tok, '{') || isPunctTok(tok, '[')) {
+        if (lastArrowIdx !== -1 && isPunctTok(tok, '{')) {
+          return { closeParenIdx, arrowIdx: lastArrowIdx };
+        }
+        const close = matchIdx[i];
+        if (close === -1 || close >= rangeEnd) {
+          break;
+        }
+        i = close;
+        continue;
+      }
+      if (isPunctTok(tok, '<')) {
+        angleDepth += 1;
+        continue;
+      }
+      if (isPunctTok(tok, '>') || isPunctTok(tok, '>>') || isPunctTok(tok, '>>>')) {
+        if (angleDepth > 0) {
+          angleDepth = Math.max(0, angleDepth - tok.value.length);
+        }
+        continue;
+      }
+      if (angleDepth === 0) {
+        if (isPunctTok(tok, '=>')) {
+          lastArrowIdx = i;
+          continue;
+        }
+        if (
+          isPunctTok(tok, ';') ||
+          isPunctTok(tok, ',') ||
+          isPunctTok(tok, ')') ||
+          isPunctTok(tok, ']') ||
+          isPunctTok(tok, '}') ||
+          isPunctTok(tok, '=')
+        ) {
+          break;
+        }
+      }
+    }
+    if (lastArrowIdx !== -1) {
+      return { closeParenIdx, arrowIdx: lastArrowIdx };
+    }
+  }
+  return null;
+};
+
+/**
+ * 构建带精确字符区间 `[start, end]` 的词法作用域树，完整覆盖：
+ * - 模块级 / 块级 `const`、`let`、`var`（`var` 自动提升至最近函数/模块作用域）及解构绑定；
+ * - 函数声明/表达式、箭头函数（块体与表达式体）、类/对象方法与构造器形参；
+ * - `catch (...)` 与 `for (...)` / `for await (...)` 循环绑定；
+ * - 跳过 `type` / `interface` / `import type` / `as const` 等纯类型语法。
+ */
+const buildLexicalScopeTree = ({ clean, tokens, matchIdx }) => {
+  let nextScopeId = 1;
+  const createScope = ({ kind, parent, start, end }) => {
+    const scope = {
+      id: nextScopeId++,
+      kind,
+      parent,
+      start,
+      end,
+      children: [],
+      bindings: new Map()
+    };
+    if (parent !== null) {
+      parent.children.push(scope);
+    }
+    return scope;
+  };
+
+  const rootScope = createScope({ kind: 'module', parent: null, start: 0, end: clean.length });
+
+  const findFunctionOrModuleScope = (scope) => {
+    let cur = scope;
+    while (cur !== null && cur.kind !== 'function' && cur.kind !== 'module') {
+      cur = cur.parent;
+    }
+    return cur ?? rootScope;
+  };
+
+  const addBinding = ({ scope, name, info }) => {
+    if (!IDENTIFIER_REGEX.test(name)) {
+      return;
+    }
+    const existing = scope.bindings.get(name);
+    if (existing === undefined) {
+      scope.bindings.set(name, info);
+      return;
+    }
+    // 绝不将已有非 const（形参/可变声明/解构等）升级为静态 const
+    if (existing.kind !== 'const') {
+      return;
+    }
+    if (info.kind !== 'const') {
+      scope.bindings.set(name, info);
+      return;
+    }
+    scope.bindings.set(name, {
+      kind: 'ambiguous',
+      detail: 'multiple declarations in the same scope',
+      declStart: info.declStart
+    });
+  };
+
+  const walkRange = ({ startTok, endTok, currentScope }) => {
+    for (let i = startTok; i < endTok; i += 1) {
+      const tok = tokens[i];
+      const prev = i > startTok ? tokens[i - 1] : undefined;
+      const next = i + 1 < endTok ? tokens[i + 1] : undefined;
+
+      // 1. import 声明（记录值导入绑定，跳过 import type 与动态 import()）
+      if (
+        isIdentTok(tok, 'import') &&
+        !isPunctTok(prev, '.') &&
+        !isPunctTok(prev, '?.') &&
+        !isPunctTok(next, '(')
+      ) {
+        let cursor = i + 1;
+        let isTypeOnlyImport = false;
+        if (isIdentTok(tokens[cursor], 'type') && !isIdentTok(tokens[cursor + 1], 'from')) {
+          isTypeOnlyImport = true;
+          cursor += 1;
+        }
+        const importedIds = [];
+        while (cursor < endTok && !isPunctTok(tokens[cursor], ';')) {
+          const cur = tokens[cursor];
+          if (cur.type === 'string') {
+            cursor += 1;
+            break;
+          }
+          if (isIdentTok(cur, 'from')) {
+            cursor += 1;
+            if (cursor < endTok && tokens[cursor].type === 'string') {
+              cursor += 1;
+            }
+            break;
+          }
+          if (!isTypeOnlyImport) {
+            if (isPunctTok(cur, '*') && isIdentTok(tokens[cursor + 1], 'as') && tokens[cursor + 2]?.type === 'ident') {
+              importedIds.push({ name: tokens[cursor + 2].value, start: tokens[cursor + 2].start });
+              cursor += 3;
+              continue;
+            }
+            if (isPunctTok(cur, '{') && matchIdx[cursor] !== -1 && matchIdx[cursor] < endTok) {
+              const close = matchIdx[cursor];
+              for (const [sStart, sEnd] of splitTokenRangeByComma({
+                tokens,
+                matchIdx,
+                startTok: cursor + 1,
+                endTok: close
+              })) {
+                if (isIdentTok(tokens[sStart], 'type')) {
+                  continue;
+                }
+                const localTok =
+                  sEnd - sStart >= 3 && isIdentTok(tokens[sStart + 1], 'as')
+                    ? tokens[sStart + 2]
+                    : tokens[sStart];
+                if (localTok?.type === 'ident') {
+                  importedIds.push({ name: localTok.value, start: localTok.start });
+                }
+              }
+              cursor = close + 1;
+              continue;
+            }
+            if (cur.type === 'ident') {
+              importedIds.push({ name: cur.value, start: cur.start });
+            }
+          }
+          cursor += 1;
+        }
+        for (const item of importedIds) {
+          addBinding({
+            scope: rootScope,
+            name: item.name,
+            info: {
+              kind: 'import',
+              detail: 'import binding',
+              declStart: item.start
+            }
+          });
+        }
+        if (isPunctTok(tokens[cursor], ';')) {
+          cursor += 1;
+        }
+        i = cursor - 1;
+        continue;
+      }
+
+      // 2. 跳过纯 TypeScript 声明：`interface Foo { ... }`、`type Foo = ...`、`export type { ... }`
+      if (
+        isIdentTok(tok, 'interface') &&
+        !isPunctTok(prev, '.') &&
+        !isPunctTok(prev, '?.') &&
+        next?.type === 'ident'
+      ) {
+        let cursor = i + 2;
+        while (cursor < endTok && !isPunctTok(tokens[cursor], '{') && !isPunctTok(tokens[cursor], ';')) {
+          cursor += 1;
+        }
+        if (isPunctTok(tokens[cursor], '{') && matchIdx[cursor] !== -1 && matchIdx[cursor] < endTok) {
+          i = matchIdx[cursor];
+          continue;
+        }
+      }
+
+      if (
+        isIdentTok(tok, 'type') &&
+        !isPunctTok(prev, '.') &&
+        !isPunctTok(prev, '?.') &&
+        next?.type === 'ident' &&
+        (prev === undefined ||
+          tok.lineBreakBefore ||
+          isPunctTok(prev, ';') ||
+          isPunctTok(prev, '{') ||
+          isPunctTok(prev, '}') ||
+          isIdentTok(prev, 'export') ||
+          isIdentTok(prev, 'declare'))
+      ) {
+        let cursor = i + 2;
+        if (isPunctTok(tokens[cursor], '<')) {
+          const closeAngle = tryMatchGenericAngle({
+            tokens,
+            matchIdx,
+            startIdx: cursor,
+            rangeEnd: endTok
+          });
+          if (closeAngle !== -1) {
+            cursor = closeAngle + 1;
+          }
+        }
+        if (isPunctTok(tokens[cursor], '=')) {
+          const typeEnd = findExprEndTok({
+            tokens,
+            matchIdx,
+            startTok: cursor + 1,
+            rangeEnd: endTok,
+            stopOnComma: false
+          });
+          i = typeEnd - 1;
+          continue;
+        }
+      }
+
+      // 3. 变量声明：`const` / `let` / `var`（跳过 `as const`、属性键与成员访问）
+      if (
+        (isIdentTok(tok, 'const') || isIdentTok(tok, 'let') || isIdentTok(tok, 'var')) &&
+        !isPunctTok(prev, '.') &&
+        !isPunctTok(prev, '?.') &&
+        !isIdentTok(prev, 'as') &&
+        next !== undefined &&
+        (next.type === 'ident' || isPunctTok(next, '{') || isPunctTok(next, '[')) &&
+        !(next.type === 'ident' && isPunctTok(tokens[i + 2], ':') && isPunctTok(prev, '{'))
+      ) {
+        const declKeyword = tok.value;
+        const targetScope =
+          declKeyword === 'var' ? findFunctionOrModuleScope(currentScope) : currentScope;
+        let cursor = i + 1;
+
+        while (cursor < endTok) {
+          const declTok = tokens[cursor];
+          if (isPunctTok(declTok, '{') || isPunctTok(declTok, '[')) {
+            const close = matchIdx[cursor];
+            if (close === -1 || close >= endTok) {
+              break;
+            }
+            const patIds = extractBindingPatternIds({
+              tokens,
+              matchIdx,
+              startTok: cursor,
+              endTok: close + 1
+            });
+            for (const id of patIds) {
+              addBinding({
+                scope: targetScope,
+                name: id,
+                info: {
+                  kind: declKeyword === 'const' ? 'destructured' : 'mutable',
+                  detail:
+                    declKeyword === 'const'
+                      ? 'const destructuring'
+                      : `${declKeyword} declaration`,
+                  declStart: declTok.start
+                }
+              });
+            }
+            cursor = close + 1;
+            if (isPunctTok(tokens[cursor], ':')) {
+              cursor = skipTypeAnnotation({
+                tokens,
+                matchIdx,
+                startTok: cursor + 1,
+                rangeEnd: endTok,
+                stopPuncts: new Set(['=', ',', ';'])
+              });
+            }
+            if (isPunctTok(tokens[cursor], '=')) {
+              const initStart = cursor + 1;
+              const initEnd = findExprEndTok({
+                tokens,
+                matchIdx,
+                startTok: initStart,
+                rangeEnd: endTok,
+                stopOnComma: true
+              });
+              walkRange({ startTok: initStart, endTok: initEnd, currentScope });
+              cursor = initEnd;
+            }
+          } else if (declTok?.type === 'ident') {
+            const varName = declTok.value;
+            const declStart = declTok.start;
+            cursor += 1;
+            if (isPunctTok(tokens[cursor], '!')) {
+              cursor += 1;
+            }
+            if (isPunctTok(tokens[cursor], ':')) {
+              cursor = skipTypeAnnotation({
+                tokens,
+                matchIdx,
+                startTok: cursor + 1,
+                rangeEnd: endTok,
+                stopPuncts: new Set(['=', ',', ';'])
+              });
+            }
+            if (isPunctTok(tokens[cursor], '=')) {
+              const initStart = cursor + 1;
+              const initEnd = findExprEndTok({
+                tokens,
+                matchIdx,
+                startTok: initStart,
+                rangeEnd: endTok,
+                stopOnComma: true
+              });
+              if (declKeyword === 'const' && initStart < initEnd) {
+                const exprStart = tokens[initStart].start;
+                const exprEnd = tokens[initEnd - 1].end;
+                addBinding({
+                  scope: targetScope,
+                  name: varName,
+                  info: {
+                    kind: 'const',
+                    exprText: clean.slice(exprStart, exprEnd).trim(),
+                    exprStart,
+                    declStart
+                  }
+                });
+              } else {
+                addBinding({
+                  scope: targetScope,
+                  name: varName,
+                  info: {
+                    kind: 'mutable',
+                    detail: `${declKeyword} declaration`,
+                    declStart
+                  }
+                });
+              }
+              walkRange({ startTok: initStart, endTok: initEnd, currentScope });
+              cursor = initEnd;
+            } else {
+              addBinding({
+                scope: targetScope,
+                name: varName,
+                info: {
+                  kind: 'mutable',
+                  detail: `${declKeyword} declaration`,
+                  declStart
+                }
+              });
+            }
+          } else {
+            break;
+          }
+
+          if (isPunctTok(tokens[cursor], ',')) {
+            cursor += 1;
+            continue;
+          }
+          break;
+        }
+        i = cursor - 1;
+        continue;
+      }
+
+      // 4. function 声明与函数表达式
+      if (
+        isIdentTok(tok, 'function') &&
+        !isPunctTok(prev, '.') &&
+        !isPunctTok(prev, '?.') &&
+        !isPunctTok(next, ':')
+      ) {
+        let cursor = i + 1;
+        if (isPunctTok(tokens[cursor], '*')) {
+          cursor += 1;
+        }
+        let fnName = null;
+        let fnNameStart = tok.start;
+        if (tokens[cursor]?.type === 'ident') {
+          fnName = tokens[cursor].value;
+          fnNameStart = tokens[cursor].start;
+          cursor += 1;
+        }
+        if (isPunctTok(tokens[cursor], '<')) {
+          const closeAngle = tryMatchGenericAngle({
+            tokens,
+            matchIdx,
+            startIdx: cursor,
+            rangeEnd: endTok
+          });
+          if (closeAngle !== -1) {
+            cursor = closeAngle + 1;
+          }
+        }
+        if (isPunctTok(tokens[cursor], '(')) {
+          const paramOpen = cursor;
+          const paramClose = matchIdx[paramOpen];
+          if (paramClose !== -1 && paramClose < endTok) {
+            let bodyOpen = paramClose + 1;
+            if (isPunctTok(tokens[bodyOpen], ':')) {
+              bodyOpen = skipTypeAnnotation({
+                tokens,
+                matchIdx,
+                startTok: bodyOpen + 1,
+                rangeEnd: endTok,
+                stopPuncts: new Set(['{', ';'])
+              });
+            }
+            if (isPunctTok(tokens[bodyOpen], '{') && matchIdx[bodyOpen] !== -1 && matchIdx[bodyOpen] < endTok) {
+              const bodyClose = matchIdx[bodyOpen];
+              const isExprPos =
+                prev !== undefined &&
+                ((prev.type === 'punct' &&
+                  ['=', '(', '[', ',', ':', '?', '&&', '||', '??', '!', '=>'].includes(
+                    prev.value
+                  )) ||
+                  (prev.type === 'ident' && ['return', 'await', 'default'].includes(prev.value)));
+              if (fnName !== null && !isExprPos) {
+                addBinding({
+                  scope: currentScope,
+                  name: fnName,
+                  info: {
+                    kind: 'function',
+                    detail: 'function declaration',
+                    declStart: fnNameStart
+                  }
+                });
+              }
+
+              const fnScope = createScope({
+                kind: 'function',
+                parent: currentScope,
+                start: tokens[paramOpen].start,
+                end: tokens[bodyClose].end
+              });
+              if (fnName !== null && isExprPos) {
+                addBinding({
+                  scope: fnScope,
+                  name: fnName,
+                  info: {
+                    kind: 'function',
+                    detail: 'function expression name',
+                    declStart: fnNameStart
+                  }
+                });
+              }
+              for (const p of extractParamListBindings({
+                tokens,
+                matchIdx,
+                openParenIdx: paramOpen,
+                closeParenIdx: paramClose
+              })) {
+                addBinding({
+                  scope: fnScope,
+                  name: p,
+                  info: {
+                    kind: 'param',
+                    detail: 'function parameter',
+                    declStart: tokens[paramOpen].start
+                  }
+                });
+              }
+              walkRange({ startTok: bodyOpen + 1, endTok: bodyClose, currentScope: fnScope });
+              i = bodyClose;
+              continue;
+            }
+          }
+        }
+      }
+
+      // 5. catch (err) { ... } 作用域
+      if (isIdentTok(tok, 'catch') && !isPunctTok(prev, '.') && !isPunctTok(prev, '?.')) {
+        if (isPunctTok(next, '(')) {
+          const paramOpen = i + 1;
+          const paramClose = matchIdx[paramOpen];
+          if (
+            paramClose !== -1 &&
+            paramClose + 1 < endTok &&
+            isPunctTok(tokens[paramClose + 1], '{')
+          ) {
+            const bodyOpen = paramClose + 1;
+            const bodyClose = matchIdx[bodyOpen];
+            if (bodyClose !== -1 && bodyClose < endTok) {
+              const catchScope = createScope({
+                kind: 'catch',
+                parent: currentScope,
+                start: tokens[bodyOpen].start,
+                end: tokens[bodyClose].end
+              });
+              for (const p of extractParamListBindings({
+                tokens,
+                matchIdx,
+                openParenIdx: paramOpen,
+                closeParenIdx: paramClose
+              })) {
+                addBinding({
+                  scope: catchScope,
+                  name: p,
+                  info: {
+                    kind: 'catch',
+                    detail: 'catch clause parameter',
+                    declStart: tokens[paramOpen].start
+                  }
+                });
+              }
+              walkRange({ startTok: bodyOpen + 1, endTok: bodyClose, currentScope: catchScope });
+              i = bodyClose;
+              continue;
+            }
+          }
+        }
+      }
+
+      // 6. for / for await 循环作用域
+      if (isIdentTok(tok, 'for') && !isPunctTok(prev, '.') && !isPunctTok(prev, '?.')) {
+        let cursor = i + 1;
+        if (isIdentTok(tokens[cursor], 'await')) {
+          cursor += 1;
+        }
+        if (isPunctTok(tokens[cursor], '(')) {
+          const headOpen = cursor;
+          const headClose = matchIdx[headOpen];
+          if (headClose !== -1 && headClose < endTok) {
+            const bodyStart = headClose + 1;
+            let bodyEnd = bodyStart;
+            let bodyIsBlock = false;
+            if (bodyStart < endTok && isPunctTok(tokens[bodyStart], '{') && matchIdx[bodyStart] !== -1) {
+              bodyEnd = Math.min(matchIdx[bodyStart] + 1, endTok);
+              bodyIsBlock = true;
+            } else if (bodyStart < endTok) {
+              bodyEnd = findExprEndTok({
+                tokens,
+                matchIdx,
+                startTok: bodyStart,
+                rangeEnd: endTok,
+                stopOnComma: false
+              });
+              if (bodyEnd < endTok && isPunctTok(tokens[bodyEnd], ';')) {
+                bodyEnd += 1;
+              }
+            }
+
+            const scopeEndChar =
+              bodyEnd > bodyStart ? tokens[bodyEnd - 1].end : tokens[headClose].end;
+            const forScope = createScope({
+              kind: 'for',
+              parent: currentScope,
+              start: tokens[headOpen].start,
+              end: scopeEndChar
+            });
+
+            const headFirst = tokens[headOpen + 1];
+            if (
+              headOpen + 1 < headClose &&
+              (isIdentTok(headFirst, 'const') ||
+                isIdentTok(headFirst, 'let') ||
+                isIdentTok(headFirst, 'var'))
+            ) {
+              const loopKeyword = headFirst.value;
+              const bindTarget =
+                loopKeyword === 'var' ? findFunctionOrModuleScope(currentScope) : forScope;
+              let declEnd = headClose;
+              for (let k = headOpen + 2; k < headClose; k += 1) {
+                if (isPunctTok(tokens[k], '(') || isPunctTok(tokens[k], '{') || isPunctTok(tokens[k], '[')) {
+                  const c = matchIdx[k];
+                  if (c !== -1 && c < headClose) k = c;
+                  continue;
+                }
+                if (
+                  isIdentTok(tokens[k], 'of') ||
+                  isIdentTok(tokens[k], 'in') ||
+                  isPunctTok(tokens[k], ';')
+                ) {
+                  declEnd = k;
+                  break;
+                }
+              }
+              for (const [dStart, dEnd] of splitTokenRangeByComma({
+                tokens,
+                matchIdx,
+                startTok: headOpen + 2,
+                endTok: declEnd
+              })) {
+                const colonIdx = findTopLevelPunctInRange({
+                  tokens,
+                  matchIdx,
+                  startTok: dStart,
+                  endTok: dEnd,
+                  punctVal: ':'
+                });
+                const eqIdx = findTopLevelPunctInRange({
+                  tokens,
+                  matchIdx,
+                  startTok: dStart,
+                  endTok: dEnd,
+                  punctVal: '='
+                });
+                let patEnd = dEnd;
+                if (colonIdx !== -1 && colonIdx < patEnd) patEnd = colonIdx;
+                if (eqIdx !== -1 && eqIdx < patEnd) patEnd = eqIdx;
+                for (const id of extractBindingPatternIds({
+                  tokens,
+                  matchIdx,
+                  startTok: dStart,
+                  endTok: patEnd
+                })) {
+                  addBinding({
+                    scope: bindTarget,
+                    name: id,
+                    info: {
+                      kind: 'mutable',
+                      detail:
+                        loopKeyword === 'var'
+                          ? 'var declaration'
+                          : 'for-loop binding',
+                      declStart: tokens[dStart].start
+                    }
+                  });
+                }
+              }
+              if (declEnd + 1 < headClose) {
+                walkRange({ startTok: declEnd + 1, endTok: headClose, currentScope: forScope });
+              }
+            } else {
+              walkRange({ startTok: headOpen + 1, endTok: headClose, currentScope: forScope });
+            }
+
+            if (bodyIsBlock) {
+              walkRange({ startTok: bodyStart + 1, endTok: bodyEnd - 1, currentScope: forScope });
+            } else if (bodyStart < bodyEnd) {
+              walkRange({ startTok: bodyStart, endTok: bodyEnd, currentScope: forScope });
+            }
+            i = Math.max(headClose, bodyEnd - 1);
+            continue;
+          }
+        }
+      }
+
+      // 7. class 声明与类体作用域
+      if (
+        isIdentTok(tok, 'class') &&
+        !isPunctTok(prev, '.') &&
+        !isPunctTok(prev, '?.') &&
+        !isPunctTok(next, ':')
+      ) {
+        let cursor = i + 1;
+        if (
+          tokens[cursor]?.type === 'ident' &&
+          tokens[cursor].value !== 'extends' &&
+          tokens[cursor].value !== 'implements'
+        ) {
+          addBinding({
+            scope: currentScope,
+            name: tokens[cursor].value,
+            info: {
+              kind: 'class',
+              detail: 'class declaration',
+              declStart: tokens[cursor].start
+            }
+          });
+          cursor += 1;
+        }
+        while (cursor < endTok && !isPunctTok(tokens[cursor], '{')) {
+          if (isPunctTok(tokens[cursor], '(') || isPunctTok(tokens[cursor], '[')) {
+            const c = matchIdx[cursor];
+            if (c !== -1 && c < endTok) cursor = c;
+          }
+          cursor += 1;
+        }
+        if (isPunctTok(tokens[cursor], '{') && matchIdx[cursor] !== -1 && matchIdx[cursor] < endTok) {
+          const bodyOpen = cursor;
+          const bodyClose = matchIdx[bodyOpen];
+          const classScope = createScope({
+            kind: 'block',
+            parent: currentScope,
+            start: tokens[bodyOpen].start,
+            end: tokens[bodyClose].end
+          });
+          walkRange({ startTok: bodyOpen + 1, endTok: bodyClose, currentScope: classScope });
+          i = bodyClose;
+          continue;
+        }
+      }
+
+      // 8a. 单参数箭头函数：`x => ...`
+      if (
+        tok.type === 'ident' &&
+        isPunctTok(next, '=>') &&
+        !isPunctTok(prev, '.') &&
+        !isPunctTok(prev, '?.')
+      ) {
+        const bodyStart = i + 2;
+        if (bodyStart < endTok && isPunctTok(tokens[bodyStart], '{') && matchIdx[bodyStart] !== -1) {
+          const bodyClose = Math.min(matchIdx[bodyStart], endTok - 1);
+          const fnScope = createScope({
+            kind: 'function',
+            parent: currentScope,
+            start: tok.start,
+            end: tokens[bodyClose].end
+          });
+          addBinding({
+            scope: fnScope,
+            name: tok.value,
+            info: {
+              kind: 'param',
+              detail: 'arrow function parameter',
+              declStart: tok.start
+            }
+          });
+          walkRange({ startTok: bodyStart + 1, endTok: bodyClose, currentScope: fnScope });
+          i = bodyClose;
+          continue;
+        }
+        if (bodyStart < endTok) {
+          const bodyEnd = findExprEndTok({
+            tokens,
+            matchIdx,
+            startTok: bodyStart,
+            rangeEnd: endTok,
+            stopOnComma: true
+          });
+          const endChar =
+            bodyEnd > bodyStart ? tokens[bodyEnd - 1].end : tokens[bodyStart].end;
+          const fnScope = createScope({
+            kind: 'function',
+            parent: currentScope,
+            start: tok.start,
+            end: endChar
+          });
+          addBinding({
+            scope: fnScope,
+            name: tok.value,
+            info: {
+              kind: 'param',
+              detail: 'arrow function parameter',
+              declStart: tok.start
+            }
+          });
+          walkRange({ startTok: bodyStart, endTok: bodyEnd, currentScope: fnScope });
+          i = Math.max(bodyStart, bodyEnd - 1);
+          continue;
+        }
+      }
+
+      // 8b. 括号参数箭头函数：`(params) [: ReturnType] => ...`
+      if (isPunctTok(tok, '(')) {
+        const arrowInfo = findArrowAfterParen({
+          tokens,
+          matchIdx,
+          openParenIdx: i,
+          rangeEnd: endTok
+        });
+        if (arrowInfo !== null) {
+          const { closeParenIdx, arrowIdx } = arrowInfo;
+          const paramIds = extractParamListBindings({
+            tokens,
+            matchIdx,
+            openParenIdx: i,
+            closeParenIdx
+          });
+          const bodyStart = arrowIdx + 1;
+          if (bodyStart < endTok && isPunctTok(tokens[bodyStart], '{') && matchIdx[bodyStart] !== -1) {
+            const bodyClose = Math.min(matchIdx[bodyStart], endTok - 1);
+            const fnScope = createScope({
+              kind: 'function',
+              parent: currentScope,
+              start: tok.start,
+              end: tokens[bodyClose].end
+            });
+            for (const p of paramIds) {
+              addBinding({
+                scope: fnScope,
+                name: p,
+                info: {
+                  kind: 'param',
+                  detail: 'arrow function parameter',
+                  declStart: tok.start
+                }
+              });
+            }
+            walkRange({ startTok: bodyStart + 1, endTok: bodyClose, currentScope: fnScope });
+            i = bodyClose;
+            continue;
+          }
+          if (bodyStart < endTok) {
+            const bodyEnd = findExprEndTok({
+              tokens,
+              matchIdx,
+              startTok: bodyStart,
+              rangeEnd: endTok,
+              stopOnComma: true
+            });
+            const endChar =
+              bodyEnd > bodyStart ? tokens[bodyEnd - 1].end : tokens[bodyStart].end;
+            const fnScope = createScope({
+              kind: 'function',
+              parent: currentScope,
+              start: tok.start,
+              end: endChar
+            });
+            for (const p of paramIds) {
+              addBinding({
+                scope: fnScope,
+                name: p,
+                info: {
+                  kind: 'param',
+                  detail: 'arrow function parameter',
+                  declStart: tok.start
+                }
+              });
+            }
+            walkRange({ startTok: bodyStart, endTok: bodyEnd, currentScope: fnScope });
+            i = Math.max(bodyStart, bodyEnd - 1);
+            continue;
+          }
+        }
+
+        // 9. 类方法 / 对象简写方法 / 构造器：`foo(params) [: Ret] { ... }`
+        const closeParenIdx = matchIdx[i];
+        const prevCanBeMethodName =
+          prev !== undefined &&
+          ((prev.type === 'ident' && !NON_METHOD_PREV_KEYWORDS.has(prev.value)) ||
+            isPunctTok(prev, '>') ||
+            isPunctTok(prev, ']'));
+        if (closeParenIdx !== -1 && closeParenIdx < endTok && prevCanBeMethodName) {
+          let bodyOpen = closeParenIdx + 1;
+          if (isPunctTok(tokens[bodyOpen], ':')) {
+            bodyOpen = skipTypeAnnotation({
+              tokens,
+              matchIdx,
+              startTok: bodyOpen + 1,
+              rangeEnd: endTok,
+              stopPuncts: new Set(['{', ';', ','])
+            });
+          }
+          if (
+            bodyOpen < endTok &&
+            isPunctTok(tokens[bodyOpen], '{') &&
+            matchIdx[bodyOpen] !== -1 &&
+            matchIdx[bodyOpen] < endTok
+          ) {
+            const bodyClose = matchIdx[bodyOpen];
+            const methodScope = createScope({
+              kind: 'function',
+              parent: currentScope,
+              start: tok.start,
+              end: tokens[bodyClose].end
+            });
+            for (const p of extractParamListBindings({
+              tokens,
+              matchIdx,
+              openParenIdx: i,
+              closeParenIdx
+            })) {
+              addBinding({
+                scope: methodScope,
+                name: p,
+                info: {
+                  kind: 'param',
+                  detail: 'method parameter',
+                  declStart: tok.start
+                }
+              });
+            }
+            walkRange({ startTok: bodyOpen + 1, endTok: bodyClose, currentScope: methodScope });
+            i = bodyClose;
+            continue;
+          }
+        }
+      }
+
+      // 10. 常规 `{ ... }` 块作用域
+      if (isPunctTok(tok, '{')) {
+        const bodyClose = matchIdx[i];
+        if (bodyClose !== -1 && bodyClose < endTok) {
+          const blockScope = createScope({
+            kind: 'block',
+            parent: currentScope,
+            start: tok.start,
+            end: tokens[bodyClose].end
+          });
+          walkRange({ startTok: i + 1, endTok: bodyClose, currentScope: blockScope });
+          i = bodyClose;
+        }
+      }
+    }
+  };
+
+  walkRange({ startTok: 0, endTok: tokens.length, currentScope: rootScope });
+
+  const findInnermostScope = (charPos) => {
+    let best = rootScope;
+    const visit = (scope) => {
+      if (charPos < scope.start || charPos > scope.end) {
+        return;
+      }
+      if (scope.end - scope.start <= best.end - best.start) {
+        best = scope;
+      }
+      for (const child of scope.children) {
+        if (charPos >= child.start && charPos <= child.end) {
+          visit(child);
+        }
+      }
+    };
+    visit(rootScope);
+    return best;
+  };
+
+  const lookupBinding = (name, charPos) => {
+    const innermost = findInnermostScope(charPos);
+    let cur = innermost;
+    while (cur !== null) {
+      if (cur.bindings.has(name)) {
+        return {
+          found: true,
+          scope: cur,
+          innermostScope: innermost,
+          binding: cur.bindings.get(name)
+        };
+      }
+      cur = cur.parent;
+    }
+    return { found: false, scope: null, innermostScope: innermost, binding: null };
+  };
+
+  return { rootScope, findInnermostScope, lookupBinding };
+};
+
+/** 收集源码中的命名导入映射与跨模块静态字符串常量（遵循可选 `gitRef` 历史隔离）。 */
+const collectImportMetadata = ({ clean, repoRoot, sourceRelPath, gitRef }) => {
+  const importedStrings = new Map();
+  const importedAliases = new Map();
+  const worktreeCache = new Map();
+
+  for (const match of clean.matchAll(/\bimport\s*\{([^}]+)\}\s*from\s*['"]([^'"]+)['"]/g)) {
+    const clause = match[1];
+    const specifier = match[2];
+    const importedMod =
+      repoRoot !== undefined
+        ? resolveImportedTsModule({ specifier, repoRoot, sourceRelPath, gitRef })
+        : null;
+    const exportedConsts =
+      importedMod !== null
+        ? readExportedStringConsts({
+            moduleInfo: importedMod,
+            repoRoot,
+            gitRef,
+            worktreeCache
+          })
+        : null;
+
+    for (const rawSpec of clause.split(',')) {
+      const trimmed = rawSpec.trim();
+      if (!trimmed || trimmed.startsWith('type ')) {
+        continue;
+      }
+      const asParts = trimmed.split(/\s+as\s+/).map((s) => s.trim());
+      const importedName = asParts[0];
+      const localName = asParts[1] ?? importedName;
+      importedAliases.set(localName, { importedName, specifier });
+      if (exportedConsts?.has(importedName)) {
+        importedStrings.set(localName, exportedConsts.get(importedName));
+      }
+    }
+  }
+
+  return { importedStrings, importedAliases };
+};
+
+/** 在 Token 流中定位所有指定函数名的真实调用（支持泛型 `<T>`，自动排除字符串、import 与函数声明）。 */
+const findFunctionCalls = ({ tokens, matchIdx, calleeNames, allowMemberAccess = false }) => {
+  const calls = [];
+  let inImportStmt = false;
+
+  for (let i = 0; i < tokens.length; i += 1) {
+    const tok = tokens[i];
+    const prev = i > 0 ? tokens[i - 1] : undefined;
+
+    if (
+      isIdentTok(tok, 'import') &&
+      !isPunctTok(prev, '.') &&
+      !isPunctTok(prev, '?.') &&
+      !isPunctTok(tokens[i + 1], '(')
+    ) {
+      inImportStmt = true;
+      continue;
+    }
+    if (inImportStmt) {
+      if (isPunctTok(tok, ';') || tok.type === 'string') {
+        inImportStmt = false;
+      }
+      continue;
+    }
+
+    if (tok.type !== 'ident' || !calleeNames.has(tok.value)) {
+      continue;
+    }
+    if (!allowMemberAccess && (isPunctTok(prev, '.') || isPunctTok(prev, '?.'))) {
+      continue;
+    }
+    if (isIdentTok(prev, 'function')) {
+      continue;
+    }
+
+    let cursor = i + 1;
+    if (isPunctTok(tokens[cursor], '<')) {
+      const closeAngle = tryMatchGenericAngle({
+        tokens,
+        matchIdx,
+        startIdx: cursor,
+        rangeEnd: tokens.length
+      });
+      if (closeAngle !== -1) {
+        cursor = closeAngle + 1;
+      }
+    }
+    if (!isPunctTok(tokens[cursor], '(')) {
+      continue;
+    }
+    const openParenIdx = cursor;
+    const closeParenIdx = matchIdx[openParenIdx];
+    calls.push({
+      calleeName: tok.value,
+      calleeIdx: i,
+      openParenIdx,
+      closeParenIdx
+    });
+  }
+
+  return calls;
+};
+
+/**
+ * 创建词法作用域感知的静态求值器：
+ * - 在调用点 `scopePos` 处沿最内层到最外层作用域查找标识符，被函数形参、`let`/`var`、`catch`/`for` 或解构遮蔽时
+ *   立即 fail-closed，绝不穿透回退到外层同名 `const`；
+ * - 对静态 `const` 绑定切换至其初始化表达式的词法位置递归求值。
+ */
+export const createStaticScopeResolver = ({
+  sourceText,
+  repoRoot,
+  sourceRelPath,
+  gitRef
+}) => {
   const clean = stripCommentsPreserveStrings(sourceText);
-  const { bindings: localBindings, ambiguous: ambiguousBindings } =
-    extractLocalConstInitializers(clean);
-  const tables = [];
-  const issues = [];
-  const callRegex = /\bdefineSqlTable\s*\(/g;
+  const { tokens, matchIdx } = tokenizeCleanJsTs(clean);
+  const scopeTree = buildLexicalScopeTree({ clean, tokens, matchIdx });
+  const { importedStrings, importedAliases } = collectImportMetadata({
+    clean,
+    repoRoot,
+    sourceRelPath,
+    gitRef
+  });
 
   const unwrapOuterParens = (expr) => {
     let current = stripTsAssertion(expr);
@@ -1985,8 +3890,61 @@ export const analyzeSqlTableDefinitions = (sourceText) => {
     return current;
   };
 
-  /** 递归解析 SQL 表定义内的静态 JS 值；无法静态判定时返回 `{ ok: false, reason }`。 */
-  const resolveStaticValue = ({ rawExpr, visited = new Set(), allowOpaqueIdentifier = false }) => {
+  /** 静态求值模板字符串 `` `...${expr}...` ``。 */
+  const resolveTemplateLiteral = ({ expr, scopePos, visited }) => {
+    const inner = expr.slice(1, -1);
+    let out = '';
+    let i = 0;
+    while (i < inner.length) {
+      if (inner[i] === '\\' && i + 1 < inner.length) {
+        out += inner[i + 1];
+        i += 2;
+        continue;
+      }
+      if (inner[i] === '$' && inner[i + 1] === '{') {
+        const seg = scanBalancedSegment(inner, {
+          startIdx: i + 1,
+          openChar: '{',
+          closeChar: '}'
+        });
+        if (seg === null) {
+          return { ok: false, reason: `malformed template literal "${expr.slice(0, 60)}"` };
+        }
+        const subRes = resolveValue({
+          rawExpr: seg.inner,
+          scopePos,
+          visited,
+          allowOpaqueIdentifier: false
+        });
+        if (
+          !subRes.ok ||
+          (typeof subRes.value !== 'string' &&
+            typeof subRes.value !== 'number' &&
+            typeof subRes.value !== 'boolean')
+        ) {
+          return {
+            ok: false,
+            reason: `template interpolation "\${${seg.inner.trim()}}" is not statically resolvable (${subRes.reason ?? 'non-primitive value'})`
+          };
+        }
+        out += String(subRes.value);
+        i = seg.endIdx + 1;
+        continue;
+      }
+      out += inner[i];
+      i += 1;
+    }
+    return { ok: true, value: out };
+  };
+
+  /** 递归求值静态 JS 表达式；`topLevelOnlyOpaque` 仅对顶层 `name` 字段放行外部导入标识符。 */
+  const resolveValue = ({
+    rawExpr,
+    scopePos = 0,
+    visited = new Set(),
+    allowOpaqueIdentifier = false,
+    topLevelOnlyOpaque = false
+  }) => {
     const expr = unwrapOuterParens(rawExpr);
     if (expr.length === 0) {
       return { ok: false, reason: 'empty expression' };
@@ -2001,26 +3959,56 @@ export const analyzeSqlTableDefinitions = (sourceText) => {
       return { ok: true, value: str };
     }
 
+    if (expr.startsWith('`') && expr.endsWith('`') && expr.length >= 2) {
+      return resolveTemplateLiteral({ expr, scopePos, visited });
+    }
+
     const num = evaluateNumericConstExpr(expr);
     if (num !== null) {
       return { ok: true, value: num };
     }
 
     if (IDENTIFIER_REGEX.test(expr)) {
-      if (ambiguousBindings.has(expr)) {
-        return { ok: false, reason: `identifier "${expr}" is declared multiple times` };
-      }
-      if (localBindings.has(expr)) {
-        if (visited.has(expr)) {
-          return { ok: false, reason: `circular local binding "${expr}"` };
+      const lookup = scopeTree.lookupBinding(expr, scopePos);
+      if (lookup.found) {
+        const { scope, innermostScope, binding } = lookup;
+        if (binding.kind === 'const') {
+          const visitKey = `${scope.id}:${expr}`;
+          if (visited.has(visitKey)) {
+            return { ok: false, reason: `circular local binding "${expr}"` };
+          }
+          if (scope === innermostScope && binding.declStart > scopePos) {
+            return {
+              ok: false,
+              reason: `identifier "${expr}" is referenced before its const declaration`
+            };
+          }
+          const nextVisited = new Set(visited);
+          nextVisited.add(visitKey);
+          return resolveValue({
+            rawExpr: binding.exprText,
+            scopePos: binding.exprStart,
+            visited: nextVisited,
+            allowOpaqueIdentifier,
+            topLevelOnlyOpaque
+          });
         }
-        const nextVisited = new Set(visited);
-        nextVisited.add(expr);
-        return resolveStaticValue({
-          rawExpr: localBindings.get(expr),
-          visited: nextVisited,
-          allowOpaqueIdentifier
-        });
+        if (binding.kind === 'import') {
+          if (importedStrings.has(expr)) {
+            return { ok: true, value: importedStrings.get(expr) };
+          }
+          if (allowOpaqueIdentifier) {
+            return { ok: true, value: expr };
+          }
+          return {
+            ok: false,
+            reason: `identifier "${expr}" is imported and cannot be statically verified`
+          };
+        }
+        return {
+          ok: false,
+          reason: `identifier "${expr}" is dynamically bound / shadowed by ${binding.detail}`
+        };
       }
       if (allowOpaqueIdentifier) {
         return { ok: true, value: expr };
@@ -2044,8 +4032,9 @@ export const analyzeSqlTableDefinitions = (sourceText) => {
           continue;
         }
         if (trimmed.startsWith('...')) {
-          const spreadRes = resolveStaticValue({
+          const spreadRes = resolveValue({
             rawExpr: trimmed.slice(3),
+            scopePos,
             visited
           });
           if (
@@ -2068,10 +4057,11 @@ export const analyzeSqlTableDefinitions = (sourceText) => {
           if (!IDENTIFIER_REGEX.test(trimmed)) {
             return { ok: false, reason: `unsupported object entry "${trimmed}"` };
           }
-          const shorthandRes = resolveStaticValue({
+          const shorthandRes = resolveValue({
             rawExpr: trimmed,
+            scopePos,
             visited,
-            allowOpaqueIdentifier: trimmed === 'name'
+            allowOpaqueIdentifier: topLevelOnlyOpaque && trimmed === 'name'
           });
           if (!shorthandRes.ok) {
             return { ok: false, reason: `property "${trimmed}": ${shorthandRes.reason}` };
@@ -2082,14 +4072,28 @@ export const analyzeSqlTableDefinitions = (sourceText) => {
 
         const rawKey = trimmed.slice(0, colonIdx).trim();
         const rawVal = trimmed.slice(colonIdx + 1).trim();
-        const key = unquoteString(rawKey) ?? rawKey;
-        if (!IDENTIFIER_REGEX.test(key) && unquoteString(rawKey) === null) {
-          return { ok: false, reason: `computed or dynamic property key "${rawKey}"` };
+        let key;
+        if (rawKey.startsWith('[') && rawKey.endsWith(']')) {
+          const keyRes = resolveValue({
+            rawExpr: rawKey.slice(1, -1),
+            scopePos,
+            visited
+          });
+          if (!keyRes.ok || typeof keyRes.value !== 'string') {
+            return { ok: false, reason: `computed or dynamic property key "${rawKey}"` };
+          }
+          key = keyRes.value;
+        } else {
+          key = unquoteString(rawKey) ?? rawKey;
+          if (!IDENTIFIER_REGEX.test(key) && unquoteString(rawKey) === null) {
+            return { ok: false, reason: `computed or dynamic property key "${rawKey}"` };
+          }
         }
-        const valRes = resolveStaticValue({
+        const valRes = resolveValue({
           rawExpr: rawVal,
+          scopePos,
           visited,
-          allowOpaqueIdentifier: key === 'name'
+          allowOpaqueIdentifier: topLevelOnlyOpaque && key === 'name'
         });
         if (!valRes.ok) {
           return { ok: false, reason: `property "${key}": ${valRes.reason}` };
@@ -2115,8 +4119,9 @@ export const analyzeSqlTableDefinitions = (sourceText) => {
           continue;
         }
         if (trimmed.startsWith('...')) {
-          const spreadRes = resolveStaticValue({
+          const spreadRes = resolveValue({
             rawExpr: trimmed.slice(3),
+            scopePos,
             visited
           });
           if (!spreadRes.ok || !Array.isArray(spreadRes.value)) {
@@ -2128,7 +4133,7 @@ export const analyzeSqlTableDefinitions = (sourceText) => {
           items.push(...spreadRes.value);
           continue;
         }
-        const itemRes = resolveStaticValue({ rawExpr: trimmed, visited });
+        const itemRes = resolveValue({ rawExpr: trimmed, scopePos, visited });
         if (!itemRes.ok) {
           return itemRes;
         }
@@ -2140,23 +4145,533 @@ export const analyzeSqlTableDefinitions = (sourceText) => {
     return { ok: false, reason: `non-static expression "${expr.slice(0, 80)}"` };
   };
 
-  for (const match of clean.matchAll(callRegex)) {
-    const openParenIdx = match.index + match[0].length - 1;
-    const parenSeg = scanBalancedSegment(clean, {
-      startIdx: openParenIdx,
-      openChar: '(',
-      closeChar: ')'
+  /**
+   * 解析对象描述符的顶层属性表（支持同文件 `const` 描述符、对象展开与简写属性），
+   * 允许不关注的兄弟属性为运行期表达式（如 `schema: new Schema(...)`、`tables: [tbl]`）。
+   */
+  const resolveObjectProperties = ({ rawExpr, scopePos = 0, visited = new Set() }) => {
+    const expr = unwrapOuterParens(rawExpr);
+    if (expr.length === 0) {
+      return { ok: false, reason: 'empty descriptor expression' };
+    }
+
+    if (IDENTIFIER_REGEX.test(expr)) {
+      const lookup = scopeTree.lookupBinding(expr, scopePos);
+      if (!lookup.found) {
+        return { ok: false, reason: `unresolved identifier "${expr}"` };
+      }
+      const { scope, innermostScope, binding } = lookup;
+      if (binding.kind !== 'const') {
+        return {
+          ok: false,
+          reason: `identifier "${expr}" is dynamically bound / shadowed by ${binding.detail}`
+        };
+      }
+      const visitKey = `${scope.id}:${expr}`;
+      if (visited.has(visitKey)) {
+        return { ok: false, reason: `circular local binding "${expr}"` };
+      }
+      if (scope === innermostScope && binding.declStart > scopePos) {
+        return {
+          ok: false,
+          reason: `identifier "${expr}" is referenced before its const declaration`
+        };
+      }
+      const nextVisited = new Set(visited);
+      nextVisited.add(visitKey);
+      return resolveObjectProperties({
+        rawExpr: binding.exprText,
+        scopePos: binding.exprStart,
+        visited: nextVisited
+      });
+    }
+
+    if (!expr.startsWith('{') || !expr.endsWith('}')) {
+      return { ok: false, reason: `non-static object expression "${expr.slice(0, 80)}"` };
+    }
+    const seg = scanBalancedSegment(expr, { startIdx: 0, openChar: '{', closeChar: '}' });
+    if (seg === null || seg.endIdx !== expr.length - 1) {
+      return { ok: false, reason: `malformed object literal "${expr.slice(0, 60)}"` };
+    }
+
+    const props = new Map();
+    const inner = seg.inner.trim();
+    if (inner.length === 0) {
+      return { ok: true, props, rawObject: expr, scopePos };
+    }
+
+    for (const entry of splitTopLevelComma(inner)) {
+      const trimmed = entry.trim();
+      if (trimmed.length === 0) {
+        continue;
+      }
+      if (trimmed.startsWith('...')) {
+        const spreadRes = resolveObjectProperties({
+          rawExpr: trimmed.slice(3),
+          scopePos,
+          visited
+        });
+        if (!spreadRes.ok) {
+          return {
+            ok: false,
+            reason: `cannot statically expand object spread "${trimmed}" (${spreadRes.reason})`
+          };
+        }
+        for (const [k, v] of spreadRes.props) {
+          props.set(k, v);
+        }
+        continue;
+      }
+
+      const colonIdx = findTopLevelColon(trimmed);
+      if (colonIdx === -1) {
+        if (IDENTIFIER_REGEX.test(trimmed)) {
+          props.set(trimmed, { rawValue: trimmed, scopePos, isShorthand: true, isGetter: false });
+          continue;
+        }
+        const getterMatch = /^get\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/.exec(trimmed);
+        if (getterMatch !== null) {
+          props.set(getterMatch[1], {
+            rawValue: trimmed,
+            scopePos,
+            isShorthand: false,
+            isGetter: true
+          });
+        }
+        continue;
+      }
+
+      const rawKey = trimmed.slice(0, colonIdx).trim();
+      const rawVal = trimmed.slice(colonIdx + 1).trim();
+      let key;
+      if (rawKey.startsWith('[') && rawKey.endsWith(']')) {
+        const keyRes = resolveValue({ rawExpr: rawKey.slice(1, -1), scopePos, visited });
+        if (!keyRes.ok || typeof keyRes.value !== 'string') {
+          return { ok: false, reason: `computed or dynamic property key "${rawKey}"` };
+        }
+        key = keyRes.value;
+      } else {
+        key = unquoteString(rawKey) ?? rawKey;
+        if (!IDENTIFIER_REGEX.test(key) && unquoteString(rawKey) === null) {
+          return { ok: false, reason: `computed or dynamic property key "${rawKey}"` };
+        }
+      }
+      props.set(key, { rawValue: rawVal, scopePos, isShorthand: false, isGetter: false });
+    }
+
+    return { ok: true, props, rawObject: expr, scopePos };
+  };
+
+  return {
+    clean,
+    tokens,
+    matchIdx,
+    scopeTree,
+    importedStrings,
+    importedAliases,
+    resolveValue,
+    resolveObjectProperties
+  };
+};
+
+/**
+ * 静态解析 `mongo/schema.ts` 的数据源归属（`'main'` | `'log'`）：
+ * - 支持 `defineMongoCollection({ datasource: 'log' })`、对象简写 `{ datasource }`、同文件/导入常量与本地 `const` 描述符；
+ * - 遇到无法静态解析的描述符、动态 `datasource` 表达式、非法值或被遮蔽变量时显式报错，绝不静默回退 `'main'`。
+ */
+export const analyzeMongoSchemaDatasource = ({
+  sourceText,
+  repoRoot,
+  sourceRelPath,
+  gitRef
+}) => {
+  const resolver = createStaticScopeResolver({
+    sourceText,
+    repoRoot,
+    sourceRelPath,
+    gitRef
+  });
+  const defineColNames = new Set(['defineMongoCollection']);
+  const logModelNames = new Set(['getMongoLogModel']);
+
+  for (const [localName, info] of resolver.importedAliases) {
+    if (info.importedName === 'defineMongoCollection') {
+      defineColNames.add(localName);
+    }
+    if (info.importedName === 'getMongoLogModel') {
+      logModelNames.add(localName);
+    }
+  }
+
+  const collections = [];
+  const errors = [];
+
+  for (const call of findFunctionCalls({
+    tokens: resolver.tokens,
+    matchIdx: resolver.matchIdx,
+    calleeNames: defineColNames
+  })) {
+    if (call.closeParenIdx === -1) {
+      errors.push('malformed defineMongoCollection(...) call (unclosed parenthesis)');
+      continue;
+    }
+    const inner = resolver.clean.slice(
+      resolver.tokens[call.openParenIdx].end,
+      resolver.tokens[call.closeParenIdx].start
+    );
+    const callArgs = splitTopLevelComma(inner).filter((arg) => arg.trim().length > 0);
+    if (callArgs.length !== 1) {
+      errors.push(
+        `cannot statically parse defineMongoCollection(...): expected 1 descriptor argument, received ${callArgs.length}`
+      );
+      continue;
+    }
+
+    const argStartPos = skipWhitespace(resolver.clean, resolver.tokens[call.openParenIdx].end);
+    const objRes = resolver.resolveObjectProperties({
+      rawExpr: callArgs[0],
+      scopePos: argStartPos
     });
-    if (parenSeg === null) {
+    if (!objRes.ok) {
+      errors.push(
+        `cannot statically parse defineMongoCollection(...) descriptor: ${objRes.reason}`
+      );
+      continue;
+    }
+
+    const nameEntry = objRes.props.get('name');
+    const resolvedName =
+      nameEntry !== undefined
+        ? resolver.resolveValue({ rawExpr: nameEntry.rawValue, scopePos: nameEntry.scopePos })
+        : { ok: false };
+    const colLabel =
+      resolvedName.ok && typeof resolvedName.value === 'string'
+        ? `"${resolvedName.value}"`
+        : '(unnamed)';
+
+    const dsEntry = objRes.props.get('datasource');
+    if (dsEntry === undefined) {
+      collections.push({ name: colLabel, datasource: 'main' });
+      continue;
+    }
+    if (dsEntry.isGetter) {
+      errors.push(
+        `cannot statically resolve defineMongoCollection(${colLabel}) datasource: getter property is not statically verifiable`
+      );
+      continue;
+    }
+
+    const dsRes = resolver.resolveValue({
+      rawExpr: dsEntry.rawValue,
+      scopePos: dsEntry.scopePos,
+      allowOpaqueIdentifier: false
+    });
+    if (!dsRes.ok) {
+      errors.push(
+        `cannot statically resolve defineMongoCollection(${colLabel}) datasource "${dsEntry.rawValue}": ${dsRes.reason}`
+      );
+      continue;
+    }
+    if (dsRes.value === undefined) {
+      collections.push({ name: colLabel, datasource: 'main' });
+      continue;
+    }
+    if (dsRes.value !== 'main' && dsRes.value !== 'log') {
+      errors.push(
+        `invalid defineMongoCollection(${colLabel}) datasource ${JSON.stringify(dsRes.value)} (expected 'main' or 'log')`
+      );
+      continue;
+    }
+    collections.push({ name: colLabel, datasource: dsRes.value });
+  }
+
+  const logModelCalls = findFunctionCalls({
+    tokens: resolver.tokens,
+    matchIdx: resolver.matchIdx,
+    calleeNames: logModelNames
+  });
+  const hasLegacyLogModel = logModelCalls.length > 0;
+  const isLogDomain = hasLegacyLogModel || collections.some((c) => c.datasource === 'log');
+
+  return {
+    datasource: isLogDomain ? 'log' : 'main',
+    isLogDomain,
+    collections,
+    errors
+  };
+};
+
+const CLASS_FIELD_MODIFIERS = new Set([
+  'public',
+  'protected',
+  'private',
+  'readonly',
+  'override',
+  'static',
+  'declare',
+  'abstract',
+  'accessor'
+]);
+
+/**
+ * 静态解析 `sql/repo.ts` 类字段/getter 上的 `datasource` 声明（支持同文件与导入常量，拒绝遮蔽/动态表达式）。
+ */
+export const analyzeSqlRepoDatasource = ({ sourceText, repoRoot, sourceRelPath }) => {
+  const resolver = createStaticScopeResolver({
+    sourceText,
+    repoRoot,
+    sourceRelPath
+  });
+  const { clean, tokens, matchIdx } = resolver;
+  const declarations = [];
+  const errors = [];
+
+  for (let i = 0; i < tokens.length; i += 1) {
+    const tok = tokens[i];
+    const prev = i > 0 ? tokens[i - 1] : undefined;
+    if (!isIdentTok(tok, 'class') || isPunctTok(prev, '.') || isPunctTok(prev, '?.')) {
+      continue;
+    }
+    let cursor = i + 1;
+    while (cursor < tokens.length && !isPunctTok(tokens[cursor], '{')) {
+      if (isPunctTok(tokens[cursor], '(') || isPunctTok(tokens[cursor], '[')) {
+        const c = matchIdx[cursor];
+        if (c !== -1) cursor = c;
+      }
+      cursor += 1;
+    }
+    if (!isPunctTok(tokens[cursor], '{') || matchIdx[cursor] === -1) {
+      continue;
+    }
+    const bodyOpen = cursor;
+    const bodyClose = matchIdx[bodyOpen];
+
+    let memberIdx = bodyOpen + 1;
+    while (memberIdx < bodyClose) {
+      if (isPunctTok(tokens[memberIdx], ';')) {
+        memberIdx += 1;
+        continue;
+      }
+      let isStatic = false;
+      let isGetter = false;
+      while (memberIdx < bodyClose && tokens[memberIdx].type === 'ident') {
+        const val = tokens[memberIdx].value;
+        if (CLASS_FIELD_MODIFIERS.has(val)) {
+          if (val === 'static') isStatic = true;
+          memberIdx += 1;
+          continue;
+        }
+        if (val === 'get' && isIdentTok(tokens[memberIdx + 1], 'datasource')) {
+          isGetter = true;
+          memberIdx += 1;
+          continue;
+        }
+        break;
+      }
+
+      if (memberIdx >= bodyClose) {
+        break;
+      }
+      const memberTok = tokens[memberIdx];
+
+      if (!isStatic && isIdentTok(memberTok, 'datasource')) {
+        let nextIdx = memberIdx + 1;
+        if (isGetter && isPunctTok(tokens[nextIdx], '(') && matchIdx[nextIdx] !== -1) {
+          let getterBodyOpen = matchIdx[nextIdx] + 1;
+          if (isPunctTok(tokens[getterBodyOpen], ':')) {
+            getterBodyOpen = skipTypeAnnotation({
+              tokens,
+              matchIdx,
+              startTok: getterBodyOpen + 1,
+              rangeEnd: bodyClose,
+              stopPuncts: new Set(['{', ';'])
+            });
+          }
+          if (isPunctTok(tokens[getterBodyOpen], '{') && matchIdx[getterBodyOpen] !== -1) {
+            const getterBodyClose = matchIdx[getterBodyOpen];
+            if (isIdentTok(tokens[getterBodyOpen + 1], 'return')) {
+              const retStart = getterBodyOpen + 2;
+              const retEnd = findExprEndTok({
+                tokens,
+                matchIdx,
+                startTok: retStart,
+                rangeEnd: getterBodyClose,
+                stopOnComma: false
+              });
+              const rawExpr =
+                retStart < retEnd
+                  ? clean.slice(tokens[retStart].start, tokens[retEnd - 1].end).trim()
+                  : '';
+              const dsRes = resolver.resolveValue({
+                rawExpr,
+                scopePos: retStart < retEnd ? tokens[retStart].start : tokens[getterBodyOpen].start,
+                allowOpaqueIdentifier: false
+              });
+              if (!dsRes.ok) {
+                const msg = `cannot statically resolve sql/repo.ts datasource "${rawExpr}": ${dsRes.reason}`;
+                errors.push(msg);
+                declarations.push({ rawExpr, resolved: null, error: msg });
+              } else if (dsRes.value !== 'main' && dsRes.value !== 'log') {
+                const msg = `invalid sql/repo.ts datasource ${JSON.stringify(dsRes.value)} (expected 'main' or 'log')`;
+                errors.push(msg);
+                declarations.push({ rawExpr, resolved: null, error: msg });
+              } else {
+                declarations.push({ rawExpr, resolved: dsRes.value, error: null });
+              }
+            } else {
+              const msg = 'cannot statically resolve sql/repo.ts datasource getter body';
+              errors.push(msg);
+              declarations.push({ rawExpr: 'get datasource()', resolved: null, error: msg });
+            }
+            memberIdx = getterBodyClose + 1;
+            continue;
+          }
+        } else if (!isPunctTok(tokens[nextIdx], '(')) {
+          if (isPunctTok(tokens[nextIdx], '?') || isPunctTok(tokens[nextIdx], '!')) {
+            nextIdx += 1;
+          }
+          if (isPunctTok(tokens[nextIdx], ':')) {
+            nextIdx = skipTypeAnnotation({
+              tokens,
+              matchIdx,
+              startTok: nextIdx + 1,
+              rangeEnd: bodyClose,
+              stopPuncts: new Set(['=', ';'])
+            });
+          }
+          if (isPunctTok(tokens[nextIdx], '=')) {
+            const initStart = nextIdx + 1;
+            const initEnd = findExprEndTok({
+              tokens,
+              matchIdx,
+              startTok: initStart,
+              rangeEnd: bodyClose,
+              stopOnComma: false
+            });
+            const rawExpr =
+              initStart < initEnd
+                ? clean.slice(tokens[initStart].start, tokens[initEnd - 1].end).trim()
+                : '';
+            const dsRes = resolver.resolveValue({
+              rawExpr,
+              scopePos: initStart < initEnd ? tokens[initStart].start : memberTok.start,
+              allowOpaqueIdentifier: false
+            });
+            if (!dsRes.ok) {
+              const msg = `cannot statically resolve sql/repo.ts datasource "${rawExpr}": ${dsRes.reason}`;
+              errors.push(msg);
+              declarations.push({ rawExpr, resolved: null, error: msg });
+            } else if (dsRes.value !== 'main' && dsRes.value !== 'log') {
+              const msg = `invalid sql/repo.ts datasource ${JSON.stringify(dsRes.value)} (expected 'main' or 'log')`;
+              errors.push(msg);
+              declarations.push({ rawExpr, resolved: null, error: msg });
+            } else {
+              declarations.push({ rawExpr, resolved: dsRes.value, error: null });
+            }
+            memberIdx = initEnd;
+            continue;
+          }
+        }
+      }
+
+      // 跳过当前类成员（方法体或字段初始化，先跳过字段/返回值 TS 类型注解避免误截断）
+      let scan = memberIdx;
+      while (scan < bodyClose) {
+        if (isPunctTok(tokens[scan], ';')) {
+          scan += 1;
+          break;
+        }
+        if (isPunctTok(tokens[scan], ':')) {
+          scan = skipTypeAnnotation({
+            tokens,
+            matchIdx,
+            startTok: scan + 1,
+            rangeEnd: bodyClose,
+            stopPuncts: new Set(['=', '{', ';'])
+          });
+          continue;
+        }
+        if (isPunctTok(tokens[scan], '{') && matchIdx[scan] !== -1) {
+          scan = matchIdx[scan] + 1;
+          break;
+        }
+        if (isPunctTok(tokens[scan], '(') || isPunctTok(tokens[scan], '[')) {
+          const c = matchIdx[scan];
+          if (c !== -1 && c < bodyClose) {
+            scan = c + 1;
+            continue;
+          }
+        }
+        if (scan > memberIdx && tokens[scan].lineBreakBefore) {
+          const prevMemberTok = tokens[scan - 1];
+          const prevContinues =
+            (prevMemberTok.type === 'punct' &&
+              EXPR_CONTINUING_PREV_PUNCT.has(prevMemberTok.value)) ||
+            (prevMemberTok.type === 'ident' &&
+              EXPR_CONTINUING_PREV_KEYWORDS.has(prevMemberTok.value));
+          if (!prevContinues) {
+            break;
+          }
+        }
+        scan += 1;
+      }
+      memberIdx = Math.max(memberIdx + 1, scan);
+    }
+
+    i = bodyClose;
+  }
+
+  return {
+    declarations,
+    errors,
+    hasLogDatasource: declarations.some((d) => d.resolved === 'log'),
+    hasMainDatasource: declarations.some((d) => d.resolved === 'main')
+  };
+};
+
+/**
+ * 静态解析 `sql/table.ts` 中的全部 `defineSqlTable(...)` 声明并校验 OceanBase/MySQL 硬约束：
+ * - 基于词法作用域树解析内联对象字面量、局部 `const` 变量、局部对象展开与 `as const` / `satisfies` 断言；
+ * - 若标识符被函数/箭头函数/方法形参、内层 `let`/`var`、解构或动态 `const` 遮蔽，立即 fail-closed 报错，绝不穿透到外层 `const`；
+ * - 禁止给 `text` / `json` 列声明 `defaultValue`（OB/MySQL `ERROR 1101`）；
+ * - 禁止对 `text` / `json` 列建普通 B-Tree 索引；
+ * - 校验单条普通/唯一复合索引在 `utf8mb4` 下的最大估算字节宽不超过 3072 字节。
+ */
+export const analyzeSqlTableDefinitions = (sourceText) => {
+  const resolver = createStaticScopeResolver({ sourceText });
+  const { clean, tokens, matchIdx, importedAliases } = resolver;
+  const tables = [];
+  const issues = [];
+
+  const defineSqlTableNames = new Set(['defineSqlTable']);
+  for (const [localName, info] of importedAliases) {
+    if (info.importedName === 'defineSqlTable') {
+      defineSqlTableNames.add(localName);
+    }
+  }
+
+  for (const call of findFunctionCalls({
+    tokens,
+    matchIdx,
+    calleeNames: defineSqlTableNames
+  })) {
+    if (call.closeParenIdx === -1) {
       issues.push('malformed defineSqlTable(...) call (unclosed parenthesis)');
       continue;
     }
 
-    const callArgs = splitTopLevelComma(parenSeg.inner).filter((arg) => arg.trim().length > 0);
+    const inner = clean.slice(tokens[call.openParenIdx].end, tokens[call.closeParenIdx].start);
+    const callArgs = splitTopLevelComma(inner).filter((arg) => arg.trim().length > 0);
     const rawArgSummary = (callArgs[0] ?? '').trim().replace(/\s+/g, ' ').slice(0, 80);
+    const argStartPos = skipWhitespace(clean, tokens[call.openParenIdx].end);
+
     const resolvedTable =
       callArgs.length === 1
-        ? resolveStaticValue({ rawExpr: callArgs[0] })
+        ? resolver.resolveValue({
+            rawExpr: callArgs[0],
+            scopePos: argStartPos,
+            topLevelOnlyOpaque: true
+          })
         : {
             ok: false,
             reason:
@@ -2218,16 +4733,16 @@ export const analyzeSqlTableDefinitions = (sourceText) => {
         continue;
       }
       const idxName = typeof idxDef.name === 'string' ? idxDef.name : '(unnamed)';
-      if (typeof idxDef.name === 'string') {
-        if (!/^fg_[a-z0-9_]+$/.test(idxDef.name)) {
-          issues.push(
-            `table "${tableName}" index "${idxName}" must start with "fg_" and use lowercase ASCII snake_case`
-          );
-        } else if (Buffer.byteLength(idxDef.name, 'ascii') > 63) {
-          issues.push(
-            `table "${tableName}" index "${idxName}" exceeds 63 ASCII bytes (PostgreSQL NAMEDATALEN limit)`
-          );
-        }
+      if (typeof idxDef.name !== 'string' || idxDef.name.length === 0) {
+        issues.push(`table "${tableName}" index "${idxName}" has missing or non-static name`);
+      } else if (!/^fg_[a-z0-9_]+$/.test(idxDef.name)) {
+        issues.push(
+          `table "${tableName}" index "${idxName}" must start with "fg_" and use lowercase ASCII snake_case`
+        );
+      } else if (Buffer.byteLength(idxDef.name, 'ascii') > 63) {
+        issues.push(
+          `table "${tableName}" index "${idxName}" exceeds 63 ASCII bytes (PostgreSQL NAMEDATALEN limit)`
+        );
       }
       if (!Array.isArray(idxDef.columns)) {
         issues.push(`table "${tableName}" index "${idxName}" has non-static columns list`);
@@ -2287,6 +4802,694 @@ export const analyzeSqlTableDefinitions = (sourceText) => {
   }
 
   return { tables, issues };
+};
+
+const REAL_LOG_HARNESS_FNS = new Set([
+  'createContractBackends',
+  'createMongoTestHarness',
+  'createPGliteSqlTestHarness',
+  'createMysqlSqlTestHarness',
+  'createPostgresSqlTestHarness'
+]);
+
+const REAL_RUNTIME_CONFIG_FNS = new Set(['configureDbRuntime']);
+
+const REPO_RUNTIME_HELPER_FNS = new Set(['injectRepo', 'runInTransaction', 'getDbRuntime']);
+
+const DB_EXERCISE_MEMBER_NAMES = new Set([
+  'logDb',
+  'logClient',
+  'getModel',
+  'insertRawRow',
+  'selectFrom',
+  'insertInto',
+  'deleteFrom',
+  'updateTable',
+  'collection',
+  'countDocuments',
+  'findOne',
+  'find',
+  'getBoundModel',
+  'bindMongoModel',
+  'resolveReadTarget'
+]);
+
+const HARNESS_CLEANUP_ONLY_MEMBERS = new Set(['close', 'clearAll', 'truncateAll']);
+
+/** 提取领域目录导出的 Repo Token 与 Mongo/SQL Repository 类名，供契约与日志双态测试覆盖校验使用。 */
+export const extractExportedDomainRepoSymbols = (domainAbs) => {
+  const symbols = new Set();
+  for (const rel of ['repo.ts', 'mongo/repo.ts', 'sql/repo.ts']) {
+    const abs = path.join(domainAbs, rel);
+    if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) {
+      continue;
+    }
+    const clean = stripCommentsPreserveStrings(fs.readFileSync(abs, 'utf8'));
+    for (const m of clean.matchAll(
+      /\bexport\s+(?:const|class|function)\s+([A-Za-z_$][A-Za-z0-9_$]*)\b/g
+    )) {
+      symbols.add(m[1]);
+    }
+  }
+  return symbols;
+};
+
+/**
+ * 校验日志域测试文件是否真正可执行地覆盖了 `'shared'` 与 `'separate'` 两种日志库拓扑：
+ * 1. 必须在真实测试/套件上下文中调用真实 DAL Harness 或 Runtime 配置（如 `createContractBackends` /
+ *    `createPGliteSqlTestHarness` / `createMongoTestHarness` / `createMysqlSqlTestHarness` /
+ *    `createPostgresSqlTestHarness` / `configureDbRuntime`），并显式覆盖 `shared` 与 `separate` 双态
+ *    （支持静态 `const`、`for ... of ['shared', 'separate']` 及 `.each(['shared', 'separate'])`）；
+ * 2. 严禁仅在 `expect({ logMode: 'shared' })` 等普通对象字面量或字符串中伪造覆盖；
+ * 3. 两种拓扑关联的可执行 `it`/`test` 用例中必须同时包含真实 `expect(...)` 断言与仓储/数据库读写隔离操作。
+ */
+export const analyzeLogDualModeTestCoverage = ({
+  testFiles,
+  domainRepoSymbols = new Set()
+}) => {
+  const coveredModes = new Set();
+  const configuredModes = new Set();
+  const harnessWithoutAssertionsModes = new Set();
+
+  for (const file of testFiles) {
+    const resolver = createStaticScopeResolver({ sourceText: file.raw });
+    const { clean, tokens, matchIdx, scopeTree, importedAliases } = resolver;
+
+    const harnessAliasToCanonical = new Map();
+    for (const fn of REAL_LOG_HARNESS_FNS) {
+      harnessAliasToCanonical.set(fn, fn);
+    }
+    const runtimeConfigNames = new Set(REAL_RUNTIME_CONFIG_FNS);
+    const repoHelperNames = new Set(REPO_RUNTIME_HELPER_FNS);
+
+    for (const [localName, info] of importedAliases) {
+      if (REAL_LOG_HARNESS_FNS.has(info.importedName)) {
+        harnessAliasToCanonical.set(localName, info.importedName);
+      }
+      if (REAL_RUNTIME_CONFIG_FNS.has(info.importedName)) {
+        runtimeConfigNames.add(localName);
+      }
+      if (REPO_RUNTIME_HELPER_FNS.has(info.importedName)) {
+        repoHelperNames.add(localName);
+      }
+    }
+
+    // 1. 收集文件内绑定到仓储实例或测试 Harness 的变量名，供识别 `repo.create(...)` / `harness.db` 等真实操作
+    const repoVars = new Set();
+    const harnessVars = new Set();
+
+    for (let i = 0; i < tokens.length; i += 1) {
+      const tok = tokens[i];
+      if (tok.type !== 'ident') {
+        continue;
+      }
+      let eqIdx = i + 1;
+      if (isPunctTok(tokens[eqIdx], ':')) {
+        eqIdx = skipTypeAnnotation({
+          tokens,
+          matchIdx,
+          startTok: eqIdx + 1,
+          rangeEnd: tokens.length,
+          stopPuncts: new Set(['=', ';', ','])
+        });
+      }
+      if (!isPunctTok(tokens[eqIdx], '=')) {
+        continue;
+      }
+      let rhsIdx = eqIdx + 1;
+      if (isIdentTok(tokens[rhsIdx], 'await')) {
+        rhsIdx += 1;
+      }
+      const rhsTok = tokens[rhsIdx];
+      if (rhsTok === undefined) {
+        continue;
+      }
+      if (
+        rhsTok.type === 'ident' &&
+        (importedAliases.get(rhsTok.value)?.importedName === 'injectRepo' ||
+          rhsTok.value === 'injectRepo')
+      ) {
+        repoVars.add(tok.value);
+      } else if (isIdentTok(rhsTok, 'new') && tokens[rhsIdx + 1]?.type === 'ident') {
+        const cls = tokens[rhsIdx + 1].value;
+        if (domainRepoSymbols.has(cls) || /Repo(?:sitory)?$/.test(cls)) {
+          repoVars.add(tok.value);
+        }
+      } else if (rhsTok.type === 'ident' && harnessAliasToCanonical.has(rhsTok.value)) {
+        harnessVars.add(tok.value);
+      }
+    }
+
+    // 2. 扫描可执行与跳过的测试容器（`it`/`test`/`describe`/`register*ContractSuite`）以及 `.each` / `for ... of` 动态日志模式集合
+    const testCases = [];
+    const describeBlocks = [];
+    const contractSuites = [];
+    const skippedSpans = [];
+    const loopModeBindings = [];
+
+    // 2a. 识别 `for (const mode of ['shared', 'separate']) { ... }`
+    for (let i = 0; i < tokens.length; i += 1) {
+      if (!isIdentTok(tokens[i], 'for')) continue;
+      let cursor = i + 1;
+      if (isIdentTok(tokens[cursor], 'await')) cursor += 1;
+      if (!isPunctTok(tokens[cursor], '(') || matchIdx[cursor] === -1) continue;
+      const headOpen = cursor;
+      const headClose = matchIdx[headOpen];
+      const declKw = tokens[headOpen + 1];
+      const loopVar = tokens[headOpen + 2];
+      if (
+        (isIdentTok(declKw, 'const') || isIdentTok(declKw, 'let')) &&
+        loopVar?.type === 'ident' &&
+        isIdentTok(tokens[headOpen + 3], 'of')
+      ) {
+        const iterStart = headOpen + 4;
+        if (iterStart < headClose) {
+          const iterRaw = clean.slice(tokens[iterStart].start, tokens[headClose - 1].end);
+          const resolved = resolver.resolveValue({
+            rawExpr: iterRaw,
+            scopePos: tokens[iterStart].start
+          });
+          if (resolved.ok && Array.isArray(resolved.value)) {
+            const modes = resolved.value.filter((v) => v === 'shared' || v === 'separate');
+            if (modes.length > 0 && isPunctTok(tokens[headClose + 1], '{')) {
+              const bodyOpen = headClose + 1;
+              const bodyClose = matchIdx[bodyOpen];
+              if (bodyClose !== -1) {
+                loopModeBindings.push({
+                  varName: loopVar.value,
+                  modes,
+                  startTok: bodyOpen,
+                  endTok: bodyClose
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 2b. 识别 `it`/`test`/`describe` 及其修饰器（`.skip`/`.todo`/`.each`/`.concurrent`/`.sequential`/`.only`）
+    for (let i = 0; i < tokens.length; i += 1) {
+      const tok = tokens[i];
+      const prev = i > 0 ? tokens[i - 1] : undefined;
+      if (isPunctTok(prev, '.') || isPunctTok(prev, '?.')) {
+        continue;
+      }
+
+      if (
+        isIdentTok(tok, 'registerMultiDialectContractSuite') ||
+        isIdentTok(tok, 'registerDualDialectContractSuite')
+      ) {
+        let cursor = i + 1;
+        if (isPunctTok(tokens[cursor], '<')) {
+          const ca = tryMatchGenericAngle({
+            tokens,
+            matchIdx,
+            startIdx: cursor,
+            rangeEnd: tokens.length
+          });
+          if (ca !== -1) cursor = ca + 1;
+        }
+        if (isPunctTok(tokens[cursor], '(') && matchIdx[cursor] !== -1) {
+          contractSuites.push({
+            startTok: i,
+            endTok: matchIdx[cursor]
+          });
+        }
+        continue;
+      }
+
+      if (!isIdentTok(tok, 'it') && !isIdentTok(tok, 'test') && !isIdentTok(tok, 'describe')) {
+        continue;
+      }
+
+      const kind = tok.value === 'describe' ? 'describe' : 'test';
+      let cursor = i + 1;
+      let isSkipped = false;
+      let eachModes = null;
+
+      while (isPunctTok(tokens[cursor], '.') && tokens[cursor + 1]?.type === 'ident') {
+        const mod = tokens[cursor + 1].value;
+        cursor += 2;
+        if (mod === 'skip' || mod === 'todo') {
+          isSkipped = true;
+        } else if (mod === 'each' && isPunctTok(tokens[cursor], '(') && matchIdx[cursor] !== -1) {
+          const eachOpen = cursor;
+          const eachClose = matchIdx[eachOpen];
+          const eachRaw = clean.slice(tokens[eachOpen].end, tokens[eachClose].start);
+          const eachRes = resolver.resolveValue({
+            rawExpr: eachRaw,
+            scopePos: tokens[eachOpen].end
+          });
+          if (eachRes.ok && Array.isArray(eachRes.value)) {
+            const extracted = [];
+            for (const item of eachRes.value) {
+              if (item === 'shared' || item === 'separate') {
+                extracted.push(item);
+              } else if (Array.isArray(item)) {
+                for (const elem of item) {
+                  if (elem === 'shared' || elem === 'separate') extracted.push(elem);
+                }
+              } else if (item !== null && typeof item === 'object') {
+                if (item.logMode === 'shared' || item.logMode === 'separate') {
+                  extracted.push(item.logMode);
+                }
+              }
+            }
+            if (extracted.length > 0) {
+              eachModes = extracted;
+            }
+          }
+          cursor = eachClose + 1;
+        }
+      }
+
+      if (!isPunctTok(tokens[cursor], '(') || matchIdx[cursor] === -1) {
+        continue;
+      }
+      const callOpen = cursor;
+      const callClose = matchIdx[callOpen];
+
+      if (isSkipped) {
+        skippedSpans.push({ startTok: i, endTok: callClose });
+        continue;
+      }
+
+      const argRanges = splitTokenRangeByComma({
+        tokens,
+        matchIdx,
+        startTok: callOpen + 1,
+        endTok: callClose
+      });
+      const cbRange = argRanges.length >= 2 ? argRanges[1] : argRanges[0];
+      if (eachModes !== null && cbRange !== undefined) {
+        let cbStart = cbRange[0];
+        if (isIdentTok(tokens[cbStart], 'async')) {
+          cbStart += 1;
+        }
+        if (tokens[cbStart]?.type === 'ident' && isPunctTok(tokens[cbStart + 1], '=>')) {
+          loopModeBindings.push({
+            varName: tokens[cbStart].value,
+            modes: eachModes,
+            startTok: cbRange[0],
+            endTok: cbRange[1]
+          });
+        } else {
+          let paramOpen = -1;
+          for (let k = cbStart; k < cbRange[1]; k += 1) {
+            if (isPunctTok(tokens[k], '(') && matchIdx[k] !== -1) {
+              paramOpen = k;
+              break;
+            }
+          }
+          if (paramOpen !== -1) {
+            const paramIds = extractParamListBindings({
+              tokens,
+              matchIdx,
+              openParenIdx: paramOpen,
+              closeParenIdx: matchIdx[paramOpen]
+            });
+            for (const pName of paramIds) {
+              loopModeBindings.push({
+                varName: pName,
+                modes: eachModes,
+                startTok: cbRange[0],
+                endTok: cbRange[1]
+              });
+            }
+          }
+        }
+      }
+
+      if (kind === 'describe') {
+        describeBlocks.push({ startTok: i, endTok: callClose });
+      } else {
+        testCases.push({
+          startTok: i,
+          endTok: callClose,
+          bodyStartTok: cbRange !== undefined ? cbRange[0] : callOpen + 1,
+          bodyEndTok: cbRange !== undefined ? cbRange[1] : callClose,
+          hasExpect: false,
+          hasRepoOrDbExercise: false
+        });
+      }
+    }
+
+    const isInsideSkipped = (tokIdx) =>
+      skippedSpans.some((s) => tokIdx >= s.startTok && tokIdx <= s.endTok);
+
+    // 3. 检测每个可执行 `it`/`test` 块是否同时包含 `expect(...)` 与真实仓储/数据库隔离操作
+    for (const tc of testCases) {
+      if (isInsideSkipped(tc.startTok)) {
+        continue;
+      }
+      for (let k = tc.bodyStartTok; k < tc.bodyEndTok; k += 1) {
+        const t = tokens[k];
+        const prev = k > tc.bodyStartTok ? tokens[k - 1] : undefined;
+        const next = k + 1 < tc.bodyEndTok ? tokens[k + 1] : undefined;
+
+        if (
+          isIdentTok(t, 'expect') &&
+          !isPunctTok(prev, '.') &&
+          !isPunctTok(prev, '?.') &&
+          isPunctTok(next, '(')
+        ) {
+          tc.hasExpect = true;
+          continue;
+        }
+
+        if (
+          t.type === 'ident' &&
+          repoHelperNames.has(t.value) &&
+          !isPunctTok(prev, '.') &&
+          !isPunctTok(prev, '?.') &&
+          isPunctTok(next, '(')
+        ) {
+          tc.hasRepoOrDbExercise = true;
+          continue;
+        }
+
+        if (
+          t.type === 'ident' &&
+          domainRepoSymbols.has(t.value) &&
+          (isIdentTok(prev, 'new') ||
+            isPunctTok(next, '.') ||
+            isPunctTok(next, '?.') ||
+            isPunctTok(next, '('))
+        ) {
+          tc.hasRepoOrDbExercise = true;
+          continue;
+        }
+
+        if (
+          t.type === 'ident' &&
+          repoVars.has(t.value) &&
+          !isPunctTok(prev, '.') &&
+          (isPunctTok(next, '.') || isPunctTok(next, '?.'))
+        ) {
+          const member = tokens[k + 2];
+          if (member?.type === 'ident' && !HARNESS_CLEANUP_ONLY_MEMBERS.has(member.value)) {
+            tc.hasRepoOrDbExercise = true;
+            continue;
+          }
+        }
+
+        if (
+          t.type === 'ident' &&
+          harnessVars.has(t.value) &&
+          !isPunctTok(prev, '.') &&
+          (isPunctTok(next, '.') || isPunctTok(next, '?.'))
+        ) {
+          const member = tokens[k + 2];
+          if (
+            member?.type === 'ident' &&
+            (member.value === 'db' ||
+              member.value === 'client' ||
+              DB_EXERCISE_MEMBER_NAMES.has(member.value))
+          ) {
+            tc.hasRepoOrDbExercise = true;
+            continue;
+          }
+        }
+
+        if (
+          (isPunctTok(prev, '.') || isPunctTok(prev, '?.')) &&
+          t.type === 'ident' &&
+          DB_EXERCISE_MEMBER_NAMES.has(t.value)
+        ) {
+          tc.hasRepoOrDbExercise = true;
+        }
+      }
+    }
+
+    const executableRepoTests = testCases.filter(
+      (tc) => !isInsideSkipped(tc.startTok) && tc.hasExpect && tc.hasRepoOrDbExercise
+    );
+
+    const hasAssociatedExecutableRepoTest = (callTokIdx) => {
+      // 1. 直接在 `it`/`test` 内：该用例自身必须含 `expect` + 真实仓储/DB 操作
+      const enclosingTest = testCases
+        .filter((tc) => callTokIdx >= tc.startTok && callTokIdx <= tc.endTok)
+        .sort((a, b) => a.endTok - a.startTok - (b.endTok - b.startTok))[0];
+      if (enclosingTest !== undefined) {
+        return enclosingTest.hasExpect && enclosingTest.hasRepoOrDbExercise;
+      }
+
+      // 2. 在 `register*ContractSuite(...)` 内：该契约套件内必须存在真实仓储/DB 用例
+      const enclosingSuite = contractSuites
+        .filter((s) => callTokIdx >= s.startTok && callTokIdx <= s.endTok)
+        .sort((a, b) => a.endTok - a.startTok - (b.endTok - b.startTok))[0];
+      if (enclosingSuite !== undefined) {
+        return executableRepoTests.some(
+          (tc) => tc.startTok >= enclosingSuite.startTok && tc.endTok <= enclosingSuite.endTok
+        );
+      }
+
+      // 3. 在 `describe(...)` 内（如 `beforeAll` / `beforeEach`）：该 describe 块内必须存在真实仓储/DB 用例
+      const enclosingDescribe = describeBlocks
+        .filter((d) => callTokIdx >= d.startTok && callTokIdx <= d.endTok)
+        .sort((a, b) => a.endTok - a.startTok - (b.endTok - b.startTok))[0];
+      if (enclosingDescribe !== undefined) {
+        return executableRepoTests.some(
+          (tc) => tc.startTok >= enclosingDescribe.startTok && tc.endTok <= enclosingDescribe.endTok
+        );
+      }
+
+      // 4. 顶层语句（如 `const backends = createContractBackends(...)`）：不得处于未调用的普通函数体内
+      const callCharPos = tokens[callTokIdx].start;
+      const enclosingScope = scopeTree.findInnermostScope(callCharPos);
+      if (enclosingScope.kind === 'function') {
+        return false;
+      }
+      return executableRepoTests.length > 0;
+    };
+
+    const resolveLogModesFromExpr = ({ rawExpr, scopePos, callTokIdx }) => {
+      const staticRes = resolver.resolveValue({
+        rawExpr,
+        scopePos,
+        allowOpaqueIdentifier: false
+      });
+      if (staticRes.ok && (staticRes.value === 'shared' || staticRes.value === 'separate')) {
+        return [staticRes.value];
+      }
+      const trimmed = stripTsAssertion(rawExpr.trim());
+      if (IDENTIFIER_REGEX.test(trimmed)) {
+        const matched = loopModeBindings
+          .filter(
+            (b) => b.varName === trimmed && callTokIdx >= b.startTok && callTokIdx <= b.endTok
+          )
+          .sort((a, b) => a.endTok - a.startTok - (b.endTok - b.startTok))[0];
+        if (matched !== undefined) {
+          return matched.modes;
+        }
+      }
+      return [];
+    };
+
+    // 4. 扫描所有真实 Harness / Runtime 配置调用（拒绝被本地 mock/stub 遮蔽的假函数）
+    const allConfigCallees = new Set([...harnessAliasToCanonical.keys(), ...runtimeConfigNames]);
+    for (const call of findFunctionCalls({
+      tokens,
+      matchIdx,
+      calleeNames: allConfigCallees
+    })) {
+      if (call.closeParenIdx === -1 || isInsideSkipped(call.calleeIdx)) {
+        continue;
+      }
+      const calleeCharPos = tokens[call.calleeIdx].start;
+      const calleeBinding = scopeTree.lookupBinding(call.calleeName, calleeCharPos);
+      if (calleeBinding.found && calleeBinding.binding.kind !== 'import') {
+        // 被本地变量/函数/形参遮蔽（如 `const createPGliteSqlTestHarness = vi.fn()`），绝不算真实 Harness
+        continue;
+      }
+
+      const inner = clean.slice(tokens[call.openParenIdx].end, tokens[call.closeParenIdx].start);
+      const callArgs = splitTopLevelComma(inner).filter((arg) => arg.trim().length > 0);
+      if (callArgs.length === 0) {
+        continue;
+      }
+      const argStartPos = skipWhitespace(clean, tokens[call.openParenIdx].end);
+      const objRes = resolver.resolveObjectProperties({
+        rawExpr: callArgs[0],
+        scopePos: argStartPos
+      });
+      if (!objRes.ok) {
+        continue;
+      }
+
+      const canonicalHarness = harnessAliasToCanonical.get(call.calleeName);
+      const modesForCall = [];
+
+      if (canonicalHarness !== undefined) {
+        const logModeEntry = objRes.props.get('logMode');
+        if (logModeEntry !== undefined) {
+          modesForCall.push(
+            ...resolveLogModesFromExpr({
+              rawExpr: logModeEntry.rawValue,
+              scopePos: logModeEntry.scopePos,
+              callTokIdx: call.calleeIdx
+            })
+          );
+        } else if (
+          canonicalHarness === 'createPGliteSqlTestHarness' &&
+          objRes.props.has('withLogDatabase')
+        ) {
+          const withLogEntry = objRes.props.get('withLogDatabase');
+          const boolRes = resolver.resolveValue({
+            rawExpr: withLogEntry.rawValue,
+            scopePos: withLogEntry.scopePos
+          });
+          if (boolRes.ok && boolRes.value === true) {
+            modesForCall.push('separate');
+          } else if (boolRes.ok && boolRes.value === false) {
+            modesForCall.push('shared');
+          }
+        }
+      } else if (runtimeConfigNames.has(call.calleeName)) {
+        const logUrlEntry = objRes.props.get('logWriteUrl');
+        if (logUrlEntry === undefined) {
+          modesForCall.push('shared');
+        } else {
+          const urlRes = resolver.resolveValue({
+            rawExpr: logUrlEntry.rawValue,
+            scopePos: logUrlEntry.scopePos
+          });
+          if (urlRes.ok && (urlRes.value === undefined || urlRes.value === null || urlRes.value === '')) {
+            modesForCall.push('shared');
+          } else {
+            modesForCall.push('separate');
+          }
+        }
+      }
+
+      if (modesForCall.length === 0) {
+        continue;
+      }
+
+      const hasAssertions = hasAssociatedExecutableRepoTest(call.calleeIdx);
+      for (const mode of modesForCall) {
+        configuredModes.add(mode);
+        if (hasAssertions) {
+          coveredModes.add(mode);
+        } else {
+          harnessWithoutAssertionsModes.add(mode);
+        }
+      }
+    }
+  }
+
+  const hasShared = coveredModes.has('shared');
+  const hasSeparate = coveredModes.has('separate');
+  const ok = hasShared && hasSeparate;
+
+  const missingModes = [];
+  if (!hasShared) missingModes.push("'shared'");
+  if (!hasSeparate) missingModes.push("'separate'");
+
+  const details = (() => {
+    if (ok) {
+      return 'covered both shared and separate log topologies with executable repo/DB assertions';
+    }
+    const parts = [
+      `missing executable harness/runtime coverage for ${missingModes.join(' and ')} logMode`
+    ];
+    const unassertedMissing = [...harnessWithoutAssertionsModes].filter(
+      (m) => !coveredModes.has(m)
+    );
+    if (unassertedMissing.length > 0) {
+      parts.push(
+        `configured ${unassertedMissing.map((m) => `'${m}'`).join(' and ')} without repository/DB assertions inside it()/test()`
+      );
+    }
+    return parts.join('; ');
+  })();
+
+  return {
+    ok,
+    hasShared,
+    hasSeparate,
+    configuredModes: [...configuredModes],
+    details
+  };
+};
+
+/**
+ * 发现领域对应的 Service L0 纯内存单测文件，同时识别 `service.unit.test.ts` 与 `service.test.ts`：
+ * - 支持直接位于领域对应测试目录的单测；
+ * - 支持 `packages/dal/db/repos/<domain>` 与 `packages/service/**\/<domain>/service.ts` 配对的 L0 单测；
+ * - 支持显式 `--test` 传入的 `service.unit.test.ts` / `service.test.ts`。
+ */
+export const findDomainServiceUnitTestFiles = ({
+  repoRoot,
+  domainRel,
+  explicitTestTargets = []
+}) => {
+  const normalizedDomain = toPosixPath(domainRel).replace(/^\.\//, '').replace(/\/$/, '');
+  const serviceFiles = new Set();
+  const unitTestFiles = new Set();
+
+  const addIfFile = (set, rel) => {
+    const abs = path.resolve(repoRoot, rel);
+    if (fs.existsSync(abs) && fs.statSync(abs).isFile()) {
+      set.add(toPosixPath(rel));
+    }
+  };
+
+  // 1. 领域目录自身含 service.ts 时检查其标准测试目录
+  addIfFile(serviceFiles, `${normalizedDomain}/service.ts`);
+  const inferredTestDir = inferDomainTestDir(normalizedDomain);
+  if (inferredTestDir !== undefined) {
+    addIfFile(unitTestFiles, `${inferredTestDir}/service.unit.test.ts`);
+    addIfFile(unitTestFiles, `${inferredTestDir}/service.test.ts`);
+  }
+
+  // 2. DAL 仓储域（packages/dal/db/repos/<name> 或 pro/admin/src/dal/db/repos/<name>）自动配对同域 Service 与其 L0 单测
+  const dalPrefixMatch =
+    /^(packages\/dal|pro\/admin\/src\/dal)\/db\/repos\/([^/]+)$/.exec(normalizedDomain);
+  if (dalPrefixMatch !== null) {
+    const isPro = dalPrefixMatch[1].startsWith('pro/');
+    const domainLeaf = dalPrefixMatch[2];
+    const serviceRoot = path.join(repoRoot, isPro ? 'pro/admin/src' : 'packages/service');
+    const serviceTestRoot = path.join(repoRoot, isPro ? 'pro/admin/test' : 'packages/service/test');
+
+    for (const abs of walkFiles(serviceRoot, (f) => {
+      const posix = toPosixPath(f);
+      return !isTestOrMigrationFile(posix) && posix.endsWith(`/${domainLeaf}/service.ts`);
+    })) {
+      const rel = toPosixPath(path.relative(repoRoot, abs));
+      serviceFiles.add(rel);
+      const pairedTestDir = inferDomainTestDir(path.posix.dirname(rel));
+      if (pairedTestDir !== undefined) {
+        addIfFile(unitTestFiles, `${pairedTestDir}/service.unit.test.ts`);
+        addIfFile(unitTestFiles, `${pairedTestDir}/service.test.ts`);
+      }
+    }
+
+    for (const abs of walkFiles(serviceTestRoot, (f) => {
+      const posix = toPosixPath(f);
+      return (
+        posix.endsWith(`/${domainLeaf}/service.unit.test.ts`) ||
+        posix.endsWith(`/${domainLeaf}/service.test.ts`)
+      );
+    })) {
+      unitTestFiles.add(toPosixPath(path.relative(repoRoot, abs)));
+    }
+  }
+
+  // 3. 显式 --test 传入的 Service L0 单测文件
+  for (const target of explicitTestTargets) {
+    const rel = toPosixPath(target).replace(/^\.\//, '');
+    const base = path.posix.basename(rel);
+    if (base === 'service.unit.test.ts' || base === 'service.test.ts') {
+      addIfFile(unitTestFiles, rel);
+    }
+  }
+
+  return {
+    serviceFiles: [...serviceFiles].sort(),
+    unitTestFiles: [...unitTestFiles].sort()
+  };
 };
 
 export { stripCommentsPreserveStrings };

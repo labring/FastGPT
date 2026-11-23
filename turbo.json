@@ -19,7 +19,38 @@
       "outputs": []
     },
     "test": {
-      "passThroughEnv": ["CI", "FASTGPT_TEST_MONGODB_URI", "FASTGPT_TEST_MAX_WORKERS"],
+      "env": [
+        "FASTGPT_TEST_MYSQL_URI",
+        "FASTGPT_TEST_OCEANBASE_URI",
+        "FASTGPT_TEST_PG_URI",
+        "FASTGPT_TEST_REQUIRED_SQL_DIALECTS",
+        "FASTGPT_TEST_REQUIRE_PRO_SCHEMA_GUARD"
+      ],
+      "passThroughEnv": [
+        "CI",
+        "FASTGPT_TEST_MONGODB_URI",
+        "FASTGPT_TEST_MAX_WORKERS",
+        "MONGOMS_SYSTEM_BINARY",
+        "MONGOMS_DOWNLOAD_DIR"
+      ],
+      "outputs": ["coverage/**", "test-results.json"]
+    },
+    "@fastgpt/dal#test": {
+      "cache": false,
+      "env": [
+        "FASTGPT_TEST_MYSQL_URI",
+        "FASTGPT_TEST_OCEANBASE_URI",
+        "FASTGPT_TEST_PG_URI",
+        "FASTGPT_TEST_REQUIRED_SQL_DIALECTS",
+        "FASTGPT_TEST_REQUIRE_PRO_SCHEMA_GUARD"
+      ],
+      "passThroughEnv": [
+        "CI",
+        "FASTGPT_TEST_MONGODB_URI",
+        "FASTGPT_TEST_MAX_WORKERS",
+        "MONGOMS_SYSTEM_BINARY",
+        "MONGOMS_DOWNLOAD_DIR"
+      ],
       "outputs": ["coverage/**", "test-results.json"]
     },
     "test:integration": {

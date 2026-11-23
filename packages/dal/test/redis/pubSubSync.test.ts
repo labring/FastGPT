@@ -6,7 +6,7 @@ import {
   redisCacheAdapter,
   RedisCacheAdapter
 } from '@fastgpt/dal/redis/adapter';
-import { RevisionSyncChannel, SignalPubSubChannel } from '@fastgpt/dal/redis/caches/pubSubSync';
+import { SignalPubSubChannel } from '@fastgpt/dal/redis/caches/pubSubSync';
 import { closeRedisRuntime, configureRedisRuntime } from '@fastgpt/dal/redis/runtime';
 
 class FakeSubscriberEmitter extends EventEmitter {
@@ -17,7 +17,7 @@ class FakeSubscriberEmitter extends EventEmitter {
   disconnect = vi.fn();
 }
 
-describe('Redis Pub/Sub & RevisionSyncChannel', () => {
+describe('Redis Pub/Sub & SignalPubSubChannel', () => {
   afterEach(async () => {
     await closeRedisRuntime();
   });
@@ -25,7 +25,6 @@ describe('Redis Pub/Sub & RevisionSyncChannel', () => {
   it('allocates dedicated subscriber connection on Runtime and closes it during shutdown', async () => {
     const commandClient = {
       status: 'ready',
-      incr: vi.fn().mockResolvedValue(1),
       publish: vi.fn().mockResolvedValue(1),
       on: vi.fn(),
       quit: vi.fn().mockResolvedValue('OK'),
@@ -46,12 +45,8 @@ describe('Redis Pub/Sub & RevisionSyncChannel', () => {
     });
     await subscription.ready;
 
-    await expect(
-      redisCacheAdapter.incr(asRedisLogicalKey('system:sync:rev:license'))
-    ).resolves.toBe(1);
     await expect(redisCacheAdapter.publish({ channel, message: 'ping' })).resolves.toBe(1);
 
-    expect(commandClient.incr).toHaveBeenCalledWith('fastgpt:system:sync:rev:license');
     expect(commandClient.publish).toHaveBeenCalledWith('fastgpt:system:sync:ch', 'ping');
     expect(subscriberClient.subscribe).toHaveBeenCalledWith('fastgpt:system:sync:ch');
 
@@ -102,65 +97,6 @@ describe('Redis Pub/Sub & RevisionSyncChannel', () => {
     await Promise.resolve();
     expect(onReconnect).toHaveBeenCalledTimes(2);
     expect(onMessage).not.toHaveBeenCalled();
-  });
-
-  it('RevisionSyncChannel bumps revision, reads revisions via MGET, and validates messages', async () => {
-    const subscriberClient = new FakeSubscriberEmitter();
-    const commandClient = {
-      incr: vi.fn().mockResolvedValue(3),
-      publish: vi.fn().mockResolvedValue(2),
-      mget: vi.fn().mockResolvedValue(['3', null])
-    };
-    const logger = { warn: vi.fn(), error: vi.fn() };
-    const adapter = new RedisCacheAdapter({
-      getCommandClient: () => commandClient as any,
-      createSubscriberConnection: () => subscriberClient as any,
-      releaseConnection: vi.fn()
-    });
-
-    const sync = new RevisionSyncChannel({
-      namespace: 'system:sync',
-      topics: ['systemConfig', 'appTemplates'] as const,
-      redis: adapter
-    });
-
-    await expect(sync.publish('systemConfig')).resolves.toBe(3);
-    expect(commandClient.incr).toHaveBeenCalledWith('fastgpt:system:sync:rev:systemConfig');
-    expect(commandClient.publish).toHaveBeenCalledWith(
-      'fastgpt:system:sync:ch',
-      JSON.stringify({ topic: 'systemConfig', revision: 3 })
-    );
-
-    await expect(sync.readRevisions()).resolves.toEqual({
-      systemConfig: 3,
-      appTemplates: 0
-    });
-
-    const events: Array<{ topic: string; revision: number }> = [];
-    const sub = sync.subscribe({
-      logger,
-      onTopicChanged: (event) => {
-        events.push(event);
-      }
-    });
-    await sub.ready;
-
-    subscriberClient.emit('message', 'fastgpt:system:sync:ch', 'not-json');
-    subscriberClient.emit(
-      'message',
-      'fastgpt:system:sync:ch',
-      JSON.stringify({ topic: 'unknown', revision: 1 })
-    );
-    subscriberClient.emit(
-      'message',
-      'fastgpt:system:sync:ch',
-      JSON.stringify({ topic: 'appTemplates', revision: 5 })
-    );
-
-    await vi.waitFor(() => expect(events).toEqual([{ topic: 'appTemplates', revision: 5 }]));
-    expect(logger.warn).toHaveBeenCalledTimes(2);
-
-    await sub.close();
   });
 
   it('SignalPubSubChannel validates schema on publish and ignores invalid subscriber JSON', async () => {

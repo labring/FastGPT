@@ -15,7 +15,7 @@ export async function registerNodeInstrumentation() {
     const [
       { connectMongo },
       { configureMongoDalRuntime },
-      { connectionMongo, connectionLogMongo, MONGO_URL, MONGO_LOG_URL },
+      { connectionMongo, connectionLogMongo, hasSeparateMongoLogUri, MONGO_URL, MONGO_LOG_URL },
       { systemStartCb },
       { initGlobalVariables, getInitConfig, initSystemPluginTags, initAppTemplateTypes },
       { initVectorStore },
@@ -135,20 +135,24 @@ export async function registerNodeInstrumentation() {
           mongoUrl: MONGO_URL
         }
       }),
-      runInitializationStep({
-        step: 'connect-log-mongo',
-        stage: InitialErrorEnum.MONGO_ERROR,
-        action: () =>
-          connectMongo({
-            db: connectionLogMongo,
-            url: MONGO_LOG_URL
-          }),
-        logger,
-        getErrText,
-        meta: {
-          mongoLogUrl: MONGO_LOG_URL
-        }
-      }),
+      ...(hasSeparateMongoLogUri && connectionLogMongo !== connectionMongo
+        ? [
+            runInitializationStep({
+              step: 'connect-log-mongo',
+              stage: InitialErrorEnum.MONGO_ERROR,
+              action: () =>
+                connectMongo({
+                  db: connectionLogMongo,
+                  url: MONGO_LOG_URL
+                }),
+              logger,
+              getErrText,
+              meta: {
+                mongoLogUrl: MONGO_LOG_URL
+              }
+            })
+          ]
+        : []),
       runInitializationStep({
         step: 'init-vector-store',
         stage: InitialErrorEnum.VECTORDB_ERROR,

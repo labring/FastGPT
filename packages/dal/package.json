@@ -41,8 +41,10 @@
     "./db/sql/dialects/mysql": "./db/sql/dialects/mysql.ts",
     "./db/testing": "./db/testing.ts",
     "./db/repos/registry": "./db/repos/registry.ts",
-    "./db/repos/*/repo": "./db/repos/*/repo.ts",
-    "./db/repos/*/repo.type": "./db/repos/*/repo.type.ts"
+    "./db/repos/appRegistration/repo": "./db/repos/appRegistration/repo.ts",
+    "./db/repos/appRegistration/repo.type": "./db/repos/appRegistration/repo.type.ts",
+    "./db/repos/*/mongo/*": null,
+    "./db/repos/*/sql/*": null
   },
   "scripts": {
     "test": "vitest run -c vitest.config.ts",

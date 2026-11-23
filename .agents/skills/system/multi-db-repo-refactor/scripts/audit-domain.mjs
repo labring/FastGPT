@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {
+  analyzeMongoSchemaDatasource,
   discoverMongoSchemas,
   extractDefineIndexes,
   extractExportedModelNames,
@@ -396,10 +397,11 @@ const target = (() => {
       relPath: normalized,
       isMigrated: normalized.endsWith('/mongo/schema.ts'),
       mongoLegacyOnly: OUT_OF_SQL_SCOPE_SCHEMAS.has(normalized),
-      datasource:
-        /\bgetMongoLogModel\b/.test(content) || /\bdatasource\s*:\s*['"]log['"]/.test(content)
-          ? 'log'
-          : 'main',
+      datasource: analyzeMongoSchemaDatasource({
+        sourceText: content,
+        repoRoot,
+        sourceRelPath: normalized
+      }).datasource,
       hasSoftDelete: /\bdeleteTime\b/.test(content),
       hasTtl: /\bexpireAfterSeconds\b|\bexpires\s*:/.test(content),
       indexes: extractDefineIndexes(content, { repoRoot, sourceRelPath: normalized }),

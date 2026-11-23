@@ -1072,25 +1072,6 @@ export class RedisCacheAdapter {
     };
   };
 
-  /** 原子递增无 TTL 的整数版本号，供多实例配置/模板修订号使用。 */
-  incr = (key: RedisLogicalKey) => {
-    const operation = 'number.incr';
-    return this.operationExecutor.uncertainWrite({
-      operation,
-      execute: async () => {
-        const result = await this.getCommandClient().incr(toPhysicalRedisKey(key));
-        const parsed = NonNegativeSafeIntegerSchema.safeParse(result);
-        if (!parsed.success) {
-          throw new RedisInvalidResponseError({
-            operation,
-            message: 'Redis INCR returned an invalid integer'
-          });
-        }
-        return parsed.data;
-      }
-    });
-  };
-
   /** 向指定 logical channel 发布 Pub/Sub 消息，返回接收到消息的订阅方数量。 */
   publish = ({ channel, message }: { channel: RedisLogicalKey; message: string }) => {
     const operation = 'pubsub.publish';

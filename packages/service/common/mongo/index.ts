@@ -30,13 +30,27 @@ export type {
   PipelineStage
 };
 
+const normalizeMongoUri = (uri?: string): string => uri?.trim() ?? '';
+
 export const MONGO_URL = serviceEnv.MONGODB_URI;
-export const MONGO_LOG_URL = serviceEnv.MONGODB_LOG_URI ?? serviceEnv.MONGODB_URI;
+/** 仅当配置了非空且与主库不同的 `MONGODB_LOG_URI` 时，才启用独立日志库连接池。 */
+export const hasSeparateMongoLogUri = (() => {
+  const mainUri = normalizeMongoUri(serviceEnv.MONGODB_URI);
+  const logUri = normalizeMongoUri(serviceEnv.MONGODB_LOG_URI);
+  return logUri.length > 0 && logUri !== mainUri;
+})();
+export const MONGO_LOG_URL = hasSeparateMongoLogUri
+  ? serviceEnv.MONGODB_LOG_URI!.trim()
+  : serviceEnv.MONGODB_URI;
 
 // 过渡期与 @fastgpt/dal/db/mongo/runtime 共享同一 Mongoose 物理实例，确保新旧模型事务共用 ClientSession。
 export const connectionMongo = getSharedMongoConnection();
 
-export const connectionLogMongo = getSharedMongoLogConnection();
+// 默认 shared 模式直接复用主库物理连接池（避免无独立 MONGODB_LOG_URI 时重复建双池）；
+// 仅当显式配置了与主库不同的 MONGODB_LOG_URI 时，才持有独立日志库连接实例。
+export const connectionLogMongo = hasSeparateMongoLogUri
+  ? getSharedMongoLogConnection()
+  : connectionMongo;
 
 const installedSchemas = new WeakSet<mongoose.Schema>();
 

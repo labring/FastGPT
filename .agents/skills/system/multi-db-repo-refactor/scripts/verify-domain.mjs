@@ -3,10 +3,15 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
+  analyzeLogDualModeTestCoverage,
+  analyzeMongoSchemaDatasource,
   analyzeSchemaIndexes,
+  analyzeSqlRepoDatasource,
   analyzeSqlTableDefinitions,
   extractDefineIndexes,
+  extractExportedDomainRepoSymbols,
   extractExportedModelNames,
+  findDomainServiceUnitTestFiles,
   findRepoRoot,
   findSiblingLegacySchemas,
   inferDomainTestDir,
@@ -40,20 +45,33 @@ const hasFlag = (flag) => args.includes(flag);
 
 if (hasFlag('--help') || hasFlag('-h') || args.length === 0) {
   console.log(`Usage:
-  node verify-domain.mjs --dir <domain-dir> \\
+  node verify-domain.mjs <--dir | --domain> <domain-dir> \\
     [--legacy-schema <path...>] \\
     [--git-legacy <[merge-base:|ref:]repo-rel-path...>] \\
     [--collection-map <oldCollection=newCollection...>] \\
     [--schema-map <OldSchemaVar=NewSchemaVar...>] \\
     [--legacy-model <MongoModelName...>] \\
     [--test <test-file...>] \\
+    [--no-test] \\
     [--allow-wip-slice1]`);
   process.exit(0);
 }
 
-const dirArg = getFlagValue('--dir');
+const dirFlag = getFlagValue('--dir');
+const domainFlag = getFlagValue('--domain');
+if (
+  dirFlag !== undefined &&
+  domainFlag !== undefined &&
+  toPosixPath(dirFlag).replace(/^\.\//, '').replace(/\/$/, '') !==
+    toPosixPath(domainFlag).replace(/^\.\//, '').replace(/\/$/, '')
+) {
+  console.error(`Conflicting flags: --dir "${dirFlag}" and --domain "${domainFlag}"`);
+  process.exit(1);
+}
+
+const dirArg = dirFlag ?? domainFlag;
 if (!dirArg) {
-  console.error('Missing required flag: --dir <domain-dir>');
+  console.error('Missing required flag: --dir <domain-dir> (or --domain <domain-dir>)');
   process.exit(1);
 }
 
@@ -61,6 +79,7 @@ const repoRoot = findRepoRoot();
 const domainRel = toPosixPath(dirArg).replace(/^\.\//, '').replace(/\/$/, '');
 const domainAbs = path.resolve(repoRoot, domainRel);
 const allowWipSlice1 = hasFlag('--allow-wip-slice1');
+const noTest = hasFlag('--no-test');
 const legacySchemaArgs = getFlagValues('--legacy-schema');
 const gitLegacyArgs = getFlagValues('--git-legacy');
 const collectionMapArgs = getFlagValues('--collection-map');
@@ -143,19 +162,40 @@ if (/\bdefineLogRepoToken\b/.test(repoTsText) || checkFileExists('noop/repo.ts')
   );
 }
 
-const mongoSchemaClean = fs.existsSync(path.join(domainAbs, 'mongo/schema.ts'))
-  ? stripCommentsPreserveStrings(fs.readFileSync(path.join(domainAbs, 'mongo/schema.ts'), 'utf8'))
-  : '';
-const isLogDomain =
-  /\bdatasource\s*:\s*['"]log['"]/.test(mongoSchemaClean) ||
-  /\bgetMongoLogModel\b/.test(mongoSchemaClean);
-if (isLogDomain && checkFileExists('sql/repo.ts')) {
-  const sqlRepoClean = stripCommentsPreserveStrings(
-    fs.readFileSync(path.join(domainAbs, 'sql/repo.ts'), 'utf8')
-  );
-  if (!/\bdatasource\b[^=\n]*=\s*['"]log['"]/.test(sqlRepoClean)) {
+const mongoDatasourceInfo = checkFileExists('mongo/schema.ts')
+  ? analyzeMongoSchemaDatasource({
+      sourceText: fs.readFileSync(path.join(domainAbs, 'mongo/schema.ts'), 'utf8'),
+      repoRoot,
+      sourceRelPath: `${domainRel}/mongo/schema.ts`
+    })
+  : { datasource: 'main', isLogDomain: false, collections: [], errors: [] };
+
+for (const err of mongoDatasourceInfo.errors) {
+  failures.push(`[Structure] ${domainRel}/mongo/schema.ts: ${err}`);
+}
+
+const isLogDomain = mongoDatasourceInfo.isLogDomain;
+if (checkFileExists('sql/repo.ts')) {
+  const sqlDatasourceInfo = analyzeSqlRepoDatasource({
+    sourceText: fs.readFileSync(path.join(domainAbs, 'sql/repo.ts'), 'utf8'),
+    repoRoot,
+    sourceRelPath: `${domainRel}/sql/repo.ts`
+  });
+  for (const err of sqlDatasourceInfo.errors) {
+    failures.push(`[Structure] ${domainRel}/sql/repo.ts: ${err}`);
+  }
+  if (isLogDomain && !sqlDatasourceInfo.hasLogDatasource && sqlDatasourceInfo.errors.length === 0) {
     failures.push(
       `[Structure] Log domain ${domainRel}/sql/repo.ts must override readonly datasource = 'log' to match mongo/schema.ts`
+    );
+  }
+  if (
+    !isLogDomain &&
+    mongoDatasourceInfo.errors.length === 0 &&
+    sqlDatasourceInfo.hasLogDatasource
+  ) {
+    failures.push(
+      `[Structure] Main domain ${domainRel}/sql/repo.ts declares datasource = 'log', which mismatches mongo/schema.ts ('main')`
     );
   }
 }
@@ -629,9 +669,11 @@ const checkContractTestGovernance = () => {
     }
   }
 
+  const rawCodeByFile = new Map();
   const execCodeByFile = new Map();
   for (const rel of candidateFiles) {
     const raw = fs.readFileSync(path.resolve(repoRoot, rel), 'utf8');
+    rawCodeByFile.set(rel, raw);
     execCodeByFile.set(rel, stripImportsAndStrings(raw));
   }
 
@@ -640,8 +682,6 @@ const checkContractTestGovernance = () => {
   const ASSERTION_CALL_REGEX = /\bexpect\s*\(/;
   const STUBBED_TX_REGEX =
     /transactionRunner\s*:\s*(?:async\s*)?\([^)]*\)\s*=>\s*(?:\{\s*return\s+)?execute\s*\(\s*undefined\s*\)/;
-  const REAL_LOG_TOPOLOGY_EXEC_REGEX =
-    /\b(?:logMode|logTables|logCollections|withLogDatabase)\s*:/;
 
   const contractTestFiles = [...candidateFiles].filter((rel) => {
     if (rel.includes('.contract.test.')) {
@@ -650,24 +690,33 @@ const checkContractTestGovernance = () => {
     return CONTRACT_SUITE_CALL_REGEX.test(execCodeByFile.get(rel) ?? '');
   });
 
+  // 同时识别 Service L0 单元测试（兼容 service.unit.test.ts 与 service.test.ts）
+  const { serviceFiles, unitTestFiles } = findDomainServiceUnitTestFiles({
+    repoRoot,
+    domainRel,
+    explicitTestTargets: testTargets
+  });
+  for (const unitRel of unitTestFiles) {
+    const raw =
+      rawCodeByFile.get(unitRel) ?? fs.readFileSync(path.resolve(repoRoot, unitRel), 'utf8');
+    const execCode = execCodeByFile.get(unitRel) ?? stripImportsAndStrings(raw);
+    if (!TEST_CASE_CALL_REGEX.test(execCode) || !ASSERTION_CALL_REGEX.test(execCode)) {
+      failures.push(
+        `[Tests] Service L0 unit test ${unitRel} must declare executable test case(s) with expect(...) assertions`
+      );
+    }
+  }
+  if (serviceFiles.length > 0 && unitTestFiles.length === 0 && !allowWipSlice1) {
+    warnings.push(
+      `[Tests] No Service L0 unit test found for ${serviceFiles.join(', ')} (expected service.unit.test.ts or service.test.ts)`
+    );
+  }
+
   if (inferredTestDir !== undefined && !allowWipSlice1 && contractTestFiles.length === 0) {
     failures.push(
       `[Tests] Missing multi-dialect contract test file (expected ${inferredTestDir}/repo.contract.test.ts or pass via --test)`
     );
     return;
-  }
-
-  let hasExecutableLogTopologyTest = false;
-
-  for (const rel of candidateFiles) {
-    const execCode = execCodeByFile.get(rel) ?? '';
-    if (
-      TEST_CASE_CALL_REGEX.test(execCode) &&
-      ASSERTION_CALL_REGEX.test(execCode) &&
-      REAL_LOG_TOPOLOGY_EXEC_REGEX.test(execCode)
-    ) {
-      hasExecutableLogTopologyTest = true;
-    }
   }
 
   for (const rel of contractTestFiles) {
@@ -690,29 +739,53 @@ const checkContractTestGovernance = () => {
     }
   }
 
-  if (isLogDomain && contractTestFiles.length > 0 && !hasExecutableLogTopologyTest) {
-    failures.push(
-      `[Tests] Log domain ${domainRel} must exercise shared/separate log topology routing with real assertions (bare imports or string literals do not count)`
-    );
+  if (isLogDomain && contractTestFiles.length > 0) {
+    const domainRepoSymbols = extractExportedDomainRepoSymbols(domainAbs);
+    const logCoverage = analyzeLogDualModeTestCoverage({
+      testFiles: [...candidateFiles].map((relPath) => ({
+        relPath,
+        raw: rawCodeByFile.get(relPath) ?? ''
+      })),
+      domainRepoSymbols
+    });
+    if (!logCoverage.ok) {
+      failures.push(
+        `[Tests] Log domain ${domainRel} must exercise shared/separate log topology routing with real assertions (${logCoverage.details})`
+      );
+    }
   }
 };
 
 checkContractTestGovernance();
 
 // 6. 运行契约与业务测试（静态门禁存在失败时 Fail-Fast，避免无效拉起 Vitest）
-if (testTargets.length > 0 && failures.length === 0) {
-  const dalTargets = testTargets
-    .map((t) => toPosixPath(t).replace(/^\.\//, ''))
+if (noTest) {
+  warnings.push('[Tests] Skipped test execution (--no-test)');
+} else if (testTargets.length > 0 && failures.length === 0) {
+  const normalizedTargets = testTargets.map((t) => toPosixPath(t).replace(/^\.\//, ''));
+  const dalTargets = normalizedTargets
     .filter((t) => t.startsWith('packages/dal/'))
     .map((t) => t.slice('packages/dal/'.length));
-  const rootTargets = testTargets
-    .map((t) => toPosixPath(t).replace(/^\.\//, ''))
-    .filter((t) => !t.startsWith('packages/dal/'));
+  const serviceUnitTargets = normalizedTargets
+    .filter((t) => t.startsWith('packages/service/test/') && t.endsWith('.unit.test.ts'))
+    .map((t) => t.slice('packages/service/'.length));
+  const rootTargets = normalizedTargets.filter(
+    (t) =>
+      !t.startsWith('packages/dal/') &&
+      !(t.startsWith('packages/service/test/') && t.endsWith('.unit.test.ts'))
+  );
 
   try {
     if (dalTargets.length > 0) {
       console.log(`Running @fastgpt/dal tests: ${dalTargets.join(' ')}`);
       execFileSync('pnpm', ['--filter', '@fastgpt/dal', 'test', ...dalTargets], {
+        cwd: repoRoot,
+        stdio: 'inherit'
+      });
+    }
+    if (serviceUnitTargets.length > 0) {
+      console.log(`Running @fastgpt/service L0 unit tests: ${serviceUnitTargets.join(' ')}`);
+      execFileSync('pnpm', ['--filter', '@fastgpt/service', 'test:unit', ...serviceUnitTargets], {
         cwd: repoRoot,
         stdio: 'inherit'
       });
