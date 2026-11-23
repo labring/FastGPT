@@ -174,6 +174,7 @@ export default function Editor({
   // 变量插件会同步 props；仅在外部文本值变化时重建编辑器。
   useEffect(() => {
     if (value === editorOutputRef.current) return;
+    editorOutputRef.current = value;
     setKey(getNanoid(6));
   }, [value]);
 
