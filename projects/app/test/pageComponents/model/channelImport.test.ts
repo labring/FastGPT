@@ -390,10 +390,9 @@ describe('buildBlankChannelModelData', () => {
           top_provider: { max_completion_tokens: 2048 }
         }
       ],
-      localModels: [],
+      installedModelNames: [],
       targetChannelModels: [],
       targetModelMappings: {},
-      otherChannelModels: [],
       templates: []
     });
     const draft = getBlankChannelImportDraft(getChannelImportCandidate(row));
@@ -571,10 +570,9 @@ describe('buildChannelImportOperation', () => {
     };
     const [row] = classifyChannelModels({
       channelModels: [{ id: 'remote/model' }],
-      localModels: [],
+      installedModelNames: [],
       targetChannelModels: [],
       targetModelMappings: {},
-      otherChannelModels: [],
       templates: [templateData]
     });
     const operation = buildChannelImportOperation({

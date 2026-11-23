@@ -105,12 +105,7 @@ const SelectButtonContent = React.memo(function SelectButtonContent({
       ) : (
         <>
           {selectItem?.icon && (
-            <Avatar
-              mr={2}
-              src={selectItem.icon}
-              w={selectItem.iconSize ?? '1rem'}
-              flexShrink={0}
-            />
+            <Avatar mr={2} src={selectItem.icon} w={selectItem.iconSize ?? '1rem'} flexShrink={0} />
           )}
           <Box
             flex="1 1 auto"

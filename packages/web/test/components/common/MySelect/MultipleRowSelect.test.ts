@@ -655,6 +655,29 @@ describe('MultipleRowSelect', () => {
     expect(document.activeElement).toBe(first);
   });
 
+  it('clears a workflow reference when the selected output is clicked again', async () => {
+    const onSelect = vi.fn();
+    await renderSelect(
+      inChakra(
+        React.createElement(MultipleRowSelect, {
+          value: ['node', 'output'],
+          list: [
+            { value: 'node', label: 'Node', children: [{ value: 'output', label: 'Output' }] }
+          ],
+          onSelect
+        })
+      )
+    );
+    await act(async () => host.querySelector('button')!.click());
+
+    const selectedOutput = [...host.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find(
+      (item) => item.textContent === 'Output'
+    )!;
+    await act(async () => selectedOutput.click());
+
+    expect(onSelect).toHaveBeenCalledExactlyOnceWith(['node', undefined]);
+  });
+
   it('searches across provider groups and only submits a selected template', async () => {
     const onSelect = vi.fn();
     const list = [
@@ -672,14 +695,20 @@ describe('MultipleRowSelect', () => {
         ]
       }
     ];
-    await renderSelect(
-      inChakra(React.createElement(MultipleRowSelect, {
-        list,
-        value: ['claude', 'opus'],
-        isSearch: true,
-        onSelect
-      }))
-    );
+    const renderTemplates = (value: string[]) =>
+      renderSelect(
+        inChakra(
+          React.createElement(MultipleRowSelect, {
+            list,
+            value,
+            isSearch: true,
+            allowDeselect: false,
+            onSelect
+          })
+        )
+      );
+
+    await renderTemplates(['claude', 'opus']);
     const trigger = host.querySelector<HTMLButtonElement>('button')!;
     await act(async () => trigger.click());
 
@@ -701,6 +730,13 @@ describe('MultipleRowSelect', () => {
     expect(getMenuItems().map((item) => item.textContent)).toEqual(['Claude', 'Sonnet']);
     await act(async () => getMenuItems()[1].click());
     expect(onSelect).toHaveBeenCalledExactlyOnceWith(['claude', 'sonnet']);
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+
+    await renderTemplates(['claude', 'sonnet']);
+    await act(async () => trigger.click());
+    const selectedTemplate = getMenuItems().find((item) => item.textContent === 'Sonnet')!;
+    await act(async () => selectedTemplate.click());
+    expect(onSelect).toHaveBeenCalledTimes(1);
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
   });
 });

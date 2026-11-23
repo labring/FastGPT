@@ -10,7 +10,6 @@ const {
   resolveChannelMock,
   getSystemChannelModelsMock,
   getTypeMetasMock,
-  listChannelsMock,
   getModelProvidersMock,
   refreshTemplatesMock,
   updateChannelMock
@@ -20,7 +19,6 @@ const {
   resolveChannelMock: vi.fn(),
   getSystemChannelModelsMock: vi.fn(),
   getTypeMetasMock: vi.fn(),
-  listChannelsMock: vi.fn(),
   getModelProvidersMock: vi.fn(),
   refreshTemplatesMock: vi.fn(),
   updateChannelMock: vi.fn()
@@ -48,7 +46,7 @@ vi.mock('@fastgpt/service/thirdProvider/aiproxy/client', () => ({
   aiProxyClient: {
     getSystemChannelModels: getSystemChannelModelsMock,
     getTypeMetas: getTypeMetasMock,
-    system: { channels: { listAll: listChannelsMock, update: updateChannelMock } }
+    system: { channels: { update: updateChannelMock } }
   }
 }));
 
@@ -100,7 +98,6 @@ describe('apply model imports from channel', () => {
       }
     ]);
     getTypeMetasMock.mockResolvedValue({ 1: { name: ' OpenAI ' } });
-    listChannelsMock.mockResolvedValue([{ ...channel }]);
     getModelProvidersMock.mockReturnValue([{ id: 'openai', name: 'openai' }]);
     refreshTemplatesMock.mockResolvedValue([]);
     updateChannelMock.mockImplementation(async (_id: number, patch: Partial<AiproxyChannel>) => {
@@ -179,7 +176,28 @@ describe('apply model imports from channel', () => {
     ]);
   });
 
-  it('falls through to templates when a target model is mapped to another upstream ID', async () => {
+  it('keeps a suffix-only local match available to import from a template', async () => {
+    channel.models = ['mini'];
+    getSystemModelHandleMock.mockResolvedValue({
+      getSystemModels: () => [{ modelId: 'existing-id', model: 'mini' }]
+    });
+    getSystemChannelModelsMock.mockResolvedValueOnce([{ id: 'openai/gpt-4o-mini' }]);
+    refreshTemplatesMock.mockResolvedValueOnce([createModelData('gpt-4o-mini').modelData]);
+
+    const preview = await previewImportFromChannel({
+      channelId: 1,
+      tmbId: '60000000000000000000000a'
+    });
+
+    expect(preview.items).toMatchObject([
+      {
+        providerModelSlug: 'openai/gpt-4o-mini',
+        candidates: [{ category: 'template', template: { model: 'gpt-4o-mini' } }]
+      }
+    ]);
+  });
+
+  it('keeps a nonmatching model available when a target alias points elsewhere', async () => {
     channel.models = ['existing-model'];
     channel.model_mapping = { 'existing-model': 'old/provider-id' };
     getSystemChannelModelsMock.mockResolvedValueOnce([{ id: 'vendor/existing-model' }]);

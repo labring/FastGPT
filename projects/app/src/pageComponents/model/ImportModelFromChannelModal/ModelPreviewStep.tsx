@@ -389,6 +389,7 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
           placeholder={t('config_model:select_model_template')}
           rowMinWidth="160px"
           isSearch
+          allowDeselect={false}
           ButtonProps={{
             size: 'sm',
             h: '32px',

@@ -24,36 +24,15 @@ const createTemplate = (overrides: Partial<AIModelDocumentDataType> = {}) =>
   }) as AIModelDocumentDataType;
 
 describe('channel model import matching', () => {
-  it('excludes local matches before looking for a template', () => {
-    const exactTemplate = classifyChannelModels({
-      channelModels: [{ id: 'vendor/gpt-4o' }],
-      localModels: [{ modelId: 'associated', model: 'gpt-4o' }],
-      targetChannelModels: ['gpt-4o'],
-      targetModelMappings: {},
-      otherChannelModels: [],
-      templates: [createTemplate({ model: 'vendor/gpt-4o' })]
-    });
-    expect(exactTemplate).toEqual([]);
-
-    const existingModel = classifyChannelModels({
-      channelModels: [{ id: 'vendor/gpt-4o' }],
-      localModels: [{ modelId: 'existing', model: 'vendor/gpt-4o' }],
-      targetChannelModels: [],
-      targetModelMappings: {},
-      otherChannelModels: [],
-      templates: [createTemplate({ model: 'vendor/gpt-4o' })]
-    });
-    expect(existingModel).toEqual([]);
-
-    const templateFallback = classifyChannelModels({
+  it('prefers a suffix template over a prefix template for an unconfigured model', () => {
+    const [item] = classifyChannelModels({
       channelModels: [{ id: 'openai/gpt-4o' }],
-      localModels: [{ modelId: 'prefix', model: 'openai' }],
+      installedModelNames: ['openai'],
       targetChannelModels: [],
       targetModelMappings: {},
-      otherChannelModels: [],
       templates: [createTemplate({ model: 'openai' }), createTemplate({ model: 'gpt-4o' })]
     });
-    expect(templateFallback[0].candidates).toEqual([
+    expect(item.candidates).toEqual([
       expect.objectContaining({
         category: 'template',
         template: { model: 'gpt-4o', type: ModelTypeEnum.llm }
@@ -64,10 +43,9 @@ describe('channel model import matching', () => {
   it('preserves template limits when upstream context length is missing', () => {
     const [preview] = classifyChannelModels({
       channelModels: [{ id: 'openai/gpt-4o' }],
-      localModels: [],
+      installedModelNames: [],
       targetChannelModels: [],
       targetModelMappings: {},
-      otherChannelModels: [],
       templates: [
         createTemplate({
           config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 120000 }
@@ -82,68 +60,39 @@ describe('channel model import matching', () => {
     });
   });
 
-  it('filters the best upstream match and keeps other rows available for import', () => {
+  it('excludes an exact installed name and retains every suffix-only match', () => {
     const items = classifyChannelModels({
-      channelModels: [{ id: 'gpt-4o' }, { id: 'vendor/gpt-4o' }],
-      localModels: [{ modelId: 'gpt-4o', model: 'gpt-4o' }],
+      channelModels: [{ id: 'gpt-4o' }, { id: 'vendor-a/gpt-4o' }, { id: 'vendor-b/gpt-4o' }],
+      installedModelNames: ['gpt-4o'],
       targetChannelModels: [],
       targetModelMappings: {},
-      otherChannelModels: [],
-      templates: [createTemplate({ model: 'vendor/gpt-4o' })]
-    });
-    expect(items.map(({ providerModelSlug }) => providerModelSlug)).toEqual(['vendor/gpt-4o']);
-    expect(items[0].candidates[0]).toMatchObject({
-      category: 'template',
-      template: { model: 'vendor/gpt-4o' }
-    });
-
-    const tiedSuffix = classifyChannelModels({
-      channelModels: [{ id: 'vendor-a/gpt-4o' }, { id: 'vendor-b/gpt-4o' }],
-      localModels: [{ modelId: 'gpt-4o', model: 'gpt-4o' }],
-      targetChannelModels: [],
-      targetModelMappings: {},
-      otherChannelModels: [],
       templates: [createTemplate({ model: 'vendor-b/gpt-4o' })]
     });
-    expect(tiedSuffix.map(({ providerModelSlug }) => providerModelSlug)).toEqual([
-      'vendor-b/gpt-4o'
-    ]);
-    expect(tiedSuffix[0].candidates[0]).toMatchObject({
-      category: 'template',
-      template: { model: 'vendor-b/gpt-4o' }
-    });
 
-    const mostSpecific = classifyChannelModels({
-      channelModels: [{ id: 'vendor/openai/gpt-4o' }],
-      localModels: [
-        { modelId: 'short', model: 'gpt-4o' },
-        { modelId: 'long', model: 'openai/gpt-4o' }
-      ],
-      targetChannelModels: [],
-      targetModelMappings: {},
-      otherChannelModels: [],
-      templates: []
-    });
-    expect(mostSpecific).toEqual([]);
+    expect(items).toMatchObject([
+      { providerModelSlug: 'vendor-a/gpt-4o', candidates: [{ category: 'blank' }] },
+      {
+        providerModelSlug: 'vendor-b/gpt-4o',
+        candidates: [{ category: 'template', template: { model: 'vendor-b/gpt-4o' } }]
+      }
+    ]);
   });
 
   it('respects an existing target alias and sends conflicting aliases to templates', () => {
     const mapped = classifyChannelModels({
       channelModels: [{ id: 'mapped/provider-id' }],
-      localModels: [{ modelId: 'associated', model: 'internal-name' }],
+      installedModelNames: ['internal-name'],
       targetChannelModels: ['internal-name'],
       targetModelMappings: { 'internal-name': 'mapped/provider-id' },
-      otherChannelModels: [],
       templates: []
     });
     expect(mapped).toEqual([]);
 
     const conflicting = classifyChannelModels({
       channelModels: [{ id: 'vendor/internal-name' }],
-      localModels: [{ modelId: 'associated', model: 'internal-name' }],
+      installedModelNames: ['internal-name'],
       targetChannelModels: ['internal-name'],
       targetModelMappings: { 'internal-name': 'old/provider-id' },
-      otherChannelModels: [],
       templates: [createTemplate({ model: 'vendor/internal-name' })]
     });
     expect(conflicting[0].candidates[0]).toMatchObject({
@@ -170,15 +119,10 @@ describe('channel model import matching', () => {
           context_length: 48000
         }
       ],
-      localModels: [
-        { modelId: 'associated', model: 'gpt-4o' },
-        { modelId: 'existing', model: 'claude' },
-        { modelId: 'other-channel', model: 'embedding' }
-      ],
+      installedModelNames: ['gpt-4o', 'claude', 'embedding'],
       provider: 'provider-from-channel',
       targetChannelModels: ['gpt-4o'],
       targetModelMappings: {},
-      otherChannelModels: ['embedding'],
       templates: [createTemplate({ model: 'new-template' })]
     });
 
@@ -238,10 +182,9 @@ describe('channel model import matching', () => {
           architecture: { output_modalities: ['text'] }
         }
       ],
-      localModels: [],
+      installedModelNames: [],
       targetChannelModels: [],
       targetModelMappings: {},
-      otherChannelModels: [],
       templates: [createTemplate({ model: 'gpt-4o' })]
     });
     const response = PreviewImportFromChannelResponseSchema.parse({ items });
@@ -261,21 +204,22 @@ describe('channel model import matching', () => {
     });
   });
 
-  it('uses matching templates instead of models already linked to another channel', () => {
+  it('only hides mapped upstream IDs for installed models bound to the target channel', () => {
     const items = classifyChannelModels({
-      channelModels: [{ id: 'vendor/gpt-4o' }],
-      localModels: [{ modelId: 'source', model: 'gpt-4o' }],
-      targetChannelModels: [],
-      targetModelMappings: {},
-      otherChannelModels: ['gpt-4o'],
-      templates: [createTemplate({ model: 'gpt-4o' })]
+      channelModels: [{ id: 'vendor/bound' }, { id: 'vendor/deleted' }, { id: 'vendor/unbound' }],
+      installedModelNames: ['bound', 'unbound'],
+      targetChannelModels: ['bound', 'deleted'],
+      targetModelMappings: {
+        bound: 'vendor/bound',
+        deleted: 'vendor/deleted',
+        unbound: 'vendor/unbound'
+      },
+      templates: []
     });
 
-    expect(items[0].candidates).toEqual([
-      expect.objectContaining({
-        category: 'template',
-        template: { type: ModelTypeEnum.llm, model: 'gpt-4o' }
-      })
+    expect(items.map(({ providerModelSlug }) => providerModelSlug)).toEqual([
+      'vendor/deleted',
+      'vendor/unbound'
     ]);
   });
 });

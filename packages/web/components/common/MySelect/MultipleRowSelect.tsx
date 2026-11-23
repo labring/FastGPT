@@ -30,6 +30,7 @@ type RenderListProps = {
   onSelect: (val: (string | undefined)[]) => void;
   onClose: () => void;
   changeOnEverySelect: boolean;
+  allowDeselect: boolean;
   emptyTip?: string;
   maxH: number;
   rowMinWidth: string;
@@ -46,6 +47,7 @@ const RenderList = React.memo(function RenderList({
   onSelect,
   onClose,
   changeOnEverySelect,
+  allowDeselect,
   emptyTip,
   maxH,
   rowMinWidth,
@@ -108,7 +110,7 @@ const RenderList = React.memo(function RenderList({
               _hover={{ bg: 'primary.50' }}
               _focusVisible={{ bg: 'primary.50' }}
               onClick={() => {
-                if (item.value === selectedValue && !changeOnEverySelect) {
+                if (item.value === selectedValue && !allowDeselect) {
                   if (!hasChildren) onClose();
                   return;
                 }
@@ -164,6 +166,7 @@ const RenderList = React.memo(function RenderList({
           onSelect={onSelect}
           onClose={onClose}
           changeOnEverySelect={changeOnEverySelect}
+          allowDeselect={allowDeselect}
           emptyTip={emptyTip}
           maxH={maxH}
           rowMinWidth={rowMinWidth}
@@ -309,6 +312,8 @@ const ArrayRenderList = React.memo(function ArrayRenderList({
 type MultipleRowSelectProps = MultipleSelectProps & {
   rowMinWidth?: string;
   isSearch?: boolean;
+  /** 重选当前叶子时清空该层及后续选择。 */
+  allowDeselect?: boolean;
 };
 
 const MultipleRowSelect = React.memo(function MultipleRowSelect({
@@ -325,7 +330,8 @@ const MultipleRowSelect = React.memo(function MultipleRowSelect({
   onCloseFunc,
   changeOnEverySelect = false,
   rowMinWidth = 'auto',
-  isSearch = false
+  isSearch = false,
+  allowDeselect = true
 }: MultipleRowSelectProps) {
   const { t } = useTranslation();
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -446,6 +452,7 @@ const MultipleRowSelect = React.memo(function MultipleRowSelect({
       onSelect={onSelect}
       onClose={onCloseSelect}
       changeOnEverySelect={changeOnEverySelect}
+      allowDeselect={allowDeselect}
       emptyTip={emptyTip}
       maxH={maxH}
       rowMinWidth={rowMinWidth}

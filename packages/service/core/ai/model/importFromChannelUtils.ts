@@ -8,8 +8,6 @@ import type {
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import type { AiproxyChannelModel } from '../../../thirdProvider/aiproxy/type';
 
-type LocalModel = Pick<AIModelDocumentDataType, 'model'> & { modelId: string };
-
 /** 仅当渠道协议名唯一匹配 FastGPT provider 展示名时返回稳定 provider ID。 */
 export const inferFastGPTProvider = ({
   channelTypeName,
@@ -131,29 +129,22 @@ export const createBlankModelData = (
   };
 };
 
-/** 过滤系统模型的目标渠道别名及精确/后缀匹配；其余上游项匹配模板或空白草稿。 */
+/** 按已安装模型名和目标渠道的显式映射精确排除，余下的模型匹配模板或生成空白草稿。 */
 export const classifyChannelModels = ({
   channelModels,
-  localModels,
+  installedModelNames,
   targetChannelModels,
   targetModelMappings,
-  otherChannelModels,
   templates,
   provider
 }: {
   channelModels: AiproxyChannelModel[];
-  localModels: LocalModel[];
+  installedModelNames: string[];
   targetChannelModels: string[];
   targetModelMappings: Record<string, string>;
-  otherChannelModels: string[];
   templates: AIModelDocumentDataType[];
   provider?: string;
 }): PreviewImportFromChannelResponse['items'] => {
-  const getLocalModelMatchRank = (providerModelSlug: string, model: string) => {
-    if (!model) return;
-    if (providerModelSlug === model) return 0;
-    if (providerModelSlug.endsWith(model)) return 1;
-  };
   const getTemplateMatchRank = (providerModelSlug: string, model: string) => {
     if (!model) return;
     if (providerModelSlug === model) return 0;
@@ -162,57 +153,18 @@ export const classifyChannelModels = ({
     if (providerModelSlug.includes(model)) return 3;
   };
 
-  const targetModelNames = new Set(targetChannelModels);
-  const otherModelNames = new Set(otherChannelModels);
-  const installedModelNames = new Set(localModels.map(({ model }) => model));
-  const localMatches = channelModels.flatMap((channelModel, channelModelIndex) =>
-    localModels.flatMap(({ modelId, model }) => {
-      const isOnTargetChannel = targetModelNames.has(model);
-      const mappedSlug = isOnTargetChannel ? targetModelMappings[model] : undefined;
-
-      // 其他渠道占用的模型不跨渠道复用；目标渠道的显式映射优先于名称推断。
-      if (!isOnTargetChannel && otherModelNames.has(model) && channelModel.id !== model) {
-        return [];
-      }
-
-      const rank =
-        mappedSlug === undefined
-          ? getLocalModelMatchRank(channelModel.id, model)
-          : mappedSlug === channelModel.id
-            ? -1
-            : undefined;
-      if (rank === undefined) return [];
-
-      return [{ channelModelIndex, model, modelId, rank }];
-    })
-  );
-  const matchedChannelModelIndexes = new Set<number>();
-  const matchedLocalModelIds = new Set<string>();
-
-  // 显式别名、精确和更长后缀优先；同精度按上游目录顺序稳定分配。
-  for (const match of localMatches.sort(
-    (left, right) =>
-      left.rank - right.rank ||
-      right.model.length - left.model.length ||
-      left.channelModelIndex - right.channelModelIndex
-  )) {
-    if (
-      matchedLocalModelIds.has(match.modelId) ||
-      matchedChannelModelIndexes.has(match.channelModelIndex)
-    ) {
-      continue;
+  // 只有仍然安装且绑定到目标渠道的模型，才能通过显式映射确认上游 ID。
+  const installedNames = new Set(installedModelNames);
+  const mappedUpstreamIds = new Set<string>();
+  for (const model of targetChannelModels) {
+    if (installedNames.has(model) && Object.hasOwn(targetModelMappings, model)) {
+      mappedUpstreamIds.add(targetModelMappings[model]);
     }
-    matchedLocalModelIds.add(match.modelId);
-    matchedChannelModelIndexes.add(match.channelModelIndex);
   }
 
-  return channelModels.flatMap((channelModel, channelModelIndex) => {
-    if (
-      installedModelNames.has(channelModel.id) ||
-      matchedChannelModelIndexes.has(channelModelIndex)
-    ) {
-      return [];
-    }
+  // 近似匹配只参与模板推荐，保留每个尚未配置的上游模型。
+  return channelModels.flatMap((channelModel) => {
+    if (installedNames.has(channelModel.id) || mappedUpstreamIds.has(channelModel.id)) return [];
 
     const contextLength = getContextLength(channelModel);
     const maxCompletionTokens = getMaxCompletionTokens(channelModel);

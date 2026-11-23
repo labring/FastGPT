@@ -28,14 +28,13 @@ export const previewImportFromChannel = async ({
   // 1. 先校验所选渠道并读取其类型，后续映射 provider 必须基于同一渠道。
   const channel = await resolveChannelForOperation({ id: channelId, channelType: 'system', tmbId });
   // 2. 并行读取预览所需目录与 type-meta，减少多段网络/存储等待。
-  const [channelModels, channels, modelHandle, templates, typeMetas] = await Promise.all([
+  const [channelModels, modelHandle, templates, typeMetas] = await Promise.all([
     aiProxyClient.getSystemChannelModels(channelId).catch((error) => {
       if ((error as { status?: number })?.status === 501) {
         throw new UserError(ModelErrEnum.channelCatalogUnsupported);
       }
       throw error;
     }),
-    aiProxyClient.system.channels.listAll(),
     getSystemModelHandle(),
     refreshModelTemplates(),
     // type-meta 只用于 provider 推断；读取失败时由空白草稿使用默认 provider。
@@ -48,16 +47,13 @@ export const previewImportFromChannel = async ({
     providers: getModelProviders('en')
   });
 
-  // 4. 保留原始渠道别名与其他渠道占用，分类后将唯一 provider 传给空白草稿。
+  // 4. 使用已安装模型名和目标渠道映射精确筛除，将唯一 provider 传给空白草稿。
   return {
     items: classifyChannelModels({
       channelModels,
-      localModels: modelHandle.getSystemModels(),
+      installedModelNames: modelHandle.getSystemModels().map(({ model }) => model),
       targetChannelModels: channel.models ?? [],
       targetModelMappings: channel.model_mapping ?? {},
-      otherChannelModels: channels
-        .filter((item) => item.id !== channelId)
-        .flatMap((item) => item.models ?? []),
       templates,
       provider
     })
