@@ -1,13 +1,30 @@
 ---
 title: V4.17.5
-description: FastGPT V4.17.5 更新说明，涵盖主页对话未读状态与资源目录权限校验修复。
+description: FastGPT V4.17.5 更新说明，涵盖 HTML 预览安全隔离、资源权限校验及工作流修复。
 sidebarTag: 开发中
 ---
+
+## 升级指南
+
+### 镜像更新
+
+- 将 FastGPT 主服务（`fastgpt-app`）镜像标签更新为 `v4.17.5`。商业版同时将 `fastgpt-pro` 更新为 `v4.17.5`。
+- 最新的 [Docker Compose 部署模板](/self-host/deploy/docker) 将自带的 MongoDB 更新至 `8.0.38`，以兼容 Ubuntu 的部分新版内核。已使用 MongoDB 8.0 的部署在原地更新补丁版时保留现有数据卷。如果使用外部 MongoDB，请参考 [MongoDB 内核兼容说明](https://www.mongodb.com/docs/manual/administration/production-notes/#platform-support-notes)。
+- 部署模板为 OpenSandbox Server 补充了 `host.docker.internal:host-gateway` 映射。自定义 Compose 使用该主机名时，也需在 `fastgpt-opensandbox-server` 的 `extra_hosts` 中加入此映射，确保服务能访问沙盒容器在宿主机上的映射端口。
+
+### 配置与数据
+
+FastGPT 从 v4.17.4 升级无需新增环境变量或执行应用升级脚本。使用自定义 Compose 的部署可直接更新对应镜像标签。
+
+已有 MongoDB 5.x 或 MinIO 的部署可继续使用原 Compose，仅更新 FastGPT 镜像。若要切换 MongoDB 大版本或从 MinIO 迁移到 RustFS，请先完成 [数据备份与迁移](/self-host/migration/docker_db)。
+
+## 安全修复
+
+1. 修复对话 HTML 在新标签页预览时的安全隔离问题。
+2. 修复根目录下应用、知识库、技能及知识库集合移动时的权限校验遗漏问题。
 
 ## 🐛 修复
 
 1. 修复非 root 用户在主页对话或仅有读取权限的应用中，已读回复仍显示为未读的问题。
 2. 修复工具文件夹中创建 HTTP 工具时的权限校验错误。
-3. 修复根目录下应用、知识库、技能及知识库集合移动时的权限校验遗漏问题。
-4. 修复循环或并行执行中结束节点引用失效时工作流详情页白屏，以及聚合输出类型未重置的问题。
-5. 修复对话 HTML 在新标签页预览时的安全隔离问题。
+3. 修复循环或并行执行中结束节点引用失效时工作流详情页白屏，以及聚合输出类型未重置的问题。

@@ -1,13 +1,30 @@
 ---
 title: V4.17.5
-description: FastGPT V4.17.5 release notes covering unread message status and resource permission check fixes.
+description: FastGPT V4.17.5 release notes covering HTML preview isolation, resource permissions, and workflow fixes.
 sidebarTag: In dev
 ---
+
+## Upgrade guide
+
+### Image updates
+
+- Update the main FastGPT service (`fastgpt-app`) image tag to `v4.17.5`. For the commercial edition, also update `fastgpt-pro` to `v4.17.5`.
+- The latest [Docker Compose deployment templates](/en/self-host/deploy/docker) update the bundled MongoDB image to `8.0.38` for compatibility with some recent Ubuntu kernels. If you already run MongoDB 8.0, keep your existing data volume when applying this patch in place. If you use an external MongoDB instance, see the [MongoDB kernel compatibility notes](https://www.mongodb.com/docs/manual/administration/production-notes/#platform-support-notes).
+- The deployment templates add the `host.docker.internal:host-gateway` mapping to OpenSandbox Server. For custom Compose deployments using this hostname, add the same mapping to `extra_hosts` on `fastgpt-opensandbox-server` so the service can reach sandbox ports published on the Docker host.
+
+### Configuration and data
+
+Upgrading FastGPT from v4.17.4 requires no new environment variables or application upgrade scripts. For custom Compose deployments, update the applicable image tags in your existing configuration.
+
+If your deployment uses MongoDB 5.x or MinIO, keep your existing Compose file and update the FastGPT images. Before changing the MongoDB major version or moving from MinIO to RustFS, follow the [data backup and migration guide](/en/self-host/migration/docker_db).
+
+## Security fixes
+
+1. Fixed a security isolation issue when opening an HTML preview from a chat in a new tab.
+2. Fixed missing permission checks when moving apps, Datasets, Skills, and Collections from the root directory.
 
 ## 🐛 Fixes
 
 1. Fixed an issue where replies in home chats or apps with read-only access remained marked as unread after non-root users read them.
 2. Fixed incorrect permission checks when creating HTTP tools in tool folders.
-3. Fixed missing permission checks when moving apps, Datasets, Skills, and Collections from the root directory.
-4. Fixed workflow detail pages failing to load when an end node in a loop or parallel execution has an invalid reference, and aggregate output types failing to reset.
-5. Fixed a security isolation issue when opening an HTML preview from a chat in a new tab.
+3. Fixed workflow detail pages failing to load when an end node in a loop or parallel execution has an invalid reference, and aggregate output types failing to reset.
