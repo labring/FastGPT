@@ -34,7 +34,7 @@ FastGPT 升级通常包括两个步骤：
 - Agent Sandbox Volume Manager 镜像: ghcr.io/labring/fastgpt-agent-volume-manager
 - Agent Sandbox 镜像: ghcr.io/labring/fastgpt-agent-sandbox
 - Agent Sandbox Proxy 镜像: ghcr.io/labring/fastgpt-agent-sandbox-proxy
-- 商业版镜像: ghcr.io/c121914yu/fastgpt-pro
+- 商业版镜像: ghcr.io/labring/fastgpt-pro
 
 **国内镜像源**
 
@@ -48,6 +48,8 @@ FastGPT 升级通常包括两个步骤：
 - 商业版镜像: ghcr.dockerproxy.net/labring/fastgpt-pro
 
 各服务使用目标版本部署模板指定的镜像 Tag。配套服务的版本号可能各自独立，升级前记录完整镜像组合与配置。
+
+如果现有 Docker Compose 使用旧阿里云地址，升级时按上表更新 FastGPT 服务的完整镜像引用，包括仓库地址和标签。启用 Agent Sandbox 时，同时更新预拉取镜像和 `AGENT_SANDBOX_OPENSANDBOX_IMAGE`，使它们指向同一镜像。
 
 ## Sealos 修改镜像
 

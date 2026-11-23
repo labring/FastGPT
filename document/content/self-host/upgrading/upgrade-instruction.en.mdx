@@ -34,7 +34,7 @@ If you use FastGPT's bundled MongoDB 5.x and want to move to 8.x, see [Migrate M
 - Agent Sandbox Volume Manager image: ghcr.io/labring/fastgpt-agent-volume-manager
 - Agent Sandbox image: ghcr.io/labring/fastgpt-agent-sandbox
 - Agent Sandbox Proxy image: ghcr.io/labring/fastgpt-agent-sandbox-proxy
-- Commercial edition image: ghcr.io/c121914yu/fastgpt-pro
+- Commercial edition image: ghcr.io/labring/fastgpt-pro
 
 **China Mainland mirror**
 
@@ -48,6 +48,8 @@ If you use FastGPT's bundled MongoDB 5.x and want to move to 8.x, see [Migrate M
 - Commercial edition image: ghcr.dockerproxy.net/labring/fastgpt-pro
 
 Pin each service to the image tag specified in the target release deployment template. Companion services may use different version tags; record the complete image set and configuration before upgrading.
+
+If your existing Docker Compose file uses the previous Alibaba Cloud registry, update each FastGPT service's full image reference during the upgrade, including the repository and tag. If you use Agent Sandbox, point its pre-pull image and `AGENT_SANDBOX_OPENSANDBOX_IMAGE` at the same updated image.
 
 ## Updating Images on Sealos
 

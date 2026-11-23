@@ -7,7 +7,6 @@ on:
         required: true
         type: string
 
-env:
 jobs:
   validate-version:
     runs-on: ubuntu-24.04
