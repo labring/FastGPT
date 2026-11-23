@@ -1514,6 +1514,7 @@ type SavedCollectionMethodDescriptor = {
 type TestMongoIndexReadinessState = {
   readyModels: WeakSet<Model<any>>;
   inFlight: WeakMap<Model<any>, Promise<void>>;
+  collectionModels: Map<object, Set<Model<any>>>;
   wrappedCollections: Map<object, SavedCollectionMethodDescriptor[]>;
   originalModelFn: Mongoose['model'];
 };
@@ -1690,23 +1691,52 @@ const wrapModelCollectionForTestReadiness = ({
     return;
   }
   const collection = model.collection as unknown as Record<PropertyKey, unknown> | undefined;
-  if (
-    collection === undefined ||
-    collection === null ||
-    typeof collection !== 'object' ||
-    state.wrappedCollections.has(collection)
-  ) {
+  if (collection === undefined || collection === null || typeof collection !== 'object') {
+    return;
+  }
+
+  // Mongoose 对同一连接和物理集合名会复用同一个 collection 对象：
+  // 必须登记该集合上当前全部非 autoIndex:false 模型，避免第二个模型的新索引被首个模型的已就绪状态掩盖。
+  let boundModels = state.collectionModels.get(collection);
+  if (boundModels === undefined) {
+    boundModels = new Set<Model<any>>();
+    state.collectionModels.set(collection, boundModels);
+  }
+  boundModels.add(model);
+
+  if (state.wrappedCollections.has(collection)) {
     return;
   }
 
   const savedDescriptors: SavedCollectionMethodDescriptor[] = [];
+  const getPendingModels = (): Model<any>[] => {
+    const models = state.collectionModels.get(collection);
+    if (models === undefined) {
+      return [];
+    }
+    const pending: Model<any>[] = [];
+    for (const boundModel of models) {
+      if (boundModel.schema.get('autoIndex') !== false && !state.readyModels.has(boundModel)) {
+        pending.push(boundModel);
+      }
+    }
+    return pending;
+  };
+
   const isFastPathReady = () =>
     testReadinessStates.get(client) !== state ||
-    state.readyModels.has(model) ||
-    model.schema.get('autoIndex') === false ||
-    client.connection.readyState !== 1;
+    client.connection.readyState !== 1 ||
+    getPendingModels().length === 0;
 
-  const waitReady = () => ensureModelIndexesReady({ client, state, model });
+  const waitReady = async (): Promise<void> => {
+    const pending = getPendingModels();
+    if (pending.length === 0) {
+      return;
+    }
+    await Promise.all(
+      pending.map((pendingModel) => ensureModelIndexesReady({ client, state, model: pendingModel }))
+    );
+  };
 
   for (const methodName of TEST_MONGO_COLLECTION_ASYNC_BARRIER_METHODS) {
     const original = collection[methodName];
@@ -1855,6 +1885,7 @@ export const enableTestMongoIndexReadiness = async (
     const state: TestMongoIndexReadinessState = {
       readyModels: new WeakSet<Model<any>>(),
       inFlight: new WeakMap<Model<any>, Promise<void>>(),
+      collectionModels: new Map(),
       wrappedCollections: new Map(),
       originalModelFn: client.model
     };
@@ -1892,6 +1923,7 @@ export const disableTestMongoIndexReadiness = (
       }
     }
     state.wrappedCollections.clear();
+    state.collectionModels.clear();
 
     (client as { model: Mongoose['model'] }).model = state.originalModelFn;
     testReadinessStates.delete(client);

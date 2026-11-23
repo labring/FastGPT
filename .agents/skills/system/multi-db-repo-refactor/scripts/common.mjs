@@ -5032,32 +5032,98 @@ export const analyzeLogDualModeTestCoverage = ({
         continue;
       }
 
-      const enclosingScope = scopeTree.findInnermostScope(calleeCharPos);
-      if (enclosingScope.kind === 'function') {
-        // 允许在 describe(...) 回调中调用，但拒绝放在从未调用的普通 helper 函数体中
-        const beforeOpenTok = call.calleeIdx;
-        let inDescribe = false;
-        for (let b = 0; b < beforeOpenTok; b += 1) {
-          if (isIdentTok(tokens[b], 'describe')) {
-            let cur = b + 1;
-            while (isPunctTok(tokens[cur], '.') && tokens[cur + 1]?.type === 'ident') {
-              cur += 2;
-              if (tokens[cur - 1].value === 'each' && isPunctTok(tokens[cur], '(') && matchIdx[cur] !== -1) {
-                cur = matchIdx[cur] + 1;
-              }
-            }
-            if (isPunctTok(tokens[cur], '(') && matchIdx[cur] !== -1 && matchIdx[cur] > call.closeParenIdx) {
-              inDescribe = true;
-              break;
-            }
+      const describeCalls = findFunctionCalls({
+        tokens,
+        matchIdx,
+        calleeNames: vitestDescribeAliases
+      }).filter((dc) => {
+        if (dc.openParenIdx === -1 || dc.closeParenIdx === -1 || isInsideSkipped(dc.calleeIdx)) {
+          return false;
+        }
+        const dcBinding = scopeTree.lookupBinding(dc.calleeName, tokens[dc.calleeIdx].start);
+        return !(dcBinding.found && dcBinding.binding.kind !== 'import');
+      });
+
+      const findConditionalPrefixError = (calleeIdx) => {
+        let p = calleeIdx - 1;
+        while (
+          p >= 0 &&
+          (isIdentTok(tokens[p], 'void') ||
+            isIdentTok(tokens[p], 'await') ||
+            isPunctTok(tokens[p], '('))
+        ) {
+          p -= 1;
+        }
+        if (p < 0) {
+          return null;
+        }
+        const prevTok = tokens[p];
+        if (
+          isPunctTok(prevTok, '&&') ||
+          isPunctTok(prevTok, '||') ||
+          isPunctTok(prevTok, '??') ||
+          isPunctTok(prevTok, '?') ||
+          isPunctTok(prevTok, ':') ||
+          isIdentTok(prevTok, 'else')
+        ) {
+          return 'must be registered unconditionally (cannot be gated by conditional expression or else branch)';
+        }
+        if (isPunctTok(prevTok, ')') && matchIdx[p] !== -1) {
+          const openIdx = matchIdx[p];
+          const beforeParen = openIdx > 0 ? tokens[openIdx - 1] : undefined;
+          if (
+            isIdentTok(beforeParen, 'if') ||
+            isIdentTok(beforeParen, 'while') ||
+            isIdentTok(beforeParen, 'for') ||
+            isIdentTok(beforeParen, 'with')
+          ) {
+            return 'must be registered unconditionally (cannot be gated by if/loop condition)';
           }
         }
-        if (!inDescribe) {
-          fileInvalidReasons.push(
-            `${file.relPath}: ${call.calleeName} must be registered at top-level or inside describe()`
-          );
-          continue;
+        return null;
+      };
+
+      const findUnconditionalPositionError = () => {
+        const directPrefixErr = findConditionalPrefixError(call.calleeIdx);
+        if (directPrefixErr !== null) {
+          return directPrefixErr;
         }
+
+        let cursorScope = scopeTree.findInnermostScope(calleeCharPos);
+        while (cursorScope !== null && cursorScope.kind !== 'program') {
+          if (cursorScope.kind === 'block') {
+            return 'must be registered unconditionally (cannot be nested inside if/else/switch/loop/try block)';
+          }
+          if (cursorScope.kind === 'function') {
+            // 仅允许作为非跳过 Vitest describe/suite 回调的直接内容，且该 describe 本身也必须处于无条件控制流中
+            let matchingDesc = null;
+            for (const dc of describeCalls) {
+              if (
+                cursorScope.start > tokens[dc.openParenIdx].start &&
+                cursorScope.end < tokens[dc.closeParenIdx].end &&
+                (matchingDesc === null ||
+                  tokens[dc.openParenIdx].start > tokens[matchingDesc.openParenIdx].start)
+              ) {
+                matchingDesc = dc;
+              }
+            }
+            if (matchingDesc === null) {
+              return 'must be registered unconditionally at top-level or inside describe()';
+            }
+            const descPrefixErr = findConditionalPrefixError(matchingDesc.calleeIdx);
+            if (descPrefixErr !== null) {
+              return descPrefixErr;
+            }
+          }
+          cursorScope = cursorScope.parent;
+        }
+        return null;
+      };
+
+      const positionErr = findUnconditionalPositionError();
+      if (positionErr !== null) {
+        fileInvalidReasons.push(`${file.relPath}: ${call.calleeName} ${positionErr}`);
+        continue;
       }
 
       const inner = clean.slice(tokens[call.openParenIdx].end, tokens[call.closeParenIdx].start);
@@ -5190,6 +5256,78 @@ export const analyzeLogDualModeTestCoverage = ({
         : missingImportFiles.length > 0
           ? `none of the candidate test files (${missingImportFiles.join(', ')}) imports and invokes "${LOG_TOPOLOGY_SUITE_CALLEE}" from "@fastgpt/dal/db/testing"`
           : `missing executable ${LOG_TOPOLOGY_SUITE_CALLEE}({ ... }) wiring shared + separate physical isolation checks`
+  };
+};
+
+export const REQUIRED_LOG_TOPOLOGY_CASES = [
+  {
+    suiteTitle: '[Log Topology: MongoDB (shared + separate)]',
+    caseTitle: 'routes log reads/writes through main physical DB in shared mode'
+  },
+  {
+    suiteTitle: '[Log Topology: MongoDB (shared + separate)]',
+    caseTitle: 'isolates log reads/writes into separate log physical DB without touching main DB'
+  },
+  {
+    suiteTitle: '[Log Topology: SQL PGlite (shared + separate)]',
+    caseTitle: 'routes log reads/writes through main physical DB in shared mode'
+  },
+  {
+    suiteTitle: '[Log Topology: SQL PGlite (shared + separate)]',
+    caseTitle: 'isolates log reads/writes into separate log physical DB without touching main DB'
+  }
+];
+
+/**
+ * 核对 Vitest JSON 测试报告，确认日志域的两族双态 4 个标准隔离用例真实注册、实际执行且全部 passed（绝不放行 0 注册或跳过）。
+ */
+export const verifyExecutedLogTopologyReports = (reports) => {
+  const assertionStatusByCase = new Map();
+
+  for (const report of reports ?? []) {
+    if (!report || typeof report !== 'object' || !Array.isArray(report.testResults)) {
+      continue;
+    }
+    for (const fileResult of report.testResults) {
+      if (!Array.isArray(fileResult?.assertionResults)) {
+        continue;
+      }
+      for (const assertion of fileResult.assertionResults) {
+        const ancestors = Array.isArray(assertion?.ancestorTitles) ? assertion.ancestorTitles : [];
+        const title = typeof assertion?.title === 'string' ? assertion.title : '';
+        const status = typeof assertion?.status === 'string' ? assertion.status : 'unknown';
+
+        for (const req of REQUIRED_LOG_TOPOLOGY_CASES) {
+          if (title === req.caseTitle && ancestors.includes(req.suiteTitle)) {
+            const key = `${req.suiteTitle} :: ${req.caseTitle}`;
+            const prev = assertionStatusByCase.get(key);
+            if (prev !== 'passed') {
+              assertionStatusByCase.set(key, status);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  const passedCases = [];
+  const missingOrNotPassed = [];
+  for (const req of REQUIRED_LOG_TOPOLOGY_CASES) {
+    const key = `${req.suiteTitle} :: ${req.caseTitle}`;
+    const status = assertionStatusByCase.get(key);
+    if (status === 'passed') {
+      passedCases.push(key);
+    } else if (status === undefined) {
+      missingOrNotPassed.push(`missing (not executed): ${key}`);
+    } else {
+      missingOrNotPassed.push(`${status}: ${key}`);
+    }
+  }
+
+  return {
+    ok: missingOrNotPassed.length === 0,
+    passedCases,
+    missingOrNotPassed
   };
 };
 

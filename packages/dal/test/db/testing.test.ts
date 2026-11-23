@@ -730,6 +730,49 @@ describe('@fastgpt/dal/db/testing harness reliability & contract guardrails', ()
       await OptedOutModel.create({ code: 'dup' });
       await OptedOutModel.collection.insertMany([{ code: 'dup' }]);
       expect(await OptedOutModel.countDocuments({ code: 'dup' })).toBe(2);
+
+      // 5. 同物理集合索引演进：首个模型就绪后，在同一集合名注册新增唯一索引的第二个模型并延迟建索引，
+      //    立即原生 insertMany 仍必须等待第二个模型的唯一索引建成再写入（精准覆盖 Codex 同集合复现场景）
+      const sharedCollName = 'shared_coll_index_evolution';
+      const v1Schema = new Schema({ code: { type: String, required: true }, extra: String });
+      const ModelV1 = harness.client.model('SharedCollModelV1', v1Schema, sharedCollName);
+      await ModelV1.create({ code: 'probe_v1' });
+      await ModelV1.deleteMany({});
+
+      let v2CreateTriggered = false;
+      const v2Schema = new Schema({ code: { type: String, required: true }, extra: String });
+      v2Schema.index({ code: 1 }, { unique: true });
+      v2Schema.statics.createIndexes = async function (...args: unknown[]) {
+        v2CreateTriggered = true;
+        await new Promise((resolve) => setTimeout(resolve, 80));
+        return (harness.client.Model.createIndexes as (...a: unknown[]) => Promise<unknown>).apply(
+          this,
+          args
+        );
+      };
+      const ModelV2 = harness.client.model('SharedCollModelV2', v2Schema, sharedCollName);
+      await expect(
+        ModelV2.collection.insertMany([{ code: 'dup_shared' }, { code: 'dup_shared' }])
+      ).rejects.toMatchObject({ code: 11000 });
+      expect(v2CreateTriggered).toBe(true);
+      expect(await ModelV2.countDocuments({ code: 'dup_shared' })).toBe(1);
+
+      // 同物理集合上显式禁用 autoIndex: false 的第三个模型仍保持豁免，不被误强建其新增索引
+      const v3OptOutSchema = new Schema(
+        { code: { type: String, required: true }, extra: String },
+        { autoIndex: false }
+      );
+      v3OptOutSchema.index({ extra: 1 }, { unique: true });
+      const ModelV3OptOut = harness.client.model(
+        'SharedCollModelV3OptOut',
+        v3OptOutSchema,
+        sharedCollName
+      );
+      await ModelV3OptOut.collection.insertMany([
+        { code: 'shared_a', extra: 'dup_extra' },
+        { code: 'shared_b', extra: 'dup_extra' }
+      ]);
+      expect(await ModelV3OptOut.countDocuments({ extra: 'dup_extra' })).toBe(2);
     } finally {
       disableTestMongoIndexReadiness([harness.client]);
       await harness.close();

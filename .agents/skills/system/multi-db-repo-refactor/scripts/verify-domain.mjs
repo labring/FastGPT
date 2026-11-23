@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import {
   analyzeLogDualModeTestCoverage,
@@ -22,7 +23,8 @@ import {
   runRg,
   stripCommentsPreserveStrings,
   stripImportsAndStrings,
-  toPosixPath
+  toPosixPath,
+  verifyExecutedLogTopologyReports
 } from './common.mjs';
 
 const args = process.argv.slice(2);
@@ -796,13 +798,44 @@ if (noTest) {
       !(t.startsWith('packages/service/test/') && t.endsWith('.unit.test.ts'))
   );
 
+  const tmpReportDir = isLogDomain
+    ? fs.mkdtempSync(path.join(os.tmpdir(), 'fg-log-verify-'))
+    : null;
+  const jsonReportFiles = [];
+
   try {
     if (dalTargets.length > 0) {
       console.log(`Running @fastgpt/dal tests: ${dalTargets.join(' ')}`);
-      execFileSync('pnpm', ['--filter', '@fastgpt/dal', 'test', ...dalTargets], {
-        cwd: repoRoot,
-        stdio: 'inherit'
-      });
+      if (isLogDomain && tmpReportDir !== null) {
+        const reportPath = path.join(tmpReportDir, 'dal-report.json');
+        jsonReportFiles.push(reportPath);
+        execFileSync(
+          'pnpm',
+          [
+            '--filter',
+            '@fastgpt/dal',
+            'exec',
+            'vitest',
+            'run',
+            '-c',
+            'vitest.config.ts',
+            '--coverage.enabled=false',
+            ...dalTargets,
+            '--reporter=default',
+            '--reporter=json',
+            `--outputFile=${reportPath}`
+          ],
+          {
+            cwd: repoRoot,
+            stdio: 'inherit'
+          }
+        );
+      } else {
+        execFileSync('pnpm', ['--filter', '@fastgpt/dal', 'test', ...dalTargets], {
+          cwd: repoRoot,
+          stdio: 'inherit'
+        });
+      }
     }
     if (serviceUnitTargets.length > 0) {
       console.log(`Running @fastgpt/service L0 unit tests: ${serviceUnitTargets.join(' ')}`);
@@ -813,13 +846,53 @@ if (noTest) {
     }
     if (rootTargets.length > 0) {
       console.log(`Running targeted tests: ${rootTargets.join(' ')}`);
-      execFileSync('pnpm', ['test', ...rootTargets], {
-        cwd: repoRoot,
-        stdio: 'inherit'
-      });
+      if (isLogDomain && tmpReportDir !== null) {
+        // 日志域按文件收集独立 JSON 报告，防止跨 workspace/config 运行时覆盖同一份输出文件
+        for (let idx = 0; idx < rootTargets.length; idx += 1) {
+          const target = rootTargets[idx];
+          const reportPath = path.join(tmpReportDir, `root-report-${idx}.json`);
+          jsonReportFiles.push(reportPath);
+          execFileSync(
+            'pnpm',
+            [
+              'test',
+              target,
+              '--',
+              '--reporter=default',
+              '--reporter=json',
+              `--outputFile=${reportPath}`
+            ],
+            {
+              cwd: repoRoot,
+              stdio: 'inherit'
+            }
+          );
+        }
+      } else {
+        execFileSync('pnpm', ['test', ...rootTargets], {
+          cwd: repoRoot,
+          stdio: 'inherit'
+        });
+      }
+    }
+
+    if (isLogDomain) {
+      const parsedReports = jsonReportFiles
+        .filter((filePath) => fs.existsSync(filePath))
+        .map((filePath) => JSON.parse(fs.readFileSync(filePath, 'utf8')));
+      const execCheck = verifyExecutedLogTopologyReports(parsedReports);
+      if (!execCheck.ok) {
+        failures.push(
+          `[Tests] Log domain ${domainRel} runtime execution did not pass all 4 required log topology cases (${execCheck.missingOrNotPassed.join('; ')})`
+        );
+      }
     }
   } catch {
     failures.push(`[Tests] Targeted tests failed: ${testTargets.join(' ')}`);
+  } finally {
+    if (tmpReportDir !== null) {
+      fs.rmSync(tmpReportDir, { recursive: true, force: true });
+    }
   }
 } else if (testTargets.length > 0) {
   warnings.push(

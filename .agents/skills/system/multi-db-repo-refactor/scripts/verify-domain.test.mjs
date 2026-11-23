@@ -14,7 +14,8 @@ import {
   discoverMongoSchemas,
   extractDefineIndexes,
   findDomainServiceUnitTestFiles,
-  readGitLegacyFile
+  readGitLegacyFile,
+  verifyExecutedLogTopologyReports
 } from './common.mjs';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
@@ -1850,6 +1851,217 @@ test('Finding #18: rejects property-existence spoofs on real harnesses and requi
             splitSkippedDescribeCliRes.stderr,
             /must be direct un-skipped vitest "describe\/suite"/
           );
+
+          // Conditional / env-gated registration MUST FAIL statically even when valid sibling files exist
+          const envBlockGatedCheck = analyzeLogDualModeTestCoverage({
+            domainRepoSymbols: new Set(['AuditLogRepoToken']),
+            testFiles: [
+              { relPath: splitCrudContractRel, raw: fs.readFileSync(splitCrudContractAbs, 'utf8') },
+              {
+                relPath: 'env-block-gated.contract.test.ts',
+                raw: `
+                  import { describe, it } from 'vitest';
+                  import { injectRepo } from '@fastgpt/dal/db/container';
+                  import { registerLogTopologyContractSuite } from '@fastgpt/dal/db/testing';
+                  if (process.env.ENABLE_LOG_TOPOLOGY === '1') {
+                    registerLogTopologyContractSuite({
+                      describeFn: describe,
+                      itFn: it,
+                      logCollections: [logCol],
+                      logTables: [logTable],
+                      mongoCollectionName: 'audit_logs',
+                      sqlTableName: 'audit_logs',
+                      writeLogRecord: async () => injectRepo(AuditLogRepoToken).create({ data: { teamId: '000000000000000000000001' } }),
+                      readLogRecord: async ({ id }) => injectRepo(AuditLogRepoToken).findById({ id, teamId: '000000000000000000000001' })
+                    });
+                  }
+                `
+              }
+            ]
+          });
+          assert.equal(envBlockGatedCheck.ok, false);
+          assert.match(envBlockGatedCheck.details, /must be registered unconditionally/);
+
+          const bracelessIfGatedCheck = analyzeLogDualModeTestCoverage({
+            domainRepoSymbols: new Set(['AuditLogRepoToken']),
+            testFiles: [
+              {
+                relPath: 'env-braceless-if.contract.test.ts',
+                raw: `
+                  import { describe, it } from 'vitest';
+                  import { injectRepo } from '@fastgpt/dal/db/container';
+                  import { registerLogTopologyContractSuite } from '@fastgpt/dal/db/testing';
+                  if (process.env.ENABLE_LOG_TOPOLOGY === '1') registerLogTopologyContractSuite({
+                    describeFn: describe,
+                    itFn: it,
+                    logCollections: [logCol],
+                    logTables: [logTable],
+                    mongoCollectionName: 'audit_logs',
+                    sqlTableName: 'audit_logs',
+                    writeLogRecord: async () => injectRepo(AuditLogRepoToken).create({ data: { teamId: '000000000000000000000001' } }),
+                    readLogRecord: async ({ id }) => injectRepo(AuditLogRepoToken).findById({ id, teamId: '000000000000000000000001' })
+                  });
+                `
+              }
+            ]
+          });
+          assert.equal(bracelessIfGatedCheck.ok, false);
+          assert.match(bracelessIfGatedCheck.details, /must be registered unconditionally/);
+
+          const shortCircuitGatedCheck = analyzeLogDualModeTestCoverage({
+            domainRepoSymbols: new Set(['AuditLogRepoToken']),
+            testFiles: [
+              {
+                relPath: 'env-and-gated.contract.test.ts',
+                raw: `
+                  import { describe, it } from 'vitest';
+                  import { injectRepo } from '@fastgpt/dal/db/container';
+                  import { registerLogTopologyContractSuite } from '@fastgpt/dal/db/testing';
+                  process.env.ENABLE_LOG_TOPOLOGY === '1' && registerLogTopologyContractSuite({
+                    describeFn: describe,
+                    itFn: it,
+                    logCollections: [logCol],
+                    logTables: [logTable],
+                    mongoCollectionName: 'audit_logs',
+                    sqlTableName: 'audit_logs',
+                    writeLogRecord: async () => injectRepo(AuditLogRepoToken).create({ data: { teamId: '000000000000000000000001' } }),
+                    readLogRecord: async ({ id }) => injectRepo(AuditLogRepoToken).findById({ id, teamId: '000000000000000000000001' })
+                  });
+                `
+              }
+            ]
+          });
+          assert.equal(shortCircuitGatedCheck.ok, false);
+          assert.match(shortCircuitGatedCheck.details, /must be registered unconditionally/);
+
+          const envWrappedDescribeCheck = analyzeLogDualModeTestCoverage({
+            domainRepoSymbols: new Set(['AuditLogRepoToken']),
+            testFiles: [
+              {
+                relPath: 'env-describe-gated.contract.test.ts',
+                raw: `
+                  import { describe, it } from 'vitest';
+                  import { injectRepo } from '@fastgpt/dal/db/container';
+                  import { registerLogTopologyContractSuite } from '@fastgpt/dal/db/testing';
+                  if (process.env.CI) {
+                    describe('AuditLog log topology', () => {
+                      registerLogTopologyContractSuite({
+                        describeFn: describe,
+                        itFn: it,
+                        logCollections: [logCol],
+                        logTables: [logTable],
+                        mongoCollectionName: 'audit_logs',
+                        sqlTableName: 'audit_logs',
+                        writeLogRecord: async () => injectRepo(AuditLogRepoToken).create({ data: { teamId: '000000000000000000000001' } }),
+                        readLogRecord: async ({ id }) => injectRepo(AuditLogRepoToken).findById({ id, teamId: '000000000000000000000001' })
+                      });
+                    });
+                  }
+                `
+              }
+            ]
+          });
+          assert.equal(envWrappedDescribeCheck.ok, false);
+          assert.match(envWrappedDescribeCheck.details, /must be registered unconditionally/);
+
+          // Runtime JSON execution report verification: rejects missing / skipped cases, accepts all 4 passed
+          const missingRuntimeCases = verifyExecutedLogTopologyReports([
+            {
+              testResults: [
+                {
+                  assertionResults: [
+                    {
+                      ancestorTitles: ['AuditLog contract'],
+                      title: 'creates and reads entries',
+                      status: 'passed'
+                    }
+                  ]
+                }
+              ]
+            }
+          ]);
+          assert.equal(missingRuntimeCases.ok, false);
+          assert.equal(missingRuntimeCases.missingOrNotPassed.length, 4);
+
+          const skippedRuntimeCases = verifyExecutedLogTopologyReports([
+            {
+              testResults: [
+                {
+                  assertionResults: [
+                    {
+                      ancestorTitles: ['[Log Topology: MongoDB (shared + separate)]'],
+                      title: 'routes log reads/writes through main physical DB in shared mode',
+                      status: 'skipped'
+                    },
+                    {
+                      ancestorTitles: ['[Log Topology: MongoDB (shared + separate)]'],
+                      title: 'isolates log reads/writes into separate log physical DB without touching main DB',
+                      status: 'passed'
+                    },
+                    {
+                      ancestorTitles: ['[Log Topology: SQL PGlite (shared + separate)]'],
+                      title: 'routes log reads/writes through main physical DB in shared mode',
+                      status: 'passed'
+                    },
+                    {
+                      ancestorTitles: ['[Log Topology: SQL PGlite (shared + separate)]'],
+                      title: 'isolates log reads/writes into separate log physical DB without touching main DB',
+                      status: 'passed'
+                    }
+                  ]
+                }
+              ]
+            }
+          ]);
+          assert.equal(skippedRuntimeCases.ok, false);
+          assert.equal(skippedRuntimeCases.missingOrNotPassed.length, 1);
+          assert.match(skippedRuntimeCases.missingOrNotPassed[0], /^skipped:/);
+
+          const validRuntimeCases = verifyExecutedLogTopologyReports([
+            {
+              testResults: [
+                {
+                  assertionResults: [
+                    {
+                      ancestorTitles: ['AuditLog'],
+                      title: 'normal crud',
+                      status: 'passed'
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              testResults: [
+                {
+                  assertionResults: [
+                    {
+                      ancestorTitles: ['Outer', '[Log Topology: MongoDB (shared + separate)]'],
+                      title: 'routes log reads/writes through main physical DB in shared mode',
+                      status: 'passed'
+                    },
+                    {
+                      ancestorTitles: ['Outer', '[Log Topology: MongoDB (shared + separate)]'],
+                      title: 'isolates log reads/writes into separate log physical DB without touching main DB',
+                      status: 'passed'
+                    },
+                    {
+                      ancestorTitles: ['Outer', '[Log Topology: SQL PGlite (shared + separate)]'],
+                      title: 'routes log reads/writes through main physical DB in shared mode',
+                      status: 'passed'
+                    },
+                    {
+                      ancestorTitles: ['Outer', '[Log Topology: SQL PGlite (shared + separate)]'],
+                      title: 'isolates log reads/writes into separate log physical DB without touching main DB',
+                      status: 'passed'
+                    }
+                  ]
+                }
+              ]
+            }
+          ]);
+          assert.equal(validRuntimeCases.ok, true);
+          assert.equal(validRuntimeCases.passedCases.length, 4);
         } finally {
           fs.rmSync(splitCrudContractAbs, { force: true });
           fs.rmSync(splitTopologyContractAbs, { force: true });
