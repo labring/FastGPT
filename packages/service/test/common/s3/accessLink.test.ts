@@ -7,7 +7,6 @@ const originalEnv = {
   fileDomain: getTestInstanceConfig().storage.fileDomain,
   publicUrl: getTestInstanceConfig().site.publicUrl,
   FILE_DOWNLOAD_PUBLIC_URL_PREFIX: process.env.FILE_DOWNLOAD_PUBLIC_URL_PREFIX,
-  STORAGE_DOWNLOAD_SIGN_VERSION: process.env.STORAGE_DOWNLOAD_SIGN_VERSION,
   FE_DOMAIN: process.env.FE_DOMAIN,
   NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL
 };
@@ -16,7 +15,6 @@ const loadAccessLinkModules = async (
   env: {
     fileDomain?: string;
     fileDownloadPublicUrlPrefix?: string;
-    storageDownloadSignVersion?: 'v1' | 'v2';
     publicUrl?: string;
     nextPublicBaseUrl?: string;
   } = {}
@@ -25,7 +23,6 @@ const loadAccessLinkModules = async (
   vi.stubEnv('FILE_TOKEN_KEY', strongFileTokenKey);
   getTestInstanceConfig().storage.fileDomain = env.fileDomain ?? 'https://files.example.com/';
   vi.stubEnv('FILE_DOWNLOAD_PUBLIC_URL_PREFIX', env.fileDownloadPublicUrlPrefix);
-  vi.stubEnv('STORAGE_DOWNLOAD_SIGN_VERSION', env.storageDownloadSignVersion);
   getTestInstanceConfig().site.publicUrl = env.publicUrl ?? 'https://app.example.com';
   vi.stubEnv('FE_DOMAIN', 'https://ignored-legacy.test');
   vi.stubEnv('NEXT_PUBLIC_BASE_URL', env.nextPublicBaseUrl ?? '/fastgpt');
@@ -57,7 +54,6 @@ describe('s3 access link', () => {
     getTestInstanceConfig().storage.fileDomain = originalEnv.fileDomain;
     getTestInstanceConfig().site.publicUrl = originalEnv.publicUrl;
     vi.stubEnv('FILE_DOWNLOAD_PUBLIC_URL_PREFIX', originalEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX);
-    vi.stubEnv('STORAGE_DOWNLOAD_SIGN_VERSION', originalEnv.STORAGE_DOWNLOAD_SIGN_VERSION);
     vi.stubEnv('FE_DOMAIN', originalEnv.FE_DOMAIN);
     vi.stubEnv('NEXT_PUBLIC_BASE_URL', originalEnv.NEXT_PUBLIC_BASE_URL);
     vi.restoreAllMocks();
@@ -537,28 +533,36 @@ describe('s3 access link', () => {
     expect(shortPrefixMod.resolveS3DownloadAliasFromUrl(shortPrefixIssued)).toBe(v2Alias);
   });
 
-  it('supports STORAGE_DOWNLOAD_SIGN_VERSION=v1 for staged rollout while still verifying v2 aliases', async () => {
-    const v2Modules = await loadAccessLinkModules({ storageDownloadSignVersion: 'v2' });
+  it('always issues v2 aliases while still verifying legacy v1 aliases', async () => {
+    const {
+      createS3DownloadAccessUrl,
+      parseSignedS3DownloadAlias,
+      signS3DownloadAlias,
+      verifyS3DownloadAccess
+    } = await loadAccessLinkModules();
     const params = {
       bucketName: 'fastgpt-private',
       objectKey: 'dataset/team-1/staged.png',
       expiredTime: getFutureDate(30),
       filename: 'staged.png'
     };
-    const v2Url = await v2Modules.createS3DownloadAccessUrl(params);
+    const v2Url = await createS3DownloadAccessUrl(params);
     const v2Alias = extractLastPathSegment(v2Url);
+    const parsedV2 = parseSignedS3DownloadAlias(v2Alias);
+    const v1Sig = signS3DownloadAlias({
+      aliasId: parsedV2.aliasId,
+      expMinute36: parsedV2.expMinute36,
+      version: 'v1'
+    });
+    const v1Alias = `${parsedV2.aliasId}.${parsedV2.expMinute36}.${v1Sig}`;
 
-    const v1Modules = await loadAccessLinkModules({ storageDownloadSignVersion: 'v1' });
-    const v1Url = await v1Modules.createS3DownloadAccessUrl(params);
-    const v1Alias = extractLastPathSegment(v1Url);
-
-    expect(v1Url).toMatch(
-      /^https:\/\/files\.example\.com\/fastgpt\/api\/system\/file\/d\/[A-Za-z0-9]{16}\.[0-9a-z]+\.[A-Za-z0-9_-]{22}$/
+    expect(v2Url).toMatch(
+      /^https:\/\/files\.example\.com\/fastgpt\/api\/system\/file\/d\/v2-[A-Za-z0-9]{16}-[0-9a-z]+-[A-Za-z0-9]{22}\.png$/
     );
-    await expect(v1Modules.verifyS3DownloadAccess(v1Alias)).resolves.toMatchObject({
+    await expect(verifyS3DownloadAccess(v1Alias)).resolves.toMatchObject({
       objectKey: params.objectKey
     });
-    await expect(v1Modules.verifyS3DownloadAccess(v2Alias)).resolves.toMatchObject({
+    await expect(verifyS3DownloadAccess(v2Alias)).resolves.toMatchObject({
       objectKey: params.objectKey
     });
   });
