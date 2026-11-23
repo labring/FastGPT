@@ -11,11 +11,51 @@ import setupModels from './setupModels';
 import { clean } from './datas/users';
 import { connectionLogMongo, connectionMongo } from '@fastgpt/service/common/mongo';
 import { loadVectorDBEnv } from './utils/env';
-import type { Mongoose } from '@fastgpt/service/common/mongo';
+import type { Model, Mongoose } from '@fastgpt/service/common/mongo';
 
 vi.stubEnv('NODE_ENV', 'test');
 
 loadVectorDBEnv({ envFileNames: ['.env.test.local'] });
+
+const initializedTestModels = new WeakMap<Mongoose, WeakSet<Model<any>>>();
+
+/**
+ * 为隔离测试库显式创建所有已声明索引并等待就绪。
+ *
+ * 生产连接固定关闭 `autoIndex`，且 `ensureMongoIndexes` 在 `NODE_ENV === 'test'` 跳过；
+ * 由共享测试装配层显式补建未禁用 schema 级 `autoIndex: false` 的模型索引，并同时覆盖
+ * `beforeAll` 之后延迟加载的模型，确保唯一键/TTL 等数据库约束在用例执行前已生效。
+ */
+const ensureTestMongoIndexes = async (clients: readonly Mongoose[]) => {
+  const tasks: Promise<unknown>[] = [];
+
+  for (const client of clients) {
+    if (client.connection.readyState !== 1) continue;
+
+    let synced = initializedTestModels.get(client);
+    if (!synced) {
+      synced = new WeakSet<Model<any>>();
+      initializedTestModels.set(client, synced);
+    }
+
+    for (const model of Object.values(client.models)) {
+      if (synced.has(model)) continue;
+      if (model.schema.get('autoIndex') === false) continue;
+
+      synced.add(model);
+      tasks.push(
+        model.createIndexes().catch((error) => {
+          synced!.delete(model);
+          throw error;
+        })
+      );
+    }
+  }
+
+  if (tasks.length > 0) {
+    await Promise.all(tasks);
+  }
+};
 
 /**
  * Clears documents while keeping collections and indexes warm inside one test file.
@@ -41,7 +81,11 @@ beforeAll(async () => {
   const uniqueMongoClients = Array.from(new Set([connectionMongo, connectionLogMongo]));
   for (const client of uniqueMongoClients) {
     await connectMongo({ db: client, url: mongoUri });
+    // 仅在隔离测试库连接后恢复连接级 autoIndex（生产始终保持 autoIndex: false），
+    // 以兼容用例内动态 import 的延迟模型；schema 级显式 autoIndex: false 仍会被 Mongoose 尊重。
+    client.set('autoIndex', true);
   }
+  await ensureTestMongoIndexes(uniqueMongoClients);
 
   initGlobalVariables();
   global.agentUserTmbIds = new Set();
@@ -71,6 +115,10 @@ afterAll(async () => {
 
 beforeEach(async () => {
   global.agentUserTmbIds = global.agentUserTmbIds ?? new Set();
+  const uniqueMongoClients = Array.from(
+    new Set([connectionMongo, connectionLogMongo].filter(Boolean))
+  );
+  await ensureTestMongoIndexes(uniqueMongoClients);
   // await connectMongo({ db: connectionMongo, url: inject('MONGODB_URI') });
   // await connectMongo({ db: connectionLogMongo, url: inject('MONGODB_URI') });
 

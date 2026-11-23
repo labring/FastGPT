@@ -473,7 +473,8 @@ test('scaffold-repo.mjs preserves existing service.ts without emitting mismatche
     assert.doesNotMatch(contractTest, /execute\(undefined\)/);
     assert.match(contractTest, /createContractBackends\(/);
     assert.match(contractTest, /compileSqlTableDDL\(probeWidgetSqlTable, 'oceanbase'\)/);
-    assert.match(contractTest, /logMode:\s*'shared'/);
+    assert.match(contractTest, /registerLogTopologyContractSuite\(/);
+    assert.match(contractTest, /logMode:\s*'separate'/);
 
     const verifyRes = runVerify(['--dir', tmpDomainRel]);
     assert.equal(verifyRes.status, 0, verifyRes.stderr);
@@ -725,7 +726,7 @@ test('enforces contract test governance (forbids stubbed transactions, bare impo
           /\[Test Callers\] Residual test fixture reference\(s\) to legacy model "MongoTempTestLeak771"/
         );
         assert.match(res.stderr, /stubs transactionRunner with execute\(undefined\)/);
-        assert.match(res.stderr, /must exercise shared\/separate log topology routing with real assertions/);
+        assert.match(res.stderr, /must register executable registerLogTopologyContractSuite\(/);
 
         // Bare import + string literal pretending to be a contract test must FAIL
         const importOnlyRes = runVerify([
@@ -740,7 +741,7 @@ test('enforces contract test governance (forbids stubbed transactions, bare impo
         assert.equal(importOnlyRes.status, 1);
         assert.match(importOnlyRes.stderr, /must invoke registerDualDialectContractSuite/);
         assert.match(importOnlyRes.stderr, /must declare executable test case\(s\) with expect\(\.\.\.\)/);
-        assert.match(importOnlyRes.stderr, /must exercise shared\/separate log topology routing with real assertions/);
+        assert.match(importOnlyRes.stderr, /must register executable registerLogTopologyContractSuite\(/);
 
         // Real suite but logMode only in string must FAIL
         const stringOnlyNoopRes = runVerify([
@@ -755,7 +756,7 @@ test('enforces contract test governance (forbids stubbed transactions, bare impo
         assert.equal(stringOnlyNoopRes.status, 1);
         assert.match(
           stringOnlyNoopRes.stderr,
-          /must exercise shared\/separate log topology routing with real assertions/
+          /must register executable registerLogTopologyContractSuite\(/
         );
       }
     );
@@ -1257,7 +1258,7 @@ test('Finding #17: statically resolves same-file log datasource constants/shorth
   );
 });
 
-test('Finding #18: rejects plain-object or single-mode log topology spoofs and requires executable shared + separate harness verification with repo/DB assertions', () => {
+test('Finding #18: rejects property-existence spoofs on real harnesses and requires executable registerLogTopologyContractSuite wiring', () => {
   const plainObjectSpoofTest = `
     import { describe, expect, it } from 'vitest';
     import { createContractBackends, registerMultiDialectContractSuite } from '@fastgpt/dal/db/testing';
@@ -1272,50 +1273,20 @@ test('Finding #18: rejects plain-object or single-mode log topology spoofs and r
     });
   `;
 
-  const sharedOnlyTest = `
-    import { describe, expect, it } from 'vitest';
-    import { injectRepo } from '@fastgpt/dal/db/container';
-    import {
-      createContractBackends,
-      createPGliteSqlTestHarness,
-      registerMultiDialectContractSuite
-    } from '@fastgpt/dal/db/testing';
-    describe('shared only', () => {
-      it('runs shared mode only', async () => {
-        const harness = await createPGliteSqlTestHarness({
-          tables: [],
-          logTables: [logTable],
-          logMode: 'shared'
-        });
-        const repo = injectRepo(AuditLogRepoToken);
-        const row = await repo.create({ data: { teamId: '000000000000000000000001' } });
-        expect(row._id).toBeDefined();
-        await harness.close();
-      });
-    });
-    registerMultiDialectContractSuite({
-      backends: createContractBackends({ collections: [logCol], tables: [logTable] }),
-      registerTests: () => {
-        const repo = injectRepo(AuditLogRepoToken);
-        it('runs default', async () => {
-          expect(await repo.findById({ id: '000000000000000000000001', teamId: '000000000000000000000001' })).toBeNull();
-        });
-      }
-    });
-  `;
-
-  const harnessNoRepoAssertionTest = `
+  // 精确复现 Codex 审查指出的绕过：分别创建真实 shared/separate PGlite harness，但只断言 expect(harness.logDb).toBeDefined()
+  const realHarnessPropertySpoofTest = `
     import { describe, expect, it } from 'vitest';
     import {
       createContractBackends,
       createPGliteSqlTestHarness,
       registerMultiDialectContractSuite
     } from '@fastgpt/dal/db/testing';
-    describe('dummy harness open/close without repo or DB assertions', () => {
-      it('opens both harnesses and asserts nothing about repo or DB', async () => {
+    describe('property existence spoof on real PGlite harnesses', () => {
+      it('only checks harness.logDb toBeDefined without log writes or isolation', async () => {
         const h1 = await createPGliteSqlTestHarness({ tables: [], logTables: [logTable], logMode: 'shared' });
         const h2 = await createPGliteSqlTestHarness({ tables: [], logTables: [logTable], logMode: 'separate' });
-        expect(1).toBe(1);
+        expect(h1.logDb).toBeDefined();
+        expect(h2.logDb).toBeDefined();
         await h1.close();
         await h2.close();
       });
@@ -1328,46 +1299,109 @@ test('Finding #18: rejects plain-object or single-mode log topology spoofs and r
     });
   `;
 
+  const shadowedMockCheck = analyzeLogDualModeTestCoverage({
+    testFiles: [
+      {
+        relPath: 'mocked.contract.test.ts',
+        raw: `
+          const registerLogTopologyContractSuite = () => undefined;
+          registerLogTopologyContractSuite({
+            describeFn: describe,
+            itFn: it,
+            logCollections: [logCol],
+            logTables: [logTable],
+            mongoCollectionName: 'audit_logs',
+            sqlTableName: 'audit_logs',
+            writeLogRecord: async () => injectRepo(AuditLogRepoToken).create({ data: { teamId: '000000000000000000000001' } }),
+            readLogRecord: async ({ id }) => injectRepo(AuditLogRepoToken).findById({ id, teamId: '000000000000000000000001' })
+          });
+        `
+      }
+    ]
+  });
+  assert.equal(shadowedMockCheck.ok, false);
+  assert.match(shadowedMockCheck.details, /must import "registerLogTopologyContractSuite"/);
+
+  const disabledFamilyCheck = analyzeLogDualModeTestCoverage({
+    testFiles: [
+      {
+        relPath: 'disabled-family.contract.test.ts',
+        raw: `
+          import { describe, it } from 'vitest';
+          import { injectRepo } from '@fastgpt/dal/db/container';
+          import { registerLogTopologyContractSuite } from '@fastgpt/dal/db/testing';
+          registerLogTopologyContractSuite({
+            describeFn: describe,
+            itFn: it,
+            logCollections: [logCol],
+            logTables: [logTable],
+            mongoCollectionName: 'audit_logs',
+            sqlTableName: 'audit_logs',
+            includeMongo: false,
+            writeLogRecord: async () => injectRepo(AuditLogRepoToken).create({ data: { teamId: '000000000000000000000001' } }),
+            readLogRecord: async ({ id }) => injectRepo(AuditLogRepoToken).findById({ id, teamId: '000000000000000000000001' })
+          });
+        `
+      }
+    ]
+  });
+  assert.equal(disabledFamilyCheck.ok, false);
+  assert.match(disabledFamilyCheck.details, /must not disable "includeMongo: false"/);
+
+  const skippedSuiteCheck = analyzeLogDualModeTestCoverage({
+    testFiles: [
+      {
+        relPath: 'skipped-suite.contract.test.ts',
+        raw: `
+          import { describe, it } from 'vitest';
+          import { injectRepo } from '@fastgpt/dal/db/container';
+          import { registerLogTopologyContractSuite } from '@fastgpt/dal/db/testing';
+          describe.skip('skipped log suite', () => {
+            registerLogTopologyContractSuite({
+              describeFn: describe,
+              itFn: it,
+              logCollections: [logCol],
+              logTables: [logTable],
+              mongoCollectionName: 'audit_logs',
+              sqlTableName: 'audit_logs',
+              writeLogRecord: async () => injectRepo(AuditLogRepoToken).create({ data: { teamId: '000000000000000000000001' } }),
+              readLogRecord: async ({ id }) => injectRepo(AuditLogRepoToken).findById({ id, teamId: '000000000000000000000001' })
+            });
+          });
+        `
+      }
+    ]
+  });
+  assert.equal(skippedSuiteCheck.ok, false);
+
   const realDualModeTest = `
-    import { describe, expect, it } from 'vitest';
+    import { afterAll, beforeAll, describe, expect, it } from 'vitest';
     import { injectRepo } from '@fastgpt/dal/db/container';
     import {
       createContractBackends,
-      createPGliteSqlTestHarness,
+      registerLogTopologyContractSuite,
       registerMultiDialectContractSuite
     } from '@fastgpt/dal/db/testing';
     import { AuditLogRepoToken } from '../repo';
 
-    describe('AuditLogRepository shared & separate log topologies', () => {
-      it('routes to main pool in shared mode and isolates physically in separate mode', async () => {
-        const sharedHarness = await createPGliteSqlTestHarness({
-          tables: [],
-          logTables: [logTable],
-          logMode: 'shared'
+    registerLogTopologyContractSuite({
+      describeFn: describe,
+      itFn: it,
+      logCollections: [logCol],
+      logTables: [logTable],
+      mongoCollectionName: 'audit_logs',
+      sqlTableName: 'audit_logs',
+      writeLogRecord: async () => {
+        const created = await injectRepo(AuditLogRepoToken).create({
+          data: { teamId: '000000000000000000000001' }
         });
-        try {
-          const repo = injectRepo(AuditLogRepoToken);
-          const created = await repo.create({ data: { teamId: '000000000000000000000001' } });
-          expect(sharedHarness.logDb).toBe(sharedHarness.db);
-          expect(await repo.findById({ id: created._id, teamId: created.teamId })).not.toBeNull();
-        } finally {
-          await sharedHarness.close();
-        }
-
-        const separateHarness = await createPGliteSqlTestHarness({
-          tables: [],
-          logTables: [logTable],
-          logMode: 'separate'
-        });
-        try {
-          const repo = injectRepo(AuditLogRepoToken);
-          const created = await repo.create({ data: { teamId: '000000000000000000000001' } });
-          expect(separateHarness.logDb).not.toBe(separateHarness.db);
-          expect(await repo.findById({ id: created._id, teamId: created.teamId })).not.toBeNull();
-        } finally {
-          await separateHarness.close();
-        }
-      });
+        return { id: created._id };
+      },
+      readLogRecord: async ({ id }) =>
+        injectRepo(AuditLogRepoToken).findById({
+          id,
+          teamId: '000000000000000000000001'
+        })
     });
 
     registerMultiDialectContractSuite({
@@ -1378,6 +1412,8 @@ test('Finding #18: rejects plain-object or single-mode log topology spoofs and r
         logTables: [logTable],
         logMode: 'separate'
       }),
+      beforeAllFn: beforeAll,
+      afterAllFn: afterAll,
       registerTests: () => {
         const repo = injectRepo(AuditLogRepoToken);
         it('creates and reads log entries', async () => {
@@ -1388,77 +1424,34 @@ test('Finding #18: rejects plain-object or single-mode log topology spoofs and r
     });
   `;
 
-  const loopDualModeTest = `
-    import { describe, expect, it } from 'vitest';
-    import { injectRepo } from '@fastgpt/dal/db/container';
-    import { createPGliteSqlTestHarness } from '@fastgpt/dal/db/testing';
-    describe('parameterized dual mode', () => {
-      for (const logMode of ['shared', 'separate'] as const) {
-        it(\`routes \${logMode}\`, async () => {
-          const harness = await createPGliteSqlTestHarness({
-            tables: [],
-            logTables: [logTable],
-            logMode
-          });
-          const repo = injectRepo(AuditLogRepoToken);
-          expect(await repo.create({ data: { teamId: '000000000000000000000001' } })).toBeDefined();
-          await harness.close();
-        });
-      }
-    });
-  `;
-
   // Direct unit checks
-  const spoofCheck = analyzeLogDualModeTestCoverage({
-    testFiles: [{ relPath: 'fake.contract.test.ts', raw: plainObjectSpoofTest }]
-  });
-  assert.equal(spoofCheck.ok, false);
-  assert.equal(spoofCheck.hasShared, false);
-  assert.equal(spoofCheck.hasSeparate, false);
-
-  const sharedOnlyCheck = analyzeLogDualModeTestCoverage({
-    testFiles: [{ relPath: 'shared-only.contract.test.ts', raw: sharedOnlyTest }]
-  });
-  assert.equal(sharedOnlyCheck.ok, false);
-  assert.equal(sharedOnlyCheck.hasShared, true);
-  assert.equal(sharedOnlyCheck.hasSeparate, false);
-
-  const noAssertionCheck = analyzeLogDualModeTestCoverage({
-    testFiles: [{ relPath: 'no-assert.contract.test.ts', raw: harnessNoRepoAssertionTest }]
-  });
-  assert.equal(noAssertionCheck.ok, false);
-  assert.match(noAssertionCheck.details, /without repository\/DB assertions/);
-
-  const shadowedMockCheck = analyzeLogDualModeTestCoverage({
-    testFiles: [
-      {
-        relPath: 'mocked.contract.test.ts',
-        raw: `
-          const createPGliteSqlTestHarness = async () => ({ db: {}, logDb: {}, close: async () => {} });
-          it('mocked', async () => {
-            const h1 = await createPGliteSqlTestHarness({ logMode: 'shared' });
-            const h2 = await createPGliteSqlTestHarness({ logMode: 'separate' });
-            expect(h1.logDb).toBeDefined();
-            expect(h2.logDb).toBeDefined();
-          });
-        `
-      }
-    ]
-  });
-  assert.equal(shadowedMockCheck.ok, false);
-
-  const loopCheck = analyzeLogDualModeTestCoverage({
-    testFiles: [{ relPath: 'loop.contract.test.ts', raw: loopDualModeTest }]
-  });
-  assert.equal(loopCheck.ok, true);
+  assert.equal(
+    analyzeLogDualModeTestCoverage({
+      testFiles: [{ relPath: 'fake.contract.test.ts', raw: plainObjectSpoofTest }]
+    }).ok,
+    false
+  );
+  assert.equal(
+    analyzeLogDualModeTestCoverage({
+      testFiles: [{ relPath: 'prop-spoof.contract.test.ts', raw: realHarnessPropertySpoofTest }]
+    }).ok,
+    false
+  );
+  assert.equal(
+    analyzeLogDualModeTestCoverage({
+      testFiles: [{ relPath: 'real-dual.contract.test.ts', raw: realDualModeTest }],
+      domainRepoSymbols: new Set(['AuditLogRepoToken'])
+    }).ok,
+    true
+  );
 
   // End-to-end CLI verification
   const tmpFakeAbs = path.join(repoRoot, 'packages/service/test/.finding18-plain-obj.contract.test.ts');
-  const tmpSharedOnlyAbs = path.join(repoRoot, 'packages/service/test/.finding18-shared-only.contract.test.ts');
+  const tmpPropSpoofAbs = path.join(repoRoot, 'packages/service/test/.finding18-prop-spoof.contract.test.ts');
   const tmpRealAbs = path.join(repoRoot, 'packages/service/test/.finding18-real-dual.contract.test.ts');
   try {
     fs.writeFileSync(tmpFakeAbs, plainObjectSpoofTest);
-    fs.writeFileSync(tmpSharedOnlyAbs, sharedOnlyTest);
+    fs.writeFileSync(tmpPropSpoofAbs, realHarnessPropertySpoofTest);
     fs.writeFileSync(tmpRealAbs, realDualModeTest);
 
     withTempDomain(
@@ -1493,10 +1486,10 @@ test('Finding #18: rejects plain-object or single-mode log topology spoofs and r
           'packages/service/test/.finding18-plain-obj.contract.test.ts'
         ]);
         assert.equal(fakeRes.status, 1);
-        assert.match(fakeRes.stderr, /must exercise shared\/separate log topology routing/);
+        assert.match(fakeRes.stderr, /must register executable registerLogTopologyContractSuite\(/);
 
-        // (b) Shared-only without separate -> REJECTED
-        const sharedOnlyRes = runVerify([
+        // (b) Real PGlite harnesses with only `expect(h.logDb).toBeDefined()` -> REJECTED
+        const propSpoofRes = runVerify([
           '--dir',
           domainRel,
           '--legacy-schema',
@@ -1504,12 +1497,12 @@ test('Finding #18: rejects plain-object or single-mode log topology spoofs and r
           '--allow-wip-slice1',
           '--no-test',
           '--test',
-          'packages/service/test/.finding18-shared-only.contract.test.ts'
+          'packages/service/test/.finding18-prop-spoof.contract.test.ts'
         ]);
-        assert.equal(sharedOnlyRes.status, 1);
-        assert.match(sharedOnlyRes.stderr, /'separate'/);
+        assert.equal(propSpoofRes.status, 1);
+        assert.match(propSpoofRes.stderr, /registerLogTopologyContractSuite/);
 
-        // (c) Real shared + separate harnesses with repo/DB isolation assertions -> PASSES
+        // (c) Real registerLogTopologyContractSuite contract wiring -> PASSES
         const realRes = runVerify([
           '--dir',
           domainRel,
@@ -1525,7 +1518,7 @@ test('Finding #18: rejects plain-object or single-mode log topology spoofs and r
     );
   } finally {
     fs.rmSync(tmpFakeAbs, { force: true });
-    fs.rmSync(tmpSharedOnlyAbs, { force: true });
+    fs.rmSync(tmpPropSpoofAbs, { force: true });
     fs.rmSync(tmpRealAbs, { force: true });
   }
 });

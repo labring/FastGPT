@@ -22,6 +22,7 @@ import type {
   EnsureSqlIndexResult,
   SqlMigrationLeaseGuard,
   SqlMigrationLock,
+  SqlPrimaryKeyMismatch,
   SqlSchemaInspectReport
 } from './types';
 
@@ -1243,6 +1244,7 @@ export const inspectSqlSchema = async ({
   const missingTables: string[] = [];
   const missingColumns: Array<{ table: string; column: string }> = [];
   const columnMismatches: Array<{ table: string; column: string; reason: string }> = [];
+  const primaryKeyMismatches: SqlPrimaryKeyMismatch[] = [];
   const missingIndexes: Array<{ table: string; indexName: string }> = [];
   const indexMismatches: Array<{ table: string; indexName: string; reason: string }> = [];
   const invalidIndexes: Array<{ table: string; indexName: string }> = [];
@@ -1280,8 +1282,46 @@ export const inspectSqlSchema = async ({
       }
     }
 
-    // 2. 校验每张表的索引存在性、有效性与完整定义一致性
+    // 2. 校验每张表的主键存在性、有效性与有序主键列一致性
     const liveMap = liveIndexesByTable.get(table.name) ?? new Map<string, LiveSqlIndexDefinition>();
+    const expectedPrimaryKey = Object.entries(table.columns)
+      .filter(([, colDef]) => colDef.primaryKey === true)
+      .map(([colName]) => colName);
+    const livePk = Array.from(liveMap.values()).find((item) => item.isPrimary);
+    const actualPrimaryKey =
+      livePk === undefined ? [] : livePk.columns.map((entry) => entry.column ?? '<expression>');
+
+    if (expectedPrimaryKey.length > 0 || actualPrimaryKey.length > 0) {
+      if (livePk === undefined) {
+        primaryKeyMismatches.push({
+          table: table.name,
+          expected: expectedPrimaryKey,
+          actual: [],
+          reason: `Table "${table.name}" is missing PRIMARY KEY (${expectedPrimaryKey.join(', ')})`
+        });
+      } else if (!livePk.isValid) {
+        primaryKeyMismatches.push({
+          table: table.name,
+          expected: expectedPrimaryKey,
+          actual: actualPrimaryKey,
+          reason: `Table "${table.name}" PRIMARY KEY "${livePk.indexName}" is marked invalid`
+        });
+      } else {
+        const pkMatches =
+          expectedPrimaryKey.length === actualPrimaryKey.length &&
+          expectedPrimaryKey.every((col, idx) => actualPrimaryKey[idx] === col);
+        if (!pkMatches) {
+          primaryKeyMismatches.push({
+            table: table.name,
+            expected: expectedPrimaryKey,
+            actual: actualPrimaryKey,
+            reason: `Table "${table.name}" PRIMARY KEY mismatch (expected (${expectedPrimaryKey.join(', ') || '<none>'}), live (${actualPrimaryKey.join(', ') || '<none>'}))`
+          });
+        }
+      }
+    }
+
+    // 3. 校验每张表的索引存在性、有效性与完整定义一致性
     const declaredNames = new Set((table.indexes ?? []).map((idx) => idx.name));
 
     for (const idx of table.indexes ?? []) {
@@ -1337,6 +1377,7 @@ export const inspectSqlSchema = async ({
     missingTables,
     missingColumns,
     columnMismatches,
+    primaryKeyMismatches,
     missingIndexes,
     indexMismatches,
     invalidIndexes,

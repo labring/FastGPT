@@ -750,7 +750,7 @@ const checkContractTestGovernance = () => {
     });
     if (!logCoverage.ok) {
       failures.push(
-        `[Tests] Log domain ${domainRel} must exercise shared/separate log topology routing with real assertions (${logCoverage.details})`
+        `[Tests] Log domain ${domainRel} must register executable registerLogTopologyContractSuite(...) verifying shared/separate physical DB isolation (${logCoverage.details})`
       );
     }
   }

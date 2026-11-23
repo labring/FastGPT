@@ -26,7 +26,12 @@ beforeAll(async () => {
   const uniqueMongoClients = Array.from(new Set([connectionMongo, connectionLogMongo]));
   for (const client of uniqueMongoClients) {
     await connectMongo({ db: client, url: inject('MONGODB_URI') });
+    client.set('autoIndex', true);
   }
+  const modelsToIndex = Array.from(
+    new Set(uniqueMongoClients.flatMap((client) => Object.values(client.models)))
+  ).filter((model) => model.schema.get('autoIndex') !== false);
+  await Promise.all(modelsToIndex.map((model) => model.createIndexes()));
 
   initGlobalVariables();
   global.agentUserTmbIds = new Set();

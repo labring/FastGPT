@@ -94,6 +94,8 @@ describe('@fastgpt/dal repository export & Vitest alias boundary', () => {
   });
 
   it('wires the private DAL repo guard plugin into every workspace Vitest config using the broad @fastgpt alias', async () => {
+    const proAdminVitestPath = path.join(REPO_ROOT, 'pro/admin/vitest.config.ts');
+    const requirePro = process.env.FASTGPT_TEST_REQUIRE_PRO_SCHEMA_GUARD === '1';
     const configPaths = [
       path.join(REPO_ROOT, 'packages/dal/vitest.config.ts'),
       path.join(REPO_ROOT, 'vitest.config.mts'),
@@ -103,6 +105,16 @@ describe('@fastgpt/dal repository export & Vitest alias boundary', () => {
       path.join(REPO_ROOT, 'packages/service/vitest.sandbox.integration.config.ts'),
       path.join(REPO_ROOT, 'projects/app/vitest.config.ts')
     ];
+
+    if (requirePro) {
+      expect(
+        fs.existsSync(proAdminVitestPath),
+        `FASTGPT_TEST_REQUIRE_PRO_SCHEMA_GUARD=1 requires ${proAdminVitestPath}`
+      ).toBe(true);
+    }
+    if (fs.existsSync(proAdminVitestPath)) {
+      configPaths.push(proAdminVitestPath);
+    }
 
     for (const configPath of configPaths) {
       const loaded = (await import(configPath)) as {

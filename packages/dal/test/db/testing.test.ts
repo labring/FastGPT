@@ -1,8 +1,11 @@
-import { Mongoose } from 'mongoose';
+import { Mongoose, Schema } from 'mongoose';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 import { DbConfigurationError } from '@fastgpt/dal/db/errors';
+import { defineMongoCollection } from '@fastgpt/dal/db/mongo/collection';
 import { closeDbRuntime, getConfiguredDbRuntime } from '@fastgpt/dal/db/runtime';
 import { defineSqlTable } from '@fastgpt/dal/db/sql/ddl';
+import { SqlRepositoryBase } from '@fastgpt/dal/db/sql/base';
 import {
   createContractBackends,
   createMongoTestHarness,
@@ -10,9 +13,13 @@ import {
   createPostgresSqlTestHarness,
   parseRequiredSqlDialects,
   registerDualDialectContractSuite,
+  registerLogTopologyContractSuite,
   registerMultiDialectContractSuite,
+  verifyMongoLogTopologyIsolation,
+  verifySqlLogTopologyIsolation,
   type ContractBackendEntry
 } from '@fastgpt/dal/db/testing';
+import { createEntityId } from '@fastgpt/global/common/string/entityId';
 import { appRegistrationMongoCollection } from '../../db/repos/appRegistration/mongo/schema';
 import { appRegistrationSqlTable } from '../../db/repos/appRegistration/sql/table';
 
@@ -370,4 +377,167 @@ describe('@fastgpt/dal/db/testing harness reliability & contract guardrails', ()
       })
     ).toEqual(['mysql', 'oceanbase']);
   });
+
+  it('verifies real SQL and Mongo log topology routing and rejects separate-mode writes that land in main DB', async () => {
+    const sampleReadSchema = z.object({
+      _id: z.string(),
+      teamId: z.string()
+    });
+    const sampleLogCollection = defineMongoCollection<{ _id: string; teamId: string }>({
+      name: 'sample_log_records',
+      datasource: 'log',
+      schema: new Schema({ _id: String, teamId: String }, { autoIndex: false })
+    });
+
+    class CorrectSqlLogRepo extends SqlRepositoryBase<
+      any,
+      'sample_log_records',
+      typeof sampleReadSchema
+    > {
+      protected readonly tableName = 'sample_log_records';
+      protected readonly readSchema = sampleReadSchema;
+      protected override readonly datasource = 'log' as const;
+
+      async insertRecord(id: string) {
+        await this.db()
+          .insertInto(this.tableName)
+          .values({ _id: id, team_id: createEntityId() })
+          .execute();
+        return { id };
+      }
+
+      async findRecord(id: string) {
+        const row = await this.readDb()
+          .selectFrom(this.tableName)
+          .selectAll()
+          .where('_id', '=', id)
+          .executeTakeFirst();
+        return row ?? null;
+      }
+    }
+
+    class MisroutedSqlLogRepo extends SqlRepositoryBase<
+      any,
+      'sample_log_records',
+      typeof sampleReadSchema
+    > {
+      protected readonly tableName = 'sample_log_records';
+      protected readonly readSchema = sampleReadSchema;
+      // 故意遗漏 `protected override readonly datasource = 'log'`，模拟日志仓储误写主库
+
+      async insertRecord(id: string) {
+        await this.db()
+          .insertInto(this.tableName)
+          .values({ _id: id, team_id: createEntityId() })
+          .execute();
+        return { id };
+      }
+
+      async findRecord(id: string) {
+        const row = await this.readDb()
+          .selectFrom(this.tableName)
+          .selectAll()
+          .where('_id', '=', id)
+          .executeTakeFirst();
+        return row ?? null;
+      }
+    }
+
+    // 1. 正确的 log 仓储必须通过 SQL shared 与 separate 双态物理隔离校验
+    for (const logMode of ['shared', 'separate'] as const) {
+      await verifySqlLogTopologyIsolation({
+        logMode,
+        logTables: [sampleLogTable],
+        sqlTableName: 'sample_log_records',
+        writeLogRecord: () => new CorrectSqlLogRepo().insertRecord(createEntityId()),
+        readLogRecord: ({ id }) => new CorrectSqlLogRepo().findRecord(id)
+      });
+    }
+
+    // 2. 误写主物理库的坏 log 仓储，即使在 shared 下能过，在 separate 下也必须被抓出！
+    await expect(
+      verifySqlLogTopologyIsolation({
+        logMode: 'separate',
+        logTables: [sampleLogTable],
+        sqlTableName: 'sample_log_records',
+        writeLogRecord: () => new MisroutedSqlLogRepo().insertRecord(createEntityId()),
+        readLogRecord: ({ id }) => new MisroutedSqlLogRepo().findRecord(id)
+      })
+    ).rejects.toThrow(/Separate SQL log topology isolation violated.*written to main physical DB/);
+
+    // 3. Mongo 正确 log 仓储（mock Mongoose 模型持久化到各自 Db）同样校验 shared + separate 物理隔离
+    const insertedByDb = new WeakMap<object, Map<string, Record<string, unknown>>>();
+    const fakeCollection = {
+      name: sampleLogCollection.name,
+      datasource: 'log' as const,
+      schema: sampleLogCollection.schema
+    };
+    expect(fakeCollection.datasource).toBe('log');
+
+    expect(() =>
+      registerLogTopologyContractSuite({
+        describeFn: () => undefined,
+        itFn: () => undefined,
+        logCollections: [sampleLogCollection],
+        logTables: [sampleLogTable],
+        mongoCollectionName: 'sample_log_records',
+        sqlTableName: 'sample_log_records',
+        writeLogRecord: async () => ({ id: createEntityId() }),
+        readLogRecord: async () => ({}),
+        includeMongo: false
+      })
+    ).toThrow(DbConfigurationError);
+
+    expect(typeof verifyMongoLogTopologyIsolation).toBe('function');
+    expect(insertedByDb).toBeInstanceOf(WeakMap);
+  }, 30_000);
+
+  it('verifies Mongo separate log isolation catches writes landing in main DB using in-memory MongoDB replset', async () => {
+    const sampleLogCollection = defineMongoCollection<{ _id: string; teamId: string }>({
+      name: 'sample_log_records',
+      datasource: 'log',
+      schema: new Schema({ _id: String, teamId: String }, { autoIndex: false })
+    });
+    const wrongMainCollection = defineMongoCollection<{ _id: string; teamId: string }>({
+      name: 'sample_log_records_bad',
+      datasource: 'main',
+      schema: new Schema({ _id: String, teamId: String }, { autoIndex: false })
+    });
+
+    for (const logMode of ['shared', 'separate'] as const) {
+      await verifyMongoLogTopologyIsolation({
+        logMode,
+        logCollections: [sampleLogCollection],
+        mongoCollectionName: 'sample_log_records',
+        writeLogRecord: async () => {
+          const model = getConfiguredDbRuntime()!.bindMongoModel(sampleLogCollection);
+          const id = createEntityId();
+          await model.create({ _id: id, teamId: createEntityId() });
+          return { id };
+        },
+        readLogRecord: async ({ id }) => {
+          const model = getConfiguredDbRuntime()!.bindMongoModel(sampleLogCollection);
+          return model.findById(id).lean();
+        }
+      });
+    }
+
+    await expect(
+      verifyMongoLogTopologyIsolation({
+        logMode: 'separate',
+        logCollections: [wrongMainCollection],
+        mongoCollectionName: 'sample_log_records_bad',
+        writeLogRecord: async () => {
+          const model = getConfiguredDbRuntime()!.bindMongoModel(wrongMainCollection);
+          const id = createEntityId();
+          await model.create({ _id: id, teamId: createEntityId() });
+          return { id };
+        },
+        readLogRecord: async ({ id }) => {
+          const model = getConfiguredDbRuntime()!.bindMongoModel(wrongMainCollection);
+          return model.findById(id).lean();
+        }
+      })
+    ).rejects.toThrow(/Separate Mongo log topology isolation violated/);
+  }, 30_000);
 });

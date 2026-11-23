@@ -407,7 +407,7 @@ import { createEntityId } from '@fastgpt/global/common/string/entityId';
 import { injectRepo } from '@fastgpt/dal/db/container';
 import { compileSqlTableDDL } from '@fastgpt/dal/db/sql/ddl';
 import {
-  createContractBackends,${datasource === 'log' ? '\n  createPGliteSqlTestHarness,' : ''}
+  createContractBackends,${datasource === 'log' ? '\n  registerLogTopologyContractSuite,' : ''}
   registerMultiDialectContractSuite
 } from '@fastgpt/dal/db/testing';
 import { runInTransaction } from '@fastgpt/dal/db/transaction';
@@ -431,23 +431,24 @@ describe('${entityArg} portable SQL DDL (OceanBase/MySQL + PostgreSQL)', () => {
 ${
   datasource === 'log'
     ? `
-describe('${entityArg}Repository shared main-pool fallback', () => {
-  it('falls back to main pool cleanly when logWriteUrl is omitted (logMode=shared)', async () => {
-    const sharedHarness = await createPGliteSqlTestHarness({
-      tables: [],
-      logTables: [${camelEntity}SqlTable],
-      logMode: 'shared'
-    });
-    try {
-      const repo = injectRepo(${entityArg}RepoToken);
-      const teamId = createEntityId();
-      const created = await repo.create({ data: { teamId } });
+describe('${entityArg}Repository shared & separate log topology isolation', () => {
+  const topologyTeamId = createEntityId();
 
-      expect(created.teamId).toBe(teamId);
-      expect(await repo.findById({ id: created._id, teamId })).not.toBeNull();
-    } finally {
-      await sharedHarness.close();
-    }
+  registerLogTopologyContractSuite({
+    describeFn: describe,
+    itFn: it,
+    logCollections: [${collectionVarName}],
+    logTables: [${camelEntity}SqlTable],
+    mongoCollectionName: '${tableArg}',
+    sqlTableName: '${tableArg}',
+    writeLogRecord: async () => {
+      const created = await injectRepo(${entityArg}RepoToken).create({
+        data: { teamId: topologyTeamId }
+      });
+      return { id: created._id };
+    },
+    readLogRecord: async ({ id }) =>
+      injectRepo(${entityArg}RepoToken).findById({ id, teamId: topologyTeamId })
   });
 });
 `

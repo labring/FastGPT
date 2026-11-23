@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { PGlite } from '@electric-sql/pglite';
 import { Kysely, MysqlDialect, PGliteDialect, PostgresDialect, sql, type MysqlPool } from 'kysely';
-import { Mongoose, type Model } from 'mongoose';
+import { Mongoose, Types, type Model } from 'mongoose';
 import { createPool } from 'mysql2';
 import { Pool } from 'pg';
 import { DbConfigurationError } from './errors';
@@ -1083,4 +1083,336 @@ export const registerDualDialectContractSuite = ({
     requireBothFamilies,
     registerTests: (ctx) => registerTests(ctx.getDialect)
   });
+};
+
+export type LogTopologyVerifyCallbacks = {
+  /** 通过目标日志仓储写入一条记录并返回主键 ID（shared/separate 各调用一次）。 */
+  writeLogRecord: (ctx: { dialect: DbDialect; logMode: DbLogMode }) => Promise<{ id: string }>;
+  /** 通过目标日志仓储按 ID 读回刚写入的记录（证明主写与读路由一致）。 */
+  readLogRecord: (ctx: {
+    dialect: DbDialect;
+    logMode: DbLogMode;
+    id: string;
+  }) => Promise<unknown | null | undefined>;
+  mongoCollectionName: string;
+  sqlTableName: string;
+  idField?: string;
+};
+
+export type RegisterLogTopologyContractSuiteParams = LogTopologyVerifyCallbacks & {
+  describeFn: (name: string, fn: () => void) => void;
+  itFn: (name: string, fn: () => Promise<void>, timeout?: number) => void;
+  collections?: readonly MongoCollectionDefinition<any>[];
+  logCollections: readonly MongoCollectionDefinition<any>[];
+  tables?: readonly SqlTableDefinition[];
+  logTables: readonly SqlTableDefinition[];
+  includeMongo?: boolean;
+  includePGlite?: boolean;
+  /** 默认同时强制验证 MongoDB 与 SQL（PGlite）两族；禁止静默跳过任一数据库族。 */
+  requireBothFamilies?: boolean;
+  timeoutMs?: number;
+};
+
+const assertLogTopologyInvariant = (condition: boolean, message: string): void => {
+  if (!condition) {
+    throw new DbConfigurationError(message);
+  }
+};
+
+const buildMongoIdFilter = (id: string, idField: string): Record<string, unknown> => {
+  if (idField === '_id' && /^[a-f0-9]{24}$/i.test(id)) {
+    return {
+      $or: [{ _id: new Types.ObjectId(id) }, { _id: id }, { _id: id.toLowerCase() }]
+    };
+  }
+  return { [idField]: id };
+};
+
+/**
+ * 在真实 MongoDB 沙盒上实际执行并验证日志域的 `'shared'` 与 `'separate'` 双态物理路由契约：
+ * - `shared`：写入与读回均成功，且记录落入主物理库；
+ * - `separate`：主/日志物理库均预先建好集合，若仓储误写主库也能落库并被立即捕获，
+ *   强制断言记录只存在于独立日志物理库且主物理库计数严格为 0。
+ */
+export const verifyMongoLogTopologyIsolation = async ({
+  logMode,
+  collections = [],
+  logCollections,
+  writeLogRecord,
+  readLogRecord,
+  mongoCollectionName,
+  idField = '_id',
+  uri
+}: {
+  logMode: DbLogMode;
+  collections?: readonly MongoCollectionDefinition<any>[];
+  logCollections: readonly MongoCollectionDefinition<any>[];
+  writeLogRecord: LogTopologyVerifyCallbacks['writeLogRecord'];
+  readLogRecord: LogTopologyVerifyCallbacks['readLogRecord'];
+  mongoCollectionName: string;
+  idField?: string;
+  uri?: string;
+}): Promise<void> => {
+  if (logCollections.length === 0) {
+    throw new DbConfigurationError('verifyMongoLogTopologyIsolation requires logCollections');
+  }
+
+  // separate 模式下在主库也建出同名日志集合，防止“未建集合掩盖误写主库”或误路由写穿时报错不清晰
+  const harness = await createMongoTestHarness({
+    collections: logMode === 'separate' ? [...collections, ...logCollections] : collections,
+    logCollections,
+    logMode,
+    uri
+  });
+
+  try {
+    assertLogTopologyInvariant(
+      getDbRuntime().logMode === logMode,
+      `Expected DbRuntime.logMode="${logMode}", received "${getDbRuntime().logMode}"`
+    );
+
+    const written = await writeLogRecord({ dialect: 'mongo', logMode });
+    assertLogTopologyInvariant(
+      typeof written?.id === 'string' && written.id.trim().length > 0,
+      `writeLogRecord in mongo/${logMode} must return a non-empty string id`
+    );
+
+    const readBack = await readLogRecord({ dialect: 'mongo', logMode, id: written.id });
+    assertLogTopologyInvariant(
+      readBack !== null && readBack !== undefined,
+      `readLogRecord returned empty for mongo/${logMode} record "${written.id}"`
+    );
+
+    const mainDb = harness.client.connection.db;
+    assertLogTopologyInvariant(mainDb !== undefined, 'Mongo main test database is not connected');
+    const idFilter = buildMongoIdFilter(written.id, idField);
+    const mainCount = await mainDb!.collection(mongoCollectionName).countDocuments(idFilter);
+
+    if (logMode === 'shared') {
+      assertLogTopologyInvariant(
+        mainCount === 1,
+        `Shared Mongo log topology expected 1 record in main collection "${mongoCollectionName}" for id="${written.id}", found ${mainCount}`
+      );
+      return;
+    }
+
+    assertLogTopologyInvariant(
+      harness.logClient !== undefined && harness.logClient !== harness.client,
+      'Separate Mongo log topology requires a distinct logClient'
+    );
+    const logDb = harness.logClient!.connection.db;
+    assertLogTopologyInvariant(logDb !== undefined, 'Mongo log test database is not connected');
+    const logCount = await logDb!.collection(mongoCollectionName).countDocuments(idFilter);
+
+    // 先校验主物理库计数为 0，确保误写主库时直接暴露物理隔离违规，而非被 logCount === 0 掩盖
+    assertLogTopologyInvariant(
+      mainCount === 0,
+      `Separate Mongo log topology isolation violated: record "${written.id}" was written to main physical DB instead of log physical DB`
+    );
+    assertLogTopologyInvariant(
+      logCount === 1,
+      `Separate Mongo log topology expected 1 record in log collection "${mongoCollectionName}" for id="${written.id}", found ${logCount}`
+    );
+  } finally {
+    await harness.close();
+  }
+};
+
+/**
+ * 在真实 SQL（PGlite）沙盒上实际执行并验证日志域的 `'shared'` 与 `'separate'` 双态物理路由契约：
+ * - `shared`：主库与日志库为同一物理库，写入后主库计数严格为 1 且可经仓储读回；
+ * - `separate`：主/日志库物理隔离且主库也存在同名表，断言写入记录只存在于 `harness.logDb`、
+ *   且 `harness.db` 主物理库计数严格为 0，从而彻底捕获未覆写 `datasource = 'log'` 的误写缺陷。
+ */
+export const verifySqlLogTopologyIsolation = async ({
+  logMode,
+  tables = [],
+  logTables,
+  writeLogRecord,
+  readLogRecord,
+  sqlTableName,
+  idField = '_id'
+}: {
+  logMode: DbLogMode;
+  tables?: readonly SqlTableDefinition[];
+  logTables: readonly SqlTableDefinition[];
+  writeLogRecord: LogTopologyVerifyCallbacks['writeLogRecord'];
+  readLogRecord: LogTopologyVerifyCallbacks['readLogRecord'];
+  sqlTableName: string;
+  idField?: string;
+}): Promise<void> => {
+  if (logTables.length === 0) {
+    throw new DbConfigurationError('verifySqlLogTopologyIsolation requires logTables');
+  }
+
+  // separate 模式下主库同样预建日志表：若 SqlRepository 漏设 `datasource = 'log'` 误写主库，下方的 mainCount === 0 断言必定抓出
+  const harness = await createPGliteSqlTestHarness({
+    tables: logMode === 'separate' ? [...tables, ...logTables] : tables,
+    logTables,
+    logMode
+  });
+
+  try {
+    assertLogTopologyInvariant(
+      getDbRuntime().logMode === logMode,
+      `Expected DbRuntime.logMode="${logMode}", received "${getDbRuntime().logMode}"`
+    );
+
+    const written = await writeLogRecord({ dialect: 'postgres', logMode });
+    assertLogTopologyInvariant(
+      typeof written?.id === 'string' && written.id.trim().length > 0,
+      `writeLogRecord in sql/${logMode} must return a non-empty string id`
+    );
+
+    const readBack = await readLogRecord({ dialect: 'postgres', logMode, id: written.id });
+    assertLogTopologyInvariant(
+      readBack !== null && readBack !== undefined,
+      `readLogRecord returned empty for sql/${logMode} record "${written.id}"`
+    );
+
+    const mainRows = await harness.db
+      .selectFrom(sqlTableName)
+      .select(idField)
+      .where(idField, '=', written.id)
+      .execute();
+
+    if (logMode === 'shared') {
+      assertLogTopologyInvariant(
+        harness.logDb === harness.db,
+        'Shared SQL log topology expected logDb === db'
+      );
+      assertLogTopologyInvariant(
+        mainRows.length === 1,
+        `Shared SQL log topology expected 1 row in main table "${sqlTableName}" for id="${written.id}", found ${mainRows.length}`
+      );
+      return;
+    }
+
+    assertLogTopologyInvariant(
+      harness.logDb !== harness.db,
+      'Separate SQL log topology requires a physically distinct logDb'
+    );
+    const logRows = await harness.logDb
+      .selectFrom(sqlTableName)
+      .select(idField)
+      .where(idField, '=', written.id)
+      .execute();
+
+    // 先校验主物理库行数为 0，确保误写主库时直接暴露物理隔离违规
+    assertLogTopologyInvariant(
+      mainRows.length === 0,
+      `Separate SQL log topology isolation violated: record "${written.id}" in "${sqlTableName}" was written to main physical DB instead of log physical DB`
+    );
+    assertLogTopologyInvariant(
+      logRows.length === 1,
+      `Separate SQL log topology expected 1 row in log table "${sqlTableName}" for id="${written.id}", found ${logRows.length}`
+    );
+  } finally {
+    await harness.close();
+  }
+};
+
+/**
+ * 声明可复用的日志域双态（`shared` / `separate`）物理隔离标准契约套件。
+ *
+ * 强制验证写入/读回与物理落库位置，杜绝测试中仅断言 `expect(harness.logDb).toBeDefined()`
+ * 导致日志仓储误写主库却仍全绿的假阳性漏洞。
+ */
+export const registerLogTopologyContractSuite = ({
+  describeFn,
+  itFn,
+  collections = [],
+  logCollections,
+  tables = [],
+  logTables,
+  writeLogRecord,
+  readLogRecord,
+  mongoCollectionName,
+  sqlTableName,
+  idField = '_id',
+  includeMongo = true,
+  includePGlite = true,
+  requireBothFamilies = true,
+  timeoutMs = 30_000
+}: RegisterLogTopologyContractSuiteParams): void => {
+  if (requireBothFamilies && (!includeMongo || !includePGlite)) {
+    throw new DbConfigurationError(
+      'registerLogTopologyContractSuite requires both Mongo and PGlite log topology verification'
+    );
+  }
+  if (!includeMongo && !includePGlite) {
+    throw new DbConfigurationError(
+      'registerLogTopologyContractSuite requires at least one enabled dialect family'
+    );
+  }
+
+  if (includeMongo) {
+    describeFn('[Log Topology: MongoDB (shared + separate)]', () => {
+      itFn(
+        'routes log reads/writes through main physical DB in shared mode',
+        async () => {
+          await verifyMongoLogTopologyIsolation({
+            logMode: 'shared',
+            collections,
+            logCollections,
+            writeLogRecord,
+            readLogRecord,
+            mongoCollectionName,
+            idField
+          });
+        },
+        timeoutMs
+      );
+      itFn(
+        'isolates log reads/writes into separate log physical DB without touching main DB',
+        async () => {
+          await verifyMongoLogTopologyIsolation({
+            logMode: 'separate',
+            collections,
+            logCollections,
+            writeLogRecord,
+            readLogRecord,
+            mongoCollectionName,
+            idField
+          });
+        },
+        timeoutMs
+      );
+    });
+  }
+
+  if (includePGlite) {
+    describeFn('[Log Topology: SQL PGlite (shared + separate)]', () => {
+      itFn(
+        'routes log reads/writes through main physical DB in shared mode',
+        async () => {
+          await verifySqlLogTopologyIsolation({
+            logMode: 'shared',
+            tables,
+            logTables,
+            writeLogRecord,
+            readLogRecord,
+            sqlTableName,
+            idField
+          });
+        },
+        timeoutMs
+      );
+      itFn(
+        'isolates log reads/writes into separate log physical DB without touching main DB',
+        async () => {
+          await verifySqlLogTopologyIsolation({
+            logMode: 'separate',
+            tables,
+            logTables,
+            writeLogRecord,
+            readLogRecord,
+            sqlTableName,
+            idField
+          });
+        },
+        timeoutMs
+      );
+    });
+  }
 };

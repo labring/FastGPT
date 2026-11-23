@@ -1,8 +1,10 @@
+import { sql } from 'kysely';
 import fs from 'node:fs';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { DbConfigurationError } from '@fastgpt/dal/db/errors';
 import { inspectMongoIndexes, syncMongoCollectionIndexes } from '@fastgpt/dal/db/mongo/indexSync';
+import { closeDbRuntime } from '@fastgpt/dal/db/runtime';
 import {
   APP_REGISTRATION_SQL_TABLE_V1,
   coreMongoCollections,
@@ -66,6 +68,7 @@ const assertZeroSqlDrift = (report: Awaited<ReturnType<typeof inspectSqlSchema>>
   expect(report.missingTables).toEqual([]);
   expect(report.missingColumns).toEqual([]);
   expect(report.columnMismatches).toEqual([]);
+  expect(report.primaryKeyMismatches).toEqual([]);
   expect(report.missingIndexes).toEqual([]);
   expect(report.indexMismatches).toEqual([]);
   expect(report.invalidIndexes).toEqual([]);
@@ -73,6 +76,10 @@ const assertZeroSqlDrift = (report: Awaited<ReturnType<typeof inspectSqlSchema>>
 };
 
 describe('CI schema & index anti-drift guardrails', () => {
+  afterEach(async () => {
+    await closeDbRuntime();
+  });
+
   it('validates SQL table registry globally and replays coreSqlMigrations 0001 -> latest with zero column/index drift', async () => {
     expect(() => validateSqlTableRegistry(coreSqlTables)).not.toThrow();
 
@@ -171,7 +178,7 @@ describe('CI schema & index anti-drift guardrails', () => {
         `Required SQL dialect "${required}" did not execute schema drift replay`
       ).toBe(true);
     }
-  });
+  }, 30_000);
 
   it('verifies forward upgrade from frozen v1 baseline to latest and catches missing columns on unmigrated schema changes', async () => {
     const harness = await createPGliteSqlTestHarness({ tables: [] });
@@ -253,7 +260,86 @@ describe('CI schema & index anti-drift guardrails', () => {
     } finally {
       await harness.close();
     }
-  });
+  }, 30_000);
+
+  it('catches missing or mismatched PRIMARY KEY even when columns and secondary indexes match', async () => {
+    const missingPkHarness = await createPGliteSqlTestHarness({ tables: [] });
+    try {
+      await sql
+        .raw(
+          `
+        CREATE TABLE "app_registrations" (
+          "_id" VARCHAR(24) NOT NULL,
+          "team_id" VARCHAR(24) NOT NULL,
+          "tmb_id" VARCHAR(24) NOT NULL,
+          "app_id" VARCHAR(24),
+          "created_at" TIMESTAMPTZ
+        )
+      `
+        )
+        .execute(missingPkHarness.db);
+      await sql
+        .raw('CREATE INDEX "fg_app_reg_team" ON "app_registrations" ("team_id")')
+        .execute(missingPkHarness.db);
+
+      const missingPkReport = await inspectSqlSchema({
+        db: missingPkHarness.db,
+        dialect: 'postgres',
+        tables: coreSqlTables
+      });
+      expect(missingPkReport.missingTables).toEqual([]);
+      expect(missingPkReport.missingColumns).toEqual([]);
+      expect(missingPkReport.columnMismatches).toEqual([]);
+      expect(missingPkReport.missingIndexes).toEqual([]);
+      expect(missingPkReport.indexMismatches).toEqual([]);
+      expect(missingPkReport.primaryKeyMismatches).toEqual([
+        expect.objectContaining({
+          table: 'app_registrations',
+          expected: ['_id'],
+          actual: [],
+          reason: expect.stringContaining('missing PRIMARY KEY (_id)')
+        })
+      ]);
+    } finally {
+      await missingPkHarness.close();
+    }
+
+    const wrongPkHarness = await createPGliteSqlTestHarness({ tables: [] });
+    try {
+      await sql
+        .raw(
+          `
+        CREATE TABLE "app_registrations" (
+          "_id" VARCHAR(24) NOT NULL,
+          "team_id" VARCHAR(24) NOT NULL PRIMARY KEY,
+          "tmb_id" VARCHAR(24) NOT NULL,
+          "app_id" VARCHAR(24),
+          "created_at" TIMESTAMPTZ
+        )
+      `
+        )
+        .execute(wrongPkHarness.db);
+      await sql
+        .raw('CREATE INDEX "fg_app_reg_team" ON "app_registrations" ("team_id")')
+        .execute(wrongPkHarness.db);
+
+      const wrongPkReport = await inspectSqlSchema({
+        db: wrongPkHarness.db,
+        dialect: 'postgres',
+        tables: coreSqlTables
+      });
+      expect(wrongPkReport.primaryKeyMismatches).toEqual([
+        expect.objectContaining({
+          table: 'app_registrations',
+          expected: ['_id'],
+          actual: ['team_id'],
+          reason: expect.stringContaining('PRIMARY KEY mismatch')
+        })
+      ]);
+    } finally {
+      await wrongPkHarness.close();
+    }
+  }, 30_000);
 
   it('syncs coreMongoCollections additively with zero inspect drift', async () => {
     const harness = await createMongoTestHarness({ collections: [] });
@@ -274,7 +360,7 @@ describe('CI schema & index anti-drift guardrails', () => {
     } finally {
       await harness.close();
     }
-  });
+  }, 30_000);
 
   it('enforces zero deprecated: true index tombstones in core schemas (and Pro schemas when present or required)', () => {
     // 1. Core roots are ALWAYS required to exist and contain >0 schema files

@@ -101,12 +101,20 @@ export type SqlMigrationRunResult = {
   alreadyAppliedCount: number;
 };
 
+export type SqlPrimaryKeyMismatch = {
+  table: string;
+  expected: string[];
+  actual: string[];
+  reason: string;
+};
+
 export type SqlSchemaInspectReport = {
   datasource: DbDatasource;
   dialect: SqlDialect;
   missingTables: string[];
   missingColumns: Array<{ table: string; column: string }>;
   columnMismatches: Array<{ table: string; column: string; reason: string }>;
+  primaryKeyMismatches: SqlPrimaryKeyMismatch[];
   missingIndexes: Array<{ table: string; indexName: string }>;
   indexMismatches: Array<{ table: string; indexName: string; reason: string }>;
   invalidIndexes: Array<{ table: string; indexName: string }>;

@@ -892,6 +892,75 @@ describe('legacy deprecated index explicit option signature protection', () => {
       expect(await getIndexNames(model)).toContain('userId_1');
     }
   });
+
+  it('previews, drops matching retired agent_sandbox_instances_v2 indexes, and preserves option-mismatched custom indexes', async () => {
+    const sandboxEntries = LEGACY_DEPRECATED_MONGO_INDEXES.filter(
+      (entry) => entry.collectionName === 'agent_sandbox_instances_v2'
+    );
+    expect(sandboxEntries.map((entry) => entry.indexName)).toEqual([
+      'sourceType_1_status_1_provider_1',
+      'status_1_metadata.operation.heartbeatAt_1'
+    ]);
+
+    const schema = new Schema(
+      { sourceType: String, status: String, provider: String, metadata: Object },
+      { autoIndex: false }
+    );
+    const model = createModel({ schema, prefix: 'SandboxExplicitCleanup' });
+    await model.collection.createIndex(
+      { sourceType: 1, status: 1, provider: 1 },
+      { name: 'sourceType_1_status_1_provider_1' }
+    );
+    // 同名同 key 但带 partialFilterExpression 的自定义索引应被保守保留
+    await model.collection.createIndex(
+      { status: 1, 'metadata.operation.heartbeatAt': 1 },
+      {
+        name: 'status_1_metadata.operation.heartbeatAt_1',
+        partialFilterExpression: { status: 'running' }
+      }
+    );
+
+    const preview = await runLegacyDeprecatedMongoIndexCleanup({
+      entries: sandboxEntries,
+      collectionOverrides: { agent_sandbox_instances_v2: model.collection.collectionName },
+      apply: false
+    });
+    expect(preview).toEqual([
+      expect.objectContaining({
+        indexName: 'sourceType_1_status_1_provider_1',
+        status: 'dropped'
+      }),
+      expect.objectContaining({
+        indexName: 'status_1_metadata.operation.heartbeatAt_1',
+        status: 'skipped_mismatch'
+      })
+    ]);
+    expect(Array.from(await getIndexNames(model))).toEqual(
+      expect.arrayContaining([
+        'sourceType_1_status_1_provider_1',
+        'status_1_metadata.operation.heartbeatAt_1'
+      ])
+    );
+
+    const applied = await runLegacyDeprecatedMongoIndexCleanup({
+      entries: sandboxEntries,
+      collectionOverrides: { agent_sandbox_instances_v2: model.collection.collectionName },
+      apply: true
+    });
+    expect(applied).toEqual([
+      expect.objectContaining({
+        indexName: 'sourceType_1_status_1_provider_1',
+        status: 'dropped'
+      }),
+      expect.objectContaining({
+        indexName: 'status_1_metadata.operation.heartbeatAt_1',
+        status: 'skipped_mismatch'
+      })
+    ]);
+    const finalNames = await getIndexNames(model);
+    expect(finalNames).not.toContain('sourceType_1_status_1_provider_1');
+    expect(finalNames).toContain('status_1_metadata.operation.heartbeatAt_1');
+  });
 });
 
 describe('Step 0 Mongo index safety fixes', () => {

@@ -276,9 +276,9 @@ describe('@fastgpt/dal/db/sql/migrations lightweight DDL runner & inspect', () =
     } finally {
       await harness.close();
     }
-  });
+  }, 30_000);
 
-  it('enforces strict datasource isolation in separate mode and avoids silent skips for same-ID main/log migrations in shared mode', async () => {
+  const createDatasourceTopologyFixtures = () => {
     const mainTable = defineSqlTable({
       name: 'main_items',
       datasource: 'main',
@@ -328,7 +328,12 @@ describe('@fastgpt/dal/db/sql/migrations lightweight DDL runner & inspect', () =
       }
     ];
 
-    // 1. Separate mode: TWO PGlite instances (main vs log) strictly isolated
+    return { mainTable, logTable, mixedMigrations };
+  };
+
+  it('enforces strict datasource isolation in separate mode across main and log physical databases', async () => {
+    const { mainTable, logTable, mixedMigrations } = createDatasourceTopologyFixtures();
+
     const separateHarness = await createPGliteSqlTestHarness({
       tables: [],
       logTables: [],
@@ -355,6 +360,7 @@ describe('@fastgpt/dal/db/sql/migrations lightweight DDL runner & inspect', () =
       });
       expect(mainInspect.missingTables).toEqual(['audit_logs']);
       expect(mainInspect.missingColumns).toEqual([]);
+      expect(mainInspect.primaryKeyMismatches).toEqual([]);
       expect(mainInspect.missingIndexes).toEqual([]);
 
       // Separate log DB (also verifies omitting logMode with datasource='log' defaults safely to ['log'])
@@ -377,12 +383,16 @@ describe('@fastgpt/dal/db/sql/migrations lightweight DDL runner & inspect', () =
       });
       expect(logInspect.missingTables).toEqual(['main_items']);
       expect(logInspect.missingColumns).toEqual([]);
+      expect(logInspect.primaryKeyMismatches).toEqual([]);
       expect(logInspect.missingIndexes).toEqual([]);
     } finally {
       await separateHarness.close();
     }
+  }, 30_000);
 
-    // 2. Shared mode: ONE PGlite instance executes BOTH main and log migrations with identical ID (zero silent skips!)
+  it('executes both main and log migrations in shared mode without skipping same-ID migrations across datasources', async () => {
+    const { mainTable, logTable, mixedMigrations } = createDatasourceTopologyFixtures();
+
     const sharedHarness = await createPGliteSqlTestHarness({ tables: [], logMode: 'shared' });
     try {
       const sharedRes = await runSqlMigrations({
@@ -418,6 +428,7 @@ describe('@fastgpt/dal/db/sql/migrations lightweight DDL runner & inspect', () =
       expect(sharedInspect.missingTables).toEqual([]);
       expect(sharedInspect.missingColumns).toEqual([]);
       expect(sharedInspect.columnMismatches).toEqual([]);
+      expect(sharedInspect.primaryKeyMismatches).toEqual([]);
       expect(sharedInspect.missingIndexes).toEqual([]);
       expect(sharedInspect.indexMismatches).toEqual([]);
 
@@ -434,7 +445,7 @@ describe('@fastgpt/dal/db/sql/migrations lightweight DDL runner & inspect', () =
     } finally {
       await sharedHarness.close();
     }
-  });
+  }, 30_000);
 
   it('supports rollback forward-compatibility, physical-DB lock scoping across core/pro, non-transactional DDL, and concurrent startup locking', async () => {
     const harness = await createPGliteSqlTestHarness({ tables: [] });
@@ -1364,6 +1375,122 @@ describe('@fastgpt/dal/db/sql/migrations lightweight DDL runner & inspect', () =
     expect(mysqlReport.columnMismatches.map((m) => m.column).sort()).toEqual([
       'body',
       'created_at'
+    ]);
+    expect(mysqlReport.primaryKeyMismatches).toEqual([
+      expect.objectContaining({
+        table: 'mysql_col_tbl',
+        expected: ['_id'],
+        actual: []
+      })
+    ]);
+  });
+
+  it('inspectSqlSchema verifies composite PRIMARY KEY column order on PGlite and MySQL/OceanBase', async () => {
+    const compositeTable = defineSqlTable({
+      name: 'composite_pk_tbl',
+      columns: {
+        tenant_id: { kind: 'entityId', primaryKey: true },
+        item_id: { kind: 'entityId', primaryKey: true }
+      }
+    });
+
+    const harness = await createPGliteSqlTestHarness({ tables: [] });
+    try {
+      await sql
+        .raw(
+          `
+        CREATE TABLE "composite_pk_tbl" (
+          "tenant_id" VARCHAR(24) NOT NULL,
+          "item_id" VARCHAR(24) NOT NULL,
+          PRIMARY KEY ("item_id", "tenant_id")
+        );
+      `
+        )
+        .execute(harness.db);
+
+      const report = await inspectSqlSchema({
+        db: harness.db,
+        dialect: 'postgres',
+        tables: [compositeTable]
+      });
+      expect(report.primaryKeyMismatches).toEqual([
+        expect.objectContaining({
+          table: 'composite_pk_tbl',
+          expected: ['tenant_id', 'item_id'],
+          actual: ['item_id', 'tenant_id'],
+          reason: expect.stringContaining('PRIMARY KEY mismatch')
+        })
+      ]);
+    } finally {
+      await harness.close();
+    }
+
+    const { db: mockMysqlPkDb } = createMockMysqlKysely(({ sql: query }) => {
+      if (query.includes('information_schema.tables')) {
+        return { rows: [{ table_name: 'composite_pk_tbl' }] };
+      }
+      if (query.includes('information_schema.columns')) {
+        return {
+          rows: [
+            {
+              table_name: 'composite_pk_tbl',
+              column_name: 'tenant_id',
+              data_type: 'varchar',
+              column_type: 'varchar(24)',
+              character_maximum_length: 24,
+              datetime_precision: null,
+              is_nullable: 'NO',
+              column_default: null
+            },
+            {
+              table_name: 'composite_pk_tbl',
+              column_name: 'item_id',
+              data_type: 'varchar',
+              column_type: 'varchar(24)',
+              character_maximum_length: 24,
+              datetime_precision: null,
+              is_nullable: 'NO',
+              column_default: null
+            }
+          ]
+        };
+      }
+      if (query.includes('information_schema.statistics')) {
+        return {
+          rows: [
+            {
+              table_name: 'composite_pk_tbl',
+              index_name: 'PRIMARY',
+              non_unique: 0,
+              seq_in_index: 1,
+              column_name: 'item_id',
+              collation: 'A'
+            },
+            {
+              table_name: 'composite_pk_tbl',
+              index_name: 'PRIMARY',
+              non_unique: 0,
+              seq_in_index: 2,
+              column_name: 'tenant_id',
+              collation: 'A'
+            }
+          ]
+        };
+      }
+      return { rows: [] };
+    });
+
+    const mysqlPkMismatch = await inspectSqlSchema({
+      db: mockMysqlPkDb,
+      dialect: 'mysql',
+      tables: [compositeTable]
+    });
+    expect(mysqlPkMismatch.primaryKeyMismatches).toEqual([
+      expect.objectContaining({
+        table: 'composite_pk_tbl',
+        expected: ['tenant_id', 'item_id'],
+        actual: ['item_id', 'tenant_id']
+      })
     ]);
   });
 });

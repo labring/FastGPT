@@ -4804,37 +4804,9 @@ export const analyzeSqlTableDefinitions = (sourceText) => {
   return { tables, issues };
 };
 
-const REAL_LOG_HARNESS_FNS = new Set([
-  'createContractBackends',
-  'createMongoTestHarness',
-  'createPGliteSqlTestHarness',
-  'createMysqlSqlTestHarness',
-  'createPostgresSqlTestHarness'
-]);
-
-const REAL_RUNTIME_CONFIG_FNS = new Set(['configureDbRuntime']);
+const LOG_TOPOLOGY_SUITE_CALLEE = 'registerLogTopologyContractSuite';
 
 const REPO_RUNTIME_HELPER_FNS = new Set(['injectRepo', 'runInTransaction', 'getDbRuntime']);
-
-const DB_EXERCISE_MEMBER_NAMES = new Set([
-  'logDb',
-  'logClient',
-  'getModel',
-  'insertRawRow',
-  'selectFrom',
-  'insertInto',
-  'deleteFrom',
-  'updateTable',
-  'collection',
-  'countDocuments',
-  'findOne',
-  'find',
-  'getBoundModel',
-  'bindMongoModel',
-  'resolveReadTarget'
-]);
-
-const HARNESS_CLEANUP_ONLY_MEMBERS = new Set(['close', 'clearAll', 'truncateAll']);
 
 /** 提取领域目录导出的 Repo Token 与 Mongo/SQL Repository 类名，供契约与日志双态测试覆盖校验使用。 */
 export const extractExportedDomainRepoSymbols = (domainAbs) => {
@@ -4855,54 +4827,53 @@ export const extractExportedDomainRepoSymbols = (domainAbs) => {
 };
 
 /**
- * 校验日志域测试文件是否真正可执行地覆盖了 `'shared'` 与 `'separate'` 两种日志库拓扑：
- * 1. 必须在真实测试/套件上下文中调用真实 DAL Harness 或 Runtime 配置（如 `createContractBackends` /
- *    `createPGliteSqlTestHarness` / `createMongoTestHarness` / `createMysqlSqlTestHarness` /
- *    `createPostgresSqlTestHarness` / `configureDbRuntime`），并显式覆盖 `shared` 与 `separate` 双态
- *    （支持静态 `const`、`for ... of ['shared', 'separate']` 及 `.each(['shared', 'separate'])`）；
- * 2. 严禁仅在 `expect({ logMode: 'shared' })` 等普通对象字面量或字符串中伪造覆盖；
- * 3. 两种拓扑关联的可执行 `it`/`test` 用例中必须同时包含真实 `expect(...)` 断言与仓储/数据库读写隔离操作。
+ * 校验日志域测试文件是否真正接入了可复用的运行期日志双态隔离契约套件 `registerLogTopologyContractSuite`：
+ * 1. 必须从 `@fastgpt/dal/db/testing` 导入（禁止本地同名 mock/函数遮蔽）；
+ * 2. 必须在顶层或非 skip/todo 的 `describe(...)` 块中可执行地调用 `registerLogTopologyContractSuite({ ... })`；
+ * 3. 禁止传入 `requireBothFamilies: false` / `includeMongo: false` / `includePGlite: false` 跳过任一方言族；
+ * 4. `writeLogRecord` 与 `readLogRecord` 回调体内必须真实调用领域仓储或 `injectRepo(...)`（绝不依赖 `harness.logDb` 属性存在性断言）。
  */
 export const analyzeLogDualModeTestCoverage = ({
   testFiles,
   domainRepoSymbols = new Set()
 }) => {
-  const coveredModes = new Set();
-  const configuredModes = new Set();
-  const harnessWithoutAssertionsModes = new Set();
+  const reasons = [];
+  let hasValidSuiteCall = false;
 
   for (const file of testFiles) {
     const resolver = createStaticScopeResolver({ sourceText: file.raw });
     const { clean, tokens, matchIdx, scopeTree, importedAliases } = resolver;
 
-    const harnessAliasToCanonical = new Map();
-    for (const fn of REAL_LOG_HARNESS_FNS) {
-      harnessAliasToCanonical.set(fn, fn);
-    }
-    const runtimeConfigNames = new Set(REAL_RUNTIME_CONFIG_FNS);
-    const repoHelperNames = new Set(REPO_RUNTIME_HELPER_FNS);
-
+    // 1. 解析从 @fastgpt/dal/db/testing 导入的 registerLogTopologyContractSuite 局部别名
+    const suiteCallees = new Set();
     for (const [localName, info] of importedAliases) {
-      if (REAL_LOG_HARNESS_FNS.has(info.importedName)) {
-        harnessAliasToCanonical.set(localName, info.importedName);
+      if (
+        info.importedName === LOG_TOPOLOGY_SUITE_CALLEE &&
+        /(?:^|\/)testing(?:\.ts)?$/.test(info.specifier)
+      ) {
+        suiteCallees.add(localName);
       }
-      if (REAL_RUNTIME_CONFIG_FNS.has(info.importedName)) {
-        runtimeConfigNames.add(localName);
-      }
+    }
+
+    if (suiteCallees.size === 0) {
+      reasons.push(
+        `${file.relPath}: must import "${LOG_TOPOLOGY_SUITE_CALLEE}" from "@fastgpt/dal/db/testing"`
+      );
+      continue;
+    }
+
+    // 收集 repoVars（如 `const repo = injectRepo(XxxToken)`）以便校验 writeLogRecord / readLogRecord 内部确实操作仓储
+    const repoHelperNames = new Set(REPO_RUNTIME_HELPER_FNS);
+    for (const [localName, info] of importedAliases) {
       if (REPO_RUNTIME_HELPER_FNS.has(info.importedName)) {
         repoHelperNames.add(localName);
       }
     }
 
-    // 1. 收集文件内绑定到仓储实例或测试 Harness 的变量名，供识别 `repo.create(...)` / `harness.db` 等真实操作
     const repoVars = new Set();
-    const harnessVars = new Set();
-
     for (let i = 0; i < tokens.length; i += 1) {
       const tok = tokens[i];
-      if (tok.type !== 'ident') {
-        continue;
-      }
+      if (tok.type !== 'ident') continue;
       let eqIdx = i + 1;
       if (isPunctTok(tokens[eqIdx], ':')) {
         eqIdx = skipTypeAnnotation({
@@ -4913,386 +4884,79 @@ export const analyzeLogDualModeTestCoverage = ({
           stopPuncts: new Set(['=', ';', ','])
         });
       }
-      if (!isPunctTok(tokens[eqIdx], '=')) {
-        continue;
-      }
+      if (!isPunctTok(tokens[eqIdx], '=')) continue;
       let rhsIdx = eqIdx + 1;
-      if (isIdentTok(tokens[rhsIdx], 'await')) {
-        rhsIdx += 1;
-      }
+      if (isIdentTok(tokens[rhsIdx], 'await')) rhsIdx += 1;
       const rhsTok = tokens[rhsIdx];
-      if (rhsTok === undefined) {
-        continue;
-      }
-      if (
-        rhsTok.type === 'ident' &&
-        (importedAliases.get(rhsTok.value)?.importedName === 'injectRepo' ||
-          rhsTok.value === 'injectRepo')
-      ) {
+      if (rhsTok === undefined) continue;
+      if (rhsTok.type === 'ident' && repoHelperNames.has(rhsTok.value)) {
         repoVars.add(tok.value);
       } else if (isIdentTok(rhsTok, 'new') && tokens[rhsIdx + 1]?.type === 'ident') {
         const cls = tokens[rhsIdx + 1].value;
         if (domainRepoSymbols.has(cls) || /Repo(?:sitory)?$/.test(cls)) {
           repoVars.add(tok.value);
         }
-      } else if (rhsTok.type === 'ident' && harnessAliasToCanonical.has(rhsTok.value)) {
-        harnessVars.add(tok.value);
       }
     }
 
-    // 2. 扫描可执行与跳过的测试容器（`it`/`test`/`describe`/`register*ContractSuite`）以及 `.each` / `for ... of` 动态日志模式集合
-    const testCases = [];
-    const describeBlocks = [];
-    const contractSuites = [];
+    // 2. 收集被 describe.skip / describe.todo / it.skip 跳过的区间
     const skippedSpans = [];
-    const loopModeBindings = [];
-
-    // 2a. 识别 `for (const mode of ['shared', 'separate']) { ... }`
-    for (let i = 0; i < tokens.length; i += 1) {
-      if (!isIdentTok(tokens[i], 'for')) continue;
-      let cursor = i + 1;
-      if (isIdentTok(tokens[cursor], 'await')) cursor += 1;
-      if (!isPunctTok(tokens[cursor], '(') || matchIdx[cursor] === -1) continue;
-      const headOpen = cursor;
-      const headClose = matchIdx[headOpen];
-      const declKw = tokens[headOpen + 1];
-      const loopVar = tokens[headOpen + 2];
-      if (
-        (isIdentTok(declKw, 'const') || isIdentTok(declKw, 'let')) &&
-        loopVar?.type === 'ident' &&
-        isIdentTok(tokens[headOpen + 3], 'of')
-      ) {
-        const iterStart = headOpen + 4;
-        if (iterStart < headClose) {
-          const iterRaw = clean.slice(tokens[iterStart].start, tokens[headClose - 1].end);
-          const resolved = resolver.resolveValue({
-            rawExpr: iterRaw,
-            scopePos: tokens[iterStart].start
-          });
-          if (resolved.ok && Array.isArray(resolved.value)) {
-            const modes = resolved.value.filter((v) => v === 'shared' || v === 'separate');
-            if (modes.length > 0 && isPunctTok(tokens[headClose + 1], '{')) {
-              const bodyOpen = headClose + 1;
-              const bodyClose = matchIdx[bodyOpen];
-              if (bodyClose !== -1) {
-                loopModeBindings.push({
-                  varName: loopVar.value,
-                  modes,
-                  startTok: bodyOpen,
-                  endTok: bodyClose
-                });
-              }
-            }
-          }
-        }
-      }
-    }
-
-    // 2b. 识别 `it`/`test`/`describe` 及其修饰器（`.skip`/`.todo`/`.each`/`.concurrent`/`.sequential`/`.only`）
     for (let i = 0; i < tokens.length; i += 1) {
       const tok = tokens[i];
       const prev = i > 0 ? tokens[i - 1] : undefined;
-      if (isPunctTok(prev, '.') || isPunctTok(prev, '?.')) {
+      if (isPunctTok(prev, '.') || isPunctTok(prev, '?.')) continue;
+      if (!isIdentTok(tok, 'describe') && !isIdentTok(tok, 'it') && !isIdentTok(tok, 'test')) {
         continue;
       }
-
-      if (
-        isIdentTok(tok, 'registerMultiDialectContractSuite') ||
-        isIdentTok(tok, 'registerDualDialectContractSuite')
-      ) {
-        let cursor = i + 1;
-        if (isPunctTok(tokens[cursor], '<')) {
-          const ca = tryMatchGenericAngle({
-            tokens,
-            matchIdx,
-            startIdx: cursor,
-            rangeEnd: tokens.length
-          });
-          if (ca !== -1) cursor = ca + 1;
-        }
-        if (isPunctTok(tokens[cursor], '(') && matchIdx[cursor] !== -1) {
-          contractSuites.push({
-            startTok: i,
-            endTok: matchIdx[cursor]
-          });
-        }
-        continue;
-      }
-
-      if (!isIdentTok(tok, 'it') && !isIdentTok(tok, 'test') && !isIdentTok(tok, 'describe')) {
-        continue;
-      }
-
-      const kind = tok.value === 'describe' ? 'describe' : 'test';
       let cursor = i + 1;
       let isSkipped = false;
-      let eachModes = null;
-
       while (isPunctTok(tokens[cursor], '.') && tokens[cursor + 1]?.type === 'ident') {
         const mod = tokens[cursor + 1].value;
         cursor += 2;
         if (mod === 'skip' || mod === 'todo') {
           isSkipped = true;
         } else if (mod === 'each' && isPunctTok(tokens[cursor], '(') && matchIdx[cursor] !== -1) {
-          const eachOpen = cursor;
-          const eachClose = matchIdx[eachOpen];
-          const eachRaw = clean.slice(tokens[eachOpen].end, tokens[eachClose].start);
-          const eachRes = resolver.resolveValue({
-            rawExpr: eachRaw,
-            scopePos: tokens[eachOpen].end
-          });
-          if (eachRes.ok && Array.isArray(eachRes.value)) {
-            const extracted = [];
-            for (const item of eachRes.value) {
-              if (item === 'shared' || item === 'separate') {
-                extracted.push(item);
-              } else if (Array.isArray(item)) {
-                for (const elem of item) {
-                  if (elem === 'shared' || elem === 'separate') extracted.push(elem);
-                }
-              } else if (item !== null && typeof item === 'object') {
-                if (item.logMode === 'shared' || item.logMode === 'separate') {
-                  extracted.push(item.logMode);
-                }
-              }
-            }
-            if (extracted.length > 0) {
-              eachModes = extracted;
-            }
-          }
-          cursor = eachClose + 1;
+          cursor = matchIdx[cursor] + 1;
         }
       }
-
-      if (!isPunctTok(tokens[cursor], '(') || matchIdx[cursor] === -1) {
-        continue;
-      }
-      const callOpen = cursor;
-      const callClose = matchIdx[callOpen];
-
-      if (isSkipped) {
-        skippedSpans.push({ startTok: i, endTok: callClose });
-        continue;
-      }
-
-      const argRanges = splitTokenRangeByComma({
-        tokens,
-        matchIdx,
-        startTok: callOpen + 1,
-        endTok: callClose
-      });
-      const cbRange = argRanges.length >= 2 ? argRanges[1] : argRanges[0];
-      if (eachModes !== null && cbRange !== undefined) {
-        let cbStart = cbRange[0];
-        if (isIdentTok(tokens[cbStart], 'async')) {
-          cbStart += 1;
-        }
-        if (tokens[cbStart]?.type === 'ident' && isPunctTok(tokens[cbStart + 1], '=>')) {
-          loopModeBindings.push({
-            varName: tokens[cbStart].value,
-            modes: eachModes,
-            startTok: cbRange[0],
-            endTok: cbRange[1]
-          });
-        } else {
-          let paramOpen = -1;
-          for (let k = cbStart; k < cbRange[1]; k += 1) {
-            if (isPunctTok(tokens[k], '(') && matchIdx[k] !== -1) {
-              paramOpen = k;
-              break;
-            }
-          }
-          if (paramOpen !== -1) {
-            const paramIds = extractParamListBindings({
-              tokens,
-              matchIdx,
-              openParenIdx: paramOpen,
-              closeParenIdx: matchIdx[paramOpen]
-            });
-            for (const pName of paramIds) {
-              loopModeBindings.push({
-                varName: pName,
-                modes: eachModes,
-                startTok: cbRange[0],
-                endTok: cbRange[1]
-              });
-            }
-          }
-        }
-      }
-
-      if (kind === 'describe') {
-        describeBlocks.push({ startTok: i, endTok: callClose });
-      } else {
-        testCases.push({
-          startTok: i,
-          endTok: callClose,
-          bodyStartTok: cbRange !== undefined ? cbRange[0] : callOpen + 1,
-          bodyEndTok: cbRange !== undefined ? cbRange[1] : callClose,
-          hasExpect: false,
-          hasRepoOrDbExercise: false
-        });
+      if (isSkipped && isPunctTok(tokens[cursor], '(') && matchIdx[cursor] !== -1) {
+        skippedSpans.push({ startTok: i, endTok: matchIdx[cursor] });
       }
     }
-
     const isInsideSkipped = (tokIdx) =>
       skippedSpans.some((s) => tokIdx >= s.startTok && tokIdx <= s.endTok);
 
-    // 3. 检测每个可执行 `it`/`test` 块是否同时包含 `expect(...)` 与真实仓储/数据库隔离操作
-    for (const tc of testCases) {
-      if (isInsideSkipped(tc.startTok)) {
-        continue;
-      }
-      for (let k = tc.bodyStartTok; k < tc.bodyEndTok; k += 1) {
-        const t = tokens[k];
-        const prev = k > tc.bodyStartTok ? tokens[k - 1] : undefined;
-        const next = k + 1 < tc.bodyEndTok ? tokens[k + 1] : undefined;
-
-        if (
-          isIdentTok(t, 'expect') &&
-          !isPunctTok(prev, '.') &&
-          !isPunctTok(prev, '?.') &&
-          isPunctTok(next, '(')
-        ) {
-          tc.hasExpect = true;
-          continue;
+    const callbackExercisesRepository = (rawValue) => {
+      const { tokens: cbTokens } = tokenizeCleanJsTs(stripCommentsPreserveStrings(rawValue));
+      for (let k = 0; k < cbTokens.length; k += 1) {
+        const t = cbTokens[k];
+        if (t.type !== 'ident') continue;
+        const prev = k > 0 ? cbTokens[k - 1] : undefined;
+        const next = k + 1 < cbTokens.length ? cbTokens[k + 1] : undefined;
+        if (repoHelperNames.has(t.value) && !isPunctTok(prev, '.') && isPunctTok(next, '(')) {
+          return true;
         }
-
         if (
-          t.type === 'ident' &&
-          repoHelperNames.has(t.value) &&
-          !isPunctTok(prev, '.') &&
-          !isPunctTok(prev, '?.') &&
-          isPunctTok(next, '(')
-        ) {
-          tc.hasRepoOrDbExercise = true;
-          continue;
-        }
-
-        if (
-          t.type === 'ident' &&
           domainRepoSymbols.has(t.value) &&
           (isIdentTok(prev, 'new') ||
             isPunctTok(next, '.') ||
             isPunctTok(next, '?.') ||
             isPunctTok(next, '('))
         ) {
-          tc.hasRepoOrDbExercise = true;
-          continue;
+          return true;
         }
-
-        if (
-          t.type === 'ident' &&
-          repoVars.has(t.value) &&
-          !isPunctTok(prev, '.') &&
-          (isPunctTok(next, '.') || isPunctTok(next, '?.'))
-        ) {
-          const member = tokens[k + 2];
-          if (member?.type === 'ident' && !HARNESS_CLEANUP_ONLY_MEMBERS.has(member.value)) {
-            tc.hasRepoOrDbExercise = true;
-            continue;
-          }
-        }
-
-        if (
-          t.type === 'ident' &&
-          harnessVars.has(t.value) &&
-          !isPunctTok(prev, '.') &&
-          (isPunctTok(next, '.') || isPunctTok(next, '?.'))
-        ) {
-          const member = tokens[k + 2];
-          if (
-            member?.type === 'ident' &&
-            (member.value === 'db' ||
-              member.value === 'client' ||
-              DB_EXERCISE_MEMBER_NAMES.has(member.value))
-          ) {
-            tc.hasRepoOrDbExercise = true;
-            continue;
-          }
-        }
-
-        if (
-          (isPunctTok(prev, '.') || isPunctTok(prev, '?.')) &&
-          t.type === 'ident' &&
-          DB_EXERCISE_MEMBER_NAMES.has(t.value)
-        ) {
-          tc.hasRepoOrDbExercise = true;
+        if (repoVars.has(t.value) && !isPunctTok(prev, '.') && (isPunctTok(next, '.') || isPunctTok(next, '?.'))) {
+          return true;
         }
       }
-    }
-
-    const executableRepoTests = testCases.filter(
-      (tc) => !isInsideSkipped(tc.startTok) && tc.hasExpect && tc.hasRepoOrDbExercise
-    );
-
-    const hasAssociatedExecutableRepoTest = (callTokIdx) => {
-      // 1. 直接在 `it`/`test` 内：该用例自身必须含 `expect` + 真实仓储/DB 操作
-      const enclosingTest = testCases
-        .filter((tc) => callTokIdx >= tc.startTok && callTokIdx <= tc.endTok)
-        .sort((a, b) => a.endTok - a.startTok - (b.endTok - b.startTok))[0];
-      if (enclosingTest !== undefined) {
-        return enclosingTest.hasExpect && enclosingTest.hasRepoOrDbExercise;
-      }
-
-      // 2. 在 `register*ContractSuite(...)` 内：该契约套件内必须存在真实仓储/DB 用例
-      const enclosingSuite = contractSuites
-        .filter((s) => callTokIdx >= s.startTok && callTokIdx <= s.endTok)
-        .sort((a, b) => a.endTok - a.startTok - (b.endTok - b.startTok))[0];
-      if (enclosingSuite !== undefined) {
-        return executableRepoTests.some(
-          (tc) => tc.startTok >= enclosingSuite.startTok && tc.endTok <= enclosingSuite.endTok
-        );
-      }
-
-      // 3. 在 `describe(...)` 内（如 `beforeAll` / `beforeEach`）：该 describe 块内必须存在真实仓储/DB 用例
-      const enclosingDescribe = describeBlocks
-        .filter((d) => callTokIdx >= d.startTok && callTokIdx <= d.endTok)
-        .sort((a, b) => a.endTok - a.startTok - (b.endTok - b.startTok))[0];
-      if (enclosingDescribe !== undefined) {
-        return executableRepoTests.some(
-          (tc) => tc.startTok >= enclosingDescribe.startTok && tc.endTok <= enclosingDescribe.endTok
-        );
-      }
-
-      // 4. 顶层语句（如 `const backends = createContractBackends(...)`）：不得处于未调用的普通函数体内
-      const callCharPos = tokens[callTokIdx].start;
-      const enclosingScope = scopeTree.findInnermostScope(callCharPos);
-      if (enclosingScope.kind === 'function') {
-        return false;
-      }
-      return executableRepoTests.length > 0;
+      return false;
     };
 
-    const resolveLogModesFromExpr = ({ rawExpr, scopePos, callTokIdx }) => {
-      const staticRes = resolver.resolveValue({
-        rawExpr,
-        scopePos,
-        allowOpaqueIdentifier: false
-      });
-      if (staticRes.ok && (staticRes.value === 'shared' || staticRes.value === 'separate')) {
-        return [staticRes.value];
-      }
-      const trimmed = stripTsAssertion(rawExpr.trim());
-      if (IDENTIFIER_REGEX.test(trimmed)) {
-        const matched = loopModeBindings
-          .filter(
-            (b) => b.varName === trimmed && callTokIdx >= b.startTok && callTokIdx <= b.endTok
-          )
-          .sort((a, b) => a.endTok - a.startTok - (b.endTok - b.startTok))[0];
-        if (matched !== undefined) {
-          return matched.modes;
-        }
-      }
-      return [];
-    };
-
-    // 4. 扫描所有真实 Harness / Runtime 配置调用（拒绝被本地 mock/stub 遮蔽的假函数）
-    const allConfigCallees = new Set([...harnessAliasToCanonical.keys(), ...runtimeConfigNames]);
+    // 3. 扫描所有可执行的 registerLogTopologyContractSuite(...) 调用并严格校验参数契约
     for (const call of findFunctionCalls({
       tokens,
       matchIdx,
-      calleeNames: allConfigCallees
+      calleeNames: suiteCallees
     })) {
       if (call.closeParenIdx === -1 || isInsideSkipped(call.calleeIdx)) {
         continue;
@@ -5300,13 +4964,40 @@ export const analyzeLogDualModeTestCoverage = ({
       const calleeCharPos = tokens[call.calleeIdx].start;
       const calleeBinding = scopeTree.lookupBinding(call.calleeName, calleeCharPos);
       if (calleeBinding.found && calleeBinding.binding.kind !== 'import') {
-        // 被本地变量/函数/形参遮蔽（如 `const createPGliteSqlTestHarness = vi.fn()`），绝不算真实 Harness
+        reasons.push(`${file.relPath}: "${call.calleeName}" is shadowed by local mock/binding`);
         continue;
+      }
+
+      const enclosingScope = scopeTree.findInnermostScope(calleeCharPos);
+      if (enclosingScope.kind === 'function') {
+        // 允许在 describe(...) 回调中调用，但拒绝放在从未调用的普通 helper 函数体中
+        const beforeOpenTok = call.calleeIdx;
+        let inDescribe = false;
+        for (let b = 0; b < beforeOpenTok; b += 1) {
+          if (isIdentTok(tokens[b], 'describe')) {
+            let cur = b + 1;
+            while (isPunctTok(tokens[cur], '.') && tokens[cur + 1]?.type === 'ident') {
+              cur += 2;
+              if (tokens[cur - 1].value === 'each' && isPunctTok(tokens[cur], '(') && matchIdx[cur] !== -1) {
+                cur = matchIdx[cur] + 1;
+              }
+            }
+            if (isPunctTok(tokens[cur], '(') && matchIdx[cur] !== -1 && matchIdx[cur] > call.closeParenIdx) {
+              inDescribe = true;
+              break;
+            }
+          }
+        }
+        if (!inDescribe) {
+          reasons.push(`${file.relPath}: ${call.calleeName} must be registered at top-level or inside describe()`);
+          continue;
+        }
       }
 
       const inner = clean.slice(tokens[call.openParenIdx].end, tokens[call.closeParenIdx].start);
       const callArgs = splitTopLevelComma(inner).filter((arg) => arg.trim().length > 0);
       if (callArgs.length === 0) {
+        reasons.push(`${file.relPath}: ${call.calleeName} called without options object`);
         continue;
       }
       const argStartPos = skipWhitespace(clean, tokens[call.openParenIdx].end);
@@ -5315,102 +5006,65 @@ export const analyzeLogDualModeTestCoverage = ({
         scopePos: argStartPos
       });
       if (!objRes.ok) {
+        reasons.push(`${file.relPath}: cannot inspect options passed to ${call.calleeName}`);
         continue;
       }
 
-      const canonicalHarness = harnessAliasToCanonical.get(call.calleeName);
-      const modesForCall = [];
-
-      if (canonicalHarness !== undefined) {
-        const logModeEntry = objRes.props.get('logMode');
-        if (logModeEntry !== undefined) {
-          modesForCall.push(
-            ...resolveLogModesFromExpr({
-              rawExpr: logModeEntry.rawValue,
-              scopePos: logModeEntry.scopePos,
-              callTokIdx: call.calleeIdx
-            })
-          );
-        } else if (
-          canonicalHarness === 'createPGliteSqlTestHarness' &&
-          objRes.props.has('withLogDatabase')
-        ) {
-          const withLogEntry = objRes.props.get('withLogDatabase');
-          const boolRes = resolver.resolveValue({
-            rawExpr: withLogEntry.rawValue,
-            scopePos: withLogEntry.scopePos
+      // 禁止关闭任意一族后端校验
+      for (const flagKey of ['requireBothFamilies', 'includeMongo', 'includePGlite']) {
+        const entry = objRes.props.get(flagKey);
+        if (entry !== undefined) {
+          const valRes = resolver.resolveValue({
+            rawExpr: entry.rawValue,
+            scopePos: entry.scopePos
           });
-          if (boolRes.ok && boolRes.value === true) {
-            modesForCall.push('separate');
-          } else if (boolRes.ok && boolRes.value === false) {
-            modesForCall.push('shared');
-          }
-        }
-      } else if (runtimeConfigNames.has(call.calleeName)) {
-        const logUrlEntry = objRes.props.get('logWriteUrl');
-        if (logUrlEntry === undefined) {
-          modesForCall.push('shared');
-        } else {
-          const urlRes = resolver.resolveValue({
-            rawExpr: logUrlEntry.rawValue,
-            scopePos: logUrlEntry.scopePos
-          });
-          if (urlRes.ok && (urlRes.value === undefined || urlRes.value === null || urlRes.value === '')) {
-            modesForCall.push('shared');
-          } else {
-            modesForCall.push('separate');
+          if (valRes.ok && valRes.value === false) {
+            reasons.push(
+              `${file.relPath}: ${call.calleeName} must not disable "${flagKey}: false"`
+            );
           }
         }
       }
 
-      if (modesForCall.length === 0) {
-        continue;
+      for (const reqProp of [
+        'logCollections',
+        'logTables',
+        'mongoCollectionName',
+        'sqlTableName',
+        'writeLogRecord',
+        'readLogRecord'
+      ]) {
+        const entry = objRes.props.get(reqProp);
+        if (entry === undefined) {
+          reasons.push(`${file.relPath}: ${call.calleeName} missing required option "${reqProp}"`);
+        }
       }
 
-      const hasAssertions = hasAssociatedExecutableRepoTest(call.calleeIdx);
-      for (const mode of modesForCall) {
-        configuredModes.add(mode);
-        if (hasAssertions) {
-          coveredModes.add(mode);
-        } else {
-          harnessWithoutAssertionsModes.add(mode);
-        }
+      const writeEntry = objRes.props.get('writeLogRecord');
+      const readEntry = objRes.props.get('readLogRecord');
+      if (writeEntry !== undefined && !callbackExercisesRepository(writeEntry.rawValue)) {
+        reasons.push(
+          `${file.relPath}: ${call.calleeName}.writeLogRecord must exercise domain repository / injectRepo()`
+        );
+      }
+      if (readEntry !== undefined && !callbackExercisesRepository(readEntry.rawValue)) {
+        reasons.push(
+          `${file.relPath}: ${call.calleeName}.readLogRecord must exercise domain repository / injectRepo()`
+        );
+      }
+
+      if (reasons.length === 0) {
+        hasValidSuiteCall = true;
       }
     }
   }
 
-  const hasShared = coveredModes.has('shared');
-  const hasSeparate = coveredModes.has('separate');
-  const ok = hasShared && hasSeparate;
-
-  const missingModes = [];
-  if (!hasShared) missingModes.push("'shared'");
-  if (!hasSeparate) missingModes.push("'separate'");
-
-  const details = (() => {
-    if (ok) {
-      return 'covered both shared and separate log topologies with executable repo/DB assertions';
-    }
-    const parts = [
-      `missing executable harness/runtime coverage for ${missingModes.join(' and ')} logMode`
-    ];
-    const unassertedMissing = [...harnessWithoutAssertionsModes].filter(
-      (m) => !coveredModes.has(m)
-    );
-    if (unassertedMissing.length > 0) {
-      parts.push(
-        `configured ${unassertedMissing.map((m) => `'${m}'`).join(' and ')} without repository/DB assertions inside it()/test()`
-      );
-    }
-    return parts.join('; ');
-  })();
-
   return {
-    ok,
-    hasShared,
-    hasSeparate,
-    configuredModes: [...configuredModes],
-    details
+    ok: hasValidSuiteCall && reasons.length === 0,
+    details:
+      reasons.length > 0
+        ? reasons.join('; ')
+        : `missing executable ${LOG_TOPOLOGY_SUITE_CALLEE}({ ... }) wiring shared + separate physical isolation checks`
   };
 };
 

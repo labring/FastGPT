@@ -6,8 +6,9 @@
 - 适用范围：主 Service、日志库、Marketplace 和 `pro/admin` 中由 FastGPT 管理的 MongoDB Schema
 - 当前基线结论：
   1. Step 0 4 项现网隐患已全部修复（连接级 `autoIndex: false`、复合 `text` 索引 `_fts/_ftsx` 精确匹配、`MONGO_DEPRECATE_INDEX` 门控与独立 `withMongoDdlConnection` 无 60s 超时 DDL 连接）；
-  2. `@fastgpt/dal/db/mongo/indexSync.ts` 已落地**启动期只增补建**（`syncMongoCollectionIndexes`：key 等价检查防 Error 85、Error `285` 退避重试、支持动态条件索引与可选 `collMod` TTL 原地更新）、**只读巡检**（`inspectMongoIndexes`）与**显式一次性安全清理**（`dropManagedMongoIndexIfExists`）；
-  3. 历史 11 个旧版 Schema 中的 17 条 `deprecated: true` 墓碑已全部清零并收口至 `packages/service/common/mongo/legacyDeprecatedIndexCleanup.ts` 显式一次性清理目录，后续严禁在任何 `schema.ts` 中新增 `deprecated: true`，所有新增 Mongo 索引统一使用 `fg_<table_short>_<purpose>[_vN]` 命名（<= 63B），客户自建与存量未带前缀索引 100% 保留。
+  2. `@fastgpt/dal/db/mongo/indexSync.ts` 已落地**启动期只增补建**（`syncMongoCollectionIndexes`：全候选 `name + key + options` 双向等价比对防受限索引掩盖、Error `285` 退避重试、支持动态条件索引与可选 `collMod` TTL 原地更新）、**只读巡检**（`inspectMongoIndexes`）与**显式一次性安全清理**（`dropManagedMongoIndexIfExists`）；
+  3. 历史旧版 Schema 中的 **18 条** `deprecated: true` 废弃索引已全部清零并收口至 `packages/service/common/mongo/legacyDeprecatedIndexCleanup.ts` 显式一次性清理目录（`LEGACY_DEPRECATED_MONGO_INDEXES`）。后续**严禁**在任何业务 `schema.ts` 中新增 `deprecated: true`，所有新增 Mongo 索引统一使用 `fg_<table_short>_<purpose>[_vN]` 命名（<= 63B），客户自建与存量未带前缀索引 100% 保留。
+  4. 新增 DAL Mongo 集合（`coreMongoCollections`）在 `connectMongo` 成功后通过 `withMongoDdlConnection`（`socketTimeoutMS: 0`）后台只增补建；存量尚未迁入 DAL 的旧 `getMongoModel` / `getMongoLogModel` 维持既有 `MongoIndexManager` 路径，随后续业务域迁入 DAL 自然收敛。
 
 ## 问题与根因
 
@@ -21,16 +22,45 @@
 
 该问题同时影响主业务库、日志库和 Marketplace；多实例启动还会放大重复执行和错误日志问题。
 
-## 最终决策
+## 当前收敛架构（Phase 0.5.4 起生效，权威口径）
+
+> 本节覆盖下方历史 Phase 背景描述中的旧版「Schema 内登记 `deprecated: true`」与「启动阶段忽略 `options` 自动清理」策略，作为当前代码与运维的唯一权威口径。
+
+### 1. 声明与零墓碑原则
+- 业务 Schema（`packages/dal/db/repos/*/mongo/schema.ts` 与存量未迁移 Schema）只声明当前有效索引，**严禁**再使用 `deprecated: true` 或字段内联 `index: true` / `unique: true`（由 `schema-drift-guard.test.ts` 在 CI 中强制回归拦截）。
+- 新增 Mongo 索引统一命名为 `fg_<table_short>_<purpose>[_vN]`（<= 63 ASCII 字节）；存量未带 `fg_` 前缀索引原地冻结保留，不做破坏性重命名。
+
+### 2. 启动期只增同步与多候选等价比对
+- 连接层（`connectMongo`、`getSharedMongoConnection`）默认关闭 Mongoose `autoIndex`；测试环境由共享测试装配层对隔离测试库显式建索引并等待就绪。
+- `connectMongo` 成功后对 `coreMongoCollections`（如 `app_registrations`）通过 `withMongoDdlConnection`（`socketTimeoutMS: 0`）在后台只增补建。
+- `syncMongoCollectionIndexes` 与 `inspectMongoIndexes` 对同 key 的全部现网候选索引逐一比对完整定义（`unique`、`sparse`、`expireAfterSeconds`、`partialFilterExpression`、归一化 `collation`、`weights`、`default_language`、`language_override` 与 `_fts`/`_ftsx` 文本骨架），防止受限的 partial/unique 索引掩盖全量索引缺失。
+
+### 3. 显式一次性历史索引退役与运维操作条件
+- 历史上原登记于旧版 Schema 的 **18 条** 废弃索引（如 `chats.appId_1_updateTime_-1`、`chats.chatGenerateStatus_1_updateTime_1`、`agent_sandbox_instances_v2.*` 等）统一收口至 [legacyDeprecatedIndexCleanup.ts](../../../packages/service/common/mongo/legacyDeprecatedIndexCleanup.ts) 的 `LEGACY_DEPRECATED_MONGO_INDEXES`。
+- **绝对不在应用启动热路径自动删除索引**；仅在确认以下前置条件满足后，由运维/一次性迁移显式触发：
+  1. 对应替代索引（以及升级后新版本查询依赖）已在目标库创建完成且通过 `inspectMongoIndexes` / `inspect` 无缺失；
+  2. 先使用预览模式执行干跑：`runLegacyDeprecatedMongoIndexCleanup({ apply: false })`，确认待删列表无 `skipped_mismatch` 风险后再执行 `runLegacyDeprecatedMongoIndexCleanup({ apply: true })`；
+  3. 清理器按 **`name + key + 完整显式历史 options`** 严格匹配；若客户库中同名索引带有意外的 `unique`、`sparse`、`partialFilterExpression`、`expireAfterSeconds` 或 `collation`，一律返回 `skipped_mismatch` 并保守保留。
+- **环境变量 `MONGO_DEPRECATE_INDEX` 边界**：
+  - 仅作用于存量 `MongoIndexManager.cleanupModelDeprecatedIndexes()`（当前所有业务 Schema 的 `deprecated` 声明已清零为 `[]`，因此生产热路径零删除）；
+  - **不会**也不得用于触发或绕过 `runLegacyDeprecatedMongoIndexCleanup()` 的显式清理流程。
+
+---
+
+## 历史演进背景（旧版 MongoIndexManager 基线，仅作历史参考）
+
+> 注意：以下小节记录早期 Step 0 引入 `MongoIndexManager` 时的过渡方案；凡涉及「在 Schema 登记 `deprecated: true`」「忽略 `options`」「启动阶段自动删除」的表述均已被上方 **Phase 0.5.4 当前收敛架构** 取代。
+
+### 最终决策（历史过渡期）
 
 1. 禁止在启动索引管理中调用 `syncIndexes()` 或 `cleanIndexes()`。
 2. 移除旧索引同步开关；启动时固定检查差异并补建当前 Schema 缺失的索引。
-3. `MONGO_DEPRECATE_INDEX` 仅控制是否清理显式声明的 FastGPT 系统内置废弃索引，默认值为 `true`；设置为 `false` 不影响缺失索引的创建。
+3. `MONGO_DEPRECATE_INDEX` 仅控制旧版 `MongoIndexManager.cleanupModelDeprecatedIndexes()` 是否在本地 `deprecated: true` 测试/过渡场景执行删除，默认值为 `true`；设置为 `false` 不影响缺失索引的创建（当前业务 Schema 已零墓碑）。
 4. 不提供可切换回全量删除的启动模式。
-5. 当前索引和废弃索引统一通过 `defineIndex()` 声明；废弃索引必须声明在所属 Schema 文件中。
+5. （历史已演进）早先通过 `defineIndex(..., { deprecated: true })` 在 Schema 上登记元数据；Phase 0.5.4 起已全面禁用，历史 18 条索引已迁移至 `legacyDeprecatedIndexCleanup.ts`。
 6. Schema 外且未被显式声明为废弃的索引只告警、不删除。
-7. 删除废弃索引前必须先成功创建当前 Schema 索引；创建失败时不进入删除阶段。
-8. 主 Service、日志库和 Marketplace 统一复用 `MongoIndexManager`，保持同步语义与错误处理一致。
+7. 删除废弃索引前必须先成功创建并就绪替代索引；创建失败时不进入删除阶段。
+8. 存量未迁移 Service/Marketplace 模型继续沿用 `MongoIndexManager`，新迁入 `@fastgpt/dal` 的模型统一由 `@fastgpt/dal/db/mongo/indexSync` 接管。
 
 ## 索引声明
 
@@ -60,9 +90,9 @@ defineIndex(ChatSchema, {
 
 废弃索引元数据使用私有 symbol 挂在 Schema 实例上，使当前索引与历史清理声明在同一业务文件中完成 review，并避免中心清单与 Schema 演进脱节。
 
-## 启动同步流程
+## 启动同步流程（历史旧版 Schema 机制，当前业务 Schema 已零墓碑）
 
-每个 model 启动时执行以下流程：
+每个尚未迁入 `@fastgpt/dal` 的存量 model 在模块初始化时执行以下流程（新建 DAL 集合改为连接成功后由 `withMongoDdlConnection` 触发 `syncMongoCollectionIndexes`）：
 
 1. `diffIndexes({ indexOptionsToCreate: true })` 生成 `toCreate` 和 `toDrop`。
 2. `toDrop` 仅表示数据库中存在但当前 Schema 未声明的索引，记录 `warn` 后保留。
@@ -132,14 +162,13 @@ key 匹配规则：
 
 ## 验收标准
 
-1. 启动时创建当前 Schema 缺失索引，并保留所有未登记的 Schema 外索引。
-2. Schema 未登记废弃索引时不执行删除。
-3. 只有 name 与 key 匹配的废弃索引会被删除；text 索引通过 weights 字段集合匹配。
-4. 当前索引创建失败时不删除废弃索引。
-5. 同名但定义不同的索引保留并告警。
-6. 已不存在的废弃索引和多实例并发重复清理保持幂等。
-7. 当前所有业务 Schema 均未登记废弃索引，启动同步不会自动删除历史索引。
-8. 主 Service、日志库和 Marketplace 始终调用同一 manager，并由 `MONGO_DEPRECATE_INDEX` 统一控制废弃索引清理。
+1. 启动时只增补建当前 Schema 缺失索引，并 100% 保留所有未登记的 Schema 外与客户自定义索引。
+2. 业务 Schema 零 `deprecated: true` 墓碑；启动热路径不自动删除历史索引。
+3. 显式历史清理（`runLegacyDeprecatedMongoIndexCleanup`）支持 `apply: false` 预览与 `apply: true` 执行，仅删除 `name + key + 完整历史 options`（含 `unique`/`sparse`/`expireAfterSeconds`/`partialFilterExpression`/`collation`）完全匹配的项；同名不同配置返回 `skipped_mismatch` 保守保留。
+4. 当前/替代索引创建就绪前不执行任何废弃清理。
+5. 多实例并发重复补建或清理保持幂等，已不存在的索引按缺失跳过。
+6. `MONGO_DEPRECATE_INDEX` 仅门控存量 `MongoIndexManager`，不影响缺失索引补建，也不触发显式迁移清单删除。
+7. `coreMongoCollections` 通过 `withMongoDdlConnection`（`socketTimeoutMS: 0`）补建，未迁入 DAL 的存量模型保持 `MongoIndexManager` 直到分批迁出。
 
 ## 后续事项
 
