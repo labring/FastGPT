@@ -36,6 +36,7 @@ const SelectChannelStep = ({
         onChange={(channelIds) => onChannelChange(channelIds[0] ?? '')}
         showCurrentModel={false}
         showTest={false}
+        showTableBorder={false}
         singleSelect
       />
     </StepContent>

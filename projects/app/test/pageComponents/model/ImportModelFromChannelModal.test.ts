@@ -20,11 +20,18 @@ vi.mock('@chakra-ui/react', () => {
     const MockTag = ({
       children,
       display,
-      onClick
+      onClick,
+      'aria-live': ariaLive
     }: React.PropsWithChildren<{
       display?: string;
       onClick?: React.MouseEventHandler;
-    }>) => React.createElement(tag, { hidden: display === 'none', onClick }, children);
+      'aria-live'?: React.AriaAttributes['aria-live'];
+    }>) =>
+      React.createElement(
+        tag,
+        { hidden: display === 'none', onClick, 'aria-live': ariaLive },
+        children
+      );
     MockTag.displayName = `Mock${tag}`;
     return MockTag;
   };
@@ -87,7 +94,10 @@ vi.mock('@fastgpt/web/components/common/Icon/button', () => ({
   >) =>
     React.createElement('button', { onClick, 'aria-label': ariaLabel, disabled: disabled === true })
 }));
-vi.mock('@fastgpt/web/components/common/Input/SearchInput', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/common/Input/SearchInput', () => ({
+  default: ({ placeholder }: { placeholder?: string }) =>
+    React.createElement('input', { placeholder })
+}));
 vi.mock('@fastgpt/web/components/common/MySelect', () => ({
   default: ({
     isDisabled,
@@ -103,7 +113,9 @@ vi.mock('@fastgpt/web/components/common/MySelect/MultipleRowSelect', () => ({
 vi.mock('@fastgpt/web/components/common/Tag', () => ({
   default: ({ children }: React.PropsWithChildren) => React.createElement('span', null, children)
 }));
-vi.mock('@fastgpt/web/components/common/TagFilter', () => ({ SingleSelectFilter: () => null }));
+vi.mock('@fastgpt/web/components/common/TagFilter', () => ({
+  SingleSelectFilter: ({ title }: { title: string }) => React.createElement('button', null, title)
+}));
 vi.mock('@fastgpt/web/components/common/FixedTable', () => {
   type LayoutOptions = { headerTableWidth: string };
   type LayoutProps = {
@@ -144,7 +156,12 @@ vi.mock('@/pageComponents/model/ModelChannelModal', () => {
 });
 vi.mock('@fastgpt/web/components/v2/common/MyModal', () => ({
   default: ({ children, title }: React.PropsWithChildren<{ title: React.ReactNode }>) =>
-    React.createElement('section', { role: 'dialog' }, title, children)
+    React.createElement(
+      'section',
+      { role: 'dialog' },
+      React.createElement('h2', null, title),
+      children
+    )
 }));
 vi.mock('@/web/core/ai/model/api', () => apiMocks);
 vi.mock('@/pageComponents/model/useModelChannelTest', () => ({
@@ -351,7 +368,17 @@ describe('ImportModelFromChannelModal', () => {
     });
 
     expect(host.querySelector('[role="dialog"]')).toBe(modal);
-    expect(host.textContent).toContain('config_model:channel_import_new_models_only');
+    expect(modal?.querySelector('h2')?.textContent).toBe('config_model:channel_import_import_step');
+    const selectedCount = modal?.querySelector('[aria-live="polite"]');
+    expect(selectedCount?.textContent).toBe('config_model:channel_import_selected_count: 0');
+    const searchInput = modal?.querySelector(
+      'input[placeholder="common:model.search_name_placeholder"]'
+    );
+    const toolbar = searchInput?.parentElement?.parentElement;
+    expect(toolbar?.firstElementChild?.textContent).toBe(
+      'config_model:channel_import_channel:System channel'
+    );
+    expect(toolbar?.lastElementChild?.textContent).toBe('common:model.model_type');
     expect(host.textContent).not.toContain('installed-model');
     const scrollContainer = host.querySelector<HTMLDivElement>('[data-testid="virtual-list"]')!;
     Object.defineProperty(scrollContainer, 'clientHeight', { configurable: true, value: 64 });
@@ -365,7 +392,7 @@ describe('ImportModelFromChannelModal', () => {
     )!;
     await act(async () => row.cells[1].click());
     expect(firstRowCheckbox.checked).toBe(true);
-    expect(host.textContent).toContain('config_model:channel_import_selected_count: 1');
+    expect(selectedCount?.textContent).toBe('config_model:channel_import_selected_count: 1');
     await act(async () => {
       row
         .querySelector<HTMLInputElement>('input[aria-label^="config_model:model.active"]')

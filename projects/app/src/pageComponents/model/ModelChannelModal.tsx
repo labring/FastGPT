@@ -65,6 +65,7 @@ export const ModelChannelSelector = ({
   showCurrentModel = true,
   showSelectedModelCount = false,
   showTest = true,
+  showTableBorder = true,
   singleSelect = false
 }: {
   models: ModelChannelModalModel[];
@@ -76,6 +77,7 @@ export const ModelChannelSelector = ({
   showCurrentModel?: boolean;
   showSelectedModelCount?: boolean;
   showTest?: boolean;
+  showTableBorder?: boolean;
   singleSelect?: boolean;
 }) => {
   const { t, i18n } = useSafeTranslation();
@@ -158,10 +160,12 @@ export const ModelChannelSelector = ({
       <FixedTableLayout
         scrollMode="normal"
         rootProps={{
-          p: 2,
-          border: '1px solid',
-          borderColor: 'myGray.200',
-          borderRadius: '12px',
+          ...(showTableBorder && {
+            p: 2,
+            border: '1px solid',
+            borderColor: 'myGray.200',
+            borderRadius: '12px'
+          }),
           flex: '1 1 0',
           gap: 2,
           overflow: 'hidden'

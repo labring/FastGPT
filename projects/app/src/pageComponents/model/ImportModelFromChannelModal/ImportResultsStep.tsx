@@ -9,7 +9,7 @@ import { useStaticVirtualList } from '@fastgpt/web/hooks/useVirtualList';
 import { enableMapSet, produce, type Draft } from 'immer';
 import { useRef, useState } from 'react';
 import { postApplyChannelImportChanges } from '@/web/core/ai/model/api';
-import StepContent from './StepContent';
+import StepContent, { ChannelImportToolbar } from './StepContent';
 import type { ChannelImportPlan, RowResult } from './types';
 
 enableMapSet();
@@ -257,10 +257,7 @@ const ImportResultsStep = ({
       }
     >
       <Flex direction="column" h="100%" minH={0} minW={0} gap={4}>
-        <Flex alignItems="center" gap={3} flexShrink={0}>
-          <Box fontWeight="500">{t('config_model:channel_import_channel')}</Box>
-          <Box color="myGray.700">{channel?.name}</Box>
-        </Flex>
+        <ChannelImportToolbar channelName={channel?.name} />
         {plan.rows.length === 0 ? (
           <Flex flex="1 1 0" minH={0} alignItems="center" justifyContent="center">
             <EmptyTip />

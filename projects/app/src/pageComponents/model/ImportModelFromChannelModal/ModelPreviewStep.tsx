@@ -47,7 +47,7 @@ import {
   getChannelImportCandidate
 } from '../channelImport';
 import { useModelChannelTest } from '../useModelChannelTest';
-import StepContent from './StepContent';
+import StepContent, { ChannelImportToolbar } from './StepContent';
 import type { ChannelImportPlan, ChannelImportPlanRow, ImportPreviewRow } from './types';
 
 enableMapSet();
@@ -778,7 +778,7 @@ const ModelPreviewStep = ({
       }
     >
       <Flex direction="column" h="100%" minH={0} minW={0} gap={4}>
-        <Flex alignItems="center" gap={2} flexShrink={0}>
+        <ChannelImportToolbar channelName={channel?.name}>
           <Box w="240px" minW={0}>
             <SearchInput
               bg="white"
@@ -801,15 +801,7 @@ const ModelPreviewStep = ({
               })
             }
           />
-          <Flex ml="auto" alignItems="center" gap={2} minW={0}>
-            <Box fontWeight="500" flexShrink={0}>
-              {t('config_model:channel_import_channel')}
-            </Box>
-            <Box color="myGray.700" isTruncated title={channel?.name}>
-              {channel?.name}
-            </Box>
-          </Flex>
-        </Flex>
+        </ChannelImportToolbar>
 
         {state.loading ? (
           <Flex flex="1 1 0" minH={0} alignItems="center" justifyContent="center" gap={3}>

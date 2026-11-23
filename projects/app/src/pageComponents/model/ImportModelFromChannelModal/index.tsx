@@ -48,16 +48,7 @@ const ImportModelFromChannelModal = ({
       onClose={submitting ? undefined : onClose}
       closeOnOverlayClick={false}
       closeOnEsc={false}
-      title={
-        <>
-          {t('config_model:channel_import_import_step')}
-          {flow.step === 'preview' && (
-            <Box mt={2} color="myGray.600" fontSize="sm" fontWeight="normal" lineHeight="5">
-              {t('config_model:channel_import_new_models_only')}
-            </Box>
-          )}
-        </>
-      }
+      title={t('config_model:channel_import_import_step')}
       w="1080px"
       h="min(760px, calc(100vh - 32px))"
       maxW="calc(100vw - 24px)"
