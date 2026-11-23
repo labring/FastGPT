@@ -83,7 +83,7 @@ services:
 
   # DB
   fastgpt-mongo:
-    image: mongo:8.0.34 # x86_64 CPU 需满足 MongoDB 8.0 的指令集要求
+    image: mongo:8.0.38 # x86_64 CPU 需满足 MongoDB 8.0 的指令集要求
     container_name: fastgpt-mongo
     restart: always
     ports:
