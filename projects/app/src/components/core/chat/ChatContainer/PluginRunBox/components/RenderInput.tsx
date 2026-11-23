@@ -27,7 +27,13 @@ const RenderInput = () => {
   const pluginInputs = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.pluginInputs);
   const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
 
-  const histories = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
+  const hasHistory = useContextSelector(ChatRecordContext, (v) => v.chatRecords.length > 0);
+  const historyInputSnapshot = useContextSelector(ChatRecordContext, (v) => {
+    const historyValue = v.chatRecords[0]?.value as UserChatItemValueItemType[] | undefined;
+    return Array.isArray(historyValue)
+      ? historyValue.find((item) => item.text?.content)?.text?.content
+      : undefined;
+  });
 
   const onStartChat = useContextSelector(PluginRunContext, (v) => v.onStartChat);
   const onNewChat = useContextSelector(PluginRunContext, (v) => v.onNewChat);
@@ -38,23 +44,22 @@ const RenderInput = () => {
 
   const { control, handleSubmit, reset } = variablesForm;
 
-  // Get plugin input components
-  const formatPluginInputs = useMemoEnhance(() => {
-    if (histories.length === 0) return pluginInputs;
+  const parsedHistoryInputs = useMemoEnhance(() => {
+    if (!hasHistory || !historyInputSnapshot) return undefined;
     try {
-      const historyValue = histories[0]?.value as UserChatItemValueItemType[];
-      const inputValueString = historyValue.find((item) => item.text?.content)?.text?.content;
-
-      if (!inputValueString) return pluginInputs;
-      return JSON.parse(inputValueString) as FlowNodeInputItemType[];
+      const parsed = JSON.parse(historyInputSnapshot);
+      return Array.isArray(parsed) ? (parsed as FlowNodeInputItemType[]) : undefined;
     } catch (error) {
       console.error('Failed to parse input value:', error);
-      return pluginInputs;
+      return undefined;
     }
-  }, [histories, pluginInputs]);
+  }, [hasHistory, historyInputSnapshot]);
+
+  // Get plugin input components
+  const formatPluginInputs = parsedHistoryInputs || pluginInputs;
 
   const [restartData, setRestartData] = useState<ChatBoxInputFormType>();
-  const [resetCount, setResetCount] = useState(0);
+  const [fieldResetKeys, setFieldResetKeys] = useState<Record<string, number>>({});
   const onClickNewChat = useCallback(
     (e: ChatBoxInputFormType) => {
       setRestartData(e);
@@ -63,8 +68,32 @@ const RenderInput = () => {
     [onNewChat]
   );
 
+  const resetFormVariables = useCallback(
+    (nextValues: ChatBoxInputFormType) => {
+      const nextVariables = nextValues.variables || {};
+      reset(nextValues);
+      // react-hook-form@7.43.1 的 Controller(useWatch) 在挂载时会把当时的字段值冻结为订阅闭包里的 defaultValue；
+      // 仅当 reset 将字段设为 undefined 时，get(..., defaultValue) 会回退到旧值并被 register 写回。
+      // 按字段粒度仅重建目标值为 undefined 的 Controller，避免已赋值字段（如附件选择器）被无谓卸载。
+      const keysToRemount = formatPluginInputs
+        .map((input) => input.key)
+        .filter((key) => nextVariables[key] === undefined);
+
+      if (keysToRemount.length > 0) {
+        setFieldResetKeys((prev) => {
+          const next = { ...prev };
+          keysToRemount.forEach((key) => {
+            next[key] = (prev[key] || 0) + 1;
+          });
+          return next;
+        });
+      }
+    },
+    [formatPluginInputs, reset]
+  );
+
   const onResetDefault = useCallback(() => {
-    reset({
+    resetFormVariables({
       variables: formatPluginInputs.reduce(
         (acc, input) => {
           acc[input.key] = input.defaultValue;
@@ -73,20 +102,15 @@ const RenderInput = () => {
         {} as Record<string, any>
       )
     });
-    // react-hook-form@7.43.1 的 Controller(useWatch) 在挂载时会把当时的字段值冻结为订阅闭包里的 defaultValue；
-    // 当字段未配置默认值（undefined）并再次 reset 时，get(..., defaultValue) 会回退到旧值并被 register 写回。
-    // 递增 key 重建 Controller，使订阅状态与 reset 后的表单值保持一致。
-    setResetCount((count) => count + 1);
-  }, [reset, formatPluginInputs]);
+  }, [formatPluginInputs, resetFormVariables]);
 
   // Reset input value
   useDeepCompareEffect(() => {
     // Set config default value
-    if (histories.length === 0) {
+    if (!hasHistory) {
       if (restartData) {
-        reset(restartData);
+        resetFormVariables(restartData);
         setRestartData(undefined);
-        setResetCount((count) => count + 1);
         return;
       }
 
@@ -95,43 +119,18 @@ const RenderInput = () => {
     }
 
     // Set history to default value
-    const historyVariables = (() => {
-      const historyValue = histories[0]?.value as UserChatItemValueItemType[];
-      if (!historyValue) return undefined;
-
-      try {
-        const inputValueString = historyValue.find((item) => item.text?.content)?.text?.content;
-        return (
-          inputValueString &&
-          JSON.parse(inputValueString).reduce(
-            (
-              acc: Record<string, any>,
-              {
-                key,
-                value
-              }: {
-                key: string;
-                value: any;
-              }
-            ) => ({ ...acc, [key]: value }),
-            {}
-          )
-        );
-      } catch (error) {
-        console.error('Failed to parse input value:', error);
-        return undefined;
-      }
-    })();
-    reset({
+    const historyVariables = parsedHistoryInputs?.reduce(
+      (acc: Record<string, any>, { key, value }) => ({ ...acc, [key]: value }),
+      {}
+    );
+    resetFormVariables({
       variables: historyVariables
     });
-    setResetCount((count) => count + 1);
-  }, [histories, formatPluginInputs]);
+  }, [hasHistory, historyInputSnapshot, formatPluginInputs]);
 
   const formFileUploading = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploading);
 
   const fileUploading = formFileUploading;
-  const hasHistory = histories.length > 0;
   const isDisabledInput = !!hasHistory;
 
   return (
@@ -201,7 +200,7 @@ const RenderInput = () => {
                 )}
               </Flex>
               <Controller
-                key={`${inputKey}-${resetCount}`}
+                key={`${inputKey}-${fieldResetKeys[input.key] || 0}`}
                 control={control}
                 name={inputKey}
                 rules={{

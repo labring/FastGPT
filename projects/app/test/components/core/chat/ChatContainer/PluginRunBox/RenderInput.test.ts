@@ -6,7 +6,11 @@ import { useForm } from 'react-hook-form';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatFileTypeEnum,
+  ChatRoleEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type {
   ChatSiteItemType,
@@ -16,10 +20,59 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 import { PluginRunContext } from '@/components/core/chat/ChatContainer/PluginRunBox/context';
+import { InputTypeEnum } from '@/components/core/app/formRender/constant';
+import FileSelector from '@/components/core/app/FileSelector';
 import RenderInput from '@/components/core/chat/ChatContainer/PluginRunBox/components/RenderInput';
+
+const getPresignedChatFileGetUrlMock = vi.hoisted(() => vi.fn());
 
 vi.mock('next-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key })
+}));
+
+vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
+  useSafeTranslation: () => ({ t: (key: string) => key })
+}));
+
+vi.mock('@/web/common/file/api', () => ({
+  getPresignedChatFileGetUrl: getPresignedChatFileGetUrlMock,
+  getUploadChatFilePresignedUrl: vi.fn(),
+  getUploadDraftChatFilePresignedUrl: vi.fn()
+}));
+
+vi.mock('@/web/common/file/hooks/useFileUploadLimits', () => ({
+  useFileUploadLimits: () => ({ maxUploadFileCount: 10, maxUploadFileSize: 50 })
+}));
+
+vi.mock('@fastgpt/web/hooks/useToast', () => ({
+  useToast: () => ({ toast: vi.fn() })
+}));
+
+vi.mock('@/web/common/file/hooks/useSelectFile', () => ({
+  useSelectFile: () => ({ File: () => null, onOpen: vi.fn() })
+}));
+
+vi.mock('@fastgpt/web/components/common/MyBox', () => ({
+  default: ({ children }: { children?: React.ReactNode }) =>
+    React.createElement('div', null, children)
+}));
+
+vi.mock('@fastgpt/web/components/common/MyDivider', () => ({
+  default: () => null
+}));
+
+vi.mock('@fastgpt/web/components/common/MyTooltip', () => ({
+  default: ({ children }: { children?: React.ReactNode }) =>
+    React.createElement(React.Fragment, null, children)
+}));
+
+vi.mock('@fastgpt/web/components/common/Avatar', () => ({
+  default: ({ src }: { src?: string }) =>
+    React.createElement('img', { 'data-testid': 'file-preview', src: src ?? '' })
+}));
+
+vi.mock('@/components/core/app/FileSelector/useLinkIcons', () => ({
+  useFileSelectorLinkIcons: () => new Map()
 }));
 
 vi.mock('@/components/Markdown', () => ({
@@ -61,22 +114,35 @@ vi.mock('@fastgpt/web/components/common/MyPopover/PopoverConfirm', () => ({
 
 vi.mock('@/components/core/app/formRender', () => ({
   default: ({
+    inputType,
     value,
     onChange,
     isDisabled,
     fieldName
   }: {
-    value?: string;
-    onChange?: (val: string) => void;
+    inputType?: InputTypeEnum;
+    value?: any;
+    onChange?: (val: any) => void;
     isDisabled?: boolean;
     fieldName?: string;
-  }) =>
-    React.createElement('input', {
+  }) => {
+    if (inputType === InputTypeEnum.fileSelect) {
+      return React.createElement(FileSelector, {
+        value: Array.isArray(value) ? value : [],
+        onChange,
+        isDisabled,
+        canSelectImg: true,
+        canSelectFile: true
+      });
+    }
+
+    return React.createElement('input', {
       'data-testid': fieldName,
       disabled: isDisabled,
       value: value ?? '',
       onChange: (e: React.ChangeEvent<HTMLInputElement>) => onChange?.(e.target.value)
-    })
+    });
+  }
 }));
 
 const createPromptInput = (defaultValue?: string): FlowNodeInputItemType => ({
@@ -348,5 +414,186 @@ describe('PluginRunBox RenderInput clear input', () => {
     expect(
       container.querySelector<HTMLInputElement>('[data-testid="variables.prompt"]')?.value
     ).toBe('preset');
+  });
+
+  it('does not remount FileSelector or re-fetch preview URL when AI output streams', async () => {
+    getPresignedChatFileGetUrlMock.mockReset();
+    getPresignedChatFileGetUrlMock.mockImplementation(
+      async ({ key }: { key: string }) => `https://signed.example/${key}`
+    );
+
+    const fileInput: FlowNodeInputItemType = {
+      key: 'files',
+      label: '附件',
+      valueType: WorkflowIOValueTypeEnum.arrayString,
+      required: false,
+      renderTypeList: [FlowNodeInputTypeEnum.fileSelect]
+    };
+    const optionalPromptInput = createPromptInput(undefined);
+    optionalPromptInput.required = false;
+
+    const attachmentValue = [
+      {
+        key: 'chat/img-1.png',
+        name: 'img-1.png',
+        type: ChatFileTypeEnum.image
+      }
+    ];
+    let latestFormValues: ChatBoxInputFormType | undefined;
+
+    const Harness = () => {
+      const variablesForm = useForm<ChatBoxInputFormType>();
+      const [chatRecords, setChatRecords] = useState<ChatSiteItemType[]>([
+        {
+          dataId: 'human-1',
+          obj: ChatRoleEnum.Human,
+          value: [
+            {
+              text: {
+                content: JSON.stringify([
+                  { ...fileInput, value: attachmentValue },
+                  { ...optionalPromptInput, value: undefined }
+                ])
+              }
+            }
+          ]
+        },
+        {
+          dataId: 'ai-1',
+          obj: ChatRoleEnum.AI,
+          value: [{ text: { content: '' } }]
+        }
+      ]);
+
+      latestFormValues = variablesForm.watch();
+
+      return React.createElement(
+        ChatItemContext.Provider,
+        {
+          value: {
+            chatBoxData: {
+              appId: 'app-1',
+              app: {
+                name: 'Flux',
+                avatar: '',
+                type: 'plugin' as any,
+                pluginInputs: [fileInput, optionalPromptInput]
+              }
+            },
+            variablesForm
+          } as any
+        },
+        React.createElement(
+          ChatRecordContext.Provider,
+          {
+            value: {
+              chatRecords,
+              setChatRecords
+            } as any
+          },
+          React.createElement(
+            WorkflowRuntimeContext.Provider,
+            {
+              value: {
+                sourceTarget: { sourceType: ChatSourceTypeEnum.app, sourceId: 'app-1' },
+                chatId: 'chat-1',
+                outLinkAuthData: undefined,
+                fileUploadMode: 'runtime',
+                fileUploading: false,
+                setFileUploadingCount: vi.fn()
+              } as any
+            },
+            React.createElement(
+              PluginRunContext.Provider,
+              {
+                value: {
+                  isChatting: false,
+                  instruction: '',
+                  onStartChat: vi.fn(),
+                  onNewChat: () => setChatRecords([]),
+                  onSubmit: vi.fn()
+                } as any
+              },
+              React.createElement(
+                'button',
+                {
+                  type: 'button',
+                  'data-testid': 'stream-chunk',
+                  onClick: () =>
+                    setChatRecords((prev) =>
+                      prev.map((item, idx) =>
+                        idx === prev.length - 1
+                          ? {
+                              ...item,
+                              value: [
+                                {
+                                  text: {
+                                    content:
+                                      ((item.value?.[0] as any)?.text?.content || '') + 'chunk-'
+                                  }
+                                }
+                              ]
+                            }
+                          : item
+                      )
+                    )
+                },
+                'stream'
+              ),
+              React.createElement(RenderInput)
+            )
+          )
+        )
+      );
+    };
+
+    await act(async () => {
+      root.render(React.createElement(Harness));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(getPresignedChatFileGetUrlMock).toHaveBeenCalledTimes(1);
+    expect(container.querySelector<HTMLImageElement>('[data-testid="file-preview"]')?.src).toBe(
+      'https://signed.example/chat/img-1.png'
+    );
+
+    // 模拟桌面端持续挂载输入面板时，AI 输出发生 3 次流式更新
+    const streamBtn = container.querySelector<HTMLButtonElement>('[data-testid="stream-chunk"]')!;
+    for (let i = 0; i < 3; i++) {
+      await act(async () => {
+        Simulate.click(streamBtn);
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+    }
+
+    expect(getPresignedChatFileGetUrlMock).toHaveBeenCalledTimes(1);
+    expect(container.querySelector<HTMLImageElement>('[data-testid="file-preview"]')?.src).toBe(
+      'https://signed.example/chat/img-1.png'
+    );
+
+    // 点击重新运行（保留附件）后仍不重复请求签名，点击清空输入则正常清空附件
+    const restartBtn = Array.from(container.querySelectorAll('button')).find(
+      (btn) => btn.textContent === 'common:Restart'
+    )!;
+    await act(async () => {
+      Simulate.click(restartBtn);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(getPresignedChatFileGetUrlMock).toHaveBeenCalledTimes(1);
+
+    const confirmClearBtn = container.querySelector<HTMLButtonElement>(
+      '[data-testid="confirm-clear"]'
+    )!;
+    await act(async () => {
+      Simulate.click(confirmClearBtn);
+    });
+    expect(latestFormValues?.variables?.files).toBeUndefined();
+    expect(container.querySelector('[data-testid="file-preview"]')).toBeNull();
   });
 });
