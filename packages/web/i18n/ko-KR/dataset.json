@@ -315,5 +315,12 @@
   "sync_root_new_items": "전체 동기화",
   "sync_root_new_items_tip": "활성화하면 수동 및 예약 동기화 시 원격 지식베이스의 모든 파일과 폴더를 전체 동기화하고 일시중지된 하위 폴더도 자동으로 재개합니다. 비활성화하면 현재 가져온 범위만 유지됩니다.",
   "sync_root_enabled_next_sync_tip": "전체 동기화가 활성화되었습니다. 다음 수동 또는 예약 동기화 시 전체 콘텐츠를 동기화합니다.",
-  "sync_root_paused_tip": "전체 동기화가 비활성화되었으며, 기존 파일은 계속 업데이트됩니다"
+  "sync_root_paused_tip": "전체 동기화가 비활성화되었으며, 기존 파일은 계속 업데이트됩니다",
+  "api_dataset_sync_all_files": "모든 파일 동기화",
+  "api_dataset_sync_all_enabled_tag": "전체 동기화됨",
+  "api_dataset_pending_summary": "추가/재개 예정 ({{count}})",
+  "sync_children_enabled_pause_text": "이 폴더의 새 파일 자동 동기화가 활성화되어 있습니다. ",
+  "click_to_pause": "일시중지",
+  "pause_sync_children_confirm": "이 폴더의 새 파일 자동 동기화를 일시중지하시겠습니까? 기존 파일은 계속 업데이트되지만 새로 추가된 항목은 자동으로 가져오지 않습니다.",
+  "sync_children_paused_tip": "이 폴더의 새 항목 자동 동기화가 일시중지되었으며, 기존 파일은 계속 업데이트됩니다"
 }

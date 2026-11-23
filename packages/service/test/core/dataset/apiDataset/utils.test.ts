@@ -3,6 +3,7 @@ import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant
 import {
   buildApiFileParentUpdates,
   createApiFileSourceResolver,
+  LEGACY_SYSTEM_ROOT_API_FILE_ID,
   planLegacyApiFileFolders,
   getApiFileSyncRootIds,
   resolveApiFileRecordParent,
@@ -297,9 +298,18 @@ describe('getApiFileSyncRootIds', () => {
         }),
         collection({ parentId: 'derived' }),
         collection({ apiFileId: 'real#dir', type: DatasetCollectionTypeEnum.folder }),
+        collection({
+          apiFileId: LEGACY_SYSTEM_ROOT_API_FILE_ID,
+          type: DatasetCollectionTypeEnum.folder
+        }),
+        collection({
+          apiFileId: 'legacy-child',
+          apiFileParentId: LEGACY_SYSTEM_ROOT_API_FILE_ID,
+          parentId: 'legacy-root'
+        }),
         collection({ apiFileId: undefined })
       ])
-    ).toEqual(['doc', 'real#dir']);
+    ).toEqual(['doc', 'real#dir', 'legacy-child']);
   });
 });
 

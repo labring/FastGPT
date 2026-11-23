@@ -17,7 +17,7 @@ import {
   upsertDatasetSyncJobScheduler
 } from '@fastgpt/service/core/dataset/datasetSync';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { applyApiDatasetSyncAll } from '@fastgpt/service/core/dataset/apiDataset/service';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { assertAuthModels } from '@fastgpt/service/support/permission/model/auth';
 import { addAuditLogs } from '@fastgpt/service/support/user/audit/util';
@@ -250,19 +250,14 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       { session }
     );
 
-    // 开启全量同步开关时，重置本知识库内所有已暂停同步的子目录，保持全库全量同步一致。
+    // 开启全量同步开关时，与导入路径共用同一状态转换入口，在同一事务内恢复库内全部暂停目录。
     if (syncAll === true) {
-      await MongoDatasetCollection.updateMany(
-        {
-          teamId,
-          datasetId: id,
-          type: DatasetCollectionTypeEnum.folder,
-          apiFileId: { $exists: true, $ne: null },
-          syncChildren: false
-        },
-        { $set: { syncChildren: true } },
-        { session }
-      );
+      await applyApiDatasetSyncAll({
+        teamId,
+        datasetId: id,
+        session,
+        updateDataset: false
+      });
     }
 
     await updateSyncSchedule({

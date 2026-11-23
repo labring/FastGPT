@@ -25,6 +25,7 @@ import {
 } from './tree';
 import {
   buildApiFileParentUpdates,
+  LEGACY_SYSTEM_ROOT_API_FILE_ID,
   resolveApiDatasetProvider,
   resolveApiFileRecordParent,
   planLegacyApiFileFolders,
@@ -43,6 +44,51 @@ import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 
 const logger = getLogger(LogCategories.MODULE.DATASET);
+
+/**
+ * 在同一事务内原子开启 API 知识库整库全量同步：
+ * 1. 置 Dataset.syncAll = true（当调用方已在同一事务中更新 Dataset 时可通过 updateDataset=false 跳过）；
+ * 2. 恢复本知识库内全部已暂停（syncChildren: false）的 API 目录，保证整库同步与局部目录状态一致。
+ * 调用方必须先完成知识库 Manage 权限校验。
+ */
+export const applyApiDatasetSyncAll = async ({
+  teamId,
+  datasetId,
+  session,
+  updateDataset = true
+}: {
+  teamId: string;
+  datasetId: string | Types.ObjectId;
+  session?: ClientSession;
+  updateDataset?: boolean;
+}) => {
+  const apply = async (tx: ClientSession) => {
+    if (updateDataset) {
+      await MongoDataset.updateOne(
+        { _id: datasetId, teamId },
+        { $set: { syncAll: true } },
+        { session: tx }
+      );
+    }
+    await MongoDatasetCollection.updateMany(
+      {
+        teamId,
+        datasetId,
+        type: DatasetCollectionTypeEnum.folder,
+        apiFileId: { $exists: true, $ne: null },
+        syncChildren: false
+      },
+      { $set: { syncChildren: true } },
+      { session: tx }
+    );
+  };
+
+  if (session) {
+    await apply(session);
+  } else {
+    await mongoSessionRun(apply);
+  }
+};
 
 /**
  * 提交已鉴权的旧目录身份转换；本地 ID、父级和 ACL 不变，元数据使用字段更新保留其他配置。
@@ -145,7 +191,15 @@ export const createApiDatasetCollection = async ({
       permission: DatasetPermission;
     };
   }): Promise<CreateApiCollectionV2ResponseType> => {
-  if (!syncAll && apiFiles.length === 0) {
+  // 升级过渡期兼容：旧导入页面（<= v4.17.5）全选整库时会传入 apiFileId='SYSTEM_ROOT' 哨兵。
+  // 在入口边界将其归一为 syncAll=true 并剥离哨兵，防止 SYSTEM_ROOT 流入普通节点建树或再次写入库中。
+  const hasLegacySystemRootSelection = apiFiles.some(
+    (item) => item.id === LEGACY_SYSTEM_ROOT_API_FILE_ID
+  );
+  const effectiveSyncAll = Boolean(syncAll) || hasLegacySystemRootSelection;
+  const sanitizedApiFiles = apiFiles.filter((item) => item.id !== LEGACY_SYSTEM_ROOT_API_FILE_ID);
+
+  if (!effectiveSyncAll && sanitizedApiFiles.length === 0) {
     return { successCount: 0, failedCount: 0 };
   }
 
@@ -194,7 +248,7 @@ export const createApiDatasetCollection = async ({
     treeSeeds: ApiFileTreeSeed[];
     explicitSeeds: Array<Pick<APIFileItemType, 'id' | 'type'>>;
   }> => {
-    if (syncAll) {
+    if (effectiveSyncAll) {
       const rootItems = await cachedListFiles(startId);
       const rootSeeds: ApiFileTreeSeed[] = rootItems.map((item) => ({
         ...item,
@@ -208,10 +262,10 @@ export const createApiDatasetCollection = async ({
 
     // V2 根信息来自客户端。兼容旧目录前使用真实详情更新类型和 hasChild，防止旧页面信息漏掉子树。
     const verifiedApiFiles = await (async () => {
-      if (!usesDingtalkDataset(dataset.apiDatasetServer)) return apiFiles;
-      const verified: typeof apiFiles = [];
+      if (!usesDingtalkDataset(dataset.apiDatasetServer)) return sanitizedApiFiles;
+      const verified: typeof sanitizedApiFiles = [];
       const details = new Map<string, ReturnType<typeof request.getFileDetail>>();
-      for (const item of apiFiles) {
+      for (const item of sanitizedApiFiles) {
         if (
           !legacySourceIds.has(item.id) ||
           localByApiId.get(item.id)?.type === DatasetCollectionTypeEnum.apiFile
@@ -241,7 +295,8 @@ export const createApiDatasetCollection = async ({
 
     for (const item of verifiedApiFiles) {
       const rawPath = ancestorPaths?.[item.id];
-      const path = rawPath?.filter(Boolean) ?? [];
+      const path =
+        rawPath?.filter((id) => Boolean(id) && id !== LEGACY_SYSTEM_ROOT_API_FILE_ID) ?? [];
       if (path.length === 0) {
         explicitTreeSeeds.push({
           ...item,
@@ -265,7 +320,10 @@ export const createApiDatasetCollection = async ({
             '远端目录结构已变更，请刷新后重试'
           );
         }
-        if (!explicitSelectedIds.has(matchedAncestor.id) && !autoAncestorSeeds.has(matchedAncestor.id)) {
+        if (
+          !explicitSelectedIds.has(matchedAncestor.id) &&
+          !autoAncestorSeeds.has(matchedAncestor.id)
+        ) {
           autoAncestorSeeds.set(matchedAncestor.id, {
             ...matchedAncestor,
             serverParentId: currentParentId,
@@ -362,7 +420,7 @@ export const createApiDatasetCollection = async ({
     idMap,
     targetParentId,
     rootParentIds: legacyPlan.rootParentIds,
-    syncAll: Boolean(syncAll)
+    syncAll: effectiveSyncAll
   };
   /** 只有已落库父目录可用于实际写入，父层失败时保持跳过语义。 */
   const resolveParentId = (record: ApiFileRecord): Types.ObjectId | null | undefined => {
@@ -391,7 +449,7 @@ export const createApiDatasetCollection = async ({
     idMap: plannedIdMap,
     targetParentId,
     rootParentIds: legacyPlan.rootParentIds,
-    syncAll: Boolean(syncAll)
+    syncAll: effectiveSyncAll
   });
   const newFolders = folderPlan.map(({ record, id }) => ({
     id: String(id),
@@ -401,7 +459,7 @@ export const createApiDatasetCollection = async ({
         idMap: plannedIdMap,
         targetParentId,
         rootParentIds: legacyPlan.rootParentIds,
-        syncAll: Boolean(syncAll)
+        syncAll: effectiveSyncAll
       }).parentId ?? null
   }));
   const newFolderParents = new Map(newFolders.map((folder) => [folder.id, folder.parentId]));
@@ -433,18 +491,28 @@ export const createApiDatasetCollection = async ({
       parentId = newFolderParents.get(parentId) ?? null;
     creationParentIds.add(parentId);
   }
-  const reEnableSyncFolderIds = [
-    ...new Set(
-      records.flatMap((record) => {
-        if (record.type !== 'folder' || record.syncChildren === false) return [];
-        const existing = existByApiFileId.get(record.apiFileId);
-        return existing?.type === DatasetCollectionTypeEnum.folder && existing.syncChildren === false
-          ? [String(existing._id)]
-          : [];
-      })
-    )
-  ];
-  const shouldEnableDatasetSyncAll = Boolean(syncAll) && !dataset.syncAll;
+  const hasPausedApiFolder = localCollections.some(
+    (item) =>
+      item.type === DatasetCollectionTypeEnum.folder &&
+      Boolean(item.apiFileId) &&
+      item.syncChildren === false
+  );
+  // 整库同步开启与信息页共用同一口径：需要知识库 Manage 权限，且事务内原子开启 syncAll 并恢复全部暂停目录。
+  const shouldApplyDatasetSyncAll = effectiveSyncAll && (!dataset.syncAll || hasPausedApiFolder);
+  const reEnableSyncFolderIds = effectiveSyncAll
+    ? []
+    : [
+        ...new Set(
+          records.flatMap((record) => {
+            if (record.type !== 'folder' || record.syncChildren === false) return [];
+            const existing = existByApiFileId.get(record.apiFileId);
+            return existing?.type === DatasetCollectionTypeEnum.folder &&
+              existing.syncChildren === false
+              ? [String(existing._id)]
+              : [];
+          })
+        )
+      ];
 
   await authorizeChanges?.({
     creationParentIds: [...creationParentIds],
@@ -454,7 +522,7 @@ export const createApiDatasetCollection = async ({
       ? { permissionSourceIds: [...new Set(legacyPlan.permissionSources.values())] }
       : {}),
     ...(reEnableSyncFolderIds.length ? { reEnableSyncFolderIds } : {}),
-    ...(shouldEnableDatasetSyncAll ? { enableDatasetSyncAll: true } : {})
+    ...(shouldApplyDatasetSyncAll ? { enableDatasetSyncAll: true } : {})
   });
 
   await applyLegacyApiFileFolders({
@@ -575,18 +643,14 @@ export const createApiDatasetCollection = async ({
     }
   }
 
-  // 7. 导入完成后落盘同步范围状态：恢复显式勾选/全量同步涵盖的暂停目录，并按需开启知识库全量同步开关。
-  if (syncAll && failedCount === 0) {
-    await MongoDatasetCollection.updateMany(
-      {
-        teamId,
-        datasetId: dataset._id,
-        type: DatasetCollectionTypeEnum.folder,
-        apiFileId: { $exists: true, $ne: null },
-        syncChildren: false
-      },
-      { $set: { syncChildren: true } }
-    );
+  // 7. 导入完成后落盘同步范围状态：
+  //    - 整库开启：与设置路由共用 applyApiDatasetSyncAll，在同一事务内原子写入 syncAll=true 并恢复全部暂停目录；
+  //    - 局部导入：仅恢复本次显式勾选覆盖到的暂停目录。
+  if (shouldApplyDatasetSyncAll && failedCount === 0) {
+    await applyApiDatasetSyncAll({
+      teamId,
+      datasetId: dataset._id
+    });
   } else if (reEnableSyncFolderIds.length > 0) {
     await MongoDatasetCollection.updateMany(
       {
@@ -597,9 +661,6 @@ export const createApiDatasetCollection = async ({
       },
       { $set: { syncChildren: true } }
     );
-  }
-  if (shouldEnableDatasetSyncAll && failedCount === 0) {
-    await MongoDataset.updateOne({ _id: dataset._id, teamId }, { $set: { syncAll: true } });
   }
 
   logger.info('Create api file collection completed', {

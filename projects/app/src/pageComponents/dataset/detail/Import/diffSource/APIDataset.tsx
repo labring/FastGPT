@@ -6,10 +6,7 @@ import Loading from '@fastgpt/web/components/common/MyLoading';
 import { Box, Button, Checkbox, Flex, Spinner } from '@chakra-ui/react';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import {
-  getApiDatasetFileList,
-  getApiDatasetSyncState
-} from '@/web/core/dataset/api/apiDataset';
+import { getApiDatasetFileList, getApiDatasetSyncState } from '@/web/core/dataset/api/apiDataset';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
@@ -17,10 +14,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { type APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
-import {
-  DatasetCollectionTypeEnum,
-  DatasetTypeEnum
-} from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useMount } from 'ahooks';
 
@@ -31,6 +25,7 @@ const Upload = dynamic(() => import('../commonProgress/Upload'));
 const PreviewData = dynamic(() => import('../commonProgress/PreviewData'));
 
 const ROOT_NODE_KEY = '__ROOT__';
+const SYNC_ALL_SOURCE_ID = '__SYNC_ALL__';
 
 type SelectedApiFileEntry = {
   item: APIFileItemType;
@@ -65,6 +60,7 @@ const CustomAPIFileInput = () => {
   const [selectedMap, setSelectedMap] = useState<Map<string, SelectedApiFileEntry>>(
     () => new Map()
   );
+  const [selectAll, setSelectAll] = useState(false);
   const [searchKey, setSearchKey] = useState('');
 
   // 树节点懒加载状态：key 为远端节点 id（根级为 ROOT_NODE_KEY）
@@ -200,6 +196,11 @@ const CustomAPIFileInput = () => {
 
   // 返回上一步时恢复选中状态
   useMount(() => {
+    if (sources.some((source) => source.isSyncAll)) {
+      setSelectAll(true);
+      setSelectedMap(new Map());
+      return;
+    }
     const nextMap = new Map<string, SelectedApiFileEntry>();
     for (const source of sources) {
       if (!source.apiFile) continue;
@@ -279,9 +280,34 @@ const CustomAPIFileInput = () => {
     []
   );
 
-  const totalPendingCount = selectedMap.size;
+  const canSelectSyncAll = !serverSyncAll && Boolean(datasetDetail.permission?.hasManagePer);
+  const totalPendingCount = selectAll ? 1 : selectedMap.size;
+
+  const handleToggleSelectAll = useCallback(() => {
+    if (!canSelectSyncAll) return;
+    setSelectAll((prev) => {
+      const next = !prev;
+      if (next) {
+        setSelectedMap(new Map());
+      }
+      return next;
+    });
+  }, [canSelectSyncAll]);
 
   const { runAsync: onclickNext, loading: onNextLoading } = useRequest(async () => {
+    if (selectAll) {
+      setSources([
+        {
+          id: SYNC_ALL_SOURCE_ID,
+          isSyncAll: true,
+          createStatus: 'waiting',
+          sourceName: t('dataset:api_dataset_sync_all_files'),
+          icon: 'common/folderFill'
+        }
+      ]);
+      goToNext();
+      return;
+    }
     setSources(
       [...selectedMap.values()].map(({ item, ancestorIds, ancestorPathLabel, isReEnableSync }) => ({
         id: item.id,
@@ -317,7 +343,7 @@ const CustomAPIFileInput = () => {
     const isSelectedSelf = selectedMap.has(item.id);
     const hasSelectedDescendant = selectedAncestorSet.has(item.id);
 
-    const isCovered = serverSyncAll || coveredBySelectedAncestor;
+    const isCovered = serverSyncAll || selectAll || coveredBySelectedAncestor;
     const isAlreadySynced = isSyncedFolder || isSyncedFileOnly;
     const isDisabled = isCovered || isAlreadySynced;
     const isChecked = isCovered || isAlreadySynced || isSelectedSelf;
@@ -480,8 +506,31 @@ const CustomAPIFileInput = () => {
         borderRadius={'md'}
         overflow={'hidden'}
       >
-        {datasetDetail.type === DatasetTypeEnum.apiDataset && (
-          <Flex px={4} py={3} borderBottom={'base'} alignItems={'center'} justifyContent={'flex-end'}>
+        <Flex
+          px={4}
+          py={3}
+          borderBottom={'base'}
+          alignItems={'center'}
+          justifyContent={'space-between'}
+          gap={3}
+        >
+          <Flex alignItems={'center'} gap={2}>
+            <Checkbox
+              isChecked={serverSyncAll || selectAll}
+              isDisabled={serverSyncAll || !canSelectSyncAll}
+              onChange={handleToggleSelectAll}
+            >
+              <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
+                {t('dataset:api_dataset_sync_all_files')}
+              </Box>
+            </Checkbox>
+            {serverSyncAll && (
+              <MyTag colorSchema={'green'} type={'fill'} fontSize={'mini'}>
+                {t('dataset:api_dataset_sync_all_enabled_tag')}
+              </MyTag>
+            )}
+          </Flex>
+          {datasetDetail.type === DatasetTypeEnum.apiDataset && (
             <Box w={'200px'}>
               <SearchInput
                 size={'sm'}
@@ -490,8 +539,8 @@ const CustomAPIFileInput = () => {
                 placeholder={t('common:Search')}
               />
             </Box>
-          </Flex>
-        )}
+          )}
+        </Flex>
 
         <Box flex={'1 0 0'} minH={0} overflowY={'auto'} py={2}>
           {trimmedSearchKey ? (
@@ -510,6 +559,46 @@ const CustomAPIFileInput = () => {
             !loadingRoot && <EmptyTip text={t('common:Empty')} />
           )}
         </Box>
+        {totalPendingCount > 0 && (
+          <Box
+            px={4}
+            py={2.5}
+            borderTop={'base'}
+            bg={'myGray.25'}
+            maxH={'112px'}
+            overflowY={'auto'}
+          >
+            <Box fontSize={'xs'} fontWeight={'medium'} color={'myGray.600'} mb={1.5}>
+              {t('dataset:api_dataset_pending_summary', { count: totalPendingCount })}
+            </Box>
+            <Flex flexWrap={'wrap'} gap={1.5}>
+              {selectAll ? (
+                <MyTag colorSchema={'blue'} type={'fill'} fontSize={'mini'}>
+                  {t('dataset:api_dataset_sync_all_files')}
+                </MyTag>
+              ) : (
+                [...selectedMap.values()].map(({ item, ancestorPathLabel, isReEnableSync }) => (
+                  <MyTag
+                    key={item.id}
+                    colorSchema={isReEnableSync ? 'blue' : 'gray'}
+                    type={'fill'}
+                    fontSize={'mini'}
+                    cursor={'pointer'}
+                    onClick={() => {
+                      setSelectedMap((prev) => {
+                        const next = new Map(prev);
+                        next.delete(item.id);
+                        return next;
+                      });
+                    }}
+                  >
+                    {`${ancestorPathLabel && ancestorPathLabel !== '/' ? `${ancestorPathLabel}/` : ''}${item.name}${isReEnableSync ? ` (${t('dataset:api_dataset_re_enable_sync_tag')})` : ''} ×`}
+                  </MyTag>
+                ))
+              )}
+            </Flex>
+          </Box>
+        )}
       </Flex>
 
       <Flex justifyContent={'flex-end'} pt={4}>
@@ -518,9 +607,11 @@ const CustomAPIFileInput = () => {
           isLoading={onNextLoading}
           onClick={onclickNext}
         >
-          {totalPendingCount > 0
-            ? `${t('dataset:total_num_files', { total: totalPendingCount })} | `
-            : ''}
+          {selectAll
+            ? `${t('dataset:api_dataset_sync_all_files')} | `
+            : totalPendingCount > 0
+              ? `${t('dataset:total_num_files', { total: totalPendingCount })} | `
+              : ''}
           {t('common:next_step')}
         </Button>
       </Flex>

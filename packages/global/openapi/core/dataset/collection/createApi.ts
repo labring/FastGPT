@@ -174,7 +174,8 @@ export const CreateApiCollectionV2BodySchema = ApiCreateCollectionRequestBaseSch
     description: '已忽略：api 文件库的层级以 server 文件树为准，导入时所处目录不影响落位'
   }),
   syncAll: BoolSchema.optional().meta({
-    description: '是否全选同步远端根目录下的全部文件及后续新增内容'
+    description:
+      '是否开启整库全量同步（导入远端全部文件及后续新增内容，并恢复库内已暂停同步的子目录）'
   }),
   apiFiles: z
     .array(APIFileItemSchema)

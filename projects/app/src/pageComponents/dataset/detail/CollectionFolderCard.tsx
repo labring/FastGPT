@@ -48,12 +48,12 @@ const CollectionFolderCard = ({
   const router = useRouter();
   const { toast } = useToast();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
+  const loadDatasetDetail = useContextSelector(DatasetPageContext, (v) => v.loadDatasetDetail);
   const isApiDataset = Boolean(datasetDetail.type && ApiDatasetTypeMap[datasetDetail.type]);
 
   const [isMoving, setIsMoving] = useState(false);
-  const { ConfirmModal: ResumeSyncConfirmModal, openConfirm: openResumeSyncConfirm } = useConfirm(
-    {}
-  );
+  const { ConfirmModal: SyncChildrenConfirmModal, openConfirm: openSyncChildrenConfirm } =
+    useConfirm({});
 
   const {
     data: folder,
@@ -99,11 +99,24 @@ const CollectionFolderCard = ({
     }
   );
 
-  const showPausedSyncChildren =
-    isApiDataset &&
-    folder?.type === DatasetCollectionTypeEnum.folder &&
-    Boolean(folder.apiFileId) &&
-    !isCollectionSyncChildrenEnabled(folder);
+  const { runAsync: pauseSyncChildren } = useRequest(
+    async () => {
+      await putDatasetCollectionById({ id: collectionId, syncChildren: false });
+      await Promise.all([refetchFolder(), loadDatasetDetail(datasetId)]);
+    },
+    {
+      onSuccess() {
+        toast({
+          title: t('dataset:sync_children_paused_tip'),
+          status: 'success'
+        });
+      }
+    }
+  );
+
+  const isSyncedApiFolder =
+    isApiDataset && folder?.type === DatasetCollectionTypeEnum.folder && Boolean(folder.apiFileId);
+  const isSyncChildrenEnabled = isSyncedApiFolder && isCollectionSyncChildrenEnabled(folder);
 
   /** 删除后回到被删目录的父级；父级为空表示知识库根目录，此时 parentId 为 undefined 会被序列化丢弃。 */
   const backToParentFolder = () =>
@@ -155,32 +168,54 @@ const CollectionFolderCard = ({
         />
       )}
 
-      {showPausedSyncChildren && folder && (
+      {isSyncedApiFolder && folder && (
         <Box w={'13rem'}>
           <MyDivider my={6} />
-          <Box display={'inline'} fontSize={'sm'}>
-            {t('dataset:sync_children_paused_resume_text')}
-            {folder.permission.hasManagePer && (
-              <Box
-                display={'inline'}
-                textDecoration={'underline'}
-                cursor={'pointer'}
-                _hover={{ color: 'primary.600' }}
-                onClick={() => {
-                  openResumeSyncConfirm({
-                    onConfirm: resumeSyncChildren,
-                    customContent: t('dataset:resume_sync_children_confirm')
-                  })();
-                }}
-              >
-                {t('common:click_to_resume')}
-              </Box>
-            )}
-          </Box>
+          {isSyncChildrenEnabled ? (
+            <Box display={'inline'} fontSize={'sm'}>
+              {t('dataset:sync_children_enabled_pause_text')}
+              {folder.permission.hasManagePer && (
+                <Box
+                  display={'inline'}
+                  textDecoration={'underline'}
+                  cursor={'pointer'}
+                  _hover={{ color: 'primary.600' }}
+                  onClick={() => {
+                    openSyncChildrenConfirm({
+                      onConfirm: pauseSyncChildren,
+                      customContent: t('dataset:pause_sync_children_confirm')
+                    })();
+                  }}
+                >
+                  {t('dataset:click_to_pause')}
+                </Box>
+              )}
+            </Box>
+          ) : (
+            <Box display={'inline'} fontSize={'sm'}>
+              {t('dataset:sync_children_paused_resume_text')}
+              {folder.permission.hasManagePer && (
+                <Box
+                  display={'inline'}
+                  textDecoration={'underline'}
+                  cursor={'pointer'}
+                  _hover={{ color: 'primary.600' }}
+                  onClick={() => {
+                    openSyncChildrenConfirm({
+                      onConfirm: resumeSyncChildren,
+                      customContent: t('dataset:resume_sync_children_confirm')
+                    })();
+                  }}
+                >
+                  {t('common:click_to_resume')}
+                </Box>
+              )}
+            </Box>
+          )}
         </Box>
       )}
 
-      <ResumeSyncConfirmModal />
+      <SyncChildrenConfirmModal />
       <RenameFolderModal />
 
       {isMoving && (

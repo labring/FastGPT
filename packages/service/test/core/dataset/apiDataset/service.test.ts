@@ -153,7 +153,8 @@ describe('createApiDatasetCollection', () => {
     expect(mockListFiles).toHaveBeenCalledWith({ parentId: undefined });
     expect(mockDatasetUpdateOne).toHaveBeenCalledWith(
       { _id: 'dataset-id', teamId: 'team-id' },
-      { $set: { syncAll: true } }
+      { $set: { syncAll: true } },
+      { session: 'session' }
     );
   });
 
@@ -607,7 +608,17 @@ describe('createApiDatasetCollection', () => {
       );
       expect(mockDatasetUpdateOne).toHaveBeenCalledWith(
         { _id: 'dataset-id', teamId: 'team-id' },
-        { $set: { syncAll: true } }
+        { $set: { syncAll: true } },
+        { session: 'session' }
+      );
+      expect(mockCollectionUpdateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          teamId: 'team-id',
+          datasetId: 'dataset-id',
+          syncChildren: false
+        }),
+        { $set: { syncChildren: true } },
+        { session: 'session' }
       );
 
       // 不创建任何哨兵节点，仅真实远端目录落库且直接挂在知识库根
@@ -663,6 +674,67 @@ describe('createApiDatasetCollection', () => {
     } as any);
 
     expect(mockListFiles).toHaveBeenCalledWith({ parentId: undefined });
+  });
+
+  it('旧客户端传入 SYSTEM_ROOT 哨兵时自动归一为 syncAll=true，不创建或查询 SYSTEM_ROOT', async () => {
+    mockListFiles.mockResolvedValueOnce([apiFile('root-file', 'file', false, 'Root File')]);
+    const authorizeChanges = vi.fn().mockResolvedValue(undefined);
+
+    await call({
+      apiFiles: [apiFile('SYSTEM_ROOT', 'folder', true, 'ROOT_FOLDER')],
+      authorizeChanges
+    });
+
+    expect(authorizeChanges).toHaveBeenCalledWith(
+      expect.objectContaining({ enableDatasetSyncAll: true })
+    );
+    expect(folderDocs().map((doc: any) => doc.apiFileId)).not.toContain('SYSTEM_ROOT');
+    expect(createdFileParams().map((p: any) => p.apiFileId)).toEqual(['root-file']);
+    expect(mockDatasetUpdateOne).toHaveBeenCalledWith(
+      { _id: 'dataset-id', teamId: 'team-id' },
+      { $set: { syncAll: true } },
+      { session: 'session' }
+    );
+  });
+
+  it('dataset.syncAll 已为 true 但存在暂停目录时，整库导入仍校验 enableDatasetSyncAll 并在同一事务恢复', async () => {
+    mockCollectionFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        {
+          _id: new Types.ObjectId(),
+          apiFileId: 'paused-dir',
+          type: 'folder',
+          syncChildren: false
+        }
+      ])
+    });
+    mockListFiles.mockResolvedValueOnce([apiFile('other-file', 'file', false, 'Other File')]);
+    const authorizeChanges = vi.fn().mockResolvedValue(undefined);
+
+    await call({
+      syncAll: true,
+      apiFiles: [],
+      dataset: { ...createDataset(), syncAll: true },
+      authorizeChanges
+    });
+
+    expect(authorizeChanges).toHaveBeenCalledWith(
+      expect.objectContaining({ enableDatasetSyncAll: true })
+    );
+    expect(mockDatasetUpdateOne).toHaveBeenCalledWith(
+      { _id: 'dataset-id', teamId: 'team-id' },
+      { $set: { syncAll: true } },
+      { session: 'session' }
+    );
+    expect(mockCollectionUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        teamId: 'team-id',
+        datasetId: 'dataset-id',
+        syncChildren: false
+      }),
+      { $set: { syncChildren: true } },
+      { session: 'session' }
+    );
   });
 
   it('局部导入带 ancestorPaths 时，服务端自顶向下核验并补建 syncChildren=false 祖先目录', async () => {

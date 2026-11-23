@@ -1042,4 +1042,72 @@ describe('delete collection by apiFileId', () => {
       String(derivedDir._id)
     );
   });
+
+  it('pauses remote source API parent folder when deleting an API file moved into a manual folder', async () => {
+    const { member, dataset, createCollection } = await fixture();
+    await MongoDataset.updateOne({ _id: dataset._id }, { $set: { syncAll: true } });
+    const remoteParent = await createCollection({
+      name: 'remote-dir',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'remote-dir-id',
+      syncChildren: true
+    });
+    const manualFolder = await createCollection({
+      name: 'manual-dir',
+      type: DatasetCollectionTypeEnum.folder
+    });
+    const movedFile = await createCollection({
+      name: 'moved-doc',
+      type: DatasetCollectionTypeEnum.apiFile,
+      apiFileId: 'doc-1',
+      apiFileParentId: 'remote-dir-id',
+      parentId: manualFolder._id
+    });
+
+    const response = await Call(deleteHandler, {
+      auth: member,
+      body: { collectionIds: [String(movedFile._id)] }
+    });
+
+    expect(response.code).toBe(200);
+    await expect(MongoDatasetCollection.findById(movedFile._id).lean()).resolves.toBeNull();
+    expect((await MongoDatasetCollection.findById(remoteParent._id).lean())?.syncChildren).toBe(
+      false
+    );
+    expect((await MongoDataset.findById(dataset._id).lean())?.syncAll).toBe(false);
+  });
+
+  it('pauses derived doc#dir folder when deleting its body moved into a manual folder', async () => {
+    const { member, dataset, createCollection } = await fixture();
+    await MongoDataset.updateOne({ _id: dataset._id }, { $set: { syncAll: true } });
+    const derivedDir = await createCollection({
+      name: 'docB',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'docB#dir',
+      syncChildren: true,
+      metadata: { apiFileSourceId: 'docB' }
+    });
+    const manualFolder = await createCollection({
+      name: 'manual-dir',
+      type: DatasetCollectionTypeEnum.folder
+    });
+    const movedBody = await createCollection({
+      name: 'docB',
+      type: DatasetCollectionTypeEnum.apiFile,
+      apiFileId: 'docB',
+      parentId: manualFolder._id
+    });
+
+    const response = await Call(deleteHandler, {
+      auth: member,
+      body: { collectionIds: [String(movedBody._id)] }
+    });
+
+    expect(response.code).toBe(200);
+    await expect(MongoDatasetCollection.findById(movedBody._id).lean()).resolves.toBeNull();
+    expect((await MongoDatasetCollection.findById(derivedDir._id).lean())?.syncChildren).toBe(
+      false
+    );
+    expect((await MongoDataset.findById(dataset._id).lean())?.syncAll).toBe(false);
+  });
 });

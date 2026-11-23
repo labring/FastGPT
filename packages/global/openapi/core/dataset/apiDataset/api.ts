@@ -127,9 +127,11 @@ export type ApiDatasetSyncStateCollectionItem = z.infer<
 >;
 
 export const GetApiDatasetSyncStateResponseSchema = z.object({
-  syncAll: z.boolean().meta({ description: '是否自动同步远端根目录下的新增文件与文件夹' }),
+  syncAll: z.boolean().meta({
+    description: '是否开启整库全量同步（开启后同步远端全部新增内容并覆盖已暂停子目录）'
+  }),
   collections: z
     .array(ApiDatasetSyncStateCollectionItemSchema)
-    .meta({ description: '知识库内已导入的 API 集合及其同步状态' })
+    .meta({ description: '当前用户可读的已导入 API 集合及其同步状态' })
 });
 export type GetApiDatasetSyncStateResponse = z.infer<typeof GetApiDatasetSyncStateResponseSchema>;

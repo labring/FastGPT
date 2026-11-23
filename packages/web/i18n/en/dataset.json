@@ -319,5 +319,12 @@
   "sync_root_new_items": "Full sync",
   "sync_root_new_items_tip": "When enabled, manual and scheduled syncs will sync all files and folders from the remote knowledge base and resume any paused folders; when disabled, only currently imported scope is maintained",
   "sync_root_enabled_next_sync_tip": "Full sync enabled. All remote content will be synced on the next manual or scheduled sync.",
-  "sync_root_paused_tip": "Full sync disabled; existing files will continue to update"
+  "sync_root_paused_tip": "Full sync disabled; existing files will continue to update",
+  "api_dataset_sync_all_files": "Sync all files",
+  "api_dataset_sync_all_enabled_tag": "Full sync enabled",
+  "api_dataset_pending_summary": "Pending add/resume ({{count}})",
+  "sync_children_enabled_pause_text": "Auto-syncing new files in this folder is enabled. ",
+  "click_to_pause": "Click to pause",
+  "pause_sync_children_confirm": "Pause auto-syncing new files in this folder? Existing files will continue to update, but newly added items in this folder will no longer be pulled automatically.",
+  "sync_children_paused_tip": "Auto-sync for new items in this folder paused; existing files will continue to update"
 }

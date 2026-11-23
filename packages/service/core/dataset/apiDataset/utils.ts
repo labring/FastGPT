@@ -2,6 +2,13 @@ import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant
 import { toApiFileDirId, type ApiFileRecord } from './tree';
 import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 
+/**
+ * 已发布版本（<= v4.17.5）使用的整库同步哨兵节点 ID。
+ * 仅在升级过渡期（Pro 先于 App 迁移启动、旧导入客户端滚动发布）的读写边界做兼容，
+ * 待全量环境升级至 v4.18.0+ 并完成 SYSTEM_ROOT 清洗后可移除。
+ */
+export const LEGACY_SYSTEM_ROOT_API_FILE_ID = 'SYSTEM_ROOT';
+
 /** 本地 collection 的身份与父级快照；兼容 lean 字符串和 Mongoose ObjectId。 */
 export type ApiFileLocalCollection = {
   _id: unknown;
@@ -268,7 +275,6 @@ export const buildApiFileParentUpdates = ({
 };
 
 /**
-/**
  * 构建本地集合到真实远端源身份的解析器。
  * 新派生目录保存 metadata.apiFileSourceId；历史派生目录仅在本地挂载关系能证明来源时归并，
  * 不盲目裁剪 provider ID 的 `#dir` 后缀。
@@ -332,15 +338,21 @@ export const createApiFileSourceResolver = (collections: ApiFileLocalCollection[
 /**
  * 同步只查询真实远端 ID。新派生目录保存 sourceId，正文尚未落库时也能恢复同步；
  * 历史目录仅在本地挂载关系能证明来源时兼容，不盲目裁剪 provider ID 的后缀。
+ * 升级过渡期忽略历史 SYSTEM_ROOT 哨兵本身，并将 apiFileParentId === 'SYSTEM_ROOT' 视作根级。
  */
 export const getApiFileSyncRootIds = (collections: ApiFileLocalCollection[]): string[] => {
-  const { getSourceId } = createApiFileSourceResolver(collections);
-  const sourceIds = new Set(collections.map(getSourceId).filter(Boolean));
+  const effectiveCollections = collections.filter(
+    (item) => item.apiFileId !== LEGACY_SYSTEM_ROOT_API_FILE_ID
+  );
+  const { getSourceId } = createApiFileSourceResolver(effectiveCollections);
+  const sourceIds = new Set(effectiveCollections.map(getSourceId).filter(Boolean));
   return [
     ...new Set(
-      collections.flatMap((item) => {
+      effectiveCollections.flatMap((item) => {
         const sourceId = getSourceId(item);
-        return sourceId && (!item.apiFileParentId || !sourceIds.has(item.apiFileParentId))
+        const effectiveParentId =
+          item.apiFileParentId === LEGACY_SYSTEM_ROOT_API_FILE_ID ? null : item.apiFileParentId;
+        return sourceId && (!effectiveParentId || !sourceIds.has(effectiveParentId))
           ? [sourceId]
           : [];
       })

@@ -41,6 +41,8 @@ export type ImportSourceItemType = {
   ancestorPathLabel?: string;
   /** 是否为重新勾选恢复自动同步（syncChildren: false -> true）的已有目录 */
   isReEnableSync?: boolean;
+  /** 是否为整库全量导入占位项（提交 syncAll: true） */
+  isSyncAll?: boolean;
 };
 
 export type ImportSourceParamsType = UseFormReturn<

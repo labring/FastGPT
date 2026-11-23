@@ -3,6 +3,8 @@ import { delCollection } from '@fastgpt/service/core/dataset/collection/controll
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { toApiFileDirId } from '@fastgpt/service/core/dataset/apiDataset/tree';
+import { LEGACY_SYSTEM_ROOT_API_FILE_ID } from '@fastgpt/service/core/dataset/apiDataset/utils';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { parseHeaderCert } from '@fastgpt/service/support/permission/auth/common';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -125,7 +127,7 @@ async function handler(req: ApiRequestProps) {
         teamId,
         datasetId: collection.datasetId,
         collectionId,
-        fields: '_id teamId name type datasetId fileId metadata parentId apiFileId'
+        fields: '_id teamId name type datasetId fileId metadata parentId apiFileId apiFileParentId'
       });
     })
   ).then((res) => {
@@ -140,9 +142,12 @@ async function handler(req: ApiRequestProps) {
 
   // 针对本次主动删除的边界 API 节点收口同步范围：
   // 1. 删除任意层级的 API 文件或目录都会关闭知识库级全量同步开关（Dataset.syncAll = false）；
-  // 2. 若该边界节点位于子目录内，同时将其直接父目录的 syncChildren 置为 false（不级联上翻更高祖先）。
+  // 2. 同时按本地父级与远端同步身份（apiFileParentId、doc#dir 派生目录）解析实际决定新增准入的存活 API 目录，
+  //    将其 syncChildren 置为 false，覆盖移入自建目录后删除及 doc#dir 正文删除场景。
   const deletingIdSet = new Set(collections.map((item) => String(item._id)));
-  const disableSyncFolderIds = new Set<string>();
+  const disableSyncLocalFolderIds = new Set<string>();
+  const disableSyncRemoteDirIds = new Set<string>();
+  const disableSyncRemoteSourceIds = new Set<string>();
   const disableSyncAllDatasetIds = new Set<string>();
   for (const item of collections) {
     if (!item.apiFileId) continue;
@@ -150,8 +155,32 @@ async function handler(req: ApiRequestProps) {
     if (parentIdStr && deletingIdSet.has(parentIdStr)) continue;
     disableSyncAllDatasetIds.add(String(item.datasetId));
     if (parentIdStr) {
-      disableSyncFolderIds.add(parentIdStr);
+      disableSyncLocalFolderIds.add(parentIdStr);
     }
+    if (item.type === DatasetCollectionTypeEnum.apiFile) {
+      // 正文（含移出派生目录后删除的正文）若存在对应的 doc#dir 派生目录，必须暂停该派生目录防止正文被重建。
+      disableSyncRemoteDirIds.add(toApiFileDirId(item.apiFileId, 'file'));
+      disableSyncRemoteSourceIds.add(item.apiFileId);
+    }
+    if (item.apiFileParentId && item.apiFileParentId !== LEGACY_SYSTEM_ROOT_API_FILE_ID) {
+      // 远端父级既可能是普通 folder（apiFileId === parent），也可能是带子文档文件的派生目录（parent#dir / apiFileSourceId）。
+      disableSyncRemoteDirIds.add(item.apiFileParentId);
+      disableSyncRemoteDirIds.add(toApiFileDirId(item.apiFileParentId, 'file'));
+      disableSyncRemoteSourceIds.add(item.apiFileParentId);
+    }
+  }
+
+  const disableFolderOrConditions: Record<string, unknown>[] = [];
+  if (disableSyncLocalFolderIds.size > 0) {
+    disableFolderOrConditions.push({ _id: { $in: [...disableSyncLocalFolderIds] } });
+  }
+  if (disableSyncRemoteDirIds.size > 0) {
+    disableFolderOrConditions.push({ apiFileId: { $in: [...disableSyncRemoteDirIds] } });
+  }
+  if (disableSyncRemoteSourceIds.size > 0) {
+    disableFolderOrConditions.push({
+      'metadata.apiFileSourceId': { $in: [...disableSyncRemoteSourceIds] }
+    });
   }
 
   // delete
@@ -163,14 +192,14 @@ async function handler(req: ApiRequestProps) {
       session
     });
 
-    if (disableSyncFolderIds.size > 0) {
+    if (disableFolderOrConditions.length > 0) {
       await MongoDatasetCollection.updateMany(
         {
-          _id: { $in: [...disableSyncFolderIds] },
           teamId,
           datasetId: collection.datasetId,
           type: DatasetCollectionTypeEnum.folder,
-          apiFileId: { $exists: true, $ne: null }
+          apiFileId: { $exists: true, $ne: null },
+          $or: disableFolderOrConditions
         },
         { $set: { syncChildren: false } },
         { session }
@@ -194,9 +223,7 @@ async function handler(req: ApiRequestProps) {
   );
   const auditResources = [...selectedCollectionIds].flatMap((id) => {
     const collection = deletedCollections.get(id);
-    return collection
-      ? [buildCollectionAuditResource(collection, { deleted: true })]
-      : [];
+    return collection ? [buildCollectionAuditResource(collection, { deleted: true })] : [];
   });
 
   (async () => {

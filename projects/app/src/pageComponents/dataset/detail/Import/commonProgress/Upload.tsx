@@ -76,22 +76,26 @@ const Upload = () => {
           }))
         );
 
-        const apiFiles = filterWaitingSources
-          .filter((item) => item.apiFile)
-          .map((item) => item.apiFile!);
-        const ancestorPaths = filterWaitingSources.reduce<Record<string, string[]>>((acc, item) => {
-          if (item.apiFile && item.ancestorIds?.length) {
-            acc[item.apiFile.id] = item.ancestorIds;
-          }
-          return acc;
-        }, {});
+        const isSyncAll = filterWaitingSources.some((item) => item.isSyncAll);
+        const apiFiles = isSyncAll
+          ? []
+          : filterWaitingSources.filter((item) => item.apiFile).map((item) => item.apiFile!);
+        const ancestorPaths = isSyncAll
+          ? {}
+          : filterWaitingSources.reduce<Record<string, string[]>>((acc, item) => {
+              if (item.apiFile && item.ancestorIds?.length) {
+                acc[item.apiFile.id] = item.ancestorIds;
+              }
+              return acc;
+            }, {});
 
         const { failedCount } = await postCreateDatasetApiDatasetCollection({
           ...data,
           datasetId: datasetDetail._id,
           customPdfParse,
+          ...(isSyncAll ? { syncAll: true } : {}),
           apiFiles,
-          ...(ancestorPaths && Object.keys(ancestorPaths).length > 0 ? { ancestorPaths } : {})
+          ...(Object.keys(ancestorPaths).length > 0 ? { ancestorPaths } : {})
         });
 
         // 服务端对「部分节点没进去」仍返回 200（已建成的目录/文件不回滚，重试幂等），
