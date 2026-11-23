@@ -1,6 +1,6 @@
 import z from 'zod';
 
-/** 24 位十六进制实体 ID 正则（兼容 MongoDB ObjectId 与 PostgreSQL VARCHAR(24) 主键）。 */
+/** 24 位十六进制实体 ID 正则（兼容 MongoDB ObjectId 与 OceanBase CHAR(24)/VARCHAR(24) 主键）。 */
 export const ENTITY_ID_REGEX = /^[0-9a-fA-F]{24}$/;
 
 const DEFAULT_ENTITY_ID_EXAMPLE = '68ee0bd23d17260b7829b137';
@@ -39,7 +39,7 @@ let sequenceCounter = (() => {
  *
  * 编码布局遵循 12 字节 ObjectId 规范：`4B 秒级 Unix 时间戳 + 5B 进程随机熵 + 3B 单调计数器`：
  * - 在 MongoDB 中可直接通过 `new Types.ObjectId(id)` 无损还原；
- * - 在 PostgreSQL 中可作为 `VARCHAR(24)` 存储，天然满足 `_id > cursor` 字典序时间游标分页；
+ * - 在 OceanBase 中可作为 `CHAR(24)` / `VARCHAR(24)` 存储，天然满足 `_id > cursor` 字典序时间游标分页；
  * - 零 Node 专属模块依赖，前后端同构可用。
  */
 export const createEntityId = (timestampMs = Date.now()): string => {

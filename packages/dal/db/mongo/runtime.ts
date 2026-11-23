@@ -143,7 +143,7 @@ export type MongoRuntimeDeps = {
 };
 
 /**
- * 构建基于 Mongoose 连接的 `@fastgpt/dal` 运行时依赖集合（事务执行器、幂等 Model 绑定器与健康检查）。
+ * 构建基于 Mongoose 连接的 `@fastgpt/dal` 运行时依赖集合（事务执行器与幂等 Model 绑定器）。
  *
  * - `mongoModelBinder` 遵循 `DbRuntime.resolveEffectiveDatasource` 路由（`shared` 透明绑定主库连接，
  *   `separate` 绑定独立日志库连接），并在目标连接上幂等复用 `connection.models[name]`，彻底规避

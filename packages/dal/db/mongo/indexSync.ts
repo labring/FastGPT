@@ -16,10 +16,6 @@ const silentLogger: DbLogger = {
   error: () => undefined
 };
 
-export type MongoIndexSyncLock = {
-  withLock: <T>(params: { key: string; label: string; fn: () => Promise<T> }) => Promise<T>;
-};
-
 export type LiveMongoIndexSpec = {
   name?: string;
   key?: Record<string, unknown>;
@@ -491,7 +487,6 @@ export const syncMongoCollectionIndexes = async ({
   client,
   collections,
   datasource,
-  lock,
   allowCollModTtl = false,
   max285Retries = 10,
   retryDelayMs = 1_000,
@@ -500,7 +495,6 @@ export const syncMongoCollectionIndexes = async ({
   client: Mongoose;
   collections: readonly MongoCollectionDefinition<any>[];
   datasource?: DbDatasource;
-  lock?: MongoIndexSyncLock;
   allowCollModTtl?: boolean;
   max285Retries?: number;
   retryDelayMs?: number;
@@ -511,194 +505,179 @@ export const syncMongoCollectionIndexes = async ({
       ? collections
       : collections.filter((col) => col.datasource === datasource);
 
-  const runSync = async (): Promise<MongoIndexSyncReport> => {
-    const db = client.connection.db;
-    if (db === undefined) {
-      throw new DbConfigurationError('MongoDB connection is not established');
+  const db = client.connection.db;
+  if (db === undefined) {
+    throw new DbConfigurationError('MongoDB connection is not established');
+  }
+
+  const report: MongoIndexSyncReport = {
+    created: [],
+    skippedExisting: [],
+    ttlUpdated: [],
+    optionDriftWarnings: [],
+    errors: []
+  };
+
+  for (const collection of targetCollections) {
+    const desiredIndexes = resolveDesiredIndexes(collection);
+    if (desiredIndexes.length === 0) {
+      continue;
     }
 
-    const report: MongoIndexSyncReport = {
-      created: [],
-      skippedExisting: [],
-      ttlUpdated: [],
-      optionDriftWarnings: [],
-      errors: []
-    };
+    const liveIndexes = await listCollectionIndexesSafe(client, collection.name);
+    const { liveBySignature, liveByName } = indexLiveSpecs(liveIndexes);
+    const nativeCollection = db.collection(collection.name);
 
-    for (const collection of targetCollections) {
-      const desiredIndexes = resolveDesiredIndexes(collection);
-      if (desiredIndexes.length === 0) {
+    for (const declared of desiredIndexes) {
+      const indexName = deriveMongoIndexName(declared);
+      const declaredOpts = declared.options as ExpectedMongoIndexOptions | undefined;
+      const desiredSig = buildNormalizedMongoKeySignature({
+        key: declared.key as Record<string, unknown>,
+        weights: declaredOpts?.weights
+      });
+      const sameKeyCandidates = liveBySignature.get(desiredSig) ?? [];
+      const sameNameLive = liveByName.get(indexName);
+
+      // 1. 仅当同 key 候选中存在定义完全等价的现网索引时，才视为已满足并跳过创建。
+      const exactMatch = pickPreferredCandidate({
+        candidates: sameKeyCandidates,
+        preferredName: indexName,
+        predicate: (live) => detectCriticalOptionDrift({ declared, live }) === undefined
+      });
+      if (exactMatch !== undefined) {
+        report.skippedExisting.push({
+          collection: collection.name,
+          indexName,
+          matchedLiveName: exactMatch.name ?? indexName
+        });
         continue;
       }
 
-      const liveIndexes = await listCollectionIndexesSafe(client, collection.name);
-      const { liveBySignature, liveByName } = indexLiveSpecs(liveIndexes);
-      const nativeCollection = db.collection(collection.name);
-
-      for (const declared of desiredIndexes) {
-        const indexName = deriveMongoIndexName(declared);
-        const declaredOpts = declared.options as ExpectedMongoIndexOptions | undefined;
-        const desiredSig = buildNormalizedMongoKeySignature({
-          key: declared.key as Record<string, unknown>,
-          weights: declaredOpts?.weights
-        });
-        const sameKeyCandidates = liveBySignature.get(desiredSig) ?? [];
-        const sameNameLive = liveByName.get(indexName);
-
-        // 1. 仅当同 key 候选中存在定义完全等价的现网索引时，才视为已满足并跳过创建。
-        const exactMatch = pickPreferredCandidate({
+      // 2. 允许原地更新 TTL 时，优先匹配仅 expireAfterSeconds 不同的候选索引。
+      if (allowCollModTtl) {
+        const ttlCandidate = pickPreferredCandidate({
           candidates: sameKeyCandidates,
           preferredName: indexName,
-          predicate: (live) => detectCriticalOptionDrift({ declared, live }) === undefined
+          predicate: (live) => isTtlOnlyDrift({ declared, live })
         });
-        if (exactMatch !== undefined) {
-          report.skippedExisting.push({
+        if (ttlCandidate !== undefined) {
+          const liveName = ttlCandidate.name ?? indexName;
+          const desiredTtl = declared.options!.expireAfterSeconds!;
+          await db.command({
+            collMod: collection.name,
+            index: { name: liveName, expireAfterSeconds: desiredTtl }
+          });
+          ttlCandidate.expireAfterSeconds = desiredTtl;
+          report.ttlUpdated.push({
             collection: collection.name,
-            indexName,
-            matchedLiveName: exactMatch.name ?? indexName
+            indexName: liveName,
+            expireAfterSeconds: desiredTtl
+          });
+          logger.info('Updated Mongo TTL index via collMod', {
+            collection: collection.name,
+            indexName: liveName,
+            expireAfterSeconds: desiredTtl
           });
           continue;
-        }
-
-        // 2. 允许原地更新 TTL 时，优先匹配仅 expireAfterSeconds 不同的候选索引。
-        if (allowCollModTtl) {
-          const ttlCandidate = pickPreferredCandidate({
-            candidates: sameKeyCandidates,
-            preferredName: indexName,
-            predicate: (live) => isTtlOnlyDrift({ declared, live })
-          });
-          if (ttlCandidate !== undefined) {
-            const liveName = ttlCandidate.name ?? indexName;
-            const desiredTtl = declared.options!.expireAfterSeconds!;
-            await db.command({
-              collMod: collection.name,
-              index: { name: liveName, expireAfterSeconds: desiredTtl }
-            });
-            ttlCandidate.expireAfterSeconds = desiredTtl;
-            report.ttlUpdated.push({
-              collection: collection.name,
-              indexName: liveName,
-              expireAfterSeconds: desiredTtl
-            });
-            logger.info('Updated Mongo TTL index via collMod', {
-              collection: collection.name,
-              indexName: liveName,
-              expireAfterSeconds: desiredTtl
-            });
-            continue;
-          }
-        }
-
-        // 3. 声明索引名已被不同 key 或不同 options 的现网索引占用时，直接记录漂移告警而不伪装跳过。
-        if (sameNameLive !== undefined) {
-          const liveSig = buildNormalizedMongoKeySignature({
-            key: sameNameLive.key ?? {},
-            weights: sameNameLive.weights
-          });
-          const reason =
-            liveSig !== desiredSig
-              ? `key mismatch on existing index name "${indexName}"`
-              : (detectCriticalOptionDrift({ declared, live: sameNameLive }) ?? 'option mismatch');
-          report.optionDriftWarnings.push({
-            collection: collection.name,
-            indexName,
-            reason
-          });
-          logger.warn(
-            'Mongo index name already exists with drifted definition (not auto-dropped)',
-            {
-              collection: collection.name,
-              indexName,
-              liveName: sameNameLive.name ?? indexName,
-              reason
-            }
-          );
-          continue;
-        }
-
-        // 4. 无等价索引且索引名未占用：尝试补建（同 key 异名且可共存的 partial/collation 将共存；
-        //    若同 key 互斥导致 Mongo 返回 85/86，则记录选项漂移告警而不误记为 skippedExisting）。
-        let createdOk = false;
-        for (let attempt = 0; attempt <= max285Retries; attempt += 1) {
-          try {
-            const createOpts: Record<string, unknown> = {
-              ...(declared.options as Record<string, unknown> | undefined),
-              ...(declared.options?.unique !== undefined
-                ? { unique: Boolean(declared.options.unique) }
-                : {}),
-              ...(declared.options?.name !== undefined ? { name: declared.options.name } : {})
-            };
-            await nativeCollection.createIndex(declared.key as any, createOpts as any);
-            report.created.push({ collection: collection.name, indexName });
-            createdOk = true;
-            break;
-          } catch (error) {
-            const code = getMongoErrorCode(error);
-            if (code === 285 && attempt < max285Retries) {
-              logger.info('Mongo index build already in progress (285); waiting before retry', {
-                collection: collection.name,
-                indexName,
-                attempt: attempt + 1
-              });
-              await sleepMs(retryDelayMs);
-              continue;
-            }
-            if (code === 85 || code === 86) {
-              report.optionDriftWarnings.push({
-                collection: collection.name,
-                indexName,
-                reason: error instanceof Error ? error.message : String(error)
-              });
-              logger.warn('Mongo index conflict (85/86) skipped safely during additive sync', {
-                collection: collection.name,
-                indexName,
-                code
-              });
-              break;
-            }
-            report.errors.push({
-              collection: collection.name,
-              indexName,
-              error: error instanceof Error ? error.message : String(error)
-            });
-            logger.error('Failed to create Mongo index during additive sync', {
-              collection: collection.name,
-              indexName,
-              error
-            });
-            break;
-          }
-        }
-
-        if (createdOk) {
-          const createdSpec: LiveMongoIndexSpec = {
-            name: indexName,
-            key: declared.key as Record<string, unknown>,
-            ...(declared.options as LiveMongoIndexSpec | undefined)
-          };
-          const existingList = liveBySignature.get(desiredSig);
-          if (existingList !== undefined) {
-            existingList.push(createdSpec);
-          } else {
-            liveBySignature.set(desiredSig, [createdSpec]);
-          }
-          liveByName.set(indexName, createdSpec);
         }
       }
+
+      // 3. 声明索引名已被不同 key 或不同 options 的现网索引占用时，直接记录漂移告警而不伪装跳过。
+      if (sameNameLive !== undefined) {
+        const liveSig = buildNormalizedMongoKeySignature({
+          key: sameNameLive.key ?? {},
+          weights: sameNameLive.weights
+        });
+        const reason =
+          liveSig !== desiredSig
+            ? `key mismatch on existing index name "${indexName}"`
+            : (detectCriticalOptionDrift({ declared, live: sameNameLive }) ?? 'option mismatch');
+        report.optionDriftWarnings.push({
+          collection: collection.name,
+          indexName,
+          reason
+        });
+        logger.warn('Mongo index name already exists with drifted definition (not auto-dropped)', {
+          collection: collection.name,
+          indexName,
+          liveName: sameNameLive.name ?? indexName,
+          reason
+        });
+        continue;
+      }
+
+      // 4. 无等价索引且索引名未占用：尝试补建（同 key 异名且可共存的 partial/collation 将共存；
+      //    若同 key 互斥导致 Mongo 返回 85/86，则记录选项漂移告警而不误记为 skippedExisting）。
+      let createdOk = false;
+      for (let attempt = 0; attempt <= max285Retries; attempt += 1) {
+        try {
+          const createOpts: Record<string, unknown> = {
+            ...(declared.options as Record<string, unknown> | undefined),
+            ...(declared.options?.unique !== undefined
+              ? { unique: Boolean(declared.options.unique) }
+              : {}),
+            ...(declared.options?.name !== undefined ? { name: declared.options.name } : {})
+          };
+          await nativeCollection.createIndex(declared.key as any, createOpts as any);
+          report.created.push({ collection: collection.name, indexName });
+          createdOk = true;
+          break;
+        } catch (error) {
+          const code = getMongoErrorCode(error);
+          if (code === 285 && attempt < max285Retries) {
+            logger.info('Mongo index build already in progress (285); waiting before retry', {
+              collection: collection.name,
+              indexName,
+              attempt: attempt + 1
+            });
+            await sleepMs(retryDelayMs);
+            continue;
+          }
+          if (code === 85 || code === 86) {
+            report.optionDriftWarnings.push({
+              collection: collection.name,
+              indexName,
+              reason: error instanceof Error ? error.message : String(error)
+            });
+            logger.warn('Mongo index conflict (85/86) skipped safely during additive sync', {
+              collection: collection.name,
+              indexName,
+              code
+            });
+            break;
+          }
+          report.errors.push({
+            collection: collection.name,
+            indexName,
+            error: error instanceof Error ? error.message : String(error)
+          });
+          logger.error('Failed to create Mongo index during additive sync', {
+            collection: collection.name,
+            indexName,
+            error
+          });
+          break;
+        }
+      }
+
+      if (createdOk) {
+        const createdSpec: LiveMongoIndexSpec = {
+          name: indexName,
+          key: declared.key as Record<string, unknown>,
+          ...(declared.options as LiveMongoIndexSpec | undefined)
+        };
+        const existingList = liveBySignature.get(desiredSig);
+        if (existingList !== undefined) {
+          existingList.push(createdSpec);
+        } else {
+          liveBySignature.set(desiredSig, [createdSpec]);
+        }
+        liveByName.set(indexName, createdSpec);
+      }
     }
-
-    return report;
-  };
-
-  if (lock !== undefined) {
-    return lock.withLock({
-      key: `mongo-index-sync:${datasource ?? 'all'}`,
-      label: `mongo-index-sync:${datasource ?? 'all'}`,
-      fn: runSync
-    });
   }
 
-  return runSync();
+  return report;
 };
 
 /**
@@ -830,9 +809,7 @@ export const dropManagedMongoIndexIfExists = async ({
   }
 };
 
-/**
- * 100% 只读的 MongoDB 索引巡检器（绝不建索引也不删索引），与 `inspectSqlSchema` 语义镜像对齐。
- */
+/** 100% 只读的 MongoDB 索引巡检器（绝不建索引也不删索引）。 */
 export const inspectMongoIndexes = async ({
   client,
   collections,
