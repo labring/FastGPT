@@ -6,6 +6,12 @@ import { i18nT, parseLocale, selectPluginText } from '@fastgpt/global/common/i18
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { getTeamPluginSource, splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import {
+  jsonSchema2NodeInput,
+  type JSONSchemaInputType
+} from '@fastgpt/global/core/app/jsonschema';
+import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
   PluginPermissionEnum,
   type PluginPermissionEnumType
 } from '@fastgpt/global/sdk/fastgpt-plugin';
@@ -107,6 +113,78 @@ export const resolveInvokeToolName = async ({
   }
 
   return trimmedToolId;
+};
+
+/**
+ * 将工作流发布资源快照中的模型授权收窄到当前工具实际声明并绑定的模型参数：
+ * 1. 未声明 `model:invoke` 权限，或不存在同团队工作流资源快照时，不签发任何发布模型授权；
+ * 2. 仅从当前工具 `inputSchema` 中渲染类型为 `selectLLMModel` 的字段提取本次运行入参（缺失时回退字段默认值）；
+ * 3. 仅保留命中应用发布快照 `resourceMap` 的模型 ID，防止同一应用内其他节点的模型越权进入当前工具凭证。
+ *    未命中的模型由反向调用路由按实际运行成员执行 `use` ACL 校验。
+ */
+export const resolveAuthorizedInvokeModelIds = ({
+  permissions,
+  resourceContext,
+  teamId,
+  inputSchema,
+  toolInput
+}: {
+  permissions?: PluginPermissionEnumType[];
+  resourceContext?: {
+    teamId?: string;
+    resourceMap: Map<string, { type: string; id: string }>;
+  };
+  teamId: string;
+  inputSchema?: JSONSchemaInputType;
+  toolInput?: Record<string, unknown>;
+}): string[] => {
+  if (!permissions?.includes(PluginPermissionEnum['model:invoke'])) {
+    return [];
+  }
+  if (!resourceContext || (resourceContext.teamId && resourceContext.teamId !== teamId)) {
+    return [];
+  }
+
+  const snapshotModelIds = new Set(
+    Array.from(resourceContext.resourceMap.values())
+      .filter((item) => item.type === 'model')
+      .map((item) => item.id)
+  );
+  if (snapshotModelIds.size === 0 || !inputSchema) {
+    return [];
+  }
+
+  const schemaInputs = jsonSchema2NodeInput({
+    jsonSchema: inputSchema,
+    schemaType: 'systemTool'
+  });
+  const authorizedIds = new Set<string>();
+
+  for (const schemaInput of schemaInputs) {
+    if (getSelectedInputRenderType(schemaInput) !== FlowNodeInputTypeEnum.selectLLMModel) {
+      continue;
+    }
+
+    const rawValue =
+      toolInput && Object.hasOwn(toolInput, schemaInput.key)
+        ? toolInput[schemaInput.key]
+        : schemaInput.defaultValue;
+    const modelId =
+      typeof rawValue === 'string'
+        ? rawValue.trim()
+        : typeof rawValue === 'object' &&
+            rawValue !== null &&
+            !Array.isArray(rawValue) &&
+            typeof (rawValue as { modelId?: unknown }).modelId === 'string'
+          ? (rawValue as { modelId: string }).modelId.trim()
+          : '';
+
+    if (modelId && snapshotModelIds.has(modelId)) {
+      authorizedIds.add(modelId);
+    }
+  }
+
+  return Array.from(authorizedIds);
 };
 
 /** 反向调用处理器 */

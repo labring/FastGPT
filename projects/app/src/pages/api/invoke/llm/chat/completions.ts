@@ -39,6 +39,7 @@ import {
 } from '@fastgpt/service/common/zod/requestParseError';
 import { createChatCompletion } from '@fastgpt/service/core/ai/llm/request/createChatCompletion';
 import { llmCompletionsBodyFormat } from '@fastgpt/service/core/ai/llm/request/requestBody';
+import { normalizeLLMCacheUsage } from '@fastgpt/service/core/ai/llm/request/response/normalize';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { InvokeProcessor } from '@fastgpt/service/support/invoke/invoke';
 import type { InvokeSessionType } from '@fastgpt/service/support/invoke/type';
@@ -198,11 +199,16 @@ export const settleInvokeModelUsage = async (
       });
     })();
 
-    // 2. 按模型定价计算积分（用户自带 Key 时按平台惯例记为 0 积分）。
+    // 2. 提取缓存读写 Token 并按最新模型定价计算积分（用户自带 Key 时按平台惯例记为 0 积分）。
+    const { cacheReadTokens, cacheCreationTokens } = context.usage
+      ? normalizeLLMCacheUsage(context.usage)
+      : { cacheReadTokens: 0, cacheCreationTokens: 0 };
     const { totalPoints: calculatedPoints, modelId } = formatModelChars2Points({
       model: context.modelData,
       inputTokens,
-      outputTokens
+      outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens
     });
     const totalPoints = context.usedUserOpenAIKey ? 0 : calculatedPoints;
 
@@ -212,21 +218,21 @@ export const settleInvokeModelUsage = async (
     // 4. 优先写入当前对话/工作流 usageId；无 usageId 且非调试来源时创建独立插件账单。
     const usageId = context.session.usageId?.trim() ?? '';
     if (usageId !== '') {
-      await Promise.resolve(
-        pushChatItemUsage({
-          teamId: context.session.teamId,
-          usageId,
-          nodeUsages: [
-            {
-              moduleName,
-              modelId,
-              inputTokens,
-              outputTokens,
-              totalPoints
-            }
-          ]
-        })
-      );
+      await pushChatItemUsage({
+        teamId: context.session.teamId,
+        usageId,
+        nodeUsages: [
+          {
+            moduleName,
+            modelId,
+            inputTokens,
+            outputTokens,
+            cacheReadTokens,
+            cacheCreationTokens,
+            totalPoints
+          }
+        ]
+      });
       return;
     }
 
@@ -246,7 +252,9 @@ export const settleInvokeModelUsage = async (
           amount: totalPoints,
           modelId,
           inputTokens,
-          outputTokens
+          outputTokens,
+          cacheReadTokens,
+          cacheCreationTokens
         }
       ]
     });
@@ -472,6 +480,20 @@ const formatInvokeCompletionRequestBody = async ({
     }
   }
 
+  // 客户端显式传入 max_completion_tokens（未传 max_tokens）且模型未通过 fieldMap 映射 max_tokens、
+  // defaultConfig 也未覆盖预算字段时，保留原生 max_completion_tokens 字段名，兼容仅接受新字段的 OpenAI o 系列上游。
+  if (
+    max_tokens === undefined &&
+    max_completion_tokens !== undefined &&
+    !modelData.config.fieldMap?.max_tokens &&
+    !Object.hasOwn(defaultConfig, 'max_tokens') &&
+    !Object.hasOwn(defaultConfig, 'max_completion_tokens') &&
+    mutableBody.max_tokens !== undefined
+  ) {
+    mutableBody.max_completion_tokens = mutableBody.max_tokens;
+    delete mutableBody.max_tokens;
+  }
+
   if (isStream) {
     mutableBody.stream = true;
     if (!Object.hasOwn(defaultConfig, 'stream_options')) {
@@ -538,10 +560,55 @@ const mapUpstreamErrorToOpenAIError = (error: unknown): OpenAIErrorPayload => {
 };
 
 /**
+ * 从上游 HTTP 200 载荷或 SSE 帧中识别协议层错误对象（如 `{ error: { message } }`）。
+ */
+const extractUpstreamPayloadError = (payload: unknown): string | undefined => {
+  if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) {
+    return undefined;
+  }
+  const errorValue = (payload as { error?: unknown }).error;
+  if (!errorValue) {
+    return undefined;
+  }
+  if (typeof errorValue === 'string') {
+    return errorValue.trim() || 'Upstream returned an error payload';
+  }
+  if (typeof errorValue === 'object' && errorValue !== null) {
+    const message = (errorValue as { message?: unknown }).message;
+    if (typeof message === 'string' && message.trim() !== '') {
+      return message.trim();
+    }
+  }
+  return getErrText(errorValue, 'Upstream returned an error payload');
+};
+
+/**
+ * 在上游适配边界对非流式补全响应执行轻量协议校验：
+ * 拒绝 HTTP 200 返回错误对象或缺少 `choices` 数组的非法载荷，同时宽容第三方 OpenAI 兼容端点的非关键元字段差异。
+ */
+const validateNonStreamCompletionResponse = (
+  payload: unknown
+): { ok: true; response: UnStreamResponseType } | { ok: false; message: string } => {
+  if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) {
+    return { ok: false, message: 'Upstream returned invalid JSON completion payload' };
+  }
+  const protocolError = extractUpstreamPayloadError(payload);
+  if (protocolError) {
+    return { ok: false, message: protocolError };
+  }
+  if (!Array.isArray((payload as { choices?: unknown }).choices)) {
+    return { ok: false, message: 'Upstream completion response is missing choices array' };
+  }
+  return { ok: true, response: payload as UnStreamResponseType };
+};
+
+/**
  * 将非流式响应兜底转换为单个 OpenAI SSE chunk（兼容少数忽略 stream=true 直接返回完整 JSON 的中转渠道）。
+ * 仅在客户端显式请求 `stream_options.include_usage: true` 时在输出帧中携带 `usage`。
  */
 const buildFallbackChunkFromCompletion = (
-  completion: UnStreamResponseType
+  completion: UnStreamResponseType,
+  includeUsage: boolean
 ): ChatCompletionChunk => ({
   id: completion.id,
   object: 'chat.completion.chunk',
@@ -578,7 +645,7 @@ const buildFallbackChunkFromCompletion = (
     logprobs: choice.logprobs ?? null,
     finish_reason: choice.finish_reason
   })),
-  ...(completion.usage ? { usage: completion.usage } : {})
+  ...(includeUsage && completion.usage ? { usage: completion.usage } : {})
 });
 
 /**
@@ -712,7 +779,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   // 5. 格式化模型请求体（重写为真实上游 modelData.model 并裁剪不支持参数）。
   const isStream = body.stream === true;
-  const callerExcludedUsage = body.stream_options?.include_usage === false;
+  const callerRequestedUsage = body.stream_options?.include_usage === true;
   const formattedResult = await (async () => {
     try {
       const requestBody = await formatInvokeCompletionRequestBody({
@@ -804,16 +871,41 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         return;
       }
 
+      const validatedResponse = validateNonStreamCompletionResponse(completionResult.response);
+      if (!validatedResponse.ok) {
+        sendOpenAIError(res, {
+          status: 502,
+          message: validatedResponse.message,
+          type: 'upstream_error',
+          code: 'invalid_upstream_response'
+        });
+        return;
+      }
+
       await settleOnce({
-        usage: completionResult.response.usage,
-        streamAccumulated: extractAccumulatedFromCompletion(completionResult.response),
+        usage: validatedResponse.response.usage,
+        streamAccumulated: extractAccumulatedFromCompletion(validatedResponse.response),
         usedUserOpenAIKey: completionResult.requestMeta.usedUserOpenAIKey,
         aborted: abortController.signal.aborted
       });
 
       if (!isResponseClosed()) {
-        res.status(200).json(completionResult.response);
+        res.status(200).json(validatedResponse.response);
       }
+      return;
+    }
+
+    // 流式兜底若收到非流式 JSON，在发出 SSE 响应头前先完成协议校验，避免非法 200 错误体进入 SSE。
+    const validatedFallbackResponse = !completionResult.isStreamResponse
+      ? validateNonStreamCompletionResponse(completionResult.response)
+      : undefined;
+    if (validatedFallbackResponse && !validatedFallbackResponse.ok) {
+      sendOpenAIError(res, {
+        status: 502,
+        message: validatedFallbackResponse.message,
+        type: 'upstream_error',
+        code: 'invalid_upstream_response'
+      });
       return;
     }
 
@@ -826,6 +918,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     res.flushHeaders?.();
 
     let latestUsage: CompletionUsage | undefined;
+    let hasValidStreamPayload = false;
     const streamAccumulated = {
       answerText: '',
       reasoningText: '',
@@ -833,24 +926,42 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     };
 
     try {
-      if (!completionResult.isStreamResponse) {
-        latestUsage = completionResult.response.usage;
-        const fallbackAccumulated = extractAccumulatedFromCompletion(completionResult.response);
+      if (validatedFallbackResponse?.ok) {
+        hasValidStreamPayload = true;
+        latestUsage = validatedFallbackResponse.response.usage;
+        const fallbackAccumulated = extractAccumulatedFromCompletion(
+          validatedFallbackResponse.response
+        );
         streamAccumulated.answerText = fallbackAccumulated.answerText;
         streamAccumulated.reasoningText = fallbackAccumulated.reasoningText;
         streamAccumulated.toolCallArguments = fallbackAccumulated.toolCallArguments;
-        const fallbackChunk = buildFallbackChunkFromCompletion(completionResult.response);
+        const fallbackChunk = buildFallbackChunkFromCompletion(
+          validatedFallbackResponse.response,
+          callerRequestedUsage
+        );
         if (!isResponseClosed()) {
           res.write(`data: ${JSON.stringify(fallbackChunk)}\n\n`);
           res.write('data: [DONE]\n\n');
         }
-      } else {
+      } else if (completionResult.isStreamResponse) {
         for await (const chunk of completionResult.response) {
           if (abortController.signal.aborted || isResponseClosed()) {
             completionResult.response.controller?.abort();
             break;
           }
 
+          if (typeof chunk !== 'object' || chunk === null || Array.isArray(chunk)) {
+            throw new Error('Upstream stream emitted invalid chunk payload');
+          }
+          const chunkProtocolError = extractUpstreamPayloadError(chunk);
+          if (chunkProtocolError) {
+            throw new Error(chunkProtocolError);
+          }
+          if (!Array.isArray(chunk.choices) && chunk.usage === undefined) {
+            throw new Error('Upstream stream chunk is missing choices and usage');
+          }
+
+          hasValidStreamPayload = true;
           if (chunk.usage) {
             latestUsage = chunk.usage;
           }
@@ -873,7 +984,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           }
 
           const isUsageOnlyChunk = (chunk.choices?.length ?? 0) === 0 && Boolean(chunk.usage);
-          if (callerExcludedUsage && isUsageOnlyChunk) {
+          if (!callerRequestedUsage && isUsageOnlyChunk) {
+            continue;
+          }
+
+          if (!callerRequestedUsage && 'usage' in chunk && chunk.usage !== undefined) {
+            const { usage: _omittedUsage, ...chunkWithoutUsage } = chunk;
+            res.write(`data: ${JSON.stringify(chunkWithoutUsage)}\n\n`);
             continue;
           }
 
@@ -900,12 +1017,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         res.write(`event: error\ndata: ${JSON.stringify(errPayload)}\n\n`);
       }
     } finally {
-      await settleOnce({
-        usage: latestUsage,
-        streamAccumulated,
-        usedUserOpenAIKey: completionResult.requestMeta.usedUserOpenAIKey,
-        aborted: abortController.signal.aborted
-      });
+      if (hasValidStreamPayload || latestUsage !== undefined) {
+        await settleOnce({
+          usage: latestUsage,
+          streamAccumulated,
+          usedUserOpenAIKey: completionResult.requestMeta.usedUserOpenAIKey,
+          aborted: abortController.signal.aborted
+        });
+      }
 
       if (!res.writableEnded && !res.destroyed) {
         res.end();

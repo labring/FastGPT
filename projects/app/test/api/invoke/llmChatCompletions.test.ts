@@ -682,7 +682,8 @@ describe('POST /api/invoke/llm/chat/completions', () => {
         body: {
           model: ACTIVE_SYSTEM_LLM_ID,
           messages: [{ role: 'user', content: 'Greet plugin' }],
-          stream: true
+          stream: true,
+          stream_options: { include_usage: true }
         }
       });
 
@@ -846,6 +847,8 @@ describe('POST /api/invoke/llm/chat/completions', () => {
             modelId: ACTIVE_SYSTEM_LLM_ID,
             inputTokens: 100,
             outputTokens: 50,
+            cacheReadTokens: 0,
+            cacheCreationTokens: 0,
             totalPoints: 0.2
           }
         ]
@@ -894,6 +897,8 @@ describe('POST /api/invoke/llm/chat/completions', () => {
             modelId: ACTIVE_SYSTEM_LLM_ID,
             inputTokens: 100,
             outputTokens: 50,
+            cacheReadTokens: 0,
+            cacheCreationTokens: 0,
             totalPoints: 0
           }
         ]
@@ -974,6 +979,8 @@ describe('POST /api/invoke/llm/chat/completions', () => {
             modelId: ACTIVE_SYSTEM_LLM_ID,
             inputTokens: 40,
             outputTokens: 10,
+            cacheReadTokens: 0,
+            cacheCreationTokens: 0,
             totalPoints: 0.06
           }
         ]
@@ -987,6 +994,8 @@ describe('POST /api/invoke/llm/chat/completions', () => {
             modelId: ACTIVE_SYSTEM_LLM_ID,
             inputTokens: 120,
             outputTokens: 30,
+            cacheReadTokens: 0,
+            cacheCreationTokens: 0,
             totalPoints: 0.18
           }
         ]
@@ -1057,6 +1066,8 @@ describe('POST /api/invoke/llm/chat/completions', () => {
             modelId: ACTIVE_SYSTEM_LLM_ID,
             inputTokens: 25,
             outputTokens: 15,
+            cacheReadTokens: 0,
+            cacheCreationTokens: 0,
             totalPoints: 0.055
           }
         ]
@@ -1141,6 +1152,8 @@ describe('POST /api/invoke/llm/chat/completions', () => {
             modelId: ACTIVE_SYSTEM_LLM_ID,
             inputTokens: 32,
             outputTokens: 14,
+            cacheReadTokens: 0,
+            cacheCreationTokens: 0,
             totalPoints: 0.06
           }
         ]
@@ -1208,7 +1221,9 @@ describe('POST /api/invoke/llm/chat/completions', () => {
             amount: 0.1,
             modelId: ACTIVE_SYSTEM_LLM_ID,
             inputTokens: 50,
-            outputTokens: 25
+            outputTokens: 25,
+            cacheReadTokens: 0,
+            cacheCreationTokens: 0
           }
         ]
       });
@@ -1442,6 +1457,405 @@ describe('POST /api/invoke/llm/chat/completions', () => {
       });
       expect(mocks.checkTeamAIPoints).toHaveBeenCalledWith('team-1');
       expect(mocks.createChatCompletion).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Cache usage billing, SSE usage option, max_completion_tokens & upstream payload validation', () => {
+    it('computes and persists cacheReadTokens & cacheCreationTokens for both JSON and SSE responses', async () => {
+      const cachePricedModel = createLLMModelFixture({
+        modelId: ACTIVE_SYSTEM_LLM_ID,
+        model: 'gpt-4o-2024-11-20',
+        name: 'GPT-4o Cache Priced',
+        pricing: {
+          tiers: [
+            {
+              inputPrice: 1000,
+              outputPrice: 2000,
+              cacheReadPrice: 200,
+              cacheCreationPrice: 1500
+            }
+          ]
+        }
+      });
+      mocks.getTeamModelHandle.mockResolvedValue(
+        createModelHandle({
+          models: [cachePricedModel],
+          defaultModels: { llm: ACTIVE_SYSTEM_LLM_ID },
+          configuredDefaultModelIds: {},
+          revision: 1,
+          version: 'cache-price-test'
+        })
+      );
+
+      // 1) Non-streaming JSON with usageId:
+      // prompt_tokens = 1000, cache_read = 500, cache_write = 200 => normalInput = 300, output = 100
+      // points = (300*1000 + 500*200 + 200*1500 + 100*2000) / 1_000_000 = (300k + 100k + 300k + 200k) / 1M = 0.9
+      const usageId = '67f000000000000000000201';
+      const tokenWithUsageId = createInvokeToken({
+        teamId: 'team-1',
+        usageId,
+        toolId: 'systemTool-webSearch'
+      });
+
+      mocks.createChatCompletion.mockResolvedValueOnce({
+        response: {
+          id: 'chatcmpl-cache-json',
+          object: 'chat.completion',
+          created: 1700000201,
+          model: 'gpt-4o-2024-11-20',
+          choices: [
+            {
+              index: 0,
+              message: { role: 'assistant', content: 'Cached reply' },
+              finish_reason: 'stop'
+            }
+          ],
+          usage: {
+            prompt_tokens: 1000,
+            completion_tokens: 100,
+            total_tokens: 1100,
+            prompt_tokens_details: {
+              cached_tokens: 500,
+              cache_write_tokens: 200
+            }
+          }
+        },
+        isStreamResponse: false,
+        requestMeta: { usedUserOpenAIKey: false }
+      });
+
+      const jsonCtx = createMockHttpContext({
+        authorization: `Bearer ${tokenWithUsageId}`,
+        body: {
+          model: ACTIVE_SYSTEM_LLM_ID,
+          messages: [{ role: 'user', content: 'Cache JSON test' }]
+        }
+      });
+      await completionsRoute(jsonCtx.req as any, jsonCtx.res as any);
+
+      expect(jsonCtx.res.statusCode).toBe(200);
+      expect(mocks.pushChatItemUsage).toHaveBeenCalledWith({
+        teamId: 'team-1',
+        usageId,
+        nodeUsages: [
+          {
+            moduleName: 'Web Search Tool',
+            modelId: ACTIVE_SYSTEM_LLM_ID,
+            inputTokens: 1000,
+            outputTokens: 100,
+            cacheReadTokens: 500,
+            cacheCreationTokens: 200,
+            totalPoints: 0.9
+          }
+        ]
+      });
+
+      // 2) Streaming SSE without usageId (createUsage fallback):
+      vi.clearAllMocks();
+      mocks.getTeamModelHandle.mockResolvedValue(
+        createModelHandle({
+          models: [cachePricedModel],
+          defaultModels: { llm: ACTIVE_SYSTEM_LLM_ID },
+          configuredDefaultModelIds: {},
+          revision: 1,
+          version: 'cache-price-test'
+        })
+      );
+      mocks.getSystemToolDisplayInfo.mockResolvedValue({
+        id: 'systemTool-webSearch',
+        name: 'Web Search Tool'
+      });
+
+      const tokenNoUsageId = new InvokeProcessor({
+        appId: 'app-1',
+        chatId: 'chat-1',
+        uId: 'user-1',
+        teamId: 'team-1',
+        tmbId: 'member-1',
+        permissions: [PluginPermissionEnum['model:invoke']],
+        toolId: 'systemTool-webSearch'
+      }).generateToken();
+
+      async function* cacheStream() {
+        yield {
+          id: 'chatcmpl-cache-sse',
+          object: 'chat.completion.chunk',
+          created: 1700000202,
+          model: 'gpt-4o-2024-11-20',
+          choices: [
+            { index: 0, delta: { role: 'assistant', content: 'Hi' }, finish_reason: 'stop' }
+          ]
+        };
+        yield {
+          id: 'chatcmpl-cache-sse',
+          object: 'chat.completion.chunk',
+          created: 1700000202,
+          model: 'gpt-4o-2024-11-20',
+          choices: [],
+          usage: {
+            prompt_tokens: 1000,
+            completion_tokens: 100,
+            total_tokens: 1100,
+            prompt_tokens_details: {
+              cached_tokens: 500,
+              cache_write_tokens: 200
+            }
+          }
+        };
+      }
+
+      mocks.createChatCompletion.mockResolvedValueOnce({
+        response: Object.assign(cacheStream(), { controller: { abort: vi.fn() } }),
+        isStreamResponse: true,
+        requestMeta: { usedUserOpenAIKey: false }
+      });
+
+      const sseCtx = createMockHttpContext({
+        authorization: `Bearer ${tokenNoUsageId}`,
+        body: {
+          model: ACTIVE_SYSTEM_LLM_ID,
+          messages: [{ role: 'user', content: 'Cache SSE test' }],
+          stream: true
+        }
+      });
+      await completionsRoute(sseCtx.req as any, sseCtx.res as any);
+
+      expect(sseCtx.res.statusCode).toBe(200);
+      expect(mocks.createUsage).toHaveBeenCalledWith({
+        teamId: 'team-1',
+        tmbId: 'member-1',
+        appName: 'Web Search Tool',
+        totalPoints: 0.9,
+        source: UsageSourceEnum.plugin,
+        list: [
+          {
+            moduleName: 'Web Search Tool',
+            amount: 0.9,
+            modelId: ACTIVE_SYSTEM_LLM_ID,
+            inputTokens: 1000,
+            outputTokens: 100,
+            cacheReadTokens: 500,
+            cacheCreationTokens: 200
+          }
+        ]
+      });
+    });
+
+    it('emits SSE usage only when caller explicitly requests stream_options.include_usage=true, across normal and fallback streams', async () => {
+      const token = createInvokeToken({ teamId: 'team-1', usageId: '67f000000000000000000202' });
+
+      const makeStream = () => {
+        async function* gen() {
+          yield {
+            id: 'chatcmpl-opt-1',
+            object: 'chat.completion.chunk',
+            created: 1700000203,
+            model: 'gpt-4o-2024-11-20',
+            choices: [{ index: 0, delta: { content: 'Hi' }, finish_reason: 'stop' }]
+          };
+          yield {
+            id: 'chatcmpl-opt-1',
+            object: 'chat.completion.chunk',
+            created: 1700000203,
+            model: 'gpt-4o-2024-11-20',
+            choices: [],
+            usage: { prompt_tokens: 10, completion_tokens: 2, total_tokens: 12 }
+          };
+        }
+        return Object.assign(gen(), { controller: { abort: vi.fn() } });
+      };
+
+      // A) stream_options omitted -> upstream gets include_usage: true for billing, client does NOT get usage chunk
+      mocks.createChatCompletion.mockResolvedValueOnce({
+        response: makeStream(),
+        isStreamResponse: true,
+        requestMeta: { usedUserOpenAIKey: false }
+      });
+      const omittedCtx = createMockHttpContext({
+        authorization: `Bearer ${token}`,
+        body: {
+          model: ACTIVE_SYSTEM_LLM_ID,
+          messages: [{ role: 'user', content: 'Hi' }],
+          stream: true
+        }
+      });
+      await completionsRoute(omittedCtx.req as any, omittedCtx.res as any);
+      expect(mocks.createChatCompletion.mock.calls[0][0].body.stream_options).toEqual({
+        include_usage: true
+      });
+      expect(omittedCtx.writtenChunks.join('')).not.toContain('"usage"');
+      expect(mocks.pushChatItemUsage).toHaveBeenCalledTimes(1);
+
+      // B) fallback JSON-to-SSE with stream_options.include_usage = false -> no usage in emitted chunk, still billed
+      mocks.createChatCompletion.mockResolvedValueOnce({
+        response: {
+          id: 'chatcmpl-fb-1',
+          object: 'chat.completion',
+          created: 1700000204,
+          model: 'gpt-4o-2024-11-20',
+          choices: [
+            {
+              index: 0,
+              message: { role: 'assistant', content: 'Fallback' },
+              finish_reason: 'stop'
+            }
+          ],
+          usage: { prompt_tokens: 12, completion_tokens: 3, total_tokens: 15 }
+        },
+        isStreamResponse: false,
+        requestMeta: { usedUserOpenAIKey: false }
+      });
+      const fallbackFalseCtx = createMockHttpContext({
+        authorization: `Bearer ${token}`,
+        body: {
+          model: ACTIVE_SYSTEM_LLM_ID,
+          messages: [{ role: 'user', content: 'Hi' }],
+          stream: true,
+          stream_options: { include_usage: false }
+        }
+      });
+      await completionsRoute(fallbackFalseCtx.req as any, fallbackFalseCtx.res as any);
+      expect(fallbackFalseCtx.writtenChunks.join('')).not.toContain('"usage"');
+      expect(mocks.pushChatItemUsage).toHaveBeenCalledTimes(2);
+
+      // C) fallback JSON-to-SSE with stream_options.include_usage = true -> usage IS included in emitted chunk
+      mocks.createChatCompletion.mockResolvedValueOnce({
+        response: {
+          id: 'chatcmpl-fb-2',
+          object: 'chat.completion',
+          created: 1700000205,
+          model: 'gpt-4o-2024-11-20',
+          choices: [
+            {
+              index: 0,
+              message: { role: 'assistant', content: 'Fallback with usage' },
+              finish_reason: 'stop'
+            }
+          ],
+          usage: { prompt_tokens: 12, completion_tokens: 3, total_tokens: 15 }
+        },
+        isStreamResponse: false,
+        requestMeta: { usedUserOpenAIKey: false }
+      });
+      const fallbackTrueCtx = createMockHttpContext({
+        authorization: `Bearer ${token}`,
+        body: {
+          model: ACTIVE_SYSTEM_LLM_ID,
+          messages: [{ role: 'user', content: 'Hi' }],
+          stream: true,
+          stream_options: { include_usage: true }
+        }
+      });
+      await completionsRoute(fallbackTrueCtx.req as any, fallbackTrueCtx.res as any);
+      expect(fallbackTrueCtx.writtenChunks.join('')).toContain('"prompt_tokens":12');
+    });
+
+    it('preserves max_completion_tokens when max_tokens is omitted and model has no fieldMap override', async () => {
+      const token = createInvokeToken({ teamId: 'team-1' });
+      mocks.createChatCompletion.mockResolvedValueOnce({
+        response: {
+          id: 'chatcmpl-o1',
+          object: 'chat.completion',
+          created: 1700000206,
+          model: 'gpt-4o-2024-11-20',
+          choices: [
+            {
+              index: 0,
+              message: { role: 'assistant', content: 'ok' },
+              finish_reason: 'stop'
+            }
+          ],
+          usage: { prompt_tokens: 5, completion_tokens: 2, total_tokens: 7 }
+        },
+        isStreamResponse: false,
+        requestMeta: { usedUserOpenAIKey: false }
+      });
+
+      const ctx = createMockHttpContext({
+        authorization: `Bearer ${token}`,
+        body: {
+          model: ACTIVE_SYSTEM_LLM_ID,
+          messages: [{ role: 'user', content: 'Test budget field' }],
+          max_completion_tokens: 999999
+        }
+      });
+      await completionsRoute(ctx.req as any, ctx.res as any);
+
+      expect(ctx.res.statusCode).toBe(200);
+      const sentBody = mocks.createChatCompletion.mock.calls[0][0].body as Record<string, unknown>;
+      // Capped to model maxResponse (4096) and kept under max_completion_tokens
+      expect(sentBody.max_completion_tokens).toBe(4096);
+      expect(sentBody).not.toHaveProperty('max_tokens');
+    });
+
+    it('rejects HTTP 200 upstream error payloads and invalid SSE error frames without billing', async () => {
+      const token = createInvokeToken({ teamId: 'team-1', usageId: '67f000000000000000000203' });
+
+      // A) Non-streaming HTTP 200 with { error: { message } }
+      mocks.createChatCompletion.mockResolvedValueOnce({
+        response: {
+          error: { message: 'Upstream proxy quota exceeded', code: 'quota' }
+        } as any,
+        isStreamResponse: false,
+        requestMeta: { usedUserOpenAIKey: false }
+      });
+      const jsonErrCtx = createMockHttpContext({
+        authorization: `Bearer ${token}`,
+        body: {
+          model: ACTIVE_SYSTEM_LLM_ID,
+          messages: [{ role: 'user', content: 'Fail 200 JSON' }]
+        }
+      });
+      await completionsRoute(jsonErrCtx.req as any, jsonErrCtx.res as any);
+      expect(jsonErrCtx.res.statusCode).toBe(502);
+      expect(jsonErrCtx.getJsonPayload()).toEqual({
+        error: {
+          message: 'Upstream proxy quota exceeded',
+          type: 'upstream_error',
+          code: 'invalid_upstream_response'
+        }
+      });
+      expect(mocks.pushChatItemUsage).not.toHaveBeenCalled();
+
+      // B) Streaming request where upstream ignores stream=true and returns HTTP 200 { error }
+      mocks.createChatCompletion.mockResolvedValueOnce({
+        response: { error: { message: 'Custom gateway error' } } as any,
+        isStreamResponse: false,
+        requestMeta: { usedUserOpenAIKey: false }
+      });
+      const fallbackErrCtx = createMockHttpContext({
+        authorization: `Bearer ${token}`,
+        body: {
+          model: ACTIVE_SYSTEM_LLM_ID,
+          messages: [{ role: 'user', content: 'Fail fallback SSE' }],
+          stream: true
+        }
+      });
+      await completionsRoute(fallbackErrCtx.req as any, fallbackErrCtx.res as any);
+      expect(fallbackErrCtx.res.statusCode).toBe(502);
+      expect(mocks.pushChatItemUsage).not.toHaveBeenCalled();
+
+      // C) Streaming SSE emitting a protocol error frame before any valid chunk -> emits event: error, no billing
+      async function* errorOnlyStream() {
+        yield { error: { message: 'Stream gateway failure' } } as any;
+      }
+      mocks.createChatCompletion.mockResolvedValueOnce({
+        response: Object.assign(errorOnlyStream(), { controller: { abort: vi.fn() } }),
+        isStreamResponse: true,
+        requestMeta: { usedUserOpenAIKey: false }
+      });
+      const sseErrCtx = createMockHttpContext({
+        authorization: `Bearer ${token}`,
+        body: {
+          model: ACTIVE_SYSTEM_LLM_ID,
+          messages: [{ role: 'user', content: 'Fail SSE frame' }],
+          stream: true
+        }
+      });
+      await completionsRoute(sseErrCtx.req as any, sseErrCtx.res as any);
+      expect(sseErrCtx.writtenChunks.join('')).toContain('event: error');
+      expect(sseErrCtx.writtenChunks.join('')).toContain('Stream gateway failure');
+      expect(mocks.pushChatItemUsage).not.toHaveBeenCalled();
     });
   });
 });

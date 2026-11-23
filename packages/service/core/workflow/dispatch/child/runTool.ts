@@ -24,7 +24,6 @@ import { pushTrack } from '../../../../common/middle/tracks/utils';
 import { getNodeErrResponse } from '../utils';
 import { getHTTPToolList, runHTTPTool } from '../../../app/http';
 import { getWorkflowContext, getWorkflowResourceContext } from '../context';
-import { PluginPermissionEnum } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { getAppVersionById } from '../../../app/version/controller';
 import {
   HttpToolSetRuntimeConfigSchema,
@@ -40,7 +39,10 @@ import {
 import { pluginClient } from '../../../../thirdProvider/fastgptPlugin';
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
 import { computedSystemToolUsage } from '../../../app/tool/runtime/utils';
-import { InvokeProcessor } from '../../../../support/invoke/invoke';
+import {
+  InvokeProcessor,
+  resolveAuthorizedInvokeModelIds
+} from '../../../../support/invoke/invoke';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { getWorkflowAppId } from '../utils/source';
 import {
@@ -279,14 +281,13 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       );
       const resourceContext = getWorkflowResourceContext();
       const teamId = String(runningUserInfo.teamId);
-      const authorizedModelIds =
-        tool.permissions?.includes(PluginPermissionEnum['model:invoke']) &&
-        resourceContext &&
-        (!resourceContext.teamId || resourceContext.teamId === teamId)
-          ? Array.from(resourceContext.resourceMap.values())
-              .filter((item) => item.type === 'model')
-              .map((item) => item.id)
-          : [];
+      const authorizedModelIds = resolveAuthorizedInvokeModelIds({
+        permissions: tool.permissions,
+        resourceContext,
+        teamId,
+        inputSchema: toolDetail.inputSchema,
+        toolInput
+      });
       const invokeToken = appId
         ? new InvokeProcessor({
             appId,

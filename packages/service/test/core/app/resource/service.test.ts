@@ -816,4 +816,52 @@ describe('prepareAppWorkflowResources', () => {
       getSystemToolDetailSpy.mockRestore();
     }
   });
+
+  it('rejects extraction when plugin tool detail lookup fails so publish keeps the previous valid version', async () => {
+    const getSystemToolDetailSpy = vi
+      .spyOn(SystemToolRepo.getInstance(), 'getSystemToolDetail')
+      .mockRejectedValue(new Error('Plugin service temporarily unavailable'));
+
+    try {
+      const agentNodes = [
+        {
+          nodeId: 'agent-fail',
+          name: 'Agent',
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+              value: [
+                {
+                  id: 'systemTool-modelInvokeTest',
+                  source: 'system',
+                  config: {
+                    summaryModel: '65f000000000000000000888'
+                  }
+                }
+              ]
+            }
+          ],
+          outputs: []
+        }
+      ];
+
+      await expect(
+        extractSelectedToolModelResources({
+          nodes: agentNodes as any,
+          teamId
+        })
+      ).rejects.toThrow('Plugin service temporarily unavailable');
+
+      await expect(
+        extractAppResourcesWithToolModels({
+          nodes: agentNodes as any,
+          teamId
+        })
+      ).rejects.toThrow('Plugin service temporarily unavailable');
+    } finally {
+      getSystemToolDetailSpy.mockRestore();
+    }
+  });
 });

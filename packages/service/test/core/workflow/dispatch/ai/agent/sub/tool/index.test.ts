@@ -846,4 +846,87 @@ describe('dispatchTool runtime toolset auth', () => {
     const tokenPayload = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
     expect(tokenPayload.usageId).toBe('usage-dispatch-1');
   });
+
+  it('narrows authorizedModelIds per Agent tool so each tool only inherits its own bound model', async () => {
+    const { createTestWorkflowFileContext, runWithTestWorkflowContext } =
+      await import('@fastgpt/service/test/core/workflow/dispatch/context/fixtures');
+    const { createWorkflowResourceContext } =
+      await import('@fastgpt/service/core/workflow/dispatch/context/resource');
+    const { dispatchTool: dispatchToolWithoutContext } =
+      await import('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool');
+
+    const modelA = '65f000000000000000000201';
+    const modelB = '65f000000000000000000202';
+    const resourceContext = createWorkflowResourceContext({
+      teamId: 'attacker-team',
+      resources: [
+        { type: 'model', id: modelA },
+        { type: 'model', id: modelB }
+      ]
+    });
+
+    const toolModelSchema = {
+      type: 'object',
+      properties: {
+        model: {
+          type: 'string',
+          format: 'modelId'
+        }
+      }
+    };
+
+    getSystemToolRuntimeMock
+      .mockResolvedValueOnce({
+        id: 'toolA',
+        version: '1.0.0',
+        currentCost: 0,
+        systemKeyCost: 0,
+        secretsVal: {},
+        permissions: [PluginPermissionEnum['model:invoke']]
+      })
+      .mockResolvedValueOnce({
+        id: 'toolB',
+        version: '1.0.0',
+        currentCost: 0,
+        systemKeyCost: 0,
+        secretsVal: {},
+        permissions: [PluginPermissionEnum['model:invoke']]
+      });
+    getSystemToolDetailMock
+      .mockResolvedValueOnce({ inputSchema: toolModelSchema })
+      .mockResolvedValueOnce({ inputSchema: toolModelSchema });
+
+    const propsA = createDispatchToolProps({ systemTool: { toolId: 'systemTool-toolA' } });
+    propsA.params = { model: modelA };
+    propsA.runningAppInfo = {
+      ...propsA.runningAppInfo,
+      sourceType: 'app',
+      sourceId: 'app-agent-isolated'
+    };
+
+    const propsB = createDispatchToolProps({ systemTool: { toolId: 'systemTool-toolB' } });
+    propsB.params = { model: modelB };
+    propsB.runningAppInfo = {
+      ...propsB.runningAppInfo,
+      sourceType: 'app',
+      sourceId: 'app-agent-isolated'
+    };
+
+    const fileContext = await createTestWorkflowFileContext();
+    await runWithTestWorkflowContext(
+      { checkIsStopping: () => false, fileContext, resourceContext },
+      async () => {
+        await dispatchToolWithoutContext(propsA);
+        await dispatchToolWithoutContext(propsB);
+      }
+    );
+
+    const tokenA = runToolStreamMock.mock.calls[0][0].systemVar.invokeToken as string;
+    const tokenB = runToolStreamMock.mock.calls[1][0].systemVar.invokeToken as string;
+    const payloadA = JSON.parse(Buffer.from(tokenA.split('.')[1], 'base64url').toString('utf8'));
+    const payloadB = JSON.parse(Buffer.from(tokenB.split('.')[1], 'base64url').toString('utf8'));
+
+    expect(payloadA.authorizedModelIds).toEqual([modelA]);
+    expect(payloadB.authorizedModelIds).toEqual([modelB]);
+  });
 });

@@ -67,11 +67,14 @@ const isPlainObjectRecord = (value: unknown): value is Record<string, unknown> =
 export const extractSelectedToolModelResources = async ({
   nodes = [],
   teamId,
-  modelHandle
+  modelHandle,
+  ignoreToolDetailError = false
 }: {
   nodes?: Array<StoreNodeItemType | RuntimeNodeItemType>;
   teamId?: string;
   modelHandle?: ModelHandle;
+  /** 仅用于历史无 resources 字段草稿的兼容回填；发布/创建等强校验流程必须保持 false，避免读取失败时静默产出残缺快照。 */
+  ignoreToolDetailError?: boolean;
 }): Promise<AppResourcesType> => {
   const candidates: Array<{
     toolId: string;
@@ -142,10 +145,17 @@ export const extractSelectedToolModelResources = async ({
           detailSource = idSource === AppToolSourceEnum.commercial ? idSource : 'system';
         }
 
+        const version =
+          typeof tool.version === 'string' && tool.version
+            ? tool.version
+            : typeof tool.versionId === 'string' && tool.versionId
+              ? tool.versionId
+              : undefined;
+
         candidates.push({
           toolId: rawToolId,
           detailSource,
-          version: typeof tool.version === 'string' && tool.version ? tool.version : undefined,
+          version,
           config: tool.config,
           inputs: tool.inputs
         });
@@ -164,14 +174,13 @@ export const extractSelectedToolModelResources = async ({
     const cacheKey = `${detailSource}:${toolId}:${version ?? ''}`;
     let pending = detailPromiseCache.get(cacheKey);
     if (!pending) {
-      pending = systemToolRepo
-        .getSystemToolDetail({
-          pluginId: toolId,
-          source: detailSource,
-          version,
-          fallbackLatestVersion: true
-        })
-        .catch(() => null);
+      const request = systemToolRepo.getSystemToolDetail({
+        pluginId: toolId,
+        source: detailSource,
+        version,
+        fallbackLatestVersion: true
+      });
+      pending = ignoreToolDetailError ? request.catch(() => null) : request;
       detailPromiseCache.set(cacheKey, pending);
     }
     return pending;
@@ -317,7 +326,8 @@ export const getAppDraftResourceBaseline = async ({
   const selectedToolModels = await extractSelectedToolModelResources({
     nodes: decodedNodes,
     teamId,
-    modelHandle
+    modelHandle,
+    ignoreToolDetailError: true
   });
   const resources =
     selectedToolModels.length > 0
