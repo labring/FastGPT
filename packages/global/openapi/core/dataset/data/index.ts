@@ -9,6 +9,7 @@ import {
   InsertDataBodySchema,
   InsertImagesBodySchema,
   PushDataBodySchema,
+  PushDataResponseSchema,
   GetDatasetDataListBodySchema,
   GetDatasetDataListResponseSchema,
   UpdateDatasetDataResponseSchema,
@@ -27,6 +28,10 @@ export const DatasetDataPath: OpenAPIPath = {
       summary: '获取数据列表',
       description: '分页查询集合内的数据列表，支持关键词搜索，包含图片预览 URL',
       tags: [DevApiTagsMap.datasetData, SystemOpenApiTagMap.datasetData],
+      'x-fastgpt-sdk': {
+        resource: 'datasets.data',
+        method: 'list'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -51,6 +56,10 @@ export const DatasetDataPath: OpenAPIPath = {
       summary: '获取数据详情',
       description: '获取单条数据集数据的详细信息，包括向量索引',
       tags: [DevApiTagsMap.datasetData, SystemOpenApiTagMap.datasetData],
+      'x-fastgpt-sdk': {
+        resource: 'datasets.data',
+        method: 'detail'
+      },
       requestParams: {
         query: GetDatasetDataDetailQuerySchema
       },
@@ -72,6 +81,10 @@ export const DatasetDataPath: OpenAPIPath = {
       summary: '更新数据',
       description: '更新数据集数据的 q、a 和向量索引，触发重新向量化',
       tags: [DevApiTagsMap.datasetData, SystemOpenApiTagMap.datasetData],
+      'x-fastgpt-sdk': {
+        resource: 'datasets.data',
+        method: 'update'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -172,6 +185,10 @@ export const DatasetDataPath: OpenAPIPath = {
       summary: '删除数据',
       description: '删除指定数据集数据，需要写权限',
       tags: [DevApiTagsMap.datasetData, SystemOpenApiTagMap.datasetData],
+      'x-fastgpt-sdk': {
+        resource: 'datasets.data',
+        method: 'delete'
+      },
       requestParams: {
         query: DeleteDatasetDataQuerySchema
       },
@@ -250,6 +267,10 @@ export const DatasetDataPath: OpenAPIPath = {
       summary: '推送数据到训练队列',
       description: '批量推送数据到训练队列，最多 200 条',
       tags: [DevApiTagsMap.datasetData, SystemOpenApiTagMap.datasetData],
+      'x-fastgpt-sdk': {
+        resource: 'datasets.data',
+        method: 'pushBatch'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -259,7 +280,12 @@ export const DatasetDataPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回插入条数'
+          description: '成功返回插入条数',
+          content: {
+            'application/json': {
+              schema: PushDataResponseSchema
+            }
+          }
         }
       }
     }

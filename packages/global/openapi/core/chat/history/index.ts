@@ -19,6 +19,10 @@ export const ChatHistoryPath: OpenAPIPath = {
       summary: '获取会话列表',
       description: '分页获取会话列表',
       tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
+      'x-fastgpt-sdk': {
+        resource: 'chat.histories',
+        method: 'list'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -44,6 +48,10 @@ export const ChatHistoryPath: OpenAPIPath = {
       description:
         '按 chatId 批量读取 Redis lease 运行状态，并返回 hasBeenRead、updateTime，用于侧栏轻量轮询同步。读取异常时返回错误，调用方保留上次状态并稍后重试。',
       tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
+      'x-fastgpt-sdk': {
+        resource: 'chat.histories',
+        method: 'getStatus'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -69,6 +77,10 @@ export const ChatHistoryPath: OpenAPIPath = {
       description:
         '用户在本页看完回复后调用，同步 Mongo hasBeenRead。App 来源要求应用读取权限，其他来源保留资源写权限；同时校验对应来源的会话访问范围。',
       tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
+      'x-fastgpt-sdk': {
+        resource: 'chat.histories',
+        method: 'markRead'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -88,6 +100,10 @@ export const ChatHistoryPath: OpenAPIPath = {
       summary: '修改会话',
       description: '修改会话的标题、自定义标题或置顶状态',
       tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
+      'x-fastgpt-sdk': {
+        resource: 'chat.histories',
+        method: 'update'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -107,6 +123,10 @@ export const ChatHistoryPath: OpenAPIPath = {
       summary: '删除单个会话',
       description: '软删除指定的单个会话，不会物理删除',
       tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
+      'x-fastgpt-sdk': {
+        resource: 'chat.histories',
+        method: 'delete'
+      },
       parameters: createChatTargetQueryParameters(DelChatHistoryRawSchema),
       responses: {
         200: {
@@ -120,6 +140,10 @@ export const ChatHistoryPath: OpenAPIPath = {
       summary: '清空会话',
       description: '清空所有会话（软删除）',
       tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
+      'x-fastgpt-sdk': {
+        resource: 'chat.histories',
+        method: 'clear'
+      },
       parameters: createChatTargetQueryParameters(ClearChatHistoriesRawSchema),
       responses: {
         200: {
@@ -133,6 +157,10 @@ export const ChatHistoryPath: OpenAPIPath = {
       summary: '批量删除会话',
       description: '物理删除选中的会话及其消息、响应和会话文件，需对应资源的日志管理权限。',
       tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
+      'x-fastgpt-sdk': {
+        resource: 'chat.histories',
+        method: 'batchDelete'
+      },
       requestBody: {
         content: {
           'application/json': {

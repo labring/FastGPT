@@ -37,7 +37,7 @@ jobs:
     steps:
       - name: Resolve preview build and publish permission
         id: prepare
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const emptyMatrix = JSON.stringify({
@@ -46,7 +46,11 @@ jobs:
             const artifactConfigs = [
               { image: 'fastgpt', artifact_name: 'preview-fastgpt-image', image_name: 'fastgpt' },
               { image: 'code-sandbox', artifact_name: 'preview-code-sandbox-image', image_name: 'fastgpt-code-sandbox' },
-              { image: 'mcp_server', artifact_name: 'preview-mcp_server-image', image_name: 'fastgpt-mcp-server' }
+              { image: 'mcp_server', artifact_name: 'preview-mcp_server-image', image_name: 'fastgpt-mcp-server' },
+              { image: 'agent-sandbox', artifact_name: 'preview-agent-sandbox-image', image_name: 'fastgpt-agent-sandbox' },
+              { image: 'agent-sandbox-root', artifact_name: 'preview-agent-sandbox-root-image', image_name: 'fastgpt-agent-sandbox-root' },
+              { image: 'volume-manager', artifact_name: 'preview-volume-manager-image', image_name: 'fastgpt-agent-volume-manager' },
+              { image: 'agent-sandbox-proxy', artifact_name: 'preview-agent-sandbox-proxy-image', image_name: 'fastgpt-agent-sandbox-proxy' }
             ];
 
             const hasPublishPermission = async (username) => {
@@ -238,11 +242,11 @@ jobs:
     strategy:
       matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
       fail-fast: false
-      max-parallel: 3
+      max-parallel: 6
 
     steps:
       - name: Download build artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ${{ matrix.artifact_name }}
           path: /tmp
@@ -250,21 +254,30 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Load Docker image
-        run: docker load --input /tmp/${{ matrix.image_name }}-image.tar
+        env:
+          IMAGE_NAME: ${{ matrix.image_name }}
+        run: |
+          set -euo pipefail
+          docker load --input "/tmp/${IMAGE_NAME}-image.tar"
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Tag and push Docker image
+        env:
+          IMAGE_NAME: ${{ matrix.image_name }}
+          PREVIEW_IMAGE: ${{ matrix.image }}
+          SHA: ${{ needs.prepare.outputs.sha }}
+          REPO_OWNER: ${{ github.repository_owner }}
         run: |
-          SHA="${{ needs.prepare.outputs.sha }}"
-          docker tag ${{ matrix.image_name }}-pr:${SHA} \
-            ghcr.io/${{ github.repository_owner }}/fastgpt-pr:${{ matrix.image }}_${SHA}
-          docker push ghcr.io/${{ github.repository_owner }}/fastgpt-pr:${{ matrix.image }}_${SHA}
+          set -euo pipefail
+          docker tag "${IMAGE_NAME}-pr:${SHA}" \
+            "ghcr.io/${REPO_OWNER}/fastgpt-pr:${PREVIEW_IMAGE}_${SHA}"
+          docker push "ghcr.io/${REPO_OWNER}/fastgpt-pr:${PREVIEW_IMAGE}_${SHA}"
 
       - name: Format preview timestamp
         id: preview_time
@@ -273,12 +286,23 @@ jobs:
 
       - name: Add PR comment on success
         if: success() && needs.prepare.outputs.number != ''
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
+        env:
+          PR_NUMBER: ${{ needs.prepare.outputs.number }}
+          PREVIEW_IMAGE: ${{ matrix.image }}
+          PREVIEW_MANUAL: ${{ needs.prepare.outputs.manual }}
+          PREVIEW_SHA: ${{ needs.prepare.outputs.sha }}
+          PREVIEW_TIME: ${{ steps.preview_time.outputs.value }}
+          REPO_OWNER: ${{ github.repository_owner }}
         with:
           script: |
-            const prNumber = parseInt('${{ needs.prepare.outputs.number }}');
-            const marker = '<!-- fastgpt-preview-${{ matrix.image }} -->';
-            const mode = '${{ needs.prepare.outputs.manual }}' === 'true' ? 'Manual publish successful' : 'Build and publish successful';
+            const prNumber = Number.parseInt(process.env.PR_NUMBER, 10);
+            const previewImage = process.env.PREVIEW_IMAGE;
+            const sha = process.env.PREVIEW_SHA;
+            const repoOwner = process.env.REPO_OWNER;
+            const previewTime = process.env.PREVIEW_TIME;
+            const marker = `<!-- fastgpt-preview-${previewImage} -->`;
+            const mode = process.env.PREVIEW_MANUAL === 'true' ? 'Manual publish successful' : 'Build and publish successful';
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
@@ -287,13 +311,13 @@ jobs:
             });
             const existingComment = comments.find((comment) => comment.body.includes(marker));
             const commentBody = `${marker}
-            ✅ **${mode}** - Preview ${{ matrix.image }} Image:
+            ✅ **${mode}** - Preview ${previewImage} Image:
 
             \`\`\`
-            ghcr.io/${{ github.repository_owner }}/fastgpt-pr:${{ matrix.image }}_${{ needs.prepare.outputs.sha }}
+            ghcr.io/${repoOwner}/fastgpt-pr:${previewImage}_${sha}
             \`\`\`
 
-            🕒 Time: ${{ steps.preview_time.outputs.value }}`;
+            🕒 Time: ${previewTime}`;
 
             if (existingComment) {
               await github.rest.issues.updateComment({
