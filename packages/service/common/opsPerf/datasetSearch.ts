@@ -20,6 +20,7 @@ import {
   patchPerfContext,
   recordPerfPoint,
   recordPerfStageSpan,
+  tagPerfError,
   trackPerfStage,
   withPerfContext
 } from './context';
@@ -275,6 +276,11 @@ export const trackVectorRecallLease = async <T>({
             return res;
           } catch (err) {
             recallMarkedFailed = true;
+            if (perfActive && isRedisLeaseError(err)) {
+              // 按异常身份绑定细粒度失租错误码，避免 trackPerfStage 覆写为通用 VECTOR_RECALL_ERROR，
+              // 且不中途改写请求级 errorCode，保证并行分支各自报错互不干扰。
+              tagPerfError('dataset.search', err, resolveVectorLeaseErrorCode(err));
+            }
             throw err;
           }
         });
@@ -290,7 +296,8 @@ export const trackVectorRecallLease = async <T>({
             stage: 'vectorLeaseWait',
             startedAtPerf: leaseEnqueueAt,
             failed: true,
-            error
+            error,
+            errorCode
           });
         } else if (!recallMarkedFailed && recallStartedAt > 0) {
           recordPerfStageSpan({
@@ -298,14 +305,12 @@ export const trackVectorRecallLease = async <T>({
             stage: 'vectorRecall',
             startedAtPerf: recallStartedAt,
             failed: true,
-            error
+            error,
+            errorCode
           });
+        } else {
+          tagPerfError('dataset.search', error, errorCode);
         }
-        patchPerfContext({
-          domain: 'dataset.search',
-          status: 'error',
-          errorCode
-        });
       }
       return { success: false, error };
     }

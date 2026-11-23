@@ -26,6 +26,7 @@ import {
   resetOpsPerfBufferForTest
 } from '@fastgpt/service/common/opsPerf/collector';
 import { withPerfContext } from '@fastgpt/service/common/opsPerf/context';
+import { trackDatasetSearchStage } from '@fastgpt/service/common/opsPerf/datasetSearch';
 
 const { withConcurrency } = vi.hoisted(() => ({ withConcurrency: vi.fn() }));
 vi.mock('@fastgpt/dal/redis/caches/lease', async (importOriginal) => {
@@ -316,6 +317,68 @@ describe('VectorDB Controller', () => {
       expect(ev?.stages.vectorRecall?.callCount).toBe(1);
       expect(ev?.stages.vectorRecall?.errorCount).toBe(1);
       expect(ev?.stages.vectorRecall?.ms).toBeGreaterThanOrEqual(20);
+    });
+
+    it('lets the actually thrown parallel branch determine final errorCode when fullText and vector lease both fail', async () => {
+      const baseDims = {
+        searchMode: 'mixedRecall' as const,
+        indexScale: 's_10k' as const,
+        usingReRank: false,
+        usingExtension: false,
+        vectorEngine: 'pg' as const
+      };
+
+      // Case A: vector lease acquire fails BEFORE withPerfContext settles, while fullTextRecall's error is what
+      // actually rejects Promise.all -> BOTH stages record errorCount=1 and FULLTEXT_RECALL_ERROR wins
+      resetOpsPerfBufferForTest();
+      const acquireErrA = new RedisLeaseAcquireError({
+        key: 'vector:recall',
+        label: 'recall',
+        cause: new Error('Redis down')
+      });
+      const fullTextErrA = new Error('Mongo fulltext failure');
+      withConcurrency.mockRejectedValueOnce(acquireErrA);
+      await expect(
+        withPerfContext({ domain: 'dataset.search', force: true, dims: baseDims }, async () => {
+          const vectorBranch = recallFromVectorStore(props);
+          void vectorBranch.catch(() => {});
+          const fullTextBranch = trackDatasetSearchStage('fullTextRecall', async () => {
+            // Let vectorBranch enter its lease catch first, then reject with fullTextErrA as the Promise.all winner
+            await Promise.resolve();
+            throw fullTextErrA;
+          });
+          await Promise.all([fullTextBranch, vectorBranch.catch(() => {})]);
+        })
+      ).rejects.toBe(fullTextErrA);
+      let ev = getOpsPerfBufferSnapshotForTest().events[0];
+      expect(ev?.errorCode).toBe('FULLTEXT_RECALL_ERROR');
+      expect(ev?.stages.vectorLeaseWait?.errorCount).toBe(1);
+      expect(ev?.stages.fullTextRecall?.errorCount).toBe(1);
+
+      // Case B: lease acquire fails before fullTextRecall in the same turn -> VECTOR_LEASE_ACQUIRE_ERROR wins,
+      // even when both reject synchronously in Promise.all
+      resetOpsPerfBufferForTest();
+      const acquireErrB = new RedisLeaseAcquireError({
+        key: 'vector:recall',
+        label: 'recall',
+        cause: new Error('Redis down')
+      });
+      const fullTextErrB = new Error('Mongo fulltext failure');
+      withConcurrency.mockRejectedValueOnce(acquireErrB);
+      await expect(
+        withPerfContext({ domain: 'dataset.search', force: true, dims: baseDims }, async () => {
+          const vectorBranch = recallFromVectorStore(props);
+          const fullTextBranch = trackDatasetSearchStage('fullTextRecall', async () => {
+            await vectorBranch.catch(() => {});
+            throw fullTextErrB;
+          });
+          void fullTextBranch.catch(() => {});
+          await Promise.all([vectorBranch, fullTextBranch]);
+        })
+      ).rejects.toBe(acquireErrB);
+      ev = getOpsPerfBufferSnapshotForTest().events[0];
+      expect(ev?.errorCode).toBe('VECTOR_LEASE_ACQUIRE_ERROR');
+      expect(ev?.stages.vectorLeaseWait?.errorCount).toBe(1);
     });
 
     it('reacquires shared capacity for every database retry', async () => {

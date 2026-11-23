@@ -42,9 +42,11 @@ export type PerfContextState<D extends OpsPerfDomain = OpsPerfDomain> = {
   createTime: Date;
   status: OpsPerfEventStatus;
   errorCode?: OpsPerfErrorCode;
-  errorCodeSeverity: OpsPerfEventStatus;
-  /** 按异常对象身份记录首次向上抛出的阶段，既支持并行分支各自报错不互覆，也防静默降级/已恢复重试串扰。 */
-  thrownStageByError: Map<unknown, string>;
+  /**
+   * 按异常对象身份记录首次归因的白名单错误码（支持显式租约码或阶段默认码）。
+   * 并行分支各自失败互不覆盖，请求出口按实际捕获的终止异常精确读取，不再由单路中途改写请求级 errorCode。
+   */
+  thrownErrorCodeByError: Map<unknown, OpsPerfErrorCode>;
   teamId?: string;
   resourceIds: string[];
   dims: Record<string, unknown>;
@@ -106,11 +108,26 @@ export const hasPerfContext = (domain: OpsPerfDomain): boolean => Boolean(getDom
 export const isOpsPerfActive = (domain?: OpsPerfDomain): boolean =>
   isProVersion() || (domain ? hasPerfContext(domain) : false);
 
-/** 按异常身份记录向上抛出的阶段（嵌套阶段下保留最内层首次抛出阶段，并行分支各自独立记录不互覆）。 */
-const recordThrownStage = (state: PerfContextState, stage: string, error: unknown) => {
-  if (state.thrownStageByError.has(error)) return;
-  if (state.thrownStageByError.size >= MAX_THROWN_ERRORS_PER_CONTEXT) return;
-  state.thrownStageByError.set(error, stage);
+/** 按异常身份记录白名单错误码（首次写入优先，确保最内层或显式细粒度错误码不被外层泛化覆盖）。 */
+const recordThrownErrorCode = (
+  state: PerfContextState,
+  error: unknown,
+  errorCode?: OpsPerfErrorCode
+) => {
+  if (!errorCode || state.thrownErrorCodeByError.has(error)) return;
+  if (state.thrownErrorCodeByError.size >= MAX_THROWN_ERRORS_PER_CONTEXT) return;
+  state.thrownErrorCodeByError.set(error, errorCode);
+};
+
+/** 为特定异常对象显式绑定细粒度白名单错误码（由请求出口按实际终止异常选用，不污染并行分支）。 */
+export const tagPerfError = (
+  domain: OpsPerfDomain,
+  error: unknown,
+  errorCode: OpsPerfErrorCode
+) => {
+  const state = getDomainState(domain);
+  if (!state) return;
+  recordThrownErrorCode(state, error, errorCode);
 };
 
 /** 将一次阶段调用区间写入累计器；超过上限时先压缩重叠区间防止极端循环膨胀内存。 */
@@ -214,8 +231,7 @@ export const withPerfContext = async <D extends OpsPerfDomain, T>(
     startedAtPerf: performance.now(),
     createTime: new Date(),
     status: 'ok',
-    errorCodeSeverity: 'ok',
-    thrownStageByError: new Map(),
+    thrownErrorCodeByError: new Map(),
     teamId: options.teamId,
     resourceIds: [...(options.resourceIds ?? [])],
     dims: { ...(options.dims as Record<string, unknown>) },
@@ -236,15 +252,9 @@ export const withPerfContext = async <D extends OpsPerfDomain, T>(
       return { ok: true, value: await storage.run(nextMap, fn) };
     } catch (error) {
       state.status = 'error';
-      // 严格脱敏且按严重级别升级归因：按最终捕获异常身份精确匹配抛出阶段，并行分支报错互不覆盖。
-      if (!state.errorCode || state.errorCodeSeverity !== 'error') {
-        const domainConfig = OPS_PERF_DOMAIN_CONFIG[state.domain];
-        const matchedStage = state.thrownStageByError.get(error);
-        state.errorCode =
-          (matchedStage ? domainConfig?.stageErrorCodes?.[matchedStage] : undefined) ??
-          domainConfig?.defaultErrorCode;
-        state.errorCodeSeverity = 'error';
-      }
+      // 终止异常无条件覆写早期 degraded 错误码，并严格按实际抛出异常身份匹配归因，并行分支互不干扰。
+      const domainConfig = OPS_PERF_DOMAIN_CONFIG[state.domain];
+      state.errorCode = state.thrownErrorCodeByError.get(error) ?? domainConfig?.defaultErrorCode;
       return { ok: false, error };
     }
   })();
@@ -329,7 +339,11 @@ export const trackPerfStage = async <D extends OpsPerfDomain, T>(
     return await fn({ markError });
   } catch (error) {
     failed = true;
-    recordThrownStage(state, options.stage, error);
+    recordThrownErrorCode(
+      state,
+      error,
+      OPS_PERF_DOMAIN_CONFIG[state.domain]?.stageErrorCodes?.[options.stage]
+    );
     throw error;
   } finally {
     const endOffset = Math.max(startOffset, performance.now() - state.startedAtPerf);
@@ -348,12 +362,18 @@ export const recordPerfStageSpan = <D extends OpsPerfDomain>(options: {
   failed?: boolean;
   /** 若该阶段失败并准备继续向上抛出该异常，传入原异常对象用于精确归因。 */
   error?: unknown;
+  /** 可选显式细粒度白名单错误码（优先级高于阶段默认映射）。 */
+  errorCode?: OpsPerfErrorCode;
 }) => {
   const state = getDomainState(options.domain);
   if (!state) return;
 
   if (options.failed && options.error !== undefined) {
-    recordThrownStage(state, options.stage, options.error);
+    recordThrownErrorCode(
+      state,
+      options.error,
+      options.errorCode ?? OPS_PERF_DOMAIN_CONFIG[state.domain]?.stageErrorCodes?.[options.stage]
+    );
   }
   const startOffset = Math.max(0, options.startedAtPerf - state.startedAtPerf);
   const endOffset = Math.max(
@@ -405,15 +425,8 @@ export const patchPerfContext = <D extends OpsPerfDomain>(options: {
       state.status = options.status;
     }
   }
-  if (options.errorCode) {
-    const incomingSeverity = options.status ?? state.status;
-    if (
-      !state.errorCode ||
-      statusSeverityRank(incomingSeverity) > statusSeverityRank(state.errorCodeSeverity)
-    ) {
-      state.errorCode = options.errorCode;
-      state.errorCodeSeverity = incomingSeverity;
-    }
+  if (options.errorCode && !state.errorCode) {
+    state.errorCode = options.errorCode;
   }
   if (options.teamId) {
     state.teamId = options.teamId;
