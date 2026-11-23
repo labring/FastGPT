@@ -25,7 +25,6 @@ const LogDetails = ({ Header }: Props) => {
     <Flex gap={'13px'} flexDir="column" h={['calc(100vh - 69px)', 'full']}>
       <Header />
       <LogTable
-        pageSizeCacheKey={'chat-log-details'}
         px={[2, 0]}
         showSourceSelector={false}
         appId={appId}

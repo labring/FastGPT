@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FastGptError, FastGptServerError } from '../src/core/errors';
+import { FastGptError, FastGptNetworkError, FastGptServerError } from '../src/core/errors';
 import { ChatStream } from '../src/core/sse';
 
 const createByteStreamFromChunks = (chunks: string[]): ReadableStream<Uint8Array> => {
@@ -320,5 +320,127 @@ describe('ChatStream & Multi-Event SSE Parser', () => {
     const result = await stream.finalResult();
     expect(result.chatTitle).toBe('服务端生成的标题');
     expect(stream.state).toBe('completed');
+  });
+
+  it('immediately settles aborted state and cancels underlying reader when aborted while iterator is paused at yield', async () => {
+    const encoder = new TextEncoder();
+    let cancelCount = 0;
+    let disposeCount = 0;
+    let chunkSent = false;
+
+    const pausableBody = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (!chunkSent) {
+          chunkSent = true;
+          controller.enqueue(
+            encoder.encode('data: {"choices":[{"delta":{"content":"第一段"}}]}\n\n')
+          );
+          return;
+        }
+        return new Promise<void>(() => {});
+      },
+      cancel() {
+        cancelCount += 1;
+      }
+    });
+
+    const controller = new AbortController();
+    const stream = new ChatStream({
+      body: pausableBody,
+      response: mockResponseInfo,
+      controller,
+      onDispose: () => {
+        disposeCount += 1;
+      }
+    });
+
+    const iter = stream[Symbol.asyncIterator]();
+    const first = await iter.next();
+    expect(first.done).toBe(false);
+    if (!first.done && first.value.type === 'answer') {
+      expect(first.value.textDelta).toBe('第一段');
+    }
+
+    // 消费者暂停在 yield 后不再主动调用 iter.next()，此时挂载 finalText() 并触发 abort()
+    const pendingFinal = stream.finalText();
+    stream.abort(new Error('user cancelled'));
+
+    // 必须立即结算为 aborted 并取消底层 reader，绝不能依赖消费者再次拉取 iter.next() 才解除挂起
+    expect(stream.state).toBe('aborted');
+    expect(disposeCount).toBe(1);
+    await expect(pendingFinal).rejects.toThrow(FastGptError);
+    expect(cancelCount).toBe(1);
+
+    // 之后若消费者恢复推进 iter.next()，必须立即抛出同一中止异常
+    await expect(iter.next()).rejects.toThrow(FastGptError);
+    expect(disposeCount).toBe(1);
+
+    // 同样验证外部 AbortController.abort() 在暂停期触发时的独立结算行为
+    let externalCancelCount = 0;
+    let externalSent = false;
+    const externalController = new AbortController();
+    const externalStream = new ChatStream({
+      body: new ReadableStream<Uint8Array>({
+        pull(ctrl) {
+          if (!externalSent) {
+            externalSent = true;
+            ctrl.enqueue(encoder.encode('data: {"choices":[{"delta":{"content":"片段"}}]}\n\n'));
+            return;
+          }
+          return new Promise<void>(() => {});
+        },
+        cancel() {
+          externalCancelCount += 1;
+        }
+      }),
+      response: mockResponseInfo,
+      controller: externalController
+    });
+
+    const externalIter = externalStream[Symbol.asyncIterator]();
+    await externalIter.next();
+    const externalFinal = externalStream.finalResult();
+    externalController.abort(new Error('external timeout'));
+
+    expect(externalStream.state).toBe('aborted');
+    await expect(externalFinal).rejects.toThrow(FastGptError);
+    expect(externalCancelCount).toBe(1);
+  });
+
+  it('rejects with FastGptNetworkError and marks state=failed when EOF arrives before [DONE] termination frame', async () => {
+    const truncatedChunks = ['data: {"choices":[{"delta":{"content":"未写完的回复"}}]}\n\n'];
+
+    // 1. 直接调用 finalText() / finalResult() 必须识别截断并失败
+    const stream1 = new ChatStream({
+      body: createByteStreamFromChunks(truncatedChunks),
+      response: mockResponseInfo,
+      controller: new AbortController()
+    });
+    await expect(stream1.finalText()).rejects.toThrow(FastGptNetworkError);
+    expect(stream1.state).toBe('failed');
+    await expect(stream1.finalResult()).rejects.toThrow(FastGptNetworkError);
+
+    // 2. for await 消费完毕但未收到 [DONE] 时同样必须抛错，避免误判 completed
+    const stream2 = new ChatStream({
+      body: createByteStreamFromChunks(truncatedChunks),
+      response: mockResponseInfo,
+      controller: new AbortController()
+    });
+    const deltas: string[] = [];
+    let caught: unknown;
+    try {
+      for await (const ev of stream2) {
+        if (ev.type === 'answer') {
+          deltas.push(ev.textDelta);
+        }
+      }
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(deltas).toEqual(['未写完的回复']);
+    expect(caught).toBeInstanceOf(FastGptNetworkError);
+    expect(stream2.state).toBe('failed');
+    await expect(stream2.finalText()).rejects.toThrow(FastGptNetworkError);
   });
 });

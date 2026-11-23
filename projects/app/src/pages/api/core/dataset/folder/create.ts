@@ -15,6 +15,7 @@ import { checkTeamDatasetFolderLimit } from '@fastgpt/service/support/permission
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildDatasetAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { checkCreateFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
@@ -53,7 +54,7 @@ async function handler(req: ApiRequestProps<CreateDatasetFolderBody>): Promise<v
     isFolderType: (parentType) => parentType === DatasetTypeEnum.folder
   });
 
-  await mongoSessionRun(async (session) => {
+  const createdDataset = await mongoSessionRun(async (session) => {
     // parentId 是权威来源，兼容尚未完成回填的历史目录。
     const ancestorIds = await getFolderAncestorIdsFromParentId({
       parentId: parentId ? String(parentId) : null,
@@ -88,12 +89,14 @@ async function handler(req: ApiRequestProps<CreateDatasetFolderBody>): Promise<v
       resource: dataset,
       resourceType: PerResourceTypeEnum.dataset
     });
+    return dataset;
   });
   (async () => {
     addAuditLog({
       tmbId,
       teamId,
       event: AuditEventEnum.CREATE_DATASET_FOLDER,
+      resources: [buildDatasetAuditResource(createdDataset)],
       params: {
         folderName: name
       }

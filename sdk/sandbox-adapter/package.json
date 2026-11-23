@@ -26,6 +26,7 @@
     "build": "tsdown",
     "dev": "tsdown --watch",
     "prepublishOnly": "pnpm build",
+    "typecheck": "tsc --noEmit --pretty",
     "test": "vitest run --config ./vitest.config.ts"
   },
   "dependencies": {

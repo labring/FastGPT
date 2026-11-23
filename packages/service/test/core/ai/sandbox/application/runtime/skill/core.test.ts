@@ -59,7 +59,7 @@ const createSkillFilesystemMocks = (directoryPaths: string[] = []) => ({
   moveFiles: vi.fn(async (_entries: Array<{ source: string; destination: string }>) => undefined)
 });
 
-const WORKSPACE_SKILL_INFO_FIND_COMMAND = `find '/workspace' \\( -name 'node_modules' -o -name '.venv' -o -name 'venv' \\) -prune -o -iname "SKILL.md" -print0 2>/dev/null`;
+const WORKSPACE_SKILL_INFO_FIND_COMMAND = `find '/workspace' \\( -name 'node_modules' -o -name '.venv' -o -name 'venv' \\) -prune -o -type f -iname "SKILL.md" -print0 2>/dev/null`;
 
 describe('runtime skill deploy and scan integration', () => {
   it('scans every recursive skill.md from every selected version directory', async () => {
@@ -278,6 +278,17 @@ description: Zeta skill
     expect(findSkillCommands.some((c) => c.includes(`'${skill1TargetDir}'`))).toBe(true);
     expect(findSkillCommands.some((c) => c.includes(`'${skill2TargetDir}'`))).toBe(true);
     expect(findSkillCommands).not.toContain(WORKSPACE_SKILL_INFO_FIND_COMMAND);
+    expect(
+      findSkillCommands.every((command) => command.includes(`-prune -o -type f -iname "SKILL.md"`))
+    ).toBe(true);
+    expect(
+      findSkillCommands.every(
+        (command) =>
+          command.includes("-name 'node_modules'") &&
+          command.includes("-name '.venv'") &&
+          command.includes("-name 'venv'")
+      )
+    ).toBe(true);
     expect(result).toHaveLength(6);
     expect(result.map((item) => item.name)).toEqual(
       expect.arrayContaining(['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta'])
@@ -822,6 +833,73 @@ description: Read webpages
         description: 'Read webpages',
         directory: '/workspace/.skills/version_1/fetch-webpage',
         skillMdPath: '/workspace/.skills/version_1/fetch-webpage/SKILL.md'
+      }
+    ]);
+  });
+});
+
+describe('getAgentSkillInfos recursive scan', () => {
+  it('keeps valid skills across depths including duplicate names and skips invalid or unnamed SKILL.md', async () => {
+    const root = '/workspace/projects/version-mixed';
+    const contentByPath: Record<string, string> = {
+      [`${root}/SKILL.md`]: '---\nname: root-skill\ndescription: Root skill\n---\n',
+      [`${root}/skills/a/SKILL.md`]: '---\nname: same\ndescription: First\n---\n',
+      [`${root}/skills/b/SKILL.md`]: '---\nname: same\ndescription: Second\n---\n',
+      [`${root}/skills/writer/helpers/review/SKILL.md`]:
+        '---\nname: reviewer\ndescription: Review helper\n---\n',
+      [`${root}/examples/template/SKILL.md`]: '# Missing frontmatter',
+      [`${root}/drafts/SKILL.md`]: '---\ndescription: Missing name\n---\n'
+    };
+
+    const sandbox = {
+      execute: vi.fn(async () => ({
+        exitCode: 0,
+        stdout: Object.keys(contentByPath)
+          .map((path) => `${path}\0`)
+          .join(''),
+        stderr: ''
+      })),
+      readFiles: vi.fn(async (paths: string[]) =>
+        paths.map((path) => ({ path, content: contentByPath[path] ?? '', error: null }))
+      )
+    };
+
+    const skillInfos = await getAgentSkillInfos({
+      skillDirectories: [root],
+      sandbox: sandbox as any
+    });
+
+    expect(
+      skillInfos.map(({ id, name, description, skillMdPath }) => ({
+        id,
+        name,
+        description,
+        skillMdPath
+      }))
+    ).toEqual([
+      {
+        id: `${root}/SKILL.md`,
+        name: 'root-skill',
+        description: 'Root skill',
+        skillMdPath: `${root}/SKILL.md`
+      },
+      {
+        id: `${root}/skills/a/SKILL.md`,
+        name: 'same',
+        description: 'First',
+        skillMdPath: `${root}/skills/a/SKILL.md`
+      },
+      {
+        id: `${root}/skills/b/SKILL.md`,
+        name: 'same',
+        description: 'Second',
+        skillMdPath: `${root}/skills/b/SKILL.md`
+      },
+      {
+        id: `${root}/skills/writer/helpers/review/SKILL.md`,
+        name: 'reviewer',
+        description: 'Review helper',
+        skillMdPath: `${root}/skills/writer/helpers/review/SKILL.md`
       }
     ]);
   });

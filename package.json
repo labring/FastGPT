@@ -29,6 +29,7 @@
     "test:service:integration:sandbox": "pnpm --dir packages/service test:integration:sandbox",
     "generate:i18n-loaders": "node scripts/generate-i18n-resource-loaders.mjs",
     "check:i18n-loaders": "node scripts/check-i18n-resource-loaders.mjs",
+    "sync:openapi-docs": "node --experimental-strip-types ./document/script/syncOpenApiDocs.mts",
     "sdk:gen": "pnpm --filter @fastgpt-sdk/openapi-codegen generate",
     "sdk:check": "pnpm --filter @fastgpt-sdk/openapi-codegen check",
     "sdk:test": "pnpm --filter @fastgpt-sdk/openapi-codegen test && pnpm --filter @fastgpt/sdk test",

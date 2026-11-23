@@ -1,14 +1,14 @@
 import crypto from 'crypto';
-import { retryFn } from '@fastgpt/global/common/system/utils';
+import { delay } from '@fastgpt/global/common/system/utils';
+import { fetchWechat, getWechatBaseUrl, WechatRequestPolicyError } from './request';
 
-const DEFAULT_BASE_URL = 'https://ilinkai.weixin.qq.com';
 const CHANNEL_VERSION = '1.0.0';
 const ILINK_APP_ID = 'bot';
 const ILINK_APP_CLIENT_VERSION = String(1 << 16);
 const BOT_TYPE = '3';
 const LONG_POLL_TIMEOUT_MS = 35_000;
 const SEND_TIMEOUT_MS = 15_000;
-const SEND_RETRY_ATTEMPTS = 1;
+const RESPONSE_BODY_TIMEOUT_MS = 15_000;
 
 export const WechatMessageType = {
   USER: 1,
@@ -139,7 +139,7 @@ export class ILinkClient {
   private token?: string;
 
   constructor(baseUrl?: string, token?: string) {
-    this.baseUrl = (baseUrl || DEFAULT_BASE_URL).replace(/\/$/, '');
+    this.baseUrl = getWechatBaseUrl(baseUrl);
     this.token = token;
   }
 
@@ -169,25 +169,81 @@ export class ILinkClient {
   }
 
   private async post(endpoint: string, body: string, timeoutMs: number): Promise<string> {
+    return this.request(endpoint, {
+      timeoutMs,
+      init: { method: 'POST', headers: this.buildHeaders(), body }
+    });
+  }
+
+  /** 分别限制等待响应头与读取响应体的时间，保留上游请求的错误类别。 */
+  private async request(
+    endpoint: string,
+    { init, timeoutMs }: { init: RequestInit; timeoutMs: number }
+  ): Promise<string> {
     const url = `${this.baseUrl}/${endpoint}`;
+    const method = init.method ?? 'GET';
+    const path = endpoint.split('?', 1)[0];
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    let timer = setTimeout(() => controller.abort(), timeoutMs);
+    let receivedHeaders = false;
 
     try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: this.buildHeaders(),
-        body,
-        signal: controller.signal
-      });
+      const res = await fetchWechat(
+        { url, endpoint: 'ilink' },
+        {
+          ...init,
+          signal: controller.signal
+        }
+      );
+      receivedHeaders = true;
+      if (res.ok === false) {
+        // 非 2xx 不将原始响应体拼入异常文本，避免 HTML 或上游正文进入日志与告警。
+        await res.body?.cancel().catch(() => {});
+        throw new Error(`HTTP ${res.status}${res.statusText ? ` ${res.statusText}` : ''}`);
+      }
+      // 响应头可能在长轮询时限末尾到达，响应体使用独立的读取时限。
       clearTimeout(timer);
-      const text = await res.text();
-      if (!res.ok) throw new Error(`HTTP ${res.status}: ${text}`);
-      return text;
+      timer = setTimeout(() => controller.abort(), RESPONSE_BODY_TIMEOUT_MS);
+      return await res.text();
     } catch (err) {
+      if (
+        err instanceof WechatRequestPolicyError ||
+        (controller.signal.aborted && !receivedHeaders)
+      ) {
+        throw err;
+      }
+      throw new Error(`iLink ${method} ${path} failed: ${formatFetchError(err)}`, {
+        cause: err
+      });
+    } finally {
       clearTimeout(timer);
-      if (err instanceof Error && err.name === 'AbortError') throw err;
-      throw new Error(`iLink POST ${endpoint} failed: ${formatFetchError(err)}`);
+    }
+  }
+
+  /** 在协议解析边界将畸形响应转为不含正文的错误，避免原始 HTML 或上游内容进入日志。 */
+  private parseJson<T>(
+    operation: string,
+    raw: string,
+    reviver?: (key: string, value: unknown, context: { source: string }) => unknown
+  ): T {
+    try {
+      const parsed = reviver
+        ? (
+            JSON.parse as (
+              text: string,
+              reviver: (key: string, value: unknown, context: { source: string }) => unknown
+            ) => T
+          )(raw, reviver)
+        : (JSON.parse(raw) as T);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error(`iLink ${operation} returned unexpected JSON payload`);
+      }
+      return parsed;
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith(`iLink ${operation} returned`)) {
+        throw error;
+      }
+      throw new Error(`iLink ${operation} returned invalid JSON`);
     }
   }
 
@@ -197,29 +253,27 @@ export class ILinkClient {
       JSON.stringify({ local_token_list: [] }),
       SEND_TIMEOUT_MS
     );
-    return JSON.parse(raw);
+    return this.parseJson<QRCodeResponse>('get_bot_qrcode', raw);
   }
 
   async getQRCodeStatus(qrcode: string): Promise<QRStatusResponse> {
-    const url = `${this.baseUrl}/ilink/bot/get_qrcode_status?qrcode=${encodeURIComponent(qrcode)}`;
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), LONG_POLL_TIMEOUT_MS);
     try {
-      const res = await fetch(url, {
-        headers: this.buildCommonHeaders(),
-        signal: controller.signal
-      });
-      clearTimeout(timer);
-      if (!res.ok) throw new Error(`QR status failed: ${res.status}`);
-      return res.json();
+      const raw = await this.request(
+        `ilink/bot/get_qrcode_status?qrcode=${encodeURIComponent(qrcode)}`,
+        {
+          init: { headers: this.buildCommonHeaders() },
+          timeoutMs: LONG_POLL_TIMEOUT_MS
+        }
+      );
+      return this.parseJson<QRStatusResponse>('get_qrcode_status', raw);
     } catch (err) {
-      clearTimeout(timer);
       if (err instanceof Error && err.name === 'AbortError') return { status: 'wait' };
       throw err;
     }
   }
 
-  async getUpdates(buf: string): Promise<GetUpdatesResponse> {
+  /** 返回上游响应，或以 undefined 表示本地在收到响应头前达到长轮询时限。 */
+  async getUpdates(buf: string): Promise<GetUpdatesResponse | undefined> {
     const body = JSON.stringify({
       get_updates_buf: buf,
       base_info: { channel_version: CHANNEL_VERSION }
@@ -227,18 +281,14 @@ export class ILinkClient {
     try {
       const raw = await this.post('ilink/bot/getupdates', body, LONG_POLL_TIMEOUT_MS);
       // ! JSON.parse reviver context.source requires Node.js >=22.
-      return (
-        JSON.parse as (
-          text: string,
-          reviver: (key: string, value: unknown, context: { source: string }) => unknown
-        ) => GetUpdatesResponse
-      )(raw, (key, value, context) => {
+      return this.parseJson<GetUpdatesResponse>('getupdates', raw, (key, value, context) => {
         if (key !== 'message_id' || typeof value !== 'number') return value;
         return context.source;
       });
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
-        return { ret: 0, msgs: [], get_updates_buf: buf };
+        // 腾讯参考客户端此时继续轮询。按失败停用可能误停空闲渠道，因此持续无响应也不会触发停用。
+        return undefined;
       }
       throw err;
     }
@@ -263,12 +313,20 @@ export class ILinkClient {
       },
       base_info: { channel_version: CHANNEL_VERSION }
     });
-    await retryFn(async () => {
+    const send = async () => {
       const raw = await this.post('ilink/bot/sendmessage', body, SEND_TIMEOUT_MS);
-      const resp = JSON.parse(raw) as Pick<GetUpdatesResponse, 'ret' | 'errmsg'>;
+      const resp = this.parseJson<Pick<GetUpdatesResponse, 'ret' | 'errmsg'>>('sendmessage', raw);
       if (resp.ret && resp.ret !== 0) {
         throw new Error(`sendMessage ret=${resp.ret} errmsg=${resp.errmsg ?? '(none)'}`);
       }
-    }, SEND_RETRY_ATTEMPTS);
+    };
+
+    try {
+      await send();
+    } catch (error) {
+      if (error instanceof WechatRequestPolicyError) throw error;
+      await delay(500);
+      await send();
+    }
   }
 }

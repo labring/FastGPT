@@ -15,4 +15,6 @@ export type ToolCallToolProvider = AgentLoopCoreToolProvider<
   readFileExecutor?: AgentLoopReadFileExecutor;
   readFileMaxFileAmount: number;
   datasetSearchExecutor?: AgentLoopDatasetSearchExecutor;
+  /** 本节点所有工具子流程实际返回的运行次数，含正常完成、交互暂停和失败结果。 */
+  getToolRunTimes: () => number;
 };

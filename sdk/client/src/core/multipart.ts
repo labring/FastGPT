@@ -79,7 +79,15 @@ export const normalizeUploadableToBlob = (
   });
 };
 
-const appendUploadField = (formData: FormData, fieldName: string, value: unknown): void => {
+const appendUploadField = ({
+  formData,
+  fieldName,
+  value
+}: {
+  formData: FormData;
+  fieldName: string;
+  value: unknown;
+}): void => {
   const items = Array.isArray(value) ? value : [value];
   for (const item of items) {
     const { blob, filename } = normalizeUploadableToBlob(item as Uploadable);
@@ -108,7 +116,7 @@ export const buildMultipartFormData = ({
         message: 'Multipart upload requires a non-empty "file" field'
       });
     }
-    appendUploadField(formData, 'file', file);
+    appendUploadField({ formData, fieldName: 'file', value: file });
 
     // 移除值为 undefined 的可选键，保持序列化 JSON 紧凑干净
     const cleanedData = Object.fromEntries(
@@ -121,7 +129,7 @@ export const buildMultipartFormData = ({
   for (const [key, val] of Object.entries(payload)) {
     if (val === undefined || val === null) continue;
     if (key === 'file') {
-      appendUploadField(formData, 'file', val);
+      appendUploadField({ formData, fieldName: 'file', value: val });
     } else if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean') {
       formData.append(key, String(val));
     } else {

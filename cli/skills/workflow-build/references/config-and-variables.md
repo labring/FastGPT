@@ -90,13 +90,13 @@ Direct CLI commands:
 
 | Command           | Required options                | Optional options                                                                         |
 | ----------------- | ------------------------------- | ---------------------------------------------------------------------------------------- |
-| `variable add`    | `--key`, `--value-type`         | type, label, description, required, type config, default value, dry-run                  |
-| `variable update` | `--key` and at least one update | new-key, type, value-type, label, description, required/optional, config, value, dry-run |
+| `variable add`    | `--value-type` (`--key` or `--label`) | key, type, label, description, required, type config, default value, dry-run        |
+| `variable update` | `--key` and at least one update | type, value-type, label, description, required/optional, config, value, dry-run          |
 | `variable remove` | `--key`                         | dry-run                                                                                  |
 
 A ChangeSet represents them with `variable.add`, `variable.update`, and `variable.remove` ChangeSet commands.
 
-`variable.add` contains one complete variable object. `variable.update` contains the existing `key` and a partial `patch`. `variable.remove` contains `key`.
+`variable.add` contains one variable object (`key` may be omitted to auto-generate a random key). `variable.update` contains the existing `key` and a partial `patch` (cannot change `key`). `variable.remove` contains `key`.
 
 ## Variable input types
 
@@ -111,10 +111,10 @@ Supported type-specific fields include structured config, select options, `min`,
 
 ## Content rules
 
-- Variable keys are stable machine identifiers; use ASCII unless an existing key must be preserved.
+- Variable keys are immutable machine identifiers after creation; provide an explicit key when referenced in the same ChangeSet, or omit it to auto-generate a random key.
 - Labels and descriptions are user-facing and may be localized.
 - Do not reuse a key that already exists.
-- When renaming a variable, inspect references and rely on Core diagnostics to detect broken bindings.
+- Rename user-facing variable names via `label`; variable `key` cannot be changed by `variable.update`.
 - `custom`, `internal`, and `switch` variables cannot be marked required by the CLI contract.
 - Default values must match `valueType` and the selected input type.
 - Do not invent datasets, models, apps, tools, or secrets as default values. Follow the tool descriptor when configuring credentials. Resolve remote resources through authorized discovery available in the current environment, and report required bindings that remain unresolved.

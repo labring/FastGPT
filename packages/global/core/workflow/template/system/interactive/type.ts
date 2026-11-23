@@ -150,7 +150,10 @@ export const UserInputFormItemSchema = AppFileSelectConfigTypeSchema.extend({
   type: z.enum(FlowNodeInputTypeEnum),
   key: z.string(),
   label: z.string(),
-  value: z.any().meta({ ...JsonValueOpenApiMeta, description: '当前填写值' }),
+  value: z
+    .any()
+    .optional()
+    .meta({ ...JsonValueOpenApiMeta, description: '当前填写值' }),
   valueType: z.enum(WorkflowIOValueTypeEnum),
   description: z.string().optional(),
   defaultValue: z

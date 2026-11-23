@@ -37,6 +37,30 @@ import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node'
 import { USER_SELECT_REFERENCE_HANDLE_KEY } from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
 
 describe('assertExecutionConnection', () => {
+  it('reconnects an edge against the graph after removing the replaced edge', async () => {
+    const document = WorkflowDocumentSchema.parse(fixture);
+    const text = document.nodes.find((node) => node.nodeId === 'text')!;
+    document.nodes.push({ ...structuredClone(text), nodeId: 'second' });
+    const oldEdge: WorkflowExecutionEdge = {
+      source: { kind: 'next', nodeId: 'text' },
+      target: { kind: 'target', nodeId: 'second' }
+    };
+    const newEdge: WorkflowExecutionEdge = {
+      source: { kind: 'next', nodeId: 'second' },
+      target: { kind: 'target', nodeId: 'text' }
+    };
+    document.executionEdges = [oldEdge];
+
+    const result = await applyWorkflowCommand({
+      document,
+      command: { type: 'edge.reconnect', oldEdge, newEdge },
+      dependencies: { templateProvider: builtinTemplateProvider }
+    });
+
+    expect(result.document.executionEdges).toEqual([newEdge]);
+    expect(document.executionEdges).toEqual([oldEdge]);
+  });
+
   it('isolates main and different tool flows in both directions without deleting edges', async () => {
     const document = WorkflowDocumentSchema.parse(fixture);
     document.nodes = [

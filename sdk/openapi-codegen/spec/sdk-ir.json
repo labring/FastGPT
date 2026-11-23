@@ -38,6 +38,7 @@
                 "tmbIds",
                 "outLinkUids",
                 "chatSearch",
+                "searchType",
                 "title",
                 "sourcesMap",
                 "logKeys"
@@ -92,7 +93,6 @@
                     "schema": {
                       "kind": "primitive",
                       "type": "string",
-                      "format": "date-time",
                       "description": "开始时间"
                     },
                     "required": true,
@@ -103,7 +103,6 @@
                     "schema": {
                       "kind": "primitive",
                       "type": "string",
-                      "format": "date-time",
                       "description": "结束时间"
                     },
                     "required": true,
@@ -166,10 +165,20 @@
                     "schema": {
                       "kind": "primitive",
                       "type": "string",
-                      "description": "对话内容搜索关键词"
+                      "description": "搜索关键词；与 searchType 共同指定标题搜索或会话 ID 精确匹配"
                     },
                     "required": false,
-                    "description": "对话内容搜索关键词"
+                    "description": "搜索关键词；与 searchType 共同指定标题搜索或会话 ID 精确匹配"
+                  },
+                  {
+                    "name": "searchType",
+                    "schema": {
+                      "kind": "enum",
+                      "values": ["title", "chatId"],
+                      "description": "搜索类型：title 搜索标题，chatId 精确匹配会话 ID；省略时兼容旧搜索"
+                    },
+                    "required": false,
+                    "description": "搜索类型：title 搜索标题，chatId 精确匹配会话 ID；省略时兼容旧搜索"
                   },
                   {
                     "name": "title",
@@ -289,7 +298,6 @@
                     "schema": {
                       "kind": "primitive",
                       "type": "string",
-                      "format": "date-time",
                       "description": "开始时间（包含），ISO 字符串保留时区偏移及毫秒；统计使用该固定偏移，未带偏移时按服务器时区，Z 为 UTC"
                     },
                     "required": true,
@@ -300,7 +308,6 @@
                     "schema": {
                       "kind": "primitive",
                       "type": "string",
-                      "format": "date-time",
                       "description": "结束时间（包含），未带偏移时按服务器时区；保持客户端选择的边界，不额外扩展日期"
                     },
                     "required": true,
@@ -757,13 +764,13 @@
               }
             },
             {
-              "id": "apps.logs.list",
+              "id": "apps.logs.listUsers",
               "resource": "apps.logs",
-              "method": "list",
+              "method": "listUsers",
               "httpMethod": "POST",
-              "path": "/core/app/logs/list",
-              "summary": "获取应用日志列表",
-              "description": "分页获取应用的对话日志列表，支持按时间范围、来源、用户等条件筛选",
+              "path": "/core/app/logs/getUsers",
+              "summary": "获取日志用户列表",
+              "description": "获取应用日志中的用户列表，包括外链用户和团队成员，按对话数量排序，支持搜索和分页",
               "requestContentType": "json",
               "responseMode": "envelope",
               "appIdCarrier": "body",
@@ -774,19 +781,14 @@
                 "appId",
                 "offset",
                 "pageSize",
-                "feedbackType",
-                "unreadOnly",
-                "errorFilter",
                 "dateStart",
                 "dateEnd",
+                "searchKey",
                 "sources",
-                "tmbIds",
-                "outLinkUids",
-                "chatSearch",
                 "pageNum"
               ],
               "hasRequiredInput": true,
-              "requestTypeName": "AppsLogsListReq",
+              "requestTypeName": "AppsLogsListUsersReq",
               "requestSchema": {
                 "kind": "object",
                 "properties": [
@@ -819,6 +821,202 @@
                     },
                     "required": false,
                     "description": "每页条数，默认 20，最大 500，超出自动按 500 处理"
+                  },
+                  {
+                    "name": "dateStart",
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "string",
+                      "description": "开始时间"
+                    },
+                    "required": true,
+                    "description": "开始时间"
+                  },
+                  {
+                    "name": "dateEnd",
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "string",
+                      "description": "结束时间"
+                    },
+                    "required": true,
+                    "description": "结束时间"
+                  },
+                  {
+                    "name": "searchKey",
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "string",
+                      "description": "搜索用户名"
+                    },
+                    "required": false,
+                    "description": "搜索用户名"
+                  },
+                  {
+                    "name": "sources",
+                    "schema": {
+                      "kind": "array",
+                      "items": {
+                        "kind": "primitive",
+                        "type": "string"
+                      },
+                      "description": "来源筛选"
+                    },
+                    "required": false,
+                    "description": "来源筛选"
+                  },
+                  {
+                    "name": "pageNum",
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "integer",
+                      "description": "页码，从 1 开始；传入 offset 时忽略"
+                    },
+                    "required": false,
+                    "description": "页码，从 1 开始；传入 offset 时忽略"
+                  }
+                ]
+              },
+              "responseTypeName": "AppsLogsListUsersRes",
+              "responseSchema": {
+                "kind": "object",
+                "properties": [
+                  {
+                    "name": "total",
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "number"
+                    },
+                    "required": true
+                  },
+                  {
+                    "name": "list",
+                    "schema": {
+                      "kind": "array",
+                      "items": {
+                        "kind": "object",
+                        "properties": [
+                          {
+                            "name": "outLinkUid",
+                            "schema": {
+                              "kind": "union",
+                              "variants": [
+                                {
+                                  "kind": "primitive",
+                                  "type": "string"
+                                },
+                                {
+                                  "kind": "primitive",
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "使用者 ID，外链访客或 API customUid；非空时优先于 tmbId"
+                            },
+                            "required": true,
+                            "description": "使用者 ID，外链访客或 API customUid；非空时优先于 tmbId"
+                          },
+                          {
+                            "name": "tmbId",
+                            "schema": {
+                              "kind": "union",
+                              "variants": [
+                                {
+                                  "kind": "primitive",
+                                  "type": "string"
+                                },
+                                {
+                                  "kind": "primitive",
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "本次实际鉴权成员 ID，代理调用时为被代理成员"
+                            },
+                            "required": true,
+                            "description": "本次实际鉴权成员 ID，代理调用时为被代理成员"
+                          },
+                          {
+                            "name": "name",
+                            "schema": {
+                              "kind": "primitive",
+                              "type": "string",
+                              "description": "用户名称"
+                            },
+                            "required": true,
+                            "description": "用户名称"
+                          },
+                          {
+                            "name": "avatar",
+                            "schema": {
+                              "kind": "primitive",
+                              "type": "string",
+                              "description": "头像"
+                            },
+                            "required": false,
+                            "description": "头像"
+                          },
+                          {
+                            "name": "count",
+                            "schema": {
+                              "kind": "primitive",
+                              "type": "number",
+                              "description": "对话数量"
+                            },
+                            "required": true,
+                            "description": "对话数量"
+                          }
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": true
+                  }
+                ],
+                "additionalProperties": false,
+                "description": "分页使用者列表"
+              }
+            },
+            {
+              "id": "apps.logs.search",
+              "resource": "apps.logs",
+              "method": "search",
+              "httpMethod": "POST",
+              "path": "/core/app/logs/search",
+              "summary": "搜索应用日志列表",
+              "description": "按游标搜索应用的对话日志列表，每页固定 50 条且不查询总数",
+              "requestContentType": "json",
+              "responseMode": "envelope",
+              "appIdCarrier": "body",
+              "identityCarrier": null,
+              "pathParams": [],
+              "queryParams": [],
+              "bodyParams": [
+                "appId",
+                "feedbackType",
+                "unreadOnly",
+                "errorFilter",
+                "dateStart",
+                "dateEnd",
+                "sources",
+                "tmbIds",
+                "outLinkUids",
+                "chatSearch",
+                "searchType",
+                "cursor"
+              ],
+              "hasRequiredInput": true,
+              "requestTypeName": "AppsLogsSearchReq",
+              "requestSchema": {
+                "kind": "object",
+                "properties": [
+                  {
+                    "name": "appId",
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "string",
+                      "description": "应用 ID"
+                    },
+                    "required": false,
+                    "description": "应用 ID"
                   },
                   {
                     "name": "feedbackType",
@@ -855,7 +1053,6 @@
                     "schema": {
                       "kind": "primitive",
                       "type": "string",
-                      "format": "date-time",
                       "description": "开始时间"
                     },
                     "required": true,
@@ -866,7 +1063,6 @@
                     "schema": {
                       "kind": "primitive",
                       "type": "string",
-                      "format": "date-time",
                       "description": "结束时间"
                     },
                     "required": true,
@@ -929,37 +1125,58 @@
                     "schema": {
                       "kind": "primitive",
                       "type": "string",
-                      "description": "对话内容搜索关键词"
+                      "description": "搜索关键词；与 searchType 共同指定标题搜索或会话 ID 精确匹配"
                     },
                     "required": false,
-                    "description": "对话内容搜索关键词"
+                    "description": "搜索关键词；与 searchType 共同指定标题搜索或会话 ID 精确匹配"
                   },
                   {
-                    "name": "pageNum",
+                    "name": "searchType",
                     "schema": {
-                      "kind": "primitive",
-                      "type": "integer",
-                      "description": "页码，从 1 开始；传入 offset 时忽略"
+                      "kind": "enum",
+                      "values": ["title", "chatId"],
+                      "description": "搜索类型：title 搜索标题，chatId 精确匹配会话 ID；省略时兼容旧搜索"
                     },
                     "required": false,
-                    "description": "页码，从 1 开始；传入 offset 时忽略"
+                    "description": "搜索类型：title 搜索标题，chatId 精确匹配会话 ID；省略时兼容旧搜索"
+                  },
+                  {
+                    "name": "cursor",
+                    "schema": {
+                      "kind": "object",
+                      "properties": [
+                        {
+                          "name": "timestamp",
+                          "schema": {
+                            "kind": "primitive",
+                            "type": "integer",
+                            "description": "游标时间戳（毫秒）"
+                          },
+                          "required": true,
+                          "description": "游标时间戳（毫秒）"
+                        },
+                        {
+                          "name": "id",
+                          "schema": {
+                            "kind": "primitive",
+                            "type": "string",
+                            "description": "游标日志 ID"
+                          },
+                          "required": true,
+                          "description": "游标日志 ID"
+                        }
+                      ],
+                      "description": "上一页响应中的 nextCursor；首屏请求省略，后续请求原样传入"
+                    },
+                    "required": false,
+                    "description": "上一页响应中的 nextCursor；首屏请求省略，后续请求原样传入"
                   }
                 ]
               },
-              "responseTypeName": "AppsLogsListRes",
+              "responseTypeName": "AppsLogsSearchRes",
               "responseSchema": {
                 "kind": "object",
                 "properties": [
-                  {
-                    "name": "total",
-                    "schema": {
-                      "kind": "primitive",
-                      "type": "number",
-                      "description": "总记录数"
-                    },
-                    "required": true,
-                    "description": "总记录数"
-                  },
                   {
                     "name": "list",
                     "schema": {
@@ -1522,228 +1739,46 @@
                         ],
                         "additionalProperties": false
                       },
-                      "description": "对话日志记录列表"
+                      "description": "对话日志记录列表，固定返回 50 条"
                     },
                     "required": true,
-                    "description": "对话日志记录列表"
+                    "description": "对话日志记录列表，固定返回 50 条"
+                  },
+                  {
+                    "name": "nextCursor",
+                    "schema": {
+                      "kind": "object",
+                      "properties": [
+                        {
+                          "name": "timestamp",
+                          "schema": {
+                            "kind": "primitive",
+                            "type": "integer",
+                            "description": "游标时间戳（毫秒）"
+                          },
+                          "required": true,
+                          "description": "游标时间戳（毫秒）"
+                        },
+                        {
+                          "name": "id",
+                          "schema": {
+                            "kind": "primitive",
+                            "type": "string",
+                            "description": "游标日志 ID"
+                          },
+                          "required": true,
+                          "description": "游标日志 ID"
+                        }
+                      ],
+                      "additionalProperties": false,
+                      "description": "下一页游标；省略表示已加载全部"
+                    },
+                    "required": false,
+                    "description": "下一页游标；省略表示已加载全部"
                   }
                 ],
                 "additionalProperties": false,
-                "description": "应用对话日志列表"
-              }
-            },
-            {
-              "id": "apps.logs.listUsers",
-              "resource": "apps.logs",
-              "method": "listUsers",
-              "httpMethod": "POST",
-              "path": "/core/app/logs/getUsers",
-              "summary": "获取日志用户列表",
-              "description": "获取应用日志中的用户列表，包括外链用户和团队成员，按对话数量排序，支持搜索和分页",
-              "requestContentType": "json",
-              "responseMode": "envelope",
-              "appIdCarrier": "body",
-              "identityCarrier": null,
-              "pathParams": [],
-              "queryParams": [],
-              "bodyParams": [
-                "appId",
-                "offset",
-                "pageSize",
-                "dateStart",
-                "dateEnd",
-                "searchKey",
-                "sources",
-                "pageNum"
-              ],
-              "hasRequiredInput": true,
-              "requestTypeName": "AppsLogsListUsersReq",
-              "requestSchema": {
-                "kind": "object",
-                "properties": [
-                  {
-                    "name": "appId",
-                    "schema": {
-                      "kind": "primitive",
-                      "type": "string",
-                      "description": "应用 ID"
-                    },
-                    "required": false,
-                    "description": "应用 ID"
-                  },
-                  {
-                    "name": "offset",
-                    "schema": {
-                      "kind": "primitive",
-                      "type": "integer",
-                      "description": "偏移量，从 0 开始"
-                    },
-                    "required": false,
-                    "description": "偏移量，从 0 开始"
-                  },
-                  {
-                    "name": "pageSize",
-                    "schema": {
-                      "kind": "primitive",
-                      "type": "integer",
-                      "description": "每页条数，默认 20，最大 500，超出自动按 500 处理"
-                    },
-                    "required": false,
-                    "description": "每页条数，默认 20，最大 500，超出自动按 500 处理"
-                  },
-                  {
-                    "name": "dateStart",
-                    "schema": {
-                      "kind": "primitive",
-                      "type": "string",
-                      "format": "date-time",
-                      "description": "开始时间"
-                    },
-                    "required": true,
-                    "description": "开始时间"
-                  },
-                  {
-                    "name": "dateEnd",
-                    "schema": {
-                      "kind": "primitive",
-                      "type": "string",
-                      "format": "date-time",
-                      "description": "结束时间"
-                    },
-                    "required": true,
-                    "description": "结束时间"
-                  },
-                  {
-                    "name": "searchKey",
-                    "schema": {
-                      "kind": "primitive",
-                      "type": "string",
-                      "description": "搜索用户名"
-                    },
-                    "required": false,
-                    "description": "搜索用户名"
-                  },
-                  {
-                    "name": "sources",
-                    "schema": {
-                      "kind": "array",
-                      "items": {
-                        "kind": "primitive",
-                        "type": "string"
-                      },
-                      "description": "来源筛选"
-                    },
-                    "required": false,
-                    "description": "来源筛选"
-                  },
-                  {
-                    "name": "pageNum",
-                    "schema": {
-                      "kind": "primitive",
-                      "type": "integer",
-                      "description": "页码，从 1 开始；传入 offset 时忽略"
-                    },
-                    "required": false,
-                    "description": "页码，从 1 开始；传入 offset 时忽略"
-                  }
-                ]
-              },
-              "responseTypeName": "AppsLogsListUsersRes",
-              "responseSchema": {
-                "kind": "object",
-                "properties": [
-                  {
-                    "name": "total",
-                    "schema": {
-                      "kind": "primitive",
-                      "type": "number"
-                    },
-                    "required": true
-                  },
-                  {
-                    "name": "list",
-                    "schema": {
-                      "kind": "array",
-                      "items": {
-                        "kind": "object",
-                        "properties": [
-                          {
-                            "name": "outLinkUid",
-                            "schema": {
-                              "kind": "union",
-                              "variants": [
-                                {
-                                  "kind": "primitive",
-                                  "type": "string"
-                                },
-                                {
-                                  "kind": "primitive",
-                                  "type": "null"
-                                }
-                              ],
-                              "description": "使用者 ID，外链访客或 API customUid；非空时优先于 tmbId"
-                            },
-                            "required": true,
-                            "description": "使用者 ID，外链访客或 API customUid；非空时优先于 tmbId"
-                          },
-                          {
-                            "name": "tmbId",
-                            "schema": {
-                              "kind": "union",
-                              "variants": [
-                                {
-                                  "kind": "primitive",
-                                  "type": "string"
-                                },
-                                {
-                                  "kind": "primitive",
-                                  "type": "null"
-                                }
-                              ],
-                              "description": "本次实际鉴权成员 ID，代理调用时为被代理成员"
-                            },
-                            "required": true,
-                            "description": "本次实际鉴权成员 ID，代理调用时为被代理成员"
-                          },
-                          {
-                            "name": "name",
-                            "schema": {
-                              "kind": "primitive",
-                              "type": "string",
-                              "description": "用户名称"
-                            },
-                            "required": true,
-                            "description": "用户名称"
-                          },
-                          {
-                            "name": "avatar",
-                            "schema": {
-                              "kind": "primitive",
-                              "type": "string",
-                              "description": "头像"
-                            },
-                            "required": false,
-                            "description": "头像"
-                          },
-                          {
-                            "name": "count",
-                            "schema": {
-                              "kind": "primitive",
-                              "type": "number",
-                              "description": "对话数量"
-                            },
-                            "required": true,
-                            "description": "对话数量"
-                          }
-                        ],
-                        "additionalProperties": false
-                      }
-                    },
-                    "required": true
-                  }
-                ],
-                "additionalProperties": false,
-                "description": "分页使用者列表"
+                "description": "应用对话日志搜索结果"
               }
             }
           ],
@@ -2807,31 +2842,82 @@
                                 {
                                   "kind": "array",
                                   "items": {
-                                    "kind": "object",
-                                    "properties": [
+                                    "kind": "union",
+                                    "variants": [
                                       {
-                                        "name": "type",
-                                        "schema": {
-                                          "kind": "literal",
-                                          "value": "text"
-                                        },
-                                        "required": true
+                                        "kind": "object",
+                                        "properties": [
+                                          {
+                                            "name": "type",
+                                            "schema": {
+                                              "kind": "literal",
+                                              "value": "text"
+                                            },
+                                            "required": true
+                                          },
+                                          {
+                                            "name": "text",
+                                            "schema": {
+                                              "kind": "primitive",
+                                              "type": "string"
+                                            },
+                                            "required": true
+                                          },
+                                          {
+                                            "name": "key",
+                                            "schema": {
+                                              "kind": "primitive",
+                                              "type": "string"
+                                            },
+                                            "required": false
+                                          }
+                                        ]
                                       },
                                       {
-                                        "name": "text",
-                                        "schema": {
-                                          "kind": "primitive",
-                                          "type": "string"
-                                        },
-                                        "required": true
-                                      },
-                                      {
-                                        "name": "key",
-                                        "schema": {
-                                          "kind": "primitive",
-                                          "type": "string"
-                                        },
-                                        "required": false
+                                        "kind": "object",
+                                        "properties": [
+                                          {
+                                            "name": "type",
+                                            "schema": {
+                                              "kind": "literal",
+                                              "value": "image_url"
+                                            },
+                                            "required": true
+                                          },
+                                          {
+                                            "name": "image_url",
+                                            "schema": {
+                                              "kind": "object",
+                                              "properties": [
+                                                {
+                                                  "name": "url",
+                                                  "schema": {
+                                                    "kind": "primitive",
+                                                    "type": "string"
+                                                  },
+                                                  "required": true
+                                                },
+                                                {
+                                                  "name": "detail",
+                                                  "schema": {
+                                                    "kind": "enum",
+                                                    "values": ["auto", "low", "high"]
+                                                  },
+                                                  "required": false
+                                                }
+                                              ]
+                                            },
+                                            "required": true
+                                          },
+                                          {
+                                            "name": "key",
+                                            "schema": {
+                                              "kind": "primitive",
+                                              "type": "string"
+                                            },
+                                            "required": false
+                                          }
+                                        ]
                                       }
                                     ]
                                   }
@@ -6048,7 +6134,8 @@
                     "required": true,
                     "description": "工作流辅助生成会话资源类型"
                   }
-                ]
+                ],
+                "additionalProperties": false
               },
               {
                 "kind": "object",
@@ -8574,7 +8661,8 @@
                     "required": true,
                     "description": "ChatAgentHelper 会话资源类型"
                   }
-                ]
+                ],
+                "additionalProperties": false
               },
               {
                 "kind": "object",
@@ -11090,7 +11178,8 @@
                     "required": true,
                     "description": "应用 ID，仅 App 会话返回"
                   }
-                ]
+                ],
+                "additionalProperties": false
               },
               {
                 "kind": "object",
@@ -13606,7 +13695,8 @@
                     "required": true,
                     "description": "Skill Edit 调试 ID，仅 Skill Edit 会话返回"
                   }
-                ]
+                ],
+                "additionalProperties": false
               }
             ]
           }
@@ -15936,7 +16026,8 @@
                                 "required": true,
                                 "description": "工作流辅助生成会话资源类型"
                               }
-                            ]
+                            ],
+                            "additionalProperties": false
                           },
                           {
                             "kind": "object",
@@ -16019,7 +16110,8 @@
                                 "required": true,
                                 "description": "ChatAgentHelper 会话资源类型"
                               }
-                            ]
+                            ],
+                            "additionalProperties": false
                           },
                           {
                             "kind": "object",
@@ -16092,7 +16184,8 @@
                                 "required": true,
                                 "description": "应用 ID，仅 App 会话返回"
                               }
-                            ]
+                            ],
+                            "additionalProperties": false
                           },
                           {
                             "kind": "object",
@@ -16165,7 +16258,8 @@
                                 "required": true,
                                 "description": "Skill Edit 调试 ID，仅 Skill Edit 会话返回"
                               }
-                            ]
+                            ],
+                            "additionalProperties": false
                           }
                         ]
                       }
@@ -21697,6 +21791,102 @@
                                                   "type": "string"
                                                 },
                                                 "required": true
+                                              },
+                                              {
+                                                "name": "content",
+                                                "schema": {
+                                                  "kind": "array",
+                                                  "items": {
+                                                    "kind": "union",
+                                                    "variants": [
+                                                      {
+                                                        "kind": "object",
+                                                        "properties": [
+                                                          {
+                                                            "name": "type",
+                                                            "schema": {
+                                                              "kind": "literal",
+                                                              "value": "text"
+                                                            },
+                                                            "required": true
+                                                          },
+                                                          {
+                                                            "name": "text",
+                                                            "schema": {
+                                                              "kind": "primitive",
+                                                              "type": "string"
+                                                            },
+                                                            "required": true
+                                                          },
+                                                          {
+                                                            "name": "key",
+                                                            "schema": {
+                                                              "kind": "primitive",
+                                                              "type": "string"
+                                                            },
+                                                            "required": false
+                                                          }
+                                                        ],
+                                                        "additionalProperties": false
+                                                      },
+                                                      {
+                                                        "kind": "object",
+                                                        "properties": [
+                                                          {
+                                                            "name": "type",
+                                                            "schema": {
+                                                              "kind": "literal",
+                                                              "value": "image_url"
+                                                            },
+                                                            "required": true
+                                                          },
+                                                          {
+                                                            "name": "image_url",
+                                                            "schema": {
+                                                              "kind": "object",
+                                                              "properties": [
+                                                                {
+                                                                  "name": "url",
+                                                                  "schema": {
+                                                                    "kind": "primitive",
+                                                                    "type": "string"
+                                                                  },
+                                                                  "required": true
+                                                                },
+                                                                {
+                                                                  "name": "detail",
+                                                                  "schema": {
+                                                                    "kind": "enum",
+                                                                    "values": [
+                                                                      "auto",
+                                                                      "low",
+                                                                      "high"
+                                                                    ]
+                                                                  },
+                                                                  "required": false
+                                                                }
+                                                              ],
+                                                              "additionalProperties": false
+                                                            },
+                                                            "required": true
+                                                          },
+                                                          {
+                                                            "name": "key",
+                                                            "schema": {
+                                                              "kind": "primitive",
+                                                              "type": "string"
+                                                            },
+                                                            "required": false
+                                                          }
+                                                        ],
+                                                        "additionalProperties": false
+                                                      }
+                                                    ]
+                                                  },
+                                                  "description": "子工具恢复时返回给模型的结构化内容"
+                                                },
+                                                "required": false,
+                                                "description": "子工具恢复时返回给模型的结构化内容"
                                               }
                                             ],
                                             "additionalProperties": false
@@ -21838,6 +22028,102 @@
                                                       ]
                                                     },
                                                     "required": false
+                                                  },
+                                                  {
+                                                    "name": "content",
+                                                    "schema": {
+                                                      "kind": "array",
+                                                      "items": {
+                                                        "kind": "union",
+                                                        "variants": [
+                                                          {
+                                                            "kind": "object",
+                                                            "properties": [
+                                                              {
+                                                                "name": "type",
+                                                                "schema": {
+                                                                  "kind": "literal",
+                                                                  "value": "text"
+                                                                },
+                                                                "required": true
+                                                              },
+                                                              {
+                                                                "name": "text",
+                                                                "schema": {
+                                                                  "kind": "primitive",
+                                                                  "type": "string"
+                                                                },
+                                                                "required": true
+                                                              },
+                                                              {
+                                                                "name": "key",
+                                                                "schema": {
+                                                                  "kind": "primitive",
+                                                                  "type": "string"
+                                                                },
+                                                                "required": false
+                                                              }
+                                                            ],
+                                                            "additionalProperties": false
+                                                          },
+                                                          {
+                                                            "kind": "object",
+                                                            "properties": [
+                                                              {
+                                                                "name": "type",
+                                                                "schema": {
+                                                                  "kind": "literal",
+                                                                  "value": "image_url"
+                                                                },
+                                                                "required": true
+                                                              },
+                                                              {
+                                                                "name": "image_url",
+                                                                "schema": {
+                                                                  "kind": "object",
+                                                                  "properties": [
+                                                                    {
+                                                                      "name": "url",
+                                                                      "schema": {
+                                                                        "kind": "primitive",
+                                                                        "type": "string"
+                                                                      },
+                                                                      "required": true
+                                                                    },
+                                                                    {
+                                                                      "name": "detail",
+                                                                      "schema": {
+                                                                        "kind": "enum",
+                                                                        "values": [
+                                                                          "auto",
+                                                                          "low",
+                                                                          "high"
+                                                                        ]
+                                                                      },
+                                                                      "required": false
+                                                                    }
+                                                                  ],
+                                                                  "additionalProperties": false
+                                                                },
+                                                                "required": true
+                                                              },
+                                                              {
+                                                                "name": "key",
+                                                                "schema": {
+                                                                  "kind": "primitive",
+                                                                  "type": "string"
+                                                                },
+                                                                "required": false
+                                                              }
+                                                            ],
+                                                            "additionalProperties": false
+                                                          }
+                                                        ]
+                                                      },
+                                                      "description": "工具实际返回给模型的结构化内容"
+                                                    },
+                                                    "required": false,
+                                                    "description": "工具实际返回给模型的结构化内容"
                                                   },
                                                   {
                                                     "name": "hideDetails",
@@ -22630,7 +22916,7 @@
                                                                   "kind": "unknown",
                                                                   "description": "当前填写值"
                                                                 },
-                                                                "required": true,
+                                                                "required": false,
                                                                 "description": "当前填写值"
                                                               },
                                                               {
@@ -25184,6 +25470,102 @@
                                                     ]
                                                   },
                                                   "required": false
+                                                },
+                                                {
+                                                  "name": "content",
+                                                  "schema": {
+                                                    "kind": "array",
+                                                    "items": {
+                                                      "kind": "union",
+                                                      "variants": [
+                                                        {
+                                                          "kind": "object",
+                                                          "properties": [
+                                                            {
+                                                              "name": "type",
+                                                              "schema": {
+                                                                "kind": "literal",
+                                                                "value": "text"
+                                                              },
+                                                              "required": true
+                                                            },
+                                                            {
+                                                              "name": "text",
+                                                              "schema": {
+                                                                "kind": "primitive",
+                                                                "type": "string"
+                                                              },
+                                                              "required": true
+                                                            },
+                                                            {
+                                                              "name": "key",
+                                                              "schema": {
+                                                                "kind": "primitive",
+                                                                "type": "string"
+                                                              },
+                                                              "required": false
+                                                            }
+                                                          ],
+                                                          "additionalProperties": false
+                                                        },
+                                                        {
+                                                          "kind": "object",
+                                                          "properties": [
+                                                            {
+                                                              "name": "type",
+                                                              "schema": {
+                                                                "kind": "literal",
+                                                                "value": "image_url"
+                                                              },
+                                                              "required": true
+                                                            },
+                                                            {
+                                                              "name": "image_url",
+                                                              "schema": {
+                                                                "kind": "object",
+                                                                "properties": [
+                                                                  {
+                                                                    "name": "url",
+                                                                    "schema": {
+                                                                      "kind": "primitive",
+                                                                      "type": "string"
+                                                                    },
+                                                                    "required": true
+                                                                  },
+                                                                  {
+                                                                    "name": "detail",
+                                                                    "schema": {
+                                                                      "kind": "enum",
+                                                                      "values": [
+                                                                        "auto",
+                                                                        "low",
+                                                                        "high"
+                                                                      ]
+                                                                    },
+                                                                    "required": false
+                                                                  }
+                                                                ],
+                                                                "additionalProperties": false
+                                                              },
+                                                              "required": true
+                                                            },
+                                                            {
+                                                              "name": "key",
+                                                              "schema": {
+                                                                "kind": "primitive",
+                                                                "type": "string"
+                                                              },
+                                                              "required": false
+                                                            }
+                                                          ],
+                                                          "additionalProperties": false
+                                                        }
+                                                      ]
+                                                    },
+                                                    "description": "工具实际返回给模型的结构化内容"
+                                                  },
+                                                  "required": false,
+                                                  "description": "工具实际返回给模型的结构化内容"
                                                 },
                                                 {
                                                   "name": "hideDetails",
@@ -30841,6 +31223,16 @@
                         "kind": "object",
                         "properties": [
                           {
+                            "name": "tierUnit",
+                            "schema": {
+                              "kind": "literal",
+                              "value": "K",
+                              "description": "LLM 阶梯输入上限单位，默认 K Tokens"
+                            },
+                            "required": false,
+                            "description": "LLM 阶梯输入上限单位，默认 K Tokens"
+                          },
+                          {
                             "name": "tiers",
                             "schema": {
                               "kind": "array",
@@ -30851,11 +31243,11 @@
                                     "name": "maxInputTokens",
                                     "schema": {
                                       "kind": "primitive",
-                                      "type": "number",
-                                      "description": "本档输入上限，单位 M Tokens；省略表示无限"
+                                      "type": "integer",
+                                      "description": "本档输入上限，单位 K Tokens；省略表示无限"
                                     },
                                     "required": false,
-                                    "description": "本档输入上限，单位 M Tokens；省略表示无限"
+                                    "description": "本档输入上限，单位 K Tokens；省略表示无限"
                                   },
                                   {
                                     "name": "inputPrice",
@@ -31225,6 +31617,16 @@
                         "kind": "object",
                         "properties": [
                           {
+                            "name": "tierUnit",
+                            "schema": {
+                              "kind": "literal",
+                              "value": "K",
+                              "description": "LLM 阶梯输入上限单位，默认 K Tokens"
+                            },
+                            "required": false,
+                            "description": "LLM 阶梯输入上限单位，默认 K Tokens"
+                          },
+                          {
                             "name": "tiers",
                             "schema": {
                               "kind": "array",
@@ -31235,11 +31637,11 @@
                                     "name": "maxInputTokens",
                                     "schema": {
                                       "kind": "primitive",
-                                      "type": "number",
-                                      "description": "本档输入上限，单位 M Tokens；省略表示无限"
+                                      "type": "integer",
+                                      "description": "本档输入上限，单位 K Tokens；省略表示无限"
                                     },
                                     "required": false,
-                                    "description": "本档输入上限，单位 M Tokens；省略表示无限"
+                                    "description": "本档输入上限，单位 K Tokens；省略表示无限"
                                   },
                                   {
                                     "name": "inputPrice",
@@ -45013,12 +45415,9 @@
                       {
                         "name": "collectionId",
                         "schema": {
-                          "kind": "primitive",
-                          "type": "string",
-                          "description": "集合 ID，不传 dataId 时按集合范围重试所有最终/阻塞异常"
+                          "kind": "never"
                         },
-                        "required": false,
-                        "description": "集合 ID，不传 dataId 时按集合范围重试所有最终/阻塞异常"
+                        "required": false
                       },
                       {
                         "name": "dataId",
@@ -45068,12 +45467,9 @@
                       {
                         "name": "datasetId",
                         "schema": {
-                          "kind": "primitive",
-                          "type": "string",
-                          "description": "知识库 ID，不传 dataId 时按知识库范围重试所有最终/阻塞异常"
+                          "kind": "never"
                         },
-                        "required": false,
-                        "description": "知识库 ID，不传 dataId 时按知识库范围重试所有最终/阻塞异常"
+                        "required": false
                       },
                       {
                         "name": "collectionId",
@@ -45387,6 +45783,16 @@
                                     "kind": "object",
                                     "properties": [
                                       {
+                                        "name": "tierUnit",
+                                        "schema": {
+                                          "kind": "literal",
+                                          "value": "K",
+                                          "description": "LLM 阶梯输入上限单位，默认 K Tokens"
+                                        },
+                                        "required": false,
+                                        "description": "LLM 阶梯输入上限单位，默认 K Tokens"
+                                      },
+                                      {
                                         "name": "tiers",
                                         "schema": {
                                           "kind": "array",
@@ -45397,11 +45803,11 @@
                                                 "name": "maxInputTokens",
                                                 "schema": {
                                                   "kind": "primitive",
-                                                  "type": "number",
-                                                  "description": "本档输入上限，单位 M Tokens；省略表示无限"
+                                                  "type": "integer",
+                                                  "description": "本档输入上限，单位 K Tokens；省略表示无限"
                                                 },
                                                 "required": false,
-                                                "description": "本档输入上限，单位 M Tokens；省略表示无限"
+                                                "description": "本档输入上限，单位 K Tokens；省略表示无限"
                                               },
                                               {
                                                 "name": "inputPrice",
@@ -46791,6 +47197,16 @@
                               "kind": "object",
                               "properties": [
                                 {
+                                  "name": "tierUnit",
+                                  "schema": {
+                                    "kind": "literal",
+                                    "value": "K",
+                                    "description": "LLM 阶梯输入上限单位，默认 K Tokens"
+                                  },
+                                  "required": false,
+                                  "description": "LLM 阶梯输入上限单位，默认 K Tokens"
+                                },
+                                {
                                   "name": "tiers",
                                   "schema": {
                                     "kind": "array",
@@ -46801,11 +47217,11 @@
                                           "name": "maxInputTokens",
                                           "schema": {
                                             "kind": "primitive",
-                                            "type": "number",
-                                            "description": "本档输入上限，单位 M Tokens；省略表示无限"
+                                            "type": "integer",
+                                            "description": "本档输入上限，单位 K Tokens；省略表示无限"
                                           },
                                           "required": false,
-                                          "description": "本档输入上限，单位 M Tokens；省略表示无限"
+                                          "description": "本档输入上限，单位 K Tokens；省略表示无限"
                                         },
                                         {
                                           "name": "inputPrice",
@@ -48272,6 +48688,7 @@
         "tmbIds",
         "outLinkUids",
         "chatSearch",
+        "searchType",
         "title",
         "sourcesMap",
         "logKeys"
@@ -48326,7 +48743,6 @@
             "schema": {
               "kind": "primitive",
               "type": "string",
-              "format": "date-time",
               "description": "开始时间"
             },
             "required": true,
@@ -48337,7 +48753,6 @@
             "schema": {
               "kind": "primitive",
               "type": "string",
-              "format": "date-time",
               "description": "结束时间"
             },
             "required": true,
@@ -48400,10 +48815,20 @@
             "schema": {
               "kind": "primitive",
               "type": "string",
-              "description": "对话内容搜索关键词"
+              "description": "搜索关键词；与 searchType 共同指定标题搜索或会话 ID 精确匹配"
             },
             "required": false,
-            "description": "对话内容搜索关键词"
+            "description": "搜索关键词；与 searchType 共同指定标题搜索或会话 ID 精确匹配"
+          },
+          {
+            "name": "searchType",
+            "schema": {
+              "kind": "enum",
+              "values": ["title", "chatId"],
+              "description": "搜索类型：title 搜索标题，chatId 精确匹配会话 ID；省略时兼容旧搜索"
+            },
+            "required": false,
+            "description": "搜索类型：title 搜索标题，chatId 精确匹配会话 ID；省略时兼容旧搜索"
           },
           {
             "name": "title",
@@ -48523,7 +48948,6 @@
             "schema": {
               "kind": "primitive",
               "type": "string",
-              "format": "date-time",
               "description": "开始时间（包含），ISO 字符串保留时区偏移及毫秒；统计使用该固定偏移，未带偏移时按服务器时区，Z 为 UTC"
             },
             "required": true,
@@ -48534,7 +48958,6 @@
             "schema": {
               "kind": "primitive",
               "type": "string",
-              "format": "date-time",
               "description": "结束时间（包含），未带偏移时按服务器时区；保持客户端选择的边界，不额外扩展日期"
             },
             "required": true,
@@ -48991,13 +49414,13 @@
       }
     },
     {
-      "id": "apps.logs.list",
+      "id": "apps.logs.listUsers",
       "resource": "apps.logs",
-      "method": "list",
+      "method": "listUsers",
       "httpMethod": "POST",
-      "path": "/core/app/logs/list",
-      "summary": "获取应用日志列表",
-      "description": "分页获取应用的对话日志列表，支持按时间范围、来源、用户等条件筛选",
+      "path": "/core/app/logs/getUsers",
+      "summary": "获取日志用户列表",
+      "description": "获取应用日志中的用户列表，包括外链用户和团队成员，按对话数量排序，支持搜索和分页",
       "requestContentType": "json",
       "responseMode": "envelope",
       "appIdCarrier": "body",
@@ -49008,19 +49431,14 @@
         "appId",
         "offset",
         "pageSize",
-        "feedbackType",
-        "unreadOnly",
-        "errorFilter",
         "dateStart",
         "dateEnd",
+        "searchKey",
         "sources",
-        "tmbIds",
-        "outLinkUids",
-        "chatSearch",
         "pageNum"
       ],
       "hasRequiredInput": true,
-      "requestTypeName": "AppsLogsListReq",
+      "requestTypeName": "AppsLogsListUsersReq",
       "requestSchema": {
         "kind": "object",
         "properties": [
@@ -49053,6 +49471,202 @@
             },
             "required": false,
             "description": "每页条数，默认 20，最大 500，超出自动按 500 处理"
+          },
+          {
+            "name": "dateStart",
+            "schema": {
+              "kind": "primitive",
+              "type": "string",
+              "description": "开始时间"
+            },
+            "required": true,
+            "description": "开始时间"
+          },
+          {
+            "name": "dateEnd",
+            "schema": {
+              "kind": "primitive",
+              "type": "string",
+              "description": "结束时间"
+            },
+            "required": true,
+            "description": "结束时间"
+          },
+          {
+            "name": "searchKey",
+            "schema": {
+              "kind": "primitive",
+              "type": "string",
+              "description": "搜索用户名"
+            },
+            "required": false,
+            "description": "搜索用户名"
+          },
+          {
+            "name": "sources",
+            "schema": {
+              "kind": "array",
+              "items": {
+                "kind": "primitive",
+                "type": "string"
+              },
+              "description": "来源筛选"
+            },
+            "required": false,
+            "description": "来源筛选"
+          },
+          {
+            "name": "pageNum",
+            "schema": {
+              "kind": "primitive",
+              "type": "integer",
+              "description": "页码，从 1 开始；传入 offset 时忽略"
+            },
+            "required": false,
+            "description": "页码，从 1 开始；传入 offset 时忽略"
+          }
+        ]
+      },
+      "responseTypeName": "AppsLogsListUsersRes",
+      "responseSchema": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "total",
+            "schema": {
+              "kind": "primitive",
+              "type": "number"
+            },
+            "required": true
+          },
+          {
+            "name": "list",
+            "schema": {
+              "kind": "array",
+              "items": {
+                "kind": "object",
+                "properties": [
+                  {
+                    "name": "outLinkUid",
+                    "schema": {
+                      "kind": "union",
+                      "variants": [
+                        {
+                          "kind": "primitive",
+                          "type": "string"
+                        },
+                        {
+                          "kind": "primitive",
+                          "type": "null"
+                        }
+                      ],
+                      "description": "使用者 ID，外链访客或 API customUid；非空时优先于 tmbId"
+                    },
+                    "required": true,
+                    "description": "使用者 ID，外链访客或 API customUid；非空时优先于 tmbId"
+                  },
+                  {
+                    "name": "tmbId",
+                    "schema": {
+                      "kind": "union",
+                      "variants": [
+                        {
+                          "kind": "primitive",
+                          "type": "string"
+                        },
+                        {
+                          "kind": "primitive",
+                          "type": "null"
+                        }
+                      ],
+                      "description": "本次实际鉴权成员 ID，代理调用时为被代理成员"
+                    },
+                    "required": true,
+                    "description": "本次实际鉴权成员 ID，代理调用时为被代理成员"
+                  },
+                  {
+                    "name": "name",
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "string",
+                      "description": "用户名称"
+                    },
+                    "required": true,
+                    "description": "用户名称"
+                  },
+                  {
+                    "name": "avatar",
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "string",
+                      "description": "头像"
+                    },
+                    "required": false,
+                    "description": "头像"
+                  },
+                  {
+                    "name": "count",
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "number",
+                      "description": "对话数量"
+                    },
+                    "required": true,
+                    "description": "对话数量"
+                  }
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": true
+          }
+        ],
+        "additionalProperties": false,
+        "description": "分页使用者列表"
+      }
+    },
+    {
+      "id": "apps.logs.search",
+      "resource": "apps.logs",
+      "method": "search",
+      "httpMethod": "POST",
+      "path": "/core/app/logs/search",
+      "summary": "搜索应用日志列表",
+      "description": "按游标搜索应用的对话日志列表，每页固定 50 条且不查询总数",
+      "requestContentType": "json",
+      "responseMode": "envelope",
+      "appIdCarrier": "body",
+      "identityCarrier": null,
+      "pathParams": [],
+      "queryParams": [],
+      "bodyParams": [
+        "appId",
+        "feedbackType",
+        "unreadOnly",
+        "errorFilter",
+        "dateStart",
+        "dateEnd",
+        "sources",
+        "tmbIds",
+        "outLinkUids",
+        "chatSearch",
+        "searchType",
+        "cursor"
+      ],
+      "hasRequiredInput": true,
+      "requestTypeName": "AppsLogsSearchReq",
+      "requestSchema": {
+        "kind": "object",
+        "properties": [
+          {
+            "name": "appId",
+            "schema": {
+              "kind": "primitive",
+              "type": "string",
+              "description": "应用 ID"
+            },
+            "required": false,
+            "description": "应用 ID"
           },
           {
             "name": "feedbackType",
@@ -49089,7 +49703,6 @@
             "schema": {
               "kind": "primitive",
               "type": "string",
-              "format": "date-time",
               "description": "开始时间"
             },
             "required": true,
@@ -49100,7 +49713,6 @@
             "schema": {
               "kind": "primitive",
               "type": "string",
-              "format": "date-time",
               "description": "结束时间"
             },
             "required": true,
@@ -49163,37 +49775,58 @@
             "schema": {
               "kind": "primitive",
               "type": "string",
-              "description": "对话内容搜索关键词"
+              "description": "搜索关键词；与 searchType 共同指定标题搜索或会话 ID 精确匹配"
             },
             "required": false,
-            "description": "对话内容搜索关键词"
+            "description": "搜索关键词；与 searchType 共同指定标题搜索或会话 ID 精确匹配"
           },
           {
-            "name": "pageNum",
+            "name": "searchType",
             "schema": {
-              "kind": "primitive",
-              "type": "integer",
-              "description": "页码，从 1 开始；传入 offset 时忽略"
+              "kind": "enum",
+              "values": ["title", "chatId"],
+              "description": "搜索类型：title 搜索标题，chatId 精确匹配会话 ID；省略时兼容旧搜索"
             },
             "required": false,
-            "description": "页码，从 1 开始；传入 offset 时忽略"
+            "description": "搜索类型：title 搜索标题，chatId 精确匹配会话 ID；省略时兼容旧搜索"
+          },
+          {
+            "name": "cursor",
+            "schema": {
+              "kind": "object",
+              "properties": [
+                {
+                  "name": "timestamp",
+                  "schema": {
+                    "kind": "primitive",
+                    "type": "integer",
+                    "description": "游标时间戳（毫秒）"
+                  },
+                  "required": true,
+                  "description": "游标时间戳（毫秒）"
+                },
+                {
+                  "name": "id",
+                  "schema": {
+                    "kind": "primitive",
+                    "type": "string",
+                    "description": "游标日志 ID"
+                  },
+                  "required": true,
+                  "description": "游标日志 ID"
+                }
+              ],
+              "description": "上一页响应中的 nextCursor；首屏请求省略，后续请求原样传入"
+            },
+            "required": false,
+            "description": "上一页响应中的 nextCursor；首屏请求省略，后续请求原样传入"
           }
         ]
       },
-      "responseTypeName": "AppsLogsListRes",
+      "responseTypeName": "AppsLogsSearchRes",
       "responseSchema": {
         "kind": "object",
         "properties": [
-          {
-            "name": "total",
-            "schema": {
-              "kind": "primitive",
-              "type": "number",
-              "description": "总记录数"
-            },
-            "required": true,
-            "description": "总记录数"
-          },
           {
             "name": "list",
             "schema": {
@@ -49756,228 +50389,46 @@
                 ],
                 "additionalProperties": false
               },
-              "description": "对话日志记录列表"
+              "description": "对话日志记录列表，固定返回 50 条"
             },
             "required": true,
-            "description": "对话日志记录列表"
+            "description": "对话日志记录列表，固定返回 50 条"
+          },
+          {
+            "name": "nextCursor",
+            "schema": {
+              "kind": "object",
+              "properties": [
+                {
+                  "name": "timestamp",
+                  "schema": {
+                    "kind": "primitive",
+                    "type": "integer",
+                    "description": "游标时间戳（毫秒）"
+                  },
+                  "required": true,
+                  "description": "游标时间戳（毫秒）"
+                },
+                {
+                  "name": "id",
+                  "schema": {
+                    "kind": "primitive",
+                    "type": "string",
+                    "description": "游标日志 ID"
+                  },
+                  "required": true,
+                  "description": "游标日志 ID"
+                }
+              ],
+              "additionalProperties": false,
+              "description": "下一页游标；省略表示已加载全部"
+            },
+            "required": false,
+            "description": "下一页游标；省略表示已加载全部"
           }
         ],
         "additionalProperties": false,
-        "description": "应用对话日志列表"
-      }
-    },
-    {
-      "id": "apps.logs.listUsers",
-      "resource": "apps.logs",
-      "method": "listUsers",
-      "httpMethod": "POST",
-      "path": "/core/app/logs/getUsers",
-      "summary": "获取日志用户列表",
-      "description": "获取应用日志中的用户列表，包括外链用户和团队成员，按对话数量排序，支持搜索和分页",
-      "requestContentType": "json",
-      "responseMode": "envelope",
-      "appIdCarrier": "body",
-      "identityCarrier": null,
-      "pathParams": [],
-      "queryParams": [],
-      "bodyParams": [
-        "appId",
-        "offset",
-        "pageSize",
-        "dateStart",
-        "dateEnd",
-        "searchKey",
-        "sources",
-        "pageNum"
-      ],
-      "hasRequiredInput": true,
-      "requestTypeName": "AppsLogsListUsersReq",
-      "requestSchema": {
-        "kind": "object",
-        "properties": [
-          {
-            "name": "appId",
-            "schema": {
-              "kind": "primitive",
-              "type": "string",
-              "description": "应用 ID"
-            },
-            "required": false,
-            "description": "应用 ID"
-          },
-          {
-            "name": "offset",
-            "schema": {
-              "kind": "primitive",
-              "type": "integer",
-              "description": "偏移量，从 0 开始"
-            },
-            "required": false,
-            "description": "偏移量，从 0 开始"
-          },
-          {
-            "name": "pageSize",
-            "schema": {
-              "kind": "primitive",
-              "type": "integer",
-              "description": "每页条数，默认 20，最大 500，超出自动按 500 处理"
-            },
-            "required": false,
-            "description": "每页条数，默认 20，最大 500，超出自动按 500 处理"
-          },
-          {
-            "name": "dateStart",
-            "schema": {
-              "kind": "primitive",
-              "type": "string",
-              "format": "date-time",
-              "description": "开始时间"
-            },
-            "required": true,
-            "description": "开始时间"
-          },
-          {
-            "name": "dateEnd",
-            "schema": {
-              "kind": "primitive",
-              "type": "string",
-              "format": "date-time",
-              "description": "结束时间"
-            },
-            "required": true,
-            "description": "结束时间"
-          },
-          {
-            "name": "searchKey",
-            "schema": {
-              "kind": "primitive",
-              "type": "string",
-              "description": "搜索用户名"
-            },
-            "required": false,
-            "description": "搜索用户名"
-          },
-          {
-            "name": "sources",
-            "schema": {
-              "kind": "array",
-              "items": {
-                "kind": "primitive",
-                "type": "string"
-              },
-              "description": "来源筛选"
-            },
-            "required": false,
-            "description": "来源筛选"
-          },
-          {
-            "name": "pageNum",
-            "schema": {
-              "kind": "primitive",
-              "type": "integer",
-              "description": "页码，从 1 开始；传入 offset 时忽略"
-            },
-            "required": false,
-            "description": "页码，从 1 开始；传入 offset 时忽略"
-          }
-        ]
-      },
-      "responseTypeName": "AppsLogsListUsersRes",
-      "responseSchema": {
-        "kind": "object",
-        "properties": [
-          {
-            "name": "total",
-            "schema": {
-              "kind": "primitive",
-              "type": "number"
-            },
-            "required": true
-          },
-          {
-            "name": "list",
-            "schema": {
-              "kind": "array",
-              "items": {
-                "kind": "object",
-                "properties": [
-                  {
-                    "name": "outLinkUid",
-                    "schema": {
-                      "kind": "union",
-                      "variants": [
-                        {
-                          "kind": "primitive",
-                          "type": "string"
-                        },
-                        {
-                          "kind": "primitive",
-                          "type": "null"
-                        }
-                      ],
-                      "description": "使用者 ID，外链访客或 API customUid；非空时优先于 tmbId"
-                    },
-                    "required": true,
-                    "description": "使用者 ID，外链访客或 API customUid；非空时优先于 tmbId"
-                  },
-                  {
-                    "name": "tmbId",
-                    "schema": {
-                      "kind": "union",
-                      "variants": [
-                        {
-                          "kind": "primitive",
-                          "type": "string"
-                        },
-                        {
-                          "kind": "primitive",
-                          "type": "null"
-                        }
-                      ],
-                      "description": "本次实际鉴权成员 ID，代理调用时为被代理成员"
-                    },
-                    "required": true,
-                    "description": "本次实际鉴权成员 ID，代理调用时为被代理成员"
-                  },
-                  {
-                    "name": "name",
-                    "schema": {
-                      "kind": "primitive",
-                      "type": "string",
-                      "description": "用户名称"
-                    },
-                    "required": true,
-                    "description": "用户名称"
-                  },
-                  {
-                    "name": "avatar",
-                    "schema": {
-                      "kind": "primitive",
-                      "type": "string",
-                      "description": "头像"
-                    },
-                    "required": false,
-                    "description": "头像"
-                  },
-                  {
-                    "name": "count",
-                    "schema": {
-                      "kind": "primitive",
-                      "type": "number",
-                      "description": "对话数量"
-                    },
-                    "required": true,
-                    "description": "对话数量"
-                  }
-                ],
-                "additionalProperties": false
-              }
-            },
-            "required": true
-          }
-        ],
-        "additionalProperties": false,
-        "description": "分页使用者列表"
+        "description": "应用对话日志搜索结果"
       }
     },
     {
@@ -51032,31 +51483,82 @@
                             {
                               "kind": "array",
                               "items": {
-                                "kind": "object",
-                                "properties": [
+                                "kind": "union",
+                                "variants": [
                                   {
-                                    "name": "type",
-                                    "schema": {
-                                      "kind": "literal",
-                                      "value": "text"
-                                    },
-                                    "required": true
+                                    "kind": "object",
+                                    "properties": [
+                                      {
+                                        "name": "type",
+                                        "schema": {
+                                          "kind": "literal",
+                                          "value": "text"
+                                        },
+                                        "required": true
+                                      },
+                                      {
+                                        "name": "text",
+                                        "schema": {
+                                          "kind": "primitive",
+                                          "type": "string"
+                                        },
+                                        "required": true
+                                      },
+                                      {
+                                        "name": "key",
+                                        "schema": {
+                                          "kind": "primitive",
+                                          "type": "string"
+                                        },
+                                        "required": false
+                                      }
+                                    ]
                                   },
                                   {
-                                    "name": "text",
-                                    "schema": {
-                                      "kind": "primitive",
-                                      "type": "string"
-                                    },
-                                    "required": true
-                                  },
-                                  {
-                                    "name": "key",
-                                    "schema": {
-                                      "kind": "primitive",
-                                      "type": "string"
-                                    },
-                                    "required": false
+                                    "kind": "object",
+                                    "properties": [
+                                      {
+                                        "name": "type",
+                                        "schema": {
+                                          "kind": "literal",
+                                          "value": "image_url"
+                                        },
+                                        "required": true
+                                      },
+                                      {
+                                        "name": "image_url",
+                                        "schema": {
+                                          "kind": "object",
+                                          "properties": [
+                                            {
+                                              "name": "url",
+                                              "schema": {
+                                                "kind": "primitive",
+                                                "type": "string"
+                                              },
+                                              "required": true
+                                            },
+                                            {
+                                              "name": "detail",
+                                              "schema": {
+                                                "kind": "enum",
+                                                "values": ["auto", "low", "high"]
+                                              },
+                                              "required": false
+                                            }
+                                          ]
+                                        },
+                                        "required": true
+                                      },
+                                      {
+                                        "name": "key",
+                                        "schema": {
+                                          "kind": "primitive",
+                                          "type": "string"
+                                        },
+                                        "required": false
+                                      }
+                                    ]
                                   }
                                 ]
                               }
@@ -53417,7 +53919,8 @@
                         "required": true,
                         "description": "工作流辅助生成会话资源类型"
                       }
-                    ]
+                    ],
+                    "additionalProperties": false
                   },
                   {
                     "kind": "object",
@@ -53500,7 +54003,8 @@
                         "required": true,
                         "description": "ChatAgentHelper 会话资源类型"
                       }
-                    ]
+                    ],
+                    "additionalProperties": false
                   },
                   {
                     "kind": "object",
@@ -53573,7 +54077,8 @@
                         "required": true,
                         "description": "应用 ID，仅 App 会话返回"
                       }
-                    ]
+                    ],
+                    "additionalProperties": false
                   },
                   {
                     "kind": "object",
@@ -53646,7 +54151,8 @@
                         "required": true,
                         "description": "Skill Edit 调试 ID，仅 Skill Edit 会话返回"
                       }
-                    ]
+                    ],
+                    "additionalProperties": false
                   }
                 ]
               }
@@ -56503,7 +57009,8 @@
                 "required": true,
                 "description": "工作流辅助生成会话资源类型"
               }
-            ]
+            ],
+            "additionalProperties": false
           },
           {
             "kind": "object",
@@ -59029,7 +59536,8 @@
                 "required": true,
                 "description": "ChatAgentHelper 会话资源类型"
               }
-            ]
+            ],
+            "additionalProperties": false
           },
           {
             "kind": "object",
@@ -61545,7 +62053,8 @@
                 "required": true,
                 "description": "应用 ID，仅 App 会话返回"
               }
-            ]
+            ],
+            "additionalProperties": false
           },
           {
             "kind": "object",
@@ -64061,7 +64570,8 @@
                 "required": true,
                 "description": "Skill Edit 调试 ID，仅 Skill Edit 会话返回"
               }
-            ]
+            ],
+            "additionalProperties": false
           }
         ]
       }
@@ -69428,6 +69938,98 @@
                                           "type": "string"
                                         },
                                         "required": true
+                                      },
+                                      {
+                                        "name": "content",
+                                        "schema": {
+                                          "kind": "array",
+                                          "items": {
+                                            "kind": "union",
+                                            "variants": [
+                                              {
+                                                "kind": "object",
+                                                "properties": [
+                                                  {
+                                                    "name": "type",
+                                                    "schema": {
+                                                      "kind": "literal",
+                                                      "value": "text"
+                                                    },
+                                                    "required": true
+                                                  },
+                                                  {
+                                                    "name": "text",
+                                                    "schema": {
+                                                      "kind": "primitive",
+                                                      "type": "string"
+                                                    },
+                                                    "required": true
+                                                  },
+                                                  {
+                                                    "name": "key",
+                                                    "schema": {
+                                                      "kind": "primitive",
+                                                      "type": "string"
+                                                    },
+                                                    "required": false
+                                                  }
+                                                ],
+                                                "additionalProperties": false
+                                              },
+                                              {
+                                                "kind": "object",
+                                                "properties": [
+                                                  {
+                                                    "name": "type",
+                                                    "schema": {
+                                                      "kind": "literal",
+                                                      "value": "image_url"
+                                                    },
+                                                    "required": true
+                                                  },
+                                                  {
+                                                    "name": "image_url",
+                                                    "schema": {
+                                                      "kind": "object",
+                                                      "properties": [
+                                                        {
+                                                          "name": "url",
+                                                          "schema": {
+                                                            "kind": "primitive",
+                                                            "type": "string"
+                                                          },
+                                                          "required": true
+                                                        },
+                                                        {
+                                                          "name": "detail",
+                                                          "schema": {
+                                                            "kind": "enum",
+                                                            "values": ["auto", "low", "high"]
+                                                          },
+                                                          "required": false
+                                                        }
+                                                      ],
+                                                      "additionalProperties": false
+                                                    },
+                                                    "required": true
+                                                  },
+                                                  {
+                                                    "name": "key",
+                                                    "schema": {
+                                                      "kind": "primitive",
+                                                      "type": "string"
+                                                    },
+                                                    "required": false
+                                                  }
+                                                ],
+                                                "additionalProperties": false
+                                              }
+                                            ]
+                                          },
+                                          "description": "子工具恢复时返回给模型的结构化内容"
+                                        },
+                                        "required": false,
+                                        "description": "子工具恢复时返回给模型的结构化内容"
                                       }
                                     ],
                                     "additionalProperties": false
@@ -69569,6 +70171,98 @@
                                               ]
                                             },
                                             "required": false
+                                          },
+                                          {
+                                            "name": "content",
+                                            "schema": {
+                                              "kind": "array",
+                                              "items": {
+                                                "kind": "union",
+                                                "variants": [
+                                                  {
+                                                    "kind": "object",
+                                                    "properties": [
+                                                      {
+                                                        "name": "type",
+                                                        "schema": {
+                                                          "kind": "literal",
+                                                          "value": "text"
+                                                        },
+                                                        "required": true
+                                                      },
+                                                      {
+                                                        "name": "text",
+                                                        "schema": {
+                                                          "kind": "primitive",
+                                                          "type": "string"
+                                                        },
+                                                        "required": true
+                                                      },
+                                                      {
+                                                        "name": "key",
+                                                        "schema": {
+                                                          "kind": "primitive",
+                                                          "type": "string"
+                                                        },
+                                                        "required": false
+                                                      }
+                                                    ],
+                                                    "additionalProperties": false
+                                                  },
+                                                  {
+                                                    "kind": "object",
+                                                    "properties": [
+                                                      {
+                                                        "name": "type",
+                                                        "schema": {
+                                                          "kind": "literal",
+                                                          "value": "image_url"
+                                                        },
+                                                        "required": true
+                                                      },
+                                                      {
+                                                        "name": "image_url",
+                                                        "schema": {
+                                                          "kind": "object",
+                                                          "properties": [
+                                                            {
+                                                              "name": "url",
+                                                              "schema": {
+                                                                "kind": "primitive",
+                                                                "type": "string"
+                                                              },
+                                                              "required": true
+                                                            },
+                                                            {
+                                                              "name": "detail",
+                                                              "schema": {
+                                                                "kind": "enum",
+                                                                "values": ["auto", "low", "high"]
+                                                              },
+                                                              "required": false
+                                                            }
+                                                          ],
+                                                          "additionalProperties": false
+                                                        },
+                                                        "required": true
+                                                      },
+                                                      {
+                                                        "name": "key",
+                                                        "schema": {
+                                                          "kind": "primitive",
+                                                          "type": "string"
+                                                        },
+                                                        "required": false
+                                                      }
+                                                    ],
+                                                    "additionalProperties": false
+                                                  }
+                                                ]
+                                              },
+                                              "description": "工具实际返回给模型的结构化内容"
+                                            },
+                                            "required": false,
+                                            "description": "工具实际返回给模型的结构化内容"
                                           },
                                           {
                                             "name": "hideDetails",
@@ -70353,7 +71047,7 @@
                                                           "kind": "unknown",
                                                           "description": "当前填写值"
                                                         },
-                                                        "required": true,
+                                                        "required": false,
                                                         "description": "当前填写值"
                                                       },
                                                       {
@@ -72879,6 +73573,98 @@
                                             ]
                                           },
                                           "required": false
+                                        },
+                                        {
+                                          "name": "content",
+                                          "schema": {
+                                            "kind": "array",
+                                            "items": {
+                                              "kind": "union",
+                                              "variants": [
+                                                {
+                                                  "kind": "object",
+                                                  "properties": [
+                                                    {
+                                                      "name": "type",
+                                                      "schema": {
+                                                        "kind": "literal",
+                                                        "value": "text"
+                                                      },
+                                                      "required": true
+                                                    },
+                                                    {
+                                                      "name": "text",
+                                                      "schema": {
+                                                        "kind": "primitive",
+                                                        "type": "string"
+                                                      },
+                                                      "required": true
+                                                    },
+                                                    {
+                                                      "name": "key",
+                                                      "schema": {
+                                                        "kind": "primitive",
+                                                        "type": "string"
+                                                      },
+                                                      "required": false
+                                                    }
+                                                  ],
+                                                  "additionalProperties": false
+                                                },
+                                                {
+                                                  "kind": "object",
+                                                  "properties": [
+                                                    {
+                                                      "name": "type",
+                                                      "schema": {
+                                                        "kind": "literal",
+                                                        "value": "image_url"
+                                                      },
+                                                      "required": true
+                                                    },
+                                                    {
+                                                      "name": "image_url",
+                                                      "schema": {
+                                                        "kind": "object",
+                                                        "properties": [
+                                                          {
+                                                            "name": "url",
+                                                            "schema": {
+                                                              "kind": "primitive",
+                                                              "type": "string"
+                                                            },
+                                                            "required": true
+                                                          },
+                                                          {
+                                                            "name": "detail",
+                                                            "schema": {
+                                                              "kind": "enum",
+                                                              "values": ["auto", "low", "high"]
+                                                            },
+                                                            "required": false
+                                                          }
+                                                        ],
+                                                        "additionalProperties": false
+                                                      },
+                                                      "required": true
+                                                    },
+                                                    {
+                                                      "name": "key",
+                                                      "schema": {
+                                                        "kind": "primitive",
+                                                        "type": "string"
+                                                      },
+                                                      "required": false
+                                                    }
+                                                  ],
+                                                  "additionalProperties": false
+                                                }
+                                              ]
+                                            },
+                                            "description": "工具实际返回给模型的结构化内容"
+                                          },
+                                          "required": false,
+                                          "description": "工具实际返回给模型的结构化内容"
                                         },
                                         {
                                           "name": "hideDetails",
@@ -86796,6 +87582,16 @@
                     "kind": "object",
                     "properties": [
                       {
+                        "name": "tierUnit",
+                        "schema": {
+                          "kind": "literal",
+                          "value": "K",
+                          "description": "LLM 阶梯输入上限单位，默认 K Tokens"
+                        },
+                        "required": false,
+                        "description": "LLM 阶梯输入上限单位，默认 K Tokens"
+                      },
+                      {
                         "name": "tiers",
                         "schema": {
                           "kind": "array",
@@ -86806,11 +87602,11 @@
                                 "name": "maxInputTokens",
                                 "schema": {
                                   "kind": "primitive",
-                                  "type": "number",
-                                  "description": "本档输入上限，单位 M Tokens；省略表示无限"
+                                  "type": "integer",
+                                  "description": "本档输入上限，单位 K Tokens；省略表示无限"
                                 },
                                 "required": false,
-                                "description": "本档输入上限，单位 M Tokens；省略表示无限"
+                                "description": "本档输入上限，单位 K Tokens；省略表示无限"
                               },
                               {
                                 "name": "inputPrice",
@@ -87180,6 +87976,16 @@
                     "kind": "object",
                     "properties": [
                       {
+                        "name": "tierUnit",
+                        "schema": {
+                          "kind": "literal",
+                          "value": "K",
+                          "description": "LLM 阶梯输入上限单位，默认 K Tokens"
+                        },
+                        "required": false,
+                        "description": "LLM 阶梯输入上限单位，默认 K Tokens"
+                      },
+                      {
                         "name": "tiers",
                         "schema": {
                           "kind": "array",
@@ -87190,11 +87996,11 @@
                                 "name": "maxInputTokens",
                                 "schema": {
                                   "kind": "primitive",
-                                  "type": "number",
-                                  "description": "本档输入上限，单位 M Tokens；省略表示无限"
+                                  "type": "integer",
+                                  "description": "本档输入上限，单位 K Tokens；省略表示无限"
                                 },
                                 "required": false,
-                                "description": "本档输入上限，单位 M Tokens；省略表示无限"
+                                "description": "本档输入上限，单位 K Tokens；省略表示无限"
                               },
                               {
                                 "name": "inputPrice",
@@ -92410,12 +93216,9 @@
               {
                 "name": "collectionId",
                 "schema": {
-                  "kind": "primitive",
-                  "type": "string",
-                  "description": "集合 ID，不传 dataId 时按集合范围重试所有最终/阻塞异常"
+                  "kind": "never"
                 },
-                "required": false,
-                "description": "集合 ID，不传 dataId 时按集合范围重试所有最终/阻塞异常"
+                "required": false
               },
               {
                 "name": "dataId",
@@ -92465,12 +93268,9 @@
               {
                 "name": "datasetId",
                 "schema": {
-                  "kind": "primitive",
-                  "type": "string",
-                  "description": "知识库 ID，不传 dataId 时按知识库范围重试所有最终/阻塞异常"
+                  "kind": "never"
                 },
-                "required": false,
-                "description": "知识库 ID，不传 dataId 时按知识库范围重试所有最终/阻塞异常"
+                "required": false
               },
               {
                 "name": "collectionId",
@@ -93390,6 +94190,16 @@
                                 "kind": "object",
                                 "properties": [
                                   {
+                                    "name": "tierUnit",
+                                    "schema": {
+                                      "kind": "literal",
+                                      "value": "K",
+                                      "description": "LLM 阶梯输入上限单位，默认 K Tokens"
+                                    },
+                                    "required": false,
+                                    "description": "LLM 阶梯输入上限单位，默认 K Tokens"
+                                  },
+                                  {
                                     "name": "tiers",
                                     "schema": {
                                       "kind": "array",
@@ -93400,11 +94210,11 @@
                                             "name": "maxInputTokens",
                                             "schema": {
                                               "kind": "primitive",
-                                              "type": "number",
-                                              "description": "本档输入上限，单位 M Tokens；省略表示无限"
+                                              "type": "integer",
+                                              "description": "本档输入上限，单位 K Tokens；省略表示无限"
                                             },
                                             "required": false,
-                                            "description": "本档输入上限，单位 M Tokens；省略表示无限"
+                                            "description": "本档输入上限，单位 K Tokens；省略表示无限"
                                           },
                                           {
                                             "name": "inputPrice",
@@ -94794,6 +95604,16 @@
                           "kind": "object",
                           "properties": [
                             {
+                              "name": "tierUnit",
+                              "schema": {
+                                "kind": "literal",
+                                "value": "K",
+                                "description": "LLM 阶梯输入上限单位，默认 K Tokens"
+                              },
+                              "required": false,
+                              "description": "LLM 阶梯输入上限单位，默认 K Tokens"
+                            },
+                            {
                               "name": "tiers",
                               "schema": {
                                 "kind": "array",
@@ -94804,11 +95624,11 @@
                                       "name": "maxInputTokens",
                                       "schema": {
                                         "kind": "primitive",
-                                        "type": "number",
-                                        "description": "本档输入上限，单位 M Tokens；省略表示无限"
+                                        "type": "integer",
+                                        "description": "本档输入上限，单位 K Tokens；省略表示无限"
                                       },
                                       "required": false,
-                                      "description": "本档输入上限，单位 M Tokens；省略表示无限"
+                                      "description": "本档输入上限，单位 K Tokens；省略表示无限"
                                     },
                                     {
                                       "name": "inputPrice",

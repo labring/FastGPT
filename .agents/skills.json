@@ -1,0 +1,9 @@
+{
+  "entries": [
+    { "path": ".agents/skills/system" },
+    { "path": ".agents/skills/doc" },
+    { "path": ".agents/skills/core/ai" },
+    { "path": ".agents/skills/core/workflow" },
+    { "path": ".agents/skills/support/permission" }
+  ]
+}

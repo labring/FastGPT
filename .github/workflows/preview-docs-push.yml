@@ -218,7 +218,7 @@ jobs:
     needs: prepare
     if: ${{ needs.prepare.outputs.should_publish == 'true' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     concurrency:
       group: 'preview-docs-deploy-${{ needs.prepare.outputs.number }}'
       cancel-in-progress: true
@@ -250,10 +250,23 @@ jobs:
 
       - name: Tag and push Docker image
         run: |
+          set -euo pipefail
           SHA="${{ needs.prepare.outputs.sha }}"
-          docker tag fastgpt-docs-pr:${SHA} \
-            ghcr.io/${{ github.repository_owner }}/fastgpt-docs-pr:${SHA}
-          docker push ghcr.io/${{ github.repository_owner }}/fastgpt-docs-pr:${SHA}
+          IMAGE_TAG="ghcr.io/${{ github.repository_owner }}/fastgpt-docs-pr:${SHA}"
+          docker tag "fastgpt-docs-pr:${SHA}" "$IMAGE_TAG"
+
+          MAX_PUSH_ATTEMPTS=3
+          for ((attempt = 1; attempt <= MAX_PUSH_ATTEMPTS; attempt++)); do
+            if docker push "$IMAGE_TAG"; then
+              break
+            fi
+            if ((attempt == MAX_PUSH_ATTEMPTS)); then
+              echo "::error::Failed to push $IMAGE_TAG after $MAX_PUSH_ATTEMPTS attempts."
+              exit 1
+            fi
+            echo "::warning::docker push failed (attempt $attempt/$MAX_PUSH_ATTEMPTS). Retrying in 10s..."
+            sleep 10
+          done
 
       - name: Deploy isolated docs preview
         id: deploy
@@ -358,6 +371,7 @@ jobs:
                   .metadata.annotations["kubectl.kubernetes.io/last-applied-configuration"]
                 )
               | .spec.replicas = 1
+              | .spec.strategy = { "type": "Recreate" }
               | .spec.selector.matchLabels = $selector
               | .spec.template.metadata.labels = ((.spec.template.metadata.labels // {}) + $selector)
               | .spec.template.metadata.annotations = ((.spec.template.metadata.annotations // {}) + {
@@ -452,30 +466,103 @@ jobs:
             -f "$WORK_DIR/service.json" \
             -f "$WORK_DIR/ingress.json"
 
-          MAX_ROLLOUT_RETRIES=3
+          ROLLOUT_TIMEOUT="360s"
+          MAX_ROLLOUT_RETRIES=2
           for ((retry = 0; retry <= MAX_ROLLOUT_RETRIES; retry++)); do
-            if kubectl rollout status "deployment/$RESOURCE_NAME" --timeout=180s 2>&1 |
+            if kubectl rollout status "deployment/$RESOURCE_NAME" --timeout="$ROLLOUT_TIMEOUT" 2>&1 |
               tee "$WORK_DIR/rollout.log"; then
               break
             fi
 
-            if ! grep -Fxq 'error: timed out waiting for the condition' "$WORK_DIR/rollout.log"; then
+            if ! grep -Eq '^error: (timed out waiting for the condition|deployment ".*" exceeded its progress deadline)$' "$WORK_DIR/rollout.log"; then
               exit 1
             fi
+
+            kubectl get resourcequota --request-timeout=10s -o wide || true
+            kubectl get deployment,rs,pods -l "fastgpt.io/preview-pr=$PR_NUMBER" --request-timeout=10s -o wide || true
+
+            OBJECT_UIDS="[]"
+            if kubectl get deployment,rs,pods -l "fastgpt.io/preview-pr=$PR_NUMBER" --request-timeout=10s -o json > "$WORK_DIR/pr-objects.json" 2>/dev/null; then
+              OBJECT_UIDS=$(jq -c '[.items[]?.metadata.uid | select(type == "string" and length > 0)]' "$WORK_DIR/pr-objects.json")
+            fi
+
+            PR_EVENTS=""
+            if [[ "$OBJECT_UIDS" != "[]" ]] && kubectl get events --request-timeout=10s -o json > "$WORK_DIR/ns-events.json" 2>/dev/null; then
+              PR_EVENTS=$(jq -r --argjson uids "$OBJECT_UIDS" '
+                [
+                  .items[]?
+                  | select(.involvedObject.uid as $uid | ($uids | index($uid)) != null)
+                ]
+                | sort_by(.lastTimestamp // .eventTime // .metadata.creationTimestamp // "")
+                | .[-10:][]
+                | "\(.lastTimestamp // .eventTime // "-")\t\(.type // "-")\t\(.reason // "-")\t\(.involvedObject.kind // "-")/\(.involvedObject.name // "-")\t\(.message // "")"
+              ' "$WORK_DIR/ns-events.json")
+            fi
+
+            if [[ -n "$PR_EVENTS" ]]; then
+              printf '%s\n' "$PR_EVENTS"
+            fi
+
+            QUOTA_BLOCKED="false"
+            if [[ -s "$WORK_DIR/pr-objects.json" ]]; then
+              QUOTA_BLOCKED=$(jq -r --arg dep_name "$RESOURCE_NAME" '
+                (.items // []) as $items
+                | ($items | map(select(.kind == "Deployment" and .metadata.name == $dep_name)) | first) as $dep
+                | ($dep.metadata.uid // "") as $dep_uid
+                | ($dep.metadata.annotations["deployment.kubernetes.io/revision"] // "") as $dep_rev
+                | [
+                    $items[]
+                    | select(.kind == "ReplicaSet")
+                    | select(
+                        if $dep_uid != "" then
+                          any(.metadata.ownerReferences[]?; .uid == $dep_uid)
+                        else
+                          true
+                        end
+                      )
+                    | select(
+                        if $dep_rev != "" then
+                          (.metadata.annotations["deployment.kubernetes.io/revision"] // "") == $dep_rev
+                        else
+                          (.spec.replicas // 0) > 0
+                        end
+                      )
+                    | select((.status.replicas // 0) < (.spec.replicas // 1))
+                    | select(
+                        any(
+                          .status.conditions[]?;
+                          .type == "ReplicaFailure"
+                          and .status == "True"
+                          and .reason == "FailedCreate"
+                          and ((.message // "") | test("exceeded quota"; "i"))
+                        )
+                      )
+                  ]
+                | if length > 0 then "true" else "false" end
+              ' "$WORK_DIR/pr-objects.json" 2>/dev/null || echo "false")
+            fi
+
+            if [[ "$QUOTA_BLOCKED" == "true" ]]; then
+              echo "::error::Docs preview rollout blocked by namespace ResourceQuota (exceeded quota). Free up Pods or raise quota before retrying."
+              exit 1
+            fi
+
             if ((retry == MAX_ROLLOUT_RETRIES)); then
               echo "::error::Docs preview rollout still timed out after $MAX_ROLLOUT_RETRIES retries."
               exit 1
             fi
 
             # 等旧 Deployment 及其副本完成级联删除后，再用同一份配置重建。
-            echo "::warning::Docs preview rollout timed out. Recreating $RESOURCE_NAME (retry $((retry + 1))/$MAX_ROLLOUT_RETRIES)."
+            echo "::warning::Docs preview rollout timed out after $ROLLOUT_TIMEOUT. Recreating $RESOURCE_NAME (retry $((retry + 1))/$MAX_ROLLOUT_RETRIES)."
             kubectl delete deployment "$RESOURCE_NAME" --ignore-not-found --cascade=foreground --timeout=60s
             kubectl apply -f "$WORK_DIR/deployment.json"
           done
 
           curl --fail --silent --show-error \
+            --max-time 15 \
             --retry 12 \
             --retry-delay 5 \
+            --retry-max-time 120 \
             --retry-connrefused \
             --retry-all-errors \
             -o /dev/null "https://$PREVIEW_HOST"

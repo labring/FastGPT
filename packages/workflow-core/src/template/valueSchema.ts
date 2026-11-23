@@ -110,8 +110,30 @@ type JsonSchema = {
   maximum?: number;
 };
 
-const valuesEqual = (left: unknown, right: unknown) =>
-  Object.is(left, right) || JSON.stringify(left) === JSON.stringify(right);
+/** 比较 JSON 值时忽略对象字段顺序，保留数组元素顺序。 */
+const valuesEqual = (left: unknown, right: unknown): boolean => {
+  if (left === right) return true;
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return (
+      Array.isArray(left) &&
+      Array.isArray(right) &&
+      left.length === right.length &&
+      left.every((item, index) => valuesEqual(item, right[index]))
+    );
+  }
+  if (left === null || right === null || typeof left !== 'object' || typeof right !== 'object') {
+    return false;
+  }
+
+  const leftEntries = Object.entries(left);
+  const rightEntries = new Map<string, unknown>(Object.entries(right));
+  return (
+    leftEntries.length === rightEntries.size &&
+    leftEntries.every(
+      ([key, value]) => rightEntries.has(key) && valuesEqual(value, rightEntries.get(key))
+    )
+  );
+};
 
 const valueMatchesType = (value: unknown, type: string) => {
   if (type === 'null') return value === null;

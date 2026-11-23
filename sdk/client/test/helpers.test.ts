@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FastGptBadRequestError, FastGptError, FastGptTimeoutError } from '../src/core/errors';
 import { isUserInputInteractive, isUserSelectInteractive } from '../src/helpers/interactive';
-import { createPageNumPaginator } from '../src/helpers/pagination';
+import { createCursorPaginator, createPageNumPaginator } from '../src/helpers/pagination';
 import type { UploadProgressInfo } from '../src/helpers/s3Uploader';
 import { FastGPT } from '../src/index';
 
@@ -607,11 +607,158 @@ describe('High-Level Helpers (S3 Upload, Training Polling, Chat Attachment, Inte
     expect(pageNumAll).toHaveLength(250);
     expect(pageNumAll[0]?._id).toBe('rec-1');
     expect(pageNumAll[249]?._id).toBe('rec-250');
-    // 首页发现服务端截断为 100 后，后续页码应与服务端生效页大小对齐
+    // 全程保持一致的 pageSize 寻址基线，避免短页反推改写 pageSize 引发跨页重读
     expect(pageNumCalls).toEqual([
       { pageNum: 1, pageSize: 500 },
-      { pageNum: 2, pageSize: 100 },
-      { pageNum: 3, pageSize: 100 }
+      { pageNum: 2, pageSize: 500 },
+      { pageNum: 3, pageSize: 500 }
     ]);
+  });
+
+  it('preserves consistent pageNum addressing baseline on initialPageNum > 1 with server cap and honors pageSize/hasMore metadata', async () => {
+    // 1. 复现边界场景：总计 120 条、服务端单页上限 50，客户端从 initialPageNum=3, pageSize=100 起始；
+    // 第 3 页命中尾页（101..120，共 20 条），绝不能把后续 pageSize 改写为 20 回读第 61..120 条。
+    const items120 = Array.from({ length: 120 }, (_, idx) => ({ _id: `item-${idx + 1}` }));
+    const clampedCalls: Array<{ pageNum: number; pageSize: number }> = [];
+
+    const tailItems = await createPageNumPaginator({
+      initialPageNum: 3,
+      pageSize: 100,
+      fetchPage: async ({ pageNum, pageSize }) => {
+        clampedCalls.push({ pageNum, pageSize });
+        const clamped = Math.min(pageSize, 50);
+        const start = (pageNum - 1) * clamped;
+        return {
+          total: items120.length,
+          list: items120.slice(start, start + clamped)
+        };
+      }
+    }).toArray();
+
+    expect(tailItems.map((i) => i._id)).toEqual(
+      Array.from({ length: 20 }, (_, idx) => `item-${101 + idx}`)
+    );
+    expect(clampedCalls).toEqual([
+      { pageNum: 3, pageSize: 100 },
+      { pageNum: 4, pageSize: 100 }
+    ]);
+
+    // 2. 若响应提供服务端实际 pageSize 或 hasMore 元数据，则精确终止且无需额外空页探测
+    const metaCalls: Array<{ pageNum: number; pageSize: number }> = [];
+    const metaTail = await createPageNumPaginator({
+      initialPageNum: 3,
+      pageSize: 100,
+      fetchPage: async ({ pageNum, pageSize }) => {
+        metaCalls.push({ pageNum, pageSize });
+        const clamped = Math.min(pageSize, 50);
+        const start = (pageNum - 1) * clamped;
+        return {
+          total: items120.length,
+          pageSize: clamped,
+          list: items120.slice(start, start + clamped)
+        };
+      }
+    }).toArray();
+
+    expect(metaTail).toHaveLength(20);
+    expect(metaCalls).toEqual([{ pageNum: 3, pageSize: 100 }]);
+
+    const hasMoreCalls: number[] = [];
+    const hasMoreItems = await createPageNumPaginator({
+      initialPageNum: 2,
+      pageSize: 50,
+      fetchPage: async ({ pageNum }) => {
+        hasMoreCalls.push(pageNum);
+        return {
+          total: 200,
+          hasMore: pageNum < 3,
+          list: [{ _id: `p-${pageNum}` }]
+        };
+      }
+    }).toArray();
+    expect(hasMoreItems.map((i) => i._id)).toEqual(['p-2', 'p-3']);
+    expect(hasMoreCalls).toEqual([2, 3]);
+  });
+
+  it('auto-paginates cursor endpoints via createCursorPaginator and apps.logs.searchAutoPaging', async () => {
+    const sentBodies: Array<Record<string, unknown>> = [];
+    const cursor1 = { timestamp: 1735689600000, id: '68ad85a7463006c963799a02' };
+
+    const client = new FastGPT({
+      baseUrl: 'https://api.example.com',
+      apiKey: 'fastgpt-personal-key',
+      defaultAppId: '68ad85a7463006c963799a05',
+      fetch: async (input, init) => {
+        const url = String(input);
+        expect(url.endsWith('/api/core/app/logs/search')).toBe(true);
+        const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        sentBodies.push(body);
+
+        if (body.cursor === undefined) {
+          return jsonRes({
+            code: 200,
+            data: {
+              list: [
+                {
+                  _id: 'log-1',
+                  chatId: 'c1',
+                  updateTime: '2026-01-02T00:00:00.000Z',
+                  source: 'api'
+                },
+                {
+                  _id: 'log-2',
+                  chatId: 'c2',
+                  updateTime: '2026-01-01T00:00:00.000Z',
+                  source: 'api'
+                }
+              ],
+              nextCursor: cursor1
+            }
+          });
+        }
+        expect(body.cursor).toEqual(cursor1);
+        return jsonRes({
+          code: 200,
+          data: {
+            list: [
+              { _id: 'log-3', chatId: 'c3', updateTime: '2025-12-31T00:00:00.000Z', source: 'api' }
+            ]
+          }
+        });
+      }
+    });
+
+    const logs = await client.apps.logs
+      .searchAutoPaging({
+        dateStart: '2025-12-01T00:00:00.000Z',
+        dateEnd: '2026-01-03T00:00:00.000Z'
+      })
+      .toArray();
+    expect(logs.map((item) => item._id)).toEqual(['log-1', 'log-2', 'log-3']);
+    expect(sentBodies).toHaveLength(2);
+    expect(sentBodies[0]?.cursor).toBeUndefined();
+    expect(sentBodies[1]?.cursor).toEqual(cursor1);
+
+    // 验证 maxItems、maxPages、AbortSignal 控制
+    const capped = await createCursorPaginator<string, string>({
+      maxItems: 3,
+      maxPages: 2,
+      fetchPage: async ({ cursor }) => {
+        if (cursor === undefined) {
+          return { list: ['a', 'b'], nextCursor: 'cur-2' };
+        }
+        return { list: ['c', 'd'], nextCursor: 'cur-3' };
+      }
+    }).toArray();
+    expect(capped).toEqual(['a', 'b', 'c']);
+
+    const ac = new AbortController();
+    ac.abort();
+    await expect(
+      createCursorPaginator<string, string>({
+        signal: ac.signal,
+        fetchPage: async () => ({ list: ['never'] })
+      }).toArray()
+    ).rejects.toThrow(FastGptError);
   });
 });

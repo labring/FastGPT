@@ -2,14 +2,17 @@ import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { AgentToolType } from '@fastgpt/global/core/app/tool/type';
 import type { DispatchSubAppResponse, GetSubAppInfoFnType, SubAppRuntimeType } from '../type';
 import { getAgentRuntimeTools } from './tool/utils';
-import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
+import type {
+  ChatCompletionTool,
+  ChatCompletionToolMessageContentPart
+} from '@fastgpt/global/core/ai/llm/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { DispatchAgentModuleProps } from '..';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { parseJsonArgs } from '../../../../../ai/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { dispatchTool } from './tool';
-import type { WorkflowResponseItemType } from '@fastgpt/global/core/workflow/runtime/sse';
+import { getWorkflowContext, runWithContext } from '../../../context';
 import { dispatchApp, dispatchPlugin } from './app';
 import { SystemToolRepo } from '../../../../../app/tool/systemTool/systemTool.repo';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -76,7 +79,6 @@ export const getSubapps = async ({
 
 export type ToolDispatchContext = Pick<
   DispatchAgentModuleProps,
-  | 'checkIsStopping'
   | 'chatConfig'
   | 'runningUserInfo'
   | 'runningAppInfo'
@@ -84,20 +86,14 @@ export type ToolDispatchContext = Pick<
   | 'responseChatItemId'
   | 'usageId'
   | 'uid'
-  | 'variableState'
-  | 'memoryState'
   | 'externalProvider'
   | 'lang'
   | 'requestOrigin'
-  | 'mode'
   | 'timezone'
   | 'retainDatasetCite'
-  | 'maxRunTimes'
-  | 'workflowDispatchDeep'
   | 'params'
   | 'query'
   | 'stream'
-  | 'nodeResponseSink'
 > & {
   runtimeNodesMap?: DispatchAgentModuleProps['runtimeNodesMap'];
   modelData: import('@fastgpt/global/core/ai/model/schema').LLMModelDataType;
@@ -106,7 +102,6 @@ export type ToolDispatchContext = Pick<
   getSubAppInfo: GetSubAppInfoFnType;
   getSubApp: (id: string) => SubAppRuntimeType | undefined;
   completionTools: ChatCompletionTool[];
-  streamResponseFn?: (args: WorkflowResponseItemType) => void | undefined;
 };
 
 const filterAgentWorkflowRuntimeParams = (
@@ -159,26 +154,19 @@ export const getAgentDatasetParams = (
 export const getExecuteTool = ({
   getSubAppInfo,
   getSubApp,
-  checkIsStopping,
   runningUserInfo,
   runningAppInfo,
   chatId,
   responseChatItemId,
   usageId,
   uid,
-  variableState,
-  memoryState,
   runtimeNodesMap,
   externalProvider,
   lang,
   requestOrigin,
-  mode,
   timezone,
   retainDatasetCite,
-  maxRunTimes,
-  workflowDispatchDeep,
-  query,
-  nodeResponseSink
+  query
 }: ToolDispatchContext) => {
   /**
    * 执行单次工具调用，并补齐节点响应的 id、运行时间和计费信息。
@@ -204,7 +192,8 @@ export const getExecuteTool = ({
       stop = false,
       nodeResponse,
       nodeSummary,
-      errorMessage
+      errorMessage,
+      content
     } = await (async (): Promise<{
       response: string;
       assistantMessages?: DispatchSubAppResponse['assistantMessages'];
@@ -214,6 +203,7 @@ export const getExecuteTool = ({
       errorMessage?: string;
       nodeResponse?: DispatchSubAppResponse['nodeResponse'];
       nodeSummary?: DispatchSubAppResponse['nodeSummary'];
+      content?: ChatCompletionToolMessageContentPart[];
     }> => {
       try {
         // User Sub App
@@ -243,31 +233,36 @@ export const getExecuteTool = ({
         });
 
         if (tool.type === 'tool') {
-          const { response, usages, nodeResponse, nodeSummary, errorMessage } = await dispatchTool({
-            tool: {
-              name: tool.name,
-              avatar: tool.avatar,
-              version: tool.version,
-              toolConfig: tool.toolConfig
-            },
-            params: requestParams,
-            runningUserInfo,
-            runningAppInfo,
-            chatId,
-            usageId,
-            uid,
-            variableState,
-            runtimeNodesMap,
-            // Agent 统一负责外层流输出，子工具不得绕过 Agent 直接写入响应流。
+          // Agent 统一输出，工具在禁流的派生作用域内运行，不能绕过外层发送事件。
+          const toolContext = getWorkflowContext().getChildContext({
             workflowStreamResponse: undefined
           });
+          const { response, usages, nodeResponse, nodeSummary, errorMessage, content } =
+            await runWithContext(toolContext, () =>
+              dispatchTool({
+                tool: {
+                  name: tool.name,
+                  avatar: tool.avatar,
+                  version: tool.version,
+                  toolConfig: tool.toolConfig
+                },
+                params: requestParams,
+                runningUserInfo,
+                runningAppInfo,
+                chatId,
+                usageId,
+                uid,
+                runtimeNodesMap
+              })
+            );
 
           return {
             response,
             usages,
             nodeResponse,
             nodeSummary,
-            errorMessage
+            errorMessage,
+            content
           };
         } else if (tool.type === 'workflow') {
           const { userChatInput, ...params } = filterAgentWorkflowRuntimeParams(requestParams, {
@@ -291,10 +286,8 @@ export const getExecuteTool = ({
             },
             userChatInput: userChatInput,
             customAppVariables: params,
-            checkIsStopping,
             lang,
             requestOrigin,
-            mode,
             timezone,
             externalProvider,
             chatId,
@@ -303,12 +296,7 @@ export const getExecuteTool = ({
             runningAppInfo,
             runningUserInfo,
             retainDatasetCite,
-            maxRunTimes,
-            workflowDispatchDeep,
-            nodeResponseSink,
             nodeResponseParentId: callId,
-            variableState,
-            memoryState,
             lastInteractive,
             query
           });
@@ -367,10 +355,8 @@ export const getExecuteTool = ({
             },
             userChatInput: '',
             customAppVariables,
-            checkIsStopping,
             lang,
             requestOrigin,
-            mode,
             timezone,
             externalProvider,
             chatId,
@@ -379,12 +365,7 @@ export const getExecuteTool = ({
             runningAppInfo,
             runningUserInfo,
             retainDatasetCite,
-            maxRunTimes,
-            workflowDispatchDeep,
-            nodeResponseSink,
             nodeResponseParentId: callId,
-            variableState,
-            memoryState,
             lastInteractive,
             query
           });
@@ -445,6 +426,7 @@ export const getExecuteTool = ({
       stop,
       nodeSummary,
       ...(errorMessage ? { errorMessage } : {}),
+      ...(content?.length ? { content } : {}),
       nodeResponse: formatNodeResponse
     };
   };

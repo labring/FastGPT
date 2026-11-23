@@ -131,6 +131,12 @@ V4.18.0 起，环境变量已简化，业务配置集中到管理员页面维护
 | `NO_PROXY`             | 空      | 不走代理的地址列表。                                                                               |
 | `ALL_PROXY`            | 未设置  | 支持此变量的出站客户端所用代理；普通 fetch/OpenAI 默认客户端需使用 `HTTP_PROXY` 或 `HTTPS_PROXY`。 |
 
+受保护的共享 HTTP 请求（如工作流 HTTP 节点、HTTP 工具及使用该客户端的对话渠道和文件处理）经代理时，需要 FastGPT 所在环境能解析目标域名，且 HTTP 或 HTTPS 代理允许向解析后的目标 IP 和端口发起 `CONNECT`。SOCKS 代理和仅支持转发普通 HTTP 请求的代理需切换到满足该要求的代理。`NO_PROXY` 命中的目标保持直连并继续校验地址。未设置请求超时时，代理握手最多等待 30 秒。
+
+升级前，请在测试环境使用实际工作流和渠道验证代理认证、目标 DNS 和 `CONNECT` 策略；如需更换代理，更新对应的 `HTTP_PROXY`、`HTTPS_PROXY` 或 `ALL_PROXY` 后重启受影响的进程。
+
+微信个人号渠道不经过上述环境代理，需由 App 容器直连 `ilinkai.weixin.qq.com`（及其子域）和 `cdn.weixin.qq.com`（及其子域，默认媒体下载使用 `novac2c.cdn.weixin.qq.com`）且解析为公网 IP；调整出网后请在容器内用不经代理的 HTTPS（如 `curl --noproxy '*'`）验证连通性，并在升级后分别复测消息与媒体。
+
 ### 功能开关与限制
 
 | 变量                                     | 默认值  | 说明                                                                                                                                                                |

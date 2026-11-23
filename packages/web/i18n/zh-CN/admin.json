@@ -1111,7 +1111,7 @@
   "aliyun_sms_credentials": "阿里云短信服务",
   "storage_external_endpoint_tip": "用户可直接访问的对象存储地址。使用 MinIO 的重定向访问模式时必须填写。",
   "storage_cdn_endpoint": "CDN 加速地址",
-  "storage_cdn_endpoint_tip": "可选。重定向访问时使用该 CDN 地址，需同时配置存储服务外部访问端点。测试会创建临时文件并验证 CDN 实际读取，完成后清理。",
+  "storage_cdn_endpoint_tip": "可选。重定向访问时使用该 CDN 地址（MinIO 需同时配置存储服务外部访问端点）。测试会创建临时文件并验证 CDN 实际读取，完成后清理。",
   "revision_conflict_refresh_required": "配置已被他人修改，请先保留当前修改，再刷新页面重新编辑并保存。",
   "feature_section_display": "展示配置",
   "page_title_inform": "通知管理",

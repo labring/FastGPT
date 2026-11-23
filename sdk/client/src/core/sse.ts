@@ -1,4 +1,4 @@
-import { createMappedApiError, FastGptError } from './errors';
+import { createMappedApiError, FastGptError, FastGptNetworkError } from './errors';
 import type { RawResponseInfo } from './types';
 
 export type RawSseFrame = {
@@ -133,8 +133,10 @@ const extractChunkDeltas = (payload: unknown): { textDelta: string; reasoningDel
  */
 export const parseChatSseFrame = (
   frame: RawSseFrame,
-  responseInfo?: RawResponseInfo
+  options?: { responseInfo?: RawResponseInfo; extraSecrets?: ReadonlyArray<string> }
 ): ChatSseEvent | null => {
+  const responseInfo = options?.responseInfo;
+  const extraSecrets = options?.extraSecrets;
   const trimmedData = frame.data.trim();
   if (trimmedData === '[DONE]' || frame.event === 'done') {
     return null;
@@ -162,7 +164,8 @@ export const parseChatSseFrame = (
           message: errMsg,
           statusText: typeof errObj.type === 'string' ? errObj.type : undefined,
           requestId: responseInfo?.requestId,
-          url: responseInfo?.url
+          url: responseInfo?.url,
+          extraSecrets
         }),
         raw: payload
       };
@@ -203,7 +206,8 @@ export const parseChatSseFrame = (
         serverCode,
         statusText,
         requestId: responseInfo?.requestId,
-        url: responseInfo?.url
+        url: responseInfo?.url,
+        extraSecrets
       }),
       raw: payload
     };
@@ -361,10 +365,17 @@ const readNextChunkWithSignal = (
  */
 export async function* iterateRawSseFrames(
   stream: ReadableStream<Uint8Array>,
-  options?: { signal?: AbortSignal }
+  options?: {
+    signal?: AbortSignal;
+    onReaderReady?: (cancelReader: (reason?: unknown) => void) => void;
+  }
 ): AsyncGenerator<RawSseFrame, void, undefined> {
   const signal = options?.signal;
   const reader = stream.getReader();
+  const cancelReader = (reason?: unknown): void => {
+    void reader.cancel(reason).catch(() => {});
+  };
+  options?.onReaderReady?.(cancelReader);
   const decoder = new TextDecoder('utf-8');
   let buffer = '';
   let currentEvent = '';
@@ -461,6 +472,9 @@ export class ChatStream implements AsyncIterable<ChatSseEvent> {
   private readonly _body: ReadableStream<Uint8Array>;
   private readonly _controller: AbortController;
   private readonly _onDispose?: () => void;
+  private readonly _requireDoneSignal: boolean;
+  private readonly _extraSecrets?: ReadonlyArray<string>;
+  private _cancelActiveReader: ((reason?: unknown) => void) | null = null;
   private _started = false;
   private _disposed = false;
   private _abortRequested = false;
@@ -487,28 +501,41 @@ export class ChatStream implements AsyncIterable<ChatSseEvent> {
       return;
     }
     this._abortRequested = true;
-    if (!this._started) {
-      const abortError = this._createAbortError(this._controller.signal.reason);
-      void this._body.cancel(this._controller.signal.reason).catch(() => {});
-      this._finalize({ state: 'aborted', error: abortError });
+    const reason = this._controller.signal.reason;
+    const abortError = this._createAbortError(reason);
+
+    // 取消必须独立驱动流资源释放与终态结算：即使消费者正暂停在 yield 处不再推进 iterator，
+    // 底层 reader 也会立即被 cancel，且等待中的 finalResult()/finalText() 立即拒绝而不挂起。
+    if (this._cancelActiveReader !== null) {
+      this._cancelActiveReader(reason);
+    } else if (!this._started) {
+      void this._body.cancel(reason).catch(() => {});
     }
+    this._finalize({ state: 'aborted', error: abortError });
   };
 
   constructor({
     body,
     response,
     controller,
-    onDispose
+    onDispose,
+    requireDoneSignal = true,
+    extraSecrets
   }: {
     body: ReadableStream<Uint8Array>;
     response: RawResponseInfo;
     controller: AbortController;
     onDispose?: () => void;
+    /** 是否要求收到协议终止帧（[DONE] / event: done）才确认正常完成（FastGPT v2 completions 与 resume 均为 true） */
+    requireDoneSignal?: boolean;
+    extraSecrets?: ReadonlyArray<string>;
   }) {
     this._body = body;
     this.response = response;
     this._controller = controller;
     this._onDispose = onDispose;
+    this._requireDoneSignal = requireDoneSignal;
+    this._extraSecrets = extraSecrets;
     this._donePromise = new Promise<void>((resolve, reject) => {
       this._resolveDone = resolve;
       this._rejectDone = reject;
@@ -528,6 +555,10 @@ export class ChatStream implements AsyncIterable<ChatSseEvent> {
     return this._state;
   }
 
+  private _isAborted(): boolean {
+    return this._state === 'aborted' || this._abortRequested || this._controller.signal.aborted;
+  }
+
   private _createAbortError(cause?: unknown): FastGptError {
     if (cause instanceof FastGptError) {
       return cause;
@@ -536,7 +567,8 @@ export class ChatStream implements AsyncIterable<ChatSseEvent> {
       message: 'Chat stream was aborted',
       requestId: this.response.requestId,
       url: this.response.url,
-      ...(cause !== undefined ? { cause } : {})
+      ...(cause !== undefined ? { cause } : {}),
+      extraSecrets: this._extraSecrets
     });
   }
 
@@ -572,7 +604,7 @@ export class ChatStream implements AsyncIterable<ChatSseEvent> {
   }
 
   /**
-   * 主动中断底层 HTTP 流连接并标记为 aborted 终态。
+   * 主动中断底层 HTTP 流连接并独立结算为 aborted 终态。
    */
   abort(reason?: unknown): void {
     this._abortRequested = true;
@@ -644,50 +676,85 @@ export class ChatStream implements AsyncIterable<ChatSseEvent> {
   async *[Symbol.asyncIterator](): AsyncIterator<ChatSseEvent> {
     if (this._started) {
       throw new FastGptError({
-        message: 'ChatStream can only be iterated once'
+        message: 'ChatStream can only be iterated once',
+        extraSecrets: this._extraSecrets
       });
     }
     this._started = true;
 
-    if (this._state === 'aborted' || this._abortRequested || this._controller.signal.aborted) {
+    if (this._isAborted()) {
       const abortErr =
         this._terminalError ?? this._createAbortError(this._controller.signal.reason);
       this._finalize({ state: 'aborted', error: abortErr });
       throw abortErr;
     }
 
-    let completedNormally = false;
+    let receivedDoneSignal = false;
+    let reachedStreamEnd = false;
     let failedWith: unknown;
     let hasFailure = false;
 
     try {
       for await (const rawFrame of iterateRawSseFrames(this._body, {
-        signal: this._controller.signal
+        signal: this._controller.signal,
+        onReaderReady: (cancelReader) => {
+          this._cancelActiveReader = cancelReader;
+          if (this._isAborted()) {
+            cancelReader(this._controller.signal.reason);
+          }
+        }
       })) {
-        const parsed = parseChatSseFrame(rawFrame, this.response);
+        if (this._isAborted()) {
+          throw this._terminalError ?? this._createAbortError(this._controller.signal.reason);
+        }
+
+        const parsed = parseChatSseFrame(rawFrame, {
+          responseInfo: this.response,
+          extraSecrets: this._extraSecrets
+        });
         if (parsed === null) {
-          completedNormally = true;
+          receivedDoneSignal = true;
+          reachedStreamEnd = true;
           return;
         }
         this._accumulateEvent(parsed);
         yield parsed;
+
+        // 若消费者暂停在 yield 期间发生了 abort() 或外部取消，恢复推进时立即抛出同一取消异常。
+        if (this._isAborted()) {
+          throw this._terminalError ?? this._createAbortError(this._controller.signal.reason);
+        }
       }
-      completedNormally = true;
+
+      reachedStreamEnd = true;
+      // v2 completions 与 chat resume 正常结束均显式发送 [DONE] / event: done；
+      // 未收到协议终止帧且未收到服务端 error 帧的提前 EOF 视为传输截断失败，绝不标为 completed。
+      if (this._streamError === undefined && this._requireDoneSignal && !receivedDoneSignal) {
+        throw new FastGptNetworkError({
+          message: 'Chat stream ended unexpectedly before receiving [DONE] termination frame',
+          requestId: this.response.requestId,
+          url: this.response.url,
+          extraSecrets: this._extraSecrets
+        });
+      }
     } catch (error) {
       hasFailure = true;
-      if (this._abortRequested || this._controller.signal.aborted) {
-        failedWith = this._createAbortError(error);
+      if (this._isAborted()) {
+        failedWith = this._terminalError ?? this._createAbortError(error);
       } else {
         failedWith = error;
       }
       throw failedWith;
     } finally {
-      if (hasFailure) {
+      this._cancelActiveReader = null;
+      if (this._state !== 'pending') {
+        this._dispose();
+      } else if (hasFailure) {
         this._finalize({
-          state: this._abortRequested || this._controller.signal.aborted ? 'aborted' : 'failed',
+          state: this._isAborted() ? 'aborted' : 'failed',
           error: failedWith
         });
-      } else if (this._abortRequested || this._controller.signal.aborted) {
+      } else if (this._isAborted()) {
         this._finalize({
           state: 'aborted',
           error: this._createAbortError(this._controller.signal.reason)
@@ -697,10 +764,10 @@ export class ChatStream implements AsyncIterable<ChatSseEvent> {
           state: 'failed',
           error: this._streamError
         });
-      } else if (completedNormally) {
+      } else if (reachedStreamEnd && (receivedDoneSignal || !this._requireDoneSignal)) {
         this._finalize({ state: 'completed' });
       } else {
-        // 调用方在未报错的情况下主动提前 break 结束遍历：释放底层连接并标记为 closed 终态，
+        // 调用方在未报错、未取消的情况下主动提前 break 结束遍历：释放底层连接并标记为 closed 终态，
         // 允许后续 finalResult()/finalText() 读取已接收到的部分快照。
         this._isConsumerClosing = true;
         if (!this._controller.signal.aborted) {

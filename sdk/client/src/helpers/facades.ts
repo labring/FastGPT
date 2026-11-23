@@ -16,10 +16,10 @@ import {
   SystemResource
 } from '../generated/resources';
 import type {
-  AppsLogsListReq,
-  AppsLogsListRes,
   AppsLogsListUsersReq,
   AppsLogsListUsersRes,
+  AppsLogsSearchReq,
+  AppsLogsSearchRes,
   ChatHistoriesListReq,
   ChatHistoriesListRes,
   ChatRecordsListReq,
@@ -55,10 +55,13 @@ import {
 } from './datasetUpload';
 import { ChatInteractiveHelper } from './interactive';
 import {
+  createCursorPaginator,
   createOffsetPaginator,
   splitAutoPagingOptions,
+  splitCursorAutoPagingOptions,
   type AsyncPageIterable,
-  type AutoPagingOptions
+  type AutoPagingOptions,
+  type CursorAutoPagingOptions
 } from './pagination';
 
 const stripPaginationCursor = <T extends Record<string, unknown>>(
@@ -72,24 +75,29 @@ const stripPaginationCursor = <T extends Record<string, unknown>>(
 };
 
 /**
- * 增强版 `apps.logs` 资源外观，追加日志与用户列表自动分页迭代器。
+ * 增强版 `apps.logs` 资源外观，追加游标日志搜索与用户列表自动分页迭代器。
  */
 export class AppsLogsFacade extends AppsLogsResource {
-  /** 自动分页遍历应用对话日志列表。 */
-  listAutoPaging(
-    req: AppsLogsListReq,
-    options?: AutoPagingOptions
-  ): AsyncPageIterable<AppsLogsListRes['list'][number]> {
-    const { requestOptions, pageSize, maxItems, maxPages } = splitAutoPagingOptions(options);
-    const baseReq = stripPaginationCursor(req);
-    return createOffsetPaginator({
-      initialOffset: req.offset ?? 0,
-      pageSize: pageSize ?? req.pageSize,
+  /** 按游标自动分页遍历应用对话日志搜索结果（`POST /core/app/logs/search`）。 */
+  searchAutoPaging(
+    req: AppsLogsSearchReq,
+    options?: CursorAutoPagingOptions
+  ): AsyncPageIterable<AppsLogsSearchRes['list'][number]> {
+    const { requestOptions, maxItems, maxPages } = splitCursorAutoPagingOptions(options);
+    const { cursor: initialCursor, ...baseReq } = req;
+    return createCursorPaginator({
+      initialCursor,
       maxItems,
       maxPages,
       signal: requestOptions?.signal,
-      fetchPage: ({ offset, pageSize: size }) =>
-        this.list({ ...baseReq, offset, pageSize: size } as AppsLogsListReq, requestOptions)
+      fetchPage: ({ cursor }) =>
+        this.search(
+          {
+            ...baseReq,
+            ...(cursor !== undefined ? { cursor } : {})
+          } as AppsLogsSearchReq,
+          requestOptions
+        )
     });
   }
 

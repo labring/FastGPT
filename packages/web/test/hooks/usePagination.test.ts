@@ -15,8 +15,10 @@ reactGlobals.IS_REACT_ACT_ENVIRONMENT = true;
 const mocks = vi.hoisted(() => ({
   router: {
     query: {},
-    pathname: '/test'
+    pathname: '/test',
+    replace: vi.fn()
   },
+  isPc: false,
   toast: vi.fn()
 }));
 
@@ -25,7 +27,7 @@ vi.mock('next/router', () => ({
 }));
 
 vi.mock('../../hooks/useSystem', () => ({
-  useSystem: () => ({ isPc: false })
+  useSystem: () => ({ isPc: mocks.isPc })
 }));
 
 vi.mock('../../hooks/useToast', () => ({
@@ -41,20 +43,27 @@ vi.mock('../../components/common/Icon', () => ({
 }));
 
 vi.mock('../../components/common/MyMenu', () => ({
-  default: () => null
+  default: ({ menuList }: { menuList: { children: { label: string; onClick: () => void }[] }[] }) =>
+    menuList.flatMap(({ children }) =>
+      children.map(({ label, onClick }) =>
+        React.createElement('button', { key: label, onClick }, label)
+      )
+    )
 }));
 
 vi.mock('@chakra-ui/react', () => ({
-  Box: React.forwardRef<HTMLDivElement, React.PropsWithChildren<Record<string, unknown>>>(
-    function MockBox({ children, ...props }, ref) {
-      return React.createElement('div', { ...props, ref }, children);
-    }
-  ),
-  Flex: React.forwardRef<HTMLDivElement, React.PropsWithChildren<Record<string, unknown>>>(
-    function MockFlex({ children, ...props }, ref) {
-      return React.createElement('div', { ...props, ref }, children);
-    }
-  )
+  Box: React.forwardRef<HTMLDivElement, React.ComponentProps<'div'>>(function MockBox(
+    { children, id },
+    ref
+  ) {
+    return React.createElement('div', { id, ref }, children);
+  }),
+  Flex: React.forwardRef<HTMLDivElement, React.ComponentProps<'div'>>(function MockFlex(
+    { children, onClick },
+    ref
+  ) {
+    return React.createElement('div', { onClick, ref }, children);
+  })
 }));
 
 vi.mock('ahooks', async () => {
@@ -102,12 +111,17 @@ const createDeferredApi = () => {
 type HarnessProps = {
   api: (params: PaginationProps) => Promise<TestResponse>;
   onState: (state: ReturnType<typeof usePagination<unknown, TestItem>>) => void;
+  onError?: (error: unknown) => void;
   type?: 'button' | 'scroll';
+  forceFirstPage?: boolean;
 };
 
-const Harness = ({ api, onState, type = 'scroll' }: HarnessProps) => {
+const Harness = ({ api, onState, onError, type = 'scroll', forceFirstPage }: HarnessProps) => {
   const state = usePagination(api, {
     type,
+    onError,
+    forceFirstPage,
+    storeToQuery: true,
     defaultPageSize: 1
   });
 
@@ -127,6 +141,8 @@ const Harness = ({ api, onState, type = 'scroll' }: HarnessProps) => {
 
   useEffect(() => onState(state), [onState, state]);
 
+  if (forceFirstPage !== undefined) return React.createElement(state.Pagination);
+
   return React.createElement(
     state.ScrollData,
     // children 由第三个参数传入，补齐 createElement 对必需 props 的类型约束。
@@ -144,19 +160,66 @@ const renderHarness = async (root: Root, props: HarnessProps) => {
 
 describe('usePagination', () => {
   let root: Root;
+  let container: HTMLDivElement;
 
   beforeEach(() => {
     vi.stubGlobal('React', React);
     vi.useFakeTimers();
     mocks.router.query = {};
+    mocks.router.replace.mockReset();
+    mocks.isPc = false;
     mocks.toast.mockReset();
-    root = createRoot(document.createElement('div'));
+    container = document.createElement('div');
+    root = createRoot(container);
   });
 
   afterEach(async () => {
     await act(async () => root.unmount());
     vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+
+  it.each([
+    { trigger: 'page size change', pageSize: 10 },
+    { trigger: 'list refresh', pageSize: 1 }
+  ])('loads page one when a $trigger overlaps a page reset', async ({ trigger, pageSize }) => {
+    const { api, requests } = createDeferredApi();
+    const onState = vi.fn<HarnessProps['onState']>();
+    const props = { api, onState, type: 'button' } as const;
+    mocks.router.query = { page: '2' };
+    mocks.isPc = true;
+    await renderHarness(root, { ...props, forceFirstPage: false });
+    expect(requests[0].params.pageNum).toBe(2);
+    await act(async () => requests[0].resolve({ list: ['old second page'], total: 30 }));
+
+    await renderHarness(root, { ...props, forceFirstPage: true });
+    await act(async () => {
+      void onState.mock.lastCall?.[0].getData(1);
+    });
+    await act(async () => {
+      if (trigger === 'page size change') {
+        const option = Array.from(container.querySelectorAll('button')).find(
+          (button) => button.textContent === '10'
+        );
+        if (!option) throw new Error('Missing page size option');
+        option.click();
+      } else {
+        void onState.mock.lastCall?.[0].getData(2);
+      }
+    });
+
+    expect(requests.map(({ params }) => [params.pageNum, params.pageSize])).toEqual([
+      [2, 1],
+      [1, 1],
+      [1, pageSize]
+    ]);
+    await act(async () => requests[2].resolve({ list: ['latest first page'], total: 30 }));
+    await act(async () => requests[1].resolve({ list: ['stale first page'], total: 30 }));
+    expect(onState.mock.lastCall?.[0]).toMatchObject({ pageNum: 1, data: ['latest first page'] });
+    expect(mocks.router.replace).toHaveBeenCalledExactlyOnceWith({
+      pathname: '/test',
+      query: { page: 1 }
+    });
   });
 
   it('stops automatic retries after a failed scroll page and allows manual retry', async () => {
@@ -271,9 +334,11 @@ describe('usePagination', () => {
   ])('settles loading after rejection with $reason', async ({ reason, toastCount }) => {
     const { api, requests } = createDeferredApi();
     const onState = vi.fn<HarnessProps['onState']>();
-    await renderHarness(root, { api, onState, type: 'button' });
+    const onError = vi.fn();
+    await renderHarness(root, { api, onState, onError, type: 'button' });
     await act(async () => requests[0].reject(reason));
     expect(onState.mock.lastCall?.[0]).toMatchObject({ data: [], isLoading: false });
+    expect(onError).toHaveBeenCalledExactlyOnceWith(reason);
     expect(mocks.toast).toHaveBeenCalledTimes(toastCount);
   });
 
@@ -309,13 +374,15 @@ describe('usePagination', () => {
     async (reason) => {
       const { api, requests } = createDeferredApi();
       const onState = vi.fn<HarnessProps['onState']>();
-      await renderHarness(root, { api, onState, type: 'button' });
+      const onError = vi.fn();
+      await renderHarness(root, { api, onState, onError, type: 'button' });
       await act(async () => {
         void onState.mock.lastCall?.[0].getData(2);
       });
 
       await act(async () => requests[0].reject(reason));
       expect(onState.mock.lastCall?.[0]).toMatchObject({ isLoading: true, error: null });
+      expect(onError).not.toHaveBeenCalled();
       expect(mocks.toast).not.toHaveBeenCalled();
 
       await act(async () => requests[1].resolve({ list: ['latest'], total: 2 }));

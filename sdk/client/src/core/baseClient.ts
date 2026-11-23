@@ -192,6 +192,51 @@ type FetchAttemptLease = {
   dispose: () => void;
 };
 
+const AUTH_SECRET_HEADER_NAMES = new Set<string>([
+  'authorization',
+  'proxy-authorization',
+  'x-api-key'
+]);
+
+type RequestSecretScope = {
+  add: (rawSecret?: string) => void;
+  addFromHeaders: (headers?: Record<string, string>) => void;
+  snapshot: () => ReadonlyArray<string>;
+};
+
+/**
+ * 构造绑定于单次请求生命周期的脱敏凭据集合：
+ * 收敛当次请求生效的静态/动态 apiKey 与显式 Authorization / X-Api-Key 请求头，
+ * 既避免跨请求共享缓存的并发淘汰问题，也确保自定义 OEM 前缀凭据在响应与钩子边界始终精准脱敏。
+ */
+const createRequestSecretScope = (): RequestSecretScope => {
+  const secrets = new Set<string>();
+  const add = (rawSecret?: string): void => {
+    if (rawSecret === undefined) return;
+    const trimmed = rawSecret.trim();
+    if (trimmed.length >= 6) {
+      secrets.add(trimmed);
+    }
+    const stripped = trimmed.replace(/^Bearer\s+/i, '').trim();
+    if (stripped.length >= 6) {
+      secrets.add(stripped);
+    }
+  };
+  const addFromHeaders = (headers?: Record<string, string>): void => {
+    if (headers === undefined) return;
+    for (const [key, val] of Object.entries(headers)) {
+      if (AUTH_SECRET_HEADER_NAMES.has(key.toLowerCase())) {
+        add(val);
+      }
+    }
+  };
+  return {
+    add,
+    addFromHeaders,
+    snapshot: () => [...secrets]
+  };
+};
+
 type PreparedHttpCall = {
   url: string;
   headers: Record<string, string>;
@@ -207,8 +252,6 @@ export class BaseClient {
   readonly apiBaseUrl: string;
   private readonly _fetchFn: typeof globalThis.fetch;
   private readonly _logger: FastGptLogger | null;
-  // 记录客户端已配置/已解析的活跃凭据，确保任意自定义 site.openApiPrefix 密钥在错误与钩子日志中均可脱敏。
-  private readonly _knownSecrets = new Set<string>();
 
   constructor(options: FastGptClientOptions = {}) {
     if (isBrowserEnvironment() && options.dangerouslyAllowBrowser !== true) {
@@ -224,34 +267,17 @@ export class BaseClient {
     this.apiBaseUrl = normalizeApiBaseUrl(options.baseUrl);
     this._fetchFn = options.fetch ?? globalThis.fetch.bind(globalThis);
     this._logger = resolveLogger(options.logger);
-    if (typeof options.apiKey === 'string') {
-      this._recordSecret(options.apiKey);
-    }
   }
 
-  private _recordSecret(rawSecret?: string): void {
-    if (rawSecret === undefined) return;
-    const normalized = rawSecret
-      .trim()
-      .replace(/^Bearer\s+/i, '')
-      .trim();
-    if (normalized.length >= 6) {
-      // 上限保护：防止长期轮换密钥无限增长
-      if (this._knownSecrets.size >= 32 && !this._knownSecrets.has(normalized)) {
-        const oldest = this._knownSecrets.values().next().value;
-        if (oldest !== undefined) {
-          this._knownSecrets.delete(oldest);
-        }
-      }
-      this._knownSecrets.add(normalized);
+  private _createInitialRequestSecretScope(requestOptions?: RequestOptions): RequestSecretScope {
+    const scope = createRequestSecretScope();
+    if (typeof this._options.apiKey === 'string') {
+      scope.add(this._options.apiKey);
     }
-  }
-
-  private _getActiveSecrets(requestOptions?: RequestOptions): string[] {
-    if (requestOptions?.apiKey !== undefined) {
-      this._recordSecret(requestOptions.apiKey);
-    }
-    return [...this._knownSecrets];
+    scope.add(requestOptions?.apiKey);
+    scope.addFromHeaders(this._options.defaultHeaders);
+    scope.addFromHeaders(requestOptions?.headers);
+    return scope;
   }
 
   /**
@@ -283,7 +309,6 @@ export class BaseClient {
 
   private async _resolveApiKey(requestOptions?: RequestOptions): Promise<string | undefined> {
     if (requestOptions?.apiKey !== undefined) {
-      this._recordSecret(requestOptions.apiKey);
       return requestOptions.apiKey;
     }
     const configured = this._options.apiKey ?? readEnvVar('FASTGPT_API_KEY');
@@ -291,11 +316,8 @@ export class BaseClient {
       return undefined;
     }
     if (typeof configured === 'function') {
-      const resolved = await configured();
-      this._recordSecret(resolved);
-      return resolved;
+      return await configured();
     }
-    this._recordSecret(configured);
     return configured;
   }
 
@@ -501,7 +523,8 @@ export class BaseClient {
     headers,
     body,
     isStreamBody,
-    requestOptions
+    requestOptions,
+    secretScope
   }: {
     spec: OperationSpec;
     url: string;
@@ -509,6 +532,7 @@ export class BaseClient {
     body?: BodyInit;
     isStreamBody: boolean;
     requestOptions?: RequestOptions;
+    secretScope: RequestSecretScope;
   }): Promise<FetchAttemptLease> {
     const apiKey = await this._resolveApiKey(requestOptions);
     const finalHeaders: Record<string, string> = { ...headers };
@@ -524,9 +548,15 @@ export class BaseClient {
       throw new FastGptAuthError({
         message:
           'Missing FastGPT API Key. Provide "apiKey" in new FastGPT({ apiKey }), RequestOptions, or FASTGPT_API_KEY env var.',
-        url
+        url,
+        extraSecrets: secretScope.snapshot()
       });
     }
+
+    // 捕获当次请求实际生效的动态凭据与最终发出的 Authorization / X-Api-Key 头
+    secretScope.add(apiKey);
+    secretScope.addFromHeaders(finalHeaders);
+    const extraSecrets = secretScope.snapshot();
 
     const timeoutMs = requestOptions?.timeoutMs ?? this._options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     const defaultRetries =
@@ -548,7 +578,8 @@ export class BaseClient {
           throw new FastGptError({
             message: 'Request was aborted before execution',
             url,
-            cause: externalSignal.reason
+            cause: externalSignal.reason,
+            extraSecrets
           });
         }
         externalSignal.addEventListener('abort', onExternalAbort, { once: true });
@@ -577,7 +608,6 @@ export class BaseClient {
       };
 
       const attemptStartMs = Date.now();
-      const extraSecrets = this._getActiveSecrets(requestOptions);
 
       try {
         await notifyRequestObservability({
@@ -649,7 +679,8 @@ export class BaseClient {
           throw new FastGptTimeoutError({
             message: `Request to ${spec.httpMethod} ${spec.path} timed out after ${timeoutMs}ms`,
             url,
-            cause: err
+            cause: err,
+            extraSecrets
           });
         }
 
@@ -657,7 +688,8 @@ export class BaseClient {
           throw new FastGptError({
             message: `Request to ${spec.httpMethod} ${spec.path} was aborted`,
             url,
-            cause: err
+            cause: err,
+            extraSecrets
           });
         }
 
@@ -796,6 +828,7 @@ export class BaseClient {
       const startedAt = Date.now();
       let requestUrl = `${this.apiBaseUrl}${spec.path}`;
       let lastAttempt = 0;
+      const secretScope = this._createInitialRequestSecretScope(requestOptions);
 
       try {
         const acceptHeader = (() => {
@@ -806,13 +839,16 @@ export class BaseClient {
 
         const prepared = prepare(acceptHeader);
         requestUrl = prepared.url;
+        secretScope.addFromHeaders(prepared.headers);
 
         const lease = await this._executeFetchWithRetry({
           spec,
           ...prepared,
-          requestOptions
+          requestOptions,
+          secretScope
         });
         const { response, attempt, controller } = lease;
+        const requestSecrets = secretScope.snapshot();
         lastAttempt = attempt;
 
         const responseInfo: RawResponseInfo = {
@@ -828,7 +864,7 @@ export class BaseClient {
               response,
               url: prepared.url,
               signal: controller.signal,
-              extraSecrets: this._getActiveSecrets(requestOptions)
+              extraSecrets: requestSecrets
             });
           }
 
@@ -891,7 +927,7 @@ export class BaseClient {
                 statusText,
                 requestId: responseInfo.requestId,
                 url: prepared.url,
-                extraSecrets: this._getActiveSecrets(requestOptions)
+                extraSecrets: requestSecrets
               });
             }
 
@@ -915,14 +951,21 @@ export class BaseClient {
             spec,
             url: prepared.url,
             lease,
-            extraSecrets: this._getActiveSecrets(requestOptions)
+            extraSecrets: requestSecrets
           });
         } finally {
           lease.dispose();
         }
       } catch (err) {
+        const requestSecrets = secretScope.snapshot();
         const errorObj =
-          err instanceof Error ? err : new FastGptError({ message: String(err), url: requestUrl });
+          err instanceof Error
+            ? err
+            : new FastGptError({
+                message: String(err),
+                url: requestUrl,
+                extraSecrets: requestSecrets
+              });
         await notifyErrorObservability({
           hooks: this._options.hooks,
           logger: this._logger,
@@ -934,7 +977,7 @@ export class BaseClient {
             attempt: lastAttempt,
             error: errorObj
           },
-          extraSecrets: this._getActiveSecrets(requestOptions)
+          extraSecrets: requestSecrets
         });
         throw err;
       }
@@ -981,6 +1024,7 @@ export class BaseClient {
     const startedAt = Date.now();
     let requestUrl = `${this.apiBaseUrl}${spec.path}`;
     let lastAttempt = 0;
+    const secretScope = this._createInitialRequestSecretScope(requestOptions);
 
     try {
       const prepared = this._prepareHttpCall({
@@ -990,6 +1034,7 @@ export class BaseClient {
         acceptHeader: 'text/event-stream'
       });
       requestUrl = prepared.url;
+      secretScope.addFromHeaders(prepared.headers);
 
       const lease = await this._executeFetchWithRetry({
         spec,
@@ -997,9 +1042,11 @@ export class BaseClient {
         requestOptions: {
           ...requestOptions,
           maxRetries: requestOptions?.maxRetries ?? 0
-        }
+        },
+        secretScope
       });
       const { response, controller, attempt } = lease;
+      const requestSecrets = secretScope.snapshot();
       lastAttempt = attempt;
 
       const responseInfo: RawResponseInfo = {
@@ -1016,7 +1063,7 @@ export class BaseClient {
             response,
             url: prepared.url,
             signal: controller.signal,
-            extraSecrets: this._getActiveSecrets(requestOptions)
+            extraSecrets: requestSecrets
           });
         }
 
@@ -1043,7 +1090,7 @@ export class BaseClient {
                 statusText: typeof parsed.statusText === 'string' ? parsed.statusText : undefined,
                 requestId: responseInfo.requestId,
                 url: prepared.url,
-                extraSecrets: this._getActiveSecrets(requestOptions)
+                extraSecrets: requestSecrets
               });
             }
           } catch (err) {
@@ -1053,7 +1100,8 @@ export class BaseClient {
             message: `Expected text/event-stream response for ${spec.path}, received ${contentType || 'unknown'}`,
             httpStatus: response.status,
             requestId: responseInfo.requestId,
-            url: prepared.url
+            url: prepared.url,
+            extraSecrets: requestSecrets
           });
         }
 
@@ -1062,11 +1110,12 @@ export class BaseClient {
             message: `Empty stream body returned from ${spec.path}`,
             httpStatus: response.status,
             requestId: responseInfo.requestId,
-            url: prepared.url
+            url: prepared.url,
+            extraSecrets: requestSecrets
           });
         }
 
-        // SSE 握手已完成：清理握手超时计时器，同时将外部 AbortSignal 清理权移交 ChatStream，
+        // SSE 握手已完成：清理握手超时计时器，同时将外部 AbortSignal 清理权与请求级脱敏凭据移交 ChatStream，
         // 使建连后的外部取消仍能直达底层流并在流关闭时释放监听。
         lease.clearTimeoutTimer();
         handedOffToStream = true;
@@ -1074,7 +1123,9 @@ export class BaseClient {
           body: response.body,
           response: responseInfo,
           controller,
-          onDispose: lease.dispose
+          onDispose: lease.dispose,
+          requireDoneSignal: true,
+          extraSecrets: requestSecrets
         });
       } catch (bodyErr) {
         throw this._wrapBodyAbortError({
@@ -1082,7 +1133,7 @@ export class BaseClient {
           spec,
           url: prepared.url,
           lease,
-          extraSecrets: this._getActiveSecrets(requestOptions)
+          extraSecrets: requestSecrets
         });
       } finally {
         if (!handedOffToStream) {
@@ -1090,8 +1141,15 @@ export class BaseClient {
         }
       }
     } catch (err) {
+      const requestSecrets = secretScope.snapshot();
       const errorObj =
-        err instanceof Error ? err : new FastGptError({ message: String(err), url: requestUrl });
+        err instanceof Error
+          ? err
+          : new FastGptError({
+              message: String(err),
+              url: requestUrl,
+              extraSecrets: requestSecrets
+            });
       await notifyErrorObservability({
         hooks: this._options.hooks,
         logger: this._logger,
@@ -1103,7 +1161,7 @@ export class BaseClient {
           attempt: lastAttempt,
           error: errorObj
         },
-        extraSecrets: this._getActiveSecrets(requestOptions)
+        extraSecrets: requestSecrets
       });
       throw err;
     }

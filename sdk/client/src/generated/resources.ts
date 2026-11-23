@@ -10,10 +10,10 @@ import type {
   AppsLogsGetChartDataRes,
   AppsLogsGetTotalDataReq,
   AppsLogsGetTotalDataRes,
-  AppsLogsListReq,
-  AppsLogsListRes,
   AppsLogsListUsersReq,
   AppsLogsListUsersRes,
+  AppsLogsSearchReq,
+  AppsLogsSearchRes,
   ChatCompletionsV2Req,
   ChatCompletionsV2Res,
   ChatCreateQuestionGuideReq,
@@ -205,6 +205,7 @@ const APPS_LOGS_EXPORT_SPEC: OperationSpec = {
     'tmbIds',
     'outLinkUids',
     'chatSearch',
+    'searchType',
     'title',
     'sourcesMap',
     'logKeys'
@@ -246,33 +247,6 @@ const APPS_LOGS_GET_TOTAL_DATA_SPEC: OperationSpec = {
   bodyParams: []
 };
 
-const APPS_LOGS_LIST_SPEC: OperationSpec = {
-  id: 'apps.logs.list',
-  httpMethod: 'POST',
-  path: '/core/app/logs/list',
-  requestContentType: 'json',
-  responseMode: 'envelope',
-  appIdCarrier: 'body',
-  identityCarrier: null,
-  pathParams: [],
-  queryParams: [],
-  bodyParams: [
-    'appId',
-    'offset',
-    'pageSize',
-    'feedbackType',
-    'unreadOnly',
-    'errorFilter',
-    'dateStart',
-    'dateEnd',
-    'sources',
-    'tmbIds',
-    'outLinkUids',
-    'chatSearch',
-    'pageNum'
-  ]
-};
-
 const APPS_LOGS_LIST_USERS_SPEC: OperationSpec = {
   id: 'apps.logs.listUsers',
   httpMethod: 'POST',
@@ -292,6 +266,32 @@ const APPS_LOGS_LIST_USERS_SPEC: OperationSpec = {
     'searchKey',
     'sources',
     'pageNum'
+  ]
+};
+
+const APPS_LOGS_SEARCH_SPEC: OperationSpec = {
+  id: 'apps.logs.search',
+  httpMethod: 'POST',
+  path: '/core/app/logs/search',
+  requestContentType: 'json',
+  responseMode: 'envelope',
+  appIdCarrier: 'body',
+  identityCarrier: null,
+  pathParams: [],
+  queryParams: [],
+  bodyParams: [
+    'appId',
+    'feedbackType',
+    'unreadOnly',
+    'errorFilter',
+    'dateStart',
+    'dateEnd',
+    'sources',
+    'tmbIds',
+    'outLinkUids',
+    'chatSearch',
+    'searchType',
+    'cursor'
   ]
 };
 
@@ -1913,24 +1913,24 @@ export class AppsLogsResource {
   }
 
   /**
-   * 获取应用日志列表
-   * 分页获取应用的对话日志列表，支持按时间范围、来源、用户等条件筛选
-   */
-  list(req: AppsLogsListReq, options?: RequestOptions): ApiPromise<AppsLogsListRes> {
-    return this._client._request<AppsLogsListRes>({
-      spec: APPS_LOGS_LIST_SPEC,
-      rawInput: req as Record<string, unknown> | undefined,
-      requestOptions: options
-    });
-  }
-
-  /**
    * 获取日志用户列表
    * 获取应用日志中的用户列表，包括外链用户和团队成员，按对话数量排序，支持搜索和分页
    */
   listUsers(req: AppsLogsListUsersReq, options?: RequestOptions): ApiPromise<AppsLogsListUsersRes> {
     return this._client._request<AppsLogsListUsersRes>({
       spec: APPS_LOGS_LIST_USERS_SPEC,
+      rawInput: req as Record<string, unknown> | undefined,
+      requestOptions: options
+    });
+  }
+
+  /**
+   * 搜索应用日志列表
+   * 按游标搜索应用的对话日志列表，每页固定 50 条且不查询总数
+   */
+  search(req: AppsLogsSearchReq, options?: RequestOptions): ApiPromise<AppsLogsSearchRes> {
+    return this._client._request<AppsLogsSearchRes>({
+      spec: APPS_LOGS_SEARCH_SPEC,
       rawInput: req as Record<string, unknown> | undefined,
       requestOptions: options
     });

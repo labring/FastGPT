@@ -144,12 +144,15 @@ async function handler(
           {
             $lookup: {
               from: MongoTeam.collection.name,
-              localField: 'teamId',
-              foreignField: '_id',
+              let: { teamId: { $ifNull: ['$teamId', null] } },
               pipeline: [
                 {
                   $match: {
-                    $and: [baseFilter, { ownerId: { $ne: currentUserObjectId } }]
+                    $and: [
+                      { $expr: { $eq: ['$_id', '$$teamId'] } },
+                      baseFilter,
+                      { ownerId: { $ne: currentUserObjectId } }
+                    ]
                   }
                 },
                 { $project: { _id: 1, name: 1, avatar: 1, createTime: 1 } }

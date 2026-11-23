@@ -1,5 +1,5 @@
 import { i18nT } from '../../i18n/utils';
-import { type ErrType } from '../errorCode';
+import { type ErrorHttpStatus, type ErrType } from '../errorCode';
 
 /* dataset: 501000 */
 export enum DatasetErrEnum {
@@ -41,104 +41,133 @@ export enum DatasetErrEnum {
   archiveInvalidTicket = 'archiveInvalidTicket',
   exportFolderNotSupported = 'exportFolderNotSupported'
 }
-const datasetErr = [
+const datasetErr: Array<{
+  statusText: DatasetErrEnum;
+  message: string;
+  httpStatus: ErrorHttpStatus;
+}> = [
   {
     statusText: DatasetErrEnum.sameApiCollection,
-    message: i18nT('common:core.dataset.error.sameApiCollection')
+    message: i18nT('common:core.dataset.error.sameApiCollection'),
+    httpStatus: 409
   },
   {
     statusText: DatasetErrEnum.notSupportSync,
-    message: i18nT('common:core.dataset.error.notSupportSync')
+    message: i18nT('common:core.dataset.error.notSupportSync'),
+    httpStatus: 400
   },
   {
     statusText: DatasetErrEnum.unExist,
-    message: i18nT('common:core.dataset.error.unExistDataset')
+    message: i18nT('common:core.dataset.error.unExistDataset'),
+    httpStatus: 404
   },
   {
     statusText: DatasetErrEnum.unExistCollection,
-    message: i18nT('common:error_collection_not_exist')
+    message: i18nT('common:error_collection_not_exist'),
+    httpStatus: 404
   },
   {
     statusText: DatasetErrEnum.unAuthDataset,
-    message: i18nT('common:core.dataset.error.unAuthDataset')
+    message: i18nT('common:core.dataset.error.unAuthDataset'),
+    httpStatus: 403
   },
   {
     statusText: DatasetErrEnum.unAuthDatasetCollection,
-    message: i18nT('common:core.dataset.error.unAuthDatasetCollection')
+    message: i18nT('common:core.dataset.error.unAuthDatasetCollection'),
+    httpStatus: 403
   },
   {
     statusText: DatasetErrEnum.unAuthDatasetData,
-    message: i18nT('common:core.dataset.error.unAuthDatasetData')
+    message: i18nT('common:core.dataset.error.unAuthDatasetData'),
+    httpStatus: 403
   },
   {
     statusText: DatasetErrEnum.unAuthDatasetFile,
-    message: i18nT('common:core.dataset.error.unAuthDatasetFile')
+    message: i18nT('common:core.dataset.error.unAuthDatasetFile'),
+    httpStatus: 403
   },
   {
     statusText: DatasetErrEnum.unCreateCollection,
-    message: i18nT('common:core.dataset.error.unCreateCollection')
+    message: i18nT('common:core.dataset.error.unCreateCollection'),
+    httpStatus: 403
   },
   {
     statusText: DatasetErrEnum.unLinkCollection,
-    message: i18nT('common:core.dataset.error.unLinkCollection')
+    message: i18nT('common:core.dataset.error.unLinkCollection'),
+    httpStatus: 400
   },
   {
     statusText: DatasetErrEnum.invalidVectorModelOrQAModel,
-    message: i18nT('common:core.dataset.error.invalidVectorModelOrQAModel')
+    message: i18nT('common:core.dataset.error.invalidVectorModelOrQAModel'),
+    httpStatus: 400
   },
   {
     statusText: DatasetErrEnum.canNotEditAdminPermission,
-    message: i18nT('common:core.dataset.error.canNotEditAdminPermission')
+    message: i18nT('common:core.dataset.error.canNotEditAdminPermission'),
+    httpStatus: 403
   },
   {
     statusText: DatasetErrEnum.noApiServer,
-    message: i18nT('common:core.dataset.error.noApiServer')
+    message: i18nT('common:core.dataset.error.noApiServer'),
+    httpStatus: 400
   },
   {
     statusText: DatasetErrEnum.externalChunkFailed,
-    message: i18nT('dataset:chunk_error.failed')
+    message: i18nT('dataset:chunk_error.failed'),
+    httpStatus: 502
   },
   {
     statusText: DatasetErrEnum.externalChunkInvalidResponse,
-    message: i18nT('dataset:chunk_error.invalid_response')
+    message: i18nT('dataset:chunk_error.invalid_response'),
+    httpStatus: 502
   },
   {
     statusText: DatasetErrEnum.externalChunkNotConfigured,
-    message: i18nT('dataset:chunk_error.not_configured')
+    message: i18nT('dataset:chunk_error.not_configured'),
+    // 由实例侧环境变量 SANGFOR_CHUNK_URL 缺失触发，属于服务端配置不可用而非客户端入参错误。
+    httpStatus: 503
   },
   {
     statusText: DatasetErrEnum.dataNotIndexed,
-    message: i18nT('common:core.dataset.error.dataNotIndexed')
+    message: i18nT('common:core.dataset.error.dataNotIndexed'),
+    httpStatus: 409
   },
 
   // Tag errors
   {
     statusText: DatasetErrEnum.tagNameDuplicate,
-    message: i18nT('common:core.dataset.error.tagNameDuplicate')
+    message: i18nT('common:core.dataset.error.tagNameDuplicate'),
+    httpStatus: 409
   },
   {
     statusText: DatasetErrEnum.tagNameEmpty,
-    message: i18nT('common:core.dataset.error.tagNameEmpty')
+    message: i18nT('common:core.dataset.error.tagNameEmpty'),
+    httpStatus: 400
   },
   {
     statusText: DatasetErrEnum.tagNotExist,
-    message: i18nT('common:core.dataset.error.tagNotExist')
+    message: i18nT('common:core.dataset.error.tagNotExist'),
+    httpStatus: 404
   },
   {
     statusText: DatasetErrEnum.tagValueInvalid,
-    message: i18nT('common:core.dataset.error.tagValueInvalid')
+    message: i18nT('common:core.dataset.error.tagValueInvalid'),
+    httpStatus: 400
   },
   {
     statusText: DatasetErrEnum.tagValueDatetimeInvalid,
-    message: i18nT('common:core.dataset.error.tagValueDatetimeInvalid')
+    message: i18nT('common:core.dataset.error.tagValueDatetimeInvalid'),
+    httpStatus: 400
   },
   {
     statusText: DatasetErrEnum.arrayTagValueInvalid,
-    message: i18nT('common:core.dataset.error.arrayTagValueInvalid')
+    message: i18nT('common:core.dataset.error.arrayTagValueInvalid'),
+    httpStatus: 400
   },
   {
     statusText: DatasetErrEnum.collectionPermissionDisabled,
-    message: i18nT('common:core.dataset.error.collectionPermissionDisabled')
+    message: i18nT('common:core.dataset.error.collectionPermissionDisabled'),
+    httpStatus: 403
   },
   {
     statusText: DatasetErrEnum.archiveNoDownloadableFile,
@@ -162,7 +191,8 @@ const datasetErr = [
   },
   {
     statusText: DatasetErrEnum.archiveInvalidFile,
-    message: i18nT('dataset:archive.invalid_file')
+    message: i18nT('dataset:archive.invalid_file'),
+    httpStatus: 400
   },
   {
     statusText: DatasetErrEnum.archiveUnsupportedDataset,
@@ -188,7 +218,7 @@ export default datasetErr.reduce((acc, cur, index) => {
       statusText: cur.statusText,
       message: cur.message,
       data: null,
-      ...('httpStatus' in cur ? { httpStatus: cur.httpStatus } : {})
+      httpStatus: cur.httpStatus
     }
   };
 }, {} as ErrType<`${DatasetErrEnum}`>);

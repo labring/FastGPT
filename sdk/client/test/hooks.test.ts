@@ -255,4 +255,116 @@ describe('SDK Observability Hooks & Redacted Logger', () => {
     expect(serializedAll).not.toContain(customOemKey);
     expect(serializedAll).not.toContain(openapiKey);
   });
+
+  it('binds secret redaction to each request lifetime across explicit Authorization headers and >40 concurrent rotating keys', async () => {
+    const errContexts: ErrorHookContext[] = [];
+    const reqContexts: RequestHookContext[] = [];
+    const logEntries: Array<{ level: string; message: string; meta?: Record<string, unknown> }> =
+      [];
+
+    // 1. 显式 headers.Authorization / X-Api-Key 凭据即使没有默认 apiKey 也必须在请求、日志与错误中脱敏
+    const explicitBearerSecret = 'explicit-custom-bearer-secret-9999';
+    const explicitRawAuthSecret = 'CustomScheme raw-opaque-secret-8888';
+    const explicitClient = new FastGPT({
+      baseUrl: 'https://api.example.com',
+      maxRetries: 0,
+      logger: {
+        debug: (message, meta) => logEntries.push({ level: 'debug', message, meta }),
+        warn: (message, meta) => logEntries.push({ level: 'warn', message, meta }),
+        error: (message, meta) => logEntries.push({ level: 'error', message, meta })
+      },
+      hooks: {
+        onRequest: (ctx) => {
+          reqContexts.push(ctx);
+        },
+        onError: (ctx) => {
+          errContexts.push(ctx);
+        }
+      },
+      fetch: async () => {
+        throw new Error(
+          `upstream bounced ${explicitBearerSecret} and ${explicitRawAuthSecret} raw-opaque-secret-8888`
+        );
+      }
+    });
+
+    await expect(
+      explicitClient.system.health({
+        headers: {
+          Authorization: `Bearer ${explicitBearerSecret}`,
+          'X-Api-Key': explicitRawAuthSecret
+        }
+      })
+    ).rejects.toThrow(FastGptError);
+
+    const explicitSerialized = JSON.stringify({
+      reqContexts,
+      errMessage: errContexts[0]?.error.message,
+      errCause:
+        errContexts[0]?.error.cause instanceof Error
+          ? errContexts[0].error.cause.message
+          : undefined,
+      logEntries
+    });
+    expect(explicitSerialized).not.toContain(explicitBearerSecret);
+    expect(explicitSerialized).not.toContain(explicitRawAuthSecret);
+
+    // 2. 45 个并发动态轮换 apiKey 请求：最先发起的慢请求 #0 在其余 44 个不同密钥请求全部结束后才失败，
+    // 验证请求级脱敏作用域绝不会因跨请求固定容量缓存淘汰而泄漏 #0 的密钥。
+    let seq = 0;
+    let releaseSlowRequest!: () => void;
+    const slowGate = new Promise<void>((resolve) => {
+      releaseSlowRequest = resolve;
+    });
+    const slowSecret = 'oemrot-slow-request-secret-0000';
+    const rotatingErrors: Array<{ key: string; message: string; hookMessage: string }> = [];
+
+    const rotatingClient = new FastGPT({
+      baseUrl: 'https://api.example.com',
+      maxRetries: 0,
+      apiKey: async () => {
+        const current = seq;
+        seq += 1;
+        return current === 0
+          ? slowSecret
+          : `oemrot-fast-request-secret-${String(current).padStart(4, '0')}`;
+      },
+      hooks: {
+        onError: (ctx) => {
+          rotatingErrors.push({
+            key: ctx.operationId,
+            message: ctx.error.message,
+            hookMessage:
+              ctx.error.cause instanceof Error ? ctx.error.cause.message : String(ctx.error.cause)
+          });
+        }
+      },
+      fetch: async (_input, init) => {
+        const auth = new Headers(init?.headers).get('authorization') ?? '';
+        const rawToken = auth.replace(/^Bearer\s+/i, '');
+        if (rawToken === slowSecret) {
+          await slowGate;
+          throw new Error(`slow request failed with leaked ${slowSecret}`);
+        }
+        return new Response(
+          JSON.stringify({ code: 200, statusText: '', message: '', data: { ok: true } }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          }
+        );
+      }
+    });
+
+    const slowPromise = rotatingClient.system.health().catch((err: unknown) => err);
+    // 先让 44 个携带全新密钥的请求并发完成（远超原 32 条上限）
+    await Promise.all(Array.from({ length: 44 }, () => rotatingClient.system.health()));
+    releaseSlowRequest();
+
+    const slowErr = await slowPromise;
+    expect(slowErr).toBeInstanceOf(FastGptError);
+    expect((slowErr as Error).message).not.toContain(slowSecret);
+    expect(rotatingErrors).toHaveLength(1);
+    expect(JSON.stringify(rotatingErrors[0])).not.toContain(slowSecret);
+  });
 });

@@ -66,7 +66,8 @@ const API_KEY_CAPABLE_PATTERNS = [
   /\bbuildClearChatHistoriesMatch\b/,
   /\bdeleteDataset\b/,
   /\bmoveDataset\b/,
-  /\bcreateDatasetSynonymMutation\b/
+  /\bcreateDatasetSynonymMutation\b/,
+  /\bgetAuthenticatedAppChatLogFilter\b/
 ];
 
 /**

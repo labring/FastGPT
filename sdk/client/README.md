@@ -219,7 +219,7 @@ Each capability is published directly from its defining module for minimal bundl
 - `@fastgpt/sdk/errors` — `FastGptError`, `FastGptAuthError`, `FastGptRateLimitError`, etc.
 - `@fastgpt/sdk/sse` — `ChatStream`, `ChatSseEvent`, `ChatStreamFinalResult`, `ChatStreamTerminalState`
 - `@fastgpt/sdk/interactive` — `InteractivePayload`, `isUserSelectInteractive`, `isUserInputInteractive`, etc.
-- `@fastgpt/sdk/pagination` — `createOffsetPaginator`, `createPageNumPaginator`, `AsyncPageIterable`
+- `@fastgpt/sdk/pagination` — `createOffsetPaginator`, `createPageNumPaginator`, `createCursorPaginator`, `AsyncPageIterable`
 - `@fastgpt/sdk/options` — `FastGptClientOptions`, `RequestOptions`, `FastGptHooks`, `FastGptLogger`
 - `@fastgpt/sdk/types` — generated OpenAPI `*Req` / `*Res` contract types
 - `@fastgpt/sdk/server` — reverse custom API dataset adapter (`createApiDatasetHandler`, `toNodeHttpHandler`)

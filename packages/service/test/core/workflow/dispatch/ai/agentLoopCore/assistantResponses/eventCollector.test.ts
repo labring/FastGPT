@@ -46,6 +46,103 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
     }
   );
 
+  it('persists structured tool content on the tool card', () => {
+    const collector = createAgentLoopCoreAssistantEventCollector();
+    const content = [
+      { type: 'text' as const, text: 'rendered' },
+      {
+        type: 'image_url' as const,
+        image_url: { url: 'https://example.com/result.png' }
+      }
+    ];
+    collector.emitEvent(end('image', [call('image')]));
+    collector.emitEvent({
+      type: 'tool_run_end',
+      call: call('image'),
+      response: 'rendered',
+      content,
+      seconds: 0
+    });
+
+    const tool = collector.assistantResponses[0].tools?.[0];
+    expect(tool).toMatchObject({ response: 'rendered', content });
+    expect(
+      AIChatItemValueSchema.safeParse({
+        ...collector.assistantResponses[0],
+        tools: [tool]
+      }).success
+    ).toBe(true);
+  });
+
+  it.each([
+    ['lowercase', 'data:image/png;base64,'],
+    ['uppercase', 'DATA:IMAGE/PNG;BASE64,']
+  ])('does not persist oversized %s inline tool images', (_label, prefix) => {
+    const collector = createAgentLoopCoreAssistantEventCollector();
+    const oversizedUrl = `${prefix}${'A'.repeat(4 * 1024 * 1024 + 1)}`;
+    const httpImage = {
+      type: 'image_url' as const,
+      image_url: { url: 'https://example.com/result.png' }
+    };
+    collector.emitEvent(end('large-image', [call('large-image')]));
+    collector.emitEvent({
+      type: 'tool_run_end',
+      call: call('large-image'),
+      response: 'rendered',
+      content: [
+        { type: 'text', text: 'rendered' },
+        { type: 'image_url', image_url: { url: oversizedUrl } },
+        httpImage
+      ],
+      seconds: 0
+    });
+    const tool = collector.assistantResponses[0].tools?.[0];
+    expect(tool?.content).toEqual([{ type: 'text', text: 'rendered' }, httpImage]);
+
+    const resumedCollector = createAgentLoopCoreAssistantEventCollector();
+    resumedCollector.emitEvent({
+      type: 'tool_run_end',
+      resumed: true,
+      call: call('resumed-large-image'),
+      response: 'rendered',
+      content: [
+        { type: 'text', text: 'rendered' },
+        { type: 'image_url', image_url: { url: oversizedUrl } },
+        httpImage
+      ],
+      seconds: 0
+    });
+    expect(resumedCollector.assistantResponses[0].toolResponses?.[0]?.content).toEqual([
+      { type: 'text', text: 'rendered' },
+      httpImage
+    ]);
+  });
+
+  it('persists structured content for a resumed child tool result', () => {
+    const collector = createAgentLoopCoreAssistantEventCollector();
+    const content = [
+      {
+        type: 'image_url' as const,
+        image_url: { url: 'https://example.com/result.png' }
+      }
+    ];
+    collector.emitEvent({
+      type: 'tool_run_end',
+      resumed: true,
+      call: call('child-image'),
+      response: 'rendered',
+      content,
+      seconds: 0
+    });
+
+    expect(collector.assistantResponses[0].toolResponses?.[0]).toMatchObject({
+      id: 'child-image',
+      response: 'rendered',
+      content
+    });
+    expect(AIChatItemValueSchema.safeParse(collector.assistantResponses[0]).success).toBe(true);
+  });
+
   it.each([undefined, 'missing-arguments'])(
     'ignores Ask events without original call data: %s',
     (id) => {

@@ -61,6 +61,64 @@ export const isNeverJsonSchema = (schema: unknown): boolean => {
 };
 
 /**
+ * 从 JSON Schema 的 `not` 约束中提取显式禁止传入的字段名：
+ * - `not: { required: ['field'] }`（单字段明确禁止；多字段组合表示“不同时出现”，不可拆成单字段禁止）；
+ * - `not: { anyOf: [{ required: ['a'] }, { required: ['b'] }] }`（按德摩根律等价于逐个禁止这些字段）。
+ */
+const extractForbiddenPropertyNames = (schema: RawJsonSchema): string[] => {
+  if (!isRecord(schema.not)) {
+    return [];
+  }
+  const notSchema = schema.not;
+  const forbidden: string[] = [];
+
+  if (
+    Array.isArray(notSchema.required) &&
+    notSchema.required.length === 1 &&
+    typeof notSchema.required[0] === 'string'
+  ) {
+    forbidden.push(notSchema.required[0]);
+  }
+
+  if (Array.isArray(notSchema.anyOf)) {
+    for (const clause of notSchema.anyOf) {
+      if (
+        isRecord(clause) &&
+        Array.isArray(clause.required) &&
+        clause.required.length === 1 &&
+        typeof clause.required[0] === 'string'
+      ) {
+        forbidden.push(clause.required[0]);
+      }
+    }
+  }
+
+  return forbidden;
+};
+
+const applyForbiddenProperties = (
+  obj: IrRequestObjectSchema,
+  forbiddenKeys: ReadonlySet<string>
+): IrRequestObjectSchema => {
+  if (forbiddenKeys.size === 0) {
+    return obj;
+  }
+  let changed = false;
+  const properties = obj.properties.map((prop) => {
+    if (!prop.required && forbiddenKeys.has(prop.name) && prop.schema.kind !== 'never') {
+      changed = true;
+      return {
+        name: prop.name,
+        schema: { kind: 'never' as const },
+        required: false
+      };
+    }
+    return prop;
+  });
+  return changed ? { ...obj, properties } : obj;
+};
+
+/**
  * 判断联合分支是否属于仅供站内调试、分享外链或已废弃兼容使用的非 SDK 分支。
  */
 const isNonSdkRequestBranch = (branch: RawJsonSchema): boolean => {
@@ -462,7 +520,7 @@ export const normalizeJsonSchemaToIr = ({
       }
     }
 
-    // 3. 处理 allOf 交集（提取额外 required 约束、忽略纯 not 守卫断言，再合并各对象成员）
+    // 3. 处理 allOf 交集（提取额外 required 与 not 禁止约束，再合并各对象成员）
     if (Array.isArray(resolved.allOf) && resolved.allOf.length > 0) {
       const { allOf, ...ownRest } = resolved;
       const extraRequired = new Set<string>(
@@ -470,6 +528,7 @@ export const normalizeJsonSchemaToIr = ({
           ? ownRest.required.filter((k): k is string => typeof k === 'string')
           : []
       );
+      const extraForbidden = new Set<string>(extractForbiddenPropertyNames(ownRest));
 
       const rawMembers: unknown[] = [...allOf];
       if (
@@ -488,6 +547,11 @@ export const normalizeJsonSchemaToIr = ({
               if (typeof reqKey === 'string' && !FORBIDDEN_REQUEST_PROPERTIES.has(reqKey)) {
                 extraRequired.add(reqKey);
               }
+            }
+          }
+          for (const forbiddenKey of extractForbiddenPropertyNames(item)) {
+            if (!FORBIDDEN_REQUEST_PROPERTIES.has(forbiddenKey)) {
+              extraForbidden.add(forbiddenKey);
             }
           }
           const hasStructuralShape =
@@ -550,6 +614,10 @@ export const normalizeJsonSchemaToIr = ({
               extraRequired.has(p.name) ? { ...p, required: true } : p
             )
           }));
+        }
+
+        if (extraForbidden.size > 0) {
+          candidates = candidates.map((cand) => applyForbiddenProperties(cand, extraForbidden));
         }
 
         if (nextCtx.mode === 'requestTop') {
@@ -761,12 +829,14 @@ export const normalizeJsonSchemaToIr = ({
         return undefined;
       })();
 
-      return {
+      const directForbidden = new Set<string>(extractForbiddenPropertyNames(resolved));
+      const baseObject: IrRequestObjectSchema = {
         kind: 'object',
         properties,
         ...(additionalProperties !== undefined ? { additionalProperties } : {}),
         ...metaPatch
       };
+      return applyForbiddenProperties(baseObject, directForbidden);
     }
 
     // 8. 处理基础标量类型

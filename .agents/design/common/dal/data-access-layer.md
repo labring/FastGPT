@@ -152,7 +152,7 @@ Cache 拥有 key、TTL、codec、miss、read-through、single-flight 和故障�
 | --- | --- | --- |
 | `DingtalkAccessTokenCache` | token；动态 TTL | Redis fail-open；上游错误传播；进程内 single-flight |
 | `TeamVectorCountCache` | decimal；1800 秒 | 读取超时回源；写入和失效 best-effort |
-| `WechatQrLoginCache` | QR JSON；480 秒 | miss 表示过期；损坏数据和 Redis 错误 fail-closed |
+| `WechatQrLoginCache` | 按渠道、成员和扫码会话保存 QR JSON；480 秒 | miss 表示过期；损坏数据和 Redis 错误 fail-closed |
 | `DailyActiveDedupeCache` | `1`；86400 秒 | `SET NX EX` 原子声明；Redis 故障 fail-open |
 | `SystemVersionCache` | UUID；永久 | 原子初始化；错误 fail-closed；wildcard 只删除子 key |
 | `FixedWindowRateLimitCache` | count 和剩余 TTL | 原子固定窗口；Redis 错误由调用方按场景决定放行或拒绝（团队 QPM fail-open） |

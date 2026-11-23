@@ -19,6 +19,8 @@ import {
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { parseDatasetImportFile } from '@fastgpt/service/core/dataset/importFile';
 import { decodeMultipartFilename } from '@fastgpt/service/common/s3/filename';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildCollectionCreateAuditLog } from '@fastgpt/service/core/dataset/audit/collection';
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
@@ -80,6 +82,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       return Promise.reject(i18nT('dataset:backup_template_invalid'));
     });
 
+    const collectionType = DatasetCollectionTypeEnum.file;
     const collectionResult = await createCollectionAndInsertData({
       dataset,
       rawText,
@@ -91,13 +94,27 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
         datasetId: dataset._id,
         parentId,
         name: filename,
-        type: DatasetCollectionTypeEnum.file,
+        type: collectionType,
         fileId,
         trainingType: DatasetCollectionDataProcessModeEnum.backup,
         tags
       }
     });
     promoted = true;
+
+    void addAuditLog(
+      await buildCollectionCreateAuditLog({
+        teamId,
+        tmbId,
+        dataset,
+        collection: {
+          _id: collectionResult.collectionId,
+          name: filename,
+          type: collectionType,
+          parentId
+        }
+      })
+    );
 
     return collectionResult;
   } catch (error) {

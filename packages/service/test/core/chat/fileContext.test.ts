@@ -11,7 +11,9 @@ import {
 import type { ChatItemMiniType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
+import { serviceEnv } from '@fastgpt/service/env';
 import { Readable } from 'node:stream';
+import { createTestWorkflowFileContext } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 
 const mockGetRawTextBuffer = vi.hoisted(() => vi.fn());
 const mockAddRawTextBuffer = vi.hoisted(() => vi.fn());
@@ -96,13 +98,14 @@ import {
   rewriteChatMessagesWithFileContext,
   getFileContentByUrl,
   getFileInfoFromUrl,
+  resolveSignedDownloadAliasFromUrl,
   type FileReadContext
 } from '@fastgpt/service/core/chat/fileContext';
 import {
   prepareWorkflowFileContext,
   type WorkflowFileContext,
   type WorkflowFileRef
-} from '@fastgpt/service/core/workflow/utils/fileContext';
+} from '@fastgpt/service/core/workflow/dispatch/context/file';
 import {
   createExternalHttpFileSource,
   createS3FileSource,
@@ -431,7 +434,9 @@ describe('parseFileContentFromUrls (external fetch)', () => {
       imageParsePrefix: 'chat/app/app-1/user-1/chat-1/private-parsed'
     });
     const fileContext: WorkflowFileContext = {
+      ...(await createTestWorkflowFileContext()),
       limits: { maxFileAmount: 20, maxBytesPerFile: 1024 },
+      register: vi.fn(),
       resolve: (value) => (value === url ? ref : undefined),
       resolveInputFile: (file) => ('url' in file && file.url === url ? ref : undefined),
       resolveChatFile: () => ({
@@ -661,88 +666,150 @@ describe('parseFileContentFromUrls (external fetch)', () => {
     });
   });
 
-  it('短链解析时使用 alias 记录里的文件名推断后缀，不把短链 token 当文件名', async () => {
-    const signedAlias = 'itmq831ey0kc0xmklk1rik.hp436.0rpC9RtnHmPy_CVri9pBq8';
-    const shortUrl = `https://files.example.com/api/system/file/d/${signedAlias}`;
-    mockVerifyS3DownloadAccess.mockResolvedValue({
-      bucketName: 'fastgpt-private',
-      objectKey: 'chat/app/app1/u1/c1/random-key',
-      filename: 'report.pdf',
-      expiresAt: new Date('2099-01-01T00:00:00.000Z')
-    });
-    mockAxiosGet.mockResolvedValue({
-      data: Buffer.from('%PDF-1.7'),
-      headers: {
-        'content-type': 'application/octet-stream'
+  it.each([
+    'itmq831ey0kc0xmklk1rik.hp436.0rpC9RtnHmPy_CVri9pBq8',
+    'v2-itmq831ey0kc0xmklk1rik-hp436-0rpC9RtnHmPyCVri9pBq8A.pdf'
+  ])(
+    '短链 %s 解析时使用 alias 记录里的文件名推断后缀，不把短链 token 当文件名',
+    async (signedAlias) => {
+      const savedConfig = global.systemInstanceConfig;
+      global.systemInstanceConfig = createDefaultInstanceConfig();
+      getTestInstanceConfig().storage.fileDomain = 'https://files.example.com';
+      try {
+        const shortUrl = `https://files.example.com/api/system/file/d/${signedAlias}`;
+        mockVerifyS3DownloadAccess.mockResolvedValue({
+          bucketName: 'fastgpt-private',
+          objectKey: 'chat/app/app1/u1/c1/random-key',
+          filename: 'report.pdf',
+          expiresAt: new Date('2099-01-01T00:00:00.000Z')
+        });
+        mockAxiosGet.mockResolvedValue({
+          data: Buffer.from('%PDF-1.7'),
+          headers: {
+            'content-type': 'application/octet-stream'
+          }
+        });
+
+        const result = await parseFileContentFromUrls({
+          urls: [shortUrl],
+          maxFiles: 20,
+          teamId: 'team-1',
+          tmbId: 'tmb-1'
+        });
+
+        expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(signedAlias);
+        expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
+          expect.objectContaining({ extension: 'pdf' })
+        );
+        expect(result[0]).toMatchObject({
+          success: true,
+          name: 'report.pdf',
+          url: shortUrl
+        });
+      } finally {
+        global.systemInstanceConfig = savedConfig;
       }
-    });
+    }
+  );
 
-    const result = await parseFileContentFromUrls({
-      urls: [shortUrl],
-      maxFiles: 20,
-      teamId: 'team-1',
-      tmbId: 'tmb-1'
-    });
-
-    expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(signedAlias);
-    expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
-      expect.objectContaining({ extension: 'pdf' })
-    );
-    expect(result[0]).toMatchObject({
-      success: true,
-      name: 'report.pdf',
-      url: shortUrl
-    });
-  });
-
-  it.each(['/api/system/file/d/', '/f/'])(
+  it.each([
+    ['/api/system/file/d/', undefined],
+    ['/f/', 'https://files.example.com/f']
+  ] as const)(
     '工作流未登记的 %s 短链使用真实文件名解析，不把签名后缀登记为外链格式',
-    async (prefix) => {
-      const signedAlias = 'itmq831ey0kc0xmklk1rik.hp436.0rpC9RtnHmPy_CVri9pBq8';
-      const shortUrl = `https://files.example.com${prefix}${signedAlias}`;
-      mockVerifyS3DownloadAccess.mockResolvedValue({
-        bucketName: S3Buckets.private,
-        objectKey: 'chat/app/app1/u1/c1/opaque-key',
-        filename: 'test_file.txt'
-      });
-      const { fileContext } = await prepareWorkflowFileContext({
-        query: [],
-        histories: [],
-        scope: { sourceType: ChatSourceTypeEnum.app, sourceId: 'app1', uid: 'u1', chatId: 'c1' },
-        maxFileAmount: 20,
-        getPreviewUrl: async () => shortUrl
-      });
+    async (prefix, publicPrefix) => {
+      const savedConfig = global.systemInstanceConfig;
+      const originalPublicPrefix = serviceEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX;
+      global.systemInstanceConfig = createDefaultInstanceConfig();
+      if (!publicPrefix) {
+        getTestInstanceConfig().storage.fileDomain = 'https://files.example.com';
+      }
+      (serviceEnv as { FILE_DOWNLOAD_PUBLIC_URL_PREFIX?: string }).FILE_DOWNLOAD_PUBLIC_URL_PREFIX =
+        publicPrefix;
+      try {
+        const signedAlias = 'itmq831ey0kc0xmklk1rik.hp436.0rpC9RtnHmPy_CVri9pBq8';
+        const shortUrl = `https://files.example.com${prefix}${signedAlias}`;
+        mockVerifyS3DownloadAccess.mockResolvedValue({
+          bucketName: S3Buckets.private,
+          objectKey: 'chat/app/app1/u1/c1/opaque-key',
+          filename: 'test_file.txt'
+        });
+        const { fileContext } = await prepareWorkflowFileContext({
+          query: [],
+          histories: [],
+          scope: { sourceType: ChatSourceTypeEnum.app, sourceId: 'app1', uid: 'u1', chatId: 'c1' },
+          maxFileAmount: 20,
+          getPreviewUrl: async () => shortUrl
+        });
 
-      const result = await parseFileContentFromUrls({
-        urls: [shortUrl],
-        maxFiles: 20,
-        teamId: 'team-1',
-        tmbId: 'tmb-1',
-        fileContext
-      });
+        const result = await parseFileContentFromUrls({
+          urls: [shortUrl],
+          maxFiles: 20,
+          teamId: 'team-1',
+          tmbId: 'tmb-1',
+          fileContext
+        });
 
-      expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(signedAlias);
-      expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
-        expect.objectContaining({ extension: 'txt' })
-      );
-      expect(result).toEqual([
-        { success: true, name: 'test_file.txt', url: shortUrl, content: 'parsed text' }
-      ]);
-      expect(fileContext.resolve(shortUrl)).toBeUndefined();
-      expect(mockAxiosGet).not.toHaveBeenCalled();
+        expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(signedAlias);
+        expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
+          expect.objectContaining({ extension: 'txt' })
+        );
+        expect(result).toEqual([
+          { success: true, name: 'test_file.txt', url: shortUrl, content: 'parsed text' }
+        ]);
+        expect(fileContext.resolve(shortUrl)).toBeUndefined();
+        expect(mockAxiosGet).not.toHaveBeenCalled();
+      } finally {
+        global.systemInstanceConfig = savedConfig;
+        (
+          serviceEnv as { FILE_DOWNLOAD_PUBLIC_URL_PREFIX?: string }
+        ).FILE_DOWNLOAD_PUBLIC_URL_PREFIX = originalPublicPrefix;
+      }
     }
   );
 
   it.each(['image.png', 'audio.mp3', 'video.mp4'])(
     '未登记的短链按真实媒体文件 %s 过滤，不进入文档解析',
     async (filename) => {
+      const originalPublicPrefix = serviceEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX;
+      (serviceEnv as { FILE_DOWNLOAD_PUBLIC_URL_PREFIX?: string }).FILE_DOWNLOAD_PUBLIC_URL_PREFIX =
+        'https://files.example.com';
+      try {
+        const shortUrl =
+          'https://files.example.com/itmq831ey0kc0xmklk1rik.hp436.0rpC9RtnHmPy_CVri9pBq8';
+        mockVerifyS3DownloadAccess.mockResolvedValue({
+          bucketName: S3Buckets.private,
+          objectKey: 'chat/app/app1/u1/c1/opaque-key',
+          filename
+        });
+
+        const result = await parseFileContentFromUrls({
+          urls: [shortUrl],
+          maxFiles: 20,
+          teamId: 'team-1',
+          tmbId: 'tmb-1',
+          fileContext: createEmptyWorkflowFileContext()
+        });
+
+        expect(result).toEqual([]);
+        expect(mockReadFileContentBySource).not.toHaveBeenCalled();
+        expect(mockAxiosGet).not.toHaveBeenCalled();
+      } finally {
+        (
+          serviceEnv as { FILE_DOWNLOAD_PUBLIC_URL_PREFIX?: string }
+        ).FILE_DOWNLOAD_PUBLIC_URL_PREFIX = originalPublicPrefix;
+      }
+    }
+  );
+
+  it('未登记的短链签名校验失败时不读取正文或解析缓存', async () => {
+    const originalPublicPrefix = serviceEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX;
+    (serviceEnv as { FILE_DOWNLOAD_PUBLIC_URL_PREFIX?: string }).FILE_DOWNLOAD_PUBLIC_URL_PREFIX =
+      'https://files.example.com';
+    try {
       const shortUrl =
         'https://files.example.com/itmq831ey0kc0xmklk1rik.hp436.0rpC9RtnHmPy_CVri9pBq8';
-      mockVerifyS3DownloadAccess.mockResolvedValue({
-        bucketName: S3Buckets.private,
-        objectKey: 'chat/app/app1/u1/c1/opaque-key',
-        filename
-      });
+      mockVerifyS3DownloadAccess.mockRejectedValue(new Error('Invalid download signature'));
 
       const result = await parseFileContentFromUrls({
         urls: [shortUrl],
@@ -752,98 +819,203 @@ describe('parseFileContentFromUrls (external fetch)', () => {
         fileContext: createEmptyWorkflowFileContext()
       });
 
-      expect(result).toEqual([]);
+      expect(result).toEqual([
+        { success: false, name: '', url: shortUrl, content: 'Invalid download signature' }
+      ]);
+      expect(mockGetRawTextBuffer).not.toHaveBeenCalled();
       expect(mockReadFileContentBySource).not.toHaveBeenCalled();
       expect(mockAxiosGet).not.toHaveBeenCalled();
+    } finally {
+      (serviceEnv as { FILE_DOWNLOAD_PUBLIC_URL_PREFIX?: string }).FILE_DOWNLOAD_PUBLIC_URL_PREFIX =
+        originalPublicPrefix;
     }
-  );
+  });
 
-  it('未登记的短链签名校验失败时不读取正文或解析缓存', async () => {
-    const shortUrl =
-      'https://files.example.com/itmq831ey0kc0xmklk1rik.hp436.0rpC9RtnHmPy_CVri9pBq8';
-    mockVerifyS3DownloadAccess.mockRejectedValue(new Error('Invalid download signature'));
+  it('普通外链文件名命中 v2 短链形状时走原外链流程，不触发本地短链校验失败', async () => {
+    const externalUrl =
+      'https://cdn.example.com/reports/v2-quarterlyreport-2026-A1B2C3D4E5F6G7H8I9J0K1.pdf';
+    mockVerifyS3DownloadAccess.mockRejectedValue(new Error('InvalidSignedAliasSignature'));
+    mockAxiosGet.mockResolvedValue({
+      data: Buffer.from('%PDF-1.7'),
+      headers: {
+        'content-type': 'application/pdf'
+      }
+    });
+
+    const normalized = await normalizeReadableFileUrl({
+      url: externalUrl,
+      fileContext: createEmptyWorkflowFileContext()
+    });
+    expect(normalized).toBe(externalUrl);
+    expect(mockVerifyS3DownloadAccess).not.toHaveBeenCalled();
+
+    const fileInfo = await getFileInfoFromUrl({
+      teamId: 'team-1',
+      url: externalUrl
+    });
+    expect(fileInfo.isChatExternalUrl).toBe(true);
+    expect(fileInfo.filename).toBe('v2-quarterlyreport-2026-A1B2C3D4E5F6G7H8I9J0K1.pdf');
+    expect(mockVerifyS3DownloadAccess).not.toHaveBeenCalled();
 
     const result = await parseFileContentFromUrls({
-      urls: [shortUrl],
+      urls: [externalUrl],
       maxFiles: 20,
       teamId: 'team-1',
       tmbId: 'tmb-1',
       fileContext: createEmptyWorkflowFileContext()
     });
-
     expect(result).toEqual([
-      { success: false, name: '', url: shortUrl, content: 'Invalid download signature' }
+      {
+        success: true,
+        name: 'v2-quarterlyreport-2026-A1B2C3D4E5F6G7H8I9J0K1.pdf',
+        url: externalUrl,
+        content: 'parsed text'
+      }
     ]);
-    expect(mockGetRawTextBuffer).not.toHaveBeenCalled();
-    expect(mockReadFileContentBySource).not.toHaveBeenCalled();
-    expect(mockAxiosGet).not.toHaveBeenCalled();
+    expect(mockVerifyS3DownloadAccess).not.toHaveBeenCalled();
+  });
+
+  it('默认未配置公开域名时，其他实例的绝对 v2 文档短链走外链流程，不触发本地验签失败', async () => {
+    const savedConfig = global.systemInstanceConfig;
+    const originalPublicPrefix = serviceEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX;
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    (serviceEnv as { FILE_DOWNLOAD_PUBLIC_URL_PREFIX?: string }).FILE_DOWNLOAD_PUBLIC_URL_PREFIX =
+      undefined;
+    try {
+      const foreignAlias = 'v2-R7mQG0Yh2kVxP9Za-200000-4k9LmN2pQrStUvWxYz12Ab.pdf';
+      const foreignUrl = `https://other-fastgpt.example.com/api/system/file/d/${foreignAlias}`;
+      mockVerifyS3DownloadAccess.mockRejectedValue(new Error('InvalidSignedAliasSignature'));
+      mockAxiosGet.mockResolvedValue({
+        data: Buffer.from('%PDF-1.7'),
+        headers: {
+          'content-type': 'application/pdf',
+          'content-disposition': 'inline; filename="partner-report.pdf"'
+        }
+      });
+
+      // 本实例相对路径仍可识别，跨实例绝对短链不归属本实例
+      expect(resolveSignedDownloadAliasFromUrl(`/api/system/file/d/${foreignAlias}`)).toBe(
+        foreignAlias
+      );
+      expect(resolveSignedDownloadAliasFromUrl(foreignUrl)).toBe('');
+
+      const normalized = await normalizeReadableFileUrl({
+        url: foreignUrl,
+        fileContext: createEmptyWorkflowFileContext()
+      });
+      expect(normalized).toBe(foreignUrl);
+      expect(mockVerifyS3DownloadAccess).not.toHaveBeenCalled();
+
+      const fileInfo = await getFileInfoFromUrl({
+        teamId: 'team-1',
+        url: foreignUrl
+      });
+      expect(fileInfo.isChatExternalUrl).toBe(true);
+      expect(mockVerifyS3DownloadAccess).not.toHaveBeenCalled();
+
+      const result = await parseFileContentFromUrls({
+        urls: [foreignUrl],
+        maxFiles: 20,
+        teamId: 'team-1',
+        tmbId: 'tmb-1',
+        fileContext: createEmptyWorkflowFileContext()
+      });
+      expect(result).toEqual([
+        {
+          success: true,
+          name: 'partner-report.pdf',
+          url: foreignUrl,
+          content: 'parsed text'
+        }
+      ]);
+      expect(mockVerifyS3DownloadAccess).not.toHaveBeenCalled();
+    } finally {
+      global.systemInstanceConfig = savedConfig;
+      (serviceEnv as { FILE_DOWNLOAD_PUBLIC_URL_PREFIX?: string }).FILE_DOWNLOAD_PUBLIC_URL_PREFIX =
+        originalPublicPrefix;
+    }
   });
 
   it('nginx 根路径短链解析时也使用 alias 文件名，不把签名最后一段当后缀', async () => {
-    const signedAlias = 'vju2QnTFBVFMZouC.hp9bi.febMBKFxSy5_u780dAPDnI';
-    const shortUrl = `http://localhost:8088/${signedAlias}`;
-    mockVerifyS3DownloadAccess.mockResolvedValue({
-      bucketName: 'fastgpt-private',
-      objectKey: 'chat/app/app1/u1/c1/license-key',
-      filename: 'LICENSE',
-      responseContentType: 'text/plain',
-      expiresAt: new Date('2099-01-01T00:00:00.000Z')
-    });
-    mockAxiosGet.mockResolvedValue({
-      data: Buffer.from('MIT License\n\nPermission is hereby granted', 'utf8'),
-      headers: {
-        'content-type': 'application/octet-stream'
-      }
-    });
+    const originalPublicPrefix = serviceEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX;
+    (serviceEnv as { FILE_DOWNLOAD_PUBLIC_URL_PREFIX?: string }).FILE_DOWNLOAD_PUBLIC_URL_PREFIX =
+      'http://localhost:8088';
+    try {
+      const signedAlias = 'vju2QnTFBVFMZouC.hp9bi.febMBKFxSy5_u780dAPDnI';
+      const shortUrl = `http://localhost:8088/${signedAlias}`;
+      mockVerifyS3DownloadAccess.mockResolvedValue({
+        bucketName: 'fastgpt-private',
+        objectKey: 'chat/app/app1/u1/c1/license-key',
+        filename: 'LICENSE',
+        responseContentType: 'text/plain',
+        expiresAt: new Date('2099-01-01T00:00:00.000Z')
+      });
+      mockAxiosGet.mockResolvedValue({
+        data: Buffer.from('MIT License\n\nPermission is hereby granted', 'utf8'),
+        headers: {
+          'content-type': 'application/octet-stream'
+        }
+      });
 
-    const result = await parseFileContentFromUrls({
-      urls: [shortUrl],
-      maxFiles: 20,
-      teamId: 'team-1',
-      tmbId: 'tmb-1'
-    });
+      const result = await parseFileContentFromUrls({
+        urls: [shortUrl],
+        maxFiles: 20,
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      });
 
-    expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(signedAlias);
-    expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
-      expect.objectContaining({
-        extension: 'txt'
-      })
-    );
-    expect(result[0]).toMatchObject({
-      success: true,
-      name: 'LICENSE',
-      url: shortUrl
-    });
+      expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(signedAlias);
+      expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          extension: 'txt'
+        })
+      );
+      expect(result[0]).toMatchObject({
+        success: true,
+        name: 'LICENSE',
+        url: shortUrl
+      });
+    } finally {
+      (serviceEnv as { FILE_DOWNLOAD_PUBLIC_URL_PREFIX?: string }).FILE_DOWNLOAD_PUBLIC_URL_PREFIX =
+        originalPublicPrefix;
+    }
   });
 
   it('短链没有 filename 时回退到 objectKey 文件名推断后缀', async () => {
-    const signedAlias = 'abc123def456ghi789.hp436.abcdefghijklmnop';
-    const shortUrl = `http://localhost:3000/api/system/file/d/${signedAlias}`;
-    mockVerifyS3DownloadAccess.mockResolvedValue({
-      bucketName: 'fastgpt-private',
-      objectKey: 'chat/app/app1/u1/c1/readme.md',
-      expiresAt: new Date('2099-01-01T00:00:00.000Z')
-    });
-    mockAxiosGet.mockResolvedValue({
-      data: Buffer.from('# Readme', 'utf8'),
-      headers: {}
-    });
+    const savedConfig = global.systemInstanceConfig;
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    getTestInstanceConfig().storage.fileDomain = 'http://localhost:3000';
+    try {
+      const signedAlias = 'abc123def456ghi789.hp436.abcdefghijklmnop';
+      const shortUrl = `http://localhost:3000/api/system/file/d/${signedAlias}`;
+      mockVerifyS3DownloadAccess.mockResolvedValue({
+        bucketName: 'fastgpt-private',
+        objectKey: 'chat/app/app1/u1/c1/readme.md',
+        expiresAt: new Date('2099-01-01T00:00:00.000Z')
+      });
+      mockAxiosGet.mockResolvedValue({
+        data: Buffer.from('# Readme', 'utf8'),
+        headers: {}
+      });
 
-    const result = await parseFileContentFromUrls({
-      urls: [shortUrl],
-      maxFiles: 20,
-      teamId: 'team-1',
-      tmbId: 'tmb-1'
-    });
+      const result = await parseFileContentFromUrls({
+        urls: [shortUrl],
+        maxFiles: 20,
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      });
 
-    expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
-      expect.objectContaining({ extension: 'md' })
-    );
-    expect(result[0]).toMatchObject({
-      success: true,
-      name: 'readme.md',
-      url: shortUrl
-    });
+      expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
+        expect.objectContaining({ extension: 'md' })
+      );
+      expect(result[0]).toMatchObject({
+        success: true,
+        name: 'readme.md',
+        url: shortUrl
+      });
+    } finally {
+      global.systemInstanceConfig = savedConfig;
+    }
   });
 
   it('pathname 没有最后一段时，文件名回退为 "file"', async () => {
@@ -970,40 +1142,47 @@ describe('formatAIChatUserQueryWithFiles', () => {
   it.each(['image/jpeg', 'application/pdf', 'error', 'missing'])(
     '短链通过授权对象元数据恢复媒体类型；%s 不误分类',
     async (outcome) => {
-      const alias = 'xWqlYoPSsRIoFtHP.hpagc.bpCySSj7HPRrPtWbcAlqxd';
-      if (outcome === 'error')
-        mockVerifyS3DownloadAccess.mockRejectedValueOnce(new Error('expired'));
-      else
-        mockVerifyS3DownloadAccess.mockResolvedValueOnce(
-          outcome === 'missing'
-            ? undefined
-            : {
-                objectKey: outcome === 'image/jpeg' ? 'chat/photo.jpeg' : 'chat/report.pdf',
-                responseContentType: outcome,
-                filename: outcome === 'image/jpeg' ? '原图.jpeg' : 'report.pdf'
-              }
+      const savedConfig = global.systemInstanceConfig;
+      global.systemInstanceConfig = createDefaultInstanceConfig();
+      getTestInstanceConfig().storage.fileDomain = 'https://files.example.com';
+      try {
+        const alias = 'xWqlYoPSsRIoFtHP.hpagc.bpCySSj7HPRrPtWbcAlqxd';
+        if (outcome === 'error')
+          mockVerifyS3DownloadAccess.mockRejectedValueOnce(new Error('expired'));
+        else
+          mockVerifyS3DownloadAccess.mockResolvedValueOnce(
+            outcome === 'missing'
+              ? undefined
+              : {
+                  objectKey: outcome === 'image/jpeg' ? 'chat/photo.jpeg' : 'chat/report.pdf',
+                  responseContentType: outcome,
+                  filename: outcome === 'image/jpeg' ? '原图.jpeg' : 'report.pdf'
+                }
+          );
+        const file = attachment(
+          `https://files.example.com/api/system/file/d/${alias}`,
+          ChatFileTypeEnum.file
         );
-      const file = attachment(
-        `https://files.example.com/api/system/file/d/${alias}`,
-        ChatFileTypeEnum.file
-      );
-      file.file!.name = '';
-      const parseFileFn = vi.fn(async () => []);
-      const result = await formatAIChatUserQueryWithFiles({ userQuery: [file], parseFileFn });
-      expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(alias);
-      if (outcome === 'image/jpeg') {
-        expect(result[0].file).toMatchObject({ name: '原图.jpeg', type: ChatFileTypeEnum.image });
-        expect(file.file?.type).toBe(ChatFileTypeEnum.file);
-        expect(parseFileFn).not.toHaveBeenCalled();
-      } else if (outcome === 'application/pdf') {
-        expect(result[0].file).toMatchObject({
-          name: 'report.pdf',
-          type: ChatFileTypeEnum.document
-        });
-        expect(parseFileFn).toHaveBeenCalledWith([file.file!.url]);
-      } else {
-        expect(result[0].file?.type).toBe(ChatFileTypeEnum.unknown);
-        expect(parseFileFn).not.toHaveBeenCalled();
+        file.file!.name = '';
+        const parseFileFn = vi.fn(async () => []);
+        const result = await formatAIChatUserQueryWithFiles({ userQuery: [file], parseFileFn });
+        expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(alias);
+        if (outcome === 'image/jpeg') {
+          expect(result[0].file).toMatchObject({ name: '原图.jpeg', type: ChatFileTypeEnum.image });
+          expect(file.file?.type).toBe(ChatFileTypeEnum.file);
+          expect(parseFileFn).not.toHaveBeenCalled();
+        } else if (outcome === 'application/pdf') {
+          expect(result[0].file).toMatchObject({
+            name: 'report.pdf',
+            type: ChatFileTypeEnum.document
+          });
+          expect(parseFileFn).toHaveBeenCalledWith([file.file!.url]);
+        } else {
+          expect(result[0].file?.type).toBe(ChatFileTypeEnum.unknown);
+          expect(parseFileFn).not.toHaveBeenCalled();
+        }
+      } finally {
+        global.systemInstanceConfig = savedConfig;
       }
     }
   );
@@ -1128,24 +1307,73 @@ describe('getFileInfoFromUrl', () => {
   });
 
   it('短链私有文件缺少 bucket、大小元数据或正文时分别失败', async () => {
-    const alias = 'xWqlYoPSsRIoFtHP.hpagc.bpCySSj7HPRrPtWbcAlqxd';
-    const url = `https://files.example.com/${alias}`;
-    mockVerifyS3DownloadAccess.mockResolvedValue({
-      bucketName: S3Buckets.private,
-      objectKey: 'chat/app/app1/u1/c1/report.pdf'
-    });
-    global.s3BucketMap = {} as any;
-    await expect(getFileInfoFromUrl({ url, teamId: 'team-1' })).rejects.toThrow('not initialized');
-    const getObjectMetadata = vi.fn().mockResolvedValue({ contentLength: -1 });
-    global.s3BucketMap = {
-      [S3Buckets.private]: { client: { getObjectMetadata, downloadObject: async () => ({}) } }
-    } as any;
-    await expect(getFileInfoFromUrl({ url, teamId: 'team-1' })).rejects.toThrow('invalid metadata');
-    getObjectMetadata.mockResolvedValue({ contentLength: 0 });
-    const { source } = await getFileInfoFromUrl({ url, teamId: 'team-1' });
-    await expect(source.materialize({ signal: new AbortController().signal })).rejects.toThrow(
-      'no body'
-    );
+    const originalPublicPrefix = serviceEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX;
+    (serviceEnv as { FILE_DOWNLOAD_PUBLIC_URL_PREFIX?: string }).FILE_DOWNLOAD_PUBLIC_URL_PREFIX =
+      'https://files.example.com';
+    try {
+      const alias = 'xWqlYoPSsRIoFtHP.hpagc.bpCySSj7HPRrPtWbcAlqxd';
+      const url = `https://files.example.com/${alias}`;
+      mockVerifyS3DownloadAccess.mockResolvedValue({
+        bucketName: S3Buckets.private,
+        objectKey: 'chat/app/app1/u1/c1/report.pdf'
+      });
+      global.s3BucketMap = {} as any;
+      await expect(getFileInfoFromUrl({ url, teamId: 'team-1' })).rejects.toThrow(
+        'not initialized'
+      );
+      const getObjectMetadata = vi.fn().mockResolvedValue({ contentLength: -1 });
+      global.s3BucketMap = {
+        [S3Buckets.private]: { client: { getObjectMetadata, downloadObject: async () => ({}) } }
+      } as any;
+      await expect(getFileInfoFromUrl({ url, teamId: 'team-1' })).rejects.toThrow(
+        'invalid metadata'
+      );
+      getObjectMetadata.mockResolvedValue({ contentLength: 0 });
+      const { source } = await getFileInfoFromUrl({ url, teamId: 'team-1' });
+      await expect(source.materialize({ signal: new AbortController().signal })).rejects.toThrow(
+        'no body'
+      );
+    } finally {
+      (serviceEnv as { FILE_DOWNLOAD_PUBLIC_URL_PREFIX?: string }).FILE_DOWNLOAD_PUBLIC_URL_PREFIX =
+        originalPublicPrefix;
+    }
+  });
+
+  it('带路径前缀的 storage.fileDomain 签发短链仍按本实例私有短链校验并保留本地元数据', async () => {
+    const savedConfig = global.systemInstanceConfig;
+    const savedBuckets = global.s3BucketMap;
+    global.systemInstanceConfig = createDefaultInstanceConfig();
+    getTestInstanceConfig().storage.fileDomain = 'https://files.example.com/gateway';
+    try {
+      const { buildS3AccessLinkDownloadUrl } =
+        await import('@fastgpt/service/common/s3/accessLink/url');
+      const v2Alias = 'v2-R7mQG0Yh2kVxP9Za-200000-4k9LmN2pQrStUvWxYz12Ab.png';
+      const issuedUrl = buildS3AccessLinkDownloadUrl(v2Alias);
+      expect(issuedUrl).toBe(`https://files.example.com/gateway/api/system/file/d/${v2Alias}`);
+      expect(resolveSignedDownloadAliasFromUrl(issuedUrl)).toBe(v2Alias);
+
+      mockVerifyS3DownloadAccess.mockResolvedValueOnce({
+        bucketName: S3Buckets.private,
+        objectKey: 'chat/workflowBuilder/app-1/u-1/c-1/file/opaque-id',
+        filename: 'builder-diagram.png',
+        responseContentType: 'image/png'
+      });
+      global.s3BucketMap = {
+        [S3Buckets.private]: {
+          client: {
+            getObjectMetadata: vi.fn().mockResolvedValue({ contentLength: 12 }),
+            downloadObject: vi.fn()
+          }
+        }
+      } as any;
+
+      const info = await getFileInfoFromUrl({ url: issuedUrl, teamId: 'team-1' });
+      expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(v2Alias);
+      expect(info.filename).toBe('builder-diagram.png');
+    } finally {
+      global.systemInstanceConfig = savedConfig;
+      global.s3BucketMap = savedBuckets;
+    }
   });
 });
 

@@ -100,7 +100,7 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
 
   const ensureNextEmptyPriceTier = useCallback(
     (index: number, value?: number, inputEl?: HTMLInputElement | null, lowerBound?: number) => {
-      if (typeof value !== 'number' || Number.isNaN(value)) return;
+      if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) return;
       if (typeof lowerBound === 'number' && value <= lowerBound) return;
 
       const tiers = getValues('pricing.tiers') ?? [];
@@ -175,8 +175,8 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
           >
             <colgroup>
               <col />
-              <col style={{ width: '100px' }} />
-              <col style={{ width: '100px' }} />
+              <col style={{ width: '180px' }} />
+              <col style={{ width: '180px' }} />
               <col style={{ width: '64px' }} />
             </colgroup>
             <Thead bg="#FBFBFC" h="32px">
@@ -193,10 +193,11 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
                   {t('common:model.price_tier_range')}
                 </Th>
                 <Th
-                  px={3}
+                  textTransform="none"
+                  px={2.5}
                   py="4px"
                   h="32px"
-                  w="100px"
+                  w="180px"
                   fontSize="12px"
                   borderRight="1px solid"
                   borderColor="myGray.200"
@@ -204,10 +205,11 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
                   {t('common:model.input_price')}
                 </Th>
                 <Th
-                  px={3}
+                  textTransform="none"
+                  px={2.5}
                   py="4px"
                   h="32px"
-                  w="100px"
+                  w="180px"
                   fontSize="12px"
                   borderRight="1px solid"
                   borderColor="myGray.200"
@@ -242,8 +244,8 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
           >
             <colgroup>
               <col />
-              <col style={{ width: '100px' }} />
-              <col style={{ width: '100px' }} />
+              <col style={{ width: '180px' }} />
+              <col style={{ width: '180px' }} />
               <col style={{ width: '64px' }} />
             </colgroup>
             <Tbody>
@@ -262,7 +264,8 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
                 const isInvalidMaxInput =
                   invalidMaxInputMap[index] ??
                   (typeof currentTier?.maxInputTokens === 'number' &&
-                    currentTier.maxInputTokens <= lowerBound);
+                    (!Number.isInteger(currentTier.maxInputTokens) ||
+                      currentTier.maxInputTokens <= lowerBound));
                 const isEmptyAction =
                   !currentTier?.maxInputTokens &&
                   !currentTier?.inputPrice &&
@@ -298,8 +301,8 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
                         <Box>{` < ${t('common:Input')} <= `}</Box>
                         <Input
                           type="number"
-                          step="any"
-                          min={lowerBound}
+                          step={1}
+                          min={lowerBound + 1}
                           placeholder={isLastTier ? t('config_model:price_tier_open_ended') : ''}
                           {...maxInputTokensRegister}
                           {...PriceInputStyles}
@@ -309,7 +312,9 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
                             setInvalidMaxInputMap((state) => ({
                               ...state,
                               [index]:
-                                typeof nextValue === 'number' ? nextValue <= lowerBound : false
+                                typeof nextValue === 'number'
+                                  ? !Number.isInteger(nextValue) || nextValue <= lowerBound
+                                  : false
                             }));
                           }}
                           onBlur={(event) => {
@@ -318,7 +323,9 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
                             setInvalidMaxInputMap((state) => ({
                               ...state,
                               [index]:
-                                typeof nextValue === 'number' ? nextValue <= lowerBound : false
+                                typeof nextValue === 'number'
+                                  ? !Number.isInteger(nextValue) || nextValue <= lowerBound
+                                  : false
                             }));
                             ensureNextEmptyPriceTier(
                               index,
@@ -364,7 +371,7 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
                               {...FixedPriceValueInputStyles}
                             />
                             <Box flexShrink={0} color="myGray.500">
-                              {t('common:support.wallet.subscription.point')}
+                              {`${t('common:support.wallet.subscription.point')}/M Tokens`}
                             </Box>
                           </Flex>
                         </Td>

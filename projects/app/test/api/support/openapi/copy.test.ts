@@ -45,6 +45,13 @@ describe('support/openapi/copy', () => {
       tmbId: auth.tmbId,
       teamId: auth.teamId,
       event: AuditEventEnum.COPY_API_KEY,
+      resources: [
+        {
+          type: 'apiKey',
+          id: String(openapi._id),
+          name: 'team key'
+        }
+      ],
       params: {
         keyName: 'team key',
         keyId: String(openapi._id),
@@ -101,6 +108,22 @@ describe('support/openapi/copy', () => {
       tmbId: auth.tmbId,
       teamId: auth.teamId,
       event: AuditEventEnum.COPY_API_KEY,
+      resources: [
+        {
+          type: 'apiKey',
+          id: String(openapi._id),
+          name: 'app key'
+        },
+        ...(expectedType === 'app'
+          ? [
+              {
+                type: 'app',
+                id: String(app._id),
+                name: 'test app'
+              }
+            ]
+          : [])
+      ],
       params: {
         keyName: 'app key',
         keyId: String(openapi._id),

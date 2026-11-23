@@ -206,10 +206,28 @@ describe('Generated Domain Resources End-to-End Transport Coverage', () => {
     await client.datasets.collections.delete({ collectionIds: ['col-1', 'col-2'] });
     await client.datasets.collections.delete({ datasetId: 'ds-1', apiFileIds: ['ext-1'] });
 
+    // retryOrUpdate 的三个合法定位分支（dataId 允许附加 datasetId/collectionId；无 dataId 时二者互斥）
+    await client.datasets.training.retryOrUpdate({ dataId: 'd-1' });
+    await client.datasets.training.retryOrUpdate({
+      dataId: 'd-1',
+      datasetId: 'ds-1',
+      collectionId: 'col-1'
+    });
+    await client.datasets.training.retryOrUpdate({ datasetId: 'ds-1' });
+    await client.datasets.training.retryOrUpdate({ collectionId: 'col-1' });
+
     expect(new URL(captured[0]!.url).searchParams.has('id')).toBe(false);
     expect(captured[0]?.body).toEqual({ id: 'col-1' });
     expect(captured[1]?.body).toEqual({ collectionIds: ['col-1', 'col-2'] });
     expect(captured[2]?.body).toEqual({ datasetId: 'ds-1', apiFileIds: ['ext-1'] });
+    expect(captured[3]?.body).toEqual({ dataId: 'd-1' });
+    expect(captured[4]?.body).toEqual({
+      dataId: 'd-1',
+      datasetId: 'ds-1',
+      collectionId: 'col-1'
+    });
+    expect(captured[5]?.body).toEqual({ datasetId: 'ds-1' });
+    expect(captured[6]?.body).toEqual({ collectionId: 'col-1' });
 
     // 编译期负例守卫：非法空调用、残缺组合与互斥分支混用必须被 TypeScript 拒绝
     const _compileTimeNegativeChecks = () => {
@@ -229,6 +247,8 @@ describe('Generated Domain Resources End-to-End Transport Coverage', () => {
       void client.datasets.training.retryOrUpdate();
       // @ts-expect-error retryOrUpdate 仅传编辑字段缺少 dataId/datasetId/collectionId
       void client.datasets.training.retryOrUpdate({ q: 'updated' });
+      // @ts-expect-error retryOrUpdate 未传 dataId 时 datasetId 与 collectionId 互斥
+      void client.datasets.training.retryOrUpdate({ datasetId: 'ds-1', collectionId: 'col-1' });
     };
     expect(typeof _compileTimeNegativeChecks).toBe('function');
   });

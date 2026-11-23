@@ -143,7 +143,7 @@ describe('registerNodeInstrumentation', () => {
         status: SystemMigrationStatusEnum.succeeded
       },
       {
-        _id: '20261112_backfill_stt_pricing_type',
+        _id: '20261120_migrate_model_pricing',
         status: SystemMigrationStatusEnum.succeeded
       }
     ]);
@@ -262,7 +262,7 @@ describe('registerNodeInstrumentation', () => {
           status: SystemMigrationStatusEnum.succeeded
         },
         {
-          _id: '20261112_backfill_stt_pricing_type',
+          _id: '20261120_migrate_model_pricing',
           status: SystemMigrationStatusEnum.failed
         }
       ]);
@@ -293,7 +293,7 @@ describe('registerNodeInstrumentation', () => {
         expect(mocks.loadModels).toHaveBeenCalledTimes(1);
         expect(mocks.reloadModels).toHaveBeenCalledTimes(1);
         expect(
-          (await MongoSystemMigrationState.findById('20261112_backfill_stt_pricing_type').lean())
+          (await MongoSystemMigrationState.findById('20261120_migrate_model_pricing').lean())
             ?.status
         ).toBe(SystemMigrationStatusEnum.failed);
         expect((await MongoAIModel.findById(modelId).lean())?.pricing).toEqual(pricing);
@@ -372,7 +372,7 @@ describe('registerNodeInstrumentation', () => {
         status: SystemMigrationStatusEnum.succeeded
       },
       {
-        _id: '20261112_backfill_stt_pricing_type',
+        _id: '20261120_migrate_model_pricing',
         status: SystemMigrationStatusEnum.succeeded
       }
     ]);

@@ -5,6 +5,7 @@
     "index",
     "---API Getting Started---",
     "../openapi/api-reference",
+    "../openapi/reference",
     "../openapi/intro",
     "../openapi/identity-proxy",
     "../openapi/interactive-and-variables",

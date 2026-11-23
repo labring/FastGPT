@@ -527,11 +527,8 @@ const SystemMigrationsPage = () => {
       migrations.filter((item) => item.status === SystemMigrationStatusEnum.failed).length
     ];
   }, [data?.migrations]);
-  // 仅倒序展示副本；普通队列按注册表顺序执行，独立任务不受展示顺序影响。
-  const displayMigrations = useMemo(
-    () => [...(data?.migrations ?? [])].reverse(),
-    [data?.migrations]
-  );
+  // 直接按注册表顺序展示，保证首位启动迁移与后续后台迁移的阅读顺序一致。
+  const displayMigrations = data?.migrations ?? [];
 
   return (
     <>

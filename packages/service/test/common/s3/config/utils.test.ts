@@ -93,4 +93,50 @@ describe('assertStorageDownloadConfig', () => {
 
     expect(() => assertStorageDownloadConfig({ downloadMode: 'short-redirect' })).not.toThrow();
   });
+
+  it.each(['oss', 'cos', 'aws-s3'] as const)(
+    'accepts cdnEndpoint without externalEndpoint for %s',
+    async (vendor) => {
+      vi.stubEnv('STORAGE_VENDOR', vendor);
+      const { assertStorageDownloadConfig } = await loadAssert();
+
+      expect(() =>
+        assertStorageDownloadConfig({
+          downloadMode: 'short-redirect',
+          cdnEndpoint: 'https://cdn.example.com'
+        })
+      ).not.toThrow();
+    }
+  );
+
+  it.each(['r2', 'oss', 'cos'] as const)(
+    'rejects explicitly submitted externalEndpoint for %s while allowing legacy snapshot refresh',
+    async (vendor) => {
+      vi.stubEnv('STORAGE_VENDOR', vendor);
+      if (vendor === 'r2') {
+        vi.stubEnv('STORAGE_R2_PUBLIC_ENDPOINT', 'https://assets.example.com');
+      }
+      try {
+        const { assertStorageDownloadConfig } = await loadAssert();
+
+        expect(() =>
+          assertStorageDownloadConfig(
+            { externalEndpoint: 'https://legacy-minio.example.com' },
+            { externalEndpoint: 'https://legacy-minio.example.com' }
+          )
+        ).toThrow('external endpoint');
+        expect(() =>
+          assertStorageDownloadConfig({ externalEndpoint: 'https://legacy-minio.example.com' })
+        ).not.toThrow();
+        expect(() =>
+          assertStorageDownloadConfig(
+            { downloadMode: 'short-redirect', externalEndpoint: '' },
+            { downloadMode: 'short-redirect', externalEndpoint: '' }
+          )
+        ).not.toThrow();
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    }
+  );
 });

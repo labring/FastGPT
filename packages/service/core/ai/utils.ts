@@ -1,5 +1,5 @@
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { ServerConfigError, UserError } from '@fastgpt/global/common/error/utils';
 import type { LLMModelDataType, AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { CompletionFinishReason, CompletionUsage } from '@fastgpt/global/core/ai/llm/type';
 import { getLLMDefaultUsage, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
@@ -381,28 +381,37 @@ export const parseJsonArgs = <T = Record<string, any>>(str: string) => {
 /**
  * 校验模型状态、类型及可选视觉能力。保留 modelUnExist 机器码兼容队列降级，
  * 通过独立展示消息区分停用与类型错误；名称来自实际模型记录，不使用用户输入猜测。
+ * 当 `isServerDefault` 为 true（服务端默认槽位不可用）时抛出 `ServerConfigError`，
+ * 以保留业务码 513000 的同时让 HTTP 入口继续返回 500 并记录 5xx span。
  */
 export const assertModelAvailable = ({
   model,
   type,
-  vision = false
+  vision = false,
+  isServerDefault = false
 }: {
   model?: Pick<AIModelDataType, 'name' | 'model' | 'type' | 'isActive' | 'config'>;
   type?: `${ModelTypeEnum}`;
   vision?: boolean;
+  isServerDefault?: boolean;
 }) => {
-  if (!model) throw new UserError(ModelErrEnum.unExist);
+  const createError = (displayMessage?: string) =>
+    isServerDefault
+      ? new ServerConfigError(ModelErrEnum.unExist, displayMessage)
+      : new UserError(ModelErrEnum.unExist, displayMessage);
+
+  if (!model) throw createError();
   const name = model.name || model.model;
   if (type && model.type !== type) {
-    throw new UserError(ModelErrEnum.unExist, `Model type mismatch: ${name}`);
+    throw createError(`Model type mismatch: ${name}`);
   }
   if (!model.isActive) {
-    throw new UserError(ModelErrEnum.unExist, `Model is disabled: ${name}`);
+    throw createError(`Model is disabled: ${name}`);
   }
   if (
     vision &&
     !(model.type === ModelTypeEnum.llm && 'vision' in model.config && model.config.vision)
   ) {
-    throw new UserError(ModelErrEnum.unExist, `Model type mismatch: ${name}`);
+    throw createError(`Model type mismatch: ${name}`);
   }
 };

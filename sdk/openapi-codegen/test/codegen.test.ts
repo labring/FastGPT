@@ -21,6 +21,12 @@ describe('OpenAPI to SDK IR Compiler & Artifacts Drift', () => {
       'training'
     ]);
 
+    const appsLogsSearch = ir.operations.find((op) => op.id === 'apps.logs.search');
+    expect(appsLogsSearch?.httpMethod).toBe('POST');
+    expect(appsLogsSearch?.path).toBe('/core/app/logs/search');
+    expect(ir.operations.find((op) => op.id === 'apps.logs.list')).toBeUndefined();
+    expect(ir.operations.find((op) => op.path === '/core/app/logs/list')).toBeUndefined();
+
     const chatNode = ir.resources.find((node) => node.name === 'chat');
     expect(chatNode?.children.map((c) => c.name)).toEqual([
       'feedbacks',
@@ -126,6 +132,33 @@ describe('OpenAPI to SDK IR Compiler & Artifacts Drift', () => {
     const retryTraining = ir.operations.find((op) => op.id === 'datasets.training.retryOrUpdate');
     expect(retryTraining?.hasRequiredInput).toBe(true);
     expect(retryTraining?.requestSchema?.kind).toBe('union');
+    if (retryTraining?.requestSchema?.kind === 'union') {
+      expect(retryTraining.requestSchema.variants).toHaveLength(3);
+      const dataIdVariant = retryTraining.requestSchema.variants.find((variant) =>
+        variant.properties.some((p) => p.name === 'dataId' && p.required)
+      );
+      const datasetIdVariant = retryTraining.requestSchema.variants.find((variant) =>
+        variant.properties.some((p) => p.name === 'datasetId' && p.required)
+      );
+      const collectionIdVariant = retryTraining.requestSchema.variants.find((variant) =>
+        variant.properties.some((p) => p.name === 'collectionId' && p.required)
+      );
+
+      expect(dataIdVariant).toBeDefined();
+      expect(dataIdVariant?.properties.find((p) => p.name === 'datasetId')?.schema.kind).not.toBe(
+        'never'
+      );
+      expect(
+        dataIdVariant?.properties.find((p) => p.name === 'collectionId')?.schema.kind
+      ).not.toBe('never');
+
+      expect(datasetIdVariant?.properties.find((p) => p.name === 'collectionId')?.schema.kind).toBe(
+        'never'
+      );
+      expect(collectionIdVariant?.properties.find((p) => p.name === 'datasetId')?.schema.kind).toBe(
+        'never'
+      );
+    }
   });
 
   it('accurately classifies dual-mode stream, multipart, octet-stream, and all 5 response modes', () => {

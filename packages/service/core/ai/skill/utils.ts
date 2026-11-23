@@ -1,7 +1,8 @@
 /**
  * Skill 纯工具统一出口。
  *
- * 这里只放无副作用的 SKILL.md 文本解析和模板拼装，不访问数据库、对象存储、sandbox 或 LLM。
+ * 这里只放无副作用的 SKILL.md 文本解析、模板拼装、目录名清洗、.gitignore 解析与
+ * 入口扫描规则，不访问数据库、对象存储、sandbox 或 LLM。
  */
 import { shellQuote } from '@fastgpt/global/common/string/utils';
 
@@ -45,6 +46,41 @@ export function parseSkillMarkdown(markdown: string): {
       error: `Failed to parse frontmatter: ${error.message}`
     };
   }
+}
+
+export type ParsedSkillMetadataResult =
+  | {
+      valid: true;
+      name: string;
+      description: string;
+    }
+  | {
+      valid: false;
+      error: string;
+    };
+
+/**
+ * 从 SKILL.md 文本中提取运行态所需的元数据（name、description）。
+ *
+ * 发布元数据解析与运行态 sandbox 扫描共用这套口径：必须存在合法 frontmatter 且
+ * `name` 为非空字符串；`description` 为可选字符串，缺省回退为空串。
+ */
+export function extractSkillMetadataFromMarkdown(markdown: string): ParsedSkillMetadataResult {
+  const { frontmatter, error } = parseSkillMarkdown(markdown);
+  if (error) {
+    return { valid: false, error };
+  }
+
+  const name = typeof frontmatter.name === 'string' ? frontmatter.name.trim() : '';
+  if (!name) {
+    return { valid: false, error: 'frontmatter name is required' };
+  }
+
+  return {
+    valid: true,
+    name,
+    description: typeof frontmatter.description === 'string' ? frontmatter.description.trim() : ''
+  };
 }
 
 /**
@@ -256,4 +292,61 @@ export function parseGitignoreRules(gitignoreContents: string[]): GitignoreParse
     customExcludes,
     pruneClause
   };
+}
+
+/* ==================== Skill 入口扫描规则 ==================== */
+
+/**
+ * Skill 包扫描时跳过的目录名。
+ *
+ * 与运行态 `find ... -prune` 列表同源，避免发布校验与运行态扫描口径漂移。
+ */
+export const RUNTIME_SKILL_SCAN_PRUNE_DIRS = ['node_modules', '.venv', 'venv'] as const;
+
+export type SkillScanEntry = {
+  /** 归档中的原始条目路径。 */
+  path: string;
+  /** 是否为目录条目。 */
+  isDir: boolean;
+};
+
+/**
+ * 从归档条目列表中递归扫描出所有 `SKILL.md` 文件条目（路径已归一化、去重并按字典序排序）。
+ *
+ * 发布结构校验、版本元数据解析与运行态 `find` 共用这套规则：
+ * - 递归匹配任意深度、大小写不敏感的 `SKILL.md` 文件；
+ * - 跳过 `RUNTIME_SKILL_SCAN_PRUNE_DIRS` 中的目录；
+ * - 只去除开头的 `./` 前缀且只按 `/` 切分路径（Unix `unzip` 保留字面反斜杠，不转换 `\`）；
+ * - 目录条目（即使名字是 `SKILL.md`）不算入口；
+ * - 透传调用方附带的扩展字段（如 JSZip 文件对象），避免外部二次建索引。
+ */
+export function findSkillMdEntries<T extends SkillScanEntry>(
+  entries: readonly T[]
+): Array<T & { path: string }> {
+  const deduped = new Map<string, T & { path: string }>();
+
+  for (const entry of entries) {
+    if (entry.isDir) continue;
+
+    const normalized = entry.path.replace(/^(?:\.\/)+/, '');
+    if (!normalized || normalized.endsWith('/')) continue;
+
+    const segments = normalized.split('/');
+    // 任意路径段命中排除目录即跳过，与运行态 `find ... -prune` 行为一致。
+    if (
+      segments.some((segment) =>
+        (RUNTIME_SKILL_SCAN_PRUNE_DIRS as readonly string[]).includes(segment)
+      )
+    ) {
+      continue;
+    }
+
+    if (segments[segments.length - 1].toLowerCase() !== 'skill.md') continue;
+
+    if (!deduped.has(normalized)) {
+      deduped.set(normalized, { ...entry, path: normalized });
+    }
+  }
+
+  return Array.from(deduped.values()).sort((a, b) => a.path.localeCompare(b.path));
 }

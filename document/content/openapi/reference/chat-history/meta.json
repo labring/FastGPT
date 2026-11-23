@@ -1,0 +1,13 @@
+{
+  "title": "会话管理",
+  "pages": [
+    "get-histories",
+    "get-history-status",
+    "mark-read",
+    "update-history",
+    "del-history",
+    "clear-histories",
+    "batch-delete",
+    "init"
+  ]
+}

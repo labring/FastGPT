@@ -1,4 +1,4 @@
-import { createDocument } from 'zod-openapi';
+import { createDocument, type oas31 } from 'zod-openapi';
 import { openApiDocumentOptions } from '../generation';
 import { setRequiredRequestExamples } from '../requiredExamples';
 import { openAPIPaths, openAPITagGroups } from '../path';
@@ -37,7 +37,7 @@ const omitSystemOpenApiTags = (paths: DefinedOpenAPIPath) => {
   return filteredPaths;
 };
 
-export const openAPIDocument = setRequiredRequestExamples(
+export const openAPIDocument: oas31.OpenAPIObject = setRequiredRequestExamples(
   createDocument(
     {
       openapi: '3.1.0',

@@ -269,92 +269,91 @@ const CreateAppNodeSchema = z.union([CreateAppPersistedNodeSchema, CreateAppRunt
 
 const CreateAppEdgesSchema = z.array(StoreEdgeItemTypeSchema);
 
-export const CreateAppBodySchema = z
-  .object({
-    parentId: ParentIdSchema.optional().meta({
-      example: '68ad85a7463006c963799a05',
-      description: '父级应用/文件夹 ID'
-    }),
-    inheritPermission: InheritPermissionSchema,
-    name: z.string().min(1).meta({
-      example: '新应用',
-      description: '应用名称'
-    }),
-    avatar: z.string().nullish().meta({
-      example: 'https://example.com/avatar.png',
-      description: '应用头像'
-    }),
-    intro: z.string().nullish().meta({
-      example: '应用介绍',
-      description: '应用介绍'
-    }),
-    type: z.enum(AppTypeEnum).meta({
-      example: AppTypeEnum.workflow,
-      description: '应用类型'
-    }),
-    nodes: z.array(CreateAppNodeSchema).optional().meta({
-      example: [],
-      description:
-        '应用节点配置。普通工作流仅传工具摘要；MCP/HTTP 工具集 App 的首个根节点可按 App 类型传入对应完整配置'
-    }),
-    // 旧 modules 只能在 preprocess 成功后被删除；残留时必须拒绝，避免静默创建空应用。
-    modules: z.never().optional().meta({
-      description: '已废弃：旧版节点配置，建议使用 nodes',
-      deprecated: true
-    }),
-    edges: CreateAppEdgesSchema.optional().meta({
-      example: [],
-      description: '应用连线'
-    }),
-    chatConfig: AppChatConfigInputSchema.strict().optional().meta({
-      description: '聊天配置'
-    }),
-    templateId: z.string().optional().meta({
-      example: 'template-123',
-      description: '模板 ID'
-    }),
-    utmParams: ShortUrlSchema.optional().meta({
-      description: 'UTM 参数'
-    })
+export const CreateAppBodyBaseSchema = z.object({
+  parentId: ParentIdSchema.optional().meta({
+    example: '68ad85a7463006c963799a05',
+    description: '父级应用/文件夹 ID'
+  }),
+  inheritPermission: InheritPermissionSchema,
+  name: z.string().min(1).meta({
+    example: '新应用',
+    description: '应用名称'
+  }),
+  avatar: z.string().nullish().meta({
+    example: 'https://example.com/avatar.png',
+    description: '应用头像'
+  }),
+  intro: z.string().nullish().meta({
+    example: '应用介绍',
+    description: '应用介绍'
+  }),
+  type: z.enum(AppTypeEnum).meta({
+    example: AppTypeEnum.workflow,
+    description: '应用类型'
+  }),
+  nodes: z.array(CreateAppNodeSchema).optional().meta({
+    example: [],
+    description:
+      '应用节点配置。普通工作流仅传工具摘要；MCP/HTTP 工具集 App 的首个根节点可按 App 类型传入对应完整配置'
+  }),
+  // 旧 modules 只能在 preprocess 成功后被删除；残留时必须拒绝，避免静默创建空应用。
+  modules: z.never().optional().meta({
+    description: '已废弃：旧版节点配置，建议使用 nodes',
+    deprecated: true
+  }),
+  edges: CreateAppEdgesSchema.optional().meta({
+    example: [],
+    description: '应用连线'
+  }),
+  chatConfig: AppChatConfigInputSchema.strict().optional().meta({
+    description: '聊天配置'
+  }),
+  templateId: z.string().optional().meta({
+    example: 'template-123',
+    description: '模板 ID'
+  }),
+  utmParams: ShortUrlSchema.optional().meta({
+    description: 'UTM 参数'
   })
-  .superRefine(({ type, nodes }, ctx) => {
-    // 只有匹配类型的工具集 App 根节点保留完整 Schema；工作流节点继续使用持久化摘要。
-    nodes?.forEach((node, index) => {
-      if (PersistedOpenAPIStoreNodeItemTypeSchema.safeParse(node).success) return;
+});
 
-      const isMcpToolSetRoot =
-        type === AppTypeEnum.mcpToolSet &&
-        index === 0 &&
-        node.flowNodeType === FlowNodeTypeEnum.toolSet &&
-        !node.pluginId &&
-        node.toolConfig?.httpToolSet === undefined &&
-        McpToolSetRuntimeConfigSchema.safeParse(node.toolConfig?.mcpToolSet).success;
-      const isHttpToolSetRoot =
-        type === AppTypeEnum.httpToolSet &&
-        index === 0 &&
-        node.flowNodeType === FlowNodeTypeEnum.toolSet &&
-        !node.pluginId &&
-        node.toolConfig?.mcpToolSet === undefined &&
-        HttpToolSetRuntimeConfigSchema.safeParse(node.toolConfig?.httpToolSet).success;
+export const CreateAppBodySchema = CreateAppBodyBaseSchema.superRefine(({ type, nodes }, ctx) => {
+  // 只有匹配类型的工具集 App 根节点保留完整 Schema；工作流节点继续使用持久化摘要。
+  nodes?.forEach((node, index) => {
+    if (PersistedOpenAPIStoreNodeItemTypeSchema.safeParse(node).success) return;
 
-      if (!isMcpToolSetRoot && !isHttpToolSetRoot) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['nodes', index],
-          message: '完整工具集配置只允许匹配类型的工具集 App 根节点'
-        });
-      }
-    });
-  })
-  .meta({
-    example: {
-      name: '新应用',
-      type: AppTypeEnum.simple,
-      nodes: [],
-      edges: [],
-      parentId: '68ad85a7463006c963799a05'
+    const isMcpToolSetRoot =
+      type === AppTypeEnum.mcpToolSet &&
+      index === 0 &&
+      node.flowNodeType === FlowNodeTypeEnum.toolSet &&
+      !node.pluginId &&
+      node.toolConfig?.httpToolSet === undefined &&
+      McpToolSetRuntimeConfigSchema.safeParse(node.toolConfig?.mcpToolSet).success;
+    const isHttpToolSetRoot =
+      type === AppTypeEnum.httpToolSet &&
+      index === 0 &&
+      node.flowNodeType === FlowNodeTypeEnum.toolSet &&
+      !node.pluginId &&
+      node.toolConfig?.mcpToolSet === undefined &&
+      HttpToolSetRuntimeConfigSchema.safeParse(node.toolConfig?.httpToolSet).success;
+
+    if (!isMcpToolSetRoot && !isHttpToolSetRoot) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['nodes', index],
+        message: '完整工具集配置只允许匹配类型的工具集 App 根节点'
+      });
     }
   });
+}).meta({
+  example: {
+    name: '新应用',
+    type: AppTypeEnum.simple,
+    nodes: [],
+    edges: [],
+    parentId: '68ad85a7463006c963799a05'
+  }
+});
 
 export const CreateAppRequestBodySchema = z.preprocess(
   migrateCreateAppBodyWorkflow,

@@ -4,9 +4,10 @@ import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { buildAppAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
-import { stopWechatPolling } from '@fastgpt/service/support/outLink/wechat/mq';
+import { removeWechatPollJob } from '@fastgpt/service/support/outLink/wechat/mq';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   OutLinkDeleteQuerySchema,
@@ -31,21 +32,15 @@ async function handler(
     per: ManagePermissionVal
   });
 
-  const outlink = await MongoOutLink.findById(id);
-
-  if (outlink && outlink.type === 'wechat') {
-    await stopWechatPolling(outlink.shareId).catch((error) => {
-      console.warn('Stop wechat polling failed', error);
-    });
-  }
-
-  await outlink?.deleteOne();
+  await MongoOutLink.deleteOne({ _id: id, teamId });
+  if (outLink.type === 'wechat') await removeWechatPollJob(outLink.shareId);
 
   (async () => {
     addAuditLog({
       tmbId,
       teamId,
       event: AuditEventEnum.DELETE_APP_PUBLISH_CHANNEL,
+      resources: [buildAppAuditResource(app)],
       params: {
         appName: app.name,
         channelName: outLink.name,

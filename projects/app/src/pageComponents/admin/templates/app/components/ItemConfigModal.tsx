@@ -65,6 +65,8 @@ export const appTypeMap = {
   [AppTypeEnum.httpPlugin]: 'HTTP 插件'
 };
 
+type TemplateFormType = Omit<AppTemplateSchemaType, 'workflow'>;
+
 const TemplateConfigModal = ({
   defaultForm = defaultTemplate,
   templateTypes = [],
@@ -82,12 +84,11 @@ const TemplateConfigModal = ({
   const [isDragging, setIsDragging] = useState(false);
   const [workflowStr, setWorkflowStr] = useState('');
 
-  const { register, setValue, watch, handleSubmit } = useForm({
+  const { register, setValue, watch, handleSubmit } = useForm<TemplateFormType>({
     defaultValues: defaultForm
   });
 
   const avatar = watch('avatar');
-  const workflow = watch('workflow');
   const templateId = watch('templateId');
   const userGuideType = watch('userGuide.type') ?? 'markdown';
   const type = watch('type');
@@ -197,7 +198,7 @@ const TemplateConfigModal = ({
   });
 
   const { runAsync: onSubmit, loading } = useRequest(
-    async (data: AppTemplateSchemaType) => {
+    async (data: TemplateFormType) => {
       if (!isPluginSystemTemplate && !workflowStr) {
         return Promise.reject(t('admin:please_upload_the_configuration_file_first'));
       }
@@ -206,7 +207,7 @@ const TemplateConfigModal = ({
         return Promise.reject(t('admin:app_type_not_recognized'));
       }
 
-      let workflow = data.workflow;
+      let workflow = defaultForm.workflow;
       if (!isPluginSystemTemplate) {
         try {
           workflow = JSON.parse(workflowStr);
@@ -259,12 +260,12 @@ const TemplateConfigModal = ({
 
   useEffect(() => {
     try {
-      setWorkflowStr(JSON.stringify(workflow, null, 2));
+      setWorkflowStr(JSON.stringify(defaultForm.workflow, null, 2));
     } catch (err) {
       console.error('JSON 序列化失败:', err);
       setWorkflowStr('');
     }
-  }, [workflow]);
+  }, [defaultForm.workflow]);
 
   useEffect(() => {
     if (isPluginSystemTemplate || !workflowStr.trim()) {

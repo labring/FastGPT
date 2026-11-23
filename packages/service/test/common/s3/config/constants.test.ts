@@ -205,7 +205,7 @@ describe('s3 storage constants', () => {
       key: 'chat/app/user/chat/file.png'
     });
     expect(result.url).toMatch(
-      /\/api\/system\/file\/d\/[A-Za-z0-9_-]{16}\.[0-9a-z]+\.[A-Za-z0-9_-]{22}$/
+      /\/api\/system\/file\/d\/v2-[A-Za-z0-9]{16}-[0-9a-z]+-[A-Za-z0-9]{22}\.png$/
     );
   });
 
@@ -257,7 +257,7 @@ describe('s3 storage constants', () => {
       key: 'chat/app/user/chat/file.png'
     });
     expect(result.url).toMatch(
-      /\/api\/system\/file\/d\/[A-Za-z0-9_-]{16}\.[0-9a-z]+\.[A-Za-z0-9_-]{22}$/
+      /\/api\/system\/file\/d\/v2-[A-Za-z0-9]{16}-[0-9a-z]+-[A-Za-z0-9]{22}\.png$/
     );
   });
 

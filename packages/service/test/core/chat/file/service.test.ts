@@ -8,6 +8,7 @@ import { ChatFileTypeEnum as FileType } from '@fastgpt/global/core/chat/constant
 import { resolveDomainEffectiveConfig } from '@fastgpt/global/common/system/config/schema';
 import { axios } from '@fastgpt/service/common/api/axios';
 import { s3AccessLinkService } from '@fastgpt/service/common/s3/accessLink/accessLinkService';
+import { serviceEnv } from '@fastgpt/service/env';
 import {
   parseUrlToChatFileType,
   prepareChatFiles,
@@ -74,32 +75,110 @@ describe('parseUrlToChatFileType', () => {
     }
   );
 
-  it.each(['/api/system/file/d/', '/f/', '/'])(
-    '短链 %s 使用响应元数据分类，不把签名中的点号当成文件后缀',
-    async (prefix) => {
-      const shortUrl = `https://files.example.com${prefix}workflowFileAlias.hscf3.ExampleSignatureValue1234`;
-      vi.mocked(axios.head).mockResolvedValueOnce({
-        headers: {
-          'content-type': 'text/plain; charset=utf-8',
-          'content-disposition': 'inline; filename="test_file.txt"'
-        }
-      });
+  it.each([
+    'workflowFileAlias.hscf3.ExampleSignatureValue1234',
+    'v2-workflowFileAlias-hscf3-ExampleSignatureValue1.txt',
+    'v2-workflowFileAlias-hscf3-ExampleSignatureValue1'
+  ])('短链凭证 %s 使用响应元数据分类，不把签名片段当成真实文件名', async (signedAlias) => {
+    const originalPublicPrefix = serviceEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX;
+    getTestInstanceConfig().storage.fileDomain = 'https://files.example.com';
+    try {
+      for (const [prefix, publicPrefix] of [
+        ['/api/system/file/d/', undefined],
+        ['/f/', 'https://files.example.com/f'],
+        ['/', 'https://files.example.com']
+      ] as const) {
+        (
+          serviceEnv as { FILE_DOWNLOAD_PUBLIC_URL_PREFIX?: string }
+        ).FILE_DOWNLOAD_PUBLIC_URL_PREFIX = publicPrefix;
+        const shortUrl = `https://files.example.com${prefix}${signedAlias}`;
+        vi.mocked(axios.head).mockResolvedValueOnce({
+          headers: {
+            'content-type': 'text/plain; charset=utf-8',
+            'content-disposition': 'inline; filename="test_file.txt"'
+          }
+        });
 
-      expect(
-        await parseUrlToChatFileType({ url: shortUrl, name: shortUrl, type: FileType.file })
-      ).toEqual({
-        url: shortUrl,
-        name: shortUrl,
-        type: FileType.document,
-        filename: 'test_file.txt'
-      });
-      expect(axios.head).toHaveBeenCalledTimes(1);
+        expect(
+          await parseUrlToChatFileType({ url: shortUrl, name: shortUrl, type: FileType.file })
+        ).toEqual({
+          url: shortUrl,
+          name: shortUrl,
+          type: FileType.document,
+          filename: 'test_file.txt'
+        });
+      }
+      expect(axios.head).toHaveBeenCalledTimes(3);
+    } finally {
+      (serviceEnv as { FILE_DOWNLOAD_PUBLIC_URL_PREFIX?: string }).FILE_DOWNLOAD_PUBLIC_URL_PREFIX =
+        originalPublicPrefix;
     }
-  );
+  });
+
+  it('普通外部 CDN 上形如 v2 短链的文件名直接按扩展名分类，不触发本地短链校验或远端探测', async () => {
+    const verifySpy = vi.spyOn(s3AccessLinkService, 'verifyDownloadAlias');
+    const externalUrl =
+      'https://cdn.example.com/reports/v2-quarterlyreport-2026-A1B2C3D4E5F6G7H8I9J0K1.pdf';
+
+    expect(await parseUrlToChatFileType({ url: externalUrl })).toEqual({
+      url: externalUrl,
+      name: 'v2-quarterlyreport-2026-A1B2C3D4E5F6G7H8I9J0K1.pdf',
+      type: FileType.document
+    });
+    expect(verifySpy).not.toHaveBeenCalled();
+    expect(axios.head).not.toHaveBeenCalled();
+  });
+
+  it('默认未配置公开域名时，跨实例 v2 文档短链直接按后缀分类，跨实例旧 v1 短链回退远端探测', async () => {
+    const verifySpy = vi.spyOn(s3AccessLinkService, 'verifyDownloadAlias');
+    const foreignV2Url =
+      'https://other-fastgpt.example.com/api/system/file/d/v2-q7aJkh7F0FB2FI3C-hskff-6JjpblHZ0hOyMbEq4frV0A.pdf';
+    const foreignV1Url =
+      'https://other-fastgpt.example.com/api/system/file/d/q7aJkh7F0FB2FI3C.hskff.6JjpblHZ0hOyMbEq4frV0A';
+
+    expect(await parseUrlToChatFileType({ url: foreignV2Url })).toEqual({
+      url: foreignV2Url,
+      name: 'v2-q7aJkh7F0FB2FI3C-hskff-6JjpblHZ0hOyMbEq4frV0A.pdf',
+      type: FileType.document
+    });
+    expect(verifySpy).not.toHaveBeenCalled();
+    expect(axios.head).not.toHaveBeenCalled();
+
+    vi.mocked(axios.head).mockResolvedValueOnce({
+      headers: {
+        'content-type': 'application/pdf',
+        'content-disposition': 'inline; filename="legacy-report.pdf"'
+      }
+    });
+    expect(
+      await parseUrlToChatFileType({ url: foreignV1Url, name: foreignV1Url, type: FileType.file })
+    ).toEqual({
+      url: foreignV1Url,
+      name: foreignV1Url,
+      type: FileType.document,
+      filename: 'legacy-report.pdf'
+    });
+    expect(verifySpy).not.toHaveBeenCalled();
+    expect(axios.head).toHaveBeenCalledTimes(1);
+  });
 
   it.each([
     [
       'https://testdev.fastgpt.cn/api/system/file/d/',
+      undefined,
+      'q7aJkh7F0FB2FI3C.hskff.6JjpblHZ0hOyMbEq4frV0A',
+      {
+        objectKey: 'chat/app/app1/u1/c1/opaque-object',
+        filename: 'diagram.png',
+        responseContentType: 'image/png'
+      },
+      FileType.image,
+      'diagram.png'
+    ],
+    [
+      'https://testdev.fastgpt.cn/api/system/file/d/',
+      undefined,
+      'v2-q7aJkh7F0FB2FI3C-hskff-6JjpblHZ0hOyMbEq4frV0A.png',
       {
         objectKey: 'chat/app/app1/u1/c1/opaque-object',
         filename: 'diagram.png',
@@ -110,6 +189,8 @@ describe('parseUrlToChatFileType', () => {
     ],
     [
       'https://files.example.com/f/',
+      'https://files.example.com/f',
+      'v2-q7aJkh7F0FB2FI3C-hskff-6JjpblHZ0hOyMbEq4frV0A.mp3',
       {
         objectKey: 'chat/app/app1/u1/c1/recording.mp3',
         filename: 'Recording'
@@ -118,24 +199,35 @@ describe('parseUrlToChatFileType', () => {
       'Recording'
     ]
   ])(
-    '本机签发的短链 %s 优先使用下载别名元数据或对象键后缀分类，不发起远端 HTTP 探测',
-    async (prefix, resolved, expectedType, expectedFilename) => {
-      const signedAlias = 'q7aJkh7F0FB2FI3C.hskff.6JjpblHZ0hOyMbEq4frV0A';
-      const shortUrl = `${prefix}${signedAlias}`;
-      vi.spyOn(s3AccessLinkService, 'verifyDownloadAlias').mockResolvedValueOnce({
-        bucketName: 'fastgpt-private',
-        expiresAt: new Date('2099-01-01T00:00:00.000Z'),
-        ...resolved
-      });
+    '本机签发的短链 %s (%s) 优先使用下载别名元数据或对象键后缀分类，不发起远端 HTTP 探测',
+    async (prefix, publicPrefix, signedAlias, resolved, expectedType, expectedFilename) => {
+      const originalPublicPrefix = serviceEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX;
+      if (!publicPrefix) {
+        getTestInstanceConfig().site.publicUrl = new URL(prefix).origin;
+      }
+      (serviceEnv as { FILE_DOWNLOAD_PUBLIC_URL_PREFIX?: string }).FILE_DOWNLOAD_PUBLIC_URL_PREFIX =
+        publicPrefix;
+      try {
+        const shortUrl = `${prefix}${signedAlias}`;
+        vi.spyOn(s3AccessLinkService, 'verifyDownloadAlias').mockResolvedValueOnce({
+          bucketName: 'fastgpt-private',
+          expiresAt: new Date('2099-01-01T00:00:00.000Z'),
+          ...resolved
+        });
 
-      expect(await parseUrlToChatFileType({ url: shortUrl })).toEqual({
-        url: shortUrl,
-        name: shortUrl,
-        type: expectedType,
-        filename: expectedFilename
-      });
-      expect(s3AccessLinkService.verifyDownloadAlias).toHaveBeenCalledWith(signedAlias);
-      expect(axios.head).not.toHaveBeenCalled();
+        expect(await parseUrlToChatFileType({ url: shortUrl })).toEqual({
+          url: shortUrl,
+          name: shortUrl,
+          type: expectedType,
+          filename: expectedFilename
+        });
+        expect(s3AccessLinkService.verifyDownloadAlias).toHaveBeenCalledWith(signedAlias);
+        expect(axios.head).not.toHaveBeenCalled();
+      } finally {
+        (
+          serviceEnv as { FILE_DOWNLOAD_PUBLIC_URL_PREFIX?: string }
+        ).FILE_DOWNLOAD_PUBLIC_URL_PREFIX = originalPublicPrefix;
+      }
     }
   );
 

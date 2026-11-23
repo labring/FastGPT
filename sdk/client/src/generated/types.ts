@@ -35,8 +35,10 @@ export type AppsLogsExportReq = {
   tmbIds?: string[];
   /** 外部用户 ID 列表 */
   outLinkUids?: string[];
-  /** 对话内容搜索关键词 */
+  /** 搜索关键词；与 searchType 共同指定标题搜索或会话 ID 精确匹配 */
   chatSearch?: string;
+  /** 搜索类型：title 搜索标题，chatId 精确匹配会话 ID；省略时兼容旧搜索 */
+  searchType?: 'title' | 'chatId';
   /** 标题 */
   title: string;
   /** 来源映射 */
@@ -187,14 +189,47 @@ export type AppsLogsGetTotalDataRes = {
   totalOutputTokens: number;
 };
 
-/** 获取应用日志列表 请求参数（POST /core/app/logs/list） */
-export type AppsLogsListReq = {
+/** 获取日志用户列表 请求参数（POST /core/app/logs/getUsers） */
+export type AppsLogsListUsersReq = {
   /** 应用 ID */
   appId?: string;
   /** 偏移量，从 0 开始 */
   offset?: number;
   /** 每页条数，默认 20，最大 500，超出自动按 500 处理 */
   pageSize?: number;
+  /** 开始时间 */
+  dateStart: string;
+  /** 结束时间 */
+  dateEnd: string;
+  /** 搜索用户名 */
+  searchKey?: string;
+  /** 来源筛选 */
+  sources?: string[];
+  /** 页码，从 1 开始；传入 offset 时忽略 */
+  pageNum?: number;
+};
+
+/** 获取日志用户列表 响应数据（POST /core/app/logs/getUsers） */
+export type AppsLogsListUsersRes = {
+  total: number;
+  list: Array<{
+    /** 使用者 ID，外链访客或 API customUid；非空时优先于 tmbId */
+    outLinkUid: string | null;
+    /** 本次实际鉴权成员 ID，代理调用时为被代理成员 */
+    tmbId: string | null;
+    /** 用户名称 */
+    name: string;
+    /** 头像 */
+    avatar?: string;
+    /** 对话数量 */
+    count: number;
+  }>;
+};
+
+/** 搜索应用日志列表 请求参数（POST /core/app/logs/search） */
+export type AppsLogsSearchReq = {
+  /** 应用 ID */
+  appId?: string;
   /** 反馈类型：all-全部记录，has_feedback-包含反馈，good-包含赞，bad-包含踩 */
   feedbackType?: 'all' | 'has_feedback' | 'good' | 'bad';
   /** 是否仅显示未读反馈（当 feedbackType 为 all 时忽略） */
@@ -224,17 +259,22 @@ export type AppsLogsListReq = {
   tmbIds?: string[];
   /** 外部用户 ID 列表 */
   outLinkUids?: string[];
-  /** 对话内容搜索关键词 */
+  /** 搜索关键词；与 searchType 共同指定标题搜索或会话 ID 精确匹配 */
   chatSearch?: string;
-  /** 页码，从 1 开始；传入 offset 时忽略 */
-  pageNum?: number;
+  /** 搜索类型：title 搜索标题，chatId 精确匹配会话 ID；省略时兼容旧搜索 */
+  searchType?: 'title' | 'chatId';
+  /** 上一页响应中的 nextCursor；首屏请求省略，后续请求原样传入 */
+  cursor?: {
+    /** 游标时间戳（毫秒） */
+    timestamp: number;
+    /** 游标日志 ID */
+    id: string;
+  };
 };
 
-/** 获取应用日志列表 响应数据（POST /core/app/logs/list） */
-export type AppsLogsListRes = {
-  /** 总记录数 */
-  total: number;
-  /** 对话日志记录列表 */
+/** 搜索应用日志列表 响应数据（POST /core/app/logs/search） */
+export type AppsLogsSearchRes = {
+  /** 对话日志记录列表，固定返回 50 条 */
   list: Array<{
     publishSource?: {
       /** 最近一次运行的调用渠道类型；无法识别时归为 unknown */
@@ -335,43 +375,13 @@ export type AppsLogsListRes = {
     /** 区域 */
     region?: string | null;
   }>;
-};
-
-/** 获取日志用户列表 请求参数（POST /core/app/logs/getUsers） */
-export type AppsLogsListUsersReq = {
-  /** 应用 ID */
-  appId?: string;
-  /** 偏移量，从 0 开始 */
-  offset?: number;
-  /** 每页条数，默认 20，最大 500，超出自动按 500 处理 */
-  pageSize?: number;
-  /** 开始时间 */
-  dateStart: string;
-  /** 结束时间 */
-  dateEnd: string;
-  /** 搜索用户名 */
-  searchKey?: string;
-  /** 来源筛选 */
-  sources?: string[];
-  /** 页码，从 1 开始；传入 offset 时忽略 */
-  pageNum?: number;
-};
-
-/** 获取日志用户列表 响应数据（POST /core/app/logs/getUsers） */
-export type AppsLogsListUsersRes = {
-  total: number;
-  list: Array<{
-    /** 使用者 ID，外链访客或 API customUid；非空时优先于 tmbId */
-    outLinkUid: string | null;
-    /** 本次实际鉴权成员 ID，代理调用时为被代理成员 */
-    tmbId: string | null;
-    /** 用户名称 */
-    name: string;
-    /** 头像 */
-    avatar?: string;
-    /** 对话数量 */
-    count: number;
-  }>;
+  /** 下一页游标；省略表示已加载全部 */
+  nextCursor?: {
+    /** 游标时间戳（毫秒） */
+    timestamp: number;
+    /** 游标日志 ID */
+    id: string;
+  };
 };
 
 /** 发起会话 v2 请求参数（POST /v2/chat/completions） */
@@ -554,11 +564,21 @@ export type ChatCompletionsV2Req = {
         role: 'tool';
         content:
           | string
-          | Array<{
-              type: 'text';
-              text: string;
-              key?: string;
-            }>;
+          | Array<
+              | {
+                  type: 'text';
+                  text: string;
+                  key?: string;
+                }
+              | {
+                  type: 'image_url';
+                  image_url: {
+                    url: string;
+                    detail?: 'auto' | 'low' | 'high';
+                  };
+                  key?: string;
+                }
+            >;
         tool_call_id: string;
         name?: string;
         reasoning_content?: string;
@@ -5429,6 +5449,22 @@ export type ChatRecordsListByAnchorRes = {
           toolResponses?: Array<{
             id: string;
             response: string;
+            /** 子工具恢复时返回给模型的结构化内容 */
+            content?: Array<
+              | {
+                  type: 'text';
+                  text: string;
+                  key?: string;
+                }
+              | {
+                  type: 'image_url';
+                  image_url: {
+                    url: string;
+                    detail?: 'auto' | 'low' | 'high';
+                  };
+                  key?: string;
+                }
+            >;
           }>;
           /**
            * 旧版 Ask 关联字段，新消息停止写入
@@ -5447,6 +5483,22 @@ export type ChatRecordsListByAnchorRes = {
             toolAvatar: string;
             params: string;
             response?: string | null;
+            /** 工具实际返回给模型的结构化内容 */
+            content?: Array<
+              | {
+                  type: 'text';
+                  text: string;
+                  key?: string;
+                }
+              | {
+                  type: 'image_url';
+                  image_url: {
+                    url: string;
+                    detail?: 'auto' | 'low' | 'high';
+                  };
+                  key?: string;
+                }
+            >;
             /** 仅展示工具信息，不提供参数或响应详情 */
             hideDetails?: boolean;
             /** 隐藏内部工具展示，仍保留模型上下文 */
@@ -5650,7 +5702,7 @@ export type ChatRecordsListByAnchorRes = {
                     key: string;
                     label: string;
                     /** 当前填写值 */
-                    value: unknown;
+                    value?: unknown;
                     valueType:
                       | 'string'
                       | 'number'
@@ -6267,6 +6319,22 @@ export type ChatRecordsListByAnchorRes = {
             toolAvatar: string;
             params: string;
             response?: string | null;
+            /** 工具实际返回给模型的结构化内容 */
+            content?: Array<
+              | {
+                  type: 'text';
+                  text: string;
+                  key?: string;
+                }
+              | {
+                  type: 'image_url';
+                  image_url: {
+                    url: string;
+                    detail?: 'auto' | 'low' | 'high';
+                  };
+                  key?: string;
+                }
+            >;
             /** 仅展示工具信息，不提供参数或响应详情 */
             hideDetails?: boolean;
             /** 隐藏内部工具展示，仍保留模型上下文 */
@@ -9073,9 +9141,11 @@ export type DatasetsDetailRes = {
   agentModel?: {
     /** LLM 每百万 Tokens 阶梯价格；缺省免费 */
     pricing?: {
+      /** LLM 阶梯输入上限单位，默认 K Tokens */
+      tierUnit?: 'K';
       /** LLM 阶梯价格，下限从上一档上限推导 */
       tiers?: Array<{
-        /** 本档输入上限，单位 M Tokens；省略表示无限 */
+        /** 本档输入上限，单位 K Tokens；省略表示无限 */
         maxInputTokens?: number;
         /** 每百万输入 Tokens 的积分单价 */
         inputPrice: number;
@@ -9125,9 +9195,11 @@ export type DatasetsDetailRes = {
   vlmModel?: {
     /** LLM 每百万 Tokens 阶梯价格；缺省免费 */
     pricing?: {
+      /** LLM 阶梯输入上限单位，默认 K Tokens */
+      tierUnit?: 'K';
       /** LLM 阶梯价格，下限从上一档上限推导 */
       tiers?: Array<{
-        /** 本档输入上限，单位 M Tokens；省略表示无限 */
+        /** 本档输入上限，单位 K Tokens；省略表示无限 */
         maxInputTokens?: number;
         /** 每百万输入 Tokens 的积分单价 */
         inputPrice: number;
@@ -10191,8 +10263,7 @@ export type DatasetsTrainingRetryOrUpdateReq =
   | {
       /** 知识库 ID，不传 dataId 时按知识库范围重试所有最终/阻塞异常 */
       datasetId: string;
-      /** 集合 ID，不传 dataId 时按集合范围重试所有最终/阻塞异常 */
-      collectionId?: string;
+      collectionId?: never;
       /** 训练数据 ID，传入则只重试或更新该训练数据 */
       dataId?: string;
       /** 问题/主文本，仅非重建任务允许编辑 */
@@ -10203,8 +10274,7 @@ export type DatasetsTrainingRetryOrUpdateReq =
       chunkIndex?: number;
     }
   | {
-      /** 知识库 ID，不传 dataId 时按知识库范围重试所有最终/阻塞异常 */
-      datasetId?: string;
+      datasetId?: never;
       /** 集合 ID，不传 dataId 时按集合范围重试所有最终/阻塞异常 */
       collectionId: string;
       /** 训练数据 ID，传入则只重试或更新该训练数据 */
@@ -10384,9 +10454,11 @@ export type ModelsCatalogRes = {
           testMode?: boolean;
           /** LLM 每百万 Tokens 阶梯价格；缺省免费 */
           pricing?: {
+            /** LLM 阶梯输入上限单位，默认 K Tokens */
+            tierUnit?: 'K';
             /** LLM 阶梯价格，下限从上一档上限推导 */
             tiers?: Array<{
-              /** 本档输入上限，单位 M Tokens；省略表示无限 */
+              /** 本档输入上限，单位 K Tokens；省略表示无限 */
               maxInputTokens?: number;
               /** 每百万输入 Tokens 的积分单价 */
               inputPrice: number;
@@ -10636,9 +10708,11 @@ export type ModelsListRes = {
         type: 'llm';
         /** LLM 每百万 Tokens 阶梯价格；缺省免费 */
         pricing?: {
+          /** LLM 阶梯输入上限单位，默认 K Tokens */
+          tierUnit?: 'K';
           /** LLM 阶梯价格，下限从上一档上限推导 */
           tiers?: Array<{
-            /** 本档输入上限，单位 M Tokens；省略表示无限 */
+            /** 本档输入上限，单位 K Tokens；省略表示无限 */
             maxInputTokens?: number;
             /** 每百万输入 Tokens 的积分单价 */
             inputPrice: number;

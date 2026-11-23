@@ -2,8 +2,9 @@ import { createEnv } from '@t3-oss/env-core';
 import z from 'zod';
 import { isPhaseProductionBuild } from '@fastgpt/global/common/system/constants';
 import { BoolSchema, IntSchema, NumSchema, UrlSchema } from '@fastgpt/global/common/zod';
+import { StorageVendorSchema } from '@fastgpt/global/common/system/config/schemas/storage';
 import { getRuntimeEnv, validateS3Env, validateAgentUsersEnv } from './env.util';
-import { LogLevelSchema, StorageVendorSchema, StorageCosProtocolSchema } from './env.const';
+import { LogLevelSchema, StorageCosProtocolSchema } from './env.const';
 
 export const serviceEnv = createEnv({
   skipValidation: isPhaseProductionBuild,
@@ -112,6 +113,11 @@ export const serviceEnv = createEnv({
     MONGODB_LOG_URI: z.string().optional(),
 
     // VectorDB
+    SEARCH_MONGO_URL: z.string().optional().meta({
+      description:
+        '独立 MongoDB 8.3+ 检索库连接参数（需 mongot），默认库名 fastgpt_search；仅适用于新建存储（不含存量迁移），配置后优先启用且不复用业务主库连接',
+      example: 'mongodb://localhost:27017/fastgpt_search'
+    }),
     VECTOR_VQ_LEVEL: IntSchema.default(32).meta({
       description: '向量量化等级'
     }),
@@ -175,6 +181,10 @@ export const serviceEnv = createEnv({
     FILE_DOWNLOAD_PUBLIC_URL_PREFIX: UrlSchema.optional().meta({
       description:
         '下载短链公开 URL 前缀。配置后下载链接生成为 {prefix}/{signedAlias}，通常由 nginx rewrite 到 FastGPT /api/system/file/d/{signedAlias}；仅影响下载，不影响上传'
+    }),
+    STORAGE_DOWNLOAD_SIGN_VERSION: z.enum(['v1', 'v2']).default('v2').meta({
+      description:
+        '下载短链签发格式版本（v1 点分格式 / v2 连字符带可选后缀格式，默认 v2）。滚动升级或先升级自定义 Nginx 短路径代理期间可暂设为 v1；服务端始终同时校验 v1 与 v2'
     }),
     NEXT_PUBLIC_BASE_URL: z.string().default(''),
 

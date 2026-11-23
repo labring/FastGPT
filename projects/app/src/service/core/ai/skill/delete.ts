@@ -7,6 +7,7 @@ import { findSkillAndAllChildren } from '@fastgpt/service/core/ai/skill/manage/f
 import { addAgentSkillDeleteJob } from '@fastgpt/service/core/ai/skill/delete';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
+import { buildSkillAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 /**
@@ -38,6 +39,7 @@ export const deleteSkill = async ({
     tmbId,
     teamId,
     event: AuditEventEnum.DELETE_SKILL,
+    resources: [buildSkillAuditResource(skill, { deleted: true })],
     params: { skillName: skill.name, skillType: getI18nSkillType(skill.type) }
   });
   return deletedIds;
