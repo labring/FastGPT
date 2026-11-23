@@ -286,23 +286,43 @@ export const datasetSearchQueryExtension = async ({
   const aiExtensionResult = await (async () => {
     if (!llmModel || !embeddingModel) return;
 
-    return trackPerfStage({ domain: 'dataset.search', stage: 'queryExtension' }, async () => {
-      try {
-        const result = await queryExtension({
-          chatBg: extensionBg,
-          query,
-          histories,
-          llmModel,
-          embeddingModel,
-          userKey,
-          teamId
-        });
-        if (result.extensionQueries?.length === 0) return;
-        return result;
-      } catch (error) {
-        logger.error('Failed to generate extension queries', { error });
+    return trackPerfStage(
+      { domain: 'dataset.search', stage: 'queryExtension' },
+      async ({ markError }) => {
+        let reportedFallback = false;
+        const notifyFallback = (code: 'QUERY_EXTENSION_FALLBACK' | 'QUERY_EXTENSION_ERROR') => {
+          if (reportedFallback) return;
+          reportedFallback = true;
+          markError();
+          patchPerfContext({
+            domain: 'dataset.search',
+            status: 'degraded',
+            errorCode: code
+          });
+        };
+
+        try {
+          const result = await queryExtension({
+            chatBg: extensionBg,
+            query,
+            histories,
+            llmModel,
+            embeddingModel,
+            userKey,
+            teamId,
+            onPerfFallback: notifyFallback
+          });
+          if (result.extensionQueries?.length === 0) {
+            notifyFallback('QUERY_EXTENSION_FALLBACK');
+            return;
+          }
+          return result;
+        } catch (error) {
+          notifyFallback('QUERY_EXTENSION_ERROR');
+          logger.error('Failed to generate extension queries', { error });
+        }
       }
-    });
+    );
   })();
 
   if (aiExtensionResult) {

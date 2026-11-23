@@ -1,25 +1,27 @@
-import { VectorCountCache } from '@fastgpt/dal/redis/caches/vectorCount';
 import {
   resolveDatasetIndexScale,
   type DatasetSearchModeMetricValue,
   type VectorEngineMetricValue
 } from '@fastgpt/global/common/opsPerf/constants';
+import { batchRun, withTimeout } from '@fastgpt/global/common/system/utils';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { getLogger, LogCategories } from '../../../common/logger';
 import { withPerfContext } from '../../../common/opsPerf/context';
 import { getVectorType } from '../../../common/vectorDB/constants';
+import { getVectorCount } from '../../../common/vectorDB/controller';
 import type { DefaultSearchDatasetDataProps, SearchDatasetDataResponse } from './type';
 import { searchDatasetData } from './defaultRecall';
 import { datasetSearchQueryExtension } from './utils';
 
 export * from './type';
 
-const perfVectorCountCache = new VectorCountCache({
-  logger: getLogger(LogCategories.INFRA.REDIS)
-});
+const PERF_VECTOR_COUNT_TIMEOUT_MS = 3_000;
+const PERF_VECTOR_COUNT_CONCURRENCY = 4;
 
-/** 仅从 Redis 缓存读取知识库索引总行数，不回源向量库 COUNT，避免埋点带来额外 DB 压力。 */
-const resolveCachedDatasetIndexCounts = async ({
+/**
+ * 复用向量库权威计数接口（内置 Redis 30 分钟缓存 + 同节点并发 miss 去重合并）补齐知识库索引规模。
+ * 仅在检索返回后的后台 onFinalize 中调用，且设置超时上限，避免非 PG 或纯全文模式因冷缓存长期落入 unknown。
+ */
+const resolveDatasetIndexCountsForPerf = async ({
   teamId,
   datasetIds
 }: {
@@ -29,19 +31,30 @@ const resolveCachedDatasetIndexCounts = async ({
   const uniqueIds = [...new Set(datasetIds.map(String))].filter(Boolean);
   if (uniqueIds.length === 0) return;
 
-  const counts = await Promise.all(
-    uniqueIds.map((datasetId) => perfVectorCountCache.get({ teamId: String(teamId), datasetId }))
-  );
-  if (counts.some((count) => count === undefined)) return;
+  try {
+    const counts = await withTimeout(
+      batchRun(
+        uniqueIds,
+        (datasetId) =>
+          getVectorCount({ teamId: String(teamId), datasetId }, { notifyDatasetCounted: false }),
+        PERF_VECTOR_COUNT_CONCURRENCY
+      ),
+      PERF_VECTOR_COUNT_TIMEOUT_MS,
+      'Resolve dataset vector count for opsPerf timed out'
+    );
 
-  let totalIndexCount = 0;
-  let maxDatasetIndexCount = 0;
-  for (const count of counts as number[]) {
-    totalIndexCount += count;
-    if (count > maxDatasetIndexCount) maxDatasetIndexCount = count;
+    let totalIndexCount = 0;
+    let maxDatasetIndexCount = 0;
+    for (const count of counts) {
+      if (typeof count !== 'number' || !Number.isFinite(count) || count < 0) return;
+      totalIndexCount += count;
+      if (count > maxDatasetIndexCount) maxDatasetIndexCount = count;
+    }
+
+    return { totalIndexCount, maxDatasetIndexCount };
+  } catch {
+    return undefined;
   }
-
-  return { totalIndexCount, maxDatasetIndexCount };
 };
 
 /**
@@ -96,7 +109,7 @@ export const defaultSearchDatasetData = async ({
           );
           state.dims.usingExtension = Boolean(
             result.queryExtensionResult ||
-              (datasetSearchUsingExtensionQuery && datasetSearchExtensionModel)
+            (datasetSearchUsingExtensionQuery && datasetSearchExtensionModel)
           );
           state.detail.resultCount = result.searchRes.length;
           state.metrics.totalResultCount =
@@ -118,20 +131,20 @@ export const defaultSearchDatasetData = async ({
           state.metrics.pgExactCount = (state.metrics.pgExactCount ?? 0) + 1;
         }
 
-        // 非 PG 或未走向量召回时，脱离主链路异步尝试从 Redis 缓存补齐索引规模分桶。
+        // 非 PG 或未走向量召回时，脱离主链路异步复用权威计数源（缓存 + 并发去重回源）补齐索引规模分桶。
         if (
           typeof state.detail.totalIndexCount !== 'number' &&
           props.teamId &&
           uniqueDatasetIds.length > 0
         ) {
-          const cached = await resolveCachedDatasetIndexCounts({
+          const resolved = await resolveDatasetIndexCountsForPerf({
             teamId: props.teamId,
             datasetIds: uniqueDatasetIds
           });
-          if (cached) {
-            state.detail.totalIndexCount = cached.totalIndexCount;
-            state.detail.maxDatasetIndexCount = cached.maxDatasetIndexCount;
-            state.dims.indexScale = resolveDatasetIndexScale(cached.totalIndexCount);
+          if (resolved) {
+            state.detail.totalIndexCount = resolved.totalIndexCount;
+            state.detail.maxDatasetIndexCount = resolved.maxDatasetIndexCount;
+            state.dims.indexScale = resolveDatasetIndexScale(resolved.totalIndexCount);
           }
         }
       }

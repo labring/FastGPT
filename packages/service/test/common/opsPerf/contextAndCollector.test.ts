@@ -157,7 +157,8 @@ describe('opsPerf context and collector', () => {
       status: 'ok',
       dims,
       stages: {
-        // Overlapping lease wait [30, 60] and vectorRecall [32, 140] must yield wall-clock [10, 155] = 145ms
+        // filter [0, 10], overlapping vectorLeaseWait [30, 60] & vectorRecall [32, 140], parallel fullText [30, 70]
+        filter: { offsetMs: 0, ms: 10 },
         vectorRoute: { offsetMs: 10, ms: 20 },
         vectorLeaseWait: { offsetMs: 30, ms: 30 },
         vectorRecall: { offsetMs: 32, ms: 108 },
@@ -194,8 +195,77 @@ describe('opsPerf context and collector', () => {
     expect(buckets[0]?.stages?.vectorPipeline?.sumMs).toBe(995);
     expect(buckets[0]?.stages?.fullTextPipeline?.count).toBe(1);
     expect(buckets[0]?.stages?.fullTextPipeline?.sumMs).toBe(40);
+    // Record 1 DB union [0, 155] = 155ms (not 10+145+40=195ms), Record 2 DB union [60, 910] = 850ms
+    expect(buckets[0]?.stages?.dbPipeline?.count).toBe(2);
+    expect(buckets[0]?.stages?.dbPipeline?.sumMs).toBe(1005);
 
     const events = await MongoOpsPerfEvent.find({ domain: 'dataset.search' }).lean();
     expect(events).toHaveLength(2);
+  });
+
+  it('strips raw upstream error text and maps failed stage to whitelist errorCode', async () => {
+    const secretQuery = 'SECRET_USER_QUERY_12345';
+    await expect(
+      withPerfContext(
+        {
+          domain: 'dataset.search',
+          force: true,
+          dims: {
+            searchMode: 'embedding',
+            indexScale: 's_10k',
+            usingReRank: false,
+            usingExtension: false,
+            vectorEngine: 'pg'
+          }
+        },
+        async () => {
+          await trackPerfStage({ domain: 'dataset.search', stage: 'embeddingApi' }, async () => {
+            throw new Error(`upstream provider rejected prompt: ${secretQuery}`);
+          });
+        }
+      )
+    ).rejects.toThrow(secretQuery);
+
+    const snapshot = getOpsPerfBufferSnapshotForTest();
+    expect(snapshot.events).toHaveLength(1);
+    const ev = snapshot.events[0]!;
+    expect(ev.status).toBe('error');
+    expect(ev.errorCode).toBe('EMBEDDING_ERROR');
+    expect(JSON.stringify(ev)).not.toContain(secretQuery);
+  });
+
+  it('records silent fallback stage errors via trackPerfStage markError control', async () => {
+    await withPerfContext(
+      {
+        domain: 'dataset.search',
+        force: true,
+        dims: {
+          searchMode: 'embedding',
+          indexScale: 's_10k',
+          usingReRank: false,
+          usingExtension: true,
+          vectorEngine: 'pg'
+        }
+      },
+      async () => {
+        await trackPerfStage(
+          { domain: 'dataset.search', stage: 'queryExtension' },
+          async ({ markError }) => {
+            markError();
+            patchPerfContext({
+              domain: 'dataset.search',
+              status: 'degraded',
+              errorCode: 'QUERY_EXTENSION_FALLBACK'
+            });
+          }
+        );
+      }
+    );
+
+    const snapshot = getOpsPerfBufferSnapshotForTest();
+    expect(snapshot.events).toHaveLength(1);
+    expect(snapshot.events[0]?.reason).toBe('degraded');
+    expect(snapshot.events[0]?.errorCode).toBe('QUERY_EXTENSION_FALLBACK');
+    expect(snapshot.events[0]?.stages.queryExtension?.errorCount).toBe(1);
   });
 });

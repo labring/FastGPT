@@ -6,6 +6,7 @@ import {
 } from '@fastgpt/global/common/opsPerf/constants';
 import {
   addHistogramValue,
+  computeIntervalUnionMs,
   estimatePercentile,
   getHistogramBucketIndex,
   mergeHistograms,
@@ -115,6 +116,7 @@ describe('opsPerf histogram and scale utilities', () => {
       expireAt: now,
       reason: 'degraded',
       status: 'degraded',
+      errorCode: 'RERANK_FALLBACK',
       resourceIds: [],
       totalMs: 420,
       dims: { model: 'bge-reranker-v2', hasSynonym: true },
@@ -122,5 +124,32 @@ describe('opsPerf histogram and scale utilities', () => {
       detail: { candidateCount: 80, fallback: true }
     });
     expect(evt.domain).toBe('dataset.rerank');
+    expect(evt.errorCode).toBe('RERANK_FALLBACK');
+    expect('errorMessage' in evt).toBe(false);
+    expect(() =>
+      OpsPerfEventSchema.parse({
+        ...evt,
+        errorCode: 'RAW_UNTRUSTED_CODE'
+      })
+    ).toThrow();
+  });
+
+  it('computes interval union duration across parallel overlaps and non-member gaps', () => {
+    // filter [0, 20], gap for embeddingApi [20, 120], parallel vector [120, 220] & fulltext [120, 220]
+    expect(
+      computeIntervalUnionMs([
+        { start: 0, end: 20 },
+        { start: 120, end: 220 },
+        { start: 120, end: 220 }
+      ])
+    ).toBe(120);
+    // partial overlap [10, 60] + [40, 110] => 100
+    expect(
+      computeIntervalUnionMs([
+        { start: 40, end: 110 },
+        { start: 10, end: 60 }
+      ])
+    ).toBe(100);
+    expect(computeIntervalUnionMs([])).toBe(0);
   });
 });

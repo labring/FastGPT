@@ -14,13 +14,13 @@ export const rerankDatasetWithSynonyms = async ({
   teamId,
   query,
   documents,
-  onSynonymTriggered
+  onSynonymRerankResult
 }: {
   model?: RerankModelDataType;
   teamId: string;
   query: string;
   documents: RerankDocument[];
-  onSynonymTriggered?: () => void;
+  onSynonymRerankResult?: (result: { triggered: boolean; failed: boolean }) => void;
 }) => {
   const baselinePromise = reRankRecall({
     model,
@@ -71,10 +71,19 @@ export const rerankDatasetWithSynonyms = async ({
   };
 
   // 1. 准备阶段只读配置并构造临时文本，与基线 rerank 并行执行，避免串行叠加延迟。
-  const groupsPromise = prepareRerankGroups().catch(() => undefined);
+  let prepareFailed = false;
+  const groupsPromise = prepareRerankGroups().catch(() => {
+    prepareFailed = true;
+    return undefined;
+  });
   const baseline = await baselinePromise;
   const groups = await groupsPromise;
-  if (!groups) return baseline;
+  if (!groups) {
+    if (prepareFailed) {
+      onSynonymRerankResult?.({ triggered: false, failed: true });
+    }
+    return baseline;
+  }
 
   // 2. 筛选出转换后 query 或分块文本发生变化的分组（query 命中同义词时该组全部候选重打分）。
   const originalTexts = new Map(documents.map(({ id, text }) => [id, text]));
@@ -88,8 +97,8 @@ export const rerankDatasetWithSynonyms = async ({
     .filter(({ documents }) => documents.length > 0);
   if (changedGroups.length === 0) return baseline;
 
-  // 3. 执行第二路重排，单组失败降级为空结果，不影响基线分数。
-  onSynonymTriggered?.();
+  // 3. 执行第二路重排，单组失败降级为空结果，不影响基线分数，但需通过结果回调上报降级。
+  let secondPassFailed = false;
   const responses = await Promise.all(
     changedGroups.map(async ({ query, documents }) => {
       try {
@@ -99,10 +108,12 @@ export const rerankDatasetWithSynonyms = async ({
           documents: documents.map(({ id, text }) => ({ id, text }))
         });
       } catch {
+        secondPassFailed = true;
         return { results: [], inputTokens: 0 };
       }
     })
   );
+  onSynonymRerankResult?.({ triggered: true, failed: secondPassFailed });
 
   // 4. 以基线分数为下限逐条保留较高分，并累加两路成功请求的 inputTokens。
   const merged = new Map(baseline.results.map((result) => [result.id, result]));

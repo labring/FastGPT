@@ -1402,5 +1402,20 @@
   "ops_perf_query_meta": "Query Meta",
   "ops_perf_no_stage_data": "No stage timings recorded",
   "ops_perf_no_data": "No metrics in selected time range",
-  "ops_perf_no_events": "No single-point events matching filters"
+  "ops_perf_no_events": "No single-point events matching filters",
+  "ops_perf_service_unavailable_title": "Performance analytics unavailable",
+  "ops_perf_service_unavailable_desc": "Ensure the commercial Pro service is configured and upgraded to a version supporting ops performance APIs.",
+  "ops_perf_model_scope_global": "Global (Time Range)",
+  "ops_perf_err_rerank_fallback": "Rerank model failed; fell back to original recall ranking",
+  "ops_perf_err_synonym_rerank_fallback": "Synonym second-pass rerank failed; kept baseline rerank results",
+  "ops_perf_err_query_extension_fallback": "Query extension returned no valid queries; fell back to original query",
+  "ops_perf_err_query_extension_error": "Query extension model error; fell back to original query",
+  "ops_perf_err_vector_lease_timeout": "Vector recall concurrency lease timed out",
+  "ops_perf_err_vector_recall_error": "Vector recall or hydration failed",
+  "ops_perf_err_embedding_error": "Embedding API request failed",
+  "ops_perf_err_fulltext_recall_error": "Full-text recall or hydration failed",
+  "ops_perf_err_filter_error": "Collection permission or metadata filter query failed",
+  "ops_perf_err_image_caption_error": "Image captioning (VLM) failed",
+  "ops_perf_err_post_process_error": "Search result merge or post-processing failed",
+  "ops_perf_err_search_error": "Dataset search execution failed"
 }

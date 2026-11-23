@@ -1,5 +1,6 @@
 import {
   OpsPerfDomainValues,
+  OpsPerfErrorCodeValues,
   OpsPerfEventReasonValues,
   OpsPerfEventStatusValues,
   OpsPerfGranularityValues
@@ -120,8 +121,10 @@ const OpsPerfEventSchema = new Schema({
     required: true,
     enum: OpsPerfEventStatusValues
   },
-  errorCode: String,
-  errorMessage: String,
+  errorCode: {
+    type: String,
+    enum: OpsPerfErrorCodeValues
+  },
   teamId: {
     type: Schema.Types.ObjectId
   },

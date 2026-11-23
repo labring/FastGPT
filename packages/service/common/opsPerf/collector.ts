@@ -1,14 +1,21 @@
 import { addDays } from 'date-fns';
 import {
+  DATASET_ALL_DB_STAGE_KEYS,
   DATASET_FULLTEXT_DB_STAGE_KEYS,
   DATASET_VECTOR_DB_STAGE_KEYS,
   OPS_PERF_BUCKET_RETENTION_DAYS,
   OPS_PERF_EVENT_RETENTION_DAYS,
+  OpsPerfErrorCodeValues,
   type OpsPerfDomain,
+  type OpsPerfErrorCode,
   type OpsPerfEventReason,
   type OpsPerfEventStatus
 } from '@fastgpt/global/common/opsPerf/constants';
-import { addHistogramValue, type OpsPerfHistogram } from '@fastgpt/global/common/opsPerf/histogram';
+import {
+  addHistogramValue,
+  computeIntervalUnionMs,
+  type OpsPerfHistogram
+} from '@fastgpt/global/common/opsPerf/histogram';
 import type {
   OpsPerfDomainPayloadMap,
   OpsPerfEventStageTiming
@@ -25,7 +32,7 @@ const MAX_BUCKET_BUFFER_SIZE = 2_000;
 const MAX_EVENT_BUFFER_SIZE = 500;
 const NORMAL_EVENT_SAMPLE_RATE = 0.02;
 const MAX_NORMAL_SAMPLE_EVENTS_PER_WINDOW = 200;
-const MAX_ERROR_MESSAGE_LENGTH = 300;
+const ALLOWED_ERROR_CODES = new Set<string>(OpsPerfErrorCodeValues);
 
 /** 仅允许安全字段标识进入 Mongo 点路径（防止外部异常字符破坏点路径更新）。 */
 const SAFE_PATH_KEY_RE = /^[a-zA-Z0-9_]+$/;
@@ -63,8 +70,7 @@ type BufferedEventEntry = {
   expireAt: Date;
   reason: OpsPerfEventReason;
   status: OpsPerfEventStatus;
-  errorCode?: string;
-  errorMessage?: string;
+  errorCode?: OpsPerfErrorCode;
   teamId?: Types.ObjectId;
   resourceIds: string[];
   totalMs: number;
@@ -166,8 +172,7 @@ export type RecordOpsPerfInput<D extends OpsPerfDomain> = {
   createTime?: Date;
   totalMs: number;
   status: OpsPerfEventStatus;
-  errorCode?: string;
-  errorMessage?: string;
+  errorCode?: OpsPerfErrorCode;
   teamId?: string;
   resourceIds?: string[];
   dims: OpsPerfDomainPayloadMap[D]['dims'];
@@ -274,9 +279,8 @@ export const enqueueOpsPerfRecord = <D extends OpsPerfDomain>(
 
         if (input.domain === 'dataset.search') {
           const accumulateCompositeStage = (targetKey: string, memberKeys: readonly string[]) => {
+            const intervals: Array<{ start: number; end: number }> = [];
             let hasAny = false;
-            let minStart = Number.POSITIVE_INFINITY;
-            let maxEnd = 0;
             let combinedErrors = 0;
             for (const key of memberKeys) {
               const timing = stagesRecord[key];
@@ -284,20 +288,19 @@ export const enqueueOpsPerfRecord = <D extends OpsPerfDomain>(
               hasAny = true;
               const start = normalizeDurationMs(timing.offsetMs);
               const end = start + normalizeDurationMs(timing.ms);
-              if (start < minStart) minStart = start;
-              if (end > maxEnd) maxEnd = end;
+              intervals.push({ start, end });
               combinedErrors += timing.errorCount ?? 0;
             }
             if (hasAny) {
-              // 按成员阶段联合墙钟区间 [minStart, maxEnd] 计算，避免多 query 并发阶段重叠时重复累加
-              const wallClockMs = normalizeDurationMs(Math.max(0, maxEnd - minStart));
-              accumulateBucketStage(targetKey, wallClockMs, combinedErrors);
+              // 按成员阶段时间区间并集结算，既避免并行阶段重复计入，又排除非成员阶段间的空隙。
+              accumulateBucketStage(targetKey, computeIntervalUnionMs(intervals), combinedErrors);
             }
           };
 
-          // 为向量与全文链路各记录一条复合直方图，保证 P50/P95/P99 对链路端到端耗时无偏
+          // 为向量、全文及全数据库链路各记录一条复合直方图，保证端到端耗时与分位数无偏。
           accumulateCompositeStage('vectorPipeline', DATASET_VECTOR_DB_STAGE_KEYS);
           accumulateCompositeStage('fullTextPipeline', DATASET_FULLTEXT_DB_STAGE_KEYS);
+          accumulateCompositeStage('dbPipeline', DATASET_ALL_DB_STAGE_KEYS);
         }
       }
 
@@ -380,6 +383,9 @@ export const enqueueOpsPerfRecord = <D extends OpsPerfDomain>(
       }
     }
 
+    const safeErrorCode =
+      input.errorCode && ALLOWED_ERROR_CODES.has(input.errorCode) ? input.errorCode : undefined;
+
     state.events.push({
       schemaVersion: 1,
       domain: input.domain,
@@ -387,10 +393,7 @@ export const enqueueOpsPerfRecord = <D extends OpsPerfDomain>(
       expireAt: addDays(createTime, OPS_PERF_EVENT_RETENTION_DAYS),
       reason,
       status: input.status,
-      ...(input.errorCode ? { errorCode: input.errorCode.slice(0, 64) } : {}),
-      ...(input.errorMessage
-        ? { errorMessage: input.errorMessage.slice(0, MAX_ERROR_MESSAGE_LENGTH) }
-        : {}),
+      ...(safeErrorCode ? { errorCode: safeErrorCode } : {}),
       ...(validTeamId ? { teamId: validTeamId } : {}),
       resourceIds,
       totalMs,

@@ -116,3 +116,42 @@ export const estimatePercentile = ({
 
   return Math.round(maxMs ?? OPS_PERF_HISTOGRAM_BOUNDS_MS[OPS_PERF_HISTOGRAM_BOUNDS_MS.length - 1]);
 };
+
+/**
+ * 计算一组时间区间 [start, end] 的并集总时长（ms）。
+ * 用于并行阶段（如混合检索中向量与全文并发）的去重汇总，同时排除非成员阶段之间的间隔。
+ */
+export const computeIntervalUnionMs = (
+  intervals: ReadonlyArray<{ start: number; end: number }>
+): number => {
+  const normalized = intervals
+    .filter(
+      (item) =>
+        Number.isFinite(item.start) &&
+        Number.isFinite(item.end) &&
+        item.end > item.start &&
+        item.end >= 0
+    )
+    .map((item) => ({ start: Math.max(0, item.start), end: Math.max(0, item.end) }))
+    .sort((a, b) => a.start - b.start || a.end - b.end);
+
+  if (normalized.length === 0) return 0;
+
+  let total = 0;
+  let curStart = normalized[0]!.start;
+  let curEnd = normalized[0]!.end;
+
+  for (let i = 1; i < normalized.length; i++) {
+    const next = normalized[i]!;
+    if (next.start <= curEnd) {
+      if (next.end > curEnd) curEnd = next.end;
+    } else {
+      total += curEnd - curStart;
+      curStart = next.start;
+      curEnd = next.end;
+    }
+  }
+  total += curEnd - curStart;
+
+  return Math.round(total * 100) / 100;
+};

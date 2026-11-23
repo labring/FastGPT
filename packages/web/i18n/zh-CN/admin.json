@@ -1402,5 +1402,20 @@
   "ops_perf_query_meta": "查询特征",
   "ops_perf_no_stage_data": "暂无阶段计时明细",
   "ops_perf_no_data": "当前时间范围内暂无统计数据",
-  "ops_perf_no_events": "当前筛选条件下暂无单点排查记录"
+  "ops_perf_no_events": "当前筛选条件下暂无单点排查记录",
+  "ops_perf_service_unavailable_title": "性能分析数据暂不可用",
+  "ops_perf_service_unavailable_desc": "请确认已启用商业版 Pro 服务并升级至包含运维性能接口的版本。",
+  "ops_perf_model_scope_global": "全站（按时间范围）",
+  "ops_perf_err_rerank_fallback": "重排模型调用失败，已自动降级为原始召回排序",
+  "ops_perf_err_synonym_rerank_fallback": "同义词次路重排失败，已自动回退保留基线重排结果",
+  "ops_perf_err_query_extension_fallback": "问题优化未生成有效扩展词，已自动回退使用原问题检索",
+  "ops_perf_err_query_extension_error": "问题优化模型调用异常，已自动回退使用原问题检索",
+  "ops_perf_err_vector_lease_timeout": "向量检索并发排队超时（Redis Lease）",
+  "ops_perf_err_vector_recall_error": "向量库检索或回表异常",
+  "ops_perf_err_embedding_error": "向量化（Embedding）接口调用异常",
+  "ops_perf_err_fulltext_recall_error": "全文检索或回表异常",
+  "ops_perf_err_filter_error": "集合权限或元数据过滤查询异常",
+  "ops_perf_err_image_caption_error": "图片描述生成（VLM）阶段异常",
+  "ops_perf_err_post_process_error": "检索结果融合、裁剪或后处理异常",
+  "ops_perf_err_search_error": "知识库检索执行异常"
 }

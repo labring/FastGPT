@@ -16,13 +16,13 @@ const datasetDataReRank = async ({
   data,
   query,
   teamId,
-  onSynonymTriggered
+  onSynonymRerankResult
 }: {
   rerankModel?: RerankModelDataType;
   data: SearchDataResponseItemType[];
   query: string;
   teamId: string;
-  onSynonymTriggered?: () => void;
+  onSynonymRerankResult?: (result: { triggered: boolean; failed: boolean }) => void;
 }): Promise<{
   results: SearchDataResponseItemType[];
   inputTokens: number;
@@ -36,7 +36,7 @@ const datasetDataReRank = async ({
       datasetId: String(item.datasetId),
       text: `${item.q}\n${item.a}`.trim()
     })),
-    onSynonymTriggered
+    onSynonymRerankResult
   });
 
   if (results.length === 0) {
@@ -104,34 +104,52 @@ export const reRankSearchResults = async ({
   const rerankModelLabel = rerankModel?.model || rerankModel?.name || 'unknown';
   const rerankStart = performance.now();
   let hasSynonym = false;
+  let synonymFailed = false;
 
-  return trackPerfStage({ domain: 'dataset.search', stage: 'rerank' }, async () => {
+  return trackPerfStage({ domain: 'dataset.search', stage: 'rerank' }, async ({ markError }) => {
     try {
       const { results: reRankResults, inputTokens } = await datasetDataReRank({
         teamId,
         rerankModel,
         query,
         data: candidates,
-        onSynonymTriggered: () => {
-          hasSynonym = true;
-          patchPerfContext({
-            domain: 'dataset.search',
-            detail: { synonymRerankTriggered: true }
-          });
+        onSynonymRerankResult: ({ triggered, failed }) => {
+          if (triggered) {
+            hasSynonym = true;
+            patchPerfContext({
+              domain: 'dataset.search',
+              detail: { synonymRerankTriggered: true }
+            });
+          }
+          if (failed) {
+            synonymFailed = true;
+          }
         }
       });
       const elapsedMs = Math.max(0, performance.now() - rerankStart);
+
+      if (synonymFailed) {
+        markError();
+        patchPerfContext({
+          domain: 'dataset.search',
+          status: 'degraded',
+          errorCode: 'SYNONYM_RERANK_FALLBACK',
+          metrics: { rerankFallbackCount: 1 },
+          detail: { rerankFallback: true, rerankModel: rerankModelLabel }
+        });
+      }
 
       recordPerfPoint({
         domain: 'dataset.rerank',
         teamId,
         totalMs: elapsedMs,
-        status: 'ok',
+        status: synonymFailed ? 'degraded' : 'ok',
         dims: {
           model: rerankModelLabel,
           hasSynonym
         },
         metrics: {
+          ...(synonymFailed ? { fallbackCount: 1 } : {}),
           totalCandidates: candidates.length,
           totalInputTokens: inputTokens
         }
@@ -155,6 +173,7 @@ export const reRankSearchResults = async ({
         usingReRank: true
       };
     } catch {
+      markError();
       const elapsedMs = Math.max(0, performance.now() - rerankStart);
       recordPerfPoint({
         domain: 'dataset.rerank',

@@ -1,13 +1,31 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { performance } from 'node:perf_hooks';
-import { getErrText } from '@fastgpt/global/common/error/utils';
-import type { OpsPerfDomain, OpsPerfEventStatus } from '@fastgpt/global/common/opsPerf/constants';
+import type {
+  OpsPerfDomain,
+  OpsPerfErrorCode,
+  OpsPerfEventStatus
+} from '@fastgpt/global/common/opsPerf/constants';
 import type {
   OpsPerfDomainPayloadMap,
   OpsPerfEventStageTiming
 } from '@fastgpt/global/common/opsPerf/type';
 import { isProVersion } from '../system/constants';
 import { enqueueOpsPerfRecord, type RecordOpsPerfInput } from './collector';
+
+const STAGE_ERROR_CODE_MAP: Record<string, OpsPerfErrorCode> = {
+  queryExtension: 'QUERY_EXTENSION_ERROR',
+  imageCaption: 'IMAGE_CAPTION_ERROR',
+  filter: 'FILTER_ERROR',
+  embeddingApi: 'EMBEDDING_ERROR',
+  vectorRoute: 'VECTOR_RECALL_ERROR',
+  vectorLeaseWait: 'VECTOR_LEASE_TIMEOUT',
+  vectorRecall: 'VECTOR_RECALL_ERROR',
+  vectorHydrate: 'VECTOR_RECALL_ERROR',
+  fullTextRecall: 'FULLTEXT_RECALL_ERROR',
+  fullTextHydrate: 'FULLTEXT_RECALL_ERROR',
+  rerank: 'RERANK_FALLBACK',
+  postProcess: 'POST_PROCESS_ERROR'
+};
 
 type StageAccumulator = {
   /** 同名阶段首次开始相对 context 起点的偏移（ms）。 */
@@ -23,8 +41,8 @@ export type PerfContextState<D extends OpsPerfDomain = OpsPerfDomain> = {
   startedAtPerf: number;
   createTime: Date;
   status: OpsPerfEventStatus;
-  errorCode?: string;
-  errorMessage?: string;
+  errorCode?: OpsPerfErrorCode;
+  lastFailedStage?: string;
   teamId?: string;
   resourceIds: string[];
   dims: Record<string, unknown>;
@@ -144,12 +162,11 @@ export const withPerfContext = async <D extends OpsPerfDomain, T>(
     hasError = true;
     caughtError = error;
     state.status = 'error';
-    if (!state.errorMessage) {
-      try {
-        state.errorMessage = String(getErrText(error)).slice(0, 300);
-      } catch {
-        state.errorMessage = 'Unknown error';
-      }
+    // 严格脱敏：禁止提取或落盘原始异常文本，仅按最近失败阶段映射白名单错误码。
+    if (!state.errorCode) {
+      state.errorCode =
+        (state.lastFailedStage ? STAGE_ERROR_CODE_MAP[state.lastFailedStage] : undefined) ??
+        'SEARCH_ERROR';
     }
     throw error;
   } finally {
@@ -163,7 +180,6 @@ export const withPerfContext = async <D extends OpsPerfDomain, T>(
         totalMs,
         status: state.status,
         errorCode: state.errorCode,
-        errorMessage: state.errorMessage,
         teamId: state.teamId,
         resourceIds: state.resourceIds,
         dims: state.dims as OpsPerfDomainPayloadMap[D]['dims'],
@@ -208,24 +224,29 @@ export const withPerfContext = async <D extends OpsPerfDomain, T>(
  * - 无活跃上下文时零成本直接执行 `fn()`
  * - 同名阶段在并发（如多 query Promise.all）下按 [minStart, maxEnd] 合并区间，
  *   防止并行阶段耗时被重复叠加导致瀑布图超过总耗时
+ * - 业务发生静默回退（内部 catch 后降级返回）时，可调用回调入参 `markError()` 准确累计阶段异常数
  */
 export const trackPerfStage = async <D extends OpsPerfDomain, T>(
   options: {
     domain: D;
     stage: keyof OpsPerfDomainPayloadMap[D]['stages'] & string;
   },
-  fn: () => Promise<T> | T
+  fn: (controls: { markError: () => void }) => Promise<T> | T
 ): Promise<T> => {
   const state = getDomainState(options.domain);
-  if (!state) return fn();
+  if (!state) return fn({ markError: () => {} });
 
   const startOffset = Math.max(0, performance.now() - state.startedAtPerf);
   let failed = false;
+  const markError = () => {
+    failed = true;
+    state.lastFailedStage = options.stage;
+  };
 
   try {
-    return await fn();
+    return await fn({ markError });
   } catch (error) {
-    failed = true;
+    markError();
     throw error;
   } finally {
     const endOffset = Math.max(startOffset, performance.now() - state.startedAtPerf);
@@ -259,6 +280,9 @@ export const recordPerfStageSpan = <D extends OpsPerfDomain>(options: {
   const state = getDomainState(options.domain);
   if (!state) return;
 
+  if (options.failed) {
+    state.lastFailedStage = options.stage;
+  }
   const startOffset = Math.max(0, options.startedAtPerf - state.startedAtPerf);
   const endOffset = Math.max(
     startOffset,
@@ -290,8 +314,7 @@ export const patchPerfContext = <D extends OpsPerfDomain>(options: {
   metrics?: Partial<Record<keyof OpsPerfDomainPayloadMap[D]['metrics'] & string, number>>;
   detail?: Partial<OpsPerfDomainPayloadMap[D]['detail']>;
   status?: OpsPerfEventStatus;
-  errorCode?: string;
-  errorMessage?: string;
+  errorCode?: OpsPerfErrorCode;
   teamId?: string;
   resourceIds?: string[];
 }) => {
@@ -319,9 +342,6 @@ export const patchPerfContext = <D extends OpsPerfDomain>(options: {
   }
   if (options.errorCode && !state.errorCode) {
     state.errorCode = options.errorCode;
-  }
-  if (options.errorMessage && !state.errorMessage) {
-    state.errorMessage = options.errorMessage;
   }
   if (options.teamId) {
     state.teamId = options.teamId;

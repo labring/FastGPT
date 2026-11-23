@@ -3,6 +3,7 @@ import { IntSchema } from '../../../common/zod';
 import {
   DatasetIndexScaleValues,
   DatasetSearchModeFilterValues,
+  OpsPerfErrorCodeValues,
   OpsPerfEventReasonValues,
   OpsPerfEventStatusValues,
   VectorEngineMetricValues
@@ -129,7 +130,10 @@ export const GetDatasetSearchPerfResponseSchema = z.object({
     dbAvgMs: z
       .number()
       .nonnegative()
-      .meta({ description: '数据库平均耗时（过滤 + 向量 + 全文 + 回表）(ms)' }),
+      .meta({
+        description: '数据库平均耗时（过滤 + 向量 + 全文 + 回表的时间区间并集均值）(ms)',
+        example: 145
+      }),
     errorCount: z.number().nonnegative().meta({ description: '失败次数' }),
     errorRate: z.number().min(0).max(1).meta({ description: '失败率' }),
     rerankTriggerRate: z.number().min(0).max(1).meta({ description: 'Rerank 触发率' }),
@@ -177,22 +181,43 @@ export const GetDatasetSearchPerfEventsQuerySchema = z.object({
 export type GetDatasetSearchPerfEventsQuery = z.infer<typeof GetDatasetSearchPerfEventsQuerySchema>;
 
 export const DatasetSearchPerfEventItemSchema = z.object({
-  id: z.string().meta({ description: '单点事件 ID' }),
-  createTime: z.string().meta({ description: '检索发生时间 ISO 字符串' }),
-  reason: z.enum(OpsPerfEventReasonValues),
-  status: z.enum(OpsPerfEventStatusValues),
-  errorCode: z.string().optional(),
-  errorMessage: z.string().optional(),
-  resourceIds: z.array(z.string()),
+  id: z.string().meta({ description: '单点事件 ID', example: '67c526a0ddd9a98bde65ad7e' }),
+  createTime: z.string().meta({
+    description: '检索发生时间 ISO 字符串',
+    example: '2026-11-23T08:30:00.000Z'
+  }),
+  reason: z.enum(OpsPerfEventReasonValues).meta({
+    description: '单点样本保留原因（error=异常全留痕，degraded=降级全留痕，sample=正常低比例采样）',
+    example: 'degraded'
+  }),
+  status: z.enum(OpsPerfEventStatusValues).meta({
+    description: '单次检索执行结果状态（ok=正常完成，degraded=发生静默降级，error=主链路异常）',
+    example: 'degraded'
+  }),
+  errorCode: z.enum(OpsPerfErrorCodeValues).optional().meta({
+    description: '脱敏白名单错误码（不记录上游原始异常文本）',
+    example: 'RERANK_FALLBACK'
+  }),
+  resourceIds: z.array(z.string()).meta({
+    description: '本次检索涉及的知识库 ID 列表',
+    example: ['67c526a0ddd9a98bde65ad7f']
+  }),
   datasets: z
     .array(
       z.object({
-        id: z.string(),
-        name: z.string().optional()
+        id: z.string().meta({ description: '知识库 ID', example: '67c526a0ddd9a98bde65ad7f' }),
+        name: z
+          .string()
+          .optional()
+          .meta({ description: '知识库名称（已删除时缺省）', example: '产品架构文档库' })
       })
     )
-    .default([]),
-  totalMs: z.number().nonnegative(),
+    .default([])
+    .meta({ description: '回查名称后的知识库列表（按检索顺序排列）' }),
+  totalMs: z
+    .number()
+    .nonnegative()
+    .meta({ description: '本次检索端到端总耗时 (ms)', example: 486.5 }),
   dims: DatasetSearchDimsSchema,
   stages: DatasetSearchEventStagesSchema,
   detail: DatasetSearchEventDetailSchema
@@ -200,8 +225,12 @@ export const DatasetSearchPerfEventItemSchema = z.object({
 export type DatasetSearchPerfEventItem = z.infer<typeof DatasetSearchPerfEventItemSchema>;
 
 export const GetDatasetSearchPerfEventsResponseSchema = z.object({
-  total: z.number().int().nonnegative(),
-  list: z.array(DatasetSearchPerfEventItemSchema)
+  total: z
+    .number()
+    .int()
+    .nonnegative()
+    .meta({ description: '符合筛选条件的单点事件总数', example: 42 }),
+  list: z.array(DatasetSearchPerfEventItemSchema).meta({ description: '当前页单点排查记录列表' })
 });
 export type GetDatasetSearchPerfEventsResponse = z.infer<
   typeof GetDatasetSearchPerfEventsResponseSchema

@@ -22,6 +22,23 @@ export type OpsPerfEventReason = (typeof OpsPerfEventReasonValues)[number];
 export const OpsPerfEventStatusValues = ['ok', 'degraded', 'error'] as const;
 export type OpsPerfEventStatus = (typeof OpsPerfEventStatusValues)[number];
 
+/** 单点排查允许持久化的稳定错误码白名单（禁止落盘上游原始异常文本，防止泄漏查询或分块正文）。 */
+export const OpsPerfErrorCodeValues = [
+  'RERANK_FALLBACK',
+  'SYNONYM_RERANK_FALLBACK',
+  'QUERY_EXTENSION_FALLBACK',
+  'QUERY_EXTENSION_ERROR',
+  'VECTOR_LEASE_TIMEOUT',
+  'VECTOR_RECALL_ERROR',
+  'EMBEDDING_ERROR',
+  'FULLTEXT_RECALL_ERROR',
+  'FILTER_ERROR',
+  'IMAGE_CAPTION_ERROR',
+  'POST_PROCESS_ERROR',
+  'SEARCH_ERROR'
+] as const;
+export type OpsPerfErrorCode = (typeof OpsPerfErrorCodeValues)[number];
+
 /** 知识库索引行数低基数规模分桶，防止高基数 datasetId 进入小时聚合桶。 */
 export const DatasetIndexScaleValues = [
   's_10k',

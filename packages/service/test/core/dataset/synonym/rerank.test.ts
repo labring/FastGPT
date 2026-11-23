@@ -53,19 +53,19 @@ describe('rerankDatasetWithSynonyms', () => {
       )
       .mockResolvedValueOnce({ results: [{ id: 'a', score: 0.9 }], inputTokens: 8 });
 
-    const onSynonymTriggered = vi.fn();
+    const onSynonymRerankResult = vi.fn();
     const resultPromise = rerankDatasetWithSynonyms({
       teamId: 't1',
       query: 'alias',
       documents,
-      onSynonymTriggered
+      onSynonymRerankResult
     });
     // 基线 rerank 尚未返回时，同义词准备阶段已经启动。
     await vi.waitFor(() => expect(mocks.runtimeConfig).toHaveBeenCalled());
     resolveBaseline({ results: [{ id: 'a', score: 0.2 }], inputTokens: 10 });
     const result = await resultPromise;
 
-    expect(onSynonymTriggered).toHaveBeenCalledTimes(1);
+    expect(onSynonymRerankResult).toHaveBeenCalledWith({ triggered: true, failed: false });
     expect(result.inputTokens).toBe(18);
     expect(result.results).toEqual([{ id: 'a', score: 0.9 }]);
     expect(mocks.reRankRecall).toHaveBeenNthCalledWith(
@@ -117,5 +117,22 @@ describe('rerankDatasetWithSynonyms', () => {
     Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: false });
     await rerankDatasetWithSynonyms({ teamId: 't1', query: 'alias', documents });
     expect(mocks.reRankRecall).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports failed=true via onSynonymRerankResult when second pass rerank fails silently', async () => {
+    mocks.reRankRecall
+      .mockResolvedValueOnce({ results: [{ id: 'a', score: 0.8 }], inputTokens: 10 })
+      .mockRejectedValueOnce(new Error('second pass timeout'));
+    const onSynonymRerankResult = vi.fn();
+
+    const result = await rerankDatasetWithSynonyms({
+      teamId: 't1',
+      query: 'alias',
+      documents,
+      onSynonymRerankResult
+    });
+
+    expect(result.results).toEqual([{ id: 'a', score: 0.8 }]);
+    expect(onSynonymRerankResult).toHaveBeenCalledWith({ triggered: true, failed: true });
   });
 });

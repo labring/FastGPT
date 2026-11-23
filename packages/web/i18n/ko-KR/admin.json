@@ -1402,5 +1402,20 @@
   "ops_perf_query_meta": "쿼리 메타",
   "ops_perf_no_stage_data": "단계 타이밍 데이터 없음",
   "ops_perf_no_data": "선택한 기간에 통계 데이터가 없습니다",
-  "ops_perf_no_events": "필터 조건에 맞는 단일 기록이 없습니다"
+  "ops_perf_no_events": "필터 조건에 맞는 단일 기록이 없습니다",
+  "ops_perf_service_unavailable_title": "성능 분석 데이터를 사용할 수 없습니다",
+  "ops_perf_service_unavailable_desc": "상용 Pro 서비스가 설정되어 있고 운영 성능 API를 지원하는 버전으로 업그레이드되었는지 확인하세요.",
+  "ops_perf_model_scope_global": "전체(시간 범위 기준)",
+  "ops_perf_err_rerank_fallback": "재정렬 모델 호출 실패로 기존 리콜 순위로 폴백되었습니다",
+  "ops_perf_err_synonym_rerank_fallback": "동의어 2차 재정렬 실패로 기본 재정렬 결과를 유지했습니다",
+  "ops_perf_err_query_extension_fallback": "쿼리 최적화가 유효한 확장 쿼리를 반환하지 않아 원본 쿼리로 폴백되었습니다",
+  "ops_perf_err_query_extension_error": "쿼리 최적화 모델 호출 오류로 원본 쿼리로 폴백되었습니다",
+  "ops_perf_err_vector_lease_timeout": "벡터 검색 동시성 대기(Redis Lease) 시간 초과",
+  "ops_perf_err_vector_recall_error": "벡터 검색 또는 데이터 조회 오류",
+  "ops_perf_err_embedding_error": "임베딩 API 호출 오류",
+  "ops_perf_err_fulltext_recall_error": "전문 검색 또는 데이터 조회 오류",
+  "ops_perf_err_filter_error": "컬렉션 권한 또는 메타데이터 필터 조회 오류",
+  "ops_perf_err_image_caption_error": "이미지 캡션 생성(VLM) 단계 오류",
+  "ops_perf_err_post_process_error": "검색 결과 병합 또는 후처리 오류",
+  "ops_perf_err_search_error": "지식베이스 검색 실행 오류"
 }

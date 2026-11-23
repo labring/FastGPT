@@ -2,9 +2,27 @@
 import React from 'react';
 import { Badge, Box, Flex, Grid, HStack, Text } from '@chakra-ui/react';
 import dayjs from 'dayjs';
-import { DATASET_SEARCH_STAGE_SPECS } from '@fastgpt/global/common/opsPerf/constants';
+import {
+  DATASET_SEARCH_STAGE_SPECS,
+  type OpsPerfErrorCode
+} from '@fastgpt/global/common/opsPerf/constants';
 import type { DatasetSearchPerfEventItem } from '@fastgpt/global/openapi/admin/ops/performance';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+
+const ERROR_CODE_I18N_KEY_MAP: Record<OpsPerfErrorCode, string> = {
+  RERANK_FALLBACK: 'admin:ops_perf_err_rerank_fallback',
+  SYNONYM_RERANK_FALLBACK: 'admin:ops_perf_err_synonym_rerank_fallback',
+  QUERY_EXTENSION_FALLBACK: 'admin:ops_perf_err_query_extension_fallback',
+  QUERY_EXTENSION_ERROR: 'admin:ops_perf_err_query_extension_error',
+  VECTOR_LEASE_TIMEOUT: 'admin:ops_perf_err_vector_lease_timeout',
+  VECTOR_RECALL_ERROR: 'admin:ops_perf_err_vector_recall_error',
+  EMBEDDING_ERROR: 'admin:ops_perf_err_embedding_error',
+  FULLTEXT_RECALL_ERROR: 'admin:ops_perf_err_fulltext_recall_error',
+  FILTER_ERROR: 'admin:ops_perf_err_filter_error',
+  IMAGE_CAPTION_ERROR: 'admin:ops_perf_err_image_caption_error',
+  POST_PROCESS_ERROR: 'admin:ops_perf_err_post_process_error',
+  SEARCH_ERROR: 'admin:ops_perf_err_search_error'
+};
 
 const STAGE_COLOR_MAP: Record<string, string> = {
   queryExtension: '#8B5CF6',
@@ -222,21 +240,21 @@ export const EventWaterfallCard = ({
         </Box>
       </Grid>
 
-      {event.errorMessage && (
+      {event.errorCode && (
         <Box
           mb={3}
           px={3}
           py={2}
-          bg={'red.50'}
+          bg={event.status === 'error' ? 'red.50' : 'orange.50'}
           borderRadius={'md'}
           borderWidth={'1px'}
-          borderColor={'red.200'}
+          borderColor={event.status === 'error' ? 'red.200' : 'orange.200'}
           fontSize={'xs'}
-          color={'red.700'}
+          color={event.status === 'error' ? 'red.700' : 'orange.700'}
           fontFamily={'mono'}
         >
-          {event.errorCode ? `[${event.errorCode}] ` : ''}
-          {event.errorMessage}
+          [{event.errorCode}]{' '}
+          {t(ERROR_CODE_I18N_KEY_MAP[event.errorCode] ?? 'admin:ops_perf_err_search_error')}
         </Box>
       )}
 

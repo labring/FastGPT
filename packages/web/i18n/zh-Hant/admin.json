@@ -1402,5 +1402,20 @@
   "ops_perf_query_meta": "查詢特徵",
   "ops_perf_no_stage_data": "暫無階段計時明細",
   "ops_perf_no_data": "目前時間範圍內暫無統計資料",
-  "ops_perf_no_events": "目前篩選條件下暫無單點排查記錄"
+  "ops_perf_no_events": "目前篩選條件下暫無單點排查記錄",
+  "ops_perf_service_unavailable_title": "效能分析資料暫不可用",
+  "ops_perf_service_unavailable_desc": "請確認已啟用商業版 Pro 服務並升級至包含維運效能介面的版本。",
+  "ops_perf_model_scope_global": "全站（依時間範圍）",
+  "ops_perf_err_rerank_fallback": "重排模型呼叫失敗，已自動降級為原始召回排序",
+  "ops_perf_err_synonym_rerank_fallback": "同義詞次路重排失敗，已自動回退保留基線重排結果",
+  "ops_perf_err_query_extension_fallback": "問題最佳化未產生有效擴展詞，已自動回退使用原問題檢索",
+  "ops_perf_err_query_extension_error": "問題最佳化模型呼叫異常，已自動回退使用原問題檢索",
+  "ops_perf_err_vector_lease_timeout": "向量檢索並行排隊逾時（Redis Lease）",
+  "ops_perf_err_vector_recall_error": "向量庫檢索或回表異常",
+  "ops_perf_err_embedding_error": "向量化（Embedding）介面呼叫異常",
+  "ops_perf_err_fulltext_recall_error": "全文檢索或回表異常",
+  "ops_perf_err_filter_error": "集合權限或中繼資料過濾查詢異常",
+  "ops_perf_err_image_caption_error": "圖片描述產生（VLM）階段異常",
+  "ops_perf_err_post_process_error": "檢索結果融合、裁剪或後處理異常",
+  "ops_perf_err_search_error": "知識庫檢索執行異常"
 }

@@ -2,6 +2,7 @@ import z from 'zod';
 import {
   DatasetIndexScaleValues,
   DatasetSearchModeFilterValues,
+  OpsPerfErrorCodeValues,
   OpsPerfEventReasonValues,
   OpsPerfEventStatusValues,
   OpsPerfGranularityValues,
@@ -30,21 +31,43 @@ export type OpsPerfStageBucketStats = z.infer<typeof OpsPerfStageBucketStatsSche
 
 /** 单点记录中单个阶段的相对起点与耗时（支持瀑布图精准呈现串/并行关系）。 */
 export const OpsPerfEventStageTimingSchema = z.object({
-  offsetMs: z.number().nonnegative(),
-  ms: z.number().nonnegative(),
-  callCount: z.number().int().positive().optional(),
-  errorCount: z.number().int().nonnegative().optional()
+  offsetMs: z
+    .number()
+    .nonnegative()
+    .meta({ description: '相对本次检索起点的偏移耗时 (ms)', example: 120 }),
+  ms: z.number().nonnegative().meta({ description: '该阶段实际墙钟耗时 (ms)', example: 85 }),
+  callCount: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .meta({ description: '同阶段调用次数（多 query 并发合并）', example: 2 }),
+  errorCount: z
+    .number()
+    .int()
+    .nonnegative()
+    .optional()
+    .meta({ description: '阶段报错或静默降级次数', example: 0 })
 });
 export type OpsPerfEventStageTiming = z.infer<typeof OpsPerfEventStageTimingSchema>;
 
 /* ==================== Domain 1: dataset.search ==================== */
 
 export const DatasetSearchDimsSchema = z.object({
-  searchMode: z.enum(DatasetSearchModeFilterValues).catch('unknown'),
-  indexScale: z.enum(DatasetIndexScaleValues).catch('unknown'),
-  usingReRank: z.boolean(),
-  usingExtension: z.boolean(),
-  vectorEngine: z.enum(VectorEngineMetricValues).catch('unknown')
+  searchMode: z
+    .enum(DatasetSearchModeFilterValues)
+    .catch('unknown')
+    .meta({ description: '知识库检索模式', example: 'mixedRecall' }),
+  indexScale: z
+    .enum(DatasetIndexScaleValues)
+    .catch('unknown')
+    .meta({ description: '覆盖知识库总索引行数分桶', example: 'l_500k' }),
+  usingReRank: z.boolean().meta({ description: '本次检索是否启用了结果重排', example: true }),
+  usingExtension: z.boolean().meta({ description: '本次检索是否启用了问题优化', example: false }),
+  vectorEngine: z
+    .enum(VectorEngineMetricValues)
+    .catch('unknown')
+    .meta({ description: '执行检索时的向量库引擎类型', example: 'pg' })
 });
 export type DatasetSearchDims = z.infer<typeof DatasetSearchDimsSchema>;
 
@@ -61,26 +84,51 @@ export const DatasetSearchBucketStagesSchema = z.object({
   fullTextHydrate: OpsPerfStageBucketStatsSchema.optional(),
   rerank: OpsPerfStageBucketStatsSchema.optional(),
   postProcess: OpsPerfStageBucketStatsSchema.optional(),
-  // 复合链路聚合直方图（仅用于桶内端到端分位数估算，不在阶段拆解表中单独展示）
+  // 复合链路聚合直方图（基于成员阶段时间区间并集结算，不在阶段拆解表中单独展示）
   vectorPipeline: OpsPerfStageBucketStatsSchema.optional(),
-  fullTextPipeline: OpsPerfStageBucketStatsSchema.optional()
+  fullTextPipeline: OpsPerfStageBucketStatsSchema.optional(),
+  dbPipeline: OpsPerfStageBucketStatsSchema.optional()
 });
 export type DatasetSearchBucketStages = z.infer<typeof DatasetSearchBucketStagesSchema>;
 
-export const DatasetSearchEventStagesSchema = z.object({
-  queryExtension: OpsPerfEventStageTimingSchema.optional(),
-  imageCaption: OpsPerfEventStageTimingSchema.optional(),
-  filter: OpsPerfEventStageTimingSchema.optional(),
-  embeddingApi: OpsPerfEventStageTimingSchema.optional(),
-  vectorRoute: OpsPerfEventStageTimingSchema.optional(),
-  vectorLeaseWait: OpsPerfEventStageTimingSchema.optional(),
-  vectorRecall: OpsPerfEventStageTimingSchema.optional(),
-  vectorHydrate: OpsPerfEventStageTimingSchema.optional(),
-  fullTextRecall: OpsPerfEventStageTimingSchema.optional(),
-  fullTextHydrate: OpsPerfEventStageTimingSchema.optional(),
-  rerank: OpsPerfEventStageTimingSchema.optional(),
-  postProcess: OpsPerfEventStageTimingSchema.optional()
-});
+export const DatasetSearchEventStagesSchema = z
+  .object({
+    queryExtension: OpsPerfEventStageTimingSchema.optional().meta({
+      description: '问题优化阶段耗时'
+    }),
+    imageCaption: OpsPerfEventStageTimingSchema.optional().meta({
+      description: '图片描述生成阶段耗时'
+    }),
+    filter: OpsPerfEventStageTimingSchema.optional().meta({
+      description: '集合权限与元数据过滤阶段耗时'
+    }),
+    embeddingApi: OpsPerfEventStageTimingSchema.optional().meta({
+      description: '向量化接口调用阶段耗时'
+    }),
+    vectorRoute: OpsPerfEventStageTimingSchema.optional().meta({
+      description: '向量索引路由快照准备阶段耗时'
+    }),
+    vectorLeaseWait: OpsPerfEventStageTimingSchema.optional().meta({
+      description: '向量并发排队（Redis Lease）耗时'
+    }),
+    vectorRecall: OpsPerfEventStageTimingSchema.optional().meta({
+      description: '向量库召回查询阶段耗时'
+    }),
+    vectorHydrate: OpsPerfEventStageTimingSchema.optional().meta({
+      description: '向量结果 Mongo 回表阶段耗时'
+    }),
+    fullTextRecall: OpsPerfEventStageTimingSchema.optional().meta({
+      description: '全文检索查询阶段耗时'
+    }),
+    fullTextHydrate: OpsPerfEventStageTimingSchema.optional().meta({
+      description: '全文结果 Mongo 回表阶段耗时'
+    }),
+    rerank: OpsPerfEventStageTimingSchema.optional().meta({ description: '搜索结果重排阶段耗时' }),
+    postProcess: OpsPerfEventStageTimingSchema.optional().meta({
+      description: '融合去重、裁剪与装饰后处理阶段耗时'
+    })
+  })
+  .meta({ description: '单次检索各执行阶段的相对起点与耗时明细' });
 export type DatasetSearchEventStages = z.infer<typeof DatasetSearchEventStagesSchema>;
 
 export const DatasetSearchMetricsSchema = z.object({
@@ -94,28 +142,111 @@ export const DatasetSearchMetricsSchema = z.object({
 });
 export type DatasetSearchMetrics = z.infer<typeof DatasetSearchMetricsSchema>;
 
-export const DatasetSearchEventDetailSchema = z.object({
-  totalIndexCount: z.number().nonnegative().optional(),
-  maxDatasetIndexCount: z.number().nonnegative().optional(),
-  datasetCount: z.number().int().nonnegative().optional(),
-  queryCount: z.number().int().nonnegative().optional(),
-  queryChars: z.number().int().nonnegative().optional(),
-  imageQueryCount: z.number().int().nonnegative().optional(),
-  hasMetadataFilter: z.boolean().optional(),
-  hasPermissionFilter: z.boolean().optional(),
-  filterCollectionCount: z.number().int().nonnegative().optional(),
-  forbidCollectionCount: z.number().int().nonnegative().optional(),
-  candidateCount: z.number().int().nonnegative().optional(),
-  resultCount: z.number().int().nonnegative().optional(),
-  embeddingModel: z.string().optional(),
-  rerankModel: z.string().optional(),
-  extensionModel: z.string().optional(),
-  rerankFallback: z.boolean().optional(),
-  synonymRerankTriggered: z.boolean().optional(),
-  pgUsesHnsw: z.boolean().optional(),
-  pgMaxRows: z.number().nonnegative().optional(),
-  hnswEfSearch: z.number().int().nonnegative().optional()
-});
+export const DatasetSearchEventDetailSchema = z
+  .object({
+    totalIndexCount: z
+      .number()
+      .nonnegative()
+      .optional()
+      .meta({ description: '覆盖知识库总向量索引行数', example: 150000 }),
+    maxDatasetIndexCount: z
+      .number()
+      .nonnegative()
+      .optional()
+      .meta({ description: '单库最大向量索引行数', example: 120000 }),
+    datasetCount: z
+      .number()
+      .int()
+      .nonnegative()
+      .optional()
+      .meta({ description: '参与本次检索的知识库数量', example: 2 }),
+    queryCount: z
+      .number()
+      .int()
+      .nonnegative()
+      .optional()
+      .meta({ description: '检索词数量（含问题优化扩展）', example: 3 }),
+    queryChars: z
+      .number()
+      .int()
+      .nonnegative()
+      .optional()
+      .meta({ description: '原始输入问题字符长度（脱敏）', example: 28 }),
+    imageQueryCount: z
+      .number()
+      .int()
+      .nonnegative()
+      .optional()
+      .meta({ description: '图片查询数量', example: 0 }),
+    hasMetadataFilter: z
+      .boolean()
+      .optional()
+      .meta({ description: '是否启用元数据过滤', example: false }),
+    hasPermissionFilter: z
+      .boolean()
+      .optional()
+      .meta({ description: '是否应用集合权限过滤', example: true }),
+    filterCollectionCount: z
+      .number()
+      .int()
+      .nonnegative()
+      .optional()
+      .meta({ description: '白名单过滤集合数', example: 12 }),
+    forbidCollectionCount: z
+      .number()
+      .int()
+      .nonnegative()
+      .optional()
+      .meta({ description: '禁用过滤集合数', example: 0 }),
+    candidateCount: z
+      .number()
+      .int()
+      .nonnegative()
+      .optional()
+      .meta({ description: '重排或阈值过滤前候选分块数', example: 60 }),
+    resultCount: z
+      .number()
+      .int()
+      .nonnegative()
+      .optional()
+      .meta({ description: '最终返回命中分块数', example: 8 }),
+    embeddingModel: z
+      .string()
+      .optional()
+      .meta({ description: '向量化模型标识', example: 'text-embedding-3-small' }),
+    rerankModel: z
+      .string()
+      .optional()
+      .meta({ description: '重排模型标识', example: 'bge-reranker-v2-m3' }),
+    extensionModel: z
+      .string()
+      .optional()
+      .meta({ description: '问题优化模型标识', example: 'qwen-turbo' }),
+    rerankFallback: z
+      .boolean()
+      .optional()
+      .meta({ description: '本次检索是否发生重排降级', example: false }),
+    synonymRerankTriggered: z
+      .boolean()
+      .optional()
+      .meta({ description: '本次检索是否触发同义词次路重排', example: false }),
+    pgUsesHnsw: z
+      .boolean()
+      .optional()
+      .meta({ description: 'PG 向量查询是否命中 HNSW 索引', example: true }),
+    pgMaxRows: z
+      .number()
+      .nonnegative()
+      .optional()
+      .meta({ description: 'PG HNSW 最大扫描元组数上限', example: 40000 }),
+    hnswEfSearch: z
+      .number()
+      .int()
+      .nonnegative()
+      .optional()
+      .meta({ description: '本次 PG HNSW ef_search 参数值', example: 200 })
+  })
+  .meta({ description: '脱敏后的单次检索诊断上下文（不含用户查询或分块正文）' });
 export type DatasetSearchEventDetail = z.infer<typeof DatasetSearchEventDetailSchema>;
 
 /* ==================== Domain 2: dataset.rerank ==================== */
@@ -216,8 +347,7 @@ const OpsPerfEventBaseSchema = z.object({
   expireAt: z.date(),
   reason: z.enum(OpsPerfEventReasonValues),
   status: z.enum(OpsPerfEventStatusValues),
-  errorCode: z.string().optional(),
-  errorMessage: z.string().optional(),
+  errorCode: z.enum(OpsPerfErrorCodeValues).optional(),
   teamId: z.string().optional(),
   resourceIds: z.array(z.string()).default([]),
   totalMs: z.number().nonnegative()

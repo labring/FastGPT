@@ -118,7 +118,8 @@ export const queryExtension = async ({
   embeddingModel,
   userKey,
   teamId,
-  generateCount = 10 // 生成优化问题集的数量，默认为10个
+  generateCount = 10, // 生成优化问题集的数量，默认为10个
+  onPerfFallback
 }: {
   chatBg?: string;
   query: string;
@@ -128,6 +129,7 @@ export const queryExtension = async ({
   userKey?: OpenaiAccountType;
   teamId: string;
   generateCount?: number;
+  onPerfFallback?: (code: 'QUERY_EXTENSION_FALLBACK' | 'QUERY_EXTENSION_ERROR') => void;
 }): Promise<{
   rawQuery: string;
   extensionQueries: string[];
@@ -183,6 +185,11 @@ export const queryExtension = async ({
         extensionModel: modelLabel
       }
     });
+    if (status === 'error') {
+      onPerfFallback?.('QUERY_EXTENSION_ERROR');
+    } else if (status === 'degraded') {
+      onPerfFallback?.('QUERY_EXTENSION_FALLBACK');
+    }
   };
   // 1. Request model
   const filterHistories = await filterGPTMessageByMaxContext({
