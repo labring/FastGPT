@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 
 const mocks = vi.hoisted(() => ({
   authUserPer: vi.fn(),
@@ -41,6 +42,26 @@ describe('system channel import authorization', () => {
       apply({ body } as Parameters<typeof apply>[0], {} as Parameters<typeof apply>[1])
     ).rejects.toBe(ModelErrEnum.rootOnlyPermit);
     expect(mocks.preview).not.toHaveBeenCalled();
+    expect(mocks.apply).not.toHaveBeenCalled();
+  });
+
+  it('rejects requests that try to associate an existing model through import', async () => {
+    mocks.authUserPer.mockResolvedValue({ ...actor, isRoot: true });
+    const body = {
+      ...query,
+      operations: [
+        {
+          action: 'associate',
+          providerModelSlug: 'vendor/model',
+          modelId: '68ad85a7463006c963799a05',
+          isActive: true
+        }
+      ]
+    };
+
+    await expect(
+      apply({ body } as Parameters<typeof apply>[0], {} as Parameters<typeof apply>[1])
+    ).rejects.toBeInstanceOf(ApiRequestInputParseError);
     expect(mocks.apply).not.toHaveBeenCalled();
   });
 

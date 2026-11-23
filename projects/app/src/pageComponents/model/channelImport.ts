@@ -8,7 +8,6 @@ import { mergeChannelTemplateModelData } from '@fastgpt/global/core/ai/model/uti
 import type {
   ApplyChangesBody,
   ImportPreviewItem,
-  ModelConfigListItem,
   PreviewImportFromChannelResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
 
@@ -32,13 +31,11 @@ export const filterChannelImportPreviewItems = ({
   items,
   modelType,
   search,
-  installedModelsById,
   getModelType
 }: {
   items: ReadonlyArray<ChannelImportRow>;
   modelType: ModelTypeEnum | '';
   search: string;
-  installedModelsById: ReadonlyMap<string, Pick<ModelConfigListItem, 'model' | 'name'>>;
   getModelType: (row: ChannelImportRow) => ModelTypeEnum | undefined;
 }) => {
   const query = search.trim().toLowerCase();
@@ -48,11 +45,7 @@ export const filterChannelImportPreviewItems = ({
     if (modelType && getModelType(row) !== modelType) return false;
     if (!query) return true;
 
-    const candidate = getChannelImportCandidate(row);
-    const modelData =
-      candidate.category === 'template' || candidate.category === 'blank'
-        ? candidate.modelData
-        : installedModelsById.get(candidate.modelId);
+    const { modelData } = getChannelImportCandidate(row);
     return (
       includesQuery(row.providerModelSlug) ||
       includesQuery(modelData?.name) ||
@@ -147,7 +140,6 @@ export const buildBlankChannelModelData = ({
 /** Translate one selected preview row into the batch API operation it owns. */
 export const buildChannelImportOperation = ({
   providerModelSlug,
-  item,
   modelData,
   templateData,
   contextLength,
@@ -155,7 +147,6 @@ export const buildChannelImportOperation = ({
   isActive = true
 }: {
   providerModelSlug: string;
-  item: ChannelImportItem;
   modelData?: AIModelDocumentDataType;
   templateData?: AIModelDocumentDataType;
   contextLength?: number;
@@ -177,15 +168,7 @@ export const buildChannelImportOperation = ({
       isActive
     };
   }
-  if (item.category === 'existing' || item.category === 'associated') {
-    return {
-      action: 'associate',
-      providerModelSlug,
-      modelId: item.modelId,
-      isActive
-    };
-  }
-  if (item.category === 'blank' && modelData) {
+  if (modelData) {
     return {
       action: 'create',
       providerModelSlug,

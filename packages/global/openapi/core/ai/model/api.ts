@@ -359,7 +359,7 @@ export type GetModelTemplatesResponse = z.infer<typeof GetModelTemplatesResponse
  * API: 从系统渠道预览模型导入
  * Route: GET /api/core/ai/model/previewImportFromChannel
  * Method: GET
- * Description: 读取渠道上游模型目录并与现有模型及模板匹配
+ * Description: 筛除系统已有模型，并将渠道上游模型与模板匹配
  * Tags: ['模型管理', 'Read']
  * ============================================================================ */
 
@@ -395,20 +395,6 @@ const ImportPreviewContextLengthSchema = IntSchema.nonnegative().meta({
 });
 
 export const ImportPreviewItemSchema = z.discriminatedUnion('category', [
-  z.object({
-    category: z.literal('associated').meta({
-      example: 'associated',
-      description: '目标渠道已关联的本地模型'
-    }),
-    modelId: ImportPreviewModelIdSchema
-  }),
-  z.object({
-    category: z.literal('existing').meta({
-      example: 'existing',
-      description: '尚未关联目标渠道的现有模型'
-    }),
-    modelId: ImportPreviewModelIdSchema
-  }),
   z.object({
     category: z.literal('template').meta({ example: 'template', description: '命中本地模型模板' }),
     template: ModelTemplateReferenceSchema,
@@ -472,17 +458,13 @@ export const PreviewImportFromChannelResponseSchema = z.object({
           .array(ImportPreviewItemSchema)
           .min(1)
           .meta({
-            example: [{ category: 'existing', modelId: '68ad85a7463006c963799a05' }],
-            description: '首项为默认候选，新版返回一个模型、模板或空白草稿'
+            example: [{ category: 'blank', modelType: ModelTypeEnum.llm }],
+            description: '首项为默认候选，预览返回匹配模板或空白模板草稿'
           })
       })
     )
     .meta({
       example: [
-        {
-          providerModelSlug: 'openai/gpt-5-mini',
-          candidates: [{ category: 'existing', modelId: '68ad85a7463006c963799a05' }]
-        },
         {
           providerModelSlug: 'openai/gpt-5.4',
           contextLength: 128000,
@@ -510,7 +492,7 @@ export const PreviewImportFromChannelResponseSchema = z.object({
           ]
         }
       ],
-      description: '按 AIProxy 原始模型目录顺序排列；每项提供默认候选'
+      description: '按 AIProxy 原始模型目录顺序排列；仅包含系统尚未配置的模型'
     })
 });
 export type PreviewImportFromChannelResponse = z.infer<
@@ -521,45 +503,30 @@ export type PreviewImportFromChannelResponse = z.infer<
  * API: 应用从系统渠道预览的模型变更
  * Route: POST /api/core/ai/model/applyChanges
  * Method: POST
- * Description: 逐条关联或创建系统模型，并保留每条操作结果
+ * Description: 逐条创建系统模型并关联到目标渠道，返回每条结果
  * Tags: ['模型管理', 'Write']
  * ============================================================================ */
 
-const ApplyChangeSchema = z.discriminatedUnion('action', [
-  z.object({
-    action: z.literal('associate').meta({
-      example: 'associate',
-      description: '将本地模型关联到目标渠道'
-    }),
-    providerModelSlug: ImportProviderModelSlugSchema,
-    modelId: ImportPreviewModelIdSchema,
-    isActive: z.boolean().default(true).meta({
-      example: true,
-      description: '关联后是否启用模型，默认为启用'
-    })
+// 未发布的导入接口已移除 associate；旧开发客户端提交该操作时按不支持的请求处理。
+const ApplyChangeSchema = z.object({
+  action: z.literal('create').meta({ example: 'create', description: '创建模型并关联到目标渠道' }),
+  providerModelSlug: ImportProviderModelSlugSchema,
+  modelData: AIModelDocumentDataSchema.meta({
+    example: {
+      type: ModelTypeEnum.llm,
+      provider: 'openai',
+      model: 'openai/gpt-5.4',
+      name: 'GPT-5.4',
+      scope: 'system',
+      config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 120000 }
+    },
+    description: '需要创建并关联的完整系统模型配置'
   }),
-  z.object({
-    action: z
-      .literal('create')
-      .meta({ example: 'create', description: '创建模型并关联到目标渠道' }),
-    providerModelSlug: ImportProviderModelSlugSchema,
-    modelData: AIModelDocumentDataSchema.meta({
-      example: {
-        type: ModelTypeEnum.llm,
-        provider: 'openai',
-        model: 'openai/gpt-5.4',
-        name: 'GPT-5.4',
-        scope: 'system',
-        config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 120000 }
-      },
-      description: '需要创建并关联的完整系统模型配置'
-    }),
-    isActive: z.boolean().default(true).meta({
-      example: true,
-      description: '创建后是否启用模型，默认为启用'
-    })
+  isActive: z.boolean().default(true).meta({
+    example: true,
+    description: '创建后是否启用模型，默认为启用'
   })
-]);
+});
 
 export const ApplyChangesBodySchema = z.object({
   channelId: IntSchema.positive().meta({ example: 1, description: '目标系统渠道 ID' }),
@@ -580,41 +547,25 @@ export const ApplyChangesBodySchema = z.object({
         isActive: true
       }
     ],
-    description: '按顺序逐条应用的关联或创建操作'
+    description: '按顺序逐条应用的创建操作'
   })
 });
 export type ApplyChangesBody = z.infer<typeof ApplyChangesBodySchema>;
 
 const ApplyChangeResultSchema = z.discriminatedUnion('status', [
   z.object({
-    action: z
-      .enum(['associate', 'create'])
-      .meta({ example: 'create', description: '请求操作类型' }),
+    action: z.literal('create').meta({ example: 'create', description: '请求操作类型' }),
     status: z.literal('success').meta({ example: 'success', description: '操作成功' }),
     modelId: ImportPreviewModelIdSchema,
     providerModelSlug: ImportProviderModelSlugSchema
   }),
   z.object({
-    action: z.literal('associate').meta({ example: 'associate', description: '请求操作类型' }),
-    status: z
-      .literal('skipped')
-      .meta({ example: 'skipped', description: '目标渠道关联、别名与启停状态均未变更' }),
-    modelId: ImportPreviewModelIdSchema,
-    providerModelSlug: ImportProviderModelSlugSchema
-  }),
-  z.object({
-    action: z
-      .enum(['associate', 'create'])
-      .meta({ example: 'create', description: '请求操作类型' }),
+    action: z.literal('create').meta({ example: 'create', description: '请求操作类型' }),
     status: z.literal('failed').meta({ example: 'failed', description: '该条操作失败' }),
     providerModelSlug: ImportProviderModelSlugSchema,
     modelId: ImportPreviewModelIdSchema.optional().meta({
       example: '68ad85a7463006c963799a05',
       description: '已创建模型的稳定 ID；创建后关联失败时返回'
-    }),
-    channelUpdated: z.literal(true).optional().meta({
-      example: true,
-      description: '本条操作失败前，渠道关联或别名已更新'
     }),
     error: z.string().meta({
       example: 'modelAlreadyExists',

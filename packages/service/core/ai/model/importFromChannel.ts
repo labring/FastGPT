@@ -12,12 +12,12 @@ import { getCachedTypeMetas } from './channel/cache';
 import { getChannelModelBindingPatch } from './channel/binding';
 import { resolveChannelForOperation } from './channel/resolve';
 import { getModelProviders } from './provider/controller';
-import { createModel, updateModelStatus } from './service';
+import { createModel } from './service';
 import { refreshModelTemplates } from './template';
 import { classifyChannelModels, inferFastGPTProvider } from './importFromChannelUtils';
 
 /**
- * 读取系统渠道的完整上游目录，并按本地模型、其他渠道关联和模板生成预览。
+ * 读取系统渠道的完整上游目录，筛除已有模型后生成模板导入预览。
  */
 export const previewImportFromChannel = async ({
   channelId,
@@ -80,63 +80,39 @@ export const applyChangesFromChannel = async ({
   await resolveChannelForOperation({ id: channelId, channelType: 'system', tmbId });
   if (operations.length === 0) return { results: [] };
 
-  // 2. 只读取一次模型快照，按稳定 ID 查找 associate 的来源模型。
-  const models = (await getSystemModelHandle()).getSystemModels();
-  const modelById = new Map(models.map((model) => [model.modelId, model]));
   const results: ApplyChangesResponse['results'] = [];
   const readChannel = () =>
     resolveChannelForOperation({ id: channelId, channelType: 'system', tmbId });
 
-  for (const operation of operations) {
-    const { providerModelSlug, isActive } = operation;
-    let modelId = operation.action === 'associate' ? operation.modelId : undefined;
-    let channelUpdated = false;
+  for (const { providerModelSlug, modelData, isActive } of operations) {
+    let modelId: string | undefined;
     try {
-      // 每条都用当前渠道配置校验冲突。创建前校验一次，提交后重读再生成写入。
-      const model =
-        operation.action === 'create' ? providerModelSlug : modelById.get(operation.modelId)?.model;
-      if (model === undefined) throw new UserError(ModelErrEnum.unExist);
-      const binding = { model, upstreamModel: providerModelSlug };
-      let patch = getChannelModelBindingPatch({ channel: await readChannel(), ...binding });
-      if (operation.action === 'create') {
-        const createdModel = await createModel({
-          modelData: { ...operation.modelData, model, scope: ModelScopeEnum.system, isActive },
-          channelType: 'system',
-          tmbId,
-          teamId
-        });
-        // 后续渠道写入失败时仍返回已创建的模型 ID。
-        modelId = createdModel.modelId;
-        patch = getChannelModelBindingPatch({ channel: await readChannel(), ...binding });
-      }
-      if (patch) {
-        await aiProxyClient.system.channels.update(channelId, patch);
-        channelUpdated = true;
-      }
+      // 创建前校验渠道冲突，创建后重读渠道以保留最新配置。
+      const binding = { model: providerModelSlug, upstreamModel: providerModelSlug };
+      getChannelModelBindingPatch({ channel: await readChannel(), ...binding });
+      const createdModel = await createModel({
+        modelData: {
+          ...modelData,
+          model: providerModelSlug,
+          scope: ModelScopeEnum.system,
+          isActive
+        },
+        channelType: 'system',
+        tmbId,
+        teamId
+      });
+      modelId = createdModel.modelId;
+      const patch = getChannelModelBindingPatch({ channel: await readChannel(), ...binding });
+      if (patch) await aiProxyClient.system.channels.update(channelId, patch);
 
-      if (!modelId) throw new UserError(ModelErrEnum.invalidModelConfig);
-      const statusChanged =
-        operation.action === 'associate' &&
-        (await updateModelStatus({
-          modelIds: [operation.modelId],
-          isActive,
-          channelType: 'system',
-          tmbId,
-          teamId
-        }));
-      const result = { modelId, providerModelSlug };
-      results.push(
-        operation.action === 'associate' && !channelUpdated && !statusChanged
-          ? { ...result, action: 'associate', status: 'skipped' }
-          : { ...result, action: operation.action, status: 'success' }
-      );
+      results.push({ action: 'create', status: 'success', providerModelSlug, modelId });
     } catch (error) {
       results.push({
-        action: operation.action,
+        action: 'create',
         status: 'failed',
-        providerModelSlug: operation.providerModelSlug,
+        providerModelSlug,
+        // 渠道写入失败时仍返回已创建的模型 ID。
         ...(modelId === undefined ? {} : { modelId }),
-        ...(channelUpdated && { channelUpdated: true as const }),
         error: error instanceof Error ? error.message : String(error)
       });
     }

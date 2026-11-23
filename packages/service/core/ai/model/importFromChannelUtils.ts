@@ -9,7 +9,6 @@ import type {
 import type { AiproxyChannelModel } from '../../../thirdProvider/aiproxy/type';
 
 type LocalModel = Pick<AIModelDocumentDataType, 'model'> & { modelId: string };
-type LocalMatchCategory = Extract<ImportPreviewItem, { modelId: string }>['category'];
 
 /** 仅当渠道协议名唯一匹配 FastGPT provider 展示名时返回稳定 provider ID。 */
 export const inferFastGPTProvider = ({
@@ -132,7 +131,7 @@ export const createBlankModelData = (
   };
 };
 
-/** 优先分配目标渠道显式别名和唯一精确/后缀模型；其他上游项匹配模板或空白草稿。 */
+/** 过滤系统模型的目标渠道别名及精确/后缀匹配；其余上游项匹配模板或空白草稿。 */
 export const classifyChannelModels = ({
   channelModels,
   localModels,
@@ -165,13 +164,14 @@ export const classifyChannelModels = ({
 
   const targetModelNames = new Set(targetChannelModels);
   const otherModelNames = new Set(otherChannelModels);
+  const installedModelNames = new Set(localModels.map(({ model }) => model));
   const localMatches = channelModels.flatMap((channelModel, channelModelIndex) =>
     localModels.flatMap(({ modelId, model }) => {
-      const category: LocalMatchCategory = targetModelNames.has(model) ? 'associated' : 'existing';
-      const mappedSlug = category === 'associated' ? targetModelMappings[model] : undefined;
+      const isOnTargetChannel = targetModelNames.has(model);
+      const mappedSlug = isOnTargetChannel ? targetModelMappings[model] : undefined;
 
       // 其他渠道占用的模型不跨渠道复用；目标渠道的显式映射优先于名称推断。
-      if (category === 'existing' && otherModelNames.has(model) && channelModel.id !== model) {
+      if (!isOnTargetChannel && otherModelNames.has(model) && channelModel.id !== model) {
         return [];
       }
 
@@ -183,10 +183,10 @@ export const classifyChannelModels = ({
             : undefined;
       if (rank === undefined) return [];
 
-      return [{ channelModelIndex, key: `model:${modelId}`, model, category, modelId, rank }];
+      return [{ channelModelIndex, model, modelId, rank }];
     })
   );
-  const localMatchByChannelModelIndex = new Map<number, (typeof localMatches)[number]>();
+  const matchedChannelModelIndexes = new Set<number>();
   const matchedLocalModelIds = new Set<string>();
 
   // 显式别名、精确和更长后缀优先；同精度按上游目录顺序稳定分配。
@@ -198,15 +198,22 @@ export const classifyChannelModels = ({
   )) {
     if (
       matchedLocalModelIds.has(match.modelId) ||
-      localMatchByChannelModelIndex.has(match.channelModelIndex)
+      matchedChannelModelIndexes.has(match.channelModelIndex)
     ) {
       continue;
     }
     matchedLocalModelIds.add(match.modelId);
-    localMatchByChannelModelIndex.set(match.channelModelIndex, match);
+    matchedChannelModelIndexes.add(match.channelModelIndex);
   }
 
-  return channelModels.map((channelModel, channelModelIndex) => {
+  return channelModels.flatMap((channelModel, channelModelIndex) => {
+    if (
+      installedModelNames.has(channelModel.id) ||
+      matchedChannelModelIndexes.has(channelModelIndex)
+    ) {
+      return [];
+    }
+
     const contextLength = getContextLength(channelModel);
     const maxCompletionTokens = getMaxCompletionTokens(channelModel);
     const rowData = {
@@ -214,14 +221,6 @@ export const classifyChannelModels = ({
       ...(contextLength === undefined ? {} : { contextLength }),
       ...(maxCompletionTokens === undefined ? {} : { maxCompletionTokens })
     };
-    const localMatch = localMatchByChannelModelIndex.get(channelModelIndex);
-    if (localMatch) {
-      return {
-        ...rowData,
-        candidates: [{ category: localMatch.category, modelId: localMatch.modelId }]
-      };
-    }
-
     let bestMatch: { template: AIModelDocumentDataType; rank: number } | undefined;
     for (const template of templates) {
       const rank = getTemplateMatchRank(channelModel.id, template.model);

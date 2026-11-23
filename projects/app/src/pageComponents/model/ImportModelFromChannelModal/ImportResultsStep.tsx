@@ -9,7 +9,7 @@ import { useStaticVirtualList } from '@fastgpt/web/hooks/useVirtualList';
 import { enableMapSet, produce, type Draft } from 'immer';
 import { useRef, useState } from 'react';
 import { postApplyChannelImportChanges } from '@/web/core/ai/model/api';
-import StepModal from './StepModal';
+import StepContent from './StepContent';
 import type { ChannelImportPlan, RowResult } from './types';
 
 enableMapSet();
@@ -32,28 +32,12 @@ const ImportResultsTable = ({
 }) => {
   const { containerRef, virtualDataList, topPlaceholderHeight, bottomPlaceholderHeight } =
     useStaticVirtualList({ data: rows, itemHeight: 56, overscan: 8 });
-  const getCategoryLabel = (category: (typeof rows)[number]['category']) => {
-    switch (category) {
-      case 'associated':
-        return t('config_model:channel_import_category_associated');
-      case 'existing':
-        return t('config_model:channel_import_category_existing');
-      case 'template':
-        return t('config_model:channel_import_category_template');
-      case 'blank':
-        return t('config_model:channel_import_category_blank');
-    }
-  };
   const getResultLabel = (status?: RowResult['status']) => {
     switch (status) {
       case 'success':
         return t('config_model:channel_import_result_success');
-      case 'skipped':
-        return t('config_model:channel_import_result_skipped');
       case 'failed':
         return t('config_model:channel_import_result_failed');
-      case 'partial':
-        return t('config_model:channel_import_result_channel_updated');
       case 'unknown':
         return t('config_model:channel_import_result_unknown');
       default:
@@ -113,7 +97,7 @@ const ImportResultsTable = ({
                   </Td>
                   <Td>
                     <MyTag type="borderFill" colorSchema="gray">
-                      {getCategoryLabel(row.category)}
+                      {t('config_model:channel_import_category_template')}
                     </MyTag>
                   </Td>
                   <Td fontSize="sm">
@@ -148,16 +132,18 @@ const ImportResultsStep = ({
   channelId,
   channel,
   plan,
-  onClose,
+  onSubmittingChange,
   onPrevious,
-  onSuccess
+  onRefresh,
+  onImportSuccess
 }: {
   channelId: number;
   channel?: ModelChannelSummary;
   plan: ChannelImportPlan;
-  onClose: () => void;
+  onSubmittingChange: (submitting: boolean) => void;
   onPrevious: () => void;
-  onSuccess: () => Promise<void>;
+  onRefresh: () => Promise<void>;
+  onImportSuccess: () => void;
 }) => {
   const { t } = useSafeTranslation();
   const [state, setState] = useState<ResultsState>(() => ({
@@ -175,6 +161,7 @@ const ImportResultsStep = ({
     if (importStartedRef.current || pendingRows.length === 0) return;
     // 同步锁住入口，避免 React 更新按钮状态前重复提交。
     importStartedRef.current = true;
+    onSubmittingChange(true);
 
     updateState((draft) => {
       draft.hasStartedImport = true;
@@ -192,8 +179,8 @@ const ImportResultsStep = ({
     const operations = pendingRows.flatMap((row) => (row.operation ? [row.operation] : []));
 
     try {
+      let shouldRefresh = false;
       if (operations.length > 0) {
-        let shouldRefresh = false;
         try {
           const response = await postApplyChannelImportChanges({
             channelId,
@@ -205,17 +192,12 @@ const ImportResultsStep = ({
           );
           for (const operation of operations) {
             const result = resultBySlug.get(operation.providerModelSlug);
-            const channelUpdated = result?.status === 'failed' && result.channelUpdated;
-            shouldRefresh ||=
-              !result ||
-              result.status !== 'failed' ||
-              channelUpdated ||
-              (result.action === 'create' && result.modelId !== undefined);
+            shouldRefresh ||= !result || result.status !== 'failed' || result.modelId !== undefined;
             nextResults.set(
               operation.providerModelSlug,
               result
                 ? {
-                    status: channelUpdated ? 'partial' : result.status,
+                    status: result.status,
                     error: result.status === 'failed' ? result.error : undefined
                   }
                 : {
@@ -233,8 +215,16 @@ const ImportResultsStep = ({
             });
           }
         }
-        if (shouldRefresh) await onSuccess().catch(() => {});
       }
+
+      if (
+        pendingRows.every((row) => nextResults.get(row.providerModelSlug)?.status === 'success')
+      ) {
+        onImportSuccess();
+        void onRefresh().catch(() => {});
+        return;
+      }
+      if (shouldRefresh) await onRefresh().catch(() => {});
 
       updateState((draft) => {
         for (const [providerModelSlug, result] of nextResults) {
@@ -242,6 +232,7 @@ const ImportResultsStep = ({
         }
       });
     } finally {
+      onSubmittingChange(false);
       updateState((draft) => {
         draft.submitting = false;
       });
@@ -249,27 +240,16 @@ const ImportResultsStep = ({
   };
 
   return (
-    <StepModal
-      isOpen
-      title={t('config_model:channel_import_import_step')}
-      onClose={state.submitting ? undefined : onClose}
-      height="min(560px, calc(100vh - 32px))"
+    <StepContent
       footer={
-        state.hasStartedImport ? (
-          <Button onClick={onClose} isLoading={state.submitting} isDisabled={state.submitting}>
-            {t('config_model:channel_import_done')}
-          </Button>
-        ) : (
+        (!state.hasStartedImport || state.submitting) && (
           <>
-            <Button variant="whiteBase" onClick={onClose}>
-              {t('common:Cancel')}
-            </Button>
-            <Button variant="whiteBase" onClick={onPrevious}>
+            <Button variant="whiteBase" onClick={onPrevious} isDisabled={state.submitting}>
               {t('config_model:previous_step')}
             </Button>
             {pendingRows.length > 0 && (
-              <Button onClick={() => void applyImport()}>
-                {t('config_model:channel_import_apply')}
+              <Button onClick={() => void applyImport()} isLoading={state.submitting}>
+                {t('common:Confirm')}
               </Button>
             )}
           </>
@@ -289,7 +269,7 @@ const ImportResultsStep = ({
           <ImportResultsTable rows={plan.rows} rowResults={state.rowResults} t={t} />
         )}
       </Flex>
-    </StepModal>
+    </StepContent>
   );
 };
 

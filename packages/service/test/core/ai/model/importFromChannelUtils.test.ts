@@ -24,7 +24,7 @@ const createTemplate = (overrides: Partial<AIModelDocumentDataType> = {}) =>
   }) as AIModelDocumentDataType;
 
 describe('channel model import matching', () => {
-  it('prefers the most precise local model and uses broad matching only for templates', () => {
+  it('excludes local matches before looking for a template', () => {
     const exactTemplate = classifyChannelModels({
       channelModels: [{ id: 'vendor/gpt-4o' }],
       localModels: [{ modelId: 'associated', model: 'gpt-4o' }],
@@ -33,9 +33,7 @@ describe('channel model import matching', () => {
       otherChannelModels: [],
       templates: [createTemplate({ model: 'vendor/gpt-4o' })]
     });
-    expect(exactTemplate[0].candidates).toEqual([
-      { category: 'associated', modelId: 'associated' }
-    ]);
+    expect(exactTemplate).toEqual([]);
 
     const existingModel = classifyChannelModels({
       channelModels: [{ id: 'vendor/gpt-4o' }],
@@ -45,7 +43,7 @@ describe('channel model import matching', () => {
       otherChannelModels: [],
       templates: [createTemplate({ model: 'vendor/gpt-4o' })]
     });
-    expect(existingModel[0].candidates).toEqual([{ category: 'existing', modelId: 'existing' }]);
+    expect(existingModel).toEqual([]);
 
     const templateFallback = classifyChannelModels({
       channelModels: [{ id: 'openai/gpt-4o' }],
@@ -84,7 +82,7 @@ describe('channel model import matching', () => {
     });
   });
 
-  it('assigns a local model to one best upstream row and routes the rest to templates', () => {
+  it('filters the best upstream match and keeps other rows available for import', () => {
     const items = classifyChannelModels({
       channelModels: [{ id: 'gpt-4o' }, { id: 'vendor/gpt-4o' }],
       localModels: [{ modelId: 'gpt-4o', model: 'gpt-4o' }],
@@ -93,8 +91,8 @@ describe('channel model import matching', () => {
       otherChannelModels: [],
       templates: [createTemplate({ model: 'vendor/gpt-4o' })]
     });
-    expect(items[0].candidates).toEqual([{ category: 'existing', modelId: 'gpt-4o' }]);
-    expect(items[1].candidates[0]).toMatchObject({
+    expect(items.map(({ providerModelSlug }) => providerModelSlug)).toEqual(['vendor/gpt-4o']);
+    expect(items[0].candidates[0]).toMatchObject({
       category: 'template',
       template: { model: 'vendor/gpt-4o' }
     });
@@ -107,8 +105,10 @@ describe('channel model import matching', () => {
       otherChannelModels: [],
       templates: [createTemplate({ model: 'vendor-b/gpt-4o' })]
     });
-    expect(tiedSuffix[0].candidates).toEqual([{ category: 'existing', modelId: 'gpt-4o' }]);
-    expect(tiedSuffix[1].candidates[0]).toMatchObject({
+    expect(tiedSuffix.map(({ providerModelSlug }) => providerModelSlug)).toEqual([
+      'vendor-b/gpt-4o'
+    ]);
+    expect(tiedSuffix[0].candidates[0]).toMatchObject({
       category: 'template',
       template: { model: 'vendor-b/gpt-4o' }
     });
@@ -124,7 +124,7 @@ describe('channel model import matching', () => {
       otherChannelModels: [],
       templates: []
     });
-    expect(mostSpecific[0].candidates).toEqual([{ category: 'existing', modelId: 'long' }]);
+    expect(mostSpecific).toEqual([]);
   });
 
   it('respects an existing target alias and sends conflicting aliases to templates', () => {
@@ -136,7 +136,7 @@ describe('channel model import matching', () => {
       otherChannelModels: [],
       templates: []
     });
-    expect(mapped[0].candidates).toEqual([{ category: 'associated', modelId: 'associated' }]);
+    expect(mapped).toEqual([]);
 
     const conflicting = classifyChannelModels({
       channelModels: [{ id: 'vendor/internal-name' }],
@@ -152,7 +152,7 @@ describe('channel model import matching', () => {
     });
   });
 
-  it('classifies associated, existing, template, and blank entries', () => {
+  it('filters installed entries and preserves the template and blank drafts', () => {
     const items = classifyChannelModels({
       channelModels: [
         { id: 'gpt-4o' },
@@ -183,14 +183,12 @@ describe('channel model import matching', () => {
     });
 
     expect(items.map((item) => item.candidates[0].category)).toEqual([
-      'associated',
-      'existing',
       'blank',
       'template',
       'blank'
     ]);
 
-    const templateItem = items[3].candidates[0];
+    const templateItem = items[1].candidates[0];
     expect(templateItem).toMatchObject({
       category: 'template',
       modelData: {
@@ -214,8 +212,8 @@ describe('channel model import matching', () => {
       expect(templateItem.blankModelData).not.toHaveProperty('inputPrice');
       expect(templateItem.blankModelData).not.toHaveProperty('outputPrice');
     }
-    const blankItem = items[4].candidates[0];
-    expect(items[4].contextLength).toBe(48000);
+    const blankItem = items[2].candidates[0];
+    expect(items[2].contextLength).toBe(48000);
     expect(blankItem.category).toBe('blank');
     expect(blankItem).toMatchObject({ modelData: { provider: 'provider-from-channel' } });
     if (blankItem.category === 'blank') expect(blankItem.modelData).not.toHaveProperty('config');

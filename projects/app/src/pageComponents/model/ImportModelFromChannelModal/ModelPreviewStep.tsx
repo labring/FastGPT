@@ -42,7 +42,7 @@ import {
   getChannelImportCandidate
 } from '../channelImport';
 import { useModelChannelTest } from '../useModelChannelTest';
-import StepModal from './StepModal';
+import StepContent from './StepContent';
 import type { ChannelImportPlan, ChannelImportPlanRow, ImportPreviewRow } from './types';
 
 enableMapSet();
@@ -60,7 +60,7 @@ type PreviewState = {
 };
 
 type ImportModelTestTarget = Parameters<typeof useModelChannelTest>[0]['target'];
-type PreviewModelData = AIModelDocumentDataType | ModelConfigListItem | undefined;
+type PreviewModelData = AIModelDocumentDataType | undefined;
 type RowSelection = {
   selected?: boolean;
   presetKey?: string;
@@ -79,8 +79,6 @@ type RowCatalog = {
   availableTemplates: AIModelDocumentDataType[];
   templateMap: Map<string, AIModelDocumentDataType>;
   providerById: Map<string, ModelProviderItemType>;
-  installedModelById: Map<string, ModelConfigListItem>;
-  installedModelNames: ReadonlySet<string>;
   availableTypes: { value: ModelTypeEnum; label: string }[];
   createModelData: (type: ModelTypeEnum) => AIModelDocumentDataType;
   channel?: ModelChannelSummary;
@@ -91,14 +89,6 @@ const noPreviewItems: ImportPreviewRow[] = [];
 const blankTemplateValue = '__blank__';
 const getTemplateKey = ({ type, model }: { type: ModelTypeEnum; model: string }) =>
   [type, model].join(':');
-const getCurrentModelKey = (modelId: string) => `__current__:${modelId}`;
-const getDefaultPresetKey = (item: ImportPreviewItem) => {
-  if (item.category === 'blank') return blankTemplateValue;
-  if (item.category === 'template') return getTemplateKey(item.template);
-  return getCurrentModelKey(item.modelId);
-};
-const isCurrentModelSelection = (item: ImportPreviewItem, key: string) =>
-  'modelId' in item && key === getCurrentModelKey(item.modelId);
 const getTemplateDataForKey = ({
   item,
   key,
@@ -112,8 +102,6 @@ const getTemplateDataForKey = ({
   if (item.category === 'template' && key === getTemplateKey(item.template)) return item.modelData;
   return templateMap.get(key);
 };
-const getModelDisplayLabel = (modelData: AIModelDocumentDataType | ModelConfigListItem) =>
-  modelData.name?.trim() ?? '';
 const buildBlankModelData = ({
   row,
   item,
@@ -125,15 +113,12 @@ const buildBlankModelData = ({
   modelType?: ModelTypeEnum;
   createModelData: (type: ModelTypeEnum) => AIModelDocumentDataType;
 }) => {
-  const draft =
-    item.category === 'blank' || item.category === 'template'
-      ? getBlankChannelImportDraft(item)
-      : undefined;
+  const draft = getBlankChannelImportDraft(item);
   return buildBlankChannelModelData({
     providerModelSlug: row.providerModelSlug,
     modelType,
-    modelData: draft?.modelData,
-    contextLength: row.contextLength ?? draft?.contextLength,
+    modelData: draft.modelData,
+    contextLength: row.contextLength ?? draft.contextLength,
     maxCompletionTokens: row.maxCompletionTokens,
     createModelData
   });
@@ -147,49 +132,29 @@ export const resolveRowSelection = ({
 }: {
   row: ImportPreviewRow;
   selection?: RowSelection;
-  catalog: Pick<RowCatalog, 'installedModelById' | 'installedModelNames' | 'templateMap'>;
+  catalog: Pick<RowCatalog, 'templateMap'>;
 }) => {
   const item = getChannelImportCandidate(row);
-  const candidateModelData =
-    item.category === 'template'
-      ? item.modelData
-      : 'modelId' in item
-        ? catalog.installedModelById.get(item.modelId)
-        : undefined;
-  const canCreate = !catalog.installedModelNames.has(row.providerModelSlug);
-  const canApply = canCreate || 'modelId' in item;
-  const presetKey = (canCreate ? selection?.presetKey : undefined) ?? getDefaultPresetKey(item);
-  const selectedPresetData =
-    isCurrentModelSelection(item, presetKey) && 'modelId' in item
-      ? catalog.installedModelById.get(item.modelId)
-      : getTemplateDataForKey({ item, key: presetKey, templateMap: catalog.templateMap });
-  const modelType = (() => {
-    if (canCreate && selection?.modelType) return selection.modelType;
-    if (presetKey !== blankTemplateValue) return selectedPresetData?.type;
-    if (item.category === 'blank' || item.category === 'template') {
-      return getBlankChannelImportDraft(item).modelType;
-    }
-    return candidateModelData?.type;
-  })();
-  const isActive = (() => {
-    if (selection?.isActive !== undefined) return selection.isActive;
-    if (item.category === 'associated' && isCurrentModelSelection(item, presetKey)) {
-      return Boolean(
-        candidateModelData && 'isActive' in candidateModelData && candidateModelData.isActive
-      );
-    }
-    return true;
-  })();
+  const presetKey =
+    selection?.presetKey ??
+    (item.category === 'template' ? getTemplateKey(item.template) : blankTemplateValue);
+  const selectedPresetData = getTemplateDataForKey({
+    item,
+    key: presetKey,
+    templateMap: catalog.templateMap
+  });
+  const modelType =
+    selection?.modelType ??
+    (presetKey === blankTemplateValue
+      ? getBlankChannelImportDraft(item).modelType
+      : selectedPresetData?.type);
 
   return {
     item,
-    candidateModelData,
     presetKey,
     selectedPresetData,
     modelType,
-    isActive,
-    canCreate,
-    canApply
+    isActive: selection?.isActive ?? true
   };
 };
 
@@ -239,6 +204,7 @@ const ImportModelTestButton = ({
 
   return (
     <MyIconButton
+      as="button"
       icon="core/chat/sendLight"
       tip={t('config_model:model.test_model')}
       aria-label={t('config_model:model.test_model')}
@@ -246,7 +212,9 @@ const ImportModelTestButton = ({
       isLoading={testingChannelIds.has(channelId)}
       pointerEvents={!target ? 'none' : undefined}
       opacity={!target ? 0.5 : undefined}
-      onClick={() => void testModelChannel(channelId)}
+      onClick={() => {
+        if (target) void testModelChannel(channelId);
+      }}
     />
   );
 };
@@ -279,53 +247,35 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
   const { t } = useSafeTranslation();
   const {
     item,
-    candidateModelData,
     presetKey: selectedPresetKey,
     selectedPresetData,
     modelType,
-    isActive: rowIsActive,
-    canCreate,
-    canApply
+    isActive: rowIsActive
   } = resolveRowSelection({ row, selection, catalog });
   const isBlank = selectedPresetKey === blankTemplateValue;
-  const templateOptions = canCreate ? [...catalog.availableTemplates] : [];
+  const templateOptions = [...catalog.availableTemplates];
   if (
-    canCreate &&
     item.category === 'template' &&
     !templateOptions.some((template) => getTemplateKey(template) === getTemplateKey(item.template))
   ) {
     templateOptions.unshift(item.modelData);
   }
   const templateSelectOptions = [
-    ...(canCreate
-      ? [
-          {
-            value: blankTemplateValue,
-            label: t('config_model:channel_import_blank_template')
-          }
-        ]
-      : []),
-    ...('modelId' in item &&
-    candidateModelData &&
-    (!modelType || candidateModelData.type === modelType)
-      ? [
-          {
-            value: getCurrentModelKey(item.modelId),
-            label: getModelDisplayLabel(candidateModelData),
-            icon: catalog.providerById.get(candidateModelData.provider)?.avatar
-          }
-        ]
-      : []),
+    {
+      value: blankTemplateValue,
+      label: t('config_model:channel_import_blank_template')
+    },
     ...templateOptions
       .filter((template) => !modelType || template.type === modelType)
       .map((template) => ({
         value: getTemplateKey(template),
-        label: getModelDisplayLabel(template),
+        label: template.name.trim(),
         icon: catalog.providerById.get(template.provider)?.avatar
       }))
   ];
-  const candidateAvatar = candidateModelData
-    ? catalog.providerById.get(candidateModelData.provider)?.avatar
+  const candidateProvider = item.modelData?.provider;
+  const candidateAvatar = candidateProvider
+    ? catalog.providerById.get(candidateProvider)?.avatar
     : undefined;
   const modelTestTarget = resolveModelTestTarget({
     row,
@@ -337,11 +287,18 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
   });
 
   return (
-    <Tr h="64.5px">
+    <Tr
+      h="64.5px"
+      cursor="pointer"
+      onClick={(event) => {
+        const target = event.target;
+        if (!(target instanceof Element) || target.closest('button, label, input, select')) return;
+        onToggleSelected(row.providerModelSlug);
+      }}
+    >
       <Td px={3}>
         <Checkbox
-          isChecked={canApply && (selection?.selected ?? false)}
-          isDisabled={!canApply}
+          isChecked={selection?.selected ?? false}
           aria-label={t('config_model:channel_import_model') + ' ' + row.providerModelSlug}
           onChange={() => onToggleSelected(row.providerModelSlug)}
         />
@@ -353,11 +310,6 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
             <Box color="myGray.900" fontWeight="500" noOfLines={1}>
               {row.providerModelSlug}
             </Box>
-            {!canApply && (
-              <Box fontSize="xs" color="myGray.600">
-                {t('common:model_id_already_exists')}
-              </Box>
-            )}
           </Box>
         </Flex>
       </Td>
@@ -369,7 +321,6 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
           value={modelType}
           list={catalog.availableTypes}
           placeholder={t('config_model:channel_import_select_type')}
-          isDisabled={!canCreate}
           isInvalid={selection?.selected && isBlank && !modelType}
           aria-label={t('common:model.model_type')}
           onChange={(selectedType) =>
@@ -390,17 +341,15 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
           list={templateSelectOptions}
           placeholder={t('config_model:select_model_template')}
           isSearch
-          isDisabled={!canCreate || catalog.templateLoading}
+          isDisabled={catalog.templateLoading}
           aria-label={t('config_model:channel_import_preset_template')}
           onChange={(selectedKey) => {
             if (selectedKey === selectedPresetKey) return;
-            const nextPresetData = isCurrentModelSelection(item, selectedKey)
-              ? candidateModelData
-              : getTemplateDataForKey({
-                  item,
-                  key: selectedKey,
-                  templateMap: catalog.templateMap
-                });
+            const nextPresetData = getTemplateDataForKey({
+              item,
+              key: selectedKey,
+              templateMap: catalog.templateMap
+            });
             onPresetChange({
               providerModelSlug: row.providerModelSlug,
               selectedKey,
@@ -414,7 +363,6 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
           size="sm"
           colorScheme="myBlue"
           isChecked={rowIsActive}
-          isDisabled={!canApply}
           aria-label={`${t('config_model:model.active')} ${row.providerModelSlug}`}
           onChange={(event) => onActiveChange(row.providerModelSlug, event.target.checked)}
         />
@@ -433,17 +381,14 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
 });
 
 const ModelPreviewStep = ({
-  isOpen,
   channelId,
   channel,
   installedModels,
   providers,
   createModelData,
   onSubmit,
-  onPrevious,
-  onClose
+  onPrevious
 }: {
-  isOpen: boolean;
   channelId: number;
   channel?: ModelChannelSummary;
   installedModels: ModelConfigListItem[];
@@ -451,7 +396,6 @@ const ModelPreviewStep = ({
   createModelData: (type: ModelTypeEnum) => AIModelDocumentDataType;
   onSubmit: (plan: ChannelImportPlan) => void;
   onPrevious: () => void;
-  onClose: () => void;
 }) => {
   const { t } = useSafeTranslation();
   const [state, setState] = useState<PreviewState>(() => ({
@@ -543,10 +487,6 @@ const ModelPreviewStep = ({
     () => new Set(installedModels.map((model) => model.model)),
     [installedModels]
   );
-  const installedModelById = useMemo(
-    () => new Map(installedModels.map((model) => [model.modelId, model] as const)),
-    [installedModels]
-  );
   const providerById = useMemo(
     () => new Map(providers.map((provider) => [provider.id, provider] as const)),
     [providers]
@@ -572,8 +512,6 @@ const ModelPreviewStep = ({
       availableTemplates,
       templateMap,
       providerById,
-      installedModelById,
-      installedModelNames,
       availableTypes,
       createModelData,
       channel,
@@ -583,8 +521,6 @@ const ModelPreviewStep = ({
       availableTemplates,
       templateMap,
       providerById,
-      installedModelById,
-      installedModelNames,
       availableTypes,
       createModelData,
       channel,
@@ -595,7 +531,12 @@ const ModelPreviewStep = ({
     () => [{ label: t('common:All'), value: '' as const }, ...availableTypes],
     [availableTypes, t]
   );
-  const previewItems = state.items ?? noPreviewItems;
+  const previewItems = useMemo(
+    () =>
+      state.items?.filter((row) => !installedModelNames.has(row.providerModelSlug)) ??
+      noPreviewItems,
+    [state.items, installedModelNames]
+  );
   const resolveSelection = useCallback(
     (row: ImportPreviewRow) =>
       resolveRowSelection({
@@ -611,18 +552,13 @@ const ModelPreviewStep = ({
         items: previewItems,
         modelType: state.modelTypeFilter,
         search: state.search,
-        installedModelsById: installedModelById,
         getModelType: (row) => resolveSelection(row).modelType
       }),
-    [installedModelById, previewItems, resolveSelection, state.modelTypeFilter, state.search]
+    [previewItems, resolveSelection, state.modelTypeFilter, state.search]
   );
   const selectedItems = useMemo(
-    () =>
-      previewItems.filter(
-        (row) =>
-          state.rowSelections.get(row.providerModelSlug)?.selected && resolveSelection(row).canApply
-      ),
-    [previewItems, resolveSelection, state.rowSelections]
+    () => previewItems.filter((row) => state.rowSelections.get(row.providerModelSlug)?.selected),
+    [previewItems, state.rowSelections]
   );
 
   const resetPreviewSelections = () => {
@@ -725,34 +661,21 @@ const ModelPreviewStep = ({
 
     const rows: ChannelImportPlanRow[] = selectedItems.map((row) => {
       const { item, presetKey, modelType, isActive } = resolveSelection(row);
-      const category: ImportPreviewItem['category'] =
+      const operation =
         presetKey === blankTemplateValue
-          ? 'blank'
-          : 'modelId' in item && presetKey === getCurrentModelKey(item.modelId)
-            ? item.category
-            : 'template';
-
-      if (presetKey === blankTemplateValue) {
-        const modelData = buildBlankModelData({ row, item, modelType, createModelData })!;
-        const operation = buildChannelImportOperation({
-          providerModelSlug: row.providerModelSlug,
-          item: { category: 'blank' },
-          modelData,
-          isActive
-        })!;
-        return { providerModelSlug: row.providerModelSlug, category, operation };
-      }
-
-      const templateData = getTemplateDataForKey({ item, key: presetKey, templateMap });
-      const operation = buildChannelImportOperation({
-        providerModelSlug: row.providerModelSlug,
-        item,
-        templateData,
-        contextLength: row.contextLength,
-        maxCompletionTokens: row.maxCompletionTokens,
-        isActive
-      });
-      return { providerModelSlug: row.providerModelSlug, category, operation };
+          ? buildChannelImportOperation({
+              providerModelSlug: row.providerModelSlug,
+              modelData: buildBlankModelData({ row, item, modelType, createModelData }),
+              isActive
+            })
+          : buildChannelImportOperation({
+              providerModelSlug: row.providerModelSlug,
+              templateData: getTemplateDataForKey({ item, key: presetKey, templateMap }),
+              contextLength: row.contextLength,
+              maxCompletionTokens: row.maxCompletionTokens,
+              isActive
+            });
+      return { providerModelSlug: row.providerModelSlug, operation };
     });
 
     onSubmit({ rows });
@@ -775,15 +698,12 @@ const ModelPreviewStep = ({
   }, [scrollToTop, state.modelTypeFilter, state.search]);
 
   return (
-    <StepModal
-      isOpen={isOpen}
-      title={t('config_model:channel_import_plan_step')}
-      onClose={onClose}
+    <StepContent
       footer={
         <>
-          <Button variant="whiteBase" onClick={onClose}>
-            {t('common:Cancel')}
-          </Button>
+          <Box mr="auto" color="myGray.600" fontSize="sm" aria-live="polite">
+            {t('config_model:channel_import_selected_count', { count: selectedItems.length })}
+          </Box>
           <Button variant="whiteBase" onClick={onPrevious}>
             {t('config_model:previous_step')}
           </Button>
@@ -802,9 +722,37 @@ const ModelPreviewStep = ({
       }
     >
       <Flex direction="column" h="100%" minH={0} minW={0} gap={4}>
-        <Flex alignItems="center" gap={3} flexShrink={0}>
-          <Box fontWeight="500">{t('config_model:channel_import_channel')}</Box>
-          <Box color="myGray.700">{channel?.name}</Box>
+        <Flex alignItems="center" gap={2} flexShrink={0}>
+          <Box w="240px" minW={0}>
+            <SearchInput
+              bg="white"
+              value={state.search}
+              onChange={(event) =>
+                updateState((draft) => {
+                  draft.search = event.target.value;
+                })
+              }
+              placeholder={t('common:model.search_name_placeholder')}
+            />
+          </Box>
+          <SingleSelectFilter
+            title={t('common:model.model_type')}
+            value={state.modelTypeFilter}
+            options={modelTypeFilterOptions}
+            onChange={(modelTypeFilter) =>
+              updateState((draft) => {
+                draft.modelTypeFilter = modelTypeFilter;
+              })
+            }
+          />
+          <Flex ml="auto" alignItems="center" gap={2} minW={0}>
+            <Box fontWeight="500" flexShrink={0}>
+              {t('config_model:channel_import_channel')}
+            </Box>
+            <Box color="myGray.700" isTruncated title={channel?.name}>
+              {channel?.name}
+            </Box>
+          </Flex>
         </Flex>
 
         {state.loading ? (
@@ -857,30 +805,6 @@ const ModelPreviewStep = ({
               </Flex>
             )}
             <Flex direction="column" flex="1 1 0" minH={0} minW={0} gap={3}>
-              <Flex alignItems="center" gap={2} flexShrink={0}>
-                <Box w="240px">
-                  <SearchInput
-                    bg="white"
-                    value={state.search}
-                    onChange={(event) =>
-                      updateState((draft) => {
-                        draft.search = event.target.value;
-                      })
-                    }
-                    placeholder={t('common:model.search_name_placeholder')}
-                  />
-                </Box>
-                <SingleSelectFilter
-                  title={t('common:model.model_type')}
-                  value={state.modelTypeFilter}
-                  options={modelTypeFilterOptions}
-                  onChange={(modelTypeFilter) =>
-                    updateState((draft) => {
-                      draft.modelTypeFilter = modelTypeFilter;
-                    })
-                  }
-                />
-              </Flex>
               {filteredPreviewItems.length === 0 ? (
                 <Flex flex="1 1 0" minH={0} alignItems="center" justifyContent="center">
                   <EmptyTip />
@@ -961,7 +885,7 @@ const ModelPreviewStep = ({
           </>
         )}
       </Flex>
-    </StepModal>
+    </StepContent>
   );
 };
 

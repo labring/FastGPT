@@ -9,7 +9,6 @@ import {
 import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import type {
   ApplyChangesBody,
-  ModelConfigListItem,
   PreviewImportFromChannelResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import {
@@ -87,8 +86,6 @@ describe('resolveRowSelection', () => {
       ]
     };
     const catalog = {
-      installedModelById: new Map(),
-      installedModelNames: new Set<string>(),
       templateMap: new Map()
     };
 
@@ -114,52 +111,21 @@ describe('resolveRowSelection', () => {
       isActive: false
     });
   });
-
-  it.each(['associated', 'existing'] as const)(
-    'allows applying a same-name %s model with its current preset',
-    (category) => {
-      const installed = { ...sourceModel, modelId: 'local', model: 'vendor/model', channels: [] };
-      const row: ImportRow = {
-        providerModelSlug: installed.model,
-        candidates: [{ category, modelId: installed.modelId }]
-      };
-
-      expect(
-        resolveRowSelection({
-          row,
-          selection: { presetKey: '__blank__', modelType: ModelTypeEnum.embedding },
-          catalog: {
-            installedModelById: new Map([[installed.modelId, installed]]),
-            installedModelNames: new Set([installed.model]),
-            templateMap: new Map()
-          }
-        })
-      ).toMatchObject({
-        canCreate: false,
-        canApply: true,
-        presetKey: '__current__:local',
-        modelType: ModelTypeEnum.llm
-      });
-    }
-  );
 });
 
 describe('resolveModelTestTarget', () => {
-  it('uses the upstream model slug to test an existing model before its alias is installed', () => {
-    const installedModel = {
-      ...sourceModel,
-      modelId: 'local-model-id',
-      model: 'gpt-4o',
-      name: 'GPT-4o',
-      channels: []
-    } satisfies ModelConfigListItem;
+  it('uses the upstream model slug to test the selected template', () => {
     const row: ImportRow = {
       providerModelSlug: 'vendor/gpt-4o',
-      candidates: [{ category: 'existing', modelId: installedModel.modelId }]
+      candidates: [
+        {
+          category: 'template',
+          template: { type: ModelTypeEnum.llm, model: sourceModel.model },
+          modelData: sourceModel
+        }
+      ]
     };
     const catalog = {
-      installedModelById: new Map([[installedModel.modelId, installedModel]]),
-      installedModelNames: new Set([installedModel.model]),
       templateMap: new Map(),
       createModelData
     };
@@ -175,20 +141,24 @@ describe('resolveModelTestTarget', () => {
     }
     expect(target.getModelData()).toMatchObject({
       model: 'vendor/gpt-4o',
-      config: installedModel.config
+      config: sourceModel.config
     });
   });
 
-  it('uses upstream limits when switching an existing model to blank', () => {
+  it('uses upstream limits when switching a matched template to blank', () => {
     const row: ImportRow = {
       providerModelSlug: 'vendor/gpt-4o',
       contextLength: 32000,
       maxCompletionTokens: 4096,
-      candidates: [{ category: 'existing', modelId: 'local-model-id' }]
+      candidates: [
+        {
+          category: 'template',
+          template: { type: ModelTypeEnum.llm, model: sourceModel.model },
+          modelData: sourceModel
+        }
+      ]
     };
     const catalog = {
-      installedModelById: new Map(),
-      installedModelNames: new Set<string>(),
       templateMap: new Map(),
       createModelData
     };
@@ -218,7 +188,7 @@ describe('getChannelImportCandidate', () => {
     const row: ImportRow = {
       providerModelSlug: 'remote/model',
       candidates: [
-        { category: 'existing', modelId: 'first-id' },
+        { category: 'blank' },
         {
           category: 'template',
           template: { type: ModelTypeEnum.llm, model: 'second-model' },
@@ -241,7 +211,11 @@ describe('filterChannelImportPreviewItems', () => {
       {
         providerModelSlug: 'remote/chat',
         candidates: [
-          { category: 'existing', modelId: 'local-chat' },
+          {
+            category: 'template',
+            template: { type: ModelTypeEnum.llm, model: 'internal-chat-id' },
+            modelData: { ...sourceModel, model: 'internal-chat-id', name: 'Friendly chat' }
+          },
           {
             category: 'template',
             template: { type: ModelTypeEnum.embedding, model: 'alternate-embedding' },
@@ -254,18 +228,9 @@ describe('filterChannelImportPreviewItems', () => {
         candidates: [{ category: 'blank', modelType: ModelTypeEnum.embedding }]
       }
     ];
-    const installedModelsById = new Map([
-      [
-        'local-chat',
-        {
-          model: 'internal-chat-id',
-          name: 'Friendly chat'
-        }
-      ]
-    ]);
     const getModelType = (row: ImportRow) =>
       row === items[0] ? ModelTypeEnum.llm : ModelTypeEnum.embedding;
-    const input = { items, installedModelsById, getModelType };
+    const input = { items, getModelType };
 
     expect(
       filterChannelImportPreviewItems({
@@ -542,35 +507,12 @@ describe('buildBlankChannelModelData', () => {
 });
 
 describe('buildChannelImportOperation', () => {
-  it('associates existing model by stable id', () => {
-    const item: ImportItem = {
-      category: 'existing',
-      modelId: 'model-id'
-    };
-
-    expect(buildChannelImportOperation({ providerModelSlug: 'remote/model', item })).toEqual({
-      action: 'associate',
-      providerModelSlug: 'remote/model',
-      modelId: 'model-id',
-      isActive: true
-    });
-    expect(
-      buildChannelImportOperation({ providerModelSlug: 'remote/model', item, isActive: false })
-    ).toMatchObject({ isActive: false });
-  });
-
   it('uses provider model slug for template-created model identifier', () => {
-    const item: ImportItem = {
-      category: 'template',
-      template: { type: ModelTypeEnum.llm, model: 'template-model' },
-      modelData: sourceModel
-    };
     const templateData = { ...sourceModel, model: 'selected-template' };
 
     expect(
       buildChannelImportOperation({
         providerModelSlug: 'remote/model',
-        item,
         templateData,
         contextLength: 64000
       })
@@ -583,50 +525,15 @@ describe('buildChannelImportOperation', () => {
     expect(
       buildChannelImportOperation({
         providerModelSlug: 'remote/model',
-        item,
         templateData,
         contextLength: 64000,
         isActive: false
       })
     ).toMatchObject({ isActive: false });
-    expect(
-      buildChannelImportOperation({ providerModelSlug: 'remote/model', item })
-    ).toBeUndefined();
-  });
-
-  it('keeps an exact channel binding unless a different template is selected', () => {
-    const associated: ImportItem = { category: 'associated', modelId: 'model-id' };
-    const templateData = { ...sourceModel, model: 'selected-template' };
-
-    expect(
-      buildChannelImportOperation({ providerModelSlug: 'remote/model', item: associated })
-    ).toEqual({
-      action: 'associate',
-      providerModelSlug: 'remote/model',
-      modelId: 'model-id',
-      isActive: true
-    });
-    expect(
-      buildChannelImportOperation({
-        providerModelSlug: 'remote/model',
-        item: associated,
-        templateData,
-        contextLength: 64000
-      })
-    ).toEqual({
-      action: 'create',
-      providerModelSlug: 'remote/model',
-      modelData: { ...templateData, model: 'remote/model' },
-      isActive: true
-    });
+    expect(buildChannelImportOperation({ providerModelSlug: 'remote/model' })).toBeUndefined();
   });
 
   it('merges upstream limits into the selected template only when building the operation', () => {
-    const item: ImportItem = {
-      category: 'template',
-      template: { type: ModelTypeEnum.llm, model: 'first-template' },
-      modelData: sourceModel
-    };
     const selectedTemplate = {
       ...sourceModel,
       model: 'second-template',
@@ -636,7 +543,6 @@ describe('buildChannelImportOperation', () => {
     expect(
       buildChannelImportOperation({
         providerModelSlug: 'remote/model',
-        item,
         templateData: selectedTemplate,
         contextLength: 4096,
         maxCompletionTokens: 1024
@@ -652,7 +558,6 @@ describe('buildChannelImportOperation', () => {
     expect(
       buildChannelImportOperation({
         providerModelSlug: 'remote/model',
-        item,
         templateData: selectedTemplate
       })
     ).toMatchObject({ modelData: { config: { maxContext: 16384, maxResponse: 8192 } } });
@@ -674,7 +579,6 @@ describe('buildChannelImportOperation', () => {
     });
     const operation = buildChannelImportOperation({
       providerModelSlug: row.providerModelSlug,
-      item: getChannelImportCandidate(row),
       templateData,
       contextLength: row.contextLength,
       maxCompletionTokens: row.maxCompletionTokens
@@ -688,7 +592,6 @@ describe('buildChannelImportOperation', () => {
   });
 
   it('creates blank candidates only when model data is available', () => {
-    const blank: ImportItem = { category: 'blank' };
     const operation: ApplyChangesBody['operations'][number] = {
       action: 'create',
       providerModelSlug: 'remote/model',
@@ -699,12 +602,9 @@ describe('buildChannelImportOperation', () => {
     expect(
       buildChannelImportOperation({
         providerModelSlug: 'remote/model',
-        item: blank,
         modelData: sourceModel
       })
     ).toEqual(operation);
-    expect(
-      buildChannelImportOperation({ providerModelSlug: 'remote/model', item: blank })
-    ).toBeUndefined();
+    expect(buildChannelImportOperation({ providerModelSlug: 'remote/model' })).toBeUndefined();
   });
 });

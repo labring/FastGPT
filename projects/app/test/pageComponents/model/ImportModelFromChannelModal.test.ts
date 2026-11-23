@@ -12,13 +12,19 @@ const apiMocks = vi.hoisted(() => ({
   getModelTemplates: vi.fn(),
   postApplyChannelImportChanges: vi.fn(),
   testModelChannel: vi.fn(),
-  deferResultModalMount: false
+  toast: vi.fn()
 }));
 
 vi.mock('@chakra-ui/react', () => {
   const asTag = (tag: string) => {
-    const MockTag = ({ children }: React.PropsWithChildren) =>
-      React.createElement(tag, null, children);
+    const MockTag = ({
+      children,
+      display,
+      onClick
+    }: React.PropsWithChildren<{
+      display?: string;
+      onClick?: React.MouseEventHandler;
+    }>) => React.createElement(tag, { hidden: display === 'none', onClick }, children);
     MockTag.displayName = `Mock${tag}`;
     return MockTag;
   };
@@ -120,7 +126,12 @@ vi.mock('@fastgpt/web/components/common/FixedTable', () => {
   return { FixedTableLayout };
 });
 vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
-  useSafeTranslation: () => ({ t: (key: string) => key })
+  useSafeTranslation: () => ({
+    t: (key: string, options?: { count: number }) => (options ? `${key}: ${options.count}` : key)
+  })
+}));
+vi.mock('@fastgpt/web/hooks/useToast', () => ({
+  useToast: () => ({ toast: apiMocks.toast })
 }));
 vi.mock('@/pageComponents/model/ModelChannelModal', () => {
   const MockModelChannelSelector = ({ onChange }: { onChange: (channelIds: number[]) => void }) =>
@@ -128,26 +139,9 @@ vi.mock('@/pageComponents/model/ModelChannelModal', () => {
   MockModelChannelSelector.displayName = 'MockModelChannelSelector';
   return { ModelChannelSelector: MockModelChannelSelector };
 });
-vi.mock('@/pageComponents/model/ImportModelFromChannelModal/StepModal', () => ({
-  default: ({
-    isOpen,
-    children,
-    footer
-  }: React.PropsWithChildren<{
-    isOpen: boolean;
-    footer?: React.ReactNode;
-  }>) => {
-    const shouldDefer = apiMocks.deferResultModalMount;
-    const [bodyMounted, setBodyMounted] = React.useState(!shouldDefer);
-
-    React.useEffect(() => {
-      if (!shouldDefer) return;
-      // Modal portals can mount their body after the parent step's first layout effect.
-      setBodyMounted(true);
-    }, [shouldDefer]);
-
-    return isOpen && bodyMounted ? React.createElement('section', null, children, footer) : null;
-  }
+vi.mock('@fastgpt/web/components/v2/common/MyModal', () => ({
+  default: ({ children, title }: React.PropsWithChildren<{ title: React.ReactNode }>) =>
+    React.createElement('section', { role: 'dialog' }, title, children)
 }));
 vi.mock('@/web/core/ai/model/api', () => apiMocks);
 vi.mock('@/pageComponents/model/useModelChannelTest', () => ({
@@ -214,7 +208,6 @@ afterAll(() => {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  apiMocks.deferResultModalMount = false;
   host = document.createElement('div');
   document.body.appendChild(host);
   root = createRoot(host);
@@ -256,7 +249,9 @@ describe('ImportModelFromChannelModal', () => {
       onClose
     };
     const getButton = (text: string) =>
-      [...host.querySelectorAll('button')].find((button) => button.textContent === text)!;
+      [...host.querySelectorAll('button')].find(
+        (button) => button.textContent === text && !button.closest('[hidden]')
+      )!;
 
     await act(async () => {
       root.render(React.createElement(ImportModelFromChannelModal, props));
@@ -272,7 +267,7 @@ describe('ImportModelFromChannelModal', () => {
     expect(getButton(buttonKey)).not.toBeUndefined();
   });
 
-  it('allows activating and testing a same-name bound model and preserves offscreen drafts', async () => {
+  it('retains selections across steps and closes with a toast after successful import', async () => {
     const installedModel = {
       modelId: 'installed-model-id',
       model: 'installed-model',
@@ -282,15 +277,35 @@ describe('ImportModelFromChannelModal', () => {
       scope: ModelScopeEnum.system,
       isActive: false
     } as ModelConfigListItem;
+    const template: AIModelDocumentDataType = {
+      model: 'preset',
+      name: 'Preset',
+      provider: 'openai',
+      scope: ModelScopeEnum.system,
+      type: ModelTypeEnum.llm,
+      config: { maxContext: 1000, maxResponse: 100, quoteMaxToken: 800 }
+    };
     apiMocks.getImportPreviewFromChannel.mockResolvedValue({
       items: [
         {
           providerModelSlug: installedModel.model,
-          candidates: [{ category: 'associated', modelId: installedModel.modelId }]
+          candidates: [
+            {
+              category: 'template',
+              template: { type: ModelTypeEnum.llm, model: 'preset' },
+              modelData: template
+            }
+          ]
         },
         ...Array.from({ length: 120 }, (_, index) => ({
           providerModelSlug: `upstream-model-${index}`,
-          candidates: [{ category: 'associated', modelId: installedModel.modelId }]
+          candidates: [
+            {
+              category: 'template',
+              template: { type: ModelTypeEnum.llm, model: 'preset' },
+              modelData: template
+            }
+          ]
         }))
       ]
     });
@@ -307,12 +322,14 @@ describe('ImportModelFromChannelModal', () => {
       ],
       installedModels: [installedModel],
       providers: [],
-      createModelData: () => installedModel as AIModelDocumentDataType,
-      onSuccess: vi.fn(async () => undefined),
-      onClose: vi.fn()
+      createModelData: () => template,
+      onSuccess: vi.fn(() => new Promise<void>(() => {})),
+      onClose: vi.fn(() => root.render(null))
     };
     const getButton = (text: string) =>
-      [...host.querySelectorAll('button')].find((button) => button.textContent === text)!;
+      [...host.querySelectorAll('button')].find(
+        (button) => button.textContent === text && !button.closest('[hidden]')
+      )!;
     const renderModal = async () => {
       await act(async () => {
         root.render(React.createElement(ImportModelFromChannelModal, props));
@@ -321,95 +338,97 @@ describe('ImportModelFromChannelModal', () => {
     };
 
     await renderModal();
+    const modal = host.querySelector('[role="dialog"]');
+    expect(modal?.textContent).toContain('config_model:channel_import_import_step');
+    expect(modal?.textContent).not.toContain('common:Cancel');
     await act(async () => getButton('choose channel').click());
     await act(async () => {
       getButton('config_model:next_step').click();
       await flush();
     });
 
-    expect(apiMocks.getImportPreviewFromChannel).toHaveBeenCalledOnce();
+    expect(host.querySelector('[role="dialog"]')).toBe(modal);
+    expect(host.textContent).toContain('config_model:channel_import_new_models_only');
+    expect(host.textContent).not.toContain('installed-model');
     const scrollContainer = host.querySelector<HTMLDivElement>('[data-testid="virtual-list"]')!;
     Object.defineProperty(scrollContainer, 'clientHeight', { configurable: true, value: 64 });
-    expect(host.textContent).toContain('upstream-model-0');
-    const exactCheckbox = host.querySelector<HTMLInputElement>(
-      'input[aria-label="config_model:channel_import_model installed-model"]'
-    )!;
-    const exactRow = exactCheckbox.closest('tr')!;
-    const activeSwitch = exactRow.querySelector<HTMLInputElement>(
-      'input[aria-label="config_model:model.active installed-model"]'
-    )!;
-    const testButton = exactRow.querySelector<HTMLButtonElement>(
-      'button[aria-label="config_model:model.test_model"]'
-    )!;
-    expect(exactCheckbox.disabled).toBe(false);
-    expect(activeSwitch.disabled).toBe(false);
-    expect(activeSwitch.checked).toBe(false);
-    expect(
-      exactRow.querySelector<HTMLSelectElement>(
-        'select[aria-label="config_model:channel_import_preset_template"]'
-      )?.disabled
-    ).toBe(true);
-    expect(testButton.disabled).toBe(false);
-    await act(async () => {
-      exactCheckbox.click();
-      activeSwitch.click();
-      testButton.click();
-    });
-    expect(apiMocks.testModelChannel).toHaveBeenCalledExactlyOnceWith(1);
 
     const firstRowCheckbox = host.querySelector<HTMLInputElement>(
       'input[aria-label="config_model:channel_import_model upstream-model-0"]'
     )!;
+    const row = firstRowCheckbox.closest('tr')!;
+    const testButton = row.querySelector<HTMLButtonElement>(
+      'button[aria-label="config_model:model.test_model"]'
+    )!;
+    await act(async () => row.cells[1].click());
+    expect(firstRowCheckbox.checked).toBe(true);
+    expect(host.textContent).toContain('config_model:channel_import_selected_count: 1');
+    await act(async () => {
+      row
+        .querySelector<HTMLInputElement>('input[aria-label^="config_model:model.active"]')
+        ?.click();
+      testButton.click();
+    });
+    expect(apiMocks.testModelChannel).toHaveBeenCalledExactlyOnceWith(1);
+    expect(firstRowCheckbox.checked).toBe(true);
     await act(async () => firstRowCheckbox.click());
+    expect(firstRowCheckbox.checked).toBe(false);
+    await act(async () => row.cells[1].click());
+
     await act(async () => {
       scrollContainer.scrollTop = 92 * 64.5;
       scrollContainer.dispatchEvent(new Event('scroll'));
       await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
     });
-    expect(host.textContent).not.toContain('upstream-model-0');
+    expect(scrollContainer.textContent).not.toContain('upstream-model-0');
 
-    await act(async () => {
-      getButton('config_model:next_step').click();
-      await flush();
-    });
-    await act(async () => {
-      getButton('config_model:previous_step').click();
-      await flush();
-    });
-
-    expect(apiMocks.getImportPreviewFromChannel).toHaveBeenCalledOnce();
-    expect(
-      host.querySelector<HTMLInputElement>(
-        'input[aria-label="config_model:channel_import_model upstream-model-0"]'
-      )?.checked
-    ).toBe(true);
-    apiMocks.postApplyChannelImportChanges.mockResolvedValueOnce({ results: [] });
     await act(async () => getButton('config_model:next_step').click());
-    await act(async () => getButton('config_model:channel_import_apply').click());
-    expect(apiMocks.postApplyChannelImportChanges).toHaveBeenCalledWith(
-      expect.objectContaining({
-        operations: expect.arrayContaining([
-          {
-            action: 'associate',
-            providerModelSlug: installedModel.model,
-            modelId: installedModel.modelId,
-            isActive: true
-          }
-        ])
-      })
-    );
+    expect(host.querySelector('[role="dialog"]')).toBe(modal);
+    expect(getButton('common:Confirm')).toBeDefined();
+    await act(async () => getButton('config_model:previous_step').click());
+    expect(apiMocks.getImportPreviewFromChannel).toHaveBeenCalledOnce();
+    expect(host.textContent).toContain('config_model:channel_import_selected_count: 1');
+
+    apiMocks.postApplyChannelImportChanges.mockResolvedValueOnce({
+      results: [
+        {
+          providerModelSlug: 'upstream-model-0',
+          action: 'create',
+          status: 'success',
+          modelId: 'created'
+        }
+      ]
+    });
+    await act(async () => getButton('config_model:next_step').click());
+    await act(async () => getButton('common:Confirm').click());
+    expect(apiMocks.postApplyChannelImportChanges).toHaveBeenCalledWith({
+      channelId: 1,
+      channelType: 'system',
+      operations: [
+        {
+          action: 'create',
+          providerModelSlug: 'upstream-model-0',
+          modelData: { ...template, model: 'upstream-model-0' },
+          isActive: false
+        }
+      ]
+    });
+    expect(host.querySelector('[role="dialog"]')).toBeNull();
+    expect(props.onSuccess).toHaveBeenCalledOnce();
+    expect(apiMocks.toast).toHaveBeenCalledExactlyOnceWith({
+      status: 'success',
+      title: 'common:import_success'
+    });
   });
 });
 
 describe('ImportResultsStep', () => {
-  it('renders the initial row when modal content mounts after the parent layout effect', async () => {
-    apiMocks.deferResultModalMount = true;
+  it('renders the initial result row on mount', async () => {
     const providerModelSlug = 'upstream-model';
     const plan: ChannelImportPlan = {
       rows: [
         {
           providerModelSlug,
-          category: 'template',
           operation: {
             action: 'create',
             providerModelSlug,
@@ -425,9 +444,10 @@ describe('ImportResultsStep', () => {
         React.createElement(ImportResultsStep, {
           channelId: 1,
           plan,
-          onClose: vi.fn(),
+          onSubmittingChange: vi.fn(),
           onPrevious: vi.fn(),
-          onSuccess: vi.fn(async () => undefined)
+          onRefresh: vi.fn(async () => undefined),
+          onImportSuccess: vi.fn()
         })
       );
       await flush();
@@ -436,71 +456,76 @@ describe('ImportResultsStep', () => {
     expect(host.textContent).toContain(providerModelSlug);
   });
 
-  it.each([
-    ['create', undefined, true, 'config_model:channel_import_result_failed'],
-    ['associate', undefined, false, 'config_model:channel_import_result_failed'],
-    ['associate', true, true, 'config_model:channel_import_result_channel_updated']
-  ] as const)(
-    'refreshes after failed %s according to completed writes (channel updated: %s)',
-    async (action, channelUpdated, shouldRefresh, statusText) => {
+  it.each([undefined, 'persisted-model-id'])(
+    'refreshes after a failed import when a model was created (%s)',
+    async (modelId) => {
       const providerModelSlug = 'upstream-model';
-      const operation =
-        action === 'create'
-          ? {
-              action,
+      const plan: ChannelImportPlan = {
+        rows: [
+          {
+            providerModelSlug,
+            operation: {
+              action: 'create',
               providerModelSlug,
               modelData: {} as AIModelDocumentDataType,
               isActive: true
             }
-          : { action, providerModelSlug, modelId: 'installed-model-id', isActive: true };
-      const plan: ChannelImportPlan = {
-        rows: [{ providerModelSlug, category: 'template', operation }]
+          }
+        ]
       };
-      const onSuccess = vi.fn(async () => undefined);
+      const onRefresh = vi.fn(async () => undefined);
       apiMocks.postApplyChannelImportChanges.mockResolvedValue({
         results: [
           {
-            action,
+            action: 'create',
             status: 'failed',
             providerModelSlug,
-            modelId: 'persisted-model-id',
-            channelUpdated,
-            error: channelUpdated ? 'Activation failed' : 'Channel binding failed'
+            modelId,
+            error: 'Channel binding failed'
           }
         ]
       });
-
       await act(async () => {
         root.render(
           React.createElement(ImportResultsStep, {
             channelId: 1,
             plan,
-            onClose: vi.fn(),
+            onSubmittingChange: vi.fn(),
             onPrevious: vi.fn(),
-            onSuccess
+            onRefresh,
+            onImportSuccess: vi.fn()
           })
         );
       });
-
-      const applyButton = [...host.querySelectorAll('button')].find((button) =>
-        button.textContent?.includes('config_model:channel_import_apply')
+      const applyButton = [...host.querySelectorAll('button')].find(
+        (button) => button.textContent === 'common:Confirm'
       )!;
+      await act(async () => applyButton.click());
 
-      await act(async () => {
-        applyButton.click();
-        await flush();
-      });
-
-      expect(apiMocks.postApplyChannelImportChanges).toHaveBeenCalledOnce();
-      expect(onSuccess).toHaveBeenCalledTimes(shouldRefresh ? 1 : 0);
-      expect(host.textContent).toContain(statusText);
-      expect(host.textContent).toContain(
-        channelUpdated ? 'Activation failed' : 'Channel binding failed'
-      );
+      expect(onRefresh).toHaveBeenCalledTimes(modelId ? 1 : 0);
+      expect(host.textContent).toContain('config_model:channel_import_result_failed');
+      expect(host.textContent).toContain('Channel binding failed');
     }
   );
 
   it.each([
+    {
+      error: undefined,
+      response: {
+        results: [
+          {
+            action: 'create',
+            status: 'success',
+            providerModelSlug: 'second-model',
+            modelId: 'created'
+          }
+        ]
+      },
+      expected: [
+        'config_model:channel_import_result_unknown',
+        'config_model:channel_import_result_success'
+      ]
+    },
     {
       error: new Error('ECONNRESET'),
       response: undefined,
@@ -511,10 +536,16 @@ describe('ImportResultsStep', () => {
       response: {
         results: [
           {
-            action: 'associate',
+            action: 'create',
             status: 'failed',
             providerModelSlug: 'upstream-model',
             error: ModelErrEnum.channelModelMappingConflict
+          },
+          {
+            action: 'create',
+            status: 'success',
+            providerModelSlug: 'second-model',
+            modelId: 'created'
           }
         ]
       },
@@ -524,23 +555,20 @@ describe('ImportResultsStep', () => {
       ]
     }
   ])(
-    'renders failure details according to whether the server returned results',
+    'keeps the results open when some outcomes fail or are unknown',
     async ({ error, response, expected }) => {
-      const providerModelSlug = 'upstream-model';
       const plan: ChannelImportPlan = {
-        rows: [
-          {
+        rows: ['upstream-model', 'second-model'].map((providerModelSlug) => ({
+          providerModelSlug,
+          operation: {
+            action: 'create',
             providerModelSlug,
-            category: 'existing',
-            operation: {
-              action: 'associate',
-              providerModelSlug,
-              isActive: true,
-              modelId: 'existing'
-            }
+            isActive: true,
+            modelData: {} as AIModelDocumentDataType
           }
-        ]
+        }))
       };
+      const onImportSuccess = vi.fn();
       if (error) apiMocks.postApplyChannelImportChanges.mockRejectedValueOnce(error);
       else apiMocks.postApplyChannelImportChanges.mockResolvedValueOnce(response);
 
@@ -549,18 +577,20 @@ describe('ImportResultsStep', () => {
           React.createElement(ImportResultsStep, {
             channelId: 1,
             plan,
-            onClose: vi.fn(),
+            onSubmittingChange: vi.fn(),
             onPrevious: vi.fn(),
-            onSuccess: vi.fn(async () => undefined)
+            onRefresh: vi.fn(async () => undefined),
+            onImportSuccess
           })
         )
       );
       const button = [...host.querySelectorAll('button')].find(
-        (button) => button.textContent === 'config_model:channel_import_apply'
+        (button) => button.textContent === 'common:Confirm'
       );
       await act(async () => button?.click());
 
       expect(apiMocks.postApplyChannelImportChanges).toHaveBeenCalledOnce();
+      expect(onImportSuccess).not.toHaveBeenCalled();
       for (const text of expected) expect(host.textContent).toContain(text);
     }
   );

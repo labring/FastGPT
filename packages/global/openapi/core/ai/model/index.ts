@@ -106,7 +106,7 @@ export const AIModelPath: OpenAPIPath = {
   '/core/ai/model/previewImportFromChannel': {
     get: {
       summary: '预览从系统渠道导入模型',
-      description: '读取渠道上游模型目录并返回现有模型、模板、歧义项与空白配置草稿',
+      description: '读取渠道上游模型目录，筛除系统已有模型，返回模板或空白配置草稿',
       tags: [DevApiTagsMap.model],
       requestParams: { query: PreviewImportFromChannelQuerySchema },
       responses: {
@@ -120,7 +120,7 @@ export const AIModelPath: OpenAPIPath = {
   '/core/ai/model/applyChanges': {
     post: {
       summary: '应用从系统渠道导入的模型变更',
-      description: '逐条关联或创建模型；单条失败不影响后续操作',
+      description: '逐条创建模型并关联到目标渠道；单条失败不影响后续操作',
       tags: [DevApiTagsMap.model],
       requestBody: { content: { 'application/json': { schema: ApplyChangesBodySchema } } },
       responses: {
