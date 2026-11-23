@@ -1,6 +1,12 @@
 import { performance } from 'node:perf_hooks';
+import type { OpsPerfErrorCode } from '@fastgpt/global/common/opsPerf/constants';
 import { getSystemInstanceConfig } from '../system/systemInstanceConfig/runtime';
-import { hasPerfContext, recordPerfStageSpan, trackPerfStage } from '../opsPerf/context';
+import {
+  hasPerfContext,
+  patchPerfContext,
+  recordPerfStageSpan,
+  trackPerfStage
+} from '../opsPerf/context';
 /* vector crud */
 import { VectorCountCache, type VectorCountScope } from '@fastgpt/dal/redis/caches/vectorCount';
 import { PgVectorCtrl } from './pg';
@@ -22,7 +28,12 @@ import { MilvusCtrl } from './milvus';
 import { MongoVectorCtrl } from './mongo';
 import { retryFn, withTimeout } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../logger';
-import { isRedisLeaseError, LeaseCache } from '@fastgpt/dal/redis/caches/lease';
+import {
+  isRedisLeaseError,
+  LeaseCache,
+  RedisLeaseLostError,
+  RedisLeaseWaitTimeoutError
+} from '@fastgpt/dal/redis/caches/lease';
 
 const getVectorObj = (): VectorControllerType => {
   switch (getVectorType()) {
@@ -58,6 +69,12 @@ export const initVectorStore = async (hooks: VectorStoreHooks = {}) => {
   Reflect.set(globalThis, vectorStoreHooksKey, hooks);
   await Vector.init();
 };
+const resolveVectorLeaseErrorCode = (error: unknown): OpsPerfErrorCode => {
+  if (error instanceof RedisLeaseWaitTimeoutError) return 'VECTOR_LEASE_TIMEOUT';
+  if (error instanceof RedisLeaseLostError) return 'VECTOR_LEASE_LOST';
+  return 'VECTOR_LEASE_ACQUIRE_ERROR';
+};
+
 /**
  * 所有向量库召回共用跨实例并发额度；每次数据库重试都重新获取额度并读取最新配置。
  * 未配置并发上限时直接召回；lease 协调错误直接上抛，避免重复排队加重过载。
@@ -66,6 +83,9 @@ export const recallFromVectorStore: VectorControllerType['embRecall'] = async (p
   const result = await retryFn(async () => {
     const perfActive = hasPerfContext('dataset.search');
     const leaseEnqueueAt = perfActive ? performance.now() : 0;
+    let leaseAcquired = false;
+    let recallStartedAt = 0;
+    let recallMarkedFailed = false;
     try {
       return {
         success: true as const,
@@ -75,29 +95,57 @@ export const recallFromVectorStore: VectorControllerType['embRecall'] = async (p
           concurrency: () => getSystemInstanceConfig().vector.vectorRecallConcurrency ?? 0,
           ttlMs: RECALL_LEASE_TTL_MS,
           renewIntervalMs: 10_000,
-          fn: () => {
+          fn: async (leaseContext) => {
+            leaseAcquired = true;
             if (perfActive) {
               recordPerfStageSpan({
                 domain: 'dataset.search',
                 stage: 'vectorLeaseWait',
                 startedAtPerf: leaseEnqueueAt
               });
+              recallStartedAt = performance.now();
             }
-            return trackPerfStage({ domain: 'dataset.search', stage: 'vectorRecall' }, () =>
-              Vector.embRecall(props)
-            );
+            return trackPerfStage({ domain: 'dataset.search', stage: 'vectorRecall' }, async () => {
+              try {
+                const res = await Vector.embRecall(props);
+                // 在 vectorRecall 阶段内校验租约仍有效，避免执行期续租失败被误记到 vectorLeaseWait
+                leaseContext?.assertValid?.();
+                return res;
+              } catch (err) {
+                recallMarkedFailed = true;
+                throw err;
+              }
+            });
           }
         })
       };
     } catch (error) {
       if (isRedisLeaseError(error)) {
         if (perfActive) {
-          recordPerfStageSpan({
+          const errorCode = resolveVectorLeaseErrorCode(error);
+          if (!leaseAcquired) {
+            // 仅在尚未进入 provider（排队超时/获取失败）时记录一次失败的排队阶段
+            recordPerfStageSpan({
+              domain: 'dataset.search',
+              stage: 'vectorLeaseWait',
+              startedAtPerf: leaseEnqueueAt,
+              failed: true,
+              error
+            });
+          } else if (!recallMarkedFailed && recallStartedAt > 0) {
+            // 兜底：若租约层在 fn 返回后才抛出失租异常，归因到执行阶段而非重复污染排队阶段
+            recordPerfStageSpan({
+              domain: 'dataset.search',
+              stage: 'vectorRecall',
+              startedAtPerf: recallStartedAt,
+              failed: true,
+              error
+            });
+          }
+          patchPerfContext({
             domain: 'dataset.search',
-            stage: 'vectorLeaseWait',
-            startedAtPerf: leaseEnqueueAt,
-            failed: true,
-            error
+            status: 'error',
+            errorCode
           });
         }
         return { success: false as const, error };

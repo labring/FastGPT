@@ -21,6 +21,11 @@ import {
   RedisLeaseLostError,
   RedisLeaseWaitTimeoutError
 } from '@fastgpt/dal/redis/caches/lease';
+import {
+  getOpsPerfBufferSnapshotForTest,
+  resetOpsPerfBufferForTest
+} from '@fastgpt/service/common/opsPerf/collector';
+import { withPerfContext } from '@fastgpt/service/common/opsPerf/context';
 
 const { withConcurrency } = vi.hoisted(() => ({ withConcurrency: vi.fn() }));
 vi.mock('@fastgpt/dal/redis/caches/lease', async (importOriginal) => {
@@ -236,6 +241,81 @@ describe('VectorDB Controller', () => {
       await expect(recallFromVectorStore(props)).rejects.toBe(error);
       expect(withConcurrency).toHaveBeenCalledOnce();
       expect(mockVectorEmbRecall).not.toHaveBeenCalled();
+    });
+
+    it('attributes wait timeout, acquire failure, and mid-execution lease loss to distinct opsPerf stages and error codes', async () => {
+      const baseDims = {
+        searchMode: 'embedding' as const,
+        indexScale: 's_10k' as const,
+        usingReRank: false,
+        usingExtension: false,
+        vectorEngine: 'pg' as const
+      };
+
+      // 1. Wait timeout before entering provider -> vectorLeaseWait failed + VECTOR_LEASE_TIMEOUT
+      resetOpsPerfBufferForTest();
+      const timeoutErr = new RedisLeaseWaitTimeoutError({ key: 'vector:recall', label: 'recall' });
+      withConcurrency.mockRejectedValueOnce(timeoutErr);
+      await expect(
+        withPerfContext({ domain: 'dataset.search', force: true, dims: baseDims }, () =>
+          recallFromVectorStore(props)
+        )
+      ).rejects.toBe(timeoutErr);
+      let ev = getOpsPerfBufferSnapshotForTest().events[0];
+      expect(ev?.errorCode).toBe('VECTOR_LEASE_TIMEOUT');
+      expect(ev?.stages.vectorLeaseWait?.callCount).toBe(1);
+      expect(ev?.stages.vectorLeaseWait?.errorCount).toBe(1);
+      expect(ev?.stages.vectorRecall).toBeUndefined();
+
+      // 2. Acquire failure before entering provider -> vectorLeaseWait failed + VECTOR_LEASE_ACQUIRE_ERROR
+      resetOpsPerfBufferForTest();
+      const acquireErr = new RedisLeaseAcquireError({
+        key: 'vector:recall',
+        label: 'recall',
+        cause: new Error('ECONNREFUSED')
+      });
+      withConcurrency.mockRejectedValueOnce(acquireErr);
+      await expect(
+        withPerfContext({ domain: 'dataset.search', force: true, dims: baseDims }, () =>
+          recallFromVectorStore(props)
+        )
+      ).rejects.toBe(acquireErr);
+      ev = getOpsPerfBufferSnapshotForTest().events[0];
+      expect(ev?.errorCode).toBe('VECTOR_LEASE_ACQUIRE_ERROR');
+      expect(ev?.stages.vectorLeaseWait?.callCount).toBe(1);
+      expect(ev?.stages.vectorLeaseWait?.errorCount).toBe(1);
+      expect(ev?.stages.vectorRecall).toBeUndefined();
+
+      // 3. Renewal lost during/after provider execution -> vectorLeaseWait stays clean (1 call, wait only),
+      //    vectorRecall fails, and errorCode is VECTOR_LEASE_LOST (not VECTOR_LEASE_TIMEOUT)
+      resetOpsPerfBufferForTest();
+      const lostErr = new RedisLeaseLostError({ key: 'vector:recall', label: 'recall' });
+      withConcurrency.mockImplementationOnce(async ({ fn }) => {
+        const result = await fn({
+          signal: new AbortController().signal,
+          assertValid: () => {
+            throw lostErr;
+          }
+        });
+        return result;
+      });
+      mockVectorEmbRecall.mockImplementationOnce(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+        return { results: [] };
+      });
+      await expect(
+        withPerfContext({ domain: 'dataset.search', force: true, dims: baseDims }, () =>
+          recallFromVectorStore(props)
+        )
+      ).rejects.toBe(lostErr);
+      ev = getOpsPerfBufferSnapshotForTest().events[0];
+      expect(ev?.errorCode).toBe('VECTOR_LEASE_LOST');
+      expect(ev?.stages.vectorLeaseWait?.callCount).toBe(1);
+      expect(ev?.stages.vectorLeaseWait?.errorCount).toBeUndefined();
+      expect(ev?.stages.vectorLeaseWait?.ms).toBeLessThan(20);
+      expect(ev?.stages.vectorRecall?.callCount).toBe(1);
+      expect(ev?.stages.vectorRecall?.errorCount).toBe(1);
+      expect(ev?.stages.vectorRecall?.ms).toBeGreaterThanOrEqual(20);
     });
 
     it('reacquires shared capacity for every database retry', async () => {

@@ -1060,9 +1060,18 @@ export default function DatasetSearchPerf(): JSX.Element {
           <MyBox {...CardBoxStyle} isLoading={eventsLoading && eventList.length === 0}>
             <Flex justify={'space-between'} align={'flex-start'} flexWrap={'wrap'} gap={3} mb={3}>
               <Box>
-                <Text fontSize={'sm'} fontWeight={'bold'} color={'myGray.900'}>
-                  {t('admin:ops_perf_events_title')}
-                </Text>
+                <HStack spacing={2} align={'center'}>
+                  <Text fontSize={'sm'} fontWeight={'bold'} color={'myGray.900'}>
+                    {t('admin:ops_perf_events_title')}
+                  </Text>
+                  {overview?.meta.eventWindowClamped && (
+                    <Badge colorScheme={'gray'} variant={'subtle'} fontSize={'11px'}>
+                      {t('admin:ops_perf_events_retention_badge', {
+                        days: overview.meta.eventRetentionDays
+                      })}
+                    </Badge>
+                  )}
+                </HStack>
                 <Text fontSize={'xs'} color={'myGray.500'}>
                   {t('admin:ops_perf_events_sub')}
                 </Text>
@@ -1101,9 +1110,14 @@ export default function DatasetSearchPerf(): JSX.Element {
                 fontSize={'xs'}
                 color={'orange.700'}
               >
-                {t('admin:ops_perf_events_dropped_notice', {
-                  count: overview!.summary.droppedEventCount.toLocaleString()
-                })}
+                {overview?.meta.eventWindowClamped
+                  ? t('admin:ops_perf_events_dropped_notice_clamped', {
+                      days: overview.meta.eventRetentionDays,
+                      count: overview.summary.droppedEventCount.toLocaleString()
+                    })
+                  : t('admin:ops_perf_events_dropped_notice', {
+                      count: overview!.summary.droppedEventCount.toLocaleString()
+                    })}
               </Box>
             )}
 

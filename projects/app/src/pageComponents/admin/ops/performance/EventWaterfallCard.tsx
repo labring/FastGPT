@@ -51,6 +51,10 @@ export const EventWaterfallCard = ({
         return t('admin:ops_perf_err_query_extension_error');
       case 'VECTOR_LEASE_TIMEOUT':
         return t('admin:ops_perf_err_vector_lease_timeout');
+      case 'VECTOR_LEASE_ACQUIRE_ERROR':
+        return t('admin:ops_perf_err_vector_lease_acquire_error');
+      case 'VECTOR_LEASE_LOST':
+        return t('admin:ops_perf_err_vector_lease_lost');
       case 'VECTOR_RECALL_ERROR':
         return t('admin:ops_perf_err_vector_recall_error');
       case 'EMBEDDING_ERROR':

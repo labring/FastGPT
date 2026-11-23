@@ -3,6 +3,7 @@ import { IntSchema } from '../../../common/zod';
 import {
   DatasetIndexScaleValues,
   DatasetSearchModeFilterValues,
+  OPS_PERF_EVENT_RETENTION_DAYS,
   OpsPerfErrorCodeValues,
   OpsPerfEventReasonValues,
   OpsPerfEventStatusValues,
@@ -119,7 +120,15 @@ export const GetDatasetSearchPerfResponseSchema = z.object({
   meta: z.object({
     vectorEngine: z.enum(VectorEngineMetricValues).meta({ description: '当前实例向量库引擎' }),
     fullTextEngine: z.enum(['milvus', 'mongo']).meta({ description: '当前实例全文检索引擎' }),
-    bucketGranularity: z.enum(['hour', 'day']).meta({ description: '趋势图展示聚合粒度' })
+    bucketGranularity: z.enum(['hour', 'day']).meta({ description: '趋势图展示聚合粒度' }),
+    eventRetentionDays: z.number().int().positive().default(OPS_PERF_EVENT_RETENTION_DAYS).meta({
+      description: '单点排查样本 TTL 保留天数（明细列表与缺口计数均受此窗口截断）',
+      example: OPS_PERF_EVENT_RETENTION_DAYS
+    }),
+    eventWindowClamped: z.boolean().default(false).meta({
+      description: '当前筛选时间范围是否超出单点样本保留期（为 true 时明细及缺口按近保留期截断）',
+      example: false
+    })
   }),
   summary: z.object({
     totalCount: z.number().nonnegative().meta({ description: '时间范围内总检索次数' }),
@@ -135,7 +144,7 @@ export const GetDatasetSearchPerfResponseSchema = z.object({
     errorRate: z.number().min(0).max(1).meta({ description: '失败率' }),
     droppedEventCount: z.number().int().nonnegative().default(0).meta({
       description:
-        '突发高峰时因单点有界缓冲饱和而被省略的异常/降级单点明细条数（聚合统计不受影响）',
+        '与单点明细同一时间窗（UTC 整点对齐且受 7 天单点保留期截断）内，因单点有界缓冲饱和被省略的异常/降级明细条数（聚合统计不受影响）',
       example: 0
     }),
     rerankTriggerRate: z.number().min(0).max(1).meta({ description: 'Rerank 触发率' }),
@@ -163,7 +172,10 @@ export const GetDatasetSearchPerfEventsQuerySchema = z.object({
   rangeHours: IntSchema.min(1)
     .max(24 * 90)
     .default(24)
-    .meta({ description: '查询时间范围（小时）', example: 24 }),
+    .meta({
+      description: '查询时间范围（小时，按 UTC 整点与总览对齐，并受单点 7 天保留期截断）',
+      example: 24
+    }),
   pageNum: IntSchema.min(1).default(1).meta({ description: '页码（1 起步）', example: 1 }),
   pageSize: IntSchema.min(1).max(100).default(20).meta({ description: '每页条数', example: 20 }),
   reason: z
