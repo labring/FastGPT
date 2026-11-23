@@ -23,6 +23,35 @@ export const GetSystemInitDataQuerySchema = z.object({
 });
 export type GetSystemInitDataQuery = z.infer<typeof GetSystemInitDataQuerySchema>;
 
+/* ============================================================================
+ * API: 获取 Pro SSO 接入状态
+ * Route: GET /api/common/system/sso/config (Pro 内部接口)
+ * Method: GET
+ * Description: 返回 Pro 部署环境中的 SSO 接入状态，不返回服务地址或凭据；仅在显式请求 includeProvider=true 时探测 provider 类型
+ * Tags: ['系统接口', 'Read']
+ * ============================================================================ */
+
+export const ProSsoConfigQuerySchema = z.object({
+  includeProvider: BoolSchema.optional().meta({
+    description:
+      '是否探测并返回 SSO provider 类型（isWecom）；未传或为 false 时仅返回 enabled，兼容旧版主服务 .strict() 校验并避免密码策略路径触发外部探测',
+    example: true
+  })
+});
+export type ProSsoConfigQuery = z.infer<typeof ProSsoConfigQuerySchema>;
+
+export const ProSsoConfigResponseSchema = z
+  .object({
+    enabled: z.boolean().meta({ description: 'Pro 是否配置 SSO 服务', example: true }),
+    isWecom: z.boolean().optional().meta({
+      description:
+        'SSO 服务是否使用企业微信 provider；仅在 includeProvider=true 且探测成功时返回，未返回表示未探测或无法确认',
+      example: false
+    })
+  })
+  .strict();
+export type ProSsoConfigResponse = z.infer<typeof ProSsoConfigResponseSchema>;
+
 // 配置存储兼容历史扩展；传输结构只暴露声明字段，且精简响应不补业务默认值。
 const ClientFeConfigsSchema = FastGPTFeConfigsSchema.partial()
   .strip()
@@ -36,7 +65,11 @@ const ClientFeConfigsSchema = FastGPTFeConfigsSchema.partial()
     sso: FastGPTFeConfigsSchema.shape.sso
       .unwrap()
       .extend({
-        enabled: BoolSchema.meta({ description: '是否配置了 SSO 登录服务', example: true })
+        enabled: BoolSchema.meta({ description: '是否配置了 SSO 登录服务', example: true }),
+        isWecom: BoolSchema.optional().meta({
+          description: 'SSO 是否使用企业微信；省略表示旧版或无法确认',
+          example: false
+        })
       })
       .optional(),
     limit: FastGPTFeConfigsSchema.shape.limit
@@ -53,7 +86,8 @@ const ClientFeConfigsSchema = FastGPTFeConfigsSchema.partial()
 export const GetSystemInitDataResponseSchema = z.object({
   bufferId: z.string().optional().meta({
     example: 'system-config-20260811',
-    description: '当前系统配置缓存标识；未登录时带 unAuth_v9_ 前缀，包含匿名过滤规则版本'
+    description:
+      '当前系统配置缓存标识；未登录时带 unAuth_v10_sso_ 前缀，包含匿名规则和 SSO provider 状态'
   }),
   feConfigs: ClientFeConfigsSchema.optional().meta({
     description:

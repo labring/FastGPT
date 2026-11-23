@@ -2,7 +2,6 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import handler from '@/pages/api/common/system/getInitData';
 import { Call } from '@test/utils/request';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
 
 const auth = {
   userId: 'user-1',
@@ -107,7 +106,7 @@ describe('initStaticData through the real initialization pipeline', () => {
     expect(publicConfig.limit).toEqual({ uploadFileMaxAmount: 7, uploadFileMaxSize: 32 });
     expect(publicConfig.limit?.uploadFileMaxSize).toBe(32);
     expect(useSystemStore.getState().feConfigs).toEqual(publicConfig);
-    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v9_config-1');
+    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v10_sso_unknown_config-1');
     expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toEqual(publicConfig);
 
     const cached = await clientInitData();
@@ -140,14 +139,18 @@ describe('initStaticData through the real initialization pipeline', () => {
     const anonymous = await clientInitData();
     expect(anonymous.feConfigs).toEqual(publicConfig);
     expect(useSystemStore.getState().feConfigs).toEqual(publicConfig);
-    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v9_config-1');
+    expect(useSystemStore.getState().initDataBufferId).toBe('unAuth_v10_sso_unknown_config-1');
     expect(useSystemStore.getState().systemVersion).toBe('4.17.3');
     expect(JSON.parse(storage.get('globalStore')!).state.feConfigs).toEqual(publicConfig);
 
     expect(mocks.GET.mock.calls).toEqual(
-      ['unAuth_config-1', 'unAuth_v9_config-1', 'unAuth_v9_config-1', 'config-1', 'config-1'].map(
-        (bufferId) => ['/common/system/getInitData', { bufferId }]
-      )
+      [
+        'unAuth_config-1',
+        'unAuth_v10_sso_unknown_config-1',
+        'unAuth_v10_sso_unknown_config-1',
+        'config-1',
+        'config-1'
+      ].map((bufferId) => ['/common/system/getInitData', { bufferId }])
     );
   });
 

@@ -9,6 +9,7 @@ import {
   type GetSystemInitDataResponse
 } from '@fastgpt/global/openapi/common/system/api';
 import { getRuntimeSubPlansConfig } from '@fastgpt/global/support/wallet/sub/utils';
+import { getSsoIsWecom } from '@fastgpt/service/common/system/sso';
 import { serviceEnv } from '@fastgpt/service/env';
 
 /** 按会话鉴权返回初始化数据；匿名白名单覆盖登录、价格和分享聊天的公共依赖。 */
@@ -20,6 +21,7 @@ async function handler(
     req,
     querySchema: GetSystemInitDataQuerySchema
   }).query;
+  const ssoIsWecom = await getSsoIsWecom();
   const subPlans = getRuntimeSubPlansConfig(global.subPlans);
 
   /**
@@ -34,7 +36,14 @@ async function handler(
       sso: (() => {
         if (!global.feConfigs.sso && !global.systemEnv?.sso?.url) return undefined;
         // 地址及启用状态以服务端连接配置为准，不能信任存储的前端能力标志。
-        return { ...global.feConfigs.sso, enabled: Boolean(global.systemEnv?.sso?.url) };
+        const baseSso = Object.fromEntries(
+          Object.entries(global.feConfigs.sso ?? {}).filter(([key]) => key !== 'isWecom')
+        );
+        return {
+          ...baseSso,
+          enabled: Boolean(global.systemEnv?.sso?.url),
+          ...(ssoIsWecom !== undefined ? { isWecom: ssoIsWecom } : {})
+        };
       })()
     };
     if (isAuthenticated) return config;
@@ -100,7 +109,7 @@ async function handler(
 
     // 白名单改变时升级版本，强制旧匿名缓存重新获取过滤后的配置。
     const unAuthBufferId = global.systemInitBufferId
-      ? `unAuth_v9_${global.systemInitBufferId}`
+      ? `unAuth_v10_sso_${ssoIsWecom === true ? 'wecom' : ssoIsWecom === false ? 'non_wecom' : 'unknown'}_${global.systemInitBufferId}`
       : '';
     if (bufferId && unAuthBufferId === bufferId) {
       return {

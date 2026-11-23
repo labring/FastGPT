@@ -54,9 +54,10 @@ export const LoginContainer = ({
     rootLogin,
     ssoAvailable: feConfigs?.sso?.enabled === true,
     ssoAutoLogin: feConfigs?.sso?.autoLogin === true,
+    isWecomSso: feConfigs?.sso?.isWecom,
     wecomAvailable: Boolean(feConfigs?.oauth?.wecom),
     isWecomTerminal,
-    canWecomTerminalAutoRedirect: !isWecomTerminal || feConfigs?.wecomLoginAutoRedirect === true
+    wecomLoginAutoRedirect: feConfigs?.wecomLoginAutoRedirect === true
   });
   // 自动跳转渠道（含仅终端内可用的企业微信）不一定出现在可选按钮列表里，
   // 这里按 Provider 直接构造跳转入口，与旧实现 onClickOauth({ provider }) 的口径一致。
@@ -88,12 +89,10 @@ export const LoginContainer = ({
   }, [feConfigs?.oauth?.wechat, resetChatCache]);
 
   useEffect(() => {
-    if (!initd || initializedRef.current) return;
+    if (!initd || initializedRef.current || !autoLoginMethod) return;
     initializedRef.current = true;
 
-    if (autoLoginMethod) {
-      void startLogin(autoLoginMethod).catch(() => setAutoLoginFailed(true));
-    }
+    void startLogin(autoLoginMethod).catch(() => setAutoLoginFailed(true));
   }, [autoLoginMethod, initd, startLogin]);
 
   return (
