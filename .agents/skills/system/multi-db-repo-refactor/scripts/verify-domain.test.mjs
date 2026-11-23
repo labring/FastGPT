@@ -1514,6 +1514,190 @@ test('Finding #18: rejects property-existence spoofs on real harnesses and requi
           'packages/service/test/.finding18-real-dual.contract.test.ts'
         ]);
         assert.equal(realRes.status, 0, realRes.stderr);
+
+        // (d) Split multi-file test suite: regular repo.contract.test.ts + dedicated log-topology.contract.test.ts + service.test.ts -> PASSES
+        const splitCrudContractRel = 'packages/service/test/.split-crud.contract.test.ts';
+        const splitTopologyContractRel = 'packages/service/test/.split-topology.contract.test.ts';
+        const splitDisabledTopologyRel = 'packages/service/test/.split-bad-topology.contract.test.ts';
+        const splitServiceTestRel = 'packages/service/test/.split-l0.service.test.ts';
+        const splitCrudContractAbs = path.join(repoRoot, splitCrudContractRel);
+        const splitTopologyContractAbs = path.join(repoRoot, splitTopologyContractRel);
+        const splitDisabledTopologyAbs = path.join(repoRoot, splitDisabledTopologyRel);
+        const splitServiceTestAbs = path.join(repoRoot, splitServiceTestRel);
+        try {
+          fs.writeFileSync(
+            splitCrudContractAbs,
+            `
+              import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+              import { injectRepo } from '@fastgpt/dal/db/container';
+              import { createContractBackends, registerMultiDialectContractSuite } from '@fastgpt/dal/db/testing';
+              import { AuditLogRepoToken } from '../repo';
+
+              registerMultiDialectContractSuite({
+                backends: createContractBackends({
+                  collections: [],
+                  logCollections: [logCol],
+                  tables: [],
+                  logTables: [logTable],
+                  logMode: 'separate'
+                }),
+                beforeAllFn: beforeAll,
+                afterAllFn: afterAll,
+                registerTests: () => {
+                  const repo = injectRepo(AuditLogRepoToken);
+                  it('creates and reads audit log entries', async () => {
+                    const created = await repo.create({ data: { teamId: '000000000000000000000001' } });
+                    expect(created._id).toBeDefined();
+                  });
+                }
+              });
+            `
+          );
+          fs.writeFileSync(
+            splitTopologyContractAbs,
+            `
+              import { describe, it } from 'vitest';
+              import { injectRepo } from '@fastgpt/dal/db/container';
+              import { registerLogTopologyContractSuite } from '@fastgpt/dal/db/testing';
+              import { AuditLogRepoToken } from '../repo';
+
+              registerLogTopologyContractSuite({
+                describeFn: describe,
+                itFn: it,
+                logCollections: [logCol],
+                logTables: [logTable],
+                mongoCollectionName: 'audit_logs',
+                sqlTableName: 'audit_logs',
+                writeLogRecord: async () => {
+                  const created = await injectRepo(AuditLogRepoToken).create({
+                    data: { teamId: '000000000000000000000001' }
+                  });
+                  return { id: created._id };
+                },
+                readLogRecord: async ({ id }) =>
+                  injectRepo(AuditLogRepoToken).findById({
+                    id,
+                    teamId: '000000000000000000000001'
+                  })
+              });
+            `
+          );
+          fs.writeFileSync(
+            splitDisabledTopologyAbs,
+            `
+              import { describe, it } from 'vitest';
+              import { injectRepo } from '@fastgpt/dal/db/container';
+              import { registerLogTopologyContractSuite } from '@fastgpt/dal/db/testing';
+              import { AuditLogRepoToken } from '../repo';
+
+              registerLogTopologyContractSuite({
+                describeFn: describe,
+                itFn: it,
+                logCollections: [logCol],
+                logTables: [logTable],
+                mongoCollectionName: 'audit_logs',
+                sqlTableName: 'audit_logs',
+                includeMongo: false,
+                writeLogRecord: async () => {
+                  const created = await injectRepo(AuditLogRepoToken).create({
+                    data: { teamId: '000000000000000000000001' }
+                  });
+                  return { id: created._id };
+                },
+                readLogRecord: async ({ id }) =>
+                  injectRepo(AuditLogRepoToken).findById({
+                    id,
+                    teamId: '000000000000000000000001'
+                  })
+              });
+            `
+          );
+          fs.writeFileSync(
+            splitServiceTestAbs,
+            `
+              import { describe, expect, it } from 'vitest';
+              describe('AuditLog service L0 unit test', () => {
+                it('checks service validation', () => {
+                  expect(true).toBe(true);
+                });
+              });
+            `
+          );
+
+          // Valid multi-file combination (regular CRUD contract + dedicated topology contract + L0 test) -> PASSES
+          const splitPassRes = runVerify([
+            '--dir',
+            domainRel,
+            '--legacy-schema',
+            legacyRel,
+            '--allow-wip-slice1',
+            '--no-test',
+            '--test',
+            splitCrudContractRel,
+            '--test',
+            splitTopologyContractRel,
+            '--test',
+            splitServiceTestRel
+          ]);
+          assert.equal(splitPassRes.status, 0, splitPassRes.stderr);
+
+          // Multi-file with NO log topology suite in any candidate file -> FAILS
+          const splitMissingTopologyRes = runVerify([
+            '--dir',
+            domainRel,
+            '--legacy-schema',
+            legacyRel,
+            '--allow-wip-slice1',
+            '--no-test',
+            '--test',
+            splitCrudContractRel,
+            '--test',
+            splitServiceTestRel
+          ]);
+          assert.equal(splitMissingTopologyRes.status, 1);
+          assert.match(
+            splitMissingTopologyRes.stderr,
+            /must register executable registerLogTopologyContractSuite\(/
+          );
+
+          // Multi-file where sibling has invalid topology (`includeMongo: false`) -> FAILS
+          const splitBrokenTopologyRes = runVerify([
+            '--dir',
+            domainRel,
+            '--legacy-schema',
+            legacyRel,
+            '--allow-wip-slice1',
+            '--no-test',
+            '--test',
+            splitCrudContractRel,
+            '--test',
+            splitDisabledTopologyRel
+          ]);
+          assert.equal(splitBrokenTopologyRes.status, 1);
+          assert.match(
+            splitBrokenTopologyRes.stderr,
+            /must not disable "includeMongo: false"/
+          );
+
+          // Dedicated log-topology file alone WITHOUT any multi-dialect CRUD/TX contract suite -> FAILS
+          const topologyOnlyRes = runVerify([
+            '--dir',
+            domainRel,
+            '--legacy-schema',
+            legacyRel,
+            '--allow-wip-slice1',
+            '--no-test',
+            '--test',
+            splitTopologyContractRel
+          ]);
+          assert.equal(topologyOnlyRes.status, 1);
+          assert.match(topologyOnlyRes.stderr, /must invoke registerDualDialectContractSuite/);
+        } finally {
+          fs.rmSync(splitCrudContractAbs, { force: true });
+          fs.rmSync(splitTopologyContractAbs, { force: true });
+          fs.rmSync(splitDisabledTopologyAbs, { force: true });
+          fs.rmSync(splitServiceTestAbs, { force: true });
+        }
       }
     );
   } finally {

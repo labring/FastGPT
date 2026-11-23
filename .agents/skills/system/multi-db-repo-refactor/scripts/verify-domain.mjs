@@ -719,6 +719,19 @@ const checkContractTestGovernance = () => {
     return;
   }
 
+  const logCoverage =
+    isLogDomain && candidateFiles.size > 0
+      ? analyzeLogDualModeTestCoverage({
+          testFiles: [...candidateFiles].map((relPath) => ({
+            relPath,
+            raw: rawCodeByFile.get(relPath) ?? ''
+          })),
+          domainRepoSymbols: extractExportedDomainRepoSymbols(domainAbs)
+        })
+      : null;
+  const validLogSuiteFiles = new Set(logCoverage?.validSuiteFiles ?? []);
+  let hasMultiDialectContractFile = false;
+
   for (const rel of contractTestFiles) {
     const execCode = execCodeByFile.get(rel) ?? '';
 
@@ -727,10 +740,22 @@ const checkContractTestGovernance = () => {
         `[Tests] ${rel} stubs transactionRunner with execute(undefined); contract tests must run against real Mongo replset transactions`
       );
     }
+
+    // 日志域允许将拓扑隔离单独拆分为 `.contract.test.ts`：只要本身是合法的日志拓扑契约文件，
+    // 其 `describe/it/expect` 由 `registerLogTopologyContractSuite` 内部展开，不再要求重复调用多方言 CRUD 套件；
+    // 但整个领域仍必须包含至少一个多方言 CRUD/事务契约文件（下方的 hasMultiDialectContractFile 守卫）。
+    const isDedicatedLogTopologyFile =
+      isLogDomain && validLogSuiteFiles.has(rel) && !CONTRACT_SUITE_CALL_REGEX.test(execCode);
+    if (isDedicatedLogTopologyFile) {
+      continue;
+    }
+
     if (!CONTRACT_SUITE_CALL_REGEX.test(execCode)) {
       failures.push(
         `[Tests] ${rel} must invoke registerDualDialectContractSuite(...) / registerMultiDialectContractSuite(...) (bare imports or strings do not count)`
       );
+    } else {
+      hasMultiDialectContractFile = true;
     }
     if (!TEST_CASE_CALL_REGEX.test(execCode) || !ASSERTION_CALL_REGEX.test(execCode)) {
       failures.push(
@@ -739,20 +764,16 @@ const checkContractTestGovernance = () => {
     }
   }
 
-  if (isLogDomain && contractTestFiles.length > 0) {
-    const domainRepoSymbols = extractExportedDomainRepoSymbols(domainAbs);
-    const logCoverage = analyzeLogDualModeTestCoverage({
-      testFiles: [...candidateFiles].map((relPath) => ({
-        relPath,
-        raw: rawCodeByFile.get(relPath) ?? ''
-      })),
-      domainRepoSymbols
-    });
-    if (!logCoverage.ok) {
-      failures.push(
-        `[Tests] Log domain ${domainRel} must register executable registerLogTopologyContractSuite(...) verifying shared/separate physical DB isolation (${logCoverage.details})`
-      );
-    }
+  if (contractTestFiles.length > 0 && !hasMultiDialectContractFile) {
+    failures.push(
+      `[Tests] Domain ${domainRel} must invoke registerDualDialectContractSuite(...) / registerMultiDialectContractSuite(...) in a contract test file`
+    );
+  }
+
+  if (isLogDomain && contractTestFiles.length > 0 && logCoverage !== null && !logCoverage.ok) {
+    failures.push(
+      `[Tests] Log domain ${domainRel} must register executable registerLogTopologyContractSuite(...) verifying shared/separate physical DB isolation (${logCoverage.details})`
+    );
   }
 };
 

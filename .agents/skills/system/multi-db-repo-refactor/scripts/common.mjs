@@ -4827,18 +4827,19 @@ export const extractExportedDomainRepoSymbols = (domainAbs) => {
 };
 
 /**
- * 校验日志域测试文件是否真正接入了可复用的运行期日志双态隔离契约套件 `registerLogTopologyContractSuite`：
- * 1. 必须从 `@fastgpt/dal/db/testing` 导入（禁止本地同名 mock/函数遮蔽）；
- * 2. 必须在顶层或非 skip/todo 的 `describe(...)` 块中可执行地调用 `registerLogTopologyContractSuite({ ... })`；
- * 3. 禁止传入 `requireBothFamilies: false` / `includeMongo: false` / `includePGlite: false` 跳过任一方言族；
- * 4. `writeLogRecord` 与 `readLogRecord` 回调体内必须真实调用领域仓储或 `injectRepo(...)`（绝不依赖 `harness.logDb` 属性存在性断言）。
+ * 按候选测试文件集合联合验收日志域是否接入标准双态物理隔离契约套件 `registerLogTopologyContractSuite`：
+ * 1. 允许按职责拆分为多文件（例如常规 CRUD/事务契约文件 + 独立日志拓扑文件 + Service L0 单测），不再误拒不含拓扑套件的兄弟文件；
+ * 2. 候选集合中必须至少有一个文件从 `@fastgpt/dal/db/testing` 导入并可执行调用 `registerLogTopologyContractSuite({ ... })`；
+ * 3. 若任何文件出现本地 mock 遮蔽、置于 skip/todo 块内、关闭 `requireBothFamilies`/`includeMongo`/`includePGlite`，
+ *    或 `writeLogRecord`/`readLogRecord` 未真实调用领域仓储/`injectRepo(...)`，均立即拒绝。
  */
 export const analyzeLogDualModeTestCoverage = ({
   testFiles,
   domainRepoSymbols = new Set()
 }) => {
-  const reasons = [];
-  let hasValidSuiteCall = false;
+  const validSuiteFiles = new Set();
+  const invalidSuiteReasons = [];
+  const missingImportFiles = [];
 
   for (const file of testFiles) {
     const resolver = createStaticScopeResolver({ sourceText: file.raw });
@@ -4856,9 +4857,19 @@ export const analyzeLogDualModeTestCoverage = ({
     }
 
     if (suiteCallees.size === 0) {
-      reasons.push(
-        `${file.relPath}: must import "${LOG_TOPOLOGY_SUITE_CALLEE}" from "@fastgpt/dal/db/testing"`
-      );
+      // 若同文件未从 @fastgpt/dal/db/testing 导入却仍调用同名符号（本地 mock 遮蔽），即使拆分在多文件集合中也必须拦截
+      const shadowedCalls = findFunctionCalls({
+        tokens,
+        matchIdx,
+        calleeNames: new Set([LOG_TOPOLOGY_SUITE_CALLEE])
+      });
+      if (shadowedCalls.length > 0) {
+        invalidSuiteReasons.push(
+          `${file.relPath}: must import "${LOG_TOPOLOGY_SUITE_CALLEE}" from "@fastgpt/dal/db/testing"`
+        );
+      } else {
+        missingImportFiles.push(file.relPath);
+      }
       continue;
     }
 
@@ -4952,19 +4963,41 @@ export const analyzeLogDualModeTestCoverage = ({
       return false;
     };
 
-    // 3. 扫描所有可执行的 registerLogTopologyContractSuite(...) 调用并严格校验参数契约
-    for (const call of findFunctionCalls({
+    // 3. 扫描当前文件所有可执行的 registerLogTopologyContractSuite(...) 调用并按单次调用校验参数契约
+    const calls = findFunctionCalls({
       tokens,
       matchIdx,
       calleeNames: suiteCallees
-    })) {
-      if (call.closeParenIdx === -1 || isInsideSkipped(call.calleeIdx)) {
+    });
+    if (calls.length === 0) {
+      invalidSuiteReasons.push(
+        `${file.relPath}: imported "${LOG_TOPOLOGY_SUITE_CALLEE}" without invoking it`
+      );
+      continue;
+    }
+
+    let fileHasValidCall = false;
+    const fileInvalidReasons = [];
+
+    for (const call of calls) {
+      const callReasons = [];
+      if (call.closeParenIdx === -1) {
+        fileInvalidReasons.push(`${file.relPath}: malformed ${call.calleeName}(...) call`);
         continue;
       }
+      if (isInsideSkipped(call.calleeIdx)) {
+        fileInvalidReasons.push(
+          `${file.relPath}: ${call.calleeName} is inside skipped test block`
+        );
+        continue;
+      }
+
       const calleeCharPos = tokens[call.calleeIdx].start;
       const calleeBinding = scopeTree.lookupBinding(call.calleeName, calleeCharPos);
       if (calleeBinding.found && calleeBinding.binding.kind !== 'import') {
-        reasons.push(`${file.relPath}: "${call.calleeName}" is shadowed by local mock/binding`);
+        fileInvalidReasons.push(
+          `${file.relPath}: "${call.calleeName}" is shadowed by local mock/binding`
+        );
         continue;
       }
 
@@ -4989,7 +5022,9 @@ export const analyzeLogDualModeTestCoverage = ({
           }
         }
         if (!inDescribe) {
-          reasons.push(`${file.relPath}: ${call.calleeName} must be registered at top-level or inside describe()`);
+          fileInvalidReasons.push(
+            `${file.relPath}: ${call.calleeName} must be registered at top-level or inside describe()`
+          );
           continue;
         }
       }
@@ -4997,7 +5032,7 @@ export const analyzeLogDualModeTestCoverage = ({
       const inner = clean.slice(tokens[call.openParenIdx].end, tokens[call.closeParenIdx].start);
       const callArgs = splitTopLevelComma(inner).filter((arg) => arg.trim().length > 0);
       if (callArgs.length === 0) {
-        reasons.push(`${file.relPath}: ${call.calleeName} called without options object`);
+        fileInvalidReasons.push(`${file.relPath}: ${call.calleeName} called without options object`);
         continue;
       }
       const argStartPos = skipWhitespace(clean, tokens[call.openParenIdx].end);
@@ -5006,7 +5041,7 @@ export const analyzeLogDualModeTestCoverage = ({
         scopePos: argStartPos
       });
       if (!objRes.ok) {
-        reasons.push(`${file.relPath}: cannot inspect options passed to ${call.calleeName}`);
+        fileInvalidReasons.push(`${file.relPath}: cannot inspect options passed to ${call.calleeName}`);
         continue;
       }
 
@@ -5019,7 +5054,7 @@ export const analyzeLogDualModeTestCoverage = ({
             scopePos: entry.scopePos
           });
           if (valRes.ok && valRes.value === false) {
-            reasons.push(
+            callReasons.push(
               `${file.relPath}: ${call.calleeName} must not disable "${flagKey}: false"`
             );
           }
@@ -5036,35 +5071,46 @@ export const analyzeLogDualModeTestCoverage = ({
       ]) {
         const entry = objRes.props.get(reqProp);
         if (entry === undefined) {
-          reasons.push(`${file.relPath}: ${call.calleeName} missing required option "${reqProp}"`);
+          callReasons.push(`${file.relPath}: ${call.calleeName} missing required option "${reqProp}"`);
         }
       }
 
       const writeEntry = objRes.props.get('writeLogRecord');
       const readEntry = objRes.props.get('readLogRecord');
       if (writeEntry !== undefined && !callbackExercisesRepository(writeEntry.rawValue)) {
-        reasons.push(
+        callReasons.push(
           `${file.relPath}: ${call.calleeName}.writeLogRecord must exercise domain repository / injectRepo()`
         );
       }
       if (readEntry !== undefined && !callbackExercisesRepository(readEntry.rawValue)) {
-        reasons.push(
+        callReasons.push(
           `${file.relPath}: ${call.calleeName}.readLogRecord must exercise domain repository / injectRepo()`
         );
       }
 
-      if (reasons.length === 0) {
-        hasValidSuiteCall = true;
+      if (callReasons.length === 0) {
+        fileHasValidCall = true;
+      } else {
+        fileInvalidReasons.push(...callReasons);
       }
+    }
+
+    if (fileInvalidReasons.length > 0) {
+      invalidSuiteReasons.push(...fileInvalidReasons);
+    } else if (fileHasValidCall) {
+      validSuiteFiles.add(file.relPath);
     }
   }
 
   return {
-    ok: hasValidSuiteCall && reasons.length === 0,
+    ok: validSuiteFiles.size > 0 && invalidSuiteReasons.length === 0,
+    validSuiteFiles: [...validSuiteFiles],
     details:
-      reasons.length > 0
-        ? reasons.join('; ')
-        : `missing executable ${LOG_TOPOLOGY_SUITE_CALLEE}({ ... }) wiring shared + separate physical isolation checks`
+      invalidSuiteReasons.length > 0
+        ? invalidSuiteReasons.join('; ')
+        : missingImportFiles.length > 0
+          ? `none of the candidate test files (${missingImportFiles.join(', ')}) imports and invokes "${LOG_TOPOLOGY_SUITE_CALLEE}" from "@fastgpt/dal/db/testing"`
+          : `missing executable ${LOG_TOPOLOGY_SUITE_CALLEE}({ ... }) wiring shared + separate physical isolation checks`
   };
 };
 

@@ -11,6 +11,8 @@ import {
   createMongoTestHarness,
   createMysqlSqlTestHarness,
   createPostgresSqlTestHarness,
+  disableTestMongoIndexReadiness,
+  enableTestMongoIndexReadiness,
   parseRequiredSqlDialects,
   registerDualDialectContractSuite,
   registerLogTopologyContractSuite,
@@ -539,5 +541,47 @@ describe('@fastgpt/dal/db/testing harness reliability & contract guardrails', ()
         }
       })
     ).rejects.toThrow(/Separate Mongo log topology isolation violated/);
+  }, 30_000);
+
+  it('guarantees unique indexes are ready before immediate writes on lazy-registered models while respecting schema autoIndex: false', async () => {
+    const harness = await createMongoTestHarness({ collections: [] });
+    try {
+      await enableTestMongoIndexReadiness([harness.client]);
+      expect(harness.client.get('autoIndex')).toBe(false);
+
+      // 1. 延迟注册带唯一约束的模型并紧接着并发双写，5 轮全部必须严格 1 成功 + 1 撞 E11000（零竞态）
+      for (let round = 0; round < 5; round += 1) {
+        const lazySchema = new Schema({ code: { type: String, required: true } });
+        lazySchema.index({ code: 1 }, { unique: true });
+        const LazyModel = harness.client.model(`LazyRaceModel_${round}`, lazySchema);
+
+        const outcomes = await Promise.allSettled([
+          LazyModel.create({ code: 'dup' }),
+          LazyModel.create({ code: 'dup' })
+        ]);
+        const fulfilled = outcomes.filter((o) => o.status === 'fulfilled');
+        const rejected = outcomes.filter((o) => o.status === 'rejected') as PromiseRejectedResult[];
+
+        expect(fulfilled).toHaveLength(1);
+        expect(rejected).toHaveLength(1);
+        expect((rejected[0].reason as { code?: number })?.code).toBe(11000);
+        expect(await LazyModel.countDocuments({ code: 'dup' })).toBe(1);
+      }
+
+      // 2. 显式声明 schema 级 autoIndex: false 的模型必须被保留豁免（允许在未手动建索引前写入重复文档）
+      const optedOutSchema = new Schema(
+        { code: { type: String, required: true } },
+        { autoIndex: false }
+      );
+      optedOutSchema.index({ code: 1 }, { unique: true });
+      const OptedOutModel = harness.client.model('OptedOutLazyModel', optedOutSchema);
+
+      await OptedOutModel.create({ code: 'dup' });
+      await OptedOutModel.create({ code: 'dup' });
+      expect(await OptedOutModel.countDocuments({ code: 'dup' })).toBe(2);
+    } finally {
+      disableTestMongoIndexReadiness([harness.client]);
+      await harness.close();
+    }
   }, 30_000);
 });

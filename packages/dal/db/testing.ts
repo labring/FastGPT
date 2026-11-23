@@ -1416,3 +1416,277 @@ export const registerLogTopologyContractSuite = ({
     });
   }
 };
+
+type TestMongoIndexReadinessState = {
+  readyModels: WeakSet<Model<any>>;
+  inFlight: WeakMap<Model<any>, Promise<void>>;
+  originalModelFn: Mongoose['model'];
+};
+
+const testReadinessStates = new WeakMap<Mongoose, TestMongoIndexReadinessState>();
+const barrierInstalledSchemas = new WeakSet<object>();
+const barrierWrappedBulkWriteModels = new WeakSet<Model<any>>();
+const TEST_MONGO_INDEX_BARRIER_OPS: ReadonlyArray<string | RegExp> = [
+  'save',
+  'insertMany',
+  /^update/,
+  'replaceOne',
+  /^find/,
+  /^delete/,
+  'aggregate',
+  'countDocuments',
+  'distinct'
+];
+
+const dedupeMongoClients = (clients: readonly (Mongoose | undefined)[]): Mongoose[] =>
+  Array.from(new Set(clients.filter((client): client is Mongoose => client !== undefined)));
+
+const resolveHookModel = (context: unknown): Model<any> | undefined => {
+  if (
+    typeof context === 'function' &&
+    typeof (context as { createIndexes?: unknown }).createIndexes === 'function'
+  ) {
+    return context as Model<any>;
+  }
+  if (context !== null && typeof context === 'object') {
+    const obj = context as {
+      _model?: unknown;
+      model?: unknown;
+      constructor?: unknown;
+    };
+    if (
+      typeof obj._model === 'function' &&
+      typeof (obj._model as { createIndexes?: unknown }).createIndexes === 'function'
+    ) {
+      return obj._model as Model<any>;
+    }
+    if (
+      typeof obj.model === 'function' &&
+      typeof (obj.model as { createIndexes?: unknown }).createIndexes === 'function'
+    ) {
+      return obj.model as Model<any>;
+    }
+    if (
+      typeof obj.constructor === 'function' &&
+      typeof (obj.constructor as { createIndexes?: unknown }).createIndexes === 'function'
+    ) {
+      return obj.constructor as Model<any>;
+    }
+  }
+  return undefined;
+};
+
+const ensureModelIndexesReady = ({
+  client,
+  state,
+  model
+}: {
+  client: Mongoose;
+  state: TestMongoIndexReadinessState;
+  model: Model<any>;
+}): Promise<void> => {
+  if (state.readyModels.has(model)) {
+    return Promise.resolve();
+  }
+  if (model.schema.get('autoIndex') === false) {
+    return Promise.resolve();
+  }
+  if (client.connection.readyState !== 1) {
+    return Promise.resolve();
+  }
+
+  let task = state.inFlight.get(model);
+  if (task === undefined) {
+    task = model
+      .createIndexes()
+      .then(() => {
+        state.readyModels.add(model);
+        state.inFlight.delete(model);
+      })
+      .catch((error) => {
+        // 建索引失败时保留重试机会，不把失败模型错误标记为 ready。
+        state.inFlight.delete(model);
+        throw error;
+      });
+    state.inFlight.set(model, task);
+  }
+  return task;
+};
+
+const installLazyModelBarrierOnSchema = (schema: unknown): void => {
+  if (schema === null || typeof schema !== 'object') {
+    return;
+  }
+  const candidate = schema as {
+    get?: (key: string) => unknown;
+    pre?: (hook: string | RegExp, fn: (this: unknown, next: (err?: Error) => void) => void) => void;
+  };
+  if (typeof candidate.get !== 'function' || typeof candidate.pre !== 'function') {
+    return;
+  }
+  if (candidate.get('autoIndex') === false) {
+    return;
+  }
+  if (barrierInstalledSchemas.has(schema)) {
+    return;
+  }
+  barrierInstalledSchemas.add(schema);
+
+  for (const op of TEST_MONGO_INDEX_BARRIER_OPS) {
+    candidate.pre(op, function (this: unknown, next: (err?: Error) => void) {
+      const model = resolveHookModel(this);
+      const client = (model?.db as { base?: Mongoose } | undefined)?.base;
+      const state = client !== undefined ? testReadinessStates.get(client) : undefined;
+      if (
+        state === undefined ||
+        model === undefined ||
+        state.readyModels.has(model) ||
+        model.schema.get('autoIndex') === false ||
+        client?.connection.readyState !== 1
+      ) {
+        next();
+        return;
+      }
+
+      // 延迟注册模型首次执行 CRUD 前等待同一份 createIndexes() 期约完成，消除唯一键并发写入竞态。
+      void ensureModelIndexesReady({ client, state, model }).then(
+        () => next(),
+        (error: Error) => next(error)
+      );
+    });
+  }
+};
+
+const wrapModelBulkWrite = ({
+  client,
+  state,
+  model
+}: {
+  client: Mongoose;
+  state: TestMongoIndexReadinessState;
+  model: Model<any>;
+}): void => {
+  if (typeof model.bulkWrite !== 'function' || barrierWrappedBulkWriteModels.has(model)) {
+    return;
+  }
+  barrierWrappedBulkWriteModels.add(model);
+
+  const originalBulkWrite = model.bulkWrite.bind(model);
+  model.bulkWrite = (async (...args: Parameters<Model<any>['bulkWrite']>) => {
+    if (testReadinessStates.get(client) === state && !state.readyModels.has(model)) {
+      await ensureModelIndexesReady({ client, state, model });
+    }
+    return originalBulkWrite(...args);
+  }) as Model<any>['bulkWrite'];
+};
+
+const wrapClientModelForTestReadiness = ({
+  client,
+  state
+}: {
+  client: Mongoose;
+  state: TestMongoIndexReadinessState;
+}): void => {
+  const originalModelFn = state.originalModelFn;
+  (client as { model: Mongoose['model'] }).model = function (this: Mongoose, ...args: unknown[]) {
+    const schemaArg = args[1];
+    installLazyModelBarrierOnSchema(schemaArg);
+
+    const model = (originalModelFn as (...innerArgs: unknown[]) => Model<any>).apply(this, args);
+    if (model !== undefined && model.schema?.get('autoIndex') !== false) {
+      wrapModelBulkWrite({ client, state, model });
+      if (client.connection.readyState === 1) {
+        // 立刻触发建索引并把 Promise 收敛进 state.inFlight，首次操作将与它复用同一构建期约。
+        void ensureModelIndexesReady({ client, state, model }).catch(() => undefined);
+      }
+    }
+    return model;
+  } as unknown as Mongoose['model'];
+};
+
+/**
+ * 为测试客户端显式确保当前已注册模型的索引全部就绪。
+ *
+ * - 自动跳过 `schema.get('autoIndex') === false` 的显式禁用场景（用于测试缺索引或手工建索引逻辑）；
+ * - 若客户端已调用 {@link enableTestMongoIndexReadiness}，则复用同一份 `readyModels` / `inFlight` 状态去重。
+ */
+export const ensureTestMongoIndexes = async (
+  clients: readonly (Mongoose | undefined)[]
+): Promise<void> => {
+  const uniqueClients = dedupeMongoClients(clients);
+  const tasks: Promise<void>[] = [];
+
+  for (const client of uniqueClients) {
+    if (client.connection.readyState !== 1) {
+      continue;
+    }
+
+    const activeState = testReadinessStates.get(client);
+    for (const model of Object.values(client.models)) {
+      if (model.schema.get('autoIndex') === false) {
+        continue;
+      }
+      if (activeState !== undefined) {
+        tasks.push(ensureModelIndexesReady({ client, state: activeState, model }));
+      } else {
+        tasks.push(model.createIndexes().then(() => undefined));
+      }
+    }
+  }
+
+  if (tasks.length > 0) {
+    await Promise.all(tasks);
+  }
+};
+
+/**
+ * 启用共享的测试态 Mongo 索引就绪契约（主仓、Pro 与集成测试装配层统一入口）：
+ * - 显式关闭 Mongoose 连接级 `autoIndex`（避免后台无等待异步建索引造成唯一键竞态）；
+ * - 立即为所有已加载模型执行并等待 `createIndexes()`；
+ * - 拦截 `client.model(...)` 为用例内延迟注册的模型挂入首次操作前就绪屏障（已完成模型同步零开销放行）。
+ */
+export const enableTestMongoIndexReadiness = async (
+  clients: readonly (Mongoose | undefined)[]
+): Promise<void> => {
+  const uniqueClients = dedupeMongoClients(clients);
+
+  for (const client of uniqueClients) {
+    client.set('autoIndex', false);
+    if (testReadinessStates.has(client)) {
+      continue;
+    }
+
+    const state: TestMongoIndexReadinessState = {
+      readyModels: new WeakSet<Model<any>>(),
+      inFlight: new WeakMap<Model<any>, Promise<void>>(),
+      originalModelFn: client.model
+    };
+    testReadinessStates.set(client, state);
+    wrapClientModelForTestReadiness({ client, state });
+
+    for (const model of Object.values(client.models)) {
+      if (model.schema.get('autoIndex') !== false) {
+        installLazyModelBarrierOnSchema(model.schema);
+        wrapModelBulkWrite({ client, state, model });
+      }
+    }
+  }
+
+  await ensureTestMongoIndexes(uniqueClients);
+};
+
+/**
+ * 清理并恢复测试客户端上的 `client.model` 拦截与状态缓存（通常在 `afterAll` 断开连接前调用）。
+ */
+export const disableTestMongoIndexReadiness = (
+  clients: readonly (Mongoose | undefined)[]
+): void => {
+  for (const client of dedupeMongoClients(clients)) {
+    const state = testReadinessStates.get(client);
+    if (state === undefined) {
+      continue;
+    }
+    (client as { model: Mongoose['model'] }).model = state.originalModelFn;
+    testReadinessStates.delete(client);
+  }
+};

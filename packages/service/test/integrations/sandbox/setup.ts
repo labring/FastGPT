@@ -3,6 +3,10 @@ import '@test/mocks/common/mongo';
 import { connectMongo } from '@fastgpt/service/common/mongo/init';
 import { connectionLogMongo, connectionMongo } from '@fastgpt/service/common/mongo';
 import {
+  disableTestMongoIndexReadiness,
+  enableTestMongoIndexReadiness
+} from '@fastgpt/dal/db/testing';
+import {
   configureRedisRuntime,
   closeRedisRuntime,
   getRedisRuntime
@@ -26,12 +30,8 @@ beforeAll(async () => {
   const uniqueMongoClients = Array.from(new Set([connectionMongo, connectionLogMongo]));
   for (const client of uniqueMongoClients) {
     await connectMongo({ db: client, url: inject('MONGODB_URI') });
-    client.set('autoIndex', true);
   }
-  const modelsToIndex = Array.from(
-    new Set(uniqueMongoClients.flatMap((client) => Object.values(client.models)))
-  ).filter((model) => model.schema.get('autoIndex') !== false);
-  await Promise.all(modelsToIndex.map((model) => model.createIndexes()));
+  await enableTestMongoIndexReadiness(uniqueMongoClients);
 
   initGlobalVariables();
   global.agentUserTmbIds = new Set();
@@ -41,6 +41,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   const uniqueMongoClients = Array.from(new Set([connectionMongo, connectionLogMongo]));
+  disableTestMongoIndexReadiness(uniqueMongoClients);
   for (const client of uniqueMongoClients) {
     await client.connection.db?.dropDatabase();
   }
