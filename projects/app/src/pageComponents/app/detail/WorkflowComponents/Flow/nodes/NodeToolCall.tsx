@@ -1,7 +1,7 @@
 import React from 'react';
-import { type NodeProps } from 'reactflow';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from './render/NodeCard';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import Divider from '../components/Divider';
 import Container from '../components/Container';
 import RenderInput from './render/RenderInput';
@@ -10,23 +10,28 @@ import { Box } from '@chakra-ui/react';
 import IOTitle from '../components/IOTitle';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import RenderOutput from './render/RenderOutput';
-import { useContextSelector } from 'use-context-selector';
 import CatchError from './render/RenderOutput/CatchError';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { WorkflowUtilsContext } from '../../context/workflowUtilsContext';
+import { splitNodeOutputs, splitToolInputsByMode } from '@/web/core/workflow/utils';
+import { useIsToolNode } from './render/useWorkflowDocument';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
 
-const NodeToolCall = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeToolCall = ({ data, selected }: CanvasNodeProps) => {
   const { t } = useTranslation();
-  const { nodeId, inputs, outputs, catchError } = data;
-  const splitToolInputs = useContextSelector(WorkflowUtilsContext, (ctx) => ctx.splitToolInputs);
-  const splitOutput = useContextSelector(WorkflowUtilsContext, (ctx) => ctx.splitOutput);
-  const { isTool, commonInputs } = useMemoEnhance(
-    () => splitToolInputs(inputs, nodeId),
-    [inputs, nodeId, splitToolInputs]
+  const { nodeId } = data;
+  const {
+    inputs = [],
+    outputs = [],
+    catchError = false
+  } = useNode<WorkflowNodeData>(nodeId, (node) => node?.data) ?? {};
+  const isTool = useIsToolNode(nodeId);
+  const { commonInputs } = useMemoEnhance(
+    () => splitToolInputsByMode(inputs, isTool),
+    [inputs, isTool]
   );
   const { successOutputs, errorOutputs } = useMemoEnhance(
-    () => splitOutput(outputs),
-    [outputs, splitOutput]
+    () => splitNodeOutputs(outputs),
+    [outputs]
   );
 
   return (

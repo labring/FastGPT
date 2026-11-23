@@ -142,7 +142,8 @@ describe('validateNodeIO', () => {
   it.each([
     { value: { logic: 'invalid', conditions: [] } },
     { value: { logic: DatasetTagFilterLogicEnum.AND, conditions: 'invalid' } },
-    { value: createEmptyTagFilterValue(), selectedType: FlowNodeInputTypeEnum.textarea }
+    { value: createEmptyTagFilterValue(), selectedType: FlowNodeInputTypeEnum.textarea },
+    { key: NodeInputKeyEnum.collectionFilterMatch, value: ['source', 'text'] }
   ])('retains type checks outside valid tag-filter storage: %j', (values) => {
     const node = makeNode({
       inputs: [
@@ -767,7 +768,7 @@ describe('validateNodeIO', () => {
           key: 'type',
           renderTypeList: [FlowNodeInputTypeEnum.reference],
           value: ['source', 'text'],
-          valueType: WorkflowIOValueTypeEnum.number
+          valueType: WorkflowIOValueTypeEnum.boolean
         }),
         makeInput({
           key: 'array',

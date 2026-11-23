@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createContainerVariableProbe } from '../utils/containerVariableProbe';
 import { createDefaultInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import {
+  FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
@@ -24,6 +25,7 @@ import {
   createWorkflowRuntimeSummary,
   summarizeRuntimeNodeResponses
 } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
+import { createEdge, createNode } from '../../utils';
 
 const runWorkflowMock = vi.fn();
 
@@ -251,6 +253,60 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(checkIsStopping).toHaveReturnedWith(true);
     expect(props).not.toHaveProperty('checkIsStopping');
   });
+
+  it.each([
+    [FlowNodeTypeEnum.classifyQuestion, 'removed', undefined],
+    [FlowNodeTypeEnum.classifyQuestion, 'kept', 'previous result'],
+    [FlowNodeTypeEnum.ifElseNode, 'removed', undefined],
+    [FlowNodeTypeEnum.ifElseNode, 'kept', 'previous result'],
+    [FlowNodeTypeEnum.ifElseNode, 'ELSE IF 1', 'previous result'],
+    [FlowNodeTypeEnum.ifElseNode, 'ELSE', 'previous result']
+  ] as const)(
+    'captures LoopRun outputs from %s via %s in a restored graph',
+    async (type, branch, value) => {
+      const props = makeProps({
+        [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+        [NodeInputKeyEnum.loopRunInputArray]: ['first']
+      });
+      const node = makeLoopRunNode([{ key: 'result', ref: ['source', 'result'] }]);
+      node.inputs.at(-1)!.renderTypeList = [FlowNodeInputTypeEnum.reference];
+      props.node = props.runtimeNodes[0] = node;
+
+      const source = createNode('source', type);
+      source.inputs = [
+        type === FlowNodeTypeEnum.ifElseNode
+          ? makeInput({
+              key: NodeInputKeyEnum.ifElseList,
+              value: [
+                { branchId: 'kept', condition: 'AND', list: [] },
+                { condition: 'AND', list: [] }
+              ]
+            })
+          : makeInput({ key: NodeInputKeyEnum.agents, value: [{ key: 'kept', value: 'Kept' }] })
+      ];
+      source.outputs = [
+        {
+          id: 'result',
+          key: 'result',
+          type: FlowNodeOutputTypeEnum.static,
+          value: 'previous result'
+        }
+      ];
+      props.runtimeNodes.push(source);
+      props.runtimeNodesMap.set(source.nodeId, source);
+      props.runtimeNodesMap.set(node.nodeId, node);
+      props.runtimeEdges = [createEdge('source', node.nodeId, 'active', `source-source-${branch}`)];
+      props.lastInteractive = {
+        type: 'loopRunInteractive',
+        params: { iteration: 1, loopHistory: [] }
+      };
+      runWorkflowMock.mockResolvedValue(makeDispatchFlowResponse());
+
+      const result = await dispatchLoopRun(props);
+
+      expect(result.data).toStrictEqual({ result: value });
+    }
+  );
 
   it('array mode 数组正常跑完 → loopHistory 全 success, data 含最后一轮快照', async () => {
     // Each iteration returns a clean response that writes a new value to chatNode

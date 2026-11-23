@@ -1,6 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
-import { FlowNodeTypeEnum, LoopRunModeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum,
+  LoopRunModeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import type { RunWorkflowProps } from '@fastgpt/service/core/workflow/dispatch/type';
 import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
 import {
@@ -170,6 +178,124 @@ const cases: DataCase[] = [
 ];
 
 describe('registered node data transfer', () => {
+  it('treats stale optional references as empty while preserving valid values and literals', async () => {
+    const source = graphNode({
+      id: 'source',
+      type: FlowNodeTypeEnum.toolParams,
+      params: { value: 0 },
+      outputs: [
+        {
+          id: 'value',
+          key: 'value',
+          label: 'Value',
+          type: FlowNodeOutputTypeEnum.static,
+          valueType: WorkflowIOValueTypeEnum.number
+        }
+      ],
+      isEntry: true
+    });
+    const sibling = graphNode({
+      id: 'sibling',
+      type: FlowNodeTypeEnum.toolParams,
+      params: { value: 'sibling' },
+      outputs: ['value']
+    });
+    sibling.outputs[0].value = 'sibling';
+
+    const target = graphNode({
+      id: 'target',
+      type: FlowNodeTypeEnum.toolParams,
+      params: { literal: ['removed', 'value'] },
+      inputs: [
+        graphReference({ key: 'missing', from: ['removed', 'value'] }),
+        graphReference({ key: 'unreachable', from: ['sibling', 'value'] }),
+        graphReference({
+          key: 'wrongType',
+          from: ['source', 'value'],
+          valueType: WorkflowIOValueTypeEnum.string
+        }),
+        graphReference({
+          key: 'mixed',
+          from: [
+            ['removed', 'value'],
+            ['source', 'value']
+          ],
+          valueType: WorkflowIOValueTypeEnum.arrayNumber
+        })
+      ],
+      outputs: ['missing', 'unreachable', 'wrongType', 'mixed', 'literal']
+    });
+
+    await runGraph({
+      nodes: [source, sibling, target],
+      edges: [
+        graphEdge({ source: 'source', target: 'sibling' }),
+        graphEdge({ source: 'source', target: 'target' })
+      ]
+    });
+
+    expect(graphValues(target)).toEqual({
+      missing: undefined,
+      unreachable: undefined,
+      wrongType: undefined,
+      mixed: [0],
+      literal: ['removed', 'value']
+    });
+    expect(target.inputs.find((input) => input.key === 'missing')?.value).toEqual([
+      'removed',
+      'value'
+    ]);
+  });
+
+  it.each([false, true])(
+    'passes upstream references to attached tools on the catch path=%s',
+    async (error) => {
+      const source = graphNode({
+        id: 'source',
+        type: FlowNodeTypeEnum.toolParams,
+        catchError: true,
+        outputs: [
+          'value',
+          { id: 'error', key: 'error', type: FlowNodeOutputTypeEnum.error, value: 'caught error' }
+        ]
+      });
+      const caller = graphNode({
+        id: 'caller',
+        type: FlowNodeTypeEnum.toolCall,
+        outputs: ['value']
+      });
+      source.outputs[0].value = 'upstream';
+      caller.outputs[0].value = 'caller result';
+      const tool = graphNode({
+        id: 'tool',
+        type: FlowNodeTypeEnum.toolParams,
+        isEntry: true,
+        inputs: [
+          graphReference({ key: 'upstream', from: ['source', 'value'] }),
+          graphReference({ key: 'upstreamError', from: ['source', 'error'] }),
+          graphReference({ key: 'callerResult', from: ['caller', 'value'] })
+        ],
+        outputs: ['upstream', 'upstreamError', 'callerResult']
+      });
+      const attachment = {
+        ...graphEdge({ source: 'caller', target: 'tool' }),
+        sourceHandle: NodeOutputKeyEnum.selectedTools,
+        targetHandle: NodeOutputKeyEnum.selectedTools
+      };
+      await runGraph({
+        nodes: [source, caller, tool],
+        edges: [graphEdge({ source: 'source', target: 'caller', error }), attachment],
+        overrides: { isToolCall: true }
+      });
+
+      expect(graphValues(tool)).toEqual({
+        upstream: 'upstream',
+        upstreamError: error ? 'caught error' : undefined,
+        callerResult: undefined
+      });
+    }
+  );
+
   it('accounts for every registered dispatcher and checks editor placeholders', async () => {
     // 这些节点的真实成功/失败返回值由各自的外部依赖 fixture 测试验证，并共用相同下游断言。
     const dedicatedNodeTypes = [

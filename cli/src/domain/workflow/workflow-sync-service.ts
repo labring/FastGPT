@@ -1,12 +1,14 @@
 import z from 'zod';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
+import { compactWorkflowReferenceSnapshots } from '@fastgpt/global/common/workflow/editor/runtime/documentRules';
+import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
 import { ChatItemMiniSchema, UserChatItemValueItemSchema } from '@fastgpt/global/core/chat/type';
 import {
   getWorkflowEntryNodeIds,
-  storeEdges2RuntimeEdges,
-  storeNodes2RuntimeNodes
+  storeEdges2RuntimeEdges
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { WorkflowDocument } from '@fastgpt/global/core/workflow/type/document';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { GetAppDetailResponseType } from '@fastgpt/global/openapi/core/app/common/api';
 import {
   PublishAppResponseSchema,
@@ -16,7 +18,10 @@ import {
 import type { WorkflowDebugResponse } from '@fastgpt/global/openapi/core/workflow/api';
 import { getWorkflowChecksum } from '@fastgpt/workflow-core/domain/checksum';
 import { ensureSystemConfigNode } from '@fastgpt/workflow-core/domain/defaults';
-import { WorkflowValidationError } from '@fastgpt/workflow-core/domain/diagnostic';
+import {
+  WorkflowCommandError,
+  WorkflowValidationError
+} from '@fastgpt/workflow-core/domain/diagnostic';
 import { compileStoreWorkflow } from '@fastgpt/workflow-core/store/compile';
 import { decompileStoreWorkflow } from '@fastgpt/workflow-core/store/decompile';
 import { createTranslator } from '@fastgpt/workflow-core/template/i18n';
@@ -300,6 +305,15 @@ function evaluateWorkflowTestCase({
   };
 }
 
+/** 旧服务可能省略空快照。远端读取按内容比较，本地校验和保留显式清除意图。 */
+const getRemoteBaselineChecksum = (document: WorkflowDocument) =>
+  getWorkflowChecksum({
+    ...document,
+    referenceSnapshots: document.referenceSnapshots?.length
+      ? document.referenceSnapshots
+      : undefined
+  });
+
 function computeDocumentDiff(localDoc: WorkflowDocument, remoteDoc: WorkflowDocument) {
   const localNodeMap = new Map(localDoc.nodes.map((node) => [node.nodeId, node]));
   const remoteNodeMap = new Map(remoteDoc.nodes.map((node) => [node.nodeId, node]));
@@ -341,10 +355,15 @@ function computeDocumentDiff(localDoc: WorkflowDocument, remoteDoc: WorkflowDocu
   const appChanged = JSON.stringify(localDoc.app) !== JSON.stringify(remoteDoc.app);
   const chatConfigChanged =
     JSON.stringify(localDoc.chatConfig) !== JSON.stringify(remoteDoc.chatConfig);
+  const referenceSnapshotsChanged = !isDeepEqual(
+    localDoc.referenceSnapshots ?? [],
+    remoteDoc.referenceSnapshots ?? []
+  );
 
   return {
     appChanged,
     chatConfigChanged,
+    referenceSnapshotsChanged,
     nodes: {
       added: addedNodes,
       removed: removedNodes,
@@ -435,7 +454,8 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
         return {
           nodes: detail.nodes ?? [],
           edges: detail.edges ?? [],
-          chatConfig: detail.chatConfig ?? {}
+          chatConfig: detail.chatConfig ?? {},
+          referenceSnapshots: detail.referenceSnapshots
         };
       }
       const versionDetail = await client.request<GetAppVersionDetailResponseType>({
@@ -446,12 +466,13 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
       return {
         nodes: versionDetail.nodes ?? [],
         edges: versionDetail.edges ?? [],
-        chatConfig: versionDetail.chatConfig ?? {}
+        chatConfig: versionDetail.chatConfig ?? {},
+        referenceSnapshots: versionDetail.referenceSnapshots
       };
     })();
 
-    // 远端版本保存接口仅持久化 nodes/edges/chatConfig，因此远端基线须排除服务端 app 元数据。
-    const remoteContentChecksum = await getWorkflowChecksum(
+    // 版本保存仅写工作流内容，远端基线须排除服务端 app 元数据。
+    const remoteContentChecksum = await getRemoteBaselineChecksum(
       decompileStoreWorkflow({
         workflow: workflowPayload as never,
         app: {}
@@ -513,15 +534,16 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
       workflow: {
         nodes: detail.nodes ?? [],
         edges: detail.edges ?? [],
-        chatConfig: detail.chatConfig ?? {}
+        chatConfig: detail.chatConfig ?? {},
+        referenceSnapshots: detail.referenceSnapshots
       } as never,
       app: {}
     });
-    const remoteContentChecksum = await getWorkflowChecksum(remoteDoc);
+    const remoteContentChecksum = await getRemoteBaselineChecksum(remoteDoc);
     const expectedRemoteChecksum = syncState.lastRemoteChecksum ?? syncState.lastChecksum;
     const remoteBaselineChecksum =
       syncState.lastRemoteChecksum === undefined
-        ? await getWorkflowChecksum({
+        ? await getRemoteBaselineChecksum({
             ...remoteDoc,
             app: { appId: detail._id, name: detail.name, intro: detail.intro ?? '' }
           })
@@ -561,7 +583,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
       };
     }
     return {
-      checksum: await getWorkflowChecksum(
+      checksum: await getRemoteBaselineChecksum(
         decompileStoreWorkflow({
           workflow: saved.workflow,
           app: {}
@@ -570,6 +592,13 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
       warnings: []
     };
   }
+
+  /** CLI 调试输入来自工作流文档，使用与实际运行一致的引用解析。 */
+  const getDebugRuntimeNodes = (nodes: StoreNodeItemType[], entryNodeIds: string[]) =>
+    storeNodes2RuntimeNodes(nodes, entryNodeIds).map((node) => ({
+      ...node,
+      inputs: node.inputs.map((input) => ({ ...input, debugValueOverride: false }))
+    }));
 
   async function resolveWorkflowForExecution({
     client,
@@ -591,7 +620,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
       };
     }
     const document = await readWorkflowDocument({ fileIo, dir });
-    const diagnostics = validateWorkflow(document, { invalidReferencePolicy: 'error' });
+    const diagnostics = validateWorkflow(document, { invalidReferencePolicy: 'asEmpty' });
     if (diagnostics.some((item) => item.severity === 'error')) {
       throw new WorkflowValidationError(diagnostics);
     }
@@ -678,13 +707,13 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
       withWorkflowErrorMapping(async () => {
         const appId = await resolveAppId({ explicitAppId, dir });
         const localDoc = await readWorkflowDocument({ fileIo, dir });
-        const localChecksum = await getWorkflowChecksum(localDoc);
         const detail = await fetchAppDetailOrThrow(client, appId);
         const remoteDoc = decompileStoreWorkflow({
           workflow: {
             nodes: detail.nodes ?? [],
             edges: detail.edges ?? [],
-            chatConfig: detail.chatConfig ?? {}
+            chatConfig: detail.chatConfig ?? {},
+            referenceSnapshots: detail.referenceSnapshots
           } as never,
           app: {
             appId: detail._id,
@@ -692,8 +721,31 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
             intro: detail.intro ?? ''
           }
         });
-        const remoteChecksum = await getWorkflowChecksum(remoteDoc);
-        const diff = computeDocumentDiff(localDoc, remoteDoc);
+        const snapshots = localDoc.referenceSnapshots ?? remoteDoc.referenceSnapshots;
+        const comparisonDoc = (() => {
+          if (!snapshots?.length) return localDoc;
+          try {
+            // 服务端按存储态的输出 ID 裁剪，省略时继承远端快照。
+            const compiled = compileStoreWorkflow(localDoc);
+            return {
+              ...localDoc,
+              referenceSnapshots: compactWorkflowReferenceSnapshots({
+                ...compiled,
+                chatConfig: compiled.chatConfig ?? {},
+                referenceSnapshots: snapshots
+              })
+            };
+          } catch (error) {
+            // 正在编辑的文档可能尚不能编译；仍允许查看其差异。
+            if (!(error instanceof WorkflowCommandError)) throw error;
+            return localDoc;
+          }
+        })();
+        const [localChecksum, remoteChecksum] = await Promise.all([
+          getRemoteBaselineChecksum(comparisonDoc),
+          getRemoteBaselineChecksum(remoteDoc)
+        ]);
+        const diff = computeDocumentDiff(comparisonDoc, remoteDoc);
         const inSync = localChecksum === remoteChecksum;
 
         return createSuccessResult({
@@ -709,7 +761,8 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
               addedEdges: diff.edges.added.length,
               removedEdges: diff.edges.removed.length,
               appChanged: diff.appChanged,
-              chatConfigChanged: diff.chatConfigChanged
+              chatConfigChanged: diff.chatConfigChanged,
+              referenceSnapshotsChanged: diff.referenceSnapshotsChanged
             },
             diff
           }
@@ -720,14 +773,14 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
       withWorkflowErrorMapping(async () => {
         const appId = await resolveAppId({ explicitAppId, dir });
         const document = await readWorkflowDocument({ fileIo, dir });
-        const diagnostics = validateWorkflow(document, { invalidReferencePolicy: 'error' });
+        const diagnostics = validateWorkflow(document, { invalidReferencePolicy: 'asEmpty' });
         if (diagnostics.some((item) => item.severity === 'error')) {
           throw new WorkflowValidationError(diagnostics);
         }
 
         const localChecksum = await getWorkflowChecksum(document);
         const compiled = compileStoreWorkflow(document);
-        const localContentChecksum = await getWorkflowChecksum(
+        const localContentChecksum = await getRemoteBaselineChecksum(
           decompileStoreWorkflow({
             workflow: compiled as never,
             app: {}
@@ -765,6 +818,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
             nodes: compiled.nodes,
             edges: compiled.edges,
             chatConfig: compiled.chatConfig,
+            referenceSnapshots: compiled.referenceSnapshots,
             isPublish: false,
             autoSave: true,
             returnWorkflow: true
@@ -807,14 +861,14 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
       withWorkflowErrorMapping(async () => {
         const appId = await resolveAppId({ explicitAppId, dir });
         const document = await readWorkflowDocument({ fileIo, dir });
-        const diagnostics = validateWorkflow(document, { invalidReferencePolicy: 'error' });
+        const diagnostics = validateWorkflow(document, { invalidReferencePolicy: 'asEmpty' });
         if (diagnostics.some((item) => item.severity === 'error')) {
           throw new WorkflowValidationError(diagnostics);
         }
 
         const localChecksum = await getWorkflowChecksum(document);
         const compiled = compileStoreWorkflow(document);
-        const localContentChecksum = await getWorkflowChecksum(
+        const localContentChecksum = await getRemoteBaselineChecksum(
           decompileStoreWorkflow({
             workflow: compiled as never,
             app: {}
@@ -853,6 +907,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
             nodes: compiled.nodes,
             edges: compiled.edges,
             chatConfig: compiled.chatConfig,
+            referenceSnapshots: compiled.referenceSnapshots,
             isPublish: true,
             versionName: resolvedVersionName,
             returnWorkflow: true
@@ -917,7 +972,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
           entryNodes && entryNodes.length > 0
             ? entryNodes
             : getWorkflowEntryNodeIds(storeWorkflow.nodes);
-        const runtimeNodes = storeNodes2RuntimeNodes(storeWorkflow.nodes, resolvedEntryNodes);
+        const runtimeNodes = getDebugRuntimeNodes(storeWorkflow.nodes, resolvedEntryNodes);
         const runtimeEdges = storeEdges2RuntimeEdges(storeWorkflow.edges);
         const queryItems = normalizeUserQuery(query);
 
@@ -1077,7 +1132,7 @@ export function createWorkflowSyncService(deps: WorkflowSyncServiceDeps): Workfl
             testCase.entryNodes && testCase.entryNodes.length > 0
               ? testCase.entryNodes
               : getWorkflowEntryNodeIds(storeWorkflow.nodes);
-          const runtimeNodes = storeNodes2RuntimeNodes(storeWorkflow.nodes, entryNodeIds);
+          const runtimeNodes = getDebugRuntimeNodes(storeWorkflow.nodes, entryNodeIds);
           const runtimeEdges = storeEdges2RuntimeEdges(storeWorkflow.edges);
           const mergedVariables = {
             ...(variables ?? {}),

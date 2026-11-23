@@ -1,4 +1,4 @@
-import WorkflowSandboxConfig from '../../components/WorkflowSandboxConfig';
+import { SandboxInputConfig } from '../../components/WorkflowSandboxConfig';
 import React from 'react';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { Box, Flex } from '@chakra-ui/react';
@@ -233,7 +233,7 @@ const RenderInput = ({
           ) {
             return {
               Component: (
-                <WorkflowSandboxConfig
+                <SandboxInputConfig
                   item={input}
                   inputs={filterProInputs}
                   nodeId={nodeId}

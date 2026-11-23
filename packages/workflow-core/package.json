@@ -64,6 +64,10 @@
       "types": "./dist/node/removal.d.ts",
       "import": "./dist/node/removal.js"
     },
+    "./reference/codec": {
+      "types": "./dist/reference/codec.d.ts",
+      "import": "./dist/reference/codec.js"
+    },
     "./reference/query": {
       "types": "./dist/reference/query.d.ts",
       "import": "./dist/reference/query.js"

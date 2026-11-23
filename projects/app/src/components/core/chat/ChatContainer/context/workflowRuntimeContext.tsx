@@ -1,6 +1,6 @@
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { getChatSourceKey, type ChatSourceTarget } from '@/web/core/chat/utils';
 

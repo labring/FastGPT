@@ -21,6 +21,8 @@ const AgentPlanNodeStatusSchema = z.enum(['set_plan', 'update_plan', 'ask_questi
 /* node props */
 export type RuntimeNodeItemType = {
   nodeId: StoreNodeItemType['nodeId'];
+  /** 容器归属用于在运行态解析祖先容器输入引用和其上游来源。 */
+  parentNodeId?: string;
   name: StoreNodeItemType['name'];
   avatar?: StoreNodeItemType['avatar'];
   intro?: StoreNodeItemType['intro'];
@@ -30,7 +32,8 @@ export type RuntimeNodeItemType = {
   isEntry?: boolean;
   version?: string;
 
-  inputs: FlowNodeInputItemType[];
+  /** 调试请求中 true 为手填字面值，false 为文档引用，省略时兼容旧客户端。 */
+  inputs: (FlowNodeInputItemType & { debugValueOverride?: boolean })[];
   outputs: FlowNodeOutputItemType[];
 
   pluginId?: string; // workflow id / plugin id

@@ -1,7 +1,6 @@
 import handler from '@/pages/api/core/app/version/publish';
 import versionDetailHandler from '@/pages/api/core/app/version/detail';
-import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
-import { storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { hydrateRuntime, serializeRuntime } from '@/web/core/workflow/editor/codec';
 import type { TFunction } from 'i18next';
 import datasetListHandler from '@/pages/api/core/dataset/listV2';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
@@ -14,13 +13,22 @@ import {
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  VARIABLE_NODE_ID,
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import {
   FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { storeNodes2RuntimeNodes } from '@fastgpt/global/core/workflow/runtime/utils';
+import { createWorkflowEditor } from '@fastgpt/global/common/workflow/editor/runtime/runtime';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/common/workflow/migration';
+import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
 import type {
   GetAppVersionDetailQueryType,
   GetAppVersionDetailResponseType,
@@ -56,7 +64,7 @@ import { MongoResourcePermission } from '@fastgpt/service/support/permission/sch
 import { getRootUser, getUser } from '@test/datas/users';
 import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
 import { Call } from '@test/utils/request';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getHTTPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 
@@ -161,15 +169,15 @@ describe('publish legacy Agent tool configuration', () => {
     expect(tools[0].inputs.find(({ key }) => key === 'constructor')?.value).toBe(
       'fixed constructor value'
     );
-    const saved = uiWorkflow2StoreWorkflow({
-      nodes: loaded.data.nodes.map((item) =>
-        storeNode2FlowNode({ item, t: ((key: string) => key) as TFunction })
-      ),
-      edges: []
+    const editor = hydrateRuntime({
+      input: loaded.data,
+      t: ((key: string) => key) as TFunction
     });
+    const saved = serializeRuntime(editor);
+    editor.dispose();
     expect(
       saved.nodes[0].inputs.find(({ key }) => key === NodeInputKeyEnum.selectedTools)?.value
-    ).toEqual([expect.objectContaining({ config: { constructor: 'fixed constructor value' } })]);
+    ).toMatchObject([{ config: { constructor: 'fixed constructor value' } }]);
   });
 });
 
@@ -1008,6 +1016,303 @@ describe('publish optional model defaults', () => {
     expect(result.code).not.toBe(200);
     expect(await MongoAppVersion.countDocuments({ appId: app._id, isPublish: true })).toBe(0);
   });
+
+  it.each([true, false])(
+    'rejects a circular workflow parent chain before saving (%s)',
+    async (autoSave) => {
+      const root = await getRootUser();
+      const app = await MongoApp.create({
+        name: 'Loop workflow',
+        type: AppTypeEnum.workflow,
+        teamId: root.teamId,
+        tmbId: root.tmbId
+      });
+      const result = await Call<PublishAppBodyType>(handler, {
+        auth: root,
+        query: { appId: String(app._id) },
+        body: {
+          nodes: [
+            { nodeId: 'loop-a', parentNodeId: 'loop-b' },
+            { nodeId: 'loop-b', parentNodeId: 'loop-a' }
+          ].map((node) => ({
+            ...node,
+            flowNodeType: FlowNodeTypeEnum.loopRun,
+            name: node.nodeId,
+            inputs: [],
+            outputs: []
+          })),
+          autoSave,
+          isPublish: !autoSave
+        }
+      });
+
+      // Call 使用测试 HTTP 入口；生产响应按同一业务异常映射为可读的 400。
+      const { processError } = await vi.importActual<
+        typeof import('@fastgpt/service/common/response')
+      >('@fastgpt/service/common/response');
+      expect(processError({ error: result.error })).toMatchObject({
+        code: 400,
+        httpStatus: 400,
+        message: 'Circular workflow parent: loop-a'
+      });
+      expect(await MongoAppVersion.countDocuments({ appId: app._id })).toBe(0);
+    }
+  );
+
+  type ReferenceSnapshot = NonNullable<PublishAppBodyType['referenceSnapshots']>[number];
+  const snapshot = (
+    reference: ReferenceSnapshot['reference'],
+    labels: { sourceLabel: string; outputLabel?: string }
+  ): ReferenceSnapshot => ({ reference, ...labels });
+
+  const referenceSnapshots = [
+    snapshot(['deleted-source', 'text'], { sourceLabel: 'Deleted source', outputLabel: 'Text' }),
+    snapshot(['source-without-output', 'removed-output'], {
+      sourceLabel: 'Source without output',
+      outputLabel: 'Removed output'
+    }),
+    snapshot(['default-source', 'text'], { sourceLabel: 'Default source', outputLabel: 'Text' }),
+    snapshot(['restored-source', 'text'], {
+      sourceLabel: 'Old restored source',
+      outputLabel: 'Text'
+    }),
+    snapshot([VARIABLE_NODE_ID, 'restored-variable'], { sourceLabel: 'Old global variable' }),
+    snapshot(['http-source', 'tool-param'], {
+      sourceLabel: 'HTTP tool',
+      outputLabel: 'Old parameter'
+    }),
+    snapshot(['unused-source', 'text'], { sourceLabel: 'Unused source', outputLabel: 'Text' }),
+    snapshot(['ordinary-array-source', 'text'], {
+      sourceLabel: 'Ordinary array source',
+      outputLabel: 'Text'
+    })
+  ];
+  const loopReferenceSnapshots = [
+    snapshot(['stale-loop', 'sample'], { sourceLabel: 'Removed Loop result' }),
+    snapshot(['restored-loop', 'sample'], { sourceLabel: 'Restored Loop result' })
+  ];
+  const storedReferenceSnapshots = [...referenceSnapshots, ...loopReferenceSnapshots];
+
+  const referenceNodes: NonNullable<PublishAppBodyType['nodes']> = [
+    {
+      nodeId: 'source-without-output',
+      name: 'Source without output',
+      flowNodeType: FlowNodeTypeEnum.answerNode,
+      inputs: [],
+      outputs: []
+    },
+    {
+      nodeId: 'restored-source',
+      name: 'Restored source',
+      flowNodeType: FlowNodeTypeEnum.answerNode,
+      inputs: [],
+      outputs: [
+        {
+          id: 'text',
+          key: 'text',
+          type: FlowNodeOutputTypeEnum.source,
+          valueType: WorkflowIOValueTypeEnum.string,
+          label: 'Text'
+        }
+      ]
+    },
+    {
+      nodeId: 'tool-caller',
+      name: 'Tool caller',
+      flowNodeType: FlowNodeTypeEnum.toolCall,
+      inputs: [],
+      outputs: []
+    },
+    {
+      nodeId: 'http-source',
+      name: 'HTTP tool',
+      flowNodeType: FlowNodeTypeEnum.httpRequest468,
+      inputs: [
+        {
+          key: 'tool-param',
+          label: 'Parameter',
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+          selectedType: FlowNodeInputTypeEnum.agentGenerated,
+          canEdit: true,
+          defaultToAgentGenerated: true
+        }
+      ],
+      outputs: []
+    },
+    {
+      nodeId: 'stale-loop',
+      name: 'Loop with a removed declaration',
+      flowNodeType: FlowNodeTypeEnum.loopRun,
+      inputs: [],
+      outputs: [{ id: 'sample', key: 'sample', type: FlowNodeOutputTypeEnum.dynamic }]
+    },
+    {
+      nodeId: 'restored-loop',
+      name: 'Loop with a restored declaration',
+      flowNodeType: FlowNodeTypeEnum.loopRun,
+      inputs: [
+        {
+          key: 'sample',
+          label: 'Sample',
+          renderTypeList: [FlowNodeInputTypeEnum.input],
+          canEdit: true
+        }
+      ],
+      outputs: []
+    },
+    {
+      nodeId: 'consumer',
+      name: 'Consumer',
+      flowNodeType: FlowNodeTypeEnum.answerNode,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.answerText,
+          label: 'Answer',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          value: [
+            ['deleted-source', 'text'],
+            ['source-without-output', 'removed-output'],
+            ['restored-source', 'text'],
+            [VARIABLE_NODE_ID, 'restored-variable'],
+            ['http-source', 'tool-param']
+          ]
+        },
+        {
+          key: 'defaultReference',
+          label: 'Default reference',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          defaultValue: [['default-source', 'text']]
+        },
+        {
+          key: 'loopReferences',
+          label: 'Loop results',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          value: loopReferenceSnapshots.map(({ reference }) => reference)
+        },
+        {
+          key: 'ordinaryArray',
+          label: 'Ordinary array',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          selectedType: FlowNodeInputTypeEnum.hidden,
+          value: ['ordinary-array-source', 'text']
+        }
+      ],
+      outputs: []
+    }
+  ];
+
+  const referenceWorkflow = {
+    nodes: referenceNodes,
+    edges: [
+      {
+        source: 'tool-caller',
+        target: 'http-source',
+        sourceHandle: 'source',
+        targetHandle: NodeOutputKeyEnum.selectedTools
+      }
+    ],
+    chatConfig: {
+      variables: [
+        {
+          key: 'restored-variable',
+          label: 'Restored variable',
+          description: '',
+          type: VariableInputEnum.input,
+          valueType: WorkflowIOValueTypeEnum.string
+        }
+      ]
+    }
+  };
+
+  const createReferenceSnapshotApp = async () => {
+    const root = await getRootUser();
+    const app = await MongoApp.create({
+      name: 'reference-snapshot-publish',
+      type: AppTypeEnum.workflow,
+      teamId: root.teamId,
+      tmbId: root.tmbId
+    });
+    await MongoAppVersion.create({
+      appId: app._id,
+      tmbId: root.tmbId,
+      nodes: referenceNodes.filter(({ nodeId }) => nodeId !== 'restored-source'),
+      edges: [],
+      chatConfig: {},
+      referenceSnapshots: storedReferenceSnapshots,
+      isAutoSave: true,
+      versionName: 'Reference snapshot draft'
+    });
+
+    return { root, app };
+  };
+
+  const saveReferenceSnapshots = async (
+    autoSave: boolean,
+    options: Pick<PublishAppBodyType, 'referenceSnapshots' | 'returnWorkflow'> = {}
+  ) => {
+    const { root, app } = await createReferenceSnapshotApp();
+    const versionName = 'Reference snapshot publish';
+    const result = await Call<PublishAppBodyType, { appId: string }, PublishAppResponseType>(
+      handler,
+      {
+        auth: root,
+        headers: {},
+        query: { appId: String(app._id) },
+        body: {
+          ...referenceWorkflow,
+          ...options,
+          ...(autoSave ? { autoSave: true } : { isPublish: true, versionName })
+        }
+      }
+    );
+    expect(result.code).toBe(200);
+    const version = await MongoAppVersion.findOne(
+      autoSave
+        ? { appId: app._id, isAutoSave: true }
+        : { appId: app._id, isPublish: true, versionName }
+    ).lean();
+    return { result, snapshots: version?.referenceSnapshots };
+  };
+
+  it.each([true, false])(
+    'inherits the same missing-source snapshots as the editor for autoSave=%s',
+    async (autoSave) => {
+      const { result, snapshots } = await saveReferenceSnapshots(autoSave, {
+        returnWorkflow: true
+      });
+      expect(snapshots).toEqual([...referenceSnapshots.slice(0, 3), loopReferenceSnapshots[0]]);
+      expect(result.data?.workflow.referenceSnapshots).toEqual(snapshots);
+
+      const editor = createWorkflowEditor(
+        migrateWorkflowToCurrent({
+          ...referenceWorkflow,
+          referenceSnapshots: storedReferenceSnapshots
+        })
+      );
+      expect(snapshots).toEqual(editor.getWorkflowData().referenceSnapshots);
+      editor.dispose();
+    }
+  );
+
+  it('compacts supplied snapshots and keeps the last snapshot for each missing source', async () => {
+    const updated = { ...referenceSnapshots[0], sourceLabel: 'Updated label' };
+    const { snapshots } = await saveReferenceSnapshots(false, {
+      referenceSnapshots: [referenceSnapshots[0], ...referenceSnapshots.slice(3), updated]
+    });
+    expect(snapshots).toEqual([updated]);
+  });
+
+  it.each([true, false])(
+    'clears reference snapshots when explicitly empty for autoSave=%s',
+    async (autoSave) => {
+      const { snapshots } = await saveReferenceSnapshots(autoSave, { referenceSnapshots: [] });
+      expect(snapshots).toEqual([]);
+    }
+  );
 
   it('keeps preview and published runtime consistent when nodes carry legacy rerankModel gte-rerank-v2', async () => {
     const root = await getRootUser();

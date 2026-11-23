@@ -1,9 +1,7 @@
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import {
-  formatVariableValByType,
-  getReferenceVariableValue
-} from '@fastgpt/global/core/workflow/runtime/utils';
+import { formatVariableValByType } from '@fastgpt/global/core/workflow/runtime/utils';
+import { getReferenceVariableValue } from '@fastgpt/global/common/workflow/runtime';
 import {
   checkStrOversize,
   logOversizeString,

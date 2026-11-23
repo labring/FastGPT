@@ -100,7 +100,9 @@ describe('BoolSchema', () => {
 
     expect(output.required).toBe(true);
     expect(output.invalid).toBe(false);
-    expect(output.invalidCondition?.({ inputs: [], llmModelMap: {} })).toBe(true);
+    expect(
+      output.invalidCondition?.({ inputs: [], llmModelMap: { byId: {}, byLegacyName: {} } })
+    ).toBe(true);
     expect(FlowNodeOutputItemTypeSchema.parse(output)).toEqual({
       id: 'output',
       key: 'output',

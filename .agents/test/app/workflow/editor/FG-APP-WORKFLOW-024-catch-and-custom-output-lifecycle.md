@@ -28,12 +28,17 @@ sources:
   - projects/app/src/pageComponents/app/detail/WorkflowComponents/utils.ts
   - projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/ImportSettings.tsx
   - projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeCode/index.tsx
+  - projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/components/IOTitle.tsx
   - projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/Handle/ConnectionHandle.tsx
   - projects/app/src/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderOutput/index.tsx
   - packages/workflow-core/src/edge/compiler.ts
 routes: []
 related: []
 baseline: 5a5211f70998f5311cd40b0e5362a1414be6fbdf
+automation:
+  - runner: playwright
+    script: .agents/test/app/workflow/editor/FG-APP-WORKFLOW-024.browser.spec.ts
+    items: [C6]
 ---
 
 # 报错捕获切换与自定义 source 出口
@@ -44,7 +49,7 @@ baseline: 5a5211f70998f5311cd40b0e5362a1414be6fbdf
 
 ## 前置准备
 
-- 环境：独立测试实例、Chrome、中文界面；登录具有本例临时应用写入和删除权限的账号，记录 BASE_URL、appId、teamId、版本和 run 标识。
+- 环境：本地 dev、Chromium、中文界面；登录具有本例临时应用写入和删除权限的测试账号，记录 BASE_URL、appId、teamId、版本和 run 标识。
 - 配置：在应用列表新建临时工作流，普通节点填固定文本。顶部应用更多菜单支持“导入配置”和“导出配置 → 导出 JSON”；模型目录可正常读取。A、B 等是别名，记录实际 nodeId；→ 为普通边，⇢ 为菱形工具挂载。
 - 公共基线：每组图准备一次，导出所有 edges 的 (source, sourceHandle, target, targetHandle) 四元组集合 E0。临时画布边 ID 不持久化；比较精确集合/差集，不以边数或刷新后的临时 ID 代替。
 - 复位：除明确“承接”的行外，子场景从所指基线开始。参数化行逐个变体执行，失败先保存证据并复位再继续，记录“子场景编号 / 变体”，避免后续失败由脏状态引起。
@@ -72,6 +77,7 @@ Error、Free（独立）
 | C3 | 基础场景；恢复 G0 | 开启报错捕获，连接 B[catch] → Error，再依次建立 B[普通成功] → A、B[catch] → A、C → A；导出 D3。 |
 | C4 | 边界场景；承接 C3 / D3 | 关闭报错捕获并导出 D4。 |
 | C5 | 边界场景；承接 C4 / D4 | 重新开启捕获，检查候选后实际连接 Success → A。 |
+| C6 | 历史兼容；独立临时应用，初态开启捕获 | 从正常创建接口装载包含 `Legacy-target-right` 和 `Modern-target-left` 两种目标端口的异常边，以及普通成功边。打开画布并导出基线，关闭捕获，再用画布按钮撤销一次。 |
 
 ## 预期结果
 
@@ -84,5 +90,6 @@ Error、Free（独立）
 | C3 | 成功和异常出口可连同一目标，custom 路径也受开启捕获后的条件语义控制。每次只新增对应边，D3 为 G0 的四条边加上述四条关系。 |
 | C4 | 只删除 B[catch] → Error、B[catch] → A；其余六条关系保留。保留的成功/custom 回流可提示串行问题，但不自动删边；Success → A 此时不可连接。 |
 | C5 | 重新开启不补回已删除的 catch 边，D4 先保持；候选恢复可连接，实际操作仅新增 Success → A。 |
+| C6 | 初始新旧异常边均可见，导出保留原始端口。关闭后开关变为关闭、两条异常边都从画布和导出消失，普通成功边与入口边保留。撤销一次恢复开启状态与包含历史端口的完整原始边集合。 |
 
 缺少入口、准备或验证证据时记录对应子场景阻塞，不将其或整个用例标记为通过。

@@ -120,6 +120,35 @@ describe('code node IO synchronization', () => {
     expect(nextNode.outputs).toEqual(previousNode?.outputs);
   });
 
+  it('keeps the existing output returned by a decorated Python entrypoint', async () => {
+    const document = await createCodeDocument();
+    const previous = document.nodes
+      .find((node) => node.nodeId === 'code')
+      ?.outputs.find((output) => output.key === 'result');
+    expect(previous).toBeDefined();
+    const result = await applyWorkflowCommand({
+      document,
+      command: {
+        type: 'input.set',
+        nodeId: 'code',
+        inputKey: 'code',
+        value: `def decorate(fn):
+    def wrapper():
+        return {"result": 1}
+    return wrapper
+
+@decorate
+def main():
+    return {}`
+      },
+      dependencies
+    });
+
+    expect(result.document.nodes.find((node) => node.nodeId === 'code')?.outputs).toContainEqual(
+      previous
+    );
+  });
+
   it('removes all editable IO for an explicitly empty signature and return object', async () => {
     let document = await createCodeDocument();
 

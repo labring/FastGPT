@@ -75,7 +75,10 @@ export const getWorkflowStartDebugFileInput = ({
     value: [],
     canLocalUpload: true,
     canUrlUpload: true,
-    ...fileSelectConfig
+    ...fileSelectConfig,
+    ...(fileSelectConfig?.customFileExtensionList
+      ? { customFileExtensionList: [...fileSelectConfig.customFileExtensionList] }
+      : {})
   };
 };
 
@@ -126,7 +129,8 @@ export const getDebugGlobalVariableFormProps = (variable: VariableItemType) => {
   return {
     ...variable,
     canSelectFile: variable.canSelectFile ?? true,
-    canLocalUpload: variable.canLocalUpload ?? true
+    canLocalUpload: variable.canLocalUpload ?? true,
+    ...(variable.list ? { list: variable.list.map((item) => ({ ...item })) } : {})
   };
 };
 
@@ -192,15 +196,16 @@ export const getDebugInputFormProps = (
     };
   }
 
-  if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)) {
-    return {
-      ...props,
-      canSelectFile: props.canSelectFile ?? true,
-      canLocalUpload: props.canLocalUpload ?? true
-    };
-  }
-
-  return props;
+  return {
+    ...props,
+    ...(props.list ? { list: props.list.map((item) => ({ ...item })) } : {}),
+    ...(input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
+      ? {
+          canSelectFile: props.canSelectFile ?? true,
+          canLocalUpload: props.canLocalUpload ?? true
+        }
+      : {})
+  };
 };
 
 /** 统一生成节点调试字段属性和控件类型，避免控件类型继续读取转换前的 renderTypeList。 */
@@ -217,7 +222,10 @@ export const getDebugInputFormConfig = (
 };
 
 const parseDebugInputFormValue = (input: FlowNodeInputItemType, value: any) => {
-  if (primitiveValueTypes.has(input.valueType as WorkflowIOValueTypeEnum)) {
+  if (
+    primitiveValueTypes.has(input.valueType as WorkflowIOValueTypeEnum) ||
+    typeof value !== 'string'
+  ) {
     return value;
   }
 
@@ -228,6 +236,7 @@ const parseDebugInputFormValue = (input: FlowNodeInputItemType, value: any) => {
   }
 };
 
+/** 调试表单提交字面值；标记 Reference 输入，避免服务端按保存态配置解析。 */
 export const getDebugRuntimeInputs = ({
   inputs,
   nodeVariables = {}
@@ -242,7 +251,8 @@ export const getDebugRuntimeInputs = ({
 
     return {
       ...input,
-      value: parseDebugInputFormValue(input, nodeVariables[input.key])
+      value: parseDebugInputFormValue(input, nodeVariables[input.key]),
+      ...(nodeInputIsReference(input) ? { debugValueOverride: true as const } : {})
     };
   });
 };
