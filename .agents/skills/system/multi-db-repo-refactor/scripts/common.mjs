@@ -1,13 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import {
-  LOG_TOPOLOGY_CASE_TITLES,
-  buildRequiredLogTopologyCases,
-  formatLogTopologySuiteTitle
-} from '../../../../../packages/dal/db/logTopologyContract.mjs';
-
-export { LOG_TOPOLOGY_CASE_TITLES, buildRequiredLogTopologyCases, formatLogTopologySuiteTitle };
+import { buildRequiredLogTopologyCases } from '../../../../../packages/dal/db/logTopologyContract.mjs';
 
 const locateWorkspaceRootFrom = (startDir) => {
   let current = path.resolve(startDir);
@@ -5906,10 +5900,171 @@ const CONTRACT_SUITE_CALLEE_NAMES = new Set([
   'registerMultiDialectContractSuite'
 ]);
 
+const analyzeFragmentSchemaAndRepoUsage = ({
+  fragmentText,
+  importedAliases,
+  effectiveDomainRepoSymbols,
+  domainRepoSymbols,
+  repoHelperNames,
+  normalizedDomainRel,
+  expectedMongoCollections,
+  expectedSqlTables,
+  domainCollectionExportNames,
+  domainTableExportNames,
+  sourceRelPath,
+  repoRoot,
+  moduleMetaCache
+}) => {
+  const { tokens, matchIdx } = tokenizeCleanJsTs(stripImportsAndStrings(fragmentText));
+  const usedIdents = new Set();
+  for (const tok of tokens) {
+    if (tok.type === 'ident') {
+      usedIdents.add(tok.value);
+    }
+  }
+
+  let configuresCurrentDomainSchema = false;
+  let configuresOtherDomainSchema = false;
+  let exercisesCurrentDomainRepo = false;
+  let exercisesOtherDomainRepo = false;
+
+  for (const [localName, info] of importedAliases) {
+    if (!usedIdents.has(localName)) {
+      continue;
+    }
+    const origName = info.importedName;
+    const resolvedMeta =
+      repoRoot !== undefined
+        ? readImportedModuleMetadata({
+            specifier: info.specifier,
+            repoRoot,
+            sourceRelPath,
+            moduleMetaCache
+          })
+        : null;
+
+    if (resolvedMeta === null) {
+      const fallbackCol = domainCollectionExportNames?.[origName];
+      const fallbackTbl = domainTableExportNames?.[origName];
+      if (
+        (typeof fallbackCol === 'string' && expectedMongoCollections.has(fallbackCol)) ||
+        (typeof fallbackTbl === 'string' && expectedSqlTables.has(fallbackTbl))
+      ) {
+        configuresCurrentDomainSchema = true;
+      }
+      continue;
+    }
+
+    const originRel = resolvedMeta.exportOriginByName[origName] ?? resolvedMeta.relPath;
+    const inCurrent =
+      normalizedDomainRel !== undefined && isPathInsideDir(originRel, normalizedDomainRel);
+    const colName = resolvedMeta.collectionExportNames[origName];
+    const tblName = resolvedMeta.tableExportNames[origName];
+
+    if (typeof colName === 'string') {
+      if (inCurrent && (expectedMongoCollections.size === 0 || expectedMongoCollections.has(colName))) {
+        configuresCurrentDomainSchema = true;
+      } else if (!inCurrent && normalizedDomainRel !== undefined) {
+        configuresOtherDomainSchema = true;
+      }
+    }
+    if (typeof tblName === 'string') {
+      if (inCurrent && (expectedSqlTables.size === 0 || expectedSqlTables.has(tblName))) {
+        configuresCurrentDomainSchema = true;
+      } else if (!inCurrent && normalizedDomainRel !== undefined) {
+        configuresOtherDomainSchema = true;
+      }
+    }
+
+    if (
+      inCurrent &&
+      (domainRepoSymbols.size === 0 || domainRepoSymbols.has(origName)) &&
+      /(?:^|\/)(?:repo|mongo\/repo|sql\/repo)\.ts$/.test(originRel)
+    ) {
+      exercisesCurrentDomainRepo = true;
+    } else if (
+      !inCurrent &&
+      normalizedDomainRel !== undefined &&
+      /(?:^packages\/dal\/db\/repos\/|^packages\/service\/.*\/(?:repo|mongo\/schema|sql\/table|mongo\/repo|sql\/repo)\.ts$)/.test(
+        originRel
+      )
+    ) {
+      if (typeof colName === 'string' || typeof tblName === 'string') {
+        configuresOtherDomainSchema = true;
+      } else if (/Token$|Repo(?:sitory)?$/.test(origName)) {
+        exercisesOtherDomainRepo = true;
+      } else {
+        configuresOtherDomainSchema = true;
+      }
+    }
+  }
+
+  for (let k = 0; k < tokens.length; k += 1) {
+    const t = tokens[k];
+    if (t.type !== 'ident') continue;
+    const prev = k > 0 ? tokens[k - 1] : undefined;
+    const next = k + 1 < tokens.length ? tokens[k + 1] : undefined;
+
+    if (
+      effectiveDomainRepoSymbols.has(t.value) &&
+      (isIdentTok(prev, 'new') ||
+        isPunctTok(next, '.') ||
+        isPunctTok(next, '?.') ||
+        isPunctTok(next, '('))
+    ) {
+      exercisesCurrentDomainRepo = true;
+    }
+
+    if (repoHelperNames.has(t.value) && !isPunctTok(prev, '.') && !isPunctTok(prev, '?.')) {
+      let openIdx = k + 1;
+      if (isPunctTok(tokens[openIdx], '<')) {
+        const closeAngle = tryMatchGenericAngle({
+          tokens,
+          matchIdx,
+          startIdx: openIdx,
+          rangeEnd: tokens.length
+        });
+        if (closeAngle !== -1) {
+          openIdx = closeAngle + 1;
+        }
+      }
+      if (isPunctTok(tokens[openIdx], '(') && matchIdx[openIdx] !== -1) {
+        const closeIdx = matchIdx[openIdx];
+        for (let a = openIdx + 1; a < closeIdx; a += 1) {
+          const argTok = tokens[a];
+          const prevArg = a > 0 ? tokens[a - 1] : undefined;
+          if (
+            argTok.type === 'ident' &&
+            !isPunctTok(prevArg, '.') &&
+            !isPunctTok(prevArg, '?.')
+          ) {
+            if (effectiveDomainRepoSymbols.has(argTok.value)) {
+              exercisesCurrentDomainRepo = true;
+            } else if (
+              domainRepoSymbols.size > 0 &&
+              (importedAliases.has(argTok.value) || /Token$|Repo(?:sitory)?$/.test(argTok.value))
+            ) {
+              exercisesOtherDomainRepo = true;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return {
+    configuresCurrentDomainSchema,
+    configuresOtherDomainSchema,
+    exercisesCurrentDomainRepo,
+    exercisesOtherDomainRepo
+  };
+};
+
 /**
- * 核对候选多方言 CRUD/事务契约文件是否真正属于被验当前领域：
- * 结合导入模块真实来源（`repo.ts` / `mongo/schema.ts` / `sql/table.ts`）、导出仓储符号与集合/表名判断归属，
- * 防止 `--test` 传入其他域的 CRUD 回归文件时误满足当前域必须拥有独立多方言 CRUD 契约的门禁。
+ * 按单次 `registerDualDialectContractSuite` / `registerMultiDialectContractSuite` 调用粒度核对多方言 CRUD/事务契约域归属：
+ * 1. 仅检查每次 CRUD 注册自身的 `backends` / `mongo` / `sql` / `setup` 与 `registerTests` 回调（含局部作用域引用的 `const` 绑定），
+ *    绝不把同一文件中并存的日志拓扑 suite 或其他域回归调用的符号误算成当前域 CRUD 证据；
+ * 2. 若本域 CRUD 为构造前置数据而额外引入其他域夹具，只有当该 CRUD 调用自身也测试了当前域仓储时才予以放行。
  */
 export const analyzeMultiDialectContractCoverage = ({
   testFiles,
@@ -5918,6 +6073,8 @@ export const analyzeMultiDialectContractCoverage = ({
   domainRepoSymbols = new Set(),
   domainMongoCollections = new Set(),
   domainSqlTables = new Set(),
+  domainCollectionExportNames = {},
+  domainTableExportNames = {},
   repoRoot
 }) => {
   const expectedMongoCollections = new Set(
@@ -5943,7 +6100,7 @@ export const analyzeMultiDialectContractCoverage = ({
       repoRoot,
       sourceRelPath: file.relPath
     });
-    const { tokens, matchIdx, scopeTree, importedAliases } = resolver;
+    const { clean, tokens, matchIdx, scopeTree, importedAliases } = resolver;
     const skippedSpans = collectVitestSkippedSpans({ tokens, matchIdx });
     const isInsideSkipped = (tokIdx) =>
       skippedSpans.some((s) => tokIdx >= s.startTok && tokIdx <= s.endTok);
@@ -5964,16 +6121,6 @@ export const analyzeMultiDialectContractCoverage = ({
       continue;
     }
 
-    const { tokens: execTokens, matchIdx: execMatchIdx } = tokenizeCleanJsTs(
-      stripImportsAndStrings(file.raw)
-    );
-    const usedIdents = new Set();
-    for (const tok of execTokens) {
-      if (tok.type === 'ident') {
-        usedIdents.add(tok.value);
-      }
-    }
-
     const effectiveDomainRepoSymbols = resolveEffectiveDomainRepoSymbols({
       importedAliases,
       domainRepoSymbols,
@@ -5983,69 +6130,6 @@ export const analyzeMultiDialectContractCoverage = ({
       moduleMetaCache
     });
 
-    let importedFromCurrentDomain = false;
-    let matchesCurrentDomainSchema = false;
-    let hasOtherDomainEvidence = false;
-
-    for (const [localName, info] of importedAliases) {
-      if (!usedIdents.has(localName)) {
-        continue;
-      }
-      const resolvedMeta =
-        repoRoot !== undefined
-          ? readImportedModuleMetadata({
-              specifier: info.specifier,
-              repoRoot,
-              sourceRelPath: file.relPath,
-              moduleMetaCache
-            })
-          : null;
-      if (resolvedMeta === null) {
-        continue;
-      }
-      const originRel = resolvedMeta.exportOriginByName[info.importedName] ?? resolvedMeta.relPath;
-      const inCurrent =
-        normalizedDomainRel !== undefined && isPathInsideDir(originRel, normalizedDomainRel);
-      if (inCurrent) {
-        importedFromCurrentDomain = true;
-      }
-
-      const origName = info.importedName;
-      const colName = resolvedMeta.collectionExportNames[origName];
-      const tblName = resolvedMeta.tableExportNames[origName];
-
-      if (typeof colName === 'string' && expectedMongoCollections.has(colName) && inCurrent) {
-        matchesCurrentDomainSchema = true;
-      } else if (
-        typeof colName === 'string' &&
-        !inCurrent &&
-        normalizedDomainRel !== undefined
-      ) {
-        hasOtherDomainEvidence = true;
-      }
-
-      if (typeof tblName === 'string' && expectedSqlTables.has(tblName) && inCurrent) {
-        matchesCurrentDomainSchema = true;
-      } else if (
-        typeof tblName === 'string' &&
-        !inCurrent &&
-        normalizedDomainRel !== undefined
-      ) {
-        hasOtherDomainEvidence = true;
-      }
-
-      if (
-        !inCurrent &&
-        normalizedDomainRel !== undefined &&
-        /(?:^packages\/dal\/db\/repos\/|^packages\/service\/.*\/(?:repo|mongo\/schema|sql\/table|mongo\/repo|sql\/repo)\.ts$)/.test(
-          originRel
-        )
-      ) {
-        hasOtherDomainEvidence = true;
-      }
-    }
-
-    let exercisesCurrentDomainRepo = false;
     const repoHelperNames = new Set(REPO_RUNTIME_HELPER_FNS);
     for (const [localName, info] of importedAliases) {
       if (REPO_RUNTIME_HELPER_FNS.has(info.importedName)) {
@@ -6053,67 +6137,146 @@ export const analyzeMultiDialectContractCoverage = ({
       }
     }
 
-    for (let k = 0; k < execTokens.length; k += 1) {
-      const t = execTokens[k];
-      if (t.type !== 'ident') continue;
-      const prev = k > 0 ? execTokens[k - 1] : undefined;
-      const next = k + 1 < execTokens.length ? execTokens[k + 1] : undefined;
+    const expandScopedFragment = ({ rawText, baseOffset, depth = 0, visited, outFragments }) => {
+      if (typeof rawText !== 'string' || rawText.trim().length === 0) {
+        return;
+      }
+      outFragments.push(rawText);
+      if (depth >= 3) {
+        return;
+      }
+      const { tokens: fragTokens } = tokenizeCleanJsTs(stripCommentsPreserveStrings(rawText));
+      for (let i = 0; i < fragTokens.length; i += 1) {
+        const tok = fragTokens[i];
+        if (tok.type !== 'ident') continue;
+        const prev = i > 0 ? fragTokens[i - 1] : undefined;
+        const next = i + 1 < fragTokens.length ? fragTokens[i + 1] : undefined;
+        if (
+          isPunctTok(prev, '.') ||
+          isPunctTok(prev, '?.') ||
+          isIdentTok(prev, 'const') ||
+          isIdentTok(prev, 'let') ||
+          isIdentTok(prev, 'var') ||
+          isIdentTok(prev, 'function') ||
+          (isPunctTok(next, ':') && (isPunctTok(prev, '{') || isPunctTok(prev, ',')))
+        ) {
+          continue;
+        }
+        const lookup = scopeTree.lookupBinding(tok.value, baseOffset + tok.start);
+        if (!lookup.found || lookup.binding.kind !== 'const') {
+          continue;
+        }
+        const visitKey = `${lookup.scope.id}:${tok.value}`;
+        if (visited.has(visitKey)) {
+          continue;
+        }
+        const nextVisited = new Set(visited);
+        nextVisited.add(visitKey);
+        expandScopedFragment({
+          rawText: lookup.binding.exprText,
+          baseOffset: lookup.binding.exprStart,
+          depth: depth + 1,
+          visited: nextVisited,
+          outFragments
+        });
+      }
+    };
 
-      if (
-        effectiveDomainRepoSymbols.has(t.value) &&
-        (isIdentTok(prev, 'new') ||
-          isPunctTok(next, '.') ||
-          isPunctTok(next, '?.') ||
-          isPunctTok(next, '('))
-      ) {
-        exercisesCurrentDomainRepo = true;
+    const isInCurrentDomainTestDir = isPathInsideDir(file.relPath, normalizedDomainTestDir);
+    let fileHasCurrentDomainCrudCall = false;
+
+    for (const call of suiteCalls) {
+      const inner = clean.slice(tokens[call.openParenIdx].end, tokens[call.closeParenIdx].start);
+      const callArgs = splitTopLevelComma(inner).filter((arg) => arg.trim().length > 0);
+      if (callArgs.length === 0) {
+        continue;
+      }
+      const argStartPos = skipWhitespace(clean, tokens[call.openParenIdx].end);
+      const objRes = resolver.resolveObjectProperties({
+        rawExpr: callArgs[0],
+        scopePos: argStartPos
+      });
+      if (!objRes.ok) {
+        continue;
       }
 
-      if (repoHelperNames.has(t.value) && !isPunctTok(prev, '.') && !isPunctTok(prev, '?.')) {
-        let openIdx = k + 1;
-        if (isPunctTok(execTokens[openIdx], '<')) {
-          const closeAngle = tryMatchGenericAngle({
-            tokens: execTokens,
-            matchIdx: execMatchIdx,
-            startIdx: openIdx,
-            rangeEnd: execTokens.length
-          });
-          if (closeAngle !== -1) {
-            openIdx = closeAngle + 1;
-          }
-        }
-        if (isPunctTok(execTokens[openIdx], '(') && execMatchIdx[openIdx] !== -1) {
-          const closeIdx = execMatchIdx[openIdx];
-          for (let a = openIdx + 1; a < closeIdx; a += 1) {
-            const argTok = execTokens[a];
-            const prevArg = a > 0 ? execTokens[a - 1] : undefined;
-            if (
-              argTok.type === 'ident' &&
-              !isPunctTok(prevArg, '.') &&
-              !isPunctTok(prevArg, '?.')
-            ) {
-              if (effectiveDomainRepoSymbols.has(argTok.value)) {
-                exercisesCurrentDomainRepo = true;
-              } else if (
-                domainRepoSymbols.size > 0 &&
-                (importedAliases.has(argTok.value) || /Token$|Repo(?:sitory)?$/.test(argTok.value))
-              ) {
-                hasOtherDomainEvidence = true;
-              }
-            }
-          }
-        }
+      const backendFragments = [];
+      for (const backendProp of ['backends', 'mongo', 'sql', 'setup']) {
+        const propEntry = objRes.props.get(backendProp);
+        if (propEntry === undefined) continue;
+        const exactBase = clean.indexOf(propEntry.rawValue, propEntry.scopePos);
+        expandScopedFragment({
+          rawText: propEntry.rawValue,
+          baseOffset: exactBase !== -1 ? exactBase : propEntry.scopePos,
+          depth: 0,
+          visited: new Set(),
+          outFragments: backendFragments
+        });
+      }
+
+      const testFragments = [];
+      const registerTestsEntry = objRes.props.get('registerTests');
+      if (registerTestsEntry !== undefined) {
+        const exactBase = clean.indexOf(registerTestsEntry.rawValue, registerTestsEntry.scopePos);
+        expandScopedFragment({
+          rawText: registerTestsEntry.rawValue,
+          baseOffset: exactBase !== -1 ? exactBase : registerTestsEntry.scopePos,
+          depth: 0,
+          visited: new Set(),
+          outFragments: testFragments
+        });
+      }
+
+      const combinedTestExec = stripImportsAndStrings(testFragments.join('\n'));
+      const hasExecutableTestsInCall =
+        /\b(?:it|test)\s*(?:\.(?:each|concurrent|sequential))?\s*\(/.test(combinedTestExec) &&
+        /\bexpect\s*\(/.test(combinedTestExec);
+      if (!hasExecutableTestsInCall) {
+        continue;
+      }
+
+      const sharedAnalyzeArgs = {
+        importedAliases,
+        effectiveDomainRepoSymbols,
+        domainRepoSymbols,
+        repoHelperNames,
+        normalizedDomainRel,
+        expectedMongoCollections,
+        expectedSqlTables,
+        domainCollectionExportNames,
+        domainTableExportNames,
+        sourceRelPath: file.relPath,
+        repoRoot,
+        moduleMetaCache
+      };
+      const backendUsage = analyzeFragmentSchemaAndRepoUsage({
+        ...sharedAnalyzeArgs,
+        fragmentText: backendFragments.join('\n')
+      });
+      const testUsage = analyzeFragmentSchemaAndRepoUsage({
+        ...sharedAnalyzeArgs,
+        fragmentText: testFragments.join('\n')
+      });
+
+      const callConfiguresCurrentDomainSchema = backendUsage.configuresCurrentDomainSchema;
+      const callConfiguresOtherDomainSchema = backendUsage.configuresOtherDomainSchema;
+      const callExercisesCurrentDomainRepo = testUsage.exercisesCurrentDomainRepo;
+      const callExercisesOtherDomainRepo = testUsage.exercisesOtherDomainRepo;
+      const callHasOtherDomainEvidence =
+        callConfiguresOtherDomainSchema || callExercisesOtherDomainRepo;
+
+      const callBelongsToCurrentDomain =
+        callExercisesCurrentDomainRepo ||
+        (callConfiguresCurrentDomainSchema && !callExercisesOtherDomainRepo) ||
+        (isInCurrentDomainTestDir && !callHasOtherDomainEvidence);
+
+      if (callBelongsToCurrentDomain) {
+        fileHasCurrentDomainCrudCall = true;
+        break;
       }
     }
 
-    const isInCurrentDomainTestDir = isPathInsideDir(file.relPath, normalizedDomainTestDir);
-    const belongsToCurrentDomain =
-      exercisesCurrentDomainRepo ||
-      matchesCurrentDomainSchema ||
-      importedFromCurrentDomain ||
-      (isInCurrentDomainTestDir && !hasOtherDomainEvidence);
-
-    if (belongsToCurrentDomain) {
+    if (fileHasCurrentDomainCrudCall) {
       currentDomainContractFiles.push(file.relPath);
     } else {
       otherDomainContractFiles.push(file.relPath);

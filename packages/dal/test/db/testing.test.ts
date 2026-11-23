@@ -2,19 +2,21 @@ import { Mongoose, Schema } from 'mongoose';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { DbConfigurationError } from '@fastgpt/dal/db/errors';
+import {
+  buildRequiredLogTopologyCases,
+  formatLogTopologySuiteTitle
+} from '@fastgpt/dal/db/logTopologyContract';
 import { defineMongoCollection } from '@fastgpt/dal/db/mongo/collection';
 import { closeDbRuntime, getConfiguredDbRuntime } from '@fastgpt/dal/db/runtime';
 import { defineSqlTable } from '@fastgpt/dal/db/sql/ddl';
 import { SqlRepositoryBase } from '@fastgpt/dal/db/sql/base';
 import {
-  buildRequiredLogTopologyCases,
   createContractBackends,
   createMongoTestHarness,
   createMysqlSqlTestHarness,
   createPostgresSqlTestHarness,
   disableTestMongoIndexReadiness,
   enableTestMongoIndexReadiness,
-  formatLogTopologySuiteTitle,
   parseRequiredSqlDialects,
   registerDualDialectContractSuite,
   registerLogTopologyContractSuite,

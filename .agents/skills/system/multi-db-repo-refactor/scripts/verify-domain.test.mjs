@@ -13,14 +13,13 @@ import {
   analyzeSqlRepoDatasource,
   analyzeSqlTableDefinitions,
   buildDomainTestExecutionPlan,
-  buildRequiredLogTopologyCases,
   discoverMongoSchemas,
   extractDefineIndexes,
   findDomainServiceUnitTestFiles,
   readGitLegacyFile,
   verifyExecutedLogTopologyReports
 } from './common.mjs';
-import { buildRequiredLogTopologyCases as sharedBuildRequiredLogTopologyCases } from '../../../../../packages/dal/db/logTopologyContract.mjs';
+import { buildRequiredLogTopologyCases } from '../../../../../packages/dal/db/logTopologyContract.mjs';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, '../../../../..');
@@ -2362,9 +2361,6 @@ test('supports --domain and --no-test flags and recognizes both service.unit.tes
 });
 
 test('binds log topology static checks, CRUD provenance, execution plan, and real registerLogTopologyContractSuite Vitest JSON reports to the target domain', () => {
-  // Single source of truth: Node CLI re-exports the exact contract identity builder from packages/dal/db/logTopologyContract.mjs
-  assert.equal(buildRequiredLogTopologyCases, sharedBuildRequiredLogTopologyCases);
-
   const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'fastgpt-log-domain-binding-'));
   const vitestProbeRelBilling = 'packages/dal/test/db/.billing-log-topology-probe.test.ts';
   const vitestProbeRelAudit = 'packages/dal/test/db/.audit-log-topology-probe.test.ts';
@@ -2923,6 +2919,247 @@ test('binds log topology static checks, CRUD provenance, execution plan, and rea
     );
     fs.writeFileSync(path.join(tmpRoot, auditCrudContractRel), auditCrudOnlySource);
     fs.writeFileSync(path.join(tmpRoot, billingContractRel), billingFullSource);
+
+    // 3c. Same-file mixed suite cases (distinguishing audit topology + billing CRUD vs audit CRUD using billing fixture)
+    const sameFileAuditTopoBillingCrudSource = `
+      import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+      import { injectRepo } from '@fastgpt/dal/db/container';
+      import {
+        createContractBackends,
+        registerLogTopologyContractSuite,
+        registerMultiDialectContractSuite
+      } from '@fastgpt/dal/db/testing';
+      import { auditLogCollection } from '../../../../db/repos/auditLogProbe/mongo/schema';
+      import { auditLogSqlTable } from '../../../../db/repos/auditLogProbe/sql/table';
+      import { AuditLogRepoToken } from '@fastgpt/dal/db/repos/auditLogProbe/repo';
+      import { billingLogCollection } from '../../../../db/repos/billingLogProbe/mongo/schema';
+      import { billingLogSqlTable } from '../../../../db/repos/billingLogProbe/sql/table';
+      import { BillingLogRepoToken } from '@fastgpt/dal/db/repos/billingLogProbe/repo';
+
+      registerLogTopologyContractSuite({
+        describeFn: describe,
+        itFn: it,
+        logCollections: [auditLogCollection],
+        logTables: [auditLogSqlTable],
+        mongoCollectionName: auditLogCollection.name,
+        sqlTableName: auditLogSqlTable.name,
+        writeLogRecord: async () => injectRepo(AuditLogRepoToken).create({}),
+        readLogRecord: async ({ id }) => injectRepo(AuditLogRepoToken).findById({ id })
+      });
+
+      const billingBackends = createContractBackends({
+        collections: [],
+        logCollections: [billingLogCollection],
+        tables: [],
+        logTables: [billingLogSqlTable],
+        logMode: 'separate'
+      });
+      registerMultiDialectContractSuite({
+        backends: billingBackends,
+        beforeAllFn: beforeAll,
+        afterAllFn: afterAll,
+        registerTests: () => {
+          const billingRepo = injectRepo(BillingLogRepoToken);
+          it('only tests billing CRUD', async () => {
+            expect(await billingRepo.create({})).toBeDefined();
+          });
+        }
+      });
+    `;
+
+    // Negative 1: same file has audit topology + billing CRUD (must NOT satisfy audit CRUD gate!)
+    const sameFileMixedNegStatic = analyzeMultiDialectContractCoverage({
+      testFiles: [{ relPath: auditCrudContractRel, raw: sameFileAuditTopoBillingCrudSource }],
+      domainRel: auditRel,
+      domainTestDir: auditTestDirRel,
+      domainRepoSymbols: new Set(['AuditLogRepoToken']),
+      domainMongoCollections: new Set(['audit_logs']),
+      domainSqlTables: new Set(['audit_logs']),
+      repoRoot: tmpRoot
+    });
+    assert.equal(sameFileMixedNegStatic.ok, false);
+    assert.deepEqual(sameFileMixedNegStatic.currentDomainContractFiles, []);
+    assert.deepEqual(sameFileMixedNegStatic.otherDomainContractFiles, [auditCrudContractRel]);
+
+    fs.writeFileSync(path.join(tmpRoot, auditCrudContractRel), sameFileAuditTopoBillingCrudSource);
+    const cliSameFileAuditTopoBillingCrud = runVerify(
+      ['--domain', auditRel, '--no-test'],
+      { cwd: tmpRoot }
+    );
+    assert.equal(cliSameFileAuditTopoBillingCrud.status, 1);
+    assert.match(
+      cliSameFileAuditTopoBillingCrud.stderr,
+      /other-domain CRUD contract\(s\) cannot substitute/
+    );
+
+    // Negative 2: single CRUD suite has shared backends listing BOTH audit & billing, yet registerTests only tests billing
+    const sameFileSharedBackendsBillingOnlySource = `
+      import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+      import { injectRepo } from '@fastgpt/dal/db/container';
+      import {
+        createContractBackends,
+        registerLogTopologyContractSuite,
+        registerMultiDialectContractSuite
+      } from '@fastgpt/dal/db/testing';
+      import { auditLogCollection } from '../../../../db/repos/auditLogProbe/mongo/schema';
+      import { auditLogSqlTable } from '../../../../db/repos/auditLogProbe/sql/table';
+      import { AuditLogRepoToken } from '@fastgpt/dal/db/repos/auditLogProbe/repo';
+      import { billingLogCollection } from '../../../../db/repos/billingLogProbe/mongo/schema';
+      import { billingLogSqlTable } from '../../../../db/repos/billingLogProbe/sql/table';
+      import { BillingLogRepoToken } from '@fastgpt/dal/db/repos/billingLogProbe/repo';
+
+      registerLogTopologyContractSuite({
+        describeFn: describe,
+        itFn: it,
+        logCollections: [auditLogCollection],
+        logTables: [auditLogSqlTable],
+        mongoCollectionName: auditLogCollection.name,
+        sqlTableName: auditLogSqlTable.name,
+        writeLogRecord: async () => injectRepo(AuditLogRepoToken).create({}),
+        readLogRecord: async ({ id }) => injectRepo(AuditLogRepoToken).findById({ id })
+      });
+
+      const auditRepo = injectRepo(AuditLogRepoToken);
+      const billingRepo = injectRepo(BillingLogRepoToken);
+      const sharedBackends = createContractBackends({
+        collections: [],
+        logCollections: [auditLogCollection, billingLogCollection],
+        tables: [],
+        logTables: [auditLogSqlTable, billingLogSqlTable],
+        logMode: 'separate'
+      });
+      registerMultiDialectContractSuite({
+        backends: sharedBackends,
+        beforeAllFn: beforeAll,
+        afterAllFn: afterAll,
+        registerTests: () => {
+          it('only exercises billingRepo despite outer auditRepo and shared backends', async () => {
+            expect(await billingRepo.create({})).toBeDefined();
+          });
+        }
+      });
+    `;
+    const sameFileSharedBackendsNeg = analyzeMultiDialectContractCoverage({
+      testFiles: [
+        { relPath: auditCrudContractRel, raw: sameFileSharedBackendsBillingOnlySource }
+      ],
+      domainRel: auditRel,
+      domainTestDir: auditTestDirRel,
+      domainRepoSymbols: new Set(['AuditLogRepoToken']),
+      domainMongoCollections: new Set(['audit_logs']),
+      domainSqlTables: new Set(['audit_logs']),
+      repoRoot: tmpRoot
+    });
+    assert.equal(sameFileSharedBackendsNeg.ok, false);
+
+    // Positive 1: same file has audit topology + audit CRUD that uses billingLog as prerequisite fixture via outer `const auditRepo`
+    const sameFileAuditCrudWithBillingFixtureSource = `
+      import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+      import { injectRepo } from '@fastgpt/dal/db/container';
+      import {
+        createContractBackends,
+        registerLogTopologyContractSuite,
+        registerMultiDialectContractSuite
+      } from '@fastgpt/dal/db/testing';
+      import { auditLogCollection } from '../../../../db/repos/auditLogProbe/mongo/schema';
+      import { auditLogSqlTable } from '../../../../db/repos/auditLogProbe/sql/table';
+      import { AuditLogRepoToken } from '@fastgpt/dal/db/repos/auditLogProbe/repo';
+      import { billingLogCollection } from '../../../../db/repos/billingLogProbe/mongo/schema';
+      import { billingLogSqlTable } from '../../../../db/repos/billingLogProbe/sql/table';
+      import { BillingLogRepoToken } from '@fastgpt/dal/db/repos/billingLogProbe/repo';
+
+      registerLogTopologyContractSuite({
+        describeFn: describe,
+        itFn: it,
+        logCollections: [auditLogCollection],
+        logTables: [auditLogSqlTable],
+        mongoCollectionName: auditLogCollection.name,
+        sqlTableName: auditLogSqlTable.name,
+        writeLogRecord: async () => injectRepo(AuditLogRepoToken).create({}),
+        readLogRecord: async ({ id }) => injectRepo(AuditLogRepoToken).findById({ id })
+      });
+
+      const auditRepo = injectRepo(AuditLogRepoToken);
+      const billingFixtureRepo = injectRepo(BillingLogRepoToken);
+      const sharedBackends = createContractBackends({
+        collections: [],
+        logCollections: [auditLogCollection, billingLogCollection],
+        tables: [],
+        logTables: [auditLogSqlTable, billingLogSqlTable],
+        logMode: 'separate'
+      });
+      registerMultiDialectContractSuite({
+        backends: sharedBackends,
+        beforeAllFn: beforeAll,
+        afterAllFn: afterAll,
+        registerTests: () => {
+          it('seeds billing fixture and verifies audit CRUD', async () => {
+            await billingFixtureRepo.create({});
+            expect(await auditRepo.create({})).toBeDefined();
+          });
+        }
+      });
+    `;
+    const sameFileFixturePos = analyzeMultiDialectContractCoverage({
+      testFiles: [
+        { relPath: auditCrudContractRel, raw: sameFileAuditCrudWithBillingFixtureSource }
+      ],
+      domainRel: auditRel,
+      domainTestDir: auditTestDirRel,
+      domainRepoSymbols: new Set(['AuditLogRepoToken']),
+      domainMongoCollections: new Set(['audit_logs']),
+      domainSqlTables: new Set(['audit_logs']),
+      repoRoot: tmpRoot
+    });
+    assert.equal(sameFileFixturePos.ok, true);
+    assert.deepEqual(sameFileFixturePos.currentDomainContractFiles, [auditCrudContractRel]);
+
+    fs.writeFileSync(
+      path.join(tmpRoot, auditCrudContractRel),
+      sameFileAuditCrudWithBillingFixtureSource
+    );
+    const cliSameFileAuditCrudWithBillingFixture = runVerify(
+      ['--domain', auditRel, '--no-test'],
+      { cwd: tmpRoot }
+    );
+    assert.equal(
+      cliSameFileAuditCrudWithBillingFixture.status,
+      0,
+      cliSameFileAuditCrudWithBillingFixture.stderr
+    );
+
+    // Positive 2: same file has audit topology + billing CRUD + separate audit CRUD call -> PASSES
+    const sameFileTwoCrudSuitesSource = `
+      ${sameFileAuditTopoBillingCrudSource}
+      registerMultiDialectContractSuite({
+        backends: createContractBackends({
+          collections: [],
+          logCollections: [auditLogCollection],
+          tables: [],
+          logTables: [auditLogSqlTable],
+          logMode: 'separate'
+        }),
+        beforeAllFn: beforeAll,
+        afterAllFn: afterAll,
+        registerTests: () => {
+          it('verifies audit CRUD explicitly', async () => {
+            expect(await injectRepo(AuditLogRepoToken).create({})).toBeDefined();
+          });
+        }
+      });
+    `;
+    const sameFileTwoCrudPos = analyzeMultiDialectContractCoverage({
+      testFiles: [{ relPath: auditCrudContractRel, raw: sameFileTwoCrudSuitesSource }],
+      domainRel: auditRel,
+      domainTestDir: auditTestDirRel,
+      domainRepoSymbols: new Set(['AuditLogRepoToken']),
+      domainMongoCollections: new Set(['audit_logs']),
+      domainSqlTables: new Set(['audit_logs']),
+      repoRoot: tmpRoot
+    });
+    assert.equal(sameFileTwoCrudPos.ok, true);
+
+    fs.writeFileSync(path.join(tmpRoot, auditCrudContractRel), auditCrudOnlySource);
 
     // 4. Execution plan unit checks: merges auto-discovered domain topology file & preserves non-unit routing
     const planWithOtherExplicit = buildDomainTestExecutionPlan({

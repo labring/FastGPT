@@ -779,6 +779,8 @@ const checkContractTestGovernance = () => {
           domainRepoSymbols,
           domainMongoCollections: domainAllMongoCollections,
           domainSqlTables,
+          domainCollectionExportNames: mongoDatasourceInfo.collectionExportNames ?? {},
+          domainTableExportNames: sqlTableInfo.tableExportNames ?? {},
           repoRoot
         })
       : { ok: false, currentDomainContractFiles: [], otherDomainContractFiles: [] };

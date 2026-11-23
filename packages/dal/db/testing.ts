@@ -5,14 +5,7 @@ import { Mongoose, Types, type Model } from 'mongoose';
 import { createPool } from 'mysql2';
 import { Pool } from 'pg';
 import { DbConfigurationError } from './errors';
-import {
-  LOG_TOPOLOGY_CASE_TITLES,
-  buildRequiredLogTopologyCases,
-  formatLogTopologySuiteTitle,
-  type LogTopologyFamily,
-  type LogTopologyMode,
-  type RequiredLogTopologyCase
-} from './logTopologyContract.mjs';
+import { LOG_TOPOLOGY_CASE_TITLES, formatLogTopologySuiteTitle } from './logTopologyContract.mjs';
 import type { MongoCollectionDefinition } from './mongo/collection';
 import { createMongoRuntimeDeps } from './mongo/runtime';
 import { closeDbRuntime, configureDbRuntime, getDbRuntime } from './runtime';
@@ -1394,15 +1387,6 @@ const registerRunnableTopologySuite = ({
       `registerLogTopologyContractSuite requires a runnable describeFn that executes suite registration for "${suiteTitle}"`
     );
   }
-};
-
-export {
-  LOG_TOPOLOGY_CASE_TITLES,
-  buildRequiredLogTopologyCases,
-  formatLogTopologySuiteTitle,
-  type LogTopologyFamily,
-  type LogTopologyMode,
-  type RequiredLogTopologyCase
 };
 
 /**
