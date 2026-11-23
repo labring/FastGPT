@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MenuProps } from '@chakra-ui/react';
 
+type MenuListPresence = {
+  isMounted: boolean;
+  modifiers: MenuProps['modifiers'];
+  mount: () => void;
+  onAnimationComplete: () => void;
+};
+
 /**
  * 保留列表到退出动画结束，再释放 Popper 的监听；MenuButton 保持挂载以维持焦点。
  */
-export const useMenuListPresence = (isOpen: boolean) => {
+export const useMenuListPresence = (isOpen: boolean): MenuListPresence => {
   const [mounted, setMounted] = useState(false);
   const isMounted = isOpen || mounted;
   const destroyPopper = useRef<() => void>();
