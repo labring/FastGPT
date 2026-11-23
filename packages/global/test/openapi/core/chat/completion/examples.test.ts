@@ -144,7 +144,7 @@ describe.each(['v1', 'v2'] as const)('completion response examples %s', (version
       '导演：新海诚',
       null
     ]);
-    expect(frames('error').some(({ data }) => data.code === 510003 && data.statusText)).toBe(true);
+    expect(frames('error').some(({ data }) => data.code === 510001 && data.statusText)).toBe(true);
     for (const key of ['interactiveUserSelect', 'interactiveUserInput'] as const) {
       expect(parseFrames(examples.sse[key].value)).toHaveLength(2);
     }

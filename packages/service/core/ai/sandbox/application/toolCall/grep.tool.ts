@@ -12,7 +12,7 @@ import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { defineTool } from './type';
 import { truncateSandboxToolOutput } from './utils';
 
-export const SandboxGrepToolSchema = z.object({
+const SandboxGrepToolSchema = z.object({
   pattern: z.string(),
   path: z.string().optional(),
   glob: z.string().optional(),
@@ -31,6 +31,7 @@ const truncateMatchLine = (line: string) => {
 
 export const sandboxGrepTool = defineTool({
   zodSchema: SandboxGrepToolSchema,
+  skipEnsureAvailable: true,
   execute: async ({ sandboxInstance, params }) => {
     const limit = params.limit ?? DEFAULT_GREP_LIMIT;
     const rgArgs = [

@@ -790,7 +790,7 @@ describe('dataset rebuild status index migration', () => {
 });
 
 describe('sandbox quota index migration', () => {
-  it('removes the old source quota index via explicit cleanup and retains current and customer indexes', async () => {
+  it('removes the old source quota index via explicit cleanup and retains current v3 and customer indexes', async () => {
     const schema = new Schema({}, { autoIndex: false });
     MongoSandboxInstance.schema.indexes().forEach(([key, options]) => {
       defineIndex(schema, { key, options });
@@ -810,9 +810,12 @@ describe('sandbox quota index migration', () => {
 
     const names = await getIndexNames(model);
     expect(names).not.toContain('sourceType_1_status_1_provider_1');
+    expect(names).toContain('provider_1_sandboxId_1');
     expect(names).toContain('teamId_1_status_1');
     expect(names).toContain('status_1_lastActiveAt_1');
+    expect(names).toContain('status_1_operation.heartbeatAt_1');
     expect(names).toContain('sourceType_1_sourceId_1_userId_1');
+    expect(names).toContain('storage.volumes.claimName_1');
     expect(names).toContain('customer_sandbox_source');
     expect(LEGACY_DEPRECATED_MONGO_INDEXES).toHaveLength(18);
   });

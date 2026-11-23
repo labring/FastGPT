@@ -1,4 +1,4 @@
-/** 持久化生命周期执行器：统一 claim、checkpoint、失败记录和终态 CAS，不决定业务方向。 */
+/** 持久化生命周期执行器：统一 claim、运行期持久化心跳、checkpoint、失败记录和终态 CAS，不决定业务方向。 */
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { RedisLeaseContext } from '@fastgpt/dal/redis/caches';
 import {
@@ -7,11 +7,18 @@ import {
   completeSandboxOperation,
   deleteClaimedSandboxRecord,
   markSandboxOperationFailed,
-  type SandboxResourceDoc
+  touchSandboxOperationHeartbeat,
+  type SandboxResourceDoc,
+  type SandboxUnsetField
 } from '../../infrastructure/instance/repository';
 import { type SandboxInstanceStatusType, type SandboxStableStatusType } from '../../type';
-import { expectedOperationByStatus, SANDBOX_OPERATION_ISOLATION_MS } from '../../constants';
-import { SandboxOperationSettledError, SandboxOperationConflictError } from './error';
+import {
+  expectedOperationByStatus,
+  SANDBOX_OPERATION_HEARTBEAT_INTERVAL_MS
+} from '../../constants';
+import { isUncertainControlPlaneError } from '../../infrastructure/opensandbox/errors';
+import { SandboxOperationConflictError } from './error';
+import { getStaleOperationTimeoutMs } from './utils';
 
 type SandboxLifecycleStepContext = {
   resource: SandboxResourceDoc;
@@ -19,7 +26,9 @@ type SandboxLifecycleStepContext = {
   lease: RedisLeaseContext;
   assertValid: () => void;
 };
-type SandboxCheckpoint = Partial<Pick<SandboxResourceDoc, 'storage' | 'image' | 'versionId'>> & {
+type SandboxCheckpoint = Partial<
+  Pick<SandboxResourceDoc, 'storage' | 'image' | 'versionId' | 'instanceId'>
+> & {
   limit?: Partial<NonNullable<SandboxResourceDoc['limit']>>;
 };
 
@@ -41,9 +50,10 @@ export type SandboxLifecycleDefinition = SandboxLifecycleSteps & {
     touchActive?: boolean;
     beforeComplete?: (context: SandboxLifecycleStepContext) => Promise<void>;
     set?: SandboxCheckpoint | ((context: SandboxLifecycleStepContext) => SandboxCheckpoint);
+    unset?: readonly SandboxUnsetField[];
   };
 };
-export type SandboxLifecycleDeleteDefinition = SandboxLifecycleSteps & {
+type SandboxLifecycleDeleteDefinition = SandboxLifecycleSteps & {
   finish: { type: 'delete' };
 };
 
@@ -55,13 +65,13 @@ type LifecycleClaim =
       set?: SandboxCheckpoint;
       previousStatus?: SandboxStableStatusType;
       matchLastActiveAt?: boolean;
+      matchInstanceIdentity?: boolean;
     };
-export type RunSandboxLifecycleParams = {
+type RunSandboxLifecycleParams = {
   resource: SandboxResourceDoc;
   lease: RedisLeaseContext;
   definition: SandboxLifecycleDefinition;
   claim?: LifecycleClaim;
-  onClaim?: (resource: SandboxResourceDoc) => void;
 };
 
 /** 执行机制共用，完成与删除各自返回明确结果；接管资格由上层统一策略决定。 */
@@ -83,7 +93,8 @@ async function executeSandboxLifecycle<T>(
           phase: claim?.initialPhase,
           set: claim?.set,
           previousStatus: claim?.previousStatus,
-          matchLastActiveAt: claim?.matchLastActiveAt
+          matchLastActiveAt: claim?.matchLastActiveAt,
+          matchInstanceIdentity: claim?.matchInstanceIdentity
         });
   if (!claimed) throw new SandboxOperationConflictError(resource.sandboxId);
   const operation = claimed.operation;
@@ -92,13 +103,31 @@ async function executeSandboxLifecycle<T>(
       `Sandbox ${resource.sandboxId} does not own the expected ${operationType} operation`
     );
   }
-  params.onClaim?.(claimed);
   const context = {
     resource: claimed,
     operationId: operation.id,
     lease,
     assertValid: () => lease.assertValid()
   };
+
+  // 长耗时单阶段（如大工作区归档上传或恢复下载）期间定期刷新 Mongo 心跳，确保活跃操作不会被后台扫描误判为孤儿记录。
+  let heartbeatActive = true;
+  let heartbeatInFlight = false;
+  const heartbeatTimer = setInterval(() => {
+    if (!heartbeatActive || heartbeatInFlight || lease.signal.aborted) return;
+    heartbeatInFlight = true;
+    void touchSandboxOperationHeartbeat({
+      resource: claimed,
+      operationId: operation.id,
+      status: definition.status
+    })
+      .catch(() => undefined)
+      .finally(() => {
+        heartbeatInFlight = false;
+      });
+  }, SANDBOX_OPERATION_HEARTBEAT_INTERVAL_MS);
+  heartbeatTimer.unref?.();
+
   try {
     const phases = [
       definition.steps[0]?.fromPhase ?? operation.phase,
@@ -131,21 +160,23 @@ async function executeSandboxLifecycle<T>(
     context.assertValid();
     return await finish(context);
   } catch (error) {
-    // 失去租约的旧执行者不能标记失败或补偿。未知远端结果保留隔离窗口。
+    // 失去租约的旧执行者严禁写入失败标记（交由阶段对应心跳超时兜底）；
+    // 确定性业务/数据面失败写入当前时间允许立即回滚或重试；控制面未收到响应的传输未决异常按当前阶段冷却（在途创建 240s / 其余阶段 60s）。
     context.assertValid();
+    const cooldownMs = isUncertainControlPlaneError(error)
+      ? getStaleOperationTimeoutMs(context.resource)
+      : 0;
     await markSandboxOperationFailed({
       resource: claimed,
       operationId: operation.id,
       status: definition.status,
       error: getErrText(error),
-      retryAfter: new Date(
-        Date.now() +
-          (error instanceof SandboxOperationSettledError
-            ? 0
-            : SANDBOX_OPERATION_ISOLATION_MS[operationType])
-      )
+      retryAfter: new Date(Date.now() + cooldownMs)
     }).catch(() => undefined);
     throw error;
+  } finally {
+    heartbeatActive = false;
+    clearInterval(heartbeatTimer);
   }
 }
 
@@ -163,7 +194,8 @@ export async function runSandboxLifecycleOperation(
       fromStatus: params.definition.status,
       status: finish.status,
       touchActive: finish.touchActive,
-      set: typeof finish.set === 'function' ? finish.set(context) : finish.set
+      set: typeof finish.set === 'function' ? finish.set(context) : finish.set,
+      unset: finish.unset
     });
     if (!completed) throw new Error(`Sandbox operation lost ownership before terminal commit`);
     return completed;

@@ -11,7 +11,7 @@ import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { defineTool } from './type';
 import { truncateSandboxToolOutput } from './utils';
 
-export const SandboxFindToolSchema = z.object({
+const SandboxFindToolSchema = z.object({
   pattern: z.string(),
   path: z.string().optional(),
   limit: z.number().int().positive().max(5000).optional()
@@ -19,6 +19,7 @@ export const SandboxFindToolSchema = z.object({
 
 export const sandboxFindTool = defineTool({
   zodSchema: SandboxFindToolSchema,
+  skipEnsureAvailable: true,
   execute: async ({ sandboxInstance, params }) => {
     const limit = params.limit ?? DEFAULT_FIND_LIMIT;
     const searchPath = params.path ?? '.';

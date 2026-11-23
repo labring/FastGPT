@@ -151,7 +151,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
 
   it('enables sandbox internal tool only when workflow prepared a sandbox client', () => {
     const sandboxClient = {
-      provider: {},
+      opensandbox: {},
       exec: vi.fn()
     };
     const { runtime } = createWorkflowAgentLoopRuntime({
@@ -172,7 +172,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
     const { runtime, artifacts } = createWorkflowAgentLoopRuntime({
       context: createContext({
         sandboxClient: {
-          provider: {},
+          opensandbox: {},
           exec: vi.fn()
         }
       }),
@@ -216,7 +216,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
     const { runtime, artifacts } = createWorkflowAgentLoopRuntime({
       context: createContext({
         sandboxClient: {
-          provider: {},
+          opensandbox: {},
           exec: vi.fn()
         }
       }),

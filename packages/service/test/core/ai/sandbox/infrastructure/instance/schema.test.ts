@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
+import {
+  collectionName,
+  getLegacySandboxInstanceCollection,
+  LEGACY_SANDBOX_INSTANCE_COLLECTION_NAME,
+  MongoSandboxInstance
+} from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
 import { getSchemaDeprecatedMongoIndexes } from '@fastgpt/service/common/mongo';
 import { LEGACY_DEPRECATED_MONGO_INDEXES } from '@fastgpt/service/common/mongo/legacyDeprecatedIndexCleanup';
 
@@ -36,7 +41,11 @@ describe('MongoSandboxInstance schema indexes', () => {
     );
   });
 
-  it('keeps zero deprecated tombstones on the schema and tracks retired sandbox indexes in explicit cleanup registry', () => {
+  it('binds runtime model to v3, keeps v2 handle separate, and tracks retired v2 indexes in explicit cleanup registry', () => {
+    expect(collectionName).toBe('agent_sandbox_instances_v3');
+    expect(MongoSandboxInstance.collection.collectionName).toBe('agent_sandbox_instances_v3');
+    expect(LEGACY_SANDBOX_INSTANCE_COLLECTION_NAME).toBe('agent_sandbox_instances_v2');
+    expect(getLegacySandboxInstanceCollection().collectionName).toBe('agent_sandbox_instances_v2');
     // 零墓碑原则：Schema 内不再保留 deprecated: true，历史废弃索引统一由显式清理清单托管。
     expect(getSchemaDeprecatedMongoIndexes(MongoSandboxInstance.schema)).toEqual([]);
     const legacySandboxIndexes = LEGACY_DEPRECATED_MONGO_INDEXES.filter(
@@ -114,27 +123,19 @@ describe('MongoSandboxInstance schema indexes', () => {
     ).rejects.toThrow('Stable status running must not keep an operation');
   });
 
-  it('rejects the removed provider migration state and operation', async () => {
-    await expect(
-      new MongoSandboxInstance({ ...baseInstance, status: 'providerMigrating' }).validate()
-    ).rejects.toThrow();
-
-    await expect(
-      new MongoSandboxInstance({
-        ...baseInstance,
-        status: 'archiving',
-        operation: {
-          id: 'provider-migration-operation',
-          type: 'providerMigration',
-          phase: 'claimed',
-          startedAt: new Date(),
-          heartbeatAt: new Date()
-        }
-      }).validate()
-    ).rejects.toThrow();
-  });
-
-  it('does not define a metadata container in the v2 model', () => {
-    expect(MongoSandboxInstance.schema.path('metadata')).toBeUndefined();
+  it('persists runtime resource limits via SandboxLimitMongoSchema rather than raw Zod shape', async () => {
+    const doc = new MongoSandboxInstance({
+      ...baseInstance,
+      status: 'running',
+      limit: {
+        cpuCount: 2,
+        memoryMiB: 2048
+      }
+    });
+    await expect(doc.validate()).resolves.toBeUndefined();
+    expect(doc.limit?.toObject?.() ?? doc.limit).toEqual({
+      cpuCount: 2,
+      memoryMiB: 2048
+    });
   });
 });

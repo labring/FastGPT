@@ -28,7 +28,7 @@ const createSandboxInstance = () =>
     }),
     resolveRuntimePath,
     ensureAvailable,
-    provider: {
+    opensandbox: {
       getFileInfo
     }
   }) as any;
@@ -45,7 +45,7 @@ describe('sandboxGetFileUrlTool', () => {
     });
     previewMock.createSandboxPreviewSession.mockResolvedValue('a12345678901234567890123');
     previewMock.buildSandboxPreviewFileUrl.mockImplementation(
-      ({ filePath }: { filePath: string }) => `preview:${filePath}`
+      ({ relativePath }: { relativePath: string }) => `preview:/workspace/${relativePath}`
     );
   });
 
@@ -88,11 +88,11 @@ describe('sandboxGetFileUrlTool', () => {
     });
     expect(previewMock.buildSandboxPreviewFileUrl).toHaveBeenNthCalledWith(1, {
       sessionId: 'a12345678901234567890123',
-      filePath: '/workspace/file.txt'
+      relativePath: 'file.txt'
     });
     expect(previewMock.buildSandboxPreviewFileUrl).toHaveBeenNthCalledWith(2, {
       sessionId: 'a12345678901234567890123',
-      filePath: '/workspace/sessions/chat-1/report/data.csv'
+      relativePath: 'sessions/chat-1/report/data.csv'
     });
     // 非图片文件只保留承载原 response 的 text part
     expect(result.content).toEqual([{ type: 'text', text: result.response }]);

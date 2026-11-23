@@ -1,13 +1,7 @@
 import z from 'zod';
 import { SANDBOX_VOLUME_NAME_RE } from '../../../../core/ai/sandbox/volume';
 import { isValidServiceBaseUrl } from '../../../string/url';
-import {
-  nonNegativeInteger,
-  positiveInteger,
-  positiveNumber,
-  textWithDefault,
-  urlWithDefault
-} from './primitives';
+import { nonNegativeInteger, positiveInteger, positiveNumber, textWithDefault } from './primitives';
 
 /** 两类子服务均从此基地址追加固定路由；空值表示尚未配置。 */
 const serviceBaseUrl = z
@@ -37,13 +31,12 @@ export const AgentSandboxProxyConfigSchema = z.strictObject({
 });
 
 const AgentSandboxSubserviceConfigSchema = z.strictObject({
-  provider: z.enum(['none', 'sealosdevbox', 'opensandbox']).default('none'),
+  enabled: z.boolean().default(false),
   proxy: AgentSandboxProxyConfigSchema.prefault({}),
   common: z
     .strictObject({
       cpuCount: positiveNumber(1),
       memoryMiB: positiveInteger(2048),
-      // 与旧环境变量和管理表单的下限一致，保证磁盘预留后仍有可用空间。
       storageSizeGi: z.number().min(1).default(1),
       suspendMinutes: positiveInteger(60),
       archiveInactiveDays: positiveInteger(7),
@@ -55,29 +48,16 @@ const AgentSandboxSubserviceConfigSchema = z.strictObject({
       aptMirror: textWithDefault()
     })
     .prefault({}),
-  sealosdevbox: z
-    .strictObject({
-      baseUrl: urlWithDefault(),
-      token: textWithDefault(),
-      workDirectory: z.string().default('/home/devbox/workspace'),
-      image: textWithDefault()
-    })
-    .prefault({
-      baseUrl: '',
-      token: '',
-      workDirectory: '/home/devbox/workspace',
-      image: ''
-    }),
   opensandbox: z
     .strictObject({
-      baseUrl: urlWithDefault(),
+      baseUrl: serviceBaseUrl,
       apiKey: textWithDefault(),
       runtime: z.enum(['docker', 'kubernetes']).default('docker'),
       cpuOvercommitFactor: z.number().min(1).default(1),
       memoryOvercommitFactor: z.number().min(1).default(1),
       image: textWithDefault(),
       useServerProxy: z.boolean().default(true),
-      volumeManagerUrl: urlWithDefault(),
+      volumeManagerUrl: serviceBaseUrl,
       volumeManagerToken: textWithDefault(),
       // 与 env 侧 SandboxVolumeNameSchema 对齐：前缀会拼进 PVC/named volume 名，
       // 必须满足 DNS label 子集，否则运行时 createSessionVolumeName 的 parse 会抛错。
@@ -92,18 +72,7 @@ const AgentSandboxSubserviceConfigSchema = z.strictObject({
         })
         .default('fastgpt-session')
     })
-    .prefault({
-      baseUrl: '',
-      apiKey: '',
-      runtime: 'docker',
-      cpuOvercommitFactor: 1,
-      memoryOvercommitFactor: 1,
-      image: '',
-      useServerProxy: true,
-      volumeManagerUrl: '',
-      volumeManagerToken: '',
-      volumeNamePrefix: 'fastgpt-session'
-    })
+    .prefault({})
 });
 
 export const SubserviceConfigBaseSchema = z.strictObject({
@@ -115,13 +84,29 @@ export const SubserviceConfigBaseSchema = z.strictObject({
 export const SubserviceConfigSchema = SubserviceConfigBaseSchema.superRefine((subservice, ctx) => {
   const { agentSandbox } = subservice;
 
-  // 启用任一供应商都依赖完整代理配置，必须在保存前拒绝不完整状态。
-  if (agentSandbox.provider !== 'none') {
+  // 启用 Agent Sandbox 依赖完整代理配置与 OpenSandbox 必填运行凭据，必须在保存前拒绝不完整状态。
+  if (agentSandbox.enabled) {
     for (const key of ['wsUrl', 'previewUrl', 'secret'] as const) {
       if (!agentSandbox.proxy[key].trim()) {
         ctx.addIssue({
           code: 'custom',
           path: ['agentSandbox', 'proxy', key],
+          message: `${key} is required when Agent Sandbox is enabled`
+        });
+      }
+    }
+
+    for (const key of [
+      'baseUrl',
+      'apiKey',
+      'image',
+      'volumeManagerUrl',
+      'volumeManagerToken'
+    ] as const) {
+      if (!agentSandbox.opensandbox[key].trim()) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['agentSandbox', 'opensandbox', key],
           message: `${key} is required when Agent Sandbox is enabled`
         });
       }
@@ -135,27 +120,5 @@ export const SubserviceConfigSchema = SubserviceConfigBaseSchema.superRefine((su
       path: ['agentSandbox', 'proxy', 'secret'],
       message: 'Agent Sandbox proxy secret must be at least 32 characters'
     });
-  }
-
-  if (agentSandbox.provider === 'sealosdevbox') {
-    const { baseUrl } = agentSandbox.sealosdevbox;
-    if (!baseUrl) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['agentSandbox', 'sealosdevbox', 'baseUrl'],
-        message: 'baseUrl is required for sealosdevbox'
-      });
-    }
-  }
-
-  if (agentSandbox.provider === 'opensandbox') {
-    const { baseUrl } = agentSandbox.opensandbox;
-    if (!baseUrl) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['agentSandbox', 'opensandbox', 'baseUrl'],
-        message: 'baseUrl is required for opensandbox'
-      });
-    }
   }
 });

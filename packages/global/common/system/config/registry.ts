@@ -424,7 +424,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
   }),
   ...createEntries({
     section: 'subservice',
-    keys: ['agentSandbox.proxy.wsUrl', 'agentSandbox.proxy.previewUrl'],
+    keys: ['agentSandbox.enabled', 'agentSandbox.proxy.wsUrl', 'agentSandbox.proxy.previewUrl'],
     options: { edition: 'all', secret: false, applyMode: 'reload' }
   }),
   ...createEntries({
@@ -435,7 +435,6 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
   ...createEntries({
     section: 'subservice',
     keys: [
-      'agentSandbox.provider',
       'agentSandbox.common.cpuCount',
       'agentSandbox.common.memoryMiB',
       'agentSandbox.common.storageSizeGi',
@@ -446,9 +445,6 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'agentSandbox.common.npmRegistry',
       'agentSandbox.common.pypiIndexUrl',
       'agentSandbox.common.aptMirror',
-      'agentSandbox.sealosdevbox.baseUrl',
-      'agentSandbox.sealosdevbox.workDirectory',
-      'agentSandbox.sealosdevbox.image',
       'agentSandbox.opensandbox.baseUrl',
       'agentSandbox.opensandbox.runtime',
       'agentSandbox.opensandbox.image',
@@ -460,11 +456,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
   }),
   ...createEntries({
     section: 'subservice',
-    keys: [
-      'agentSandbox.sealosdevbox.token',
-      'agentSandbox.opensandbox.apiKey',
-      'agentSandbox.opensandbox.volumeManagerToken'
-    ],
+    keys: ['agentSandbox.opensandbox.apiKey', 'agentSandbox.opensandbox.volumeManagerToken'],
     options: { edition: 'all', secret: true, applyMode: 'restart' }
   }),
   ...createEntries({

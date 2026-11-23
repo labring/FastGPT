@@ -2,17 +2,20 @@ import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  checkSandboxRuntimeInstanceExists: vi.fn(),
-  getRunningSandboxClient: vi.fn()
+  existsSandboxInstanceBySandboxId: vi.fn(),
+  assertSandboxSourceActive: vi.fn(),
+  touchRunningSandboxInstance: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/client', () => ({
-  checkSandboxRuntimeInstanceExists: mocks.checkSandboxRuntimeInstanceExists,
-  getRunningSandboxClient: mocks.getRunningSandboxClient
+vi.mock('@fastgpt/service/core/ai/sandbox/application/sourceGuard', () => ({
+  assertSandboxSourceActive: mocks.assertSandboxSourceActive
 }));
 
-import { SandboxLifecycleStateError } from '@fastgpt/service/core/ai/sandbox/application/lifecycle/error';
-import { SandboxRuntimeNotRunningError } from '@fastgpt/service/core/ai/sandbox/error';
+vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository', () => ({
+  existsSandboxInstanceBySandboxId: mocks.existsSandboxInstanceBySandboxId,
+  touchRunningSandboxInstance: mocks.touchRunningSandboxInstance
+}));
+
 import {
   checkSandboxSessionExist,
   keepaliveSandboxSession
@@ -29,38 +32,45 @@ const query = {
 describe('sandbox session interface', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.checkSandboxRuntimeInstanceExists.mockResolvedValue(true);
-    mocks.getRunningSandboxClient.mockResolvedValue({
-      provider: { close: vi.fn(async () => undefined) }
+    mocks.existsSandboxInstanceBySandboxId.mockResolvedValue(true);
+    mocks.assertSandboxSourceActive.mockResolvedValue(undefined);
+    mocks.touchRunningSandboxInstance.mockResolvedValue({ sandboxId: query.sandboxId });
+  });
+
+  it('checks local session existence without touching runtime active timestamp', async () => {
+    await expect(checkSandboxSessionExist(query)).resolves.toBe(true);
+
+    expect(mocks.existsSandboxInstanceBySandboxId).toHaveBeenCalledWith({
+      sandboxId: query.sandboxId
+    });
+    expect(mocks.touchRunningSandboxInstance).not.toHaveBeenCalled();
+  });
+
+  it('refreshes lastActiveAt in Mongo when source is active without opening remote connections', async () => {
+    await expect(keepaliveSandboxSession(query)).resolves.toBeUndefined();
+
+    expect(mocks.assertSandboxSourceActive).toHaveBeenCalledWith({
+      sourceType: query.sourceType,
+      sourceId: query.sourceId
+    });
+    expect(mocks.touchRunningSandboxInstance).toHaveBeenCalledWith({
+      sandboxId: query.sandboxId,
+      sourceType: query.sourceType,
+      sourceId: query.sourceId,
+      userId: query.userId
     });
   });
 
-  it('checks local session existence without constructing a runtime client', async () => {
-    await expect(checkSandboxSessionExist(query)).resolves.toBe(true);
-
-    expect(mocks.checkSandboxRuntimeInstanceExists).toHaveBeenCalledWith(query);
-    expect(mocks.getRunningSandboxClient).not.toHaveBeenCalled();
-  });
-
-  it('keeps a running sandbox alive without allowing archived restore', async () => {
-    await expect(keepaliveSandboxSession(query)).resolves.toBeUndefined();
-
-    expect(mocks.getRunningSandboxClient).toHaveBeenCalledWith(query);
-  });
-
-  it.each([
-    new SandboxRuntimeNotRunningError(query.sandboxId),
-    new SandboxLifecycleStateError('stopping'),
-    new SandboxLifecycleStateError('stopped')
-  ])('treats a non-running lifecycle state as an idempotent keepalive no-op', async (error) => {
-    mocks.getRunningSandboxClient.mockRejectedValueOnce(error);
+  it('returns cleanly as a no-op when the sandbox record is not running (stopped/archived)', async () => {
+    mocks.touchRunningSandboxInstance.mockResolvedValueOnce(null);
 
     await expect(keepaliveSandboxSession(query)).resolves.toBeUndefined();
   });
 
-  it('propagates unexpected provider failures', async () => {
-    mocks.getRunningSandboxClient.mockRejectedValueOnce(new Error('provider unavailable'));
+  it('propagates missing source and database errors', async () => {
+    mocks.assertSandboxSourceActive.mockRejectedValueOnce(new Error('source deleted'));
 
-    await expect(keepaliveSandboxSession(query)).rejects.toThrow('provider unavailable');
+    await expect(keepaliveSandboxSession(query)).rejects.toThrow('source deleted');
+    expect(mocks.touchRunningSandboxInstance).not.toHaveBeenCalled();
   });
 });

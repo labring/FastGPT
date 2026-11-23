@@ -130,8 +130,6 @@ src/
 ├── env.ts                # 环境变量校验
 ├── routes/
 │   └── volumes.ts        # /v1/volumes 路由
-├── services/
-│   └── VolumeService.ts  # 业务逻辑层
 ├── drivers/
 │   ├── IVolumeDriver.ts  # 驱动接口
 │   ├── DockerVolumeDriver.ts
