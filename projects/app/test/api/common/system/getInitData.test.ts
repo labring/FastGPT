@@ -1,3 +1,4 @@
+import { getSsoIsWecom } from '@fastgpt/service/common/system/sso';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import handler from '@/pages/api/common/system/getInitData';
 import { Call } from '@test/utils/request';
@@ -9,6 +10,10 @@ import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 import { ZodError } from 'zod';
 import { serviceEnv } from '@fastgpt/service/env';
+
+vi.mock('@fastgpt/service/common/system/sso', () => ({
+  getSsoIsWecom: vi.fn().mockResolvedValue(undefined)
+}));
 
 const originalShowRunDetail = serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL;
 
@@ -79,6 +84,7 @@ const channel = {
 
 describe('getInitData anonymous configuration filtering', () => {
   beforeEach(() => {
+    vi.mocked(getSsoIsWecom).mockResolvedValue(undefined);
     vi.clearAllMocks();
     serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL = false;
     global.systemInitBufferId = 'config-1';
@@ -132,7 +138,7 @@ describe('getInitData anonymous configuration filtering', () => {
 
     expect(code).toBe(200);
     expect(data).toEqual({
-      bufferId: 'unAuth_v9_config-1',
+      bufferId: 'unAuth_v10_sso_unknown_config-1',
       feConfigs: publicConfig
     });
     expect(global.feConfigs).toEqual(originalConfig);
@@ -159,7 +165,7 @@ describe('getInitData anonymous configuration filtering', () => {
     const { code, data } = await Call(handler, {
       auth,
       headers: {},
-      query: { bufferId: 'unAuth_v9_config-1' }
+      query: { bufferId: 'unAuth_v10_sso_unknown_config-1' }
     });
 
     expect(code).toBe(200);
@@ -189,22 +195,22 @@ describe('getInitData anonymous configuration filtering', () => {
     'unAuth_v4_chat_config-1',
     'unAuth_v5_config-1',
     'unAuth_v8_config-1',
-    'unAuth_v9_config-old',
+    'unAuth_v10_sso_unknown_config-old',
     'unAuth_v4_share_config-1'
   ])('refreshes stale or authenticated cache %s with filtered data', async (bufferId) => {
     const { data } = await Call(handler, { headers: {}, query: { bufferId } });
 
-    expect(data.bufferId).toBe('unAuth_v9_config-1');
+    expect(data.bufferId).toBe('unAuth_v10_sso_unknown_config-1');
     expect(data.feConfigs).toEqual(publicConfig);
   });
 
   it('retains the anonymous cache-hit response only for the current policy version', async () => {
     const { data } = await Call(handler, {
       headers: {},
-      query: { bufferId: 'unAuth_v9_config-1' }
+      query: { bufferId: 'unAuth_v10_sso_unknown_config-1' }
     });
 
-    expect(data).toEqual({ bufferId: 'unAuth_v9_config-1' });
+    expect(data).toEqual({ bufferId: 'unAuth_v10_sso_unknown_config-1' });
   });
 
   it.each([
@@ -220,10 +226,10 @@ describe('getInitData anonymous configuration filtering', () => {
     async (referer) => {
       const { data } = await Call(handler, {
         headers: { referer },
-        query: { bufferId: 'unAuth_v9_config-1', includeSubPlans: 'true' }
+        query: { bufferId: 'unAuth_v10_sso_unknown_config-1', includeSubPlans: 'true' }
       });
       expect(data).toEqual({
-        bufferId: 'unAuth_v9_config-1',
+        bufferId: 'unAuth_v10_sso_unknown_config-1',
         subPlans: global.subPlans
       });
     }
@@ -274,7 +280,7 @@ describe('getInitData anonymous configuration filtering', () => {
       headers: { referer: 'https://app.example.com/login' }
     });
 
-    expect(data.bufferId).toBe('unAuth_v9_config-1');
+    expect(data.bufferId).toBe('unAuth_v10_sso_unknown_config-1');
     expect(data.feConfigs).not.toHaveProperty('payConfig');
   });
 
@@ -322,7 +328,7 @@ describe('getInitData anonymous configuration filtering', () => {
     async (includeSubPlans) => {
       const { data } = await Call(handler, { headers: {}, query: { includeSubPlans } });
       expect(data).toEqual({
-        bufferId: 'unAuth_v9_config-1',
+        bufferId: 'unAuth_v10_sso_unknown_config-1',
         feConfigs: publicConfig,
         subPlans: global.subPlans
       });
@@ -436,5 +442,21 @@ describe('getInitData anonymous configuration filtering', () => {
 
     expect(invalidResponse.code).toBe(500);
     expect(invalidResponse.error).toBeInstanceOf(ZodError);
+  });
+  it('refreshes cached provider metadata and strips stale stored isWecom', async () => {
+    global.feConfigs.sso = { ...publicConfig.sso, isWecom: true } as typeof global.feConfigs.sso;
+    const unknown = await Call(handler, { headers: {} });
+    expect(unknown.data.feConfigs.sso).not.toHaveProperty('isWecom');
+    vi.mocked(getSsoIsWecom).mockResolvedValue(false);
+    const nonWecom = await Call(handler, {
+      headers: {},
+      query: { bufferId: unknown.data.bufferId }
+    });
+    expect(nonWecom.data.feConfigs.sso.isWecom).toBe(false);
+    expect(nonWecom.data.bufferId).toBe('unAuth_v10_sso_non_wecom_config-1');
+    vi.mocked(getSsoIsWecom).mockResolvedValue(true);
+    const wecom = await Call(handler, { headers: {}, query: { bufferId: nonWecom.data.bufferId } });
+    expect(wecom.data.feConfigs.sso.isWecom).toBe(true);
+    expect(wecom.data.bufferId).toBe('unAuth_v10_sso_wecom_config-1');
   });
 });
