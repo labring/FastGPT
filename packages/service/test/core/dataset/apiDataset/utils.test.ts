@@ -305,6 +305,35 @@ describe('getApiFileSyncRootIds', () => {
   });
 });
 
+describe('createApiFileSourceResolver', () => {
+  it('真实目录显式记录自身来源时，不被其下 V1 同名文档误判为派生目录', () => {
+    const realFolder = collection({
+      _id: 'real-dir',
+      apiFileId: 'custom-doc#dir',
+      type: DatasetCollectionTypeEnum.folder,
+      metadata: { apiFileSourceId: 'custom-doc#dir' }
+    });
+    const v1Doc = collection({
+      _id: 'v1-doc',
+      apiFileId: 'custom-doc',
+      type: DatasetCollectionTypeEnum.apiFile,
+      parentId: 'real-dir'
+    });
+    const derivedFolder = collection({
+      _id: 'derived-dir',
+      apiFileId: 'doc#dir',
+      type: DatasetCollectionTypeEnum.folder,
+      metadata: { apiFileSourceId: 'doc' }
+    });
+
+    const resolver = createApiFileSourceResolver([realFolder, v1Doc, derivedFolder]);
+    expect(resolver.getSourceId(realFolder)).toBe('custom-doc#dir');
+    expect(resolver.isDerivedFolder(realFolder)).toBe(false);
+    expect(resolver.getSourceId(derivedFolder)).toBe('doc');
+    expect(resolver.isDerivedFolder(derivedFolder)).toBe(true);
+  });
+});
+
 describe('planLegacyApiFileFolders', () => {
   const apiDatasetServer = { dingtalkServer: { appKey: 'key', userId: 'user' } };
   const legacy = () =>

@@ -31,7 +31,6 @@ export type LegacyApiFileFolderMigration = {
   inheritPermission?: boolean;
 };
 
-/** 沿用请求 factory 的配置优先级，旧目录正文兼容只适用于实际启用的钉钉 Provider。 */
 export type ResolvedApiDatasetProvider =
   | {
       type: 'api';
@@ -83,6 +82,7 @@ export const resolveApiDatasetProvider = (
   return undefined;
 };
 
+/** 沿用请求 factory 的配置优先级，旧目录正文兼容只适用于实际启用的钉钉 Provider。 */
 export const usesDingtalkDataset = (apiDatasetServer?: ApiDatasetServerType) =>
   resolveApiDatasetProvider(apiDatasetServer)?.type === 'dingtalk';
 
@@ -298,21 +298,32 @@ export const createApiFileSourceResolver = (collections: ApiFileLocalCollection[
     if (isDerived) legacySources.set(dirId, item.apiFileId);
   }
 
-  const isDerivedFolder = (item: ApiFileLocalCollection): boolean => {
-    if (item.type !== DatasetCollectionTypeEnum.folder || !item.apiFileId) return false;
-    const sourceId = item.metadata?.apiFileSourceId;
-    if (typeof sourceId === 'string' && sourceId && sourceId !== item.apiFileId) return true;
-    return legacySources.has(item.apiFileId);
+  const resolveIdentity = (item: ApiFileLocalCollection) => {
+    if (!item.apiFileId) {
+      return { sourceId: undefined, isDerivedFolder: false };
+    }
+    if (item.type !== DatasetCollectionTypeEnum.folder) {
+      return { sourceId: item.apiFileId, isDerivedFolder: false };
+    }
+    const explicitSourceId = item.metadata?.apiFileSourceId;
+    if (typeof explicitSourceId === 'string' && explicitSourceId) {
+      return {
+        sourceId: explicitSourceId,
+        isDerivedFolder: explicitSourceId !== item.apiFileId
+      };
+    }
+    const legacySourceId = legacySources.get(item.apiFileId);
+    return {
+      sourceId: legacySourceId ?? item.apiFileId,
+      isDerivedFolder: legacySourceId !== undefined
+    };
   };
 
-  const getSourceId = (item: ApiFileLocalCollection): string | undefined => {
-    if (!item.apiFileId) return undefined;
-    if (item.type !== DatasetCollectionTypeEnum.folder) return item.apiFileId;
-    const sourceId = item.metadata?.apiFileSourceId;
-    return typeof sourceId === 'string' && sourceId
-      ? sourceId
-      : (legacySources.get(item.apiFileId) ?? item.apiFileId);
-  };
+  const getSourceId = (item: ApiFileLocalCollection): string | undefined =>
+    resolveIdentity(item).sourceId;
+
+  const isDerivedFolder = (item: ApiFileLocalCollection): boolean =>
+    resolveIdentity(item).isDerivedFolder;
 
   return { getSourceId, isDerivedFolder };
 };
