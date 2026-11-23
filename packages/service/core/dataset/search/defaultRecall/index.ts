@@ -15,6 +15,10 @@ import {
 import { countRecallLimit, filterDatasetDataByMaxTokens } from './utils';
 import { attachSynonymMappingsToSearchResults } from '../../synonym/searchResult';
 import { serviceEnv } from '../../../../env';
+import {
+  recordDatasetSearchCandidateCount,
+  trackDatasetSearchStage
+} from '../../../../common/opsPerf/datasetSearch';
 
 /**
  * 执行默认知识库召回主流程。
@@ -65,12 +69,17 @@ export async function searchDatasetData(
 
   // Step 1: 图片先尝试转成文本描述。caption 会作为普通文本 query 参与后续召回，
   // 这样即使 embedding 模型不支持图片，也能通过 VLM 描述获得一条文本检索路径。
-  const imageCaptionQueries = await getImageCaptionQueries({
-    vlmModel,
-    imageQueries,
-    userKey,
-    teamId
-  });
+  const runImageCaption = () =>
+    getImageCaptionQueries({
+      vlmModel,
+      imageQueries,
+      userKey,
+      teamId
+    });
+  const imageCaptionQueries =
+    vlmModel && imageQueries.length > 0
+      ? await trackDatasetSearchStage('imageCaption', runImageCaption)
+      : await runImageCaption();
 
   // caption 结果需要回传给工作流计费与响应详情；没有生成出有效描述时不输出该段。
   const hasImageCaptionUsage =
@@ -154,74 +163,83 @@ export async function searchDatasetData(
     rerankCandidateNum
   });
 
-  const hasTextQuery = textQueries.some((item) => item.trim());
-  // Step 5: 合并图片侧结果。caption 是图片的文本解释，权重低于原始图片向量；
-  // 但当模型不支持图片向量时，caption 仍能单独提供图片相关召回。
-  const imageRecallResults = concatWeightedRecallLists([
-    {
-      weight: imageCaptionRecallResults.length > 0 ? 0.3 : 0,
-      list: imageCaptionRecallResults
-    },
-    {
-      weight: imageVectorRecallResults.length > 0 ? 0.7 : 0,
-      list: imageVectorRecallResults
-    }
-  ]);
-  // Step 6: 合并文本侧与图片侧结果。
-  // 纯图片搜索时图片结果权重为 1；图文混合搜索时，文本问题保持主导，图片作为补充约束。
-  const rrfConcatResults = concatWeightedRecallLists([
-    {
-      weight: textRerankRecallResults.length > 0 ? 1 : 0,
-      list: textRerankRecallResults
-    },
-    {
-      weight: imageRecallResults.length > 0 ? (hasTextQuery ? 0.7 : 1) : 0,
-      list: imageRecallResults
-    }
-  ]);
+  const { finalResult, usingSimilarityFilter } = await trackDatasetSearchStage(
+    'postProcess',
+    async () => {
+      const hasTextQuery = textQueries.some((item) => item.trim());
+      // Step 5: 合并图片侧结果。caption 是图片的文本解释，权重低于原始图片向量；
+      // 但当模型不支持图片向量时，caption 仍能单独提供图片相关召回。
+      const imageRecallResults = concatWeightedRecallLists([
+        {
+          weight: imageCaptionRecallResults.length > 0 ? 0.3 : 0,
+          list: imageCaptionRecallResults
+        },
+        {
+          weight: imageVectorRecallResults.length > 0 ? 0.7 : 0,
+          list: imageVectorRecallResults
+        }
+      ]);
+      // Step 6: 合并文本侧与图片侧结果。
+      // 纯图片搜索时图片结果权重为 1；图文混合搜索时，文本问题保持主导，图片作为补充约束。
+      const rrfConcatResults = concatWeightedRecallLists([
+        {
+          weight: textRerankRecallResults.length > 0 ? 1 : 0,
+          list: textRerankRecallResults
+        },
+        {
+          weight: imageRecallResults.length > 0 ? (hasTextQuery ? 0.7 : 1) : 0,
+          list: imageRecallResults
+        }
+      ]);
 
-  // Step 7: 最终过滤顺序固定为：同内容去重 -> 相似度阈值 -> 条数或 token 预算。
-  // 先去重可以避免同一 chunk 因多路召回重复占用相似度过滤和 token 预算。
-  const filterSameDataResults = removeDuplicateSearchResults(rrfConcatResults);
-  const { results: scoreFilter, usingSimilarityFilter } = filterSearchResultsByScore({
-    data: filterSameDataResults,
-    usingReRank: finalUsingReRank,
-    searchMode,
-    similarity
-  });
+      // Step 7: 最终过滤顺序固定为：同内容去重 -> 相似度阈值 -> 条数或 token 预算。
+      // 先去重可以避免同一 chunk 因多路召回重复占用相似度过滤和 token 预算。
+      const filterSameDataResults = removeDuplicateSearchResults(rrfConcatResults);
+      recordDatasetSearchCandidateCount(filterSameDataResults.length);
+      const { results: scoreFilter, usingSimilarityFilter: nextUsingSimilarityFilter } =
+        filterSearchResultsByScore({
+          data: filterSameDataResults,
+          usingReRank: finalUsingReRank,
+          searchMode,
+          similarity
+        });
 
-  // topk 优先且不计 token；截断发生在同义词装饰和图片签名前，避免处理未入选结果。
-  const filteredResults =
-    topk === undefined
-      ? await filterDatasetDataByMaxTokens(scoreFilter, maxTokens)
-      : scoreFilter.slice(0, topk);
-  // 同义词只装饰最终入选结果：被前面过滤掉的候选不会产生 alias 查询。
-  // 问题侧映射只扫「用户原始问题」（rawQueries）：textQueries 已过 query extension，
-  // 扩展模型生成的同义词和「原词出现在分块正文或用户问题里」的装饰语义无关，
-  // 带进来会让模型看到用户没提过的术语对应关系。未传 rawQueries 的旧入口回退到
-  // textQueries，保持原行为。
-  const decoratedFinal = await attachSynonymMappingsToSearchResults({
-    teamId,
-    datasetIds,
-    results: filteredResults,
-    queries: rawQueries.length > 0 ? rawQueries : textQueries
-  });
-  // Step 8: 返回前一次收集最终结果中的 q、a、imageId，并批量签发唯一 dataset 对象 key。
-  // 最终输出不暴露仅供格式化使用的 imageId。
-  // 白名单绑定本次召回授权的 datasetIds：结果里内嵌的外库图片 key 不签发短链，
-  // 避免检索输出成为跨库预览签名的旁路。
-  const formattedValues = await formatDatasetDataValues(
-    decoratedFinal.map(({ q, a, imageId }) => ({ q, a, imageId })),
-    { datasetIds }
+      // topk 优先且不计 token；截断发生在同义词装饰和图片签名前，避免处理未入选结果。
+      const filteredResults =
+        topk === undefined
+          ? await filterDatasetDataByMaxTokens(scoreFilter, maxTokens)
+          : scoreFilter.slice(0, topk);
+      // 同义词只装饰最终入选结果：被前面过滤掉的候选不会产生 alias 查询。
+      // 问题侧映射只扫「用户原始问题」（rawQueries）：textQueries 已过 query extension，
+      // 扩展模型生成的同义词和「原词出现在分块正文或用户问题里」的装饰语义无关，
+      // 带进来会让模型看到用户没提过的术语对应关系。未传 rawQueries 的旧入口回退到
+      // textQueries，保持原行为。
+      const decoratedFinal = await attachSynonymMappingsToSearchResults({
+        teamId,
+        datasetIds,
+        results: filteredResults,
+        queries: rawQueries.length > 0 ? rawQueries : textQueries
+      });
+      // Step 8: 返回前一次收集最终结果中的 q、a、imageId，并批量签发唯一 dataset 对象 key。
+      // 最终输出不暴露仅供格式化使用的 imageId。
+      // 白名单绑定本次召回授权的 datasetIds：结果里内嵌的外库图片 key 不签发短链，
+      // 避免检索输出成为跨库预览签名的旁路。
+      const formattedValues = await formatDatasetDataValues(
+        decoratedFinal.map(({ q, a, imageId }) => ({ q, a, imageId })),
+        { datasetIds }
+      );
+      const formatted = decoratedFinal.map((item, index) => {
+        const result = { ...item };
+        delete result.imageId;
+        return {
+          ...result,
+          ...formattedValues[index]!
+        };
+      });
+
+      return { finalResult: formatted, usingSimilarityFilter: nextUsingSimilarityFilter };
+    }
   );
-  const finalResult = decoratedFinal.map((item, index) => {
-    const result = { ...item };
-    delete result.imageId;
-    return {
-      ...result,
-      ...formattedValues[index]!
-    };
-  });
 
   return {
     searchRes: finalResult,

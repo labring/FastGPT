@@ -13,12 +13,14 @@ export const rerankDatasetWithSynonyms = async ({
   model,
   teamId,
   query,
-  documents
+  documents,
+  onSynonymRerankResult
 }: {
   model?: RerankModelDataType;
   teamId: string;
   query: string;
   documents: RerankDocument[];
+  onSynonymRerankResult?: (result: { triggered: boolean; failed: boolean }) => void;
 }) => {
   const baselinePromise = reRankRecall({
     model,
@@ -27,11 +29,12 @@ export const rerankDatasetWithSynonyms = async ({
   });
   if (!serviceEnv.DATASET_SYNONYM_ENABLED || documents.length === 0) return baselinePromise;
 
-  /** 按知识库读取当前规则并按转换后的问题分组；某个知识库配置不可用时保留其原文输入。 */
+  /** 按知识库读取当前规则并按转换后的问题分组；单个知识库配置读取异常时标记降级并保留原文输入。 */
   const prepareRerankGroups = async () => {
     const datasetIds = [
       ...new Set(documents.map((document) => document.datasetId).filter(Boolean))
     ];
+    let configLoadFailed = false;
     const runtimes = new Map(
       await Promise.all(
         datasetIds.map(async (datasetId) => {
@@ -41,6 +44,7 @@ export const rerankDatasetWithSynonyms = async ({
               await getDatasetSynonymRuntimeConfig({ teamId, datasetId })
             ] as const;
           } catch {
+            configLoadFailed = true;
             return [datasetId, null] as const;
           }
         })
@@ -65,14 +69,28 @@ export const rerankDatasetWithSynonyms = async ({
       group.documents.push(normalizedDocument);
       groups.set(normalizedQuery, group);
     }
-    return [...groups.values()];
+    return {
+      groups: [...groups.values()],
+      configLoadFailed
+    };
   };
 
   // 1. 准备阶段只读配置并构造临时文本，与基线 rerank 并行执行，避免串行叠加延迟。
-  const groupsPromise = prepareRerankGroups().catch(() => undefined);
+  let prepareFailed = false;
+  const preparedPromise = prepareRerankGroups().catch(() => {
+    prepareFailed = true;
+    return undefined;
+  });
   const baseline = await baselinePromise;
-  const groups = await groupsPromise;
-  if (!groups) return baseline;
+  const prepared = await preparedPromise;
+  if (!prepared) {
+    if (prepareFailed) {
+      onSynonymRerankResult?.({ triggered: false, failed: true });
+    }
+    return baseline;
+  }
+
+  const { groups, configLoadFailed } = prepared;
 
   // 2. 筛选出转换后 query 或分块文本发生变化的分组（query 命中同义词时该组全部候选重打分）。
   const originalTexts = new Map(documents.map(({ id, text }) => [id, text]));
@@ -84,22 +102,34 @@ export const rerankDatasetWithSynonyms = async ({
       )
     }))
     .filter(({ documents }) => documents.length > 0);
-  if (changedGroups.length === 0) return baseline;
+  if (changedGroups.length === 0) {
+    if (configLoadFailed) {
+      onSynonymRerankResult?.({ triggered: false, failed: true });
+    }
+    return baseline;
+  }
 
-  // 3. 执行第二路重排，单组失败降级为空结果，不影响基线分数。
+  // 3. 执行第二路重排，单组抛错或模型返回空打分均视作静默降级，保留基线分数并通过回调上报。
+  let secondPassFailed = false;
   const responses = await Promise.all(
     changedGroups.map(async ({ query, documents }) => {
       try {
-        return await reRankRecall({
+        const res = await reRankRecall({
           model,
           query,
           documents: documents.map(({ id, text }) => ({ id, text }))
         });
+        if (documents.length > 0 && res.results.length === 0) {
+          secondPassFailed = true;
+        }
+        return res;
       } catch {
+        secondPassFailed = true;
         return { results: [], inputTokens: 0 };
       }
     })
   );
+  onSynonymRerankResult?.({ triggered: true, failed: configLoadFailed || secondPassFailed });
 
   // 4. 以基线分数为下限逐条保留较高分，并累加两路成功请求的 inputTokens。
   const merged = new Map(baseline.results.map((result) => [result.id, result]));
