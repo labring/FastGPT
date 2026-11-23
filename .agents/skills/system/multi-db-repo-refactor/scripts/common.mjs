@@ -3251,7 +3251,9 @@ const buildLexicalScopeTree = ({ clean, tokens, matchIdx }) => {
                   info: {
                     kind: 'function',
                     detail: 'function declaration',
-                    declStart: fnNameStart
+                    declStart: fnNameStart,
+                    exprText: clean.slice(tokens[paramOpen].start, tokens[bodyClose].end),
+                    exprStart: tokens[paramOpen].start
                   }
                 });
               }
@@ -3644,11 +3646,13 @@ const buildLexicalScopeTree = ({ clean, tokens, matchIdx }) => {
           }
         }
 
-        // 9. 类方法 / 对象简写方法 / 构造器：`foo(params) [: Ret] { ... }`
+        // 9. 类方法 / 对象简写方法 / 构造器：`foo(params) [: Ret] { ... }`（含字符串/数字字面量方法键）
         const closeParenIdx = matchIdx[i];
         const prevCanBeMethodName =
           prev !== undefined &&
           ((prev.type === 'ident' && !NON_METHOD_PREV_KEYWORDS.has(prev.value)) ||
+            prev.type === 'string' ||
+            prev.type === 'number' ||
             isPunctTok(prev, '>') ||
             isPunctTok(prev, ']'));
         if (closeParenIdx !== -1 && closeParenIdx < endTok && prevCanBeMethodName) {
@@ -4150,11 +4154,11 @@ export const createStaticScopeResolver = ({
   };
 
   /**
-   * 解析对象描述符的顶层属性表（支持同文件 `const` 描述符、对象展开与简写属性），
+   * 解析对象描述符的顶层属性表（支持同文件 `const` 描述符、对象展开、简写属性、getter/setter 与对象方法），
    * 允许不关注的兄弟属性为运行期表达式（如 `schema: new Schema(...)`、`tables: [tbl]`）。
    */
   const resolveObjectProperties = ({ rawExpr, scopePos = 0, visited = new Set() }) => {
-    const expr = unwrapOuterParens(rawExpr);
+    const expr = unwrapOuterParens(stripTsAssertion(rawExpr));
     if (expr.length === 0) {
       return { ok: false, reason: 'empty descriptor expression' };
     }
@@ -4193,32 +4197,106 @@ export const createStaticScopeResolver = ({
     if (!expr.startsWith('{') || !expr.endsWith('}')) {
       return { ok: false, reason: `non-static object expression "${expr.slice(0, 80)}"` };
     }
-    const seg = scanBalancedSegment(expr, { startIdx: 0, openChar: '{', closeChar: '}' });
-    if (seg === null || seg.endIdx !== expr.length - 1) {
+    const { tokens: objToks, matchIdx: objMatch } = tokenizeCleanJsTs(expr);
+    if (
+      objToks.length < 2 ||
+      !isPunctTok(objToks[0], '{') ||
+      objMatch[0] !== objToks.length - 1
+    ) {
       return { ok: false, reason: `malformed object literal "${expr.slice(0, 60)}"` };
     }
 
+    // 精确定位 `expr` 在去注释源码 `clean` 中的字符起点，供词法作用域查找对齐偏移。
+    let exprBasePos = scopePos;
+    if (!clean.startsWith(expr, exprBasePos)) {
+      const relOffset = rawExpr.indexOf(expr);
+      if (relOffset !== -1 && clean.startsWith(expr, scopePos + relOffset)) {
+        exprBasePos = scopePos + relOffset;
+      } else {
+        const foundPos = clean.indexOf(expr, scopePos);
+        if (foundPos !== -1) {
+          exprBasePos = foundPos;
+        }
+      }
+    }
+
     const props = new Map();
-    const inner = seg.inner.trim();
-    if (inner.length === 0) {
+    const bodyEndTok = objToks.length - 1;
+    if (bodyEndTok <= 1) {
       return { ok: true, props, rawObject: expr, scopePos };
     }
 
-    for (const entry of splitTopLevelComma(inner)) {
-      const trimmed = entry.trim();
-      if (trimmed.length === 0) {
+    // 按顶层 `,` 切分对象成员；不能复用 `splitTokenRangeByComma`，因为它会跟踪 `<`/`>` 而误伤比较运算符表达式。
+    const entryRanges = [];
+    let curEntryStart = 1;
+    for (let ti = 1; ti < bodyEndTok; ti += 1) {
+      const t = objToks[ti];
+      if (isPunctTok(t, '(') || isPunctTok(t, '{') || isPunctTok(t, '[')) {
+        const close = objMatch[ti];
+        if (close !== -1 && close < bodyEndTok) {
+          ti = close;
+        }
         continue;
       }
-      if (trimmed.startsWith('...')) {
+      if (isPunctTok(t, ',')) {
+        if (curEntryStart < ti) {
+          entryRanges.push([curEntryStart, ti]);
+        }
+        curEntryStart = ti + 1;
+      }
+    }
+    if (curEntryStart < bodyEndTok) {
+      entryRanges.push([curEntryStart, bodyEndTok]);
+    }
+
+    const parsePropertyName = (tokIdx, entryEnd) => {
+      if (tokIdx >= entryEnd) {
+        return { error: 'missing property key' };
+      }
+      const keyTok = objToks[tokIdx];
+      if (isPunctTok(keyTok, '[')) {
+        const closeBracket = objMatch[tokIdx];
+        if (closeBracket === -1 || closeBracket >= entryEnd) {
+          return {
+            error: `malformed computed property key "${expr.slice(keyTok.start, objToks[entryEnd - 1].end)}"`
+          };
+        }
+        const rawKeyExpr = expr.slice(keyTok.end, objToks[closeBracket].start).trim();
+        const keyRes = resolveValue({ rawExpr: rawKeyExpr, scopePos, visited });
+        if (!keyRes.ok || typeof keyRes.value !== 'string') {
+          return { error: `computed or dynamic property key "[${rawKeyExpr}]"` };
+        }
+        return { key: keyRes.value, nextIdx: closeBracket + 1 };
+      }
+      if (keyTok.type === 'string' || keyTok.type === 'template') {
+        const key = unquoteString(keyTok.value);
+        if (key === null) {
+          return { error: `computed or dynamic property key "${keyTok.value}"` };
+        }
+        return { key, nextIdx: tokIdx + 1 };
+      }
+      if (keyTok.type === 'ident' || keyTok.type === 'number') {
+        return { key: keyTok.value, nextIdx: tokIdx + 1 };
+      }
+      return { error: `computed or dynamic property key "${keyTok.value}"` };
+    };
+
+    for (const [entryStart, entryEnd] of entryRanges) {
+      if (entryStart >= entryEnd) {
+        continue;
+      }
+
+      if (isPunctTok(objToks[entryStart], '...')) {
+        const spreadRaw = expr.slice(objToks[entryStart].end, objToks[entryEnd - 1].end).trim();
         const spreadRes = resolveObjectProperties({
-          rawExpr: trimmed.slice(3),
+          rawExpr: spreadRaw,
           scopePos,
           visited
         });
         if (!spreadRes.ok) {
           return {
             ok: false,
-            reason: `cannot statically expand object spread "${trimmed}" (${spreadRes.reason})`
+            reason: `cannot statically expand object spread "...${spreadRaw}" (${spreadRes.reason})`
           };
         }
         for (const [k, v] of spreadRes.props) {
@@ -4227,40 +4305,154 @@ export const createStaticScopeResolver = ({
         continue;
       }
 
-      const colonIdx = findTopLevelColon(trimmed);
-      if (colonIdx === -1) {
-        if (IDENTIFIER_REGEX.test(trimmed)) {
-          props.set(trimmed, { rawValue: trimmed, scopePos, isShorthand: true, isGetter: false });
-          continue;
-        }
-        const getterMatch = /^get\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/.exec(trimmed);
-        if (getterMatch !== null) {
-          props.set(getterMatch[1], {
-            rawValue: trimmed,
-            scopePos,
-            isShorthand: false,
-            isGetter: true
-          });
-        }
+      // 1. 简写属性 `{ foo }`
+      if (entryEnd === entryStart + 1 && objToks[entryStart].type === 'ident') {
+        const key = objToks[entryStart].value;
+        props.set(key, {
+          rawValue: key,
+          scopePos,
+          valuePos: exprBasePos + objToks[entryStart].start,
+          isShorthand: true,
+          isGetter: false,
+          isSetter: false,
+          isMethod: false
+        });
         continue;
       }
 
-      const rawKey = trimmed.slice(0, colonIdx).trim();
-      const rawVal = trimmed.slice(colonIdx + 1).trim();
-      let key;
-      if (rawKey.startsWith('[') && rawKey.endsWith(']')) {
-        const keyRes = resolveValue({ rawExpr: rawKey.slice(1, -1), scopePos, visited });
-        if (!keyRes.ok || typeof keyRes.value !== 'string') {
-          return { ok: false, reason: `computed or dynamic property key "${rawKey}"` };
-        }
-        key = keyRes.value;
-      } else {
-        key = unquoteString(rawKey) ?? rawKey;
-        if (!IDENTIFIER_REGEX.test(key) && unquoteString(rawKey) === null) {
-          return { ok: false, reason: `computed or dynamic property key "${rawKey}"` };
+      // 2. 常规键值属性 `key: value`（需优先于 `get`/`set`/`async` 修饰符判断，兼容 `{ get: 1 }`）
+      const directName = parsePropertyName(entryStart, entryEnd);
+      if (
+        directName.key !== undefined &&
+        directName.nextIdx < entryEnd &&
+        isPunctTok(objToks[directName.nextIdx], ':')
+      ) {
+        const valStartIdx = directName.nextIdx + 1;
+        const rawVal =
+          valStartIdx < entryEnd
+            ? expr.slice(objToks[valStartIdx].start, objToks[entryEnd - 1].end).trim()
+            : '';
+        props.set(directName.key, {
+          rawValue: rawVal,
+          scopePos,
+          valuePos:
+            valStartIdx < entryEnd
+              ? exprBasePos + objToks[valStartIdx].start
+              : exprBasePos + objToks[directName.nextIdx].end,
+          isShorthand: false,
+          isGetter: false,
+          isSetter: false,
+          isMethod: false
+        });
+        continue;
+      }
+      if (
+        directName.error !== undefined &&
+        isPunctTok(objToks[entryStart], '[') &&
+        objMatch[entryStart] !== -1 &&
+        objMatch[entryStart] + 1 < entryEnd &&
+        isPunctTok(objToks[objMatch[entryStart] + 1], ':')
+      ) {
+        return { ok: false, reason: directName.error };
+      }
+
+      // 3. getter / setter / 对象方法 `[async] [*] key [<T>] (params) [: Ret] { ... }`
+      let cursor = entryStart;
+      let isGetter = false;
+      let isSetter = false;
+      const firstTok = objToks[cursor];
+      const secondTok = cursor + 1 < entryEnd ? objToks[cursor + 1] : undefined;
+      if (
+        (isIdentTok(firstTok, 'get') || isIdentTok(firstTok, 'set')) &&
+        secondTok !== undefined &&
+        !isPunctTok(secondTok, '(') &&
+        !isPunctTok(secondTok, '<')
+      ) {
+        isGetter = firstTok.value === 'get';
+        isSetter = firstTok.value === 'set';
+        cursor += 1;
+      }
+
+      if (
+        !isGetter &&
+        !isSetter &&
+        isIdentTok(objToks[cursor], 'async') &&
+        cursor + 1 < entryEnd &&
+        !isPunctTok(objToks[cursor + 1], '(') &&
+        !isPunctTok(objToks[cursor + 1], '<')
+      ) {
+        cursor += 1;
+      }
+
+      if (!isGetter && !isSetter && isPunctTok(objToks[cursor], '*')) {
+        cursor += 1;
+      }
+
+      const methodName = parsePropertyName(cursor, entryEnd);
+      if (methodName.error !== undefined) {
+        return { ok: false, reason: methodName.error };
+      }
+      cursor = methodName.nextIdx;
+
+      if (isPunctTok(objToks[cursor], '<')) {
+        const closeAngle = tryMatchGenericAngle({
+          tokens: objToks,
+          matchIdx: objMatch,
+          startIdx: cursor,
+          rangeEnd: entryEnd
+        });
+        if (closeAngle !== -1) {
+          cursor = closeAngle + 1;
         }
       }
-      props.set(key, { rawValue: rawVal, scopePos, isShorthand: false, isGetter: false });
+
+      if (
+        cursor < entryEnd &&
+        isPunctTok(objToks[cursor], '(') &&
+        objMatch[cursor] !== -1 &&
+        objMatch[cursor] < entryEnd
+      ) {
+        const paramOpenIdx = cursor;
+        const paramCloseIdx = objMatch[paramOpenIdx];
+        let bodyOpenIdx = paramCloseIdx + 1;
+        if (bodyOpenIdx < entryEnd && isPunctTok(objToks[bodyOpenIdx], ':')) {
+          bodyOpenIdx = skipTypeAnnotation({
+            tokens: objToks,
+            matchIdx: objMatch,
+            startTok: bodyOpenIdx + 1,
+            rangeEnd: entryEnd,
+            stopPuncts: new Set(['{'])
+          });
+        }
+        if (
+          bodyOpenIdx < entryEnd &&
+          isPunctTok(objToks[bodyOpenIdx], '{') &&
+          objMatch[bodyOpenIdx] === entryEnd - 1
+        ) {
+          const bodyCloseIdx = entryEnd - 1;
+          const fullEntryText = expr
+            .slice(objToks[entryStart].start, objToks[entryEnd - 1].end)
+            .trim();
+          const methodBodyText = expr.slice(
+            objToks[paramOpenIdx].start,
+            objToks[bodyCloseIdx].end
+          );
+          // 对普通对象方法仅从 `(` 起切片（排除方法名如 `registerTests`），防止展开片段时误把属性名当作外层同名 `const` 变量，
+          // 并让 `valuePos` 与 `buildLexicalScopeTree` 中方法作用域起点完全一致；同时保留外层 `scopePos` 不削弱 TDZ 顺序检查。
+          props.set(methodName.key, {
+            rawValue: isGetter || isSetter ? fullEntryText : methodBodyText,
+            scopePos,
+            valuePos:
+              isGetter || isSetter
+                ? exprBasePos + objToks[entryStart].start
+                : exprBasePos + objToks[paramOpenIdx].start,
+            isShorthand: false,
+            isGetter,
+            isSetter,
+            isMethod: !isGetter && !isSetter
+          });
+        }
+      }
     }
 
     return { ok: true, props, rawObject: expr, scopePos };
@@ -4405,7 +4597,7 @@ export const analyzeMongoSchemaDatasource = ({
       collections.push({ name: colLabel, collectionName, datasource: 'main' });
       continue;
     }
-    if (dsEntry.isGetter) {
+    if (dsEntry.isGetter || dsEntry.isSetter) {
       errors.push(
         `cannot statically resolve defineMongoCollection(${colLabel}) datasource: getter property is not statically verifiable`
       );
@@ -6163,7 +6355,13 @@ export const analyzeMultiDialectContractCoverage = ({
           continue;
         }
         const lookup = scopeTree.lookupBinding(tok.value, baseOffset + tok.start);
-        if (!lookup.found || lookup.binding.kind !== 'const') {
+        if (
+          !lookup.found ||
+          !(
+            lookup.binding.kind === 'const' ||
+            (lookup.binding.kind === 'function' && typeof lookup.binding.exprText === 'string')
+          )
+        ) {
           continue;
         }
         const visitKey = `${lookup.scope.id}:${tok.value}`;
@@ -6204,7 +6402,10 @@ export const analyzeMultiDialectContractCoverage = ({
       for (const backendProp of ['backends', 'mongo', 'sql', 'setup']) {
         const propEntry = objRes.props.get(backendProp);
         if (propEntry === undefined) continue;
-        const exactBase = clean.indexOf(propEntry.rawValue, propEntry.scopePos);
+        const exactBase =
+          typeof propEntry.valuePos === 'number'
+            ? propEntry.valuePos
+            : clean.indexOf(propEntry.rawValue, propEntry.scopePos);
         expandScopedFragment({
           rawText: propEntry.rawValue,
           baseOffset: exactBase !== -1 ? exactBase : propEntry.scopePos,
@@ -6217,7 +6418,10 @@ export const analyzeMultiDialectContractCoverage = ({
       const testFragments = [];
       const registerTestsEntry = objRes.props.get('registerTests');
       if (registerTestsEntry !== undefined) {
-        const exactBase = clean.indexOf(registerTestsEntry.rawValue, registerTestsEntry.scopePos);
+        const exactBase =
+          typeof registerTestsEntry.valuePos === 'number'
+            ? registerTestsEntry.valuePos
+            : clean.indexOf(registerTestsEntry.rawValue, registerTestsEntry.scopePos);
         expandScopedFragment({
           rawText: registerTestsEntry.rawValue,
           baseOffset: exactBase !== -1 ? exactBase : registerTestsEntry.scopePos,

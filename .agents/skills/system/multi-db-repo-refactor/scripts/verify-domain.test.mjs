@@ -3161,6 +3161,428 @@ test('binds log topology static checks, CRUD provenance, execution plan, and rea
 
     fs.writeFileSync(path.join(tmpRoot, auditCrudContractRel), auditCrudOnlySource);
 
+    // 3d. Object method syntax, async methods, typed/string/computed keys, spread, local function helper, & anti-spoof negatives
+    const auditMethodCrudWithAsyncTopoSource = `
+      import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+      import { injectRepo } from '@fastgpt/dal/db/container';
+      import {
+        createContractBackends,
+        registerLogTopologyContractSuite,
+        registerMultiDialectContractSuite
+      } from '@fastgpt/dal/db/testing';
+      import { auditLogCollection } from '../../../../db/repos/auditLogProbe/mongo/schema';
+      import { auditLogSqlTable } from '../../../../db/repos/auditLogProbe/sql/table';
+      import { AuditLogRepoToken } from '@fastgpt/dal/db/repos/auditLogProbe/repo';
+
+      registerLogTopologyContractSuite({
+        describeFn: describe,
+        itFn: it,
+        logCollections: [auditLogCollection],
+        logTables: [auditLogSqlTable],
+        mongoCollectionName: auditLogCollection.name,
+        sqlTableName: auditLogSqlTable.name,
+        async writeLogRecord(_ctx): Promise<{ id: string }> {
+          const created = await injectRepo(AuditLogRepoToken).create({});
+          return { id: created._id };
+        },
+        async readLogRecord({ id }: { id: string }): Promise<unknown> {
+          return injectRepo(AuditLogRepoToken).findById({ id });
+        }
+      });
+
+      registerMultiDialectContractSuite({
+        backends: createContractBackends({
+          collections: [],
+          logCollections: [auditLogCollection],
+          tables: [],
+          logTables: [auditLogSqlTable],
+          logMode: 'separate'
+        }),
+        beforeAllFn: beforeAll,
+        afterAllFn: afterAll,
+        registerTests({ getDialect }: { getDialect: () => string }): void {
+          const repo = injectRepo(AuditLogRepoToken);
+          it('creates audit log entries via object method callback', async () => {
+            expect(getDialect()).toBeTruthy();
+            expect(await repo.create({})).toBeDefined();
+          });
+        }
+      });
+    `;
+    const auditMethodTopoRes = analyzeLogDualModeTestCoverage({
+      testFiles: [{ relPath: auditCrudContractRel, raw: auditMethodCrudWithAsyncTopoSource }],
+      domainRel: auditRel,
+      domainTestDir: auditTestDirRel,
+      domainRepoSymbols: new Set(['AuditLogRepoToken']),
+      domainMongoCollections: new Set(['audit_logs']),
+      domainSqlTables: new Set(['audit_logs']),
+      repoRoot: tmpRoot
+    });
+    assert.equal(auditMethodTopoRes.ok, true, auditMethodTopoRes.details);
+
+    const auditMethodCrudRes = analyzeMultiDialectContractCoverage({
+      testFiles: [{ relPath: auditCrudContractRel, raw: auditMethodCrudWithAsyncTopoSource }],
+      domainRel: auditRel,
+      domainTestDir: auditTestDirRel,
+      domainRepoSymbols: new Set(['AuditLogRepoToken']),
+      domainMongoCollections: new Set(['audit_logs']),
+      domainSqlTables: new Set(['audit_logs']),
+      repoRoot: tmpRoot
+    });
+    assert.equal(auditMethodCrudRes.ok, true);
+    assert.deepEqual(auditMethodCrudRes.currentDomainContractFiles, [auditCrudContractRel]);
+
+    fs.writeFileSync(path.join(tmpRoot, auditCrudContractRel), auditMethodCrudWithAsyncTopoSource);
+    const cliMethodParityPos = runVerify(['--domain', auditRel, '--no-test'], { cwd: tmpRoot });
+    assert.equal(cliMethodParityPos.status, 0, cliMethodParityPos.stderr);
+
+    // String-keyed method, computed static key method, spread method, and local function helper inside registerTests
+    const auditMethodVariantForms = [
+      `
+        import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+        import { injectRepo } from '@fastgpt/dal/db/container';
+        import {
+          createContractBackends,
+          registerLogTopologyContractSuite,
+          registerMultiDialectContractSuite
+        } from '@fastgpt/dal/db/testing';
+        import { auditLogCollection } from '../../../../db/repos/auditLogProbe/mongo/schema';
+        import { auditLogSqlTable } from '../../../../db/repos/auditLogProbe/sql/table';
+        import { AuditLogRepoToken } from '@fastgpt/dal/db/repos/auditLogProbe/repo';
+        ${auditDedicatedTopologySource.replace(/import[^\n]*\n/g, '')}
+        registerMultiDialectContractSuite({
+          backends: createContractBackends({
+            collections: [],
+            logCollections: [auditLogCollection],
+            tables: [],
+            logTables: [auditLogSqlTable],
+            logMode: 'separate'
+          }),
+          beforeAllFn: beforeAll,
+          afterAllFn: afterAll,
+          'registerTests'({ getDialect }) {
+            it('handles string-keyed method', async () => {
+              expect(getDialect()).toBeTruthy();
+              expect(await injectRepo(AuditLogRepoToken).create({})).toBeDefined();
+            });
+          }
+        });
+      `,
+      `
+        import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+        import { injectRepo } from '@fastgpt/dal/db/container';
+        import {
+          createContractBackends,
+          registerLogTopologyContractSuite,
+          registerMultiDialectContractSuite
+        } from '@fastgpt/dal/db/testing';
+        import { auditLogCollection } from '../../../../db/repos/auditLogProbe/mongo/schema';
+        import { auditLogSqlTable } from '../../../../db/repos/auditLogProbe/sql/table';
+        import { AuditLogRepoToken } from '@fastgpt/dal/db/repos/auditLogProbe/repo';
+        const REGISTER_KEY = 'registerTests';
+        ${auditDedicatedTopologySource.replace(/import[^\n]*\n/g, '')}
+        registerMultiDialectContractSuite({
+          backends: createContractBackends({
+            collections: [],
+            logCollections: [auditLogCollection],
+            tables: [],
+            logTables: [auditLogSqlTable],
+            logMode: 'separate'
+          }),
+          beforeAllFn: beforeAll,
+          afterAllFn: afterAll,
+          [REGISTER_KEY]({ getDialect }) {
+            expect(getDialect()).toBeDefined();
+            it('handles computed static method key', async () => {
+              expect(await injectRepo(AuditLogRepoToken).create({})).toBeDefined();
+            });
+          }
+        });
+      `,
+      `
+        import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+        import { injectRepo } from '@fastgpt/dal/db/container';
+        import {
+          createContractBackends,
+          registerLogTopologyContractSuite,
+          registerMultiDialectContractSuite
+        } from '@fastgpt/dal/db/testing';
+        import { auditLogCollection } from '../../../../db/repos/auditLogProbe/mongo/schema';
+        import { auditLogSqlTable } from '../../../../db/repos/auditLogProbe/sql/table';
+        import { AuditLogRepoToken } from '@fastgpt/dal/db/repos/auditLogProbe/repo';
+        const spreadMethodCfg = {
+          registerTests() {
+            it('handles method via object spread', async () => {
+              expect(await injectRepo(AuditLogRepoToken).create({})).toBeDefined();
+            });
+          }
+        };
+        ${auditDedicatedTopologySource.replace(/import[^\n]*\n/g, '')}
+        registerMultiDialectContractSuite({
+          backends: createContractBackends({
+            collections: [],
+            logCollections: [auditLogCollection],
+            tables: [],
+            logTables: [auditLogSqlTable],
+            logMode: 'separate'
+          }),
+          beforeAllFn: beforeAll,
+          afterAllFn: afterAll,
+          ...spreadMethodCfg
+        });
+      `,
+      `
+        import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+        import { injectRepo } from '@fastgpt/dal/db/container';
+        import {
+          createContractBackends,
+          registerLogTopologyContractSuite,
+          registerMultiDialectContractSuite
+        } from '@fastgpt/dal/db/testing';
+        import { auditLogCollection } from '../../../../db/repos/auditLogProbe/mongo/schema';
+        import { auditLogSqlTable } from '../../../../db/repos/auditLogProbe/sql/table';
+        import { AuditLogRepoToken } from '@fastgpt/dal/db/repos/auditLogProbe/repo';
+        function seedAuditLogRecord() {
+          return injectRepo(AuditLogRepoToken).create({});
+        }
+        ${auditDedicatedTopologySource.replace(/import[^\n]*\n/g, '')}
+        registerMultiDialectContractSuite({
+          backends: createContractBackends({
+            collections: [],
+            logCollections: [auditLogCollection],
+            tables: [],
+            logTables: [auditLogSqlTable],
+            logMode: 'separate'
+          }),
+          beforeAllFn: beforeAll,
+          afterAllFn: afterAll,
+          registerTests({ getDialect }) {
+            it('handles local function declaration helper inside method', async () => {
+              expect(getDialect()).toBeDefined();
+              expect(await seedAuditLogRecord()).toBeDefined();
+            });
+          }
+        });
+      `
+    ];
+    for (const [idx, variantSource] of auditMethodVariantForms.entries()) {
+      const variantRes = analyzeMultiDialectContractCoverage({
+        testFiles: [{ relPath: auditCrudContractRel, raw: variantSource }],
+        domainRel: auditRel,
+        domainTestDir: auditTestDirRel,
+        domainRepoSymbols: new Set(['AuditLogRepoToken']),
+        domainMongoCollections: new Set(['audit_logs']),
+        domainSqlTables: new Set(['audit_logs']),
+        repoRoot: tmpRoot
+      });
+      assert.equal(variantRes.ok, true, `variant #${idx} failed static contract check`);
+      fs.writeFileSync(path.join(tmpRoot, auditCrudContractRel), variantSource);
+      const cliVariantRes = runVerify(['--domain', auditRel, '--no-test'], { cwd: tmpRoot });
+      assert.equal(cliVariantRes.status, 0, `variant #${idx} CLI failed: ${cliVariantRes.stderr}`);
+    }
+
+    // Method negatives: same-file audit topology + billing CRUD method, outer const name collision, & parameter shadowing
+    const methodNegativeCases = [
+      {
+        label: 'same-file audit topology + billing CRUD written as object method',
+        source: `
+          import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+          import { injectRepo } from '@fastgpt/dal/db/container';
+          import {
+            createContractBackends,
+            registerLogTopologyContractSuite,
+            registerMultiDialectContractSuite
+          } from '@fastgpt/dal/db/testing';
+          import { auditLogCollection } from '../../../../db/repos/auditLogProbe/mongo/schema';
+          import { auditLogSqlTable } from '../../../../db/repos/auditLogProbe/sql/table';
+          import { AuditLogRepoToken } from '@fastgpt/dal/db/repos/auditLogProbe/repo';
+          import { billingLogCollection } from '../../../../db/repos/billingLogProbe/mongo/schema';
+          import { billingLogSqlTable } from '../../../../db/repos/billingLogProbe/sql/table';
+          import { BillingLogRepoToken } from '@fastgpt/dal/db/repos/billingLogProbe/repo';
+
+          registerLogTopologyContractSuite({
+            describeFn: describe,
+            itFn: it,
+            logCollections: [auditLogCollection],
+            logTables: [auditLogSqlTable],
+            mongoCollectionName: auditLogCollection.name,
+            sqlTableName: auditLogSqlTable.name,
+            async writeLogRecord() { return injectRepo(AuditLogRepoToken).create({}); },
+            async readLogRecord({ id }) { return injectRepo(AuditLogRepoToken).findById({ id }); }
+          });
+
+          registerMultiDialectContractSuite({
+            backends: createContractBackends({
+              collections: [],
+              logCollections: [billingLogCollection],
+              tables: [],
+              logTables: [billingLogSqlTable],
+              logMode: 'separate'
+            }),
+            beforeAllFn: beforeAll,
+            afterAllFn: afterAll,
+            registerTests({ getDialect }) {
+              it('only tests billing CRUD as method', async () => {
+                expect(getDialect()).toBeDefined();
+                expect(await injectRepo(BillingLogRepoToken).create({})).toBeDefined();
+              });
+            }
+          });
+        `
+      },
+      {
+        label: 'outer const registerTests referencing AuditLogRepoToken must not leak into method body',
+        source: `
+          import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+          import { injectRepo } from '@fastgpt/dal/db/container';
+          import {
+            createContractBackends,
+            registerLogTopologyContractSuite,
+            registerMultiDialectContractSuite
+          } from '@fastgpt/dal/db/testing';
+          import { auditLogCollection } from '../../../../db/repos/auditLogProbe/mongo/schema';
+          import { auditLogSqlTable } from '../../../../db/repos/auditLogProbe/sql/table';
+          import { AuditLogRepoToken } from '@fastgpt/dal/db/repos/auditLogProbe/repo';
+          import { billingLogCollection } from '../../../../db/repos/billingLogProbe/mongo/schema';
+          import { billingLogSqlTable } from '../../../../db/repos/billingLogProbe/sql/table';
+          import { BillingLogRepoToken } from '@fastgpt/dal/db/repos/billingLogProbe/repo';
+
+          const registerTests = () => {
+            it('unused outer audit test', async () => {
+              expect(await injectRepo(AuditLogRepoToken).create({})).toBeDefined();
+            });
+          };
+
+          registerLogTopologyContractSuite({
+            describeFn: describe,
+            itFn: it,
+            logCollections: [auditLogCollection],
+            logTables: [auditLogSqlTable],
+            mongoCollectionName: auditLogCollection.name,
+            sqlTableName: auditLogSqlTable.name,
+            async writeLogRecord() { return injectRepo(AuditLogRepoToken).create({}); },
+            async readLogRecord({ id }) { return injectRepo(AuditLogRepoToken).findById({ id }); }
+          });
+
+          registerMultiDialectContractSuite({
+            backends: createContractBackends({
+              collections: [],
+              logCollections: [billingLogCollection],
+              tables: [],
+              logTables: [billingLogSqlTable],
+              logMode: 'separate'
+            }),
+            beforeAllFn: beforeAll,
+            afterAllFn: afterAll,
+            registerTests({ getDialect }) {
+              it('only exercises billing despite outer const registerTests', async () => {
+                expect(getDialect()).toBeDefined();
+                expect(await injectRepo(BillingLogRepoToken).create({})).toBeDefined();
+              });
+            }
+          });
+        `
+      },
+      {
+        label: 'parameter shadowing: outer const getDialect referencing AuditLogRepoToken must be shadowed by method param',
+        source: `
+          import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+          import { injectRepo } from '@fastgpt/dal/db/container';
+          import {
+            createContractBackends,
+            registerLogTopologyContractSuite,
+            registerMultiDialectContractSuite
+          } from '@fastgpt/dal/db/testing';
+          import { auditLogCollection } from '../../../../db/repos/auditLogProbe/mongo/schema';
+          import { auditLogSqlTable } from '../../../../db/repos/auditLogProbe/sql/table';
+          import { AuditLogRepoToken } from '@fastgpt/dal/db/repos/auditLogProbe/repo';
+          import { billingLogCollection } from '../../../../db/repos/billingLogProbe/mongo/schema';
+          import { billingLogSqlTable } from '../../../../db/repos/billingLogProbe/sql/table';
+          import { BillingLogRepoToken } from '@fastgpt/dal/db/repos/billingLogProbe/repo';
+
+          const getDialect = () => injectRepo(AuditLogRepoToken);
+
+          registerLogTopologyContractSuite({
+            describeFn: describe,
+            itFn: it,
+            logCollections: [auditLogCollection],
+            logTables: [auditLogSqlTable],
+            mongoCollectionName: auditLogCollection.name,
+            sqlTableName: auditLogSqlTable.name,
+            async writeLogRecord() { return injectRepo(AuditLogRepoToken).create({}); },
+            async readLogRecord({ id }) { return injectRepo(AuditLogRepoToken).findById({ id }); }
+          });
+
+          registerMultiDialectContractSuite({
+            backends: createContractBackends({
+              collections: [],
+              logCollections: [billingLogCollection],
+              tables: [],
+              logTables: [billingLogSqlTable],
+              logMode: 'separate'
+            }),
+            beforeAllFn: beforeAll,
+            afterAllFn: afterAll,
+            registerTests({ getDialect }) {
+              it('calls shadowed getDialect parameter while testing billing', async () => {
+                expect(getDialect()).toBeDefined();
+                expect(await injectRepo(BillingLogRepoToken).create({})).toBeDefined();
+              });
+            }
+          });
+        `
+      }
+    ];
+    for (const negCase of methodNegativeCases) {
+      const negRes = analyzeMultiDialectContractCoverage({
+        testFiles: [{ relPath: auditCrudContractRel, raw: negCase.source }],
+        domainRel: auditRel,
+        domainTestDir: auditTestDirRel,
+        domainRepoSymbols: new Set(['AuditLogRepoToken']),
+        domainMongoCollections: new Set(['audit_logs']),
+        domainSqlTables: new Set(['audit_logs']),
+        repoRoot: tmpRoot
+      });
+      assert.equal(negRes.ok, false, `Expected static rejection for: ${negCase.label}`);
+      fs.writeFileSync(path.join(tmpRoot, auditCrudContractRel), negCase.source);
+      const cliNegRes = runVerify(['--domain', auditRel, '--no-test'], { cwd: tmpRoot });
+      assert.equal(cliNegRes.status, 1, `Expected CLI exit 1 for: ${negCase.label}`);
+      assert.match(cliNegRes.stderr, /other-domain CRUD contract\(s\) cannot substitute/);
+    }
+
+    // Schema datasource rejection for method and getter forms
+    const methodDsSchemaRes = analyzeMongoSchemaDatasource({
+      sourceText: `
+        import { defineMongoCollection } from '@fastgpt/dal/db/mongo/collection';
+        export const col = defineMongoCollection({
+          name: 'x',
+          datasource() { return 'log'; },
+          schema: S
+        });
+      `,
+      repoRoot: tmpRoot,
+      sourceRelPath: `${auditRel}/mongo/schema.ts`
+    });
+    assert.ok(methodDsSchemaRes.errors.length > 0);
+    assert.match(methodDsSchemaRes.errors[0], /cannot statically resolve defineMongoCollection/);
+
+    const getterDsSchemaRes = analyzeMongoSchemaDatasource({
+      sourceText: `
+        import { defineMongoCollection } from '@fastgpt/dal/db/mongo/collection';
+        export const col = defineMongoCollection({
+          name: 'x',
+          get datasource() { return 'log'; },
+          schema: S
+        });
+      `,
+      repoRoot: tmpRoot,
+      sourceRelPath: `${auditRel}/mongo/schema.ts`
+    });
+    assert.ok(getterDsSchemaRes.errors.length > 0);
+    assert.match(getterDsSchemaRes.errors[0], /getter property is not statically verifiable/);
+
+    fs.writeFileSync(path.join(tmpRoot, auditCrudContractRel), auditCrudOnlySource);
+
     // 4. Execution plan unit checks: merges auto-discovered domain topology file & preserves non-unit routing
     const planWithOtherExplicit = buildDomainTestExecutionPlan({
       explicitTestTargets: [billingContractRel],
@@ -3304,17 +3726,21 @@ test('binds log topology static checks, CRUD provenance, execution plan, and rea
     assert.equal(bothPresentRuntime.ok, true);
     assert.equal(bothPresentRuntime.passedCases.length, 4);
 
-    // 6. Real registerLogTopologyContractSuite Vitest JSON reporter end-to-end verification (real MongoDB + PGlite)
-    const makeRealRegisterVitestFile = (targetName) => `
+    // 6. Real registerLogTopologyContractSuite + registerMultiDialectContractSuite Vitest JSON reporter end-to-end verification (real MongoDB + PGlite)
+    const makeRealRegisterVitestFile = ({ targetName, useMethodSyntax = false }) => `
       import { Schema } from 'mongoose';
-      import { describe, it } from 'vitest';
+      import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
       import { z } from 'zod';
       import { createEntityId } from '@fastgpt/global/common/string/entityId';
       import { defineMongoCollection } from '@fastgpt/dal/db/mongo/collection';
       import { MongoRepositoryBase } from '@fastgpt/dal/db/mongo/base';
       import { defineSqlTable } from '@fastgpt/dal/db/sql/ddl';
       import { SqlRepositoryBase } from '@fastgpt/dal/db/sql/base';
-      import { registerLogTopologyContractSuite } from '@fastgpt/dal/db/testing';
+      import {
+        createContractBackends,
+        registerLogTopologyContractSuite,
+        registerMultiDialectContractSuite
+      } from '@fastgpt/dal/db/testing';
 
       const probeReadSchema = z.object({
         _id: z.string(),
@@ -3383,6 +3809,20 @@ test('binds log topology static checks, CRUD provenance, execution plan, and rea
         logTables: [probeSqlTable],
         mongoCollectionName: probeCollection.name,
         sqlTableName: probeSqlTable.name,
+        ${
+          useMethodSyntax
+            ? `
+        async writeLogRecord({ dialect }) {
+          return dialect === 'mongo'
+            ? new ProbeMongoLogRepo().writeEntry()
+            : new ProbeSqlLogRepo().writeEntry();
+        },
+        async readLogRecord({ dialect, id }) {
+          return dialect === 'mongo'
+            ? new ProbeMongoLogRepo().readEntry(id)
+            : new ProbeSqlLogRepo().readEntry(id);
+        }`
+            : `
         writeLogRecord: async ({ dialect }) =>
           dialect === 'mongo'
             ? new ProbeMongoLogRepo().writeEntry()
@@ -3390,11 +3830,88 @@ test('binds log topology static checks, CRUD provenance, execution plan, and rea
         readLogRecord: async ({ dialect, id }) =>
           dialect === 'mongo'
             ? new ProbeMongoLogRepo().readEntry(id)
-            : new ProbeSqlLogRepo().readEntry(id)
+            : new ProbeSqlLogRepo().readEntry(id)`
+        }
+      });
+
+      registerMultiDialectContractSuite({
+        backends: createContractBackends({
+          collections: [],
+          logCollections: [probeCollection],
+          tables: [],
+          logTables: [probeSqlTable],
+          logMode: 'separate'
+        }),
+        describeFn: describe,
+        beforeAllFn: beforeAll,
+        beforeEachFn: beforeEach,
+        afterAllFn: afterAll,
+        ${
+          useMethodSyntax
+            ? `
+        registerTests({ getDialect }) {
+          it('executes real CRUD contract via object method callback', async () => {
+            const repo = getDialect() === 'mongo' ? new ProbeMongoLogRepo() : new ProbeSqlLogRepo();
+            const { id } = await repo.writeEntry();
+            expect(await repo.readEntry(id)).toBeTruthy();
+          });
+        }`
+            : `
+        registerTests: ({ getDialect }) => {
+          it('executes real CRUD contract via arrow callback', async () => {
+            const repo = getDialect() === 'mongo' ? new ProbeMongoLogRepo() : new ProbeSqlLogRepo();
+            const { id } = await repo.writeEntry();
+            expect(await repo.readEntry(id)).toBeTruthy();
+          });
+        }`
+        }
       });
     `;
-    fs.writeFileSync(vitestProbeAbsBilling, makeRealRegisterVitestFile('billing_logs'));
-    fs.writeFileSync(vitestProbeAbsAudit, makeRealRegisterVitestFile('audit_logs'));
+    const realArrowProbeSource = makeRealRegisterVitestFile({
+      targetName: 'billing_logs',
+      useMethodSyntax: false
+    });
+    const realMethodProbeSource = makeRealRegisterVitestFile({
+      targetName: 'audit_logs',
+      useMethodSyntax: true
+    });
+    fs.writeFileSync(vitestProbeAbsBilling, realArrowProbeSource);
+    fs.writeFileSync(vitestProbeAbsAudit, realMethodProbeSource);
+
+    // Static analyzer parity between equivalent arrow callback file & object method callback file
+    for (const [label, probeRel, probeSrc, targetCol, repoSyms] of [
+      [
+        'arrow probe',
+        vitestProbeRelBilling,
+        realArrowProbeSource,
+        'billing_logs',
+        new Set(['ProbeMongoLogRepo', 'ProbeSqlLogRepo'])
+      ],
+      [
+        'object method probe',
+        vitestProbeRelAudit,
+        realMethodProbeSource,
+        'audit_logs',
+        new Set(['ProbeMongoLogRepo', 'ProbeSqlLogRepo'])
+      ]
+    ]) {
+      const topoParity = analyzeLogDualModeTestCoverage({
+        testFiles: [{ relPath: probeRel, raw: probeSrc }],
+        domainRepoSymbols: repoSyms,
+        domainMongoCollections: new Set([targetCol]),
+        domainSqlTables: new Set([targetCol]),
+        repoRoot
+      });
+      assert.equal(topoParity.ok, true, `${label} topology parity failed: ${topoParity.details}`);
+      const crudParity = analyzeMultiDialectContractCoverage({
+        testFiles: [{ relPath: probeRel, raw: probeSrc }],
+        domainRepoSymbols: repoSyms,
+        domainMongoCollections: new Set([targetCol]),
+        domainSqlTables: new Set([targetCol]),
+        repoRoot
+      });
+      assert.equal(crudParity.ok, true, `${label} CRUD parity failed`);
+    }
 
     const billingVitestTarget = vitestProbeRelBilling.slice('packages/dal/'.length);
     const auditVitestTarget = vitestProbeRelAudit.slice('packages/dal/'.length);
@@ -3410,6 +3927,7 @@ test('binds log topology static checks, CRUD provenance, execution plan, and rea
     );
 
     const realBillingOnlyReport = JSON.parse(fs.readFileSync(billingReportJsonAbs, 'utf8'));
+    assert.equal(realBillingOnlyReport.numPassedTests, 6);
     const realAuditExpected = [
       {
         relPath: vitestProbeRelAudit,
@@ -3426,6 +3944,7 @@ test('binds log topology static checks, CRUD provenance, execution plan, and rea
     assert.equal(realBillingOnlyVerdict.missingOrNotPassed.length, 4);
 
     const realBothReport = JSON.parse(fs.readFileSync(bothReportJsonAbs, 'utf8'));
+    assert.equal(realBothReport.numPassedTests, 12);
     const realBothVerdict = verifyExecutedLogTopologyReports({
       repoRoot,
       expectedSuites: realAuditExpected,
