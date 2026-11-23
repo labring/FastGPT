@@ -40,7 +40,11 @@ export type ProHealthResponse = z.infer<typeof ProHealthResponseSchema>;
 
 export const ProSsoConfigResponseSchema = z
   .object({
-    enabled: z.boolean().meta({ description: 'Pro 是否配置 SSO 服务', example: true })
+    enabled: z.boolean().meta({ description: 'Pro 是否配置 SSO 服务', example: true }),
+    isWecom: z
+      .boolean()
+      .optional()
+      .meta({ description: 'SSO 服务是否使用企业微信 provider', example: false })
   })
   .strict();
 export type ProSsoConfigResponse = z.infer<typeof ProSsoConfigResponseSchema>;
@@ -78,7 +82,11 @@ const ClientFeConfigsSchema = FastGPTFeConfigsSchema.partial()
     sso: FastGPTFeConfigsSchema.shape.sso
       .unwrap()
       .extend({
-        enabled: BoolSchema.meta({ description: '是否配置了 SSO 登录服务', example: true })
+        enabled: BoolSchema.meta({ description: '是否配置了 SSO 登录服务', example: true }),
+        isWecom: BoolSchema.optional().meta({
+          description: '当前 SSO 是否为企业微信 provider',
+          example: false
+        })
       })
       .optional(),
     limit: FastGPTFeConfigsSchema.shape.limit
@@ -95,7 +103,8 @@ const ClientFeConfigsSchema = FastGPTFeConfigsSchema.partial()
 export const GetSystemInitDataResponseSchema = z.object({
   bufferId: z.string().optional().meta({
     example: 'system-config-20260811',
-    description: '当前系统配置缓存标识；未登录时以 unAuth_v11_sso_ 开头，包含 SSO 能力状态'
+    description:
+      '当前系统配置缓存标识；未登录时以 unAuth_v12_sso_ 开头，包含 SSO 能力及企业微信类型状态'
   }),
   feConfigs: ClientFeConfigsSchema.optional().meta({
     description:

@@ -54,9 +54,10 @@ export const LoginContainer = ({
     rootLogin,
     ssoAvailable: feConfigs?.sso?.enabled === true,
     ssoAutoLogin: feConfigs?.sso?.autoLogin === true,
+    isWecomSso: feConfigs?.sso?.isWecom === true,
     wecomAvailable: Boolean(feConfigs?.oauth?.wecom),
     isWecomTerminal,
-    canWecomTerminalAutoRedirect: !isWecomTerminal || feConfigs?.wecomLoginAutoRedirect === true
+    wecomLoginAutoRedirect: feConfigs?.wecomLoginAutoRedirect === true
   });
   // 自动跳转渠道（含仅终端内可用的企业微信）不一定出现在可选按钮列表里，
   // 这里按 Provider 直接构造跳转入口，与旧实现 onClickOauth({ provider }) 的口径一致。

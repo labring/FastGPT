@@ -14,7 +14,7 @@ import { getRuntimeSubPlansConfig } from '@fastgpt/global/support/wallet/sub/uti
 import { serviceEnv } from '@fastgpt/service/env';
 import { postHealth } from '@fastgpt/service/thirdProvider/fastgptPro/api';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { getSsoConfigured } from '@fastgpt/service/common/system/sso';
+import { getSsoConfig } from '@fastgpt/service/common/system/sso';
 import { resolveEffectiveTeamMode } from '@fastgpt/global/common/system/config/teamMode';
 import { applyEnvAuthoritativeFeConfigs } from '@/service/common/system/envAuthoritativeFeConfigs';
 
@@ -30,7 +30,9 @@ async function handler(
     querySchema: GetSystemInitDataQuerySchema
   }).query;
   // 展示可在 Pro 不可用时暂时隐藏入口；密码安全校验独立读取并拒绝未知状态。
-  const ssoConfigured = await getSsoConfigured().catch(() => undefined);
+  const ssoConfig = await getSsoConfig().catch(() => undefined);
+  const ssoConfigured = ssoConfig?.enabled;
+  const ssoIsWecom = ssoConfig?.enabled === true && ssoConfig.isWecom === true;
 
   // 只有鉴权失败才降级为匿名响应，配置处理错误仍交给 API 中间件报告。
   const isAuthenticated = await authCert({ req, authToken: true })
@@ -94,8 +96,12 @@ async function handler(
       showAuxiliaryGenerationRunDetail: serviceEnv.AUXILIARY_GENERATION_SHOW_RUN_DETAIL,
       sso: (() => {
         if (!runtimeSnapshot.feConfigs?.sso && ssoConfigured !== true) return undefined;
-        // 只信任 Pro 的部署能力，旧库地址和存储的前端能力标志都不是权威来源。
-        return { ...runtimeSnapshot.feConfigs?.sso, enabled: ssoConfigured === true };
+        // 只信任 Pro 的部署能力与 provider 探测结果，旧库地址和存储的前端能力标志都不是权威来源。
+        return {
+          ...runtimeSnapshot.feConfigs?.sso,
+          enabled: ssoConfigured === true,
+          isWecom: ssoIsWecom
+        };
       })()
     };
     if (isAuthenticated) return config;
@@ -162,10 +168,17 @@ async function handler(
       };
     }
 
-    // Pro 环境变化不改变 Mongo revision，必须把能力及不可用状态加入匿名缓存标识。
-    const ssoVersion = ssoConfigured === undefined ? 'unavailable' : ssoConfigured ? '1' : '0';
+    // Pro 环境或 SSO provider 变化不改变 Mongo revision，必须把能力、类型及不可用状态加入匿名缓存标识。
+    const ssoVersion =
+      ssoConfigured === undefined
+        ? 'unavailable'
+        : ssoConfigured
+          ? ssoIsWecom
+            ? '1_wecom'
+            : '1'
+          : '0';
     const unAuthBufferId = runtimeSnapshot.systemInitBufferId
-      ? `unAuth_v11_sso_${ssoVersion}_${runtimeSnapshot.systemInitBufferId}`
+      ? `unAuth_v12_sso_${ssoVersion}_${runtimeSnapshot.systemInitBufferId}`
       : '';
     if (bufferId && unAuthBufferId === bufferId) {
       return {
