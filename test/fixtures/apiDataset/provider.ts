@@ -118,13 +118,17 @@ export const createProviderFixture = ({
       config: request
     });
     // 保留 HTTP 客户端消费的结构化错误合约，模拟设施无需引入 Axios 运行时。
+    // custom 协议错误响应携带 { success: false, message } 信封，与生产协议一致。
     const failure = (message: string, status: number) =>
       Object.assign(new Error(message), {
         name: 'AxiosError',
         isAxiosError: true,
         code: 'ERR_BAD_RESPONSE',
         config: request,
-        response: { ...reply({ message }), status }
+        response: {
+          ...reply(provider === 'custom' ? { success: false, message } : { message }),
+          status
+        }
       });
     const mark = async ({
       kind,

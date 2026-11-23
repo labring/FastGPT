@@ -69,7 +69,9 @@ describe('createProviderFixture', () => {
     fixture.nodes = fixture.nodes.filter((node) => node.key !== 'root/file-0');
     await expect(
       fixture.respond(request({ url: '/v1/file/detail', params: { id } }))
-    ).rejects.toMatchObject({ response: { status: 404 } });
+    ).rejects.toMatchObject({
+      response: { status: 404, data: { success: false, message: 'Not found' } }
+    });
     fixture.nodes = [...fixture.nodes, fixture.node('restored', { parent: 'root' })];
     const reply = await fixture.respond(
       request({ url: '/v1/file/list', data: JSON.stringify({ parentId: fixture.id('root') }) })
