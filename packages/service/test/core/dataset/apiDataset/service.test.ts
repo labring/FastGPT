@@ -615,6 +615,36 @@ describe('createApiDatasetCollection', () => {
     }
   );
 
+  it('混合 provider 配置下整库导入只使用当前生效 provider 的目录起点', async () => {
+    setServerTree({
+      ROOT: [apiFile('root-file', 'file')]
+    });
+
+    const dataset = createDataset({
+      apiServer: {
+        baseUrl: 'https://api.example.com',
+        basePath: ''
+      },
+      feishuServer: {
+        appId: 'feishu-app',
+        appSecret: 'feishu-secret',
+        folderToken: 'stale-feishu-folder'
+      }
+    });
+
+    await createApiDatasetCollection({
+      datasetId: 'dataset-id',
+      apiFiles: [apiFile(RootCollectionId, 'folder', true, 'ROOT_FOLDER')],
+      customPdfParse: false,
+      trainingType: 'chunk',
+      teamId: 'team-id',
+      tmbId: 'tmb-id',
+      dataset
+    } as any);
+
+    expect(mockListFiles).toHaveBeenCalledWith({ parentId: undefined });
+  });
+
   /**
    * 回归场景：目录骨架整体漏传 inheritPermission —— 文件走 `...body` 落成请求指定的独立态，
    * 目录却落成 schema default（继承态）。同一次导入里两者口径相反，而继承态目录的快照 =
