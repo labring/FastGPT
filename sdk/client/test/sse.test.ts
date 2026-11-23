@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ChatStream, FastGptError, FastGptServerError } from '../src/index';
+import { FastGptError, FastGptServerError } from '../src/core/errors';
+import { ChatStream } from '../src/core/sse';
 
 const createByteStreamFromChunks = (chunks: string[]): ReadableStream<Uint8Array> => {
   const encoder = new TextEncoder();
@@ -35,8 +36,8 @@ describe('ChatStream & Multi-Event SSE Parser', () => {
       'event: flowNodeResponse\ndata: {"moduleName":"KB","quoteList":[{"id":"q1","q":"FAQ"}]}\n\n',
       'event: updateVariables\ndata: {"lang":"zh-CN"}\n\n',
       'event: interactive\ndata: {"type":"userSelect","params":{"userSelectOptions":["A","B"]}}\n\n',
-      'event: chatTitle\ndata: "SDK 测试会话"\n\n',
-      'event: workflowDuration\ndata: 1.42\n\n',
+      'event: chatTitle\ndata: {"title":"SDK 测试会话"}\n\n',
+      'event: workflowDuration\ndata: {"durationSeconds":1.42}\n\n',
       'data: [DONE]\n\n'
     ];
 
@@ -199,6 +200,125 @@ describe('ChatStream & Multi-Event SSE Parser', () => {
         break;
       }
     }
+    expect(stream2.state).toBe('closed');
     await expect(stream2.finalText()).resolves.toBe('Hello');
+  });
+
+  it('propagates mid-stream transport failure to finalText()/finalResult() instead of returning partial text', async () => {
+    const encoder = new TextEncoder();
+    let chunkCount = 0;
+    const failingBody = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        chunkCount += 1;
+        if (chunkCount === 1) {
+          controller.enqueue(
+            encoder.encode('data: {"choices":[{"delta":{"content":"首段"}}]}\n\n')
+          );
+          return;
+        }
+        controller.error(new Error('socket hang up'));
+      }
+    });
+
+    const stream = new ChatStream({
+      body: failingBody,
+      response: mockResponseInfo,
+      controller: new AbortController()
+    });
+
+    const deltas: string[] = [];
+    let iterError: unknown;
+    try {
+      for await (const ev of stream) {
+        if (ev.type === 'answer') {
+          deltas.push(ev.textDelta);
+        }
+      }
+    } catch (err) {
+      iterError = err;
+    }
+
+    expect(deltas).toEqual(['首段']);
+    expect(iterError).toBeInstanceOf(Error);
+    expect((iterError as Error).message).toBe('socket hang up');
+    expect(stream.state).toBe('failed');
+
+    // 迭代失败后调用 finalText()/finalResult() 必须共享失败终态并拒绝，绝不返回截断的首段文本
+    await expect(stream.finalText()).rejects.toThrow('socket hang up');
+    await expect(stream.finalResult()).rejects.toThrow('socket hang up');
+  });
+
+  it('rejects iteration and aggregation with aborted state when aborted mid-stream and invokes onDispose once', async () => {
+    const encoder = new TextEncoder();
+    let disposeCount = 0;
+    let firstSent = false;
+    const slowBody = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (!firstSent) {
+          firstSent = true;
+          controller.enqueue(
+            encoder.encode('data: {"choices":[{"delta":{"content":"进行中"}}]}\n\n')
+          );
+          return;
+        }
+        // 后续 chunk 永远挂起，直到收到 abort 取消信号
+        return new Promise<void>(() => {});
+      }
+    });
+
+    const controller = new AbortController();
+    const stream = new ChatStream({
+      body: slowBody,
+      response: mockResponseInfo,
+      controller,
+      onDispose: () => {
+        disposeCount += 1;
+      }
+    });
+
+    const deltas: string[] = [];
+    let iterErr: unknown;
+    try {
+      for await (const ev of stream) {
+        if (ev.type === 'answer') {
+          deltas.push(ev.textDelta);
+          stream.abort();
+        }
+      }
+    } catch (err) {
+      iterErr = err;
+    }
+
+    expect(deltas).toEqual(['进行中']);
+    expect(iterErr).toBeInstanceOf(FastGptError);
+    expect(stream.state).toBe('aborted');
+    expect(disposeCount).toBe(1);
+    await expect(stream.finalText()).rejects.toThrow(FastGptError);
+    await expect(stream.finalResult()).rejects.toThrow(FastGptError);
+    expect(disposeCount).toBe(1);
+  });
+
+  it('parses real FastGPT server chatTitle object wire format { title } without stringifying to [object Object]', async () => {
+    const stream = new ChatStream({
+      body: createByteStreamFromChunks([
+        'event: chatTitle\ndata: {"title":"服务端生成的标题"}\n\n',
+        'data: {"choices":[{"delta":{"content":"内容"}}]}\n\n',
+        'data: [DONE]\n\n'
+      ]),
+      response: mockResponseInfo,
+      controller: new AbortController()
+    });
+
+    const titleEvents: string[] = [];
+    for await (const ev of stream) {
+      if (ev.type === 'chatTitle') {
+        titleEvents.push(ev.title);
+      }
+    }
+
+    expect(titleEvents).toEqual(['服务端生成的标题']);
+    const result = await stream.finalResult();
+    expect(result.chatTitle).toBe('服务端生成的标题');
+    expect(stream.state).toBe('completed');
   });
 });

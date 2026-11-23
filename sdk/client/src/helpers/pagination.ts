@@ -27,6 +27,11 @@ export type AsyncPageIterable<TItem> = AsyncIterable<TItem> & {
 };
 
 const DEFAULT_PAGE_SIZE = 20;
+// 对齐服务端 PaginationPageSizeLimit = 500；同时在运行期兼容更严格的子接口上限。
+const MAX_SERVER_PAGE_SIZE = 500;
+
+const isFiniteTotal = (total: number | undefined): total is number =>
+  typeof total === 'number' && Number.isFinite(total) && total >= 0;
 
 const buildAsyncPageIterable = <TItem>(
   createPageGenerator: () => AsyncGenerator<TItem[], void, undefined>
@@ -74,7 +79,7 @@ export const createOffsetPaginator = <TItem>({
   maxPages?: number;
   signal?: AbortSignal;
 }): AsyncPageIterable<TItem> => {
-  const safePageSize = Math.max(1, Math.floor(pageSize));
+  const safePageSize = Math.min(Math.max(1, Math.floor(pageSize)), MAX_SERVER_PAGE_SIZE);
   const safeInitialOffset = Math.max(0, Math.floor(initialOffset));
 
   return buildAsyncPageIterable<TItem>(async function* () {
@@ -98,9 +103,10 @@ export const createOffsetPaginator = <TItem>({
 
       const remainingAllowance =
         maxItems !== undefined ? Math.min(safePageSize, maxItems - yieldedCount) : safePageSize;
+      const requestedPageSize = Math.max(1, remainingAllowance);
       const page = await fetchPage({
         offset,
-        pageSize: Math.max(1, remainingAllowance)
+        pageSize: requestedPageSize
       });
 
       const items = page.list;
@@ -122,10 +128,14 @@ export const createOffsetPaginator = <TItem>({
       if (maxItems !== undefined && yieldedCount >= maxItems) {
         return;
       }
-      if (page.total !== undefined && offset >= page.total) {
-        return;
+      if (isFiniteTotal(page.total)) {
+        // 服务端存在 total 时以实际偏移量与 total 为准，避免服务端把 pageSize 截断到上限（如 500 或更低）时误判为末页。
+        if (offset >= page.total) {
+          return;
+        }
+        continue;
       }
-      if (items.length < remainingAllowance) {
+      if (items.length < requestedPageSize) {
         return;
       }
     }
@@ -150,12 +160,13 @@ export const createPageNumPaginator = <TItem>({
   maxPages?: number;
   signal?: AbortSignal;
 }): AsyncPageIterable<TItem> => {
-  const safePageSize = Math.max(1, Math.floor(pageSize));
+  const safePageSize = Math.min(Math.max(1, Math.floor(pageSize)), MAX_SERVER_PAGE_SIZE);
   const safeInitialPageNum = Math.max(1, Math.floor(initialPageNum));
 
   return buildAsyncPageIterable<TItem>(async function* () {
     let pageNum = safeInitialPageNum;
-    let fetchedCount = (safeInitialPageNum - 1) * safePageSize;
+    let effectivePageSize = safePageSize;
+    let fetchedCount = (safeInitialPageNum - 1) * effectivePageSize;
     let yieldedCount = 0;
     let pageCount = 0;
 
@@ -175,12 +186,24 @@ export const createPageNumPaginator = <TItem>({
 
       const page = await fetchPage({
         pageNum,
-        pageSize: safePageSize
+        pageSize: effectivePageSize
       });
 
       const items = page.list;
       if (items.length === 0) {
         return;
+      }
+
+      // 若首页返回条数小于请求页大小但 total 显示仍有后续数据，说明服务端对该接口截断了 pageSize；
+      // 同步收敛 effectivePageSize 与服务端生效页大小一致，确保后续 pageNum 偏移连续不跳页。
+      if (
+        pageCount === 0 &&
+        isFiniteTotal(page.total) &&
+        items.length < effectivePageSize &&
+        (safeInitialPageNum - 1) * items.length + items.length < page.total
+      ) {
+        effectivePageSize = items.length;
+        fetchedCount = (safeInitialPageNum - 1) * effectivePageSize;
       }
 
       const sliced =
@@ -198,10 +221,13 @@ export const createPageNumPaginator = <TItem>({
       if (maxItems !== undefined && yieldedCount >= maxItems) {
         return;
       }
-      if (page.total !== undefined && fetchedCount >= page.total) {
-        return;
+      if (isFiniteTotal(page.total)) {
+        if (fetchedCount >= page.total) {
+          return;
+        }
+        continue;
       }
-      if (items.length < safePageSize) {
+      if (items.length < effectivePageSize) {
         return;
       }
     }

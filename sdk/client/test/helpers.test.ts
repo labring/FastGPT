@@ -1,12 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import {
-  createPageNumPaginator,
-  FastGPT,
-  FastGptBadRequestError,
-  FastGptError,
-  FastGptTimeoutError,
-  type UploadProgressInfo
-} from '../src/index';
+import { FastGptBadRequestError, FastGptError, FastGptTimeoutError } from '../src/core/errors';
+import { isUserInputInteractive, isUserSelectInteractive } from '../src/helpers/interactive';
+import { createPageNumPaginator } from '../src/helpers/pagination';
+import type { UploadProgressInfo } from '../src/helpers/s3Uploader';
+import { FastGPT } from '../src/index';
 
 const jsonRes = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), {
@@ -430,6 +427,24 @@ describe('High-Level Helpers (S3 Upload, Training Polling, Chat Attachment, Inte
     expect(outer?.type).toBe('childrenInteractive');
     const inner = client.chat.interactive.unwrap(outer!);
     expect(inner.type).toBe('userSelect');
+    expect(isUserSelectInteractive(inner)).toBe(true);
+    expect(isUserInputInteractive(inner)).toBe(false);
+
+    // 验证 README 中的严格类型收窄用法可直接访问 userSelectOptions[0].value，无需强制断言
+    if (inner.type === 'userSelect') {
+      const firstOptionValue: string = inner.params.userSelectOptions[0]!.value;
+      expect(firstOptionValue).toBe('通过');
+    }
+
+    // 未知交互类型归入独立判别值 type: 'unknown'，保留原始 rawType 与字段，避免与已知分支重叠
+    const unknownPrompt = client.chat.interactive.extract({
+      interactive: { type: 'futureCustomNode', params: { step: 1 } }
+    });
+    expect(unknownPrompt?.type).toBe('unknown');
+    if (unknownPrompt?.type === 'unknown') {
+      expect(unknownPrompt.rawType).toBe('futureCustomNode');
+      expect(unknownPrompt.params).toEqual({ step: 1 });
+    }
 
     // 2. 恢复 userSelect
     await client.chat.interactive.replyUserSelect({
@@ -520,5 +535,83 @@ describe('High-Level Helpers (S3 Upload, Training Polling, Chat Attachment, Inte
     }).toArray();
     expect(pageNums).toEqual([1, 2]);
     expect(numPaged.map((i) => i._id)).toEqual(['chunk-1', 'chunk-2', 'chunk-3']);
+  });
+
+  it('continues auto-paging without silent data loss when server clamps pageSize (e.g. max 500 or narrower route cap)', async () => {
+    // 1. 模拟 FastGPT 服务端 PaginationPageSizeLimit = 500 截断规则：800 条数据，调用方传 pageSize: 1000
+    const allCollections = Array.from({ length: 800 }, (_, idx) => ({
+      _id: `col-${idx + 1}`
+    }));
+    const requestedPageSizes: number[] = [];
+
+    const client = new FastGPT({
+      baseUrl: 'https://api.example.com',
+      apiKey: 'fastgpt-personal-key',
+      fetch: async (_url, init) => {
+        const body = JSON.parse(String(init?.body)) as { offset: number; pageSize: number };
+        requestedPageSizes.push(body.pageSize);
+        const serverClampedSize = Math.min(body.pageSize, 500);
+        return jsonRes({
+          code: 200,
+          data: {
+            total: allCollections.length,
+            list: allCollections.slice(body.offset, body.offset + serverClampedSize)
+          }
+        });
+      }
+    });
+
+    const collected = await client.datasets.collections
+      .listAutoPaging({ datasetId: 'ds-1' }, { pageSize: 1000 })
+      .toArray();
+    expect(collected).toHaveLength(800);
+    expect(collected[0]?._id).toBe('col-1');
+    expect(collected[799]?._id).toBe('col-800');
+    expect(requestedPageSizes.every((size) => size <= 500)).toBe(true);
+
+    // 2. 模拟子接口更严格的页大小上限（如 100 条/页），offset 与 pageNum 模式均能完整翻完 250 条
+    const allRecords = Array.from({ length: 250 }, (_, idx) => ({ _id: `rec-${idx + 1}` }));
+    const narrowClient = new FastGPT({
+      baseUrl: 'https://api.example.com',
+      apiKey: 'fastgpt-personal-key',
+      fetch: async (_url, init) => {
+        const body = JSON.parse(String(init?.body)) as { offset: number; pageSize: number };
+        const clamped = Math.min(body.pageSize, 100);
+        return jsonRes({
+          code: 200,
+          data: {
+            total: allRecords.length,
+            list: allRecords.slice(body.offset, body.offset + clamped)
+          }
+        });
+      }
+    });
+    const offsetAll = await narrowClient.datasets.collections
+      .listAutoPaging({ datasetId: 'ds-2' }, { pageSize: 300 })
+      .toArray();
+    expect(offsetAll).toHaveLength(250);
+
+    const pageNumCalls: Array<{ pageNum: number; pageSize: number }> = [];
+    const pageNumAll = await createPageNumPaginator({
+      pageSize: 1000,
+      fetchPage: async ({ pageNum, pageSize }) => {
+        pageNumCalls.push({ pageNum, pageSize });
+        const clamped = Math.min(pageSize, 100);
+        const start = (pageNum - 1) * clamped;
+        return {
+          total: allRecords.length,
+          list: allRecords.slice(start, start + clamped)
+        };
+      }
+    }).toArray();
+    expect(pageNumAll).toHaveLength(250);
+    expect(pageNumAll[0]?._id).toBe('rec-1');
+    expect(pageNumAll[249]?._id).toBe('rec-250');
+    // 首页发现服务端截断为 100 后，后续页码应与服务端生效页大小对齐
+    expect(pageNumCalls).toEqual([
+      { pageNum: 1, pageSize: 500 },
+      { pageNum: 2, pageSize: 100 },
+      { pageNum: 3, pageSize: 100 }
+    ]);
   });
 });

@@ -73,7 +73,23 @@ export type IrSchema =
       deprecated?: boolean;
     }
   | {
+      kind: 'never';
+      description?: string;
+      deprecated?: boolean;
+    }
+  | {
       kind: 'unknown';
+      description?: string;
+      deprecated?: boolean;
+    };
+
+export type IrRequestObjectSchema = Extract<IrSchema, { kind: 'object' }>;
+
+export type IrRequestSchema =
+  | IrRequestObjectSchema
+  | {
+      kind: 'union';
+      variants: IrRequestObjectSchema[];
       description?: string;
       deprecated?: boolean;
     };
@@ -114,10 +130,10 @@ export type IrOperation = {
   bodyParams: string[];
   /** application/octet-stream 请求体在扁平入参对象中的字段名 */
   binaryBodyField?: string;
-  /** 是否至少存在一个必填入参字段 */
+  /** 是否至少存在一个必填入参字段（联合入参时表示每个合法分支均含必填字段） */
   hasRequiredInput: boolean;
   requestTypeName?: string;
-  requestSchema?: Extract<IrSchema, { kind: 'object' }>;
+  requestSchema?: IrRequestSchema;
   responseTypeName?: string;
   responseSchema?: IrSchema;
 };

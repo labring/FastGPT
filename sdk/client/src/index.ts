@@ -1,81 +1,14 @@
 /*
- * @fastgpt/sdk 对外公共包入口。
+ * @fastgpt/sdk 主客户端入口（package.json "." 导出）。
  *
- * 说明：作为发布到 npm 的外部 SDK 顶层包边界（package.json "." 导出），
- * 此处集中向外部调用方暴露 FastGPT 客户端主类、异常类、流式会话类、高阶 Helper 与生成契约类型。
+ * 严格遵循仓库「禁止 re-export」规范：本模块仅定义并导出 FastGPT 客户端主类，
+ * 异常类、SSE 流、交互/分页助手、服务端适配器与生成契约类型分别由各自的定义模块通过
+ * package.json 子路径映射（@fastgpt/sdk/errors、/sse、/interactive、/pagination、/server、/types、/options）直接导出。
  */
 
-import { ApiPromise } from './core/apiPromise';
-import { BaseClient, SDK_VERSION } from './core/baseClient';
-import {
-  FastGptAuthError,
-  FastGptBadRequestError,
-  FastGptConflictError,
-  FastGptError,
-  FastGptNetworkError,
-  FastGptNotFoundError,
-  FastGptRateLimitError,
-  FastGptServerError,
-  FastGptTimeoutError
-} from './core/errors';
-import { ChatStream, type ChatSseEvent, type ChatStreamFinalResult } from './core/sse';
-import type {
-  AuthProxyIdentity,
-  BinaryInput,
-  CredentialProvider,
-  ErrorHookContext,
-  FastGptClientOptions,
-  FastGptHooks,
-  FastGptIdentity,
-  FastGptLogLevel,
-  FastGptLogger,
-  RawRequestParams,
-  RawResponseInfo,
-  RequestHookContext,
-  RequestOptions,
-  ResponseHookContext,
-  Uploadable,
-  UploadableFileObject,
-  WithRawResponseResult
-} from './core/types';
-import type {
-  ChatFileContentPart,
-  ChatImageContentPart,
-  ChatUploadedContentPart,
-  UploadChatFileParams,
-  UploadChatFileResult
-} from './helpers/chatUpload';
-import type {
-  CollectionTrainingProgress,
-  DatasetTrainingProgress,
-  UploadDatasetFileParams,
-  UploadDatasetFileResult,
-  WaitForCollectionTrainingParams,
-  WaitForCollectionTrainingResult,
-  WaitForDatasetTrainingParams,
-  WaitForDatasetTrainingResult
-} from './helpers/datasetUpload';
+import { BaseClient } from './core/baseClient';
+import type { FastGptClientOptions, FastGptIdentity } from './core/types';
 import { createSdkResources, type SdkResources } from './helpers/facades';
-import {
-  buildUserFormMessage,
-  buildUserSelectMessage,
-  extractInteractive,
-  isInteractivePending,
-  unwrapInteractive,
-  type InteractivePayload,
-  type InteractiveUserMessage,
-  type ReplyUserFormParams,
-  type ReplyUserSelectParams,
-  type UserSelectInteractiveOption
-} from './helpers/interactive';
-import {
-  createOffsetPaginator,
-  createPageNumPaginator,
-  type AsyncPageIterable,
-  type AutoPagingOptions,
-  type PageSlice
-} from './helpers/pagination';
-import type { PresignedUploadSession, UploadProgressInfo } from './helpers/s3Uploader';
 
 /**
  * FastGPT 官方 SDK 客户端主入口。
@@ -122,72 +55,3 @@ export class FastGPT extends BaseClient {
     });
   }
 }
-
-export {
-  ApiPromise,
-  buildUserFormMessage,
-  buildUserSelectMessage,
-  ChatStream,
-  createOffsetPaginator,
-  createPageNumPaginator,
-  extractInteractive,
-  FastGptAuthError,
-  FastGptBadRequestError,
-  FastGptConflictError,
-  FastGptError,
-  FastGptNetworkError,
-  FastGptNotFoundError,
-  FastGptRateLimitError,
-  FastGptServerError,
-  FastGptTimeoutError,
-  isInteractivePending,
-  SDK_VERSION,
-  unwrapInteractive
-};
-
-export type {
-  AsyncPageIterable,
-  AuthProxyIdentity,
-  AutoPagingOptions,
-  BinaryInput,
-  ChatFileContentPart,
-  ChatImageContentPart,
-  ChatSseEvent,
-  ChatStreamFinalResult,
-  ChatUploadedContentPart,
-  CollectionTrainingProgress,
-  CredentialProvider,
-  DatasetTrainingProgress,
-  ErrorHookContext,
-  FastGptClientOptions,
-  FastGptHooks,
-  FastGptIdentity,
-  FastGptLogLevel,
-  FastGptLogger,
-  InteractivePayload,
-  InteractiveUserMessage,
-  PageSlice,
-  PresignedUploadSession,
-  RawRequestParams,
-  RawResponseInfo,
-  ReplyUserFormParams,
-  ReplyUserSelectParams,
-  RequestHookContext,
-  RequestOptions,
-  ResponseHookContext,
-  Uploadable,
-  UploadableFileObject,
-  UploadChatFileParams,
-  UploadChatFileResult,
-  UploadDatasetFileParams,
-  UploadDatasetFileResult,
-  UploadProgressInfo,
-  UserSelectInteractiveOption,
-  WaitForCollectionTrainingParams,
-  WaitForCollectionTrainingResult,
-  WaitForDatasetTrainingParams,
-  WaitForDatasetTrainingResult,
-  WithRawResponseResult
-};
-
-export type * from './generated/types';

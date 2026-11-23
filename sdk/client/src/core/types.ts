@@ -73,7 +73,7 @@ export type FastGptClientOptions = {
   defaultAppId?: string;
   /** 默认调用者身份上下文（可通过 client.withIdentity 派生隔离实例） */
   identity?: FastGptIdentity;
-  /** 默认单次请求超时毫秒数（默认 60000ms） */
+  /** 默认单次请求超时毫秒数（普通请求覆盖至响应体读取完成，SSE 流式请求用于握手超时；默认 60000ms） */
   timeoutMs?: number;
   /** 默认幂等请求最大重试次数（默认 GET 重试 2 次，非幂等请求不自动重试） */
   maxRetries?: number;
@@ -96,11 +96,11 @@ export type RequestOptions = {
   customUid?: string;
   /** 覆盖当前请求的成员代理身份（与 customUid 互斥） */
   authProxy?: AuthProxyIdentity;
-  /** 覆盖当前请求超时时间（毫秒） */
+  /** 覆盖当前请求超时时间（普通请求覆盖至响应体读取完成，SSE 流式请求用于握手超时） */
   timeoutMs?: number;
   /** 覆盖当前请求的最大重试次数 */
   maxRetries?: number;
-  /** 外部取消信号 */
+  /** 外部取消信号（普通请求覆盖至响应体读取完成，SSE 流式请求覆盖整个流生命周期） */
   signal?: AbortSignal;
   /** 单次请求附加 Header */
   headers?: Record<string, string>;

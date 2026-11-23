@@ -1,4 +1,4 @@
-import type { IrProperty, IrSchema } from './irTypes';
+import type { IrProperty, IrRequestObjectSchema, IrRequestSchema, IrSchema } from './irTypes';
 
 export type RawJsonSchema = Record<string, unknown>;
 
@@ -123,6 +123,8 @@ export const getIrSchemaSignature = (schema: IrSchema): string => {
       return `enum:${JSON.stringify([...schema.values].sort())}`;
     case 'binary':
       return `bin:${schema.multiple === true ? 'multi' : 'single'}`;
+    case 'never':
+      return 'never';
     case 'unknown':
       return 'unknown';
     case 'array':
@@ -191,6 +193,100 @@ export const mergeIrUnionVariants = (variants: IrSchema[], description?: string)
     variants: unique,
     ...(description !== undefined ? { description } : {})
   };
+};
+
+/**
+ * 判断顶层请求对象联合是否表达“多选一必填定位分支”约束：
+ * 仅当所有分支的公共必填集合严格小于每个分支各自的必填集合时（即没有任何分支可以仅凭公共字段合法调用），
+ * 才必须保留联合分支，避免拍平后把多选一必填字段退化为全可选而放行空请求或残缺组合。
+ */
+export const shouldPreserveRequestObjectUnion = (variants: IrRequestObjectSchema[]): boolean => {
+  if (variants.length < 2) {
+    return false;
+  }
+
+  const branchRequiredSets = variants.map(
+    (variant) => new Set(variant.properties.filter((p) => p.required).map((p) => p.name))
+  );
+  const firstRequired = branchRequiredSets[0]!;
+  const commonRequired = new Set(
+    [...firstRequired].filter((key) => branchRequiredSets.every((set) => set.has(key)))
+  );
+
+  return branchRequiredSets.every((set) => [...set].some((key) => !commonRequired.has(key)));
+};
+
+/**
+ * 为严格互斥（`additionalProperties: false` 或 `oneOf`）的请求联合分支补齐其他分支字段的 `?: never` 排除项，
+ * 避免 TypeScript 联合类型宽松允许混传多个定位分支（如同时传 `id` 与 `collectionIds`）。
+ */
+export const applyStrictBranchExclusivity = ({
+  variants,
+  exclusive
+}: {
+  variants: IrRequestObjectSchema[];
+  exclusive: boolean;
+}): IrRequestObjectSchema[] => {
+  const allKeys: string[] = [];
+  const allKeySet = new Set<string>();
+  const requiredByAny = new Set<string>();
+
+  for (const variant of variants) {
+    for (const prop of variant.properties) {
+      if (prop.schema.kind === 'never') continue;
+      if (!allKeySet.has(prop.name)) {
+        allKeySet.add(prop.name);
+        allKeys.push(prop.name);
+      }
+      if (prop.required) {
+        requiredByAny.add(prop.name);
+      }
+    }
+  }
+
+  return variants.map((variant) => {
+    const existingNames = new Set(variant.properties.map((p) => p.name));
+    const requiredNames = new Set(variant.properties.filter((p) => p.required).map((p) => p.name));
+
+    if (variant.additionalProperties === false) {
+      const extraNeverProps: IrProperty[] = allKeys
+        .filter((key) => !existingNames.has(key))
+        .map((key) => ({
+          name: key,
+          schema: { kind: 'never' },
+          required: false
+        }));
+      return extraNeverProps.length > 0
+        ? { ...variant, properties: [...variant.properties, ...extraNeverProps] }
+        : variant;
+    }
+
+    if (exclusive) {
+      const excludedKeys = [...requiredByAny].filter((key) => !requiredNames.has(key));
+      if (excludedKeys.length === 0) {
+        return variant;
+      }
+      const excludedSet = new Set(excludedKeys);
+      const updatedProps = variant.properties.map((prop) =>
+        excludedSet.has(prop.name)
+          ? { name: prop.name, schema: { kind: 'never' as const }, required: false }
+          : prop
+      );
+      const missingNeverProps: IrProperty[] = excludedKeys
+        .filter((key) => !existingNames.has(key))
+        .map((key) => ({
+          name: key,
+          schema: { kind: 'never' },
+          required: false
+        }));
+      return {
+        ...variant,
+        properties: [...updatedProps, ...missingNeverProps]
+      };
+    }
+
+    return variant;
+  });
 };
 
 /**
@@ -457,6 +553,12 @@ export const normalizeJsonSchemaToIr = ({
         }
 
         if (nextCtx.mode === 'requestTop') {
+          if (shouldPreserveRequestObjectUnion(candidates)) {
+            return mergeIrUnionVariants(
+              applyStrictBranchExclusivity({ variants: candidates, exclusive: false }),
+              description
+            );
+          }
           return mergeIrObjectSchemas({
             objects: candidates,
             mode: 'or',
@@ -488,6 +590,7 @@ export const normalizeJsonSchemaToIr = ({
     }
 
     // 4. 处理 anyOf / oneOf 联合
+    const isExclusiveOneOf = !Array.isArray(resolved.anyOf) && Array.isArray(resolved.oneOf);
     const rawBranches = Array.isArray(resolved.anyOf)
       ? resolved.anyOf
       : Array.isArray(resolved.oneOf)
@@ -514,14 +617,26 @@ export const normalizeJsonSchemaToIr = ({
         return convert(branch, nextCtx);
       });
 
-      // 请求顶层对象联合统一拍平为单个结构体，彻底消除跨语言 OneOf 包装类。
+      // 请求顶层对象联合：
+      // - 若为多选一必填/互斥分支（如按 id / collectionIds / datasetId+apiFileIds 定位），保留联合并注入互斥 never 约束；
+      // - 其余仅在可选/身份/分页变体上扩展的联合仍拍平为单个扁平结构体，保持调用体验简洁。
       if (
         nextCtx.mode === 'requestTop' &&
         convertedBranches.length > 0 &&
         convertedBranches.every((b) => b.kind === 'object')
       ) {
+        const objectBranches = convertedBranches as IrRequestObjectSchema[];
+        if (shouldPreserveRequestObjectUnion(objectBranches)) {
+          return mergeIrUnionVariants(
+            applyStrictBranchExclusivity({
+              variants: objectBranches,
+              exclusive: isExclusiveOneOf
+            }),
+            description
+          );
+        }
         return mergeIrObjectSchemas({
-          objects: convertedBranches as Array<Extract<IrSchema, { kind: 'object' }>>,
+          objects: objectBranches,
           mode: 'or',
           description
         });
@@ -638,6 +753,7 @@ export const normalizeJsonSchemaToIr = ({
 
       const additionalProperties = (() => {
         if (resolved.additionalProperties === true) return true;
+        if (resolved.additionalProperties === false) return false;
         if (isRecord(resolved.additionalProperties)) {
           const convertedExtra = convert(resolved.additionalProperties, nestedCtx);
           return convertedExtra;
@@ -681,15 +797,15 @@ export const normalizeJsonSchemaToIr = ({
 };
 
 /**
- * 将请求顶层 Schema 强制收敛为 IrObject（若归一化后仍为对象联合则执行 OR 拍平）。
+ * 将请求顶层 Schema 归一化为单个对象或保留必填/互斥分支约束的对象联合。
  */
-export const normalizeRequestObjectToIr = ({
+export const normalizeRequestSchemaToIr = ({
   rawSchema,
   rootDoc
 }: {
   rawSchema: unknown;
   rootDoc: Record<string, unknown>;
-}): Extract<IrSchema, { kind: 'object' }> => {
+}): IrRequestSchema => {
   const normalized = normalizeJsonSchemaToIr({
     rawSchema,
     rootDoc,
@@ -702,9 +818,19 @@ export const normalizeRequestObjectToIr = ({
 
   if (normalized.kind === 'union') {
     const objectVariants = normalized.variants.filter(
-      (v): v is Extract<IrSchema, { kind: 'object' }> => v.kind === 'object'
+      (v): v is IrRequestObjectSchema => v.kind === 'object'
     );
-    if (objectVariants.length > 0) {
+    if (objectVariants.length === 1) {
+      return objectVariants[0]!;
+    }
+    if (objectVariants.length > 1) {
+      if (shouldPreserveRequestObjectUnion(objectVariants)) {
+        return {
+          kind: 'union',
+          variants: objectVariants,
+          ...(normalized.description !== undefined ? { description: normalized.description } : {})
+        };
+      }
       return mergeIrObjectSchemas({
         objects: objectVariants,
         mode: 'or',
@@ -717,4 +843,25 @@ export const normalizeRequestObjectToIr = ({
     kind: 'object',
     properties: []
   };
+};
+
+/**
+ * 将请求顶层 Schema 强制收敛为 IrObject（若归一化后仍为对象联合则执行 OR 拍平）。
+ */
+export const normalizeRequestObjectToIr = ({
+  rawSchema,
+  rootDoc
+}: {
+  rawSchema: unknown;
+  rootDoc: Record<string, unknown>;
+}): IrRequestObjectSchema => {
+  const normalized = normalizeRequestSchemaToIr({ rawSchema, rootDoc });
+  if (normalized.kind === 'object') {
+    return normalized;
+  }
+  return mergeIrObjectSchemas({
+    objects: normalized.variants,
+    mode: 'or',
+    description: normalized.description
+  });
 };

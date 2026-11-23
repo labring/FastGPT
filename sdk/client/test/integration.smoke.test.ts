@@ -32,7 +32,8 @@ describeSmoke('FastGPT SDK Live Integration Smoke Tests', () => {
     expect(whoami).toBeDefined();
 
     const publicModels = await client.models.list();
-    expect(Array.isArray(publicModels)).toBe(true);
+    expect(Array.isArray(publicModels.models)).toBe(true);
+    expect(Array.isArray(publicModels.providers)).toBe(true);
   });
 
   it('lists datasets when using a personal API key', async () => {
@@ -68,5 +69,5 @@ describeSmoke('FastGPT SDK Live Integration Smoke Tests', () => {
     const summary = await stream.finalResult();
     expect(chunkCount).toBeGreaterThan(0);
     expect(summary.text.trim().length).toBeGreaterThan(0);
-  });
+  }, 30_000);
 });

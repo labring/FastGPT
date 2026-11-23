@@ -6,7 +6,7 @@ import {
   createApiDatasetHandler,
   toNodeHttpHandler,
   type ApiDatasetFileItem
-} from '../src/server/index';
+} from '../src/server/apiDataset';
 
 const sampleFiles: ApiDatasetFileItem[] = [
   {
@@ -51,6 +51,53 @@ const createTestHandler = (basePath?: string) =>
   });
 
 describe('@fastgpt/sdk/server Custom API Dataset Adapter', () => {
+  it('fails fast at startup when authentication is omitted or empty unless allowAnonymous is explicitly true', async () => {
+    const minimalProvider = {
+      listFiles: () => sampleFiles,
+      getFileContent: () => null,
+      getFileDetail: () => null
+    };
+
+    // 1. 未传鉴权配置（或运行时 env 缺失传入 undefined）必须直接抛错，禁止静默退化为匿名模式
+    expect(() =>
+      createApiDatasetHandler({
+        provider: minimalProvider
+      })
+    ).toThrow(/authentication is required/i);
+
+    expect(() =>
+      createApiDatasetHandler({
+        authorization: undefined,
+        provider: minimalProvider
+      })
+    ).toThrow(/authentication is required/i);
+
+    // 2. 空串或纯空白令牌直接报错
+    expect(() =>
+      createApiDatasetHandler({
+        authorization: '',
+        provider: minimalProvider
+      })
+    ).toThrow(/non-empty string/i);
+
+    expect(() =>
+      createApiDatasetHandler({
+        authorization: '   ',
+        provider: minimalProvider
+      })
+    ).toThrow(/non-empty string/i);
+
+    // 3. 显式开启 allowAnonymous: true 才允许无鉴权运行
+    const anonHandler = createApiDatasetHandler({
+      allowAnonymous: true,
+      provider: minimalProvider
+    });
+    const res = await anonHandler(
+      new Request('https://kb.example.com/v1/file/list', { method: 'POST', body: '{}' })
+    );
+    expect(res.status).toBe(200);
+  });
+
   it('enforces Bearer authorization, basePath stripping, and all 4 custom API dataset routes', async () => {
     const handler = createTestHandler('/custom/kb');
 

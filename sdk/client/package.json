@@ -37,6 +37,56 @@
         "types": "./dist/errors.d.cts",
         "default": "./dist/errors.cjs"
       }
+    },
+    "./sse": {
+      "import": {
+        "types": "./dist/sse.d.mts",
+        "default": "./dist/sse.mjs"
+      },
+      "require": {
+        "types": "./dist/sse.d.cts",
+        "default": "./dist/sse.cjs"
+      }
+    },
+    "./options": {
+      "import": {
+        "types": "./dist/options.d.mts",
+        "default": "./dist/options.mjs"
+      },
+      "require": {
+        "types": "./dist/options.d.cts",
+        "default": "./dist/options.cjs"
+      }
+    },
+    "./interactive": {
+      "import": {
+        "types": "./dist/interactive.d.mts",
+        "default": "./dist/interactive.mjs"
+      },
+      "require": {
+        "types": "./dist/interactive.d.cts",
+        "default": "./dist/interactive.cjs"
+      }
+    },
+    "./pagination": {
+      "import": {
+        "types": "./dist/pagination.d.mts",
+        "default": "./dist/pagination.mjs"
+      },
+      "require": {
+        "types": "./dist/pagination.d.cts",
+        "default": "./dist/pagination.cjs"
+      }
+    },
+    "./types": {
+      "import": {
+        "types": "./dist/types.d.mts",
+        "default": "./dist/types.mjs"
+      },
+      "require": {
+        "types": "./dist/types.d.cts",
+        "default": "./dist/types.cjs"
+      }
     }
   },
   "files": [

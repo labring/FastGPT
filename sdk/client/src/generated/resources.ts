@@ -1094,7 +1094,7 @@ const DATASETS_COLLECTIONS_DELETE_SPEC: OperationSpec = {
   appIdCarrier: null,
   identityCarrier: null,
   pathParams: [],
-  queryParams: ['id'],
+  queryParams: [],
   bodyParams: ['id', 'collectionIds', 'datasetId', 'apiFileIds']
 };
 
@@ -2619,7 +2619,7 @@ export class DatasetsCollectionsResource {
    * 删除集合
    * 删除一个或多个集合及其子集合。请求体三选一：body.id（单个集合）、body.collectionIds（集合列表）、body.datasetId + body.apiFileIds（API 文件库外部文件或目录 ID）。仅集合所有者（owner）可删除；持有 manage/write 权限的协作者不可删除。按 apiFileIds 定位时全部未命中会返回集合不存在错误。旧版 query.id 仍兼容但已弃用，请改用 body.id；使用 query.id 时请求体可缺失或为 {}，同时提供合法请求体时 query.id 优先，非法请求体仍会被拒绝。未提供任何定位参数时拒绝请求
    */
-  delete(req?: DatasetsCollectionsDeleteReq, options?: RequestOptions): ApiPromise<void> {
+  delete(req: DatasetsCollectionsDeleteReq, options?: RequestOptions): ApiPromise<void> {
     return this._client._request<void>({
       spec: DATASETS_COLLECTIONS_DELETE_SPEC,
       rawInput: req as Record<string, unknown> | undefined,
@@ -2766,7 +2766,7 @@ export class DatasetsCollectionsResource {
    * 更新数据集集合信息
    * 更新数据集集合信息，支持通过集合ID或数据集ID+外部文件ID定位集合。需要集合写权限；变更 parentId 视为移动，源父级与目标父级均需管理权限（根目录与文件夹之间移动还需团队知识库创建权限），且不接受 inheritPermission，独立态保持独立、继承态保持继承
    */
-  update(req?: DatasetsCollectionsUpdateReq, options?: RequestOptions): ApiPromise<void> {
+  update(req: DatasetsCollectionsUpdateReq, options?: RequestOptions): ApiPromise<void> {
     return this._client._request<void>({
       spec: DATASETS_COLLECTIONS_UPDATE_SPEC,
       rawInput: req as Record<string, unknown> | undefined,
@@ -3194,10 +3194,7 @@ export class DatasetsTrainingResource {
    * 更新训练数据或重试训练异常
    * 更新或重试训练异常：传 dataId 时重试或编辑后重训单个 chunk；不传 dataId 时，可按 collectionId 或 datasetId 重试全部最终/阻塞异常
    */
-  retryOrUpdate(
-    req?: DatasetsTrainingRetryOrUpdateReq,
-    options?: RequestOptions
-  ): ApiPromise<void> {
+  retryOrUpdate(req: DatasetsTrainingRetryOrUpdateReq, options?: RequestOptions): ApiPromise<void> {
     return this._client._request<void>({
       spec: DATASETS_TRAINING_RETRY_OR_UPDATE_SPEC,
       rawInput: req as Record<string, unknown> | undefined,

@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { normalizeApiBaseUrl } from '../src/core/baseClient';
 import {
-  FastGPT,
   FastGptAuthError,
   FastGptBadRequestError,
   FastGptConflictError,
@@ -10,7 +9,8 @@ import {
   FastGptRateLimitError,
   FastGptServerError,
   FastGptTimeoutError
-} from '../src/index';
+} from '../src/core/errors';
+import { FastGPT } from '../src/index';
 
 const createJsonResponse = ({
   body,
@@ -275,6 +275,22 @@ describe('FastGPT Core Client, Auth, Identity & Error Semantics', () => {
         expectedClass: FastGptRateLimitError
       },
       {
+        // 明确 HTTP 429 优先于旧版鉴权业务标记，避免调用方误判为凭据错误而放弃退避
+        httpStatus: 429,
+        body: { code: 506001, statusText: 'openapiUnAuth', message: 'Gateway rate limited' },
+        expectedClass: FastGptRateLimitError
+      },
+      {
+        // 明确 HTTP 503 优先于旧版资源不存在业务标记，避免被降级为 404
+        httpStatus: 503,
+        body: {
+          code: 502000,
+          statusText: 'appUnExist',
+          message: 'Upstream temporarily unavailable'
+        },
+        expectedClass: FastGptServerError
+      },
+      {
         httpStatus: 200,
         body: {
           code: 500,
@@ -363,5 +379,165 @@ describe('FastGPT Core Client, Auth, Identity & Error Semantics', () => {
     });
 
     await expect(slowClient.system.health()).rejects.toThrow(FastGptTimeoutError);
+  });
+
+  it('keeps timeoutMs and external AbortSignal active after response headers arrive for both body reads and SSE streams', async () => {
+    const encoder = new TextEncoder();
+
+    // 1. 普通 JSON 响应在 headers 立即返回、body 延迟 80ms 才发送时，15ms timeoutMs 必须超时中断
+    const slowBodyClient = new FastGPT({
+      baseUrl: 'https://api.example.com',
+      apiKey: 'fastgpt-key',
+      maxRetries: 0,
+      timeoutMs: 15,
+      fetch: async () => {
+        const delayedBody = new ReadableStream<Uint8Array>({
+          start(controller) {
+            const timer = setTimeout(() => {
+              controller.enqueue(
+                encoder.encode(
+                  JSON.stringify({ code: 200, statusText: '', message: '', data: 'ok' })
+                )
+              );
+              controller.close();
+            }, 80);
+            return () => clearTimeout(timer);
+          }
+        });
+        return new Response(delayedBody, {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+    });
+    await expect(slowBodyClient.system.health()).rejects.toThrow(FastGptTimeoutError);
+
+    // 2. 普通响应在 headers 返回后由外部 AbortSignal 取消，必须中断响应体读取
+    const externalJsonAbort = new AbortController();
+    const abortableBodyClient = new FastGPT({
+      baseUrl: 'https://api.example.com',
+      apiKey: 'fastgpt-key',
+      maxRetries: 0,
+      fetch: async () => {
+        const hangingBody = new ReadableStream<Uint8Array>({
+          pull() {
+            return new Promise<void>(() => {});
+          }
+        });
+        setTimeout(() => externalJsonAbort.abort(new Error('user cancelled')), 10);
+        return new Response(hangingBody, {
+          status: 200,
+          headers: { 'content-type': 'application/json' }
+        });
+      }
+    });
+    await expect(
+      abortableBodyClient.system.health({ signal: externalJsonAbort.signal })
+    ).rejects.toThrow(FastGptError);
+
+    // 3. SSE 流建连后（握手超时清理，不误杀慢流），外部 AbortSignal 触发仍能直达底层流并中止迭代
+    let fetchSignalAborted = false;
+    const sseClient = new FastGPT({
+      baseUrl: 'https://api.example.com',
+      apiKey: 'fastgpt-key',
+      timeoutMs: 15,
+      fetch: async (_url, init) => {
+        init?.signal?.addEventListener('abort', () => {
+          fetchSignalAborted = true;
+        });
+        let sentFirst = false;
+        const sseBody = new ReadableStream<Uint8Array>({
+          pull(controller) {
+            if (!sentFirst) {
+              sentFirst = true;
+              return new Promise<void>((resolve) => {
+                setTimeout(() => {
+                  controller.enqueue(
+                    encoder.encode('data: {"choices":[{"delta":{"content":"晚到分片"}}]}\n\n')
+                  );
+                  resolve();
+                }, 30);
+              });
+            }
+            return new Promise<void>(() => {});
+          }
+        });
+        return new Response(sseBody, {
+          status: 200,
+          headers: { 'content-type': 'text/event-stream' }
+        });
+      }
+    });
+
+    const sseAbort = new AbortController();
+    const stream = await sseClient.chat.completionsV2Stream(
+      {
+        chatId: 'c-abort',
+        messages: [{ role: 'user', content: 'hi' }]
+      },
+      { signal: sseAbort.signal }
+    );
+
+    const received: string[] = [];
+    await expect(async () => {
+      for await (const ev of stream) {
+        if (ev.type === 'answer') {
+          received.push(ev.textDelta);
+          sseAbort.abort();
+        }
+      }
+    }).rejects.toThrow(FastGptError);
+
+    // 首包在 30ms（超过 15ms 握手超时）后依然正常抵达，随后由外部 sseAbort 中断底层信号
+    expect(received).toEqual(['晚到分片']);
+    expect(fetchSignalAborted).toBe(true);
+    expect(stream.state).toBe('aborted');
+  });
+
+  it('preserves rawRequest query and JSON body independently for arrays, scalars, and overlapping keys', async () => {
+    const captured: Array<{ url: string; contentType: string | null; body: string | null }> = [];
+    const client = new FastGPT({
+      baseUrl: 'https://api.example.com',
+      apiKey: 'fastgpt-key',
+      fetch: async (input, init) => {
+        const headers = new Headers(init?.headers);
+        captured.push({
+          url: String(input),
+          contentType: headers.get('content-type'),
+          body: typeof init?.body === 'string' ? init.body : null
+        });
+        return createJsonResponse({
+          body: { code: 200, statusText: '', message: '', data: { ok: true } }
+        });
+      }
+    });
+
+    // 1. JSON 数组 body 原样序列化，不会退化为 {}
+    await client.rawRequest({
+      method: 'POST',
+      path: '/custom/batch',
+      body: [1, { name: 'a' }, 'x']
+    });
+    expect(captured[0]?.body).toBe('[1,{"name":"a"},"x"]');
+
+    // 2. JSON 标量 body 原样序列化
+    await client.rawRequest({
+      method: 'POST',
+      path: '/custom/scalar',
+      body: 'raw-text-value'
+    });
+    expect(captured[1]?.body).toBe('"raw-text-value"');
+
+    // 3. query 与 body 同名字段各自保留，互不覆盖与删减
+    await client.rawRequest({
+      method: 'POST',
+      path: '/custom/overlap',
+      query: { id: 'query-id', mode: 'fast' },
+      body: { id: 'body-id', extra: 42 }
+    });
+    const overlapUrl = new URL(captured[2]!.url);
+    expect(overlapUrl.searchParams.get('id')).toBe('query-id');
+    expect(overlapUrl.searchParams.get('mode')).toBe('fast');
+    expect(JSON.parse(captured[2]!.body!)).toEqual({ id: 'body-id', extra: 42 });
   });
 });

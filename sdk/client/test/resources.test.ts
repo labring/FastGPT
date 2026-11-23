@@ -180,4 +180,56 @@ describe('Generated Domain Resources End-to-End Transport Coverage', () => {
     const voidRes = await client.chat.histories.markRead({ chatId: 'chat-1' });
     expect(voidRes).toBeUndefined();
   });
+
+  it('enforces required-alternative and mutually exclusive branches on datasets.collections.delete/update and sends body.id', async () => {
+    const captured: Array<{ url: string; body: unknown }> = [];
+    const client = new FastGPT({
+      baseUrl: 'https://api.example.com',
+      apiKey: 'fastgpt-personal-key',
+      fetch: async (input, init) => {
+        captured.push({
+          url: String(input),
+          body: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined
+        });
+        return new Response(
+          JSON.stringify({ code: 200, statusText: '', message: '', data: null }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          }
+        );
+      }
+    });
+
+    // 合法的三种删除定位分支均通过类型检查，且 body.id 通过 JSON 请求体发送（不再落到已废弃的 query.id）
+    await client.datasets.collections.delete({ id: 'col-1' });
+    await client.datasets.collections.delete({ collectionIds: ['col-1', 'col-2'] });
+    await client.datasets.collections.delete({ datasetId: 'ds-1', apiFileIds: ['ext-1'] });
+
+    expect(new URL(captured[0]!.url).searchParams.has('id')).toBe(false);
+    expect(captured[0]?.body).toEqual({ id: 'col-1' });
+    expect(captured[1]?.body).toEqual({ collectionIds: ['col-1', 'col-2'] });
+    expect(captured[2]?.body).toEqual({ datasetId: 'ds-1', apiFileIds: ['ext-1'] });
+
+    // 编译期负例守卫：非法空调用、残缺组合与互斥分支混用必须被 TypeScript 拒绝
+    const _compileTimeNegativeChecks = () => {
+      // @ts-expect-error delete() 缺少必填定位分支
+      void client.datasets.collections.delete();
+      // @ts-expect-error 空对象不满足任意删除定位分支
+      void client.datasets.collections.delete({});
+      // @ts-expect-error 仅传 datasetId 缺少配套 apiFileIds
+      void client.datasets.collections.delete({ datasetId: 'ds-1' });
+      // @ts-expect-error 混用互斥分支 id 与 collectionIds
+      void client.datasets.collections.delete({ id: 'col-1', collectionIds: ['col-2'] });
+      // @ts-expect-error update() 缺少定位分支
+      void client.datasets.collections.update();
+      // @ts-expect-error update 仅传 datasetId 缺少 externalFileId
+      void client.datasets.collections.update({ datasetId: 'ds-1', name: 'x' });
+      // @ts-expect-error retryOrUpdate() 缺少必填目标
+      void client.datasets.training.retryOrUpdate();
+      // @ts-expect-error retryOrUpdate 仅传编辑字段缺少 dataId/datasetId/collectionId
+      void client.datasets.training.retryOrUpdate({ q: 'updated' });
+    };
+    expect(typeof _compileTimeNegativeChecks).toBe('function');
+  });
 });

@@ -168,12 +168,12 @@ for await (const chunk of client.datasets.data.listAutoPaging(
 ## Raw Responses, Escape Hatch, Observability & Errors
 
 ```ts
+import { FastGPT } from '@fastgpt/sdk';
 import {
-  FastGPT,
   FastGptAuthError,
   FastGptConflictError,
   FastGptRateLimitError
-} from '@fastgpt/sdk';
+} from '@fastgpt/sdk/errors';
 
 const client = new FastGPT({
   apiKey: process.env.FASTGPT_API_KEY,
@@ -211,16 +211,36 @@ try {
 
 ---
 
+### Package Entry Points
+
+Each capability is published directly from its defining module for minimal bundle size:
+
+- `@fastgpt/sdk` — `FastGPT` main client class
+- `@fastgpt/sdk/errors` — `FastGptError`, `FastGptAuthError`, `FastGptRateLimitError`, etc.
+- `@fastgpt/sdk/sse` — `ChatStream`, `ChatSseEvent`, `ChatStreamFinalResult`, `ChatStreamTerminalState`
+- `@fastgpt/sdk/interactive` — `InteractivePayload`, `isUserSelectInteractive`, `isUserInputInteractive`, etc.
+- `@fastgpt/sdk/pagination` — `createOffsetPaginator`, `createPageNumPaginator`, `AsyncPageIterable`
+- `@fastgpt/sdk/options` — `FastGptClientOptions`, `RequestOptions`, `FastGptHooks`, `FastGptLogger`
+- `@fastgpt/sdk/types` — generated OpenAPI `*Req` / `*Res` contract types
+- `@fastgpt/sdk/server` — reverse custom API dataset adapter (`createApiDatasetHandler`, `toNodeHttpHandler`)
+
+---
+
 ## Reverse Server Adapter (`@fastgpt/sdk/server`)
 
-Expose your own enterprise document store as a FastGPT **Custom API Dataset** (`/v1/file/list`, `/v1/file/content`, `/v1/file/detail`, `/v1/file/read`) with zero web framework lock-in:
+Expose your own enterprise document store as a FastGPT **Custom API Dataset** (`/v1/file/list`, `/v1/file/content`, `/v1/file/detail`, `/v1/file/read`) with zero web framework lock-in. Authentication is **required by default** (fail-fast at startup if missing); pass `{ allowAnonymous: true }` only if you explicitly intend to run without Bearer auth:
 
 ```ts
 import http from 'node:http';
 import { createApiDatasetHandler, toNodeHttpHandler } from '@fastgpt/sdk/server';
 
+const kbServerToken = process.env.KB_SERVER_TOKEN?.trim();
+if (!kbServerToken) {
+  throw new Error('Missing required environment variable: KB_SERVER_TOKEN');
+}
+
 const fetchHandler = createApiDatasetHandler({
-  authorization: process.env.KB_SERVER_TOKEN!,
+  authorization: kbServerToken,
   basePath: '/api/fastgpt-kb', // optional mount prefix
   provider: {
     async listFiles({ parentId, searchKey }) {

@@ -7,6 +7,8 @@ import type {
   IrOperation,
   IrProperty,
   IrRequestContentType,
+  IrRequestObjectSchema,
+  IrRequestSchema,
   IrResourceNode,
   IrResponseMode,
   IrSchema,
@@ -14,8 +16,11 @@ import type {
 } from './irTypes';
 import {
   isNeverJsonSchema,
+  mergeIrObjectSchemas,
   normalizeJsonSchemaToIr,
   normalizeRequestObjectToIr,
+  normalizeRequestSchemaToIr,
+  shouldPreserveRequestObjectUnion,
   shouldStripRequestProperty,
   type RawJsonSchema
 } from './schemaNormalizer';
@@ -132,7 +137,12 @@ export const buildSdkIrDocument = (): SdkIrDocument => {
 
       for (const param of allRawParams) {
         if (!isRecord(param)) continue;
-        if (param.deprecated === true) continue;
+        if (
+          param.deprecated === true ||
+          (isRecord(param.schema) && param.schema.deprecated === true)
+        ) {
+          continue;
+        }
 
         const paramIn = param.in;
         const paramName = typeof param.name === 'string' ? param.name : '';
@@ -197,19 +207,38 @@ export const buildSdkIrDocument = (): SdkIrDocument => {
       let multipartMode: IrMultipartMode | undefined;
       let binaryBodyField: string | undefined;
       const bodyProperties: IrProperty[] = [];
+      let bodyUnionVariants: IrRequestObjectSchema[] | null = null;
 
       if (isRecord(reqContent['application/json'])) {
         requestContentType = 'json';
-        const flattenedBody = normalizeRequestObjectToIr({
+        const stripStream = (props: IrProperty[]): IrProperty[] =>
+          sdkMeta.streamMethod !== undefined
+            ? props.filter((prop) => prop.name !== 'stream')
+            : props;
+
+        const normalizedBody = normalizeRequestSchemaToIr({
           rawSchema: reqContent['application/json'].schema,
           rootDoc
         });
-        for (const prop of flattenedBody.properties) {
-          // 双模态流式接口由 completionsV2 / completionsV2Stream 内部固定注入 stream 布尔值
-          if (sdkMeta.streamMethod !== undefined && prop.name === 'stream') {
-            continue;
+
+        if (normalizedBody.kind === 'union') {
+          bodyUnionVariants = normalizedBody.variants.map((variant) => ({
+            ...variant,
+            properties: stripStream(variant.properties)
+          }));
+          const flattenedBody = mergeIrObjectSchemas({
+            objects: bodyUnionVariants,
+            mode: 'or'
+          });
+          for (const prop of flattenedBody.properties) {
+            if (prop.schema.kind === 'never') continue;
+            bodyProperties.push(prop);
           }
-          bodyProperties.push(prop);
+        } else {
+          for (const prop of stripStream(normalizedBody.properties)) {
+            if (prop.schema.kind === 'never') continue;
+            bodyProperties.push(prop);
+          }
         }
       } else if (isRecord(reqContent['multipart/form-data'])) {
         requestContentType = 'multipart';
@@ -344,20 +373,126 @@ export const buildSdkIrDocument = (): SdkIrDocument => {
           : prop
       );
 
+      const relaxAppIdProp = (prop: IrProperty): IrProperty =>
+        prop.name === 'appId' && appIdCarrier !== null
+          ? {
+              ...prop,
+              required: false
+            }
+          : prop;
+
       const unifiedMap = new Map<string, IrProperty>();
       for (const prop of [...pathProperties, ...normalizedQueryProperties, ...bodyProperties]) {
-        const adjustedProp: IrProperty =
-          prop.name === 'appId' && appIdCarrier !== null
-            ? {
-                ...prop,
-                required: false
-              }
-            : prop;
+        const adjustedProp = relaxAppIdProp(prop);
         unifiedMap.set(adjustedProp.name, adjustedProp);
       }
       const unifiedProperties = [...unifiedMap.values()];
-      const hasInput = unifiedProperties.length > 0;
-      const hasRequiredInput = unifiedProperties.some((p) => p.required);
+
+      const sharedNonBodyProps = [...pathProperties, ...normalizedQueryProperties].map(
+        relaxAppIdProp
+      );
+
+      // 根据顶层联合分支或 OpenAPI x-required-parameter-alternatives 构造最终请求 Schema，
+      // 确保“多选一必填”与严格互斥分支（如 datasets.collections.delete）在 IR 和类型签名中不被拍平丢失。
+      const finalRequestSchema: IrRequestSchema = (() => {
+        if (bodyUnionVariants !== null) {
+          const combinedVariants: IrRequestObjectSchema[] = bodyUnionVariants.map((variant) => {
+            const propMap = new Map<string, IrProperty>();
+            for (const prop of sharedNonBodyProps) {
+              propMap.set(prop.name, prop);
+            }
+            for (const prop of variant.properties) {
+              propMap.set(prop.name, relaxAppIdProp(prop));
+            }
+            return {
+              ...variant,
+              properties: [...propMap.values()]
+            };
+          });
+
+          if (shouldPreserveRequestObjectUnion(combinedVariants)) {
+            return {
+              kind: 'union',
+              variants: combinedVariants
+            };
+          }
+
+          return mergeIrObjectSchemas({
+            objects: combinedVariants,
+            mode: 'or'
+          });
+        }
+
+        const baseObject: IrRequestObjectSchema = {
+          kind: 'object',
+          properties: unifiedProperties
+        };
+
+        const rawAlternatives = rawOp['x-required-parameter-alternatives'];
+        if (Array.isArray(rawAlternatives) && unifiedProperties.length > 0) {
+          const pathParamSet = new Set(pathParams);
+          const queryParamSet = new Set(queryParams);
+          const bodyParamSet = new Set(bodyParams);
+          const seenBranchKeys = new Set<string>();
+          const alternativeVariants: IrRequestObjectSchema[] = [];
+
+          for (const rawBranch of rawAlternatives) {
+            if (!Array.isArray(rawBranch) || rawBranch.length === 0) continue;
+            const requiredNames: string[] = [];
+            let branchSupported = true;
+
+            for (const item of rawBranch) {
+              if (!isRecord(item) || typeof item.name !== 'string') {
+                branchSupported = false;
+                break;
+              }
+              const paramIn = typeof item.in === 'string' ? item.in : undefined;
+              const matchesCarrier =
+                (paramIn === 'path' && pathParamSet.has(item.name)) ||
+                (paramIn === 'query' && queryParamSet.has(item.name)) ||
+                (paramIn === 'body' && bodyParamSet.has(item.name)) ||
+                (paramIn === undefined && unifiedMap.has(item.name));
+              if (!matchesCarrier || !unifiedMap.has(item.name)) {
+                branchSupported = false;
+                break;
+              }
+              requiredNames.push(item.name);
+            }
+
+            if (!branchSupported || requiredNames.length === 0) continue;
+            const sig = [...requiredNames].sort().join(',');
+            if (seenBranchKeys.has(sig)) continue;
+            seenBranchKeys.add(sig);
+
+            const reqSet = new Set(requiredNames);
+            alternativeVariants.push({
+              kind: 'object',
+              properties: unifiedProperties.map((prop) =>
+                reqSet.has(prop.name) ? { ...prop, required: true } : prop
+              )
+            });
+          }
+
+          if (shouldPreserveRequestObjectUnion(alternativeVariants)) {
+            return {
+              kind: 'union',
+              variants: alternativeVariants
+            };
+          }
+        }
+
+        return baseObject;
+      })();
+
+      const hasInput =
+        finalRequestSchema.kind === 'union'
+          ? finalRequestSchema.variants.some((v) => v.properties.length > 0)
+          : finalRequestSchema.properties.length > 0;
+      const hasRequiredInput =
+        finalRequestSchema.kind === 'union'
+          ? finalRequestSchema.variants.length > 0 &&
+            finalRequestSchema.variants.every((v) => v.properties.some((p) => p.required))
+          : finalRequestSchema.properties.some((p) => p.required);
 
       // 4. 解析 200 成功响应模式与返回类型
       const responsesObj = isRecord(rawOp.responses) ? rawOp.responses : {};
@@ -439,10 +574,7 @@ export const buildSdkIrDocument = (): SdkIrDocument => {
         ...(hasInput
           ? {
               requestTypeName: `${typePrefix}Req`,
-              requestSchema: {
-                kind: 'object',
-                properties: unifiedProperties
-              }
+              requestSchema: finalRequestSchema
             }
           : {}),
         ...(responseSchema !== undefined

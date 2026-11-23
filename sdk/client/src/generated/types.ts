@@ -7601,16 +7601,29 @@ export type DatasetsCollectionsCreateByTextRes = {
 };
 
 /** 删除集合 请求参数（POST /core/dataset/collection/delete） */
-export type DatasetsCollectionsDeleteReq = {
-  /** 集合 ID，删除该集合及其全部子集合 */
-  id?: string;
-  /** 集合 ID 列表，删除每个集合及其全部子集合 */
-  collectionIds?: string[];
-  /** API 文件库对应的知识库 ID */
-  datasetId?: string;
-  /** API 文件库的外部文件或目录 ID 列表；全部未命中时返回集合不存在 */
-  apiFileIds?: string[];
-};
+export type DatasetsCollectionsDeleteReq =
+  | {
+      /** 集合 ID，删除该集合及其全部子集合 */
+      id: string;
+      collectionIds?: never;
+      datasetId?: never;
+      apiFileIds?: never;
+    }
+  | {
+      /** 集合 ID 列表，删除每个集合及其全部子集合 */
+      collectionIds: string[];
+      id?: never;
+      datasetId?: never;
+      apiFileIds?: never;
+    }
+  | {
+      /** API 文件库对应的知识库 ID */
+      datasetId: string;
+      /** API 文件库的外部文件或目录 ID 列表；全部未命中时返回集合不存在 */
+      apiFileIds: string[];
+      id?: never;
+      collectionIds?: never;
+    };
 
 /** 获取集合详情 请求参数（GET /core/dataset/collection/detail） */
 export type DatasetsCollectionsDetailReq = {
@@ -8257,30 +8270,55 @@ export type DatasetsCollectionsSyncReq = {
 export type DatasetsCollectionsSyncRes = 'sameRaw' | 'success' | 'failed';
 
 /** 更新数据集集合信息 请求参数（POST /core/dataset/collection/update） */
-export type DatasetsCollectionsUpdateReq = {
-  /** 集合ID，与 datasetId+externalFileId 二选一 */
-  id?: string;
-  /** 父级目录ID */
-  parentId?: string | null;
-  /** 集合名称 */
-  name?: string;
-  /** 标签列表（支持 String 旧格式 或 { tag, value } 新格式） */
-  tags?: Array<
-    | string
-    | {
-        tag: string;
-        value: string | number | string[];
-      }
-  >;
-  /** 是否禁用 */
-  forbid?: boolean;
-  /** 创建时间 */
-  createTime?: string;
-  /** 数据集ID，配合 externalFileId 使用 */
-  datasetId?: string;
-  /** 外部文件ID，配合 datasetId 使用 */
-  externalFileId?: string;
-};
+export type DatasetsCollectionsUpdateReq =
+  | {
+      /** 集合ID，与 datasetId+externalFileId 二选一 */
+      id: string;
+      /** 父级目录ID */
+      parentId?: string | null;
+      /** 集合名称 */
+      name?: string;
+      /** 标签列表（支持 String 旧格式 或 { tag, value } 新格式） */
+      tags?: Array<
+        | string
+        | {
+            tag: string;
+            value: string | number | string[];
+          }
+      >;
+      /** 是否禁用 */
+      forbid?: boolean;
+      /** 创建时间 */
+      createTime?: string;
+      /** 数据集ID，配合 externalFileId 使用 */
+      datasetId?: string;
+      /** 外部文件ID，配合 datasetId 使用 */
+      externalFileId?: string;
+    }
+  | {
+      /** 集合ID，与 datasetId+externalFileId 二选一 */
+      id?: string;
+      /** 父级目录ID */
+      parentId?: string | null;
+      /** 集合名称 */
+      name?: string;
+      /** 标签列表（支持 String 旧格式 或 { tag, value } 新格式） */
+      tags?: Array<
+        | string
+        | {
+            tag: string;
+            value: string | number | string[];
+          }
+      >;
+      /** 是否禁用 */
+      forbid?: boolean;
+      /** 创建时间 */
+      createTime?: string;
+      /** 数据集ID，配合 externalFileId 使用 */
+      datasetId: string;
+      /** 外部文件ID，配合 datasetId 使用 */
+      externalFileId: string;
+    };
 
 /** 创建知识库 请求参数（POST /core/dataset/create） */
 export type DatasetsCreateReq = {
@@ -10135,20 +10173,49 @@ export type DatasetsTrainingRebuildEmbeddingReq = {
 };
 
 /** 更新训练数据或重试训练异常 请求参数（PUT /core/dataset/training/updateTrainingData） */
-export type DatasetsTrainingRetryOrUpdateReq = {
-  /** 知识库 ID，不传 dataId 时按知识库范围重试所有最终/阻塞异常 */
-  datasetId?: string;
-  /** 集合 ID，不传 dataId 时按集合范围重试所有最终/阻塞异常 */
-  collectionId?: string;
-  /** 训练数据 ID，传入则只重试或更新该训练数据 */
-  dataId?: string;
-  /** 问题/主文本，仅非重建任务允许编辑 */
-  q?: string;
-  /** 回答/补充文本，仅非重建任务允许编辑，空串表示清空 */
-  a?: string;
-  /** 块索引，仅非重建任务允许编辑 */
-  chunkIndex?: number;
-};
+export type DatasetsTrainingRetryOrUpdateReq =
+  | {
+      /** 知识库 ID，不传 dataId 时按知识库范围重试所有最终/阻塞异常 */
+      datasetId?: string;
+      /** 集合 ID，不传 dataId 时按集合范围重试所有最终/阻塞异常 */
+      collectionId?: string;
+      /** 训练数据 ID，传入则只重试或更新该训练数据 */
+      dataId: string;
+      /** 问题/主文本，仅非重建任务允许编辑 */
+      q?: string;
+      /** 回答/补充文本，仅非重建任务允许编辑，空串表示清空 */
+      a?: string;
+      /** 块索引，仅非重建任务允许编辑 */
+      chunkIndex?: number;
+    }
+  | {
+      /** 知识库 ID，不传 dataId 时按知识库范围重试所有最终/阻塞异常 */
+      datasetId: string;
+      /** 集合 ID，不传 dataId 时按集合范围重试所有最终/阻塞异常 */
+      collectionId?: string;
+      /** 训练数据 ID，传入则只重试或更新该训练数据 */
+      dataId?: string;
+      /** 问题/主文本，仅非重建任务允许编辑 */
+      q?: string;
+      /** 回答/补充文本，仅非重建任务允许编辑，空串表示清空 */
+      a?: string;
+      /** 块索引，仅非重建任务允许编辑 */
+      chunkIndex?: number;
+    }
+  | {
+      /** 知识库 ID，不传 dataId 时按知识库范围重试所有最终/阻塞异常 */
+      datasetId?: string;
+      /** 集合 ID，不传 dataId 时按集合范围重试所有最终/阻塞异常 */
+      collectionId: string;
+      /** 训练数据 ID，传入则只重试或更新该训练数据 */
+      dataId?: string;
+      /** 问题/主文本，仅非重建任务允许编辑 */
+      q?: string;
+      /** 回答/补充文本，仅非重建任务允许编辑，空串表示清空 */
+      a?: string;
+      /** 块索引，仅非重建任务允许编辑 */
+      chunkIndex?: number;
+    };
 
 /** 更新知识库 请求参数（PUT /core/dataset/update） */
 export type DatasetsUpdateReq = {

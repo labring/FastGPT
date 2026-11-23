@@ -87,8 +87,45 @@ describe('OpenAPI to SDK IR Compiler & Artifacts Drift', () => {
       'authProxy'
     ]);
 
-    const authProxyProp = chatInit?.requestSchema?.properties.find((p) => p.name === 'authProxy');
-    expect(authProxyProp?.schema.kind).toBe('union');
+    expect(chatInit?.requestSchema?.kind).toBe('object');
+    if (chatInit?.requestSchema?.kind === 'object') {
+      const authProxyProp = chatInit.requestSchema.properties.find((p) => p.name === 'authProxy');
+      expect(authProxyProp?.schema.kind).toBe('union');
+    }
+  });
+
+  it('preserves required-alternative and strict mutually exclusive request union branches', () => {
+    const deleteCol = ir.operations.find((op) => op.id === 'datasets.collections.delete');
+    expect(deleteCol).toBeDefined();
+    expect(deleteCol?.queryParams).toEqual([]);
+    expect(deleteCol?.hasRequiredInput).toBe(true);
+    expect(deleteCol?.requestSchema?.kind).toBe('union');
+    if (deleteCol?.requestSchema?.kind === 'union') {
+      expect(deleteCol.requestSchema.variants).toHaveLength(3);
+      const requiredSets = deleteCol.requestSchema.variants.map((variant) =>
+        variant.properties
+          .filter((p) => p.required)
+          .map((p) => p.name)
+          .sort()
+      );
+      expect(requiredSets).toEqual([['id'], ['collectionIds'], ['apiFileIds', 'datasetId']]);
+
+      // 每个严格分支必须对其他分支的定位字段注入 never 互斥约束
+      for (const variant of deleteCol.requestSchema.variants) {
+        const neverNames = variant.properties
+          .filter((p) => p.schema.kind === 'never')
+          .map((p) => p.name);
+        expect(neverNames.length).toBeGreaterThan(0);
+      }
+    }
+
+    const updateCol = ir.operations.find((op) => op.id === 'datasets.collections.update');
+    expect(updateCol?.hasRequiredInput).toBe(true);
+    expect(updateCol?.requestSchema?.kind).toBe('union');
+
+    const retryTraining = ir.operations.find((op) => op.id === 'datasets.training.retryOrUpdate');
+    expect(retryTraining?.hasRequiredInput).toBe(true);
+    expect(retryTraining?.requestSchema?.kind).toBe('union');
   });
 
   it('accurately classifies dual-mode stream, multipart, octet-stream, and all 5 response modes', () => {

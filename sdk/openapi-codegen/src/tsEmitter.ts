@@ -75,6 +75,8 @@ export const renderTsType = ({
       if (isOctetStreamInput) return 'BinaryInput';
       return schema.multiple === true ? 'Uploadable | Uploadable[]' : 'Uploadable';
     }
+    case 'never':
+      return 'never';
     case 'unknown':
       return 'unknown';
     case 'array': {
@@ -99,8 +101,21 @@ export const renderTsType = ({
       return `Record<string, ${valTs}>`;
     }
     case 'union': {
+      if (indent === '' && schema.variants.every((v) => v.kind === 'object')) {
+        return `\n${schema.variants
+          .map(
+            (variant) =>
+              `  | ${renderTsType({
+                schema: variant,
+                direction,
+                isOctetStreamInput,
+                indent: '  '
+              })}`
+          )
+          .join('\n')}`;
+      }
       return schema.variants
-        .map((variant) => renderTsType({ schema: variant, direction, indent }))
+        .map((variant) => renderTsType({ schema: variant, direction, isOctetStreamInput, indent }))
         .join(' | ');
     }
     case 'object': {
@@ -128,7 +143,10 @@ const renderTsObjectLiteral = ({
   isOctetStreamInput?: boolean;
   indent?: string;
 }): string => {
-  if (properties.length === 0 && additionalProperties === undefined) {
+  if (
+    properties.length === 0 &&
+    (additionalProperties === undefined || additionalProperties === false)
+  ) {
     return 'Record<string, never>';
   }
   if (properties.length === 0 && additionalProperties === true) {

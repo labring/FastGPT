@@ -18,7 +18,6 @@ import { ChatStream } from './sse';
 import type {
   BinaryInput,
   FastGptClientOptions,
-  FastGptHooks,
   FastGptIdentity,
   FastGptLogger,
   OperationSpec,
@@ -139,6 +138,67 @@ const sleepWithSignal = (ms: number, signal?: AbortSignal): Promise<void> =>
     signal?.addEventListener('abort', onAbort, { once: true });
   });
 
+const hasHeaderIgnoreCase = (headers: Record<string, string>, targetName: string): boolean => {
+  const lower = targetName.toLowerCase();
+  return Object.keys(headers).some((key) => key.toLowerCase() === lower);
+};
+
+const readWithAbortSignal = async <R>({
+  read,
+  signal,
+  onAbort
+}: {
+  read: () => Promise<R>;
+  signal: AbortSignal;
+  onAbort?: () => void;
+}): Promise<R> => {
+  if (signal.aborted) {
+    onAbort?.();
+    throw signal.reason ?? new DOMException('Aborted', 'AbortError');
+  }
+
+  const readPromise = read();
+  // 若超时或外部信号先触发，防止底层响应体读取后续异步 reject 造成 unhandledRejection。
+  readPromise.catch(() => {});
+
+  return await new Promise<R>((resolve, reject) => {
+    const onSignalAbort = () => {
+      onAbort?.();
+      reject(signal.reason ?? new DOMException('Aborted', 'AbortError'));
+    };
+    signal.addEventListener('abort', onSignalAbort, { once: true });
+
+    readPromise.then(
+      (value) => {
+        signal.removeEventListener('abort', onSignalAbort);
+        resolve(value);
+      },
+      (error) => {
+        signal.removeEventListener('abort', onSignalAbort);
+        reject(error);
+      }
+    );
+  });
+};
+
+type FetchAttemptLease = {
+  response: Response;
+  controller: AbortController;
+  attempt: number;
+  timeoutMs: number;
+  isTimedOut: () => boolean;
+  isExternalAborted: () => boolean;
+  clearTimeoutTimer: () => void;
+  dispose: () => void;
+};
+
+type PreparedHttpCall = {
+  url: string;
+  headers: Record<string, string>;
+  body?: BodyInit;
+  isStreamBody: boolean;
+};
+
 /**
  * SDK 底层传输、鉴权注入、异常解包与流式管理核心底座。
  */
@@ -147,6 +207,8 @@ export class BaseClient {
   readonly apiBaseUrl: string;
   private readonly _fetchFn: typeof globalThis.fetch;
   private readonly _logger: FastGptLogger | null;
+  // 记录客户端已配置/已解析的活跃凭据，确保任意自定义 site.openApiPrefix 密钥在错误与钩子日志中均可脱敏。
+  private readonly _knownSecrets = new Set<string>();
 
   constructor(options: FastGptClientOptions = {}) {
     if (isBrowserEnvironment() && options.dangerouslyAllowBrowser !== true) {
@@ -162,6 +224,34 @@ export class BaseClient {
     this.apiBaseUrl = normalizeApiBaseUrl(options.baseUrl);
     this._fetchFn = options.fetch ?? globalThis.fetch.bind(globalThis);
     this._logger = resolveLogger(options.logger);
+    if (typeof options.apiKey === 'string') {
+      this._recordSecret(options.apiKey);
+    }
+  }
+
+  private _recordSecret(rawSecret?: string): void {
+    if (rawSecret === undefined) return;
+    const normalized = rawSecret
+      .trim()
+      .replace(/^Bearer\s+/i, '')
+      .trim();
+    if (normalized.length >= 6) {
+      // 上限保护：防止长期轮换密钥无限增长
+      if (this._knownSecrets.size >= 32 && !this._knownSecrets.has(normalized)) {
+        const oldest = this._knownSecrets.values().next().value;
+        if (oldest !== undefined) {
+          this._knownSecrets.delete(oldest);
+        }
+      }
+      this._knownSecrets.add(normalized);
+    }
+  }
+
+  private _getActiveSecrets(requestOptions?: RequestOptions): string[] {
+    if (requestOptions?.apiKey !== undefined) {
+      this._recordSecret(requestOptions.apiKey);
+    }
+    return [...this._knownSecrets];
   }
 
   /**
@@ -191,16 +281,9 @@ export class BaseClient {
     return this._options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   }
 
-  /** 内部辅助：向高阶 Helper 共享脱敏日志与钩子通道。 */
-  _getObservability(): { hooks?: FastGptHooks; logger: FastGptLogger | null } {
-    return {
-      ...(this._options.hooks !== undefined ? { hooks: this._options.hooks } : {}),
-      logger: this._logger
-    };
-  }
-
   private async _resolveApiKey(requestOptions?: RequestOptions): Promise<string | undefined> {
     if (requestOptions?.apiKey !== undefined) {
+      this._recordSecret(requestOptions.apiKey);
       return requestOptions.apiKey;
     }
     const configured = this._options.apiKey ?? readEnvVar('FASTGPT_API_KEY');
@@ -208,8 +291,11 @@ export class BaseClient {
       return undefined;
     }
     if (typeof configured === 'function') {
-      return await configured();
+      const resolved = await configured();
+      this._recordSecret(resolved);
+      return resolved;
     }
+    this._recordSecret(configured);
     return configured;
   }
 
@@ -423,12 +509,10 @@ export class BaseClient {
     body?: BodyInit;
     isStreamBody: boolean;
     requestOptions?: RequestOptions;
-  }): Promise<{ response: Response; controller: AbortController; attempt: number }> {
+  }): Promise<FetchAttemptLease> {
     const apiKey = await this._resolveApiKey(requestOptions);
     const finalHeaders: Record<string, string> = { ...headers };
-    const hasExplicitAuth = Object.keys(finalHeaders).some(
-      (k) => k.toLowerCase() === 'authorization'
-    );
+    const hasExplicitAuth = hasHeaderIgnoreCase(finalHeaders, 'authorization');
 
     if (!hasExplicitAuth && apiKey !== undefined && apiKey.length > 0) {
       finalHeaders.authorization = apiKey.startsWith('Bearer ') ? apiKey : `Bearer ${apiKey}`;
@@ -453,6 +537,7 @@ export class BaseClient {
     while (true) {
       const controller = new AbortController();
       let timedOut = false;
+      let disposed = false;
       const externalSignal = requestOptions?.signal;
 
       const onExternalAbort = () => {
@@ -469,7 +554,7 @@ export class BaseClient {
         externalSignal.addEventListener('abort', onExternalAbort, { once: true });
       }
 
-      const timeoutTimer =
+      let timeoutTimer: ReturnType<typeof setTimeout> | null =
         timeoutMs > 0
           ? setTimeout(() => {
               timedOut = true;
@@ -477,7 +562,22 @@ export class BaseClient {
             }, timeoutMs)
           : null;
 
+      const clearTimeoutTimer = (): void => {
+        if (timeoutTimer !== null) {
+          clearTimeout(timeoutTimer);
+          timeoutTimer = null;
+        }
+      };
+
+      const dispose = (): void => {
+        if (disposed) return;
+        disposed = true;
+        clearTimeoutTimer();
+        externalSignal?.removeEventListener('abort', onExternalAbort);
+      };
+
       const attemptStartMs = Date.now();
+      const extraSecrets = this._getActiveSecrets(requestOptions);
 
       try {
         await notifyRequestObservability({
@@ -489,7 +589,8 @@ export class BaseClient {
             url,
             headers: finalHeaders,
             attempt
-          }
+          },
+          extraSecrets
         });
 
         const init: RequestInit & { duplex?: 'half' } = {
@@ -501,8 +602,6 @@ export class BaseClient {
         };
 
         const response = await this._fetchFn(url, init);
-        if (timeoutTimer !== null) clearTimeout(timeoutTimer);
-        externalSignal?.removeEventListener('abort', onExternalAbort);
 
         await notifyResponseObservability({
           hooks: this._options.hooks,
@@ -515,10 +614,12 @@ export class BaseClient {
             requestId: extractRequestId(response.headers),
             durationMs: Date.now() - attemptStartMs,
             attempt
-          }
+          },
+          extraSecrets
         });
 
         if (RETRYABLE_HTTP_STATUSES.has(response.status) && attempt < maxRetries) {
+          dispose();
           const retryAfterMs = parseRetryAfterMs(response.headers.get('retry-after'));
           const backoffMs =
             retryAfterMs ?? Math.min(300 * 2 ** attempt + Math.floor(Math.random() * 100), 5_000);
@@ -528,10 +629,21 @@ export class BaseClient {
           continue;
         }
 
-        return { response, controller, attempt };
+        // 不在拿到响应头时立即清理超时和外部 AbortSignal 监听：
+        // - 普通请求由调用方在完整读取响应体后统一 dispose()；
+        // - SSE 流式请求在确认流响应后先 clearTimeoutTimer()（仅作握手超时），并把 dispose() 移交给 ChatStream 在流关闭时清理。
+        return {
+          response,
+          controller,
+          attempt,
+          timeoutMs,
+          isTimedOut: () => timedOut,
+          isExternalAborted: () => externalSignal?.aborted === true,
+          clearTimeoutTimer,
+          dispose
+        };
       } catch (err) {
-        if (timeoutTimer !== null) clearTimeout(timeoutTimer);
-        externalSignal?.removeEventListener('abort', onExternalAbort);
+        dispose();
 
         if (timedOut) {
           throw new FastGptTimeoutError({
@@ -562,15 +674,72 @@ export class BaseClient {
               ? `Network request failed: ${err.message}`
               : 'Network request failed',
           url,
-          cause: err
+          cause: err,
+          extraSecrets
         });
       }
     }
   }
 
-  private async _throwResponseError(response: Response, url: string): Promise<never> {
+  private _wrapBodyAbortError({
+    error,
+    spec,
+    url,
+    lease,
+    extraSecrets
+  }: {
+    error: unknown;
+    spec: OperationSpec;
+    url: string;
+    lease: FetchAttemptLease;
+    extraSecrets?: ReadonlyArray<string>;
+  }): unknown {
+    if (error instanceof FastGptError) {
+      return error;
+    }
+    if (lease.isTimedOut()) {
+      return new FastGptTimeoutError({
+        message: `Request to ${spec.httpMethod} ${spec.path} timed out after ${lease.timeoutMs}ms`,
+        url,
+        cause: error,
+        extraSecrets
+      });
+    }
+    if (lease.isExternalAborted()) {
+      return new FastGptError({
+        message: `Request to ${spec.httpMethod} ${spec.path} was aborted`,
+        url,
+        cause: error,
+        extraSecrets
+      });
+    }
+    return error;
+  }
+
+  private async _throwResponseError({
+    response,
+    url,
+    signal,
+    extraSecrets
+  }: {
+    response: Response;
+    url: string;
+    signal: AbortSignal;
+    extraSecrets?: ReadonlyArray<string>;
+  }): Promise<never> {
     const requestId = extractRequestId(response.headers);
-    const rawText = await response.text().catch(() => '');
+    const rawText = await readWithAbortSignal({
+      read: () => response.text(),
+      signal,
+      onAbort: () => {
+        void response.body?.cancel().catch(() => {});
+      }
+    }).catch((err) => {
+      if (signal.aborted) {
+        throw err;
+      }
+      return '';
+    });
 
     if (rawText.trim().length > 0) {
       try {
@@ -594,7 +763,8 @@ export class BaseClient {
             serverCode,
             statusText,
             requestId,
-            url
+            url,
+            extraSecrets
           });
         }
       } catch (innerErr) {
@@ -608,7 +778,166 @@ export class BaseClient {
       message: rawText.slice(0, 300) || `Request failed with HTTP ${response.status}`,
       httpStatus: response.status,
       requestId,
-      url
+      url,
+      extraSecrets
+    });
+  }
+
+  private _executePreparedRequest<T>({
+    spec,
+    prepare,
+    requestOptions
+  }: {
+    spec: OperationSpec;
+    prepare: (acceptHeader: string) => PreparedHttpCall;
+    requestOptions?: RequestOptions;
+  }): ApiPromise<T> {
+    return new ApiPromise<T>(async (): Promise<WithRawResponseResult<T>> => {
+      const startedAt = Date.now();
+      let requestUrl = `${this.apiBaseUrl}${spec.path}`;
+      let lastAttempt = 0;
+
+      try {
+        const acceptHeader = (() => {
+          if (spec.responseMode === 'text') return 'text/csv, text/plain, application/json';
+          if (spec.responseMode === 'binary') return '*/*';
+          return 'application/json';
+        })();
+
+        const prepared = prepare(acceptHeader);
+        requestUrl = prepared.url;
+
+        const lease = await this._executeFetchWithRetry({
+          spec,
+          ...prepared,
+          requestOptions
+        });
+        const { response, attempt, controller } = lease;
+        lastAttempt = attempt;
+
+        const responseInfo: RawResponseInfo = {
+          status: response.status,
+          headers: response.headers,
+          requestId: extractRequestId(response.headers),
+          url: prepared.url
+        };
+
+        try {
+          if (response.status >= 400) {
+            await this._throwResponseError({
+              response,
+              url: prepared.url,
+              signal: controller.signal,
+              extraSecrets: this._getActiveSecrets(requestOptions)
+            });
+          }
+
+          if (spec.responseMode === 'binary') {
+            const buffer = await readWithAbortSignal({
+              read: () => response.arrayBuffer(),
+              signal: controller.signal,
+              onAbort: () => {
+                void response.body?.cancel().catch(() => {});
+              }
+            });
+            return { data: buffer as T, response: responseInfo };
+          }
+
+          if (spec.responseMode === 'text') {
+            const text = await readWithAbortSignal({
+              read: () => response.text(),
+              signal: controller.signal,
+              onAbort: () => {
+                void response.body?.cancel().catch(() => {});
+              }
+            });
+            return { data: text as T, response: responseInfo };
+          }
+
+          const rawText = await readWithAbortSignal({
+            read: () => response.text(),
+            signal: controller.signal,
+            onAbort: () => {
+              void response.body?.cancel().catch(() => {});
+            }
+          });
+          if (rawText.trim().length === 0) {
+            return { data: undefined as T, response: responseInfo };
+          }
+
+          let parsed: unknown;
+          try {
+            parsed = JSON.parse(rawText);
+          } catch {
+            if (spec.responseMode === 'void') {
+              return { data: undefined as T, response: responseInfo };
+            }
+            return { data: rawText as T, response: responseInfo };
+          }
+
+          if (isRecord(parsed)) {
+            const serverCode = typeof parsed.code === 'number' ? parsed.code : undefined;
+            if (serverCode !== undefined && serverCode >= 400) {
+              const statusText =
+                typeof parsed.statusText === 'string' ? parsed.statusText : undefined;
+              const message =
+                typeof parsed.message === 'string' && parsed.message.length > 0
+                  ? parsed.message
+                  : (statusText ?? `FastGPT API error (code ${serverCode})`);
+              throw createMappedApiError({
+                message,
+                httpStatus: response.status,
+                serverCode,
+                statusText,
+                requestId: responseInfo.requestId,
+                url: prepared.url,
+                extraSecrets: this._getActiveSecrets(requestOptions)
+              });
+            }
+
+            if (spec.responseMode === 'void') {
+              return { data: undefined as T, response: responseInfo };
+            }
+
+            if (spec.responseMode === 'envelope' && 'code' in parsed && 'data' in parsed) {
+              return { data: parsed.data as T, response: responseInfo };
+            }
+          }
+
+          if (spec.responseMode === 'void') {
+            return { data: undefined as T, response: responseInfo };
+          }
+
+          return { data: parsed as T, response: responseInfo };
+        } catch (bodyErr) {
+          throw this._wrapBodyAbortError({
+            error: bodyErr,
+            spec,
+            url: prepared.url,
+            lease,
+            extraSecrets: this._getActiveSecrets(requestOptions)
+          });
+        } finally {
+          lease.dispose();
+        }
+      } catch (err) {
+        const errorObj =
+          err instanceof Error ? err : new FastGptError({ message: String(err), url: requestUrl });
+        await notifyErrorObservability({
+          hooks: this._options.hooks,
+          logger: this._logger,
+          context: {
+            operationId: spec.id,
+            method: spec.httpMethod,
+            url: requestUrl,
+            durationMs: Date.now() - startedAt,
+            attempt: lastAttempt,
+            error: errorObj
+          },
+          extraSecrets: this._getActiveSecrets(requestOptions)
+        });
+        throw err;
+      }
     });
   }
 
@@ -624,119 +953,16 @@ export class BaseClient {
     rawInput?: Record<string, unknown>;
     requestOptions?: RequestOptions;
   }): ApiPromise<T> {
-    return new ApiPromise<T>(async (): Promise<WithRawResponseResult<T>> => {
-      const startedAt = Date.now();
-      let requestUrl = `${this.apiBaseUrl}${spec.path}`;
-      let lastAttempt = 0;
-
-      try {
-        const acceptHeader = (() => {
-          if (spec.responseMode === 'text') return 'text/csv, text/plain, application/json';
-          if (spec.responseMode === 'binary') return '*/*';
-          return 'application/json';
-        })();
-
-        const prepared = this._prepareHttpCall({
+    return this._executePreparedRequest<T>({
+      spec,
+      prepare: (acceptHeader) =>
+        this._prepareHttpCall({
           spec,
           rawInput,
           requestOptions,
           acceptHeader
-        });
-        requestUrl = prepared.url;
-
-        const { response, attempt } = await this._executeFetchWithRetry({
-          spec,
-          ...prepared,
-          requestOptions
-        });
-        lastAttempt = attempt;
-
-        const responseInfo: RawResponseInfo = {
-          status: response.status,
-          headers: response.headers,
-          requestId: extractRequestId(response.headers),
-          url: prepared.url
-        };
-
-        if (response.status >= 400) {
-          await this._throwResponseError(response, prepared.url);
-        }
-
-        if (spec.responseMode === 'binary') {
-          const buffer = await response.arrayBuffer();
-          return { data: buffer as T, response: responseInfo };
-        }
-
-        if (spec.responseMode === 'text') {
-          const text = await response.text();
-          return { data: text as T, response: responseInfo };
-        }
-
-        const rawText = await response.text();
-        if (rawText.trim().length === 0) {
-          return { data: undefined as T, response: responseInfo };
-        }
-
-        let parsed: unknown;
-        try {
-          parsed = JSON.parse(rawText);
-        } catch {
-          if (spec.responseMode === 'void') {
-            return { data: undefined as T, response: responseInfo };
-          }
-          return { data: rawText as T, response: responseInfo };
-        }
-
-        if (isRecord(parsed)) {
-          const serverCode = typeof parsed.code === 'number' ? parsed.code : undefined;
-          if (serverCode !== undefined && serverCode >= 400) {
-            const statusText =
-              typeof parsed.statusText === 'string' ? parsed.statusText : undefined;
-            const message =
-              typeof parsed.message === 'string' && parsed.message.length > 0
-                ? parsed.message
-                : (statusText ?? `FastGPT API error (code ${serverCode})`);
-            throw createMappedApiError({
-              message,
-              httpStatus: response.status,
-              serverCode,
-              statusText,
-              requestId: responseInfo.requestId,
-              url: prepared.url
-            });
-          }
-
-          if (spec.responseMode === 'void') {
-            return { data: undefined as T, response: responseInfo };
-          }
-
-          if (spec.responseMode === 'envelope' && 'code' in parsed && 'data' in parsed) {
-            return { data: parsed.data as T, response: responseInfo };
-          }
-        }
-
-        if (spec.responseMode === 'void') {
-          return { data: undefined as T, response: responseInfo };
-        }
-
-        return { data: parsed as T, response: responseInfo };
-      } catch (err) {
-        const errorObj =
-          err instanceof Error ? err : new FastGptError({ message: String(err), url: requestUrl });
-        await notifyErrorObservability({
-          hooks: this._options.hooks,
-          logger: this._logger,
-          context: {
-            operationId: spec.id,
-            method: spec.httpMethod,
-            url: requestUrl,
-            durationMs: Date.now() - startedAt,
-            attempt: lastAttempt,
-            error: errorObj
-          }
-        });
-        throw err;
-      }
+        }),
+      requestOptions
     });
   }
 
@@ -765,7 +991,7 @@ export class BaseClient {
       });
       requestUrl = prepared.url;
 
-      const { response, controller, attempt } = await this._executeFetchWithRetry({
+      const lease = await this._executeFetchWithRetry({
         spec,
         ...prepared,
         requestOptions: {
@@ -773,6 +999,7 @@ export class BaseClient {
           maxRetries: requestOptions?.maxRetries ?? 0
         }
       });
+      const { response, controller, attempt } = lease;
       lastAttempt = attempt;
 
       const responseInfo: RawResponseInfo = {
@@ -782,54 +1009,86 @@ export class BaseClient {
         url: prepared.url
       };
 
-      if (response.status >= 400) {
-        await this._throwResponseError(response, prepared.url);
-      }
-
-      const contentType = response.headers.get('content-type') ?? '';
-      if (contentType.includes('application/json')) {
-        // 某些前置校验错误仍可能以 HTTP 200 + { code: 5xx, message } JSON 返回
-        const rawText = await response.text();
-        try {
-          const parsed = JSON.parse(rawText) as unknown;
-          if (isRecord(parsed) && typeof parsed.code === 'number' && parsed.code >= 400) {
-            throw createMappedApiError({
-              message:
-                typeof parsed.message === 'string' && parsed.message.length > 0
-                  ? parsed.message
-                  : `FastGPT stream error (code ${parsed.code})`,
-              httpStatus: response.status,
-              serverCode: parsed.code,
-              statusText: typeof parsed.statusText === 'string' ? parsed.statusText : undefined,
-              requestId: responseInfo.requestId,
-              url: prepared.url
-            });
-          }
-        } catch (err) {
-          if (err instanceof FastGptError) throw err;
+      let handedOffToStream = false;
+      try {
+        if (response.status >= 400) {
+          await this._throwResponseError({
+            response,
+            url: prepared.url,
+            signal: controller.signal,
+            extraSecrets: this._getActiveSecrets(requestOptions)
+          });
         }
-        throw new FastGptError({
-          message: `Expected text/event-stream response for ${spec.path}, received ${contentType || 'unknown'}`,
-          httpStatus: response.status,
-          requestId: responseInfo.requestId,
-          url: prepared.url
-        });
-      }
 
-      if (response.body === null) {
-        throw new FastGptError({
-          message: `Empty stream body returned from ${spec.path}`,
-          httpStatus: response.status,
-          requestId: responseInfo.requestId,
-          url: prepared.url
-        });
-      }
+        const contentType = response.headers.get('content-type') ?? '';
+        if (contentType.includes('application/json')) {
+          // 某些前置校验错误仍可能以 HTTP 200 + { code: 5xx, message } JSON 返回
+          const rawText = await readWithAbortSignal({
+            read: () => response.text(),
+            signal: controller.signal,
+            onAbort: () => {
+              void response.body?.cancel().catch(() => {});
+            }
+          });
+          try {
+            const parsed = JSON.parse(rawText) as unknown;
+            if (isRecord(parsed) && typeof parsed.code === 'number' && parsed.code >= 400) {
+              throw createMappedApiError({
+                message:
+                  typeof parsed.message === 'string' && parsed.message.length > 0
+                    ? parsed.message
+                    : `FastGPT stream error (code ${parsed.code})`,
+                httpStatus: response.status,
+                serverCode: parsed.code,
+                statusText: typeof parsed.statusText === 'string' ? parsed.statusText : undefined,
+                requestId: responseInfo.requestId,
+                url: prepared.url,
+                extraSecrets: this._getActiveSecrets(requestOptions)
+              });
+            }
+          } catch (err) {
+            if (err instanceof FastGptError) throw err;
+          }
+          throw new FastGptError({
+            message: `Expected text/event-stream response for ${spec.path}, received ${contentType || 'unknown'}`,
+            httpStatus: response.status,
+            requestId: responseInfo.requestId,
+            url: prepared.url
+          });
+        }
 
-      return new ChatStream({
-        body: response.body,
-        response: responseInfo,
-        controller
-      });
+        if (response.body === null) {
+          throw new FastGptError({
+            message: `Empty stream body returned from ${spec.path}`,
+            httpStatus: response.status,
+            requestId: responseInfo.requestId,
+            url: prepared.url
+          });
+        }
+
+        // SSE 握手已完成：清理握手超时计时器，同时将外部 AbortSignal 清理权移交 ChatStream，
+        // 使建连后的外部取消仍能直达底层流并在流关闭时释放监听。
+        lease.clearTimeoutTimer();
+        handedOffToStream = true;
+        return new ChatStream({
+          body: response.body,
+          response: responseInfo,
+          controller,
+          onDispose: lease.dispose
+        });
+      } catch (bodyErr) {
+        throw this._wrapBodyAbortError({
+          error: bodyErr,
+          spec,
+          url: prepared.url,
+          lease,
+          extraSecrets: this._getActiveSecrets(requestOptions)
+        });
+      } finally {
+        if (!handedOffToStream) {
+          lease.dispose();
+        }
+      }
     } catch (err) {
       const errorObj =
         err instanceof Error ? err : new FastGptError({ message: String(err), url: requestUrl });
@@ -843,39 +1102,95 @@ export class BaseClient {
           durationMs: Date.now() - startedAt,
           attempt: lastAttempt,
           error: errorObj
-        }
+        },
+        extraSecrets: this._getActiveSecrets(requestOptions)
       });
       throw err;
     }
   }
 
+  private _prepareRawHttpCall({
+    params,
+    requestOptions,
+    acceptHeader
+  }: {
+    params: RawRequestParams;
+    requestOptions: RequestOptions | undefined;
+    acceptHeader: string;
+  }): PreparedHttpCall {
+    const normalizedRoutePath = params.path.startsWith('/api/')
+      ? params.path.slice(4)
+      : params.path.startsWith('/')
+        ? params.path
+        : `/${params.path}`;
+
+    const fullUrl = new URL(`${this.apiBaseUrl}${normalizedRoutePath}`);
+    if (params.query !== undefined) {
+      appendQueryParams(fullUrl, params.query);
+    }
+
+    const headers: Record<string, string> = {
+      accept: acceptHeader,
+      'x-fastgpt-client': `fastgpt-js-sdk/${SDK_VERSION}`,
+      ...(this._options.defaultHeaders ?? {}),
+      ...(requestOptions?.headers ?? {})
+    };
+
+    if (params.body === undefined) {
+      return { url: fullUrl.toString(), headers, isStreamBody: false };
+    }
+
+    if (typeof FormData !== 'undefined' && params.body instanceof FormData) {
+      return { url: fullUrl.toString(), headers, body: params.body, isStreamBody: false };
+    }
+
+    if (
+      params.body instanceof Blob ||
+      params.body instanceof ArrayBuffer ||
+      params.body instanceof Uint8Array ||
+      (typeof ReadableStream !== 'undefined' && params.body instanceof ReadableStream)
+    ) {
+      const { body, isStream } = toBinaryBodyInit(params.body);
+      return { url: fullUrl.toString(), headers, body, isStreamBody: isStream };
+    }
+
+    if (!hasHeaderIgnoreCase(headers, 'content-type')) {
+      headers['content-type'] = 'application/json';
+    }
+    return {
+      url: fullUrl.toString(),
+      headers,
+      body: JSON.stringify(params.body),
+      isStreamBody: false
+    };
+  }
+
   /**
-   * 泛化逃生口：在服务端新增接口尚未进入 SDK 生成层时，直接复用 SDK 鉴权、重试与解包能力发起请求。
+   * 泛化逃生口：在服务端新增接口尚未进入 SDK 生成层时，直接复用 SDK 鉴权、重试与解包能力发起请求；
+   * 独立序列化 query 与 body，原样保留 JSON 数组、标量及 query/body 同名字段。
    */
   rawRequest<T = unknown>(params: RawRequestParams, options?: RequestOptions): ApiPromise<T> {
-    const queryKeys = Object.keys(params.query ?? {});
-    const hasBody = params.body !== undefined;
     const spec: OperationSpec = {
       id: `raw.${params.method.toLowerCase()}`,
       httpMethod: params.method,
       path: params.path,
-      requestContentType: hasBody ? 'json' : 'none',
+      requestContentType: params.body !== undefined ? 'json' : 'none',
       responseMode: params.responseMode ?? 'envelope',
       appIdCarrier: null,
       identityCarrier: null,
       pathParams: [],
-      queryParams: queryKeys,
-      bodyParams: isRecord(params.body) ? Object.keys(params.body) : []
+      queryParams: Object.keys(params.query ?? {}),
+      bodyParams: []
     };
 
-    const mergedInput: Record<string, unknown> = {
-      ...(params.query ?? {}),
-      ...(isRecord(params.body) ? params.body : {})
-    };
-
-    return this._request<T>({
+    return this._executePreparedRequest<T>({
       spec,
-      rawInput: mergedInput,
+      prepare: (acceptHeader) =>
+        this._prepareRawHttpCall({
+          params,
+          requestOptions: options,
+          acceptHeader
+        }),
       requestOptions: options
     });
   }

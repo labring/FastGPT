@@ -65,10 +65,16 @@ export type ApiDatasetProvider = {
 export type CreateApiDatasetHandlerOptions = {
   /** 业务侧数据源实现 */
   provider: ApiDatasetProvider;
-  /** 静态 Bearer 鉴权令牌（与 FastGPT 自定义 API 知识库配置的 authorization 一致） */
+  /** 静态 Bearer 鉴权令牌（与 FastGPT 自定义 API 知识库配置的 authorization 一致，不能为空白） */
   authorization?: string;
   /** 自定义异步令牌校验回调（优先于或可替代静态 authorization） */
   verifyToken?: (token: string, request: Request) => boolean | Promise<boolean>;
+  /**
+   * 显式开启匿名访问模式（默认 false）。
+   * 未配置 `authorization` 或 `verifyToken` 时必须显式传入 `true`，否则启动时直接报错，
+   * 防止环境变量缺失（如 `process.env.TOKEN!` 在运行期为 `undefined`）导致回调静默裸奔。
+   */
+  allowAnonymous?: boolean;
   /** 路由挂载前缀，例如 "/api/fastgpt-dataset"，匹配前自动剥离 */
   basePath?: string;
   /** 服务端未捕获异常回调 */
@@ -175,9 +181,29 @@ const extractBearerToken = (request: Request): string | null => {
 export const createApiDatasetHandler = (
   options: CreateApiDatasetHandlerOptions
 ): WebFetchHandler => {
-  const { provider, authorization, verifyToken, onError } = options;
+  const { provider, authorization, verifyToken, allowAnonymous = false, onError } = options;
   const basePath = normalizeBasePath(options.basePath);
-  const requiresAuth = authorization !== undefined || verifyToken !== undefined;
+
+  const normalizedAuthorization = (() => {
+    if (authorization === undefined) return undefined;
+    if (typeof authorization !== 'string' || authorization.trim().length === 0) {
+      throw new Error(
+        'createApiDatasetHandler: "authorization" must be a non-empty string when provided'
+      );
+    }
+    return authorization.trim();
+  })();
+
+  if (verifyToken !== undefined && typeof verifyToken !== 'function') {
+    throw new Error('createApiDatasetHandler: "verifyToken" must be a function when provided');
+  }
+
+  const requiresAuth = normalizedAuthorization !== undefined || verifyToken !== undefined;
+  if (!requiresAuth && allowAnonymous !== true) {
+    throw new Error(
+      'createApiDatasetHandler: authentication is required by default. Provide a non-empty "authorization" token or "verifyToken" callback, or pass { allowAnonymous: true } to explicitly opt in to anonymous access.'
+    );
+  }
 
   return async (request: Request): Promise<Response> => {
     try {
@@ -204,7 +230,10 @@ export const createApiDatasetHandler = (
           if (verifyToken !== undefined) {
             return await verifyToken(token, request);
           }
-          return authorization !== undefined && constantTimeEqual(token, authorization);
+          return (
+            normalizedAuthorization !== undefined &&
+            constantTimeEqual(token, normalizedAuthorization)
+          );
         })();
 
         if (!isAuthorized) {
@@ -411,3 +440,115 @@ export const createApiDatasetHandler = (
     }
   };
 };
+
+/**
+ * 与 Node.js `http.IncomingMessage` 及 Express / Fastify 请求对象结构兼容的最小入参接口，
+ * 避免对外声明文件依赖 `@types/node`，使 Edge / Deno / Cloudflare Workers 消费者可零配置编译。
+ */
+export type NodeHttpIncomingRequest = {
+  method?: string;
+  url?: string;
+  originalUrl?: string;
+  headers: Record<string, string | string[] | undefined>;
+  body?: unknown;
+  readableEnded?: boolean;
+  [Symbol.asyncIterator](): AsyncIterator<unknown>;
+};
+
+/**
+ * 与 Node.js `http.ServerResponse` 及 Express / Fastify 响应对象结构兼容的最小出参接口。
+ */
+export type NodeHttpServerResponse = {
+  statusCode: number;
+  setHeader(name: string, value: string): unknown;
+  end(chunk?: Uint8Array): unknown;
+};
+
+const readIncomingBody = async (req: NodeHttpIncomingRequest): Promise<Uint8Array | undefined> => {
+  const method = (req.method ?? 'GET').toUpperCase();
+  if (method === 'GET' || method === 'HEAD') {
+    return undefined;
+  }
+
+  // 兼容 Express / Next.js Pages API 等已经提前消费完流并挂载到 req.body 的中间件场景
+  if (req.body !== undefined && req.readableEnded) {
+    if (req.body instanceof Uint8Array) {
+      return req.body;
+    }
+    if (typeof req.body === 'string') {
+      return new TextEncoder().encode(req.body);
+    }
+    return new TextEncoder().encode(JSON.stringify(req.body));
+  }
+
+  const chunks: Uint8Array[] = [];
+  let totalLength = 0;
+
+  for await (const chunk of req) {
+    const bytes = chunk instanceof Uint8Array ? chunk : new TextEncoder().encode(String(chunk));
+    chunks.push(bytes);
+    totalLength += bytes.byteLength;
+  }
+
+  if (totalLength === 0) {
+    return undefined;
+  }
+
+  const combined = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    combined.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return combined;
+};
+
+/**
+ * 将标准 Web Fetch Handler 包装为 Node.js `(req, res)` 处理器，
+ * 零外部依赖兼容原生 `http.createServer`、Express、Fastify 及 Next.js Pages API。
+ */
+export const toNodeHttpHandler =
+  (fetchHandler: WebFetchHandler) =>
+  async (req: NodeHttpIncomingRequest, res: NodeHttpServerResponse): Promise<void> => {
+    const host = req.headers.host ?? 'localhost';
+    const protoHeader = req.headers['x-forwarded-proto'];
+    const protocol =
+      typeof protoHeader === 'string' && protoHeader.length > 0
+        ? protoHeader.split(',')[0]!.trim()
+        : 'http';
+    const pathAndQuery = req.originalUrl ?? req.url ?? '/';
+    const url = `${protocol}://${host}${pathAndQuery.startsWith('/') ? pathAndQuery : `/${pathAndQuery}`}`;
+
+    const headers = new Headers();
+    for (const [key, rawVal] of Object.entries(req.headers)) {
+      if (rawVal === undefined) continue;
+      if (Array.isArray(rawVal)) {
+        for (const item of rawVal) {
+          headers.append(key, item);
+        }
+      } else {
+        headers.set(key, rawVal);
+      }
+    }
+
+    const bodyBytes = await readIncomingBody(req);
+    const bodyBuffer =
+      bodyBytes !== undefined
+        ? bodyBytes.buffer.slice(bodyBytes.byteOffset, bodyBytes.byteOffset + bodyBytes.byteLength)
+        : undefined;
+
+    const webRequest = new Request(url, {
+      method: req.method ?? 'GET',
+      headers,
+      ...(bodyBuffer !== undefined ? { body: bodyBuffer as ArrayBuffer } : {})
+    });
+
+    const webResponse = await fetchHandler(webRequest);
+    res.statusCode = webResponse.status;
+    webResponse.headers.forEach((value, key) => {
+      res.setHeader(key, value);
+    });
+
+    const responseBytes = new Uint8Array(await webResponse.arrayBuffer());
+    res.end(responseBytes);
+  };

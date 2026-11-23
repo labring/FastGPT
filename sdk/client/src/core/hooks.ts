@@ -1,4 +1,16 @@
-import { redactSecrets } from './errors';
+import {
+  FastGptAuthError,
+  FastGptBadRequestError,
+  FastGptConflictError,
+  FastGptError,
+  FastGptNetworkError,
+  FastGptNotFoundError,
+  FastGptRateLimitError,
+  FastGptServerError,
+  FastGptTimeoutError,
+  redactSecrets,
+  type FastGptErrorDetails
+} from './errors';
 import type {
   ErrorHookContext,
   FastGptHooks,
@@ -27,15 +39,18 @@ const LOG_LEVEL_WEIGHT: Record<FastGptLogLevel, number> = {
 /**
  * 对请求头中的鉴权与会话字段执行脱敏，确保钩子与日志不泄漏明文凭证。
  */
-export const redactHeaders = (headers: Record<string, string>): Record<string, string> => {
+export const redactHeaders = (
+  headers: Record<string, string>,
+  extraSecrets?: ReadonlyArray<string>
+): Record<string, string> => {
   const sanitized: Record<string, string> = {};
   for (const [key, value] of Object.entries(headers)) {
     const lower = key.toLowerCase();
     if (SENSITIVE_HEADER_NAMES.has(lower)) {
-      const redacted = redactSecrets(value);
+      const redacted = redactSecrets(value, extraSecrets);
       sanitized[key] = redacted === value ? '****' : redacted;
     } else {
-      sanitized[key] = redactSecrets(value);
+      sanitized[key] = redactSecrets(value, extraSecrets);
     }
   }
   return sanitized;
@@ -77,23 +92,116 @@ export const resolveLogger = (logger?: FastGptLogger | FastGptLogLevel): FastGpt
   };
 };
 
+const MAX_CAUSE_DEPTH = 3;
+
+const sanitizeCauseForHook = ({
+  cause,
+  depth,
+  extraSecrets
+}: {
+  cause: unknown;
+  depth: number;
+  extraSecrets?: ReadonlyArray<string>;
+}): unknown => {
+  if (cause === undefined || cause === null) {
+    return undefined;
+  }
+  if (typeof cause === 'string') {
+    return redactSecrets(cause, extraSecrets);
+  }
+  if (typeof cause === 'number' || typeof cause === 'boolean') {
+    return cause;
+  }
+  if (cause instanceof Error) {
+    if (depth >= MAX_CAUSE_DEPTH) {
+      return redactSecrets(`${cause.name}: ${cause.message}`, extraSecrets);
+    }
+    return sanitizeErrorForHook(cause, { depth: depth + 1, extraSecrets });
+  }
+  return redactSecrets(String(cause), extraSecrets);
+};
+
+const instantiateFastGptErrorView = (
+  source: FastGptError,
+  details: FastGptErrorDetails
+): FastGptError => {
+  if (source instanceof FastGptAuthError) return new FastGptAuthError(details);
+  if (source instanceof FastGptBadRequestError) return new FastGptBadRequestError(details);
+  if (source instanceof FastGptNotFoundError) return new FastGptNotFoundError(details);
+  if (source instanceof FastGptConflictError) return new FastGptConflictError(details);
+  if (source instanceof FastGptRateLimitError) return new FastGptRateLimitError(details);
+  if (source instanceof FastGptServerError) return new FastGptServerError(details);
+  if (source instanceof FastGptTimeoutError) return new FastGptTimeoutError(details);
+  if (source instanceof FastGptNetworkError) return new FastGptNetworkError(details);
+  return new FastGptError(details);
+};
+
+/**
+ * 为可观测性钩子构造独立的脱敏错误视图：
+ * 仅保留受控白名单字段，递归脱敏 message / stack / url / cause，剥离原始异常及其 cause 上可能携带凭据的任意附加属性。
+ */
+export const sanitizeErrorForHook = (
+  error: Error,
+  options?: { depth?: number; extraSecrets?: ReadonlyArray<string> }
+): Error => {
+  const depth = options?.depth ?? 0;
+  const extraSecrets = options?.extraSecrets;
+  const sanitizedCause =
+    'cause' in error && error.cause !== undefined
+      ? sanitizeCauseForHook({ cause: error.cause, depth, extraSecrets })
+      : undefined;
+
+  if (error instanceof FastGptError) {
+    const view = instantiateFastGptErrorView(error, {
+      message: redactSecrets(error.message, extraSecrets),
+      httpStatus: error.httpStatus,
+      serverCode: error.serverCode,
+      statusText:
+        error.statusText !== undefined ? redactSecrets(error.statusText, extraSecrets) : undefined,
+      requestId: error.requestId,
+      url: error.url !== undefined ? redactSecrets(error.url, extraSecrets) : undefined,
+      ...(sanitizedCause !== undefined ? { cause: sanitizedCause } : {}),
+      ...(extraSecrets !== undefined ? { extraSecrets } : {})
+    });
+    if (typeof error.stack === 'string') {
+      view.stack = redactSecrets(error.stack, extraSecrets);
+    }
+    return view;
+  }
+
+  const view = new Error(
+    redactSecrets(error.message, extraSecrets),
+    sanitizedCause !== undefined ? { cause: sanitizedCause } : undefined
+  );
+  view.name = redactSecrets(error.name || 'Error', extraSecrets);
+  if (typeof error.stack === 'string') {
+    view.stack = redactSecrets(error.stack, extraSecrets);
+  }
+  return view;
+};
+
 const invokeSafely = async <T>({
   hook,
   context,
   logger,
-  hookName
+  hookName,
+  extraSecrets
 }: {
   hook?: (ctx: T) => void | Promise<void>;
   context: T;
   logger: FastGptLogger | null;
   hookName: string;
+  extraSecrets?: ReadonlyArray<string>;
 }): Promise<void> => {
   if (hook === undefined) return;
   try {
     await hook(context);
   } catch (hookError) {
     logger?.warn?.(`FastGPT SDK ${hookName} hook threw an error`, {
-      error: hookError instanceof Error ? hookError.message : String(hookError)
+      error: redactSecrets(
+        hookError instanceof Error ? hookError.message : String(hookError),
+        extraSecrets
+      )
     });
   }
 };
@@ -104,16 +212,18 @@ const invokeSafely = async <T>({
 export const notifyRequestObservability = async ({
   hooks,
   logger,
-  context
+  context,
+  extraSecrets
 }: {
   hooks?: FastGptHooks;
   logger: FastGptLogger | null;
   context: RequestHookContext;
+  extraSecrets?: ReadonlyArray<string>;
 }): Promise<void> => {
   const sanitizedContext: RequestHookContext = {
     ...context,
-    url: redactSecrets(context.url),
-    headers: redactHeaders(context.headers)
+    url: redactSecrets(context.url, extraSecrets),
+    headers: redactHeaders(context.headers, extraSecrets)
   };
 
   logger?.debug?.(`${sanitizedContext.method} ${sanitizedContext.url}`, {
@@ -126,7 +236,8 @@ export const notifyRequestObservability = async ({
     hook: hooks?.onRequest,
     context: sanitizedContext,
     logger,
-    hookName: 'onRequest'
+    hookName: 'onRequest',
+    extraSecrets
   });
 };
 
@@ -136,15 +247,17 @@ export const notifyRequestObservability = async ({
 export const notifyResponseObservability = async ({
   hooks,
   logger,
-  context
+  context,
+  extraSecrets
 }: {
   hooks?: FastGptHooks;
   logger: FastGptLogger | null;
   context: ResponseHookContext;
+  extraSecrets?: ReadonlyArray<string>;
 }): Promise<void> => {
   const sanitizedContext: ResponseHookContext = {
     ...context,
-    url: redactSecrets(context.url)
+    url: redactSecrets(context.url, extraSecrets)
   };
 
   logger?.debug?.(
@@ -162,7 +275,8 @@ export const notifyResponseObservability = async ({
     hook: hooks?.onResponse,
     context: sanitizedContext,
     logger,
-    hookName: 'onResponse'
+    hookName: 'onResponse',
+    extraSecrets
   });
 };
 
@@ -172,29 +286,34 @@ export const notifyResponseObservability = async ({
 export const notifyErrorObservability = async ({
   hooks,
   logger,
-  context
+  context,
+  extraSecrets
 }: {
   hooks?: FastGptHooks;
   logger: FastGptLogger | null;
   context: ErrorHookContext;
+  extraSecrets?: ReadonlyArray<string>;
 }): Promise<void> => {
+  const sanitizedError = sanitizeErrorForHook(context.error, { extraSecrets });
   const sanitizedContext: ErrorHookContext = {
     ...context,
-    url: redactSecrets(context.url)
+    url: redactSecrets(context.url, extraSecrets),
+    error: sanitizedError
   };
 
   logger?.error?.(`${sanitizedContext.method} ${sanitizedContext.url} failed`, {
     operationId: sanitizedContext.operationId,
     durationMs: sanitizedContext.durationMs,
     attempt: sanitizedContext.attempt,
-    errorName: sanitizedContext.error.name,
-    errorMessage: redactSecrets(sanitizedContext.error.message)
+    errorName: sanitizedError.name,
+    errorMessage: sanitizedError.message
   });
 
   await invokeSafely({
     hook: hooks?.onError,
     context: sanitizedContext,
     logger,
-    hookName: 'onError'
+    hookName: 'onError',
+    extraSecrets
   });
 };
