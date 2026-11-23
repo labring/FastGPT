@@ -29,19 +29,26 @@ export const OpsPerfStageBucketStatsSchema = z.object({
 });
 export type OpsPerfStageBucketStats = z.infer<typeof OpsPerfStageBucketStatsSchema>;
 
-/** 单点记录中单个阶段的相对起点与耗时（支持瀑布图精准呈现串/并行关系）。 */
+/** 单点记录中单个阶段的相对起点与耗时（支持瀑布图精准呈现串/并行与重试跨度）。 */
 export const OpsPerfEventStageTimingSchema = z.object({
   offsetMs: z
     .number()
     .nonnegative()
-    .meta({ description: '相对本次检索起点的偏移耗时 (ms)', example: 120 }),
-  ms: z.number().nonnegative().meta({ description: '该阶段实际墙钟耗时 (ms)', example: 85 }),
+    .meta({ description: '相对本次检索起点的首次开始偏移 (ms)', example: 120 }),
+  ms: z
+    .number()
+    .nonnegative()
+    .meta({ description: '该阶段实际执行耗时（多调用区间并集，不含重试空档）(ms)', example: 85 }),
+  endOffsetMs: z.number().nonnegative().optional().meta({
+    description: '存在重试空档时的最晚结束相对偏移 (ms)，用于瀑布图完整标尺',
+    example: 620
+  }),
   callCount: z
     .number()
     .int()
     .positive()
     .optional()
-    .meta({ description: '同阶段调用次数（多 query 并发合并）', example: 2 }),
+    .meta({ description: '同阶段调用次数（多 query 并发或重试合并）', example: 2 }),
   errorCount: z
     .number()
     .int()

@@ -6,6 +6,7 @@ import json5 from 'json5';
 import { createLLMResponse } from '../llm/request';
 import { useTextCosine } from '../hooks/useTextCosine';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { isProVersion } from '../../../common/system/constants';
 import { patchPerfContext, recordPerfPoint } from '../../../common/opsPerf/context';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type {
@@ -145,9 +146,10 @@ export const queryExtension = async ({
   embeddingTokens: number;
 }> => {
   const startTime = Date.now();
-  const perfStart = performance.now();
+  const perfEnabled = isProVersion();
+  const perfStart = perfEnabled ? performance.now() : 0;
   const getSeconds = () => +((Date.now() - startTime) / 1000).toFixed(2);
-  const modelLabel = llmModel.model || llmModel.name || 'unknown';
+  const modelLabel = perfEnabled ? llmModel.model || llmModel.name || 'unknown' : '';
 
   const reportQueryExtensionPerf = ({
     status,
@@ -164,6 +166,7 @@ export const queryExtension = async ({
     embeddingTokens?: number;
     generatedCount?: number;
   }) => {
+    if (!perfEnabled) return;
     const totalMs = Math.max(0, performance.now() - perfStart);
     recordPerfPoint({
       domain: 'dataset.queryExtension',

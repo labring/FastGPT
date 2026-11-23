@@ -20,6 +20,7 @@ import { getDatasetVectorSearchData } from '../../vectorData/service';
 import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/runtime';
 import { logInstanceConfigRead } from '../../../../common/system/migrationCoverageLog';
 import { resolveDatasetIndexScale } from '@fastgpt/global/common/opsPerf/constants';
+import { isProVersion } from '../../../../common/system/constants';
 import { patchPerfContext, trackPerfStage } from '../../../../common/opsPerf/context';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
@@ -204,28 +205,30 @@ export const embeddingRecall = async ({
     { domain: 'dataset.search', stage: 'vectorRoute' },
     () => getDatasetVectorSearchData({ teamId, datasetIds })
   );
-  if (datasetVectorData && datasetVectorData.length > 0) {
-    const totalIndexCount = datasetVectorData.reduce((sum, item) => sum + (item.rows ?? 0), 0);
-    const maxDatasetIndexCount = datasetVectorData.reduce(
-      (max, item) => Math.max(max, item.rows ?? 0),
-      0
-    );
-    patchPerfContext({
-      domain: 'dataset.search',
-      dims: {
-        indexScale: resolveDatasetIndexScale(totalIndexCount)
-      },
-      detail: {
-        totalIndexCount,
-        maxDatasetIndexCount,
-        hnswEfSearch
-      }
-    });
-  } else {
-    patchPerfContext({
-      domain: 'dataset.search',
-      detail: { hnswEfSearch }
-    });
+  if (isProVersion()) {
+    if (datasetVectorData && datasetVectorData.length > 0) {
+      const totalIndexCount = datasetVectorData.reduce((sum, item) => sum + (item.rows ?? 0), 0);
+      const maxDatasetIndexCount = datasetVectorData.reduce(
+        (max, item) => Math.max(max, item.rows ?? 0),
+        0
+      );
+      patchPerfContext({
+        domain: 'dataset.search',
+        dims: {
+          indexScale: resolveDatasetIndexScale(totalIndexCount)
+        },
+        detail: {
+          totalIndexCount,
+          maxDatasetIndexCount,
+          hnswEfSearch
+        }
+      });
+    } else {
+      patchPerfContext({
+        domain: 'dataset.search',
+        detail: { hnswEfSearch }
+      });
+    }
   }
   const recallResults = await Promise.all(
     tasks.map(async ({ vector }) => {

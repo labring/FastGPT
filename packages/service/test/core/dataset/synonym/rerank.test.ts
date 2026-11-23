@@ -135,4 +135,36 @@ describe('rerankDatasetWithSynonyms', () => {
     expect(result.results).toEqual([{ id: 'a', score: 0.8 }]);
     expect(onSynonymRerankResult).toHaveBeenCalledWith({ triggered: true, failed: true });
   });
+
+  it('reports failed=true when per-dataset synonym config load throws or second pass returns empty results', async () => {
+    // 1. Per-dataset config load error silently falls back to baseline
+    mocks.runtimeConfig.mockRejectedValueOnce(new Error('mongo read timeout'));
+    const onConfigErr = vi.fn();
+    const res1 = await rerankDatasetWithSynonyms({
+      teamId: 't1',
+      query: 'alias',
+      documents,
+      onSynonymRerankResult: onConfigErr
+    });
+    expect(res1.results).toEqual([{ id: 'a', score: 0.2 }]);
+    expect(onConfigErr).toHaveBeenCalledWith({ triggered: false, failed: true });
+
+    // 2. Second pass returns empty results list without throwing
+    mocks.runtimeConfig.mockResolvedValueOnce({
+      config: { enabled: true, version: 2 },
+      active: { version: 2, matcher }
+    });
+    mocks.reRankRecall
+      .mockResolvedValueOnce({ results: [{ id: 'a', score: 0.7 }], inputTokens: 10 })
+      .mockResolvedValueOnce({ results: [], inputTokens: 0 });
+    const onEmptyPass = vi.fn();
+    const res2 = await rerankDatasetWithSynonyms({
+      teamId: 't1',
+      query: 'alias',
+      documents,
+      onSynonymRerankResult: onEmptyPass
+    });
+    expect(res2.results).toEqual([{ id: 'a', score: 0.7 }]);
+    expect(onEmptyPass).toHaveBeenCalledWith({ triggered: true, failed: true });
+  });
 });

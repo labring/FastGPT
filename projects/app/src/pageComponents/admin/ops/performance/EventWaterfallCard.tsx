@@ -9,21 +9,6 @@ import {
 import type { DatasetSearchPerfEventItem } from '@fastgpt/global/openapi/admin/ops/performance';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
-const ERROR_CODE_I18N_KEY_MAP: Record<OpsPerfErrorCode, string> = {
-  RERANK_FALLBACK: 'admin:ops_perf_err_rerank_fallback',
-  SYNONYM_RERANK_FALLBACK: 'admin:ops_perf_err_synonym_rerank_fallback',
-  QUERY_EXTENSION_FALLBACK: 'admin:ops_perf_err_query_extension_fallback',
-  QUERY_EXTENSION_ERROR: 'admin:ops_perf_err_query_extension_error',
-  VECTOR_LEASE_TIMEOUT: 'admin:ops_perf_err_vector_lease_timeout',
-  VECTOR_RECALL_ERROR: 'admin:ops_perf_err_vector_recall_error',
-  EMBEDDING_ERROR: 'admin:ops_perf_err_embedding_error',
-  FULLTEXT_RECALL_ERROR: 'admin:ops_perf_err_fulltext_recall_error',
-  FILTER_ERROR: 'admin:ops_perf_err_filter_error',
-  IMAGE_CAPTION_ERROR: 'admin:ops_perf_err_image_caption_error',
-  POST_PROCESS_ERROR: 'admin:ops_perf_err_post_process_error',
-  SEARCH_ERROR: 'admin:ops_perf_err_search_error'
-};
-
 const STAGE_COLOR_MAP: Record<string, string> = {
   queryExtension: '#8B5CF6',
   imageCaption: '#A855F7',
@@ -53,9 +38,46 @@ export const EventWaterfallCard = ({
 }: EventWaterfallCardProps) => {
   const { t } = useSafeTranslation();
 
+  /** 按错误码穷尽映射静态字面量翻译 key，确保 i18n 静态提取与未使用清理脚本可识别。 */
+  const resolveErrorCodeLabel = (code: OpsPerfErrorCode): string => {
+    switch (code) {
+      case 'RERANK_FALLBACK':
+        return t('admin:ops_perf_err_rerank_fallback');
+      case 'SYNONYM_RERANK_FALLBACK':
+        return t('admin:ops_perf_err_synonym_rerank_fallback');
+      case 'QUERY_EXTENSION_FALLBACK':
+        return t('admin:ops_perf_err_query_extension_fallback');
+      case 'QUERY_EXTENSION_ERROR':
+        return t('admin:ops_perf_err_query_extension_error');
+      case 'VECTOR_LEASE_TIMEOUT':
+        return t('admin:ops_perf_err_vector_lease_timeout');
+      case 'VECTOR_RECALL_ERROR':
+        return t('admin:ops_perf_err_vector_recall_error');
+      case 'EMBEDDING_ERROR':
+        return t('admin:ops_perf_err_embedding_error');
+      case 'FULLTEXT_RECALL_ERROR':
+        return t('admin:ops_perf_err_fulltext_recall_error');
+      case 'FILTER_ERROR':
+        return t('admin:ops_perf_err_filter_error');
+      case 'IMAGE_CAPTION_ERROR':
+        return t('admin:ops_perf_err_image_caption_error');
+      case 'POST_PROCESS_ERROR':
+        return t('admin:ops_perf_err_post_process_error');
+      case 'SEARCH_ERROR':
+        return t('admin:ops_perf_err_search_error');
+      default: {
+        const _exhaustive: never = code;
+        return _exhaustive
+          ? t('admin:ops_perf_err_search_error')
+          : t('admin:ops_perf_err_search_error');
+      }
+    }
+  };
+
   const bars = DATASET_SEARCH_STAGE_SPECS.map((spec) => {
     const timing = event.stages[spec.key];
     if (!timing) return null;
+    const spanEndMs = timing.endOffsetMs ?? timing.offsetMs + timing.ms;
     return {
       key: spec.key,
       step: spec.step,
@@ -63,13 +85,14 @@ export const EventWaterfallCard = ({
       label: stageLabelMap[spec.key] ?? spec.key,
       offsetMs: timing.offsetMs,
       ms: timing.ms,
+      spanEndMs,
       callCount: timing.callCount ?? 1,
       errorCount: timing.errorCount ?? 0,
       color: STAGE_COLOR_MAP[spec.key] ?? '#3B82F6'
     };
   }).filter((item): item is NonNullable<typeof item> => item !== null);
 
-  const axisMaxMs = Math.max(event.totalMs, ...bars.map((bar) => bar.offsetMs + bar.ms), 1);
+  const axisMaxMs = Math.max(event.totalMs, ...bars.map((bar) => bar.spanEndMs), 1);
 
   const statusColorScheme =
     event.status === 'error' ? 'red' : event.status === 'degraded' ? 'orange' : 'green';
@@ -253,8 +276,7 @@ export const EventWaterfallCard = ({
           color={event.status === 'error' ? 'red.700' : 'orange.700'}
           fontFamily={'mono'}
         >
-          [{event.errorCode}]{' '}
-          {t(ERROR_CODE_I18N_KEY_MAP[event.errorCode] ?? 'admin:ops_perf_err_search_error')}
+          [{event.errorCode}] {resolveErrorCodeLabel(event.errorCode)}
         </Box>
       )}
 

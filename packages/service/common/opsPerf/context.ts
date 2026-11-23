@@ -5,12 +5,15 @@ import type {
   OpsPerfErrorCode,
   OpsPerfEventStatus
 } from '@fastgpt/global/common/opsPerf/constants';
+import { computeIntervalUnionMs } from '@fastgpt/global/common/opsPerf/histogram';
 import type {
   OpsPerfDomainPayloadMap,
   OpsPerfEventStageTiming
 } from '@fastgpt/global/common/opsPerf/type';
 import { isProVersion } from '../system/constants';
 import { enqueueOpsPerfRecord, type RecordOpsPerfInput } from './collector';
+
+const MAX_SPANS_PER_STAGE = 64;
 
 const STAGE_ERROR_CODE_MAP: Record<string, OpsPerfErrorCode> = {
   queryExtension: 'QUERY_EXTENSION_ERROR',
@@ -27,10 +30,20 @@ const STAGE_ERROR_CODE_MAP: Record<string, OpsPerfErrorCode> = {
   postProcess: 'POST_PROCESS_ERROR'
 };
 
+const statusSeverityRank = (status: OpsPerfEventStatus): number => {
+  if (status === 'error') return 2;
+  if (status === 'degraded') return 1;
+  return 0;
+};
+
+export type PerfStageSpan = { start: number; end: number };
+
 type StageAccumulator = {
+  /** 同名阶段各次真实调用的相对区间列表，用于在压平前精确计算区间并集。 */
+  spans: PerfStageSpan[];
   /** 同名阶段首次开始相对 context 起点的偏移（ms）。 */
   minStartOffsetMs: number;
-  /** 同名阶段最后结束相对 context 起点的偏移（ms），用于合并并发重叠区间。 */
+  /** 同名阶段最后结束相对 context 起点的偏移（ms），供瀑布图定位跨度终点。 */
   maxEndOffsetMs: number;
   callCount: number;
   errorCount: number;
@@ -42,6 +55,7 @@ export type PerfContextState<D extends OpsPerfDomain = OpsPerfDomain> = {
   createTime: Date;
   status: OpsPerfEventStatus;
   errorCode?: OpsPerfErrorCode;
+  errorCodeSeverity: OpsPerfEventStatus;
   lastFailedStage?: string;
   teamId?: string;
   resourceIds: string[];
@@ -51,6 +65,29 @@ export type PerfContextState<D extends OpsPerfDomain = OpsPerfDomain> = {
   detail: Record<string, unknown>;
   recordEvent: boolean;
   force: boolean;
+};
+
+export type WithPerfContextOptions<D extends OpsPerfDomain, T> = {
+  domain: D;
+  teamId?: string;
+  resourceIds?: string[];
+  dims: OpsPerfDomainPayloadMap[D]['dims'];
+  metrics?: Partial<Record<string, number>>;
+  detail?: Partial<OpsPerfDomainPayloadMap[D]['detail']>;
+  recordEvent?: boolean;
+  /** 跳过 isProVersion 检查，仅用于测试。 */
+  force?: boolean;
+  /**
+   * 业务结束后的补充回调（在 finally 阶段触发，支持异步补齐索引数等非关键维度；
+   * 若返回 Promise，会脱离主链路在后台结算入队，不阻塞业务返回）。
+   */
+  onFinalize?: (params: {
+    state: PerfContextState<D>;
+    result?: T;
+    error?: unknown;
+    totalMs: number;
+    stages: Record<string, OpsPerfEventStageTiming>;
+  }) => void | Promise<void>;
 };
 
 type DomainContextMap = Map<OpsPerfDomain, PerfContextState>;
@@ -74,55 +111,101 @@ const getDomainState = <D extends OpsPerfDomain>(domain: D): PerfContextState<D>
   return map?.get(domain) as PerfContextState<D> | undefined;
 };
 
+/** 将一次阶段调用区间写入累计器；超过上限时先压缩重叠区间防止极端循环膨胀内存。 */
+const appendStageSpan = ({
+  state,
+  stage,
+  startOffset,
+  endOffset,
+  failed
+}: {
+  state: PerfContextState;
+  stage: string;
+  startOffset: number;
+  endOffset: number;
+  failed: boolean;
+}) => {
+  const span: PerfStageSpan = { start: startOffset, end: Math.max(startOffset, endOffset) };
+  const existing = state.stages.get(stage);
+  if (!existing) {
+    state.stages.set(stage, {
+      spans: [span],
+      minStartOffsetMs: span.start,
+      maxEndOffsetMs: span.end,
+      callCount: 1,
+      errorCount: failed ? 1 : 0
+    });
+    return;
+  }
+
+  if (existing.spans.length >= MAX_SPANS_PER_STAGE) {
+    // 先压缩重叠或相邻区间，保留真实空档；仍超限时并入末尾区间确保内存有界。
+    const sorted = [...existing.spans, span].sort((a, b) => a.start - b.start || a.end - b.end);
+    const merged: PerfStageSpan[] = [];
+    for (const item of sorted) {
+      const prev = merged[merged.length - 1];
+      if (prev && item.start <= prev.end) {
+        if (item.end > prev.end) prev.end = item.end;
+      } else {
+        merged.push({ start: item.start, end: item.end });
+      }
+    }
+    if (merged.length > MAX_SPANS_PER_STAGE) {
+      const last = merged[merged.length - 1]!;
+      const tail = merged[MAX_SPANS_PER_STAGE - 1]!;
+      tail.end = Math.max(tail.end, last.end);
+      merged.length = MAX_SPANS_PER_STAGE;
+    }
+    existing.spans = merged;
+  } else {
+    existing.spans.push(span);
+  }
+
+  existing.minStartOffsetMs = Math.min(existing.minStartOffsetMs, span.start);
+  existing.maxEndOffsetMs = Math.max(existing.maxEndOffsetMs, span.end);
+  existing.callCount += 1;
+  if (failed) existing.errorCount += 1;
+};
+
 const buildStageSnapshot = (
   stages: Map<string, StageAccumulator>
-): Record<string, OpsPerfEventStageTiming> => {
+): {
+  stages: Record<string, OpsPerfEventStageTiming>;
+  stageSpans: Record<string, PerfStageSpan[]>;
+} => {
   const result: Record<string, OpsPerfEventStageTiming> = {};
+  const stageSpans: Record<string, PerfStageSpan[]> = {};
   stages.forEach((acc, key) => {
     const offsetMs = Math.max(0, Math.round(acc.minStartOffsetMs * 100) / 100);
-    const ms = Math.max(0, Math.round((acc.maxEndOffsetMs - acc.minStartOffsetMs) * 100) / 100);
+    const endOffsetMs = Math.max(offsetMs, Math.round(acc.maxEndOffsetMs * 100) / 100);
+    const ms = computeIntervalUnionMs(acc.spans);
     result[key] = {
       offsetMs,
       ms,
+      ...(endOffsetMs > offsetMs + ms + 0.5 ? { endOffsetMs } : {}),
       callCount: acc.callCount,
       ...(acc.errorCount > 0 ? { errorCount: acc.errorCount } : {})
     };
+    stageSpans[key] = acc.spans;
   });
-  return result;
+  return { stages: result, stageSpans };
 };
 
 /**
  * 为指定 domain 创建隔离的性能埋点上下文；结束时自动结算总耗时并入队缓冲。
  *
+ * - 支持传入惰性配置工厂函数：社区版在构造 dims/detail 之前即零开销短路
  * - 支持多 domain 嵌套（如未来 workflow.run 嵌套 dataset.search），互不覆盖
  * - 同 domain 重入时直接透传外层上下文，避免重复记账
- * - 社区版默认直接执行业务函数，零内存与计时开销
  */
 export const withPerfContext = async <D extends OpsPerfDomain, T>(
-  options: {
-    domain: D;
-    teamId?: string;
-    resourceIds?: string[];
-    dims: OpsPerfDomainPayloadMap[D]['dims'];
-    metrics?: Partial<Record<string, number>>;
-    detail?: Partial<OpsPerfDomainPayloadMap[D]['detail']>;
-    recordEvent?: boolean;
-    /** 跳过 isProVersion 检查，仅用于测试。 */
-    force?: boolean;
-    /**
-     * 业务结束后的补充回调（在 finally 阶段触发，支持异步补齐索引数等非关键维度；
-     * 若返回 Promise，会脱离主链路在后台结算入队，不阻塞业务返回）。
-     */
-    onFinalize?: (params: {
-      state: PerfContextState<D>;
-      result?: T;
-      error?: unknown;
-      totalMs: number;
-      stages: Record<string, OpsPerfEventStageTiming>;
-    }) => void | Promise<void>;
-  },
+  optionsOrFactory: WithPerfContextOptions<D, T> | (() => WithPerfContextOptions<D, T>),
   fn: () => Promise<T>
 ): Promise<T> => {
+  if (typeof optionsOrFactory === 'function' && !isProVersion()) {
+    return fn();
+  }
+  const options = typeof optionsOrFactory === 'function' ? optionsOrFactory() : optionsOrFactory;
   if (!options.force && !isProVersion()) {
     return fn();
   }
@@ -138,6 +221,7 @@ export const withPerfContext = async <D extends OpsPerfDomain, T>(
     startedAtPerf: performance.now(),
     createTime: new Date(),
     status: 'ok',
+    errorCodeSeverity: 'ok',
     teamId: options.teamId,
     resourceIds: [...(options.resourceIds ?? [])],
     dims: { ...(options.dims as Record<string, unknown>) },
@@ -162,16 +246,17 @@ export const withPerfContext = async <D extends OpsPerfDomain, T>(
     hasError = true;
     caughtError = error;
     state.status = 'error';
-    // 严格脱敏：禁止提取或落盘原始异常文本，仅按最近失败阶段映射白名单错误码。
-    if (!state.errorCode) {
+    // 严格脱敏且按严重级别升级归因：最终未捕获失败必须覆盖更早的 degraded 错误码。
+    if (!state.errorCode || state.errorCodeSeverity !== 'error') {
       state.errorCode =
         (state.lastFailedStage ? STAGE_ERROR_CODE_MAP[state.lastFailedStage] : undefined) ??
         'SEARCH_ERROR';
+      state.errorCodeSeverity = 'error';
     }
     throw error;
   } finally {
     const totalMs = Math.max(0, performance.now() - state.startedAtPerf);
-    const stagesSnapshot = buildStageSnapshot(state.stages);
+    const { stages: stagesSnapshot, stageSpans } = buildStageSnapshot(state.stages);
 
     const commit = () => {
       enqueueOpsPerfRecord({
@@ -184,6 +269,7 @@ export const withPerfContext = async <D extends OpsPerfDomain, T>(
         resourceIds: state.resourceIds,
         dims: state.dims as OpsPerfDomainPayloadMap[D]['dims'],
         stages: stagesSnapshot,
+        stageSpans,
         metrics: state.metrics,
         detail: state.detail as OpsPerfDomainPayloadMap[D]['detail'],
         recordEvent: state.recordEvent,
@@ -250,20 +336,7 @@ export const trackPerfStage = async <D extends OpsPerfDomain, T>(
     throw error;
   } finally {
     const endOffset = Math.max(startOffset, performance.now() - state.startedAtPerf);
-    const existing = state.stages.get(options.stage);
-    if (!existing) {
-      state.stages.set(options.stage, {
-        minStartOffsetMs: startOffset,
-        maxEndOffsetMs: endOffset,
-        callCount: 1,
-        errorCount: failed ? 1 : 0
-      });
-    } else {
-      existing.minStartOffsetMs = Math.min(existing.minStartOffsetMs, startOffset);
-      existing.maxEndOffsetMs = Math.max(existing.maxEndOffsetMs, endOffset);
-      existing.callCount += 1;
-      if (failed) existing.errorCount += 1;
-    }
+    appendStageSpan({ state, stage: options.stage, startOffset, endOffset, failed });
   }
 };
 
@@ -288,20 +361,13 @@ export const recordPerfStageSpan = <D extends OpsPerfDomain>(options: {
     startOffset,
     (options.endedAtPerf ?? performance.now()) - state.startedAtPerf
   );
-  const existing = state.stages.get(options.stage);
-  if (!existing) {
-    state.stages.set(options.stage, {
-      minStartOffsetMs: startOffset,
-      maxEndOffsetMs: endOffset,
-      callCount: 1,
-      errorCount: options.failed ? 1 : 0
-    });
-  } else {
-    existing.minStartOffsetMs = Math.min(existing.minStartOffsetMs, startOffset);
-    existing.maxEndOffsetMs = Math.max(existing.maxEndOffsetMs, endOffset);
-    existing.callCount += 1;
-    if (options.failed) existing.errorCount += 1;
-  }
+  appendStageSpan({
+    state,
+    stage: options.stage,
+    startOffset,
+    endOffset,
+    failed: Boolean(options.failed)
+  });
 };
 
 /**
@@ -336,12 +402,19 @@ export const patchPerfContext = <D extends OpsPerfDomain>(options: {
   }
   if (options.status) {
     // 严重级别单调升级：error > degraded > ok
-    if (options.status === 'error' || (options.status === 'degraded' && state.status === 'ok')) {
+    if (statusSeverityRank(options.status) > statusSeverityRank(state.status)) {
       state.status = options.status;
     }
   }
-  if (options.errorCode && !state.errorCode) {
-    state.errorCode = options.errorCode;
+  if (options.errorCode) {
+    const incomingSeverity = options.status ?? state.status;
+    if (
+      !state.errorCode ||
+      statusSeverityRank(incomingSeverity) > statusSeverityRank(state.errorCodeSeverity)
+    ) {
+      state.errorCode = options.errorCode;
+      state.errorCodeSeverity = incomingSeverity;
+    }
   }
   if (options.teamId) {
     state.teamId = options.teamId;

@@ -1,17 +1,21 @@
+import { performance } from 'node:perf_hooks';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   enqueueOpsPerfRecord,
   flushOpsPerfBuffer,
   getOpsPerfBufferSnapshotForTest,
+  opsPerfTimerProcess,
   resetOpsPerfBufferForTest
 } from '@fastgpt/service/common/opsPerf/collector';
 import {
   patchPerfContext,
   recordPerfPoint,
+  recordPerfStageSpan,
   trackPerfStage,
   withPerfContext
 } from '@fastgpt/service/common/opsPerf/context';
 import { MongoOpsPerfBucket, MongoOpsPerfEvent } from '@fastgpt/service/common/opsPerf/schema';
+import * as systemConstants from '@fastgpt/service/common/system/constants';
 
 describe('opsPerf context and collector', () => {
   beforeEach(() => {
@@ -267,5 +271,109 @@ describe('opsPerf context and collector', () => {
     expect(snapshot.events[0]?.reason).toBe('degraded');
     expect(snapshot.events[0]?.errorCode).toBe('QUERY_EXTENSION_FALLBACK');
     expect(snapshot.events[0]?.stages.queryExtension?.errorCount).toBe(1);
+  });
+
+  it('preserves raw stage spans so retry backoff gaps are excluded from stage, vectorPipeline, and dbPipeline durations', async () => {
+    await withPerfContext(
+      {
+        domain: 'dataset.search',
+        force: true,
+        dims: {
+          searchMode: 'embedding',
+          indexScale: 'm_100k',
+          usingReRank: false,
+          usingExtension: false,
+          vectorEngine: 'pg'
+        }
+      },
+      async () => {
+        const base = performance.now();
+        // Two 10ms vectorRecall calls separated by a 500ms retry sleep gap
+        recordPerfStageSpan({
+          domain: 'dataset.search',
+          stage: 'vectorRecall',
+          startedAtPerf: base,
+          endedAtPerf: base + 10,
+          failed: true
+        });
+        recordPerfStageSpan({
+          domain: 'dataset.search',
+          stage: 'vectorRecall',
+          startedAtPerf: base + 510,
+          endedAtPerf: base + 520,
+          failed: false
+        });
+      }
+    );
+
+    const snapshot = getOpsPerfBufferSnapshotForTest();
+    expect(snapshot.buckets).toHaveLength(1);
+    const bucket = snapshot.buckets[0]!;
+    expect(bucket.stages.vectorRecall?.sumMs).toBeCloseTo(20, 0);
+    expect(bucket.stages.vectorPipeline?.sumMs).toBeCloseTo(20, 0);
+    expect(bucket.stages.dbPipeline?.sumMs).toBeCloseTo(20, 0);
+  });
+
+  it('escalates errorCode when an earlier degraded stage is followed by a terminal error', async () => {
+    await expect(
+      withPerfContext(
+        {
+          domain: 'dataset.search',
+          force: true,
+          dims: {
+            searchMode: 'embedding',
+            indexScale: 's_10k',
+            usingReRank: false,
+            usingExtension: true,
+            vectorEngine: 'pg'
+          }
+        },
+        async () => {
+          await trackPerfStage(
+            { domain: 'dataset.search', stage: 'queryExtension' },
+            async ({ markError }) => {
+              markError();
+              patchPerfContext({
+                domain: 'dataset.search',
+                status: 'degraded',
+                errorCode: 'QUERY_EXTENSION_FALLBACK'
+              });
+            }
+          );
+          await trackPerfStage({ domain: 'dataset.search', stage: 'embeddingApi' }, async () => {
+            throw new Error('embedding down');
+          });
+        }
+      )
+    ).rejects.toThrow('embedding down');
+
+    const snapshot = getOpsPerfBufferSnapshotForTest();
+    expect(snapshot.events).toHaveLength(1);
+    const ev = snapshot.events[0]!;
+    expect(ev.status).toBe('error');
+    expect(ev.errorCode).toBe('EMBEDDING_ERROR');
+    expect(ev.stages.queryExtension?.errorCount).toBe(1);
+    expect(ev.stages.embeddingApi?.errorCount).toBe(1);
+  });
+
+  it('skips lazy options factory and timer registration in community edition', async () => {
+    vi.spyOn(systemConstants, 'isProVersion').mockReturnValue(false);
+    const optionsFactory = vi.fn(() => ({
+      domain: 'dataset.search' as const,
+      dims: {
+        searchMode: 'embedding' as const,
+        indexScale: 's_10k' as const,
+        usingReRank: false,
+        usingExtension: false,
+        vectorEngine: 'pg' as const
+      }
+    }));
+
+    const out = await withPerfContext(optionsFactory, async () => 'ok');
+    expect(out).toBe('ok');
+    expect(optionsFactory).not.toHaveBeenCalled();
+
+    await opsPerfTimerProcess();
+    expect(getOpsPerfBufferSnapshotForTest().timerStarted).toBe(false);
   });
 });

@@ -177,6 +177,8 @@ export type RecordOpsPerfInput<D extends OpsPerfDomain> = {
   resourceIds?: string[];
   dims: OpsPerfDomainPayloadMap[D]['dims'];
   stages?: Partial<Record<string, OpsPerfEventStageTiming>>;
+  /** 采集层保留的各阶段真实子区间列表，用于在计算复合链路并集前避免被外包区间压平。 */
+  stageSpans?: Partial<Record<string, ReadonlyArray<{ start: number; end: number }>>>;
   metrics?: Partial<Record<string, number>>;
   detail?: OpsPerfDomainPayloadMap[D]['detail'];
   /** 是否允许进入单点采样队列；伴生域（rerank/queryExtension）默认 false，只写聚合桶。 */
@@ -284,15 +286,24 @@ export const enqueueOpsPerfRecord = <D extends OpsPerfDomain>(
             let combinedErrors = 0;
             for (const key of memberKeys) {
               const timing = stagesRecord[key];
-              if (!timing) continue;
+              const rawSpans = input.stageSpans?.[key];
+              if (!timing && (!rawSpans || rawSpans.length === 0)) continue;
               hasAny = true;
-              const start = normalizeDurationMs(timing.offsetMs);
-              const end = start + normalizeDurationMs(timing.ms);
-              intervals.push({ start, end });
-              combinedErrors += timing.errorCount ?? 0;
+              if (rawSpans && rawSpans.length > 0) {
+                for (const span of rawSpans) {
+                  const start = normalizeDurationMs(span.start);
+                  const end = Math.max(start, normalizeDurationMs(span.end));
+                  intervals.push({ start, end });
+                }
+              } else if (timing) {
+                const start = normalizeDurationMs(timing.offsetMs);
+                const end = start + normalizeDurationMs(timing.ms);
+                intervals.push({ start, end });
+              }
+              combinedErrors += timing?.errorCount ?? 0;
             }
             if (hasAny) {
-              // 按成员阶段时间区间并集结算，既避免并行阶段重复计入，又排除非成员阶段间的空隙。
+              // 按成员阶段真实子区间并集结算，既排除重试空档，也去重并行阶段重叠时间。
               accumulateBucketStage(targetKey, computeIntervalUnionMs(intervals), combinedErrors);
             }
           };
@@ -366,6 +377,9 @@ export const enqueueOpsPerfRecord = <D extends OpsPerfDomain>(
         cleanStages[stageKey] = {
           offsetMs: normalizeDurationMs(timing.offsetMs),
           ms: normalizeDurationMs(timing.ms),
+          ...(timing.endOffsetMs !== undefined
+            ? { endOffsetMs: normalizeDurationMs(timing.endOffsetMs) }
+            : {}),
           ...(timing.callCount !== undefined ? { callCount: timing.callCount } : {}),
           ...(timing.errorCount !== undefined && timing.errorCount > 0
             ? { errorCount: timing.errorCount }
@@ -566,7 +580,7 @@ export const flushOpsPerfBuffer = async (): Promise<{
   }
 };
 
-/** 仅用于测试重置内存缓冲状态。 */
+/** 仅用于测试重置内存缓冲与定时器状态。 */
 export const resetOpsPerfBufferForTest = () => {
   const state = getBufferState();
   state.buckets = new Map();
@@ -575,6 +589,7 @@ export const resetOpsPerfBufferForTest = () => {
   state.droppedBuckets = 0;
   state.droppedEvents = 0;
   state.flushing = false;
+  state.timerStarted = false;
 };
 
 /** 仅用于测试读取当前内存缓冲快照。 */
@@ -582,12 +597,17 @@ export const getOpsPerfBufferSnapshotForTest = () => {
   const state = getBufferState();
   return {
     buckets: Array.from(state.buckets.values()),
-    events: [...state.events]
+    events: [...state.events],
+    timerStarted: state.timerStarted
   };
 };
 
-/** 启动运维性能缓冲定时刷新循环（每 10 秒落库一次），幂等且支持退出前尽力刷新。 */
+/**
+ * 启动运维性能缓冲定时刷新循环（每 10 秒落库一次），幂等且支持退出前尽力刷新。
+ * 社区版未启用商业版授权时不注册定时器；若后续运行时授权变更启用，首次入队会自动惰性拉起。
+ */
 export const opsPerfTimerProcess = async () => {
+  if (!isProVersion()) return;
   ensureOpsPerfFlushTimer();
   await flushOpsPerfBuffer();
 };

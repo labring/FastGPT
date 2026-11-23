@@ -5,6 +5,7 @@ import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/ty
 import { normalizeRerankCandidateNum } from '@fastgpt/global/core/dataset/search/utils';
 import { concatWeightedRecallLists, removeDuplicateSearchResults } from './result';
 import { rerankDatasetWithSynonyms } from '../../synonym/rerank';
+import { isProVersion } from '../../../../common/system/constants';
 import {
   patchPerfContext,
   recordPerfPoint,
@@ -101,8 +102,9 @@ export const reRankSearchResults = async ({
     0,
     normalizeRerankCandidateNum(rerankCandidateNum)
   );
-  const rerankModelLabel = rerankModel?.model || rerankModel?.name || 'unknown';
-  const rerankStart = performance.now();
+  const perfEnabled = isProVersion();
+  const rerankModelLabel = perfEnabled ? rerankModel?.model || rerankModel?.name || 'unknown' : '';
+  const rerankStart = perfEnabled ? performance.now() : 0;
   let hasSynonym = false;
   let synonymFailed = false;
 
@@ -113,47 +115,54 @@ export const reRankSearchResults = async ({
         rerankModel,
         query,
         data: candidates,
-        onSynonymRerankResult: ({ triggered, failed }) => {
-          if (triggered) {
-            hasSynonym = true;
-            patchPerfContext({
-              domain: 'dataset.search',
-              detail: { synonymRerankTriggered: true }
-            });
-          }
-          if (failed) {
-            synonymFailed = true;
-          }
-        }
+        ...(perfEnabled
+          ? {
+              onSynonymRerankResult: ({ triggered, failed }) => {
+                if (triggered) {
+                  hasSynonym = true;
+                  patchPerfContext({
+                    domain: 'dataset.search',
+                    detail: { synonymRerankTriggered: true }
+                  });
+                }
+                if (failed) {
+                  synonymFailed = true;
+                }
+              }
+            }
+          : {})
       });
-      const elapsedMs = Math.max(0, performance.now() - rerankStart);
 
-      if (synonymFailed) {
-        markError();
-        patchPerfContext({
-          domain: 'dataset.search',
-          status: 'degraded',
-          errorCode: 'SYNONYM_RERANK_FALLBACK',
-          metrics: { rerankFallbackCount: 1 },
-          detail: { rerankFallback: true, rerankModel: rerankModelLabel }
+      if (perfEnabled) {
+        const elapsedMs = Math.max(0, performance.now() - rerankStart);
+
+        if (synonymFailed) {
+          markError();
+          patchPerfContext({
+            domain: 'dataset.search',
+            status: 'degraded',
+            errorCode: 'SYNONYM_RERANK_FALLBACK',
+            metrics: { rerankFallbackCount: 1 },
+            detail: { rerankFallback: true, rerankModel: rerankModelLabel }
+          });
+        }
+
+        recordPerfPoint({
+          domain: 'dataset.rerank',
+          teamId,
+          totalMs: elapsedMs,
+          status: synonymFailed ? 'degraded' : 'ok',
+          dims: {
+            model: rerankModelLabel,
+            hasSynonym
+          },
+          metrics: {
+            ...(synonymFailed ? { fallbackCount: 1 } : {}),
+            totalCandidates: candidates.length,
+            totalInputTokens: inputTokens
+          }
         });
       }
-
-      recordPerfPoint({
-        domain: 'dataset.rerank',
-        teamId,
-        totalMs: elapsedMs,
-        status: synonymFailed ? 'degraded' : 'ok',
-        dims: {
-          model: rerankModelLabel,
-          hasSynonym
-        },
-        metrics: {
-          ...(synonymFailed ? { fallbackCount: 1 } : {}),
-          totalCandidates: candidates.length,
-          totalInputTokens: inputTokens
-        }
-      });
 
       if (rerankWeight === 1) {
         return {
@@ -173,29 +182,31 @@ export const reRankSearchResults = async ({
         usingReRank: true
       };
     } catch {
-      markError();
-      const elapsedMs = Math.max(0, performance.now() - rerankStart);
-      recordPerfPoint({
-        domain: 'dataset.rerank',
-        teamId,
-        totalMs: elapsedMs,
-        status: 'degraded',
-        dims: {
-          model: rerankModelLabel,
-          hasSynonym
-        },
-        metrics: {
-          fallbackCount: 1,
-          totalCandidates: candidates.length
-        }
-      });
-      patchPerfContext({
-        domain: 'dataset.search',
-        status: 'degraded',
-        errorCode: 'RERANK_FALLBACK',
-        metrics: { rerankFallbackCount: 1 },
-        detail: { rerankFallback: true, rerankModel: rerankModelLabel }
-      });
+      if (perfEnabled) {
+        markError();
+        const elapsedMs = Math.max(0, performance.now() - rerankStart);
+        recordPerfPoint({
+          domain: 'dataset.rerank',
+          teamId,
+          totalMs: elapsedMs,
+          status: 'degraded',
+          dims: {
+            model: rerankModelLabel,
+            hasSynonym
+          },
+          metrics: {
+            fallbackCount: 1,
+            totalCandidates: candidates.length
+          }
+        });
+        patchPerfContext({
+          domain: 'dataset.search',
+          status: 'degraded',
+          errorCode: 'RERANK_FALLBACK',
+          metrics: { rerankFallbackCount: 1 },
+          detail: { rerankFallback: true, rerankModel: rerankModelLabel }
+        });
+      }
 
       return {
         results: textRecallResults,
