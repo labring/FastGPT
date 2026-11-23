@@ -179,6 +179,11 @@ export const ChatCompletionPath: OpenAPIPath = {
   '/v2/chat/completions': {
     post: {
       tags: [DevApiTagsMap.chatController, SystemOpenApiTagMap.chatController],
+      'x-fastgpt-sdk': {
+        resource: 'chat',
+        method: 'completionsV2',
+        streamMethod: 'completionsV2Stream'
+      },
       summary: '发起会话 v2',
       description: `v2 对话接口兼容 GPT 的接口规范。
 

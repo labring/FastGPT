@@ -3,6 +3,7 @@ import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
 import {
   GetResDataQueryRawSchema,
+  GetResDataResponseSchema,
   DeleteChatRecordBodyRawSchema,
   GetQuoteBodyRawSchema,
   GetQuoteResponseSchema,
@@ -22,6 +23,10 @@ export const ChatRecordPath: OpenAPIPath = {
       summary: '分页获取对话',
       description: '分页获取指定会话的对话，支持多种鉴权模式',
       tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat],
+      'x-fastgpt-sdk': {
+        resource: 'chat.records',
+        method: 'list'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -47,6 +52,10 @@ export const ChatRecordPath: OpenAPIPath = {
       description:
         '默认读取最新消息，按时间正序返回。prevId、nextId、initialId 三选一，也可均不传；角色由方向确定，prevId 定位 Human，nextId 和 initialId 定位 AI。将 prevCursor/nextCursor 直接传入 prevId/nextId；无对应方向的下一页时为 null。为补齐轮次边界，返回条数可能略超 pageSize。支持多种鉴权模式。',
       tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat],
+      'x-fastgpt-sdk': {
+        resource: 'chat.records',
+        method: 'listByAnchor'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -72,10 +81,19 @@ export const ChatRecordPath: OpenAPIPath = {
       summary: '获取对话响应详细数据',
       description: '根据 dataId 获取对话中某条 AI 回复的详细响应数据',
       tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat],
+      'x-fastgpt-sdk': {
+        resource: 'chat.records',
+        method: 'getResponseData'
+      },
       parameters: createChatTargetQueryParameters(GetResDataQueryRawSchema),
       responses: {
         200: {
-          description: '成功返回响应数据'
+          description: '成功返回响应数据',
+          content: {
+            'application/json': {
+              schema: GetResDataResponseSchema
+            }
+          }
         }
       }
     }
@@ -86,6 +104,10 @@ export const ChatRecordPath: OpenAPIPath = {
       summary: '获取对话引用数据',
       description: '获取指定对话消息的数据集引用列表，需要对话访问权限',
       tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat],
+      'x-fastgpt-sdk': {
+        resource: 'chat.records',
+        method: 'getQuotes'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -110,6 +132,10 @@ export const ChatRecordPath: OpenAPIPath = {
       summary: '获取集合分页引用数据',
       description: '以链式分页方式获取指定集合的引用数据，支持前后翻页，需要对话访问权限',
       tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat],
+      'x-fastgpt-sdk': {
+        resource: 'chat.records',
+        method: 'getCollectionQuotes'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -136,6 +162,10 @@ export const ChatRecordPath: OpenAPIPath = {
       description:
         '通过 JSON Body 软删除指定消息，outLinkAuthData 传对象，contentIds 传数组。Ask/Preview 的待回答状态由剩余消息推导；删除末轮回答及后续 AI 后可重新回答。',
       tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat],
+      'x-fastgpt-sdk': {
+        resource: 'chat.records',
+        method: 'delete'
+      },
       requestBody: {
         required: true,
         content: {

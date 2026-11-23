@@ -48,19 +48,19 @@ jobs:
     timeout-minutes: 120
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@v3
         with:
           driver-opts: |
             network=host
 
       - name: Cache Docker layers
-        uses: actions/cache@v6
+        uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache
           key: ${{ runner.os }}-fastgpt-agent-sandbox-proxy-buildx-${{ github.sha }}
@@ -68,7 +68,7 @@ jobs:
             ${{ runner.os }}-fastgpt-agent-sandbox-proxy-buildx-
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v4
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -76,7 +76,7 @@ jobs:
 
       - name: Build for ${{ matrix.arch }}
         id: build-ghcr
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@v6
         with:
           context: projects/agent-sandbox-proxy
           file: projects/agent-sandbox-proxy/Dockerfile
@@ -102,7 +102,7 @@ jobs:
           touch "${RUNNER_TEMP_DIR}/digests/ghcr/${GHCR_DIGEST#sha256:}"
 
       - name: Upload GHCR digest
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: ghcr-digests-fastgpt-agent-sandbox-proxy-${{ github.sha }}-${{ matrix.arch }}
           path: ${{ runner.temp }}/digests/ghcr/*
@@ -118,21 +118,21 @@ jobs:
     timeout-minutes: 120
     steps:
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v4
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download digests
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
           path: ${{ runner.temp }}/digests/ghcr
           pattern: ghcr-digests-fastgpt-agent-sandbox-proxy-${{ github.sha }}-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@v3
 
       - name: Set image name and tag
         env:
