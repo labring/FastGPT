@@ -30,6 +30,11 @@ import {
 } from '../domain/dataset/collection-service';
 import { createDatasetDataService, type DatasetDataService } from '../domain/dataset/data-service';
 import { createDatasetService, type DatasetService } from '../domain/dataset/dataset-service';
+import { createAppLogsService, type AppLogsService } from '../domain/app/app-logs-service';
+import {
+  createChatFeedbackService,
+  type ChatFeedbackService
+} from '../domain/chat/chat-feedback-service';
 import { createChatService, type ChatService } from '../domain/chat/chat-service';
 import { createModelService, type ModelService } from '../domain/model/model-service';
 import { createProfileService, type ProfileService } from '../domain/profile/profile-service';
@@ -92,7 +97,9 @@ export type CliContainer = {
   readonly datasetService: DatasetService;
   readonly datasetCollectionService: DatasetCollectionService;
   readonly datasetDataService: DatasetDataService;
+  readonly appLogsService: AppLogsService;
   readonly chatService: ChatService;
+  readonly chatFeedbackService: ChatFeedbackService;
   readonly modelService: ModelService;
   readonly skillsService: SkillsService;
   readonly workflowLocalService: WorkflowLocalService;
@@ -254,7 +261,9 @@ export function createCliContainer(deps: CliRuntimeDeps): CliContainer {
     datasetService,
     datasetCollectionService,
     datasetDataService,
+    appLogsService: createAppLogsService({ fileIo }),
     chatService: createChatService(),
+    chatFeedbackService: createChatFeedbackService(),
     modelService: createModelService(),
     skillsService,
     workflowLocalService,
