@@ -1,16 +1,10 @@
-import { performance } from 'node:perf_hooks';
 import { SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { RerankModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { normalizeRerankCandidateNum } from '@fastgpt/global/core/dataset/search/utils';
 import { concatWeightedRecallLists, removeDuplicateSearchResults } from './result';
 import { rerankDatasetWithSynonyms } from '../../synonym/rerank';
-import {
-  isOpsPerfActive,
-  patchPerfContext,
-  recordPerfPoint,
-  trackPerfStage
-} from '../../../../common/opsPerf/context';
+import { trackDatasetRerankPerf } from '../../../../common/opsPerf/datasetSearch';
 
 const datasetDataReRank = async ({
   rerankModel,
@@ -102,109 +96,48 @@ export const reRankSearchResults = async ({
     0,
     normalizeRerankCandidateNum(rerankCandidateNum)
   );
-  const perfEnabled = isOpsPerfActive('dataset.search');
-  const rerankModelLabel = perfEnabled ? rerankModel?.model || rerankModel?.name || 'unknown' : '';
-  const rerankStart = perfEnabled ? performance.now() : 0;
-  let hasSynonym = false;
-  let synonymFailed = false;
-
-  const reportRerankPerf = ({
-    fallbackCode,
-    inputTokens,
-    markError
-  }: {
-    fallbackCode?: 'RERANK_FALLBACK' | 'SYNONYM_RERANK_FALLBACK';
-    inputTokens?: number;
-    markError: () => void;
-  }) => {
-    if (!perfEnabled) return;
-    const isDegraded = Boolean(fallbackCode);
-    if (fallbackCode) {
-      markError();
-      patchPerfContext({
-        domain: 'dataset.search',
-        status: 'degraded',
-        errorCode: fallbackCode,
-        metrics: { rerankFallbackCount: 1 },
-        detail: { rerankFallback: true, rerankModel: rerankModelLabel }
-      });
-    }
-    recordPerfPoint({
-      domain: 'dataset.rerank',
+  return trackDatasetRerankPerf(
+    {
       teamId,
-      totalMs: Math.max(0, performance.now() - rerankStart),
-      status: isDegraded ? 'degraded' : 'ok',
-      dims: {
-        model: rerankModelLabel,
-        hasSynonym
-      },
-      metrics: {
-        ...(isDegraded ? { fallbackCount: 1 } : {}),
-        totalCandidates: candidates.length,
-        ...(inputTokens !== undefined ? { totalInputTokens: inputTokens } : {})
-      }
-    });
-  };
+      model: rerankModel,
+      candidateCount: candidates.length
+    },
+    async ({ onSynonymRerankResult, recordResult, recordFallback }) => {
+      try {
+        const { results: reRankResults, inputTokens } = await datasetDataReRank({
+          teamId,
+          rerankModel,
+          query,
+          data: candidates,
+          onSynonymRerankResult
+        });
+        recordResult({ inputTokens });
 
-  return trackPerfStage({ domain: 'dataset.search', stage: 'rerank' }, async ({ markError }) => {
-    try {
-      const { results: reRankResults, inputTokens } = await datasetDataReRank({
-        teamId,
-        rerankModel,
-        query,
-        data: candidates,
-        ...(perfEnabled
-          ? {
-              onSynonymRerankResult: ({ triggered, failed }) => {
-                if (triggered) {
-                  hasSynonym = true;
-                  patchPerfContext({
-                    domain: 'dataset.search',
-                    detail: { synonymRerankTriggered: true }
-                  });
-                }
-                if (failed) {
-                  synonymFailed = true;
-                }
-              }
-            }
-          : {})
-      });
+        if (rerankWeight === 1) {
+          return {
+            results: reRankResults,
+            inputTokens,
+            usingReRank: true
+          };
+        }
 
-      reportRerankPerf({
-        fallbackCode: synonymFailed ? 'SYNONYM_RERANK_FALLBACK' : undefined,
-        inputTokens,
-        markError
-      });
-
-      if (rerankWeight === 1) {
+        // 只融合送入重排的候选：超出部分没有重排分，会被按重排分过滤的阈值直接放行。
         return {
-          results: reRankResults,
+          results: concatWeightedRecallLists([
+            { weight: 1 - rerankWeight, list: candidates },
+            { weight: rerankWeight, list: reRankResults }
+          ]),
           inputTokens,
           usingReRank: true
         };
+      } catch {
+        recordFallback();
+        return {
+          results: textRecallResults,
+          inputTokens: 0,
+          usingReRank: false
+        };
       }
-
-      // 只融合送入重排的候选：超出部分没有重排分，会被按重排分过滤的阈值直接放行。
-      return {
-        results: concatWeightedRecallLists([
-          { weight: 1 - rerankWeight, list: candidates },
-          { weight: rerankWeight, list: reRankResults }
-        ]),
-        inputTokens,
-        usingReRank: true
-      };
-    } catch {
-      reportRerankPerf({
-        fallbackCode: 'RERANK_FALLBACK',
-        markError
-      });
-
-      return {
-        results: textRecallResults,
-        inputTokens: 0,
-        usingReRank: false
-      };
     }
-  });
+  );
 };

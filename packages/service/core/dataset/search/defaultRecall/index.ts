@@ -15,7 +15,10 @@ import {
 import { countRecallLimit, filterDatasetDataByMaxTokens } from './utils';
 import { attachSynonymMappingsToSearchResults } from '../../synonym/searchResult';
 import { serviceEnv } from '../../../../env';
-import { patchPerfContext, trackPerfStage } from '../../../../common/opsPerf/context';
+import {
+  recordDatasetSearchCandidateCount,
+  trackDatasetSearchStage
+} from '../../../../common/opsPerf/datasetSearch';
 
 /**
  * 执行默认知识库召回主流程。
@@ -75,7 +78,7 @@ export async function searchDatasetData(
     });
   const imageCaptionQueries =
     vlmModel && imageQueries.length > 0
-      ? await trackPerfStage({ domain: 'dataset.search', stage: 'imageCaption' }, runImageCaption)
+      ? await trackDatasetSearchStage('imageCaption', runImageCaption)
       : await runImageCaption();
 
   // caption 结果需要回传给工作流计费与响应详情；没有生成出有效描述时不输出该段。
@@ -160,8 +163,8 @@ export async function searchDatasetData(
     rerankCandidateNum
   });
 
-  const { finalResult, usingSimilarityFilter } = await trackPerfStage(
-    { domain: 'dataset.search', stage: 'postProcess' },
+  const { finalResult, usingSimilarityFilter } = await trackDatasetSearchStage(
+    'postProcess',
     async () => {
       const hasTextQuery = textQueries.some((item) => item.trim());
       // Step 5: 合并图片侧结果。caption 是图片的文本解释，权重低于原始图片向量；
@@ -192,10 +195,7 @@ export async function searchDatasetData(
       // Step 7: 最终过滤顺序固定为：同内容去重 -> 相似度阈值 -> 条数或 token 预算。
       // 先去重可以避免同一 chunk 因多路召回重复占用相似度过滤和 token 预算。
       const filterSameDataResults = removeDuplicateSearchResults(rrfConcatResults);
-      patchPerfContext({
-        domain: 'dataset.search',
-        detail: { candidateCount: filterSameDataResults.length }
-      });
+      recordDatasetSearchCandidateCount(filterSameDataResults.length);
       const { results: scoreFilter, usingSimilarityFilter: nextUsingSimilarityFilter } =
         filterSearchResultsByScore({
           data: filterSameDataResults,

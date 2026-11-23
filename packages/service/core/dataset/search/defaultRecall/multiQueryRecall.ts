@@ -2,7 +2,10 @@ import { getForbidCollectionIdList, filterCollectionByMetadata } from '../filter
 import { embeddingRecall } from './embeddingRecall';
 import { fullTextRecall } from './fullTextRecall';
 import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import { patchPerfContext, trackPerfStage } from '../../../../common/opsPerf/context';
+import {
+  recordDatasetSearchFilterPerf,
+  trackDatasetSearchStage
+} from '../../../../common/opsPerf/datasetSearch';
 
 /**
  * 默认召回的并行调度层。
@@ -34,8 +37,8 @@ export const multiQueryRecall = async ({
   textQueries: string[];
   imageCaptionQueries: string[];
 }) => {
-  const [forbidCollectionIdList, metadataFilterCollectionIdList] = await trackPerfStage(
-    { domain: 'dataset.search', stage: 'filter' },
+  const [forbidCollectionIdList, metadataFilterCollectionIdList] = await trackDatasetSearchStage(
+    'filter',
     () =>
       Promise.all([
         getForbidCollectionIdList({
@@ -61,14 +64,11 @@ export const multiQueryRecall = async ({
     filterCollectionIdList = readableCollectionIdList ?? metadataFilterCollectionIdList;
   }
 
-  patchPerfContext({
-    domain: 'dataset.search',
-    detail: {
-      hasMetadataFilter: Boolean(collectionFilterMatch && metadataFilterEnabled),
-      hasPermissionFilter: readableCollectionIdList !== undefined,
-      filterCollectionCount: filterCollectionIdList?.length,
-      forbidCollectionCount: forbidCollectionIdList.length
-    }
+  recordDatasetSearchFilterPerf({
+    hasMetadataFilter: Boolean(collectionFilterMatch && metadataFilterEnabled),
+    hasPermissionFilter: readableCollectionIdList !== undefined,
+    filterCollectionCount: filterCollectionIdList?.length,
+    forbidCollectionCount: forbidCollectionIdList.length
   });
 
   if (filterCollectionIdList && filterCollectionIdList.length === 0) {
