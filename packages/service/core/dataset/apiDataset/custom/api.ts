@@ -38,6 +38,78 @@ type APIFileListResponse = {
   hasChild?: boolean;
 };
 
+type ParsedCustomApiFileMeta = {
+  id: string;
+  name: string;
+  type: 'file' | 'folder';
+  hasChild: boolean;
+};
+
+type CustomApiFileMetaResult =
+  | { ok: true; meta: ParsedCustomApiFileMeta }
+  | {
+      ok: false;
+      reason: 'empty data' | 'mismatched id' | 'missing name' | 'invalid type' | 'invalid hasChild';
+    };
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * 统一校验并归一化自定义 API 文件库的列表项与详情关键字段。
+ * 协议仅允许 hasChild 为 boolean 或缺省（undefined/null）；显式非法值直接拒收，
+ * 避免带子级的文件节点被静默降级为 false 后触发同步误删。
+ */
+const parseCustomApiFileMeta = (item: unknown, expectedId?: string): CustomApiFileMetaResult => {
+  if (!isRecord(item)) {
+    return { ok: false, reason: 'empty data' };
+  }
+  if (
+    typeof item.id !== 'string' ||
+    !item.id ||
+    (expectedId !== undefined && item.id !== expectedId)
+  ) {
+    return { ok: false, reason: 'mismatched id' };
+  }
+  if (typeof item.name !== 'string' || !item.name) {
+    return { ok: false, reason: 'missing name' };
+  }
+  if (item.type !== 'file' && item.type !== 'folder') {
+    return { ok: false, reason: 'invalid type' };
+  }
+  const rawHasChild = item.hasChild;
+  if (rawHasChild !== undefined && rawHasChild !== null && typeof rawHasChild !== 'boolean') {
+    return { ok: false, reason: 'invalid hasChild' };
+  }
+
+  return {
+    ok: true,
+    meta: {
+      id: item.id,
+      name: item.name,
+      type: item.type,
+      // 自定义接口特殊：folder 可以没有子级、file 也可以挂子级（语雀一类），
+      // 因此只在对方缺省 hasChild 时回退到 type，不能反过来由 type 覆盖。
+      hasChild: typeof rawHasChild === 'boolean' ? rawHasChild : item.type === 'folder'
+    }
+  };
+};
+
+/**
+ * 判断异常是否为不符合自定义 API 协议信封（{ success: false, ... }）的 HTTP 404。
+ * 网关/框架路由缺失 404（HTML、Express、Go、FastAPI、Spring、AWS API Gateway、APISIX 等）
+ * 均不携带协议信封，不能作为资源级 NOT_FOUND 删除依据。
+ */
+const isNonProtocolNotFoundError = (error: unknown): boolean => {
+  if (!isRecord(error)) return false;
+  const response = isRecord(error.response) ? error.response : undefined;
+  const status = response?.status ?? error.status ?? error.statusCode;
+  if (status !== 404) return false;
+
+  const body = response?.data;
+  return !isRecord(body) || body.success !== false;
+};
+
 export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerType }) => {
   const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
   const instance = createProxyAxios({
@@ -161,28 +233,19 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
     if (!Array.isArray(files)) {
       return Promise.reject('Invalid file list format');
     }
-    if (
-      files.some(
-        (file) =>
-          !file ||
-          typeof file !== 'object' ||
-          typeof file.id !== 'string' ||
-          !file.id ||
-          typeof file.name !== 'string' ||
-          !file.name ||
-          (file.type !== 'file' && file.type !== 'folder')
-      )
-    ) {
-      return Promise.reject('Invalid file data format');
-    }
 
-    const formattedFiles = files.map((file) => ({
-      ...file,
-      rawId: file.id,
-      // 自定义接口特殊：folder 可以没有子级、file 也可以挂子级（语雀一类），
-      // 因此只在对方没给 hasChild 时才回退到 type，不能反过来由 type 覆盖
-      hasChild: typeof file.hasChild === 'boolean' ? file.hasChild : file.type === 'folder'
-    }));
+    const formattedFiles = [];
+    for (const file of files) {
+      const parsed = parseCustomApiFileMeta(file);
+      if (!parsed.ok) {
+        return Promise.reject('Invalid file data format');
+      }
+      formattedFiles.push({
+        ...file,
+        rawId: parsed.meta.id,
+        hasChild: parsed.meta.hasChild
+      });
+    }
 
     return formattedFiles;
   };
@@ -296,89 +359,27 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
         'GET'
       );
 
-      // success:true 但 data 为空或非对象时，删除证据不足，不能归类为 NOT_FOUND 以免误删本地集合。
-      if (!fileData || typeof fileData !== 'object' || Array.isArray(fileData)) {
+      // 统一校验详情响应对象及关键字段，防止空数据、错误 id、非法 type/hasChild 被当作合法节点或触发误删。
+      const parsed = parseCustomApiFileMeta(fileData, apiFileId);
+      if (!parsed.ok) {
         return toApiDatasetError({
           code: 'INVALID_RESPONSE',
-          message: 'Invalid file detail response: empty data'
-        });
-      }
-
-      // 校验详情对象关键字段：错误 id、缺失 name 或非法 type 均视为无效响应。
-      if (typeof fileData.id !== 'string' || !fileData.id || fileData.id !== apiFileId) {
-        return toApiDatasetError({
-          code: 'INVALID_RESPONSE',
-          message: 'Invalid file detail response: mismatched id'
-        });
-      }
-      if (typeof fileData.name !== 'string' || !fileData.name) {
-        return toApiDatasetError({
-          code: 'INVALID_RESPONSE',
-          message: 'Invalid file detail response: missing name'
-        });
-      }
-      if (fileData.type !== 'file' && fileData.type !== 'folder') {
-        return toApiDatasetError({
-          code: 'INVALID_RESPONSE',
-          message: 'Invalid file detail response: invalid type'
+          message: `Invalid file detail response: ${parsed.reason}`
         });
       }
 
       return toApiDatasetSuccess({
-        id: fileData.id,
+        id: parsed.meta.id,
         rawId: apiFileId,
-        name: fileData.name,
+        name: parsed.meta.name,
         parentId: fileData.parentId === null ? '' : fileData.parentId,
-        type: fileData.type,
-        // 与 listFiles 同一口径。同步拿它当根种子：漏了 hasChild 会退化为 false，
-        // 子树不再被遍历 → 后代全部落入删除集，整棵删掉
-        hasChild:
-          typeof fileData.hasChild === 'boolean' ? fileData.hasChild : fileData.type === 'folder',
+        type: parsed.meta.type,
+        hasChild: parsed.meta.hasChild,
         updateTime: fileData.updateTime,
         createTime: fileData.createTime
       });
     } catch (err: any) {
-      // 网关/框架路由缺失 404（HTML、Express Cannot GET、Go 404、FastAPI {"detail":"Not Found"} 等非协议体）
-      // 不能归类为资源级 NOT_FOUND，避免触发同步删除。
-      const isRouteMissingDetailError = (error: unknown): boolean => {
-        if (!error || typeof error !== 'object') return false;
-        const record = error as Record<string, unknown>;
-        const response =
-          record.response && typeof record.response === 'object'
-            ? (record.response as Record<string, unknown>)
-            : undefined;
-        const status = response?.status ?? record.status ?? record.statusCode;
-        if (status !== 404) return false;
-
-        const body = response?.data;
-        if (typeof body === 'string') {
-          return /(?:cannot\s+(?:get|post|put|delete|patch)\b|<!doctype\s+html|<html[\s>]|404\s+page\s+not\s+found|(?:route|endpoint|path|api|method)\s+not\s+found)/i.test(
-            body
-          );
-        }
-        if (body && typeof body === 'object' && !Array.isArray(body)) {
-          const bodyRecord = body as Record<string, unknown>;
-          if (
-            bodyRecord.success === undefined &&
-            bodyRecord.message === undefined &&
-            bodyRecord.msg === undefined &&
-            typeof bodyRecord.detail === 'string' &&
-            /^not found$/i.test(bodyRecord.detail.trim())
-          ) {
-            return true;
-          }
-          if (
-            bodyRecord.success === undefined &&
-            bodyRecord.message === undefined &&
-            typeof bodyRecord.path === 'string' &&
-            bodyRecord.path.includes('/v1/file/detail')
-          ) {
-            return true;
-          }
-        }
-        return false;
-      };
-      if (isRouteMissingDetailError(err)) {
+      if (isNonProtocolNotFoundError(err)) {
         return toApiDatasetError({
           code: 'INVALID_RESPONSE',
           message: getErrorMessage(err) || 'Detail endpoint not found',

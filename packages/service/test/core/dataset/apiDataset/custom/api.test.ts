@@ -29,7 +29,9 @@ const ok = (data: unknown) => ({ data: { success: true, data } });
 const contentInput = { teamId: 'team', tmbId: 'member', apiFileId: 'file', datasetId: 'dataset' };
 const hierarchyCases = [
   { type: 'folder', hasChild: undefined, expected: true },
+  { type: 'folder', hasChild: null, expected: true },
   { type: 'file', hasChild: undefined, expected: false },
+  { type: 'file', hasChild: null, expected: false },
   { type: 'folder', hasChild: false, expected: false },
   { type: 'file', hasChild: true, expected: true }
 ];
@@ -111,7 +113,10 @@ describe('listFiles', () => {
     ['not-array', 'Invalid file list format'],
     [[{ id: '', name: 'Doc', type: 'file' }], 'Invalid file data format'],
     [[{ id: '1', name: '', type: 'file' }], 'Invalid file data format'],
-    [[{ id: '1', name: 'Doc' }], 'Invalid file data format']
+    [[{ id: '1', name: 'Doc' }], 'Invalid file data format'],
+    [[{ id: '1', name: 'Doc', type: 'file', hasChild: 1 }], 'Invalid file data format'],
+    [[{ id: '1', name: 'Doc', type: 'file', hasChild: 'true' }], 'Invalid file data format'],
+    [[{ id: '1', name: 'Doc', type: 'folder', hasChild: 0 }], 'Invalid file data format']
   ])('拒绝无效列表 %#', async (data, message) => {
     mocks.request.mockResolvedValueOnce(ok(data));
     await expect(provider().listFiles({})).rejects.toBe(message);
@@ -195,7 +200,22 @@ describe('getFileDetail', () => {
     ['错误 id', { id: 'other', name: 'Doc', type: 'folder' }, 'mismatched id'],
     ['缺少 id', { id: '', name: 'Doc', type: 'folder' }, 'mismatched id'],
     ['缺少 name', { id: 'file', name: '', type: 'folder' }, 'missing name'],
-    ['非法 type', { id: 'file', name: 'Doc', type: 'unknown' }, 'invalid type']
+    ['非法 type', { id: 'file', name: 'Doc', type: 'unknown' }, 'invalid type'],
+    [
+      '非法 hasChild 数字 1',
+      { id: 'file', name: 'Doc', type: 'file', hasChild: 1 },
+      'invalid hasChild'
+    ],
+    [
+      '非法 hasChild 字符串',
+      { id: 'file', name: 'Doc', type: 'file', hasChild: 'true' },
+      'invalid hasChild'
+    ],
+    [
+      '非法 hasChild 对象',
+      { id: 'file', name: 'Doc', type: 'folder', hasChild: {} },
+      'invalid hasChild'
+    ]
   ])('详情关键字段异常（%s）resolve INVALID_RESPONSE', async (_label, data, reason) => {
     mocks.request.mockResolvedValueOnce(ok(data));
     expect(await provider().getFileDetail({ apiFileId: 'file' })).toMatchObject({
@@ -216,8 +236,12 @@ describe('getFileDetail', () => {
     ['Nginx HTML 404', '<!doctype html><html><body>404 Not Found</body></html>'],
     ['Go 默认 404', '404 page not found\n'],
     ['FastAPI 默认 404', { detail: 'Not Found' }],
-    ['Spring Boot 默认 404', { error: 'Not Found', path: '/v1/file/detail' }]
-  ])('路由缺失 HTTP 404（%s）归类为 INVALID_RESPONSE 而非 NOT_FOUND', async (_label, data) => {
+    ['Spring Boot 默认 404', { error: 'Not Found', path: '/v1/file/detail' }],
+    ['AWS API Gateway 404', { message: 'Not Found' }],
+    ['APISIX 404', { error_msg: '404 Route Not Found' }],
+    ['Kong 404', { message: 'no Route matched with those values' }],
+    ['无协议信封的裸 JSON 404', { message: 'upstream resource not found' }]
+  ])('非协议信封 HTTP 404（%s）归类为 INVALID_RESPONSE 而非 NOT_FOUND', async (_label, data) => {
     mocks.request.mockRejectedValueOnce({
       message: 'Request failed with status code 404',
       response: { status: 404, data }
@@ -228,6 +252,18 @@ describe('getFileDetail', () => {
       status: 404
     });
   });
+  it('符合协议信封的真实业务 HTTP 404 仍归类为 NOT_FOUND', async () => {
+    mocks.request.mockRejectedValueOnce({
+      message: 'Request failed',
+      response: { status: 404, data: { success: false, message: 'upstream resource not found' } }
+    });
+    expect(await provider().getFileDetail({ apiFileId: 'file' })).toMatchObject({
+      success: false,
+      code: 'NOT_FOUND',
+      status: 404,
+      message: 'upstream resource not found'
+    });
+  });
   it('网络错误 resolve 失败', async () => {
     mocks.request.mockRejectedValueOnce({ code: 'ECONNRESET' });
     expect(await provider().getFileDetail({ apiFileId: 'file' })).toMatchObject({
@@ -236,20 +272,19 @@ describe('getFileDetail', () => {
     });
   });
   it.each([
-    [404, 'NOT_FOUND'],
     [403, 'UNAUTHORIZED'],
     [429, 'RATE_LIMIT'],
     [503, 'SERVER_ERROR']
   ])('真实 HTTP %s 状态穿过错误转换后仍可分类', async (status, code) => {
     mocks.request.mockRejectedValueOnce({
       message: 'Request failed',
-      response: { status, data: { message: 'upstream resource not found' } }
+      response: { status, data: { message: 'upstream error' } }
     });
     expect(await provider().getFileDetail({ apiFileId: 'file' })).toMatchObject({
       success: false,
       code,
       status,
-      message: 'upstream resource not found'
+      message: 'upstream error'
     });
   });
 });
