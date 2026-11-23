@@ -378,4 +378,48 @@ describe('filterSensitiveNodesData', () => {
 
     expect(filterSensitiveNodesData(nodes)[0].inputs[0].value).toEqual(value);
   });
+
+  it('clears agent bindings and strips V2 and legacy prompt references on export', () => {
+    const nodes = [
+      {
+        nodeId: 'agent-1',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            value: [{ id: 'tool-1', name: 'Tool 1', source: 'team:t1' }]
+          },
+          {
+            key: NodeInputKeyEnum.skills,
+            value: [{ skillId: 'skill-1', name: 'Skill 1', source: 'team' }]
+          },
+          {
+            key: NodeInputKeyEnum.datasetSelectList,
+            value: [{ datasetId: 'ds-1' }]
+          },
+          {
+            key: NodeInputKeyEnum.datasetParams,
+            value: { datasets: [{ datasetId: 'ds-1' }], limit: 500 }
+          },
+          {
+            key: NodeInputKeyEnum.aiSystemPrompt,
+            value:
+              '先用 {{@plugin:team:t1:calc@}} 与 {{@legacy-skill@}}，保留 {{$start.q$}} 和 {{{{@literal@}}}}'
+          }
+        ],
+        outputs: []
+      }
+    ] as any;
+
+    const filtered = filterSensitiveNodesData(nodes);
+    const inputMap = new Map(filtered[0].inputs.map((item: any) => [item.key, item.value]));
+
+    expect(inputMap.get(NodeInputKeyEnum.selectedTools)).toEqual([]);
+    expect(inputMap.get(NodeInputKeyEnum.skills)).toEqual([]);
+    expect(inputMap.get(NodeInputKeyEnum.datasetSelectList)).toEqual([]);
+    expect(inputMap.get(NodeInputKeyEnum.datasetParams)).toEqual({ datasets: [], limit: 500 });
+    expect(inputMap.get(NodeInputKeyEnum.aiSystemPrompt)).toBe(
+      '先用  与 ，保留 {{$start.q$}} 和 {{{{@literal@}}}}'
+    );
+  });
 });

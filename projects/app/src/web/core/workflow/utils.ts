@@ -1,5 +1,6 @@
 import { getSecretReferenceValue } from '@fastgpt/global/common/secret/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { stripAgentPromptRefs } from '@fastgpt/global/core/workflow/node/agent/promptRef/protocol';
 import { getWorkflowSecretInputKind } from '@fastgpt/global/common/workflow/input';
 import {
   getHandleId,
@@ -573,7 +574,7 @@ export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
           input.key === NodeInputKeyEnum.aiSystemPrompt &&
           typeof input.value === 'string'
         ) {
-          input.value = input.value.replace(/\{\{@[^@{}]+@\}\}/g, '');
+          input.value = stripAgentPromptRefs(input.value);
         }
       });
     }

@@ -80,7 +80,7 @@ export const AgentPromptInput = ({ item, nodeId }: Pick<RenderInputProps, 'item'
   const { t } = useTranslation();
   const { onPromptChange, editorVariables, allVariables, skillManager } =
     useAgentNodeInputContext();
-  const { skillOption, selectedSkills, onClickSkill } = skillManager;
+  const { skillOption, promptRefRegistry, onClickSkill } = skillManager;
   const Optimizer = useCallback(
     ({ iconButtonStyle }: { iconButtonStyle: Record<string, any> }) => (
       <OptimizerPopover
@@ -104,7 +104,7 @@ export const AgentPromptInput = ({ item, nodeId }: Pick<RenderInputProps, 'item'
         variables={allVariables}
         variableLabels={editorVariables}
         skillOption={skillOption}
-        selectedSkills={selectedSkills}
+        promptRefRegistry={promptRefRegistry}
         onClickSkill={onClickSkill}
         ExtensionPopover={[Optimizer]}
         placeholder={t('workflow:agent.prompt_placeholder')}

@@ -59,4 +59,33 @@ describe('get preview node handler', () => {
       source: 'debug:tmbId:tmb-1'
     });
   });
+
+  it('authorizes parent app id when previewing untyped V2 child tool lookup ids', async () => {
+    const parentId = '507f1f77bcf86cd799439031';
+    mocks.getClientToolPreviewNode.mockResolvedValueOnce({
+      id: 'node-id',
+      pluginId: `mcp-${parentId}/get-weather`,
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: 'get-weather',
+      inputs: [],
+      outputs: []
+    });
+
+    const res = await Call(handler, {
+      query: {
+        appId: `${parentId}/get-weather`,
+        versionId: ''
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(mocks.authApp).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appId: parentId
+      })
+    );
+    expect(res.data).toMatchObject({
+      pluginId: `mcp-${parentId}/get-weather`
+    });
+  });
 });

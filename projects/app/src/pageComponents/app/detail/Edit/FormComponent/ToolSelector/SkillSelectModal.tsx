@@ -163,6 +163,7 @@ const SkillSelectModal = ({
         const detail = await getSkillDetail({ skillId });
         onAddSkill({
           skillId: detail._id,
+          source: detail.source,
           name: detail.name,
           description: detail.description,
           avatar: detail.avatar
@@ -276,6 +277,7 @@ const SkillSelectModal = ({
                       onAdd={() =>
                         onAddSkill({
                           skillId: item._id,
+                          source: item.source,
                           name: item.name,
                           description: item.description,
                           avatar: item.avatar

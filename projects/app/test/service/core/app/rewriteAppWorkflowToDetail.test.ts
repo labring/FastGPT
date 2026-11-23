@@ -51,6 +51,54 @@ describe('rewriteAppWorkflowToDetail - current workflow tool inputs', () => {
     authAppByTmbIdMock.mockReset();
   });
 
+  it('loads a persisted team tool from its saved source even when a system tool shares its ID', async () => {
+    const id = 'systemTool-search';
+    const teamSource = 'teamId:team-1';
+    const teamToolConfig = {
+      systemTool: { toolId: id, source: teamSource }
+    };
+    getClientToolPreviewNodeMock.mockImplementation(async ({ appId, source }) => ({
+      pluginId: appId,
+      name: source === teamSource ? 'Team search' : 'System search',
+      inputs: [],
+      outputs: []
+    }));
+    const nodes: StoreNodeItemType[] = [
+      {
+        nodeId: 'agent',
+        name: 'Agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            label: 'Tools',
+            renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+            value: [
+              { id, config: {}, toolConfig: teamToolConfig },
+              { id, config: {}, source: 'system', toolConfig: teamToolConfig }
+            ]
+          }
+        ],
+        outputs: []
+      }
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(getClientToolPreviewNodeMock).toHaveBeenCalledWith(
+      expect.objectContaining({ appId: id, source: teamSource, teamId: 'team-1' })
+    );
+    expect(nodes[0].inputs[0].value).toMatchObject([
+      { id, source: teamSource, name: 'Team search' },
+      { id, source: 'system', name: 'System search' }
+    ]);
+  });
+
   it('protects historical Agent tool credentials in detail when the preview is unavailable', async () => {
     getClientToolPreviewNodeMock.mockRejectedValue(new Error('Tool deleted'));
     const nodes = [
@@ -1238,6 +1286,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
     expect(rewrittenSkills).toEqual([
       {
         skillId: String(activeSkill._id),
+        source: activeSkill.source,
         name: 'Current Skill Name',
         description: 'Current skill description',
         avatar: 'current-avatar'
@@ -2209,5 +2258,79 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         error: 'resource_missing'
       }
     ]);
+  });
+
+  it('refreshes the resolved MCP tool config without overwriting the saved child ID', async () => {
+    const appId = '507f1f77bcf86cd799439031';
+    const savedTool = serializeAgentTool({
+      tool: {
+        id: `mcp-${appId}/catalog/search`,
+        pluginId: `mcp-${appId}/catalog/search`,
+        name: 'catalog/search',
+        avatar: 'mcp.svg',
+        intro: '',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        templateType: 'tools',
+        inputs: [],
+        outputs: [],
+        toolConfig: {
+          mcpTool: {
+            toolId: `mcp-${appId}/catalog/search`
+          }
+        }
+      } as any
+    });
+
+    getClientToolPreviewNodeMock.mockResolvedValueOnce({
+      id: `mcp-${appId}/catalog/search`,
+      pluginId: `mcp-${appId}/catalog/search`,
+      name: 'search',
+      avatar: 'mcp.svg',
+      intro: 'Search',
+      flowNodeType: FlowNodeTypeEnum.tool,
+      templateType: 'tools',
+      inputs: [],
+      outputs: [],
+      version: '',
+      isLatestVersion: true,
+      toolConfig: {
+        mcpTool: {
+          toolId: `mcp-${appId}/search`
+        }
+      }
+    });
+
+    const nodes: StoreNodeItemType[] = [
+      {
+        nodeId: 'agent-node',
+        name: 'Agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            valueType: WorkflowIOValueTypeEnum.arrayObject,
+            label: 'Tools',
+            renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+            value: [savedTool]
+          }
+        ],
+        outputs: []
+      }
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: true
+    });
+
+    const reloadedTool = nodes[0].inputs[0].value[0];
+    expect(reloadedTool.id).toBe(`mcp-${appId}/catalog/search`);
+    expect(reloadedTool.toolConfig).toEqual({
+      mcpTool: {
+        toolId: `mcp-${appId}/search`
+      }
+    });
   });
 });
