@@ -102,34 +102,38 @@ describe('system tool path handler', () => {
     });
   });
 
-  it('returns parent and child paths for system toolset child', async () => {
-    mocks.getSystemToolDisplayInfo.mockImplementation(({ pluginId }) =>
-      Promise.resolve({
-        name: pluginId === 'systemTool-map' ? 'Map' : 'Geocode'
-      })
-    );
+  it.each(['geocode', 'catalog/geocode', '/catalog/geocode'])(
+    'returns parent and child paths for system toolset child %s',
+    async (childId) => {
+      const sourceId = `systemTool-map/${childId}`;
+      mocks.getSystemToolDisplayInfo.mockImplementation(({ pluginId }) =>
+        Promise.resolve({
+          name: pluginId === 'systemTool-map' ? 'Map' : 'Geocode'
+        })
+      );
 
-    const result = await handler(
-      {
-        query: {
-          sourceId: 'systemTool-map/geocode',
-          type: 'current'
+      const result = await handler(
+        {
+          query: {
+            sourceId,
+            type: 'current'
+          }
+        } as ApiRequestProps<Record<string, never>, { sourceId: string; type: 'current' }>,
+        {} as ApiResponseType<any>
+      );
+
+      expect(result).toEqual([
+        {
+          parentId: 'systemTool-map',
+          parentName: 'Map'
+        },
+        {
+          parentId: sourceId,
+          parentName: 'Geocode'
         }
-      } as ApiRequestProps<Record<string, never>, { sourceId: string; type: 'current' }>,
-      {} as ApiResponseType<any>
-    );
-
-    expect(result).toEqual([
-      {
-        parentId: 'systemTool-map',
-        parentName: 'Map'
-      },
-      {
-        parentId: 'systemTool-map/geocode',
-        parentName: 'Geocode'
-      }
-    ]);
-  });
+      ]);
+    }
+  );
 
   it('returns only parent path when querying parent of system toolset child', async () => {
     mocks.getSystemToolDisplayInfo.mockResolvedValueOnce({

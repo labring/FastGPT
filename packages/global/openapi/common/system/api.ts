@@ -34,13 +34,27 @@ export type ProHealthResponse = z.infer<typeof ProHealthResponseSchema>;
  * API: 获取 Pro SSO 接入状态
  * Route: GET /api/common/system/sso/config (Pro 内部接口)
  * Method: GET
- * Description: 返回 Pro 部署环境中的 SSO 接入状态，不返回服务地址或凭据
+ * Description: 返回 Pro 部署环境中的 SSO 接入状态，不返回服务地址或凭据；仅在显式请求 includeProvider=true 时探测 provider 类型
  * Tags: ['系统接口', 'Read']
  * ============================================================================ */
 
+export const ProSsoConfigQuerySchema = z.object({
+  includeProvider: BoolSchema.optional().meta({
+    description:
+      '是否探测并返回 SSO provider 类型（isWecom）；未传或为 false 时仅返回 enabled，兼容旧版主服务 .strict() 校验并避免密码策略路径触发外部探测',
+    example: true
+  })
+});
+export type ProSsoConfigQuery = z.infer<typeof ProSsoConfigQuerySchema>;
+
 export const ProSsoConfigResponseSchema = z
   .object({
-    enabled: z.boolean().meta({ description: 'Pro 是否配置 SSO 服务', example: true })
+    enabled: z.boolean().meta({ description: 'Pro 是否配置 SSO 服务', example: true }),
+    isWecom: z.boolean().optional().meta({
+      description:
+        'SSO 服务是否使用企业微信 provider；仅在 includeProvider=true 且探测成功时返回，未返回表示未探测或无法确认',
+      example: false
+    })
   })
   .strict();
 export type ProSsoConfigResponse = z.infer<typeof ProSsoConfigResponseSchema>;
@@ -75,10 +89,16 @@ const ClientFeConfigsSchema = FastGPTFeConfigsSchema.partial()
       example: false
     }),
     // SSO 根地址只在服务端访问；客户端通过能力标志展示入口，点击后按需获取授权地址。
+    // isWecom 为纯运行时客户端投影（不属于可存储配置），undefined 表示未探测或无法确认 provider 类型。
     sso: FastGPTFeConfigsSchema.shape.sso
       .unwrap()
       .extend({
-        enabled: BoolSchema.meta({ description: '是否配置了 SSO 登录服务', example: true })
+        enabled: BoolSchema.meta({ description: '是否配置了 SSO 登录服务', example: true }),
+        isWecom: BoolSchema.optional().meta({
+          description:
+            '当前 SSO 是否为企业微信 provider；undefined 表示未探测或旧版/自建 SSO 无法确认',
+          example: false
+        })
       })
       .optional(),
     limit: FastGPTFeConfigsSchema.shape.limit
@@ -95,7 +115,8 @@ const ClientFeConfigsSchema = FastGPTFeConfigsSchema.partial()
 export const GetSystemInitDataResponseSchema = z.object({
   bufferId: z.string().optional().meta({
     example: 'system-config-20260811',
-    description: '当前系统配置缓存标识；未登录时以 unAuth_v11_sso_ 开头，包含 SSO 能力状态'
+    description:
+      '当前系统配置缓存标识；未登录时以 unAuth_v12_sso_ 开头，包含 SSO 能力及企业微信类型状态'
   }),
   feConfigs: ClientFeConfigsSchema.optional().meta({
     description:

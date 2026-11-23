@@ -33,7 +33,7 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { WorkflowDiagnosticSchema } from '@fastgpt/workflow-core/domain/diagnostic';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { hasDebugToolInNodes } from '@fastgpt/global/core/app/tool/utils';
+import { hasDebugToolInNodes } from '@fastgpt/global/core/app/utils';
 import { serializeWorkflowData } from '@/web/core/workflow/editor/session/workflowPersistence';
 import { checkWorkflowBeforeRunOrPublish } from '@/web/core/workflow/check/check';
 import { workflowRuntimeToWorkflowDocument } from '@/pageComponents/app/detail/WorkflowComponents/adapters/document';

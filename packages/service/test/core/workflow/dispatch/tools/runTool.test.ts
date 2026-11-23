@@ -832,6 +832,17 @@ describe('dispatchRunTool runtime toolset auth', () => {
       expect.objectContaining({ input: { keyword: 'fastgpt' } })
     );
   });
+
+  it('passes the complete child ID to the plugin when running a system tool node', async () => {
+    const result = await dispatchRunTool(
+      createRunToolProps({ systemTool: { toolId: 'systemTool-search/catalog/search' } })
+    );
+
+    expect(result.error).toBeUndefined();
+    expect(runToolStreamMock).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ pluginId: 'search', childId: 'catalog/search' })
+    );
+  });
   it('should inject usageId into systemVar and invokeToken', async () => {
     const props = createRunToolProps({ systemTool: { toolId: 'search' } });
     props.usageId = 'usage-1';
