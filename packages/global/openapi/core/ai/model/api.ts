@@ -473,7 +473,7 @@ export const PreviewImportFromChannelResponseSchema = z.object({
           .min(1)
           .meta({
             example: [{ category: 'existing', modelId: '68ad85a7463006c963799a05' }],
-            description: '按匹配优先级排序的模型和模板候选；未命中时包含一个空白模型草稿'
+            description: '首项为默认候选，新版返回一个模型、模板或空白草稿'
           })
       })
     )
@@ -510,7 +510,7 @@ export const PreviewImportFromChannelResponseSchema = z.object({
           ]
         }
       ],
-      description: '按 AIProxy 原始模型目录顺序排列；每项提供按匹配优先级排序的候选'
+      description: '按 AIProxy 原始模型目录顺序排列；每项提供默认候选'
     })
 });
 export type PreviewImportFromChannelResponse = z.infer<
@@ -598,7 +598,7 @@ const ApplyChangeResultSchema = z.discriminatedUnion('status', [
     action: z.literal('associate').meta({ example: 'associate', description: '请求操作类型' }),
     status: z
       .literal('skipped')
-      .meta({ example: 'skipped', description: '目标渠道已关联，未重复处理' }),
+      .meta({ example: 'skipped', description: '目标渠道关联、别名与启停状态均未变更' }),
     modelId: ImportPreviewModelIdSchema,
     providerModelSlug: ImportProviderModelSlugSchema
   }),
@@ -612,7 +612,10 @@ const ApplyChangeResultSchema = z.discriminatedUnion('status', [
       example: '68ad85a7463006c963799a05',
       description: '已创建模型的稳定 ID；创建后关联失败时返回'
     }),
-    error: z.string().meta({ example: '模型已存在', description: '该条操作失败原因' })
+    error: z.string().meta({
+      example: 'modelAlreadyExists',
+      description: '该条操作失败的 FastGPT 错误标识或上游错误信息'
+    })
   })
 ]);
 

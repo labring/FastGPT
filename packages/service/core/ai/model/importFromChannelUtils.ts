@@ -11,13 +11,6 @@ import type { AiproxyChannelModel } from '../../../thirdProvider/aiproxy/type';
 type LocalModel = Pick<AIModelDocumentDataType, 'model'> & { modelId: string };
 type LocalMatchCategory = Extract<ImportPreviewItem, { modelId: string }>['category'];
 
-type ModelMatch = {
-  key: string;
-  template: { type: AIModelDocumentDataType['type']; model: string };
-  templateData: AIModelDocumentDataType;
-  rank: number;
-};
-
 /** 仅当渠道协议名唯一匹配 FastGPT provider 展示名时返回稳定 provider ID。 */
 export const inferFastGPTProvider = ({
   channelTypeName,
@@ -39,7 +32,10 @@ const modalityModelTypes: ReadonlyMap<string, ModelTypeEnum> = new Map([
   ['text', ModelTypeEnum.llm],
   ['rerank', ModelTypeEnum.rerank],
   ['audio', ModelTypeEnum.tts],
-  ['embedding', ModelTypeEnum.embedding]
+  ['embedding', ModelTypeEnum.embedding],
+  ['embeddings', ModelTypeEnum.embedding],
+  ['speech', ModelTypeEnum.tts],
+  ['transcription', ModelTypeEnum.stt]
 ]);
 
 const getContextLength = (model: AiproxyChannelModel): number | undefined => {
@@ -121,6 +117,7 @@ export const createBlankModelData = (
           config: contextLength === undefined ? {} : { maxToken: contextLength }
         };
       case ModelTypeEnum.tts:
+      case ModelTypeEnum.stt:
         return { ...base, type: modelType };
       default:
         return base;
@@ -225,36 +222,27 @@ export const classifyChannelModels = ({
       };
     }
 
-    const matches: ModelMatch[] = [];
-    templates.forEach((template) => {
+    let bestMatch: { template: AIModelDocumentDataType; rank: number } | undefined;
+    for (const template of templates) {
       const rank = getTemplateMatchRank(channelModel.id, template.model);
-      if (rank !== undefined) {
-        matches.push({
-          key: `template:${template.type}:${template.model}`,
-          template: { type: template.type, model: template.model },
-          templateData: template,
-          rank
-        });
+      if (rank !== undefined && (bestMatch === undefined || rank < bestMatch.rank)) {
+        bestMatch = { template, rank };
       }
-    });
-    const orderedMatches = [...new Map(matches.map((match) => [match.key, match])).values()].sort(
-      (left, right) => left.rank - right.rank
-    );
-    const blankDraft = orderedMatches.length
-      ? createBlankModelData(channelModel, provider)
-      : undefined;
-    const candidates: ImportPreviewItem[] = orderedMatches.length
-      ? orderedMatches.map((match) => ({
-          category: 'template',
-          template: match.template,
-          modelData: mergeTemplateModelData(match.templateData, channelModel),
-          ...(blankDraft?.contextLength === undefined
-            ? {}
-            : { contextLength: blankDraft.contextLength }),
-          ...(blankDraft?.modelData === undefined ? {} : { blankModelData: blankDraft.modelData })
-        }))
-      : [createBlankModelData(channelModel, provider)];
+    }
+    const blankDraft = createBlankModelData(channelModel, provider);
+    if (!bestMatch) return { ...rowData, candidates: [blankDraft] };
 
-    return { ...rowData, candidates };
+    const { template } = bestMatch;
+    return {
+      ...rowData,
+      candidates: [
+        {
+          category: 'template',
+          template: { type: template.type, model: template.model },
+          modelData: mergeTemplateModelData(template, channelModel),
+          blankModelData: blankDraft.modelData
+        }
+      ]
+    };
   });
 };

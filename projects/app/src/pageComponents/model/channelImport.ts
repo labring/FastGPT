@@ -27,45 +27,37 @@ export const getChannelImportCandidate = (item: ChannelImportRow) => {
   return candidate;
 };
 
-/** 按默认候选的模型类型筛选，并按上游 ID、本地名称或模型 ID 搜索预览行。 */
+/** 按当前选择的模型类型筛选，并按上游 ID、候选名称或模型 ID 搜索预览行。 */
 export const filterChannelImportPreviewItems = ({
   items,
   modelType,
   search,
-  installedModels
+  installedModelsById,
+  getModelType
 }: {
   items: ReadonlyArray<ChannelImportRow>;
   modelType: ModelTypeEnum | '';
   search: string;
-  installedModels: ReadonlyArray<Pick<ModelConfigListItem, 'modelId' | 'model' | 'name' | 'type'>>;
+  installedModelsById: ReadonlyMap<string, Pick<ModelConfigListItem, 'model' | 'name'>>;
+  getModelType: (row: ChannelImportRow) => ModelTypeEnum | undefined;
 }) => {
-  const installedModelsById = new Map(
-    installedModels.map((model) => [model.modelId, model] as const)
-  );
   const query = search.trim().toLowerCase();
   const includesQuery = (value?: string) => value?.toLowerCase().includes(query) ?? false;
 
   return items.filter((row) => {
+    if (modelType && getModelType(row) !== modelType) return false;
+    if (!query) return true;
+
     const candidate = getChannelImportCandidate(row);
-    const candidateType = (() => {
-      if (candidate.category === 'template') return candidate.template.type;
-      if (candidate.category === 'blank') {
-        return candidate.modelType ?? candidate.modelData?.type;
-      }
-      return installedModelsById.get(candidate.modelId)?.type;
-    })();
     const modelData =
       candidate.category === 'template' || candidate.category === 'blank'
         ? candidate.modelData
         : installedModelsById.get(candidate.modelId);
-    const matchesType = !modelType || candidateType === modelType;
-    const matchesSearch =
-      !query ||
+    return (
       includesQuery(row.providerModelSlug) ||
       includesQuery(modelData?.name) ||
-      includesQuery(modelData?.model);
-
-    return matchesType && matchesSearch;
+      includesQuery(modelData?.model)
+    );
   });
 };
 

@@ -9,7 +9,7 @@ import type {
 import { aiProxyClient } from '../../../thirdProvider/aiproxy/client';
 import { getSystemModelHandle } from './catalog/service';
 import { getCachedTypeMetas } from './channel/cache';
-import { updateModelChannelBindings } from './channel/binding';
+import { getChannelModelBindingPatch } from './channel/binding';
 import { resolveChannelForOperation } from './channel/resolve';
 import { getModelProviders } from './provider/controller';
 import { createModel, updateModelStatus } from './service';
@@ -84,100 +84,47 @@ export const applyChangesFromChannel = async ({
   const models = (await getSystemModelHandle()).getSystemModels();
   const modelById = new Map(models.map((model) => [model.modelId, model]));
   const results: ApplyChangesResponse['results'] = [];
+  const readChannel = () =>
+    resolveChannelForOperation({ id: channelId, channelType: 'system', tmbId });
 
   for (const operation of operations) {
-    let modelId: string | undefined =
-      operation.action === 'associate' ? operation.modelId : undefined;
+    const { providerModelSlug, isActive } = operation;
+    let modelId = operation.action === 'associate' ? operation.modelId : undefined;
     try {
-      // 3. 每条操作重读渠道状态，别名与关联可能已被前序操作或并发请求更新。
-      const channel = await resolveChannelForOperation({
-        id: channelId,
-        channelType: 'system',
-        tmbId
-      });
-      // 4. 先解析目标模型并检查别名冲突，避免创建后才发现无法安全映射。
-      const model = (() => {
-        if (operation.action === 'create') return operation.providerModelSlug;
-        const existingModel = modelById.get(operation.modelId);
-        if (!existingModel) throw new Error('系统模型不存在');
-        return existingModel.model;
-      })();
-
-      const modelMapping = channel.model_mapping ?? {};
-      const mappedProviderModelSlug = modelMapping[model];
-      if (
-        mappedProviderModelSlug !== undefined &&
-        mappedProviderModelSlug !== operation.providerModelSlug
-      ) {
-        throw new Error('渠道别名已映射到其他上游模型');
-      }
-
-      // 已有关联时跳过重复绑定；缺少别名时仍补映射，并应用本次启停选择。
-      const alreadyAssociated =
-        operation.action === 'associate' && (channel.models ?? []).includes(model);
-
-      if (!alreadyAssociated) {
-        if (operation.action === 'create') {
-          // 5. 先保存创建 ID；后续别名或绑定失败仍需在结果中返回该 ID。
-          const createdModel = await createModel({
-            modelData: {
-              ...operation.modelData,
-              model,
-              scope: ModelScopeEnum.system,
-              isActive: operation.isActive
-            },
-            channelType: 'system',
-            tmbId,
-            teamId
-          });
-          modelId = createdModel.modelId;
-        }
-      }
-
-      if (model !== operation.providerModelSlug && mappedProviderModelSlug === undefined) {
-        await aiProxyClient.system.channels.update(channelId, {
-          model_mapping: {
-            ...modelMapping,
-            [model]: operation.providerModelSlug
-          }
-        });
-      }
-
-      if (!alreadyAssociated) {
-        await updateModelChannelBindings({
-          model,
-          addChannelIds: [channelId],
-          channelType: 'system',
-          tmbId
-        });
-      }
-
-      if (operation.action === 'associate') {
-        await updateModelStatus({
-          modelIds: [operation.modelId],
-          isActive: operation.isActive,
+      // 每条都用当前渠道配置校验冲突。创建前校验一次，提交后重读再生成写入。
+      const model =
+        operation.action === 'create' ? providerModelSlug : modelById.get(operation.modelId)?.model;
+      if (model === undefined) throw new UserError(ModelErrEnum.unExist);
+      const binding = { model, upstreamModel: providerModelSlug };
+      let patch = getChannelModelBindingPatch({ channel: await readChannel(), ...binding });
+      if (operation.action === 'create') {
+        const createdModel = await createModel({
+          modelData: { ...operation.modelData, model, scope: ModelScopeEnum.system, isActive },
           channelType: 'system',
           tmbId,
           teamId
         });
+        // 后续渠道写入失败时仍返回已创建的模型 ID。
+        modelId = createdModel.modelId;
+        patch = getChannelModelBindingPatch({ channel: await readChannel(), ...binding });
       }
+      if (patch) await aiProxyClient.system.channels.update(channelId, patch);
 
-      const resolvedModelId = modelId;
-      if (!resolvedModelId) throw new Error('创建的系统模型缺少 ID');
+      if (!modelId) throw new UserError(ModelErrEnum.invalidModelConfig);
+      const statusChanged =
+        operation.action === 'associate' &&
+        (await updateModelStatus({
+          modelIds: [operation.modelId],
+          isActive,
+          channelType: 'system',
+          tmbId,
+          teamId
+        }));
+      const result = { modelId, providerModelSlug };
       results.push(
-        alreadyAssociated && operation.action === 'associate'
-          ? {
-              action: 'associate',
-              status: 'skipped',
-              modelId: resolvedModelId,
-              providerModelSlug: operation.providerModelSlug
-            }
-          : {
-              action: operation.action,
-              status: 'success',
-              modelId: resolvedModelId,
-              providerModelSlug: operation.providerModelSlug
-            }
+        operation.action === 'associate' && !patch && !statusChanged
+          ? { ...result, action: 'associate', status: 'skipped' }
+          : { ...result, action: operation.action, status: 'success' }
       );
     } catch (error) {
       results.push({

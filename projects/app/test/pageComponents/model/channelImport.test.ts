@@ -86,7 +86,11 @@ describe('resolveRowSelection', () => {
         }
       ]
     };
-    const catalog = { installedModelById: new Map(), templateMap: new Map() };
+    const catalog = {
+      installedModelById: new Map(),
+      installedModelNames: new Set<string>(),
+      templateMap: new Map()
+    };
 
     expect(resolveRowSelection({ row, catalog })).toMatchObject({
       presetKey: 'llm:template-model',
@@ -110,6 +114,34 @@ describe('resolveRowSelection', () => {
       isActive: false
     });
   });
+
+  it.each([
+    ['associated', true],
+    ['existing', false]
+  ] as const)('keeps a same-name %s model on the current preset', (category, isDisabled) => {
+    const installed = { ...sourceModel, modelId: 'local', model: 'vendor/model', channels: [] };
+    const row: ImportRow = {
+      providerModelSlug: installed.model,
+      candidates: [{ category, modelId: installed.modelId }]
+    };
+
+    expect(
+      resolveRowSelection({
+        row,
+        selection: { presetKey: '__blank__', modelType: ModelTypeEnum.embedding },
+        catalog: {
+          installedModelById: new Map([[installed.modelId, installed]]),
+          installedModelNames: new Set([installed.model]),
+          templateMap: new Map()
+        }
+      })
+    ).toMatchObject({
+      canCreate: false,
+      isDisabled,
+      presetKey: '__current__:local',
+      modelType: ModelTypeEnum.llm
+    });
+  });
 });
 
 describe('resolveModelTestTarget', () => {
@@ -127,6 +159,7 @@ describe('resolveModelTestTarget', () => {
     };
     const catalog = {
       installedModelById: new Map([[installedModel.modelId, installedModel]]),
+      installedModelNames: new Set([installedModel.model]),
       templateMap: new Map(),
       createModelData
     };
@@ -155,6 +188,7 @@ describe('resolveModelTestTarget', () => {
     };
     const catalog = {
       installedModelById: new Map(),
+      installedModelNames: new Set<string>(),
       templateMap: new Map(),
       createModelData
     };
@@ -201,7 +235,7 @@ describe('getChannelImportCandidate', () => {
 });
 
 describe('filterChannelImportPreviewItems', () => {
-  it('filters and searches by the first ranked candidate only', () => {
+  it('filters by current row type and searches the default candidate', () => {
     const alternateTemplate = createModelData(ModelTypeEnum.embedding);
     const items: ImportRow[] = [
       {
@@ -220,45 +254,46 @@ describe('filterChannelImportPreviewItems', () => {
         candidates: [{ category: 'blank', modelType: ModelTypeEnum.embedding }]
       }
     ];
-    const installedModels = [
-      {
-        modelId: 'local-chat',
-        model: 'internal-chat-id',
-        name: 'Friendly chat',
-        type: ModelTypeEnum.llm
-      }
-    ];
+    const installedModelsById = new Map([
+      [
+        'local-chat',
+        {
+          model: 'internal-chat-id',
+          name: 'Friendly chat'
+        }
+      ]
+    ]);
+    const getModelType = (row: ImportRow) =>
+      row === items[0] ? ModelTypeEnum.llm : ModelTypeEnum.embedding;
+    const input = { items, installedModelsById, getModelType };
 
     expect(
       filterChannelImportPreviewItems({
-        items,
+        ...input,
         modelType: ModelTypeEnum.llm,
-        search: 'FRIENDLY',
-        installedModels
+        search: 'FRIENDLY'
       }).map((item) => item.providerModelSlug)
     ).toEqual(['remote/chat']);
     expect(
       filterChannelImportPreviewItems({
-        items,
+        ...input,
         modelType: ModelTypeEnum.embedding,
-        search: 'remote/embedding',
-        installedModels
+        search: 'remote/embedding'
       }).map((item) => item.providerModelSlug)
     ).toEqual(['remote/embedding']);
     expect(
       filterChannelImportPreviewItems({
-        items,
+        ...input,
         modelType: ModelTypeEnum.embedding,
         search: '',
-        installedModels
+        getModelType: () => ModelTypeEnum.embedding
       }).map((item) => item.providerModelSlug)
-    ).toEqual(['remote/embedding']);
+    ).toEqual(['remote/chat', 'remote/embedding']);
     expect(
       filterChannelImportPreviewItems({
-        items,
+        ...input,
         modelType: '',
-        search: 'alternate-embedding',
-        installedModels
+        search: 'alternate-embedding'
       })
     ).toEqual([]);
   });

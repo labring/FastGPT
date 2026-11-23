@@ -45,9 +45,9 @@ const ImportModelFromChannelModal = ({
           onClose={onClose}
         />
       )}
-      {flow.step === 'preview' && flow.channelId !== '' && (
+      {flow.step !== 'select' && flow.channelId !== '' && (
         <ModelPreviewStep
-          isOpen
+          isOpen={flow.step === 'preview'}
           channelId={flow.channelId}
           channel={channel}
           installedModels={installedModels}

@@ -53,12 +53,14 @@ describe('channel model import matching', () => {
       targetChannelModels: [],
       targetModelMappings: {},
       otherChannelModels: [],
-      templates: [createTemplate({ model: 'openai' })]
+      templates: [createTemplate({ model: 'openai' }), createTemplate({ model: 'gpt-4o' })]
     });
-    expect(templateFallback[0].candidates[0]).toMatchObject({
-      category: 'template',
-      template: { model: 'openai' }
-    });
+    expect(templateFallback[0].candidates).toEqual([
+      expect.objectContaining({
+        category: 'template',
+        template: { model: 'gpt-4o', type: ModelTypeEnum.llm }
+      })
+    ]);
   });
 
   it('preserves template limits when upstream context length is missing', () => {
@@ -191,7 +193,6 @@ describe('channel model import matching', () => {
     const templateItem = items[3].candidates[0];
     expect(templateItem).toMatchObject({
       category: 'template',
-      contextLength: 32000,
       modelData: {
         provider: 'openai',
         inputPrice: 1,
@@ -304,6 +305,20 @@ describe('channel model import drafts', () => {
     expect(inferChannelModelType(['text', 'image'])).toBe(ModelTypeEnum.llm);
     expect(inferChannelModelType(['text', 'embedding'])).toBeUndefined();
     expect(inferChannelModelType(['image', 'video'])).toBeUndefined();
+  });
+
+  it.each([
+    ['embeddings', ModelTypeEnum.embedding],
+    ['speech', ModelTypeEnum.tts],
+    ['transcription', ModelTypeEnum.stt]
+  ] as const)('uses the upstream %s modality in blank drafts', (modality, modelType) => {
+    const item = createBlankModelData({
+      id: 'vendor/model',
+      architecture: { output_modalities: [modality] }
+    });
+
+    expect(item).toMatchObject({ modelType, modelData: { type: modelType } });
+    expect(inferChannelModelType([modality, 'text'])).toBeUndefined();
   });
 
   it('preserves template prices and merges upstream token limits into a template', () => {

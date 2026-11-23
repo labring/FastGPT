@@ -5,6 +5,7 @@ import type {
   UpdateChannelData
 } from '../../../../thirdProvider/aiproxy/type';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import { tolerateNotFound } from '../../../../thirdProvider/aiproxy/error';
 import { resolveChannelsForOperation } from './resolve';
@@ -30,6 +31,35 @@ const stripModelsFromChannel = (
   return {
     models,
     model_mapping: Object.keys(model_mapping).length > 0 ? model_mapping : undefined
+  };
+};
+
+/** 从同一渠道快照计算一份关联更新，别名已被占用时拒绝覆盖。 */
+export const getChannelModelBindingPatch = ({
+  channel,
+  model,
+  upstreamModel
+}: {
+  channel: Pick<AiproxyChannel, 'models' | 'model_mapping'>;
+  model: string;
+  upstreamModel?: string;
+}): Pick<UpdateChannelData, 'models' | 'model_mapping'> | undefined => {
+  const currentModels = channel.models ?? [];
+  const currentMapping = channel.model_mapping ?? {};
+  const mappedModel = Object.hasOwn(currentMapping, model) ? currentMapping[model] : undefined;
+  if (upstreamModel !== undefined && mappedModel !== undefined && mappedModel !== upstreamModel) {
+    throw new UserError(ModelErrEnum.channelModelMappingConflict);
+  }
+  const isBound = currentModels.includes(model);
+  const missingMapping =
+    upstreamModel !== undefined && upstreamModel !== model && mappedModel === undefined;
+  if (isBound && !missingMapping) return;
+
+  return {
+    models: isBound ? currentModels : [...currentModels, model],
+    model_mapping: missingMapping
+      ? { ...currentMapping, [model]: upstreamModel }
+      : channel.model_mapping
   };
 };
 
@@ -63,14 +93,8 @@ export const updateModelChannelBindings = async ({
 
   await Promise.all([
     ...addChannels.map(async (channel) => {
-      const currentModels = channel.models ?? [];
-      if (currentModels.includes(trimmedModel)) return;
-      await client.update(channel.id, {
-        models: [...currentModels, trimmedModel],
-        ...(channel.model_mapping !== undefined && {
-          model_mapping: channel.model_mapping
-        })
-      });
+      const patch = getChannelModelBindingPatch({ channel, model: trimmedModel });
+      if (patch) await client.update(channel.id, patch);
     }),
     ...removeChannels.map(async (channel) => {
       const patch = stripModelsFromChannel(channel, new Set([trimmedModel]));

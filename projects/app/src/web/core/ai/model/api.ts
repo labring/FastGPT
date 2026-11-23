@@ -55,7 +55,7 @@ export const getImportPreviewFromChannel = (data: PreviewImportFromChannelQuery)
 
 /** Apply selected channel import operations and return one result per operation. */
 export const postApplyChannelImportChanges = (data: ApplyChangesBody) =>
-  POST<ApplyChangesResponse>(coreModelPath + '/applyChanges', data);
+  POST<ApplyChangesResponse>(coreModelPath + '/applyChanges', data, { timeout: 0 });
 
 /** 创建模型（系统模型或团队私有模型），强制显式传递 channelType */
 export const postCreateModel = (data: CreateModelBody) =>

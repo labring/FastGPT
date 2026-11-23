@@ -80,6 +80,7 @@ type RowCatalog = {
   templateMap: Map<string, AIModelDocumentDataType>;
   providerById: Map<string, ModelProviderItemType>;
   installedModelById: Map<string, ModelConfigListItem>;
+  installedModelNames: ReadonlySet<string>;
   availableTypes: { value: ModelTypeEnum; label: string }[];
   createModelData: (type: ModelTypeEnum) => AIModelDocumentDataType;
   channel?: ModelChannelSummary;
@@ -146,7 +147,7 @@ export const resolveRowSelection = ({
 }: {
   row: ImportPreviewRow;
   selection?: RowSelection;
-  catalog: Pick<RowCatalog, 'installedModelById' | 'templateMap'>;
+  catalog: Pick<RowCatalog, 'installedModelById' | 'installedModelNames' | 'templateMap'>;
 }) => {
   const item = getChannelImportCandidate(row);
   const candidateModelData =
@@ -155,13 +156,17 @@ export const resolveRowSelection = ({
       : 'modelId' in item
         ? catalog.installedModelById.get(item.modelId)
         : undefined;
-  const presetKey = selection?.presetKey ?? getDefaultPresetKey(item);
+  const canCreate = !catalog.installedModelNames.has(row.providerModelSlug);
+  const isDisabled =
+    (item.category === 'associated' && candidateModelData?.model === row.providerModelSlug) ||
+    (!canCreate && !('modelId' in item));
+  const presetKey = (canCreate ? selection?.presetKey : undefined) ?? getDefaultPresetKey(item);
   const selectedPresetData =
     isCurrentModelSelection(item, presetKey) && 'modelId' in item
       ? catalog.installedModelById.get(item.modelId)
       : getTemplateDataForKey({ item, key: presetKey, templateMap: catalog.templateMap });
   const modelType = (() => {
-    if (selection?.modelType) return selection.modelType;
+    if (canCreate && selection?.modelType) return selection.modelType;
     if (presetKey !== blankTemplateValue) return selectedPresetData?.type;
     if (item.category === 'blank' || item.category === 'template') {
       return getBlankChannelImportDraft(item).modelType;
@@ -178,7 +183,16 @@ export const resolveRowSelection = ({
     return true;
   })();
 
-  return { item, candidateModelData, presetKey, selectedPresetData, modelType, isActive };
+  return {
+    item,
+    candidateModelData,
+    presetKey,
+    selectedPresetData,
+    modelType,
+    isActive,
+    canCreate,
+    isDisabled
+  };
 };
 
 /** 复用所选配置，并在渠道别名写入前用上游模型 ID 测试。 */
@@ -271,21 +285,28 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
     presetKey: selectedPresetKey,
     selectedPresetData,
     modelType,
-    isActive: rowIsActive
+    isActive: rowIsActive,
+    canCreate,
+    isDisabled
   } = resolveRowSelection({ row, selection, catalog });
   const isBlank = selectedPresetKey === blankTemplateValue;
-  const templateOptions = [...catalog.availableTemplates];
+  const templateOptions = canCreate ? [...catalog.availableTemplates] : [];
   if (
+    canCreate &&
     item.category === 'template' &&
     !templateOptions.some((template) => getTemplateKey(template) === getTemplateKey(item.template))
   ) {
     templateOptions.unshift(item.modelData);
   }
   const templateSelectOptions = [
-    {
-      value: blankTemplateValue,
-      label: t('config_model:channel_import_blank_template')
-    },
+    ...(canCreate
+      ? [
+          {
+            value: blankTemplateValue,
+            label: t('config_model:channel_import_blank_template')
+          }
+        ]
+      : []),
     ...('modelId' in item &&
     candidateModelData &&
     (!modelType || candidateModelData.type === modelType)
@@ -318,10 +339,11 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
   });
 
   return (
-    <Tr h="64.5px">
+    <Tr h="64.5px" aria-disabled={isDisabled || undefined} opacity={isDisabled ? 0.6 : undefined}>
       <Td px={3}>
         <Checkbox
-          isChecked={selection?.selected ?? false}
+          isChecked={!isDisabled && (selection?.selected ?? false)}
+          isDisabled={isDisabled}
           aria-label={t('config_model:channel_import_model') + ' ' + row.providerModelSlug}
           onChange={() => onToggleSelected(row.providerModelSlug)}
         />
@@ -329,8 +351,17 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
       <Td fontSize="sm">
         <Flex alignItems="center" gap={2} minW={0}>
           <Avatar src={candidateAvatar} w="1.2rem" borderRadius="50%" />
-          <Box color="myGray.900" fontWeight="500" noOfLines={1} minW={0}>
-            {row.providerModelSlug}
+          <Box minW={0}>
+            <Box color="myGray.900" fontWeight="500" noOfLines={1}>
+              {row.providerModelSlug}
+            </Box>
+            {isDisabled && (
+              <Box fontSize="xs" color="myGray.600">
+                {item.category === 'associated'
+                  ? t('config_model:channel_import_category_associated')
+                  : t('common:model_id_already_exists')}
+              </Box>
+            )}
           </Box>
         </Flex>
       </Td>
@@ -342,6 +373,7 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
           value={modelType}
           list={catalog.availableTypes}
           placeholder={t('config_model:channel_import_select_type')}
+          isDisabled={!canCreate}
           isInvalid={selection?.selected && isBlank && !modelType}
           aria-label={t('common:model.model_type')}
           onChange={(selectedType) =>
@@ -362,7 +394,7 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
           list={templateSelectOptions}
           placeholder={t('config_model:select_model_template')}
           isSearch
-          isDisabled={catalog.templateLoading}
+          isDisabled={!canCreate || catalog.templateLoading}
           aria-label={t('config_model:channel_import_preset_template')}
           onChange={(selectedKey) => {
             if (selectedKey === selectedPresetKey) return;
@@ -386,12 +418,13 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
           size="sm"
           colorScheme="myBlue"
           isChecked={rowIsActive}
+          isDisabled={isDisabled}
           aria-label={`${t('config_model:model.active')} ${row.providerModelSlug}`}
           onChange={(event) => onActiveChange(row.providerModelSlug, event.target.checked)}
         />
       </Td>
       <Td>
-        {catalog.channel && (
+        {!isDisabled && catalog.channel && (
           <ImportModelTestButton
             target={modelTestTarget}
             channelId={catalog.channel.id}
@@ -522,10 +555,7 @@ const ModelPreviewStep = ({
     () => new Map(providers.map((provider) => [provider.id, provider] as const)),
     [providers]
   );
-  const availableTemplates = useMemo(
-    () => state.templates.filter((template) => !installedModelNames.has(template.model)),
-    [installedModelNames, state.templates]
-  );
+  const availableTemplates = state.templates;
   const templateMap = useMemo(
     () =>
       new Map(availableTemplates.map((template) => [getTemplateKey(template), template] as const)),
@@ -547,6 +577,7 @@ const ModelPreviewStep = ({
       templateMap,
       providerById,
       installedModelById,
+      installedModelNames,
       availableTypes,
       createModelData,
       channel,
@@ -557,6 +588,7 @@ const ModelPreviewStep = ({
       templateMap,
       providerById,
       installedModelById,
+      installedModelNames,
       availableTypes,
       createModelData,
       channel,
@@ -568,19 +600,34 @@ const ModelPreviewStep = ({
     [availableTypes, t]
   );
   const previewItems = state.items ?? noPreviewItems;
+  const resolveSelection = useCallback(
+    (row: ImportPreviewRow) =>
+      resolveRowSelection({
+        row,
+        selection: state.rowSelections.get(row.providerModelSlug),
+        catalog
+      }),
+    [catalog, state.rowSelections]
+  );
   const filteredPreviewItems = useMemo(
     () =>
       filterChannelImportPreviewItems({
         items: previewItems,
         modelType: state.modelTypeFilter,
         search: state.search,
-        installedModels
+        installedModelsById: installedModelById,
+        getModelType: (row) => resolveSelection(row).modelType
       }),
-    [installedModels, previewItems, state.modelTypeFilter, state.search]
+    [installedModelById, previewItems, resolveSelection, state.modelTypeFilter, state.search]
   );
   const selectedItems = useMemo(
-    () => previewItems.filter((item) => state.rowSelections.get(item.providerModelSlug)?.selected),
-    [previewItems, state.rowSelections]
+    () =>
+      previewItems.filter(
+        (row) =>
+          state.rowSelections.get(row.providerModelSlug)?.selected &&
+          !resolveSelection(row).isDisabled
+      ),
+    [previewItems, resolveSelection, state.rowSelections]
   );
 
   const resetPreviewSelections = () => {
@@ -667,11 +714,7 @@ const ModelPreviewStep = ({
   );
 
   const selectedRowsNeedBlankFields = selectedItems.some((row) => {
-    const view = resolveRowSelection({
-      row,
-      selection: state.rowSelections.get(row.providerModelSlug),
-      catalog
-    });
+    const view = resolveSelection(row);
     return view.presetKey === blankTemplateValue && !view.modelType;
   });
 
@@ -686,11 +729,7 @@ const ModelPreviewStep = ({
     }
 
     const rows: ChannelImportPlanRow[] = selectedItems.map((row) => {
-      const { item, presetKey, modelType, isActive } = resolveRowSelection({
-        row,
-        selection: state.rowSelections.get(row.providerModelSlug),
-        catalog
-      });
+      const { item, presetKey, modelType, isActive } = resolveSelection(row);
       const category: ImportPreviewItem['category'] =
         presetKey === blankTemplateValue
           ? 'blank'

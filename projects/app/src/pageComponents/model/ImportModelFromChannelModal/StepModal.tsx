@@ -11,7 +11,7 @@ const StepModal = ({
 }: {
   isOpen: boolean;
   title: string;
-  onClose: () => void;
+  onClose?: () => void;
   footer: ReactNode;
   children: ReactNode;
   height?: string;
@@ -20,6 +20,7 @@ const StepModal = ({
     <MyModal
       isOpen
       onClose={onClose}
+      closeOnOverlayClick={Boolean(onClose)}
       title={title}
       w="1080px"
       h={height ?? 'min(760px, calc(100vh - 32px))'}

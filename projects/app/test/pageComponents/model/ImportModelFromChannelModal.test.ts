@@ -36,16 +36,19 @@ vi.mock('@chakra-ui/react', () => {
     Button,
     Checkbox: ({
       isChecked,
+      isDisabled,
       onChange,
       'aria-label': ariaLabel
     }: {
       isChecked?: boolean;
+      isDisabled?: boolean;
       onChange?: React.ChangeEventHandler<HTMLInputElement>;
       'aria-label'?: string;
     }) =>
       React.createElement('input', {
         type: 'checkbox',
         checked: isChecked,
+        disabled: isDisabled,
         onChange,
         'aria-label': ariaLabel
       }),
@@ -242,7 +245,7 @@ describe('ImportModelFromChannelModal', () => {
     expect(getButton(buttonKey)).not.toBeUndefined();
   });
 
-  it('remounts and refreshes the preview after returning from results', async () => {
+  it('disables an exact bound model and keeps offscreen selections when returning from results', async () => {
     const installedModel = {
       modelId: 'installed-model-id',
       model: 'installed-model',
@@ -253,10 +256,16 @@ describe('ImportModelFromChannelModal', () => {
       isActive: true
     } as ModelConfigListItem;
     apiMocks.getImportPreviewFromChannel.mockResolvedValue({
-      items: Array.from({ length: 120 }, (_, index) => ({
-        providerModelSlug: `upstream-model-${index}`,
-        candidates: [{ category: 'associated', modelId: installedModel.modelId }]
-      }))
+      items: [
+        {
+          providerModelSlug: installedModel.model,
+          candidates: [{ category: 'associated', modelId: installedModel.modelId }]
+        },
+        ...Array.from({ length: 120 }, (_, index) => ({
+          providerModelSlug: `upstream-model-${index}`,
+          candidates: [{ category: 'associated', modelId: installedModel.modelId }]
+        }))
+      ]
     });
     apiMocks.getModelTemplates.mockResolvedValue({ models: [] });
 
@@ -288,6 +297,11 @@ describe('ImportModelFromChannelModal', () => {
     const scrollContainer = host.querySelector<HTMLDivElement>('[data-testid="virtual-list"]')!;
     Object.defineProperty(scrollContainer, 'clientHeight', { configurable: true, value: 64 });
     expect(host.textContent).toContain('upstream-model-0');
+    expect(
+      host.querySelector<HTMLInputElement>(
+        'input[aria-label="config_model:channel_import_model installed-model"]'
+      )?.disabled
+    ).toBe(true);
 
     const firstRowCheckbox = host.querySelector<HTMLInputElement>(
       'input[aria-label="config_model:channel_import_model upstream-model-0"]'
@@ -309,8 +323,12 @@ describe('ImportModelFromChannelModal', () => {
       await flush();
     });
 
-    expect(apiMocks.getImportPreviewFromChannel).toHaveBeenCalledTimes(2);
-    expect(host.textContent).toContain('upstream-model-0');
+    expect(apiMocks.getImportPreviewFromChannel).toHaveBeenCalledOnce();
+    expect(
+      host.querySelector<HTMLInputElement>(
+        'input[aria-label="config_model:channel_import_model upstream-model-0"]'
+      )?.checked
+    ).toBe(true);
   });
 });
 
@@ -405,6 +423,72 @@ describe('ImportResultsStep', () => {
       expect(apiMocks.postApplyChannelImportChanges).toHaveBeenCalledOnce();
       expect(onSuccess).toHaveBeenCalledTimes(shouldRefresh ? 1 : 0);
       expect(host.textContent).toContain('config_model:channel_import_result_failed');
+      expect(host.textContent).toContain('Channel binding failed');
+    }
+  );
+
+  it.each([
+    {
+      error: new Error('ECONNRESET'),
+      response: undefined,
+      expected: ['config_model:channel_import_result_unknown', 'ECONNRESET']
+    },
+    {
+      error: undefined,
+      response: {
+        results: [
+          {
+            action: 'associate',
+            status: 'failed',
+            providerModelSlug: 'upstream-model',
+            error: ModelErrEnum.channelModelMappingConflict
+          }
+        ]
+      },
+      expected: [
+        'config_model:channel_import_result_failed',
+        'config_model:channel_import_mapping_conflict'
+      ]
+    }
+  ])(
+    'renders failure details according to whether the server returned results',
+    async ({ error, response, expected }) => {
+      const providerModelSlug = 'upstream-model';
+      const plan: ChannelImportPlan = {
+        rows: [
+          {
+            providerModelSlug,
+            category: 'existing',
+            operation: {
+              action: 'associate',
+              providerModelSlug,
+              isActive: true,
+              modelId: 'existing'
+            }
+          }
+        ]
+      };
+      if (error) apiMocks.postApplyChannelImportChanges.mockRejectedValueOnce(error);
+      else apiMocks.postApplyChannelImportChanges.mockResolvedValueOnce(response);
+
+      await act(async () =>
+        root.render(
+          React.createElement(ImportResultsStep, {
+            channelId: 1,
+            plan,
+            onClose: vi.fn(),
+            onPrevious: vi.fn(),
+            onSuccess: vi.fn(async () => undefined)
+          })
+        )
+      );
+      const button = [...host.querySelectorAll('button')].find(
+        (button) => button.textContent === 'config_model:channel_import_apply'
+      );
+      await act(async () => button?.click());
+
+      expect(apiMocks.postApplyChannelImportChanges).toHaveBeenCalledOnce();
+      for (const text of expected) expect(host.textContent).toContain(text);
     }
   );
 });

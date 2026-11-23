@@ -13,7 +13,6 @@ const {
   listChannelsMock,
   getModelProvidersMock,
   refreshTemplatesMock,
-  updateBindingsMock,
   updateChannelMock,
   updateModelStatusMock
 } = vi.hoisted(() => ({
@@ -25,7 +24,6 @@ const {
   listChannelsMock: vi.fn(),
   getModelProvidersMock: vi.fn(),
   refreshTemplatesMock: vi.fn(),
-  updateBindingsMock: vi.fn(),
   updateChannelMock: vi.fn(),
   updateModelStatusMock: vi.fn()
 }));
@@ -41,9 +39,6 @@ vi.mock('@fastgpt/service/core/ai/model/channel/cache', () => ({
 }));
 vi.mock('@fastgpt/service/core/ai/model/provider/controller', () => ({
   getModelProviders: getModelProvidersMock
-}));
-vi.mock('@fastgpt/service/core/ai/model/channel/binding', () => ({
-  updateModelChannelBindings: updateBindingsMock
 }));
 vi.mock('@fastgpt/service/core/ai/model/service', () => ({
   createModel: createModelMock,
@@ -111,9 +106,10 @@ describe('apply model imports from channel', () => {
     listChannelsMock.mockResolvedValue([{ ...channel }]);
     getModelProvidersMock.mockReturnValue([{ id: 'openai', name: 'openai' }]);
     refreshTemplatesMock.mockResolvedValue([]);
-    updateBindingsMock.mockResolvedValue(undefined);
-    updateChannelMock.mockResolvedValue(undefined);
-    updateModelStatusMock.mockResolvedValue(undefined);
+    updateChannelMock.mockImplementation(async (_id: number, patch: Partial<AiproxyChannel>) => {
+      Object.assign(channel, patch);
+    });
+    updateModelStatusMock.mockResolvedValue(false);
   });
 
   it('infers a unique cached provider and keeps context length when type is unresolved', async () => {
@@ -201,9 +197,9 @@ describe('apply model imports from channel', () => {
       .mockRejectedValueOnce(new Error('duplicate'))
       .mockResolvedValueOnce({ modelId: 'created-id' })
       .mockResolvedValueOnce({ modelId: 'successful-id' });
-    updateBindingsMock.mockImplementation(async ({ model }: { model: string }) => {
-      if (model === 'upstream/created-without-binding') throw new Error('binding failed');
-    });
+    updateChannelMock
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('binding failed'));
 
     const results = await applyChangesFromChannel({
       channelId: 1,
@@ -239,6 +235,7 @@ describe('apply model imports from channel', () => {
 
   it('applies enabled state to an already-associated model without changing the channel', async () => {
     channel.models = ['existing-model'];
+    updateModelStatusMock.mockResolvedValueOnce(true);
 
     const results = await applyChangesFromChannel({
       channelId: 1,
@@ -256,7 +253,7 @@ describe('apply model imports from channel', () => {
 
     expect(results.results[0]).toMatchObject({
       action: 'associate',
-      status: 'skipped',
+      status: 'success',
       modelId: 'existing-id'
     });
     expect(updateModelStatusMock).toHaveBeenCalledWith({
@@ -266,7 +263,6 @@ describe('apply model imports from channel', () => {
       tmbId: '60000000000000000000000a',
       teamId: '6000000000000000000000aa'
     });
-    expect(updateBindingsMock).not.toHaveBeenCalled();
     expect(updateChannelMock).not.toHaveBeenCalled();
   });
 
@@ -287,11 +283,76 @@ describe('apply model imports from channel', () => {
       ]
     });
 
-    expect(results.results[0]).toMatchObject({ status: 'skipped', modelId: 'existing-id' });
+    expect(results.results[0]).toMatchObject({ status: 'success', modelId: 'existing-id' });
     expect(updateChannelMock).toHaveBeenCalledWith(1, {
+      models: ['existing-model'],
       model_mapping: { 'existing-model': 'vendor/existing-model' }
     });
-    expect(updateBindingsMock).not.toHaveBeenCalled();
+  });
+
+  it.each([true, false])(
+    'sends the new binding and alias together (write succeeds: %s)',
+    async (succeeds) => {
+      channel.models = ['other-model'];
+      channel.model_mapping = { 'other-model': 'vendor/other' };
+      if (!succeeds) updateChannelMock.mockRejectedValueOnce(new Error('upstream_write_failed'));
+
+      const response = await applyChangesFromChannel({
+        channelId: 1,
+        tmbId: 'member',
+        teamId: 'team',
+        operations: [
+          {
+            action: 'associate',
+            providerModelSlug: 'vendor/existing-model',
+            modelId: 'existing-id',
+            isActive: true
+          }
+        ]
+      });
+
+      const patch = {
+        models: ['other-model', 'existing-model'],
+        model_mapping: { 'other-model': 'vendor/other', 'existing-model': 'vendor/existing-model' }
+      };
+      expect(updateChannelMock).toHaveBeenCalledExactlyOnceWith(1, patch);
+      if (succeeds) {
+        expect(response.results[0].status).toBe('success');
+        expect(channel).toMatchObject(patch);
+      } else {
+        expect(response.results[0]).toMatchObject({
+          status: 'failed',
+          error: 'upstream_write_failed'
+        });
+        expect(channel).toMatchObject({
+          models: ['other-model'],
+          model_mapping: { 'other-model': 'vendor/other' }
+        });
+        expect(updateModelStatusMock).not.toHaveBeenCalled();
+      }
+    }
+  );
+
+  it('skips an association only when channel binding and active state are unchanged', async () => {
+    channel.models = ['existing-model'];
+    channel.model_mapping = { 'existing-model': 'vendor/existing-model' };
+
+    const response = await applyChangesFromChannel({
+      channelId: 1,
+      tmbId: 'member',
+      teamId: 'team',
+      operations: [
+        {
+          action: 'associate',
+          providerModelSlug: 'vendor/existing-model',
+          modelId: 'existing-id',
+          isActive: true
+        }
+      ]
+    });
+
+    expect(response.results[0].status).toBe('skipped');
+    expect(updateChannelMock).not.toHaveBeenCalled();
   });
 
   it('uses provider model slug for new models and honors enabled state', async () => {
@@ -354,7 +415,7 @@ describe('apply model imports from channel', () => {
     expect(results.results[0]).toMatchObject({
       action: 'create',
       status: 'failed',
-      error: '渠道别名已映射到其他上游模型'
+      error: ModelErrEnum.channelModelMappingConflict
     });
     expect(createModelMock).not.toHaveBeenCalled();
     expect(updateChannelMock).not.toHaveBeenCalled();

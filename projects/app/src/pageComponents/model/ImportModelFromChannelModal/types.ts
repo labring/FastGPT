@@ -7,7 +7,7 @@ import type {
 
 export type ImportPreviewRow = PreviewImportFromChannelResponse['items'][number];
 export type RowResult = {
-  status: ApplyChangesResponse['results'][number]['status'];
+  status: ApplyChangesResponse['results'][number]['status'] | 'unknown';
   error?: string;
 };
 export type ChannelImportPlanRow = {

@@ -88,6 +88,7 @@ const ImportResultsTable = ({
             )}
             {virtualDataList.map(({ data: row }) => {
               const result = rowResults.get(row.providerModelSlug);
+              const error = result?.error ? t(getErrText(result.error)) : undefined;
 
               return (
                 <Tr key={row.providerModelSlug} h="56px">
@@ -100,7 +101,7 @@ const ImportResultsTable = ({
                     </MyTag>
                   </Td>
                   <Td fontSize="sm">
-                    <Tooltip label={result?.error} isDisabled={!result?.error}>
+                    <Tooltip label={error} isDisabled={!error}>
                       <Box
                         color={result?.status === 'failed' ? 'red.500' : 'myGray.700'}
                         overflow="hidden"
@@ -113,8 +114,10 @@ const ImportResultsTable = ({
                             ? t('config_model:channel_import_result_skipped')
                             : result?.status === 'failed'
                               ? t('config_model:channel_import_result_failed')
-                              : t('config_model:channel_import_result_pending')}
-                        {result?.error && `：${result.error}`}
+                              : result?.status === 'unknown'
+                                ? t('config_model:channel_import_result_unknown')
+                                : t('config_model:channel_import_result_pending')}
+                        {error && `：${error}`}
                       </Box>
                     </Tooltip>
                   </Td>
@@ -182,6 +185,7 @@ const ImportResultsStep = ({
 
     try {
       if (operations.length > 0) {
+        let shouldRefresh = false;
         try {
           const response = await postApplyChannelImportChanges({
             channelId,
@@ -193,6 +197,10 @@ const ImportResultsStep = ({
           );
           for (const operation of operations) {
             const result = resultBySlug.get(operation.providerModelSlug);
+            shouldRefresh ||=
+              !result ||
+              result.status !== 'failed' ||
+              (result.action === 'create' && result.modelId !== undefined);
             nextResults.set(
               operation.providerModelSlug,
               result
@@ -201,28 +209,21 @@ const ImportResultsStep = ({
                     error: result.status === 'failed' ? result.error : undefined
                   }
                 : {
-                    status: 'failed',
-                    error: t('config_model:channel_import_apply_error')
+                    status: 'unknown'
                   }
             );
           }
-          if (
-            response.results.some(
-              (result) =>
-                result.status !== 'failed' ||
-                (result.action === 'create' && result.modelId !== undefined)
-            )
-          ) {
-            await onSuccess().catch(() => {});
-          }
         } catch (error) {
+          // 连接中断时服务端可能已完成写入，只有逐项响应能确认失败。
+          shouldRefresh = true;
           for (const operation of operations) {
             nextResults.set(operation.providerModelSlug, {
-              status: 'failed',
-              error: getErrText(error, t('config_model:channel_import_apply_error'))
+              status: 'unknown',
+              error: getErrText(error)
             });
           }
         }
+        if (shouldRefresh) await onSuccess().catch(() => {});
       }
 
       updateState((draft) => {
@@ -241,7 +242,7 @@ const ImportResultsStep = ({
     <StepModal
       isOpen
       title={t('config_model:channel_import_import_step')}
-      onClose={onClose}
+      onClose={state.submitting ? undefined : onClose}
       height="min(560px, calc(100vh - 32px))"
       footer={
         state.hasStartedImport ? (

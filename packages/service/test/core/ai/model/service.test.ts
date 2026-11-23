@@ -528,6 +528,17 @@ describe('team model writes', () => {
       ).rejects.toThrow('modelUnExist');
     });
 
+    it('updates active state and increments revision only when it changes', async () => {
+      const model = await createModel({ ...owner, modelData: draft });
+      const input = { ...owner, modelIds: [model.modelId], isActive: false };
+
+      await expect(updateModelStatus(input)).resolves.toBe(true);
+      expect(await readModelCatalogRevision(context)).toBe(2);
+      await expect(updateModelStatus(input)).resolves.toBe(false);
+      expect(await readModelCatalogRevision(context)).toBe(2);
+      expect(await MongoAIModel.findById(model.modelId).lean()).toMatchObject({ isActive: false });
+    });
+
     it('rolls back a batch that includes another member model', async () => {
       const own = await createModel({ ...owner, modelData: draft });
       const other = await createModel({
