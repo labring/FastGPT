@@ -279,7 +279,11 @@ export const trackVectorRecallLease = async <T>({
             if (perfActive && isRedisLeaseError(err)) {
               // 按异常身份绑定细粒度失租错误码，避免 trackPerfStage 覆写为通用 VECTOR_RECALL_ERROR，
               // 且不中途改写请求级 errorCode，保证并行分支各自报错互不干扰。
-              tagPerfError('dataset.search', err, resolveVectorLeaseErrorCode(err));
+              tagPerfError({
+                domain: 'dataset.search',
+                error: err,
+                errorCode: resolveVectorLeaseErrorCode(err)
+              });
             }
             throw err;
           }
@@ -309,7 +313,7 @@ export const trackVectorRecallLease = async <T>({
             errorCode
           });
         } else {
-          tagPerfError('dataset.search', error, errorCode);
+          tagPerfError({ domain: 'dataset.search', error, errorCode });
         }
       }
       return { success: false, error };

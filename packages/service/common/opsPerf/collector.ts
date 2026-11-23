@@ -270,7 +270,15 @@ export const enqueueOpsPerfRecord = <D extends OpsPerfDomain>(
       addHistogramValue({ hist: bucket.total.hist, durationMs: totalMs });
 
       if (input.stages) {
-        const accumulateBucketStage = (stageKey: string, stageMs: number, stageErrors: number) => {
+        const accumulateBucketStage = ({
+          stageKey,
+          stageMs,
+          stageErrors
+        }: {
+          stageKey: string;
+          stageMs: number;
+          stageErrors: number;
+        }) => {
           const stageAccum =
             bucket.stages[stageKey] ??
             (bucket.stages[stageKey] = {
@@ -292,7 +300,11 @@ export const enqueueOpsPerfRecord = <D extends OpsPerfDomain>(
 
         for (const [stageKey, timing] of Object.entries(stagesRecord)) {
           if (!timing || !SAFE_PATH_KEY_RE.test(stageKey)) continue;
-          accumulateBucketStage(stageKey, normalizeDurationMs(timing.ms), timing.errorCount ?? 0);
+          accumulateBucketStage({
+            stageKey,
+            stageMs: normalizeDurationMs(timing.ms),
+            stageErrors: timing.errorCount ?? 0
+          });
         }
 
         const compositeStages = OPS_PERF_DOMAIN_CONFIG[input.domain]?.compositeStages;
@@ -321,7 +333,11 @@ export const enqueueOpsPerfRecord = <D extends OpsPerfDomain>(
             }
             if (hasAny) {
               // 按成员阶段真实子区间并集结算，既排除重试空档，也去重并行阶段重叠时间。
-              accumulateBucketStage(targetKey, computeIntervalUnionMs(intervals), combinedErrors);
+              accumulateBucketStage({
+                stageKey: targetKey,
+                stageMs: computeIntervalUnionMs(intervals),
+                stageErrors: combinedErrors
+              });
             }
           }
         }

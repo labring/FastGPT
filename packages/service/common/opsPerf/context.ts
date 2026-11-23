@@ -109,25 +109,33 @@ export const isOpsPerfActive = (domain?: OpsPerfDomain): boolean =>
   isProVersion() || (domain ? hasPerfContext(domain) : false);
 
 /** 按异常身份记录白名单错误码（首次写入优先，确保最内层或显式细粒度错误码不被外层泛化覆盖）。 */
-const recordThrownErrorCode = (
-  state: PerfContextState,
-  error: unknown,
-  errorCode?: OpsPerfErrorCode
-) => {
+const recordThrownErrorCode = ({
+  state,
+  error,
+  errorCode
+}: {
+  state: PerfContextState;
+  error: unknown;
+  errorCode?: OpsPerfErrorCode;
+}) => {
   if (!errorCode || state.thrownErrorCodeByError.has(error)) return;
   if (state.thrownErrorCodeByError.size >= MAX_THROWN_ERRORS_PER_CONTEXT) return;
   state.thrownErrorCodeByError.set(error, errorCode);
 };
 
 /** 为特定异常对象显式绑定细粒度白名单错误码（由请求出口按实际终止异常选用，不污染并行分支）。 */
-export const tagPerfError = (
-  domain: OpsPerfDomain,
-  error: unknown,
-  errorCode: OpsPerfErrorCode
-) => {
+export const tagPerfError = ({
+  domain,
+  error,
+  errorCode
+}: {
+  domain: OpsPerfDomain;
+  error: unknown;
+  errorCode: OpsPerfErrorCode;
+}) => {
   const state = getDomainState(domain);
   if (!state) return;
-  recordThrownErrorCode(state, error, errorCode);
+  recordThrownErrorCode({ state, error, errorCode });
 };
 
 /** 将一次阶段调用区间写入累计器；超过上限时先压缩重叠区间防止极端循环膨胀内存。 */
@@ -339,11 +347,11 @@ export const trackPerfStage = async <D extends OpsPerfDomain, T>(
     return await fn({ markError });
   } catch (error) {
     failed = true;
-    recordThrownErrorCode(
+    recordThrownErrorCode({
       state,
       error,
-      OPS_PERF_DOMAIN_CONFIG[state.domain]?.stageErrorCodes?.[options.stage]
-    );
+      errorCode: OPS_PERF_DOMAIN_CONFIG[state.domain]?.stageErrorCodes?.[options.stage]
+    });
     throw error;
   } finally {
     const endOffset = Math.max(startOffset, performance.now() - state.startedAtPerf);
@@ -369,11 +377,12 @@ export const recordPerfStageSpan = <D extends OpsPerfDomain>(options: {
   if (!state) return;
 
   if (options.failed && options.error !== undefined) {
-    recordThrownErrorCode(
+    recordThrownErrorCode({
       state,
-      options.error,
-      options.errorCode ?? OPS_PERF_DOMAIN_CONFIG[state.domain]?.stageErrorCodes?.[options.stage]
-    );
+      error: options.error,
+      errorCode:
+        options.errorCode ?? OPS_PERF_DOMAIN_CONFIG[state.domain]?.stageErrorCodes?.[options.stage]
+    });
   }
   const startOffset = Math.max(0, options.startedAtPerf - state.startedAtPerf);
   const endOffset = Math.max(
