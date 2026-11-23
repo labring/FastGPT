@@ -10,6 +10,7 @@ sidebarTag: 开发中
 
 - 将 FastGPT 主服务（`fastgpt-app`）镜像标签更新为 `v4.17.5`。商业版同时将 `fastgpt-pro` 更新为 `v4.17.5`。
 - 最新的 [Docker Compose 部署模板](/self-host/deploy/docker) 将自带的 MongoDB 更新至 `8.0.38`，以兼容 Ubuntu 的部分新版内核。已使用 MongoDB 8.0 的部署在原地更新补丁版时保留现有数据卷。如果使用外部 MongoDB，请参考 [MongoDB 内核兼容说明](https://www.mongodb.com/docs/manual/administration/production-notes/#platform-support-notes)。
+- 部署模板为 OpenSandbox Server 补充了 `host.docker.internal:host-gateway` 映射。自定义 Compose 使用该主机名时，也需在 `fastgpt-opensandbox-server` 的 `extra_hosts` 中加入此映射，确保服务能访问沙盒容器在宿主机上的映射端口。
 
 ### 配置与数据
 
