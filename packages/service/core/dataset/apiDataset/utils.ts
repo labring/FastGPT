@@ -32,10 +32,59 @@ export type LegacyApiFileFolderMigration = {
 };
 
 /** 沿用请求 factory 的配置优先级，旧目录正文兼容只适用于实际启用的钉钉 Provider。 */
-export const usesDingtalkDataset = (apiDatasetServer?: ApiDatasetServerType) => {
+export type ResolvedApiDatasetProvider =
+  | {
+      type: 'api';
+      basePath: string | undefined;
+      server: NonNullable<ApiDatasetServerType['apiServer']>;
+    }
+  | {
+      type: 'yuque';
+      basePath: string | undefined;
+      server: NonNullable<ApiDatasetServerType['yuqueServer']>;
+    }
+  | {
+      type: 'feishu';
+      basePath: string | undefined;
+      server: NonNullable<ApiDatasetServerType['feishuServer']>;
+    }
+  | {
+      type: 'dingtalk';
+      basePath: string | undefined;
+      server: NonNullable<ApiDatasetServerType['dingtalkServer']>;
+    };
+
+/** 按统一优先级解析当前生效的数据源 provider 及其配置的目录起点，供请求、导入与同步复用。 */
+export const resolveApiDatasetProvider = (
+  apiDatasetServer?: ApiDatasetServerType
+): ResolvedApiDatasetProvider | undefined => {
   const { apiServer, yuqueServer, feishuServer, dingtalkServer } = apiDatasetServer ?? {};
-  return Boolean(dingtalkServer && !apiServer && !yuqueServer && !feishuServer);
+
+  if (apiServer) {
+    return { type: 'api', basePath: apiServer.basePath || undefined, server: apiServer };
+  }
+  if (yuqueServer) {
+    return { type: 'yuque', basePath: yuqueServer.basePath || undefined, server: yuqueServer };
+  }
+  if (feishuServer) {
+    return {
+      type: 'feishu',
+      basePath: feishuServer.folderToken || undefined,
+      server: feishuServer
+    };
+  }
+  if (dingtalkServer) {
+    return {
+      type: 'dingtalk',
+      basePath: dingtalkServer.rootNodeId || undefined,
+      server: dingtalkServer
+    };
+  }
+  return undefined;
 };
+
+export const usesDingtalkDataset = (apiDatasetServer?: ApiDatasetServerType) =>
+  resolveApiDatasetProvider(apiDatasetServer)?.type === 'dingtalk';
 
 /**
  * 兼容旧钉钉把带子文档的正文存成目录的记录；只有远端已确认正文、且本地无新格式来源标记时转换。
@@ -219,10 +268,11 @@ export const buildApiFileParentUpdates = ({
 };
 
 /**
- * 同步只查询真实远端 ID。新派生目录保存 sourceId，正文尚未落库时也能恢复同步；
- * 历史目录仅在本地挂载关系能证明来源时兼容，不盲目裁剪 provider ID 的后缀。
+ * 构建本地集合到真实远端源身份的解析器。
+ * 新派生目录保存 metadata.apiFileSourceId；历史派生目录仅在本地挂载关系能证明来源时归并，
+ * 不盲目裁剪 provider ID 的 `#dir` 后缀。
  */
-export const getApiFileSyncRootIds = (collections: ApiFileLocalCollection[]): string[] => {
+export const createApiFileSourceResolver = (collections: ApiFileLocalCollection[]) => {
   const localByApiId = new Map(
     collections.filter((item) => item.apiFileId).map((item) => [item.apiFileId!, item])
   );
@@ -247,19 +297,37 @@ export const getApiFileSyncRootIds = (collections: ApiFileLocalCollection[]): st
       remoteParentsByLocalParent.get(String(directory._id))?.has(item.apiFileId);
     if (isDerived) legacySources.set(dirId, item.apiFileId);
   }
-  const sourceIdOf = (item: ApiFileLocalCollection) => {
+
+  const isDerivedFolder = (item: ApiFileLocalCollection): boolean => {
+    if (item.type !== DatasetCollectionTypeEnum.folder || !item.apiFileId) return false;
+    const sourceId = item.metadata?.apiFileSourceId;
+    if (typeof sourceId === 'string' && sourceId && sourceId !== item.apiFileId) return true;
+    return legacySources.has(item.apiFileId);
+  };
+
+  const getSourceId = (item: ApiFileLocalCollection): string | undefined => {
     if (!item.apiFileId) return undefined;
     if (item.type !== DatasetCollectionTypeEnum.folder) return item.apiFileId;
     const sourceId = item.metadata?.apiFileSourceId;
     return typeof sourceId === 'string' && sourceId
       ? sourceId
-      : (legacySources.get(item.apiFileId ?? '') ?? item.apiFileId);
+      : (legacySources.get(item.apiFileId) ?? item.apiFileId);
   };
-  const sourceIds = new Set(collections.map(sourceIdOf).filter(Boolean));
+
+  return { getSourceId, isDerivedFolder };
+};
+
+/**
+ * 同步只查询真实远端 ID。新派生目录保存 sourceId，正文尚未落库时也能恢复同步；
+ * 历史目录仅在本地挂载关系能证明来源时兼容，不盲目裁剪 provider ID 的后缀。
+ */
+export const getApiFileSyncRootIds = (collections: ApiFileLocalCollection[]): string[] => {
+  const { getSourceId } = createApiFileSourceResolver(collections);
+  const sourceIds = new Set(collections.map(getSourceId).filter(Boolean));
   return [
     ...new Set(
       collections.flatMap((item) => {
-        const sourceId = sourceIdOf(item);
+        const sourceId = getSourceId(item);
         return sourceId &&
           sourceId !== RootCollectionId &&
           (!item.apiFileParentId || !sourceIds.has(item.apiFileParentId))

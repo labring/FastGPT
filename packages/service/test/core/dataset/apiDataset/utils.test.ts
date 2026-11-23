@@ -3,6 +3,7 @@ import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant
 import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import {
   buildApiFileParentUpdates,
+  createApiFileSourceResolver,
   planLegacyApiFileFolders,
   getApiFileSyncRootIds,
   resolveApiFileRecordParent,
@@ -188,6 +189,53 @@ describe('buildApiFileParentUpdates', () => {
         collections: [collection()]
       })
     ).toEqual([]);
+  });
+});
+
+describe('createApiFileSourceResolver', () => {
+  it('真实目录 folder 与 folder#dir 并存时不误判为派生目录', () => {
+    const folder = collection({
+      _id: 'folder-id',
+      apiFileId: 'folder',
+      type: DatasetCollectionTypeEnum.folder
+    });
+    const suffixFolder = collection({
+      _id: 'suffix-folder-id',
+      apiFileId: 'folder#dir',
+      type: DatasetCollectionTypeEnum.folder
+    });
+    const resolver = createApiFileSourceResolver([folder, suffixFolder]);
+    expect(resolver.getSourceId(folder)).toBe('folder');
+    expect(resolver.isDerivedFolder(folder)).toBe(false);
+    expect(resolver.getSourceId(suffixFolder)).toBe('folder#dir');
+    expect(resolver.isDerivedFolder(suffixFolder)).toBe(false);
+  });
+
+  it('带 apiFileSourceId 或可证明父子关系的目录识别为派生目录', () => {
+    const modernDerived = collection({
+      _id: 'modern-dir',
+      apiFileId: 'doc-a#dir',
+      type: DatasetCollectionTypeEnum.folder,
+      metadata: { apiFileSourceId: 'doc-a' }
+    });
+    const legacyDerived = collection({
+      _id: 'legacy-dir',
+      apiFileId: 'doc-b#dir',
+      type: DatasetCollectionTypeEnum.folder
+    });
+    const legacyDoc = collection({
+      _id: 'legacy-doc',
+      apiFileId: 'doc-b',
+      parentId: 'legacy-dir',
+      type: DatasetCollectionTypeEnum.apiFile
+    });
+    const resolver = createApiFileSourceResolver([modernDerived, legacyDerived, legacyDoc]);
+    expect(resolver.getSourceId(modernDerived)).toBe('doc-a');
+    expect(resolver.isDerivedFolder(modernDerived)).toBe(true);
+    expect(resolver.getSourceId(legacyDerived)).toBe('doc-b');
+    expect(resolver.isDerivedFolder(legacyDerived)).toBe(true);
+    expect(resolver.getSourceId(legacyDoc)).toBe('doc-b');
+    expect(resolver.isDerivedFolder(legacyDoc)).toBe(false);
   });
 });
 
