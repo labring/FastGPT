@@ -842,6 +842,25 @@ export const auditLogMap = {
     typeLabel: i18nT('account_team:delete_api_key'),
     params: {} as ApiKeyAuditParams
   },
+  //Account sync / claim（V3 账号同步与登录侧认领；操作者均为 system）
+  [AuditEventEnum.SYNC_ACCOUNT_CLAIM]: {
+    content: i18nT('account_team:log_sync_account_claim'),
+    typeLabel: i18nT('account_team:sync_account_claim'),
+    params: {} as {
+      syncId: string;
+      claimedUsername: string;
+      matchedBy: 'username' | 'contact';
+    }
+  },
+  [AuditEventEnum.SSO_ACCOUNT_CLAIM]: {
+    content: i18nT('account_team:log_sso_account_claim'),
+    typeLabel: i18nT('account_team:sso_account_claim'),
+    params: {} as {
+      ssoSource: string;
+      ssoId: string;
+      claimedUsername: string;
+    }
+  },
   //Agent Skills
   [AuditEventEnum.CREATE_SKILL]: {
     content: i18nT('account_team:log_create_skill'),
