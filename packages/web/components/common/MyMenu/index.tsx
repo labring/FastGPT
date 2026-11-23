@@ -217,7 +217,7 @@ const MyMenu = ({
   const menuRef = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<any>();
   const [isOpen, setIsOpen] = useState(false);
-  const modifiers = useCanvasMenuModifiers(isOpen, ref);
+  const modifiers = useCanvasMenuModifiers({ isOpen, triggerRef: ref });
 
   const formatTrigger = !isPc ? 'click' : trigger;
 

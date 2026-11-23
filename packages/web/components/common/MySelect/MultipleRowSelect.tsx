@@ -347,7 +347,7 @@ const MultipleRowSelect = React.memo(function MultipleRowSelect({
     return safeCloneValue;
   })();
   const { isMounted, mount, onAnimationComplete, modifiers } = useMenuListPresence(isOpen);
-  const canvasModifiers = useCanvasMenuModifiers(isOpen, ButtonRef, modifiers);
+  const canvasModifiers = useCanvasMenuModifiers({ isOpen, triggerRef: ButtonRef, modifiers });
 
   const onOpenSelect = useCallback(() => {
     setCloneValue(Array.isArray(value) ? value : []);
@@ -519,7 +519,7 @@ const MultipleRowArraySelect = React.memo(function MultipleRowArraySelect({
   const ref = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const modifiers = useCanvasMenuModifiers(isOpen, buttonRef);
+  const modifiers = useCanvasMenuModifiers({ isOpen, triggerRef: buttonRef });
   const [triggerWidth, setTriggerWidth] = useState(0);
   const isTriggerDisabled = Boolean(
     ButtonProps?.isDisabled || (ButtonProps && 'disabled' in ButtonProps && ButtonProps.disabled)

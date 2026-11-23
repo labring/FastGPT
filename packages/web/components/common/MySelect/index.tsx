@@ -228,7 +228,7 @@ const SelectMenu = React.memo(function SelectMenu({
   const blurCloseFrame = useRef<number>();
   const [menuWidth, setMenuWidth] = useState<number>();
   const { isMounted, mount, onAnimationComplete, modifiers } = useMenuListPresence(isOpen);
-  const canvasModifiers = useCanvasMenuModifiers(isOpen, ButtonRef, modifiers);
+  const canvasModifiers = useCanvasMenuModifiers({ isOpen, triggerRef: ButtonRef, modifiers });
   const menuListAnimationProps = { onAnimationComplete } as {
     onAnimationComplete: () => void;
   };

@@ -241,7 +241,7 @@ const MultipleSelectMenu = React.memo(function MultipleSelectMenu({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [menuWidth, setMenuWidth] = useState<number>();
   const { isMounted, mount, onAnimationComplete, modifiers } = useMenuListPresence(isOpen);
-  const canvasModifiers = useCanvasMenuModifiers(isOpen, triggerRef, modifiers);
+  const canvasModifiers = useCanvasMenuModifiers({ isOpen, triggerRef, modifiers });
   const visibleList = useMemo(
     () =>
       isMounted && canSearch && shouldFilterLocal

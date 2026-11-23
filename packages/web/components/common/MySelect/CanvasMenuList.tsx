@@ -6,11 +6,15 @@ const getCanvasViewport = (element: HTMLElement | null) =>
   element?.closest('.react-flow__viewport');
 
 /** 菜单上下都放不下时，仍用 Popper 将它限制在视口内。 */
-export const useCanvasMenuModifiers = (
-  isOpen: boolean,
-  triggerRef: RefObject<HTMLElement>,
-  modifiers?: MenuProps['modifiers']
-): MenuProps['modifiers'] => {
+export const useCanvasMenuModifiers = ({
+  isOpen,
+  triggerRef,
+  modifiers
+}: {
+  isOpen: boolean;
+  triggerRef: RefObject<HTMLElement>;
+  modifiers?: MenuProps['modifiers'];
+}): MenuProps['modifiers'] => {
   const [isInCanvas, setIsInCanvas] = useState(false);
   useEffect(() => {
     if (isOpen) {
