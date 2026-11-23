@@ -7,12 +7,12 @@ description: FastGPT CI workflow 双轨同步。当用户修改或新增 .github
 
 FastGPT 同时维护两套 CI workflow：
 
-- `.github/workflows/` —— 跑在 **GitHub 托管 runner** 上，发布到 ghcr.io + 阿里云 + Docker Hub，面向开源社区。
+- `.github/workflows/` —— 跑在 **GitHub 托管 runner** 上，发布到 ghcr.io + Docker Hub，面向开源社区。
 - `.forgejo/workflows/` —— 跑在 **内网 Forgejo + 自建 runner** 上，发布到 Forgejo 自带 registry，面向内网镜像分发。内网环境需要代理、镜像源、自建 registry。
 
 两套同名 workflow 必须保持**功能一致**：构建步骤、测试逻辑、触发条件对齐。但 Forgejo 版本需要移除 GitHub 特有能力（attestations、github-script、PR 评论）并注入内网代理/镜像配置。
 
-> 为什么这么做：内网 Forgejo runner 无法访问 ghcr.io / 阿里云 / Docker Hub 登录凭据，也没有 GitHub PR 评论 API；但构建和测试本身必须在内网跑通。所以不是"复制粘贴"，而是"等价改写"。
+> 为什么这么做：内网 Forgejo runner 无法访问 ghcr.io / Docker Hub 登录凭据，也没有 GitHub PR 评论 API；但构建和测试本身必须在内网跑通。所以不是"复制粘贴"，而是"等价改写"。
 
 ## 何时使用此技能
 
@@ -106,28 +106,20 @@ ${{ env.REGISTRY }}/${{ github.repository_owner }}/<repo>:<tag>
 
 ### 模式 2 · 移除外部 registry 登录
 
-GitHub 同时登录 ghcr.io + 阿里云 + Docker Hub 并打多组 tag；Forgejo 只登录自建 registry，**删除**阿里云、Docker Hub 的 login step 和对应 tag 环境变量。
+GitHub 同时登录 ghcr.io + Docker Hub 并打多组 tag；Forgejo 只登录自建 registry，**删除**Docker Hub 的 login step 和对应 tag 环境变量。
 
 ```yaml
 # GitHub（要删）
-- name: Login to Ali Hub
-  uses: docker/login-action@v3
-  with:
-    registry: registry.cn-hangzhou.aliyuncs.com
-    username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
-    password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
 - name: Login to Docker Hub
   uses: docker/login-action@v3
   with:
     username: ${{ secrets.DOCKER_HUB_NAME }}
     password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 # env 计算里
-echo "Ali_Tag=..." >> $GITHUB_ENV
-echo "Ali_Latest=..." >> $GITHUB_ENV
 echo "Docker_Hub_Tag=..." >> $GITHUB_ENV
 echo "Docker_Hub_Latest=..." >> $GITHUB_ENV
 # TAGS 拼接里
-TAGS="$(echo -e "${Git_Tag}\n${Git_Latest}\n${Ali_Tag}\n${Ali_Latest}\n${Docker_Hub_Tag}\n${Docker_Hub_Latest}")"
+TAGS="$(echo -e "${Git_Tag}\n${Git_Latest}\n${Docker_Hub_Tag}\n${Docker_Hub_Latest}")"
 
 # Forgejo（只留 Git_*）
 TAGS="$(echo -e "${Git_Tag}\n${Git_Latest}")"
@@ -439,12 +431,6 @@ GitHub 用 `actions/github-script` 调 `github.rest.issues.createComment` 在 PR
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Login to Ali Hub           # ← Forgejo 整段删
-        uses: docker/login-action@v3
-        with:
-          registry: registry.cn-hangzhou.aliyuncs.com
-          username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
-          password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
       - name: Login to Docker Hub        # ← Forgejo 整段删
         uses: docker/login-action@v3
         with:
@@ -485,7 +471,7 @@ GitHub 用 `actions/github-script` 调 `github.rest.issues.createComment` 在 PR
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.REGISTRY_TOKEN }}
-      # 无 Ali Hub / Docker Hub login
+      # 无 Docker Hub login
       - name: Download digests
         uses: forgejo/download-artifact@v4
         with:
@@ -510,7 +496,7 @@ GitHub 用 `actions/github-script` 调 `github.rest.issues.createComment` 在 PR
 
 - [ ] `.forgejo/workflows/<name>` 与 `.github/workflows/<name>` 的**构建/测试业务步骤**一致。
 - [ ] Forgejo 版本无 `ghcr.io` 硬编码，改用 `${{ env.REGISTRY }}`。
-- [ ] Forgejo 版本无阿里云 / Docker Hub login step 及对应 tag 变量。
+- [ ] Forgejo 版本无Docker Hub login step 及对应 tag 变量。
 - [ ] 所有 `actions/*` 引用已换成 `forgejo/*`；`actions/github-script` step 已删除或改写。
 - [ ] `permissions` 块里没有 `attestations: write` / `id-token: write` / `issues: write` / `pull-requests: write`。
 - [ ] 构建 job 开头有 "Capture proxy envs" + "Write buildkitd config" 两步。
@@ -519,7 +505,7 @@ GitHub 用 `actions/github-script` 调 `github.rest.issues.createComment` 在 PR
 - [ ] `runs-on` 矩阵每条都显式写了 runner，job 级用 `matrix.runs-on` 无兜底。
 - [ ] 构建类 workflow 的 `on:` 里有 `workflow_dispatch.inputs.version`，版本解析脚本处理了 `workflow_dispatch` 分支。
 - [ ] YAML 语法校验通过。
-- [ ] 若删掉了 GitHub 专有能力（PR 评论、attestation、ali/docker hub 推送），已在回复里告知用户。
+- [ ] 若删掉了 GitHub 专有能力（PR 评论、attestation、Docker Hub 推送），已在回复里告知用户。
 
 ## 反模式（不要做）
 
@@ -527,7 +513,7 @@ GitHub 用 `actions/github-script` 调 `github.rest.issues.createComment` 在 PR
 - ❌ 只改 registry 地址不改 artifact 下载方式 —— `pattern` + `merge-multiple` 在 forgejo/download-artifact 上会报错。
 - ❌ 保留 `actions/github-script` step —— Forgejo 没有这个 action，job 会直接 fail。
 - ❌ 把内网代理变量写死成真实代理 URL —— 必须用 `vars.AB_*` 仓库变量，URL 会变。
-- ❌ 为了"对齐"而给 Forgejo 版加回阿里云 / Docker Hub 登录 —— 内网没有这些凭据，也没必要。
+- ❌ 为了"对齐"而给 Forgejo 版加回Docker Hub 登录 —— 内网没有这些凭据，也没必要。
 - ❌ 改了 GitHub 侧却忘了同步 Forgejo 侧（最常见错误）—— 改 `.github/workflows/` 时必须同时检查 `.forgejo/workflows/`。
 - ❌ 删掉业务逻辑步骤以求"简化" —— 转换只改执行环境，不改构建/测试内容。
 - ❌ 对 `preview-*` / `build-docs` / `helm-release` 等 GitHub 专属 workflow 也强行造 Forgejo 版本 —— 它们依赖 GitHub Pages / Vercel / Helm repo，内网无对应能力。

@@ -47,7 +47,7 @@ CREATE INDEX CONCURRENTLY vector_index ON modeldata USING hnsw (vector vector_ip
 
 下面的命令是基于给的 docker-compose 模板，如果数据库账号密码更换了，请自行调整。
 
-1. 修改 `docker-compose.yml` 中 pg 的镜像版本，改成 `ankane/pgvector:v0.5.0` 或 `registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.5.0`
+1. 修改 `docker-compose.yml` 中 pg 的镜像版本，改成 `ankane/pgvector:v0.5.0`
 2. 重启 pg 容器(docker-compose pull && docker-compose up -d)，等待重启完成。
 3. 进入容器: `docker exec -it pg bash`
 4. 连接数据库: `psql 'postgresql://username:password@localhost:5432/postgres'`

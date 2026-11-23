@@ -39,7 +39,7 @@ Deploy using docker-compose:
 
 ```yaml
 fastgpt-sso:
-  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:latest
+  image: ghcr.io/labring/fastgpt-sso-service:latest
   container_name: fastgpt-sso
   restart: always
   networks:
@@ -203,7 +203,7 @@ The redirect URL should follow the format `https://www.fastgpt.cn/login/provider
 
 ```yaml
 fastgpt-sso:
-  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:latest
+  image: ghcr.io/labring/fastgpt-sso-service:latest
   container_name: fastgpt-sso
   restart: always
   networks:
@@ -254,7 +254,7 @@ Two items need to be filled in:
 
 ```yaml
 fastgpt-sso:
-  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:latest
+  image: ghcr.io/labring/fastgpt-sso-service:latest
   container_name: fastgpt-sso
   restart: always
   networks:
@@ -346,7 +346,7 @@ docker compose up -d --force-recreate fastgpt-sso
 
 ```yaml
 fastgpt-sso:
-  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:latest
+  image: ghcr.io/labring/fastgpt-sso-service:latest
   container_name: fastgpt-sso
   restart: always
   networks:
@@ -435,7 +435,7 @@ We provide a standard OAuth 2.0 integration flow requiring three endpoints:
 
 ```yaml
 fastgpt-sso:
-  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:latest
+  image: ghcr.io/labring/fastgpt-sso-service:latest
   container_name: fastgpt-sso
   restart: always
   networks:
@@ -475,7 +475,7 @@ The LDAP provider only synchronizes users and organizations. It does not provide
 
 ```yaml
 fastgpt-sso:
-  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:latest
+  image: ghcr.io/labring/fastgpt-sso-service:latest
   environment:
     - SSO_PROVIDER=oauth2
     - SSO_SYNC_PROVIDER=ldap
@@ -538,8 +538,8 @@ For ldaps://, configure LDAP_TLS_REJECT_UNAUTHORIZED, LDAP_TLS_CA_FILE, LDAP_TLS
 
 LDAP_MEMBERSHIP_MODE supports four modes:
 
-| Mode             | Relationship                                                    | Main configuration       |
-| ---------------- | --------------------------------------------------------------- | ------------------------ |
+| Mode             | Relationship                                                    | Main configuration        |
+| ---------------- | --------------------------------------------------------------- | ------------------------- |
 | user_attribute   | A user attribute, usually ou, points to an organization         | `LDAP_USER_ATTRIBUTE_*`   |
 | group_member_dn  | A group attribute, usually member, contains user DNs            | `LDAP_GROUP_MEMBER_DN_*`  |
 | user_member_of   | A user attribute, usually memberOf, contains group DNs          | `LDAP_USER_MEMBER_OF_*`   |

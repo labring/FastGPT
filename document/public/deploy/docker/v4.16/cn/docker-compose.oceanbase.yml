@@ -79,7 +79,7 @@ x-agent-sandbox-config: &x-agent-sandbox-config
   AGENT_SANDBOX_OPENSANDBOX_BASEURL: http://fastgpt-opensandbox-server:8090
   AGENT_SANDBOX_OPENSANDBOX_API_KEY: fastgpt-opensandbox-api-key
   AGENT_SANDBOX_OPENSANDBOX_RUNTIME: docker
-  AGENT_SANDBOX_OPENSANDBOX_IMAGE: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.3.0
+  AGENT_SANDBOX_OPENSANDBOX_IMAGE: ghcr.dockerproxy.net/labring/fastgpt-agent-sandbox:v0.3.0
   AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: true
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL: http://fastgpt-volume-manager:3000
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: *x-volume-manager-auth-token
@@ -132,7 +132,7 @@ services:
       retries: 1000
       start_period: 10s
   fastgpt-mongo:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.32 # cpu 不支持 AVX 时候使用 4.4.29
+    image: dockerproxy.net/library/mongo:5.0.32 # cpu 不支持 AVX 时候使用 4.4.29
     container_name: fastgpt-mongo
     restart: always
     networks:
@@ -180,7 +180,7 @@ services:
         # 等待docker-entrypoint.sh脚本执行的MongoDB服务进程
         wait $$!
   fastgpt-redis:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/redis:7.2-alpine
+    image: dockerproxy.net/library/redis:7.2-alpine
     container_name: fastgpt-redis
     networks:
       - data
@@ -230,7 +230,7 @@ services:
 
   fastgpt-app:
     container_name: fastgpt-app
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.16.2
+    image: ghcr.dockerproxy.net/labring/fastgpt:v4.16.2
     ports:
       - 3000:3000
     networks:
@@ -322,7 +322,7 @@ services:
       TEXTIN_SECRET_CODE:
   fastgpt-code-sandbox:
     container_name: fastgpt-code-sandbox
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox:v4.16.2
+    image: ghcr.dockerproxy.net/labring/fastgpt-code-sandbox:v4.16.2
     networks:
       - codesandbox
     restart: always
@@ -376,7 +376,7 @@ services:
       retries: 3
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.14.23
+    image: ghcr.dockerproxy.net/labring/fastgpt-mcp_server:v4.14.23
     networks:
       - app
     ports:
@@ -386,7 +386,7 @@ services:
       <<: [*x-log-config, *x-no-proxy-config]
       FASTGPT_ENDPOINT: http://fastgpt-app:3000
   fastgpt-plugin:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v1.1.2
+    image: ghcr.dockerproxy.net/labring/fastgpt-plugin:v1.1.2
     container_name: fastgpt-plugin
     restart: always
     networks:
@@ -414,7 +414,7 @@ services:
 
   # OpenSandbox Server 和 Volume Manager 仅需在 app 内网中访问。
   fastgpt-opensandbox-server:
-    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/server:v0.2.2
+    image: dockerproxy.net/opensandbox/server:v0.2.2
     container_name: fastgpt-opensandbox-server
     restart: always
     networks:
@@ -440,7 +440,7 @@ services:
       retries: 5
 
   fastgpt-volume-manager:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-volume-manager:v0.3.0
+    image: ghcr.dockerproxy.net/labring/fastgpt-agent-volume-manager:v0.3.0
     container_name: fastgpt-volume-manager
     restart: always
     networks:
@@ -467,21 +467,21 @@ services:
 
   # 仅用于预拉取运行时镜像，不会随 docker compose up 启动。
   opensandbox-agent-sandbox-image:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.3.0
+    image: ghcr.dockerproxy.net/labring/fastgpt-agent-sandbox:v0.3.0
     profiles:
       - prepull
   opensandbox-execd-image:
-    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:v1.0.21
+    image: dockerproxy.net/opensandbox/execd:v1.0.21
     profiles:
       - prepull
   opensandbox-egress-image:
-    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:v1.1.5
+    image: dockerproxy.net/opensandbox/egress:v1.1.5
     profiles:
       - prepull
 
   # 浏览器访问 Agent Sandbox 的鉴权代理，生产环境应通过独立域名反向代理 3006 端口。
   fastgpt-agent-sandbox-proxy:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-proxy:v0.3.0
+    image: ghcr.dockerproxy.net/labring/fastgpt-agent-sandbox-proxy:v0.3.0
     container_name: fastgpt-agent-sandbox-proxy
     restart: always
     networks:
@@ -498,7 +498,7 @@ services:
 
   # AI Proxy
   fastgpt-aiproxy:
-    image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.6.5
+    image: ghcr.dockerproxy.net/labring/aiproxy:v0.6.5
     container_name: fastgpt-aiproxy
     restart: unless-stopped
     depends_on:
@@ -525,7 +525,7 @@ services:
       timeout: 5s
       retries: 10
   fastgpt-aiproxy-pg:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:0.8.0-pg15 # docker hub
+    image: dockerproxy.net/pgvector/pgvector:0.8.0-pg15 # docker hub
     restart: unless-stopped
     container_name: fastgpt-aiproxy-pg
     volumes:
@@ -579,10 +579,10 @@ configs:
 
       [runtime]
       type = "docker"
-      execd_image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:v1.0.21"
+      execd_image = "dockerproxy.net/opensandbox/execd:v1.0.21"
 
       [egress]
-      image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:v1.1.5"
+      image = "dockerproxy.net/opensandbox/egress:v1.1.5"
 
       [docker]
       network_mode = "bridge"

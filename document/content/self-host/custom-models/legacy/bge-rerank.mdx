@@ -69,11 +69,15 @@ python app.py
 
 ## docker 部署
 
-**镜像名分别为:**
+以基础版为例，从历史版本的 Dockerfile 构建本地镜像：
 
-1. registry.cn-hangzhou.aliyuncs.com/fastgpt/bge-rerank-base:v0.1 (4 GB+)
-2. registry.cn-hangzhou.aliyuncs.com/fastgpt/bge-rerank-large:v0.1 (5 GB+)
-3. registry.cn-hangzhou.aliyuncs.com/fastgpt/bge-rerank-v2-m3:v0.1 (5 GB+)
+```bash
+git clone --depth 1 --branch v4.14.7 https://github.com/labring/FastGPT.git fastgpt-reranker
+# 先将下载的 bge-reranker-base 权重目录放到 Dockerfile 所在目录下。
+docker build -t fastgpt-bge-rerank-base:v0.1 fastgpt-reranker/plugins/model/rerank-bge/bge-reranker-base
+```
+
+构建 large 或 v2-m3 时，使用相应的源目录和本地镜像名。
 
 **端口**
 
@@ -89,7 +93,7 @@ ACCESS_TOKEN=访问安全凭证，请求时，Authorization: Bearer ${ACCESS_TOK
 
 ```sh
 # auth token 为mytoken
-docker run -d --name reranker -p 6006:6006 -e ACCESS_TOKEN=mytoken --gpus all registry.cn-hangzhou.aliyuncs.com/fastgpt/bge-rerank-base:v0.1
+docker run -d --name reranker -p 6006:6006 -e ACCESS_TOKEN=mytoken --gpus all fastgpt-bge-rerank-base:v0.1
 ```
 
 **docker-compose.yml 示例**
@@ -98,7 +102,7 @@ docker run -d --name reranker -p 6006:6006 -e ACCESS_TOKEN=mytoken --gpus all re
 version: "3"
 services:
   reranker:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/bge-rerank-base:v0.1
+    image: fastgpt-bge-rerank-base:v0.1
     container_name: reranker
     # GPU运行环境，如果宿主机未安装，将deploy配置隐藏即可
     deploy:

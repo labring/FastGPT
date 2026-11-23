@@ -96,7 +96,7 @@ FastGPT 的 SeekDB 适配包含以下能力，支持范围以所选数据库版�
   <Tab value="Linux">
 ```bash
 # 安装 Docker（包含 Docker Compose V2 插件）
-curl -fsSL https://get.docker.com | bash -s docker --mirror Aliyun
+curl -fsSL https://get.docker.com | bash
 systemctl enable --now docker
 # 验证安装
 docker -v
@@ -177,6 +177,8 @@ FASTGPT_LOCAL_COMPOSE_PATH=/path/to/docker-compose.yml bash <(curl -fsSL https:/
 
 如果需要固定使用某个 `docker-compose.yml` 文件，推荐先手动下载 `docker-compose.yml` 和 `install.sh`，再通过 `install.sh` 的本地 compose 模式生成最终配置。这样仍然可以复用脚本里的随机凭证、S3 地址写入、Docker socket 检测等能力。
 
+国内模板的部分镜像使用公共加速源。加速源超时或不可用时，可选择全球镜像源，或将受影响的镜像换为上游仓库地址。
+
 1. 下载所需的 `docker-compose.yml` 文件到服务器，例如：
 
 ```bash
@@ -189,22 +191,22 @@ curl -fsSL https://doc.fastgpt.cn/deploy/docker/main/cn/docker-compose.pg.yml -o
 <summary>点击展开查看不同数据库的 docker-compose 配置文件下载地址</summary>
 
 - **Pgvector**
-  - 中国大陆地区镜像源(阿里云)：[docker-compose.pg.yml](/deploy/docker/main/cn/docker-compose.pg.yml)
+  - 国内镜像源：[docker-compose.pg.yml](/deploy/docker/main/cn/docker-compose.pg.yml)
   - 全球镜像源(dockerhub, ghcr)：[docker-compose.pg.yml](/deploy/docker/main/global/docker-compose.pg.yml)
 - **Oceanbase**
-  - 中国大陆地区镜像源(阿里云)：[docker-compose.oceanbase.yml](/deploy/docker/main/cn/docker-compose.oceanbase.yml)
+  - 国内镜像源：[docker-compose.oceanbase.yml](/deploy/docker/main/cn/docker-compose.oceanbase.yml)
   - 全球镜像源(dockerhub, ghcr)：[docker-compose.oceanbase.yml](/deploy/docker/main/global/docker-compose.oceanbase.yml)
 - **Milvus**
-  - 中国大陆地区镜像源(阿里云)：[docker-compose.milvus.yml](/deploy/docker/main/cn/docker-compose.milvus.yml)
+  - 国内镜像源：[docker-compose.milvus.yml](/deploy/docker/main/cn/docker-compose.milvus.yml)
   - 全球镜像源(dockerhub, ghcr)：[docker-compose.milvus.yml](/deploy/docker/main/global/docker-compose.milvus.yml)
 - **Zilliz**
-  - 中国大陆地区镜像源(阿里云)：[docker-compose.zilliz.yml](/deploy/docker/main/cn/docker-compose.zilliz.yml)
+  - 国内镜像源：[docker-compose.zilliz.yml](/deploy/docker/main/cn/docker-compose.zilliz.yml)
   - 全球镜像源(dockerhub, ghcr)：[docker-compose.zilliz.yml](/deploy/docker/main/global/docker-compose.zilliz.yml)
 - **SeekDB**
-  - 中国大陆地区镜像源(阿里云)：[docker-compose.seekdb.yml](/deploy/docker/main/cn/docker-compose.seekdb.yml)
+  - 国内镜像源：[docker-compose.seekdb.yml](/deploy/docker/main/cn/docker-compose.seekdb.yml)
   - 全球镜像源(dockerhub, ghcr)：[docker-compose.seekdb.yml](/deploy/docker/main/global/docker-compose.seekdb.yml)
 - **OpenGauss**
-  - 中国大陆地区镜像源(阿里云)：[docker-compose.opengauss.yml](/deploy/docker/main/cn/docker-compose.opengauss.yml)
+  - 国内镜像源：[docker-compose.opengauss.yml](/deploy/docker/main/cn/docker-compose.opengauss.yml)
   - 全球镜像源(dockerhub, ghcr)：[docker-compose.opengauss.yml](/deploy/docker/main/global/docker-compose.opengauss.yml)
 
 </details>

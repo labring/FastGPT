@@ -27,7 +27,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv47' \
 
 ## 3. 升级 ReRank 模型
 
-4.7 对 ReRank 模型进行了格式变动，兼容 cohere 的格式，可以直接使用 cohere 提供的 API。如果是本地的 ReRank 模型，需要修改镜像为：`registry.cn-hangzhou.aliyuncs.com/fastgpt/bge-rerank-base:v0.1`。
+4.7 对 ReRank 模型进行了格式变动，兼容 cohere 的格式，可以直接使用 cohere 提供的 API。如果使用本地 ReRank 模型，请按 [BGE Rerank 部署说明](/zh-CN/self-host/custom-models/legacy/bge-rerank) 构建镜像。
 
 cohere 的重排模型对中文不是很好，感觉不如 bge 的好用，接入教程如下：
 

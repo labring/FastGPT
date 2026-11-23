@@ -96,7 +96,7 @@ The FastGPT SeekDB adapter provides the following capabilities, subject to the s
   <Tab value="Linux">
 ```bash
 # Install Docker (includes the Docker Compose V2 plugin)
-curl -fsSL https://get.docker.com | bash -s docker --mirror Aliyun
+curl -fsSL https://get.docker.com | bash
 systemctl enable --now docker
 # Verify installation
 docker -v
@@ -179,6 +179,8 @@ FASTGPT_LOCAL_COMPOSE_PATH=/path/to/docker-compose.yml bash <(curl -fsSL https:/
 
 If you need to pin deployment to a specific `docker-compose.yml` file, we recommend downloading both `docker-compose.yml` and `install.sh`, then using the script's local compose mode to generate the final config. This keeps the script's random credential generation, S3 address updates, and Docker socket detection.
 
+The China Mainland templates use public registry proxies for some images. If a proxy is slow or unavailable, select the global source or switch the affected image to its upstream registry.
+
 1. Download the required `docker-compose.yml` file to the server, for example:
 
 ```bash
@@ -191,22 +193,22 @@ curl -fsSL https://doc.fastgpt.io/deploy/docker/main/global/docker-compose.pg.ym
 <summary>Click to view docker-compose config file download links for different databases</summary>
 
 - **Pgvector**
-  - China mirror (Alibaba Cloud): [docker-compose.pg.yml](/deploy/docker/main/cn/docker-compose.pg.yml)
+  - China Mainland mirror: [docker-compose.pg.yml](/deploy/docker/main/cn/docker-compose.pg.yml)
   - Global mirror (dockerhub, ghcr): [docker-compose.pg.yml](/deploy/docker/main/global/docker-compose.pg.yml)
 - **Oceanbase**
-  - China mirror (Alibaba Cloud): [docker-compose.oceanbase.yml](/deploy/docker/main/cn/docker-compose.oceanbase.yml)
+  - China Mainland mirror: [docker-compose.oceanbase.yml](/deploy/docker/main/cn/docker-compose.oceanbase.yml)
   - Global mirror (dockerhub, ghcr): [docker-compose.oceanbase.yml](/deploy/docker/main/global/docker-compose.oceanbase.yml)
 - **Milvus**
-  - China mirror (Alibaba Cloud): [docker-compose.milvus.yml](/deploy/docker/main/cn/docker-compose.milvus.yml)
+  - China Mainland mirror: [docker-compose.milvus.yml](/deploy/docker/main/cn/docker-compose.milvus.yml)
   - Global mirror (dockerhub, ghcr): [docker-compose.milvus.yml](/deploy/docker/main/global/docker-compose.milvus.yml)
 - **Zilliz**
-  - China mirror (Alibaba Cloud): [docker-compose.zilliz.yml](/deploy/docker/main/cn/docker-compose.zilliz.yml)
+  - China Mainland mirror: [docker-compose.zilliz.yml](/deploy/docker/main/cn/docker-compose.zilliz.yml)
   - Global mirror (dockerhub, ghcr): [docker-compose.zilliz.yml](/deploy/docker/main/global/docker-compose.zilliz.yml)
 - **SeekDB**
-  - China mirror (Alibaba Cloud): [docker-compose.seekdb.yml](/deploy/docker/main/cn/docker-compose.seekdb.yml)
+  - China Mainland mirror: [docker-compose.seekdb.yml](/deploy/docker/main/cn/docker-compose.seekdb.yml)
   - Global mirror (dockerhub, ghcr): [docker-compose.seekdb.yml](/deploy/docker/main/global/docker-compose.seekdb.yml)
 - **OpenGauss**
-  - China mirror (Alibaba Cloud): [docker-compose.opengauss.yml](/deploy/docker/main/cn/docker-compose.opengauss.yml)
+  - China Mainland mirror: [docker-compose.opengauss.yml](/deploy/docker/main/cn/docker-compose.opengauss.yml)
   - Global mirror (dockerhub, ghcr): [docker-compose.opengauss.yml](/deploy/docker/main/global/docker-compose.opengauss.yml)
 
 </details>

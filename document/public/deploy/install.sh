@@ -1064,7 +1064,7 @@ if [ "$DEPLOY_VERSION" != "$LOCAL_DEPLOY_VERSION" ]; then
         REGION="cn"
         BASE_URL="${CUSTOM_DEPLOY_BASE_URL:-https://doc.fastgpt.cn/deploy}"
     else
-        radio_select "请选择镜像源 (↑↓ 选择, 回车确认):" "阿里云 (中国大陆)" "GitHub (全球)"
+        radio_select "请选择镜像源 (↑↓ 选择, 回车确认):" "国内镜像源" "全球镜像源"
         case $RADIO_RESULT in
             1)
                 REGION="global"
@@ -1273,9 +1273,9 @@ fi
 # ========== 确认配置 ==========
 DEPLOY_VERSION_LABEL="$(get_version_label "$DEPLOY_VERSION")"
 
-REGION_LABEL="阿里云 (中国大陆)"
+REGION_LABEL="国内镜像源"
 if [ "$REGION" == "global" ]; then
-    REGION_LABEL="GitHub (全球)"
+    REGION_LABEL="全球镜像源"
 fi
 
 # 构建显示地址

@@ -1,6 +1,6 @@
 ---
 title: 版本&升级说明
-description: "阅读 FastGPT 自部署版本升级标准操作指南，掌握镜像版本号规则、启动迁移、后台迁移与跨版本升级流程。"
+description: '阅读 FastGPT 自部署版本升级标准操作指南，掌握镜像版本号规则、启动迁移、后台迁移与跨版本升级流程。'
 ---
 
 ## 版本说明
@@ -34,18 +34,18 @@ FastGPT 升级通常包括两个步骤：
 - Agent Sandbox Volume Manager 镜像: ghcr.io/labring/fastgpt-agent-volume-manager
 - Agent Sandbox 镜像: ghcr.io/labring/fastgpt-agent-sandbox
 - Agent Sandbox Proxy 镜像: ghcr.io/labring/fastgpt-agent-sandbox-proxy
-- 商业版镜像: ghcr.io/c121914yu/fastgpt-pro
+- 商业版镜像: ghcr.io/labring/fastgpt-pro
 
-**阿里云**
+**国内镜像源**
 
-- FastGPT 主镜像: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt
-- Plugin 镜像: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin
-- 代码沙箱镜像: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox
-- AI Proxy 镜像: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy
-- Agent Sandbox Volume Manager 镜像: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-volume-manager
-- Agent Sandbox 镜像: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox
-- Agent Sandbox Proxy 镜像: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-proxy
-- 商业版镜像: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-pro
+- FastGPT 主镜像: ghcr.dockerproxy.net/labring/fastgpt
+- Plugin 镜像: ghcr.dockerproxy.net/labring/fastgpt-plugin
+- 代码沙箱镜像: ghcr.dockerproxy.net/labring/fastgpt-code-sandbox
+- AI Proxy 镜像: ghcr.dockerproxy.net/labring/aiproxy
+- Agent Sandbox Volume Manager 镜像: ghcr.dockerproxy.net/labring/fastgpt-agent-volume-manager
+- Agent Sandbox 镜像: ghcr.dockerproxy.net/labring/fastgpt-agent-sandbox
+- Agent Sandbox Proxy 镜像: ghcr.dockerproxy.net/labring/fastgpt-agent-sandbox-proxy
+- 商业版镜像: ghcr.dockerproxy.net/labring/fastgpt-pro
 
 各服务使用目标版本部署模板指定的镜像 Tag。配套服务的版本号可能各自独立，升级前记录完整镜像组合与配置。
 
