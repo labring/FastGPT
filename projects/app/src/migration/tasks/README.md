@@ -9,6 +9,12 @@
 | `20261022_initialize_dataset_vector_indexes` | 普通自动 | 初始化知识库向量索引 |
 | `20261104_backfill_chat_publish_source` | 独立执行 | 回填聊天发布来源 |
 | `20261104_backfill_openapi_key_type` | 独立执行 | 回填 OpenAPI Key 类型 |
+| `20261123_cleanup_mongo_indexes` | 独立执行 | 清理历史废弃 MongoDB 索引（按名/键/选项精确匹配，遵循 `MONGO_DEPRECATE_INDEX`） |
+
+## 废弃 MongoDB 索引按版本清理约定
+
+- 后续任意版本需要退役 MongoDB 索引时，统一按 Expand-Contract 两版本收缩：N 版移除 Schema/DAL 索引声明与查询依赖，N+1 版在 `projects/app/src/migration/tasks/<version>/<YYYYMMDD>_cleanup_mongo_indexes/` 新增独立迁移任务并追加至 `systemMigrations` 末尾。
+- 所有版本复用 `projects/app/src/migration/mongoIndexCleanup.ts` 的 `createMongoIndexCleanupMigration`，固定包含 `cleanup` 与 `validation` 两阶段、采用幂等全量重跑，并严格按 `name + key + 完整 options` 匹配删除，同时遵循 `MONGO_DEPRECATE_INDEX` 开关。
 
 ## 系统配置迁移
 

@@ -37,13 +37,13 @@
 
 ### 3. 显式一次性历史索引退役与运维操作条件
 - 历史上原登记于旧版 Schema 的 **18 条** 废弃索引（如 `chats.appId_1_updateTime_-1`、`chats.chatGenerateStatus_1_updateTime_1`、`agent_sandbox_instances_v2.*` 等）统一收口至 [legacyDeprecatedIndexCleanup.ts](../../../packages/service/common/mongo/legacyDeprecatedIndexCleanup.ts) 的 `LEGACY_DEPRECATED_MONGO_INDEXES`。
-- **绝对不在应用启动热路径自动删除索引**；仅在确认以下前置条件满足后，由运维/一次性迁移显式触发：
-  1. 对应替代索引（以及升级后新版本查询依赖）已在目标库创建完成且通过 `inspectMongoIndexes` / `inspect` 无缺失；
-  2. 先使用预览模式执行干跑：`runLegacyDeprecatedMongoIndexCleanup({ apply: false })`，确认待删列表无 `skipped_mismatch` 风险后再执行 `runLegacyDeprecatedMongoIndexCleanup({ apply: true })`；
-  3. 清理器按 **`name + key + 完整显式历史 options`** 严格匹配；若客户库中同名索引带有意外的 `unique`、`sparse`、`partialFilterExpression`、`expireAfterSeconds` 或 `collation`，一律返回 `skipped_mismatch` 并保守保留。
+- **绝对不在应用启动索引同步热路径自动删除索引**；所有版本的废弃 Mongo 索引删除统一收口至系统升级迁移框架（`projects/app/src/migration/tasks/<version>/<YYYYMMDD>_cleanup_mongo_indexes/`，复用 `createMongoIndexCleanupMigration`；v4.18.0 为 `20261123_cleanup_mongo_indexes`，`independent: true` 后台集群互斥只执行一次）：
+  1. 清理前需确保替代索引已在上一版本或当前启动同步就绪；
+  2. 清理器按 **`name + key + 完整显式历史 options`** 严格匹配；若客户库中同名索引带有意外的 `unique`、`sparse`、`partialFilterExpression`、`expireAfterSeconds` 或 `collation`，一律返回 `skipped_mismatch` 并保守保留；
+  3. 手动运维排查时仍可直接干跑预览 `runLegacyDeprecatedMongoIndexCleanup({ apply: false })` 或执行 `runLegacyDeprecatedMongoIndexCleanup({ apply: true })`。
 - **环境变量 `MONGO_DEPRECATE_INDEX` 边界**：
-  - 仅作用于存量 `MongoIndexManager.cleanupModelDeprecatedIndexes()`（当前所有业务 Schema 的 `deprecated` 声明已清零为 `[]`，因此生产热路径零删除）；
-  - **不会**也不得用于触发或绕过 `runLegacyDeprecatedMongoIndexCleanup()` 的显式清理流程。
+  - 默认 `true`，同时控制存量 `MongoIndexManager.cleanupModelDeprecatedIndexes()` 与按版本执行的 `*_cleanup_mongo_indexes` 系统升级迁移任务；设为 `false` / `0` 时只检查不删除，不影响缺失索引的自动补建。
+  - 运维手工直接调用 `runLegacyDeprecatedMongoIndexCleanup({ apply: true })` 时不受该变量拦截。
 
 ---
 

@@ -30,9 +30,9 @@ FastGPT 是使用 pnpm workspaces 的 AI Agent 构建平台。开发环境按根
 
 ### 数据库与索引规范
 
-- **新建/迁移 DAL 集合与表**：MongoDB 集合统一使用 `@fastgpt/dal/db/mongo/collection` 的 `defineMongoCollection`（接收原生 `Schema` 与 `indexes`），SQL 表使用 `@fastgpt/dal/db/sql/ddl` 的 `defineSqlTable`；未迁出的存量旧 Schema 仍使用 `defineIndex`。禁止直接调用 `schema.index()` 或使用字段级 `index: true`、`unique: true` 隐式建索引。
-- **命名与零墓碑原则**：所有 SQL 索引与所有**新增** Mongo 索引统一命名为 `fg_<table_short>_<purpose>[_vN]`（<= 63 ASCII 字节，SQL 跨表全局唯一）；存量未带前缀的 Mongo 索引原地冻结不强改名；严禁在 `schema.ts` / `table.ts` 中新增 `deprecated: true` 永久墓碑。
-- **Expand-Contract 删除与属性变更**：启动期 Mongo 同步仅做异步只增补建，绝不自动删除索引；删除索引遵循两版本收缩（N 版移除声明与查询依赖，N+1 版通过显式一次性迁移或 `dropSqlIndexIfExists` / `dropManagedMongoIndexIfExists` 清理），保留客户 DBA 自建与来源不明索引。详见[多库仓储架构](./.agents/design/common/dal/multi-db-repository-architecture.md)与[索引同步设计](./.agents/design/common/mongo-index-sync-strategy.md)。
+- **新建/迁移 DAL 集合与表**：MongoDB 集合统一使用 `@fastgpt/dal/db/mongo/collection` 的 `defineMongoCollection`（接收原生 `Schema` 与 `indexes`），OceanBase 表在 `oceanbase/table.ts` 声明行类型与原生 `CREATE TABLE IF NOT EXISTS ... DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;` DDL；未迁出的存量旧 Schema 仍使用 `defineIndex`。禁止直接调用 `schema.index()` 或使用字段级 `index: true`、`unique: true` 隐式建索引。
+- **命名与零墓碑原则**：所有 OceanBase 托管索引与所有**新增** Mongo 索引统一命名为 `fg_<table_short>_<purpose>[_vN]`（<= 63 ASCII 字节）；存量未带前缀的 Mongo 索引原地冻结不强改名；严禁在 `schema.ts` 中新增 `deprecated: true` 永久墓碑。
+- **Expand-Contract 删除与属性变更**：启动期 Mongo 同步仅做异步只增补建，绝不自动删除索引；删除索引遵循两版本收缩（N 版移除声明与查询依赖，N+1 版在 `projects/app/src/migration/tasks/<version>/<YYYYMMDD>_cleanup_mongo_indexes/` 新增统一清理迁移任务，复用 `createMongoIndexCleanupMigration` / `dropManagedMongoIndexIfExists` 按名/键/选项精确清理并遵循 `MONGO_DEPRECATE_INDEX`），保留客户 DBA 自建与来源不明索引。详见[多库仓储架构](./.agents/design/common/dal/multi-db-repository-architecture.md)与[索引同步设计](./.agents/design/common/mongo-index-sync-strategy.md)。
 
 ## 测试
 

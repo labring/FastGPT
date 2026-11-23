@@ -71,7 +71,8 @@ type SyncModelIndexesParams = {
   applyDeprecatedCleanup?: boolean;
 };
 
-const isMongoDeprecateIndexEnabled = (): boolean => {
+/** 读取 `MONGO_DEPRECATE_INDEX` 环境变量（默认 `true`，`false` / `0` 时跳过废弃索引删除）。 */
+export const isMongoDeprecateIndexEnabled = (): boolean => {
   const raw = process.env.MONGO_DEPRECATE_INDEX;
   if (raw === undefined) {
     return true;
