@@ -1601,6 +1601,127 @@ describe('createMcpSafeFetch', () => {
     }
   });
 
+  it('should abort a stalled DNS lookup in proxy connector when deadline fires, close cleanly, and skip CONNECT', async () => {
+    vi.spyOn(dns, 'resolve4').mockResolvedValue(['198.51.100.12']);
+    vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
+
+    let resolveLookupStarted!: () => void;
+    const lookupStarted = new Promise<void>((resolve) => {
+      resolveLookupStarted = resolve;
+    });
+    let resolveLookup!: (value: Array<{ address: string; family: 4 | 6 }>) => void;
+    vi.spyOn(dns, 'lookup').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveLookupStarted();
+          resolveLookup = resolve as (value: Array<{ address: string; family: 4 | 6 }>) => void;
+        }) as ReturnType<typeof dns.lookup>
+    );
+
+    const deadlineController = new AbortController();
+    vi.spyOn(AbortSignal, 'timeout').mockReturnValue(deadlineController.signal);
+    const poolConnectSpy = vi.spyOn(Pool.prototype, 'connect');
+    const safeFetch = createMcpSafeFetch();
+
+    try {
+      vi.stubEnv('HTTPS_PROXY', 'http://127.0.0.1:3128');
+      vi.stubEnv('NO_PROXY', '');
+      vi.stubEnv('no_proxy', '');
+
+      const requestPromise = safeFetch('https://stalled-dns-timeout.example.test/mcp');
+      await lookupStarted;
+
+      deadlineController.abort(
+        new DOMException('The operation was aborted due to timeout', 'TimeoutError')
+      );
+
+      await expect(
+        Promise.race([
+          requestPromise,
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('request hung waiting for DNS lookup')), 2000)
+          )
+        ])
+      ).rejects.toMatchObject({
+        name: 'TimeoutError'
+      });
+      await expect(
+        Promise.race([
+          safeFetch.close().then(() => 'closed'),
+          new Promise<string>((_, reject) =>
+            setTimeout(() => reject(new Error('safeFetch.close hung waiting for DNS lookup')), 2000)
+          )
+        ])
+      ).resolves.toBe('closed');
+
+      resolveLookup([{ address: '198.51.100.12', family: 4 }]);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(poolConnectSpy).not.toHaveBeenCalled();
+    } finally {
+      resolveLookup?.([{ address: '198.51.100.12', family: 4 }]);
+      await safeFetch.close();
+    }
+  });
+
+  it('should abort a stalled DNS lookup in proxy connector when safeFetch.close() is called and skip CONNECT', async () => {
+    vi.spyOn(dns, 'resolve4').mockResolvedValue(['198.51.100.12']);
+    vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
+
+    let resolveLookupStarted!: () => void;
+    const lookupStarted = new Promise<void>((resolve) => {
+      resolveLookupStarted = resolve;
+    });
+    let resolveLookup!: (value: Array<{ address: string; family: 4 | 6 }>) => void;
+    vi.spyOn(dns, 'lookup').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveLookupStarted();
+          resolveLookup = resolve as (value: Array<{ address: string; family: 4 | 6 }>) => void;
+        }) as ReturnType<typeof dns.lookup>
+    );
+
+    const poolConnectSpy = vi.spyOn(Pool.prototype, 'connect');
+    const safeFetch = createMcpSafeFetch();
+
+    try {
+      vi.stubEnv('HTTPS_PROXY', 'http://127.0.0.1:3128');
+      vi.stubEnv('NO_PROXY', '');
+      vi.stubEnv('no_proxy', '');
+
+      const requestPromise = safeFetch('https://close-during-dns.example.test/mcp');
+      await lookupStarted;
+
+      await expect(
+        Promise.race([
+          safeFetch.close().then(() => 'closed'),
+          new Promise<string>((_, reject) =>
+            setTimeout(() => reject(new Error('safeFetch.close hung during DNS lookup')), 2000)
+          )
+        ])
+      ).resolves.toBe('closed');
+      await expect(
+        Promise.race([
+          requestPromise,
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('request hung after close during DNS lookup')), 2000)
+          )
+        ])
+      ).rejects.toMatchObject({
+        cause: expect.objectContaining({
+          name: 'AbortError',
+          message: 'MCP fetch closed'
+        })
+      });
+
+      resolveLookup([{ address: '198.51.100.12', family: 4 }]);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(poolConnectSpy).not.toHaveBeenCalled();
+    } finally {
+      resolveLookup?.([{ address: '198.51.100.12', family: 4 }]);
+      await safeFetch.close();
+    }
+  });
+
   it('should initiate TLS handshake to an https proxy URL with proxy servername', async () => {
     vi.spyOn(dns, 'resolve4').mockResolvedValue(['198.51.100.12']);
     vi.spyOn(dns, 'resolve6').mockResolvedValue([]);

@@ -364,29 +364,43 @@ export const createMcpSafeFetch = ({
         let settled = false;
         let activeRawSocket: Socket | undefined;
         let activeTlsSocket: Socket | undefined;
-        let onTunnelAbort: (() => void) | undefined;
         let onTlsClose: (() => void) | undefined;
+
+        const onTunnelAbort = () => {
+          const abortError = toAbortError(tunnelSignal.reason);
+          // 无论处于 DNS 解析、代理 CONNECT 还是 TLS 握手阶段，超时/关闭/取消都先通过 finish 结束
+          // undici Client 的 connecting 状态，再销毁已建立的 TLS/底层 socket；
+          // 仅调用无参 socket.destroy() 不会触发 buildConnector 的 error 回调，会导致 Agent.close() 永远挂起。
+          finish(abortError, null);
+          activeTlsSocket?.on('error', () => {}).destroy(abortError);
+          activeRawSocket?.on('error', () => {}).destroy();
+        };
 
         // 保证每次 connect 只回调一次 undici，并在完成后及时清理监听，避免重复回调或内存泄漏。
         const finish = (...args: Parameters<typeof callback>) => {
           if (settled) return;
           settled = true;
-          if (onTunnelAbort) {
-            tunnelSignal.removeEventListener('abort', onTunnelAbort);
-          }
+          tunnelSignal.removeEventListener('abort', onTunnelAbort);
           if (onTlsClose && activeTlsSocket) {
             activeTlsSocket.removeListener('close', onTlsClose);
           }
           callback(...args);
         };
 
+        if (tunnelSignal.aborted) {
+          onTunnelAbort();
+          return;
+        }
+        tunnelSignal.addEventListener('abort', onTunnelAbort, { once: true });
+
         void (async () => {
           try {
-            tunnelSignal.throwIfAborted();
-
             // 每次新建隧道连接都重新解析并校验目标 IP，防止代理路径上的 DNS rebinding。
             const resolved = await resolveMcpConnectAddress(connectOpts.hostname);
-            tunnelSignal.throwIfAborted();
+            if (settled || tunnelSignal.aborted) {
+              finish(toAbortError(tunnelSignal.reason), null);
+              return;
+            }
 
             const targetPort = connectOpts.port
               ? String(connectOpts.port)
@@ -422,6 +436,11 @@ export const createMcpSafeFetch = ({
               });
 
             const rawSocket = socket as Socket;
+            if (settled || tunnelSignal.aborted) {
+              rawSocket.on('error', () => {}).destroy();
+              finish(toAbortError(tunnelSignal.reason), null);
+              return;
+            }
             activeRawSocket = rawSocket;
 
             if (statusCode !== 200) {
@@ -436,25 +455,10 @@ export const createMcpSafeFetch = ({
               return;
             }
 
-            if (tunnelSignal.aborted) {
-              rawSocket.on('error', () => {}).destroy();
-              finish(toAbortError(tunnelSignal.reason), null);
-              return;
-            }
-
             if (connectOpts.protocol !== 'https:') {
               finish(null, rawSocket);
               return;
             }
-
-            onTunnelAbort = () => {
-              const abortError = toAbortError(tunnelSignal.reason);
-              // 先通过 finish 结束 undici Client 的 connecting 状态，再销毁 TLS/底层 socket 并清理超时定时器；
-              // 仅调用无参 socket.destroy() 不会触发 buildConnector 的 error 回调，会导致 Agent.close() 永远挂起。
-              finish(abortError, null);
-              activeTlsSocket?.on('error', () => {}).destroy(abortError);
-              rawSocket.on('error', () => {}).destroy();
-            };
 
             onTlsClose = () => {
               // 兜底：若 TLS socket 未触发 secureConnect/error 即关闭，必须结束 connect 回调防止 Client 卡死。
@@ -483,10 +487,10 @@ export const createMcpSafeFetch = ({
 
             if (!settled) {
               activeTlsSocket?.once('close', onTlsClose);
-              tunnelSignal.addEventListener('abort', onTunnelAbort, { once: true });
-              if (tunnelSignal.aborted) {
-                onTunnelAbort();
-              }
+            } else if (tunnelSignal.aborted) {
+              const abortError = toAbortError(tunnelSignal.reason);
+              activeTlsSocket?.on('error', () => {}).destroy(abortError);
+              rawSocket.on('error', () => {}).destroy();
             }
           } catch (error) {
             if (!settled) {
