@@ -173,6 +173,7 @@ export default function Editor({
   // 变量标签由展示上下文更新；仅在外部文本值变化时重建编辑器。
   useEffect(() => {
     if (value === editorOutputRef.current) return;
+    editorOutputRef.current = value;
     setKey(getNanoid(6));
   }, [value]);
 
