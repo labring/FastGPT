@@ -82,8 +82,9 @@ export const isStreamCompletionResponse = (
 };
 
 /**
- * 归一化 OpenAI 兼容渠道缓存用量，与 Pi SDK 补丁保持一致。
- * OpenAI 和 AIProxy 的 cached_tokens 表示缓存读取，cache_write_tokens 表示缓存创建。
+ * FastGPT 仅按 OpenAI 兼容的 Chat Completions usage 约定解析缓存用量，普通请求与 Pi SDK 口径一致。
+ * 供应商协议和用量字段由 AIProxy 渠道适配层转换。旧 requestUrl 直连端点需按同一约定返回用量。
+ * cached_tokens 表示缓存读取，AIProxy 输出的 cache_write_tokens 表示缓存创建。
  * 两个明细创建别名按 AIProxy 规则取较大值，只记录一次创建量。
  * 缓存读取和创建均包含在总输入内，异常值也不得超过总输入。
  */
