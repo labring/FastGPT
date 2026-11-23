@@ -25,6 +25,8 @@ export async function createQuestionGuide({
   result: string[];
   inputTokens: number;
   outputTokens: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
 }> {
   const concatMessages: ChatCompletionMessageParam[] = [
     ...messages,
@@ -36,7 +38,7 @@ export async function createQuestionGuide({
 
   const {
     answerText: answer,
-    usage: { inputTokens, outputTokens }
+    usage: { inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens }
   } = await createLLMResponse({
     teamId,
     saveLLMResponseRecord: false,
@@ -56,7 +58,9 @@ export async function createQuestionGuide({
     return {
       result: [],
       inputTokens,
-      outputTokens
+      outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens
     };
   }
 
@@ -86,7 +90,9 @@ export async function createQuestionGuide({
     return {
       result: moderatedList,
       inputTokens,
-      outputTokens
+      outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens
     };
   } catch (error) {
     logger.warn('Failed to parse question guide JSON', { error, raw: jsonStr });
@@ -94,7 +100,9 @@ export async function createQuestionGuide({
     return {
       result: [],
       inputTokens,
-      outputTokens
+      outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens
     };
   }
 }

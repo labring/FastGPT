@@ -31,17 +31,31 @@ export const sanitizeModelPriceTiers = (tiers?: ModelPriceTierType[]): ModelPric
     if (result.length >= MAX_MODEL_PRICE_TIERS) break;
     const hasInput = typeof tier.inputPrice === 'number' && Number.isFinite(tier.inputPrice);
     const hasOutput = typeof tier.outputPrice === 'number' && Number.isFinite(tier.outputPrice);
+    const cachePrices = {
+      ...(typeof tier.cacheReadPrice === 'number' &&
+      Number.isFinite(tier.cacheReadPrice) &&
+      tier.cacheReadPrice >= 0
+        ? { cacheReadPrice: tier.cacheReadPrice }
+        : {}),
+      ...(typeof tier.cacheCreationPrice === 'number' &&
+      Number.isFinite(tier.cacheCreationPrice) &&
+      tier.cacheCreationPrice >= 0
+        ? { cacheCreationPrice: tier.cacheCreationPrice }
+        : {})
+    };
     const max =
       typeof tier.maxInputTokens === 'number' && Number.isFinite(tier.maxInputTokens)
         ? Math.max(0, tier.maxInputTokens)
         : undefined;
-    if (!hasInput && !hasOutput && max === undefined) break;
+    if (!hasInput && !hasOutput && Object.keys(cachePrices).length === 0 && max === undefined)
+      break;
     const previous = result.at(-1)?.maxInputTokens;
     if (max !== undefined && previous !== undefined && max <= previous) continue;
     result.push({
       ...(max === undefined ? {} : { maxInputTokens: max }),
       inputPrice: hasInput ? tier.inputPrice : 0,
-      outputPrice: hasOutput ? tier.outputPrice : 0
+      outputPrice: hasOutput ? tier.outputPrice : 0,
+      ...cachePrices
     });
     if (max === undefined) break;
   }
@@ -70,7 +84,13 @@ export const normalizeModelPricingForSave = (
         : sanitizeModelPriceTiers(pricing.tiers).map((tier) => ({
             ...tier,
             inputPrice: roundModelPrice(tier.inputPrice),
-            outputPrice: roundModelPrice(tier.outputPrice)
+            outputPrice: roundModelPrice(tier.outputPrice),
+            ...(tier.cacheReadPrice === undefined
+              ? {}
+              : { cacheReadPrice: roundModelPrice(tier.cacheReadPrice) }),
+            ...(tier.cacheCreationPrice === undefined
+              ? {}
+              : { cacheCreationPrice: roundModelPrice(tier.cacheCreationPrice) })
           }));
 
     return {
@@ -107,18 +127,34 @@ export const normalizeModelPricingForSave = (
   };
 };
 
-/** 仅系统模型计费；STT 必须传入带口径的用量，秒数不再复用 inputTokens。 */
+/**
+ * 系统 LLM 按总输入匹配档位。总输入包含普通输入、缓存读取和缓存创建。
+ * 读取和创建独立计量。普通输入 = 总输入 - 缓存读取 - 缓存创建，每个输入 Token 只计费一次。
+ * 各缓存单价缺省时沿用该档输入价，显式 0 表示该项免费。输出独立计费。
+ * STT 使用独立计量口径，团队模型免费。
+ *
+ * @see https://developers.openai.com/api/docs/guides/prompt-caching
+ */
 export const calculateModelPrice = ({
   config,
   inputTokens = 0,
   outputTokens = 0,
+  cacheReadTokens = 0,
+  cacheCreationTokens = 0,
   sttUsage
 }: {
   config?: PriceType & { type?: ModelTypeEnum; scope?: ModelScopeEnum };
   inputTokens?: number;
   outputTokens?: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
   sttUsage?: STTBillableUsageType;
 }) => {
+  const safeCount = (value: number) => (Number.isFinite(value) ? Math.max(0, value) : 0);
+  inputTokens = safeCount(inputTokens);
+  outputTokens = safeCount(outputTokens);
+  cacheReadTokens = Math.min(inputTokens, safeCount(cacheReadTokens));
+  cacheCreationTokens = Math.min(inputTokens - cacheReadTokens, safeCount(cacheCreationTokens));
   const tiers = getRuntimeResolvedPriceTiers(config);
   const multiple = 1000000;
   if (config?.type === ModelTypeEnum.stt) {
@@ -159,7 +195,10 @@ export const calculateModelPrice = ({
     config?.scope !== ModelScopeEnum.system
       ? 0
       : config.type === ModelTypeEnum.llm
-        ? ((matchedTier?.inputPrice ?? 0) * inputTokens +
+        ? ((matchedTier?.inputPrice ?? 0) * (inputTokens - cacheReadTokens - cacheCreationTokens) +
+            (matchedTier?.cacheReadPrice ?? matchedTier?.inputPrice ?? 0) * cacheReadTokens +
+            (matchedTier?.cacheCreationPrice ?? matchedTier?.inputPrice ?? 0) *
+              cacheCreationTokens +
             (matchedTier?.outputPrice ?? 0) * outputTokens) /
           multiple
         : ((inputTokens + outputTokens) / multiple) * (config.pricing?.unitPrice ?? 0);

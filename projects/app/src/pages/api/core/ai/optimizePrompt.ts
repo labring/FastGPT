@@ -107,7 +107,7 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
     ];
 
     const {
-      usage: { inputTokens, outputTokens }
+      usage: { inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens }
     } = await createLLMResponse({
       teamId,
       saveLLMResponseRecord: false,
@@ -144,7 +144,9 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
     const { totalPoints } = formatModelChars2Points({
       model: modelData,
       inputTokens,
-      outputTokens
+      outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens
     });
 
     createUsage({
@@ -159,7 +161,9 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
           amount: totalPoints,
           modelId: modelData.modelId,
           inputTokens,
-          outputTokens
+          outputTokens,
+          cacheReadTokens,
+          cacheCreationTokens
         }
       ]
     });

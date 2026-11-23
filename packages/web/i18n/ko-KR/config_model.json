@@ -352,5 +352,6 @@
   "model.stt_billing_duration": "시간 기준",
   "model.stt_billing_tokens": "토큰 기준",
   "model.stt_input_price": "입력 가격(포인트)",
-  "model.stt_output_price": "출력 가격(포인트)"
+  "model.stt_output_price": "출력 가격(포인트)",
+  "model.cache_price_tip": "가격 단위: 포인트 / M 토큰, 소수점 이하 최대 2자리. 캐시 읽기 또는 생성 가격을 비워 두면 해당 구간의 입력 가격을 적용하며, 0을 입력하면 무료입니다."
 }
