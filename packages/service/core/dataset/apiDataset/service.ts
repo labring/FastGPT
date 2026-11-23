@@ -17,6 +17,7 @@ import { getApiDatasetRequest } from './index';
 import { buildApiFileRecords, buildApiFileTree, toApiFileDirId, type ApiFileRecord } from './tree';
 import {
   buildApiFileParentUpdates,
+  resolveApiDatasetProvider,
   resolveApiFileRecordParent,
   planLegacyApiFileFolders,
   usesDingtalkDataset,
@@ -135,11 +136,7 @@ export const createApiDatasetCollection = async ({
       permission: DatasetPermission;
     };
   }): Promise<CreateApiCollectionV2ResponseType> => {
-  const startId =
-    dataset.apiDatasetServer?.apiServer?.basePath ||
-    dataset.apiDatasetServer?.yuqueServer?.basePath ||
-    dataset.apiDatasetServer?.feishuServer?.folderToken ||
-    dataset.apiDatasetServer?.dingtalkServer?.rootNodeId;
+  const startId = resolveApiDatasetProvider(dataset.apiDatasetServer)?.basePath;
 
   const request = await getApiDatasetRequest(dataset.apiDatasetServer);
 
