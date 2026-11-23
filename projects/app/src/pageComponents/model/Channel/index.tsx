@@ -463,7 +463,7 @@ const ChannelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType:
                         <HStack spacing={2} justifyContent={'flex-end'}>
                           <MyIconButton
                             icon={'core/chat/sendLight'}
-                            tip={t('config_model:model_test')}
+                            tip={t('config_model:test')}
                             onClick={() =>
                               setTestModelData({
                                 channelId: item.id,
