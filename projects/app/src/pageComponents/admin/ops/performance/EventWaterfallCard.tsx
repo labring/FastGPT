@@ -1,0 +1,322 @@
+'use client';
+import React from 'react';
+import { Badge, Box, Flex, Grid, HStack, Text } from '@chakra-ui/react';
+import dayjs from 'dayjs';
+import { DATASET_SEARCH_STAGE_SPECS } from '@fastgpt/global/common/opsPerf/constants';
+import type { DatasetSearchPerfEventItem } from '@fastgpt/global/openapi/admin/ops/performance';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+
+const STAGE_COLOR_MAP: Record<string, string> = {
+  queryExtension: '#8B5CF6',
+  imageCaption: '#A855F7',
+  filter: '#0EA5E9',
+  embeddingApi: '#3B82F6',
+  vectorRoute: '#6366F1',
+  vectorLeaseWait: '#F59E0B',
+  vectorRecall: '#EF4444',
+  vectorHydrate: '#06B6D4',
+  fullTextRecall: '#EC4899',
+  fullTextHydrate: '#F472B6',
+  rerank: '#10B981',
+  postProcess: '#64748B'
+};
+
+type EventWaterfallCardProps = {
+  event: DatasetSearchPerfEventItem;
+  stageLabelMap: Record<string, string>;
+  modeLabelMap: Record<string, string>;
+};
+
+/** 渲染单次知识库检索的阶段耗时瀑布图与脱敏诊断特征。 */
+export const EventWaterfallCard = ({
+  event,
+  stageLabelMap,
+  modeLabelMap
+}: EventWaterfallCardProps) => {
+  const { t } = useSafeTranslation();
+
+  const bars = DATASET_SEARCH_STAGE_SPECS.map((spec) => {
+    const timing = event.stages[spec.key];
+    if (!timing) return null;
+    return {
+      key: spec.key,
+      step: spec.step,
+      group: spec.group,
+      label: stageLabelMap[spec.key] ?? spec.key,
+      offsetMs: timing.offsetMs,
+      ms: timing.ms,
+      callCount: timing.callCount ?? 1,
+      errorCount: timing.errorCount ?? 0,
+      color: STAGE_COLOR_MAP[spec.key] ?? '#3B82F6'
+    };
+  }).filter((item): item is NonNullable<typeof item> => item !== null);
+
+  const axisMaxMs = Math.max(event.totalMs, ...bars.map((bar) => bar.offsetMs + bar.ms), 1);
+
+  const statusColorScheme =
+    event.status === 'error' ? 'red' : event.status === 'degraded' ? 'orange' : 'green';
+  const statusLabel =
+    event.status === 'error'
+      ? t('admin:ops_perf_status_error')
+      : event.status === 'degraded'
+        ? t('admin:ops_perf_status_degraded')
+        : t('admin:ops_perf_status_ok');
+
+  const datasetList =
+    event.datasets.length > 0
+      ? event.datasets
+      : event.resourceIds.map((id) => ({ id, name: undefined }));
+
+  return (
+    <Box>
+      {/* Header */}
+      <Flex
+        justify={'space-between'}
+        align={'flex-start'}
+        flexWrap={'wrap'}
+        gap={3}
+        pb={3}
+        mb={3}
+        borderBottom={'1px solid'}
+        borderColor={'myGray.150'}
+      >
+        <Box>
+          <HStack spacing={2} flexWrap={'wrap'}>
+            <Badge colorScheme={statusColorScheme} fontSize={'xs'} borderRadius={'sm'}>
+              {statusLabel}
+            </Badge>
+            <Badge colorScheme={'blue'} variant={'subtle'} fontSize={'xs'} borderRadius={'sm'}>
+              {modeLabelMap[event.dims.searchMode] ?? event.dims.searchMode}
+            </Badge>
+            {event.detail.pgUsesHnsw === false && (
+              <Badge colorScheme={'gray'} variant={'subtle'} fontSize={'xs'} borderRadius={'sm'}>
+                {t('admin:ops_perf_route_pg_exact')}
+              </Badge>
+            )}
+            {event.detail.pgUsesHnsw === true && (
+              <Badge colorScheme={'green'} variant={'subtle'} fontSize={'xs'} borderRadius={'sm'}>
+                {t('admin:ops_perf_route_pg_hnsw')}
+              </Badge>
+            )}
+          </HStack>
+          <Text fontSize={'xs'} color={'myGray.500'} mt={1.5} fontFamily={'mono'}>
+            {dayjs(event.createTime).format('YYYY-MM-DD HH:mm:ss.SSS')}
+          </Text>
+        </Box>
+        <Box textAlign={'right'}>
+          <Text fontSize={'xs'} color={'myGray.500'}>
+            {t('admin:ops_perf_total_duration')}
+          </Text>
+          <Text fontSize={'lg'} fontWeight={'bold'} fontFamily={'mono'} color={'primary.600'}>
+            {Math.round(event.totalMs).toLocaleString()} ms
+          </Text>
+        </Box>
+      </Flex>
+
+      {/* Involved datasets list */}
+      {datasetList.length > 0 && (
+        <Box mb={3.5}>
+          <Text fontSize={'xs'} color={'myGray.500'} mb={1.5}>
+            {t('admin:ops_perf_datasets_label')} ({datasetList.length})
+          </Text>
+          <Flex flexWrap={'wrap'} gap={2}>
+            {datasetList.map((ds) => (
+              <Flex
+                key={ds.id}
+                align={'center'}
+                gap={1.5}
+                px={2.5}
+                py={1}
+                bg={'myGray.50'}
+                borderWidth={'1px'}
+                borderColor={'myGray.200'}
+                borderRadius={'md'}
+                fontSize={'xs'}
+              >
+                <Text fontWeight={'medium'} color={'myGray.800'}>
+                  {ds.name || ds.id}
+                </Text>
+                {ds.name && (
+                  <Text color={'myGray.500'} fontFamily={'mono'} fontSize={'11px'}>
+                    {ds.id}
+                  </Text>
+                )}
+              </Flex>
+            ))}
+          </Flex>
+        </Box>
+      )}
+
+      {/* Diagnostic metadata summary */}
+      <Grid
+        templateColumns={['repeat(2, 1fr)', 'repeat(3, 1fr)']}
+        gap={3}
+        mb={4}
+        p={3.5}
+        bg={'myGray.50'}
+        borderRadius={'md'}
+        fontSize={'xs'}
+      >
+        <Box>
+          <Text color={'myGray.500'}>{t('admin:ops_perf_index_count')}</Text>
+          <Text fontWeight={'semibold'} fontFamily={'mono'} color={'myGray.900'} mt={0.5}>
+            {event.detail.totalIndexCount !== undefined
+              ? event.detail.totalIndexCount.toLocaleString()
+              : '-'}
+          </Text>
+        </Box>
+        <Box>
+          <Text color={'myGray.500'}>{t('admin:ops_perf_candidates_results')}</Text>
+          <Text fontWeight={'semibold'} fontFamily={'mono'} color={'myGray.900'} mt={0.5}>
+            {event.detail.candidateCount ?? '-'} → {event.detail.resultCount ?? '-'}
+          </Text>
+        </Box>
+        <Box>
+          <Text color={'myGray.500'}>{t('admin:ops_perf_query_meta')}</Text>
+          <Text fontWeight={'semibold'} fontFamily={'mono'} color={'myGray.900'} mt={0.5}>
+            {t('admin:ops_perf_query_meta_value', {
+              queries: event.detail.queryCount ?? 1,
+              chars: event.detail.queryChars ?? 0
+            })}
+            {event.detail.hasMetadataFilter ? ` · ${t('admin:ops_perf_metadata_filter')}` : ''}
+          </Text>
+        </Box>
+        <Box>
+          <Text color={'myGray.500'}>{t('admin:ops_perf_embedding_model')}</Text>
+          <Text
+            fontWeight={'semibold'}
+            fontFamily={'mono'}
+            color={'myGray.900'}
+            mt={0.5}
+            noOfLines={1}
+            title={event.detail.embeddingModel || '-'}
+          >
+            {event.detail.embeddingModel || '-'}
+          </Text>
+        </Box>
+        <Box>
+          <Text color={'myGray.500'}>{t('admin:ops_perf_rerank_model')}</Text>
+          <Text
+            fontWeight={'semibold'}
+            fontFamily={'mono'}
+            color={'myGray.900'}
+            mt={0.5}
+            noOfLines={1}
+            title={event.detail.rerankModel || '-'}
+          >
+            {event.detail.rerankModel || '-'}
+          </Text>
+        </Box>
+        <Box>
+          <Text color={'myGray.500'}>{t('admin:ops_perf_extension_model')}</Text>
+          <Text
+            fontWeight={'semibold'}
+            fontFamily={'mono'}
+            color={'myGray.900'}
+            mt={0.5}
+            noOfLines={1}
+            title={event.detail.extensionModel || '-'}
+          >
+            {event.detail.extensionModel || '-'}
+          </Text>
+        </Box>
+      </Grid>
+
+      {event.errorMessage && (
+        <Box
+          mb={3}
+          px={3}
+          py={2}
+          bg={'red.50'}
+          borderRadius={'md'}
+          borderWidth={'1px'}
+          borderColor={'red.200'}
+          fontSize={'xs'}
+          color={'red.700'}
+          fontFamily={'mono'}
+        >
+          {event.errorCode ? `[${event.errorCode}] ` : ''}
+          {event.errorMessage}
+        </Box>
+      )}
+
+      {/* Waterfall bars */}
+      {bars.length === 0 ? (
+        <Text fontSize={'xs'} color={'myGray.500'} py={3} textAlign={'center'}>
+          {t('admin:ops_perf_no_stage_data')}
+        </Text>
+      ) : (
+        <Box>
+          <Flex justify={'space-between'} fontSize={'11px'} color={'myGray.400'} mb={1.5} px={1}>
+            <Text w={'255px'}>{t('admin:ops_perf_col_stage')}</Text>
+            <Flex flex={1} justify={'space-between'} px={2}>
+              <Text>0 ms</Text>
+              <Text>{Math.round(axisMaxMs / 2).toLocaleString()} ms</Text>
+              <Text>{Math.round(axisMaxMs).toLocaleString()} ms</Text>
+            </Flex>
+            <Text w={'84px'} textAlign={'right'}>
+              {t('admin:ops_perf_col_duration')}
+            </Text>
+          </Flex>
+          {bars.map((bar) => {
+            const leftPct = Math.min(98, (bar.offsetMs / axisMaxMs) * 100);
+            const widthPct = Math.max(1.2, Math.min(100 - leftPct, (bar.ms / axisMaxMs) * 100));
+            return (
+              <Flex key={bar.key} align={'center'} py={1.5} px={1} fontSize={'xs'}>
+                <Flex w={'255px'} flexShrink={0} align={'center'} gap={1.5} pr={2}>
+                  <Text w={'34px'} fontFamily={'mono'} color={'myGray.400'} fontSize={'11px'}>
+                    {bar.step}
+                  </Text>
+                  <Text color={'myGray.800'} fontWeight={'medium'} noOfLines={1}>
+                    {bar.label}
+                  </Text>
+                  {bar.group !== 'serial' && (
+                    <Badge
+                      fontSize={'10px'}
+                      colorScheme={bar.group === 'parallel-vector' ? 'blue' : 'pink'}
+                      variant={'subtle'}
+                      flexShrink={0}
+                    >
+                      ∥
+                    </Badge>
+                  )}
+                </Flex>
+
+                <Box
+                  flex={1}
+                  h={'16px'}
+                  bg={'myGray.100'}
+                  borderRadius={'sm'}
+                  position={'relative'}
+                  overflow={'hidden'}
+                  mx={2}
+                >
+                  <Box
+                    position={'absolute'}
+                    top={'2px'}
+                    bottom={'2px'}
+                    left={`${leftPct.toFixed(2)}%`}
+                    width={`${widthPct.toFixed(2)}%`}
+                    bg={bar.errorCount > 0 ? 'red.500' : bar.color}
+                    borderRadius={'sm'}
+                  />
+                </Box>
+
+                <Text
+                  w={'84px'}
+                  flexShrink={0}
+                  textAlign={'right'}
+                  fontFamily={'mono'}
+                  fontWeight={'semibold'}
+                  color={bar.errorCount > 0 ? 'red.600' : 'myGray.900'}
+                >
+                  {Math.round(bar.ms).toLocaleString()} ms
+                </Text>
+              </Flex>
+            );
+          })}
+        </Box>
+      )}
+    </Box>
+  );
+};

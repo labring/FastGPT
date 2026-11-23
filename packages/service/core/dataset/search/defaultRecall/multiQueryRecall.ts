@@ -2,6 +2,7 @@ import { getForbidCollectionIdList, filterCollectionByMetadata } from '../filter
 import { embeddingRecall } from './embeddingRecall';
 import { fullTextRecall } from './fullTextRecall';
 import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { patchPerfContext, trackPerfStage } from '../../../../common/opsPerf/context';
 
 /**
  * 默认召回的并行调度层。
@@ -33,13 +34,22 @@ export const multiQueryRecall = async ({
   textQueries: string[];
   imageCaptionQueries: string[];
 }) => {
-  const [forbidCollectionIdList, metadataFilterCollectionIdList] = await Promise.all([
-    getForbidCollectionIdList({
-      teamId,
-      datasetIds
-    }),
-    filterCollectionByMetadata({ teamId, datasetIds, collectionFilterMatch, metadataFilterEnabled })
-  ]);
+  const [forbidCollectionIdList, metadataFilterCollectionIdList] = await trackPerfStage(
+    { domain: 'dataset.search', stage: 'filter' },
+    () =>
+      Promise.all([
+        getForbidCollectionIdList({
+          teamId,
+          datasetIds
+        }),
+        filterCollectionByMetadata({
+          teamId,
+          datasetIds,
+          collectionFilterMatch,
+          metadataFilterEnabled
+        })
+      ])
+  );
 
   // 权限可读集合 ∩ 用户 metadata 过滤集合 → 有效过滤集合（AND 语义）。
   // 两者均未定义 → 不设 collectionId 过滤（undefined）；交集为空 → 直接返回空结果（跳过向量召回）。
@@ -50,6 +60,16 @@ export const multiQueryRecall = async ({
   } else {
     filterCollectionIdList = readableCollectionIdList ?? metadataFilterCollectionIdList;
   }
+
+  patchPerfContext({
+    domain: 'dataset.search',
+    detail: {
+      hasMetadataFilter: Boolean(collectionFilterMatch && metadataFilterEnabled),
+      hasPermissionFilter: readableCollectionIdList !== undefined,
+      filterCollectionCount: filterCollectionIdList?.length,
+      forbidCollectionCount: forbidCollectionIdList.length
+    }
+  });
 
   if (filterCollectionIdList && filterCollectionIdList.length === 0) {
     return {

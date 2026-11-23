@@ -13,12 +13,14 @@ export const rerankDatasetWithSynonyms = async ({
   model,
   teamId,
   query,
-  documents
+  documents,
+  onSynonymTriggered
 }: {
   model?: RerankModelDataType;
   teamId: string;
   query: string;
   documents: RerankDocument[];
+  onSynonymTriggered?: () => void;
 }) => {
   const baselinePromise = reRankRecall({
     model,
@@ -87,6 +89,7 @@ export const rerankDatasetWithSynonyms = async ({
   if (changedGroups.length === 0) return baseline;
 
   // 3. 执行第二路重排，单组失败降级为空结果，不影响基线分数。
+  onSynonymTriggered?.();
   const responses = await Promise.all(
     changedGroups.map(async ({ query, documents }) => {
       try {

@@ -79,6 +79,7 @@ describe('getAdminMenuList', () => {
     // 商业化和数据面板等商业业务自动隐藏。
     expect(topLabels).not.toContain('商业化');
     expect(topLabels).not.toContain('数据面板');
+    expect(topLabels).not.toContain('运维看板');
     expect(topLabels).not.toContain('运营管理');
     expect(topLabels).not.toContain('用户与团队');
     expect(topLabels).not.toContain('用户资源');
@@ -95,7 +96,11 @@ describe('getAdminMenuList', () => {
     expect(menuLabels).toContain('内容审核');
     expect(menuLabels).toContain('子服务');
     expect(menuLabels).toContain('数据面板');
+    expect(menuLabels).toContain('运维看板');
     expect(menuLabels).toContain('系统配置');
+
+    const opsMenu = menus.find((item) => item.label === '运维看板');
+    expect(opsMenu?.children?.map((c) => c.value)).toEqual(['/admin/ops/performance']);
 
     const moderationMenu = menus.find((item) => item.label === '内容审核');
     expect(moderationMenu?.children?.map((c) => c.value)).toEqual(['/admin/moderation/policy']);

@@ -53,12 +53,19 @@ describe('rerankDatasetWithSynonyms', () => {
       )
       .mockResolvedValueOnce({ results: [{ id: 'a', score: 0.9 }], inputTokens: 8 });
 
-    const resultPromise = rerankDatasetWithSynonyms({ teamId: 't1', query: 'alias', documents });
+    const onSynonymTriggered = vi.fn();
+    const resultPromise = rerankDatasetWithSynonyms({
+      teamId: 't1',
+      query: 'alias',
+      documents,
+      onSynonymTriggered
+    });
     // 基线 rerank 尚未返回时，同义词准备阶段已经启动。
     await vi.waitFor(() => expect(mocks.runtimeConfig).toHaveBeenCalled());
     resolveBaseline({ results: [{ id: 'a', score: 0.2 }], inputTokens: 10 });
     const result = await resultPromise;
 
+    expect(onSynonymTriggered).toHaveBeenCalledTimes(1);
     expect(result.inputTokens).toBe(18);
     expect(result.results).toEqual([{ id: 'a', score: 0.9 }]);
     expect(mocks.reRankRecall).toHaveBeenNthCalledWith(

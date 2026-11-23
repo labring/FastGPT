@@ -1,4 +1,6 @@
+import { performance } from 'node:perf_hooks';
 import { getSystemInstanceConfig } from '../system/systemInstanceConfig/runtime';
+import { recordPerfStageSpan, trackPerfStage } from '../opsPerf/context';
 /* vector crud */
 import { VectorCountCache, type VectorCountScope } from '@fastgpt/dal/redis/caches/vectorCount';
 import { PgVectorCtrl } from './pg';
@@ -62,6 +64,7 @@ export const initVectorStore = async (hooks: VectorStoreHooks = {}) => {
  */
 export const recallFromVectorStore: VectorControllerType['embRecall'] = async (props) => {
   const result = await retryFn(async () => {
+    const leaseEnqueueAt = performance.now();
     try {
       return {
         success: true as const,
@@ -71,11 +74,28 @@ export const recallFromVectorStore: VectorControllerType['embRecall'] = async (p
           concurrency: () => getSystemInstanceConfig().vector.vectorRecallConcurrency ?? 0,
           ttlMs: RECALL_LEASE_TTL_MS,
           renewIntervalMs: 10_000,
-          fn: () => Vector.embRecall(props)
+          fn: () => {
+            recordPerfStageSpan({
+              domain: 'dataset.search',
+              stage: 'vectorLeaseWait',
+              startedAtPerf: leaseEnqueueAt
+            });
+            return trackPerfStage({ domain: 'dataset.search', stage: 'vectorRecall' }, () =>
+              Vector.embRecall(props)
+            );
+          }
         })
       };
     } catch (error) {
-      if (isRedisLeaseError(error)) return { success: false as const, error };
+      if (isRedisLeaseError(error)) {
+        recordPerfStageSpan({
+          domain: 'dataset.search',
+          stage: 'vectorLeaseWait',
+          startedAtPerf: leaseEnqueueAt,
+          failed: true
+        });
+        return { success: false as const, error };
+      }
       throw error;
     }
   });

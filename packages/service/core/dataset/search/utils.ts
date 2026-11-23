@@ -4,6 +4,7 @@ import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { isHttpUrl } from '@fastgpt/global/common/string/url';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { patchPerfContext, trackPerfStage } from '../../../common/opsPerf/context';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import { getImageBase64 } from '../../../common/file/image/utils';
 import { getMultipleDataToBase64 } from '../../../common/system/constants';
@@ -285,26 +286,32 @@ export const datasetSearchQueryExtension = async ({
   const aiExtensionResult = await (async () => {
     if (!llmModel || !embeddingModel) return;
 
-    try {
-      const result = await queryExtension({
-        chatBg: extensionBg,
-        query,
-        histories,
-        llmModel,
-        embeddingModel,
-        userKey,
-        teamId
-      });
-      if (result.extensionQueries?.length === 0) return;
-      return result;
-    } catch (error) {
-      logger.error('Failed to generate extension queries', { error });
-    }
+    return trackPerfStage({ domain: 'dataset.search', stage: 'queryExtension' }, async () => {
+      try {
+        const result = await queryExtension({
+          chatBg: extensionBg,
+          query,
+          histories,
+          llmModel,
+          embeddingModel,
+          userKey,
+          teamId
+        });
+        if (result.extensionQueries?.length === 0) return;
+        return result;
+      } catch (error) {
+        logger.error('Failed to generate extension queries', { error });
+      }
+    });
   })();
 
   if (aiExtensionResult) {
     queries = filterSameQuery(queries.concat(aiExtensionResult.extensionQueries));
     reRankQuery = queries.join('\n');
+    patchPerfContext({
+      domain: 'dataset.search',
+      detail: { queryCount: queries.length }
+    });
   }
 
   queries = await standardizeDatasetSearchQueries({ teamId, datasetIds, queries });

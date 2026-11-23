@@ -1,3 +1,4 @@
+import { performance } from 'node:perf_hooks';
 import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { filterGPTMessageByMaxContext } from '../llm/utils';
@@ -5,6 +6,7 @@ import json5 from 'json5';
 import { createLLMResponse } from '../llm/request';
 import { useTextCosine } from '../hooks/useTextCosine';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { patchPerfContext, recordPerfPoint } from '../../../common/opsPerf/context';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type {
   EmbeddingModelDataType,
@@ -141,7 +143,47 @@ export const queryExtension = async ({
   embeddingTokens: number;
 }> => {
   const startTime = Date.now();
+  const perfStart = performance.now();
   const getSeconds = () => +((Date.now() - startTime) / 1000).toFixed(2);
+  const modelLabel = llmModel.model || llmModel.name || 'unknown';
+
+  const reportQueryExtensionPerf = ({
+    status,
+    invalidJson = false,
+    inputTokens = 0,
+    outputTokens = 0,
+    embeddingTokens = 0,
+    generatedCount = 0
+  }: {
+    status: 'ok' | 'degraded' | 'error';
+    invalidJson?: boolean;
+    inputTokens?: number;
+    outputTokens?: number;
+    embeddingTokens?: number;
+    generatedCount?: number;
+  }) => {
+    const totalMs = Math.max(0, performance.now() - perfStart);
+    recordPerfPoint({
+      domain: 'dataset.queryExtension',
+      teamId,
+      totalMs,
+      status,
+      dims: { model: modelLabel },
+      metrics: {
+        ...(invalidJson ? { invalidJsonCount: 1 } : {}),
+        totalInputTokens: inputTokens,
+        totalOutputTokens: outputTokens,
+        totalEmbeddingTokens: embeddingTokens,
+        totalGeneratedQueries: generatedCount
+      }
+    });
+    patchPerfContext({
+      domain: 'dataset.search',
+      detail: {
+        extensionModel: modelLabel
+      }
+    });
+  };
   // 1. Request model
   const filterHistories = await filterGPTMessageByMaxContext({
     messages: chats2GPTMessages({ messages: histories, reserveId: false }),
@@ -178,22 +220,37 @@ export const queryExtension = async ({
     }
   ] as any;
 
+  let llmResponse: Awaited<ReturnType<typeof createLLMResponse>>;
+  try {
+    llmResponse = await createLLMResponse({
+      userKey,
+      teamId,
+      body: {
+        stream: true,
+        model: llmModel,
+        messages,
+        ...(llmModel.config.reasoning ? { reasoning_effort: 'none' as const } : {})
+      }
+    });
+  } catch (error) {
+    reportQueryExtensionPerf({
+      status: 'error'
+    });
+    throw error;
+  }
   const {
     answerText: answer,
     requestId,
     usage: { inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens, usedUserOpenAIKey }
-  } = await createLLMResponse({
-    userKey,
-    teamId,
-    body: {
-      stream: true,
-      model: llmModel,
-      messages,
-      ...(llmModel.config.reasoning ? { reasoning_effort: 'none' as const } : {})
-    }
-  });
+  } = llmResponse;
 
   if (!answer) {
+    reportQueryExtensionPerf({
+      status: 'degraded',
+      invalidJson: true,
+      inputTokens,
+      outputTokens
+    });
     return {
       rawQuery: query,
       extensionQueries: [],
@@ -216,6 +273,12 @@ export const queryExtension = async ({
   if (start === -1 || end === -1) {
     logger.warn('Query extension returned invalid JSON', {
       answer
+    });
+    reportQueryExtensionPerf({
+      status: 'degraded',
+      invalidJson: true,
+      inputTokens,
+      outputTokens
     });
     return {
       rawQuery: query,
@@ -243,6 +306,12 @@ export const queryExtension = async ({
     let queries = json5.parse(jsonStr) as string[];
 
     if (!Array.isArray(queries) || queries.length === 0) {
+      reportQueryExtensionPerf({
+        status: 'degraded',
+        invalidJson: true,
+        inputTokens,
+        outputTokens
+      });
       return {
         rawQuery: query,
         extensionQueries: [],
@@ -265,6 +334,12 @@ export const queryExtension = async ({
     });
     queries = queries.map((item) => String(item).trim()).filter(Boolean);
     if (queries.length === 0) {
+      reportQueryExtensionPerf({
+        status: 'degraded',
+        invalidJson: true,
+        inputTokens,
+        outputTokens
+      });
       return {
         rawQuery: query,
         extensionQueries: [],
@@ -288,6 +363,14 @@ export const queryExtension = async ({
       alpha: 0.3
     });
 
+    reportQueryExtensionPerf({
+      status: 'ok',
+      inputTokens,
+      outputTokens,
+      embeddingTokens,
+      generatedCount: selectedQueries.length
+    });
+
     return {
       rawQuery: query,
       extensionQueries: selectedQueries,
@@ -306,6 +389,12 @@ export const queryExtension = async ({
     logger.warn('Query extension failed', {
       error,
       answer
+    });
+    reportQueryExtensionPerf({
+      status: 'degraded',
+      invalidJson: true,
+      inputTokens,
+      outputTokens
     });
     return {
       rawQuery: query,

@@ -19,6 +19,8 @@ import { buildSearchResultItem, concatRecallLists } from './result';
 import { getDatasetVectorSearchData } from '../../vectorData/service';
 import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/runtime';
 import { logInstanceConfigRead } from '../../../../common/system/migrationCoverageLog';
+import { resolveDatasetIndexScale } from '@fastgpt/global/common/opsPerf/constants';
+import { patchPerfContext, trackPerfStage } from '../../../../common/opsPerf/context';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
@@ -171,12 +173,16 @@ export const embeddingRecall = async ({
     };
   }
 
-  const { tasks, tokens } = await buildVectorRecallTasks({
-    model,
-    textQueries,
-    imageCaptionQueries,
-    imageQueries
-  });
+  const { tasks, tokens } = await trackPerfStage(
+    { domain: 'dataset.search', stage: 'embeddingApi' },
+    () =>
+      buildVectorRecallTasks({
+        model,
+        textQueries,
+        imageCaptionQueries,
+        imageQueries
+      })
+  );
 
   if (tasks.length === 0) {
     return {
@@ -194,7 +200,33 @@ export const embeddingRecall = async ({
   });
 
   // 多个文本/图片 query 共用路由快照，避免每个向量都重复查询计数及索引状态。
-  const datasetVectorData = await getDatasetVectorSearchData({ teamId, datasetIds });
+  const datasetVectorData = await trackPerfStage(
+    { domain: 'dataset.search', stage: 'vectorRoute' },
+    () => getDatasetVectorSearchData({ teamId, datasetIds })
+  );
+  if (datasetVectorData && datasetVectorData.length > 0) {
+    const totalIndexCount = datasetVectorData.reduce((sum, item) => sum + (item.rows ?? 0), 0);
+    const maxDatasetIndexCount = datasetVectorData.reduce(
+      (max, item) => Math.max(max, item.rows ?? 0),
+      0
+    );
+    patchPerfContext({
+      domain: 'dataset.search',
+      dims: {
+        indexScale: resolveDatasetIndexScale(totalIndexCount)
+      },
+      detail: {
+        totalIndexCount,
+        maxDatasetIndexCount,
+        hnswEfSearch
+      }
+    });
+  } else {
+    patchPerfContext({
+      domain: 'dataset.search',
+      detail: { hnswEfSearch }
+    });
+  }
   const recallResults = await Promise.all(
     tasks.map(async ({ vector }) => {
       return await recallFromVectorStore({
@@ -223,47 +255,51 @@ export const embeddingRecall = async ({
     ? collectionIdList.filter((id) => filterCollectionIdList.includes(id))
     : collectionIdList;
 
-  const [dataMaps, collectionMaps] = await Promise.all([
-    MongoDatasetData.find(
-      {
-        teamId,
-        datasetId: { $in: datasetIds },
-        collectionId: { $in: recallFilterCollectionIdList },
-        'indexes.dataId': { $in: indexDataIds }
-      },
-      datasetDataSelectField,
-      { ...readFromSecondary }
-    )
-      .lean()
-      .then((res) => {
-        const map = new Map<string, DatasetDataSchemaType>();
+  const [dataMaps, collectionMaps] = await trackPerfStage(
+    { domain: 'dataset.search', stage: 'vectorHydrate' },
+    () =>
+      Promise.all([
+        MongoDatasetData.find(
+          {
+            teamId,
+            datasetId: { $in: datasetIds },
+            collectionId: { $in: recallFilterCollectionIdList },
+            'indexes.dataId': { $in: indexDataIds }
+          },
+          datasetDataSelectField,
+          { ...readFromSecondary }
+        )
+          .lean()
+          .then((res) => {
+            const map = new Map<string, DatasetDataSchemaType>();
 
-        res.forEach((item) => {
-          item.indexes.forEach((index) => {
-            map.set(String(index.dataId), item);
-          });
-        });
+            res.forEach((item) => {
+              item.indexes.forEach((index) => {
+                map.set(String(index.dataId), item);
+              });
+            });
 
-        return map;
-      }),
-    MongoDatasetCollection.find(
-      {
-        _id: { $in: recallFilterCollectionIdList }
-      },
-      datasetCollectionSelectField,
-      { ...readFromSecondary }
-    )
-      .lean()
-      .then((res) => {
-        const map = new Map<string, DatasetCollectionSchemaType>();
+            return map;
+          }),
+        MongoDatasetCollection.find(
+          {
+            _id: { $in: recallFilterCollectionIdList }
+          },
+          datasetCollectionSelectField,
+          { ...readFromSecondary }
+        )
+          .lean()
+          .then((res) => {
+            const map = new Map<string, DatasetCollectionSchemaType>();
 
-        res.forEach((item) => {
-          map.set(String(item._id), item);
-        });
+            res.forEach((item) => {
+              map.set(String(item._id), item);
+            });
 
-        return map;
-      })
-  ]);
+            return map;
+          })
+      ])
+  );
 
   const groupedRecallLists: Record<EmbeddingRecallSource, SearchDataResponseItemType[][]> = {
     text: [],
