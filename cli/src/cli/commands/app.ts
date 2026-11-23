@@ -2,6 +2,7 @@ import { CliArgumentError } from '../../shared/errors';
 import { resolveJsonObjectPayload } from '../../shared/input';
 import type { CliCommandSpec } from '../pipeline';
 import { createAppListCommandSpec } from './app/list';
+import { createAppLogsCommandSpecs } from './app/logs';
 import { requireActiveClient } from './dataset/shared';
 import {
   WORKFLOW_DIR_OPTION,
@@ -18,6 +19,7 @@ import {
 export function createAppCommandSpecs(): CliCommandSpec[] {
   return [
     createAppListCommandSpec(),
+    ...createAppLogsCommandSpecs(),
     {
       path: ['app', 'pull'],
       summary: 'Pull an App draft or specific version from FastGPT into local workflow.json',

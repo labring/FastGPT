@@ -68,6 +68,12 @@ describe('Workflow CLI commands', () => {
       .map(({ path }) => path.join(' '));
     expect(remotePaths.sort()).toEqual([
       'app list',
+      'app logs chart',
+      'app logs export',
+      'app logs list',
+      'app logs search',
+      'app logs stats',
+      'app logs users',
       'app publish',
       'app pull',
       'app run',
