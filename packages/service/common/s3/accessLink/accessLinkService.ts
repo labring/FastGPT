@@ -12,7 +12,6 @@ const roundDurationMs = (durationMs: number) => Number(durationMs.toFixed(3));
 
 export const s3AccessLinkService = createS3AccessLinkService({
   secret: serviceEnv.FILE_TOKEN_KEY,
-  downloadSignVersion: serviceEnv.STORAGE_DOWNLOAD_SIGN_VERSION,
   routes: {
     buildDownloadUrl: buildS3AccessLinkDownloadUrl,
     buildUploadUrl: buildS3AccessLinkUploadUrl
