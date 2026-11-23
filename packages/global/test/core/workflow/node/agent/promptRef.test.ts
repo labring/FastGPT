@@ -5,6 +5,7 @@ import {
   stripAgentPromptRefs
 } from '@fastgpt/global/core/workflow/node/agent/promptRef/protocol';
 import {
+  getPromptRefPrefixLengths,
   hasDebugPromptRef,
   isBuiltinPromptRefKey,
   parseAgentPromptRefKey,
@@ -329,6 +330,20 @@ describe('AgentPromptRefRegistry invariants', () => {
     expect(isBuiltinPromptRefKey('read_files')).toBe(true);
     expect(isBuiltinPromptRefKey('plugin:system:metaso')).toBe(false);
     expect(parseAgentPromptRefKey('').kind).toBe('invalid');
+    expect(getPromptRefPrefixLengths('plugin:team:t1:calc v2', 0)).toEqual([
+      'plugin:team:t1:'.length,
+      0
+    ]);
+    expect(getPromptRefPrefixLengths('teamId:t1:systemTool-calc高级', 0)).toEqual([
+      'teamId:t1:systemTool-'.length,
+      'teamId:t1:'.length,
+      0
+    ]);
+    expect(getPromptRefPrefixLengths('system:mcp-app1/tool', 0)).toEqual([
+      'system:mcp-'.length,
+      'system:'.length,
+      0
+    ]);
   });
 
   it('prevents deleted legacy HTTP and slash-named MCP child tools from cross-binding', () => {

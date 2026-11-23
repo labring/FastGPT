@@ -25,6 +25,11 @@ export type ParsedAgentPromptRef =
 const LEGACY_BUILTIN_ID_SET = new Set<string>(['dataset_search', 'read_files', 'agent_sandbox']);
 
 const OBJECT_ID_RE = /^[a-f0-9]{24}$/i;
+const V2_REF_PREFIX_RE =
+  /^(?:builtin:|(?:plugin:(?:system|commercial)|skill:(?:system|team)|app:team):|plugin:(?:team|debug):[^:@{}\r\n/]+:)/;
+const LEGACY_SCOPED_PREFIX_RE = /^(?:teamId|debug:tmbId):[^:@{}\r\n]+:/;
+const LEGACY_PLUGIN_PREFIX_RE = /^(?:systemTool|community|commercial)-/;
+const LEGACY_TOOL_PREFIX_RE = /^(?:systemTool|community|commercial|personal|mcp|http)-/;
 
 /** 剥离历史插件 ID 前缀（systemTool-/community-/commercial-），直接复用 splitCombineToolId 口径。 */
 export const stripLegacyPluginPrefix = (id: string): string => {
@@ -187,6 +192,49 @@ export const hasDebugPromptRef = (text?: string | null): boolean => {
   }
 
   return false;
+};
+
+/**
+ * 提取文本指定位置处合法的 V2 或历史引用前缀长度候选（从长到短排序，末尾固定含 0 表示裸键）。
+ * 与 protocol.ts / legacy.ts 共享单一前缀语法定义，供裸 `@id` 边界识别直接复用。
+ */
+export const getPromptRefPrefixLengths = (text: string, startIndex: number): number[] => {
+  const slice = text.slice(startIndex);
+  const lengths: number[] = [];
+  const addLength = (len: number) => {
+    if (len > 0 && !lengths.includes(len)) lengths.push(len);
+  };
+
+  const v2Match = V2_REF_PREFIX_RE.exec(slice);
+  if (v2Match) {
+    addLength(v2Match[0].length);
+  }
+
+  const scopedMatch = LEGACY_SCOPED_PREFIX_RE.exec(slice);
+  if (scopedMatch) {
+    const pluginPrefixMatch = LEGACY_PLUGIN_PREFIX_RE.exec(slice.slice(scopedMatch[0].length));
+    if (pluginPrefixMatch) {
+      addLength(scopedMatch[0].length + pluginPrefixMatch[0].length);
+    }
+    addLength(scopedMatch[0].length);
+  }
+
+  if (slice.startsWith('system:')) {
+    const systemLen = 'system:'.length;
+    const toolPrefixMatch = LEGACY_TOOL_PREFIX_RE.exec(slice.slice(systemLen));
+    if (toolPrefixMatch) {
+      addLength(systemLen + toolPrefixMatch[0].length);
+    }
+    addLength(systemLen);
+  }
+
+  const bareToolPrefixMatch = LEGACY_TOOL_PREFIX_RE.exec(slice);
+  if (bareToolPrefixMatch) {
+    addLength(bareToolPrefixMatch[0].length);
+  }
+
+  lengths.push(0);
+  return lengths;
 };
 
 /**
