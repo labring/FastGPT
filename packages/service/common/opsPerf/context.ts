@@ -1,11 +1,12 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { performance } from 'node:perf_hooks';
-import type {
-  OpsPerfDomain,
-  OpsPerfErrorCode,
-  OpsPerfEventStatus
+import {
+  OPS_PERF_DOMAIN_CONFIG,
+  type OpsPerfDomain,
+  type OpsPerfErrorCode,
+  type OpsPerfEventStatus
 } from '@fastgpt/global/common/opsPerf/constants';
-import { computeIntervalUnionMs } from '@fastgpt/global/common/opsPerf/histogram';
+import { computeIntervalUnionMs, mergeIntervals } from '@fastgpt/global/common/opsPerf/histogram';
 import type {
   OpsPerfDomainPayloadMap,
   OpsPerfEventStageTiming
@@ -14,21 +15,6 @@ import { isProVersion } from '../system/constants';
 import { enqueueOpsPerfRecord, type RecordOpsPerfInput } from './collector';
 
 const MAX_SPANS_PER_STAGE = 64;
-
-const STAGE_ERROR_CODE_MAP: Record<string, OpsPerfErrorCode> = {
-  queryExtension: 'QUERY_EXTENSION_ERROR',
-  imageCaption: 'IMAGE_CAPTION_ERROR',
-  filter: 'FILTER_ERROR',
-  embeddingApi: 'EMBEDDING_ERROR',
-  vectorRoute: 'VECTOR_RECALL_ERROR',
-  vectorLeaseWait: 'VECTOR_LEASE_TIMEOUT',
-  vectorRecall: 'VECTOR_RECALL_ERROR',
-  vectorHydrate: 'VECTOR_RECALL_ERROR',
-  fullTextRecall: 'FULLTEXT_RECALL_ERROR',
-  fullTextHydrate: 'FULLTEXT_RECALL_ERROR',
-  rerank: 'RERANK_FALLBACK',
-  postProcess: 'POST_PROCESS_ERROR'
-};
 
 const statusSeverityRank = (status: OpsPerfEventStatus): number => {
   if (status === 'error') return 2;
@@ -56,7 +42,9 @@ export type PerfContextState<D extends OpsPerfDomain = OpsPerfDomain> = {
   status: OpsPerfEventStatus;
   errorCode?: OpsPerfErrorCode;
   errorCodeSeverity: OpsPerfEventStatus;
-  lastFailedStage?: string;
+  /** 仅记录最近一次未捕获向上抛出的异常对象与所在阶段，避免静默降级或已恢复重试污染后续异常归因。 */
+  lastThrownError?: unknown;
+  lastThrownStage?: string;
   teamId?: string;
   resourceIds: string[];
   dims: Record<string, unknown>;
@@ -111,6 +99,20 @@ const getDomainState = <D extends OpsPerfDomain>(domain: D): PerfContextState<D>
   return map?.get(domain) as PerfContextState<D> | undefined;
 };
 
+/** 判断指定性能域是否存在活跃埋点上下文（O(1) ALS 查找，供深层调用点跳过无关计算）。 */
+export const hasPerfContext = (domain: OpsPerfDomain): boolean => Boolean(getDomainState(domain));
+
+/** 判断运维性能埋点是否应对当前调用生效（商业版默认开启，或处于显式创建的活跃上下文内）。 */
+export const isOpsPerfActive = (domain?: OpsPerfDomain): boolean =>
+  isProVersion() || (domain ? hasPerfContext(domain) : false);
+
+/** 记录向上抛出的阶段异常（嵌套阶段下保留最内层首次抛出阶段，避免外层覆写）。 */
+const recordThrownStage = (state: PerfContextState, stage: string, error: unknown) => {
+  if (state.lastThrownStage && Object.is(state.lastThrownError, error)) return;
+  state.lastThrownError = error;
+  state.lastThrownStage = stage;
+};
+
 /** 将一次阶段调用区间写入累计器；超过上限时先压缩重叠区间防止极端循环膨胀内存。 */
 const appendStageSpan = ({
   state,
@@ -139,17 +141,8 @@ const appendStageSpan = ({
   }
 
   if (existing.spans.length >= MAX_SPANS_PER_STAGE) {
-    // 先压缩重叠或相邻区间，保留真实空档；仍超限时并入末尾区间确保内存有界。
-    const sorted = [...existing.spans, span].sort((a, b) => a.start - b.start || a.end - b.end);
-    const merged: PerfStageSpan[] = [];
-    for (const item of sorted) {
-      const prev = merged[merged.length - 1];
-      if (prev && item.start <= prev.end) {
-        if (item.end > prev.end) prev.end = item.end;
-      } else {
-        merged.push({ start: item.start, end: item.end });
-      }
-    }
+    // 复用公共区间合并原语压缩重叠/相邻区间，保留真实空档；仍超限时并入末尾确保内存有界。
+    const merged = mergeIntervals([...existing.spans, span]);
     if (merged.length > MAX_SPANS_PER_STAGE) {
       const last = merged[merged.length - 1]!;
       const tail = merged[MAX_SPANS_PER_STAGE - 1]!;
@@ -246,11 +239,16 @@ export const withPerfContext = async <D extends OpsPerfDomain, T>(
     hasError = true;
     caughtError = error;
     state.status = 'error';
-    // 严格脱敏且按严重级别升级归因：最终未捕获失败必须覆盖更早的 degraded 错误码。
+    // 严格脱敏且按严重级别升级归因：仅当捕获对象与阶段抛出的异常一致时归因到该阶段，否则落到域默认错误码。
     if (!state.errorCode || state.errorCodeSeverity !== 'error') {
+      const domainConfig = OPS_PERF_DOMAIN_CONFIG[state.domain];
+      const matchedStage =
+        state.lastThrownStage && Object.is(state.lastThrownError, error)
+          ? state.lastThrownStage
+          : undefined;
       state.errorCode =
-        (state.lastFailedStage ? STAGE_ERROR_CODE_MAP[state.lastFailedStage] : undefined) ??
-        'SEARCH_ERROR';
+        (matchedStage ? domainConfig?.stageErrorCodes?.[matchedStage] : undefined) ??
+        domainConfig?.defaultErrorCode;
       state.errorCodeSeverity = 'error';
     }
     throw error;
@@ -325,14 +323,15 @@ export const trackPerfStage = async <D extends OpsPerfDomain, T>(
   const startOffset = Math.max(0, performance.now() - state.startedAtPerf);
   let failed = false;
   const markError = () => {
+    // 静默降级只累计本阶段 errorCount，不写入 lastThrownStage，避免污染后续未捕获异常归因。
     failed = true;
-    state.lastFailedStage = options.stage;
   };
 
   try {
     return await fn({ markError });
   } catch (error) {
-    markError();
+    failed = true;
+    recordThrownStage(state, options.stage, error);
     throw error;
   } finally {
     const endOffset = Math.max(startOffset, performance.now() - state.startedAtPerf);
@@ -349,12 +348,14 @@ export const recordPerfStageSpan = <D extends OpsPerfDomain>(options: {
   startedAtPerf: number;
   endedAtPerf?: number;
   failed?: boolean;
+  /** 若该阶段失败并准备继续向上抛出该异常，传入原异常对象用于精确归因。 */
+  error?: unknown;
 }) => {
   const state = getDomainState(options.domain);
   if (!state) return;
 
-  if (options.failed) {
-    state.lastFailedStage = options.stage;
+  if (options.failed && options.error !== undefined) {
+    recordThrownStage(state, options.stage, options.error);
   }
   const startOffset = Math.max(0, options.startedAtPerf - state.startedAtPerf);
   const endOffset = Math.max(

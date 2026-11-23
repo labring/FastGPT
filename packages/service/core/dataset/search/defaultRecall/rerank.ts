@@ -5,8 +5,8 @@ import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/ty
 import { normalizeRerankCandidateNum } from '@fastgpt/global/core/dataset/search/utils';
 import { concatWeightedRecallLists, removeDuplicateSearchResults } from './result';
 import { rerankDatasetWithSynonyms } from '../../synonym/rerank';
-import { isProVersion } from '../../../../common/system/constants';
 import {
+  isOpsPerfActive,
   patchPerfContext,
   recordPerfPoint,
   trackPerfStage
@@ -102,11 +102,49 @@ export const reRankSearchResults = async ({
     0,
     normalizeRerankCandidateNum(rerankCandidateNum)
   );
-  const perfEnabled = isProVersion();
+  const perfEnabled = isOpsPerfActive('dataset.search');
   const rerankModelLabel = perfEnabled ? rerankModel?.model || rerankModel?.name || 'unknown' : '';
   const rerankStart = perfEnabled ? performance.now() : 0;
   let hasSynonym = false;
   let synonymFailed = false;
+
+  const reportRerankPerf = ({
+    fallbackCode,
+    inputTokens,
+    markError
+  }: {
+    fallbackCode?: 'RERANK_FALLBACK' | 'SYNONYM_RERANK_FALLBACK';
+    inputTokens?: number;
+    markError: () => void;
+  }) => {
+    if (!perfEnabled) return;
+    const isDegraded = Boolean(fallbackCode);
+    if (fallbackCode) {
+      markError();
+      patchPerfContext({
+        domain: 'dataset.search',
+        status: 'degraded',
+        errorCode: fallbackCode,
+        metrics: { rerankFallbackCount: 1 },
+        detail: { rerankFallback: true, rerankModel: rerankModelLabel }
+      });
+    }
+    recordPerfPoint({
+      domain: 'dataset.rerank',
+      teamId,
+      totalMs: Math.max(0, performance.now() - rerankStart),
+      status: isDegraded ? 'degraded' : 'ok',
+      dims: {
+        model: rerankModelLabel,
+        hasSynonym
+      },
+      metrics: {
+        ...(isDegraded ? { fallbackCount: 1 } : {}),
+        totalCandidates: candidates.length,
+        ...(inputTokens !== undefined ? { totalInputTokens: inputTokens } : {})
+      }
+    });
+  };
 
   return trackPerfStage({ domain: 'dataset.search', stage: 'rerank' }, async ({ markError }) => {
     try {
@@ -133,36 +171,11 @@ export const reRankSearchResults = async ({
           : {})
       });
 
-      if (perfEnabled) {
-        const elapsedMs = Math.max(0, performance.now() - rerankStart);
-
-        if (synonymFailed) {
-          markError();
-          patchPerfContext({
-            domain: 'dataset.search',
-            status: 'degraded',
-            errorCode: 'SYNONYM_RERANK_FALLBACK',
-            metrics: { rerankFallbackCount: 1 },
-            detail: { rerankFallback: true, rerankModel: rerankModelLabel }
-          });
-        }
-
-        recordPerfPoint({
-          domain: 'dataset.rerank',
-          teamId,
-          totalMs: elapsedMs,
-          status: synonymFailed ? 'degraded' : 'ok',
-          dims: {
-            model: rerankModelLabel,
-            hasSynonym
-          },
-          metrics: {
-            ...(synonymFailed ? { fallbackCount: 1 } : {}),
-            totalCandidates: candidates.length,
-            totalInputTokens: inputTokens
-          }
-        });
-      }
+      reportRerankPerf({
+        fallbackCode: synonymFailed ? 'SYNONYM_RERANK_FALLBACK' : undefined,
+        inputTokens,
+        markError
+      });
 
       if (rerankWeight === 1) {
         return {
@@ -182,31 +195,10 @@ export const reRankSearchResults = async ({
         usingReRank: true
       };
     } catch {
-      if (perfEnabled) {
-        markError();
-        const elapsedMs = Math.max(0, performance.now() - rerankStart);
-        recordPerfPoint({
-          domain: 'dataset.rerank',
-          teamId,
-          totalMs: elapsedMs,
-          status: 'degraded',
-          dims: {
-            model: rerankModelLabel,
-            hasSynonym
-          },
-          metrics: {
-            fallbackCount: 1,
-            totalCandidates: candidates.length
-          }
-        });
-        patchPerfContext({
-          domain: 'dataset.search',
-          status: 'degraded',
-          errorCode: 'RERANK_FALLBACK',
-          metrics: { rerankFallbackCount: 1 },
-          detail: { rerankFallback: true, rerankModel: rerankModelLabel }
-        });
-      }
+      reportRerankPerf({
+        fallbackCode: 'RERANK_FALLBACK',
+        markError
+      });
 
       return {
         results: textRecallResults,

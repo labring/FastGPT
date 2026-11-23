@@ -66,22 +66,17 @@ export async function searchDatasetData(
 
   // Step 1: 图片先尝试转成文本描述。caption 会作为普通文本 query 参与后续召回，
   // 这样即使 embedding 模型不支持图片，也能通过 VLM 描述获得一条文本检索路径。
+  const runImageCaption = () =>
+    getImageCaptionQueries({
+      vlmModel,
+      imageQueries,
+      userKey,
+      teamId
+    });
   const imageCaptionQueries =
     vlmModel && imageQueries.length > 0
-      ? await trackPerfStage({ domain: 'dataset.search', stage: 'imageCaption' }, () =>
-          getImageCaptionQueries({
-            vlmModel,
-            imageQueries,
-            userKey,
-            teamId
-          })
-        )
-      : await getImageCaptionQueries({
-          vlmModel,
-          imageQueries,
-          userKey,
-          teamId
-        });
+      ? await trackPerfStage({ domain: 'dataset.search', stage: 'imageCaption' }, runImageCaption)
+      : await runImageCaption();
 
   // caption 结果需要回传给工作流计费与响应详情；没有生成出有效描述时不输出该段。
   const hasImageCaptionUsage =

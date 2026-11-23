@@ -356,6 +356,54 @@ describe('opsPerf context and collector', () => {
     expect(ev.stages.embeddingApi?.errorCount).toBe(1);
   });
 
+  it('does not misattribute an uncaught non-stage error to an earlier silent fallback or recovered retry', async () => {
+    await expect(
+      withPerfContext(
+        {
+          domain: 'dataset.search',
+          force: true,
+          dims: {
+            searchMode: 'embedding',
+            indexScale: 's_10k',
+            usingReRank: false,
+            usingExtension: true,
+            vectorEngine: 'pg'
+          }
+        },
+        async () => {
+          // 1. Silent fallback in queryExtension
+          await trackPerfStage(
+            { domain: 'dataset.search', stage: 'queryExtension' },
+            async ({ markError }) => {
+              markError();
+              patchPerfContext({
+                domain: 'dataset.search',
+                status: 'degraded',
+                errorCode: 'QUERY_EXTENSION_FALLBACK'
+              });
+            }
+          );
+          // 2. Retried failure in vectorRecall that was caught & recovered
+          try {
+            await trackPerfStage({ domain: 'dataset.search', stage: 'vectorRecall' }, async () => {
+              throw new Error('transient vector hiccup');
+            });
+          } catch {
+            // recovered by retry
+          }
+          // 3. Unrelated uncaught error outside any tracked stage
+          throw new Error('unexpected orchestrator bug');
+        }
+      )
+    ).rejects.toThrow('unexpected orchestrator bug');
+
+    const snapshot = getOpsPerfBufferSnapshotForTest();
+    expect(snapshot.events).toHaveLength(1);
+    const ev = snapshot.events[0]!;
+    expect(ev.status).toBe('error');
+    expect(ev.errorCode).toBe('SEARCH_ERROR');
+  });
+
   it('skips lazy options factory and timer registration in community edition', async () => {
     vi.spyOn(systemConstants, 'isProVersion').mockReturnValue(false);
     const optionsFactory = vi.fn(() => ({

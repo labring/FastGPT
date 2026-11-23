@@ -118,40 +118,53 @@ export const estimatePercentile = ({
 };
 
 /**
+ * 将一组非负时间区间 [start, end] 规范化并合并重叠/相邻区间，返回按起点升序排列的互不相交区间。
+ * 供采集层压缩高频并发 span 以及聚合层计算并行阶段并集耗时复用。
+ */
+export const mergeIntervals = (
+  intervals: ReadonlyArray<{ start: number; end: number }>
+): Array<{ start: number; end: number }> => {
+  const normalized = intervals
+    .filter(
+      (item) =>
+        Number.isFinite(item.start) &&
+        Number.isFinite(item.end) &&
+        item.end >= item.start &&
+        item.end >= 0
+    )
+    .map((item) => {
+      const start = Math.max(0, item.start);
+      return { start, end: Math.max(start, item.end) };
+    })
+    .sort((a, b) => a.start - b.start || a.end - b.end);
+
+  if (normalized.length === 0) return [];
+
+  const merged: Array<{ start: number; end: number }> = [normalized[0]!];
+  for (let i = 1; i < normalized.length; i++) {
+    const next = normalized[i]!;
+    const prev = merged[merged.length - 1]!;
+    if (next.start <= prev.end) {
+      if (next.end > prev.end) prev.end = next.end;
+    } else {
+      merged.push(next);
+    }
+  }
+
+  return merged;
+};
+
+/**
  * 计算一组时间区间 [start, end] 的并集总时长（ms）。
  * 用于并行阶段（如混合检索中向量与全文并发）的去重汇总，同时排除非成员阶段之间的间隔。
  */
 export const computeIntervalUnionMs = (
   intervals: ReadonlyArray<{ start: number; end: number }>
 ): number => {
-  const normalized = intervals
-    .filter(
-      (item) =>
-        Number.isFinite(item.start) &&
-        Number.isFinite(item.end) &&
-        item.end > item.start &&
-        item.end >= 0
-    )
-    .map((item) => ({ start: Math.max(0, item.start), end: Math.max(0, item.end) }))
-    .sort((a, b) => a.start - b.start || a.end - b.end);
-
-  if (normalized.length === 0) return 0;
-
+  const merged = mergeIntervals(intervals);
   let total = 0;
-  let curStart = normalized[0]!.start;
-  let curEnd = normalized[0]!.end;
-
-  for (let i = 1; i < normalized.length; i++) {
-    const next = normalized[i]!;
-    if (next.start <= curEnd) {
-      if (next.end > curEnd) curEnd = next.end;
-    } else {
-      total += curEnd - curStart;
-      curStart = next.start;
-      curEnd = next.end;
-    }
+  for (const item of merged) {
+    total += item.end - item.start;
   }
-  total += curEnd - curStart;
-
   return Math.round(total * 100) / 100;
 };

@@ -1,6 +1,6 @@
 import { performance } from 'node:perf_hooks';
 import { getSystemInstanceConfig } from '../system/systemInstanceConfig/runtime';
-import { recordPerfStageSpan, trackPerfStage } from '../opsPerf/context';
+import { hasPerfContext, recordPerfStageSpan, trackPerfStage } from '../opsPerf/context';
 /* vector crud */
 import { VectorCountCache, type VectorCountScope } from '@fastgpt/dal/redis/caches/vectorCount';
 import { PgVectorCtrl } from './pg';
@@ -64,7 +64,8 @@ export const initVectorStore = async (hooks: VectorStoreHooks = {}) => {
  */
 export const recallFromVectorStore: VectorControllerType['embRecall'] = async (props) => {
   const result = await retryFn(async () => {
-    const leaseEnqueueAt = performance.now();
+    const perfActive = hasPerfContext('dataset.search');
+    const leaseEnqueueAt = perfActive ? performance.now() : 0;
     try {
       return {
         success: true as const,
@@ -75,11 +76,13 @@ export const recallFromVectorStore: VectorControllerType['embRecall'] = async (p
           ttlMs: RECALL_LEASE_TTL_MS,
           renewIntervalMs: 10_000,
           fn: () => {
-            recordPerfStageSpan({
-              domain: 'dataset.search',
-              stage: 'vectorLeaseWait',
-              startedAtPerf: leaseEnqueueAt
-            });
+            if (perfActive) {
+              recordPerfStageSpan({
+                domain: 'dataset.search',
+                stage: 'vectorLeaseWait',
+                startedAtPerf: leaseEnqueueAt
+              });
+            }
             return trackPerfStage({ domain: 'dataset.search', stage: 'vectorRecall' }, () =>
               Vector.embRecall(props)
             );
@@ -88,12 +91,15 @@ export const recallFromVectorStore: VectorControllerType['embRecall'] = async (p
       };
     } catch (error) {
       if (isRedisLeaseError(error)) {
-        recordPerfStageSpan({
-          domain: 'dataset.search',
-          stage: 'vectorLeaseWait',
-          startedAtPerf: leaseEnqueueAt,
-          failed: true
-        });
+        if (perfActive) {
+          recordPerfStageSpan({
+            domain: 'dataset.search',
+            stage: 'vectorLeaseWait',
+            startedAtPerf: leaseEnqueueAt,
+            failed: true,
+            error
+          });
+        }
         return { success: false as const, error };
       }
       throw error;

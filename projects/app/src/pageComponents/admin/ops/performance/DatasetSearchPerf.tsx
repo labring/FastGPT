@@ -278,7 +278,8 @@ export default function DatasetSearchPerf(): JSX.Element {
       { label: scaleLabelMap.m_100k, value: 'm_100k' as const },
       { label: scaleLabelMap.l_500k, value: 'l_500k' as const },
       { label: scaleLabelMap.xl_2m, value: 'xl_2m' as const },
-      { label: scaleLabelMap.xxl_2m_plus, value: 'xxl_2m_plus' as const }
+      { label: scaleLabelMap.xxl_2m_plus, value: 'xxl_2m_plus' as const },
+      { label: scaleLabelMap.unknown, value: 'unknown' as const }
     ],
     [scaleLabelMap, t]
   );

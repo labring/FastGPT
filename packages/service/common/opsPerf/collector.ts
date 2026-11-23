@@ -1,9 +1,7 @@
 import { addDays } from 'date-fns';
 import {
-  DATASET_ALL_DB_STAGE_KEYS,
-  DATASET_FULLTEXT_DB_STAGE_KEYS,
-  DATASET_VECTOR_DB_STAGE_KEYS,
   OPS_PERF_BUCKET_RETENTION_DAYS,
+  OPS_PERF_DOMAIN_CONFIG,
   OPS_PERF_EVENT_RETENTION_DAYS,
   OpsPerfErrorCodeValues,
   type OpsPerfDomain,
@@ -279,12 +277,13 @@ export const enqueueOpsPerfRecord = <D extends OpsPerfDomain>(
           accumulateBucketStage(stageKey, normalizeDurationMs(timing.ms), timing.errorCount ?? 0);
         }
 
-        if (input.domain === 'dataset.search') {
-          const accumulateCompositeStage = (targetKey: string, memberKeys: readonly string[]) => {
+        const compositeStages = OPS_PERF_DOMAIN_CONFIG[input.domain]?.compositeStages;
+        if (compositeStages && compositeStages.length > 0) {
+          for (const { key: targetKey, members } of compositeStages) {
             const intervals: Array<{ start: number; end: number }> = [];
             let hasAny = false;
             let combinedErrors = 0;
-            for (const key of memberKeys) {
+            for (const key of members) {
               const timing = stagesRecord[key];
               const rawSpans = input.stageSpans?.[key];
               if (!timing && (!rawSpans || rawSpans.length === 0)) continue;
@@ -306,12 +305,7 @@ export const enqueueOpsPerfRecord = <D extends OpsPerfDomain>(
               // 按成员阶段真实子区间并集结算，既排除重试空档，也去重并行阶段重叠时间。
               accumulateBucketStage(targetKey, computeIntervalUnionMs(intervals), combinedErrors);
             }
-          };
-
-          // 为向量、全文及全数据库链路各记录一条复合直方图，保证端到端耗时与分位数无偏。
-          accumulateCompositeStage('vectorPipeline', DATASET_VECTOR_DB_STAGE_KEYS);
-          accumulateCompositeStage('fullTextPipeline', DATASET_FULLTEXT_DB_STAGE_KEYS);
-          accumulateCompositeStage('dbPipeline', DATASET_ALL_DB_STAGE_KEYS);
+          }
         }
       }
 

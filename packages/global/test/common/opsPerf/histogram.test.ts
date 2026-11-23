@@ -10,6 +10,7 @@ import {
   estimatePercentile,
   getHistogramBucketIndex,
   mergeHistograms,
+  mergeIntervals,
   type OpsPerfHistogram
 } from '@fastgpt/global/common/opsPerf/histogram';
 import { OpsPerfBucketSchema, OpsPerfEventSchema } from '@fastgpt/global/common/opsPerf/type';
@@ -151,5 +152,15 @@ describe('opsPerf histogram and scale utilities', () => {
       ])
     ).toBe(100);
     expect(computeIntervalUnionMs([])).toBe(0);
+    expect(
+      mergeIntervals([
+        { start: 40, end: 110 },
+        { start: 10, end: 60 },
+        { start: 200, end: 220 }
+      ])
+    ).toEqual([
+      { start: 10, end: 110 },
+      { start: 200, end: 220 }
+    ]);
   });
 });

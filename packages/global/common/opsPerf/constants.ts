@@ -176,6 +176,46 @@ export const DATASET_ALL_DB_STAGE_KEYS = [
   ...DATASET_FULLTEXT_DB_STAGE_KEYS
 ] as const satisfies readonly DatasetSearchStageKey[];
 
+export type OpsPerfDomainRuntimeConfig = {
+  /** 未能归因到具体抛出阶段时的默认白名单错误码。 */
+  defaultErrorCode: OpsPerfErrorCode;
+  /** 各阶段未捕获异常到脱敏白名单错误码的映射。 */
+  stageErrorCodes?: Partial<Record<string, OpsPerfErrorCode>>;
+  /** 需按成员阶段真实区间并集自动派生的复合链路聚合键。 */
+  compositeStages?: ReadonlyArray<{
+    key: string;
+    members: readonly string[];
+  }>;
+};
+
+/**
+ * 各性能域的声明式运行时配置（错误归因表与复合链路并集定义）。
+ * context / collector 保持领域无关，后续扩展工作流、沙箱等新域只需在此增补声明。
+ */
+export const OPS_PERF_DOMAIN_CONFIG: Partial<Record<OpsPerfDomain, OpsPerfDomainRuntimeConfig>> = {
+  'dataset.search': {
+    defaultErrorCode: 'SEARCH_ERROR',
+    stageErrorCodes: {
+      queryExtension: 'QUERY_EXTENSION_ERROR',
+      imageCaption: 'IMAGE_CAPTION_ERROR',
+      filter: 'FILTER_ERROR',
+      embeddingApi: 'EMBEDDING_ERROR',
+      vectorRoute: 'VECTOR_RECALL_ERROR',
+      vectorLeaseWait: 'VECTOR_LEASE_TIMEOUT',
+      vectorRecall: 'VECTOR_RECALL_ERROR',
+      vectorHydrate: 'VECTOR_RECALL_ERROR',
+      fullTextRecall: 'FULLTEXT_RECALL_ERROR',
+      fullTextHydrate: 'FULLTEXT_RECALL_ERROR',
+      postProcess: 'POST_PROCESS_ERROR'
+    },
+    compositeStages: [
+      { key: 'vectorPipeline', members: DATASET_VECTOR_DB_STAGE_KEYS },
+      { key: 'fullTextPipeline', members: DATASET_FULLTEXT_DB_STAGE_KEYS },
+      { key: 'dbPipeline', members: DATASET_ALL_DB_STAGE_KEYS }
+    ]
+  }
+};
+
 /**
  * 将本次检索覆盖的知识库总向量索引行数映射为低基数规模分桶。
  * 无法获取索引行数（undefined / 负数 / NaN）时回落到 `'unknown'`。

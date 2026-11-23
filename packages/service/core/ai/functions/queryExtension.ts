@@ -6,8 +6,11 @@ import json5 from 'json5';
 import { createLLMResponse } from '../llm/request';
 import { useTextCosine } from '../hooks/useTextCosine';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { isProVersion } from '../../../common/system/constants';
-import { patchPerfContext, recordPerfPoint } from '../../../common/opsPerf/context';
+import {
+  isOpsPerfActive,
+  patchPerfContext,
+  recordPerfPoint
+} from '../../../common/opsPerf/context';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type {
   EmbeddingModelDataType,
@@ -146,7 +149,7 @@ export const queryExtension = async ({
   embeddingTokens: number;
 }> => {
   const startTime = Date.now();
-  const perfEnabled = isProVersion();
+  const perfEnabled = isOpsPerfActive('dataset.search');
   const perfStart = perfEnabled ? performance.now() : 0;
   const getSeconds = () => +((Date.now() - startTime) / 1000).toFixed(2);
   const modelLabel = perfEnabled ? llmModel.model || llmModel.name || 'unknown' : '';

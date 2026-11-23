@@ -67,9 +67,8 @@ export const EventWaterfallCard = ({
         return t('admin:ops_perf_err_search_error');
       default: {
         const _exhaustive: never = code;
-        return _exhaustive
-          ? t('admin:ops_perf_err_search_error')
-          : t('admin:ops_perf_err_search_error');
+        void _exhaustive;
+        return t('admin:ops_perf_err_search_error');
       }
     }
   };
@@ -301,6 +300,14 @@ export const EventWaterfallCard = ({
           {bars.map((bar) => {
             const leftPct = Math.min(98, (bar.offsetMs / axisMaxMs) * 100);
             const widthPct = Math.max(1.2, Math.min(100 - leftPct, (bar.ms / axisMaxMs) * 100));
+            const hasRetryGap = bar.spanEndMs > bar.offsetMs + bar.ms + 0.5;
+            const spanWidthPct = hasRetryGap
+              ? Math.max(
+                  widthPct,
+                  Math.min(100 - leftPct, ((bar.spanEndMs - bar.offsetMs) / axisMaxMs) * 100)
+                )
+              : 0;
+            const barColor = bar.errorCount > 0 ? 'red.500' : bar.color;
             return (
               <Flex key={bar.key} align={'center'} py={1.5} px={1} fontSize={'xs'}>
                 <Flex w={'255px'} flexShrink={0} align={'center'} gap={1.5} pr={2}>
@@ -310,6 +317,11 @@ export const EventWaterfallCard = ({
                   <Text color={'myGray.800'} fontWeight={'medium'} noOfLines={1}>
                     {bar.label}
                   </Text>
+                  {bar.callCount > 1 && (
+                    <Text fontFamily={'mono'} fontSize={'10px'} color={'myGray.500'} flexShrink={0}>
+                      ×{bar.callCount}
+                    </Text>
+                  )}
                   {bar.group !== 'serial' && (
                     <Badge
                       fontSize={'10px'}
@@ -331,13 +343,25 @@ export const EventWaterfallCard = ({
                   overflow={'hidden'}
                   mx={2}
                 >
+                  {hasRetryGap && (
+                    <Box
+                      position={'absolute'}
+                      top={'2px'}
+                      bottom={'2px'}
+                      left={`${leftPct.toFixed(2)}%`}
+                      width={`${spanWidthPct.toFixed(2)}%`}
+                      bg={barColor}
+                      opacity={0.22}
+                      borderRadius={'sm'}
+                    />
+                  )}
                   <Box
                     position={'absolute'}
                     top={'2px'}
                     bottom={'2px'}
                     left={`${leftPct.toFixed(2)}%`}
                     width={`${widthPct.toFixed(2)}%`}
-                    bg={bar.errorCount > 0 ? 'red.500' : bar.color}
+                    bg={barColor}
                     borderRadius={'sm'}
                   />
                 </Box>
