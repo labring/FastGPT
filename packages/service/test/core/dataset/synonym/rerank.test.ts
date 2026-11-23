@@ -53,12 +53,19 @@ describe('rerankDatasetWithSynonyms', () => {
       )
       .mockResolvedValueOnce({ results: [{ id: 'a', score: 0.9 }], inputTokens: 8 });
 
-    const resultPromise = rerankDatasetWithSynonyms({ teamId: 't1', query: 'alias', documents });
+    const onSynonymRerankResult = vi.fn();
+    const resultPromise = rerankDatasetWithSynonyms({
+      teamId: 't1',
+      query: 'alias',
+      documents,
+      onSynonymRerankResult
+    });
     // 基线 rerank 尚未返回时，同义词准备阶段已经启动。
     await vi.waitFor(() => expect(mocks.runtimeConfig).toHaveBeenCalled());
     resolveBaseline({ results: [{ id: 'a', score: 0.2 }], inputTokens: 10 });
     const result = await resultPromise;
 
+    expect(onSynonymRerankResult).toHaveBeenCalledWith({ triggered: true, failed: false });
     expect(result.inputTokens).toBe(18);
     expect(result.results).toEqual([{ id: 'a', score: 0.9 }]);
     expect(mocks.reRankRecall).toHaveBeenNthCalledWith(
@@ -110,5 +117,54 @@ describe('rerankDatasetWithSynonyms', () => {
     Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: false });
     await rerankDatasetWithSynonyms({ teamId: 't1', query: 'alias', documents });
     expect(mocks.reRankRecall).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports failed=true via onSynonymRerankResult when second pass rerank fails silently', async () => {
+    mocks.reRankRecall
+      .mockResolvedValueOnce({ results: [{ id: 'a', score: 0.8 }], inputTokens: 10 })
+      .mockRejectedValueOnce(new Error('second pass timeout'));
+    const onSynonymRerankResult = vi.fn();
+
+    const result = await rerankDatasetWithSynonyms({
+      teamId: 't1',
+      query: 'alias',
+      documents,
+      onSynonymRerankResult
+    });
+
+    expect(result.results).toEqual([{ id: 'a', score: 0.8 }]);
+    expect(onSynonymRerankResult).toHaveBeenCalledWith({ triggered: true, failed: true });
+  });
+
+  it('reports failed=true when per-dataset synonym config load throws or second pass returns empty results', async () => {
+    // 1. Per-dataset config load error silently falls back to baseline
+    mocks.runtimeConfig.mockRejectedValueOnce(new Error('mongo read timeout'));
+    const onConfigErr = vi.fn();
+    const res1 = await rerankDatasetWithSynonyms({
+      teamId: 't1',
+      query: 'alias',
+      documents,
+      onSynonymRerankResult: onConfigErr
+    });
+    expect(res1.results).toEqual([{ id: 'a', score: 0.2 }]);
+    expect(onConfigErr).toHaveBeenCalledWith({ triggered: false, failed: true });
+
+    // 2. Second pass returns empty results list without throwing
+    mocks.runtimeConfig.mockResolvedValueOnce({
+      config: { enabled: true, version: 2 },
+      active: { version: 2, matcher }
+    });
+    mocks.reRankRecall
+      .mockResolvedValueOnce({ results: [{ id: 'a', score: 0.7 }], inputTokens: 10 })
+      .mockResolvedValueOnce({ results: [], inputTokens: 0 });
+    const onEmptyPass = vi.fn();
+    const res2 = await rerankDatasetWithSynonyms({
+      teamId: 't1',
+      query: 'alias',
+      documents,
+      onSynonymRerankResult: onEmptyPass
+    });
+    expect(res2.results).toEqual([{ id: 'a', score: 0.7 }]);
+    expect(onEmptyPass).toHaveBeenCalledWith({ triggered: true, failed: true });
   });
 });
