@@ -42,7 +42,9 @@ defineIndex(DatasetDataTextSchema, {
 defineIndex(DatasetDataTextSchema, {
   key: { teamId: 1, datasetId: 1, collectionId: 1 }
 });
-defineIndex(DatasetDataTextSchema, { key: { dataId: 'hashed' } });
+defineIndex(DatasetDataTextSchema, {
+  key: { dataId: 'hashed' }
+});
 
 export const MongoDatasetDataText = getMongoModel<DatasetDataTextSchemaType>(
   DatasetDataTextCollectionName,

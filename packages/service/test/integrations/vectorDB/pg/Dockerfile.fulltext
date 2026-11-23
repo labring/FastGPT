@@ -1,0 +1,17 @@
+# 仅用于本地隔离演练，不替换部署模板中的 PG 镜像。
+FROM registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:0.8.0-pg15@sha256:92be4ea0424cccf17003f5803d54448e2864ac27a70e6ac5d24b3d8b463c689c
+
+ARG TARGETARCH
+ARG PG_SEARCH_VERSION=0.26.6
+ARG PG_PACKAGE_VERSION=15.19-1.pgdg12+2
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
+       postgresql-15=${PG_PACKAGE_VERSION} postgresql-client-15=${PG_PACKAGE_VERSION} \
+    && curl --fail --location --retry 2 \
+       https://github.com/paradedb/paradedb/releases/download/v${PG_SEARCH_VERSION}/postgresql-15-pg-search_${PG_SEARCH_VERSION}-1PARADEDB-bookworm_${TARGETARCH}.deb \
+       --output /tmp/pg_search.deb \
+    && apt-get install -y --no-install-recommends /tmp/pg_search.deb \
+    && rm -rf /tmp/pg_search.deb /var/lib/apt/lists/*
+
+CMD ["postgres", "-c", "shared_preload_libraries=pg_search"]

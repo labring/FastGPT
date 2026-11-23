@@ -1,0 +1,35 @@
+import type {
+  SqlFullTextMetadata,
+  SqlFullTextProvider
+} from '@fastgpt/global/core/dataset/fullText/schema';
+import type { FullTextSearchProps } from '../type';
+
+/** 业务侧的全文输入：text 为同义词处理后的原文，写库前统一经外置分析器转成词串。 */
+export type SqlFullTextRow = {
+  vectorId: string;
+  teamId: string;
+  datasetId: string;
+  collectionId: string;
+  text: string;
+};
+
+/** 写入/核对数据库时使用的行：tokens 为外置分析器输出、以空格分隔的词串。 */
+export type SqlFullTextTokenRow = Omit<SqlFullTextRow, 'text'> & { tokens: string };
+
+export type SqlFullTextHit = { vectorId: string; collectionId: string; score: number };
+
+/**
+ * 底层适配器不读取 Mongo 路由或业务内容；只提供物理全文能力。
+ * 入参中的 text/query 均为原文，适配器内部统一调用外置分析器分词，数据库只按空格切词并打分。
+ */
+export type SqlFullTextAdapter = {
+  provider: SqlFullTextProvider;
+  /** 准备物理结构并核验能力后返回目标身份，失败不得返回可用元数据。 */
+  prepare: (options?: { signal?: AbortSignal }) => Promise<SqlFullTextMetadata>;
+  assertCapability: () => Promise<void>;
+  getMetadata: () => Promise<SqlFullTextMetadata>;
+  fill: (rows: SqlFullTextRow[], validateOnly?: boolean) => Promise<string[]>;
+  /** 按全局向量 ID 判断物理缺失；错误归属的已有行不算缺失，禁止借修复绕过归属校验。 */
+  findMissingVectorIds: (ids: string[]) => Promise<string[]>;
+  search: (props: FullTextSearchProps) => Promise<SqlFullTextHit[]>;
+};

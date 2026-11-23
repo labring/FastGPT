@@ -83,5 +83,11 @@
   "migrations.20261120_migrate_model_pricing.stt": "回填 STT 计价类型",
   "migrations.20261120_migrate_model_pricing.llmTiers": "迁移 LLM 阶梯上限",
   "migrations.20261120_migrate_model_pricing.validation": "校验模型价格",
-  "migrations.20261120_migrate_model_pricing.result": "已扫描 {{sttModels}} 个 STT 模型，已转换 {{llmModels}} 个系统 LLM 模型的阶梯上限为 K Tokens。"
+  "migrations.20261120_migrate_model_pricing.result": "已扫描 {{sttModels}} 个 STT 模型，已转换 {{llmModels}} 个系统 LLM 模型的阶梯上限为 K Tokens。",
+  "migrations.20261110_migrate_sql_fulltext.name": "迁移 SQL 向量库全文检索",
+  "migrations.20261110_migrate_sql_fulltext.description": "请确认所有 App/Pro 节点已完成升级、旧训练任务已排空并已准备当前 SQL 向量库全文能力后再手动执行。PostgreSQL 使用低于 0.26.0 的 pg_search 时，首次构建或重建索引期间，向量写入会排队且可能超时。为避免超时，启动或重试前先暂停所有知识库向量写入并等待在途写入结束，准备全文结构与索引阶段完成后恢复。确认向量行物理缺失后，会按知识库的索引模型补建向量和词串，只替换缺失项的向量 ID，免 FastGPT 积分检查及扣费。迁移分批校验并回填历史分词词串，完整验收通过后标为成功。配置 TMP_MIGRATE_FULL_TEXT=true 时，迁移成功后仍读 Mongo 并双写。确认成功后手动移除变量并重启，才切到 SQL 原生全文。",
+  "migrations.20261110_migrate_sql_fulltext.result": "已回填 {{scanned}} 条，校验 {{validated}} 条",
+  "migrations.20261110_migrate_sql_fulltext.prepare": "准备全文结构与索引",
+  "migrations.20261110_migrate_sql_fulltext.scan": "回填历史分词索引",
+  "migrations.20261110_migrate_sql_fulltext.validation": "校验有效索引完整性"
 }

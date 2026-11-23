@@ -42,3 +42,25 @@ Pro 启动及轮询始终按已有 scope 与 Schema 默认值合成完整快照�
 `system_instance_configs` 共 17 个 scope：上述 11 个业务域，以及 proEnv、license、instanceId、modelStatusProbe、moderationPolicy、operations 六个辅助 scope。套餐保存为 `commercial.subPlans`，与商业配置共用 revision；`operations` 包含 systemMsgModal、operationalAd、activityAd 三个子对象，局部保存不会覆盖其他子项。license 保持独立，proEnv 仍只由 ENV 发布。
 
 合并迁移优先保留新目标，其次读取开发期旧 `system_instance_configs` scope，最后读取旧 `systemconfigs`；诊断配置约束后，在同一事务中迁入、复验承接结果并删除四个开发期旧 scope，保留原始 `systemconfigs` 作为迁移来源。配置更新只轮询 `domain/_id/revision`，不保留配置 Change Stream 监听。
+
+同版本的 API Key 类型回填按历史 `appId` 判定个人/应用，只补齐 `type`，保留凭证、绑定与其他字段。正常模型要求 `type` 必填；迁移按固定上界断点处理，完成校验要求范围内类型均合法，校验阶段异常同样记录 ID，修复后重试可越过已保存的游标恢复。
+
+## 手动触发任务
+
+需要管理员确认升级前提的任务可声明 `manual: true`。存在执行依赖时，通过 `dependsOn` 声明注册表中更早的前置任务 ID；启动、重试和 runner 执行均要求前置任务已成功。默认自动任务不受影响。
+
+- 首次原子初始化为 `waiting`，管理端显示“待手动执行”；runner 跳过该任务继续后续自动任务，不占用 lease、不阻塞 readiness。
+- 管理员确认任务说明中的前提后点击“执行迁移”，API 原子把 `waiting` 改为 `pending` 并唤醒 runner。重复点击不会重置执行中的任务。
+- 首次入队后复用标准 lease、checkpoint 和进度机制；进程中断自动接管，明确失败由管理员修复后使用“重试”。
+- `manual` 不得与 `independent` 或 `delay` 同时启用。后续自动任务不得依赖尚未手动执行的任务。
+- 手动触发不会自动检测集群升级完成，执行前需按任务说明确认升级前提。
+
+当前 4.18.0 包含手动任务 `20261110_migrate_sql_fulltext`：待集群所有节点升级完毕、旧训练任务排空并确认目标 SQL 向量库全文能力可用后由管理员手动触发，统一完成结构准备、逐记录校验与分批回填、最终完整性校验。PG 在手动准备阶段建全文索引。`pg_search` 低于 0.26.0 时，索引构建期间向量表写入等待表锁，后续回填和验收可与写入并行。各 SQL 向量库的物理缺行使用知识库配置的 embedding 模型补建，CAS 只替换缺失项 ID，免 FastGPT 余额检查及扣费。最终验收核对目标和版本并运行固定查询。`TMP_MIGRATE_FULL_TEXT=true` 时保持读 Mongo 并双写。管理员确认迁移成功后移除变量并重启，才切到 SQL 原生全文。未配置或关闭变量的节点直接读写 SQL 全文。迁移成功前切换可能使纯全文和混合检索报错或漏掉历史全文命中。
+
+## 前置依赖
+
+`dependsOn` 是成功前提，不是额外的执行模式。任务可以声明多个更早注册的任务 ID，只有它们全部 succeeded 才能执行。前置为 waiting、pending、running、failed 或状态缺失时都不能越过；后台前置修复并重试成功后，等待的自动任务会继续执行；启动链前置失败则需修复并重启 owner。
+
+当前 4.18.0 注册表中的自动与独立任务均未声明前置依赖。
+
+不要用数组中的相邻位置代替业务成功依赖，也不要把所有任务链式关联来模拟旧的全队列暂停。普通队列仍按注册顺序串行选择可执行任务，独立模式仍与非空 dependsOn 互斥。

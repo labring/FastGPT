@@ -436,3 +436,17 @@ describe('serviceEnv bootstrap configuration', () => {
     }
   });
 });
+
+describe('TMP_MIGRATE_FULL_TEXT configuration', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it.each([
+    [undefined, false],
+    ['true', true],
+    ['false', false]
+  ])('parses %s into %s', async (raw, expected) => {
+    vi.stubEnv('TMP_MIGRATE_FULL_TEXT', raw);
+    const { serviceEnv } = await importServiceEnv();
+    expect(serviceEnv.TMP_MIGRATE_FULL_TEXT).toBe(expected);
+  });
+});
