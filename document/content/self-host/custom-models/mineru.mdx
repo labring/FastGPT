@@ -5,9 +5,9 @@ description: 使用 MinerU 解析 PDF 文档，可实现图片提取、布局识
 
 ## 背景
 
-PDF 是一个相对复杂的文件格式，在 FastGPT 内置的 PDF 解析器中，依赖的是 pdfjs 库解析，该库基于逻辑解析，无法有效的理解复杂的 PDF 文件。所以我们在解析 PDF 时候，如果遇到图片、表格、公式等非简单文本内容，会发现解析效果不佳。
+PDF 是一个相对复杂的文件格式，在 FastGPT 内置的 pdf 解析器中，依赖的是 pdfjs 库解析，该库基于逻辑解析，无法有效的理解复杂的 pdf 文件。所以我们在解析 pdf 时候，如果遇到图片、表格、公式等非简单文本内容，会发现解析效果不佳。
 
-市面上目前有多种解析 PDF 的方法，比如使用 [MinerU](https://github.com/opendatalab/MinerU)，该项目使用了 YOLO、PaddleOCR 以及表格识别等模型，基于视觉解析，可以有效提取图片、表格、公式等复杂内容。
+市面上目前有多种解析 PDF 的方法，比如使用 [MinerU](https://github.com/opendatalab/MinerU)，该项目使用了 YOLO、PaddleOCR以及表格识别等模型，基于视觉解析，可以有效提取图片、表格、公式等复杂内容。
 
 社区版用户可以通过 `CUSTOM_PDF_PARSE_URL`、`CUSTOM_PDF_PARSE_KEY` 环境变量配置，来使用 MinerU 解析 PDF 文件（4.15.0 起开源版改由环境变量读取配置）。商业版用户在「管理员 → 系统配置 → 基础配置 → PDF 解析配置」中根据表单指引填写即可，使用教程中会详细说明。
 
@@ -17,14 +17,15 @@ PDF 是一个相对复杂的文件格式，在 FastGPT 内置的 PDF 解析器�
 
 ### 1. 安装 MinerU
 
-从自己的镜像仓库准备兼容 FastGPT 自定义 PDF 解析 API（`/v2/parse/file`）的 MinerU 镜像，将完整地址赋给 `MINERU_IMAGE` 后运行：
+这里介绍快速 Docker 安装的方法：
+
+拉取 fastgpt-mineru 镜像 ---> 创建容器启动解析服务 ---> 将部署好的服务地址配置到 `fastgpt-app` 的环境变量 `CUSTOM_PDF_PARSE_URL` 中
 
 ```bash
-docker pull "${MINERU_IMAGE:?Set MINERU_IMAGE}"
-docker run --gpus all -itd -p 7231:8001 --name mode_pdf_minerU "${MINERU_IMAGE:?Set MINERU_IMAGE}"
+docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/fastgpt_ck/mineru:v1
+docker run --gpus all -itd -p 7231:8001 --name mode_pdf_minerU crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/fastgpt_ck/mineru:v1
 ```
-
-这里的 mineru 接入的是 pipeline 模式，并且在 docker 内部进行了并行化，会根据 gpu 数量创建多个进程来同时处理上传的 PDF 数据
+这里的mineru接入的是pipeline模式，并且在docker内部进行了并行化，会根据gpu数量创建多个进程来同时处理上传的pdf数据
 
 ### 2. 添加 FastGPT 文件配置
 
@@ -46,16 +47,17 @@ DOC2X_KEY= # doc2x 服务密钥（可选）
 
 ### 3. 测试效果
 
-通过知识库上传一个 PDF 文件，并勾选上 `PDF 增强解析`。
+通过知识库上传一个 pdf 文件，并勾选上 `PDF 增强解析`。
 
 ![3. 测试效果：界面示例](/imgs/optimized/mineru1.png.webp)
 
-确认上传后，可以在日志中看到 LOG（`LOG_CONSOLE_LEVEL` 需要设置 info 或者 debug）：
+确认上传后，可以在日志中看到 LOG （`LOG_CONSOLE_LEVEL` 需要设置 info 或者 debug）：
 
 ```
 Start parsing file via external service
 External file parsing completed
 ```
+
 
 同样的，在应用中，你可以在文件上传配置里，勾选上 `PDF 增强解析`。
 
@@ -63,13 +65,14 @@ External file parsing completed
 
 ## 效果展示
 
-以清华的 [ChatDev Communicative Agents for Software Develop.PDF](https://arxiv.org/abs/2307.07924) 为例，展示 MinerU 解析的效果：
+以清华的 [ChatDev Communicative Agents for Software Develop.pdf](https://arxiv.org/abs/2307.07924) 为例，展示 MinerU 解析的效果：
 
-|                                                           |                                                           |                                                           |
-| --------------------------------------------------------- | --------------------------------------------------------- | --------------------------------------------------------- |
+|                                 |                                 |                                 |
+| ------------------------------- | ------------------------------- | ------------------------------- |
 | ![效果展示：界面示例](/imgs/optimized/mineru3-1.png.webp) | ![效果展示：界面示例](/imgs/optimized/mineru4-1.png.webp) | ![效果展示：界面示例](/imgs/optimized/mineru5-1.png.webp) |
-| ![效果展示：界面示例](/imgs/optimized/mineru3.png.webp)   | ![效果展示：界面示例](/imgs/optimized/mineru4.png.webp)   | ![效果展示：界面示例](/imgs/optimized/mineru5.png.webp)   |
+| ![效果展示：界面示例](/imgs/optimized/mineru3.png.webp) | ![效果展示：界面示例](/imgs/optimized/mineru4.png.webp) | ![效果展示：界面示例](/imgs/optimized/mineru5.png.webp) |
 
-上图是分块后的结果，下图是 PDF 原文。整体图片、公式、ocr 手写体都可以提取出来，效果还是可以的。
+上图是分块后的结果，下图是 pdf 原文。整体图片、公式、ocr手写体都可以提取出来，效果还是可以的。
 
-不过要注意的是，[MinerU](https://github.com/opendatalab/MinerU) 的协议是 `GPL-3.0 license`，请在遵守协议的前提下使用。
+不过要注意的是，[MinerU](https://github.com/opendatalab/MinerU) 的协议是`GPL-3.0 license`，请在遵守协议的前提下使用。
+

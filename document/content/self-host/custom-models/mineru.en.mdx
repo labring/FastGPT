@@ -17,11 +17,13 @@ Hardware requirements: 16GB+ GPU VRAM, minimum 16GB+ RAM (32GB+ recommended). Se
 
 ### 1. Install MinerU
 
-Set `MINERU_IMAGE` to the full reference for a MinerU image in your registry that implements the FastGPT custom PDF parsing endpoint (`/v2/parse/file`), then start the service:
+Quick Docker installation:
+
+Pull the fastgpt-mineru image --> Create and start the parsing service container --> Set the deployed URL in the `CUSTOM_PDF_PARSE_URL` environment variable of `fastgpt-app`
 
 ```bash
-docker pull "${MINERU_IMAGE:?Set MINERU_IMAGE}"
-docker run --gpus all -itd -p 7231:8001 --name mode_pdf_minerU "${MINERU_IMAGE:?Set MINERU_IMAGE}"
+docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/fastgpt_ck/mineru:v1
+docker run --gpus all -itd -p 7231:8001 --name mode_pdf_minerU crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/fastgpt_ck/mineru:v1
 ```
 
 This MinerU integration uses pipeline mode with built-in parallelization inside the Docker container. It creates multiple processes based on the number of GPUs to handle uploaded PDFs concurrently.
@@ -65,8 +67,8 @@ Similarly, in apps you can enable `Enhanced PDF Parsing` in the file upload sett
 
 Using Tsinghua's [ChatDev Communicative Agents for Software Develop.pdf](https://arxiv.org/abs/2307.07924) as an example:
 
-|                                                                    |                                                                    |                                                                    |
-| ------------------------------------------------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------ |
+|                                                 |                                                 |                                                 |
+| ----------------------------------------------- | ----------------------------------------------- | ----------------------------------------------- |
 | ![Results — interface example](/imgs/optimized/mineru3-1.png.webp) | ![Results — interface example](/imgs/optimized/mineru4-1.png.webp) | ![Results — interface example](/imgs/optimized/mineru5-1.png.webp) |
 | ![Results — interface example](/imgs/optimized/mineru3.png.webp)   | ![Results — interface example](/imgs/optimized/mineru4.png.webp)   | ![Results — interface example](/imgs/optimized/mineru5.png.webp)   |
 

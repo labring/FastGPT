@@ -6,6 +6,7 @@ description: Integrating private ChatGLM2 and m3e-large models with FastGPT
 
 This page retains a community model-service example and its historical OneAPI/config.json integration. For current deployments, register the reachable model service through [Model configuration](/en/self-host/config/model/intro) and verify model type, endpoint, permissions, and compatibility for your release.
 
+
 ## Introduction
 
 FastGPT uses OpenAI's LLM and embedding models by default. For private deployment, you can use ChatGLM2 and m3e-large as replacements. The following method was contributed by community user @不做了睡大觉. This image bundles both M3E-Large and ChatGLM2-6B models, ready to use out of the box.
@@ -13,6 +14,7 @@ FastGPT uses OpenAI's LLM and embedding models by default. For private deploymen
 ## Deploy the Image
 
 - Image: `stawky/chatglm2-m3e:latest`
+- China mirror: `registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/chatglm2-m3e:latest`
 - Port: 6006
 
 ```

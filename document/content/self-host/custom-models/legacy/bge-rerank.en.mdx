@@ -67,15 +67,11 @@ On successful startup, you should see an address like this:
 
 ## Docker Deployment
 
-Build the base model image locally using the Dockerfile from the archived release:
+**Image names:**
 
-```bash
-git clone --depth 1 --branch v4.14.7 https://github.com/labring/FastGPT.git fastgpt-reranker
-# Place the downloaded bge-reranker-base weights directory next to the Dockerfile.
-docker build -t fastgpt-bge-rerank-base:v0.1 fastgpt-reranker/plugins/model/rerank-bge/bge-reranker-base
-```
-
-For the large or v2-m3 model, change the source directory and local image name accordingly.
+1. registry.cn-hangzhou.aliyuncs.com/fastgpt/bge-rerank-base:v0.1 (4 GB+)
+2. registry.cn-hangzhou.aliyuncs.com/fastgpt/bge-rerank-large:v0.1 (5 GB+)
+3. registry.cn-hangzhou.aliyuncs.com/fastgpt/bge-rerank-v2-m3:v0.1 (5 GB+)
 
 **Port**
 
@@ -91,7 +87,7 @@ ACCESS_TOKEN=your_access_token (used in request header: Authorization: Bearer ${
 
 ```sh
 # auth token set to mytoken
-docker run -d --name reranker -p 6006:6006 -e ACCESS_TOKEN=mytoken --gpus all fastgpt-bge-rerank-base:v0.1
+docker run -d --name reranker -p 6006:6006 -e ACCESS_TOKEN=mytoken --gpus all registry.cn-hangzhou.aliyuncs.com/fastgpt/bge-rerank-base:v0.1
 ```
 
 **docker-compose.yml Example**
@@ -100,7 +96,7 @@ docker run -d --name reranker -p 6006:6006 -e ACCESS_TOKEN=mytoken --gpus all fa
 version: "3"
 services:
   reranker:
-    image: fastgpt-bge-rerank-base:v0.1
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/bge-rerank-base:v0.1
     container_name: reranker
     # GPU runtime. If the host doesn't have GPU drivers installed, comment out the deploy section.
     deploy:

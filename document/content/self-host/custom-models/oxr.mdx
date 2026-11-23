@@ -3,7 +3,7 @@ title: 接入 OXR PDF 文档解析
 description: 使用 Docker 部署 OXR，为 FastGPT 提供本地 PDF 识别能力，支持离线运行和单机多卡
 ---
 
-[SoMark OXR-1.0](https://huggingface.co/SoMarkAI/OXR-1.0) 可以识别 PDF 中的文字、表格、公式和图片，并转换为 Markdown。以下步骤使用兼容 FastGPT 自定义 PDF 解析 API 的 OXR 镜像。将 `OXR_IMAGE` 设置为该镜像的完整地址。要离线运行，镜像须包含模型权重。
+[SoMark OXR-1.0](https://huggingface.co/SoMarkAI/OXR-1.0) 可以识别 PDF 中的文字、表格、公式和图片，并转换为 Markdown。本文使用已适配 FastGPT 的 Docker 镜像，内置模型权重，拉取镜像后无需联网下载模型。镜像公开，可免登录拉取。
 
 ## 1. 环境要求
 
@@ -24,7 +24,7 @@ docker run -d --name oxr \
   -p 18080:8000 \
   -v oxr-cache:/cache \
   --log-opt max-size=20m --log-opt max-file=3 \
-  "${OXR_IMAGE:?Set OXR_IMAGE}"
+  crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/fastgpt_ck/oxr:1.0.2-cu130
 ```
 
 此命令只使用第 0 张显卡，对外端口为 `18080`。`oxr-cache` 保存启动时生成的编译缓存，日志按大小自动轮转。
@@ -129,8 +129,8 @@ curl --fail-with-body \
 在有网络的机器上拉取并导出镜像：
 
 ```bash
-docker pull "${OXR_IMAGE:?Set OXR_IMAGE}"
-docker save "${OXR_IMAGE:?Set OXR_IMAGE}" | gzip -1 > oxr.tar.gz
+docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/fastgpt_ck/oxr:1.0.2-cu130
+docker save crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/fastgpt_ck/oxr:1.0.2-cu130 | gzip -1 > oxr.tar.gz
 ```
 
 将 `oxr.tar.gz` 复制到离线服务器，导入镜像后按第 2 步启动：

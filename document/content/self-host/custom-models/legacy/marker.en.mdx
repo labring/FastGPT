@@ -23,9 +23,8 @@ Refer to the [Marker installation guide](https://github.com/labring/FastGPT/tree
 Quick Docker installation:
 
 ```bash
-git clone --depth 1 --branch v4.14.7 https://github.com/labring/FastGPT.git fastgpt-marker
-docker build -t fastgpt-marker:v0.2 fastgpt-marker/plugins/model/pdf-marker
-docker run --gpus all -itd -p 7231:7232 --name model_pdf_v2 -e PROCESSES_PER_GPU="2" fastgpt-marker:v0.2
+docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.2
+docker run --gpus all -itd -p 7231:7232 --name model_pdf_v2 -e PROCESSES_PER_GPU="2" crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.2
 ```
 
 ### 2. Add FastGPT Configuration
@@ -72,8 +71,8 @@ Similarly, in apps you can enable `Enhanced PDF Parsing` in the file upload sett
 
 Using Tsinghua's [ChatDev Communicative Agents for Software Develop.pdf](https://arxiv.org/abs/2307.07924) as an example:
 
-|                                                                   |                                                                   |                                                                   |
-| ----------------------------------------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------- |
+|                                                |                                                |                                                |
+| ---------------------------------------------- | ---------------------------------------------- | ---------------------------------------------- |
 | ![Results — interface example](/imgs/optimized/image-11.png.webp) | ![Results — interface example](/imgs/optimized/image-12.png.webp) | ![Results — interface example](/imgs/optimized/image-13.png.webp) |
 | ![Results — interface example](/imgs/optimized/image-14.png.webp) | ![Results — interface example](/imgs/optimized/image-15.png.webp) | ![Results — interface example](/imgs/optimized/image-16.png.webp) |
 
@@ -87,11 +86,9 @@ For FastGPT versions before V4.9.0, you can use the following method for Marker 
 
 Install and run the Marker service:
 
-Set `MARKER_V1_IMAGE` to the reference for an existing Marker image that implements the legacy `/v1/parse/file` endpoint.
-
 ```bash
-docker pull "${MARKER_V1_IMAGE:?Set MARKER_V1_IMAGE}"
-docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 -e PROCESSES_PER_GPU="2" "${MARKER_V1_IMAGE:?Set MARKER_V1_IMAGE}"
+docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.1
+docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 -e PROCESSES_PER_GPU="2" crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.1
 ```
 
 Then modify the FastGPT environment variables:

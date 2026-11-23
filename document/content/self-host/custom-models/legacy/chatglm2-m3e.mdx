@@ -6,13 +6,15 @@ description: ' 将 FastGPT 接入私有化模型 ChatGLM2和m3e-large'
 
 本页保留社区模型服务示例及历史 OneAPI/config.json 接入配置。当前部署请通过[模型配置](/zh-CN/self-host/config/model/intro)登记可访问的模型服务，并核对所用版本的模型类型、接口地址、权限和兼容性。
 
+
 ## 前言
 
-FastGPT 默认使用了 OpenAI 的 LLM 模型和向量模型，如果想要私有化部署的话，可以使用 ChatGLM2 和 m3e-large 模型。以下是由用户@不做了睡大觉提供的接入方法。该镜像直接集成了 M3E-Large 和 ChatGLM2-6B 模型，可以直接使用。
+FastGPT 默认使用了 OpenAI 的 LLM 模型和向量模型，如果想要私有化部署的话，可以使用 ChatGLM2 和 m3e-large 模型。以下是由用户@不做了睡大觉 提供的接入方法。该镜像直接集成了 M3E-Large 和 ChatGLM2-6B 模型，可以直接使用。
 
 ## 部署镜像
 
 - 镜像名: `stawky/chatglm2-m3e:latest`
+- 国内镜像名: `registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/chatglm2-m3e:latest`
 - 端口号: 6006
 
 ```
@@ -113,4 +115,5 @@ M3E 模型的使用方法如下：
 
    ![测试使用：界面示例](/imgs/optimized/model-m3e4.png.webp)
 
-chatglm2 模型的使用方法如下：模型选择 chatglm2 即可
+chatglm2 模型的使用方法如下：
+模型选择 chatglm2 即可
