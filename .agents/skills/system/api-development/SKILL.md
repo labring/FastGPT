@@ -24,6 +24,7 @@ description: 开发或审查 FastGPT Next.js API 路由，同步 Zod 入参和�
 4. **实际存在的入参必须使用 `parseApiInput` 验证；完全无入参时不做空 Query/Body Schema 校验**
 5. **实际存在业务数据的函数返回值必须使用 schema.parse() 验证；空成功响应直接返回 `undefined`，不做空 Schema 校验**
 6. **必须编写完整的 OpenAPI 文档，一次性管理员升级/清洗能力除外**
+7. **对外开放 OpenAPI 接口必须手动声明 `x-fastgpt-sdk` 并同步 SDK；非开放接口严禁声明**：凡挂载 `SystemOpenApiTagMap` 且非 `deprecated` 的对外开放接口，必须在 OpenAPI Path 中手动声明 `'x-fastgpt-sdk': { resource, method, streamMethod? }` 并执行 `pnpm sdk:gen`；仅站内使用（只挂 `DevApiTagsMap`）或 `deprecated: true` 的接口**禁止**声明 `x-fastgpt-sdk`，SDK 仅提供 OpenAPI 中正式声明的开放接口。
 
 ### 管理员升级与清洗能力的文档豁免
 
@@ -297,6 +298,46 @@ export default NextAPI(handler);
 
 在所属模块的 Path 中注册实际方法、路径、标签、请求与成功响应。确认该模块已接入 [openAPIPaths](../../../../packages/global/openapi/path.ts)。例如[日志模块的 Path](../../../../packages/global/openapi/core/app/log/index.ts)直接引用接口的请求与响应 Schema。
 
+#### 对外开放接口（`SystemOpenApiTagMap`）与 SDK 元数据
+
+- **仅站内使用（只挂 `DevApiTagsMap`）**：无需且**禁止**声明 `x-fastgpt-sdk`；SDK 暂不提供非 System OpenAPI 接口。
+- **对外开放接口（挂 `SystemOpenApiTagMap` 且非 `deprecated`）**：
+  - 路由 handler 必须真正支持 API Key 鉴权（`authApiKey: true` / `authAppApiKey: true` 或等效封装；现役唯一免鉴权公开例外为 `GET /core/ai/model/list` / `models.list()`，须同步登记在 `sdkContract.test.ts` 的 `SPECIAL_AUTH_OPEN_ROUTES` 与 `BaseClient` 运行时放行清单），非空成功响应必须声明 `responses[200].content`。
+  - 必须手动声明 `'x-fastgpt-sdk': { resource, method, streamMethod? }`（刻意不依赖 URL 正则猜测，保证多语言 SDK 方法名稳定；`resource` 使用小写点分领域路径如 `'apps.logs'`、`'chat.histories'`、`'datasets.collections'`，`method` 使用 camelCase，双模 SSE 流式接口同步声明 `streamMethod`）。
+  - 修改或新增开放接口后，必须执行 `pnpm sdk:gen`，并运行 `pnpm test packages/global/test/openapi/sdkContract.test.ts` 与 `pnpm sdk:check` 验证命名唯一、鉴权合规、生成产物无漂移。
+- **已弃用接口（`deprecated: true`）**：不得挂载 `x-fastgpt-sdk`（迁移替代接口时从旧路由移除 `x-fastgpt-sdk` 并挂到新路由）。
+
+```typescript
+'/core/app/logs/search': {
+  post: {
+    summary: '搜索应用日志列表',
+    description: '按游标搜索应用的对话日志列表，每页固定 50 条且不查询总数',
+    tags: [DevApiTagsMap.appLog, SystemOpenApiTagMap.appLog],
+    'x-fastgpt-sdk': {
+      resource: 'apps.logs',
+      method: 'search'
+    },
+    requestBody: {
+      content: {
+        'application/json': {
+          schema: SearchAppChatLogsBodySchema
+        }
+      }
+    },
+    responses: {
+      200: {
+        description: '成功搜索应用日志列表',
+        content: {
+          'application/json': {
+            schema: SearchAppChatLogsResponseSchema
+          }
+        }
+      }
+    }
+  }
+}
+```
+
 ## 审查检查清单
 
 ### 🔴 必须检查项 (阻塞性)
@@ -313,6 +354,10 @@ export default NextAPI(handler);
 - [ ] **出参验证**: 返回实际业务数据时使用 `Schema.parse(responseData)`；空成功响应无需 Schema 和 parse
 - [ ] **函数返回类型**: 函数返回值声明为导出的类型
 - [ ] **权限验证**: API 路由有相应的权限检查 (如需要)
+
+**OpenAPI Path 与 SDK 同步** (`packages/global/openapi/.../index.ts`):
+- [ ] **对外开放接口已声明与同步**: 挂 `SystemOpenApiTagMap` 且非 `deprecated` 的接口已手动声明 `'x-fastgpt-sdk'`，并已执行 `pnpm sdk:gen` 与 `pnpm sdk:check`（通过 `sdkContract.test.ts`）
+- [ ] **非开放与已弃用接口未越界**: 仅站内（只挂 `DevApiTagsMap`）与 `deprecated: true` 接口未声明 `'x-fastgpt-sdk'`
 
 ### 🟡 推荐检查项 (建议性)
 

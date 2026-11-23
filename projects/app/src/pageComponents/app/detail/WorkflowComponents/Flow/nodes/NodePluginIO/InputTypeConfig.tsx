@@ -43,6 +43,7 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { canInputBeAgentGenerated } from '@fastgpt/global/core/app/formEdit/utils';
 import { getUserFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
+import { getWorkflowReferenceItems } from '@fastgpt/global/common/workflow/reference';
 import {
   MAX_SELECT_OPTION_COUNT,
   MAX_SELECT_OPTION_LENGTH
@@ -342,7 +343,7 @@ const InputTypeConfig = ({
           commonData.listInputType = optionMode;
         }
         if (optionMode === FlowNodeInputTypeEnum.reference) {
-          commonData.listReference = Array.isArray(data.listReference) ? data.listReference : [];
+          commonData.listReference = getWorkflowReferenceItems(data.listReference);
           commonData.defaultValue = undefined;
         } else {
           commonData.list = data.list;

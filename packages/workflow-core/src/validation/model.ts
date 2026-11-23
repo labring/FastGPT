@@ -2,7 +2,8 @@ import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagno
 import {
   getWorkflowNodeModelInputs,
   isWorkflowModelExpression,
-  isWorkflowSystemModelInput
+  isWorkflowSystemModelInput,
+  workflowModelReferenceIsAvailable
 } from '@fastgpt/global/common/workflow/model';
 import {
   getSelectedInputRenderType,
@@ -88,14 +89,13 @@ export const checkWorkflowModels = ({
     }
 
     if (!modelData) return;
-    const available = modelData.references.some(
-      (item) =>
-        item.type === type &&
-        (!isEmptyModelValue(modelId)
-          ? item.modelId === String(modelId) ||
-            (allowLegacyModelFallback && item.legacyModel === modelId)
-          : item.legacyModel === model)
-    );
+    const available = workflowModelReferenceIsAvailable({
+      references: modelData.references,
+      type,
+      modelId,
+      model,
+      allowLegacyModelFallback
+    });
     if (available) return;
     diagnostics.push({
       code: WorkflowDiagnosticCodeEnum.modelUnavailable,

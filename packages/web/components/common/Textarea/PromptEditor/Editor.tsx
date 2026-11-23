@@ -170,7 +170,7 @@ export default function Editor({
     }
   };
 
-  // 变量插件会同步 props；仅在外部文本值变化时重建编辑器。
+  // 变量标签由展示上下文更新；仅在外部文本值变化时重建编辑器。
   useEffect(() => {
     if (value === editorOutputRef.current) return;
     setKey(getNanoid(6));
@@ -286,7 +286,7 @@ export default function Editor({
 
           {variableLabels.length > 0 && (
             <>
-              <VariableLabelPlugin variables={variableLabels} />
+              <VariableLabelPlugin />
               <VariableLabelPickerPlugin variables={variableLabels} isFocus={focus} />
             </>
           )}

@@ -155,5 +155,7 @@ it.each([false, true])(
     expect(
       await MongoChatItem.countDocuments({ appId: source.sourceId, chatId: source.chatId })
     ).toBe(2);
-  }
+  },
+  // 三轮交互均执行真实 Mongo 读写，为冷启动和并发套件留出余量。
+  40_000
 );

@@ -1,90 +1,22 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
-import { type NodeProps } from 'reactflow';
+import type { CanvasNodeProps } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import NodeCard from '../render/NodeCard';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
-import {
-  NodeInputKeyEnum,
-  NodeOutputKeyEnum,
-  WorkflowIOValueTypeEnum
-} from '@fastgpt/global/core/workflow/constants';
 import { Box, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
-import React, { useEffect, useMemo } from 'react';
-import {
-  FlowNodeOutputTypeEnum,
-  FlowValueTypeMap
-} from '@fastgpt/global/core/workflow/node/constant';
+import React, { useMemo } from 'react';
+import { FlowValueTypeMap } from '@fastgpt/global/core/workflow/node/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
 
-const typeMap = {
-  [WorkflowIOValueTypeEnum.arrayString]: WorkflowIOValueTypeEnum.string,
-  [WorkflowIOValueTypeEnum.arrayNumber]: WorkflowIOValueTypeEnum.number,
-  [WorkflowIOValueTypeEnum.arrayBoolean]: WorkflowIOValueTypeEnum.boolean,
-  [WorkflowIOValueTypeEnum.arrayObject]: WorkflowIOValueTypeEnum.object,
-  [WorkflowIOValueTypeEnum.arrayAny]: WorkflowIOValueTypeEnum.any
-};
+const emptyOutputs: FlowNodeItemType['outputs'] = [];
 
-const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeLoopStart = ({ data, selected }: CanvasNodeProps) => {
+  const { nodeId } = data;
+  const outputs =
+    useNode<FlowNodeItemType['outputs']>(nodeId, (current) => current?.data.outputs) ??
+    emptyOutputs;
   const { t } = useTranslation();
-  const { nodeId, outputs } = data;
-  const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-
-  const loopStartNode = getNodeById(nodeId);
-
-  // According to the variable referenced by parentInput, find the output of the corresponding node and take its output valueType
-  const loopItemInputType = useMemo(() => {
-    const parentNode = getNodeById(loopStartNode?.parentNodeId);
-    const parentArrayInput = parentNode?.inputs.find(
-      (input) => input.key === NodeInputKeyEnum.nestedInputArray
-    );
-    return typeMap[parentArrayInput?.valueType as keyof typeof typeMap];
-  }, [getNodeById, loopStartNode?.parentNodeId]);
-
-  // Auth update loopStartInput output
-  useEffect(() => {
-    const loopArrayOutput = loopStartNode?.outputs.find(
-      (output) => output.key === NodeOutputKeyEnum.nestedStartInput
-    );
-
-    // if loopItemInputType is undefined, delete loopStartInput output
-    if (!loopItemInputType && loopArrayOutput) {
-      onChangeNode({
-        nodeId,
-        type: 'delOutput',
-        key: NodeOutputKeyEnum.nestedStartInput
-      });
-    }
-    // if loopItemInputType is not undefined, and has no loopArrayOutput, add loopStartInput output
-    if (loopItemInputType && !loopArrayOutput) {
-      onChangeNode({
-        nodeId,
-        type: 'ensureOutput',
-        value: {
-          id: NodeOutputKeyEnum.nestedStartInput,
-          key: NodeOutputKeyEnum.nestedStartInput,
-          label: t('workflow:Array_element'),
-          type: FlowNodeOutputTypeEnum.static,
-          valueType: loopItemInputType
-        }
-      });
-    }
-    // if loopItemInputType is not undefined, and has loopArrayOutput, update loopStartInput output
-    if (loopItemInputType && loopArrayOutput) {
-      onChangeNode({
-        nodeId,
-        type: 'updateOutput',
-        key: NodeOutputKeyEnum.nestedStartInput,
-        value: {
-          ...loopArrayOutput,
-          valueType: loopItemInputType
-        }
-      });
-    }
-  }, [loopStartNode?.outputs, nodeId, onChangeNode, loopItemInputType, t]);
 
   const Render = useMemo(() => {
     return (

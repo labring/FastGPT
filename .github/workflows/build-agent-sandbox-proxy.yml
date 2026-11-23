@@ -1,0 +1,162 @@
+name: Release Agent-sandbox-proxy
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'fastgpt-agent-sandbox-proxy image tag'
+        required: false
+        default: latest
+        type: string
+
+permissions: {}
+
+jobs:
+  validate-tag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      tag: ${{ steps.validate.outputs.tag }}
+    steps:
+      - name: Validate image tag
+        id: validate
+        env:
+          RAW_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          export LC_ALL=C
+          TAG="${RAW_TAG:-latest}"
+          if [[ "$TAG" == *$'\n'* || "$TAG" == *$'\r'* || ! "$TAG" =~ ^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$ ]]; then
+            echo "::error::Invalid OCI image tag. Expected pattern ^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$."
+            exit 1
+          fi
+          printf 'tag=%s\n' "$TAG" >> "$GITHUB_OUTPUT"
+
+  build-fastgpt-agent-sandbox-proxy-images:
+    needs: validate-tag
+    permissions:
+      packages: write
+      contents: read
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+          - arch: arm64
+            runs-on: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runs-on || 'ubuntu-24.04' }}
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            network=host
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-fastgpt-agent-sandbox-proxy-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-fastgpt-agent-sandbox-proxy-buildx-
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build for ${{ matrix.arch }}
+        id: build-ghcr
+        uses: docker/build-push-action@v6
+        with:
+          context: projects/agent-sandbox-proxy
+          file: projects/agent-sandbox-proxy/Dockerfile
+          platforms: linux/${{ matrix.arch }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.description=fastgpt-agent-sandbox-proxy image
+          outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/fastgpt-agent-sandbox-proxy",push-by-digest=true,push=true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Export digest
+        env:
+          RUNNER_TEMP_DIR: ${{ runner.temp }}
+          GHCR_DIGEST: ${{ steps.build-ghcr.outputs.digest }}
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP_DIR}/digests/ghcr"
+          if [[ ! "${GHCR_DIGEST}" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            echo "::error::Invalid GHCR digest: ${GHCR_DIGEST}"
+            exit 1
+          fi
+          touch "${RUNNER_TEMP_DIR}/digests/ghcr/${GHCR_DIGEST#sha256:}"
+
+      - name: Upload GHCR digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: ghcr-digests-fastgpt-agent-sandbox-proxy-${{ github.sha }}-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/ghcr/*
+          if-no-files-found: error
+          retention-days: 1
+
+  release-fastgpt-agent-sandbox-proxy-images:
+    permissions:
+      packages: write
+      contents: read
+    needs: [validate-tag, build-fastgpt-agent-sandbox-proxy-images]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests/ghcr
+          pattern: ghcr-digests-fastgpt-agent-sandbox-proxy-${{ github.sha }}-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set image name and tag
+        env:
+          TAG: ${{ needs.validate-tag.outputs.tag }}
+          REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          printf 'Git_Tag=ghcr.io/%s/fastgpt-agent-sandbox-proxy:%s\n' "${REPO_OWNER}" "${TAG}" >> "$GITHUB_ENV"
+
+      - name: Create manifest list and push
+        working-directory: ${{ runner.temp }}/digests
+        env:
+          REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          GHCR_IMAGE="ghcr.io/${REPO_OWNER}/fastgpt-agent-sandbox-proxy"
+          GHCR_SOURCES=()
+          for digest_file in ghcr/*; do
+            [[ -f "$digest_file" ]] || continue
+            GHCR_SOURCES+=("${GHCR_IMAGE}@sha256:$(basename "$digest_file")")
+          done
+          if [[ "${#GHCR_SOURCES[@]}" -ne 2 ]]; then
+            echo "Expected two GHCR digests"
+            exit 1
+          fi
+          docker buildx imagetools create -t "${Git_Tag}" "${GHCR_SOURCES[@]}"
+          sleep 5

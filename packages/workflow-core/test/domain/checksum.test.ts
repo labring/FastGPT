@@ -30,6 +30,18 @@ describe('canonical workflow checksum', () => {
     );
   });
 
+  it('preserves explicit snapshot clears and hashes populated snapshots', async () => {
+    const document = createWorkflowDocument();
+    const cleared = { ...document, referenceSnapshots: [] };
+    const snapshots = createWorkflowDocument({
+      referenceSnapshots: [{ reference: ['deleted', 'output'], sourceLabel: 'Deleted node' }]
+    });
+    expect(normalizeWorkflowDocument(document).referenceSnapshots).toBeUndefined();
+    expect(normalizeWorkflowDocument(cleared).referenceSnapshots).toEqual([]);
+    expect(await getWorkflowChecksum(cleared)).not.toBe(await getWorkflowChecksum(document));
+    expect(await getWorkflowChecksum(snapshots)).not.toBe(await getWorkflowChecksum(document));
+  });
+
   it('normalizes object keys and node/edge order while preserving input array order', async () => {
     const left = WorkflowDocumentSchema.parse({ ...ai, app: { name: 'Demo', intro: 'Intro' } });
     const right = {

@@ -9,7 +9,10 @@ import { getWorkflowContext } from '@fastgpt/service/core/workflow/dispatch/cont
 import { SANDBOX_SHELL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { AgentUsageModuleName } from '@fastgpt/service/core/ai/llm/agentLoop/interface';
 import { createToolSchema } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolCatalog';
 import { runToolCall as runToolCallWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/toolCall';
@@ -1139,10 +1142,12 @@ describe('runToolCall compression node responses', () => {
         inputs: expect.arrayContaining([
           {
             key: NodeInputKeyEnum.datasetSearchInput,
+            selectedType: FlowNodeInputTypeEnum.textarea,
             value: ['red shoes']
           },
           {
             key: NodeInputKeyEnum.userChatInput,
+            selectedType: FlowNodeInputTypeEnum.textarea,
             value: ''
           }
         ])

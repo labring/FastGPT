@@ -3,10 +3,17 @@ import React, { act, type MouseEventHandler, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { Simulate } from 'react-dom/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { WorkflowChange } from '@fastgpt/global/core/workflow/editor/types';
 import NodeToolSet from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeToolSet';
 
+type RuntimeChange = Pick<WorkflowChange, 'kind' | 'origin'> & {
+  changedRecords?: Pick<WorkflowChange['changedRecords'], 'nodeIds'>;
+};
+
 const mocks = vi.hoisted(() => ({
-  onChangeNode: vi.fn(),
+  currentNodeData: undefined as any,
+  changeListeners: new Set<(change: RuntimeChange) => void>(),
+  updateNode: vi.fn(),
   toast: vi.fn(),
   reloadApp: vi.fn(),
   getMCPTools: vi.fn(),
@@ -102,22 +109,29 @@ vi.mock('@chakra-ui/react', async () => {
 });
 
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
-vi.mock('use-context-selector', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('use-context-selector')>();
-  return {
-    ...actual,
-    useContextSelector: (_context: unknown, selector: (value: unknown) => unknown) =>
-      selector({
-        onChangeNode: mocks.onChangeNode,
-        appDetail: { _id: 'app-id', name: 'App', nodes: [] },
-        reloadApp: mocks.reloadApp
-      })
-  };
-});
+vi.mock('@/web/core/workflow/editor/react/useNode', () => ({
+  useNode: (nodeId: string, selector: (node: any) => unknown) => {
+    const data = mocks.currentNodeData;
+    return selector(data?.nodeId === nodeId ? { data } : undefined);
+  },
+  useNodeActions: () => ({
+    updateNode: mocks.updateNode
+  })
+}));
+vi.mock('@/web/core/workflow/editor/session/workflowSession', () => ({
+  useWorkflowRuntime: () => ({
+    isDisposed: () => false,
+    getNode: () => mocks.currentNodeData,
+    getNodeActions: () => ({ updateNode: mocks.updateNode }),
+    subscribe: (listener: (change: RuntimeChange) => void) => {
+      mocks.changeListeners.add(listener);
+      return () => mocks.changeListeners.delete(listener);
+    }
+  })
+}));
 vi.mock('@fastgpt/web/hooks/useRequest', () => ({
-  useRequest: (request: (...args: any[]) => unknown, options: any = {}) => ({
-    loading: false,
-    runAsync: async (...args: any[]) => {
+  useRequest: (request: (...args: any[]) => unknown, options: any = {}) => {
+    const runAsync = async (...args: any[]) => {
       try {
         const result = await request(...args);
         await options.onSuccess?.(result, args);
@@ -126,8 +140,15 @@ vi.mock('@fastgpt/web/hooks/useRequest', () => ({
         if (options.errorToast) mocks.toast({ status: 'error', title: options.errorToast });
         return undefined;
       }
-    }
-  })
+    };
+    return {
+      loading: false,
+      runAsync,
+      run: (...args: any[]) => {
+        void runAsync(...args);
+      }
+    };
+  }
 }));
 vi.mock('@fastgpt/web/hooks/useToast', () => ({ useToast: () => ({ toast: mocks.toast }) }));
 vi.mock('@/web/core/app/api/mcpTools', () => ({ getMCPTools: mocks.getMCPTools }));
@@ -264,7 +285,8 @@ describe('NodeToolSet', () => {
     vi.stubGlobal('document', dom.window.document);
     vi.stubGlobal('location', dom.window.location);
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
-    mocks.onChangeNode.mockReset();
+    mocks.changeListeners.clear();
+    mocks.updateNode.mockReset();
     mocks.toast.mockReset();
     mocks.reloadApp.mockReset();
     mocks.getMCPTools.mockReset().mockResolvedValue(mocks.remoteMcpTools);
@@ -283,6 +305,7 @@ describe('NodeToolSet', () => {
   });
 
   const renderNode = async (data: Record<string, unknown>) => {
+    mocks.currentNodeData = data;
     await act(async () => {
       root.render(React.createElement(NodeToolSet, { data, selected: false } as any));
     });
@@ -303,6 +326,10 @@ describe('NodeToolSet', () => {
       Simulate.change(field);
     });
   };
+  const getSavedToolConfig = () => {
+    const patch = mocks.updateNode.mock.calls.at(-1)?.[0];
+    return patch ? patch(mocks.currentNodeData).toolConfig : undefined;
+  };
 
   it('parses on the first click after saving a changed MCP URL on blur', async () => {
     const initialNode = {
@@ -311,13 +338,10 @@ describe('NodeToolSet', () => {
         mcpToolSet: { url: '', headerSecret: {}, toolList: [] }
       }
     };
-    mocks.onChangeNode.mockImplementation(({ value }) => {
-      root.render(
-        React.createElement(NodeToolSet, {
-          data: { ...initialNode, toolConfig: value },
-          selected: false
-        } as any)
-      );
+    mocks.updateNode.mockImplementation((patch) => {
+      const current = { ...initialNode };
+      const next = patch(current);
+      mocks.currentNodeData = { ...initialNode, ...next };
     });
     await renderNode(initialNode);
     const input = container.querySelector('input');
@@ -358,7 +382,7 @@ describe('NodeToolSet', () => {
       url: 'https://tools.example/mcp',
       headerSecret: {}
     });
-    const savedToolSet = mocks.onChangeNode.mock.calls.at(-1)?.[0]?.value?.mcpToolSet;
+    const savedToolSet = getSavedToolConfig()?.mcpToolSet;
     expect(savedToolSet).toEqual({
       url: 'https://tools.example/mcp',
       headerSecret: {},
@@ -389,7 +413,7 @@ describe('NodeToolSet', () => {
     expect(mocks.headerSecretConfigs.at(-1)).toEqual({
       Authorization: { value: 'token-b' }
     });
-    expect(mocks.onChangeNode).not.toHaveBeenCalled();
+    expect(mocks.updateNode).not.toHaveBeenCalled();
   });
 
   it('drops an MCP parse result when the node configuration is restored', async () => {
@@ -409,13 +433,13 @@ describe('NodeToolSet', () => {
     await renderNode(makeNode('https://a.example/mcp'));
     await click('common:Parse');
     await renderNode(makeNode('https://b.example/mcp'));
-    mocks.onChangeNode.mockClear();
+    mocks.updateNode.mockClear();
     await act(async () => {
       resolveTools?.(mocks.remoteMcpTools);
       await Promise.resolve();
     });
 
-    expect(mocks.onChangeNode).not.toHaveBeenCalled();
+    expect(mocks.updateNode).not.toHaveBeenCalled();
   });
 
   it('keeps the MCP draft when only the tool list changes', async () => {
@@ -458,18 +482,46 @@ describe('NodeToolSet', () => {
       } else {
         await click('common:auth_config');
       }
-      mocks.onChangeNode.mockClear();
+      mocks.updateNode.mockClear();
 
       await act(async () => {
         resolveTools?.(mocks.remoteMcpTools);
         await Promise.resolve();
       });
 
-      expect(mocks.onChangeNode).not.toHaveBeenCalled();
+      expect(mocks.updateNode).not.toHaveBeenCalled();
     }
   );
 
-  it('drops an MCP parse result that arrives after the node unmounts', async () => {
+  it('applies completed MCP parses after the same node leaves and re-enters the viewport', async () => {
+    const pending = Promise.withResolvers<typeof mocks.remoteMcpTools>();
+    mocks.getMCPTools.mockReturnValueOnce(pending.promise);
+    const makeNode = (description: string) => ({
+      nodeId: 'node-mcp',
+      toolConfig: {
+        mcpToolSet: {
+          url: 'https://tools.example/mcp',
+          headerSecret: {},
+          toolList: [{ name: 'search', description }]
+        }
+      }
+    });
+    await renderNode(makeNode('Old description'));
+    await click('common:Parse');
+    await act(async () => root.render(null));
+    await renderNode(makeNode('Updated description'));
+    await act(async () => {
+      pending.resolve(mocks.remoteMcpTools);
+      await pending.promise;
+    });
+
+    expect(getSavedToolConfig()?.mcpToolSet?.toolList).toEqual([
+      { name: 'search', description: 'Updated description' },
+      { name: 'new-tool', description: 'Remote tool' }
+    ]);
+  });
+
+  it('drops an MCP parse result when the Runtime node has been removed', async () => {
     let resolveTools: ((tools: typeof mocks.remoteMcpTools) => void) | undefined;
     mocks.getMCPTools.mockReturnValueOnce(
       new Promise((resolve) => {
@@ -488,13 +540,38 @@ describe('NodeToolSet', () => {
     });
 
     await click('common:Parse');
-    await act(async () => root.unmount());
+    await act(async () => root.render(null));
+    mocks.currentNodeData = undefined;
     await act(async () => {
       resolveTools?.(mocks.remoteMcpTools);
       await Promise.resolve();
     });
 
-    expect(mocks.onChangeNode).not.toHaveBeenCalled();
+    expect(mocks.updateNode).not.toHaveBeenCalled();
+  });
+
+  it.each<RuntimeChange>([
+    { kind: 'replace', origin: 'command' },
+    { kind: 'semantic', origin: 'undo', changedRecords: { nodeIds: ['node-mcp'] } }
+  ])('drops an MCP parse on a $kind/$origin change with the same connection', async (change) => {
+    const pending = Promise.withResolvers<typeof mocks.remoteMcpTools>();
+    mocks.getMCPTools.mockReturnValueOnce(pending.promise);
+    await renderNode({
+      nodeId: 'node-mcp',
+      toolConfig: {
+        mcpToolSet: { url: 'https://tools.example/mcp', headerSecret: {}, toolList: [] }
+      }
+    });
+    await click('common:Parse');
+    await act(async () => root.render(null));
+    mocks.changeListeners.forEach((listener) => listener(change));
+    await act(async () => {
+      pending.resolve(mocks.remoteMcpTools);
+      await pending.promise;
+    });
+
+    expect(mocks.updateNode).not.toHaveBeenCalled();
+    expect(mocks.changeListeners.size).toBe(0);
   });
 
   it('keeps referenced App tools on the description-only edit path', async () => {
@@ -510,6 +587,7 @@ describe('NodeToolSet', () => {
     });
 
     expect(container.querySelector('input')).toBeNull();
+    expect(container.textContent).not.toContain('app:toolset_config');
     await click('common:Edit');
     expect(container.textContent).toContain('app:Edit_tool_description');
     expect(container.textContent).not.toContain('app:tool_detail');
@@ -537,7 +615,7 @@ describe('NodeToolSet', () => {
     expect(schemaDisplay?.value).toContain('"openapi": "3.0.0"');
     await click('common:Save');
 
-    const savedToolSet = mocks.onChangeNode.mock.calls.at(-1)?.[0]?.value?.httpToolSet;
+    const savedToolSet = getSavedToolConfig()?.httpToolSet;
     expect(savedToolSet).toEqual({
       apiSchemaUrl: 'https://api.example/openapi.json',
       customHeaders: '{}',
@@ -576,7 +654,7 @@ describe('NodeToolSet', () => {
       await Promise.resolve();
     });
 
-    expect(mocks.onChangeNode).not.toHaveBeenCalled();
+    expect(mocks.updateNode).not.toHaveBeenCalled();
     expect(container.querySelector('textarea')).toBeNull();
   });
 
@@ -601,7 +679,7 @@ describe('NodeToolSet', () => {
     await setFieldValue(baseUrlInput, 'https://gateway.example/v2');
     await click('common:Save');
 
-    const savedToolSet = mocks.onChangeNode.mock.calls.at(-1)?.[0]?.value?.httpToolSet;
+    const savedToolSet = getSavedToolConfig()?.httpToolSet;
     expect(savedToolSet).toMatchObject({ baseUrl: 'https://gateway.example/v2' });
   });
 
@@ -622,7 +700,7 @@ describe('NodeToolSet', () => {
     await click('common:Parse');
     await click('common:Save');
 
-    const savedToolSet = mocks.onChangeNode.mock.calls.at(-1)?.[0]?.value?.httpToolSet;
+    const savedToolSet = getSavedToolConfig()?.httpToolSet;
     expect(savedToolSet?.toolList).toEqual([{ name: 'listItems', description: 'Local wording' }]);
   });
 });

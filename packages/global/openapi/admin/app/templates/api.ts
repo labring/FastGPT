@@ -11,6 +11,7 @@ import {
   OpenAPIFlowNodeOutputItemTypeSchema,
   OpenAPIStoreNodeItemTypeSchema
 } from '../../../core/workflow/node';
+import { WorkflowReferenceSnapshotsSchema } from '../../../../core/workflow/type/io';
 import z from 'zod';
 import { OpenAPIAppTemplateSchema } from '../../../core/app/template/api';
 
@@ -36,7 +37,10 @@ const AdminWorkflowNodeSchema = OpenAPIStoreNodeItemTypeSchema;
 const AdminWorkflowTemplateSchema = z.object({
   nodes: z.array(AdminWorkflowNodeSchema),
   edges: z.array(StoreEdgeItemTypeSchema),
-  chatConfig: OpenAPIAppChatConfigSchema.optional()
+  chatConfig: OpenAPIAppChatConfigSchema.optional(),
+  referenceSnapshots: WorkflowReferenceSnapshotsSchema.optional().meta({
+    description: '已丢失引用来源的历史展示信息，旧模板可以省略'
+  })
 });
 
 const AdminSelectedToolItemSchema = SelectedToolItemTypeSchema.omit({
