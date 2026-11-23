@@ -490,6 +490,101 @@ describe('@fastgpt/dal/db/testing harness reliability & contract guardrails', ()
       })
     ).toThrow(DbConfigurationError);
 
+    // 跳过式或空实现 describeFn / itFn 同样必须在注册期直接抛错拒绝（禁止静默跳过拓扑用例）
+    expect(() =>
+      registerLogTopologyContractSuite({
+        describeFn: () => undefined,
+        itFn: () => undefined,
+        logCollections: [sampleLogCollection],
+        logTables: [sampleLogTable],
+        mongoCollectionName: 'sample_log_records',
+        sqlTableName: 'sample_log_records',
+        writeLogRecord: async () => ({ id: createEntityId() }),
+        readLogRecord: async () => ({})
+      })
+    ).toThrow(/requires a runnable describeFn/);
+
+    expect(() =>
+      registerLogTopologyContractSuite({
+        describeFn: () => ({ type: 'collector', mode: 'skip', tasks: [] }),
+        itFn: () => undefined,
+        logCollections: [sampleLogCollection],
+        logTables: [sampleLogTable],
+        mongoCollectionName: 'sample_log_records',
+        sqlTableName: 'sample_log_records',
+        writeLogRecord: async () => ({ id: createEntityId() }),
+        readLogRecord: async () => ({})
+      })
+    ).toThrow(/refuses skipped\/todo describeFn/);
+
+    expect(() =>
+      registerLogTopologyContractSuite({
+        describeFn: (_name, fn) => {
+          const collector = {
+            type: 'collector',
+            mode: 'run',
+            tasks: [{ mode: 'skip' }, { mode: 'skip' }]
+          };
+          // 模拟 Vitest collector 收集完成后发现 itFn 注册了 skip 用例
+          collector.tasks.length = 0;
+          const runWithCollector = () => fn();
+          runWithCollector();
+          return collector;
+        },
+        itFn: () => undefined,
+        logCollections: [sampleLogCollection],
+        logTables: [sampleLogTable],
+        mongoCollectionName: 'sample_log_records',
+        sqlTableName: 'sample_log_records',
+        writeLogRecord: async () => ({ id: createEntityId() }),
+        readLogRecord: async () => ({})
+      })
+    ).not.toThrow();
+
+    const skippedTaskCollector = {
+      type: 'collector',
+      mode: 'run',
+      tasks: [] as Array<{ mode: string }>
+    };
+    let delayedFactory: (() => void) | undefined;
+    registerLogTopologyContractSuite({
+      describeFn: (_name, fn) => {
+        delayedFactory = fn;
+        return skippedTaskCollector;
+      },
+      itFn: () => {
+        skippedTaskCollector.tasks.push({ mode: 'skip' });
+      },
+      includePGlite: false,
+      requireBothFamilies: false,
+      logCollections: [sampleLogCollection],
+      logTables: [sampleLogTable],
+      mongoCollectionName: 'sample_log_records',
+      sqlTableName: 'sample_log_records',
+      writeLogRecord: async () => ({ id: createEntityId() }),
+      readLogRecord: async () => ({})
+    });
+    expect(() => delayedFactory?.()).toThrow(/refuses skipped\/todo itFn/);
+
+    let noOpItFactory: (() => void) | undefined;
+    const emptyCollector = { type: 'collector', mode: 'run', tasks: [] };
+    registerLogTopologyContractSuite({
+      describeFn: (_name, fn) => {
+        noOpItFactory = fn;
+        return emptyCollector;
+      },
+      itFn: () => undefined,
+      includePGlite: false,
+      requireBothFamilies: false,
+      logCollections: [sampleLogCollection],
+      logTables: [sampleLogTable],
+      mongoCollectionName: 'sample_log_records',
+      sqlTableName: 'sample_log_records',
+      writeLogRecord: async () => ({ id: createEntityId() }),
+      readLogRecord: async () => ({})
+    });
+    expect(() => noOpItFactory?.()).toThrow(/expected 2 runnable test cases/);
+
     expect(typeof verifyMongoLogTopologyIsolation).toBe('function');
     expect(insertedByDb).toBeInstanceOf(WeakMap);
   }, 30_000);
@@ -543,13 +638,21 @@ describe('@fastgpt/dal/db/testing harness reliability & contract guardrails', ()
     ).rejects.toThrow(/Separate Mongo log topology isolation violated/);
   }, 30_000);
 
-  it('guarantees unique indexes are ready before immediate writes on lazy-registered models while respecting schema autoIndex: false', async () => {
+  it('guarantees unique indexes are ready before Model and raw collection writes on lazy models without mutating Schema middleware', async () => {
     const harness = await createMongoTestHarness({ collections: [] });
     try {
       await enableTestMongoIndexReadiness([harness.client]);
       expect(harness.client.get('autoIndex')).toBe(false);
 
-      // 1. 延迟注册带唯一约束的模型并紧接着并发双写，5 轮全部必须严格 1 成功 + 1 撞 E11000（零竞态）
+      // 1. 共用同一个业务 Schema 注册多个 Model，Schema 自身的 middleware hook 不允许被污染增加
+      const sharedSchema = new Schema({ code: { type: String, required: true } });
+      sharedSchema.index({ code: 1 }, { unique: true });
+      harness.client.model('SharedMiddlewarePure_A', sharedSchema);
+      harness.client.model('SharedMiddlewarePure_B', sharedSchema);
+      const findPreHooks = ((sharedSchema as any).s?.hooks?._pres?.get('find') ?? []) as unknown[];
+      expect(findPreHooks).toHaveLength(0);
+
+      // 2. 延迟注册带唯一约束的模型并紧接着 Model.create 并发双写，5 轮全部严格 1 成功 + 1 撞 E11000（零竞态）
       for (let round = 0; round < 5; round += 1) {
         const lazySchema = new Schema({ code: { type: String, required: true } });
         lazySchema.index({ code: 1 }, { unique: true });
@@ -568,7 +671,55 @@ describe('@fastgpt/dal/db/testing harness reliability & contract guardrails', ()
         expect(await LazyModel.countDocuments({ code: 'dup' })).toBe(1);
       }
 
-      // 2. 显式声明 schema 级 autoIndex: false 的模型必须被保留豁免（允许在未手动建索引前写入重复文档）
+      // 3. 精确复现 Codex 延迟建索引窗口：通过 schema.statics 在 model() 注册前注入 80ms 建索引延迟，
+      //    立即调用原生 collection.insertMany / insertOne 仍必须在唯一索引就绪后再写入并稳定触发 E11000 拦截
+      let delayedCreateTriggered = false;
+      const delayedSchema = new Schema({ code: { type: String, required: true } });
+      delayedSchema.index({ code: 1 }, { unique: true });
+      delayedSchema.statics.createIndexes = async function (...args: unknown[]) {
+        delayedCreateTriggered = true;
+        await new Promise((resolve) => setTimeout(resolve, 80));
+        return (harness.client.Model.createIndexes as (...a: unknown[]) => Promise<unknown>).apply(
+          this,
+          args
+        );
+      };
+      const DelayedRawModel = harness.client.model('DelayedRawCollectionManyModel', delayedSchema);
+      await expect(
+        DelayedRawModel.collection.insertMany([{ code: 'dup' }, { code: 'dup' }])
+      ).rejects.toMatchObject({ code: 11000 });
+      expect(delayedCreateTriggered).toBe(true);
+      expect(await DelayedRawModel.countDocuments({ code: 'dup' })).toBe(1);
+
+      let delayedOneTriggered = false;
+      const delayedOneSchema = new Schema({ code: { type: String, required: true } });
+      delayedOneSchema.index({ code: 1 }, { unique: true });
+      delayedOneSchema.statics.createIndexes = async function (...args: unknown[]) {
+        delayedOneTriggered = true;
+        await new Promise((resolve) => setTimeout(resolve, 80));
+        return (harness.client.Model.createIndexes as (...a: unknown[]) => Promise<unknown>).apply(
+          this,
+          args
+        );
+      };
+      const DelayedRawOneModel = harness.client.model(
+        'DelayedRawCollectionOneModel',
+        delayedOneSchema
+      );
+      const rawOutcomes = await Promise.allSettled([
+        DelayedRawOneModel.collection.insertOne({ code: 'dup' }),
+        DelayedRawOneModel.collection.insertOne({ code: 'dup' })
+      ]);
+      expect(delayedOneTriggered).toBe(true);
+      expect(rawOutcomes.filter((o) => o.status === 'fulfilled')).toHaveLength(1);
+      const rawRejected = rawOutcomes.filter(
+        (o) => o.status === 'rejected'
+      ) as PromiseRejectedResult[];
+      expect(rawRejected).toHaveLength(1);
+      expect((rawRejected[0].reason as { code?: number })?.code).toBe(11000);
+      expect(await DelayedRawOneModel.countDocuments({ code: 'dup' })).toBe(1);
+
+      // 4. 显式声明 schema 级 autoIndex: false 的模型必须被保留豁免（Model 与原生 collection 均允许未建索引双写）
       const optedOutSchema = new Schema(
         { code: { type: String, required: true } },
         { autoIndex: false }
@@ -577,7 +728,7 @@ describe('@fastgpt/dal/db/testing harness reliability & contract guardrails', ()
       const OptedOutModel = harness.client.model('OptedOutLazyModel', optedOutSchema);
 
       await OptedOutModel.create({ code: 'dup' });
-      await OptedOutModel.create({ code: 'dup' });
+      await OptedOutModel.collection.insertMany([{ code: 'dup' }]);
       expect(await OptedOutModel.countDocuments({ code: 'dup' })).toBe(2);
     } finally {
       disableTestMongoIndexReadiness([harness.client]);

@@ -1100,8 +1100,8 @@ export type LogTopologyVerifyCallbacks = {
 };
 
 export type RegisterLogTopologyContractSuiteParams = LogTopologyVerifyCallbacks & {
-  describeFn: (name: string, fn: () => void) => void;
-  itFn: (name: string, fn: () => Promise<void>, timeout?: number) => void;
+  describeFn: (name: string, fn: () => void) => unknown;
+  itFn: (name: string, fn: () => Promise<void>, timeout?: number) => unknown;
   collections?: readonly MongoCollectionDefinition<any>[];
   logCollections: readonly MongoCollectionDefinition<any>[];
   tables?: readonly SqlTableDefinition[];
@@ -1312,11 +1312,87 @@ export const verifySqlLogTopologyIsolation = async ({
   }
 };
 
+type VitestTaskLike = {
+  mode?: unknown;
+  skip?: unknown;
+};
+
+type VitestCollectorLike = {
+  type?: unknown;
+  mode?: unknown;
+  skip?: unknown;
+  tasks?: VitestTaskLike[];
+};
+
+const isSkippedOrTodoMode = (entry: { mode?: unknown; skip?: unknown } | undefined): boolean =>
+  entry?.mode === 'skip' || entry?.mode === 'todo' || entry?.skip === true;
+
+const registerRunnableTopologySuite = ({
+  describeFn,
+  itFn,
+  suiteTitle,
+  expectedCases,
+  register
+}: {
+  describeFn: (name: string, fn: () => void) => unknown;
+  itFn: (name: string, fn: () => Promise<void>, timeout?: number) => unknown;
+  suiteTitle: string;
+  expectedCases: number;
+  register: () => void;
+}): void => {
+  if (typeof describeFn !== 'function' || typeof itFn !== 'function') {
+    throw new DbConfigurationError(
+      'registerLogTopologyContractSuite requires runnable describeFn and itFn functions'
+    );
+  }
+
+  let factoryExecuted = false;
+  let collectorRef: VitestCollectorLike | undefined;
+
+  const returned = describeFn(suiteTitle, () => {
+    factoryExecuted = true;
+    const tasksBefore = Array.isArray(collectorRef?.tasks) ? collectorRef.tasks.length : undefined;
+
+    register();
+
+    // Vitest 在 collect() 阶段执行 suite 回调：核对 itFn 真实追加了全部可执行用例且无 skip/todo。
+    if (Array.isArray(collectorRef?.tasks)) {
+      const addedTasks = collectorRef.tasks.slice(tasksBefore ?? 0);
+      if (addedTasks.length < expectedCases) {
+        throw new DbConfigurationError(
+          `registerLogTopologyContractSuite expected ${expectedCases} runnable test cases in "${suiteTitle}", but itFn registered ${addedTasks.length}`
+        );
+      }
+      const badTask = addedTasks.find((task) => isSkippedOrTodoMode(task));
+      if (badTask !== undefined) {
+        throw new DbConfigurationError(
+          `registerLogTopologyContractSuite refuses skipped/todo itFn in "${suiteTitle}" (mode="${String(badTask.mode ?? 'skip')}")`
+        );
+      }
+    }
+  });
+
+  if (returned !== null && typeof returned === 'object') {
+    collectorRef = returned as VitestCollectorLike;
+  }
+
+  if (isSkippedOrTodoMode(collectorRef)) {
+    throw new DbConfigurationError(
+      `registerLogTopologyContractSuite refuses skipped/todo describeFn for "${suiteTitle}" (mode="${String(collectorRef?.mode ?? 'skip')}")`
+    );
+  }
+  if (collectorRef?.type !== 'collector' && !factoryExecuted) {
+    throw new DbConfigurationError(
+      `registerLogTopologyContractSuite requires a runnable describeFn that executes suite registration for "${suiteTitle}"`
+    );
+  }
+};
+
 /**
  * 声明可复用的日志域双态（`shared` / `separate`）物理隔离标准契约套件。
  *
  * 强制验证写入/读回与物理落库位置，杜绝测试中仅断言 `expect(harness.logDb).toBeDefined()`
- * 导致日志仓储误写主库却仍全绿的假阳性漏洞。
+ * 或传入跳过式 `describe.skip` / `it.skip` 导致日志仓储误写主库却仍全绿的假阳性漏洞。
  */
 export const registerLogTopologyContractSuite = ({
   describeFn,
@@ -1347,134 +1423,135 @@ export const registerLogTopologyContractSuite = ({
   }
 
   if (includeMongo) {
-    describeFn('[Log Topology: MongoDB (shared + separate)]', () => {
-      itFn(
-        'routes log reads/writes through main physical DB in shared mode',
-        async () => {
-          await verifyMongoLogTopologyIsolation({
-            logMode: 'shared',
-            collections,
-            logCollections,
-            writeLogRecord,
-            readLogRecord,
-            mongoCollectionName,
-            idField
-          });
-        },
-        timeoutMs
-      );
-      itFn(
-        'isolates log reads/writes into separate log physical DB without touching main DB',
-        async () => {
-          await verifyMongoLogTopologyIsolation({
-            logMode: 'separate',
-            collections,
-            logCollections,
-            writeLogRecord,
-            readLogRecord,
-            mongoCollectionName,
-            idField
-          });
-        },
-        timeoutMs
-      );
+    registerRunnableTopologySuite({
+      describeFn,
+      itFn,
+      suiteTitle: '[Log Topology: MongoDB (shared + separate)]',
+      expectedCases: 2,
+      register: () => {
+        itFn(
+          'routes log reads/writes through main physical DB in shared mode',
+          async () => {
+            await verifyMongoLogTopologyIsolation({
+              logMode: 'shared',
+              collections,
+              logCollections,
+              writeLogRecord,
+              readLogRecord,
+              mongoCollectionName,
+              idField
+            });
+          },
+          timeoutMs
+        );
+        itFn(
+          'isolates log reads/writes into separate log physical DB without touching main DB',
+          async () => {
+            await verifyMongoLogTopologyIsolation({
+              logMode: 'separate',
+              collections,
+              logCollections,
+              writeLogRecord,
+              readLogRecord,
+              mongoCollectionName,
+              idField
+            });
+          },
+          timeoutMs
+        );
+      }
     });
   }
 
   if (includePGlite) {
-    describeFn('[Log Topology: SQL PGlite (shared + separate)]', () => {
-      itFn(
-        'routes log reads/writes through main physical DB in shared mode',
-        async () => {
-          await verifySqlLogTopologyIsolation({
-            logMode: 'shared',
-            tables,
-            logTables,
-            writeLogRecord,
-            readLogRecord,
-            sqlTableName,
-            idField
-          });
-        },
-        timeoutMs
-      );
-      itFn(
-        'isolates log reads/writes into separate log physical DB without touching main DB',
-        async () => {
-          await verifySqlLogTopologyIsolation({
-            logMode: 'separate',
-            tables,
-            logTables,
-            writeLogRecord,
-            readLogRecord,
-            sqlTableName,
-            idField
-          });
-        },
-        timeoutMs
-      );
+    registerRunnableTopologySuite({
+      describeFn,
+      itFn,
+      suiteTitle: '[Log Topology: SQL PGlite (shared + separate)]',
+      expectedCases: 2,
+      register: () => {
+        itFn(
+          'routes log reads/writes through main physical DB in shared mode',
+          async () => {
+            await verifySqlLogTopologyIsolation({
+              logMode: 'shared',
+              tables,
+              logTables,
+              writeLogRecord,
+              readLogRecord,
+              sqlTableName,
+              idField
+            });
+          },
+          timeoutMs
+        );
+        itFn(
+          'isolates log reads/writes into separate log physical DB without touching main DB',
+          async () => {
+            await verifySqlLogTopologyIsolation({
+              logMode: 'separate',
+              tables,
+              logTables,
+              writeLogRecord,
+              readLogRecord,
+              sqlTableName,
+              idField
+            });
+          },
+          timeoutMs
+        );
+      }
     });
   }
+};
+
+type SavedCollectionMethodDescriptor = {
+  key: PropertyKey;
+  hadOwn: boolean;
+  descriptor?: PropertyDescriptor;
 };
 
 type TestMongoIndexReadinessState = {
   readyModels: WeakSet<Model<any>>;
   inFlight: WeakMap<Model<any>, Promise<void>>;
+  wrappedCollections: Map<object, SavedCollectionMethodDescriptor[]>;
   originalModelFn: Mongoose['model'];
 };
 
 const testReadinessStates = new WeakMap<Mongoose, TestMongoIndexReadinessState>();
-const barrierInstalledSchemas = new WeakSet<object>();
-const barrierWrappedBulkWriteModels = new WeakSet<Model<any>>();
-const TEST_MONGO_INDEX_BARRIER_OPS: ReadonlyArray<string | RegExp> = [
-  'save',
+
+// 仅在底层 model.collection 执行边界挂接就绪屏障：绝不改动业务 Schema middleware，同时覆盖 Model CRUD 与原生 collection 写入。
+const TEST_MONGO_COLLECTION_ASYNC_BARRIER_METHODS = [
+  'insertOne',
   'insertMany',
-  /^update/,
+  'updateOne',
+  'updateMany',
   'replaceOne',
-  /^find/,
-  /^delete/,
-  'aggregate',
+  'findOneAndUpdate',
+  'findOneAndReplace',
+  'findOneAndDelete',
+  'bulkWrite',
+  'findOne',
   'countDocuments',
-  'distinct'
+  'distinct',
+  'deleteOne',
+  'deleteMany'
+] as const;
+
+const TEST_MONGO_COLLECTION_CURSOR_BARRIER_METHODS = ['find', 'aggregate'] as const;
+
+const TEST_MONGO_CURSOR_CONSUME_METHODS: readonly PropertyKey[] = [
+  'toArray',
+  'next',
+  'hasNext',
+  'tryNext',
+  'forEach',
+  'count',
+  Symbol.asyncIterator
 ];
 
 const dedupeMongoClients = (clients: readonly (Mongoose | undefined)[]): Mongoose[] =>
   Array.from(new Set(clients.filter((client): client is Mongoose => client !== undefined)));
-
-const resolveHookModel = (context: unknown): Model<any> | undefined => {
-  if (
-    typeof context === 'function' &&
-    typeof (context as { createIndexes?: unknown }).createIndexes === 'function'
-  ) {
-    return context as Model<any>;
-  }
-  if (context !== null && typeof context === 'object') {
-    const obj = context as {
-      _model?: unknown;
-      model?: unknown;
-      constructor?: unknown;
-    };
-    if (
-      typeof obj._model === 'function' &&
-      typeof (obj._model as { createIndexes?: unknown }).createIndexes === 'function'
-    ) {
-      return obj._model as Model<any>;
-    }
-    if (
-      typeof obj.model === 'function' &&
-      typeof (obj.model as { createIndexes?: unknown }).createIndexes === 'function'
-    ) {
-      return obj.model as Model<any>;
-    }
-    if (
-      typeof obj.constructor === 'function' &&
-      typeof (obj.constructor as { createIndexes?: unknown }).createIndexes === 'function'
-    ) {
-      return obj.constructor as Model<any>;
-    }
-  }
-  return undefined;
-};
 
 const ensureModelIndexesReady = ({
   client,
@@ -1513,51 +1590,94 @@ const ensureModelIndexesReady = ({
   return task;
 };
 
-const installLazyModelBarrierOnSchema = (schema: unknown): void => {
-  if (schema === null || typeof schema !== 'object') {
-    return;
-  }
-  const candidate = schema as {
-    get?: (key: string) => unknown;
-    pre?: (hook: string | RegExp, fn: (this: unknown, next: (err?: Error) => void) => void) => void;
-  };
-  if (typeof candidate.get !== 'function' || typeof candidate.pre !== 'function') {
-    return;
-  }
-  if (candidate.get('autoIndex') === false) {
-    return;
-  }
-  if (barrierInstalledSchemas.has(schema)) {
-    return;
-  }
-  barrierInstalledSchemas.add(schema);
-
-  for (const op of TEST_MONGO_INDEX_BARRIER_OPS) {
-    candidate.pre(op, function (this: unknown, next: (err?: Error) => void) {
-      const model = resolveHookModel(this);
-      const client = (model?.db as { base?: Mongoose } | undefined)?.base;
-      const state = client !== undefined ? testReadinessStates.get(client) : undefined;
-      if (
-        state === undefined ||
-        model === undefined ||
-        state.readyModels.has(model) ||
-        model.schema.get('autoIndex') === false ||
-        client?.connection.readyState !== 1
-      ) {
-        next();
-        return;
+const invokeMethodAfterReady = ({
+  receiver,
+  method,
+  args,
+  waitReady
+}: {
+  receiver: unknown;
+  method: (...a: unknown[]) => unknown;
+  args: unknown[];
+  waitReady: () => Promise<void>;
+}): unknown => {
+  const lastArg = args[args.length - 1];
+  if (typeof lastArg === 'function') {
+    void waitReady().then(
+      () => {
+        method.apply(receiver, args);
+      },
+      (error) => {
+        (lastArg as (err: unknown) => void)(error);
       }
+    );
+    return undefined;
+  }
+  return waitReady().then(() => method.apply(receiver, args));
+};
 
-      // 延迟注册模型首次执行 CRUD 前等待同一份 createIndexes() 期约完成，消除唯一键并发写入竞态。
-      void ensureModelIndexesReady({ client, state, model }).then(
-        () => next(),
-        (error: Error) => next(error)
-      );
-    });
+const createReadyAsyncIterator = async function* ({
+  receiver,
+  method,
+  args,
+  waitReady
+}: {
+  receiver: unknown;
+  method: (...a: unknown[]) => AsyncIterableIterator<unknown>;
+  args: unknown[];
+  waitReady: () => Promise<void>;
+}) {
+  await waitReady();
+  const innerIter = method.apply(receiver, args);
+  for await (const doc of innerIter) {
+    yield doc;
   }
 };
 
-const wrapModelBulkWrite = ({
+const wrapCursorForTestReadiness = ({
+  cursor,
+  waitReady
+}: {
+  cursor: unknown;
+  waitReady: () => Promise<void>;
+}): unknown => {
+  if (cursor === null || typeof cursor !== 'object') {
+    return cursor;
+  }
+  const target = cursor as Record<PropertyKey, unknown>;
+
+  for (const consumeMethod of TEST_MONGO_CURSOR_CONSUME_METHODS) {
+    const originalConsume = target[consumeMethod];
+    if (typeof originalConsume !== 'function') {
+      continue;
+    }
+
+    if (consumeMethod === Symbol.asyncIterator) {
+      target[consumeMethod] = function (this: unknown, ...args: unknown[]) {
+        return createReadyAsyncIterator({
+          receiver: this,
+          method: originalConsume as (...a: unknown[]) => AsyncIterableIterator<unknown>,
+          args,
+          waitReady
+        });
+      };
+      continue;
+    }
+
+    target[consumeMethod] = function (this: unknown, ...args: unknown[]) {
+      return invokeMethodAfterReady({
+        receiver: this,
+        method: originalConsume as (...a: unknown[]) => unknown,
+        args,
+        waitReady
+      });
+    };
+  }
+
+  return cursor;
+};
+
+const wrapModelCollectionForTestReadiness = ({
   client,
   state,
   model
@@ -1566,18 +1686,95 @@ const wrapModelBulkWrite = ({
   state: TestMongoIndexReadinessState;
   model: Model<any>;
 }): void => {
-  if (typeof model.bulkWrite !== 'function' || barrierWrappedBulkWriteModels.has(model)) {
+  if (model.schema.get('autoIndex') === false) {
     return;
   }
-  barrierWrappedBulkWriteModels.add(model);
+  const collection = model.collection as unknown as Record<PropertyKey, unknown> | undefined;
+  if (
+    collection === undefined ||
+    collection === null ||
+    typeof collection !== 'object' ||
+    state.wrappedCollections.has(collection)
+  ) {
+    return;
+  }
 
-  const originalBulkWrite = model.bulkWrite.bind(model);
-  model.bulkWrite = (async (...args: Parameters<Model<any>['bulkWrite']>) => {
-    if (testReadinessStates.get(client) === state && !state.readyModels.has(model)) {
-      await ensureModelIndexesReady({ client, state, model });
+  const savedDescriptors: SavedCollectionMethodDescriptor[] = [];
+  const isFastPathReady = () =>
+    testReadinessStates.get(client) !== state ||
+    state.readyModels.has(model) ||
+    model.schema.get('autoIndex') === false ||
+    client.connection.readyState !== 1;
+
+  const waitReady = () => ensureModelIndexesReady({ client, state, model });
+
+  for (const methodName of TEST_MONGO_COLLECTION_ASYNC_BARRIER_METHODS) {
+    const original = collection[methodName];
+    if (typeof original !== 'function') {
+      continue;
     }
-    return originalBulkWrite(...args);
-  }) as Model<any>['bulkWrite'];
+
+    const hadOwn = Object.prototype.hasOwnProperty.call(collection, methodName);
+    savedDescriptors.push({
+      key: methodName,
+      hadOwn,
+      descriptor: hadOwn ? Object.getOwnPropertyDescriptor(collection, methodName) : undefined
+    });
+
+    collection[methodName] = function (this: unknown, ...args: unknown[]) {
+      if (isFastPathReady()) {
+        return (original as (...a: unknown[]) => unknown).apply(this, args);
+      }
+
+      return invokeMethodAfterReady({
+        receiver: this,
+        method: original as (...a: unknown[]) => unknown,
+        args,
+        waitReady
+      });
+    };
+  }
+
+  for (const methodName of TEST_MONGO_COLLECTION_CURSOR_BARRIER_METHODS) {
+    const original = collection[methodName];
+    if (typeof original !== 'function') {
+      continue;
+    }
+
+    const hadOwn = Object.prototype.hasOwnProperty.call(collection, methodName);
+    savedDescriptors.push({
+      key: methodName,
+      hadOwn,
+      descriptor: hadOwn ? Object.getOwnPropertyDescriptor(collection, methodName) : undefined
+    });
+
+    collection[methodName] = function (this: unknown, ...args: unknown[]) {
+      if (isFastPathReady()) {
+        return (original as (...a: unknown[]) => unknown).apply(this, args);
+      }
+
+      if (typeof args[args.length - 1] === 'function') {
+        return invokeMethodAfterReady({
+          receiver: this,
+          method: original as (...a: unknown[]) => unknown,
+          args,
+          waitReady
+        });
+      }
+
+      const result = (original as (...a: unknown[]) => unknown).apply(this, args);
+      if (
+        result !== null &&
+        typeof result === 'object' &&
+        typeof (result as PromiseLike<unknown>).then === 'function'
+      ) {
+        return waitReady().then(() => result);
+      }
+      return wrapCursorForTestReadiness({ cursor: result, waitReady });
+    };
+  }
+
+  state.wrappedCollections.set(collection, savedDescriptors);
 };
 
 const wrapClientModelForTestReadiness = ({
@@ -1589,14 +1786,11 @@ const wrapClientModelForTestReadiness = ({
 }): void => {
   const originalModelFn = state.originalModelFn;
   (client as { model: Mongoose['model'] }).model = function (this: Mongoose, ...args: unknown[]) {
-    const schemaArg = args[1];
-    installLazyModelBarrierOnSchema(schemaArg);
-
     const model = (originalModelFn as (...innerArgs: unknown[]) => Model<any>).apply(this, args);
     if (model !== undefined && model.schema?.get('autoIndex') !== false) {
-      wrapModelBulkWrite({ client, state, model });
+      wrapModelCollectionForTestReadiness({ client, state, model });
       if (client.connection.readyState === 1) {
-        // 立刻触发建索引并把 Promise 收敛进 state.inFlight，首次操作将与它复用同一构建期约。
+        // 立刻触发建索引并把 Promise 收敛进 state.inFlight，后续 Mongoose 与原生 collection 操作共用同一期约。
         void ensureModelIndexesReady({ client, state, model }).catch(() => undefined);
       }
     }
@@ -1627,6 +1821,7 @@ export const ensureTestMongoIndexes = async (
         continue;
       }
       if (activeState !== undefined) {
+        wrapModelCollectionForTestReadiness({ client, state: activeState, model });
         tasks.push(ensureModelIndexesReady({ client, state: activeState, model }));
       } else {
         tasks.push(model.createIndexes().then(() => undefined));
@@ -1643,7 +1838,8 @@ export const ensureTestMongoIndexes = async (
  * 启用共享的测试态 Mongo 索引就绪契约（主仓、Pro 与集成测试装配层统一入口）：
  * - 显式关闭 Mongoose 连接级 `autoIndex`（避免后台无等待异步建索引造成唯一键竞态）；
  * - 立即为所有已加载模型执行并等待 `createIndexes()`；
- * - 拦截 `client.model(...)` 为用例内延迟注册的模型挂入首次操作前就绪屏障（已完成模型同步零开销放行）。
+ * - 拦截 `client.model(...)` 为延迟注册的模型底层 `model.collection` 挂入就绪屏障，
+ *   在不修改任何业务 Schema middleware 的前提下同时覆盖 Mongoose Model CRUD 与原生 `Model.collection` 写入。
  */
 export const enableTestMongoIndexReadiness = async (
   clients: readonly (Mongoose | undefined)[]
@@ -1659,16 +1855,14 @@ export const enableTestMongoIndexReadiness = async (
     const state: TestMongoIndexReadinessState = {
       readyModels: new WeakSet<Model<any>>(),
       inFlight: new WeakMap<Model<any>, Promise<void>>(),
+      wrappedCollections: new Map(),
       originalModelFn: client.model
     };
     testReadinessStates.set(client, state);
     wrapClientModelForTestReadiness({ client, state });
 
     for (const model of Object.values(client.models)) {
-      if (model.schema.get('autoIndex') !== false) {
-        installLazyModelBarrierOnSchema(model.schema);
-        wrapModelBulkWrite({ client, state, model });
-      }
+      wrapModelCollectionForTestReadiness({ client, state, model });
     }
   }
 
@@ -1676,7 +1870,7 @@ export const enableTestMongoIndexReadiness = async (
 };
 
 /**
- * 清理并恢复测试客户端上的 `client.model` 拦截与状态缓存（通常在 `afterAll` 断开连接前调用）。
+ * 清理并恢复测试客户端上的 `client.model` 与 `model.collection` 拦截及状态缓存（通常在 `afterAll` 断开连接前调用）。
  */
 export const disableTestMongoIndexReadiness = (
   clients: readonly (Mongoose | undefined)[]
@@ -1686,6 +1880,19 @@ export const disableTestMongoIndexReadiness = (
     if (state === undefined) {
       continue;
     }
+
+    for (const [collection, savedDescriptors] of state.wrappedCollections) {
+      const target = collection as Record<PropertyKey, unknown>;
+      for (const entry of savedDescriptors) {
+        if (entry.hadOwn && entry.descriptor !== undefined) {
+          Object.defineProperty(target, entry.key, entry.descriptor);
+        } else {
+          Reflect.deleteProperty(target, entry.key);
+        }
+      }
+    }
+    state.wrappedCollections.clear();
+
     (client as { model: Mongoose['model'] }).model = state.originalModelFn;
     testReadinessStates.delete(client);
   }

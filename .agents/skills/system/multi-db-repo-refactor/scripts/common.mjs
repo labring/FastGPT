@@ -4910,13 +4910,33 @@ export const analyzeLogDualModeTestCoverage = ({
       }
     }
 
-    // 2. 收集被 describe.skip / describe.todo / it.skip 跳过的区间
+    // 收集直接从 vitest 导入的 describe/suite 与 it/test 标识（绝不接受 .skip / .todo / 空实现）
+    const vitestDescribeAliases = new Set();
+    const vitestItAliases = new Set();
+    for (const [localName, info] of importedAliases) {
+      if (info.specifier !== 'vitest') {
+        continue;
+      }
+      if (info.importedName === 'describe' || info.importedName === 'suite') {
+        vitestDescribeAliases.add(localName);
+      }
+      if (info.importedName === 'it' || info.importedName === 'test') {
+        vitestItAliases.add(localName);
+      }
+    }
+
+    // 2. 收集被 describe.skip / describe.todo / describe.skipIf / describe.runIf / it.skip 跳过的区间
     const skippedSpans = [];
     for (let i = 0; i < tokens.length; i += 1) {
       const tok = tokens[i];
       const prev = i > 0 ? tokens[i - 1] : undefined;
       if (isPunctTok(prev, '.') || isPunctTok(prev, '?.')) continue;
-      if (!isIdentTok(tok, 'describe') && !isIdentTok(tok, 'it') && !isIdentTok(tok, 'test')) {
+      if (
+        !isIdentTok(tok, 'describe') &&
+        !isIdentTok(tok, 'suite') &&
+        !isIdentTok(tok, 'it') &&
+        !isIdentTok(tok, 'test')
+      ) {
         continue;
       }
       let cursor = i + 1;
@@ -4924,9 +4944,20 @@ export const analyzeLogDualModeTestCoverage = ({
       while (isPunctTok(tokens[cursor], '.') && tokens[cursor + 1]?.type === 'ident') {
         const mod = tokens[cursor + 1].value;
         cursor += 2;
-        if (mod === 'skip' || mod === 'todo') {
+        if (mod === 'skip' || mod === 'todo' || mod === 'skipIf' || mod === 'runIf') {
           isSkipped = true;
-        } else if (mod === 'each' && isPunctTok(tokens[cursor], '(') && matchIdx[cursor] !== -1) {
+          if (
+            (mod === 'skipIf' || mod === 'runIf') &&
+            isPunctTok(tokens[cursor], '(') &&
+            matchIdx[cursor] !== -1
+          ) {
+            cursor = matchIdx[cursor] + 1;
+          }
+        } else if (
+          (mod === 'each' || mod === 'for') &&
+          isPunctTok(tokens[cursor], '(') &&
+          matchIdx[cursor] !== -1
+        ) {
           cursor = matchIdx[cursor] + 1;
         }
       }
@@ -5062,6 +5093,8 @@ export const analyzeLogDualModeTestCoverage = ({
       }
 
       for (const reqProp of [
+        'describeFn',
+        'itFn',
         'logCollections',
         'logTables',
         'mongoCollectionName',
@@ -5074,6 +5107,52 @@ export const analyzeLogDualModeTestCoverage = ({
           callReasons.push(`${file.relPath}: ${call.calleeName} missing required option "${reqProp}"`);
         }
       }
+
+      // 强制校验 describeFn 与 itFn 必须是直接从 vitest 导入的未修饰 describe/suite 与 it/test（拒绝 .skip/.todo/空函数/局部变量转发）
+      const checkDirectVitestRunnerIdent = ({ propName, allowedAliases, expectedLabel }) => {
+        const entry = objRes.props.get(propName);
+        if (entry === undefined) {
+          return;
+        }
+        const rawTrimmed = stripTsAssertion(entry.rawValue).trim();
+        const { tokens: runnerToks, matchIdx: runnerMatch } = tokenizeCleanJsTs(rawTrimmed);
+        let lo = 0;
+        let hi = runnerToks.length - 1;
+        while (lo < hi && isPunctTok(runnerToks[lo], '(') && runnerMatch[lo] === hi) {
+          lo += 1;
+          hi -= 1;
+        }
+        if (lo !== hi || runnerToks[lo]?.type !== 'ident') {
+          callReasons.push(
+            `${file.relPath}: ${call.calleeName}.${propName} must be direct un-skipped vitest "${expectedLabel}" (received "${rawTrimmed}")`
+          );
+          return;
+        }
+        const identName = runnerToks[lo].value;
+        const binding = scopeTree.lookupBinding(identName, entry.scopePos);
+        if (binding.found && binding.binding.kind !== 'import') {
+          callReasons.push(
+            `${file.relPath}: ${call.calleeName}.${propName} ("${identName}") is shadowed by local binding; pass direct vitest "${expectedLabel}"`
+          );
+          return;
+        }
+        if (!allowedAliases.has(identName)) {
+          callReasons.push(
+            `${file.relPath}: ${call.calleeName}.${propName} ("${identName}") must be imported from "vitest" as ${expectedLabel}`
+          );
+        }
+      };
+
+      checkDirectVitestRunnerIdent({
+        propName: 'describeFn',
+        allowedAliases: vitestDescribeAliases,
+        expectedLabel: 'describe/suite'
+      });
+      checkDirectVitestRunnerIdent({
+        propName: 'itFn',
+        allowedAliases: vitestItAliases,
+        expectedLabel: 'it/test'
+      });
 
       const writeEntry = objRes.props.get('writeLogRecord');
       const readEntry = objRes.props.get('readLogRecord');

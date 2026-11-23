@@ -1692,6 +1692,164 @@ test('Finding #18: rejects property-existence spoofs on real harnesses and requi
           ]);
           assert.equal(topologyOnlyRes.status, 1);
           assert.match(topologyOnlyRes.stderr, /must invoke registerDualDialectContractSuite/);
+
+          // Skipped describeFn / itFn / local alias / describe.skipIf(...) MUST ALL FAIL (even alongside valid CRUD file)
+          const skippedDescribeCheck = analyzeLogDualModeTestCoverage({
+            domainRepoSymbols: new Set(['AuditLogRepoToken']),
+            testFiles: [
+              { relPath: splitCrudContractRel, raw: fs.readFileSync(splitCrudContractAbs, 'utf8') },
+              {
+                relPath: 'skipped-describe-runner.contract.test.ts',
+                raw: `
+                  import { describe, it } from 'vitest';
+                  import { injectRepo } from '@fastgpt/dal/db/container';
+                  import { registerLogTopologyContractSuite } from '@fastgpt/dal/db/testing';
+                  registerLogTopologyContractSuite({
+                    describeFn: describe.skip,
+                    itFn: it,
+                    logCollections: [logCol],
+                    logTables: [logTable],
+                    mongoCollectionName: 'audit_logs',
+                    sqlTableName: 'audit_logs',
+                    writeLogRecord: async () => injectRepo(AuditLogRepoToken).create({ data: { teamId: '000000000000000000000001' } }),
+                    readLogRecord: async ({ id }) => injectRepo(AuditLogRepoToken).findById({ id, teamId: '000000000000000000000001' })
+                  });
+                `
+              }
+            ]
+          });
+          assert.equal(skippedDescribeCheck.ok, false);
+          assert.match(skippedDescribeCheck.details, /must be direct un-skipped vitest "describe\/suite"/);
+
+          const skippedItCheck = analyzeLogDualModeTestCoverage({
+            domainRepoSymbols: new Set(['AuditLogRepoToken']),
+            testFiles: [
+              { relPath: splitCrudContractRel, raw: fs.readFileSync(splitCrudContractAbs, 'utf8') },
+              {
+                relPath: 'skipped-it-runner.contract.test.ts',
+                raw: `
+                  import { describe, test } from 'vitest';
+                  import { injectRepo } from '@fastgpt/dal/db/container';
+                  import { registerLogTopologyContractSuite } from '@fastgpt/dal/db/testing';
+                  registerLogTopologyContractSuite({
+                    describeFn: describe,
+                    itFn: test.todo,
+                    logCollections: [logCol],
+                    logTables: [logTable],
+                    mongoCollectionName: 'audit_logs',
+                    sqlTableName: 'audit_logs',
+                    writeLogRecord: async () => injectRepo(AuditLogRepoToken).create({ data: { teamId: '000000000000000000000001' } }),
+                    readLogRecord: async ({ id }) => injectRepo(AuditLogRepoToken).findById({ id, teamId: '000000000000000000000001' })
+                  });
+                `
+              }
+            ]
+          });
+          assert.equal(skippedItCheck.ok, false);
+          assert.match(skippedItCheck.details, /must be direct un-skipped vitest "it\/test"/);
+
+          const localAliasRunnerCheck = analyzeLogDualModeTestCoverage({
+            domainRepoSymbols: new Set(['AuditLogRepoToken']),
+            testFiles: [
+              {
+                relPath: 'alias-runner.contract.test.ts',
+                raw: `
+                  import { describe, it } from 'vitest';
+                  import { injectRepo } from '@fastgpt/dal/db/container';
+                  import { registerLogTopologyContractSuite } from '@fastgpt/dal/db/testing';
+                  const skippedDesc = describe.skip;
+                  registerLogTopologyContractSuite({
+                    describeFn: skippedDesc,
+                    itFn: () => undefined,
+                    logCollections: [logCol],
+                    logTables: [logTable],
+                    mongoCollectionName: 'audit_logs',
+                    sqlTableName: 'audit_logs',
+                    writeLogRecord: async () => injectRepo(AuditLogRepoToken).create({ data: { teamId: '000000000000000000000001' } }),
+                    readLogRecord: async ({ id }) => injectRepo(AuditLogRepoToken).findById({ id, teamId: '000000000000000000000001' })
+                  });
+                `
+              }
+            ]
+          });
+          assert.equal(localAliasRunnerCheck.ok, false);
+          assert.match(localAliasRunnerCheck.details, /is shadowed by local binding|must be imported from "vitest"/);
+
+          const skipIfWrapperCheck = analyzeLogDualModeTestCoverage({
+            domainRepoSymbols: new Set(['AuditLogRepoToken']),
+            testFiles: [
+              {
+                relPath: 'skip-if-wrapper.contract.test.ts',
+                raw: `
+                  import { describe, it } from 'vitest';
+                  import { injectRepo } from '@fastgpt/dal/db/container';
+                  import { registerLogTopologyContractSuite } from '@fastgpt/dal/db/testing';
+                  describe.skipIf(true)('conditionally skipped', () => {
+                    registerLogTopologyContractSuite({
+                      describeFn: describe,
+                      itFn: it,
+                      logCollections: [logCol],
+                      logTables: [logTable],
+                      mongoCollectionName: 'audit_logs',
+                      sqlTableName: 'audit_logs',
+                      writeLogRecord: async () => injectRepo(AuditLogRepoToken).create({ data: { teamId: '000000000000000000000001' } }),
+                      readLogRecord: async ({ id }) => injectRepo(AuditLogRepoToken).findById({ id, teamId: '000000000000000000000001' })
+                    });
+                  });
+                `
+              }
+            ]
+          });
+          assert.equal(skipIfWrapperCheck.ok, false);
+          assert.match(skipIfWrapperCheck.details, /inside skipped test block/);
+
+          // CLI end-to-end rejection when combined with valid CRUD contract file
+          fs.writeFileSync(
+            splitDisabledTopologyAbs,
+            `
+              import { describe, it } from 'vitest';
+              import { injectRepo } from '@fastgpt/dal/db/container';
+              import { registerLogTopologyContractSuite } from '@fastgpt/dal/db/testing';
+              import { AuditLogRepoToken } from '../repo';
+
+              registerLogTopologyContractSuite({
+                describeFn: describe.skip,
+                itFn: it,
+                logCollections: [logCol],
+                logTables: [logTable],
+                mongoCollectionName: 'audit_logs',
+                sqlTableName: 'audit_logs',
+                writeLogRecord: async () => {
+                  const created = await injectRepo(AuditLogRepoToken).create({
+                    data: { teamId: '000000000000000000000001' }
+                  });
+                  return { id: created._id };
+                },
+                readLogRecord: async ({ id }) =>
+                  injectRepo(AuditLogRepoToken).findById({
+                    id,
+                    teamId: '000000000000000000000001'
+                  })
+              });
+            `
+          );
+          const splitSkippedDescribeCliRes = runVerify([
+            '--dir',
+            domainRel,
+            '--legacy-schema',
+            legacyRel,
+            '--allow-wip-slice1',
+            '--no-test',
+            '--test',
+            splitCrudContractRel,
+            '--test',
+            splitDisabledTopologyRel
+          ]);
+          assert.equal(splitSkippedDescribeCliRes.status, 1);
+          assert.match(
+            splitSkippedDescribeCliRes.stderr,
+            /must be direct un-skipped vitest "describe\/suite"/
+          );
         } finally {
           fs.rmSync(splitCrudContractAbs, { force: true });
           fs.rmSync(splitTopologyContractAbs, { force: true });
