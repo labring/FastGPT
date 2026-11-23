@@ -1,3 +1,5 @@
+import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { getChatFileTypeByFilename } from '@fastgpt/global/core/chat/file/utils';
 import {
   WechatMessageItemType,
   WechatMessageType,
@@ -13,20 +15,52 @@ export type ParsedMessageGroup = {
   lastMsgId: string;
 };
 
-const hasDownloadUrl = (media?: CDNMedia) => Boolean(media?.encrypt_query_param || media?.full_url);
+export type WechatMediaResource = {
+  media: CDNMedia;
+  imageAesKey?: string;
+  filename?: string;
+  fileType: ChatFileTypeEnum;
+  defaultName: 'image' | 'file' | 'video';
+};
 
-/** 仅保留能够转换为 runtime query 的消息项，避免空 job 进入工作流。 */
-export const isSupportedMessageItem = (item: MessageItem) => {
-  if (item.type === WechatMessageItemType.TEXT) return Boolean(item.text_item?.text);
-  if (item.type === WechatMessageItemType.VOICE) return Boolean(item.voice_item?.text);
-  if (item.type === WechatMessageItemType.IMAGE) return hasDownloadUrl(item.image_item?.media);
-  if (item.type === WechatMessageItemType.FILE) {
-    return Boolean(item.file_item?.media?.aes_key && hasDownloadUrl(item.file_item.media));
+type ParsedWechatItem = { text: string } | WechatMediaResource;
+
+const hasDownloadUrl = (media?: CDNMedia): media is CDNMedia =>
+  Boolean(media?.encrypt_query_param || media?.full_url);
+
+/** 入队与消费共用消息项解析规则，媒体字段始终从声明的消息类型读取。 */
+export const parseWechatMessageItem = (item: MessageItem): ParsedWechatItem | undefined => {
+  switch (item.type) {
+    case WechatMessageItemType.TEXT:
+    case WechatMessageItemType.VOICE: {
+      // 语音当前只使用微信提供的转写文本。
+      const text =
+        item.type === WechatMessageItemType.TEXT ? item.text_item?.text : item.voice_item?.text;
+      return text ? { text } : undefined;
+    }
+    case WechatMessageItemType.IMAGE: {
+      const image = item.image_item;
+      if (!image || !hasDownloadUrl(image.media)) return;
+      return {
+        media: image.media,
+        imageAesKey: image.aeskey,
+        fileType: ChatFileTypeEnum.image,
+        defaultName: 'image'
+      };
+    }
+    case WechatMessageItemType.FILE:
+    case WechatMessageItemType.VIDEO: {
+      const isFile = item.type === WechatMessageItemType.FILE;
+      const resource = isFile ? item.file_item : item.video_item;
+      if (!resource || !resource.media?.aes_key || !hasDownloadUrl(resource.media)) return;
+      return {
+        media: resource.media,
+        filename: resource.file_name,
+        fileType: isFile ? getChatFileTypeByFilename(resource.file_name) : ChatFileTypeEnum.video,
+        defaultName: isFile ? 'file' : 'video'
+      };
+    }
   }
-  if (item.type === WechatMessageItemType.VIDEO) {
-    return Boolean(item.video_item?.media?.aes_key && hasDownloadUrl(item.video_item.media));
-  }
-  return false;
 };
 
 export function groupMessagesByUser(msgs: WeixinMessage[]): ParsedMessageGroup[] {
@@ -38,7 +72,9 @@ export function groupMessagesByUser(msgs: WeixinMessage[]): ParsedMessageGroup[]
     if (msg.message_id === undefined) continue;
     const messageId = msg.message_id;
 
-    const items = (msg.item_list ?? []).filter(isSupportedMessageItem);
+    const items = (msg.item_list ?? []).filter(
+      (item) => parseWechatMessageItem(item) !== undefined
+    );
     if (items.length === 0) continue;
 
     const userId = msg.from_user_id ?? 'unknown';

@@ -1,8 +1,8 @@
 import React from 'react';
-import { Box, Button, Flex, Grid, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
+import { Button, Flex, Grid, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
-import type { WechatAppType, OutLinkEditType } from '@fastgpt/global/support/outLink/type';
+import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { createShareChat, updateShareChat } from '@/web/support/outLink/api';
@@ -19,14 +19,14 @@ const WechatEditModal = ({
   isEdit = false
 }: {
   appId: string;
-  defaultData: OutLinkEditType<WechatAppType>;
+  defaultData: Omit<OutLinkEditType, 'app'>;
   onClose: () => void;
-  onCreate: (shareId: string) => Promise<string | undefined>;
+  onCreate: () => Promise<unknown>;
   onEdit: () => void;
   isEdit?: boolean;
 }) => {
   const { t } = useTranslation();
-  const { register, setValue, handleSubmit } = useForm({
+  const { register, handleSubmit } = useForm({
     defaultValues: defaultData
   });
 
@@ -40,9 +40,8 @@ const WechatEditModal = ({
     {
       errorToast: t('common:create_failed'),
       successToast: t('common:create_success'),
-      onSuccess: async (shareId) => {
-        const _id = await onCreate(shareId);
-        if (_id) setValue('_id', _id);
+      onSuccess: async () => {
+        await onCreate();
         onClose();
       }
     }
