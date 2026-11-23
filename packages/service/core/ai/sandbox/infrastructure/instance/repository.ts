@@ -27,6 +27,32 @@ import {
 
 const stableStatuses = new Set<SandboxInstanceStatusType>(sandboxStableStatusList);
 
+/**
+ * 部署前实现从 provider 文本特征推导出的合成码，不是 provider 原始码。
+ *
+ * 读取时不能把它们当作结构化终止证据。
+ */
+const LEGACY_TEXT_DERIVED_ERROR_CODES: ReadonlySet<string> = new Set([
+  'CONTAINER_FAILED',
+  'INIT_CONTAINER_FAILED',
+  'CONTAINER_EXITED'
+]);
+
+/**
+ * 读取边界归一（唯一的旧记录兼容转换点）。
+ *
+ * 老 operation 记录只有 error 文本、没有 provider 原始 errorCode；这里绝不从文本反推
+ * code，缺失或旧合成码统一归一为 `undefined`，消费方按“未知结果”保持原有隔离窗口。
+ */
+const normalizeSandboxOperationFailure = <T extends SandboxResourceDoc | null | undefined>(
+  resource: T
+): T => {
+  const operation = resource?.operation;
+  const errorCode = operation?.errorCode;
+  if (!errorCode || !LEGACY_TEXT_DERIVED_ERROR_CODES.has(errorCode)) return resource;
+  return { ...resource, operation: { ...operation, errorCode: undefined } } as T;
+};
+
 export type SandboxResourceDoc = Pick<
   SandboxInstanceSchemaType,
   | 'provider'
@@ -391,7 +417,7 @@ export async function findStaleSandboxOperations(params: {
   now?: Date;
 }) {
   const heartbeatFilter = { 'operation.heartbeatAt': { $lte: params.heartbeatBefore } };
-  return MongoSandboxInstance.find({
+  const resources = await MongoSandboxInstance.find({
     status: { $in: params.statuses },
     $or: [
       heartbeatFilter,
@@ -399,6 +425,7 @@ export async function findStaleSandboxOperations(params: {
       ...(params.retryPhases?.length ? [{ 'operation.phase': { $in: params.retryPhases } }] : [])
     ]
   }).lean<SandboxResourceDoc[]>();
+  return resources.map((resource) => normalizeSandboxOperationFailure(resource));
 }
 
 export async function findSandboxResourcesBySource(params: SandboxSourceParams) {
@@ -412,11 +439,12 @@ export async function findSandboxInstanceBySandboxId(params: {
   sandboxId: string;
   status?: SandboxInstanceStatusType;
 }) {
-  return MongoSandboxInstance.findOne({
+  const resource = await MongoSandboxInstance.findOne({
     ...(params.provider ? { provider: params.provider } : {}),
     sandboxId: params.sandboxId,
     ...(params.status ? { status: params.status } : {})
   }).lean<SandboxResourceDoc | null>();
+  return normalizeSandboxOperationFailure(resource);
 }
 
 export async function findSandboxInstanceBySandboxIdAndSource(params: {
@@ -426,13 +454,14 @@ export async function findSandboxInstanceBySandboxIdAndSource(params: {
   sourceId: string;
   status?: SandboxInstanceStatusType;
 }) {
-  return MongoSandboxInstance.findOne({
+  const resource = await MongoSandboxInstance.findOne({
     ...(params.provider ? { provider: params.provider } : {}),
     sandboxId: params.sandboxId,
     sourceType: params.sourceType,
     sourceId: params.sourceId,
     ...(params.status ? { status: params.status } : {})
   }).lean<SandboxResourceDoc | null>();
+  return normalizeSandboxOperationFailure(resource);
 }
 
 export async function existsSandboxInstanceBySandboxId(params: {
@@ -449,13 +478,14 @@ export async function findSandboxInstanceBySource(params: {
   userId: string;
   status?: SandboxInstanceStatusType;
 }) {
-  return MongoSandboxInstance.findOne({
+  const resource = await MongoSandboxInstance.findOne({
     ...(params.provider ? { provider: params.provider } : {}),
     sourceType: params.sourceType,
     sourceId: params.sourceId,
     userId: params.userId,
     ...(params.status ? { status: params.status } : {})
   }).lean<SandboxResourceDoc | null>();
+  return normalizeSandboxOperationFailure(resource);
 }
 
 /**

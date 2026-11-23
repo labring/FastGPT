@@ -3,7 +3,15 @@ import { Box, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
-const ChatErrorCard = ({ title, message }: { title: string; message: string }) => {
+const ChatErrorCard = ({
+  title,
+  message,
+  secondary
+}: {
+  title: string;
+  message: string;
+  secondary?: string;
+}) => {
   return (
     <Box
       w={'100%'}
@@ -36,6 +44,11 @@ const ChatErrorCard = ({ title, message }: { title: string; message: string }) =
       <Box mt={'4px'} pl={'26px'} color={'myGray.500'} fontSize={'13px'} lineHeight={'20px'}>
         {message}
       </Box>
+      {secondary && (
+        <Box mt={'2px'} pl={'26px'} color={'myGray.400'} fontSize={'12px'} lineHeight={'18px'}>
+          {secondary}
+        </Box>
+      )}
     </Box>
   );
 };

@@ -56,8 +56,9 @@ export class ConnectionError extends SandboxException {
  * 会丢失证据。该异常把终止码与原始详情显式带到适配器边界之外，下游可沿 cause
  * 链读取，用于判定“结果已确定”而不是“结果未知”。
  *
- * `code`/`detail` 是稳定的结构化字段；`options.message` 可覆盖对外文案，
- * 让适配器保持历史错误 message 不变。
+ * `code`/`detail` 是稳定的结构化字段；对外 `message` 默认使用可直接展示的
+ * `displayMessage`（provider 原始原因），不再退化成 `Failed to create sandbox` 这类
+ * 通用包装文案。
  */
 export class SandboxTerminationError extends SandboxException {
   constructor(
@@ -70,6 +71,173 @@ export class SandboxTerminationError extends SandboxException {
     Object.setPrototypeOf(this, SandboxTerminationError.prototype);
   }
 }
+
+/**
+ * provider 边界的沙箱失败契约（唯一真源）。
+ *
+ * - `code`：provider 原始码，例如 `KUBERNETES::POD_FAILED`；
+ * - `terminated`：远端是否已明确结束（只有终止码表命中才为 true）；
+ * - `displayMessage`：可直接展示的单行原因，来自 provider message，已去控制字符/换行。
+ */
+export type SandboxFailureDetail = {
+  code: string;
+  terminated: boolean;
+  displayMessage: string;
+};
+
+/**
+ * provider 原始终止码表。
+ *
+ * 这是全局唯一一份终止码表：service / app 只能消费 `getSandboxFailureDetail` 的结果，
+ * 不得再维护文本特征或复制本表。超时（如 `KUBERNETES::POD_READY_TIMEOUT`）和网络错误
+ * 不在表中，必须按“结果未知”处理。
+ *
+ * 后三项是早期实现从文本特征命名的兼容码，保留用于读取部署前已落库的记录。
+ */
+export const SANDBOX_TERMINAL_CODES: readonly string[] = [
+  'KUBERNETES::POD_FAILED',
+  'KUBERNETES::QUOTA_EXCEEDED',
+  'CONTAINER_FAILED',
+  'INIT_CONTAINER_FAILED',
+  'CONTAINER_EXITED'
+];
+
+/** 适配器自身/传输层错误码，不代表 provider 终止原因，选码时排在 provider 码之后。 */
+const TRANSPORT_ERROR_CODES: ReadonlySet<string> = new Set([
+  'INTERNAL_UNKNOWN_ERROR',
+  'CONNECTION_ERROR',
+  'TIMEOUT',
+  'READY_TIMEOUT',
+  'UNHEALTHY',
+  'INVALID_ARGUMENT',
+  'UNEXPECTED_RESPONSE',
+  'FEATURE_NOT_SUPPORTED',
+  'SANDBOX_NOT_FOUND',
+  'PERMISSION_DENIED',
+  'FILE_NOT_FOUND',
+  'FILE_ALREADY_EXISTS',
+  'COMMAND_FAILED',
+  'INVALID_STATE'
+]);
+
+const MAX_DISPLAY_MESSAGE_LENGTH = 500;
+
+/** 通用包装文案没有诊断价值，只有在没有更具体原因时才兜底展示。 */
+const GENERIC_FAILURE_MESSAGES: ReadonlySet<string> = new Set([
+  'Failed to create sandbox',
+  'Sandbox create failed',
+  'Sandbox error',
+  'unknown error',
+  'Unknown error'
+]);
+
+/** 把 provider message 收敛成可直接展示的单行文本：去控制字符/换行、脱敏、限长。 */
+const sanitizeDisplayMessage = (value: string | undefined): string | undefined => {
+  if (!value) return undefined;
+  const text = value
+    .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]+/gi, 'Bearer ***')
+    .replace(/\b(api[_-]?key|token|authorization)\s*[:=]\s*[^\s,;]+/gi, '$1=***')
+    .trim();
+  if (!text) return undefined;
+  return text.length > MAX_DISPLAY_MESSAGE_LENGTH
+    ? `${text.slice(0, MAX_DISPLAY_MESSAGE_LENGTH - 1)}…`
+    : text;
+};
+
+type FailureEvidence = { codes: string[]; texts: string[] };
+
+/**
+ * 沿 cause/AggregateError/opensandbox `error` 字段收集结构化 code 与原始文案。
+ *
+ * 只从结构化字段读 code（`code`/`reason`），绝不从 message 文本反推码；message 仅作为
+ * `displayMessage` 的候选来源。
+ */
+const collectFailureEvidence = (
+  value: unknown,
+  evidence: FailureEvidence,
+  seen = new Set<unknown>(),
+  depth = 0
+): void => {
+  if (depth > 8 || value === null || value === undefined) return;
+  if (typeof value === 'string') {
+    evidence.texts.push(value);
+    return;
+  }
+  if (typeof value !== 'object' || seen.has(value)) return;
+  seen.add(value);
+
+  const record = value as Record<string, unknown>;
+  if (typeof record.code === 'string') evidence.codes.push(record.code);
+  // provider status 的 reason 是 machine-readable code；不是终止码时自然会被判为未知。
+  if (typeof record.reason === 'string') evidence.codes.push(record.reason);
+  for (const key of ['detail', 'errorText', 'system_error_text']) {
+    if (typeof record[key] === 'string') evidence.texts.push(record[key] as string);
+  }
+
+  // provider 的结构化 payload 优先于外层包装文案。
+  collectFailureEvidence(record.error, evidence, seen, depth + 1);
+  collectFailureEvidence(record.status, evidence, seen, depth + 1);
+  if (Array.isArray(record.errors)) {
+    for (const nested of record.errors) collectFailureEvidence(nested, evidence, seen, depth + 1);
+  }
+  collectFailureEvidence(record.cause, evidence, seen, depth + 1);
+  if (typeof record.message === 'string') evidence.texts.push(record.message);
+};
+
+/**
+ * 终止码优先，其次是 provider 命名空间码，最后才是非传输层码。
+ *
+ * 只有传输层/适配器码时返回 undefined：包装层不能伪装成 provider 结构化证据。
+ */
+const pickFailureCode = (codes: string[]): string | undefined => {
+  const terminal = codes.find((code) => SANDBOX_TERMINAL_CODES.includes(code));
+  if (terminal) return terminal;
+  return (
+    codes.find((code) => code.includes('::') && !TRANSPORT_ERROR_CODES.has(code)) ??
+    codes.find((code) => !TRANSPORT_ERROR_CODES.has(code))
+  );
+};
+
+/** 选取最具体的 provider 文案，并确保展示原因里保留结构化 code。 */
+const pickDisplayMessage = (texts: string[], code: string): string => {
+  const normalized = [
+    ...new Set(texts.map((text) => sanitizeDisplayMessage(text)).filter(Boolean))
+  ] as string[];
+  const specific = normalized.find(
+    (text) =>
+      !GENERIC_FAILURE_MESSAGES.has(text) &&
+      (text.includes(code) ||
+        text.includes('ContainerFailed') ||
+        text.includes('InitContainerFailed') ||
+        text.includes('exited with code'))
+  );
+  const chosen = specific ?? normalized.find((text) => !GENERIC_FAILURE_MESSAGES.has(text));
+  if (!chosen) return code;
+  return chosen.includes(code) ? chosen : `${code}: ${chosen}`;
+};
+
+/**
+ * 读取沙箱失败的结构化契约。
+ *
+ * 沿 cause 链读取 provider 原始 code 与 message；没有结构化 code 时返回 undefined，
+ * 表示“未知结果”，调用方必须保留隔离窗口而不是猜测终止。
+ */
+export const getSandboxFailureDetail = (error: unknown): SandboxFailureDetail | undefined => {
+  if (error === null || error === undefined) return undefined;
+
+  const evidence: FailureEvidence = { codes: [], texts: [] };
+  collectFailureEvidence(error, evidence);
+  const code = pickFailureCode(evidence.codes);
+  if (!code) return undefined;
+
+  return {
+    code,
+    terminated: SANDBOX_TERMINAL_CODES.includes(code),
+    displayMessage: pickDisplayMessage(evidence.texts, code)
+  };
+};
 
 export class FeatureNotSupportedError extends SandboxException {
   constructor(

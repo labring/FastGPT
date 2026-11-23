@@ -15,6 +15,13 @@ import { canResumeSandboxOperation } from '@fastgpt/service/core/ai/sandbox/appl
 import { SANDBOX_OPERATION_ISOLATION_MS } from '@fastgpt/service/core/ai/sandbox/constants';
 import { ConnectionError, SandboxTerminationError } from '@fastgpt-sdk/sandbox-adapter';
 
+/** 只包一层可观测 spy，行为仍委托真实 SDK 契约，用于断言“只判定一次”。 */
+const sdkMocks = vi.hoisted(() => ({ getSandboxFailureDetail: vi.fn() }));
+vi.mock('@fastgpt-sdk/sandbox-adapter', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt-sdk/sandbox-adapter')>();
+  return { ...actual, getSandboxFailureDetail: sdkMocks.getSandboxFailureDetail };
+});
+
 const sandboxId = 'runner-contract-test';
 const lease = { signal: new AbortController().signal, assertValid: vi.fn() };
 const read = () => repository.findSandboxInstanceBySandboxId({ sandboxId });
@@ -44,6 +51,11 @@ beforeAll(async () => {
 });
 beforeEach(async () => {
   vi.restoreAllMocks();
+  const actual = await vi.importActual<typeof import('@fastgpt-sdk/sandbox-adapter')>(
+    '@fastgpt-sdk/sandbox-adapter'
+  );
+  sdkMocks.getSandboxFailureDetail.mockReset();
+  sdkMocks.getSandboxFailureDetail.mockImplementation(actual.getSandboxFailureDetail);
   lease.assertValid.mockReset();
   await MongoSandboxInstance.deleteMany({ sandboxId });
 });
@@ -130,6 +142,8 @@ describe('runSandboxLifecycleOperation', () => {
     expect(failed.operation?.retryAfter).toBeInstanceOf(Date);
     expect(failed.operation!.retryAfter!.getTime() - Date.now()).toBeLessThanOrEqual(1_000);
     expect(canResumeSandboxOperation(failed)).toBe(true);
+    // 只在本层判定一次，不重复遍历 cause 链。
+    expect(sdkMocks.getSandboxFailureDetail).toHaveBeenCalledTimes(1);
   });
 
   it('keeps unknown results in the isolation window without persisting an errorCode', async () => {

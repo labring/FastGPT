@@ -6,6 +6,7 @@ const ensureWorkflowSandboxReadyForUse = createTestWorkflowDispatch(
   ensureWorkflowSandboxReadyForUseWithoutContext
 );
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ConnectionError, SandboxTerminationError } from '@fastgpt-sdk/sandbox-adapter';
 
 const { ensureAppSandboxRuntimeReadyMock, markChatSandboxEnabledMock } = vi.hoisted(() => ({
   ensureAppSandboxRuntimeReadyMock: vi.fn(),
@@ -140,6 +141,37 @@ describe('ensureWorkflowSandboxReadyForUse', () => {
     ]);
     expect(prepareRuntime).toHaveBeenCalledTimes(stage === 'configuration' ? 0 : 1);
     expect(markChatSandboxEnabledMock).not.toHaveBeenCalled();
+  });
+
+  it('reports the provider display reason instead of the generic wrapper text', async () => {
+    // 真实适配器边界：外层是通用 ConnectionError，provider 证据在 cause 链。
+    const error = new ConnectionError(
+      'Failed to create sandbox',
+      'http://opensandbox.local',
+      new SandboxTerminationError(
+        'KUBERNETES::POD_FAILED',
+        'primary reason=ContainerFailed; container sandbox exited with code 127 (pod sample-pod-7f9c)'
+      )
+    );
+    ensureAppSandboxRuntimeReadyMock.mockRejectedValueOnce(error);
+    const workflowStreamResponse = vi.fn();
+
+    await expect(
+      ensureWorkflowSandboxReadyForUse({
+        ...source,
+        workflowStreamResponse,
+        prepareRuntime: async () => undefined
+      })
+    ).rejects.toBe(error);
+
+    const failed = workflowStreamResponse.mock.calls
+      .map(([event]) => event.data)
+      .find((data) => data.phase === 'failed');
+    expect(failed).toMatchObject({ sandboxId, phase: 'failed', step: 'upgrade' });
+    expect(failed?.message).toContain('ContainerFailed');
+    expect(failed?.message).toContain('sample-pod-7f9c');
+    expect(failed?.message).not.toBe('Failed to create sandbox');
+    expect(failed?.message).not.toContain('\n');
   });
 
   it('prepares the runtime without a stream callback', async () => {

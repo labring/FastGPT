@@ -87,6 +87,16 @@ export type ChatSiteItemType = ChatItemObjItemType & {
   time?: Date;
   durationSeconds?: number;
   errorMsg?: string;
+  /**
+   * sandbox failed 事件留下的失败上下文。
+   *
+   * 后续 Agent/ToolCall 节点错误会覆盖 `moduleName`，最终错误卡片必须靠这里保留
+   * 失败环节（step）与 provider 可展示原因（message）。
+   */
+  sandboxError?: {
+    step?: string;
+    message?: string;
+  };
   deleteTime?: Date | null;
   collapseTop?: {
     count: number;

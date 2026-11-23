@@ -25,6 +25,7 @@ import { shouldFilterAiValue } from './AIChatBubble/utils';
 import { getAIChatDisplayGroups } from '../utils/agentAsk';
 import ChatErrorCard from './ChatErrorCard';
 import { shouldShowChatItemInlineError } from '../utils/error';
+import { resolveChatItemErrorContent } from '../utils/sandboxStatus';
 import { toChatAuthApiTarget } from '@/web/core/chat/utils';
 import { ChatBoxContentMaxWidth } from '../constants';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -106,16 +107,15 @@ const ChatItem = (props: Props) => {
   }, [statisticalChatItem.totalQuoteList]);
   const { errorText } = statisticalChatItem;
   const inlineErrorInfo = useMemo(() => {
-    if (!chat.errorMsg && !errorText) return;
-
-    const moduleName = errorText?.moduleName || chat.moduleName;
-    const errorPrefix = t('chat:log.error.error_prefix');
-
-    return {
-      title: moduleName ? `${errorPrefix} - ${t(moduleName)}` : errorPrefix,
-      message: t(errorText?.errorText || chat.errorMsg || 'Unknow error')
-    };
-  }, [chat.errorMsg, chat.moduleName, errorText, t]);
+    return resolveChatItemErrorContent({
+      errorMsg: chat.errorMsg,
+      errorText,
+      moduleName: chat.moduleName,
+      sandboxError: chat.sandboxError,
+      logErrorPrefix: t('chat:log.error.error_prefix'),
+      t
+    });
+  }, [chat.errorMsg, chat.moduleName, chat.sandboxError, errorText, t]);
   const showInlineError = shouldShowChatItemInlineError({
     hasInlineError: !!inlineErrorInfo,
     isChatting,
@@ -255,7 +255,11 @@ const ChatItem = (props: Props) => {
               {/* error message */}
               {showInlineError && inlineErrorInfo && (
                 <Box mt={4}>
-                  <ChatErrorCard title={inlineErrorInfo.title} message={inlineErrorInfo.message} />
+                  <ChatErrorCard
+                    title={inlineErrorInfo.title}
+                    message={inlineErrorInfo.message}
+                    secondary={inlineErrorInfo.secondary}
+                  />
                 </Box>
               )}
               {children}

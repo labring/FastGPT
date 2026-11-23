@@ -1,5 +1,6 @@
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { getSandboxFailureDetail } from '@fastgpt-sdk/sandbox-adapter';
 import { buildSandboxClientQueryFromChatSource } from '../../../ai/sandbox/interface/runtime';
 import { ensureAppSandboxRuntimeReady } from '../../../ai/sandbox/application/runtime/upgrade';
 import { getRunningSandboxId } from '../../../ai/sandbox/utils/id';
@@ -74,8 +75,10 @@ export async function ensureWorkflowSandboxReadyForUse<T>({
     return runtime;
   } catch (error) {
     // 失败原因必须随 failed 事件透出（前端据此展示具体原因与重试入口），再向上抛出中断本轮。
+    // provider 边界已完成结构化取证：优先使用可展示的 provider 原因，而不是通用包装文案。
+    const failure = getSandboxFailureDetail(error);
     reportSandboxPhase('failed', {
-      message: getErrText(error, 'Failed to prepare sandbox runtime'),
+      message: failure?.displayMessage ?? getErrText(error, 'Failed to prepare sandbox runtime'),
       step: currentStep
     });
     throw error;

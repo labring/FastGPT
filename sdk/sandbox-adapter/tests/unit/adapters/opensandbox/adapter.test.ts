@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   Sandbox,
   SandboxApiException,
+  SandboxError,
   SandboxException,
   SandboxManager,
   type SandboxInfo as SdkSandboxInfo,
@@ -199,12 +200,13 @@ describe('OpenSandboxAdapter', () => {
   });
 
   it('preserves provider termination evidence when SDK create fails', async () => {
-    // 复现真实 SDK 形态：通用异常外层，provider 终止原因在 cause 链。
-    const providerCause = new Error(
-      'KUBERNETES::POD_FAILED primary reason=ContainerFailed; container sandbox exited with code 127 (Error)'
-    );
+    // 复现真实 SDK 形态：provider 原始 code/message 在结构化 error 字段，
+    // 外层是通用 SandboxException（message 只有通用包装文案）。
+    const providerMessage =
+      'primary reason=ContainerFailed; container sandbox exited with code 127 (Error)';
+    const providerError = new SandboxError('KUBERNETES::POD_FAILED', providerMessage);
     vi.spyOn(Sandbox, 'create').mockRejectedValueOnce(
-      new SandboxException({ message: 'Sandbox create failed', cause: providerCause })
+      new SandboxException({ message: 'Sandbox create failed', error: providerError })
     );
     const adapter = new OpenSandboxAdapter(CONNECTION, {
       image: { repository: 'node', tag: '20' }
@@ -213,7 +215,8 @@ describe('OpenSandboxAdapter', () => {
     const error = await adapter.create().catch((err: unknown) => err);
 
     expect(error).toBeInstanceOf(SandboxTerminationError);
-    expect((error as SandboxTerminationError).message).toBe('Failed to create sandbox');
+    // 对外文案直接使用 provider 可展示原因，而不是通用包装文案。
+    expect((error as SandboxTerminationError).message).toContain('ContainerFailed');
     expect((error as SandboxTerminationError).code).toBe('KUBERNETES::POD_FAILED');
     expect((error as SandboxTerminationError).detail).toContain(
       'container sandbox exited with code 127'
@@ -241,7 +244,8 @@ describe('OpenSandboxAdapter', () => {
       ...sdkInfo('Error'),
       status: {
         state: 'Error',
-        message: 'KUBERNETES::POD_FAILED; container sandbox exited with code 1'
+        code: 'KUBERNETES::POD_FAILED',
+        message: 'container sandbox exited with code 1'
       }
     } as SdkSandboxInfo;
     mockManager([errorInfo]);
@@ -252,7 +256,7 @@ describe('OpenSandboxAdapter', () => {
     expect(error).toBeInstanceOf(SandboxTerminationError);
     expect((error as SandboxTerminationError).code).toBe('KUBERNETES::POD_FAILED');
     expect((error as SandboxTerminationError).message).toContain(
-      'Sandbox error: KUBERNETES::POD_FAILED'
+      'container sandbox exited with code 1'
     );
   });
 

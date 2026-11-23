@@ -11,7 +11,7 @@ import {
 } from '../../infrastructure/instance/repository';
 import { type SandboxInstanceStatusType, type SandboxStableStatusType } from '../../type';
 import { expectedOperationByStatus, SANDBOX_OPERATION_ISOLATION_MS } from '../../constants';
-import { getSandboxFailureCode, isSettledSandboxFailure } from '../../error';
+import { getSandboxFailureDetail } from '@fastgpt-sdk/sandbox-adapter';
 import { SandboxOperationSettledError, SandboxOperationConflictError } from './error';
 
 type SandboxLifecycleStepContext = {
@@ -134,16 +134,18 @@ async function executeSandboxLifecycle<T>(
   } catch (error) {
     // 失去租约的旧执行者不能标记失败或补偿。未知远端结果保留隔离窗口。
     context.assertValid();
+    // 只判定一次：provider 边界已完成结构化取证，这里仅消费结果。
+    const failure = getSandboxFailureDetail(error);
     await markSandboxOperationFailed({
       resource: claimed,
       operationId: operation.id,
       status: definition.status,
       error: getErrText(error),
-      // 结构化终止码随失败一起落库，恢复入口无需再猜文案。
-      errorCode: getSandboxFailureCode(error),
+      // provider 原始码随失败一起落库；读取侧只按结构化码判定，不再猜文案。
+      errorCode: failure?.code,
       retryAfter: new Date(
         Date.now() +
-          (error instanceof SandboxOperationSettledError || isSettledSandboxFailure(error)
+          (error instanceof SandboxOperationSettledError || failure?.terminated
             ? 0
             : SANDBOX_OPERATION_ISOLATION_MS[operationType])
       )

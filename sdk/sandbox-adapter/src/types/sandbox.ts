@@ -28,6 +28,8 @@ export type SandboxState =
  */
 export type SandboxStatus = {
   state: SandboxState;
+  /** provider 原始失败码（如 `KUBERNETES::POD_FAILED`），只作为结构化证据读取。 */
+  code?: string;
   reason?: string;
   message?: string;
 };
