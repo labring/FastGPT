@@ -1,6 +1,7 @@
 import type {
   ChatCompletionMessageToolCall,
   CompletionFinishReason,
+  LLMCompletionUsage,
   StreamResponseType,
   UnStreamResponseType
 } from '@fastgpt/global/core/ai/llm/type';
@@ -78,4 +79,30 @@ export const isStreamCompletionResponse = (
     response !== null &&
     ('iterator' in response || 'controller' in response)
   );
+};
+
+/**
+ * FastGPT 仅按 OpenAI 兼容的 Chat Completions usage 约定解析缓存用量，普通请求与 Pi SDK 口径一致。
+ * 供应商协议和用量字段由 AIProxy 渠道适配层转换。旧 requestUrl 直连端点需按同一约定返回用量。
+ * cached_tokens 表示缓存读取，AIProxy 输出的 cache_write_tokens 表示缓存创建。
+ * 两个明细创建别名按 AIProxy 规则取较大值，只记录一次创建量。
+ * 缓存读取和创建均包含在总输入内，异常值也不得超过总输入。
+ */
+export const normalizeLLMCacheUsage = (usage: LLMCompletionUsage) => {
+  const safeCount = (value?: number) =>
+    typeof value === 'number' && Number.isFinite(value) ? Math.max(0, value) : 0;
+  const details = usage.prompt_tokens_details;
+  const inputTokens = safeCount(usage.prompt_tokens);
+  const cacheCreationTokens = Math.min(
+    inputTokens,
+    safeCount(
+      usage.cache_creation_tokens ??
+        Math.max(safeCount(details?.cache_creation_tokens), safeCount(details?.cache_write_tokens))
+    )
+  );
+  const cacheReadTokens = Math.min(
+    inputTokens - cacheCreationTokens,
+    safeCount(details?.cache_read_tokens ?? usage.prompt_cache_hit_tokens ?? details?.cached_tokens)
+  );
+  return { cacheReadTokens, cacheCreationTokens };
 };

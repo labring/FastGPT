@@ -35,6 +35,8 @@ type ModelDashboardData = {
   inputTokens: number;
   outputTokens: number;
   totalTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
   totalCost: number;
   avgResponseTime: number;
   avgTtfb: number;
@@ -307,6 +309,11 @@ const ModelDashboard = ({
       const inputTokens = summary.reduce((acc, model) => acc + (model.input_tokens || 0), 0);
       const outputTokens = summary.reduce((acc, model) => acc + (model?.output_tokens || 0), 0);
       const totalTokens = summary.reduce((acc, model) => acc + (model.total_tokens || 0), 0);
+      const cacheReadTokens = summary.reduce((acc, model) => acc + (model.cached_tokens ?? 0), 0);
+      const cacheCreationTokens = summary.reduce(
+        (acc, model) => acc + (model.cache_creation_tokens ?? 0),
+        0
+      );
 
       const successCalls = totalCalls - errorCalls;
       const avgResponseTime = successCalls
@@ -336,7 +343,9 @@ const ModelDashboard = ({
           const { totalPoints } = calculateModelPrice({
             config: modelPricing,
             inputTokens,
-            outputTokens
+            outputTokens,
+            cacheReadTokens: model.cached_tokens,
+            cacheCreationTokens: model.cache_creation_tokens
           });
 
           return acc + totalPoints;
@@ -365,6 +374,8 @@ const ModelDashboard = ({
         inputTokens,
         outputTokens,
         totalTokens,
+        cacheReadTokens,
+        cacheCreationTokens,
         // 保留费用精度供累计图使用，只在显示时舍入。
         totalCost,
         avgResponseTime: Math.round(avgResponseTime * 100) / 100,
@@ -540,6 +551,18 @@ const ModelDashboard = ({
                       label: t('config_model:dashboard_token_usage'),
                       dataKey: tokensUsageType,
                       color: theme.colors.primary['600']
+                    },
+                    {
+                      label: t('account_usage:cache_read_token_length'),
+                      dataKey: 'cacheReadTokens',
+                      color: theme.colors.myGray['500'],
+                      accumulate: true
+                    },
+                    {
+                      label: t('account_usage:cache_creation_token_length'),
+                      dataKey: 'cacheCreationTokens',
+                      color: theme.colors.myGray['500'],
+                      accumulate: true
                     }
                   ]}
                   HeaderLeftChildren={

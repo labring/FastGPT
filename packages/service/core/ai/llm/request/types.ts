@@ -6,7 +6,7 @@ import type {
   ChatCompletionMessageToolCall,
   ChatCompletionTool,
   CompletionFinishReason,
-  CompletionUsage,
+  LLMCompletionUsage,
   OpenAI,
   StreamResponseType,
   UnStreamResponseType
@@ -96,6 +96,8 @@ export type LLMResponse = {
   usage: {
     inputTokens: number;
     outputTokens: number;
+    cacheReadTokens?: number;
+    cacheCreationTokens?: number;
     // 只给上层计费判断使用，不保存到 LLM request detail。
     usedUserOpenAIKey: boolean;
   };
@@ -115,7 +117,7 @@ export type CompleteResponse = Pick<
   LLMResponse,
   'answerText' | 'reasoningText' | 'toolCalls' | 'finish_reason'
 > & {
-  usage?: CompletionUsage;
+  usage?: LLMCompletionUsage;
   error?: any;
 };
 
@@ -123,7 +125,6 @@ export type LLMAccumulatedUsage = {
   prompt_tokens: number;
   completion_tokens: number;
   total_tokens: number;
-  cached_tokens: number;
   cache_read_tokens: number;
   cache_write_tokens: number;
 };

@@ -126,6 +126,8 @@ export type AiproxyDashboardSummaryItem = {
   total_ttfb_milliseconds: number;
   input_tokens: number;
   output_tokens: number;
+  cached_tokens: number;
+  cache_creation_tokens: number;
   total_tokens: number;
   max_rpm: number;
   max_tpm: number;

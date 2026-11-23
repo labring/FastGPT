@@ -86,6 +86,8 @@ export const pushLLMTrainingUsage = async ({
   model,
   inputTokens,
   outputTokens,
+  cacheReadTokens,
+  cacheCreationTokens,
   usageId,
   type
 }: {
@@ -93,6 +95,8 @@ export const pushLLMTrainingUsage = async ({
   model: AIModelDataType;
   inputTokens: number;
   outputTokens: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
   usageId: string;
   type: UsageItemTypeEnum;
 }) => {
@@ -100,7 +104,9 @@ export const pushLLMTrainingUsage = async ({
   const { totalPoints } = formatModelChars2Points({
     model,
     inputTokens,
-    outputTokens
+    outputTokens,
+    cacheReadTokens,
+    cacheCreationTokens
   });
 
   concatUsage({
@@ -109,7 +115,9 @@ export const pushLLMTrainingUsage = async ({
     itemType: type,
     totalPoints,
     inputTokens,
-    outputTokens
+    outputTokens,
+    cacheReadTokens,
+    cacheCreationTokens
   });
 
   return { totalPoints };
@@ -169,6 +177,8 @@ export const pushChatItemUsage = ({
       modelId: item.modelId,
       inputTokens: item.inputTokens,
       outputTokens: item.outputTokens,
+      cacheReadTokens: item.cacheReadTokens,
+      cacheCreationTokens: item.cacheCreationTokens,
       pages: item.pages
     }))
   });

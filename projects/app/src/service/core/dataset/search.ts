@@ -68,6 +68,8 @@ export const searchDatasetForApi = ({
           modelId: item.model.modelId,
           inputTokens: item.inputTokens,
           outputTokens: item.outputTokens,
+          cacheReadTokens: item.cacheReadTokens,
+          cacheCreationTokens: item.cacheCreationTokens,
           amount: item.usedUserOpenAIKey ? 0 : formatModelChars2Points(item).totalPoints
         }));
         const totalPoints = list.reduce((sum, item) => sum + item.amount, 0);
