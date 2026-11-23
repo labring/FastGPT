@@ -93,6 +93,7 @@ export type SandboxStatusItemType = {
   skillName?: string; // present on 'deployingSkills', 'downloadingPackage',
   // 'uploadingPackage', 'extractingPackage' in session-runtime
   message?: string; // optional human-readable message
+  step?: string; // present on 'failed': 'upgrade' (配置收敛/升级) or 'prepare' (运行环境准备)
 };
 
 /* Skill module response */

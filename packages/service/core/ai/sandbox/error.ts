@@ -47,3 +47,23 @@ export const createAgentSandboxLimitReachedError = () =>
 /** 生成团队沙箱配额拒绝错误：当前团队的活跃沙箱实例已达配额上限。 */
 export const createAgentSandboxTeamLimitReachedError = () =>
   new UserError(SandboxErrEnum.agentSandboxTeamLimitReached);
+
+/**
+ * 判定“远端已明确结束”的沙箱失败（容器非 0 退出、配额拒绝等）。
+ *
+ * 这类失败不是执行者失联导致的未知结果，重试语义明确，不需要再等操作隔离窗口；
+ * 若仍按隔离窗口（provision 5 分钟）阻塞，会在用户侧表现为
+ * “沙箱启动失败后一段时间内怎么点都失败、过一会儿又突然好了”。
+ */
+const SETTLED_SANDBOX_FAILURE_PATTERNS = [
+  'KUBERNETES::POD_FAILED',
+  'primary reason=ContainerFailed',
+  'primary reason=InitContainerFailed',
+  'container sandbox exited with code',
+  'KUBERNETES::QUOTA_EXCEEDED'
+];
+
+export const isSettledSandboxFailure = (error: unknown) => {
+  const message = getErrText(error, '');
+  return SETTLED_SANDBOX_FAILURE_PATTERNS.some((pattern) => message.includes(pattern));
+};

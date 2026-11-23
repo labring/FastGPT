@@ -116,29 +116,31 @@ describe('ensureWorkflowSandboxReadyForUse', () => {
     ]);
   });
 
-  it.each(['configuration', 'runtime'])(
-    'does not report readiness after %s fails',
-    async (stage) => {
-      const error = new Error(`${stage} failed`);
-      const workflowStreamResponse = vi.fn();
-      const prepareRuntime = vi.fn(async () => undefined);
-      if (stage === 'configuration') {
-        ensureAppSandboxRuntimeReadyMock.mockRejectedValueOnce(error);
-      } else {
-        prepareRuntime.mockRejectedValueOnce(error);
-      }
-
-      await expect(
-        ensureWorkflowSandboxReadyForUse({ ...source, workflowStreamResponse, prepareRuntime })
-      ).rejects.toBe(error);
-
-      expect(workflowStreamResponse.mock.calls.map(([event]) => event.data.phase)).toEqual([
-        'lazyInit'
-      ]);
-      expect(prepareRuntime).toHaveBeenCalledTimes(stage === 'configuration' ? 0 : 1);
-      expect(markChatSandboxEnabledMock).not.toHaveBeenCalled();
+  it.each([
+    ['configuration', 'upgrade'],
+    ['runtime', 'prepare']
+  ] as const)('reports failed phase with reason after %s fails', async (stage, step) => {
+    const error = new Error(`${stage} failed`);
+    const workflowStreamResponse = vi.fn();
+    const prepareRuntime = vi.fn(async () => undefined);
+    if (stage === 'configuration') {
+      ensureAppSandboxRuntimeReadyMock.mockRejectedValueOnce(error);
+    } else {
+      prepareRuntime.mockRejectedValueOnce(error);
     }
-  );
+
+    await expect(
+      ensureWorkflowSandboxReadyForUse({ ...source, workflowStreamResponse, prepareRuntime })
+    ).rejects.toBe(error);
+
+    // 失败必须先上报 failed（原因 + 环节）再抛出，前端据此展示具体原因与重试入口。
+    expect(workflowStreamResponse.mock.calls.map(([event]) => event.data)).toEqual([
+      { sandboxId, phase: 'lazyInit' },
+      { sandboxId, phase: 'failed', message: `${stage} failed`, step }
+    ]);
+    expect(prepareRuntime).toHaveBeenCalledTimes(stage === 'configuration' ? 0 : 1);
+    expect(markChatSandboxEnabledMock).not.toHaveBeenCalled();
+  });
 
   it('prepares the runtime without a stream callback', async () => {
     const prepareRuntime = vi.fn(async () => 'runtime');

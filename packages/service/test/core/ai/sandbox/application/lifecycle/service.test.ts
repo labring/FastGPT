@@ -101,6 +101,7 @@ const makeResourceDoc = (params: {
   phase?: string;
   heartbeatAt?: Date;
   retryAfter?: Date;
+  error?: string;
 }) =>
   ({
     sandboxId,
@@ -121,7 +122,8 @@ const makeResourceDoc = (params: {
       previousStatus: (params.status ?? 'restoring') === 'restoring' ? 'archived' : 'stopped',
       startedAt: new Date(0),
       heartbeatAt: params.heartbeatAt ?? new Date(0),
-      retryAfter: params.retryAfter
+      retryAfter: params.retryAfter,
+      error: params.error
     }
   }) as repository.SandboxResourceDoc;
 const read = () => repository.findSandboxInstanceBySandboxId({ sandboxId });
@@ -166,6 +168,32 @@ describe('isSandboxActivationRecoverable / isSandboxActivationRollback', () => {
     });
     expect(isSandboxActivationRecoverable(resource, now)).toBe(false);
     expect(isSandboxActivationRecoverable(resource, new Date(now.getTime() + 1))).toBe(true);
+  });
+  it('allows immediate recovery only for settled failures despite the retry window', () => {
+    // 部署前写入的 5 分钟 retryAfter 不应继续阻塞“远端已明确结束”的失败。
+    const retryAfter = new Date(now.getTime() + 5 * 60 * 1000);
+    expect(
+      isSandboxActivationRecoverable(
+        makeResourceDoc({
+          status: 'provisioning',
+          heartbeatAt: now,
+          retryAfter,
+          error: 'container sandbox exited with code 127 (Error)'
+        }),
+        now
+      )
+    ).toBe(true);
+    expect(
+      isSandboxActivationRecoverable(
+        makeResourceDoc({
+          status: 'provisioning',
+          heartbeatAt: now,
+          retryAfter,
+          error: 'sandbox request timeout'
+        }),
+        now
+      )
+    ).toBe(false);
   });
   it('keeps recent errors isolated without acquiring lease', async () => {
     const resource = await createResource({ status: 'provisioning', heartbeatAt: now });
