@@ -51,6 +51,20 @@ describe('create outlink branding', () => {
       expect(vi.mocked(MongoOutLink.create).mock.calls[0][0]).not.toHaveProperty('isShowBrand');
     }
   );
+  it('creates WeChat channels without client-supplied connection state', async () => {
+    await handler({
+      body: {
+        appId: '68ad85a7463006c963799a05',
+        name: 'bot',
+        type: PublishChannelEnum.wechat,
+        app: { token: 'submitted-token', status: 'online' }
+      }
+    } as any);
+    const stored = vi.mocked(MongoOutLink.create).mock.calls[0][0];
+    expect(stored).toMatchObject({ name: 'bot', type: PublishChannelEnum.wechat });
+    expect(stored).not.toHaveProperty('app');
+  });
+
   it('never adds branding to other channels even when enabled', async () => {
     serviceEnv.SHOW_OUTLINK_BRAND = true;
     await handler({

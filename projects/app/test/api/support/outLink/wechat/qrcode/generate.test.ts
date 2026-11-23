@@ -1,10 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.unmock('@fastgpt/service/common/response');
+
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
+import { jsonRes } from '@fastgpt/service/common/response';
+import { WechatRequestPolicyError } from '@fastgpt/service/support/outLink/wechat/request';
+import { resolveWechatQrErrorMessage } from '@/pageComponents/app/detail/Publish/Wechat/QRLoginModal';
+
 const mocks = vi.hoisted(() => ({
   authOutLinkCrud: vi.fn(),
   assertWechatOutLink: vi.fn(),
   getQRCode: vi.fn(),
-  repositorySet: vi.fn()
+  repositorySet: vi.fn(),
+  updateOne: vi.fn()
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
@@ -24,6 +33,11 @@ vi.mock('@fastgpt/service/support/outLink/wechat/ilinkClient', () => ({
     getQRCode = mocks.getQRCode;
   }
 }));
+
+vi.mock('@fastgpt/service/support/outLink/schema', () => ({
+  MongoOutLink: { updateOne: mocks.updateOne }
+}));
+vi.mock('@fastgpt/service/support/outLink/wechat/mq', () => ({ startWechatPolling: vi.fn() }));
 
 vi.mock('@fastgpt/dal/redis/caches', () => ({
   WECHAT_QR_LOGIN_TTL_SECONDS: 480,
@@ -48,12 +62,18 @@ describe('POST /api/support/outLink/wechat/qrcode/generate', () => {
     mocks.assertWechatOutLink.mockResolvedValue(undefined);
     mocks.getQRCode.mockResolvedValue(qrData);
     mocks.repositorySet.mockResolvedValue(undefined);
+    mocks.updateOne.mockResolvedValue({ matchedCount: 1 });
   });
 
-  it('stores generated QR data and returns the Cache TTL', async () => {
+  it('returns the QR image and TTL while caching the QR identifier', async () => {
     const req = { body: { outLinkId } } as any;
 
-    await expect(handler(req)).resolves.toEqual({ ...qrData, expireTime: 480 });
+    const result = (await handler(req)) as { attemptId: string };
+    expect(result).toEqual({ ...qrData, expireTime: 480, attemptId: expect.any(String) });
+    expect(mocks.updateOne).toHaveBeenCalledWith(
+      { _id: outLinkId, type: 'wechat' },
+      { $set: { 'app.qrAttemptId': result.attemptId } }
+    );
 
     expect(mocks.authOutLinkCrud).toHaveBeenCalledWith({
       req,
@@ -65,8 +85,18 @@ describe('POST /api/support/outLink/wechat/qrcode/generate', () => {
     expect(mocks.repositorySet).toHaveBeenCalledWith({
       outLinkId,
       tmbId: 'tmb-1',
-      data: qrData
+      attemptId: result.attemptId,
+      data: { qrcode: qrData.qrcode }
     });
+  });
+
+  it('does not cache a QR code when iLink omits the image content', async () => {
+    mocks.getQRCode.mockResolvedValue({ qrcode: qrData.qrcode });
+
+    await expect(handler({ body: { outLinkId } } as any)).rejects.toThrow(
+      'invalid QR image content'
+    );
+    expect(mocks.repositorySet).not.toHaveBeenCalled();
   });
 
   it('propagates Cache write failures instead of returning an unusable QR code', async () => {
@@ -82,5 +112,92 @@ describe('POST /api/support/outLink/wechat/qrcode/generate', () => {
     expect(mocks.authOutLinkCrud).not.toHaveBeenCalled();
     expect(mocks.getQRCode).not.toHaveBeenCalled();
     expect(mocks.repositorySet).not.toHaveBeenCalled();
+  });
+
+  it('preserves policy errors and maps raw upstream failures to controlled localized errors', async () => {
+    const serializeError = (error: unknown) => {
+      let payload: unknown;
+      const res = {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn((body: unknown) => {
+          payload = body;
+        })
+      } as any;
+      jsonRes(res, { error });
+      return payload as Record<string, unknown>;
+    };
+
+    const policyError = new WechatRequestPolicyError('private_address');
+    mocks.getQRCode.mockRejectedValueOnce(policyError);
+
+    const caughtPolicy = await handler({ body: { outLinkId } } as any).catch((err) => err);
+    expect(caughtPolicy).toBe(policyError);
+    const policyPayload = serializeError(caughtPolicy);
+    expect(policyPayload).toMatchObject({
+      message: 'publish:wechat.error.private_address',
+      errorType: 'UserError'
+    });
+    expect(
+      resolveWechatQrErrorMessage({
+        error: policyPayload,
+        fallback: 'fallback',
+        translate: (key) => (key === 'publish:wechat.error.private_address' ? 'DNS 异常' : key)
+      })
+    ).toBe('DNS 异常');
+
+    mocks.getQRCode.mockRejectedValueOnce(
+      new Error(
+        'iLink POST ilink/bot/get_bot_qrcode failed: Error: HTTP 502: <html>Bad Gateway</html>'
+      )
+    );
+
+    const caughtUpstream = await handler({ body: { outLinkId } } as any).catch((err) => err);
+    expect(caughtUpstream).toBeInstanceOf(UserError);
+    const upstreamPayload = serializeError(caughtUpstream);
+    expect(upstreamPayload).toMatchObject({
+      message: 'publish:wechat.qr_generate_failed',
+      errorType: 'UserError'
+    });
+    expect(
+      resolveWechatQrErrorMessage({
+        error: upstreamPayload,
+        fallback: 'fallback',
+        translate: (key) => (key === 'publish:wechat.qr_generate_failed' ? '生成失败' : key)
+      })
+    ).toBe('生成失败');
+
+    // 已登记的 FastGPT 业务码可正常展示
+    const businessPayload = serializeError(OutLinkErrEnum.unExist);
+    expect(
+      resolveWechatQrErrorMessage({
+        error: businessPayload,
+        fallback: '生成失败',
+        translate: (key) => (key === businessPayload.message ? '分享链接不存在' : key)
+      })
+    ).toBe('分享链接不存在');
+
+    // 未经业务边界包装的普通错误、网关非 FastGPT JSON 及不匹配的业务码均回退本地化兜底
+    const rawPayload = serializeError(new Error('HTTP 502: <html>Bad Gateway</html>'));
+    expect(
+      resolveWechatQrErrorMessage({
+        error: rawPayload,
+        fallback: '生成失败',
+        translate: (key) => key
+      })
+    ).toBe('生成失败');
+    expect(
+      resolveWechatQrErrorMessage({
+        error: { code: 502, statusText: 'Bad Gateway', message: 'upstream gateway error' },
+        fallback: '生成失败',
+        translate: (key) => key
+      })
+    ).toBe('生成失败');
+    expect(
+      resolveWechatQrErrorMessage({
+        error: { code: 502, statusText: OutLinkErrEnum.unExist, message: 'spoofed' },
+        fallback: '生成失败',
+        translate: (key) => key
+      })
+    ).toBe('生成失败');
   });
 });

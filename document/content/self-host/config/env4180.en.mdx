@@ -135,6 +135,8 @@ Protected requests through the shared HTTP client include Workflow HTTP Nodes, H
 
 Before upgrading, use your actual Workflows and channels in a test environment to verify proxy authentication, DNS resolution, and `CONNECT` policy. If you switch proxies, update the applicable `HTTP_PROXY`, `HTTPS_PROXY`, or `ALL_PROXY` setting and restart the affected processes.
 
+The WeChat Personal channel bypasses these proxy environment variables and requires direct HTTPS access from the App container to `ilinkai.weixin.qq.com` (and its subdomains) and `cdn.weixin.qq.com` (and its subdomains; default media downloads use `novac2c.cdn.weixin.qq.com`) resolving to public IP addresses. Verify connectivity from the container without a proxy (for example, `curl --noproxy '*'`), then test both messaging and media after upgrading.
+
 ### Feature controls and service limits
 
 | Variable                                 | Default | Description                                                                                                                                                                                                                                                                                      |

@@ -67,6 +67,54 @@ describe('list outlink anonymous access', () => {
     expect(result[0]).not.toHaveProperty('isShowBrand');
   });
 
+  it('only exposes WeChat binding status to the editor', async () => {
+    mockList({
+      ...baseOutLink,
+      type: PublishChannelEnum.wechat,
+      app: {
+        status: 'online',
+        token: 'stored-token',
+        baseUrl: 'https://ilinkai.weixin.qq.com',
+        syncBuf: 'stored-cursor'
+      }
+    });
+
+    const result = await handler({ query: { appId: id, type: PublishChannelEnum.wechat } } as any);
+    expect(result[0].app).toEqual({ isBound: true, status: 'online' });
+  });
+
+  it.each([
+    ['private_address', 'private_address'],
+    ['raw upstream failure', undefined],
+    [{ detail: 'legacy failure' }, undefined]
+  ])('only exposes a known WeChat error reason (%s)', async (lastError, errorReason) => {
+    mockList({
+      ...baseOutLink,
+      type: PublishChannelEnum.wechat,
+      app: { status: 'error', token: 'stored-token', lastError }
+    });
+
+    const [item] = await handler({ query: { appId: id, type: PublishChannelEnum.wechat } } as any);
+    expect(item.app).toMatchObject({ status: 'error', isBound: true });
+    expect(item.app.errorReason).toBe(errorReason);
+    expect(item.app).not.toHaveProperty('lastError');
+  });
+
+  it('preserves the error status and reason when a stored token is malformed', async () => {
+    mockList({
+      ...baseOutLink,
+      type: PublishChannelEnum.wechat,
+      app: { status: 'error', token: null, lastError: 'private_address' }
+    });
+
+    const [item] = await handler({ query: { appId: id, type: PublishChannelEnum.wechat } } as any);
+    expect(item.app).toEqual({
+      status: 'error',
+      isBound: false,
+      errorReason: 'private_address'
+    });
+  });
+
   it('removes allowAnonymous from non-share channel responses', async () => {
     mockList({
       ...baseOutLink,
