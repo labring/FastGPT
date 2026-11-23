@@ -9,8 +9,13 @@ import {
   peekModelCatalog
 } from '@/web/core/ai/model/modelData';
 import { getModelSummary } from '@/web/core/ai/model/useModelSummary';
-import { getWorkflowModelCheckData } from '@/web/core/workflow/modelData';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  getWorkflowModelCheckData,
+  peekWorkflowEnvironmentModels
+} from '@/web/core/workflow/modelData';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { buildWorkflowLLMModelMap } from '@fastgpt/global/common/workflow/editor/utils';
+import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -311,6 +316,48 @@ describe('catalog consumers', () => {
       (await getModelDefault({ modelType: ModelTypeEnum.llm, businessDefaultModelId: 'team-only' }))
         ?.modelId
     ).toBe('team-only');
+  });
+
+  it('resolves reasoning output capabilities using the correct model identity', async () => {
+    const systemModel = makeModel('system');
+    systemModel.config.reasoning = true;
+    const teamModel: MyLLMModelItemType = {
+      ...makeModel(systemModel.model),
+      model: systemModel.model,
+      scope: 'team',
+      tmbId: 'member'
+    };
+    mocks.catalog.mockResolvedValueOnce({
+      version: 'v-reasoning',
+      data: { models: [systemModel, teamModel], providers: [], defaultModelIds: {} }
+    });
+    await getModelList({ modelType: ModelTypeEnum.llm });
+
+    const environment = peekWorkflowEnvironmentModels();
+    expect(environment?.defaultModelIds[ModelTypeEnum.llm]).toBe(systemModel.modelId);
+    const llmModelMap = buildWorkflowLLMModelMap(environment?.models)!;
+    const reasoningCondition = AiChatModule.outputs.find(
+      ({ id }) => id === NodeOutputKeyEnum.reasoningText
+    )!.invalidCondition!;
+    const legacyInput = {
+      key: NodeInputKeyEnum.aiModel,
+      value: systemModel.model,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden]
+    };
+    expect(reasoningCondition({ llmModelMap, inputs: [legacyInput] })).toBe(false);
+    expect(
+      reasoningCondition({
+        llmModelMap,
+        inputs: [
+          legacyInput,
+          {
+            ...legacyInput,
+            key: NodeInputKeyEnum.aiModelId,
+            value: teamModel.modelId
+          }
+        ]
+      })
+    ).toBe(true);
   });
 
   it('propagates network failure and retries instead of treating it as an empty catalog', async () => {

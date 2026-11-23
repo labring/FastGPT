@@ -10,7 +10,11 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { publishStatusStyle } from '../constants';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { WorkflowUtilsContext } from './context/workflowUtilsContext';
+import {
+  useWorkflowInitialLoadFailed,
+  useWorkflowPersistence
+} from '@/web/core/workflow/editor/session/workflowSession';
+import { filterSensitiveNodesData } from '@/web/core/workflow/utils';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const ImportSettings = dynamic(() => import('./Flow/ImportSettings'));
@@ -21,10 +25,29 @@ const ExportConfigPopover = dynamic(
 const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved: boolean }) => {
   const { t } = useTranslation();
 
-  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
+  const appType = useContextSelector(AppContext, (v) => v.appDetail.type);
+  const appName = useContextSelector(AppContext, (v) => v.appDetail.name);
+  const appIntro = useContextSelector(AppContext, (v) => v.appDetail.intro);
+  const appAvatar = useContextSelector(AppContext, (v) => v.appDetail.avatar);
+  const isOwner = useContextSelector(AppContext, (v) => v.appDetail.permission.isOwner);
+  const canEdit = useContextSelector(AppContext, (v) => v.appDetail.permission.hasWritePer);
   const onOpenInfoEdit = useContextSelector(AppContext, (v) => v.onOpenInfoEdit);
   const onDelApp = useContextSelector(AppContext, (v) => v.onDelApp);
-  const flowData2StoreData = useContextSelector(WorkflowUtilsContext, (v) => v.flowData2StoreData);
+  const { serializeWorkflow: flowData2StoreData } = useWorkflowPersistence();
+  const initialLoadFailed = useWorkflowInitialLoadFailed();
+  const failedWorkflow = useContextSelector(AppContext, ({ appDetail }) =>
+    initialLoadFailed && appDetail.permission.hasWritePer ? appDetail : undefined
+  );
+  const getWorkflowForExport = useCallback(() => {
+    if (!failedWorkflow) return flowData2StoreData();
+    // 允许导出后离线修正唯一的坏版本；恢复导出始终剥离节点凭据。
+    return {
+      nodes: filterSensitiveNodesData(failedWorkflow.nodes ?? []),
+      edges: failedWorkflow.edges ?? [],
+      chatConfig: failedWorkflow.chatConfig,
+      referenceSnapshots: failedWorkflow.referenceSnapshots
+    };
+  }, [failedWorkflow, flowData2StoreData]);
 
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
 
@@ -68,19 +91,21 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
                 <Box fontSize={'sm'}>{t('app:Role_setting')}</Box>
               </MyBox>
               <Box w={'full'} h={'1px'} bg={'myGray.200'} my={1} />
-              <MyBox
-                display={'flex'}
-                size={'md'}
-                px={1}
-                py={1.5}
-                rounded={'4px'}
-                _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
-                cursor={'pointer'}
-                onClick={onOpenImport}
-              >
-                <MyIcon name={'common/importLight'} w={'16px'} mr={2} />
-                <Box fontSize={'sm'}>{t('app:import_configs')}</Box>
-              </MyBox>
+              {canEdit && (
+                <MyBox
+                  display={'flex'}
+                  size={'md'}
+                  px={1}
+                  py={1.5}
+                  rounded={'4px'}
+                  _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
+                  cursor={'pointer'}
+                  onClick={onOpenImport}
+                >
+                  <MyIcon name={'common/importLight'} w={'16px'} mr={2} />
+                  <Box fontSize={'sm'}>{t('app:import_configs')}</Box>
+                </MyBox>
+              )}
               <MyBox
                 display={'flex'}
                 size={'md'}
@@ -91,14 +116,14 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
                 cursor={'pointer'}
               >
                 <ExportConfigPopover
-                  appType={appDetail.type}
-                  chatConfig={appDetail.chatConfig}
-                  appName={appDetail.name}
-                  appIntro={appDetail.intro}
-                  getWorkflowData={flowData2StoreData}
+                  appType={appType}
+                  appName={appName}
+                  appIntro={appIntro}
+                  getWorkflowData={getWorkflowForExport}
+                  filterSensitiveInfo={failedWorkflow ? true : undefined}
                 />
               </MyBox>
-              {appDetail.permission.isOwner && (
+              {isOwner && (
                 <>
                   <Box w={'full'} h={'1px'} bg={'myGray.200'} my={1} />
 
@@ -124,12 +149,13 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
       );
     },
     [
-      appDetail.chatConfig,
-      appDetail.intro,
-      appDetail.name,
-      appDetail.permission.isOwner,
-      appDetail.type,
-      flowData2StoreData,
+      appIntro,
+      appName,
+      appType,
+      canEdit,
+      failedWorkflow,
+      getWorkflowForExport,
+      isOwner,
       onDelApp,
       onOpenImport,
       onOpenInfoEdit,
@@ -141,12 +167,12 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
     return (
       <HStack flex={1} justifyContent={'space-between'}>
         <HStack minW={0}>
-          <Avatar src={appDetail.avatar} w={'1.75rem'} borderRadius={'md'} flexShrink={0} />
+          <Avatar src={appAvatar} w={'1.75rem'} borderRadius={'md'} flexShrink={0} />
           <Box minW={0}>
             <HStack spacing={1} minW={0}>
-              <MyTooltip label={appDetail.name} showOnlyWhenOverflow>
+              <MyTooltip label={appName} showOnlyWhenOverflow>
                 <Box color={'myGray.900'} maxW={['45vw', '280px']} className="textEllipsis">
-                  {appDetail.name}
+                  {appName}
                 </Box>
               </MyTooltip>
             </HStack>
@@ -192,12 +218,13 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
           />
         )}
 
-        {isOpenImport && <ImportSettings onClose={onCloseImport} />}
+        {canEdit && isOpenImport && <ImportSettings onClose={onCloseImport} />}
       </HStack>
     );
   }, [
-    appDetail.avatar,
-    appDetail.name,
+    appAvatar,
+    appName,
+    canEdit,
     isOpenImport,
     isSaved,
     onCloseImport,

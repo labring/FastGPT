@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
@@ -114,6 +115,10 @@ describe('loopRun/service', () => {
   });
 
   describe('readCustomOutputSnapshot', () => {
+    const referenceScope = {
+      node: makeNode('loop', FlowNodeTypeEnum.loopRun),
+      getIncomingEdges: () => []
+    };
     const nodeA = makeNode('A', FlowNodeTypeEnum.chatNode, {
       outputs: [{ id: 'outA', key: 'outA', value: 'valueFromA' }]
     });
@@ -127,6 +132,7 @@ describe('loopRun/service', () => {
         makeInput({ key: 'b', canEdit: true, value: ['B', 'outB'] })
       ];
       const snapshot = readCustomOutputSnapshot({
+        referenceScope,
         customOutputInputs,
         runtimeNodes: [nodeA, nodeB],
         variableState: createTestVariableContext()
@@ -140,6 +146,7 @@ describe('loopRun/service', () => {
         makeInput({ key: 'b', canEdit: true, value: ['B', 'outB'] })
       ];
       const snapshot = readCustomOutputSnapshot({
+        referenceScope,
         customOutputInputs,
         runtimeNodes: [nodeA, nodeB],
         variableState: createTestVariableContext(),
@@ -148,11 +155,41 @@ describe('loopRun/service', () => {
       expect(snapshot).toEqual({ a: 'valueFromA', b: undefined });
     });
 
+    it('reads a direct child’s caught error only if it ran in the current iteration', () => {
+      const child: RuntimeNodeItemType = {
+        ...nodeA,
+        catchError: true,
+        parentNodeId: referenceScope.node.nodeId,
+        outputs: [{ ...nodeA.outputs[0], type: FlowNodeOutputTypeEnum.error, value: 'caught' }]
+      };
+      const fixture = {
+        referenceScope,
+        customOutputInputs: [
+          makeInput({
+            key: 'error',
+            canEdit: true,
+            renderTypeList: [FlowNodeInputTypeEnum.reference],
+            value: [child.nodeId, child.outputs[0].id]
+          })
+        ],
+        runtimeNodes: [child],
+        variableState: createTestVariableContext(),
+        childrenNodeIdList: [child.nodeId]
+      };
+      expect(
+        readCustomOutputSnapshot({ ...fixture, finishedNodeIds: new Set([child.nodeId]) })
+      ).toEqual({ error: 'caught' });
+      expect(readCustomOutputSnapshot({ ...fixture, finishedNodeIds: new Set() })).toEqual({
+        error: undefined
+      });
+    });
+
     it('失败轮 - 全空 finishedNodeIds → 全部 undefined', () => {
       const customOutputInputs: FlowNodeInputItemType[] = [
         makeInput({ key: 'a', canEdit: true, value: ['A', 'outA'] })
       ];
       const snapshot = readCustomOutputSnapshot({
+        referenceScope,
         customOutputInputs,
         runtimeNodes: [nodeA],
         variableState: createTestVariableContext(),
@@ -166,6 +203,7 @@ describe('loopRun/service', () => {
         makeInput({ key: 'g', canEdit: true, value: ['VARIABLE_NODE_ID', 'globalKey'] })
       ];
       const snapshot = readCustomOutputSnapshot({
+        referenceScope,
         customOutputInputs,
         runtimeNodes: [],
         variableState: createTestVariableContext({ globalKey: 'globalValue' }),
@@ -176,6 +214,7 @@ describe('loopRun/service', () => {
 
     it('空声明列表 → 空快照', () => {
       const snapshot = readCustomOutputSnapshot({
+        referenceScope,
         customOutputInputs: [],
         runtimeNodes: [],
         variableState: createTestVariableContext()
@@ -191,6 +230,7 @@ describe('loopRun/service', () => {
         makeInput({ key: 'b', canEdit: true, value: ['B', 'outB'] })
       ];
       const snapshot = readCustomOutputSnapshot({
+        referenceScope,
         customOutputInputs,
         runtimeNodes: [nodeA, nodeB],
         variableState: createTestVariableContext(),
@@ -206,6 +246,7 @@ describe('loopRun/service', () => {
         makeInput({ key: 'b', canEdit: true, value: ['B', 'outB'] })
       ];
       const snapshot = readCustomOutputSnapshot({
+        referenceScope,
         customOutputInputs,
         runtimeNodes: [nodeA, nodeB],
         variableState: createTestVariableContext(),

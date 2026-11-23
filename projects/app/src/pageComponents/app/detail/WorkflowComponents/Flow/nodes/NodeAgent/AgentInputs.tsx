@@ -9,6 +9,7 @@ import MyTag from '@fastgpt/web/components/common/Tag';
 import { getSelectedInputRenderType } from '@fastgpt/global/common/workflow/reference';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover';
+import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 import { AgentSkillCardList } from '@/components/core/app/SkillCard';
 import SelectedToolCardList from '@/components/core/app/SelectedToolCardList';
 import { useAgentNodeInputContext } from './context';
@@ -75,7 +76,7 @@ export const AgentPromptLabel = ({ item }: RenderInputProps) => {
 };
 
 /** Agent 提示词复用共享资源管理器，引用及 AI 生成态由 RenderInput 优先处理。 */
-export const AgentPromptInput = ({ item }: Pick<RenderInputProps, 'item'>) => {
+export const AgentPromptInput = ({ item, nodeId }: Pick<RenderInputProps, 'item' | 'nodeId'>) => {
   const { t } = useTranslation();
   const { onPromptChange, editorVariables, allVariables, skillManager } =
     useAgentNodeInputContext();
@@ -91,22 +92,24 @@ export const AgentPromptInput = ({ item }: Pick<RenderInputProps, 'item'>) => {
     [item.value, onPromptChange]
   );
   return (
-    <PromptEditor
-      minH={140}
-      bg={'white'}
-      title={t('common:core.ai.Prompt')}
-      isRichText
-      showOpenModal
-      value={item.value ?? ''}
-      onChange={onPromptChange}
-      variables={allVariables}
-      variableLabels={editorVariables}
-      skillOption={skillOption}
-      selectedSkills={selectedSkills}
-      onClickSkill={onClickSkill}
-      ExtensionPopover={[Optimizer]}
-      placeholder={t('workflow:agent.prompt_placeholder')}
-    />
+    <WorkflowFieldScope nodeId={nodeId} fieldKey={item.key}>
+      <PromptEditor
+        minH={140}
+        bg={'white'}
+        title={t('common:core.ai.Prompt')}
+        isRichText
+        showOpenModal
+        value={item.value ?? ''}
+        onChange={onPromptChange}
+        variables={allVariables}
+        variableLabels={editorVariables}
+        skillOption={skillOption}
+        selectedSkills={selectedSkills}
+        onClickSkill={onClickSkill}
+        ExtensionPopover={[Optimizer]}
+        placeholder={t('workflow:agent.prompt_placeholder')}
+      />
+    </WorkflowFieldScope>
   );
 };
 

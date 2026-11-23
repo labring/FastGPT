@@ -12,6 +12,10 @@ export const DatasetBatchPath: OpenAPIPath = {
       summary: '批量移动知识库',
       description: '批量移动知识库或文件夹，具体权限、目录深度和继承权限由知识库模块校验',
       tags: [DevApiTagsMap.datasetCommon, SystemOpenApiTagMap.dataset],
+      'x-fastgpt-sdk': {
+        resource: 'datasets',
+        method: 'batchMove'
+      },
       requestBody: {
         content: {
           'application/json': {
@@ -36,6 +40,10 @@ export const DatasetBatchPath: OpenAPIPath = {
       summary: '批量删除知识库',
       description: '批量删除知识库或文件夹，具体子树处理和异步清理由知识库模块负责',
       tags: [DevApiTagsMap.datasetCommon, SystemOpenApiTagMap.dataset],
+      'x-fastgpt-sdk': {
+        resource: 'datasets',
+        method: 'batchDelete'
+      },
       requestBody: {
         content: {
           'application/json': {

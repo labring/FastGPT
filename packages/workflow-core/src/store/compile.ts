@@ -8,5 +8,8 @@ export const compileStoreWorkflow = (document: WorkflowDocument) =>
   WorkflowTemplateBasicTypeSchema.parse({
     nodes: encodeWorkflowNodeReferences(document.nodes),
     edges: document.executionEdges.map((edge) => compileExecutionEdge(edge, document)),
-    chatConfig: structuredClone(document.chatConfig)
+    chatConfig: structuredClone(document.chatConfig),
+    ...(document.referenceSnapshots !== undefined && {
+      referenceSnapshots: document.referenceSnapshots
+    })
   });

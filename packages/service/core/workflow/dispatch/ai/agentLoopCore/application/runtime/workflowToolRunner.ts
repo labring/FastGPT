@@ -9,6 +9,7 @@ import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edg
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchFlowResponse } from '../../../../type';
 import type { AgentLoopInteractiveToolExecuteParams } from '../../../../../../ai/llm/agentLoop/interface';
@@ -296,10 +297,10 @@ export const createAgentLoopCoreWorkflowSystemToolExecutor = <TChildrenResponse 
           // dataset_search 的系统参数由 agent-loop 直接生成，不受工具输入最终类型过滤影响。
           datasetNode.inputs = datasetNode.inputs.map((input) => {
             if (input.key === NodeInputKeyEnum.datasetSearchInput) {
-              return { ...input, value: query };
+              return { ...input, selectedType: FlowNodeInputTypeEnum.textarea, value: query };
             }
             if (input.key === NodeInputKeyEnum.userChatInput) {
-              return { ...input, value: '' };
+              return { ...input, selectedType: FlowNodeInputTypeEnum.textarea, value: '' };
             }
             return input;
           });

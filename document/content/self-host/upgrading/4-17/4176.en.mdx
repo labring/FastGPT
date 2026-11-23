@@ -1,0 +1,17 @@
+---
+title: V4.17.6
+description: FastGPT V4.17.6 release notes covering MCP environment proxy connections and SSRF protection.
+sidebarTag: In dev
+---
+
+## Upgrade guide
+
+### Configuration
+
+When using `HTTP_PROXY` / `HTTPS_PROXY` to access MCP services, the FastGPT container must resolve target hostnames through local DNS. The proxy must support CONNECT tunnels to the target port, including port 80 or a custom port for plain HTTP targets.
+
+Use `NO_PROXY` for trusted hosts that require direct connections. Direct requests still pin DNS addresses and enforce SSRF checks. This update requires no new environment variables or app upgrade scripts.
+
+## 🐛 Fixes
+
+1. Fixed MCP connections failing when an environment proxy is configured. Proxy tunnels now connect to a validated, pinned IP address to prevent proxy-side DNS resolution from bypassing SSRF protection. Also improved connection timeouts, cancellation, and resource cleanup.

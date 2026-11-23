@@ -107,13 +107,10 @@ export const normalizeAgentToolInputs = ({
           ? AgentToolInputModeEnum.manual
           : AgentToolInputModeEnum.agentGenerated;
 
-    // 固定值搬进 config；已有的非空 config 优先，不覆盖。
-    if (
-      mode === AgentToolInputModeEnum.manual &&
-      rawInput.value !== undefined &&
-      !hasOwnConfigValue
-    ) {
-      setOwnConfigValue({ target: config, key, value: rawInput.value });
+    // 兼容旧快照只有 defaultValue 的手填项；已有的非空 config 优先。
+    const inputValue = Object.hasOwn(rawInput, 'value') ? rawInput.value : rawInput.defaultValue;
+    if (mode === AgentToolInputModeEnum.manual && inputValue !== undefined && !hasOwnConfigValue) {
+      setOwnConfigValue({ target: config, key, value: inputValue });
     }
 
     inputs.push({ key, mode });

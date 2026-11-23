@@ -1,4 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
+import { assertWorkflowDocumentStructure } from '@fastgpt/global/common/workflow/connection';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
@@ -44,8 +45,10 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
     ? await authApp({ req, appId: app.parentId, per: WritePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
-  // Copy avatar
   const { appId } = await mongoSessionRun(async (session) => {
+    const draftWorkflow = await getAppDraftWorkflow(app._id, app);
+    assertWorkflowDocumentStructure(draftWorkflow);
+
     const avatar = await copyAvatarImage({
       teamId,
       imageUrl: app.avatar,
@@ -53,7 +56,6 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
       session
     });
 
-    const draftWorkflow = await getAppDraftWorkflow(app._id, app);
     const storageNodes = (() => {
       if (app.type === AppTypeEnum.mcpToolSet) {
         return encodeMcpToolSetNodesForStorage(draftWorkflow.nodes);
@@ -74,6 +76,7 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
       storageNodes,
       edges: draftWorkflow.edges,
       chatConfig: draftWorkflow.chatConfig,
+      referenceSnapshots: draftWorkflow.referenceSnapshots,
       teamId,
       tmbId,
       isRoot,

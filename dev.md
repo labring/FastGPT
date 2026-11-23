@@ -38,21 +38,21 @@ make dev name=admin
 
 ```sh
 # Docker 命令：构建镜像，不使用代理
-docker build -f ./projects/app/Dockerfile -t registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.1 . --build-arg name=app
+docker build -f ./projects/app/Dockerfile -t ghcr.io/labring/fastgpt:v4.8.1 . --build-arg name=app
 # Docker 命令：构建商业版 admin 镜像，不使用代理
-docker build -f ./pro/admin/Dockerfile -t registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-admin:v4.8.1 . --build-arg name=admin
+docker build -f ./pro/admin/Dockerfile -t ghcr.io/labring/fastgpt-admin:v4.8.1 . --build-arg name=admin
 # Docker 命令：构建商业版 sso 镜像，不使用代理
-docker build -f ./pro/sso/Dockerfile -t registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.8.1 . --build-arg name=sso
+docker build -f ./pro/sso/Dockerfile -t ghcr.io/labring/fastgpt-sso-service:v4.8.1 . --build-arg name=sso
 # Make 命令：构建镜像，不使用代理
-make build name=app image=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.1
-make build name=admin image=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-admin:v4.8.1
-make build name=sso image=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.8.1
+make build name=app image=ghcr.io/labring/fastgpt:v4.8.1
+make build name=admin image=ghcr.io/labring/fastgpt-admin:v4.8.1
+make build name=sso image=ghcr.io/labring/fastgpt-sso-service:v4.8.1
 
 # Docker 命令：使用代理构建镜像
-docker build -f ./projects/app/Dockerfile -t registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.1 . --build-arg name=app --build-arg proxy=taobao
+docker build -f ./projects/app/Dockerfile -t ghcr.io/labring/fastgpt:v4.8.1 . --build-arg name=app --build-arg proxy=taobao
 # Docker 命令：使用代理构建商业版 admin 镜像
-docker build -f ./pro/admin/Dockerfile -t registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-admin:v4.8.1 . --build-arg name=admin --build-arg proxy=taobao
+docker build -f ./pro/admin/Dockerfile -t ghcr.io/labring/fastgpt-admin:v4.8.1 . --build-arg name=admin --build-arg proxy=taobao
 # Make 命令：使用代理构建镜像
-make build name=app image=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.1 proxy=taobao
-make build name=admin image=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-admin:v4.8.1 proxy=taobao
+make build name=app image=ghcr.io/labring/fastgpt:v4.8.1 proxy=taobao
+make build name=admin image=ghcr.io/labring/fastgpt-admin:v4.8.1 proxy=taobao
 ```

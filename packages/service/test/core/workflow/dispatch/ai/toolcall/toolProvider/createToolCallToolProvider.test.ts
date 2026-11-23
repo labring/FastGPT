@@ -1,3 +1,5 @@
+import { getWorkflowNodeRunParams } from '@fastgpt/service/core/workflow/dispatch/utils/runtime';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
@@ -648,18 +650,24 @@ describe('createToolCallToolProvider', () => {
     const runtimeNodes = [
       {
         nodeId: 'dataset_node_1',
+        outputs: [],
         inputs: [
           {
             key: NodeInputKeyEnum.datasetSearchInput,
+            renderTypeList: [FlowNodeInputTypeEnum.reference],
+            selectedType: FlowNodeInputTypeEnum.reference,
             value: []
           }
         ]
       },
       {
         nodeId: 'dataset_node_2',
+        outputs: [],
         inputs: [
           {
             key: NodeInputKeyEnum.datasetSearchInput,
+            renderTypeList: [FlowNodeInputTypeEnum.reference],
+            selectedType: FlowNodeInputTypeEnum.reference,
             value: []
           }
         ]
@@ -698,7 +706,7 @@ describe('createToolCallToolProvider', () => {
         function: {
           name: 'dataset_search',
           arguments: JSON.stringify({
-            query: ['FastGPT']
+            query: ['dataset_node_1', 'missingOutput']
           })
         }
       } as any
@@ -717,7 +725,9 @@ describe('createToolCallToolProvider', () => {
           inputs: [
             {
               key: NodeInputKeyEnum.datasetSearchInput,
-              value: ['FastGPT']
+              value: ['dataset_node_1', 'missingOutput'],
+              renderTypeList: [FlowNodeInputTypeEnum.reference],
+              selectedType: FlowNodeInputTypeEnum.textarea
             }
           ]
         }),
@@ -729,13 +739,24 @@ describe('createToolCallToolProvider', () => {
           inputs: [
             {
               key: NodeInputKeyEnum.datasetSearchInput,
-              value: ['FastGPT']
+              value: ['dataset_node_1', 'missingOutput'],
+              renderTypeList: [FlowNodeInputTypeEnum.reference],
+              selectedType: FlowNodeInputTypeEnum.textarea
             }
           ]
         }),
         activeEdge: expect.objectContaining({ target: 'dataset_node_2' })
       }
     ]);
+    const execution = runWorkflowMock.mock.calls[0][0];
+    const entry = execution.runtimeNodes.find((node: any) => node.isEntry);
+    expect(
+      getWorkflowNodeRunParams({
+        node: entry,
+        runtimeNodesMap: new Map(execution.runtimeNodes.map((node: any) => [node.nodeId, node])),
+        variableState: { toRuntimeRecord: () => ({}) } as any
+      })[NodeInputKeyEnum.datasetSearchInput]
+    ).toEqual(['dataset_node_1', 'missingOutput']);
     expect(result).toEqual(
       expect.objectContaining({
         response: expect.stringContaining('quote_1'),

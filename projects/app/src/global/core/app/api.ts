@@ -1,13 +1,16 @@
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
+import type {
+  PublishAppBodySchema,
+  PublishAppBodyType
+} from '@fastgpt/global/openapi/core/app/version/api';
+import type { z } from 'zod';
 
-export type PostPublishAppProps = {
-  nodes: AppVersionSchemaType['nodes'];
-  edges: AppVersionSchemaType['edges'];
-  chatConfig: AppVersionSchemaType['chatConfig'];
-  isPublish?: boolean;
-  versionName?: string;
-  autoSave?: boolean; // If it is automatically saved, only one copy of the entire app will be stored, overwriting the old version
-};
+type PublishAppBody = z.output<typeof PublishAppBodySchema>;
+
+/** 编辑器每次保存都会提交完整工作流，选项使用 API 解析后的类型。 */
+export type PostPublishAppProps = Omit<PublishAppBody, 'nodes' | 'edges' | 'chatConfig'> &
+  Required<Pick<PublishAppBody, 'edges' | 'chatConfig'>> &
+  Required<Pick<PublishAppBodyType, 'nodes'>>;
 
 export type PostRevertAppProps = {
   versionId: string;
