@@ -44,7 +44,7 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { getFullTextStore, MongoFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
-import { searchSqlFullText } from '@fastgpt/service/core/dataset/fullText/sql/store';
+import { searchNativeFullText } from '@fastgpt/service/core/dataset/fullText/store';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import type { SystemMigrationContext } from '@/migration/registry';
 import { systemMigrations } from '@/migration/registry';
@@ -332,7 +332,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
         }
       ]);
       expect((await snapshot()).map((row) => row.id)).toEqual([healthy.insertIds[0], repairedId]);
-      expect((await searchSqlFullText(props('missingvectorproof')))[0]?.dataId).toBe(fixture.id);
+      expect((await searchNativeFullText(props('missingvectorproof')))[0]?.dataId).toBe(fixture.id);
       expect(await MongoDatasetDataText.countDocuments()).toBe(2);
       expect(mockGetVectors).toHaveBeenCalledOnce();
       expect(points).not.toHaveBeenCalled();
@@ -592,9 +592,9 @@ describe.skipIf(!target)('PG full-text real migration', () => {
       await seed('新写入 incremental', { native: true });
     });
     expect(await migrateSqlFullTextMigration(state.context)).toMatchObject({ validated: 3 });
-    expect((await searchSqlFullText(props('replacement')))[0]?.dataId).toBe(replaced.id);
-    expect(await searchSqlFullText(props('outdated'))).toEqual([]);
-    expect((await searchSqlFullText(props('incremental'))).length).toBe(1);
+    expect((await searchNativeFullText(props('replacement')))[0]?.dataId).toBe(replaced.id);
+    expect(await searchNativeFullText(props('outdated'))).toEqual([]);
+    expect((await searchNativeFullText(props('incremental'))).length).toBe(1);
     expect(
       (
         await pool.query('SELECT id FROM modeldata WHERE id=ANY($1::bigint[])', [
@@ -629,14 +629,14 @@ describe.skipIf(!target)('PG full-text real migration', () => {
       vectors: [vector],
       texts: ['南京长江大桥 orphan orphan']
     });
-    const matches = await searchSqlFullText({
+    const matches = await searchNativeFullText({
       ...props('长江大桥'),
       limit: 2,
       filterCollectionIdList: [collectionId, hiddenCollectionId],
       forbidCollectionIdList: [hiddenCollectionId]
     });
     expect(new Set(matches.map(({ dataId }) => dataId))).toEqual(new Set([wanted.id, second.id]));
-    expect(await searchSqlFullText(props('private_image_secret_key'))).toEqual([]);
+    expect(await searchNativeFullText(props('private_image_secret_key'))).toEqual([]);
     expect(
       (
         await pool.query('SELECT fulltext_tokens AS text FROM modeldata WHERE id=$1', [
@@ -690,7 +690,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
     expect((await searchPgFullText(props('invisible'))).map(({ vectorId }) => vectorId)).toContain(
       vectorId
     );
-    expect(await searchSqlFullText(props('invisible'))).toEqual([]);
+    expect(await searchNativeFullText(props('invisible'))).toEqual([]);
   });
 
   it('rejects wrong ownership, mismatched inputs and changed target checkpoints', async () => {
@@ -849,7 +849,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
       embeddingModel: model
     });
     expect(await MongoDatasetDataText.countDocuments()).toBe(1);
-    expect((await searchSqlFullText(props('createproof')))[0]?.dataId).toBe(created.insertId);
+    expect((await searchNativeFullText(props('createproof')))[0]?.dataId).toBe(created.insertId);
     expect((await new MongoFullTextStore().search(props('createproof')))[0]?.dataId).toBe(
       created.insertId
     );
@@ -861,8 +861,8 @@ describe.skipIf(!target)('PG full-text real migration', () => {
       indexes: [],
       model
     });
-    expect((await searchSqlFullText(props('updateproof')))[0]?.dataId).toBe(created.insertId);
-    expect(await searchSqlFullText(props('createproof'))).toEqual([]);
+    expect((await searchNativeFullText(props('updateproof')))[0]?.dataId).toBe(created.insertId);
+    expect(await searchNativeFullText(props('createproof'))).toEqual([]);
     expect(
       (
         await pool.query('SELECT id FROM modeldata WHERE id=ANY($1::bigint[])', [
@@ -872,7 +872,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
     ).toEqual([]);
     const current = (await MongoDatasetData.findById(created.insertId).lean())!;
     await operation.delete({ ...current, id: String(current._id) });
-    expect(await searchSqlFullText(props('updateproof'))).toEqual([]);
+    expect(await searchNativeFullText(props('updateproof'))).toEqual([]);
     expect(await MongoDatasetData.countDocuments()).toBe(0);
     expect(await MongoDatasetDataText.countDocuments()).toBe(0);
     expect((await pool.query('SELECT count(*)::int AS n FROM modeldata')).rows[0].n).toBe(0);
@@ -927,7 +927,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
         const query = doc.indexes.find(
           (i) => i.type !== DatasetDataIndexTypeEnum.imageEmbedding
         )!.text;
-        const pgHits = await searchSqlFullText({
+        const pgHits = await searchNativeFullText({
           ...props(query),
           teamId: String(doc.teamId),
           datasetIds: [String(doc.datasetId)]

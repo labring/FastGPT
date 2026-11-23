@@ -1,5 +1,5 @@
 import { getLogger, LogCategories } from '../logger';
-import type { Model } from 'mongoose';
+import type { Model, mongo } from 'mongoose';
 import { getDeprecatedIndexes, type DeprecatedMongoIndexDefinition } from './schemaIndexes';
 
 const defaultLogger = getLogger(LogCategories.INFRA.MONGO);
@@ -63,6 +63,8 @@ export type MongoIndexCleanupSummary = {
 
 type SyncModelIndexesParams = {
   model: Model<any>;
+  /** 单独在后台构建的索引由调用方负责，仍在 Schema 中声明。 */
+  deferredIndexNames?: readonly string[];
   logger?: MongoIndexLogger;
 };
 
@@ -125,6 +127,7 @@ export class MongoIndexManager {
 
   private static async syncModelIndexesInner({
     model,
+    deferredIndexNames,
     logger = defaultLogger
   }: SyncModelIndexesParams): Promise<MongoIndexSyncResult> {
     const inspection = await MongoIndexManager.inspectModelIndexes(model);
@@ -136,7 +139,19 @@ export class MongoIndexManager {
       });
     }
 
-    await model.createIndexes({ background: true });
+    if (deferredIndexNames?.length) {
+      for (const [key, options] of model.schema.indexes()) {
+        if (options?.name && deferredIndexNames.includes(options.name)) continue;
+        const { unique, ...indexOptions } = options ?? {};
+        await model.collection.createIndex(key as mongo.IndexSpecification, {
+          ...indexOptions,
+          unique: Array.isArray(unique) ? unique[0] : unique,
+          background: true
+        });
+      }
+    } else {
+      await model.createIndexes({ background: true });
+    }
 
     const cleanupReport = await MongoIndexManager.cleanupModelDeprecatedIndexes({
       model,

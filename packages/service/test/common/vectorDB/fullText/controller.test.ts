@@ -74,7 +74,7 @@ describe('getSqlFullTextAdapter', () => {
 
   it('uses the configured provider by default and rejects Milvus', () => {
     expect(getSqlFullTextAdapter()).toBe(getSqlFullTextAdapter('pg'));
-    expect(() => getSqlFullTextAdapter('milvus')).toThrow('existing native');
+    expect(() => getSqlFullTextAdapter('milvus')).toThrow('own native');
   });
 });
 

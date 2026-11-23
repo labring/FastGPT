@@ -26,7 +26,9 @@ const adapters = new Map<SqlFullTextProvider, SqlFullTextAdapter>();
 export const getSqlFullTextAdapter = (
   provider: VectorType = getVectorType()
 ): SqlFullTextAdapter => {
-  if (provider === 'milvus') throw new Error('Milvus uses its existing native full-text path');
+  if (provider === 'milvus' || provider === 'mongo') {
+    throw new Error(`${provider} uses its own native full-text adapter`);
+  }
   const cached = adapters.get(provider);
   if (cached) return cached;
   const adapter: SqlFullTextAdapter = (() => {

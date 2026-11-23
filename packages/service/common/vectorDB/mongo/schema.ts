@@ -6,6 +6,15 @@ import { DatasetEmbeddingCollectionName } from '../constants';
 // 独立连接允许向量库与业务库部署在不同集群，且避免 Next.js 热更新重复建立连接。
 export const embeddingMongo = (global.embeddingMongo ??= new Mongoose());
 
+export const MongoFullTextIndex = {
+  key: { teamId: 1, fulltextTokens: 'text' },
+  options: {
+    name: 'embedding_fulltext',
+    default_language: 'none',
+    collation: { locale: 'simple' }
+  }
+} as const;
+
 export const DatasetDataEmbeddingMongoSchema = new Schema<DatasetDataEmbedding>(
   {
     _id: { type: String, required: true },
@@ -14,7 +23,8 @@ export const DatasetDataEmbeddingMongoSchema = new Schema<DatasetDataEmbedding>(
     collectionId: { type: String, required: true },
     vector: { type: [Number], required: true },
     createTime: { type: Date, required: true },
-    text: String
+    text: String,
+    fulltextTokens: String
   },
   { autoIndex: false, autoCreate: false, versionKey: false }
 );
@@ -22,6 +32,9 @@ export const DatasetDataEmbeddingMongoSchema = new Schema<DatasetDataEmbedding>(
 // 新集合没有 FastGPT 历史索引；只声明当前查询和孤儿向量清理所需的普通索引。
 defineIndex(DatasetDataEmbeddingMongoSchema, { key: { teamId: 1, datasetId: 1, collectionId: 1 } });
 defineIndex(DatasetDataEmbeddingMongoSchema, { key: { createTime: 1 } });
+
+// teamId 是 $text 的等值前缀。知识库和集合过滤在同一查询内应用。
+defineIndex(DatasetDataEmbeddingMongoSchema, MongoFullTextIndex);
 
 export const MongoDatasetDataEmbedding: Model<DatasetDataEmbedding> =
   embeddingMongo.models[DatasetEmbeddingCollectionName] ??

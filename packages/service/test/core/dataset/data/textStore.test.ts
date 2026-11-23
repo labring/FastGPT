@@ -35,8 +35,8 @@ vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
 vi.mock('@fastgpt/service/common/string/jieba/index', () => ({
   jiebaSplit: mockJiebaSplit
 }));
-vi.mock('@fastgpt/service/core/dataset/fullText/sql/store', () => ({
-  searchSqlFullText: mockSearchSqlFullText
+vi.mock('@fastgpt/service/core/dataset/fullText/store', () => ({
+  searchNativeFullText: mockSearchSqlFullText
 }));
 vi.mock('@fastgpt/service/common/vectorDB/milvus/fullText', () => ({
   getMilvusFullTextStore: () => ({ isMilvus: true, search: mockMilvusSearch })
@@ -83,10 +83,10 @@ afterEach(() => {
 });
 
 describe('textStore', () => {
-  it('TC-7.1 MongoFullTextStore and SqlFullTextStore expose search + compatibility write/delete', async () => {
-    const { MongoFullTextStore, SqlFullTextStore } = await loadTextStore('pg');
+  it('TC-7.1 MongoFullTextStore and NativeFullTextStore expose search + compatibility write/delete', async () => {
+    const { MongoFullTextStore, NativeFullTextStore } = await loadTextStore('pg');
     const mongo = new MongoFullTextStore();
-    const sqlStore = new SqlFullTextStore();
+    const sqlStore = new NativeFullTextStore();
     expect(typeof mongo.search).toBe('function');
     expect(typeof mongo.write).toBe('function');
     expect(typeof mongo.deleteByDataId).toBe('function');
@@ -103,9 +103,9 @@ describe('textStore', () => {
   it.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
     'TC-7.3 keeps %s on Mongo until the compatibility flag is removed',
     async (provider) => {
-      const { getFullTextStore, SqlFullTextStore } = await loadTextStore(provider);
+      const { getFullTextStore, NativeFullTextStore } = await loadTextStore(provider);
       const store = getFullTextStore();
-      expect(store).toBeInstanceOf(SqlFullTextStore);
+      expect(store).toBeInstanceOf(NativeFullTextStore);
       expect(getFullTextStore()).toBe(store);
 
       const props = {
@@ -143,8 +143,8 @@ describe('textStore', () => {
 
   it('TC-7.4 write tokenizes fullText internally and upserts by dataId with session', async () => {
     mockJiebaSplit.mockResolvedValue('token d1');
-    const { SqlFullTextStore } = await loadTextStore('pg');
-    const store = new SqlFullTextStore();
+    const { NativeFullTextStore } = await loadTextStore('pg');
+    const store = new NativeFullTextStore();
     const session = { sessionId: 's1' } as never;
     await store.write(
       [
@@ -176,8 +176,8 @@ describe('textStore', () => {
   });
 
   it('TC-7.5 deleteByDataId, deleteByDatasetIds and deleteByCollectionIds forward session', async () => {
-    const { SqlFullTextStore } = await loadTextStore('pg');
-    const store = new SqlFullTextStore();
+    const { NativeFullTextStore } = await loadTextStore('pg');
+    const store = new NativeFullTextStore();
     const session = { sessionId: 's1' } as never;
     await store.deleteByDataId('d1', session);
     expect(mockDeleteMany).toHaveBeenCalledWith({ dataId: 'd1' }, { session });

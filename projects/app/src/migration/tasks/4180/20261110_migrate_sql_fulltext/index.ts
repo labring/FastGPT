@@ -8,11 +8,11 @@ import type {
 } from '@fastgpt/global/migration/schema';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import {
-  SqlFullTextProviderSchema,
+  NativeFullTextProviderSchema,
   SqlFullTextMetadataSchema
 } from '@fastgpt/global/core/dataset/fullText/schema';
 import { getVectorType } from '@fastgpt/service/common/vectorDB/constants';
-import { getSqlFullTextAdapter } from '@fastgpt/service/common/vectorDB/fullText/controller';
+import { getNativeFullTextAdapter } from '@fastgpt/service/common/vectorDB/fullText/native';
 import {
   SqlFullTextMigrationRecordError,
   getLatestDatasetDataId,
@@ -23,7 +23,7 @@ import { verifySqlFullTextSearch } from './probe';
 
 const STAGE_KEYS = ['prepare', 'scan', 'validation'] as const;
 const CheckpointSchema = z.object({
-  provider: SqlFullTextProviderSchema,
+  provider: NativeFullTextProviderSchema,
   schemaVersion: SqlFullTextMetadataSchema.shape.schemaVersion.default(1),
   analyzerVersion: SqlFullTextMetadataSchema.shape.analyzerVersion,
   targetId: z.uuid(),
@@ -62,7 +62,7 @@ export const migrateSqlFullTextMigration = async (
   // 1. 准备索引并读取目标身份和版本。
   await assertActive();
   await context.reportProgress({ key: 'prepare', status: SystemMigrationStatusEnum.running });
-  const adapter = getSqlFullTextAdapter();
+  const adapter = getNativeFullTextAdapter();
   const metadata = await adapter.prepare({ signal: context.signal });
   await context.reportProgress({ key: 'prepare', status: SystemMigrationStatusEnum.succeeded });
 

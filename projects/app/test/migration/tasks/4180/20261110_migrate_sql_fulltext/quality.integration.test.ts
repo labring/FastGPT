@@ -30,7 +30,7 @@ import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { getFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
-import { searchSqlFullText } from '@fastgpt/service/core/dataset/fullText/sql/store';
+import { searchNativeFullText } from '@fastgpt/service/core/dataset/fullText/store';
 import { getSqlFullTextAdapter } from '@fastgpt/service/common/vectorDB/fullText/controller';
 import { systemMigrations } from '@/migration/registry';
 import { createSystemMigrationRunner } from '@/migration/runner';
@@ -385,7 +385,7 @@ describe.skipIf(!target).each(qualityDatasets)(
               milliseconds: performance.now() - t0
             };
           }
-          const hits = await searchSqlFullText(props(query));
+          const hits = await searchNativeFullText(props(query));
           return {
             ids: hits.map((hit) => sourceIds.get(hit.dataId)!),
             scores: hits.map((hit) => hit.score),

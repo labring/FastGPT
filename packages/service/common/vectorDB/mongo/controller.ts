@@ -2,7 +2,9 @@ import { DatasetEmbeddingDimensions } from '@fastgpt/global/core/dataset/data/em
 import { delay } from '@fastgpt/global/common/system/utils';
 import { serviceEnv } from '../../../env';
 import { MongoIndexManager } from '../../mongo/indexManager';
-import { embeddingMongo, MongoDatasetDataEmbedding } from './schema';
+import { embeddingMongo, MongoDatasetDataEmbedding, MongoFullTextIndex } from './schema';
+import { ensureMongoFullTextIndex } from './fullTextIndex';
+import { getLogger, LogCategories } from '../../logger';
 import z from 'zod';
 
 const SearchIndexStateSchema = z.object({
@@ -107,7 +109,16 @@ export const initEmbeddingMongo = async (): Promise<void> => {
   if (!initializing) {
     initializing = (async () => {
       await connectEmbeddingMongo();
-      await MongoIndexManager.syncModelIndexes({ model: MongoDatasetDataEmbedding });
+      await MongoIndexManager.syncModelIndexes({
+        model: MongoDatasetDataEmbedding,
+        deferredIndexNames: [MongoFullTextIndex.options.name]
+      });
+      void ensureMongoFullTextIndex().catch((error) => {
+        getLogger(LogCategories.INFRA.VECTOR).warn(
+          'MongoDB full-text background index build failed',
+          { error }
+        );
+      });
       await ensureMongoEmbeddingSearchIndex();
     })().catch((error) => {
       initializing = undefined;

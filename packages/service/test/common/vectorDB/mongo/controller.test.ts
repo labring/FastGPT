@@ -16,10 +16,12 @@ const mocks = vi.hoisted(() => ({
   connection: { readyState: 0 },
   connect: vi.fn(),
   list: vi.fn(),
-  create: vi.fn()
+  create: vi.fn(),
+  ensureFullText: vi.fn()
 }));
 vi.mock('@fastgpt/service/env', () => ({ serviceEnv: mocks.env }));
 vi.mock('@fastgpt/service/common/vectorDB/mongo/schema', () => ({
+  MongoFullTextIndex: { options: { name: 'embedding_fulltext' } },
   embeddingMongo: { connection: mocks.connection, connect: mocks.connect },
   MongoDatasetDataEmbedding: {
     collection: {
@@ -27,6 +29,9 @@ vi.mock('@fastgpt/service/common/vectorDB/mongo/schema', () => ({
       createSearchIndex: mocks.create
     }
   }
+}));
+vi.mock('@fastgpt/service/common/vectorDB/mongo/fullTextIndex', () => ({
+  ensureMongoFullTextIndex: mocks.ensureFullText
 }));
 const ready = () => ({
   status: 'READY',
@@ -43,6 +48,7 @@ describe('Mongo embedding initialization', () => {
     mocks.connect.mockReset().mockResolvedValue(undefined);
     mocks.list.mockReset().mockResolvedValue([ready()]);
     mocks.create.mockReset().mockResolvedValue('embedding_int8');
+    mocks.ensureFullText.mockReset().mockResolvedValue(undefined);
   });
 
   it('requires a dedicated URL and reuses an established connection', async () => {
@@ -151,14 +157,19 @@ describe('Mongo embedding initialization', () => {
     }
   });
 
-  it('retries a failed init and caches completed index initialization', async () => {
+  it('retries a failed init and starts vector operations while full-text index construction is pending', async () => {
     const sync = vi
       .spyOn(MongoIndexManager, 'syncModelIndexes')
       .mockRejectedValueOnce(new Error('index error'))
       .mockResolvedValue({} as never);
+    mocks.ensureFullText.mockReturnValue(new Promise<void>(() => {}));
     await expect(initEmbeddingMongo()).rejects.toThrow('index error');
     await Promise.all([initEmbeddingMongo(), initEmbeddingMongo()]);
     await initEmbeddingMongo();
     expect(sync).toHaveBeenCalledTimes(2);
+    expect(sync).toHaveBeenLastCalledWith(
+      expect.objectContaining({ deferredIndexNames: ['embedding_fulltext'] })
+    );
+    expect(mocks.ensureFullText).toHaveBeenCalledOnce();
   });
 });

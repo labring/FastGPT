@@ -9,7 +9,7 @@ import type {
   FullTextWriteProps
 } from '../../../common/vectorDB/type';
 import { getMilvusFullTextStore } from '../../../common/vectorDB/milvus/fullText';
-import { searchSqlFullText } from '../fullText/sql/store';
+import { searchNativeFullText } from '../fullText/store';
 import { MongoDatasetDataText } from './dataTextSchema';
 import {
   getFullTextProvider,
@@ -145,14 +145,14 @@ export class MongoFullTextStore implements FullTextStore {
   }
 }
 
-/** SQL 向量库的全文读取和 Mongo 兼容写删由同一个环境变量控制。 */
-export class SqlFullTextStore extends MongoFullTextStore {
+/** 向量库的原生全文读取和 Mongo 兼容写删由同一个环境变量控制。 */
+export class NativeFullTextStore extends MongoFullTextStore {
   override async search(props: FullTextSearchProps): Promise<FullTextSearchItem[]> {
-    if (getFullTextProvider() === 'mongo') return super.search(props);
-    return searchSqlFullText(props);
+    if (getFullTextProvider() === 'legacy-mongo') return super.search(props);
+    return searchNativeFullText(props);
   }
 
-  /** 兼容模式维护旧 Mongo 全文，SQL 词串始终由向量写入通道同行保存。 */
+  /** 兼容模式维护旧 Mongo 全文，原生词串始终由向量写入通道同行保存。 */
   override async write(props: FullTextWriteProps[], session?: ClientSession): Promise<void> {
     if (shouldWriteMongoFullText()) await super.write(props, session);
   }
@@ -179,9 +179,10 @@ export class SqlFullTextStore extends MongoFullTextStore {
 
 let fullTextStore: FullTextStore | undefined;
 
-/** 按物理存储分发单例，SQL Store 统一处理兼容模式。 */
+/** 按物理存储分发单例，原生 Store 统一处理兼容模式。 */
 export const getFullTextStore = (): FullTextStore => {
   if (fullTextStore) return fullTextStore;
-  fullTextStore = getVectorType() === 'milvus' ? getMilvusFullTextStore() : new SqlFullTextStore();
+  fullTextStore =
+    getVectorType() === 'milvus' ? getMilvusFullTextStore() : new NativeFullTextStore();
   return fullTextStore;
 };

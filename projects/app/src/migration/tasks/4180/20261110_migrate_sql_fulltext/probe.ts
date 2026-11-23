@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { createVectorController } from '@fastgpt/service/common/vectorDB/controller';
-import type { SqlFullTextAdapter } from '@fastgpt/service/common/vectorDB/fullText/type';
+import type { NativeFullTextAdapter } from '@fastgpt/service/common/vectorDB/fullText/type';
 
 /**
  * 在当前索引中用隔离词条验证中英文匹配与集合过滤。使用固定向量，无需模型或业务样本，
@@ -13,7 +13,7 @@ export const verifySqlFullTextSearch = async ({
   runId,
   assertActive
 }: {
-  adapter: SqlFullTextAdapter;
+  adapter: NativeFullTextAdapter;
   targetId: string;
   runId: string;
   assertActive: () => Promise<void>;

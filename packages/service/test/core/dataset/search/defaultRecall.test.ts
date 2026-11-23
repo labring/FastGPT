@@ -121,12 +121,12 @@ vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/core/dataset/fullText/sql/store', () => ({
-  searchSqlFullText: mockSearchSqlFullText
+vi.mock('@fastgpt/service/core/dataset/fullText/store', () => ({
+  searchNativeFullText: mockSearchSqlFullText
 }));
 
 // 覆盖 test/mocks/common/vector.ts 的全局 constants mock(其缺 getVectorType 导出)。
-// textStore 经 importOriginal 委托真实 SqlFullTextStore 时需要该导出;defaultRecall 链路本身
+// textStore 经 importOriginal 委托真实 NativeFullTextStore 时需要该导出;defaultRecall 链路本身
 // 不消费 vectorDB/constants,因此补上导出不影响既有用例。
 vi.mock('@fastgpt/service/common/vectorDB/constants', async (importOriginal) => {
   const orig = await importOriginal<typeof import('@fastgpt/service/common/vectorDB/constants')>();
@@ -138,8 +138,8 @@ vi.mock('@fastgpt/service/common/vectorDB/constants', async (importOriginal) => 
 });
 
 // getFullTextStore 可切换 mock(ISSUE-015):
-// 默认(mockUseMilvusStore.value=false)委托真实 SqlFullTextStore.search —— 内部走
-// searchSqlFullText,由 mockSearchSqlFullText 支撑;
+// 默认(mockUseMilvusStore.value=false)委托真实 NativeFullTextStore.search —— 内部走
+// searchNativeFullText,由 mockSearchSqlFullText 支撑;
 // milvus 用例置 mockUseMilvusStore.value=true 后经 mockFullTextStoreSearch 覆盖。
 vi.mock('@fastgpt/service/core/dataset/data/textStore', async (importOriginal) => {
   const orig =
@@ -151,7 +151,7 @@ vi.mock('@fastgpt/service/core/dataset/data/textStore', async (importOriginal) =
         if (mockUseMilvusStore.value) {
           return mockFullTextStoreSearch(props);
         }
-        return new orig.SqlFullTextStore().search(props);
+        return new orig.NativeFullTextStore().search(props);
       }
     })
   };
@@ -818,7 +818,7 @@ describe('fullTextRecall engine dispatch', () => {
 
   it('TC-13.1 SQL path groups results assembled via store search', async () => {
     // 被测函数: fullTextRecall  等级: 3-High
-    // 正常场景(回归): getFullTextStore 默认委托真实 SqlFullTextStore.search(内部走 searchSqlFullText,
+    // 正常场景(回归): getFullTextStore 默认委托真实 NativeFullTextStore.search(内部走 searchNativeFullText,
     // 由 mockSearchSqlFullText 支撑),buildResultsFromRecallItems 反查 data/collection 组装;
     // 结果 id 取自 dataset_data._id。
     mockSearchSqlFullText.mockResolvedValue([

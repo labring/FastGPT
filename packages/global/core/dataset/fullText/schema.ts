@@ -4,6 +4,12 @@ import { SQL_FULL_TEXT_ANALYZER_VERSION, SQL_FULL_TEXT_SCHEMA_VERSION } from './
 export const SqlFullTextProviderSchema = z.enum(['pg', 'oceanbase', 'seekdb', 'opengauss']);
 export type SqlFullTextProvider = z.infer<typeof SqlFullTextProviderSchema>;
 
+export const NativeFullTextProviderSchema = z.union([
+  SqlFullTextProviderSchema,
+  z.literal('mongo')
+]);
+export type NativeFullTextProvider = z.infer<typeof NativeFullTextProviderSchema>;
+
 /**
  * 物理目标身份由数据库持久化，断点及就绪记录必须绑定同一目标和分词规则。
  * 各 SQL provider 只存 FastGPT 外置分析器（jieba 搜索模式）输出的词串（fulltext_tokens 列），

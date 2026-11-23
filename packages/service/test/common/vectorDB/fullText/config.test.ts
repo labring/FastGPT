@@ -22,14 +22,14 @@ afterEach(() => {
 });
 
 describe('SQL full-text mode', () => {
-  it.each(['pg', 'seekdb', 'oceanbase', 'opengauss'] as const)(
+  it.each(['pg', 'seekdb', 'oceanbase', 'opengauss', 'mongo'] as const)(
     '%s pairs Mongo reads with dual writes only when compatibility is enabled',
     (provider) => {
       config.provider = provider;
       expect(getFullTextProvider()).toBe(provider);
       expect(shouldWriteMongoFullText()).toBe(false);
       config.compatibility = true;
-      expect(getFullTextProvider()).toBe('mongo');
+      expect(getFullTextProvider()).toBe('legacy-mongo');
       expect(shouldWriteMongoFullText()).toBe(true);
     }
   );

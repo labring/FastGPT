@@ -1,4 +1,5 @@
 import type {
+  NativeFullTextProvider,
   SqlFullTextMetadata,
   SqlFullTextProvider
 } from '@fastgpt/global/core/dataset/fullText/schema';
@@ -22,8 +23,10 @@ export type SqlFullTextHit = { vectorId: string; collectionId: string; score: nu
  * 底层适配器不读取 Mongo 路由或业务内容；只提供物理全文能力。
  * 入参中的 text/query 均为原文，适配器内部统一调用外置分析器分词，数据库只按空格切词并打分。
  */
-export type SqlFullTextAdapter = {
-  provider: SqlFullTextProvider;
+export type NativeFullTextAdapter<
+  Provider extends NativeFullTextProvider = NativeFullTextProvider
+> = {
+  provider: Provider;
   /** 准备物理结构并核验能力后返回目标身份，失败不得返回可用元数据。 */
   prepare: (options?: { signal?: AbortSignal }) => Promise<SqlFullTextMetadata>;
   assertCapability: () => Promise<void>;
@@ -33,3 +36,5 @@ export type SqlFullTextAdapter = {
   findMissingVectorIds: (ids: string[]) => Promise<string[]>;
   search: (props: FullTextSearchProps) => Promise<SqlFullTextHit[]>;
 };
+
+export type SqlFullTextAdapter = NativeFullTextAdapter<SqlFullTextProvider>;

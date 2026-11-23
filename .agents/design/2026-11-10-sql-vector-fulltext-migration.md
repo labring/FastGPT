@@ -1,6 +1,6 @@
-# SQL 向量库全文检索与存量回填
+# 向量库原生全文检索与存量回填
 
-> 更新：2026-11-19。范围：PG、OceanBase、SeekDB、OpenGauss；Milvus/Zilliz 保留现有路径。
+> 更新：2026-11-19。范围：MongoDB、PG、OceanBase、SeekDB、OpenGauss；Milvus/Zilliz 保留现有路径。
 > 全文统一按 `index.text` 构建。临时兼容开关控制读写，迁移负责校验结构、分词版本和实际全文召回。
 
 ## 1. 目标与边界
@@ -15,18 +15,18 @@ index.text → 对应历史同义词处理 → 统一分析器 → modeldata.ful
 
 `fulltext_tokens IS NULL` 表示未回填；图片向量的全文词串为空串。检索库不额外保存业务原文。
 
-新写入通过向量通道将向量和词串同行提交，随后在 Mongo 事务中写主数据及兼容全文；两个数据库之间没有分布式事务。SQL 查询结果须按 Mongo 当前有效引用核对，孤儿及已替换的旧向量不能成为有效业务命中。
+新写入通过向量通道将向量和词串同行提交，随后在 Mongo 事务中写主数据及兼容全文；两个数据库之间没有分布式事务。原生全文查询结果须按 Mongo 当前有效引用核对，孤儿及已替换的旧向量不能成为有效业务命中。
 
 ## 2. 临时兼容开关
 
 | 环境变量 | 全文读取 | 全文写删 |
 | --- | --- | --- |
-| `TMP_MIGRATE_FULL_TEXT=true` | Mongo | SQL 和 Mongo |
-| 未设置或关闭 | SQL | SQL |
+| `TMP_MIGRATE_FULL_TEXT=true` | 业务 Mongo 的旧全文 | 当前向量库和旧全文 |
+| 未设置或关闭 | 当前向量库 | 当前向量库 |
 
-为保持升级期间的全文服务，先在所有新版 App/Pro 和训练写入方统一配置 `TMP_MIGRATE_FULL_TEXT=true`。管理员确认迁移成功后，在统一切换窗口移除变量并重启相关进程。切换窗口可暂停写入并排空在途请求，避免只写 SQL 的节点和仍读 Mongo 的节点同时提供服务。Milvus/Zilliz 始终沿用原生路径。
+为保持升级期间的全文服务，先在所有新版 App/Pro 和训练写入方统一配置 `TMP_MIGRATE_FULL_TEXT=true`。管理员确认迁移成功后，在统一切换窗口移除变量并重启相关进程。切换窗口可暂停写入并排空在途请求，避免只写原生全文的节点和仍读旧全文的节点同时提供服务。Milvus/Zilliz 始终沿用原生路径。
 
-环境变量直接决定全文路由。迁移完成前关闭兼容时，SQL 全文查询可能失败或漏掉历史命中，包含全文召回的混合检索也会受到影响。旧镜像或暂不满足原生全文能力的部署可持续开启兼容。停双写后旧 Mongo 全文会落后，恢复 Mongo 查询前需补齐并验证增删改。
+环境变量直接决定全文路由。迁移完成前关闭兼容时，原生全文查询可能失败或漏掉历史命中，包含全文召回的混合检索也会受到影响。旧镜像或暂不满足原生全文能力的部署可持续开启兼容。停双写后旧 Mongo 全文会落后，恢复 Mongo 查询前需补齐并验证增删改。
 
 ## 3. 分词规则与物理目标
 
@@ -63,9 +63,15 @@ SQL 的 `fastgpt_fulltext_metadata` 保存目标和版本。Runner 保存迁移�
 
 启动先准备基础表、词串列及必要的向量侧索引。PG 只在管理员运行手动任务后构建全文索引，已存在的词串列通过目录查询确认，只有缺列才短暂获取表排他锁。列 DDL 提交后，`pg_search` 0.26.0 及以上使用 `CREATE INDEX CONCURRENTLY`。旧版扩展在构建期间使用普通 `CREATE INDEX`，由 PG 表锁阻塞写入，读取继续。索引建完后，回填与验收阶段都允许写入。建索引遇到长事务等待超时后可重试，仅对同表、同名、定义匹配的无效索引重建。扩展原地升级后会复用仍受支持的历史有效索引，并继续校验索引列、分词及固定查询结果。
 
-其他已适配的 SQL 向量库继续异步准备全文索引，应用启动可以继续。共享的 prepare Promise 合并本进程内对同一 provider 的并发准备。管理员确认 Runner 成功后再切读。
+MongoDB 及其他已适配的 SQL 向量库异步准备全文索引，应用启动可以继续。共享的 prepare Promise 合并本进程内对同一 provider 的并发准备。管理员确认 Runner 成功后再切读。
 
 仓库现有公开 PG 镜像未预装 pg_search，openGauss 示例仍为 RC1。使用这些组合时，升级前设置兼容变量可保留 Mongo 全文。切换 SQL 原生全文前需先准备上述数据库版本及扩展。
+
+### MongoDB 向量库
+
+`SEARCH_MONGO_URL` 指向的 `dataset_data_embeddings` 用 `fulltextTokens` 存词串，与向量同行写删。`embedding_fulltext` 以 `teamId` 为等值前缀，使用 `$text` 和 `default_language: none`，沿用外置 Jieba 分词。数据集与允许/禁止集合均在排序和取 Top-K 前过滤。MongoDB 全文索引异步构建，和向量搜索索引各自验证。[MongoDB 文本索引约束](https://www.mongodb.com/docs/manual/core/indexes/index-types/index-text/text-index-restrictions/)
+
+手动任务复用现有三阶段流程。业务 Mongo 的 `dataset_datas.indexes[].text` 及历史同义词版本作为源，按字符串向量 ID 给同归属、词串缺失或为 `null` 的文档回填。旧 `dataset_data_texts` 保留给兼容读取。断点绑定向量集合 UUID，验收包含完整引用校验以及隔离范围的中英文检索。切读仍由 `TMP_MIGRATE_FULL_TEXT` 决定。
 
 ## 5. 三阶段手动迁移
 
@@ -85,7 +91,7 @@ validation：完整重验当前有效引用 → 核对能力和目标版本 → 
 
 已有非空冲突值和错误归属不会被覆盖。发现坏记录时允许其他健康记录完成派生词串回填，任务最终会失败。
 
-对仍被 Mongo 引用的无效 SQL 行，再按全局 ID 查询确认物理缺失，不能把错误归属当作缺失。PostgreSQL、OceanBase、SeekDB 和 openGauss 均只补建物理缺失项，复用 `DatasetDataIndexOperation.insertVectors`，使用知识库配置的 embedding 模型与记录的历史同义词输入，在新 SQL 行中一并写入向量和全文，分配新 ID；不会使用空向量或复用旧 ID。
+对仍被 Mongo 引用的无效 SQL 行，再按全局 ID 查询确认物理缺失，不能把错误归属当作缺失。PostgreSQL、OceanBase、SeekDB、openGauss 和 MongoDB 均只补建物理缺失项，复用 `DatasetDataIndexOperation.insertVectors`，使用知识库配置的 embedding 模型与记录的历史同义词输入，在新向量记录中一并写入向量和全文，分配新 ID；不会使用空向量或复用旧 ID。
 
 提交前检查执行权，并在 Mongo 事务中核对模型引用、数据归属、原始 BSON indexes、updateTime、indexStatus 和 synonymVersion，只更新缺失项的 dataId。并发编辑、删除或模型重建使快照失效时不提交，清理未被引用的新向量；提交响应不确定时先查主库引用，主库不可读则保留派生行供孤儿清理。修复提交后重新读取并只读验收全部当前引用。原文、历史同义词版本及 Mongo 兼容全文不变；图片补建失败不能静默删除索引。
 
@@ -110,7 +116,7 @@ validation：完整重验当前有效引用 → 核对能力和目标版本 → 
 
 ## 6. 检索与兼容期
 
-SQL 先按团队、知识库、集合允许/禁止范围过滤，再做相关性排名与 limit。返回向量 ID，经 Mongo 主库当前索引引用映射为业务块，去重后进入既有 RRF/rerank。
+原生全文先按团队、知识库、集合允许/禁止范围过滤，再做相关性排名与 limit。返回向量 ID，经 Mongo 主库当前索引引用映射为业务块，去重后进入既有 RRF/rerank。
 
 候选逐步扩展且最多 500 条；本轮按用户要求保留现有预算与去重行为，不额外实现分组 Top-K 或分页。
 
@@ -127,7 +133,7 @@ SQL 先按团队、知识库、集合允许/禁止范围过滤，再做相关性
 - 三阶段注册、Milvus 不适用边界、手动 waiting 入队和真实 Runner 完成/失败。
 - 坏数据与健康数据混合时健康行可回填，错误完整保存，任务标为失败。修复后优先重试游标前错误。
 - 源记录无效时不写该记录，已有词串冲突不覆盖，向量、正文及旧 Mongo 全文保持原样。
-- 各 SQL 向量库只补建物理缺失项，向量和全文同写，保留旧 BSON 形状并只替换 ID，重试不重复生成。覆盖历史同义词、并发编辑/删除/换模型、lease 丢失、图片生成失败及不确定提交后的保守清理。
+- 各向量库只补建物理缺失项，向量和全文同写，保留旧 BSON 形状并只替换 ID，重试不重复生成。覆盖历史同义词、并发编辑/删除/换模型、lease 丢失、图片生成失败及不确定提交后的保守清理。
 - checkpoint 提交前退出、取消、lease 失效、意外数据库错误、恢复验收重扫及条件补 NULL。
 - 目标或规则与断点不匹配时拒绝续跑。
 - 迁移暂停期间读 Mongo 与双写，固定查询失败让任务失败。成功后仍保持兼容，移除变量后直接读写 SQL 全文。

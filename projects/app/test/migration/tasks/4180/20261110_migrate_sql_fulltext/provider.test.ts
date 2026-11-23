@@ -8,7 +8,7 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { migrateSqlFullTextMigration } from '@/migration/tasks/4180/20261110_migrate_sql_fulltext';
 import { getFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
-import { searchSqlFullText } from '@fastgpt/service/core/dataset/fullText/sql/store';
+import { searchNativeFullText } from '@fastgpt/service/core/dataset/fullText/store';
 import { systemMigrations, type SystemMigrationContext } from '@/migration/registry';
 import { createSystemMigrationRunner } from '@/migration/runner';
 import { enqueueManualMigration, ensureMigrationStates } from '@/migration/entity';
@@ -20,7 +20,7 @@ import type {
 
 // 兼容模式在迁移成功后仍固定读 Mongo；在测试中模拟启动时移除环境变量。
 vi.mock('@fastgpt/service/common/vectorDB/fullText/config', () => ({
-  getFullTextProvider: () => (driver.compatibility ? 'mongo' : driver.provider),
+  getFullTextProvider: () => (driver.compatibility ? 'legacy-mongo' : driver.provider),
   shouldWriteMongoFullText: () => driver.compatibility
 }));
 vi.mock('@/migration/tasks/4180/20261110_migrate_sql_fulltext/probe', () => ({
@@ -164,7 +164,7 @@ describe.each(['pg', 'oceanbase', 'seekdb', 'opengauss'] as const)(
         { vectorId: '1', collectionId, score: 2.5 },
         { vectorId: '999', collectionId, score: 1 }
       ]);
-      expect(await searchSqlFullText(queryProps)).toEqual([
+      expect(await searchNativeFullText(queryProps)).toEqual([
         { dataId: String(doc._id), collectionId, score: 2.5 }
       ]);
       expect(await getFullTextStore().search(queryProps)).toEqual([

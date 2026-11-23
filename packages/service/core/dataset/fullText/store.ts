@@ -1,12 +1,12 @@
-import type { FullTextSearchProps, FullTextSearchItem } from '../../../../common/vectorDB/type';
-import { getSqlFullTextAdapter } from '../../../../common/vectorDB/fullText/controller';
-import { MongoDatasetData } from '../../data/schema';
+import type { FullTextSearchProps, FullTextSearchItem } from '../../../common/vectorDB/type';
+import { getNativeFullTextAdapter } from '../../../common/vectorDB/fullText/native';
+import { MongoDatasetData } from '../data/schema';
 
 /**
  * 原生返回向量 ID，按当前主库引用、团队及知识库归属验证后映射为业务 ID。
  * 候选逐步扩大且最多 500 条；删除和旧向量残留不会变成有效业务命中。
  */
-export const searchSqlFullText = async (
+export const searchNativeFullText = async (
   props: FullTextSearchProps
 ): Promise<FullTextSearchItem[]> => {
   if (props.limit <= 0 || !props.query.trim() || !props.datasetIds.length) return [];
@@ -14,7 +14,7 @@ export const searchSqlFullText = async (
   const seen = new Set<string>();
   let budget = Math.min(500, Math.max(props.limit, props.limit * 2));
   while (budget > 0) {
-    const hits = await getSqlFullTextAdapter().search({ ...props, limit: budget });
+    const hits = await getNativeFullTextAdapter().search({ ...props, limit: budget });
     const docs = await MongoDatasetData.find(
       {
         teamId: props.teamId,

@@ -1,3 +1,4 @@
+import { assertMongoFullTextVectorId } from '@fastgpt/service/common/vectorDB/mongo/fullText';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
@@ -5,7 +6,7 @@ import {
   getDatasetSynonymConfig,
   getDatasetSynonymMatcher
 } from '@fastgpt/service/core/dataset/synonym/entity';
-import { getSqlFullTextAdapter } from '@fastgpt/service/common/vectorDB/fullText/controller';
+import { getNativeFullTextAdapter } from '@fastgpt/service/common/vectorDB/fullText/native';
 import type { SqlFullTextRow } from '@fastgpt/service/common/vectorDB/fullText/type';
 import {
   SqlFullTextDataError,
@@ -49,7 +50,10 @@ const withRecordDataErrorBoundary = async <T>(action: () => Promise<T>): Promise
 };
 
 /** 按索引记录的历史同义词版本重建输入，图片全文为空；不能用当前词表猜测历史。 */
-export const buildSqlFullTextRows = async (data: SqlFullTextSource): Promise<SqlFullTextRow[]> =>
+export const buildSqlFullTextRows = async (
+  data: SqlFullTextSource,
+  assertVectorId = assertSqlFullTextVectorId
+): Promise<SqlFullTextRow[]> =>
   withRecordDataErrorBoundary(async () => {
     const teamId = String(data.teamId);
     const datasetId = String(data.datasetId);
@@ -65,14 +69,17 @@ export const buildSqlFullTextRows = async (data: SqlFullTextSource): Promise<Sql
       );
     }
     const matcher =
-      needsHistory && version > 0 && !(config?.version === version && !config.enabled)
+      needsHistory &&
+      version > 0 &&
+      !config?.emptyVersions?.includes(version) &&
+      !(config?.version === version && !config.enabled)
         ? await getDatasetSynonymMatcher({ teamId, datasetId, fileVersion: version })
         : undefined;
     if (matcher && !matcher.hasMappings) {
       throw new SqlFullTextMigrationRecordError('Historical synonym snapshot is unavailable');
     }
     return data.indexes.map((index) => {
-      assertSqlFullTextVectorId(index.dataId);
+      assertVectorId(index.dataId);
       const text =
         index.type === DatasetDataIndexTypeEnum.imageEmbedding
           ? ''
@@ -138,8 +145,10 @@ const processSqlFullTextRecord = async ({
   withRecordDataErrorBoundary(async () => {
     const data = await MongoDatasetData.findById(id).read('primary').lean();
     if (!data) return 0;
-    const expected = await buildSqlFullTextRows(data);
-    const adapter = getSqlFullTextAdapter();
+    const adapter = getNativeFullTextAdapter();
+    const assertVectorId =
+      adapter.provider === 'mongo' ? assertMongoFullTextVectorId : assertSqlFullTextVectorId;
+    const expected = await buildSqlFullTextRows(data, assertVectorId);
     const invalid = new Set(await adapter.fill(expected, validateOnly));
     // 模型的 find 中间件会把 ObjectId 转成字符串，CAS 快照需直接保留 BSON。
     const current = await MongoDatasetData.collection.findOne<SqlFullTextSnapshot>(
@@ -148,7 +157,7 @@ const processSqlFullTextRecord = async ({
     );
     if (!current) return 0;
     const snapshot = current;
-    const currentRows = await buildSqlFullTextRows(current);
+    const currentRows = await buildSqlFullTextRows(current, assertVectorId);
     const currentById = new Map(currentRows.map((row) => [row.vectorId, row]));
     const invalidActiveIds: string[] = [];
     for (const row of expected) {
