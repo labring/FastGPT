@@ -90,6 +90,7 @@ export const applyChangesFromChannel = async ({
   for (const operation of operations) {
     const { providerModelSlug, isActive } = operation;
     let modelId = operation.action === 'associate' ? operation.modelId : undefined;
+    let channelUpdated = false;
     try {
       // 每条都用当前渠道配置校验冲突。创建前校验一次，提交后重读再生成写入。
       const model =
@@ -108,7 +109,10 @@ export const applyChangesFromChannel = async ({
         modelId = createdModel.modelId;
         patch = getChannelModelBindingPatch({ channel: await readChannel(), ...binding });
       }
-      if (patch) await aiProxyClient.system.channels.update(channelId, patch);
+      if (patch) {
+        await aiProxyClient.system.channels.update(channelId, patch);
+        channelUpdated = true;
+      }
 
       if (!modelId) throw new UserError(ModelErrEnum.invalidModelConfig);
       const statusChanged =
@@ -122,7 +126,7 @@ export const applyChangesFromChannel = async ({
         }));
       const result = { modelId, providerModelSlug };
       results.push(
-        operation.action === 'associate' && !patch && !statusChanged
+        operation.action === 'associate' && !channelUpdated && !statusChanged
           ? { ...result, action: 'associate', status: 'skipped' }
           : { ...result, action: operation.action, status: 'success' }
       );
@@ -132,6 +136,7 @@ export const applyChangesFromChannel = async ({
         status: 'failed',
         providerModelSlug: operation.providerModelSlug,
         ...(modelId === undefined ? {} : { modelId }),
+        ...(channelUpdated && { channelUpdated: true as const }),
         error: error instanceof Error ? error.message : String(error)
       });
     }

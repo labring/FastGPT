@@ -11,6 +11,7 @@ const apiMocks = vi.hoisted(() => ({
   getImportPreviewFromChannel: vi.fn(),
   getModelTemplates: vi.fn(),
   postApplyChannelImportChanges: vi.fn(),
+  testModelChannel: vi.fn(),
   deferResultModalMount: false
 }));
 
@@ -31,30 +32,32 @@ vi.mock('@chakra-ui/react', () => {
     isDisabled?: boolean;
   }>) => React.createElement('button', { onClick, disabled: isDisabled }, children);
 
+  const Checkbox = ({
+    isChecked,
+    isDisabled,
+    onChange,
+    'aria-label': ariaLabel
+  }: {
+    isChecked?: boolean;
+    isDisabled?: boolean;
+    onChange?: React.ChangeEventHandler<HTMLInputElement>;
+    'aria-label'?: string;
+  }) =>
+    React.createElement('input', {
+      type: 'checkbox',
+      checked: isChecked,
+      disabled: isDisabled,
+      onChange,
+      'aria-label': ariaLabel
+    });
+
   return {
     Box,
     Button,
-    Checkbox: ({
-      isChecked,
-      isDisabled,
-      onChange,
-      'aria-label': ariaLabel
-    }: {
-      isChecked?: boolean;
-      isDisabled?: boolean;
-      onChange?: React.ChangeEventHandler<HTMLInputElement>;
-      'aria-label'?: string;
-    }) =>
-      React.createElement('input', {
-        type: 'checkbox',
-        checked: isChecked,
-        disabled: isDisabled,
-        onChange,
-        'aria-label': ariaLabel
-      }),
+    Checkbox,
     Flex: Box,
     Spinner: () => null,
-    Switch: () => null,
+    Switch: Checkbox,
     Table: asTag('table'),
     Tbody: asTag('tbody'),
     Td: asTag('td'),
@@ -67,9 +70,27 @@ vi.mock('@chakra-ui/react', () => {
 
 vi.mock('@fastgpt/web/components/common/Avatar', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/EmptyTip', () => ({ default: () => null }));
-vi.mock('@fastgpt/web/components/common/Icon/button', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/common/Icon/button', () => ({
+  default: ({
+    onClick,
+    'aria-label': ariaLabel,
+    'aria-disabled': disabled
+  }: Pick<
+    React.ButtonHTMLAttributes<HTMLButtonElement>,
+    'onClick' | 'aria-label' | 'aria-disabled'
+  >) =>
+    React.createElement('button', { onClick, 'aria-label': ariaLabel, disabled: disabled === true })
+}));
 vi.mock('@fastgpt/web/components/common/Input/SearchInput', () => ({ default: () => null }));
-vi.mock('@fastgpt/web/components/common/MySelect', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/common/MySelect', () => ({
+  default: ({
+    isDisabled,
+    'aria-label': ariaLabel
+  }: {
+    isDisabled?: boolean;
+    'aria-label'?: string;
+  }) => React.createElement('select', { disabled: isDisabled, 'aria-label': ariaLabel })
+}));
 vi.mock('@fastgpt/web/components/common/Tag', () => ({
   default: ({ children }: React.PropsWithChildren) => React.createElement('span', null, children)
 }));
@@ -129,6 +150,12 @@ vi.mock('@/pageComponents/model/ImportModelFromChannelModal/StepModal', () => ({
   }
 }));
 vi.mock('@/web/core/ai/model/api', () => apiMocks);
+vi.mock('@/pageComponents/model/useModelChannelTest', () => ({
+  useModelChannelTest: () => ({
+    testingChannelIds: new Set<number>(),
+    testModelChannel: apiMocks.testModelChannel
+  })
+}));
 
 let dom: JSDOM;
 let host: HTMLDivElement;
@@ -245,7 +272,7 @@ describe('ImportModelFromChannelModal', () => {
     expect(getButton(buttonKey)).not.toBeUndefined();
   });
 
-  it('disables an exact bound model and keeps offscreen selections when returning from results', async () => {
+  it('allows activating and testing a same-name bound model and preserves offscreen drafts', async () => {
     const installedModel = {
       modelId: 'installed-model-id',
       model: 'installed-model',
@@ -253,7 +280,7 @@ describe('ImportModelFromChannelModal', () => {
       provider: 'openai',
       type: ModelTypeEnum.llm,
       scope: ModelScopeEnum.system,
-      isActive: true
+      isActive: false
     } as ModelConfigListItem;
     apiMocks.getImportPreviewFromChannel.mockResolvedValue({
       items: [
@@ -270,7 +297,14 @@ describe('ImportModelFromChannelModal', () => {
     apiMocks.getModelTemplates.mockResolvedValue({ models: [] });
 
     const props = {
-      channels: [],
+      channels: [
+        {
+          id: 1,
+          name: 'System channel',
+          status: 1,
+          protocol: { name: { en: 'OpenAI', 'zh-CN': 'OpenAI' }, avatar: 'model/openai' }
+        }
+      ],
       installedModels: [installedModel],
       providers: [],
       createModelData: () => installedModel as AIModelDocumentDataType,
@@ -297,11 +331,31 @@ describe('ImportModelFromChannelModal', () => {
     const scrollContainer = host.querySelector<HTMLDivElement>('[data-testid="virtual-list"]')!;
     Object.defineProperty(scrollContainer, 'clientHeight', { configurable: true, value: 64 });
     expect(host.textContent).toContain('upstream-model-0');
+    const exactCheckbox = host.querySelector<HTMLInputElement>(
+      'input[aria-label="config_model:channel_import_model installed-model"]'
+    )!;
+    const exactRow = exactCheckbox.closest('tr')!;
+    const activeSwitch = exactRow.querySelector<HTMLInputElement>(
+      'input[aria-label="config_model:model.active installed-model"]'
+    )!;
+    const testButton = exactRow.querySelector<HTMLButtonElement>(
+      'button[aria-label="config_model:model.test_model"]'
+    )!;
+    expect(exactCheckbox.disabled).toBe(false);
+    expect(activeSwitch.disabled).toBe(false);
+    expect(activeSwitch.checked).toBe(false);
     expect(
-      host.querySelector<HTMLInputElement>(
-        'input[aria-label="config_model:channel_import_model installed-model"]'
+      exactRow.querySelector<HTMLSelectElement>(
+        'select[aria-label="config_model:channel_import_preset_template"]'
       )?.disabled
     ).toBe(true);
+    expect(testButton.disabled).toBe(false);
+    await act(async () => {
+      exactCheckbox.click();
+      activeSwitch.click();
+      testButton.click();
+    });
+    expect(apiMocks.testModelChannel).toHaveBeenCalledExactlyOnceWith(1);
 
     const firstRowCheckbox = host.querySelector<HTMLInputElement>(
       'input[aria-label="config_model:channel_import_model upstream-model-0"]'
@@ -329,6 +383,21 @@ describe('ImportModelFromChannelModal', () => {
         'input[aria-label="config_model:channel_import_model upstream-model-0"]'
       )?.checked
     ).toBe(true);
+    apiMocks.postApplyChannelImportChanges.mockResolvedValueOnce({ results: [] });
+    await act(async () => getButton('config_model:next_step').click());
+    await act(async () => getButton('config_model:channel_import_apply').click());
+    expect(apiMocks.postApplyChannelImportChanges).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operations: expect.arrayContaining([
+          {
+            action: 'associate',
+            providerModelSlug: installedModel.model,
+            modelId: installedModel.modelId,
+            isActive: true
+          }
+        ])
+      })
+    );
   });
 });
 
@@ -368,11 +437,12 @@ describe('ImportResultsStep', () => {
   });
 
   it.each([
-    ['create', true],
-    ['associate', false]
+    ['create', undefined, true, 'config_model:channel_import_result_failed'],
+    ['associate', undefined, false, 'config_model:channel_import_result_failed'],
+    ['associate', true, true, 'config_model:channel_import_result_channel_updated']
   ] as const)(
-    'refreshes after a failed %s with a returned model ID only when it created the model',
-    async (action, shouldRefresh) => {
+    'refreshes after failed %s according to completed writes (channel updated: %s)',
+    async (action, channelUpdated, shouldRefresh, statusText) => {
       const providerModelSlug = 'upstream-model';
       const operation =
         action === 'create'
@@ -394,7 +464,8 @@ describe('ImportResultsStep', () => {
             status: 'failed',
             providerModelSlug,
             modelId: 'persisted-model-id',
-            error: 'Channel binding failed'
+            channelUpdated,
+            error: channelUpdated ? 'Activation failed' : 'Channel binding failed'
           }
         ]
       });
@@ -422,8 +493,10 @@ describe('ImportResultsStep', () => {
 
       expect(apiMocks.postApplyChannelImportChanges).toHaveBeenCalledOnce();
       expect(onSuccess).toHaveBeenCalledTimes(shouldRefresh ? 1 : 0);
-      expect(host.textContent).toContain('config_model:channel_import_result_failed');
-      expect(host.textContent).toContain('Channel binding failed');
+      expect(host.textContent).toContain(statusText);
+      expect(host.textContent).toContain(
+        channelUpdated ? 'Activation failed' : 'Channel binding failed'
+      );
     }
   );
 

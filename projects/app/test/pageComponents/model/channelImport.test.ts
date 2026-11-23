@@ -115,33 +115,33 @@ describe('resolveRowSelection', () => {
     });
   });
 
-  it.each([
-    ['associated', true],
-    ['existing', false]
-  ] as const)('keeps a same-name %s model on the current preset', (category, isDisabled) => {
-    const installed = { ...sourceModel, modelId: 'local', model: 'vendor/model', channels: [] };
-    const row: ImportRow = {
-      providerModelSlug: installed.model,
-      candidates: [{ category, modelId: installed.modelId }]
-    };
+  it.each(['associated', 'existing'] as const)(
+    'allows applying a same-name %s model with its current preset',
+    (category) => {
+      const installed = { ...sourceModel, modelId: 'local', model: 'vendor/model', channels: [] };
+      const row: ImportRow = {
+        providerModelSlug: installed.model,
+        candidates: [{ category, modelId: installed.modelId }]
+      };
 
-    expect(
-      resolveRowSelection({
-        row,
-        selection: { presetKey: '__blank__', modelType: ModelTypeEnum.embedding },
-        catalog: {
-          installedModelById: new Map([[installed.modelId, installed]]),
-          installedModelNames: new Set([installed.model]),
-          templateMap: new Map()
-        }
-      })
-    ).toMatchObject({
-      canCreate: false,
-      isDisabled,
-      presetKey: '__current__:local',
-      modelType: ModelTypeEnum.llm
-    });
-  });
+      expect(
+        resolveRowSelection({
+          row,
+          selection: { presetKey: '__blank__', modelType: ModelTypeEnum.embedding },
+          catalog: {
+            installedModelById: new Map([[installed.modelId, installed]]),
+            installedModelNames: new Set([installed.model]),
+            templateMap: new Map()
+          }
+        })
+      ).toMatchObject({
+        canCreate: false,
+        canApply: true,
+        presetKey: '__current__:local',
+        modelType: ModelTypeEnum.llm
+      });
+    }
+  );
 });
 
 describe('resolveModelTestTarget', () => {

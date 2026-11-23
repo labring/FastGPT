@@ -44,6 +44,22 @@ const ImportResultsTable = ({
         return t('config_model:channel_import_category_blank');
     }
   };
+  const getResultLabel = (status?: RowResult['status']) => {
+    switch (status) {
+      case 'success':
+        return t('config_model:channel_import_result_success');
+      case 'skipped':
+        return t('config_model:channel_import_result_skipped');
+      case 'failed':
+        return t('config_model:channel_import_result_failed');
+      case 'partial':
+        return t('config_model:channel_import_result_channel_updated');
+      case 'unknown':
+        return t('config_model:channel_import_result_unknown');
+      default:
+        return t('config_model:channel_import_result_pending');
+    }
+  };
 
   return (
     <FixedTableLayout
@@ -108,15 +124,7 @@ const ImportResultsTable = ({
                         textOverflow="ellipsis"
                         whiteSpace="nowrap"
                       >
-                        {result?.status === 'success'
-                          ? t('config_model:channel_import_result_success')
-                          : result?.status === 'skipped'
-                            ? t('config_model:channel_import_result_skipped')
-                            : result?.status === 'failed'
-                              ? t('config_model:channel_import_result_failed')
-                              : result?.status === 'unknown'
-                                ? t('config_model:channel_import_result_unknown')
-                                : t('config_model:channel_import_result_pending')}
+                        {getResultLabel(result?.status)}
                         {error && `：${error}`}
                       </Box>
                     </Tooltip>
@@ -197,15 +205,17 @@ const ImportResultsStep = ({
           );
           for (const operation of operations) {
             const result = resultBySlug.get(operation.providerModelSlug);
+            const channelUpdated = result?.status === 'failed' && result.channelUpdated;
             shouldRefresh ||=
               !result ||
               result.status !== 'failed' ||
+              channelUpdated ||
               (result.action === 'create' && result.modelId !== undefined);
             nextResults.set(
               operation.providerModelSlug,
               result
                 ? {
-                    status: result.status,
+                    status: channelUpdated ? 'partial' : result.status,
                     error: result.status === 'failed' ? result.error : undefined
                   }
                 : {

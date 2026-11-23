@@ -290,12 +290,17 @@ describe('apply model imports from channel', () => {
     });
   });
 
-  it.each([true, false])(
-    'sends the new binding and alias together (write succeeds: %s)',
-    async (succeeds) => {
+  it.each(['success', 'binding failure', 'activation failure'] as const)(
+    'reports the persisted binding and alias after %s',
+    async (outcome) => {
       channel.models = ['other-model'];
       channel.model_mapping = { 'other-model': 'vendor/other' };
-      if (!succeeds) updateChannelMock.mockRejectedValueOnce(new Error('upstream_write_failed'));
+      if (outcome === 'binding failure') {
+        updateChannelMock.mockRejectedValueOnce(new Error('upstream_write_failed'));
+      }
+      if (outcome === 'activation failure') {
+        updateModelStatusMock.mockRejectedValueOnce(new Error('activation failed'));
+      }
 
       const response = await applyChangesFromChannel({
         channelId: 1,
@@ -316,19 +321,24 @@ describe('apply model imports from channel', () => {
         model_mapping: { 'other-model': 'vendor/other', 'existing-model': 'vendor/existing-model' }
       };
       expect(updateChannelMock).toHaveBeenCalledExactlyOnceWith(1, patch);
-      if (succeeds) {
-        expect(response.results[0].status).toBe('success');
-        expect(channel).toMatchObject(patch);
-      } else {
+      if (outcome === 'binding failure') {
         expect(response.results[0]).toMatchObject({
           status: 'failed',
           error: 'upstream_write_failed'
         });
+        expect(response.results[0]).not.toHaveProperty('channelUpdated');
         expect(channel).toMatchObject({
           models: ['other-model'],
           model_mapping: { 'other-model': 'vendor/other' }
         });
         expect(updateModelStatusMock).not.toHaveBeenCalled();
+      } else {
+        expect(channel).toMatchObject(patch);
+        expect(response.results[0]).toMatchObject(
+          outcome === 'success'
+            ? { status: 'success' }
+            : { status: 'failed', channelUpdated: true, error: 'activation failed' }
+        );
       }
     }
   );

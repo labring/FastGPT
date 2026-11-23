@@ -157,9 +157,7 @@ export const resolveRowSelection = ({
         ? catalog.installedModelById.get(item.modelId)
         : undefined;
   const canCreate = !catalog.installedModelNames.has(row.providerModelSlug);
-  const isDisabled =
-    (item.category === 'associated' && candidateModelData?.model === row.providerModelSlug) ||
-    (!canCreate && !('modelId' in item));
+  const canApply = canCreate || 'modelId' in item;
   const presetKey = (canCreate ? selection?.presetKey : undefined) ?? getDefaultPresetKey(item);
   const selectedPresetData =
     isCurrentModelSelection(item, presetKey) && 'modelId' in item
@@ -191,7 +189,7 @@ export const resolveRowSelection = ({
     modelType,
     isActive,
     canCreate,
-    isDisabled
+    canApply
   };
 };
 
@@ -287,7 +285,7 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
     modelType,
     isActive: rowIsActive,
     canCreate,
-    isDisabled
+    canApply
   } = resolveRowSelection({ row, selection, catalog });
   const isBlank = selectedPresetKey === blankTemplateValue;
   const templateOptions = canCreate ? [...catalog.availableTemplates] : [];
@@ -339,11 +337,11 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
   });
 
   return (
-    <Tr h="64.5px" aria-disabled={isDisabled || undefined} opacity={isDisabled ? 0.6 : undefined}>
+    <Tr h="64.5px">
       <Td px={3}>
         <Checkbox
-          isChecked={!isDisabled && (selection?.selected ?? false)}
-          isDisabled={isDisabled}
+          isChecked={canApply && (selection?.selected ?? false)}
+          isDisabled={!canApply}
           aria-label={t('config_model:channel_import_model') + ' ' + row.providerModelSlug}
           onChange={() => onToggleSelected(row.providerModelSlug)}
         />
@@ -355,11 +353,9 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
             <Box color="myGray.900" fontWeight="500" noOfLines={1}>
               {row.providerModelSlug}
             </Box>
-            {isDisabled && (
+            {!canApply && (
               <Box fontSize="xs" color="myGray.600">
-                {item.category === 'associated'
-                  ? t('config_model:channel_import_category_associated')
-                  : t('common:model_id_already_exists')}
+                {t('common:model_id_already_exists')}
               </Box>
             )}
           </Box>
@@ -418,13 +414,13 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
           size="sm"
           colorScheme="myBlue"
           isChecked={rowIsActive}
-          isDisabled={isDisabled}
+          isDisabled={!canApply}
           aria-label={`${t('config_model:model.active')} ${row.providerModelSlug}`}
           onChange={(event) => onActiveChange(row.providerModelSlug, event.target.checked)}
         />
       </Td>
       <Td>
-        {!isDisabled && catalog.channel && (
+        {catalog.channel && (
           <ImportModelTestButton
             target={modelTestTarget}
             channelId={catalog.channel.id}
@@ -624,8 +620,7 @@ const ModelPreviewStep = ({
     () =>
       previewItems.filter(
         (row) =>
-          state.rowSelections.get(row.providerModelSlug)?.selected &&
-          !resolveSelection(row).isDisabled
+          state.rowSelections.get(row.providerModelSlug)?.selected && resolveSelection(row).canApply
       ),
     [previewItems, resolveSelection, state.rowSelections]
   );

@@ -612,6 +612,10 @@ const ApplyChangeResultSchema = z.discriminatedUnion('status', [
       example: '68ad85a7463006c963799a05',
       description: '已创建模型的稳定 ID；创建后关联失败时返回'
     }),
+    channelUpdated: z.literal(true).optional().meta({
+      example: true,
+      description: '本条操作失败前，渠道关联或别名已更新'
+    }),
     error: z.string().meta({
       example: 'modelAlreadyExists',
       description: '该条操作失败的 FastGPT 错误标识或上游错误信息'

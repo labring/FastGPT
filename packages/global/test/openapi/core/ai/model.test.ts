@@ -3,6 +3,7 @@ import { AIModelDocumentDataSchema } from '../../../../core/ai/model/schema';
 import {
   ModelReferenceSchema,
   ApplyChangesBodySchema,
+  ApplyChangesResponseSchema,
   CreateModelBodySchema,
   CreateModelsFromTemplatesBodySchema,
   DeleteModelsBodySchema,
@@ -355,6 +356,18 @@ describe('admin system model API schemas', () => {
         expect(operation?.tags).toContain(DevApiTagsMap.model);
       }
     }
+  });
+
+  it('preserves an acknowledged channel update on a failed import operation', () => {
+    const failedOperation = {
+      action: 'associate',
+      status: 'failed',
+      modelId: '68ad85a7463006c963799a05',
+      providerModelSlug: 'provider/model',
+      error: 'activation failed'
+    };
+    const results = [{ ...failedOperation, channelUpdated: true }, failedOperation];
+    expect(ApplyChangesResponseSchema.parse({ results }).results).toEqual(results);
   });
 
   it('accepts ranked model candidates and their template or blank drafts', () => {
