@@ -145,7 +145,8 @@ export class MongoIndexManager {
         const { unique, ...indexOptions } = options ?? {};
         await model.collection.createIndex(key as mongo.IndexSpecification, {
           ...indexOptions,
-          unique: Array.isArray(unique) ? unique[0] : unique,
+          // 驱动会把显式 undefined 序列化为 null，MongoDB 只接受布尔值或省略。
+          ...(unique !== undefined && { unique: Array.isArray(unique) ? unique[0] : unique }),
           background: true
         });
       }

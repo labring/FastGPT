@@ -61,6 +61,23 @@ const legacyDefinition = {
   key: { legacyField: 1 }
 } as const;
 
+it('creates ordinary indexes without undefined options when deferring full-text indexing', async () => {
+  const schema = new Schema(
+    { teamId: String, tokens: String },
+    { autoIndex: false, autoCreate: false }
+  );
+  defineIndex(schema, { key: { teamId: 1 }, options: { name: 'team_lookup' } });
+  defineIndex(schema, { key: { tokens: 'text' }, options: { name: 'tokens_search' } });
+  const model = createModel({ schema });
+  await model.createCollection();
+  try {
+    await MongoIndexManager.syncModelIndexes({ model, deferredIndexNames: ['tokens_search'] });
+    expect(await getIndexNames(model)).toEqual(new Set(['_id_', 'team_lookup']));
+  } finally {
+    await model.collection.drop();
+  }
+});
+
 describe('runtime configuration scope indexes', () => {
   it('uses the domain unique index for the Pro ENV scope alongside business domains', async () => {
     const model = createModel({
