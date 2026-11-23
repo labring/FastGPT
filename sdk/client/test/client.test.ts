@@ -52,7 +52,6 @@ describe('FastGPT Core Client, Auth, Identity & Error Semantics', () => {
       fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')
     ) as { version: string };
     expect(SDK_VERSION).toBe(pkg.version);
-    expect(SDK_VERSION).toBe('0.1.0-beta.2');
 
     let clientHeader: string | null = null;
     const client = new FastGPT({

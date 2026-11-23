@@ -219,6 +219,54 @@ Starting from `0.1.0-beta.2`, `@fastgpt/sdk` is strictly scoped to **published S
   - **Workflow interactive continuation**: `client.chat.interactive.{isPending,extract,unwrap,replyUserSelect,replyUserSelectStream,replyUserForm,replyUserFormStream}` (built on `POST /v2/chat/completions`).
   - **Auto-pagination**: `*AutoPaging` methods (including `client.apps.logs.searchAutoPaging`) plus `@fastgpt/sdk/pagination`.
 
+### Breaking Import Path Changes (Root Entry -> Subpath Exports)
+
+In `0.1.0-beta.1`, the root entrypoint `@fastgpt/sdk` re-exported error classes, `ChatStream`, paginators, interactive helpers, client/request option types, `ApiPromise`, `SDK_VERSION`, and `*Req` / `*Res` types. Starting from `0.1.0-beta.2`, both the ESM and CJS root entrypoints export **only `FastGPT`**, and every helper/type module must be imported directly from its dedicated subpath export. Existing code that imports error classes or helpers from `@fastgpt/sdk` will fail at compile time or module load time until updated:
+
+```ts
+// 0.1.0-beta.1 (no longer works in 0.1.0-beta.2)
+import {
+  FastGPT,
+  FastGptAuthError,
+  ChatStream,
+  createPageNumPaginator,
+  extractInteractive,
+  type FastGptClientOptions,
+  type ChatCompletionsV2Req
+} from '@fastgpt/sdk';
+
+// 0.1.0-beta.2
+import { FastGPT } from '@fastgpt/sdk';
+import { FastGptAuthError } from '@fastgpt/sdk/errors';
+import { ChatStream } from '@fastgpt/sdk/sse';
+import { createPageNumPaginator } from '@fastgpt/sdk/pagination';
+import { extractInteractive } from '@fastgpt/sdk/interactive';
+import type { FastGptClientOptions, WithRawResponseResult } from '@fastgpt/sdk/options';
+import type { ChatCompletionsV2Req } from '@fastgpt/sdk/types';
+```
+
+#### Root Entry Import Migration Table
+
+| `0.1.0-beta.2` Subpath | Exported Symbols Migrated from `0.1.0-beta.1` Root (and Additions) |
+| --- | --- |
+| `@fastgpt/sdk` | `FastGPT` (sole root export in `0.1.0-beta.2`) |
+| `@fastgpt/sdk/errors` | `FastGptError`, `FastGptAuthError`, `FastGptBadRequestError`, `FastGptNotFoundError`, `FastGptConflictError`, `FastGptRateLimitError`, `FastGptServerError`, `FastGptTimeoutError`, `FastGptNetworkError` (alongside `type FastGptErrorDetails`, `redactSecrets`, `createMappedApiError`) |
+| `@fastgpt/sdk/sse` | `ChatStream`, `type ChatSseEvent`, `type ChatStreamFinalResult` (plus `type ChatStreamTerminalState`, `parseChatSseFrame`, `iterateRawSseFrames`, `type RawSseFrame`) |
+| `@fastgpt/sdk/interactive` | `unwrapInteractive`, `extractInteractive`, `isInteractivePending`, `buildUserSelectMessage`, `buildUserFormMessage`, `type InteractivePayload`, `type InteractiveUserMessage`, `type ReplyUserSelectParams`, `type ReplyUserFormParams`, `type UserSelectInteractiveOption` (plus `isUserSelectInteractive`, `isUserInputInteractive`, `isPaymentPauseInteractive`) |
+| `@fastgpt/sdk/pagination` | `createOffsetPaginator`, `createPageNumPaginator`, `type AutoPagingOptions`, `type PageSlice`, `type AsyncPageIterable` (plus cursor pagination: `createCursorPaginator`, `type CursorAutoPagingOptions`, `type CursorPageSlice`) |
+| `@fastgpt/sdk/options` | `type FastGptClientOptions`, `type RequestOptions`, `type CredentialProvider`, `type AuthProxyIdentity`, `type FastGptIdentity`, `type FastGptHooks`, `type FastGptLogger`, `type FastGptLogLevel`, `type RequestHookContext`, `type ResponseHookContext`, `type ErrorHookContext`, `type Uploadable`, `type UploadableFileObject`, `type BinaryInput`, `type RawResponseInfo`, `type WithRawResponseResult` |
+| `@fastgpt/sdk/types` | All retained System OpenAPI `*Req` / `*Res` contract types (e.g. `ChatCompletionsV2Req`, `ChatCompletionsV2Res`, `DatasetsSearchReq`, `ModelsCatalogRes`, plus new `AppsLogsSearchReq` / `AppsLogsSearchRes`) |
+
+#### Removed / No Longer Publicly Exported Symbols
+
+| `0.1.0-beta.1` Symbol | Status in `0.1.0-beta.2` | Migration Guidance |
+| --- | --- | --- |
+| `ApiPromise` (class & type) | Not publicly exported | SDK methods still return a thenable supporting `await` and `.withRawResponse()`. For TypeScript annotations, use `Promise<T>` (unwrapped data), `Promise<WithRawResponseResult<T>>` from `@fastgpt/sdk/options` (for `.withRawResponse()`), or `ReturnType<FastGPT['models']['list']>` (to preserve `.withRawResponse()` on a method return). Avoid runtime `instanceof ApiPromise` checks and treat return values as standard thenables. |
+| `SDK_VERSION` (constant) | Not publicly exported | `./package.json` is not exposed via `exports`; inspect the `x-fastgpt-client` header (`fastgpt-js-sdk/<version>`) inside `hooks.onRequest` if needed for diagnostics or telemetry. |
+| Preview-only helper types (`RawRequestParams`, `PresignedUploadSession`, `UploadProgressInfo`, `UploadDatasetFileParams`, `UploadDatasetFileResult`, `UploadChatFileParams`, `UploadChatFileResult`, `ChatFileContentPart`, `ChatImageContentPart`, `ChatUploadedContentPart`, `CollectionTrainingProgress`, `DatasetTrainingProgress`, `WaitForCollectionTrainingParams`, `WaitForCollectionTrainingResult`, `WaitForDatasetTrainingParams`, `WaitForDatasetTrainingResult`) | Removed | Removed alongside deferred runtime helpers. Use `Uploadable` / `UploadableFileObject` from `@fastgpt/sdk/options` with `client.datasets.collections.createByLocalFile`, or pin `@fastgpt/sdk@0.1.0-beta.1`. |
+| Removed endpoint `*Req` / `*Res` types (`SystemHealthRes`, `SystemWhoamiRes`, `ChatResumeReq` / `ChatResumeRes`, `AppsLogsListReq` / `AppsLogsListRes`, `DatasetsTraining*`, `DatasetsFiles*`, `DatasetsSynonyms*`, `ChatFiles*`, `ChatSandbox*`) | Removed / Replaced | Replace `AppsLogsListReq` / `AppsLogsListRes` with `AppsLogsSearchReq` / `AppsLogsSearchRes` from `@fastgpt/sdk/types`; pin `@fastgpt/sdk@0.1.0-beta.1` or type raw HTTP calls directly for deferred endpoints. |
+| `@fastgpt/sdk/server` (`ApiDatasetHttpError`, `createApiDatasetHandler`, `toNodeHttpHandler`) | Removed | Use standard `fetch` / Web request handlers directly or pin `@fastgpt/sdk@0.1.0-beta.1`. |
+
 ### Deferred / Removed in `0.1.0-beta.2`
 
 The following surfaces shipped in the earlier `0.1.0-beta.1` preview are **removed in `0.1.0-beta.2`** until their underlying contracts enter System OpenAPI:
