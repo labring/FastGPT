@@ -233,29 +233,29 @@ export const queryExtension = async ({
     }
   ] as any;
 
-  let llmResponse: Awaited<ReturnType<typeof createLLMResponse>>;
-  try {
-    llmResponse = await createLLMResponse({
-      userKey,
-      teamId,
-      body: {
-        stream: true,
-        model: llmModel,
-        messages,
-        ...(llmModel.config.reasoning ? { reasoning_effort: 'none' as const } : {})
-      }
-    });
-  } catch (error) {
-    reportQueryExtensionPerf({
-      status: 'error'
-    });
-    throw error;
-  }
   const {
     answerText: answer,
     requestId,
     usage: { inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens, usedUserOpenAIKey }
-  } = llmResponse;
+  } = await (async () => {
+    try {
+      return await createLLMResponse({
+        userKey,
+        teamId,
+        body: {
+          stream: true,
+          model: llmModel,
+          messages,
+          ...(llmModel.config.reasoning ? { reasoning_effort: 'none' as const } : {})
+        }
+      });
+    } catch (error) {
+      reportQueryExtensionPerf({
+        status: 'error'
+      });
+      throw error;
+    }
+  })();
 
   if (!answer) {
     reportQueryExtensionPerf({
