@@ -12,8 +12,32 @@ on:
 env:
   FASTGPT_ALI_IMAGE_USER: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
 
+permissions: {}
+
 jobs:
+  validate-tag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      tag: ${{ steps.validate.outputs.tag }}
+    steps:
+      - name: Validate image tag
+        id: validate
+        env:
+          RAW_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          export LC_ALL=C
+          TAG="${RAW_TAG:-latest}"
+          if [[ "$TAG" == *$'\n'* || "$TAG" == *$'\r'* || ! "$TAG" =~ ^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$ ]]; then
+            echo "::error::Invalid OCI image tag. Expected pattern ^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$."
+            exit 1
+          fi
+          printf 'tag=%s\n' "$TAG" >> "$GITHUB_OUTPUT"
+
   build-fastgpt-agent-sandbox-proxy-images:
+    needs: validate-tag
     permissions:
       packages: write
       contents: read
@@ -27,19 +51,19 @@ jobs:
     timeout-minutes: 120
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
         with:
           driver-opts: |
             network=host
 
       - name: Cache Docker layers
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: /tmp/.buildx-cache
           key: ${{ runner.os }}-fastgpt-agent-sandbox-proxy-buildx-${{ github.sha }}
@@ -47,7 +71,7 @@ jobs:
             ${{ runner.os }}-fastgpt-agent-sandbox-proxy-buildx-
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -55,7 +79,7 @@ jobs:
 
       - name: Login to Ali Hub
         if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: registry.cn-hangzhou.aliyuncs.com
           username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
@@ -63,7 +87,7 @@ jobs:
 
       - name: Build for ${{ matrix.arch }}
         id: build-ghcr
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: projects/agent-sandbox-proxy
           file: projects/agent-sandbox-proxy/Dockerfile
@@ -78,7 +102,7 @@ jobs:
       - name: Build for Ali Hub ${{ matrix.arch }}
         if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
         id: build-aliyun
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: projects/agent-sandbox-proxy
           file: projects/agent-sandbox-proxy/Dockerfile
@@ -92,18 +116,29 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
 
       - name: Export digest
+        env:
+          RUNNER_TEMP_DIR: ${{ runner.temp }}
+          GHCR_DIGEST: ${{ steps.build-ghcr.outputs.digest }}
+          ALIYUN_DIGEST: ${{ steps.build-aliyun.outputs.digest }}
         run: |
-          mkdir -p ${{ runner.temp }}/digests/ghcr
-          ghcr_digest="${{ steps.build-ghcr.outputs.digest }}"
-          touch "${{ runner.temp }}/digests/ghcr/${ghcr_digest#sha256:}"
-          if [[ -n "$FASTGPT_ALI_IMAGE_USER" ]]; then
-            mkdir -p ${{ runner.temp }}/digests/aliyun
-            aliyun_digest="${{ steps.build-aliyun.outputs.digest }}"
-            touch "${{ runner.temp }}/digests/aliyun/${aliyun_digest#sha256:}"
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP_DIR}/digests/ghcr"
+          if [[ ! "${GHCR_DIGEST}" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            echo "::error::Invalid GHCR digest: ${GHCR_DIGEST}"
+            exit 1
+          fi
+          touch "${RUNNER_TEMP_DIR}/digests/ghcr/${GHCR_DIGEST#sha256:}"
+          if [[ -n "${FASTGPT_ALI_IMAGE_USER:-}" ]]; then
+            mkdir -p "${RUNNER_TEMP_DIR}/digests/aliyun"
+            if [[ ! "${ALIYUN_DIGEST}" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+              echo "::error::Invalid Ali Hub digest: ${ALIYUN_DIGEST}"
+              exit 1
+            fi
+            touch "${RUNNER_TEMP_DIR}/digests/aliyun/${ALIYUN_DIGEST#sha256:}"
           fi
 
       - name: Upload GHCR digest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ghcr-digests-fastgpt-agent-sandbox-proxy-${{ github.sha }}-${{ matrix.arch }}
           path: ${{ runner.temp }}/digests/ghcr/*
@@ -112,7 +147,7 @@ jobs:
 
       - name: Upload Ali Hub digest
         if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: aliyun-digests-fastgpt-agent-sandbox-proxy-${{ github.sha }}-${{ matrix.arch }}
           path: ${{ runner.temp }}/digests/aliyun/*
@@ -123,12 +158,12 @@ jobs:
     permissions:
       packages: write
       contents: read
-    needs: build-fastgpt-agent-sandbox-proxy-images
+    needs: [validate-tag, build-fastgpt-agent-sandbox-proxy-images]
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     steps:
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -136,14 +171,14 @@ jobs:
 
       - name: Login to Ali Hub
         if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: registry.cn-hangzhou.aliyuncs.com
           username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
           password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
 
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: ${{ runner.temp }}/digests/ghcr
           pattern: ghcr-digests-fastgpt-agent-sandbox-proxy-${{ github.sha }}-*
@@ -151,28 +186,35 @@ jobs:
 
       - name: Download Ali Hub digests
         if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: ${{ runner.temp }}/digests/aliyun
           pattern: aliyun-digests-fastgpt-agent-sandbox-proxy-${{ github.sha }}-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Set image name and tag
+        env:
+          TAG: ${{ needs.validate-tag.outputs.tag }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          ALI_IMAGE_PREFIX: ${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}
         run: |
-          TAG="${{ inputs.tag || 'latest' }}"
-          echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/fastgpt-agent-sandbox-proxy:${TAG}" >> "$GITHUB_ENV"
-          if [[ -n "$FASTGPT_ALI_IMAGE_USER" ]]; then
-            echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-agent-sandbox-proxy:${TAG}" >> "$GITHUB_ENV"
+          set -euo pipefail
+          printf 'Git_Tag=ghcr.io/%s/fastgpt-agent-sandbox-proxy:%s\n' "${REPO_OWNER}" "${TAG}" >> "$GITHUB_ENV"
+          if [[ -n "${FASTGPT_ALI_IMAGE_USER:-}" ]]; then
+            printf 'Ali_Tag=%s/fastgpt-agent-sandbox-proxy:%s\n' "${ALI_IMAGE_PREFIX}" "${TAG}" >> "$GITHUB_ENV"
           fi
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
+        env:
+          REPO_OWNER: ${{ github.repository_owner }}
+          ALI_IMAGE_PREFIX: ${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}
         run: |
           set -euo pipefail
-          GHCR_IMAGE="ghcr.io/${{ github.repository_owner }}/fastgpt-agent-sandbox-proxy"
+          GHCR_IMAGE="ghcr.io/${REPO_OWNER}/fastgpt-agent-sandbox-proxy"
           GHCR_SOURCES=()
           for digest_file in ghcr/*; do
             [[ -f "$digest_file" ]] || continue
@@ -185,8 +227,8 @@ jobs:
           docker buildx imagetools create -t "${Git_Tag}" "${GHCR_SOURCES[@]}"
           sleep 5
 
-          if [[ -n "$FASTGPT_ALI_IMAGE_USER" && -n "${Ali_Tag:-}" ]]; then
-            ALI_IMAGE="${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/fastgpt-agent-sandbox-proxy"
+          if [[ -n "${FASTGPT_ALI_IMAGE_USER:-}" && -n "${Ali_Tag:-}" ]]; then
+            ALI_IMAGE="${ALI_IMAGE_PREFIX}/fastgpt-agent-sandbox-proxy"
             ALI_SOURCES=()
             for digest_file in aliyun/*; do
               [[ -f "$digest_file" ]] || continue

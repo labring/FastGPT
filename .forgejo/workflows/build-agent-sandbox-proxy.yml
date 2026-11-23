@@ -9,8 +9,32 @@ on:
         default: latest
         type: string
 
+permissions: {}
+
 jobs:
+  validate-tag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      tag: ${{ steps.validate.outputs.tag }}
+    steps:
+      - name: Validate image tag
+        id: validate
+        env:
+          RAW_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          export LC_ALL=C
+          TAG="${RAW_TAG:-latest}"
+          if [[ "$TAG" == *$'\n'* || "$TAG" == *$'\r'* || ! "$TAG" =~ ^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$ ]]; then
+            echo "::error::Invalid OCI image tag. Expected pattern ^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$."
+            exit 1
+          fi
+          printf 'tag=%s\n' "$TAG" >> "$GITHUB_OUTPUT"
+
   build-fastgpt-agent-sandbox-proxy-images:
+    needs: validate-tag
     permissions:
       packages: write
       contents: read
@@ -64,7 +88,7 @@ jobs:
             env.HTTP_PROXY=${{ env.HTTP_PROXY }}
             env.HTTPS_PROXY=${{ env.HTTPS_PROXY }}
             env.NO_PROXY=${{ env.REGISTRY_HOST }}
-          config: /tmp/buildkit/buildkitd.toml
+          buildkitd-config: /tmp/buildkit/buildkitd.toml
 
       - name: Cache Docker layers
         uses: actions/cache@v4
@@ -114,10 +138,17 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache
 
       - name: Export digest
+        env:
+          RUNNER_TEMP_DIR: ${{ runner.temp }}
+          DIGEST: ${{ steps.build.outputs.digest }}
         run: |
-          mkdir -p ${{ runner.temp }}/digests
-          digest="${{ steps.build.outputs.digest }}"
-          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP_DIR}/digests"
+          if [[ ! "${DIGEST}" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            echo "::error::Invalid image digest: ${DIGEST}"
+            exit 1
+          fi
+          touch "${RUNNER_TEMP_DIR}/digests/${DIGEST#sha256:}"
 
       - name: Upload digest
         uses: forgejo/upload-artifact@v4
@@ -131,7 +162,7 @@ jobs:
     permissions:
       packages: write
       contents: read
-    needs: build-fastgpt-agent-sandbox-proxy-images
+    needs: [validate-tag, build-fastgpt-agent-sandbox-proxy-images]
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     steps:
@@ -195,18 +226,23 @@ jobs:
             env.HTTP_PROXY=${{ env.HTTP_PROXY }}
             env.HTTPS_PROXY=${{ env.HTTPS_PROXY }}
             env.NO_PROXY=${{ env.REGISTRY_HOST }}
-          config: /tmp/buildkit/buildkitd.toml
+          buildkitd-config: /tmp/buildkit/buildkitd.toml
 
       - name: Set image name and tag
+        env:
+          TAG: ${{ needs.validate-tag.outputs.tag }}
+          REPO_OWNER: ${{ github.repository_owner }}
         run: |
-          TAG="${{ inputs.tag || 'latest' }}"
-          echo "Git_Tag=${REGISTRY}/${{ github.repository_owner }}/fastgpt-agent-sandbox-proxy:${TAG}" >> "$GITHUB_ENV"
+          set -euo pipefail
+          printf 'Git_Tag=%s/%s/fastgpt-agent-sandbox-proxy:%s\n' "${REGISTRY}" "${REPO_OWNER}" "${TAG}" >> "$GITHUB_ENV"
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
+        env:
+          REPO_OWNER: ${{ github.repository_owner }}
         run: |
           set -euo pipefail
-          IMAGE_REF="${REGISTRY}/${{ github.repository_owner }}/fastgpt-agent-sandbox-proxy"
+          IMAGE_REF="${REGISTRY}/${REPO_OWNER}/fastgpt-agent-sandbox-proxy"
           SOURCES=()
           for digest_file in ./*; do
             [[ -f "$digest_file" ]] || continue
