@@ -7,6 +7,7 @@ import { closeDbRuntime, getConfiguredDbRuntime } from '@fastgpt/dal/db/runtime'
 import { defineSqlTable } from '@fastgpt/dal/db/sql/ddl';
 import { SqlRepositoryBase } from '@fastgpt/dal/db/sql/base';
 import {
+  buildRequiredLogTopologyCases,
   createContractBackends,
   createMongoTestHarness,
   createMysqlSqlTestHarness,
@@ -586,15 +587,19 @@ describe('@fastgpt/dal/db/testing harness reliability & contract guardrails', ()
     });
     expect(() => noOpItFactory?.()).toThrow(/expected 2 runnable test cases/);
 
-    // 套件标题必须携带物理目标集合/表名，且禁止空白集合名/表名
-    const capturedTitles: string[] = [];
+    // 套件标题与用例标题必须严格对齐共享契约描述，且禁止空白集合名/表名
+    const capturedCases: Array<{ suiteTitle: string; caseTitle: string }> = [];
+    let currentSuiteTitle = '';
     registerLogTopologyContractSuite({
       describeFn: (title, fn) => {
-        capturedTitles.push(title);
+        currentSuiteTitle = title;
         fn();
         return undefined;
       },
-      itFn: () => undefined,
+      itFn: (caseTitle) => {
+        capturedCases.push({ suiteTitle: currentSuiteTitle, caseTitle });
+        return undefined;
+      },
       logCollections: [sampleLogCollection],
       logTables: [sampleLogTable],
       mongoCollectionName: '  sample_log_records  ',
@@ -602,10 +607,24 @@ describe('@fastgpt/dal/db/testing harness reliability & contract guardrails', ()
       writeLogRecord: async () => ({ id: createEntityId() }),
       readLogRecord: async () => ({})
     });
-    expect(capturedTitles).toEqual([
+    expect(capturedCases).toEqual(
+      buildRequiredLogTopologyCases({
+        mongoCollectionName: 'sample_log_records',
+        sqlTableName: 'sample_log_table'
+      }).map(({ suiteTitle, caseTitle }) => ({ suiteTitle, caseTitle }))
+    );
+    expect(capturedCases.map((entry) => entry.suiteTitle)).toEqual([
       formatLogTopologySuiteTitle({
         family: 'mongodb',
         targetName: 'sample_log_records'
+      }),
+      formatLogTopologySuiteTitle({
+        family: 'mongodb',
+        targetName: 'sample_log_records'
+      }),
+      formatLogTopologySuiteTitle({
+        family: 'sql_pglite',
+        targetName: 'sample_log_table'
       }),
       formatLogTopologySuiteTitle({
         family: 'sql_pglite',

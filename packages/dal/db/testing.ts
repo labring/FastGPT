@@ -5,6 +5,14 @@ import { Mongoose, Types, type Model } from 'mongoose';
 import { createPool } from 'mysql2';
 import { Pool } from 'pg';
 import { DbConfigurationError } from './errors';
+import {
+  LOG_TOPOLOGY_CASE_TITLES,
+  buildRequiredLogTopologyCases,
+  formatLogTopologySuiteTitle,
+  type LogTopologyFamily,
+  type LogTopologyMode,
+  type RequiredLogTopologyCase
+} from './logTopologyContract.mjs';
 import type { MongoCollectionDefinition } from './mongo/collection';
 import { createMongoRuntimeDeps } from './mongo/runtime';
 import { closeDbRuntime, configureDbRuntime, getDbRuntime } from './runtime';
@@ -1388,19 +1396,14 @@ const registerRunnableTopologySuite = ({
   }
 };
 
-/**
- * 构造绑定目标物理集合或表身份的日志拓扑套件标题，避免多日志域共享同名套件标题而互代。
- */
-export const formatLogTopologySuiteTitle = ({
-  family,
-  targetName
-}: {
-  family: 'mongodb' | 'sql_pglite';
-  targetName: string;
-}): string =>
-  family === 'mongodb'
-    ? `[Log Topology: MongoDB (shared + separate) | ${targetName}]`
-    : `[Log Topology: SQL PGlite (shared + separate) | ${targetName}]`;
+export {
+  LOG_TOPOLOGY_CASE_TITLES,
+  buildRequiredLogTopologyCases,
+  formatLogTopologySuiteTitle,
+  type LogTopologyFamily,
+  type LogTopologyMode,
+  type RequiredLogTopologyCase
+};
 
 /**
  * 声明可复用的日志域双态（`shared` / `separate`）物理隔离标准契约套件。
@@ -1460,7 +1463,7 @@ export const registerLogTopologyContractSuite = ({
       expectedCases: 2,
       register: () => {
         itFn(
-          'routes log reads/writes through main physical DB in shared mode',
+          LOG_TOPOLOGY_CASE_TITLES.shared,
           async () => {
             await verifyMongoLogTopologyIsolation({
               logMode: 'shared',
@@ -1475,7 +1478,7 @@ export const registerLogTopologyContractSuite = ({
           timeoutMs
         );
         itFn(
-          'isolates log reads/writes into separate log physical DB without touching main DB',
+          LOG_TOPOLOGY_CASE_TITLES.separate,
           async () => {
             await verifyMongoLogTopologyIsolation({
               logMode: 'separate',
@@ -1504,7 +1507,7 @@ export const registerLogTopologyContractSuite = ({
       expectedCases: 2,
       register: () => {
         itFn(
-          'routes log reads/writes through main physical DB in shared mode',
+          LOG_TOPOLOGY_CASE_TITLES.shared,
           async () => {
             await verifySqlLogTopologyIsolation({
               logMode: 'shared',
@@ -1519,7 +1522,7 @@ export const registerLogTopologyContractSuite = ({
           timeoutMs
         );
         itFn(
-          'isolates log reads/writes into separate log physical DB without touching main DB',
+          LOG_TOPOLOGY_CASE_TITLES.separate,
           async () => {
             await verifySqlLogTopologyIsolation({
               logMode: 'separate',

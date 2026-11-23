@@ -1,6 +1,13 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import {
+  LOG_TOPOLOGY_CASE_TITLES,
+  buildRequiredLogTopologyCases,
+  formatLogTopologySuiteTitle
+} from '../../../../../packages/dal/db/logTopologyContract.mjs';
+
+export { LOG_TOPOLOGY_CASE_TITLES, buildRequiredLogTopologyCases, formatLogTopologySuiteTitle };
 
 const locateWorkspaceRootFrom = (startDir) => {
   let current = path.resolve(startDir);
@@ -580,6 +587,9 @@ const resolveImportedTsModule = ({ specifier, repoRoot, sourceRelPath, gitRef })
     return null;
   }
   const baseRel = (() => {
+    if (specifier.startsWith('@fastgpt/dal/')) {
+      return `packages/dal/${specifier.slice('@fastgpt/dal/'.length)}`;
+    }
     if (specifier.startsWith('@fastgpt/global/')) {
       return `packages/global/${specifier.slice('@fastgpt/global/'.length)}`;
     }
@@ -4913,15 +4923,217 @@ export const extractExportedDomainRepoSymbols = (domainAbs) => {
   return symbols;
 };
 
+const normalizeOptionalDir = (relDir) =>
+  typeof relDir === 'string' && relDir.trim().length > 0
+    ? toPosixPath(relDir).replace(/^\.\//, '').replace(/\/$/, '')
+    : undefined;
+
+const isPathInsideDir = (fileRel, dirRel) => {
+  const normFile = normalizeOptionalDir(fileRel);
+  const normDir = normalizeOptionalDir(dirRel);
+  if (normFile === undefined || normDir === undefined) {
+    return false;
+  }
+  return normFile === normDir || normFile.startsWith(`${normDir}/`);
+};
+
+/**
+ * 读取被导入 TS 模块的集合/表导出名称与来源路径（支持 barrel `export { ... } from` / `export * from`），
+ * 让静态领域归属判定同时覆盖当前域与显式传入的其他域合法回归文件。
+ */
+const readImportedModuleMetadata = ({
+  specifier,
+  repoRoot,
+  sourceRelPath,
+  moduleMetaCache = new Map(),
+  depth = 0
+}) => {
+  if (!repoRoot || !specifier || depth > 2) {
+    return null;
+  }
+  const mod = resolveImportedTsModule({ specifier, repoRoot, sourceRelPath });
+  if (mod === null) {
+    return null;
+  }
+  const cacheKey = `${repoRoot}::${mod.relPath}`;
+  if (moduleMetaCache.has(cacheKey)) {
+    return moduleMetaCache.get(cacheKey);
+  }
+
+  const meta = {
+    relPath: mod.relPath,
+    exportOriginByName: {},
+    collectionExportNames: {},
+    tableExportNames: {}
+  };
+  moduleMetaCache.set(cacheKey, meta);
+
+  if (/\bdefineMongoCollection\b/.test(mod.content)) {
+    const mongoInfo = analyzeMongoSchemaDatasource({
+      sourceText: mod.content,
+      repoRoot,
+      sourceRelPath: mod.relPath
+    });
+    Object.assign(meta.collectionExportNames, mongoInfo.collectionExportNames ?? {});
+    for (const key of Object.keys(meta.collectionExportNames)) {
+      meta.exportOriginByName[key] = mod.relPath;
+    }
+  }
+  if (/\bdefineSqlTable\b/.test(mod.content)) {
+    const sqlInfo = analyzeSqlTableDefinitions(mod.content, {
+      repoRoot,
+      sourceRelPath: mod.relPath
+    });
+    Object.assign(meta.tableExportNames, sqlInfo.tableExportNames ?? {});
+    for (const key of Object.keys(meta.tableExportNames)) {
+      meta.exportOriginByName[key] = mod.relPath;
+    }
+  }
+
+  const clean = stripCommentsPreserveStrings(mod.content);
+  for (const match of clean.matchAll(/\bexport\s*\{([^}]+)\}\s*from\s*['"]([^'"]+)['"]/g)) {
+    const targetMeta = readImportedModuleMetadata({
+      specifier: match[2],
+      repoRoot,
+      sourceRelPath: mod.relPath,
+      moduleMetaCache,
+      depth: depth + 1
+    });
+    if (targetMeta === null) {
+      continue;
+    }
+    for (const rawSpec of match[1].split(',')) {
+      const trimmed = rawSpec.trim();
+      if (!trimmed || trimmed.startsWith('type ')) continue;
+      const parts = trimmed.split(/\s+as\s+/).map((s) => s.trim());
+      const origName = parts[0];
+      const exportedName = parts[1] ?? origName;
+      if (targetMeta.collectionExportNames[origName] !== undefined) {
+        meta.collectionExportNames[exportedName] = targetMeta.collectionExportNames[origName];
+      }
+      if (targetMeta.tableExportNames[origName] !== undefined) {
+        meta.tableExportNames[exportedName] = targetMeta.tableExportNames[origName];
+      }
+      meta.exportOriginByName[exportedName] =
+        targetMeta.exportOriginByName[origName] ?? targetMeta.relPath;
+    }
+  }
+  for (const match of clean.matchAll(/\bexport\s*\*\s*from\s*['"]([^'"]+)['"]/g)) {
+    const targetMeta = readImportedModuleMetadata({
+      specifier: match[1],
+      repoRoot,
+      sourceRelPath: mod.relPath,
+      moduleMetaCache,
+      depth: depth + 1
+    });
+    if (targetMeta === null) {
+      continue;
+    }
+    Object.assign(meta.collectionExportNames, targetMeta.collectionExportNames);
+    Object.assign(meta.tableExportNames, targetMeta.tableExportNames);
+    Object.assign(meta.exportOriginByName, targetMeta.exportOriginByName);
+  }
+
+  return meta;
+};
+
+/**
+ * 基于实际导入模块来源计算当前测试文件内真正属于被验领域的仓储符号集合（含局部 import 别名，排除其他域同名导出碰撞）。
+ */
+const resolveEffectiveDomainRepoSymbols = ({
+  importedAliases,
+  domainRepoSymbols,
+  normalizedDomainRel,
+  sourceRelPath,
+  repoRoot,
+  moduleMetaCache
+}) => {
+  const effective = new Set();
+  for (const sym of domainRepoSymbols) {
+    if (!importedAliases.has(sym)) {
+      effective.add(sym);
+    }
+  }
+  for (const [localName, info] of importedAliases) {
+    const resolvedMeta =
+      repoRoot !== undefined
+        ? readImportedModuleMetadata({
+            specifier: info.specifier,
+            repoRoot,
+            sourceRelPath,
+            moduleMetaCache
+          })
+        : null;
+    if (resolvedMeta !== null && normalizedDomainRel !== undefined) {
+      const originRel = resolvedMeta.exportOriginByName[info.importedName] ?? resolvedMeta.relPath;
+      if (
+        isPathInsideDir(originRel, normalizedDomainRel) &&
+        (domainRepoSymbols.size === 0 || domainRepoSymbols.has(info.importedName))
+      ) {
+        effective.add(localName);
+      }
+      continue;
+    }
+    if (domainRepoSymbols.has(info.importedName)) {
+      effective.add(localName);
+    }
+  }
+  return effective;
+};
+
+const collectVitestSkippedSpans = ({ tokens, matchIdx }) => {
+  const skippedSpans = [];
+  for (let i = 0; i < tokens.length; i += 1) {
+    const tok = tokens[i];
+    const prev = i > 0 ? tokens[i - 1] : undefined;
+    if (isPunctTok(prev, '.') || isPunctTok(prev, '?.')) continue;
+    if (
+      !isIdentTok(tok, 'describe') &&
+      !isIdentTok(tok, 'suite') &&
+      !isIdentTok(tok, 'it') &&
+      !isIdentTok(tok, 'test')
+    ) {
+      continue;
+    }
+    let cursor = i + 1;
+    let isSkipped = false;
+    while (isPunctTok(tokens[cursor], '.') && tokens[cursor + 1]?.type === 'ident') {
+      const mod = tokens[cursor + 1].value;
+      cursor += 2;
+      if (mod === 'skip' || mod === 'todo' || mod === 'skipIf' || mod === 'runIf') {
+        isSkipped = true;
+        if (
+          (mod === 'skipIf' || mod === 'runIf') &&
+          isPunctTok(tokens[cursor], '(') &&
+          matchIdx[cursor] !== -1
+        ) {
+          cursor = matchIdx[cursor] + 1;
+        }
+      } else if (
+        (mod === 'each' || mod === 'for') &&
+        isPunctTok(tokens[cursor], '(') &&
+        matchIdx[cursor] !== -1
+      ) {
+        cursor = matchIdx[cursor] + 1;
+      }
+    }
+    if (isSkipped && isPunctTok(tokens[cursor], '(') && matchIdx[cursor] !== -1) {
+      skippedSpans.push({ startTok: i, endTok: matchIdx[cursor] });
+    }
+  }
+  return skippedSpans;
+};
+
 /**
  * 按候选测试文件集合联合验收当前日志域是否接入标准双态物理隔离契约套件 `registerLogTopologyContractSuite`：
  * 1. 允许按职责拆分为多文件（例如常规 CRUD/事务契约文件 + 独立日志拓扑文件 + Service L0 单测 + 跨领域回归文件）；
- * 2. 候选集合中必须至少有一个文件从 `@fastgpt/dal/db/testing` 导入并可执行调用指向当前域物理集合/表与仓储的 `registerLogTopologyContractSuite({ ... })`；
+ * 2. 解析 `.name` 描述符与仓储 Token 时优先追踪实际导入模块来源，确保合法的外域回归文件可直接解析并放行；
  * 3. 若传入的其他域回归文件仅覆盖其他集合/表且未触及当前域，会将其隔离到 `otherDomainValidSuiteFiles` 而非当作当前域覆盖；
  * 4. 若发生跨集合/跨表局部错配、调用非当前域仓储、条件门控、跳过块、本地遮蔽或关闭任意一族校验，立即 fail-closed 拒绝。
  */
 export const analyzeLogDualModeTestCoverage = ({
   testFiles,
+  domainRel,
   domainRepoSymbols = new Set(),
   domainMongoCollections = new Set(),
   domainSqlTables = new Set(),
@@ -4943,10 +5155,9 @@ export const analyzeLogDualModeTestCoverage = ({
   const hasDomainMongoFilter = expectedMongoCollections.size > 0;
   const hasDomainSqlFilter = expectedSqlTables.size > 0;
   const hasCurrentDomainFilter = hasDomainMongoFilter || hasDomainSqlFilter;
-  const normalizedDomainTestDir =
-    typeof domainTestDir === 'string' && domainTestDir.trim().length > 0
-      ? toPosixPath(domainTestDir).replace(/^\.\//, '').replace(/\/$/, '')
-      : undefined;
+  const normalizedDomainRel = normalizeOptionalDir(domainRel);
+  const normalizedDomainTestDir = normalizeOptionalDir(domainTestDir);
+  const moduleMetaCache = new Map();
 
   const validSuiteFiles = new Set();
   const validSuiteEntries = [];
@@ -4963,19 +5174,16 @@ export const analyzeLogDualModeTestCoverage = ({
       sourceRelPath: file.relPath
     });
     const { clean, tokens, matchIdx, scopeTree, importedAliases } = resolver;
-    const normalizedRelPath = toPosixPath(file.relPath).replace(/^\.\//, '');
-    const isInCurrentDomainTestDir =
-      normalizedDomainTestDir !== undefined &&
-      (normalizedRelPath === normalizedDomainTestDir ||
-        normalizedRelPath.startsWith(`${normalizedDomainTestDir}/`));
+    const isInCurrentDomainTestDir = isPathInsideDir(file.relPath, normalizedDomainTestDir);
 
-    // 将导出仓储符号与其在本文件中的 import 别名统一映射，防止 `import { AuditLogRepoToken as T }` 漏检或误拒
-    const effectiveDomainRepoSymbols = new Set(domainRepoSymbols);
-    for (const [localName, info] of importedAliases) {
-      if (domainRepoSymbols.has(info.importedName)) {
-        effectiveDomainRepoSymbols.add(localName);
-      }
-    }
+    const effectiveDomainRepoSymbols = resolveEffectiveDomainRepoSymbols({
+      importedAliases,
+      domainRepoSymbols,
+      normalizedDomainRel,
+      sourceRelPath: file.relPath,
+      repoRoot,
+      moduleMetaCache
+    });
 
     // 1. 解析从 @fastgpt/dal/db/testing 导入的 registerLogTopologyContractSuite 局部别名
     const suiteCallees = new Set();
@@ -5099,45 +5307,7 @@ export const analyzeLogDualModeTestCoverage = ({
     }
 
     // 2. 收集被 describe.skip / describe.todo / describe.skipIf / describe.runIf / it.skip 跳过的区间
-    const skippedSpans = [];
-    for (let i = 0; i < tokens.length; i += 1) {
-      const tok = tokens[i];
-      const prev = i > 0 ? tokens[i - 1] : undefined;
-      if (isPunctTok(prev, '.') || isPunctTok(prev, '?.')) continue;
-      if (
-        !isIdentTok(tok, 'describe') &&
-        !isIdentTok(tok, 'suite') &&
-        !isIdentTok(tok, 'it') &&
-        !isIdentTok(tok, 'test')
-      ) {
-        continue;
-      }
-      let cursor = i + 1;
-      let isSkipped = false;
-      while (isPunctTok(tokens[cursor], '.') && tokens[cursor + 1]?.type === 'ident') {
-        const mod = tokens[cursor + 1].value;
-        cursor += 2;
-        if (mod === 'skip' || mod === 'todo' || mod === 'skipIf' || mod === 'runIf') {
-          isSkipped = true;
-          if (
-            (mod === 'skipIf' || mod === 'runIf') &&
-            isPunctTok(tokens[cursor], '(') &&
-            matchIdx[cursor] !== -1
-          ) {
-            cursor = matchIdx[cursor] + 1;
-          }
-        } else if (
-          (mod === 'each' || mod === 'for') &&
-          isPunctTok(tokens[cursor], '(') &&
-          matchIdx[cursor] !== -1
-        ) {
-          cursor = matchIdx[cursor] + 1;
-        }
-      }
-      if (isSkipped && isPunctTok(tokens[cursor], '(') && matchIdx[cursor] !== -1) {
-        skippedSpans.push({ startTok: i, endTok: matchIdx[cursor] });
-      }
-    }
+    const skippedSpans = collectVitestSkippedSpans({ tokens, matchIdx });
     const isInsideSkipped = (tokIdx) =>
       skippedSpans.some((s) => tokIdx >= s.startTok && tokIdx <= s.endTok);
 
@@ -5145,8 +5315,7 @@ export const analyzeLogDualModeTestCoverage = ({
       const { tokens: cbTokens, matchIdx: cbMatchIdx } = tokenizeCleanJsTs(
         stripCommentsPreserveStrings(rawValue)
       );
-      const requireCurrentDomainSymbol =
-        restrictToCurrentDomain && effectiveDomainRepoSymbols.size > 0;
+      const requireCurrentDomainSymbol = restrictToCurrentDomain && domainRepoSymbols.size > 0;
 
       for (let k = 0; k < cbTokens.length; k += 1) {
         const t = cbTokens[k];
@@ -5194,7 +5363,10 @@ export const analyzeLogDualModeTestCoverage = ({
         }
 
         if (
-          effectiveDomainRepoSymbols.has(t.value) &&
+          (requireCurrentDomainSymbol
+            ? effectiveDomainRepoSymbols.has(t.value)
+            : effectiveDomainRepoSymbols.has(t.value) ||
+              /Repo(?:sitory)?(?:Token)?$/.test(t.value)) &&
           (isIdentTok(prev, 'new') ||
             isPunctTok(next, '.') ||
             isPunctTok(next, '?.') ||
@@ -5215,9 +5387,11 @@ export const analyzeLogDualModeTestCoverage = ({
       return false;
     };
 
-    const resolveSuiteTargetName = ({ entry, exportedNameMap }) => {
+    let inlineFileCollectionNames = null;
+    let inlineFileTableNames = null;
+    const resolveSuiteTargetName = ({ entry, exportedNameMap, targetKind }) => {
       if (entry === undefined) {
-        return { ok: false, reason: 'missing option' };
+        return { ok: false, reason: 'missing option', sourceRelPath: null };
       }
       const staticRes = resolver.resolveValue({
         rawExpr: entry.rawValue,
@@ -5229,7 +5403,7 @@ export const analyzeLogDualModeTestCoverage = ({
         typeof staticRes.value === 'string' &&
         staticRes.value.trim().length > 0
       ) {
-        return { ok: true, value: staticRes.value.trim() };
+        return { ok: true, value: staticRes.value.trim(), sourceRelPath: null };
       }
 
       let expr = stripTsAssertion(entry.rawValue).trim();
@@ -5245,15 +5419,72 @@ export const analyzeLogDualModeTestCoverage = ({
         const ident = memberMatch[1];
         const binding = scopeTree.lookupBinding(ident, entry.scopePos);
         if (binding.found && binding.binding.kind === 'import') {
-          const origName = importedAliases.get(ident)?.importedName ?? ident;
+          const aliasInfo = importedAliases.get(ident);
+          const origName = aliasInfo?.importedName ?? ident;
+          const importedMeta =
+            repoRoot !== undefined && aliasInfo !== undefined
+              ? readImportedModuleMetadata({
+                  specifier: aliasInfo.specifier,
+                  repoRoot,
+                  sourceRelPath: file.relPath,
+                  moduleMetaCache
+                })
+              : null;
+
+          if (importedMeta !== null) {
+            const targetMap =
+              targetKind === 'mongo'
+                ? importedMeta.collectionExportNames
+                : importedMeta.tableExportNames;
+            const resolvedFromImport = targetMap?.[origName];
+            if (typeof resolvedFromImport === 'string' && resolvedFromImport.trim().length > 0) {
+              return {
+                ok: true,
+                value: resolvedFromImport.trim(),
+                sourceRelPath: importedMeta.exportOriginByName[origName] ?? importedMeta.relPath
+              };
+            }
+            return {
+              ok: false,
+              reason: `imported descriptor "${ident}" from "${aliasInfo.specifier}" does not export a static ${targetKind === 'mongo' ? 'defineMongoCollection' : 'defineSqlTable'} name`,
+              sourceRelPath: importedMeta.relPath
+            };
+          }
+
           const mappedName = exportedNameMap?.[origName];
           if (typeof mappedName === 'string' && mappedName.trim().length > 0) {
-            return { ok: true, value: mappedName.trim() };
+            return { ok: true, value: mappedName.trim(), sourceRelPath: null };
+          }
+        } else if (binding.found && binding.binding.kind === 'const') {
+          if (targetKind === 'mongo') {
+            if (inlineFileCollectionNames === null) {
+              inlineFileCollectionNames = analyzeMongoSchemaDatasource({
+                sourceText: file.raw,
+                repoRoot,
+                sourceRelPath: file.relPath
+              }).collectionExportNames;
+            }
+            const inlineName = inlineFileCollectionNames?.[ident];
+            if (typeof inlineName === 'string' && inlineName.trim().length > 0) {
+              return { ok: true, value: inlineName.trim(), sourceRelPath: file.relPath };
+            }
+          } else {
+            if (inlineFileTableNames === null) {
+              inlineFileTableNames = analyzeSqlTableDefinitions(file.raw, {
+                repoRoot,
+                sourceRelPath: file.relPath
+              }).tableExportNames;
+            }
+            const inlineName = inlineFileTableNames?.[ident];
+            if (typeof inlineName === 'string' && inlineName.trim().length > 0) {
+              return { ok: true, value: inlineName.trim(), sourceRelPath: file.relPath };
+            }
           }
         } else if (binding.found) {
           return {
             ok: false,
-            reason: `identifier "${ident}" is shadowed by local ${binding.binding.kind}`
+            reason: `identifier "${ident}" is shadowed by local ${binding.binding.kind}`,
+            sourceRelPath: null
           };
         }
       }
@@ -5262,7 +5493,8 @@ export const analyzeLogDualModeTestCoverage = ({
         ok: false,
         reason: staticRes.ok
           ? `expected non-empty string, received ${JSON.stringify(staticRes.value)}`
-          : (staticRes.reason ?? `cannot statically resolve "${entry.rawValue}"`)
+          : (staticRes.reason ?? `cannot statically resolve "${entry.rawValue}"`),
+        sourceRelPath: null
       };
     };
 
@@ -5499,11 +5731,13 @@ export const analyzeLogDualModeTestCoverage = ({
 
       const mongoRes = resolveSuiteTargetName({
         entry: objRes.props.get('mongoCollectionName'),
-        exportedNameMap: domainCollectionExportNames
+        exportedNameMap: domainCollectionExportNames,
+        targetKind: 'mongo'
       });
       const sqlRes = resolveSuiteTargetName({
         entry: objRes.props.get('sqlTableName'),
-        exportedNameMap: domainTableExportNames
+        exportedNameMap: domainTableExportNames,
+        targetKind: 'sql'
       });
       const resolvedMongoCol = mongoRes.ok ? mongoRes.value : null;
       const resolvedSqlTable = sqlRes.ok ? sqlRes.value : null;
@@ -5523,14 +5757,29 @@ export const analyzeLogDualModeTestCoverage = ({
         readEntry !== undefined &&
         callbackExercisesRepo({ rawValue: readEntry.rawValue, restrictToCurrentDomain: false });
 
+      const mongoProvenanceMatches =
+        mongoRes.sourceRelPath === null ||
+        mongoRes.sourceRelPath === file.relPath ||
+        normalizedDomainRel === undefined ||
+        isPathInsideDir(mongoRes.sourceRelPath, normalizedDomainRel);
+      const sqlProvenanceMatches =
+        sqlRes.sourceRelPath === null ||
+        sqlRes.sourceRelPath === file.relPath ||
+        normalizedDomainRel === undefined ||
+        isPathInsideDir(sqlRes.sourceRelPath, normalizedDomainRel);
+
       const matchesMongoCol = hasDomainMongoFilter
-        ? resolvedMongoCol !== null && expectedMongoCollections.has(resolvedMongoCol)
-        : true;
+        ? resolvedMongoCol !== null &&
+          expectedMongoCollections.has(resolvedMongoCol) &&
+          mongoProvenanceMatches
+        : mongoProvenanceMatches;
       const matchesSqlTable = hasDomainSqlFilter
-        ? resolvedSqlTable !== null && expectedSqlTables.has(resolvedSqlTable)
-        : true;
+        ? resolvedSqlTable !== null &&
+          expectedSqlTables.has(resolvedSqlTable) &&
+          sqlProvenanceMatches
+        : sqlProvenanceMatches;
       const touchesCurrentDomainRepo =
-        effectiveDomainRepoSymbols.size > 0 && (writeCurrent || readCurrent);
+        domainRepoSymbols.size > 0 && (writeCurrent || readCurrent);
 
       // 位于当前域测试目录之外、合法运行其他物理集合/表且未引用当前域仓储的独立拓扑回归文件，
       // 仅作跨领域回归放行（记录到 otherDomainValidSuiteFiles），绝不作为当前域拓扑证据。
@@ -5558,6 +5807,10 @@ export const analyzeLogDualModeTestCoverage = ({
         callReasons.push(
           `${file.relPath}: ${call.calleeName}.mongoCollectionName ${mongoRes.reason}`
         );
+      } else if (!mongoProvenanceMatches) {
+        callReasons.push(
+          `${file.relPath}: ${call.calleeName}.mongoCollectionName originates from "${mongoRes.sourceRelPath}" outside current domain (${normalizedDomainRel})`
+        );
       } else if (hasDomainMongoFilter && !expectedMongoCollections.has(resolvedMongoCol)) {
         callReasons.push(
           `${file.relPath}: ${call.calleeName}.mongoCollectionName "${resolvedMongoCol}" does not match current domain log collection(s) (${[...expectedMongoCollections].join(', ')})`
@@ -5566,6 +5819,10 @@ export const analyzeLogDualModeTestCoverage = ({
 
       if (!sqlRes.ok) {
         callReasons.push(`${file.relPath}: ${call.calleeName}.sqlTableName ${sqlRes.reason}`);
+      } else if (!sqlProvenanceMatches) {
+        callReasons.push(
+          `${file.relPath}: ${call.calleeName}.sqlTableName originates from "${sqlRes.sourceRelPath}" outside current domain (${normalizedDomainRel})`
+        );
       } else if (hasDomainSqlFilter && !expectedSqlTables.has(resolvedSqlTable)) {
         callReasons.push(
           `${file.relPath}: ${call.calleeName}.sqlTableName "${resolvedSqlTable}" does not match current domain SQL table(s) (${[...expectedSqlTables].join(', ')})`
@@ -5644,6 +5901,232 @@ export const analyzeLogDualModeTestCoverage = ({
   };
 };
 
+const CONTRACT_SUITE_CALLEE_NAMES = new Set([
+  'registerDualDialectContractSuite',
+  'registerMultiDialectContractSuite'
+]);
+
+/**
+ * 核对候选多方言 CRUD/事务契约文件是否真正属于被验当前领域：
+ * 结合导入模块真实来源（`repo.ts` / `mongo/schema.ts` / `sql/table.ts`）、导出仓储符号与集合/表名判断归属，
+ * 防止 `--test` 传入其他域的 CRUD 回归文件时误满足当前域必须拥有独立多方言 CRUD 契约的门禁。
+ */
+export const analyzeMultiDialectContractCoverage = ({
+  testFiles,
+  domainRel,
+  domainTestDir,
+  domainRepoSymbols = new Set(),
+  domainMongoCollections = new Set(),
+  domainSqlTables = new Set(),
+  repoRoot
+}) => {
+  const expectedMongoCollections = new Set(
+    [...(domainMongoCollections ?? [])]
+      .filter((name) => typeof name === 'string' && name.trim().length > 0)
+      .map((name) => name.trim())
+  );
+  const expectedSqlTables = new Set(
+    [...(domainSqlTables ?? [])]
+      .filter((name) => typeof name === 'string' && name.trim().length > 0)
+      .map((name) => name.trim())
+  );
+  const normalizedDomainRel = normalizeOptionalDir(domainRel);
+  const normalizedDomainTestDir = normalizeOptionalDir(domainTestDir);
+  const moduleMetaCache = new Map();
+
+  const currentDomainContractFiles = [];
+  const otherDomainContractFiles = [];
+
+  for (const file of testFiles) {
+    const resolver = createStaticScopeResolver({
+      sourceText: file.raw,
+      repoRoot,
+      sourceRelPath: file.relPath
+    });
+    const { tokens, matchIdx, scopeTree, importedAliases } = resolver;
+    const skippedSpans = collectVitestSkippedSpans({ tokens, matchIdx });
+    const isInsideSkipped = (tokIdx) =>
+      skippedSpans.some((s) => tokIdx >= s.startTok && tokIdx <= s.endTok);
+
+    const suiteCalls = findFunctionCalls({
+      tokens,
+      matchIdx,
+      calleeNames: CONTRACT_SUITE_CALLEE_NAMES
+    }).filter((call) => {
+      if (call.closeParenIdx === -1 || isInsideSkipped(call.calleeIdx)) {
+        return false;
+      }
+      const binding = scopeTree.lookupBinding(call.calleeName, tokens[call.calleeIdx].start);
+      return !(binding.found && binding.binding.kind !== 'import');
+    });
+
+    if (suiteCalls.length === 0) {
+      continue;
+    }
+
+    const { tokens: execTokens, matchIdx: execMatchIdx } = tokenizeCleanJsTs(
+      stripImportsAndStrings(file.raw)
+    );
+    const usedIdents = new Set();
+    for (const tok of execTokens) {
+      if (tok.type === 'ident') {
+        usedIdents.add(tok.value);
+      }
+    }
+
+    const effectiveDomainRepoSymbols = resolveEffectiveDomainRepoSymbols({
+      importedAliases,
+      domainRepoSymbols,
+      normalizedDomainRel,
+      sourceRelPath: file.relPath,
+      repoRoot,
+      moduleMetaCache
+    });
+
+    let importedFromCurrentDomain = false;
+    let matchesCurrentDomainSchema = false;
+    let hasOtherDomainEvidence = false;
+
+    for (const [localName, info] of importedAliases) {
+      if (!usedIdents.has(localName)) {
+        continue;
+      }
+      const resolvedMeta =
+        repoRoot !== undefined
+          ? readImportedModuleMetadata({
+              specifier: info.specifier,
+              repoRoot,
+              sourceRelPath: file.relPath,
+              moduleMetaCache
+            })
+          : null;
+      if (resolvedMeta === null) {
+        continue;
+      }
+      const originRel = resolvedMeta.exportOriginByName[info.importedName] ?? resolvedMeta.relPath;
+      const inCurrent =
+        normalizedDomainRel !== undefined && isPathInsideDir(originRel, normalizedDomainRel);
+      if (inCurrent) {
+        importedFromCurrentDomain = true;
+      }
+
+      const origName = info.importedName;
+      const colName = resolvedMeta.collectionExportNames[origName];
+      const tblName = resolvedMeta.tableExportNames[origName];
+
+      if (typeof colName === 'string' && expectedMongoCollections.has(colName) && inCurrent) {
+        matchesCurrentDomainSchema = true;
+      } else if (
+        typeof colName === 'string' &&
+        !inCurrent &&
+        normalizedDomainRel !== undefined
+      ) {
+        hasOtherDomainEvidence = true;
+      }
+
+      if (typeof tblName === 'string' && expectedSqlTables.has(tblName) && inCurrent) {
+        matchesCurrentDomainSchema = true;
+      } else if (
+        typeof tblName === 'string' &&
+        !inCurrent &&
+        normalizedDomainRel !== undefined
+      ) {
+        hasOtherDomainEvidence = true;
+      }
+
+      if (
+        !inCurrent &&
+        normalizedDomainRel !== undefined &&
+        /(?:^packages\/dal\/db\/repos\/|^packages\/service\/.*\/(?:repo|mongo\/schema|sql\/table|mongo\/repo|sql\/repo)\.ts$)/.test(
+          originRel
+        )
+      ) {
+        hasOtherDomainEvidence = true;
+      }
+    }
+
+    let exercisesCurrentDomainRepo = false;
+    const repoHelperNames = new Set(REPO_RUNTIME_HELPER_FNS);
+    for (const [localName, info] of importedAliases) {
+      if (REPO_RUNTIME_HELPER_FNS.has(info.importedName)) {
+        repoHelperNames.add(localName);
+      }
+    }
+
+    for (let k = 0; k < execTokens.length; k += 1) {
+      const t = execTokens[k];
+      if (t.type !== 'ident') continue;
+      const prev = k > 0 ? execTokens[k - 1] : undefined;
+      const next = k + 1 < execTokens.length ? execTokens[k + 1] : undefined;
+
+      if (
+        effectiveDomainRepoSymbols.has(t.value) &&
+        (isIdentTok(prev, 'new') ||
+          isPunctTok(next, '.') ||
+          isPunctTok(next, '?.') ||
+          isPunctTok(next, '('))
+      ) {
+        exercisesCurrentDomainRepo = true;
+      }
+
+      if (repoHelperNames.has(t.value) && !isPunctTok(prev, '.') && !isPunctTok(prev, '?.')) {
+        let openIdx = k + 1;
+        if (isPunctTok(execTokens[openIdx], '<')) {
+          const closeAngle = tryMatchGenericAngle({
+            tokens: execTokens,
+            matchIdx: execMatchIdx,
+            startIdx: openIdx,
+            rangeEnd: execTokens.length
+          });
+          if (closeAngle !== -1) {
+            openIdx = closeAngle + 1;
+          }
+        }
+        if (isPunctTok(execTokens[openIdx], '(') && execMatchIdx[openIdx] !== -1) {
+          const closeIdx = execMatchIdx[openIdx];
+          for (let a = openIdx + 1; a < closeIdx; a += 1) {
+            const argTok = execTokens[a];
+            const prevArg = a > 0 ? execTokens[a - 1] : undefined;
+            if (
+              argTok.type === 'ident' &&
+              !isPunctTok(prevArg, '.') &&
+              !isPunctTok(prevArg, '?.')
+            ) {
+              if (effectiveDomainRepoSymbols.has(argTok.value)) {
+                exercisesCurrentDomainRepo = true;
+              } else if (
+                domainRepoSymbols.size > 0 &&
+                (importedAliases.has(argTok.value) || /Token$|Repo(?:sitory)?$/.test(argTok.value))
+              ) {
+                hasOtherDomainEvidence = true;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    const isInCurrentDomainTestDir = isPathInsideDir(file.relPath, normalizedDomainTestDir);
+    const belongsToCurrentDomain =
+      exercisesCurrentDomainRepo ||
+      matchesCurrentDomainSchema ||
+      importedFromCurrentDomain ||
+      (isInCurrentDomainTestDir && !hasOtherDomainEvidence);
+
+    if (belongsToCurrentDomain) {
+      currentDomainContractFiles.push(file.relPath);
+    } else {
+      otherDomainContractFiles.push(file.relPath);
+    }
+  }
+
+  return {
+    ok: currentDomainContractFiles.length > 0,
+    currentDomainContractFiles,
+    otherDomainContractFiles
+  };
+};
+
 /**
  * 组装领域验证的实际测试执行计划：
  * 日志域运行期必须合并静态识别到的本域拓扑文件与显式 `--test` 目标，防止仅执行其他域回归时漏跑当前域拓扑校验。
@@ -5705,32 +6188,6 @@ export const buildDomainTestExecutionPlan = ({
     rootTargets
   };
 };
-
-/**
- * 按物理集合/表身份构造日志域双态 4 个必需拓扑用例标题描述符。
- */
-export const buildRequiredLogTopologyCases = ({ mongoCollectionName, sqlTableName }) => [
-  {
-    family: 'mongodb',
-    suiteTitle: `[Log Topology: MongoDB (shared + separate) | ${mongoCollectionName}]`,
-    caseTitle: 'routes log reads/writes through main physical DB in shared mode'
-  },
-  {
-    family: 'mongodb',
-    suiteTitle: `[Log Topology: MongoDB (shared + separate) | ${mongoCollectionName}]`,
-    caseTitle: 'isolates log reads/writes into separate log physical DB without touching main DB'
-  },
-  {
-    family: 'sql_pglite',
-    suiteTitle: `[Log Topology: SQL PGlite (shared + separate) | ${sqlTableName}]`,
-    caseTitle: 'routes log reads/writes through main physical DB in shared mode'
-  },
-  {
-    family: 'sql_pglite',
-    suiteTitle: `[Log Topology: SQL PGlite (shared + separate) | ${sqlTableName}]`,
-    caseTitle: 'isolates log reads/writes into separate log physical DB without touching main DB'
-  }
-];
 
 const normalizeIdentityPath = (filePath, baseDir = process.cwd()) => {
   const raw = String(filePath ?? '').trim();

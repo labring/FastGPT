@@ -6,6 +6,7 @@ import path from 'node:path';
 import {
   analyzeLogDualModeTestCoverage,
   analyzeMongoSchemaDatasource,
+  analyzeMultiDialectContractCoverage,
   analyzeSchemaIndexes,
   analyzeSqlRepoDatasource,
   analyzeSqlTableDefinitions,
@@ -196,6 +197,10 @@ const sqlTableInfo =
       })
     : { tables: [], tableExportNames: {}, issues: [] };
 const domainMongoLogCollections = new Set(mongoDatasourceInfo.logCollectionNames ?? []);
+const domainAllMongoCollections = new Set([
+  ...(mongoDatasourceInfo.collections ?? []).map((c) => c.collectionName).filter(Boolean),
+  ...(mongoDatasourceInfo.logCollectionNames ?? [])
+]);
 const domainSqlTables = new Set(
   sqlTableInfo.tables
     .map((t) => t.name)
@@ -744,6 +749,7 @@ const checkContractTestGovernance = () => {
     return { validLogSuiteFiles: [], validLogSuiteEntries: [] };
   }
 
+  const domainRepoSymbols = extractExportedDomainRepoSymbols(domainAbs);
   const logCoverage =
     isLogDomain && candidateFiles.size > 0
       ? analyzeLogDualModeTestCoverage({
@@ -751,7 +757,8 @@ const checkContractTestGovernance = () => {
             relPath,
             raw: rawCodeByFile.get(relPath) ?? ''
           })),
-          domainRepoSymbols: extractExportedDomainRepoSymbols(domainAbs),
+          domainRel,
+          domainRepoSymbols,
           domainMongoCollections: domainMongoLogCollections,
           domainSqlTables,
           domainCollectionExportNames: mongoDatasourceInfo.collectionExportNames ?? {},
@@ -760,9 +767,25 @@ const checkContractTestGovernance = () => {
           repoRoot
         })
       : null;
+  const crudCoverage =
+    contractTestFiles.length > 0
+      ? analyzeMultiDialectContractCoverage({
+          testFiles: contractTestFiles.map((relPath) => ({
+            relPath,
+            raw: rawCodeByFile.get(relPath) ?? ''
+          })),
+          domainRel,
+          domainTestDir: inferredTestDir,
+          domainRepoSymbols,
+          domainMongoCollections: domainAllMongoCollections,
+          domainSqlTables,
+          repoRoot
+        })
+      : { ok: false, currentDomainContractFiles: [], otherDomainContractFiles: [] };
+  const currentDomainContractSet = new Set(crudCoverage.currentDomainContractFiles);
   const validLogSuiteFiles = new Set(logCoverage?.validSuiteFiles ?? []);
   const otherDomainValidLogSuiteFiles = new Set(logCoverage?.otherDomainValidSuiteFiles ?? []);
-  let hasMultiDialectContractFile = false;
+  let hasCurrentDomainMultiDialectContractFile = false;
 
   for (const rel of contractTestFiles) {
     const execCode = execCodeByFile.get(rel) ?? '';
@@ -775,7 +798,7 @@ const checkContractTestGovernance = () => {
 
     // 日志域允许将拓扑隔离单独拆分为 `.contract.test.ts`：只要本身是合法的日志拓扑契约文件，
     // 其 `describe/it/expect` 由 `registerLogTopologyContractSuite` 内部展开，不再要求重复调用多方言 CRUD 套件；
-    // 但整个领域仍必须包含至少一个多方言 CRUD/事务契约文件（下方的 hasMultiDialectContractFile 守卫）。
+    // 但整个领域仍必须包含至少一个归属于当前域的多方言 CRUD/事务契约文件（下方的 hasCurrentDomainMultiDialectContractFile 守卫）。
     const isDedicatedLogTopologyFile =
       isLogDomain &&
       (validLogSuiteFiles.has(rel) || otherDomainValidLogSuiteFiles.has(rel)) &&
@@ -784,23 +807,32 @@ const checkContractTestGovernance = () => {
       continue;
     }
 
-    if (!CONTRACT_SUITE_CALL_REGEX.test(execCode)) {
+    const invokesContractSuite = CONTRACT_SUITE_CALL_REGEX.test(execCode);
+    const hasExecutableCases =
+      TEST_CASE_CALL_REGEX.test(execCode) && ASSERTION_CALL_REGEX.test(execCode);
+
+    if (!invokesContractSuite) {
       failures.push(
         `[Tests] ${rel} must invoke registerDualDialectContractSuite(...) / registerMultiDialectContractSuite(...) (bare imports or strings do not count)`
       );
-    } else {
-      hasMultiDialectContractFile = true;
     }
-    if (!TEST_CASE_CALL_REGEX.test(execCode) || !ASSERTION_CALL_REGEX.test(execCode)) {
+    if (!hasExecutableCases) {
       failures.push(
         `[Tests] ${rel} must declare executable test case(s) with expect(...) assertions`
       );
     }
+    if (invokesContractSuite && hasExecutableCases && currentDomainContractSet.has(rel)) {
+      hasCurrentDomainMultiDialectContractFile = true;
+    }
   }
 
-  if (contractTestFiles.length > 0 && !hasMultiDialectContractFile) {
+  if (contractTestFiles.length > 0 && !hasCurrentDomainMultiDialectContractFile) {
+    const substituteHint =
+      crudCoverage.otherDomainContractFiles.length > 0
+        ? ` (other-domain CRUD contract(s) cannot substitute: ${crudCoverage.otherDomainContractFiles.join(', ')})`
+        : '';
     failures.push(
-      `[Tests] Domain ${domainRel} must invoke registerDualDialectContractSuite(...) / registerMultiDialectContractSuite(...) in a contract test file`
+      `[Tests] Domain ${domainRel} must invoke registerDualDialectContractSuite(...) / registerMultiDialectContractSuite(...) for the current domain${substituteHint}`
     );
   }
 
