@@ -172,41 +172,6 @@ describe('buildApiFileTree', () => {
     expect(listFiles).toHaveBeenCalledTimes(2);
   });
 
-  it('verifyFolderChildren=true 时对 hasChild=false 的目录仍调用 listFiles 核实子项', async () => {
-    listFiles.mockImplementation(async ({ parentId }: { parentId: string }) => {
-      if (parentId === 'non-empty') return [file('child', 'file')];
-      return [];
-    });
-
-    const nodes = await buildApiFileTree({
-      request,
-      seeds: [
-        file('non-empty', 'folder', false),
-        file('really-empty', 'folder', false),
-        file('leaf-file', 'file', false)
-      ],
-      verifyFolderChildren: true
-    });
-
-    expect(listFiles.mock.calls.map(([args]) => args.parentId)).toEqual([
-      'non-empty',
-      'really-empty'
-    ]);
-    expect(
-      nodes.map(({ serverId, type, hasChild, serverParentId }) => [
-        serverId,
-        type,
-        hasChild,
-        serverParentId
-      ])
-    ).toEqual([
-      ['non-empty', 'folder', true, null],
-      ['really-empty', 'folder', false, null],
-      ['leaf-file', 'file', false, null],
-      ['child', 'file', false, 'non-empty']
-    ]);
-  });
-
   it('T1-8: listFiles reject 时异常上抛', async () => {
     listFiles.mockRejectedValue(new Error('list files failed'));
 

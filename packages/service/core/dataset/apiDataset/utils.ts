@@ -31,10 +31,6 @@ export type LegacyApiFileFolderMigration = {
   inheritPermission?: boolean;
 };
 
-/** 沿用请求 factory 的配置优先级，判断当前是否启用自定义 API 文件库 Provider。 */
-export const usesCustomApiDataset = (apiDatasetServer?: ApiDatasetServerType) => {
-  return Boolean(apiDatasetServer?.apiServer);
-};
 /** 沿用请求 factory 的配置优先级，旧目录正文兼容只适用于实际启用的钉钉 Provider。 */
 export const usesDingtalkDataset = (apiDatasetServer?: ApiDatasetServerType) => {
   const { apiServer, yuqueServer, feishuServer, dingtalkServer } = apiDatasetServer ?? {};
