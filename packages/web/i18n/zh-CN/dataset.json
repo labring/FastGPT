@@ -322,5 +322,7 @@
   "sync_children_enabled_pause_text": "已开启自动同步该目录新增文件，",
   "click_to_pause": "点击暂停",
   "pause_sync_children_confirm": "是否暂停自动同步该目录新增文件？暂停后已导入文件仍会继续更新，但不再自动拉取该目录下新增内容。",
-  "sync_children_paused_tip": "已暂停自动同步该目录新增内容，已导入的文件仍会正常更新"
+  "sync_children_paused_tip": "已暂停自动同步该目录新增内容，已导入的文件仍会正常更新",
+  "sync_new_children": "同步新增",
+  "sync_new_children_tip": "开启后，手动或定时同步时将自动拉取该目录下的新增文件与子目录；暂停后已导入文件仍会继续更新"
 }

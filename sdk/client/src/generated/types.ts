@@ -7019,6 +7019,8 @@ export type DatasetsCollectionsDetailRes = {
   apiFileId?: string;
   /** API 文件父级 ID */
   apiFileParentId?: string;
+  /** API 集合是否自动同步新增直属子级；缺省兼容存量视为 true */
+  syncChildren?: boolean;
   /** 外部文件 URL */
   externalFileUrl?: string;
   /** 原始文本长度 */
@@ -7181,6 +7183,8 @@ export type DatasetsCollectionsDetailRes = {
     deleteTime?: string | null;
     /** 自动同步 */
     autoSync?: boolean;
+    /** 是否同步第三方知识库根目录下的新增文件与文件夹 */
+    syncAll?: boolean;
     /**
      * 外部读取 URL
      * @deprecated
@@ -7369,6 +7373,10 @@ export type DatasetsCollectionsListRes = {
     >;
     /** 外部文件 ID */
     externalFileId?: string;
+    /** API 文件 ID */
+    apiFileId?: string;
+    /** API 集合是否自动同步新增直属子级；缺省兼容存量视为 true */
+    syncChildren?: boolean;
     /** 文件 ID */
     fileId?: string;
     /** 原始链接 */
@@ -7440,6 +7448,8 @@ export type DatasetsCollectionsUpdateReq =
       >;
       /** 是否禁用 */
       forbid?: boolean;
+      /** 是否自动同步该 API 目录下的新增子级（仅 API 目录生效） */
+      syncChildren?: boolean;
       /** 创建时间 */
       createTime?: string;
       /** 数据集ID，配合 externalFileId 使用 */
@@ -7464,6 +7474,8 @@ export type DatasetsCollectionsUpdateReq =
       >;
       /** 是否禁用 */
       forbid?: boolean;
+      /** 是否自动同步该 API 目录下的新增子级（仅 API 目录生效） */
+      syncChildren?: boolean;
       /** 创建时间 */
       createTime?: string;
       /** 数据集ID，配合 externalFileId 使用 */
@@ -7918,6 +7930,8 @@ export type DatasetsDetailRes = {
   deleteTime?: string | null;
   /** 自动同步 */
   autoSync?: boolean;
+  /** 是否同步第三方知识库根目录下的新增文件与文件夹 */
+  syncAll?: boolean;
   /**
    * 外部读取 URL
    * @deprecated
@@ -8610,6 +8624,8 @@ export type DatasetsUpdateReq = {
   };
   /** 是否自动同步 */
   autoSync?: boolean;
+  /** 是否开启第三方知识库整库全量同步（仅 API 知识库生效；开启后会同时恢复库内所有已暂停同步的子目录） */
+  syncAll?: boolean;
   /** 分块配置 */
   chunkSettings?: {
     /** 训练类型 */

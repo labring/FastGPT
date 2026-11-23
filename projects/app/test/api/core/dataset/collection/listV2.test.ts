@@ -69,16 +69,25 @@ describe('collection listV2 navigation folders', () => {
       agentModel: 'test',
       collectionPermissionEnabled: true
     });
-    const create = (name: string, type: DatasetCollectionTypeEnum, parentId: string | null) =>
+    const create = (
+      name: string,
+      type: DatasetCollectionTypeEnum,
+      parentId: string | null,
+      extra: Record<string, unknown> = {}
+    ) =>
       MongoDatasetCollection.create({
         name,
         type,
         parentId,
         teamId: users.owner.teamId,
         tmbId: users.owner.tmbId,
-        datasetId: dataset._id
+        datasetId: dataset._id,
+        ...extra
       });
-    const folder = await create('folder', DatasetCollectionTypeEnum.folder, null);
+    const folder = await create('folder', DatasetCollectionTypeEnum.folder, null, {
+      apiFileId: 'remote-folder-id',
+      syncChildren: false
+    });
     const emptyFolder = await create('empty', DatasetCollectionTypeEnum.folder, null);
     const file = await create('file', DatasetCollectionTypeEnum.file, String(folder._id));
     await MongoResourcePermission.create({
@@ -98,22 +107,27 @@ describe('collection listV2 navigation folders', () => {
     return { member, dataset, folder, emptyFolder, file };
   };
 
-  it('lists folders that lead to readable collections as navigation-only and hides empty ones', async () => {
-    const { member, dataset, folder, emptyFolder } = await setup();
+  it.each([false, true])(
+    'lists folders that lead to readable collections as navigation-only (simple=%s) and omits api sync metadata',
+    async (simple) => {
+      const { member, dataset, folder, emptyFolder } = await setup();
 
-    const response = await Call(listHandler, {
-      auth: member,
-      body: { datasetId: dataset._id, pageSize: 10, offset: 0 }
-    });
+      const response = await Call(listHandler, {
+        auth: member,
+        body: { datasetId: dataset._id, pageSize: 10, offset: 0, simple }
+      });
 
-    expect(response.code).toBe(200);
-    const ids = response.data.list.map((item) => String(item._id));
-    expect(ids).toContain(String(folder._id));
-    expect(ids).not.toContain(String(emptyFolder._id));
-    const item = response.data.list.find((entry) => String(entry._id) === String(folder._id));
-    expect(item?.folderAccessMode).toBe('navigate');
-    expect(item?.permission.hasReadPer).toBe(false);
-  });
+      expect(response.code).toBe(200);
+      const ids = response.data.list.map((item) => String(item._id));
+      expect(ids).toContain(String(folder._id));
+      expect(ids).not.toContain(String(emptyFolder._id));
+      const item = response.data.list.find((entry) => String(entry._id) === String(folder._id));
+      expect(item?.folderAccessMode).toBe('navigate');
+      expect(item?.permission.hasReadPer).toBe(false);
+      expect(item?.apiFileId).toBeUndefined();
+      expect(item?.syncChildren).toBeUndefined();
+    }
+  );
 
   it('allows browsing into a navigation-only folder and lists its readable children', async () => {
     const { member, dataset, folder, file } = await setup();

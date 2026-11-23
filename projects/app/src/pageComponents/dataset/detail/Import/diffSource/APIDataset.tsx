@@ -282,6 +282,9 @@ const CustomAPIFileInput = () => {
 
   const canSelectSyncAll = !serverSyncAll && Boolean(datasetDetail.permission?.hasManagePer);
   const totalPendingCount = selectAll ? 1 : selectedMap.size;
+  const isRootChecked = serverSyncAll || selectAll;
+  const hasImportedItems = existingFolderBySourceId.size > 0 || existingFileBySourceId.size > 0;
+  const isRootIndeterminate = !isRootChecked && (hasImportedItems || selectedMap.size > 0);
 
   const handleToggleSelectAll = useCallback(() => {
     if (!canSelectSyncAll) return;
@@ -516,7 +519,8 @@ const CustomAPIFileInput = () => {
         >
           <Flex alignItems={'center'} gap={2}>
             <Checkbox
-              isChecked={serverSyncAll || selectAll}
+              isChecked={isRootChecked}
+              isIndeterminate={isRootIndeterminate}
               isDisabled={serverSyncAll || !canSelectSyncAll}
               onChange={handleToggleSelectAll}
             >

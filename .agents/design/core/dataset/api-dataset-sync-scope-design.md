@@ -220,29 +220,23 @@ flowchart TD
      - 对目录：查找对应本地目录（`folder` 查 `sourceId`，`file` 查 `sourceId#dir`；若派生目录尚未建立但本地已有叶子 `apiFile`，查该 `apiFile`）。若本地不存在（本轮新发现）返回 `true`，否则返回 `isCollectionSyncChildrenEnabled(localNode)`。
 
 2. **顶层入口（Seeds）**：
-   - `dataset.syncAll === true`：调用 `request.listFiles({ parentId: startId })`，全部远端顶层节点作为 seeds（同时记为根级允许新增）。
-   - `dataset.syncAll === false`：找出本地顶层远端节点 ID（`getApiFileSyncRootIds(allCollections)`，不再过滤 `RootCollectionId`），并发调用 `request.getFileDetail({ apiFileId })`：
-     - `success` → 作为 seed。
-     - `NOT_FOUND` → 跳过，后续进入删除候选。
-     - 其他错误（429/5xx/网络等）→ 立即抛错中止本轮同步，防止误删。
+   - `dataset.syncAll === true`：调用 `request.listFiles({ parentId: null })`，全部远端顶层节点作为 seeds（同时记为根级允许新增）。
+   - `dataset.syncAll === false`：找出本地顶层远端节点 ID（`getApiFileSyncRootIds(allCollections)`，不再过滤 `RootCollectionId`）。若配置的目录起点（`basePath` / `folderToken` / `rootNodeId`）本身在本地已导入，直接按共享真实源身份构造种子；否则从顶层按层遍历 `request.listFiles`（复用单轮内存缓存 `listFilesCached`）发现局部同步根。列表拉取失败直接抛错中止同步，不误删；未出现在结果中的根随后进入缺失核实/删除流程。
 
 3. **递归展开规则（`walk(node)`）**：
-   - 若 `!node.hasChild`，结束当前分支。
-   - 调用 `request.listFiles({ parentId: node.id })` 获取远端直属子列表 `remoteChildren`。
+   - 若 `!node.hasChild`，结束当前分支（即 `hasChild: false` 表示该节点下在远端已无子节点）。
+   - 调用 `listFilesCached(node.id)` 获取远端直属子列表 `remoteChildren`（当远端目录真实为空时正常返回 `[]`，非正常响应则抛错中止）。
    - 判断当前节点是否允许拉取新增：`allowNew = syncChildrenEnabledOf(node.id)`：
      - **`allowNew === true`**：将 `remoteChildren` 全部加入树并递归展开。
      - **`allowNew === false`**：**仅**将 `remoteChildren` 中满足 `localSourceIds.has(child.id)` 的已导入子项加入树并继续递归（**不剪枝已有子树，但完全忽略远端新增直属项**）。
 
-4. **远端移动（Remote Move）与误删防护**：
-   - 当存在 `syncChildren === false` 的目录（或 `dataset.syncAll === false`）时，某已导入文件 `doc1` 可能在远端被移动到了一个尚未导入的目录 `Folder C`：
-     - 遍历结束后，检查所有本地 `localSourceIds` 中**未出现在本轮已遍历远端节点**的候选节点（排除其父级已确认为 `NOT_FOUND` 且明确属于整棵被删的情况，或在 `syncAll === true` 时已全树扫描无需二次探测）。
-     - 当 `dataset.syncAll === false` 或存在任意 `syncChildren === false` 目录时，对未命中的本地节点并发调用 `request.getFileDetail({ apiFileId })` 做二次确认：
-       - 返回 `NOT_FOUND`：确认为远端已删除 → 进入删除候选。
-       - 返回限流/5xx/网络错误：抛错中止删除阶段（不误删）。
-       - 返回 `success`（说明远端仍存活，只是移到了未展开的分支）：
-         - **推荐策略（策略 1：跟随移动并补建 `syncChildren: false` 祖先）**：
-           - 若 provider 返回有效 `parentId`（语雀、钉钉、自定义 API）：沿 `getFileDetail` 向上回溯直至命中本地已有节点或到达 `startId`/根，将缺失的新祖先目录以 `syncChildren: false` 加入本轮树，使 `doc1` 移动到新父目录下并继续同步内容；若 `doc1` 自身是目录且 `syncChildren !== false`，同时递归展开其子树。
-           - 若 provider 不返回 `parentId`（**飞书 Drive 限制**：`getFileDetail` 固定返回 `parentId: null`）：无法获知新父目录位置，将其保留在远端存活集合中（不删除、暂保原本地位置继续同步正文），并记录告警日志提示远端位置无法回溯。
+4. **远端移动（Remote Move）与缺失核实（`!syncAll || hasPausedFolder`）**：
+   - 当存在 `syncChildren === false` 的目录（或 `dataset.syncAll === false`）时，某已导入文件 `doc1` 可能在远端被移动到了一个尚未导入或已暂停的目录 `Folder C`：
+     - 遍历结束后，检查所有本地 `localSourceIds` 中**未出现在本轮已遍历远端节点**的集合 `unvisitedIds`。
+     - 当 `!syncAll || hasPausedFolder` 且 `unvisitedIds.size > 0` 时，基于本轮已缓存的 `listFilesCached` 从顶层按层做全树 BFS 扫描（若任一目录列举失败则直接抛错中止，不误删）：
+       - 若全树扫描完仍未出现（含因空目录返回 `[]` 或 `hasChild: false` 未再出现）：确认为远端已删除 → 进入删除候选。
+       - 若在远端其他目录找到 `doc1`（说明只是移到了未展开/未导入分支）：按 BFS 发现的远端父链自顶向下补齐尚未进入本轮树的远端祖先占位（`syncChildren: false, expandChildren: false, isAutoAncestor: true`），再重新计算 `depth` 并重排后合并进 `nodes`，使 `doc1` 移动到新父目录下并继续同步内容；若 `doc1` 自身是目录且 `syncChildren !== false`，同时递归展开其子树。
+       - 注：全树 BFS 基于 `listFiles` 树完整性工作，同样覆盖飞书等 `getFileDetail` 不返回 `parentId` 的 provider，且不依赖上游对目录实现 `getFileDetail`。
 
 5. **`buildApiFileSyncPlan` 新增文件准入守卫**：
    - 移除 `rootCollectionId` 和所有 `RootCollectionId` 判断。
@@ -397,7 +391,7 @@ flowchart TD
 - [x] 改造 `fastgpt-pro/admin/src/service/core/dataset/dataset/sync.ts`：
   - [x] 用 `Boolean(dataset.syncAll)` 替代 `SYSTEM_ROOT` 判断；
   - [x] 改造建树与展开逻辑：对 `syncChildren === false` 目录仅保留已导入子项继续递归，不拉取新增直属子级，不剪枝已有子树；
-  - [x] 处理远端移动二次确认（`getFileDetail` 区分 `NOT_FOUND` vs 远端移动，支持 `parentId` 回溯补建 `syncChildren: false` 祖先；兼容飞书 `parentId: null` 不误删）；
+  - [x] 处理远端移动与缺失确认（基于缓存 `listFiles` 全树 BFS 发现局部同步根与迁出节点，补建 `syncChildren: false` 祖先，不依赖 `getFileDetail`）；
   - [x] 传入 `syncAll` 与目录 `syncChildren` 状态给 `buildApiFileSyncPlan`，阻断 `docA#dir.syncChildren === false` 时重建已删正文 `docA`。
 
 ### 阶段四：前端交互改造（`FastGPT`）

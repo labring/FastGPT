@@ -410,6 +410,35 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     });
   };
 
+  /** 投影列表项并脱敏 navigate 导航目录：不向仅可导航的成员暴露标签、远端文件 ID 与同步范围配置。 */
+  const projectCollectionItem = ({
+    item,
+    tags,
+    dataAmount,
+    trainingStatus,
+    collectionPermissionMap
+  }: {
+    item: DatasetCollectionSchemaType;
+    tags: CollectionTagLabelType[] | undefined;
+    dataAmount: number;
+    trainingStatus: typeof defaultCollectionTrainingStatus;
+    collectionPermissionMap?: Map<string, CollectionPermission>;
+  }) => {
+    const collectionId = String(item._id);
+    const folderAccessMode = folderAccessModeMap.get(collectionId);
+    const isNavigateFolder = folderAccessMode === 'navigate';
+    const { apiFileId: _apiFileId, syncChildren: _syncChildren, ...baseItem } = item;
+
+    return {
+      ...(isNavigateFolder ? baseItem : item),
+      tags: isNavigateFolder ? [] : tags,
+      dataAmount,
+      ...trainingStatus,
+      permission: getCollectionPermission(item, collectionPermissionMap),
+      ...(folderAccessMode ? { folderAccessMode } : {})
+    };
+  };
+
   // not count data amount
   if (simple) {
     const [collections, total] = await Promise.all([
@@ -424,16 +453,15 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     ]);
 
     return ListCollectionV2ResponseSchema.parse({
-      list: collections.map((item, index) => ({
-        ...item,
-        tags: folderAccessModeMap.get(String(item._id)) === 'navigate' ? [] : tags[index],
-        dataAmount: 0,
-        ...defaultCollectionTrainingStatus,
-        permission: getCollectionPermission(item, collectionPermissionMap),
-        ...(folderAccessModeMap.has(String(item._id))
-          ? { folderAccessMode: folderAccessModeMap.get(String(item._id)) }
-          : {})
-      })),
+      list: collections.map((item, index) =>
+        projectCollectionItem({
+          item,
+          tags: tags[index],
+          dataAmount: 0,
+          trainingStatus: defaultCollectionTrainingStatus,
+          collectionPermissionMap
+        })
+      ),
       total
     });
   }
@@ -489,19 +517,16 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
   const list = collections.map((item, index) => {
     const collectionId = String(item._id);
     const dataCounts = dataAmountMap.get(collectionId);
-    return {
-      ...item,
-      tags: folderAccessModeMap.get(collectionId) === 'navigate' ? [] : tags[index],
+    return projectCollectionItem({
+      item,
+      tags: tags[index],
       dataAmount: dataCounts?.count ?? 0,
-      ...getCollectionTrainingStatusFromCounts({
+      trainingStatus: getCollectionTrainingStatusFromCounts({
         modeCounts: trainingAmountMap.get(collectionId)?.modeCounts,
         rebuildCounts: dataCounts
       }),
-      permission: getCollectionPermission(item, collectionPermissionMap),
-      ...(folderAccessModeMap.has(collectionId)
-        ? { folderAccessMode: folderAccessModeMap.get(collectionId) }
-        : {})
-    };
+      collectionPermissionMap
+    });
   });
 
   // count collections

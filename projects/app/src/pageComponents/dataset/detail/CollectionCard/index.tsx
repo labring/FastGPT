@@ -61,7 +61,11 @@ import CollectionListHeaderMenu from './CollectionListHeaderMenu';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import { collectionCanSync } from '@fastgpt/global/core/dataset/collection/utils';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import {
+  collectionCanSync,
+  isCollectionSyncChildrenEnabled
+} from '@fastgpt/global/core/dataset/collection/utils';
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import TagsPopOver from './TagsPopOver';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -214,6 +218,26 @@ const CollectionCard = () => {
     }
   );
 
+  const { ConfirmModal: ConfirmSyncChildrenModal, openConfirm: openSyncChildrenConfirm } =
+    useConfirm({});
+  const { runAsync: onToggleSyncChildren, loading: isUpdatingSyncChildren } = useRequest(
+    async ({ id, syncChildren }: { id: string; syncChildren: boolean }) => {
+      await putDatasetCollectionById({ id, syncChildren });
+      await Promise.all([refreshCollections(), loadDatasetDetail(datasetDetail._id)]);
+      return syncChildren;
+    },
+    {
+      onSuccess(syncChildren) {
+        toast({
+          title: syncChildren
+            ? t('dataset:sync_children_enabled_next_sync_tip')
+            : t('dataset:sync_children_paused_tip'),
+          status: 'success'
+        });
+      }
+    }
+  );
+
   const { openConfirm: openDeleteConfirm, ConfirmModal: ConfirmDeleteModal } = useConfirm({
     content: t('common:dataset.Confirm to delete the file'),
     type: 'delete'
@@ -359,7 +383,8 @@ const CollectionCard = () => {
     }
   });
 
-  const isLoading = isUpdating || isSyncing || isDropping || isEnablingCollectionPer;
+  const isLoading =
+    isUpdating || isUpdatingSyncChildren || isSyncing || isDropping || isEnablingCollectionPer;
 
   const onBatchDownload = () => {
     batchDownloadSubmitterRef.current.submit({
@@ -483,6 +508,14 @@ const CollectionCard = () => {
                   />
                 </Th>
                 <Th py={4}>{t('common:Status')}</Th>
+                {isApiDataset && (
+                  <Th py={4}>
+                    <Flex alignItems={'center'} gap={1}>
+                      {t('dataset:sync_new_children')}
+                      <QuestionTip label={t('dataset:sync_new_children_tip')} />
+                    </Flex>
+                  </Th>
+                )}
                 <Th py={4}>{t('dataset:Enable')}</Th>
                 <Th py={4} />
               </Tr>
@@ -499,7 +532,7 @@ const CollectionCard = () => {
                         <Skeleton h={4} w="60%" minW="100px" borderRadius="sm" />
                       </HStack>
                     </Td>
-                    {[16, 12, 28, 20, 8, 4].map((width, column) => (
+                    {[16, 12, 28, 20, ...(isApiDataset ? [12] : []), 8, 4].map((width, column) => (
                       <Td key={column} py={4}>
                         <Skeleton h={4} w={width} borderRadius="sm" />
                       </Td>
@@ -584,6 +617,21 @@ const CollectionCard = () => {
                               {collection.name}
                             </Box>
                           </MyTooltip>
+                          {isApiDataset &&
+                            collection.type === DatasetCollectionTypeEnum.folder &&
+                            Boolean(collection.apiFileId) &&
+                            !collection.isNavigableFolder &&
+                            collection.syncChildren === false && (
+                              <MyTag
+                                ml={2}
+                                colorSchema={'gray'}
+                                type={'fill'}
+                                fontSize={'mini'}
+                                flexShrink={0}
+                              >
+                                {t('dataset:sync_children_paused_tag')}
+                              </MyTag>
+                            )}
                         </Flex>
                         {feConfigs?.isPlus && !!collection.tags?.length && (
                           <TagsPopOver currentCollection={collection} />
@@ -641,6 +689,35 @@ const CollectionCard = () => {
                       </MyTag>
                     </MyTooltip>
                   </Td>
+                  {isApiDataset && (
+                    <Td py={2} onClick={(e) => e.stopPropagation()}>
+                      {collection.isNavigableFolder ? (
+                        <Box visibility={'hidden'}>-</Box>
+                      ) : collection.type === DatasetCollectionTypeEnum.folder &&
+                        Boolean(collection.apiFileId) ? (
+                        <Switch
+                          isChecked={isCollectionSyncChildrenEnabled(collection)}
+                          isDisabled={!collection.permission.hasManagePer}
+                          size={'sm'}
+                          onChange={(e) => {
+                            const nextSyncChildren = e.target.checked;
+                            openSyncChildrenConfirm({
+                              onConfirm: () =>
+                                onToggleSyncChildren({
+                                  id: collection._id,
+                                  syncChildren: nextSyncChildren
+                                }),
+                              customContent: nextSyncChildren
+                                ? t('dataset:resume_sync_children_confirm')
+                                : t('dataset:pause_sync_children_confirm')
+                            })();
+                          }}
+                        />
+                      ) : (
+                        <Box color={'myGray.400'}>-</Box>
+                      )}
+                    </Td>
+                  )}
                   <Td py={2} onClick={(e) => e.stopPropagation()}>
                     <Switch
                       visibility={collection.isNavigableFolder ? 'hidden' : 'visible'}
@@ -780,6 +857,7 @@ const CollectionCard = () => {
 
         <ConfirmDeleteModal />
         <ConfirmSyncModal />
+        <ConfirmSyncChildrenModal />
         <EditTitleModal />
         <ConfirmCollectionPerEnableModal />
 

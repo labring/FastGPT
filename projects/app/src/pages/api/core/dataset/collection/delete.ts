@@ -3,8 +3,10 @@ import { delCollection } from '@fastgpt/service/core/dataset/collection/controll
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { toApiFileDirId } from '@fastgpt/service/core/dataset/apiDataset/tree';
-import { LEGACY_SYSTEM_ROOT_API_FILE_ID } from '@fastgpt/service/core/dataset/apiDataset/utils';
+import {
+  createApiFileSourceResolver,
+  LEGACY_SYSTEM_ROOT_API_FILE_ID
+} from '@fastgpt/service/core/dataset/apiDataset/utils';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { parseHeaderCert } from '@fastgpt/service/support/permission/auth/common';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -141,50 +143,77 @@ async function handler(req: ApiRequestProps) {
   });
 
   // 针对本次主动删除的边界 API 节点收口同步范围：
-  // 1. 删除任意层级的 API 文件或目录都会关闭知识库级全量同步开关（Dataset.syncAll = false）；
-  // 2. 同时按本地父级与远端同步身份（apiFileParentId、doc#dir 派生目录）解析实际决定新增准入的存活 API 目录，
-  //    将其 syncChildren 置为 false，覆盖移入自建目录后删除及 doc#dir 正文删除场景。
-  const deletingIdSet = new Set(collections.map((item) => String(item._id)));
-  const disableSyncLocalFolderIds = new Set<string>();
-  const disableSyncRemoteDirIds = new Set<string>();
-  const disableSyncRemoteSourceIds = new Set<string>();
-  const disableSyncAllDatasetIds = new Set<string>();
-  for (const item of collections) {
-    if (!item.apiFileId) continue;
-    const parentIdStr = item.parentId ? String(item.parentId) : null;
-    if (parentIdStr && deletingIdSet.has(parentIdStr)) continue;
-    disableSyncAllDatasetIds.add(String(item.datasetId));
-    if (parentIdStr) {
-      disableSyncLocalFolderIds.add(parentIdStr);
-    }
-    if (item.type === DatasetCollectionTypeEnum.apiFile) {
-      // 正文（含移出派生目录后删除的正文）若存在对应的 doc#dir 派生目录，必须暂停该派生目录防止正文被重建。
-      disableSyncRemoteDirIds.add(toApiFileDirId(item.apiFileId, 'file'));
-      disableSyncRemoteSourceIds.add(item.apiFileId);
-    }
-    if (item.apiFileParentId && item.apiFileParentId !== LEGACY_SYSTEM_ROOT_API_FILE_ID) {
-      // 远端父级既可能是普通 folder（apiFileId === parent），也可能是带子文档文件的派生目录（parent#dir / apiFileSourceId）。
-      disableSyncRemoteDirIds.add(item.apiFileParentId);
-      disableSyncRemoteDirIds.add(toApiFileDirId(item.apiFileParentId, 'file'));
-      disableSyncRemoteSourceIds.add(item.apiFileParentId);
-    }
-  }
-
-  const disableFolderOrConditions: Record<string, unknown>[] = [];
-  if (disableSyncLocalFolderIds.size > 0) {
-    disableFolderOrConditions.push({ _id: { $in: [...disableSyncLocalFolderIds] } });
-  }
-  if (disableSyncRemoteDirIds.size > 0) {
-    disableFolderOrConditions.push({ apiFileId: { $in: [...disableSyncRemoteDirIds] } });
-  }
-  if (disableSyncRemoteSourceIds.size > 0) {
-    disableFolderOrConditions.push({
-      'metadata.apiFileSourceId': { $in: [...disableSyncRemoteSourceIds] }
-    });
-  }
+  // 1. 删除任意有效 API 文件或目录都会关闭知识库级全量同步开关（Dataset.syncAll = false）；
+  // 2. 依据同步计划使用的远端记录身份（带子文档正文优先对应存活的 doc#dir，否则对应存活的 apiFileParentId 目录）
+  //    将实际决定新增准入的存活 API 目录置为 syncChildren = false，避免移入自建目录连删漏停或 doc#dir 正文误停外层。
+  const deletingApiCollections = collections.filter(
+    (item) => item.apiFileId && item.apiFileId !== LEGACY_SYSTEM_ROOT_API_FILE_ID
+  );
 
   // delete
   await mongoSessionRun(async (session) => {
+    const disableFolderIds = new Set<string>();
+    const disableSyncAllDatasetIds = new Set<string>();
+
+    if (deletingApiCollections.length > 0) {
+      const deletingIdSet = new Set(collections.map((item) => String(item._id)));
+      const datasetApiCollections = await MongoDatasetCollection.find(
+        {
+          teamId,
+          datasetId: collection.datasetId,
+          apiFileId: { $exists: true, $ne: null }
+        },
+        '_id parentId type apiFileId apiFileParentId metadata'
+      )
+        .session(session)
+        .lean();
+
+      const { getSourceId, isDerivedFolder } = createApiFileSourceResolver(datasetApiCollections);
+      const survivingFolderIdsBySourceId = new Map<string, string[]>();
+      const survivingDerivedFolderIdsBySourceId = new Map<string, string[]>();
+
+      for (const item of datasetApiCollections) {
+        if (item.type !== DatasetCollectionTypeEnum.folder) continue;
+        if (deletingIdSet.has(String(item._id))) continue;
+        const sourceId = getSourceId(item);
+        if (!sourceId || sourceId === LEGACY_SYSTEM_ROOT_API_FILE_ID) continue;
+
+        const id = String(item._id);
+        const list = survivingFolderIdsBySourceId.get(sourceId) ?? [];
+        list.push(id);
+        survivingFolderIdsBySourceId.set(sourceId, list);
+
+        if (isDerivedFolder(item)) {
+          const derivedList = survivingDerivedFolderIdsBySourceId.get(sourceId) ?? [];
+          derivedList.push(id);
+          survivingDerivedFolderIdsBySourceId.set(sourceId, derivedList);
+        }
+      }
+
+      for (const item of deletingApiCollections) {
+        disableSyncAllDatasetIds.add(String(item.datasetId));
+
+        if (item.type === DatasetCollectionTypeEnum.apiFile && item.apiFileId) {
+          const survivingDerivedIds = survivingDerivedFolderIdsBySourceId.get(item.apiFileId);
+          if (survivingDerivedIds?.length) {
+            for (const id of survivingDerivedIds) {
+              disableFolderIds.add(id);
+            }
+            continue;
+          }
+        }
+
+        const remoteParentId = item.apiFileParentId;
+        if (!remoteParentId || remoteParentId === LEGACY_SYSTEM_ROOT_API_FILE_ID) continue;
+        const survivingParentIds = survivingFolderIdsBySourceId.get(remoteParentId);
+        if (survivingParentIds?.length) {
+          for (const id of survivingParentIds) {
+            disableFolderIds.add(id);
+          }
+        }
+      }
+    }
+
     await delCollection({
       collections,
       delImg: true,
@@ -192,14 +221,12 @@ async function handler(req: ApiRequestProps) {
       session
     });
 
-    if (disableFolderOrConditions.length > 0) {
+    if (disableFolderIds.size > 0) {
       await MongoDatasetCollection.updateMany(
         {
+          _id: { $in: [...disableFolderIds] },
           teamId,
-          datasetId: collection.datasetId,
-          type: DatasetCollectionTypeEnum.folder,
-          apiFileId: { $exists: true, $ne: null },
-          $or: disableFolderOrConditions
+          datasetId: collection.datasetId
         },
         { $set: { syncChildren: false } },
         { session }

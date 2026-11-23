@@ -326,5 +326,7 @@
   "sync_children_enabled_pause_text": "Auto-syncing new files in this folder is enabled. ",
   "click_to_pause": "Click to pause",
   "pause_sync_children_confirm": "Pause auto-syncing new files in this folder? Existing files will continue to update, but newly added items in this folder will no longer be pulled automatically.",
-  "sync_children_paused_tip": "Auto-sync for new items in this folder paused; existing files will continue to update"
+  "sync_children_paused_tip": "Auto-sync for new items in this folder paused; existing files will continue to update",
+  "sync_new_children": "Sync new items",
+  "sync_new_children_tip": "When enabled, manual and scheduled syncs will automatically pull new files and subfolders under this folder; when paused, existing files continue to update"
 }
