@@ -819,6 +819,7 @@ describe('update collection syncChildren', () => {
     expect(denied.error).toBe(DatasetErrEnum.unAuthDatasetCollection);
     expect((await MongoDatasetCollection.findById(apiFolder._id).lean())?.syncChildren).toBe(true);
 
+    await MongoDataset.updateOne({ _id: datasetId }, { $set: { syncAll: true } });
     await grant(String(apiFolder._id), ManageRoleVal);
     const allowed = await Call(updateHandler, {
       auth: actor,
@@ -826,6 +827,7 @@ describe('update collection syncChildren', () => {
     });
     expect(allowed.code).toBe(200);
     expect((await MongoDatasetCollection.findById(apiFolder._id).lean())?.syncChildren).toBe(false);
+    expect((await MongoDataset.findById(datasetId).lean())?.syncAll).toBe(false);
   });
 
   it('rejects syncChildren updates on non-API folders and non-folder files', async () => {

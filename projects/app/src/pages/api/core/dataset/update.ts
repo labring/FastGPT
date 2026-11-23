@@ -1,7 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
   UpdateDatasetBodySchema,
@@ -17,6 +17,7 @@ import {
   upsertDatasetSyncJobScheduler
 } from '@fastgpt/service/core/dataset/datasetSync';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { assertAuthModels } from '@fastgpt/service/support/permission/model/auth';
 import { addAuditLogs } from '@fastgpt/service/support/user/audit/util';
@@ -248,6 +249,21 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       },
       { session }
     );
+
+    // 开启全量同步开关时，重置本知识库内所有已暂停同步的子目录，保持全库全量同步一致。
+    if (syncAll === true) {
+      await MongoDatasetCollection.updateMany(
+        {
+          teamId,
+          datasetId: id,
+          type: DatasetCollectionTypeEnum.folder,
+          apiFileId: { $exists: true, $ne: null },
+          syncChildren: false
+        },
+        { $set: { syncChildren: true } },
+        { session }
+      );
+    }
 
     await updateSyncSchedule({
       dataset,

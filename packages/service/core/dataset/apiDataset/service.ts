@@ -575,8 +575,19 @@ export const createApiDatasetCollection = async ({
     }
   }
 
-  // 7. 导入完成后落盘同步范围状态：恢复显式勾选/全选的暂停目录，并按需开启知识库根级 syncAll。
-  if (reEnableSyncFolderIds.length > 0) {
+  // 7. 导入完成后落盘同步范围状态：恢复显式勾选/全量同步涵盖的暂停目录，并按需开启知识库全量同步开关。
+  if (syncAll && failedCount === 0) {
+    await MongoDatasetCollection.updateMany(
+      {
+        teamId,
+        datasetId: dataset._id,
+        type: DatasetCollectionTypeEnum.folder,
+        apiFileId: { $exists: true, $ne: null },
+        syncChildren: false
+      },
+      { $set: { syncChildren: true } }
+    );
+  } else if (reEnableSyncFolderIds.length > 0) {
     await MongoDatasetCollection.updateMany(
       {
         _id: { $in: reEnableSyncFolderIds },

@@ -3,16 +3,7 @@ import { DatasetImportContext } from '../Context';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Loading from '@fastgpt/web/components/common/MyLoading';
-import {
-  Box,
-  Button,
-  Checkbox,
-  Flex,
-  HStack,
-  IconButton,
-  Spinner,
-  VStack
-} from '@chakra-ui/react';
+import { Box, Button, Checkbox, Flex, Spinner } from '@chakra-ui/react';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
@@ -24,7 +15,6 @@ import { useTranslation } from 'next-i18next';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { type APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import {
@@ -71,16 +61,10 @@ const CustomAPIFileInput = () => {
   const currentLocalParentId = useContextSelector(DatasetImportContext, (v) => v.parentId);
   const sources = useContextSelector(DatasetImportContext, (v) => v.sources);
   const setSources = useContextSelector(DatasetImportContext, (v) => v.setSources);
-  const apiDatasetSyncAll = useContextSelector(DatasetImportContext, (v) => v.apiDatasetSyncAll);
-  const setApiDatasetSyncAll = useContextSelector(
-    DatasetImportContext,
-    (v) => v.setApiDatasetSyncAll
-  );
 
   const [selectedMap, setSelectedMap] = useState<Map<string, SelectedApiFileEntry>>(
     () => new Map()
   );
-  const [isSelectAll, setIsSelectAll] = useState(false);
   const [searchKey, setSearchKey] = useState('');
 
   // 树节点懒加载状态：key 为远端节点 id（根级为 ROOT_NODE_KEY）
@@ -91,7 +75,10 @@ const CustomAPIFileInput = () => {
   const autoExpandedRef = useRef(false);
 
   const { data: syncState, loading: loadingSyncState } = useRequest(
-    async () => getApiDatasetSyncState({ datasetId: datasetDetail._id }),
+    async () => {
+      if (!datasetDetail._id) return undefined;
+      return getApiDatasetSyncState({ datasetId: datasetDetail._id });
+    },
     {
       refreshDeps: [datasetDetail._id],
       manual: false
@@ -100,6 +87,7 @@ const CustomAPIFileInput = () => {
 
   const { loading: loadingRoot } = useRequest(
     async () => {
+      if (!datasetDetail._id) return [];
       const list = await getApiDatasetFileList({
         datasetId: datasetDetail._id,
         parentId: ''
@@ -117,7 +105,7 @@ const CustomAPIFileInput = () => {
   const trimmedSearchKey = searchKey.trim();
   const { data: searchResultList = [], loading: loadingSearch } = useRequest(
     async () => {
-      if (!trimmedSearchKey) return [];
+      if (!datasetDetail._id || !trimmedSearchKey) return [];
       return getApiDatasetFileList({
         datasetId: datasetDetail._id,
         parentId: '',
@@ -132,39 +120,33 @@ const CustomAPIFileInput = () => {
   );
 
   // 构建本地同步状态索引：区分正文文件、同步中目录、暂停同步目录（syncChildren === false）
-  const {
-    serverSyncAll,
-    existingFileBySourceId,
-    existingFolderBySourceId,
-    collectionById,
-    hasAnyExisting
-  } = useMemo(() => {
-    const fileMap = new Map<string, NonNullable<typeof syncState>['collections'][number]>();
-    const folderMap = new Map<string, NonNullable<typeof syncState>['collections'][number]>();
-    const colById = new Map<string, NonNullable<typeof syncState>['collections'][number]>();
+  const { serverSyncAll, existingFileBySourceId, existingFolderBySourceId, collectionById } =
+    useMemo(() => {
+      const fileMap = new Map<string, NonNullable<typeof syncState>['collections'][number]>();
+      const folderMap = new Map<string, NonNullable<typeof syncState>['collections'][number]>();
+      const colById = new Map<string, NonNullable<typeof syncState>['collections'][number]>();
 
-    for (const col of syncState?.collections ?? []) {
-      colById.set(col.collectionId, col);
-      if (col.type === DatasetCollectionTypeEnum.folder) {
-        folderMap.set(col.sourceId, col);
-      } else {
-        fileMap.set(col.sourceId, col);
+      for (const col of syncState?.collections ?? []) {
+        colById.set(col.collectionId, col);
+        if (col.type === DatasetCollectionTypeEnum.folder) {
+          folderMap.set(col.sourceId, col);
+        } else {
+          fileMap.set(col.sourceId, col);
+        }
       }
-    }
 
-    return {
-      serverSyncAll: Boolean(syncState?.syncAll),
-      existingFileBySourceId: fileMap,
-      existingFolderBySourceId: folderMap,
-      collectionById: colById,
-      hasAnyExisting: (syncState?.collections.length ?? 0) > 0
-    };
-  }, [syncState]);
+      return {
+        serverSyncAll: Boolean(syncState?.syncAll),
+        existingFileBySourceId: fileMap,
+        existingFolderBySourceId: folderMap,
+        collectionById: colById
+      };
+    }, [syncState]);
 
   /** 懒加载并缓存指定远端父节点的直接子列表。 */
   const loadNodeChildren = useCallback(
     async (nodeId: string) => {
-      if (loadedKeysRef.current.has(nodeId)) return;
+      if (!datasetDetail._id || loadedKeysRef.current.has(nodeId)) return;
       setLoadingNodeIds((prev) => {
         const next = new Set(prev);
         next.add(nodeId);
@@ -218,11 +200,6 @@ const CustomAPIFileInput = () => {
 
   // 返回上一步时恢复选中状态
   useMount(() => {
-    if (apiDatasetSyncAll) {
-      setIsSelectAll(true);
-      setSelectedMap(new Map());
-      return;
-    }
     const nextMap = new Map<string, SelectedApiFileEntry>();
     for (const source of sources) {
       if (!source.apiFile) continue;
@@ -302,49 +279,9 @@ const CustomAPIFileInput = () => {
     []
   );
 
-  const handleToggleSelectAll = useCallback(() => {
-    if (serverSyncAll || !datasetDetail.permission.hasManagePer) return;
-    setIsSelectAll((prev) => {
-      const next = !prev;
-      if (next) {
-        setSelectedMap(new Map());
-      }
-      return next;
-    });
-  }, [serverSyncAll, datasetDetail.permission.hasManagePer]);
-
-  const { newEntries, reEnableEntries } = useMemo(() => {
-    const newList: SelectedApiFileEntry[] = [];
-    const reEnableList: SelectedApiFileEntry[] = [];
-    for (const entry of selectedMap.values()) {
-      if (entry.isReEnableSync) {
-        reEnableList.push(entry);
-      } else {
-        newList.push(entry);
-      }
-    }
-    return { newEntries: newList, reEnableEntries: reEnableList };
-  }, [selectedMap]);
-
-  const totalPendingCount = isSelectAll ? 1 : selectedMap.size;
+  const totalPendingCount = selectedMap.size;
 
   const { runAsync: onclickNext, loading: onNextLoading } = useRequest(async () => {
-    if (isSelectAll) {
-      setApiDatasetSyncAll(true);
-      setSources([
-        {
-          id: '__sync_all__',
-          createStatus: 'waiting',
-          sourceName: t('dataset:api_dataset_sync_all_summary'),
-          icon: 'common/folderFill',
-          isSyncAllSummary: true
-        }
-      ]);
-      goToNext();
-      return;
-    }
-
-    setApiDatasetSyncAll(false);
     setSources(
       [...selectedMap.values()].map(({ item, ancestorIds, ancestorPathLabel, isReEnableSync }) => ({
         id: item.id,
@@ -380,7 +317,7 @@ const CustomAPIFileInput = () => {
     const isSelectedSelf = selectedMap.has(item.id);
     const hasSelectedDescendant = selectedAncestorSet.has(item.id);
 
-    const isCovered = isSelectAll || coveredBySelectedAncestor;
+    const isCovered = serverSyncAll || coveredBySelectedAncestor;
     const isAlreadySynced = isSyncedFolder || isSyncedFileOnly;
     const isDisabled = isCovered || isAlreadySynced;
     const isChecked = isCovered || isAlreadySynced || isSelectedSelf;
@@ -527,10 +464,6 @@ const CustomAPIFileInput = () => {
   };
 
   const rootItems = childrenMap[ROOT_NODE_KEY] ?? [];
-  const rootCheckboxChecked = serverSyncAll || isSelectAll;
-  const rootCheckboxIndeterminate =
-    !rootCheckboxChecked && (hasAnyExisting || selectedMap.size > 0);
-  const rootCheckboxDisabled = serverSyncAll || !datasetDetail.permission.hasManagePer;
 
   return (
     <MyBox
@@ -542,263 +475,41 @@ const CustomAPIFileInput = () => {
       <Flex
         flex={'1 0 0'}
         minH={0}
+        flexDirection={'column'}
         border={'base'}
         borderRadius={'md'}
         overflow={'hidden'}
-        direction={['column', 'row']}
       >
-        {/* 左栏：远端目录树 */}
-        <Flex
-          flex={'1 1 58%'}
-          minW={0}
-          minH={0}
-          flexDirection={'column'}
-          borderRight={['none', 'base']}
-          borderBottom={['base', 'none']}
-        >
-          <Flex
-            px={4}
-            py={3}
-            borderBottom={'base'}
-            alignItems={'center'}
-            justifyContent={'space-between'}
-            gap={3}
-          >
-            <MyTooltip
-              label={
-                !datasetDetail.permission.hasManagePer
-                  ? t('dataset:api_dataset_sync_all_manage_tip')
-                  : t('dataset:sync_root_new_items_tip')
-              }
-            >
-              <Box>
-                <Checkbox
-                  isChecked={rootCheckboxChecked}
-                  isIndeterminate={rootCheckboxIndeterminate}
-                  isDisabled={rootCheckboxDisabled}
-                  onChange={handleToggleSelectAll}
-                >
-                  <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
-                    {t('dataset:api_dataset_select_all_root')}
-                  </Box>
-                </Checkbox>
-              </Box>
-            </MyTooltip>
-
-            {datasetDetail.type === DatasetTypeEnum.apiDataset && (
-              <Box w={'200px'}>
-                <SearchInput
-                  size={'sm'}
-                  value={searchKey}
-                  onChange={(e) => setSearchKey(e.target.value)}
-                  placeholder={t('common:Search')}
-                />
-              </Box>
-            )}
-          </Flex>
-
-          <Box flex={'1 0 0'} minH={0} overflowY={'auto'} py={2}>
-            {trimmedSearchKey ? (
-              loadingSearch ? (
-                <Flex justifyContent={'center'} py={8}>
-                  <Spinner size={'sm'} color={'primary.500'} />
-                </Flex>
-              ) : searchResultList.length > 0 ? (
-                searchResultList.map((item) => renderTreeNode(item, 0, [], [], false))
-              ) : (
-                <EmptyTip text={t('common:Empty')} />
-              )
-            ) : rootItems.length > 0 ? (
-              rootItems.map((item) => renderTreeNode(item, 0, [], [], false))
-            ) : (
-              !loadingRoot && <EmptyTip text={t('common:Empty')} />
-            )}
-          </Box>
-        </Flex>
-
-        {/* 右栏：本次待导入与恢复同步摘要 */}
-        <Flex flex={'1 1 42%'} minW={0} minH={0} flexDirection={'column'} bg={'myGray.25'}>
-          <Flex
-            px={4}
-            py={3}
-            borderBottom={'base'}
-            alignItems={'center'}
-            justifyContent={'space-between'}
-          >
-            <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
-              {t('dataset:api_dataset_pending_changes')} ({totalPendingCount})
+        {datasetDetail.type === DatasetTypeEnum.apiDataset && (
+          <Flex px={4} py={3} borderBottom={'base'} alignItems={'center'} justifyContent={'flex-end'}>
+            <Box w={'200px'}>
+              <SearchInput
+                size={'sm'}
+                value={searchKey}
+                onChange={(e) => setSearchKey(e.target.value)}
+                placeholder={t('common:Search')}
+              />
             </Box>
-            {totalPendingCount > 0 && (
-              <Button
-                size={'xs'}
-                variant={'whiteBase'}
-                onClick={() => {
-                  setIsSelectAll(false);
-                  setSelectedMap(new Map());
-                }}
-              >
-                {t('common:Clear')}
-              </Button>
-            )}
           </Flex>
+        )}
 
-          <Box flex={'1 0 0'} minH={0} overflowY={'auto'} p={4}>
-            {totalPendingCount === 0 ? (
-              <EmptyTip text={t('dataset:api_dataset_no_pending_selection')} />
+        <Box flex={'1 0 0'} minH={0} overflowY={'auto'} py={2}>
+          {trimmedSearchKey ? (
+            loadingSearch ? (
+              <Flex justifyContent={'center'} py={8}>
+                <Spinner size={'sm'} color={'primary.500'} />
+              </Flex>
+            ) : searchResultList.length > 0 ? (
+              searchResultList.map((item) => renderTreeNode(item, 0, [], [], false))
             ) : (
-              <VStack align={'stretch'} spacing={4}>
-                {isSelectAll && (
-                  <Box
-                    p={3}
-                    bg={'white'}
-                    border={'base'}
-                    borderRadius={'md'}
-                    borderColor={'primary.300'}
-                  >
-                    <Flex alignItems={'center'} justifyContent={'space-between'}>
-                      <HStack spacing={2} minW={0}>
-                        <MyIcon name={'common/folderFill'} w={'18px'} flexShrink={0} />
-                        <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
-                          {t('dataset:api_dataset_sync_all_summary')}
-                        </Box>
-                      </HStack>
-                      <IconButton
-                        size={'xs'}
-                        variant={'grayDanger'}
-                        aria-label={'Remove'}
-                        icon={<MyIcon name={'delete'} w={'14px'} />}
-                        onClick={() => setIsSelectAll(false)}
-                      />
-                    </Flex>
-                    <Box mt={1.5} fontSize={'xs'} color={'myGray.500'}>
-                      {t('dataset:api_dataset_sync_all_summary_desc')}
-                    </Box>
-                  </Box>
-                )}
-
-                {reEnableEntries.length > 0 && (
-                  <Box>
-                    <Box fontSize={'xs'} fontWeight={'medium'} color={'myGray.600'} mb={2}>
-                      {t('dataset:api_dataset_re_enable_sync_group')} ({reEnableEntries.length})
-                    </Box>
-                    <VStack align={'stretch'} spacing={2}>
-                      {reEnableEntries.map((entry) => (
-                        <Flex
-                          key={entry.item.id}
-                          p={2.5}
-                          bg={'white'}
-                          border={'base'}
-                          borderRadius={'md'}
-                          alignItems={'center'}
-                          justifyContent={'space-between'}
-                          gap={2}
-                        >
-                          <HStack spacing={2} minW={0} flex={1}>
-                            <MyIcon name={'common/folderFill'} w={'16px'} flexShrink={0} />
-                            <Box minW={0} flex={1}>
-                              <Box
-                                fontSize={'sm'}
-                                fontWeight={'medium'}
-                                color={'myGray.900'}
-                                className={'textEllipsis'}
-                              >
-                                {entry.item.name}
-                              </Box>
-                              <Box
-                                fontSize={'mini'}
-                                color={'myGray.500'}
-                                className={'textEllipsis'}
-                              >
-                                {entry.ancestorPathLabel}
-                              </Box>
-                            </Box>
-                          </HStack>
-                          <IconButton
-                            size={'xs'}
-                            variant={'grayDanger'}
-                            aria-label={'Remove'}
-                            icon={<MyIcon name={'delete'} w={'14px'} />}
-                            onClick={() =>
-                              setSelectedMap((prev) => {
-                                const next = new Map(prev);
-                                next.delete(entry.item.id);
-                                return next;
-                              })
-                            }
-                          />
-                        </Flex>
-                      ))}
-                    </VStack>
-                  </Box>
-                )}
-
-                {newEntries.length > 0 && (
-                  <Box>
-                    <Box fontSize={'xs'} fontWeight={'medium'} color={'myGray.600'} mb={2}>
-                      {t('dataset:api_dataset_new_import_group')} ({newEntries.length})
-                    </Box>
-                    <VStack align={'stretch'} spacing={2}>
-                      {newEntries.map((entry) => (
-                        <Flex
-                          key={entry.item.id}
-                          p={2.5}
-                          bg={'white'}
-                          border={'base'}
-                          borderRadius={'md'}
-                          alignItems={'center'}
-                          justifyContent={'space-between'}
-                          gap={2}
-                        >
-                          <HStack spacing={2} minW={0} flex={1}>
-                            <MyIcon
-                              name={
-                                entry.item.type === 'folder'
-                                  ? 'common/folderFill'
-                                  : (getSourceNameIcon({ sourceName: entry.item.name }) as any)
-                              }
-                              w={'16px'}
-                              flexShrink={0}
-                            />
-                            <Box minW={0} flex={1}>
-                              <Box
-                                fontSize={'sm'}
-                                fontWeight={'medium'}
-                                color={'myGray.900'}
-                                className={'textEllipsis'}
-                              >
-                                {entry.item.name}
-                              </Box>
-                              <Box
-                                fontSize={'mini'}
-                                color={'myGray.500'}
-                                className={'textEllipsis'}
-                              >
-                                {entry.ancestorPathLabel}
-                              </Box>
-                            </Box>
-                          </HStack>
-                          <IconButton
-                            size={'xs'}
-                            variant={'grayDanger'}
-                            aria-label={'Remove'}
-                            icon={<MyIcon name={'delete'} w={'14px'} />}
-                            onClick={() =>
-                              setSelectedMap((prev) => {
-                                const next = new Map(prev);
-                                next.delete(entry.item.id);
-                                return next;
-                              })
-                            }
-                          />
-                        </Flex>
-                      ))}
-                    </VStack>
-                  </Box>
-                )}
-              </VStack>
-            )}
-          </Box>
-        </Flex>
+              <EmptyTip text={t('common:Empty')} />
+            )
+          ) : rootItems.length > 0 ? (
+            rootItems.map((item) => renderTreeNode(item, 0, [], [], false))
+          ) : (
+            !loadingRoot && <EmptyTip text={t('common:Empty')} />
+          )}
+        </Box>
       </Flex>
 
       <Flex justifyContent={'flex-end'} pt={4}>
@@ -807,7 +518,7 @@ const CustomAPIFileInput = () => {
           isLoading={onNextLoading}
           onClick={onclickNext}
         >
-          {totalPendingCount > 0 && !isSelectAll
+          {totalPendingCount > 0
             ? `${t('dataset:total_num_files', { total: totalPendingCount })} | `
             : ''}
           {t('common:next_step')}

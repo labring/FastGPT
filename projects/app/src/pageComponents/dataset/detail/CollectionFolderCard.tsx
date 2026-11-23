@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
+import { Box } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import FolderSlideCard from '@/components/common/folder/SlideCard';
 import SelectCollections from '@/web/core/dataset/components/SelectCollections';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
@@ -17,6 +20,11 @@ import {
   putDatasetCollectionById,
   putResumeCollectionInheritPermission
 } from '@/web/core/dataset/api/collection';
+import {
+  ApiDatasetTypeMap,
+  DatasetCollectionTypeEnum
+} from '@fastgpt/global/core/dataset/constants';
+import { isCollectionSyncChildrenEnabled } from '@fastgpt/global/core/dataset/collection/utils';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { CollectionRoleList } from '@fastgpt/global/support/permission/collection/constant';
 
@@ -40,8 +48,12 @@ const CollectionFolderCard = ({
   const router = useRouter();
   const { toast } = useToast();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
+  const isApiDataset = Boolean(datasetDetail.type && ApiDatasetTypeMap[datasetDetail.type]);
 
   const [isMoving, setIsMoving] = useState(false);
+  const { ConfirmModal: ResumeSyncConfirmModal, openConfirm: openResumeSyncConfirm } = useConfirm(
+    {}
+  );
 
   const {
     data: folder,
@@ -71,6 +83,27 @@ const CollectionFolderCard = ({
       errorToast: t('common:delete_failed')
     }
   );
+
+  const { runAsync: resumeSyncChildren } = useRequest(
+    async () => {
+      await putDatasetCollectionById({ id: collectionId, syncChildren: true });
+      await refetchFolder();
+    },
+    {
+      onSuccess() {
+        toast({
+          title: t('dataset:sync_children_enabled_next_sync_tip'),
+          status: 'success'
+        });
+      }
+    }
+  );
+
+  const showPausedSyncChildren =
+    isApiDataset &&
+    folder?.type === DatasetCollectionTypeEnum.folder &&
+    Boolean(folder.apiFileId) &&
+    !isCollectionSyncChildrenEnabled(folder);
 
   /** 删除后回到被删目录的父级；父级为空表示知识库根目录，此时 parentId 为 undefined 会被序列化丢弃。 */
   const backToParentFolder = () =>
@@ -122,6 +155,32 @@ const CollectionFolderCard = ({
         />
       )}
 
+      {showPausedSyncChildren && folder && (
+        <Box w={'13rem'}>
+          <MyDivider my={6} />
+          <Box display={'inline'} fontSize={'sm'}>
+            {t('dataset:sync_children_paused_resume_text')}
+            {folder.permission.hasManagePer && (
+              <Box
+                display={'inline'}
+                textDecoration={'underline'}
+                cursor={'pointer'}
+                _hover={{ color: 'primary.600' }}
+                onClick={() => {
+                  openResumeSyncConfirm({
+                    onConfirm: resumeSyncChildren,
+                    customContent: t('dataset:resume_sync_children_confirm')
+                  })();
+                }}
+              >
+                {t('common:click_to_resume')}
+              </Box>
+            )}
+          </Box>
+        </Box>
+      )}
+
+      <ResumeSyncConfirmModal />
       <RenameFolderModal />
 
       {isMoving && (

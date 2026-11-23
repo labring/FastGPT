@@ -1337,6 +1337,16 @@ describe('update dataset syncAll', () => {
     expect(deniedWrite.code).not.toBe(200);
     expect((await MongoDataset.findById(apiDataset._id).lean())?.syncAll).toBe(false);
 
+    const pausedFolder = await MongoDatasetCollection.create({
+      teamId,
+      tmbId: String(owner.tmbId),
+      datasetId: apiDataset._id,
+      name: 'paused-api-folder',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'remote-dir-paused',
+      syncChildren: false
+    });
+
     const allowedOwner = await Call<UpdateDatasetBody, Record<string, never>, string>(
       updateHandler,
       {
@@ -1346,6 +1356,10 @@ describe('update dataset syncAll', () => {
     );
     expect(allowedOwner.code).toBe(200);
     expect((await MongoDataset.findById(apiDataset._id).lean())?.syncAll).toBe(true);
+    // 开启全量同步时，本知识库内已暂停的子目录会一并恢复自动同步
+    expect((await MongoDatasetCollection.findById(pausedFolder._id).lean())?.syncChildren).toBe(
+      true
+    );
   });
 });
 

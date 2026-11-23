@@ -138,7 +138,9 @@ async function handler(req: ApiRequestProps) {
     return uniqueCollections;
   });
 
-  // 仅针对本次主动删除的边界 API 节点收口其直接父级的自动同步范围（不级联上翻祖先，且仅限用户删除入口）
+  // 针对本次主动删除的边界 API 节点收口同步范围：
+  // 1. 删除任意层级的 API 文件或目录都会关闭知识库级全量同步开关（Dataset.syncAll = false）；
+  // 2. 若该边界节点位于子目录内，同时将其直接父目录的 syncChildren 置为 false（不级联上翻更高祖先）。
   const deletingIdSet = new Set(collections.map((item) => String(item._id)));
   const disableSyncFolderIds = new Set<string>();
   const disableSyncAllDatasetIds = new Set<string>();
@@ -146,10 +148,9 @@ async function handler(req: ApiRequestProps) {
     if (!item.apiFileId) continue;
     const parentIdStr = item.parentId ? String(item.parentId) : null;
     if (parentIdStr && deletingIdSet.has(parentIdStr)) continue;
+    disableSyncAllDatasetIds.add(String(item.datasetId));
     if (parentIdStr) {
       disableSyncFolderIds.add(parentIdStr);
-    } else {
-      disableSyncAllDatasetIds.add(String(item.datasetId));
     }
   }
 

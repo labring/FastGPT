@@ -929,7 +929,7 @@ describe('delete collection by apiFileId', () => {
     expect(response.error).toBeInstanceOf(ApiRequestInputParseError);
   });
 
-  it('flips parent folder syncChildren to false when deleting a child API collection', async () => {
+  it('flips parent folder syncChildren and Dataset.syncAll to false when deleting a child API collection', async () => {
     const { member, dataset, createCollection } = await fixture();
     await MongoDataset.updateOne({ _id: dataset._id }, { $set: { syncAll: true } });
     const folder = await createCollection({
@@ -954,8 +954,8 @@ describe('delete collection by apiFileId', () => {
     expect(response.code).toBe(200);
     await expect(MongoDatasetCollection.findById(child._id).lean()).resolves.toBeNull();
     expect((await MongoDatasetCollection.findById(folder._id).lean())?.syncChildren).toBe(false);
-    // 非根级删除不改变知识库根级 syncAll
-    expect((await MongoDataset.findById(dataset._id).lean())?.syncAll).toBe(true);
+    // 任意层级的 API 节点删除都会先关闭知识库级全量同步总开关
+    expect((await MongoDataset.findById(dataset._id).lean())?.syncAll).toBe(false);
   });
 
   it('flips Dataset.syncAll to false when deleting a root-level API collection', async () => {
