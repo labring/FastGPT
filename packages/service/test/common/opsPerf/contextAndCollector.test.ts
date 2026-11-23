@@ -473,6 +473,86 @@ describe('opsPerf context and collector', () => {
     expect(snapshot.events).toHaveLength(500);
   });
 
+  it('retains high-watermark wakeup during slow Mongo flush and drains the next full batch immediately', async () => {
+    resetOpsPerfBufferForTest({ autoFlushOnHighWatermark: true });
+
+    const dims = {
+      searchMode: 'embedding' as const,
+      indexScale: 's_10k' as const,
+      usingReRank: false,
+      usingExtension: false,
+      vectorEngine: 'pg' as const
+    };
+
+    let releaseFirstInsert!: () => void;
+    const firstInsertGate = new Promise<void>((resolve) => {
+      releaseFirstInsert = resolve;
+    });
+    const insertedBatchSizes: number[] = [];
+
+    vi.spyOn(MongoOpsPerfBucket, 'bulkWrite').mockResolvedValue({} as any);
+    const insertSpy = vi
+      .spyOn(MongoOpsPerfEvent, 'insertMany')
+      .mockImplementation(async (docs: any) => {
+        insertedBatchSizes.push(Array.isArray(docs) ? docs.length : 0);
+        if (insertedBatchSizes.length === 1) {
+          await firstInsertGate;
+        }
+        return [] as any;
+      });
+
+    // 1. Batch 1 fills to 500 -> triggers high-watermark flush, paused on slow Mongo insertMany
+    for (let i = 0; i < 500; i++) {
+      enqueueOpsPerfRecord({
+        domain: 'dataset.search',
+        force: true,
+        totalMs: 100,
+        status: 'error',
+        errorCode: 'EMBEDDING_ERROR',
+        dims
+      });
+    }
+    await vi.waitFor(() => {
+      expect(insertSpy).toHaveBeenCalledTimes(1);
+    });
+
+    // 2. While Batch 1 is still writing to Mongo, Batch 2 fills to 500 -> sets flushRequested without launching a 2nd writer
+    for (let i = 0; i < 500; i++) {
+      enqueueOpsPerfRecord({
+        domain: 'dataset.search',
+        force: true,
+        totalMs: 100,
+        status: 'error',
+        errorCode: 'EMBEDDING_ERROR',
+        dims
+      });
+    }
+    expect(insertSpy).toHaveBeenCalledTimes(1);
+    expect(getOpsPerfBufferSnapshotForTest().events).toHaveLength(500);
+
+    // 3. Release Batch 1 -> single-writer loop must immediately drain Batch 2 without waiting for the 10s timer
+    releaseFirstInsert();
+    await vi.waitFor(() => {
+      expect(insertSpy).toHaveBeenCalledTimes(2);
+    });
+    expect(insertedBatchSizes).toEqual([500, 500]);
+
+    // 4. Subsequent 20 errors arrive into freshly emptied buffer with zero drops
+    for (let i = 0; i < 20; i++) {
+      enqueueOpsPerfRecord({
+        domain: 'dataset.search',
+        force: true,
+        totalMs: 100,
+        status: 'error',
+        errorCode: 'EMBEDDING_ERROR',
+        dims
+      });
+    }
+    const snapshot = getOpsPerfBufferSnapshotForTest();
+    expect(snapshot.events).toHaveLength(20);
+    expect(snapshot.buckets[0]?.metrics.droppedEventCount).toBeUndefined();
+  });
+
   it('skips lazy options factory and timer registration in community edition', async () => {
     vi.spyOn(systemConstants, 'isProVersion').mockReturnValue(false);
     const optionsFactory = vi.fn(() => ({

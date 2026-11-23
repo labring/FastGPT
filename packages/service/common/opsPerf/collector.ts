@@ -86,6 +86,10 @@ type OpsPerfBufferState = {
   shutdownRegistered: boolean;
   timerStarted: boolean;
   flushing: boolean;
+  /** 刷盘期间收到高水位或并发刷盘唤醒时置 true，由唯一刷盘循环在当前批次结束后继续消费下一批。 */
+  flushRequested: boolean;
+  /** 仅用于测试控制是否在达到单点高水位时自动触发异步提前刷盘（默认非测试环境开启）。 */
+  autoFlushOnHighWatermark?: boolean;
 };
 
 // Next.js instrumentation 与 API route 可能打包在独立模块副本中，通过 globalThis Symbol 共享同一缓冲。
@@ -103,13 +107,27 @@ const getBufferState = (): OpsPerfBufferState => {
     droppedEvents: 0,
     shutdownRegistered: false,
     timerStarted: false,
-    flushing: false
+    flushing: false,
+    flushRequested: false
   };
   Reflect.set(globalThis, BUFFER_SYMBOL, state);
   return state;
 };
 
 const isTestRuntime = () => Boolean(process.env.VITEST) || process.env.NODE_ENV === 'test';
+
+const shouldAutoFlushOnHighWatermark = (state: OpsPerfBufferState) =>
+  state.autoFlushOnHighWatermark ?? !isTestRuntime();
+
+/** 标记高水位待刷盘；若当前已有写者在刷盘则仅记录待续刷标志，否则立刻启动唯一写者异步消费。 */
+const requestHighWatermarkFlush = (state: OpsPerfBufferState) => {
+  if (!shouldAutoFlushOnHighWatermark(state)) return;
+  state.flushRequested = true;
+  if (state.flushing) return;
+  void flushOpsPerfBuffer().catch((error) => {
+    logger.error('Ops perf high-watermark flush failed', { error });
+  });
+};
 
 /**
  * 惰性幂等启动当前进程的定时刷盘器（10 秒间隔 + 退出前兜底刷盘）。
@@ -349,6 +367,7 @@ export const enqueueOpsPerfRecord = <D extends OpsPerfDomain>(
       // 优先丢弃已有普通采样点，保底异常/降级样本不因正常采样爆仓而丢失
       if (reason === 'sample') {
         state.droppedEvents += 1;
+        requestHighWatermarkFlush(state);
         return;
       }
       const sampleIdx = state.events.findIndex((item) => item.reason === 'sample');
@@ -359,6 +378,7 @@ export const enqueueOpsPerfRecord = <D extends OpsPerfDomain>(
         if (bucket) {
           bucket.metrics.droppedEventCount = (bucket.metrics.droppedEventCount ?? 0) + 1;
         }
+        requestHighWatermarkFlush(state);
         return;
       }
     }
@@ -415,11 +435,9 @@ export const enqueueOpsPerfRecord = <D extends OpsPerfDomain>(
       detail: cleanDetail
     });
 
-    // 非单测环境下达到单点缓冲水位时，于所有同步写缓冲完成后异步提前刷盘以减少突发丢弃
-    if (!isTestRuntime() && state.events.length >= MAX_EVENT_BUFFER_SIZE) {
-      void flushOpsPerfBuffer().catch((error) => {
-        logger.error('Ops perf high-watermark flush failed', { error });
-      });
+    // 达到单点缓冲高水位时，于所有同步写缓冲完成后请求异步提前刷盘（若正在刷盘则保留待续刷标志）
+    if (state.events.length >= MAX_EVENT_BUFFER_SIZE) {
+      requestHighWatermarkFlush(state);
     }
   } catch (error) {
     logger.warn('Failed to enqueue ops perf record', { error });
@@ -496,7 +514,8 @@ const isDuplicateKeyBulkError = (error: unknown): boolean => {
 /**
  * 将内存缓冲的小时聚合桶和单点样本批量刷入 connectionLogMongo。
  *
- * - 先原子换出队列，确保刷盘期间新产生的检索指标不会丢失或重复计算
+ * - 单写者串行循环：先原子换出队列确保刷盘期间新指标不丢不重；若刷盘期间再次收到高水位或并发刷盘请求，
+ *   保留 `flushRequested` 标志并在当前批次写完后立即继续消费下一批，避免持续高峰丢唤醒
  * - 若多个 Pod 在新整点首次 upsert 碰撞 E11000，仅对冲突项重试一次即可安全累加
  */
 export const flushOpsPerfBuffer = async (): Promise<{
@@ -505,89 +524,111 @@ export const flushOpsPerfBuffer = async (): Promise<{
 }> => {
   const state = getBufferState();
   if (state.flushing) {
+    if (state.buckets.size > 0 || state.events.length > 0) {
+      state.flushRequested = true;
+    }
     return { bucketsFlushed: 0, eventsFlushed: 0 };
   }
   if (state.buckets.size === 0 && state.events.length === 0) {
     state.normalSamplesInWindow = 0;
+    state.flushRequested = false;
     return { bucketsFlushed: 0, eventsFlushed: 0 };
   }
 
   state.flushing = true;
+  let totalBucketsFlushed = 0;
+  let totalEventsFlushed = 0;
+
   try {
-    const bucketEntries = Array.from(state.buckets.values());
-    const eventEntries = state.events;
-    const droppedBuckets = state.droppedBuckets;
-    const droppedEvents = state.droppedEvents;
+    while (true) {
+      state.flushRequested = false;
+      if (state.buckets.size === 0 && state.events.length === 0) {
+        state.normalSamplesInWindow = 0;
+        break;
+      }
 
-    state.buckets = new Map();
-    state.events = [];
-    state.normalSamplesInWindow = 0;
-    state.droppedBuckets = 0;
-    state.droppedEvents = 0;
+      const bucketEntries = Array.from(state.buckets.values());
+      const eventEntries = state.events;
+      const droppedBuckets = state.droppedBuckets;
+      const droppedEvents = state.droppedEvents;
 
-    if (droppedBuckets > 0 || droppedEvents > 0) {
-      logger.warn('Ops perf buffer reached capacity and dropped items', {
-        droppedBuckets,
-        droppedEvents
-      });
-    }
+      state.buckets = new Map();
+      state.events = [];
+      state.normalSamplesInWindow = 0;
+      state.droppedBuckets = 0;
+      state.droppedEvents = 0;
 
-    let bucketsFlushed = 0;
-    let eventsFlushed = 0;
+      if (droppedBuckets > 0 || droppedEvents > 0) {
+        logger.warn('Ops perf buffer reached capacity and dropped items', {
+          droppedBuckets,
+          droppedEvents
+        });
+      }
 
-    if (bucketEntries.length > 0) {
-      const bulkOps = bucketEntries.map(buildBucketBulkOp);
-      try {
-        await MongoOpsPerfBucket.bulkWrite(bulkOps, { ordered: false });
-        bucketsFlushed = bulkOps.length;
-      } catch (error) {
-        if (isDuplicateKeyBulkError(error)) {
-          // 整点首条文档并发 upsert 碰撞：重试冲突操作即可转入已有文档原子 $inc
-          try {
-            const writeErrors =
-              (error as { writeErrors?: Array<{ index?: number }> }).writeErrors ?? [];
-            const retryOps =
-              writeErrors.length > 0
-                ? writeErrors
-                    .map((item) =>
-                      typeof item.index === 'number' ? bulkOps[item.index] : undefined
-                    )
-                    .filter((op): op is (typeof bulkOps)[number] => op !== undefined)
-                : bulkOps;
-            if (retryOps.length > 0) {
-              await MongoOpsPerfBucket.bulkWrite(retryOps, { ordered: false });
+      let bucketsFlushed = 0;
+      let eventsFlushed = 0;
+
+      if (bucketEntries.length > 0) {
+        const bulkOps = bucketEntries.map(buildBucketBulkOp);
+        try {
+          await MongoOpsPerfBucket.bulkWrite(bulkOps, { ordered: false });
+          bucketsFlushed = bulkOps.length;
+        } catch (error) {
+          if (isDuplicateKeyBulkError(error)) {
+            // 整点首条文档并发 upsert 碰撞：重试冲突操作即可转入已有文档原子 $inc
+            try {
+              const writeErrors =
+                (error as { writeErrors?: Array<{ index?: number }> }).writeErrors ?? [];
+              const retryOps =
+                writeErrors.length > 0
+                  ? writeErrors
+                      .map((item) =>
+                        typeof item.index === 'number' ? bulkOps[item.index] : undefined
+                      )
+                      .filter((op): op is (typeof bulkOps)[number] => op !== undefined)
+                  : bulkOps;
+              if (retryOps.length > 0) {
+                await MongoOpsPerfBucket.bulkWrite(retryOps, { ordered: false });
+              }
+              bucketsFlushed = bulkOps.length;
+            } catch (retryError) {
+              logger.error('Ops perf bucket bulkWrite retry failed', { error: retryError });
             }
-            bucketsFlushed = bulkOps.length;
-          } catch (retryError) {
-            logger.error('Ops perf bucket bulkWrite retry failed', { error: retryError });
+          } else {
+            logger.error('Ops perf bucket bulkWrite failed', { error });
           }
-        } else {
-          logger.error('Ops perf bucket bulkWrite failed', { error });
         }
       }
-    }
 
-    if (eventEntries.length > 0) {
-      try {
-        await MongoOpsPerfEvent.insertMany(eventEntries, { ordered: false });
-        eventsFlushed = eventEntries.length;
-      } catch (error) {
-        logger.error('Ops perf event insertMany failed', { error });
+      if (eventEntries.length > 0) {
+        try {
+          await MongoOpsPerfEvent.insertMany(eventEntries, { ordered: false });
+          eventsFlushed = eventEntries.length;
+        } catch (error) {
+          logger.error('Ops perf event insertMany failed', { error });
+        }
+      }
+
+      if (bucketsFlushed > 0 || eventsFlushed > 0) {
+        logger.debug('Ops perf buffer flushed', { bucketsFlushed, eventsFlushed });
+      }
+
+      totalBucketsFlushed += bucketsFlushed;
+      totalEventsFlushed += eventsFlushed;
+
+      if (!state.flushRequested) {
+        break;
       }
     }
 
-    if (bucketsFlushed > 0 || eventsFlushed > 0) {
-      logger.debug('Ops perf buffer flushed', { bucketsFlushed, eventsFlushed });
-    }
-
-    return { bucketsFlushed, eventsFlushed };
+    return { bucketsFlushed: totalBucketsFlushed, eventsFlushed: totalEventsFlushed };
   } finally {
     state.flushing = false;
   }
 };
 
 /** 仅用于测试重置内存缓冲与定时器状态。 */
-export const resetOpsPerfBufferForTest = () => {
+export const resetOpsPerfBufferForTest = (options?: { autoFlushOnHighWatermark?: boolean }) => {
   const state = getBufferState();
   state.buckets = new Map();
   state.events = [];
@@ -595,7 +636,9 @@ export const resetOpsPerfBufferForTest = () => {
   state.droppedBuckets = 0;
   state.droppedEvents = 0;
   state.flushing = false;
+  state.flushRequested = false;
   state.timerStarted = false;
+  state.autoFlushOnHighWatermark = options?.autoFlushOnHighWatermark;
 };
 
 /** 仅用于测试读取当前内存缓冲快照。 */
