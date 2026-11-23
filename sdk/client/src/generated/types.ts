@@ -4286,6 +4286,10 @@ export type ChatRecordsGetResponseDataRes = Array<{
   inputTokens?: number;
   /** 输出 token */
   outputTokens?: number;
+  /** 输入中缓存读取 token */
+  cacheReadTokens?: number;
+  /** 输入中缓存创建 token */
+  cacheCreationTokens?: number;
   /** 模型 ID */
   modelId?: string;
   /**
@@ -4555,6 +4559,10 @@ export type ChatRecordsGetResponseDataRes = Array<{
   compressTextAgent?: {
     /** 输入 token */
     inputTokens: number;
+    /** 输入中缓存读取 token */
+    cacheReadTokens?: number;
+    /** 输入中缓存创建 token */
+    cacheCreationTokens?: number;
     /** 输出 token */
     outputTokens: number;
     /** 总积分 */
@@ -6104,6 +6112,10 @@ export type ChatRecordsListByAnchorRes = {
           inputTokens?: number;
           /** 输出 token */
           outputTokens?: number;
+          /** 输入中缓存读取 token */
+          cacheReadTokens?: number;
+          /** 输入中缓存创建 token */
+          cacheCreationTokens?: number;
           /** 模型 ID */
           modelId?: string;
           /**
@@ -6373,6 +6385,10 @@ export type ChatRecordsListByAnchorRes = {
           compressTextAgent?: {
             /** 输入 token */
             inputTokens: number;
+            /** 输入中缓存读取 token */
+            cacheReadTokens?: number;
+            /** 输入中缓存创建 token */
+            cacheCreationTokens?: number;
             /** 输出 token */
             outputTokens: number;
             /** 总积分 */
@@ -8009,6 +8025,10 @@ export type DatasetsDetailRes = {
         inputPrice: number;
         /** 每百万输出 Tokens 的积分单价 */
         outputPrice: number;
+        /** 每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费 */
+        cacheReadPrice?: number;
+        /** 每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费 */
+        cacheCreationPrice?: number;
       }>;
     };
     provider: string;
@@ -8063,6 +8083,10 @@ export type DatasetsDetailRes = {
         inputPrice: number;
         /** 每百万输出 Tokens 的积分单价 */
         outputPrice: number;
+        /** 每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费 */
+        cacheReadPrice?: number;
+        /** 每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费 */
+        cacheCreationPrice?: number;
       }>;
     };
     provider: string;
@@ -8695,6 +8719,10 @@ export type ModelsCatalogRes = {
               inputPrice: number;
               /** 每百万输出 Tokens 的积分单价 */
               outputPrice: number;
+              /** 每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费 */
+              cacheReadPrice?: number;
+              /** 每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费 */
+              cacheCreationPrice?: number;
             }>;
           };
           type: 'llm';
@@ -8949,6 +8977,10 @@ export type ModelsListRes = {
             inputPrice: number;
             /** 每百万输出 Tokens 的积分单价 */
             outputPrice: number;
+            /** 每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费 */
+            cacheReadPrice?: number;
+            /** 每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费 */
+            cacheCreationPrice?: number;
           }>;
         };
         config: {

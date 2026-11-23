@@ -26,7 +26,7 @@ import type {
   WithRawResponseResult
 } from './types';
 
-export const SDK_VERSION = '0.1.0-beta.1';
+export const SDK_VERSION = '0.1.0-beta.2';
 const DEFAULT_BASE_URL = 'https://cloud.fastgpt.cn';
 const DEFAULT_TIMEOUT_MS = 60_000;
 const DEFAULT_GET_MAX_RETRIES = 2;

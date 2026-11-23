@@ -302,7 +302,7 @@ export default NextAPI(handler);
 
 - **仅站内使用（只挂 `DevApiTagsMap`）**：无需且**禁止**声明 `x-fastgpt-sdk`；SDK 暂不提供非 System OpenAPI 接口。
 - **对外开放接口（挂 `SystemOpenApiTagMap` 且非 `deprecated`）**：
-  - 路由 handler 必须真正支持 API Key 鉴权（`authApiKey: true` / `authAppApiKey: true` 或等效封装），非空成功响应必须声明 `responses[200].content`。
+  - 路由 handler 必须真正支持 API Key 鉴权（`authApiKey: true` / `authAppApiKey: true` 或等效封装；现役唯一免鉴权公开例外为 `GET /core/ai/model/list` / `models.list()`，须同步登记在 `sdkContract.test.ts` 的 `SPECIAL_AUTH_OPEN_ROUTES` 与 `BaseClient` 运行时放行清单），非空成功响应必须声明 `responses[200].content`。
   - 必须手动声明 `'x-fastgpt-sdk': { resource, method, streamMethod? }`（刻意不依赖 URL 正则猜测，保证多语言 SDK 方法名稳定；`resource` 使用小写点分领域路径如 `'apps.logs'`、`'chat.histories'`、`'datasets.collections'`，`method` 使用 camelCase，双模 SSE 流式接口同步声明 `streamMethod`）。
   - 修改或新增开放接口后，必须执行 `pnpm sdk:gen`，并运行 `pnpm test packages/global/test/openapi/sdkContract.test.ts` 与 `pnpm sdk:check` 验证命名唯一、鉴权合规、生成产物无漂移。
 - **已弃用接口（`deprecated: true`）**：不得挂载 `x-fastgpt-sdk`（迁移替代接口时从旧路由移除 `x-fastgpt-sdk` 并挂到新路由）。

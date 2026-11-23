@@ -120,19 +120,25 @@ describe('System OpenAPI & SDK contract governance', () => {
   const operations = collectSystemOpenApiOperations();
 
   it('builds System OpenAPI document and covers all rendered tags in tagGroups', () => {
-    expect(operations).toHaveLength(51);
-    expect(Object.keys(apiDocOpenAPIDocument.paths ?? {}).length).toBeGreaterThanOrEqual(45);
+    expect(operations.length).toBeGreaterThan(0);
 
     const groupedTags = new Set<string>(tagGroups.flatMap((group) => group.tags));
-    for (const pathItem of Object.values(apiDocOpenAPIDocument.paths ?? {})) {
+    const renderedOpKeys: string[] = [];
+    for (const [routePath, pathItem] of Object.entries(apiDocOpenAPIDocument.paths ?? {})) {
       if (pathItem === null || pathItem === undefined) continue;
       for (const method of HTTP_METHODS) {
         const op = pathItem[method as keyof typeof pathItem] as { tags?: string[] } | undefined;
-        for (const tag of op?.tags ?? []) {
+        if (op === undefined) continue;
+        renderedOpKeys.push(`${method.toUpperCase()} ${routePath}`);
+        for (const tag of op.tags ?? []) {
           expect(groupedTags.has(tag)).toBe(true);
         }
       }
     }
+
+    // 动态校验从 openAPIPaths 采集的 SystemOpenApiTagMap 操作集合与最终渲染文档 100% 一致
+    const collectedOpKeys = operations.map((op) => `${op.method.toUpperCase()} ${op.routePath}`);
+    expect([...renderedOpKeys].sort()).toEqual([...collectedOpKeys].sort());
   });
 
   it('requires valid, globally unique, collision-free x-fastgpt-sdk metadata on all active operations', () => {

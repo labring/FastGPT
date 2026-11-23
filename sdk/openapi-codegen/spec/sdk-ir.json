@@ -15962,6 +15962,26 @@
                       "description": "输出 token"
                     },
                     {
+                      "name": "cacheReadTokens",
+                      "schema": {
+                        "kind": "primitive",
+                        "type": "number",
+                        "description": "输入中缓存读取 token"
+                      },
+                      "required": false,
+                      "description": "输入中缓存读取 token"
+                    },
+                    {
+                      "name": "cacheCreationTokens",
+                      "schema": {
+                        "kind": "primitive",
+                        "type": "number",
+                        "description": "输入中缓存创建 token"
+                      },
+                      "required": false,
+                      "description": "输入中缓存创建 token"
+                    },
+                    {
                       "name": "modelId",
                       "schema": {
                         "kind": "primitive",
@@ -17247,6 +17267,26 @@
                             },
                             "required": true,
                             "description": "输入 token"
+                          },
+                          {
+                            "name": "cacheReadTokens",
+                            "schema": {
+                              "kind": "primitive",
+                              "type": "number",
+                              "description": "输入中缓存读取 token"
+                            },
+                            "required": false,
+                            "description": "输入中缓存读取 token"
+                          },
+                          {
+                            "name": "cacheCreationTokens",
+                            "schema": {
+                              "kind": "primitive",
+                              "type": "number",
+                              "description": "输入中缓存创建 token"
+                            },
+                            "required": false,
+                            "description": "输入中缓存创建 token"
                           },
                           {
                             "name": "outputTokens",
@@ -24368,6 +24408,26 @@
                                         "description": "输出 token"
                                       },
                                       {
+                                        "name": "cacheReadTokens",
+                                        "schema": {
+                                          "kind": "primitive",
+                                          "type": "number",
+                                          "description": "输入中缓存读取 token"
+                                        },
+                                        "required": false,
+                                        "description": "输入中缓存读取 token"
+                                      },
+                                      {
+                                        "name": "cacheCreationTokens",
+                                        "schema": {
+                                          "kind": "primitive",
+                                          "type": "number",
+                                          "description": "输入中缓存创建 token"
+                                        },
+                                        "required": false,
+                                        "description": "输入中缓存创建 token"
+                                      },
+                                      {
                                         "name": "modelId",
                                         "schema": {
                                           "kind": "primitive",
@@ -25673,6 +25733,26 @@
                                               },
                                               "required": true,
                                               "description": "输入 token"
+                                            },
+                                            {
+                                              "name": "cacheReadTokens",
+                                              "schema": {
+                                                "kind": "primitive",
+                                                "type": "number",
+                                                "description": "输入中缓存读取 token"
+                                              },
+                                              "required": false,
+                                              "description": "输入中缓存读取 token"
+                                            },
+                                            {
+                                              "name": "cacheCreationTokens",
+                                              "schema": {
+                                                "kind": "primitive",
+                                                "type": "number",
+                                                "description": "输入中缓存创建 token"
+                                              },
+                                              "required": false,
+                                              "description": "输入中缓存创建 token"
                                             },
                                             {
                                               "name": "outputTokens",
@@ -28571,6 +28651,26 @@
                                     },
                                     "required": true,
                                     "description": "每百万输出 Tokens 的积分单价"
+                                  },
+                                  {
+                                    "name": "cacheReadPrice",
+                                    "schema": {
+                                      "kind": "primitive",
+                                      "type": "number",
+                                      "description": "每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
+                                    },
+                                    "required": false,
+                                    "description": "每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
+                                  },
+                                  {
+                                    "name": "cacheCreationPrice",
+                                    "schema": {
+                                      "kind": "primitive",
+                                      "type": "number",
+                                      "description": "每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
+                                    },
+                                    "required": false,
+                                    "description": "每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
                                   }
                                 ],
                                 "additionalProperties": false
@@ -28965,6 +29065,26 @@
                                     },
                                     "required": true,
                                     "description": "每百万输出 Tokens 的积分单价"
+                                  },
+                                  {
+                                    "name": "cacheReadPrice",
+                                    "schema": {
+                                      "kind": "primitive",
+                                      "type": "number",
+                                      "description": "每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
+                                    },
+                                    "required": false,
+                                    "description": "每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
+                                  },
+                                  {
+                                    "name": "cacheCreationPrice",
+                                    "schema": {
+                                      "kind": "primitive",
+                                      "type": "number",
+                                      "description": "每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
+                                    },
+                                    "required": false,
+                                    "description": "每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
                                   }
                                 ],
                                 "additionalProperties": false
@@ -37281,6 +37401,26 @@
                                                 },
                                                 "required": true,
                                                 "description": "每百万输出 Tokens 的积分单价"
+                                              },
+                                              {
+                                                "name": "cacheReadPrice",
+                                                "schema": {
+                                                  "kind": "primitive",
+                                                  "type": "number",
+                                                  "description": "每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
+                                                },
+                                                "required": false,
+                                                "description": "每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
+                                              },
+                                              {
+                                                "name": "cacheCreationPrice",
+                                                "schema": {
+                                                  "kind": "primitive",
+                                                  "type": "number",
+                                                  "description": "每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
+                                                },
+                                                "required": false,
+                                                "description": "每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
                                               }
                                             ],
                                             "additionalProperties": false
@@ -38695,6 +38835,26 @@
                                           },
                                           "required": true,
                                           "description": "每百万输出 Tokens 的积分单价"
+                                        },
+                                        {
+                                          "name": "cacheReadPrice",
+                                          "schema": {
+                                            "kind": "primitive",
+                                            "type": "number",
+                                            "description": "每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
+                                          },
+                                          "required": false,
+                                          "description": "每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
+                                        },
+                                        {
+                                          "name": "cacheCreationPrice",
+                                          "schema": {
+                                            "kind": "primitive",
+                                            "type": "number",
+                                            "description": "每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
+                                          },
+                                          "required": false,
+                                          "description": "每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
                                         }
                                       ],
                                       "additionalProperties": false
@@ -55141,6 +55301,26 @@
               "description": "输出 token"
             },
             {
+              "name": "cacheReadTokens",
+              "schema": {
+                "kind": "primitive",
+                "type": "number",
+                "description": "输入中缓存读取 token"
+              },
+              "required": false,
+              "description": "输入中缓存读取 token"
+            },
+            {
+              "name": "cacheCreationTokens",
+              "schema": {
+                "kind": "primitive",
+                "type": "number",
+                "description": "输入中缓存创建 token"
+              },
+              "required": false,
+              "description": "输入中缓存创建 token"
+            },
+            {
               "name": "modelId",
               "schema": {
                 "kind": "primitive",
@@ -56426,6 +56606,26 @@
                     },
                     "required": true,
                     "description": "输入 token"
+                  },
+                  {
+                    "name": "cacheReadTokens",
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "number",
+                      "description": "输入中缓存读取 token"
+                    },
+                    "required": false,
+                    "description": "输入中缓存读取 token"
+                  },
+                  {
+                    "name": "cacheCreationTokens",
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "number",
+                      "description": "输入中缓存创建 token"
+                    },
+                    "required": false,
+                    "description": "输入中缓存创建 token"
                   },
                   {
                     "name": "outputTokens",
@@ -63475,6 +63675,26 @@
                                 "description": "输出 token"
                               },
                               {
+                                "name": "cacheReadTokens",
+                                "schema": {
+                                  "kind": "primitive",
+                                  "type": "number",
+                                  "description": "输入中缓存读取 token"
+                                },
+                                "required": false,
+                                "description": "输入中缓存读取 token"
+                              },
+                              {
+                                "name": "cacheCreationTokens",
+                                "schema": {
+                                  "kind": "primitive",
+                                  "type": "number",
+                                  "description": "输入中缓存创建 token"
+                                },
+                                "required": false,
+                                "description": "输入中缓存创建 token"
+                              },
+                              {
                                 "name": "modelId",
                                 "schema": {
                                   "kind": "primitive",
@@ -64780,6 +65000,26 @@
                                       },
                                       "required": true,
                                       "description": "输入 token"
+                                    },
+                                    {
+                                      "name": "cacheReadTokens",
+                                      "schema": {
+                                        "kind": "primitive",
+                                        "type": "number",
+                                        "description": "输入中缓存读取 token"
+                                      },
+                                      "required": false,
+                                      "description": "输入中缓存读取 token"
+                                    },
+                                    {
+                                      "name": "cacheCreationTokens",
+                                      "schema": {
+                                        "kind": "primitive",
+                                        "type": "number",
+                                        "description": "输入中缓存创建 token"
+                                      },
+                                      "required": false,
+                                      "description": "输入中缓存创建 token"
                                     },
                                     {
                                       "name": "outputTokens",
@@ -72775,6 +73015,26 @@
                                 },
                                 "required": true,
                                 "description": "每百万输出 Tokens 的积分单价"
+                              },
+                              {
+                                "name": "cacheReadPrice",
+                                "schema": {
+                                  "kind": "primitive",
+                                  "type": "number",
+                                  "description": "每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
+                                },
+                                "required": false,
+                                "description": "每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
+                              },
+                              {
+                                "name": "cacheCreationPrice",
+                                "schema": {
+                                  "kind": "primitive",
+                                  "type": "number",
+                                  "description": "每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
+                                },
+                                "required": false,
+                                "description": "每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
                               }
                             ],
                             "additionalProperties": false
@@ -73169,6 +73429,26 @@
                                 },
                                 "required": true,
                                 "description": "每百万输出 Tokens 的积分单价"
+                              },
+                              {
+                                "name": "cacheReadPrice",
+                                "schema": {
+                                  "kind": "primitive",
+                                  "type": "number",
+                                  "description": "每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
+                                },
+                                "required": false,
+                                "description": "每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
+                              },
+                              {
+                                "name": "cacheCreationPrice",
+                                "schema": {
+                                  "kind": "primitive",
+                                  "type": "number",
+                                  "description": "每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
+                                },
+                                "required": false,
+                                "description": "每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
                               }
                             ],
                             "additionalProperties": false
@@ -76451,6 +76731,26 @@
                                             },
                                             "required": true,
                                             "description": "每百万输出 Tokens 的积分单价"
+                                          },
+                                          {
+                                            "name": "cacheReadPrice",
+                                            "schema": {
+                                              "kind": "primitive",
+                                              "type": "number",
+                                              "description": "每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
+                                            },
+                                            "required": false,
+                                            "description": "每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
+                                          },
+                                          {
+                                            "name": "cacheCreationPrice",
+                                            "schema": {
+                                              "kind": "primitive",
+                                              "type": "number",
+                                              "description": "每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
+                                            },
+                                            "required": false,
+                                            "description": "每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
                                           }
                                         ],
                                         "additionalProperties": false
@@ -77865,6 +78165,26 @@
                                       },
                                       "required": true,
                                       "description": "每百万输出 Tokens 的积分单价"
+                                    },
+                                    {
+                                      "name": "cacheReadPrice",
+                                      "schema": {
+                                        "kind": "primitive",
+                                        "type": "number",
+                                        "description": "每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
+                                      },
+                                      "required": false,
+                                      "description": "每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
+                                    },
+                                    {
+                                      "name": "cacheCreationPrice",
+                                      "schema": {
+                                        "kind": "primitive",
+                                        "type": "number",
+                                        "description": "每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
+                                      },
+                                      "required": false,
+                                      "description": "每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
                                     }
                                   ],
                                   "additionalProperties": false

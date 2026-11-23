@@ -1,5 +1,6 @@
+import fs from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { normalizeApiBaseUrl } from '../src/core/baseClient';
+import { normalizeApiBaseUrl, SDK_VERSION } from '../src/core/baseClient';
 import {
   FastGptAuthError,
   FastGptBadRequestError,
@@ -46,13 +47,31 @@ describe('FastGPT Core Client, Auth, Identity & Error Semantics', () => {
     );
   });
 
-  it('exposes only OpenAPI-declared domains and omits rawRequest escape hatch', () => {
-    const client = new FastGPT({ apiKey: 'fastgpt-key' });
+  it('exposes only OpenAPI-declared domains, omits rawRequest, and aligns SDK_VERSION with package.json', async () => {
+    const pkg = JSON.parse(
+      fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')
+    ) as { version: string };
+    expect(SDK_VERSION).toBe(pkg.version);
+    expect(SDK_VERSION).toBe('0.1.0-beta.2');
+
+    let clientHeader: string | null = null;
+    const client = new FastGPT({
+      apiKey: 'fastgpt-key',
+      fetch: async (_input, init) => {
+        clientHeader = new Headers(init?.headers).get('x-fastgpt-client');
+        return createJsonResponse({
+          body: { code: 200, statusText: '', message: '', data: { models: [], providers: [] } }
+        });
+      }
+    });
     expect('rawRequest' in client).toBe(false);
     expect('system' in client).toBe(false);
     expect(
       Object.keys(client).filter((k) => ['apps', 'chat', 'datasets', 'models'].includes(k))
     ).toEqual(['apps', 'chat', 'datasets', 'models']);
+
+    await client.models.list();
+    expect(clientHeader).toBe(`fastgpt-js-sdk/${SDK_VERSION}`);
   });
 
   it('blocks accidental browser instantiation unless dangerouslyAllowBrowser is true', () => {

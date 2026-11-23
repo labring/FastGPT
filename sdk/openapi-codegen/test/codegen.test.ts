@@ -1,14 +1,31 @@
+import { apiDocOpenAPIDocument } from '@fastgpt/global/openapi/provider/systemopenapi';
 import { describe, expect, it } from 'vitest';
 import { buildSdkIrDocument } from '../src/buildIr';
 import { checkSdkArtifactsDrift } from '../src/index';
 import { normalizeRequestSchemaToIr } from '../src/schemaNormalizer';
 
+const collectExpectedActiveSystemOps = (): string[] => {
+  const keys: string[] = [];
+  for (const [routePath, pathItem] of Object.entries(apiDocOpenAPIDocument.paths ?? {})) {
+    if (pathItem === null || pathItem === undefined) continue;
+    for (const method of ['get', 'post', 'put', 'delete', 'patch'] as const) {
+      const op = pathItem[method] as { deprecated?: boolean } | undefined;
+      if (op === undefined || op.deprecated === true) continue;
+      keys.push(`${method.toUpperCase()} ${routePath}`);
+    }
+  }
+  return keys.sort();
+};
+
 describe('OpenAPI to SDK IR Compiler & Artifacts Drift', () => {
   const ir = buildSdkIrDocument();
 
-  it('compiles all 47 active System OpenAPI operations into 4 top-level domain resources', () => {
+  it('compiles every active System OpenAPI operation into 4 top-level domain resources', () => {
     expect(ir.irVersion).toBe('1.0.0');
-    expect(ir.operations).toHaveLength(47);
+    const expectedOpKeys = collectExpectedActiveSystemOps();
+    const compiledOpKeys = ir.operations.map((op) => `${op.httpMethod} ${op.path}`).sort();
+    expect(ir.operations.length).toBeGreaterThan(0);
+    expect(compiledOpKeys).toEqual(expectedOpKeys);
 
     const topResourceNames = ir.resources.map((node) => node.name);
     expect(topResourceNames).toEqual(['apps', 'chat', 'datasets', 'models']);

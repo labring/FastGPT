@@ -207,6 +207,39 @@ Each capability is published directly from its defining module for minimal bundl
 
 ---
 
+## Release Scope (`0.1.0-beta.2`) & Migration from `0.1.0-beta.1`
+
+Starting from `0.1.0-beta.2`, `@fastgpt/sdk` is strictly scoped to **published System OpenAPI operations only** (**47 active operations** across `apps.logs`, `chat`, `datasets`, and `models`). Routes not yet formally added to System OpenAPI are deferred so that every SDK method maintains verified API Key semantics and generated type contracts.
+
+### Retained Capabilities (`0.1.0-beta.2`)
+
+- **Core client & auth**: Personal and App API Keys, `withIdentity({ customUid })` / `authProxy`, per-request `RequestOptions`, `.withRawResponse()`, redacted hooks/logger, and retry/timeout handling.
+- **47 System OpenAPI methods** across `client.apps.logs.*` (cursor `search` / `listUsers` / `getTotalData` / `getChartData`), `client.chat.*` (`completionsV2`, `completionsV2Stream`, `init`, `stop`, `histories.*`, `records.*`, `feedbacks.*`), `client.datasets.*` (CRUD, `search`, `batchMove`, `batchDelete`, `collections.*`, `data.*`), and `client.models.*` (`list`, `catalog`, `summary`).
+- **OpenAPI-backed helpers**:
+  - **Workflow interactive continuation**: `client.chat.interactive.{isPending,extract,unwrap,replyUserSelect,replyUserSelectStream,replyUserForm,replyUserFormStream}` (built on `POST /v2/chat/completions`).
+  - **Auto-pagination**: `*AutoPaging` methods (including `client.apps.logs.searchAutoPaging`) plus `@fastgpt/sdk/pagination`.
+
+### Deferred / Removed in `0.1.0-beta.2`
+
+The following surfaces shipped in the earlier `0.1.0-beta.1` preview are **removed in `0.1.0-beta.2`** until their underlying contracts enter System OpenAPI:
+
+| `0.1.0-beta.1` API | Status in `0.1.0-beta.2` | Upgrade / Transition Guidance |
+| --- | --- | --- |
+| `client.chat.resume` / `chat.resumeStream` | **Removed** (disconnect SSE recovery) | Not in System OpenAPI yet; distinct from workflow `chat.interactive` continuation (which remains supported). Pin `@fastgpt/sdk@0.1.0-beta.1` or call `/api/core/chat/resume` directly if needed. |
+| `client.chat.interactive.*` | **Retained** (workflow pause/resume) | No action needed; continues to work via `POST /v2/chat/completions`. |
+| `client.system.*` (`health`, `whoami`) | **Removed** | Switch connectivity / credential checks to `client.models.catalog()` (authenticated) or `client.models.list()` (public). |
+| `client.datasets.collections.uploadFile` & `waitForTraining` | **Removed** | Use `client.datasets.collections.createByLocalFile({ datasetId, file, trainingType })` for direct OpenAPI multipart upload. |
+| `client.datasets.files.*`, `training.*`, `synonyms.*`, `chat.files.*`, `chat.sandbox.*` | **Removed** | Pin `@fastgpt/sdk@0.1.0-beta.1` or invoke HTTP endpoints directly until added to System OpenAPI. |
+| `client.apps.logs.list` / `listAutoPaging` | **Replaced** | Migrate to cursor-based `client.apps.logs.search` and `client.apps.logs.searchAutoPaging`. |
+| `client.rawRequest` & `@fastgpt/sdk/server` | **Removed** | Use standard `fetch` / Web handlers or pin `@fastgpt/sdk@0.1.0-beta.1`. |
+
+> **Upgrading or staying on the preview?** To keep calling non-System-OpenAPI preview endpoints temporarily, install the pinned preview version:
+> ```bash
+> npm install @fastgpt/sdk@0.1.0-beta.1
+> ```
+
+---
+
 ## Live Backend Smoke Testing
 
 ```bash
