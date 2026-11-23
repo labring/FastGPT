@@ -18,7 +18,7 @@ import { getAvailableInputReferences } from '../../src/reference/query';
 import { instantiateNodeFromTemplate } from '../../src/template/instantiate';
 import { parseNodeTemplateRef } from '../../src/template/type';
 import {
-  createWorkflowErrorBranchIndex,
+  createWorkflowReferenceIndex,
   isWorkflowReferenceOutputUpstream,
   setInputReference,
   setInputValue
@@ -509,11 +509,10 @@ describe('workflow error output reachability', () => {
 
     expect(
       isWorkflowReferenceOutputUpstream({
-        document,
+        referenceIndex: createWorkflowReferenceIndex(document),
         nodeId: target.nodeId,
         sourceNodeId: source.nodeId,
-        isErrorOutput: true,
-        errorBranchIndex: createWorkflowErrorBranchIndex(document)
+        isErrorOutput: true
       })
     ).toBe(true);
   });
@@ -531,7 +530,7 @@ describe('workflow error output reachability', () => {
 
     expect(
       isWorkflowReferenceOutputUpstream({
-        document,
+        referenceIndex: createWorkflowReferenceIndex(document),
         nodeId: target.nodeId,
         sourceNodeId: source.nodeId,
         isErrorOutput: true

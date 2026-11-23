@@ -502,7 +502,7 @@ export const isWorkflowErrorBranchReachable = ({
   /** 只返回当前 source handle 仍有效的入边。 */
   getIncomingEdges: (
     nodeId: string
-  ) => readonly Pick<StoreEdgeItemType, 'source' | 'sourceHandle' | 'targetHandle'>[];
+  ) => Iterable<Pick<StoreEdgeItemType, 'source' | 'sourceHandle' | 'targetHandle'>>;
 }): boolean => {
   if (sourceNodeId === targetNodeId) return false;
 

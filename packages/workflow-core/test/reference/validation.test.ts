@@ -20,7 +20,7 @@ import {
   resolveWorkflowReferenceDocument
 } from '../../src/reference/validation';
 import { getAvailableInputReferences } from '../../src/reference/query';
-import { createWorkflowErrorBranchIndex, setInputReference } from '../../src/reference/service';
+import { createWorkflowReferenceIndex, setInputReference } from '../../src/reference/service';
 import { validateWorkflow } from '../../src/validation/index';
 
 /** 最小连通图同时提供稳定 key 和历史 id，用真实引用规则检查两种策略。 */
@@ -82,7 +82,7 @@ const makeDocument = (input: Partial<FlowNodeInputItemType> = {}) =>
   });
 
 describe('getWorkflowInputReferenceDiagnostics', () => {
-  it('ignores removed dynamic source handles in the error branch index', () => {
+  it('ignores removed dynamic source handles in the reference index', () => {
     const document = makeDocument();
     document.nodes[1] = {
       ...document.nodes[1],
@@ -104,12 +104,12 @@ describe('getWorkflowInputReferenceDiagnostics', () => {
     ];
 
     expect(
-      createWorkflowErrorBranchIndex(document).incomingEdgesByNodeId.get('start')
+      createWorkflowReferenceIndex(document).incomingEdgesByNodeId.get('start')
     ).toContainEqual(expect.objectContaining({ source: 'target' }));
 
     document.nodes[1].inputs[0] = { ...document.nodes[1].inputs[0], value: [] };
     expect(
-      createWorkflowErrorBranchIndex(document).incomingEdgesByNodeId.get('start')
+      createWorkflowReferenceIndex(document).incomingEdgesByNodeId.get('start')
     ).toBeUndefined();
   });
 

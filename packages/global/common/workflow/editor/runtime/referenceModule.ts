@@ -713,15 +713,11 @@ export const createReferenceModule = (document: DocumentReadApi) => {
     const cached = reachabilityCache.get(cacheKey);
     if (cached !== undefined) return cached;
 
-    const graphIndex = document.getGraphIndex();
     const result = isWorkflowErrorBranchReachable({
       sourceNodeId,
       targetNodeId,
-      parentByNodeId: graphIndex.parentByChild,
-      getIncomingEdges: (nodeId) =>
-        (graphIndex.byTarget.get(nodeId) ?? [])
-          .filter(document.isSourceEdgeValid)
-          .map(({ data }) => data)
+      parentByNodeId: document.getGraphIndex().parentByChild,
+      getIncomingEdges: document.getIncomingReferenceEdges
     });
     reachabilityCache.set(cacheKey, result);
     return result;

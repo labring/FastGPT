@@ -247,6 +247,13 @@ export const createDocumentModule = (
       sourceHandle: data.sourceHandle
     });
 
+  /** 普通引用与异常引用从同一组有效入边计算可达性。 */
+  function* getIncomingReferenceEdges(nodeId: string) {
+    for (const edge of graphIndex.byTarget.get(nodeId) ?? []) {
+      if (isSourceEdgeValid(edge)) yield edge.data;
+    }
+  }
+
   const isMountedTool = (nodeId: string) =>
     graphIndex.byTarget
       .get(nodeId)
@@ -296,11 +303,7 @@ export const createDocumentModule = (
       stopAtSourceId,
       getNodeById: (id) => getNodeById(id)?.data,
       getChildNodeIds: (id) => graphIndex.childrenByParent.get(id) ?? [],
-      *getIncomingEdges(id) {
-        for (const edge of graphIndex.byTarget.get(id) ?? []) {
-          if (edge.data.target === id && isSourceEdgeValid(edge)) yield edge.data;
-        }
-      }
+      getIncomingEdges: getIncomingReferenceEdges
     });
 
   /** 返回选择器等调用方所需的完整来源列表，并保持同一文档内的快照身份。 */
@@ -1275,6 +1278,7 @@ export const createDocumentModule = (
     getWorkingNodeIndex,
     isMountedTool,
     isSourceEdgeValid,
+    getIncomingReferenceEdges,
     getSourceNodeIds,
     hasSourceNode,
     rebuildNodeIndex,

@@ -158,6 +158,7 @@ export type DocumentReadApi = {
   readonly getNodeIndex: () => ReadonlyMap<string, IndexedNode>;
   readonly getGraphIndex: () => GraphIndex;
   readonly isSourceEdgeValid: (edge: EdgeRecord) => boolean;
+  readonly getIncomingReferenceEdges: (nodeId: string) => Iterable<StoreEdgeItemType>;
   readonly isMountedTool: (nodeId: string) => boolean;
   readonly getSourceNodeIds: (args: {
     nodeId: string;

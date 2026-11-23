@@ -9,7 +9,7 @@ import {
 import {
   getInput,
   assertInputMode,
-  createWorkflowErrorBranchIndex,
+  createWorkflowReferenceIndex,
   getInputReferenceSourceNodes,
   isWorkflowReferenceOutputUpstream
 } from './service';
@@ -26,8 +26,9 @@ export const getAvailableInputReferences = ({
 }) => {
   const { input, inputModes } = getInput({ document, nodeId, inputKey });
   assertInputMode({ inputKey, inputModes, nodeId, mode: 'reference' });
-  const errorBranchIndex = createWorkflowErrorBranchIndex(document);
-  const nodeOutputs = getInputReferenceSourceNodes({ document, nodeId, input }).flatMap((node) =>
+  const referenceIndex = createWorkflowReferenceIndex(document);
+  const sourceNodes = getInputReferenceSourceNodes({ referenceIndex, nodeId, input });
+  const nodeOutputs = sourceNodes.flatMap((node) =>
     filterSelectableWorkflowNodeOutputs({
       outputs: node.outputs,
       catchError: node.catchError
@@ -35,12 +36,11 @@ export const getAvailableInputReferences = ({
       .filter(
         (output) =>
           isWorkflowReferenceOutputUpstream({
-            document,
+            referenceIndex,
             nodeId,
             sourceNodeId: node.nodeId,
             isErrorOutput: output.type === FlowNodeOutputTypeEnum.error,
-            allowLoopRunChildSource: input.canEdit === true && node.catchError === true,
-            errorBranchIndex
+            allowLoopRunChildSource: input.canEdit === true && node.catchError === true
           }) &&
           (input.valueType === undefined ||
             input.valueType === WorkflowIOValueTypeEnum.any ||

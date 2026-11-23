@@ -18,7 +18,7 @@ import { hasConfiguredValue } from '../template/defaultValue';
 import { resolveWorkflowDocumentOutput } from './codec';
 import { isWorkflowInputReferenceForValidation } from '../template/inputValue';
 import {
-  createWorkflowErrorBranchIndex,
+  createWorkflowReferenceIndex,
   getInputReferenceSourceNodes,
   isWorkflowReferenceOutputUpstream,
   getWorkflowReferenceValues,
@@ -44,7 +44,7 @@ const createInputReferenceCheck = ({
   excludeValueTypes?: readonly WorkflowIOValueTypeEnum[];
 }) => {
   let sourceNodeIds: Set<string> | undefined;
-  let errorBranchIndex: ReturnType<typeof createWorkflowErrorBranchIndex> | undefined;
+  let referenceIndex: ReturnType<typeof createWorkflowReferenceIndex> | undefined;
   let variables: ReturnType<typeof getWorkflowReferenceVariables> | undefined;
   return ([sourceNodeId, outputKey]: WorkflowReferenceValue): WorkflowDiagnostic[] => {
     const diagnostics: WorkflowDiagnostic[] = [];
@@ -93,8 +93,9 @@ const createInputReferenceCheck = ({
     }
     if (sourceNodeId === VARIABLE_NODE_ID) return diagnostics;
 
+    referenceIndex ??= createWorkflowReferenceIndex(document);
     sourceNodeIds ??= new Set(
-      getInputReferenceSourceNodes({ document, nodeId, input }).map((source) => source.nodeId)
+      getInputReferenceSourceNodes({ referenceIndex, nodeId, input }).map((source) => source.nodeId)
     );
     const isErrorOutput =
       'type' in sourceOutput && sourceOutput.type === FlowNodeOutputTypeEnum.error;
@@ -102,12 +103,11 @@ const createInputReferenceCheck = ({
       !sourceNodeIds.has(sourceNodeId) ||
       (isErrorOutput &&
         !isWorkflowReferenceOutputUpstream({
-          document,
+          referenceIndex,
           nodeId,
           sourceNodeId,
           isErrorOutput,
-          allowLoopRunChildSource: input.canEdit === true && sourceNode?.catchError === true,
-          errorBranchIndex: (errorBranchIndex ??= createWorkflowErrorBranchIndex(document))
+          allowLoopRunChildSource: input.canEdit === true && sourceNode?.catchError === true
         }))
     ) {
       diagnostics.push({
