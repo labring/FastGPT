@@ -96,7 +96,7 @@ x-vec-config: &x-vec-config
 
 services:
   fastgpt-vector:
-    image: dockerproxy.net/pgvector/pgvector:0.8.0-pg15
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:0.8.0-pg15
     container_name: fastgpt-pg
     restart: always
     networks:
@@ -114,7 +114,7 @@ services:
       timeout: 5s
       retries: 10
   fastgpt-mongo:
-    image: dockerproxy.net/library/mongo:5.0.32 # cpu 不支持 AVX 时候使用 4.4.29
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.32 # cpu 不支持 AVX 时候使用 4.4.29
     container_name: fastgpt-mongo
     restart: always
     networks:
@@ -162,7 +162,7 @@ services:
         # 等待docker-entrypoint.sh脚本执行的MongoDB服务进程
         wait $$!
   fastgpt-redis:
-    image: dockerproxy.net/library/redis:7.2-alpine
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/redis:7.2-alpine
     container_name: fastgpt-redis
     networks:
       - data
@@ -396,7 +396,7 @@ services:
 
   # OpenSandbox Server 和 Volume Manager 仅需在 app 内网中访问。
   fastgpt-opensandbox-server:
-    image: dockerproxy.net/opensandbox/server:v0.2.2
+    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/server:v0.2.2
     container_name: fastgpt-opensandbox-server
     restart: always
     networks:
@@ -453,11 +453,11 @@ services:
     profiles:
       - prepull
   opensandbox-execd-image:
-    image: dockerproxy.net/opensandbox/execd:v1.0.21
+    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:v1.0.21
     profiles:
       - prepull
   opensandbox-egress-image:
-    image: dockerproxy.net/opensandbox/egress:v1.1.5
+    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:v1.1.5
     profiles:
       - prepull
 
@@ -480,7 +480,7 @@ services:
 
   # AI Proxy
   fastgpt-aiproxy:
-    image: ghcr.dockerproxy.net/labring/aiproxy:v0.6.5
+    image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.6.5
     container_name: fastgpt-aiproxy
     restart: unless-stopped
     depends_on:
@@ -507,7 +507,7 @@ services:
       timeout: 5s
       retries: 10
   fastgpt-aiproxy-pg:
-    image: dockerproxy.net/pgvector/pgvector:0.8.0-pg15 # docker hub
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:0.8.0-pg15 # docker hub
     restart: unless-stopped
     container_name: fastgpt-aiproxy-pg
     volumes:
@@ -561,10 +561,10 @@ configs:
 
       [runtime]
       type = "docker"
-      execd_image = "dockerproxy.net/opensandbox/execd:v1.0.21"
+      execd_image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:v1.0.21"
 
       [egress]
-      image = "dockerproxy.net/opensandbox/egress:v1.1.5"
+      image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:v1.1.5"
 
       [docker]
       network_mode = "bridge"

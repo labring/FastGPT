@@ -61,6 +61,7 @@ Refer to the [v4.9.0 yml](https://raw.githubusercontent.com/labring/FastGPT/v4.9
       retries: 10
   aiproxy_pg:
     image: pgvector/pgvector:0.8.0-pg15 # docker hub
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.8.0-pg15 # Alibaba Cloud
     restart: unless-stopped
     container_name: aiproxy_pg
     volumes:

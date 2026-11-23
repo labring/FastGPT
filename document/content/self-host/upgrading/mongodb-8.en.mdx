@@ -148,7 +148,7 @@ Notes:
 - No host port is published by default; FastGPT and other containers connect through the Docker network at `fastgpt-mongo:27017`.
 - If an application on the host needs access, add `-p 127.0.0.1:27017:27017` to bind only to loopback. Do not use `-p 27017:27017`.
 - `fastgpt-mongo8` is a brand-new data volume.
-- For the China Mainland mirror, use `dockerproxy.net/library/mongo:8.0.34`.
+- For Alibaba Cloud, replace `mongo:8.0.34` with the corresponding mirror image.
 
 Wait for it to start:
 

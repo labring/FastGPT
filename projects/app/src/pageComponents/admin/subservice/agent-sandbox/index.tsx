@@ -849,7 +849,7 @@ const AgentSandboxSubserviceComponent = () => {
                 form.getFieldState('agentSandbox.common.aptMirror', form.formState).error
               )}
               {...register('agentSandbox.common.aptMirror')}
-              placeholder="https://mirrors.ustc.edu.cn"
+              placeholder="https://mirrors.aliyun.com"
             />
           </AdminFormItem>
         </SimpleGrid>

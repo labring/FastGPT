@@ -89,7 +89,7 @@ AGENT_SANDBOX_STORAGE_SIZE_GI=1
 | 非 root | `ghcr.dockerproxy.net/labring/fastgpt-agent-sandbox:v0.4.0`      |
 | root    | `ghcr.dockerproxy.net/labring/fastgpt-agent-sandbox-root:v0.4.0` |
 
-全球镜像源将 `ghcr.dockerproxy.net/labring` 替换为 `ghcr.io/labring`。如果使用私有镜像仓库，请确保镜像 tag 保留 `amd64` 和 `arm64` manifest；如果仓库只提供单架构镜像，请将 `AGENT_SANDBOX_OPENSANDBOX_IMAGE` 配置为与 OpenSandbox Server 宿主机架构匹配的镜像地址。
+上表的 FastGPT 运行态镜像使用全球镜像源时，将 `ghcr.dockerproxy.net/labring` 替换为 `ghcr.io/labring`。如果使用私有镜像仓库，请确保镜像 tag 保留 `amd64` 和 `arm64` manifest；如果仓库只提供单架构镜像，请将 `AGENT_SANDBOX_OPENSANDBOX_IMAGE` 配置为与 OpenSandbox Server 宿主机架构匹配的镜像地址。
 
 `AGENT_SANDBOX_OPENSANDBOX_API_KEY` 必须与 `[server].api_key` 一致，`AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN` 必须与 `x-volume-manager-auth-token` 一致，Agent Sandbox 管理页的共享密钥必须与独立 Proxy 服务的 `AGENT_SANDBOX_PROXY_SECRET` 一致。
 

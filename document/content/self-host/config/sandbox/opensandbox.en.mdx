@@ -90,7 +90,7 @@ Each official image tag includes both `amd64` and `arm64` variants. Both archite
 | Non-root | `ghcr.io/labring/fastgpt-agent-sandbox:v0.4.0`      |
 | Root     | `ghcr.io/labring/fastgpt-agent-sandbox-root:v0.4.0` |
 
-For China Mainland registries, replace `ghcr.io/labring` with `ghcr.dockerproxy.net/labring`. If you use a private registry, make sure each tag preserves both the `amd64` and `arm64` manifests. If the registry provides only a single-architecture image, set `AGENT_SANDBOX_OPENSANDBOX_IMAGE` to an image matching the architecture of the OpenSandbox Server host.
+To use the China Mainland mirror for the FastGPT runtime images above, replace `ghcr.io/labring` with `ghcr.dockerproxy.net/labring`. If you use a private registry, make sure each tag preserves both the `amd64` and `arm64` manifests. If the registry provides only a single-architecture image, set `AGENT_SANDBOX_OPENSANDBOX_IMAGE` to an image matching the architecture of the OpenSandbox Server host.
 
 `AGENT_SANDBOX_OPENSANDBOX_API_KEY` must match `[server].api_key`, `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN` must match `x-volume-manager-auth-token`, and the shared secret on the Agent Sandbox admin page must match the standalone Proxy service's `AGENT_SANDBOX_PROXY_SECRET`.
 

@@ -96,7 +96,7 @@ The FastGPT SeekDB adapter provides the following capabilities, subject to the s
   <Tab value="Linux">
 ```bash
 # Install Docker (includes the Docker Compose V2 plugin)
-curl -fsSL https://get.docker.com | bash
+curl -fsSL https://get.docker.com | bash -s docker --mirror Aliyun
 systemctl enable --now docker
 # Verify installation
 docker -v
@@ -179,7 +179,7 @@ FASTGPT_LOCAL_COMPOSE_PATH=/path/to/docker-compose.yml bash <(curl -fsSL https:/
 
 If you need to pin deployment to a specific `docker-compose.yml` file, we recommend downloading both `docker-compose.yml` and `install.sh`, then using the script's local compose mode to generate the final config. This keeps the script's random credential generation, S3 address updates, and Docker socket detection.
 
-The China Mainland templates use public registry proxies for some images. If a proxy is slow or unavailable, select the global source or switch the affected image to its upstream registry.
+The China Mainland templates use a public registry proxy for FastGPT service images. If a proxy is slow or unavailable, select the global source or switch the affected image to its upstream registry.
 
 1. Download the required `docker-compose.yml` file to the server, for example:
 
