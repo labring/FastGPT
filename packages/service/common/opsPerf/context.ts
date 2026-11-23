@@ -229,75 +229,75 @@ export const withPerfContext = async <D extends OpsPerfDomain, T>(
   const nextMap: DomainContextMap = new Map(parentMap ?? []);
   nextMap.set(options.domain, state);
 
-  let resultValue: T | undefined;
-  let caughtError: unknown;
-  let hasError = false;
-
-  try {
-    resultValue = await storage.run(nextMap, fn);
-    return resultValue;
-  } catch (error) {
-    hasError = true;
-    caughtError = error;
-    state.status = 'error';
-    // 严格脱敏且按严重级别升级归因：按最终捕获异常身份精确匹配抛出阶段，并行分支报错互不覆盖。
-    if (!state.errorCode || state.errorCodeSeverity !== 'error') {
-      const domainConfig = OPS_PERF_DOMAIN_CONFIG[state.domain];
-      const matchedStage = state.thrownStageByError.get(error);
-      state.errorCode =
-        (matchedStage ? domainConfig?.stageErrorCodes?.[matchedStage] : undefined) ??
-        domainConfig?.defaultErrorCode;
-      state.errorCodeSeverity = 'error';
+  const outcome = await (async (): Promise<
+    { ok: true; value: T } | { ok: false; error: unknown }
+  > => {
+    try {
+      return { ok: true, value: await storage.run(nextMap, fn) };
+    } catch (error) {
+      state.status = 'error';
+      // 严格脱敏且按严重级别升级归因：按最终捕获异常身份精确匹配抛出阶段，并行分支报错互不覆盖。
+      if (!state.errorCode || state.errorCodeSeverity !== 'error') {
+        const domainConfig = OPS_PERF_DOMAIN_CONFIG[state.domain];
+        const matchedStage = state.thrownStageByError.get(error);
+        state.errorCode =
+          (matchedStage ? domainConfig?.stageErrorCodes?.[matchedStage] : undefined) ??
+          domainConfig?.defaultErrorCode;
+        state.errorCodeSeverity = 'error';
+      }
+      return { ok: false, error };
     }
-    throw error;
-  } finally {
-    const totalMs = Math.max(0, performance.now() - state.startedAtPerf);
-    const { stages: stagesSnapshot, stageSpans } = buildStageSnapshot(state.stages);
+  })();
 
-    const commit = () => {
-      enqueueOpsPerfRecord({
-        domain: state.domain,
-        createTime: state.createTime,
+  const totalMs = Math.max(0, performance.now() - state.startedAtPerf);
+  const { stages: stagesSnapshot, stageSpans } = buildStageSnapshot(state.stages);
+
+  const commit = () => {
+    enqueueOpsPerfRecord({
+      domain: state.domain,
+      createTime: state.createTime,
+      totalMs,
+      status: state.status,
+      errorCode: state.errorCode,
+      teamId: state.teamId,
+      resourceIds: state.resourceIds,
+      dims: state.dims as OpsPerfDomainPayloadMap[D]['dims'],
+      stages: stagesSnapshot,
+      stageSpans,
+      metrics: state.metrics,
+      detail: state.detail as OpsPerfDomainPayloadMap[D]['detail'],
+      recordEvent: state.recordEvent,
+      force: state.force
+    });
+  };
+
+  if (options.onFinalize) {
+    try {
+      const maybePromise = options.onFinalize({
+        state,
+        result: outcome.ok ? outcome.value : undefined,
+        error: outcome.ok ? undefined : outcome.error,
         totalMs,
-        status: state.status,
-        errorCode: state.errorCode,
-        teamId: state.teamId,
-        resourceIds: state.resourceIds,
-        dims: state.dims as OpsPerfDomainPayloadMap[D]['dims'],
-        stages: stagesSnapshot,
-        stageSpans,
-        metrics: state.metrics,
-        detail: state.detail as OpsPerfDomainPayloadMap[D]['detail'],
-        recordEvent: state.recordEvent,
-        force: state.force
+        stages: stagesSnapshot
       });
-    };
-
-    if (options.onFinalize) {
-      try {
-        const maybePromise = options.onFinalize({
-          state,
-          result: hasError ? undefined : resultValue,
-          error: hasError ? caughtError : undefined,
-          totalMs,
-          stages: stagesSnapshot
-        });
-        if (maybePromise && typeof (maybePromise as Promise<void>).then === 'function') {
-          void (maybePromise as Promise<void>)
-            .catch(() => {})
-            .finally(() => {
-              commit();
-            });
-        } else {
-          commit();
-        }
-      } catch {
+      if (maybePromise && typeof (maybePromise as Promise<void>).then === 'function') {
+        void (maybePromise as Promise<void>)
+          .catch(() => {})
+          .finally(() => {
+            commit();
+          });
+      } else {
         commit();
       }
-    } else {
+    } catch {
       commit();
     }
+  } else {
+    commit();
   }
+
+  if (!outcome.ok) throw outcome.error;
+  return outcome.value;
 };
 
 /**

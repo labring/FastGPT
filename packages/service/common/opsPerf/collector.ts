@@ -234,31 +234,33 @@ export const enqueueOpsPerfRecord = <D extends OpsPerfDomain>(
     const mapKey = `${input.domain}|1h|${bucketTime.getTime()}|${dimKey}`;
 
     // 1. 合入小时聚合桶
-    let bucket = state.buckets.get(mapKey);
-    if (!bucket) {
+    const bucket = (() => {
+      const existing = state.buckets.get(mapKey);
+      if (existing) return existing;
       if (state.buckets.size >= MAX_BUCKET_BUFFER_SIZE) {
         state.droppedBuckets += 1;
-      } else {
-        bucket = {
-          domain: input.domain,
-          granularity: '1h',
-          bucketTime,
-          expireAt: addDays(bucketTime, OPS_PERF_BUCKET_RETENTION_DAYS),
-          dimKey,
-          dims: { ...dimsRecord },
-          total: {
-            count: 0,
-            errorCount: 0,
-            sumMs: 0,
-            maxMs: totalMs,
-            hist: {}
-          },
-          stages: {},
-          metrics: {}
-        };
-        state.buckets.set(mapKey, bucket);
+        return undefined;
       }
-    }
+      const created: BufferedBucketEntry = {
+        domain: input.domain,
+        granularity: '1h',
+        bucketTime,
+        expireAt: addDays(bucketTime, OPS_PERF_BUCKET_RETENTION_DAYS),
+        dimKey,
+        dims: { ...dimsRecord },
+        total: {
+          count: 0,
+          errorCount: 0,
+          sumMs: 0,
+          maxMs: totalMs,
+          hist: {}
+        },
+        stages: {},
+        metrics: {}
+      };
+      state.buckets.set(mapKey, created);
+      return created;
+    })();
 
     if (bucket) {
       bucket.total.count += 1;
@@ -269,17 +271,15 @@ export const enqueueOpsPerfRecord = <D extends OpsPerfDomain>(
 
       if (input.stages) {
         const accumulateBucketStage = (stageKey: string, stageMs: number, stageErrors: number) => {
-          let stageAccum = bucket!.stages[stageKey];
-          if (!stageAccum) {
-            stageAccum = {
+          const stageAccum =
+            bucket.stages[stageKey] ??
+            (bucket.stages[stageKey] = {
               count: 0,
               errorCount: 0,
               sumMs: 0,
               maxMs: stageMs,
               hist: {}
-            };
-            bucket!.stages[stageKey] = stageAccum;
-          }
+            });
 
           stageAccum.count += 1;
           stageAccum.errorCount += stageErrors;
@@ -565,14 +565,12 @@ export const flushOpsPerfBuffer = async (): Promise<{
         });
       }
 
-      let bucketsFlushed = 0;
-      let eventsFlushed = 0;
-
-      if (bucketEntries.length > 0) {
+      const bucketsFlushed = await (async () => {
+        if (bucketEntries.length === 0) return 0;
         const bulkOps = bucketEntries.map(buildBucketBulkOp);
         try {
           await MongoOpsPerfBucket.bulkWrite(bulkOps, { ordered: false });
-          bucketsFlushed = bulkOps.length;
+          return bulkOps.length;
         } catch (error) {
           if (isDuplicateKeyBulkError(error)) {
             // 整点首条文档并发 upsert 碰撞：重试冲突操作即可转入已有文档原子 $inc
@@ -590,24 +588,27 @@ export const flushOpsPerfBuffer = async (): Promise<{
               if (retryOps.length > 0) {
                 await MongoOpsPerfBucket.bulkWrite(retryOps, { ordered: false });
               }
-              bucketsFlushed = bulkOps.length;
+              return bulkOps.length;
             } catch (retryError) {
               logger.error('Ops perf bucket bulkWrite retry failed', { error: retryError });
             }
           } else {
             logger.error('Ops perf bucket bulkWrite failed', { error });
           }
+          return 0;
         }
-      }
+      })();
 
-      if (eventEntries.length > 0) {
+      const eventsFlushed = await (async () => {
+        if (eventEntries.length === 0) return 0;
         try {
           await MongoOpsPerfEvent.insertMany(eventEntries, { ordered: false });
-          eventsFlushed = eventEntries.length;
+          return eventEntries.length;
         } catch (error) {
           logger.error('Ops perf event insertMany failed', { error });
+          return 0;
         }
-      }
+      })();
 
       if (bucketsFlushed > 0 || eventsFlushed > 0) {
         logger.debug('Ops perf buffer flushed', { bucketsFlushed, eventsFlushed });
