@@ -23,13 +23,14 @@ FastGPT 同时维护两套 CI workflow：
 
 ## 当前配对清单（改前先核对）
 
-**已有 Forgejo 对应（9 个，改动时必须同步）：**
+**已有 Forgejo 对应（10 个，改动时必须同步）：**
 
 | GitHub | Forgejo | 类型 |
 | --- | --- | --- |
 | `build-fastgpt.yml` | ✅ | 镜像构建 |
 | `build-code-sandbox.yml` | ✅ | 镜像构建 |
 | `build-agent-sandbox.yml` | ✅ | 镜像构建 |
+| `build-agent-sandbox-proxy.yml` | ✅ | 镜像构建 |
 | `build-fastgpt-ide-agent.yml` | ✅ | 镜像构建 |
 | `build-marketplace.yml` | ✅ | 镜像构建 |
 | `build-mcp-server.yml` | ✅ | 镜像构建 |
