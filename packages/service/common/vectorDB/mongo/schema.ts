@@ -7,7 +7,7 @@ import { DatasetEmbeddingCollectionName } from '../constants';
 export const embeddingMongo = (global.embeddingMongo ??= new Mongoose());
 
 export const MongoFullTextIndex = {
-  key: { teamId: 1, fulltextTokens: 'text' },
+  key: { teamId: 1, datasetId: 1, fulltextTokens: 'text' },
   options: {
     name: 'embedding_fulltext',
     default_language: 'none',
@@ -33,7 +33,7 @@ export const DatasetDataEmbeddingMongoSchema = new Schema<DatasetDataEmbedding>(
 defineIndex(DatasetDataEmbeddingMongoSchema, { key: { teamId: 1, datasetId: 1, collectionId: 1 } });
 defineIndex(DatasetDataEmbeddingMongoSchema, { key: { createTime: 1 } });
 
-// teamId 是 $text 的等值前缀。知识库和集合过滤在同一查询内应用。
+// $text 查询按 teamId 和 datasetId 等值定位知识库，集合过滤在同一次查询内应用。
 defineIndex(DatasetDataEmbeddingMongoSchema, MongoFullTextIndex);
 
 export const MongoDatasetDataEmbedding: Model<DatasetDataEmbedding> =

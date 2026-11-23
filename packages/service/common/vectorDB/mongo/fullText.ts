@@ -1,4 +1,5 @@
 import { mongo } from 'mongoose';
+import pLimit from 'p-limit';
 import { SqlFullTextMetadataSchema } from '@fastgpt/global/core/dataset/fullText/schema';
 import {
   SQL_FULL_TEXT_ANALYZER_VERSION,
@@ -11,6 +12,9 @@ import { connectEmbeddingMongo } from './controller';
 import { assertMongoFullTextIndex, ensureMongoFullTextIndex } from './fullTextIndex';
 import { embeddingMongo, MongoDatasetDataEmbedding } from './schema';
 import { toMongoFullTextTokens } from './utils';
+
+const datasetSearchConcurrency = 8;
+const limitDatasetSearch = pLimit(datasetSearchConcurrency);
 
 /** MongoDB 向量 ID 是字符串，早于全文迁移创建的行也使用此契约。 */
 export const assertMongoFullTextVectorId = (id: string) => {
@@ -116,7 +120,7 @@ export const mongoFullTextAdapter: NativeFullTextAdapter<'mongo'> = {
     await ensureMongoFullTextIndex();
     const scope = {
       teamId: props.teamId,
-      datasetId: { $in: props.datasetIds },
+      $text: { $search: terms.join(' ') },
       ...(allowed
         ? { collectionId: { $in: allowed } }
         : props.forbidCollectionIdList.length
@@ -125,13 +129,41 @@ export const mongoFullTextAdapter: NativeFullTextAdapter<'mongo'> = {
             }
           : {})
     };
-    return MongoDatasetDataEmbedding.aggregate<SqlFullTextHit>([
-      { $match: { ...scope, $text: { $search: terms.join(' ') } } },
-      { $project: { _id: 0, vectorId: '$_id', collectionId: 1, score: { $meta: 'textScore' } } },
-      { $sort: { score: -1, vectorId: 1 } },
-      { $limit: props.limit }
-    ])
-      .collation({ locale: 'simple' })
-      .read('primary');
+    const datasetIds = [...new Set(props.datasetIds)];
+    const hits: SqlFullTextHit[] = [];
+    for (let start = 0; start < datasetIds.length; start += datasetSearchConcurrency) {
+      const batch = await Promise.all(
+        datasetIds.slice(start, start + datasetSearchConcurrency).map((datasetId) =>
+          limitDatasetSearch(() =>
+            MongoDatasetDataEmbedding.aggregate<SqlFullTextHit>([
+              { $match: { ...scope, datasetId } },
+              {
+                $project: {
+                  _id: 0,
+                  vectorId: '$_id',
+                  collectionId: 1,
+                  score: { $meta: 'textScore' }
+                }
+              },
+              { $sort: { score: -1, vectorId: 1 } },
+              { $limit: props.limit }
+            ])
+              .collation({ locale: 'simple' })
+              .read('primary')
+              .exec()
+          )
+        )
+      );
+
+      // 每批只保留当前全局 Top K。同分按 UTF-8 字节序比较，和 MongoDB simple collation 一致。
+      hits.push(...batch.flat());
+      hits.sort(
+        (left, right) =>
+          right.score - left.score ||
+          Buffer.compare(Buffer.from(left.vectorId), Buffer.from(right.vectorId))
+      );
+      hits.length = Math.min(hits.length, props.limit);
+    }
+    return hits;
   }
 };

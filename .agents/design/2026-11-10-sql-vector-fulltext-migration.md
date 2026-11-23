@@ -69,7 +69,7 @@ MongoDB 及其他已适配的 SQL 向量库异步准备全文索引，应用启�
 
 ### MongoDB 向量库
 
-`SEARCH_MONGO_URL` 指向的 `dataset_data_embeddings` 用 `fulltextTokens` 存词串，与向量同行写删。`embedding_fulltext` 以 `teamId` 为等值前缀，使用 `$text` 和 `default_language: none`，沿用外置 Jieba 分词。数据集与允许/禁止集合均在排序和取 Top-K 前过滤。MongoDB 全文索引异步构建，和向量搜索索引各自验证。[MongoDB 文本索引约束](https://www.mongodb.com/docs/manual/core/indexes/index-types/index-text/text-index-restrictions/)
+`SEARCH_MONGO_URL` 指向的 `dataset_data_embeddings` 用 `fulltextTokens` 存词串，与向量同行写删。`embedding_fulltext` 以 `teamId`、`datasetId` 为等值前缀，使用 `$text` 和 `default_language: none`，沿用外置 Jieba 分词。Mongo provider 对选中的知识库限并发查询，每库先过滤允许/禁止集合并取 Top-K，再按原始分数和向量 ID 合并取全局 Top-K。MongoDB 全文索引异步构建，和向量搜索索引各自验证。已试用过仅含 `teamId` 前缀的 PR 版本时，可切到旧全文兼容读，确认索引定义后删除该预览索引，再构建新版索引。[MongoDB 文本索引约束](https://www.mongodb.com/docs/manual/core/indexes/index-types/index-text/text-index-restrictions/)
 
 手动任务复用现有三阶段流程。业务 Mongo 的 `dataset_datas.indexes[].text` 及历史同义词版本作为源，按字符串向量 ID 给同归属、词串缺失或为 `null` 的文档回填。旧 `dataset_data_texts` 保留给兼容读取。断点绑定向量集合 UUID，验收包含完整引用校验以及隔离范围的中英文检索。切读仍由 `TMP_MIGRATE_FULL_TEXT` 决定。
 

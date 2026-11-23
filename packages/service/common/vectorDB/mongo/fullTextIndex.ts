@@ -11,10 +11,11 @@ export const assertMongoFullTextIndex = async () => {
     !index ||
     index.hidden ||
     index.default_language !== 'none' ||
+    Object.keys(index.key).join(',') !== 'teamId,datasetId,_fts,_ftsx' ||
     index.key.teamId !== 1 ||
+    index.key.datasetId !== 1 ||
     index.key._fts !== 'text' ||
     index.key._ftsx !== 1 ||
-    Object.keys(index.key).length !== 3 ||
     index.weights?.fulltextTokens !== 1 ||
     Object.keys(index.weights).length !== 1 ||
     index.partialFilterExpression ||
