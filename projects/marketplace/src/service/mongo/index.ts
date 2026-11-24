@@ -70,6 +70,7 @@ export async function connectMongo(db: Mongoose, url: string): Promise<Mongoose>
     db.connection.removeAllListeners('error');
     db.connection.removeAllListeners('disconnected');
     db.set('strictQuery', 'throw');
+    db.set('autoIndex', false);
 
     db.connection.on('error', async (error) => {
       logger.error('Mongo connection error', { error });

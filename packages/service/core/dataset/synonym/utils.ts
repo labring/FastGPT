@@ -385,7 +385,11 @@ export const serializeSynonymMappingsToExcelBuffer = (
   const dataRows: string[][] = [];
   let maxSynonymCount = 1;
   for (const mapping of mappings) {
-    for (let offset = 0; offset < Math.max(1, mapping.synonymTerms.length); offset += maxSynonymsPerRow) {
+    for (
+      let offset = 0;
+      offset < Math.max(1, mapping.synonymTerms.length);
+      offset += maxSynonymsPerRow
+    ) {
       const group = mapping.synonymTerms.slice(offset, offset + maxSynonymsPerRow);
       dataRows.push([mapping.standardizedTerm, ...group]);
       maxSynonymCount = Math.max(maxSynonymCount, group.length);

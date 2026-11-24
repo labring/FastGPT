@@ -6,5 +6,5 @@
     }
   },
   "include": ["**/*.ts"],
-  "exclude": ["node_modules", "**/test/**", "**/*.test.ts", "vitest*.config.ts", "dist", "coverage", ".tsc-out"]
+  "exclude": ["node_modules", "**/test/**", "**/*.test.ts", "vitest*.config.ts", "vitestBoundary.ts", "dist", "coverage", ".tsc-out"]
 }

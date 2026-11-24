@@ -2,6 +2,7 @@ name: 'Test FastGPT'
 on:
   pull_request:
     paths:
+      - 'packages/dal/**'
       - 'packages/global/**'
       - 'packages/service/**'
       - 'packages/web/**'
@@ -67,6 +68,85 @@ jobs:
             packages/global/coverage/coverage-final.json
             packages/global/coverage/coverage-summary.json
 
+  test-dal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name ||
+            github.repository }}
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Capture proxy envs from variables
+        run: |
+          echo "HTTP_PROXY=${{ vars.AB_HTTP_PROXY }}" >> "$GITHUB_ENV"
+          echo "HTTPS_PROXY=${{ vars.AB_HTTPS_PROXY }}" >> "$GITHUB_ENV"
+          echo "NO_PROXY=${{ vars.AB_NO_PROXY }}" >> "$GITHUB_ENV"
+          echo "MONGOMS_DOWNLOAD_DIR=$HOME/.cache/mongodb-binaries" >> "$GITHUB_ENV"
+
+      - name: Pre-download MongoDB binary
+        run: |
+          MONGODB_VERSION="8.2.6"
+          UBUNTU_TAG="ubuntu2204"
+          if [ -r /etc/os-release ]; then
+            . /etc/os-release
+            case "${VERSION_ID%%.*}" in
+              24|26|28) UBUNTU_TAG="ubuntu2404" ;;
+            esac
+          fi
+          ARCHIVE="mongodb-linux-x86_64-${UBUNTU_TAG}-${MONGODB_VERSION}"
+          CACHE_DIR="$HOME/.cache/mongodb-binaries/${ARCHIVE}"
+          if [ ! -f "${CACHE_DIR}/mongod" ]; then
+            mkdir -p "${CACHE_DIR}"
+            TMP_DIR="$(mktemp -d)"
+            echo "Downloading MongoDB ${MONGODB_VERSION} (${UBUNTU_TAG}) via proxy..."
+            curl --proxy "${{ vars.AB_HTTP_PROXY }}" -fsSL \
+              "https://fastdl.mongodb.org/linux/${ARCHIVE}.tgz" \
+              | tar xz -C "${TMP_DIR}"
+            cp "${TMP_DIR}/${ARCHIVE}/bin/mongod" "${CACHE_DIR}/mongod.$$.tmp"
+            chmod +x "${CACHE_DIR}/mongod.$$.tmp"
+            mv -f "${CACHE_DIR}/mongod.$$.tmp" "${CACHE_DIR}/mongod"
+            rm -rf "${TMP_DIR}"
+            echo "MongoDB binary cached at ${CACHE_DIR}/mongod"
+          else
+            echo "MongoDB binary already cached at ${CACHE_DIR}/mongod"
+          fi
+          chmod +x "${CACHE_DIR}/mongod"
+          echo "MONGOMS_SYSTEM_BINARY=${CACHE_DIR}/mongod" >> "$GITHUB_ENV"
+
+      - name: 'Install Deps'
+        run: pnpm install --frozen-lockfile
+
+      - name: 'Typecheck DAL'
+        run: pnpm --filter @fastgpt/dal typecheck
+
+      - name: 'Test DAL'
+        env:
+          FASTGPT_TEST_SCOPE: dal
+          FASTGPT_TEST_OCEANBASE_URI: ${{ vars.AB_TEST_OCEANBASE_URI }}
+        run: |
+          if [ -n "$(printf '%s' "${FASTGPT_TEST_OCEANBASE_URI}" | tr -d '[:space:]')" ]; then
+            export FASTGPT_TEST_REQUIRED_OCEANBASE=1
+          fi
+          pnpm test
+
+      - name: 'Upload Coverage (DAL)'
+        if: always() && hashFiles('packages/dal/coverage/coverage-summary.json') != ''
+        uses: forgejo/upload-artifact@v4
+        with:
+          name: coverage-dal
+          path: |
+            packages/dal/coverage/coverage-final.json
+            packages/dal/coverage/coverage-summary.json
+
   test-service:
     runs-on: ubuntu-latest
     steps:
@@ -105,16 +185,20 @@ jobs:
           CACHE_DIR="$HOME/.cache/mongodb-binaries/${ARCHIVE}"
           if [ ! -f "${CACHE_DIR}/mongod" ]; then
             mkdir -p "${CACHE_DIR}"
+            TMP_DIR="$(mktemp -d)"
             echo "Downloading MongoDB ${MONGODB_VERSION} (${UBUNTU_TAG}) via proxy..."
             curl --proxy "${{ vars.AB_HTTP_PROXY }}" -fsSL \
               "https://fastdl.mongodb.org/linux/${ARCHIVE}.tgz" \
-              | tar xz -C /tmp
-            cp "/tmp/${ARCHIVE}/bin/mongod" "${CACHE_DIR}/mongod"
-            rm -rf "/tmp/${ARCHIVE}"
+              | tar xz -C "${TMP_DIR}"
+            cp "${TMP_DIR}/${ARCHIVE}/bin/mongod" "${CACHE_DIR}/mongod.$$.tmp"
+            chmod +x "${CACHE_DIR}/mongod.$$.tmp"
+            mv -f "${CACHE_DIR}/mongod.$$.tmp" "${CACHE_DIR}/mongod"
+            rm -rf "${TMP_DIR}"
             echo "MongoDB binary cached at ${CACHE_DIR}/mongod"
           else
             echo "MongoDB binary already cached at ${CACHE_DIR}/mongod"
           fi
+          chmod +x "${CACHE_DIR}/mongod"
           echo "MONGOMS_SYSTEM_BINARY=${CACHE_DIR}/mongod" >> "$GITHUB_ENV"
 
       - name: 'Install Deps'
@@ -172,16 +256,20 @@ jobs:
           CACHE_DIR="$HOME/.cache/mongodb-binaries/${ARCHIVE}"
           if [ ! -f "${CACHE_DIR}/mongod" ]; then
             mkdir -p "${CACHE_DIR}"
+            TMP_DIR="$(mktemp -d)"
             echo "Downloading MongoDB ${MONGODB_VERSION} (${UBUNTU_TAG}) via proxy..."
             curl --proxy "${{ vars.AB_HTTP_PROXY }}" -fsSL \
               "https://fastdl.mongodb.org/linux/${ARCHIVE}.tgz" \
-              | tar xz -C /tmp
-            cp "/tmp/${ARCHIVE}/bin/mongod" "${CACHE_DIR}/mongod"
-            rm -rf "/tmp/${ARCHIVE}"
+              | tar xz -C "${TMP_DIR}"
+            cp "${TMP_DIR}/${ARCHIVE}/bin/mongod" "${CACHE_DIR}/mongod.$$.tmp"
+            chmod +x "${CACHE_DIR}/mongod.$$.tmp"
+            mv -f "${CACHE_DIR}/mongod.$$.tmp" "${CACHE_DIR}/mongod"
+            rm -rf "${TMP_DIR}"
             echo "MongoDB binary cached at ${CACHE_DIR}/mongod"
           else
             echo "MongoDB binary already cached at ${CACHE_DIR}/mongod"
           fi
+          chmod +x "${CACHE_DIR}/mongod"
           echo "MONGOMS_SYSTEM_BINARY=${CACHE_DIR}/mongod" >> "$GITHUB_ENV"
 
       - name: 'Install Deps'
@@ -316,7 +404,7 @@ jobs:
 
   report-coverage:
     runs-on: ubuntu-latest
-    needs: [test-global, test-service, test-web, test-app, test-workflow-core, test-cli]
+    needs: [test-global, test-dal, test-service, test-web, test-app, test-workflow-core, test-cli]
     if: ${{ always() }}
     permissions:
       contents: read
@@ -326,6 +414,13 @@ jobs:
         with:
           name: coverage-global
           path: coverage-artifacts/coverage-global
+        continue-on-error: true
+
+      - name: 'Download Coverage (DAL)'
+        uses: forgejo/download-artifact@v4
+        with:
+          name: coverage-dal
+          path: coverage-artifacts/coverage-dal
         continue-on-error: true
 
       - name: 'Download Coverage Artifacts'
@@ -372,6 +467,7 @@ jobs:
           const marker = '<!-- fastgpt-coverage-report -->';
           const packages = [
             { name: 'Global', dir: 'coverage-global' },
+            { name: 'DAL', dir: 'coverage-dal' },
             { name: 'Service', dir: 'coverage-service' },
             { name: 'Web', dir: 'coverage-web' },
             { name: 'App', dir: 'coverage-app' },
@@ -410,6 +506,8 @@ jobs:
         run: |
           if { [ "${{ needs.test-global.result }}" != "success" ] &&
                [ "${{ needs.test-global.result }}" != "skipped" ]; } ||
+             { [ "${{ needs.test-dal.result }}" != "success" ] &&
+               [ "${{ needs.test-dal.result }}" != "skipped" ]; } ||
              { [ "${{ needs.test-service.result }}" != "success" ] &&
                [ "${{ needs.test-service.result }}" != "skipped" ]; } ||
              { [ "${{ needs.test-web.result }}" != "success" ] &&
