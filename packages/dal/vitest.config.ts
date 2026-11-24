@@ -1,7 +1,9 @@
 import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
+import { blockPrivateDalRepoImports } from './vitestBoundary';
 
 export default defineConfig({
+  plugins: [blockPrivateDalRepoImports()],
   resolve: {
     alias: {
       '@fastgpt-sdk/otel/logger': resolve('../../sdk/otel/src/logger-entry.ts'),
@@ -14,7 +16,7 @@ export default defineConfig({
       enabled: true,
       reporter: ['text', 'text-summary', 'html', 'json-summary', 'json'],
       reportOnFailure: true,
-      include: ['redis/**/*.ts'],
+      include: ['redis/**/*.ts', 'db/**/*.ts'],
       exclude: ['**/test/**', '**/*.test.ts', '**/index.ts'],
       cleanOnRerun: false
     },

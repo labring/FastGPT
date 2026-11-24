@@ -1,9 +1,11 @@
 import type { ClientSession } from '@fastgpt/service/common/mongo';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
 import {
+  bridgeClientSessionToDbSession,
   MongoTransactionConflictError,
   mongoSessionRun
 } from '@fastgpt/service/common/mongo/sessionRun';
+import { afterMongoCommit } from '@fastgpt/service/common/mongo/sessionCommitHook';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
@@ -90,5 +92,103 @@ describe('mongoSessionRun', () => {
     expect(handler).toHaveBeenCalledTimes(2);
     expect(firstSession.endSession).toHaveBeenCalledTimes(1);
     expect(secondSession.endSession).toHaveBeenCalledTimes(1);
+  });
+
+  it('executes afterMongoCommit callbacks in order only after commit, and drops retried/aborted queues', async () => {
+    const firstSession = createSession();
+    const secondSession = createSession();
+    const events: string[] = [];
+
+    firstSession.withTransaction = vi.fn(async (callback) => callback());
+    secondSession.withTransaction = vi.fn(async (callback) => callback());
+
+    let attempt = 0;
+    const handler = vi.fn(async (session: ClientSession) => {
+      attempt += 1;
+      await afterMongoCommit(session, () => {
+        events.push(`attempt-${attempt}`);
+      });
+      if (attempt === 1) {
+        throw new MongoTransactionConflictError(new Error('write conflict'));
+      }
+      await afterMongoCommit(session, () => {
+        events.push('second-hook');
+      });
+      return 'ok';
+    });
+
+    vi.spyOn(connectionMongo, 'startSession')
+      .mockResolvedValueOnce(firstSession)
+      .mockResolvedValueOnce(secondSession);
+
+    await expect(mongoSessionRun(handler)).resolves.toBe('ok');
+    expect(events).toEqual(['attempt-2', 'second-hook']);
+
+    // 业务异常回滚时不触发已注册回调；无 session 时直接触发。
+    const rollbackSession = createSession();
+    rollbackSession.withTransaction = vi.fn(async (callback) => callback());
+    vi.spyOn(connectionMongo, 'startSession').mockResolvedValueOnce(rollbackSession);
+
+    await expect(
+      mongoSessionRun(async (session) => {
+        await afterMongoCommit(session, () => {
+          events.push('should-not-run');
+        });
+        throw new Error('abort');
+      })
+    ).rejects.toThrow('abort');
+    expect(events).toEqual(['attempt-2', 'second-hook']);
+
+    await afterMongoCommit(undefined, () => {
+      events.push('immediate');
+    });
+    expect(events).toEqual(['attempt-2', 'second-hook', 'immediate']);
+  });
+
+  it('bridges ClientSession to DbSession with working tx.afterCommit and rollback isolation', async () => {
+    const firstSession = createSession();
+    const secondSession = createSession();
+    const events: string[] = [];
+
+    firstSession.withTransaction = vi.fn(async (callback) => callback());
+    secondSession.withTransaction = vi.fn(async (callback) => callback());
+
+    let attempt = 0;
+    vi.spyOn(connectionMongo, 'startSession')
+      .mockResolvedValueOnce(firstSession)
+      .mockResolvedValueOnce(secondSession);
+
+    await expect(
+      mongoSessionRun(async (session) => {
+        attempt += 1;
+        const tx = bridgeClientSessionToDbSession(session);
+        expect(tx?.dialect).toBe('mongo');
+        tx?.afterCommit(() => {
+          events.push(`bridged-attempt-${attempt}`);
+        });
+        if (attempt === 1) {
+          throw new MongoTransactionConflictError(new Error('retry me'));
+        }
+        return 'bridged-ok';
+      })
+    ).resolves.toBe('bridged-ok');
+    expect(events).toEqual(['bridged-attempt-2']);
+
+    const rollbackSession = createSession();
+    rollbackSession.withTransaction = vi.fn(async (callback) => callback());
+    vi.spyOn(connectionMongo, 'startSession').mockResolvedValueOnce(rollbackSession);
+
+    await expect(
+      mongoSessionRun(async (session) => {
+        const tx = bridgeClientSessionToDbSession(session);
+        tx?.afterCommit(() => {
+          events.push('bridged-aborted');
+        });
+        throw new Error('bridged-rollback');
+      })
+    ).rejects.toThrow('bridged-rollback');
+    expect(events).toEqual(['bridged-attempt-2']);
+    expect(bridgeClientSessionToDbSession(undefined)).toBeUndefined();
+    expect(bridgeClientSessionToDbSession(null)).toBeUndefined();
   });
 });

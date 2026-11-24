@@ -27,7 +27,7 @@ describe('rateLimit core', () => {
     await expect(checkIPRateLimit({ ...params, ip: '192.0.2.2' })).resolves.toBe(true);
 
     const key = toPhysicalRedisKey(`${RATE_LIMIT_KEY_PREFIX}:ip:wechat-login-qrcode:ip:192.0.2.1`);
-    await expect(getRedisConnection().get(key)).resolves.toBe(2);
+    await expect(getRedisConnection().get(key)).resolves.toBe('2');
   });
 
   it('对动态 key segment 进行编码', async () => {
@@ -41,7 +41,7 @@ describe('rateLimit core', () => {
     const key = toPhysicalRedisKey(
       `${RATE_LIMIT_KEY_PREFIX}:ip:encoded-policy:ip:user%3Aname%40example.com`
     );
-    await expect(getRedisConnection().get(key)).resolves.toBe(1);
+    await expect(getRedisConnection().get(key)).resolves.toBe('1');
   });
 
   it('支持按增量原子消费额度', async () => {

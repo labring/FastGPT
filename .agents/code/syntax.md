@@ -37,7 +37,7 @@
 
 ```
 packages/
-├── global/core/              # 原子层：类型、常量（前后端共享）
+├── global/core/              # 原子层：类型、常量（前后端共享，browser-safe，严禁声明物理表名/集合名）
 │   ├── app/
 │   │   ├── type.ts           # 顶层聚合类型
 │   │   ├── constants.ts
@@ -52,24 +52,27 @@ packages/
 │   ├── dataset/
 │   └── plugin/
 │
-└── service/core/             # 后端业务逻辑（不可在前端引用）
+├── dal/db/repos/             # 纯服务端持久化与仓储边界（开源表；Pro 10 表位于 pro/admin/src/dal/db/repos/）
+│   └── app/
+│       ├── repo.type.ts      # 【公开导出】领域仓储契约 type、Write Schema、Normalized Read Schema 及 .pick() 窄 DTO
+│       ├── repo.ts           # 【公开导出】调用 defineRepoToken 导出 AppRepoToken
+│       ├── mongo/            # 【包内私有，package.json exports 不暴露】
+│       │   ├── schema.ts     # 原生 new Schema + defineMongoCollection（含物理集合名与索引，零副作用）
+│       │   └── repo.ts       # MongoAppRepository（extends MongoRepositoryBase，constructor 自动构 readonly model）
+│       └── oceanbase/        # 【包内私有，package.json exports 不暴露】
+│           ├── table.ts      # 行类型、表名常量与原生 OceanBase CREATE TABLE DDL（utf8mb4_bin + fg_ 索引）
+│           └── repo.ts       # OceanBaseAppRepository（extends OceanBaseRepositoryBase, implements AppRepository）
+
+└── service/core/             # 后端业务逻辑与编排（不可在前端引用，新代码消费 @fastgpt/dal 公开 Token 与 repo.type）
     ├── app/                  # App 实例
-    │   ├── schema.ts         # 原子层：App 主表 Schema
-    │   ├── entity.ts         # 原子层：App 单次读写
-    │   ├── utils.ts          # 原子层：纯函数
-    │   ├── service.ts        # 实例业务层：只组合 App 自身操作，其他实例通过参数注入
-    │   ├── orchestration.ts  # 业务编排层（如有）：组合 App、AppVersion、Chat 等实例业务层
-    │   ├── auth.ts           # 鉴权（如有）：供 API 层或编排层入口调用
-    │   ├── version/          # AppVersion 实例（有独立 schema），与 App 互不引用
-    │   │   ├── schema.ts
-    │   │   ├── entity.ts
+    │   ├── service.ts        # 实例业务层：AppService 类（构造函数 deps 注入仓储与协同函数）+ 导出单例
+    │   ├── orchestration.ts  # 业务编排层（如有）：组合多个实例业务层，开启事务并注入依赖
+    │   ├── auth.ts           # 鉴权相关（如有）：供 API 层或编排层入口调用
+    │   ├── utils.ts          # 原子层：纯函数工具，无副作用，可独立单测
+    │   ├── version/          # AppVersion 实例（有独立 schema/repo），与 App 互不引用
     │   │   ├── service.ts
     │   │   └── utils.ts
-    │   ├── evaluation/       # 多个 schema 合并到单个 schema.ts
-    │   │   ├── schema.ts
-    │   │   ├── entity.ts
-    │   │   ├── service.ts
-    │   │   └── utils.ts
+    │   ├── evaluation/       # 多个子表 schema 合并到同一域下的 mongo/schema.ts 与 oceanbase/table.ts
     │   ├── logs/
     │   └── tool/             # 无独立 schema，属于 App 实例的业务拆分
     │       ├── service.ts
@@ -82,6 +85,48 @@ packages/
 - 子功能目录不超过 **3 层**嵌套。
 - 无需拆子功能时，目录内直接放 `schema.ts` + `entity.ts` + `service.ts` + `utils.ts`，需要跨实例组合时再加 `orchestration.ts`。
 - 多个 schema 文件（如 `evalSchema.ts` + `evalItemSchema.ts`）**合并**到单个 `schema.ts`。
+
+> 架构设计详见 [多数据库适配与领域仓储重构设计](../design/common/dal/multi-db-repository-architecture.md)。存量 `entity.ts` / 旧 `schema.ts` 处于渐进收口阶段，所有新增与重构模块一律采用以下领域仓储结构：
+
+| 文件 | 职责 |
+|------|------|
+| `packages/dal/db/repos/<domain>/repo.type.ts` | 领域仓储 `type` 契约、严进 Write Schema、宽出归一化 Read Schema 及 `.pick()` 窄 DTO（严禁泄漏 `FilterQuery`、空格投影字符串等驱动类型） |
+| `packages/dal/db/repos/<domain>/mongo/schema.ts` | 原生 `new Schema(...)` + `defineMongoCollection`（纯声明、零模块加载副作用，含物理集合名常量与索引，严禁字段内联 `index: true / unique: true`） |
+| `packages/dal/db/repos/<domain>/mongo/repo.ts` | 继承 `@fastgpt/dal/db/mongo/base` 的 `MongoRepositoryBase`，`constructor` 自动按 `DbRuntime` 构出 `readonly model`，内部封闭 `.lean()`、`ObjectId` 转换与软删除/租户过滤，出口统一经过 `parseRow` / `parseList` |
+| `packages/dal/db/repos/<domain>/oceanbase/table.ts` & `oceanbase/repo.ts` | OceanBase（4.3+ / SeekDB，MySQL 兼容模式）行类型与原生 `utf8mb4_bin` DDL，以及继承 `@fastgpt/dal/db/oceanbase/base` `OceanBaseRepositoryBase`（Kysely + `mysql2`）的策略实现 |
+| `packages/dal/db/repos/<domain>/repo.ts` | 统一通过 `defineRepoToken` 定义并导出仓储 DI Token（`{ mongo, oceanbase }`）；日志类仓储未配置 `logWriteUrl` 时透明回退复用主库连接池 |
+| `packages/service/<domain>/service.ts` | 业务编排类 `XxxService`：构造函数通过 `deps: XxxServiceDeps = {}` 注入仓储与协同函数（默认回退 `injectRepo(Token)`），导出默认实例；严禁引入 `mongoose` / `kysely` / `mysql2` |
+| `packages/service/<domain>/utils.ts` | 纯函数工具，无副作用，可独立单测 |
+
+```typescript
+// packages/dal/db/repos/app/repo.ts —— 注册方言工厂，模块加载期零副作用
+export const AppRepoToken = defineRepoToken<AppRepository>('AppRepository', {
+  mongo: (runtime) => new MongoAppRepository(runtime),
+  oceanbase: (runtime) => new OceanBaseAppRepository(runtime)
+});
+
+// service.ts —— 构造函数依赖注入（支持单测直接 new AppService({ appRepo: mockRepo }) 零 vi.mock 隔离）
+export type AppServiceDeps = {
+  appRepo?: AppRepository;
+  versionRepo?: AppVersionRepository;
+};
+
+export class AppService {
+  private readonly appRepo: AppRepository;
+  private readonly versionRepo: AppVersionRepository;
+
+  constructor(deps: AppServiceDeps = {}) {
+    this.appRepo = deps.appRepo ?? injectRepo(AppRepoToken);
+    this.versionRepo = deps.versionRepo ?? injectRepo(AppVersionRepoToken);
+  }
+
+  async findAppById(appId: string, teamId: string) {
+    return this.appRepo.findActiveById({ appId, teamId });
+  }
+}
+
+export const appService = new AppService();
+```
 
 ### 跨实例依赖通过函数注入
 
@@ -133,6 +178,12 @@ await deleteAppWithRelations(appId);
 ```
 
 注入函数也是测试接缝：实例业务层的单测直接传入 fake 函数，无需 mock 其他实例的模块。
+
+- `global/core/` 只放类型和常量，**禁止**引入 mongoose、kysely、pg、mysql2、服务端 SDK；实体 ID 统一使用 `@fastgpt/global/common/string/entityId`
+- `service/core/` 只在服务端使用，**禁止**被 `packages/web/` 或前端页面直接引用
+- 除 `**/mongo/**`、`**/sql/**` 与 `packages/dal/db/**` 外，全仓业务与 API 代码**严禁**直接引用底层数据库驱动或裸 `MongoXxx` Model
+- 子功能目录不超过 **3 层**嵌套
+- 同子域下紧密关联的多张子表 Schema **合并**置于同一子域的 `mongo/schema.ts` 与 `sql/table.ts`
 
 ### 禁止 re-export
 
@@ -417,35 +468,34 @@ const RequiredStoredStatusSchema = z.string().min(1).pipe(StoredStatusSchema);
 
 ## MongoDB 数据访问
 
-### 数据写操作函数支持可选 session 参数
+### 数据写操作支持可选 `tx?: DbSession` 显式事务参数
 
-涉及数据库写操作的函数统一支持可选的 `session` 参数，便于上层组合事务。事务统一通过 `mongoSessionRun` 发起，内部自动处理 startTransaction / commit / abort / retry。
+涉及数据库写操作的 Repository 与 Service 方法统一支持可选的 `tx?: DbSession` 参数（从 `@fastgpt/dal/db/types` 导入，严禁使用 `AsyncLocalStorage` 隐式传播或直接暴露 Mongoose `ClientSession`）。事务统一通过 `@fastgpt/dal/db/transaction` 的 `runInTransaction` 发起，内部自动处理开启、提交、回滚、写冲突重试以及 `tx.afterCommit` 提交后副作用触发。
 
 ```typescript
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { type ClientSession } from '@fastgpt/service/common/mongo';
+import { runInTransaction } from '@fastgpt/dal/db/transaction';
+import type { DbSession } from '@fastgpt/dal/db/types';
 
-// entity.ts —— 基础操作透传 session
-export const createVersion = (data: CreateVersionData, session?: ClientSession) =>
-  MongoAppVersion.create([data], { session });
+// mongo/repo.ts —— 通过基类 this.txOpts(tx) 透传底层会话
+async createVersion({ data, tx }: { data: CreateVersionInput; tx?: DbSession }) {
+  const [doc] = await this.model.create([data], this.txOpts(tx));
+  return this.parseRow(doc.toObject());
+}
 
-// service.ts —— 需要事务时用 mongoSessionRun 包裹，外部已有 session 时直接传入
-export const createAppAndInitVersion = async (
-  data: AppCreateParams,
-  session?: ClientSession
-) => {
-  const create = async (session: ClientSession) => {
-    const app = await createApp(data, session);
-    await createVersion({ appId: app._id, version: 0 }, session);
+// service.ts —— 外部已传入 tx 时直接复用，否则由 runInTransaction 开启新事务；缓存失效挂入 afterCommit
+async createAppAndInitVersion({ data, tx }: { data: CreateAppWriteInput; tx?: DbSession }) {
+  const execute = async (activeTx: DbSession) => {
+    const app = await this.appRepo.createApp({ data, tx: activeTx });
+    await this.versionRepo.createVersion({ data: { appId: app._id, version: 0 }, tx: activeTx });
+    activeTx.afterCommit(() => invalidateTeamAppCache(data.teamId));
     return app;
   };
 
-  if (session) {
-    return create(session);
-  } else {
-    return mongoSessionRun(create);
+  if (tx !== undefined) {
+    return execute(tx);
   }
-};
+  return runInTransaction(execute);
+}
 ```
 
 ### MongoDB 4.4 `$lookup` 兼容

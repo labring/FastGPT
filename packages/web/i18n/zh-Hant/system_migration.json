@@ -83,5 +83,10 @@
   "migrations.20261120_migrate_model_pricing.stt": "回填 STT 計價類型",
   "migrations.20261120_migrate_model_pricing.llmTiers": "遷移 LLM 階梯上限",
   "migrations.20261120_migrate_model_pricing.validation": "驗證模型價格",
-  "migrations.20261120_migrate_model_pricing.result": "已掃描 {{sttModels}} 個 STT 模型，已轉換 {{llmModels}} 個系統 LLM 模型的階梯上限為 K Tokens。"
+  "migrations.20261120_migrate_model_pricing.result": "已掃描 {{sttModels}} 個 STT 模型，已轉換 {{llmModels}} 個系統 LLM 模型的階梯上限為 K Tokens。",
+  "migrations.20261123_cleanup_mongo_indexes.name": "清理歷史廢棄 MongoDB 索引",
+  "migrations.20261123_cleanup_mongo_indexes.description": "啟動後在背景獨立清理歷史已廢棄的 MongoDB 索引：刪除前持續追蹤前置替代索引直至建置就緒，並嚴格依索引名稱、鍵定義與完整選項精確比對，自動跳過客戶自建或簽章不符的索引；設定 MONGO_DEPRECATE_INDEX=false 時保留現有廢棄索引並延後等待開啟或手動清理後重試。",
+  "migrations.20261123_cleanup_mongo_indexes.cleanup": "清理廢棄索引",
+  "migrations.20261123_cleanup_mongo_indexes.validation": "驗證清理結果",
+  "migrations.20261123_cleanup_mongo_indexes.result": "共檢查 {{totalCount}} 條廢棄索引：已清理 {{droppedCount}} 條，已不存在 {{missingCount}} 條，保守跳過 {{skippedCount}} 條。"
 }
