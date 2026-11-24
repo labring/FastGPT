@@ -85,24 +85,35 @@ export const ModerationPolicy = () => {
   };
 
   // 1. 获取全局策略与插件列表
-  const { loading: loadingPolicy, runAsync: fetchPolicy } = useRequest(getAdminModerationPolicy, {
-    onSuccess: (data) => {
-      if (data) {
-        persistedPolicyRef.current = data;
-        const restoredPolicy = marketplaceDraft.current ?? data;
-        updatePolicy(restoredPolicy, { markDraftDirty: false });
-        marketplaceDraft.current = undefined;
-        useModerationPolicyDraftStore.getState().setDraft(undefined);
-        // 标注 2 特殊状态规则：若当前有审核服务在生效，列表默认收起；若未选择，默认展开
-        if (!hasInitializedCollapse.current) {
-          setIsListCollapsed(Boolean(restoredPolicy.activePluginId));
-          hasInitializedCollapse.current = true;
-        }
-      }
+  const { loading: loadingPolicy, runAsync: fetchPolicy } = useRequest(
+    async (expectedRevision?: number) => {
+      const revisionAtStart =
+        typeof expectedRevision === 'number' ? expectedRevision : draftRevisionRef.current;
+      const data = await getAdminModerationPolicy();
+      return { data, revisionAtStart };
     },
-    errorToast: t('admin:moderation.fetch_policy_error'),
-    manual: false
-  });
+    {
+      onSuccess: ({ data, revisionAtStart }) => {
+        if (data) {
+          persistedPolicyRef.current = data;
+          // 仅在请求期间未产生新草稿编辑时覆盖表单状态，防止异步回读冲掉更新的草稿
+          if (draftRevisionRef.current === revisionAtStart) {
+            const restoredPolicy = marketplaceDraft.current ?? data;
+            updatePolicy(restoredPolicy, { markDraftDirty: false });
+            marketplaceDraft.current = undefined;
+            useModerationPolicyDraftStore.getState().setDraft(undefined);
+            // 标注 2 特殊状态规则：若当前有审核服务在生效，列表默认收起；若未选择，默认展开
+            if (!hasInitializedCollapse.current) {
+              setIsListCollapsed(Boolean(restoredPolicy.activePluginId));
+              hasInitializedCollapse.current = true;
+            }
+          }
+        }
+      },
+      errorToast: t('admin:moderation.fetch_policy_error'),
+      manual: false
+    }
+  );
 
   const { loading: loadingPlugins, runAsync: fetchPlugins } = useRequest(
     () => getAdminModerationPluginList(),
@@ -122,21 +133,27 @@ export const ModerationPolicy = () => {
     return plugins.find((p) => !p.deleted && p.pluginId === policy.activePluginId);
   }, [plugins, policy.activePluginId]);
 
-  // 保存全局策略配置
+  // 保存全局策略配置：将保存与回读合并为同一请求周期，避免保存完成到回读结束的间隙出现可编辑窗口
   const { runAsync: savePolicy, loading: savingPolicy } = useRequest(
-    postAdminUpdateModerationPolicy,
+    async (data: SystemModerationPolicyType) => {
+      const revisionAtSubmit = draftRevisionRef.current;
+      const updated = await postAdminUpdateModerationPolicy(data);
+      persistedPolicyRef.current = updated ?? data;
+      // 使用 allSettled 避免回读失败覆盖“保存成功”状态，回读错误由各自请求提示
+      await Promise.allSettled([fetchPolicy(revisionAtSubmit), fetchPlugins()]);
+      return updated;
+    },
     {
       manual: true,
       successToast: t('admin:moderation.save_success'),
-      errorToast: t('admin:moderation.save_error'),
-      onSuccess: () => {
-        void fetchPolicy();
-        void fetchPlugins();
-      }
+      errorToast: t('admin:moderation.save_error')
     }
   );
 
+  const isPolicyBusy = loadingPolicy || loadingPlugins || savingPolicy;
+
   const handleSubmit = async () => {
+    if (isPolicyBusy) return;
     const currentPolicy = policyRef.current;
     if (currentPolicy.enabled && !activePlugin) {
       toast({ status: 'error', title: t('admin:moderation.select_plugin_required') });
@@ -183,6 +200,7 @@ export const ModerationPolicy = () => {
   // 点击操作栏“启用”按钮切换到目标插件（已启用插件不可取消启用）
   const handleActivatePlugin = async (plugin: AdminModerationPluginItemType) => {
     if (
+      isPolicyBusy ||
       !plugin.hasConfiguredSecrets ||
       policyRef.current.activePluginId === plugin.pluginId ||
       activatingPluginId
@@ -271,6 +289,7 @@ export const ModerationPolicy = () => {
 
   // 删除插件入口：仅剩最后一个审核插件时弹出专用 Modal 提示并允许直接卸载及关闭总开关
   const handleDeletePlugin = (plugin: AdminModerationPluginItemType) => {
+    if (isPolicyBusy) return;
     const isLastPlugin = plugins.length <= 1;
     if (isLastPlugin) {
       openUninstallLastConfirm({
@@ -295,6 +314,7 @@ export const ModerationPolicy = () => {
 
   /** Preserve all unsaved fields while visiting the marketplace to install a plugin. */
   const handleAddFromMarket = () => {
+    if (isPolicyBusy) return;
     useModerationPolicyDraftStore.getState().setDraft(policyRef.current);
     void router.push('/config/tool/marketplace?type=moderation');
   };
@@ -319,7 +339,7 @@ export const ModerationPolicy = () => {
       <AdminSettingPage
         headerTitle={t('admin:page_title_moderation_policy')}
         tocItems={tocItems}
-        isLoading={loadingPolicy || loadingPlugins}
+        isLoading={isPolicyBusy}
         isSaving={savingPolicy}
         onSave={handleSubmit}
       >
@@ -328,6 +348,7 @@ export const ModerationPolicy = () => {
           <AdminSwitchRow
             label={t('admin:moderation.enable_moderation')}
             isChecked={policy.enabled}
+            isDisabled={isPolicyBusy}
             onChange={(checked) => {
               updatePolicy((prev) => ({
                 ...prev,
@@ -516,6 +537,7 @@ export const ModerationPolicy = () => {
                   label={t('admin:moderation.hook_user_input')}
                   tooltip={t('admin:moderation.hook_user_input_tip')}
                   isChecked={policy.hooks.userInput}
+                  isDisabled={isPolicyBusy}
                   onChange={(checked) => {
                     updatePolicy((prev) => ({
                       ...prev,
@@ -529,6 +551,7 @@ export const ModerationPolicy = () => {
                   label={t('admin:moderation.hook_model_input')}
                   tooltip={t('admin:moderation.hook_model_input_tip')}
                   isChecked={policy.hooks.modelInput}
+                  isDisabled={isPolicyBusy}
                   onChange={(checked) => {
                     updatePolicy((prev) => ({
                       ...prev,
@@ -542,6 +565,7 @@ export const ModerationPolicy = () => {
                   label={t('admin:moderation.hook_final_output')}
                   tooltip={t('admin:moderation.hook_final_output_tip')}
                   isChecked={policy.hooks.finalOutput}
+                  isDisabled={isPolicyBusy}
                   onChange={(checked) => {
                     updatePolicy((prev) => ({
                       ...prev,
@@ -569,6 +593,7 @@ export const ModerationPolicy = () => {
                     precision={0}
                     w={'160px'}
                     variant={'whiteOutline'}
+                    isDisabled={isPolicyBusy}
                     value={policy.strategy.streamInterval}
                     onChange={(val) => {
                       updatePolicy((prev) => ({
@@ -596,6 +621,7 @@ export const ModerationPolicy = () => {
               >
                 <MySelect
                   width={'100%'}
+                  isDisabled={isPolicyBusy}
                   value={policy.strategy.suspectedRiskAction}
                   list={[
                     {
@@ -627,6 +653,7 @@ export const ModerationPolicy = () => {
               >
                 <MySelect
                   width={'100%'}
+                  isDisabled={isPolicyBusy}
                   value={policy.strategy.serviceExceptionAction}
                   list={[
                     {

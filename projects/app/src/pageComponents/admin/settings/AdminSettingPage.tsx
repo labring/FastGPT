@@ -66,6 +66,11 @@ const AdminSettingPage = ({
     ? activeId
     : tocItems[0]?.id || '';
 
+  // 当前高亮项从动态目录中移除时在渲染阶段同步回退，避免该目录项再次出现后误跳回旧高亮位置
+  if (activeId && currentActiveId !== activeId) {
+    setActiveId(currentActiveId);
+  }
+
   // 滚动监听，实时计算当前视口中最高亮的首个可见大区。
   // 每帧都会触发且内部多次 getBoundingClientRect 强制同步布局，沿用旧版 100ms 节流避免滚动掉帧。
   // 容器通过滚动事件的 currentTarget 传入，避免在渲染期创建的节流闭包里读取 ref。

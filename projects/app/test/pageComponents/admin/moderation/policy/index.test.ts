@@ -15,8 +15,12 @@ const mocks = vi.hoisted(() => ({
   pluginsData: [] as AdminModerationPluginItemType[],
   lastHeaderTitle: undefined as string | undefined,
   lastTocItems: [] as Array<{ id: string; label: string }>,
+  lastIsLoading: false,
+  lastIsSaving: false,
   lastOnSave: undefined as (() => void | Promise<unknown>) | undefined,
   lastNumberInputVariant: undefined as string | undefined,
+  getModerationPolicy: vi.fn(),
+  getModerationPluginList: vi.fn(),
   saveModerationConfig: vi.fn(),
   updateModerationPolicy: vi.fn(),
   lastModalOnSuccess: undefined as
@@ -47,24 +51,41 @@ vi.mock('@fastgpt/web/hooks/useConfirm', () => ({
 }));
 vi.mock('@fastgpt/web/hooks/useRequest', () => ({
   useRequest: (
-    fn: () => Promise<unknown>,
+    fn: (...args: any[]) => Promise<unknown>,
     options?: { manual?: boolean; onSuccess?: (data: unknown) => void }
   ) => {
-    React.useEffect(() => {
-      if (options?.manual === false) {
-        void fn().then((res) => options?.onSuccess?.(res));
+    const [loading, setLoading] = React.useState(false);
+    const fnRef = React.useRef(fn);
+    const optionsRef = React.useRef(options);
+    fnRef.current = fn;
+    optionsRef.current = options;
+
+    const runAsync = React.useCallback(async (...args: any[]) => {
+      setLoading(true);
+      try {
+        const res = await fnRef.current(...args);
+        optionsRef.current?.onSuccess?.(res);
+        return res;
+      } finally {
+        setLoading(false);
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    React.useEffect(() => {
+      if (optionsRef.current?.manual === false) {
+        void runAsync();
+      }
+    }, [runAsync]);
+
     return {
-      loading: false,
-      runAsync: fn
+      loading,
+      runAsync
     };
   }
 }));
 vi.mock('@/web/core/plugin/admin/moderation/api', () => ({
-  getAdminModerationPolicy: () => Promise.resolve(mocks.policyData),
-  getAdminModerationPluginList: () => Promise.resolve(mocks.pluginsData),
+  getAdminModerationPolicy: (...args: any[]) => mocks.getModerationPolicy(...args),
+  getAdminModerationPluginList: (...args: any[]) => mocks.getModerationPluginList(...args),
   postAdminDeleteModerationPlugin: vi.fn(),
   postAdminSaveModerationConfig: mocks.saveModerationConfig,
   postAdminUpdateModerationPolicy: mocks.updateModerationPolicy
@@ -84,19 +105,30 @@ vi.mock('@/pageComponents/admin/settings/AdminSettingPage', () => ({
   default: ({
     headerTitle,
     tocItems,
+    isLoading,
+    isSaving,
     onSave,
     children
   }: React.PropsWithChildren<{
     headerTitle?: string;
     tocItems: Array<{ id: string; label: string }>;
+    isLoading?: boolean;
+    isSaving?: boolean;
     onSave?: () => void | Promise<unknown>;
   }>) => {
     mocks.lastHeaderTitle = headerTitle;
     mocks.lastTocItems = tocItems;
+    mocks.lastIsLoading = Boolean(isLoading);
+    mocks.lastIsSaving = Boolean(isSaving);
     mocks.lastOnSave = onSave;
     return React.createElement(
       'div',
-      { 'data-admin-setting-page': 'true', 'data-header-title': headerTitle },
+      {
+        'data-admin-setting-page': 'true',
+        'data-header-title': headerTitle,
+        'data-is-loading': String(Boolean(isLoading)),
+        'data-is-saving': String(Boolean(isSaving))
+      },
       children
     );
   }
@@ -124,10 +156,12 @@ vi.mock('@/pageComponents/admin/settings/AdminSwitchRow', () => ({
   default: ({
     label,
     isChecked,
+    isDisabled,
     onChange
   }: {
     label: string;
     isChecked?: boolean;
+    isDisabled?: boolean;
     onChange?: (checked: boolean) => void;
   }) =>
     React.createElement(
@@ -137,6 +171,7 @@ vi.mock('@/pageComponents/admin/settings/AdminSwitchRow', () => ({
       React.createElement('input', {
         type: 'checkbox',
         checked: Boolean(isChecked),
+        disabled: Boolean(isDisabled),
         onChange: (e: React.ChangeEvent<HTMLInputElement>) => onChange?.(e.target.checked)
       })
     )
@@ -222,9 +257,17 @@ describe('ModerationPolicy page', () => {
     mocks.pluginsData = [];
     mocks.lastHeaderTitle = undefined;
     mocks.lastTocItems = [];
+    mocks.lastIsLoading = false;
+    mocks.lastIsSaving = false;
     mocks.lastOnSave = undefined;
     mocks.lastNumberInputVariant = undefined;
     mocks.lastModalOnSuccess = undefined;
+    mocks.getModerationPolicy
+      .mockReset()
+      .mockImplementation(() => Promise.resolve(mocks.policyData));
+    mocks.getModerationPluginList
+      .mockReset()
+      .mockImplementation(() => Promise.resolve(mocks.pluginsData));
     mocks.saveModerationConfig.mockReset();
     mocks.updateModerationPolicy.mockReset();
   });
@@ -627,6 +670,155 @@ describe('ModerationPolicy page', () => {
       title: 'admin:moderation.select_plugin_required'
     });
     expect(mocks.updateModerationPolicy).not.toHaveBeenCalled();
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it('keeps AdminSettingPage loading and form controls disabled throughout save and post-save refetch', async () => {
+    const baiduPlugin: AdminModerationPluginItemType = {
+      pluginId: 'baidu',
+      source: 'system',
+      name: 'Baidu Moderation',
+      provider: 'baidu',
+      enabled: true,
+      hasConfiguredSecrets: true
+    };
+    const initialPolicy: SystemModerationPolicyType = {
+      ...DefaultSystemModerationPolicy,
+      enabled: true,
+      activePluginId: 'baidu'
+    };
+    mocks.policyData = initialPolicy;
+    mocks.pluginsData = [baiduPlugin];
+
+    let resolveUpdate!: (value: SystemModerationPolicyType) => void;
+    mocks.updateModerationPolicy.mockReturnValueOnce(
+      new Promise<SystemModerationPolicyType>((resolve) => {
+        resolveUpdate = resolve;
+      })
+    );
+    let resolveRefetchPolicy!: (value: SystemModerationPolicyType) => void;
+    let resolveRefetchPlugins!: (value: AdminModerationPluginItemType[]) => void;
+
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    await act(async () => {
+      root.render(React.createElement(ModerationPolicy));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mocks.lastIsLoading).toBe(false);
+    expect(mocks.lastIsSaving).toBe(false);
+
+    // Prepare deferred post-save refetch promises before submitting
+    mocks.getModerationPolicy.mockReturnValueOnce(
+      new Promise<SystemModerationPolicyType>((resolve) => {
+        resolveRefetchPolicy = resolve;
+      })
+    );
+    mocks.getModerationPluginList.mockReturnValueOnce(
+      new Promise<AdminModerationPluginItemType[]>((resolve) => {
+        resolveRefetchPlugins = resolve;
+      })
+    );
+
+    // Trigger save without awaiting completion
+    let savePromise!: Promise<unknown> | void;
+    await act(async () => {
+      savePromise = mocks.lastOnSave?.();
+      await Promise.resolve();
+    });
+
+    // 1. While update request is pending: AdminSettingPage is loading & saving, switches are disabled
+    expect(mocks.lastIsLoading).toBe(true);
+    expect(mocks.lastIsSaving).toBe(true);
+    const switchesDuringUpdate = Array.from(
+      host.querySelectorAll('input[type="checkbox"]')
+    ) as HTMLInputElement[];
+    expect(switchesDuringUpdate.length).toBeGreaterThan(1);
+    expect(switchesDuringUpdate.every((input) => input.disabled)).toBe(true);
+
+    // Clicking a disabled switch during save does not mutate state
+    await act(async () => {
+      switchesDuringUpdate[1].click();
+    });
+    expect(switchesDuringUpdate[1].checked).toBe(true);
+
+    // 2. After update resolves, while post-save refetch is still pending: page MUST remain busy
+    await act(async () => {
+      resolveUpdate(initialPolicy);
+      await Promise.resolve();
+    });
+    expect(mocks.lastIsLoading).toBe(true);
+    expect(mocks.lastIsSaving).toBe(true);
+    const switchesDuringRefetch = Array.from(
+      host.querySelectorAll('input[type="checkbox"]')
+    ) as HTMLInputElement[];
+    expect(switchesDuringRefetch.every((input) => input.disabled)).toBe(true);
+
+    // 3. Once post-save refetch finishes: busy state clears and controls re-enable
+    await act(async () => {
+      resolveRefetchPolicy(initialPolicy);
+      resolveRefetchPlugins([baiduPlugin]);
+      await savePromise;
+    });
+    expect(mocks.lastIsLoading).toBe(false);
+    expect(mocks.lastIsSaving).toBe(false);
+    const switchesAfterSave = Array.from(
+      host.querySelectorAll('input[type="checkbox"]')
+    ) as HTMLInputElement[];
+    expect(switchesAfterSave.every((input) => !input.disabled)).toBe(true);
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it('does not overwrite newer draft edits when a stale getAdminModerationPolicy response resolves', async () => {
+    let resolveInitialFetch!: (value: SystemModerationPolicyType) => void;
+    mocks.getModerationPolicy.mockReturnValueOnce(
+      new Promise<SystemModerationPolicyType>((resolve) => {
+        resolveInitialFetch = resolve;
+      })
+    );
+
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    await act(async () => {
+      root.render(React.createElement(ModerationPolicy));
+    });
+
+    // Simulate a draft edit happening before the stale policy fetch completes
+    // (e.g., via programmatic update or race while fetchPolicy is still pending)
+    const totalSwitch = host.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    expect(totalSwitch.checked).toBe(false);
+    expect(totalSwitch.disabled).toBe(true);
+
+    // Even if an event fires directly (bypassing disabled attribute), draftRevisionRef protects it
+    totalSwitch.disabled = false;
+    await act(async () => {
+      totalSwitch.click();
+    });
+    expect(totalSwitch.checked).toBe(true);
+
+    // Stale fetch returns enabled: false — must NOT clobber the newer enabled: true draft
+    await act(async () => {
+      resolveInitialFetch({
+        ...DefaultSystemModerationPolicy,
+        enabled: false
+      });
+      await Promise.resolve();
+    });
+
+    expect((host.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(true);
 
     await act(async () => {
       root.unmount();
