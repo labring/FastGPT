@@ -787,17 +787,18 @@ func (c *Client) resolveTimeout(reqCfg requestConfig) time.Duration {
 	return defaultTimeout
 }
 
-func (c *Client) resolveMaxRetries(spec operationSpec, reqCfg requestConfig, isStreamBody bool, streamMode bool) int {
-	if isStreamBody {
+func (c *Client) resolveMaxRetries(spec operationSpec, reqCfg requestConfig, isStreamBody bool, disableDefaultRetry bool) int {
+	if isStreamBody || spec.RetryPolicy == retryPolicyDisabled {
 		return 0
 	}
 	if reqCfg.maxRetries != nil {
 		return max(0, *reqCfg.maxRetries)
 	}
-	if streamMode {
+	if disableDefaultRetry {
 		return 0
 	}
-	if spec.Method == http.MethodGet {
+	retryableByDefault := spec.RetryPolicy == retryPolicyEnabled || (spec.RetryPolicy == retryPolicyDefault && spec.Method == http.MethodGet)
+	if retryableByDefault {
 		if c.cfg.maxRetries != nil {
 			return max(0, *c.cfg.maxRetries)
 		}
@@ -918,7 +919,8 @@ func (c *Client) executeWithRetry(
 	prepared preparedRequest,
 	reqCfg requestConfig,
 	scope *secretScope,
-	streamMode bool,
+	handshakeOnlyTimeout bool,
+	disableDefaultRetry bool,
 	lastAttempt *int,
 ) (*attemptResult, error) {
 	routePath := normalizeRoutePath(spec.Path)
@@ -948,7 +950,7 @@ func (c *Client) executeWithRetry(
 	extraSecrets := scope.snapshot()
 
 	timeout := c.resolveTimeout(reqCfg)
-	maxRetries := c.resolveMaxRetries(spec, reqCfg, prepared.isStreamBody, streamMode)
+	maxRetries := c.resolveMaxRetries(spec, reqCfg, prepared.isStreamBody, disableDefaultRetry)
 
 	attempt := 0
 	for {
@@ -966,8 +968,8 @@ func (c *Client) executeWithRetry(
 		)
 
 		// 非流式请求将超时期限贯穿至响应体读取完成；
-		// SSE 流式请求仅将超时作用于建连握手阶段，握手成功后立即摘除超时计时器，避免误杀长耗时流。
-		if streamMode {
+		// SSE 与二进制流式下载仅将超时作用于建连握手阶段，握手成功后立即摘除超时计时器，避免误杀长耗时流。
+		if handshakeOnlyTimeout {
 			reqCtx, cancelReq = context.WithCancelCause(ctx)
 			if timeout > 0 {
 				handshakeTimer = time.AfterFunc(timeout, func() {
@@ -1115,9 +1117,10 @@ func buildResponseError(
 	rawText := strings.TrimSpace(string(rawBytes))
 	if rawText != "" {
 		var env struct {
-			Code       *int   `json:"code"`
-			StatusText string `json:"statusText"`
-			Message    string `json:"message"`
+			Code       *int            `json:"code"`
+			StatusText string          `json:"statusText"`
+			Message    string          `json:"message"`
+			Data       json.RawMessage `json:"data"`
 			Error      *struct {
 				Message string `json:"message"`
 			} `json:"error"`
@@ -1132,13 +1135,14 @@ func buildResponseError(
 				msg = env.Error.Message
 			}
 			msg = cmp.Or(msg, env.StatusText, fmt.Sprintf("Request failed with HTTP %d", statusCode))
-			return newMappedAPIError(
+			return newMappedAPIErrorWithData(
 				msg,
 				statusCode,
 				serverCode,
 				env.StatusText,
 				raw.RequestID,
 				raw.URL,
+				env.Data,
 				nil,
 				extraSecrets,
 			)
@@ -1177,13 +1181,14 @@ func unwrapJSONResponse(
 				code := *env.Code
 				if code >= 400 || (spec.ResponseMode == responseEnvelope && code != 200) {
 					msg := cmp.Or(env.Message, env.StatusText, fmt.Sprintf("FastGPT API error (code %d)", code))
-					return newMappedAPIError(
+					return newMappedAPIErrorWithData(
 						msg,
 						raw.StatusCode,
 						code,
 						env.StatusText,
 						raw.RequestID,
 						raw.URL,
+						env.Data,
 						nil,
 						extraSecrets,
 					)
@@ -1279,7 +1284,7 @@ func (c *Client) executeNonStream(
 	requestURL = prepared.url
 	scope.addFromHeader(prepared.headers)
 
-	res, err := c.executeWithRetry(ctx, spec, prepared, reqCfg, scope, false, &lastAttempt)
+	res, err := c.executeWithRetry(ctx, spec, prepared, reqCfg, scope, false, false, &lastAttempt)
 	if err != nil {
 		return c.reportRequestError(ctx, spec, requestURL, startedAt, lastAttempt, scope, err)
 	}
@@ -1346,24 +1351,121 @@ func (c *Client) doBinary(
 	spec operationSpec,
 	req any,
 	opts ...RequestOption,
-) ([]byte, error) {
-	var result []byte
-	err := c.executeNonStream(
-		ctx,
-		spec,
-		req,
-		nil,
-		"*/*",
-		func(_ RawResponse, bodyBytes []byte, _ []string) error {
-			result = bodyBytes
-			return nil
-		},
-		opts...,
-	)
-	if err != nil {
-		return nil, err
+) (*BinaryStream, error) {
+	if ctx == nil {
+		ctx = context.Background()
 	}
-	return result, nil
+	reqCfg := applyRequestOptions(opts...)
+	startedAt := time.Now()
+	requestURL := c.baseURL + normalizeRoutePath(spec.Path)
+	lastAttempt := 0
+	scope := c.newInitialSecretScope(reqCfg)
+
+	reportErr := func(err error) error {
+		return c.reportRequestError(ctx, spec, requestURL, startedAt, lastAttempt, scope, err)
+	}
+
+	prepared, err := c.prepareRequest(spec, req, nil, reqCfg, "*/*")
+	if err != nil {
+		return nil, reportErr(err)
+	}
+	requestURL = prepared.url
+	scope.addFromHeader(prepared.headers)
+
+	res, err := c.executeWithRetry(ctx, spec, prepared, reqCfg, scope, true, false, &lastAttempt)
+	if err != nil {
+		return nil, reportErr(err)
+	}
+
+	handedOff := false
+	defer func() {
+		if !handedOff {
+			if res.handshakeTimer != nil {
+				res.handshakeTimer.Stop()
+			}
+			if res.resp.Body != nil {
+				_ = res.resp.Body.Close()
+			}
+			res.cancelReq(nil)
+		}
+	}()
+
+	if reqCfg.rawResponse != nil {
+		*reqCfg.rawResponse = res.raw
+	}
+
+	extraSecrets := scope.snapshot()
+	if res.resp.StatusCode >= http.StatusBadRequest {
+		bodyBytes, readErr := c.readBodyWithAttempt(ctx, spec, res, extraSecrets)
+		if readErr != nil {
+			return nil, reportErr(readErr)
+		}
+		return nil, reportErr(buildResponseError(res.resp.StatusCode, res.raw, bodyBytes, extraSecrets))
+	}
+
+	contentType := strings.ToLower(res.resp.Header.Get("Content-Type"))
+	contentDisposition := strings.ToLower(res.resp.Header.Get("Content-Disposition"))
+	if strings.Contains(contentType, "application/json") && !strings.Contains(contentDisposition, "attachment") {
+		bodyBytes, readErr := c.readBodyWithAttempt(ctx, spec, res, extraSecrets)
+		if readErr != nil {
+			return nil, reportErr(readErr)
+		}
+		var env struct {
+			Code       *int            `json:"code"`
+			StatusText string          `json:"statusText"`
+			Message    string          `json:"message"`
+			Data       json.RawMessage `json:"data"`
+		}
+		if json.Unmarshal(bytes.TrimSpace(bodyBytes), &env) == nil && env.Code != nil && *env.Code != 200 {
+			msg := cmp.Or(env.Message, env.StatusText, fmt.Sprintf("FastGPT API error (code %d)", *env.Code))
+			return nil, reportErr(newMappedAPIErrorWithData(
+				msg,
+				res.resp.StatusCode,
+				*env.Code,
+				env.StatusText,
+				res.raw.RequestID,
+				res.raw.URL,
+				env.Data,
+				nil,
+				extraSecrets,
+			))
+		}
+		res.resp.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+	}
+
+	if res.handshakeTimer != nil {
+		res.handshakeTimer.Stop()
+	}
+	// 原子抢占握手完成标记；若定时器在 Stop 前已经触发超时，立即拒绝建连并释放响应体。
+	if !res.handshakeDone.CompareAndSwap(false, true) || res.handshakeTimed.Load() {
+		return nil, reportErr(c.classifyContextOrTransportError(
+			ctx,
+			spec,
+			res.raw.URL,
+			res.timeout,
+			true,
+			context.DeadlineExceeded,
+			extraSecrets,
+		))
+	}
+
+	body := res.resp.Body
+	if body == nil {
+		body = http.NoBody
+	}
+	handedOff = true
+	return newBinaryStream(
+		ctx,
+		body,
+		res.raw,
+		res.resp.ContentLength,
+		spec,
+		startedAt,
+		lastAttempt,
+		extraSecrets,
+		c,
+		res.cancelReq,
+	), nil
 }
 
 func (c *Client) doStream(
@@ -1393,7 +1495,7 @@ func (c *Client) doStream(
 	requestURL = prepared.url
 	scope.addFromHeader(prepared.headers)
 
-	res, err := c.executeWithRetry(ctx, spec, prepared, reqCfg, scope, true, &lastAttempt)
+	res, err := c.executeWithRetry(ctx, spec, prepared, reqCfg, scope, true, true, &lastAttempt)
 	if err != nil {
 		return nil, reportErr(err)
 	}
@@ -1431,19 +1533,21 @@ func (c *Client) doStream(
 			return nil, reportErr(readErr)
 		}
 		var env struct {
-			Code       *int   `json:"code"`
-			StatusText string `json:"statusText"`
-			Message    string `json:"message"`
+			Code       *int            `json:"code"`
+			StatusText string          `json:"statusText"`
+			Message    string          `json:"message"`
+			Data       json.RawMessage `json:"data"`
 		}
 		if json.Unmarshal(bytes.TrimSpace(bodyBytes), &env) == nil && env.Code != nil && *env.Code >= 400 {
 			msg := cmp.Or(env.Message, env.StatusText, fmt.Sprintf("FastGPT stream error (code %d)", *env.Code))
-			return nil, reportErr(newMappedAPIError(
+			return nil, reportErr(newMappedAPIErrorWithData(
 				msg,
 				res.resp.StatusCode,
 				*env.Code,
 				env.StatusText,
 				res.raw.RequestID,
 				res.raw.URL,
+				env.Data,
 				nil,
 				extraSecrets,
 			))

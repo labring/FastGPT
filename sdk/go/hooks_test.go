@@ -98,33 +98,50 @@ func TestHooksOnRequestOnResponseAndRedactedSlog(t *testing.T) {
 			if req.Header.Get("Authorization") != "Bearer fastgpt-supersecretkey9999" {
 				t.Fatalf("unexpected wire authorization header: %q", req.Header.Get("Authorization"))
 			}
+			if strings.Contains(req.URL.Path, "/core/dataset/collection/batchDownload") {
+				return &http.Response{
+					StatusCode: 200,
+					Header: http.Header{
+						"Content-Type": []string{"application/zip"},
+						"X-Request-Id": []string{"req-hook-bin"},
+					},
+					Body: newBlockingReadCloser(req.Context(), 0, []byte{0x50, 0x4b, 0x03, 0x04}, nil),
+				}, nil
+			}
 			if attemptCount.Add(1) == 1 {
 				return jsonHTTPResponse(503, map[string]any{"message": "overload"}, map[string]string{
 					"Retry-After": "0",
 				}), nil
 			}
-			return &http.Response{
-				StatusCode: 200,
-				Header: http.Header{
-					"Content-Type": []string{"application/zip"},
-					"X-Request-Id": []string{"req-hook-1"},
-				},
-				Body: newBlockingReadCloser(req.Context(), 0, []byte{0x50, 0x4b, 0x03, 0x04}, nil),
-			}, nil
+			return jsonHTTPResponse(200, map[string]any{
+				"code": 200,
+				"data": map[string]any{"version": "v1"},
+			}, map[string]string{
+				"X-Request-Id": "req-hook-1",
+			}), nil
 		})),
 	)
 
-	data, err := client.Datasets.Collections.BatchDownload(t.Context(), DatasetsCollectionsBatchDownloadParams{
+	stream, err := client.Datasets.Collections.BatchDownload(t.Context(), DatasetsCollectionsBatchDownloadParams{
 		Ticket: "secret-ticket-888",
 	})
 	if err != nil {
 		t.Fatalf("BatchDownload() error = %v", err)
 	}
+	data, err := stream.Bytes()
+	if err != nil {
+		t.Fatalf("BatchDownload().Bytes() error = %v", err)
+	}
 	if !bytes.Equal(data, []byte{0x50, 0x4b, 0x03, 0x04}) {
 		t.Fatalf("unexpected bytes: %x", data)
 	}
 
-	if len(reqContexts) != 2 || reqContexts[0].Attempt != 0 || reqContexts[1].Attempt != 1 {
+	catalogRes, err := client.Models.Catalog(t.Context(), ModelsCatalogParams{})
+	if err != nil || catalogRes.Version != "v1" {
+		t.Fatalf("Models.Catalog() = (%+v, %v), want v1", catalogRes, err)
+	}
+
+	if len(reqContexts) != 3 || reqContexts[1].Attempt != 0 || reqContexts[2].Attempt != 1 {
 		t.Fatalf("unexpected reqContexts: %+v", reqContexts)
 	}
 	if strings.Contains(reqContexts[0].Headers.Get("Authorization"), "supersecretkey9999") {
@@ -133,7 +150,7 @@ func TestHooksOnRequestOnResponseAndRedactedSlog(t *testing.T) {
 	if strings.Contains(reqContexts[0].URL, "secret-ticket-888") {
 		t.Fatalf("hook URL ticket not redacted: %q", reqContexts[0].URL)
 	}
-	if len(respContexts) != 2 || respContexts[0].StatusCode != 503 || respContexts[1].StatusCode != 200 || respContexts[1].RequestID != "req-hook-1" {
+	if len(respContexts) != 3 || respContexts[1].StatusCode != 503 || respContexts[2].StatusCode != 200 || respContexts[2].RequestID != "req-hook-1" {
 		t.Fatalf("unexpected respContexts: %+v", respContexts)
 	}
 	if len(errContexts) != 0 {

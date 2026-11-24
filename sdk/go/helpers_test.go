@@ -507,3 +507,188 @@ func TestPageNumPaginatorClampingAndMetadata(t *testing.T) {
 		t.Fatalf("capped = %v, err = %v", capped, err)
 	}
 }
+
+func TestOffsetAutoPagersPreservePageNumAndOffsetPrecedence(t *testing.T) {
+	allItems := make([]map[string]any, 35)
+	for i := range 35 {
+		allItems[i] = map[string]any{
+			"_id":       "item-" + string(rune('a'+(i%26))) + string(rune('0'+(i/26))),
+			"datasetId": "ds-1",
+			"q":         "Q",
+			"a":         "A",
+		}
+	}
+
+	type capturedPageReq struct {
+		path       string
+		hasOffset  bool
+		offset     int
+		hasPageNum bool
+		pageSize   int
+	}
+	var recorded []capturedPageReq
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		rawBytes, _ := io.ReadAll(r.Body)
+		var body map[string]any
+		_ = json.Unmarshal(rawBytes, &body)
+
+		rec := capturedPageReq{path: r.URL.Path}
+		if offVal, ok := body["offset"].(float64); ok {
+			rec.hasOffset = true
+			rec.offset = int(offVal)
+		}
+		_, rec.hasPageNum = body["pageNum"]
+		if psVal, ok := body["pageSize"].(float64); ok {
+			rec.pageSize = int(psVal)
+		}
+		recorded = append(recorded, rec)
+
+		if strings.HasSuffix(r.URL.Path, "/core/dataset/data/v2/list") {
+			start := min(max(0, rec.offset), len(allItems))
+			ps := rec.pageSize
+			if ps <= 0 {
+				ps = 20
+			}
+			end := min(start+ps, len(allItems))
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"code": 200,
+				"data": map[string]any{
+					"total": len(allItems),
+					"list":  allItems[start:end],
+				},
+			})
+			return
+		}
+
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"code": 200,
+			"data": map[string]any{"total": 0, "list": []any{}},
+		})
+	}))
+	defer srv.Close()
+
+	client := NewClient(
+		WithBaseURL(srv.URL),
+		WithAPIKey("fastgpt-personal-key-123456"),
+		WithDefaultAppID("app-1"),
+	)
+
+	// 1. PageNum=3, PageSize=10 + WithMaxItems(5) -> starts at offset=20, clamps first fetch pageSize=5, yields items[20:25].
+	recorded = nil
+	items, err := client.Datasets.Data.ListAutoPaging(
+		t.Context(),
+		DatasetsDataListParams{
+			CollectionID: "col-1",
+			PageNum:      Int(3),
+			PageSize:     Int(10),
+		},
+		WithMaxItems(5),
+	).Collect()
+	if err != nil {
+		t.Fatalf("ListAutoPaging(PageNum=3, MaxItems=5) error = %v", err)
+	}
+	if len(recorded) != 1 || !recorded[0].hasOffset || recorded[0].offset != 20 || recorded[0].pageSize != 5 || recorded[0].hasPageNum {
+		t.Fatalf("unexpected first request with PageNum=3+MaxItems=5: %+v", recorded)
+	}
+	if len(items) != 5 || items[0].ID_ != allItems[20]["_id"] || items[4].ID_ != allItems[24]["_id"] {
+		t.Fatalf("returned wrong page slice: got len=%d first=%q want=%q", len(items), items[0].ID_, allItems[20]["_id"])
+	}
+
+	// 2. PageNum=3 + WithPageSize(10) -> starts at offset=20 and continues cleanly through item 34.
+	recorded = nil
+	page3Onward, err := client.Datasets.Data.ListAutoPaging(
+		t.Context(),
+		DatasetsDataListParams{
+			CollectionID: "col-1",
+			PageNum:      Int(3),
+		},
+		WithPageSize(10),
+	).Collect()
+	if err != nil {
+		t.Fatalf("ListAutoPaging(PageNum=3, WithPageSize(10)) error = %v", err)
+	}
+	if len(recorded) != 2 || recorded[0].offset != 20 || recorded[1].offset != 30 {
+		t.Fatalf("unexpected offsets with WithPageSize(10): %+v", recorded)
+	}
+	if len(page3Onward) != 15 || page3Onward[0].ID_ != allItems[20]["_id"] || page3Onward[14].ID_ != allItems[34]["_id"] {
+		t.Fatalf("unexpected tail items count=%d", len(page3Onward))
+	}
+
+	// 3. Explicit Offset=0 takes precedence over PageNum=3 (matches server normalizePagination).
+	recorded = nil
+	_, err = client.Datasets.Data.ListAutoPaging(
+		t.Context(),
+		DatasetsDataListParams{
+			CollectionID: "col-1",
+			Offset:       Int(0),
+			PageNum:      Int(3),
+			PageSize:     Int(10),
+		},
+		WithMaxItems(2),
+	).Collect()
+	if err != nil || len(recorded) != 1 || recorded[0].offset != 0 {
+		t.Fatalf("explicit Offset=0 must take precedence over PageNum=3: %+v, err=%v", recorded, err)
+	}
+
+	// 4. Explicit Offset=15 takes precedence over PageNum=3.
+	recorded = nil
+	_, err = client.Datasets.Data.ListAutoPaging(
+		t.Context(),
+		DatasetsDataListParams{
+			CollectionID: "col-1",
+			Offset:       Int(15),
+			PageNum:      Int(3),
+			PageSize:     Int(10),
+		},
+		WithMaxItems(2),
+	).Collect()
+	if err != nil || len(recorded) != 1 || recorded[0].offset != 15 {
+		t.Fatalf("explicit Offset=15 must take precedence over PageNum=3: %+v, err=%v", recorded, err)
+	}
+
+	// 5. All 6 offset auto-paging facades honor PageNum=3, PageSize=10 -> initial offset=20.
+	recorded = nil
+	for _, call := range []struct {
+		name string
+		fn   func() error
+	}{
+		{"Apps.Logs.ListUsersAutoPaging", func() error {
+			_, err := client.Apps.Logs.ListUsersAutoPaging(t.Context(), AppsLogsListUsersParams{DateStart: "a", DateEnd: "b", PageNum: Int(3), PageSize: Int(10)}).Collect()
+			return err
+		}},
+		{"Chat.Histories.ListAutoPaging", func() error {
+			_, err := client.Chat.Histories.ListAutoPaging(t.Context(), ChatHistoriesListParams{PageNum: Int(3), PageSize: Int(10)}).Collect()
+			return err
+		}},
+		{"Chat.Records.ListAutoPaging", func() error {
+			_, err := client.Chat.Records.ListAutoPaging(t.Context(), ChatRecordsListParams{PageNum: Int(3), PageSize: Int(10)}).Collect()
+			return err
+		}},
+		{"Datasets.Collections.ListAutoPaging", func() error {
+			_, err := client.Datasets.Collections.ListAutoPaging(t.Context(), DatasetsCollectionsListParams{DatasetID: "ds-1", PageNum: Int(3), PageSize: Int(10)}).Collect()
+			return err
+		}},
+		{"Datasets.Data.ListAutoPaging", func() error {
+			_, err := client.Datasets.Data.ListAutoPaging(t.Context(), DatasetsDataListParams{CollectionID: "col-1", PageNum: Int(3), PageSize: Int(10)}, WithMaxItems(10)).Collect()
+			return err
+		}},
+		{"Datasets.ListAutoPaging", func() error {
+			_, err := client.Datasets.ListAutoPaging(t.Context(), DatasetsListParams{PageNum: Int(3), PageSize: Int(10)}).Collect()
+			return err
+		}},
+	} {
+		if err := call.fn(); err != nil {
+			t.Fatalf("%s error = %v", call.name, err)
+		}
+	}
+	if len(recorded) != 6 {
+		t.Fatalf("expected 6 requests across all offset facades, got %d", len(recorded))
+	}
+	for i, rec := range recorded {
+		if !rec.hasOffset || rec.offset != 20 || rec.pageSize != 10 || rec.hasPageNum {
+			t.Fatalf("facade #%d (%s) sent %+v, want offset=20 pageSize=10 no pageNum", i, rec.path, rec)
+		}
+	}
+}

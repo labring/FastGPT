@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import prettier from 'prettier';
 import { buildSdkIrDocument } from './buildIr';
 import { emitGoModelsFile, emitGoResourcesFile } from './goEmitter';
+import type { SdkIrDocument } from './irTypes';
 import { emitTypeScriptResourcesFile, emitTypeScriptTypesFile } from './tsEmitter';
 
 export type GeneratedArtifacts = {
@@ -38,9 +39,11 @@ const resolveRepoPaths = () => {
 /**
  * 在内存中执行完整的 IR 编译与 TypeScript / Go 代码生成，并使用主仓 Prettier 配置统一格式化 TS 与 IR。
  */
-export const compileSdkArtifacts = async (): Promise<GeneratedArtifacts> => {
+export const compileSdkArtifacts = async (
+  precomputedIr?: SdkIrDocument
+): Promise<GeneratedArtifacts> => {
   const paths = resolveRepoPaths();
-  const ir = buildSdkIrDocument();
+  const ir = precomputedIr ?? buildSdkIrDocument();
 
   const prettierConfig =
     (await prettier.resolveConfig(paths.typesPath)) ??
@@ -96,8 +99,10 @@ export const writeSdkArtifacts = async (): Promise<GeneratedArtifacts> => {
 /**
  * 校验磁盘已提交的 IR 与生成代码是否与最新 OpenAPI 契约零漂移一致。
  */
-export const checkSdkArtifactsDrift = async (): Promise<{ driftedFiles: string[] }> => {
-  const artifacts = await compileSdkArtifacts();
+export const checkSdkArtifactsDrift = async (
+  precomputedIr?: SdkIrDocument
+): Promise<{ driftedFiles: string[] }> => {
+  const artifacts = await compileSdkArtifacts(precomputedIr);
   const pairs: Array<[string, string]> = [
     [artifacts.irPath, artifacts.irContent],
     [artifacts.typesPath, artifacts.typesContent],

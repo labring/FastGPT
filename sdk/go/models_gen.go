@@ -5026,7 +5026,7 @@ type DatasetsCollectionsBatchDownloadParams struct {
 }
 
 // DatasetsCollectionsBatchDownloadRes represents the response payload for datasets.collections.batchDownload (GET /core/dataset/collection/batchDownload).
-type DatasetsCollectionsBatchDownloadRes = []byte
+type DatasetsCollectionsBatchDownloadRes = *BinaryStream
 
 // DatasetCollectionTagInput represents a collection tag in either legacy string or {tag, value} form.
 type DatasetCollectionTagInput interface {

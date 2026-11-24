@@ -10,6 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 type chunkedReadCloser struct {
@@ -582,5 +583,73 @@ func TestChatStreamEdgeCasesTrailingFrameAndChatTitleFormats(t *testing.T) {
 	}
 	if res.ChatTitle != "服务端生成的标题" || res.DurationSeconds != 2.5 || res.Text != "内容" {
 		t.Fatalf("unexpected FinalResult: %+v", res)
+	}
+}
+
+func TestChatStreamNextThenFinalResultSameGoroutine(t *testing.T) {
+	// 1. Reading one frame via Next() then calling FinalResult() in the same goroutine must drain cleanly without hanging.
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	defer cancel()
+
+	chunks := [][]byte{
+		[]byte("event: answer\ndata: {\"choices\":[{\"delta\":{\"content\":\"第一段\"}}]}\n\n"),
+		[]byte("event: answer\ndata: {\"choices\":[{\"delta\":{\"content\":\"第二段\"}}]}\n\n"),
+		[]byte("data: [DONE]\n\n"),
+	}
+	resp, raw := mockSSEResponse(newChunkedReadCloser(chunks...))
+	stream := newChatStream(ctx, resp, raw, true, nil)
+
+	if !stream.Next() {
+		t.Fatalf("expected first event from Next(), err=%v", stream.Err())
+	}
+	ev, ok := stream.Current().(ChatSSEAnswerEvent)
+	if !ok || ev.TextDelta != "第一段" {
+		t.Fatalf("unexpected first event: %#v", stream.Current())
+	}
+
+	res, err := stream.FinalResult()
+	if err != nil {
+		t.Fatalf("FinalResult() after Next() error = %v", err)
+	}
+	if res.Text != "第一段第二段" {
+		t.Fatalf("res.Text = %q, want 第一段第二段", res.Text)
+	}
+	if stream.State() != ChatStreamStateCompleted {
+		t.Fatalf("stream.State() = %q, want completed", stream.State())
+	}
+
+	// Subsequent Events() iteration after Next()/FinalResult() remains single-use.
+	var secondErr error
+	for _, err := range stream.Events() {
+		if err != nil {
+			secondErr = err
+		}
+	}
+	if secondErr == nil {
+		t.Fatal("expected single-use error on Events() after Next()+FinalResult()")
+	}
+
+	// 2. Next() followed by FinalResult() on an SSE error event returns that mapped error with conflict recovery data.
+	errChunks := [][]byte{
+		[]byte("event: answer\ndata: {\"choices\":[{\"delta\":{\"content\":\"part\"}}]}\n\n"),
+		[]byte("event: error\ndata: {\"httpStatus\":409,\"code\":409,\"statusText\":\"chatIsGenerating\",\"message\":\"Generating\",\"data\":{\"responseChatItemId\":\"sse-turn-9\"}}\n\n"),
+		[]byte("data: [DONE]\n\n"),
+	}
+	errResp, errRaw := mockSSEResponse(newChunkedReadCloser(errChunks...))
+	errStream := newChatStream(ctx, errResp, errRaw, true, nil)
+	if !errStream.Next() {
+		t.Fatalf("expected first event before error, err=%v", errStream.Err())
+	}
+	_, finalErr := errStream.FinalResult()
+	if !errors.Is(finalErr, ErrConflict) {
+		t.Fatalf("FinalResult() error = %v, want ErrConflict", finalErr)
+	}
+	var apiErr *APIError
+	if !errors.As(finalErr, &apiErr) {
+		t.Fatalf("expected *APIError, got %T", finalErr)
+	}
+	conflict, ok := apiErr.ChatGeneratingConflict()
+	if !ok || conflict.ResponseChatItemID != "sse-turn-9" {
+		t.Fatalf("ChatGeneratingConflict() = (%+v, %v), want sse-turn-9", conflict, ok)
 	}
 }

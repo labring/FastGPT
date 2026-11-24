@@ -3301,6 +3301,8 @@ export const emitGoModelsFile = (ir: SdkIrDocument): string => {
             state
           });
         }
+      } else if (op.responseMode === 'binary') {
+        state.definitions.push(`${doc}type ${topName} = *BinaryStream`);
       } else {
         const targetType = renderSchemaToGoType({
           schema: op.responseSchema,
@@ -3466,7 +3468,7 @@ const getOperationReturnSpec = (
     return { returnType: '', isPointerStruct: false };
   }
   if (op.responseMode === 'binary') {
-    return { returnType: '[]byte', isPointerStruct: false };
+    return { returnType: '*BinaryStream', isPointerStruct: true };
   }
   const resType = op.responseTypeName!;
   if (op.responseSchema?.kind === 'object' || op.responseSchema?.kind === 'union') {
@@ -3507,7 +3509,7 @@ const renderGoResourceMethods = ({
 
     if (op.responseMode === 'binary') {
       return [
-        `${doc}func (r *${structName}) ${methodName}(${paramsSig}) ([]byte, error) {`,
+        `${doc}func (r *${structName}) ${methodName}(${paramsSig}) (*BinaryStream, error) {`,
         `\treturn r.client.doBinary(ctx, ${specVar}, ${reqArg}, opts...)`,
         '}'
       ].join('\n');
@@ -3583,6 +3585,12 @@ export const emitGoResourcesFile = (ir: SdkIrDocument): string => {
     ];
     if (op.binaryBodyField !== undefined) {
       fields.push({ key: 'BinaryBodyField', value: toGoStringLiteral(op.binaryBodyField) });
+    }
+    if (op.retryable !== undefined) {
+      fields.push({
+        key: 'RetryPolicy',
+        value: op.retryable ? 'retryPolicyEnabled' : 'retryPolicyDisabled'
+      });
     }
     return renderAlignedCompositeLiteral({
       typeName: 'operationSpec',

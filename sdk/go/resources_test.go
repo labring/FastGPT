@@ -175,11 +175,18 @@ func TestResourcesDualModeMultipartBinaryVoidRawResponseAndOpt(t *testing.T) {
 	}
 
 	// 3. Binary download (Datasets.Collections.BatchDownload).
-	zipBytes, err := client.Datasets.Collections.BatchDownload(t.Context(), DatasetsCollectionsBatchDownloadParams{
+	dlStream, err := client.Datasets.Collections.BatchDownload(t.Context(), DatasetsCollectionsBatchDownloadParams{
 		Ticket: "archive-ticket-123",
 	})
 	if err != nil {
 		t.Fatalf("BatchDownload() error = %v", err)
+	}
+	defer func() {
+		_ = dlStream.Close()
+	}()
+	zipBytes, err := dlStream.Bytes()
+	if err != nil {
+		t.Fatalf("BatchDownload().Bytes() error = %v", err)
 	}
 	if !slices.Equal(zipBytes, []byte{0x50, 0x4b, 0x03, 0x04}) {
 		t.Fatalf("zipBytes = %x, want 504b0304", zipBytes)

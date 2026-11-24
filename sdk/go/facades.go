@@ -2,10 +2,23 @@ package fastgpt
 
 import "context"
 
+func resolveInitialOffset(offsetOpt Opt[int], pageNumOpt Opt[int], effectivePageSize int) int {
+	// 与服务端 normalizePagination 保持一致：显式传入的 offset（含 0）优先于 pageNum；
+	// 仅传入 pageNum 时按 (pageNum - 1) * pageSize 换算起始偏移量。
+	if off, ok := offsetOpt.Get(); ok {
+		return max(0, off)
+	}
+	if pageNum, ok := pageNumOpt.Get(); ok {
+		return max(0, (max(1, pageNum)-1)*max(1, effectivePageSize))
+	}
+	return 0
+}
+
 func newOffsetListPager[P any, R any, Item any](
 	ctx context.Context,
 	baseParams P,
-	initialOffset int,
+	offsetOpt Opt[int],
+	pageNumOpt Opt[int],
 	defaultSize int,
 	prepare func(params *P, offset int, pageSize int),
 	fetch func(ctx context.Context, params P, reqOpts ...RequestOption) (R, error),
@@ -13,6 +26,7 @@ func newOffsetListPager[P any, R any, Item any](
 	opts ...PagerOption,
 ) *Pager[Item] {
 	cfg := resolvePagerConfig(defaultSize, opts)
+	initialOffset := resolveInitialOffset(offsetOpt, pageNumOpt, cfg.pageSize)
 	return NewOffsetPaginator(
 		ctx,
 		initialOffset,
@@ -90,7 +104,8 @@ func (s *AppsLogsService) ListUsersAutoPaging(
 	return newOffsetListPager(
 		ctx,
 		params,
-		params.Offset.Or(0),
+		params.Offset,
+		params.PageNum,
 		params.PageSize.Or(0),
 		func(p *AppsLogsListUsersParams, offset int, pageSize int) {
 			p.PageNum = Opt[int]{}
@@ -133,7 +148,8 @@ func (s *ChatHistoriesService) ListAutoPaging(
 	return newOffsetListPager(
 		ctx,
 		params,
-		params.Offset.Or(0),
+		params.Offset,
+		params.PageNum,
 		params.PageSize.Or(0),
 		func(p *ChatHistoriesListParams, offset int, pageSize int) {
 			p.PageNum = Opt[int]{}
@@ -162,7 +178,8 @@ func (s *ChatRecordsService) ListAutoPaging(
 	return newOffsetListPager(
 		ctx,
 		params,
-		params.Offset.Or(0),
+		params.Offset,
+		params.PageNum,
 		params.PageSize.Or(0),
 		func(p *ChatRecordsListParams, offset int, pageSize int) {
 			p.PageNum = Opt[int]{}
@@ -209,7 +226,8 @@ func (s *DatasetsCollectionsService) ListAutoPaging(
 	return newOffsetListPager(
 		ctx,
 		params,
-		params.Offset.Or(0),
+		params.Offset,
+		params.PageNum,
 		params.PageSize.Or(0),
 		func(p *DatasetsCollectionsListParams, offset int, pageSize int) {
 			p.PageNum = Opt[int]{}
@@ -238,7 +256,8 @@ func (s *DatasetsDataService) ListAutoPaging(
 	return newOffsetListPager(
 		ctx,
 		params,
-		params.Offset.Or(0),
+		params.Offset,
+		params.PageNum,
 		params.PageSize.Or(0),
 		func(p *DatasetsDataListParams, offset int, pageSize int) {
 			p.PageNum = Opt[int]{}
@@ -278,7 +297,8 @@ func (s *DatasetsService) ListAutoPaging(
 	return newOffsetListPager(
 		ctx,
 		params,
-		params.Offset.Or(0),
+		params.Offset,
+		params.PageNum,
 		params.PageSize.Or(0),
 		func(p *DatasetsListParams, offset int, pageSize int) {
 			p.PageNum = Opt[int]{}

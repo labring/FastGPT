@@ -865,14 +865,431 @@ func TestMultipartBinaryAndVoidWireEncoding(t *testing.T) {
 		t.Fatalf("unexpected multipart data JSON: %v", parsedData)
 	}
 
-	zipBytes, err := client.Datasets.Collections.BatchDownload(t.Context(), DatasetsCollectionsBatchDownloadParams{
+	dlStream, err := client.Datasets.Collections.BatchDownload(t.Context(), DatasetsCollectionsBatchDownloadParams{
 		Ticket: "t-zip",
 	})
+	if err != nil {
+		t.Fatalf("BatchDownload() error = %v", err)
+	}
+	defer func() {
+		_ = dlStream.Close()
+	}()
+	zipBytes, err := dlStream.Bytes()
 	if err != nil || !bytes.Equal(zipBytes, []byte{0x50, 0x4b, 0x03, 0x04}) {
-		t.Fatalf("BatchDownload() = (%x, %v)", zipBytes, err)
+		t.Fatalf("BatchDownload().Bytes() = (%x, %v)", zipBytes, err)
 	}
 
 	if err := client.Chat.Histories.MarkRead(t.Context(), ChatHistoriesMarkReadParams{ChatID: "c-1"}); err != nil {
 		t.Fatalf("MarkRead() error = %v", err)
+	}
+}
+
+type chunkCallbackWriter struct {
+	buf     bytes.Buffer
+	onChunk func([]byte)
+	mu      sync.Mutex
+}
+
+func (w *chunkCallbackWriter) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	n, err := w.buf.Write(p)
+	w.mu.Unlock()
+	if w.onChunk != nil && n > 0 {
+		w.onChunk(p[:n])
+	}
+	return n, err
+}
+
+type trackingPipeBody struct {
+	pr        *io.PipeReader
+	closed    atomic.Bool
+	closeOnce sync.Once
+	closedCh  chan struct{}
+}
+
+func newTrackingPipeBody(pr *io.PipeReader) *trackingPipeBody {
+	return &trackingPipeBody{
+		pr:       pr,
+		closedCh: make(chan struct{}),
+	}
+}
+
+func (b *trackingPipeBody) Read(p []byte) (int, error) {
+	return b.pr.Read(p)
+}
+
+func (b *trackingPipeBody) Close() error {
+	b.closeOnce.Do(func() {
+		b.closed.Store(true)
+		close(b.closedCh)
+	})
+	return b.pr.Close()
+}
+
+type failingReaderBody struct {
+	firstChunk []byte
+	sentFirst  bool
+	readErr    error
+	closed     atomic.Bool
+}
+
+func (b *failingReaderBody) Read(p []byte) (int, error) {
+	if !b.sentFirst {
+		b.sentFirst = true
+		n := copy(p, b.firstChunk)
+		return n, nil
+	}
+	return 0, b.readErr
+}
+
+func (b *failingReaderBody) Close() error {
+	b.closed.Store(true)
+	return nil
+}
+
+func TestBinaryDownloadStreamingCancelCloseAndNonRetryable(t *testing.T) {
+	// 1. Streaming WriteTo delivers first chunk before producer closes pipe (no full-body io.ReadAll buffering).
+	pr, pw := io.Pipe()
+	bodyStream := newTrackingPipeBody(pr)
+	firstChunkSeen := make(chan struct{})
+	var firstChunkOnce sync.Once
+	producerDone := make(chan error, 1)
+
+	go func() {
+		defer close(producerDone)
+		if _, err := pw.Write([]byte("ZIP-PART-1:")); err != nil {
+			producerDone <- err
+			return
+		}
+		select {
+		case <-firstChunkSeen:
+		case <-time.After(2 * time.Second):
+			producerDone <- errors.New("timed out waiting for incremental consumer read")
+			_ = pw.CloseWithError(errors.New("consumer did not stream incrementally"))
+			return
+		}
+		if _, err := pw.Write([]byte("ZIP-PART-2")); err != nil {
+			producerDone <- err
+			return
+		}
+		producerDone <- pw.Close()
+	}()
+
+	client := NewClient(
+		WithBaseURL("https://api.example.com"),
+		WithAPIKey("fastgpt-key"),
+		WithMaxRetries(2),
+		WithHTTPClient(newTestHTTPClient(func(_ *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode:    200,
+				ContentLength: 21,
+				Header: http.Header{
+					"Content-Type":        []string{"application/zip"},
+					"Content-Disposition": []string{`attachment; filename="bundle.zip"`},
+					"X-Request-Id":        []string{"req-bin-stream"},
+				},
+				Body: bodyStream,
+			}, nil
+		})),
+	)
+
+	var raw RawResponse
+	dl, err := client.Datasets.Collections.BatchDownload(
+		t.Context(),
+		DatasetsCollectionsBatchDownloadParams{Ticket: "ticket-stream-1"},
+		WithRawResponse(&raw),
+	)
+	if err != nil {
+		t.Fatalf("BatchDownload() error = %v", err)
+	}
+	if dl.ContentType() != "application/zip" || dl.ContentLength() != 21 || dl.Response().RequestID != "req-bin-stream" || raw.StatusCode != 200 {
+		t.Fatalf("unexpected metadata: ct=%q len=%d resp=%+v raw=%+v", dl.ContentType(), dl.ContentLength(), dl.Response(), raw)
+	}
+
+	sink := &chunkCallbackWriter{
+		onChunk: func(chunk []byte) {
+			if strings.Contains(string(chunk), "ZIP-PART-1:") {
+				firstChunkOnce.Do(func() { close(firstChunkSeen) })
+			}
+		},
+	}
+	written, err := dl.WriteTo(sink)
+	if err != nil {
+		t.Fatalf("WriteTo() error = %v", err)
+	}
+	if err := <-producerDone; err != nil {
+		t.Fatalf("producer error = %v", err)
+	}
+	if written != 21 || sink.buf.String() != "ZIP-PART-1:ZIP-PART-2" {
+		t.Fatalf("streamed bytes = (%d, %q), want (21, ZIP-PART-1:ZIP-PART-2)", written, sink.buf.String())
+	}
+	if !bodyStream.closed.Load() {
+		t.Fatal("expected underlying HTTP body to be closed after WriteTo")
+	}
+
+	// 2. Mid-read context cancellation immediately closes body, yields ErrAborted, and emits OnError once.
+	prCancel, pwCancel := io.Pipe()
+	cancelBody := newTrackingPipeBody(prCancel)
+	go func() {
+		_, _ = pwCancel.Write([]byte("HALF"))
+		// Keep pipe open until reader closes on context cancel.
+	}()
+
+	var cancelErrHooks atomic.Int32
+	cancelClient := NewClient(
+		WithBaseURL("https://api.example.com"),
+		WithAPIKey("fastgpt-key"),
+		WithHooks(Hooks{
+			OnError: func(_ context.Context, _ ErrorHookContext) {
+				cancelErrHooks.Add(1)
+			},
+		}),
+		WithHTTPClient(newTestHTTPClient(func(_ *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: 200,
+				Header: http.Header{
+					"Content-Type": []string{"application/zip"},
+					"X-Request-Id": []string{"req-bin-cancel"},
+				},
+				Body: cancelBody,
+			}, nil
+		})),
+	)
+
+	cancelCtx, cancelDownload := context.WithCancelCause(t.Context())
+	cancelStream, err := cancelClient.Datasets.Collections.BatchDownload(
+		cancelCtx,
+		DatasetsCollectionsBatchDownloadParams{Ticket: "secret-cancel-ticket"},
+	)
+	if err != nil {
+		t.Fatalf("BatchDownload() cancel setup error = %v", err)
+	}
+	buf := make([]byte, 4)
+	n, err := cancelStream.Read(buf)
+	if err != nil || n != 4 || string(buf) != "HALF" {
+		t.Fatalf("first Read() = (%d, %q, %v), want (4, HALF, nil)", n, string(buf), err)
+	}
+
+	cancelDownload(errors.New("caller aborted download"))
+	select {
+	case <-cancelBody.closedCh:
+	case <-time.After(time.Second):
+		t.Fatal("expected mid-read context cancel to close underlying response body")
+	}
+	_, err = cancelStream.Read(buf)
+	if !errors.Is(err, ErrAborted) {
+		t.Fatalf("Read() after cancel = %v, want ErrAborted", err)
+	}
+	if strings.Contains(err.Error(), "secret-cancel-ticket") {
+		t.Fatalf("ticket leaked in aborted read error: %s", err.Error())
+	}
+	if cancelErrHooks.Load() != 1 {
+		t.Fatalf("expected OnError once on mid-stream abort, got %d", cancelErrHooks.Load())
+	}
+
+	// 3. Explicit Close prevents subsequent reads and mid-read transport failure maps to ErrNetwork.
+	failBody := &failingReaderBody{
+		firstChunk: []byte("OK"),
+		readErr:    errors.New("connection reset by peer"),
+	}
+	var failHooks atomic.Int32
+	failClient := NewClient(
+		WithBaseURL("https://api.example.com"),
+		WithAPIKey("fastgpt-key"),
+		WithHooks(Hooks{
+			OnError: func(_ context.Context, _ ErrorHookContext) {
+				failHooks.Add(1)
+			},
+		}),
+		WithHTTPClient(newTestHTTPClient(func(_ *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: 200,
+				Header:     http.Header{"Content-Type": []string{"application/zip"}},
+				Body:       failBody,
+			}, nil
+		})),
+	)
+	failStream, err := failClient.Datasets.Collections.BatchDownload(
+		t.Context(),
+		DatasetsCollectionsBatchDownloadParams{Ticket: "t-fail"},
+	)
+	if err != nil {
+		t.Fatalf("BatchDownload() fail setup error = %v", err)
+	}
+	var sinkBuf bytes.Buffer
+	_, writeErr := failStream.WriteTo(&sinkBuf)
+	if !errors.Is(writeErr, ErrNetwork) {
+		t.Fatalf("WriteTo() mid-stream error = %v, want ErrNetwork", writeErr)
+	}
+	if !failBody.closed.Load() || failHooks.Load() != 1 {
+		t.Fatalf("expected closed=true & OnError=1, got closed=%v hooks=%d", failBody.closed.Load(), failHooks.Load())
+	}
+
+	// Closing an unused stream transitions Read to ErrAborted.
+	closedStream, err := client.Datasets.Collections.BatchDownload(
+		t.Context(),
+		DatasetsCollectionsBatchDownloadParams{Ticket: "t-close"},
+	)
+	if err != nil {
+		t.Fatalf("BatchDownload() close setup error = %v", err)
+	}
+	if err := closedStream.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+	if _, err := closedStream.Read(make([]byte, 8)); !errors.Is(err, ErrAborted) {
+		t.Fatalf("Read() after Close() = %v, want ErrAborted", err)
+	}
+
+	// 4. Non-retryable one-time ticket GET operation NEVER replays on transport failure or 503,
+	// even when WithMaxRetries(2) AND WithRequestMaxRetries(2) are configured.
+	var dropAttempts atomic.Int32
+	noReplayTransportClient := NewClient(
+		WithBaseURL("https://api.example.com"),
+		WithAPIKey("fastgpt-key"),
+		WithMaxRetries(2),
+		WithHTTPClient(newTestHTTPClient(func(_ *http.Request) (*http.Response, error) {
+			if dropAttempts.Add(1) == 1 {
+				return nil, errors.New("unexpected EOF reading response headers")
+			}
+			return jsonHTTPResponse(410, map[string]any{
+				"code":       501024,
+				"statusText": "archiveInvalidTicket",
+				"message":    "Ticket already consumed",
+			}, nil), nil
+		})),
+	)
+	_, err = noReplayTransportClient.Datasets.Collections.BatchDownload(
+		t.Context(),
+		DatasetsCollectionsBatchDownloadParams{Ticket: "one-time-ticket"},
+		WithRequestMaxRetries(2),
+	)
+	if !errors.Is(err, ErrNetwork) || errors.Is(err, ErrNotFound) {
+		t.Fatalf("BatchDownload() error = %v, want first ErrNetwork without 410 replay", err)
+	}
+	if dropAttempts.Load() != 1 {
+		t.Fatalf("BatchDownload() sent %d attempts on transport error, want 1", dropAttempts.Load())
+	}
+
+	var status503Attempts atomic.Int32
+	noReplay503Client := NewClient(
+		WithBaseURL("https://api.example.com"),
+		WithAPIKey("fastgpt-key"),
+		WithMaxRetries(2),
+		WithHTTPClient(newTestHTTPClient(func(_ *http.Request) (*http.Response, error) {
+			status503Attempts.Add(1)
+			return jsonHTTPResponse(503, map[string]any{"message": "Temporary overload"}, map[string]string{
+				"Retry-After": "0",
+			}), nil
+		})),
+	)
+	_, err = noReplay503Client.Datasets.Collections.BatchDownload(
+		t.Context(),
+		DatasetsCollectionsBatchDownloadParams{Ticket: "one-time-503"},
+		WithRequestMaxRetries(2),
+	)
+	if !errors.Is(err, ErrServer) || status503Attempts.Load() != 1 {
+		t.Fatalf("BatchDownload() 503 attempts=%d err=%v, want 1 & ErrServer", status503Attempts.Load(), err)
+	}
+}
+
+func TestChatGeneratingConflictDataRedactedHooksAndSSE(t *testing.T) {
+	// 1. HTTP 409 chatIsGenerating preserves recovery fields in APIError.ChatGeneratingConflict() / Data,
+	// while hooks and slog records observe ONLY the redacted summary without Data payload leakage.
+	logger, records, logMu := newRecordingLogger()
+	var hookErr error
+
+	client := NewClient(
+		WithBaseURL("https://api.example.com"),
+		WithAPIKey("fastgpt-secret-api-key-12345"),
+		WithLogger(logger),
+		WithHooks(Hooks{
+			OnError: func(_ context.Context, ctx ErrorHookContext) {
+				hookErr = ctx.Error
+			},
+		}),
+		WithHTTPClient(newTestHTTPClient(func(_ *http.Request) (*http.Response, error) {
+			return jsonHTTPResponse(409, map[string]any{
+				"code":       409,
+				"statusText": "chatIsGenerating",
+				"message":    "Chat busy with fastgpt-secret-api-key-12345",
+				"data": map[string]any{
+					"responseChatItemId": "ai-turn-recover-99",
+					"reusePreviousAi":    true,
+					"leakedHint":         "Bearer fastgpt-secret-api-key-12345",
+				},
+			}, map[string]string{
+				"X-Request-Id": "req-conflict-409",
+			}), nil
+		})),
+	)
+
+	var raw RawResponse
+	_, err := client.Chat.CompletionsV2(
+		t.Context(),
+		ChatCompletionsV2Params{
+			ChatID: String("chat-conflict-1"),
+		},
+		WithRawResponse(&raw),
+	)
+	if !errors.Is(err, ErrConflict) {
+		t.Fatalf("CompletionsV2() err = %v, want ErrConflict", err)
+	}
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("expected *APIError, got %T", err)
+	}
+	if apiErr.HTTPStatus != 409 || apiErr.StatusText != "chatIsGenerating" || len(apiErr.Data) == 0 {
+		t.Fatalf("unexpected apiErr metadata: %+v", apiErr)
+	}
+	if strings.Contains(string(apiErr.Data), "fastgpt-secret-api-key-12345") {
+		t.Fatalf("secret leaked in apiErr.Data: %s", string(apiErr.Data))
+	}
+	conflict, ok := apiErr.ChatGeneratingConflict()
+	if !ok || conflict.ResponseChatItemID != "ai-turn-recover-99" || !conflict.ReusePreviousAI {
+		t.Fatalf("ChatGeneratingConflict() = (%+v, %v), want (ai-turn-recover-99, true)", conflict, ok)
+	}
+
+	// Verify logs & hook view strip Data and redact secrets.
+	var hookAPIErr *APIError
+	if !errors.As(hookErr, &hookAPIErr) || len(hookAPIErr.Data) != 0 {
+		t.Fatalf("expected hook Error to strip Data, got %+v", hookErr)
+	}
+	if strings.Contains(hookErr.Error(), "ai-turn-recover-99") || strings.Contains(hookErr.Error(), "fastgpt-secret-api-key-12345") {
+		t.Fatalf("hookErr.Error() leaked raw data/secret: %s", hookErr.Error())
+	}
+	logMu.Lock()
+	serializedLogs, _ := json.Marshal(*records)
+	logMu.Unlock()
+	if strings.Contains(string(serializedLogs), "ai-turn-recover-99") || strings.Contains(string(serializedLogs), "fastgpt-secret-api-key-12345") {
+		t.Fatalf("slog leaked conflict Data or secret: %s", string(serializedLogs))
+	}
+
+	// 2. HTTP 200 JSON handshake error on streaming endpoint preserves reusePreviousAi too.
+	reuseClient := NewClient(
+		WithBaseURL("https://api.example.com"),
+		WithAPIKey("fastgpt-key"),
+		WithHTTPClient(newTestHTTPClient(func(_ *http.Request) (*http.Response, error) {
+			return jsonHTTPResponse(200, map[string]any{
+				"code":       409,
+				"statusText": "chatIsGenerating",
+				"message":    "Interactive turn generating",
+				"data": map[string]any{
+					"reusePreviousAi": true,
+				},
+			}, nil), nil
+		})),
+	)
+	_, err = reuseClient.Chat.CompletionsV2Stream(t.Context(), ChatCompletionsV2Params{
+		ChatID: String("chat-conflict-2"),
+	})
+	if !errors.Is(err, ErrConflict) {
+		t.Fatalf("CompletionsV2Stream() err = %v, want ErrConflict", err)
+	}
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("expected *APIError, got %T", err)
+	}
+	conflict, ok = apiErr.ChatGeneratingConflict()
+	if !ok || !conflict.ReusePreviousAI || conflict.ResponseChatItemID != "" {
+		t.Fatalf("ChatGeneratingConflict() = (%+v, %v), want ReusePreviousAI=true", conflict, ok)
 	}
 }

@@ -1,7 +1,9 @@
 package fastgpt
 
 import (
+	"bytes"
 	"cmp"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -48,7 +50,34 @@ type APIError struct {
 	StatusText string
 	RequestID  string
 	URL        string
+	Data       json.RawMessage
 	Cause      error
+}
+
+// ChatGeneratingConflictData holds structured recovery hints returned when a concurrent turn is active
+// (`chatIsGenerating` / HTTP 409). Callers can resume `ResponseChatItemID` or reuse previous AI when
+// `ReusePreviousAI` is true.
+type ChatGeneratingConflictData struct {
+	ResponseChatItemID string `json:"responseChatItemId,omitempty"`
+	ReusePreviousAI    bool   `json:"reusePreviousAi,omitempty"`
+}
+
+// ChatGeneratingConflict extracts recovery hints from Data on chatIsGenerating conflict errors.
+func (e *APIError) ChatGeneratingConflict() (*ChatGeneratingConflictData, bool) {
+	if e == nil || len(e.Data) == 0 {
+		return nil, false
+	}
+	if e.StatusText != "chatIsGenerating" && e.HTTPStatus != 409 && e.ServerCode != 409 {
+		return nil, false
+	}
+	var out ChatGeneratingConflictData
+	if err := json.Unmarshal(e.Data, &out); err != nil {
+		return nil, false
+	}
+	if out.ResponseChatItemID == "" && !out.ReusePreviousAI {
+		return nil, false
+	}
+	return &out, true
 }
 
 // Error returns a redacted, human-readable error message with response metadata.
@@ -353,8 +382,76 @@ func newMappedAPIError(
 	cause error,
 	extraSecrets []string,
 ) error {
+	return newMappedAPIErrorWithData(
+		message,
+		httpStatus,
+		serverCode,
+		statusText,
+		requestID,
+		reqURL,
+		nil,
+		cause,
+		extraSecrets,
+	)
+}
+
+func newMappedAPIErrorWithData(
+	message string,
+	httpStatus int,
+	serverCode int,
+	statusText string,
+	requestID string,
+	reqURL string,
+	data json.RawMessage,
+	cause error,
+	extraSecrets []string,
+) error {
 	kind := classifyAPIErrorKind(httpStatus, serverCode, statusText)
-	return newAPIError(kind, message, httpStatus, serverCode, statusText, requestID, reqURL, cause, extraSecrets)
+	apiErr := newAPIError(kind, message, httpStatus, serverCode, statusText, requestID, reqURL, cause, extraSecrets)
+	apiErr.Data = sanitizeErrorDataJSON(data, extraSecrets)
+	return apiErr
+}
+
+func sanitizeJSONValue(v any, extraSecrets []string) any {
+	switch val := v.(type) {
+	case string:
+		return redactSecrets(val, extraSecrets)
+	case []any:
+		out := make([]any, len(val))
+		for i, item := range val {
+			out[i] = sanitizeJSONValue(item, extraSecrets)
+		}
+		return out
+	case map[string]any:
+		out := make(map[string]any, len(val))
+		for k, item := range val {
+			out[k] = sanitizeJSONValue(item, extraSecrets)
+		}
+		return out
+	default:
+		return v
+	}
+}
+
+func sanitizeErrorDataJSON(raw json.RawMessage, extraSecrets []string) json.RawMessage {
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		return nil
+	}
+	dec := json.NewDecoder(bytes.NewReader(trimmed))
+	dec.UseNumber()
+	var decoded any
+	if err := dec.Decode(&decoded); err == nil {
+		var trailing any
+		if dec.Decode(&trailing) == nil {
+			// Fall back to string redaction when multiple JSON values exist.
+			return json.RawMessage(redactSecrets(string(trimmed), extraSecrets))
+		}
+		if marshaled, err := json.Marshal(sanitizeJSONValue(decoded, extraSecrets)); err == nil {
+			return json.RawMessage(marshaled)
+		}
+	}
+	return json.RawMessage(redactSecrets(string(trimmed), extraSecrets))
 }
 
 func newNetworkError(message string, reqURL string, cause error, extraSecrets []string) error {

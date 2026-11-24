@@ -41,6 +41,14 @@ const (
 	carrierBody  paramCarrier = "body"
 )
 
+type retryPolicy uint8
+
+const (
+	retryPolicyDefault retryPolicy = iota
+	retryPolicyEnabled
+	retryPolicyDisabled
+)
+
 type operationSpec struct {
 	ID                 string
 	Method             string
@@ -48,6 +56,7 @@ type operationSpec struct {
 	RequestContentType requestContentType
 	MultipartMode      multipartMode
 	ResponseMode       responseMode
+	RetryPolicy        retryPolicy
 	AppIDCarrier       paramCarrier
 	IdentityCarrier    paramCarrier
 	PathParams         []string

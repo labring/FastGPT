@@ -338,6 +338,7 @@ var datasetsCollectionsBatchDownloadSpec = operationSpec{
 	PathParams:         nil,
 	QueryParams:        []string{"ticket"},
 	BodyParams:         nil,
+	RetryPolicy:        retryPolicyDisabled,
 }
 
 var datasetsCollectionsCreateSpec = operationSpec{
@@ -929,7 +930,7 @@ func newDatasetsCollectionsResource(client *Client) *DatasetsCollectionsResource
 
 // 下载知识库集合归档文件
 // 使用短效凭证将预检后的集合原始文件流式归档为 ZIP 文件
-func (r *DatasetsCollectionsResource) BatchDownload(ctx context.Context, params DatasetsCollectionsBatchDownloadParams, opts ...RequestOption) ([]byte, error) {
+func (r *DatasetsCollectionsResource) BatchDownload(ctx context.Context, params DatasetsCollectionsBatchDownloadParams, opts ...RequestOption) (*BinaryStream, error) {
 	return r.client.doBinary(ctx, datasetsCollectionsBatchDownloadSpec, params, opts...)
 }
 

@@ -216,7 +216,7 @@ if _, err := client.Chat.Histories.List(ctx, fastgpt.ChatHistoriesListParams{});
 	case errors.Is(err, fastgpt.ErrAuth):
 		// 401 / 403 / serverCode 514 (unAuthApiKey)
 	case errors.Is(err, fastgpt.ErrConflict):
-		// 409 / chatIsGenerating
+		// 409 / chatIsGenerating; check apiErr.ChatGeneratingConflict() for recovery fields
 	case errors.Is(err, fastgpt.ErrRateLimit):
 		// 429 / tooManyRequest
 	case errors.Is(err, fastgpt.ErrNetwork):

@@ -498,6 +498,7 @@ func parseChatSSEFrame(frame rawSSEFrame, raw RawResponse, extraSecrets []string
 		httpStatus := 0
 		serverCode := 0
 		statusText := ""
+		var dataRaw json.RawMessage
 
 		if strVal, ok := payload.(string); ok && strVal != "" {
 			errMsg = strVal
@@ -510,17 +511,23 @@ func parseChatSSEFrame(frame rawSSEFrame, raw RawResponse, extraSecrets []string
 			httpStatus = intField(obj, "httpStatus")
 			serverCode = intField(obj, "code")
 			statusText = stringField(obj, "statusText")
+			if rawData, exists := obj["data"]; exists && rawData != nil {
+				if encoded, err := json.Marshal(rawData); err == nil {
+					dataRaw = encoded
+				}
+			}
 		} else if trimmedData != "" {
 			errMsg = trimmedData
 		}
 
-		mapped := newMappedAPIError(
+		mapped := newMappedAPIErrorWithData(
 			redactSecrets(errMsg, extraSecrets),
 			httpStatus,
 			serverCode,
 			statusText,
 			raw.RequestID,
 			raw.URL,
+			dataRaw,
 			nil,
 			extraSecrets,
 		)
@@ -711,9 +718,13 @@ type ChatStream struct {
 	closeBodyOnce sync.Once
 	bodyCloseErr  error
 
+	// readMu 始终在 mu 之外获取，串行化底层帧读取，防止主动 FinalResult 与并发 Next 竞争 reader；
+	// Close / abort 绝不获取 readMu，以保证关闭响应体可立即唤醒阻塞中的读操作。
+	readMu          sync.Mutex
 	mu              sync.Mutex
 	state           ChatStreamState
 	started         bool
+	eventsActive    bool
 	receivedDone    bool
 	err             error
 	streamError     error
@@ -966,6 +977,9 @@ func (s *ChatStream) Next() bool {
 }
 
 func (s *ChatStream) nextStep() bool {
+	s.readMu.Lock()
+	defer s.readMu.Unlock()
+
 	for {
 		s.mu.Lock()
 		if s.state != ChatStreamStatePending {
@@ -1056,6 +1070,7 @@ func (s *ChatStream) Events() iter.Seq2[ChatSSEEvent, error] {
 		alreadyStarted := s.started
 		if !alreadyStarted {
 			s.started = true
+			s.eventsActive = true
 		}
 		s.mu.Unlock()
 
@@ -1074,6 +1089,9 @@ func (s *ChatStream) Events() iter.Seq2[ChatSSEEvent, error] {
 		}
 
 		defer func() {
+			s.mu.Lock()
+			s.eventsActive = false
+			s.mu.Unlock()
 			_ = s.Close()
 		}()
 
@@ -1097,17 +1115,26 @@ func (s *ChatStream) FinalResult() (*ChatStreamFinalResult, error) {
 	}
 
 	s.mu.Lock()
-	shouldDrain := !s.started && s.state == ChatStreamStatePending
-	if shouldDrain {
+	if s.state != ChatStreamStatePending {
+		err := s.err
+		snap := s.buildFinalResultSnapshotLocked()
+		s.mu.Unlock()
+		if err != nil {
+			return nil, err
+		}
+		return snap, nil
+	}
+	waitForEvents := s.eventsActive
+	if !waitForEvents {
 		s.started = true
 	}
 	s.mu.Unlock()
 
-	if shouldDrain {
+	if waitForEvents {
+		<-s.doneCh
+	} else {
 		for s.nextStep() {
 		}
-	} else {
-		<-s.doneCh
 	}
 
 	s.mu.Lock()
