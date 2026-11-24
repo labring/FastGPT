@@ -1718,7 +1718,8 @@ describe('POST /api/invoke/llm/chat/completions', () => {
       expect(fallbackFalseCtx.writtenChunks.join('')).not.toContain('"usage"');
       expect(mocks.pushChatItemUsage).toHaveBeenCalledTimes(2);
 
-      // C) fallback JSON-to-SSE with stream_options.include_usage = true -> usage IS included in emitted chunk
+      // C) fallback JSON-to-SSE with stream_options.include_usage = true -> emits content chunk (no usage),
+      // then standalone empty-choices usage chunk, then [DONE]
       mocks.createChatCompletion.mockResolvedValueOnce({
         response: {
           id: 'chatcmpl-fb-2',
@@ -1747,30 +1748,90 @@ describe('POST /api/invoke/llm/chat/completions', () => {
         }
       });
       await completionsRoute(fallbackTrueCtx.req as any, fallbackTrueCtx.res as any);
-      expect(fallbackTrueCtx.writtenChunks.join('')).toContain('"prompt_tokens":12');
+      const fallbackFrames = fallbackTrueCtx.writtenChunks
+        .join('')
+        .trim()
+        .split('\n\n')
+        .map((frame) => frame.replace(/^data:\s*/, ''));
+      expect(fallbackFrames).toHaveLength(3);
+      const contentFrame = JSON.parse(fallbackFrames[0]);
+      const usageFrame = JSON.parse(fallbackFrames[1]);
+      expect(contentFrame.choices).toHaveLength(1);
+      expect(contentFrame.choices[0].delta.content).toBe('Fallback with usage');
+      expect(contentFrame).not.toHaveProperty('usage');
+      expect(usageFrame.choices).toEqual([]);
+      expect(usageFrame.usage).toEqual({
+        prompt_tokens: 12,
+        completion_tokens: 3,
+        total_tokens: 15
+      });
+      expect(fallbackFrames[2]).toBe('[DONE]');
+
+      // D) native SSE with usage embedded in content chunk + include_usage = true -> normalized into content chunk + standalone usage chunk + [DONE]
+      async function* embeddedUsageStream() {
+        yield {
+          id: 'chatcmpl-emb-1',
+          object: 'chat.completion.chunk',
+          created: 1700000205,
+          model: 'gpt-4o-2024-11-20',
+          choices: [{ index: 0, delta: { content: 'Embedded' }, finish_reason: 'stop' }],
+          usage: { prompt_tokens: 8, completion_tokens: 4, total_tokens: 12 }
+        };
+      }
+      mocks.createChatCompletion.mockResolvedValueOnce({
+        response: Object.assign(embeddedUsageStream(), { controller: { abort: vi.fn() } }),
+        isStreamResponse: true,
+        requestMeta: { usedUserOpenAIKey: false }
+      });
+      const embeddedTrueCtx = createMockHttpContext({
+        authorization: `Bearer ${token}`,
+        body: {
+          model: ACTIVE_SYSTEM_LLM_ID,
+          messages: [{ role: 'user', content: 'Hi' }],
+          stream: true,
+          stream_options: { include_usage: true }
+        }
+      });
+      await completionsRoute(embeddedTrueCtx.req as any, embeddedTrueCtx.res as any);
+      const embeddedFrames = embeddedTrueCtx.writtenChunks
+        .join('')
+        .trim()
+        .split('\n\n')
+        .map((frame) => frame.replace(/^data:\s*/, ''));
+      expect(embeddedFrames).toHaveLength(3);
+      expect(JSON.parse(embeddedFrames[0])).not.toHaveProperty('usage');
+      expect(JSON.parse(embeddedFrames[1]).choices).toEqual([]);
+      expect(JSON.parse(embeddedFrames[1]).usage).toEqual({
+        prompt_tokens: 8,
+        completion_tokens: 4,
+        total_tokens: 12
+      });
+      expect(embeddedFrames[2]).toBe('[DONE]');
     });
 
-    it('preserves max_completion_tokens when max_tokens is omitted and model has no fieldMap override', async () => {
+    it('emits a single budget field when max_completion_tokens is used with or without model defaultConfig', async () => {
       const token = createInvokeToken({ teamId: 'team-1' });
+      const okCompletion = {
+        id: 'chatcmpl-o1',
+        object: 'chat.completion',
+        created: 1700000206,
+        model: 'gpt-4o-2024-11-20',
+        choices: [
+          {
+            index: 0,
+            message: { role: 'assistant', content: 'ok' },
+            finish_reason: 'stop'
+          }
+        ],
+        usage: { prompt_tokens: 5, completion_tokens: 2, total_tokens: 7 }
+      };
+
+      // A) No defaultConfig override -> capped under max_completion_tokens
       mocks.createChatCompletion.mockResolvedValueOnce({
-        response: {
-          id: 'chatcmpl-o1',
-          object: 'chat.completion',
-          created: 1700000206,
-          model: 'gpt-4o-2024-11-20',
-          choices: [
-            {
-              index: 0,
-              message: { role: 'assistant', content: 'ok' },
-              finish_reason: 'stop'
-            }
-          ],
-          usage: { prompt_tokens: 5, completion_tokens: 2, total_tokens: 7 }
-        },
+        response: okCompletion,
         isStreamResponse: false,
         requestMeta: { usedUserOpenAIKey: false }
       });
-
       const ctx = createMockHttpContext({
         authorization: `Bearer ${token}`,
         body: {
@@ -1780,15 +1841,103 @@ describe('POST /api/invoke/llm/chat/completions', () => {
         }
       });
       await completionsRoute(ctx.req as any, ctx.res as any);
-
       expect(ctx.res.statusCode).toBe(200);
       const sentBody = mocks.createChatCompletion.mock.calls[0][0].body as Record<string, unknown>;
-      // Capped to model maxResponse (4096) and kept under max_completion_tokens
       expect(sentBody.max_completion_tokens).toBe(4096);
       expect(sentBody).not.toHaveProperty('max_tokens');
+
+      // B) Model defaultConfig sets max_completion_tokens & plugin also passes max_completion_tokens -> only max_completion_tokens sent
+      const oSeriesDefaultModel = createLLMModelFixture({
+        modelId: ACTIVE_SYSTEM_LLM_ID,
+        model: 'o3-mini',
+        name: 'o3-mini',
+        config: {
+          maxContext: 8192,
+          maxResponse: 4096,
+          quoteMaxToken: 4096,
+          defaultConfig: {
+            max_completion_tokens: 2048
+          }
+        }
+      });
+      mocks.getTeamModelHandle.mockResolvedValueOnce(
+        createModelHandle({
+          models: [oSeriesDefaultModel],
+          defaultModels: { llm: ACTIVE_SYSTEM_LLM_ID },
+          configuredDefaultModelIds: {},
+          revision: 1,
+          version: 'o-series-default'
+        })
+      );
+      mocks.createChatCompletion.mockResolvedValueOnce({
+        response: okCompletion,
+        isStreamResponse: false,
+        requestMeta: { usedUserOpenAIKey: false }
+      });
+      const defaultNewFieldCtx = createMockHttpContext({
+        authorization: `Bearer ${token}`,
+        body: {
+          model: ACTIVE_SYSTEM_LLM_ID,
+          messages: [{ role: 'user', content: 'Test defaultConfig.max_completion_tokens' }],
+          max_completion_tokens: 512
+        }
+      });
+      await completionsRoute(defaultNewFieldCtx.req as any, defaultNewFieldCtx.res as any);
+      expect(defaultNewFieldCtx.res.statusCode).toBe(200);
+      const sentBodyWithDefaultNew = mocks.createChatCompletion.mock.calls[1][0].body as Record<
+        string,
+        unknown
+      >;
+      expect(sentBodyWithDefaultNew.max_completion_tokens).toBe(2048);
+      expect(sentBodyWithDefaultNew).not.toHaveProperty('max_tokens');
+
+      // C) Model defaultConfig sets max_tokens & plugin passes max_completion_tokens -> only max_tokens sent
+      const legacyDefaultModel = createLLMModelFixture({
+        modelId: ACTIVE_SYSTEM_LLM_ID,
+        model: 'gpt-4o-legacy',
+        name: 'gpt-4o-legacy',
+        config: {
+          maxContext: 8192,
+          maxResponse: 4096,
+          quoteMaxToken: 4096,
+          defaultConfig: {
+            max_tokens: 1500
+          }
+        }
+      });
+      mocks.getTeamModelHandle.mockResolvedValueOnce(
+        createModelHandle({
+          models: [legacyDefaultModel],
+          defaultModels: { llm: ACTIVE_SYSTEM_LLM_ID },
+          configuredDefaultModelIds: {},
+          revision: 1,
+          version: 'legacy-default'
+        })
+      );
+      mocks.createChatCompletion.mockResolvedValueOnce({
+        response: okCompletion,
+        isStreamResponse: false,
+        requestMeta: { usedUserOpenAIKey: false }
+      });
+      const defaultLegacyCtx = createMockHttpContext({
+        authorization: `Bearer ${token}`,
+        body: {
+          model: ACTIVE_SYSTEM_LLM_ID,
+          messages: [{ role: 'user', content: 'Test defaultConfig.max_tokens' }],
+          max_completion_tokens: 512
+        }
+      });
+      await completionsRoute(defaultLegacyCtx.req as any, defaultLegacyCtx.res as any);
+      expect(defaultLegacyCtx.res.statusCode).toBe(200);
+      const sentBodyWithDefaultLegacy = mocks.createChatCompletion.mock.calls[2][0].body as Record<
+        string,
+        unknown
+      >;
+      expect(sentBodyWithDefaultLegacy.max_tokens).toBe(1500);
+      expect(sentBodyWithDefaultLegacy).not.toHaveProperty('max_completion_tokens');
     });
 
-    it('rejects HTTP 200 upstream error payloads and invalid SSE error frames without billing', async () => {
+    it('rejects HTTP 200 upstream error payloads, malformed choices/message payloads, and invalid SSE frames without billing', async () => {
       const token = createInvokeToken({ teamId: 'team-1', usageId: '67f000000000000000000203' });
 
       // A) Non-streaming HTTP 200 with { error: { message } }
@@ -1815,6 +1964,35 @@ describe('POST /api/invoke/llm/chat/completions', () => {
           code: 'invalid_upstream_response'
         }
       });
+      expect(mocks.pushChatItemUsage).not.toHaveBeenCalled();
+
+      // A2) Non-streaming HTTP 200 with choices missing message / empty choices -> rejected with 502, no billing
+      for (const malformedPayload of [
+        { id: 'bad-1', choices: [] },
+        { id: 'bad-2', choices: [{ index: 0 }] },
+        { id: 'bad-3', choices: [{ index: 0, message: { role: 'assistant' } }] }
+      ]) {
+        mocks.createChatCompletion.mockResolvedValueOnce({
+          response: malformedPayload as any,
+          isStreamResponse: false,
+          requestMeta: { usedUserOpenAIKey: false }
+        });
+        const badCtx = createMockHttpContext({
+          authorization: `Bearer ${token}`,
+          body: {
+            model: ACTIVE_SYSTEM_LLM_ID,
+            messages: [{ role: 'user', content: 'Malformed JSON' }]
+          }
+        });
+        await completionsRoute(badCtx.req as any, badCtx.res as any);
+        expect(badCtx.res.statusCode).toBe(502);
+        expect(badCtx.getJsonPayload()).toMatchObject({
+          error: {
+            type: 'upstream_error',
+            code: 'invalid_upstream_response'
+          }
+        });
+      }
       expect(mocks.pushChatItemUsage).not.toHaveBeenCalled();
 
       // B) Streaming request where upstream ignores stream=true and returns HTTP 200 { error }
@@ -1855,6 +2033,29 @@ describe('POST /api/invoke/llm/chat/completions', () => {
       await completionsRoute(sseErrCtx.req as any, sseErrCtx.res as any);
       expect(sseErrCtx.writtenChunks.join('')).toContain('event: error');
       expect(sseErrCtx.writtenChunks.join('')).toContain('Stream gateway failure');
+      expect(mocks.pushChatItemUsage).not.toHaveBeenCalled();
+
+      // D) Streaming SSE emitting malformed choice without delta or empty choices without usage -> emits event: error, no billing
+      for (const badChunk of [{ choices: [{}] }, { choices: [] }]) {
+        async function* badChunkStream() {
+          yield badChunk as any;
+        }
+        mocks.createChatCompletion.mockResolvedValueOnce({
+          response: Object.assign(badChunkStream(), { controller: { abort: vi.fn() } }),
+          isStreamResponse: true,
+          requestMeta: { usedUserOpenAIKey: false }
+        });
+        const badSseCtx = createMockHttpContext({
+          authorization: `Bearer ${token}`,
+          body: {
+            model: ACTIVE_SYSTEM_LLM_ID,
+            messages: [{ role: 'user', content: 'Bad SSE frame' }],
+            stream: true
+          }
+        });
+        await completionsRoute(badSseCtx.req as any, badSseCtx.res as any);
+        expect(badSseCtx.writtenChunks.join('')).toContain('event: error');
+      }
       expect(mocks.pushChatItemUsage).not.toHaveBeenCalled();
     });
   });

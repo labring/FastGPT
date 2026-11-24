@@ -274,7 +274,8 @@ export const onCreateApp = async ({
             nodes: workflow.nodes,
             chatConfig: workflow.chatConfig,
             teamId,
-            modelHandle
+            modelHandle,
+            onToolDetailError: 'ignore'
           }),
           tmbId,
           teamId,

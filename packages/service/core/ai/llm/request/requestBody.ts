@@ -47,6 +47,8 @@ export const llmCompletionsBodyFormat = async <T extends ChatCompletionCreatePar
     tool_choice,
     parallel_tool_calls,
     toolCallMode,
+    max_tokens,
+    max_completion_tokens,
     ...body
   } = input;
   const sanitizedTools = sanitizeCompletionTools(tools);
@@ -80,15 +82,29 @@ export const llmCompletionsBodyFormat = async <T extends ChatCompletionCreatePar
   })();
   const stop = body.stop ?? undefined;
 
+  const defaultConfig = modelData.config.defaultConfig ?? {};
+  const mappedMaxTokensKey = modelData.config.fieldMap?.max_tokens;
+  const hasDefaultMaxCompletionTokens = Object.hasOwn(defaultConfig, 'max_completion_tokens');
+  const hasDefaultMaxTokens = Object.hasOwn(defaultConfig, 'max_tokens');
   const maxTokens = computedMaxToken({
     model: modelData,
-    maxToken: body.max_tokens || undefined
+    maxToken: (max_tokens ?? max_completion_tokens) || undefined
   });
+  // 按模型上游契约确定唯一的补全预算字段，避免 max_tokens 与 max_completion_tokens 同时发给上游。
+  const tokenLimitField: 'max_tokens' | 'max_completion_tokens' = mappedMaxTokensKey
+    ? 'max_tokens'
+    : hasDefaultMaxCompletionTokens && !hasDefaultMaxTokens
+      ? 'max_completion_tokens'
+      : hasDefaultMaxTokens && !hasDefaultMaxCompletionTokens
+        ? 'max_tokens'
+        : max_tokens === undefined && max_completion_tokens !== undefined
+          ? 'max_completion_tokens'
+          : 'max_tokens';
 
   const formatStop = stop?.split('|').filter((item) => !!item.trim());
   let requestBody = {
     ...body,
-    max_tokens: maxTokens,
+    [tokenLimitField]: maxTokens,
     model: modelData.model,
     temperature:
       typeof body.temperature === 'number'

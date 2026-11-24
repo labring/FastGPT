@@ -114,7 +114,9 @@ async function handler(req: ApiRequestProps<PublishAppBodyType>): Promise<Publis
     nodes: normalizedWorkflow.nodes,
     chatConfig: normalizedWorkflow.chatConfig,
     teamId,
-    modelHandle
+    modelHandle,
+    // 草稿自动保存与非发布保存不阻断已下架普通工具或短暂不可用的插件详情；正式发布必须强校验以保留原发布版本。
+    onToolDetailError: isPublish ? 'throw' : 'ignore'
   });
 
   /** 事务重试时读取同一草稿供快照继承和资源鉴权；显式空数组仍表示清除快照。 */

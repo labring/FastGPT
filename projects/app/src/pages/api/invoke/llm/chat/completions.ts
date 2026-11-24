@@ -26,6 +26,8 @@ import { isTeamModel } from '@fastgpt/global/core/ai/model/utils';
 import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 import {
   InvokeChatCompletionsBodySchema,
+  InvokeUpstreamChatCompletionChunkSchema,
+  InvokeUpstreamChatCompletionSchema,
   type InvokeChatCompletionsBodyType,
   type InvokeOpenAIErrorResponseType
 } from '@fastgpt/global/openapi/plugin/invoke';
@@ -443,7 +445,8 @@ const formatInvokeCompletionRequestBody = async ({
     model: modelData,
     messages,
     stream: isStream,
-    max_tokens: max_tokens ?? max_completion_tokens,
+    max_tokens,
+    max_completion_tokens,
     temperature: undefined,
     stop: Array.isArray(stop) ? stop.join('|') : stop,
     response_format: normalizedResponseFormat,
@@ -478,20 +481,6 @@ const formatInvokeCompletionRequestBody = async ({
     if (!Object.hasOwn(defaultConfig, targetStopKey)) {
       mutableBody[targetStopKey] = stop;
     }
-  }
-
-  // 客户端显式传入 max_completion_tokens（未传 max_tokens）且模型未通过 fieldMap 映射 max_tokens、
-  // defaultConfig 也未覆盖预算字段时，保留原生 max_completion_tokens 字段名，兼容仅接受新字段的 OpenAI o 系列上游。
-  if (
-    max_tokens === undefined &&
-    max_completion_tokens !== undefined &&
-    !modelData.config.fieldMap?.max_tokens &&
-    !Object.hasOwn(defaultConfig, 'max_tokens') &&
-    !Object.hasOwn(defaultConfig, 'max_completion_tokens') &&
-    mutableBody.max_tokens !== undefined
-  ) {
-    mutableBody.max_completion_tokens = mutableBody.max_tokens;
-    delete mutableBody.max_tokens;
   }
 
   if (isStream) {
@@ -583,8 +572,8 @@ const extractUpstreamPayloadError = (payload: unknown): string | undefined => {
 };
 
 /**
- * 在上游适配边界对非流式补全响应执行轻量协议校验：
- * 拒绝 HTTP 200 返回错误对象或缺少 `choices` 数组的非法载荷，同时宽容第三方 OpenAI 兼容端点的非关键元字段差异。
+ * 在上游适配边界对非流式补全响应执行 Zod Schema 契约校验：
+ * 拒绝 HTTP 200 返回错误对象、空 choices 或缺失 message 业务字段的非法载荷。
  */
 const validateNonStreamCompletionResponse = (
   payload: unknown
@@ -596,27 +585,54 @@ const validateNonStreamCompletionResponse = (
   if (protocolError) {
     return { ok: false, message: protocolError };
   }
-  if (!Array.isArray((payload as { choices?: unknown }).choices)) {
-    return { ok: false, message: 'Upstream completion response is missing choices array' };
+  const parsed = InvokeUpstreamChatCompletionSchema.safeParse(payload);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message:
+        parsed.error.issues[0]?.message || 'Upstream completion response failed schema validation'
+    };
   }
-  return { ok: true, response: payload as UnStreamResponseType };
+  return { ok: true, response: parsed.data as unknown as UnStreamResponseType };
 };
 
 /**
- * 将非流式响应兜底转换为单个 OpenAI SSE chunk（兼容少数忽略 stream=true 直接返回完整 JSON 的中转渠道）。
- * 仅在客户端显式请求 `stream_options.include_usage: true` 时在输出帧中携带 `usage`。
+ * 在上游适配边界对单帧 SSE Chunk 执行 Zod Schema 契约校验。
  */
-const buildFallbackChunkFromCompletion = (
-  completion: UnStreamResponseType,
-  includeUsage: boolean
+const validateStreamChunkPayload = (
+  payload: unknown
+): { ok: true; chunk: ChatCompletionChunk } | { ok: false; message: string } => {
+  if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) {
+    return { ok: false, message: 'Upstream stream emitted invalid chunk payload' };
+  }
+  const protocolError = extractUpstreamPayloadError(payload);
+  if (protocolError) {
+    return { ok: false, message: protocolError };
+  }
+  const parsed = InvokeUpstreamChatCompletionChunkSchema.safeParse(payload);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message || 'Upstream stream chunk failed schema validation'
+    };
+  }
+  return { ok: true, chunk: parsed.data as unknown as ChatCompletionChunk };
+};
+
+/**
+ * 将非流式响应兜底转换为单个 OpenAI SSE 内容帧（不含 usage）。
+ * 独立用量尾帧由统一的流输出逻辑按 `stream_options.include_usage` 决定是否在 `[DONE]` 前追加。
+ */
+const buildFallbackContentChunkFromCompletion = (
+  completion: UnStreamResponseType
 ): ChatCompletionChunk => ({
   id: completion.id,
   object: 'chat.completion.chunk',
   created: completion.created,
   model: completion.model,
   system_fingerprint: completion.system_fingerprint,
-  choices: (completion.choices ?? []).map((choice) => ({
-    index: choice.index,
+  choices: (completion.choices ?? []).map((choice, idx) => ({
+    index: choice.index ?? idx,
     delta: {
       role: 'assistant',
       content: choice.message?.content ?? null,
@@ -630,8 +646,8 @@ const buildFallbackChunkFromCompletion = (
         ? {
             tool_calls: choice.message.tool_calls
               .filter((toolCall) => toolCall.type === 'function')
-              .map((toolCall, idx) => ({
-                index: idx,
+              .map((toolCall, toolIdx) => ({
+                index: toolIdx,
                 id: toolCall.id,
                 type: 'function' as const,
                 function: {
@@ -643,9 +659,33 @@ const buildFallbackChunkFromCompletion = (
         : {})
     },
     logprobs: choice.logprobs ?? null,
-    finish_reason: choice.finish_reason
-  })),
-  ...(includeUsage && completion.usage ? { usage: completion.usage } : {})
+    finish_reason: choice.finish_reason ?? null
+  }))
+});
+
+/**
+ * 构造符合 OpenAI 约定的独立空 `choices` 用量尾帧，确保原生 SSE 与 JSON 兜底路径的帧结构一致。
+ */
+const buildUsageOnlyChunk = ({
+  id,
+  created,
+  model,
+  system_fingerprint,
+  usage
+}: {
+  id?: string;
+  created?: number;
+  model?: string;
+  system_fingerprint?: string | null;
+  usage: CompletionUsage;
+}): ChatCompletionChunk => ({
+  id: id ?? '',
+  object: 'chat.completion.chunk',
+  created: created ?? Math.floor(Date.now() / 1000),
+  model: model ?? '',
+  ...(system_fingerprint !== undefined ? { system_fingerprint } : {}),
+  choices: [],
+  usage
 });
 
 /**
@@ -919,49 +959,85 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     let latestUsage: CompletionUsage | undefined;
     let hasValidStreamPayload = false;
+    let emittedUsageOnlyChunk = false;
+    let lastChunkMeta: {
+      id?: string;
+      created?: number;
+      model?: string;
+      system_fingerprint?: string | null;
+    } = { model: modelData.model };
     const streamAccumulated = {
       answerText: '',
       reasoningText: '',
       toolCallArguments: ''
     };
 
+    const writeSseChunk = (chunk: ChatCompletionChunk) => {
+      if (!isResponseClosed()) {
+        res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+      }
+    };
+
+    // 统一结束流输出：按客户端是否开启 include_usage 决定是否在 [DONE] 前追加独立空 choices 用量尾帧。
+    const finishSseStream = () => {
+      if (abortController.signal.aborted || isResponseClosed()) {
+        return;
+      }
+      if (callerRequestedUsage && latestUsage && !emittedUsageOnlyChunk) {
+        writeSseChunk(
+          buildUsageOnlyChunk({
+            ...lastChunkMeta,
+            usage: latestUsage
+          })
+        );
+        emittedUsageOnlyChunk = true;
+      }
+      if (!isResponseClosed()) {
+        res.write('data: [DONE]\n\n');
+      }
+    };
+
     try {
       if (validatedFallbackResponse?.ok) {
         hasValidStreamPayload = true;
         latestUsage = validatedFallbackResponse.response.usage;
+        lastChunkMeta = {
+          id: validatedFallbackResponse.response.id,
+          created: validatedFallbackResponse.response.created,
+          model: validatedFallbackResponse.response.model,
+          system_fingerprint: validatedFallbackResponse.response.system_fingerprint
+        };
         const fallbackAccumulated = extractAccumulatedFromCompletion(
           validatedFallbackResponse.response
         );
         streamAccumulated.answerText = fallbackAccumulated.answerText;
         streamAccumulated.reasoningText = fallbackAccumulated.reasoningText;
         streamAccumulated.toolCallArguments = fallbackAccumulated.toolCallArguments;
-        const fallbackChunk = buildFallbackChunkFromCompletion(
-          validatedFallbackResponse.response,
-          callerRequestedUsage
-        );
-        if (!isResponseClosed()) {
-          res.write(`data: ${JSON.stringify(fallbackChunk)}\n\n`);
-          res.write('data: [DONE]\n\n');
-        }
+        writeSseChunk(buildFallbackContentChunkFromCompletion(validatedFallbackResponse.response));
+        finishSseStream();
       } else if (completionResult.isStreamResponse) {
-        for await (const chunk of completionResult.response) {
+        for await (const rawChunk of completionResult.response) {
           if (abortController.signal.aborted || isResponseClosed()) {
             completionResult.response.controller?.abort();
             break;
           }
 
-          if (typeof chunk !== 'object' || chunk === null || Array.isArray(chunk)) {
-            throw new Error('Upstream stream emitted invalid chunk payload');
+          const validatedChunk = validateStreamChunkPayload(rawChunk);
+          if (!validatedChunk.ok) {
+            throw new Error(validatedChunk.message);
           }
-          const chunkProtocolError = extractUpstreamPayloadError(chunk);
-          if (chunkProtocolError) {
-            throw new Error(chunkProtocolError);
-          }
-          if (!Array.isArray(chunk.choices) && chunk.usage === undefined) {
-            throw new Error('Upstream stream chunk is missing choices and usage');
-          }
+          const chunk = validatedChunk.chunk;
 
           hasValidStreamPayload = true;
+          lastChunkMeta = {
+            id: chunk.id ?? lastChunkMeta.id,
+            created: chunk.created ?? lastChunkMeta.created,
+            model: chunk.model ?? lastChunkMeta.model,
+            system_fingerprint:
+              chunk.system_fingerprint !== undefined
+                ? chunk.system_fingerprint
+                : lastChunkMeta.system_fingerprint
+          };
           if (chunk.usage) {
             latestUsage = chunk.usage;
           }
@@ -984,22 +1060,26 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           }
 
           const isUsageOnlyChunk = (chunk.choices?.length ?? 0) === 0 && Boolean(chunk.usage);
-          if (!callerRequestedUsage && isUsageOnlyChunk) {
+          if (isUsageOnlyChunk) {
+            if (!callerRequestedUsage) {
+              continue;
+            }
+            writeSseChunk(chunk);
+            emittedUsageOnlyChunk = true;
             continue;
           }
 
-          if (!callerRequestedUsage && 'usage' in chunk && chunk.usage !== undefined) {
+          // 内容帧统一剥离内嵌 usage，确保所有流响应只在独立尾帧输出 usage。
+          if ('usage' in chunk && chunk.usage !== undefined) {
             const { usage: _omittedUsage, ...chunkWithoutUsage } = chunk;
-            res.write(`data: ${JSON.stringify(chunkWithoutUsage)}\n\n`);
+            writeSseChunk(chunkWithoutUsage);
             continue;
           }
 
-          res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+          writeSseChunk(chunk);
         }
 
-        if (!abortController.signal.aborted && !isResponseClosed()) {
-          res.write('data: [DONE]\n\n');
-        }
+        finishSseStream();
       }
     } catch (streamError) {
       if (completionResult.isStreamResponse) {

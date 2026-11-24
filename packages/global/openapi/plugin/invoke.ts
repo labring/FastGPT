@@ -353,6 +353,135 @@ export const InvokeChatCompletionsResponseSchema = z
 
 export type InvokeChatCompletionsResponseType = z.infer<typeof InvokeChatCompletionsResponseSchema>;
 
+const InvokeUpstreamUsageSchema = z
+  .object({
+    prompt_tokens: z.number().finite().nonnegative().optional(),
+    completion_tokens: z.number().finite().nonnegative().optional(),
+    total_tokens: z.number().finite().nonnegative().optional()
+  })
+  .passthrough()
+  .refine(
+    (usage) =>
+      usage.prompt_tokens !== undefined ||
+      usage.completion_tokens !== undefined ||
+      usage.total_tokens !== undefined,
+    { message: 'Upstream usage must contain token counts' }
+  );
+
+const InvokeUpstreamToolCallSchema = z
+  .object({
+    id: z.string().optional(),
+    type: z.string().optional(),
+    function: z
+      .object({
+        name: z.string(),
+        arguments: z.string()
+      })
+      .passthrough()
+      .optional()
+  })
+  .passthrough();
+
+const InvokeUpstreamChoiceMessageSchema = z
+  .object({
+    role: z.string().min(1).optional(),
+    content: z.string().nullish(),
+    reasoning_content: z.string().nullish(),
+    refusal: z.string().nullish(),
+    tool_calls: z.array(InvokeUpstreamToolCallSchema).optional(),
+    function_call: z.unknown().optional()
+  })
+  .passthrough()
+  .refine(
+    (message) =>
+      message.content !== undefined ||
+      message.reasoning_content !== undefined ||
+      message.refusal !== undefined ||
+      message.tool_calls !== undefined ||
+      message.function_call !== undefined,
+    { message: 'Upstream choice message is missing completion content' }
+  );
+
+/**
+ * 上游非流式补全响应运行时校验 Schema：
+ * 兼容第三方 OpenAI 兼容端点的可选元字段，同时强制校验非空 choices 与 message 业务字段，
+ * 避免非法 HTTP 200 载荷进入计费结算或原样透传给插件。
+ */
+export const InvokeUpstreamChatCompletionSchema = z
+  .object({
+    id: z.string().optional(),
+    object: z.string().optional(),
+    created: z.number().finite().optional(),
+    model: z.string().optional(),
+    system_fingerprint: z.string().nullish(),
+    choices: z
+      .array(
+        z
+          .object({
+            index: z.number().int().nonnegative().optional(),
+            message: InvokeUpstreamChoiceMessageSchema,
+            finish_reason: z.string().nullish(),
+            logprobs: z.unknown().optional()
+          })
+          .passthrough()
+      )
+      .min(1, 'Upstream completion response must contain at least one choice'),
+    usage: InvokeUpstreamUsageSchema.nullish()
+  })
+  .passthrough();
+
+const InvokeUpstreamDeltaToolCallSchema = z
+  .object({
+    index: z.number().int().nonnegative().optional(),
+    id: z.string().optional(),
+    type: z.string().optional(),
+    function: z
+      .object({
+        name: z.string().optional(),
+        arguments: z.string().optional()
+      })
+      .passthrough()
+      .optional()
+  })
+  .passthrough();
+
+const InvokeUpstreamStreamChoiceSchema = z
+  .object({
+    index: z.number().int().nonnegative().optional(),
+    delta: z
+      .object({
+        role: z.string().optional(),
+        content: z.string().nullish(),
+        reasoning_content: z.string().nullish(),
+        refusal: z.string().nullish(),
+        tool_calls: z.array(InvokeUpstreamDeltaToolCallSchema).optional(),
+        function_call: z.unknown().optional()
+      })
+      .passthrough(),
+    finish_reason: z.string().nullish(),
+    logprobs: z.unknown().optional()
+  })
+  .passthrough();
+
+/**
+ * 上游 SSE 流式分片运行时校验 Schema：
+ * 要求分片至少携带合法的 choices[*].delta 或合法 usage，拒绝空壳或字段类型异常的帧。
+ */
+export const InvokeUpstreamChatCompletionChunkSchema = z
+  .object({
+    id: z.string().optional(),
+    object: z.string().optional(),
+    created: z.number().finite().optional(),
+    model: z.string().optional(),
+    system_fingerprint: z.string().nullish(),
+    choices: z.array(InvokeUpstreamStreamChoiceSchema).optional(),
+    usage: InvokeUpstreamUsageSchema.nullish()
+  })
+  .passthrough()
+  .refine((chunk) => (chunk.choices && chunk.choices.length > 0) || Boolean(chunk.usage), {
+    message: 'Upstream stream chunk must contain choices or usage'
+  });
+
 export const InvokeChatCompletionsSseResponseSchema = z.string().meta({
   description:
     '标准 OpenAI ChatCompletionChunk SSE 事件流，每帧为 data: <JSON> 并以 data: [DONE] 结束',

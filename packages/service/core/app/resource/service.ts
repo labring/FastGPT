@@ -11,9 +11,10 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
 import { AgentToolInputModeEnum, AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import {
+  getAgentToolSource,
   getTeamPluginSource,
-  isDebugToolSource,
   isTeamPluginSource,
+  resolveSystemToolDetailSource,
   splitCombineToolId
 } from '@fastgpt/global/core/app/tool/utils';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -56,6 +57,28 @@ import {
 const isPlainObjectRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+const extractModelIdValue = (value: unknown): string => {
+  const modelValue =
+    typeof value === 'string'
+      ? value.trim()
+      : isPlainObjectRecord(value) && typeof value.modelId === 'string'
+        ? value.modelId.trim()
+        : '';
+  return modelValue && !isWorkflowModelExpression(modelValue) ? modelValue : '';
+};
+
+/**
+ * 粗筛工具配置中是否可能包含手工模型绑定（排除鉴权容器 `systemInputConfig` 及非模型值），
+ * 避免仅配置密钥或开关/数字参数的普通工具在发布或保存时触发不必要的插件详情查询。
+ */
+const hasPotentialModelConfigValue = (config: Record<string, unknown>): boolean =>
+  Object.entries(config).some(
+    ([key, value]) =>
+      key !== NodeInputKeyEnum.systemInputConfig && Boolean(extractModelIdValue(value))
+  );
+
+export type ToolDetailErrorPolicy = 'ignore' | 'throw';
+
 /**
  * 从 Agent 节点的 `selectedTools[*].config` 中提取系统/商业工具声明的 `selectLLMModel` 模型引用。
  *
@@ -64,18 +87,21 @@ const isPlainObjectRecord = (value: unknown): value is Record<string, unknown> =
  * 并仅提取未设为 `agentGenerated` 的手工模型配置，确保：
  * 1. 发布/调试时受 `resolveAppResourcesByPermission` 权限校验约束（防止无权限编辑者夹带未授权模型）；
  * 2. 合法模型写入 `AppVersion.resources`，让已发布应用及 `model:invoke` 反向调用准确继承发布者快照授权。
+ *
+ * 错误策略由调用方按入口语义显式选择：
+ * - 创建/复制/草稿自动保存/历史基线回填使用 `'ignore'`，不因已下架普通工具或插件服务抖动阻断编辑；
+ * - 正式发布（`isPublish`）与调试运行使用 `'throw'`，无法验证工具定义时阻断发布并保留原发布版本。
  */
 export const extractSelectedToolModelResources = async ({
   nodes = [],
   teamId,
   modelHandle,
-  ignoreToolDetailError = false
+  onToolDetailError = 'ignore'
 }: {
   nodes?: Array<StoreNodeItemType | RuntimeNodeItemType>;
   teamId?: string;
   modelHandle?: ModelHandle;
-  /** 仅用于历史无 resources 字段草稿的兼容回填；发布/创建等强校验流程必须保持 false，避免读取失败时静默产出残缺快照。 */
-  ignoreToolDetailError?: boolean;
+  onToolDetailError?: ToolDetailErrorPolicy;
 }): Promise<AppResourcesType> => {
   const candidates: Array<{
     toolId: string;
@@ -94,7 +120,7 @@ export const extractSelectedToolModelResources = async ({
 
       for (const tool of input.value) {
         if (!isPlainObjectRecord(tool) || !isPlainObjectRecord(tool.config)) continue;
-        if (Object.keys(tool.config).length === 0) continue;
+        if (!hasPotentialModelConfigValue(tool.config)) continue;
 
         const rawToolId =
           typeof tool.id === 'string' && tool.id.trim()
@@ -118,33 +144,23 @@ export const extractSelectedToolModelResources = async ({
           continue;
         }
 
-        const toolConfig = isPlainObjectRecord(tool.toolConfig) ? tool.toolConfig : undefined;
-        const systemToolConfig =
-          toolConfig && isPlainObjectRecord(toolConfig.systemTool)
-            ? toolConfig.systemTool
-            : undefined;
-        const systemToolSetConfig =
-          toolConfig && isPlainObjectRecord(toolConfig.systemToolSet)
-            ? toolConfig.systemToolSet
-            : undefined;
-        const rawSource =
-          typeof tool.source === 'string'
-            ? tool.source
-            : typeof systemToolConfig?.source === 'string'
-              ? systemToolConfig.source
-              : typeof systemToolSetConfig?.source === 'string'
-                ? systemToolSetConfig.source
-                : undefined;
-
-        let detailSource: string;
-        if (isDebugToolSource(rawSource)) {
-          detailSource = rawSource;
-        } else if (isTeamPluginSource(rawSource)) {
-          if (teamId && rawSource !== getTeamPluginSource(teamId)) continue;
-          detailSource = rawSource;
-        } else {
-          detailSource = idSource === AppToolSourceEnum.commercial ? idSource : 'system';
+        const runtimeSource = getAgentToolSource({
+          source: typeof tool.source === 'string' ? tool.source : undefined,
+          toolConfig: isPlainObjectRecord(tool.toolConfig)
+            ? (tool.toolConfig as Parameters<typeof getAgentToolSource>[0]['toolConfig'])
+            : undefined
+        });
+        if (
+          isTeamPluginSource(runtimeSource) &&
+          teamId &&
+          runtimeSource !== getTeamPluginSource(teamId)
+        ) {
+          continue;
         }
+        const detailSource = resolveSystemToolDetailSource({
+          idSource,
+          runtimeSource
+        });
 
         const version =
           typeof tool.version === 'string' && tool.version
@@ -175,13 +191,13 @@ export const extractSelectedToolModelResources = async ({
     const cacheKey = `${detailSource}:${toolId}:${version ?? ''}`;
     let pending = detailPromiseCache.get(cacheKey);
     if (!pending) {
+      // 按指定版本读取，与 Agent 运行时注册（formatSystemToolNode）保持一致，避免回退 latest 产生版本错位。
       const request = systemToolRepo.getSystemToolDetail({
         pluginId: toolId,
         source: detailSource,
-        version,
-        fallbackLatestVersion: true
+        version: version || undefined
       });
-      pending = ignoreToolDetailError ? request.catch(() => null) : request;
+      pending = onToolDetailError === 'ignore' ? request.catch(() => null) : request;
       detailPromiseCache.set(cacheKey, pending);
     }
     return pending;
@@ -252,13 +268,8 @@ export const extractSelectedToolModelResources = async ({
           const rawValue = Object.hasOwn(candidate.config, schemaInput.key)
             ? candidate.config[schemaInput.key]
             : schemaInput.defaultValue;
-          const modelValue =
-            typeof rawValue === 'string'
-              ? rawValue.trim()
-              : isPlainObjectRecord(rawValue) && typeof rawValue.modelId === 'string'
-                ? rawValue.modelId.trim()
-                : '';
-          if (!modelValue || isWorkflowModelExpression(modelValue)) continue;
+          const modelValue = extractModelIdValue(rawValue);
+          if (!modelValue) continue;
 
           const resolvedId = findModelIdByHandle(modelValue) ?? modelValue;
           resources.push({ type: 'model', id: resolvedId });
@@ -275,18 +286,21 @@ export const extractAppResourcesWithToolModels = async ({
   nodes = [],
   chatConfig,
   teamId,
-  modelHandle
+  modelHandle,
+  onToolDetailError = 'ignore'
 }: {
   nodes?: Array<StoreNodeItemType | RuntimeNodeItemType>;
   chatConfig?: AppChatConfigType;
   teamId?: string;
   modelHandle?: ModelHandle;
+  onToolDetailError?: ToolDetailErrorPolicy;
 }): Promise<AppResourcesType> => {
   const staticResources = extractAppResources({ nodes, chatConfig });
   const selectedToolModelResources = await extractSelectedToolModelResources({
     nodes,
     teamId,
-    modelHandle
+    modelHandle,
+    onToolDetailError
   });
   return selectedToolModelResources.length > 0
     ? mergeAppResources([...staticResources, ...selectedToolModelResources])
@@ -340,7 +354,7 @@ export const getAppDraftResourceBaseline = async ({
     nodes: decodedNodes,
     teamId,
     modelHandle,
-    ignoreToolDetailError: true
+    onToolDetailError: 'ignore'
   });
   const resources =
     selectedToolModels.length > 0
@@ -530,7 +544,8 @@ export const prepareAppWorkflowResources = async ({
     nodes,
     chatConfig,
     teamId,
-    modelHandle
+    modelHandle,
+    onToolDetailError: 'throw'
   });
   return resolveAppResourcesByPermission({
     appId,

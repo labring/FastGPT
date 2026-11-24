@@ -504,4 +504,76 @@ describe('llmCompletionsBodyFormat', () => {
       })
     ).rejects.toThrow('Json schema error');
   });
+
+  it('should emit a single completion budget field across defaultConfig, fieldMap, and max_completion_tokens inputs', async () => {
+    // 1) Model declares defaultConfig.max_completion_tokens and caller passes max_completion_tokens -> no max_tokens emitted
+    const oSeriesDefaultModel = createModel({
+      config: {
+        maxContext: 8192,
+        maxResponse: 4096,
+        quoteMaxToken: 4096,
+        defaultConfig: {
+          max_completion_tokens: 2048
+        }
+      }
+    });
+    const res1 = await llmCompletionsBodyFormat({
+      model: oSeriesDefaultModel,
+      messages,
+      stream: false,
+      max_completion_tokens: 1024
+    });
+    expect(res1.requestBody.max_completion_tokens).toBe(2048);
+    expect(res1.requestBody).not.toHaveProperty('max_tokens');
+
+    // 2) Model declares defaultConfig.max_completion_tokens and caller passes max_tokens -> no max_tokens emitted
+    const res2 = await llmCompletionsBodyFormat({
+      model: oSeriesDefaultModel,
+      messages,
+      stream: false,
+      max_tokens: 1024
+    });
+    expect(res2.requestBody.max_completion_tokens).toBe(2048);
+    expect(res2.requestBody).not.toHaveProperty('max_tokens');
+
+    // 3) Model declares defaultConfig.max_tokens and caller passes max_completion_tokens -> no max_completion_tokens emitted
+    const legacyDefaultModel = createModel({
+      config: {
+        maxContext: 8192,
+        maxResponse: 4096,
+        quoteMaxToken: 4096,
+        defaultConfig: {
+          max_tokens: 1500
+        }
+      }
+    });
+    const res3 = await llmCompletionsBodyFormat({
+      model: legacyDefaultModel,
+      messages,
+      stream: false,
+      max_completion_tokens: 1024
+    });
+    expect(res3.requestBody.max_tokens).toBe(1500);
+    expect(res3.requestBody).not.toHaveProperty('max_completion_tokens');
+
+    // 4) Model maps max_tokens via fieldMap and caller passes max_completion_tokens -> only mapped target field emitted
+    const mappedModel = createModel({
+      config: {
+        maxContext: 8192,
+        maxResponse: 4096,
+        quoteMaxToken: 4096,
+        fieldMap: {
+          max_tokens: 'max_completion_tokens'
+        }
+      }
+    });
+    const res4 = await llmCompletionsBodyFormat({
+      model: mappedModel,
+      messages,
+      stream: false,
+      max_completion_tokens: 9999
+    });
+    expect(res4.requestBody.max_completion_tokens).toBe(4096);
+    expect(res4.requestBody).not.toHaveProperty('max_tokens');
+  });
 });

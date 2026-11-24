@@ -831,13 +831,27 @@ describe('prepareAppWorkflowResources', () => {
     }
   });
 
-  it('rejects extraction when plugin tool detail lookup fails so publish keeps the previous valid version', async () => {
+  it('handles plugin tool detail lookup errors by entry policy, skips non-model configs, and queries exact version', async () => {
     const getSystemToolDetailSpy = vi
       .spyOn(SystemToolRepo.getInstance(), 'getSystemToolDetail')
       .mockRejectedValue(new Error('Plugin service temporarily unavailable'));
 
     try {
-      const agentNodes = [
+      const staticModelId = '65f000000000000000000777';
+      const nodesWithUnavailableTools = [
+        {
+          nodeId: 'chat-node',
+          name: 'AI Chat',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.aiModelId,
+              renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+              value: staticModelId
+            }
+          ],
+          outputs: []
+        },
         {
           nodeId: 'agent-fail',
           name: 'Agent',
@@ -850,6 +864,7 @@ describe('prepareAppWorkflowResources', () => {
                 {
                   id: 'systemTool-modelInvokeTest',
                   source: 'system',
+                  version: '1.2.3',
                   config: {
                     summaryModel: '65f000000000000000000888'
                   }
@@ -861,19 +876,71 @@ describe('prepareAppWorkflowResources', () => {
         }
       ];
 
+      // 1) Draft auto-save / create-copy (default / onToolDetailError='ignore') keeps static resources and does not block.
+      const draftExtracted = await extractAppResourcesWithToolModels({
+        nodes: nodesWithUnavailableTools as any,
+        teamId
+      });
+      expect(draftExtracted).toEqual([{ type: 'model', id: staticModelId }]);
+      expect(getSystemToolDetailSpy).toHaveBeenCalledWith({
+        pluginId: 'systemTool-modelInvokeTest',
+        source: 'system',
+        version: '1.2.3'
+      });
+
+      // 2) Publish / debug strict mode (onToolDetailError='throw') rejects so publish keeps the previous valid version.
       await expect(
         extractSelectedToolModelResources({
-          nodes: agentNodes as any,
-          teamId
+          nodes: nodesWithUnavailableTools as any,
+          teamId,
+          onToolDetailError: 'throw'
         })
       ).rejects.toThrow('Plugin service temporarily unavailable');
 
       await expect(
         extractAppResourcesWithToolModels({
-          nodes: agentNodes as any,
-          teamId
+          nodes: nodesWithUnavailableTools as any,
+          teamId,
+          onToolDetailError: 'throw'
         })
       ).rejects.toThrow('Plugin service temporarily unavailable');
+
+      // 3) Ordinary tools that only hold secrets (systemInputConfig) or non-model values skip plugin detail lookup entirely.
+      getSystemToolDetailSpy.mockClear();
+      const ordinaryToolNodes = [
+        {
+          nodeId: 'agent-ordinary',
+          name: 'Agent',
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+              value: [
+                {
+                  id: 'systemTool-removedOrdinaryTool',
+                  source: 'system',
+                  config: {
+                    [NodeInputKeyEnum.systemInputConfig]: { apiKey: 'secret' },
+                    limit: 10,
+                    enabled: true,
+                    dynamicRef: '{{start.query}}'
+                  }
+                }
+              ]
+            }
+          ],
+          outputs: []
+        }
+      ];
+      await expect(
+        extractSelectedToolModelResources({
+          nodes: ordinaryToolNodes as any,
+          teamId,
+          onToolDetailError: 'throw'
+        })
+      ).resolves.toEqual([]);
+      expect(getSystemToolDetailSpy).not.toHaveBeenCalled();
     } finally {
       getSystemToolDetailSpy.mockRestore();
     }
