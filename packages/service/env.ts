@@ -186,10 +186,6 @@ export const serviceEnv = createEnv({
       description:
         '下载短链公开 URL 前缀。配置后下载链接生成为 {prefix}/{signedAlias}，通常由 nginx rewrite 到 FastGPT /api/system/file/d/{signedAlias}；仅影响下载，不影响上传'
     }),
-    STORAGE_DOWNLOAD_SIGN_VERSION: z.enum(['v1', 'v2']).default('v2').meta({
-      description:
-        '下载短链签发格式版本（v1 点分格式 / v2 连字符带可选后缀格式，默认 v2）。滚动升级或先升级自定义 Nginx 短路径代理期间可暂设为 v1；服务端始终同时校验 v1 与 v2'
-    }),
     NEXT_PUBLIC_BASE_URL: z.string().default(''),
 
     //==================== 安全配置 ====================

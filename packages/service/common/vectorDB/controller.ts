@@ -1,4 +1,5 @@
 import { getSystemInstanceConfig } from '../system/systemInstanceConfig/runtime';
+import { trackVectorRecallLease } from '../opsPerf/datasetSearch';
 /* vector crud */
 import { VectorCountCache, type VectorCountScope } from '@fastgpt/dal/redis/caches/vectorCount';
 import { PgVectorCtrl } from './pg';
@@ -20,7 +21,7 @@ import { MilvusCtrl } from './milvus';
 import { MongoVectorCtrl } from './mongo';
 import { retryFn, withTimeout } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../logger';
-import { isRedisLeaseError, LeaseCache } from '@fastgpt/dal/redis/caches/lease';
+import { LeaseCache } from '@fastgpt/dal/redis/caches/lease';
 
 /** 根据部署配置创建向量存储控制器，迁移验收也通过同一实现写入探测向量。 */
 export const createVectorController = (): VectorControllerType => {
@@ -62,24 +63,20 @@ export const initVectorStore = async (hooks: VectorStoreHooks = {}) => {
  * 未配置并发上限时直接召回；lease 协调错误直接上抛，避免重复排队加重过载。
  */
 export const recallFromVectorStore: VectorControllerType['embRecall'] = async (props) => {
-  const result = await retryFn(async () => {
-    try {
-      return {
-        success: true as const,
-        value: await recallLease.withConcurrency({
+  const result = await retryFn(() =>
+    trackVectorRecallLease({
+      runWithLease: (fn) =>
+        recallLease.withConcurrency({
           key: 'vector:recall',
           label: 'vector-recall',
           concurrency: () => getSystemInstanceConfig().vector.vectorRecallConcurrency ?? 0,
           ttlMs: RECALL_LEASE_TTL_MS,
           renewIntervalMs: 10_000,
-          fn: () => Vector.embRecall(props)
-        })
-      };
-    } catch (error) {
-      if (isRedisLeaseError(error)) return { success: false as const, error };
-      throw error;
-    }
-  });
+          fn
+        }),
+      runRecall: () => Vector.embRecall(props)
+    })
+  );
 
   if (!result.success) throw result.error;
   return result.value;

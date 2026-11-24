@@ -5,7 +5,10 @@ import {
   type AppFormEditFormType
 } from '@fastgpt/global/core/app/formEdit/type';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type {
+  FlowNodeTemplateType,
+  StoreNodeItemType
+} from '@fastgpt/global/core/workflow/type/node';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -21,7 +24,7 @@ import { userFilesInput } from '@fastgpt/global/core/workflow/template/output';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent/index';
-import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
+import { getDefaultAppForm, hasEnabledFileSelect } from '@fastgpt/global/core/app/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { getAppChatConfig } from '@fastgpt/global/common/app/chat';
 import { Input_Template_File_Link } from '@fastgpt/global/core/workflow/template/input';
@@ -33,7 +36,16 @@ import { getNewToolPreviewNode } from '@/web/core/app/api/tool';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { inheritToolInputConfig } from '../FormComponent/ToolSelector/utils';
-import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import {
+  getAgentToolSource,
+  isSystemOrCommercialToolId
+} from '@fastgpt/global/core/app/tool/utils';
+import { parseV2RefKey } from '@fastgpt/global/core/workflow/node/agent/promptRef/protocol';
+import { toLegacyToolLookup } from '@fastgpt/global/core/workflow/node/agent/promptRef/legacy';
+import {
+  getAgentToolIdentityKey,
+  getPromptRefToolId
+} from '@fastgpt/global/core/workflow/node/agent/promptRef/registry';
 
 /* format app nodes to edit form */
 export const appWorkflow2AgentForm = ({
@@ -306,8 +318,9 @@ export function agentForm2AppWorkflow(
                     label: '',
                     valueType: WorkflowIOValueTypeEnum.arrayObject,
                     value: data.selectedAgentSkills.map(
-                      ({ skillId, name, description, avatar }) => ({
+                      ({ skillId, source, name, description, avatar }) => ({
                         skillId,
+                        ...(source ? { source } : {}),
                         name,
                         description,
                         ...(avatar === undefined ? {} : { avatar })
@@ -363,65 +376,141 @@ export const getEmptyAgentConfig = (t: any) => {
   );
 };
 
-/** 加载辅助生成的工具，按来源复用已有配置；旧引用未记录来源时按 system 匹配。 */
+/** 按规范工具身份键更新或头插已选工具，避免隐式 source 或旧三段式子工具 ID 导致重复或误覆盖。 */
+export const upsertSelectedTool = (
+  selectedTools: SelectedToolItemType[],
+  tool: SelectedToolItemType
+): SelectedToolItemType[] => {
+  const toolKey = getAgentToolIdentityKey(tool);
+  const exists = selectedTools.some((item) => getAgentToolIdentityKey(item) === toolKey);
+  return exists
+    ? selectedTools.map((item) => (getAgentToolIdentityKey(item) === toolKey ? tool : item))
+    : [tool, ...selectedTools];
+};
+
+/** 按规范工具身份键从已选工具列表中移除目标工具。 */
+export const removeSelectedTool = (
+  selectedTools: SelectedToolItemType[],
+  target: { id?: string; pluginId?: string; source?: string }
+): SelectedToolItemType[] => {
+  const targetKey = getAgentToolIdentityKey(target);
+  return selectedTools.filter((item) => getAgentToolIdentityKey(item) !== targetKey);
+};
+
+export type VerifiedToolPreviewResult =
+  | { status: 'missing' }
+  | { status: 'existing'; tool: SelectedToolItemType }
+  | { status: 'preview'; tool: FlowNodeTemplateType };
+
+/**
+ * 统一解析并校验工具预览（@ 菜单与辅助生成共用）：
+ * - 非 MCP/HTTP 子工具命中已有配置时直接复用，避免重复请求；
+ * - MCP/HTTP 子工具先经实时预览校验规范身份，防止已删子工具借历史回退误复用或误插入。
+ */
+export const resolveVerifiedToolPreview = async ({
+  toolId,
+  source,
+  existsTools = []
+}: {
+  toolId: string;
+  source?: string;
+  existsTools?: SelectedToolItemType[];
+}): Promise<VerifiedToolPreviewResult> => {
+  const identityKey = getAgentToolIdentityKey({ id: toolId, source });
+  const isSameTool = (tool: FlowNodeTemplateType) => getAgentToolIdentityKey(tool) === identityKey;
+
+  const isMcpOrHttpChild =
+    toolId.startsWith('mcp-') ||
+    toolId.startsWith('http-') ||
+    (toolId.includes('/') && !isSystemOrCommercialToolId(toolId) && !source);
+
+  const existTool = existsTools.find(isSameTool);
+  if (existTool && !isMcpOrHttpChild) {
+    return { status: 'existing', tool: existTool };
+  }
+
+  const preview = await getNewToolPreviewNode({
+    appId: toolId,
+    source
+  });
+  if (
+    isMcpOrHttpChild &&
+    !isSameTool({ ...preview, source: getAgentToolSource(preview) ?? source })
+  ) {
+    return { status: 'missing' };
+  }
+
+  if (existTool) {
+    return { status: 'existing', tool: existTool };
+  }
+
+  return { status: 'preview', tool: preview };
+};
+
+/** 加载辅助生成的工具，同时兼容 V2 canonicalKey 与旧格式 { id, source } / string 引用。 */
 export const loadGeneratedTools = async ({
   newToolIds,
   existsTools = [],
-  generatedSelectedTools = [],
   fileSelectConfig
 }: {
   newToolIds: Array<string | { id: string; source?: string }>; // 新的，完整的 toolId
   existsTools?: SelectedToolItemType[];
-  generatedSelectedTools?: SelectedToolItemType[];
   fileSelectConfig?: AppFileSelectConfigType;
 }): Promise<SelectedToolItemType[]> => {
   const results = (
     await Promise.all(
       newToolIds.map<Promise<SelectedToolItemType | undefined>>(async (toolRef) => {
-        const toolId = typeof toolRef === 'string' ? toolRef : toolRef.id;
-        const source = typeof toolRef === 'string' ? undefined : toolRef.source;
-        const identityKey = getToolIdentityKey(toolId, source);
-        // 已经存在的工具，直接返回
-        const existTool = existsTools.find(
-          (tool) => getToolIdentityKey(tool.pluginId, tool.source) === identityKey
-        );
-        if (existTool) {
-          // 新提示词使用带来源的引用；复用旧配置时也要补齐来源，才能与运行时引用一致。
-          if (source === 'system' && !existTool.source) {
-            return { ...existTool, source };
+        const { toolId, source } = (() => {
+          if (typeof toolRef === 'string') {
+            const v2Ref = parseV2RefKey(toolRef);
+            if (v2Ref) {
+              const legacyLookup = toLegacyToolLookup(v2Ref);
+              return legacyLookup
+                ? { toolId: legacyLookup.appId, source: legacyLookup.source }
+                : { toolId: '', source: undefined };
+            }
+            return { toolId: toolRef, source: undefined };
           }
-          return existTool;
+          return { toolId: toolRef.id, source: toolRef.source };
+        })();
+        if (!toolId) return;
+
+        const verified = await resolveVerifiedToolPreview({
+          toolId,
+          source,
+          existsTools
+        });
+        if (verified.status === 'missing') return;
+        if (verified.status === 'existing') {
+          // 复用旧配置时补齐显式来源，保持与运行时引用一致。
+          if (source === 'system' && !verified.tool.source) {
+            return { ...verified.tool, source };
+          }
+          return verified.tool;
         }
 
-        // 新工具，需要与已配置的 tool 进行 input 合并
-        const tool = await getNewToolPreviewNode({
-          appId: toolId,
-          source
-        });
+        const tool = verified.tool;
         // 验证工具配置
         const toolValid = validateToolConfiguration({
           toolTemplate: tool,
           isAppTool: true,
-          canUploadFile: !!(
-            fileSelectConfig?.canSelectFile ||
-            fileSelectConfig?.canSelectImg ||
-            fileSelectConfig?.canSelectVideo ||
-            fileSelectConfig?.canSelectAudio ||
-            fileSelectConfig?.canSelectCustomFileExtension
-          )
+          canUploadFile: hasEnabledFileSelect(fileSelectConfig)
         });
         if (!toolValid) {
           return;
         }
 
-        const generatedTool = generatedSelectedTools.find(
-          (item) => getToolIdentityKey(item.pluginId, item.source) === identityKey
-        );
-        const inheritedTool = inheritToolInputConfig({ tool, sourceTool: generatedTool });
+        const inheritedTool = inheritToolInputConfig({ tool });
+        const previewToolId = getPromptRefToolId(tool);
+        const resolvedToolId =
+          toolId.includes('/') &&
+          (previewToolId.startsWith('mcp-') || previewToolId.startsWith('http-'))
+            ? previewToolId
+            : toolId;
 
         return {
           ...inheritedTool,
-          id: toolId,
+          id: resolvedToolId,
           source
         };
       })

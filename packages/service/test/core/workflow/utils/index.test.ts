@@ -513,25 +513,28 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     expect(result[1].nodeId).toBe('parent-nodechild-1');
   });
 
-  it('should accept full child tool id from selected config', async () => {
-    const toolSetNode = makeToolSetNode({
-      toolList: [
-        {
-          toolId: 'systemTool-toolset-1/child-1',
-          name: 'Full Id Tool',
-          description: 'Full Id Desc'
-        }
-      ]
-    });
-    mockToolDetail();
+  it.each(['catalog/search', 'systemTool-toolset-1/catalog/search'])(
+    'resolves a slash-named child selected as %s',
+    async (selectedId) => {
+      const toolSetNode = makeToolSetNode({
+        toolList: [
+          {
+            toolId: selectedId,
+            name: 'Full Id Tool',
+            description: 'Full Id Desc'
+          }
+        ]
+      });
+      mockToolDetail([{ id: 'catalog/search', name: 'Search catalog' }]);
 
-    const result = await getSystemToolRunTimeNodeFromSystemToolset({
-      toolSetNode
-    });
+      const result = await getSystemToolRunTimeNodeFromSystemToolset({
+        toolSetNode
+      });
 
-    expect(result).toHaveLength(1);
-    expect(result[0].pluginId).toBe('systemTool-toolset-1/child-1');
-  });
+      expect(result).toHaveLength(1);
+      expect(result[0].pluginId).toBe('systemTool-toolset-1/catalog/search');
+    }
+  );
 
   it('should skip selected tools that are missing from repo children', async () => {
     const toolSetNode = makeToolSetNode({

@@ -1,3 +1,5 @@
+import type { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
+
 /**
  * 沙盒业务层：声明运行态 Skill 扫描和部署结果类型。
  *
@@ -13,6 +15,7 @@ export type DeployedSkillInfo = {
   appId?: string;
   appName?: string;
   appDescription?: string;
+  appSource?: `${AgentSkillSourceEnum}`;
 };
 
 export type DeployedSkillVersion = {
@@ -20,6 +23,7 @@ export type DeployedSkillVersion = {
   name?: string;
   description?: string;
   avatar?: string;
+  source?: `${AgentSkillSourceEnum}`;
   versionId: string;
   targetDir: string;
 };

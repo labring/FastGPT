@@ -1,0 +1,741 @@
+import React, { act, useState } from 'react';
+import { JSDOM } from 'jsdom';
+import { createRoot, type Root } from 'react-dom/client';
+import { Simulate } from 'react-dom/test-utils';
+import { useForm } from 'react-hook-form';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  ChatFileTypeEnum,
+  ChatRoleEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type {
+  ChatSiteItemType,
+  ChatBoxInputFormType
+} from '@/components/core/chat/ChatContainer/ChatBox/type';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
+import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
+import PluginRunContextProvider, {
+  PluginRunContext
+} from '@/components/core/chat/ChatContainer/PluginRunBox/context';
+import { InputTypeEnum } from '@/components/core/app/formRender/constant';
+import FileSelector from '@/components/core/app/FileSelector';
+import RenderInput from '@/components/core/chat/ChatContainer/PluginRunBox/components/RenderInput';
+
+const getPresignedChatFileGetUrlMock = vi.hoisted(() => vi.fn());
+
+vi.mock('next-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key })
+}));
+
+vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
+  useSafeTranslation: () => ({ t: (key: string) => key })
+}));
+
+vi.mock('@/web/common/file/api', () => ({
+  getPresignedChatFileGetUrl: getPresignedChatFileGetUrlMock,
+  getUploadChatFilePresignedUrl: vi.fn(),
+  getUploadDraftChatFilePresignedUrl: vi.fn()
+}));
+
+vi.mock('@/web/common/file/hooks/useFileUploadLimits', () => ({
+  useFileUploadLimits: () => ({ maxUploadFileCount: 10, maxUploadFileSize: 50 })
+}));
+
+vi.mock('@fastgpt/web/hooks/useToast', () => ({
+  useToast: () => ({ toast: vi.fn() })
+}));
+
+vi.mock('@/web/common/file/hooks/useSelectFile', () => ({
+  useSelectFile: () => ({ File: () => null, onOpen: vi.fn() })
+}));
+
+vi.mock('@fastgpt/web/components/common/MyBox', () => ({
+  default: ({ children }: { children?: React.ReactNode }) =>
+    React.createElement('div', null, children)
+}));
+
+vi.mock('@fastgpt/web/components/common/MyDivider', () => ({
+  default: () => null
+}));
+
+vi.mock('@fastgpt/web/components/common/MyTooltip', () => ({
+  default: ({ children }: { children?: React.ReactNode }) =>
+    React.createElement(React.Fragment, null, children)
+}));
+
+vi.mock('@fastgpt/web/components/common/Avatar', () => ({
+  default: ({ src }: { src?: string }) =>
+    React.createElement('img', { 'data-testid': 'file-preview', src: src ?? '' })
+}));
+
+vi.mock('@/components/core/app/FileSelector/useLinkIcons', () => ({
+  useFileSelectorLinkIcons: () => new Map()
+}));
+
+vi.mock('@/components/Markdown', () => ({
+  default: () => null
+}));
+
+vi.mock('@fastgpt/web/components/common/Icon', () => ({
+  default: () => null
+}));
+
+vi.mock('@fastgpt/web/components/common/MyBox/FormLabel', () => ({
+  default: ({ children }: { children?: React.ReactNode }) =>
+    React.createElement('label', null, children)
+}));
+
+vi.mock('@fastgpt/web/components/common/MyTooltip/QuestionTip', () => ({
+  default: () => null
+}));
+
+vi.mock('@fastgpt/web/components/common/MyPopover/PopoverConfirm', () => ({
+  default: ({
+    Trigger,
+    onConfirm
+  }: {
+    Trigger: React.ReactNode;
+    onConfirm: () => Promise<any> | any;
+  }) =>
+    React.createElement(
+      'div',
+      null,
+      Trigger,
+      React.createElement(
+        'button',
+        { type: 'button', 'data-testid': 'confirm-clear', onClick: () => void onConfirm() },
+        'confirm'
+      )
+    )
+}));
+
+vi.mock('@/components/core/app/formRender', () => ({
+  default: ({
+    inputType,
+    value,
+    onChange,
+    isDisabled,
+    fieldName
+  }: {
+    inputType?: InputTypeEnum;
+    value?: any;
+    onChange?: (val: any) => void;
+    isDisabled?: boolean;
+    fieldName?: string;
+  }) => {
+    if (inputType === InputTypeEnum.fileSelect) {
+      return React.createElement(FileSelector, {
+        value: Array.isArray(value) ? value : [],
+        onChange,
+        isDisabled,
+        canSelectImg: true,
+        canSelectFile: true
+      });
+    }
+
+    return React.createElement('input', {
+      'data-testid': fieldName,
+      disabled: isDisabled,
+      value: value ?? '',
+      onChange: (e: React.ChangeEvent<HTMLInputElement>) => onChange?.(e.target.value)
+    });
+  }
+}));
+
+const createPromptInput = (defaultValue?: string): FlowNodeInputItemType => ({
+  key: 'prompt',
+  label: '绘图提示词',
+  valueType: WorkflowIOValueTypeEnum.string,
+  required: true,
+  renderTypeList: [FlowNodeInputTypeEnum.textarea],
+  defaultValue
+});
+
+const createHistoryRecord = (input: FlowNodeInputItemType, value: unknown): ChatSiteItemType => ({
+  dataId: 'human-1',
+  obj: ChatRoleEnum.Human,
+  value: [
+    {
+      text: {
+        content: JSON.stringify([{ ...input, value }])
+      }
+    }
+  ]
+});
+
+describe('PluginRunBox RenderInput clear input', () => {
+  let dom: JSDOM;
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    dom = new JSDOM('<!doctype html><html><body></body></html>', { pretendToBeVisual: true });
+    vi.stubGlobal('window', dom.window);
+    vi.stubGlobal('document', dom.window.document);
+    vi.stubGlobal('HTMLElement', dom.window.HTMLElement);
+    vi.stubGlobal('HTMLInputElement', dom.window.HTMLInputElement);
+    vi.stubGlobal('React', React);
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+    dom.window.close();
+    vi.unstubAllGlobals();
+  });
+
+  it('clears an input with undefined defaultValue after Run -> switch back -> Restart', async () => {
+    const promptInput = createPromptInput(undefined);
+    const onSubmitSpy = vi.fn();
+
+    const Harness = () => {
+      const variablesForm = useForm<ChatBoxInputFormType>();
+      const [chatRecords, setChatRecords] = useState<ChatSiteItemType[]>([]);
+      const [mounted, setMounted] = useState(true);
+
+      return React.createElement(
+        ChatItemContext.Provider,
+        {
+          value: {
+            chatBoxData: {
+              appId: 'app-1',
+              app: {
+                name: 'Flux',
+                avatar: '',
+                type: 'plugin' as any,
+                pluginInputs: [promptInput]
+              }
+            },
+            variablesForm
+          } as any
+        },
+        React.createElement(
+          ChatRecordContext.Provider,
+          {
+            value: {
+              chatRecords,
+              setChatRecords
+            } as any
+          },
+          React.createElement(
+            WorkflowRuntimeContext.Provider,
+            {
+              value: {
+                outLinkAuthData: undefined,
+                fileUploading: false
+              } as any
+            },
+            React.createElement(
+              PluginRunContext.Provider,
+              {
+                value: {
+                  isChatting: false,
+                  instruction: '',
+                  onStartChat: vi.fn(),
+                  onNewChat: () => setChatRecords([]),
+                  onSubmit: (formData: ChatBoxInputFormType) => {
+                    onSubmitSpy(formData);
+                    setChatRecords([createHistoryRecord(promptInput, formData.variables?.prompt)]);
+                    setMounted(false);
+                  }
+                } as any
+              },
+              React.createElement(
+                'button',
+                {
+                  type: 'button',
+                  'data-testid': 'toggle-mount',
+                  onClick: () => setMounted((v) => !v)
+                },
+                'toggle'
+              ),
+              mounted ? React.createElement(RenderInput) : null
+            )
+          )
+        )
+      );
+    };
+
+    // 1. 初始打开并输入 SS，点击运行（切到输出 Tab，RenderInput 卸载）
+    await act(async () => {
+      root.render(React.createElement(Harness));
+    });
+
+    const inputEl = container.querySelector<HTMLInputElement>('[data-testid="variables.prompt"]');
+    expect(inputEl).not.toBeNull();
+    await act(async () => {
+      inputEl!.value = 'SS';
+      Simulate.change(inputEl!);
+    });
+
+    const runBtn = Array.from(container.querySelectorAll('button')).find(
+      (btn) => btn.textContent === 'common:Run'
+    )!;
+    await act(async () => {
+      Simulate.click(runBtn);
+    });
+    expect(onSubmitSpy).toHaveBeenCalledTimes(1);
+    expect(onSubmitSpy).toHaveBeenLastCalledWith({ variables: { prompt: 'SS' } });
+
+    // 2. 运行一轮后切回输入 Tab：RenderInput 重新挂载并回显历史 SS
+    const toggleBtn = container.querySelector<HTMLButtonElement>('[data-testid="toggle-mount"]')!;
+    await act(async () => {
+      Simulate.click(toggleBtn);
+    });
+
+    const mountedWithHistory = container.querySelector<HTMLInputElement>(
+      '[data-testid="variables.prompt"]'
+    )!;
+    expect(mountedWithHistory.value).toBe('SS');
+    expect(mountedWithHistory.disabled).toBe(true);
+
+    // 3. 点击重新运行（Restart）：保留 SS 且转为可编辑
+    const restartBtn = Array.from(container.querySelectorAll('button')).find(
+      (btn) => btn.textContent === 'common:Restart'
+    )!;
+    await act(async () => {
+      Simulate.click(restartBtn);
+    });
+
+    const afterRestart = container.querySelector<HTMLInputElement>(
+      '[data-testid="variables.prompt"]'
+    )!;
+    expect(afterRestart.disabled).toBe(false);
+    expect(afterRestart.value).toBe('SS');
+
+    // 4. 点击清空输入确认：应清空回默认值 undefined，且必填校验阻止提交旧值 SS
+    const confirmClearBtn = container.querySelector<HTMLButtonElement>(
+      '[data-testid="confirm-clear"]'
+    )!;
+    await act(async () => {
+      Simulate.click(confirmClearBtn);
+    });
+
+    const afterClear = container.querySelector<HTMLInputElement>(
+      '[data-testid="variables.prompt"]'
+    )!;
+    expect(afterClear.value).toBe('');
+
+    const runAfterClearBtn = Array.from(container.querySelectorAll('button')).find(
+      (btn) => btn.textContent === 'common:Run'
+    )!;
+    await act(async () => {
+      Simulate.click(runAfterClearBtn);
+    });
+    expect(onSubmitSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores explicit defaultValue on clear and clears stale value when switching histories', async () => {
+    const promptInput = createPromptInput('preset');
+
+    const Harness = () => {
+      const variablesForm = useForm<ChatBoxInputFormType>();
+      const [chatRecords, setChatRecords] = useState<ChatSiteItemType[]>([
+        createHistoryRecord(promptInput, 'SS')
+      ]);
+
+      return React.createElement(
+        ChatItemContext.Provider,
+        {
+          value: {
+            chatBoxData: {
+              appId: 'app-1',
+              app: {
+                name: 'Flux',
+                avatar: '',
+                type: 'plugin' as any,
+                pluginInputs: [promptInput]
+              }
+            },
+            variablesForm
+          } as any
+        },
+        React.createElement(
+          ChatRecordContext.Provider,
+          {
+            value: {
+              chatRecords,
+              setChatRecords
+            } as any
+          },
+          React.createElement(
+            WorkflowRuntimeContext.Provider,
+            {
+              value: {
+                outLinkAuthData: undefined,
+                fileUploading: false
+              } as any
+            },
+            React.createElement(
+              PluginRunContext.Provider,
+              {
+                value: {
+                  isChatting: false,
+                  instruction: '',
+                  onStartChat: vi.fn(),
+                  onNewChat: () => setChatRecords([]),
+                  onSubmit: vi.fn()
+                } as any
+              },
+              React.createElement(
+                'button',
+                {
+                  type: 'button',
+                  'data-testid': 'switch-empty-history',
+                  onClick: () => setChatRecords([createHistoryRecord(promptInput, undefined)])
+                },
+                'switch'
+              ),
+              React.createElement(RenderInput)
+            )
+          )
+        )
+      );
+    };
+
+    await act(async () => {
+      root.render(React.createElement(Harness));
+    });
+    expect(
+      container.querySelector<HTMLInputElement>('[data-testid="variables.prompt"]')?.value
+    ).toBe('SS');
+
+    // 切换到该字段为 undefined 的历史记录时，不应残留上一条记录的 SS
+    await act(async () => {
+      Simulate.click(container.querySelector('[data-testid="switch-empty-history"]')!);
+    });
+    expect(
+      container.querySelector<HTMLInputElement>('[data-testid="variables.prompt"]')?.value
+    ).toBe('');
+
+    // 点击清空输入应恢复为配置默认值 'preset'
+    await act(async () => {
+      Simulate.click(container.querySelector('[data-testid="confirm-clear"]')!);
+    });
+    expect(
+      container.querySelector<HTMLInputElement>('[data-testid="variables.prompt"]')?.value
+    ).toBe('preset');
+  });
+
+  it('does not remount FileSelector or re-fetch preview URL when AI output streams', async () => {
+    getPresignedChatFileGetUrlMock.mockReset();
+    getPresignedChatFileGetUrlMock.mockImplementation(
+      async ({ key }: { key: string }) => `https://signed.example/${key}`
+    );
+
+    const fileInput: FlowNodeInputItemType = {
+      key: 'files',
+      label: '附件',
+      valueType: WorkflowIOValueTypeEnum.arrayString,
+      required: false,
+      renderTypeList: [FlowNodeInputTypeEnum.fileSelect]
+    };
+    const optionalPromptInput = createPromptInput(undefined);
+    optionalPromptInput.required = false;
+
+    const attachmentValue = [
+      {
+        key: 'chat/img-1.png',
+        name: 'img-1.png',
+        type: ChatFileTypeEnum.image
+      }
+    ];
+    const onSubmitSpy = vi.fn();
+
+    const Harness = () => {
+      const variablesForm = useForm<ChatBoxInputFormType>();
+      const [chatRecords, setChatRecords] = useState<ChatSiteItemType[]>([
+        {
+          dataId: 'human-1',
+          obj: ChatRoleEnum.Human,
+          value: [
+            {
+              text: {
+                content: JSON.stringify([
+                  { ...fileInput, value: attachmentValue },
+                  { ...optionalPromptInput, value: undefined }
+                ])
+              }
+            }
+          ]
+        },
+        {
+          dataId: 'ai-1',
+          obj: ChatRoleEnum.AI,
+          value: [{ text: { content: '' } }]
+        }
+      ]);
+
+      return React.createElement(
+        ChatItemContext.Provider,
+        {
+          value: {
+            chatBoxData: {
+              appId: 'app-1',
+              app: {
+                name: 'Flux',
+                avatar: '',
+                type: 'plugin' as any,
+                pluginInputs: [fileInput, optionalPromptInput]
+              }
+            },
+            variablesForm
+          } as any
+        },
+        React.createElement(
+          ChatRecordContext.Provider,
+          {
+            value: {
+              chatRecords,
+              setChatRecords
+            } as any
+          },
+          React.createElement(
+            WorkflowRuntimeContext.Provider,
+            {
+              value: {
+                sourceTarget: { sourceType: ChatSourceTypeEnum.app, sourceId: 'app-1' },
+                chatId: 'chat-1',
+                outLinkAuthData: undefined,
+                fileUploadMode: 'runtime',
+                fileUploading: false,
+                setFileUploadingCount: vi.fn()
+              } as any
+            },
+            React.createElement(
+              PluginRunContext.Provider,
+              {
+                value: {
+                  isChatting: false,
+                  instruction: '',
+                  onStartChat: vi.fn(),
+                  onNewChat: () => setChatRecords([]),
+                  onSubmit: onSubmitSpy
+                } as any
+              },
+              React.createElement(
+                'button',
+                {
+                  type: 'button',
+                  'data-testid': 'stream-chunk',
+                  onClick: () =>
+                    setChatRecords((prev) =>
+                      prev.map((item, idx) =>
+                        idx === prev.length - 1
+                          ? {
+                              ...item,
+                              value: [
+                                {
+                                  text: {
+                                    content:
+                                      ((item.value?.[0] as any)?.text?.content ?? '') + 'chunk-'
+                                  }
+                                }
+                              ]
+                            }
+                          : item
+                      )
+                    )
+                },
+                'stream'
+              ),
+              React.createElement(RenderInput)
+            )
+          )
+        )
+      );
+    };
+
+    await act(async () => {
+      root.render(React.createElement(Harness));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(getPresignedChatFileGetUrlMock).toHaveBeenCalledTimes(1);
+    expect(container.querySelector<HTMLImageElement>('[data-testid="file-preview"]')?.src).toBe(
+      'https://signed.example/chat/img-1.png'
+    );
+
+    // 模拟桌面端持续挂载输入面板时，AI 输出发生 3 次流式更新
+    const streamBtn = container.querySelector<HTMLButtonElement>('[data-testid="stream-chunk"]')!;
+    for (let i = 0; i < 3; i++) {
+      await act(async () => {
+        Simulate.click(streamBtn);
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+    }
+
+    expect(getPresignedChatFileGetUrlMock).toHaveBeenCalledTimes(1);
+    expect(container.querySelector<HTMLImageElement>('[data-testid="file-preview"]')?.src).toBe(
+      'https://signed.example/chat/img-1.png'
+    );
+
+    // 点击重新运行（保留附件）后仍不重复请求签名，点击清空输入则正常清空附件
+    const restartBtn = Array.from(container.querySelectorAll('button')).find(
+      (btn) => btn.textContent === 'common:Restart'
+    )!;
+    await act(async () => {
+      Simulate.click(restartBtn);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(getPresignedChatFileGetUrlMock).toHaveBeenCalledTimes(1);
+
+    const confirmClearBtn = container.querySelector<HTMLButtonElement>(
+      '[data-testid="confirm-clear"]'
+    )!;
+    await act(async () => {
+      Simulate.click(confirmClearBtn);
+    });
+    expect(container.querySelector('[data-testid="file-preview"]')).toBeNull();
+
+    const runBtn = Array.from(container.querySelectorAll('button')).find(
+      (btn) => btn.textContent === 'common:Run'
+    )!;
+    await act(async () => {
+      Simulate.click(runBtn);
+    });
+    expect(onSubmitSpy).toHaveBeenCalledWith({
+      variables: { files: undefined, prompt: undefined }
+    });
+  });
+
+  it('preserves submitted plugin inputs and restart params when SSE updateVariables fires', async () => {
+    const promptInput = createPromptInput(undefined);
+    let latestGlobalVariables: Record<string, any> | undefined;
+    const setPluginRunTab = vi.fn();
+
+    const Harness = () => {
+      const variablesForm = useForm<ChatBoxInputFormType>();
+      const [chatRecords, setChatRecords] = useState<ChatSiteItemType[]>([]);
+
+      latestGlobalVariables = variablesForm.watch('variables');
+
+      const resetVariables = ({ variables = {} }: { variables?: Record<string, any> } = {}) => {
+        const values = variablesForm.getValues();
+        variablesForm.reset({
+          ...values,
+          variables
+        });
+      };
+
+      return React.createElement(
+        ChatItemContext.Provider,
+        {
+          value: {
+            chatBoxData: {
+              appId: 'app-1',
+              app: {
+                name: 'Flux',
+                avatar: '',
+                type: 'plugin' as any,
+                pluginInputs: [promptInput],
+                chatConfig: {}
+              }
+            },
+            variablesForm,
+            resetVariables,
+            setPluginRunTab
+          } as any
+        },
+        React.createElement(
+          ChatRecordContext.Provider,
+          {
+            value: {
+              chatRecords,
+              setChatRecords
+            } as any
+          },
+          React.createElement(
+            PluginRunContextProvider,
+            {
+              appId: 'app-1',
+              chatId: 'chat-1',
+              onNewChat: () => {
+                resetVariables({ variables: {} });
+                setChatRecords([]);
+              },
+              onStartChat: async ({ generatingMessage }) => {
+                generatingMessage({
+                  event: SseResponseEventEnum.updateVariables,
+                  variables: { runtimeOnly: 'updated-by-workflow' }
+                });
+                generatingMessage({
+                  event: SseResponseEventEnum.answer,
+                  text: 'done'
+                });
+                return { responseText: 'done' };
+              }
+            },
+            React.createElement(RenderInput)
+          )
+        )
+      );
+    };
+
+    await act(async () => {
+      root.render(React.createElement(Harness));
+    });
+
+    const inputEl = container.querySelector<HTMLInputElement>('[data-testid="variables.prompt"]')!;
+    await act(async () => {
+      inputEl.value = 'submitted prompt';
+      Simulate.change(inputEl);
+    });
+
+    const runBtn = Array.from(container.querySelectorAll('button')).find(
+      (btn) => btn.textContent === 'common:Run'
+    )!;
+    await act(async () => {
+      Simulate.click(runBtn);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // 全局会话变量表单收到运行时更新，但插件历史入参回显不被覆盖
+    expect(latestGlobalVariables).toEqual({ runtimeOnly: 'updated-by-workflow' });
+    const historyInput = container.querySelector<HTMLInputElement>(
+      '[data-testid="variables.prompt"]'
+    )!;
+    expect(historyInput.disabled).toBe(true);
+    expect(historyInput.value).toBe('submitted prompt');
+
+    // 点击重新运行（即使 onNewChat 同时重置全局 variablesForm）仍保留上次提交的参数
+    const restartBtn = Array.from(container.querySelectorAll('button')).find(
+      (btn) => btn.textContent === 'common:Restart'
+    )!;
+    await act(async () => {
+      Simulate.click(restartBtn);
+    });
+
+    const restartedInput = container.querySelector<HTMLInputElement>(
+      '[data-testid="variables.prompt"]'
+    )!;
+    expect(restartedInput.disabled).toBe(false);
+    expect(restartedInput.value).toBe('submitted prompt');
+
+    // 再点清空输入仍可正常清空
+    await act(async () => {
+      Simulate.click(container.querySelector('[data-testid="confirm-clear"]')!);
+    });
+    expect(
+      container.querySelector<HTMLInputElement>('[data-testid="variables.prompt"]')?.value
+    ).toBe('');
+  });
+});
