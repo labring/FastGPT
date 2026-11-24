@@ -1,13 +1,12 @@
 import { findCollectionAndChild } from '@fastgpt/service/core/dataset/collection/utils';
 import { delCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   createApiFileSourceResolver,
   LEGACY_SYSTEM_ROOT_API_FILE_ID
 } from '@fastgpt/service/core/dataset/apiDataset/utils';
-import { cleanDatasetLegacySystemRootInSession } from '@fastgpt/service/core/dataset/apiDataset/service';
+import { disableApiDatasetSyncAllInSession } from '@fastgpt/service/core/dataset/apiDataset/service';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { parseHeaderCert } from '@fastgpt/service/support/permission/auth/common';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -242,21 +241,14 @@ async function handler(req: ApiRequestProps) {
     }
 
     if (disableSyncAllDatasetIds.size > 0) {
-      await MongoDataset.updateMany(
-        { _id: { $in: [...disableSyncAllDatasetIds] }, teamId },
-        { $set: { syncAll: false } },
-        { session }
-      );
-      if (hasLegacySystemRootRefs) {
-        // 升级过渡期兼容：删除 API 集合关闭全量同步时，一并拆除存量 SYSTEM_ROOT 哨兵并重挂存活子节点，
-        // 避免残留哨兵被新旧 Pro 或读接口继续视作 syncAll = true。
-        for (const dsId of disableSyncAllDatasetIds) {
-          await cleanDatasetLegacySystemRootInSession({
-            datasetId: dsId,
-            session,
-            backfillSyncAll: false
-          });
-        }
+      // 与关闭 syncAll、暂停目录共用同一状态转换入口：关闭全量同步并按需拆除存量 SYSTEM_ROOT 哨兵。
+      for (const dsId of disableSyncAllDatasetIds) {
+        await disableApiDatasetSyncAllInSession({
+          teamId,
+          datasetId: dsId,
+          session,
+          cleanLegacySystemRoot: hasLegacySystemRootRefs
+        });
       }
     }
   });

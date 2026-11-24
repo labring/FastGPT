@@ -1,8 +1,9 @@
 import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
 import type { SystemMigrationFailedRecord } from '@fastgpt/global/migration/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { LEGACY_SYSTEM_ROOT_API_FILE_ID } from '@fastgpt/service/core/dataset/apiDataset/utils';
 import type { SystemMigrationContext } from '@/migration/registry';
-import { cleanSingleDatasetSystemRoot, LEGACY_SYSTEM_ROOT_API_FILE_ID } from './service';
+import { cleanSingleDatasetSystemRoot } from './service';
 
 const SYSTEM_ROOT_QUERY = {
   $or: [

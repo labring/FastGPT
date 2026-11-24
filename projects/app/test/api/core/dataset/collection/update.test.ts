@@ -832,7 +832,10 @@ describe('update collection syncChildren', () => {
 
   it('rejects syncChildren updates on non-API folders and non-folder files', async () => {
     const { owner, source, file } = await fixture();
-    await MongoDatasetCollection.updateOne({ _id: file._id }, { $set: { apiFileId: 'remote-file' } });
+    await MongoDatasetCollection.updateOne(
+      { _id: file._id },
+      { $set: { apiFileId: 'remote-file' } }
+    );
 
     const manualFolderRes = await Call(updateHandler, {
       auth: owner,
@@ -845,5 +848,54 @@ describe('update collection syncChildren', () => {
       body: { id: String(file._id), syncChildren: false }
     });
     expect(apiFileRes.error).toBe(CommonErrEnum.invalidParams);
+  });
+
+  it('cleans legacy SYSTEM_ROOT sentinel and reparents children when pausing a folder on an unmigrated dataset', async () => {
+    const { owner, datasetId } = await fixture();
+    const sentinel = await MongoDatasetCollection.create({
+      teamId: owner.teamId,
+      datasetId,
+      tmbId: owner.tmbId,
+      name: 'ROOT_FOLDER',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'SYSTEM_ROOT'
+    });
+    const apiFolder = await MongoDatasetCollection.create({
+      teamId: owner.teamId,
+      datasetId,
+      tmbId: owner.tmbId,
+      name: 'top-api-folder',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'remote-dir',
+      apiFileParentId: 'SYSTEM_ROOT',
+      parentId: sentinel._id,
+      syncChildren: true
+    });
+    const siblingFile = await MongoDatasetCollection.create({
+      teamId: owner.teamId,
+      datasetId,
+      tmbId: owner.tmbId,
+      name: 'sibling-doc',
+      type: DatasetCollectionTypeEnum.apiFile,
+      apiFileId: 'remote-doc',
+      apiFileParentId: 'SYSTEM_ROOT',
+      parentId: sentinel._id
+    });
+
+    const res = await Call(updateHandler, {
+      auth: owner,
+      body: { id: String(apiFolder._id), syncChildren: false }
+    });
+
+    expect(res.code).toBe(200);
+    await expect(MongoDatasetCollection.findById(sentinel._id).lean()).resolves.toBeNull();
+    const savedFolder = await MongoDatasetCollection.findById(apiFolder._id).lean();
+    expect(savedFolder?.syncChildren).toBe(false);
+    expect(savedFolder?.parentId).toBeNull();
+    expect(savedFolder?.apiFileParentId).toBeUndefined();
+    const savedSibling = await MongoDatasetCollection.findById(siblingFile._id).lean();
+    expect(savedSibling?.parentId).toBeNull();
+    expect(savedSibling?.apiFileParentId).toBeUndefined();
+    expect((await MongoDataset.findById(datasetId).lean())?.syncAll).toBe(false);
   });
 });

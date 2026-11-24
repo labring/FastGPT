@@ -134,4 +134,28 @@ describe('createApiFileFolders', () => {
     ).rejects.toBe(error);
     expect(idMap.size).toBe(0);
   });
+
+  it('将 rootParentIds 透传给父级解析，使存量 SYSTEM_ROOT 下的新目录落库父级与鉴权父级一致', async () => {
+    const sentinelId = String(new Types.ObjectId());
+    const idMap = new Map<string, string>();
+    const folders = planApiFileFolders({
+      records: [folder('topDir', null, 0), folder('subDir', 'topDir', 1)],
+      idMap
+    });
+    const insertFolders = vi.fn(async (docs: BulkInsertCollectionDoc[]) => ({
+      successApiFileIds: docs.map((doc) => doc.apiFileId),
+      failedApiFileIds: []
+    }));
+
+    await createApiFileFolders({
+      folders,
+      idMap,
+      rootParentIds: new Map([['topDir', sentinelId]]),
+      syncAll: true,
+      insertFolders
+    });
+
+    expect(String(insertFolders.mock.calls[0][0][0].parentId)).toBe(sentinelId);
+    expect(String(insertFolders.mock.calls[1][0][0].parentId)).toBe(idMap.get('topDir'));
+  });
 });

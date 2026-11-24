@@ -162,6 +162,40 @@ export const cleanDatasetLegacySystemRootInSession = async ({
 };
 
 /**
+ * 在同一事务内关闭 API 知识库整库全量同步，并同步拆除存量 SYSTEM_ROOT 哨兵（保留存活子节点与独立权限快照）。
+ * 统一供 dataset/update（关闭 syncAll）、collection/update（暂停目录）与 collection/delete（删除 API 集合）复用，
+ * 避免哨兵残留导致 syncState/detail/Pro 继续将其判定为 syncAll = true。
+ */
+export const disableApiDatasetSyncAllInSession = async ({
+  teamId,
+  datasetId,
+  session,
+  updateDataset = true,
+  cleanLegacySystemRoot = true
+}: {
+  teamId: string | Types.ObjectId;
+  datasetId: string | Types.ObjectId;
+  session: ClientSession;
+  updateDataset?: boolean;
+  cleanLegacySystemRoot?: boolean;
+}) => {
+  if (updateDataset) {
+    await MongoDataset.updateOne(
+      { _id: datasetId, teamId, syncAll: true },
+      { $set: { syncAll: false } },
+      { session }
+    );
+  }
+  if (cleanLegacySystemRoot) {
+    await cleanDatasetLegacySystemRootInSession({
+      datasetId,
+      session,
+      backfillSyncAll: false
+    });
+  }
+};
+
+/**
  * 在同一事务内原子开启 API 知识库整库全量同步：
  * 1. 置 Dataset.syncAll = true（当调用方已在同一事务中更新 Dataset 时可通过 updateDataset=false 跳过）；
  * 2. 恢复本知识库内全部已暂停（syncChildren: false）的 API 目录，保证整库同步与局部目录状态一致。
@@ -616,7 +650,8 @@ export const createApiDatasetCollection = async ({
       record,
       idMap: plannedIdMap,
       targetParentId,
-      rootParentIds: effectiveRootParentIds
+      rootParentIds: effectiveRootParentIds,
+      syncAll: effectiveSyncAll
     }).parentId;
     if (parentId === undefined) continue;
     // 新目录归当前调用者所有，其创建授权来自最近已有父级，不能查询尚未落库的目录。

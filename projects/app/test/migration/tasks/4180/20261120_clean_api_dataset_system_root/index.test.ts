@@ -11,12 +11,10 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { LEGACY_SYSTEM_ROOT_API_FILE_ID } from '@fastgpt/service/core/dataset/apiDataset/utils';
 import { systemMigrations, type SystemMigrationContext } from '@/migration/registry';
 import { cleanApiDatasetSystemRoot } from '@/migration/tasks/4180/20261120_clean_api_dataset_system_root';
-import {
-  cleanSingleDatasetSystemRoot,
-  LEGACY_SYSTEM_ROOT_API_FILE_ID
-} from '@/migration/tasks/4180/20261120_clean_api_dataset_system_root/service';
+import { cleanSingleDatasetSystemRoot } from '@/migration/tasks/4180/20261120_clean_api_dataset_system_root/service';
 import { getFakeUsers } from '@test/datas/users';
 
 const createMigrationContext = () => {

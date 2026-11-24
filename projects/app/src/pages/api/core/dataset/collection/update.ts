@@ -1,5 +1,5 @@
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { disableApiDatasetSyncAllInSession } from '@fastgpt/service/core/dataset/apiDataset/service';
 import {
   createOrGetCollectionTags,
   getCollectionUpdateTime
@@ -255,17 +255,14 @@ async function handler(req: ApiRequestProps) {
       );
     }
 
-    // 单独暂停任意目录同步新增时，同步关闭知识库全量同步总开关，避免与全量同步语义冲突。
+    // 单独暂停任意目录同步新增时，统一关闭知识库全量同步总开关并拆除存量 SYSTEM_ROOT 哨兵，
+    // 避免哨兵残留导致 syncState/detail/Pro 继续将其视作整库全量同步。
     if (syncChildren === false) {
-      await MongoDataset.updateOne(
-        {
-          _id: collection.datasetId,
-          teamId: resourceTeamId,
-          syncAll: true
-        },
-        { $set: { syncAll: false } },
-        { session }
-      );
+      await disableApiDatasetSyncAllInSession({
+        teamId: resourceTeamId,
+        datasetId: collection.datasetId,
+        session
+      });
     }
 
     // Folder update forbid

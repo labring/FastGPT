@@ -318,7 +318,8 @@ flowchart TD
 - 路径：`projects/app/src/migration/tasks/4180/20261120_clean_api_dataset_system_root/`（严格遵循 `projects/app/src/migration/tasks/README.md` 与 `system-migration-development` 规范，注册至 `projects/app/src/migration/registry.ts` 尾部）。
 - 调度策略：`manual: true`，采用**幂等全量扫描 + 完成校验**（不使用 checkpoint，失败可安全重跑）：
   - 为兼容任意升级顺序（先升 App、同时升级或滚动升级窗口期与旧版 Pro/App 共存），启动阶段不自动删除 `SYSTEM_ROOT`；
-  - 未执行清理前，新版 App（`detail`、`syncState`、`listV2`、`paths`、`createApiDatasetCollection`、`update`、`delete`）与新版 Pro（`sync`）均透明兼容存量 `SYSTEM_ROOT` 哨兵；待全部 App 与 Pro 均升级完毕后，由管理员在后台手动触发清理；
+  - 推荐发版升级顺序为「先升 Pro → 再升 App → 全部服务就绪后由管理员手动执行本清理迁移」；旧版 Pro（<= v4.17.5）不识别新版 `Dataset.syncAll` 与 `collection.syncChildren`，若出现先升 App 的混合窗口期，手动迁移保住未操作的存量老库，待 Pro 升级后新版同步范围自动收敛，不在新版 App 中反向写回 `SYSTEM_ROOT`；
+  - 未执行清理前，新版 App（`detail`、`syncState`、`listV2`、`paths`、`createApiDatasetCollection`、`dataset/update`、`collection/update`、`collection/delete`）与新版 Pro（`sync`）均透明兼容存量 `SYSTEM_ROOT` 哨兵；待全部 App 与 Pro 均升级完毕后，由管理员在后台手动触发清理；
   - 单次执行耗时短（仅扫描 `apiFileId: 'SYSTEM_ROOT'` 与 `apiFileParentId: 'SYSTEM_ROOT'` 命中文档），逐 Dataset 事务提交，重复执行零副作用。
 - 阶段声明：`migrate`（逐库事务清理哨兵、迁移权限并回填 `Dataset.syncAll`）→ `validation`（全库二次核验确认无残留 `SYSTEM_ROOT`）。
 - 国际化文案：补全 `packages/web/i18n/{zh-CN,en,ja}/system_migration.json`。

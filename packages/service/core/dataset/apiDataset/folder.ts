@@ -28,6 +28,8 @@ export const createApiFileFolders = async ({
   folders,
   idMap,
   targetParentId,
+  rootParentIds,
+  syncAll,
   inheritPermissionOf,
   insertFolders,
   onLayer
@@ -35,6 +37,8 @@ export const createApiFileFolders = async ({
   folders: ReturnType<typeof planApiFileFolders>;
   idMap: Map<string, string>;
   targetParentId?: string | null;
+  rootParentIds?: Map<string, string | null>;
+  syncAll?: boolean;
   inheritPermissionOf?: (record: ApiFileRecord) => boolean | undefined;
   insertFolders: (
     docs: BulkInsertCollectionDoc[]
@@ -59,7 +63,9 @@ export const createApiFileFolders = async ({
       const { parentId, apiFileParentId } = resolveApiFileRecordParent({
         record,
         idMap,
-        targetParentId
+        targetParentId,
+        rootParentIds,
+        syncAll
       });
       if (parentId === undefined) {
         skippedIds.push(record.apiFileId);

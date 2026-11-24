@@ -3,9 +3,6 @@ import {
   cleanDatasetLegacySystemRootInSession,
   type CleanDatasetLegacySystemRootResult
 } from '@fastgpt/service/core/dataset/apiDataset/service';
-import { LEGACY_SYSTEM_ROOT_API_FILE_ID } from '@fastgpt/service/core/dataset/apiDataset/utils';
-
-export { LEGACY_SYSTEM_ROOT_API_FILE_ID };
 
 export type CleanSingleDatasetSystemRootResult = CleanDatasetLegacySystemRootResult;
 
