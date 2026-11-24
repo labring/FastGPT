@@ -713,6 +713,12 @@ describe('prepareAppWorkflowResources', () => {
               type: 'string',
               format: 'modelId',
               description: 'Explicitly marked agentGenerated'
+            },
+            defaultOnlyModel: {
+              type: 'string',
+              format: 'modelId',
+              default: 'schema-default-model-id',
+              description: 'Static schema default without explicit config should be ignored'
             }
           }
         }

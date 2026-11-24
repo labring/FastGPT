@@ -356,10 +356,9 @@ const inspectSelectedToolModelResources = async ({
             continue;
           }
 
-          const rawValue = Object.hasOwn(candidate.config, schemaInput.key)
-            ? candidate.config[schemaInput.key]
-            : schemaInput.defaultValue;
-          const modelValue = extractModelIdValue(rawValue);
+          // 仅提取用户在 config 中显式配置的模型，不回退插件 Schema 静态默认值，保持正常提取与草稿降级规则一致。
+          if (!Object.hasOwn(candidate.config, schemaInput.key)) continue;
+          const modelValue = extractModelIdValue(candidate.config[schemaInput.key]);
           if (!modelValue) continue;
 
           resources.push({ type: 'model', id: resolveModelId(modelValue) });

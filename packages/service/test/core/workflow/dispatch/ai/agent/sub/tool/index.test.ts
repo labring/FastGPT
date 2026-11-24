@@ -910,6 +910,11 @@ describe('dispatchTool runtime toolset auth', () => {
         model: {
           type: 'string',
           format: 'modelId'
+        },
+        defaultOnlyModel: {
+          type: 'string',
+          format: 'modelId',
+          default: modelB
         }
       }
     };

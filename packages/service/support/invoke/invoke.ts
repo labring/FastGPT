@@ -165,10 +165,11 @@ export const resolveAuthorizedInvokeModelIds = ({
       continue;
     }
 
-    const rawValue =
-      toolInput && Object.hasOwn(toolInput, schemaInput.key)
-        ? toolInput[schemaInput.key]
-        : schemaInput.defaultValue;
+    // 仅授权当前调用显式传入的模型参数，不采信插件 Schema 静态默认值。
+    if (!toolInput || !Object.hasOwn(toolInput, schemaInput.key)) {
+      continue;
+    }
+    const rawValue = toolInput[schemaInput.key];
     const modelId =
       typeof rawValue === 'string'
         ? rawValue.trim()

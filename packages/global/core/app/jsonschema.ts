@@ -578,7 +578,11 @@ export const jsonSchema2NodeInput = ({
     });
     const rawNodeMetadata =
       schemaType === 'systemTool' ? value[JsonSchemaNodeInputMetadataKey] : undefined;
-    const { isToolParam: _legacyIsToolParam, ...nodeMetadata } = rawNodeMetadata ?? {};
+    const {
+      isToolParam: _legacyIsToolParam,
+      defaultValue: metadataDefaultValue,
+      ...nodeMetadata
+    } = rawNodeMetadata ?? {};
     const localizedTitle = selectPluginText(value['x-i18n']?.title, lang);
     const localizedDescription =
       value['x-i18n']?.description !== undefined
@@ -596,8 +600,14 @@ export const jsonSchema2NodeInput = ({
             renderTypeList: [FlowNodeInputTypeEnum.agentGenerated],
             selectedType: FlowNodeInputTypeEnum.agentGenerated
           }),
-      ...(value.default !== undefined ? { defaultValue: value.default } : {}),
-      ...(nodeMetadata ?? {}),
+      // 模型 ID 强依赖部署实例与团队权限，不透传插件 Schema 静态默认值，必须由用户在配置中显式选择。
+      ...(isModelId
+        ? {}
+        : {
+            ...(value.default !== undefined ? { defaultValue: value.default } : {}),
+            ...(metadataDefaultValue !== undefined ? { defaultValue: metadataDefaultValue } : {})
+          }),
+      ...nodeMetadata,
       key,
       label: localizedTitle || value.title || key,
       valueType: nodeMetadata?.valueType ?? valueType,

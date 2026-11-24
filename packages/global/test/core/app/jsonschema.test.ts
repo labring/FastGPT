@@ -406,11 +406,11 @@ describe('jsonSchema2NodeInput', () => {
       valueType: WorkflowIOValueTypeEnum.string,
       renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
       selectedType: FlowNodeInputTypeEnum.selectLLMModel,
-      defaultValue: 'default-model-id',
       required: true,
       canAgentGenerated: false,
       defaultToAgentGenerated: false
     });
+    expect(systemToolInputs[0]).not.toHaveProperty('defaultValue');
     expect(systemToolInputs[1]).toMatchObject({
       key: 'nullableModel',
       valueType: WorkflowIOValueTypeEnum.string,
