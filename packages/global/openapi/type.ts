@@ -24,7 +24,11 @@ export const FastGptSdkMetaSchema = z.object({
     .string()
     .regex(/^[a-z][a-zA-Z0-9]*$/)
     .optional()
-    .meta({ description: '双模态流式配套方法名，例如 completionsV2Stream' })
+    .meta({ description: '双模态流式配套方法名，例如 completionsV2Stream' }),
+  retryable: z.boolean().optional().meta({
+    description:
+      '显式覆盖 SDK 默认重试策略；默认为 GET 可重试、非 GET 不可重试。消耗一次性凭证的 GET 接口必须设为 false。'
+  })
 });
 export type FastGptSdkMeta = z.infer<typeof FastGptSdkMetaSchema>;
 
