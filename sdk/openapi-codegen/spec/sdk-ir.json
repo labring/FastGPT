@@ -27294,6 +27294,26 @@
                       },
                       "required": false,
                       "description": "钉钉知识库配置"
+                    },
+                    {
+                      "name": "permissionSync",
+                      "schema": {
+                        "kind": "primitive",
+                        "type": "boolean",
+                        "description": "外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL"
+                      },
+                      "required": false,
+                      "description": "外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL"
+                    },
+                    {
+                      "name": "syncAllFiles",
+                      "schema": {
+                        "kind": "primitive",
+                        "type": "boolean",
+                        "description": "整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点"
+                      },
+                      "required": false,
+                      "description": "整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点"
                     }
                   ],
                   "description": "第三方知识库服务器配置(API/飞书/语雀/钉钉)"
@@ -28046,6 +28066,26 @@
                       },
                       "required": false,
                       "description": "钉钉知识库配置"
+                    },
+                    {
+                      "name": "permissionSync",
+                      "schema": {
+                        "kind": "primitive",
+                        "type": "boolean",
+                        "description": "外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL"
+                      },
+                      "required": false,
+                      "description": "外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL"
+                    },
+                    {
+                      "name": "syncAllFiles",
+                      "schema": {
+                        "kind": "primitive",
+                        "type": "boolean",
+                        "description": "整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点"
+                      },
+                      "required": false,
+                      "description": "整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点"
                     }
                   ],
                   "additionalProperties": false,
@@ -28330,6 +28370,26 @@
                 },
                 "required": false,
                 "description": "错误信息"
+              },
+              {
+                "name": "permissionSyncStatus",
+                "schema": {
+                  "kind": "enum",
+                  "values": ["active", "syncing", "waiting", "error"],
+                  "description": "外部文件权限同步状态；仅在 permissionSync 开启时返回"
+                },
+                "required": false,
+                "description": "外部文件权限同步状态；仅在 permissionSync 开启时返回"
+              },
+              {
+                "name": "permissionSyncErrorMsg",
+                "schema": {
+                  "kind": "primitive",
+                  "type": "string",
+                  "description": "外部文件权限同步失败信息"
+                },
+                "required": false,
+                "description": "外部文件权限同步失败信息"
               },
               {
                 "name": "vectorModel",
@@ -31837,6 +31897,26 @@
                       },
                       "required": false,
                       "description": "钉钉知识库配置"
+                    },
+                    {
+                      "name": "permissionSync",
+                      "schema": {
+                        "kind": "primitive",
+                        "type": "boolean",
+                        "description": "外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL"
+                      },
+                      "required": false,
+                      "description": "外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL"
+                    },
+                    {
+                      "name": "syncAllFiles",
+                      "schema": {
+                        "kind": "primitive",
+                        "type": "boolean",
+                        "description": "整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点"
+                      },
+                      "required": false,
+                      "description": "整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点"
                     }
                   ],
                   "description": "第三方知识库服务器配置(API/飞书/语雀/钉钉)"
@@ -32099,6 +32179,7 @@
               "id": "datasets.collections.batchDownload",
               "resource": "datasets.collections",
               "method": "batchDownload",
+              "retryable": false,
               "httpMethod": "GET",
               "path": "/core/dataset/collection/batchDownload",
               "summary": "下载知识库集合归档文件",
@@ -34686,6 +34767,26 @@
                                 },
                                 "required": false,
                                 "description": "钉钉知识库配置"
+                              },
+                              {
+                                "name": "permissionSync",
+                                "schema": {
+                                  "kind": "primitive",
+                                  "type": "boolean",
+                                  "description": "外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL"
+                                },
+                                "required": false,
+                                "description": "外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL"
+                              },
+                              {
+                                "name": "syncAllFiles",
+                                "schema": {
+                                  "kind": "primitive",
+                                  "type": "boolean",
+                                  "description": "整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点"
+                                },
+                                "required": false,
+                                "description": "整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点"
                               }
                             ],
                             "additionalProperties": false,
@@ -66367,6 +66468,7 @@
       "id": "datasets.collections.batchDownload",
       "resource": "datasets.collections",
       "method": "batchDownload",
+      "retryable": false,
       "httpMethod": "GET",
       "path": "/core/dataset/collection/batchDownload",
       "summary": "下载知识库集合归档文件",
@@ -68939,6 +69041,26 @@
                         },
                         "required": false,
                         "description": "钉钉知识库配置"
+                      },
+                      {
+                        "name": "permissionSync",
+                        "schema": {
+                          "kind": "primitive",
+                          "type": "boolean",
+                          "description": "外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL"
+                        },
+                        "required": false,
+                        "description": "外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL"
+                      },
+                      {
+                        "name": "syncAllFiles",
+                        "schema": {
+                          "kind": "primitive",
+                          "type": "boolean",
+                          "description": "整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点"
+                        },
+                        "required": false,
+                        "description": "整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点"
                       }
                     ],
                     "additionalProperties": false,
@@ -70816,6 +70938,26 @@
                   },
                   "required": false,
                   "description": "钉钉知识库配置"
+                },
+                {
+                  "name": "permissionSync",
+                  "schema": {
+                    "kind": "primitive",
+                    "type": "boolean",
+                    "description": "外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL"
+                  },
+                  "required": false,
+                  "description": "外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL"
+                },
+                {
+                  "name": "syncAllFiles",
+                  "schema": {
+                    "kind": "primitive",
+                    "type": "boolean",
+                    "description": "整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点"
+                  },
+                  "required": false,
+                  "description": "整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点"
                 }
               ],
               "description": "第三方知识库服务器配置(API/飞书/语雀/钉钉)"
@@ -72513,6 +72655,26 @@
                   },
                   "required": false,
                   "description": "钉钉知识库配置"
+                },
+                {
+                  "name": "permissionSync",
+                  "schema": {
+                    "kind": "primitive",
+                    "type": "boolean",
+                    "description": "外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL"
+                  },
+                  "required": false,
+                  "description": "外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL"
+                },
+                {
+                  "name": "syncAllFiles",
+                  "schema": {
+                    "kind": "primitive",
+                    "type": "boolean",
+                    "description": "整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点"
+                  },
+                  "required": false,
+                  "description": "整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点"
                 }
               ],
               "additionalProperties": false,
@@ -72797,6 +72959,26 @@
             },
             "required": false,
             "description": "错误信息"
+          },
+          {
+            "name": "permissionSyncStatus",
+            "schema": {
+              "kind": "enum",
+              "values": ["active", "syncing", "waiting", "error"],
+              "description": "外部文件权限同步状态；仅在 permissionSync 开启时返回"
+            },
+            "required": false,
+            "description": "外部文件权限同步状态；仅在 permissionSync 开启时返回"
+          },
+          {
+            "name": "permissionSyncErrorMsg",
+            "schema": {
+              "kind": "primitive",
+              "type": "string",
+              "description": "外部文件权限同步失败信息"
+            },
+            "required": false,
+            "description": "外部文件权限同步失败信息"
           },
           {
             "name": "vectorModel",
@@ -76290,6 +76472,26 @@
                   },
                   "required": false,
                   "description": "钉钉知识库配置"
+                },
+                {
+                  "name": "permissionSync",
+                  "schema": {
+                    "kind": "primitive",
+                    "type": "boolean",
+                    "description": "外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL"
+                  },
+                  "required": false,
+                  "description": "外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL"
+                },
+                {
+                  "name": "syncAllFiles",
+                  "schema": {
+                    "kind": "primitive",
+                    "type": "boolean",
+                    "description": "整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点"
+                  },
+                  "required": false,
+                  "description": "整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点"
                 }
               ],
               "description": "第三方知识库服务器配置(API/飞书/语雀/钉钉)"

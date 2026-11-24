@@ -2,7 +2,13 @@ import { apiDocOpenAPIDocument } from '@fastgpt/global/openapi/provider/systemop
 import { describe, expect, it } from 'vitest';
 import { buildSdkIrDocument } from '../src/buildIr';
 import { checkSdkArtifactsDrift } from '../src/index';
+import {
+  emitPythonModelsFile,
+  emitPythonResourcesFile,
+  toPythonSnakeCase
+} from '../src/pythonEmitter';
 import { normalizeRequestSchemaToIr } from '../src/schemaNormalizer';
+import { emitTypeScriptResourcesFile } from '../src/tsEmitter';
 
 const collectExpectedActiveSystemOps = (): string[] => {
   const keys: string[] = [];
@@ -206,6 +212,8 @@ describe('OpenAPI to SDK IR Compiler & Artifacts Drift', () => {
       (op) => op.id === 'datasets.collections.batchDownload'
     );
     expect(batchDownload?.responseMode).toBe('binary');
+    expect(batchDownload?.retryable).toBe(false);
+    expect(emitTypeScriptResourcesFile(ir)).toContain('"retryable": false');
 
     const deleteDataset = ir.operations.find((op) => op.id === 'datasets.delete');
     expect(deleteDataset?.responseMode).toBe('void');
@@ -215,7 +223,37 @@ describe('OpenAPI to SDK IR Compiler & Artifacts Drift', () => {
     expect(unknownTopResponses).toHaveLength(0);
   });
 
-  it('keeps committed SDK IR and generated TypeScript sources 100% drift-free', async () => {
+  it('emits Python Pydantic models and Sync/Async resource trees with snake_case, safe aliasing, and never constraints', () => {
+    expect(toPythonSnakeCase('completionsV2Stream')).toBe('completions_v2_stream');
+    expect(toPythonSnakeCase('paragraphChunkAIMode')).toBe('paragraph_chunk_ai_mode');
+    expect(toPythonSnakeCase('zh-Hant')).toBe('zh_hant');
+
+    const pyModels = emitPythonModelsFile(ir);
+    const pyResources = emitPythonResourcesFile(ir);
+
+    // `_id` 字段映射到 `id_` 且不影响同级 `id`，互斥 `never` 字段使用 `exclude=True`
+    expect(pyModels).toContain(
+      'id_: str = Field(validation_alias=AliasChoices("id_", "_id"), serialization_alias="_id"'
+    );
+    expect(pyModels).toContain(
+      'collection_ids: None = Field(default=None, validation_alias=AliasChoices("collection_ids", "collectionIds"), serialization_alias="collectionIds", exclude=True'
+    );
+    expect(pyModels).toContain('_builtins.list[');
+
+    // Sync / Async / WithRawResponse / 双模态流式方法齐全，且对象与数组联合入参放宽为 Mapping/Sequence
+    expect(pyResources).toContain('class ChatResource:');
+    expect(pyResources).toContain('class AsyncChatResource:');
+    expect(pyResources).toContain('class WithRawResponseChatResource:');
+    expect(pyResources).toContain('class AsyncWithRawResponseChatResource:');
+    expect(pyResources).toContain('def completions_v2_stream(');
+    expect(pyResources).toContain('async def completions_v2_stream(');
+    expect(pyResources).toContain('retryable=False');
+    expect(pyResources).toContain(
+      'messages: Sequence[ChatCompletionsV2ReqMessagesItem | Mapping[str, Any]]'
+    );
+  });
+
+  it('keeps committed SDK IR and generated TypeScript/Python sources 100% drift-free', async () => {
     const { driftedFiles } = await checkSdkArtifactsDrift();
     expect(driftedFiles).toEqual([]);
   });

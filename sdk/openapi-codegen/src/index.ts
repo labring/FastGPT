@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import prettier from 'prettier';
 import { buildSdkIrDocument } from './buildIr';
+import { emitPythonModelsFile, emitPythonResourcesFile } from './pythonEmitter';
 import { emitTypeScriptResourcesFile, emitTypeScriptTypesFile } from './tsEmitter';
 
 export type GeneratedArtifacts = {
@@ -12,6 +13,10 @@ export type GeneratedArtifacts = {
   typesContent: string;
   resourcesPath: string;
   resourcesContent: string;
+  pythonModelsPath: string;
+  pythonModelsContent: string;
+  pythonResourcesPath: string;
+  pythonResourcesContent: string;
 };
 
 const resolveRepoPaths = () => {
@@ -24,12 +29,14 @@ const resolveRepoPaths = () => {
     repoRoot,
     irPath: path.join(codegenRoot, 'spec/sdk-ir.json'),
     typesPath: path.join(sdkRoot, 'client/src/generated/types.ts'),
-    resourcesPath: path.join(sdkRoot, 'client/src/generated/resources.ts')
+    resourcesPath: path.join(sdkRoot, 'client/src/generated/resources.ts'),
+    pythonModelsPath: path.join(sdkRoot, 'python/src/fastgpt_sdk/generated/models.py'),
+    pythonResourcesPath: path.join(sdkRoot, 'python/src/fastgpt_sdk/generated/resources.py')
   };
 };
 
 /**
- * 在内存中执行完整的 IR 编译与 TypeScript 代码生成，并使用主仓 Prettier 配置统一格式化。
+ * 在内存中执行完整的 IR 编译与多语言（TypeScript / Python）代码生成，并使用主仓 Prettier 配置格式化 TS/JSON 产物。
  */
 export const compileSdkArtifacts = async (): Promise<GeneratedArtifacts> => {
   const paths = resolveRepoPaths();
@@ -43,6 +50,8 @@ export const compileSdkArtifacts = async (): Promise<GeneratedArtifacts> => {
   const rawIrJson = `${JSON.stringify(ir, null, 2)}\n`;
   const rawTypesTs = emitTypeScriptTypesFile(ir);
   const rawResourcesTs = emitTypeScriptResourcesFile(ir);
+  const pythonModelsContent = emitPythonModelsFile(ir);
+  const pythonResourcesContent = emitPythonResourcesFile(ir);
 
   const [irContent, typesContent, resourcesContent] = await Promise.all([
     prettier.format(rawIrJson, { ...prettierConfig, filepath: paths.irPath }),
@@ -56,36 +65,45 @@ export const compileSdkArtifacts = async (): Promise<GeneratedArtifacts> => {
     typesPath: paths.typesPath,
     typesContent,
     resourcesPath: paths.resourcesPath,
-    resourcesContent
+    resourcesContent,
+    pythonModelsPath: paths.pythonModelsPath,
+    pythonModelsContent,
+    pythonResourcesPath: paths.pythonResourcesPath,
+    pythonResourcesContent
   };
 };
 
 /**
- * 将最新生成的 SDK IR 与 TypeScript 生成代码写入磁盘。
+ * 将最新生成的 SDK IR、TypeScript 与 Python 生成代码写入磁盘。
  */
 export const writeSdkArtifacts = async (): Promise<GeneratedArtifacts> => {
   const artifacts = await compileSdkArtifacts();
   await Promise.all([
     fs.mkdir(path.dirname(artifacts.irPath), { recursive: true }),
-    fs.mkdir(path.dirname(artifacts.typesPath), { recursive: true })
+    fs.mkdir(path.dirname(artifacts.typesPath), { recursive: true }),
+    fs.mkdir(path.dirname(artifacts.pythonModelsPath), { recursive: true })
   ]);
   await Promise.all([
     fs.writeFile(artifacts.irPath, artifacts.irContent, 'utf8'),
     fs.writeFile(artifacts.typesPath, artifacts.typesContent, 'utf8'),
-    fs.writeFile(artifacts.resourcesPath, artifacts.resourcesContent, 'utf8')
+    fs.writeFile(artifacts.resourcesPath, artifacts.resourcesContent, 'utf8'),
+    fs.writeFile(artifacts.pythonModelsPath, artifacts.pythonModelsContent, 'utf8'),
+    fs.writeFile(artifacts.pythonResourcesPath, artifacts.pythonResourcesContent, 'utf8')
   ]);
   return artifacts;
 };
 
 /**
- * 校验磁盘已提交的 IR 与生成代码是否与最新 OpenAPI 契约零漂移一致。
+ * 校验磁盘已提交的 IR 与多语言生成代码是否与最新 OpenAPI 契约零漂移一致。
  */
 export const checkSdkArtifactsDrift = async (): Promise<{ driftedFiles: string[] }> => {
   const artifacts = await compileSdkArtifacts();
   const pairs: Array<[string, string]> = [
     [artifacts.irPath, artifacts.irContent],
     [artifacts.typesPath, artifacts.typesContent],
-    [artifacts.resourcesPath, artifacts.resourcesContent]
+    [artifacts.resourcesPath, artifacts.resourcesContent],
+    [artifacts.pythonModelsPath, artifacts.pythonModelsContent],
+    [artifacts.pythonResourcesPath, artifacts.pythonResourcesContent]
   ];
 
   const driftedFiles: string[] = [];

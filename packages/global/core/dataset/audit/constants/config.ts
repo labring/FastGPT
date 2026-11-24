@@ -22,7 +22,22 @@ export enum DatasetConfigAuditItemEnum {
 
 export type DatasetConfigAuditItem = `${DatasetConfigAuditItemEnum}`;
 
-/** 配置项的静态翻译标记，供审计生成和 i18n 清理脚本共同使用。 */
+/** 审计配置值的来源标记；用于区分真实模型展示名与目录查不到模型时的系统兜底。 */
+export type DatasetConfigAuditValueSource = 'literal' | 'fallback';
+
+/** 对象型配置项与子字段路径的分隔符，写入侧与展示侧共用。 */
+export const DATASET_CONFIG_CHANGE_ITEM_SEPARATOR = ' · ';
+
+/**
+ * 凭据类字段名匹配规则（写入侧脱敏与展示侧敏感子路径识别共用）。
+ * 配置结构会随第三方集成扩展，宁可在少量非敏感字段上隐藏值，也不能漏出一个凭据。
+ */
+export const DATASET_CONFIG_SENSITIVE_KEY_PATTERN =
+  /(token|secret|password|passwd|apikey|api_key|authorization|credential|cookie|privatekey|accesskey|signature)/i;
+
+/**
+ * 配置项的静态翻译标记，供审计生成和 i18n 清理脚本共同使用。
+ */
 export const datasetConfigAuditItemLabelMap: Record<DatasetConfigAuditItem, string> = {
   [DatasetConfigAuditItemEnum.NAME]: i18nT('account_team:dataset_config_item_name'),
   [DatasetConfigAuditItemEnum.INTRO]: i18nT('account_team:dataset_config_item_intro'),

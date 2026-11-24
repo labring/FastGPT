@@ -7178,6 +7178,10 @@ export type DatasetsCollectionsDetailRes = {
         rootNodeId?: string;
         workspaceName?: string;
       };
+      /** 外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL */
+      permissionSync?: boolean;
+      /** 整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点 */
+      syncAllFiles?: boolean;
     };
     /** 删除时间 */
     deleteTime?: string | null;
@@ -7555,6 +7559,10 @@ export type DatasetsCreateReq = {
       rootNodeId?: string;
       workspaceName?: string;
     };
+    /** 外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL */
+    permissionSync?: boolean;
+    /** 整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点 */
+    syncAllFiles?: boolean;
   };
   /** 外部文档解析开关(页眉页脚/附录/图片识别/图转表),仅对 customPdfParse 解析路径生效 */
   sangforFileParseConfig?: {
@@ -7925,6 +7933,10 @@ export type DatasetsDetailRes = {
       rootNodeId?: string;
       workspaceName?: string;
     };
+    /** 外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL */
+    permissionSync?: boolean;
+    /** 整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点 */
+    syncAllFiles?: boolean;
   };
   /** 删除时间 */
   deleteTime?: string | null;
@@ -7988,6 +8000,10 @@ export type DatasetsDetailRes = {
   hasTrainingTask: boolean;
   /** 错误信息 */
   errorMsg?: string;
+  /** 外部文件权限同步状态；仅在 permissionSync 开启时返回 */
+  permissionSyncStatus?: 'active' | 'syncing' | 'waiting' | 'error';
+  /** 外部文件权限同步失败信息 */
+  permissionSyncErrorMsg?: string;
   /** 向量模型；模型已删除时为空，已停用模型仍返回展示数据 */
   vectorModel?: {
     /** 每固定计价单位的积分单价；缺省免费 */
@@ -8617,6 +8633,10 @@ export type DatasetsUpdateReq = {
       rootNodeId?: string;
       workspaceName?: string;
     };
+    /** 外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL */
+    permissionSync?: boolean;
+    /** 整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点 */
+    syncAllFiles?: boolean;
   };
   /** 是否自动同步 */
   autoSync?: boolean;

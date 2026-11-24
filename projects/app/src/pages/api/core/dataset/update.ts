@@ -383,7 +383,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   // 每个实际变化的配置项写一条日志，保留单项追溯能力，而不是把多个字段拼成一行。
   if (configAuditLogs.length > 0) {
     void addAuditLogs(
-      configAuditLogs.map(({ changeItem, oldValue, newValue }) => ({
+      configAuditLogs.map(({ changeItem, oldValue, newValue, oldValueSource, newValueSource }) => ({
         tmbId,
         teamId,
         event: DatasetAuditEventEnum.DATASET_CONFIG_UPDATE,
@@ -398,8 +398,10 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
         params: {
           datasetName: name ?? dataset.name,
           changeItem,
-          oldValue,
-          newValue
+          ...(oldValue !== undefined && { oldValue }),
+          ...(newValue !== undefined && { newValue }),
+          ...(oldValueSource !== undefined && { oldValueSource }),
+          ...(newValueSource !== undefined && { newValueSource })
         }
       }))
     );

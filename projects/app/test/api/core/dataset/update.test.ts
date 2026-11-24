@@ -1659,10 +1659,9 @@ describe('update dataset audit', () => {
 
     const logs = await waitForAuditLogs(owner.teamId, 1);
     expect(logs).toHaveLength(1);
-    expect(logs[0].metadata).toMatchObject({
-      changeItem: 'account_team:dataset_config_item_apiDatasetServer · apiServer.authorization',
-      oldValue: '[REDACTED]',
-      newValue: '[REDACTED]'
+    expect(logs[0].metadata).toEqual({
+      datasetName: 'audit-partial-api-config',
+      changeItem: 'account_team:dataset_config_item_apiDatasetServer · apiServer.authorization'
     });
     expect(JSON.stringify(logs)).not.toContain('old-secret');
     expect(JSON.stringify(logs)).not.toContain('new-secret');
@@ -1714,9 +1713,10 @@ describe('update dataset audit', () => {
       'account_team:dataset_config_item_apiDatasetServer · apiServer.baseUrl',
       'account_team:dataset_config_item_apiDatasetServer · apiServer.authorization'
     ]);
-    // 凭据字段必须以脱敏形式落库，不能被原文写入操作日志
+    // 凭据字段不写入新旧值，避免凭据原文落库
     expect(JSON.stringify(logs)).not.toContain('secret-token');
-    expect(logs[1].metadata?.newValue).toBe('[REDACTED]');
+    expect(logs[1].metadata?.oldValue).toBeUndefined();
+    expect(logs[1].metadata?.newValue).toBeUndefined();
   });
 });
 

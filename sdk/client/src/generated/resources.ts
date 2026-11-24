@@ -503,7 +503,8 @@ const DATASETS_COLLECTIONS_BATCH_DOWNLOAD_SPEC: OperationSpec = {
   identityCarrier: null,
   pathParams: [],
   queryParams: ['ticket'],
-  bodyParams: []
+  bodyParams: [],
+  retryable: false
 };
 
 const DATASETS_COLLECTIONS_CREATE_SPEC: OperationSpec = {
