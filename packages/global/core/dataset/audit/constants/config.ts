@@ -24,8 +24,19 @@ export type DatasetConfigAuditItem = `${DatasetConfigAuditItemEnum}`;
 /** 对象型配置项与子字段路径的分隔符，写入侧与展示侧共用。 */
 export const DATASET_CONFIG_CHANGE_ITEM_SEPARATOR = ' · ';
 
-/** 敏感配置落库时的脱敏占位符，写入侧与展示侧共用。 */
+/** 敏感配置在整体序列化兜底与历史日志中的脱敏占位符，写入侧与展示侧共用。 */
 export const DATASET_CONFIG_REDACTED_VALUE = '[REDACTED]';
+
+/**
+ * 凭据类字段名匹配规则（写入侧脱敏与展示侧敏感子路径识别共用）。
+ * 配置结构会随第三方集成扩展，宁可在少量非敏感字段上隐藏值，也不能漏出一个凭据。
+ */
+export const DATASET_CONFIG_SENSITIVE_KEY_PATTERN =
+  /(token|secret|password|passwd|apikey|api_key|authorization|credential|cookie|privatekey|accesskey|signature)/i;
+
+/** 判断对象型配置子字段路径是否包含凭据类敏感键。 */
+export const isSensitiveDatasetConfigFieldPath = (fieldPath: string) =>
+  fieldPath.split('.').some((segment) => DATASET_CONFIG_SENSITIVE_KEY_PATTERN.test(segment));
 
 /**
  * 配置项的静态翻译标记，供审计生成和 i18n 清理脚本共同使用。
@@ -55,14 +66,63 @@ export const datasetConfigAuditItemLabelMap: Record<DatasetConfigAuditItem, stri
 };
 
 /**
- * 审计变更值（oldValue / newValue）中允许在展示层翻译的系统占位白名单。
- * 仅对明确登记的系统值做翻译，防止用户输入的 URL（含 `:`）或业务文本被误当作 i18n key。
+ * 对象型知识库配置中取值为布尔类型的子字段集合（按父配置项 key 分组）。
+ * 展示层仅对这些布尔子字段及标量 `autoSync` 翻译 `common:yes` / `common:no`，避免误译自由文本。
  */
-export const datasetConfigAuditValueLabelMap: Readonly<Record<string, string>> = {
-  [i18nT('common:yes')]: i18nT('common:yes'),
-  [i18nT('common:no')]: i18nT('common:no'),
-  [i18nT('common:UnKnow')]: i18nT('common:UnKnow'),
-  [DATASET_CONFIG_REDACTED_VALUE]: i18nT('account_team:dataset_config_value_redacted')
+export const datasetConfigAuditBooleanFieldMap: Readonly<
+  Partial<Record<string, ReadonlySet<string>>>
+> = {
+  [datasetConfigAuditItemLabelMap[DatasetConfigAuditItemEnum.CHUNK_SETTINGS]]: new Set([
+    'dataEnhanceCollectionName',
+    'imageIndex',
+    'autoIndexes',
+    'indexPrefixTitle'
+  ]),
+  [datasetConfigAuditItemLabelMap[DatasetConfigAuditItemEnum.FILE_PARSE_CONFIG]]: new Set([
+    'keep_header_footer',
+    'keep_appendix',
+    'image_analysis',
+    'chart_analysis'
+  ])
+};
+
+export type DatasetConfigAuditValueKind = 'boolean' | 'model' | 'sensitive' | 'raw';
+
+/**
+ * 按配置项 key 与可选子字段路径解析审计值语义，供展示层决定允许翻译或隐藏的占位符范围。
+ */
+export const getDatasetConfigAuditValueKind = ({
+  itemKey,
+  fieldPath
+}: {
+  itemKey: string;
+  fieldPath?: string;
+}): DatasetConfigAuditValueKind => {
+  if (!fieldPath) {
+    if (itemKey === datasetConfigAuditItemLabelMap[DatasetConfigAuditItemEnum.AUTO_SYNC]) {
+      return 'boolean';
+    }
+    if (
+      itemKey === datasetConfigAuditItemLabelMap[DatasetConfigAuditItemEnum.AGENT_MODEL] ||
+      itemKey === datasetConfigAuditItemLabelMap[DatasetConfigAuditItemEnum.VLM_MODEL]
+    ) {
+      return 'model';
+    }
+    return 'raw';
+  }
+
+  if (isSensitiveDatasetConfigFieldPath(fieldPath)) {
+    return 'sensitive';
+  }
+
+  if (
+    Object.hasOwn(datasetConfigAuditBooleanFieldMap, itemKey) &&
+    datasetConfigAuditBooleanFieldMap[itemKey]?.has(fieldPath)
+  ) {
+    return 'boolean';
+  }
+
+  return 'raw';
 };
 
 /**

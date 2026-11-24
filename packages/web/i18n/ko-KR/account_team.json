@@ -94,7 +94,6 @@
   "dataset_config_item_autoSync": "자동 동기화",
   "dataset_config_item_chunkSettings": "청크 설정",
   "dataset_config_item_fileParseConfig": "파일 파싱 설정",
-  "dataset_config_value_redacted": "숨김",
   "dataset_config_field_websiteConfig_url": "기본 URL",
   "dataset_config_field_websiteConfig_selector": "선택자",
   "dataset_config_field_chunkSettings_trainingType": "학습 모드",

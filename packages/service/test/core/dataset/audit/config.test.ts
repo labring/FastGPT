@@ -3,6 +3,7 @@ import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/consta
 import { DatasetConfigAuditItemEnum } from '@fastgpt/global/core/dataset/audit/constants/config';
 import { AuditEventEnum, TeamAuditEventList } from '@fastgpt/global/support/user/audit/constants';
 import { auditLogMap } from '@fastgpt/web/support/user/audit/constants';
+import { formatAuditSummary } from '@fastgpt/web/support/user/audit/presenter';
 import {
   buildDatasetConfigAuditChanges,
   stringifyDatasetConfigAuditValue
@@ -155,7 +156,7 @@ describe('buildDatasetConfigAuditChanges', () => {
     expect(changes[2]).toMatchObject({ oldValue: 'u1', newValue: '-' });
   });
 
-  it('redacts credentials nested at any depth', () => {
+  it('omits old and new values for credentials nested at any depth', () => {
     const changes = buildDatasetConfigAuditChanges({
       item: DatasetConfigAuditItemEnum.API_DATASET_SERVER,
       oldValue: undefined,
@@ -166,16 +167,21 @@ describe('buildDatasetConfigAuditChanges', () => {
 
     const serialized = JSON.stringify(changes);
     expect(serialized).not.toContain('secret-token');
-    expect(serialized).toContain('[REDACTED]');
-    // 保留字段路径，能看出「凭据被改过」，但不泄漏内容
-    expect(changes.map((change) => change.changeItem)).toEqual(
-      expect.arrayContaining([
-        'account_team:dataset_config_item_apiDatasetServer · apiServer.authorization'
-      ])
-    );
+    expect(serialized).not.toContain('[REDACTED]');
+    // 保留字段路径，能看出「凭据被改过」，且不落库新旧值
+    expect(changes).toEqual([
+      {
+        changeItem: 'account_team:dataset_config_item_apiDatasetServer · apiServer.baseUrl',
+        oldValue: '-',
+        newValue: 'https://api.example.com'
+      },
+      {
+        changeItem: 'account_team:dataset_config_item_apiDatasetServer · apiServer.authorization'
+      }
+    ]);
   });
 
-  it('records credential rotations but keeps both values redacted', () => {
+  it('records credential rotations without storing old or new values', () => {
     const changes = buildDatasetConfigAuditChanges({
       item: DatasetConfigAuditItemEnum.API_DATASET_SERVER,
       oldValue: { apiServer: { authorization: 'Bearer old-secret' } },
@@ -184,13 +190,82 @@ describe('buildDatasetConfigAuditChanges', () => {
 
     expect(changes).toEqual([
       {
-        changeItem: 'account_team:dataset_config_item_apiDatasetServer · apiServer.authorization',
-        oldValue: '[REDACTED]',
-        newValue: '[REDACTED]'
+        changeItem: 'account_team:dataset_config_item_apiDatasetServer · apiServer.authorization'
       }
     ]);
     expect(JSON.stringify(changes)).not.toContain('old-secret');
     expect(JSON.stringify(changes)).not.toContain('new-secret');
+  });
+
+  it('preserves literal system tokens in free-text fields from generation to formatted summary', () => {
+    const dict: Record<string, string> = {
+      'account_team:dataset_config_item_intro': '简介',
+      'account_team:dataset_config_item_websiteConfig': '网站抓取配置',
+      'account_team:dataset_config_field_websiteConfig_selector': '选择器',
+      'account_team:dataset_config_item_apiDatasetServer': '第三方来源配置',
+      'account_team:dataset_config_field_apiDatasetServer_apiServer_authorization': 'API 认证信息',
+      'account_team:dataset_config_item_autoSync': '自动同步',
+      'common:yes': '是',
+      'common:no': '否'
+    };
+    const t = (key: string, params?: Record<string, unknown>) => {
+      if (key === 'account_team:audit_detail_dataset_config') {
+        return `${params?.changeItem}：${params?.oldValue} → ${params?.newValue}`;
+      }
+      return dict[key] ?? key;
+    };
+
+    const [introChange] = buildDatasetConfigAuditChanges({
+      item: DatasetConfigAuditItemEnum.INTRO,
+      oldValue: '[REDACTED]',
+      newValue: '已隐藏'
+    });
+    expect(
+      formatAuditSummary({
+        event: DatasetAuditEventEnum.DATASET_CONFIG_UPDATE,
+        metadata: introChange,
+        t
+      })
+    ).toBe('简介：[REDACTED] → 已隐藏');
+
+    const [selectorChange] = buildDatasetConfigAuditChanges({
+      item: DatasetConfigAuditItemEnum.WEBSITE_CONFIG,
+      oldValue: { url: 'https://a.example.com', selector: '[REDACTED]' },
+      newValue: { url: 'https://a.example.com', selector: '#content' }
+    });
+    expect(
+      formatAuditSummary({
+        event: DatasetAuditEventEnum.DATASET_CONFIG_UPDATE,
+        metadata: selectorChange,
+        t
+      })
+    ).toBe('网站抓取配置 · 选择器：[REDACTED] → #content');
+
+    const [secretChange] = buildDatasetConfigAuditChanges({
+      item: DatasetConfigAuditItemEnum.API_DATASET_SERVER,
+      oldValue: { apiServer: { authorization: 'Bearer old' } },
+      newValue: { apiServer: { authorization: 'Bearer new' } }
+    });
+    expect(
+      formatAuditSummary({
+        event: DatasetAuditEventEnum.DATASET_CONFIG_UPDATE,
+        metadata: secretChange,
+        t
+      })
+    ).toBe('第三方来源配置 · API 认证信息');
+
+    const [autoSyncChange] = buildDatasetConfigAuditChanges({
+      item: DatasetConfigAuditItemEnum.AUTO_SYNC,
+      oldValue: false,
+      newValue: true
+    });
+    expect(
+      formatAuditSummary({
+        event: DatasetAuditEventEnum.DATASET_CONFIG_UPDATE,
+        metadata: autoSyncChange,
+        t
+      })
+    ).toBe('自动同步：否 → 是');
   });
 
   it('does not log unchanged credentials', () => {

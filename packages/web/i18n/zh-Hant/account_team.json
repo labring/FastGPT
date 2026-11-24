@@ -98,7 +98,6 @@
   "dataset_config_item_autoSync": "自動同步",
   "dataset_config_item_chunkSettings": "分塊參數",
   "dataset_config_item_fileParseConfig": "檔案解析設定",
-  "dataset_config_value_redacted": "已隱藏",
   "dataset_config_field_websiteConfig_url": "根網址",
   "dataset_config_field_websiteConfig_selector": "選擇器",
   "dataset_config_field_chunkSettings_trainingType": "處理方式",

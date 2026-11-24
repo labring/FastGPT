@@ -269,8 +269,8 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
         params: {
           datasetName: name ?? dataset.name,
           changeItem,
-          oldValue,
-          newValue
+          ...(oldValue !== undefined && { oldValue }),
+          ...(newValue !== undefined && { newValue })
         }
       }))
     );

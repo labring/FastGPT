@@ -98,7 +98,6 @@
   "dataset_config_item_autoSync": "Auto sync",
   "dataset_config_item_chunkSettings": "Chunk settings",
   "dataset_config_item_fileParseConfig": "File parsing configuration",
-  "dataset_config_value_redacted": "Hidden",
   "dataset_config_field_websiteConfig_url": "Base URL",
   "dataset_config_field_websiteConfig_selector": "Selector",
   "dataset_config_field_chunkSettings_trainingType": "Processing mode",

@@ -491,8 +491,8 @@ export type DatasetAuditEventParamsType = {
     name?: string;
     datasetName: string;
     changeItem: string;
-    oldValue: string;
-    newValue: string;
+    oldValue?: string;
+    newValue?: string;
   };
   [DatasetAuditEventEnum.DATASET_TAG_CREATE]: {
     name?: string;

@@ -1,7 +1,7 @@
 import {
   DATASET_CONFIG_CHANGE_ITEM_SEPARATOR,
   datasetConfigAuditFieldLabelMap,
-  datasetConfigAuditValueLabelMap
+  getDatasetConfigAuditValueKind
 } from '@fastgpt/global/core/dataset/audit/constants/config';
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
@@ -28,21 +28,15 @@ export const processUpdateDatasetCollaboratorSpecific = (
  *
  * 三个展示边界：
  * 1. `changeItem` 为「配置项 i18n key」或「配置项 key · 字段路径」，前缀翻译并按白名单映射已知子字段路径，未知路径原样回退；
- * 2. `oldValue` / `newValue` 仅对白名单内的系统占位值（布尔 key、未知模型、敏感脱敏占位）做翻译，
- *    其余用户数据（如含 `:` 的 URL 或业务文本）保持原值，避免被误当作 i18n key；
+ * 2. `oldValue` / `newValue` 按配置项与子路径语义分流：布尔项仅翻译 `common:yes`/`common:no`，
+ *    模型项仅翻译 `common:UnKnow`，敏感子路径统一隐藏新旧值（兼容历史 `[REDACTED]` 记录），
+ *    其余自由文本（含 URL 或与系统占位同名的业务原值）原样透传；
  * 3. `datasetName` / `name` 等名称字段直接透传，不走通用 processor。
  */
 export const processDatasetConfigUpdateSpecific = (
   metadata: CommonMetadataFields,
   t: (key: string) => string
 ) => {
-  /** 仅翻译白名单中登记的系统值，Object.hasOwn 防止原型链键名误命中。 */
-  const translateConfigValue = (value: unknown) => {
-    if (typeof value !== 'string') return value;
-    if (!Object.hasOwn(datasetConfigAuditValueLabelMap, value)) return value;
-    return t(datasetConfigAuditValueLabelMap[value]);
-  };
-
   /** 按父配置项查表翻译已知子字段路径，未登记路径原样保留。 */
   const translateFieldPath = (itemKey: string, fieldPath: string) => {
     if (!Object.hasOwn(datasetConfigAuditFieldLabelMap, itemKey)) return fieldPath;
@@ -55,14 +49,40 @@ export const processDatasetConfigUpdateSpecific = (
   const [itemKey, ...fieldPathParts] = String(changeItem ?? '').split(
     DATASET_CONFIG_CHANGE_ITEM_SEPARATOR
   );
+  const rawFieldPath =
+    fieldPathParts.length > 0
+      ? fieldPathParts.join(DATASET_CONFIG_CHANGE_ITEM_SEPARATOR)
+      : undefined;
   const translatedItem = itemKey ? t(itemKey) : itemKey;
   const formattedChangeItem =
-    fieldPathParts.length > 0
+    rawFieldPath !== undefined
       ? `${translatedItem}${DATASET_CONFIG_CHANGE_ITEM_SEPARATOR}${translateFieldPath(
           itemKey,
-          fieldPathParts.join(DATASET_CONFIG_CHANGE_ITEM_SEPARATOR)
+          rawFieldPath
         )}`
       : translatedItem;
+
+  const valueKind = getDatasetConfigAuditValueKind({ itemKey, fieldPath: rawFieldPath });
+
+  // 敏感配置变更不展示新旧值（同时屏蔽历史上已落库的 `[REDACTED]` 对比）。
+  if (valueKind === 'sensitive') {
+    return {
+      ...rest,
+      changeItem: formattedChangeItem
+    };
+  }
+
+  /** 仅翻译当前字段语义允许的系统占位值，避免误译同名自由文本。 */
+  const translateConfigValue = (value: unknown) => {
+    if (typeof value !== 'string') return value;
+    if (valueKind === 'boolean' && (value === 'common:yes' || value === 'common:no')) {
+      return t(value);
+    }
+    if (valueKind === 'model' && value === 'common:UnKnow') {
+      return t(value);
+    }
+    return value;
+  };
 
   return {
     ...rest,

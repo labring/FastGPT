@@ -2,6 +2,7 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
   DATASET_CONFIG_CHANGE_ITEM_SEPARATOR,
   DATASET_CONFIG_REDACTED_VALUE,
+  DATASET_CONFIG_SENSITIVE_KEY_PATTERN,
   datasetConfigAuditItemLabelMap,
   type DatasetConfigAuditItem
 } from '@fastgpt/global/core/dataset/audit/constants/config';
@@ -11,13 +12,6 @@ import { isCollectionTagValue } from '@fastgpt/global/core/dataset/tagUtils';
 
 /** 审计值允许为任意原始类型，写入前统一转成字符串落到 metadata。 */
 type AuditRawValue = unknown;
-
-/**
- * 凭据类字段名（包含匹配）。配置结构会随第三方集成扩展，
- * 宁可在少量非敏感字段上少展示内容，也不能漏出一个凭据。
- */
-const sensitiveKeyPattern =
-  /(token|secret|password|passwd|apikey|api_key|authorization|credential|cookie|privatekey|accesskey|signature)/i;
 
 /** Mongoose 子文档会带 `_id`（以 Buffer 形式序列化），它不携带配置语义，一律剔除。 */
 const shouldSkipKey = (key: string) => key === '_id' || key === '__v';
@@ -45,7 +39,7 @@ const formatAuditScalar = (value: AuditRawValue): string => {
 
 /** 递归脱敏并剔除 `_id`；用于「必须整体展示」的兜底场景。 */
 const sanitizeAuditValue = (input: AuditRawValue, key?: string): AuditRawValue => {
-  if (key && sensitiveKeyPattern.test(key)) return DATASET_CONFIG_REDACTED_VALUE;
+  if (key && DATASET_CONFIG_SENSITIVE_KEY_PATTERN.test(key)) return DATASET_CONFIG_REDACTED_VALUE;
   if (Array.isArray(input)) return input.map((item) => sanitizeAuditValue(item));
   if (input && typeof input === 'object') {
     return Object.fromEntries(
@@ -72,7 +66,7 @@ const flattenAuditObject = (input: AuditRawValue, prefix = ''): FlattenedAuditFi
     if (shouldSkipKey(key)) continue;
 
     const path = prefix ? `${prefix}.${key}` : key;
-    if (sensitiveKeyPattern.test(key)) {
+    if (DATASET_CONFIG_SENSITIVE_KEY_PATTERN.test(key)) {
       result.push({ path, value, sensitive: true });
       continue;
     }
@@ -113,7 +107,7 @@ export const buildDatasetConfigAuditChanges = ({
   newValue: AuditRawValue;
   enabled?: boolean;
   compareValues?: { oldValue: AuditRawValue; newValue: AuditRawValue };
-}): Array<{ changeItem: string; oldValue: string; newValue: string }> => {
+}): Array<{ changeItem: string; oldValue?: string; newValue?: string }> => {
   if (!enabled) return [];
 
   const itemLabel = datasetConfigAuditItemLabelMap[item];
@@ -136,7 +130,6 @@ export const buildDatasetConfigAuditChanges = ({
 
   const formatFieldValue = (field?: FlattenedAuditField) => {
     if (!field) return '-';
-    if (field.sensitive) return DATASET_CONFIG_REDACTED_VALUE;
     return formatAuditScalar(sanitizeAuditValue(field.value));
   };
 
@@ -155,10 +148,16 @@ export const buildDatasetConfigAuditChanges = ({
     const newField = newFieldMap.get(path);
     if (isEqual(oldField?.value, newField?.value)) return [];
 
+    // 子字段沿用父级 i18n 标签再拼上字段路径，保证列表里有上下文。
+    const changeItem = `${itemLabel}${DATASET_CONFIG_CHANGE_ITEM_SEPARATOR}${path}`;
+    // 敏感字段仅记录变更项本身，不落库新旧值，防止凭据泄漏也避免无意义的脱敏对比。
+    if (oldField?.sensitive || newField?.sensitive) {
+      return [{ changeItem }];
+    }
+
     return [
       {
-        // 子字段沿用父级 i18n 标签再拼上字段路径，保证列表里有上下文。
-        changeItem: `${itemLabel}${DATASET_CONFIG_CHANGE_ITEM_SEPARATOR}${path}`,
+        changeItem,
         oldValue: formatFieldValue(oldField),
         newValue: formatFieldValue(newField)
       }
