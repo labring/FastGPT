@@ -1,6 +1,6 @@
 /** 运行准备的唯一编排入口：归属、恢复、配置迁移和激活；client 不解释生命周期。 */
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
-import { SandboxNotFoundError, SandboxStateError } from '@fastgpt-sdk/sandbox-adapter';
+import { isRecoverableSandboxUnavailable } from '@fastgpt-sdk/sandbox-adapter';
 import { isRedisLeaseError, type RedisLeaseContext } from '@fastgpt/dal/redis/caches';
 import {
   createSandboxProvisioningInstance,
@@ -86,7 +86,8 @@ export async function connectRunningSandbox(params: {
     return { resource: { ...touched, teamId }, adapter };
   } catch (error) {
     if (!params.adapter) await adapter.close().catch(() => undefined);
-    if (error instanceof SandboxNotFoundError || error instanceof SandboxStateError)
+    // 保活/复用只读连接不重建；终止与暂停、缺失一样收敛为“没有可用实例”。
+    if (isRecoverableSandboxUnavailable(error))
       throw new SandboxRuntimeNotRunningError(params.query.sandboxId);
     throw error;
   }
@@ -153,10 +154,10 @@ async function prepareSandboxRuntime(params: {
           return await connectRunningSandbox({ query, options, ...params.connection });
         }
       } catch (error) {
+        // 可恢复不可用（含连接期终止）才进入持锁恢复；未知连接错误保持原样抛出。
         if (
-          !(error instanceof SandboxNotFoundError) &&
-          !(error instanceof SandboxRuntimeNotRunningError) &&
-          !(error instanceof SandboxStateError)
+          !isRecoverableSandboxUnavailable(error) &&
+          !(error instanceof SandboxRuntimeNotRunningError)
         )
           throw error;
         repairMissingProvider = true;
@@ -275,8 +276,8 @@ async function prepareSandboxRuntime(params: {
           lease.assertValid();
           return { resource: bindOwnedResource(current), adapter };
         } catch (error) {
-          if (!(error instanceof SandboxNotFoundError) && !(error instanceof SandboxStateError))
-            throw error;
+          // 连接期终止同样交给生命周期：ensureRunning 会重新取证并让 runner 写 retryAfter。
+          if (!isRecoverableSandboxUnavailable(error)) throw error;
           if (!allowProviderRepair) throw missingProviderRequiresSourceLease;
         }
       }

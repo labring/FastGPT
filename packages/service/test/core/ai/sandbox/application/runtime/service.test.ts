@@ -1,6 +1,11 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { SandboxNotFoundError, SandboxStateError } from '@fastgpt-sdk/sandbox-adapter';
+import {
+  ConnectionError,
+  SandboxNotFoundError,
+  SandboxStateError,
+  SandboxTerminationError
+} from '@fastgpt-sdk/sandbox-adapter';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
 import * as repository from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository';
 import {
@@ -268,6 +273,83 @@ describe('ensureSandboxRuntime', () => {
     expect(result.resource.status).toBe('running');
     expect(mocks.lifecycle).toHaveBeenCalledTimes(1);
     expect(events).toContain('create:opensandbox');
+  });
+
+  // 真实包装形态：SandboxTerminationError 的 cause 里保留 provider 的结构化阶段与原因。
+  const terminatedDevbox = () =>
+    new SandboxTerminationError(
+      'SEALOS_DEVBOX::FAILED',
+      'Devbox phase Error: container OOMKilled',
+      {
+        message: 'SEALOS_DEVBOX::FAILED: Devbox phase Error: container OOMKilled',
+        cause: {
+          code: 'SEALOS_DEVBOX::FAILED',
+          status: { phase: 'Error', message: 'container OOMKilled' }
+        }
+      }
+    );
+
+  it('treats a terminated remote as unavailable on the connect-only path', async () => {
+    await create('running');
+    mocks.adapter.mockReturnValueOnce({
+      connectRunning: vi.fn(async () => {
+        throw terminatedDevbox();
+      }),
+      close: mocks.close
+    });
+    await expect(connectRunningSandbox({ query })).rejects.toThrow('is not running');
+    expect(mocks.ensure).not.toHaveBeenCalled();
+    expect(mocks.lifecycle).not.toHaveBeenCalled();
+  });
+
+  it('recovers a running record whose connection reports termination', async () => {
+    await create('running');
+    const termination = terminatedDevbox();
+    mocks.adapter.mockReturnValue({
+      connectRunning: vi.fn(async () => {
+        throw termination;
+      }),
+      ensureRunning: vi.fn(async () => {
+        throw termination;
+      }),
+      close: mocks.close
+    });
+
+    await expect(ensureSandboxRuntime({ query })).rejects.toThrow('container OOMKilled');
+
+    const current = (await read())!;
+    // 连接期终止必须进入持锁恢复：状态迁移到 provisioning，并由 runner 写入本轮失败。
+    expect(mocks.lifecycle).toHaveBeenCalledTimes(1);
+    expect(current.status).toBe('provisioning');
+    expect(current.operation?.error).toContain('container OOMKilled');
+    const retryAfter = new Date(current.operation!.retryAfter!).getTime();
+    // 终止是确定结果，retryAfter 必须是 now，而不是未知错误的隔离窗口。
+    expect(Math.abs(retryAfter - Date.now())).toBeLessThan(5000);
+  });
+
+  it('keeps the unknown connection failure strategy for a running record', async () => {
+    await create('running');
+    const failure = new ConnectionError(
+      'gateway timeout',
+      'http://provider',
+      new Error('ETIMEDOUT')
+    );
+    mocks.adapter.mockReturnValueOnce({
+      connectRunning: vi.fn(async () => {
+        throw failure;
+      }),
+      close: mocks.close
+    });
+
+    await expect(ensureSandboxRuntime({ query })).rejects.toBe(failure);
+
+    // 未知连接错误不得被误判成可恢复：不取锁、不重建，记录保持原状。
+    expect(mocks.lifecycle).not.toHaveBeenCalled();
+    expect(mocks.sourceLease).not.toHaveBeenCalled();
+    expect(mocks.ensure).not.toHaveBeenCalled();
+    const current = (await read())!;
+    expect(current.status).toBe('running');
+    expect(current.operation).toBeUndefined();
   });
 
   it('rejects invalid target configuration before archiving the old provider', async () => {

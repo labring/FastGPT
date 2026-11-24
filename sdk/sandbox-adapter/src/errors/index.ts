@@ -287,6 +287,23 @@ export class SandboxStateError extends SandboxException {
   }
 }
 
+/**
+ * 只读连接入口的“可恢复不可用”判定。
+ *
+ * 三类结果都表示远端当前没有可继续使用的实例，生命周期可以按既有策略重建：
+ * - `SandboxNotFoundError`：远端资源已不存在；
+ * - `SandboxStateError`：远端处于非 Running 的已知阶段（暂停/停止等）；
+ * - `SandboxTerminationError`：远端已明确终止（Pod 失败、配额拒绝等），
+ *   结构化原因仍留在异常本身与 cause 链上供 `getSandboxFailureDetail` 读取。
+ *
+ * 网络抖动、超时、命令通道未就绪等 `ConnectionError` / `TimeoutError` 未知结果
+ * **不**在判定范围内，调用方必须保持原策略（原样抛出、保留隔离窗口），不得触发重建。
+ */
+export const isRecoverableSandboxUnavailable = (error: unknown): boolean =>
+  error instanceof SandboxNotFoundError ||
+  error instanceof SandboxStateError ||
+  error instanceof SandboxTerminationError;
+
 export class TimeoutError extends SandboxException {
   constructor(
     message: string,

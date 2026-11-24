@@ -4,8 +4,11 @@ import {
   ConnectionError,
   SANDBOX_TERMINAL_CODES,
   SandboxException,
+  SandboxNotFoundError,
+  SandboxStateError,
   SandboxTerminationError,
-  getSandboxFailureDetail
+  getSandboxFailureDetail,
+  isRecoverableSandboxUnavailable
 } from '@/errors';
 
 describe('sandbox errors', () => {
@@ -140,5 +143,30 @@ describe('getSandboxFailureDetail', () => {
     expect(detail).toMatchObject({ code: 'SEALOS_DEVBOX::FAILED', terminated: true });
     expect(detail?.displayMessage).toContain('OOMKilled');
     expect(detail?.displayMessage).not.toContain('\n');
+  });
+});
+
+describe('isRecoverableSandboxUnavailable', () => {
+  it('accepts the three unavailable outcomes that lifecycle may rebuild', () => {
+    expect(isRecoverableSandboxUnavailable(new SandboxNotFoundError('missing'))).toBe(true);
+    expect(isRecoverableSandboxUnavailable(new SandboxStateError('stopped', 'Stopped'))).toBe(true);
+    expect(
+      isRecoverableSandboxUnavailable(
+        new SandboxTerminationError('SEALOS_DEVBOX::FAILED', 'container OOMKilled')
+      )
+    ).toBe(true);
+  });
+
+  it('rejects unknown transport failures so callers keep the isolation window', () => {
+    expect(
+      isRecoverableSandboxUnavailable(
+        new ConnectionError('gateway timeout', 'http://provider', new Error('ETIMEDOUT'))
+      )
+    ).toBe(false);
+    expect(isRecoverableSandboxUnavailable(new SandboxException('unexpected response'))).toBe(
+      false
+    );
+    expect(isRecoverableSandboxUnavailable(new Error('boom'))).toBe(false);
+    expect(isRecoverableSandboxUnavailable(undefined)).toBe(false);
   });
 });
