@@ -11,7 +11,10 @@ import type {
   SelectedAgentSkillItemType,
   SelectedToolItemType
 } from '@fastgpt/global/core/app/formEdit/type';
-import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import {
+  removeSelectedTool,
+  upsertSelectedTool
+} from '@/pageComponents/app/detail/Edit/ChatAgent/utils';
 import { useTranslation } from 'next-i18next';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useAgentSkillSelect } from '@/pageComponents/app/detail/Edit/ChatAgent/hooks/useAgentSkillSelect';
@@ -19,7 +22,7 @@ import { useSkillManager } from '@/pageComponents/app/detail/Edit/ChatAgent/hook
 import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserStore } from '@/web/support/user/useUserStore';
+import { useAgentSandboxCapability } from '@/pageComponents/app/detail/hooks/useAgentSandboxCapability';
 import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
 import { useNodeWorkflowDocument } from '../render/useWorkflowDocument';
@@ -40,7 +43,7 @@ const useAgentNodeInputs = (nodeId: string) => {
   });
   const appId = useContextSelector(AppContext, (v) => v.appId);
   const { feConfigs } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
+  const { showSandbox, enableSandbox } = useAgentSandboxCapability();
   const { workflow, getNodeById, graph } = useNodeWorkflowDocument({ nodeId });
   const inputMap = useMemo(() => new Map(inputs.map((input) => [input.key, input])), [inputs]);
   const selectedTools = useMemo<SelectedToolItemType[]>(() => {
@@ -97,8 +100,8 @@ const useAgentNodeInputs = (nodeId: string) => {
   const skillSelection = useAgentSkillSelect({
     selectedAgentSkills,
     useAgentSandbox,
-    showSandbox: feConfigs.show_agent_sandbox,
-    enableSandbox: !teamPlanStatus?.standard || !!teamPlanStatus.standard.enableSandbox,
+    showSandbox,
+    enableSandbox,
     onUpdateSkills,
     onUpdateSandbox
   });
@@ -121,23 +124,13 @@ const useAgentNodeInputs = (nodeId: string) => {
     (tool: SelectedToolItemType) => {
       const id = tool.pluginId ?? tool.id;
       const nextTool = { ...tool, id, pluginId: id };
-      const key = getToolIdentityKey(id, tool.source);
-      const matches = (item: SelectedToolItemType) =>
-        getToolIdentityKey(item.pluginId ?? item.id, item.source) === key;
-      updateTools((tools) =>
-        tools.some(matches)
-          ? tools.map((item) => (matches(item) ? nextTool : item))
-          : [nextTool, ...tools]
-      );
+      updateTools((tools) => upsertSelectedTool(tools, nextTool));
     },
     [updateTools]
   );
   const onDeleteTool = useCallback(
     (id: string, source?: string) => {
-      const key = getToolIdentityKey(id, source);
-      updateTools((tools) =>
-        tools.filter((tool) => getToolIdentityKey(tool.pluginId ?? tool.id, tool.source) !== key)
-      );
+      updateTools((tools) => removeSelectedTool(tools, { id, source }));
     },
     [updateTools]
   );

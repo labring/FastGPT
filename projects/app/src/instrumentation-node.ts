@@ -26,6 +26,7 @@ export async function registerNodeInstrumentation() {
       { preLoadWorker },
       { loadInstalledModels, loadSystemModels },
       { trackTimerProcess },
+      { opsPerfTimerProcess },
       { initBullMQWorkers },
       { initS3Buckets },
       { initGeo },
@@ -55,6 +56,7 @@ export async function registerNodeInstrumentation() {
       import('@fastgpt/service/worker/preload'),
       import('@fastgpt/service/core/ai/model/catalog/service'),
       import('@fastgpt/service/common/middle/tracks/processor'),
+      import('@fastgpt/service/common/opsPerf/collector'),
       import('@/service/common/bullmq'),
       import('@fastgpt/service/common/s3'),
       import('@fastgpt/service/common/geo'),
@@ -283,6 +285,12 @@ export async function registerNodeInstrumentation() {
       runBackgroundInitializationStep({
         step: 'track-timer-process',
         action: () => trackTimerProcess(),
+        logger,
+        getErrText
+      });
+      runBackgroundInitializationStep({
+        step: 'ops-perf-timer-process',
+        action: () => opsPerfTimerProcess(),
         logger,
         getErrText
       });

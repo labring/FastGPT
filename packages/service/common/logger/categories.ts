@@ -163,7 +163,8 @@ export const LogCategories = {
 
   // 事件层
   EVENT: {
-    TRACK: ['event', 'track']
+    TRACK: ['event', 'track'],
+    OPS_PERF: ['event', 'ops-perf']
   }
 };
 

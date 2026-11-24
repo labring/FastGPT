@@ -217,7 +217,8 @@ describe('ChatAgentHelper', () => {
     expect(mocks.loadChatAgentConfig).toHaveBeenCalledExactlyOnceWith({
       appId: 'app-1',
       chatId: 'saved-chat',
-      responseChatItemId: 'response-1'
+      responseChatItemId: 'response-1',
+      promptRefVersion: 'v2'
     });
     expect(mocks.onApply).toHaveBeenCalledExactlyOnceWith({ tools: [] });
     expect(mocks.toast).not.toHaveBeenCalled();

@@ -4,6 +4,10 @@ import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { isHttpUrl } from '@fastgpt/global/common/string/url';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { getLogger, LogCategories } from '../../../common/logger';
+import {
+  recordDatasetSearchQueryCount,
+  trackDatasetQueryExtensionStage
+} from '../../../common/opsPerf/datasetSearch';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import { getImageBase64 } from '../../../common/file/image/utils';
 import { getMultipleDataToBase64 } from '../../../common/system/constants';
@@ -282,29 +286,27 @@ export const datasetSearchQueryExtension = async ({
   let reRankQuery = query;
 
   // Use LLM to generate extension queries
-  const aiExtensionResult = await (async () => {
-    if (!llmModel || !embeddingModel) return;
-
-    try {
-      const result = await queryExtension({
-        chatBg: extensionBg,
-        query,
-        histories,
-        llmModel,
-        embeddingModel,
-        userKey,
-        teamId
-      });
-      if (result.extensionQueries?.length === 0) return;
-      return result;
-    } catch (error) {
-      logger.error('Failed to generate extension queries', { error });
-    }
-  })();
+  const aiExtensionResult =
+    llmModel && embeddingModel
+      ? await trackDatasetQueryExtensionStage(
+          () =>
+            queryExtension({
+              chatBg: extensionBg,
+              query,
+              histories,
+              llmModel,
+              embeddingModel,
+              userKey,
+              teamId
+            }),
+          (error) => logger.error('Failed to generate extension queries', { error })
+        )
+      : undefined;
 
   if (aiExtensionResult) {
     queries = filterSameQuery(queries.concat(aiExtensionResult.extensionQueries));
     reRankQuery = queries.join('\n');
+    recordDatasetSearchQueryCount(queries.length);
   }
 
   queries = await standardizeDatasetSearchQueries({ teamId, datasetIds, queries });
