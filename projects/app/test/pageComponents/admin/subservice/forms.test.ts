@@ -65,7 +65,8 @@ vi.mock('@chakra-ui/react', () => ({
   Wrap: ({ children }: any) => React.createElement('div', null, children),
   Tag: ({ children }: any) => React.createElement('span', null, children),
   SimpleGrid: ({ children }: any) => React.createElement('div', null, children),
-  NumberInput: () => null,
+  NumberInput: ({ variant, children }: any) =>
+    React.createElement('div', { 'data-number-input-variant': variant ?? 'outline' }, children),
   NumberInputField: () => null,
   NumberInputStepper: () => null,
   NumberIncrementStepper: () => null,
@@ -192,6 +193,20 @@ describe('agent sandbox Kubernetes overcommit settings', () => {
       expect(container.textContent?.includes('admin:sandbox_memory_overcommit_factor')).toBe(
         visible
       );
+      if (visible) {
+        const labels = [...container.querySelectorAll('label')];
+        for (const key of [
+          'admin:sandbox_cpu_overcommit_factor',
+          'admin:sandbox_memory_overcommit_factor'
+        ]) {
+          const item = labels.find((el) => el.textContent?.includes(key));
+          expect(
+            item
+              ?.querySelector('[data-number-input-variant]')
+              ?.getAttribute('data-number-input-variant')
+          ).toBe('whiteOutline');
+        }
+      }
       if (provider === 'opensandbox' && runtime === 'docker') {
         await act(async () => mocks.changeRuntime!('kubernetes'));
         expect(container.textContent).toContain('admin:sandbox_cpu_overcommit_factor');
