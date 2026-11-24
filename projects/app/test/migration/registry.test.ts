@@ -20,7 +20,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20261120_migrate_model_pricing',
       '20261022_initialize_dataset_vector_indexes',
       '20261104_backfill_chat_publish_source',
-      '20261104_backfill_openapi_key_type'
+      '20261104_backfill_openapi_key_type',
+      '20261123_cleanup_mongo_indexes'
     ]);
     const tasks: readonly SystemMigration[] = systemMigrations;
     expect(tasks.filter((task) => task.blockStartup).map(({ id }) => id)).toEqual([
@@ -49,7 +50,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20261120_migrate_model_pricing',
       '20261022_initialize_dataset_vector_indexes',
       '20261104_backfill_chat_publish_source',
-      '20261104_backfill_openapi_key_type'
+      '20261104_backfill_openapi_key_type',
+      '20261123_cleanup_mongo_indexes'
     ]);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
@@ -109,12 +111,27 @@ describe('validateSystemMigrationRegistry', () => {
     expect(task).not.toHaveProperty('blockStartup', true);
   });
 
+  it('registers v4.18.0 deprecated MongoDB index cleanup at tail as an independent task', () => {
+    const task = systemMigrations.find(({ id }) => id === '20261123_cleanup_mongo_indexes');
+    expect(task).toMatchObject({
+      id: '20261123_cleanup_mongo_indexes',
+      version: '4.18.0',
+      independent: true,
+      progressSteps: [{ key: 'cleanup' }, { key: 'validation' }]
+    });
+    expect(task).not.toHaveProperty('blockStartup', true);
+    expect(task).not.toHaveProperty('dependsOn');
+    expect(task).not.toHaveProperty('manual');
+    expect(task).not.toHaveProperty('delay');
+  });
+
   it('runs only the selected production tasks independently', () => {
     const independentTasks = systemMigrations.filter((task: SystemMigration) => task.independent);
     expect(independentTasks.map((task) => task.id)).toEqual([
       '20261120_migrate_model_pricing',
       '20261104_backfill_chat_publish_source',
-      '20261104_backfill_openapi_key_type'
+      '20261104_backfill_openapi_key_type',
+      '20261123_cleanup_mongo_indexes'
     ]);
   });
 

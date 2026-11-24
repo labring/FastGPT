@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
 import { getSchemaDeprecatedMongoIndexes } from '@fastgpt/service/common/mongo';
+import { LEGACY_DEPRECATED_MONGO_INDEXES } from '@fastgpt/service/common/mongo/legacyDeprecatedIndexCleanup';
 
 const baseInstance = {
   provider: 'opensandbox',
@@ -35,19 +36,28 @@ describe('MongoSandboxInstance schema indexes', () => {
     );
   });
 
-  it('registers the nested operation index for automatic cleanup', () => {
-    expect(getSchemaDeprecatedMongoIndexes(MongoSandboxInstance.schema)).toEqual([
-      {
-        indexName: 'sourceType_1_status_1_provider_1',
-        key: { sourceType: 1, status: 1, provider: 1 },
-        options: undefined
-      },
-      {
-        indexName: 'status_1_metadata.operation.heartbeatAt_1',
-        key: { status: 1, 'metadata.operation.heartbeatAt': 1 },
-        options: undefined
-      }
-    ]);
+  it('keeps zero deprecated tombstones on the schema and tracks retired sandbox indexes in explicit cleanup registry', () => {
+    // 零墓碑原则：Schema 内不再保留 deprecated: true，历史废弃索引统一由显式清理清单托管。
+    expect(getSchemaDeprecatedMongoIndexes(MongoSandboxInstance.schema)).toEqual([]);
+    const legacySandboxIndexes = LEGACY_DEPRECATED_MONGO_INDEXES.filter(
+      (entry) => entry.collectionName === 'agent_sandbox_instances_v2'
+    );
+    expect(legacySandboxIndexes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          datasource: 'main',
+          indexName: 'sourceType_1_status_1_provider_1',
+          key: { sourceType: 1, status: 1, provider: 1 },
+          options: {}
+        }),
+        expect.objectContaining({
+          datasource: 'main',
+          indexName: 'status_1_metadata.operation.heartbeatAt_1',
+          key: { status: 1, 'metadata.operation.heartbeatAt': 1 },
+          options: {}
+        })
+      ])
+    );
   });
 
   it('accepts stable states without operation and matching transition operations', async () => {

@@ -90,12 +90,6 @@ defineIndex(TeamMemberSchema, {
   options: { unique: true, background: true }
 });
 
-defineIndex(TeamMemberSchema, {
-  key: { userId: 1 },
-  deprecated: true,
-  options: { background: true }
-});
-
 export const MongoTeamMember = getMongoModel<TeamMemberType>(
   TeamMemberCollectionName,
   TeamMemberSchema
