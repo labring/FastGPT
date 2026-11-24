@@ -17,7 +17,7 @@ try {
   if (command === 'generate') {
     const artifacts = await mod.writeSdkArtifacts();
     console.log(
-      `[sdk:codegen] Generated:\n  - ${artifacts.irPath}\n  - ${artifacts.typesPath}\n  - ${artifacts.resourcesPath}`
+      `[sdk:codegen] Generated:\n  - ${artifacts.irPath}\n  - ${artifacts.typesPath}\n  - ${artifacts.resourcesPath}\n  - ${artifacts.goModelsPath}\n  - ${artifacts.goResourcesPath}`
     );
   } else if (command === 'check') {
     const { driftedFiles } = await mod.checkSdkArtifactsDrift();
@@ -27,7 +27,7 @@ try {
       );
       process.exitCode = 1;
     } else {
-      console.log('[sdk:codegen] SDK IR and generated TypeScript sources are up to date.');
+      console.log('[sdk:codegen] SDK IR and generated TypeScript/Go sources are up to date.');
     }
   } else {
     console.error(`Unknown command "${command}". Expected "generate" or "check".`);
