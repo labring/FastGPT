@@ -926,6 +926,9 @@ export const inspectMongoIndexes = async ({
 
 type ReadyMongoIndexSpec = LiveMongoIndexSpec & { name: string };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
 const buildTextExplainFilter = (key: Record<string, unknown>): Record<string, unknown> => {
   const filter: Record<string, unknown> = {};
   for (const [field, order] of Object.entries(key)) {
@@ -934,8 +937,76 @@ const buildTextExplainFilter = (key: Record<string, unknown>): Record<string, un
     }
     filter[field] = null;
   }
-  filter.$text = { $search: 'a' };
+  filter.$text = { $search: 'fastgpt' };
   return filter;
+};
+
+/** 递归校验 explain `winningPlan` 节点是否实际命中目标索引（兼容经典计划与 MongoDB 7/8 SBE `queryPlan`）。 */
+const planStageUsesIndex = (stage: unknown, expectedIndexName: string): boolean => {
+  if (!isRecord(stage)) {
+    return false;
+  }
+  if (isRecord(stage.queryPlan) && planStageUsesIndex(stage.queryPlan, expectedIndexName)) {
+    return true;
+  }
+  if (
+    (stage.stage === 'IXSCAN' || stage.stage === 'TEXT_MATCH') &&
+    stage.indexName === expectedIndexName
+  ) {
+    return true;
+  }
+  if (planStageUsesIndex(stage.inputStage, expectedIndexName)) {
+    return true;
+  }
+  if (
+    Array.isArray(stage.inputStages) &&
+    stage.inputStages.some((child) => planStageUsesIndex(child, expectedIndexName))
+  ) {
+    return true;
+  }
+  if (
+    planStageUsesIndex(stage.outerStage, expectedIndexName) ||
+    planStageUsesIndex(stage.innerStage, expectedIndexName)
+  ) {
+    return true;
+  }
+  return (
+    planStageUsesIndex(stage.thenStage, expectedIndexName) ||
+    planStageUsesIndex(stage.elseStage, expectedIndexName)
+  );
+};
+
+/**
+ * 校验 `explain('queryPlanner')` 的最终 `winningPlan` 是否确认使用了目标候选索引。
+ *
+ * 绝不查看 `rejectedPlans`；若存在索引过滤器覆盖 `.hint()` 导致退化为 `COLLSCAN`、
+ * 切换至其他索引或分片任一分片未命中目标索引，均 fail-closed 返回 `false`。
+ */
+const explainUsesIndex = (explainResult: unknown, expectedIndexName: string): boolean => {
+  if (!isRecord(explainResult) || !isRecord(explainResult.queryPlanner)) {
+    return false;
+  }
+  const { queryPlanner } = explainResult;
+  const shards =
+    isRecord(queryPlanner.winningPlan) && Array.isArray(queryPlanner.winningPlan.shards)
+      ? queryPlanner.winningPlan.shards
+      : Array.isArray(queryPlanner.shards)
+        ? queryPlanner.shards
+        : undefined;
+
+  if (shards !== undefined) {
+    return (
+      shards.length > 0 &&
+      shards.every(
+        (shard) =>
+          isRecord(shard) &&
+          isRecord(shard.winningPlan) &&
+          planStageUsesIndex(shard.winningPlan, expectedIndexName)
+      )
+    );
+  }
+
+  return planStageUsesIndex(queryPlanner.winningPlan, expectedIndexName);
 };
 
 const isIndexUsableByQueryPlanner = async (
@@ -950,23 +1021,20 @@ const isIndexUsableByQueryPlanner = async (
   const collection = db.collection(collectionName);
 
   try {
-    if (
-      isTextIndexSpec({
-        key: candidate.key ?? {},
-        weights: candidate.weights,
-        textIndexVersion: candidate.textIndexVersion
-      })
-    ) {
-      // MongoDB 不允许对 text 索引执行 .hint()，且单集合仅允许存在一个 text 索引；
-      // 若其处于构建中或 hidden 状态，带前导 prefix 条件的 $text 查询规划会直接报 Error 27（IndexNotFound）。
-      await collection
-        .find(buildTextExplainFilter(candidate.key ?? {}))
-        .limit(1)
-        .explain('queryPlanner');
-    } else {
-      await collection.find({}).hint(candidate.name).limit(1).explain('queryPlanner');
-    }
-    return true;
+    const explainResult = isTextIndexSpec({
+      key: candidate.key ?? {},
+      weights: candidate.weights,
+      textIndexVersion: candidate.textIndexVersion
+    })
+      ? // MongoDB 不允许对 text 索引执行 .hint()，且单集合仅允许存在一个 text 索引；
+        // 若其处于构建中或 hidden 状态，带前导 prefix 条件的 $text 查询规划会直接报 Error 27（IndexNotFound）。
+        await collection
+          .find(buildTextExplainFilter(candidate.key ?? {}))
+          .limit(1)
+          .explain('queryPlanner')
+      : await collection.find({}).hint(candidate.name).limit(1).explain('queryPlanner');
+
+    return explainUsesIndex(explainResult, candidate.name);
   } catch (error) {
     const code = getMongoErrorCode(error);
     // 2 = BadValue（MongoDB 8.x 对构建中索引与 hidden 索引执行 hint 均返回此错误），
@@ -985,7 +1053,8 @@ const isIndexUsableByQueryPlanner = async (
  * 本函数通过统一的两步守卫排除未就绪候选：
  * 1. `indexes()` 比对 `key + 完整 options` 并直接过滤 `hidden: true`；
  * 2. 使用原生驱动集合 `find(...).limit(1).explain('queryPlanner')`（非 text 索引显式 `.hint(name)`，
- *    text 索引按前导 prefix + `$text` 匹配）零扫表验证查询规划器可直接选用该索引。
+ *    text 索引按前导 prefix + `$text` 匹配）并校验 `winningPlan` 实际命中目标 `candidate.name`，
+ *    防止索引过滤器（`planCacheSetFilter`）覆盖 `.hint()` 退回 `COLLSCAN` 或旧索引时误判就绪。
  */
 export const hasMatchingMongoIndex = async ({
   client,

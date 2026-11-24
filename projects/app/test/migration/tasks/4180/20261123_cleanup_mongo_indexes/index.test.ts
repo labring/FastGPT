@@ -448,6 +448,72 @@ describe('20261123_cleanup_mongo_indexes', () => {
     expect(await listIndexNames(collectionName)).toContain('appId_1_updateTime_-1__id_-1');
   });
 
+  it('keeps legacy index when MongoDB index filter overrides probe hint, then drops on retry once cleared', async () => {
+    const collectionName = 'mig_idx_filter_override_test';
+    const db = connectionMongo.connection.db!;
+    const col = db.collection(collectionName);
+    await col.insertOne({ appId: 'a1', updateTime: new Date() });
+    await col.createIndex({ appId: 1, updateTime: -1 }, { name: 'appId_1_updateTime_-1' });
+    await col.createIndex(
+      { appId: 1, updateTime: -1, _id: -1 },
+      { name: 'appId_1_updateTime_-1__id_-1' }
+    );
+
+    const entry: DeprecatedMongoIndexMigrationEntry = {
+      collectionName,
+      datasource: 'main',
+      indexName: 'appId_1_updateTime_-1',
+      key: { appId: 1, updateTime: -1 },
+      options: {},
+      requiredIndexes: [{ key: { appId: 1, updateTime: -1, _id: -1 }, options: {} }],
+      reason: 'replacement readiness must verify winningPlan even under index filters'
+    };
+
+    try {
+      // 配置仅允许旧索引的查询形状过滤器，使探测 query {}.hint(new) 不抛错但退化为 COLLSCAN
+      await db.command({
+        planCacheSetFilter: collectionName,
+        query: {},
+        indexes: [{ appId: 1, updateTime: -1 }]
+      });
+
+      const filteredExplain = (await col
+        .find({})
+        .hint('appId_1_updateTime_-1__id_-1')
+        .limit(1)
+        .explain('queryPlanner')) as { queryPlanner?: { indexFilterSet?: boolean } };
+      expect(filteredExplain.queryPlanner?.indexFilterSet).toBe(true);
+
+      const blockedRun = createMongoIndexCleanupMigration({
+        entries: [entry],
+        pollIntervalMs: 15,
+        prerequisiteWaitTimeoutMs: 45
+      });
+      await expect(blockedRun(createContext().context)).rejects.toThrow('failed to clean up');
+      expect(await listIndexNames(collectionName)).toContain('appId_1_updateTime_-1');
+
+      await db.command({ planCacheClearFilters: collectionName });
+
+      const retryRun = createMongoIndexCleanupMigration({
+        entries: [entry],
+        pollIntervalMs: 15,
+        prerequisiteWaitTimeoutMs: 500
+      });
+      const result = await retryRun(createContext().context);
+      expect(result).toEqual({
+        totalCount: 1,
+        droppedCount: 1,
+        missingCount: 0,
+        skippedCount: 0
+      });
+      expect(await listIndexNames(collectionName)).not.toContain('appId_1_updateTime_-1');
+      expect(await listIndexNames(collectionName)).toContain('appId_1_updateTime_-1__id_-1');
+    } finally {
+      await db.command({ planCacheClearFilters: collectionName }).catch(() => undefined);
+      await col.dropIndexes().catch(() => undefined);
+    }
+  });
+
   it('aborts promptly while waiting for replacement indexes and preserves legacy index', async () => {
     const collectionName = 'mig_idx_abort_wait_test';
     const db = connectionMongo.connection.db!;

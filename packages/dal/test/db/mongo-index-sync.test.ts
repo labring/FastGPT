@@ -684,17 +684,19 @@ describe('@fastgpt/dal/db/mongo additive index sync, collMod TTL, safe drops, an
     expect(matchingCollation.dropIndex).toHaveBeenCalledWith('userId_1');
   });
 
-  it('verifies exact key, option parity, hidden exclusion, and queryPlanner explain readiness in hasMatchingMongoIndex', async () => {
+  it('verifies exact key, option parity, hidden exclusion, and queryPlanner explain winningPlan readiness in hasMatchingMongoIndex', async () => {
     const mockClient = ({
       indexes,
       usableNames,
       explainError,
+      explainResult,
       omitFind = false,
       onFind
     }: {
       indexes: Array<Record<string, unknown>>;
       usableNames?: readonly string[];
       explainError?: Error & { code?: number };
+      explainResult?: Record<string, unknown>;
       omitFind?: boolean;
       onFind?: (filter: Record<string, unknown>) => void;
     }) =>
@@ -730,7 +732,14 @@ describe('@fastgpt/dal/db/mongo additive index sync, collMod TTL, safe drops, an
                               err.code = 2;
                               throw err;
                             }
-                            return { queryPlanner: { winningPlan: { stage: 'IXSCAN' } } };
+                            if (explainResult !== undefined) {
+                              return explainResult;
+                            }
+                            return {
+                              queryPlanner: {
+                                winningPlan: { stage: 'IXSCAN', indexName: hintedName }
+                              }
+                            };
                           }
                         })
                       };
@@ -792,6 +801,151 @@ describe('@fastgpt/dal/db/mongo additive index sync, collMod TTL, safe drops, an
       })
     ).resolves.toBe(false);
 
+    // explain 返回 COLLSCAN（索引过滤器覆盖 hint）或命中其他索引名 -> 必须返回 false
+    await expect(
+      hasMatchingMongoIndex({
+        client: mockClient({
+          indexes: [{ name: 'ready_cursor', key: { appId: 1, updateTime: -1, _id: -1 } }],
+          explainResult: {
+            queryPlanner: {
+              indexFilterSet: true,
+              winningPlan: {
+                stage: 'LIMIT',
+                limitAmount: 1,
+                inputStage: { stage: 'COLLSCAN', direction: 'forward' }
+              }
+            }
+          }
+        }),
+        collectionName: 'chats',
+        key: { appId: 1, updateTime: -1, _id: -1 },
+        options: {}
+      })
+    ).resolves.toBe(false);
+
+    await expect(
+      hasMatchingMongoIndex({
+        client: mockClient({
+          indexes: [{ name: 'ready_cursor', key: { appId: 1, updateTime: -1, _id: -1 } }],
+          explainResult: {
+            queryPlanner: {
+              indexFilterSet: true,
+              winningPlan: {
+                stage: 'LIMIT',
+                inputStage: {
+                  stage: 'FETCH',
+                  inputStage: { stage: 'IXSCAN', indexName: 'legacy_cursor' }
+                }
+              },
+              rejectedPlans: [{ stage: 'IXSCAN', indexName: 'ready_cursor' }]
+            }
+          }
+        }),
+        collectionName: 'chats',
+        key: { appId: 1, updateTime: -1, _id: -1 },
+        options: {}
+      })
+    ).resolves.toBe(false);
+
+    // SBE winningPlan.queryPlan 与分片集群 shards 结构校验
+    await expect(
+      hasMatchingMongoIndex({
+        client: mockClient({
+          indexes: [{ name: 'ready_cursor', key: { appId: 1, updateTime: -1, _id: -1 } }],
+          explainResult: {
+            queryPlanner: {
+              winningPlan: {
+                queryPlan: {
+                  stage: 'LIMIT',
+                  inputStage: { stage: 'IXSCAN', indexName: 'ready_cursor' }
+                }
+              }
+            }
+          }
+        }),
+        collectionName: 'chats',
+        key: { appId: 1, updateTime: -1, _id: -1 },
+        options: {}
+      })
+    ).resolves.toBe(true);
+
+    await expect(
+      hasMatchingMongoIndex({
+        client: mockClient({
+          indexes: [{ name: 'ready_cursor', key: { appId: 1, updateTime: -1, _id: -1 } }],
+          explainResult: {
+            queryPlanner: {
+              winningPlan: {
+                queryPlan: {
+                  stage: 'LIMIT',
+                  inputStage: { stage: 'COLLSCAN' }
+                }
+              }
+            }
+          }
+        }),
+        collectionName: 'chats',
+        key: { appId: 1, updateTime: -1, _id: -1 },
+        options: {}
+      })
+    ).resolves.toBe(false);
+
+    await expect(
+      hasMatchingMongoIndex({
+        client: mockClient({
+          indexes: [{ name: 'ready_cursor', key: { appId: 1, updateTime: -1, _id: -1 } }],
+          explainResult: {
+            queryPlanner: {
+              winningPlan: {
+                stage: 'SHARD_MERGE',
+                shards: [
+                  {
+                    shardName: 'shard0',
+                    winningPlan: { stage: 'IXSCAN', indexName: 'ready_cursor' }
+                  },
+                  {
+                    shardName: 'shard1',
+                    winningPlan: { stage: 'IXSCAN', indexName: 'ready_cursor' }
+                  }
+                ]
+              }
+            }
+          }
+        }),
+        collectionName: 'chats',
+        key: { appId: 1, updateTime: -1, _id: -1 },
+        options: {}
+      })
+    ).resolves.toBe(true);
+
+    await expect(
+      hasMatchingMongoIndex({
+        client: mockClient({
+          indexes: [{ name: 'ready_cursor', key: { appId: 1, updateTime: -1, _id: -1 } }],
+          explainResult: {
+            queryPlanner: {
+              winningPlan: {
+                stage: 'SHARD_MERGE',
+                shards: [
+                  {
+                    shardName: 'shard0',
+                    winningPlan: { stage: 'IXSCAN', indexName: 'ready_cursor' }
+                  },
+                  {
+                    shardName: 'shard1',
+                    winningPlan: { stage: 'COLLSCAN' }
+                  }
+                ]
+              }
+            }
+          }
+        }),
+        collectionName: 'chats',
+        key: { appId: 1, updateTime: -1, _id: -1 },
+        options: {}
+      })
+    ).resolves.toBe(false);
+
     // explain 返回 Error 27 (IndexNotFound) -> 返回 false；非 2/26/27 异常及缺失 find() 必须失败关闭
     const missingIndexErr = Object.assign(new Error('index not found'), { code: 27 });
     const textFindFilters: Array<Record<string, unknown>> = [];
@@ -813,7 +967,7 @@ describe('@fastgpt/dal/db/mongo additive index sync, collMod TTL, safe drops, an
         options: { weights: { name: 1 } }
       })
     ).resolves.toBe(false);
-    expect(textFindFilters).toEqual([{ teamId: null, $text: { $search: 'a' } }]);
+    expect(textFindFilters).toEqual([{ teamId: null, $text: { $search: 'fastgpt' } }]);
 
     const unauthorizedErr = Object.assign(new Error('not authorized'), { code: 13 });
     await expect(
@@ -987,7 +1141,9 @@ describe('@fastgpt/dal/db/mongo additive index sync, collMod TTL, safe drops, an
         })
       ).resolves.toBe(true);
 
-      // 3. 真实冻结构建中的索引：listIndexes 已返回该定义，但尚未提交可用 -> 必须返回 false；提交后返回 true
+      // 3. 真实冻结构建中的索引（含默认无过滤器与 planCacheSetFilter 覆盖 hint 两种场景）：
+      //    listIndexes 已返回且在过滤器生效时 explain 虽未抛错但走 COLLSCAN/旧索引，均必须判为未就绪
+      await col.createIndex({ appId: 1, updateTime: -1 }, { name: 'appId_1_updateTime_-1' });
       await db
         .admin()
         .command({ configureFailPoint: 'hangAfterStartingIndexBuild', mode: 'alwaysOn' });
@@ -995,8 +1151,9 @@ describe('@fastgpt/dal/db/mongo additive index sync, collMod TTL, safe drops, an
         { appId: 1, updateTime: -1, _id: -1 },
         { name: 'appId_1_updateTime_-1__id_-1' }
       );
+      let filterActive = false;
       try {
-        // 等待后台构建登记进 listIndexes，实证复现 MongoDB 8.x 会列出构建中索引的现象
+        // 等待后台构建登记进 listIndexes，实证复现 MongoDB 会列出构建中索引的现象
         const deadline = Date.now() + 5_000;
         let listedWhileBuilding = false;
         while (Date.now() < deadline) {
@@ -1018,21 +1175,64 @@ describe('@fastgpt/dal/db/mongo additive index sync, collMod TTL, safe drops, an
             options: {}
           })
         ).resolves.toBe(false);
+
+        // 配置索引过滤器强制查询形状 {} 仅允许旧索引，使 hint 不抛 Error 2 但实际退化为 COLLSCAN
+        await db.command({
+          planCacheSetFilter: 'chats_real_ready',
+          query: {},
+          indexes: [{ appId: 1, updateTime: -1 }]
+        });
+        filterActive = true;
+
+        const filteredExplain = (await col
+          .find({})
+          .hint('appId_1_updateTime_-1__id_-1')
+          .limit(1)
+          .explain('queryPlanner')) as { queryPlanner?: { indexFilterSet?: boolean } };
+        expect(filteredExplain.queryPlanner?.indexFilterSet).toBe(true);
+
+        await expect(
+          hasMatchingMongoIndex({
+            client,
+            collectionName: 'chats_real_ready',
+            key: { appId: 1, updateTime: -1, _id: -1 },
+            options: {}
+          })
+        ).resolves.toBe(false);
       } finally {
         await db
           .admin()
           .command({ configureFailPoint: 'hangAfterStartingIndexBuild', mode: 'off' });
       }
 
-      await buildPromise;
-      await expect(
-        hasMatchingMongoIndex({
-          client,
-          collectionName: 'chats_real_ready',
-          key: { appId: 1, updateTime: -1, _id: -1 },
-          options: {}
-        })
-      ).resolves.toBe(true);
+      try {
+        await buildPromise;
+        // 构建提交完成后若索引过滤器仍覆盖 hint，winningPlan 仍未命中替代索引，继续保守返回 false
+        await expect(
+          hasMatchingMongoIndex({
+            client,
+            collectionName: 'chats_real_ready',
+            key: { appId: 1, updateTime: -1, _id: -1 },
+            options: {}
+          })
+        ).resolves.toBe(false);
+
+        await db.command({ planCacheClearFilters: 'chats_real_ready' });
+        filterActive = false;
+
+        await expect(
+          hasMatchingMongoIndex({
+            client,
+            collectionName: 'chats_real_ready',
+            key: { appId: 1, updateTime: -1, _id: -1 },
+            options: {}
+          })
+        ).resolves.toBe(true);
+      } finally {
+        if (filterActive) {
+          await db.command({ planCacheClearFilters: 'chats_real_ready' }).catch(() => undefined);
+        }
+      }
     } finally {
       await client.disconnect().catch(() => undefined);
       await replSet.stop();
