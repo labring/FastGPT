@@ -1,5 +1,8 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { filterApiDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
+import {
+  filterApiDatasetServerPublicData,
+  isPermissionSyncDataset
+} from '@fastgpt/global/core/dataset/apiDataset/utils';
 import {
   GetDatasetDetailQuerySchema,
   GetDatasetDetailResponseSchema,
@@ -11,6 +14,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { desensitizeModel } from '@fastgpt/service/core/ai/model/transform';
 import { getDatasetSyncDatasetStatus } from '@fastgpt/service/core/dataset/datasetSync';
+import { getDatasetPermissionSyncStatus } from '@fastgpt/service/core/dataset/datasetPermissionSync';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { hasDatasetTrainingTask } from '@fastgpt/service/core/dataset/training/entity';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
@@ -29,18 +33,23 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> 
     per: ReadPermissionVal
   });
 
-  const [{ status, errorMsg }, hasTrainingTask, hasLegacySystemRoot] = await Promise.all([
-    getDatasetSyncDatasetStatus(datasetId),
-    hasDatasetTrainingTask({ teamId: dataset.teamId, datasetId }),
-    // 升级过渡期兼容：未执行手动清理迁移前，存量 SYSTEM_ROOT 哨兵等价于 syncAll = true。
-    dataset.apiDatasetServer && !dataset.syncAll
-      ? MongoDatasetCollection.exists({
-          teamId: dataset.teamId,
-          datasetId: dataset._id,
-          apiFileId: LEGACY_SYSTEM_ROOT_API_FILE_ID
-        })
-      : null
-  ]);
+  const [{ status, errorMsg }, hasTrainingTask, hasLegacySystemRoot, permissionSyncStatus] =
+    await Promise.all([
+      getDatasetSyncDatasetStatus(datasetId),
+      hasDatasetTrainingTask({ teamId: dataset.teamId, datasetId }),
+      // 升级过渡期兼容：未执行手动清理迁移前，存量 SYSTEM_ROOT 哨兵等价于 syncAll = true。
+      dataset.apiDatasetServer && !dataset.syncAll
+        ? MongoDatasetCollection.exists({
+            teamId: dataset.teamId,
+            datasetId: dataset._id,
+            apiFileId: LEGACY_SYSTEM_ROOT_API_FILE_ID
+          })
+        : null,
+      // 只有开启同步才有状态可报；关闭时连队列都不查
+      isPermissionSyncDataset(dataset.apiDatasetServer)
+        ? getDatasetPermissionSyncStatus(datasetId)
+        : Promise.resolve(undefined)
+    ]);
   const modelHandle = await getTeamModelHandle({ teamId: String(dataset.teamId) });
   const vectorModel = modelHandle.findModelData(getDatasetModelReference(dataset, 'embedding'), {
     type: 'embedding'
@@ -60,6 +69,12 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> 
     hasTrainingTask,
     errorMsg,
     permission,
+    ...(permissionSyncStatus
+      ? {
+          permissionSyncStatus: permissionSyncStatus.status,
+          permissionSyncErrorMsg: permissionSyncStatus.errorMsg
+        }
+      : {}),
     vectorModel: vectorModel ? desensitizeModel(vectorModel) : undefined,
     agentModel: agentModel ? desensitizeModel(agentModel) : undefined,
     vlmModel: vlmModel ? desensitizeModel(vlmModel) : undefined,

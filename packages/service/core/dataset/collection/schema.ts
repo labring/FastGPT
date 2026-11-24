@@ -155,26 +155,6 @@ defineIndex(DatasetCollectionSchema, {
   options: { partialFilterExpression: { forbid: true } }
 });
 
-// 废弃索引集中登记，启动时按名称和 key 精确清理。
-// 原继承状态索引已合并到上方类型/目录索引。
-defineIndex(DatasetCollectionSchema, {
-  key: { teamId: 1, datasetId: 1, parentId: 1, inheritPermission: 1 },
-  deprecated: true
-});
-// 旧格式标签索引不支持结构化字段定位；team/dataset 前缀由当前索引继续提供。
-defineIndex(DatasetCollectionSchema, {
-  key: { teamId: 1, datasetId: 1, tags: 1 },
-  deprecated: true
-});
-// 旧图片清理任务已删除，当前不再按 relatedImgId 查询 Collection。
-defineIndex(DatasetCollectionSchema, {
-  key: {
-    teamId: 1,
-    'metadata.relatedImgId': 1
-  },
-  deprecated: true
-});
-
 export const MongoDatasetCollection = getMongoModel<DatasetCollectionSchemaType>(
   DatasetColCollectionName,
   DatasetCollectionSchema

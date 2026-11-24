@@ -79,14 +79,19 @@
   "migrations.20261116_migrate_system_configs.validate": "전체 설정 검증",
   "migrations.20261116_migrate_system_configs.result": "설정 도메인 {{migratedDomainCount}}개를 이전하고 사용 중단 필드 {{removedFieldCount}}개를 정리했습니다. 기존 설정 {{skippedConfigCount}}개는 건너뛰었거나 확인이 필요합니다.",
   "migrations.20261120_migrate_model_pricing.name": "모델 가격 마이그레이션",
-  "migrations.20261120_migrate_model_pricing.description": "시작 후 백그라운드에서 독립적으로 단계별 모델 가격 마이그레이션을 실행합니다. 먼저 기존 STT 과금 유형을 시간 기준으로 채우고, 시스템 LLM 계층 상한(maxInputTokens)을 M Tokens에서 양의 정수 K Tokens로 변환(>10 건너뜀)한 뒤 전체 가격 설정을 검증합니다.",
+  "migrations.20261120_migrate_model_pricing.description": "시작 후 백그라운드에서 기존 STT의 시간 기준 과금 유형과 시스템 LLM의 K Tokens 구간 상한을 채웁니다. 롤백 시 사용할 기존 상한은 유지합니다.",
   "migrations.20261120_migrate_model_pricing.stt": "STT 과금 유형 채우기",
   "migrations.20261120_migrate_model_pricing.llmTiers": "LLM 계층 상한 변환",
   "migrations.20261120_migrate_model_pricing.validation": "모델 가격 검증",
-  "migrations.20261120_migrate_model_pricing.result": "STT 모델 {{sttModels}}개를 검사하고 시스템 LLM 모델 {{llmModels}}개의 계층 상한을 K Tokens로 변환했습니다.",
+  "migrations.20261120_migrate_model_pricing.result": "STT 모델 {{sttModels}}개를 검사하고 시스템 LLM 모델 {{llmModels}}개의 K Tokens 구간 상한을 채웠습니다.",
   "migrations.20261120_clean_api_dataset_system_root.name": "API 지식베이스 레거시 가상 루트 노드 정리",
   "migrations.20261120_clean_api_dataset_system_root.description": "기존 API 지식베이스의 SYSTEM_ROOT 센티넬 폴더를 제거하고 최상위 컬렉션을 루트로 이동하며 Dataset.syncAll을 채웁니다. 모든 앱 및 Pro 서비스가 새 버전으로 업그레이드된 후 수동으로 실행하세요.",
   "migrations.20261120_clean_api_dataset_system_root.migrate": "센티넬 노드 정리 및 syncAll 채우기",
   "migrations.20261120_clean_api_dataset_system_root.validation": "잔여 가상 루트 노드 없음 검증",
-  "migrations.20261120_clean_api_dataset_system_root.result": "지식베이스 {{datasets}}개를 처리하고 센티넬 노드 {{sentinels}}개를 제거했으며 최상위 컬렉션 {{reparented}}개를 루트로 이동했습니다."
+  "migrations.20261120_clean_api_dataset_system_root.result": "지식베이스 {{datasets}}개를 처리하고 센티넬 노드 {{sentinels}}개를 제거했으며 최상위 컬렉션 {{reparented}}개를 루트로 이동했습니다.",
+  "migrations.20261123_cleanup_mongo_indexes.name": "사용 중단된 MongoDB 인덱스 정리",
+  "migrations.20261123_cleanup_mongo_indexes.description": "시작 후 백그라운드에서 독립적으로 사용 중단된 MongoDB 인덱스를 정리합니다. 삭제 전 필수 대체 인덱스의 생성 완료를 지속적으로 확인하고 인덱스 이름, 키 정의 및 전체 옵션이 정확히 일치하는 경우에만 삭제하며 사용자 지정 또는 불일치 인덱스는 보존합니다. MONGO_DEPRECATE_INDEX=false이면 기존 사용 중단 인덱스를 유지하고 활성화 또는 수동 삭제 후 재시도할 수 있도록 연기합니다.",
+  "migrations.20261123_cleanup_mongo_indexes.cleanup": "사용 중단된 인덱스 정리",
+  "migrations.20261123_cleanup_mongo_indexes.validation": "정리 결과 검증",
+  "migrations.20261123_cleanup_mongo_indexes.result": "총 {{totalCount}}개의 사용 중단된 인덱스를 검사했습니다: {{droppedCount}}개 삭제, {{missingCount}}개 미존재, {{skippedCount}}개 안전하게 건너뜀."
 }

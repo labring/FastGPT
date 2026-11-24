@@ -111,6 +111,9 @@ export const serviceEnv = createEnv({
         'mongodb://myusername:mypassword@localhost:27017/fastgpt?authSource=admin&directConnection=true'
       ),
     MONGODB_LOG_URI: z.string().optional(),
+    MONGO_DEPRECATE_INDEX: BoolSchema.default(true).meta({
+      description: '是否在 Mongo 索引同步阶段清理显式声明为 deprecated 的历史索引（默认开启）'
+    }),
 
     // VectorDB
     SEARCH_MONGO_URL: z.string().optional().meta({
@@ -198,6 +201,10 @@ export const serviceEnv = createEnv({
     //==================== Beta features ====================
     DATASET_SYNONYM_ENABLED: BoolSchema.default(false).meta({
       description: '是否启用知识库同义词能力；关闭时不读取同义词配置或执行查询扩展'
+    }),
+    DISABLE_APIDATASET_SUPER_ADMIN: BoolSchema.default(false).meta({
+      description:
+        '是否要求 root / 团队 owner 在 API 文件库（配置了 apiDatasetServer 的知识库）管理侧遵守文件 ACL；不影响普通知识库与检索'
     }),
 
     // ==================== 并发控制与限制 ====================

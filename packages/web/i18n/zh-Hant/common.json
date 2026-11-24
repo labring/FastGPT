@@ -1464,5 +1464,6 @@
   "puzzle_captcha_load_failed": "圖片載入失敗，請點擊換一張",
   "model.cache_read_price": "快取讀取",
   "model.cache_creation_price": "快取建立",
-  "model.cache_price_default": "同輸入價"
+  "model.cache_price_default": "同輸入價",
+  "core.dataset.error.permissionSyncManaged": "該知識庫的檔案權限由外部 API 檔案庫同步維護，無法在此修改"
 }

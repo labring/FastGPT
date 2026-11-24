@@ -217,8 +217,6 @@ defineIndex(DatasetSchema, { key: { deleteTime: 1 } }); // 添加软删除字段
 // Admin search
 defineIndex(DatasetSchema, { key: { tmbId: 1 } });
 
-defineIndex(DatasetSchema, { key: { teamId: 1 }, deprecated: true });
-
 export const MongoDataset = getMongoModel<DatasetSchemaType & { vectorData?: DatasetVectorData }>(
   DatasetCollectionName,
   DatasetSchema

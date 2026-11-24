@@ -128,10 +128,6 @@ defineIndex(SandboxInstanceSchema, {
   options: { unique: true }
 });
 defineIndex(SandboxInstanceSchema, {
-  key: { sourceType: 1, status: 1, provider: 1 },
-  deprecated: true
-});
-defineIndex(SandboxInstanceSchema, {
   key: { teamId: 1, status: 1 }
 });
 defineIndex(SandboxInstanceSchema, {
@@ -139,10 +135,6 @@ defineIndex(SandboxInstanceSchema, {
 });
 defineIndex(SandboxInstanceSchema, {
   key: { status: 1, 'operation.heartbeatAt': 1 }
-});
-defineIndex(SandboxInstanceSchema, {
-  key: { status: 1, 'metadata.operation.heartbeatAt': 1 },
-  deprecated: true
 });
 
 /**

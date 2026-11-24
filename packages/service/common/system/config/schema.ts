@@ -1,9 +1,6 @@
 import { type SystemConfigsType } from '@fastgpt/global/common/system/config/type';
 import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
-import {
-  SystemConfigsTypeEnum,
-  SystemConfigsTypeMap
-} from '@fastgpt/global/common/system/config/constants';
+import { SystemConfigsTypeMap } from '@fastgpt/global/common/system/config/constants';
 
 const { Schema } = connectionMongo;
 
@@ -32,24 +29,6 @@ const systemConfigSchema = new Schema(
 );
 
 defineIndex(systemConfigSchema, { key: { type: 1 } });
-// 开发期新增的运行时唯一约束已随 scope 迁出而废弃；保留旧来源快照及普通 type 索引。
-defineIndex(systemConfigSchema, {
-  key: { type: 1 },
-  deprecated: true,
-  options: {
-    name: 'runtime_scope_type_unique',
-    unique: true,
-    partialFilterExpression: {
-      type: {
-        $in: [
-          SystemConfigsTypeEnum.proEnv,
-          SystemConfigsTypeEnum.subPlans,
-          SystemConfigsTypeEnum.langfuse
-        ]
-      }
-    }
-  }
-});
 
 export const MongoSystemConfigs = getMongoModel<SystemConfigsType>(
   collectionName,

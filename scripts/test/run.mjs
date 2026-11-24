@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 const workspaceFilters = {
   app: '@fastgpt/app',
   admin: '@fastgpt/admin',
+  dal: '@fastgpt/dal',
   global: '@fastgpt/global',
   service: '@fastgpt/service',
   web: '@fastgpt/web',

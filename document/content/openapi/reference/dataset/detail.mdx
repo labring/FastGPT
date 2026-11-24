@@ -167,7 +167,7 @@ curl --fail-with-body -X GET "https://cloud.fastgpt.cn/api/core/dataset/detail?i
 | `agentModel`                                    | `object`         | 否   | -                  | AI 模型；模型已删除时为空，已停用模型仍返回展示数据                                                                           |
 | `agentModel.pricing`                            | `object`         | 否   | -                  | LLM 每百万 Tokens 阶梯价格；缺省免费                                                                                          |
 | `agentModel.pricing.tiers`                      | `object[]`       | 否   | -                  | LLM 阶梯价格，下限从上一档上限推导。最多项数：5                                                                               |
-| `agentModel.pricing.tiers[].maxInputTokens`     | `number`         | 否   | -                  | 本档输入上限，单位 M Tokens；省略表示无限。最小值：0                                                                          |
+| `agentModel.pricing.tiers[].maxInputTokensK`    | `integer`        | 否   | 32                 | 本档输入上限，单位 K Tokens；省略表示无限。最大值：9007199254740991                                                           |
 | `agentModel.pricing.tiers[].inputPrice`         | `number`         | 是   | -                  | 每百万输入 Tokens 的积分单价。最小值：0                                                                                       |
 | `agentModel.pricing.tiers[].outputPrice`        | `number`         | 是   | -                  | 每百万输出 Tokens 的积分单价。最小值：0                                                                                       |
 | `agentModel.provider`                           | `string`         | 是   | -                  | 最小长度：1                                                                                                                   |
@@ -207,7 +207,7 @@ curl --fail-with-body -X GET "https://cloud.fastgpt.cn/api/core/dataset/detail?i
 | `vlmModel`                                      | `object`         | 否   | -                  | 视觉语言模型                                                                                                                  |
 | `vlmModel.pricing`                              | `object`         | 否   | -                  | LLM 每百万 Tokens 阶梯价格；缺省免费                                                                                          |
 | `vlmModel.pricing.tiers`                        | `object[]`       | 否   | -                  | LLM 阶梯价格，下限从上一档上限推导。最多项数：5                                                                               |
-| `vlmModel.pricing.tiers[].maxInputTokens`       | `number`         | 否   | -                  | 本档输入上限，单位 M Tokens；省略表示无限。最小值：0                                                                          |
+| `vlmModel.pricing.tiers[].maxInputTokensK`      | `integer`        | 否   | 32                 | 本档输入上限，单位 K Tokens；省略表示无限。最大值：9007199254740991                                                           |
 | `vlmModel.pricing.tiers[].inputPrice`           | `number`         | 是   | -                  | 每百万输入 Tokens 的积分单价。最小值：0                                                                                       |
 | `vlmModel.pricing.tiers[].outputPrice`          | `number`         | 是   | -                  | 每百万输出 Tokens 的积分单价。最小值：0                                                                                       |
 | `vlmModel.provider`                             | `string`         | 是   | -                  | 最小长度：1                                                                                                                   |

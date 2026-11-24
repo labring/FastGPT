@@ -8029,12 +8029,10 @@ export type DatasetsDetailRes = {
   agentModel?: {
     /** LLM 每百万 Tokens 阶梯价格；缺省免费 */
     pricing?: {
-      /** LLM 阶梯输入上限单位，默认 K Tokens */
-      tierUnit?: 'K';
       /** LLM 阶梯价格，下限从上一档上限推导 */
       tiers?: Array<{
         /** 本档输入上限，单位 K Tokens；省略表示无限 */
-        maxInputTokens?: number;
+        maxInputTokensK?: number;
         /** 每百万输入 Tokens 的积分单价 */
         inputPrice: number;
         /** 每百万输出 Tokens 的积分单价 */
@@ -8087,12 +8085,10 @@ export type DatasetsDetailRes = {
   vlmModel?: {
     /** LLM 每百万 Tokens 阶梯价格；缺省免费 */
     pricing?: {
-      /** LLM 阶梯输入上限单位，默认 K Tokens */
-      tierUnit?: 'K';
       /** LLM 阶梯价格，下限从上一档上限推导 */
       tiers?: Array<{
         /** 本档输入上限，单位 K Tokens；省略表示无限 */
-        maxInputTokens?: number;
+        maxInputTokensK?: number;
         /** 每百万输入 Tokens 的积分单价 */
         inputPrice: number;
         /** 每百万输出 Tokens 的积分单价 */
@@ -8725,12 +8721,10 @@ export type ModelsCatalogRes = {
           testMode?: boolean;
           /** LLM 每百万 Tokens 阶梯价格；缺省免费 */
           pricing?: {
-            /** LLM 阶梯输入上限单位，默认 K Tokens */
-            tierUnit?: 'K';
             /** LLM 阶梯价格，下限从上一档上限推导 */
             tiers?: Array<{
               /** 本档输入上限，单位 K Tokens；省略表示无限 */
-              maxInputTokens?: number;
+              maxInputTokensK?: number;
               /** 每百万输入 Tokens 的积分单价 */
               inputPrice: number;
               /** 每百万输出 Tokens 的积分单价 */
@@ -8983,12 +8977,10 @@ export type ModelsListRes = {
         type: 'llm';
         /** LLM 每百万 Tokens 阶梯价格；缺省免费 */
         pricing?: {
-          /** LLM 阶梯输入上限单位，默认 K Tokens */
-          tierUnit?: 'K';
           /** LLM 阶梯价格，下限从上一档上限推导 */
           tiers?: Array<{
             /** 本档输入上限，单位 K Tokens；省略表示无限 */
-            maxInputTokens?: number;
+            maxInputTokensK?: number;
             /** 每百万输入 Tokens 的积分单价 */
             inputPrice: number;
             /** 每百万输出 Tokens 的积分单价 */

@@ -28616,16 +28616,6 @@
                         "kind": "object",
                         "properties": [
                           {
-                            "name": "tierUnit",
-                            "schema": {
-                              "kind": "literal",
-                              "value": "K",
-                              "description": "LLM 阶梯输入上限单位，默认 K Tokens"
-                            },
-                            "required": false,
-                            "description": "LLM 阶梯输入上限单位，默认 K Tokens"
-                          },
-                          {
                             "name": "tiers",
                             "schema": {
                               "kind": "array",
@@ -28633,7 +28623,7 @@
                                 "kind": "object",
                                 "properties": [
                                   {
-                                    "name": "maxInputTokens",
+                                    "name": "maxInputTokensK",
                                     "schema": {
                                       "kind": "primitive",
                                       "type": "integer",
@@ -29030,16 +29020,6 @@
                         "kind": "object",
                         "properties": [
                           {
-                            "name": "tierUnit",
-                            "schema": {
-                              "kind": "literal",
-                              "value": "K",
-                              "description": "LLM 阶梯输入上限单位，默认 K Tokens"
-                            },
-                            "required": false,
-                            "description": "LLM 阶梯输入上限单位，默认 K Tokens"
-                          },
-                          {
                             "name": "tiers",
                             "schema": {
                               "kind": "array",
@@ -29047,7 +29027,7 @@
                                 "kind": "object",
                                 "properties": [
                                   {
-                                    "name": "maxInputTokens",
+                                    "name": "maxInputTokensK",
                                     "schema": {
                                       "kind": "primitive",
                                       "type": "integer",
@@ -37438,16 +37418,6 @@
                                     "kind": "object",
                                     "properties": [
                                       {
-                                        "name": "tierUnit",
-                                        "schema": {
-                                          "kind": "literal",
-                                          "value": "K",
-                                          "description": "LLM 阶梯输入上限单位，默认 K Tokens"
-                                        },
-                                        "required": false,
-                                        "description": "LLM 阶梯输入上限单位，默认 K Tokens"
-                                      },
-                                      {
                                         "name": "tiers",
                                         "schema": {
                                           "kind": "array",
@@ -37455,7 +37425,7 @@
                                             "kind": "object",
                                             "properties": [
                                               {
-                                                "name": "maxInputTokens",
+                                                "name": "maxInputTokensK",
                                                 "schema": {
                                                   "kind": "primitive",
                                                   "type": "integer",
@@ -38872,16 +38842,6 @@
                               "kind": "object",
                               "properties": [
                                 {
-                                  "name": "tierUnit",
-                                  "schema": {
-                                    "kind": "literal",
-                                    "value": "K",
-                                    "description": "LLM 阶梯输入上限单位，默认 K Tokens"
-                                  },
-                                  "required": false,
-                                  "description": "LLM 阶梯输入上限单位，默认 K Tokens"
-                                },
-                                {
                                   "name": "tiers",
                                   "schema": {
                                     "kind": "array",
@@ -38889,7 +38849,7 @@
                                       "kind": "object",
                                       "properties": [
                                         {
-                                          "name": "maxInputTokens",
+                                          "name": "maxInputTokensK",
                                           "schema": {
                                             "kind": "primitive",
                                             "type": "integer",
@@ -73123,16 +73083,6 @@
                     "kind": "object",
                     "properties": [
                       {
-                        "name": "tierUnit",
-                        "schema": {
-                          "kind": "literal",
-                          "value": "K",
-                          "description": "LLM 阶梯输入上限单位，默认 K Tokens"
-                        },
-                        "required": false,
-                        "description": "LLM 阶梯输入上限单位，默认 K Tokens"
-                      },
-                      {
                         "name": "tiers",
                         "schema": {
                           "kind": "array",
@@ -73140,7 +73090,7 @@
                             "kind": "object",
                             "properties": [
                               {
-                                "name": "maxInputTokens",
+                                "name": "maxInputTokensK",
                                 "schema": {
                                   "kind": "primitive",
                                   "type": "integer",
@@ -73537,16 +73487,6 @@
                     "kind": "object",
                     "properties": [
                       {
-                        "name": "tierUnit",
-                        "schema": {
-                          "kind": "literal",
-                          "value": "K",
-                          "description": "LLM 阶梯输入上限单位，默认 K Tokens"
-                        },
-                        "required": false,
-                        "description": "LLM 阶梯输入上限单位，默认 K Tokens"
-                      },
-                      {
                         "name": "tiers",
                         "schema": {
                           "kind": "array",
@@ -73554,7 +73494,7 @@
                             "kind": "object",
                             "properties": [
                               {
-                                "name": "maxInputTokens",
+                                "name": "maxInputTokensK",
                                 "schema": {
                                   "kind": "primitive",
                                   "type": "integer",
@@ -76850,16 +76790,6 @@
                                 "kind": "object",
                                 "properties": [
                                   {
-                                    "name": "tierUnit",
-                                    "schema": {
-                                      "kind": "literal",
-                                      "value": "K",
-                                      "description": "LLM 阶梯输入上限单位，默认 K Tokens"
-                                    },
-                                    "required": false,
-                                    "description": "LLM 阶梯输入上限单位，默认 K Tokens"
-                                  },
-                                  {
                                     "name": "tiers",
                                     "schema": {
                                       "kind": "array",
@@ -76867,7 +76797,7 @@
                                         "kind": "object",
                                         "properties": [
                                           {
-                                            "name": "maxInputTokens",
+                                            "name": "maxInputTokensK",
                                             "schema": {
                                               "kind": "primitive",
                                               "type": "integer",
@@ -78284,16 +78214,6 @@
                           "kind": "object",
                           "properties": [
                             {
-                              "name": "tierUnit",
-                              "schema": {
-                                "kind": "literal",
-                                "value": "K",
-                                "description": "LLM 阶梯输入上限单位，默认 K Tokens"
-                              },
-                              "required": false,
-                              "description": "LLM 阶梯输入上限单位，默认 K Tokens"
-                            },
-                            {
                               "name": "tiers",
                               "schema": {
                                 "kind": "array",
@@ -78301,7 +78221,7 @@
                                   "kind": "object",
                                   "properties": [
                                     {
-                                      "name": "maxInputTokens",
+                                      "name": "maxInputTokensK",
                                       "schema": {
                                         "kind": "primitive",
                                         "type": "integer",

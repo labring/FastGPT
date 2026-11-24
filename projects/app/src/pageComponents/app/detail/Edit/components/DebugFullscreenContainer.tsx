@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Box, Flex, FocusLock, Portal } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import type { useDebugFullscreen } from '../hooks/useDebugFullscreen';
@@ -14,6 +14,16 @@ const DebugFullscreenContainer = ({
   const { t } = useTranslation();
   const { isFullscreen, isClosing, prefersReducedMotion, animation, onAnimationEnd, close } =
     fullscreen;
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const container = containerRef.current;
+    // 全屏态接管外部残余焦点，已有调试面板内焦点保持不动。
+    if (container && !container.contains(document.activeElement)) {
+      container.focus({ preventScroll: true });
+    }
+  }, [isFullscreen]);
 
   return (
     <Box h={'full'} w={'full'} sx={{ '& > div:not([data-focus-guard])': { display: 'contents' } }}>
@@ -31,6 +41,9 @@ const DebugFullscreenContainer = ({
       </Portal>
       <FocusLock isDisabled={!isFullscreen} autoFocus={false}>
         <Flex
+          ref={containerRef}
+          tabIndex={isFullscreen ? -1 : undefined}
+          outline={'none'}
           h={isFullscreen ? 'calc(100vh - 2.5rem)' : 'full'}
           w={isFullscreen ? 'calc(100vw - 2.5rem)' : undefined}
           position={isFullscreen ? 'fixed' : undefined}

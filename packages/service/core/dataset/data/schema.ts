@@ -136,12 +136,6 @@ if (serviceEnv.DATASET_SYNONYM_ENABLED) {
 // Cron clear invalid data
 defineIndex(DatasetDataSchema, { key: { updateTime: 1 } });
 
-// FastGPT 旧版重建标记索引已由 indexStatus 索引替代。
-defineIndex(DatasetDataSchema, {
-  key: { rebuilding: 1, teamId: 1, datasetId: 1 },
-  deprecated: true
-});
-
 export const MongoDatasetData = getMongoModel<DatasetDataSchemaType>(
   DatasetDataCollectionName,
   DatasetDataSchema

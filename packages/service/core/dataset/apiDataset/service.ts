@@ -41,6 +41,8 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { lockDatasetCollectionPermissionState } from '../../../support/permission/collection/datasetSwitch';
 import { getLogger, LogCategories } from '../../../common/logger';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import { isPermissionSyncDataset } from '@fastgpt/global/core/dataset/apiDataset/utils';
+import { enqueueDatasetPermissionSync } from '../datasetPermissionSync';
 import type { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '../../../support/permission/schema';
@@ -354,7 +356,6 @@ export const createApiDatasetCollection = async ({
   }
 
   const startId = resolveApiDatasetProvider(dataset.apiDatasetServer)?.basePath;
-
   const request = await getApiDatasetRequest(dataset.apiDatasetServer);
   const listFilesCache = new Map<string, Promise<APIFileItemType[]>>();
   /** 单次导入请求内复用同一 parentId 的 listFiles 结果，减少祖先校验与子树展开的重复调用。 */
@@ -522,6 +523,7 @@ export const createApiDatasetCollection = async ({
 
   // 2c. 请求级 inheritPermission 只作用于**显式选中的节点**（全选时作用于远端根下顶层节点）：
   //     自动补建的祖先目录及其后代保持继承态，已存在节点跳过不改写 inheritPermission。
+  //     #dir 是选中文件的同名目录，同属该节点，用与建树同一个函数派生，避免后缀口径漂移。
   const selectedDirIds = new Set(
     explicitSeeds.flatMap((item) => [item.id, toApiFileDirId(item.id, item.type)])
   );
@@ -682,16 +684,30 @@ export const createApiDatasetCollection = async ({
         )
       ];
 
-  await authorizeChanges?.({
-    creationParentIds: [...creationParentIds],
-    newFolderIds: new Set(newFolderParents.keys()),
-    moves: plannedMoves,
-    ...(legacyPlan.permissionSources.size
-      ? { permissionSourceIds: [...new Set(legacyPlan.permissionSources.values())] }
-      : {}),
-    ...(reEnableSyncFolderIds.length ? { reEnableSyncFolderIds } : {}),
-    ...(shouldApplyDatasetSyncAll ? { enableDatasetSyncAll: true } : {})
-  });
+  // 外部权限同步托管时跳过 collection 级鉴权：ACL 由外部列表整份接管，本地角色不代表访问权，
+  // 而这里的建树/纠偏落位由 server 树推导，不是用户选择的目标。入口已校验 dataset 级写权限，
+  // 仍按本地 collection ACL 鉴权只会把「有知识库写权限」的调用方误拒；但开启整库 syncAll 仍需知识库 Manage 权限。
+  if (isPermissionSyncDataset(dataset.apiDatasetServer)) {
+    if (shouldApplyDatasetSyncAll) {
+      await authorizeChanges?.({
+        creationParentIds: [],
+        newFolderIds: new Set(),
+        moves: [],
+        enableDatasetSyncAll: true
+      });
+    }
+  } else {
+    await authorizeChanges?.({
+      creationParentIds: [...creationParentIds],
+      newFolderIds: new Set(newFolderParents.keys()),
+      moves: plannedMoves,
+      ...(legacyPlan.permissionSources.size
+        ? { permissionSourceIds: [...new Set(legacyPlan.permissionSources.values())] }
+        : {}),
+      ...(reEnableSyncFolderIds.length ? { reEnableSyncFolderIds } : {}),
+      ...(shouldApplyDatasetSyncAll ? { enableDatasetSyncAll: true } : {})
+    });
+  }
 
   await applyLegacyApiFileFolders({
     teamId,
@@ -840,6 +856,25 @@ export const createApiDatasetCollection = async ({
     successCount,
     failedCount
   });
+
+  // 外部权限同步开启时，只入队本次请求选中的节点作为根；失败只告警，不回滚已提交的导入
+  if (isPermissionSyncDataset(dataset.apiDatasetServer)) {
+    // 根 = 本次请求选中的节点；文件带子文档时子级挂在派生目录（xxx#dir）下，两者都算根
+    const rootApiFileIds = [
+      ...new Set(treeSeeds.flatMap((item) => [item.id, toApiFileDirId(item.id, item.type)]))
+    ];
+    const rootCollections = await MongoDatasetCollection.find(
+      { teamId, datasetId: dataset._id, apiFileId: { $in: rootApiFileIds } },
+      '_id'
+    ).lean();
+
+    if (rootCollections.length > 0) {
+      await enqueueDatasetPermissionSync({
+        datasetId: String(dataset._id),
+        collectionIds: rootCollections.map((collection) => String(collection._id))
+      });
+    }
+  }
 
   return { successCount, failedCount };
 };

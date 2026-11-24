@@ -44,15 +44,15 @@ export const sanitizeModelPriceTiers = (tiers?: ModelPriceTierType[]): ModelPric
         : {})
     };
     const max =
-      typeof tier.maxInputTokens === 'number' && Number.isFinite(tier.maxInputTokens)
-        ? Math.max(0, tier.maxInputTokens)
+      typeof tier.maxInputTokensK === 'number' && Number.isFinite(tier.maxInputTokensK)
+        ? Math.max(0, tier.maxInputTokensK)
         : undefined;
     if (!hasInput && !hasOutput && Object.keys(cachePrices).length === 0 && max === undefined)
       break;
-    const previous = result.at(-1)?.maxInputTokens;
+    const previous = result.at(-1)?.maxInputTokensK;
     if (max !== undefined && previous !== undefined && max <= previous) continue;
     result.push({
-      ...(max === undefined ? {} : { maxInputTokens: max }),
+      ...(max === undefined ? {} : { maxInputTokensK: max }),
       inputPrice: hasInput ? tier.inputPrice : 0,
       outputPrice: hasOutput ? tier.outputPrice : 0,
       ...cachePrices
@@ -62,7 +62,7 @@ export const sanitizeModelPriceTiers = (tiers?: ModelPriceTierType[]): ModelPric
   return result;
 };
 
-/** 只解析新计价字段，绝不回退根级历史价格。 */
+/** 只按 K 字段解析阶梯。旧记录尚未回填时，首档没有 K 上限，视为无限档。 */
 export const getRuntimeResolvedPriceTiers = (config?: PriceType): ModelPriceTierType[] =>
   sanitizeModelPriceTiers(config?.pricing?.tiers);
 
@@ -102,10 +102,7 @@ export const normalizeModelPricingForSave = (
       ...(pricing.outputPrice === undefined
         ? {}
         : { outputPrice: roundModelPrice(pricing.outputPrice) }),
-      ...(tiers === undefined ? {} : { tiers }),
-      ...(model.type === ModelTypeEnum.llm && tiers && tiers.length > 0
-        ? { tierUnit: 'K' as const }
-        : {})
+      ...(tiers === undefined ? {} : { tiers })
     };
   };
 
@@ -182,15 +179,12 @@ export const calculateModelPrice = ({
     })();
     return { totalPoints, tiers, matchedTier: undefined };
   }
-  // 无阶梯单位时不做区间计算，直接使用第一档；具备单位（K）时按 K Tokens 匹配阶梯上限，积分单价按 M Tokens 结算。
   const matchedTier =
-    config?.pricing?.tierUnit === undefined
-      ? tiers[0]
-      : (tiers.find(
-          (tier) =>
-            tier.maxInputTokens === undefined ||
-            inputTokens / MODEL_PRICE_TIER_TOKEN_UNIT <= tier.maxInputTokens
-        ) ?? tiers.at(-1));
+    tiers.find(
+      (tier) =>
+        tier.maxInputTokensK === undefined ||
+        inputTokens / MODEL_PRICE_TIER_TOKEN_UNIT <= tier.maxInputTokensK
+    ) ?? tiers.at(-1);
   const totalPoints =
     config?.scope !== ModelScopeEnum.system
       ? 0

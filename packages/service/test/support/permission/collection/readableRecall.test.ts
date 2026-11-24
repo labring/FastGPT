@@ -217,6 +217,26 @@ describe.sequential('resolveReadableCollectionIds', () => {
     ).resolves.toBeUndefined();
   });
 
+  it('honours file ACL for a team owner when ignoreTeamOwner is set', async () => {
+    const users = await getFakeUsers(1);
+    const teamId = String(users.owner.teamId);
+    const member = users.members[0];
+    // dataset 与文件都归 member：快照里的 owner 行只属于 member，团队 owner 没有任何 collection ACL
+    const dataset = await createDataset({ user: member });
+    const datasetId = String(dataset._id);
+    await createCollection({ user: member, datasetId, name: 'member-file' });
+    await enableDatasetCollectionPermissions({ teamId, datasetId });
+
+    await expect(
+      resolveReadableCollectionIds({
+        teamId,
+        datasetIds: [datasetId],
+        tmbId: String(users.owner.tmbId),
+        ignoreTeamOwner: true
+      })
+    ).resolves.toEqual([]);
+  });
+
   it('filters collection ACL for a team manager instead of bypassing it', async () => {
     const users = await getFakeUsers(1);
     const teamId = String(users.owner.teamId);

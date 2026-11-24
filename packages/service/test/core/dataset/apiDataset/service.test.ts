@@ -10,7 +10,9 @@ const {
   mockCollectionUpdateMany,
   mockDatasetUpdateOne,
   mockMongoSessionRun,
-  mockLoggerWarn
+  mockEnqueueDatasetPermissionSync,
+  mockLoggerWarn,
+  mockLoggerError
 } = vi.hoisted(() => ({
   mockListFiles: vi.fn(),
   mockCreateApiFileCollectionsBatch: vi.fn(),
@@ -20,7 +22,9 @@ const {
   mockCollectionUpdateMany: vi.fn(),
   mockDatasetUpdateOne: vi.fn(),
   mockMongoSessionRun: vi.fn(),
-  mockLoggerWarn: vi.fn()
+  mockEnqueueDatasetPermissionSync: vi.fn(),
+  mockLoggerWarn: vi.fn(),
+  mockLoggerError: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
@@ -29,7 +33,11 @@ vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
 
 vi.mock('@fastgpt/service/common/logger', () => ({
   LogCategories: { MODULE: { DATASET: 'dataset' } },
-  getLogger: () => ({ info: vi.fn(), warn: mockLoggerWarn, error: vi.fn() })
+  getLogger: () => ({ info: vi.fn(), warn: mockLoggerWarn, error: mockLoggerError })
+}));
+
+vi.mock('@fastgpt/service/core/dataset/schema', () => ({
+  MongoDataset: { updateOne: mockDatasetUpdateOne }
 }));
 
 vi.mock('@fastgpt/service/core/dataset/schema', () => ({
@@ -48,6 +56,10 @@ vi.mock('@fastgpt/service/core/dataset/apiDataset', () => ({
 
 vi.mock('@fastgpt/service/common/mongo/sessionRun', () => ({
   mongoSessionRun: mockMongoSessionRun
+}));
+
+vi.mock('@fastgpt/service/core/dataset/datasetPermissionSync', () => ({
+  enqueueDatasetPermissionSync: mockEnqueueDatasetPermissionSync
 }));
 
 vi.mock('@fastgpt/service/core/dataset/collection/controller', () => ({
@@ -137,13 +149,16 @@ beforeEach(() => {
   mockCreateApiFileCollectionsBatch.mockResolvedValue({ collectionIds: [] });
   mockCollectionUpdateMany.mockResolvedValue({ modifiedCount: 0 });
   mockDatasetUpdateOne.mockResolvedValue({ modifiedCount: 1 });
+  mockEnqueueDatasetPermissionSync.mockResolvedValue(undefined);
 });
 
 describe('createApiDatasetCollection', () => {
   it.each([
-    ['yuque', { yuqueServer: { userId: 'yuque-user' } }],
-    ['dingtalk', { dingtalkServer: { appKey: 'ding-app', userId: 'user-id' } }]
-  ])('%s 未配置根路径时，全选从 provider 根枚举', async (_, apiDatasetServer) => {
+    ['custom 未配置根路径', { apiServer: {} }],
+    ['yuque 未配置根路径', { yuqueServer: { userId: 'yuque-user' } }],
+    ['feishu 未配置根路径', { feishuServer: { appId: 'feishu-app' } }],
+    ['dingtalk 未配置根路径', { dingtalkServer: { appKey: 'ding-app', userId: 'user-id' } }]
+  ])('%s 全选以 provider 根的直接子节点为种子', async (_, apiDatasetServer) => {
     await call({
       syncAll: true,
       apiFiles: [],
@@ -170,7 +185,6 @@ describe('createApiDatasetCollection', () => {
     });
     expect(mockListFiles).toHaveBeenCalledWith({ parentId: 'configured-root' });
   });
-
   it('四层层级：folder 逐层写 parentId，file 落在 L3 之下', async () => {
     setServerTree({
       l1: [apiFile('l2', 'folder', true)],
@@ -393,6 +407,41 @@ describe('createApiDatasetCollection', () => {
     expect(mockCreateApiFileCollectionsBatch).not.toHaveBeenCalled();
   });
 
+  it('外部权限同步托管时跳过 collection 级鉴权：落位由 server 树推导，本地 ACL 不代表访问权', async () => {
+    setServerTree({ root: [apiFile('child', 'file')] });
+    const authorizeChanges = vi.fn();
+
+    const result = await call({
+      apiFiles: [apiFile('root', 'folder', true)],
+      authorizeChanges,
+      dataset: createDataset({ apiServer: {}, permissionSync: true })
+    });
+
+    expect(authorizeChanges).not.toHaveBeenCalled();
+    // 跳过鉴权不影响实际写入
+    expect(result.successCount).toBe(2);
+  });
+
+  it('外部权限同步托管且开启 syncAll 时仍校验 enableDatasetSyncAll（知识库 Manage 权限）', async () => {
+    setServerTree({ undefined: [apiFile('root', 'file')] });
+    const authorizeChanges = vi.fn();
+
+    await call({
+      syncAll: true,
+      apiFiles: [],
+      authorizeChanges,
+      dataset: createDataset({ apiServer: {}, permissionSync: true })
+    });
+
+    expect(authorizeChanges).toHaveBeenCalledTimes(1);
+    expect(authorizeChanges).toHaveBeenCalledWith({
+      creationParentIds: [],
+      newFolderIds: new Set(),
+      moves: [],
+      enableDatasetSyncAll: true
+    });
+  });
+
   it.each(['self', 'descendant'])('V1 重复导入在任何写入前拒绝目录环：%s', async (mode) => {
     const parent = localId('parent');
     const child = localId('child');
@@ -588,7 +637,7 @@ describe('createApiDatasetCollection', () => {
       });
       const authorizeChanges = vi.fn();
 
-      await createApiDatasetCollection({
+      const result = await createApiDatasetCollection({
         datasetId: 'dataset-id',
         syncAll: true,
         apiFiles: [],
@@ -642,12 +691,15 @@ describe('createApiDatasetCollection', () => {
       expect(deepFileParams.parentId).toBe(String(findFolder('root-folder')._id));
       expect(deepFileParams.apiFileParentId).toBe('root-folder');
       expect(deepFileParams.inheritPermission).toBeUndefined();
+
+      // successCount 不再包含该合成节点
+      expect(result).toEqual({ successCount: 3, failedCount: 0 });
     }
   );
 
-  it('混合 provider 配置下整库导入只使用当前生效 provider 的目录起点', async () => {
+  it('混合 provider 配置下整库导入不透传失效 provider 的目录起点', async () => {
     setServerTree({
-      ROOT: [apiFile('root-file', 'file')]
+      null: [apiFile('root-file', 'file')]
     });
 
     const dataset = createDataset({
@@ -674,6 +726,7 @@ describe('createApiDatasetCollection', () => {
     } as any);
 
     expect(mockListFiles).toHaveBeenCalledWith({ parentId: undefined });
+    expect(mockListFiles).not.toHaveBeenCalledWith({ parentId: 'stale-feishu-folder' });
   });
 
   it('旧客户端传入 SYSTEM_ROOT 哨兵时自动归一为 syncAll=true，不创建或查询 SYSTEM_ROOT', async () => {
@@ -957,5 +1010,70 @@ describe('createApiDatasetCollection', () => {
       'Create api file collection parent correction not fully matched',
       expect.anything()
     );
+  });
+
+  describe('外部权限同步入队', () => {
+    /** 本地快照查询不带 apiFileId 过滤；根节点查询按 apiFileId 过滤，用一个实现分流。 */
+    const setFindByRootQuery = (localRows: any[], rootRows: any[]) =>
+      mockCollectionFind.mockImplementation((filter: any) => ({
+        lean: vi.fn().mockResolvedValue(filter.apiFileId ? rootRows : localRows)
+      }));
+    const syncDataset = () => createDataset({ apiServer: {}, permissionSync: true });
+    const rootQueryIds = () => {
+      const filter = mockCollectionFind.mock.calls.at(-1)![0] as { apiFileId?: { $in: string[] } };
+      return filter.apiFileId?.$in;
+    };
+
+    it('只把本次选中的节点作为根入队，选中文件的 #dir 同为根', async () => {
+      setServerTree({ doc: [apiFile('sub', 'file')] });
+      const rootRows = [{ _id: localId('ROOT_FOLDER') }, { _id: localId('ROOT_DOC') }];
+      setFindByRootQuery([], rootRows);
+
+      await call({
+        apiFiles: [apiFile('folderA', 'folder'), apiFile('doc', 'file', true)],
+        dataset: syncDataset()
+      });
+
+      // 只取请求里选中的节点，不扩到展开出的子节点
+      expect(new Set(rootQueryIds())).toEqual(new Set(['folderA', 'doc', 'doc#dir']));
+      expect(mockEnqueueDatasetPermissionSync).toHaveBeenCalledWith({
+        datasetId: 'dataset-id',
+        collectionIds: [localId('ROOT_FOLDER'), localId('ROOT_DOC')]
+      });
+    });
+
+    it('选中文件挂在存量目录下时只入队它自己', async () => {
+      setFindByRootQuery(
+        [
+          { _id: localId('PARENT'), apiFileId: 'parent', type: 'folder', parentId: null },
+          { _id: localId('DOC'), apiFileId: 'doc', type: 'apiFile', parentId: localId('PARENT') }
+        ],
+        [{ _id: localId('DOC') }]
+      );
+
+      await call({ apiFiles: [apiFile('doc', 'file')], dataset: syncDataset() });
+
+      expect(new Set(rootQueryIds())).toEqual(new Set(['doc', 'doc#dir']));
+      expect(mockEnqueueDatasetPermissionSync).toHaveBeenCalledWith({
+        datasetId: 'dataset-id',
+        collectionIds: [localId('DOC')]
+      });
+    });
+
+    it('根节点未落库时不入队', async () => {
+      setFindByRootQuery([], []);
+
+      await call({ apiFiles: [apiFile('doc', 'file')], dataset: syncDataset() });
+
+      expect(mockEnqueueDatasetPermissionSync).not.toHaveBeenCalled();
+    });
+
+    it('未开启 permissionSync 时不入队', async () => {
+      setFindByRootQuery([], [{ _id: localId('DOC') }]);
+
+      await call({ apiFiles: [apiFile('doc', 'file')] });
+
+      expect(mockEnqueueDatasetPermissionSync).not.toHaveBeenCalled();
+    });
   });
 });

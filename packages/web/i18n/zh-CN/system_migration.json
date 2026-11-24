@@ -79,14 +79,19 @@
   "migrations.20261116_migrate_system_configs.validate": "校验完整配置",
   "migrations.20261116_migrate_system_configs.result": "已迁移 {{migratedDomainCount}} 个配置域，清理 {{removedFieldCount}} 个废弃字段；{{skippedConfigCount}} 个旧配置项被跳过或需人工处理。",
   "migrations.20261120_migrate_model_pricing.name": "模型价格迁移",
-  "migrations.20261120_migrate_model_pricing.description": "启动后在后台独立执行多阶段模型价格迁移：先回填旧 STT 模型计价类型为按时长计费，再将系统 LLM 模型阶梯输入上限由 M Tokens 转换为正整数 K Tokens（>10 跳过），最后统一校验价格配置。",
+  "migrations.20261120_migrate_model_pricing.description": "启动后在后台回填旧 STT 的时长计价类型和系统 LLM 的 K Tokens 阶梯上限，保留旧上限供回退读取。",
   "migrations.20261120_migrate_model_pricing.stt": "回填 STT 计价类型",
   "migrations.20261120_migrate_model_pricing.llmTiers": "迁移 LLM 阶梯上限",
   "migrations.20261120_migrate_model_pricing.validation": "校验模型价格",
-  "migrations.20261120_migrate_model_pricing.result": "已扫描 {{sttModels}} 个 STT 模型，已转换 {{llmModels}} 个系统 LLM 模型的阶梯上限为 K Tokens。",
+  "migrations.20261120_migrate_model_pricing.result": "已扫描 {{sttModels}} 个 STT 模型，已回填 {{llmModels}} 个系统 LLM 模型的 K Tokens 阶梯上限。",
   "migrations.20261120_clean_api_dataset_system_root.name": "清理 API 知识库历史虚拟根节点",
   "migrations.20261120_clean_api_dataset_system_root.description": "清理存量 API 知识库中的 SYSTEM_ROOT 哨兵目录，将顶层子集合重挂到知识库根目录并回填 Dataset.syncAll 标记。请待所有主服务与 Pro 服务均升级至新版后再手动执行。",
   "migrations.20261120_clean_api_dataset_system_root.migrate": "清理哨兵节点并回填同步标记",
   "migrations.20261120_clean_api_dataset_system_root.validation": "核验无残留虚拟根节点",
-  "migrations.20261120_clean_api_dataset_system_root.result": "已处理 {{datasets}} 个知识库，清理 {{sentinels}} 个哨兵节点，重挂 {{reparented}} 个顶层集合。"
+  "migrations.20261120_clean_api_dataset_system_root.result": "已处理 {{datasets}} 个知识库，清理 {{sentinels}} 个哨兵节点，重挂 {{reparented}} 个顶层集合。",
+  "migrations.20261123_cleanup_mongo_indexes.name": "清理历史废弃 MongoDB 索引",
+  "migrations.20261123_cleanup_mongo_indexes.description": "启动后在后台独立清理历史已废弃的 MongoDB 索引：删除前持续跟踪前置替代索引直至构建就绪，并严格按索引名、键定义与完整选项精确匹配，自动跳过客户自建或签名不符的索引；设置 MONGO_DEPRECATE_INDEX=false 时保留现有废弃索引并延后等待开启或手动清理后重试。",
+  "migrations.20261123_cleanup_mongo_indexes.cleanup": "清理废弃索引",
+  "migrations.20261123_cleanup_mongo_indexes.validation": "校验清理结果",
+  "migrations.20261123_cleanup_mongo_indexes.result": "共检查 {{totalCount}} 条废弃索引：已清理 {{droppedCount}} 条，已不存在 {{missingCount}} 条，保守跳过 {{skippedCount}} 条。"
 }
