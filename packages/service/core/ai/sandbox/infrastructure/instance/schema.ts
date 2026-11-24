@@ -150,7 +150,8 @@ defineIndex(SandboxInstanceSchema, {
   key: { status: 1, 'operation.heartbeatAt': 1 }
 });
 defineIndex(SandboxInstanceSchema, {
-  key: { 'storage.volumes.claimName': 1 }
+  key: { 'storage.volumes.claimName': 1 },
+  options: { name: 'fg_sandbox_inst_claim_name' }
 });
 
 /**

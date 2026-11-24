@@ -51,12 +51,12 @@ const CheckpointSchema = z.object({
   lastZipKey: z.string().nullable(),
   zipsDone: z.boolean(),
   deletedDevboxes: IntSchema,
-  deletedVolumes: IntSchema.default(0),
+  deletedVolumes: IntSchema,
   deletedZips: IntSchema,
   deletedOrphans: IntSchema,
-  processedDocs: IntSchema.optional(),
+  processedDocs: IntSchema,
   totalDocs: IntSchema.optional(),
-  processedZips: IntSchema.optional(),
+  processedZips: IntSchema,
   totalZips: IntSchema.optional()
 });
 
@@ -167,12 +167,11 @@ export const cleanupLegacySandboxResources = async (context: SystemMigrationCont
       stages: [
         {
           key: 'cleanupDevboxes',
-          current:
-            existingCheckpoint?.processedDocs ?? deletedDevboxes + deletedVolumes + deletedOrphans
+          current: existingCheckpoint?.processedDocs ?? 0
         },
         {
           key: 'cleanupLegacyZips',
-          current: existingCheckpoint?.processedZips ?? deletedZips
+          current: existingCheckpoint?.processedZips ?? 0
         }
       ],
       result: { deletedDevboxes, deletedVolumes, deletedZips, deletedOrphans }
@@ -190,9 +189,7 @@ export const cleanupLegacySandboxResources = async (context: SystemMigrationCont
   const docStage: SandboxCursorStageState = {
     lastId: checkpoint.lastDocId,
     done: checkpoint.devboxesDone,
-    processed:
-      checkpoint.processedDocs ??
-      checkpoint.deletedDevboxes + checkpoint.deletedVolumes + checkpoint.deletedOrphans,
+    processed: checkpoint.processedDocs,
     total: checkpoint.totalDocs
   };
   const saveCleanupCheckpoint = () => {
@@ -437,26 +434,23 @@ export const cleanupLegacySandboxResources = async (context: SystemMigrationCont
     ) {
       continue;
     }
-    const key = String(item.data.key);
+    const key = item.data.key;
     if (seenRetryKeys.has(key)) continue;
     seenRetryKeys.add(key);
     if (existingZipSet.has(key)) {
-      activeZipRetries.push(key);
+      if (checkpoint.zipsDone || (checkpoint.lastZipKey !== null && key <= checkpoint.lastZipKey)) {
+        activeZipRetries.push(key);
+      }
     } else {
       failures.delete(key);
       clearedMissingZips = true;
     }
   }
 
-  const activeZipRetrySet = new Set(activeZipRetries);
   const keysToProcess = checkpoint.zipsDone
     ? []
-    : allRemainingZipKeys.filter(
-        (key) =>
-          (!checkpoint.lastZipKey || key > checkpoint.lastZipKey) && !activeZipRetrySet.has(key)
-      );
+    : allRemainingZipKeys.filter((key) => !checkpoint.lastZipKey || key > checkpoint.lastZipKey);
 
-  checkpoint.processedZips = checkpoint.processedZips ?? checkpoint.deletedZips;
   checkpoint.totalZips = Math.max(
     checkpoint.totalZips ?? 0,
     checkpoint.processedZips + activeZipRetries.length + keysToProcess.length
@@ -466,8 +460,8 @@ export const cleanupLegacySandboxResources = async (context: SystemMigrationCont
     context,
     stageKey: 'cleanupLegacyZips',
     getProgress: () => ({
-      current: checkpoint.processedZips ?? 0,
-      total: Math.max(checkpoint.totalZips ?? 0, checkpoint.processedZips ?? 0)
+      current: checkpoint.processedZips,
+      total: Math.max(checkpoint.totalZips ?? 0, checkpoint.processedZips)
     })
   });
   await zipProgressReporter.reportStart();
@@ -475,7 +469,7 @@ export const cleanupLegacySandboxResources = async (context: SystemMigrationCont
   const cleanupAndTrackZipKey = async (key: string) => {
     await cleanupLegacyZipKey(key);
     if (!failures.has(key)) {
-      checkpoint.processedZips = (checkpoint.processedZips ?? 0) + 1;
+      checkpoint.processedZips += 1;
       checkpoint.totalZips = Math.max(checkpoint.totalZips ?? 0, checkpoint.processedZips);
       await zipProgressReporter.reportIfDue();
     }

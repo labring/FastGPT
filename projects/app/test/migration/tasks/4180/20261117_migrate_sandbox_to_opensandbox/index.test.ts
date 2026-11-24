@@ -725,9 +725,9 @@ describe('migrateSandboxToOpenSandbox', () => {
 
     const state = createMigrationContext();
     await state.context.saveCheckpoint({
-      runningDevbox: { lastId: null, migrated: 0, done: true },
-      stoppedDevbox: { lastId: null, migrated: 0, done: true },
-      legacyArchives: { lastId: null, migrated: 0, done: true }
+      runningDevbox: { lastId: null, migrated: 0, processed: 0, done: true },
+      stoppedDevbox: { lastId: null, migrated: 0, processed: 0, done: true },
+      legacyArchives: { lastId: null, migrated: 0, processed: 0, done: true }
     });
     await state.context.reportFailedRecords([
       {
@@ -1984,5 +1984,158 @@ describe('migrateSandboxToOpenSandbox', () => {
       { key: 'legacyArchives', status: 'succeeded', current: 2, total: 2 }
     ]);
     expect([vol1Row.sandboxId, vol2Row.sandboxId]).toHaveLength(2);
+  });
+
+  it('does not double-count ahead-of-cursor failure retries across crash before cursor advancement while still clearing deleted ahead failures', async () => {
+    const app = await seedActiveApp();
+    const row1 = await seedLegacyRow({
+      provider: 'sealosdevbox',
+      sourceId: app.appId,
+      teamId: app.teamId,
+      status: SandboxInstanceStatusEnum.archived
+    });
+    const row2 = await seedLegacyRow({
+      provider: 'sealosdevbox',
+      sourceId: app.appId,
+      teamId: app.teamId,
+      status: SandboxInstanceStatusEnum.archived
+    });
+    const row3 = await seedLegacyRow({
+      provider: 'sealosdevbox',
+      sourceId: app.appId,
+      teamId: app.teamId,
+      status: SandboxInstanceStatusEnum.archived
+    });
+    const zipBytes = await new JSZip().file('ok.txt', 'ok').generateAsync({ type: 'nodebuffer' });
+    for (const row of [row1, row2, row3]) {
+      s3State.objects.set(`sandbox/archive/${row.sandboxId}/package.zip`, zipBytes);
+    }
+
+    // 1. 当所有失败项均位于游标前方且仍存在于 DB 中时，不提前在 retry 阶段执行或推进 processed；
+    //    若批扫描中在推进 lastId 前中止，重启后仍从 0/3 正确收敛至 3/3（绝不双计为 4/4）。
+    const abortController = new AbortController();
+    const abortedRun = createMigrationContext();
+    abortedRun.context.signal = abortController.signal;
+    await abortedRun.context.saveCheckpoint({
+      runningDevbox: { lastId: null, migrated: 0, processed: 0, done: true },
+      stoppedDevbox: { lastId: null, migrated: 0, processed: 0, done: true },
+      legacyArchives: { lastId: null, migrated: 0, processed: 0, done: false }
+    });
+    await abortedRun.context.reportFailedRecords([
+      {
+        stageKey: 'legacyArchives',
+        data: { id: String(row1._id), sandboxId: row1.sandboxId },
+        reason: { message: 'Transient earlier failure ahead of cursor' }
+      }
+    ]);
+
+    const origUpdateOne = MongoSandboxInstance.collection.updateOne.bind(
+      MongoSandboxInstance.collection
+    );
+    let row1Committed!: () => void;
+    const row1CommittedPromise = new Promise<void>((resolve) => {
+      row1Committed = resolve;
+    });
+    vi.spyOn(MongoSandboxInstance.collection, 'updateOne').mockImplementation((async (
+      filter: Record<string, unknown>,
+      update: Record<string, unknown>,
+      options?: Record<string, unknown>
+    ) => {
+      const insertedId = (update as { $setOnInsert?: { _id?: Types.ObjectId } }).$setOnInsert?._id;
+      if (insertedId && String(insertedId) !== String(row1._id)) {
+        await row1CommittedPromise;
+        abortController.abort(new Error('Simulated worker crash before cursor checkpoint'));
+        throw abortController.signal.reason;
+      }
+      const res = await origUpdateOne(filter as any, update as any, options as any);
+      if (insertedId && String(insertedId) === String(row1._id)) {
+        row1Committed();
+      }
+      return res;
+    }) as any);
+
+    await expect(migrateSandboxToOpenSandbox(abortedRun.context)).rejects.toThrow(
+      'Simulated worker crash before cursor checkpoint'
+    );
+    expect(abortedRun.context.saveCheckpoint).toHaveBeenCalledTimes(1);
+
+    vi.restoreAllMocks();
+    const resumedRun = createMigrationContext();
+    await resumedRun.context.saveCheckpoint(
+      vi.mocked(abortedRun.context.saveCheckpoint).mock.calls.at(-1)![0]
+    );
+    await resumedRun.context.reportFailedRecords(abortedRun.failures());
+
+    await expect(migrateSandboxToOpenSandbox(resumedRun.context)).resolves.toEqual({
+      runningDevbox: 0,
+      stoppedDevbox: 0,
+      legacyArchives: 2
+    });
+    expect(resumedRun.failures()).toEqual([]);
+    const resumedLegacyCalls = vi
+      .mocked(resumedRun.context.reportProgress)
+      .mock.calls.map(([arg]) => arg)
+      .filter((arg) => arg.key === 'legacyArchives');
+    expect(resumedLegacyCalls[0]).toEqual({
+      key: 'legacyArchives',
+      status: 'running',
+      current: 0,
+      total: 3
+    });
+    expect(resumedLegacyCalls.at(-1)).toEqual({
+      key: 'legacyArchives',
+      status: 'succeeded',
+      current: 3,
+      total: 3
+    });
+    const finalCheckpoint = vi.mocked(resumedRun.context.saveCheckpoint).mock.calls.at(-1)![0] as {
+      legacyArchives: { processed: number; total?: number; done: boolean };
+    };
+    expect(finalCheckpoint.legacyArchives).toMatchObject({
+      processed: 3,
+      total: 3,
+      done: true
+    });
+
+    // 2. 若游标前方同时存在已从 DB 物理删除的幽灵失败项，仍应在 retry 阶段将其清理，且不触发既有 ahead 文档的重复计数。
+    await MongoSandboxInstance.collection.deleteMany({});
+    const staleAheadId = new Types.ObjectId(
+      `${(Number.parseInt(row3._id.toHexString().slice(0, 8), 16) + 10).toString(16).padStart(8, '0')}${row3._id.toHexString().slice(8)}`
+    );
+    const cleanupRun = createMigrationContext();
+    await cleanupRun.context.saveCheckpoint({
+      runningDevbox: { lastId: null, migrated: 0, processed: 0, done: true },
+      stoppedDevbox: { lastId: null, migrated: 0, processed: 0, done: true },
+      legacyArchives: { lastId: null, migrated: 0, processed: 0, done: false }
+    });
+    await cleanupRun.context.reportFailedRecords([
+      {
+        stageKey: 'legacyArchives',
+        data: { id: String(row1._id), sandboxId: row1.sandboxId },
+        reason: { message: 'Existing doc ahead of cursor' }
+      },
+      {
+        stageKey: 'legacyArchives',
+        data: { id: String(staleAheadId), sandboxId: 'deleted-ahead-sbx' },
+        reason: { message: 'Deleted doc ahead of cursor' }
+      }
+    ]);
+
+    await expect(migrateSandboxToOpenSandbox(cleanupRun.context)).resolves.toEqual({
+      runningDevbox: 0,
+      stoppedDevbox: 0,
+      legacyArchives: 3
+    });
+    expect(cleanupRun.failures()).toEqual([]);
+    const cleanupLegacyCalls = vi
+      .mocked(cleanupRun.context.reportProgress)
+      .mock.calls.map(([arg]) => arg)
+      .filter((arg) => arg.key === 'legacyArchives');
+    expect(cleanupLegacyCalls.at(-1)).toEqual({
+      key: 'legacyArchives',
+      status: 'succeeded',
+      current: 3,
+      total: 3
+    });
   });
 });

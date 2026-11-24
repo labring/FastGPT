@@ -39,6 +39,8 @@ describe('MongoSandboxInstance schema indexes', () => {
     expect(indexes.some(([keys]) => keys.status === 1 && keys['operation.heartbeatAt'] === 1)).toBe(
       true
     );
+    const claimNameIndex = indexes.find(([keys]) => keys['storage.volumes.claimName'] === 1);
+    expect(claimNameIndex?.[1]?.name).toBe('fg_sandbox_inst_claim_name');
   });
 
   it('binds runtime model to v3, keeps v2 handle separate, and tracks retired v2 indexes in explicit cleanup registry', () => {

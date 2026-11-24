@@ -19,9 +19,6 @@ const SandboxShellToolSchema = z.object({
   timeout: z.number().int().min(1).max(600).optional()
 });
 
-// 略高于 SANDBOX_TOOL_MAX_BYTES (50 KiB)，保证远端写出 execd 临时文件严格有界且 App 侧有足够 UTF-8 裁剪余量。
-export const SANDBOX_SHELL_REMOTE_OUTPUT_MAX_BYTES = 64 * 1024;
-
 export const sandboxShellTool = defineTool({
   zodSchema: SandboxShellToolSchema,
   skipEnsureAvailable: true,
@@ -49,17 +46,16 @@ export const sandboxShellTool = defineTool({
     })();
 
     const quotedCommand = shellQuote(params.command);
-    const innerCommand = (() => {
+    const execCommand = (() => {
       if (fsizeLimit === undefined) {
-        return `/bin/bash -c ${quotedCommand}`;
+        return `exec /bin/bash -c ${quotedCommand} 2>&1`;
       }
       if (fsizeLimit > 0) {
-        return `prlimit --fsize=${fsizeLimit}:${fsizeLimit} -- /bin/bash -c ${quotedCommand}`;
+        return `exec prlimit --fsize=${fsizeLimit}:${fsizeLimit} -- /bin/bash -c ${quotedCommand} 2>&1`;
       }
-      // 仅 RLIMIT_FSIZE=0 时写 execd 普通日志会触发 SIGXFSZ (153)，统一经管道 tail -c 避免写满 execd 临时空间并保留真实退出码。
-      return `prlimit --fsize=0:0 -- /bin/bash -c ${quotedCommand}`;
+      // RLIMIT_FSIZE=0 时直接写 execd 落盘日志会触发 SIGXFSZ (153)，需通过匿名管道转交 cat 写出并保留原退出码。
+      return `prlimit --fsize=0:0 -- /bin/bash -c ${quotedCommand} 2>&1 | cat; exit "\${PIPESTATUS[0]}"`;
     })();
-    const execCommand = `${innerCommand} 2>&1 | tail -c ${SANDBOX_SHELL_REMOTE_OUTPUT_MAX_BYTES}; exit "\${PIPESTATUS[0]}"`;
 
     const execOptions =
       params.timeout !== undefined || signal !== undefined
@@ -73,13 +69,11 @@ export const sandboxShellTool = defineTool({
       : await sandboxInstance.exec(execCommand);
 
     const rawOutput = [result.stdout, result.stderr].filter(Boolean).join('\n');
-    const remoteTailTruncated =
-      Buffer.byteLength(rawOutput, 'utf8') >= SANDBOX_SHELL_REMOTE_OUTPUT_MAX_BYTES;
     const output = truncateSandboxToolOutput({ content: rawOutput, direction: 'tail' });
     const truncationNotice = (() => {
-      if (!output.truncated && !result.truncated && !remoteTailTruncated) return '';
+      if (!output.truncated && !result.truncated) return '';
       const hint = 'Redirect output to a file if you need full logs.';
-      if (!remoteTailTruncated && output.truncatedBy === 'lines') {
+      if (!result.truncated && output.truncatedBy === 'lines') {
         return `[Showing last ${output.outputLines} of ${output.totalLines} lines. ${hint}]`;
       }
       return `[Showing last ${output.outputBytes} bytes of output. ${hint}]`;

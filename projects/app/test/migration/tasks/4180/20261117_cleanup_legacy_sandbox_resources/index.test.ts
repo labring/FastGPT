@@ -639,7 +639,7 @@ describe('cleanupLegacySandboxResources', () => {
     });
   });
 
-  it('clears stale preflight failure, parses legacy checkpoint defaults, and retries validation zip failure on resume', async () => {
+  it('clears stale preflight failure and retries validation zip failure on resume', async () => {
     const activeApp = await seedApp(false);
     vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', '');
     vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', '');
@@ -665,15 +665,17 @@ describe('cleanupLegacySandboxResources', () => {
     s3State.objects.set(zipKey, Buffer.from('stale-package-zip'));
 
     const state = createMigrationContext();
-    // 模拟缺少可选计数默认值的旧 checkpoint（不含 deletedVolumes）也能通过默认值解析续跑。
     await state.context.saveCheckpoint({
       lastDocId: String(row._id),
       devboxesDone: true,
       lastZipKey: zipKey,
       zipsDone: true,
       deletedDevboxes: 0,
+      deletedVolumes: 0,
       deletedZips: 0,
-      deletedOrphans: 0
+      deletedOrphans: 0,
+      processedDocs: 0,
+      processedZips: 0
     });
     await state.context.reportFailedRecords([
       {
@@ -877,7 +879,9 @@ describe('cleanupLegacySandboxResources', () => {
       deletedDevboxes: 0,
       deletedVolumes: 0,
       deletedZips: 0,
-      deletedOrphans: 0
+      deletedOrphans: 0,
+      processedDocs: 0,
+      processedZips: 0
     });
 
     await expect(cleanupLegacySandboxResources(state.context)).rejects.toThrow(
@@ -1306,5 +1310,143 @@ describe('cleanupLegacySandboxResources', () => {
       { key: 'cleanupLegacyZips', status: 'running', current: 2, total: 2 },
       { key: 'cleanupLegacyZips', status: 'succeeded', current: 2, total: 2 }
     ]);
+  });
+
+  it('does not pre-retry or double-count ahead-of-cursor failures in cleanupDevboxes or cleanupLegacyZips', async () => {
+    const activeApp = await seedApp(false);
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', '');
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', '');
+
+    const row1 = await insertLegacySandboxRow({
+      provider: 'opensandbox',
+      sourceId: activeApp.appId,
+      teamId: activeApp.teamId,
+      status: SandboxInstanceStatusEnum.archived
+    });
+    const row2 = await insertLegacySandboxRow({
+      provider: 'opensandbox',
+      sourceId: activeApp.appId,
+      teamId: activeApp.teamId,
+      status: SandboxInstanceStatusEnum.archived
+    });
+    for (const [idx, row] of [row1, row2].entries()) {
+      const zstKey = buildSandboxArchiveObjectKey(row.sandboxId, `g-${idx}`);
+      await insertV3SandboxRow({
+        _id: row._id,
+        provider: 'opensandbox',
+        sandboxId: row.sandboxId,
+        sourceType: row.sourceType,
+        sourceId: row.sourceId,
+        userId: row.userId,
+        teamId: activeApp.teamId,
+        status: SandboxInstanceStatusEnum.archived,
+        storage: {
+          archive: {
+            objectKey: zstKey,
+            generation: `g-${idx}`,
+            format: 'tar.zst',
+            sizeBytes: 12,
+            archivedAt: new Date()
+          }
+        }
+      });
+      s3State.objects.set(zstKey, Buffer.from('zst-payload!!'));
+      s3State.objects.set(
+        `${LEGACY_SANDBOX_ARCHIVE_PREFIX}/${row.sandboxId}/package.zip`,
+        Buffer.from('legacy-zip')
+      );
+    }
+
+    const zipKeys = [
+      `${LEGACY_SANDBOX_ARCHIVE_PREFIX}/${row1.sandboxId}/package.zip`,
+      `${LEGACY_SANDBOX_ARCHIVE_PREFIX}/${row2.sandboxId}/package.zip`
+    ].sort();
+    const staleAheadDocId = `${(Number.parseInt(row2._id.toHexString().slice(0, 8), 16) + 10).toString(16).padStart(8, '0')}${row2._id.toHexString().slice(8)}`;
+
+    const state = createMigrationContext();
+    await state.context.saveCheckpoint({
+      lastDocId: null,
+      devboxesDone: false,
+      lastZipKey: null,
+      zipsDone: false,
+      deletedDevboxes: 0,
+      deletedVolumes: 0,
+      deletedZips: 0,
+      deletedOrphans: 0,
+      processedDocs: 0,
+      processedZips: 0
+    });
+    await state.context.reportFailedRecords([
+      {
+        stageKey: 'cleanupDevboxes',
+        data: { id: String(row1._id), sandboxId: row1.sandboxId },
+        reason: { message: 'Transient ahead-of-cursor doc failure' }
+      },
+      {
+        stageKey: 'cleanupDevboxes',
+        data: { id: staleAheadDocId, sandboxId: 'deleted-v2-ahead' },
+        reason: { message: 'Missing ahead-of-cursor doc failure' }
+      },
+      {
+        stageKey: 'cleanupLegacyZips',
+        data: { key: zipKeys[0], sandboxId: 'ahead-zip' },
+        reason: { message: 'Transient ahead-of-cursor zip failure' }
+      },
+      {
+        stageKey: 'cleanupLegacyZips',
+        data: {
+          key: `${LEGACY_SANDBOX_ARCHIVE_PREFIX}/zzz-deleted/package.zip`,
+          sandboxId: 'zzz-deleted'
+        },
+        reason: { message: 'Missing ahead-of-cursor zip failure' }
+      }
+    ]);
+
+    await expect(cleanupLegacySandboxResources(state.context)).resolves.toEqual({
+      deletedDevboxes: 0,
+      deletedVolumes: 0,
+      deletedZips: 2,
+      deletedOrphans: 0
+    });
+    expect(state.failures()).toEqual([]);
+
+    const savedCheckpoints = vi
+      .mocked(state.context.saveCheckpoint)
+      .mock.calls.slice(1)
+      .map(([cp]) => cp as Record<string, unknown>);
+    expect(
+      savedCheckpoints.some((cp) => cp.lastDocId === null && (cp.processedDocs as number) > 0)
+    ).toBe(false);
+    expect(
+      savedCheckpoints.some((cp) => cp.lastZipKey === null && (cp.processedZips as number) > 0)
+    ).toBe(false);
+
+    const progressByStage = (key: 'cleanupDevboxes' | 'cleanupLegacyZips') =>
+      vi
+        .mocked(state.context.reportProgress)
+        .mock.calls.map(([arg]) => arg)
+        .filter((arg) => arg.key === key);
+    expect(progressByStage('cleanupDevboxes').at(-1)).toEqual({
+      key: 'cleanupDevboxes',
+      status: 'succeeded',
+      current: 2,
+      total: 2
+    });
+    const zipProgressCalls = progressByStage('cleanupLegacyZips');
+    expect(zipProgressCalls[0]).toEqual({
+      key: 'cleanupLegacyZips',
+      status: 'running',
+      current: 0,
+      total: 2
+    });
+    expect(zipProgressCalls.at(-1)).toEqual({
+      key: 'cleanupLegacyZips',
+      status: 'succeeded',
+      current: 2,
+      total: 2
+    });
+    for (const call of zipProgressCalls) {
+      expect(call.total).toBe(2);
+    }
   });
 });

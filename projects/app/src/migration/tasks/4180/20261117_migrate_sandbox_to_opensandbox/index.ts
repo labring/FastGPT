@@ -40,7 +40,7 @@ type SandboxStageKey = 'runningDevbox' | 'stoppedDevbox' | 'legacyArchives';
 const StageCheckpointSchema = z.object({
   lastId: ObjectIdSchema.nullable(),
   migrated: IntSchema,
-  processed: IntSchema.optional(),
+  processed: IntSchema,
   total: IntSchema.optional(),
   done: z.boolean()
 });
@@ -144,15 +144,15 @@ export const migrateSandboxToOpenSandbox = async (context: SystemMigrationContex
       stages: [
         {
           key: 'runningDevbox',
-          current: existingCheckpoint?.runningDevbox.processed ?? runningDevbox
+          current: existingCheckpoint?.runningDevbox.processed ?? 0
         },
         {
           key: 'stoppedDevbox',
-          current: existingCheckpoint?.stoppedDevbox.processed ?? stoppedDevbox
+          current: existingCheckpoint?.stoppedDevbox.processed ?? 0
         },
         {
           key: 'legacyArchives',
-          current: existingCheckpoint?.legacyArchives.processed ?? legacyArchives
+          current: existingCheckpoint?.legacyArchives.processed ?? 0
         }
       ],
       result: { runningDevbox, stoppedDevbox, legacyArchives }
@@ -219,7 +219,6 @@ export const migrateSandboxToOpenSandbox = async (context: SystemMigrationContex
     filter: Record<string, unknown>;
   }) => {
     const stage = checkpoint[stageKey];
-    stage.processed ??= stage.migrated;
     await runSandboxDocCursorStage({
       context,
       collection: legacyCollection,

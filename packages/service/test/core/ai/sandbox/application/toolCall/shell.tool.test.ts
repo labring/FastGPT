@@ -1,15 +1,14 @@
 import { spawnSync } from 'node:child_process';
+import { closeSync, mkdtempSync, openSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createDefaultInstanceConfig,
   getTestInstanceConfig
 } from '@test/utils/instanceConfigSnapshot';
 import { invalidateIdeAgentPasswordCache } from '@fastgpt/service/core/ai/sandbox/application/ideAgent';
-import { SANDBOX_TOOL_MAX_BYTES } from '@fastgpt/service/core/ai/sandbox/constants';
-import {
-  SANDBOX_SHELL_REMOTE_OUTPUT_MAX_BYTES,
-  sandboxShellTool
-} from '@fastgpt/service/core/ai/sandbox/application/toolCall/shell.tool';
+import { sandboxShellTool } from '@fastgpt/service/core/ai/sandbox/application/toolCall/shell.tool';
 
 const createSandboxInstance = (options: { withDiskProbe?: boolean; id?: string } = {}) =>
   ({
@@ -53,7 +52,7 @@ describe('sandboxShellTool', () => {
     expect(() => sandboxShellTool.zodSchema.parse({ command: 'sleep 1', timeout: -1 })).toThrow();
   });
 
-  it('runs bounded bash tail capture without python3 or prlimit on kubernetes runtime and forwards options', async () => {
+  it('runs direct bash execution without tail/python3/prlimit on kubernetes runtime and forwards options', async () => {
     const sandbox = createSandboxInstance();
 
     const result = await sandboxShellTool.execute({
@@ -62,11 +61,11 @@ describe('sandboxShellTool', () => {
     });
 
     expect(result.response).toBe('out');
-    expect(sandbox.exec).toHaveBeenLastCalledWith(
-      `/bin/bash -c 'echo hi' 2>&1 | tail -c ${SANDBOX_SHELL_REMOTE_OUTPUT_MAX_BYTES}; exit "\${PIPESTATUS[0]}"`,
-      { timeout: 3 }
-    );
+    expect(sandbox.exec).toHaveBeenLastCalledWith(`exec /bin/bash -c 'echo hi' 2>&1`, {
+      timeout: 3
+    });
     const [executedScript] = sandbox.exec.mock.calls[0]!;
+    expect(executedScript).not.toContain('tail');
     expect(executedScript).not.toContain('python3');
     expect(executedScript).not.toContain('prlimit');
     expect(executedScript).not.toContain('| cat');
@@ -78,25 +77,66 @@ describe('sandboxShellTool', () => {
       params: { command: 'sleep 10', timeout: 30 },
       signal: controller.signal
     });
-    expect(sandbox.exec).toHaveBeenLastCalledWith(
-      `/bin/bash -c 'sleep 10' 2>&1 | tail -c ${SANDBOX_SHELL_REMOTE_OUTPUT_MAX_BYTES}; exit "\${PIPESTATUS[0]}"`,
-      {
-        timeout: 30,
-        signal: controller.signal
-      }
-    );
+    expect(sandbox.exec).toHaveBeenLastCalledWith(`exec /bin/bash -c 'sleep 10' 2>&1`, {
+      timeout: 30,
+      signal: controller.signal
+    });
   });
 
-  it('bounds remote output via tail -c and preserves exit code for oversized commands', async () => {
+  it('does not block foreground exit when background child inherits file-backed stdout/stderr and preserves truncation notices', async () => {
     const sandbox = createSandboxInstance();
-    let lastCapturedRemoteBytes = 0;
+
+    sandbox.exec.mockImplementationOnce(async (script: string) => {
+      const tempDir = mkdtempSync(join(tmpdir(), 'shell-tool-bg-'));
+      const logFile = join(tempDir, 'execd.log');
+      let fd: number | undefined = openSync(logFile, 'w');
+      let bgPid: number | undefined;
+      try {
+        const startedAt = Date.now();
+        const proc = spawnSync('/bin/bash', ['-c', script], {
+          stdio: ['ignore', fd, fd],
+          timeout: 5_000
+        });
+        const elapsedMs = Date.now() - startedAt;
+        closeSync(fd);
+        fd = undefined;
+        const stdout = readFileSync(logFile, 'utf8');
+        const pidMatch = stdout.match(/BG_PID=(\d+)/);
+        bgPid = pidMatch ? Number(pidMatch[1]) : undefined;
+        expect(elapsedMs).toBeLessThan(1_000);
+        return {
+          stdout,
+          stderr: '',
+          exitCode: proc.status ?? 1,
+          truncated: false
+        };
+      } finally {
+        if (bgPid !== undefined && Number.isFinite(bgPid)) {
+          try {
+            process.kill(bgPid, 'SIGKILL');
+          } catch {}
+        }
+        if (fd !== undefined) {
+          try {
+            closeSync(fd);
+          } catch {}
+        }
+        rmSync(tempDir, { recursive: true, force: true });
+      }
+    });
+
+    const bgRes = await sandboxShellTool.execute({
+      sandboxInstance: sandbox,
+      params: { command: 'sleep 5 & echo "BG_PID=$!"; echo ready' }
+    });
+    expect(bgRes.response).toContain('ready');
+
     const runReal = async (script: string) => {
       const proc = spawnSync('/bin/bash', ['-c', script], {
         encoding: 'utf8',
         maxBuffer: 10 * 1024 * 1024,
         timeout: 10_000
       });
-      lastCapturedRemoteBytes = Buffer.byteLength(proc.stdout, 'utf8');
       return {
         stdout: proc.stdout,
         stderr: proc.stderr,
@@ -123,25 +163,25 @@ describe('sandboxShellTool', () => {
       '[Showing last 2000 of 2005 lines. Redirect output to a file if you need full logs.]'
     );
 
-    // 远端产生 >100 KiB 输出时，管道在沙盒侧就已封顶在 64 KiB 以内并保留非零退出码与字节截断提示。
-    sandbox.exec.mockImplementationOnce(runReal);
-    const hugeRes = await sandboxShellTool.execute({
+    sandbox.exec.mockResolvedValueOnce({
+      stdout: 'tail-bytes-only',
+      stderr: '',
+      exitCode: 5,
+      truncated: true
+    });
+    const upstreamTruncatedRes = await sandboxShellTool.execute({
       sandboxInstance: sandbox,
       params: { command: 'seq 1 30000; exit 5' }
     });
-    expect(lastCapturedRemoteBytes).toBeLessThanOrEqual(SANDBOX_SHELL_REMOTE_OUTPUT_MAX_BYTES);
-    expect(hugeRes.response).toContain('30000');
-    expect(hugeRes.response).toContain('Command exited with code 5');
-    expect(hugeRes.response).toMatch(
-      new RegExp(
-        `\\[Showing last \\d+ bytes of output\\. Redirect output to a file if you need full logs\\.\\]`
-      )
+    expect(upstreamTruncatedRes.response).toContain('tail-bytes-only');
+    expect(upstreamTruncatedRes.response).toContain('Command exited with code 5');
+    expect(upstreamTruncatedRes.response).toMatch(
+      /\[Showing last \d+ bytes of output\. Redirect output to a file if you need full logs\.\]/
     );
-    expect(hugeRes.response).not.toMatch(/Showing last \d+ of \d+ lines/);
-    expect(Buffer.byteLength(hugeRes.response, 'utf8')).toBeLessThan(SANDBOX_TOOL_MAX_BYTES + 512);
+    expect(upstreamTruncatedRes.response).not.toMatch(/Showing last \d+ of \d+ lines/);
   });
 
-  it('preserves stdout and exit code via PIPESTATUS in exceeded docker mode without mkfifo or python3', async () => {
+  it('preserves stdout and exit code via PIPESTATUS in exceeded docker mode without tail, mkfifo, or python3', async () => {
     getTestInstanceConfig().subservice.agentSandbox.opensandbox.runtime = 'docker';
     const limit = 1024 * 1024 * 1024;
     globalThis.fetch = vi.fn(
@@ -153,11 +193,10 @@ describe('sandboxShellTool', () => {
 
     const sandbox = createSandboxInstance({ withDiskProbe: true, id: 'sbx-docker-exceeded-pipe' });
     sandbox.exec.mockImplementationOnce(async (script: string) => {
-      expect(script).toContain('prlimit --fsize=0:0');
-      expect(script).toContain(
-        `| tail -c ${SANDBOX_SHELL_REMOTE_OUTPUT_MAX_BYTES}; exit "\${PIPESTATUS[0]}"`
+      expect(script).toBe(
+        `prlimit --fsize=0:0 -- /bin/bash -c 'echo ready; exit 7' 2>&1 | cat; exit "\${PIPESTATUS[0]}"`
       );
-      expect(script).not.toContain('| cat');
+      expect(script).not.toContain('tail');
       expect(script).not.toContain('mkfifo');
       expect(script).not.toContain('python3');
       // 在无 Linux prlimit 的宿主（如 macOS）剥离 prlimit 前缀，真实验证管道 + PIPESTATUS[0] 透传 stdout 与退出码。
@@ -184,7 +223,7 @@ describe('sandboxShellTool', () => {
     expect(result.response).toContain('RLIMIT_FSIZE=0');
   });
 
-  it('uses container effective limitBytes for prlimit with bounded tail capture when instance storageSizeGi changes', async () => {
+  it('uses container effective limitBytes for prlimit without tail wrapper when instance storageSizeGi changes', async () => {
     getTestInstanceConfig().subservice.agentSandbox.opensandbox.runtime = 'docker';
     getTestInstanceConfig().subservice.agentSandbox.common.storageSizeGi = 4;
     const containerLimit = 1024 * 1024 * 1024;
@@ -203,7 +242,7 @@ describe('sandboxShellTool', () => {
 
     const [executedScript] = sandbox.exec.mock.calls[0]!;
     expect(executedScript).toBe(
-      `prlimit --fsize=${containerLimit}:${containerLimit} -- /bin/bash -c 'echo hi' 2>&1 | tail -c ${SANDBOX_SHELL_REMOTE_OUTPUT_MAX_BYTES}; exit "\${PIPESTATUS[0]}"`
+      `exec prlimit --fsize=${containerLimit}:${containerLimit} -- /bin/bash -c 'echo hi' 2>&1`
     );
   });
 
@@ -233,11 +272,10 @@ describe('sandboxShellTool', () => {
     });
 
     const [firstScript] = sandbox.exec.mock.calls[0]!;
-    expect(firstScript).toContain('prlimit --fsize=0:0');
-    expect(firstScript).toContain(
-      `| tail -c ${SANDBOX_SHELL_REMOTE_OUTPUT_MAX_BYTES}; exit "\${PIPESTATUS[0]}"`
+    expect(firstScript).toBe(
+      `prlimit --fsize=0:0 -- /bin/bash -c 'rm -f /home/sandbox/workspace/big.bin' 2>&1 | cat; exit "\${PIPESTATUS[0]}"`
     );
-    expect(firstScript).not.toContain('| cat');
+    expect(firstScript).not.toContain('tail');
     expect(firstScript).not.toContain('mkfifo');
     expect(firstScript).not.toContain('python3');
     expect(result.response).toContain('removed big.bin');
@@ -251,7 +289,7 @@ describe('sandboxShellTool', () => {
     });
     const [secondScript] = sandbox.exec.mock.calls[1]!;
     expect(secondScript).toBe(
-      `prlimit --fsize=${limit}:${limit} -- /bin/bash -c 'echo ok' 2>&1 | tail -c ${SANDBOX_SHELL_REMOTE_OUTPUT_MAX_BYTES}; exit "\${PIPESTATUS[0]}"`
+      `exec prlimit --fsize=${limit}:${limit} -- /bin/bash -c 'echo ok' 2>&1`
     );
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });

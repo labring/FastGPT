@@ -815,7 +815,7 @@ describe('sandbox quota index migration', () => {
     expect(names).toContain('status_1_lastActiveAt_1');
     expect(names).toContain('status_1_operation.heartbeatAt_1');
     expect(names).toContain('sourceType_1_sourceId_1_userId_1');
-    expect(names).toContain('storage.volumes.claimName_1');
+    expect(names).toContain('fg_sandbox_inst_claim_name');
     expect(names).toContain('customer_sandbox_source');
     expect(LEGACY_DEPRECATED_MONGO_INDEXES).toHaveLength(18);
   });
