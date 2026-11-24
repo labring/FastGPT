@@ -9,7 +9,6 @@ import {
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { formatDbModelToDocumentData } from '@fastgpt/service/core/ai/model/transform';
-import { assertModelPriceTiersBackfilled } from '@fastgpt/service/core/ai/model/utils';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 
 async function handler(req: ApiRequestProps): Promise<GetSystemModelConfigJsonResponse> {
@@ -17,7 +16,6 @@ async function handler(req: ApiRequestProps): Promise<GetSystemModelConfigJsonRe
   if (!actor.isRoot) throw ModelErrEnum.rootOnlyPermit;
 
   const models = await MongoAIModel.find({ scope: ModelScopeEnum.system }).lean();
-  assertModelPriceTiersBackfilled(models);
 
   return GetSystemModelConfigJsonResponseSchema.parse(
     JSON.stringify(

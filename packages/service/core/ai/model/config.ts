@@ -1,6 +1,3 @@
-import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
-import { UserError } from '@fastgpt/global/common/error/utils';
-import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { sortModelOrderItems } from '@fastgpt/global/core/ai/model/order';
 import {
@@ -18,10 +15,7 @@ import {
   groupChannelSummariesByModel
 } from './channel/summary';
 import { getModelProviderMetadata } from './provider/controller';
-import { formatDbModelToRuntimeModel } from './runtime';
-import { MongoAIModel } from './schema';
 import { desensitizeModel } from './transform';
-import { assertModelPriceTiersBackfilled } from './utils';
 
 /** 聚合管理员视角系统模型、渠道、Provider 与默认模型配置。 */
 export const getSystemModelConfigService = async (): Promise<GetSystemModelConfigResponse> => {
@@ -76,29 +70,15 @@ export const getModelDetailService = async ({
   model: AIModelDataType;
   ownerTmbId?: string;
 }): Promise<GetModelDetailResponse> => {
-  const editableModel = await (async () => {
-    if (model.scope !== ModelScopeEnum.system || model.type !== ModelTypeEnum.llm) return model;
-
-    // 用同一份库内快照校验并生成编辑表单，防止回填完成后仍返回旧目录中的无限首档。
-    const storedModel = await MongoAIModel.findOne({
-      _id: model.modelId,
-      scope: ModelScopeEnum.system,
-      type: ModelTypeEnum.llm
-    }).lean();
-    if (!storedModel) throw new UserError(ModelErrEnum.unExist);
-    assertModelPriceTiersBackfilled([storedModel]);
-    return formatDbModelToRuntimeModel(storedModel);
-  })();
-
   const channelItems = ownerTmbId
     ? await getMemberChannelSummaryItems(ownerTmbId)
     : await getSystemChannelSummaryItems();
 
   return GetModelDetailResponseSchema.parse({
-    model: editableModel,
+    model,
     channels: channelItems.map((channel) => ({
       ...channel.summary,
-      isAssociated: channel.models.includes(editableModel.model)
+      isAssociated: channel.models.includes(model.model)
     }))
   });
 };

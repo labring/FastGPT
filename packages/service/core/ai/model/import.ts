@@ -8,7 +8,7 @@ import { runModelTransaction } from './catalog/transaction';
 import { deleteModelRecords } from './cleanup';
 import { MongoAIModel } from './schema';
 import { updatedReloadSystemModel } from './catalog/service';
-import { assertModelPriceTiersBackfilled, getModelConfigUpdate } from './utils';
+import { getModelConfigUpdate } from './utils';
 
 /**
  * 用导入配置替换系统模型集合，保留可匹配实例的稳定 ID 与原有展示顺序，并在同一事务内清理派生权限与探测记录。
@@ -29,11 +29,10 @@ export const importSystemModels = async ({ config }: ParsedSystemModelsWithJsonB
   const changes = await runModelTransaction({ scope: ModelScopeEnum.system }, async (session) => {
     const existingModels = await MongoAIModel.find(
       { scope: ModelScopeEnum.system },
-      '_id model scope type pricing'
+      '_id model type'
     )
       .session(session)
       .lean();
-    assertModelPriceTiersBackfilled(existingModels);
     const existingModelMap = new Map(
       existingModels.map((model) => [
         String(model._id),

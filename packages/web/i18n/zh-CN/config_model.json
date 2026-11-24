@@ -77,7 +77,6 @@
   "monitoring": "监控",
   "output": "输出",
   "price_tier_open_ended": "无穷",
-  "pricing_migration_pending": "请先在升级管理中完成模型价格迁移，再继续配置模型。",
   "request_at": "请求时间",
   "request_duration": "请求时长: {{duration}}s",
   "retry_times": "重试次数",

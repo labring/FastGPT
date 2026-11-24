@@ -8,7 +8,6 @@ import {
 } from '@fastgpt/service/core/ai/model/catalog/cache';
 import { incrementModelCatalogRevision } from '@fastgpt/service/core/ai/model/catalog/entity';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
-import { aiProxyClient } from '@fastgpt/service/thirdProvider/aiproxy/client';
 import { Call } from '@test/utils/request';
 import { getRootUser } from '@test/datas/users';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -52,7 +51,6 @@ import createFromTemplatesApi from '@/pages/api/core/ai/model/createFromTemplate
 import { calculateModelPrice } from '@fastgpt/global/core/ai/model/pricing';
 import { formatDbModelToRuntimeModel } from '@fastgpt/service/core/ai/model/runtime';
 import getModelTemplatesApi from '@/pages/api/core/ai/model/templates';
-import getModelDetailApi from '@/pages/api/core/ai/model/detail';
 import updateModelApi from '@/pages/api/core/ai/model/update';
 import updateModelOrderApi from '@/pages/api/core/ai/model/updateOrder';
 
@@ -121,58 +119,6 @@ describe('admin settings model create/update api', () => {
     // 丢弃 fixture 目录，配置鉴权从数据库目录快照读取模型。
     publishSystemModelHandle(undefined);
     clearTeamModelCatalogCache();
-  });
-
-  it('opens an editable LLM detail only with the current backfilled tiers', async () => {
-    const original = buildLlmDocument();
-    const pricing = {
-      tiers: [
-        { maxInputTokens: 0.128, inputPrice: 10, outputPrice: 20 },
-        { inputPrice: 80, outputPrice: 160 }
-      ]
-    };
-    const existing = await insertSystemModel(original);
-    const filter = { _id: existing._id };
-    await MongoAIModel.collection.updateOne(filter, { $set: { pricing } });
-
-    const readDetail = () =>
-      callApi({
-        handler: getModelDetailApi,
-        query: { modelId: String(existing._id), channelType: 'system' }
-      });
-    expect((await readDetail()).error?.message).toBe('modelPricingMigrationPending');
-
-    const modelData = {
-      ...buildLlmUpdateData(),
-      name: 'Renamed LLM',
-      pricing: { tiers: [{ inputPrice: 10, outputPrice: 20 }] }
-    };
-    const save = (data: typeof modelData) =>
-      callApi({
-        handler: updateModelApi,
-        body: { modelId: String(existing._id), modelData: data }
-      });
-    const blocked = await save(modelData);
-    expect(blocked.error?.message).toBe('modelPricingMigrationPending');
-    expect(await MongoAIModel.collection.findOne(filter)).toMatchObject({
-      name: original.name,
-      pricing
-    });
-
-    await MongoAIModel.collection.updateOne(filter, {
-      $set: { 'pricing.tiers.0.maxInputTokensK': 128 }
-    });
-    // 保留旧目录快照，验证详情从刚完成回填的记录生成表单。
-    vi.spyOn(aiProxyClient.system.channels, 'listAll').mockResolvedValueOnce([]);
-    const detail = await readDetail();
-    expect(detail.code).toBe(200);
-    const tiers = [{ maxInputTokensK: 128, inputPrice: 10, outputPrice: 20 }, pricing.tiers[1]];
-    expect(detail.data.model.pricing.tiers).toEqual(tiers);
-    expect((await save({ ...modelData, pricing: detail.data.model.pricing })).code).toBe(200);
-    expect(await MongoAIModel.collection.findOne(filter)).toMatchObject({
-      name: modelData.name,
-      pricing: { tiers }
-    });
   });
 
   it.each([{}, { unitPrice: 0.2 }, null, { type: 'unknown', unitPrice: 0.2 }])(

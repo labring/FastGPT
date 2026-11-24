@@ -111,46 +111,6 @@ describe('admin settings model updateWithJson api', () => {
     expect(saved).toMatchObject({ inputPrice: 0.001, outputPrice: 0.003 });
   });
 
-  it('blocks JSON import and export until the stored LLM tier bounds are backfilled', async () => {
-    const pricing = {
-      tiers: [
-        { maxInputTokens: 0.128, inputPrice: 10, outputPrice: 20 },
-        { inputPrice: 80, outputPrice: 160 }
-      ]
-    };
-    const { insertedId } = await MongoAIModel.collection.insertOne({
-      ...buildStoredLlm('pending-tier-migration'),
-      pricing
-    });
-    const root = await getRootUser();
-    const exportConfig = () => Call<string>(getConfigJsonApi, { auth: root });
-
-    const blocked = await exportConfig();
-    expect(blocked.error?.name).toBe('UserError');
-    const replacement = buildLlmConfig({
-      modelId: String(insertedId),
-      model: 'pending-tier-migration'
-    });
-    const blockedImport = await callUpdateWithJson(JSON.stringify([replacement]));
-    expect(blockedImport.error?.message).toBe('modelPricingMigrationPending');
-    expect((await MongoAIModel.collection.findOne({ _id: insertedId }))?.pricing).toEqual(pricing);
-
-    await MongoAIModel.collection.updateOne(
-      { _id: insertedId },
-      { $set: { 'pricing.tiers.0.maxInputTokensK': 128 } }
-    );
-    const exported = await exportConfig();
-    expect(exported.code).toBe(200);
-    expect(JSON.parse(exported.data)[0].pricing.tiers).toEqual([
-      { maxInputTokensK: 128, inputPrice: 10, outputPrice: 20 },
-      pricing.tiers[1]
-    ]);
-    expect((await callUpdateWithJson(exported.data)).code).toBe(200);
-    expect((await MongoAIModel.collection.findOne({ _id: insertedId }))?.pricing?.tiers).toEqual(
-      JSON.parse(exported.data)[0].pricing.tiers
-    );
-  });
-
   it('imports new prices without rescaling and permits an explicitly free edit', async () => {
     const existingModel = await MongoAIModel.create(buildStoredLlm('import-priced'));
     const input = {

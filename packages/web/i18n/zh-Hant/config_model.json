@@ -77,7 +77,6 @@
   "monitoring": "監控",
   "output": "輸出",
   "price_tier_open_ended": "無窮",
-  "pricing_migration_pending": "請先在升級管理中完成模型價格遷移，再繼續設定模型。",
   "request_at": "請求時間",
   "request_duration": "請求時長：{{duration}}s",
   "retry_times": "重試次數",
