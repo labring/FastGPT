@@ -3,6 +3,10 @@ import { ModelScopeEnum, ModelTypeEnum } from '../constants';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import z from 'zod';
 
+/**
+ * LLM 阶梯上限由 maxInputTokensK 固定为 K Tokens，避免同一字段在不同版本中按不同单位解释。
+ * 预发布的 tierUnit、ModelPriceTierUnitSchema 和 ModelPriceTierUnitType 已移除。
+ */
 export const ModelPriceTierSchema = z.object({
   maxInputTokensK: z
     .number()
