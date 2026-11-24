@@ -1,16 +1,32 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { redisCacheAdapter } from '@fastgpt/dal/redis/adapter';
+import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
 import type {
   SystemMigrationFailedRecord,
   SystemMigrationFailureInput
 } from '@fastgpt/global/migration/schema';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
-import { connectionLogMongo, connectionMongo } from '@fastgpt/service/common/mongo';
+import { connectionLogMongo, connectionMongo, Types } from '@fastgpt/service/common/mongo';
 import { LEGACY_DEPRECATED_MONGO_INDEXES } from '@fastgpt/service/common/mongo/legacyDeprecatedIndexCleanup';
 import {
   createMongoIndexCleanupMigration,
   type DeprecatedMongoIndexMigrationEntry
 } from '@/migration/mongoIndexCleanup';
-import type { SystemMigrationContext } from '@/migration/registry';
+import {
+  MongoSystemMigrationFailedRecord,
+  MongoSystemMigrationState
+} from '@/migration/mongoSchema';
+import {
+  systemMigrations,
+  type SystemMigration,
+  type SystemMigrationContext
+} from '@/migration/registry';
+import { createSystemMigrationRunner } from '@/migration/runner';
+import {
+  getSystemMigrationFailedRecords,
+  getSystemMigrationList,
+  retrySystemMigration
+} from '@/migration/service';
 import { cleanupMongoIndexes } from '@/migration/tasks/4180/20261123_cleanup_mongo_indexes';
 
 const createContext = (signal?: AbortSignal) => {
@@ -48,6 +64,36 @@ const listIndexNames = async (collectionName: string, datasource: 'main' | 'log'
 
 describe('20261123_cleanup_mongo_indexes', () => {
   const originalEnv = process.env.MONGO_DEPRECATE_INDEX;
+  const touchedMainCollections = [
+    'chats',
+    'systemConfigs',
+    'dataset_datas',
+    'datasets',
+    'model_status_probe_records',
+    'team_members',
+    'mig_idx_wait_ready_test',
+    'mig_idx_missing_replacement_test',
+    'mig_idx_abort_wait_test',
+    'mig_idx_disabled_test',
+    'mig_idx_validation_fail_test',
+    'mig_idx_lease_loss_test'
+  ];
+  const touchedLogCollections = ['app_chat_logs'];
+
+  const resetCollectionIndexes = async () => {
+    const mainDb = connectionMongo.connection.db!;
+    for (const name of touchedMainCollections) {
+      if (await mainDb.listCollections({ name }).hasNext()) {
+        await mainDb.collection(name).dropIndexes();
+      }
+    }
+    const logDb = connectionLogMongo.connection.db!;
+    for (const name of touchedLogCollections) {
+      if (await logDb.listCollections({ name }).hasNext()) {
+        await logDb.collection(name).dropIndexes();
+      }
+    }
+  };
 
   afterEach(async () => {
     if (originalEnv === undefined) {
@@ -55,6 +101,7 @@ describe('20261123_cleanup_mongo_indexes', () => {
     } else {
       process.env.MONGO_DEPRECATE_INDEX = originalEnv;
     }
+    await resetCollectionIndexes();
     vi.restoreAllMocks();
   });
 
@@ -486,5 +533,231 @@ describe('20261123_cleanup_mongo_indexes', () => {
     await expect(run(context)).rejects.toThrow('Lease lost');
     expect(await listIndexNames(collectionName)).not.toContain('a_1');
     expect(await listIndexNames(collectionName)).toContain('b_1');
+  });
+
+  it('end-to-end: runs through real SystemMigrationRunner on mocked v4.17.5 data (defer with flag off -> retry -> track async replacement -> succeed)', async () => {
+    await resetCollectionIndexes();
+    const mainDb = connectionMongo.connection.db!;
+    const logDb = connectionLogMongo.connection.db!;
+    const teamId = new Types.ObjectId();
+    const userId = new Types.ObjectId();
+    const appId = new Types.ObjectId();
+    const datasetId = new Types.ObjectId();
+
+    // 1. Mock v4.17.5 历史业务数据 + 7 条旧废弃索引 + 6 条已就绪替代索引（chats 替代索引刻意滞后）+ 2 条客户索引
+    await mainDb.collection('chats').insertOne({
+      teamId,
+      appId,
+      chatId: 'chat-e2e-1',
+      chatGenerateStatus: 0,
+      updateTime: new Date()
+    });
+    await mainDb
+      .collection('chats')
+      .createIndex({ appId: 1, updateTime: -1 }, { name: 'appId_1_updateTime_-1' });
+    await mainDb.collection('chats').createIndex(
+      { chatGenerateStatus: 1, updateTime: 1 },
+      {
+        name: 'chatGenerateStatus_1_updateTime_1',
+        partialFilterExpression: { chatGenerateStatus: 0 }
+      }
+    );
+    await mainDb
+      .collection('chats')
+      .createIndex({ customCustomerField: 1 }, { name: 'customer_chat_lookup' });
+
+    await mainDb.collection('systemConfigs').insertOne({
+      type: SystemConfigsTypeEnum.subPlans,
+      value: { extraDatasetSize: { price: 4 } }
+    });
+    await mainDb.collection('systemConfigs').createIndex(
+      { type: 1 },
+      {
+        name: 'runtime_scope_type_unique',
+        unique: true,
+        partialFilterExpression: {
+          type: {
+            $in: [
+              SystemConfigsTypeEnum.proEnv,
+              SystemConfigsTypeEnum.subPlans,
+              SystemConfigsTypeEnum.langfuse
+            ]
+          }
+        }
+      }
+    );
+    await mainDb.collection('systemConfigs').createIndex({ type: 1 }, { name: 'type_1' });
+
+    await mainDb.collection('dataset_datas').insertOne({
+      teamId,
+      datasetId,
+      rebuilding: false,
+      indexStatus: 'ready'
+    });
+    await mainDb
+      .collection('dataset_datas')
+      .createIndex(
+        { rebuilding: 1, teamId: 1, datasetId: 1 },
+        { name: 'rebuilding_1_teamId_1_datasetId_1' }
+      );
+    await mainDb
+      .collection('dataset_datas')
+      .createIndex(
+        { indexStatus: 1, teamId: 1, datasetId: 1 },
+        { name: 'indexStatus_1_teamId_1_datasetId_1' }
+      );
+
+    await mainDb.collection('datasets').insertOne({ teamId, name: 'kb-e2e' });
+    await mainDb
+      .collection('datasets')
+      .createIndex({ teamId: 1 }, { name: 'teamId_1', unique: true });
+
+    await mainDb.collection('model_status_probe_records').insertOne({
+      modelId: 'gpt-4o',
+      testedAt: new Date(),
+      requestEndedAt: new Date()
+    });
+    await mainDb
+      .collection('model_status_probe_records')
+      .createIndex({ testedAt: 1 }, { name: 'testedAt_1', expireAfterSeconds: 30 * 24 * 60 * 60 });
+    await mainDb
+      .collection('model_status_probe_records')
+      .createIndex(
+        { requestEndedAt: 1 },
+        { name: 'requestEndedAt_1', expireAfterSeconds: 30 * 24 * 60 * 60 }
+      );
+
+    await mainDb.collection('team_members').insertOne({ teamId, userId, name: 'owner' });
+    await mainDb.collection('team_members').createIndex({ userId: 1 }, { name: 'userId_1' });
+    await mainDb
+      .collection('team_members')
+      .createIndex({ userId: 1, teamId: 1 }, { name: 'userId_1_teamId_1', unique: true });
+
+    await logDb.collection('app_chat_logs').insertOne({
+      teamId,
+      appId,
+      userId,
+      createTime: new Date()
+    });
+    await logDb
+      .collection('app_chat_logs')
+      .createIndex({ teamId: 1, appId: 1, userId: 1 }, { name: 'teamId_1_appId_1_userId_1' });
+    await logDb
+      .collection('app_chat_logs')
+      .createIndex(
+        { teamId: 1, appId: 1, userId: 1, createTime: 1 },
+        { name: 'teamId_1_appId_1_userId_1_createTime_1' }
+      );
+
+    const registeredMeta = systemMigrations.find(
+      ({ id }) => id === '20261123_cleanup_mongo_indexes'
+    )!;
+    const e2eRegistry: readonly SystemMigration[] = [
+      {
+        ...registeredMeta,
+        run: createMongoIndexCleanupMigration({
+          entries: LEGACY_DEPRECATED_MONGO_INDEXES,
+          pollIntervalMs: 30,
+          prerequisiteWaitTimeoutMs: 5_000
+        })
+      }
+    ];
+
+    vi.spyOn(redisCacheAdapter, 'evalScript').mockResolvedValue(1);
+    const runner = createSystemMigrationRunner({
+      migrations: e2eRegistry,
+      logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+    });
+
+    try {
+      // 阶段 A：MONGO_DEPRECATE_INDEX=false 下按真实启动生命周期运行 -> 保留全部 7 条旧索引，进入可重试态并输出明细
+      process.env.MONGO_DEPRECATE_INDEX = 'false';
+      await runner.start();
+      await runner.waitForBlockingMigrations();
+      runner.startBackgroundMigrations();
+      await runner.tick();
+
+      const deferredState = await MongoSystemMigrationState.findById(
+        '20261123_cleanup_mongo_indexes'
+      ).lean();
+      expect(deferredState?.status).toBe(SystemMigrationStatusEnum.failed);
+
+      const deferredRecords = await getSystemMigrationFailedRecords(
+        '20261123_cleanup_mongo_indexes',
+        'cleanup',
+        e2eRegistry
+      );
+      expect(deferredRecords.failedRecords).toHaveLength(7);
+      expect(await listIndexNames('chats')).toContain('appId_1_updateTime_-1');
+      expect(await listIndexNames('systemConfigs')).toContain('runtime_scope_type_unique');
+
+      // 阶段 B：开启开关并经管理服务重试 -> 后台延迟补建 chats 替代索引 -> 自动轮询跟踪并在就绪后删除
+      process.env.MONGO_DEPRECATE_INDEX = 'true';
+      await retrySystemMigration('20261123_cleanup_mongo_indexes', e2eRegistry);
+
+      const tickPromise = runner.tick();
+      await new Promise((resolve) => setTimeout(resolve, 90));
+      // 替代索引尚未建好时，chats.appId_1_updateTime_-1 仍被保护
+      expect(await listIndexNames('chats')).toContain('appId_1_updateTime_-1');
+
+      // 模拟后台 ensureMongoIndexes 建完 chats 替代复合索引
+      await mainDb
+        .collection('chats')
+        .createIndex(
+          { appId: 1, updateTime: -1, _id: -1 },
+          { name: 'appId_1_updateTime_-1__id_-1' }
+        );
+      await tickPromise;
+
+      const list = await getSystemMigrationList(e2eRegistry);
+      expect(list.migrations[0]).toMatchObject({
+        id: '20261123_cleanup_mongo_indexes',
+        status: SystemMigrationStatusEnum.succeeded,
+        failedRecordCount: 0,
+        result: {
+          key: 'system_migration:migrations.20261123_cleanup_mongo_indexes.result',
+          params: {
+            totalCount: LEGACY_DEPRECATED_MONGO_INDEXES.length,
+            droppedCount: 7,
+            missingCount: LEGACY_DEPRECATED_MONGO_INDEXES.length - 8,
+            skippedCount: 1
+          }
+        }
+      });
+      expect(
+        await MongoSystemMigrationFailedRecord.countDocuments({
+          migrationId: '20261123_cleanup_mongo_indexes'
+        })
+      ).toBe(0);
+
+      // 所有 7 条旧索引已删除
+      expect(await listIndexNames('chats')).not.toContain('appId_1_updateTime_-1');
+      expect(await listIndexNames('chats')).not.toContain('chatGenerateStatus_1_updateTime_1');
+      expect(await listIndexNames('systemConfigs')).not.toContain('runtime_scope_type_unique');
+      expect(await listIndexNames('dataset_datas')).not.toContain(
+        'rebuilding_1_teamId_1_datasetId_1'
+      );
+      expect(await listIndexNames('model_status_probe_records')).not.toContain('testedAt_1');
+      expect(await listIndexNames('team_members')).not.toContain('userId_1');
+      expect(await listIndexNames('app_chat_logs', 'log')).not.toContain(
+        'teamId_1_appId_1_userId_1'
+      );
+
+      // 替代索引、客户索引与业务 mock 数据 100% 完好
+      expect(await listIndexNames('chats')).toContain('appId_1_updateTime_-1__id_-1');
+      expect(await listIndexNames('chats')).toContain('customer_chat_lookup');
+      expect(await listIndexNames('datasets')).toContain('teamId_1');
+      expect(await mainDb.collection('chats').countDocuments({ chatId: 'chat-e2e-1' })).toBe(1);
+      expect(await mainDb.collection('datasets').countDocuments({ name: 'kb-e2e' })).toBe(1);
+      expect(await logDb.collection('app_chat_logs').countDocuments({ appId })).toBe(1);
+
+      // 已 succeeded 后再次 tick 不重跑
+      await runner.tick();
+      expect(
+        (await MongoSystemMigrationState.findById('20261123_cleanup_mongo_indexes').lean())?.status
+      ).toBe(SystemMigrationStatusEnum.succeeded);
+    } finally {
+      runner.stop();
+    }
   });
 });
