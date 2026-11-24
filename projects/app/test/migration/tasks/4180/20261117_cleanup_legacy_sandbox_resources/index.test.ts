@@ -1116,4 +1116,195 @@ describe('cleanupLegacySandboxResources', () => {
       { sandboxId: restoringOrphanV2.sandboxId, allowLegacyUnlabeled: true }
     ]);
   });
+
+  it('reports current/total progress for cleanupDevboxes and cleanupLegacyZips including throttled intra-batch updates and zip retries', async () => {
+    const activeApp = await seedApp(false);
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', '');
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', '');
+
+    let fakeNow = 3_000_000;
+    vi.spyOn(Date, 'now').mockImplementation(() => fakeNow);
+
+    // 1. 全流程正常清理：2 个 legacy v2 记录 + 2 个 legacy zip，并在批内跨过 2 秒窗口触发节流上报。
+    const row1 = await insertLegacySandboxRow({
+      provider: 'opensandbox',
+      sourceId: activeApp.appId,
+      teamId: activeApp.teamId,
+      status: SandboxInstanceStatusEnum.archived
+    });
+    const row2 = await insertLegacySandboxRow({
+      provider: 'opensandbox',
+      sourceId: activeApp.appId,
+      teamId: activeApp.teamId,
+      status: SandboxInstanceStatusEnum.archived
+    });
+
+    const zst1 = buildSandboxArchiveObjectKey(row1.sandboxId, 'g1');
+    const zst2 = buildSandboxArchiveObjectKey(row2.sandboxId, 'g2');
+    for (const [row, zstKey] of [
+      [row1, zst1],
+      [row2, zst2]
+    ] as const) {
+      await insertV3SandboxRow({
+        _id: row._id,
+        provider: 'opensandbox',
+        sandboxId: row.sandboxId,
+        sourceType: row.sourceType,
+        sourceId: row.sourceId,
+        userId: row.userId,
+        teamId: activeApp.teamId,
+        status: SandboxInstanceStatusEnum.archived,
+        storage: {
+          archive: {
+            objectKey: zstKey,
+            generation: 'g1',
+            format: 'tar.zst',
+            sizeBytes: 12,
+            archivedAt: new Date()
+          }
+        }
+      });
+      s3State.objects.set(zstKey, Buffer.from('zst-payload!!'));
+    }
+
+    const zipKey1 = `${LEGACY_SANDBOX_ARCHIVE_PREFIX}/${row1.sandboxId}/package.zip`;
+    const zipKey2 = `${LEGACY_SANDBOX_ARCHIVE_PREFIX}/${row2.sandboxId}/package.zip`;
+    s3State.objects.set(zipKey1, Buffer.from('zip-1'));
+    s3State.objects.set(zipKey2, Buffer.from('zip-2'));
+
+    let deletedZipIdx = 0;
+    s3State.deleteArchiveObjectSpy.mockImplementation(() => {
+      deletedZipIdx += 1;
+      if (deletedZipIdx === 1) {
+        fakeNow += 500;
+      } else {
+        fakeNow += 2_500;
+      }
+    });
+
+    const fullState = createMigrationContext();
+    await expect(cleanupLegacySandboxResources(fullState.context)).resolves.toEqual({
+      deletedDevboxes: 0,
+      deletedVolumes: 0,
+      deletedZips: 2,
+      deletedOrphans: 0
+    });
+
+    const callsByStage = (
+      ctx: typeof fullState.context,
+      stageKey: 'cleanupDevboxes' | 'cleanupLegacyZips'
+    ) =>
+      vi
+        .mocked(ctx.reportProgress)
+        .mock.calls.map(([arg]) => arg)
+        .filter((arg) => arg.key === stageKey);
+
+    const docCalls = callsByStage(fullState.context, 'cleanupDevboxes');
+    expect(docCalls[0]).toEqual({
+      key: 'cleanupDevboxes',
+      status: 'running',
+      current: 0,
+      total: 2
+    });
+    expect(docCalls.at(-1)).toEqual({
+      key: 'cleanupDevboxes',
+      status: 'succeeded',
+      current: 2,
+      total: 2
+    });
+
+    const zipCalls = callsByStage(fullState.context, 'cleanupLegacyZips');
+    expect(zipCalls[0]).toEqual({
+      key: 'cleanupLegacyZips',
+      status: 'running',
+      current: 0,
+      total: 2
+    });
+    expect(zipCalls.length).toBeGreaterThanOrEqual(3);
+    expect(zipCalls.length).toBeLessThanOrEqual(4);
+    for (const call of zipCalls.slice(1, -1)) {
+      expect(call.status).toBe('running');
+      expect(call.current).toBeGreaterThan(0);
+      expect(call.current).toBeLessThanOrEqual(2);
+      expect(call.total).toBe(2);
+    }
+    expect(zipCalls.at(-1)).toEqual({
+      key: 'cleanupLegacyZips',
+      status: 'succeeded',
+      current: 2,
+      total: 2
+    });
+
+    // 2. 验证 cleanupLegacyZips 失败项重试期间同样推进 current/total 至 succeeded。
+    await getLegacySandboxInstanceCollection().deleteMany({});
+    await MongoSandboxInstance.collection.deleteMany({});
+    s3State.objects.clear();
+    s3State.deleteArchiveObjectSpy.mockReset();
+
+    const retryZstOk = buildSandboxArchiveObjectKey('zip-retry-ok', 'g1');
+    const retryZstMissing = buildSandboxArchiveObjectKey('zip-retry-bad', 'g1');
+    const okZipRow = await insertV3SandboxRow({
+      provider: 'opensandbox',
+      sourceId: activeApp.appId,
+      teamId: activeApp.teamId,
+      status: SandboxInstanceStatusEnum.archived,
+      storage: {
+        archive: {
+          objectKey: retryZstOk,
+          generation: 'g1',
+          format: 'tar.zst',
+          sizeBytes: 12,
+          archivedAt: new Date()
+        }
+      }
+    });
+    const badZipRow = await insertV3SandboxRow({
+      provider: 'opensandbox',
+      sourceId: activeApp.appId,
+      teamId: activeApp.teamId,
+      status: SandboxInstanceStatusEnum.archived,
+      storage: {
+        archive: {
+          objectKey: retryZstMissing,
+          generation: 'g1',
+          format: 'tar.zst',
+          sizeBytes: 12,
+          archivedAt: new Date()
+        }
+      }
+    });
+    s3State.objects.set(retryZstOk, Buffer.from('zst-payload!!'));
+    const okZipKey = `${LEGACY_SANDBOX_ARCHIVE_PREFIX}/${okZipRow.sandboxId}/package.zip`;
+    const badZipKey = `${LEGACY_SANDBOX_ARCHIVE_PREFIX}/${badZipRow.sandboxId}/package.zip`;
+    s3State.objects.set(okZipKey, Buffer.from('zip-ok'));
+    s3State.objects.set(badZipKey, Buffer.from('zip-bad'));
+
+    const failRun = createMigrationContext();
+    await expect(cleanupLegacySandboxResources(failRun.context)).rejects.toThrow(
+      'failed safety verification'
+    );
+    expect(callsByStage(failRun.context, 'cleanupLegacyZips')).toEqual([
+      { key: 'cleanupLegacyZips', status: 'running', current: 0, total: 2 },
+      { key: 'cleanupLegacyZips', status: 'running', current: 1, total: 2 }
+    ]);
+
+    // 补齐缺失的 .tar.zst 后恢复执行，确认 zip 重试同步推进到 2/2 succeeded。
+    s3State.objects.set(retryZstMissing, Buffer.from('zst-payload!!'));
+    const savedCheckpoint = vi.mocked(failRun.context.saveCheckpoint).mock.calls.at(-1)![0];
+    const retryRun = createMigrationContext();
+    await retryRun.context.saveCheckpoint(savedCheckpoint);
+    await retryRun.context.reportFailedRecords(failRun.failures());
+
+    await expect(cleanupLegacySandboxResources(retryRun.context)).resolves.toEqual({
+      deletedDevboxes: 0,
+      deletedVolumes: 0,
+      deletedZips: 2,
+      deletedOrphans: 0
+    });
+    expect(callsByStage(retryRun.context, 'cleanupLegacyZips')).toEqual([
+      { key: 'cleanupLegacyZips', status: 'running', current: 1, total: 2 },
+      { key: 'cleanupLegacyZips', status: 'running', current: 2, total: 2 },
+      { key: 'cleanupLegacyZips', status: 'succeeded', current: 2, total: 2 }
+    ]);
+  });
 });

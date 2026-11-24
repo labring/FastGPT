@@ -111,6 +111,7 @@ import { migrateSandboxDoc } from '@/migration/tasks/4180/sandbox_opensandbox_sh
 import {
   buildTarZstArchiveInfo,
   commitMigratedSandboxArchive,
+  createStageProgressReporter,
   hasMigratedV3Record,
   isLegacyOpenSandboxArchiveAuthoritative,
   LEGACY_MIGRATABLE_SANDBOX_FILTER,
@@ -1744,5 +1745,244 @@ describe('migrateSandboxToOpenSandbox', () => {
       legacyArchives: 0
     });
     expect(probeExecCount).toBe(2);
+  });
+
+  it('reports throttled intra-batch current/total progress, preserves migrated result count, and syncs progress across retries', async () => {
+    const app = await seedActiveApp();
+    let fakeNow = 1_000_000;
+    vi.spyOn(Date, 'now').mockImplementation(() => fakeNow);
+
+    // 1. 验证 createStageProgressReporter 的 2 秒节流、并发串行化与 total 下界钳制。
+    const events: Array<{ status: string; current?: number; total?: number }> = [];
+    let releaseFirstWrite: (() => void) | undefined;
+    const reporterContext = createMigrationContext().context;
+    vi.mocked(reporterContext.reportProgress).mockImplementationOnce(async (progress) => {
+      events.push({ status: progress.status, current: progress.current, total: progress.total });
+    });
+    vi.mocked(reporterContext.reportProgress).mockImplementation(async (progress) => {
+      if (progress.current === 2 && !releaseFirstWrite) {
+        await new Promise<void>((resolve) => {
+          releaseFirstWrite = resolve;
+        });
+      }
+      events.push({ status: progress.status, current: progress.current, total: progress.total });
+    });
+
+    let reporterCurrent = 0;
+    let reporterTotal = 2;
+    const reporter = createStageProgressReporter({
+      context: reporterContext,
+      stageKey: 'legacyArchives',
+      getProgress: () => ({ current: reporterCurrent, total: reporterTotal }),
+      minIntervalMs: 2_000
+    });
+
+    await reporter.reportStart();
+    expect(events).toEqual([{ status: 'running', current: 0, total: 2 }]);
+
+    // 间隔不足 2000ms 时被节流。
+    fakeNow = 1_001_999;
+    reporterCurrent = 1;
+    await reporter.reportIfDue();
+    expect(events).toHaveLength(1);
+
+    // 超过 2000ms 时触发写库，且在 in-flight 期间并发触发 flush/succeeded 必须严格串行等待完成。
+    fakeNow = 1_002_000;
+    reporterCurrent = 2;
+    reporterTotal = 1; // 即使 total 暂时落后也会钳制为 >= current，满足 schema 约束。
+    const dueWritePromise = reporter.reportIfDue();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    reporterCurrent = 3;
+    const succeededPromise = reporter.reportSucceeded();
+    expect(events).toHaveLength(1);
+    releaseFirstWrite?.();
+    await Promise.all([dueWritePromise, succeededPromise]);
+    expect(events).toEqual([
+      { status: 'running', current: 0, total: 2 },
+      { status: 'running', current: 2, total: 2 },
+      { status: 'succeeded', current: 3, total: 3 }
+    ]);
+
+    // 2. 验证单批 (< 100) 内在跨过 2 秒窗口时确实发出带 current/total 的运行中进度，跳过项计入进度但不计入 migrated 返回值。
+    vi.restoreAllMocks();
+    fakeNow = 2_000_000;
+    vi.spyOn(Date, 'now').mockImplementation(() => fakeNow);
+
+    const skippedRow = await seedLegacyRow({
+      provider: 'opensandbox',
+      sourceId: app.appId,
+      teamId: app.teamId,
+      status: SandboxInstanceStatusEnum.archived
+    });
+    await insertV3SandboxRow({
+      _id: skippedRow._id,
+      provider: 'opensandbox',
+      sandboxId: skippedRow.sandboxId,
+      sourceType: skippedRow.sourceType,
+      sourceId: skippedRow.sourceId,
+      userId: skippedRow.userId,
+      teamId: app.teamId,
+      status: SandboxInstanceStatusEnum.archived,
+      storage: {
+        archive: buildTarZstArchiveInfo({
+          sandboxId: skippedRow.sandboxId,
+          generation: 'g0',
+          sizeBytes: 0
+        })
+      }
+    });
+
+    const vol1Row = await seedLegacyRow({
+      provider: 'opensandbox',
+      sourceId: app.appId,
+      teamId: app.teamId,
+      status: SandboxInstanceStatusEnum.stopped,
+      storage: {
+        volumes: [{ name: 'workspace', claimName: 'pvc-prog-1', mountPath: '/workspace' }]
+      }
+    });
+    const vol2Row = await seedLegacyRow({
+      provider: 'opensandbox',
+      sourceId: app.appId,
+      teamId: app.teamId,
+      status: SandboxInstanceStatusEnum.stopped,
+      storage: {
+        volumes: [{ name: 'workspace', claimName: 'pvc-prog-2', mountPath: '/workspace' }]
+      }
+    });
+
+    let markVol1Done: (() => void) | undefined;
+    const vol1DonePromise = new Promise<void>((resolve) => {
+      markVol1Done = resolve;
+    });
+    let volumeCallIndex = 0;
+    extraMocks.packSandboxDirectory.mockImplementation(async () => {
+      volumeCallIndex += 1;
+      if (volumeCallIndex === 1) {
+        // 第一卷在 500ms 内完成：保持 throttled。
+        fakeNow = 2_000_500;
+        return createTarZstStream([
+          { path: 'workspace/ok.txt', type: 'file', mode: 0o644, content: Buffer.from('ok-1\n') }
+        ]);
+      }
+      await vol1DonePromise;
+      // 稍等确保 skipped 与 vol1 的 runAndTrackDoc 完成并受 500ms 窗口节流后再跨过 2 秒阈值。
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      fakeNow = 2_002_500;
+      return createTarZstStream([
+        { path: 'workspace/ok.txt', type: 'file', mode: 0o644, content: Buffer.from('ok-2\n') }
+      ]);
+    });
+    let deleteCallIndex = 0;
+    extraMocks.tempSandboxDelete.mockImplementation(async () => {
+      deleteCallIndex += 1;
+      if (deleteCallIndex === 1) {
+        markVol1Done?.();
+      }
+    });
+
+    const batchState = createMigrationContext();
+    await expect(migrateSandboxToOpenSandbox(batchState.context)).resolves.toEqual({
+      runningDevbox: 0,
+      stoppedDevbox: 0,
+      legacyArchives: 2
+    });
+
+    const legacyCalls = vi
+      .mocked(batchState.context.reportProgress)
+      .mock.calls.map(([arg], idx) => ({
+        arg,
+        order: vi.mocked(batchState.context.reportProgress).mock.invocationCallOrder[idx]
+      }))
+      .filter(({ arg }) => arg.key === 'legacyArchives');
+    const firstCheckpointOrderAfterStart = vi
+      .mocked(batchState.context.saveCheckpoint)
+      .mock.invocationCallOrder.find((order) => order > legacyCalls[0].order)!;
+
+    expect(legacyCalls[0].arg).toEqual({
+      key: 'legacyArchives',
+      status: 'running',
+      current: 0,
+      total: 3
+    });
+    // 至少有一次带有效进度的 running 上报严格早于批尾 saveCheckpoint，且未逐条无节流上报。
+    const intraBatchCalls = legacyCalls.filter(
+      ({ arg, order }) =>
+        order > legacyCalls[0].order &&
+        order < firstCheckpointOrderAfterStart &&
+        arg.status === 'running'
+    );
+    expect(intraBatchCalls.length).toBeGreaterThanOrEqual(1);
+    expect(intraBatchCalls.length).toBeLessThan(3);
+    for (const { arg } of intraBatchCalls) {
+      expect(arg.current).toBeGreaterThan(0);
+      expect(arg.current).toBeLessThanOrEqual(3);
+      expect(arg.total).toBe(3);
+    }
+    expect(legacyCalls.at(-1)?.arg).toEqual({
+      key: 'legacyArchives',
+      status: 'succeeded',
+      current: 3,
+      total: 3
+    });
+
+    // 3. 验证遗留失败记录重跑（stage.done 已为 true）仍推进 current/total 至 succeeded。
+    await getLegacySandboxInstanceCollection().deleteMany({});
+    await MongoSandboxInstance.collection.deleteMany({});
+    s3State.objects.clear();
+    extraMocks.packSandboxDirectory.mockReset();
+    extraMocks.tempSandboxDelete.mockImplementation(async () => undefined);
+
+    const okRow = await seedLegacyRow({
+      provider: 'sealosdevbox',
+      sourceId: app.appId,
+      teamId: app.teamId,
+      status: SandboxInstanceStatusEnum.archived
+    });
+    const retryRow = await seedLegacyRow({
+      provider: 'sealosdevbox',
+      sourceId: app.appId,
+      teamId: app.teamId,
+      status: SandboxInstanceStatusEnum.archived
+    });
+    const zipBytes = await new JSZip().file('a.txt', '1').generateAsync({ type: 'nodebuffer' });
+    s3State.objects.set(`sandbox/archive/${okRow.sandboxId}/package.zip`, zipBytes);
+    // 故意暂缺 retryRow 的 zip，让首轮在 legacyArchives 失败一次。
+
+    const firstRun = createMigrationContext();
+    await expect(migrateSandboxToOpenSandbox(firstRun.context)).rejects.toThrow(
+      'failed to migrate'
+    );
+    const firstLegacyCalls = vi
+      .mocked(firstRun.context.reportProgress)
+      .mock.calls.map(([arg]) => arg)
+      .filter((arg) => arg.key === 'legacyArchives');
+    expect(firstLegacyCalls).toEqual([
+      { key: 'legacyArchives', status: 'running', current: 0, total: 2 },
+      { key: 'legacyArchives', status: 'running', current: 1, total: 2 }
+    ]);
+
+    // 修复缺失 zip 后，复用持久化 checkpoint 与 failures 重试。
+    s3State.objects.set(`sandbox/archive/${retryRow.sandboxId}/package.zip`, zipBytes);
+    const savedCheckpoint = vi.mocked(firstRun.context.saveCheckpoint).mock.calls.at(-1)![0];
+    const retryRun = createMigrationContext();
+    await retryRun.context.saveCheckpoint(savedCheckpoint);
+    await retryRun.context.reportFailedRecords(firstRun.failures());
+
+    await expect(migrateSandboxToOpenSandbox(retryRun.context)).resolves.toEqual({
+      runningDevbox: 0,
+      stoppedDevbox: 0,
+      legacyArchives: 2
+    });
+    const retryLegacyCalls = vi
+      .mocked(retryRun.context.reportProgress)
+      .mock.calls.map(([arg]) => arg)
+      .filter((arg) => arg.key === 'legacyArchives');
+    expect(retryLegacyCalls).toEqual([
+      { key: 'legacyArchives', status: 'running', current: 1, total: 2 },
+      { key: 'legacyArchives', status: 'running', current: 2, total: 2 },
+      { key: 'legacyArchives', status: 'succeeded', current: 2, total: 2 }
+    ]);
+    expect([vol1Row.sandboxId, vol2Row.sandboxId]).toHaveLength(2);
   });
 });

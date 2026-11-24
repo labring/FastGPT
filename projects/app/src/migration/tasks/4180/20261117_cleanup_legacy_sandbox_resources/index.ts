@@ -30,6 +30,7 @@ import {
 } from '../sandbox_opensandbox_shared/sealosClient';
 import {
   completeNoopSandboxMigration,
+  createStageProgressReporter,
   hasMigratedV3Record,
   isSandboxSourceActive,
   loadNonPreflightFailures,
@@ -52,7 +53,11 @@ const CheckpointSchema = z.object({
   deletedDevboxes: IntSchema,
   deletedVolumes: IntSchema.default(0),
   deletedZips: IntSchema,
-  deletedOrphans: IntSchema
+  deletedOrphans: IntSchema,
+  processedDocs: IntSchema.optional(),
+  totalDocs: IntSchema.optional(),
+  processedZips: IntSchema.optional(),
+  totalZips: IntSchema.optional()
 });
 
 type CheckpointState = z.infer<typeof CheckpointSchema>;
@@ -65,7 +70,9 @@ const createInitialCheckpoint = (): CheckpointState => ({
   deletedDevboxes: 0,
   deletedVolumes: 0,
   deletedZips: 0,
-  deletedOrphans: 0
+  deletedOrphans: 0,
+  processedDocs: 0,
+  processedZips: 0
 });
 
 /**
@@ -158,8 +165,15 @@ export const cleanupLegacySandboxResources = async (context: SystemMigrationCont
     return await completeNoopSandboxMigration({
       context,
       stages: [
-        { key: 'cleanupDevboxes', current: deletedDevboxes + deletedVolumes + deletedOrphans },
-        { key: 'cleanupLegacyZips', current: deletedZips }
+        {
+          key: 'cleanupDevboxes',
+          current:
+            existingCheckpoint?.processedDocs ?? deletedDevboxes + deletedVolumes + deletedOrphans
+        },
+        {
+          key: 'cleanupLegacyZips',
+          current: existingCheckpoint?.processedZips ?? deletedZips
+        }
       ],
       result: { deletedDevboxes, deletedVolumes, deletedZips, deletedOrphans }
     });
@@ -175,15 +189,19 @@ export const cleanupLegacySandboxResources = async (context: SystemMigrationCont
   const checkpoint = existingCheckpoint ?? createInitialCheckpoint();
   const docStage: SandboxCursorStageState = {
     lastId: checkpoint.lastDocId,
-    done: checkpoint.devboxesDone
+    done: checkpoint.devboxesDone,
+    processed:
+      checkpoint.processedDocs ??
+      checkpoint.deletedDevboxes + checkpoint.deletedVolumes + checkpoint.deletedOrphans,
+    total: checkpoint.totalDocs
   };
   const saveCleanupCheckpoint = () => {
     checkpoint.lastDocId = docStage.lastId;
     checkpoint.devboxesDone = docStage.done;
+    checkpoint.processedDocs = docStage.processed;
+    checkpoint.totalDocs = docStage.total;
     return context.saveCheckpoint(checkpoint);
   };
-  const getCleanupDevboxesProgress = () =>
-    checkpoint.deletedDevboxes + checkpoint.deletedVolumes + checkpoint.deletedOrphans;
 
   const validateTargetTarZstArchive = async (
     targetRow: SandboxMigrationDoc
@@ -330,7 +348,6 @@ export const cleanupLegacySandboxResources = async (context: SystemMigrationCont
     concurrency: CLEANUP_CONCURRENCY,
     maxFailures: MAX_FAILURE_RECORDS,
     failMessage: 'Too many legacy Devbox cleanup failures; inspect failed records before retrying',
-    getProgressCurrent: getCleanupDevboxesProgress,
     processDoc: cleanupLegacyV2Row,
     saveCheckpoint: saveCleanupCheckpoint
   });
@@ -407,12 +424,6 @@ export const cleanupLegacySandboxResources = async (context: SystemMigrationCont
     }
   };
 
-  await context.reportProgress({
-    key: 'cleanupLegacyZips',
-    status: SystemMigrationStatusEnum.running,
-    current: checkpoint.deletedZips
-  });
-
   const allRemainingZipKeys = preflightZipKeys ?? (await listLegacyZipKeys());
   const existingZipSet = new Set(allRemainingZipKeys);
   const seenRetryKeys = new Set<string>();
@@ -438,28 +449,57 @@ export const cleanupLegacySandboxResources = async (context: SystemMigrationCont
   }
 
   const activeZipRetrySet = new Set(activeZipRetries);
+  const keysToProcess = checkpoint.zipsDone
+    ? []
+    : allRemainingZipKeys.filter(
+        (key) =>
+          (!checkpoint.lastZipKey || key > checkpoint.lastZipKey) && !activeZipRetrySet.has(key)
+      );
+
+  checkpoint.processedZips = checkpoint.processedZips ?? checkpoint.deletedZips;
+  checkpoint.totalZips = Math.max(
+    checkpoint.totalZips ?? 0,
+    checkpoint.processedZips + activeZipRetries.length + keysToProcess.length
+  );
+
+  const zipProgressReporter = createStageProgressReporter({
+    context,
+    stageKey: 'cleanupLegacyZips',
+    getProgress: () => ({
+      current: checkpoint.processedZips ?? 0,
+      total: Math.max(checkpoint.totalZips ?? 0, checkpoint.processedZips ?? 0)
+    })
+  });
+  await zipProgressReporter.reportStart();
+
+  const cleanupAndTrackZipKey = async (key: string) => {
+    await cleanupLegacyZipKey(key);
+    if (!failures.has(key)) {
+      checkpoint.processedZips = (checkpoint.processedZips ?? 0) + 1;
+      checkpoint.totalZips = Math.max(checkpoint.totalZips ?? 0, checkpoint.processedZips);
+      await zipProgressReporter.reportIfDue();
+    }
+  };
+
   if (activeZipRetries.length > 0) {
-    await batchRun(activeZipRetries, cleanupLegacyZipKey, CLEANUP_CONCURRENCY);
+    await batchRun(activeZipRetries, cleanupAndTrackZipKey, CLEANUP_CONCURRENCY);
     await context.reportFailedRecords([...failures.values()]);
     await saveCleanupCheckpoint();
+    await zipProgressReporter.flush();
   } else if (clearedMissingZips) {
     await context.reportFailedRecords([...failures.values()]);
   }
 
   if (!checkpoint.zipsDone) {
-    const keysToProcess = allRemainingZipKeys.filter(
-      (key) =>
-        (!checkpoint.lastZipKey || key > checkpoint.lastZipKey) && !activeZipRetrySet.has(key)
-    );
-
     for (let i = 0; i < keysToProcess.length; i += systemMigrationBatchSize) {
       context.signal.throwIfAborted();
       await context.assertActive();
 
       const batch = keysToProcess.slice(i, i + systemMigrationBatchSize);
-      await batchRun(batch, cleanupLegacyZipKey, CLEANUP_CONCURRENCY);
+      await batchRun(batch, cleanupAndTrackZipKey, CLEANUP_CONCURRENCY);
 
       if (failures.size >= MAX_FAILURE_RECORDS) {
+        await zipProgressReporter.flush();
         await context.fail({
           message: 'Too many legacy package.zip cleanup failures; inspect failed records',
           failedRecords: [...failures.values()]
@@ -469,11 +509,7 @@ export const cleanupLegacySandboxResources = async (context: SystemMigrationCont
       await context.reportFailedRecords([...failures.values()]);
       checkpoint.lastZipKey = batch[batch.length - 1];
       await saveCleanupCheckpoint();
-      await context.reportProgress({
-        key: 'cleanupLegacyZips',
-        status: SystemMigrationStatusEnum.running,
-        current: checkpoint.deletedZips
-      });
+      await zipProgressReporter.flush();
     }
 
     checkpoint.zipsDone = true;
@@ -487,11 +523,13 @@ export const cleanupLegacySandboxResources = async (context: SystemMigrationCont
       (item.stageKey === 'validation' && typeof item.data.key === 'string')
   ).length;
   if (zipFailureCount === 0) {
-    await context.reportProgress({
-      key: 'cleanupLegacyZips',
-      status: SystemMigrationStatusEnum.succeeded,
-      current: checkpoint.deletedZips
-    });
+    if (checkpoint.totalZips !== checkpoint.processedZips) {
+      checkpoint.totalZips = checkpoint.processedZips;
+      await saveCleanupCheckpoint();
+    }
+    await zipProgressReporter.reportSucceeded();
+  } else {
+    await zipProgressReporter.flush();
   }
 
   if (failures.size > 0) {
@@ -513,6 +551,8 @@ export const cleanupLegacySandboxResources = async (context: SystemMigrationCont
     // 若校验阶段发现残留旧 ZIP，重置游标以确保下次重跑从头扫清。
     checkpoint.lastZipKey = null;
     checkpoint.zipsDone = false;
+    checkpoint.processedZips = 0;
+    checkpoint.totalZips = undefined;
     await saveCleanupCheckpoint();
     await context.fail({
       message: 'Legacy package.zip objects remain in S3 after cleanup',
@@ -533,6 +573,8 @@ export const cleanupLegacySandboxResources = async (context: SystemMigrationCont
     // 重置 v2 清理游标，使重跑既能重放失败快照也能覆盖期间新增的残留记录。
     docStage.lastId = null;
     docStage.done = false;
+    docStage.processed = 0;
+    docStage.total = undefined;
     await saveCleanupCheckpoint();
     await context.fail({
       message: 'Legacy sandbox resource cleanup validation failed with remaining v2 records',

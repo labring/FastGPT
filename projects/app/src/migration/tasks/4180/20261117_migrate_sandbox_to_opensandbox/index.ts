@@ -40,6 +40,8 @@ type SandboxStageKey = 'runningDevbox' | 'stoppedDevbox' | 'legacyArchives';
 const StageCheckpointSchema = z.object({
   lastId: ObjectIdSchema.nullable(),
   migrated: IntSchema,
+  processed: IntSchema.optional(),
+  total: IntSchema.optional(),
   done: z.boolean()
 });
 
@@ -52,9 +54,9 @@ const CheckpointSchema = z.object({
 type CheckpointState = z.infer<typeof CheckpointSchema>;
 
 const createInitialCheckpoint = (): CheckpointState => ({
-  runningDevbox: { lastId: null, migrated: 0, done: false },
-  stoppedDevbox: { lastId: null, migrated: 0, done: false },
-  legacyArchives: { lastId: null, migrated: 0, done: false }
+  runningDevbox: { lastId: null, migrated: 0, processed: 0, done: false },
+  stoppedDevbox: { lastId: null, migrated: 0, processed: 0, done: false },
+  legacyArchives: { lastId: null, migrated: 0, processed: 0, done: false }
 });
 
 const resolveDocStageKey = (doc: SandboxMigrationDoc): SandboxStageKey => {
@@ -140,9 +142,18 @@ export const migrateSandboxToOpenSandbox = async (context: SystemMigrationContex
     return await completeNoopSandboxMigration({
       context,
       stages: [
-        { key: 'runningDevbox', current: runningDevbox },
-        { key: 'stoppedDevbox', current: stoppedDevbox },
-        { key: 'legacyArchives', current: legacyArchives }
+        {
+          key: 'runningDevbox',
+          current: existingCheckpoint?.runningDevbox.processed ?? runningDevbox
+        },
+        {
+          key: 'stoppedDevbox',
+          current: existingCheckpoint?.stoppedDevbox.processed ?? stoppedDevbox
+        },
+        {
+          key: 'legacyArchives',
+          current: existingCheckpoint?.legacyArchives.processed ?? legacyArchives
+        }
       ],
       result: { runningDevbox, stoppedDevbox, legacyArchives }
     });
@@ -206,21 +217,23 @@ export const migrateSandboxToOpenSandbox = async (context: SystemMigrationContex
   }: {
     stageKey: SandboxStageKey;
     filter: Record<string, unknown>;
-  }) =>
+  }) => {
+    const stage = checkpoint[stageKey];
+    stage.processed ??= stage.migrated;
     await runSandboxDocCursorStage({
       context,
       collection: legacyCollection,
       failures,
       stageKey,
       filter,
-      stage: checkpoint[stageKey],
+      stage,
       concurrency: SANDBOX_MIGRATION_CONCURRENCY,
       maxFailures: MAX_FAILURE_RECORDS,
       failMessage: 'Too many sandbox migration failures; resolve errors before retrying',
-      getProgressCurrent: () => checkpoint[stageKey].migrated,
       processDoc: (doc) => migrateOneDoc(doc, stageKey),
       saveCheckpoint: () => context.saveCheckpoint(checkpoint)
     });
+  };
 
   await runStage({
     stageKey: 'runningDevbox',
@@ -297,6 +310,8 @@ export const migrateSandboxToOpenSandbox = async (context: SystemMigrationContex
       checkpoint[stageKey] = {
         ...checkpoint[stageKey],
         lastId: null,
+        processed: 0,
+        total: undefined,
         done: false
       };
     }

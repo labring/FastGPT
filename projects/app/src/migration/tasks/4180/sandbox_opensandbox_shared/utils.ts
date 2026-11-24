@@ -55,6 +55,79 @@ export type SandboxMigrationDoc = {
 export type SandboxCursorStageState = {
   lastId: string | null;
   done: boolean;
+  processed?: number;
+  total?: number;
+};
+
+export const SANDBOX_MIGRATION_PROGRESS_REPORT_INTERVAL_MS = 2_000;
+
+/**
+ * 序列化并按时间节流上报单阶段进度（`current`/`total`），避免并发工作协程竞争乱序写库。
+ */
+export const createStageProgressReporter = (params: {
+  context: SystemMigrationContext;
+  stageKey: string;
+  getProgress: () => { current: number; total: number };
+  minIntervalMs?: number;
+}) => {
+  const {
+    context,
+    stageKey,
+    getProgress,
+    minIntervalMs = SANDBOX_MIGRATION_PROGRESS_REPORT_INTERVAL_MS
+  } = params;
+  let lastReportedAt = 0;
+  let lastReportedCurrent = -1;
+  let lastReportedTotal = -1;
+  let inFlight: Promise<void> | undefined;
+
+  const writeProgress = async (
+    status: SystemMigrationStatusEnum.running | SystemMigrationStatusEnum.succeeded,
+    force: boolean
+  ) => {
+    while (inFlight !== undefined) {
+      await inFlight;
+    }
+
+    const { current, total } = getProgress();
+    const normalizedTotal = Math.max(total, current);
+    if (!force && current === lastReportedCurrent && normalizedTotal === lastReportedTotal) {
+      return;
+    }
+
+    const task = (async () => {
+      await context.reportProgress({
+        key: stageKey,
+        status,
+        current,
+        total: normalizedTotal
+      });
+      lastReportedAt = Date.now();
+      lastReportedCurrent = current;
+      lastReportedTotal = normalizedTotal;
+    })();
+
+    inFlight = task;
+    try {
+      await task;
+    } finally {
+      if (inFlight === task) {
+        inFlight = undefined;
+      }
+    }
+  };
+
+  return {
+    reportStart: () => writeProgress(SystemMigrationStatusEnum.running, true),
+    reportIfDue: async () => {
+      if (inFlight !== undefined || Date.now() - lastReportedAt < minIntervalMs) {
+        return;
+      }
+      await writeProgress(SystemMigrationStatusEnum.running, false);
+    },
+    flush: () => writeProgress(SystemMigrationStatusEnum.running, false),
+    reportSucceeded: () => writeProgress(SystemMigrationStatusEnum.succeeded, true)
+  };
 };
 
 type SandboxMigrationCollection = ReturnType<typeof getLegacySandboxInstanceCollection>;
@@ -340,12 +413,14 @@ export async function completeNoopSandboxMigration<T>(params: {
     await context.reportProgress({
       key: stage.key,
       status: SystemMigrationStatusEnum.running,
-      current: stage.current
+      current: stage.current,
+      total: stage.current
     });
     await context.reportProgress({
       key: stage.key,
       status: SystemMigrationStatusEnum.succeeded,
-      current: stage.current
+      current: stage.current,
+      total: stage.current
     });
   }
   await context.reportProgress({
@@ -395,9 +470,18 @@ export async function retryFailedSandboxDocs(params: {
   concurrency: number;
   processDoc: (doc: SandboxMigrationDoc) => Promise<void>;
   saveCheckpoint: () => Promise<void>;
-}): Promise<void> {
-  const { context, collection, failures, stageKeys, concurrency, processDoc, saveCheckpoint } =
-    params;
+  onChunkComplete?: () => Promise<void>;
+}): Promise<Set<string>> {
+  const {
+    context,
+    collection,
+    failures,
+    stageKeys,
+    concurrency,
+    processDoc,
+    saveCheckpoint,
+    onChunkComplete
+  } = params;
   const stageSet = new Set(stageKeys);
   const retryIdSet = new Set<string>();
 
@@ -408,6 +492,7 @@ export async function retryFailedSandboxDocs(params: {
   }
 
   const retryIds = [...retryIdSet];
+  const processedIds = new Set<string>();
 
   for (let i = 0; i < retryIds.length; i += systemMigrationBatchSize) {
     context.signal.throwIfAborted();
@@ -424,15 +509,22 @@ export async function retryFailedSandboxDocs(params: {
     for (const id of chunkIds) {
       if (!foundIds.has(id)) {
         failures.delete(id);
+        processedIds.add(id);
       }
+    }
+    for (const doc of retryDocs) {
+      processedIds.add(String(doc._id));
     }
     await batchRun(retryDocs, processDoc, concurrency);
     await context.reportFailedRecords([...failures.values()]);
     await saveCheckpoint();
+    await onChunkComplete?.();
   }
+
+  return processedIds;
 }
 
-/** 按 `_id` 游标分批执行迁移或清理阶段，直接推进统一形态 `{ lastId, done }` stage 状态。 */
+/** 按 `_id` 游标分批执行迁移或清理阶段，推进 `{ lastId, done, processed, total }` 状态并节流同步阶段进度。 */
 export async function runSandboxDocCursorStage(params: {
   context: SystemMigrationContext;
   collection: SandboxMigrationCollection;
@@ -444,7 +536,6 @@ export async function runSandboxDocCursorStage(params: {
   concurrency: number;
   maxFailures: number;
   failMessage: string;
-  getProgressCurrent: () => number;
   processDoc: (doc: SandboxMigrationDoc) => Promise<void>;
   saveCheckpoint: () => Promise<void>;
 }): Promise<void> {
@@ -459,25 +550,71 @@ export async function runSandboxDocCursorStage(params: {
     concurrency,
     maxFailures,
     failMessage,
-    getProgressCurrent,
     processDoc,
     saveCheckpoint
   } = params;
 
-  await context.reportProgress({
-    key: stageKey,
-    status: SystemMigrationStatusEnum.running,
-    current: getProgressCurrent()
+  const effectiveRetryStageKeys = retryStageKeys ?? [stageKey];
+  const retryStageSet = new Set(effectiveRetryStageKeys);
+  const lastIdHex = stage.lastId ? new Types.ObjectId(stage.lastId).toHexString() : null;
+
+  stage.processed = stage.processed ?? 0;
+
+  const remainingFilter: SandboxDocFilter = stage.lastId
+    ? { ...filter, _id: { $gt: new Types.ObjectId(stage.lastId) } }
+    : filter;
+  const remainingCount = stage.done ? 0 : await collection.countDocuments(remainingFilter);
+
+  const nonOverlappingRetryIds = new Set<string>();
+  for (const item of failures.values()) {
+    if (!retryStageSet.has(item.stageKey)) continue;
+    if (typeof item.data.id !== 'string' || !Types.ObjectId.isValid(item.data.id)) continue;
+    const itemHex = new Types.ObjectId(item.data.id).toHexString();
+    // 仅统计游标尚未覆盖到的失败项，避免与 remainingCount 重复计数；未进游标或已完结阶段一律计入。
+    if (stage.done || (lastIdHex !== null && itemHex <= lastIdHex)) {
+      nonOverlappingRetryIds.add(itemHex);
+    }
+  }
+
+  stage.total = Math.max(
+    stage.total ?? 0,
+    stage.processed + remainingCount + nonOverlappingRetryIds.size
+  );
+
+  const progressReporter = createStageProgressReporter({
+    context,
+    stageKey,
+    getProgress: () => ({
+      current: stage.processed ?? 0,
+      total: Math.max(stage.total ?? 0, stage.processed ?? 0)
+    })
   });
+
+  await progressReporter.reportStart();
+
+  const handledInRetry = new Set<string>();
+  const runAndTrackDoc = async (doc: SandboxMigrationDoc) => {
+    const recordId = String(doc._id);
+    await processDoc(doc);
+    if (!failures.has(recordId)) {
+      stage.processed = (stage.processed ?? 0) + 1;
+      stage.total = Math.max(stage.total ?? 0, stage.processed);
+      await progressReporter.reportIfDue();
+    }
+  };
 
   await retryFailedSandboxDocs({
     context,
     collection,
     failures,
-    stageKeys: retryStageKeys ?? [stageKey],
+    stageKeys: effectiveRetryStageKeys,
     concurrency,
-    processDoc,
-    saveCheckpoint
+    processDoc: async (doc) => {
+      handledInRetry.add(String(doc._id));
+      await runAndTrackDoc(doc);
+    },
+    saveCheckpoint,
+    onChunkComplete: () => progressReporter.flush()
   });
 
   while (!stage.done) {
@@ -496,14 +633,21 @@ export async function runSandboxDocCursorStage(params: {
 
     if (batch.length === 0) {
       stage.done = true;
+      const stageHasFailures = [...failures.values()].some((item) => item.stageKey === stageKey);
+      if (!stageHasFailures) {
+        stage.total = stage.processed;
+      }
       await context.reportFailedRecords([...failures.values()]);
       await saveCheckpoint();
       break;
     }
 
-    await batchRun(batch, processDoc, concurrency);
+    const batchToProcess =
+      handledInRetry.size > 0 ? batch.filter((doc) => !handledInRetry.has(String(doc._id))) : batch;
+    await batchRun(batchToProcess, runAndTrackDoc, concurrency);
 
     if (failures.size >= maxFailures) {
+      await progressReporter.flush();
       await context.fail({
         message: failMessage,
         failedRecords: [...failures.values()]
@@ -514,19 +658,17 @@ export async function runSandboxDocCursorStage(params: {
     await context.reportFailedRecords([...failures.values()]);
     stage.lastId = String(batch.at(-1)!._id);
     await saveCheckpoint();
-    await context.reportProgress({
-      key: stageKey,
-      status: SystemMigrationStatusEnum.running,
-      current: getProgressCurrent()
-    });
+    await progressReporter.flush();
   }
 
   const stageHasFailures = [...failures.values()].some((item) => item.stageKey === stageKey);
   if (!stageHasFailures) {
-    await context.reportProgress({
-      key: stageKey,
-      status: SystemMigrationStatusEnum.succeeded,
-      current: getProgressCurrent()
-    });
+    if (stage.total !== stage.processed) {
+      stage.total = stage.processed;
+      await saveCheckpoint();
+    }
+    await progressReporter.reportSucceeded();
+  } else {
+    await progressReporter.flush();
   }
 }
