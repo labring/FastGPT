@@ -1,14 +1,18 @@
 import { ModelScopeEnum, ModelTypeEnum } from '../../../../core/ai/constants';
+import { MAX_MODEL_PRICE_TIERS } from '../../../../core/ai/model/pricing';
 import {
   EmbeddingModelConfigSchema,
   EmbeddingModelDocumentSchema,
   LLMModelConfigSchema,
   LLMModelDocumentSchema,
+  LLMModelPricingSchema,
+  ModelPriceTierSchema,
   ModelPricingSchema,
   RerankModelConfigSchema,
   RerankModelDocumentSchema,
   STTModelConfigSchema,
   STTModelDocumentSchema,
+  STTModelPricingSchema,
   AIModelDataSchema,
   AIModelDocumentDataSchema,
   TTSModelConfigSchema,
@@ -539,11 +543,30 @@ const ImportedModelIdField = {
   scope: z.literal(ModelScopeEnum.system).meta({ description: '系统模型作用域' })
 };
 
+/** JSON 导入会覆盖模型配置，因此拒绝未知阶梯字段，防止遗漏上限后把首档保存为无限档。 */
+const ImportedLLMPricingSchema = z
+  .strictObject({
+    ...LLMModelPricingSchema.shape,
+    tiers: z.array(z.strictObject(ModelPriceTierSchema.shape)).max(MAX_MODEL_PRICE_TIERS).optional()
+  })
+  .optional();
+
+/** 4.17.5 导出的 STT 单价固定按时长计费；显式指定计价类型时按当前合约校验。 */
+const ImportedSTTPricingSchema = z
+  .union([
+    STTModelPricingSchema,
+    z
+      .strictObject({ unitPrice: ModelPricingSchema.shape.unitPrice })
+      .transform(({ unitPrice }) => ({ type: 'duration' as const, unitPrice }))
+  ])
+  .optional();
+
 // JSON 仅替换模型配置；旧文件中的 rank 作为未知字段忽略，不覆盖本实例的展示顺序。
 export const ImportedSystemModelSchema = z.discriminatedUnion('type', [
   LLMModelDocumentSchema.omit({ sortOrder: true }).extend({
     ...ImportedModelIdField,
-    config: LLMModelConfigSchema
+    config: LLMModelConfigSchema,
+    pricing: ImportedLLMPricingSchema
   }),
   EmbeddingModelDocumentSchema.omit({ sortOrder: true }).extend({
     ...ImportedModelIdField,
@@ -555,7 +578,8 @@ export const ImportedSystemModelSchema = z.discriminatedUnion('type', [
   }),
   STTModelDocumentSchema.omit({ sortOrder: true }).extend({
     ...ImportedModelIdField,
-    config: STTModelConfigSchema
+    config: STTModelConfigSchema,
+    pricing: ImportedSTTPricingSchema
   }),
   RerankModelDocumentSchema.omit({ sortOrder: true }).extend({
     ...ImportedModelIdField,
@@ -579,7 +603,7 @@ export const UpdateSystemModelsWithJsonBodySchema = z.object({
     example:
       '[{"modelId":"68ad85a7463006c963799a05","scope":"system","type":"llm","provider":"OpenAI","model":"gpt-5","name":"GPT-5","isActive":true,"config":{"maxContext":400000,"maxResponse":128000,"quoteMaxToken":300000,"toolChoice":true}}]',
     description:
-      '完整系统模型配置 JSON，每条记录必须包含源实例模型 ID；sortOrder 会被忽略，已有展示顺序保持不变'
+      '完整系统模型配置 JSON，每条记录必须包含源实例模型 ID；LLM 阶梯上限使用 maxInputTokensK；sortOrder 会被忽略，已有展示顺序保持不变'
   })
 });
 export type UpdateSystemModelsWithJsonBody = z.input<typeof UpdateSystemModelsWithJsonBodySchema>;

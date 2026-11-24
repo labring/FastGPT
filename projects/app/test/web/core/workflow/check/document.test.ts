@@ -3,7 +3,7 @@ import {
   WorkflowDiagnosticCodeEnum
 } from '@fastgpt/global/core/workflow/diagnostic/constants';
 import { describe, expect, it } from 'vitest';
-import type { Node, Edge } from 'reactflow';
+import type { Node, Edge } from '@xyflow/react';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import {
   FlowNodeTypeEnum,

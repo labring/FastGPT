@@ -18,11 +18,8 @@ import type {
 } from '../types/runtime';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText, isUserConfigError } from '@fastgpt/global/common/error/utils';
-import {
-  filterWorkflowEdges,
-  valueTypeFormat,
-  getReferenceVariableValue
-} from '@fastgpt/global/core/workflow/runtime/utils';
+import { filterWorkflowEdges, valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
+import { getReferenceVariableValue } from '@fastgpt/global/common/workflow/runtime';
 import type {
   InteractiveNodeResponseType,
   WorkflowInteractiveResponseType
@@ -52,7 +49,11 @@ import {
   shouldTraceWorkflowStep,
   type WorkflowObservedStepResult
 } from './utils/trace';
-import { getDispatchModerationContext, getWorkflowNodeRunParams } from './utils/runtime';
+import {
+  createRuntimeReferenceGraph,
+  getDispatchModerationContext,
+  getWorkflowNodeRunParams
+} from './utils/runtime';
 import { getWorkflowSource } from './utils/source';
 import { filterToolNodeIdByEdges, getInlineMcpToolSetRuntimeNodes } from './utils/index';
 import type { WorkflowMemoryContext } from './context/memory';
@@ -121,7 +122,10 @@ export class WorkflowQueue {
 
   // Debug
   private isDebugMode: boolean;
-  private debugNextStepRunNodes: RuntimeNodeItemType[] = []; // 记录 Debug 模式下，下一个阶段需要执行的节点。
+  private debugNextStepCandidates = new Set<RuntimeNodeItemType>();
+  private debugPausedNodeIds?: Set<string>;
+  private debugPausedEdgeStatuses = new Map<RuntimeEdgeItemType, RuntimeEdgeItemType['status']>();
+  private debugResumeNodeIds?: Set<string>;
   private debugNodeResponses: WorkflowDebugResponse['nodeResponses'] = {};
 
   // Queue variables
@@ -140,6 +144,8 @@ export class WorkflowQueue {
     bySource: new Map<string, RuntimeEdgeItemType[]>(),
     byTarget: new Map<string, RuntimeEdgeItemType[]>()
   };
+  // 引用来源需要经过工具挂载边，普通调度索引不包含这些边。
+  private referenceGraph?: ReturnType<typeof createRuntimeReferenceGraph>;
   // 🆕 预构建的节点边分组 Map
   private nodeEdgeGroupsMap: NodeEdgeGroupsMap;
 
@@ -441,9 +447,12 @@ export class WorkflowQueue {
 
   /* ===== life circle ===== */
   // Add active node to queue (if already in the queue, it will not be added again)
-  addActiveNode(nodeId: string) {
+  addActiveNode(nodeId: string, resumeDebugInteraction = false) {
     if (this.activeRunQueue.has(nodeId)) {
       return;
+    }
+    if (resumeDebugInteraction) {
+      (this.debugResumeNodeIds ??= new Set()).add(nodeId);
     }
     this.activeRunQueue.add(nodeId);
 
@@ -470,8 +479,8 @@ export class WorkflowQueue {
         // 检查结束条件
         if (this.activeRunQueue.size === 0 && runningNodePromises.size === 0) {
           if (this.isDebugMode) {
-            // 没有下一个激活节点，说明debug 进入了一个”即将结束”状态。可以开始处理 skip 节点
-            if (this.debugNextStepRunNodes.length === 0 && this.skipNodeQueue.size > 0) {
+            // 还没有可运行的入口时传播跳过状态，汇合节点才能在所有入边就绪后继续。
+            if (this.skipNodeQueue.size > 0 && this.getDebugEntryNodeIds().length === 0) {
               await this.processSkipNodes();
               continue;
             } else {
@@ -600,6 +609,7 @@ export class WorkflowQueue {
                 }))
               )
             );
+            this.referenceGraph = undefined;
           })();
           this.inlineMcpExpansions.set(toolSetId, expansion);
         }
@@ -637,7 +647,14 @@ export class WorkflowQueue {
       const params = getWorkflowNodeRunParams({
         node,
         runtimeNodesMap: this.runtimeNodesMap,
-        variableState: getWorkflowContext().variableContext
+        variableState: getWorkflowContext().variableContext,
+        chatConfig: this.data.chatConfig,
+        isDebugMode: this.isDebugMode,
+        getReferenceGraph: () =>
+          (this.referenceGraph ??= createRuntimeReferenceGraph({
+            runtimeEdges: this.data.runtimeEdges,
+            runtimeNodesMap: this.runtimeNodesMap
+          }))
       });
       const nodeSummary = createNodeSummary();
       // 旧实现通过节点 props 捕获预算；现在由节点 Context 保留同一时机的快照。
@@ -681,6 +698,7 @@ export class WorkflowQueue {
         runtimeNodesMap: this.runtimeNodesMap,
         runtimeEdges: this.data.runtimeEdges,
         params,
+        ...(this.isDebugMode && { isDebugMode: true }),
         nodeResponseParentId: nodeResponseId
       };
 
@@ -1016,7 +1034,9 @@ export class WorkflowQueue {
           onWorkflowNodeStart({
             isRootRuntime: this.isRootRuntime,
             mode,
-            appId: String(this.data.runningAppInfo.sourceId)
+            appId: String(this.data.runningAppInfo.sourceId),
+            nodeId: node.nodeId,
+            nodeName: node.name
           });
           return withActiveSpan(
             {
@@ -1255,11 +1275,14 @@ export class WorkflowQueue {
       return;
     }
 
-    // Get node run status by edges (使用预构建的边分组)
-    const status = WorkflowQueue.getNodeRunStatus({
-      node,
-      nodeEdgeGroupsMap: this.nodeEdgeGroupsMap
-    });
+    // 回答的调试节点已在暂停时就绪；并行回路更新的边不应阻止这一次续跑。
+    const status = this.debugResumeNodeIds?.delete(node.nodeId)
+      ? 'run'
+      : WorkflowQueue.getNodeRunStatus({ node, nodeEdgeGroupsMap: this.nodeEdgeGroupsMap });
+    const debugIncomingStates =
+      this.isDebugMode && status === 'run'
+        ? this.edgeIndex.byTarget.get(node.nodeId)?.map((edge) => ({ edge, status: edge.status }))
+        : undefined;
 
     const nodeRunResult = await (async () => {
       if (status === 'run') {
@@ -1351,8 +1374,12 @@ export class WorkflowQueue {
     // In the current version, only one interactive node is allowed at the same time
     const interactiveResponse = nodeRunResult.result[DispatchNodeResponseKeyEnum.interactive];
     if (interactiveResponse) {
+      // 调试续跑需要本次消费前的入边状态，已跳过的分支不应被重新标为活跃。
       if (this.isDebugMode) {
-        this.debugNextStepRunNodes = this.debugNextStepRunNodes.concat([nodeRunResult.node]);
+        (this.debugPausedNodeIds ??= new Set()).add(nodeRunResult.node.nodeId);
+        for (const { edge, status } of debugIncomingStates ?? []) {
+          this.debugPausedEdgeStatuses.set(edge, status);
+        }
       }
       const nodeResponseId =
         nodeRunResult.runStatus === 'run'
@@ -1378,8 +1405,10 @@ export class WorkflowQueue {
       }
       return;
     } else if (this.isDebugMode) {
-      // Debug 模式下一步时候，会自己增加 activeNode
-      this.debugNextStepRunNodes = this.debugNextStepRunNodes.concat(nextStepActiveNodes);
+      // 汇合最后一条入边也可能被跳过，此时仍要检查其余已激活的入边。
+      for (const node of [...nextStepActiveNodes, ...nextStepSkipNodes]) {
+        this.debugNextStepCandidates.add(node);
+      }
     } else {
       nextStepActiveNodes.forEach((node) => {
         this.addActiveNode(node.nodeId);
@@ -1420,11 +1449,7 @@ export class WorkflowQueue {
         skippedNodeIdList: Array.from(item.skippedNodeIdList)
       })),
       entryNodeIds,
-      memoryEdges: this.data.runtimeEdges.map((edge) => ({
-        ...edge,
-        // 入口前面的边全部激活，保证下次进来一定能执行。
-        status: entryNodeIds.includes(edge.target) ? 'active' : edge.status
-      })),
+      memoryEdges: this.getMemoryEdgesForResume(entryNodeIds),
       nodeOutputs,
       usageId: this.data.usageId
     };
@@ -1440,14 +1465,40 @@ export class WorkflowQueue {
       interactive: interactiveResult
     };
   }
+
+  /** 调试复用正常调度的汇合判定，已暂停的交互节点保留为续跑入口。 */
+  private getDebugEntryNodeIds(): string[] {
+    const entryNodeIds = new Set(this.debugPausedNodeIds);
+    for (const node of this.debugNextStepCandidates) {
+      if (
+        WorkflowQueue.getNodeRunStatus({ node, nodeEdgeGroupsMap: this.nodeEdgeGroupsMap }) ===
+        'run'
+      ) {
+        entryNodeIds.add(node.nodeId);
+      }
+    }
+    return [...entryNodeIds];
+  }
+
+  /** 调试只回填暂停节点已消费的入边；同一步新产生的状态优先。普通交互沿用原续跑行为。 */
+  private getMemoryEdgesForResume(entryNodeIds?: Iterable<string>): RuntimeEdgeItemType[] {
+    const resumeNodeIds = new Set(entryNodeIds);
+    return this.data.runtimeEdges.map((edge) => {
+      const status = (() => {
+        if (!resumeNodeIds.has(edge.target)) return edge.status;
+        if (!this.isDebugMode) return 'active';
+        if (edge.status !== 'waiting') return edge.status;
+        return this.debugPausedEdgeStatuses.get(edge) ?? edge.status;
+      })();
+      return { ...edge, status };
+    });
+  }
+
   getDebugResponse(): WorkflowDebugResponse {
-    const entryNodeIds = this.debugNextStepRunNodes.map((item) => item.nodeId);
+    const entryNodeIds = this.isDebugMode ? this.getDebugEntryNodeIds() : [];
 
     return {
-      memoryEdges: this.data.runtimeEdges.map((edge) => ({
-        ...edge,
-        status: entryNodeIds.includes(edge.target) ? 'active' : edge.status
-      })),
+      memoryEdges: this.getMemoryEdgesForResume(this.debugPausedNodeIds),
       memoryNodes: Array.from(this.runtimeNodesMap.values()),
       entryNodeIds,
       nodeResponses: this.debugNodeResponses,

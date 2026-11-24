@@ -12,8 +12,10 @@ import {
 vi.unmock('../../src/isolated/js-isolation-config');
 
 const nativeAddonPath = join(process.cwd(), 'dist', 'fastgpt_js_sandbox.node');
+const nativeLauncherPath = join(process.cwd(), 'dist', 'fastgpt_js_launcher');
 const shouldRunNativeIsolation =
   shouldEnableJsNativeIsolation() && process.getuid?.() === 0 && existsSync(nativeAddonPath);
+const shouldRunSeccompIsolation = shouldRunNativeIsolation && existsSync(nativeLauncherPath);
 
 /**
  * 绕过 worker 的 JavaScript API guard，直接在原生隔离初始化后尝试危险能力。
@@ -22,7 +24,7 @@ const shouldRunNativeIsolation =
  * 进入 seccomp 前预加载，确保失败来自内核边界而非 safeRequire 白名单。
  */
 describe.skipIf(!shouldRunNativeIsolation)('JS native seccomp/chroot isolation', () => {
-  it('降权并从内核层阻断 socket 和 chroot 外文件', () => {
+  it.skipIf(!shouldRunSeccompIsolation)('降权并从内核层阻断 socket 和 chroot 外文件', () => {
     const sandboxRoot = mkdtempSync(join(tmpdir(), 'fastgpt-js-native-sandbox-'));
     const probe = `
 const fs = require('fs');
@@ -55,7 +57,9 @@ fs.writeSync(1, JSON.stringify(result) + '\\n');
 socket.close();
 `;
 
-    const result = spawnSync(process.execPath, ['-e', probe], {
+    // 开启 seccomp 时必须经 fastgpt_js_launcher 预禁 io_uring，与生产 worker 启动链一致，
+    // 避免 libuv 在 seccomp 生效后调用 io_uring_enter 触发 EPERM 崩溃。
+    const result = spawnSync(nativeLauncherPath, [process.execPath, '-e', probe], {
       cwd: sandboxRoot,
       encoding: 'utf8',
       timeout: 5000

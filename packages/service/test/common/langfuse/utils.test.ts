@@ -35,6 +35,17 @@ describe('serializeLangfuseValue', () => {
     ).toEqual({ answer: '1', nested: { value: 'visible' } });
   });
 
+  it('keeps explicitly allowed excluded keys only where the caller opts in', () => {
+    expect(
+      JSON.parse(
+        serializeLangfuseValue(
+          { reasoningText: 'think', history: ['private'] },
+          { keepExcludedKeys: new Set(['reasoningText']) }
+        ) ?? ''
+      )
+    ).toEqual({ reasoningText: 'think' });
+  });
+
   it('bounds strings, arrays, object keys and nesting depth', () => {
     const serialized = serializeLangfuseValue({
       longText: 'a'.repeat(10001),
@@ -116,10 +127,21 @@ describe('Langfuse initial attributes', () => {
       'langfuse.trace.name': 'message',
       'langfuse.session.id': 'chat-1',
       'langfuse.user.id': 'user-1',
-      'langfuse.trace.metadata.app_id': 'app-1'
-    });
-    expect(getLangfuseStepStartAttributes('app-1')).toEqual({
+      'langfuse.trace.metadata.app_id': 'app-1',
       'langfuse.observation.metadata.app_id': 'app-1'
+    });
+    expect(
+      getLangfuseStepStartAttributes({ appId: 'app-1', nodeId: 'node-1', nodeName: 'Node' })
+    ).toEqual({
+      'langfuse.observation.metadata.app_id': 'app-1',
+      'langfuse.observation.metadata.nodeId': 'node-1',
+      'langfuse.observation.metadata.nodeName': 'Node',
+      'langfuse.trace.name': 'message'
+    });
+    expect(getLangfuseStepStartAttributes({ appId: 'app-1', nodeId: 'node-1' })).toEqual({
+      'langfuse.observation.metadata.app_id': 'app-1',
+      'langfuse.observation.metadata.nodeId': 'node-1',
+      'langfuse.trace.name': 'message'
     });
   });
 });

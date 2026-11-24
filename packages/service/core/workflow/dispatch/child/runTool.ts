@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { NodeOutputKeyEnum, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import { getReferenceVariableValue } from '@fastgpt/global/common/workflow/runtime';
 import { jsonSchema2SecretInput } from '@fastgpt/global/core/app/jsonschema';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
@@ -32,9 +32,9 @@ import {
 import { isWorkflowResourceError, loadWorkflowAppResource } from '../../resource/service';
 import {
   getToolNameCandidates,
-  getToolRawId,
   isDebugToolSource,
-  isTeamPluginSource
+  isTeamPluginSource,
+  parseToolsetToolId
 } from '@fastgpt/global/core/app/tool/utils';
 import { pluginClient } from '../../../../thirdProvider/fastgptPlugin';
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
@@ -288,12 +288,13 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           }).generateToken()
         : undefined;
 
-      const formatToolId = getToolRawId(toolConfig.systemTool!.toolId);
-      const childId = toolConfig.systemTool.toolId.split('/')[1];
+      const { parentId: pluginId, toolName: childId } = parseToolsetToolId(
+        toolConfig.systemTool.toolId
+      );
       let answerText = '';
 
       const res = await pluginClient.runToolStream({
-        pluginId: formatToolId,
+        pluginId,
         version: tool.version ?? version ?? '',
         source: runtimeToolSource,
         input: toolInput,

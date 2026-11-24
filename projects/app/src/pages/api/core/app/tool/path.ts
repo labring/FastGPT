@@ -5,7 +5,8 @@ import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/system
 import {
   isDebugToolSource,
   isTeamPluginSource,
-  splitCombineToolId
+  splitCombineToolId,
+  splitToolsetToolPluginId
 } from '@fastgpt/global/core/app/tool/utils';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import {
@@ -64,8 +65,8 @@ export default NextAPI(handler);
 function getParentToolId({ toolId, source }: { toolId: string; source?: string }) {
   if (isDebugToolSource(source)) {
     const { pluginId, hasIdPrefix, idSource } = parseToolIdForPath(toolId);
-    const [parentPluginId, childPluginId] = pluginId.split('/');
-    if (!parentPluginId || !childPluginId) return;
+    const { parentId: parentPluginId, toolName } = splitToolsetToolPluginId(pluginId);
+    if (!parentPluginId || !toolName) return;
     return hasIdPrefix ? `${idSource}-${parentPluginId}` : parentPluginId;
   }
 
@@ -75,8 +76,8 @@ function getParentToolId({ toolId, source }: { toolId: string; source?: string }
     return;
   }
 
-  const [parentPluginId, childPluginId] = pluginId.split('/');
-  if (!parentPluginId || !childPluginId) return;
+  const { parentId: parentPluginId, toolName } = splitToolsetToolPluginId(pluginId);
+  if (!parentPluginId || !toolName) return;
 
   return `${idSource}-${parentPluginId}`;
 }

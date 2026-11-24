@@ -111,6 +111,9 @@ export const serviceEnv = createEnv({
         'mongodb://myusername:mypassword@localhost:27017/fastgpt?authSource=admin&directConnection=true'
       ),
     MONGODB_LOG_URI: z.string().optional(),
+    MONGO_DEPRECATE_INDEX: BoolSchema.default(true).meta({
+      description: '是否在 Mongo 索引同步阶段清理显式声明为 deprecated 的历史索引（默认开启）'
+    }),
 
     // VectorDB
     SEARCH_MONGO_URL: z.string().optional().meta({
@@ -181,10 +184,6 @@ export const serviceEnv = createEnv({
     FILE_DOWNLOAD_PUBLIC_URL_PREFIX: UrlSchema.optional().meta({
       description:
         '下载短链公开 URL 前缀。配置后下载链接生成为 {prefix}/{signedAlias}，通常由 nginx rewrite 到 FastGPT /api/system/file/d/{signedAlias}；仅影响下载，不影响上传'
-    }),
-    STORAGE_DOWNLOAD_SIGN_VERSION: z.enum(['v1', 'v2']).default('v2').meta({
-      description:
-        '下载短链签发格式版本（v1 点分格式 / v2 连字符带可选后缀格式，默认 v2）。滚动升级或先升级自定义 Nginx 短路径代理期间可暂设为 v1；服务端始终同时校验 v1 与 v2'
     }),
     NEXT_PUBLIC_BASE_URL: z.string().default(''),
 

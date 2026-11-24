@@ -1,8 +1,11 @@
-import React, { act } from 'react';
+import React, { act, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import AppDetailPanelModal from '@/pageComponents/app/detail/components/AppDetailPanelModal';
+import AppDetailPanelModal, {
+  APP_DETAIL_PANEL_TRANSITION_MS,
+  usePanelContentMounted
+} from '@/pageComponents/app/detail/components/AppDetailPanelModal';
 
 vi.mock('@chakra-ui/react', async () => {
   const { createElement } = await import('react');
@@ -30,9 +33,14 @@ vi.mock('@chakra-ui/react', async () => {
   };
 });
 vi.mock('@fastgpt/web/components/common/MyBox', async () => {
-  const { createElement } = await import('react');
+  const { createElement, forwardRef } = await import('react');
+  const MockMyBox = forwardRef<HTMLDivElement, { children?: React.ReactNode; tabIndex?: number }>(
+    ({ children, tabIndex }, ref) =>
+      createElement('div', { ref, tabIndex, 'data-panel-box': 'true' }, children)
+  );
+  MockMyBox.displayName = 'MockMyBox';
   return {
-    default: ({ children }: { children?: React.ReactNode }) => createElement('div', null, children)
+    default: MockMyBox
   };
 });
 
@@ -215,5 +223,111 @@ describe('调试侧栏 Escape', () => {
     });
     expect(exitFullscreen).toHaveBeenCalledTimes(1);
     expect(close).not.toHaveBeenCalled();
+  });
+
+  it('隐藏的外部弹窗不阻断全屏 Escape，且 trapFocus 仅接管外部焦点', () => {
+    const outside = document.createElement('button');
+    document.body.appendChild(outside);
+    outside.focus();
+
+    const hiddenDialog = document.createElement('div');
+    hiddenDialog.setAttribute('role', 'dialog');
+    hiddenDialog.setAttribute('aria-modal', 'true');
+    hiddenDialog.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(hiddenDialog);
+
+    const renderPanel = (trapFocus: boolean) =>
+      act(() =>
+        root.render(
+          React.createElement(
+            AppDetailPanelModal,
+            {
+              isOpen: true,
+              onClose: close,
+              onEscape: exitFullscreen,
+              trapFocus,
+              width: '400px',
+              height: '100vh',
+              header: '调试'
+            },
+            React.createElement('button', { 'data-testid': 'chat-action' }, '发送')
+          )
+        )
+      );
+
+    renderPanel(true);
+    const panel = document.querySelector('[data-panel-box="true"]');
+    expect(document.activeElement).toBe(panel);
+
+    act(() => {
+      document.dispatchEvent(
+        new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })
+      );
+    });
+    expect(exitFullscreen).toHaveBeenCalledTimes(1);
+
+    const action = document.querySelector<HTMLButtonElement>('[data-testid="chat-action"]')!;
+    act(() => action.focus());
+    renderPanel(false);
+    renderPanel(true);
+    expect(document.activeElement).toBe(action);
+  });
+});
+
+const PanelContentProbe = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const isContentMounted = usePanelContentMounted(isOpen);
+
+  return React.createElement(
+    'button',
+    {
+      'data-mounted': isContentMounted,
+      onClick: () => setIsOpen((value) => !value)
+    },
+    isContentMounted ? 'content' : null
+  );
+};
+
+describe('usePanelContentMounted', () => {
+  let root: Root;
+  let container: HTMLDivElement;
+
+  beforeEach(() => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>');
+    vi.stubGlobal('window', dom.window);
+    vi.stubGlobal('document', dom.window.document);
+    vi.stubGlobal('HTMLElement', dom.window.HTMLElement);
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    vi.useFakeTimers();
+
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+    window.close();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it('mounts on the first open and unmounts after the close transition', async () => {
+    await act(async () => root.render(React.createElement(PanelContentProbe)));
+    const button = container.querySelector('button')!;
+
+    expect(button.dataset.mounted).toBe('false');
+
+    await act(async () => button.click());
+    expect(button.dataset.mounted).toBe('true');
+    expect(button.textContent).toBe('content');
+
+    await act(async () => button.click());
+    expect(button.dataset.mounted).toBe('true');
+
+    await act(async () => vi.advanceTimersByTime(APP_DETAIL_PANEL_TRANSITION_MS));
+    expect(button.dataset.mounted).toBe('false');
+    expect(button.textContent).toBe('');
   });
 });

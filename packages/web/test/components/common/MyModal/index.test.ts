@@ -35,7 +35,8 @@ vi.mock('@chakra-ui/react', () => {
     ModalContent: Box,
     ModalHeader: Box,
     ModalOverlay: () => null,
-    ModalCloseButton: () => React.createElement('button', null, 'close'),
+    ModalCloseButton: (props: Record<string, unknown>) =>
+      React.createElement('button', { 'data-z-index': props.zIndex }, 'close'),
     Modal: ({ children, isOpen }: React.PropsWithChildren<{ isOpen: boolean }>) =>
       isOpen ? children : null
   };
@@ -133,4 +134,24 @@ describe('MyModal loading viewport', () => {
     expect(viewport.getAttribute('data-overflow')).toBe('unset');
     expect(viewport.parentElement?.getAttribute('data-overflow')).toBe('visible');
   });
+
+  it.each([
+    ['V1', ModalV1],
+    ['V2', ModalV2]
+  ] as const)(
+    '%s 无标题时关闭按钮位于正文外壳之上，不被 position: relative 遮挡',
+    async (_name, Modal) => {
+      await act(async () => {
+        root.render(
+          React.createElement(
+            Modal,
+            { onClose: vi.fn() },
+            React.createElement('div', null, '确认退出登录？')
+          )
+        );
+      });
+      const closeButton = host.querySelector('button');
+      expect(Number(closeButton?.getAttribute('data-z-index'))).toBeGreaterThanOrEqual(1);
+    }
+  );
 });

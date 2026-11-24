@@ -130,7 +130,8 @@ export const DevApiTagsMap = {
   adminWalletInvoice: '发票处理',
   adminWalletRefund: '退款管理',
   adminAuth: '认证',
-  adminAudit: '审计日志'
+  adminAudit: '审计日志',
+  adminOpsPerformance: '运维性能分析'
 };
 
 /** Scalar 文档导航中的标签展示名，key 保持 OpenAPI 内部标签唯一。 */

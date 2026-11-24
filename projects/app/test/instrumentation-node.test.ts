@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   cron: vi.fn(),
   training: vi.fn(),
   tracks: vi.fn(),
+  opsPerf: vi.fn(),
   loadModels: vi.fn(),
   reloadModels: vi.fn(),
   getInitConfig: vi.fn(),
@@ -85,7 +86,7 @@ vi.mock('@fastgpt/service/common/s3', async () => {
     })
   };
 });
-vi.mock('@/service/common/system/volumnMongoWatch', () => ({ startMongoWatch: mocks.watch }));
+vi.mock('@/service/common/system/sync', () => ({ startSystemSync: mocks.watch }));
 vi.mock('@/service/common/system/configPolling', () => ({
   startAppConfigPolling: mocks.configPolling
 }));
@@ -94,6 +95,9 @@ vi.mock('@/service/common/system/cron', () => ({ startCron: mocks.cron }));
 vi.mock('@/service/core/dataset/training/utils', () => ({ startTrainingQueue: mocks.training }));
 vi.mock('@fastgpt/service/common/middle/tracks/processor', () => ({
   trackTimerProcess: mocks.tracks
+}));
+vi.mock('@fastgpt/service/common/opsPerf/collector', () => ({
+  opsPerfTimerProcess: mocks.opsPerf
 }));
 vi.mock('@fastgpt/service/worker/preload', () => ({ preLoadWorker: vi.fn() }));
 vi.mock('@fastgpt/service/common/geo', () => ({ initGeo: vi.fn() }));
@@ -107,7 +111,13 @@ import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { formatDbModelToRuntimeModel } from '@fastgpt/service/core/ai/model/runtime';
-import { Types } from '@fastgpt/service/common/mongo';
+import {
+  connectionLogMongo,
+  connectionMongo,
+  hasSeparateMongoLogUri,
+  Types
+} from '@fastgpt/service/common/mongo';
+import * as mongoInit from '@fastgpt/service/common/mongo/init';
 import { redisCacheAdapter } from '@fastgpt/dal/redis/adapter';
 import { registerNodeInstrumentation } from '@/instrumentation-node';
 import { MongoSystemMigrationState } from '@/migration/mongoSchema';
@@ -390,8 +400,13 @@ describe('registerNodeInstrumentation', () => {
       explicitDefaultPaths: []
     });
 
+    const connectMongoSpy = vi.spyOn(mongoInit, 'connectMongo');
     try {
       await registerNodeInstrumentation();
+      expect(hasSeparateMongoLogUri).toBe(false);
+      expect(connectionLogMongo).toBe(connectionMongo);
+      // 默认 shared 模式下跳过冗余 connect-log-mongo 步骤，仅连接单一物理连接池。
+      expect(connectMongoSpy).toHaveBeenCalledTimes(1);
       expect(mocks.getInitConfig).toHaveBeenCalledTimes(2);
       expect(mocks.exit).not.toHaveBeenCalled();
       expect(getSystemInstanceConfig().subservice.agentSandbox).toMatchObject({

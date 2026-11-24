@@ -9,7 +9,7 @@ import { getApiSchemaByUrl } from '@/web/core/app/api/httpTools';
 import { getMCPTools } from '@/web/core/app/api/mcpTools';
 import { str2OpenApiSchema } from '@fastgpt/global/core/app/jsonschema';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import { getReferenceVariableValue } from '@fastgpt/global/common/workflow/runtime';
 import { getSecretReferenceValue } from '@fastgpt/global/common/secret/utils';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';

@@ -1,55 +1,70 @@
-import { isValidReferenceValueFormat } from '@fastgpt/global/common/workflow/reference';
+import {
+  DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES,
+  getWorkflowReferenceItems
+} from '@fastgpt/global/common/workflow/reference';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   MAX_SELECT_OPTION_COUNT,
   truncateSelectOptionText
 } from '@fastgpt/global/core/workflow/optionLimit';
-import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import {
-  getReferenceVariableValue,
-  valueTypeFormat
-} from '@fastgpt/global/core/workflow/runtime/utils';
-import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
+import type { ModuleDispatchProps } from '../../types/runtime';
+import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
+import { getReferenceVariableValue } from '@fastgpt/global/common/workflow/runtime';
+import { createRuntimeReferenceCheck, createRuntimeReferenceGraph } from '../utils/runtime';
+import { getWorkflowContext } from '../context';
 
 /**
  * 解析动态选项变量引用列表，按勾选顺序展开并拼接为选项字符串列表（不去重）。
  * - 数组值逐元素展开，非数组值作为单个选项
  * - undefined / null / 空数组 / 空白字符串不产生选项
  * - 单项超过 100 字符时截断，最多保留前 200 个有效选项
- * - 若输入非引用数组（如单步调试直接传入的字面量值），按相同规则展开
+ * - 单步调试的字面量由调用方标记，避免两个字符串被当成持久化引用
  */
-export const resolveDynamicOptionStrings = ({
-  value,
-  runtimeNodesMap = new Map(),
-  variables = {}
-}: {
-  value?: ReferenceValueType | unknown;
-  runtimeNodesMap?: Map<string, RuntimeNodeItemType>;
-  variables?: Record<string, unknown>;
-}): string[] => {
-  if (value === undefined || value === null) return [];
+export const createDynamicOptionResolver = ({
+  node,
+  runtimeNodesMap,
+  runtimeEdges,
+  chatConfig
+}: Pick<
+  ModuleDispatchProps<unknown>,
+  'node' | 'runtimeNodesMap' | 'runtimeEdges' | 'chatConfig'
+>) => {
+  let variables: Record<string, unknown> | undefined;
+  const isSelectable = createRuntimeReferenceCheck({
+    node,
+    runtimeNodesMap,
+    chatConfig,
+    ...createRuntimeReferenceGraph({
+      runtimeEdges,
+      runtimeNodesMap
+    })
+  });
 
-  const isReferenceArray =
-    Array.isArray(value) && value.every((item) => isValidReferenceValueFormat(item));
-  const rawList = isReferenceArray
-    ? value.flatMap((item) =>
-        isValidReferenceValueFormat(item, runtimeNodesMap)
-          ? [
+  return (value: unknown, literal = false): string[] => {
+    const rawList = literal
+      ? [value].flat()
+      : getWorkflowReferenceItems(value)
+          .filter((item) =>
+            isSelectable(item, { excludeValueTypes: DYNAMIC_OPTION_EXCLUDED_VALUE_TYPES })
+          )
+          .flatMap((item) =>
+            [
               getReferenceVariableValue({
                 value: item,
                 nodesMap: runtimeNodesMap,
-                variables
+                variables: (variables ??= getWorkflowContext().variableContext.toRuntimeRecord())
               })
             ].flat()
-          : []
-      )
-    : [value].flat();
+          );
 
-  return rawList
-    .filter((item) => item !== undefined && item !== null)
-    .map((item) =>
-      truncateSelectOptionText(String(valueTypeFormat(item, WorkflowIOValueTypeEnum.string)).trim())
-    )
-    .filter(Boolean)
-    .slice(0, MAX_SELECT_OPTION_COUNT);
+    return rawList
+      .filter((item) => item !== undefined && item !== null)
+      .map((item) =>
+        truncateSelectOptionText(
+          String(valueTypeFormat(item, WorkflowIOValueTypeEnum.string)).trim()
+        )
+      )
+      .filter(Boolean)
+      .slice(0, MAX_SELECT_OPTION_COUNT);
+  };
 };

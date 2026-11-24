@@ -69,7 +69,7 @@ catalog:
   file-type: 21.3.4
   gpt-tokenizer: 3.4.0
   hono: 4.13.16
-  i18next: 23.16.8
+  i18next: 26.3.4
   ipaddr.js: ^2.4.0
   js-yaml: ^4.3.2
   jsdom: 26.1.0

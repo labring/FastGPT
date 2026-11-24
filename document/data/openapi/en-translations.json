@@ -857,6 +857,10 @@
       "zh": "将文本内容存储为文件后创建集合并触发训练",
       "en": "Store raw text content as a file, create a collection, and trigger indexing training."
     },
+    "03aefa647fb2dfafd8ff9a0a885fc426f8ccfa5a838508ffc0d4a67a0c22c2c4": {
+      "zh": "子工具恢复时返回给模型的结构化内容",
+      "en": "Structured content the subtool returns to the model when it resumes"
+    },
     "03b35deb09573d055862bbaee2ca9fcc2ef1251f4aff0c82f464d41185cb279a": {
       "zh": "按游标搜索应用的对话日志列表，每页固定 50 条且不查询总数",
       "en": "Search app chat logs with cursor-based pagination. The page size is fixed at 50 and the response does not include a total count."
@@ -2109,6 +2113,10 @@
       "zh": "开场白配置",
       "en": "Opening prompt configuration"
     },
+    "4ba2b14c1224abb29eecd52bf51f7fda9405f885a696919aa3398f4a8e4462f4": {
+      "zh": "本档输入上限，单位 K Tokens；省略表示无限",
+      "en": "Upper input limit for this tier in thousands of tokens. Omit for unlimited"
+    },
     "4ba844729fc592b161d34dc49534830746ea58d1e2eb52c7e42b38e3e543eabe": {
       "zh": "通过 skillId 定位调试会话，优先于 appId 并忽略其 sourceType，使用接口允许的请求头凭证鉴权。",
       "en": "Identify the debug session via `skillId` (takes precedence over `appId` and ignores `sourceType`), authenticated with allowed request header credentials."
@@ -3004,6 +3012,10 @@
     "83dd4e2a508b413846dd2b63a2d588282d40f9fd404fbdceb76e19286084b23e": {
       "zh": "视觉语言模型 ID；未传不修改，null 或空字符串表示清空",
       "en": "VLM model ID; omitted leaves unchanged, `null` or empty string clears it"
+    },
+    "83fcb20cc534510ddf51f092578b876ecb3cfd58f96a4198cd3afd5e8bff4e7d": {
+      "zh": "工具实际返回给模型的结构化内容",
+      "en": "Structured content the tool returns to the model"
     },
     "840bb697c56165558f244e3bd23bb5c85a407c889b5445ac7bd8cf141c33b456": {
       "zh": "Token 用量。v1 接口为占位值，需要时请从 responseData 计算",

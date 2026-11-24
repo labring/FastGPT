@@ -35,7 +35,7 @@ import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { decodeToolSetNodesFromStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
 import { getAppResourceKey } from '@fastgpt/service/core/app/resource/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration/migrate';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/common/workflow/migration';
 import { cloneDeep } from 'lodash-es';
 import { Types } from 'mongoose';
 

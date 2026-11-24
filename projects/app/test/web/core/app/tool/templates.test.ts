@@ -404,6 +404,23 @@ describe('getNewToolPreviewNode', () => {
     };
     expect(mocks.GET).toHaveBeenCalledWith('/core/app/tool/getPreviewNode', expectedQuery);
   });
+
+  it('uses the returned tool type for a V2 child lookup containing hyphens', async () => {
+    const appId = '507f1f77bcf86cd799439011/get-weather';
+    const preview = {
+      pluginId: `mcp-${appId}`,
+      version: 'child-version',
+      inputs: [],
+      outputs: []
+    };
+    mocks.GET.mockResolvedValueOnce(preview);
+
+    await expect(getNewToolPreviewNode({ appId })).resolves.toBe(preview);
+    expect(mocks.GET).toHaveBeenCalledExactlyOnceWith('/core/app/tool/getPreviewNode', {
+      appId,
+      getLatestVersion: true
+    });
+  });
 });
 
 describe('getClientToolPreviewNode', () => {

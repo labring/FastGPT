@@ -45,6 +45,15 @@ describe('getDatasetVectorSearchData', () => {
       { datasetId: datasetIds[1], rows: 50, pgIndex: 'ready' }
     ]);
     expect(mocks.count).toHaveBeenCalledTimes(2);
+    expect(
+      await getDatasetVectorSearchData({
+        teamId,
+        datasetIds: [datasetIds[1], datasetIds[0], datasetIds[1]]
+      })
+    ).toEqual([
+      { datasetId: datasetIds[1], rows: 50, pgIndex: 'ready' },
+      { datasetId: datasetIds[0], rows: 50, pgIndex: 'none' }
+    ]);
     expect((await MongoDataset.findById(datasetIds[0]).lean())?.vectorData).toBeUndefined();
     expect(
       await getDatasetVectorSearchData({ teamId: String(new Types.ObjectId()), datasetIds })

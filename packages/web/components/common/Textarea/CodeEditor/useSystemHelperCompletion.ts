@@ -2,12 +2,12 @@ import { type Monaco } from '@monaco-editor/react';
 import { useCallback } from 'react';
 import { type CompletionModel, type CompletionPosition } from './type';
 
-let monacoInstance: Monaco | null = null;
+const registeredMonacoInstances = new WeakSet<Monaco>();
 
 const useSystemHelperCompletion = () => {
   return useCallback((monaco: Monaco) => {
-    if (monacoInstance === monaco) return;
-    monacoInstance = monaco;
+    if (registeredMonacoInstances.has(monaco)) return;
+    registeredMonacoInstances.add(monaco);
 
     const buildSuggestions = (
       monaco: Monaco,

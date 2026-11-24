@@ -12,6 +12,7 @@ describe('resolveTestPlan', () => {
       expect.arrayContaining([
         '--concurrency=1',
         '--filter=@fastgpt/app',
+        '--filter=@fastgpt/dal',
         '--filter=@fastgpt/web',
         '--filter=@fastgpt/workflow-core',
         '--filter=@fastgpt/cli'
@@ -22,12 +23,20 @@ describe('resolveTestPlan', () => {
 
   it.each([
     {
+      scopeValue: 'dal',
+      filters: ['--filter=@fastgpt/dal']
+    },
+    {
       scopeValue: 'global,service',
       filters: ['--filter=@fastgpt/global', '--filter=@fastgpt/service']
     },
     {
       scopeValue: 'workflow-core,cli',
       filters: ['--filter=@fastgpt/workflow-core', '--filter=@fastgpt/cli']
+    },
+    {
+      scopeValue: 'sdk,sdk-codegen',
+      filters: ['--filter=@fastgpt/sdk', '--filter=@fastgpt-sdk/openapi-codegen']
     }
   ])('filters unit tests to the requested $scopeValue scopes', ({ scopeValue, filters }) => {
     const plan = resolveTestPlan({ scopeValue });

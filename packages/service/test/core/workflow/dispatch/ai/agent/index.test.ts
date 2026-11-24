@@ -13,6 +13,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
 import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/application/runtime';
@@ -502,8 +503,13 @@ describe('dispatchRunAgent user context', () => {
         avatar: 'search.svg',
         params: {},
         promptReference: {
-          id: 'mcp-app_1/search',
-          name: 'Search documentation'
+          name: 'Search documentation',
+          legacyExactKeys: ['mcp-app_1/LegacyToolset/search'],
+          ref: {
+            type: 'app',
+            source: 'team',
+            id: 'app_1/search'
+          }
         },
         requestSchema: {
           type: 'function',
@@ -518,7 +524,8 @@ describe('dispatchRunAgent user context', () => {
       }
     ]);
     const props = createProps();
-    props.params.systemPrompt = '优先使用 {{@mcp-app_1/search@}}';
+    props.params.systemPrompt =
+      '优先使用 {{@mcp-app_1/search@}} 与旧三段 {{@mcp-app_1/LegacyToolset/search@}}，缺失保持 {{@app:team:app_1/LegacyToolset/search@}} 和 {{@missing@}}';
     props.params.agent_selectedTools = [{ id: 'mcp-app_1/search', config: {} }];
 
     let resultPromise: Promise<any>;
@@ -533,8 +540,293 @@ describe('dispatchRunAgent user context', () => {
     await resultPromise!;
 
     const systemPrompt = runAgentLoopMock.mock.calls[0][0].input.systemPrompt;
-    expect(systemPrompt).toContain('{{Search documentation}}');
-    expect(systemPrompt).not.toContain('{{@mcp-app_1/search@}}');
+    expect(systemPrompt).toContain(
+      '优先使用 {{Search documentation}} 与旧三段 {{Search documentation}}，缺失保持 {{@app:team:app_1/LegacyToolset/search@}} 和 {{@missing@}}'
+    );
+  });
+
+  it('resolves V2 and legacy tool/skill/builtin prompt refs while keeping deleted or errored skills unresolved', async () => {
+    const skillId = '68b2000000000000000000aa';
+    const unavailableSkillId = '68b2000000000000000000bb';
+    authSkillByTmbIdMock
+      .mockResolvedValueOnce({
+        skill: { _id: skillId, name: 'PDF深度分析技能', source: 'personal' }
+      })
+      .mockRejectedValueOnce(SkillErrEnum.unAuthSkill);
+    getAgentSkillInfosMock.mockResolvedValueOnce([
+      {
+        id: './skills/pdf/SKILL.md',
+        name: 'pdf-analyzer',
+        description: 'Analyze PDF',
+        directory: './skills/pdf',
+        skillMdPath: './skills/pdf/SKILL.md',
+        appId: skillId,
+        appName: 'PDF深度分析技能',
+        appSource: 'personal'
+      }
+    ]);
+    getAgentRuntimeToolsMock.mockResolvedValue([
+      {
+        type: 'tool',
+        id: 'sys_metaso',
+        name: '秘塔官方',
+        inputs: [],
+        agentGeneratedInputKeys: [],
+        promptReference: {
+          name: '秘塔官方',
+          ref: {
+            type: 'plugin',
+            source: 'system',
+            id: 'metaso'
+          }
+        },
+        params: {},
+        requestSchema: {
+          type: 'function',
+          function: {
+            name: 'sys_metaso',
+            description: '秘塔官方',
+            parameters: { type: 'object' }
+          }
+        }
+      }
+    ]);
+
+    const props = createProps();
+    props.params.useAgentSandbox = true;
+    props.params.skills = [
+      {
+        skillId,
+        source: 'personal',
+        name: 'PDF深度分析技能',
+        description: ''
+      },
+      {
+        skillId: unavailableSkillId,
+        source: 'personal',
+        name: '未部署技能',
+        description: ''
+      }
+    ];
+    props.params.systemPrompt =
+      '工具 {{@plugin:system:metaso@}}，技能 {{@skill:team:68b2000000000000000000aa@}}，未部署 {{@skill:team:68b2000000000000000000bb@}}，越权 {{@skill:team:68b2000000000000000000ee@}}，知识库 {{@builtin:dataset_search@}}，虚拟机 {{@builtin:agent_sandbox@}}';
+    props.params.agent_selectedTools = [{ id: 'systemTool-metaso', source: 'system', config: {} }];
+
+    let resultPromise: Promise<any>;
+    runWithContext({ mcpClientMemory: {} }, () => {
+      resultPromise = dispatchRunAgent(props);
+    });
+    await resultPromise!;
+
+    const systemPrompt = runAgentLoopMock.mock.calls[0][0].input.systemPrompt;
+    expect(systemPrompt).toContain('工具 {{秘塔官方}}');
+    expect(systemPrompt).toContain('技能 {{PDF深度分析技能}}');
+    expect(systemPrompt).toContain('未部署 {{@skill:team:68b2000000000000000000bb@}}');
+    expect(systemPrompt).toContain('越权 {{@skill:team:68b2000000000000000000ee@}}');
+    expect(systemPrompt).toContain('知识库 {{');
+    expect(systemPrompt).not.toContain('{{@builtin:dataset_search@}}');
+    expect(systemPrompt).not.toContain('{{@builtin:agent_sandbox@}}');
+  });
+
+  it('disambiguates same-name plugins from different sources using model function names', async () => {
+    getAgentRuntimeToolsMock.mockResolvedValue([
+      {
+        type: 'tool',
+        id: 'getTime',
+        name: 'Get Time',
+        inputs: [],
+        agentGeneratedInputKeys: [],
+        promptReference: {
+          name: 'Get Time',
+          ref: {
+            type: 'plugin',
+            source: 'system',
+            id: 'getTime'
+          }
+        },
+        params: {},
+        requestSchema: {
+          type: 'function',
+          function: {
+            name: 'getTime',
+            description: 'Get Time',
+            parameters: { type: 'object' }
+          }
+        }
+      },
+      {
+        type: 'tool',
+        id: 'team_fn_get_time',
+        name: 'Get Time',
+        inputs: [],
+        agentGeneratedInputKeys: [],
+        promptReference: {
+          name: 'Get Time',
+          ref: {
+            type: 'plugin',
+            source: 'team',
+            teamId: '67a100000000000000000001',
+            id: 'getTime'
+          }
+        },
+        params: {},
+        requestSchema: {
+          type: 'function',
+          function: {
+            name: 'team_fn_get_time',
+            description: 'Get Time',
+            parameters: { type: 'object' }
+          }
+        }
+      },
+      {
+        type: 'tool',
+        id: 'debug_fn_get_time',
+        name: 'Get Time',
+        inputs: [],
+        agentGeneratedInputKeys: [],
+        promptReference: {
+          name: 'Get Time',
+          ref: {
+            type: 'plugin',
+            source: 'debug',
+            tmbId: '67d300000000000000000002',
+            id: 'getTime'
+          }
+        },
+        params: {},
+        requestSchema: {
+          type: 'function',
+          function: {
+            name: 'debug_fn_get_time',
+            description: 'Get Time',
+            parameters: { type: 'object' }
+          }
+        }
+      }
+    ]);
+
+    const props = createProps();
+    props.params.systemPrompt =
+      '系统 {{@plugin:system:getTime@}}，团队 {{@plugin:team:67a100000000000000000001:getTime@}}，调试 {{@plugin:debug:67d300000000000000000002:getTime@}}';
+    props.params.agent_selectedTools = [
+      { id: 'systemTool-getTime', source: 'system', config: {} },
+      { id: 'systemTool-getTime', source: 'teamId:67a100000000000000000001', config: {} },
+      { id: 'systemTool-getTime', source: 'debug:tmbId:67d300000000000000000002', config: {} }
+    ];
+
+    let resultPromise: Promise<any>;
+    runWithContext({ mcpClientMemory: {} }, () => {
+      resultPromise = dispatchRunAgent(props);
+    });
+    await resultPromise!;
+
+    const loopInput = runAgentLoopMock.mock.calls[0][0].input;
+    expect(loopInput.systemPrompt).toContain('系统 {{Get Time (getTime)}}');
+    expect(loopInput.systemPrompt).toContain('团队 {{Get Time (team_fn_get_time)}}');
+    expect(loopInput.systemPrompt).toContain('调试 {{Get Time (debug_fn_get_time)}}');
+  });
+
+  it('does not resolve builtin:agent_sandbox or skills when sandbox is disabled', async () => {
+    getTestInstanceConfig().subservice.agentSandbox.provider = 'none';
+    const props = createProps();
+    props.params.useAgentSandbox = true;
+    props.params.skills = [
+      {
+        skillId: '68b2000000000000000000aa',
+        source: 'personal',
+        name: 'PDF深度分析技能',
+        description: ''
+      }
+    ];
+    props.params.systemPrompt =
+      '虚拟机 {{@builtin:agent_sandbox@}}，技能 {{@skill:team:68b2000000000000000000aa@}}';
+
+    let resultPromise: Promise<any>;
+    runWithContext({ mcpClientMemory: {} }, () => {
+      resultPromise = dispatchRunAgent(props);
+    });
+    await resultPromise!;
+
+    const systemPrompt = runAgentLoopMock.mock.calls[0][0].input.systemPrompt;
+    expect(systemPrompt).toContain('虚拟机 {{@builtin:agent_sandbox@}}');
+    expect(systemPrompt).toContain('技能 {{@skill:team:68b2000000000000000000aa@}}');
+  });
+
+  it('derives builtin prompt refs directly from runtime.systemTools so tool catalog and systemPrompt stay in sync', async () => {
+    // 1. ChatAgent 关闭上传控件但聊天 API 直接传入 file_url，且清空知识库与沙盒：
+    //    runtime.systemTools.readFile 仍启用，datasetSearch 与 sandbox 未启用；提示词引用必须与实际工具目录严格一致。
+    const chatAgentProps = createProps();
+    chatAgentProps.chatConfig = {
+      fileSelectConfig: {
+        canSelectFile: false,
+        canSelectImg: false,
+        canSelectVideo: false,
+        canSelectAudio: false,
+        canSelectCustomFileExtension: false
+      }
+    };
+    chatAgentProps.query = runtimePrompt2ChatsValue({
+      text: '读取附件',
+      files: [
+        {
+          type: ChatFileTypeEnum.file,
+          name: 'api-upload.pdf',
+          url: 'https://files.example.com/api-upload.pdf'
+        }
+      ]
+    });
+    chatAgentProps.params.agent_datasetParams = {
+      ...chatAgentProps.params.agent_datasetParams,
+      datasets: []
+    };
+    chatAgentProps.params.useAgentSandbox = false;
+    chatAgentProps.params.systemPrompt =
+      '知识库 {{@builtin:dataset_search@}}，文件 {{@builtin:read_files@}}，虚拟机 {{@builtin:agent_sandbox@}}';
+
+    let chatAgentPromise: Promise<any>;
+    runWithContext({ mcpClientMemory: {} }, () => {
+      chatAgentPromise = dispatchRunAgent(chatAgentProps);
+    });
+    await chatAgentPromise!;
+
+    const chatAgentCall = runAgentLoopMock.mock.calls[0][0];
+    expect(chatAgentCall.runtime.systemTools?.readFile?.enabled).toBe(true);
+    expect(chatAgentCall.runtime.systemTools?.datasetSearch).toBeUndefined();
+    expect(chatAgentCall.runtime.systemTools?.sandbox).toBeUndefined();
+    expect(
+      chatAgentCall.input.messages
+        .map((message: ChatCompletionMessageParam) => getMessageTextForTest(message.content))
+        .join('\n')
+    ).toContain('api-upload.pdf');
+    expect(chatAgentCall.input.systemPrompt).not.toContain('{{@builtin:read_files@}}');
+    expect(chatAgentCall.input.systemPrompt).toContain('知识库 {{@builtin:dataset_search@}}');
+    expect(chatAgentCall.input.systemPrompt).toContain('虚拟机 {{@builtin:agent_sandbox@}}');
+
+    // 2. Workflow NodeAgent：开启知识库与沙盒后，runtime.systemTools 与提示词三项内置引用全部对齐。
+    const enabledWorkflowProps = createProps();
+    delete (enabledWorkflowProps.params as any).agent_datasetParams;
+    enabledWorkflowProps.params[NodeInputKeyEnum.datasetSelectList] = [
+      { datasetId: 'dataset_1', name: 'KB 1', avatar: '', vectorModel: { model: 'embed' } }
+    ] as any;
+    enabledWorkflowProps.params.useAgentSandbox = true;
+    enabledWorkflowProps.node.inputs = [{ key: NodeInputKeyEnum.fileUrlList, value: [] } as any];
+    enabledWorkflowProps.params.systemPrompt =
+      '知识库 {{@builtin:dataset_search@}}，文件 {{@builtin:read_files@}}，虚拟机 {{@builtin:agent_sandbox@}}';
+
+    let enabledWorkflowPromise: Promise<any>;
+    runWithContext({ mcpClientMemory: {} }, () => {
+      enabledWorkflowPromise = dispatchRunAgent(enabledWorkflowProps);
+    });
+    await enabledWorkflowPromise!;
+
+    const enabledWorkflowCall = runAgentLoopMock.mock.calls[1][0];
+    expect(enabledWorkflowCall.runtime.systemTools?.datasetSearch?.enabled).toBe(true);
+    expect(enabledWorkflowCall.runtime.systemTools?.readFile?.enabled).toBe(true);
+    expect(enabledWorkflowCall.runtime.systemTools?.sandbox?.enabled).toBe(true);
+    expect(enabledWorkflowCall.input.systemPrompt).not.toContain('{{@builtin:dataset_search@}}');
+    expect(enabledWorkflowCall.input.systemPrompt).not.toContain('{{@builtin:read_files@}}');
+    expect(enabledWorkflowCall.input.systemPrompt).not.toContain('{{@builtin:agent_sandbox@}}');
   });
 
   it('uses the default agent system prompt when the user prompt is omitted', async () => {

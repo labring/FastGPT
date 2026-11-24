@@ -6,12 +6,15 @@ import React, { createContext, useCallback, useContext, useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { WorkflowNodeData } from '@fastgpt/global/core/workflow/editor/types';
 import type {
   SelectedAgentSkillItemType,
   SelectedToolItemType
 } from '@fastgpt/global/core/app/formEdit/type';
-import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
+import {
+  removeSelectedTool,
+  upsertSelectedTool
+} from '@/pageComponents/app/detail/Edit/ChatAgent/utils';
 import { useTranslation } from 'next-i18next';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useAgentSkillSelect } from '@/pageComponents/app/detail/Edit/ChatAgent/hooks/useAgentSkillSelect';
@@ -19,19 +22,29 @@ import { useSkillManager } from '@/pageComponents/app/detail/Edit/ChatAgent/hook
 import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
-import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
+import { useAgentSandboxCapability } from '@/pageComponents/app/detail/hooks/useAgentSandboxCapability';
+import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { useFieldActions } from '@/web/core/workflow/editor/react/useField';
+import { useNodeWorkflowDocument } from '../render/useWorkflowDocument';
 import { getEditorVariables } from '../../../utils';
 
+const emptyInputs: WorkflowNodeData['inputs'] = [];
+
 /** 仅适配 Agent 节点的输入更新、提示词资源和共享选择逻辑，不维护另一套表单渲染。 */
-const useAgentNodeInputs = ({ nodeId, inputs }: FlowNodeItemType) => {
+const useAgentNodeInputs = (nodeId: string) => {
   const { t } = useTranslation();
-  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { getNodeById, edges } = useContextSelector(WorkflowBufferDataContext, (v) => v);
-  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
+  const nodeActions = useNodeActions(nodeId);
+  const inputs =
+    useNode<WorkflowNodeData['inputs']>(nodeId, (node) => node?.data.inputs) ?? emptyInputs;
+  const promptField = useFieldActions({
+    nodeId,
+    fieldKey: NodeInputKeyEnum.aiSystemPrompt,
+    kind: 'input'
+  });
+  const appId = useContextSelector(AppContext, (v) => v.appId);
   const { feConfigs } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
+  const { showSandbox, enableSandbox } = useAgentSandboxCapability();
+  const { workflow, getNodeById, graph } = useNodeWorkflowDocument({ nodeId });
   const inputMap = useMemo(() => new Map(inputs.map((input) => [input.key, input])), [inputs]);
   const selectedTools = useMemo<SelectedToolItemType[]>(() => {
     const value = inputMap.get(NodeInputKeyEnum.selectedTools)?.value;
@@ -45,86 +58,79 @@ const useAgentNodeInputs = ({ nodeId, inputs }: FlowNodeItemType) => {
   const datasets = datasetInput?.value;
   const useAgentSandbox = Boolean(inputMap.get(NodeInputKeyEnum.useAgentSandbox)?.value);
 
-  const updateInputs = useCallback(
+  /** 字段值写入当前 Runtime 记录；技能与沙盒联动时使用同一节点事务。 */
+  const updateInputFields = useCallback(
     (values: Record<string, unknown>) => {
-      onChangeNode(
-        Object.entries(values).flatMap(([key, value]) => {
-          const input = inputMap.get(key);
-          return input
-            ? [{ nodeId, key, type: 'updateInput' as const, value: { ...input, value } }]
-            : [];
-        })
-      );
+      nodeActions?.updateNode((current) => ({
+        inputs: current.inputs.map((input) =>
+          Object.prototype.hasOwnProperty.call(values, input.key)
+            ? { ...input, value: values[input.key] }
+            : input
+        )
+      }));
     },
-    [inputMap, nodeId, onChangeNode]
+    [nodeActions]
   );
   const onUpdateSkills = useCallback(
     (
       update: (skills: SelectedAgentSkillItemType[]) => SelectedAgentSkillItemType[],
       enableSandbox?: boolean
     ) => {
-      updateInputs({
-        [NodeInputKeyEnum.skills]: update(selectedAgentSkills),
-        ...(enableSandbox ? { [NodeInputKeyEnum.useAgentSandbox]: true } : {})
-      });
+      nodeActions?.updateNode((current) => ({
+        inputs: current.inputs.map((input) => {
+          if (input.key === NodeInputKeyEnum.skills) {
+            const skills = Array.isArray(input.value) ? input.value : [];
+            return { ...input, value: update(skills) };
+          }
+          if (input.key === NodeInputKeyEnum.useAgentSandbox && enableSandbox) {
+            return { ...input, value: true };
+          }
+          return input;
+        })
+      }));
     },
-    [selectedAgentSkills, updateInputs]
+    [nodeActions]
   );
   const onUpdateSandbox = useCallback(
     (checked: boolean) => {
-      updateInputs({ [NodeInputKeyEnum.useAgentSandbox]: checked });
+      updateInputFields({ [NodeInputKeyEnum.useAgentSandbox]: checked });
     },
-    [updateInputs]
+    [updateInputFields]
   );
   const skillSelection = useAgentSkillSelect({
     selectedAgentSkills,
     useAgentSandbox,
-    showSandbox: feConfigs.show_agent_sandbox,
-    enableSandbox: !teamPlanStatus?.standard || !!teamPlanStatus.standard.enableSandbox,
+    showSandbox,
+    enableSandbox,
     onUpdateSkills,
     onUpdateSandbox
   });
 
-  /** 异步工具预览可能保留旧回调，写入时读取当前列表和输入定义，保留期间的编辑。 */
+  /** 工具预览可能异步返回；写入时从 Runtime 的最新节点读取，避免覆盖期间编辑。 */
   const updateTools = useCallback(
     (update: (tools: SelectedToolItemType[]) => SelectedToolItemType[]) => {
-      const input = getNodeById(nodeId)?.inputs.find(
-        (input) => input.key === NodeInputKeyEnum.selectedTools
-      );
-      if (!input) return;
-
-      const tools: SelectedToolItemType[] = Array.isArray(input.value) ? input.value : [];
-      onChangeNode({
-        nodeId,
-        key: NodeInputKeyEnum.selectedTools,
-        type: 'updateInput',
-        value: { ...input, value: update(tools) }
-      });
+      nodeActions?.updateNode((current) => ({
+        inputs: current.inputs.map((input) => {
+          if (input.key !== NodeInputKeyEnum.selectedTools) return input;
+          const tools = Array.isArray(input.value) ? input.value : [];
+          return { ...input, value: update(tools) };
+        })
+      }));
     },
-    [getNodeById, nodeId, onChangeNode]
+    [nodeActions]
   );
 
   const onUpdateOrAddTool = useCallback(
     (tool: SelectedToolItemType) => {
       const id = tool.pluginId ?? tool.id;
       const nextTool = { ...tool, id, pluginId: id };
-      const key = getToolIdentityKey(id, tool.source);
-      const matches = (item: SelectedToolItemType) =>
-        getToolIdentityKey(item.pluginId ?? item.id, item.source) === key;
-      updateTools((tools) =>
-        tools.some(matches)
-          ? tools.map((item) => (matches(item) ? nextTool : item))
-          : [nextTool, ...tools]
-      );
+      updateTools((tools) => upsertSelectedTool(tools, nextTool));
     },
     [updateTools]
   );
   const onDeleteTool = useCallback(
     (id: string, source?: string) => {
-      const key = getToolIdentityKey(id, source);
-      updateTools((tools) =>
-        tools.filter((tool) => getToolIdentityKey(tool.pluginId ?? tool.id, tool.source) !== key)
-      );
+      updateTools((tools) => removeSelectedTool(tools, { id, source }));
     },
     [updateTools]
   );
@@ -149,7 +155,7 @@ const useAgentNodeInputs = ({ nodeId, inputs }: FlowNodeItemType) => {
     canUploadFile,
     hasSelectedDataset,
     useAgentSandbox,
-    currentAppId: appDetail._id,
+    currentAppId: appId || undefined,
     onClickDatasetSearch: () => {
       const attribute = hasSelectedDataset
         ? 'data-dataset-params-trigger'
@@ -157,10 +163,16 @@ const useAgentNodeInputs = ({ nodeId, inputs }: FlowNodeItemType) => {
       document.querySelector<HTMLElement>(`[${attribute}="${nodeId}"]`)?.click();
     }
   });
-  const editorVariables = useMemoEnhance(
-    () => getEditorVariables({ nodeId, getNodeById, edges, appDetail, t }),
-    [nodeId, getNodeById, edges, appDetail, t]
-  );
+  const editorVariables = useMemoEnhance(() => {
+    if (!workflow || !graph) return [];
+    return getEditorVariables({
+      nodeId,
+      getNodeById,
+      chatConfig: workflow.chatConfig,
+      t,
+      getSourceNodeIds: (sourceNodeId) => graph.getSourceNodeIds({ nodeId: sourceNodeId })
+    });
+  }, [nodeId, workflow, getNodeById, graph, t]);
   const allVariables = useMemo(
     () => [
       ...editorVariables,
@@ -173,9 +185,9 @@ const useAgentNodeInputs = ({ nodeId, inputs }: FlowNodeItemType) => {
   );
   const onPromptChange = useCallback(
     (value: string) => {
-      updateInputs({ [NodeInputKeyEnum.aiSystemPrompt]: value });
+      promptField.setValue(value);
     },
-    [updateInputs]
+    [promptField]
   );
 
   return {
@@ -205,19 +217,26 @@ export const useAgentNodeInputContext = () => {
 
 /** 向模板渲染器提供 Agent 上下文，并统一挂载配置/套餐提示弹窗。 */
 export const AgentNodeInputProvider = ({
-  data,
+  nodeId,
   children
 }: {
-  data: FlowNodeItemType;
+  nodeId: string;
   children: React.ReactNode;
 }) => {
-  const context = useAgentNodeInputs(data);
+  const context = useAgentNodeInputs(nodeId);
   const { ConfirmModal, isOpenRecharge, onCloseRecharge } = context.skillSelection;
   return (
     <AgentNodeInputContext.Provider value={context}>
       {children}
       <ConfirmModal />
-      {isOpenRecharge && <RechargeModal onClose={onCloseRecharge} onPaySuccess={onCloseRecharge} />}
+      {isOpenRecharge && (
+        <RechargeModal
+          onClose={onCloseRecharge}
+          onPaySuccess={() => {
+            onCloseRecharge();
+          }}
+        />
+      )}
       {context.skillManager.toolConfigModal}
     </AgentNodeInputContext.Provider>
   );

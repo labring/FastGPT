@@ -3689,22 +3689,95 @@
                                                 {
                                                   "type": "array",
                                                   "items": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                      "type": {
-                                                        "type": "string",
-                                                        "const": "text"
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "object",
+                                                        "properties": {
+                                                          "type": {
+                                                            "allOf": [
+                                                              {
+                                                                "type": "string",
+                                                                "const": "text"
+                                                              }
+                                                            ],
+                                                            "x-fastgpt-union-parameter": {
+                                                              "label": "",
+                                                              "position": "first"
+                                                            }
+                                                          },
+                                                          "text": {
+                                                            "allOf": [
+                                                              {
+                                                                "type": "string"
+                                                              }
+                                                            ],
+                                                            "x-fastgpt-union-parameter": {
+                                                              "label": "",
+                                                              "position": "last"
+                                                            }
+                                                          },
+                                                          "key": {
+                                                            "type": "string"
+                                                          }
+                                                        },
+                                                        "required": [
+                                                          "type",
+                                                          "text"
+                                                        ],
+                                                        "description": ""
                                                       },
-                                                      "text": {
-                                                        "type": "string"
-                                                      },
-                                                      "key": {
-                                                        "type": "string"
+                                                      {
+                                                        "type": "object",
+                                                        "properties": {
+                                                          "type": {
+                                                            "allOf": [
+                                                              {
+                                                                "type": "string",
+                                                                "const": "image_url"
+                                                              }
+                                                            ],
+                                                            "x-fastgpt-union-parameter": {
+                                                              "label": "",
+                                                              "position": "first"
+                                                            }
+                                                          },
+                                                          "image_url": {
+                                                            "allOf": [
+                                                              {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                  "url": {
+                                                                    "type": "string"
+                                                                  },
+                                                                  "detail": {
+                                                                    "type": "string",
+                                                                    "enum": [
+                                                                      "auto",
+                                                                      "low",
+                                                                      "high"
+                                                                    ]
+                                                                  }
+                                                                },
+                                                                "required": [
+                                                                  "url"
+                                                                ]
+                                                              }
+                                                            ],
+                                                            "x-fastgpt-union-parameter": {
+                                                              "label": "",
+                                                              "position": "last"
+                                                            }
+                                                          },
+                                                          "key": {
+                                                            "type": "string"
+                                                          }
+                                                        },
+                                                        "required": [
+                                                          "type",
+                                                          "image_url"
+                                                        ],
+                                                        "description": ""
                                                       }
-                                                    },
-                                                    "required": [
-                                                      "type",
-                                                      "text"
                                                     ]
                                                   }
                                                 }
@@ -4907,22 +4980,95 @@
                                                 {
                                                   "type": "array",
                                                   "items": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                      "type": {
-                                                        "type": "string",
-                                                        "const": "text"
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "object",
+                                                        "properties": {
+                                                          "type": {
+                                                            "allOf": [
+                                                              {
+                                                                "type": "string",
+                                                                "const": "text"
+                                                              }
+                                                            ],
+                                                            "x-fastgpt-union-parameter": {
+                                                              "label": "",
+                                                              "position": "first"
+                                                            }
+                                                          },
+                                                          "text": {
+                                                            "allOf": [
+                                                              {
+                                                                "type": "string"
+                                                              }
+                                                            ],
+                                                            "x-fastgpt-union-parameter": {
+                                                              "label": "",
+                                                              "position": "last"
+                                                            }
+                                                          },
+                                                          "key": {
+                                                            "type": "string"
+                                                          }
+                                                        },
+                                                        "required": [
+                                                          "type",
+                                                          "text"
+                                                        ],
+                                                        "description": ""
                                                       },
-                                                      "text": {
-                                                        "type": "string"
-                                                      },
-                                                      "key": {
-                                                        "type": "string"
+                                                      {
+                                                        "type": "object",
+                                                        "properties": {
+                                                          "type": {
+                                                            "allOf": [
+                                                              {
+                                                                "type": "string",
+                                                                "const": "image_url"
+                                                              }
+                                                            ],
+                                                            "x-fastgpt-union-parameter": {
+                                                              "label": "",
+                                                              "position": "first"
+                                                            }
+                                                          },
+                                                          "image_url": {
+                                                            "allOf": [
+                                                              {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                  "url": {
+                                                                    "type": "string"
+                                                                  },
+                                                                  "detail": {
+                                                                    "type": "string",
+                                                                    "enum": [
+                                                                      "auto",
+                                                                      "low",
+                                                                      "high"
+                                                                    ]
+                                                                  }
+                                                                },
+                                                                "required": [
+                                                                  "url"
+                                                                ]
+                                                              }
+                                                            ],
+                                                            "x-fastgpt-union-parameter": {
+                                                              "label": "",
+                                                              "position": "last"
+                                                            }
+                                                          },
+                                                          "key": {
+                                                            "type": "string"
+                                                          }
+                                                        },
+                                                        "required": [
+                                                          "type",
+                                                          "image_url"
+                                                        ],
+                                                        "description": ""
                                                       }
-                                                    },
-                                                    "required": [
-                                                      "type",
-                                                      "text"
                                                     ]
                                                   }
                                                 }
@@ -6176,22 +6322,95 @@
                                                 {
                                                   "type": "array",
                                                   "items": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                      "type": {
-                                                        "type": "string",
-                                                        "const": "text"
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "object",
+                                                        "properties": {
+                                                          "type": {
+                                                            "allOf": [
+                                                              {
+                                                                "type": "string",
+                                                                "const": "text"
+                                                              }
+                                                            ],
+                                                            "x-fastgpt-union-parameter": {
+                                                              "label": "",
+                                                              "position": "first"
+                                                            }
+                                                          },
+                                                          "text": {
+                                                            "allOf": [
+                                                              {
+                                                                "type": "string"
+                                                              }
+                                                            ],
+                                                            "x-fastgpt-union-parameter": {
+                                                              "label": "",
+                                                              "position": "last"
+                                                            }
+                                                          },
+                                                          "key": {
+                                                            "type": "string"
+                                                          }
+                                                        },
+                                                        "required": [
+                                                          "type",
+                                                          "text"
+                                                        ],
+                                                        "description": ""
                                                       },
-                                                      "text": {
-                                                        "type": "string"
-                                                      },
-                                                      "key": {
-                                                        "type": "string"
+                                                      {
+                                                        "type": "object",
+                                                        "properties": {
+                                                          "type": {
+                                                            "allOf": [
+                                                              {
+                                                                "type": "string",
+                                                                "const": "image_url"
+                                                              }
+                                                            ],
+                                                            "x-fastgpt-union-parameter": {
+                                                              "label": "",
+                                                              "position": "first"
+                                                            }
+                                                          },
+                                                          "image_url": {
+                                                            "allOf": [
+                                                              {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                  "url": {
+                                                                    "type": "string"
+                                                                  },
+                                                                  "detail": {
+                                                                    "type": "string",
+                                                                    "enum": [
+                                                                      "auto",
+                                                                      "low",
+                                                                      "high"
+                                                                    ]
+                                                                  }
+                                                                },
+                                                                "required": [
+                                                                  "url"
+                                                                ]
+                                                              }
+                                                            ],
+                                                            "x-fastgpt-union-parameter": {
+                                                              "label": "",
+                                                              "position": "last"
+                                                            }
+                                                          },
+                                                          "key": {
+                                                            "type": "string"
+                                                          }
+                                                        },
+                                                        "required": [
+                                                          "type",
+                                                          "image_url"
+                                                        ],
+                                                        "description": ""
                                                       }
-                                                    },
-                                                    "required": [
-                                                      "type",
-                                                      "text"
                                                     ]
                                                   }
                                                 }
@@ -7392,22 +7611,95 @@
                                             {
                                               "type": "array",
                                               "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                  "type": {
-                                                    "type": "string",
-                                                    "const": "text"
+                                                "anyOf": [
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "type": {
+                                                        "allOf": [
+                                                          {
+                                                            "type": "string",
+                                                            "const": "text"
+                                                          }
+                                                        ],
+                                                        "x-fastgpt-union-parameter": {
+                                                          "label": "",
+                                                          "position": "first"
+                                                        }
+                                                      },
+                                                      "text": {
+                                                        "allOf": [
+                                                          {
+                                                            "type": "string"
+                                                          }
+                                                        ],
+                                                        "x-fastgpt-union-parameter": {
+                                                          "label": "",
+                                                          "position": "last"
+                                                        }
+                                                      },
+                                                      "key": {
+                                                        "type": "string"
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "type",
+                                                      "text"
+                                                    ],
+                                                    "description": ""
                                                   },
-                                                  "text": {
-                                                    "type": "string"
-                                                  },
-                                                  "key": {
-                                                    "type": "string"
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "type": {
+                                                        "allOf": [
+                                                          {
+                                                            "type": "string",
+                                                            "const": "image_url"
+                                                          }
+                                                        ],
+                                                        "x-fastgpt-union-parameter": {
+                                                          "label": "",
+                                                          "position": "first"
+                                                        }
+                                                      },
+                                                      "image_url": {
+                                                        "allOf": [
+                                                          {
+                                                            "type": "object",
+                                                            "properties": {
+                                                              "url": {
+                                                                "type": "string"
+                                                              },
+                                                              "detail": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                  "auto",
+                                                                  "low",
+                                                                  "high"
+                                                                ]
+                                                              }
+                                                            },
+                                                            "required": [
+                                                              "url"
+                                                            ]
+                                                          }
+                                                        ],
+                                                        "x-fastgpt-union-parameter": {
+                                                          "label": "",
+                                                          "position": "last"
+                                                        }
+                                                      },
+                                                      "key": {
+                                                        "type": "string"
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "type",
+                                                      "image_url"
+                                                    ],
+                                                    "description": ""
                                                   }
-                                                },
-                                                "required": [
-                                                  "type",
-                                                  "text"
                                                 ]
                                               }
                                             }
@@ -8610,22 +8902,95 @@
                                             {
                                               "type": "array",
                                               "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                  "type": {
-                                                    "type": "string",
-                                                    "const": "text"
+                                                "anyOf": [
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "type": {
+                                                        "allOf": [
+                                                          {
+                                                            "type": "string",
+                                                            "const": "text"
+                                                          }
+                                                        ],
+                                                        "x-fastgpt-union-parameter": {
+                                                          "label": "",
+                                                          "position": "first"
+                                                        }
+                                                      },
+                                                      "text": {
+                                                        "allOf": [
+                                                          {
+                                                            "type": "string"
+                                                          }
+                                                        ],
+                                                        "x-fastgpt-union-parameter": {
+                                                          "label": "",
+                                                          "position": "last"
+                                                        }
+                                                      },
+                                                      "key": {
+                                                        "type": "string"
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "type",
+                                                      "text"
+                                                    ],
+                                                    "description": ""
                                                   },
-                                                  "text": {
-                                                    "type": "string"
-                                                  },
-                                                  "key": {
-                                                    "type": "string"
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "type": {
+                                                        "allOf": [
+                                                          {
+                                                            "type": "string",
+                                                            "const": "image_url"
+                                                          }
+                                                        ],
+                                                        "x-fastgpt-union-parameter": {
+                                                          "label": "",
+                                                          "position": "first"
+                                                        }
+                                                      },
+                                                      "image_url": {
+                                                        "allOf": [
+                                                          {
+                                                            "type": "object",
+                                                            "properties": {
+                                                              "url": {
+                                                                "type": "string"
+                                                              },
+                                                              "detail": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                  "auto",
+                                                                  "low",
+                                                                  "high"
+                                                                ]
+                                                              }
+                                                            },
+                                                            "required": [
+                                                              "url"
+                                                            ]
+                                                          }
+                                                        ],
+                                                        "x-fastgpt-union-parameter": {
+                                                          "label": "",
+                                                          "position": "last"
+                                                        }
+                                                      },
+                                                      "key": {
+                                                        "type": "string"
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "type",
+                                                      "image_url"
+                                                    ],
+                                                    "description": ""
                                                   }
-                                                },
-                                                "required": [
-                                                  "type",
-                                                  "text"
                                                 ]
                                               }
                                             }
@@ -9846,22 +10211,95 @@
                                         {
                                           "type": "array",
                                           "items": {
-                                            "type": "object",
-                                            "properties": {
-                                              "type": {
-                                                "type": "string",
-                                                "const": "text"
+                                            "anyOf": [
+                                              {
+                                                "type": "object",
+                                                "properties": {
+                                                  "type": {
+                                                    "allOf": [
+                                                      {
+                                                        "type": "string",
+                                                        "const": "text"
+                                                      }
+                                                    ],
+                                                    "x-fastgpt-union-parameter": {
+                                                      "label": "",
+                                                      "position": "first"
+                                                    }
+                                                  },
+                                                  "text": {
+                                                    "allOf": [
+                                                      {
+                                                        "type": "string"
+                                                      }
+                                                    ],
+                                                    "x-fastgpt-union-parameter": {
+                                                      "label": "",
+                                                      "position": "last"
+                                                    }
+                                                  },
+                                                  "key": {
+                                                    "type": "string"
+                                                  }
+                                                },
+                                                "required": [
+                                                  "type",
+                                                  "text"
+                                                ],
+                                                "description": ""
                                               },
-                                              "text": {
-                                                "type": "string"
-                                              },
-                                              "key": {
-                                                "type": "string"
+                                              {
+                                                "type": "object",
+                                                "properties": {
+                                                  "type": {
+                                                    "allOf": [
+                                                      {
+                                                        "type": "string",
+                                                        "const": "image_url"
+                                                      }
+                                                    ],
+                                                    "x-fastgpt-union-parameter": {
+                                                      "label": "",
+                                                      "position": "first"
+                                                    }
+                                                  },
+                                                  "image_url": {
+                                                    "allOf": [
+                                                      {
+                                                        "type": "object",
+                                                        "properties": {
+                                                          "url": {
+                                                            "type": "string"
+                                                          },
+                                                          "detail": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                              "auto",
+                                                              "low",
+                                                              "high"
+                                                            ]
+                                                          }
+                                                        },
+                                                        "required": [
+                                                          "url"
+                                                        ]
+                                                      }
+                                                    ],
+                                                    "x-fastgpt-union-parameter": {
+                                                      "label": "",
+                                                      "position": "last"
+                                                    }
+                                                  },
+                                                  "key": {
+                                                    "type": "string"
+                                                  }
+                                                },
+                                                "required": [
+                                                  "type",
+                                                  "image_url"
+                                                ],
+                                                "description": ""
                                               }
-                                            },
-                                            "required": [
-                                              "type",
-                                              "text"
                                             ]
                                           }
                                         }
@@ -12013,22 +12451,95 @@
                                                 {
                                                   "type": "array",
                                                   "items": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                      "type": {
-                                                        "type": "string",
-                                                        "const": "text"
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "object",
+                                                        "properties": {
+                                                          "type": {
+                                                            "allOf": [
+                                                              {
+                                                                "type": "string",
+                                                                "const": "text"
+                                                              }
+                                                            ],
+                                                            "x-fastgpt-union-parameter": {
+                                                              "label": "",
+                                                              "position": "first"
+                                                            }
+                                                          },
+                                                          "text": {
+                                                            "allOf": [
+                                                              {
+                                                                "type": "string"
+                                                              }
+                                                            ],
+                                                            "x-fastgpt-union-parameter": {
+                                                              "label": "",
+                                                              "position": "last"
+                                                            }
+                                                          },
+                                                          "key": {
+                                                            "type": "string"
+                                                          }
+                                                        },
+                                                        "required": [
+                                                          "type",
+                                                          "text"
+                                                        ],
+                                                        "description": ""
                                                       },
-                                                      "text": {
-                                                        "type": "string"
-                                                      },
-                                                      "key": {
-                                                        "type": "string"
+                                                      {
+                                                        "type": "object",
+                                                        "properties": {
+                                                          "type": {
+                                                            "allOf": [
+                                                              {
+                                                                "type": "string",
+                                                                "const": "image_url"
+                                                              }
+                                                            ],
+                                                            "x-fastgpt-union-parameter": {
+                                                              "label": "",
+                                                              "position": "first"
+                                                            }
+                                                          },
+                                                          "image_url": {
+                                                            "allOf": [
+                                                              {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                  "url": {
+                                                                    "type": "string"
+                                                                  },
+                                                                  "detail": {
+                                                                    "type": "string",
+                                                                    "enum": [
+                                                                      "auto",
+                                                                      "low",
+                                                                      "high"
+                                                                    ]
+                                                                  }
+                                                                },
+                                                                "required": [
+                                                                  "url"
+                                                                ]
+                                                              }
+                                                            ],
+                                                            "x-fastgpt-union-parameter": {
+                                                              "label": "",
+                                                              "position": "last"
+                                                            }
+                                                          },
+                                                          "key": {
+                                                            "type": "string"
+                                                          }
+                                                        },
+                                                        "required": [
+                                                          "type",
+                                                          "image_url"
+                                                        ],
+                                                        "description": ""
                                                       }
-                                                    },
-                                                    "required": [
-                                                      "type",
-                                                      "text"
                                                     ]
                                                   }
                                                 }
@@ -13231,22 +13742,95 @@
                                                 {
                                                   "type": "array",
                                                   "items": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                      "type": {
-                                                        "type": "string",
-                                                        "const": "text"
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "object",
+                                                        "properties": {
+                                                          "type": {
+                                                            "allOf": [
+                                                              {
+                                                                "type": "string",
+                                                                "const": "text"
+                                                              }
+                                                            ],
+                                                            "x-fastgpt-union-parameter": {
+                                                              "label": "",
+                                                              "position": "first"
+                                                            }
+                                                          },
+                                                          "text": {
+                                                            "allOf": [
+                                                              {
+                                                                "type": "string"
+                                                              }
+                                                            ],
+                                                            "x-fastgpt-union-parameter": {
+                                                              "label": "",
+                                                              "position": "last"
+                                                            }
+                                                          },
+                                                          "key": {
+                                                            "type": "string"
+                                                          }
+                                                        },
+                                                        "required": [
+                                                          "type",
+                                                          "text"
+                                                        ],
+                                                        "description": ""
                                                       },
-                                                      "text": {
-                                                        "type": "string"
-                                                      },
-                                                      "key": {
-                                                        "type": "string"
+                                                      {
+                                                        "type": "object",
+                                                        "properties": {
+                                                          "type": {
+                                                            "allOf": [
+                                                              {
+                                                                "type": "string",
+                                                                "const": "image_url"
+                                                              }
+                                                            ],
+                                                            "x-fastgpt-union-parameter": {
+                                                              "label": "",
+                                                              "position": "first"
+                                                            }
+                                                          },
+                                                          "image_url": {
+                                                            "allOf": [
+                                                              {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                  "url": {
+                                                                    "type": "string"
+                                                                  },
+                                                                  "detail": {
+                                                                    "type": "string",
+                                                                    "enum": [
+                                                                      "auto",
+                                                                      "low",
+                                                                      "high"
+                                                                    ]
+                                                                  }
+                                                                },
+                                                                "required": [
+                                                                  "url"
+                                                                ]
+                                                              }
+                                                            ],
+                                                            "x-fastgpt-union-parameter": {
+                                                              "label": "",
+                                                              "position": "last"
+                                                            }
+                                                          },
+                                                          "key": {
+                                                            "type": "string"
+                                                          }
+                                                        },
+                                                        "required": [
+                                                          "type",
+                                                          "image_url"
+                                                        ],
+                                                        "description": ""
                                                       }
-                                                    },
-                                                    "required": [
-                                                      "type",
-                                                      "text"
                                                     ]
                                                   }
                                                 }
@@ -14500,22 +15084,95 @@
                                                 {
                                                   "type": "array",
                                                   "items": {
-                                                    "type": "object",
-                                                    "properties": {
-                                                      "type": {
-                                                        "type": "string",
-                                                        "const": "text"
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "object",
+                                                        "properties": {
+                                                          "type": {
+                                                            "allOf": [
+                                                              {
+                                                                "type": "string",
+                                                                "const": "text"
+                                                              }
+                                                            ],
+                                                            "x-fastgpt-union-parameter": {
+                                                              "label": "",
+                                                              "position": "first"
+                                                            }
+                                                          },
+                                                          "text": {
+                                                            "allOf": [
+                                                              {
+                                                                "type": "string"
+                                                              }
+                                                            ],
+                                                            "x-fastgpt-union-parameter": {
+                                                              "label": "",
+                                                              "position": "last"
+                                                            }
+                                                          },
+                                                          "key": {
+                                                            "type": "string"
+                                                          }
+                                                        },
+                                                        "required": [
+                                                          "type",
+                                                          "text"
+                                                        ],
+                                                        "description": ""
                                                       },
-                                                      "text": {
-                                                        "type": "string"
-                                                      },
-                                                      "key": {
-                                                        "type": "string"
+                                                      {
+                                                        "type": "object",
+                                                        "properties": {
+                                                          "type": {
+                                                            "allOf": [
+                                                              {
+                                                                "type": "string",
+                                                                "const": "image_url"
+                                                              }
+                                                            ],
+                                                            "x-fastgpt-union-parameter": {
+                                                              "label": "",
+                                                              "position": "first"
+                                                            }
+                                                          },
+                                                          "image_url": {
+                                                            "allOf": [
+                                                              {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                  "url": {
+                                                                    "type": "string"
+                                                                  },
+                                                                  "detail": {
+                                                                    "type": "string",
+                                                                    "enum": [
+                                                                      "auto",
+                                                                      "low",
+                                                                      "high"
+                                                                    ]
+                                                                  }
+                                                                },
+                                                                "required": [
+                                                                  "url"
+                                                                ]
+                                                              }
+                                                            ],
+                                                            "x-fastgpt-union-parameter": {
+                                                              "label": "",
+                                                              "position": "last"
+                                                            }
+                                                          },
+                                                          "key": {
+                                                            "type": "string"
+                                                          }
+                                                        },
+                                                        "required": [
+                                                          "type",
+                                                          "image_url"
+                                                        ],
+                                                        "description": ""
                                                       }
-                                                    },
-                                                    "required": [
-                                                      "type",
-                                                      "text"
                                                     ]
                                                   }
                                                 }
@@ -15716,22 +16373,95 @@
                                             {
                                               "type": "array",
                                               "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                  "type": {
-                                                    "type": "string",
-                                                    "const": "text"
+                                                "anyOf": [
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "type": {
+                                                        "allOf": [
+                                                          {
+                                                            "type": "string",
+                                                            "const": "text"
+                                                          }
+                                                        ],
+                                                        "x-fastgpt-union-parameter": {
+                                                          "label": "",
+                                                          "position": "first"
+                                                        }
+                                                      },
+                                                      "text": {
+                                                        "allOf": [
+                                                          {
+                                                            "type": "string"
+                                                          }
+                                                        ],
+                                                        "x-fastgpt-union-parameter": {
+                                                          "label": "",
+                                                          "position": "last"
+                                                        }
+                                                      },
+                                                      "key": {
+                                                        "type": "string"
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "type",
+                                                      "text"
+                                                    ],
+                                                    "description": ""
                                                   },
-                                                  "text": {
-                                                    "type": "string"
-                                                  },
-                                                  "key": {
-                                                    "type": "string"
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "type": {
+                                                        "allOf": [
+                                                          {
+                                                            "type": "string",
+                                                            "const": "image_url"
+                                                          }
+                                                        ],
+                                                        "x-fastgpt-union-parameter": {
+                                                          "label": "",
+                                                          "position": "first"
+                                                        }
+                                                      },
+                                                      "image_url": {
+                                                        "allOf": [
+                                                          {
+                                                            "type": "object",
+                                                            "properties": {
+                                                              "url": {
+                                                                "type": "string"
+                                                              },
+                                                              "detail": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                  "auto",
+                                                                  "low",
+                                                                  "high"
+                                                                ]
+                                                              }
+                                                            },
+                                                            "required": [
+                                                              "url"
+                                                            ]
+                                                          }
+                                                        ],
+                                                        "x-fastgpt-union-parameter": {
+                                                          "label": "",
+                                                          "position": "last"
+                                                        }
+                                                      },
+                                                      "key": {
+                                                        "type": "string"
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "type",
+                                                      "image_url"
+                                                    ],
+                                                    "description": ""
                                                   }
-                                                },
-                                                "required": [
-                                                  "type",
-                                                  "text"
                                                 ]
                                               }
                                             }
@@ -16934,22 +17664,95 @@
                                             {
                                               "type": "array",
                                               "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                  "type": {
-                                                    "type": "string",
-                                                    "const": "text"
+                                                "anyOf": [
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "type": {
+                                                        "allOf": [
+                                                          {
+                                                            "type": "string",
+                                                            "const": "text"
+                                                          }
+                                                        ],
+                                                        "x-fastgpt-union-parameter": {
+                                                          "label": "",
+                                                          "position": "first"
+                                                        }
+                                                      },
+                                                      "text": {
+                                                        "allOf": [
+                                                          {
+                                                            "type": "string"
+                                                          }
+                                                        ],
+                                                        "x-fastgpt-union-parameter": {
+                                                          "label": "",
+                                                          "position": "last"
+                                                        }
+                                                      },
+                                                      "key": {
+                                                        "type": "string"
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "type",
+                                                      "text"
+                                                    ],
+                                                    "description": ""
                                                   },
-                                                  "text": {
-                                                    "type": "string"
-                                                  },
-                                                  "key": {
-                                                    "type": "string"
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "type": {
+                                                        "allOf": [
+                                                          {
+                                                            "type": "string",
+                                                            "const": "image_url"
+                                                          }
+                                                        ],
+                                                        "x-fastgpt-union-parameter": {
+                                                          "label": "",
+                                                          "position": "first"
+                                                        }
+                                                      },
+                                                      "image_url": {
+                                                        "allOf": [
+                                                          {
+                                                            "type": "object",
+                                                            "properties": {
+                                                              "url": {
+                                                                "type": "string"
+                                                              },
+                                                              "detail": {
+                                                                "type": "string",
+                                                                "enum": [
+                                                                  "auto",
+                                                                  "low",
+                                                                  "high"
+                                                                ]
+                                                              }
+                                                            },
+                                                            "required": [
+                                                              "url"
+                                                            ]
+                                                          }
+                                                        ],
+                                                        "x-fastgpt-union-parameter": {
+                                                          "label": "",
+                                                          "position": "last"
+                                                        }
+                                                      },
+                                                      "key": {
+                                                        "type": "string"
+                                                      }
+                                                    },
+                                                    "required": [
+                                                      "type",
+                                                      "image_url"
+                                                    ],
+                                                    "description": ""
                                                   }
-                                                },
-                                                "required": [
-                                                  "type",
-                                                  "text"
                                                 ]
                                               }
                                             }
@@ -18170,22 +18973,95 @@
                                         {
                                           "type": "array",
                                           "items": {
-                                            "type": "object",
-                                            "properties": {
-                                              "type": {
-                                                "type": "string",
-                                                "const": "text"
+                                            "anyOf": [
+                                              {
+                                                "type": "object",
+                                                "properties": {
+                                                  "type": {
+                                                    "allOf": [
+                                                      {
+                                                        "type": "string",
+                                                        "const": "text"
+                                                      }
+                                                    ],
+                                                    "x-fastgpt-union-parameter": {
+                                                      "label": "",
+                                                      "position": "first"
+                                                    }
+                                                  },
+                                                  "text": {
+                                                    "allOf": [
+                                                      {
+                                                        "type": "string"
+                                                      }
+                                                    ],
+                                                    "x-fastgpt-union-parameter": {
+                                                      "label": "",
+                                                      "position": "last"
+                                                    }
+                                                  },
+                                                  "key": {
+                                                    "type": "string"
+                                                  }
+                                                },
+                                                "required": [
+                                                  "type",
+                                                  "text"
+                                                ],
+                                                "description": ""
                                               },
-                                              "text": {
-                                                "type": "string"
-                                              },
-                                              "key": {
-                                                "type": "string"
+                                              {
+                                                "type": "object",
+                                                "properties": {
+                                                  "type": {
+                                                    "allOf": [
+                                                      {
+                                                        "type": "string",
+                                                        "const": "image_url"
+                                                      }
+                                                    ],
+                                                    "x-fastgpt-union-parameter": {
+                                                      "label": "",
+                                                      "position": "first"
+                                                    }
+                                                  },
+                                                  "image_url": {
+                                                    "allOf": [
+                                                      {
+                                                        "type": "object",
+                                                        "properties": {
+                                                          "url": {
+                                                            "type": "string"
+                                                          },
+                                                          "detail": {
+                                                            "type": "string",
+                                                            "enum": [
+                                                              "auto",
+                                                              "low",
+                                                              "high"
+                                                            ]
+                                                          }
+                                                        },
+                                                        "required": [
+                                                          "url"
+                                                        ]
+                                                      }
+                                                    ],
+                                                    "x-fastgpt-union-parameter": {
+                                                      "label": "",
+                                                      "position": "last"
+                                                    }
+                                                  },
+                                                  "key": {
+                                                    "type": "string"
+                                                  }
+                                                },
+                                                "required": [
+                                                  "type",
+                                                  "image_url"
+                                                ],
+                                                "description": ""
                                               }
-                                            },
-                                            "required": [
-                                              "type",
-                                              "text"
                                             ]
                                           }
                                         }
@@ -28914,6 +29790,105 @@
                                                   },
                                                   "response": {
                                                     "type": "string"
+                                                  },
+                                                  "content": {
+                                                    "description": "Structured content the subtool returns to the model when it resumes",
+                                                    "type": "array",
+                                                    "items": {
+                                                      "anyOf": [
+                                                        {
+                                                          "type": "object",
+                                                          "properties": {
+                                                            "type": {
+                                                              "allOf": [
+                                                                {
+                                                                  "type": "string",
+                                                                  "const": "text"
+                                                                }
+                                                              ],
+                                                              "x-fastgpt-union-parameter": {
+                                                                "label": "",
+                                                                "position": "first"
+                                                              }
+                                                            },
+                                                            "text": {
+                                                              "allOf": [
+                                                                {
+                                                                  "type": "string"
+                                                                }
+                                                              ],
+                                                              "x-fastgpt-union-parameter": {
+                                                                "label": "",
+                                                                "position": "last"
+                                                              }
+                                                            },
+                                                            "key": {
+                                                              "type": "string"
+                                                            }
+                                                          },
+                                                          "required": [
+                                                            "type",
+                                                            "text"
+                                                          ],
+                                                          "additionalProperties": false,
+                                                          "description": ""
+                                                        },
+                                                        {
+                                                          "type": "object",
+                                                          "properties": {
+                                                            "type": {
+                                                              "allOf": [
+                                                                {
+                                                                  "type": "string",
+                                                                  "const": "image_url"
+                                                                }
+                                                              ],
+                                                              "x-fastgpt-union-parameter": {
+                                                                "label": "",
+                                                                "position": "first"
+                                                              }
+                                                            },
+                                                            "image_url": {
+                                                              "allOf": [
+                                                                {
+                                                                  "type": "object",
+                                                                  "properties": {
+                                                                    "url": {
+                                                                      "type": "string"
+                                                                    },
+                                                                    "detail": {
+                                                                      "type": "string",
+                                                                      "enum": [
+                                                                        "auto",
+                                                                        "low",
+                                                                        "high"
+                                                                      ]
+                                                                    }
+                                                                  },
+                                                                  "required": [
+                                                                    "url"
+                                                                  ],
+                                                                  "additionalProperties": false
+                                                                }
+                                                              ],
+                                                              "x-fastgpt-union-parameter": {
+                                                                "label": "",
+                                                                "position": "last"
+                                                              }
+                                                            },
+                                                            "key": {
+                                                              "type": "string"
+                                                            }
+                                                          },
+                                                          "required": [
+                                                            "type",
+                                                            "image_url"
+                                                          ],
+                                                          "additionalProperties": false,
+                                                          "description": ""
+                                                        }
+                                                      ]
+                                                    }
                                                   }
                                                 },
                                                 "required": [
@@ -29001,6 +29976,105 @@
                                                             "type": "null"
                                                           }
                                                         ]
+                                                      },
+                                                      "content": {
+                                                        "description": "Structured content the tool returns to the model",
+                                                        "type": "array",
+                                                        "items": {
+                                                          "anyOf": [
+                                                            {
+                                                              "type": "object",
+                                                              "properties": {
+                                                                "type": {
+                                                                  "allOf": [
+                                                                    {
+                                                                      "type": "string",
+                                                                      "const": "text"
+                                                                    }
+                                                                  ],
+                                                                  "x-fastgpt-union-parameter": {
+                                                                    "label": "",
+                                                                    "position": "first"
+                                                                  }
+                                                                },
+                                                                "text": {
+                                                                  "allOf": [
+                                                                    {
+                                                                      "type": "string"
+                                                                    }
+                                                                  ],
+                                                                  "x-fastgpt-union-parameter": {
+                                                                    "label": "",
+                                                                    "position": "last"
+                                                                  }
+                                                                },
+                                                                "key": {
+                                                                  "type": "string"
+                                                                }
+                                                              },
+                                                              "required": [
+                                                                "type",
+                                                                "text"
+                                                              ],
+                                                              "additionalProperties": false,
+                                                              "description": ""
+                                                            },
+                                                            {
+                                                              "type": "object",
+                                                              "properties": {
+                                                                "type": {
+                                                                  "allOf": [
+                                                                    {
+                                                                      "type": "string",
+                                                                      "const": "image_url"
+                                                                    }
+                                                                  ],
+                                                                  "x-fastgpt-union-parameter": {
+                                                                    "label": "",
+                                                                    "position": "first"
+                                                                  }
+                                                                },
+                                                                "image_url": {
+                                                                  "allOf": [
+                                                                    {
+                                                                      "type": "object",
+                                                                      "properties": {
+                                                                        "url": {
+                                                                          "type": "string"
+                                                                        },
+                                                                        "detail": {
+                                                                          "type": "string",
+                                                                          "enum": [
+                                                                            "auto",
+                                                                            "low",
+                                                                            "high"
+                                                                          ]
+                                                                        }
+                                                                      },
+                                                                      "required": [
+                                                                        "url"
+                                                                      ],
+                                                                      "additionalProperties": false
+                                                                    }
+                                                                  ],
+                                                                  "x-fastgpt-union-parameter": {
+                                                                    "label": "",
+                                                                    "position": "last"
+                                                                  }
+                                                                },
+                                                                "key": {
+                                                                  "type": "string"
+                                                                }
+                                                              },
+                                                              "required": [
+                                                                "type",
+                                                                "image_url"
+                                                              ],
+                                                              "additionalProperties": false,
+                                                              "description": ""
+                                                            }
+                                                          ]
+                                                        }
                                                       },
                                                       "hideDetails": {
                                                         "description": "Display tool metadata only without exposing parameters or response details",
@@ -30256,6 +31330,105 @@
                                                           "type": "null"
                                                         }
                                                       ]
+                                                    },
+                                                    "content": {
+                                                      "description": "Structured content the tool returns to the model",
+                                                      "type": "array",
+                                                      "items": {
+                                                        "anyOf": [
+                                                          {
+                                                            "type": "object",
+                                                            "properties": {
+                                                              "type": {
+                                                                "allOf": [
+                                                                  {
+                                                                    "type": "string",
+                                                                    "const": "text"
+                                                                  }
+                                                                ],
+                                                                "x-fastgpt-union-parameter": {
+                                                                  "label": "",
+                                                                  "position": "first"
+                                                                }
+                                                              },
+                                                              "text": {
+                                                                "allOf": [
+                                                                  {
+                                                                    "type": "string"
+                                                                  }
+                                                                ],
+                                                                "x-fastgpt-union-parameter": {
+                                                                  "label": "",
+                                                                  "position": "last"
+                                                                }
+                                                              },
+                                                              "key": {
+                                                                "type": "string"
+                                                              }
+                                                            },
+                                                            "required": [
+                                                              "type",
+                                                              "text"
+                                                            ],
+                                                            "additionalProperties": false,
+                                                            "description": ""
+                                                          },
+                                                          {
+                                                            "type": "object",
+                                                            "properties": {
+                                                              "type": {
+                                                                "allOf": [
+                                                                  {
+                                                                    "type": "string",
+                                                                    "const": "image_url"
+                                                                  }
+                                                                ],
+                                                                "x-fastgpt-union-parameter": {
+                                                                  "label": "",
+                                                                  "position": "first"
+                                                                }
+                                                              },
+                                                              "image_url": {
+                                                                "allOf": [
+                                                                  {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                      "url": {
+                                                                        "type": "string"
+                                                                      },
+                                                                      "detail": {
+                                                                        "type": "string",
+                                                                        "enum": [
+                                                                          "auto",
+                                                                          "low",
+                                                                          "high"
+                                                                        ]
+                                                                      }
+                                                                    },
+                                                                    "required": [
+                                                                      "url"
+                                                                    ],
+                                                                    "additionalProperties": false
+                                                                  }
+                                                                ],
+                                                                "x-fastgpt-union-parameter": {
+                                                                  "label": "",
+                                                                  "position": "last"
+                                                                }
+                                                              },
+                                                              "key": {
+                                                                "type": "string"
+                                                              }
+                                                            },
+                                                            "required": [
+                                                              "type",
+                                                              "image_url"
+                                                            ],
+                                                            "additionalProperties": false,
+                                                            "description": ""
+                                                          }
+                                                        ]
+                                                      }
                                                     },
                                                     "hideDetails": {
                                                       "description": "Display tool metadata only without exposing parameters or response details",
@@ -36886,11 +38059,12 @@
                                   "items": {
                                     "type": "object",
                                     "properties": {
-                                      "maxInputTokens": {
-                                        "description": "Upper input limit for this tier in million tokens; omit for unlimited",
-                                        "example": 1,
-                                        "type": "number",
-                                        "minimum": 0
+                                      "maxInputTokensK": {
+                                        "description": "Upper input limit for this tier in thousands of tokens. Omit for unlimited",
+                                        "example": 32,
+                                        "type": "integer",
+                                        "exclusiveMinimum": 0,
+                                        "maximum": 9007199254740991
                                       },
                                       "inputPrice": {
                                         "description": "Credit price per million input tokens",
@@ -37114,11 +38288,12 @@
                                   "items": {
                                     "type": "object",
                                     "properties": {
-                                      "maxInputTokens": {
-                                        "description": "Upper input limit for this tier in million tokens; omit for unlimited",
-                                        "example": 1,
-                                        "type": "number",
-                                        "minimum": 0
+                                      "maxInputTokensK": {
+                                        "description": "Upper input limit for this tier in thousands of tokens. Omit for unlimited",
+                                        "example": 32,
+                                        "type": "integer",
+                                        "exclusiveMinimum": 0,
+                                        "maximum": 9007199254740991
                                       },
                                       "inputPrice": {
                                         "description": "Credit price per million input tokens",
@@ -42793,11 +43968,12 @@
                                             "items": {
                                               "type": "object",
                                               "properties": {
-                                                "maxInputTokens": {
-                                                  "description": "Upper input limit for this tier in million tokens; omit for unlimited",
-                                                  "example": 1,
-                                                  "type": "number",
-                                                  "minimum": 0
+                                                "maxInputTokensK": {
+                                                  "description": "Upper input limit for this tier in thousands of tokens. Omit for unlimited",
+                                                  "example": 32,
+                                                  "type": "integer",
+                                                  "exclusiveMinimum": 0,
+                                                  "maximum": 9007199254740991
                                                 },
                                                 "inputPrice": {
                                                   "description": "Credit price per million input tokens",
@@ -43472,11 +44648,12 @@
                                                 "items": {
                                                   "type": "object",
                                                   "properties": {
-                                                    "maxInputTokens": {
-                                                      "description": "Upper input limit for this tier in million tokens; omit for unlimited",
-                                                      "example": 1,
-                                                      "type": "number",
-                                                      "minimum": 0
+                                                    "maxInputTokensK": {
+                                                      "description": "Upper input limit for this tier in thousands of tokens. Omit for unlimited",
+                                                      "example": 32,
+                                                      "type": "integer",
+                                                      "exclusiveMinimum": 0,
+                                                      "maximum": 9007199254740991
                                                     },
                                                     "inputPrice": {
                                                       "description": "Credit price per million input tokens",

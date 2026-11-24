@@ -1,84 +1,48 @@
-import { describe, expect, it, vi } from 'vitest';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
+import { describe, expect, it } from 'vitest';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { DatasetTagFilterVersionEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   getDatasetSearchFilterVersion,
-  persistLegacyDatasetSearchNodeUpgrade
+  upgradeLegacyDatasetSearchInputs
 } from '@/web/core/workflow/datasetSearchNodeUpgrade';
-import { DatasetTagFilterVersionEnum } from '@fastgpt/global/core/dataset/constants';
 
-const legacyNode = {
-  nodeId: 'dataset-node',
-  name: 'Dataset search',
-  flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
-  version: '4.9.2',
-  inputs: [
-    { key: 'datasetSelectList', label: '', renderTypeList: [], value: ['dataset'] },
-    {
-      key: 'collectionFilterMatch',
-      label: '',
-      renderTypeList: [FlowNodeInputTypeEnum.datasetTagFilter],
-      value: '{"tags":{"$and":["legacy"]}}'
-    }
-  ],
-  outputs: [{ key: 'quoteQA', label: '', type: 'static' }]
-} as any;
-const upgradedInput = {
-  ...legacyNode.inputs[1],
-  value: { logic: 'AND', conditions: [] }
+const datasetInput = {
+  key: NodeInputKeyEnum.datasetSelectList,
+  label: '',
+  renderTypeList: [],
+  value: ['dataset']
+};
+const legacyInput = {
+  key: NodeInputKeyEnum.collectionFilterMatch,
+  label: '',
+  renderTypeList: [FlowNodeInputTypeEnum.datasetTagFilter],
+  value: '{"tags":{"$and":["legacy"]}}'
 };
 const versionInput = {
-  key: 'collectionFilterVersion',
+  key: NodeInputKeyEnum.collectionFilterVersion,
   label: '',
   renderTypeList: [FlowNodeInputTypeEnum.hidden],
-  value: 'legacy'
-} as any;
+  value: DatasetTagFilterVersionEnum.legacy
+};
 
 describe('dataset search node upgrade', () => {
-  it('does not commit the local upgrade when persistence fails', async () => {
-    const commit = vi.fn();
-    const persist = vi.fn().mockRejectedValue(new Error('save failed'));
-    await expect(
-      persistLegacyDatasetSearchNodeUpgrade({
-        nodes: [legacyNode],
-        nodeId: legacyNode.nodeId,
-        filterInput: upgradedInput,
-        persist,
-        commit
-      })
-    ).rejects.toThrow('save failed');
-    expect(commit).not.toHaveBeenCalled();
+  it('replaces only the legacy filter and version inputs', () => {
+    const inputs = [datasetInput, legacyInput, versionInput];
+    const filterInput = { ...legacyInput, value: { logic: 'AND', conditions: [] } };
+
+    const upgraded = upgradeLegacyDatasetSearchInputs({ inputs, filterInput });
+
+    expect(upgraded[0]).toBe(datasetInput);
+    expect(upgraded).toHaveLength(3);
+    expect(upgraded[2]).toBe(filterInput);
+    expect(getDatasetSearchFilterVersion(upgraded)).toBe(DatasetTagFilterVersionEnum.structured);
+    expect(getDatasetSearchFilterVersion(inputs)).toBe(DatasetTagFilterVersionEnum.legacy);
   });
 
-  it('persists and commits one canonical upgraded node without changing shared node data', async () => {
-    const persist = vi.fn(async () => undefined);
-    const commit = vi.fn();
-
-    await persistLegacyDatasetSearchNodeUpgrade({
-      nodes: [legacyNode],
-      nodeId: legacyNode.nodeId,
-      filterInput: upgradedInput,
-      persist,
-      commit
-    });
-
-    const persistedNode = persist.mock.calls[0][0][0];
-    expect(commit).toHaveBeenCalledWith(persistedNode);
-    expect(persistedNode).toMatchObject({
-      nodeId: legacyNode.nodeId,
-      name: legacyNode.name,
-      flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
-      outputs: legacyNode.outputs
-    });
-    expect(persistedNode.inputs[0]).toEqual(legacyNode.inputs[0]);
-    expect(persistedNode.inputs.find((input) => input.key === upgradedInput.key)).toEqual(
-      upgradedInput
-    );
-    expect(getDatasetSearchFilterVersion(persistedNode.inputs)).toBe(
-      DatasetTagFilterVersionEnum.structured
-    );
-    expect(persistedNode.inputs.filter((input) => input.key === versionInput.key)).toHaveLength(1);
+  it('rejects replacing an unrelated input', () => {
+    expect(() =>
+      upgradeLegacyDatasetSearchInputs({ inputs: [datasetInput], filterInput: datasetInput })
+    ).toThrow('Dataset search filter upgrade received an invalid filter input');
   });
 });

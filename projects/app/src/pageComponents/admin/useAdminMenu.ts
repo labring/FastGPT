@@ -61,6 +61,8 @@ const createLabelGetter = (t?: MenuTranslateFn) => {
     menu_tools: t?.('admin:menu_tools'),
     menu_migration: t?.('admin:menu_migration'),
     menu_dashboard: t?.('admin:menu_dashboard'),
+    menu_ops_dashboard: t?.('admin:menu_ops_dashboard'),
+    menu_ops_performance: t?.('admin:menu_ops_performance'),
     menu_operation: t?.('admin:menu_operation'),
     menu_inform: t?.('admin:menu_inform'),
     menu_user_team: t?.('admin:menu_user_team'),
@@ -119,6 +121,19 @@ export const getAdminMenuList = (params: GetAdminMenuListParams): AdminMenuItem[
       icon: 'common/dashboardLight',
       label: lbl('menu_dashboard', '数据面板'),
       value: '/admin/dashboard'
+    },
+    {
+      icon: 'core/chat/monitor',
+      label: lbl('menu_ops_dashboard', '运维看板'),
+      value: '/admin/ops/performance',
+      isProOnly: true,
+      children: [
+        {
+          label: lbl('menu_ops_performance', '性能分析'),
+          value: '/admin/ops/performance',
+          isProOnly: true
+        }
+      ]
     },
 
     {

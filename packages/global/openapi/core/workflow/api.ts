@@ -46,6 +46,40 @@ const DynamicObjectOpenApiMeta = {
 const WorkflowDebugRuntimeNodeSchema = z
   .custom<RuntimeNodeItemType>()
   .meta(DynamicObjectOpenApiMeta);
+// 旧调试节点仍允许动态字段，只校验本接口新增的字面量标记。
+const WorkflowDebugRequestNodeSchema = WorkflowDebugRuntimeNodeSchema.superRefine((node, ctx) => {
+  if (!Array.isArray(node?.inputs)) return;
+  node.inputs.forEach((input, index) => {
+    const marker = input?.debugValueOverride;
+    if (marker !== undefined && typeof marker !== 'boolean') {
+      ctx.addIssue({
+        code: 'invalid_type',
+        expected: 'boolean',
+        path: ['inputs', index, 'debugValueOverride']
+      });
+    }
+  });
+}).meta({
+  override: {
+    ...DynamicObjectOpenApiMeta.override,
+    properties: {
+      inputs: {
+        type: 'array',
+        description: '运行时节点的输入列表，保留节点及插件的扩展字段',
+        items: {
+          ...DynamicObjectOpenApiMeta.override,
+          properties: {
+            debugValueOverride: {
+              type: 'boolean',
+              example: false,
+              description: 'true 使用手填字面值，false 解析文档引用，省略时沿用旧客户端解析规则'
+            }
+          }
+        }
+      }
+    }
+  }
+});
 const WorkflowDebugNodeResponseDataSchema = z
   .custom<ChatHistoryItemResType>()
   .meta(DynamicObjectOpenApiMeta);
@@ -54,7 +88,7 @@ const WorkflowDebugInteractiveResponseSchema = z
   .meta(DynamicObjectOpenApiMeta);
 
 export const WorkflowDebugBodySchema = z.object({
-  nodes: z.array(WorkflowDebugRuntimeNodeSchema).default([]).meta({
+  nodes: z.array(WorkflowDebugRequestNodeSchema).default([]).meta({
     description: '待调试的运行时节点列表'
   }),
   edges: z.array(WorkflowDebugRuntimeEdgeSchema).default([]).meta({

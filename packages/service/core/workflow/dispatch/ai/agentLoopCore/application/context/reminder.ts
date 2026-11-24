@@ -31,7 +31,7 @@ export const buildAgentLoopCoreInputFilesPrompt = (files: AgentLoopCoreInputFile
 
 用户本次对话上传的文件，按 type 使用：
 1. document：当前解析器支持的文档，可通过 ${READ_FILES_TOOL_NAME} 读取内容。
-2. image、audio、video：图片、音频、视频，由支持对应能力的模型或工具处理。
+2. image、audio、video：图片、音频、视频。若内容已随当前消息附带，请直接查看或收听并回答，无需调用 ${READ_FILES_TOOL_NAME}；若未附带内容或需进一步处理，再交由支持对应能力的其他工具处理。
 3. unknown：当前文档解析器不支持或无法识别的格式，不要使用 ${READ_FILES_TOOL_NAME} 读取；应选择适合该格式的其他工具处理。
 4. 可把 url 作为模型或工具参数；有 sandboxPath 时，也可通过沙箱工具处理文件。
 

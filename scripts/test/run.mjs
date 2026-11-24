@@ -7,11 +7,14 @@ import { fileURLToPath } from 'node:url';
 const workspaceFilters = {
   app: '@fastgpt/app',
   admin: '@fastgpt/admin',
+  dal: '@fastgpt/dal',
   global: '@fastgpt/global',
   service: '@fastgpt/service',
   web: '@fastgpt/web',
   'workflow-core': '@fastgpt/workflow-core',
-  cli: '@fastgpt/cli'
+  cli: '@fastgpt/cli',
+  sdk: '@fastgpt/sdk',
+  'sdk-codegen': '@fastgpt-sdk/openapi-codegen'
 };
 const workspaceScopes = Object.keys(workspaceFilters);
 const optionalWorkspaceScopes = new Set(['workflow-core']);

@@ -20,6 +20,10 @@ export const ChatFeedbackPath: OpenAPIPath = {
       summary: '添加/更新用户反馈',
       description: '用户对消息添加或更新好评/差评反馈',
       tags: [DevApiTagsMap.chatFeedback, SystemOpenApiTagMap.chatFeedback],
+      'x-fastgpt-sdk': {
+        resource: 'chat.feedbacks',
+        method: 'updateUser'
+      },
       requestBody: {
         content: {
           'application/json': {
