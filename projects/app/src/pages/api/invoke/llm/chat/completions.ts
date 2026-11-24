@@ -683,7 +683,7 @@ const buildUsageOnlyChunk = ({
   object: 'chat.completion.chunk',
   created: created ?? Math.floor(Date.now() / 1000),
   model: model ?? '',
-  ...(system_fingerprint !== undefined ? { system_fingerprint } : {}),
+  ...(typeof system_fingerprint === 'string' ? { system_fingerprint } : {}),
   choices: [],
   usage
 });

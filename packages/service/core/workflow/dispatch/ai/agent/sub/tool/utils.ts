@@ -4,6 +4,7 @@ import {
   findToolByNameCandidates,
   getAgentToolSource,
   isDebugToolSource,
+  isSystemOrCommercialToolId,
   isTeamPluginSource,
   resolveSystemToolDetailSource,
   splitCombineToolId,
