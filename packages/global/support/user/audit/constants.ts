@@ -1,5 +1,6 @@
 import type { ApiKeyAuditParams } from '../../openapi/schema';
 import { DatasetAuditEventEnum } from '../../../core/dataset/audit/constants/event';
+import type { DatasetConfigAuditValueSource } from '../../../core/dataset/audit/constants/config';
 
 export enum AdminAuditEventEnum {
   ADMIN_LOGIN = 'ADMIN_LOGIN',
@@ -493,6 +494,8 @@ export type DatasetAuditEventParamsType = {
     changeItem: string;
     oldValue?: string;
     newValue?: string;
+    oldValueSource?: DatasetConfigAuditValueSource;
+    newValueSource?: DatasetConfigAuditValueSource;
   };
   [DatasetAuditEventEnum.DATASET_TAG_CREATE]: {
     name?: string;

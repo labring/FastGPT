@@ -2,8 +2,6 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   DATASET_CONFIG_REDACTED_VALUE,
   DatasetConfigAuditItemEnum,
-  datasetConfigAuditBooleanFieldMap,
-  datasetConfigAuditFieldLabelMap,
   datasetConfigAuditItemLabelMap
 } from '@fastgpt/global/core/dataset/audit/constants/config';
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
@@ -16,6 +14,8 @@ import {
 import { formatAuditSummary } from '@fastgpt/web/support/user/audit/presenter';
 import {
   createDatasetAuditProcessors,
+  datasetConfigAuditBooleanFieldMap,
+  datasetConfigAuditFieldLabelMap,
   processDatasetCollectionSpecific,
   processDatasetConfigUpdateSpecific
 } from '@fastgpt/web/support/user/audit/processors/datasetProcessors';
@@ -74,56 +74,91 @@ describe('processDatasetConfigUpdateSpecific', () => {
   });
 
   it.each([
-    [
-      'account_team:dataset_config_item_autoSync',
-      '自动同步',
-      'common:no',
-      'common:yes',
-      '否',
-      '是'
-    ],
-    [
-      'account_team:dataset_config_item_chunkSettings · indexPrefixTitle',
-      '分块参数 · 将标题加入索引',
-      'common:no',
-      'common:yes',
-      '否',
-      '是'
-    ],
-    [
-      'account_team:dataset_config_item_fileParseConfig · keep_header_footer',
-      '文件解析配置 · 保留页眉页脚',
-      'common:yes',
-      'common:no',
-      '是',
-      '否'
-    ],
-    [
-      'account_team:dataset_config_item_agentModel',
-      '知识库 Agent 模型',
-      'common:UnKnow',
-      'GPT-4o',
-      '未知',
-      'GPT-4o'
-    ],
-    ['account_team:dataset_config_item_vlmModel', '图片理解模型', 'common:UnKnow', '-', '未知', '-']
+    {
+      changeItem: 'account_team:dataset_config_item_autoSync',
+      expectedItem: '自动同步',
+      oldValue: 'common:no',
+      newValue: 'common:yes',
+      expectedOld: '否',
+      expectedNew: '是'
+    },
+    {
+      changeItem: 'account_team:dataset_config_item_chunkSettings · indexPrefixTitle',
+      expectedItem: '分块参数 · 将标题加入索引',
+      oldValue: 'common:no',
+      newValue: 'common:yes',
+      expectedOld: '否',
+      expectedNew: '是'
+    },
+    {
+      changeItem: 'account_team:dataset_config_item_fileParseConfig · keep_header_footer',
+      expectedItem: '文件解析配置 · 保留页眉页脚',
+      oldValue: 'common:yes',
+      newValue: 'common:no',
+      expectedOld: '是',
+      expectedNew: '否'
+    },
+    {
+      changeItem: 'account_team:dataset_config_item_agentModel',
+      expectedItem: '知识库 Agent 模型',
+      oldValue: 'common:UnKnow',
+      newValue: 'GPT-4o',
+      oldValueSource: 'fallback',
+      newValueSource: 'literal',
+      expectedOld: '未知',
+      expectedNew: 'GPT-4o'
+    },
+    {
+      changeItem: 'account_team:dataset_config_item_vlmModel',
+      expectedItem: '图片理解模型',
+      oldValue: 'common:UnKnow',
+      newValue: '-',
+      expectedOld: '未知',
+      expectedNew: '-'
+    },
+    {
+      changeItem: 'account_team:dataset_config_item_agentModel',
+      expectedItem: '知识库 Agent 模型',
+      oldValue: 'common:UnKnow',
+      newValue: 'GPT-4o',
+      oldValueSource: 'literal',
+      newValueSource: 'literal',
+      expectedOld: 'common:UnKnow',
+      expectedNew: 'GPT-4o'
+    },
+    {
+      changeItem: 'account_team:dataset_config_item_vlmModel',
+      expectedItem: '图片理解模型',
+      oldValue: 'GPT-4o',
+      newValue: 'common:UnKnow',
+      oldValueSource: 'literal',
+      newValueSource: 'literal',
+      expectedOld: 'GPT-4o',
+      expectedNew: 'common:UnKnow'
+    }
   ])(
-    'translates semantic system values for %s (%s -> %s)',
-    (changeItem, expectedItem, oldValue, newValue, expectedOld, expectedNew) => {
-      expect(
-        processDatasetConfigUpdateSpecific(
-          {
-            name: '张三',
-            datasetName: '产品手册',
-            changeItem,
-            oldValue,
-            newValue
-          },
-          t
-        )
-      ).toEqual({
+    'translates semantic system values for $changeItem ($oldValue -> $newValue)',
+    ({
+      changeItem,
+      expectedItem,
+      oldValue,
+      newValue,
+      oldValueSource,
+      newValueSource,
+      expectedOld,
+      expectedNew
+    }) => {
+      const metadata = {
         name: '张三',
         datasetName: '产品手册',
+        changeItem,
+        oldValue,
+        newValue,
+        ...(oldValueSource !== undefined && { oldValueSource }),
+        ...(newValueSource !== undefined && { newValueSource })
+      };
+      expect(processDatasetConfigUpdateSpecific(metadata, t)).toEqual({
+        ...metadata,
         changeItem: expectedItem,
         oldValue: expectedOld,
         newValue: expectedNew

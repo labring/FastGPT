@@ -9,7 +9,10 @@ import {
   stringifyDatasetConfigAuditValue
 } from '@fastgpt/service/core/dataset/audit/utils';
 import { buildDatasetConfigUpdatePatch } from '@fastgpt/service/core/dataset/audit/patch';
-import { resolveDatasetAuditModel } from '@fastgpt/service/core/dataset/audit/config';
+import {
+  buildDatasetUpdateAuditLogs,
+  resolveDatasetAuditModel
+} from '@fastgpt/service/core/dataset/audit/config';
 
 describe('dataset level audit events', () => {
   it('keeps every dataset event registered in the team audit event list', () => {
@@ -313,26 +316,105 @@ describe('buildDatasetConfigAuditChanges', () => {
 });
 
 describe('resolveDatasetAuditModel', () => {
-  it('uses the resolved stable ID and display name', () => {
+  it('uses the resolved stable ID, display name, and literal source', () => {
     expect(
       resolveDatasetAuditModel({
         reference: { modelId: 'model-id', model: 'old-model-name' },
         modelData: { modelId: 'resolved-id', model: 'provider-model', name: 'Display name' }
       })
-    ).toEqual({ modelId: 'resolved-id', modelName: 'Display name' });
+    ).toEqual({ modelId: 'resolved-id', modelName: 'Display name', valueSource: 'literal' });
   });
 
-  it('keeps legacy model names when the catalog no longer has the model', () => {
+  it('keeps legacy model names as literal when the catalog no longer has the model', () => {
     expect(
       resolveDatasetAuditModel({ reference: { modelId: undefined, model: 'legacy-model' } })
-    ).toEqual({ modelId: 'legacy-model', modelName: 'legacy-model' });
+    ).toEqual({ modelId: 'legacy-model', modelName: 'legacy-model', valueSource: 'literal' });
   });
 
-  it('does not expose unresolved model IDs as display names', () => {
+  it('marks unresolved model IDs as fallback instead of exposing raw IDs', () => {
     expect(resolveDatasetAuditModel({ reference: { modelId: 'deleted-model-id' } })).toEqual({
       modelId: 'deleted-model-id',
-      modelName: 'common:UnKnow'
+      modelName: 'common:UnKnow',
+      valueSource: 'fallback'
     });
+  });
+
+  it('distinguishes a real model named common:UnKnow from an unresolved fallback end-to-end', () => {
+    const dict: Record<string, string> = {
+      'account_team:dataset_config_item_agentModel': '知识库 Agent 模型',
+      'common:UnKnow': '未知'
+    };
+    const t = (key: string, params?: Record<string, unknown>) => {
+      if (key === 'account_team:audit_detail_dataset_config') {
+        return `${params?.changeItem}：${params?.oldValue} → ${params?.newValue}`;
+      }
+      return dict[key] ?? key;
+    };
+
+    const models = new Map([
+      ['model-1', { modelId: 'model-1', model: 'provider-1', name: 'common:UnKnow' }],
+      ['model-2', { modelId: 'model-2', model: 'provider-2', name: 'GPT-4o' }]
+    ]);
+    const modelHandle = {
+      findModelData: (ref: { modelId?: string }) =>
+        ref.modelId ? models.get(ref.modelId) : undefined
+    } as Parameters<typeof buildDatasetUpdateAuditLogs>[0]['modelHandle'];
+
+    const [literalChange] = buildDatasetUpdateAuditLogs({
+      dataset: { agentModelId: 'model-1' } as Parameters<
+        typeof buildDatasetUpdateAuditLogs
+      >[0]['dataset'],
+      modelHandle,
+      update: {
+        agentModelId: 'model-2',
+        agentModelData: models.get('model-2'),
+        clearVlmModel: false,
+        apiDatasetServer: { enabled: false },
+        chunkSettingsEnabled: false
+      }
+    });
+    expect(literalChange).toEqual({
+      changeItem: 'account_team:dataset_config_item_agentModel',
+      oldValue: 'common:UnKnow',
+      newValue: 'GPT-4o',
+      oldValueSource: 'literal',
+      newValueSource: 'literal'
+    });
+    expect(
+      formatAuditSummary({
+        event: DatasetAuditEventEnum.DATASET_CONFIG_UPDATE,
+        metadata: literalChange,
+        t
+      })
+    ).toBe('知识库 Agent 模型：common:UnKnow → GPT-4o');
+
+    const [fallbackChange] = buildDatasetUpdateAuditLogs({
+      dataset: { agentModelId: 'deleted-model-id' } as Parameters<
+        typeof buildDatasetUpdateAuditLogs
+      >[0]['dataset'],
+      modelHandle,
+      update: {
+        agentModelId: 'model-2',
+        agentModelData: models.get('model-2'),
+        clearVlmModel: false,
+        apiDatasetServer: { enabled: false },
+        chunkSettingsEnabled: false
+      }
+    });
+    expect(fallbackChange).toEqual({
+      changeItem: 'account_team:dataset_config_item_agentModel',
+      oldValue: 'common:UnKnow',
+      newValue: 'GPT-4o',
+      oldValueSource: 'fallback',
+      newValueSource: 'literal'
+    });
+    expect(
+      formatAuditSummary({
+        event: DatasetAuditEventEnum.DATASET_CONFIG_UPDATE,
+        metadata: fallbackChange,
+        t
+      })
+    ).toBe('知识库 Agent 模型：未知 → GPT-4o');
   });
 });
 

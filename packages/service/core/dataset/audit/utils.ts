@@ -4,7 +4,8 @@ import {
   DATASET_CONFIG_REDACTED_VALUE,
   DATASET_CONFIG_SENSITIVE_KEY_PATTERN,
   datasetConfigAuditItemLabelMap,
-  type DatasetConfigAuditItem
+  type DatasetConfigAuditItem,
+  type DatasetConfigAuditValueSource
 } from '@fastgpt/global/core/dataset/audit/constants/config';
 import { isEqual } from 'lodash-es';
 import type { CollectionTagValueType } from '@fastgpt/global/core/dataset/type';
@@ -100,14 +101,25 @@ export const buildDatasetConfigAuditChanges = ({
   oldValue,
   newValue,
   enabled = true,
-  compareValues
+  compareValues,
+  valueSources
 }: {
   item: DatasetConfigAuditItem;
   oldValue: AuditRawValue;
   newValue: AuditRawValue;
   enabled?: boolean;
   compareValues?: { oldValue: AuditRawValue; newValue: AuditRawValue };
-}): Array<{ changeItem: string; oldValue?: string; newValue?: string }> => {
+  valueSources?: {
+    oldValue?: DatasetConfigAuditValueSource;
+    newValue?: DatasetConfigAuditValueSource;
+  };
+}): Array<{
+  changeItem: string;
+  oldValue?: string;
+  newValue?: string;
+  oldValueSource?: DatasetConfigAuditValueSource;
+  newValueSource?: DatasetConfigAuditValueSource;
+}> => {
   if (!enabled) return [];
 
   const itemLabel = datasetConfigAuditItemLabelMap[item];
@@ -123,7 +135,9 @@ export const buildDatasetConfigAuditChanges = ({
           {
             changeItem: itemLabel,
             oldValue: formatAuditScalar(sanitizeAuditValue(oldValue)),
-            newValue: formatAuditScalar(sanitizeAuditValue(newValue))
+            newValue: formatAuditScalar(sanitizeAuditValue(newValue)),
+            ...(valueSources?.oldValue && { oldValueSource: valueSources.oldValue }),
+            ...(valueSources?.newValue && { newValueSource: valueSources.newValue })
           }
         ];
   }
