@@ -269,7 +269,7 @@ export class OceanBaseFullTextAdapter implements SqlFullTextAdapter {
     if (!terms.length) return [];
     const matchText = terms.join(' ');
     const where = [
-      `MATCH(${column}) AGAINST (? IN NATURAL LANGUAGE MODE)>0`,
+      `MATCH(${column}) AGAINST (? IN NATURAL LANGUAGE MODE)`,
       'team_id=?',
       `dataset_id IN (${props.datasetIds.map(() => '?').join(',')})`
     ];

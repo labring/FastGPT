@@ -37,8 +37,20 @@ describe.each(['oceanbase', 'seekdb'] as const)('ObVectorCtrl (%s)', (type) => {
     expect(query.mock.calls.some(([sql]) => String(sql).includes('CREATE FULLTEXT'))).toBe(false);
   });
 
+  it('preserves the existing vector index and starts full-text initialization on restart', async () => {
+    startSqlFullTextIndexBuild.mockClear();
+    query.mockImplementation(async (sql: string) => [
+      sql.startsWith('SHOW INDEX') ? [{ Column_name: 'vector', Index_type: 'VECTOR' }] : []
+    ]);
+    await new ObVectorCtrl({ type }).init();
+    expect(query.mock.calls.some(([sql]) => String(sql).includes('CREATE VECTOR INDEX'))).toBe(
+      false
+    );
+    expect(startSqlFullTextIndexBuild).toHaveBeenCalledWith(type);
+  });
+
   it.each([200, 100])('applies the supplied search width %j', async (hnswEfSearch) => {
-    query.mockResolvedValue([[{}, {}, []]]);
+    query.mockResolvedValue([[{}, []]]);
     await new ObVectorCtrl({ type }).embRecall({
       teamId: 'team',
       datasetIds: ['dataset'],
@@ -47,9 +59,43 @@ describe.each(['oceanbase', 'seekdb'] as const)('ObVectorCtrl (%s)', (type) => {
       hnswEfSearch,
       forbidCollectionIdList: []
     });
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining(`SET ob_hnsw_ef_search = ${hnswEfSearch};`)
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('SET ob_hnsw_ef_search = ?;'), [
+      hnswEfSearch,
+      '[0.1,0.2]',
+      'team',
+      ['dataset'],
+      100
+    ]);
+  });
+
+  it('widens collection candidates inside the requested scope and retries exactly on underfill', async () => {
+    query
+      .mockResolvedValueOnce([[{}, []]])
+      .mockResolvedValueOnce([[{ id: '1', collection_id: 'allowed', score: -0.75 }]]);
+    const result = await new ObVectorCtrl({ type }).embRecall({
+      teamId: 'team',
+      datasetIds: ['dataset'],
+      vector: [0.1, 0.2],
+      limit: 100,
+      hnswEfSearch: 200,
+      filterCollectionIdList: ['allowed', 'blocked'],
+      forbidCollectionIdList: ['blocked']
+    });
+    expect(query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringMatching(
+        /WHERE team_id = \? AND dataset_id IN \(\?\).*APPROXIMATE LIMIT \?\s+\) candidates WHERE collection_id IN \(\?\)/s
+      ),
+      [type === 'seekdb' ? 2500 : 512, '[0.1,0.2]', 'team', ['dataset'], 1600, ['allowed'], 100]
     );
+    expect(query).toHaveBeenNthCalledWith(2, expect.stringContaining('ORDER BY score + 0 ASC'), [
+      '[0.1,0.2]',
+      'team',
+      ['dataset'],
+      ['allowed'],
+      100
+    ]);
+    expect(result.results).toEqual([{ id: '1', collectionId: 'allowed', score: 0.75 }]);
   });
 
   it('updates only the selected team and IDs through bound parameters', async () => {
