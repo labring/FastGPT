@@ -77,10 +77,43 @@ describe('OpenGauss native BM25', () => {
     expect(
       statements.some((sql) => sql.includes('SELECT true,$1::uuid,$2::integer,$3::text'))
     ).toBe(true);
-    expect(statements.some((sql) => /DROP|DELETE|TRUNCATE|SET vector/i.test(sql))).toBe(false);
+    const begin = statements.indexOf('BEGIN');
+    expect(statements.slice(0, begin)).toEqual(
+      expect.arrayContaining([
+        'ANALYZE pg_temp.fastgpt_bm25_maintenance_probe',
+        'VACUUM pg_temp.fastgpt_bm25_maintenance_probe',
+        'DROP TABLE pg_temp.fastgpt_bm25_maintenance_probe'
+      ])
+    );
+    expect(
+      statements.slice(begin).some((sql) => /DROP|DELETE|TRUNCATE|SET vector/i.test(sql))
+    ).toBe(false);
     expect(statements).toContain('COMMIT');
     expect(client.release).toHaveBeenCalledOnce();
   });
+  it.each(['ANALYZE', 'VACUUM'])(
+    'rejects failed BM25 %s before touching the vector table',
+    async (command) => {
+      const query = client.query.getMockImplementation()!;
+      client.query.mockImplementation(async (sql: string) => {
+        if (sql.startsWith(command)) throw new Error('function returned NULL');
+        return query(sql);
+      });
+
+      await expect(prepareOpenGaussFullText()).rejects.toThrow(
+        'requires working ANALYZE and VACUUM'
+      );
+      expect(client.query).toHaveBeenCalledWith(
+        'DROP TABLE pg_temp.fastgpt_bm25_maintenance_probe'
+      );
+      expect(client.query).not.toHaveBeenCalledWith('BEGIN');
+      expect(client.query.mock.calls.some(([sql]) => String(sql).includes('modeldata'))).toBe(
+        false
+      );
+      expect(client.release).toHaveBeenCalledWith(true);
+    }
+  );
+
   it('rolls back before building the BM25 index when existing metadata is incompatible', async () => {
     const query = client.query.getMockImplementation()!;
     client.query.mockImplementation(async (sql: string) => {
@@ -91,8 +124,8 @@ describe('OpenGauss native BM25', () => {
     });
     await expect(prepareOpenGaussFullText()).rejects.toThrow();
     expect(client.query).toHaveBeenCalledWith('ROLLBACK');
-    expect(client.query.mock.calls.some(([sql]) => String(sql).startsWith('CREATE INDEX'))).toBe(
-      false
+    expect(client.query).not.toHaveBeenCalledWith(
+      expect.stringContaining('CREATE INDEX modeldata_fulltext')
     );
     expect(client.release).toHaveBeenCalledOnce();
   });

@@ -74,16 +74,21 @@ export const onDatasetVectorCounted = async ({
     return;
   }
   if (!state || state === 'none' || state === 'failed') {
-    await updateIndexState(provider, scope, 'pending', checkedAt);
+    await updateIndexState({ provider, scope, state: 'pending', expectedCheckedAt: checkedAt });
   }
 };
 
-const updateIndexState = (
-  provider: 'pg' | 'opengauss',
-  scope: PgDatasetIndexScope,
-  state: NonNullable<DatasetVectorData['pgIndex']>,
-  expectedCheckedAt?: Date
-) =>
+const updateIndexState = ({
+  provider,
+  scope,
+  state,
+  expectedCheckedAt
+}: {
+  provider: 'pg' | 'opengauss';
+  scope: PgDatasetIndexScope;
+  state: NonNullable<DatasetVectorData['pgIndex']>;
+  expectedCheckedAt?: Date;
+}) =>
   provider === 'pg'
     ? updateDatasetPgIndexState({
         ...scope,
@@ -113,12 +118,12 @@ export const processDatasetVectorIndex = async (
       onBuilding: async () => {
         // 清理通知可能早于专用 PG 连接建立；此时尚无会话可终止，由建图前检查挡住旧创建任务。
         if (await getDatasetVectorIndexQueue().getJob(`${scope.datasetId}-cleanup`)) return false;
-        const result = await updateIndexState(provider, scope, 'building');
+        const result = await updateIndexState({ provider, scope, state: 'building' });
         // deleteTime 条件与状态更新原子判断，挡住进入删除流程前已领取的陈旧任务。
         return result.matchedCount > 0;
       },
       onRemoving: async () => {
-        await updateIndexState(provider, scope, 'removing');
+        await updateIndexState({ provider, scope, state: 'removing' });
       }
     };
     const result =
@@ -139,11 +144,11 @@ export const processDatasetVectorIndex = async (
             }
           })
         : await ensureOpenGaussDatasetIndex(options);
-    await updateIndexState(
+    await updateIndexState({
       provider,
       scope,
-      'pgIndex' in result ? result.pgIndex : result.indexState
-    );
+      state: 'pgIndex' in result ? result.pgIndex : result.indexState
+    });
     logger.info('Dataset HNSW index task completed', {
       provider,
       ...scope,
@@ -155,7 +160,7 @@ export const processDatasetVectorIndex = async (
     // 资源不足也按普通失败处理，暂不通过降低并行度或内存预算保证建图成功。
     // 下次真实统计仍按原预算规则投递，资源限制未解除时可能再次失败；failed 期间走精确检索。
     // Mongo 故障不掩盖原始构建错误；下次真实统计重新投递后再核验，成功索引无需重复构建。
-    await updateIndexState(provider, scope, 'failed').catch((stateError) =>
+    await updateIndexState({ provider, scope, state: 'failed' }).catch((stateError) =>
       logger.warn('Failed to update dataset index state', { ...scope, error: stateError })
     );
     logger.error('Dataset HNSW index task failed', { provider, ...scope, operation, error });

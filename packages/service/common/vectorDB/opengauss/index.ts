@@ -9,6 +9,7 @@ import { SQL_FULL_TEXT_COLUMN } from '../fullText/utils';
 import { insertPostgresVectorFullTextRows } from '../fullText/postgres';
 import { startSqlFullTextIndexBuild } from '../fullText/controller';
 import { buildOpenGaussVectorRecallQuery } from './recall';
+import { serviceEnv } from '../../../env';
 
 const logger = getLogger(LogCategories.INFRA.VECTOR);
 
@@ -45,7 +46,8 @@ export class OpenGaussVectorCtrl implements VectorControllerType {
       await OgClient.query(
         `CREATE INDEX CONCURRENTLY IF NOT EXISTS create_time_index ON ${DatasetVectorTableName} USING btree(createtime);`
       );
-      startSqlFullTextIndexBuild('opengauss');
+      // 滚动升级兼容期由管理员显式运行迁移，在建 BM25 前核验维护能力。
+      if (!serviceEnv.TMP_MIGRATE_FULL_TEXT) startSqlFullTextIndexBuild('opengauss');
 
       logger.info('openGauss DataVec vector initialization completed');
     } catch (error) {

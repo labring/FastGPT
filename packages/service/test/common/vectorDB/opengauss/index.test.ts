@@ -1,6 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const startSqlFullTextIndexBuild = vi.hoisted(() => vi.fn());
+const { startSqlFullTextIndexBuild, mode } = vi.hoisted(() => ({
+  startSqlFullTextIndexBuild: vi.fn(),
+  mode: { compatibility: false }
+}));
+vi.mock('@fastgpt/service/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/env')>();
+  return {
+    ...actual,
+    serviceEnv: {
+      ...actual.serviceEnv,
+      get TMP_MIGRATE_FULL_TEXT() {
+        return mode.compatibility;
+      }
+    }
+  };
+});
 vi.mock('@fastgpt/service/common/vectorDB/fullText/controller', () => ({
   startSqlFullTextIndexBuild
 }));
@@ -15,23 +30,32 @@ vi.mock('@fastgpt/service/common/vectorDB/opengauss/controller', () => ({
 }));
 
 describe('OpenGaussVectorCtrl.init', () => {
-  it('creates the vector and BM25 full-text schema and indexes on init', async () => {
-    vi.mocked(OgClient.query)
-      .mockReset()
-      .mockResolvedValue({ rows: [] } as any);
-    await new OpenGaussVectorCtrl().init();
-    expect(
-      vi.mocked(OgClient.query).mock.calls.some(([sql]) => String(sql).includes('USING hnsw'))
-    ).toBe(false);
-    expect(OgClient.query).toHaveBeenCalledWith(expect.stringContaining('storage_type=ASTORE'));
-    expect(OgClient.query).toHaveBeenCalledWith(
-      expect.stringContaining('ALTER TABLE modeldata ADD COLUMN fulltext_tokens TEXT;')
-    );
-    expect(startSqlFullTextIndexBuild).toHaveBeenCalledWith('opengauss');
-    expect(
-      vi.mocked(OgClient.query).mock.calls.some(([sql]) => String(sql).includes('USING bm25'))
-    ).toBe(false);
-  });
+  it.each([false, true])(
+    'prepares the vector schema with compatibility mode set to %s',
+    async (compatibility) => {
+      mode.compatibility = compatibility;
+      startSqlFullTextIndexBuild.mockClear();
+      vi.mocked(OgClient.query)
+        .mockReset()
+        .mockResolvedValue({ rows: [] } as any);
+      await new OpenGaussVectorCtrl().init();
+      expect(
+        vi.mocked(OgClient.query).mock.calls.some(([sql]) => String(sql).includes('USING hnsw'))
+      ).toBe(false);
+      expect(OgClient.query).toHaveBeenCalledWith(expect.stringContaining('storage_type=ASTORE'));
+      expect(OgClient.query).toHaveBeenCalledWith(
+        expect.stringContaining('ALTER TABLE modeldata ADD COLUMN fulltext_tokens TEXT;')
+      );
+      if (compatibility) {
+        expect(startSqlFullTextIndexBuild).not.toHaveBeenCalled();
+      } else {
+        expect(startSqlFullTextIndexBuild).toHaveBeenCalledWith('opengauss');
+      }
+      expect(
+        vi.mocked(OgClient.query).mock.calls.some(([sql]) => String(sql).includes('USING bm25'))
+      ).toBe(false);
+    }
+  );
 });
 
 describe('OpenGaussVectorCtrl.embRecall', () => {

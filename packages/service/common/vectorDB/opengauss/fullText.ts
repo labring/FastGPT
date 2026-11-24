@@ -3,6 +3,7 @@ import {
   SQL_FULL_TEXT_SCHEMA_VERSION
 } from '@fastgpt/global/core/dataset/fullText/constants';
 import { randomUUID } from 'node:crypto';
+import type { PoolClient } from 'pg';
 import {
   SqlFullTextMetadataSchema,
   type SqlFullTextMetadata
@@ -69,18 +70,44 @@ export const assertOpenGaussFullTextCapability = async () => {
   }
 };
 
+/** 在当前会话的空白临时表验证 BM25 维护能力，失败时不接触业务向量表。 */
+const assertOpenGaussBm25Maintenance = async (client: Pick<PoolClient, 'query'>) => {
+  const probeName = 'fastgpt_bm25_maintenance_probe';
+  const probe = `pg_temp.${probeName}`;
+  await client.query(`CREATE TEMP TABLE ${probeName} (tokens TEXT) WITH (storage_type=astore)`);
+  try {
+    await client.query(`INSERT INTO ${probe} (tokens) VALUES ('fastgpt bm25 maintenance probe')`);
+    await client.query(`CREATE INDEX ON ${probe} USING bm25 (tokens)`);
+    await client.query(`ANALYZE ${probe}`);
+    await client.query(`DELETE FROM ${probe}`);
+    // VACUUM 不能在事务内执行，删除测试行后覆盖 BM25 的死元组清理。
+    await client.query(`VACUUM ${probe}`);
+  } catch (cause) {
+    throw new Error('OpenGauss BM25 requires working ANALYZE and VACUUM before indexing', {
+      cause
+    });
+  } finally {
+    await client.query(`DROP TABLE ${probe}`);
+  }
+};
+
 /**
  * 对既有 astore 普通表追加词串字段与 BM25 索引；不转换存储引擎、不改向量。
  * 迁移准备阶段在事务中核对版本、表类型与索引，错误回滚本次事务。
  */
 export const prepareOpenGaussFullText = async () => {
   const client = await (await connectOg()).connect();
+  let transactionStarted = false;
+  let discardClient = false;
   try {
-    await client.query('BEGIN');
     const version = await client.query<{ version: string }>('SELECT version() AS version');
     assertOpenGaussFullTextVersion(version.rows[0].version);
     const method = await client.query("SELECT 1 FROM pg_am WHERE amname='bm25'");
     if (!method.rows.length) throw new Error('DataVec BM25 is unavailable in this OpenGauss build');
+    await assertOpenGaussBm25Maintenance(client);
+
+    await client.query('BEGIN');
+    transactionStarted = true;
     await client.query(`LOCK TABLE ${DatasetVectorTableName} IN SHARE UPDATE EXCLUSIVE MODE`);
     const table = await client.query<{ relkind: string; reloptions: string[] | null }>(
       `SELECT relkind,reloptions FROM pg_class WHERE oid='${DatasetVectorTableName}'::regclass`
@@ -144,10 +171,17 @@ export const prepareOpenGaussFullText = async () => {
     );
     await client.query('COMMIT');
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (transactionStarted) {
+      await client.query('ROLLBACK').catch(() => {
+        discardClient = true;
+      });
+    } else {
+      // 前置检查可能在临时表清理时失败，退出会话以释放遗留对象。
+      discardClient = true;
+    }
     throw error;
   } finally {
-    client.release();
+    client.release(discardClient);
   }
   await assertOpenGaussFullTextCapability();
   return getOpenGaussFullTextMetadata();
