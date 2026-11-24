@@ -31,6 +31,7 @@ type BinaryStream struct {
 	stopAfter func() bool
 
 	closed atomic.Bool
+	eof    atomic.Bool
 
 	closeOnce    sync.Once
 	bodyCloseErr error
@@ -152,7 +153,9 @@ func (s *BinaryStream) Close() error {
 	if s == nil {
 		return nil
 	}
-	s.closed.Store(true)
+	if !s.eof.Load() {
+		s.closed.Store(true)
+	}
 	return s.closeTransport()
 }
 
@@ -256,6 +259,9 @@ func (s *BinaryStream) Read(p []byte) (int, error) {
 	if existingErr := s.cachedReadError(); existingErr != nil {
 		return 0, existingErr
 	}
+	if s.eof.Load() {
+		return 0, io.EOF
+	}
 	if s.ctx.Err() != nil {
 		_ = s.closeTransport()
 		return 0, s.reportErrorOnce(s.classifyReadFailure(s.ctx.Err()))
@@ -264,6 +270,8 @@ func (s *BinaryStream) Read(p []byte) (int, error) {
 		return 0, s.reportErrorOnce(s.classifyReadFailure(net.ErrClosed))
 	}
 	if s.body == nil {
+		s.eof.Store(true)
+		_ = s.closeTransport()
 		return 0, io.EOF
 	}
 
@@ -280,7 +288,8 @@ func (s *BinaryStream) Read(p []byte) (int, error) {
 			_ = s.closeTransport()
 			return n, s.reportErrorOnce(s.classifyReadFailure(net.ErrClosed))
 		}
-		_ = s.Close()
+		s.eof.Store(true)
+		_ = s.closeTransport()
 		return n, io.EOF
 	}
 

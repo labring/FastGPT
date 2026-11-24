@@ -329,34 +329,54 @@ func TestChatStreamSupportsFinalResultAfterIterationAndNextLoop(t *testing.T) {
 }
 
 func TestChatStreamConcurrentFinalResultAndEarlyBreakPartialSnapshot(t *testing.T) {
-	// 1. Concurrent FinalResult() while Next() advances.
-	chunks1 := [][]byte{
-		[]byte("data: {\"choices\":[{\"delta\":{\"content\":\"A\"}}]}\n\n"),
-		[]byte("data: {\"choices\":[{\"delta\":{\"content\":\"B\"}}]}\n\n"),
-		[]byte("data: [DONE]\n\n"),
-	}
-	resp1, raw1 := mockSSEResponse(newChunkedReadCloser(chunks1...))
+	// 1. Concurrent FinalResult() waits cleanly while Events() advances, without stealing frames.
+	pr, pw := io.Pipe()
+	t.Cleanup(func() {
+		_ = pw.Close()
+		_ = pr.Close()
+	})
+	resp1, raw1 := mockSSEResponse(pr)
 	stream1 := newChatStream(t.Context(), resp1, raw1, true, nil)
 
-	if !stream1.Next() {
-		t.Fatalf("expected first event, err=%v", stream1.Err())
-	}
-
+	firstEventSeen := make(chan struct{})
+	finalReady := make(chan struct{})
 	type finalOut struct {
 		res *ChatStreamFinalResult
 		err error
 	}
 	ch := make(chan finalOut, 1)
+
 	go func() {
+		_, _ = pw.Write([]byte("data: {\"choices\":[{\"delta\":{\"content\":\"A\"}}]}\n\n"))
+		<-finalReady
+		_, _ = pw.Write([]byte("data: {\"choices\":[{\"delta\":{\"content\":\"B\"}}]}\n\n"))
+		_, _ = pw.Write([]byte("data: [DONE]\n\n"))
+		_ = pw.Close()
+	}()
+
+	go func() {
+		<-firstEventSeen
+		close(finalReady)
 		r, e := stream1.FinalResult()
 		ch <- finalOut{res: r, err: e}
 	}()
 
-	for stream1.Next() {
+	var eventsText strings.Builder
+	for ev, err := range stream1.Events() {
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if answer, ok := ev.(ChatSSEAnswerEvent); ok {
+			eventsText.WriteString(answer.TextDelta)
+			if eventsText.String() == "A" {
+				close(firstEventSeen)
+			}
+		}
 	}
-	if err := stream1.Err(); err != nil {
-		t.Fatalf("stream1.Err() = %v", err)
+	if eventsText.String() != "AB" {
+		t.Fatalf("Events() received %q, want AB", eventsText.String())
 	}
+
 	got := <-ch
 	if got.err != nil || got.res.Text != "AB" {
 		t.Fatalf("concurrent FinalResult() = (%+v, %v), want Text=AB", got.res, got.err)
@@ -429,16 +449,29 @@ func TestChatStreamMidStreamTransportFailure(t *testing.T) {
 }
 
 func TestChatStreamContextAbortWhilePausedOrBlocked(t *testing.T) {
-	// 1. Paused after first event, then context canceled while FinalText() waits.
+	// 1. Paused after first event in Events(), then context canceled while FinalText() waits.
 	body := newPausableReadCloser("data: {\"choices\":[{\"delta\":{\"content\":\"第一段\"}}]}\n\n")
 	resp, raw := mockSSEResponse(body)
 	ctx, cancel := context.WithCancelCause(t.Context())
 	defer cancel(nil)
 
 	stream := newChatStream(ctx, resp, raw, true, nil)
-	if !stream.Next() {
-		t.Fatalf("expected first event, got err=%v", stream.Err())
-	}
+	firstEvent := make(chan struct{})
+	eventsErrCh := make(chan error, 1)
+	go func() {
+		var iterErr error
+		for ev, err := range stream.Events() {
+			if err != nil {
+				iterErr = err
+				break
+			}
+			if _, ok := ev.(ChatSSEAnswerEvent); ok {
+				close(firstEvent)
+			}
+		}
+		eventsErrCh <- iterErr
+	}()
+	<-firstEvent
 
 	errCh := make(chan error, 1)
 	go func() {
@@ -452,6 +485,9 @@ func TestChatStreamContextAbortWhilePausedOrBlocked(t *testing.T) {
 	finalErr := <-errCh
 	if !errors.Is(finalErr, ErrAborted) {
 		t.Fatalf("expected ErrAborted, got %v", finalErr)
+	}
+	if eventsErr := <-eventsErrCh; !errors.Is(eventsErr, ErrAborted) {
+		t.Fatalf("expected Events() ErrAborted, got %v", eventsErr)
 	}
 	if stream.State() != ChatStreamStateAborted {
 		t.Fatalf("State() = %q, want aborted", stream.State())
@@ -586,11 +622,11 @@ func TestChatStreamEdgeCasesTrailingFrameAndChatTitleFormats(t *testing.T) {
 	}
 }
 
-func TestChatStreamNextThenFinalResultSameGoroutine(t *testing.T) {
-	// 1. Reading one frame via Next() then calling FinalResult() in the same goroutine must drain cleanly without hanging.
+func TestChatStreamManualNextOwnershipAndFinalResult(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 	defer cancel()
 
+	// 1. Calling FinalResult()/FinalText() before Next() finishes returns ErrBadRequest without blocking or stealing frames.
 	chunks := [][]byte{
 		[]byte("event: answer\ndata: {\"choices\":[{\"delta\":{\"content\":\"第一段\"}}]}\n\n"),
 		[]byte("event: answer\ndata: {\"choices\":[{\"delta\":{\"content\":\"第二段\"}}]}\n\n"),
@@ -607,9 +643,29 @@ func TestChatStreamNextThenFinalResultSameGoroutine(t *testing.T) {
 		t.Fatalf("unexpected first event: %#v", stream.Current())
 	}
 
+	if _, err := stream.FinalResult(); !errors.Is(err, ErrBadRequest) {
+		t.Fatalf("FinalResult() while Next() active = %v, want ErrBadRequest", err)
+	}
+	if _, err := stream.FinalText(); !errors.Is(err, ErrBadRequest) {
+		t.Fatalf("FinalText() while Next() active = %v, want ErrBadRequest", err)
+	}
+
+	var rest strings.Builder
+	for stream.Next() {
+		if answer, ok := stream.Current().(ChatSSEAnswerEvent); ok {
+			rest.WriteString(answer.TextDelta)
+		}
+	}
+	if err := stream.Err(); err != nil {
+		t.Fatalf("stream.Err() after completing Next() = %v", err)
+	}
+	if rest.String() != "第二段" {
+		t.Fatalf("remaining Next() text = %q, want 第二段", rest.String())
+	}
+
 	res, err := stream.FinalResult()
 	if err != nil {
-		t.Fatalf("FinalResult() after Next() error = %v", err)
+		t.Fatalf("FinalResult() after Next() completion error = %v", err)
 	}
 	if res.Text != "第一段第二段" {
 		t.Fatalf("res.Text = %q, want 第一段第二段", res.Text)
@@ -629,7 +685,91 @@ func TestChatStreamNextThenFinalResultSameGoroutine(t *testing.T) {
 		t.Fatal("expected single-use error on Events() after Next()+FinalResult()")
 	}
 
-	// 2. Next() followed by FinalResult() on an SSE error event returns that mapped error with conflict recovery data.
+	// 2. Concurrent FinalText() while another goroutine is mid-Next() returns ErrBadRequest immediately without stealing subsequent frames.
+	pr, pw := io.Pipe()
+	t.Cleanup(func() {
+		_ = pw.Close()
+		_ = pr.Close()
+	})
+	resp2, raw2 := mockSSEResponse(pr)
+	stream2 := newChatStream(ctx, resp2, raw2, true, nil)
+
+	firstDone := make(chan error, 1)
+	go func() {
+		_, wErr := pw.Write([]byte("event: answer\ndata: {\"choices\":[{\"delta\":{\"content\":\"A\"}}]}\n\n"))
+		firstDone <- wErr
+	}()
+	if !stream2.Next() {
+		t.Fatalf("expected first concurrent event, err=%v", stream2.Err())
+	}
+	if wErr := <-firstDone; wErr != nil {
+		t.Fatalf("write chunk A failed: %v", wErr)
+	}
+
+	nextBlocked := make(chan struct{})
+	secondChunkReceived := make(chan string, 1)
+	nextFinished := make(chan error, 1)
+	go func() {
+		close(nextBlocked)
+		var collected strings.Builder
+		for stream2.Next() {
+			if answer, ok := stream2.Current().(ChatSSEAnswerEvent); ok {
+				collected.WriteString(answer.TextDelta)
+			}
+		}
+		secondChunkReceived <- collected.String()
+		nextFinished <- stream2.Err()
+	}()
+
+	<-nextBlocked
+	// Give Next() a moment to enter blocked Read on frame 2, then verify FinalText() rejects immediately.
+	time.Sleep(15 * time.Millisecond)
+	if _, err := stream2.FinalText(); !errors.Is(err, ErrBadRequest) {
+		t.Fatalf("concurrent FinalText() while Next() active = %v, want ErrBadRequest", err)
+	}
+
+	if _, err := pw.Write([]byte("event: answer\ndata: {\"choices\":[{\"delta\":{\"content\":\"B\"}}]}\n\n")); err != nil {
+		t.Fatalf("write chunk B failed: %v", err)
+	}
+	if _, err := pw.Write([]byte("data: [DONE]\n\n")); err != nil {
+		t.Fatalf("write DONE failed: %v", err)
+	}
+	_ = pw.Close()
+
+	if gotRest := <-secondChunkReceived; gotRest != "B" {
+		t.Fatalf("concurrent Next() received %q, want B (frame must not be stolen)", gotRest)
+	}
+	if err := <-nextFinished; err != nil {
+		t.Fatalf("concurrent Next() err = %v", err)
+	}
+	finalTxt, err := stream2.FinalText()
+	if err != nil || finalTxt != "AB" {
+		t.Fatalf("FinalText() after Next() finished = (%q, %v), want (AB, nil)", finalTxt, err)
+	}
+
+	// 3. Early Close() releases pending ownership so FinalResult() returns partial snapshot without blocking.
+	closeChunks := [][]byte{
+		[]byte("event: answer\ndata: {\"choices\":[{\"delta\":{\"content\":\"partial\"}}]}\n\n"),
+		[]byte("event: answer\ndata: {\"choices\":[{\"delta\":{\"content\":\"ignored\"}}]}\n\n"),
+		[]byte("data: [DONE]\n\n"),
+	}
+	closeResp, closeRaw := mockSSEResponse(newChunkedReadCloser(closeChunks...))
+	closeStream := newChatStream(ctx, closeResp, closeRaw, true, nil)
+	if !closeStream.Next() {
+		t.Fatalf("expected first event before Close(), err=%v", closeStream.Err())
+	}
+	if err := closeStream.Close(); err != nil {
+		t.Fatalf("Close() err = %v", err)
+	}
+	if closeStream.State() != ChatStreamStateClosed {
+		t.Fatalf("State() after Close() = %q, want closed", closeStream.State())
+	}
+	closedRes, err := closeStream.FinalResult()
+	if err != nil || closedRes.Text != "partial" {
+		t.Fatalf("FinalResult() after Close() = (%+v, %v), want Text=partial", closedRes, err)
+	}
+
+	// 4. Exhausting Next() on an SSE error event allows FinalResult() to return that mapped conflict error.
 	errChunks := [][]byte{
 		[]byte("event: answer\ndata: {\"choices\":[{\"delta\":{\"content\":\"part\"}}]}\n\n"),
 		[]byte("event: error\ndata: {\"httpStatus\":409,\"code\":409,\"statusText\":\"chatIsGenerating\",\"message\":\"Generating\",\"data\":{\"responseChatItemId\":\"sse-turn-9\"}}\n\n"),
@@ -637,8 +777,7 @@ func TestChatStreamNextThenFinalResultSameGoroutine(t *testing.T) {
 	}
 	errResp, errRaw := mockSSEResponse(newChunkedReadCloser(errChunks...))
 	errStream := newChatStream(ctx, errResp, errRaw, true, nil)
-	if !errStream.Next() {
-		t.Fatalf("expected first event before error, err=%v", errStream.Err())
+	for errStream.Next() {
 	}
 	_, finalErr := errStream.FinalResult()
 	if !errors.Is(finalErr, ErrConflict) {

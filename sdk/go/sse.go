@@ -702,6 +702,15 @@ func extractChunkDeltas(payload any) (string, string) {
 	return textDelta, reasoningDelta
 }
 
+type chatStreamOwner uint8
+
+const (
+	streamOwnerNone chatStreamOwner = iota
+	streamOwnerNext
+	streamOwnerEvents
+	streamOwnerFinal
+)
+
 // ChatStream consumes a FastGPT SSE response stream with incremental event iteration,
 // automatic context cancellation cleanup, and post-stream result aggregation.
 type ChatStream struct {
@@ -718,13 +727,12 @@ type ChatStream struct {
 	closeBodyOnce sync.Once
 	bodyCloseErr  error
 
-	// readMu 始终在 mu 之外获取，串行化底层帧读取，防止主动 FinalResult 与并发 Next 竞争 reader；
+	// readMu 始终在 mu 之外获取，串行化底层帧读取；
 	// Close / abort 绝不获取 readMu，以保证关闭响应体可立即唤醒阻塞中的读操作。
 	readMu          sync.Mutex
 	mu              sync.Mutex
 	state           ChatStreamState
-	started         bool
-	eventsActive    bool
+	owner           chatStreamOwner
 	receivedDone    bool
 	err             error
 	streamError     error
@@ -970,7 +978,11 @@ func (s *ChatStream) Next() bool {
 		s.mu.Unlock()
 		return false
 	}
-	s.started = true
+	if s.owner != streamOwnerNone && s.owner != streamOwnerNext {
+		s.mu.Unlock()
+		return false
+	}
+	s.owner = streamOwnerNext
 	s.mu.Unlock()
 
 	return s.nextStep()
@@ -1067,10 +1079,9 @@ func (s *ChatStream) Events() iter.Seq2[ChatSSEEvent, error] {
 			return
 		}
 		s.mu.Lock()
-		alreadyStarted := s.started
+		alreadyStarted := s.owner != streamOwnerNone
 		if !alreadyStarted {
-			s.started = true
-			s.eventsActive = true
+			s.owner = streamOwnerEvents
 		}
 		s.mu.Unlock()
 
@@ -1089,9 +1100,6 @@ func (s *ChatStream) Events() iter.Seq2[ChatSSEEvent, error] {
 		}
 
 		defer func() {
-			s.mu.Lock()
-			s.eventsActive = false
-			s.mu.Unlock()
 			_ = s.Close()
 		}()
 
@@ -1108,6 +1116,8 @@ func (s *ChatStream) Events() iter.Seq2[ChatSSEEvent, error] {
 }
 
 // FinalResult consumes or awaits completion of the stream and returns the aggregated response summary.
+// If the stream is actively controlled by Next(), callers must finish Next() or call Close() first;
+// otherwise FinalResult returns an ErrBadRequest error instead of stealing events from Next().
 // If the stream failed, aborted, or received an SSE error event, FinalResult returns that terminal error.
 func (s *ChatStream) FinalResult() (*ChatStreamFinalResult, error) {
 	if s == nil {
@@ -1124,17 +1134,28 @@ func (s *ChatStream) FinalResult() (*ChatStreamFinalResult, error) {
 		}
 		return snap, nil
 	}
-	waitForEvents := s.eventsActive
-	if !waitForEvents {
-		s.started = true
-	}
-	s.mu.Unlock()
-
-	if waitForEvents {
-		<-s.doneCh
-	} else {
+	switch s.owner {
+	case streamOwnerNone:
+		s.owner = streamOwnerFinal
+		s.mu.Unlock()
 		for s.nextStep() {
 		}
+	case streamOwnerEvents, streamOwnerFinal:
+		s.mu.Unlock()
+		<-s.doneCh
+	case streamOwnerNext:
+		s.mu.Unlock()
+		return nil, newAPIError(
+			ErrBadRequest,
+			"ChatStream is still being consumed via Next(); finish iterating with Next() or call Close() before calling FinalResult()",
+			0,
+			0,
+			"",
+			s.raw.RequestID,
+			s.raw.URL,
+			nil,
+			s.extraSecrets,
+		)
 	}
 
 	s.mu.Lock()

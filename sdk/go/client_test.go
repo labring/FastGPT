@@ -1293,3 +1293,184 @@ func TestChatGeneratingConflictDataRedactedHooksAndSSE(t *testing.T) {
 		t.Fatalf("ChatGeneratingConflict() = (%+v, %v), want ReusePreviousAI=true", conflict, ok)
 	}
 }
+
+func TestBinaryDownloadNoReplayOnReusedKeepAliveConn(t *testing.T) {
+	var (
+		mu             sync.Mutex
+		lastWarmRemote string
+		wireErrs       []string
+	)
+	var dropHits atomic.Int32
+	var okHits atomic.Int32
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/core/ai/model/list"):
+			mu.Lock()
+			lastWarmRemote = r.RemoteAddr
+			mu.Unlock()
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"code":200,"data":{"models":[],"providers":[]}}`))
+		case strings.HasSuffix(r.URL.Path, "/core/dataset/collection/batchDownload"):
+			if r.Method != http.MethodGet || len(r.TransferEncoding) > 0 || r.ContentLength > 0 ||
+				r.Header.Get("Transfer-Encoding") != "" || r.Header.Get("Content-Length") != "" {
+				mu.Lock()
+				wireErrs = append(wireErrs, "unexpected request framing on bodyless GET")
+				mu.Unlock()
+			}
+			ticket := r.URL.Query().Get("ticket")
+			if ticket == "drop-ticket" {
+				mu.Lock()
+				sameConn := r.RemoteAddr == lastWarmRemote
+				mu.Unlock()
+				if !sameConn {
+					mu.Lock()
+					wireErrs = append(wireErrs, "batchDownload did not reuse warmed keep-alive connection")
+					mu.Unlock()
+				}
+				if dropHits.Add(1) == 1 {
+					if hj, ok := w.(http.Hijacker); ok {
+						if conn, _, err := hj.Hijack(); err == nil {
+							_ = conn.Close()
+							return
+						}
+					}
+				}
+				w.WriteHeader(http.StatusGone)
+				return
+			}
+			if ticket == "ok-ticket" {
+				mu.Lock()
+				sameConn := r.RemoteAddr == lastWarmRemote
+				mu.Unlock()
+				if !sameConn {
+					mu.Lock()
+					wireErrs = append(wireErrs, "ok batchDownload did not reuse warmed keep-alive connection")
+					mu.Unlock()
+				}
+				okHits.Add(1)
+				w.Header().Set("Content-Type", "application/zip")
+				_, _ = w.Write([]byte{0x50, 0x4b, 0x03, 0x04})
+				return
+			}
+			http.NotFound(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	tr := &http.Transport{
+		MaxIdleConns:        1,
+		MaxIdleConnsPerHost: 1,
+		IdleConnTimeout:     30 * time.Second,
+	}
+	defer tr.CloseIdleConnections()
+
+	client := NewClient(
+		WithBaseURL(srv.URL),
+		WithAPIKey("fastgpt-key"),
+		WithHTTPClient(&http.Client{Transport: tr}),
+	)
+
+	// 1. Warm the idle keep-alive socket, then drop the socket before response headers on BatchDownload.
+	if _, err := client.Models.List(t.Context()); err != nil {
+		t.Fatalf("warm Models.List() error = %v", err)
+	}
+	_, err := client.Datasets.Collections.BatchDownload(t.Context(), DatasetsCollectionsBatchDownloadParams{
+		Ticket: "drop-ticket",
+	})
+	if !errors.Is(err, ErrNetwork) {
+		t.Fatalf("BatchDownload(drop-ticket) err = %v, want ErrNetwork without silent replay", err)
+	}
+	if dropHits.Load() != 1 {
+		t.Fatalf("drop-ticket server hits = %d, want 1 (net/http must not replay non-retryable ticket)", dropHits.Load())
+	}
+
+	// 2. Warm a fresh keep-alive socket and verify normal BatchDownload over reused keep-alive still succeeds with clean GET framing.
+	if _, err := client.Models.List(t.Context()); err != nil {
+		t.Fatalf("rewarm Models.List() error = %v", err)
+	}
+	stream, err := client.Datasets.Collections.BatchDownload(t.Context(), DatasetsCollectionsBatchDownloadParams{
+		Ticket: "ok-ticket",
+	})
+	if err != nil {
+		t.Fatalf("BatchDownload(ok-ticket) error = %v", err)
+	}
+	defer func() {
+		_ = stream.Close()
+	}()
+	data, err := stream.Bytes()
+	if err != nil || !bytes.Equal(data, []byte{0x50, 0x4b, 0x03, 0x04}) {
+		t.Fatalf("BatchDownload(ok-ticket).Bytes() = (%x, %v)", data, err)
+	}
+	if okHits.Load() != 1 {
+		t.Fatalf("ok-ticket hits = %d, want 1", okHits.Load())
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(wireErrs) > 0 {
+		t.Fatalf("wire/keep-alive verification errors: %v", wireErrs)
+	}
+}
+
+func TestBinaryDownloadEOFAfterReadFullDoesNotReportAborted(t *testing.T) {
+	payload := []byte("0123456789abcdef")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/core/dataset/collection/batchDownload") {
+			w.Header().Set("Content-Type", "application/octet-stream")
+			w.Header().Set("Content-Length", "16")
+			_, _ = w.Write(payload)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	var onErrCount atomic.Int32
+	client := NewClient(
+		WithBaseURL(srv.URL),
+		WithAPIKey("fastgpt-key"),
+		WithHooks(Hooks{
+			OnError: func(_ context.Context, _ ErrorHookContext) {
+				onErrCount.Add(1)
+			},
+		}),
+	)
+
+	stream, err := client.Datasets.Collections.BatchDownload(t.Context(), DatasetsCollectionsBatchDownloadParams{
+		Ticket: "eof-ticket",
+	})
+	if err != nil {
+		t.Fatalf("BatchDownload() error = %v", err)
+	}
+	defer func() {
+		_ = stream.Close()
+	}()
+
+	buf := make([]byte, len(payload))
+	n, err := io.ReadFull(stream, buf)
+	if err != nil || n != len(payload) || !bytes.Equal(buf, payload) {
+		t.Fatalf("io.ReadFull() = (%d, %v, %q), want (%d, nil, %q)", n, err, buf, len(payload), payload)
+	}
+
+	// Drive EOF and call Read repeatedly after EOF as well as after Close().
+	extra := make([]byte, 8)
+	for range 2 {
+		rn, rErr := stream.Read(extra)
+		if rn != 0 || !errors.Is(rErr, io.EOF) {
+			t.Fatalf("post-ReadFull Read() = (%d, %v), want (0, io.EOF)", rn, rErr)
+		}
+	}
+	if err := stream.Close(); err != nil {
+		t.Fatalf("Close() after EOF error = %v", err)
+	}
+	rn, rErr := stream.Read(extra)
+	if rn != 0 || !errors.Is(rErr, io.EOF) {
+		t.Fatalf("Read() after EOF + Close() = (%d, %v), want (0, io.EOF)", rn, rErr)
+	}
+	if onErrCount.Load() != 0 {
+		t.Fatalf("OnError called %d times after clean EOF, want 0", onErrCount.Load())
+	}
+}

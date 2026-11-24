@@ -913,6 +913,16 @@ func (c *Client) classifyContextOrTransportError(
 	return newNetworkError("Network request failed", reqURL, nil, extraSecrets)
 }
 
+// nonReplayableEmptyBody wraps an empty request body for bodyless non-retryable operations.
+// Go's net/http treats Request.Body == nil or http.NoBody with GetBody != nil as idempotent/replayable
+// and automatically retries them if a reused keep-alive connection closes before response headers.
+// Providing a non-nil body with GetBody == nil makes Transport.RoundTrip treat the request as
+// non-replayable while probeRequestBody reads (0, io.EOF) and emits a clean bodyless HTTP request.
+type nonReplayableEmptyBody struct{}
+
+func (nonReplayableEmptyBody) Read([]byte) (int, error) { return 0, io.EOF }
+func (nonReplayableEmptyBody) Close() error             { return nil }
+
 func (c *Client) executeWithRetry(
 	ctx context.Context,
 	spec operationSpec,
@@ -994,6 +1004,8 @@ func (c *Client) executeWithRetry(
 			} else {
 				body = bytes.NewReader(prepared.bodyBytes)
 			}
+		} else if spec.RetryPolicy == retryPolicyDisabled {
+			body = nonReplayableEmptyBody{}
 		}
 
 		httpReq, err := http.NewRequestWithContext(reqCtx, spec.Method, prepared.url, body)
@@ -1003,6 +1015,9 @@ func (c *Client) executeWithRetry(
 			}
 			cancelReq(nil)
 			return nil, newBadRequestError("Failed to construct HTTP request", prepared.url, err, extraSecrets)
+		}
+		if spec.RetryPolicy == retryPolicyDisabled {
+			httpReq.GetBody = nil
 		}
 		httpReq.Header = finalHeaders.Clone()
 
