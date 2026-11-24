@@ -3,6 +3,7 @@ import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
   ParallelRunStatusEnum,
+  VariableInputEnum,
   WorkflowIOValueTypeEnum,
   VARIABLE_NODE_ID
 } from '@fastgpt/global/core/workflow/constants';
@@ -13,6 +14,7 @@ import {
   LoopRunModeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/common/workflow/migration';
 import { codeSandbox } from '@fastgpt/service/thirdProvider/codeSandbox';
 import { getTestInstanceConfig } from '@test/utils/instanceConfigSnapshot';
 import { UserConfigError } from '@fastgpt/global/common/error/utils';
@@ -394,6 +396,70 @@ describe('workflow data transfer through real nodes', () => {
     expect(graphValues(target)).toEqual({ zero: 0, flag: false, variable: 'updated' });
   });
 
+  it('checks declared variable types without excluding values created during execution', async () => {
+    const update = graphNode({
+      id: 'update',
+      type: FlowNodeTypeEnum.variableUpdate,
+      isEntry: true,
+      params: {
+        updateList: [
+          {
+            variable: [VARIABLE_NODE_ID, 'declared'],
+            value: ['', true],
+            valueType: 'boolean',
+            renderType: 'input'
+          },
+          {
+            variable: [VARIABLE_NODE_ID, 'runtime'],
+            value: ['', 'runtime value'],
+            valueType: 'string',
+            renderType: 'input'
+          }
+        ]
+      }
+    });
+    const target = graphNode({
+      id: 'target',
+      type: FlowNodeTypeEnum.toolParams,
+      inputs: [
+        graphReference({
+          key: 'text',
+          from: [VARIABLE_NODE_ID, 'declared'],
+          valueType: WorkflowIOValueTypeEnum.string
+        }),
+        graphReference({
+          key: 'flag',
+          from: [VARIABLE_NODE_ID, 'declared'],
+          valueType: WorkflowIOValueTypeEnum.boolean
+        }),
+        graphReference({
+          key: 'runtime',
+          from: [VARIABLE_NODE_ID, 'runtime'],
+          valueType: WorkflowIOValueTypeEnum.string
+        })
+      ],
+      outputs: ['text', 'flag', 'runtime']
+    });
+    await runGraph({
+      nodes: [update, target],
+      edges: [graphEdge({ source: 'update', target: 'target' })],
+      overrides: {
+        chatConfig: {
+          variables: [
+            {
+              key: 'declared',
+              label: 'Declared',
+              description: '',
+              type: VariableInputEnum.switch,
+              valueType: WorkflowIOValueTypeEnum.boolean
+            }
+          ]
+        }
+      }
+    });
+    expect(graphValues(target)).toEqual({ text: undefined, flag: true, runtime: 'runtime value' });
+  });
+
   it.each([0, 1])('runs only the selected if/else branch for %s', async (value) => {
     const source = graphNode({
       id: 'source',
@@ -767,6 +833,142 @@ const containerNodes = (type: FlowNodeTypeEnum) => {
 };
 
 describe('real container child workflows', () => {
+  it.each(['legacy', 'explicit', 'ambiguous', 'parent default'] as const)(
+    'resolves an outer reference from a %s loop child scope',
+    async (scenario) => {
+      const { start, body } = containerNodes(FlowNodeTypeEnum.loopRun);
+      const childIds = [start.nodeId, body.nodeId];
+      if (scenario === 'explicit') {
+        start.parentNodeId = 'loop';
+        body.parentNodeId = 'loop';
+      }
+      body.inputs.push({
+        ...graphReference({ key: 'outer', from: ['outer', 'value'] }),
+        canEdit: true
+      });
+      const outer = graphNode({
+        id: 'outer',
+        type: FlowNodeTypeEnum.toolParams,
+        params: { value: 'outer-value' },
+        isEntry: true,
+        outputs: ['value']
+      });
+      const loop = graphNode({
+        id: 'loop',
+        type: FlowNodeTypeEnum.loopRun,
+        params: {
+          [NodeInputKeyEnum.loopRunInputArray]: [0],
+          childrenNodeIdList: childIds
+        }
+      });
+      const inherited = scenario === 'parent default';
+      if (inherited) {
+        outer.isEntry = false;
+        outer.outputs[0].value = 'outer-value';
+        loop.isEntry = true;
+        loop.inputs.push({
+          ...graphReference({ key: 'alias', from: ['outer', 'value'] }),
+          value: undefined,
+          defaultValue: ['outer', 'value']
+        });
+      }
+      const other = graphNode({
+        id: 'other',
+        type: FlowNodeTypeEnum.loopRun,
+        params: { childrenNodeIdList: childIds }
+      });
+
+      await runGraph({
+        nodes: [
+          outer,
+          loop,
+          start,
+          body,
+          ...(scenario === 'explicit' || scenario === 'ambiguous' ? [other] : [])
+        ],
+        edges: [
+          ...(inherited ? [] : [graphEdge({ source: 'outer', target: 'loop' })]),
+          graphEdge({ source: start.nodeId, target: body.nodeId })
+        ]
+      });
+
+      expect(codeSandbox.runCode).toHaveBeenCalledOnce();
+      expect(vi.mocked(codeSandbox.runCode).mock.calls[0][0].variables?.outer).toBe(
+        scenario === 'ambiguous' ? undefined : 'outer-value'
+      );
+      expect(body.parentNodeId).toBe(scenario === 'explicit' ? 'loop' : undefined);
+    }
+  );
+
+  it.each([
+    {
+      label: 'legacy literal array',
+      value: ['first', 'second'] satisfies [string, string],
+      expected: ['first', 'second']
+    },
+    {
+      label: 'explicit list with a removed reference',
+      value: [['first', 'second']] satisfies [string, string][],
+      expected: []
+    }
+  ])('executes the expected items for $label in the loop input', async ({ value, expected }) => {
+    const { start, body } = containerNodes(FlowNodeTypeEnum.loopRun);
+    const source = graphNode({
+      id: 'container',
+      type: FlowNodeTypeEnum.loopRun,
+      isEntry: true,
+      params: { childrenNodeIdList: ['start', 'body'] },
+      inputs: [
+        graphReference({
+          key: NodeInputKeyEnum.loopRunInputArray,
+          from: value,
+          valueType: WorkflowIOValueTypeEnum.arrayAny
+        })
+      ]
+    });
+
+    await runGraph({
+      nodes: [source, start, body],
+      edges: [graphEdge({ source: 'start', target: 'body' })]
+    });
+
+    expect(
+      vi.mocked(codeSandbox.runCode).mock.calls.map(([args]) => args.variables?.value)
+    ).toEqual(expected);
+  });
+
+  it('does not return the IDs of a deleted reference as a tool output array', async () => {
+    const reference = ['removed-node', 'removed-result'] as [string, string];
+    const literal = ['first', 'second'] as [string, string];
+    const output = graphNode({
+      id: 'tool-output',
+      type: FlowNodeTypeEnum.pluginOutput,
+      isEntry: true,
+      inputs: [
+        graphReference({
+          key: 'removed',
+          from: reference,
+          valueType: WorkflowIOValueTypeEnum.arrayString
+        }),
+        graphReference({
+          key: 'literal',
+          from: literal,
+          valueType: WorkflowIOValueTypeEnum.arrayString
+        })
+      ]
+    });
+    const graph = migrateWorkflowToCurrent({
+      nodes: [output],
+      edges: [],
+      referenceSnapshots: [{ reference }]
+    });
+    const { result } = await runGraph({
+      nodes: [{ ...output, inputs: graph.nodes[0].inputs }],
+      edges: []
+    });
+    expect(result.workflowRuntimeSummary.pluginOutput).toEqual({ removed: [], literal });
+  });
+
   it.each([FlowNodeTypeEnum.loop, FlowNodeTypeEnum.parallelRun])(
     '%s passes every falsy result through nestedStart/nestedEnd to downstream',
     async (type) => {
@@ -833,12 +1035,22 @@ describe('real container child workflows', () => {
               : [0, false, ''],
           childrenNodeIdList: ['start', 'body']
         },
-        inputs: [{ ...graphReference({ key: 'value', from: ['body', 'value'] }), canEdit: true }],
+        inputs: [
+          { ...graphReference({ key: 'value', from: ['body', 'value'] }), canEdit: true },
+          { ...graphReference({ key: 'missing', from: ['removed', 'result'] }), canEdit: true }
+        ],
         outputs: [
           {
             id: 'value',
             key: 'value',
             label: '',
+            type: FlowNodeOutputTypeEnum.dynamic,
+            valueType: WorkflowIOValueTypeEnum.any
+          },
+          {
+            id: 'missing',
+            key: 'missing',
+            label: 'Removed source',
             type: FlowNodeOutputTypeEnum.dynamic,
             valueType: WorkflowIOValueTypeEnum.any
           },
@@ -849,6 +1061,7 @@ describe('real container child workflows', () => {
       });
       const target = consumer('target', {
         value: ['container', 'value'],
+        missing: ['container', 'missing'],
         errorText: ['container', NodeOutputKeyEnum.errorText]
       });
       const { result, responses } = await runGraph({
@@ -860,12 +1073,14 @@ describe('real container child workflows', () => {
       });
       expect(graphValues(target)).toEqual({
         value: fails || omitted ? undefined : '',
+        missing: undefined,
         errorText: fails && catchError ? failure.message : undefined
       });
       const history = responses.find((response) => response.nodeId === 'container')?.loopRunHistory;
       expect(history?.map((item) => item.customOutputs.value)).toEqual(
         fails || omitted ? [0, undefined] : [0, false, '']
       );
+      expect(history?.every((item) => item.customOutputs.missing === undefined)).toBe(true);
       expect(codeSandbox.runCode).toHaveBeenCalledTimes(fails || omitted ? 2 : 3);
       expect(result.workflowRuntimeSummary.errorCount).toBe(fails && !catchError ? 1 : 0);
       expect(findFailedResponseNode(responses)?.nodeId).toBe(

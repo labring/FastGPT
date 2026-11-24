@@ -17,14 +17,14 @@ import { LoopRunNode } from '@fastgpt/global/core/workflow/template/system/loopR
 import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http468';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { McpToolSetNode } from '@fastgpt/global/core/workflow/template/system/mcpToolSet';
-import { CanonicalWorkflowDataSchema } from '@fastgpt/global/core/workflow/migration';
+import { CanonicalWorkflowDataSchema } from '@fastgpt/global/core/workflow/migration/schema';
 import { PublishAppBodySchema } from '@fastgpt/global/openapi/core/app/version/api';
 import {
   getInputComponentProps,
   nodeTemplate2FlowNode,
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
-import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
+import { uiWorkflow2StoreWorkflow } from '@/web/core/workflow/editor/codec';
 import { hasDynamicToolInput } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderToolInput';
 
 describe('workflow tool node templates', () => {
@@ -285,7 +285,7 @@ describe('workflow tool node templates', () => {
           t: ((key: string) => key) as any
         })
       );
-    const workflow = uiWorkflow2StoreWorkflow({ nodes: toolNodes, edges: [], chatConfig: {} });
+    const workflow = uiWorkflow2StoreWorkflow({ nodes: toolNodes, edges: [] });
 
     expect(CanonicalWorkflowDataSchema.safeParse({ ...workflow, chatConfig: {} }).success).toBe(
       true

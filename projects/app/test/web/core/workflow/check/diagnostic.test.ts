@@ -7,6 +7,8 @@ import {
   FlowNodeInputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { TextEditorNode } from '@fastgpt/global/core/workflow/template/system/textEditor';
+import { renderWorkflowIssueMessage } from '@/web/core/workflow/issueView';
 import workflowZh from '@fastgpt/web/i18n/zh-CN/workflow.json';
 import commonZh from '@fastgpt/web/i18n/zh-CN/common.json';
 import type { TFunction } from 'next-i18next';
@@ -181,5 +183,56 @@ describe('formatWorkflowDiagnostic', () => {
         diagnostic: { code: WorkflowDiagnosticCodeEnum.outputReferencesRemain, severity: 'error' }
       }).message
     ).toBe(WorkflowDiagnosticCodeEnum.outputReferencesRemain);
+  });
+
+  it.each(['问题', 'common:Confirm'])(
+    'renders reference type mismatches for the literal label %s',
+    (inputName) => {
+      const issue = formatWorkflowDiagnostic({
+        diagnostic: {
+          code: WorkflowDiagnosticCodeEnum.referenceTypeMismatch,
+          severity: 'error',
+          nodeId: 'target',
+          inputKey: 'question',
+          params: { expected: 'string', actual: 'number' }
+        },
+        node: {
+          ...node,
+          inputs: [
+            {
+              key: 'question',
+              label: inputName,
+              renderTypeList: [FlowNodeInputTypeEnum.reference]
+            }
+          ]
+        },
+        t
+      });
+      expect(issue.message).toBe(
+        `输入项 ${inputName} 引用的变量类型不匹配，应为 string，实际为 number`
+      );
+      expect(issue.params).toEqual({
+        expected: 'string',
+        actual: 'number',
+        inputName,
+        nodeId: 'target'
+      });
+    }
+  );
+
+  it('retains a template label key until the reference diagnostic is rendered', () => {
+    const issue = formatWorkflowDiagnostic({
+      diagnostic: {
+        code: WorkflowDiagnosticCodeEnum.referenceTypeMismatch,
+        severity: 'error',
+        nodeId: 'target',
+        inputKey: NodeInputKeyEnum.textareaInput,
+        params: { expected: 'string', actual: 'number' }
+      },
+      node: { ...node, flowNodeType: TextEditorNode.flowNodeType, inputs: TextEditorNode.inputs }
+    });
+
+    expect(issue.params).toMatchObject({ inputNameKey: TextEditorNode.inputs[0].label });
+    expect(renderWorkflowIssueMessage(issue, t)).toContain(workflowZh.concatenation_text);
   });
 });

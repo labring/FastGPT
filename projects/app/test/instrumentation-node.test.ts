@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   cron: vi.fn(),
   training: vi.fn(),
   tracks: vi.fn(),
+  opsPerf: vi.fn(),
   loadModels: vi.fn(),
   reloadModels: vi.fn(),
   getInitConfig: vi.fn(),
@@ -94,6 +95,9 @@ vi.mock('@/service/common/system/cron', () => ({ startCron: mocks.cron }));
 vi.mock('@/service/core/dataset/training/utils', () => ({ startTrainingQueue: mocks.training }));
 vi.mock('@fastgpt/service/common/middle/tracks/processor', () => ({
   trackTimerProcess: mocks.tracks
+}));
+vi.mock('@fastgpt/service/common/opsPerf/collector', () => ({
+  opsPerfTimerProcess: mocks.opsPerf
 }));
 vi.mock('@fastgpt/service/worker/preload', () => ({ preLoadWorker: vi.fn() }));
 vi.mock('@fastgpt/service/common/geo', () => ({ initGeo: vi.fn() }));

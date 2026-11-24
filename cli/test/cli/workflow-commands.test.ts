@@ -3,6 +3,20 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createWorkflowTemplateBundle } from '@fastgpt/workflow-core/template/bundle';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import { WorkflowTemplateBasicTypeSchema } from '@fastgpt/global/core/workflow/type';
+import { WorkflowDocumentSchema } from '@fastgpt/global/core/workflow/type/document';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { FormInputNode } from '@fastgpt/global/core/workflow/template/system/interactive/formInput';
+import {
+  UserSelectNode,
+  USER_SELECT_REFERENCE_HANDLE_KEY
+} from '@fastgpt/global/core/workflow/template/system/interactive/userSelect';
+import commonLinearWorkflow from '../../../packages/workflow-core/test/fixtures/common-linear/workflow.json';
 import { getCliCommandSpecs } from '../../src/cli/registry';
 import { runCli } from '../../src/cli/run';
 import type { CliFetchFn } from '../../src/shared/types';
@@ -180,6 +194,126 @@ describe('Workflow CLI commands', () => {
     });
     expect(validateRes.exitCode).toBe(0);
     expect(JSON.parse(validateRes.stdout).data.valid).toBe(true);
+  });
+
+  it('encodes dynamic option defaults as output IDs and restores their keys on import', async () => {
+    const cwd = await makeDir();
+    const document = WorkflowDocumentSchema.parse(commonLinearWorkflow);
+    const edge = document.executionEdges.find((item) => item.target.nodeId === 'answer')!;
+    const references = (outputSelector: string) => [['code', outputSelector]];
+    const forms = (outputSelector: string) => {
+      const choice = {
+        key: 'choice',
+        label: 'Choice',
+        type: FlowNodeInputTypeEnum.multipleSelect,
+        valueType: WorkflowIOValueTypeEnum.arrayString,
+        required: false,
+        defaultValue: ['code', 'result'],
+        listInputType: FlowNodeInputTypeEnum.reference,
+        listReference: references(outputSelector)
+      };
+      return [
+        choice,
+        {
+          ...choice,
+          key: 'manual',
+          listInputType: FlowNodeInputTypeEnum.input,
+          listReference: references('result')
+        }
+      ];
+    };
+    document.nodes.push(
+      {
+        nodeId: 'choices',
+        name: 'Choices',
+        flowNodeType: UserSelectNode.flowNodeType,
+        inputs: UserSelectNode.inputs.map((input) =>
+          input.key === NodeInputKeyEnum.userSelectOptions
+            ? {
+                ...input,
+                selectedType: FlowNodeInputTypeEnum.reference,
+                value: null,
+                defaultValue: references('result')
+              }
+            : input
+        ),
+        outputs: UserSelectNode.outputs
+      },
+      {
+        nodeId: 'form',
+        name: 'Form',
+        flowNodeType: FormInputNode.flowNodeType,
+        inputs: FormInputNode.inputs.map((input) =>
+          input.key === NodeInputKeyEnum.userInputForms
+            ? {
+                ...input,
+                value: null,
+                defaultValue: forms('result')
+              }
+            : input
+        ),
+        outputs: [
+          ...FormInputNode.outputs,
+          ...forms('result').map(({ key, valueType }) => ({
+            id: key,
+            key,
+            valueType,
+            type: FlowNodeOutputTypeEnum.static
+          }))
+        ]
+      }
+    );
+    const answer = edge.target;
+    edge.target = { kind: 'target', nodeId: 'choices' };
+    document.executionEdges.push(
+      {
+        source: { kind: 'branch', nodeId: 'choices', branchKey: USER_SELECT_REFERENCE_HANDLE_KEY },
+        target: { kind: 'target', nodeId: 'form' }
+      },
+      { source: { kind: 'next', nodeId: 'form' }, target: answer }
+    );
+    await writeFile(join(cwd, 'workflow.json'), JSON.stringify(document));
+
+    const expectOutputSelector = (nodes: StoreNodeItemType[], selector: string) => {
+      expect(
+        nodes
+          .find((node) => node.nodeId === 'choices')
+          ?.inputs.find((input) => input.key === NodeInputKeyEnum.userSelectOptions)
+      ).toMatchObject({
+        selectedType: FlowNodeInputTypeEnum.reference,
+        value: null,
+        defaultValue: references(selector)
+      });
+      expect(
+        nodes
+          .find((node) => node.nodeId === 'form')
+          ?.inputs.find((input) => input.key === NodeInputKeyEnum.userInputForms)
+      ).toMatchObject({
+        value: null,
+        defaultValue: forms(selector)
+      });
+    };
+    const output = join(cwd, 'store.json');
+    for (const args of [['validate'], ['build', '--output', output]]) {
+      expect(await exec({ args: ['workflow-build', ...args], cwd })).toMatchObject({
+        exitCode: 0,
+        stderr: ''
+      });
+    }
+    const store = WorkflowTemplateBasicTypeSchema.parse(JSON.parse(await readFile(output, 'utf8')));
+    expectOutputSelector(store.nodes, 'qLUQfhG0ILRX');
+
+    const importedDir = await makeDir();
+    expect(
+      await exec({ args: ['workflow-build', 'import', '--input', output], cwd: importedDir })
+    ).toMatchObject({
+      exitCode: 0,
+      stderr: ''
+    });
+    const imported = WorkflowDocumentSchema.parse(
+      JSON.parse(await readFile(join(importedDir, 'workflow.json'), 'utf8'))
+    );
+    expectOutputSelector(imported.nodes, 'result');
   });
 
   it('initializes and reloads the workspace bundle with one authenticated request per command', async () => {

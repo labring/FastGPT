@@ -8,6 +8,7 @@ import {
 } from '../../workflow/node';
 import { AppResourcesSchema } from '../../../../core/app/type';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
+import { WorkflowReferenceSnapshotsSchema } from '../../../../core/workflow/type/io';
 import { AppChatConfigInputSchema, OpenAPIAppChatConfigSchema } from '../common/api';
 import { BoolSchema, NumSchema } from '../../../../common/zod';
 import {
@@ -40,13 +41,17 @@ const AppVersionChatConfigSchema = OpenAPIAppChatConfigSchema.default({}).meta({
 const AppVersionChatConfigInputSchema = AppChatConfigInputSchema.default({}).meta({
   description: '本次写入的应用对话配置'
 });
-
 const PublishAppBodyCommonShape = {
   edges: AppVersionEdgesSchema.optional().meta({
     description: '本次保存的应用连线配置；未传时按空连线保存'
   }),
   chatConfig: AppVersionChatConfigInputSchema.optional().meta({
     description: '本次保存的应用对话配置'
+  }),
+  referenceSnapshots: WorkflowReferenceSnapshotsSchema.optional().meta({
+    example: [],
+    description:
+      '本次保存的已删除引用来源历史展示元数据，只保留仍被引用且来源不可解析的快照。未传时从当前草稿继承，传入空数组时清空'
   }),
   isPublish: BoolSchema.optional().meta({
     example: true,
@@ -128,6 +133,10 @@ const AppVersionResourcesSchema = AppResourcesSchema.meta({
   description: '该版本引用的资源集合'
 });
 
+const AppVersionReferenceSnapshotsSchema = WorkflowReferenceSnapshotsSchema.default([]).meta({
+  description: '该版本内已删除引用来源的历史展示元数据'
+});
+
 const OpenAPIVersionListItemSchema = VersionListItemSchema.extend({
   _id: ObjectIdSchema.meta({
     description: '版本记录 ID'
@@ -195,7 +204,10 @@ export const PublishAppResponseSchema = z
       .object({
         nodes: AppVersionNodesSchema,
         edges: AppVersionEdgesSchema,
-        chatConfig: AppVersionChatConfigSchema
+        chatConfig: AppVersionChatConfigSchema,
+        referenceSnapshots: WorkflowReferenceSnapshotsSchema.optional().meta({
+          description: '该版本内已删除引用来源的历史展示元数据'
+        })
       })
       .meta({
         description: '本次实际保存的工作流，已完成迁移、模型归一化和详情补全'
@@ -286,6 +298,7 @@ export const GetAppVersionDetailResponseSchema = z.object({
     example: '正式发布版',
     description: '版本名称'
   }),
+  referenceSnapshots: AppVersionReferenceSnapshotsSchema,
   resources: AppVersionResourcesSchema
 });
 
@@ -324,6 +337,7 @@ export const GetLatestAppVersionResponseSchema = z.object({
   }),
   edges: AppVersionEdgesSchema,
   chatConfig: AppVersionChatConfigSchema,
+  referenceSnapshots: AppVersionReferenceSnapshotsSchema,
   resources: AppVersionResourcesSchema
 });
 

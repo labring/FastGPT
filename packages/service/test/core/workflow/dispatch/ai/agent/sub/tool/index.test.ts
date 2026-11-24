@@ -1,6 +1,7 @@
 import { createTestWorkflowDispatch } from '@fastgpt/service/test/core/workflow/dispatch/context/fixtures';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { dispatchTool as dispatchToolWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool';
+import { getSystemToolRunTimeNodeFromSystemToolset } from '@fastgpt/service/core/workflow/utils';
 const dispatchTool = createTestWorkflowDispatch(dispatchToolWithoutContext);
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
@@ -152,6 +153,44 @@ describe('dispatchTool runtime toolset auth', () => {
     expect(result.nodeResponse?.errorText).toBe(isError ? 'MCP call failed' : undefined);
     expect(result.nodeResponse?.toolRes).toEqual(toolResult);
     expect(JSON.parse(result.response)).toEqual(toolResult);
+  });
+
+  it('passes the complete child ID to the plugin when invoking a tool expanded from a system toolset', async () => {
+    const parentId = 'systemTool-search';
+    const childId = 'catalog/search';
+    const toolId = `${parentId}/${childId}`;
+    getSystemToolDetailMock.mockResolvedValueOnce({
+      children: [{ id: childId, name: 'Catalog Search' }]
+    });
+    getSystemToolRuntimeMock.mockResolvedValueOnce({
+      id: toolId,
+      version: '1.0.0',
+      currentCost: 0,
+      systemKeyCost: 0
+    });
+    runToolStreamMock.mockResolvedValueOnce({ output: { ok: true } });
+    const [child] = await getSystemToolRunTimeNodeFromSystemToolset({
+      toolSetNode: {
+        nodeId: 'search',
+        inputs: [],
+        toolConfig: {
+          systemToolSet: {
+            toolId: parentId,
+            toolList: [{ toolId: childId, name: 'Catalog Search' }]
+          }
+        }
+      }
+    });
+
+    expect(child.toolConfig?.systemTool?.toolId).toBe(toolId);
+    const result = await dispatchTool(createDispatchToolProps(child.toolConfig!));
+    expect(result.errorMessage).toBeUndefined();
+    expect(getSystemToolDetailMock).toHaveBeenCalledWith(
+      expect.objectContaining({ pluginId: toolId })
+    );
+    expect(runToolStreamMock).toHaveBeenCalledWith(
+      expect.objectContaining({ pluginId: 'search', childId })
+    );
   });
 
   it('projects plugin values and orders each value before its images', async () => {

@@ -52,6 +52,12 @@ function main({ question }) {
     ]);
   });
 
+  it('normalizes an unsupported annotation type before applying the node update', () => {
+    expect(extractCodeFromMarkdown('/** @property {Date} result */').outputs).toEqual([
+      { key: 'result', type: 'any' }
+    ]);
+  });
+
   it('does not infer undocumented inputs or outputs from code', () => {
     expect(
       extractCodeFromMarkdown('function main({ question }) { return { result: 1 }; }')

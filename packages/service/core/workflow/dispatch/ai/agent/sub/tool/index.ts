@@ -1,14 +1,14 @@
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
-import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import { getReferenceVariableValue } from '@fastgpt/global/common/workflow/runtime';
 import { jsonSchema2SecretInput } from '@fastgpt/global/core/app/jsonschema';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { DispatchSubAppResponse } from '../../type';
 import {
   getToolNameCandidates,
-  getToolRawId,
   isDebugToolSource,
-  isTeamPluginSource
+  isTeamPluginSource,
+  parseToolsetToolId
 } from '@fastgpt/global/core/app/tool/utils';
 import { getSecretValue } from '../../../../../../../common/secret/utils';
 import { resolveToolInputValues } from '../../../../../../app/tool/secretConfig';
@@ -198,7 +198,9 @@ export const dispatchTool = async ({
         }
       })();
 
-      const formatToolId = getToolRawId(tool.id);
+      const { parentId: pluginId, toolName: childId } = parseToolsetToolId(
+        toolConfig.systemTool.toolId
+      );
       const appId = getWorkflowAppId(runningAppInfo);
 
       // 系统工具的用户信息反向调用必须使用实际运行成员，不能使用应用 owner。
@@ -226,10 +228,8 @@ export const dispatchTool = async ({
           }).generateToken()
         : undefined;
 
-      const childId = toolConfig.systemTool.toolId.split('/')[1];
-
       const res = await pluginClient.runToolStream({
-        pluginId: formatToolId,
+        pluginId,
         ...(childId ? { childId } : {}),
         version: tool.version ?? version ?? '',
         source: runtimeToolSource,

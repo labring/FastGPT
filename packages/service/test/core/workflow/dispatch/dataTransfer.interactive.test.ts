@@ -30,7 +30,7 @@ const restoreGraph = (paused: Awaited<ReturnType<typeof runGraph>>) => {
 };
 
 describe('interactive workflow output propagation', () => {
-  it('pauses userSelect and resumes only the chosen branch with the selected data', async () => {
+  it.each(['yes', 'right'])('resumes userSelect through the %s output', async (handle) => {
     const source = graphNode({
       id: 'source',
       type: FlowNodeTypeEnum.toolParams,
@@ -70,7 +70,7 @@ describe('interactive workflow output propagation', () => {
       nodes: [source, select, yes, no],
       edges: [
         graphEdge({ source: 'source', target: 'select' }),
-        graphEdge({ source: 'select', target: 'yes', handle: 'yes' }),
+        graphEdge({ source: 'select', target: 'yes', handle }),
         graphEdge({ source: 'select', target: 'no', handle: 'no' })
       ]
     });

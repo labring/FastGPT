@@ -15,7 +15,6 @@ on:
       - 'v*'
 
 env:
-  FASTGPT_ALI_IMAGE_USER: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
   DOCKER_HUB_NAME: ${{ secrets.DOCKER_HUB_NAME }}
 
 jobs:
@@ -143,14 +142,6 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Login to Ali Hub
-        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
-        uses: docker/login-action@v3
-        with:
-          registry: registry.cn-hangzhou.aliyuncs.com
-          username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
-          password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
-
       - name: Build for ${{ matrix.archs.arch }}
         id: build-ghcr
         uses: docker/build-push-action@v6
@@ -168,50 +159,17 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
-      - name: Build for Ali Hub ${{ matrix.archs.arch }}
-        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
-        id: build-aliyun
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: projects/app/Dockerfile
-          platforms: linux/${{ matrix.archs.arch }}
-          build-args: |
-            SKIP_TYPE_CHECK=true
-            ${{ matrix.sub_routes.base_url && format('base_url={0}', matrix.sub_routes.base_url) || '' }}
-          labels: |
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.description=${{ matrix.sub_routes.repo }} image
-          provenance: false
-          sbom: false
-          outputs: type=image,"name=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/${{ matrix.sub_routes.repo }}",push-by-digest=true,push=true
-          cache-from: type=local,src=/tmp/.buildx-cache
-
       - name: Export digest
         run: |
           mkdir -p ${{ runner.temp }}/digests/${{ matrix.sub_routes.repo }}/ghcr
           ghcr_digest="${{ steps.build-ghcr.outputs.digest }}"
           touch "${{ runner.temp }}/digests/${{ matrix.sub_routes.repo }}/ghcr/${ghcr_digest#sha256:}"
-          if [[ -n "$FASTGPT_ALI_IMAGE_USER" ]]; then
-            mkdir -p ${{ runner.temp }}/digests/${{ matrix.sub_routes.repo }}/aliyun
-            aliyun_digest="${{ steps.build-aliyun.outputs.digest }}"
-            touch "${{ runner.temp }}/digests/${{ matrix.sub_routes.repo }}/aliyun/${aliyun_digest#sha256:}"
-          fi
 
       - name: Upload GHCR digest
         uses: actions/upload-artifact@v4
         with:
           name: ghcr-digests-${{ matrix.sub_routes.repo }}-${{ github.sha }}-${{ matrix.archs.arch }}
           path: ${{ runner.temp }}/digests/${{ matrix.sub_routes.repo }}/ghcr/*
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Upload Ali Hub digest
-        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: aliyun-digests-${{ matrix.sub_routes.repo }}-${{ github.sha }}-${{ matrix.archs.arch }}
-          path: ${{ runner.temp }}/digests/${{ matrix.sub_routes.repo }}/aliyun/*
           if-no-files-found: error
           retention-days: 1
 
@@ -236,13 +194,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Login to Ali Hub
-        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
-        uses: docker/login-action@v3
-        with:
-          registry: registry.cn-hangzhou.aliyuncs.com
-          username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
-          password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
       - name: Login to Docker Hub
         if: ${{ env.DOCKER_HUB_NAME != '' }}
         uses: docker/login-action@v3
@@ -257,14 +208,6 @@ jobs:
           pattern: ghcr-digests-${{ matrix.sub_routes.repo }}-${{ github.sha }}-*
           merge-multiple: true
 
-      - name: Download Ali Hub digests
-        if: ${{ env.FASTGPT_ALI_IMAGE_USER != '' }}
-        uses: actions/download-artifact@v4
-        with:
-          path: ${{ runner.temp }}/digests/aliyun
-          pattern: aliyun-digests-${{ matrix.sub_routes.repo }}-${{ github.sha }}-*
-          merge-multiple: true
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -273,8 +216,6 @@ jobs:
           VERSION="${{ needs.validate-version.outputs.version }}"
           echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/${{ matrix.sub_routes.repo }}:${VERSION}" >> $GITHUB_ENV
           echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/${{ matrix.sub_routes.repo }}:latest" >> $GITHUB_ENV
-          echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/${{ matrix.sub_routes.repo }}:${VERSION}" >> $GITHUB_ENV
-          echo "Ali_Latest=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/${{ matrix.sub_routes.repo }}:latest" >> $GITHUB_ENV
           if [[ -n "$DOCKER_HUB_NAME" ]]; then
             echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/${{ matrix.sub_routes.repo }}:${VERSION}" >> $GITHUB_ENV
             echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/${{ matrix.sub_routes.repo }}:latest" >> $GITHUB_ENV
@@ -286,25 +227,13 @@ jobs:
         run: |
           set -euo pipefail
           GHCR_IMAGE="ghcr.io/${{ github.repository_owner }}/${{ matrix.sub_routes.repo }}"
-          ALI_IMAGE="${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/${{ matrix.sub_routes.repo }}"
           GHCR_SOURCES=()
           for digest_file in ./*; do
             [[ -f "$digest_file" ]] || continue
             GHCR_SOURCES+=("${GHCR_IMAGE}@sha256:$(basename "$digest_file")")
           done
-          ALI_SOURCES=()
-          if [[ -n "$FASTGPT_ALI_IMAGE_USER" ]]; then
-            for digest_file in aliyun/*; do
-              [[ -f "$digest_file" ]] || continue
-              ALI_SOURCES+=("${ALI_IMAGE}@sha256:$(basename "$digest_file")")
-            done
-          fi
           if [[ "${#GHCR_SOURCES[@]}" -ne 2 ]]; then
             echo "Expected two GHCR digests"
-            exit 1
-          fi
-          if [[ -n "$FASTGPT_ALI_IMAGE_USER" && "${#ALI_SOURCES[@]}" -ne 2 ]]; then
-            echo "Expected two Ali Hub digests"
             exit 1
           fi
 
@@ -335,16 +264,3 @@ jobs:
             retry_imagetools_create "$TAG" "${GHCR_SOURCES[@]}"
             sleep 5
           done
-          if [[ -n "$FASTGPT_ALI_IMAGE_USER" ]]; then
-            for TAG in "${Ali_Tag}" "${Ali_Latest}"; do
-              retry_imagetools_create "$TAG" "${ALI_SOURCES[@]}"
-              sleep 5
-            done
-
-            manifest="$(docker buildx imagetools inspect --raw "${Ali_Tag}")"
-            jq -e '
-              ([.manifests[]?.platform | select(.os == "linux" and .architecture == "amd64")] | length == 1) and
-              ([.manifests[]?.platform | select(.os == "linux" and .architecture == "arm64")] | length == 1) and
-              ([.manifests[]?.platform | select(.os == "linux" and (.architecture != "amd64" and .architecture != "arm64"))] | length == 0)
-            ' <<<"$manifest" >/dev/null
-          fi

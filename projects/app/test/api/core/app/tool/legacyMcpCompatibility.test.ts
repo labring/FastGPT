@@ -10,7 +10,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { storeSecretValue } from '@fastgpt/service/common/secret/utils';
-import { storeNodes2RuntimeNodes } from '@fastgpt/global/core/workflow/runtime/utils';
+import { storeNodes2RuntimeNodes } from '@fastgpt/global/common/workflow/runtime';
 import { rewriteRuntimeWorkFlow } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { dispatchRunTool } from '@fastgpt/service/core/workflow/dispatch/child/runTool';
 import { dispatchTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool';

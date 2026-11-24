@@ -2,9 +2,24 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { createWorkflowEditor } from '@fastgpt/global/common/workflow/editor/runtime/runtime';
+import { getHandleId } from '@fastgpt/global/common/workflow/reference';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { WorkflowDiagnosticCodeEnum } from '@fastgpt/global/core/workflow/diagnostic/constants';
+import type { CanonicalWorkflowData } from '@fastgpt/global/core/workflow/migration/schema';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import { checkExecutionConnection } from '@fastgpt/workflow-core/edge/validation';
+import { decompileStoreWorkflow } from '@fastgpt/workflow-core/store/decompile';
 import { createWorkflowTemplateBundle } from '@fastgpt/workflow-core/template/bundle';
 import { createWorkflowLocalService } from '../../src/domain/workflow/workflow-local-service';
+import {
+  serializeWorkflowDocument,
+  WORKFLOW_FILE_NAME
+} from '../../src/domain/workflow/workflow-workspace';
 import { createNodeFileIoAdapter } from '../../src/infra/fs/file-io';
 import { createNonTtyPrompter } from '../../src/infra/ui/prompter';
 import {
@@ -375,6 +390,135 @@ describe('WorkflowLocalService', () => {
     expect(varsAfter[0].label).toBe('Planned Auto Var');
     expect(varsAfter[0].key).toMatch(/^[A-Za-z0-9]{8}$/);
   });
+
+  it.each([
+    { branchState: 'current', branchKey: 'continue', configuredKey: 'continue' },
+    { branchState: 'removed', branchKey: 'continue', configuredKey: 'replacement' },
+    { branchState: 'legacy manual', branchKey: 'right', configuredKey: 'option1' }
+  ])(
+    'keeps Web and CLI reference candidates in sync through a $branchState branch',
+    async ({ branchState, branchKey, configuredKey }) => {
+      const dir = await makeDir();
+      const service = createLocalService(dir);
+      const reachable = branchState !== 'removed';
+      const legacyManual = branchState === 'legacy manual';
+      const input = { dir, nodeId: 'target', key: 'parameter' };
+      const workflow: CanonicalWorkflowData = {
+        nodes: [
+          {
+            nodeId: 'source',
+            name: 'Source',
+            flowNodeType: FlowNodeTypeEnum.code,
+            catchError: true,
+            inputs: [],
+            outputs: [
+              {
+                id: 'result-id',
+                key: 'result',
+                type: FlowNodeOutputTypeEnum.static,
+                valueType: WorkflowIOValueTypeEnum.string
+              },
+              {
+                id: 'error-id',
+                key: 'error',
+                type: FlowNodeOutputTypeEnum.error,
+                valueType: WorkflowIOValueTypeEnum.string
+              }
+            ]
+          },
+          {
+            nodeId: 'branch',
+            name: 'Branch',
+            flowNodeType: legacyManual
+              ? FlowNodeTypeEnum.userSelect
+              : FlowNodeTypeEnum.classifyQuestion,
+            inputs: [
+              {
+                key: legacyManual ? NodeInputKeyEnum.userSelectOptions : NodeInputKeyEnum.agents,
+                label: 'Branches',
+                renderTypeList: [],
+                value: [{ key: configuredKey, value: 'Continue' }]
+              }
+            ],
+            outputs: []
+          },
+          {
+            nodeId: input.nodeId,
+            name: 'Target',
+            flowNodeType: FlowNodeTypeEnum.answerNode,
+            inputs: [
+              {
+                key: input.key,
+                label: 'Parameter',
+                valueType: WorkflowIOValueTypeEnum.string,
+                renderTypeList: [FlowNodeInputTypeEnum.reference]
+              }
+            ],
+            outputs: []
+          }
+        ],
+        edges: [
+          {
+            source: 'source',
+            target: 'branch',
+            sourceHandle: getHandleId('source', 'source_catch', 'right'),
+            targetHandle: getHandleId('branch', 'target', 'left')
+          },
+          {
+            source: 'branch',
+            target: input.nodeId,
+            sourceHandle: getHandleId('branch', 'source', branchKey),
+            targetHandle: getHandleId(input.nodeId, 'target', 'left')
+          }
+        ],
+        chatConfig: {},
+        referenceSnapshots: []
+      };
+      const editor = createWorkflowEditor(workflow);
+      const webRefs = editor
+        .getReferenceOptions({ nodeId: input.nodeId })
+        .map(({ reference }) => reference);
+      editor.dispose();
+
+      const document = decompileStoreWorkflow({ workflow });
+      if (legacyManual) {
+        expect(
+          checkExecutionConnection({
+            connection: workflow.edges[1],
+            edges: [],
+            getNodeById: (nodeId) => document.nodes.find((node) => node.nodeId === nodeId)
+          })
+        ).toMatchObject({
+          allowed: false,
+          reason: { code: WorkflowDiagnosticCodeEnum.branchKeyNotFound }
+        });
+      }
+      await writeFile(join(dir, WORKFLOW_FILE_NAME), serializeWorkflowDocument(document));
+      const { data: cliRefs } = await service.inputAvailable(input);
+      for (const output of workflow.nodes[0].outputs) {
+        const ref = { nodeId: 'source', outputKey: output.key };
+        const setReference = () =>
+          service.inputRef({ ...input, locale: 'en', from: `source.${output.key}` });
+        if (reachable) {
+          expect(webRefs).toContainEqual(['source', output.id]);
+          expect(cliRefs).toContainEqual(expect.objectContaining({ ref }));
+          await expect(setReference()).resolves.toMatchObject({ changed: true });
+        } else {
+          expect(webRefs).not.toContainEqual(['source', output.id]);
+          expect(cliRefs).not.toContainEqual(expect.objectContaining({ ref }));
+          await expect(setReference()).rejects.toMatchObject({
+            details: {
+              diagnostics: [
+                expect.objectContaining({
+                  code: WorkflowDiagnosticCodeEnum.referenceSourceNotUpstream
+                })
+              ]
+            }
+          });
+        }
+      }
+    }
+  );
 
   it('loads the template bundle once per template list', async () => {
     const dir = await makeDir();

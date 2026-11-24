@@ -3,6 +3,7 @@ import { AdminAppsPath } from './app';
 import { DashboardPath } from './dashboard';
 import { AdminDatasetsPath } from './dataset';
 import { AdminLicensePath } from './license';
+import { AdminOpsPerformancePath } from './ops/performancePath';
 import { AdminSystemPath } from './system';
 import { AdminModelStatusPath } from './system/model/statusPath';
 import { AdminTeamsPath } from './team';
@@ -15,6 +16,7 @@ export const AdminPath: NonNullable<OpenAPIPath> = {
   ...DashboardPath,
   ...AdminDatasetsPath,
   ...AdminLicensePath,
+  ...AdminOpsPerformancePath,
   ...AdminSystemPath,
   ...AdminModelStatusPath,
   ...AdminTeamsPath,

@@ -13,6 +13,9 @@ import type { CliFetchFn } from '../../src/shared/types';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { formatModels } from '@fastgpt/global/common/workflow/model';
 import type { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { WorkflowDebugBodySchema } from '@fastgpt/global/openapi/core/workflow/api';
 import { getWorkflowChecksum } from '@fastgpt/workflow-core/domain/checksum';
 import { decompileStoreWorkflow } from '@fastgpt/workflow-core/store/decompile';
 import {
@@ -98,9 +101,21 @@ async function createSyncedServices() {
     detailReadCount: 0,
     saveCount: 0
   };
+  const debugRequests: ReturnType<typeof WorkflowDebugBodySchema.parse>[] = [];
   const fetchFn: CliFetchFn = vi.fn(async (input, init) => {
     const request = new Request(input, init);
     const path = new URL(request.url).pathname;
+    if (path === '/api/core/workflow/debug') {
+      debugRequests.push(WorkflowDebugBodySchema.parse(await request.json()));
+      return jsonResponse({
+        memoryEdges: [],
+        memoryNodes: [],
+        entryNodeIds: ['start'],
+        nodeResponses: { chat: { nodeId: 'chat', type: 'run' } },
+        newVariables: {},
+        usageId: 'usage_123'
+      });
+    }
     if (path === '/api/core/app/detail') {
       remote.detailReadCount += 1;
       return jsonResponse({
@@ -120,7 +135,8 @@ async function createSyncedServices() {
       const saved = structuredClone({
         nodes: body.nodes,
         edges: body.edges,
-        chatConfig: body.chatConfig ?? {}
+        chatConfig: body.chatConfig ?? {},
+        referenceSnapshots: body.referenceSnapshots
       });
       if (remote.normalizeOnSave) {
         formatModels({
@@ -146,10 +162,112 @@ async function createSyncedServices() {
     appId: APP_ID,
     force: true
   });
-  return { dir, ...services, remote };
+  return { dir, ...services, remote, debugRequests };
 }
 
 describe('WorkflowSyncService', () => {
+  it('compares inherited snapshots by save semantics and still detects an explicit clear', async () => {
+    const { dir, client, sync, remote } = await createSyncedServices();
+    const snapshot = {
+      reference: ['removed', 'result'] as [string, string],
+      sourceLabel: 'Removed'
+    };
+    const prompt = remote.workflow.nodes
+      .find(({ nodeId }) => nodeId === 'chat')!
+      .inputs.find(({ key }) => key === NodeInputKeyEnum.aiSystemPrompt)!;
+    prompt.value = '{{$removed.result$}}';
+    remote.workflow.referenceSnapshots = [snapshot];
+    await sync.pull({ client, dir, locale: 'en', force: true });
+
+    const file = join(dir, 'workflow.json');
+    const local = JSON.parse(await readFile(file, 'utf8'));
+    delete local.referenceSnapshots;
+    await writeFile(file, JSON.stringify(local));
+    expect((await sync.diff({ client, dir })).data).toMatchObject({
+      inSync: true,
+      summary: { referenceSnapshotsChanged: false }
+    });
+
+    await writeFile(file, JSON.stringify({ ...local, referenceSnapshots: [] }));
+    expect((await sync.diff({ client, dir })).data).toMatchObject({
+      inSync: false,
+      summary: { referenceSnapshotsChanged: true }
+    });
+  });
+  it('protects a local explicit snapshot clear while treating absent remote snapshots as empty', async () => {
+    const { dir, client, sync, remote } = await createSyncedServices();
+    const file = join(dir, 'workflow.json');
+    const local = JSON.parse(await readFile(file, 'utf8'));
+    expect(local.referenceSnapshots).toBeUndefined();
+    remote.workflow.referenceSnapshots = [];
+    expect((await sync.diff({ client, dir })).data).toMatchObject({ inSync: true });
+
+    await writeFile(file, JSON.stringify({ ...local, referenceSnapshots: [] }));
+    remote.workflow.referenceSnapshots = undefined;
+    await expect(sync.pull({ client, dir, locale: 'en' })).rejects.toThrow(
+      /Local workflow.json has unpushed modifications/
+    );
+    await sync.save({ client, dir });
+    expect(remote.workflow.referenceSnapshots).toEqual([]);
+  });
+
+  it('preserves stale optional references through save, publish and local execution', async () => {
+    const { dir, client, local, sync, remote, debugRequests } = await createSyncedServices();
+    const snapshots: NonNullable<WorkflowTemplateBasicType['referenceSnapshots']> = [
+      { reference: ['deleted', 'output'], sourceLabel: 'Deleted node' }
+    ];
+    const prompt = remote.workflow.nodes
+      .find(({ nodeId }) => nodeId === 'chat')!
+      .inputs.find(({ key }) => key === NodeInputKeyEnum.aiSystemPrompt)!;
+    const stalePrompt = {
+      ...prompt,
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      selectedType: FlowNodeInputTypeEnum.reference,
+      required: false,
+      value: snapshots[0].reference
+    };
+    Object.assign(prompt, stalePrompt);
+    remote.workflow.referenceSnapshots = snapshots;
+    await sync.pull({ client, dir, locale: 'en' });
+    await local.configSet({
+      dir,
+      locale: 'en',
+      path: 'welcomeText',
+      valueInput: { value: 'Hello' }
+    });
+    const onDisk = JSON.parse(await readFile(join(dir, 'workflow.json'), 'utf8'));
+    expect(onDisk.referenceSnapshots).toEqual(snapshots);
+
+    for (const write of [sync.save, sync.publish]) {
+      await write({ client, dir });
+      const savedPrompt = remote.workflow.nodes
+        .find(({ nodeId }) => nodeId === 'chat')
+        ?.inputs.find(({ key }) => key === NodeInputKeyEnum.aiSystemPrompt);
+      expect(savedPrompt?.value).toEqual(snapshots[0].reference);
+      expect(remote.workflow.referenceSnapshots).toEqual(snapshots);
+    }
+
+    await sync.debug({ client, dir, query: 'Hello' });
+    await sync.test({ client, dir, query: 'Hello' });
+    expect(debugRequests).toHaveLength(2);
+    for (const { nodes } of debugRequests) {
+      const input = nodes
+        .find(({ nodeId }) => nodeId === 'chat')
+        ?.inputs.find(({ key }) => key === NodeInputKeyEnum.aiSystemPrompt);
+      expect(input).toMatchObject({ value: snapshots[0].reference, debugValueOverride: false });
+    }
+
+    remote.workflow.referenceSnapshots = [
+      { ...snapshots[0], sourceLabel: 'Concurrent label edit' }
+    ];
+    const diff = await sync.diff({ client, dir });
+    expect(diff.data).toMatchObject({
+      inSync: false,
+      summary: { referenceSnapshotsChanged: true }
+    });
+    await expect(sync.save({ client, dir })).rejects.toThrow(/Remote workflow has changed/);
+  });
+
   it('rejects pull when user lacks write permission on the App', async () => {
     const dir = await makeDir();
     const fetchFn: CliFetchFn = vi.fn(async () =>

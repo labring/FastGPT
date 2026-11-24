@@ -526,6 +526,20 @@ describe('getAppDraftResourceBaseline', () => {
     }
     expect(mocks.mongoAppFindById).not.toHaveBeenCalled();
   });
+  it('uses an already-read draft or confirmed absence without querying it again', async () => {
+    const draftId = '65f00000000000000000007a';
+    const resources = [{ type: 'dataset' as const, id: datasetId }];
+    const draftVersion = { appId: draftId, nodes: [], chatConfig: {}, resources };
+
+    await expect(
+      getAppDraftResourceBaseline({ appId: draftId.toUpperCase(), draftVersion })
+    ).resolves.toEqual(resources);
+    await expect(getAppDraftResourceBaseline({ appId, draftVersion: null })).resolves.toEqual([]);
+    await expect(getAppDraftResourceBaseline({ appId, draftVersion })).rejects.toThrow(
+      'Draft version belongs to another app'
+    );
+    expect(mocks.getAppDraftVersion).not.toHaveBeenCalled();
+  });
   it('keeps an invalid stored array empty even if nodes contain resources', async () => {
     mocks.getAppDraftVersion.mockResolvedValue({
       ...legacyDraft(),
