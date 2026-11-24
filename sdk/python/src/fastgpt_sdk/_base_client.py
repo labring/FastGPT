@@ -20,6 +20,7 @@ from urllib.parse import quote
 import httpx
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
+from ._async import aclose_shielded
 from ._hooks import (
     notify_error_async,
     notify_error_sync,
@@ -1230,7 +1231,7 @@ class AsyncBaseClient(_BaseClientCore):
     async def aclose(self) -> None:
         """若本客户端独占底层 ``httpx.AsyncClient`` 连接池，则将其安全关闭。"""
         if self._owns_http_client:
-            await self._http_client.aclose()
+            await aclose_shielded(self._http_client, suppress_errors=False)
 
     async def _resolve_api_key_async(self, request_options: RequestOptions | None) -> str | None:
         if request_options and request_options.get("api_key") is not None:
@@ -1358,12 +1359,11 @@ class AsyncBaseClient(_BaseClientCore):
                     retry_backoff = _parse_retry_after_seconds(response.headers.get("retry-after"))
                     if retry_backoff is None:
                         retry_backoff = _compute_backoff_seconds(attempt)
-                    await response.aclose()
+                    await aclose_shielded(response, suppress_errors=False)
                 else:
                     return response, attempt
             except BaseException:
-                with contextlib.suppress(Exception):
-                    await response.aclose()
+                await aclose_shielded(response)
                 raise
 
             attempt += 1
@@ -1437,8 +1437,7 @@ class AsyncBaseClient(_BaseClientCore):
                     parse_fn=lambda: decoded,
                 )
             except BaseException:
-                with contextlib.suppress(Exception):
-                    await response.aclose()
+                await aclose_shielded(response)
                 raise
         except Exception as exc:
             await notify_error_async(
@@ -1552,8 +1551,7 @@ class AsyncBaseClient(_BaseClientCore):
                     extra_secrets=extra_secrets,
                 )
             except BaseException:
-                with contextlib.suppress(Exception):
-                    await response.aclose()
+                await aclose_shielded(response)
                 raise
         except Exception as exc:
             await notify_error_async(

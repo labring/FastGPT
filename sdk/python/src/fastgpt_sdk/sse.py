@@ -13,6 +13,7 @@ from typing import Annotated, Any, Literal
 import httpx
 from pydantic import Field
 
+from ._async import aclose_shielded
 from .errors import FastGPTError, FastGPTNetworkError, FastGPTTimeoutError, create_mapped_api_error
 from .options import FastGPTModel, RawResponseInfo
 
@@ -744,10 +745,11 @@ class AsyncChatStream(_BaseChatStreamState):
         if self._disposed:
             return
         self._disposed = True
-        with contextlib.suppress(Exception):
-            await self._http_response.aclose()
-        if self._on_dispose is not None:
-            self._on_dispose()
+        try:
+            await aclose_shielded(self._http_response)
+        finally:
+            if self._on_dispose is not None:
+                self._on_dispose()
 
     def _schedule_dispose(self) -> None:
         if self._disposed:
