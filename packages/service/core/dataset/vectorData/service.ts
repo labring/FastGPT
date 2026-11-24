@@ -3,11 +3,12 @@ import { batchRun } from '@fastgpt/global/common/system/utils';
 import { getVectorCount } from '../../../common/vectorDB/controller';
 import { getVectorType } from '../../../common/vectorDB/constants';
 import { findDatasetsVectorData } from './entity';
+import { removeOpenGaussDatasetIndex } from '../../../common/vectorDB/opengauss/datasetIndex';
 import { removePgDatasetIndex } from '../../../common/vectorDB/pg/datasetIndex';
 
 /**
- * 物理删除知识库前同步清理 PG 专属索引，包括无效索引和缺少 Mongo 索引元数据的知识库。
- * 逐库等待 PG 维护锁并核验清理结果，失败上抛给删除队列；其他向量库无需额外操作。
+ * 物理删除知识库前同步清理专属局部索引，包括无效索引和缺少 Mongo 索引元数据的知识库。
+ * 逐库等待数据库维护锁并核验清理结果，失败上抛给删除队列；其他向量库无需额外操作。
  */
 export const removeDatasetVectorIndexes = async ({
   teamId,
@@ -16,13 +17,15 @@ export const removeDatasetVectorIndexes = async ({
   teamId: string;
   datasetIds: string[];
 }) => {
-  if (getVectorType() !== 'pg') return;
+  const provider = getVectorType();
+  if (provider !== 'pg' && provider !== 'opengauss') return;
+  const removeIndex = provider === 'pg' ? removePgDatasetIndex : removeOpenGaussDatasetIndex;
   for (const datasetId of new Set(datasetIds.map(String))) {
-    await removePgDatasetIndex({ teamId: String(teamId), datasetId });
+    await removeIndex({ teamId: String(teamId), datasetId });
   }
 };
 
-/** PG 检索每次只准备一次路由快照；冷计数最多并行四个，其他 provider 不增加统计开销。 */
+/** 使用局部索引的检索每次只准备一次路由快照；冷计数最多并行四个，其他 provider 不增加统计开销。 */
 export const getDatasetVectorSearchData = async ({
   teamId,
   datasetIds
@@ -30,7 +33,8 @@ export const getDatasetVectorSearchData = async ({
   teamId: string;
   datasetIds: string[];
 }): Promise<DatasetVectorSearchData[] | undefined> => {
-  if (getVectorType() !== 'pg' || datasetIds.length === 0) return;
+  const provider = getVectorType();
+  if ((provider !== 'pg' && provider !== 'opengauss') || datasetIds.length === 0) return;
   const datasets = await findDatasetsVectorData({ teamId, datasetIds: [...new Set(datasetIds)] });
   return batchRun(
     datasets,
@@ -39,7 +43,9 @@ export const getDatasetVectorSearchData = async ({
       return {
         datasetId,
         rows: await getVectorCount({ teamId, datasetId }),
-        pgIndex: dataset.vectorData?.pgIndex ?? 'none'
+        ...(provider === 'pg'
+          ? { pgIndex: dataset.vectorData?.pgIndex ?? 'none' }
+          : { openGaussIndex: dataset.vectorData?.openGaussIndex ?? 'none' })
       };
     },
     4

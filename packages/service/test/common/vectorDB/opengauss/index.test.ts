@@ -5,6 +5,7 @@ vi.mock('@fastgpt/service/common/vectorDB/fullText/controller', () => ({
   startSqlFullTextIndexBuild
 }));
 import { OgClient } from '@fastgpt/service/common/vectorDB/opengauss/controller';
+vi.unmock('@fastgpt/service/common/vectorDB/opengauss');
 import { OpenGaussVectorCtrl } from '@fastgpt/service/common/vectorDB/opengauss';
 
 const txClient = vi.hoisted(() => ({ query: vi.fn(), release: vi.fn() }));
@@ -19,9 +20,9 @@ describe('OpenGaussVectorCtrl.init', () => {
       .mockReset()
       .mockResolvedValue({ rows: [] } as any);
     await new OpenGaussVectorCtrl().init();
-    expect(OgClient.query).toHaveBeenCalledWith(
-      expect.stringContaining('WITH (m = 32, ef_construction = 256)')
-    );
+    expect(
+      vi.mocked(OgClient.query).mock.calls.some(([sql]) => String(sql).includes('USING hnsw'))
+    ).toBe(false);
     expect(OgClient.query).toHaveBeenCalledWith(expect.stringContaining('storage_type=ASTORE'));
     expect(OgClient.query).toHaveBeenCalledWith(
       expect.stringContaining('ALTER TABLE modeldata ADD COLUMN fulltext_tokens TEXT;')
@@ -37,32 +38,58 @@ describe('OpenGaussVectorCtrl.embRecall', () => {
   beforeEach(() => {
     vi.mocked(OgClient.query)
       .mockReset()
-      .mockResolvedValue([{}, { rows: [] }] as any);
+      .mockResolvedValue({ rows: [] } as any);
+    txClient.query.mockReset().mockResolvedValue({ rows: [] });
+    txClient.release.mockClear();
   });
 
-  it.each([200, 100])(
-    'scopes the query and applies the supplied search width %j',
-    async (hnswEfSearch) => {
-      await new OpenGaussVectorCtrl().embRecall({
-        teamId: 'team-a',
-        datasetIds: ['dataset-a', 'dataset-b'],
-        vector: [0.1, 0.2],
-        limit: 20,
-        hnswEfSearch,
-        forbidCollectionIdList: [],
-        filterCollectionIdList: undefined
-      });
+  const props = {
+    teamId: 'team-a',
+    datasetIds: ['dataset-a', 'dataset-b'],
+    vector: [0.1, 0.2],
+    limit: 20,
+    hnswEfSearch: 128,
+    forbidCollectionIdList: ['blocked'],
+    filterCollectionIdList: ['allowed', 'blocked']
+  };
 
-      expect(OgClient.query).toHaveBeenCalledOnce();
-      const [query] = vi.mocked(OgClient.query).mock.calls[0];
-      expect(query).toMatchObject({ query_timeout: 120_000 });
-      const sql = typeof query === 'string' ? query : query.text;
-      expect(sql).toContain(`SET LOCAL hnsw.ef_search = ${hnswEfSearch};`);
-      expect(sql).toMatch(
-        /WHERE\s+team_id = 'team-a'\s+AND dataset_id IN \('dataset-a','dataset-b'\)/
-      );
-    }
-  );
+  it('uses the dataset HNSW and exact branches under identical tenant and collection filters', async () => {
+    await new OpenGaussVectorCtrl().embRecall({
+      ...props,
+      datasetVectorData: [
+        { datasetId: 'dataset-a', rows: 12000, openGaussIndex: 'ready' },
+        { datasetId: 'dataset-b', rows: 500, openGaussIndex: 'none' }
+      ]
+    });
+
+    expect(txClient.query).toHaveBeenNthCalledWith(
+      2,
+      "SELECT set_config('hnsw_ef_search', $1, true)",
+      ['128']
+    );
+    const [query, values] = txClient.query.mock.calls[2];
+    expect(query).toMatchObject({ query_timeout: 120_000 });
+    expect(query.text).toContain(
+      "WHERE team_id = 'team-a' AND collection_id = ANY($3::varchar[]) AND dataset_id = 'dataset-a'"
+    );
+    expect(query.text).toContain(
+      "WHERE team_id = 'team-a' AND collection_id = ANY($3::varchar[]) AND dataset_id = ANY($4::varchar[])"
+    );
+    expect(query.text).toContain('UNION ALL');
+    expect(values).toEqual(['[0.1,0.2]', 20, ['allowed'], ['dataset-b']]);
+    expect(txClient.release).toHaveBeenCalledWith(false);
+  });
+
+  it('uses exact search until the index has been validated', async () => {
+    await new OpenGaussVectorCtrl().embRecall(props);
+    expect(OgClient.query).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: expect.stringContaining('ORDER BY (vector <#> $1::vector) + 0')
+      }),
+      ['[0.1,0.2]', 20, ['allowed'], ['dataset-a', 'dataset-b']]
+    );
+    expect(txClient.query).not.toHaveBeenCalled();
+  });
 });
 
 describe('OpenGaussVectorCtrl.refreshCreateTime', () => {

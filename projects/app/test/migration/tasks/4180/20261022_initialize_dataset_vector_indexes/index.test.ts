@@ -10,10 +10,12 @@ const mocks = vi.hoisted(() => ({
   count: vi.fn(),
   counted: vi.fn(),
   removeLegacy: vi.fn(),
+  removeOpenGaussLegacy: vi.fn(),
   provider: 'pg'
 }));
 vi.mock('@/migration/tasks/4180/20261022_initialize_dataset_vector_indexes/service', () => ({
-  removeLegacyPgVectorIndex: mocks.removeLegacy
+  removeLegacyPgVectorIndex: mocks.removeLegacy,
+  removeLegacyOpenGaussVectorIndex: mocks.removeOpenGaussLegacy
 }));
 vi.mock('@fastgpt/service/common/vectorDB/controller', () => ({ getVectorCount: mocks.count }));
 vi.mock('@fastgpt/service/core/dataset/vectorData/mq', () => ({
@@ -67,6 +69,7 @@ beforeEach(() => {
   mocks.count.mockReset().mockResolvedValue(40000);
   mocks.counted.mockReset().mockResolvedValue(undefined);
   mocks.removeLegacy.mockReset().mockResolvedValue(undefined);
+  mocks.removeOpenGaussLegacy.mockReset().mockResolvedValue(undefined);
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -323,4 +326,20 @@ describe('initializeDatasetVectorIndexes', () => {
     expect(mocks.count).not.toHaveBeenCalled();
     expect(mocks.removeLegacy).toHaveBeenCalledTimes(pg ? 1 : 0);
   });
+});
+
+it('verifies openGauss legacy cleanup before scheduling partial indexes in the existing migration', async () => {
+  mocks.provider = 'opengauss';
+  await seed(1);
+  const { context } = createContext();
+  expect(await initializeDatasetVectorIndexes(context)).toEqual({
+    scannedCount: 1,
+    eligibleCount: 1
+  });
+  expect(mocks.removeLegacy).not.toHaveBeenCalled();
+  expect(mocks.removeOpenGaussLegacy).toHaveBeenCalledOnce();
+  expect(mocks.removeOpenGaussLegacy.mock.invocationCallOrder[0]).toBeLessThan(
+    mocks.counted.mock.invocationCallOrder[0]
+  );
+  expect(mocks.counted).toHaveBeenCalledWith({ teamId, datasetId: id(1), rows: 40000 });
 });

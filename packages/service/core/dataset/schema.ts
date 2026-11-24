@@ -15,7 +15,7 @@ import {
 import { userCollectionName } from '../../support/user/schema';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
-  DatasetVectorDataSchema,
+  DatasetVectorIndexStateSchema,
   type DatasetVectorData
 } from '@fastgpt/global/core/dataset/vectorData/type';
 
@@ -164,16 +164,17 @@ const DatasetSchema = new Schema({
     type: Number,
     default: 0
   },
-  // 整体可选；计数不持久化。索引建成并通过 PG 目录核验后才能置为 ready。
+  // 整体可选；计数不持久化。索引建成并通过数据库目录核验后才能置为 ready。
   vectorData: {
     type: new Schema(
       {
         pgIndex: {
           type: String,
-          enum: DatasetVectorDataSchema.shape.pgIndex.options,
-          required: true
+          enum: DatasetVectorIndexStateSchema.options
         },
-        pgIndexCheckedAt: { type: Date, required: true }
+        pgIndexCheckedAt: Date,
+        openGaussIndex: { type: String, enum: DatasetVectorIndexStateSchema.options },
+        openGaussIndexCheckedAt: Date
       },
       { _id: false }
     ),

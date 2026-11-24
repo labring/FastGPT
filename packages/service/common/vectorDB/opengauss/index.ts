@@ -7,6 +7,7 @@ import { getLogger, LogCategories } from '../../logger';
 import { SQL_FULL_TEXT_COLUMN } from '../fullText/utils';
 import { insertPostgresVectorFullTextRows } from '../fullText/postgres';
 import { startSqlFullTextIndexBuild } from '../fullText/controller';
+import { buildOpenGaussVectorRecallQuery } from './recall';
 
 const logger = getLogger(LogCategories.INFRA.VECTOR);
 
@@ -37,9 +38,6 @@ export class OpenGaussVectorCtrl implements VectorControllerType {
         );
       }
 
-      await OgClient.query(
-        `CREATE INDEX CONCURRENTLY IF NOT EXISTS vector_index ON ${DatasetVectorTableName} USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 256);`
-      );
       await OgClient.query(
         `CREATE INDEX CONCURRENTLY IF NOT EXISTS team_dataset_collection_index ON ${DatasetVectorTableName} USING btree(team_id, dataset_id, collection_id);`
       );
@@ -103,77 +101,41 @@ export class OpenGaussVectorCtrl implements VectorControllerType {
       where: [where]
     });
   };
+  /** 局部索引查询在事务内设置 openGauss 的搜索宽度，精确路径不占用事务。 */
   embRecall: VectorControllerType['embRecall'] = async (props) => {
-    const {
-      teamId,
-      datasetIds,
-      vector,
-      limit,
-      hnswEfSearch,
-      forbidCollectionIdList,
-      filterCollectionIdList
-    } = props;
-
-    // Get forbid collection
-    const formatForbidCollectionIdList = (() => {
-      if (!filterCollectionIdList) return forbidCollectionIdList;
-      const list = forbidCollectionIdList
-        .map((id) => String(id))
-        .filter((id) => !filterCollectionIdList.includes(id));
-      return list;
+    const query = buildOpenGaussVectorRecallQuery(props);
+    if (!query) return { results: [] };
+    type Row = { id: string; collection_id: string; score: number };
+    // 客户端等待长于服务端 statement_timeout，避免顶层提前归还并发额度。
+    const recallQuery = { text: query.text, query_timeout: 120_000 };
+    const result = await (async () => {
+      if (!query.usesHnsw) return OgClient.query<Row>(recallQuery, query.values);
+      const client = await (await connectOg()).connect();
+      let destroyClient = false;
+      try {
+        await client.query('BEGIN');
+        await client.query("SELECT set_config('hnsw_ef_search', $1, true)", [
+          String(Math.max(props.hnswEfSearch, props.limit))
+        ]);
+        const result = await client.query<Row>(recallQuery, query.values);
+        await client.query('COMMIT');
+        return result;
+      } catch (error) {
+        try {
+          await client.query('ROLLBACK');
+        } catch {
+          destroyClient = true;
+        }
+        throw error;
+      } finally {
+        client.release(destroyClient);
+      }
     })();
-    const forbidCollectionSql =
-      formatForbidCollectionIdList.length > 0
-        ? `AND collection_id NOT IN (${formatForbidCollectionIdList.map((id) => `'${id}'`).join(',')})`
-        : '';
-
-    // Filter by collectionId
-    const formatFilterCollectionId = (() => {
-      if (!filterCollectionIdList) return;
-
-      return filterCollectionIdList
-        .map((id) => String(id))
-        .filter((id) => !forbidCollectionIdList.includes(id));
-    })();
-    const filterCollectionIdSql = formatFilterCollectionId
-      ? `AND collection_id IN (${formatFilterCollectionId.map((id) => `'${id}'`).join(',')})`
-      : '';
-    // Empty data
-    if (formatFilterCollectionId && formatFilterCollectionId.length === 0) {
-      return { results: [] };
-    }
-
-    const results: any = await OgClient.query({
-      // 客户端等待长于服务端的 90 秒超时，避免顶层提前释放并发额度。
-      query_timeout: 120_000,
-      text: `BEGIN;
-          SET LOCAL hnsw.ef_search = ${hnswEfSearch};
-          SELECT id, collection_id, vector <#> '[${vector}]' AS score
-            FROM ${DatasetVectorTableName}
-            WHERE team_id = '${String(teamId)}'
-              AND dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
-              ${filterCollectionIdSql}
-              ${forbidCollectionSql}
-            ORDER BY score LIMIT ${limit};
-        COMMIT;`
-    });
-    const rows = results?.[results.length - 2]?.rows as {
-      id: string;
-      collection_id: string;
-      score: number;
-    }[];
-
-    if (!Array.isArray(rows)) {
-      return {
-        results: []
-      };
-    }
-
     return {
-      results: rows.map((item) => ({
-        id: String(item.id),
-        collectionId: item.collection_id,
-        score: item.score * -1
+      results: result.rows.map(({ id, collection_id, score }) => ({
+        id: String(id),
+        collectionId: collection_id,
+        score: -Number(score)
       }))
     };
   };

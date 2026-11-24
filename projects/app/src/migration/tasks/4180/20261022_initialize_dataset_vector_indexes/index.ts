@@ -12,7 +12,7 @@ import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import { IntSchema } from '@fastgpt/global/common/zod';
 import { systemMigrationBatchSize } from '@/migration/constants';
 import type { SystemMigrationContext } from '@/migration/registry';
-import { removeLegacyPgVectorIndex } from './service';
+import { removeLegacyOpenGaussVectorIndex, removeLegacyPgVectorIndex } from './service';
 
 const CursorSchema = ObjectIdSchema.nullable();
 const CheckpointSchema = z
@@ -33,19 +33,24 @@ const CheckpointSchema = z
  * 总量仅初始化一次；兼容旧断点，以已处理数加剩余数补齐，扫描结束后校准并发删除造成的偏差。
  */
 export const initializeDatasetVectorIndexes = async (context: SystemMigrationContext) => {
-  const isPg = getVectorType() === 'pg';
+  const provider = getVectorType();
+  const supportsPartialIndex = provider === 'pg' || provider === 'opengauss';
 
   // 先完成旧索引清理；扫描和投递尚未开始，失败不会留下本次迁移新创建的建图任务。
   await context.reportProgress({ key: 'legacyIndex', status: SystemMigrationStatusEnum.running });
-  if (isPg) {
+  if (supportsPartialIndex) {
     await context.assertActive();
-    await removeLegacyPgVectorIndex(context);
+    if (provider === 'pg') {
+      await removeLegacyPgVectorIndex(context);
+    } else {
+      await removeLegacyOpenGaussVectorIndex(context);
+    }
     await context.assertActive();
   }
   await context.reportProgress({ key: 'legacyIndex', status: SystemMigrationStatusEnum.succeeded });
 
   await context.reportProgress({ key: 'datasets', status: SystemMigrationStatusEnum.running });
-  if (!isPg) {
+  if (!supportsPartialIndex) {
     await context.reportProgress({ key: 'datasets', status: SystemMigrationStatusEnum.succeeded });
     return { scannedCount: 0, eligibleCount: 0 };
   }

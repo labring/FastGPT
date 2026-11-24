@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   getWorker: vi.fn(),
   getQueue: vi.fn(),
   ensureIndex: vi.fn(),
+  ensureOpenGaussIndex: vi.fn(),
   cancelBuild: vi.fn(),
   provider: 'pg',
   info: vi.fn(),
@@ -23,6 +24,9 @@ vi.mock('@fastgpt/dal/redis/bullmq/binding', () => ({
 vi.mock('@fastgpt/service/common/vectorDB/pg/datasetIndex', () => ({
   ensurePgDatasetIndex: mocks.ensureIndex,
   cancelPgDatasetIndexBuild: mocks.cancelBuild
+}));
+vi.mock('@fastgpt/service/common/vectorDB/opengauss/datasetIndex', () => ({
+  ensureOpenGaussDatasetIndex: mocks.ensureOpenGaussIndex
 }));
 vi.mock('@fastgpt/service/common/vectorDB/constants', async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -72,6 +76,7 @@ beforeEach(() => {
     setGlobalConcurrency: mocks.setGlobalConcurrency
   });
   mocks.ensureIndex.mockReset().mockResolvedValue({ pgIndex: 'ready', created: true });
+  mocks.ensureOpenGaussIndex.mockReset().mockResolvedValue({ indexState: 'ready', created: true });
   mocks.info.mockClear();
   mocks.error.mockClear();
 });
@@ -422,7 +427,7 @@ describe('processDatasetVectorIndex', () => {
       'shared memory'
     );
     expect(mocks.error).toHaveBeenCalledWith(
-      'PG dataset FP16 index task failed',
+      'Dataset HNSW index task failed',
       expect.objectContaining({ ...scope, error })
     );
     expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData?.pgIndex).toBe(
@@ -478,7 +483,7 @@ describe('initDatasetVectorIndexWorker', () => {
     }
     expect(mocks.ensureIndex.mock.calls.map(([props]) => props.allowCreate)).toEqual([true, false]);
     expect(() => mocks.getWorker.mock.calls[0][1]({ data: scope, name: 'unknown' })).toThrow(
-      'Unknown PG dataset index task'
+      'Unknown dataset index task'
     );
   });
 
@@ -489,5 +494,22 @@ describe('initDatasetVectorIndexWorker', () => {
     mocks.provider = 'milvus';
     await initDatasetVectorIndexWorker();
     expect(mocks.getWorker).not.toHaveBeenCalled();
+  });
+});
+
+it('tracks openGauss index state independently of PostgreSQL', async () => {
+  mocks.provider = 'opengauss';
+  await createDataset({ vectorData: { pgIndex: 'ready', pgIndexCheckedAt: new Date() } });
+  await onDatasetVectorCounted({ ...scope, rows: 10001 });
+  expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData).toMatchObject({
+    pgIndex: 'ready',
+    openGaussIndex: 'pending'
+  });
+  await processDatasetVectorIndex(scope, { operation: 'build' });
+  expect(mocks.ensureOpenGaussIndex).toHaveBeenCalledOnce();
+  expect(mocks.ensureIndex).not.toHaveBeenCalled();
+  expect((await MongoDataset.findById(scope.datasetId).lean())?.vectorData).toMatchObject({
+    pgIndex: 'ready',
+    openGaussIndex: 'ready'
   });
 });
