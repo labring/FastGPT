@@ -20,6 +20,8 @@ export type LoginMethodItem =
       provider: OAuthAccountVerificationProvider;
       label: string;
       icon?: string;
+      /** 多 SSO 来源：同 provider 下的实例 ID（企微多企业/多个 OAuth2 IdP） */
+      source?: string;
     };
 
 type LoginMethodLabels = {
@@ -79,23 +81,39 @@ export const getLoginMethodItems = ({
   mode,
   pageType,
   feConfigs,
-  labels
+  labels,
+  ssoSources = []
 }: {
   mode: 'selection' | 'alternatives';
   pageType?: `${LoginPageTypeEnum}`;
   feConfigs: Pick<NonNullable<GetSystemInitDataResponse['feConfigs']>, 'sso' | 'oauth'>;
   labels: LoginMethodLabels;
+  /** sso 服务返回的登录来源列表；多来源时按来源展开多个按钮，单来源/为空保持单按钮 */
+  ssoSources?: Array<{ id: string; provider: string; name: string; source: string }>;
 }): LoginMethodItem[] => {
   const result: LoginMethodItem[] = [];
 
   if (feConfigs.sso?.enabled) {
-    result.push({
-      id: 'oauth:sso',
-      type: 'oauth',
-      provider: 'sso',
-      label: feConfigs.sso.title || 'SSO',
-      icon: feConfigs.sso.icon
-    });
+    if (ssoSources.length > 1) {
+      // 多来源：每个来源一个入口，label 用来源名（来自 sso 服务 env，不需要 i18n）
+      for (const source of ssoSources) {
+        result.push({
+          id: `oauth:sso:${source.source}`,
+          type: 'oauth',
+          provider: 'sso',
+          label: source.name,
+          source: source.source
+        });
+      }
+    } else {
+      result.push({
+        id: 'oauth:sso',
+        type: 'oauth',
+        provider: 'sso',
+        label: feConfigs.sso.title || 'SSO',
+        icon: feConfigs.sso.icon
+      });
+    }
   }
 
   if (feConfigs.oauth?.wechat && pageType !== LoginPageTypeEnum.wechat) {

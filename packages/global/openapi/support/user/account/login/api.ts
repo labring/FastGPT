@@ -345,6 +345,12 @@ export const SsoGetAuthorizationURLBodySchema = z.object({
   isWecomWorkTerminal: z.boolean().meta({
     example: false,
     description: '当前是否为企业微信工作台环境'
+  }),
+  provider: z.string().trim().min(1).optional().meta({
+    description: '登录类型（wecom/oauth2/…），缺省回落 sso 服务的 SSO_PROVIDER'
+  }),
+  source: z.string().trim().min(1).optional().meta({
+    description: '同类型下的实例 ID（企微多企业/多个 OAuth2 IdP），缺省回落单实例'
   })
 });
 export const SsoGetAuthorizationURLResponseSchema = z.string().meta({

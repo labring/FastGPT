@@ -57,6 +57,11 @@ export const oauthLogin = (params: OauthLoginBodyType) =>
   POST<LoginSuccessResponseType>('/proApi/support/user/account/login/oauth', params);
 export const getSsoAuthURL = (params: SsoGetAuthorizationURLBodyType) =>
   POST<string>('/proApi/support/user/account/login/getAuthURL', params);
+/** 登录页可见的 SSO 来源列表（pro 代理 sso 服务 /login/oauth/sources；sso 不可用返回空数组） */
+export const getSsoSources = () =>
+  GET<{ sources: Array<{ id: string; provider: string; name: string; source: string }> }>(
+    '/proApi/support/user/account/login/sso/sources'
+  );
 export const getWecomRedirectURL = (params: WecomGetRedirectURLBodyType) =>
   POST<string>('/proApi/support/user/account/login/wecom/getRedirectUrl', params);
 export const postFastLogin = (params: FastLoginBodyType) =>
