@@ -416,11 +416,31 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
             return createToolResponse(response, { skipResponseCompress: true });
           }
 
+          const { checkIsStopping, sandboxToolContext } = runtime;
+          const stopController = checkIsStopping ? new AbortController() : undefined;
+          let stopTimer: ReturnType<typeof setInterval> | undefined;
+          if (stopController && checkIsStopping) {
+            if (checkIsStopping()) {
+              stopController.abort();
+            } else {
+              stopTimer = setInterval(() => {
+                if (checkIsStopping()) {
+                  clearInterval(stopTimer);
+                  stopController.abort();
+                }
+              }, 100);
+              stopTimer.unref?.();
+            }
+          }
+
           const sandboxResult = await runSandboxTools({
             toolName: sandboxToolName,
             args: call.function.arguments ?? '',
-            sandboxClient: runtime.sandboxToolContext.client,
-            validate: runtime.sandboxToolContext.validate
+            sandboxClient: sandboxToolContext.client,
+            validate: sandboxToolContext.validate,
+            signal: stopController?.signal
+          }).finally(() => {
+            if (stopTimer !== undefined) clearInterval(stopTimer);
           });
           return createToolResponse(sandboxResult.response, {
             skipResponseCompress: true,

@@ -98,7 +98,7 @@ describe('SandboxClient', () => {
     const next = makeRuntime();
     mocks.ensure.mockResolvedValue(next);
 
-    await client.exec('second', 3);
+    await client.exec('second', { timeout: 3 });
 
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(runtime.opensandbox);
     expect(next.opensandbox.execute).toHaveBeenCalledWith('second', {
@@ -217,6 +217,47 @@ describe('SandboxClient', () => {
     expect(mocks.ensure).toHaveBeenCalledTimes(2);
     expect(mocks.ensure).not.toHaveBeenCalledWith(expect.objectContaining({ verifyHealth: true }));
     expect(mocks.disconnectSandbox).not.toHaveBeenCalled();
+  });
+
+  it('forwards AbortSignal in exec, skips recovery when aborted, and short-circuits pre-aborted signals', async () => {
+    const client = await getSandboxClient(query);
+    const ensureCallsBeforeAbort = mocks.ensure.mock.calls.length;
+
+    const preAborted = new AbortController();
+    preAborted.abort();
+    await expect(
+      client.exec('echo never', { timeout: 5, signal: preAborted.signal })
+    ).resolves.toEqual({
+      stdout: '',
+      stderr: 'Command execution aborted',
+      exitCode: -1
+    });
+    expect(mocks.ensure).toHaveBeenCalledTimes(ensureCallsBeforeAbort);
+    expect(runtime.opensandbox.execute).not.toHaveBeenCalled();
+    await expect(
+      client.runWithRecovery(async () => 'never', { signal: preAborted.signal })
+    ).rejects.toMatchObject({ name: 'AbortError' });
+
+    const activeController = new AbortController();
+    runtime.opensandbox.execute.mockImplementationOnce(async () => {
+      activeController.abort(new Error('user paused'));
+      throw new SandboxNotFoundError('gone after abort');
+    });
+
+    await expect(
+      client.exec('sleep 10', { timeout: 30, signal: activeController.signal })
+    ).resolves.toEqual({
+      stdout: '',
+      stderr: 'Command execution aborted',
+      exitCode: -1
+    });
+    expect(runtime.opensandbox.execute).toHaveBeenCalledWith('sleep 10', {
+      timeoutMs: 30_000,
+      signal: activeController.signal,
+      workingDirectory: client.getRuntimePaths().sessionWorkDirectory
+    });
+    expect(mocks.disconnectSandbox).not.toHaveBeenCalled();
+    expect(mocks.ensure).not.toHaveBeenCalledWith(expect.objectContaining({ verifyHealth: true }));
   });
 });
 

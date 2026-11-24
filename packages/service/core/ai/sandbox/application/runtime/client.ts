@@ -2,6 +2,7 @@
 import type { ExecuteResult } from '@fastgpt/global/core/ai/sandbox/type';
 import { isAppSandboxSourceType } from '@fastgpt/global/common/chat/source';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { throwIfAborted } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { isRecoverableSandboxError } from '../../infrastructure/opensandbox/errors';
 import { disconnectSandbox } from '../../infrastructure/opensandbox/opensandbox';
@@ -76,13 +77,17 @@ export class SandboxClient {
   }
 
   /**
-   * 仅对已准备好的客户端执行一次失败自愈重试（不重复调用 `ensureAvailable`）。
+   * 仅对已准备好的客户端执行一次失败自愈重试（不重复调用 `ensureAvailable`）；
+   * 若调用方已主动中止，则直接上抛避免无意义的容器恢复。
    */
-  async retryOnRecoverableError<T>(fn: () => Promise<T>): Promise<T> {
+  async retryOnRecoverableError<T>(
+    fn: () => Promise<T>,
+    options?: { signal?: AbortSignal }
+  ): Promise<T> {
     try {
       return await fn();
     } catch (error) {
-      if (!isRecoverableSandboxError(error)) {
+      if (options?.signal?.aborted || !isRecoverableSandboxError(error)) {
         throw error;
       }
       await this.recover();
@@ -93,12 +98,13 @@ export class SandboxClient {
   /** 确保运行时可用后执行业务操作，遇到可恢复的容器/连接异常时自动自愈重试一次。 */
   async runWithRecovery<T>(
     fn: () => Promise<T>,
-    options?: { skipEnsureAvailable?: boolean }
+    options?: { skipEnsureAvailable?: boolean; signal?: AbortSignal }
   ): Promise<T> {
+    throwIfAborted(options?.signal);
     if (!options?.skipEnsureAvailable) {
       await this.ensureAvailable();
     }
-    return this.retryOnRecoverableError(fn);
+    return this.retryOnRecoverableError(fn, options);
   }
 
   /** 为 App 和 Builder 会话创建默认工作目录，连接切换后重新准备；Skill 使用共享根目录。 */
@@ -149,7 +155,14 @@ export class SandboxClient {
    * 执行前会先 ensureAvailable；若乐观直连遇到容器丢失或挂载断连则自愈重连后重试 1 次。
    * 失败时返回标准 ExecuteResult，让 workflow 能把错误当作工具输出处理。
    */
-  async exec(command: string, timeout?: number): Promise<ExecuteResult> {
+  async exec(
+    command: string,
+    options?: { timeout?: number; signal?: AbortSignal }
+  ): Promise<ExecuteResult> {
+    if (options?.signal?.aborted) {
+      return { stdout: '', stderr: 'Command execution aborted', exitCode: -1 };
+    }
+
     try {
       await this.ensureAvailable();
     } catch (err) {
@@ -167,7 +180,8 @@ export class SandboxClient {
     const runCommand = async () => {
       await this.prepareWorkDirectory();
       return this.opensandbox.execute(command, {
-        timeoutMs: timeout ? timeout * 1000 : undefined,
+        timeoutMs: options?.timeout ? options.timeout * 1000 : undefined,
+        ...(options?.signal ? { signal: options.signal } : {}),
         ...(isAppSandboxSourceType(this.query.sourceType)
           ? { workingDirectory: this.runtimePaths.sessionWorkDirectory }
           : {})
@@ -175,8 +189,11 @@ export class SandboxClient {
     };
 
     try {
-      return await this.retryOnRecoverableError(runCommand);
+      return await this.retryOnRecoverableError(runCommand, options);
     } catch (err: unknown) {
+      if (options?.signal?.aborted) {
+        return { stdout: '', stderr: 'Command execution aborted', exitCode: -1 };
+      }
       logger.error('Failed to execute sandbox', { sandboxId: this.query.sandboxId, error: err });
       return {
         stdout: '',

@@ -449,7 +449,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         label: agentLoopToolName,
         description: sandboxTool.function.description || '',
         parameters: toPiToolParameters(sandboxTool.function.parameters),
-        execute: async (callId: string, args: unknown) => {
+        execute: async (callId: string, args: unknown, signal?: AbortSignal) => {
           const call = createToolCall({
             id: callId,
             name: agentLoopToolName,
@@ -462,7 +462,8 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
                 toolName: sandboxToolName,
                 args: call.function.arguments ?? '',
                 sandboxClient: sandbox.client,
-                validate: sandbox.validate
+                validate: sandbox.validate,
+                signal
               });
               return {
                 response: sandboxResult.response,

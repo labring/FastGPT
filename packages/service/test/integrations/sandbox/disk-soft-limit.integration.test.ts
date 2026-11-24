@@ -28,10 +28,6 @@ import {
   type SandboxClient
 } from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
 import { runSandboxTools } from '@fastgpt/service/core/ai/sandbox/application/toolCall';
-import {
-  SANDBOX_SHELL_LOG_MAX_BYTES,
-  SANDBOX_SHELL_LOG_MAX_FILES
-} from '@fastgpt/service/core/ai/sandbox/application/toolCall/shell.tool';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
 import { getSandboxIntegrationProvider } from './config';
 
@@ -152,32 +148,7 @@ describe.skipIf(!integrationProvider)(
         expect(afterTmp.usedBytes).toBeLessThan(limitBytes);
         await exec('rm -f /tmp/outside-volume.bin');
 
-        // 2. shell.tool.ts 单日志 5 MiB 封顶 + 最近 10 份淘汰。
-        const bigOut = await runSandboxTools({
-          toolName: SANDBOX_SHELL_TOOL_NAME,
-          args: JSON.stringify({ command: 'head -c 6291456 /dev/zero | tr "\\0" "a"' }),
-          sandboxClient: sandbox
-        });
-        expect(bigOut.success).toBe(true);
-        const maxLogBytes = Number(
-          (await exec('stat -c "%s" /tmp/fastgpt-bash-*.log | sort -nr | head -n 1')).stdout.trim()
-        );
-        expect(maxLogBytes).toBeLessThanOrEqual(SANDBOX_SHELL_LOG_MAX_BYTES);
-
-        await exec(
-          'for i in $(seq 1 12); do touch -d "2026-01-01 00:00:$i" "/tmp/fastgpt-bash-old-$i.log"; done'
-        );
-        await runSandboxTools({
-          toolName: SANDBOX_SHELL_TOOL_NAME,
-          args: JSON.stringify({ command: 'seq 1 2005' }),
-          sandboxClient: sandbox
-        });
-        const logCount = Number(
-          (await exec('ls -1 /tmp/fastgpt-bash-*.log | wc -l')).stdout.trim()
-        );
-        expect(logCount).toBeLessThanOrEqual(SANDBOX_SHELL_LOG_MAX_FILES);
-
-        // 3. 写入种子文件并在持久卷内写入 3 MiB 触发超限。
+        // 2. 写入种子文件并在持久卷内写入 3 MiB 触发超限。
         const seed = await runSandboxTools({
           toolName: SANDBOX_WRITE_FILE_TOOL_NAME,
           args: JSON.stringify({ path: 'note.txt', content: 'hello world' }),

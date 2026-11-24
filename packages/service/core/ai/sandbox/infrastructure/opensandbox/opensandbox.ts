@@ -25,6 +25,7 @@ import {
   throwIfAborted
 } from '@fastgpt/global/common/system/utils';
 import type { ExecuteResult } from '@fastgpt/global/core/ai/sandbox/type';
+import { getLogger, LogCategories } from '../../../../../common/logger';
 import {
   getOpenSandboxClientConfig,
   getOpenSandboxRuntimeConfig,
@@ -80,7 +81,10 @@ const DEFAULT_CONNECT_READY_TIMEOUT_SECONDS = 10;
 const DEFAULT_LIFECYCLE_TIMEOUT_MS = 120_000;
 const LIFECYCLE_POLL_INTERVAL_MS = 250;
 const DEFAULT_MAX_OUTPUT_BYTES = 1024 * 1024;
+const DEFAULT_COMMAND_TIMEOUT_SECONDS = 600;
+const PRE_INIT_ABORT_CLEANUP_TIMEOUT_MS = 10_000;
 const WRITE_FILES_CONCURRENCY = 8;
+const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 const STATE_MAP: Record<string, SandboxState> = {
   running: 'Running',
@@ -1275,12 +1279,15 @@ export class OpenSandboxClient {
       stdout: new BoundedOutputBuffer(maxBytes),
       stderr: new BoundedOutputBuffer(maxBytes)
     };
+    const callerSignal = options?.signal;
     const timeoutSeconds =
       options?.timeoutMs !== undefined && options.timeoutMs > 0
         ? Math.ceil(options.timeoutMs / 1000)
-        : undefined;
+        : DEFAULT_COMMAND_TIMEOUT_SECONDS;
 
     try {
+      throwIfAborted(callerSignal);
+
       const execution: Execution = { logs: { stdout: [], stderr: [] }, result: [] };
       const dispatcher = new ExecutionEventDispatcher(execution, {
         skipAccumulation: true,
@@ -1288,38 +1295,109 @@ export class OpenSandboxClient {
         onStderr: (msg) => buffers.stderr.append(msg.text)
       });
       const streamController = new AbortController();
-      const abortFromCaller = () => streamController.abort(options?.signal?.reason);
+      let commandId: string | undefined;
+      let interruptSent = false;
+      let preInitCleanupTimer: ReturnType<typeof setTimeout> | undefined;
 
-      if (options?.signal?.aborted) {
-        abortFromCaller();
-        throw toError(options.signal.reason ?? 'Command execution aborted');
-      }
-      options?.signal?.addEventListener('abort', abortFromCaller, { once: true });
+      // execd 的 Execute 使用 context.Background()，仅断开 SSE 不会结束容器内进程，必须在拿到 commandId 后显式调 interrupt 终止进程组。
+      const triggerInterrupt = () => {
+        if (!commandId || interruptSent) return;
+        interruptSent = true;
+        const targetCommandId = commandId;
+        void this.sandbox.commands.interrupt(targetCommandId).catch((interruptError) => {
+          logger.warn('[OpenSandbox] Failed to interrupt command', {
+            sandboxId: this.id,
+            commandId: targetCommandId,
+            error: interruptError
+          });
+        });
+      };
+
+      let resolveCallerAbort: (() => void) | undefined;
+      const callerAbortPromise = callerSignal
+        ? new Promise<void>((resolve) => {
+            resolveCallerAbort = resolve;
+          })
+        : undefined;
+
+      const onCallerAbort = () => {
+        if (commandId) {
+          triggerInterrupt();
+          streamController.abort(callerSignal?.reason);
+        } else if (preInitCleanupTimer === undefined) {
+          // 请求已发出但 init 尚未返回 commandId：前台立即返回，后台保留短时 SSE 监听以便收到 init 后补发 interrupt。
+          preInitCleanupTimer = setTimeout(() => {
+            if (!streamController.signal.aborted) {
+              streamController.abort(callerSignal?.reason);
+            }
+          }, PRE_INIT_ABORT_CLEANUP_TIMEOUT_MS);
+          preInitCleanupTimer.unref?.();
+        }
+        resolveCallerAbort?.();
+      };
+
+      callerSignal?.addEventListener('abort', onCallerAbort, { once: true });
 
       let terminalReceived = false;
-      try {
-        const stream = this.sandbox.commands.runStream(
-          command,
-          {
-            workingDirectory: this.normalizePath(options?.workingDirectory),
-            timeoutSeconds,
-            envs: options?.env
-          },
-          streamController.signal
-        );
-        for await (const event of stream) {
-          await dispatcher.dispatch(event);
-          if (event.type === 'execution_complete' || event.type === 'error') {
-            terminalReceived = true;
-            // 终态事件到达后立即取消仍在等待 EOF 的 SSE 连接，消除固定尾延迟。
+      const streamTask = (async () => {
+        try {
+          const stream = this.sandbox.commands.runStream(
+            command,
+            {
+              workingDirectory: this.normalizePath(options?.workingDirectory),
+              timeoutSeconds,
+              envs: options?.env
+            },
+            streamController.signal
+          );
+          for await (const event of stream) {
+            if (event.type === 'init' && typeof event.text === 'string' && event.text.trim()) {
+              commandId = event.text.trim();
+              if (callerSignal?.aborted) {
+                triggerInterrupt();
+                streamController.abort(callerSignal.reason);
+                break;
+              }
+            }
+            if (callerSignal?.aborted) {
+              if (event.type === 'execution_complete' || event.type === 'error') {
+                streamController.abort(callerSignal.reason);
+                break;
+              }
+              continue;
+            }
+            await dispatcher.dispatch(event);
+            if (event.type === 'execution_complete' || event.type === 'error') {
+              terminalReceived = true;
+              // 终态事件到达后立即取消仍在等待 EOF 的 SSE 连接，消除固定尾延迟。
+              streamController.abort();
+              break;
+            }
+          }
+        } finally {
+          if (preInitCleanupTimer !== undefined) {
+            clearTimeout(preInitCleanupTimer);
+            preInitCleanupTimer = undefined;
+          }
+          callerSignal?.removeEventListener('abort', onCallerAbort);
+          if (callerSignal?.aborted) {
+            triggerInterrupt();
+          }
+          if (!streamController.signal.aborted) {
             streamController.abort();
-            break;
           }
         }
-      } finally {
-        options?.signal?.removeEventListener('abort', abortFromCaller);
-        if (!streamController.signal.aborted) streamController.abort();
+      })();
+
+      if (callerAbortPromise) {
+        // 避免 Promise.race 因前台已 abort 返回后，后台等待 init/关闭连接抛出的拒绝变成 UnhandledRejection。
+        void streamTask.catch(() => undefined);
+        await Promise.race([streamTask, callerAbortPromise]);
+      } else {
+        await streamTask;
       }
+
+      throwIfAborted(callerSignal);
 
       if (!terminalReceived) {
         throw new Error('OpenSandbox command stream ended without a terminal event');

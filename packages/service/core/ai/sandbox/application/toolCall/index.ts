@@ -80,12 +80,14 @@ export const runSandboxTools = async ({
   toolName,
   args,
   sandboxClient,
-  validate
+  validate,
+  signal
 }: {
   toolName: string;
   args: string;
   sandboxClient: SandboxClient;
   validate?: SandboxToolCallValidator;
+  signal?: AbortSignal;
 }): Promise<SandboxToolCallResult> => {
   const startTime = Date.now();
   const getDuration = () => +((Date.now() - startTime) / 1000).toFixed(2);
@@ -113,7 +115,8 @@ export const runSandboxTools = async ({
 
   const result = await tool({
     sandboxInstance: sandboxClient,
-    input: parseJsonArgs<Record<string, unknown>>(args)
+    input: parseJsonArgs<Record<string, unknown>>(args),
+    signal
   });
   if (!result.success) {
     return {

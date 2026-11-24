@@ -17,6 +17,7 @@ export type SandboxToolCallValidator = (params: {
 type ToolExecuteContext<P> = {
   sandboxInstance: SandboxClient;
   params: P;
+  signal?: AbortSignal;
 };
 
 /**
@@ -60,29 +61,40 @@ export const createToolRunner =
   async (params: {
     sandboxInstance: SandboxClient;
     input: Record<string, unknown> | undefined;
+    signal?: AbortSignal;
   }): Promise<ToolRunResult> => {
+    if (params.signal?.aborted) {
+      return { success: false, error: 'Command execution aborted' };
+    }
     const parsed = definition.zodSchema.safeParse(params.input);
     if (!parsed.success) return { success: false, error: parsed.error.message };
 
-    const outcome = await params.sandboxInstance.runWithRecovery(
-      async () => {
-        if (definition.requiresWritableDisk) {
-          const quota = await getSandboxDiskQuotaStatus(params.sandboxInstance.opensandbox, {
-            rethrowRecoverable: true
-          });
-          if (quota.exceeded) {
-            return { quotaExceededNotice: formatAgentDiskQuotaNotice(quota, 'write') };
+    const recoveryOptions =
+      definition.skipEnsureAvailable || params.signal
+        ? {
+            ...(definition.skipEnsureAvailable ? { skipEnsureAvailable: true } : {}),
+            ...(params.signal ? { signal: params.signal } : {})
           }
+        : undefined;
+
+    const outcome = await params.sandboxInstance.runWithRecovery(async () => {
+      if (definition.requiresWritableDisk) {
+        const quota = await getSandboxDiskQuotaStatus(params.sandboxInstance.opensandbox, {
+          rethrowRecoverable: true,
+          signal: params.signal
+        });
+        if (quota.exceeded) {
+          return { quotaExceededNotice: formatAgentDiskQuotaNotice(quota, 'write') };
         }
-        return {
-          toolResult: await definition.execute({
-            sandboxInstance: params.sandboxInstance,
-            params: parsed.data
-          })
-        };
-      },
-      definition.skipEnsureAvailable ? { skipEnsureAvailable: true } : undefined
-    );
+      }
+      return {
+        toolResult: await definition.execute({
+          sandboxInstance: params.sandboxInstance,
+          params: parsed.data,
+          signal: params.signal
+        })
+      };
+    }, recoveryOptions);
 
     if ('quotaExceededNotice' in outcome && outcome.quotaExceededNotice !== undefined) {
       return {

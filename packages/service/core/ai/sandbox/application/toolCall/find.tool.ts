@@ -20,14 +20,16 @@ const SandboxFindToolSchema = z.object({
 export const sandboxFindTool = defineTool({
   zodSchema: SandboxFindToolSchema,
   skipEnsureAvailable: true,
-  execute: async ({ sandboxInstance, params }) => {
+  execute: async ({ sandboxInstance, params, signal }) => {
     const limit = params.limit ?? DEFAULT_FIND_LIMIT;
     const searchPath = params.path ?? '.';
     const command = [
       `cd ${shellQuote(searchPath)}`,
       `rg --files --hidden --glob ${shellQuote(params.pattern)} -- . | head -n ${limit + 1}`
     ].join(' && ');
-    const result = await sandboxInstance.exec(command);
+    const result = signal
+      ? await sandboxInstance.exec(command, { signal })
+      : await sandboxInstance.exec(command);
     const paths = result.stdout
       .split('\n')
       .map((item) => item.trim().replace(/^\.\//, ''))

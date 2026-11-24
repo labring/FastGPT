@@ -108,11 +108,28 @@ describe('sandbox toolCall index', () => {
       toolName: SANDBOX_SHELL_TOOL_NAME,
       args: JSON.stringify({ command: 'pwd' })
     });
-    expect(sandboxClient.exec).toHaveBeenCalledWith(
-      expect.stringContaining('/tmp/fastgpt-bash-'),
-      undefined
-    );
+    expect(sandboxClient.exec).toHaveBeenCalledWith(expect.stringContaining("/bin/bash -c 'pwd'"));
+    expect(sandboxClient.exec.mock.calls[0]?.[0]).not.toContain('python3');
     expect(runtimeMock.getSandboxClient).not.toHaveBeenCalled();
+  });
+
+  it('forwards AbortSignal to sandbox client execution', async () => {
+    const sandboxClient = createSandboxInstance();
+    const controller = new AbortController();
+
+    await expect(
+      runSandboxTools({
+        toolName: SANDBOX_SHELL_TOOL_NAME,
+        args: JSON.stringify({ command: 'sleep 10' }),
+        sandboxClient,
+        signal: controller.signal
+      })
+    ).resolves.toMatchObject({ success: true });
+
+    expect(sandboxClient.exec).toHaveBeenCalledWith(
+      expect.stringContaining("/bin/bash -c 'sleep 10'"),
+      { signal: controller.signal }
+    );
   });
 
   it('returns a validation error without accessing the sandbox', async () => {

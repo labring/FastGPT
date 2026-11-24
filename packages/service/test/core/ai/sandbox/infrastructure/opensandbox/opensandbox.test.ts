@@ -141,6 +141,7 @@ const resetTestSandboxConfig = () => {
 resetTestSandboxConfig();
 
 import {
+  CommandExecutionError,
   ConnectionError,
   isConfirmedSandboxUnavailableError,
   isTransientSandboxConnectError,
@@ -172,7 +173,8 @@ const createSdkSandbox = (id = 'remote-1', metadata?: Record<string, string>) =>
     runStream: vi.fn(async function* () {
       yield { type: 'stdout', text: 'hello' };
       yield { type: 'execution_complete', executionTimeMs: 12 };
-    })
+    }),
+    interrupt: vi.fn(async () => undefined)
   },
   files: {
     writeFiles: vi.fn(),
@@ -1036,5 +1038,168 @@ describe('opensandbox client and lifecycle helpers', () => {
       SandboxStateError
     );
     expect(nextSdk.close).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls commands.interrupt with init commandId and aborts promptly when caller signal aborts', async () => {
+    const sdkSandbox = createSdkSandbox('remote-interrupt');
+    sdkSandbox.commands.runStream.mockImplementationOnce(async function* (
+      _cmd: string,
+      _opts: unknown,
+      streamSignal?: AbortSignal
+    ) {
+      yield { type: 'init', text: 'cmd-stop-1' };
+      await new Promise<never>((_, reject) => {
+        if (streamSignal?.aborted) {
+          reject(streamSignal.reason ?? new DOMException('Aborted', 'AbortError'));
+          return;
+        }
+        streamSignal?.addEventListener(
+          'abort',
+          () => reject(streamSignal.reason ?? new DOMException('Aborted', 'AbortError')),
+          { once: true }
+        );
+      });
+    });
+    mocks.sandboxConnect.mockResolvedValueOnce(sdkSandbox);
+    const client = await connectToOpenSandbox({
+      sandboxId: 'sb-interrupt',
+      remoteSandboxId: 'remote-interrupt'
+    });
+
+    const controller = new AbortController();
+    const execPromise = client.execute('curl https://slow.example', { signal: controller.signal });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    controller.abort(new Error('user paused'));
+
+    await expect(execPromise).rejects.toBeInstanceOf(CommandExecutionError);
+    expect(sdkSandbox.commands.interrupt).toHaveBeenCalledTimes(1);
+    expect(sdkSandbox.commands.interrupt).toHaveBeenCalledWith('cmd-stop-1');
+  });
+
+  it('does not call commands.interrupt on normal completion and tolerates interrupt failure on abort', async () => {
+    const sdkSandbox = createSdkSandbox('remote-interrupt-err');
+    mocks.sandboxConnect.mockResolvedValueOnce(sdkSandbox);
+    const client = await connectToOpenSandbox({
+      sandboxId: 'sb-normal',
+      remoteSandboxId: 'remote-interrupt-err'
+    });
+
+    await expect(client.execute('echo ok')).resolves.toMatchObject({
+      exitCode: 0,
+      stdout: 'hello'
+    });
+    expect(sdkSandbox.commands.interrupt).not.toHaveBeenCalled();
+
+    const controller = new AbortController();
+    sdkSandbox.commands.interrupt.mockRejectedValueOnce(new Error('interrupt transport failed'));
+    sdkSandbox.commands.runStream.mockImplementationOnce(async function* () {
+      yield { type: 'init', text: 'cmd-stop-err' };
+      controller.abort(new Error('user stopped'));
+    });
+
+    await expect(client.execute('sleep 10', { signal: controller.signal })).rejects.toBeInstanceOf(
+      CommandExecutionError
+    );
+    expect(sdkSandbox.commands.interrupt).toHaveBeenCalledWith('cmd-stop-err');
+  });
+
+  it('returns promptly when aborted before init and still interrupts once init arrives', async () => {
+    const sdkSandbox = createSdkSandbox('remote-pre-init');
+    let emitInit: (() => void) | undefined;
+    let capturedStreamSignal: AbortSignal | undefined;
+
+    sdkSandbox.commands.runStream.mockImplementationOnce(async function* (
+      _cmd: string,
+      _opts: unknown,
+      streamSignal?: AbortSignal
+    ) {
+      capturedStreamSignal = streamSignal;
+      await new Promise<void>((resolve) => {
+        emitInit = resolve;
+      });
+      yield { type: 'init', text: 'cmd-pre-init' };
+      await new Promise<never>((_, reject) => {
+        if (streamSignal?.aborted) {
+          reject(streamSignal.reason ?? new DOMException('Aborted', 'AbortError'));
+          return;
+        }
+        streamSignal?.addEventListener(
+          'abort',
+          () => reject(streamSignal.reason ?? new DOMException('Aborted', 'AbortError')),
+          { once: true }
+        );
+      });
+    });
+
+    mocks.sandboxConnect.mockResolvedValueOnce(sdkSandbox);
+    const client = await connectToOpenSandbox({
+      sandboxId: 'sb-pre-init',
+      remoteSandboxId: 'remote-pre-init'
+    });
+
+    const controller = new AbortController();
+    const execPromise = client.execute('sleep 30', { signal: controller.signal });
+    await Promise.resolve();
+    controller.abort(new Error('user cancelled early'));
+
+    await expect(execPromise).rejects.toBeInstanceOf(CommandExecutionError);
+    expect(capturedStreamSignal?.aborted).toBe(false);
+    expect(sdkSandbox.commands.interrupt).not.toHaveBeenCalled();
+
+    emitInit?.();
+    await vi.waitFor(() => {
+      expect(sdkSandbox.commands.interrupt).toHaveBeenCalledWith('cmd-pre-init');
+      expect(capturedStreamSignal?.aborted).toBe(true);
+    });
+  });
+
+  it('passes default 600s command timeout and bounds pre-init cleanup when init never arrives', async () => {
+    const sdkSandbox = createSdkSandbox('remote-pre-init-timeout');
+    let capturedOpts: Record<string, unknown> | undefined;
+    let capturedStreamSignal: AbortSignal | undefined;
+
+    sdkSandbox.commands.runStream.mockImplementationOnce(async function* (
+      _cmd: string,
+      opts: Record<string, unknown>,
+      streamSignal?: AbortSignal
+    ) {
+      capturedOpts = opts;
+      capturedStreamSignal = streamSignal;
+      await new Promise<never>((_, reject) => {
+        if (streamSignal?.aborted) {
+          reject(streamSignal.reason ?? new DOMException('Aborted', 'AbortError'));
+          return;
+        }
+        streamSignal?.addEventListener(
+          'abort',
+          () => reject(streamSignal.reason ?? new DOMException('Aborted', 'AbortError')),
+          { once: true }
+        );
+      });
+    });
+
+    mocks.sandboxConnect.mockResolvedValueOnce(sdkSandbox);
+    const client = await connectToOpenSandbox({
+      sandboxId: 'sb-pre-init-timeout',
+      remoteSandboxId: 'remote-pre-init-timeout'
+    });
+
+    const controller = new AbortController();
+    vi.useFakeTimers();
+    try {
+      const execPromise = client.execute('sleep 30', { signal: controller.signal });
+      await Promise.resolve();
+      expect(capturedOpts).toMatchObject({ timeoutSeconds: 600 });
+
+      controller.abort(new Error('network blackhole'));
+      await expect(execPromise).rejects.toBeInstanceOf(CommandExecutionError);
+      expect(capturedStreamSignal?.aborted).toBe(false);
+
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(capturedStreamSignal?.aborted).toBe(true);
+      expect(sdkSandbox.commands.interrupt).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
