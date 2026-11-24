@@ -68,6 +68,10 @@ describe('Agent read_files tool protocol', () => {
     const readFileTool = createReadFilesTool({ maxFileAmount: 3 });
 
     expect(readFileTool.function.name).toBe(READ_FILES_TOOL_NAME);
+    expect(readFileTool.function.description).toContain('document files only');
+    expect(readFileTool.function.description).toContain(
+      'Image, audio, and video attachments provided in the message are already available to understand directly'
+    );
     expect(readFileTool.function.parameters).toEqual({
       type: 'object',
       properties: {
@@ -77,7 +81,8 @@ describe('Agent read_files tool protocol', () => {
           items: {
             type: 'string'
           },
-          description: 'Absolute HTTP(S) file URLs'
+          description:
+            'Absolute HTTP(S) document URLs (document files only; do not pass image, audio, video, or unknown URLs)'
         }
       },
       required: ['urls']
