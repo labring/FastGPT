@@ -109,6 +109,10 @@ export type DevboxInfoData = {
   deletionTimestamp?: string | null;
   state: {
     phase: `${DevboxPhaseEnum}`;
+    /** provider 可选诊断原因；存在时作为终止原因的展示来源，缺失时退回 phase。 */
+    reason?: string;
+    /** provider 可选失败详情，语义同 `reason`，用于构造单行 displayMessage。 */
+    message?: string;
   };
   ssh: DevboxSshInfo;
   gateway?: DevboxGatewayInfo;

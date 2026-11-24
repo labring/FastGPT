@@ -3,7 +3,11 @@ import {
   CommandExecutionError,
   ConnectionError,
   SandboxNotFoundError,
-  SandboxStateError
+  SandboxReadyTimeoutError,
+  SandboxStateError,
+  SandboxTerminationError,
+  getSandboxFailureDetail,
+  type SandboxFailureDetail
 } from '../../errors';
 import type {
   Endpoint,
@@ -16,6 +20,7 @@ import type {
   SandboxId,
   SandboxInfo,
   SandboxState,
+  SandboxStatus,
   FileWriteEntry,
   FileWriteResult,
   FileReadResult
@@ -38,6 +43,23 @@ const LIFECYCLE_TIMEOUT_MS = 120_000;
 const COMMAND_READY_TIMEOUT_MS = 300_000;
 const COMMAND_READY_INTERVAL_MS = 1_000;
 const COMMAND_READY_PROBE_TIMEOUT_MS = 5_000;
+
+/** Devbox controller 的不可自愈终态；码表本体在 SDK errors 包。 */
+const DEVBOX_FAILED_CODE = 'SEALOS_DEVBOX::FAILED';
+/** create 被 provider 明确拒绝（Pod 准入/配额等），远端不会留下可恢复实例。 */
+const DEVBOX_CREATE_REJECTED_CODE = 'SEALOS_DEVBOX::CREATE_REJECTED';
+
+/** 只有 controller 的 Error 阶段是终止；Unknown 与过渡态都按“结果未知”处理。 */
+const isTerminalDevboxPhase = (phase: string): boolean => phase === DevboxPhaseEnum.Error;
+
+/**
+ * provider 对本次 create 的明确拒绝（Pod 准入被拒、配额不足、参数校验失败、重名冲突）。
+ * 401（凭据过期）、408（超时）、429（限流）与 5xx 都可能是瞬时问题，保持“结果未知”。
+ */
+const SETTLED_CREATE_REJECTION_CODES: ReadonlySet<number> = new Set([400, 402, 403, 409, 422]);
+
+const isSettledCreateRejection = (code: number): boolean =>
+  SETTLED_CREATE_REJECTION_CODES.has(code);
 
 const isCommandChannelNotReadyError = (error: unknown): boolean => {
   const pending: unknown[] = [error];
@@ -147,6 +169,55 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
       default:
         return 'Error';
     }
+  }
+
+  /**
+   * 把 controller 的终止阶段收敛为 SDK 失败契约。
+   *
+   * 只有 `Error` 阶段属于不可自愈终态；`Unknown` 等未知阶段不产出结构化证据，调用方
+   * 继续按“结果未知”处理。展示原因优先取 provider 的 reason/message，缺失时退回
+   * 结构化的 phase 文本，绝不使用通用包装文案。
+   */
+  private resolvePhaseFailure(data: DevboxInfoData): SandboxFailureDetail | undefined {
+    if (!isTerminalDevboxPhase(data.state.phase)) return undefined;
+    const reason =
+      data.state.message?.trim() || data.state.reason?.trim() || `Devbox phase ${data.state.phase}`;
+    return getSandboxFailureDetail({ code: DEVBOX_FAILED_CODE, message: reason });
+  }
+
+  /** 从已映射的 status 读取结构化终止证据；没有 provider 码时返回 undefined。 */
+  private resolveStatusFailure(status: SandboxStatus): SandboxFailureDetail | undefined {
+    if (!status.code) return undefined;
+    return getSandboxFailureDetail({ code: status.code, message: status.message ?? status.reason });
+  }
+
+  private createTerminationError(
+    code: string,
+    message: string | undefined,
+    fallbackMessage: string
+  ): SandboxTerminationError {
+    const detail = getSandboxFailureDetail({
+      code,
+      message: message?.trim() || fallbackMessage
+    });
+    const displayMessage = detail?.displayMessage ?? fallbackMessage;
+    return new SandboxTerminationError(detail?.code ?? code, displayMessage, {
+      message: displayMessage
+    });
+  }
+
+  /**
+   * 外层包装仍保留结构化证据：已经是 `SandboxTerminationError` 时原样抛出，
+   * 否则沿 cause 链用唯一实现 `getSandboxFailureDetail` 读取终止详情。
+   */
+  private toTerminationError(error: unknown): SandboxTerminationError | undefined {
+    if (error instanceof SandboxTerminationError) return error;
+    const failure = getSandboxFailureDetail(error);
+    if (!failure?.terminated) return undefined;
+    return new SandboxTerminationError(failure.code, failure.displayMessage, {
+      message: failure.displayMessage,
+      cause: error
+    });
   }
 
   private buildCreateRequest(): DevboxCreateRequest {
@@ -260,10 +331,64 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
         }
       }
 
+      // 命令通道未就绪时，只有 controller 明确进入终止阶段才提前失败；网络错误继续重试。
+      const termination = await this.readPhaseTermination();
+      if (termination) throw termination;
+
       await new Promise((resolve) => setTimeout(resolve, COMMAND_READY_INTERVAL_MS));
     }
 
     throw this.createCommandReadyError(lastError ?? new Error('Sandbox command probe timed out'));
+  }
+
+  /** 读取一次 controller 阶段的终止证据；读不到或非终止时返回 undefined。 */
+  private async readPhaseTermination(): Promise<SandboxTerminationError | undefined> {
+    try {
+      const info = await this.getInfo();
+      if (!info) return undefined;
+      const failure = this.resolveStatusFailure(info.status);
+      if (!failure?.terminated) return undefined;
+      return new SandboxTerminationError(failure.code, failure.displayMessage, {
+        message: failure.displayMessage
+      });
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Devbox 的就绪等待需要识别 controller 的终止阶段。
+   *
+   * 基类 `ping()` 只有布尔结果，phase=Error 会一直等到超时，丢失结构化证据；这里改为
+   * 读取 info，终止阶段立即抛 `SandboxTerminationError`，其余状态继续等待。
+   */
+  override async waitUntilReady(timeoutMs = 300_000): Promise<void> {
+    const startTime = Date.now();
+    let lastError: unknown;
+
+    while (Date.now() - startTime < timeoutMs) {
+      try {
+        const info = await this.getInfo();
+        if (info?.status.state === 'Running') return;
+
+        if (info) {
+          const failure = this.resolveStatusFailure(info.status);
+          if (failure?.terminated) {
+            throw new SandboxTerminationError(failure.code, failure.displayMessage, {
+              message: failure.displayMessage
+            });
+          }
+        }
+      } catch (error) {
+        if (error instanceof SandboxTerminationError) throw error;
+        // 网关抖动、实例尚未可读等瞬时错误继续等待，超时后保留最后一次错误。
+        lastError = error;
+      }
+      await this.sleep(GET_INFO_RETRY_INTERVAL_MS);
+    }
+
+    if (lastError instanceof Error) throw lastError;
+    throw new SandboxReadyTimeoutError(this._id, timeoutMs);
   }
 
   private isRetryableGetInfoError(error: unknown): boolean {
@@ -348,11 +473,14 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
       }
 
       const data: DevboxInfoData = res.data;
+      const phaseFailure = this.resolvePhaseFailure(data);
 
       this._status = {
         state: this.adaptStatus(data),
+        // 终止码随 status 透传，恢复入口与 runner 读取同一份结构化证据。
+        code: phaseFailure?.code,
         reason: data.state.phase,
-        message: res.message
+        message: phaseFailure?.displayMessage ?? res.message
       };
       return {
         id: data.name,
@@ -372,6 +500,13 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
     const info = await this.getInfoWithProviderRetry();
     if (!info) throw new SandboxNotFoundError(`Sandbox ${this._id} does not exist`);
     if (info.status.state !== 'Running') {
+      // 终止阶段必须先抛结构化证据，不能被“非 Running”这个通用状态错误吞掉。
+      const failure = this.resolveStatusFailure(info.status);
+      if (failure?.terminated) {
+        throw new SandboxTerminationError(failure.code, failure.displayMessage, {
+          message: failure.displayMessage
+        });
+      }
       throw new SandboxStateError(
         'Cannot connect to an inactive sandbox',
         info.status.state,
@@ -407,11 +542,19 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
             await this.waitUntilDeleted();
             await this.create();
             return;
-          case 'Error':
+          case 'Error': {
+            const failure = this.resolveStatusFailure(sandbox.status);
+            if (failure?.terminated) {
+              // 对外 message 直接使用 provider 的可展示原因。
+              throw new SandboxTerminationError(failure.code, failure.displayMessage, {
+                message: failure.displayMessage
+              });
+            }
             throw new ConnectionError(
               `Sandbox ${sandbox.id} is in error state: ${sandbox.status.reason ?? sandbox.status.message ?? 'unknown'}`,
               this.config.baseUrl
             );
+          }
           default:
             throw new ConnectionError(`Sandbox state ${status} not supported`, this.config.baseUrl);
         }
@@ -422,9 +565,16 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
       }
       await this.create();
     } catch (error) {
-      if (error instanceof ConnectionError || error instanceof SandboxNotFoundError) {
+      // 终止证据与状态错误不能被通用 ConnectionError 覆盖，否则 cause 链仍在但外层文案失真。
+      if (
+        error instanceof ConnectionError ||
+        error instanceof SandboxNotFoundError ||
+        error instanceof SandboxTerminationError
+      ) {
         throw error;
       }
+      const termination = this.toTerminationError(error);
+      if (termination) throw termination;
       throw new ConnectionError(`Failed to ensure sandbox running`, this.config.baseUrl, error);
     }
   }
@@ -433,11 +583,21 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
     try {
       this._status = { state: 'Creating' };
       const res = await this.api.create(this.buildCreateRequest());
+      if (isSettledCreateRejection(res.code)) {
+        // 4xx 是 provider 对本次创建的明确拒绝（Pod 准入/配额等），远端没有可恢复实例。
+        throw this.createTerminationError(
+          DEVBOX_CREATE_REJECTED_CODE,
+          res.message,
+          `Devbox create rejected with code ${res.code}`
+        );
+      }
       this.assertMutationSuccess({ response: res, action: 'create' });
       await this.waitUntilReady();
       await this.waitUntilCommandReady();
       this._status = { state: 'Running' };
     } catch (error) {
+      const termination = this.toTerminationError(error);
+      if (termination) throw termination;
       throw new ConnectionError('Failed to create sandbox', this.config.baseUrl, error);
     }
   }
@@ -467,6 +627,9 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
       await this.waitUntilCommandReady();
       this._status = { state: 'Running' };
     } catch (error) {
+      // resume 被拒绝时，再读一次 provider 阶段：devbox 真的处于 Error 才当终止。
+      const termination = this.toTerminationError(error) ?? (await this.readPhaseTermination());
+      if (termination) throw termination;
       throw new ConnectionError('Failed to resume sandbox', this.config.baseUrl, error);
     }
   }

@@ -28,7 +28,11 @@ export type SandboxState =
  */
 export type SandboxStatus = {
   state: SandboxState;
-  /** provider 原始失败码（如 `KUBERNETES::POD_FAILED`），只作为结构化证据读取。 */
+  /**
+   * provider 原始失败码（如 `KUBERNETES::POD_FAILED` / `SEALOS_DEVBOX::FAILED`）。
+   * opensandbox 与 sealos-devbox 都在适配器边界经同一份 `SANDBOX_TERMINAL_CODES`
+   * 产出该字段，消费方只按结构化码判定，不猜文案。
+   */
   code?: string;
   reason?: string;
   message?: string;

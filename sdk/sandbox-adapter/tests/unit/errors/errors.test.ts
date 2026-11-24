@@ -106,8 +106,22 @@ describe('getSandboxFailureDetail', () => {
     expect(getSandboxFailureDetail('KUBERNETES::POD_FAILED')).toBeUndefined();
   });
 
-  it('exposes the single terminal code table', () => {
+  it('exposes the single terminal code table for both providers', () => {
     expect(SANDBOX_TERMINAL_CODES).toContain('KUBERNETES::POD_FAILED');
     expect(SANDBOX_TERMINAL_CODES).not.toContain('KUBERNETES::POD_READY_TIMEOUT');
+    // devbox 码与 opensandbox 码在同一张表：provider 边界只产出证据，码表只有一份。
+    expect(SANDBOX_TERMINAL_CODES).toContain('SEALOS_DEVBOX::FAILED');
+    expect(SANDBOX_TERMINAL_CODES).toContain('SEALOS_DEVBOX::CREATE_REJECTED');
+  });
+
+  it('reads devbox termination evidence from a provider-shaped record', () => {
+    const detail = getSandboxFailureDetail({
+      code: 'SEALOS_DEVBOX::FAILED',
+      message: 'pod sandbox-1 failed:\nOOMKilled'
+    });
+
+    expect(detail).toMatchObject({ code: 'SEALOS_DEVBOX::FAILED', terminated: true });
+    expect(detail?.displayMessage).toContain('OOMKilled');
+    expect(detail?.displayMessage).not.toContain('\n');
   });
 });

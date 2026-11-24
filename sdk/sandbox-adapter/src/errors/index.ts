@@ -88,15 +88,26 @@ export type SandboxFailureDetail = {
 /**
  * provider 原始终止码表。
  *
- * 这是全局唯一一份终止码表：service / app 只能消费 `getSandboxFailureDetail` 的结果，
- * 不得再维护文本特征或复制本表。超时（如 `KUBERNETES::POD_READY_TIMEOUT`）和网络错误
- * 不在表中，必须按“结果未知”处理。
+ * 这是全局唯一一份终止码表：两个 provider（opensandbox / sealos-devbox）与 service / app
+ * 都只能消费 `getSandboxFailureDetail` 的结果，不得再维护文本特征或复制本表。超时
+ * （如 `KUBERNETES::POD_READY_TIMEOUT`）和网络错误不在表中，必须按“结果未知”处理。
  *
- * 后三项是早期实现从文本特征命名的兼容码，保留用于读取部署前已落库的记录。
+ * - `KUBERNETES::*`：opensandbox 的 Kubernetes 结构化状态码；
+ * - `SEALOS_DEVBOX::FAILED`：sealos-devbox 的 info `state.phase === "Error"`，
+ *   Devbox controller 已把实例判为不可自愈的终态；
+ * - `SEALOS_DEVBOX::CREATE_REJECTED`：sealos-devbox 的 create API 以 400/402/403/409/422
+ *   明确拒绝创建（Pod 准入被拒、配额不足、参数校验失败、重名冲突），远端没有产生可继续
+ *   使用的实例；401/408/429/5xx 仍按“结果未知”处理；
+ * - 后三项是早期实现从文本特征命名的兼容码，保留用于读取部署前已落库的记录。
+ *
+ * sealos-devbox 的 Paused/Stopped/Shutdown/Pausing/Stopping/Shutting、Unknown 阶段、
+ * 命令执行失败、超时和网络错误都不是终止码。
  */
 export const SANDBOX_TERMINAL_CODES: readonly string[] = [
   'KUBERNETES::POD_FAILED',
   'KUBERNETES::QUOTA_EXCEEDED',
+  'SEALOS_DEVBOX::FAILED',
+  'SEALOS_DEVBOX::CREATE_REJECTED',
   'CONTAINER_FAILED',
   'INIT_CONTAINER_FAILED',
   'CONTAINER_EXITED'
