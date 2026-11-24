@@ -49,6 +49,8 @@ const AIModelSchema = new Schema(
             type: [
               {
                 _id: false,
+                /** @deprecated 保留历史阶梯上限，供 4.17.5 回退读取。新版计费用 maxInputTokensK。 */
+                maxInputTokens: Number,
                 maxInputTokensK: Number,
                 inputPrice: Number,
                 outputPrice: Number,
