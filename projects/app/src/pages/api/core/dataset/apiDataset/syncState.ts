@@ -80,9 +80,12 @@ async function handler(
     '_id apiFileId apiFileParentId parentId type syncChildren metadata'
   ).lean();
 
-  const hasLegacySystemRoot = collections.some(
-    (col) => col.apiFileId === LEGACY_SYSTEM_ROOT_API_FILE_ID
+  const legacySentinelIdSet = new Set(
+    collections
+      .filter((col) => col.apiFileId === LEGACY_SYSTEM_ROOT_API_FILE_ID)
+      .map((col) => String(col._id))
   );
+  const hasLegacySystemRoot = legacySentinelIdSet.size > 0;
   const effectiveCollections = collections.filter(
     (col) => col.apiFileId !== LEGACY_SYSTEM_ROOT_API_FILE_ID
   );
@@ -97,9 +100,13 @@ async function handler(
       const sourceId = getSourceId(col);
       if (!sourceId) return [];
       const rawParentId = col.parentId ? String(col.parentId) : null;
-      // 不可读父目录的本地 ID 不向外暴露，避免泄露无权访问的目录元数据。
+      // 不可读父目录或历史 SYSTEM_ROOT 哨兵的本地 ID 不向外暴露，归一化为根级 null。
       const parentId =
-        rawParentId && (!readableIdSet || readableIdSet.has(rawParentId)) ? rawParentId : null;
+        rawParentId &&
+        !legacySentinelIdSet.has(rawParentId) &&
+        (!readableIdSet || readableIdSet.has(rawParentId))
+          ? rawParentId
+          : null;
       return [
         {
           collectionId: idStr,

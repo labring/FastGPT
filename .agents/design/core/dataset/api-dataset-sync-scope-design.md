@@ -316,8 +316,9 @@ flowchart TD
 ### 5.1 接入内置系统迁移框架（已确认选项 A）
 
 - 路径：`projects/app/src/migration/tasks/4180/20261120_clean_api_dataset_system_root/`（严格遵循 `projects/app/src/migration/tasks/README.md` 与 `system-migration-development` 规范，注册至 `projects/app/src/migration/registry.ts` 尾部）。
-- 调度策略：`blockStartup: true`，采用**幂等全量扫描 + 完成校验**（不使用 checkpoint，失败由框架自动重跑）：
-  - 新版业务代码已移除 `RootCollectionId` 逻辑，`blockStartup: true` 保证业务启动前所有存量哨兵全部清洗完毕；
+- 调度策略：`manual: true`，采用**幂等全量扫描 + 完成校验**（不使用 checkpoint，失败可安全重跑）：
+  - 为兼容任意升级顺序（先升 App、同时升级或滚动升级窗口期与旧版 Pro/App 共存），启动阶段不自动删除 `SYSTEM_ROOT`；
+  - 未执行清理前，新版 App（`detail`、`syncState`、`listV2`、`paths`、`createApiDatasetCollection`、`update`、`delete`）与新版 Pro（`sync`）均透明兼容存量 `SYSTEM_ROOT` 哨兵；待全部 App 与 Pro 均升级完毕后，由管理员在后台手动触发清理；
   - 单次执行耗时短（仅扫描 `apiFileId: 'SYSTEM_ROOT'` 与 `apiFileParentId: 'SYSTEM_ROOT'` 命中文档），逐 Dataset 事务提交，重复执行零副作用。
 - 阶段声明：`migrate`（逐库事务清理哨兵、迁移权限并回填 `Dataset.syncAll`）→ `validation`（全库二次核验确认无残留 `SYSTEM_ROOT`）。
 - 国际化文案：补全 `packages/web/i18n/{zh-CN,en,ja}/system_migration.json`。
@@ -357,7 +358,7 @@ flowchart TD
 
 ## 6. 已确认产品/交互决策
 
-1. **存量 `SYSTEM_ROOT` 数据清洗形态**：接入内置 `admin/migrations` 系统迁移框架（`20261120_clean_api_dataset_system_root`，`blockStartup: true`）。
+1. **存量 `SYSTEM_ROOT` 数据清洗形态**：接入内置 `admin/migrations` 系统迁移框架（`20261120_clean_api_dataset_system_root`，`manual: true`），待主服务与 Pro 均升级完成后手动执行，过渡期由 App 与 Pro 透明兼容。
 2. **在 `CollectionCard` / `Info` 把 `syncAll` 或目录 `syncChildren` 从 `false` 切回 `true` 时**：仅保存状态标记并提示“将在下次同步时拉取新增内容”，不立即自动触发同步。
 3. **`docA#dir` 派生目录被删光所有子文档时**：保留 `docA#dir`（`syncChildren: false`），不自动折叠回单文件 `apiFile`。
 4. **远端移动（Remote Move）到未同步目录时**：保留已导入文件，支持 `parentId` 的 provider 自动补建 `syncChildren: false` 新祖先并跟随移动；飞书暂保原位继续同步正文。

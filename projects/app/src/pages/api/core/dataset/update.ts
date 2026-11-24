@@ -17,7 +17,10 @@ import {
   upsertDatasetSyncJobScheduler
 } from '@fastgpt/service/core/dataset/datasetSync';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { applyApiDatasetSyncAll } from '@fastgpt/service/core/dataset/apiDataset/service';
+import {
+  applyApiDatasetSyncAll,
+  cleanDatasetLegacySystemRootInSession
+} from '@fastgpt/service/core/dataset/apiDataset/service';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { assertAuthModels } from '@fastgpt/service/support/permission/model/auth';
 import { addAuditLogs } from '@fastgpt/service/support/user/audit/util';
@@ -257,6 +260,14 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
         datasetId: id,
         session,
         updateDataset: false
+      });
+    } else if (syncAll === false) {
+      // 升级过渡期兼容：主动关闭整库全量同步时同步拆除存量 SYSTEM_ROOT 哨兵（保留子节点与独立权限快照），
+      // 防止哨兵残留导致新旧 Pro 或读接口继续将其判定为 syncAll = true，也防止后续手动迁移误回填 true。
+      await cleanDatasetLegacySystemRootInSession({
+        datasetId: id,
+        session,
+        backfillSyncAll: false
       });
     }
 

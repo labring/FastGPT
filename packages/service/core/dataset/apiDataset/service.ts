@@ -42,8 +42,124 @@ import { lockDatasetCollectionPermissionState } from '../../../support/permissio
 import { getLogger, LogCategories } from '../../../common/logger';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
+import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { MongoResourcePermission } from '../../../support/permission/schema';
 
 const logger = getLogger(LogCategories.MODULE.DATASET);
+
+export type CleanDatasetLegacySystemRootResult = {
+  sentinels: number;
+  reparented: number;
+};
+
+/**
+ * 在已有事务内清理单个 API 知识库的历史 SYSTEM_ROOT 哨兵集合：
+ * 1. 若知识库启用了集合级权限且哨兵为独立权限（inheritPermission=false），将直接继承态子节点
+ *    标记为 inheritPermission=false 以保留其既有物化快照，防止重挂到根后发生权限漂移；
+ * 2. 将哨兵下的直接子节点重挂到知识库根（parentId=null），并移除残留 apiFileParentId='SYSTEM_ROOT'；
+ * 3. 删除哨兵自身的 ResourcePermission 记录，避免孤儿权限行；
+ * 4. 按调用方需求决定是否回填 Dataset.syncAll = true（手动清理迁移传 true；主动关闭 syncAll / 删文件传 false）；
+ * 5. 删除哨兵集合。
+ *
+ * 重复执行安全：目标已清理时只读返回零变更。
+ */
+export const cleanDatasetLegacySystemRootInSession = async ({
+  datasetId,
+  session,
+  backfillSyncAll = false
+}: {
+  datasetId: string | Types.ObjectId;
+  session: ClientSession;
+  backfillSyncAll?: boolean;
+}): Promise<CleanDatasetLegacySystemRootResult> => {
+  const datasetObjectId = typeof datasetId === 'string' ? new Types.ObjectId(datasetId) : datasetId;
+
+  const [sentinels, dataset] = await Promise.all([
+    MongoDatasetCollection.find(
+      {
+        datasetId: datasetObjectId,
+        apiFileId: LEGACY_SYSTEM_ROOT_API_FILE_ID
+      },
+      '_id teamId datasetId inheritPermission'
+    )
+      .lean()
+      .session(session),
+    MongoDataset.findById(datasetObjectId, '_id teamId collectionPermissionEnabled')
+      .lean()
+      .session(session)
+  ]);
+
+  const sentinelIds = sentinels.map((s) => s._id);
+  const sentinelIdStrings = sentinelIds.map(String);
+  let reparented = 0;
+
+  if (sentinelIds.length > 0) {
+    const independentSentinelIds = sentinels
+      .filter((s) => s.inheritPermission === false)
+      .map((s) => s._id);
+
+    // 启用集合级权限且哨兵自身是独立权限时，保留子节点当前物化快照而不自动改继承 Dataset ACL
+    if (dataset?.collectionPermissionEnabled === true && independentSentinelIds.length > 0) {
+      const res = await MongoDatasetCollection.updateMany(
+        {
+          datasetId: datasetObjectId,
+          parentId: { $in: independentSentinelIds },
+          inheritPermission: { $ne: false }
+        },
+        { $set: { parentId: null, inheritPermission: false } },
+        { session }
+      );
+      reparented += res.modifiedCount;
+    }
+
+    const restRes = await MongoDatasetCollection.updateMany(
+      {
+        datasetId: datasetObjectId,
+        parentId: { $in: sentinelIds }
+      },
+      { $set: { parentId: null } },
+      { session }
+    );
+    reparented += restRes.modifiedCount;
+
+    const teamIds = Array.from(
+      new Set(
+        [...sentinels.map((s) => String(s.teamId)), ...(dataset ? [String(dataset.teamId)] : [])]
+          .filter(Boolean)
+          .map((id) => new Types.ObjectId(id))
+      )
+    );
+
+    await MongoResourcePermission.deleteMany(
+      {
+        resourceType: PerResourceTypeEnum.collection,
+        ...(teamIds.length > 0 ? { teamId: { $in: teamIds } } : {}),
+        resourceId: { $in: sentinelIdStrings }
+      },
+      { session }
+    );
+
+    if (backfillSyncAll && dataset) {
+      await MongoDataset.updateOne({ _id: dataset._id }, { $set: { syncAll: true } }, { session });
+    }
+
+    await MongoDatasetCollection.deleteMany({ _id: { $in: sentinelIds } }, { session });
+  }
+
+  await MongoDatasetCollection.updateMany(
+    {
+      datasetId: datasetObjectId,
+      apiFileParentId: LEGACY_SYSTEM_ROOT_API_FILE_ID
+    },
+    { $unset: { apiFileParentId: '' } },
+    { session }
+  );
+
+  return {
+    sentinels: sentinelIds.length,
+    reparented
+  };
+};
 
 /**
  * 在同一事务内原子开启 API 知识库整库全量同步：
@@ -416,10 +532,27 @@ export const createApiDatasetCollection = async ({
   );
   const folderPlan = planApiFileFolders({ records, idMap });
 
+  // 升级过渡期兼容：若库内仍存在未迁移的 SYSTEM_ROOT 哨兵且未指定落位目录，
+  // 保持顶层记录继续挂在哨兵下（与 Pro 同步逻辑对称），避免触发多余的移动与权限变更，等待手动迁移一次性无损重挂。
+  const legacySystemRootCollection = localCollections.find(
+    (item) => item.apiFileId === LEGACY_SYSTEM_ROOT_API_FILE_ID
+  );
+  const legacySystemRootId = legacySystemRootCollection
+    ? String(legacySystemRootCollection._id)
+    : undefined;
+  const effectiveRootParentIds = new Map(legacyPlan.rootParentIds);
+  if (legacySystemRootId && !targetParentId) {
+    for (const record of records) {
+      if (record.parentDirId === null && !effectiveRootParentIds.has(record.sourceId)) {
+        effectiveRootParentIds.set(record.sourceId, legacySystemRootId);
+      }
+    }
+  }
+
   const parentOptions = {
     idMap,
     targetParentId,
-    rootParentIds: legacyPlan.rootParentIds,
+    rootParentIds: effectiveRootParentIds,
     syncAll: effectiveSyncAll
   };
   /** 只有已落库父目录可用于实际写入，父层失败时保持跳过语义。 */
@@ -448,7 +581,7 @@ export const createApiDatasetCollection = async ({
     collections: existCollections,
     idMap: plannedIdMap,
     targetParentId,
-    rootParentIds: legacyPlan.rootParentIds,
+    rootParentIds: effectiveRootParentIds,
     syncAll: effectiveSyncAll
   });
   const newFolders = folderPlan.map(({ record, id }) => ({
@@ -458,7 +591,7 @@ export const createApiDatasetCollection = async ({
         record,
         idMap: plannedIdMap,
         targetParentId,
-        rootParentIds: legacyPlan.rootParentIds,
+        rootParentIds: effectiveRootParentIds,
         syncAll: effectiveSyncAll
       }).parentId ?? null
   }));
@@ -483,7 +616,7 @@ export const createApiDatasetCollection = async ({
       record,
       idMap: plannedIdMap,
       targetParentId,
-      rootParentIds: legacyPlan.rootParentIds
+      rootParentIds: effectiveRootParentIds
     }).parentId;
     if (parentId === undefined) continue;
     // 新目录归当前调用者所有，其创建授权来自最近已有父级，不能查询尚未落库的目录。

@@ -178,4 +178,51 @@ describe('apiDataset syncState', () => {
     );
     expect(sharedItem?.parentId).toBeNull();
   });
+
+  it('treats legacy SYSTEM_ROOT as syncAll=true and normalizes sentinel children parentId to null', async () => {
+    const { owner } = await getFakeUsers(1);
+    const dataset = await MongoDataset.create({
+      name: 'api-sync-state-legacy-root',
+      type: DatasetTypeEnum.apiDataset,
+      syncAll: false,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const sentinel = await MongoDatasetCollection.create({
+      name: 'ROOT_FOLDER',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'SYSTEM_ROOT',
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      datasetId: dataset._id
+    });
+    const topFile = await MongoDatasetCollection.create({
+      name: 'top-doc',
+      type: DatasetCollectionTypeEnum.apiFile,
+      apiFileId: 'doc-1',
+      apiFileParentId: 'SYSTEM_ROOT',
+      parentId: sentinel._id,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      datasetId: dataset._id
+    });
+
+    const response = await Call(syncStateHandler, {
+      auth: owner,
+      query: { datasetId: String(dataset._id) }
+    });
+
+    expect(response.code).toBe(200);
+    expect(response.data.syncAll).toBe(true);
+    expect(response.data.collections).toEqual([
+      {
+        collectionId: String(topFile._id),
+        apiFileId: 'doc-1',
+        sourceId: 'doc-1',
+        type: DatasetCollectionTypeEnum.apiFile,
+        syncChildren: true,
+        parentId: null
+      }
+    ]);
+  });
 });

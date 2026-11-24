@@ -11,7 +11,7 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import type { SystemMigrationContext } from '@/migration/registry';
+import { systemMigrations, type SystemMigrationContext } from '@/migration/registry';
 import { cleanApiDatasetSystemRoot } from '@/migration/tasks/4180/20261120_clean_api_dataset_system_root';
 import {
   cleanSingleDatasetSystemRoot,
@@ -217,7 +217,11 @@ describe('20261120_clean_api_dataset_system_root migration', () => {
     let insertedLingering = false;
     vi.mocked(context.reportProgress).mockImplementation(async (input) => {
       SystemMigrationProgressInputSchema.parse(input);
-      if (input.key === 'validation' && input.status === SystemMigrationStatusEnum.running && !insertedLingering) {
+      if (
+        input.key === 'validation' &&
+        input.status === SystemMigrationStatusEnum.running &&
+        !insertedLingering
+      ) {
         insertedLingering = true;
         await MongoDatasetCollection.create({
           teamId: owner.teamId,
@@ -247,5 +251,12 @@ describe('20261120_clean_api_dataset_system_root migration', () => {
     await expect(MongoDatasetCollection.findById(sentinel._id).lean()).resolves.toBeNull();
     // 清理测试遗留记录，避免影响同库其他用例
     await cleanSingleDatasetSystemRoot({ datasetId: String(dataset._id) });
+  });
+
+  it('registers as a manual non-blocking migration in systemMigrations', () => {
+    const entry = systemMigrations.find((m) => m.id === '20261120_clean_api_dataset_system_root');
+    expect(entry).toBeDefined();
+    expect(entry?.manual).toBe(true);
+    expect(entry?.blockStartup).toBeUndefined();
   });
 });

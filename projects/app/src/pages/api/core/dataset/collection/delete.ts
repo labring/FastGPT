@@ -7,6 +7,7 @@ import {
   createApiFileSourceResolver,
   LEGACY_SYSTEM_ROOT_API_FILE_ID
 } from '@fastgpt/service/core/dataset/apiDataset/utils';
+import { cleanDatasetLegacySystemRootInSession } from '@fastgpt/service/core/dataset/apiDataset/service';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { parseHeaderCert } from '@fastgpt/service/support/permission/auth/common';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -154,6 +155,7 @@ async function handler(req: ApiRequestProps) {
   await mongoSessionRun(async (session) => {
     const disableFolderIds = new Set<string>();
     const disableSyncAllDatasetIds = new Set<string>();
+    let hasLegacySystemRootRefs = false;
 
     if (deletingApiCollections.length > 0) {
       const deletingIdSet = new Set(collections.map((item) => String(item._id)));
@@ -167,6 +169,12 @@ async function handler(req: ApiRequestProps) {
       )
         .session(session)
         .lean();
+
+      hasLegacySystemRootRefs = datasetApiCollections.some(
+        (item) =>
+          item.apiFileId === LEGACY_SYSTEM_ROOT_API_FILE_ID ||
+          item.apiFileParentId === LEGACY_SYSTEM_ROOT_API_FILE_ID
+      );
 
       const { getSourceId, isDerivedFolder } = createApiFileSourceResolver(datasetApiCollections);
       const survivingFolderIdsBySourceId = new Map<string, string[]>();
@@ -239,6 +247,17 @@ async function handler(req: ApiRequestProps) {
         { $set: { syncAll: false } },
         { session }
       );
+      if (hasLegacySystemRootRefs) {
+        // 升级过渡期兼容：删除 API 集合关闭全量同步时，一并拆除存量 SYSTEM_ROOT 哨兵并重挂存活子节点，
+        // 避免残留哨兵被新旧 Pro 或读接口继续视作 syncAll = true。
+        for (const dsId of disableSyncAllDatasetIds) {
+          await cleanDatasetLegacySystemRootInSession({
+            datasetId: dsId,
+            session,
+            backfillSyncAll: false
+          });
+        }
+      }
     }
   });
 

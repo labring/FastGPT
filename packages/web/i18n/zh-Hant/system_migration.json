@@ -85,7 +85,7 @@
   "migrations.20261120_migrate_model_pricing.validation": "驗證模型價格",
   "migrations.20261120_migrate_model_pricing.result": "已掃描 {{sttModels}} 個 STT 模型，已轉換 {{llmModels}} 個系統 LLM 模型的階梯上限為 K Tokens。",
   "migrations.20261120_clean_api_dataset_system_root.name": "清理 API 知識庫歷史虛擬根節點",
-  "migrations.20261120_clean_api_dataset_system_root.description": "清理存量 API 知識庫中的 SYSTEM_ROOT 哨兵目錄，將頂層子集合重掛到知識庫根目錄並回填 Dataset.syncAll 標記；全部驗證通過後啟動業務。",
+  "migrations.20261120_clean_api_dataset_system_root.description": "清理存量 API 知識庫中的 SYSTEM_ROOT 哨兵目錄，將頂層子集合重掛到知識庫根目錄並回填 Dataset.syncAll 標記。請待所有主服務與 Pro 服務均升級至新版後再手動執行。",
   "migrations.20261120_clean_api_dataset_system_root.migrate": "清理哨兵節點並回填同步標記",
   "migrations.20261120_clean_api_dataset_system_root.validation": "驗證無殘留虛擬根節點",
   "migrations.20261120_clean_api_dataset_system_root.result": "已處理 {{datasets}} 個知識庫，清理 {{sentinels}} 個哨兵節點，重掛 {{reparented}} 個頂層集合。"

@@ -246,7 +246,9 @@ export const systemMigrations = [
     progressSteps: [
       {
         key: 'migrate',
-        labelKey: i18nT('system_migration:migrations.20261120_clean_api_dataset_system_root.migrate')
+        labelKey: i18nT(
+          'system_migration:migrations.20261120_clean_api_dataset_system_root.migrate'
+        )
       },
       {
         key: 'validation',
@@ -255,8 +257,9 @@ export const systemMigrations = [
         )
       }
     ],
-    // 新版 API 知识库逻辑已彻底移除 SYSTEM_ROOT 哨兵，业务启动前必须完成清洗与 syncAll 回填。
-    blockStartup: true,
+    // 为兼容任意升级顺序（先升 App / 同时升级 / 滚动升级窗口期与旧版 Pro 共存），
+    // 不在启动阶段自动删除 SYSTEM_ROOT；由新版 App/Pro 运行时透明兼容，待全部服务升级完毕后由管理员手动触发清理。
+    manual: true,
     run: cleanApiDatasetSystemRoot
   }
 ] as const satisfies readonly SystemMigration[];

@@ -85,7 +85,7 @@
   "migrations.20261120_migrate_model_pricing.validation": "모델 가격 검증",
   "migrations.20261120_migrate_model_pricing.result": "STT 모델 {{sttModels}}개를 검사하고 시스템 LLM 모델 {{llmModels}}개의 계층 상한을 K Tokens로 변환했습니다.",
   "migrations.20261120_clean_api_dataset_system_root.name": "API 지식베이스 레거시 가상 루트 노드 정리",
-  "migrations.20261120_clean_api_dataset_system_root.description": "기존 API 지식베이스의 SYSTEM_ROOT 센티넬 폴더를 제거하고 최상위 컬렉션을 루트로 이동하며 Dataset.syncAll을 채운 뒤 검증을 완료하고 서비스를 시작합니다.",
+  "migrations.20261120_clean_api_dataset_system_root.description": "기존 API 지식베이스의 SYSTEM_ROOT 센티넬 폴더를 제거하고 최상위 컬렉션을 루트로 이동하며 Dataset.syncAll을 채웁니다. 모든 앱 및 Pro 서비스가 새 버전으로 업그레이드된 후 수동으로 실행하세요.",
   "migrations.20261120_clean_api_dataset_system_root.migrate": "센티넬 노드 정리 및 syncAll 채우기",
   "migrations.20261120_clean_api_dataset_system_root.validation": "잔여 가상 루트 노드 없음 검증",
   "migrations.20261120_clean_api_dataset_system_root.result": "지식베이스 {{datasets}}개를 처리하고 센티넬 노드 {{sentinels}}개를 제거했으며 최상위 컬렉션 {{reparented}}개를 루트로 이동했습니다."

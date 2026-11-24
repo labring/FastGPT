@@ -858,6 +858,50 @@ describe('update dataset', () => {
     const unchanged = await MongoDataset.findById(dataset._id).lean();
     expect(unchanged?.parentId ?? null).toBeNull();
   });
+
+  it('cleans legacy SYSTEM_ROOT sentinel and reparents children when disabling syncAll', async () => {
+    const { owner } = await getFakeUsers(1);
+    const dataset = await MongoDataset.create({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      name: 'legacy-syncall-dataset',
+      type: DatasetTypeEnum.apiDataset,
+      syncAll: false,
+      apiDatasetServer: {
+        apiServer: { baseUrl: 'https://example.com', authorization: 'token' }
+      }
+    });
+    const sentinel = await MongoDatasetCollection.create({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      datasetId: dataset._id,
+      name: 'ROOT_FOLDER',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'SYSTEM_ROOT'
+    });
+    const child = await MongoDatasetCollection.create({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      datasetId: dataset._id,
+      name: 'top-doc',
+      type: DatasetCollectionTypeEnum.apiFile,
+      apiFileId: 'doc-1',
+      apiFileParentId: 'SYSTEM_ROOT',
+      parentId: sentinel._id
+    });
+
+    const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+      auth: owner,
+      body: { id: String(dataset._id), syncAll: false }
+    });
+
+    expect(res.code).toBe(200);
+    expect((await MongoDataset.findById(dataset._id).lean())?.syncAll).toBe(false);
+    await expect(MongoDatasetCollection.findById(sentinel._id).lean()).resolves.toBeNull();
+    const savedChild = await MongoDatasetCollection.findById(child._id).lean();
+    expect(savedChild?.parentId).toBeNull();
+    expect(savedChild?.apiFileParentId).toBeUndefined();
+  });
 });
 
 describe('update dataset audit', () => {
@@ -907,9 +951,10 @@ describe('update dataset audit', () => {
 
     const logs = await waitForAuditLogs(owner.teamId, 2);
     expect(logs).toHaveLength(2);
-    expect(logs.map((log) => log.resources?.map((resource) => String(resource.id)))).toEqual(
-      [[String(dataset._id)], [String(dataset._id)]]
-    );
+    expect(logs.map((log) => log.resources?.map((resource) => String(resource.id)))).toEqual([
+      [String(dataset._id)],
+      [String(dataset._id)]
+    ]);
 
     // 每个配置项单独成条，字段名走 i18n key，值保留「旧 → 新」可比对文本
     expect(logs.map((log) => log.metadata?.changeItem)).toEqual([

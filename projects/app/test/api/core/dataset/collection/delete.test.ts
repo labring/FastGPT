@@ -1185,4 +1185,40 @@ describe('delete collection by apiFileId', () => {
     expect((await MongoDatasetCollection.findById(outer._id).lean())?.syncChildren).toBe(true);
     expect((await MongoDataset.findById(dataset._id).lean())?.syncAll).toBe(false);
   });
+
+  it('cleans legacy SYSTEM_ROOT sentinel and reparents surviving children when deleting an API file', async () => {
+    const { member, dataset, createCollection } = await fixture();
+    const sentinel = await createCollection({
+      name: 'ROOT_FOLDER',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'SYSTEM_ROOT'
+    });
+    const deletedDoc = await createCollection({
+      name: 'deleted-doc',
+      type: DatasetCollectionTypeEnum.apiFile,
+      apiFileId: 'doc-del',
+      apiFileParentId: 'SYSTEM_ROOT',
+      parentId: sentinel._id
+    });
+    const survivingDoc = await createCollection({
+      name: 'surviving-doc',
+      type: DatasetCollectionTypeEnum.apiFile,
+      apiFileId: 'doc-keep',
+      apiFileParentId: 'SYSTEM_ROOT',
+      parentId: sentinel._id
+    });
+
+    const response = await Call(deleteHandler, {
+      auth: member,
+      body: { collectionIds: [String(deletedDoc._id)] }
+    });
+
+    expect(response.code).toBe(200);
+    await expect(MongoDatasetCollection.findById(deletedDoc._id).lean()).resolves.toBeNull();
+    await expect(MongoDatasetCollection.findById(sentinel._id).lean()).resolves.toBeNull();
+    const savedSurviving = await MongoDatasetCollection.findById(survivingDoc._id).lean();
+    expect(savedSurviving?.parentId).toBeNull();
+    expect(savedSurviving?.apiFileParentId).toBeUndefined();
+    expect((await MongoDataset.findById(dataset._id).lean())?.syncAll).toBe(false);
+  });
 });

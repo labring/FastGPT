@@ -1,5 +1,6 @@
 import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { LEGACY_SYSTEM_ROOT_API_FILE_ID } from '../apiDataset/utils';
 import { type ClientSession } from '../../../common/mongo';
 import { getFolderParentPathItems } from '../../../common/parentFolder/ancestorIds';
 import { MongoDatasetCollection } from './schema';
@@ -27,7 +28,8 @@ export async function getDatasetCollectionPaths({
           _id: id,
           teamId,
           datasetId,
-          // 当前资源可为文件，其余祖先只能是文件夹。
+          // 当前资源可为文件，其余祖先只能是文件夹；同时跳过升级过渡期残留的 SYSTEM_ROOT 虚拟根哨兵。
+          apiFileId: { $ne: LEGACY_SYSTEM_ROOT_API_FILE_ID },
           ...(id === parentId ? {} : { type: DatasetCollectionTypeEnum.folder })
         },
         'name parentId',
