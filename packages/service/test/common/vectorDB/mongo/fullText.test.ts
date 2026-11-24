@@ -1,19 +1,20 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import { mongoFullTextAdapter } from '@fastgpt/service/common/vectorDB/mongo/fullText';
 
-const { aggregate, collation, read, exec, connect, ensureIndex } = vi.hoisted(() => ({
+const { aggregate, collation, read, exec, connect, ensureIndex, assertIndex } = vi.hoisted(() => ({
   aggregate: vi.fn(),
   collation: vi.fn(),
   read: vi.fn(),
   exec: vi.fn(),
   connect: vi.fn(),
-  ensureIndex: vi.fn()
+  ensureIndex: vi.fn(),
+  assertIndex: vi.fn()
 }));
 vi.mock('@fastgpt/service/common/vectorDB/mongo/controller', () => ({
   connectEmbeddingMongo: connect
 }));
 vi.mock('@fastgpt/service/common/vectorDB/mongo/fullTextIndex', () => ({
-  assertMongoFullTextIndex: vi.fn(),
+  assertMongoFullTextIndex: assertIndex,
   ensureMongoFullTextIndex: ensureIndex,
   MongoFullTextSearchIndexName: 'embedding_search_fulltext'
 }));
@@ -31,6 +32,7 @@ const input = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  assertIndex.mockReset().mockResolvedValue(undefined);
   aggregate.mockReturnValue({ collation });
   collation.mockReturnValue({ read });
   read.mockReturnValue({ exec });
@@ -88,4 +90,14 @@ it('skips MongoDB when no collections are allowed', async () => {
   ).resolves.toEqual([]);
   expect(connect).not.toHaveBeenCalled();
   expect(aggregate).not.toHaveBeenCalled();
+});
+
+it('reports an unavailable index separately from an empty successful search', async () => {
+  exec.mockResolvedValue([]);
+  assertIndex.mockRejectedValueOnce(new Error('index is not ready'));
+
+  await expect(mongoFullTextAdapter.search(input)).rejects.toThrow('index is not ready');
+  expect(aggregate).not.toHaveBeenCalled();
+  await expect(mongoFullTextAdapter.search(input)).resolves.toEqual([]);
+  expect(ensureIndex).not.toHaveBeenCalled();
 });

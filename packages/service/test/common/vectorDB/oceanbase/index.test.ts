@@ -86,7 +86,7 @@ describe.each(['oceanbase', 'seekdb'] as const)('ObVectorCtrl (%s)', (type) => {
       expect.stringMatching(
         /WHERE team_id = \? AND dataset_id IN \(\?\).*APPROXIMATE LIMIT \?\s+\) candidates WHERE collection_id IN \(\?\)/s
       ),
-      [type === 'seekdb' ? 2500 : 512, '[0.1,0.2]', 'team', ['dataset'], 1600, ['allowed'], 100]
+      [type === 'seekdb' ? 1000 : 512, '[0.1,0.2]', 'team', ['dataset'], 1600, ['allowed'], 100]
     );
     expect(query).toHaveBeenNthCalledWith(2, expect.stringContaining('ORDER BY score + 0 ASC'), [
       '[0.1,0.2]',
@@ -97,6 +97,32 @@ describe.each(['oceanbase', 'seekdb'] as const)('ObVectorCtrl (%s)', (type) => {
     ]);
     expect(result.results).toEqual([{ id: '1', collectionId: 'allowed', score: 0.75 }]);
   });
+
+  it.each([200, 1000])(
+    'bounds multi-dataset search with configured width %j',
+    async (hnswEfSearch) => {
+      const datasetIds = ['one', 'two'];
+      query.mockResolvedValue([[{}, []]]);
+      await new ObVectorCtrl({ type }).embRecall({
+        teamId: 'team',
+        datasetIds,
+        vector: [0.1, 0.2],
+        limit: 100,
+        hnswEfSearch,
+        forbidCollectionIdList: []
+      });
+      expect(query).toHaveBeenCalledExactlyOnceWith(
+        expect.stringContaining('SET ob_hnsw_ef_search = ?;'),
+        [
+          type === 'seekdb' ? 1000 : Math.max(hnswEfSearch, 512),
+          '[0.1,0.2]',
+          'team',
+          datasetIds,
+          100
+        ]
+      );
+    }
+  );
 
   it('updates only the selected team and IDs through bound parameters', async () => {
     await new ObVectorCtrl({ type }).refreshCreateTime({ teamId: "team'", idList: ['1', '2'] });

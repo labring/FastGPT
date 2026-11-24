@@ -1,4 +1,8 @@
 import { SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  HNSW_EF_SEARCH_MIN,
+  HNSW_EF_SEARCH_MAX
+} from '@fastgpt/global/core/dataset/vectorData/constants';
 import type {
   DatasetCollectionSchemaType,
   DatasetDataSchemaType,
@@ -187,7 +191,10 @@ export const embeddingRecall = async ({
 
   // 同一轮多 query 召回共用配置值，统一限制在 100～1000，provider 直接使用，不再按 limit 调整。
   const { hnswEfSearch: configuredHnswEfSearch } = getSystemInstanceConfig().vector;
-  const hnswEfSearch = Math.min(1000, Math.max(100, configuredHnswEfSearch));
+  const hnswEfSearch = Math.min(
+    HNSW_EF_SEARCH_MAX,
+    Math.max(HNSW_EF_SEARCH_MIN, configuredHnswEfSearch)
+  );
   logInstanceConfigRead({
     callsite: 'runtime.core.dataset.search.embeddingRecall',
     fields: [{ path: 'vector.hnswEfSearch', value: configuredHnswEfSearch }]

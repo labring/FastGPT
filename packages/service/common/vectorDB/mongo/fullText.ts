@@ -116,7 +116,8 @@ export const mongoFullTextAdapter: NativeFullTextAdapter<'mongo'> = {
     const terms = await toSqlFullTextQueryTerms(props.query);
     if (!terms.length) return [];
     await connectEmbeddingMongo();
-    await ensureMongoFullTextIndex();
+    // MongoDB Search 在索引缺失时可能返回空结果，先核验就绪状态以区分正常无命中。
+    await assertMongoFullTextIndex();
     const datasetIds = [...new Set(props.datasetIds)];
     const denied = allowed ? [] : props.forbidCollectionIdList;
     return MongoDatasetDataEmbedding.aggregate<SqlFullTextHit>([

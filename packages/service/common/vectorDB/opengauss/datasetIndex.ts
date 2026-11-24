@@ -13,10 +13,7 @@ const maintenanceLock = 41823001;
 const logger = getLogger(LogCategories.INFRA.VECTOR);
 
 /** 各节点的建图、删除和迁移清理共用一个数据库会话锁。 */
-export const withOpenGaussIndexSession = async <T>(
-  run: (client: pg.Client) => Promise<T>,
-  signal?: AbortSignal
-): Promise<T> => {
+const withOpenGaussIndexSession = async <T>(run: (client: pg.Client) => Promise<T>): Promise<T> => {
   const client = new pg.Client({
     connectionString: OPENGAUSS_ADDRESS,
     application_name: 'fastgpt-opengauss-dataset-index',
@@ -29,15 +26,9 @@ export const withOpenGaussIndexSession = async <T>(
       message: error.message
     })
   );
-  let closing: Promise<void> | undefined;
-  const close = () => (closing ??= client.end());
-  const abort = () => void close().catch(() => {});
-  signal?.addEventListener('abort', abort, { once: true });
   try {
-    signal?.throwIfAborted();
     await client.connect();
     while (true) {
-      signal?.throwIfAborted();
       const { rows } = await client.query<{ locked: boolean }>(
         'SELECT pg_try_advisory_lock($1::bigint) AS locked',
         [maintenanceLock]
@@ -45,25 +36,23 @@ export const withOpenGaussIndexSession = async <T>(
       if (rows[0].locked) break;
       await delay(1000);
     }
-    signal?.throwIfAborted();
     return await run(client);
   } finally {
-    signal?.removeEventListener('abort', abort);
-    await close();
+    await client.end();
   }
 };
 
 /** 检查索引的表、访问方法、列和谓词，避免重用或删除同名自建索引。 */
-export const readOpenGaussHnswIndex = async ({
+const readOpenGaussHnswIndex = async ({
   client,
   schema,
   indexName,
-  predicate = ''
+  predicate
 }: {
   client: Pick<pg.Client, 'query'>;
   schema: string;
   indexName: string;
-  predicate?: string;
+  predicate: string;
 }) => {
   const { rows } = await client.query<{
     table_name: string;

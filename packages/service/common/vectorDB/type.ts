@@ -1,6 +1,10 @@
 import z from 'zod';
 import type { ClientSession } from '../mongo';
 import { DatasetVectorSearchDataSchema } from '@fastgpt/global/core/dataset/vectorData/type';
+import {
+  HNSW_EF_SEARCH_MIN,
+  HNSW_EF_SEARCH_MAX
+} from '@fastgpt/global/core/dataset/vectorData/constants';
 import { IntSchema } from '@fastgpt/global/common/zod';
 
 // Embedding recall item schema
@@ -74,7 +78,7 @@ export const EmbeddingRecallCtrlPropsSchema = z.object({
   datasetVectorData: z.array(DatasetVectorSearchDataSchema).optional(),
   vector: z.array(z.number()),
   limit: z.number(),
-  hnswEfSearch: IntSchema.min(100).max(1000).meta({
+  hnswEfSearch: IntSchema.min(HNSW_EF_SEARCH_MIN).max(HNSW_EF_SEARCH_MAX).meta({
     description: '本次 HNSW 搜索宽度，由召回入口统一限制在 100～1000 后传入'
   }),
   forbidCollectionIdList: z.array(z.string()),

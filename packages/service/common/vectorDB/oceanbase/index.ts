@@ -1,4 +1,5 @@
 /* oceanbase vector crud */
+import { HNSW_EF_SEARCH_MAX } from '@fastgpt/global/core/dataset/vectorData/constants';
 import { DatasetVectorTableName, OceanBaseIndexConfig } from '../constants';
 import { ObClass } from './controller';
 import { type RowDataPacket } from 'mysql2/promise';
@@ -171,8 +172,12 @@ export class ObVectorCtrl implements VectorControllerType {
     const embedding = `[${vector.join(',')}]`;
     const filteredScope = collectionFilter ? `${scope} AND ${collectionFilter}` : scope;
     const filteredValues = [embedding, ...scopeValues, ...collectionValues, limit];
-    const width = this.controllerType === 'seekdb' ? 2500 : datasets.length > 5 ? 1000 : 512;
-    const ef = Math.max(hnswEfSearch, limit, collectionFilter || datasets.length > 1 ? width : 0);
+    const width =
+      this.controllerType === 'seekdb' || datasets.length > 5 ? HNSW_EF_SEARCH_MAX : 512;
+    const ef = Math.min(
+      HNSW_EF_SEARCH_MAX,
+      Math.max(hnswEfSearch, limit, collectionFilter || datasets.length > 1 ? width : 0)
+    );
     const candidateLimit = Math.max(limit, Math.min(1600, limit * 16));
 
     // 内层始终保留团队和知识库条件。集合白名单和黑名单都在最终 LIMIT 前生效。

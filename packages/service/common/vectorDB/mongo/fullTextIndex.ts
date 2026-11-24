@@ -28,11 +28,10 @@ let building: Promise<void> | undefined;
 /** 检查全文搜索索引的当前定义和就绪状态。 */
 export const assertMongoFullTextIndex = () => assertMongoSearchIndexReady(fullTextIndex);
 
-/** 全文读、启动与迁移共享后台构建，失败后可重试。 */
+/** 启动与迁移合并进行中的建图，后续准备重新核验当前数据库目录。 */
 export const ensureMongoFullTextIndex = () => {
-  building ??= ensureMongoSearchIndex(fullTextIndex).catch((error) => {
+  building ??= ensureMongoSearchIndex(fullTextIndex).finally(() => {
     building = undefined;
-    throw error;
   });
   return building;
 };

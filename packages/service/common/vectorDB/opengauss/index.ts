@@ -1,4 +1,5 @@
 /* openGauss DataVec vector crud */
+import { HNSW_EF_SEARCH_MAX } from '@fastgpt/global/core/dataset/vectorData/constants';
 import { DatasetVectorTableName } from '../constants';
 import { OgClient, connectOg } from './controller';
 import type { VectorControllerType } from '../type';
@@ -115,7 +116,7 @@ export class OpenGaussVectorCtrl implements VectorControllerType {
       try {
         await client.query('BEGIN');
         await client.query("SELECT set_config('hnsw_ef_search', $1, true)", [
-          String(Math.max(props.hnswEfSearch, props.limit))
+          String(Math.min(HNSW_EF_SEARCH_MAX, Math.max(props.hnswEfSearch, props.limit)))
         ]);
         const result = await client.query<Row>(recallQuery, query.values);
         await client.query('COMMIT');

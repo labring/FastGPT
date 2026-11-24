@@ -1,10 +1,6 @@
 import pg from 'pg';
 import { DatasetVectorTableName, PG_ADDRESS } from '@fastgpt/service/common/vectorDB/constants';
 import { delay } from '@fastgpt/global/common/system/utils';
-import {
-  readOpenGaussHnswIndex,
-  withOpenGaussIndexSession
-} from '@fastgpt/service/common/vectorDB/opengauss/datasetIndex';
 import type { SystemMigrationContext } from '@/migration/registry';
 
 /**
@@ -134,24 +130,3 @@ export const removeLegacyPgVectorIndex = async (
     await close();
   }
 };
-
-/** 核验后在线回收旧全局 HNSW，局部索引和旧数据由各自的生命周期维护。 */
-export const removeLegacyOpenGaussVectorIndex = async (
-  context: Pick<SystemMigrationContext, 'assertActive' | 'signal' | 'logger'>
-) =>
-  withOpenGaussIndexSession(async (client) => {
-    const {
-      rows: [{ schema }]
-    } = await client.query<{ schema: string }>('SELECT current_schema() AS schema');
-    const indexName = 'vector_index';
-    const readIndex = () => readOpenGaussHnswIndex({ client, schema, indexName });
-    if (!(await readIndex())) return;
-    await context.assertActive();
-    context.signal.throwIfAborted();
-    await client.query(
-      `DROP INDEX CONCURRENTLY ${pg.escapeIdentifier(schema)}.${pg.escapeIdentifier(indexName)}`
-    );
-    if (await readIndex())
-      throw new Error('Legacy openGauss vector index still exists after cleanup');
-    context.logger.info('Legacy global openGauss HNSW index removed');
-  }, context.signal);
