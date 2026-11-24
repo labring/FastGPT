@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Box,
   Flex,
@@ -8,6 +8,7 @@ import {
   usePrefersReducedMotion
 } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { hasBlockingModalDialog } from '../Edit/hooks/useDebugFullscreen';
 
 export type AppDetailPanelModalProps = {
   isOpen: boolean;
@@ -95,6 +96,16 @@ const AppDetailPanelModal = ({
   const prefersReducedMotion = usePrefersReducedMotion();
   const usesSlideFromLeft = animationMode === 'slideFromLeft';
   const motionDuration = prefersReducedMotion ? '0ms' : `${APP_DETAIL_PANEL_TRANSITION_MS}ms`;
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen || !trapFocus) return;
+    const panel = panelRef.current;
+    // 全屏态接管外部残余焦点（如 body 或画布节点），已有面板内焦点保持不动。
+    if (panel && !panel.contains(document.activeElement)) {
+      panel.focus({ preventScroll: true });
+    }
+  }, [isOpen, trapFocus]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -103,11 +114,7 @@ const AppDetailPanelModal = ({
       if (event.key === 'Escape' && !event.defaultPrevented && !event.isComposing) {
         // 全屏调试位于所有侧栏之上，后台面板不能响应同一次按键。
         if (!onEscape && document.querySelector('[data-debug-fullscreen="true"]')) return;
-        if (
-          onEscape &&
-          document.querySelector('[role="dialog"][aria-modal="true"]:not([data-debug-fullscreen])')
-        )
-          return;
+        if (onEscape && hasBlockingModalDialog()) return;
         event.stopPropagation();
         (onEscape ?? onClose)();
       }
@@ -136,6 +143,9 @@ const AppDetailPanelModal = ({
       )}
       <FocusLock isDisabled={!trapFocus} autoFocus={false}>
         <MyBox
+          ref={panelRef}
+          tabIndex={trapFocus ? -1 : undefined}
+          outline={'none'}
           isLoading={isLoading}
           zIndex={300}
           display={'flex'}

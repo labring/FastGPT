@@ -7,23 +7,23 @@ import { useDebugFullscreen } from '@/pageComponents/app/detail/Edit/hooks/useDe
 
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('@chakra-ui/react', async () => {
-  const { createElement } = await import('react');
-  const Container = ({
-    children,
-    onAnimationEnd,
-    onClick,
-    role,
-    sx
-  }: {
-    children?: React.ReactNode;
-    onAnimationEnd?: React.AnimationEventHandler;
-    onClick?: React.MouseEventHandler;
-    role?: string;
-    sx?: Record<string, unknown>;
-  }) =>
+  const { createElement, forwardRef } = await import('react');
+  const Container = forwardRef<
+    HTMLDivElement,
+    {
+      children?: React.ReactNode;
+      onAnimationEnd?: React.AnimationEventHandler;
+      onClick?: React.MouseEventHandler;
+      role?: string;
+      tabIndex?: number;
+      sx?: Record<string, unknown>;
+    }
+  >(({ children, onAnimationEnd, onClick, role, tabIndex, sx }, ref) =>
     createElement(
       'div',
       {
+        ref,
+        tabIndex,
         onAnimationEnd,
         onClick,
         role,
@@ -31,7 +31,9 @@ vi.mock('@chakra-ui/react', async () => {
         'data-focus-guard-rule': sx?.['& > div:not([data-focus-guard])'] ? 'true' : undefined
       },
       children
-    );
+    )
+  );
+  Container.displayName = 'MockContainer';
   return {
     Box: Container,
     Flex: Container,
@@ -75,6 +77,45 @@ describe('DebugFullscreenContainer', () => {
     expect(document.querySelector('[role="dialog"]')).toBeNull();
     expect(document.querySelector('input')).toBe(input);
     expect(input.value).toBe('草稿');
+    act(() => root.unmount());
+    dom.window.close();
+    vi.unstubAllGlobals();
+  });
+
+  it('进入全屏时接管外部焦点并保留容器内焦点', () => {
+    const dom = new JSDOM('<button id="outside">外部</button><div id="root"></div>');
+    vi.stubGlobal('window', dom.window);
+    vi.stubGlobal('document', dom.window.document);
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    const root = createRoot(document.getElementById('root')!);
+    const outsideButton = document.getElementById('outside') as HTMLButtonElement;
+    let toggleRef: (() => void) | undefined;
+
+    const Preview = () => {
+      const fullscreen = useDebugFullscreen();
+      toggleRef = fullscreen.toggle;
+      return React.createElement(
+        DebugFullscreenContainer,
+        { fullscreen },
+        React.createElement('button', { id: 'inside' }, '发送')
+      );
+    };
+
+    act(() => root.render(React.createElement(Preview)));
+    act(() => outsideButton.focus());
+    expect(document.activeElement).toBe(outsideButton);
+
+    act(() => toggleRef?.());
+    const dialog = document.querySelector('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+    expect(document.activeElement).toBe(dialog);
+
+    const insideButton = document.getElementById('inside') as HTMLButtonElement;
+    act(() => insideButton.focus());
+    expect(document.activeElement).toBe(insideButton);
+    act(() => root.render(React.createElement(Preview)));
+    expect(document.activeElement).toBe(insideButton);
+
     act(() => root.unmount());
     dom.window.close();
     vi.unstubAllGlobals();
