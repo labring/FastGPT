@@ -19,8 +19,8 @@ export type LegacyDeprecatedMongoIndexEntry = {
   /** 显式声明完整历史选项签名（普通非唯一非条件索引固定传 `{}`），防止误删客户同名定制索引。 */
   options: ExpectedMongoIndexOptions;
   /**
-   * 显式声明必须已构建就绪的替代索引列表。
-   * 自动迁移在目标集合存在本废弃索引时，必须先确认这些替代索引全部出现在现网 `listIndexes()` 后才允许删除。
+   * 显式声明必须已构建完成、非隐藏且可供查询使用的替代索引列表。
+   * 自动迁移在目标集合存在本废弃索引时，必须先确认这些替代索引全部提交可用后才允许删除。
    */
   requiredIndexes?: readonly MongoIndexRequirement[];
   reason: string;

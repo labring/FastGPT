@@ -21,6 +21,7 @@ export type LiveMongoIndexSpec = {
   key?: Record<string, unknown>;
   unique?: boolean;
   sparse?: boolean;
+  hidden?: boolean;
   expireAfterSeconds?: number;
   partialFilterExpression?: unknown;
   collation?: Record<string, unknown>;
@@ -923,9 +924,93 @@ export const inspectMongoIndexes = async ({
   return report;
 };
 
+type MongoIndexStatEntry = {
+  name?: string;
+  building?: boolean;
+  spec?: {
+    hidden?: boolean;
+  };
+};
+
+const listIndexStatsSafe = async (
+  client: Mongoose,
+  collectionName: string
+): Promise<{ status: 'ok'; stats: MongoIndexStatEntry[] } | { status: 'unavailable' }> => {
+  const db = client.connection.db;
+  if (db === undefined) {
+    throw new DbConfigurationError('MongoDB connection is not established');
+  }
+  const collection = db.collection(collectionName) as unknown as {
+    aggregate?: (pipeline: readonly Record<string, unknown>[]) => {
+      toArray: () => Promise<MongoIndexStatEntry[]>;
+    };
+  };
+  if (typeof collection.aggregate !== 'function') {
+    return { status: 'unavailable' };
+  }
+
+  try {
+    const stats = await collection.aggregate([{ $indexStats: {} }]).toArray();
+    return { status: 'ok', stats };
+  } catch (error) {
+    const code = getMongoErrorCode(error);
+    // 26 = NamespaceNotFound：集合尚未建表，直接视为无就绪索引
+    if (code === 26) {
+      return { status: 'ok', stats: [] };
+    }
+    // 13 = Unauthorized、59 = CommandNotFound、40324 = Unrecognized pipeline stage：
+    // 权限受限或兼容引擎不支持 $indexStats 时降级由 queryPlanner explain 兜底，不误放行构建中索引。
+    if (code === 13 || code === 59 || code === 40324) {
+      return { status: 'unavailable' };
+    }
+    throw error;
+  }
+};
+
+const isIndexUsableByQueryPlanner = async (
+  client: Mongoose,
+  collectionName: string,
+  indexName: string
+): Promise<boolean | undefined> => {
+  const db = client.connection.db;
+  if (db === undefined) {
+    throw new DbConfigurationError('MongoDB connection is not established');
+  }
+  const collection = db.collection(collectionName) as unknown as {
+    find?: (filter: Record<string, unknown>) => {
+      hint: (name: string) => {
+        limit: (n: number) => {
+          explain: (verbosity: 'queryPlanner') => Promise<unknown>;
+        };
+      };
+    };
+  };
+  if (typeof collection.find !== 'function') {
+    return undefined;
+  }
+
+  try {
+    await collection.find({}).hint(indexName).limit(1).explain('queryPlanner');
+    return true;
+  } catch (error) {
+    const code = getMongoErrorCode(error);
+    // 2 = BadValue（MongoDB 8.x 对构建中索引与 hidden 索引执行 hint 均返回此错误），
+    // 26 = NamespaceNotFound，27 = IndexNotFound：均代表该索引当前不可供查询规划器使用。
+    if (code === 2 || code === 26 || code === 27) {
+      return false;
+    }
+    throw error;
+  }
+};
+
 /**
- * 100% 只读校验：判断目标集合当前已提交就绪的 `listIndexes()` 中是否存在与 `key + options`
- * 完整等价的索引（MongoDB 后台构建中的索引不会出现在 `listIndexes()` 中）。
+ * 100% 只读校验：判断目标集合是否存在与 `key + options` 完整等价、且**已提交完成、非隐藏、可供查询规划器使用**的索引。
+ *
+ * 注意：MongoDB 的 `listIndexes` / `indexes()` 会把正在后台构建中的索引与 `hidden: true` 隐藏索引一并返回；
+ * 本函数通过三重守卫排除未就绪候选：
+ * 1. `indexes()` 比对 `key + 完整 options` 并直接过滤 `hidden: true`；
+ * 2. `$indexStats` 过滤 `building: true` 与 `spec.hidden: true`（受权限限制时降级至下一步）；
+ * 3. `find({}).hint(name).limit(1).explain('queryPlanner')` 零扫表验证查询规划器可直接使用该索引。
  */
 export const hasMatchingMongoIndex = async ({
   client,
@@ -948,7 +1033,10 @@ export const hasMatchingMongoIndex = async ({
     weights: options?.weights
   });
 
-  return liveIndexes.some((live) => {
+  const matchingCandidates = liveIndexes.filter((live) => {
+    if (live.hidden === true || typeof live.name !== 'string' || live.name.length === 0) {
+      return false;
+    }
     const liveSig = buildNormalizedMongoKeySignature({
       key: live.key ?? {},
       weights: live.weights
@@ -966,4 +1054,39 @@ export const hasMatchingMongoIndex = async ({
       }) === undefined
     );
   });
+
+  if (matchingCandidates.length === 0) {
+    return false;
+  }
+
+  const statsResult = await listIndexStatsSafe(client, collectionName);
+  const readyByStats =
+    statsResult.status === 'ok'
+      ? matchingCandidates.filter((candidate) => {
+          const stat = statsResult.stats.find((entry) => entry.name === candidate.name);
+          return stat !== undefined && stat.building !== true && stat.spec?.hidden !== true;
+        })
+      : matchingCandidates;
+
+  if (readyByStats.length === 0) {
+    return false;
+  }
+
+  for (const candidate of readyByStats) {
+    const plannerUsable = await isIndexUsableByQueryPlanner(
+      client,
+      collectionName,
+      candidate.name!
+    );
+    if (plannerUsable === true) {
+      return true;
+    }
+    // 仅当最小测试桩未实现 `find().explain()` 且 `$indexStats` 已明确证实非构建/非隐藏时放行；
+    // 真实 MongoDB 驱动始终提供 `find`，决不跳过 planner 可用性校验。
+    if (plannerUsable === undefined && statsResult.status === 'ok') {
+      return true;
+    }
+  }
+
+  return false;
 };

@@ -684,25 +684,67 @@ describe('@fastgpt/dal/db/mongo additive index sync, collMod TTL, safe drops, an
     expect(matchingCollation.dropIndex).toHaveBeenCalledWith('userId_1');
   });
 
-  it('verifies exact key and full option parity in hasMatchingMongoIndex', async () => {
-    const mockClient = (indexes: Array<Record<string, unknown>>) =>
+  it('verifies exact key, option parity, hidden exclusion, and $indexStats/explain fallback in hasMatchingMongoIndex', async () => {
+    const mockClient = ({
+      indexes,
+      stats,
+      statsError,
+      usableNames
+    }: {
+      indexes: Array<Record<string, unknown>>;
+      stats?: Array<Record<string, unknown>>;
+      statsError?: Error & { code?: number };
+      usableNames?: readonly string[];
+    }) =>
       ({
         connection: {
           db: {
             collection: () => ({
-              indexes: async () => [{ name: '_id_', key: { _id: 1 } }, ...indexes]
+              indexes: async () => [{ name: '_id_', key: { _id: 1 } }, ...indexes],
+              aggregate: () => ({
+                toArray: async () => {
+                  if (statsError !== undefined) {
+                    throw statsError;
+                  }
+                  return (
+                    stats ??
+                    indexes.map((item) => ({
+                      name: item.name,
+                      spec: { hidden: item.hidden === true }
+                    }))
+                  );
+                }
+              }),
+              find: () => ({
+                hint: (name: string) => ({
+                  limit: () => ({
+                    explain: async () => {
+                      if (usableNames !== undefined && !usableNames.includes(name)) {
+                        const err = new Error(
+                          'hint provided does not correspond to an existing index'
+                        ) as Error & { code?: number };
+                        err.code = 2;
+                        throw err;
+                      }
+                      return { queryPlanner: { winningPlan: { stage: 'IXSCAN' } } };
+                    }
+                  })
+                })
+              })
             })
           }
         }
       }) as any;
 
-    const partialOnly = mockClient([
-      {
-        name: 'partial_cursor',
-        key: { appId: 1, updateTime: -1, _id: -1 },
-        partialFilterExpression: { appId: { $exists: true } }
-      }
-    ]);
+    const partialOnly = mockClient({
+      indexes: [
+        {
+          name: 'partial_cursor',
+          key: { appId: 1, updateTime: -1, _id: -1 },
+          partialFilterExpression: { appId: { $exists: true } }
+        }
+      ]
+    });
     await expect(
       hasMatchingMongoIndex({
         client: partialOnly,
@@ -712,17 +754,84 @@ describe('@fastgpt/dal/db/mongo additive index sync, collMod TTL, safe drops, an
       })
     ).resolves.toBe(false);
 
-    const fullAndUnique = mockClient([
-      {
-        name: 'appId_1_updateTime_-1__id_-1',
-        key: { appId: 1, updateTime: -1, _id: -1 }
-      },
-      {
-        name: 'userId_1_teamId_1',
-        key: { userId: 1, teamId: 1 },
-        unique: true
-      }
-    ]);
+    // 隐藏索引与构建中索引（$indexStats.building === true）均必须返回 false
+    const hiddenAndBuilding = mockClient({
+      indexes: [
+        {
+          name: 'hidden_cursor',
+          key: { appId: 1, updateTime: -1, _id: -1 },
+          hidden: true
+        },
+        {
+          name: 'building_cursor',
+          key: { teamId: 1, createTime: 1 }
+        }
+      ],
+      stats: [
+        { name: 'hidden_cursor', spec: { hidden: true } },
+        { name: 'building_cursor', building: true, spec: {} }
+      ]
+    });
+    await expect(
+      hasMatchingMongoIndex({
+        client: hiddenAndBuilding,
+        collectionName: 'chats',
+        key: { appId: 1, updateTime: -1, _id: -1 },
+        options: {}
+      })
+    ).resolves.toBe(false);
+    await expect(
+      hasMatchingMongoIndex({
+        client: hiddenAndBuilding,
+        collectionName: 'datasets',
+        key: { teamId: 1, createTime: 1 },
+        options: {}
+      })
+    ).resolves.toBe(false);
+
+    // $indexStats 遇权限受限（Error 13 Unauthorized）时降级使用 explain(queryPlanner) 判可用性
+    const unauthorizedErr = Object.assign(new Error('not authorized'), { code: 13 });
+    const fallbackUnusable = mockClient({
+      indexes: [{ name: 'building_cursor', key: { appId: 1, updateTime: -1, _id: -1 } }],
+      statsError: unauthorizedErr,
+      usableNames: []
+    });
+    await expect(
+      hasMatchingMongoIndex({
+        client: fallbackUnusable,
+        collectionName: 'chats',
+        key: { appId: 1, updateTime: -1, _id: -1 },
+        options: {}
+      })
+    ).resolves.toBe(false);
+
+    const fallbackUsable = mockClient({
+      indexes: [{ name: 'ready_cursor', key: { appId: 1, updateTime: -1, _id: -1 } }],
+      statsError: unauthorizedErr,
+      usableNames: ['ready_cursor']
+    });
+    await expect(
+      hasMatchingMongoIndex({
+        client: fallbackUsable,
+        collectionName: 'chats',
+        key: { appId: 1, updateTime: -1, _id: -1 },
+        options: {}
+      })
+    ).resolves.toBe(true);
+
+    const fullAndUnique = mockClient({
+      indexes: [
+        {
+          name: 'appId_1_updateTime_-1__id_-1',
+          key: { appId: 1, updateTime: -1, _id: -1 }
+        },
+        {
+          name: 'userId_1_teamId_1',
+          key: { userId: 1, teamId: 1 },
+          unique: true
+        }
+      ]
+    });
     await expect(
       hasMatchingMongoIndex({
         client: fullAndUnique,
@@ -747,5 +856,95 @@ describe('@fastgpt/dal/db/mongo additive index sync, collMod TTL, safe drops, an
         options: {}
       })
     ).resolves.toBe(false);
+  });
+
+  it('rejects in-progress building and hidden indexes on real MongoDB until committed and visible', async () => {
+    const { MongoMemoryReplSet } = await import('mongodb-memory-server');
+    const { Mongoose } = await import('mongoose');
+
+    const replSet = await MongoMemoryReplSet.create({
+      replSet: { count: 1, storageEngine: 'wiredTiger' },
+      instanceOpts: [{ args: ['--setParameter', 'enableTestCommands=1'] }]
+    });
+    const client = new Mongoose();
+    try {
+      await client.connect(replSet.getUri('fg_idx_ready_real_test'));
+      const db = client.connection.db!;
+      const col = db.collection('chats_real_ready');
+      await col.insertOne({ appId: 'a1', updateTime: new Date() });
+
+      // 1. 真实隐藏索引：listIndexes 已列出，但不可用于查询规划器 -> 必须返回 false；unhide 后返回 true
+      await col.createIndex({ hiddenKey: 1 }, { name: 'hidden_idx', hidden: true });
+      await expect(
+        hasMatchingMongoIndex({
+          client,
+          collectionName: 'chats_real_ready',
+          key: { hiddenKey: 1 },
+          options: {}
+        })
+      ).resolves.toBe(false);
+      await db.command({
+        collMod: 'chats_real_ready',
+        index: { name: 'hidden_idx', hidden: false }
+      });
+      await expect(
+        hasMatchingMongoIndex({
+          client,
+          collectionName: 'chats_real_ready',
+          key: { hiddenKey: 1 },
+          options: {}
+        })
+      ).resolves.toBe(true);
+
+      // 2. 真实冻结构建中的索引：listIndexes 已返回该定义，但尚未提交可用 -> 必须返回 false；提交后返回 true
+      await db
+        .admin()
+        .command({ configureFailPoint: 'hangAfterStartingIndexBuild', mode: 'alwaysOn' });
+      const buildPromise = col.createIndex(
+        { appId: 1, updateTime: -1, _id: -1 },
+        { name: 'appId_1_updateTime_-1__id_-1' }
+      );
+      try {
+        // 等待后台构建登记进 listIndexes，实证复现 MongoDB 8.x 会列出构建中索引的现象
+        const deadline = Date.now() + 5_000;
+        let listedWhileBuilding = false;
+        while (Date.now() < deadline) {
+          const names = (await col.indexes()).map((item) => item.name);
+          if (names.includes('appId_1_updateTime_-1__id_-1')) {
+            listedWhileBuilding = true;
+            break;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+        expect(listedWhileBuilding).toBe(true);
+
+        // 即使 listIndexes 已列出，hasMatchingMongoIndex 仍必须判为未就绪
+        await expect(
+          hasMatchingMongoIndex({
+            client,
+            collectionName: 'chats_real_ready',
+            key: { appId: 1, updateTime: -1, _id: -1 },
+            options: {}
+          })
+        ).resolves.toBe(false);
+      } finally {
+        await db
+          .admin()
+          .command({ configureFailPoint: 'hangAfterStartingIndexBuild', mode: 'off' });
+      }
+
+      await buildPromise;
+      await expect(
+        hasMatchingMongoIndex({
+          client,
+          collectionName: 'chats_real_ready',
+          key: { appId: 1, updateTime: -1, _id: -1 },
+          options: {}
+        })
+      ).resolves.toBe(true);
+    } finally {
+      await client.disconnect().catch(() => undefined);
+      await replSet.stop();
+    }
   });
 });

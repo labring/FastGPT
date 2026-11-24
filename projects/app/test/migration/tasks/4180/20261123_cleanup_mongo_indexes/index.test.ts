@@ -76,7 +76,8 @@ describe('20261123_cleanup_mongo_indexes', () => {
     'mig_idx_abort_wait_test',
     'mig_idx_disabled_test',
     'mig_idx_validation_fail_test',
-    'mig_idx_lease_loss_test'
+    'mig_idx_lease_loss_test',
+    'mig_idx_hidden_and_building_test'
   ];
   const touchedLogCollections = ['app_chat_logs'];
 
@@ -344,6 +345,119 @@ describe('20261123_cleanup_mongo_indexes', () => {
       skippedCount: 0
     });
     expect(await listIndexNames(collectionName)).not.toContain('appId_1_updateTime_-1');
+  });
+
+  it('keeps legacy index when matching replacement is listed by indexes() but hidden or still building, then drops once committed & visible', async () => {
+    const collectionName = 'mig_idx_hidden_and_building_test';
+    const db = connectionMongo.connection.db!;
+    const col = db.collection(collectionName);
+
+    // 场景 1：真实 MongoDB hidden: true 替代索引已出现在 indexes()，必须保留旧索引直到 unhide
+    await col.createIndex({ appId: 1, updateTime: -1 }, { name: 'appId_1_updateTime_-1' });
+    await col.createIndex(
+      { appId: 1, updateTime: -1, _id: -1 },
+      { name: 'appId_1_updateTime_-1__id_-1', hidden: true }
+    );
+
+    const entry: DeprecatedMongoIndexMigrationEntry = {
+      collectionName,
+      datasource: 'main',
+      indexName: 'appId_1_updateTime_-1',
+      key: { appId: 1, updateTime: -1 },
+      options: {},
+      requiredIndexes: [{ key: { appId: 1, updateTime: -1, _id: -1 }, options: {} }],
+      reason: 'replacement must be committed and visible'
+    };
+
+    const hiddenRun = createMongoIndexCleanupMigration({
+      entries: [entry],
+      pollIntervalMs: 15,
+      prerequisiteWaitTimeoutMs: 45
+    });
+    const hiddenCtx = createContext();
+    await expect(hiddenRun(hiddenCtx.context)).rejects.toThrow('failed to clean up');
+    expect(await listIndexNames(collectionName)).toContain('appId_1_updateTime_-1');
+
+    // unhide 之后变为可用，但再模拟 MongoDB 8.x “listIndexes 已列出但仍在构建中”的状态（$indexStats.building=true）
+    await db.command({
+      collMod: collectionName,
+      index: { name: 'appId_1_updateTime_-1__id_-1', hidden: false }
+    });
+
+    let isBuilding = true;
+    const realCollection = db.collection(collectionName);
+    const wrappedClient = {
+      connection: {
+        db: {
+          collection: (name: string) => {
+            if (name !== collectionName) {
+              return db.collection(name);
+            }
+            return {
+              indexes: () => realCollection.indexes(),
+              dropIndex: (idxName: string) => realCollection.dropIndex(idxName),
+              aggregate: (pipeline: readonly Record<string, unknown>[]) => ({
+                toArray: async () => {
+                  const realStats = await realCollection
+                    .aggregate(pipeline as Record<string, unknown>[])
+                    .toArray();
+                  return realStats.map((stat) =>
+                    isBuilding && stat.name === 'appId_1_updateTime_-1__id_-1'
+                      ? { ...stat, building: true }
+                      : stat
+                  );
+                }
+              }),
+              find: (filter: Record<string, unknown>) => {
+                const cursor = realCollection.find(filter);
+                return {
+                  hint: (idxName: string) => ({
+                    limit: (n: number) => ({
+                      explain: async (verbosity: 'queryPlanner') => {
+                        if (isBuilding && idxName === 'appId_1_updateTime_-1__id_-1') {
+                          const err = new Error(
+                            'hint provided does not correspond to an existing index'
+                          ) as Error & { code?: number };
+                          err.code = 2;
+                          throw err;
+                        }
+                        return cursor.hint(idxName).limit(n).explain(verbosity);
+                      }
+                    })
+                  })
+                };
+              }
+            };
+          }
+        }
+      }
+    } as any;
+
+    const buildingRun = createMongoIndexCleanupMigration({
+      entries: [entry],
+      mainClient: wrappedClient,
+      pollIntervalMs: 25,
+      prerequisiteWaitTimeoutMs: 2_000
+    });
+    const buildingCtx = createContext();
+    const runPromise = buildingRun(buildingCtx.context);
+
+    // 确认 indexes() 已经列出替代索引，但构建中期间旧索引绝对不被提前删除
+    await new Promise((resolve) => setTimeout(resolve, 65));
+    expect(await listIndexNames(collectionName)).toContain('appId_1_updateTime_-1__id_-1');
+    expect(await listIndexNames(collectionName)).toContain('appId_1_updateTime_-1');
+
+    // 模拟构建提交完成 -> 轮询检测到就绪并立即删除旧索引
+    isBuilding = false;
+    const result = await runPromise;
+    expect(result).toEqual({
+      totalCount: 1,
+      droppedCount: 1,
+      missingCount: 0,
+      skippedCount: 0
+    });
+    expect(await listIndexNames(collectionName)).not.toContain('appId_1_updateTime_-1');
+    expect(await listIndexNames(collectionName)).toContain('appId_1_updateTime_-1__id_-1');
   });
 
   it('aborts promptly while waiting for replacement indexes and preserves legacy index', async () => {

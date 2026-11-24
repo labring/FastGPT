@@ -27,7 +27,7 @@ export const DEFAULT_PREREQUISITE_WAIT_TIMEOUT_MS = 30 * 60 * 1_000;
  * - 每一项必须显式给出 `key` 与完整 `options`（普通索引传 `{}`），按 `name + key + 完整 options`
  *   精确匹配删除，避免误删客户 DBA 同名自建索引；
  * - 若该旧索引由新索引替代，必须通过 `requiredIndexes` 声明前置替代索引签名；迁移任务会先确认所有
- *   替代索引已在现网 `listIndexes()` 就绪（未就绪时持续轮询跟踪），绝不在替代索引建完前删除旧索引。
+ *   替代索引已构建完成、非隐藏且可供查询规划器使用（未就绪时持续轮询跟踪），绝不在替代索引建完前删除旧索引。
  */
 export type DeprecatedMongoIndexMigrationEntry = {
   collectionName: string;
@@ -106,9 +106,9 @@ const areRequiredIndexesReady = async ({
  * 原因：清理对象仅是确定且有界的索引元数据（不扫描业务文档），且 `dropManagedMongoIndexIfExists`
  * 天然幂等（已删项返回 `missing`，签名不符返回 `skipped_mismatch`）；任意重试或租约接管均可安全全量复核。
  *
- * 前置就绪守卫：若旧索引存在且声明了 `requiredIndexes`，迁移脚本会在删除前持续轮询 `listIndexes()`
- * 跟踪前置替代索引是否构建完毕（MongoDB 构建中的索引不会出现在 `listIndexes()` 中）；全部就绪后立即删除，
- * 超时仍未就绪则保守保留旧索引并失败退出，待补建完成后可安全重试。
+ * 前置就绪守卫：若旧索引存在且声明了 `requiredIndexes`，迁移脚本会在删除前通过 `hasMatchingMongoIndex`
+ * 持续轮询跟踪前置替代索引是否已提交完成、非隐藏且可供查询规划器使用（排除构建中与隐藏候选）；全部就绪后
+ * 立即删除，超时仍未就绪则保守保留旧索引并失败退出，待补建完成后可安全重试。
  */
 export const createMongoIndexCleanupMigration = ({
   entries,
