@@ -21,6 +21,7 @@ import {
 import { ModelTypeEnum, reasoningEffortList } from '@fastgpt/global/core/ai/constants';
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
 import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
+import type { ReasoningEffortLevel } from '@fastgpt/global/core/ai/model/schema';
 import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -159,6 +160,20 @@ const AIChatSettingsModal = ({
   }, [modelData]);
   const selectedModel = data.selectedModel;
   const supportParams = data.supportParams;
+  const availableReasoningEffortOptions = useMemo(() => {
+    const allowed = new Set<ReasoningEffort>(supportParams.reasoningEffortList);
+    return reasoningEffortList
+      .filter((item) => item.value === null || allowed.has(item.value))
+      .map((item) => ({
+        label: t(item.label),
+        value: item.value
+      }));
+  }, [supportParams.reasoningEffortList, t]);
+  const effectiveReasoningEffort: ReasoningEffort =
+    reasoningEffort &&
+    supportParams.reasoningEffortList.includes(reasoningEffort as ReasoningEffortLevel)
+      ? reasoningEffort
+      : null;
   const multimodalOptions = useMemo(
     () =>
       [
@@ -222,11 +237,19 @@ const AIChatSettingsModal = ({
     );
     if (getValues('modelId') !== e) return;
     if (modelData) {
+      const nextSupport = getLLMSupportParams(modelData);
       setValue('maxToken', modelData.config.maxResponse / 2);
+      const currentReasoningEffort = getValues(NodeInputKeyEnum.aiChatReasoningEffort);
+      if (
+        currentReasoningEffort &&
+        !nextSupport.reasoningEffortList.includes(currentReasoningEffort as ReasoningEffortLevel)
+      ) {
+        setValue(NodeInputKeyEnum.aiChatReasoningEffort, null);
+      }
       if (showMultimodalSetting) {
         const settings = filterModelMultimodalSettings({
           settings: getValues(),
-          support: getLLMSupportParams(modelData)
+          support: nextSupport
         });
         setValue(NodeInputKeyEnum.aiChatVision, settings.aiChatVision);
         setValue(NodeInputKeyEnum.aiChatAudio, settings.aiChatAudio);
@@ -269,7 +292,19 @@ const AIChatSettingsModal = ({
           <Button
             isLoading={modelLoading}
             isDisabled={!!modelError}
-            onClick={handleSubmit(onSuccess)}
+            onClick={handleSubmit((formData) => {
+              const submittedEffort = formData[NodeInputKeyEnum.aiChatReasoningEffort];
+              const normalizedEffort =
+                submittedEffort &&
+                supportParams.reasoningEffortList.includes(submittedEffort as ReasoningEffortLevel)
+                  ? submittedEffort
+                  : null;
+              onSuccess({
+                ...formData,
+                [NodeInputKeyEnum.aiChatReasoningEffort]:
+                  submittedEffort === undefined ? undefined : normalizedEffort
+              });
+            })}
           >
             {t('common:Confirm')}
           </Button>
@@ -490,11 +525,8 @@ const AIChatSettingsModal = ({
               {supportParams.reasoningEffort ? (
                 <MySelect<ReasoningEffort>
                   h={'36px'}
-                  list={reasoningEffortList.map((item) => ({
-                    label: t(item.label),
-                    value: item.value
-                  }))}
-                  value={reasoningEffort ?? null}
+                  list={availableReasoningEffortOptions}
+                  value={effectiveReasoningEffort}
                   onChange={(e) => {
                     setValue(NodeInputKeyEnum.aiChatReasoningEffort, e);
                   }}
@@ -505,7 +537,7 @@ const AIChatSettingsModal = ({
                 </Box>
               )}
             </SettingRow>
-            {reasoningEffort !== 'none' && (
+            {effectiveReasoningEffort !== 'none' && (
               <SettingRow
                 label={t('app:reasoning_response')}
                 switchControl={

@@ -128,6 +128,12 @@ export const llmCompletionsBodyFormat = async <T extends ChatCompletionCreatePar
   }
   if (!supportParams.reasoningEffort) {
     delete requestBody.reasoning_effort;
+  } else if (
+    requestBody.reasoning_effort &&
+    supportParams.reasoningEffortList &&
+    !supportParams.reasoningEffortList.includes(requestBody.reasoning_effort)
+  ) {
+    delete requestBody.reasoning_effort;
   }
 
   if (modelData.config.fieldMap) {

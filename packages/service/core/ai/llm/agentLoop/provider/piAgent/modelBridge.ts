@@ -1,4 +1,5 @@
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
+import { getSupportedReasoningEfforts } from '@fastgpt/global/core/ai/llm/utils';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { ThinkingLevel } from '@mariozechner/pi-agent-core';
 import {
@@ -26,19 +27,28 @@ export function getPiThinkingLevel(
   modelData: LLMModelDataType,
   reasoningEffort?: ReasoningEffort
 ): ThinkingLevel {
-  if (
-    !modelData.config.reasoning ||
-    !modelData.config.reasoningEffort ||
-    reasoningEffort === 'none'
-  ) {
+  const supportedLevels = getSupportedReasoningEfforts(modelData.config);
+  if (!modelData.config.reasoning || supportedLevels.length === 0 || reasoningEffort === 'none') {
     return 'off';
   }
 
-  if (reasoningEffort && supportedThinkingLevels.has(reasoningEffort as ThinkingLevel)) {
+  if (
+    reasoningEffort &&
+    supportedLevels.includes(reasoningEffort) &&
+    supportedThinkingLevels.has(reasoningEffort as ThinkingLevel)
+  ) {
     return reasoningEffort as ThinkingLevel;
   }
 
-  return 'medium';
+  if (supportedLevels.includes('medium')) {
+    return 'medium';
+  }
+
+  // 不支持 medium 时回退到模型支持的最低思考等级，避免发送不被上游接受的等级。
+  const fallbackLevel = supportedLevels.find(
+    (level) => level !== 'none' && supportedThinkingLevels.has(level as ThinkingLevel)
+  );
+  return (fallbackLevel as ThinkingLevel | undefined) ?? 'off';
 }
 
 /** 无鉴权自定义端点的占位 Key；仅用于阻止 pi-ai 回退宿主环境变量，实际请求头会被置空。 */
@@ -103,7 +113,7 @@ export function buildPiModel(
     compat: {
       supportsDeveloperRole: false,
       supportsStore: false,
-      supportsReasoningEffort: modelData.config.reasoningEffort ?? false,
+      supportsReasoningEffort: getSupportedReasoningEfforts(modelData.config).length > 0,
       maxTokensField: 'max_tokens'
     }
   };

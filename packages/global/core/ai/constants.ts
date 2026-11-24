@@ -117,6 +117,16 @@ export enum EmbeddingTypeEnm {
   db = 'db'
 }
 
+/** AI Proxy 对齐的模型思考等级全集（按思考强度从低到高排序）。 */
+export const REASONING_EFFORT_LEVELS = [
+  'none',
+  'minimal',
+  'low',
+  'medium',
+  'high',
+  'xhigh'
+] as const;
+
 export const reasoningEffortList: { label: string; value: ReasoningEffort }[] = [
   { label: i18nT('common:reasoning_effort.default'), value: null },
   { label: i18nT('common:reasoning_effort.none'), value: 'none' },

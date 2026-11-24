@@ -49,6 +49,30 @@ describe('PiAgent provider model bridge', () => {
     expect(getPiThinkingLevel(reasoningModel as any, 'none')).toBe('off');
     expect(getPiThinkingLevel(plainModel as any, 'high')).toBe('off');
     expect(getPiThinkingLevel(reasoningWithoutEffortModel as any, 'high')).toBe('off');
+
+    const restrictedModel = createLlmModel({
+      model: 'restricted-reasoning',
+      config: {
+        reasoning: true,
+        reasoningEffort: true,
+        reasoningEffortList: ['low', 'high']
+      }
+    });
+    expect(getPiThinkingLevel(restrictedModel as any, 'high')).toBe('high');
+    expect(getPiThinkingLevel(restrictedModel as any, 'xhigh')).toBe('low');
+    expect(getPiThinkingLevel(restrictedModel as any, null)).toBe('low');
+    expect(getPiThinkingLevel(restrictedModel as any, 'none')).toBe('off');
+
+    const emptyEffortModel = createLlmModel({
+      model: 'empty-effort',
+      config: {
+        reasoning: true,
+        reasoningEffort: true,
+        reasoningEffortList: []
+      }
+    });
+    expect(getPiThinkingLevel(emptyEffortModel as any, 'high')).toBe('off');
+    expect(buildPiModel(emptyEffortModel as any).compat?.supportsReasoningEffort).toBe(false);
   });
 
   it('passes reasoning model metadata into pi-ai model config', () => {

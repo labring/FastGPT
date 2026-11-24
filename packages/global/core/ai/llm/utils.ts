@@ -1,5 +1,5 @@
-import type { LLMModelDataType } from '../model/schema';
-import { ChatCompletionRequestMessageRoleEnum } from '../constants';
+import type { LLMModelConfigType, LLMModelDataType, ReasoningEffortLevel } from '../model/schema';
+import { ChatCompletionRequestMessageRoleEnum, REASONING_EFFORT_LEVELS } from '../constants';
 
 export const removeDatasetCiteText = (text: string, retainDatasetCite: boolean) => {
   return retainDatasetCite
@@ -54,8 +54,57 @@ export const createChatCompletionDeltaResponse = ({
   };
 };
 
+/** 按 AI Proxy 思考等级标准顺序去重并返回合法思考等级列表。 */
+export const normalizeReasoningEffortList = (
+  levels?: readonly string[]
+): ReasoningEffortLevel[] => {
+  if (!Array.isArray(levels) || levels.length === 0) return [];
+  const allowed = new Set(levels);
+  return REASONING_EFFORT_LEVELS.filter((level) => allowed.has(level));
+};
+
+/**
+ * 解析模型实际可用的思考等级列表（按 AI Proxy 标准顺序去重）。
+ *
+ * - 关闭思考或关闭思考配置时返回空数组；
+ * - 显式配置了 reasoningEffortList 时以该列表为准（空数组代表无可用等级）；
+ * - 兼容历史模型数据：仅开启 reasoningEffort: true 且未配置 reasoningEffortList 时，回退为全部等级。
+ */
+export const getSupportedReasoningEfforts = (
+  config?: Pick<LLMModelConfigType, 'reasoning' | 'reasoningEffort' | 'reasoningEffortList'>
+): ReasoningEffortLevel[] => {
+  if (!config) return [];
+  if (config.reasoning === false || config.reasoningEffort === false) return [];
+
+  if (Array.isArray(config.reasoningEffortList)) {
+    return normalizeReasoningEffortList(config.reasoningEffortList);
+  }
+
+  if (config.reasoningEffort) {
+    return [...REASONING_EFFORT_LEVELS];
+  }
+
+  return [];
+};
+
+/**
+ * 获取模型支持的最低思考等级（按 AI Proxy 强度从低到高选取：none < minimal < low < medium < high < xhigh）。
+ *
+ * 用于标题生成、问题引导、查询改写等需要最小化思考开销的辅助链路：
+ * - 不支持思考或不支持配置思考等级的模型返回 undefined，避免误传 reasoning_effort 导致报错；
+ * - 支持关闭思考的模型返回 'none'，不支持关闭思考的模型返回其支持的最低等级（如 'minimal' / 'low'）。
+ */
+export const getLowestReasoningEffort = (
+  llm?: Pick<LLMModelDataType, 'config'>
+): ReasoningEffortLevel | undefined => {
+  const config = llm?.config;
+  if (!config?.reasoning) return undefined;
+  return getSupportedReasoningEfforts(config)[0];
+};
+
 export const getLLMSupportParams = (llm?: Pick<LLMModelDataType, 'config'>) => {
   const config = llm?.config;
+  const reasoningEffortList = getSupportedReasoningEfforts(config);
   return {
     vision: !!config?.vision,
     audio: !!config?.audio,
@@ -63,7 +112,8 @@ export const getLLMSupportParams = (llm?: Pick<LLMModelDataType, 'config'>) => {
     multimodal: !!(config?.vision || config?.audio || config?.video),
     temperature: typeof config?.maxTemperature === 'number',
     reasoning: !!config?.reasoning,
-    reasoningEffort: !!config?.reasoningEffort,
+    reasoningEffort: reasoningEffortList.length > 0,
+    reasoningEffortList,
     topP: !!config?.showTopP,
     stop: !!config?.showStopSign,
     responseFormat: !!(config?.responseFormatList && config.responseFormatList.length > 0),

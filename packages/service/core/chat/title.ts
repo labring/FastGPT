@@ -2,6 +2,7 @@ import { LangEnum, type localeType } from '@fastgpt/global/common/i18n/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { withTimeout } from '@fastgpt/global/common/system/utils';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import { getLowestReasoningEffort } from '@fastgpt/global/core/ai/llm/utils';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import type { UserChatItemType } from '@fastgpt/global/core/chat/type';
 import type { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -164,7 +165,7 @@ export const canWriteGeneratedTitle = (
  * 设计考量：
  * - 截取问题前 1000 字符，避免长文本耗尽上下文或大幅增加延迟；
  * - 标题生成作为辅助链路，设置 throwError: false 且不保存模型调用记录，失败时不阻塞对话流程；
- * - 若标题模型支持深度思考（reasoning），显式关闭（reasoning_effort: 'none'）以最大化响应速度；
+ * - 若标题模型支持可配置思考，自动选择模型支持的最低思考等级（优先 'none'，不支持关闭则降为最低等级）以最大化响应速度；
  * - 对生成结果统一规范化清洗，若模型输出了空字符串或占位符文案（如「新对话」），则视为生成失败；
  * - 若当前系统未配置标题模型，则直接降级截取问题前 20 字符。
  */
@@ -188,6 +189,7 @@ ${questionForTitle}
 </user_message>
 
 Return only the title.`;
+  const lowestReasoningEffort = getLowestReasoningEffort(titleModel);
   let answerText = '';
   try {
     const response = await createLLMResponse({
@@ -209,7 +211,7 @@ Return only the title.`;
             content: userPrompt
           }
         ],
-        ...(titleModel.config.reasoning ? { reasoning_effort: 'none' as const } : {})
+        ...(lowestReasoningEffort ? { reasoning_effort: lowestReasoningEffort } : {})
       }
     });
     answerText = response.answerText;
