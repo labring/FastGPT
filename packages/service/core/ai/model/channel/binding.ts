@@ -5,7 +5,6 @@ import type {
   UpdateChannelData
 } from '../../../../thirdProvider/aiproxy/type';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
-import { UserError } from '@fastgpt/global/common/error/utils';
 import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import { tolerateNotFound } from '../../../../thirdProvider/aiproxy/error';
 import { resolveChannelsForOperation } from './resolve';
@@ -34,32 +33,20 @@ const stripModelsFromChannel = (
   };
 };
 
-/** 从同一渠道快照计算一份关联更新，别名已被占用时拒绝覆盖。 */
+/** 按渠道快照追加模型，透传已有别名配置；已关联时不写入。 */
 export const getChannelModelBindingPatch = ({
   channel,
-  model,
-  upstreamModel
+  model
 }: {
   channel: Pick<AiproxyChannel, 'models' | 'model_mapping'>;
   model: string;
-  upstreamModel?: string;
 }): Pick<UpdateChannelData, 'models' | 'model_mapping'> | undefined => {
   const currentModels = channel.models ?? [];
-  const currentMapping = channel.model_mapping ?? {};
-  const mappedModel = Object.hasOwn(currentMapping, model) ? currentMapping[model] : undefined;
-  if (upstreamModel !== undefined && mappedModel !== undefined && mappedModel !== upstreamModel) {
-    throw new UserError(ModelErrEnum.channelModelMappingConflict);
-  }
-  const isBound = currentModels.includes(model);
-  const missingMapping =
-    upstreamModel !== undefined && upstreamModel !== model && mappedModel === undefined;
-  if (isBound && !missingMapping) return;
+  if (currentModels.includes(model)) return;
 
   return {
-    models: isBound ? currentModels : [...currentModels, model],
-    model_mapping: missingMapping
-      ? { ...currentMapping, [model]: upstreamModel }
-      : channel.model_mapping
+    models: [...currentModels, model],
+    ...(channel.model_mapping !== undefined && { model_mapping: channel.model_mapping })
   };
 };
 

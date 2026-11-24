@@ -15,15 +15,19 @@ import {
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
+import type {
+  AIModelDataType,
+  AIModelDocumentDataType
+} from '@fastgpt/global/core/ai/model/schema';
+import { mergeChannelTemplateModelData } from '@fastgpt/global/core/ai/model/utils';
 import {
   defaultProvider,
   type ModelProviderItemType
 } from '@fastgpt/global/core/ai/model/provider';
 import type {
-  ImportPreviewItem,
-  ModelChannelSummary,
-  ModelConfigListItem
+  CreateModelData,
+  ImportPreviewCandidate,
+  ModelChannelSummary
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -41,14 +45,12 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getImportPreviewFromChannel, getModelTemplates } from '@/web/core/ai/model/api';
 import {
   buildBlankChannelModelData,
-  buildChannelImportOperation,
   filterChannelImportPreviewItems,
-  getBlankChannelImportDraft,
-  getChannelImportCandidate
+  getBlankChannelImportDraft
 } from '../channelImport';
 import { useModelChannelTest } from '../useModelChannelTest';
 import StepContent, { ChannelImportToolbar } from './StepContent';
-import type { ChannelImportPlan, ChannelImportPlanRow, ImportPreviewRow } from './types';
+import type { ImportPreviewRow } from './types';
 
 enableMapSet();
 
@@ -78,7 +80,7 @@ export const isUnsupportedChannelCatalogError = (error: unknown) =>
     error &&
     typeof error === 'object' &&
     'statusText' in error &&
-    (error as { statusText?: unknown }).statusText === ModelErrEnum.channelCatalogUnsupported
+    error.statusText === ModelErrEnum.channelCatalogUnsupported
   );
 type RowCatalog = {
   availableTemplates: AIModelDocumentDataType[];
@@ -100,7 +102,7 @@ const getTemplateDataForKey = ({
   key,
   templateMap
 }: {
-  item: ImportPreviewItem;
+  item: ImportPreviewCandidate;
   key: string;
   templateMap: Map<string, AIModelDocumentDataType>;
 }) => {
@@ -108,28 +110,6 @@ const getTemplateDataForKey = ({
   if (item.category === 'template' && key === getTemplateKey(item.template)) return item.modelData;
   return templateMap.get(key);
 };
-const buildBlankModelData = ({
-  row,
-  item,
-  modelType,
-  createModelData
-}: {
-  row: ImportPreviewRow;
-  item: ImportPreviewItem;
-  modelType?: ModelTypeEnum;
-  createModelData: (type: ModelTypeEnum) => AIModelDocumentDataType;
-}) => {
-  const draft = getBlankChannelImportDraft(item);
-  return buildBlankChannelModelData({
-    providerModelSlug: row.providerModelSlug,
-    modelType,
-    modelData: draft.modelData,
-    contextLength: row.contextLength ?? draft.contextLength,
-    maxCompletionTokens: row.maxCompletionTokens,
-    createModelData
-  });
-};
-
 /** 统一解析行内显示和提交所需的选择，避免两条路径使用不同默认值。 */
 export const resolveRowSelection = ({
   row,
@@ -140,7 +120,7 @@ export const resolveRowSelection = ({
   selection?: RowSelection;
   catalog: Pick<RowCatalog, 'templateMap'>;
 }) => {
-  const item = getChannelImportCandidate(row);
+  const item = row.candidate;
   const presetKey =
     selection?.presetKey ??
     (item.category === 'template' ? getTemplateKey(item.template) : blankTemplateValue);
@@ -152,7 +132,7 @@ export const resolveRowSelection = ({
   const modelType =
     selection?.modelType ??
     (presetKey === blankTemplateValue
-      ? getBlankChannelImportDraft(item).modelType
+      ? getBlankChannelImportDraft(item)?.type
       : selectedPresetData?.type);
 
   return {
@@ -164,32 +144,49 @@ export const resolveRowSelection = ({
   };
 };
 
-/** 复用所选配置，并在渠道别名写入前用上游模型 ID 测试。 */
-export const resolveModelTestTarget = ({
+/** 用同一份草稿测试和导入，模型标识始终采用上游 ID。 */
+const resolveImportDraft = ({
   row,
-  item,
   presetKey,
   selectedPresetData,
   modelType,
-  catalog
+  createModelData
 }: {
   row: ImportPreviewRow;
-  item: ImportPreviewItem;
   presetKey: string;
   selectedPresetData: PreviewModelData;
   modelType?: ModelTypeEnum;
-  catalog: Pick<RowCatalog, 'createModelData'>;
-}): ImportModelTestTarget => {
-  const modelData =
-    presetKey === blankTemplateValue
-      ? buildBlankModelData({ row, item, modelType, createModelData: catalog.createModelData })
-      : selectedPresetData;
-  return modelData
-    ? {
-        source: 'draft',
-        getModelData: () => ({ ...modelData, model: row.providerModelSlug })
-      }
-    : undefined;
+  createModelData: RowCatalog['createModelData'];
+}): PreviewModelData => {
+  const { providerModelSlug, contextLength, maxCompletionTokens, candidate } = row;
+  if (presetKey === blankTemplateValue) {
+    return buildBlankChannelModelData({
+      providerModelSlug,
+      modelType,
+      modelData: getBlankChannelImportDraft(candidate),
+      contextLength,
+      maxCompletionTokens,
+      createModelData
+    });
+  }
+  if (!selectedPresetData) return;
+
+  return {
+    ...mergeChannelTemplateModelData({
+      template: selectedPresetData,
+      contextLength,
+      maxCompletionTokens
+    }),
+    model: providerModelSlug
+  };
+};
+
+/** 通过目标渠道测试导入草稿，测试不保存模型。 */
+export const resolveModelTestTarget = (
+  params: Parameters<typeof resolveImportDraft>[0]
+): ImportModelTestTarget => {
+  const modelData = resolveImportDraft(params);
+  return modelData ? { source: 'draft', getModelData: () => modelData } : undefined;
 };
 
 const ImportModelTestButton = ({
@@ -302,11 +299,10 @@ const ModelPreviewRow = memo(function ModelPreviewRow({
     : undefined;
   const modelTestTarget = resolveModelTestTarget({
     row,
-    item,
     presetKey: selectedPresetKey,
     selectedPresetData,
     modelType,
-    catalog
+    createModelData: catalog.createModelData
   });
 
   return (
@@ -447,10 +443,10 @@ const ModelPreviewStep = ({
 }: {
   channelId: number;
   channel?: ModelChannelSummary;
-  installedModels: ModelConfigListItem[];
+  installedModels: Pick<AIModelDataType, 'model'>[];
   providers: ModelProviderItemType[];
   createModelData: (type: ModelTypeEnum) => AIModelDocumentDataType;
-  onSubmit: (plan: ChannelImportPlan) => void;
+  onSubmit: (models: CreateModelData[]) => void;
   onPrevious: () => void;
 }) => {
   const { t } = useSafeTranslation();
@@ -486,7 +482,7 @@ const ModelPreviewStep = ({
     });
 
     try {
-      const preview = await getImportPreviewFromChannel({ channelId, channelType: 'system' });
+      const preview = await getImportPreviewFromChannel({ channelId });
       if (!isCurrentRequest()) return;
       updateState((draft) => {
         draft.items = preview.items;
@@ -700,41 +696,30 @@ const ModelPreviewStep = ({
     [updateState]
   );
 
-  const selectedRowsNeedBlankFields = selectedItems.some((row) => {
-    const view = resolveSelection(row);
-    return view.presetKey === blankTemplateValue && !view.modelType;
+  const selectedRowsNeedConfig = selectedItems.some((row) => {
+    const { presetKey, modelType, selectedPresetData } = resolveSelection(row);
+    return presetKey === blankTemplateValue
+      ? modelType === undefined
+      : selectedPresetData === undefined;
   });
+  const isNextDisabled =
+    state.loading || state.templateLoading || selectedItems.length === 0 || selectedRowsNeedConfig;
 
   const submitPlan = () => {
-    if (
-      state.loading ||
-      state.templateLoading ||
-      selectedItems.length === 0 ||
-      selectedRowsNeedBlankFields
-    ) {
-      return;
-    }
+    if (isNextDisabled) return;
 
-    const rows: ChannelImportPlanRow[] = selectedItems.map((row) => {
-      const { item, presetKey, modelType, isActive } = resolveSelection(row);
-      const operation =
-        presetKey === blankTemplateValue
-          ? buildChannelImportOperation({
-              providerModelSlug: row.providerModelSlug,
-              modelData: buildBlankModelData({ row, item, modelType, createModelData }),
-              isActive
-            })
-          : buildChannelImportOperation({
-              providerModelSlug: row.providerModelSlug,
-              templateData: getTemplateDataForKey({ item, key: presetKey, templateMap }),
-              contextLength: row.contextLength,
-              maxCompletionTokens: row.maxCompletionTokens,
-              isActive
-            });
-      return { providerModelSlug: row.providerModelSlug, operation };
+    const models = selectedItems.map((row) => {
+      const { isActive, presetKey, modelType, selectedPresetData } = resolveSelection(row);
+      const modelData = resolveImportDraft({
+        row,
+        presetKey,
+        modelType,
+        selectedPresetData,
+        createModelData
+      });
+      return modelData && { ...modelData, isActive };
     });
-
-    onSubmit({ rows });
+    if (models.every((model) => model !== undefined)) onSubmit(models);
   };
 
   const {
@@ -763,15 +748,7 @@ const ModelPreviewStep = ({
           <Button variant="whiteBase" onClick={onPrevious}>
             {t('config_model:previous_step')}
           </Button>
-          <Button
-            onClick={submitPlan}
-            isDisabled={
-              state.loading ||
-              state.templateLoading ||
-              selectedItems.length === 0 ||
-              selectedRowsNeedBlankFields
-            }
-          >
+          <Button onClick={submitPlan} isDisabled={isNextDisabled}>
             {t('config_model:next_step')}
           </Button>
         </>
@@ -817,9 +794,7 @@ const ModelPreviewStep = ({
             gap={3}
           >
             <Box color="red.500">
-              {isUnsupportedChannelCatalogError(state.loadError)
-                ? t('config_model:channel_import_unsupported')
-                : getErrText(state.loadError, t('config_model:channel_import_load_error'))}
+              {getErrText(state.loadError, t('config_model:channel_import_load_error'))}
             </Box>
             <Button
               size="sm"

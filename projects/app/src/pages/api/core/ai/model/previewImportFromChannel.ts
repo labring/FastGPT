@@ -16,7 +16,7 @@ async function handler(
   req: ApiRequestProps<Record<string, never>, PreviewImportFromChannelQuery>
 ): Promise<PreviewImportFromChannelResponse> {
   const query = parseApiInput({ req, querySchema: PreviewImportFromChannelQuerySchema }).query;
-  const { tmbId } = await authModelScope({ req, channelType: query.channelType });
+  const { tmbId } = await authModelScope({ req, channelType: 'system' });
   const result = await previewImportFromChannel({ channelId: query.channelId, tmbId });
 
   return PreviewImportFromChannelResponseSchema.parse(result);

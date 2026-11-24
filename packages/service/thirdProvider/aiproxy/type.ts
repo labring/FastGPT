@@ -27,7 +27,13 @@ export type AiproxyChannel = {
 
 /** GET /api/channel/{id}/models 中 FastGPT 使用的字段；其他元数据不参与模型配置生成。 */
 export const AiproxyChannelModelSchema = z.looseObject({
-  id: z.string().min(1),
+  // 模型创建会裁去首尾空白，目录 ID 必须能原样用作模型名和渠道标识。
+  id: z
+    .string()
+    .min(1)
+    .refine((id) => id === id.trim(), {
+      message: 'Model ID has leading or trailing whitespace'
+    }),
   name: z.string().optional(),
   context_length: z.number().optional(),
   architecture: z.looseObject({ output_modalities: z.array(z.string()).optional() }).optional(),

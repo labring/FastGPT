@@ -15,8 +15,8 @@ import {
   GetModelTemplatesResponseSchema,
   PreviewImportFromChannelQuerySchema,
   PreviewImportFromChannelResponseSchema,
-  ApplyChangesBodySchema,
-  ApplyChangesResponseSchema,
+  ImportFromChannelBodySchema,
+  ImportFromChannelResponseSchema,
   GetSystemModelConfigJsonResponseSchema,
   GetSystemModelsResponseSchema,
   ModelReferenceSchema,
@@ -117,16 +117,16 @@ export const AIModelPath: OpenAPIPath = {
       }
     }
   },
-  '/core/ai/model/applyChanges': {
+  '/core/ai/model/importFromChannel': {
     post: {
-      summary: '应用从系统渠道导入的模型变更',
+      summary: '从系统渠道创建模型',
       description: '逐条创建模型并关联到目标渠道；单条失败不影响后续操作',
       tags: [DevApiTagsMap.model],
-      requestBody: { content: { 'application/json': { schema: ApplyChangesBodySchema } } },
+      requestBody: { content: { 'application/json': { schema: ImportFromChannelBodySchema } } },
       responses: {
         200: {
           description: '与请求操作顺序一致的逐条结果',
-          content: { 'application/json': { schema: ApplyChangesResponseSchema } }
+          content: { 'application/json': { schema: ImportFromChannelResponseSchema } }
         }
       }
     }

@@ -1,9 +1,6 @@
 import type { CreateChannelResponse } from '@fastgpt/global/openapi/core/ai/model/channel/api';
 import { useModelChannelTest } from './useModelChannelTest';
-import type {
-  ModelChannelSummary,
-  ModelConfigListItem
-} from '@fastgpt/global/openapi/core/ai/model/api';
+import type { ModelChannelSummary } from '@fastgpt/global/openapi/core/ai/model/api';
 import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import { getModelTemplates, postModelsFromTemplates } from '@/web/core/ai/model/api';
 import { defaultChannel } from '@fastgpt/global/core/ai/model/channel';
@@ -921,7 +918,7 @@ const AddModel = ({
   buttonBoxProps,
   ...buttonProps
 }: {
-  installedModels: ModelConfigListItem[];
+  installedModels: AIModelDataType[];
   channels: ModelChannelSummary[];
   providers: ModelProviderItemType[];
   channelType: ChannelType;

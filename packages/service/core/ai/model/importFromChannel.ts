@@ -2,11 +2,13 @@ import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import type {
-  ApplyChangesBody,
-  ApplyChangesResponse,
+  ImportFromChannelBody,
+  ImportFromChannelResponse,
+  PreviewImportFromChannelQuery,
   PreviewImportFromChannelResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import { aiProxyClient } from '../../../thirdProvider/aiproxy/client';
+import { isAiproxyNotImplementedError } from '../../../thirdProvider/aiproxy/error';
 import { getSystemModelHandle } from './catalog/service';
 import { getCachedTypeMetas } from './channel/cache';
 import { getChannelModelBindingPatch } from './channel/binding';
@@ -22,7 +24,7 @@ import { classifyChannelModels, inferFastGPTProvider } from './importFromChannel
 export const previewImportFromChannel = async ({
   channelId,
   tmbId
-}: Pick<ApplyChangesBody, 'channelId'> & {
+}: PreviewImportFromChannelQuery & {
   tmbId: string;
 }): Promise<PreviewImportFromChannelResponse> => {
   // 1. 先校验所选渠道并读取其类型，后续映射 provider 必须基于同一渠道。
@@ -30,7 +32,7 @@ export const previewImportFromChannel = async ({
   // 2. 并行读取预览所需目录与 type-meta，减少多段网络/存储等待。
   const [channelModels, modelHandle, templates, typeMetas] = await Promise.all([
     aiProxyClient.getSystemChannelModels(channelId).catch((error) => {
-      if ((error as { status?: number })?.status === 501) {
+      if (isAiproxyNotImplementedError(error)) {
         throw new UserError(ModelErrEnum.channelCatalogUnsupported);
       }
       throw error;
@@ -60,54 +62,56 @@ export const previewImportFromChannel = async ({
   };
 };
 
-/**
- * 应用系统渠道导入操作，按请求顺序隔离单条失败；创建成功后的渠道绑定失败保留模型。
- */
-export const applyChangesFromChannel = async ({
+/** 逐条创建并绑定系统模型。创建完成后的关联失败保留模型并返回其 ID。 */
+export const importFromChannel = async ({
   channelId,
-  operations,
+  models,
   tmbId,
   teamId
-}: Pick<ApplyChangesBody, 'channelId' | 'operations'> & {
+}: ImportFromChannelBody & {
   tmbId: string;
   teamId: string;
-}): Promise<ApplyChangesResponse> => {
-  // 1. 校验目标渠道后再处理空批次，避免无操作时读取系统模型目录。
-  await resolveChannelForOperation({ id: channelId, channelType: 'system', tmbId });
-  if (operations.length === 0) return { results: [] };
+}): Promise<ImportFromChannelResponse> => {
+  const channelScope = { id: channelId, channelType: 'system' as const, tmbId };
+  await resolveChannelForOperation(channelScope);
 
-  const results: ApplyChangesResponse['results'] = [];
-  const readChannel = () =>
-    resolveChannelForOperation({ id: channelId, channelType: 'system', tmbId });
+  const readChannelForModel = async (model: string) => {
+    const channel = await resolveChannelForOperation(channelScope);
+    const mapping = channel.model_mapping;
+    // 导入直接使用上游 ID，同名别名只能指向该 ID。
+    if (mapping && Object.hasOwn(mapping, model) && mapping[model] !== model) {
+      throw new UserError(ModelErrEnum.channelModelMappingConflict);
+    }
+    return channel;
+  };
 
-  for (const { providerModelSlug, modelData, isActive } of operations) {
+  const results: ImportFromChannelResponse['results'] = [];
+  for (const modelData of models) {
+    const { model } = modelData;
     let modelId: string | undefined;
     try {
-      // 创建前校验渠道冲突，创建后重读渠道以保留最新配置。
-      const binding = { model: providerModelSlug, upstreamModel: providerModelSlug };
-      getChannelModelBindingPatch({ channel: await readChannel(), ...binding });
+      // 创建前检查映射冲突，创建后重新读取关联配置。
+      await readChannelForModel(model);
       const createdModel = await createModel({
         modelData: {
           ...modelData,
-          model: providerModelSlug,
           scope: ModelScopeEnum.system,
-          isActive
+          isActive: modelData.isActive ?? true
         },
         channelType: 'system',
         tmbId,
         teamId
       });
       modelId = createdModel.modelId;
-      const patch = getChannelModelBindingPatch({ channel: await readChannel(), ...binding });
+      const channel = await readChannelForModel(model);
+      const patch = getChannelModelBindingPatch({ channel, model });
       if (patch) await aiProxyClient.system.channels.update(channelId, patch);
 
-      results.push({ action: 'create', status: 'success', providerModelSlug, modelId });
+      results.push({ status: 'success', model, modelId });
     } catch (error) {
       results.push({
-        action: 'create',
         status: 'failed',
-        providerModelSlug,
-        // 渠道写入失败时仍返回已创建的模型 ID。
+        model,
         ...(modelId === undefined ? {} : { modelId }),
         error: error instanceof Error ? error.message : String(error)
       });

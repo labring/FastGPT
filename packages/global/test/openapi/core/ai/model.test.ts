@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { AIModelDocumentDataSchema } from '../../../../core/ai/model/schema';
 import {
   ModelReferenceSchema,
-  ApplyChangesBodySchema,
-  ApplyChangesResponseSchema,
+  ImportFromChannelBodySchema,
+  ImportFromChannelResponseSchema,
   CreateModelBodySchema,
   CreateModelsFromTemplatesBodySchema,
   DeleteModelsBodySchema,
@@ -103,36 +103,34 @@ describe('admin system model API schemas', () => {
     ).toThrow('modelIds must be unique');
   });
 
-  it('preserves explicit enabled states and defaults new channel imports to enabled', () => {
-    const createOperation = (model: string) => ({
-      action: 'create',
-      providerModelSlug: model,
-      modelData: {
-        type: 'llm',
-        provider: 'openai',
-        model,
-        name: model,
-        scope: 'system',
-        config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 120000 }
-      }
-    });
+  it('parses channel imports with the shared model creation contract', () => {
+    const modelData = {
+      type: 'llm',
+      provider: 'openai',
+      model: 'openai/gpt-5.4',
+      name: 'GPT-5.4',
+      scope: 'system',
+      config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 120000 }
+    };
 
-    const body = ApplyChangesBodySchema.parse({
+    const body = ImportFromChannelBodySchema.parse({
       channelId: 1,
-      channelType: 'system',
-      operations: [
-        { ...createOperation('openai/gpt-5.4'), isActive: false },
-        { ...createOperation('openai/gpt-5.4-mini'), isActive: true },
-        createOperation('openai/gpt-5.4-pro')
-      ]
+      models: [{ ...modelData, isActive: false, sortOrder: 10 }, modelData]
     });
 
-    expect(body.operations.map((operation) => operation.isActive)).toEqual([false, true, true]);
+    expect(body.models).toEqual([
+      CreateModelBodySchema.parse({
+        modelData: { ...modelData, isActive: false, sortOrder: 10 },
+        channelType: 'system'
+      }).modelData,
+      modelData
+    ]);
+    expect(body.models[0]).not.toHaveProperty('sortOrder');
   });
 
   it('rejects associating an existing model through channel import', () => {
     expect(() =>
-      ApplyChangesBodySchema.parse({
+      ImportFromChannelBodySchema.parse({
         channelId: 1,
         channelType: 'system',
         operations: [
@@ -369,20 +367,14 @@ describe('admin system model API schemas', () => {
   it('preserves the created model ID when the channel binding fails', () => {
     const results = [
       {
-        action: 'create',
         status: 'failed',
         modelId: '68ad85a7463006c963799a05',
-        providerModelSlug: 'provider/model',
+        model: 'provider/model',
         error: 'binding failed'
       },
-      {
-        action: 'create',
-        status: 'failed',
-        providerModelSlug: 'provider/other-model',
-        error: 'modelAlreadyExists'
-      }
+      { status: 'failed', model: 'provider/other-model', error: 'modelAlreadyExists' }
     ];
-    expect(ApplyChangesResponseSchema.parse({ results }).results).toEqual(results);
+    expect(ImportFromChannelResponseSchema.parse({ results }).results).toEqual(results);
   });
 
   it('accepts template and blank channel import drafts', () => {
@@ -398,48 +390,45 @@ describe('admin system model API schemas', () => {
           providerModelSlug: 'openai/gpt-4o',
           contextLength: 64000,
           maxCompletionTokens: 8000,
-          candidates: [
-            {
-              category: 'template',
-              template: { type: 'llm', model: 'gpt-4o' },
-              modelData: {
-                type: 'llm',
-                provider: 'openai',
-                model: 'gpt-4o',
-                name: 'GPT-4o',
-                scope: 'system',
-                config: { maxContext: 64000, maxResponse: 8000, quoteMaxToken: 12000 }
-              },
-              blankModelData
-            }
-          ]
+          candidate: {
+            category: 'template',
+            template: { type: 'llm', model: 'gpt-4o' },
+            modelData: {
+              type: 'llm',
+              provider: 'openai',
+              model: 'gpt-4o',
+              name: 'GPT-4o',
+              scope: 'system',
+              config: { maxContext: 64000, maxResponse: 8000, quoteMaxToken: 12000 }
+            },
+            blankModelData
+          }
         },
         {
           providerModelSlug: 'unknown/embedding',
-          candidates: [
-            {
-              category: 'blank',
-              contextLength: 32000,
-              modelData: { model: 'unknown/embedding', name: 'Unknown embedding model' }
-            }
-          ]
+          contextLength: 32000,
+          candidate: {
+            category: 'blank',
+            modelData: { model: 'unknown/embedding', name: 'Unknown embedding model' }
+          }
         }
       ]
     });
 
     expect(result.items[0]).toMatchObject({ contextLength: 64000, maxCompletionTokens: 8000 });
-    expect(result.items[0].candidates[0]).toMatchObject({
+    expect(result.items[0].candidate).toMatchObject({
       category: 'template',
       template: { type: 'llm', model: 'gpt-4o' },
       blankModelData
     });
-    expect(result.items[1].candidates[0]).toMatchObject({
-      category: 'blank',
-      contextLength: 32000
+    expect(result.items[1]).toMatchObject({
+      contextLength: 32000,
+      candidate: { category: 'blank' }
     });
+    expect(result.items[1].candidate).not.toHaveProperty('contextLength');
   });
 
-  it('requires at least one candidate for each upstream model', () => {
+  it('requires a candidate for each upstream model', () => {
     expect(() =>
       PreviewImportFromChannelResponseSchema.parse({
         items: [{ providerModelSlug: 'unknown/model', candidates: [] }]
@@ -453,7 +442,7 @@ describe('admin system model API schemas', () => {
         items: [
           {
             providerModelSlug: 'vendor/model',
-            candidates: [{ category: 'existing', modelId: '68ad85a7463006c963799a05' }]
+            candidate: { category: 'existing', modelId: '68ad85a7463006c963799a05' }
           }
         ]
       })
@@ -464,10 +453,8 @@ describe('admin system model API schemas', () => {
     const baseItem = { category: 'blank' };
     expect(
       PreviewImportFromChannelResponseSchema.parse({
-        items: [
-          { providerModelSlug: 'unknown/model', candidates: [{ ...baseItem, contextLength: 0 }] }
-        ]
-      }).items[0].candidates[0]
+        items: [{ providerModelSlug: 'unknown/model', contextLength: 0, candidate: baseItem }]
+      }).items[0]
     ).toMatchObject({ contextLength: 0 });
 
     for (const contextLength of [-1, 32000.5]) {
@@ -476,7 +463,8 @@ describe('admin system model API schemas', () => {
           items: [
             {
               providerModelSlug: 'unknown/model',
-              candidates: [{ ...baseItem, contextLength }]
+              contextLength,
+              candidate: baseItem
             }
           ]
         })

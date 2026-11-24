@@ -5,12 +5,11 @@ import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { ModelConfigListItem } from '@fastgpt/global/openapi/core/ai/model/api';
-import type { ChannelImportPlan } from '@/pageComponents/model/ImportModelFromChannelModal/types';
 
 const apiMocks = vi.hoisted(() => ({
   getImportPreviewFromChannel: vi.fn(),
   getModelTemplates: vi.fn(),
-  postApplyChannelImportChanges: vi.fn(),
+  postImportModelsFromChannel: vi.fn(),
   testModelChannel: vi.fn(),
   toast: vi.fn()
 }));
@@ -248,7 +247,7 @@ describe('ImportModelFromChannelModal', () => {
         message: 'model catalog is unsupported',
         statusText: ModelErrEnum.channelCatalogUnsupported
       },
-      messageKey: 'config_model:channel_import_unsupported',
+      messageKey: 'model catalog is unsupported',
       buttonKey: 'common:back'
     },
     {
@@ -309,23 +308,19 @@ describe('ImportModelFromChannelModal', () => {
       items: [
         {
           providerModelSlug: installedModel.model,
-          candidates: [
-            {
-              category: 'template',
-              template: { type: ModelTypeEnum.llm, model: 'preset' },
-              modelData: template
-            }
-          ]
+          candidate: {
+            category: 'template',
+            template: { type: ModelTypeEnum.llm, model: 'preset' },
+            modelData: template
+          }
         },
         ...Array.from({ length: 120 }, (_, index) => ({
           providerModelSlug: `upstream-model-${index}`,
-          candidates: [
-            {
-              category: 'template',
-              template: { type: ModelTypeEnum.llm, model: 'preset' },
-              modelData: template
-            }
-          ]
+          candidate: {
+            category: 'template',
+            template: { type: ModelTypeEnum.llm, model: 'preset' },
+            modelData: template
+          }
         }))
       ]
     });
@@ -419,11 +414,10 @@ describe('ImportModelFromChannelModal', () => {
     expect(apiMocks.getImportPreviewFromChannel).toHaveBeenCalledOnce();
     expect(host.textContent).toContain('config_model:channel_import_selected_count: 1');
 
-    apiMocks.postApplyChannelImportChanges.mockResolvedValueOnce({
+    apiMocks.postImportModelsFromChannel.mockResolvedValueOnce({
       results: [
         {
-          providerModelSlug: 'upstream-model-0',
-          action: 'create',
+          model: 'upstream-model-0',
           status: 'success',
           modelId: 'created'
         }
@@ -431,17 +425,9 @@ describe('ImportModelFromChannelModal', () => {
     });
     await act(async () => getButton('config_model:next_step').click());
     await act(async () => getButton('common:Confirm').click());
-    expect(apiMocks.postApplyChannelImportChanges).toHaveBeenCalledWith({
+    expect(apiMocks.postImportModelsFromChannel).toHaveBeenCalledWith({
       channelId: 1,
-      channelType: 'system',
-      operations: [
-        {
-          action: 'create',
-          providerModelSlug: 'upstream-model-0',
-          modelData: { ...template, model: 'upstream-model-0' },
-          isActive: false
-        }
-      ]
+      models: [{ ...template, model: 'upstream-model-0', isActive: false }]
     });
     expect(host.querySelector('[role="dialog"]')).toBeNull();
     expect(props.onSuccess).toHaveBeenCalledOnce();
@@ -452,28 +438,25 @@ describe('ImportModelFromChannelModal', () => {
   });
 });
 
+const createResultModel = (model: string): AIModelDocumentDataType => ({
+  model,
+  name: model,
+  provider: 'openai',
+  type: ModelTypeEnum.llm,
+  scope: ModelScopeEnum.system,
+  config: { maxContext: 1000, maxResponse: 100, quoteMaxToken: 800 }
+});
+
 describe('ImportResultsStep', () => {
   it('renders the initial result row on mount', async () => {
-    const providerModelSlug = 'upstream-model';
-    const plan: ChannelImportPlan = {
-      rows: [
-        {
-          providerModelSlug,
-          operation: {
-            action: 'create',
-            providerModelSlug,
-            modelData: {} as AIModelDocumentDataType,
-            isActive: true
-          }
-        }
-      ]
-    };
+    const model = 'upstream-model';
+    const models = [createResultModel(model)];
 
     await act(async () => {
       root.render(
         React.createElement(ImportResultsStep, {
           channelId: 1,
-          plan,
+          models,
           onSubmittingChange: vi.fn(),
           onPrevious: vi.fn(),
           onRefresh: vi.fn(async () => undefined),
@@ -483,33 +466,24 @@ describe('ImportResultsStep', () => {
       await flush();
     });
 
-    expect(host.textContent).toContain(providerModelSlug);
+    expect(host.textContent).toContain(model);
+    expect([...host.querySelectorAll('th')].map((header) => header.textContent)).toEqual([
+      'config_model:channel_import_model',
+      'config_model:channel_import_result'
+    ]);
   });
 
   it.each([undefined, 'persisted-model-id'])(
     'refreshes after a failed import when a model was created (%s)',
     async (modelId) => {
-      const providerModelSlug = 'upstream-model';
-      const plan: ChannelImportPlan = {
-        rows: [
-          {
-            providerModelSlug,
-            operation: {
-              action: 'create',
-              providerModelSlug,
-              modelData: {} as AIModelDocumentDataType,
-              isActive: true
-            }
-          }
-        ]
-      };
+      const model = 'upstream-model';
+      const models = [createResultModel(model)];
       const onRefresh = vi.fn(async () => undefined);
-      apiMocks.postApplyChannelImportChanges.mockResolvedValue({
+      apiMocks.postImportModelsFromChannel.mockResolvedValue({
         results: [
           {
-            action: 'create',
             status: 'failed',
-            providerModelSlug,
+            model,
             modelId,
             error: 'Channel binding failed'
           }
@@ -519,7 +493,7 @@ describe('ImportResultsStep', () => {
         root.render(
           React.createElement(ImportResultsStep, {
             channelId: 1,
-            plan,
+            models,
             onSubmittingChange: vi.fn(),
             onPrevious: vi.fn(),
             onRefresh,
@@ -544,9 +518,8 @@ describe('ImportResultsStep', () => {
       response: {
         results: [
           {
-            action: 'create',
             status: 'success',
-            providerModelSlug: 'second-model',
+            model: 'second-model',
             modelId: 'created'
           }
         ]
@@ -566,15 +539,13 @@ describe('ImportResultsStep', () => {
       response: {
         results: [
           {
-            action: 'create',
             status: 'failed',
-            providerModelSlug: 'upstream-model',
+            model: 'upstream-model',
             error: ModelErrEnum.channelModelMappingConflict
           },
           {
-            action: 'create',
             status: 'success',
-            providerModelSlug: 'second-model',
+            model: 'second-model',
             modelId: 'created'
           }
         ]
@@ -587,26 +558,16 @@ describe('ImportResultsStep', () => {
   ])(
     'keeps the results open when some outcomes fail or are unknown',
     async ({ error, response, expected }) => {
-      const plan: ChannelImportPlan = {
-        rows: ['upstream-model', 'second-model'].map((providerModelSlug) => ({
-          providerModelSlug,
-          operation: {
-            action: 'create',
-            providerModelSlug,
-            isActive: true,
-            modelData: {} as AIModelDocumentDataType
-          }
-        }))
-      };
+      const models = ['upstream-model', 'second-model'].map(createResultModel);
       const onImportSuccess = vi.fn();
-      if (error) apiMocks.postApplyChannelImportChanges.mockRejectedValueOnce(error);
-      else apiMocks.postApplyChannelImportChanges.mockResolvedValueOnce(response);
+      if (error) apiMocks.postImportModelsFromChannel.mockRejectedValueOnce(error);
+      else apiMocks.postImportModelsFromChannel.mockResolvedValueOnce(response);
 
       await act(async () =>
         root.render(
           React.createElement(ImportResultsStep, {
             channelId: 1,
-            plan,
+            models,
             onSubmittingChange: vi.fn(),
             onPrevious: vi.fn(),
             onRefresh: vi.fn(async () => undefined),
@@ -619,7 +580,7 @@ describe('ImportResultsStep', () => {
       );
       await act(async () => button?.click());
 
-      expect(apiMocks.postApplyChannelImportChanges).toHaveBeenCalledOnce();
+      expect(apiMocks.postImportModelsFromChannel).toHaveBeenCalledOnce();
       expect(onImportSuccess).not.toHaveBeenCalled();
       for (const text of expected) expect(host.textContent).toContain(text);
     }

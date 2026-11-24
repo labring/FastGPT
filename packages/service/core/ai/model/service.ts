@@ -131,38 +131,22 @@ export const restoreModelName = async ({
   await refreshMutationCatalog(context);
 };
 
-/** 原子校验归属并更新需要变更的启停状态，返回本次是否修改了模型。 */
+/** 批量启停必须完整命中所属桶，否则整个事务回滚，不产生部分生效或错误修订号。 */
 export const updateModelStatus = async ({
   modelIds,
   isActive,
   ...owner
 }: { modelIds: string[]; isActive: boolean } & ModelMutationOwner) => {
   const { context, filter } = getMutationScope(owner);
-  const changed = await mongoSessionRun(
-    async (session) => {
-      const models = await MongoAIModel.find({ _id: { $in: modelIds }, ...filter })
-        .select({ _id: 1, isActive: 1 })
-        .session(session)
-        .lean();
-      if (models.length !== new Set(modelIds).size) throw new UserError(ModelErrEnum.unExist);
-      const changedIds = models
-        .filter((model) => model.isActive !== isActive)
-        .map(({ _id }) => _id);
-      if (changedIds.length === 0) return false;
-
-      // 只在启停实际变化时更新修订号，与模型写入一起提交。
-      await incrementModelCatalogRevision(context, session);
-      await MongoAIModel.updateMany(
-        { _id: { $in: changedIds }, ...filter },
-        { $set: { isActive } },
-        { session }
-      );
-      return true;
-    },
-    { readConcern: { level: 'snapshot' }, writeConcern: { w: 'majority' } }
-  );
-  if (changed) await refreshMutationCatalog(context);
-  return changed;
+  await runModelTransaction(context, async (session) => {
+    const result = await MongoAIModel.updateMany(
+      { _id: { $in: modelIds }, ...filter },
+      { $set: { isActive } },
+      { session }
+    );
+    if (result.matchedCount !== new Set(modelIds).size) throw new UserError(ModelErrEnum.unExist);
+  });
+  await refreshMutationCatalog(context);
 };
 
 /** 在一个目录事务中按客户端提交的完整顺序写入连续的 1-based rank。 */

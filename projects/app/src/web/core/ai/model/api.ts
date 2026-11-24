@@ -5,8 +5,8 @@ import type {
   CreateModelResponse,
   CreateModelsFromTemplatesBody,
   CreateModelsFromTemplatesResponse,
-  ApplyChangesBody,
-  ApplyChangesResponse,
+  ImportFromChannelBody,
+  ImportFromChannelResponse,
   DeleteModelsBody,
   GetModelTemplatesResponse,
   GetModelDetailResponse,
@@ -54,8 +54,8 @@ export const getImportPreviewFromChannel = (data: PreviewImportFromChannelQuery)
   GET<PreviewImportFromChannelResponse>(coreModelPath + '/previewImportFromChannel', data);
 
 /** Apply selected channel import operations and return one result per operation. */
-export const postApplyChannelImportChanges = (data: ApplyChangesBody) =>
-  POST<ApplyChangesResponse>(coreModelPath + '/applyChanges', data, { timeout: 0 });
+export const postImportModelsFromChannel = (data: ImportFromChannelBody) =>
+  POST<ImportFromChannelResponse>(coreModelPath + '/importFromChannel', data, { timeout: 0 });
 
 /** 创建模型（系统模型或团队私有模型），强制显式传递 channelType */
 export const postCreateModel = (data: CreateModelBody) =>

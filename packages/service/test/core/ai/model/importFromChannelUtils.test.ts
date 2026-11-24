@@ -32,12 +32,10 @@ describe('channel model import matching', () => {
       targetModelMappings: {},
       templates: [createTemplate({ model: 'openai' }), createTemplate({ model: 'gpt-4o' })]
     });
-    expect(item.candidates).toEqual([
-      expect.objectContaining({
-        category: 'template',
-        template: { model: 'gpt-4o', type: ModelTypeEnum.llm }
-      })
-    ]);
+    expect(item.candidate).toMatchObject({
+      category: 'template',
+      template: { model: 'gpt-4o', type: ModelTypeEnum.llm }
+    });
   });
 
   it('preserves template limits when upstream context length is missing', () => {
@@ -54,7 +52,7 @@ describe('channel model import matching', () => {
     });
 
     expect(preview.contextLength).toBeUndefined();
-    expect(preview.candidates[0]).toMatchObject({
+    expect(preview.candidate).toMatchObject({
       category: 'template',
       modelData: { config: { maxContext: 128000, maxResponse: 16000 } }
     });
@@ -70,10 +68,10 @@ describe('channel model import matching', () => {
     });
 
     expect(items).toMatchObject([
-      { providerModelSlug: 'vendor-a/gpt-4o', candidates: [{ category: 'blank' }] },
+      { providerModelSlug: 'vendor-a/gpt-4o', candidate: { category: 'blank' } },
       {
         providerModelSlug: 'vendor-b/gpt-4o',
-        candidates: [{ category: 'template', template: { model: 'vendor-b/gpt-4o' } }]
+        candidate: { category: 'template', template: { model: 'vendor-b/gpt-4o' } }
       }
     ]);
   });
@@ -95,7 +93,7 @@ describe('channel model import matching', () => {
       targetModelMappings: { 'internal-name': 'old/provider-id' },
       templates: [createTemplate({ model: 'vendor/internal-name' })]
     });
-    expect(conflicting[0].candidates[0]).toMatchObject({
+    expect(conflicting[0].candidate).toMatchObject({
       category: 'template',
       template: { model: 'vendor/internal-name' }
     });
@@ -126,13 +124,9 @@ describe('channel model import matching', () => {
       templates: [createTemplate({ model: 'new-template' })]
     });
 
-    expect(items.map((item) => item.candidates[0].category)).toEqual([
-      'blank',
-      'template',
-      'blank'
-    ]);
+    expect(items.map((item) => item.candidate.category)).toEqual(['blank', 'template', 'blank']);
 
-    const templateItem = items[1].candidates[0];
+    const templateItem = items[1].candidate;
     expect(templateItem).toMatchObject({
       category: 'template',
       modelData: {
@@ -156,14 +150,14 @@ describe('channel model import matching', () => {
       expect(templateItem.blankModelData).not.toHaveProperty('inputPrice');
       expect(templateItem.blankModelData).not.toHaveProperty('outputPrice');
     }
-    const blankItem = items[2].candidates[0];
+    const blankItem = items[2].candidate;
     expect(items[2].contextLength).toBe(48000);
     expect(blankItem.category).toBe('blank');
     expect(blankItem).toMatchObject({ modelData: { provider: 'provider-from-channel' } });
     if (blankItem.category === 'blank') expect(blankItem.modelData).not.toHaveProperty('config');
   });
 
-  it('falls back to model IDs for blank upstream names in mixed directories', () => {
+  it('keeps the first row per upstream ID and falls back to the ID for blank names', () => {
     const items = classifyChannelModels({
       channelModels: [
         {
@@ -180,7 +174,8 @@ describe('channel model import matching', () => {
           id: 'vendor/custom',
           name: '  Custom Model  ',
           architecture: { output_modalities: ['text'] }
-        }
+        },
+        { id: 'vendor/unlisted', name: 'Duplicate upstream row' }
       ],
       installedModelNames: [],
       targetChannelModels: [],
@@ -190,15 +185,15 @@ describe('channel model import matching', () => {
     const response = PreviewImportFromChannelResponseSchema.parse({ items });
 
     expect(response.items).toHaveLength(3);
-    expect(response.items[0].candidates[0]).toMatchObject({
+    expect(response.items[0].candidate).toMatchObject({
       category: 'blank',
       modelData: { name: 'vendor/unlisted' }
     });
-    expect(response.items[1].candidates[0]).toMatchObject({
+    expect(response.items[1].candidate).toMatchObject({
       category: 'template',
       blankModelData: { name: 'vendor/gpt-4o' }
     });
-    expect(response.items[2].candidates[0]).toMatchObject({
+    expect(response.items[2].candidate).toMatchObject({
       category: 'blank',
       modelData: { name: 'Custom Model' }
     });
@@ -259,7 +254,7 @@ describe('channel model import drafts', () => {
       architecture: { output_modalities: [modality] }
     });
 
-    expect(item).toMatchObject({ modelType, modelData: { type: modelType } });
+    expect(item).toMatchObject({ modelData: { type: modelType } });
     expect(inferChannelModelType([modality, 'text'])).toBeUndefined();
   });
 
@@ -290,7 +285,6 @@ describe('channel model import drafts', () => {
 
     expect(item).toMatchObject({
       category: 'blank',
-      modelType: ModelTypeEnum.llm,
       modelData: {
         type: ModelTypeEnum.llm,
         model: 'openai/gpt-4o',
@@ -316,7 +310,6 @@ describe('channel model import drafts', () => {
 
     expect(item).toMatchObject({
       category: 'blank',
-      contextLength: 16000,
       modelData: { config: { maxContext: 16000 } }
     });
   });

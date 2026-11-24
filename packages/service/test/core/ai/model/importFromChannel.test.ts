@@ -1,6 +1,7 @@
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
-import type { ApplyChangesBody } from '@fastgpt/global/openapi/core/ai/model/api';
+import type { CreateModelData } from '@fastgpt/global/openapi/core/ai/model/api';
+import { AxiosError } from 'axios';
 import type { AiproxyChannel } from '@fastgpt/service/thirdProvider/aiproxy/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -51,25 +52,18 @@ vi.mock('@fastgpt/service/thirdProvider/aiproxy/client', () => ({
 }));
 
 import {
-  applyChangesFromChannel,
+  importFromChannel,
   previewImportFromChannel
 } from '@fastgpt/service/core/ai/model/importFromChannel';
 
-const createModelData = (
-  model: string,
-  isActive = true
-): ApplyChangesBody['operations'][number] => ({
-  action: 'create',
-  providerModelSlug: `upstream/${model}`,
+const createModelData = (model: string, isActive?: boolean): CreateModelData => ({
+  type: ModelTypeEnum.llm,
+  provider: 'openai',
+  model,
+  name: model,
+  scope: ModelScopeEnum.system,
   isActive,
-  modelData: {
-    type: ModelTypeEnum.llm,
-    provider: 'openai',
-    model,
-    name: model,
-    scope: ModelScopeEnum.system,
-    config: { maxContext: 1000, maxResponse: 100, quoteMaxToken: 500 }
-  }
+  config: { maxContext: 1000, maxResponse: 100, quoteMaxToken: 500 }
 });
 
 describe('apply model imports from channel', () => {
@@ -112,13 +106,12 @@ describe('apply model imports from channel', () => {
     });
 
     expect(preview.items[0]).toMatchObject({ contextLength: 48000, maxCompletionTokens: 2048 });
-    expect(preview.items[0].candidates[0]).toMatchObject({
+    expect(preview.items[0].candidate).toMatchObject({
       category: 'blank',
-      contextLength: 48000,
       modelData: { provider: 'openai' }
     });
-    if (preview.items[0].candidates[0].category === 'blank') {
-      expect(preview.items[0].candidates[0].modelData).not.toHaveProperty('config');
+    if (preview.items[0].candidate.category === 'blank') {
+      expect(preview.items[0].candidate.modelData).not.toHaveProperty('config');
     }
   });
 
@@ -130,19 +123,18 @@ describe('apply model imports from channel', () => {
       tmbId: '60000000000000000000000a'
     });
 
-    expect(preview.items[0].candidates[0]).toMatchObject({
-      category: 'blank',
-      contextLength: 48000
+    expect(preview.items[0].candidate).toMatchObject({
+      category: 'blank'
     });
-    if (preview.items[0].candidates[0].category === 'blank') {
-      expect(preview.items[0].candidates[0].modelData).not.toHaveProperty('provider');
+    if (preview.items[0].candidate.category === 'blank') {
+      expect(preview.items[0].candidate.modelData).not.toHaveProperty('provider');
     }
   });
 
   it('maps an unsupported channel catalog to a stable model error', async () => {
     getSystemChannelModelsMock.mockRejectedValueOnce(
-      Object.assign(new Error('model catalog is unsupported for this channel type'), {
-        status: 501
+      Object.assign(new AxiosError('model catalog is unsupported for this channel type'), {
+        response: { status: 501 }
       })
     );
 
@@ -182,7 +174,7 @@ describe('apply model imports from channel', () => {
       getSystemModels: () => [{ modelId: 'existing-id', model: 'mini' }]
     });
     getSystemChannelModelsMock.mockResolvedValueOnce([{ id: 'openai/gpt-4o-mini' }]);
-    refreshTemplatesMock.mockResolvedValueOnce([createModelData('gpt-4o-mini').modelData]);
+    refreshTemplatesMock.mockResolvedValueOnce([createModelData('gpt-4o-mini')]);
 
     const preview = await previewImportFromChannel({
       channelId: 1,
@@ -192,7 +184,7 @@ describe('apply model imports from channel', () => {
     expect(preview.items).toMatchObject([
       {
         providerModelSlug: 'openai/gpt-4o-mini',
-        candidates: [{ category: 'template', template: { model: 'gpt-4o-mini' } }]
+        candidate: { category: 'template', template: { model: 'gpt-4o-mini' } }
       }
     ]);
   });
@@ -207,7 +199,7 @@ describe('apply model imports from channel', () => {
       tmbId: '60000000000000000000000a'
     });
 
-    expect(preview.items[0].candidates[0]).toMatchObject({ category: 'blank' });
+    expect(preview.items[0].candidate).toMatchObject({ category: 'blank' });
   });
 
   it('keeps result order and continues after create and binding failures', async () => {
@@ -217,18 +209,25 @@ describe('apply model imports from channel', () => {
       .mockResolvedValueOnce({ modelId: 'successful-id' });
     updateChannelMock.mockRejectedValueOnce(new Error('binding failed'));
 
-    const results = await applyChangesFromChannel({
+    const results = await importFromChannel({
       channelId: 1,
       tmbId: '60000000000000000000000a',
       teamId: '6000000000000000000000aa',
-      operations: [
-        createModelData('duplicate'),
-        createModelData('created-without-binding'),
-        createModelData('successful')
+      models: [
+        createModelData('upstream/duplicate'),
+        createModelData('upstream/created-without-binding'),
+        createModelData('upstream/successful')
       ]
     });
 
-    expect(results.results.map(({ status }) => status)).toEqual(['failed', 'failed', 'success']);
+    expect(results.results.map(({ model, status }) => ({ model, status }))).toEqual([
+      { model: 'upstream/duplicate', status: 'failed' },
+      { model: 'upstream/created-without-binding', status: 'failed' },
+      { model: 'upstream/successful', status: 'success' }
+    ]);
+    expect(createModelMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ modelData: expect.objectContaining({ isActive: true }) })
+    );
     expect(results.results[0]).toMatchObject({ status: 'failed', error: 'duplicate' });
     expect(results.results[1]).toMatchObject({
       status: 'failed',
@@ -243,11 +242,11 @@ describe('apply model imports from channel', () => {
     channel.models = ['existing-model'];
     channel.model_mapping = { 'existing-model': 'vendor/existing-model' };
 
-    const results = await applyChangesFromChannel({
+    const results = await importFromChannel({
       channelId: 1,
       tmbId: '60000000000000000000000a',
       teamId: '6000000000000000000000aa',
-      operations: [createModelData('disabled-model', false)]
+      models: [createModelData('upstream/disabled-model', false)]
     });
 
     expect(results.results.map(({ status }) => status)).toEqual(['success']);
@@ -262,32 +261,31 @@ describe('apply model imports from channel', () => {
     });
   });
 
-  it('preserves a conflicting alias and does not create a model', async () => {
-    channel.model_mapping = { 'new-upstream': 'old-upstream' };
-
-    const results = await applyChangesFromChannel({
+  it('omits the patch mapping key when the channel has no mappings', async () => {
+    delete channel.model_mapping;
+    createModelMock.mockResolvedValueOnce({ modelId: 'created-id' });
+    await importFromChannel({
       channelId: 1,
       tmbId: '60000000000000000000000a',
       teamId: '6000000000000000000000aa',
-      operations: [
-        {
-          action: 'create',
-          providerModelSlug: 'new-upstream',
-          modelData: {
-            type: ModelTypeEnum.llm,
-            provider: 'openai',
-            model: 'preferred',
-            name: 'Preferred',
-            scope: ModelScopeEnum.system,
-            config: { maxContext: 1000, maxResponse: 100, quoteMaxToken: 500 }
-          },
-          isActive: true
-        }
-      ]
+      models: [createModelData('new-upstream')]
+    });
+
+    expect(updateChannelMock.mock.calls).toStrictEqual([[1, { models: ['new-upstream'] }]]);
+  });
+
+  it('preserves a conflicting alias and does not create a model', async () => {
+    channel.model_mapping = { 'new-upstream': 'old-upstream' };
+
+    const results = await importFromChannel({
+      channelId: 1,
+      tmbId: '60000000000000000000000a',
+      teamId: '6000000000000000000000aa',
+      models: [createModelData('new-upstream')]
     });
 
     expect(results.results[0]).toMatchObject({
-      action: 'create',
+      model: 'new-upstream',
       status: 'failed',
       error: ModelErrEnum.channelModelMappingConflict
     });

@@ -3,7 +3,7 @@ import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/sche
 import { mergeChannelTemplateModelData } from '@fastgpt/global/core/ai/model/utils';
 import type { ModelProviderItemType } from '@fastgpt/global/core/ai/model/provider';
 import type {
-  ImportPreviewItem,
+  ImportPreviewCandidate,
   PreviewImportFromChannelResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import type { AiproxyChannelModel } from '../../../thirdProvider/aiproxy/type';
@@ -80,7 +80,7 @@ export const mergeTemplateModelData = (
 export const createBlankModelData = (
   channelModel: AiproxyChannelModel,
   provider?: string
-): Extract<ImportPreviewItem, { category: 'blank' }> => {
+): Extract<ImportPreviewCandidate, { category: 'blank' }> => {
   const modelType = inferChannelModelType(channelModel.architecture?.output_modalities);
   const contextLength = getContextLength(channelModel);
   const maxResponse = getMaxCompletionTokens(channelModel);
@@ -123,8 +123,6 @@ export const createBlankModelData = (
 
   return {
     category: 'blank',
-    ...(modelType === undefined ? {} : { modelType }),
-    ...(contextLength === undefined ? {} : { contextLength }),
     modelData
   };
 };
@@ -155,16 +153,17 @@ export const classifyChannelModels = ({
 
   // 只有仍然安装且绑定到目标渠道的模型，才能通过显式映射确认上游 ID。
   const installedNames = new Set(installedModelNames);
-  const mappedUpstreamIds = new Set<string>();
+  const seenUpstreamIds = new Set(installedNames);
   for (const model of targetChannelModels) {
     if (installedNames.has(model) && Object.hasOwn(targetModelMappings, model)) {
-      mappedUpstreamIds.add(targetModelMappings[model]);
+      seenUpstreamIds.add(targetModelMappings[model]);
     }
   }
 
-  // 近似匹配只参与模板推荐，保留每个尚未配置的上游模型。
+  // 保留未配置的上游 ID 首次出现的记录，确保预览选择和导入结果共用唯一标识。
   return channelModels.flatMap((channelModel) => {
-    if (installedNames.has(channelModel.id) || mappedUpstreamIds.has(channelModel.id)) return [];
+    if (seenUpstreamIds.has(channelModel.id)) return [];
+    seenUpstreamIds.add(channelModel.id);
 
     const contextLength = getContextLength(channelModel);
     const maxCompletionTokens = getMaxCompletionTokens(channelModel);
@@ -181,19 +180,17 @@ export const classifyChannelModels = ({
       }
     }
     const blankDraft = createBlankModelData(channelModel, provider);
-    if (!bestMatch) return { ...rowData, candidates: [blankDraft] };
+    if (!bestMatch) return { ...rowData, candidate: blankDraft };
 
     const { template } = bestMatch;
     return {
       ...rowData,
-      candidates: [
-        {
-          category: 'template',
-          template: { type: template.type, model: template.model },
-          modelData: mergeTemplateModelData(template, channelModel),
-          blankModelData: blankDraft.modelData
-        }
-      ]
+      candidate: {
+        category: 'template',
+        template: { type: template.type, model: template.model },
+        modelData: mergeTemplateModelData(template, channelModel),
+        blankModelData: blankDraft.modelData
+      }
     };
   });
 };

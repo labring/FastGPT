@@ -1,16 +1,18 @@
 import { Box, Button, Flex, Table, Tbody, Td, Th, Thead, Tooltip, Tr } from '@chakra-ui/react';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import type { ModelChannelSummary } from '@fastgpt/global/openapi/core/ai/model/api';
+import type {
+  CreateModelData,
+  ModelChannelSummary
+} from '@fastgpt/global/openapi/core/ai/model/api';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
-import MyTag from '@fastgpt/web/components/common/Tag';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useStaticVirtualList } from '@fastgpt/web/hooks/useVirtualList';
 import { enableMapSet, produce, type Draft } from 'immer';
 import { useRef, useState } from 'react';
-import { postApplyChannelImportChanges } from '@/web/core/ai/model/api';
+import { postImportModelsFromChannel } from '@/web/core/ai/model/api';
 import StepContent, { ChannelImportToolbar } from './StepContent';
-import type { ChannelImportPlan, RowResult } from './types';
+import type { RowResult } from './types';
 
 enableMapSet();
 
@@ -26,7 +28,7 @@ const ImportResultsTable = ({
   rowResults,
   t
 }: {
-  rows: ChannelImportPlan['rows'];
+  rows: CreateModelData[];
   rowResults: Map<string, RowResult>;
   t: ReturnType<typeof useSafeTranslation>['t'];
 }) => {
@@ -58,47 +60,39 @@ const ImportResultsTable = ({
         overflowY: 'auto'
       }}
       renderHeader={({ headerTableWidth }) => (
-        <Table minW="760px" sx={{ tableLayout: 'fixed', width: headerTableWidth }}>
+        <Table minW="580px" sx={{ tableLayout: 'fixed', width: headerTableWidth }}>
           <colgroup>
             <col style={{ width: '260px' }} />
-            <col style={{ width: '180px' }} />
             <col style={{ width: '320px' }} />
           </colgroup>
           <Thead>
             <Tr>
               <Th fontSize="xs">{t('config_model:channel_import_model')}</Th>
-              <Th fontSize="xs">{t('config_model:channel_import_action')}</Th>
               <Th fontSize="xs">{t('config_model:channel_import_result')}</Th>
             </Tr>
           </Thead>
         </Table>
       )}
       renderBody={({ headerTableWidth }) => (
-        <Table minW="760px" sx={{ tableLayout: 'fixed', width: headerTableWidth }}>
+        <Table minW="580px" sx={{ tableLayout: 'fixed', width: headerTableWidth }}>
           <colgroup>
             <col style={{ width: '260px' }} />
-            <col style={{ width: '180px' }} />
             <col style={{ width: '320px' }} />
           </colgroup>
           <Tbody>
             {topPlaceholderHeight > 0 && (
               <Tr h={topPlaceholderHeight + 'px'} aria-hidden>
-                <Td colSpan={3} h={topPlaceholderHeight + 'px'} p={0} border={0} />
+                <Td colSpan={2} h={topPlaceholderHeight + 'px'} p={0} border={0} />
               </Tr>
             )}
             {virtualDataList.map(({ data: row }) => {
-              const result = rowResults.get(row.providerModelSlug);
+              const result = rowResults.get(row.model);
               const error = result?.error ? t(getErrText(result.error)) : undefined;
 
               return (
-                <Tr key={row.providerModelSlug} h="56px">
+                <Tr key={row.model} h="56px">
                   <Td fontSize="sm">
-                    <Box noOfLines={1}>{row.providerModelSlug}</Box>
-                  </Td>
-                  <Td>
-                    <MyTag type="borderFill" colorSchema="gray">
-                      {t('config_model:channel_import_category_template')}
-                    </MyTag>
+                    <Box noOfLines={1}>{row.model}</Box>
                   </Td>
                   <Td fontSize="sm">
                     <Tooltip label={error} isDisabled={!error}>
@@ -118,7 +112,7 @@ const ImportResultsTable = ({
             })}
             {bottomPlaceholderHeight > 0 && (
               <Tr h={bottomPlaceholderHeight + 'px'} aria-hidden>
-                <Td colSpan={3} h={bottomPlaceholderHeight + 'px'} p={0} border={0} />
+                <Td colSpan={2} h={bottomPlaceholderHeight + 'px'} p={0} border={0} />
               </Tr>
             )}
           </Tbody>
@@ -131,7 +125,7 @@ const ImportResultsTable = ({
 const ImportResultsStep = ({
   channelId,
   channel,
-  plan,
+  models,
   onSubmittingChange,
   onPrevious,
   onRefresh,
@@ -139,7 +133,7 @@ const ImportResultsStep = ({
 }: {
   channelId: number;
   channel?: ModelChannelSummary;
-  plan: ChannelImportPlan;
+  models: CreateModelData[];
   onSubmittingChange: (submitting: boolean) => void;
   onPrevious: () => void;
   onRefresh: () => Promise<void>;
@@ -155,10 +149,8 @@ const ImportResultsStep = ({
   const updateState = (recipe: (draft: Draft<ResultsState>) => void) =>
     setState((current) => produce(current, recipe));
 
-  const pendingRows = plan.rows.filter((row) => !state.rowResults.has(row.providerModelSlug));
-
   const applyImport = async () => {
-    if (importStartedRef.current || pendingRows.length === 0) return;
+    if (importStartedRef.current || models.length === 0) return;
     // 同步锁住入口，避免 React 更新按钮状态前重复提交。
     importStartedRef.current = true;
     onSubmittingChange(true);
@@ -168,58 +160,33 @@ const ImportResultsStep = ({
       draft.submitting = true;
     });
     const nextResults = new Map<string, RowResult>();
-    for (const row of pendingRows) {
-      if (!row.operation) {
-        nextResults.set(row.providerModelSlug, {
-          status: 'failed',
-          error: t('config_model:channel_import_apply_error')
-        });
-      }
-    }
-    const operations = pendingRows.flatMap((row) => (row.operation ? [row.operation] : []));
-
     try {
       let shouldRefresh = false;
-      if (operations.length > 0) {
-        try {
-          const response = await postApplyChannelImportChanges({
-            channelId,
-            channelType: 'system',
-            operations
-          });
-          const resultBySlug = new Map(
-            response.results.map((result) => [result.providerModelSlug, result] as const)
+      try {
+        const response = await postImportModelsFromChannel({ channelId, models });
+        const resultByModel = new Map(response.results.map((result) => [result.model, result]));
+        for (const { model } of models) {
+          const result = resultByModel.get(model);
+          shouldRefresh ||= !result || result.status !== 'failed' || result.modelId !== undefined;
+          nextResults.set(
+            model,
+            result
+              ? {
+                  status: result.status,
+                  error: result.status === 'failed' ? result.error : undefined
+                }
+              : { status: 'unknown' }
           );
-          for (const operation of operations) {
-            const result = resultBySlug.get(operation.providerModelSlug);
-            shouldRefresh ||= !result || result.status !== 'failed' || result.modelId !== undefined;
-            nextResults.set(
-              operation.providerModelSlug,
-              result
-                ? {
-                    status: result.status,
-                    error: result.status === 'failed' ? result.error : undefined
-                  }
-                : {
-                    status: 'unknown'
-                  }
-            );
-          }
-        } catch (error) {
-          // 连接中断时服务端可能已完成写入，只有逐项响应能确认失败。
-          shouldRefresh = true;
-          for (const operation of operations) {
-            nextResults.set(operation.providerModelSlug, {
-              status: 'unknown',
-              error: getErrText(error)
-            });
-          }
+        }
+      } catch (error) {
+        // 连接中断时服务端可能已完成写入，只有逐项响应能确认失败。
+        shouldRefresh = true;
+        for (const { model } of models) {
+          nextResults.set(model, { status: 'unknown', error: getErrText(error) });
         }
       }
 
-      if (
-        pendingRows.every((row) => nextResults.get(row.providerModelSlug)?.status === 'success')
-      ) {
+      if (models.every(({ model }) => nextResults.get(model)?.status === 'success')) {
         onImportSuccess();
         void onRefresh().catch(() => {});
         return;
@@ -227,8 +194,8 @@ const ImportResultsStep = ({
       if (shouldRefresh) await onRefresh().catch(() => {});
 
       updateState((draft) => {
-        for (const [providerModelSlug, result] of nextResults) {
-          draft.rowResults.set(providerModelSlug, result);
+        for (const [model, result] of nextResults) {
+          draft.rowResults.set(model, result);
         }
       });
     } finally {
@@ -247,7 +214,7 @@ const ImportResultsStep = ({
             <Button variant="whiteBase" onClick={onPrevious} isDisabled={state.submitting}>
               {t('config_model:previous_step')}
             </Button>
-            {pendingRows.length > 0 && (
+            {models.length > 0 && (
               <Button onClick={() => void applyImport()} isLoading={state.submitting}>
                 {t('common:Confirm')}
               </Button>
@@ -258,12 +225,12 @@ const ImportResultsStep = ({
     >
       <Flex direction="column" h="100%" minH={0} minW={0} gap={4}>
         <ChannelImportToolbar channelName={channel?.name} />
-        {plan.rows.length === 0 ? (
+        {models.length === 0 ? (
           <Flex flex="1 1 0" minH={0} alignItems="center" justifyContent="center">
             <EmptyTip />
           </Flex>
         ) : (
-          <ImportResultsTable rows={plan.rows} rowResults={state.rowResults} t={t} />
+          <ImportResultsTable rows={models} rowResults={state.rowResults} t={t} />
         )}
       </Flex>
     </StepContent>

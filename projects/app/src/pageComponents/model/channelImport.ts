@@ -4,28 +4,13 @@ import {
   AIModelDocumentDataSchema,
   type AIModelDocumentDataType
 } from '@fastgpt/global/core/ai/model/schema';
-import { mergeChannelTemplateModelData } from '@fastgpt/global/core/ai/model/utils';
 import type {
-  ApplyChangesBody,
-  ImportPreviewItem,
+  ImportPreviewBlankModelData,
+  ImportPreviewCandidate,
   PreviewImportFromChannelResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
 
 type ChannelImportRow = PreviewImportFromChannelResponse['items'][number];
-type ChannelImportItem = ImportPreviewItem;
-type BlankModelData =
-  | NonNullable<Extract<ChannelImportItem, { category: 'blank' }>['modelData']>
-  | NonNullable<Extract<ChannelImportItem, { category: 'template' }>['blankModelData']>
-  | AIModelDocumentDataType;
-type BlankPreviewItem = Extract<ChannelImportItem, { category: 'blank' | 'template' }>;
-
-/** 始终使用后端按优先级排序后的首个候选。 */
-export const getChannelImportCandidate = (item: ChannelImportRow) => {
-  const candidate = item.candidates[0];
-  if (!candidate) throw new Error('Channel import preview item must include a candidate');
-  return candidate;
-};
-
 /** 按当前选择的模型类型筛选，并按上游 ID、候选名称或模型 ID 搜索预览行。 */
 export const filterChannelImportPreviewItems = ({
   items,
@@ -45,7 +30,7 @@ export const filterChannelImportPreviewItems = ({
     if (modelType && getModelType(row) !== modelType) return false;
     if (!query) return true;
 
-    const { modelData } = getChannelImportCandidate(row);
+    const { modelData } = row.candidate;
     return (
       includesQuery(row.providerModelSlug) ||
       includesQuery(modelData?.name) ||
@@ -54,17 +39,9 @@ export const filterChannelImportPreviewItems = ({
   });
 };
 
-/** Resolve only upstream-derived values; a template's merged draft is never a blank fallback. */
-export const getBlankChannelImportDraft = (item: BlankPreviewItem) => {
-  const modelData = item.category === 'blank' ? item.modelData : item.blankModelData;
-
-  return {
-    modelData,
-    modelType: (item.category === 'blank' ? item.modelType : undefined) ?? modelData?.type,
-    provider: modelData?.provider,
-    contextLength: item.contextLength
-  };
-};
+/** 空白草稿仅取上游推断信息，模板的配置只用于所选模板。 */
+export const getBlankChannelImportDraft = (candidate: ImportPreviewCandidate) =>
+  candidate.category === 'blank' ? candidate.modelData : candidate.blankModelData;
 
 /**
  * 根据上游推断字段和空白模型默认值构造模型草稿。
@@ -73,7 +50,6 @@ export const getBlankChannelImportDraft = (item: BlankPreviewItem) => {
 export const buildBlankChannelModelData = ({
   providerModelSlug,
   modelType,
-  provider,
   modelData,
   contextLength,
   maxCompletionTokens,
@@ -81,14 +57,13 @@ export const buildBlankChannelModelData = ({
 }: {
   providerModelSlug: string;
   modelType?: ModelTypeEnum;
-  provider?: string;
-  modelData?: BlankModelData;
+  modelData?: ImportPreviewBlankModelData;
   contextLength?: number;
   maxCompletionTokens?: number;
   createModelData: (type: ModelTypeEnum) => AIModelDocumentDataType;
 }): AIModelDocumentDataType | undefined => {
   const type = modelType ?? modelData?.type;
-  const selectedProvider = provider?.trim() || modelData?.provider?.trim() || defaultProvider.id;
+  const selectedProvider = modelData?.provider?.trim() || defaultProvider.id;
   if (!type) return;
 
   const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -135,46 +110,4 @@ export const buildBlankChannelModelData = ({
     name: modelData?.name ?? providerModelSlug,
     config
   });
-};
-
-/** Translate one selected preview row into the batch API operation it owns. */
-export const buildChannelImportOperation = ({
-  providerModelSlug,
-  modelData,
-  templateData,
-  contextLength,
-  maxCompletionTokens,
-  isActive = true
-}: {
-  providerModelSlug: string;
-  modelData?: AIModelDocumentDataType;
-  templateData?: AIModelDocumentDataType;
-  contextLength?: number;
-  maxCompletionTokens?: number;
-  isActive?: boolean;
-}): ApplyChangesBody['operations'][number] | undefined => {
-  if (templateData) {
-    return {
-      action: 'create',
-      providerModelSlug,
-      modelData: {
-        ...mergeChannelTemplateModelData({
-          template: templateData,
-          contextLength,
-          maxCompletionTokens
-        }),
-        model: providerModelSlug
-      },
-      isActive
-    };
-  }
-  if (modelData) {
-    return {
-      action: 'create',
-      providerModelSlug,
-      modelData,
-      isActive
-    };
-  }
-  return;
 };
