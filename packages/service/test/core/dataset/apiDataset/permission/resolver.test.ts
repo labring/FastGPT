@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
+import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 
 const userFind = vi.fn();
 const teamMemberFind = vi.fn();
@@ -101,10 +102,56 @@ describe('resolveApiDatasetPermissionItems', () => {
     });
 
     expect(result.get('file-1')).toEqual([{ tmbId: 'tmb-1', permission: 4 }]);
-    // 第二跳必须限定在当前团队
+    // 第二跳必须限定在当前团队且为在职状态
     expect(teamMemberFind).toHaveBeenCalledWith(
-      expect.objectContaining({ teamId: 'team-1', userId: { $in: ['user-1'] } }),
+      expect.objectContaining({
+        teamId: 'team-1',
+        userId: { $in: ['user-1'] },
+        status: TeamMemberStatusEnum.active
+      }),
       expect.anything()
+    );
+  });
+
+  it('excludes non-active (leave/forbidden) members for both username and tmbId queries', async () => {
+    const activeTmbId = '64b7f4c2f1a2b3c4d5e6f7a1';
+    const leftTmbId = '64b7f4c2f1a2b3c4d5e6f7a2';
+    userFind.mockReturnValue(
+      lean([
+        { _id: 'user-active', username: 'alice' },
+        { _id: 'user-left', username: 'bob' }
+      ])
+    );
+    teamMemberFind.mockImplementation((filter: Record<string, unknown>) => {
+      if (filter.status !== TeamMemberStatusEnum.active) return lean([]);
+      if (filter.userId) {
+        return lean([{ _id: 'tmb-alice', userId: 'user-active' }]);
+      }
+      return lean([{ _id: activeTmbId }]);
+    });
+
+    const result = await resolveApiDatasetPermissionItems({
+      teamId: 'team-1',
+      itemsByFileId: new Map([
+        [
+          'file-1',
+          [
+            { username: 'alice', permission: 4 },
+            { username: 'bob', permission: 2 },
+            { tmbId: activeTmbId, permission: 4 },
+            { tmbId: leftTmbId, permission: 4294967295 }
+          ]
+        ]
+      ])
+    });
+
+    expect(result.get('file-1')).toEqual([
+      { tmbId: 'tmb-alice', permission: 4 },
+      { tmbId: activeTmbId, permission: 4 }
+    ]);
+    expect(teamMemberFind).toHaveBeenCalledWith(
+      expect.objectContaining({ teamId: 'team-1', status: TeamMemberStatusEnum.active }),
+      '_id'
     );
   });
 

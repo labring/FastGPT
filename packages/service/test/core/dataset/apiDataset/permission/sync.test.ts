@@ -233,22 +233,57 @@ describe('syncCollectionPermissions', () => {
     expect(applyCollectionPermissionStates.mock.calls[0][0].states).toEqual([]);
   });
 
-  it('skips a node when external permissions are non-empty but resolve to nothing', async () => {
+  it('falls back to dataset owner when non-empty external permissions resolve to nothing', async () => {
     mockCollectionFind({
-      all: [{ _id: 'c1', apiFileId: 'f1', type: 'file', parentId: null, inheritPermission: false }]
+      all: [
+        { _id: 'c1', apiFileId: 'f1', type: 'file', parentId: null, inheritPermission: false },
+        { _id: 'c2', apiFileId: 'f2', type: 'file', parentId: null, inheritPermission: false }
+      ]
     });
     fetchApiFilePermissions.mockResolvedValue(
       new Map([
-        ['f1', { apiFileId: 'f1', status: 'ok', permissions: [{ tmbId: 'x', permission: 4 }] }]
+        [
+          'f1',
+          {
+            apiFileId: 'f1',
+            status: 'ok',
+            permissions: [{ tmbId: 'ghost-owner', permission: OwnerRoleVal }]
+          }
+        ],
+        [
+          'f2',
+          { apiFileId: 'f2', status: 'ok', permissions: [{ tmbId: 'left-user', permission: 4 }] }
+        ]
       ])
     );
-    resolveApiDatasetPermissionItems.mockResolvedValue(new Map([['f1', []]]));
+    resolveApiDatasetPermissionItems.mockResolvedValue(
+      new Map([
+        ['f1', []],
+        ['f2', []]
+      ])
+    );
+    findByResourceIds.mockResolvedValue([
+      // c1 原有旧协作者应被撤权并兜底成仅 dataset owner
+      { resourceId: 'c1', tmbId: 'old-reader', permission: ReadRoleVal },
+      // c2 已经只有 dataset owner，幂等跳过
+      { resourceId: 'c2', tmbId: 'owner-tmb', permission: OwnerRoleVal }
+    ]);
+    applyCollectionPermissionStates.mockResolvedValue({ updated: 1 });
 
     const stats = await syncCollectionPermissions({ teamId, datasetId });
 
-    // 不能退化成「仅 owner」：那等于按不可解析的输入撤权
-    expect(stats).toEqual({ checked: 1, updated: 0, skipped: 1, failed: 0 });
-    expect(applyCollectionPermissionStates.mock.calls[0][0].states).toEqual([]);
+    expect(stats).toEqual({ checked: 2, updated: 1, skipped: 1, failed: 0 });
+    expect(applyCollectionPermissionStates.mock.calls[0][0].states).toEqual([
+      {
+        collectionId: 'c1',
+        type: 'file',
+        parentId: null,
+        collaborators: [{ tmbId: 'owner-tmb', permission: OwnerRoleVal }],
+        currentCollaborators: [{ tmbId: 'old-reader', permission: ReadRoleVal }],
+        isIndependent: true,
+        changed: true
+      }
+    ]);
   });
 
   it('forwards the deadline to fetching and writing', async () => {

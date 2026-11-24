@@ -119,8 +119,8 @@ const expandPermissionSyncCollections = async ({
  *
  * 入口只有一个，两类调用方：每日同步作业（全量，不传 collectionIds）与导入接口（定向）。
  * 定向的 `collectionIds` 是**根节点**，作业内展开整棵子树，只同步带 `apiFileId` 的节点。
- * 三态语义：外部 `permissions` 缺失 / 详情 NOT_FOUND → 跳过该节点；`[]` → 独立态 + owner 兜底；
- * 非空 → 独立态 = 解析后的列表（无 owner 行时追加 owner 兜底）。
+ * 三态语义：外部 `permissions` 缺失 / 详情 NOT_FOUND / 全组格式非法 → 跳过该节点；`[]` → 独立态 + owner 兜底；
+ * 非空 → 独立态 = 解析后的列表（不可解析或离职主体丢弃；无 owner 行时追加 owner 兜底，全部解析失败时仅保留 owner）。
  *
  * 抓取阶段单节点失败只记 failed 并跳过该节点；凭据失效（UNAUTHORIZED）或一整批全部失败
  * 视为外部整体不可用，抛出中止整轮，避免半轮写入。写入阶段最终一致，失败由重试收敛。
@@ -258,22 +258,9 @@ export const syncCollectionPermissions = async ({
     const sourceId = sourceIdByCollectionId.get(collectionId)!;
     // 抓取失败已在上面计入 failed，这里不能再算 skipped
     if (failedFileIds.has(sourceId)) continue;
-    const rawPermissions = okPermissionsByFileId.get(sourceId);
     const collaborators = resolved.get(sourceId);
-    // undefined = 外部未提供（或本条失败）：本地保持不动（跳过，不算失败）
+    // undefined = 外部未提供（或本条失败 / 全组格式非法）：本地保持不动（跳过，不算失败）
     if (collaborators === undefined) {
-      stats.skipped++;
-      continue;
-    }
-    // 外部给了非空列表却一个都没解析出来（跨团队主体、非法角色）：不能退化成「仅 owner」，
-    // 否则等于按不可解析的输入撤权。保持本地不动。
-    if (rawPermissions && rawPermissions.length > 0 && collaborators.length === 0) {
-      logger.warn('[permissionSync] external permissions resolve to empty, skip node', {
-        teamId,
-        datasetId,
-        collectionId,
-        itemCount: rawPermissions.length
-      });
       stats.skipped++;
       continue;
     }

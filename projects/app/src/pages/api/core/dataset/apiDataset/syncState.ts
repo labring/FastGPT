@@ -13,6 +13,7 @@ import {
   canShortCircuitCollectionPermission,
   getReadableCollectionIds
 } from '@fastgpt/service/support/permission/collection/auth';
+import { isDisableSuperAdmin } from '@fastgpt/service/support/permission/dataset/disableSuperAdmin';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getTmbInfoByTmbId } from '@fastgpt/service/support/user/team/controller';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
@@ -36,7 +37,7 @@ async function handler(
     querySchema: GetApiDatasetSyncStateQuerySchema
   }).query;
 
-  const { dataset, teamId, tmbId, permission } = await authDataset({
+  const { dataset, teamId, tmbId, permission, isRoot } = await authDataset({
     req,
     datasetId,
     per: ReadPermissionVal,
@@ -44,25 +45,30 @@ async function handler(
     authApiKey: true
   });
 
+  // 资源范围以 dataset 归属为准：root 可跨团队，用请求侧 teamId 会把集合列表过滤成空。
+  const scopeTeamId = String(dataset.teamId);
   const tmbInfo = await getTmbInfoByTmbId({ tmbId });
-  const shortCircuit = await canShortCircuitCollectionPermission({
-    teamId,
-    datasetIds: [String(dataset._id)],
-    tmbId,
-    tmbInfo
-  });
+  const shortCircuit =
+    isRoot ||
+    (await canShortCircuitCollectionPermission({
+      teamId,
+      datasetIds: [String(dataset._id)],
+      tmbId,
+      tmbInfo,
+      ignoreTeamOwner: isDisableSuperAdmin(dataset.apiDatasetServer)
+    }));
 
   let readableIdSet: Set<string> | undefined;
   if (!shortCircuit) {
     const [groupIds, orgIds, visibilityCollections] = await Promise.all([
       getGroupsByTmbId({ tmbId, teamId }).then((list) => list.map((item) => String(item._id))),
       getOrgIdSetWithParentByTmbId({ tmbId, teamId }).then((set) => Array.from(set)),
-      findDatasetCollectionsForVisibility({ teamId, datasetId: String(dataset._id) })
+      findDatasetCollectionsForVisibility({ teamId: scopeTeamId, datasetId: String(dataset._id) })
     ]);
     const readableIds = await getReadableCollectionIds({
       collections: visibilityCollections,
       tmbId,
-      teamId,
+      teamId: scopeTeamId,
       groupIds,
       orgIds,
       datasetPermission: permission.role,

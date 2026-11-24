@@ -26,14 +26,16 @@ routes:
   - "GET /api/core/dataset/apiDataset/syncState"
   - "POST /api/core/dataset/apiDataset/list"
   - "POST /api/core/dataset/collection/create/apiCollectionV2"
-  - "POST /api/core/dataset/update"
+  - "PUT /api/core/dataset/update"
   - "POST /api/core/dataset/collection/update"
   - "POST /api/core/dataset/collection/delete"
   - "POST /api/core/dataset/collection/listV2"
 related:
   - FG-DATASET-INGESTION-004
+  - FG-DATASET-INGESTION-005
+  - FG-PERMISSION-RESOURCE-006
 automation: []
-baseline: "8476352ca9"
+baseline: "518be3e929; pro/cb1716a2"
 ---
 
 # API 知识库同步范围配置、树形导入与删除收口
@@ -44,7 +46,7 @@ API 知识库以 `Dataset.syncAll` 和 `DatasetCollection.syncChildren` 作为�
 
 ## 前置准备
 
-- 环境与版本：本地 dev 环境 `BASE_URL`（如 `http://127.0.0.1:3000`），代码基线 `8476352ca9`；使用真实 MongoDB、Redis 与已配置模型目录；无需启动 Pro BullMQ 同步 Worker（同步引擎异步执行由 `FG-DATASET-INGESTION-004` 验证）。
+- 环境与版本：本地 dev 环境 `BASE_URL`（如 `http://127.0.0.1:3000`），代码基线 `518be3e929`；使用真实 MongoDB、Redis 与已配置模型目录；无需启动 Pro BullMQ 同步 Worker（同步引擎异步执行由 `FG-DATASET-INGESTION-004` 验证）。
 - 远端夹具：在本地启动可控自定义 API 知识库 HTTP 服务（响应格式 `{ success, message, data }`），以本次 `runId` 隔离目录树，初始包含：
   - 顶层目录 `DirA` -> 子目录 `DirB` -> 文件 `file1.md`、`file2.md`、`file3.md`；
   - 顶层文件 `rootDoc.md`；
@@ -67,9 +69,9 @@ API 知识库以 `Dataset.syncAll` 和 `DatasetCollection.syncChildren` 作为�
 | --- | --- | --- |
 | C1 | 基础场景；`DS_API_<runId>` 初始为空，无已导入 API 集合 | `OwnerA` 打开知识库详情页进入 API 知识库导入弹窗（`APIDataset`），展开 `DirA` -> `DirB`，仅勾选深层文件 `file1.md` 并完成上传提交（触发 `POST /api/core/dataset/collection/create/apiCollectionV2`，携带 `ancestorPaths`）；随后调用 `GET /api/core/dataset/apiDataset/syncState` 并刷新集合列表。 |
 | C2 | 边界场景；承接 C1（`DirA`、`DirB` 均为 `syncChildren: false`，仅 `file1.md` 已导入） | 再次打开 `APIDataset` 导入弹窗，观察 `DirA`/`DirB` 标签与可展开性；① 展开 `DirB`，仅勾选 `file2.md` 导入；② 再次打开导入弹窗，直接勾选暂停态目录 `DirB`（不展开单选）并提交导入。 |
-| C3 | 基础/配置切换；承接 C2（此时 `DirA.syncChildren: false`、`DirB.syncChildren: true`、`Dataset.syncAll: false`） | ① 在知识库右侧信息页（`Info`）开启「全量同步」开关（`POST /api/core/dataset/update`，`syncAll: true`），刷新页面确认状态；② 调用 `POST /api/core/dataset/collection/update` 将 `DirB` 的 `syncChildren` 设为 `false`，刷新信息页与 `DirB` 目录侧栏（`CollectionFolderCard`）；③ 在 `DirB` 目录侧栏点击「点击恢复」并在确认弹窗点击确认。 |
+| C3 | 基础/配置切换；承接 C2（此时 `DirA.syncChildren: false`、`DirB.syncChildren: true`、`Dataset.syncAll: false`） | ① 在知识库右侧信息页（`Info`）开启「全量同步」开关（`PUT /api/core/dataset/update`，`syncAll: true`），刷新页面确认状态；② 调用 `POST /api/core/dataset/collection/update` 将 `DirB` 的 `syncChildren` 设为 `false`，刷新信息页与 `DirB` 目录侧栏（`CollectionFolderCard`）；③ 在 `DirB` 目录侧栏点击「点击恢复」并在确认弹窗点击确认。 |
 | C4 | 边界场景；承接 C3，先将 `DS_API_<runId>` 恢复为 `syncAll: true` 且 `DirA`/`DirB` 均为 `syncChildren: true`，并导入 `rootDoc.md` 与带子文档节点 `docA`（含 `docA#dir` 与 `docA1.md`） | ① `OwnerA` 调用 `POST /api/core/dataset/collection/delete`（传 `collectionIds`）删除 `DirB` 下的 `file3.md`；② 重新将 `syncAll` 置 `true` 后，删除根目录直属 `rootDoc.md`；③ 按 `apiFileIds: ['docA']` 调用删除接口删除带子文档节点 `docA`。 |
-| C5 | 异常场景；承接 C4（`DS_API_<runId>` 与 `DS_COMMON_<runId>` 均存在） | 依次执行 5 组非法/越权请求：① 对 `DS_COMMON_<runId>` 调 `POST /api/core/dataset/update` 传 `syncAll: true`；② 对 `DS_API_<runId>` 的 `LocalFolder` 与 `file1.md` 分别调 `POST /api/core/dataset/collection/update` 传 `syncChildren: false`；③ 调 `create/apiCollectionV2` 传入伪造不存在的 `ancestorPaths`（如 `['non_exist_dir']`）；④ `WriterB` 调 `dataset/update` 改 `syncAll` 与 `collection/update` 改 `DirA.syncChildren`；⑤ `WriterB` 调 `collection/delete` 删除 `DirB` 下的 `file2.md`。 |
+| C5 | 异常场景；承接 C4（`DS_API_<runId>` 与 `DS_COMMON_<runId>` 均存在） | 依次执行 5 组非法/越权请求：① 对 `DS_COMMON_<runId>` 调 `PUT /api/core/dataset/update` 传 `syncAll: true`；② 对 `DS_API_<runId>` 的 `LocalFolder` 与 `file1.md` 分别调 `POST /api/core/dataset/collection/update` 传 `syncChildren: false`；③ 调 `create/apiCollectionV2` 传入伪造不存在的 `ancestorPaths`（如 `['non_exist_dir']`）；④ `WriterB` 调 `dataset/update` 改 `syncAll` 与 `collection/update` 改 `DirA.syncChildren`；⑤ `WriterB` 调 `collection/delete` 删除 `DirB` 下的 `file2.md`。 |
 | C6 | 基础/边界场景；独立新建空 API 知识库 `DS_FULL_<runId>` | `OwnerA` 调用 `POST /api/core/dataset/collection/create/apiCollectionV2`，传入 `{ datasetId: DS_FULL_<runId>, syncAll: true, apiFiles: [] }`，完成后查询 `syncState`、`listV2` 与 Mongo 集合表。 |
 
 ## 预期结果

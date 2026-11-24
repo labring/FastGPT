@@ -9,6 +9,7 @@ import {
   ReadRoleVal,
   WriteRoleVal
 } from '@fastgpt/global/support/permission/constant';
+import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
 import type { ApiDatasetPermissionItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
 
@@ -51,10 +52,10 @@ export const getPermissionSubjectKey = (collaborator: CollaboratorItemType) => {
  *
  * 步骤：
  * 1. 收集本轮出现的四类主体，各查一次库：
- *    - username 两跳：user.username → userId → 同团队 teamMember.tmbId；
- *      username 只在内存里流转，不落库、不打日志；跨团队同名用户天然解析失败。
- *    - tmbId / groupId / orgId：按 teamId 批量校验存在性。
- * 2. 逐条转换，解析不到的主体直接丢弃（已删除成员、别的团队的 id 都不会让整轮失败）。
+ *    - username 两跳：user.username → userId → 同团队在职 teamMember.tmbId；
+ *      username 只在内存里流转，不落库、不打日志；跨团队同名用户及离职/禁用成员天然解析失败。
+ *    - tmbId / groupId / orgId：按 teamId 批量校验存在性（tmbId 额外校验在职状态）。
+ * 2. 逐条转换，解析不到的主体直接丢弃（已删除/离职成员、别的团队的 id 都不会让整轮失败）。
  * 3. 同一文件内同一主体出现多次时取最强角色，避免写入顺序决定结果。
  *
  * 输入 `undefined` 表示外部未提供，输出原样保留 `undefined`（调用方据此跳过该节点）。
@@ -93,7 +94,11 @@ export const resolveApiDatasetPermissionItems = async ({
     );
     if (usernameByUserId.size > 0) {
       const teamMembers = await MongoTeamMember.find(
-        { teamId, userId: { $in: Array.from(usernameByUserId.keys()) } },
+        {
+          teamId,
+          userId: { $in: Array.from(usernameByUserId.keys()) },
+          status: TeamMemberStatusEnum.active
+        },
         '_id userId'
       ).lean();
       for (const member of teamMembers) {
@@ -106,7 +111,14 @@ export const resolveApiDatasetPermissionItems = async ({
   const validTmbIds = new Set<string>(
     tmbIdSet.size > 0
       ? (
-          await MongoTeamMember.find({ teamId, _id: { $in: toObjectIds(tmbIdSet) } }, '_id').lean()
+          await MongoTeamMember.find(
+            {
+              teamId,
+              _id: { $in: toObjectIds(tmbIdSet) },
+              status: TeamMemberStatusEnum.active
+            },
+            '_id'
+          ).lean()
         ).map((item) => String(item._id))
       : []
   );

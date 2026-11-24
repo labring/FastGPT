@@ -21,8 +21,9 @@ sources:
 routes: []
 related:
   - FG-DATASET-INGESTION-003
+  - FG-DATASET-INGESTION-005
 automation: []
-baseline: "8476352ca9; pro/b2198137"
+baseline: "518be3e929; pro/cb1716a2"
 ---
 
 # API 知识库同步引擎范围约束、远端移动与防误删保护
@@ -33,7 +34,7 @@ API 知识库通过 Pro 同步 Worker 的 `apiDatasetProcessor` 异步拉取远�
 
 ## 前置准备
 
-- 环境与版本：在本地 dev 模式运行包含本次改动的 Pro `initDatasetSyncWorker`（基线 FastGPT `8476352ca9` + fastgpt-pro `b2198137`），连接真实 MongoDB、PG 向量库与隔离 Redis BullMQ 队列；复制 dev 模型目录配置，不修改共享业务数据。
+- 环境与版本：在本地 dev 模式运行包含本次改动的 Pro `initDatasetSyncWorker`（基线 FastGPT `518be3e929` + fastgpt-pro `cb1716a2`），连接真实 MongoDB、PG 向量库与隔离 Redis BullMQ 队列；复制 dev 模型目录配置，不修改共享业务数据。
 - 远端夹具：在本地启动可控自定义 API 知识库 HTTP 服务，实现 `listFiles`、`getFileDetail` 与文件内容读取接口，按本次 `runId` 独立维护内存目录树，并支持按场景动态增删改节点、移动节点及注入 `listFiles` HTTP 500 / 非协议 HTML 响应。
 - 身份与权限：本轮新建测试团队 `T_<runId>` 与 owner 成员；通过真实 Mongo 夹具与 `DatasetSync` BullMQ 队列投递同步任务。本例为服务集成测试，不覆盖浏览器 UI 交互或向量检索质量。
 - 复位约定：每个子场景使用独立创建的自定义 API 知识库 `DS_<runId>_C<n>`，先构造对应初始 Mongo 集合与远端目录树快照，再投递一次真实同步任务。
