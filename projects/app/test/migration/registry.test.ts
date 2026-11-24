@@ -25,10 +25,12 @@ describe('validateSystemMigrationRegistry', () => {
     ]);
     const tasks: readonly SystemMigration[] = systemMigrations;
     expect(tasks.filter((task) => task.blockStartup).map(({ id }) => id)).toEqual([
-      '20261116_migrate_system_configs',
+      '20261116_migrate_system_configs'
+    ]);
+    expect(tasks.filter((task) => task.manual).map(({ id }) => id)).toEqual([
       '20261120_clean_api_dataset_system_root'
     ]);
-    expect(tasks.filter((task) => task.delay || task.manual || task.resumable)).toEqual([]);
+    expect(tasks.filter((task) => task.delay || task.resumable)).toEqual([]);
 
     const configMigration = tasks.find(({ id }) => id === '20261116_migrate_system_configs');
     expect(configMigration).toMatchObject({
@@ -46,15 +48,13 @@ describe('validateSystemMigrationRegistry', () => {
     expect(configMigration).not.toHaveProperty('independent');
     expect(configMigration).not.toHaveProperty('resumable', true);
     const plan = createSystemMigrationPlan(tasks);
-    expect(plan.startupMigrations.map(({ id }) => id)).toEqual([
-      '20261116_migrate_system_configs',
-      '20261120_clean_api_dataset_system_root'
-    ]);
+    expect(plan.startupMigrations.map(({ id }) => id)).toEqual(['20261116_migrate_system_configs']);
     expect(plan.backgroundMigrations.map(({ id }) => id)).toEqual([
       '20261120_migrate_model_pricing',
       '20261022_initialize_dataset_vector_indexes',
       '20261104_backfill_chat_publish_source',
-      '20261104_backfill_openapi_key_type'
+      '20261104_backfill_openapi_key_type',
+      '20261120_clean_api_dataset_system_root'
     ]);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
