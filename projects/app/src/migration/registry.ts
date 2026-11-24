@@ -12,6 +12,7 @@ import { initializeDatasetVectorIndexes } from './tasks/4180/20261022_initialize
 import { backfillChatPublishSource } from './tasks/4180/20261104_backfill_chat_publish_source';
 import { backfillOpenApiKeyType } from './tasks/4180/20261104_backfill_openapi_key_type';
 import { migrateModelPricing } from './tasks/4180/20261120_migrate_model_pricing';
+import { cleanupMongoIndexes } from './tasks/4180/20261123_cleanup_mongo_indexes';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -233,6 +234,26 @@ export const systemMigrations = [
       }
     ],
     run: backfillOpenApiKeyType
+  },
+  {
+    id: '20261123_cleanup_mongo_indexes',
+    version: '4.18.0',
+    // 独立后台清理历史废弃 Mongo 索引，不阻塞业务启动或等待其他长任务；遵循 MONGO_DEPRECATE_INDEX 开关。
+    independent: true,
+    nameKey: i18nT('system_migration:migrations.20261123_cleanup_mongo_indexes.name'),
+    descriptionKey: i18nT('system_migration:migrations.20261123_cleanup_mongo_indexes.description'),
+    resultKey: i18nT('system_migration:migrations.20261123_cleanup_mongo_indexes.result'),
+    progressSteps: [
+      {
+        key: 'cleanup',
+        labelKey: i18nT('system_migration:migrations.20261123_cleanup_mongo_indexes.cleanup')
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT('system_migration:migrations.20261123_cleanup_mongo_indexes.validation')
+      }
+    ],
+    run: cleanupMongoIndexes
   }
 ] as const satisfies readonly SystemMigration[];
 

@@ -23,6 +23,7 @@ import { isS3ObjectKey, removeS3TTL } from '../../../common/s3/utils';
 import { getDatasetSynonymTransformContext } from '../synonym/entity';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { serviceEnv } from '../../../env';
+import { publishTrainingWakeup } from './wakeup';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.TRAINING);
 
@@ -278,52 +279,53 @@ export const pushDataListToTrainingQueue = async ({
     session: ClientSession
   ): Promise<number> => {
     let insertedCount = 0;
+    const insertedModes = new Set<TrainingModeEnum>();
 
     for (let i = 0; i < dataToInsert.length; i += batchSize) {
       const batch = dataToInsert.slice(i, i + batchSize);
 
       if (batch.length === 0) continue;
 
-      const result = await MongoDatasetTraining.insertMany(
-        batch.map((item) => {
-          // 只切换当前任务的模式，不拆分输入数组，保证预落库 dataIds 与输入顺序一致。
-          const itemMode = (() => {
-            if (
-              mode === TrainingModeEnum.auto &&
-              ((item.q ?? '') + (item.a ?? '')).length > maxToken
-            ) {
-              return TrainingModeEnum.index;
-            }
-            return mode;
-          })();
+      const records = batch.map((item) => {
+        // 只切换当前任务的模式，不拆分输入数组，保证预落库 dataIds 与输入顺序一致。
+        const itemMode = (() => {
+          if (
+            mode === TrainingModeEnum.auto &&
+            ((item.q ?? '') + (item.a ?? '')).length > maxToken
+          ) {
+            return TrainingModeEnum.index;
+          }
+          return mode;
+        })();
+        insertedModes.add(itemMode);
 
-          return {
-            teamId,
-            tmbId,
-            datasetId,
-            collectionId,
-            billId,
-            mode: itemMode,
-            ...(item.q && { q: item.q }),
-            ...(item.a && { a: item.a }),
-            ...(item.imageId && { imageId: item.imageId }),
-            ...(item.dataId && { dataId: item.dataId }),
-            ...(item.metadata && { dataMetadata: item.metadata }),
-            chunkIndex: item.chunkIndex ?? 0,
-            indexSize,
-            weight:
-              itemMode === TrainingModeEnum.index ? vectorModelData.config.weight : (weight ?? 0),
-            indexes: item.indexes,
-            retryCount: 3
-          };
-        }),
-        {
-          session,
-          ordered: true, // 改为 true: 任何失败立即停止,事务回滚
-          rawResult: true,
-          includeResultMetadata: false
-        }
-      );
+        return {
+          teamId,
+          tmbId,
+          datasetId,
+          collectionId,
+          billId,
+          mode: itemMode,
+          ...(item.q && { q: item.q }),
+          ...(item.a && { a: item.a }),
+          ...(item.imageId && { imageId: item.imageId }),
+          ...(item.dataId && { dataId: item.dataId }),
+          ...(item.metadata && { dataMetadata: item.metadata }),
+          chunkIndex: item.chunkIndex ?? 0,
+          indexSize,
+          weight:
+            itemMode === TrainingModeEnum.index ? vectorModelData.config.weight : (weight ?? 0),
+          indexes: item.indexes,
+          retryCount: 3
+        };
+      });
+
+      const result = await MongoDatasetTraining.insertMany(records, {
+        session,
+        ordered: true, // 改为 true: 任何失败立即停止,事务回滚
+        rawResult: true,
+        includeResultMetadata: false
+      });
 
       // ordered: true 模式下,成功必定等于批次大小
       insertedCount += result.insertedCount;
@@ -332,6 +334,10 @@ export const pushDataListToTrainingQueue = async ({
         insertedCount,
         total: dataToInsert.length
       });
+    }
+
+    if (insertedModes.size > 0) {
+      await publishTrainingWakeup({ modes: [...insertedModes], session });
     }
 
     return insertedCount;
@@ -552,4 +558,6 @@ export const pushDatasetToParseQueue = async ({
     })),
     { session, ordered: true }
   );
+
+  await publishTrainingWakeup({ modes: [TrainingModeEnum.parse], session });
 };

@@ -7,6 +7,7 @@ import { selectPluginText } from '@fastgpt/global/common/i18n/utils';
 import { SystemToolRepo } from '../../app/tool/systemTool/systemTool.repo';
 import { jsonSchema2NodeInput, jsonSchema2NodeOutput } from '@fastgpt/global/core/app/jsonschema';
 import {
+  getSystemToolSetChildId,
   getToolSetChildDescription,
   isDebugToolSource,
   isTeamPluginSource
@@ -93,7 +94,7 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
 
   const runtimeVersion = tool.version || toolSetNode.version;
   const childMap = new Map<string, (typeof tool.children)[number]>(
-    tool.children.map((child) => [`${systemToolId}/${child.id}`, child])
+    tool.children.map((child) => [getSystemToolSetChildId(systemToolId, child.id), child])
   );
   tool.children.forEach((child) => {
     childMap.set(child.id, child);
@@ -103,7 +104,7 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
     const child = childMap.get(selectedTool.toolId);
     if (!child) return [];
 
-    const pluginId = `${systemToolId}/${child.id}`;
+    const pluginId = getSystemToolSetChildId(systemToolId, child.id);
     const childDescription = selectPluginText(child.description, metadataLocale);
     const intro = getToolSetChildDescription(selectedTool.description, childDescription);
     const childInputs = jsonSchema2NodeInput({

@@ -154,8 +154,8 @@ catalogs:
       specifier: 4.13.16
       version: 4.13.16
     i18next:
-      specifier: 23.16.8
-      version: 23.16.8
+      specifier: 26.3.4
+      version: 26.3.4
     ipaddr.js:
       specifier: ^2.4.0
       version: 2.4.0
@@ -358,7 +358,7 @@ importers:
         version: 8.0.3
       i18next:
         specifier: 'catalog:'
-        version: 23.16.8
+        version: 26.3.4(typescript@6.0.3)
       js-yaml:
         specifier: 'catalog:'
         version: 4.3.2
@@ -370,13 +370,13 @@ importers:
         version: 11.3.0(bare-buffer@3.7.1)(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
       next-i18next:
         specifier: 'catalog:'
-        version: 15.4.2(i18next@23.16.8)(next@16.4.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 15.4.2(i18next@26.3.4(typescript@6.0.3))(next@16.4.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@26.3.4(typescript@6.0.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       prettier:
         specifier: catalog:lint
         version: 3.8.3
       react-i18next:
         specifier: 'catalog:'
-        version: 14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 14.1.2(i18next@26.3.4(typescript@6.0.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       turbo:
         specifier: 'catalog:'
         version: 2.10.8
@@ -558,6 +558,15 @@ importers:
       ioredis:
         specifier: ^5.11.1
         version: 5.11.1
+      kysely:
+        specifier: ^0.29.9
+        version: 0.29.9
+      mongoose:
+        specifier: 'catalog:'
+        version: 8.24.8(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
+      mysql2:
+        specifier: ^3.23.1
+        version: 3.24.3(@types/node@24.13.3)
       zod:
         specifier: 'catalog:'
         version: 4.6.7
@@ -565,6 +574,9 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.3
+      mongodb-memory-server:
+        specifier: 'catalog:'
+        version: 11.3.0(bare-buffer@3.7.1)(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -751,7 +763,7 @@ importers:
         version: 7.0.6
       i18next:
         specifier: 'catalog:'
-        version: 23.16.8
+        version: 26.3.4(typescript@6.0.3)
       iconv-lite:
         specifier: ^0.6.3
         version: 0.6.3
@@ -977,7 +989,7 @@ importers:
         version: 1.11.19
       i18next:
         specifier: 'catalog:'
-        version: 23.16.8
+        version: 26.3.4(typescript@6.0.3)
       js-cookie:
         specifier: ^3.0.7
         version: 3.0.7
@@ -992,7 +1004,7 @@ importers:
         version: 16.4.6(@babel/core@7.29.13)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
       next-i18next:
         specifier: 'catalog:'
-        version: 15.4.2(i18next@23.16.8)(next@16.4.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 15.4.2(i18next@26.3.4(typescript@6.0.3))(next@16.4.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@26.3.4(typescript@6.0.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       papaparse:
         specifier: ^5.4.1
         version: 5.4.1
@@ -1013,7 +1025,7 @@ importers:
         version: 7.43.1(react@18.3.1)
       react-i18next:
         specifier: 'catalog:'
-        version: 14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 14.1.2(i18next@26.3.4(typescript@6.0.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react-markdown:
         specifier: 'catalog:'
         version: 9.1.0(@types/react@18.3.1)(react@18.3.1)
@@ -1574,7 +1586,7 @@ importers:
         version: 2.4.29
       i18next:
         specifier: 'catalog:'
-        version: 23.16.8
+        version: 26.3.4(typescript@6.0.3)
       immer:
         specifier: ^9.0.19
         version: 9.0.21
@@ -1625,7 +1637,7 @@ importers:
         version: 16.4.6(@babel/core@7.29.13)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
       next-i18next:
         specifier: 'catalog:'
-        version: 15.4.2(i18next@23.16.8)(next@16.4.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 15.4.2(i18next@26.3.4(typescript@6.0.3))(next@16.4.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@26.3.4(typescript@6.0.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       nodemailer:
         specifier: 'catalog:'
         version: 10.2.1
@@ -1652,7 +1664,7 @@ importers:
         version: 7.43.1(react@18.3.1)
       react-i18next:
         specifier: 'catalog:'
-        version: 14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 14.1.2(i18next@26.3.4(typescript@6.0.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react-markdown:
         specifier: 'catalog:'
         version: 9.1.0(@types/react@18.3.1)(react@18.3.1)
@@ -1906,7 +1918,7 @@ importers:
         version: 1.21.1
       i18next:
         specifier: 'catalog:'
-        version: 23.16.8
+        version: 26.3.4(typescript@6.0.3)
       mongoose:
         specifier: 'catalog:'
         version: 8.24.8(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
@@ -1915,7 +1927,7 @@ importers:
         version: 16.4.6(@babel/core@7.29.13)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
       next-i18next:
         specifier: 'catalog:'
-        version: 15.4.2(i18next@23.16.8)(next@16.4.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 15.4.2(i18next@26.3.4(typescript@6.0.3))(next@16.4.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@26.3.4(typescript@6.0.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       react:
         specifier: ^18
         version: 18.3.1
@@ -1924,7 +1936,7 @@ importers:
         version: 18.3.1(react@18.3.1)
       react-i18next:
         specifier: 'catalog:'
-        version: 14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 14.1.2(i18next@26.3.4(typescript@6.0.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       zod:
         specifier: 'catalog:'
         version: 4.6.7
@@ -10145,8 +10157,13 @@ packages:
   i18next-fs-backend@2.7.0:
     resolution: {integrity: sha512-CUfthmimGMcpLujpZXrVl3aF2Ra/cdYhoA0Ep+PckOk0N8jhwGGDNsrB2WM5CR4i66nYQPJoWR8YzsUrohuqKw==}
 
-  i18next@23.16.8:
-    resolution: {integrity: sha512-06r/TitrM88Mg5FdUXAKL96dJMzgqLE5dv3ryBAra4KCwD9mJ4ndOTS95ZuymIGoE+2hzfdaMak2X11/es7ZWg==}
+  i18next@26.3.4:
+    resolution: {integrity: sha512-pa7m0d7pBDqGHZxljT+WPFeyFgQ7P7SciPPo1tTqYuO0z4sqADYhwnBESmmGp/wEof1inwdls/k8ZgTg8rxFHA==}
+    peerDependencies:
+      typescript: ^5 || ^6
+    peerDependenciesMeta:
+      typescript:
+        optional: true
 
   iconv-lite@0.4.24:
     resolution: {integrity: sha512-v3MXnZAcvnywkTUEZomIActle7RXXeedOR31wwl7VlyoXO4Qi9arvSenNQWne1TcRwhCL1HwLI21bEqdpj8/rA==}
@@ -10803,6 +10820,10 @@ packages:
   ky@1.14.3:
     resolution: {integrity: sha512-9zy9lkjac+TR1c2tG+mkNSVlyOpInnWdSMiue4F+kq8TwJSgv6o8jhLRg8Ho6SnZ9wOYUq/yozts9qQCfk7bIw==}
     engines: {node: '>=18'}
+
+  kysely@0.29.9:
+    resolution: {integrity: sha512-K48ErswC3MlIcBqR0pYIIEl+n9rIgwxgzaM1FxKHMXn7egxr1NHj7bCeF98mXl9A3/QoL5I7mo5S/mLXgeDgGA==}
+    engines: {node: '>=22.0.0'}
 
   langbase@1.1.44:
     resolution: {integrity: sha512-99nmbZ2DVwqYiqSVgH8lF9UoM7glIYSdG3WzE3Z2nZbJKoFyZPvRRk7Czq05b32nqcAALwzk3zqVOZmDIn1rqQ==}
@@ -11623,8 +11644,8 @@ packages:
   mongodb-connection-string-url@3.0.2:
     resolution: {integrity: sha512-rMO7CGo/9BFwyZABcKAWL8UJwH/Kc2x0g72uhDWzG48URRax5TCIcJ7Rc3RZqffZzO/Gwff/jyKwCU9TN8gehA==}
 
-  mongodb-connection-string-url@7.0.3:
-    resolution: {integrity: sha512-5I/pX3C2gPEz1EDdYMdZwBx1b/jE/f+J+KItSUJ02uQZ66bbe7kHKjv2uqCHJWaMCagem3dyfWqoAcv+XYZ6aw==}
+  mongodb-connection-string-url@7.0.2:
+    resolution: {integrity: sha512-ZoS07RoFqpKYQwAk59qmrx8+jJHNHU30UjlU96QktiGn1ltvDr+vCznLX5DiUBLEpMAHatHNWV1nM/74ul66kA==}
     engines: {node: '>=20.19.0'}
 
   mongodb-memory-server-core@11.3.0:
@@ -14117,17 +14138,9 @@ packages:
   tr46@0.0.3:
     resolution: {integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==}
 
-  tr46@5.1.0:
-    resolution: {integrity: sha512-IUWnUK7ADYR5Sl1fZlO1INDUhVhatWl7BtJWsIhwJ0UAK7ilzzIa8uIqOO/aYVWHZPJkKbEL+362wrzoeRF7bw==}
-    engines: {node: '>=18'}
-
   tr46@5.1.1:
     resolution: {integrity: sha512-hdF5ZgjTqgAntKkklYw0R03MG2x/bSzTtkxmIRw/sTNV8YXsCJ1tfLAX23lhxhHJlEf3CRCOCGGWw3vI3GaSPw==}
     engines: {node: '>=18'}
-
-  tr46@6.0.0:
-    resolution: {integrity: sha512-bLVMLPtstlZ4iMQHpFHTR7GAGj2jxi8Dg0s2h2MafAE4uSWF98FC/3MomU51iQAMf8/qDUbKWf5GxuvvVcXEhw==}
-    engines: {node: '>=20'}
 
   traverse@0.6.11:
     resolution: {integrity: sha512-vxXDZg8/+p3gblxB6BhhG5yWVn1kGRlaL8O78UDXc3wRnPizB5g83dcvWV1jpDMIPnjZjOFuxlMmE82XJ4407w==}
@@ -14802,10 +14815,6 @@ packages:
     resolution: {integrity: sha512-VwddBukDzu71offAQR975unBIGqfKZpM+8ZX6ySk8nYhVoo5CYaZyzt3YBvYtRtO+aoGlqxPg/B87NGVZ/fu6g==}
     engines: {node: '>=12'}
 
-  webidl-conversions@8.0.1:
-    resolution: {integrity: sha512-BMhLD/Sw+GbJC21C/UgyaZX41nPt8bUTg+jWyDeg7e7YN4xOM05YPSIXceACnXVtqyEw/LMClUQMtMZ+PGGpqQ==}
-    engines: {node: '>=20'}
-
   webpack-bundle-analyzer@4.10.1:
     resolution: {integrity: sha512-s3P7pgexgT/HTUSYgxJyn28A+99mmLq4HsJepMPzu0R8ImJc52QNqaFYW1Z2z2uIb1/J3eYgaAWVpaC+v/1aAQ==}
     engines: {node: '>= 10.13.0'}
@@ -14820,17 +14829,9 @@ packages:
     resolution: {integrity: sha512-QaKxh0eNIi2mE9p2vEdzfagOKHCcj1pJ56EEHGQOVxp8r9/iszLUUV7v89x9O1p/T+NlTM5W7jW6+cz4Fq1YVg==}
     engines: {node: '>=18'}
 
-  whatwg-url@14.1.1:
-    resolution: {integrity: sha512-mDGf9diDad/giZ/Sm9Xi2YcyzaFpbdLpJPr+E9fSkyQ7KpQD4SdFcugkRQYzhmfI4KeV4Qpnn2sKPdo+kmsgRQ==}
-    engines: {node: '>=18'}
-
   whatwg-url@14.2.0:
     resolution: {integrity: sha512-De72GdQZzNTUBBChsXueQUnPKDkg/5A5zp7pFDuQAj5UFoENpiACU0wlCvzpAGnTkj++ihpKwKyYewn/XNUbKw==}
     engines: {node: '>=18'}
-
-  whatwg-url@15.1.0:
-    resolution: {integrity: sha512-2ytDk0kiEj/yu90JOAp44PVPUkO9+jVhyf+SybKlRHSDlvOOZhdPIrr7xTH64l4WixO2cP+wQIcgujkGBPPz6g==}
-    engines: {node: '>=20'}
 
   whatwg-url@5.0.0:
     resolution: {integrity: sha512-saE57nupxk6v3HY35+jzBwYa0rKSy0XR8JSxZPwgLr7ys0IBzhGviA1/TUGJLmSVqs8pb9AnvICXEuOHLprYTw==}
@@ -25143,9 +25144,9 @@ snapshots:
 
   i18next-fs-backend@2.7.0: {}
 
-  i18next@23.16.8:
-    dependencies:
-      '@babel/runtime': 7.26.10
+  i18next@26.3.4(typescript@6.0.3):
+    optionalDependencies:
+      typescript: 6.0.3
 
   iconv-lite@0.4.24:
     dependencies:
@@ -25769,6 +25770,8 @@ snapshots:
   kuler@2.0.0: {}
 
   ky@1.14.3: {}
+
+  kysely@0.29.9: {}
 
   langbase@1.1.44(encoding@0.1.13)(react@18.3.1)(ws@8.21.3(bufferutil@4.1.0)(utf-8-validate@5.0.10)):
     dependencies:
@@ -27036,12 +27039,12 @@ snapshots:
   mongodb-connection-string-url@3.0.2:
     dependencies:
       '@types/whatwg-url': 11.0.5
-      whatwg-url: 14.1.1
+      whatwg-url: 14.2.0
 
-  mongodb-connection-string-url@7.0.3:
+  mongodb-connection-string-url@7.0.2:
     dependencies:
       '@types/whatwg-url': 13.0.0
-      whatwg-url: 15.1.0
+      whatwg-url: 14.2.0
 
   mongodb-memory-server-core@11.3.0(bare-buffer@3.7.1)(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10):
     dependencies:
@@ -27100,7 +27103,7 @@ snapshots:
     dependencies:
       '@mongodb-js/saslprep': 1.4.11
       bson: 7.3.4
-      mongodb-connection-string-url: 7.0.3
+      mongodb-connection-string-url: 7.0.2
     optionalDependencies:
       gcp-metadata: 5.3.0(encoding@0.1.13)
       socks: 2.8.10
@@ -27209,17 +27212,17 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  next-i18next@15.4.2(i18next@23.16.8)(next@16.4.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
+  next-i18next@15.4.2(i18next@26.3.4(typescript@6.0.3))(next@16.4.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@26.3.4(typescript@6.0.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
     dependencies:
       '@babel/runtime': 7.26.10
       '@types/hoist-non-react-statics': 3.3.6
       core-js: 3.41.0
       hoist-non-react-statics: 3.3.2
-      i18next: 23.16.8
+      i18next: 26.3.4(typescript@6.0.3)
       i18next-fs-backend: 2.7.0
       next: 16.4.6(@babel/core@7.29.13)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
       react: 18.3.1
-      react-i18next: 14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react-i18next: 14.1.2(i18next@26.3.4(typescript@6.0.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
 
   next-themes@0.4.6(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
@@ -28285,11 +28288,11 @@ snapshots:
     dependencies:
       react: 18.3.1
 
-  react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+  react-i18next@14.1.2(i18next@26.3.4(typescript@6.0.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       '@babel/runtime': 7.26.10
       html-parse-stringify: 3.0.1
-      i18next: 23.16.8
+      i18next: 26.3.4(typescript@6.0.3)
       react: 18.3.1
     optionalDependencies:
       react-dom: 18.3.1(react@18.3.1)
@@ -30058,15 +30061,7 @@ snapshots:
 
   tr46@0.0.3: {}
 
-  tr46@5.1.0:
-    dependencies:
-      punycode: 2.3.1
-
   tr46@5.1.1:
-    dependencies:
-      punycode: 2.3.1
-
-  tr46@6.0.0:
     dependencies:
       punycode: 2.3.1
 
@@ -30923,8 +30918,6 @@ snapshots:
 
   webidl-conversions@7.0.0: {}
 
-  webidl-conversions@8.0.1: {}
-
   webpack-bundle-analyzer@4.10.1(bufferutil@4.1.0)(utf-8-validate@5.0.10):
     dependencies:
       '@discoveryjs/json-ext': 0.5.7
@@ -30950,20 +30943,10 @@ snapshots:
 
   whatwg-mimetype@4.0.0: {}
 
-  whatwg-url@14.1.1:
-    dependencies:
-      tr46: 5.1.0
-      webidl-conversions: 7.0.0
-
   whatwg-url@14.2.0:
     dependencies:
       tr46: 5.1.1
       webidl-conversions: 7.0.0
-
-  whatwg-url@15.1.0:
-    dependencies:
-      tr46: 6.0.0
-      webidl-conversions: 8.0.1
 
   whatwg-url@5.0.0:
     dependencies:

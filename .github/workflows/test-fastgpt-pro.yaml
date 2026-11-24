@@ -5,6 +5,7 @@ on:
     paths:
       - 'pro'
       - 'pro/**'
+      - 'packages/dal/**'
       - 'packages/global/**'
       - 'packages/service/**'
       - 'packages/web/**'
@@ -76,6 +77,10 @@ jobs:
           cache: 'pnpm'
       - name: Install Deps
         run: pnpm install --frozen-lockfile
+      - name: Verify DAL & Pro Schema Guard
+        env:
+          FASTGPT_TEST_REQUIRE_PRO_SCHEMA_GUARD: '1'
+        run: node ./scripts/test/withMongo.mjs pnpm --filter @fastgpt/dal exec vitest run --no-coverage test/db/schema-drift-guard.test.ts test/db/package-exports.test.ts
       - name: Test
         env:
           INVOKE_TOKEN_SECRET: fastgpt_test_invoke_token_secret_32

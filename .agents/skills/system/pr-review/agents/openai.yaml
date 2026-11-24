@@ -1,7 +1,7 @@
 interface:
   display_name: 'PR Review'
-  short_description: '需求明确的 PR 基于最新 upstream main 审查，复审拒绝补丁式修复'
-  default_prompt: 'Use $pr-review to review this PR URL: reject it if the requirement is unclear, otherwise review it in a worktree based on the latest upstream main (including pro) within the stated requirement scope; report findings without posting comments.'
+  short_description: '围绕需求明确、方案把关、规范红线、BUG 与代码收敛务实审查 PR'
+  default_prompt: 'Use $pr-review to review this PR URL: read all comments first, reject if requirements are unclear, review in a worktree based on latest upstream main (including pro) for good design, repository rule redlines, real bug convergence, and code convergence against bloat; ignore acceptable legacy boundaries of reused components, list uncertain items as discussion topics, and report concisely without posting comments.'
 
 policy:
   allow_implicit_invocation: false

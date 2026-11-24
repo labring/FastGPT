@@ -98,7 +98,7 @@ describe('PriceTiersLabel', () => {
       pricing: {
         tiers: [
           {
-            maxInputTokens: 10,
+            maxInputTokensK: 10,
             inputPrice: 1.234,
             outputPrice: 1.999,
             cacheReadPrice: 0.125,
@@ -133,7 +133,7 @@ describe('PriceTiersLabel', () => {
     const { visibleText, headers, values, tooltips } = render({
       pricing: {
         tiers: [
-          { maxInputTokens: 32, inputPrice: 2, outputPrice: 4, cacheReadPrice: 0.2 },
+          { maxInputTokensK: 32, inputPrice: 2, outputPrice: 4, cacheReadPrice: 0.2 },
           { inputPrice: 4, outputPrice: 6, cacheReadPrice: 0, cacheCreationPrice: 5 }
         ]
       }
@@ -159,7 +159,7 @@ describe('PriceTiersLabel', () => {
     const { visibleText, tooltips, values } = render({
       pricing: {
         tiers: [
-          { maxInputTokens: 32, inputPrice: 0, outputPrice: 0, cacheReadPrice: 0 },
+          { maxInputTokensK: 32, inputPrice: 0, outputPrice: 0, cacheReadPrice: 0 },
           { inputPrice: 2, outputPrice: 4, cacheCreationPrice: 0 }
         ]
       }

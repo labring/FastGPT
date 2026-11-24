@@ -1,6 +1,7 @@
 import { availableParallelism } from 'node:os';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
+import { blockPrivateDalRepoImports } from '../../packages/dal/vitestBoundary';
 
 /**
  * Keep this helper local to the app project because the app Docker build context
@@ -20,6 +21,7 @@ const getTestMaxWorkers = () => {
 };
 
 export default defineConfig({
+  plugins: [blockPrivateDalRepoImports()],
   resolve: {
     alias: {
       '@': resolve('src'),

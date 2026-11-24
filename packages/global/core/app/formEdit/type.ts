@@ -5,10 +5,12 @@ import { FlowNodeTemplateTypeSchema } from '../../workflow/type/node';
 import { NodeInputKeyEnum } from '../../workflow/constants';
 import { SANDBOX_ENTRYPOINT_MAX_LENGTH } from '../../ai/sandbox/constants';
 import { AgentToolSchema } from '../tool/type';
+import { AgentSkillSourceSchema } from '../../ai/skill/type';
 
 /* ===== Agent Skill ===== */
 export const SelectedAgentSkillItemTypeSchema = z.object({
   skillId: z.string(),
+  source: AgentSkillSourceSchema.optional(),
   name: z.string(),
   description: z.string().default(''),
   avatar: z.string().optional(),
@@ -18,6 +20,7 @@ export const SelectedAgentSkillItemTypeSchema = z.object({
 export type SelectedAgentSkillItemType = z.infer<typeof SelectedAgentSkillItemTypeSchema>;
 export const StoredSelectedAgentSkillItemTypeSchema = z.object({
   skillId: z.string(),
+  source: AgentSkillSourceSchema.optional(),
   name: z.string().optional(),
   avatar: z.string().optional(),
   description: z.string().optional()

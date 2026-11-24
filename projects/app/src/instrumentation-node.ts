@@ -14,17 +14,19 @@ export async function registerNodeInstrumentation() {
 
     const [
       { connectMongo },
-      { connectionMongo, connectionLogMongo, MONGO_URL, MONGO_LOG_URL },
+      { configureMongoDalRuntime },
+      { connectionMongo, connectionLogMongo, hasSeparateMongoLogUri, MONGO_URL, MONGO_LOG_URL },
       { systemStartCb },
       { initGlobalVariables, getInitConfig, initSystemPluginTags, initAppTemplateTypes },
       { initVectorStore },
       { initSystemUser },
-      { startMongoWatch },
+      { startSystemSync },
       { startCron },
       { startTrainingQueue },
       { preLoadWorker },
       { loadInstalledModels, loadSystemModels },
       { trackTimerProcess },
+      { opsPerfTimerProcess },
       { initBullMQWorkers },
       { initS3Buckets },
       { initGeo },
@@ -42,17 +44,19 @@ export async function registerNodeInstrumentation() {
       { onDatasetVectorCounted }
     ] = await Promise.all([
       import('@fastgpt/service/common/mongo/init'),
+      import('@fastgpt/service/common/mongo/dalRuntime'),
       import('@fastgpt/service/common/mongo/index'),
       import('@fastgpt/service/common/system/tools'),
       import('@/service/common/system'),
       import('@fastgpt/service/common/vectorDB/controller'),
       import('@fastgpt/service/support/user/systemUser'),
-      import('@/service/common/system/volumnMongoWatch'),
+      import('@/service/common/system/sync'),
       import('@/service/common/system/cron'),
       import('@/service/core/dataset/training/utils'),
       import('@fastgpt/service/worker/preload'),
       import('@fastgpt/service/core/ai/model/catalog/service'),
       import('@fastgpt/service/common/middle/tracks/processor'),
+      import('@fastgpt/service/common/opsPerf/collector'),
       import('@/service/common/bullmq'),
       import('@fastgpt/service/common/s3'),
       import('@fastgpt/service/common/geo'),
@@ -113,6 +117,13 @@ export async function registerNodeInstrumentation() {
         getErrText
       }),
       runInitializationStep({
+        step: 'configure-db-runtime',
+        stage: InitialErrorEnum.MONGO_ERROR,
+        action: () => configureMongoDalRuntime(),
+        logger,
+        getErrText
+      }),
+      runInitializationStep({
         step: 'connect-main-mongo',
         stage: InitialErrorEnum.MONGO_ERROR,
         action: () =>
@@ -126,20 +137,24 @@ export async function registerNodeInstrumentation() {
           mongoUrl: MONGO_URL
         }
       }),
-      runInitializationStep({
-        step: 'connect-log-mongo',
-        stage: InitialErrorEnum.MONGO_ERROR,
-        action: () =>
-          connectMongo({
-            db: connectionLogMongo,
-            url: MONGO_LOG_URL
-          }),
-        logger,
-        getErrText,
-        meta: {
-          mongoLogUrl: MONGO_LOG_URL
-        }
-      }),
+      ...(hasSeparateMongoLogUri && connectionLogMongo !== connectionMongo
+        ? [
+            runInitializationStep({
+              step: 'connect-log-mongo',
+              stage: InitialErrorEnum.MONGO_ERROR,
+              action: () =>
+                connectMongo({
+                  db: connectionLogMongo,
+                  url: MONGO_LOG_URL
+                }),
+              logger,
+              getErrText,
+              meta: {
+                mongoLogUrl: MONGO_LOG_URL
+              }
+            })
+          ]
+        : []),
       runInitializationStep({
         step: 'init-vector-store',
         stage: InitialErrorEnum.VECTORDB_ERROR,
@@ -241,8 +256,9 @@ export async function registerNodeInstrumentation() {
 
       await Promise.all([
         runInitializationStep({
-          step: 'start-mongo-watch',
-          action: () => startMongoWatch(),
+          step: 'start-system-sync',
+          stage: InitialErrorEnum.REDIS_ERROR,
+          action: () => startSystemSync(),
           logger,
           getErrText
         }),
@@ -269,6 +285,12 @@ export async function registerNodeInstrumentation() {
       runBackgroundInitializationStep({
         step: 'track-timer-process',
         action: () => trackTimerProcess(),
+        logger,
+        getErrText
+      });
+      runBackgroundInitializationStep({
+        step: 'ops-perf-timer-process',
+        action: () => opsPerfTimerProcess(),
         logger,
         getErrText
       });

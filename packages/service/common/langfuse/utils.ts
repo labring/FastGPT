@@ -6,6 +6,13 @@ const LANGFUSE_MAX_OBJECT_KEYS = 100;
 const LANGFUSE_MAX_DEPTH = 8;
 const LANGFUSE_MAX_SERIALIZED_LENGTH = 100000;
 
+const LANGFUSE_TRACE_NAME = 'message';
+
+/**
+ * 不上报的历史上下文与内部推理对象。
+ * 推理文本默认过滤；仅当调用方确认字段属于上报契约时（generation 输出），通过
+ * `keepExcludedKeys` 放开，避免普通节点的输入/输出泄露推理内容。
+ */
 const langfuseExcludedKeys = new Set([
   'history',
   'histories',
@@ -14,6 +21,11 @@ const langfuseExcludedKeys = new Set([
   'reasoning',
   'reasoningText'
 ]);
+
+type LangfuseSerializeOptions = {
+  /** 仅放行调用方明确需要上报的排除字段；其他位置仍按默认规则过滤。 */
+  keepExcludedKeys?: ReadonlySet<string>;
+};
 
 type LangfuseTraceAttributesProps = {
   sessionId: string;
@@ -26,12 +38,16 @@ type LangfuseTraceAttributesProps = {
 /**
  * 将业务数据转换为有界的 Langfuse attribute 字符串。
  * 不可序列化的观测数据会被忽略，避免 tracing 反向中断工作流主流程。
+ * 默认过滤敏感字段；`keepExcludedKeys` 仅供调用方按上报契约放行指定字段。
  */
-export const serializeLangfuseValue = (value: unknown): string | undefined => {
+export const serializeLangfuseValue = (
+  value: unknown,
+  { keepExcludedKeys }: LangfuseSerializeOptions = {}
+): string | undefined => {
   const seen = new WeakSet<object>();
 
   const normalize = (current: unknown, depth: number, key?: string): unknown => {
-    if (key && langfuseExcludedKeys.has(key)) return undefined;
+    if (key && langfuseExcludedKeys.has(key) && !keepExcludedKeys?.has(key)) return undefined;
     if (current === null) return null;
 
     if (typeof current === 'string') {
@@ -98,16 +114,32 @@ export const getLangfuseTraceAttributes = ({
 }: LangfuseTraceAttributesProps) => {
   const serializedInput = serializeLangfuseValue(input);
   return {
-    'langfuse.trace.name': 'message',
+    'langfuse.trace.name': LANGFUSE_TRACE_NAME,
     'langfuse.session.id': sessionId,
     'langfuse.user.id': userId,
     'langfuse.trace.metadata.app_id': appId,
     'langfuse.trace.metadata.appName': appName,
+    // workflow.run 既是根 trace 也是 observation，两个维度都带 app_id，便于下游按 observation 过滤。
+    'langfuse.observation.metadata.app_id': appId,
     ...(serializedInput !== undefined ? { 'langfuse.trace.input': serializedInput } : {})
   };
 };
 
-/** 构造节点 span 的初始标记，确保 processor 从 span 启动时就跟踪该节点。 */
-export const getLangfuseStepStartAttributes = (appId: string) => ({
-  'langfuse.observation.metadata.app_id': appId
+/**
+ * 构造节点 span 的初始标记，确保 processor 从 span 启动时就跟踪该节点。
+ * nodeId/nodeName 用于区分同类型节点；trace.name 挂在每个 step 上，便于下游按 trace 名过滤。
+ */
+export const getLangfuseStepStartAttributes = ({
+  appId,
+  nodeId,
+  nodeName
+}: {
+  appId: string;
+  nodeId: string;
+  nodeName?: string;
+}) => ({
+  'langfuse.observation.metadata.app_id': appId,
+  'langfuse.observation.metadata.nodeId': nodeId,
+  ...(nodeName ? { 'langfuse.observation.metadata.nodeName': nodeName } : {}),
+  'langfuse.trace.name': LANGFUSE_TRACE_NAME
 });
