@@ -431,6 +431,7 @@ _DATASETS_COLLECTIONS_BATCH_DOWNLOAD_SPEC = OperationSpec(
     path_params=(),
     query_params=("ticket",),
     body_params=(),
+    retryable=False,
 )
 
 _DATASETS_COLLECTIONS_CREATE_SPEC = OperationSpec(

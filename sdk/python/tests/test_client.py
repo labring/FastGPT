@@ -20,6 +20,7 @@ from fastgpt_sdk import (
     FastGPTConflictError,
     FastGPTError,
     FastGPTIdentity,
+    FastGPTNetworkError,
     FastGPTNotFoundError,
     FastGPTRateLimitError,
     FastGPTServerError,
@@ -395,3 +396,157 @@ async def test_async_retry_and_timeout_mapping() -> None:
     ) as slow_client:
         with pytest.raises(FastGPTTimeoutError):
             await slow_client.models.catalog()
+
+
+def test_non_replayable_batch_download_never_retries() -> None:
+    attempts = 0
+
+    def status_handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            return _json_response(
+                {"message": "upstream overload"},
+                status_code=503,
+                headers={"retry-after": "0"},
+            )
+        return _json_response(
+            {"code": 501024, "statusText": "archiveInvalidTicket", "message": "Invalid ticket"},
+            status_code=410,
+        )
+
+    with (
+        FastGPT(
+            base_url="https://api.example.com",
+            api_key="fastgpt-key",
+            max_retries=2,
+            http_client=httpx.Client(transport=httpx.MockTransport(status_handler)),
+        ) as client,
+        pytest.raises(FastGPTServerError),
+    ):
+        client.datasets.collections.batch_download(
+            ticket="once-ticket-1",
+            request_options={"max_retries": 2},
+        )
+    assert attempts == 1
+
+    net_attempts = 0
+
+    def network_handler(request: httpx.Request) -> httpx.Response:
+        nonlocal net_attempts
+        net_attempts += 1
+        if net_attempts == 1:
+            raise httpx.RemoteProtocolError("stream interrupted", request=request)
+        return _json_response(
+            {"code": 501024, "statusText": "archiveInvalidTicket", "message": "Invalid ticket"},
+            status_code=410,
+        )
+
+    with FastGPT(
+        base_url="https://api.example.com",
+        api_key="fastgpt-key",
+        max_retries=2,
+        http_client=httpx.Client(transport=httpx.MockTransport(network_handler)),
+    ) as net_client, pytest.raises(FastGPTNetworkError):
+        net_client.datasets.collections.batch_download(ticket="once-ticket-2")
+    assert net_attempts == 1
+
+
+async def test_async_non_replayable_batch_download_never_retries() -> None:
+    attempts = 0
+
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            return _json_response(
+                {"message": "upstream overload"},
+                status_code=503,
+                headers={"retry-after": "0"},
+            )
+        return _json_response(
+            {"code": 501024, "statusText": "archiveInvalidTicket", "message": "Invalid ticket"},
+            status_code=410,
+        )
+
+    async with AsyncFastGPT(
+        base_url="https://api.example.com",
+        api_key="fastgpt-key",
+        max_retries=2,
+        http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+    ) as client:
+        with pytest.raises(FastGPTServerError):
+            await client.datasets.collections.batch_download(
+                ticket="once-async-1",
+                request_options={"max_retries": 2},
+            )
+    assert attempts == 1
+
+
+def test_request_options_auth_proxy_consistency_across_body_and_query() -> None:
+    seen: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content.decode("utf-8")) if request.content else None
+        seen.append({"url": str(request.url), "body": body})
+        if request.url.path.endswith("/core/chat/init"):
+            return _json_response(
+                {
+                    "code": 200,
+                    "data": {
+                        "chatId": "chat-1",
+                        "title": "Test Chat",
+                        "appId": "app-default-1",
+                        "app": {
+                            "name": "Test App",
+                            "avatar": "/icon.png",
+                            "intro": "intro",
+                            "type": "simple",
+                            "pluginInputs": [],
+                        },
+                    },
+                }
+            )
+        return _json_response({"code": 200, "data": {"total": 0, "list": []}})
+
+    with FastGPT(
+        base_url="https://api.example.com",
+        api_key="fastgpt-key",
+        default_app_id="app-default-1",
+        identity={"custom_uid": "default-uid"},
+        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    ) as client:
+        # 1. 结构化 request_options.auth_proxy 在 query 接口自动序列化为紧凑 JSON 字符串
+        client.chat.init(
+            chat_id="chat-1",
+            request_options={"auth_proxy": AuthProxyIdentity(username="bob")},
+        )
+        qs1 = parse_qs(urlparse(seen[0]["url"]).query)
+        assert qs1["authProxy"] == ['{"username":"bob"}']
+        assert "customUid" not in qs1
+
+        # 2. 结构化 request_options.auth_proxy 在 body 接口序列化为 JSON 对象
+        client.chat.histories.list(
+            page_size=5,
+            request_options={"auth_proxy": {"tmb_id": "tmb-9"}},
+        )
+        assert seen[1]["body"] == {
+            "pageSize": 5,
+            "appId": "app-default-1",
+            "authProxy": {"tmbId": "tmb-9"},
+        }
+
+        # 3. query 路由直传 JSON 字符串时保持原值，不被默认 custom_uid 覆盖
+        client.chat.init(chat_id="chat-2", auth_proxy='{"username":"raw-query"}')
+        qs3 = parse_qs(urlparse(seen[2]["url"]).query)
+        assert qs3["authProxy"] == ['{"username":"raw-query"}']
+        assert "customUid" not in qs3
+
+        # 4. request_options.auth_proxy 在运行时也不接受原始字符串
+        bad_request_options: Any = {"auth_proxy": '{"username":"bad"}'}
+        with pytest.raises(FastGPTBadRequestError):
+            client.chat.histories.list(
+                page_size=5,
+                request_options=bad_request_options,
+            )
+        assert len(seen) == 3

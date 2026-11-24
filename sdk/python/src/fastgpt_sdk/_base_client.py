@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import email.utils
 import inspect
 import json
@@ -10,8 +11,9 @@ import os
 import random
 import time
 import urllib.parse
-from collections.abc import Mapping, Sequence
+from collections.abc import AsyncIterator, Iterator, Mapping, Sequence
 from functools import lru_cache
+from pathlib import Path
 from typing import Any, TypeVar
 from urllib.parse import quote
 
@@ -54,6 +56,7 @@ from .options import (
     RequestHookContext,
     RequestOptions,
     ResponseHookContext,
+    is_readable_binary_stream,
 )
 from .sse import AsyncChatStream, ChatStream
 
@@ -84,9 +87,40 @@ def _get_type_adapter(tp: Any) -> TypeAdapter[Any]:
     return TypeAdapter(tp)
 
 
+def _contains_opaque_stream_or_binary(value: Any) -> bool:
+    if isinstance(value, (bytearray, Path)) or is_readable_binary_stream(value):
+        return True
+    if isinstance(value, (Iterator, AsyncIterator)) and not isinstance(
+        value, (str, bytes, bytearray, Path, Mapping, list, tuple)
+    ):
+        return True
+    if isinstance(value, tuple):
+        return any(_contains_opaque_stream_or_binary(item) for item in value)
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray, tuple)):
+        return any(_contains_opaque_stream_or_binary(item) for item in value)
+    return False
+
+
+def _dump_request_model(model: BaseModel) -> dict[str, Any]:
+    """导出请求模型为 wire 字典，同时保留未被 pydantic_core 转成迭代器的原始流句柄与元组。"""
+    dumped = model.model_dump(mode="python", by_alias=True, exclude_unset=True)
+    for field_name, field_info in type(model).model_fields.items():
+        if field_name not in model.model_fields_set:
+            continue
+        raw_val = getattr(model, field_name)
+        if not _contains_opaque_stream_or_binary(raw_val):
+            continue
+        wire_key = field_info.serialization_alias or field_info.alias or field_name
+        if wire_key in dumped:
+            dumped[wire_key] = raw_val
+        elif field_name in dumped:
+            dumped[field_name] = raw_val
+    return dumped
+
+
 def _unwrap_models_in_collection(value: Any) -> Any:
     if isinstance(value, BaseModel):
-        return value.model_dump(mode="python", by_alias=True, exclude_unset=True)
+        return _dump_request_model(value)
     if isinstance(value, Mapping):
         return {k: _unwrap_models_in_collection(v) for k, v in value.items()}
     if isinstance(value, list):
@@ -137,7 +171,7 @@ def prepare_request_payload(
         ) from exc
 
     if isinstance(validated, BaseModel):
-        dumped = validated.model_dump(mode="python", by_alias=True, exclude_unset=True)
+        dumped = _dump_request_model(validated)
     elif isinstance(validated, dict):
         dumped = dict(validated)
     else:
@@ -370,10 +404,10 @@ class _BaseClientCore:
             )
 
         if (
-        raw_input
-        and raw_input.get("customUid") is not None
-        and raw_input.get("authProxy") is not None
-    ):
+            raw_input
+            and raw_input.get("customUid") is not None
+            and raw_input.get("authProxy") is not None
+        ):
             raise FastGPTBadRequestError(
                 'Request payload "customUid" and "authProxy" are mutually exclusive and '
                 "cannot be set together"
@@ -389,7 +423,7 @@ class _BaseClientCore:
             raw_input.get("customUid") is not None or raw_input.get("authProxy") is not None
         ):
             # 当调用方直接传入字符串形式的 authProxy（如 query JSON 字符串）时，
-        # 保留原入参且不再叠加客户端默认身份。
+            # 保留原入参且不再叠加客户端默认身份。
             if isinstance(raw_input.get("authProxy"), str):
                 return None
             return _normalize_identity_input(
@@ -574,11 +608,11 @@ class _BaseClientCore:
         is_stream_body: bool,
         request_options: RequestOptions | None,
     ) -> int:
-        if is_stream_body:
+        if is_stream_body or spec.retryable is False:
             return 0
         if request_options and "max_retries" in request_options:
             return max(0, int(request_options["max_retries"]))
-        if spec.http_method == "GET":
+        if spec.retryable is True or (spec.retryable is None and spec.http_method == "GET"):
             return self._max_retries if self._max_retries is not None else _DEFAULT_GET_MAX_RETRIES
         return 0
 
@@ -596,8 +630,8 @@ class _BaseClientCore:
                 parsed = json.loads(raw_text)
                 if isinstance(parsed, dict):
                     server_code = (
-                parsed.get("code") if isinstance(parsed.get("code"), int) else None
-            )
+                        parsed.get("code") if isinstance(parsed.get("code"), int) else None
+                    )
                     status_text = (
                         parsed.get("statusText")
                         if isinstance(parsed.get("statusText"), str)
@@ -920,32 +954,38 @@ class SyncBaseClient(_BaseClientCore):
                     extra_secrets=extra_secrets,
                 ) from exc
 
-            duration_ms = (time.monotonic() - attempt_start) * 1000.0
-            notify_response_sync(
-                hooks=self._hooks,
-                logger=self._logger,
-                context=ResponseHookContext(
-                    operation_id=spec.id,
-                    method=spec.http_method,
-                    url=prepared.url,
-                    status_code=response.status_code,
-                    request_id=_extract_request_id(response.headers),
-                    duration_ms=duration_ms,
-                    attempt=attempt,
-                ),
-                extra_secrets=extra_secrets,
-            )
+            retry_backoff: float | None = None
+            try:
+                duration_ms = (time.monotonic() - attempt_start) * 1000.0
+                notify_response_sync(
+                    hooks=self._hooks,
+                    logger=self._logger,
+                    context=ResponseHookContext(
+                        operation_id=spec.id,
+                        method=spec.http_method,
+                        url=prepared.url,
+                        status_code=response.status_code,
+                        request_id=_extract_request_id(response.headers),
+                        duration_ms=duration_ms,
+                        attempt=attempt,
+                    ),
+                    extra_secrets=extra_secrets,
+                )
 
-            if response.status_code in _RETRYABLE_HTTP_STATUSES and attempt < max_retries:
-                backoff = _parse_retry_after_seconds(response.headers.get("retry-after"))
-                if backoff is None:
-                    backoff = _compute_backoff_seconds(attempt)
-                response.close()
-                attempt += 1
-                time.sleep(backoff)
-                continue
+                if response.status_code in _RETRYABLE_HTTP_STATUSES and attempt < max_retries:
+                    retry_backoff = _parse_retry_after_seconds(response.headers.get("retry-after"))
+                    if retry_backoff is None:
+                        retry_backoff = _compute_backoff_seconds(attempt)
+                    response.close()
+                else:
+                    return response, attempt
+            except BaseException:
+                with contextlib.suppress(Exception):
+                    response.close()
+                raise
 
-            return response, attempt
+            attempt += 1
+            time.sleep(retry_backoff)
 
     def _request_raw(
         self,
@@ -986,33 +1026,38 @@ class SyncBaseClient(_BaseClientCore):
                 secret_scope=secret_scope,
                 stream=False,
             )
-            extra_secrets = secret_scope.snapshot()
+            try:
+                extra_secrets = secret_scope.snapshot()
 
-            if response.status_code >= 400:
-                self._raise_for_http_error(
+                if response.status_code >= 400:
+                    self._raise_for_http_error(
+                        response=response,
+                        url=prepared.url,
+                        extra_secrets=extra_secrets,
+                    )
+
+                decoded = self._decode_success_response(
+                    spec=spec,
                     response=response,
                     url=prepared.url,
+                    response_type=response_type,
                     extra_secrets=extra_secrets,
                 )
-
-            decoded = self._decode_success_response(
-                spec=spec,
-                response=response,
-                url=prepared.url,
-                response_type=response_type,
-                extra_secrets=extra_secrets,
-            )
-            response_info = RawResponseInfo(
-                status_code=response.status_code,
-                headers=response.headers,
-                request_id=_extract_request_id(response.headers),
-                url=prepared.url,
-            )
-            return APIResponse(
-                http_response=response,
-                response_info=response_info,
-                parse_fn=lambda: decoded,
-            )
+                response_info = RawResponseInfo(
+                    status_code=response.status_code,
+                    headers=response.headers,
+                    request_id=_extract_request_id(response.headers),
+                    url=prepared.url,
+                )
+                return APIResponse(
+                    http_response=response,
+                    response_info=response_info,
+                    parse_fn=lambda: decoded,
+                )
+            except BaseException:
+                with contextlib.suppress(Exception):
+                    response.close()
+                raise
         except Exception as exc:
             notify_error_sync(
                 hooks=self._hooks,
@@ -1088,15 +1133,15 @@ class SyncBaseClient(_BaseClientCore):
                 secret_scope=secret_scope,
                 stream=True,
             )
-            extra_secrets = secret_scope.snapshot()
-            response_info = RawResponseInfo(
-                status_code=response.status_code,
-                headers=response.headers,
-                request_id=_extract_request_id(response.headers),
-                url=prepared.url,
-            )
-
             try:
+                extra_secrets = secret_scope.snapshot()
+                response_info = RawResponseInfo(
+                    status_code=response.status_code,
+                    headers=response.headers,
+                    request_id=_extract_request_id(response.headers),
+                    url=prepared.url,
+                )
+
                 if response.status_code >= 400:
                     response.read()
                     self._raise_for_http_error(
@@ -1116,16 +1161,17 @@ class SyncBaseClient(_BaseClientCore):
                         request_id=response_info.request_id,
                         extra_secrets=extra_secrets,
                     )
-            except BaseException:
-                response.close()
-                raise
 
-            return ChatStream(
-                http_response=response,
-                response=response_info,
-                require_done_signal=True,
-                extra_secrets=extra_secrets,
-            )
+                return ChatStream(
+                    http_response=response,
+                    response=response_info,
+                    require_done_signal=True,
+                    extra_secrets=extra_secrets,
+                )
+            except BaseException:
+                with contextlib.suppress(Exception):
+                    response.close()
+                raise
         except Exception as exc:
             notify_error_sync(
                 hooks=self._hooks,
@@ -1290,32 +1336,38 @@ class AsyncBaseClient(_BaseClientCore):
                     extra_secrets=extra_secrets,
                 ) from exc
 
-            duration_ms = (time.monotonic() - attempt_start) * 1000.0
-            await notify_response_async(
-                hooks=self._hooks,
-                logger=self._logger,
-                context=ResponseHookContext(
-                    operation_id=spec.id,
-                    method=spec.http_method,
-                    url=prepared.url,
-                    status_code=response.status_code,
-                    request_id=_extract_request_id(response.headers),
-                    duration_ms=duration_ms,
-                    attempt=attempt,
-                ),
-                extra_secrets=extra_secrets,
-            )
+            retry_backoff: float | None = None
+            try:
+                duration_ms = (time.monotonic() - attempt_start) * 1000.0
+                await notify_response_async(
+                    hooks=self._hooks,
+                    logger=self._logger,
+                    context=ResponseHookContext(
+                        operation_id=spec.id,
+                        method=spec.http_method,
+                        url=prepared.url,
+                        status_code=response.status_code,
+                        request_id=_extract_request_id(response.headers),
+                        duration_ms=duration_ms,
+                        attempt=attempt,
+                    ),
+                    extra_secrets=extra_secrets,
+                )
 
-            if response.status_code in _RETRYABLE_HTTP_STATUSES and attempt < max_retries:
-                backoff = _parse_retry_after_seconds(response.headers.get("retry-after"))
-                if backoff is None:
-                    backoff = _compute_backoff_seconds(attempt)
-                await response.aclose()
-                attempt += 1
-                await asyncio.sleep(backoff)
-                continue
+                if response.status_code in _RETRYABLE_HTTP_STATUSES and attempt < max_retries:
+                    retry_backoff = _parse_retry_after_seconds(response.headers.get("retry-after"))
+                    if retry_backoff is None:
+                        retry_backoff = _compute_backoff_seconds(attempt)
+                    await response.aclose()
+                else:
+                    return response, attempt
+            except BaseException:
+                with contextlib.suppress(Exception):
+                    await response.aclose()
+                raise
 
-            return response, attempt
+            attempt += 1
+            await asyncio.sleep(retry_backoff)
 
     async def _request_raw(
         self,
@@ -1356,33 +1408,38 @@ class AsyncBaseClient(_BaseClientCore):
                 secret_scope=secret_scope,
                 stream=False,
             )
-            extra_secrets = secret_scope.snapshot()
+            try:
+                extra_secrets = secret_scope.snapshot()
 
-            if response.status_code >= 400:
-                self._raise_for_http_error(
+                if response.status_code >= 400:
+                    self._raise_for_http_error(
+                        response=response,
+                        url=prepared.url,
+                        extra_secrets=extra_secrets,
+                    )
+
+                decoded = self._decode_success_response(
+                    spec=spec,
                     response=response,
                     url=prepared.url,
+                    response_type=response_type,
                     extra_secrets=extra_secrets,
                 )
-
-            decoded = self._decode_success_response(
-                spec=spec,
-                response=response,
-                url=prepared.url,
-                response_type=response_type,
-                extra_secrets=extra_secrets,
-            )
-            response_info = RawResponseInfo(
-                status_code=response.status_code,
-                headers=response.headers,
-                request_id=_extract_request_id(response.headers),
-                url=prepared.url,
-            )
-            return APIResponse(
-                http_response=response,
-                response_info=response_info,
-                parse_fn=lambda: decoded,
-            )
+                response_info = RawResponseInfo(
+                    status_code=response.status_code,
+                    headers=response.headers,
+                    request_id=_extract_request_id(response.headers),
+                    url=prepared.url,
+                )
+                return APIResponse(
+                    http_response=response,
+                    response_info=response_info,
+                    parse_fn=lambda: decoded,
+                )
+            except BaseException:
+                with contextlib.suppress(Exception):
+                    await response.aclose()
+                raise
         except Exception as exc:
             await notify_error_async(
                 hooks=self._hooks,
@@ -1459,15 +1516,15 @@ class AsyncBaseClient(_BaseClientCore):
                 secret_scope=secret_scope,
                 stream=True,
             )
-            extra_secrets = secret_scope.snapshot()
-            response_info = RawResponseInfo(
-                status_code=response.status_code,
-                headers=response.headers,
-                request_id=_extract_request_id(response.headers),
-                url=prepared.url,
-            )
-
             try:
+                extra_secrets = secret_scope.snapshot()
+                response_info = RawResponseInfo(
+                    status_code=response.status_code,
+                    headers=response.headers,
+                    request_id=_extract_request_id(response.headers),
+                    url=prepared.url,
+                )
+
                 if response.status_code >= 400:
                     await response.aread()
                     self._raise_for_http_error(
@@ -1487,16 +1544,17 @@ class AsyncBaseClient(_BaseClientCore):
                         request_id=response_info.request_id,
                         extra_secrets=extra_secrets,
                     )
-            except BaseException:
-                await response.aclose()
-                raise
 
-            return AsyncChatStream(
-                http_response=response,
-                response=response_info,
-                require_done_signal=True,
-                extra_secrets=extra_secrets,
-            )
+                return AsyncChatStream(
+                    http_response=response,
+                    response=response_info,
+                    require_done_signal=True,
+                    extra_secrets=extra_secrets,
+                )
+            except BaseException:
+                with contextlib.suppress(Exception):
+                    await response.aclose()
+                raise
         except Exception as exc:
             await notify_error_async(
                 hooks=self._hooks,

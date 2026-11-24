@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from collections.abc import AsyncIterator, Iterator
 from typing import Any
@@ -9,8 +10,15 @@ from typing import Any
 import httpx
 import pytest
 
-from fastgpt_sdk import AsyncFastGPT, FastGPT, FastGPTAuthError, FastGPTError, FastGPTNetworkError
-from fastgpt_sdk.options import RawResponseInfo
+from fastgpt_sdk import (
+    AsyncFastGPT,
+    FastGPT,
+    FastGPTAuthError,
+    FastGPTError,
+    FastGPTHooks,
+    FastGPTNetworkError,
+)
+from fastgpt_sdk.options import RawResponseInfo, ResponseHookContext
 from fastgpt_sdk.sse import (
     AgentLifecycleSseEvent,
     AnswerSseEvent,
@@ -365,3 +373,88 @@ async def test_async_chat_stream_events_close_and_error() -> None:
         with pytest.raises(FastGPTAuthError):
             await stream.final_result()
         assert stream.state == "failed"
+
+
+async def test_async_stream_cancelling_during_on_response_closes_response_and_stream() -> None:
+    hook_entered = asyncio.Event()
+    release_hook = asyncio.Event()
+
+    class _TrackedAsyncStream(httpx.AsyncByteStream):
+        def __init__(self) -> None:
+            self.closed = False
+
+        async def __aiter__(self) -> AsyncIterator[bytes]:
+            yield b'event: answer\ndata: {"choices":[{"delta":{"content":"hi"}}]}\n\n'
+            yield b"data: [DONE]\n\n"
+
+        async def aclose(self) -> None:
+            self.closed = True
+
+    tracked_stream = _TrackedAsyncStream()
+    raw_resp = httpx.Response(
+        status_code=200,
+        headers={"content-type": "text/event-stream; charset=utf-8"},
+        stream=tracked_stream,
+    )
+
+    async def handler(_req: httpx.Request) -> httpx.Response:
+        return raw_resp
+
+    async def slow_on_response(_ctx: ResponseHookContext) -> None:
+        hook_entered.set()
+        await release_hook.wait()
+
+    async with AsyncFastGPT(
+        base_url="https://api.example.com",
+        api_key="fastgpt-key",
+        hooks=FastGPTHooks(on_response=slow_on_response),
+        http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+    ) as client:
+        task = asyncio.create_task(client.chat.completions_v2_stream(chat_id="cancel-win"))
+        await hook_entered.wait()
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    assert raw_resp.is_closed
+    assert tracked_stream.closed
+
+
+def test_sync_stream_hook_base_exception_closes_response_and_stream() -> None:
+    class _TrackedSyncStream(httpx.SyncByteStream):
+        def __init__(self) -> None:
+            self.closed = False
+
+        def __iter__(self) -> Iterator[bytes]:
+            yield b'event: answer\ndata: {"choices":[{"delta":{"content":"hi"}}]}\n\n'
+            yield b"data: [DONE]\n\n"
+
+        def close(self) -> None:
+            self.closed = True
+
+    class _AbortSignal(BaseException):
+        pass
+
+    tracked_stream = _TrackedSyncStream()
+    raw_resp = httpx.Response(
+        status_code=200,
+        headers={"content-type": "text/event-stream; charset=utf-8"},
+        stream=tracked_stream,
+    )
+
+    def broken_on_response(_ctx: ResponseHookContext) -> None:
+        raise _AbortSignal("interrupt before handoff")
+
+    with (
+        FastGPT(
+            base_url="https://api.example.com",
+            api_key="fastgpt-key",
+            hooks=FastGPTHooks(on_response=broken_on_response),
+            http_client=httpx.Client(transport=httpx.MockTransport(lambda _r: raw_resp)),
+        ) as client,
+        pytest.raises(_AbortSignal),
+    ):
+        client.chat.completions_v2_stream(chat_id="sync-abort-win")
+
+    assert raw_resp.is_closed
+    assert tracked_stream.closed

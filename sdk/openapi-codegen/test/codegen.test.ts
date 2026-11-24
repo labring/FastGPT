@@ -8,6 +8,7 @@ import {
   toPythonSnakeCase
 } from '../src/pythonEmitter';
 import { normalizeRequestSchemaToIr } from '../src/schemaNormalizer';
+import { emitTypeScriptResourcesFile } from '../src/tsEmitter';
 
 const collectExpectedActiveSystemOps = (): string[] => {
   const keys: string[] = [];
@@ -211,6 +212,8 @@ describe('OpenAPI to SDK IR Compiler & Artifacts Drift', () => {
       (op) => op.id === 'datasets.collections.batchDownload'
     );
     expect(batchDownload?.responseMode).toBe('binary');
+    expect(batchDownload?.retryable).toBe(false);
+    expect(emitTypeScriptResourcesFile(ir)).toContain('"retryable": false');
 
     const deleteDataset = ir.operations.find((op) => op.id === 'datasets.delete');
     expect(deleteDataset?.responseMode).toBe('void');
@@ -244,6 +247,7 @@ describe('OpenAPI to SDK IR Compiler & Artifacts Drift', () => {
     expect(pyResources).toContain('class AsyncWithRawResponseChatResource:');
     expect(pyResources).toContain('def completions_v2_stream(');
     expect(pyResources).toContain('async def completions_v2_stream(');
+    expect(pyResources).toContain('retryable=False');
     expect(pyResources).toContain(
       'messages: Sequence[ChatCompletionsV2ReqMessagesItem | Mapping[str, Any]]'
     );

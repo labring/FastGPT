@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .errors import FastGPTBadRequestError
-from .options import MultipartMode
+from .options import MultipartMode, is_readable_binary_stream
 
 MultipartFileTuple = (
     tuple[str, bytes] | tuple[str, bytes, str] | tuple[str, Any] | tuple[str, Any, str]
@@ -28,8 +28,7 @@ def _coerce_file_content(
         if not content.is_file():
             raise FastGPTBadRequestError(f"Upload file path does not exist: {content}")
         return content.name or fallback_filename, content.read_bytes()
-    read_fn = getattr(content, "read", None)
-    if callable(read_fn):
+    if is_readable_binary_stream(content):
         raw_name = getattr(content, "name", None)
         filename = (
             os.path.basename(raw_name)

@@ -2,22 +2,33 @@
 
 from __future__ import annotations
 
+import io
 import warnings
+from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 import httpx
 import pytest
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
-from fastgpt_sdk import APIResponse, AsyncFastGPT, FastGPT
+from fastgpt_sdk import (
+    APIResponse,
+    AsyncFastGPT,
+    AuthProxyIdentity,
+    FastGPT,
+    FastGPTBadRequestError,
+    FastGPTIdentity,
+)
 from fastgpt_sdk.generated.models import (
     AppsLogsGetTotalDataRes,
     AppsLogsSearchReq,
     AppsLogsSearchReqCursor,
+    DatasetsCollectionsCreateByLocalFileReq,
     DatasetsCollectionsCreateByLocalFileRes,
     DatasetsCollectionsDeleteReq,
     DatasetsListRes,
+    DatasetsSearchReq,
     ModelsCatalogRes,
 )
 
@@ -108,9 +119,9 @@ def test_bidirectional_aliases_and_strict_union_validation() -> None:
     assert recorded == []
 
     # never 互斥约束：禁止同时传 id 与 collectionIds
-    from pydantic import TypeAdapter
-
-    delete_adapter = TypeAdapter(DatasetsCollectionsDeleteReq)
+    delete_adapter: TypeAdapter[DatasetsCollectionsDeleteReq] = TypeAdapter(
+        DatasetsCollectionsDeleteReq
+    )
     ok_single = delete_adapter.validate_python({"id": "col-1"})
     assert ok_single.id == "col-1"
 
@@ -291,3 +302,159 @@ async def test_async_resources_multipart_binary_and_void() -> None:
         raw_del = await client.with_raw_response.datasets.delete(id="ds-async")
         assert raw_del.status_code == 200
         assert raw_del.parse() is None
+
+
+def test_dual_alias_conflict_rejection_and_equal_dedup() -> None:
+    with pytest.raises(ValidationError):
+        DatasetsCollectionsCreateByLocalFileReq.model_validate(
+            {"dataset_id": "ds-A", "datasetId": "ds-B", "file": b"hello"}
+        )
+
+    # bool 与 int (True vs 1) 也必须视为冲突，防止 alias 静默吞并
+    with pytest.raises(ValidationError):
+        DatasetsCollectionsCreateByLocalFileReq.model_validate(
+            {
+                "dataset_id": "ds-A",
+                "data_enhance_collection_name": True,
+                "dataEnhanceCollectionName": 1,
+                "file": b"hello",
+            }
+        )
+
+    # 嵌套子模型（如 datasets.search 的 scope）同样拒绝冲突双别名
+    with pytest.raises(ValidationError):
+        DatasetsSearchReq.model_validate(
+            {
+                "scope": {"dataset_ids": ["ds-A"], "datasetIds": ["ds-B"]},
+                "query": {"text": "hello"},
+            }
+        )
+
+    with pytest.raises(ValidationError):
+        AuthProxyIdentity.model_validate({"tmb_id": "t-1", "tmbId": "t-2"})
+    with pytest.raises(ValidationError):
+        FastGPTIdentity.model_validate({"custom_uid": "u-1", "customUid": "u-2"})
+
+    # 相同双别名应归一化消除重复键，绝不残留在 model_extra 中
+    deduped = DatasetsCollectionsCreateByLocalFileReq.model_validate(
+        {"dataset_id": "ds-A", "datasetId": "ds-A", "file": b"hello"}
+    )
+    assert deduped.dataset_id == "ds-A"
+    assert not deduped.model_extra
+    assert deduped.model_dump(mode="python", by_alias=True, exclude_unset=True) == {
+        "file": b"hello",
+        "datasetId": "ds-A",
+    }
+
+    sent: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        sent.append(request)
+        return _json_response(
+            {"code": 200, "data": {"collectionId": "c1", "results": {"insertLen": 1}}}
+        )
+
+    with FastGPT(
+        base_url="https://api.example.com",
+        api_key="fastgpt-key",
+        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    ) as client:
+        with pytest.raises(FastGPTBadRequestError):
+            client.datasets.collections.create_by_local_file(
+                {"dataset_id": "ds-A", "datasetId": "ds-B", "file": b"x"}
+            )
+        assert sent == []
+
+
+async def test_file_handle_bytesio_path_bytearray_and_text_stream_rejection(
+    tmp_path: Path,
+) -> None:
+    captured_bodies: list[str] = []
+
+    def sync_handler(request: httpx.Request) -> httpx.Response:
+        captured_bodies.append(request.content.decode("utf-8", errors="replace"))
+        return _json_response(
+            {"code": 200, "data": {"collectionId": "col-fh-1", "results": {"insertLen": 1}}}
+        )
+
+    sample_file = tmp_path / "doc.txt"
+    sample_file.write_bytes(b"real-file-bytes")
+
+    with warnings.catch_warnings(record=True) as recorded:
+        warnings.simplefilter("error", UserWarning)
+
+        with FastGPT(
+            base_url="https://api.example.com",
+            api_key="fastgpt-key",
+            http_client=httpx.Client(transport=httpx.MockTransport(sync_handler)),
+        ) as client:
+            # 1. 直接传入 open(..., "rb") 真实文件句柄
+            with sample_file.open("rb") as fp:
+                res1 = client.datasets.collections.create_by_local_file(file=fp, dataset_id="ds-1")
+                assert res1.collection_id == "col-fh-1"
+
+            # 2. 传入带文件名的 BytesIO 元组
+            res2 = client.datasets.collections.create_by_local_file(
+                file=("stream.txt", io.BytesIO(b"stream-hello"), "text/plain"),
+                dataset_id="ds-1",
+            )
+            assert res2.collection_id == "col-fh-1"
+
+            # 3. 传入 Path 与 bytearray，以及命名 BytesIO 模型直传
+            client.datasets.collections.create_by_local_file(
+                DatasetsCollectionsCreateByLocalFileReq(
+                    file=("direct.bin", io.BytesIO(b"direct-io")),
+                    dataset_id="ds-1",
+                )
+            )
+            client.datasets.collections.create_by_local_file(file=sample_file, dataset_id="ds-1")
+            client.datasets.collections.create_by_local_file(
+                file=bytearray(b"bytearray-payload"),
+                dataset_id="ds-1",
+            )
+
+            # 4. 文本流（StringIO 与 open(..., "r")）必须在发请求前被统一拦截
+            with pytest.raises(FastGPTBadRequestError):
+                client.datasets.collections.create_by_local_file(
+                    file=io.StringIO("plain-text"),  # type: ignore[arg-type]
+                    dataset_id="ds-1",
+                )
+            with sample_file.open("r", encoding="utf-8") as text_fp, pytest.raises(
+                FastGPTBadRequestError
+            ):
+                client.datasets.collections.create_by_local_file(
+                    file=("bad.txt", text_fp),  # type: ignore[arg-type]
+                    dataset_id="ds-1",
+                )
+
+    assert recorded == []
+    assert len(captured_bodies) == 5
+    assert 'filename="doc.txt"' in captured_bodies[0]
+    assert "real-file-bytes" in captured_bodies[0]
+    assert 'filename="stream.txt"' in captured_bodies[1]
+    assert "stream-hello" in captured_bodies[1]
+    assert 'filename="direct.bin"' in captured_bodies[2]
+    assert "direct-io" in captured_bodies[2]
+    assert 'filename="doc.txt"' in captured_bodies[3]
+    assert "bytearray-payload" in captured_bodies[4]
+
+    async def async_handler(request: httpx.Request) -> httpx.Response:
+        captured_bodies.append(request.content.decode("utf-8", errors="replace"))
+        return _json_response(
+            {"code": 200, "data": {"collectionId": "col-async-fh", "results": {"insertLen": 1}}}
+        )
+
+    async with AsyncFastGPT(
+        base_url="https://api.example.com",
+        api_key="fastgpt-key",
+        http_client=httpx.AsyncClient(transport=httpx.MockTransport(async_handler)),
+    ) as async_client:
+        with sample_file.open("rb") as fp:
+            async_res = await async_client.datasets.collections.create_by_local_file(
+                file=("async-doc.txt", fp, "text/plain"),
+                dataset_id="ds-async",
+            )
+            assert async_res.collection_id == "col-async-fh"
+
+    assert 'filename="async-doc.txt"' in captured_bodies[-1]
+    assert "real-file-bytes" in captured_bodies[-1]

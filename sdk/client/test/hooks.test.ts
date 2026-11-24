@@ -22,7 +22,7 @@ describe('SDK Observability Hooks & Redacted Logger', () => {
       error: (message, meta) => logEntries.push({ level: 'error', message, meta })
     };
 
-    let fetchAttempt = 0;
+    let catalogAttempt = 0;
     const client = new FastGPT({
       baseUrl: 'https://api.example.com',
       apiKey: 'fastgpt-supersecretkey9999',
@@ -38,40 +38,60 @@ describe('SDK Observability Hooks & Redacted Logger', () => {
           errContexts.push(ctx);
         }
       },
-      fetch: async () => {
-        fetchAttempt += 1;
-        if (fetchAttempt === 1) {
+      fetch: async (url) => {
+        const urlStr = String(url);
+        if (urlStr.includes('/core/dataset/collection/batchDownload')) {
+          return new Response(new Uint8Array([0x50, 0x4b, 0x03, 0x04]), {
+            status: 200,
+            headers: {
+              'content-type': 'application/zip',
+              'x-request-id': 'req-hook-bin'
+            }
+          });
+        }
+        catalogAttempt += 1;
+        if (catalogAttempt === 1) {
           return new Response(JSON.stringify({ message: 'overload' }), {
             status: 503,
             headers: { 'content-type': 'application/json', 'retry-after': '0' }
           });
         }
-        return new Response(new Uint8Array([0x50, 0x4b, 0x03, 0x04]), {
-          status: 200,
-          headers: {
-            'content-type': 'application/zip',
-            'x-request-id': 'req-hook-1'
+        return new Response(
+          JSON.stringify({
+            code: 200,
+            statusText: '',
+            message: '',
+            data: { version: 'v1' }
+          }),
+          {
+            status: 200,
+            headers: {
+              'content-type': 'application/json',
+              'x-request-id': 'req-hook-1'
+            }
           }
-        });
+        );
       }
     });
 
     const data = await client.datasets.collections.batchDownload({
       ticket: 'secret-ticket-888'
     });
-
     expect(data).toBeInstanceOf(ArrayBuffer);
     expect(Array.from(new Uint8Array(data))).toEqual([0x50, 0x4b, 0x03, 0x04]);
-    expect(reqContexts).toHaveLength(2);
-    expect(reqContexts[0]?.attempt).toBe(0);
-    expect(reqContexts[1]?.attempt).toBe(1);
-    expect(reqContexts[0]?.headers.authorization).not.toContain('supersecretkey9999');
-    expect(reqContexts[0]?.url).not.toContain('secret-ticket-888');
 
-    expect(resContexts).toHaveLength(2);
-    expect(resContexts[0]?.status).toBe(503);
-    expect(resContexts[1]?.status).toBe(200);
-    expect(resContexts[1]?.requestId).toBe('req-hook-1');
+    const catalog = await client.models.catalog();
+    expect(catalog.version).toBe('v1');
+    expect(reqContexts).toHaveLength(3);
+    expect(reqContexts[0]?.url).not.toContain('secret-ticket-888');
+    expect(reqContexts[1]?.attempt).toBe(0);
+    expect(reqContexts[2]?.attempt).toBe(1);
+    expect(reqContexts[1]?.headers.authorization).not.toContain('supersecretkey9999');
+
+    expect(resContexts).toHaveLength(3);
+    expect(resContexts[1]?.status).toBe(503);
+    expect(resContexts[2]?.status).toBe(200);
+    expect(resContexts[2]?.requestId).toBe('req-hook-1');
     expect(errContexts).toHaveLength(0);
 
     // 确认日志内容同样经过完整脱敏

@@ -2,13 +2,34 @@
 
 from __future__ import annotations
 
+import io
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterator, Mapping
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
-from typing import IO, Any, Generic, Literal, Protocol, TypedDict, TypeGuard, TypeVar
+from typing import (
+    IO,
+    Annotated,
+    Any,
+    Generic,
+    Literal,
+    Protocol,
+    TypeAlias,
+    TypedDict,
+    TypeGuard,
+    TypeVar,
+)
 
 import httpx
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    PlainSerializer,
+    PlainValidator,
+    model_validator,
+)
 
 _T = TypeVar("_T")
 
@@ -31,6 +52,52 @@ def is_given(value: _T | NotGiven) -> TypeGuard[_T]:
     return not isinstance(value, NotGiven)
 
 
+def _values_equal_strict(left: Any, right: Any) -> bool:
+    """严格比较同一字段多个别名传入的值是否一致，区分 ``bool`` 与 ``int``。"""
+    if type(left) is bool or type(right) is bool:
+        return type(left) is type(right) and bool(left) == bool(right)
+    if isinstance(left, BaseModel) and isinstance(right, Mapping):
+        left_dict = left.model_dump(mode="python", by_alias=False, exclude_unset=True)
+        return _values_equal_strict(left_dict, right)
+    if isinstance(left, Mapping) and isinstance(right, BaseModel):
+        right_dict = right.model_dump(mode="python", by_alias=False, exclude_unset=True)
+        return _values_equal_strict(left, right_dict)
+    if isinstance(left, Mapping) and isinstance(right, Mapping):
+        if len(left) != len(right):
+            return False
+        return all(k in right and _values_equal_strict(v, right[k]) for k, v in left.items())
+    if isinstance(left, (list, tuple)) and isinstance(right, (list, tuple)):
+        if type(left) is not type(right) or len(left) != len(right):
+            return False
+        return all(_values_equal_strict(a, b) for a, b in zip(left, right, strict=True))
+    return bool(left == right)
+
+
+@lru_cache(maxsize=512)
+def _field_alias_groups(model_cls: type[BaseModel]) -> tuple[tuple[str, tuple[str, ...]], ...]:
+    groups: list[tuple[str, tuple[str, ...]]] = []
+    for field_name, field_info in model_cls.model_fields.items():
+        aliases: list[str] = [field_name]
+        if isinstance(field_info.alias, str) and field_info.alias not in aliases:
+            aliases.append(field_info.alias)
+        if (
+            isinstance(field_info.serialization_alias, str)
+            and field_info.serialization_alias not in aliases
+        ):
+            aliases.append(field_info.serialization_alias)
+        if isinstance(field_info.validation_alias, AliasChoices):
+            for choice in field_info.validation_alias.choices:
+                if isinstance(choice, str) and choice not in aliases:
+                    aliases.append(choice)
+        elif (
+            isinstance(field_info.validation_alias, str)
+            and field_info.validation_alias not in aliases
+        ):
+            aliases.append(field_info.validation_alias)
+        groups.append((field_name, tuple(aliases)))
+    return tuple(groups)
+
+
 class FastGPTModel(BaseModel):
     """FastGPT SDK 所有生成 Pydantic 模型的公共基类。"""
 
@@ -41,7 +108,37 @@ class FastGPTModel(BaseModel):
     )
 
 
-class FastGPTRequestModel(FastGPTModel):
+class _StrictAliasInputModel(FastGPTModel):
+    """输入模型公共基类：验证前归一化同字段双别名并拒绝冲突值，防止 extra 改写 wire 值。"""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_and_reject_alias_conflicts(cls, data: Any) -> Any:
+        if not isinstance(data, Mapping):
+            return data
+
+        normalized = dict(data)
+        for field_name, aliases in _field_alias_groups(cls):
+            present = [alias for alias in aliases if alias in normalized]
+            if len(present) <= 1:
+                continue
+
+            first_val = normalized[present[0]]
+            for other_alias in present[1:]:
+                if not _values_equal_strict(first_val, normalized[other_alias]):
+                    raise ValueError(
+                        f"Conflicting values provided for field aliases {present} "
+                        f"(field {field_name!r})"
+                    )
+
+            for alias in present:
+                normalized.pop(alias, None)
+            normalized[field_name] = first_val
+
+        return normalized
+
+
+class FastGPTRequestModel(_StrictAliasInputModel):
     """支持二进制上传句柄与 camelCase/snake_case 双向绑定的请求模型基类。"""
 
     model_config = ConfigDict(
@@ -62,7 +159,7 @@ class FastGPTResponseModel(FastGPTModel):
     )
 
 
-class AuthProxyIdentity(FastGPTModel):
+class AuthProxyIdentity(_StrictAliasInputModel):
     """团队成员身份代理（仅开启代理权限的个人密钥可用；tmb_id 与 username 互斥）。"""
 
     tmb_id: str | None = Field(
@@ -83,7 +180,7 @@ class AuthProxyIdentity(FastGPTModel):
         return self
 
 
-class FastGPTIdentity(FastGPTModel):
+class FastGPTIdentity(_StrictAliasInputModel):
     """调用者终端身份上下文（custom_uid 与 auth_proxy 严格互斥）。"""
 
     custom_uid: str | None = Field(
@@ -107,13 +204,77 @@ class FastGPTIdentity(FastGPTModel):
 CredentialProvider = str | Callable[[], str]
 AsyncCredentialProvider = str | Callable[[], str | Awaitable[str]]
 
-UploadableContent = bytes | bytearray | Path | IO[bytes]
-Uploadable = (
+def is_readable_binary_stream(value: Any) -> bool:
+    """判断输入是否为可读二进制流（显式拒绝 str、bytes、Path 及文本模式流）。"""
+    if isinstance(value, (str, bytes, bytearray, Path, io.TextIOBase)):
+        return False
+    mode = getattr(value, "mode", None)
+    if (
+        isinstance(mode, str)
+        and "b" not in mode
+        and not isinstance(value, (io.BufferedIOBase, io.RawIOBase))
+    ):
+        return False
+    return callable(getattr(value, "read", None))
+
+
+def _validate_uploadable_content(value: Any) -> Any:
+    if isinstance(value, (bytes, bytearray, Path)) or is_readable_binary_stream(value):
+        return value
+    raise ValueError(
+        "Invalid file upload content: expected bytes, bytearray, Path, or readable binary stream"
+    )
+
+
+def _validate_uploadable(value: Any) -> Any:
+    if isinstance(value, tuple):
+        if len(value) not in (2, 3) or not isinstance(value[0], str) or len(value[0]) == 0:
+            raise ValueError(
+                "Invalid file tuple upload input: expected (filename, content) or "
+                "(filename, content, content_type)"
+            )
+        _validate_uploadable_content(value[1])
+        if len(value) == 3 and (not isinstance(value[2], str) or len(value[2]) == 0):
+            raise ValueError("File tuple content_type must be a non-empty string")
+        return value
+    return _validate_uploadable_content(value)
+
+
+def _validate_binary_input(value: Any) -> Any:
+    if isinstance(value, (bytes, bytearray)) or is_readable_binary_stream(value):
+        return value
+    if (
+        isinstance(value, (Iterator, AsyncIterator))
+        and not isinstance(value, (str, bytes, bytearray, Path, Mapping, list, tuple))
+    ):
+        return value
+    raise ValueError(
+        "Invalid binary input: expected bytes, bytearray, readable binary stream, "
+        "or byte chunk iterator/async iterator"
+    )
+
+
+def _passthrough_serialize(value: Any) -> Any:
+    return value
+
+
+UploadableContent: TypeAlias = Annotated[
+    bytes | bytearray | Path | IO[bytes],
+    PlainValidator(_validate_uploadable_content),
+    PlainSerializer(_passthrough_serialize, return_type=Any),
+]
+Uploadable: TypeAlias = Annotated[
     UploadableContent
     | tuple[str, UploadableContent]
-    | tuple[str, UploadableContent, str]
-)
-BinaryInput = bytes | bytearray | IO[bytes] | Iterator[bytes] | AsyncIterator[bytes]
+    | tuple[str, UploadableContent, str],
+    PlainValidator(_validate_uploadable),
+    PlainSerializer(_passthrough_serialize, return_type=Any),
+]
+BinaryInput: TypeAlias = Annotated[
+    bytes | bytearray | IO[bytes] | Iterator[bytes] | AsyncIterator[bytes],
+    PlainValidator(_validate_binary_input),
+    PlainSerializer(_passthrough_serialize, return_type=Any),
+]
 
 FastGPTLogLevel = Literal["debug", "info", "warn", "error", "silent"]
 
@@ -171,7 +332,7 @@ class RequestOptions(TypedDict, total=False):
 
     api_key: str
     custom_uid: str
-    auth_proxy: AuthProxyIdentity | Mapping[str, Any] | str
+    auth_proxy: AuthProxyIdentity | Mapping[str, Any]
     timeout: float | httpx.Timeout
     max_retries: int
     headers: Mapping[str, str]
@@ -210,6 +371,7 @@ class OperationSpec:
     body_params: tuple[str, ...] = ()
     multipart_mode: MultipartMode | None = None
     binary_body_field: str | None = None
+    retryable: bool | None = None
 
 
 _UNSET = object()

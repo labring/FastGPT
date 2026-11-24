@@ -326,7 +326,8 @@ export const emitTypeScriptResourcesFile = (ir: SdkIrDocument): string => {
       pathParams: op.pathParams,
       queryParams: op.queryParams,
       bodyParams: op.bodyParams,
-      ...(op.binaryBodyField !== undefined ? { binaryBodyField: op.binaryBodyField } : {})
+      ...(op.binaryBodyField !== undefined ? { binaryBodyField: op.binaryBodyField } : {}),
+      ...(op.retryable !== undefined ? { retryable: op.retryable } : {})
     };
     return `const ${constName}: OperationSpec = ${JSON.stringify(specObj, null, 2)};`;
   });

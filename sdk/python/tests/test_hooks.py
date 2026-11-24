@@ -45,12 +45,18 @@ def test_hooks_redacted_across_retries_and_isolated_errors() -> None:
     err_contexts: list[ErrorHookContext] = []
     logger = _RecordingLogger()
 
-    attempt = 0
+    catalog_attempt = 0
 
-    def handler(_request: httpx.Request) -> httpx.Response:
-        nonlocal attempt
-        attempt += 1
-        if attempt == 1:
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal catalog_attempt
+        if "/core/dataset/collection/batchDownload" in str(request.url):
+            return httpx.Response(
+                200,
+                content=b"PK\x03\x04",
+                headers={"content-type": "application/zip", "x-request-id": "req-py-bin"},
+            )
+        catalog_attempt += 1
+        if catalog_attempt == 1:
             return httpx.Response(
                 503,
                 json={"message": "overload"},
@@ -58,8 +64,8 @@ def test_hooks_redacted_across_retries_and_isolated_errors() -> None:
             )
         return httpx.Response(
             200,
-            content=b"PK\x03\x04",
-            headers={"content-type": "application/zip", "x-request-id": "req-py-1"},
+            json={"code": 200, "data": {"version": "v1"}},
+            headers={"content-type": "application/json", "x-request-id": "req-py-1"},
         )
 
     hooks = FastGPTHooks(
@@ -78,14 +84,18 @@ def test_hooks_redacted_across_retries_and_isolated_errors() -> None:
         data = client.datasets.collections.batch_download(ticket="secret-ticket-888")
         assert data == b"PK\x03\x04"
 
-    assert len(req_contexts) == 2
-    assert req_contexts[0].attempt == 0
-    assert req_contexts[1].attempt == 1
-    assert "supersecretkey9999" not in req_contexts[0].headers["authorization"]
+        cat = client.models.catalog()
+        assert cat.version == "v1"
+
+    assert len(req_contexts) == 3
     assert "secret-ticket-888" not in req_contexts[0].url
-    assert res_contexts[0].status_code == 503
-    assert res_contexts[1].status_code == 200
-    assert res_contexts[1].request_id == "req-py-1"
+    assert req_contexts[1].attempt == 0
+    assert req_contexts[2].attempt == 1
+    assert "supersecretkey9999" not in req_contexts[1].headers["authorization"]
+    assert len(res_contexts) == 3
+    assert res_contexts[1].status_code == 503
+    assert res_contexts[2].status_code == 200
+    assert res_contexts[2].request_id == "req-py-1"
     assert err_contexts == []
 
     serialized_logs = json.dumps(logger.entries)

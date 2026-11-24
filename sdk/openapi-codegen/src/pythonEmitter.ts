@@ -954,7 +954,8 @@ export const emitPythonResourcesFile = (ir: SdkIrDocument): string => {
       `    body_params=${formatPythonTuple(op.bodyParams)},`,
       ...(op.binaryBodyField !== undefined
         ? [`    binary_body_field=${toPythonStringLiteral(op.binaryBodyField)},`]
-        : [])
+        : []),
+      ...(op.retryable !== undefined ? [`    retryable=${op.retryable ? 'True' : 'False'},`] : [])
     ];
     return `${constName} = OperationSpec(\n${fields.join('\n')}\n)`;
   });
