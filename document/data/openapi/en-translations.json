@@ -1165,10 +1165,6 @@
       "zh": "成功获取日志用户列表",
       "en": "Successfully retrieved application log users"
     },
-    "1666aa7e84489684426e945113c5a41563139b747f29707abf6221f1a731d0f7": {
-      "zh": "每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费",
-      "en": "Price in points per million cache-creation tokens. Defaults to the input price. Set to 0 for free cache creation."
-    },
     "16bd8baef4bb42b9a9ff798c777db745438566538a4f3ae742ad158a230db201": {
       "zh": "结果总 token 预算，无业务上限；保留完整数据块，最后一块可能使预算超出",
       "en": "Total token budget across returned chunks (no fixed cap; preserves complete chunks, so the final chunk may exceed the budget)"
@@ -3225,10 +3221,6 @@
       "zh": "event: chatTitle\ndata: {\"title\":\"铃芽之旅导演\"}\n\n",
       "en": "event: chatTitle\ndata: {\"title\":\"Suzume Director\"}\n\n"
     },
-    "917be2d94d2a40b12f78cabaa6ddc4d0e002c0e684fdcd60a322e10aea4118db": {
-      "zh": "每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费",
-      "en": "Price in points per million cache-read tokens. Defaults to the input price. Set to 0 for free cache reads."
-    },
     "91dfab3d199500fcf4100da15cf44e1bb144ec12bb3f8be9811fecd8ce0f1e1d": {
       "zh": "是否显示技能引用",
       "en": "Whether to include skill references"
@@ -3992,10 +3984,6 @@
     "bacf8efc2caf3256508c6a3e5a415c3b6290e88937046cec4ab80a1325651ce7": {
       "zh": "分类问题列表",
       "en": "Classification question items"
-    },
-    "bb1bdb28dd72a41860100dbc8b1c1e73a6ee12661cf04df7516661b02f6ff6ef": {
-      "zh": "兼容旧客户端的阶梯上限，单位 M Tokens；新客户端请使用 maxInputTokensK",
-      "en": "Tier upper limit in millions of tokens for older clients. New clients should use maxInputTokensK."
     },
     "bb90bcc5eb8444b8015d4cb5033e706ae8730d43dc4ef0960a1adaf89a64fb75": {
       "zh": "时间变量的选择粒度",

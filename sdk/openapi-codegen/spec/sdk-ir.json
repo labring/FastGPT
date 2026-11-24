@@ -28661,18 +28661,6 @@
                                     },
                                     "required": false,
                                     "description": "每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
-                                  },
-                                  {
-                                    "name": "maxInputTokens",
-                                    "schema": {
-                                      "kind": "primitive",
-                                      "type": "number",
-                                      "description": "兼容旧客户端的阶梯上限，单位 M Tokens；新客户端请使用 maxInputTokensK",
-                                      "deprecated": true
-                                    },
-                                    "required": false,
-                                    "description": "兼容旧客户端的阶梯上限，单位 M Tokens；新客户端请使用 maxInputTokensK",
-                                    "deprecated": true
                                   }
                                 ],
                                 "additionalProperties": false
@@ -29077,18 +29065,6 @@
                                     },
                                     "required": false,
                                     "description": "每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
-                                  },
-                                  {
-                                    "name": "maxInputTokens",
-                                    "schema": {
-                                      "kind": "primitive",
-                                      "type": "number",
-                                      "description": "兼容旧客户端的阶梯上限，单位 M Tokens；新客户端请使用 maxInputTokensK",
-                                      "deprecated": true
-                                    },
-                                    "required": false,
-                                    "description": "兼容旧客户端的阶梯上限，单位 M Tokens；新客户端请使用 maxInputTokensK",
-                                    "deprecated": true
                                   }
                                 ],
                                 "additionalProperties": false
@@ -73009,18 +72985,6 @@
                                 },
                                 "required": false,
                                 "description": "每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
-                              },
-                              {
-                                "name": "maxInputTokens",
-                                "schema": {
-                                  "kind": "primitive",
-                                  "type": "number",
-                                  "description": "兼容旧客户端的阶梯上限，单位 M Tokens；新客户端请使用 maxInputTokensK",
-                                  "deprecated": true
-                                },
-                                "required": false,
-                                "description": "兼容旧客户端的阶梯上限，单位 M Tokens；新客户端请使用 maxInputTokensK",
-                                "deprecated": true
                               }
                             ],
                             "additionalProperties": false
@@ -73425,18 +73389,6 @@
                                 },
                                 "required": false,
                                 "description": "每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费"
-                              },
-                              {
-                                "name": "maxInputTokens",
-                                "schema": {
-                                  "kind": "primitive",
-                                  "type": "number",
-                                  "description": "兼容旧客户端的阶梯上限，单位 M Tokens；新客户端请使用 maxInputTokensK",
-                                  "deprecated": true
-                                },
-                                "required": false,
-                                "description": "兼容旧客户端的阶梯上限，单位 M Tokens；新客户端请使用 maxInputTokensK",
-                                "deprecated": true
                               }
                             ],
                             "additionalProperties": false

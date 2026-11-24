@@ -38077,25 +38077,6 @@
                                         "example": 4,
                                         "type": "number",
                                         "minimum": 0
-                                      },
-                                      "cacheReadPrice": {
-                                        "description": "Price in points per million cache-read tokens. Defaults to the input price. Set to 0 for free cache reads.",
-                                        "example": 0.2,
-                                        "type": "number",
-                                        "minimum": 0
-                                      },
-                                      "cacheCreationPrice": {
-                                        "description": "Price in points per million cache-creation tokens. Defaults to the input price. Set to 0 for free cache creation.",
-                                        "example": 2.5,
-                                        "type": "number",
-                                        "minimum": 0
-                                      },
-                                      "maxInputTokens": {
-                                        "deprecated": true,
-                                        "description": "Tier upper limit in millions of tokens for older clients. New clients should use maxInputTokensK.",
-                                        "example": 0.128,
-                                        "type": "number",
-                                        "minimum": 0
                                       }
                                     },
                                     "required": [
@@ -38323,25 +38304,6 @@
                                       "outputPrice": {
                                         "description": "Credit price per million output tokens",
                                         "example": 4,
-                                        "type": "number",
-                                        "minimum": 0
-                                      },
-                                      "cacheReadPrice": {
-                                        "description": "Price in points per million cache-read tokens. Defaults to the input price. Set to 0 for free cache reads.",
-                                        "example": 0.2,
-                                        "type": "number",
-                                        "minimum": 0
-                                      },
-                                      "cacheCreationPrice": {
-                                        "description": "Price in points per million cache-creation tokens. Defaults to the input price. Set to 0 for free cache creation.",
-                                        "example": 2.5,
-                                        "type": "number",
-                                        "minimum": 0
-                                      },
-                                      "maxInputTokens": {
-                                        "deprecated": true,
-                                        "description": "Tier upper limit in millions of tokens for older clients. New clients should use maxInputTokensK.",
-                                        "example": 0.128,
                                         "type": "number",
                                         "minimum": 0
                                       }

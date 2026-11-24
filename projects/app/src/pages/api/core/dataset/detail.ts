@@ -1,5 +1,4 @@
 import { NextAPI } from '@/service/middleware/entry';
-import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { filterApiDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
 import {
   GetDatasetDetailQuerySchema,
@@ -44,26 +43,6 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> 
     vision: true
   });
 
-  /** 详情接口的旧字段从当前 K 上限投影，供 4.17.5 客户端按 M Tokens 读取。 */
-  const toPublicLLMModel = (model: LLMModelDataType | undefined) => {
-    if (!model) return;
-    const publicModel = desensitizeModel(model);
-    const tiers = publicModel.pricing?.tiers;
-    if (!tiers) return publicModel;
-
-    return {
-      ...publicModel,
-      pricing: {
-        ...publicModel.pricing,
-        tiers: tiers.map((tier) =>
-          tier.maxInputTokensK === undefined
-            ? tier
-            : { ...tier, maxInputTokens: tier.maxInputTokensK / 1000 }
-        )
-      }
-    };
-  };
-
   return GetDatasetDetailResponseSchema.parse({
     ...dataset,
     status,
@@ -71,8 +50,8 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> 
     errorMsg,
     permission,
     vectorModel: vectorModel ? desensitizeModel(vectorModel) : undefined,
-    agentModel: toPublicLLMModel(agentModel),
-    vlmModel: toPublicLLMModel(vlmModel),
+    agentModel: agentModel ? desensitizeModel(agentModel) : undefined,
+    vlmModel: vlmModel ? desensitizeModel(vlmModel) : undefined,
     apiDatasetServer: filterApiDatasetServerPublicData(dataset.apiDatasetServer)
   });
 }

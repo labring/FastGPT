@@ -587,7 +587,7 @@ const ImportedSTTPricingSchema = z
   .union([
     STTModelPricingSchema,
     z
-      .object({ type: z.undefined().optional(), unitPrice: ModelPricingSchema.shape.unitPrice })
+      .strictObject({ unitPrice: ModelPricingSchema.shape.unitPrice })
       .transform(({ unitPrice }) => ({ type: 'duration' as const, unitPrice }))
   ])
   .optional();
