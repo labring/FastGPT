@@ -149,9 +149,9 @@ const TierBreakdownTable = ({
           </Thead>
           <Tbody>
             {tiers.map((tier, index) => {
-              const lowerBound = tiers[index - 1]?.maxInputTokens ?? 0;
+              const lowerBound = tiers[index - 1]?.maxInputTokensK ?? 0;
               const upperBound =
-                tier.maxInputTokens === undefined ? '' : ` ≤ ${tier.maxInputTokens}`;
+                tier.maxInputTokensK === undefined ? '' : ` ≤ ${tier.maxInputTokensK}`;
               return (
                 <Tr key={index}>
                   <Td>

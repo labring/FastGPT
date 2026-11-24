@@ -65,7 +65,7 @@ export const formatDbModelToDocumentData = (
       );
       return result.success ? result.data : undefined;
     }
-    // 未迁移的小数阶梯上限或异常价格按免费处理，避免后台迁移完成前阻断模型目录加载。
+    // 旧阶梯上限由迁移读取。这里仅保留新上限及价格，尚未回填时首档按无限上限计费。
     const result = ModelPricingSchema.safeParse(pricing);
     return result.success ? result.data : undefined;
   })();

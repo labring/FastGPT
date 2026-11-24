@@ -175,8 +175,14 @@ describe('migrateModelPricing', () => {
     await expect(migrateModelPricing(state.context)).rejects.toThrow('validation failed');
     expect(state.failures()).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ stageKey: 'validation', data: { id: String(raw._id) } }),
-        expect.objectContaining({ stageKey: 'validation', data: { id: lateId! } })
+        expect.objectContaining({
+          stageKey: 'validation',
+          data: { id: String(raw._id), modelType: ModelTypeEnum.stt }
+        }),
+        expect.objectContaining({
+          stageKey: 'validation',
+          data: { id: lateId!, modelType: ModelTypeEnum.stt }
+        })
       ])
     );
     state.context.reportProgress.mockReset();
@@ -212,13 +218,36 @@ describe('migrateModelPricing', () => {
     );
     expect(await migrateModelPricing(state.context)).toEqual({ sttModels: 1, llmModels: 2 });
     expect((await MongoAIModel.collection.findOne({ _id: valid._id }))?.pricing).toEqual({
-      tierUnit: 'K',
-      tiers: [{ maxInputTokens: 128, inputPrice: 100, outputPrice: 200 }]
+      tiers: [{ maxInputTokens: 0.128, maxInputTokensK: 128, inputPrice: 100, outputPrice: 200 }]
     });
     expect((await MongoAIModel.collection.findOne({ _id: invalid._id }))?.pricing).toEqual({
-      tierUnit: 'K',
-      tiers: [{ maxInputTokens: 32, inputPrice: 10, outputPrice: 20 }]
+      tiers: [{ maxInputTokens: 0.032, maxInputTokensK: 32, inputPrice: 10, outputPrice: 20 }]
     });
+  });
+
+  it('retries the LLM backfill after validation finds a concurrent legacy write', async () => {
+    const pricing = { tiers: [{ maxInputTokens: 0.032, inputPrice: 10, outputPrice: 20 }] };
+    const existing = await seedLlm({ pricing });
+    const state = createContext();
+    let lateId: Types.ObjectId | undefined;
+    state.context.reportProgress.mockImplementation(async ({ key, status }) => {
+      if (key === 'validation' && status === 'running') {
+        lateId = (await seedLlm({ pricing }))._id;
+      }
+    });
+
+    await expect(migrateModelPricing(state.context)).rejects.toThrow('validation failed');
+    expect(state.failures()).toMatchObject([
+      { stageKey: 'validation', data: { id: String(lateId) } }
+    ]);
+
+    state.context.reportProgress.mockReset();
+    expect(await migrateModelPricing(state.context)).toEqual({ sttModels: 0, llmModels: 2 });
+    for (const _id of [existing._id, lateId]) {
+      expect((await MongoAIModel.collection.findOne({ _id }))?.pricing).toEqual({
+        tiers: [{ ...pricing.tiers[0], maxInputTokensK: 32 }]
+      });
+    }
   });
 
   it('rolls back LLM transaction if catalog revision fails, skips empty collections, and keeps post-commit retries idempotent', async () => {
@@ -247,11 +276,11 @@ describe('migrateModelPricing', () => {
 
     revisionSpy.mockRestore();
     const state = createContext();
-    // 模拟 llmTiers 事务已提交但 checkpoint 尚未保存就中断，验证 <=10 的小上限重跑不会被二次放大。
+    // 模拟 llmTiers 事务已提交但 checkpoint 尚未保存就中断，验证小上限重跑不会被二次换算。
     const originalSaveCheckpoint = state.context.saveCheckpoint.getMockImplementation()!;
     let failLlmCheckpoint = true;
     state.context.saveCheckpoint.mockImplementation(async (value) => {
-      if (failLlmCheckpoint && value.llmCompleted) {
+      if (failLlmCheckpoint && value.llmMigrated !== undefined) {
         failLlmCheckpoint = false;
         throw new Error('checkpoint store unavailable after commit');
       }
@@ -261,25 +290,22 @@ describe('migrateModelPricing', () => {
       'checkpoint store unavailable after commit'
     );
     expect((await MongoAIModel.collection.findOne({ _id: smallBoundModel._id }))?.pricing).toEqual({
-      tierUnit: 'K',
-      tiers: [{ maxInputTokens: 5, inputPrice: 10, outputPrice: 20 }]
+      tiers: [{ maxInputTokens: 0.005, maxInputTokensK: 5, inputPrice: 10, outputPrice: 20 }]
     });
 
     expect(await migrateModelPricing(state.context)).toEqual({ sttModels: 0, llmModels: 0 });
     expect((await MongoAIModel.collection.findOne({ _id: model._id }))?.pricing).toEqual({
-      tierUnit: 'K',
-      tiers: [{ maxInputTokens: 272, inputPrice: 1680, outputPrice: 8400 }]
+      tiers: [{ maxInputTokens: 0.272, maxInputTokensK: 272, inputPrice: 1680, outputPrice: 8400 }]
     });
     expect((await MongoAIModel.collection.findOne({ _id: smallBoundModel._id }))?.pricing).toEqual({
-      tierUnit: 'K',
-      tiers: [{ maxInputTokens: 5, inputPrice: 10, outputPrice: 20 }]
+      tiers: [{ maxInputTokens: 0.005, maxInputTokensK: 5, inputPrice: 10, outputPrice: 20 }]
     });
     const runtimeSmall = formatDbModelToRuntimeModel(
       (await MongoAIModel.collection.findOne({ _id: smallBoundModel._id })) as any,
       { fallbackProvider: true }
     );
     expect(calculateModelPrice({ config: runtimeSmall, inputTokens: 5000 }).matchedTier).toEqual({
-      maxInputTokens: 5,
+      maxInputTokensK: 5,
       inputPrice: 10,
       outputPrice: 20
     });
@@ -292,7 +318,7 @@ describe('migrateModelPricing', () => {
     expect(await MongoAIModel.collection.findOne({ _id: rawStt._id })).toEqual(rawStt);
   });
 
-  it('verifies a mixed 10+ model catalog across STT backfill, <1 M->K conversion, >=1 tierUnit backfill, and billing', async () => {
+  it('verifies a mixed 10+ model catalog across STT backfill, legacy M/K limit backfill, and billing', async () => {
     const fixtures = await Promise.all([
       // 1~2. STT 历史时长模式 + 已有 tokens 模式
       seedStt({ model: 'mock-whisper-legacy', pricing: { unitPrice: 0.2 } }),
@@ -336,16 +362,18 @@ describe('migrateModelPricing', () => {
           ]
         }
       }),
-      // 7. 0 -> 1 与 >= 1（10）仅回填 tierUnit: 'K'
+      // 7. 0 -> 1 与已回填的 K 上限
       seedLlm({
         model: 'mock-zero-bound',
         pricing: { tiers: [{ maxInputTokens: 0, inputPrice: 1, outputPrice: 2 }] }
       }),
       seedLlm({
         model: 'mock-boundary-10m',
-        pricing: { tiers: [{ maxInputTokens: 10, inputPrice: 15, outputPrice: 30 }] }
+        pricing: {
+          tiers: [{ maxInputTokens: 10, maxInputTokensK: 12, inputPrice: 15, outputPrice: 30 }]
+        }
       }),
-      // 8~9. >10 跳过（32K 与 [8, 32]）
+      // 8~9. 旧 K 整数（32K 与 [8, 32]）
       seedLlm({
         model: 'mock-already-k-32',
         pricing: {
@@ -384,15 +412,21 @@ describe('migrateModelPricing', () => {
       })
     ]);
 
-    expect(await migrateModelPricing(createContext().context)).toEqual({
-      sttModels: 2,
-      llmModels: 9
-    });
-
     const loadRuntime = async (id: Types.ObjectId) => {
       const doc = await MongoAIModel.collection.findOne({ _id: id });
       return { doc, runtime: formatDbModelToRuntimeModel(doc as any, { fallbackProvider: true }) };
     };
+
+    const before = await loadRuntime(fixtures[2]._id);
+    expect(calculateModelPrice({ config: before.runtime, inputTokens: 200_000 })).toMatchObject({
+      matchedTier: { inputPrice: 2.5, outputPrice: 10 },
+      totalPoints: 0.5
+    });
+
+    expect(await migrateModelPricing(createContext().context)).toEqual({
+      sttModels: 2,
+      llmModels: 7
+    });
 
     // STT 1~2
     const sttLegacy = await loadRuntime(fixtures[0]._id);
@@ -414,7 +448,12 @@ describe('migrateModelPricing', () => {
 
     // LLM 128K & 272K & 浮点边界
     const m128 = await loadRuntime(fixtures[2]._id);
-    expect(m128.doc?.pricing.tiers[0].maxInputTokens).toBe(128);
+    expect(m128.doc?.pricing.tiers[0]).toEqual({
+      maxInputTokens: 0.128,
+      maxInputTokensK: 128,
+      inputPrice: 2.5,
+      outputPrice: 10
+    });
     expect(calculateModelPrice({ config: m128.runtime, inputTokens: 128_000 }).totalPoints).toBe(
       0.32
     );
@@ -423,30 +462,32 @@ describe('migrateModelPricing', () => {
     );
 
     const m272 = await loadRuntime(fixtures[3]._id);
-    expect(m272.doc?.pricing.tiers.map((t: any) => t.maxInputTokens)).toEqual([32, 272, undefined]);
+    expect(m272.doc?.pricing.tiers.map((t: any) => t.maxInputTokensK)).toEqual([
+      32,
+      272,
+      undefined
+    ]);
     expect(
       calculateModelPrice({ config: m272.runtime, inputTokens: 272_000, outputTokens: 1_000 })
     ).toMatchObject({
-      matchedTier: { maxInputTokens: 272, inputPrice: 1680, outputPrice: 8400 },
+      matchedTier: { maxInputTokensK: 272, inputPrice: 1680, outputPrice: 8400 },
       totalPoints: 465.36
     });
 
-    expect((await loadRuntime(fixtures[4]._id)).doc?.pricing.tiers[0].maxInputTokens).toBe(290);
+    expect((await loadRuntime(fixtures[4]._id)).doc?.pricing.tiers[0].maxInputTokensK).toBe(290);
     expect(
-      (await loadRuntime(fixtures[5]._id)).doc?.pricing.tiers.map((t: any) => t.maxInputTokens)
+      (await loadRuntime(fixtures[5]._id)).doc?.pricing.tiers.map((t: any) => t.maxInputTokensK)
     ).toEqual([4, 5]);
-    expect((await loadRuntime(fixtures[6]._id)).doc?.pricing.tiers[0].maxInputTokens).toBe(1);
+    expect((await loadRuntime(fixtures[6]._id)).doc?.pricing.tiers[0].maxInputTokensK).toBe(1);
     expect((await loadRuntime(fixtures[7]._id)).doc?.pricing).toEqual({
-      tierUnit: 'K',
-      tiers: [{ maxInputTokens: 10, inputPrice: 15, outputPrice: 30 }]
+      tiers: [{ maxInputTokens: 10, maxInputTokensK: 12, inputPrice: 15, outputPrice: 30 }]
     });
 
-    // >10 跳过 & 非系统LLM/Embedding隔离
+    // 旧 K 整数与开放档回填，团队 LLM 和 Embedding 隔离
     const skip32 = await loadRuntime(fixtures[8]._id);
     expect(skip32.doc?.pricing).toEqual({
-      tierUnit: 'K',
       tiers: [
-        { maxInputTokens: 32, inputPrice: 1000, outputPrice: 2000 },
+        { maxInputTokens: 32, maxInputTokensK: 32, inputPrice: 1000, outputPrice: 2000 },
         { inputPrice: 3000, outputPrice: 6000 }
       ]
     });
@@ -454,17 +495,15 @@ describe('migrateModelPricing', () => {
       32
     );
     const skipMixed = await loadRuntime(fixtures[9]._id);
-    expect(skipMixed.doc?.pricing.tiers.map((t: any) => t.maxInputTokens)).toEqual([
+    expect(skipMixed.doc?.pricing.tiers.map((t: any) => t.maxInputTokensK)).toEqual([
       8,
       32,
       undefined
     ]);
-    expect(skipMixed.doc?.pricing.tierUnit).toBe('K');
     expect(calculateModelPrice({ config: skipMixed.runtime, inputTokens: 8_000 }).totalPoints).toBe(
       4
     );
     expect((await loadRuntime(fixtures[10]._id)).doc?.pricing).toEqual({
-      tierUnit: 'K',
       tiers: [{ inputPrice: 10, outputPrice: 20 }]
     });
     expect((await loadRuntime(fixtures[11]._id)).doc).toEqual(fixtures[11]);

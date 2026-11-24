@@ -52,9 +52,9 @@ STT 新增按每百万 Tokens 或每 60 秒计价，通过后续启动迁移为�
 
 ## LLM 阶梯输入上限回退为 K Tokens
 
-单价（`inputPrice`、`outputPrice`、`unitPrice`）维持每百万 Tokens 计费不变，LLM 阶梯输入区间上限 `pricing.tiers[].maxInputTokens` 调整回 **K Tokens**（即 `inputTokens / 1000 <= maxInputTokens`），表格列头同步标明 `输入区间：K Tokens`、`输入价格/M Tokens`、`输出价格/M Tokens`。`pricing.tierUnit`（默认为 `'K'`）用于显式标识阶梯单位：保存非空阶梯与迁移均写入 `'K'`；运行时若缺少 `tierUnit`，不做区间匹配，直接使用第一档计费。
+LLM 使用 `pricing.tiers[].maxInputTokensK` 配置阶梯上限，值为正整数 K Tokens。新版按 `inputTokens / 1000 <= maxInputTokensK` 选档。省略上限表示无限档，尚未回填的旧阶梯因此直接使用首档。单价按每百万 Tokens 结算。
 
-`maxInputTokens` 约束为正整数（K Tokens），4.18.0 已将 STT 计价类型回填与 LLM 阶梯上限转换合并为多阶段独立后台迁移 `20261120_migrate_model_pricing`（模型价格迁移）：依次执行 `stt` 分批回填、`llmTiers` 单事务回填缺失 `tierUnit` 的记录（已有 `'K'` 跳过保证重跑幂等；无单位且含 `< 1` 上限按 M 乘以 1000 四舍五入为正整数 K 并写入 `tierUnit: 'K'`；无单位且均为 `>= 1` 或开放档仅回填 `tierUnit: 'K'`）与 `validation` 联合校验。
+4.18.0 的独立后台任务 `20261120_migrate_model_pricing` 先分批回填 STT 计价类型，再用单事务回填系统 LLM 的 `maxInputTokensK`，最后联合校验。模型任一旧上限小于 1 时，按 M Tokens 将有限旧上限乘以 1000、四舍五入并最小取 1。其余旧上限按 K Tokens 复制。已有新上限及开放档跳过，原 `maxInputTokens` 保留供回退读取。新版保存只写 `maxInputTokensK`，经新版编辑的配置按新版格式使用。
 
 ## 缓存计费扩展
 

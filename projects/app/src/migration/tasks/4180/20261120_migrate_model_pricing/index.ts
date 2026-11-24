@@ -24,8 +24,6 @@ const CheckpointSchema = z.object({
     })
     .optional(),
   sttCompleted: z.boolean().optional(),
-  llmCompleted: z.boolean().optional(),
-  llmScanned: IntSchema.optional(),
   llmMigrated: IntSchema.optional()
 });
 
@@ -34,7 +32,7 @@ type ModelPricingCheckpoint = z.infer<typeof CheckpointSchema>;
 /**
  * 独立后台模型价格迁移（三阶段）：
  * 1. `stt`：分批断点回填缺少计价类型的 STT 模型为 `duration`；
- * 2. `llmTiers`：单事务回填缺失 `tierUnit` 的系统 LLM 阶梯（含 `< 1` 上限乘千转 K，其余仅回填 `tierUnit: 'K'`；已标 `K` 跳过）；
+ * 2. `llmTiers`：单事务回填系统 LLM 的 K Tokens 阶梯上限，已有 K 上限的档位跳过；
  * 3. `validation`：联合校验全库 STT 计价类型与系统 LLM 阶梯上限。
  */
 export const migrateModelPricing = async (context: SystemMigrationContext) => {
@@ -58,7 +56,10 @@ export const migrateModelPricing = async (context: SystemMigrationContext) => {
 
   const sttFailures = new Map<string, SystemMigrationFailedRecord>();
   for (const failure of await context.getFailedRecords()) {
-    if (failure.stageKey === 'stt' || failure.stageKey === 'validation') {
+    if (
+      failure.stageKey === 'stt' ||
+      (failure.stageKey === 'validation' && failure.data.modelType === ModelTypeEnum.stt)
+    ) {
       sttFailures.set(String(failure.data.id), failure);
     }
   }
@@ -150,36 +151,33 @@ export const migrateModelPricing = async (context: SystemMigrationContext) => {
     current: checkpoint.stt?.scanned ?? 0
   });
 
-  // ==================== 阶段 2：LLM 阶梯输入上限 M -> K ====================
+  // ==================== 阶段 2：回填 LLM 阶梯 K Tokens 上限 ====================
   await context.reportProgress({ key: 'llmTiers', status: SystemMigrationStatusEnum.running });
   await context.assertActive();
 
-  if (!checkpoint.llmCompleted) {
-    const llmResult = await migrateTierMaxInputTokensInTransaction({
-      signal: context.signal,
-      assertActive: context.assertActive
+  // 重试时重扫已提交的 LLM 阶梯，以补齐事务提交后由旧节点写入的记录。
+  const llmResult = await migrateTierMaxInputTokensInTransaction({
+    signal: context.signal,
+    assertActive: context.assertActive
+  });
+  if (llmResult.failures.length > 0) {
+    await context.fail({
+      message: 'Some LLM pricing tiers require repair',
+      failedRecords: llmResult.failures
     });
-    if (llmResult.failures.length > 0) {
-      await context.fail({
-        message: 'Some LLM pricing tiers require repair',
-        failedRecords: llmResult.failures
-      });
-    }
-    checkpoint = {
-      ...checkpoint,
-      llmCompleted: true,
-      llmScanned: llmResult.scannedCount,
-      llmMigrated: llmResult.migratedCount
-    };
-    await context.saveCheckpoint(checkpoint);
   }
+  checkpoint = {
+    ...checkpoint,
+    llmMigrated: (checkpoint.llmMigrated ?? 0) + llmResult.migratedCount
+  };
+  await context.saveCheckpoint(checkpoint);
 
   await context.assertActive();
   await context.reportProgress({
     key: 'llmTiers',
     status: SystemMigrationStatusEnum.succeeded,
-    current: checkpoint.llmScanned ?? 0,
-    total: checkpoint.llmScanned ?? 0
+    current: llmResult.scannedCount,
+    total: llmResult.scannedCount
   });
 
   // ==================== 阶段 3：联合校验 ====================

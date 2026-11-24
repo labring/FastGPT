@@ -43,25 +43,25 @@ describe('sanitizeModelPriceTiers', () => {
     expect(sanitizeModelPriceTiers()).toEqual([]);
     expect(
       sanitizeModelPriceTiers([
-        { maxInputTokens: -1, inputPrice: NaN, outputPrice: Infinity },
-        { maxInputTokens: 4, inputPrice: 1, outputPrice: 2 },
-        { maxInputTokens: 4, inputPrice: 5, outputPrice: 5 },
+        { maxInputTokensK: -1, inputPrice: NaN, outputPrice: Infinity },
+        { maxInputTokensK: 4, inputPrice: 1, outputPrice: 2 },
+        { maxInputTokensK: 4, inputPrice: 5, outputPrice: 5 },
         { inputPrice: undefined, outputPrice: undefined } as never
       ])
     ).toEqual([
-      { maxInputTokens: 0, inputPrice: 0, outputPrice: 0 },
-      { maxInputTokens: 4, inputPrice: 1, outputPrice: 2 }
+      { maxInputTokensK: 0, inputPrice: 0, outputPrice: 0 },
+      { maxInputTokensK: 4, inputPrice: 1, outputPrice: 2 }
     ]);
     expect(
       sanitizeModelPriceTiers([
         { inputPrice: 0, outputPrice: 2 },
-        { maxInputTokens: 4, inputPrice: 8, outputPrice: 8 }
+        { maxInputTokensK: 4, inputPrice: 8, outputPrice: 8 }
       ])
     ).toEqual([{ inputPrice: 0, outputPrice: 2 }]);
     expect(
       sanitizeModelPriceTiers(
         Array.from({ length: 6 }, (_, i) => ({
-          maxInputTokens: i + 1,
+          maxInputTokensK: i + 1,
           inputPrice: 1,
           outputPrice: 2
         }))
@@ -69,9 +69,9 @@ describe('sanitizeModelPriceTiers', () => {
     ).toHaveLength(MAX_MODEL_PRICE_TIERS);
     expect(
       sanitizeModelPriceTiers([
-        { maxInputTokens: 1, inputPrice: undefined, outputPrice: 2 } as never
+        { maxInputTokensK: 1, inputPrice: undefined, outputPrice: 2 } as never
       ])
-    ).toEqual([{ maxInputTokens: 1, inputPrice: 0, outputPrice: 2 }]);
+    ).toEqual([{ maxInputTokensK: 1, inputPrice: 0, outputPrice: 2 }]);
   });
 });
 
@@ -132,9 +132,8 @@ describe('calculateModelPrice', () => {
     const config = {
       ...model,
       pricing: {
-        tierUnit: 'K' as const,
         tiers: [
-          { maxInputTokens: 5, inputPrice: 1000, outputPrice: 1000, cacheReadPrice: 0 },
+          { maxInputTokensK: 5, inputPrice: 1000, outputPrice: 1000, cacheReadPrice: 0 },
           { inputPrice: 2000, outputPrice: 4000, cacheReadPrice: 200, cacheCreationPrice: 2500 }
         ]
       }
@@ -156,10 +155,9 @@ describe('calculateModelPrice', () => {
     const config = {
       ...model,
       pricing: {
-        tierUnit: 'K' as const,
         tiers: [
-          { maxInputTokens: 4, inputPrice: 1000, outputPrice: 2000 },
-          { maxInputTokens: 10, inputPrice: 3000, outputPrice: 4000 }
+          { maxInputTokensK: 4, inputPrice: 1000, outputPrice: 2000 },
+          { maxInputTokensK: 10, inputPrice: 3000, outputPrice: 4000 }
         ]
       }
     };
@@ -180,9 +178,8 @@ describe('calculateModelPrice', () => {
         config: {
           ...model,
           pricing: {
-            tierUnit: 'K',
             tiers: [
-              { maxInputTokens: 272, inputPrice: 1680, outputPrice: 8400 },
+              { maxInputTokensK: 272, inputPrice: 1680, outputPrice: 8400 },
               { inputPrice: 3360, outputPrice: 12600 }
             ]
           }
@@ -191,36 +188,16 @@ describe('calculateModelPrice', () => {
         outputTokens: 1000
       })
     ).toMatchObject({
-      matchedTier: { maxInputTokens: 272, inputPrice: 1680, outputPrice: 8400 },
+      matchedTier: { maxInputTokensK: 272, inputPrice: 1680, outputPrice: 8400 },
       totalPoints: 465.36
     });
-    // 缺少 tierUnit 时不做阶梯区间匹配，直接使用第一档计费。
     expect(
       calculateModelPrice({
         config: {
           ...model,
           pricing: {
             tiers: [
-              { maxInputTokens: 4, inputPrice: 1000, outputPrice: 2000 },
-              { inputPrice: 3000, outputPrice: 4000 }
-            ]
-          }
-        },
-        inputTokens: 100000,
-        outputTokens: 1000
-      })
-    ).toMatchObject({
-      matchedTier: { maxInputTokens: 4, inputPrice: 1000, outputPrice: 2000 },
-      totalPoints: 102
-    });
-    expect(
-      calculateModelPrice({
-        config: {
-          ...model,
-          pricing: {
-            tierUnit: 'K',
-            tiers: [
-              { maxInputTokens: 0, inputPrice: 1, outputPrice: 1 },
+              { maxInputTokensK: 0, inputPrice: 1, outputPrice: 1 },
               { inputPrice: 2, outputPrice: 3 }
             ]
           }
@@ -228,6 +205,26 @@ describe('calculateModelPrice', () => {
         inputTokens: 1
       }).totalPoints
     ).toBe(0.000002);
+  });
+  it('treats the first legacy tier as unlimited before K limits are backfilled', () => {
+    const pricing = LLMModelPricingSchema.parse({
+      tiers: [
+        { maxInputTokens: 0.128, inputPrice: 1000, outputPrice: 2000 },
+        { inputPrice: 3000, outputPrice: 4000 }
+      ]
+    });
+    const firstTier = { inputPrice: 1000, outputPrice: 2000 };
+    expect(
+      calculateModelPrice({
+        config: { ...model, pricing },
+        inputTokens: 200_000,
+        outputTokens: 1000
+      })
+    ).toEqual({
+      tiers: [firstTier],
+      matchedTier: firstTier,
+      totalPoints: 202
+    });
   });
   it.each([ModelTypeEnum.embedding, ModelTypeEnum.rerank, ModelTypeEnum.tts, ModelTypeEnum.stt])(
     'fixes %s denominator by type and preserves per-call precision',
@@ -289,9 +286,9 @@ describe('calculateModelPrice', () => {
 
 const tieredModel = {
   ...model,
-  pricing: { tiers: [{ maxInputTokens: 4, inputPrice: 1.005, outputPrice: 2.675 }] }
+  pricing: { tiers: [{ maxInputTokensK: 4, inputPrice: 1.005, outputPrice: 2.675 }] }
 };
-const roundedTiers = [{ maxInputTokens: 4, inputPrice: 1.01, outputPrice: 2.68 }];
+const roundedTiers = [{ maxInputTokensK: 4, inputPrice: 1.01, outputPrice: 2.68 }];
 const sttModel = {
   ...model,
   type: ModelTypeEnum.stt as const,
@@ -303,7 +300,6 @@ describe('normalizeModelPricingForRead', () => {
   it('rounds editing values without changing missing pricing, source rates or precise bounds', () => {
     expect(normalizeModelPricingForRead(model)).toBe(model);
     expect(normalizeModelPricingForRead(tieredModel).pricing).toEqual({
-      tierUnit: 'K',
       tiers: roundedTiers
     });
     expect(normalizeModelPricingForRead(sttModel).pricing).toEqual({
@@ -344,11 +340,7 @@ describe('normalizeModelPricingForSave', () => {
   });
   it('marks missing prices as configured and preserves empty or explicit free prices', () => {
     expect(normalizeModelPricingForSave(model).pricing).toEqual({});
-    for (const pricing of [
-      {},
-      { tiers: [] },
-      { tierUnit: 'K' as const, tiers: [{ inputPrice: 0, outputPrice: 0 }] }
-    ]) {
+    for (const pricing of [{}, { tiers: [] }, { tiers: [{ inputPrice: 0, outputPrice: 0 }] }]) {
       expect(normalizeModelPricingForSave({ ...model, pricing })).toEqual({ ...model, pricing });
     }
     expect(normalizeModelPricingForSave({ ...sttModel, pricing: undefined }).pricing).toEqual({
@@ -364,7 +356,6 @@ describe('normalizeModelPricingForSave', () => {
       unitPrice: 0
     });
     expect(normalizeModelPricingForSave(tieredModel).pricing).toEqual({
-      tierUnit: 'K',
       tiers: roundedTiers
     });
     expect(normalizeModelPricingForSave(sttModel).pricing).toEqual({

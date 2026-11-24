@@ -79,9 +79,9 @@
   "migrations.20261116_migrate_system_configs.validate": "Validate complete configuration",
   "migrations.20261116_migrate_system_configs.result": "Migrated {{migratedDomainCount}} configuration domains and removed {{removedFieldCount}} deprecated fields; {{skippedConfigCount}} legacy settings were skipped or require attention.",
   "migrations.20261120_migrate_model_pricing.name": "Migrate model pricing",
-  "migrations.20261120_migrate_model_pricing.description": "Runs independently in the background in stages after startup: first backfills legacy STT pricing types as duration-based, then converts system LLM tier maxInputTokens bounds from M Tokens to positive integer K Tokens (skipping bounds > 10), and validates all model pricing.",
+  "migrations.20261120_migrate_model_pricing.description": "After startup, backfills duration-based STT pricing types and system LLM tier limits in thousands of tokens in the background. Keeps legacy limits for rollback.",
   "migrations.20261120_migrate_model_pricing.stt": "Backfill STT pricing types",
   "migrations.20261120_migrate_model_pricing.llmTiers": "Convert LLM tier limits",
   "migrations.20261120_migrate_model_pricing.validation": "Validate model pricing",
-  "migrations.20261120_migrate_model_pricing.result": "Scanned {{sttModels}} STT models and converted tier limits to K Tokens for {{llmModels}} system LLM models."
+  "migrations.20261120_migrate_model_pricing.result": "Scanned {{sttModels}} STT models and backfilled tier limits in thousands of tokens for {{llmModels}} system LLM models."
 }
