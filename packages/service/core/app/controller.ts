@@ -25,7 +25,7 @@ import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant
 import { removeImageByPath } from '../../common/file/image/controller';
 import { MongoAppLogKeys } from './logs/logkeysSchema';
 import { MongoAppChatLog } from './logs/chatLogsSchema';
-import { MongoAppRegistration } from '../../support/appRegistration/schema';
+import { appRegistrationService } from '../../support/appRegistration/service';
 import { MongoMcpKey } from '../../support/mcp/schema';
 import { MongoAppRecord } from './record/schema';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
@@ -300,7 +300,7 @@ export const deleteAppDataProcessor = async ({
     // 删除日志密钥
     await MongoAppLogKeys.deleteMany({ appId });
     // 删除应用注册记录
-    await MongoAppRegistration.deleteMany({ appId });
+    await appRegistrationService.deleteAppRegistrations({ teamId, appId });
 
     // 删除应用本身
     await MongoApp.deleteOne({ _id: appId });

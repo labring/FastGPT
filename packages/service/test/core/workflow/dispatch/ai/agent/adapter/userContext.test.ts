@@ -161,6 +161,7 @@ describe('buildAgentLoopCoreInputFilesPrompt', () => {
     expect(result).toContain('<type>document</type>');
     expect(result).toContain('<type>unknown</type>');
     expect(result).toContain('<url>/files/archive.zip</url>');
+    expect(result).toContain('若内容已随当前消息附带，请直接查看或收听并回答，无需调用 read_files');
     expect(result).toContain('不要使用 read_files 读取');
     expect(result).not.toContain('<type>file</type>');
   });

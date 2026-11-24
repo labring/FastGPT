@@ -1,5 +1,8 @@
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { DatasetConfigAuditItemEnum } from '@fastgpt/global/core/dataset/audit/constants/config';
+import {
+  DatasetConfigAuditItemEnum,
+  type DatasetConfigAuditValueSource
+} from '@fastgpt/global/core/dataset/audit/constants/config';
 import type { ModelReferenceType } from '@fastgpt/global/core/ai/model/schema';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import type { ModelHandle } from '../../ai/model/catalog/handle';
@@ -10,7 +13,8 @@ type DatasetAuditModelData = { modelId?: string; model?: string; name?: string }
 
 /**
  * 解析模型审计用的稳定身份和展示名称；身份始终优先使用 modelId，名称只用于日志文案。
- * 历史数据仅存 model 时继续以旧标识作身份，并优先展示目录名称或旧 model 名称。
+ * 历史数据仅存 model 时继续以旧标识作身份，并优先展示目录名称或旧 model 名称；
+ * 同时标记名称来源（`literal` / `fallback`），避免真实模型名恰好与兜底 key 同名时被误译。
  */
 export const resolveDatasetAuditModel = ({
   reference,
@@ -18,13 +22,15 @@ export const resolveDatasetAuditModel = ({
 }: {
   reference: ModelReferenceType;
   modelData?: DatasetAuditModelData;
-}) => {
+}): { modelId: string; modelName: string; valueSource: DatasetConfigAuditValueSource } => {
   const legacyModel =
     reference.model && reference.model !== reference.modelId ? reference.model : undefined;
+  const resolvedName = modelData?.name || modelData?.model || legacyModel;
 
   return {
     modelId: modelData?.modelId || reference.modelId || legacyModel || '',
-    modelName: modelData?.name || modelData?.model || legacyModel || i18nT('common:UnKnow')
+    modelName: resolvedName || i18nT('common:UnKnow'),
+    valueSource: resolvedName ? 'literal' : 'fallback'
   };
 };
 
@@ -114,6 +120,10 @@ export const buildDatasetUpdateAuditLogs = ({
         oldValue: oldAgentModel.modelId,
         newValue: newAgentModel?.modelId ?? ''
       },
+      valueSources: {
+        oldValue: oldAgentModel.valueSource,
+        newValue: newAgentModel?.valueSource
+      },
       enabled:
         (update.agentModelId !== undefined || update.agentModel !== undefined) &&
         !!update.agentModelData
@@ -125,6 +135,10 @@ export const buildDatasetUpdateAuditLogs = ({
       compareValues: {
         oldValue: oldVlmModel.modelId,
         newValue: update.clearVlmModel ? '' : (newVlmModel?.modelId ?? '')
+      },
+      valueSources: {
+        oldValue: oldVlmModel.valueSource,
+        newValue: update.clearVlmModel ? undefined : newVlmModel?.valueSource
       },
       enabled:
         (update.vlmModelId !== undefined || update.vlmModel !== undefined) &&

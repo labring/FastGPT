@@ -2113,6 +2113,10 @@
       "zh": "开场白配置",
       "en": "Opening prompt configuration"
     },
+    "4ba2b14c1224abb29eecd52bf51f7fda9405f885a696919aa3398f4a8e4462f4": {
+      "zh": "本档输入上限，单位 K Tokens；省略表示无限",
+      "en": "Upper input limit for this tier in thousands of tokens. Omit for unlimited"
+    },
     "4ba844729fc592b161d34dc49534830746ea58d1e2eb52c7e42b38e3e543eabe": {
       "zh": "通过 skillId 定位调试会话，优先于 appId 并忽略其 sourceType，使用接口允许的请求头凭证鉴权。",
       "en": "Identify the debug session via `skillId` (takes precedence over `appId` and ignores `sourceType`), authenticated with allowed request header credentials."
