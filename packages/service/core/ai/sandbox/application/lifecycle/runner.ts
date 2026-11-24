@@ -141,8 +141,6 @@ async function executeSandboxLifecycle<T>(
       operationId: operation.id,
       status: definition.status,
       error: getErrText(error),
-      // provider 原始码随失败一起落库；读取侧只按结构化码判定，不再猜文案。
-      errorCode: failure?.code,
       retryAfter: new Date(
         Date.now() +
           (error instanceof SandboxOperationSettledError || failure?.terminated

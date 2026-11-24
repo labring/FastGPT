@@ -728,14 +728,29 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await resultPromise!;
 
+    const sandboxStatusEvents = props.workflowStreamResponse.mock.calls
+      .map(([event]: [{ event: string; data: { phase?: string } }]) => event)
+      .filter((event: { event: string }) => event.event === 'sandboxStatus');
+
+    // 失败是终态：lazyInit 之后直接 failed，不误报 ready。
+    expect(
+      sandboxStatusEvents.map((event: { data: { phase: string } }) => event.data.phase)
+    ).toEqual(['lazyInit', 'failed']);
+    expect(sandboxStatusEvents[1]?.data).toMatchObject({
+      sandboxId: getRunningSandboxId({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app_1',
+        userId: 'user_1'
+      }),
+      phase: 'failed',
+      step: 'upgrade',
+      nodeId: 'agent_node'
+    });
+    expect(sandboxStatusEvents[1]?.data.message).toContain('archive upload failed');
+
+    // 失败后禁止继续初始化：不创建 sandbox client，也不进入 agent loop。
     expect(getSandboxClientMock).not.toHaveBeenCalled();
     expect(runAgentLoopMock).not.toHaveBeenCalled();
-    expect(
-      props.workflowStreamResponse.mock.calls
-        .map(([event]: [{ event: string; data: { phase?: string } }]) => event)
-        .filter((event: { event: string }) => event.event === 'sandboxStatus')
-        .map((event: { data: { phase: string } }) => event.data.phase)
-    ).toEqual(['lazyInit']);
     expect(result.error?.system_error_text).toContain('archive upload failed');
   });
 

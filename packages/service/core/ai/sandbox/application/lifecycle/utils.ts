@@ -24,7 +24,7 @@ export function canResumeSandboxOperation(resource: SandboxResourceDoc, now = ne
  *
  * 这里不再做第二次终止分类：provider 边界的结构化判定已在 runner 写入
  * `retryAfter`（终止即 now），因此 `canResumeSandboxOperation` 自然放行；
- * 旧记录缺失结构化码时由读取边界归一为“未知”，继续沿用隔离窗口。
+ * 缺失 retryAfter 的记录继续沿用隔离窗口。
  */
 export function isSandboxActivationRecoverable(
   resource: SandboxResourceDoc,

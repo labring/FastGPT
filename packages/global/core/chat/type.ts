@@ -94,6 +94,7 @@ export type SandboxStatusItemType = {
   // 'uploadingPackage', 'extractingPackage' in session-runtime
   message?: string; // optional human-readable message
   step?: string; // present on 'failed': 'upgrade' (配置收敛/升级) or 'prepare' (运行环境准备)
+  nodeId?: string; // present on 'failed': 触发沙箱准备的工作流节点，用于把失败原因归属到实际节点
 };
 
 /* Skill module response */

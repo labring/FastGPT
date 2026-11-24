@@ -14,6 +14,7 @@ import {
   type OnOpenCiteModalProps
 } from '@/web/core/chat/context/chatItemContext';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
+import { findFailedResponseNode } from '@fastgpt/global/core/chat/utils';
 import { useMemoizedFn } from 'ahooks';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -106,16 +107,23 @@ const ChatItem = (props: Props) => {
     return new Set(sourceQuoteList.map((item) => item.id).filter((id): id is string => !!id));
   }, [statisticalChatItem.totalQuoteList]);
   const { errorText } = statisticalChatItem;
+  // 最终失败节点身份：用于判断沙箱失败是否已被后续节点错误取代，避免消息级覆盖。
+  const failedNodeId = useMemoEnhance(() => {
+    const responseData =
+      statisticalChatItem.obj === ChatRoleEnum.AI ? statisticalChatItem.responseData : undefined;
+    return findFailedResponseNode(responseData)?.nodeId;
+  }, [statisticalChatItem]);
   const inlineErrorInfo = useMemo(() => {
     return resolveChatItemErrorContent({
       errorMsg: chat.errorMsg,
       errorText,
       moduleName: chat.moduleName,
       sandboxError: chat.sandboxError,
+      failedNodeId,
       logErrorPrefix: t('chat:log.error.error_prefix'),
       t
     });
-  }, [chat.errorMsg, chat.moduleName, chat.sandboxError, errorText, t]);
+  }, [chat.errorMsg, chat.moduleName, chat.sandboxError, errorText, failedNodeId, t]);
   const showInlineError = shouldShowChatItemInlineError({
     hasInlineError: !!inlineErrorInfo,
     isChatting,

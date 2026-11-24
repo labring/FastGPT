@@ -116,7 +116,7 @@ describe('runSandboxLifecycleOperation', () => {
     expect(failed.operation?.retryAfter).toBeInstanceOf(Date);
   });
 
-  it('persists structured termination evidence and allows immediate retry', async () => {
+  it('settles structured termination evidence and allows immediate retry', async () => {
     const resource = await create();
     // 真实包装形态：provider 终止原因在 cause 链，外层是通用 ConnectionError。
     const error = new ConnectionError(
@@ -138,7 +138,6 @@ describe('runSandboxLifecycleOperation', () => {
     ).rejects.toBe(error);
 
     const failed = (await read())!;
-    expect(failed.operation?.errorCode).toBe('KUBERNETES::POD_FAILED');
     expect(failed.operation?.retryAfter).toBeInstanceOf(Date);
     expect(failed.operation!.retryAfter!.getTime() - Date.now()).toBeLessThanOrEqual(1_000);
     expect(canResumeSandboxOperation(failed)).toBe(true);
@@ -146,7 +145,7 @@ describe('runSandboxLifecycleOperation', () => {
     expect(sdkMocks.getSandboxFailureDetail).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps unknown results in the isolation window without persisting an errorCode', async () => {
+  it('keeps unknown results in the isolation window without settling the failure', async () => {
     const resource = await create();
     const error = new ConnectionError(
       'Failed to create sandbox',
@@ -164,7 +163,6 @@ describe('runSandboxLifecycleOperation', () => {
     ).rejects.toBe(error);
 
     const failed = (await read())!;
-    expect(failed.operation?.errorCode).toBeUndefined();
     const retryDelta = failed.operation!.retryAfter!.getTime() - Date.now();
     expect(retryDelta).toBeGreaterThanOrEqual(SANDBOX_OPERATION_ISOLATION_MS.stop - 1_000);
     expect(retryDelta).toBeLessThanOrEqual(SANDBOX_OPERATION_ISOLATION_MS.stop);

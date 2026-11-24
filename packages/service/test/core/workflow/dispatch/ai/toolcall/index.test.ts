@@ -554,10 +554,24 @@ describe('dispatchRunTools', () => {
     });
     expect(getSandboxClientMock).not.toHaveBeenCalled();
     expect(runToolCallMock).not.toHaveBeenCalled();
+
+    const sandboxStatusEvents = props.workflowStreamResponse.mock.calls.map(
+      ([event]: [{ event: string; data: { phase: string } }]) => event
+    );
+    // 失败是终态：lazyInit 之后直接 failed，不误报 ready。
     expect(
-      props.workflowStreamResponse.mock.calls.map(
-        ([event]: [{ data: { phase: string } }]) => event.data.phase
-      )
-    ).toEqual(['lazyInit']);
+      sandboxStatusEvents.map((event: { data: { phase: string } }) => event.data.phase)
+    ).toEqual(['lazyInit', 'failed']);
+    expect(sandboxStatusEvents[1]?.data).toMatchObject({
+      sandboxId: getRunningSandboxId({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app_1',
+        userId: 'user_1'
+      }),
+      phase: 'failed',
+      step: 'upgrade',
+      nodeId: 'toolcall_node'
+    });
+    expect(sandboxStatusEvents[1]?.data.message).toContain('archive upload failed');
   });
 });

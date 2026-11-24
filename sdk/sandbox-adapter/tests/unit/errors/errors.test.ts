@@ -112,6 +112,23 @@ describe('getSandboxFailureDetail', () => {
     // devbox 码与 opensandbox 码在同一张表：provider 边界只产出证据，码表只有一份。
     expect(SANDBOX_TERMINAL_CODES).toContain('SEALOS_DEVBOX::FAILED');
     expect(SANDBOX_TERMINAL_CODES).toContain('SEALOS_DEVBOX::CREATE_REJECTED');
+    // 早期从文本特征合成的兼容码从未发布，不再参与终止判定。
+    expect(SANDBOX_TERMINAL_CODES).not.toContain('CONTAINER_FAILED');
+    expect(SANDBOX_TERMINAL_CODES).not.toContain('INIT_CONTAINER_FAILED');
+    expect(SANDBOX_TERMINAL_CODES).not.toContain('CONTAINER_EXITED');
+  });
+
+  it('stops walking a self-referencing cause chain instead of looping', () => {
+    const error: { code: string; message: string; cause?: unknown } = {
+      code: 'KUBERNETES::POD_FAILED',
+      message: 'pod sample-pod-7f9c failed'
+    };
+    error.cause = error;
+
+    expect(getSandboxFailureDetail(error)).toMatchObject({
+      code: 'KUBERNETES::POD_FAILED',
+      terminated: true
+    });
   });
 
   it('reads devbox termination evidence from a provider-shaped record', () => {

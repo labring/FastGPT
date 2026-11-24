@@ -22,10 +22,12 @@ export type SandboxFailedLabel = {
   values?: { message: string };
 };
 
-/** failed 事件留在消息上的失败上下文；后续节点错误不得覆盖它。 */
+/** failed 事件留在消息上的失败上下文；节点级错误优先于它。 */
 export type SandboxErrorContext = {
   step?: string;
   message?: string;
+  /** 触发沙箱准备的工作流节点；用于判断最终失败是否仍是该节点。 */
+  nodeId?: string;
 };
 
 export type ChatItemErrorContent = {
@@ -90,26 +92,32 @@ export const getSandboxErrorPatch = (status: {
   phase: string;
   step?: string;
   message?: string;
+  nodeId?: string;
 }): { sandboxError?: SandboxErrorContext } => {
   if (status.phase !== 'failed') return { sandboxError: undefined };
 
   const step = status.step === 'upgrade' || status.step === 'prepare' ? status.step : undefined;
   const message = status.message && status.message.length > 0 ? status.message : undefined;
-  return { sandboxError: { step, message } };
+  const nodeId = status.nodeId && status.nodeId.length > 0 ? status.nodeId : undefined;
+  return { sandboxError: { step, message, ...(nodeId ? { nodeId } : {}) } };
 };
 
 /**
  * 解析聊天气泡底部错误卡片内容。
  *
- * 存在 sandbox 失败上下文时，标题优先展示失败环节，正文优先展示 provider 可展示原因；
- * 被后续 Agent/ToolCall 节点错误覆盖的节点名降为次要信息。没有 sandbox 上下文时保持
- * 原有“运行错误 - 节点名 / 节点错误文案”的行为。
+ * 失败原因归属到实际失败的节点，而不是整条消息：
+ * 1. 最终失败节点不是沙箱节点时（例如沙箱错误被 catch 后，后续 HTTP 节点返回 503），
+ *    展示该节点的真实错误，沙箱环节与原因降为次要信息，绝不覆盖真实原因；
+ * 2. 最终失败节点就是沙箱节点（或没有任何节点级错误，只能使用消息级兜底）时，
+ *    标题展示失败环节，正文优先展示 provider 可展示原因；
+ * 3. 没有 sandbox 上下文时保持原有“运行错误 - 节点名 / 节点错误文案”的行为。
  */
 export const resolveChatItemErrorContent = ({
   errorMsg,
   errorText,
   moduleName,
   sandboxError,
+  failedNodeId,
   logErrorPrefix,
   t
 }: {
@@ -117,6 +125,8 @@ export const resolveChatItemErrorContent = ({
   errorText?: { moduleName?: string; errorText?: string };
   moduleName?: string;
   sandboxError?: SandboxErrorContext;
+  /** 最终失败节点的 workflow nodeId（来自 responseData）；缺失表示没有节点级信息。 */
+  failedNodeId?: string;
   logErrorPrefix: string;
   t: TFunction;
 }): ChatItemErrorContent | undefined => {
@@ -124,27 +134,41 @@ export const resolveChatItemErrorContent = ({
 
   const nodeName = errorText?.moduleName || moduleName;
   const nodeNameText = nodeName ? t(nodeName) : undefined;
+  const nodeErrorText = t(errorText?.errorText || errorMsg || 'Unknow error');
 
   if (sandboxError) {
     const phaseLabel = translateSandboxFailedLabel(
       getSandboxFailedLabel(sandboxError.step, undefined),
       t
     );
-    const message =
-      sandboxError.message ||
-      (errorText?.errorText ? t(errorText.errorText) : undefined) ||
-      (errorMsg ? t(errorMsg) : undefined) ||
-      t('Unknow error');
+    // 只有失败节点就是沙箱节点，或完全没有节点级错误时才使用沙箱文案。
+    const sandboxNodeFailed =
+      !errorText || (!!sandboxError.nodeId && failedNodeId === sandboxError.nodeId);
 
+    if (sandboxNodeFailed) {
+      const message =
+        sandboxError.message ||
+        (errorText?.errorText ? t(errorText.errorText) : undefined) ||
+        (errorMsg ? t(errorMsg) : undefined) ||
+        t('Unknow error');
+
+      return {
+        title: `${logErrorPrefix} - ${phaseLabel}`,
+        message,
+        secondary: nodeNameText
+      };
+    }
+
+    // 后续节点真实失败：保留节点错误，把更早的沙箱失败降为次要信息。
     return {
-      title: `${logErrorPrefix} - ${phaseLabel}`,
-      message,
-      secondary: nodeNameText
+      title: nodeNameText ? `${logErrorPrefix} - ${nodeNameText}` : logErrorPrefix,
+      message: nodeErrorText,
+      secondary: sandboxError.message ? `${phaseLabel}：${sandboxError.message}` : phaseLabel
     };
   }
 
   return {
     title: nodeNameText ? `${logErrorPrefix} - ${nodeNameText}` : logErrorPrefix,
-    message: t(errorText?.errorText || errorMsg || 'Unknow error')
+    message: nodeErrorText
   };
 };

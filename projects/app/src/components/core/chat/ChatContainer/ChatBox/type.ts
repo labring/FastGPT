@@ -96,6 +96,8 @@ export type ChatSiteItemType = ChatItemObjItemType & {
   sandboxError?: {
     step?: string;
     message?: string;
+    /** 触发沙箱准备的工作流节点；最终错误选择据此判断失败是否仍归属该节点。 */
+    nodeId?: string;
   };
   deleteTime?: Date | null;
   collapseTop?: {

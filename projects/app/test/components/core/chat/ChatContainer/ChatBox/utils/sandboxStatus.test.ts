@@ -102,15 +102,20 @@ describe('translateSandboxFailedLabel', () => {
 });
 
 describe('getSandboxErrorPatch', () => {
-  it('stores step and reason on failed events', () => {
+  it('stores step, reason and node identity on failed events', () => {
     expect(
       getSandboxErrorPatch({
         phase: 'failed',
         step: 'prepare',
-        message: 'container sandbox exited with code 127'
+        message: 'container sandbox exited with code 127',
+        nodeId: 'agent_node'
       })
     ).toEqual({
-      sandboxError: { step: 'prepare', message: 'container sandbox exited with code 127' }
+      sandboxError: {
+        step: 'prepare',
+        message: 'container sandbox exited with code 127',
+        nodeId: 'agent_node'
+      }
     });
   });
 
@@ -127,13 +132,14 @@ describe('getSandboxErrorPatch', () => {
 });
 
 describe('resolveChatItemErrorContent', () => {
-  it('failed SSE → 节点错误覆盖 moduleName → end frame 仍保留环节与原因', () => {
+  it('failed SSE → 同一沙箱节点失败 → 保留环节与原因', () => {
     const { t } = createTranslate();
 
-    // 1. failed SSE 写入的失败上下文。
+    // 1. failed SSE 写入的失败上下文（挂在 Agent 节点上）。
     const failedPatch = getSandboxErrorPatch({
       phase: 'failed',
       step: 'prepare',
+      nodeId: 'agent_node',
       message:
         'primary reason=ContainerFailed; container sandbox exited with code 127 (pod sample-pod-7f9c)'
     });
@@ -151,6 +157,7 @@ describe('resolveChatItemErrorContent', () => {
       errorText,
       moduleName: item.moduleName,
       sandboxError: item.sandboxError,
+      failedNodeId: 'agent_node',
       logErrorPrefix: '运行错误',
       t
     });
@@ -161,6 +168,51 @@ describe('resolveChatItemErrorContent', () => {
     expect(content?.message).toContain('sample-pod-7f9c');
     expect(content?.message).not.toBe('Failed to create sandbox');
     expect(content?.secondary).toBe('Agent');
+  });
+
+  it('沙箱失败被捕获后，后续 HTTP 节点 503 优先于沙箱文案', () => {
+    const { t } = createTranslate();
+
+    const content = resolveChatItemErrorContent({
+      // 最终失败节点是 HTTP 节点：真实 503。
+      errorMsg: 'Request failed with status code 503',
+      errorText: {
+        moduleName: 'HTTP request',
+        errorText: 'Request failed with status code 503'
+      },
+      moduleName: 'HTTP request',
+      // 更早的沙箱失败已挂在自己的节点上，且被 catch 分支捕获。
+      sandboxError: {
+        step: 'prepare',
+        nodeId: 'agent_node',
+        message: 'container sandbox exited with code 127'
+      },
+      failedNodeId: 'http_node',
+      logErrorPrefix: '运行错误',
+      t
+    });
+
+    // 真实 503 必须优先展示，不能被消息级沙箱原因覆盖。
+    expect(content?.title).toContain('HTTP request');
+    expect(content?.message).toContain('503');
+    expect(content?.message).not.toContain('container sandbox exited');
+    // 之前的沙箱失败信息不丢失，降为次要信息。
+    expect(content?.secondary).toContain('运行环境准备失败');
+    expect(content?.secondary).toContain('container sandbox exited with code 127');
+  });
+
+  it('没有节点级错误时回退到消息级沙箱上下文', () => {
+    const { t } = createTranslate();
+
+    const content = resolveChatItemErrorContent({
+      errorMsg: 'Failed to create sandbox',
+      sandboxError: { step: 'upgrade', nodeId: 'agent_node' },
+      logErrorPrefix: '运行错误',
+      t
+    });
+
+    expect(content?.title).toContain('配置升级失败');
+    expect(content?.message).toBe('Failed to create sandbox');
   });
 
   it('keeps the legacy node-error card when there is no sandbox context', () => {
@@ -177,14 +229,15 @@ describe('resolveChatItemErrorContent', () => {
     expect(content).toEqual({ title: '运行错误 - Agent', message: 'node failed' });
   });
 
-  it('falls back to node error text when the failed event has no reason', () => {
+  it('falls back to node error text when the sandbox node has no reason', () => {
     const { t } = createTranslate();
 
     const content = resolveChatItemErrorContent({
       errorMsg: 'node failed',
       errorText: { moduleName: 'Agent', errorText: 'node failed' },
       moduleName: 'Agent',
-      sandboxError: { step: 'upgrade' },
+      sandboxError: { step: 'upgrade', nodeId: 'agent_node' },
+      failedNodeId: 'agent_node',
       logErrorPrefix: '运行错误',
       t
     });

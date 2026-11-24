@@ -97,8 +97,7 @@ export type SandboxFailureDetail = {
  *   Devbox controller 已把实例判为不可自愈的终态；
  * - `SEALOS_DEVBOX::CREATE_REJECTED`：sealos-devbox 的 create API 以 400/402/403/409/422
  *   明确拒绝创建（Pod 准入被拒、配额不足、参数校验失败、重名冲突），远端没有产生可继续
- *   使用的实例；401/408/429/5xx 仍按“结果未知”处理；
- * - 后三项是早期实现从文本特征命名的兼容码，保留用于读取部署前已落库的记录。
+ *   使用的实例；401/408/429/5xx 仍按“结果未知”处理。
  *
  * sealos-devbox 的 Paused/Stopped/Shutdown/Pausing/Stopping/Shutting、Unknown 阶段、
  * 命令执行失败、超时和网络错误都不是终止码。
@@ -107,10 +106,7 @@ export const SANDBOX_TERMINAL_CODES: readonly string[] = [
   'KUBERNETES::POD_FAILED',
   'KUBERNETES::QUOTA_EXCEEDED',
   'SEALOS_DEVBOX::FAILED',
-  'SEALOS_DEVBOX::CREATE_REJECTED',
-  'CONTAINER_FAILED',
-  'INIT_CONTAINER_FAILED',
-  'CONTAINER_EXITED'
+  'SEALOS_DEVBOX::CREATE_REJECTED'
 ];
 
 /** 适配器自身/传输层错误码，不代表 provider 终止原因，选码时排在 provider 码之后。 */
@@ -159,42 +155,49 @@ const sanitizeDisplayMessage = (value: string | undefined): string | undefined =
 
 type FailureEvidence = { codes: string[]; texts: string[] };
 
+const MAX_FAILURE_EVIDENCE_DEPTH = 8;
+
 /**
  * 沿 cause/AggregateError/opensandbox `error` 字段收集结构化 code 与原始文案。
  *
  * 只从结构化字段读 code（`code`/`reason`），绝不从 message 文本反推码；message 仅作为
  * `displayMessage` 的候选来源。
+ *
+ * `seen` 与遍历深度属于同一轮遍历，收进闭包；对外只接收待检查的 error。
  */
-const collectFailureEvidence = (
-  value: unknown,
-  evidence: FailureEvidence,
-  seen = new Set<unknown>(),
-  depth = 0
-): void => {
-  if (depth > 8 || value === null || value === undefined) return;
-  if (typeof value === 'string') {
-    evidence.texts.push(value);
-    return;
-  }
-  if (typeof value !== 'object' || seen.has(value)) return;
-  seen.add(value);
+const collectFailureEvidence = (value: unknown): FailureEvidence => {
+  const evidence: FailureEvidence = { codes: [], texts: [] };
+  const seen = new Set<unknown>();
 
-  const record = value as Record<string, unknown>;
-  if (typeof record.code === 'string') evidence.codes.push(record.code);
-  // provider status 的 reason 是 machine-readable code；不是终止码时自然会被判为未知。
-  if (typeof record.reason === 'string') evidence.codes.push(record.reason);
-  for (const key of ['detail', 'errorText', 'system_error_text']) {
-    if (typeof record[key] === 'string') evidence.texts.push(record[key] as string);
-  }
+  const visit = (current: unknown, depth: number): void => {
+    if (depth > MAX_FAILURE_EVIDENCE_DEPTH || current === null || current === undefined) return;
+    if (typeof current === 'string') {
+      evidence.texts.push(current);
+      return;
+    }
+    if (typeof current !== 'object' || seen.has(current)) return;
+    seen.add(current);
 
-  // provider 的结构化 payload 优先于外层包装文案。
-  collectFailureEvidence(record.error, evidence, seen, depth + 1);
-  collectFailureEvidence(record.status, evidence, seen, depth + 1);
-  if (Array.isArray(record.errors)) {
-    for (const nested of record.errors) collectFailureEvidence(nested, evidence, seen, depth + 1);
-  }
-  collectFailureEvidence(record.cause, evidence, seen, depth + 1);
-  if (typeof record.message === 'string') evidence.texts.push(record.message);
+    const record = current as Record<string, unknown>;
+    if (typeof record.code === 'string') evidence.codes.push(record.code);
+    // provider status 的 reason 是 machine-readable code；不是终止码时自然会被判为未知。
+    if (typeof record.reason === 'string') evidence.codes.push(record.reason);
+    for (const key of ['detail', 'errorText', 'system_error_text']) {
+      if (typeof record[key] === 'string') evidence.texts.push(record[key] as string);
+    }
+
+    // provider 的结构化 payload 优先于外层包装文案。
+    visit(record.error, depth + 1);
+    visit(record.status, depth + 1);
+    if (Array.isArray(record.errors)) {
+      for (const nested of record.errors) visit(nested, depth + 1);
+    }
+    visit(record.cause, depth + 1);
+    if (typeof record.message === 'string') evidence.texts.push(record.message);
+  };
+
+  visit(value, 0);
+  return evidence;
 };
 
 /**
@@ -238,8 +241,7 @@ const pickDisplayMessage = (texts: string[], code: string): string => {
 export const getSandboxFailureDetail = (error: unknown): SandboxFailureDetail | undefined => {
   if (error === null || error === undefined) return undefined;
 
-  const evidence: FailureEvidence = { codes: [], texts: [] };
-  collectFailureEvidence(error, evidence);
+  const evidence = collectFailureEvidence(error);
   const code = pickFailureCode(evidence.codes);
   if (!code) return undefined;
 

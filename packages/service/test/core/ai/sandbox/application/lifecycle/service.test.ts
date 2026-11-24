@@ -102,7 +102,6 @@ const makeResourceDoc = (params: {
   heartbeatAt?: Date;
   retryAfter?: Date;
   error?: string;
-  errorCode?: string;
 }) =>
   ({
     sandboxId,
@@ -124,8 +123,7 @@ const makeResourceDoc = (params: {
       startedAt: new Date(0),
       heartbeatAt: params.heartbeatAt ?? new Date(0),
       retryAfter: params.retryAfter,
-      error: params.error,
-      errorCode: params.errorCode
+      error: params.error
     }
   }) as repository.SandboxResourceDoc;
 const read = () => repository.findSandboxInstanceBySandboxId({ sandboxId });
@@ -179,16 +177,15 @@ describe('isSandboxActivationRecoverable / isSandboxActivationRollback', () => {
           status: 'provisioning',
           heartbeatAt: now,
           retryAfter: now,
-          error: 'Failed to create sandbox',
-          errorCode: 'KUBERNETES::POD_FAILED'
+          error: 'Failed to create sandbox'
         }),
         now
       )
     ).toBe(true);
   });
-  it('旧记录缺结构化码时按未知处理，不因文本特征提前恢复', () => {
+  it('缺失 retryAfter 时按 heartbeat 隔离窗口处理，不从错误文本提前恢复', () => {
     const retryAfter = new Date(now.getTime() + 5 * 60 * 1000);
-    // 部署前记录只有文本、没有 provider 原始 errorCode：保持原隔离窗口，绝不从文本猜终止。
+    // 没有 retryAfter 的记录只能等待完整隔离窗口，绝不从文本特征猜终止。
     expect(
       isSandboxActivationRecoverable(
         makeResourceDoc({
@@ -212,7 +209,7 @@ describe('isSandboxActivationRecoverable / isSandboxActivationRollback', () => {
       )
     ).toBe(false);
   });
-  it('只按 retryAfter 放行，不再用 errorCode 覆盖隔离窗口', () => {
+  it('只按 retryAfter 决定是否放行', () => {
     const retryAfter = new Date(now.getTime() + 5 * 60 * 1000);
     expect(
       isSandboxActivationRecoverable(
@@ -220,8 +217,7 @@ describe('isSandboxActivationRecoverable / isSandboxActivationRollback', () => {
           status: 'provisioning',
           heartbeatAt: now,
           retryAfter,
-          error: 'Failed to create sandbox',
-          errorCode: 'KUBERNETES::POD_FAILED'
+          error: 'Failed to create sandbox'
         }),
         now
       )
@@ -232,40 +228,11 @@ describe('isSandboxActivationRecoverable / isSandboxActivationRollback', () => {
           status: 'provisioning',
           heartbeatAt: now,
           retryAfter,
-          error: 'container sandbox exited with code 127 (Error)',
-          errorCode: 'CONNECTION_ERROR'
+          error: 'container sandbox exited with code 127 (Error)'
         }),
         now
       )
     ).toBe(false);
-  });
-  it('读取边界把部署前的文本合成码归一为未知（唯一兼容转换点）', async () => {
-    await MongoSandboxInstance.create({
-      sandboxId,
-      teamId,
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: 'recovery-app',
-      userId: 'user',
-      provider: 'opensandbox',
-      status: 'provisioning',
-      storage,
-      lastActiveAt: new Date(0),
-      operation: {
-        id: 'legacy-operation',
-        type: 'provision',
-        phase: 'claimed',
-        startedAt: new Date(0),
-        heartbeatAt: now,
-        retryAfter: new Date(now.getTime() + 5 * 60 * 1000),
-        error: 'container sandbox exited with code 127 (Error)',
-        errorCode: 'CONTAINER_EXITED'
-      }
-    });
-
-    const resource = await read();
-
-    expect(resource?.operation?.errorCode).toBeUndefined();
-    expect(isSandboxActivationRecoverable(resource!, now)).toBe(false);
   });
   it('keeps recent errors isolated without acquiring lease', async () => {
     const resource = await createResource({ status: 'provisioning', heartbeatAt: now });

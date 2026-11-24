@@ -303,6 +303,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       });
     const { sandboxClient, currentWorkingDirectory, skillInfos } = effectiveUseAgentSandbox
       ? await ensureWorkflowSandboxReadyForUse({
+          nodeId,
           sourceType: sandboxSourceType,
           sourceId: sandboxSourceId,
           userId: sandboxContext.userId,

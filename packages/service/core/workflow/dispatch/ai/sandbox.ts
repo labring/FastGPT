@@ -17,6 +17,7 @@ import { markChatSandboxEnabled } from '../../../chat/sandbox/service';
  * 避免前端只能展示笼统的「沙箱启动失败」而无法定位。其他 source 的生命周期仍由节点负责。
  */
 export async function ensureWorkflowSandboxReadyForUse<T>({
+  nodeId,
   sourceType,
   sourceId,
   userId,
@@ -24,6 +25,8 @@ export async function ensureWorkflowSandboxReadyForUse<T>({
   teamId,
   prepareRuntime
 }: {
+  /** 触发本次沙箱准备的工作流节点；失败事件据此把原因归属到真实节点。 */
+  nodeId?: string;
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   userId: string;
@@ -40,7 +43,7 @@ export async function ensureWorkflowSandboxReadyForUse<T>({
   /** 合并连续重复状态，升级完成后允许恢复准备状态；failed 是终态，必须每次都上报原因。 */
   const reportSandboxPhase = (
     phase: 'lazyInit' | 'upgrading' | 'ready' | 'failed',
-    extra?: { message?: string; step?: string }
+    extra?: { message?: string; step?: string; nodeId?: string }
   ) => {
     if (phase !== 'failed' && reportedPhase === phase) return;
     reportedPhase = phase;
@@ -79,7 +82,8 @@ export async function ensureWorkflowSandboxReadyForUse<T>({
     const failure = getSandboxFailureDetail(error);
     reportSandboxPhase('failed', {
       message: failure?.displayMessage ?? getErrText(error, 'Failed to prepare sandbox runtime'),
-      step: currentStep
+      step: currentStep,
+      ...(nodeId ? { nodeId } : {})
     });
     throw error;
   }
