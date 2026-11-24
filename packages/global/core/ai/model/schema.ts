@@ -3,11 +3,9 @@ import { ModelScopeEnum, ModelTypeEnum } from '../constants';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import z from 'zod';
 
-export const ModelPriceTierUnitSchema = z.enum(['K']);
-export type ModelPriceTierUnitType = z.infer<typeof ModelPriceTierUnitSchema>;
-
+/** LLM 阶梯上限由 maxInputTokensK 固定为 K Tokens，避免同一字段在不同版本中按不同单位解释。 */
 export const ModelPriceTierSchema = z.object({
-  maxInputTokens: z
+  maxInputTokensK: z
     .number()
     .int()
     .positive()
@@ -32,9 +30,6 @@ export const ModelPricingSchema = z.object({
   type: z.enum(['duration', 'tokens']).optional().meta({ description: 'STT 计价类型' }),
   inputPrice: ModelPriceTierSchema.shape.inputPrice.optional(),
   outputPrice: ModelPriceTierSchema.shape.outputPrice.optional(),
-  tierUnit: ModelPriceTierUnitSchema.optional().meta({
-    description: 'LLM 阶梯输入上限单位，默认 K Tokens'
-  }),
   tiers: z
     .array(ModelPriceTierSchema)
     .max(5)
@@ -54,7 +49,6 @@ export const LLMModelPricingSchema = ModelPricingSchema.omit({
 });
 export const UnitModelPricingSchema = ModelPricingSchema.omit({
   tiers: true,
-  tierUnit: true,
   inputPrice: true,
   outputPrice: true,
   type: true

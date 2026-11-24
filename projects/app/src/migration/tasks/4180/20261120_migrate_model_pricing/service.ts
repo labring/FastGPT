@@ -11,10 +11,9 @@ import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { z } from 'zod';
 import { systemMigrationBatchSize } from '@/migration/constants';
 import {
-  convertTierMaxInputTokensToK,
-  MigratedTierPricingSchema,
-  type MigrationPriceTier,
-  type MigrationTierUnit
+  backfillTierMaxInputTokensK,
+  MigratedTierListSchema,
+  type MigrationPriceTier
 } from './utils';
 
 // 冻结 STT 迁移的最小价格契约，避免未来业务 Schema 改动影响断点重放。
@@ -27,17 +26,6 @@ const llmTierScopeFilter = {
   scope: ModelScopeEnum.system,
   type: ModelTypeEnum.llm,
   'pricing.tiers': { $exists: true }
-};
-
-const extractRawTierPricing = (pricing: unknown) => {
-  const pricingObj =
-    typeof pricing === 'object' && pricing !== null && !Array.isArray(pricing)
-      ? (pricing as Record<string, unknown>)
-      : undefined;
-  return {
-    tiers: pricingObj?.tiers,
-    tierUnit: pricingObj?.tierUnit
-  };
 };
 
 /**
@@ -93,8 +81,8 @@ export const backfillSTTPricingTypeRecord = async (id: string) => {
 };
 
 /**
- * 在单个快照事务内将系统 LLM 阶梯上限从 M Tokens 乘以 1000 并四舍五入为 K Tokens 正整数，
- * 同时递增系统模型目录修订号。
+ * 在单个快照事务内回填系统 LLM 的 K Tokens 阶梯上限并递增目录修订号，
+ * 保留旧字段供旧版本选档。
  */
 export const migrateTierMaxInputTokensInTransaction = async ({
   signal,
@@ -116,7 +104,7 @@ export const migrateTierMaxInputTokensInTransaction = async ({
       const models = await MongoAIModel.collection
         .find(llmTierScopeFilter, {
           session,
-          projection: { _id: 1, 'pricing.tiers': 1, 'pricing.tierUnit': 1 }
+          projection: { _id: 1, 'pricing.tiers': 1 }
         })
         .sort({ _id: 1 })
         .toArray();
@@ -130,16 +118,15 @@ export const migrateTierMaxInputTokensInTransaction = async ({
           update: {
             $set: {
               'pricing.tiers': MigrationPriceTier[];
-              'pricing.tierUnit'?: MigrationTierUnit;
             };
           };
         };
       }> = [];
 
       for (const model of models) {
-        const rawPricing = extractRawTierPricing(model.pricing);
+        const rawTiers = model.pricing?.tiers;
         try {
-          const { tiers, tierUnit, changed } = convertTierMaxInputTokensToK(rawPricing);
+          const { tiers, changed } = backfillTierMaxInputTokensK(rawTiers);
           if (!changed) continue;
           updates.push({
             updateOne: {
@@ -147,17 +134,9 @@ export const migrateTierMaxInputTokensInTransaction = async ({
                 _id: model._id,
                 scope: ModelScopeEnum.system,
                 type: ModelTypeEnum.llm,
-                'pricing.tiers': rawPricing.tiers,
-                ...(rawPricing.tierUnit === undefined
-                  ? { 'pricing.tierUnit': { $exists: false } }
-                  : { 'pricing.tierUnit': rawPricing.tierUnit })
+                'pricing.tiers': rawTiers
               },
-              update: {
-                $set: {
-                  'pricing.tiers': tiers,
-                  ...(tierUnit === undefined ? {} : { 'pricing.tierUnit': tierUnit })
-                }
-              }
+              update: { $set: { 'pricing.tiers': tiers } }
             }
           });
         } catch {
@@ -207,26 +186,26 @@ export const validateBackfilledSTTPricingTypes = async (): Promise<
 
   return invalid.map(({ _id }) => ({
     stageKey: 'validation',
-    data: { id: String(_id) },
+    data: { id: String(_id), modelType: ModelTypeEnum.stt },
     reason: { message: 'STT pricing type is missing or invalid; repair before retrying' }
   }));
 };
 
-/** 校验全部系统 LLM 阶梯均合法、非空阶梯具备 `tierUnit: 'K'` 且有限输入上限均为正整数 K Tokens。 */
+/** 校验系统 LLM 的有限旧上限均已回填 K Tokens 字段。 */
 export const validateMigratedTierMaxInputTokens = async (): Promise<
   SystemMigrationFailedRecord[]
 > => {
   const persistedModels = await MongoAIModel.collection
-    .find(llmTierScopeFilter, { projection: { _id: 1, 'pricing.tiers': 1, 'pricing.tierUnit': 1 } })
+    .find(llmTierScopeFilter, { projection: { _id: 1, 'pricing.tiers': 1 } })
     .sort({ _id: 1 })
     .toArray();
   const validationFailures: SystemMigrationFailedRecord[] = [];
 
   for (const model of persistedModels) {
     const id = String(model._id);
-    const rawPricing = extractRawTierPricing(model.pricing);
+    const rawTiers = model.pricing?.tiers;
     try {
-      MigratedTierPricingSchema.parse(rawPricing);
+      MigratedTierListSchema.parse(rawTiers);
     } catch {
       validationFailures.push({
         stageKey: 'validation',

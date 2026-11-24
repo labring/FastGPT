@@ -56,7 +56,10 @@ describe('refreshLLMRequestRecordTTL', () => {
       await model.collection.createIndex({ requestId: 1 }, { name: 'customer_request_lookup' });
       const dropIndex = vi.spyOn(model.collection, 'dropIndex');
       const createIndex = vi.spyOn(model.collection, 'createIndex');
-      const mainCommand = vi.spyOn(connectionMongo.connection.db!, 'command');
+      const hasSeparateLogDb = model.db.db !== connectionMongo.connection.db;
+      const mainCommand = hasSeparateLogDb
+        ? vi.spyOn(connectionMongo.connection.db!, 'command')
+        : undefined;
       const logCommand = vi.spyOn(model.db.db!, 'command');
       setRetentionHours(hours);
 
@@ -65,7 +68,9 @@ describe('refreshLLMRequestRecordTTL', () => {
         collMod: model.collection.collectionName,
         index: { name: 'createdAt_1', expireAfterSeconds: hours * 3600 }
       });
-      expect(mainCommand).not.toHaveBeenCalled();
+      if (mainCommand) {
+        expect(mainCommand).not.toHaveBeenCalled();
+      }
       expect(dropIndex).not.toHaveBeenCalled();
       expect(createIndex).not.toHaveBeenCalled();
       expect(await getTTLIndex()).toMatchObject({ expireAfterSeconds: hours * 3600 });
@@ -79,6 +84,32 @@ describe('refreshLLMRequestRecordTTL', () => {
       expect(dropIndex).not.toHaveBeenCalled();
     }
   );
+
+  it('targets model.db.db directly without touching connectionMongo when log db is separate', async () => {
+    await model.collection.createIndex({ createdAt: 1 }, { expireAfterSeconds: 6 * 3600 });
+    const separateLogCommand = vi.fn(async () => ({ ok: 1 }));
+    const mainCommand = vi.spyOn(connectionMongo.connection.db!, 'command');
+    const originalDb = model.db.db;
+
+    Object.defineProperty(model.db, 'db', {
+      value: { command: separateLogCommand },
+      configurable: true
+    });
+    try {
+      setRetentionHours(24);
+      expect(await refreshLLMRequestRecordTTL()).toBe(true);
+      expect(separateLogCommand).toHaveBeenCalledWith({
+        collMod: model.collection.collectionName,
+        index: { name: 'createdAt_1', expireAfterSeconds: 24 * 3600 }
+      });
+      expect(mainCommand).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(model.db, 'db', {
+        value: originalDb,
+        configurable: true
+      });
+    }
+  });
 
   it('does not issue collMod when the database already has the requested TTL', async () => {
     await model.collection.createIndex({ createdAt: 1 }, { expireAfterSeconds: 6 * 3600 });

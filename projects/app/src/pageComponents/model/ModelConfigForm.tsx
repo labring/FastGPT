@@ -417,7 +417,7 @@ const ModelConfigForm = ({
       const last = tiers.at(-1);
       if (
         tiers.length === 0 ||
-        (tiers.length < MAX_MODEL_PRICE_TIERS && last?.maxInputTokens !== undefined)
+        (tiers.length < MAX_MODEL_PRICE_TIERS && last?.maxInputTokensK !== undefined)
       )
         tiers.push(emptyPriceTier);
       return {
@@ -505,8 +505,8 @@ const ModelConfigForm = ({
         if (
           tiers.some(
             (tier) =>
-              tier.maxInputTokens !== undefined &&
-              (!Number.isInteger(tier.maxInputTokens) || tier.maxInputTokens <= 0)
+              tier.maxInputTokensK !== undefined &&
+              (!Number.isInteger(tier.maxInputTokensK) || tier.maxInputTokensK <= 0)
           )
         ) {
           return Promise.reject(t('config_model:model.price_tier_range_invalid'));

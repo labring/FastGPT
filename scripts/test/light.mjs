@@ -23,6 +23,9 @@ export const getConfigNames = (testPath) => {
   if (pathForMatching.includes(integrationSegment) || testPath.endsWith('.integration.test.ts')) {
     return ['vitest.integration.config.ts', ...configNames];
   }
+  if (testPath.endsWith('.unit.test.ts')) {
+    return ['vitest.unit.config.ts', ...configNames];
+  }
   if (testPath.endsWith('.benchmark.ts')) {
     return ['vitest.benchmark.config.ts', ...configNames];
   }

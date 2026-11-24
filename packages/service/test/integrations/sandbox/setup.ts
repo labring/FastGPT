@@ -3,6 +3,10 @@ import '@test/mocks/common/mongo';
 import { connectMongo } from '@fastgpt/service/common/mongo/init';
 import { connectionLogMongo, connectionMongo } from '@fastgpt/service/common/mongo';
 import {
+  disableTestMongoIndexReadiness,
+  enableTestMongoIndexReadiness
+} from '@fastgpt/dal/db/testing';
+import {
   configureRedisRuntime,
   closeRedisRuntime,
   getRedisRuntime
@@ -23,8 +27,11 @@ configureRedisRuntime({
  */
 beforeAll(async () => {
   await getRedisRuntime().checkHealth();
-  await connectMongo({ db: connectionMongo, url: inject('MONGODB_URI') });
-  await connectMongo({ db: connectionLogMongo, url: inject('MONGODB_URI') });
+  const uniqueMongoClients = Array.from(new Set([connectionMongo, connectionLogMongo]));
+  for (const client of uniqueMongoClients) {
+    await connectMongo({ db: client, url: inject('MONGODB_URI') });
+  }
+  await enableTestMongoIndexReadiness(uniqueMongoClients);
 
   initGlobalVariables();
   global.agentUserTmbIds = new Set();
@@ -33,9 +40,13 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await connectionMongo.connection.db?.dropDatabase();
-  await connectionLogMongo.connection.db?.dropDatabase();
-  await connectionMongo.disconnect();
-  await connectionLogMongo.disconnect();
+  const uniqueMongoClients = Array.from(new Set([connectionMongo, connectionLogMongo]));
+  disableTestMongoIndexReadiness(uniqueMongoClients);
+  for (const client of uniqueMongoClients) {
+    await client.connection.db?.dropDatabase();
+  }
+  for (const client of uniqueMongoClients) {
+    await client.disconnect();
+  }
   await closeRedisRuntime();
 });

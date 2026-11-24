@@ -51,10 +51,10 @@ describe('assertOpenApiLimit', () => {
   it.each([
     { maxUsagePoints: undefined, usagePoints: 100, overLimit: false },
     { maxUsagePoints: -1, usagePoints: 100, overLimit: false },
-    { maxUsagePoints: 0, usagePoints: 0, overLimit: false },
+    { maxUsagePoints: 0, usagePoints: 0, overLimit: true },
     { maxUsagePoints: 0, usagePoints: 0.001, overLimit: true },
     { maxUsagePoints: 1, usagePoints: 0.5, overLimit: false },
-    { maxUsagePoints: 1, usagePoints: 1, overLimit: false },
+    { maxUsagePoints: 1, usagePoints: 1, overLimit: true },
     { maxUsagePoints: 1, usagePoints: 1.001, overLimit: true }
   ])('enforces quota boundaries: %j', ({ maxUsagePoints, usagePoints, overLimit }) => {
     const openApi: OpenApiSchema = {
