@@ -1,6 +1,11 @@
+import {
+  DATASET_CONFIG_CHANGE_ITEM_SEPARATOR,
+  datasetConfigAuditFieldLabelMap,
+  datasetConfigAuditValueLabelMap
+} from '@fastgpt/global/core/dataset/audit/constants/config';
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
-import { defaultMetadataProcessor } from './commonProcessor';
+import { defaultMetadataProcessor, type CommonMetadataFields } from './commonProcessor';
 
 /** 保留知识库类型等通用翻译，并将协作者角色转换为审计列表展示用的权限标记。 */
 export const processUpdateDatasetCollaboratorSpecific = (
@@ -18,24 +23,52 @@ export const processUpdateDatasetCollaboratorSpecific = (
   };
 };
 
-/** 对象型配置的子字段分隔符；与 `buildDatasetConfigAuditChanges` 生成格式保持一致。 */
-const CHANGE_ITEM_PATH_SEPARATOR = ' · ';
-
 /**
  * 知识库配置变更的 metadata 处理。
  *
- * 两个必须单独处理的点：
- * 1. `changeItem` 是「配置项 i18n key」或「配置项 key · 字段路径」，只翻译前缀；
- * 2. `oldValue` / `newValue` 是用户数据原值，通用 processor 会把任何含 `:` 的字符串
- *    当 key 翻译，导致审计里的 URL（`https://example.com`）被渲染成 `//example.com`。
+ * 三个展示边界：
+ * 1. `changeItem` 为「配置项 i18n key」或「配置项 key · 字段路径」，前缀翻译并按白名单映射已知子字段路径，未知路径原样回退；
+ * 2. `oldValue` / `newValue` 仅对白名单内的系统占位值（布尔 key、未知模型、敏感脱敏占位）做翻译，
+ *    其余用户数据（如含 `:` 的 URL 或业务文本）保持原值，避免被误当作 i18n key；
+ * 3. `datasetName` / `name` 等名称字段直接透传，不走通用 processor。
  */
-export const processDatasetConfigUpdateSpecific = (metadata: any, t: any) => {
-  const { changeItem, ...rest } = metadata;
-  const [itemKey, ...fieldPath] = String(changeItem ?? '').split(CHANGE_ITEM_PATH_SEPARATOR);
+export const processDatasetConfigUpdateSpecific = (
+  metadata: CommonMetadataFields,
+  t: (key: string) => string
+) => {
+  /** 仅翻译白名单中登记的系统值，Object.hasOwn 防止原型链键名误命中。 */
+  const translateConfigValue = (value: unknown) => {
+    if (typeof value !== 'string') return value;
+    if (!Object.hasOwn(datasetConfigAuditValueLabelMap, value)) return value;
+    return t(datasetConfigAuditValueLabelMap[value]);
+  };
+
+  /** 按父配置项查表翻译已知子字段路径，未登记路径原样保留。 */
+  const translateFieldPath = (itemKey: string, fieldPath: string) => {
+    if (!Object.hasOwn(datasetConfigAuditFieldLabelMap, itemKey)) return fieldPath;
+    const fieldLabelMap = datasetConfigAuditFieldLabelMap[itemKey];
+    if (!fieldLabelMap || !Object.hasOwn(fieldLabelMap, fieldPath)) return fieldPath;
+    return t(fieldLabelMap[fieldPath]);
+  };
+
+  const { changeItem, oldValue, newValue, ...rest } = metadata;
+  const [itemKey, ...fieldPathParts] = String(changeItem ?? '').split(
+    DATASET_CONFIG_CHANGE_ITEM_SEPARATOR
+  );
+  const translatedItem = itemKey ? t(itemKey) : itemKey;
+  const formattedChangeItem =
+    fieldPathParts.length > 0
+      ? `${translatedItem}${DATASET_CONFIG_CHANGE_ITEM_SEPARATOR}${translateFieldPath(
+          itemKey,
+          fieldPathParts.join(DATASET_CONFIG_CHANGE_ITEM_SEPARATOR)
+        )}`
+      : translatedItem;
 
   return {
     ...rest,
-    changeItem: [itemKey ? t(itemKey) : itemKey, ...fieldPath].join(CHANGE_ITEM_PATH_SEPARATOR)
+    changeItem: formattedChangeItem,
+    ...('oldValue' in metadata && { oldValue: translateConfigValue(oldValue) }),
+    ...('newValue' in metadata && { newValue: translateConfigValue(newValue) })
   };
 };
 

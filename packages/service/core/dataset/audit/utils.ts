@@ -1,5 +1,7 @@
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
+  DATASET_CONFIG_CHANGE_ITEM_SEPARATOR,
+  DATASET_CONFIG_REDACTED_VALUE,
   datasetConfigAuditItemLabelMap,
   type DatasetConfigAuditItem
 } from '@fastgpt/global/core/dataset/audit/constants/config';
@@ -43,7 +45,7 @@ const formatAuditScalar = (value: AuditRawValue): string => {
 
 /** 递归脱敏并剔除 `_id`；用于「必须整体展示」的兜底场景。 */
 const sanitizeAuditValue = (input: AuditRawValue, key?: string): AuditRawValue => {
-  if (key && sensitiveKeyPattern.test(key)) return '[REDACTED]';
+  if (key && sensitiveKeyPattern.test(key)) return DATASET_CONFIG_REDACTED_VALUE;
   if (Array.isArray(input)) return input.map((item) => sanitizeAuditValue(item));
   if (input && typeof input === 'object') {
     return Object.fromEntries(
@@ -134,7 +136,7 @@ export const buildDatasetConfigAuditChanges = ({
 
   const formatFieldValue = (field?: FlattenedAuditField) => {
     if (!field) return '-';
-    if (field.sensitive) return '[REDACTED]';
+    if (field.sensitive) return DATASET_CONFIG_REDACTED_VALUE;
     return formatAuditScalar(sanitizeAuditValue(field.value));
   };
 
@@ -156,7 +158,7 @@ export const buildDatasetConfigAuditChanges = ({
     return [
       {
         // 子字段沿用父级 i18n 标签再拼上字段路径，保证列表里有上下文。
-        changeItem: `${itemLabel} · ${path}`,
+        changeItem: `${itemLabel}${DATASET_CONFIG_CHANGE_ITEM_SEPARATOR}${path}`,
         oldValue: formatFieldValue(oldField),
         newValue: formatFieldValue(newField)
       }
