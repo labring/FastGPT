@@ -419,6 +419,7 @@ const AgentSandboxSubserviceComponent = () => {
                       rules={{ validate: (value) => Number.isFinite(value) && value >= 1 }}
                       render={({ field, fieldState }) => (
                         <NumberInput
+                          variant={'whiteOutline'}
                           min={1}
                           step={0.1}
                           value={field.value ?? ''}
@@ -445,6 +446,7 @@ const AgentSandboxSubserviceComponent = () => {
                       rules={{ validate: (value) => Number.isFinite(value) && value >= 1 }}
                       render={({ field, fieldState }) => (
                         <NumberInput
+                          variant={'whiteOutline'}
                           min={1}
                           step={0.1}
                           value={field.value ?? ''}
