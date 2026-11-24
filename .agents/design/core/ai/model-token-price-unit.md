@@ -56,7 +56,7 @@ LLM 使用 `pricing.tiers[].maxInputTokensK` 配置阶梯上限，值为正整�
 
 4.18.0 的独立后台任务 `20261120_migrate_model_pricing` 先分批回填 STT 计价类型，再用单事务回填系统 LLM 的 `maxInputTokensK`，最后联合校验。模型任一旧上限小于 1 时，按 M Tokens 将有限旧上限乘以 1000、四舍五入并最小取 1。其余旧上限按 K Tokens 复制。已有新上限及开放档跳过，原 `maxInputTokens` 保留供回退读取。新版保存只写 `maxInputTokensK`，经新版编辑的配置按新版格式使用。
 
-公开 API、SDK 和新版导出的模型配置只提供 `maxInputTokensK`。当系统模型仍有待回填的旧上限时，暂缓导出 JSON，避免在同一新版实例保存配置时将首档变为无限档并覆盖后续档位。4.17.5 导出的配置可导入新版，能精确换算为正整数 K Tokens 的上限由导入入口转换。
+公开 API、SDK 和新版导出的模型配置只提供 `maxInputTokensK`。系统模型仍有待回填的旧上限时，暂缓该模型的配置更新和整批 JSON 导入、导出，避免保存时将首档变为无限档并覆盖后续档位。4.17.5 导出的配置可导入新版，能精确换算为正整数 K Tokens 的上限由导入入口转换。
 
 ## 缓存计费扩展
 

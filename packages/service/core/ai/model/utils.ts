@@ -2,7 +2,11 @@ import { getSystemInstanceConfig } from '../../../common/system/systemInstanceCo
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { SystemErrEnum } from '@fastgpt/global/common/error/code/system';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import {
+  ModelPriceTierSchema,
+  type AIModelDocumentDataType
+} from '@fastgpt/global/core/ai/model/schema';
 import type { UpdateQuery } from 'mongoose';
 import { isProVersion } from '../../../common/system/constants';
 import { checkUrlSafety } from '../../../common/system/utils';
@@ -13,6 +17,31 @@ export type EditableModelData = Omit<AIModelDocumentDataType, 'model'> & {
 };
 
 const optionalModelConfigFields = ['requestUrl', 'requestAuth', 'testMode', 'pricing'] as const;
+
+const finiteTierBoundSchema = ModelPriceTierSchema.shape.maxInputTokensK.unwrap();
+
+/** 替换式配置读写必须等旧上限回填，否则运行时视图会将后续档位永久覆盖。 */
+export const assertModelPriceTiersBackfilled = (
+  models: ReadonlyArray<Pick<AIModelSchemaType, 'scope' | 'type' | 'pricing'>>
+) => {
+  const pending = models.some(
+    (model) =>
+      model.scope === ModelScopeEnum.system &&
+      model.type === ModelTypeEnum.llm &&
+      model.pricing !== null &&
+      typeof model.pricing === 'object' &&
+      'tiers' in model.pricing &&
+      Array.isArray(model.pricing.tiers) &&
+      model.pricing.tiers.some(
+        (tier) =>
+          tier !== null &&
+          typeof tier === 'object' &&
+          'maxInputTokens' in tier &&
+          !finiteTierBoundSchema.safeParse(tier.maxInputTokensK).success
+      )
+  );
+  if (pending) throw new UserError(ModelErrEnum.pricingMigrationPending);
+};
 
 /**
  * 生成模型配置的替换式更新表达式，清除缺失的可选字段并保护类型、归属和展示顺序。

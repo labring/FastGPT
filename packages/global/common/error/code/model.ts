@@ -30,7 +30,8 @@ export enum ModelErrEnum {
   requestTimeout = 'modelRequestTimeout',
   serviceUnavailable = 'modelServiceUnavailable',
   networkError = 'modelNetworkError',
-  invalidResponse = 'modelInvalidResponse'
+  invalidResponse = 'modelInvalidResponse',
+  pricingMigrationPending = 'modelPricingMigrationPending'
 }
 
 const modelErrList: Array<{
@@ -178,6 +179,11 @@ const modelErrList: Array<{
     statusText: ModelErrEnum.invalidResponse,
     message: i18nT('common:code_error.model_error.invalid_response'),
     httpStatus: 502
+  },
+  {
+    statusText: ModelErrEnum.pricingMigrationPending,
+    message: i18nT('config_model:pricing_migration_pending'),
+    httpStatus: 409
   }
 ];
 

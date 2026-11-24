@@ -25,6 +25,7 @@ import { importSystemModels as importSystemModelRecords } from './import';
 import { MongoAIModel } from './schema';
 import { refreshModelTemplates } from './template';
 import {
+  assertModelPriceTiersBackfilled,
   assertTeamModelRequestUrlSafe,
   getModelConfigUpdate,
   sanitizeTeamModelData
@@ -86,6 +87,7 @@ export const updateModel = async ({
       .lean();
     if (!existing) throw new UserError(ModelErrEnum.unExist);
     if (existing.type !== modelData.type) throw new UserError('Model type cannot be changed');
+    assertModelPriceTiersBackfilled([existing]);
     const newModel = modelData.model?.trim() ?? existing.model;
     if (
       newModel !== existing.model &&

@@ -77,6 +77,7 @@
   "monitoring": "모니터링",
   "output": "출력",
   "price_tier_open_ended": "무제한",
+  "pricing_migration_pending": "업그레이드 관리에서 모델 가격 마이그레이션을 완료한 후 계속하세요.",
   "request_at": "요청 시간",
   "request_duration": "요청 시간: {{duration}}초",
   "retry_times": "재시도 횟수",

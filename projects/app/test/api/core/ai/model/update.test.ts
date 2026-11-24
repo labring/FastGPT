@@ -121,6 +121,46 @@ describe('admin settings model create/update api', () => {
     clearTeamModelCatalogCache();
   });
 
+  it('preserves stored LLM tiers when configuration changes arrive before backfill', async () => {
+    const original = buildLlmDocument();
+    const pricing = {
+      tiers: [
+        { maxInputTokens: 0.128, inputPrice: 10, outputPrice: 20 },
+        { inputPrice: 80, outputPrice: 160 }
+      ]
+    };
+    const existing = await insertSystemModel(original);
+    const filter = { _id: existing._id };
+    await MongoAIModel.collection.updateOne(filter, { $set: { pricing } });
+
+    const modelData = {
+      ...buildLlmUpdateData(),
+      name: 'Renamed LLM',
+      pricing: { tiers: [{ inputPrice: 10, outputPrice: 20 }] }
+    };
+    const save = (data: typeof modelData) =>
+      callApi({
+        handler: updateModelApi,
+        body: { modelId: String(existing._id), modelData: data }
+      });
+    const blocked = await save(modelData);
+    expect(blocked.error?.message).toBe('modelPricingMigrationPending');
+    expect(await MongoAIModel.collection.findOne(filter)).toMatchObject({
+      name: original.name,
+      pricing
+    });
+
+    await MongoAIModel.collection.updateOne(filter, {
+      $set: { 'pricing.tiers.0.maxInputTokensK': 128 }
+    });
+    const tiers = [{ maxInputTokensK: 128, inputPrice: 10, outputPrice: 20 }, pricing.tiers[1]];
+    expect((await save({ ...modelData, pricing: { tiers } })).code).toBe(200);
+    expect(await MongoAIModel.collection.findOne(filter)).toMatchObject({
+      name: modelData.name,
+      pricing: { tiers }
+    });
+  });
+
   it.each([{}, { unitPrice: 0.2 }, null, { type: 'unknown', unitPrice: 0.2 }])(
     'rejects invalid STT prices on create and update despite permissive database reads: %j',
     async (pricing) => {

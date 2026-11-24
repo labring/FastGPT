@@ -111,7 +111,7 @@ describe('admin settings model updateWithJson api', () => {
     expect(saved).toMatchObject({ inputPrice: 0.001, outputPrice: 0.003 });
   });
 
-  it('blocks JSON export until the stored LLM tier bounds are backfilled', async () => {
+  it('blocks JSON import and export until the stored LLM tier bounds are backfilled', async () => {
     const pricing = {
       tiers: [
         { maxInputTokens: 0.128, inputPrice: 10, outputPrice: 20 },
@@ -127,6 +127,12 @@ describe('admin settings model updateWithJson api', () => {
 
     const blocked = await exportConfig();
     expect(blocked.error?.name).toBe('UserError');
+    const replacement = buildLlmConfig({
+      modelId: String(insertedId),
+      model: 'pending-tier-migration'
+    });
+    const blockedImport = await callUpdateWithJson(JSON.stringify([replacement]));
+    expect(blockedImport.error?.message).toBe('modelPricingMigrationPending');
     expect((await MongoAIModel.collection.findOne({ _id: insertedId }))?.pricing).toEqual(pricing);
 
     await MongoAIModel.collection.updateOne(
