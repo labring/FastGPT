@@ -1,0 +1,4 @@
+interface:
+  display_name: 'FastGPT 提交 PR'
+  short_description: '核对工作区范围、rebase upstream/main、联动 Pro 并撰写详细 PR 描述'
+  default_prompt: '使用 $create-pr 检查当前分支与工作区改动范围，rebase upstream/main，如涉及 pro 则一并提交，并按规范撰写包含需求背景、问题、解决方案和边界情况（明确考虑与不考虑）的 PR 描述。'
