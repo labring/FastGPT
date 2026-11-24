@@ -1,18 +1,21 @@
 import { OwnerRoleVal, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import type { ClientSession } from '../../../common/mongo';
 import { MongoDatasetCollection } from '../../../core/dataset/collection/schema';
 import { MongoDataset } from '../../../core/dataset/schema';
+import { isPermissionSyncDataset } from '@fastgpt/global/core/dataset/apiDataset/utils';
 import { MongoResourcePermission } from '../schema';
 import { getCollaboratorId } from '@fastgpt/global/support/permission/utils';
 import {
+  assertCollectionPermissionEditable,
   assertDatasetCollectionPermissionEnabled,
   getDatasetCollectionPermissionEnabled,
   lockDatasetCollectionPermissionState
 } from './datasetSwitch';
+import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import type { SyncChildrenPermissionResourceType } from '../inheritPermission';
 import type { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
@@ -219,23 +222,33 @@ export async function resumeCollectionInheritPermission({
   >;
   session?: ClientSession;
 }): Promise<void> {
-  // resume 只对独立态有意义，而独立态只存在于启用态；关闭态直接拒绝，不隐式开启开关。
-  await assertDatasetCollectionPermissionEnabled({
-    teamId: collection.teamId,
-    datasetId: collection.datasetId,
-    session
-  });
+  const fn = async (activeSession: ClientSession) => {
+    // 托管守卫必须与写入同事务：路由层无 session 的检查在并发开启托管后仍会放行。
+    await assertCollectionPermissionEditable({
+      teamId: collection.teamId,
+      datasetId: collection.datasetId,
+      session: activeSession
+    });
+    // resume 只对独立态有意义，而独立态只存在于启用态；关闭态直接拒绝，不隐式开启开关。
+    await assertDatasetCollectionPermissionEnabled({
+      teamId: collection.teamId,
+      datasetId: collection.datasetId,
+      session: activeSession
+    });
 
-  return resumeResourcePermissionInheritance({
-    resource: collection,
-    resourceModel: MongoDatasetCollection,
-    resourceType: PerResourceTypeEnum.collection,
-    parentResourceType: collection.parentId
-      ? PerResourceTypeEnum.collection
-      : PerResourceTypeEnum.dataset,
-    parentResourceId: collection.parentId ? String(collection.parentId) : collection.datasetId,
-    session
-  });
+    return resumeResourcePermissionInheritance({
+      resource: collection,
+      resourceModel: MongoDatasetCollection,
+      resourceType: PerResourceTypeEnum.collection,
+      parentResourceType: collection.parentId
+        ? PerResourceTypeEnum.collection
+        : PerResourceTypeEnum.dataset,
+      parentResourceId: collection.parentId ? String(collection.parentId) : collection.datasetId,
+      session: activeSession
+    });
+  };
+
+  return session ? fn(session) : mongoSessionRun(fn);
 }
 
 /**
@@ -443,6 +456,9 @@ export const syncRootCollections = async ({
  * collection 权限开关按 dataset 独立判定：folder 类型 dataset 永远不会开启，不能因为被改节点
  * 是 folder 就跳过整棵后代树；关闭态 dataset 自身的 collection 不写快照（读路径已短路）。
  *
+ * 只有非 folder 的托管库（permissionSync）跳过：其 collection ACL 由外部同步整份覆盖。
+ * folder 上的同名开关是存量脏数据，写入侧已拒绝，读侧必须容忍并继续向下传播。
+ *
  * 收集阶段按层查询并剪掉独立权限分支：`inheritPermission=false` 的子树不会受父级 ACL 变化影响，
  * 既不遍历其后代，也不把它们的 ACL 送进批量查询，避免大目录下事务里的串行查询放大。
  */
@@ -461,6 +477,23 @@ export async function syncDatasetToCollections({
   newEffectiveClbs: CollaboratorItemType[];
   session: ClientSession;
 }): Promise<void> {
+  // 外部权限同步托管：ACL 由外部列表整份覆盖，级联写入既会被下一轮抹掉，也会与外部意图冲突。
+  // 必须在收集阶段之前退出，避免对开启态的 dataset 产生任何 ACL 写。
+  // folder 永远不是托管库：它只承载子知识库、没有自己的 collection，存量脏数据可能带着开关，
+  // 不能因此剪掉整棵子树。
+  const datasetConfig = await MongoDataset.findOne(
+    { _id: datasetId, teamId },
+    'type apiDatasetServer'
+  )
+    .session(session)
+    .lean();
+  if (
+    datasetConfig?.type !== DatasetTypeEnum.folder &&
+    isPermissionSyncDataset(datasetConfig?.apiDatasetServer)
+  ) {
+    return;
+  }
+
   // 按层收集继承态后代 dataset。独立权限分支在收集阶段剪掉：父级 ACL 变化不会传播进去，
   // 其整棵子树无需同步。不能用 collectionPermissionEnabled 剪枝——关闭态 folder 下可能有开启态知识库。
   const datasetNodes = new Map<string, { collectionPermissionEnabled?: boolean }>();
@@ -470,12 +503,16 @@ export async function syncDatasetToCollections({
   while (pendingParentIds.length > 0) {
     const children = await MongoDataset.find(
       { teamId, parentId: { $in: pendingParentIds } },
-      '_id parentId inheritPermission collectionPermissionEnabled'
+      '_id parentId type inheritPermission collectionPermissionEnabled apiDatasetServer'
     )
       .lean()
       .session(session);
-    const inheritingChildren = children.filter((child) =>
-      shouldInheritResourcePermission(child.inheritPermission)
+    const inheritingChildren = children.filter(
+      (child) =>
+        shouldInheritResourcePermission(child.inheritPermission) &&
+        // 托管库的 collection ACL 由外部同步整份覆盖，其子树一并跳过，避免本地级联覆盖外部意图。
+        // folder 不是托管库（存量脏数据除外），必须继续向下遍历。
+        (child.type === DatasetTypeEnum.folder || !isPermissionSyncDataset(child.apiDatasetServer))
     );
 
     for (const child of inheritingChildren) {
@@ -557,7 +594,7 @@ export async function syncDatasetToCollections({
 }
 
 /** 批量 ACL 写入的分片大小：4w 行整批 deleteMany + insertMany 的载荷与内存都不可接受 */
-const COLLECTION_PERMISSION_WRITE_CHUNK_SIZE = 1000;
+export const COLLECTION_PERMISSION_WRITE_CHUNK_SIZE = 1000;
 
 const chunked = <T>(items: T[], size: number): T[][] => {
   const result: T[][] = [];

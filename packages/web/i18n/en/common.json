@@ -1464,5 +1464,6 @@
   "puzzle_captcha_load_failed": "Could not load the image. Select New image.",
   "model.cache_read_price": "Cache read",
   "model.cache_creation_price": "Cache creation",
-  "model.cache_price_default": "Input price"
+  "model.cache_price_default": "Input price",
+  "core.dataset.error.permissionSyncManaged": "File permissions of this knowledge base are managed by the external API file library and cannot be edited here"
 }

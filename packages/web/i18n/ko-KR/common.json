@@ -1464,5 +1464,6 @@
   "puzzle_captcha_load_failed": "이미지를 불러오지 못했습니다. 새 이미지를 선택하세요.",
   "model.cache_read_price": "캐시 읽기",
   "model.cache_creation_price": "캐시 생성",
-  "model.cache_price_default": "입력 가격"
+  "model.cache_price_default": "입력 가격",
+  "core.dataset.error.permissionSyncManaged": "이 지식 베이스의 파일 권한은 외부 API 파일 라이브러리에서 동기화되므로 여기서 수정할 수 없습니다"
 }
