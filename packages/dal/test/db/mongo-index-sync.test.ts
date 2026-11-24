@@ -4,6 +4,7 @@ import { DbConfigurationError } from '@fastgpt/dal/db/errors';
 import { defineMongoCollection } from '@fastgpt/dal/db/mongo/collection';
 import {
   dropManagedMongoIndexIfExists,
+  hasMatchingMongoIndex,
   inspectMongoIndexes,
   syncMongoCollectionIndexes,
   type LiveMongoIndexSpec
@@ -681,5 +682,70 @@ describe('@fastgpt/dal/db/mongo additive index sync, collMod TTL, safe drops, an
     });
     expect(droppedCollation.status).toBe('dropped');
     expect(matchingCollation.dropIndex).toHaveBeenCalledWith('userId_1');
+  });
+
+  it('verifies exact key and full option parity in hasMatchingMongoIndex', async () => {
+    const mockClient = (indexes: Array<Record<string, unknown>>) =>
+      ({
+        connection: {
+          db: {
+            collection: () => ({
+              indexes: async () => [{ name: '_id_', key: { _id: 1 } }, ...indexes]
+            })
+          }
+        }
+      }) as any;
+
+    const partialOnly = mockClient([
+      {
+        name: 'partial_cursor',
+        key: { appId: 1, updateTime: -1, _id: -1 },
+        partialFilterExpression: { appId: { $exists: true } }
+      }
+    ]);
+    await expect(
+      hasMatchingMongoIndex({
+        client: partialOnly,
+        collectionName: 'chats',
+        key: { appId: 1, updateTime: -1, _id: -1 },
+        options: {}
+      })
+    ).resolves.toBe(false);
+
+    const fullAndUnique = mockClient([
+      {
+        name: 'appId_1_updateTime_-1__id_-1',
+        key: { appId: 1, updateTime: -1, _id: -1 }
+      },
+      {
+        name: 'userId_1_teamId_1',
+        key: { userId: 1, teamId: 1 },
+        unique: true
+      }
+    ]);
+    await expect(
+      hasMatchingMongoIndex({
+        client: fullAndUnique,
+        collectionName: 'chats',
+        key: { appId: 1, updateTime: -1, _id: -1 },
+        options: {}
+      })
+    ).resolves.toBe(true);
+    await expect(
+      hasMatchingMongoIndex({
+        client: fullAndUnique,
+        collectionName: 'team_members',
+        key: { userId: 1, teamId: 1 },
+        options: { unique: true }
+      })
+    ).resolves.toBe(true);
+    await expect(
+      hasMatchingMongoIndex({
+        client: fullAndUnique,
+        collectionName: 'team_members',
+        key: { userId: 1, teamId: 1 },
+        options: {}
+      })
+    ).resolves.toBe(false);
   });
 });

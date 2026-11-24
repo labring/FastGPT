@@ -62,6 +62,12 @@ export type MongoIndexInspectReport = {
   legacyOrCustomerIndexes: Array<{ collection: string; indexName: string }>;
 };
 
+export type MongoIndexRequirement = {
+  key: Record<string, unknown>;
+  /** 显式声明替代索引的预期选项签名（普通索引可省略或传 `{}`），防止受限 partial/unique 索引误判为已就绪的全量替代索引。 */
+  options?: ExpectedMongoIndexOptions;
+};
+
 export type DropMongoIndexResult = {
   collection: string;
   indexName: string;
@@ -915,4 +921,49 @@ export const inspectMongoIndexes = async ({
   }
 
   return report;
+};
+
+/**
+ * 100% 只读校验：判断目标集合当前已提交就绪的 `listIndexes()` 中是否存在与 `key + options`
+ * 完整等价的索引（MongoDB 后台构建中的索引不会出现在 `listIndexes()` 中）。
+ */
+export const hasMatchingMongoIndex = async ({
+  client,
+  collectionName,
+  key,
+  options
+}: {
+  client: Mongoose;
+  collectionName: string;
+  key: Record<string, unknown>;
+  options?: ExpectedMongoIndexOptions;
+}): Promise<boolean> => {
+  if (client.connection.db === undefined) {
+    throw new DbConfigurationError('MongoDB connection is not established');
+  }
+
+  const liveIndexes = await listCollectionIndexesSafe(client, collectionName);
+  const expectedSig = buildNormalizedMongoKeySignature({
+    key,
+    weights: options?.weights
+  });
+
+  return liveIndexes.some((live) => {
+    const liveSig = buildNormalizedMongoKeySignature({
+      key: live.key ?? {},
+      weights: live.weights
+    });
+    if (liveSig !== expectedSig) {
+      return false;
+    }
+    return (
+      detectCriticalOptionDrift({
+        declared: {
+          key: key as any,
+          options: (options ?? {}) as any
+        },
+        live
+      }) === undefined
+    );
+  });
 };

@@ -15,6 +15,7 @@
 
 - 后续任意版本需要退役 MongoDB 索引时，统一按 Expand-Contract 两版本收缩：N 版移除 Schema/DAL 索引声明与查询依赖，N+1 版在 `projects/app/src/migration/tasks/<version>/<YYYYMMDD>_cleanup_mongo_indexes/` 新增独立迁移任务并追加至 `systemMigrations` 末尾。
 - 所有版本复用 `projects/app/src/migration/mongoIndexCleanup.ts` 的 `createMongoIndexCleanupMigration`，固定包含 `cleanup` 与 `validation` 两阶段、采用幂等全量重跑，并严格按 `name + key + 完整 options` 匹配删除，同时遵循 `MONGO_DEPRECATE_INDEX` 开关。
+- 凡由新索引替代的退役项必须声明 `requiredIndexes`：迁移在删除前会持续轮询 `listIndexes()` 确认前置替代索引已全部构建就绪，未就绪（或超时）时保守保留旧索引并报错待重试，避免大表异步建索引期间回退全表扫描。
 
 ## 系统配置迁移
 

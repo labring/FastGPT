@@ -85,7 +85,7 @@
   "migrations.20261120_migrate_model_pricing.validation": "모델 가격 검증",
   "migrations.20261120_migrate_model_pricing.result": "STT 모델 {{sttModels}}개를 검사하고 시스템 LLM 모델 {{llmModels}}개의 계층 상한을 K Tokens로 변환했습니다.",
   "migrations.20261123_cleanup_mongo_indexes.name": "사용 중단된 MongoDB 인덱스 정리",
-  "migrations.20261123_cleanup_mongo_indexes.description": "시작 후 백그라운드에서 독립적으로 사용 중단된 MongoDB 인덱스를 정리합니다. 인덱스 이름, 키 정의 및 전체 옵션이 정확히 일치하는 경우에만 삭제하며 사용자 지정 또는 불일치 인덱스는 보존합니다. MONGO_DEPRECATE_INDEX=false이면 삭제하지 않고 검사만 수행합니다.",
+  "migrations.20261123_cleanup_mongo_indexes.description": "시작 후 백그라운드에서 독립적으로 사용 중단된 MongoDB 인덱스를 정리합니다. 삭제 전 필수 대체 인덱스의 생성 완료를 지속적으로 확인하고 인덱스 이름, 키 정의 및 전체 옵션이 정확히 일치하는 경우에만 삭제하며 사용자 지정 또는 불일치 인덱스는 보존합니다. MONGO_DEPRECATE_INDEX=false이면 기존 사용 중단 인덱스를 유지하고 활성화 또는 수동 삭제 후 재시도할 수 있도록 연기합니다.",
   "migrations.20261123_cleanup_mongo_indexes.cleanup": "사용 중단된 인덱스 정리",
   "migrations.20261123_cleanup_mongo_indexes.validation": "정리 결과 검증",
   "migrations.20261123_cleanup_mongo_indexes.result": "총 {{totalCount}}개의 사용 중단된 인덱스를 검사했습니다: {{droppedCount}}개 삭제, {{missingCount}}개 미존재, {{skippedCount}}개 안전하게 건너뜀."

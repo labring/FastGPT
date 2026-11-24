@@ -58,14 +58,18 @@ describe('20261123_cleanup_mongo_indexes', () => {
     vi.restoreAllMocks();
   });
 
-  it('drops exact-matching legacy indexes (main + log + partial unique + TTL), preserves customer indexes, and replays idempotently', async () => {
+  it('drops exact-matching legacy indexes after replacement indexes are ready, preserves customer indexes, and replays idempotently', async () => {
     const mainDb = connectionMongo.connection.db!;
     const logDb = connectionLogMongo.connection.db!;
 
-    // 1. 构造真实历史废弃索引：普通、partial unique、TTL 与 log 库索引
+    // 1. 构造真实历史废弃索引及其声明的前置替代索引（普通、partial unique、TTL 与 log 库索引）
     await mainDb
       .collection('chats')
       .createIndex({ appId: 1, updateTime: -1 }, { name: 'appId_1_updateTime_-1' });
+    await mainDb
+      .collection('chats')
+      .createIndex({ appId: 1, updateTime: -1, _id: -1 }, { name: 'appId_1_updateTime_-1__id_-1' });
+
     await mainDb.collection('systemConfigs').createIndex(
       { type: 1 },
       {
@@ -82,12 +86,27 @@ describe('20261123_cleanup_mongo_indexes', () => {
         }
       }
     );
+    await mainDb.collection('systemConfigs').createIndex({ type: 1 }, { name: 'type_1' });
+
     await mainDb
       .collection('model_status_probe_records')
       .createIndex({ testedAt: 1 }, { name: 'testedAt_1', expireAfterSeconds: 30 * 24 * 60 * 60 });
+    await mainDb
+      .collection('model_status_probe_records')
+      .createIndex(
+        { requestEndedAt: 1 },
+        { name: 'requestEndedAt_1', expireAfterSeconds: 30 * 24 * 60 * 60 }
+      );
+
     await logDb
       .collection('app_chat_logs')
       .createIndex({ teamId: 1, appId: 1, userId: 1 }, { name: 'teamId_1_appId_1_userId_1' });
+    await logDb
+      .collection('app_chat_logs')
+      .createIndex(
+        { teamId: 1, appId: 1, userId: 1, createTime: 1 },
+        { name: 'teamId_1_appId_1_userId_1_createTime_1' }
+      );
 
     // 2. 构造客户同名定制索引（加了 unique: true）与客户无关索引，均必须保守保留
     await mainDb
@@ -128,13 +147,17 @@ describe('20261123_cleanup_mongo_indexes', () => {
       status: 'succeeded'
     });
 
-    // 验证四条精确匹配的废弃索引已删除
+    // 验证四条精确匹配的废弃索引已删除，替代索引与客户索引完好保留
     expect(await listIndexNames('chats')).not.toContain('appId_1_updateTime_-1');
+    expect(await listIndexNames('chats')).toContain('appId_1_updateTime_-1__id_-1');
     expect(await listIndexNames('systemConfigs')).not.toContain('runtime_scope_type_unique');
+    expect(await listIndexNames('systemConfigs')).toContain('type_1');
     expect(await listIndexNames('model_status_probe_records')).not.toContain('testedAt_1');
+    expect(await listIndexNames('model_status_probe_records')).toContain('requestEndedAt_1');
     expect(await listIndexNames('app_chat_logs', 'log')).not.toContain('teamId_1_appId_1_userId_1');
-
-    // 验证客户同名定制索引与客户自建索引完好保留
+    expect(await listIndexNames('app_chat_logs', 'log')).toContain(
+      'teamId_1_appId_1_userId_1_createTime_1'
+    );
     expect(await listIndexNames('datasets')).toContain('teamId_1');
     expect(await listIndexNames('chats')).toContain('customer_custom_idx');
     expect(first.context.logger.warn).toHaveBeenCalledWith(
@@ -158,11 +181,165 @@ describe('20261123_cleanup_mongo_indexes', () => {
     expect(await listIndexNames('chats')).toContain('customer_custom_idx');
   });
 
-  it('skips dropping indexes without error when MONGO_DEPRECATE_INDEX=false', async () => {
+  it('tracks required replacement index build via polling and drops legacy index only once ready', async () => {
+    const collectionName = 'mig_idx_wait_ready_test';
+    const db = connectionMongo.connection.db!;
+    await db
+      .collection(collectionName)
+      .createIndex({ appId: 1, updateTime: -1 }, { name: 'appId_1_updateTime_-1' });
+
+    const run = createMongoIndexCleanupMigration({
+      entries: [
+        {
+          collectionName,
+          datasource: 'main',
+          indexName: 'appId_1_updateTime_-1',
+          key: { appId: 1, updateTime: -1 },
+          options: {},
+          requiredIndexes: [{ key: { appId: 1, updateTime: -1, _id: -1 }, options: {} }],
+          reason: 'wait for replacement build'
+        }
+      ],
+      pollIntervalMs: 25,
+      prerequisiteWaitTimeoutMs: 2_000
+    });
+
+    const { context } = createContext();
+    let seenLegacyWhileWaiting = false;
+
+    const migrationPromise = run(context);
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    // 替代索引未就绪期间，旧索引必须依然存在
+    seenLegacyWhileWaiting = (await listIndexNames(collectionName)).includes(
+      'appId_1_updateTime_-1'
+    );
+
+    // 模拟后台建索引完成
+    await db
+      .collection(collectionName)
+      .createIndex({ appId: 1, updateTime: -1, _id: -1 }, { name: 'appId_1_updateTime_-1__id_-1' });
+
+    const result = await migrationPromise;
+    expect(seenLegacyWhileWaiting).toBe(true);
+    expect(result).toEqual({
+      totalCount: 1,
+      droppedCount: 1,
+      missingCount: 0,
+      skippedCount: 0
+    });
+    expect(await listIndexNames(collectionName)).not.toContain('appId_1_updateTime_-1');
+    expect(await listIndexNames(collectionName)).toContain('appId_1_updateTime_-1__id_-1');
+  });
+
+  it('keeps legacy index and fails when required replacement index is missing or only partial, then succeeds after real replacement is built', async () => {
+    const collectionName = 'mig_idx_missing_replacement_test';
+    const db = connectionMongo.connection.db!;
+    await db
+      .collection(collectionName)
+      .createIndex({ appId: 1, updateTime: -1 }, { name: 'appId_1_updateTime_-1' });
+    // 同 key 但带 partialFilterExpression 的受限索引不得被误判为全量替代索引
+    await db.collection(collectionName).createIndex(
+      { appId: 1, updateTime: -1, _id: -1 },
+      {
+        name: 'partial_replacement_candidate',
+        partialFilterExpression: { appId: { $exists: true } }
+      }
+    );
+
+    const run = createMongoIndexCleanupMigration({
+      entries: [
+        {
+          collectionName,
+          datasource: 'main',
+          indexName: 'appId_1_updateTime_-1',
+          key: { appId: 1, updateTime: -1 },
+          options: {},
+          requiredIndexes: [{ key: { appId: 1, updateTime: -1, _id: -1 }, options: {} }],
+          reason: 'replacement required before drop'
+        }
+      ],
+      pollIntervalMs: 15,
+      prerequisiteWaitTimeoutMs: 45
+    });
+
+    const first = createContext();
+    await expect(run(first.context)).rejects.toThrow('failed to clean up');
+    expect(await listIndexNames(collectionName)).toContain('appId_1_updateTime_-1');
+    expect(first.failures()).toEqual([
+      {
+        stageKey: 'cleanup',
+        data: {
+          collection: collectionName,
+          indexName: 'appId_1_updateTime_-1',
+          datasource: 'main'
+        },
+        reason: {
+          message: 'Required replacement MongoDB index is not ready yet; keeping legacy index'
+        }
+      }
+    ]);
+    expect(first.context.reportProgress).not.toHaveBeenCalledWith({
+      key: 'cleanup',
+      status: 'succeeded',
+      current: 1,
+      total: 1
+    });
+
+    // 建好真正的全量替代索引后重试成功
+    await db
+      .collection(collectionName)
+      .createIndex({ appId: 1, updateTime: -1, _id: -1 }, { name: 'appId_1_updateTime_-1__id_-1' });
+    const retry = createContext();
+    expect(await run(retry.context)).toEqual({
+      totalCount: 1,
+      droppedCount: 1,
+      missingCount: 0,
+      skippedCount: 0
+    });
+    expect(await listIndexNames(collectionName)).not.toContain('appId_1_updateTime_-1');
+  });
+
+  it('aborts promptly while waiting for replacement indexes and preserves legacy index', async () => {
+    const collectionName = 'mig_idx_abort_wait_test';
+    const db = connectionMongo.connection.db!;
+    await db
+      .collection(collectionName)
+      .createIndex({ appId: 1, updateTime: -1 }, { name: 'appId_1_updateTime_-1' });
+
+    const controller = new AbortController();
+    const run = createMongoIndexCleanupMigration({
+      entries: [
+        {
+          collectionName,
+          datasource: 'main',
+          indexName: 'appId_1_updateTime_-1',
+          key: { appId: 1, updateTime: -1 },
+          options: {},
+          requiredIndexes: [{ key: { appId: 1, updateTime: -1, _id: -1 }, options: {} }],
+          reason: 'abort while polling'
+        }
+      ],
+      pollIntervalMs: 5_000,
+      prerequisiteWaitTimeoutMs: 30_000
+    });
+
+    const { context } = createContext(controller.signal);
+    const startedAt = Date.now();
+    setTimeout(() => controller.abort(new Error('Runner stopping')), 30);
+
+    await expect(run(context)).rejects.toThrow('Runner stopping');
+    expect(Date.now() - startedAt).toBeLessThan(1_000);
+    expect(await listIndexNames(collectionName)).toContain('appId_1_updateTime_-1');
+  });
+
+  it('defers cleanup without dropping when MONGO_DEPRECATE_INDEX=false and succeeds once enabled or manually dropped', async () => {
     process.env.MONGO_DEPRECATE_INDEX = 'false';
     const collectionName = 'mig_idx_disabled_test';
     const db = connectionMongo.connection.db!;
     await db.collection(collectionName).createIndex({ legacyField: 1 }, { name: 'legacyField_1' });
+    await db
+      .collection(collectionName)
+      .createIndex({ replacementField: 1 }, { name: 'replacementField_1' });
 
     const run = createMongoIndexCleanupMigration({
       entries: [
@@ -172,23 +349,50 @@ describe('20261123_cleanup_mongo_indexes', () => {
           indexName: 'legacyField_1',
           key: { legacyField: 1 },
           options: {},
+          requiredIndexes: [{ key: { replacementField: 1 }, options: {} }],
           reason: 'test disabled switch'
         }
       ]
     });
 
-    const { context } = createContext();
-    const result = await run(context);
-    expect(result).toEqual({
+    // 1. 开关关闭且库里仍有旧索引：不删索引、不误标 succeeded，保留失败明细待后续重试
+    const first = createContext();
+    await expect(run(first.context)).rejects.toThrow('deferred while MONGO_DEPRECATE_INDEX');
+    expect(await listIndexNames(collectionName)).toContain('legacyField_1');
+    expect(first.failures()).toEqual([
+      {
+        stageKey: 'cleanup',
+        data: {
+          collection: collectionName,
+          indexName: 'legacyField_1',
+          datasource: 'main'
+        },
+        reason: {
+          message:
+            'Skipped because MONGO_DEPRECATE_INDEX is disabled; enable it or drop manually and retry'
+        }
+      }
+    ]);
+
+    // 2. 开启开关后重试：校验替代索引就绪并删除旧索引，成功收口
+    process.env.MONGO_DEPRECATE_INDEX = 'true';
+    const enabledRetry = createContext();
+    expect(await run(enabledRetry.context)).toEqual({
+      totalCount: 1,
+      droppedCount: 1,
+      missingCount: 0,
+      skippedCount: 0
+    });
+    expect(await listIndexNames(collectionName)).not.toContain('legacyField_1');
+
+    // 3. 库中已无旧索引时，即使开关关闭也能直接 succeeded（如全新部署或 DBA 已手工删完）
+    process.env.MONGO_DEPRECATE_INDEX = 'false';
+    const cleanRetry = createContext();
+    expect(await run(cleanRetry.context)).toEqual({
       totalCount: 1,
       droppedCount: 0,
-      missingCount: 0,
-      skippedCount: 1
-    });
-    expect(await listIndexNames(collectionName)).toContain('legacyField_1');
-    expect(context.reportProgress).toHaveBeenCalledWith({
-      key: 'validation',
-      status: 'succeeded'
+      missingCount: 1,
+      skippedCount: 0
     });
   });
 
