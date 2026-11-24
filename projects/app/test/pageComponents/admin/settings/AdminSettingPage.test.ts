@@ -26,11 +26,20 @@ vi.mock('@chakra-ui/react', () => ({
   Button: ({
     children,
     onClick,
-    isLoading
-  }: React.PropsWithChildren<{ onClick?: () => void; isLoading?: boolean }>) =>
+    isLoading,
+    isDisabled
+  }: React.PropsWithChildren<{
+    onClick?: () => void;
+    isLoading?: boolean;
+    isDisabled?: boolean;
+  }>) =>
     React.createElement(
       'button',
-      { onClick, 'data-loading': String(Boolean(isLoading)) },
+      {
+        onClick,
+        disabled: Boolean(isDisabled),
+        'data-loading': String(Boolean(isLoading))
+      },
       children
     ),
   Flex: ({ children }: React.PropsWithChildren) => React.createElement('div', null, children),
@@ -128,7 +137,8 @@ describe('AdminSettingPage dynamic TOC fallback', () => {
     });
   });
 
-  it('mounts MyLoading overlay whenever isLoading is true', async () => {
+  it('mounts MyLoading overlay and disables Save button whenever isLoading is true', async () => {
+    const onSave = vi.fn();
     const host = document.createElement('div');
     document.body.appendChild(host);
     const root = createRoot(host);
@@ -141,8 +151,8 @@ describe('AdminSettingPage dynamic TOC fallback', () => {
             headerTitle: 'Moderation Policy',
             tocItems: [{ id: 'service', label: 'Service' }],
             isLoading: true,
-            isSaving: true,
-            onSave: vi.fn()
+            isSaving: false,
+            onSave
           },
           React.createElement('div')
         )
@@ -150,7 +160,14 @@ describe('AdminSettingPage dynamic TOC fallback', () => {
     });
 
     expect(host.querySelector('[data-my-loading="true"]')).not.toBeNull();
-    expect(host.querySelector('button')?.getAttribute('data-loading')).toBe('true');
+    const saveBtn = host.querySelector('button') as HTMLButtonElement;
+    expect(saveBtn.disabled).toBe(true);
+    expect(saveBtn.getAttribute('data-loading')).toBe('false');
+
+    await act(async () => {
+      saveBtn.click();
+    });
+    expect(onSave).not.toHaveBeenCalled();
 
     await act(async () => {
       root.unmount();

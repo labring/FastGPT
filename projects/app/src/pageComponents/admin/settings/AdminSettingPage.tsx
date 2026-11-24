@@ -105,7 +105,14 @@ const AdminSettingPage = ({
   const headerActions =
     headerRightContent ||
     (onSave && (
-      <Button colorScheme={'blue'} size={'sm'} px={6} isLoading={isSaving} onClick={save}>
+      <Button
+        colorScheme={'blue'}
+        size={'sm'}
+        px={6}
+        isLoading={isSaving}
+        isDisabled={isLoading}
+        onClick={save}
+      >
         {t('common:Save')}
       </Button>
     ));
