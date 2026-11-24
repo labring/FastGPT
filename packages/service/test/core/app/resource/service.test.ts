@@ -4,6 +4,7 @@ import {
   extractAppResourcesWithToolModels,
   extractSelectedToolModelResources,
   getAppDraftResourceBaseline,
+  inspectAppResourcesWithToolModels,
   prepareAppWorkflowResources,
   authTargetModelResource,
   resolveAppResourcesByPermission
@@ -941,6 +942,289 @@ describe('prepareAppWorkflowResources', () => {
         })
       ).resolves.toEqual([]);
       expect(getSystemToolDetailSpy).not.toHaveBeenCalled();
+    } finally {
+      getSystemToolDetailSpy.mockRestore();
+    }
+  });
+
+  it('preserves unchanged verified tool model bindings across degraded draft saves and allows publish after recovery', async () => {
+    const privateModel = AIModelDataSchema.parse({
+      scope: 'team',
+      teamId,
+      tmbId: '65f000000000000000000099',
+      isActive: true,
+      modelId: 'private-tool-model-baseline-id',
+      model: 'private-tool-baseline-llm',
+      name: 'Private Tool Baseline LLM',
+      provider: 'OpenAI',
+      type: 'llm',
+      config: { maxContext: 4096, maxResponse: 1024, quoteMaxToken: 1024 }
+    });
+    const anotherPrivateModel = AIModelDataSchema.parse({
+      scope: 'team',
+      teamId,
+      tmbId: '65f000000000000000000099',
+      isActive: true,
+      modelId: 'private-tool-model-other-id',
+      model: 'private-tool-other-llm',
+      name: 'Private Tool Other LLM',
+      provider: 'OpenAI',
+      type: 'llm',
+      config: { maxContext: 4096, maxResponse: 1024, quoteMaxToken: 1024 }
+    });
+    const restrictedHandle = createModelHandle({
+      models: [model, privateModel, anotherPrivateModel],
+      defaultModels: {},
+      configuredDefaultModelIds: {},
+      revision: 1,
+      version: 'degraded-draft-recovery-catalog'
+    });
+    mocks.getTeamModelHandle.mockResolvedValue(restrictedHandle);
+
+    const buildAgentNodes = ({
+      toolVersion = '1.2.3',
+      modelId = privateModel.modelId,
+      mode = AgentToolInputModeEnum.manual,
+      includeTool = true
+    }: {
+      toolVersion?: string;
+      modelId?: string;
+      mode?: AgentToolInputModeEnum;
+      includeTool?: boolean;
+    } = {}) => [
+      {
+        nodeId: 'agent-1',
+        name: 'Agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+            value: includeTool
+              ? [
+                  {
+                    id: 'systemTool-modelInvokeTest',
+                    source: 'system',
+                    version: toolVersion,
+                    inputs: [{ key: 'summaryModel', mode }],
+                    config: {
+                      summaryModel: modelId
+                    }
+                  }
+                ]
+              : []
+          }
+        ],
+        outputs: []
+      }
+    ];
+
+    const toolDetailPayload = {
+      id: 'systemTool-modelInvokeTest',
+      version: '1.2.3',
+      status: 1,
+      source: 'system',
+      isToolSet: false,
+      avatar: '',
+      name: { en: 'Model Invoke Test' },
+      intro: { en: 'Test tool' },
+      author: 'FastGPT',
+      tags: [],
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      hasSystemSecret: false,
+      systemSecretStatus: 'none',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          summaryModel: {
+            type: 'string',
+            format: 'modelId',
+            description: 'Summary LLM model'
+          }
+        }
+      }
+    } as any;
+
+    const appId = 'app-degraded-draft-recovery';
+    const initialNodes = buildAgentNodes();
+    const initialDraftVersion = {
+      appId,
+      nodes: initialNodes as any,
+      resources: [{ type: 'model' as const, id: privateModel.modelId }]
+    };
+
+    const getSystemToolDetailSpy = vi.spyOn(SystemToolRepo.getInstance(), 'getSystemToolDetail');
+
+    try {
+      // 1) Tool detail temporarily fails during draft auto-save for a collaborator without model permission.
+      getSystemToolDetailSpy.mockRejectedValue(new Error('Plugin service temporarily unavailable'));
+
+      const degradedExtraction = await inspectAppResourcesWithToolModels({
+        nodes: initialNodes as any,
+        teamId,
+        modelHandle: restrictedHandle,
+        onToolDetailError: 'ignore'
+      });
+      expect(degradedExtraction.resources).toEqual([]);
+      expect(degradedExtraction.unresolvedToolCandidates).toHaveLength(1);
+
+      const savedDraftResources = await resolveAppResourcesByPermission({
+        appId,
+        extracted: degradedExtraction.resources,
+        unresolvedToolCandidates: degradedExtraction.unresolvedToolCandidates,
+        tmbId,
+        teamId,
+        blockOnUnauthorized: false,
+        modelHandle: restrictedHandle,
+        draftVersion: initialDraftVersion
+      });
+      expect(savedDraftResources).toEqual([{ type: 'model', id: privateModel.modelId }]);
+
+      // 2) Once tool detail recovers, publishing from the saved degraded draft still inherits the verified binding.
+      getSystemToolDetailSpy.mockResolvedValue(toolDetailPayload);
+
+      const savedDraftVersion = {
+        appId,
+        nodes: initialNodes as any,
+        resources: savedDraftResources
+      };
+      const recoveredExtraction = await inspectAppResourcesWithToolModels({
+        nodes: initialNodes as any,
+        teamId,
+        modelHandle: restrictedHandle,
+        onToolDetailError: 'throw'
+      });
+      expect(recoveredExtraction.unresolvedToolCandidates).toEqual([]);
+      const publishedResources = await resolveAppResourcesByPermission({
+        appId,
+        extracted: recoveredExtraction.resources,
+        unresolvedToolCandidates: recoveredExtraction.unresolvedToolCandidates,
+        tmbId,
+        teamId,
+        blockOnUnauthorized: true,
+        modelHandle: restrictedHandle,
+        draftVersion: savedDraftVersion
+      });
+      expect(publishedResources).toEqual([{ type: 'model', id: privateModel.modelId }]);
+
+      // 3) Removing the tool, changing its model/mode/version during outage must NOT preserve the old baseline.
+      getSystemToolDetailSpy.mockRejectedValue(new Error('Plugin service temporarily unavailable'));
+
+      // 3a) Tool removed
+      const removedNodes = buildAgentNodes({ includeTool: false });
+      const removedExtraction = await inspectAppResourcesWithToolModels({
+        nodes: removedNodes as any,
+        teamId,
+        modelHandle: restrictedHandle,
+        onToolDetailError: 'ignore'
+      });
+      expect(removedExtraction.unresolvedToolCandidates).toEqual([]);
+      const removedDraftResources = await resolveAppResourcesByPermission({
+        appId,
+        extracted: removedExtraction.resources,
+        unresolvedToolCandidates: removedExtraction.unresolvedToolCandidates,
+        tmbId,
+        teamId,
+        blockOnUnauthorized: false,
+        modelHandle: restrictedHandle,
+        draftVersion: initialDraftVersion
+      });
+      expect(removedDraftResources).toEqual([]);
+
+      // 3b) Model changed (even to another model in baseline)
+      const draftWithTwoModels = {
+        appId,
+        nodes: initialNodes as any,
+        resources: [
+          { type: 'model' as const, id: privateModel.modelId },
+          { type: 'model' as const, id: anotherPrivateModel.modelId }
+        ]
+      };
+      const changedModelNodes = buildAgentNodes({ modelId: anotherPrivateModel.modelId });
+      const changedModelExtraction = await inspectAppResourcesWithToolModels({
+        nodes: changedModelNodes as any,
+        teamId,
+        modelHandle: restrictedHandle,
+        onToolDetailError: 'ignore'
+      });
+      const changedModelDraftResources = await resolveAppResourcesByPermission({
+        appId,
+        extracted: changedModelExtraction.resources,
+        unresolvedToolCandidates: changedModelExtraction.unresolvedToolCandidates,
+        tmbId,
+        teamId,
+        blockOnUnauthorized: false,
+        modelHandle: restrictedHandle,
+        draftVersion: draftWithTwoModels
+      });
+      expect(changedModelDraftResources).toEqual([]);
+
+      // 3c) Input mode switched to agentGenerated
+      const agentGeneratedNodes = buildAgentNodes({ mode: AgentToolInputModeEnum.agentGenerated });
+      const agentGeneratedExtraction = await inspectAppResourcesWithToolModels({
+        nodes: agentGeneratedNodes as any,
+        teamId,
+        modelHandle: restrictedHandle,
+        onToolDetailError: 'ignore'
+      });
+      const agentGeneratedDraftResources = await resolveAppResourcesByPermission({
+        appId,
+        extracted: agentGeneratedExtraction.resources,
+        unresolvedToolCandidates: agentGeneratedExtraction.unresolvedToolCandidates,
+        tmbId,
+        teamId,
+        blockOnUnauthorized: false,
+        modelHandle: restrictedHandle,
+        draftVersion: initialDraftVersion
+      });
+      expect(agentGeneratedDraftResources).toEqual([]);
+
+      // 3d) Tool version changed
+      const changedVersionNodes = buildAgentNodes({ toolVersion: '2.0.0' });
+      const changedVersionExtraction = await inspectAppResourcesWithToolModels({
+        nodes: changedVersionNodes as any,
+        teamId,
+        modelHandle: restrictedHandle,
+        onToolDetailError: 'ignore'
+      });
+      const changedVersionDraftResources = await resolveAppResourcesByPermission({
+        appId,
+        extracted: changedVersionExtraction.resources,
+        unresolvedToolCandidates: changedVersionExtraction.unresolvedToolCandidates,
+        tmbId,
+        teamId,
+        blockOnUnauthorized: false,
+        modelHandle: restrictedHandle,
+        draftVersion: initialDraftVersion
+      });
+      expect(changedVersionDraftResources).toEqual([]);
+
+      // 3e) Re-adding the removed tool after recovery is rejected as unauthorized
+      getSystemToolDetailSpy.mockResolvedValue(toolDetailPayload);
+      const readdedExtraction = await inspectAppResourcesWithToolModels({
+        nodes: initialNodes as any,
+        teamId,
+        modelHandle: restrictedHandle,
+        onToolDetailError: 'throw'
+      });
+      await expect(
+        resolveAppResourcesByPermission({
+          appId,
+          extracted: readdedExtraction.resources,
+          unresolvedToolCandidates: readdedExtraction.unresolvedToolCandidates,
+          tmbId,
+          teamId,
+          blockOnUnauthorized: true,
+          modelHandle: restrictedHandle,
+          draftVersion: {
+            appId,
+            nodes: removedNodes as any,
+            resources: removedDraftResources
+          }
+        })
+      ).rejects.toBe(ERROR_ENUM.unAuthModel);
     } finally {
       getSystemToolDetailSpy.mockRestore();
     }

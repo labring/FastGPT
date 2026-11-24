@@ -38,7 +38,7 @@ import {
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { getAuthorizedModelIds } from '@fastgpt/service/support/permission/model/auth';
 import {
-  extractAppResourcesWithToolModels,
+  inspectAppResourcesWithToolModels,
   resolveAppResourcesByPermission
 } from '@fastgpt/service/core/app/resource/service';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
@@ -110,14 +110,15 @@ async function handler(req: ApiRequestProps<PublishAppBodyType>): Promise<Publis
     nodes: normalizedWorkflow.nodes,
     teamId
   });
-  const extracted = await extractAppResourcesWithToolModels({
-    nodes: normalizedWorkflow.nodes,
-    chatConfig: normalizedWorkflow.chatConfig,
-    teamId,
-    modelHandle,
-    // 草稿自动保存与非发布保存不阻断已下架普通工具或短暂不可用的插件详情；正式发布必须强校验以保留原发布版本。
-    onToolDetailError: isPublish ? 'throw' : 'ignore'
-  });
+  const { resources: extracted, unresolvedToolCandidates } =
+    await inspectAppResourcesWithToolModels({
+      nodes: normalizedWorkflow.nodes,
+      chatConfig: normalizedWorkflow.chatConfig,
+      teamId,
+      modelHandle,
+      // 草稿自动保存与非发布保存不阻断已下架普通工具或短暂不可用的插件详情；正式发布必须强校验以保留原发布版本。
+      onToolDetailError: isPublish ? 'throw' : 'ignore'
+    });
 
   /** 事务重试时读取同一草稿供快照继承和资源鉴权；显式空数组仍表示清除快照。 */
   const resolveSaveMetadata = async (session: ClientSession) => {
@@ -132,6 +133,7 @@ async function handler(req: ApiRequestProps<PublishAppBodyType>): Promise<Publis
     const resources = await resolveAppResourcesByPermission({
       appId,
       extracted,
+      unresolvedToolCandidates,
       tmbId,
       teamId,
       isRoot,
