@@ -50,6 +50,7 @@ import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGrou
 import { getTmbInfoByTmbId } from '@fastgpt/service/support/user/team/controller';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { LEGACY_SYSTEM_ROOT_API_FILE_ID } from '@fastgpt/service/core/dataset/apiDataset/utils';
 import { isPermissionSyncDataset } from '@fastgpt/global/core/dataset/apiDataset/utils';
 import { isDisableSuperAdmin } from '@fastgpt/service/support/permission/dataset/disableSuperAdmin';
 import { CollectionPermission } from '@fastgpt/global/support/permission/collection/controller';
@@ -76,14 +77,20 @@ type TrainingAmountAggregateItem = {
 const parseCollectionScopeMatch = ({
   parentId,
   searchText,
-  subtreeFolderIds
+  subtreeFolderIds,
+  legacySystemRootObjectIds = []
 }: {
   parentId?: string | null;
   searchText?: string;
   subtreeFolderIds: string[];
+  legacySystemRootObjectIds?: Types.ObjectId[];
 }) => {
   if (!searchText) {
-    return { parentId: parentId ? new Types.ObjectId(parentId) : null };
+    if (parentId) return { parentId: new Types.ObjectId(parentId) };
+    // 升级过渡期兼容：挂在历史 SYSTEM_ROOT 哨兵下的直接子节点在根目录透明展示。
+    return legacySystemRootObjectIds.length > 0
+      ? { parentId: { $in: [null, ...legacySystemRootObjectIds] } }
+      : { parentId: null };
   }
 
   const nameMatch = { name: new RegExp(`${replaceRegChars(searchText)}`, 'i') };
@@ -190,12 +197,37 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
   // 资源范围以 dataset 归属为准：root 可以跨团队，用 header 的 teamId 会把列表过滤成空。
   const scopeTeamId = String(dataset.teamId);
 
+  // 升级过渡期兼容：未执行手动清理迁移前，历史 SYSTEM_ROOT 哨兵不对外暴露，其直接子节点透明展示在根目录。
+  const legacySystemRootObjectIds = dataset.apiDatasetServer
+    ? await MongoDatasetCollection.find(
+        {
+          teamId: new Types.ObjectId(teamId),
+          datasetId: new Types.ObjectId(datasetId),
+          apiFileId: LEGACY_SYSTEM_ROOT_API_FILE_ID
+        },
+        '_id',
+        { ...readFromSecondary }
+      )
+        .lean()
+        .then((docs) => docs.map((doc) => new Types.ObjectId(String(doc._id))))
+    : [];
+  const legacySystemRootIdSet = new Set(legacySystemRootObjectIds.map((id) => String(id)));
+  const legacySystemRootExcludeMatch =
+    legacySystemRootObjectIds.length > 0
+      ? { apiFileId: { $ne: LEGACY_SYSTEM_ROOT_API_FILE_ID } }
+      : {};
+
   // 搜索范围限定在当前路径及其子树，先枚举子树内的文件夹 ID（根目录搜索无需枚举）。
   const subtreeFolderIds =
     searchText && parentId
       ? await findSubtreeFolderIds({ teamId: scopeTeamId, datasetId, collectionId: parentId })
       : [];
-  const scopeMatch = parseCollectionScopeMatch({ parentId, searchText, subtreeFolderIds });
+  const scopeMatch = parseCollectionScopeMatch({
+    parentId,
+    searchText,
+    subtreeFolderIds,
+    legacySystemRootObjectIds
+  });
 
   // 浏览具体目录前先校验目录本身可读；搜索模式不校验 —— 范围由 parentId 子树决定，
   // 命中项各自还要过权限过滤，父目录本身是否可读不影响结果正确性。
@@ -269,12 +301,27 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
         datasetPermission: permission.role,
         collectionPermissionEnabled: dataset.collectionPermissionEnabled
       });
+      // 权限解析使用原始树（保留独立权限哨兵的继承链路）；可见性展示则隐藏哨兵并将直接子节点上提至根。
+      const visibleCollections =
+        legacySystemRootIdSet.size > 0
+          ? allCollections
+              .filter((col) => !legacySystemRootIdSet.has(String(col._id)))
+              .map((col) =>
+                col.parentId && legacySystemRootIdSet.has(String(col.parentId))
+                  ? { ...col, parentId: null }
+                  : col
+              )
+          : allCollections;
+      const effectiveReadableIds =
+        legacySystemRootIdSet.size > 0
+          ? readableIds.filter((id) => !legacySystemRootIdSet.has(id))
+          : readableIds;
       if (
         parentRequiresNavigation &&
         !isCollectionFolderNavigable({
           folderId: String(parentId),
-          collections: allCollections,
-          readableIds
+          collections: visibleCollections,
+          readableIds: effectiveReadableIds
         })
       ) {
         return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
@@ -282,8 +329,8 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
 
       const visibleChildren = getCollectionVisibleChildren({
         currentFolderId: parentId || null,
-        collections: allCollections,
-        readableIds
+        collections: visibleCollections,
+        readableIds: effectiveReadableIds
       });
       // 选择目录（如移动目标）只接受真实可读的目录，导航目录不能作为目标。
       const listedChildren = selectFolder
@@ -300,6 +347,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
           datasetId: new Types.ObjectId(datasetId),
           ...(selectFolder ? { type: DatasetCollectionTypeEnum.folder } : {}),
           ...scopeMatch,
+          ...legacySystemRootExcludeMatch,
           ...buildCollectionListTagMatch(tagFilters)
         },
         '_id type parentId tmbId inheritPermission datasetId',
@@ -327,6 +375,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     datasetId: new Types.ObjectId(datasetId),
     ...(selectFolder ? { type: DatasetCollectionTypeEnum.folder } : {}),
     ...scopeMatch,
+    ...legacySystemRootExcludeMatch,
     ...buildCollectionListTagMatch(tagFilters),
     ...collectionIdFilter
   };
@@ -344,7 +393,9 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     fileId: 1,
     rawLink: 1,
     tags: 1,
-    externalFileId: 1
+    externalFileId: 1,
+    apiFileId: 1,
+    syncChildren: 1
   };
 
   const sortDirection = sortOrder === 'desc' ? -1 : 1;
@@ -426,6 +477,38 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     });
   };
 
+  /** 投影列表项并脱敏 navigate 导航目录：不向仅可导航的成员暴露标签、远端文件 ID 与同步范围配置。 */
+  const projectCollectionItem = ({
+    item,
+    tags,
+    dataAmount,
+    trainingStatus,
+    collectionPermissionMap
+  }: {
+    item: DatasetCollectionSchemaType;
+    tags: CollectionTagLabelType[] | undefined;
+    dataAmount: number;
+    trainingStatus: typeof defaultCollectionTrainingStatus;
+    collectionPermissionMap?: Map<string, CollectionPermission>;
+  }) => {
+    const collectionId = String(item._id);
+    const folderAccessMode = folderAccessModeMap.get(collectionId);
+    const isNavigateFolder = folderAccessMode === 'navigate';
+    const { apiFileId: _apiFileId, syncChildren: _syncChildren, ...baseItem } = item;
+    const normalizedParentId =
+      item.parentId && legacySystemRootIdSet.has(String(item.parentId)) ? null : item.parentId;
+
+    return {
+      ...(isNavigateFolder ? baseItem : item),
+      parentId: normalizedParentId,
+      tags: isNavigateFolder ? [] : tags,
+      dataAmount,
+      ...trainingStatus,
+      permission: getCollectionPermission(item, collectionPermissionMap),
+      ...(folderAccessMode ? { folderAccessMode } : {})
+    };
+  };
+
   // not count data amount
   if (simple) {
     const [collections, total] = await Promise.all([
@@ -440,16 +523,15 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     ]);
 
     return ListCollectionV2ResponseSchema.parse({
-      list: collections.map((item, index) => ({
-        ...item,
-        tags: folderAccessModeMap.get(String(item._id)) === 'navigate' ? [] : tags[index],
-        dataAmount: 0,
-        ...defaultCollectionTrainingStatus,
-        permission: getCollectionPermission(item, collectionPermissionMap),
-        ...(folderAccessModeMap.has(String(item._id))
-          ? { folderAccessMode: folderAccessModeMap.get(String(item._id)) }
-          : {})
-      })),
+      list: collections.map((item, index) =>
+        projectCollectionItem({
+          item,
+          tags: tags[index],
+          dataAmount: 0,
+          trainingStatus: defaultCollectionTrainingStatus,
+          collectionPermissionMap
+        })
+      ),
       total
     });
   }
@@ -505,19 +587,16 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
   const list = collections.map((item, index) => {
     const collectionId = String(item._id);
     const dataCounts = dataAmountMap.get(collectionId);
-    return {
-      ...item,
-      tags: folderAccessModeMap.get(collectionId) === 'navigate' ? [] : tags[index],
+    return projectCollectionItem({
+      item,
+      tags: tags[index],
       dataAmount: dataCounts?.count ?? 0,
-      ...getCollectionTrainingStatusFromCounts({
+      trainingStatus: getCollectionTrainingStatusFromCounts({
         modeCounts: trainingAmountMap.get(collectionId)?.modeCounts,
         rebuildCounts: dataCounts
       }),
-      permission: getCollectionPermission(item, collectionPermissionMap),
-      ...(folderAccessModeMap.has(collectionId)
-        ? { folderAccessMode: folderAccessModeMap.get(collectionId) }
-        : {})
-    };
+      collectionPermissionMap
+    });
   });
 
   // count collections

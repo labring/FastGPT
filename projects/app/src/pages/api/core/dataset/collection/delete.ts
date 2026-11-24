@@ -1,6 +1,12 @@
 import { findCollectionAndChild } from '@fastgpt/service/core/dataset/collection/utils';
 import { delCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  createApiFileSourceResolver,
+  LEGACY_SYSTEM_ROOT_API_FILE_ID
+} from '@fastgpt/service/core/dataset/apiDataset/utils';
+import { disableApiDatasetSyncAllInSession } from '@fastgpt/service/core/dataset/apiDataset/service';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { parseHeaderCert } from '@fastgpt/service/support/permission/auth/common';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -8,7 +14,6 @@ import { NextAPI } from '@/service/middleware/entry';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { buildCollectionAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -39,9 +44,6 @@ async function handler(req: ApiRequestProps) {
 
     const { datasetId, apiFileIds } = body;
     // 外部集成只知道 API 文件身份：用请求头 teamId + datasetId 定位内部 _id，后续复用原有删除流程
-    if (apiFileIds.includes(RootCollectionId)) {
-      return Promise.reject(CommonErrEnum.invalidParams);
-    }
     const { teamId } = await parseHeaderCert({ req, authToken: true, authApiKey: true });
     // apiFileId 可以标识远端文件或目录。带子文档的文件会生成「派生目录 + 正文」，
     // 派生目录用 metadata.apiFileSourceId 关联远端 ID，必须一起命中才能删除完整子树。
@@ -127,7 +129,7 @@ async function handler(req: ApiRequestProps) {
         teamId,
         datasetId: collection.datasetId,
         collectionId,
-        fields: '_id teamId name type datasetId fileId metadata'
+        fields: '_id teamId name type datasetId fileId metadata parentId apiFileId apiFileParentId'
       });
     })
   ).then((res) => {
@@ -140,15 +142,116 @@ async function handler(req: ApiRequestProps) {
     return uniqueCollections;
   });
 
+  // 针对本次主动删除的边界 API 节点收口同步范围：
+  // 1. 删除任意有效 API 文件或目录都会关闭知识库级全量同步开关（Dataset.syncAll = false）；
+  // 2. 依据同步计划使用的远端记录身份（带子文档正文优先对应存活的 doc#dir，否则对应存活的 apiFileParentId 目录）
+  //    将实际决定新增准入的存活 API 目录置为 syncChildren = false，避免移入自建目录连删漏停或 doc#dir 正文误停外层。
+  const deletingApiCollections = collections.filter(
+    (item) => item.apiFileId && item.apiFileId !== LEGACY_SYSTEM_ROOT_API_FILE_ID
+  );
+
   // delete
-  await mongoSessionRun((session) =>
-    delCollection({
+  await mongoSessionRun(async (session) => {
+    const disableFolderIds = new Set<string>();
+    const disableSyncAllDatasetIds = new Set<string>();
+    let hasLegacySystemRootRefs = false;
+
+    if (deletingApiCollections.length > 0) {
+      const deletingIdSet = new Set(collections.map((item) => String(item._id)));
+      const datasetApiCollections = await MongoDatasetCollection.find(
+        {
+          teamId,
+          datasetId: collection.datasetId,
+          apiFileId: { $exists: true, $ne: null }
+        },
+        '_id parentId type apiFileId apiFileParentId metadata'
+      )
+        .session(session)
+        .lean();
+
+      hasLegacySystemRootRefs = datasetApiCollections.some(
+        (item) =>
+          item.apiFileId === LEGACY_SYSTEM_ROOT_API_FILE_ID ||
+          item.apiFileParentId === LEGACY_SYSTEM_ROOT_API_FILE_ID
+      );
+
+      const { getSourceId, isDerivedFolder } = createApiFileSourceResolver(datasetApiCollections);
+      const survivingFolderIdsBySourceId = new Map<string, string[]>();
+      const survivingDerivedFolderIdsBySourceId = new Map<string, string[]>();
+
+      for (const item of datasetApiCollections) {
+        if (item.type !== DatasetCollectionTypeEnum.folder) continue;
+        if (deletingIdSet.has(String(item._id))) continue;
+        const sourceId = getSourceId(item);
+        if (!sourceId || sourceId === LEGACY_SYSTEM_ROOT_API_FILE_ID) continue;
+
+        const id = String(item._id);
+        const list = survivingFolderIdsBySourceId.get(sourceId) ?? [];
+        list.push(id);
+        survivingFolderIdsBySourceId.set(sourceId, list);
+
+        if (isDerivedFolder(item)) {
+          const derivedList = survivingDerivedFolderIdsBySourceId.get(sourceId) ?? [];
+          derivedList.push(id);
+          survivingDerivedFolderIdsBySourceId.set(sourceId, derivedList);
+        }
+      }
+
+      for (const item of deletingApiCollections) {
+        disableSyncAllDatasetIds.add(String(item.datasetId));
+
+        if (item.type === DatasetCollectionTypeEnum.apiFile && item.apiFileId) {
+          const survivingDerivedIds = survivingDerivedFolderIdsBySourceId.get(item.apiFileId);
+          if (survivingDerivedIds?.length) {
+            for (const id of survivingDerivedIds) {
+              disableFolderIds.add(id);
+            }
+            continue;
+          }
+        }
+
+        const remoteParentId = item.apiFileParentId;
+        if (!remoteParentId || remoteParentId === LEGACY_SYSTEM_ROOT_API_FILE_ID) continue;
+        const survivingParentIds = survivingFolderIdsBySourceId.get(remoteParentId);
+        if (survivingParentIds?.length) {
+          for (const id of survivingParentIds) {
+            disableFolderIds.add(id);
+          }
+        }
+      }
+    }
+
+    await delCollection({
       collections,
       delImg: true,
       delFile: true,
       session
-    })
-  );
+    });
+
+    if (disableFolderIds.size > 0) {
+      await MongoDatasetCollection.updateMany(
+        {
+          _id: { $in: [...disableFolderIds] },
+          teamId,
+          datasetId: collection.datasetId
+        },
+        { $set: { syncChildren: false } },
+        { session }
+      );
+    }
+
+    if (disableSyncAllDatasetIds.size > 0) {
+      // 与关闭 syncAll、暂停目录共用同一状态转换入口：关闭全量同步并按需拆除存量 SYSTEM_ROOT 哨兵。
+      for (const dsId of disableSyncAllDatasetIds) {
+        await disableApiDatasetSyncAllInSession({
+          teamId,
+          datasetId: dsId,
+          session,
+          cleanLegacySystemRoot: hasLegacySystemRootRefs
+        });
+      }
+    }
+  });
 
   // 仅记录实际删除的显式选中项；隐式删除的后代不展开，避免大型目录生成过大的日志。
   const deletedCollections = new Map(collections.map((item) => [String(item._id), item]));
@@ -158,9 +261,7 @@ async function handler(req: ApiRequestProps) {
   );
   const auditResources = [...selectedCollectionIds].flatMap((id) => {
     const collection = deletedCollections.get(id);
-    return collection
-      ? [buildCollectionAuditResource(collection, { deleted: true })]
-      : [];
+    return collection ? [buildCollectionAuditResource(collection, { deleted: true })] : [];
   });
 
   (async () => {

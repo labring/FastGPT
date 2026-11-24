@@ -17,6 +17,8 @@ import { getDatasetSyncDatasetStatus } from '@fastgpt/service/core/dataset/datas
 import { getDatasetPermissionSyncStatus } from '@fastgpt/service/core/dataset/datasetPermissionSync';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { hasDatasetTrainingTask } from '@fastgpt/service/core/dataset/training/entity';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { LEGACY_SYSTEM_ROOT_API_FILE_ID } from '@fastgpt/service/core/dataset/apiDataset/utils';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 
 async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> {
@@ -31,14 +33,23 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> 
     per: ReadPermissionVal
   });
 
-  const [{ status, errorMsg }, hasTrainingTask, permissionSyncStatus] = await Promise.all([
-    getDatasetSyncDatasetStatus(datasetId),
-    hasDatasetTrainingTask({ teamId: dataset.teamId, datasetId }),
-    // 只有开启同步才有状态可报；关闭时连队列都不查
-    isPermissionSyncDataset(dataset.apiDatasetServer)
-      ? getDatasetPermissionSyncStatus(datasetId)
-      : Promise.resolve(undefined)
-  ]);
+  const [{ status, errorMsg }, hasTrainingTask, hasLegacySystemRoot, permissionSyncStatus] =
+    await Promise.all([
+      getDatasetSyncDatasetStatus(datasetId),
+      hasDatasetTrainingTask({ teamId: dataset.teamId, datasetId }),
+      // 升级过渡期兼容：未执行手动清理迁移前，存量 SYSTEM_ROOT 哨兵等价于 syncAll = true。
+      dataset.apiDatasetServer && !dataset.syncAll
+        ? MongoDatasetCollection.exists({
+            teamId: dataset.teamId,
+            datasetId: dataset._id,
+            apiFileId: LEGACY_SYSTEM_ROOT_API_FILE_ID
+          })
+        : null,
+      // 只有开启同步才有状态可报；关闭时连队列都不查
+      isPermissionSyncDataset(dataset.apiDatasetServer)
+        ? getDatasetPermissionSyncStatus(datasetId)
+        : Promise.resolve(undefined)
+    ]);
   const modelHandle = await getTeamModelHandle({ teamId: String(dataset.teamId) });
   const vectorModel = modelHandle.findModelData(getDatasetModelReference(dataset, 'embedding'), {
     type: 'embedding'
@@ -53,6 +64,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> 
 
   return GetDatasetDetailResponseSchema.parse({
     ...dataset,
+    syncAll: Boolean(dataset.syncAll) || Boolean(hasLegacySystemRoot),
     status,
     hasTrainingTask,
     errorMsg,

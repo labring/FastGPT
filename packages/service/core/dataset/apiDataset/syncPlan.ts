@@ -1,5 +1,5 @@
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
+import { isCollectionSyncChildrenEnabled } from '@fastgpt/global/core/dataset/collection/utils';
 import { planApiFileFolders } from './folder';
 import type { ApiFileRecord } from './tree';
 import {
@@ -12,31 +12,55 @@ import {
  * 基于完整远端树和本地快照计算结构差量，不读写数据库。
  * 预分配目录 ID 用于验证最终树；idMap 只包含已存在节点，执行阶段提交成功后才能补入新目录。
  * 旧文件名单与新增文件分离，避免新增解析任务再次进入本轮内容同步。
+ * 新增文件受全量开关 `syncAll` 与父目录 `syncChildren` 守卫约束：
+ * `syncAll === true` 时放行全库新增文件（优先级高于子目录残留的 `syncChildren: false`）；
+ * `syncAll === false` 时仅允许 `syncChildren !== false` 的父目录下新增文件，避免在暂停目录（含 docA#dir）中重建已被用户删除的正文。
  */
 export const buildApiFileSyncPlan = <T extends ApiFileLocalCollection & { name: string }>({
   records,
   collections,
   transientFolderIds = new Set<string>(),
-  rootParentIds
+  rootParentIds,
+  syncAll = false,
+  alwaysAllowNewFileIds = new Set<string>()
 }: {
   records: ApiFileRecord[];
   collections: T[];
   transientFolderIds?: Set<string>;
   rootParentIds?: Map<string, string | null>;
+  /** 知识库根级全量同步开关（Dataset.syncAll），为 true 时放行全库新增文件并覆盖残留 syncChildren=false。 */
+  syncAll?: boolean;
+  /** 允许绕过新增守卫的文件 apiFileId（例如旧钉钉目录转正文兼容迁移）。 */
+  alwaysAllowNewFileIds?: Set<string>;
 }) => {
-  const root = collections.find((item) => item.apiFileId === RootCollectionId);
-  const rootCollectionId = root ? String(root._id) : undefined;
   const existingByApiId = new Map(
-    collections
-      .filter((item) => item.apiFileId && item.apiFileId !== RootCollectionId)
-      .map((item) => [item.apiFileId!, item])
+    collections.filter((item) => item.apiFileId).map((item) => [item.apiFileId!, item])
   );
   const idMap = new Map(
     [...existingByApiId].map(([apiFileId, item]) => [apiFileId, String(item._id)])
   );
   const folders = planApiFileFolders({ records, idMap });
   const plannedIdMap = new Map(idMap);
-  for (const { record, id } of folders) plannedIdMap.set(record.apiFileId, String(id));
+  const plannedFolderByApiId = new Map<string, ApiFileRecord>();
+  for (const { record, id } of folders) {
+    plannedIdMap.set(record.apiFileId, String(id));
+    plannedFolderByApiId.set(record.apiFileId, record);
+  }
+
+  /** 判断新增文件是否允许落库：syncAll=true 时放行全部新增文件（覆盖残留暂停目录）；否则遵循直接父目录 syncChildren。 */
+  const canCreateNewFile = (record: ApiFileRecord): boolean => {
+    if (syncAll || alwaysAllowNewFileIds.has(record.apiFileId)) return true;
+    if (record.parentDirId === null) return false;
+    const existingParent = existingByApiId.get(record.parentDirId);
+    if (existingParent) {
+      return isCollectionSyncChildrenEnabled(existingParent);
+    }
+    const plannedParent = plannedFolderByApiId.get(record.parentDirId);
+    if (plannedParent) {
+      return plannedParent.syncChildren !== false;
+    }
+    return false;
+  };
 
   const missingFiles: ApiFileRecord[] = [];
   const existingFileIds: string[] = [];
@@ -47,7 +71,9 @@ export const buildApiFileSyncPlan = <T extends ApiFileLocalCollection & { name: 
     if (!transientFolderIds.has(record.apiFileId)) remoteIds.add(record.apiFileId);
     const existing = existingByApiId.get(record.apiFileId);
     if (!existing) {
-      if (record.type === 'file') missingFiles.push(record);
+      if (record.type === 'file' && canCreateNewFile(record)) {
+        missingFiles.push(record);
+      }
       continue;
     }
     const expectedType =
@@ -73,16 +99,16 @@ export const buildApiFileSyncPlan = <T extends ApiFileLocalCollection & { name: 
     records,
     collections,
     idMap: plannedIdMap,
-    rootCollectionId,
-    rootParentIds
+    rootParentIds,
+    syncAll
   });
   const parentChanges = [
     ...folders.map(({ record, id }) => {
       const { parentId } = resolveApiFileRecordParent({
         record,
         idMap: plannedIdMap,
-        rootCollectionId,
-        rootParentIds
+        rootParentIds,
+        syncAll
       });
       if (parentId === undefined) throw new Error(`Missing API file parent: ${record.apiFileId}`);
       return { id: String(id), parentId };
@@ -90,12 +116,10 @@ export const buildApiFileSyncPlan = <T extends ApiFileLocalCollection & { name: 
     ...parentUpdates.map((item) => ({ id: item._id, parentId: item.newParentId }))
   ];
   const deleteCandidates = collections.filter(
-    (item) =>
-      item.apiFileId && item.apiFileId !== RootCollectionId && !remoteIds.has(item.apiFileId)
+    (item) => item.apiFileId && !remoteIds.has(item.apiFileId)
   );
   return {
     idMap,
-    rootCollectionId,
     folders,
     missingFiles,
     existingFileIds,

@@ -531,6 +531,10 @@ export const UpdateDatasetBodySchema = z.object({
   autoSync: z.boolean().optional().meta({
     description: '是否自动同步'
   }),
+  syncAll: z.boolean().optional().meta({
+    description:
+      '是否开启第三方知识库整库全量同步（仅 API 知识库生效；开启后会同时恢复库内所有已暂停同步的子目录）'
+  }),
   chunkSettings: ChunkSettingsSchema.optional().meta({
     description: '分块配置'
   }),

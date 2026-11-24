@@ -1,7 +1,8 @@
 import { NextAPI } from '@/service/middleware/entry';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/constants/event';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
   UpdateDatasetBodySchema,
@@ -17,6 +18,10 @@ import {
   upsertDatasetSyncJobScheduler
 } from '@fastgpt/service/core/dataset/datasetSync';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import {
+  applyApiDatasetSyncAll,
+  disableApiDatasetSyncAllInSession
+} from '@fastgpt/service/core/dataset/apiDataset/service';
 import { enqueueDatasetPermissionSync } from '@fastgpt/service/core/dataset/datasetPermissionSync';
 import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { ApiDatasetServerSchema } from '@fastgpt/global/core/dataset/apiDataset/type';
@@ -62,6 +67,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       externalReadUrl,
       apiDatasetServer,
       autoSync,
+      syncAll,
       sangforFileParseConfig,
       chunkSettings: rawChunkSettings
     }
@@ -93,6 +99,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     externalReadUrl !== undefined ||
     apiDatasetServer !== undefined ||
     autoSync !== undefined ||
+    syncAll !== undefined ||
     sangforFileParseConfig !== undefined ||
     rawChunkSettings !== undefined;
 
@@ -109,6 +116,10 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     datasetId: id,
     per: ManagePermissionVal
   });
+
+  if (typeof syncAll === 'boolean' && !dataset.apiDatasetServer && !apiDatasetServer) {
+    return Promise.reject(CommonErrEnum.invalidParams);
+  }
 
   const modelHandle = await getTeamModelHandle({ teamId });
   const chunkSettings = rawChunkSettings
@@ -208,6 +219,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
         value: apiDatasetServerPatch?.effectiveValue
       },
       autoSync,
+      syncAll,
       chunkSettings,
       chunkSettingsEnabled: rawChunkSettings !== undefined,
       fileParseConfig: sangforFileParseConfig
@@ -324,6 +336,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
         ...(intro !== undefined && { intro }),
         ...(externalReadUrl !== undefined && { externalReadUrl }),
         ...(typeof autoSync === 'boolean' && { autoSync }),
+        ...(typeof syncAll === 'boolean' && { syncAll }),
         // 传空对象等价于恢复全部开关默认值(读取层补全),旧文件已固化的解析结果不受影响
         ...(sangforFileParseConfig !== undefined && { sangforFileParseConfig }),
         ...apiDatasetParams,
@@ -331,6 +344,24 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       },
       { session }
     );
+
+    // 开启全量同步开关时，与导入路径共用同一状态转换入口，在同一事务内恢复库内全部暂停目录。
+    if (syncAll === true) {
+      await applyApiDatasetSyncAll({
+        teamId,
+        datasetId: id,
+        session,
+        updateDataset: false
+      });
+    } else if (syncAll === false) {
+      // 升级过渡期兼容：与目录暂停/删除共用同一关闭入口，同步拆除存量 SYSTEM_ROOT 哨兵（保留子节点与独立权限快照）。
+      await disableApiDatasetSyncAllInSession({
+        teamId,
+        datasetId: id,
+        session,
+        updateDataset: false
+      });
+    }
 
     await updateSyncSchedule({
       dataset,

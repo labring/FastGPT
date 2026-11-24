@@ -1,4 +1,5 @@
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { disableApiDatasetSyncAllInSession } from '@fastgpt/service/core/dataset/apiDataset/service';
 import {
   createOrGetCollectionTags,
   getCollectionUpdateTime
@@ -87,6 +88,7 @@ async function handler(req: ApiRequestProps) {
     name,
     tags,
     forbid,
+    syncChildren,
     createTime
   } = parseApiInput({ req, bodySchema: UpdateDatasetCollectionBodySchema }).body;
   let id = parsedCollectionId;
@@ -116,7 +118,11 @@ async function handler(req: ApiRequestProps) {
   const targetParentId = parentId || null;
   // move 只校验源父级/目标父级（根级移动校验节点自身 manage）；字段更新要求节点自身 manage。
   const hasMetaUpdate =
-    !!name || tags !== undefined || forbid !== undefined || createTime !== undefined;
+    !!name ||
+    tags !== undefined ||
+    forbid !== undefined ||
+    syncChildren !== undefined ||
+    createTime !== undefined;
   const auth = { req, authToken: true, authApiKey: true, collectionId: id };
   const { collection, tmbId } = isMove
     ? await authDatasetCollectionMove({ ...auth, targetParentId })
@@ -126,6 +132,14 @@ async function handler(req: ApiRequestProps) {
   // 同请求携带字段更新时仍需节点 manage，避免借 move 绕过改名/禁用等门槛
   if (isMove && hasMetaUpdate) {
     await authDatasetCollection({ ...auth, per: ManagePermissionVal });
+  }
+
+  // syncChildren 仅对第三方 API 知识库同步目录生效，普通文件或用户自建目录不允许设置
+  if (
+    syncChildren !== undefined &&
+    (collection.type !== DatasetCollectionTypeEnum.folder || !collection.apiFileId)
+  ) {
+    return Promise.reject(CommonErrEnum.invalidParams);
   }
 
   // Move collection：parentId 显式提供时在事务前校验深度/环
@@ -222,6 +236,7 @@ async function handler(req: ApiRequestProps) {
       ...(name && { name, updateTime: getCollectionUpdateTime({ name }) }),
       ...(collectionTags !== undefined && { tags: collectionTags }),
       ...(forbid !== undefined && { forbid }),
+      ...(syncChildren !== undefined && { syncChildren }),
       ...(createTime !== undefined && { createTime })
     };
 
@@ -238,6 +253,16 @@ async function handler(req: ApiRequestProps) {
           session
         }
       );
+    }
+
+    // 单独暂停任意目录同步新增时，统一关闭知识库全量同步总开关并拆除存量 SYSTEM_ROOT 哨兵，
+    // 避免哨兵残留导致 syncState/detail/Pro 继续将其视作整库全量同步。
+    if (syncChildren === false) {
+      await disableApiDatasetSyncAllInSession({
+        teamId: resourceTeamId,
+        datasetId: collection.datasetId,
+        session
+      });
     }
 
     // Folder update forbid

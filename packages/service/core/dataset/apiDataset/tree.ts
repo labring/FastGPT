@@ -17,11 +17,25 @@ export type ApiFileTreeNode = {
   /** 层号，最外层为 0。folder 分层批写依赖此字段 */
   depth: number;
   hasChild: boolean;
+  /** 目录记录落库时的 syncChildren 标记；自动补建的祖先目录为 false，正常节点为 true */
+  syncChildren?: boolean;
+  /** 为镜像远端目录树自动补建的祖先占位节点：即使远端是带子文档的 file，也只建派生目录而不导入其正文 */
+  isAutoAncestor?: boolean;
+  /** 即使远端已无子文档，也保留该文档的派生目录（用于维持 docA#dir.syncChildren=false 的暂停状态） */
+  preserveDir?: boolean;
 };
 
 export type ApiFileTreeSeed = Pick<APIFileItemType, 'id' | 'name' | 'type' | 'hasChild'> & {
   /** 展开子级时传给 listFiles 的 parentId；显式 undefined 表示 provider 根，字段缺省才回退为 id */
   listId?: string;
+  /** 已知的远端父级 ID（由服务端自顶向下校验后填入）；缺省为 null */
+  serverParentId?: string | null;
+  /** 目录同步范围标记，默认 true；自动补建的祖先传 false */
+  syncChildren?: boolean;
+  /** 是否递归展开该节点的子级；自动补建祖先传 false，默认 true */
+  expandChildren?: boolean;
+  /** 标记该种子是否为自动补建祖先占位节点 */
+  isAutoAncestor?: boolean;
 };
 
 /**
@@ -40,6 +54,8 @@ export type ApiFileRecord = {
   type: 'file' | 'folder';
   name: string;
   depth: number;
+  /** 目录级同步范围标记；自动补建祖先为 false，显式或自动展开目录为 true */
+  syncChildren?: boolean;
 };
 
 type ApiDatasetRequest = Awaited<ReturnType<typeof getApiDatasetRequest>>;
@@ -54,24 +70,48 @@ export const toApiFileDirId = (serverId: string, type: ApiFileTreeNode['type']) 
 /**
  * 递归拉取 server 树，返回父先子后排序的扁平节点列表。
  * folder 与 file 一并返回：创建路径需要 folder 的层级来搭骨架。
+ * 支持通过 `filterChildren` 按同步范围（如 `syncChildren === false`）裁剪无需展开的新增子节点，
+ * 同时继续递归已导入子树。
  */
 export const buildApiFileTree = async ({
   request,
-  seeds
+  seeds,
+  filterChildren
 }: {
   request: ApiDatasetRequest;
   seeds: ApiFileTreeSeed[];
+  /** 可选：对某父节点 listFiles 返回的直属子节点进行过滤（如 syncChildren=false 仅保留本地已存在子项）。 */
+  filterChildren?: (parent: ApiFileTreeNode, children: APIFileItemType[]) => APIFileItemType[];
 }): Promise<ApiFileTreeNode[]> => {
   const nodes: ApiFileTreeNode[] = [];
   const nodeById = new Map<string, ApiFileTreeNode>();
-  // server 树理应无环，visited 只用于抵御 provider 返回重复/自引用节点时死循环
+  // server 树理应无环，visited 只用于抵御 provider 返回重复/自引用节点时死循环；
+  // expanded 记录已经完整展开过子级的节点，允许先作为自动祖先占位、后被显式节点升级展开。
   const visited = new Set<string>();
+  const expanded = new Set<string>();
+
+  const shiftDescendantsDepth = (ancestor: ApiFileTreeNode, depthDiff: number) => {
+    for (const node of nodes) {
+      if (node === ancestor) continue;
+      let parentId = node.serverParentId;
+      while (parentId) {
+        if (parentId === ancestor.serverId) {
+          node.depth += depthDiff;
+          break;
+        }
+        parentId = nodeById.get(parentId)?.serverParentId ?? null;
+      }
+    }
+  };
 
   const walk = async (
     seed: ApiFileTreeSeed,
     serverParentId: string | null,
     depth: number
   ): Promise<void> => {
+    const wantExpand = seed.expandChildren !== false;
+    const isAutoAncestor = Boolean(seed.isAutoAncestor);
+
     if (visited.has(seed.id)) {
       const existing = nodeById.get(seed.id);
       const createsCycle = (() => {
@@ -89,18 +129,21 @@ export const buildApiFileTree = async ({
         const depthDiff = depth - existing.depth;
         existing.serverParentId = serverParentId;
         existing.depth = depth;
-
-        // 已先遍历完的后代也要整体下移，最终再按 depth 恢复父先子后顺序。
-        for (const node of nodes) {
-          if (node === existing) continue;
-          let parentId = node.serverParentId;
-          while (parentId) {
-            if (parentId === existing.serverId) {
-              node.depth += depthDiff;
-              break;
-            }
-            parentId = nodeById.get(parentId)?.serverParentId ?? null;
-          }
+        shiftDescendantsDepth(existing, depthDiff);
+      }
+      // 自动补建祖先占位如果随后被显式节点或上游同步目录命中，需要升级为正式节点并补展开子级。
+      if (existing && !isAutoAncestor && existing.isAutoAncestor) {
+        existing.isAutoAncestor = false;
+        existing.syncChildren = seed.syncChildren ?? true;
+      }
+      if (existing && wantExpand && seed.hasChild && !expanded.has(seed.id)) {
+        expanded.add(seed.id);
+        const rawChildren: APIFileItemType[] = await request.listFiles({
+          parentId: Object.prototype.hasOwnProperty.call(seed, 'listId') ? seed.listId : seed.id
+        });
+        const children = filterChildren ? filterChildren(existing, rawChildren) : rawChildren;
+        for (const child of children) {
+          await walk(child, seed.id, existing.depth + 1);
         }
       }
       return;
@@ -114,23 +157,30 @@ export const buildApiFileTree = async ({
       type: seed.type,
       name: seed.name,
       depth,
-      hasChild: Boolean(seed.hasChild)
+      hasChild: Boolean(seed.hasChild),
+      ...(seed.syncChildren !== undefined ? { syncChildren: seed.syncChildren } : {}),
+      ...(isAutoAncestor ? { isAutoAncestor: true } : {})
     };
     nodes.push(node);
     nodeById.set(seed.id, node);
 
-    if (!seed.hasChild) return;
+    if (!seed.hasChild || !wantExpand) return;
 
-    const children: APIFileItemType[] = await request.listFiles({
+    expanded.add(seed.id);
+    const rawChildren: APIFileItemType[] = await request.listFiles({
       parentId: Object.prototype.hasOwnProperty.call(seed, 'listId') ? seed.listId : seed.id
     });
+    const children = filterChildren ? filterChildren(node, rawChildren) : rawChildren;
     for (const child of children) {
-      await walk(child, seed.id, depth + 1);
+      await walk(child, seed.id, node.depth + 1);
     }
   };
 
   for (const seed of seeds) {
-    await walk(seed, null, 0);
+    const seedParentId = seed.serverParentId ?? null;
+    const parentNode = seedParentId ? nodeById.get(seedParentId) : undefined;
+    const seedDepth = parentNode ? parentNode.depth + 1 : 0;
+    await walk(seed, seedParentId, seedDepth);
   }
 
   return nodes.sort((a, b) => a.depth - b.depth);
@@ -141,7 +191,8 @@ export const buildApiFileTree = async ({
  *
  * 统一形态：**每个节点的子级都挂在一条目录记录下，节点自身正文（若有）作为文件记录写进该目录**。
  * 于是 `hasChild` 的 file 会产出两条记录（同名目录 + 正文文件），folder 只产出目录记录。
- * 目录记录的父级也必是目录记录，所以「先按层写全部目录、再写全部文件」即可满足依赖。
+ * 若节点是仅用于镜像目录树的自动补建祖先（`isAutoAncestor: true`），即使远端是带子文档的 file，
+ * 也只产出 `syncChildren: false` 的目录记录，不额外导入其正文文件。
  */
 export const buildApiFileRecords = (nodes: ApiFileTreeNode[]): ApiFileRecord[] => {
   // provider id 是不受本地控制的字符串。`a` 的派生目录是 `a#dir`，若远端恰好还存在 id 为
@@ -149,7 +200,10 @@ export const buildApiFileRecords = (nodes: ApiFileTreeNode[]): ApiFileRecord[] =
   // 已落库数据，但在写入前拒绝这类无法无损表达的树，避免错挂或重复创建。
   const serverIds = new Set(nodes.map((node) => node.serverId));
   const conflictingDirNode = nodes.find(
-    (node) => node.type === 'file' && node.hasChild && serverIds.has(node.dirId)
+    (node) =>
+      node.type === 'file' &&
+      (node.hasChild || node.isAutoAncestor || node.preserveDir) &&
+      serverIds.has(node.dirId)
   );
   if (conflictingDirNode) {
     throw new Error(
@@ -167,7 +221,7 @@ export const buildApiFileRecords = (nodes: ApiFileTreeNode[]): ApiFileRecord[] =
   for (const node of nodes) {
     const parentDirId = parentDirIdOf(node);
 
-    if (node.type === 'folder' || node.hasChild) {
+    if (node.type === 'folder' || node.hasChild || node.isAutoAncestor || node.preserveDir) {
       records.push({
         sourceId: node.serverId,
         apiFileId: node.dirId,
@@ -175,17 +229,18 @@ export const buildApiFileRecords = (nodes: ApiFileTreeNode[]): ApiFileRecord[] =
         parentDirId,
         type: 'folder',
         name: node.name,
-        depth: node.depth
+        depth: node.depth,
+        ...(node.syncChildren !== undefined ? { syncChildren: node.syncChildren } : {})
       });
     }
 
-    if (node.type === 'file') {
+    if (node.type === 'file' && !node.isAutoAncestor) {
       records.push({
         sourceId: node.serverId,
         apiFileId: node.serverId,
         apiFileParentId: node.serverParentId,
-        // 带子文档时正文挂在自己的同名目录下，否则与兄弟同级
-        parentDirId: node.hasChild ? node.dirId : parentDirId,
+        // 带子文档（或保留派生目录以维持暂停状态）时正文挂在自己的同名目录下，否则与兄弟同级
+        parentDirId: node.hasChild || node.preserveDir ? node.dirId : parentDirId,
         type: 'file',
         name: node.name,
         depth: node.depth

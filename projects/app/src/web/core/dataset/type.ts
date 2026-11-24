@@ -35,6 +35,14 @@ export type ImportSourceItemType = {
   // api dataset
   apiFileId?: string;
   apiFile?: APIFileItemType;
+  /** 从远端根到该节点直接父级的祖先 ID 链，用于服务端校验并补建 syncChildren=false 祖先目录 */
+  ancestorIds?: string[];
+  /** 用于 UI 展示的祖先路径文本 */
+  ancestorPathLabel?: string;
+  /** 是否为重新勾选恢复自动同步（syncChildren: false -> true）的已有目录 */
+  isReEnableSync?: boolean;
+  /** 是否为整库全量导入占位项（提交 syncAll: true） */
+  isSyncAll?: boolean;
 };
 
 export type ImportSourceParamsType = UseFormReturn<

@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import { type SetStateAction, useEffect, useMemo, useState } from 'react';
+import { type SetStateAction, useEffect, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
 import {

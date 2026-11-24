@@ -9,6 +9,7 @@
 | `20261022_initialize_dataset_vector_indexes` | 普通自动 | 初始化知识库向量索引 |
 | `20261104_backfill_chat_publish_source` | 独立执行 | 回填聊天发布来源 |
 | `20261104_backfill_openapi_key_type` | 独立执行 | 回填 OpenAPI Key 类型 |
+| `20261120_clean_api_dataset_system_root` | 手动执行 | 待所有主服务与 Pro 升级至新版后手动触发，清理 API 知识库历史 `SYSTEM_ROOT` 哨兵节点并回填 `Dataset.syncAll` |
 | `20261123_cleanup_mongo_indexes` | 独立执行 | 清理历史废弃 MongoDB 索引（按名/键/选项精确匹配，遵循 `MONGO_DEPRECATE_INDEX`） |
 
 ## 废弃 MongoDB 索引按版本清理约定

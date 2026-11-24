@@ -1,5 +1,5 @@
 import listHandler from '@/pages/api/core/dataset/collection/listV2';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   OwnerRoleVal,
   PerResourceTypeEnum,
@@ -154,16 +154,25 @@ describe('collection listV2 navigation folders', () => {
       agentModel: 'test',
       collectionPermissionEnabled: true
     });
-    const create = (name: string, type: DatasetCollectionTypeEnum, parentId: string | null) =>
+    const create = (
+      name: string,
+      type: DatasetCollectionTypeEnum,
+      parentId: string | null,
+      extra: Record<string, unknown> = {}
+    ) =>
       MongoDatasetCollection.create({
         name,
         type,
         parentId,
         teamId: users.owner.teamId,
         tmbId: users.owner.tmbId,
-        datasetId: dataset._id
+        datasetId: dataset._id,
+        ...extra
       });
-    const folder = await create('folder', DatasetCollectionTypeEnum.folder, null);
+    const folder = await create('folder', DatasetCollectionTypeEnum.folder, null, {
+      apiFileId: 'remote-folder-id',
+      syncChildren: false
+    });
     const emptyFolder = await create('empty', DatasetCollectionTypeEnum.folder, null);
     const file = await create('file', DatasetCollectionTypeEnum.file, String(folder._id));
     await MongoResourcePermission.create({
@@ -183,22 +192,27 @@ describe('collection listV2 navigation folders', () => {
     return { member, dataset, folder, emptyFolder, file };
   };
 
-  it('lists folders that lead to readable collections as navigation-only and hides empty ones', async () => {
-    const { member, dataset, folder, emptyFolder } = await setup();
+  it.each([false, true])(
+    'lists folders that lead to readable collections as navigation-only (simple=%s) and omits api sync metadata',
+    async (simple) => {
+      const { member, dataset, folder, emptyFolder } = await setup();
 
-    const response = await Call(listHandler, {
-      auth: member,
-      body: { datasetId: dataset._id, pageSize: 10, offset: 0 }
-    });
+      const response = await Call(listHandler, {
+        auth: member,
+        body: { datasetId: dataset._id, pageSize: 10, offset: 0, simple }
+      });
 
-    expect(response.code).toBe(200);
-    const ids = response.data.list.map((item) => String(item._id));
-    expect(ids).toContain(String(folder._id));
-    expect(ids).not.toContain(String(emptyFolder._id));
-    const item = response.data.list.find((entry) => String(entry._id) === String(folder._id));
-    expect(item?.folderAccessMode).toBe('navigate');
-    expect(item?.permission.hasReadPer).toBe(false);
-  });
+      expect(response.code).toBe(200);
+      const ids = response.data.list.map((item) => String(item._id));
+      expect(ids).toContain(String(folder._id));
+      expect(ids).not.toContain(String(emptyFolder._id));
+      const item = response.data.list.find((entry) => String(entry._id) === String(folder._id));
+      expect(item?.folderAccessMode).toBe('navigate');
+      expect(item?.permission.hasReadPer).toBe(false);
+      expect(item?.apiFileId).toBeUndefined();
+      expect(item?.syncChildren).toBeUndefined();
+    }
+  );
 
   it('allows browsing into a navigation-only folder and lists its readable children', async () => {
     const { member, dataset, folder, file } = await setup();
@@ -485,5 +499,170 @@ describe('collection listV2 sort', () => {
       });
       expect(response.error).toBeInstanceOf(ApiRequestInputParseError);
     }
+  });
+
+  it('projects apiFileId and syncChildren for API dataset collections', async () => {
+    const { root, dataset } = await createFixture();
+    const pausedDir = await MongoDatasetCollection.create({
+      name: 'paused-dir',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'remote-dir-paused',
+      syncChildren: false,
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id
+    });
+    const activeDir = await MongoDatasetCollection.create({
+      name: 'active-dir',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'remote-dir-active',
+      syncChildren: true,
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id
+    });
+
+    const response = await Call(listHandler, {
+      auth: root,
+      body: { datasetId: dataset._id, pageSize: 10, offset: 0 }
+    });
+
+    expect(response.code).toBe(200);
+    const byId = new Map(response.data.list.map((item) => [String(item._id), item]));
+    expect(byId.get(String(pausedDir._id))).toMatchObject({
+      apiFileId: 'remote-dir-paused',
+      syncChildren: false
+    });
+    expect(byId.get(String(activeDir._id))).toMatchObject({
+      apiFileId: 'remote-dir-active',
+      syncChildren: true
+    });
+  });
+
+  it('transparently hides legacy SYSTEM_ROOT sentinel and exposes its children at root in browse and search', async () => {
+    const { root, dataset } = await createFixture();
+    await MongoDataset.updateOne(
+      { _id: dataset._id },
+      {
+        $set: {
+          type: DatasetTypeEnum.apiDataset,
+          apiDatasetServer: {
+            apiServer: { baseUrl: 'https://example.com', authorization: 'token' }
+          }
+        }
+      }
+    );
+
+    const sentinel = await MongoDatasetCollection.create({
+      name: 'ROOT_FOLDER',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'SYSTEM_ROOT',
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id
+    });
+    const topFolder = await MongoDatasetCollection.create({
+      name: 'top-folder',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'dir-top',
+      apiFileParentId: 'SYSTEM_ROOT',
+      parentId: sentinel._id,
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id
+    });
+    const directRootFile = await MongoDatasetCollection.create({
+      name: 'direct-root-file',
+      type: DatasetCollectionTypeEnum.apiFile,
+      apiFileId: 'doc-root',
+      parentId: null,
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id
+    });
+
+    // 根目录浏览：隐藏 SYSTEM_ROOT，直接展示其子节点与原根级文件，且 parentId 归一化为 null
+    const rootRes = await Call(listHandler, {
+      auth: root,
+      body: { datasetId: dataset._id, pageSize: 10, offset: 0 }
+    });
+    expect(rootRes.code).toBe(200);
+    expect(rootRes.data.total).toBe(2);
+    expect(rootRes.data.list.map((item) => String(item._id)).sort()).toEqual(
+      [String(topFolder._id), String(directRootFile._id)].sort()
+    );
+    const listedTopFolder = rootRes.data.list.find(
+      (item) => String(item._id) === String(topFolder._id)
+    );
+    expect(listedTopFolder?.parentId ?? null).toBeNull();
+
+    // 根目录搜索：搜 ROOT_FOLDER 不应命中哨兵
+    const searchRes = await Call(listHandler, {
+      auth: root,
+      body: { datasetId: dataset._id, searchText: 'ROOT_FOLDER', pageSize: 10, offset: 0 }
+    });
+    expect(searchRes.code).toBe(200);
+    expect(searchRes.data.total).toBe(0);
+    expect(searchRes.data.list).toHaveLength(0);
+  });
+
+  it('transparently hides legacy SYSTEM_ROOT sentinel under collection-level permissions', async () => {
+    const users = await getFakeUsers(1);
+    const member = users.members[0];
+    const dataset = await MongoDataset.create({
+      name: 'legacy-root-acl-dataset',
+      type: DatasetTypeEnum.apiDataset,
+      collectionPermissionEnabled: true,
+      apiDatasetServer: {
+        apiServer: { baseUrl: 'https://example.com', authorization: 'token' }
+      },
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId
+    });
+    await MongoResourcePermission.create({
+      teamId: users.owner.teamId,
+      tmbId: member.tmbId,
+      resourceType: PerResourceTypeEnum.dataset,
+      resourceId: dataset._id,
+      permission: ReadPermissionVal
+    });
+
+    const sentinel = await MongoDatasetCollection.create({
+      name: 'ROOT_FOLDER',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'SYSTEM_ROOT',
+      inheritPermission: true,
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId,
+      datasetId: dataset._id
+    });
+    const topFolder = await MongoDatasetCollection.create({
+      name: 'acl-top-folder',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'dir-top',
+      apiFileParentId: 'SYSTEM_ROOT',
+      parentId: sentinel._id,
+      inheritPermission: false,
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId,
+      datasetId: dataset._id
+    });
+    await MongoResourcePermission.create({
+      teamId: users.owner.teamId,
+      tmbId: member.tmbId,
+      resourceType: PerResourceTypeEnum.collection,
+      resourceId: topFolder._id,
+      permission: ReadPermissionVal
+    });
+
+    const res = await Call(listHandler, {
+      auth: member,
+      body: { datasetId: String(dataset._id), pageSize: 10, offset: 0 }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.total).toBe(1);
+    expect(res.data.list.map((item) => String(item._id))).toEqual([String(topFolder._id)]);
+    expect(res.data.list[0]?.parentId ?? null).toBeNull();
   });
 });

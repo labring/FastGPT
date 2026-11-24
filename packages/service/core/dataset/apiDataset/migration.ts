@@ -1,4 +1,4 @@
-import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
+import { LEGACY_SYSTEM_ROOT_API_FILE_ID } from './utils';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoDatasetCollection } from '../collection/schema';
 import { MongoDataset } from '../schema';
@@ -35,7 +35,7 @@ export const migrateRootSentinelCollection = async ({
   session?: ClientSession;
 }): Promise<boolean> => {
   const sentinelQuery = MongoDatasetCollection.findOne(
-    { teamId, datasetId, apiFileId: RootCollectionId },
+    { teamId, datasetId, apiFileId: LEGACY_SYSTEM_ROOT_API_FILE_ID },
     '_id'
   );
   const sentinel = await (session ? sentinelQuery.session(session) : sentinelQuery).lean();

@@ -96,6 +96,7 @@
   "dataset_config_item_externalReadUrl": "外部預覽地址",
   "dataset_config_item_apiDatasetServer": "第三方來源設定",
   "dataset_config_item_autoSync": "自動同步",
+  "dataset_config_item_syncAll": "全量同步",
   "dataset_config_item_chunkSettings": "分塊參數",
   "dataset_config_item_fileParseConfig": "檔案解析設定",
   "create_department": "創建子部門",

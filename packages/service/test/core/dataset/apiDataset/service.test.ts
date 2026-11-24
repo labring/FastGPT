@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import { Types } from '@fastgpt/service/common/mongo';
 
 const {
@@ -8,6 +7,7 @@ const {
   mockBulkInsertFolderCollections,
   mockBulkMoveCollectionsParent,
   mockCollectionFind,
+  mockCollectionUpdateMany,
   mockDatasetUpdateOne,
   mockMongoSessionRun,
   mockEnqueueDatasetPermissionSync,
@@ -19,6 +19,7 @@ const {
   mockBulkInsertFolderCollections: vi.fn(),
   mockBulkMoveCollectionsParent: vi.fn(),
   mockCollectionFind: vi.fn(),
+  mockCollectionUpdateMany: vi.fn(),
   mockDatasetUpdateOne: vi.fn(),
   mockMongoSessionRun: vi.fn(),
   mockEnqueueDatasetPermissionSync: vi.fn(),
@@ -39,8 +40,12 @@ vi.mock('@fastgpt/service/core/dataset/schema', () => ({
   MongoDataset: { updateOne: mockDatasetUpdateOne }
 }));
 
+vi.mock('@fastgpt/service/core/dataset/schema', () => ({
+  MongoDataset: { updateOne: mockDatasetUpdateOne }
+}));
+
 vi.mock('@fastgpt/service/core/dataset/collection/schema', () => ({
-  MongoDatasetCollection: { find: mockCollectionFind }
+  MongoDatasetCollection: { find: mockCollectionFind, updateMany: mockCollectionUpdateMany }
 }));
 
 vi.mock('@fastgpt/service/core/dataset/apiDataset', () => ({
@@ -142,28 +147,44 @@ beforeEach(() => {
   }));
   mockMongoSessionRun.mockImplementation((fn: any) => fn('session'));
   mockCreateApiFileCollectionsBatch.mockResolvedValue({ collectionIds: [] });
-  mockDatasetUpdateOne.mockResolvedValue({});
+  mockCollectionUpdateMany.mockResolvedValue({ modifiedCount: 0 });
+  mockDatasetUpdateOne.mockResolvedValue({ modifiedCount: 1 });
   mockEnqueueDatasetPermissionSync.mockResolvedValue(undefined);
 });
 
 describe('createApiDatasetCollection', () => {
   it.each([
-    ['custom', { apiServer: { basePath: 'configured-root' } }],
+    ['custom 未配置根路径', { apiServer: {} }],
     ['yuque 未配置根路径', { yuqueServer: { userId: 'yuque-user' } }],
-    ['yuque', { yuqueServer: { basePath: 'configured-root' } }],
-    ['feishu', { feishuServer: { folderToken: 'configured-root' } }],
+    ['feishu 未配置根路径', { feishuServer: { appId: 'feishu-app' } }],
     ['dingtalk 未配置根路径', { dingtalkServer: { appKey: 'ding-app', userId: 'user-id' } }]
   ])('%s 全选以 provider 根的直接子节点为种子', async (_, apiDatasetServer) => {
     await call({
-      apiFiles: [apiFile(RootCollectionId, 'folder', true, 'ROOT_FOLDER')],
+      syncAll: true,
+      apiFiles: [],
       dataset: createDataset(apiDatasetServer)
     });
 
-    // 哨兵不进入建树：种子来自 provider 根，缺省 parentId 由各 provider 解析为配置根
-    expect(mockListFiles).toHaveBeenCalledWith({ parentId: null });
-    expect(mockListFiles).not.toHaveBeenCalledWith({ parentId: RootCollectionId });
+    expect(mockListFiles).toHaveBeenCalledWith({ parentId: undefined });
+    expect(mockDatasetUpdateOne).toHaveBeenCalledWith(
+      { _id: 'dataset-id', teamId: 'team-id' },
+      { $set: { syncAll: true } },
+      { session: 'session' }
+    );
   });
 
+  it.each([
+    ['custom', { apiServer: { basePath: 'configured-root' } }],
+    ['yuque', { yuqueServer: { basePath: 'configured-root' } }],
+    ['feishu', { feishuServer: { folderToken: 'configured-root' } }]
+  ])('%s 全选使用配置的根路径', async (_, apiDatasetServer) => {
+    await call({
+      syncAll: true,
+      apiFiles: [],
+      dataset: createDataset(apiDatasetServer)
+    });
+    expect(mockListFiles).toHaveBeenCalledWith({ parentId: 'configured-root' });
+  });
   it('四层层级：folder 逐层写 parentId，file 落在 L3 之下', async () => {
     setServerTree({
       l1: [apiFile('l2', 'folder', true)],
@@ -401,6 +422,26 @@ describe('createApiDatasetCollection', () => {
     expect(result.successCount).toBe(2);
   });
 
+  it('外部权限同步托管且开启 syncAll 时仍校验 enableDatasetSyncAll（知识库 Manage 权限）', async () => {
+    setServerTree({ undefined: [apiFile('root', 'file')] });
+    const authorizeChanges = vi.fn();
+
+    await call({
+      syncAll: true,
+      apiFiles: [],
+      authorizeChanges,
+      dataset: createDataset({ apiServer: {}, permissionSync: true })
+    });
+
+    expect(authorizeChanges).toHaveBeenCalledTimes(1);
+    expect(authorizeChanges).toHaveBeenCalledWith({
+      creationParentIds: [],
+      newFolderIds: new Set(),
+      moves: [],
+      enableDatasetSyncAll: true
+    });
+  });
+
   it.each(['self', 'descendant'])('V1 重复导入在任何写入前拒绝目录环：%s', async (mode) => {
     const parent = localId('parent');
     const child = localId('child');
@@ -580,10 +621,10 @@ describe('createApiDatasetCollection', () => {
   });
 
   it.each([undefined, false])(
-    '根哨兵不落库，provider 根级节点上提为本地根并承接请求权限标记 %s',
+    'syncAll=true 整库导入直接落知识库根，不创建哨兵且仅顶层节点继承权限标记 %s',
     async (inheritPermission) => {
       setServerTree({
-        null: [apiFile('root-folder', 'folder', true), apiFile('root-file', 'file')],
+        'dingtalk-root': [apiFile('root-folder', 'folder', true), apiFile('root-file', 'file')],
         'root-folder': [apiFile('deep-file', 'file')]
       });
 
@@ -594,35 +635,48 @@ describe('createApiDatasetCollection', () => {
           rootNodeId: 'dingtalk-root'
         }
       });
+      const authorizeChanges = vi.fn();
 
       const result = await createApiDatasetCollection({
         datasetId: 'dataset-id',
-        apiFiles: [apiFile(RootCollectionId, 'folder', true, 'ROOT_FOLDER')],
+        syncAll: true,
+        apiFiles: [],
         customPdfParse: false,
         trainingType: 'chunk',
         teamId: 'team-id',
         tmbId: 'tmb-id',
         dataset,
-        inheritPermission
+        inheritPermission,
+        authorizeChanges
       } as any);
 
       expect(getApiDatasetRequest).toHaveBeenCalledWith(dataset.apiDatasetServer);
-      // 哨兵本身不是真实 server 节点：既不拿它当种子，也不会用它的 id 去列子级
-      expect(mockListFiles).toHaveBeenCalledWith({ parentId: null });
-      expect(mockListFiles).not.toHaveBeenCalledWith({ parentId: RootCollectionId });
-
-      // 哨兵不落库
-      expect(findFolder(RootCollectionId)).toBeUndefined();
-      expect(createdFileParams().some((params: any) => params.apiFileId === RootCollectionId)).toBe(
-        false
+      expect(mockListFiles).toHaveBeenCalledWith({ parentId: 'dingtalk-root' });
+      expect(authorizeChanges).toHaveBeenCalledWith(
+        expect.objectContaining({ enableDatasetSyncAll: true })
+      );
+      expect(mockDatasetUpdateOne).toHaveBeenCalledWith(
+        { _id: 'dataset-id', teamId: 'team-id' },
+        { $set: { syncAll: true } },
+        { session: 'session' }
+      );
+      expect(mockCollectionUpdateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          teamId: 'team-id',
+          datasetId: 'dataset-id',
+          syncChildren: false
+        }),
+        { $set: { syncChildren: true } },
+        { session: 'session' }
       );
 
-      // provider 根级 folder 落在 dataset 根，且承接请求级权限标记
+      // 不创建任何哨兵节点，仅真实远端目录落库且直接挂在知识库根
+      expect(folderDocs().map((doc: any) => doc.apiFileId)).toEqual(['root-folder']);
       expect(findFolder('root-folder').parentId).toBeNull();
       expect(findFolder('root-folder').apiFileParentId).toBeUndefined();
       expect(findFolder('root-folder').inheritPermission).toBe(inheritPermission);
 
-      // provider 根级 file 同样落在 dataset 根（落库时 null 归一为缺字段）
+      // server 根级 file 直接挂在知识库根（parentId/apiFileParentId 均为 undefined）
       const rootFileParams = createdFileParams().find(
         (params: any) => params.apiFileId === 'root-file'
       );
@@ -630,7 +684,7 @@ describe('createApiDatasetCollection', () => {
       expect(rootFileParams.apiFileParentId).toBeUndefined();
       expect(rootFileParams.inheritPermission).toBe(inheritPermission);
 
-      // 子级保持继承：父级 ACL 变化时才跟着变
+      // 子级 file 的父级是 root-folder 行，且保持继承态
       const deepFileParams = createdFileParams().find(
         (params: any) => params.apiFileId === 'deep-file'
       );
@@ -638,11 +692,6 @@ describe('createApiDatasetCollection', () => {
       expect(deepFileParams.apiFileParentId).toBe('root-folder');
       expect(deepFileParams.inheritPermission).toBeUndefined();
 
-      // 幂等置位：后续每日同步的范围是知识库根，而不是本地最外层节点
-      expect(mockDatasetUpdateOne).toHaveBeenCalledWith(
-        { _id: 'dataset-id', teamId: 'team-id' },
-        { $set: { 'apiDatasetServer.syncAllFiles': true } }
-      );
       // successCount 不再包含该合成节点
       expect(result).toEqual({ successCount: 3, failedCount: 0 });
     }
@@ -667,7 +716,8 @@ describe('createApiDatasetCollection', () => {
 
     await createApiDatasetCollection({
       datasetId: 'dataset-id',
-      apiFiles: [apiFile(RootCollectionId, 'folder', true, 'ROOT_FOLDER')],
+      syncAll: true,
+      apiFiles: [],
       customPdfParse: false,
       trainingType: 'chunk',
       teamId: 'team-id',
@@ -675,34 +725,152 @@ describe('createApiDatasetCollection', () => {
       dataset
     } as any);
 
-    expect(mockListFiles).toHaveBeenCalledWith({ parentId: null });
+    expect(mockListFiles).toHaveBeenCalledWith({ parentId: undefined });
     expect(mockListFiles).not.toHaveBeenCalledWith({ parentId: 'stale-feishu-folder' });
   });
 
-  it('已开启 syncAllFiles 时不再重复置位', async () => {
-    setServerTree({ null: [apiFile('root-folder', 'folder')] });
+  it('旧客户端传入 SYSTEM_ROOT 哨兵时自动归一为 syncAll=true，不创建或查询 SYSTEM_ROOT', async () => {
+    mockListFiles.mockResolvedValueOnce([apiFile('root-file', 'file', false, 'Root File')]);
+    const authorizeChanges = vi.fn().mockResolvedValue(undefined);
 
     await call({
-      apiFiles: [apiFile(RootCollectionId, 'folder', true)],
-      dataset: createDataset({ apiServer: { basePath: 'configured-root' }, syncAllFiles: true })
+      apiFiles: [apiFile('SYSTEM_ROOT', 'folder', true, 'ROOT_FOLDER')],
+      authorizeChanges
     });
 
-    expect(mockDatasetUpdateOne).not.toHaveBeenCalled();
+    expect(authorizeChanges).toHaveBeenCalledWith(
+      expect.objectContaining({ enableDatasetSyncAll: true })
+    );
+    expect(folderDocs().map((doc: any) => doc.apiFileId)).not.toContain('SYSTEM_ROOT');
+    expect(createdFileParams().map((p: any) => p.apiFileId)).toEqual(['root-file']);
+    expect(mockDatasetUpdateOne).toHaveBeenCalledWith(
+      { _id: 'dataset-id', teamId: 'team-id' },
+      { $set: { syncAll: true } },
+      { session: 'session' }
+    );
   });
 
-  it('置位 syncAllFiles 失败只告警，不阻断导入', async () => {
-    setServerTree({ null: [apiFile('root-folder', 'folder')] });
-    mockDatasetUpdateOne.mockRejectedValueOnce(new Error('mongo down'));
+  it('dataset.syncAll 已为 true 但存在暂停目录时，整库导入仍校验 enableDatasetSyncAll 并在同一事务恢复', async () => {
+    mockCollectionFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        {
+          _id: new Types.ObjectId(),
+          apiFileId: 'paused-dir',
+          type: 'folder',
+          syncChildren: false
+        }
+      ])
+    });
+    mockListFiles.mockResolvedValueOnce([apiFile('other-file', 'file', false, 'Other File')]);
+    const authorizeChanges = vi.fn().mockResolvedValue(undefined);
 
-    const result = await call({
-      apiFiles: [apiFile(RootCollectionId, 'folder', true)],
-      dataset: createDataset({ apiServer: { basePath: 'configured-root' } })
+    await call({
+      syncAll: true,
+      apiFiles: [],
+      dataset: { ...createDataset(), syncAll: true },
+      authorizeChanges
     });
 
-    expect(result).toEqual({ successCount: 1, failedCount: 0 });
-    expect(mockLoggerError).toHaveBeenCalledWith(
-      'Set apiDatasetServer.syncAllFiles failed',
-      expect.objectContaining({ datasetId: 'dataset-id' })
+    expect(authorizeChanges).toHaveBeenCalledWith(
+      expect.objectContaining({ enableDatasetSyncAll: true })
+    );
+    expect(mockDatasetUpdateOne).toHaveBeenCalledWith(
+      { _id: 'dataset-id', teamId: 'team-id' },
+      { $set: { syncAll: true } },
+      { session: 'session' }
+    );
+    expect(mockCollectionUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        teamId: 'team-id',
+        datasetId: 'dataset-id',
+        syncChildren: false
+      }),
+      { $set: { syncChildren: true } },
+      { session: 'session' }
+    );
+  });
+
+  it('局部导入带 ancestorPaths 时，服务端自顶向下核验并补建 syncChildren=false 祖先目录', async () => {
+    setServerTree({
+      '': [apiFile('dir-a', 'folder', true, 'Dir A'), apiFile('other', 'file')],
+      'dir-a': [apiFile('dir-b', 'folder', true, 'Dir B')],
+      'dir-b': [apiFile('target-file', 'file', false, 'Target File'), apiFile('sibling', 'file')]
+    });
+    mockListFiles.mockImplementation(async ({ parentId }: any) => {
+      if (parentId === undefined) {
+        return [apiFile('dir-a', 'folder', true, 'Dir A'), apiFile('other', 'file')];
+      }
+      if (parentId === 'dir-a') return [apiFile('dir-b', 'folder', true, 'Dir B')];
+      if (parentId === 'dir-b') {
+        return [apiFile('target-file', 'file', false, 'Target File'), apiFile('sibling', 'file')];
+      }
+      return [];
+    });
+
+    await call({
+      apiFiles: [apiFile('target-file', 'file', false, 'Target File')],
+      ancestorPaths: {
+        'target-file': ['dir-a', 'dir-b']
+      },
+      inheritPermission: false
+    });
+
+    // 仅创建了占位祖先 dir-a / dir-b（syncChildren=false），不展开兄弟节点 other / sibling
+    expect(
+      folderDocs().map((doc: any) => [doc.apiFileId, doc.syncChildren, doc.inheritPermission])
+    ).toEqual([
+      ['dir-a', false, undefined],
+      ['dir-b', false, undefined]
+    ]);
+    expect(String(findFolder('dir-b').parentId)).toBe(String(findFolder('dir-a')._id));
+    expect(createdFileParams().map((p: any) => p.apiFileId)).toEqual(['target-file']);
+    expect(createdFileParams()[0].parentId).toBe(String(findFolder('dir-b')._id));
+    expect(createdFileParams()[0].inheritPermission).toBe(false);
+  });
+
+  it('重新勾选已暂停的目录时触发 reEnableSyncFolderIds 鉴权、恢复 syncChildren=true 并补齐缺失子项', async () => {
+    setServerTree({
+      'paused-dir': [apiFile('existing-file', 'file'), apiFile('missing-file', 'file')]
+    });
+    mockCollectionFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        {
+          _id: localId('PAUSED'),
+          apiFileId: 'paused-dir',
+          type: 'folder',
+          parentId: null,
+          syncChildren: false
+        },
+        {
+          _id: localId('EXISTING'),
+          apiFileId: 'existing-file',
+          type: 'apiFile',
+          parentId: localId('PAUSED'),
+          apiFileParentId: 'paused-dir'
+        }
+      ])
+    });
+    const authorizeChanges = vi.fn();
+
+    await call({
+      apiFiles: [apiFile('paused-dir', 'folder', true)],
+      authorizeChanges
+    });
+
+    expect(authorizeChanges).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reEnableSyncFolderIds: [localId('PAUSED')]
+      })
+    );
+    expect(createdFileParams().map((p: any) => p.apiFileId)).toEqual(['missing-file']);
+    expect(mockCollectionUpdateMany).toHaveBeenCalledWith(
+      {
+        _id: { $in: [localId('PAUSED')] },
+        teamId: 'team-id',
+        datasetId: 'dataset-id',
+        type: 'folder'
+      },
+      { $set: { syncChildren: true } }
     );
   });
 

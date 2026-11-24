@@ -12,7 +12,11 @@ import { postDisableCollectionPermission } from '@/web/core/dataset/api';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { Box, Flex, Input, Switch, Skeleton, SkeletonText } from '@chakra-ui/react';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
+import {
+  ApiDatasetTypeMap,
+  DatasetTypeEnum,
+  DatasetTypeMap
+} from '@fastgpt/global/core/dataset/constants';
 import type { DatasetItemType } from '@fastgpt/global/core/dataset/type';
 import type { MyEmbeddingModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
@@ -25,6 +29,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import React, { useEffect, useState } from 'react';
@@ -38,6 +43,7 @@ const EditAPIDatasetInfoModal = dynamic(() => import('./components/EditApiServic
 
 const Info = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const {
     datasetDetail,
     loadDatasetDetail,
@@ -46,6 +52,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     refreshCollectionList
   } = useContextSelector(DatasetPageContext, (v) => v);
   const { feConfigs } = useSystemStore();
+  const isApiDataset = Boolean(datasetDetail.type && ApiDatasetTypeMap[datasetDetail.type]);
 
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
   const [editedAPIDataset, setEditedAPIDataset] = useState<EditAPIDatasetInfoFormType>();
@@ -88,6 +95,26 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     async () => {
       await postDisableCollectionPermission({ datasetId });
       await loadDatasetDetail(datasetId);
+    }
+  );
+
+  const { runAsync: onToggleSyncAll, loading: isUpdatingSyncAll } = useRequest(
+    async (syncAll: boolean) => {
+      await updateDataset({
+        id: datasetId,
+        syncAll
+      });
+      return syncAll;
+    },
+    {
+      onSuccess(syncAll) {
+        toast({
+          status: 'success',
+          title: syncAll
+            ? t('dataset:sync_root_enabled_next_sync_tip')
+            : t('dataset:sync_root_paused_tip')
+        });
+      }
     }
   );
 
@@ -322,6 +349,21 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                   customContent: text
                 })();
               }}
+            />
+          </Flex>
+        )}
+
+        {isApiDataset && (
+          <Flex alignItems={'center'} pt={5}>
+            <FormLabel fontSize={'mini'} fontWeight={'500'}>
+              {t('dataset:sync_root_new_items')}
+            </FormLabel>
+            <QuestionTip ml={1} label={t('dataset:sync_root_new_items_tip')} />
+            <Box flex={1} />
+            <Switch
+              isChecked={!!datasetDetail.syncAll}
+              isDisabled={!datasetDetail.permission.hasManagePer || isUpdatingSyncAll}
+              onChange={(e) => onToggleSyncAll(e.target.checked)}
             />
           </Flex>
         )}

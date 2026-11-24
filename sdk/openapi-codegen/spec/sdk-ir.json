@@ -28084,6 +28084,16 @@
                 "description": "自动同步"
               },
               {
+                "name": "syncAll",
+                "schema": {
+                  "kind": "primitive",
+                  "type": "boolean",
+                  "description": "是否同步第三方知识库根目录下的新增文件与文件夹"
+                },
+                "required": false,
+                "description": "是否同步第三方知识库根目录下的新增文件与文件夹"
+              },
+              {
                 "name": "externalReadUrl",
                 "schema": {
                   "kind": "primitive",
@@ -31481,6 +31491,7 @@
             "externalReadUrl",
             "apiDatasetServer",
             "autoSync",
+            "syncAll",
             "chunkSettings",
             "sangforFileParseConfig"
           ],
@@ -31842,6 +31853,16 @@
                 },
                 "required": false,
                 "description": "是否自动同步"
+              },
+              {
+                "name": "syncAll",
+                "schema": {
+                  "kind": "primitive",
+                  "type": "boolean",
+                  "description": "是否开启第三方知识库整库全量同步（仅 API 知识库生效；开启后会同时恢复库内所有已暂停同步的子目录）"
+                },
+                "required": false,
+                "description": "是否开启第三方知识库整库全量同步（仅 API 知识库生效；开启后会同时恢复库内所有已暂停同步的子目录）"
               },
               {
                 "name": "chunkSettings",
@@ -33916,6 +33937,16 @@
                     "description": "API 文件父级 ID"
                   },
                   {
+                    "name": "syncChildren",
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "boolean",
+                      "description": "API 集合是否自动同步新增直属子级；缺省兼容存量视为 true"
+                    },
+                    "required": false,
+                    "description": "API 集合是否自动同步新增直属子级；缺省兼容存量视为 true"
+                  },
+                  {
                     "name": "externalFileUrl",
                     "schema": {
                       "kind": "primitive",
@@ -34691,6 +34722,16 @@
                           },
                           "required": false,
                           "description": "自动同步"
+                        },
+                        {
+                          "name": "syncAll",
+                          "schema": {
+                            "kind": "primitive",
+                            "type": "boolean",
+                            "description": "是否同步第三方知识库根目录下的新增文件与文件夹"
+                          },
+                          "required": false,
+                          "description": "是否同步第三方知识库根目录下的新增文件与文件夹"
                         },
                         {
                           "name": "externalReadUrl",
@@ -35604,6 +35645,26 @@
                             "description": "外部文件 ID"
                           },
                           {
+                            "name": "apiFileId",
+                            "schema": {
+                              "kind": "primitive",
+                              "type": "string",
+                              "description": "API 文件 ID"
+                            },
+                            "required": false,
+                            "description": "API 文件 ID"
+                          },
+                          {
+                            "name": "syncChildren",
+                            "schema": {
+                              "kind": "primitive",
+                              "type": "boolean",
+                              "description": "API 集合是否自动同步新增直属子级；缺省兼容存量视为 true"
+                            },
+                            "required": false,
+                            "description": "API 集合是否自动同步新增直属子级；缺省兼容存量视为 true"
+                          },
+                          {
                             "name": "fileId",
                             "schema": {
                               "kind": "primitive",
@@ -35837,6 +35898,7 @@
                 "name",
                 "tags",
                 "forbid",
+                "syncChildren",
                 "createTime",
                 "datasetId",
                 "externalFileId"
@@ -35952,6 +36014,16 @@
                         },
                         "required": false,
                         "description": "是否禁用"
+                      },
+                      {
+                        "name": "syncChildren",
+                        "schema": {
+                          "kind": "primitive",
+                          "type": "boolean",
+                          "description": "是否自动同步该 API 目录下的新增子级（仅 API 目录生效）"
+                        },
+                        "required": false,
+                        "description": "是否自动同步该 API 目录下的新增子级（仅 API 目录生效）"
                       },
                       {
                         "name": "createTime",
@@ -36091,6 +36163,16 @@
                         },
                         "required": false,
                         "description": "是否禁用"
+                      },
+                      {
+                        "name": "syncChildren",
+                        "schema": {
+                          "kind": "primitive",
+                          "type": "boolean",
+                          "description": "是否自动同步该 API 目录下的新增子级（仅 API 目录生效）"
+                        },
+                        "required": false,
+                        "description": "是否自动同步该 API 目录下的新增子级（仅 API 目录生效）"
                       },
                       {
                         "name": "createTime",
@@ -68115,6 +68197,16 @@
             "description": "API 文件父级 ID"
           },
           {
+            "name": "syncChildren",
+            "schema": {
+              "kind": "primitive",
+              "type": "boolean",
+              "description": "API 集合是否自动同步新增直属子级；缺省兼容存量视为 true"
+            },
+            "required": false,
+            "description": "API 集合是否自动同步新增直属子级；缺省兼容存量视为 true"
+          },
+          {
             "name": "externalFileUrl",
             "schema": {
               "kind": "primitive",
@@ -68883,6 +68975,16 @@
                   },
                   "required": false,
                   "description": "自动同步"
+                },
+                {
+                  "name": "syncAll",
+                  "schema": {
+                    "kind": "primitive",
+                    "type": "boolean",
+                    "description": "是否同步第三方知识库根目录下的新增文件与文件夹"
+                  },
+                  "required": false,
+                  "description": "是否同步第三方知识库根目录下的新增文件与文件夹"
                 },
                 {
                   "name": "externalReadUrl",
@@ -69796,6 +69898,26 @@
                     "description": "外部文件 ID"
                   },
                   {
+                    "name": "apiFileId",
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "string",
+                      "description": "API 文件 ID"
+                    },
+                    "required": false,
+                    "description": "API 文件 ID"
+                  },
+                  {
+                    "name": "syncChildren",
+                    "schema": {
+                      "kind": "primitive",
+                      "type": "boolean",
+                      "description": "API 集合是否自动同步新增直属子级；缺省兼容存量视为 true"
+                    },
+                    "required": false,
+                    "description": "API 集合是否自动同步新增直属子级；缺省兼容存量视为 true"
+                  },
+                  {
                     "name": "fileId",
                     "schema": {
                       "kind": "primitive",
@@ -70029,6 +70151,7 @@
         "name",
         "tags",
         "forbid",
+        "syncChildren",
         "createTime",
         "datasetId",
         "externalFileId"
@@ -70144,6 +70267,16 @@
                 },
                 "required": false,
                 "description": "是否禁用"
+              },
+              {
+                "name": "syncChildren",
+                "schema": {
+                  "kind": "primitive",
+                  "type": "boolean",
+                  "description": "是否自动同步该 API 目录下的新增子级（仅 API 目录生效）"
+                },
+                "required": false,
+                "description": "是否自动同步该 API 目录下的新增子级（仅 API 目录生效）"
               },
               {
                 "name": "createTime",
@@ -70283,6 +70416,16 @@
                 },
                 "required": false,
                 "description": "是否禁用"
+              },
+              {
+                "name": "syncChildren",
+                "schema": {
+                  "kind": "primitive",
+                  "type": "boolean",
+                  "description": "是否自动同步该 API 目录下的新增子级（仅 API 目录生效）"
+                },
+                "required": false,
+                "description": "是否自动同步该 API 目录下的新增子级（仅 API 目录生效）"
               },
               {
                 "name": "createTime",
@@ -72406,6 +72549,16 @@
             },
             "required": false,
             "description": "自动同步"
+          },
+          {
+            "name": "syncAll",
+            "schema": {
+              "kind": "primitive",
+              "type": "boolean",
+              "description": "是否同步第三方知识库根目录下的新增文件与文件夹"
+            },
+            "required": false,
+            "description": "是否同步第三方知识库根目录下的新增文件与文件夹"
           },
           {
             "name": "externalReadUrl",
@@ -75791,6 +75944,7 @@
         "externalReadUrl",
         "apiDatasetServer",
         "autoSync",
+        "syncAll",
         "chunkSettings",
         "sangforFileParseConfig"
       ],
@@ -76152,6 +76306,16 @@
             },
             "required": false,
             "description": "是否自动同步"
+          },
+          {
+            "name": "syncAll",
+            "schema": {
+              "kind": "primitive",
+              "type": "boolean",
+              "description": "是否开启第三方知识库整库全量同步（仅 API 知识库生效；开启后会同时恢复库内所有已暂停同步的子目录）"
+            },
+            "required": false,
+            "description": "是否开启第三方知识库整库全量同步（仅 API 知识库生效；开启后会同时恢复库内所有已暂停同步的子目录）"
           },
           {
             "name": "chunkSettings",

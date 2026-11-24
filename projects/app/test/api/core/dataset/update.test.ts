@@ -890,6 +890,50 @@ describe('update dataset', () => {
     const unchanged = await MongoDataset.findById(dataset._id).lean();
     expect(unchanged?.parentId ?? null).toBeNull();
   });
+
+  it('cleans legacy SYSTEM_ROOT sentinel and reparents children when disabling syncAll', async () => {
+    const { owner } = await getFakeUsers(1);
+    const dataset = await MongoDataset.create({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      name: 'legacy-syncall-dataset',
+      type: DatasetTypeEnum.apiDataset,
+      syncAll: false,
+      apiDatasetServer: {
+        apiServer: { baseUrl: 'https://example.com', authorization: 'token' }
+      }
+    });
+    const sentinel = await MongoDatasetCollection.create({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      datasetId: dataset._id,
+      name: 'ROOT_FOLDER',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'SYSTEM_ROOT'
+    });
+    const child = await MongoDatasetCollection.create({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      datasetId: dataset._id,
+      name: 'top-doc',
+      type: DatasetCollectionTypeEnum.apiFile,
+      apiFileId: 'doc-1',
+      apiFileParentId: 'SYSTEM_ROOT',
+      parentId: sentinel._id
+    });
+
+    const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+      auth: owner,
+      body: { id: String(dataset._id), syncAll: false }
+    });
+
+    expect(res.code).toBe(200);
+    expect((await MongoDataset.findById(dataset._id).lean())?.syncAll).toBe(false);
+    await expect(MongoDatasetCollection.findById(sentinel._id).lean()).resolves.toBeNull();
+    const savedChild = await MongoDatasetCollection.findById(child._id).lean();
+    expect(savedChild?.parentId).toBeNull();
+    expect(savedChild?.apiFileParentId).toBeUndefined();
+  });
 });
 
 describe('dataset permission sync switch', () => {
@@ -1687,6 +1731,83 @@ it('rejects moving a leaf beneath another leaf without changing its parent', asy
   });
   expect(res.error).toBe(CommonErrEnum.invalidParams);
   expect((await MongoDataset.findById(source._id).lean())?.parentId).toBeNull();
+});
+
+describe('update dataset syncAll', () => {
+  it('updates syncAll for API datasets with Manage permission and rejects non-API datasets', async () => {
+    const { owner, members } = await getFakeUsers(1);
+    const writeMember = members[0];
+    const teamId = String(owner.teamId);
+
+    const normalDataset = await createDatasetWithOwnerSnapshot({
+      teamId,
+      tmbId: String(owner.tmbId),
+      name: 'normal-dataset',
+      type: DatasetTypeEnum.dataset
+    });
+    const rejectedNormal = await Call<UpdateDatasetBody, Record<string, never>, string>(
+      updateHandler,
+      {
+        auth: owner,
+        body: { id: String(normalDataset._id), syncAll: true }
+      }
+    );
+    expect(rejectedNormal.error).toBe(CommonErrEnum.invalidParams);
+
+    const apiDataset = await MongoDataset.create({
+      teamId,
+      tmbId: String(owner.tmbId),
+      name: 'api-dataset-sync-all',
+      type: DatasetTypeEnum.apiDataset,
+      syncAll: false,
+      apiDatasetServer: {
+        apiServer: { baseUrl: 'https://api.example.com' }
+      }
+    });
+    await setDatasetCollaborators({
+      datasetId: String(apiDataset._id),
+      teamId,
+      type: apiDataset.type,
+      collaborators: [
+        { tmbId: String(owner.tmbId), permission: OwnerRoleVal },
+        { tmbId: String(writeMember.tmbId), permission: WriteRoleVal }
+      ]
+    });
+
+    const deniedWrite = await Call<UpdateDatasetBody, Record<string, never>, string>(
+      updateHandler,
+      {
+        auth: writeMember,
+        body: { id: String(apiDataset._id), syncAll: true }
+      }
+    );
+    expect(deniedWrite.code).not.toBe(200);
+    expect((await MongoDataset.findById(apiDataset._id).lean())?.syncAll).toBe(false);
+
+    const pausedFolder = await MongoDatasetCollection.create({
+      teamId,
+      tmbId: String(owner.tmbId),
+      datasetId: apiDataset._id,
+      name: 'paused-api-folder',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'remote-dir-paused',
+      syncChildren: false
+    });
+
+    const allowedOwner = await Call<UpdateDatasetBody, Record<string, never>, string>(
+      updateHandler,
+      {
+        auth: owner,
+        body: { id: String(apiDataset._id), syncAll: true }
+      }
+    );
+    expect(allowedOwner.code).toBe(200);
+    expect((await MongoDataset.findById(apiDataset._id).lean())?.syncAll).toBe(true);
+    // 开启全量同步时，本知识库内已暂停的子目录会一并恢复自动同步
+    expect((await MongoDatasetCollection.findById(pausedFolder._id).lean())?.syncChildren).toBe(
+      true
+    );
+  });
 });
 
 describe('configured move depth', () => {

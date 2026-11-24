@@ -29,7 +29,7 @@ const Upload = () => {
   const { collectionId = '' } = router.query as {
     collectionId: string;
   };
-  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
+  const { datasetDetail } = useContextSelector(DatasetPageContext, (v) => v);
   const retrainNewCollectionId = useRef('');
 
   const { importSource, parentId, sources, setSources, processParamsForm } = useContextSelector(
@@ -76,17 +76,26 @@ const Upload = () => {
           }))
         );
 
-        const apiFiles = filterWaitingSources
-          .filter((item) => item.apiFile)
-          .map((item) => item.apiFile!);
+        const isSyncAll = filterWaitingSources.some((item) => item.isSyncAll);
+        const apiFiles = isSyncAll
+          ? []
+          : filterWaitingSources.filter((item) => item.apiFile).map((item) => item.apiFile!);
+        const ancestorPaths = isSyncAll
+          ? {}
+          : filterWaitingSources.reduce<Record<string, string[]>>((acc, item) => {
+              if (item.apiFile && item.ancestorIds?.length) {
+                acc[item.apiFile.id] = item.ancestorIds;
+              }
+              return acc;
+            }, {});
 
         const { failedCount } = await postCreateDatasetApiDatasetCollection({
           ...data,
-          parentId,
           datasetId: datasetDetail._id,
-
           customPdfParse,
-          apiFiles
+          ...(isSyncAll ? { syncAll: true } : {}),
+          apiFiles,
+          ...(Object.keys(ancestorPaths).length > 0 ? { ancestorPaths } : {})
         });
 
         // 服务端对「部分节点没进去」仍返回 200（已建成的目录/文件不回滚，重试幂等），

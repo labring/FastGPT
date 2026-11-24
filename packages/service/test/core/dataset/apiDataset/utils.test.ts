@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import {
   buildApiFileParentUpdates,
   createApiFileSourceResolver,
+  LEGACY_SYSTEM_ROOT_API_FILE_ID,
   planLegacyApiFileFolders,
   getApiFileSyncRootIds,
   resolveApiFileRecordParent,
@@ -31,7 +31,7 @@ const collection = (overrides: Partial<ApiFileLocalCollection> = {}): ApiFileLoc
 
 describe('resolveApiFileRecordParent', () => {
   it.each([undefined, 'selected-parent'])(
-    '无哨兵导入根落位与已有位置保留规则：%s',
+    '根级记录落位与已有位置保留规则：%s',
     (targetParentId) => {
       expect(
         resolveApiFileRecordParent({ record: record(), idMap: new Map(), targetParentId })
@@ -42,16 +42,16 @@ describe('resolveApiFileRecordParent', () => {
       });
     }
   );
-  it('整库同步根级记录落在哨兵下', () => {
+  it('syncAll=true 时根级记录落到知识库根且不保留旧父级位置', () => {
     expect(
       resolveApiFileRecordParent({
         record: record(),
         idMap: new Map(),
-        rootCollectionId: 'root-local'
+        syncAll: true
       })
     ).toEqual({
-      parentId: 'root-local',
-      apiFileParentId: RootCollectionId,
+      parentId: null,
+      apiFileParentId: null,
       preserveExistingPlacement: false
     });
   });
@@ -298,10 +298,18 @@ describe('getApiFileSyncRootIds', () => {
         }),
         collection({ parentId: 'derived' }),
         collection({ apiFileId: 'real#dir', type: DatasetCollectionTypeEnum.folder }),
-        collection({ apiFileId: RootCollectionId, type: DatasetCollectionTypeEnum.folder }),
+        collection({
+          apiFileId: LEGACY_SYSTEM_ROOT_API_FILE_ID,
+          type: DatasetCollectionTypeEnum.folder
+        }),
+        collection({
+          apiFileId: 'legacy-child',
+          apiFileParentId: LEGACY_SYSTEM_ROOT_API_FILE_ID,
+          parentId: 'legacy-root'
+        }),
         collection({ apiFileId: undefined })
       ])
-    ).toEqual(['doc', 'real#dir']);
+    ).toEqual(['doc', 'real#dir', 'legacy-child']);
   });
 });
 
@@ -386,14 +394,6 @@ describe('planLegacyApiFileFolders', () => {
             targetParentId: null
           })
         ).toMatchObject({ parentId: null, preserveExistingPlacement: false });
-        expect(
-          resolveApiFileRecordParent({
-            record: record(),
-            idMap: new Map(),
-            rootParentIds: plan.rootParentIds,
-            rootCollectionId: 'root'
-          }).parentId
-        ).toBe('root');
       }
       expect(JSON.stringify({ records, collections })).toBe(before);
       const retry = planLegacyApiFileFolders({

@@ -12,6 +12,7 @@ import { initializeDatasetVectorIndexes } from './tasks/4180/20261022_initialize
 import { backfillChatPublishSource } from './tasks/4180/20261104_backfill_chat_publish_source';
 import { backfillOpenApiKeyType } from './tasks/4180/20261104_backfill_openapi_key_type';
 import { migrateModelPricing } from './tasks/4180/20261120_migrate_model_pricing';
+import { cleanApiDatasetSystemRoot } from './tasks/4180/20261120_clean_api_dataset_system_root';
 import { cleanupMongoIndexes } from './tasks/4180/20261123_cleanup_mongo_indexes';
 
 export type SystemMigrationLogger = {
@@ -234,6 +235,33 @@ export const systemMigrations = [
       }
     ],
     run: backfillOpenApiKeyType
+  },
+  {
+    id: '20261120_clean_api_dataset_system_root',
+    version: '4.18.0',
+    nameKey: i18nT('system_migration:migrations.20261120_clean_api_dataset_system_root.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261120_clean_api_dataset_system_root.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261120_clean_api_dataset_system_root.result'),
+    progressSteps: [
+      {
+        key: 'migrate',
+        labelKey: i18nT(
+          'system_migration:migrations.20261120_clean_api_dataset_system_root.migrate'
+        )
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261120_clean_api_dataset_system_root.validation'
+        )
+      }
+    ],
+    // 为兼容任意升级顺序（先升 App / 同时升级 / 滚动升级窗口期与旧版 Pro 共存），
+    // 不在启动阶段自动删除 SYSTEM_ROOT；由新版 App/Pro 运行时透明兼容，待全部服务升级完毕后由管理员手动触发清理。
+    manual: true,
+    run: cleanApiDatasetSystemRoot
   },
   {
     id: '20261123_cleanup_mongo_indexes',

@@ -21,13 +21,17 @@ describe('validateSystemMigrationRegistry', () => {
       '20261022_initialize_dataset_vector_indexes',
       '20261104_backfill_chat_publish_source',
       '20261104_backfill_openapi_key_type',
+      '20261120_clean_api_dataset_system_root',
       '20261123_cleanup_mongo_indexes'
     ]);
     const tasks: readonly SystemMigration[] = systemMigrations;
     expect(tasks.filter((task) => task.blockStartup).map(({ id }) => id)).toEqual([
       '20261116_migrate_system_configs'
     ]);
-    expect(tasks.filter((task) => task.delay || task.manual || task.resumable)).toEqual([]);
+    expect(tasks.filter((task) => task.manual).map(({ id }) => id)).toEqual([
+      '20261120_clean_api_dataset_system_root'
+    ]);
+    expect(tasks.filter((task) => task.delay || task.resumable)).toEqual([]);
 
     const configMigration = tasks.find(({ id }) => id === '20261116_migrate_system_configs');
     expect(configMigration).toMatchObject({
@@ -51,6 +55,7 @@ describe('validateSystemMigrationRegistry', () => {
       '20261022_initialize_dataset_vector_indexes',
       '20261104_backfill_chat_publish_source',
       '20261104_backfill_openapi_key_type',
+      '20261120_clean_api_dataset_system_root',
       '20261123_cleanup_mongo_indexes'
     ]);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();

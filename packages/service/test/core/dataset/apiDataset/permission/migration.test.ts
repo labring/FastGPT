@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
+import { LEGACY_SYSTEM_ROOT_API_FILE_ID } from '@fastgpt/service/core/dataset/apiDataset/utils';
 
 const collectionFindOne = vi.fn();
 const collectionUpdateMany = vi.fn();
@@ -136,7 +136,7 @@ describe('migrateRootSentinelCollection', () => {
   it('queries the sentinel by dataset-scoped apiFileId', async () => {
     await migrateRootSentinelCollection({ teamId: 'team-1', datasetId: 'dataset-1' });
     expect(collectionFindOne).toHaveBeenCalledWith(
-      { teamId: 'team-1', datasetId: 'dataset-1', apiFileId: RootCollectionId },
+      { teamId: 'team-1', datasetId: 'dataset-1', apiFileId: LEGACY_SYSTEM_ROOT_API_FILE_ID },
       '_id'
     );
   });
