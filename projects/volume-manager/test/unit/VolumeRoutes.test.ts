@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+const mockLogger = vi.hoisted(() => ({
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn()
+}));
+
 vi.mock('../../src/env', () => ({
   env: {
     PORT: 3000,
@@ -8,9 +15,23 @@ vi.mock('../../src/env', () => ({
     VM_DOCKER_SOCKET: '/var/run/docker.sock',
     VM_DOCKER_API_VERSION: 'v1.44',
     VM_K8S_NAMESPACE: 'opensandbox',
-    VM_K8S_PVC_STORAGE_CLASS: '',
-    VM_LOG_LEVEL: 'none'
+    VM_K8S_PVC_STORAGE_CLASS: ''
   }
+}));
+
+vi.mock('../../src/utils/logger', () => ({
+  LogCategories: {
+    MODULE: {
+      VOLUME_MANAGER: {
+        SERVER: ['volume-manager', 'server'] as const,
+        API: ['volume-manager', 'api'] as const,
+        DRIVER: ['volume-manager', 'driver'] as const
+      }
+    }
+  },
+  configureLogger: vi.fn(),
+  disposeLogger: vi.fn(),
+  getLogger: () => mockLogger
 }));
 
 import { createVolumeManagerApp } from '../../src/index';
@@ -24,6 +45,7 @@ describe('volume-manager HTTP routes', () => {
   let app: ReturnType<typeof createVolumeManagerApp>;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     driver = {
       exists: vi.fn(),
       ensure: vi.fn(),
@@ -171,5 +193,72 @@ describe('volume-manager HTTP routes', () => {
       headers: AUTH_HEADERS
     });
     expect(abortTimeoutRes.status).toBe(504);
+  });
+
+  it('logs expected 4xx HTTPException at warn level and 5xx/unexpected errors at error level', async () => {
+    const { HTTPException } = await import('hono/http-exception');
+
+    vi.mocked(driver.exists).mockRejectedValueOnce(
+      new HTTPException(403, { message: 'forbidden label' })
+    );
+    const res403 = await app.request(`/v1/volumes/${CLAIM_NAME}`, { headers: AUTH_HEADERS });
+    expect(res403.status).toBe(403);
+    expect(mockLogger.warn).toHaveBeenCalledTimes(1);
+    expect(mockLogger.warn).toHaveBeenCalledWith('Request rejected', {
+      status: 403,
+      method: 'GET',
+      path: `/v1/volumes/${CLAIM_NAME}`,
+      message: 'forbidden label'
+    });
+    expect(mockLogger.error).not.toHaveBeenCalled();
+
+    mockLogger.warn.mockClear();
+    vi.mocked(driver.remove).mockRejectedValueOnce(
+      new HTTPException(409, { message: 'delete conflict' })
+    );
+    const res409 = await app.request(`/v1/volumes/${CLAIM_NAME}`, {
+      method: 'DELETE',
+      headers: AUTH_HEADERS
+    });
+    expect(res409.status).toBe(409);
+    expect(mockLogger.warn).toHaveBeenCalledTimes(1);
+    expect(mockLogger.warn).toHaveBeenCalledWith('Request rejected', {
+      status: 409,
+      method: 'DELETE',
+      path: `/v1/volumes/${CLAIM_NAME}`,
+      message: 'delete conflict'
+    });
+    expect(mockLogger.error).not.toHaveBeenCalled();
+
+    mockLogger.warn.mockClear();
+    const timeoutErr = new HTTPException(504, { message: 'timed out' });
+    vi.mocked(driver.ensure).mockRejectedValueOnce(timeoutErr);
+    const res504 = await app.request('/v1/volumes/ensure', {
+      method: 'POST',
+      headers: { ...AUTH_HEADERS, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ claimName: CLAIM_NAME })
+    });
+    expect(res504.status).toBe(504);
+    expect(mockLogger.error).toHaveBeenCalledTimes(1);
+    expect(mockLogger.error).toHaveBeenCalledWith('Upstream or server error', {
+      status: 504,
+      method: 'POST',
+      path: '/v1/volumes/ensure',
+      error: timeoutErr
+    });
+    expect(mockLogger.warn).not.toHaveBeenCalled();
+
+    mockLogger.error.mockClear();
+    const unexpectedErr = new Error('unexpected failure');
+    vi.mocked(driver.list).mockRejectedValueOnce(unexpectedErr);
+    const res500 = await app.request('/v1/volumes', { headers: AUTH_HEADERS });
+    expect(res500.status).toBe(500);
+    expect(mockLogger.error).toHaveBeenCalledTimes(1);
+    expect(mockLogger.error).toHaveBeenCalledWith('Unhandled request error', {
+      method: 'GET',
+      path: '/v1/volumes',
+      error: unexpectedErr
+    });
+    expect(mockLogger.warn).not.toHaveBeenCalled();
   });
 });

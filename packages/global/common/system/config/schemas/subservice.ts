@@ -30,6 +30,18 @@ export const AgentSandboxProxyConfigSchema = z.strictObject({
   secret: textWithDefault()
 });
 
+export const DEFAULT_SANDBOX_VOLUME_NAME_PREFIX = 'fastgpt-session';
+
+/** 沙盒持久卷前缀校验：拼接后需满足 DNS label 规范且留出 sandboxId 后缀空间。 */
+export const AgentSandboxVolumeNamePrefixSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(100)
+  .regex(SANDBOX_VOLUME_NAME_RE, {
+    message: 'Volume name prefix must use lowercase alphanumeric characters and hyphens'
+  });
+
 const AgentSandboxSubserviceConfigSchema = z.strictObject({
   enabled: z.boolean().default(false),
   proxy: AgentSandboxProxyConfigSchema.prefault({}),
@@ -59,18 +71,9 @@ const AgentSandboxSubserviceConfigSchema = z.strictObject({
       useServerProxy: z.boolean().default(true),
       volumeManagerUrl: serviceBaseUrl,
       volumeManagerToken: textWithDefault(),
-      // 与 env 侧 SandboxVolumeNameSchema 对齐：前缀会拼进 PVC/named volume 名，
-      // 必须满足 DNS label 子集，否则运行时 createSessionVolumeName 的 parse 会抛错。
-      // 保留 max(100)：前缀 + sandboxId 需容纳在 253 字符的 DNS label 内。
-      volumeNamePrefix: z
-        .string()
-        .trim()
-        .min(1)
-        .max(100)
-        .regex(SANDBOX_VOLUME_NAME_RE, {
-          message: 'Volume name prefix must use lowercase alphanumeric characters and hyphens'
-        })
-        .default('fastgpt-session')
+      volumeNamePrefix: AgentSandboxVolumeNamePrefixSchema.default(
+        DEFAULT_SANDBOX_VOLUME_NAME_PREFIX
+      )
     })
     .prefault({})
 });

@@ -78,7 +78,7 @@ infrastructure（instance repository / opensandbox SDK & runtimeProfile / volume
 以下环境变量仅由独立容器/微服务自身读取，不纳入主站 `system_instance_configs`：
 
 - **`projects/agent-sandbox-proxy`**：`PORT`、`FASTGPT_APP_URL`、`FASTGPT_APP_REQUEST_TIMEOUT_SECS`、`AGENT_SANDBOX_PROXY_SECRET`、`AGENT_SANDBOX_PROXY_ADDRESS_CACHE_TTL_SECS`、`AGENT_SANDBOX_PROXY_REWRITE_HOST`、`RUST_LOG`。
-- **`projects/volume-manager`**：`PORT`、`VM_AUTH_TOKEN`、`VM_RUNTIME`（`docker | kubernetes`）、`VM_DOCKER_SOCKET`、`VM_DOCKER_API_VERSION`、`VM_K8S_NAMESPACE`、`VM_K8S_PVC_STORAGE_CLASS`、`VM_LOG_LEVEL`。
+- **`projects/volume-manager`**：`PORT`、`VM_AUTH_TOKEN`、`VM_RUNTIME`（`docker | kubernetes`）、`VM_DOCKER_SOCKET`、`VM_DOCKER_API_VERSION`、`VM_K8S_NAMESPACE`、`VM_K8S_PVC_STORAGE_CLASS`、`LOG_ENABLE_CONSOLE`、`LOG_CONSOLE_LEVEL`、`LOG_ENABLE_OTEL`、`LOG_OTEL_*`。
 - **`projects/fastgpt-ide-agent` 与沙盒镜像入口（`/usr/local/bin/entrypoint.sh`）**：`FASTGPT_WORKDIR`（默认 `/home/sandbox/workspace`）、`FASTGPT_RUNTIME_DIR`（默认 `/var/lib/fastgpt-runtime`）、`HOME`（默认 `/home/sandbox`）、`SHELL`、`FASTGPT_DISK_SOFT_LIMIT_BYTES`、`FASTGPT_IDE_MAX_FILE_BYTES`、`FASTGPT_IDE_WS_MAX_MESSAGE_BYTES`、`FASTGPT_IDE_WS_MAX_FRAME_BYTES`；`entrypoint.sh` 校验目录可写后直接 `exec fastgpt-ide-agent` 作为前景进程（`stdout/stderr` 交由容器运行时收集），`/terminal` 拉起子 shell 时由 `src/terminal/bridge.rs` 清理这 6 个启动控制变量；镜像同时固化 `PIP_BREAK_SYSTEM_PACKAGES=1` 与 `PIP_NO_CACHE_DIR=1`，避免在持久 `$HOME` 产生冗余 pip 缓存。
 
 ---

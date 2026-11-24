@@ -2005,6 +2005,9 @@ importers:
 
   projects/volume-manager:
     dependencies:
+      '@fastgpt-sdk/otel':
+        specifier: workspace:*
+        version: link:../../sdk/otel
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../../packages/global

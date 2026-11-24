@@ -96,5 +96,6 @@
   "delete_folders_confirm_title_other": "Confirm deleting {{count}} folders",
   "delete_following_skills_tip": "Deleting the following skills cannot be undone.",
   "delete_following_folders_tip": "Once deleted, these folders and all skills inside them will be deleted.",
-  "generating": "Generating"
+  "generating": "Generating",
+  "version_publish_tips": "Save this Skill version to the team cloud, share it with the entire team, and publish it as the latest active Skill version."
 }

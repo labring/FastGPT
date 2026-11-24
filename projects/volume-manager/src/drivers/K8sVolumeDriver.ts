@@ -9,8 +9,10 @@ import {
 } from '@fastgpt/global/core/ai/sandbox/volume';
 import type { IVolumeDriver } from './IVolumeDriver';
 import { env } from '../env';
-import { logDebug } from '../utils/logger';
+import { getLogger, LogCategories } from '../utils/logger';
 import { FASTGPT_VOLUME_LABELS, canAdoptLegacyLabels, isManagedLabels } from '../utils/ownership';
+
+const logger = getLogger(LogCategories.MODULE.VOLUME_MANAGER.DRIVER);
 
 const K8S_API = 'https://kubernetes.default.svc';
 const TOKEN_PATH = '/var/run/secrets/kubernetes.io/serviceaccount/token';
@@ -84,9 +86,8 @@ export class K8sVolumeDriver implements IVolumeDriver {
   /** 读取 PVC 的 generation 和删除状态，避免把 Terminating 对象当成可挂载资源。 */
   private async readPvc(name: string): Promise<K8sPvcState> {
     const url = this.pvcUrl(name);
-    logDebug(`K8s GET PVC url=${url}`);
     const res = await this.k8sFetch(url);
-    logDebug(`K8s GET PVC status=${res.status}`);
+    logger.debug('K8s GET PVC', { url, status: res.status });
 
     if (res.status === 404) {
       await res.body?.cancel().catch(() => undefined);
@@ -207,12 +208,11 @@ export class K8sVolumeDriver implements IVolumeDriver {
       };
 
       const postUrl = this.pvcUrl();
-      logDebug(`K8s POST PVC url=${postUrl} name=${name}`);
       const createRes = await this.k8sFetch(postUrl, {
         method: 'POST',
         body: JSON.stringify(pvcPayload)
       });
-      logDebug(`K8s POST PVC status=${createRes.status}`);
+      logger.debug('K8s POST PVC', { url: postUrl, claimName: name, status: createRes.status });
 
       if (createRes.ok) {
         await createRes.body?.cancel().catch(() => undefined);
@@ -247,7 +247,6 @@ export class K8sVolumeDriver implements IVolumeDriver {
 
     const delUrl = this.pvcUrl(name);
 
-    logDebug(`K8s DELETE PVC url=${delUrl}`);
     const res = await this.k8sFetch(delUrl, {
       method: 'DELETE',
       body: JSON.stringify({
@@ -256,7 +255,7 @@ export class K8sVolumeDriver implements IVolumeDriver {
         preconditions: { uid: targetUid }
       })
     });
-    logDebug(`K8s DELETE PVC status=${res.status}`);
+    logger.debug('K8s DELETE PVC', { url: delUrl, status: res.status });
 
     if (res.status === 404) {
       await res.body?.cancel().catch(() => undefined);
@@ -283,9 +282,8 @@ export class K8sVolumeDriver implements IVolumeDriver {
       `app=${FASTGPT_VOLUME_LABELS.app},managed-by=${FASTGPT_VOLUME_LABELS['managed-by']}`
     );
     const url = `${this.pvcUrl()}?labelSelector=${labelSelector}`;
-    logDebug(`K8s LIST PVC url=${url}`);
     const res = await this.k8sFetch(url);
-    logDebug(`K8s LIST PVC status=${res.status}`);
+    logger.debug('K8s LIST PVC', { url, status: res.status });
 
     if (!res.ok) {
       const text = await res.text().catch(() => '');

@@ -414,6 +414,7 @@
   "supported_node_js_libraries": "Supported Node.js Libraries",
   "ai_proxy_health_check_endpoint": "AI Proxy Health Check Endpoint",
   "invalid_subservice_base_url": "Enter an HTTP(S) base URL without credentials, query parameters, or a fragment.",
+  "invalid_sandbox_volume_name_prefix": "Volume name prefix must contain only lowercase letters, numbers, and hyphens (-), start and end with a letter or number, and be at most 100 characters.",
   "mcp_sse_proxy_url": "MCP SSE Proxy URL",
   "enable_mcp_sse": "Enable MCP SSE service",
   "required": "* Required",

@@ -414,6 +414,7 @@
   "supported_node_js_libraries": "已支援 Node.js / JavaScript 模組庫",
   "ai_proxy_health_check_endpoint": "AI Proxy 健康檢查端點",
   "invalid_subservice_base_url": "請輸入不含帳號密碼、查詢參數或片段的 HTTP(S) 服務基底位址。",
+  "invalid_sandbox_volume_name_prefix": "儲存卷名前綴只能包含小寫字母、數字和連字號（-），須以字母或數字開頭和結尾，且不超過 100 個字元。",
   "mcp_sse_proxy_url": "MCP SSE 代理地址",
   "enable_mcp_sse": "啟用 MCP SSE 服務",
   "required": "*必填",

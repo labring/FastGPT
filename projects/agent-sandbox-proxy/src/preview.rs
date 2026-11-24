@@ -31,6 +31,7 @@ static PREVIEW_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
 
 const FORWARDED_REQUEST_HEADERS: [HeaderName; 2] = [RANGE, IF_NONE_MATCH];
 const PREVIEW_METHOD_HEADER: &str = "x-fastgpt-preview-method";
+const PREVIEW_CONTENT_LENGTH_HEADER: &str = "x-fastgpt-preview-content-length";
 const PREVIEW_ORIGIN_HEADER: &str = "x-fastgpt-preview-origin";
 const PREVIEW_ORIGIN_IDE_AGENT: &str = "ide-agent";
 const FORWARDED_RESPONSE_HEADERS: [HeaderName; 5] = [
@@ -175,6 +176,16 @@ pub async fn proxy_preview_file(
             response.headers_mut().insert(header_name, value.clone());
         }
     }
+    // 隧道 HEAD 走上游 GET，真实长度通过自定义头回传；仅接受纯十进制非负整数，避免异常响应头污染 Content-Length。
+    if is_head
+        && let Some(value) = upstream_headers.get(PREVIEW_CONTENT_LENGTH_HEADER)
+        && value
+            .to_str()
+            .ok()
+            .is_some_and(|raw| !raw.is_empty() && raw.bytes().all(|b| b.is_ascii_digit()))
+    {
+        response.headers_mut().insert(CONTENT_LENGTH, value.clone());
+    }
     response.headers_mut().insert(
         REFERRER_POLICY,
         axum::http::HeaderValue::from_static("no-referrer"),
@@ -194,7 +205,13 @@ pub async fn proxy_preview_file(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{Router, body::to_bytes, extract::Path, http::HeaderValue, routing::get};
+    use axum::{
+        Router,
+        body::to_bytes,
+        extract::Path,
+        http::HeaderValue,
+        routing::{get, head},
+    };
     use std::collections::HashMap;
 
     async fn upstream_handler(Path(path): Path<String>, headers: HeaderMap) -> Response<Body> {
@@ -344,6 +361,110 @@ mod tests {
                 .unwrap()
                 .is_empty()
         );
+    }
+
+    #[tokio::test]
+    async fn tunnels_head_reads_custom_content_length_over_empty_get_wire_http() {
+        let base_url = spawn_preview_upstream(Router::new().route(
+            "/base/preview/{*path}",
+            get(|headers: HeaderMap| async move {
+                assert_eq!(headers.get(PREVIEW_METHOD_HEADER).unwrap(), "HEAD");
+                let mut response = Response::new(Body::empty());
+                response.headers_mut().insert(
+                    HeaderName::from_static(PREVIEW_CONTENT_LENGTH_HEADER),
+                    HeaderValue::from_static("26"),
+                );
+                response
+                    .headers_mut()
+                    .insert(CONTENT_LENGTH, HeaderValue::from_static("0"));
+                response
+            }),
+        ))
+        .await;
+
+        let sandbox = SandboxAddress {
+            sandbox_url: Some(base_url.clone()),
+            ..Default::default()
+        };
+        let response =
+            proxy_preview_file(&sandbox, "dir/file.txt", &Method::HEAD, &HeaderMap::new())
+                .await
+                .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers().get(CONTENT_LENGTH).unwrap(), "26");
+        assert!(
+            response
+                .headers()
+                .get(PREVIEW_CONTENT_LENGTH_HEADER)
+                .is_none()
+        );
+        assert!(
+            to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap()
+                .is_empty()
+        );
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let proxy_addr = listener.local_addr().unwrap();
+        let proxy_router = Router::new().route(
+            "/proxy/{*path}",
+            head(move |Path(path): Path<String>, headers: HeaderMap| {
+                let target = SandboxAddress {
+                    sandbox_url: Some(base_url.clone()),
+                    ..Default::default()
+                };
+                async move {
+                    proxy_preview_file(&target, &path, &Method::HEAD, &headers)
+                        .await
+                        .unwrap()
+                }
+            }),
+        );
+        tokio::spawn(async move { axum::serve(listener, proxy_router).await.unwrap() });
+
+        let wire_response = reqwest::Client::new()
+            .head(format!("http://{proxy_addr}/proxy/dir/file.txt"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(wire_response.status(), StatusCode::OK);
+        assert_eq!(wire_response.headers().get(CONTENT_LENGTH).unwrap(), "26");
+        assert!(
+            wire_response
+                .headers()
+                .get(PREVIEW_CONTENT_LENGTH_HEADER)
+                .is_none()
+        );
+        assert!(wire_response.bytes().await.unwrap().is_empty());
+
+        let malformed_base_url = spawn_preview_upstream(Router::new().route(
+            "/base/preview/{*path}",
+            get(|| async move {
+                let mut response = Response::new(Body::empty());
+                response.headers_mut().insert(
+                    HeaderName::from_static(PREVIEW_CONTENT_LENGTH_HEADER),
+                    HeaderValue::from_static("not-a-number"),
+                );
+                response
+                    .headers_mut()
+                    .insert(CONTENT_LENGTH, HeaderValue::from_static("0"));
+                response
+            }),
+        ))
+        .await;
+        let malformed_res = proxy_preview_file(
+            &SandboxAddress {
+                sandbox_url: Some(malformed_base_url),
+                ..Default::default()
+            },
+            "dir/file.txt",
+            &Method::HEAD,
+            &HeaderMap::new(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(malformed_res.headers().get(CONTENT_LENGTH).unwrap(), "0");
     }
 
     #[tokio::test]

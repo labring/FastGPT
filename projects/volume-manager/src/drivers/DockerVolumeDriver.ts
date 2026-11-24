@@ -8,8 +8,10 @@ import {
 } from '@fastgpt/global/core/ai/sandbox/volume';
 import type { IVolumeDriver } from './IVolumeDriver';
 import { env } from '../env';
-import { logDebug } from '../utils/logger';
+import { getLogger, LogCategories } from '../utils/logger';
 import { FASTGPT_VOLUME_LABELS, canAdoptLegacyLabels, isManagedLabels } from '../utils/ownership';
+
+const logger = getLogger(LogCategories.MODULE.VOLUME_MANAGER.DRIVER);
 
 const DockerVolumeInspectSchema = z.object({
   Name: z.string().optional(),
@@ -71,9 +73,8 @@ export class DockerVolumeDriver implements IVolumeDriver {
     allowLegacyUnlabeled?: boolean;
   }): Promise<boolean> {
     const { claimName, action, allowLegacyUnlabeled } = params;
-    logDebug(`Docker inspect volume name=${claimName} action=${action}`);
     const inspectRes = await this.dockerFetch(`/volumes/${claimName}`);
-    logDebug(`Docker inspect volume status=${inspectRes.status}`);
+    logger.debug('Docker inspect volume', { claimName, action, status: inspectRes.status });
 
     if (inspectRes.status === 404) {
       await inspectRes.body?.cancel().catch(() => undefined);
@@ -109,7 +110,6 @@ export class DockerVolumeDriver implements IVolumeDriver {
       return { claimName: name, created: false };
     }
 
-    logDebug(`Docker create volume name=${name}`);
     const createRes = await this.dockerFetch('/volumes/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -118,7 +118,7 @@ export class DockerVolumeDriver implements IVolumeDriver {
         Labels: { ...FASTGPT_VOLUME_LABELS }
       })
     });
-    logDebug(`Docker create volume status=${createRes.status}`);
+    logger.debug('Docker create volume', { claimName: name, status: createRes.status });
 
     if (!createRes.ok) {
       const text = await createRes.text().catch(() => '');
@@ -137,9 +137,8 @@ export class DockerVolumeDriver implements IVolumeDriver {
     });
     if (!found) return;
 
-    logDebug(`Docker remove volume name=${claimName}`);
     const res = await this.dockerFetch(`/volumes/${claimName}`, { method: 'DELETE' });
-    logDebug(`Docker remove volume status=${res.status}`);
+    logger.debug('Docker remove volume', { claimName, status: res.status });
 
     // 404 视为幂等成功
     if (!res.ok && res.status !== 404) {
@@ -159,9 +158,8 @@ export class DockerVolumeDriver implements IVolumeDriver {
         ]
       })
     );
-    logDebug('Docker list volumes');
     const res = await this.dockerFetch(`/volumes?filters=${filters}`);
-    logDebug(`Docker list volumes status=${res.status}`);
+    logger.debug('Docker list volumes', { status: res.status });
 
     if (!res.ok) {
       const text = await res.text().catch(() => '');

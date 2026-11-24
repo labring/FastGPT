@@ -92,5 +92,6 @@
   "delete_folders_confirm_title": "確認刪除 {{count}} 個文件夾",
   "delete_following_skills_tip": "刪除以下技能後將無法恢復。",
   "delete_following_folders_tip": "刪除後，這些文件夾及其包含的全部技能將被一併刪除。",
-  "generating": "生成中"
+  "generating": "生成中",
+  "version_publish_tips": "此版本將儲存至團隊雲端，同步給整個團隊，並作為最新的已發布技能版本生效"
 }

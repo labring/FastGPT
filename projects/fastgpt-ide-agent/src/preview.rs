@@ -32,6 +32,7 @@ struct ByteRange {
 }
 
 const PREVIEW_METHOD_HEADER: &str = "x-fastgpt-preview-method";
+const PREVIEW_CONTENT_LENGTH_HEADER: &str = "x-fastgpt-preview-content-length";
 const PREVIEW_ORIGIN_HEADER: &str = "x-fastgpt-preview-origin";
 const PREVIEW_ORIGIN_VALUE: &str = "ide-agent";
 
@@ -217,12 +218,12 @@ async fn preview_file_handler(
     method: Method,
     headers: HeaderMap,
 ) -> Response<Body> {
-    let is_head = method == Method::HEAD
-        || (method == Method::GET
-            && headers
-                .get(PREVIEW_METHOD_HEADER)
-                .and_then(|value| value.to_str().ok())
-                .is_some_and(|value| value.eq_ignore_ascii_case("HEAD")));
+    let is_tunneled_head = method == Method::GET
+        && headers
+            .get(PREVIEW_METHOD_HEADER)
+            .and_then(|value| value.to_str().ok())
+            .is_some_and(|value| value.eq_ignore_ascii_case("HEAD"));
+    let is_head = method == Method::HEAD || is_tunneled_head;
 
     let (clean_rel_path, file_size, modified_at, mut opened_file) =
         match resolve_and_open_preview_file(&path, !is_head).await {
@@ -296,7 +297,16 @@ async fn preview_file_handler(
     let content_type_header = HeaderValue::from_str(&content_type_for_path(&clean_rel_path))
         .unwrap_or_else(|_| HeaderValue::from_static("application/octet-stream"));
     response_headers.insert(CONTENT_TYPE, content_type_header);
-    if let Ok(len_header) = HeaderValue::from_str(&response_length.to_string()) {
+    if is_tunneled_head {
+        // 隧道 HEAD 响应通过 GET 承载，真实文件体积须经自定义头回传，同时将 HTTP Content-Length 设为 0 以符合 GET 空响应体帧规范。
+        if let Ok(len_header) = HeaderValue::from_str(&response_length.to_string()) {
+            response_headers.insert(
+                HeaderName::from_static(PREVIEW_CONTENT_LENGTH_HEADER),
+                len_header,
+            );
+        }
+        response_headers.insert(CONTENT_LENGTH, HeaderValue::from_static("0"));
+    } else if let Ok(len_header) = HeaderValue::from_str(&response_length.to_string()) {
         response_headers.insert(CONTENT_LENGTH, len_header);
     }
     response_headers.insert(ETAG, etag_header);
@@ -469,8 +479,66 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(tunneled_head_response.status(), StatusCode::OK);
+        assert_eq!(
+            tunneled_head_response
+                .headers()
+                .get(CONTENT_LENGTH)
+                .unwrap(),
+            "0"
+        );
+        assert_eq!(
+            tunneled_head_response
+                .headers()
+                .get(PREVIEW_CONTENT_LENGTH_HEADER)
+                .unwrap(),
+            "10"
+        );
         assert!(
             to_bytes(tunneled_head_response.into_body(), 1024)
+                .await
+                .unwrap()
+                .is_empty()
+        );
+
+        let tunneled_head_range_response = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/preview/preview_http_range.txt")
+                    .header(PREVIEW_METHOD_HEADER, "HEAD")
+                    .header(RANGE, "bytes=2-5")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            tunneled_head_range_response.status(),
+            StatusCode::PARTIAL_CONTENT
+        );
+        assert_eq!(
+            tunneled_head_range_response
+                .headers()
+                .get(CONTENT_RANGE)
+                .unwrap(),
+            "bytes 2-5/10"
+        );
+        assert_eq!(
+            tunneled_head_range_response
+                .headers()
+                .get(CONTENT_LENGTH)
+                .unwrap(),
+            "0"
+        );
+        assert_eq!(
+            tunneled_head_range_response
+                .headers()
+                .get(PREVIEW_CONTENT_LENGTH_HEADER)
+                .unwrap(),
+            "4"
+        );
+        assert!(
+            to_bytes(tunneled_head_range_response.into_body(), 1024)
                 .await
                 .unwrap()
                 .is_empty()

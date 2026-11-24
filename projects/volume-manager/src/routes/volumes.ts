@@ -4,16 +4,17 @@ import {
   SandboxVolumeNameSchema
 } from '@fastgpt/global/core/ai/sandbox/volume';
 import type { IVolumeDriver } from '../drivers/IVolumeDriver';
-import { logInfo } from '../utils/logger';
+import { getLogger, LogCategories } from '../utils/logger';
+
+const logger = getLogger(LogCategories.MODULE.VOLUME_MANAGER.API);
 
 export function volumeRoutes(driver: IVolumeDriver): Hono {
   const app = new Hono();
 
   // GET /v1/volumes
   app.get('/', async (c) => {
-    logInfo('GET /v1/volumes');
     const items = await driver.list();
-    logInfo(`list done count=${items.length}`);
+    logger.debug('Listed volumes', { count: items.length });
     return c.json({ items }, 200);
   });
 
@@ -26,15 +27,13 @@ export function volumeRoutes(driver: IVolumeDriver): Hono {
 
     // [4.18.0 legacy compat, remove in >= 4.19.0] 允许只读核验 4.18.0 迁移期之前的无标签存量持久卷
     const allowLegacyUnlabeled = c.req.query('allowLegacyUnlabeled') === 'true';
-    logInfo(`GET /v1/volumes/${parsedName.data}`);
     const found = allowLegacyUnlabeled
       ? await driver.exists(parsedName.data, { allowLegacyUnlabeled: true })
       : await driver.exists(parsedName.data);
+    logger.debug('Inspected volume', { claimName: parsedName.data, found, allowLegacyUnlabeled });
     if (!found) {
-      logInfo(`inspect not found claimName=${parsedName.data}`);
       return c.json({ error: 'Volume not found' }, 404);
     }
-    logInfo(`inspect done claimName=${parsedName.data}`);
     return c.json({ claimName: parsedName.data }, 200);
   });
 
@@ -47,13 +46,12 @@ export function volumeRoutes(driver: IVolumeDriver): Hono {
     }
 
     const { claimName, storageSize } = parsed.data;
-    logInfo(`POST /v1/volumes/ensure claimName=${claimName}`);
     const result = await driver.ensure({
       claimName,
       storageSize
     });
     const status = result.created ? 201 : 200;
-    logInfo(`ensure done claimName=${result.claimName} created=${result.created} status=${status}`);
+    logger.info('Ensured volume', { claimName: result.claimName, created: result.created });
     return c.json(result, status);
   });
 
@@ -66,13 +64,12 @@ export function volumeRoutes(driver: IVolumeDriver): Hono {
 
     // [4.18.0 legacy compat, remove in >= 4.19.0] 允许清理 4.18.0 迁移期之前的无标签存量孤儿卷
     const allowLegacyUnlabeled = c.req.query('allowLegacyUnlabeled') === 'true';
-    logInfo(`DELETE /v1/volumes/${parsedName.data}`);
     if (allowLegacyUnlabeled) {
       await driver.remove(parsedName.data, { allowLegacyUnlabeled: true });
     } else {
       await driver.remove(parsedName.data);
     }
-    logInfo(`remove done claimName=${parsedName.data}`);
+    logger.info('Removed volume', { claimName: parsedName.data, allowLegacyUnlabeled });
     return c.body(null, 204);
   });
 

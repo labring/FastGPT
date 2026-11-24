@@ -23,7 +23,11 @@ import ConnectivityTestInput from '@/pageComponents/admin/settings/ConnectivityT
 import ConnectivityTestGroup from '@/pageComponents/admin/settings/ConnectivityTestGroup';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import { isValidServiceBaseUrl } from '@fastgpt/global/common/string/url';
-import { AgentSandboxProxyConfigSchema } from '@fastgpt/global/common/system/config/schemas/subservice';
+import {
+  AgentSandboxProxyConfigSchema,
+  AgentSandboxVolumeNamePrefixSchema,
+  DEFAULT_SANDBOX_VOLUME_NAME_PREFIX
+} from '@fastgpt/global/common/system/config/schemas/subservice';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/schema';
 import type { DeepPartial } from '@fastgpt/global/common/system/config/type';
 
@@ -134,7 +138,17 @@ const AgentSandboxSubserviceComponent = () => {
         volumeManagerUrl:
           isEnabled || isValidOptionalUrl(formData.agentSandbox.opensandbox.volumeManagerUrl)
             ? formData.agentSandbox.opensandbox.volumeManagerUrl
-            : (effectiveConfig.agentSandbox?.opensandbox?.volumeManagerUrl ?? '')
+            : (effectiveConfig.agentSandbox?.opensandbox?.volumeManagerUrl ?? ''),
+        volumeNamePrefix: (() => {
+          const parsedPrefix = AgentSandboxVolumeNamePrefixSchema.safeParse(
+            formData.agentSandbox.opensandbox.volumeNamePrefix
+          );
+          if (parsedPrefix.success) return parsedPrefix.data;
+          return isEnabled
+            ? (formData.agentSandbox.opensandbox.volumeNamePrefix ?? '').trim()
+            : (effectiveConfig.agentSandbox?.opensandbox?.volumeNamePrefix ??
+                DEFAULT_SANDBOX_VOLUME_NAME_PREFIX);
+        })()
       }
     };
     await patchConfig({ agentSandbox: sanitizedAgentSandbox });
@@ -143,6 +157,14 @@ const AgentSandboxSubserviceComponent = () => {
   const validateServiceBaseUrl = (value?: string) => {
     if (!value?.trim()) return t('admin:required');
     return isValidServiceBaseUrl(value) || t('admin:invalid_subservice_base_url');
+  };
+
+  const validateVolumeNamePrefix = (value?: string) => {
+    if (!value?.trim()) return t('admin:required');
+    return (
+      AgentSandboxVolumeNamePrefixSchema.safeParse(value).success ||
+      t('admin:invalid_sandbox_volume_name_prefix')
+    );
   };
 
   const renderServiceProbeGroup = ({
@@ -393,16 +415,20 @@ const AgentSandboxSubserviceComponent = () => {
               )}
 
               <AdminFormItem
+                name="agentSandbox.opensandbox.volumeNamePrefix"
                 label={t('admin:storage_volume_name_prefix')}
                 tooltip={t('admin:dynamic_volume_name_prefix')}
+                isRequired
               >
                 <Input
                   isInvalid={Boolean(
                     form.getFieldState('agentSandbox.opensandbox.volumeNamePrefix', form.formState)
                       .error
                   )}
-                  {...register('agentSandbox.opensandbox.volumeNamePrefix')}
-                  placeholder="fastgpt-session"
+                  {...register('agentSandbox.opensandbox.volumeNamePrefix', {
+                    validate: validateVolumeNamePrefix
+                  })}
+                  placeholder={DEFAULT_SANDBOX_VOLUME_NAME_PREFIX}
                 />
               </AdminFormItem>
             </SimpleGrid>

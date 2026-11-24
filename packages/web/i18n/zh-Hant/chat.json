@@ -217,6 +217,7 @@
   "sandbox_save_failed": "儲存文件失敗",
   "sandbox_search_files": "搜尋文件",
   "sandbox_select_file_edit": "選擇一個文件進行編輯",
+  "sandbox_select_file_view": "選擇一個文件進行查看",
   "sandbox_selected_items_count": "已選 {{count}} 項",
   "sandbox_starting": "沙盒啟動中（1/2）",
   "sandbox_status_checkExisting": "正在檢查沙箱環境",
