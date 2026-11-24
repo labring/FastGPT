@@ -42,7 +42,7 @@ describe('Langfuse workflow lifecycle callbacks', () => {
   ])('skips non-root, debug and unconfigured runs: %j', ({ configured, ...props }) => {
     mocks.enabled = configured;
     onWorkflowStart({ ...traceProps, ...props });
-    onWorkflowNodeStart({ ...props, appId: 'app' });
+    onWorkflowNodeStart({ ...props, appId: 'app', nodeId: 'node', nodeName: 'Chat' });
     onWorkflowNodeEnd({
       ...props,
       nodeType: FlowNodeTypeEnum.chatNode,
@@ -58,15 +58,23 @@ describe('Langfuse workflow lifecycle callbacks', () => {
 
   it('returns root and node attributes at span creation time', () => {
     onWorkflowStart(traceProps);
-    onWorkflowNodeStart({ ...lifecycle, appId: 'app' });
+    onWorkflowNodeStart({ ...lifecycle, appId: 'app', nodeId: 'node', nodeName: 'Chat' });
     expect(mocks.prepareSpan).toHaveBeenNthCalledWith(
       1,
-      expect.objectContaining({ 'langfuse.trace.name': 'message' }),
+      expect.objectContaining({
+        'langfuse.trace.name': 'message',
+        'langfuse.observation.metadata.app_id': 'app'
+      }),
       'trace'
     );
     expect(mocks.prepareSpan).toHaveBeenNthCalledWith(
       2,
-      { 'langfuse.observation.metadata.app_id': 'app' },
+      {
+        'langfuse.observation.metadata.app_id': 'app',
+        'langfuse.observation.metadata.nodeId': 'node',
+        'langfuse.observation.metadata.nodeName': 'Chat',
+        'langfuse.trace.name': 'message'
+      },
       'observation'
     );
   });
@@ -96,6 +104,63 @@ describe('Langfuse workflow lifecycle callbacks', () => {
       'langfuse.observation.type': 'generation',
       'langfuse.observation.model.name': 'gpt-4',
       'langfuse.observation.usage_details': '{"input":0,"output":10}'
+    });
+  });
+
+  it('keeps generation reasoning text in the observation output', () => {
+    onWorkflowNodeEnd({
+      ...lifecycle,
+      nodeType: FlowNodeTypeEnum.chatNode,
+      input: { userChatInput: 'hello' },
+      output: { answerText: 'world', reasoningText: 'think', history: ['private'] },
+      response: { model: 'gpt-4' }
+    });
+    expect(mocks.setAttributes).toHaveBeenCalledWith({
+      'langfuse.observation.input': '{"userChatInput":"hello"}',
+      'langfuse.observation.output': '{"answerText":"world","reasoningText":"think"}',
+      'langfuse.observation.type': 'generation',
+      'langfuse.observation.model.name': 'gpt-4'
+    });
+  });
+
+  it('keeps reasoning text only on generation outputs', () => {
+    // generation input still follows the default filter
+    onWorkflowNodeEnd({
+      ...lifecycle,
+      nodeType: FlowNodeTypeEnum.chatNode,
+      input: { userChatInput: 'hello', reasoningText: 'input-think' },
+      output: { answerText: 'world' },
+      response: { model: 'gpt-4' }
+    });
+    expect(mocks.setAttributes).toHaveBeenLastCalledWith({
+      'langfuse.observation.input': '{"userChatInput":"hello"}',
+      'langfuse.observation.output': '{"answerText":"world"}',
+      'langfuse.observation.type': 'generation',
+      'langfuse.observation.model.name': 'gpt-4'
+    });
+
+    // non-LLM node output is filtered, including nested fields such as rawResponse
+    onWorkflowNodeEnd({
+      ...lifecycle,
+      nodeType: FlowNodeTypeEnum.code,
+      input: {},
+      output: { answer: 'world', rawResponse: { reasoningText: 'leak' } }
+    });
+    expect(mocks.setAttributes).toHaveBeenLastCalledWith({
+      'langfuse.observation.input': '{}',
+      'langfuse.observation.output': '{"answer":"world","rawResponse":{}}'
+    });
+
+    // LLM node without a model is not a generation, so its output keeps the default filter
+    onWorkflowNodeEnd({
+      ...lifecycle,
+      nodeType: FlowNodeTypeEnum.chatNode,
+      input: { userChatInput: 'hello' },
+      output: { answerText: 'world', reasoningText: 'think' }
+    });
+    expect(mocks.setAttributes).toHaveBeenLastCalledWith({
+      'langfuse.observation.input': '{"userChatInput":"hello"}',
+      'langfuse.observation.output': '{"answerText":"world"}'
     });
   });
 
