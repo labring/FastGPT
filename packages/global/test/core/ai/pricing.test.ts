@@ -206,10 +206,10 @@ describe('calculateModelPrice', () => {
       }).totalPoints
     ).toBe(0.000002);
   });
-  it('treats the first legacy tier as unlimited before K limits are backfilled', () => {
+  it('uses the first tier for all inputs when it has no K limit', () => {
     const pricing = LLMModelPricingSchema.parse({
       tiers: [
-        { maxInputTokens: 0.128, inputPrice: 1000, outputPrice: 2000 },
+        { inputPrice: 1000, outputPrice: 2000 },
         { inputPrice: 3000, outputPrice: 4000 }
       ]
     });

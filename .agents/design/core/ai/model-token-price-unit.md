@@ -7,7 +7,7 @@
 ```typescript
 pricing: {
   // 仅 LLM 使用；每档下限由上一档上限推导，省略上限表示无限。
-  tiers?: { maxInputTokens?: number; inputPrice: number; outputPrice: number }[];
+  tiers?: { maxInputTokensK?: number; inputPrice: number; outputPrice: number }[];
   // Embedding、Rerank、TTS、STT 使用，值为积分金额。
   unitPrice?: number;
 }
@@ -56,13 +56,13 @@ LLM 使用 `pricing.tiers[].maxInputTokensK` 配置阶梯上限，值为正整�
 
 4.18.0 的独立后台任务 `20261120_migrate_model_pricing` 先分批回填 STT 计价类型，再用单事务回填系统 LLM 的 `maxInputTokensK`，最后联合校验。模型任一旧上限小于 1 时，按 M Tokens 将有限旧上限乘以 1000、四舍五入并最小取 1。其余旧上限按 K Tokens 复制。已有新上限及开放档跳过，原 `maxInputTokens` 保留供回退读取。新版保存只写 `maxInputTokensK`，经新版编辑的配置按新版格式使用。
 
-公开 API、SDK 和新版导出的模型配置只提供 `maxInputTokensK`。配置编辑和 JSON 往返的兼容范围以价格回填完成的模型为准。4.17.5 导出的配置可导入新版，能精确换算为正整数 K Tokens 的上限由导入入口转换。
+公开 API、SDK 和模型配置 JSON 的 LLM 阶梯上限统一使用 `maxInputTokensK`。配置编辑和 JSON 往返的兼容范围以价格回填完成的模型为准。JSON 导入会校验阶梯字段，只接受新版上限字段。
 
 ## 缓存计费扩展
 
 百万单位及 `pricing` 结构已合入；缓存计费在 `pricing.tiers` 中增加可选的 `cacheReadPrice`、`cacheCreationPrice`，均为每百万 Tokens 的单价。未配置沿用该档输入价，显式 0 免费。只影响 LLM，不新增单位标记，不读取旧根字段，也不修改既有价格迁移或新增迁移任务。
 
-总输入包含两类缓存。已标记 K 单位的配置按总输入选档，缺少标记时用首档。费用为 `(普通输入 × 输入价 + 缓存读取 × 读取价 + 缓存创建 × 创建价 + 输出 × 输出价) / 1000000`。负数或非有限用量按 0 处理，缓存读取最多为总输入，缓存创建最多为剩余输入；团队模型仍免费。单次费用不舍入。
+总输入包含两类缓存。按总输入量与 maxInputTokensK 选档，旧模型首档尚未回填上限时使用首档。费用为 `(普通输入 × 输入价 + 缓存读取 × 读取价 + 缓存创建 × 创建价 + 输出 × 输出价) / 1000000`。负数或非有限用量按 0 处理，缓存读取最多为总输入，缓存创建最多为剩余输入；团队模型仍免费。单次费用不舍入。
 
 OpenAI 兼容响应在请求聚合入口归一化供应商缓存字段并累计连续输出；Pi 的普通输入不含缓存，适配时补回缓存以形成总输入。锁定 SDK 的 pnpm 补丁补齐其 OpenAI 缓存解析，输出与普通请求统一采用 `completion_tokens` 总量，不再次累加其中的 `reasoning_tokens` 分项，避免推理模型重复计费。镜像安装上下文同步包含补丁。普通请求、两种 Agent、压缩、知识库检索、训练、辅助生成与评估逐层转发两类缓存数量。Pro 创建/追加/合并用量后按已有积分总额扣费，不再重新计价。
 

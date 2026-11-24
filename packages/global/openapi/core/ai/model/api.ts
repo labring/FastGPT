@@ -543,42 +543,11 @@ const ImportedModelIdField = {
   scope: z.literal(ModelScopeEnum.system).meta({ description: '系统模型作用域' })
 };
 
-/** 导入旧导出文件时一次性转换阶梯上限，交给保存逻辑的始终是当前 K Tokens 格式。 */
-const ImportedLLMPricingSchema = LLMModelPricingSchema.extend({
-  tierUnit: z.literal('K').optional().meta({
-    deprecated: true,
-    description: '仅识别 4.18 预发布导出中的 K Tokens 单位标记，当前文件使用 maxInputTokensK'
-  }),
-  tiers: ModelPriceTierSchema.extend({
-    maxInputTokens: z.number().nonnegative().optional().meta({
-      deprecated: true,
-      description: '旧导出文件的阶梯上限，4.17.5 使用 M Tokens，由导入转换为 maxInputTokensK'
-    })
-  })
-    .array()
-    .max(MAX_MODEL_PRICE_TIERS)
-    .optional()
-})
-  .transform(({ tierUnit, tiers, ...pricing }, ctx) => {
-    const legacyToK = tierUnit === 'K' ? 1 : 1000;
-    const convertedTiers = tiers?.map(({ maxInputTokens, ...tier }, index) => {
-      if (tier.maxInputTokensK !== undefined || maxInputTokens === undefined) return tier;
-
-      const maxInputTokensK = Math.round(maxInputTokens * legacyToK);
-      if (
-        maxInputTokensK / legacyToK !== maxInputTokens ||
-        !ModelPriceTierSchema.shape.maxInputTokensK.safeParse(maxInputTokensK).success
-      ) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['tiers', index, 'maxInputTokens'],
-          message: 'Set maxInputTokensK to a positive integer to import this legacy tier bound'
-        });
-        return z.NEVER;
-      }
-      return { ...tier, maxInputTokensK };
-    });
-    return { ...pricing, tiers: convertedTiers };
+/** JSON 导入会覆盖模型配置，因此拒绝未知阶梯字段，防止遗漏上限后把首档保存为无限档。 */
+const ImportedLLMPricingSchema = z
+  .strictObject({
+    ...LLMModelPricingSchema.shape,
+    tiers: z.array(z.strictObject(ModelPriceTierSchema.shape)).max(MAX_MODEL_PRICE_TIERS).optional()
   })
   .optional();
 
@@ -634,7 +603,7 @@ export const UpdateSystemModelsWithJsonBodySchema = z.object({
     example:
       '[{"modelId":"68ad85a7463006c963799a05","scope":"system","type":"llm","provider":"OpenAI","model":"gpt-5","name":"GPT-5","isActive":true,"config":{"maxContext":400000,"maxResponse":128000,"quoteMaxToken":300000,"toolChoice":true}}]',
     description:
-      '完整系统模型配置 JSON，每条记录必须包含源实例模型 ID；旧版 LLM 上限需可精确换算为整数 K Tokens；sortOrder 会被忽略，已有展示顺序保持不变'
+      '完整系统模型配置 JSON，每条记录必须包含源实例模型 ID；LLM 阶梯上限使用 maxInputTokensK；sortOrder 会被忽略，已有展示顺序保持不变'
   })
 });
 export type UpdateSystemModelsWithJsonBody = z.input<typeof UpdateSystemModelsWithJsonBodySchema>;
