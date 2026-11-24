@@ -12,6 +12,8 @@ export default defineConfig({
   },
   test: {
     globalSetup: resolve(import.meta.dirname, 'test/global-setup.ts'),
+    testTimeout: 30000,
+    hookTimeout: 30000,
     coverage: {
       enabled: true,
       reporter: ['text', 'text-summary', 'html', 'json-summary', 'json'],

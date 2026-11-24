@@ -154,8 +154,8 @@ catalogs:
       specifier: 4.13.16
       version: 4.13.16
     i18next:
-      specifier: 23.16.8
-      version: 23.16.8
+      specifier: 26.3.4
+      version: 26.3.4
     ipaddr.js:
       specifier: ^2.4.0
       version: 2.4.0
@@ -358,7 +358,7 @@ importers:
         version: 8.0.3
       i18next:
         specifier: 'catalog:'
-        version: 23.16.8
+        version: 26.3.4(typescript@6.0.3)
       js-yaml:
         specifier: 'catalog:'
         version: 4.3.2
@@ -370,13 +370,13 @@ importers:
         version: 11.3.0(bare-buffer@3.7.1)(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
       next-i18next:
         specifier: 'catalog:'
-        version: 15.4.2(i18next@23.16.8)(next@16.4.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 15.4.2(i18next@26.3.4(typescript@6.0.3))(next@16.4.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@26.3.4(typescript@6.0.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       prettier:
         specifier: catalog:lint
         version: 3.8.3
       react-i18next:
         specifier: 'catalog:'
-        version: 14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 14.1.2(i18next@26.3.4(typescript@6.0.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       turbo:
         specifier: 'catalog:'
         version: 2.10.8
@@ -763,7 +763,7 @@ importers:
         version: 7.0.6
       i18next:
         specifier: 'catalog:'
-        version: 23.16.8
+        version: 26.3.4(typescript@6.0.3)
       iconv-lite:
         specifier: ^0.6.3
         version: 0.6.3
@@ -989,7 +989,7 @@ importers:
         version: 1.11.19
       i18next:
         specifier: 'catalog:'
-        version: 23.16.8
+        version: 26.3.4(typescript@6.0.3)
       js-cookie:
         specifier: ^3.0.7
         version: 3.0.7
@@ -1004,7 +1004,7 @@ importers:
         version: 16.4.6(@babel/core@7.29.13)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
       next-i18next:
         specifier: 'catalog:'
-        version: 15.4.2(i18next@23.16.8)(next@16.4.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 15.4.2(i18next@26.3.4(typescript@6.0.3))(next@16.4.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@26.3.4(typescript@6.0.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       papaparse:
         specifier: ^5.4.1
         version: 5.4.1
@@ -1025,7 +1025,7 @@ importers:
         version: 7.43.1(react@18.3.1)
       react-i18next:
         specifier: 'catalog:'
-        version: 14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 14.1.2(i18next@26.3.4(typescript@6.0.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react-markdown:
         specifier: 'catalog:'
         version: 9.1.0(@types/react@18.3.1)(react@18.3.1)
@@ -1586,7 +1586,7 @@ importers:
         version: 2.4.29
       i18next:
         specifier: 'catalog:'
-        version: 23.16.8
+        version: 26.3.4(typescript@6.0.3)
       immer:
         specifier: ^9.0.19
         version: 9.0.21
@@ -1637,7 +1637,7 @@ importers:
         version: 16.4.6(@babel/core@7.29.13)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
       next-i18next:
         specifier: 'catalog:'
-        version: 15.4.2(i18next@23.16.8)(next@16.4.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 15.4.2(i18next@26.3.4(typescript@6.0.3))(next@16.4.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@26.3.4(typescript@6.0.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       nodemailer:
         specifier: 'catalog:'
         version: 10.2.1
@@ -1664,7 +1664,7 @@ importers:
         version: 7.43.1(react@18.3.1)
       react-i18next:
         specifier: 'catalog:'
-        version: 14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 14.1.2(i18next@26.3.4(typescript@6.0.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react-markdown:
         specifier: 'catalog:'
         version: 9.1.0(@types/react@18.3.1)(react@18.3.1)
@@ -1918,7 +1918,7 @@ importers:
         version: 1.21.1
       i18next:
         specifier: 'catalog:'
-        version: 23.16.8
+        version: 26.3.4(typescript@6.0.3)
       mongoose:
         specifier: 'catalog:'
         version: 8.24.8(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
@@ -1927,7 +1927,7 @@ importers:
         version: 16.4.6(@babel/core@7.29.13)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
       next-i18next:
         specifier: 'catalog:'
-        version: 15.4.2(i18next@23.16.8)(next@16.4.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 15.4.2(i18next@26.3.4(typescript@6.0.3))(next@16.4.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@26.3.4(typescript@6.0.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       react:
         specifier: ^18
         version: 18.3.1
@@ -1936,7 +1936,7 @@ importers:
         version: 18.3.1(react@18.3.1)
       react-i18next:
         specifier: 'catalog:'
-        version: 14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: 14.1.2(i18next@26.3.4(typescript@6.0.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       zod:
         specifier: 'catalog:'
         version: 4.6.7
@@ -10157,8 +10157,13 @@ packages:
   i18next-fs-backend@2.7.0:
     resolution: {integrity: sha512-CUfthmimGMcpLujpZXrVl3aF2Ra/cdYhoA0Ep+PckOk0N8jhwGGDNsrB2WM5CR4i66nYQPJoWR8YzsUrohuqKw==}
 
-  i18next@23.16.8:
-    resolution: {integrity: sha512-06r/TitrM88Mg5FdUXAKL96dJMzgqLE5dv3ryBAra4KCwD9mJ4ndOTS95ZuymIGoE+2hzfdaMak2X11/es7ZWg==}
+  i18next@26.3.4:
+    resolution: {integrity: sha512-pa7m0d7pBDqGHZxljT+WPFeyFgQ7P7SciPPo1tTqYuO0z4sqADYhwnBESmmGp/wEof1inwdls/k8ZgTg8rxFHA==}
+    peerDependencies:
+      typescript: ^5 || ^6
+    peerDependenciesMeta:
+      typescript:
+        optional: true
 
   iconv-lite@0.4.24:
     resolution: {integrity: sha512-v3MXnZAcvnywkTUEZomIActle7RXXeedOR31wwl7VlyoXO4Qi9arvSenNQWne1TcRwhCL1HwLI21bEqdpj8/rA==}
@@ -25139,9 +25144,9 @@ snapshots:
 
   i18next-fs-backend@2.7.0: {}
 
-  i18next@23.16.8:
-    dependencies:
-      '@babel/runtime': 7.26.10
+  i18next@26.3.4(typescript@6.0.3):
+    optionalDependencies:
+      typescript: 6.0.3
 
   iconv-lite@0.4.24:
     dependencies:
@@ -27207,17 +27212,17 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  next-i18next@15.4.2(i18next@23.16.8)(next@16.4.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
+  next-i18next@15.4.2(i18next@26.3.4(typescript@6.0.3))(next@16.4.6(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@26.3.4(typescript@6.0.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
     dependencies:
       '@babel/runtime': 7.26.10
       '@types/hoist-non-react-statics': 3.3.6
       core-js: 3.41.0
       hoist-non-react-statics: 3.3.2
-      i18next: 23.16.8
+      i18next: 26.3.4(typescript@6.0.3)
       i18next-fs-backend: 2.7.0
       next: 16.4.6(@babel/core@7.29.13)(@opentelemetry/api@1.9.0)(@playwright/test@1.64.1)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
       react: 18.3.1
-      react-i18next: 14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react-i18next: 14.1.2(i18next@26.3.4(typescript@6.0.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
 
   next-themes@0.4.6(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
@@ -28283,11 +28288,11 @@ snapshots:
     dependencies:
       react: 18.3.1
 
-  react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+  react-i18next@14.1.2(i18next@26.3.4(typescript@6.0.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       '@babel/runtime': 7.26.10
       html-parse-stringify: 3.0.1
-      i18next: 23.16.8
+      i18next: 26.3.4(typescript@6.0.3)
       react: 18.3.1
     optionalDependencies:
       react-dom: 18.3.1(react@18.3.1)
