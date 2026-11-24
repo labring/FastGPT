@@ -9,125 +9,147 @@ import { DatasetAuditEventEnum } from '@fastgpt/global/core/dataset/audit/consta
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import { defaultMetadataProcessor, type CommonMetadataFields } from './commonProcessor';
 
-/**
- * 对象型知识库配置中取值为布尔类型的子字段集合（按父配置项 key 分组）。
- * 展示层仅对这些布尔子字段及标量 `autoSync` 翻译 `common:yes` / `common:no`，避免误译自由文本。
- */
-export const datasetConfigAuditBooleanFieldMap: Readonly<
-  Partial<Record<string, ReadonlySet<string>>>
-> = {
-  [datasetConfigAuditItemLabelMap[DatasetConfigAuditItemEnum.CHUNK_SETTINGS]]: new Set([
-    'dataEnhanceCollectionName',
-    'imageIndex',
-    'autoIndexes',
-    'indexPrefixTitle'
-  ]),
-  [datasetConfigAuditItemLabelMap[DatasetConfigAuditItemEnum.FILE_PARSE_CONFIG]]: new Set([
-    'keep_header_footer',
-    'keep_appendix',
-    'image_analysis',
-    'chart_analysis'
-  ])
+type DatasetConfigAuditFieldMeta = {
+  label: string;
+  valueKind?: 'boolean';
 };
 
 /**
- * 对象型知识库配置的子字段路径到 i18n key 的映射表（按父配置项 key 分组）。
- * 展示层查表翻译，未匹配到的未知路径或扩展字段原样回退显示。
+ * 对象型知识库配置的子字段展示元数据（按父配置项 key 分组）：
+ * 统一维护子字段路径的 i18n key 与布尔值语义，避免拆成多张表导致漂移；未匹配路径原样回退显示。
  */
-export const datasetConfigAuditFieldLabelMap: Readonly<
-  Partial<Record<string, Readonly<Record<string, string>>>>
+export const datasetConfigAuditFieldMap: Readonly<
+  Partial<Record<string, Readonly<Record<string, DatasetConfigAuditFieldMeta>>>>
 > = {
   [datasetConfigAuditItemLabelMap[DatasetConfigAuditItemEnum.WEBSITE_CONFIG]]: {
-    url: i18nT('account_team:dataset_config_field_websiteConfig_url'),
-    selector: i18nT('account_team:dataset_config_field_websiteConfig_selector')
+    url: { label: i18nT('account_team:dataset_config_field_websiteConfig_url') },
+    selector: { label: i18nT('account_team:dataset_config_field_websiteConfig_selector') }
   },
   [datasetConfigAuditItemLabelMap[DatasetConfigAuditItemEnum.CHUNK_SETTINGS]]: {
-    trainingType: i18nT('account_team:dataset_config_field_chunkSettings_trainingType'),
-    chunkTriggerType: i18nT('account_team:dataset_config_field_chunkSettings_chunkTriggerType'),
-    chunkTriggerMinSize: i18nT(
-      'account_team:dataset_config_field_chunkSettings_chunkTriggerMinSize'
-    ),
-    dataEnhanceCollectionName: i18nT(
-      'account_team:dataset_config_field_chunkSettings_dataEnhanceCollectionName'
-    ),
-    imageIndex: i18nT('account_team:dataset_config_field_chunkSettings_imageIndex'),
-    autoIndexes: i18nT('account_team:dataset_config_field_chunkSettings_autoIndexes'),
-    indexPrefixTitle: i18nT('account_team:dataset_config_field_chunkSettings_indexPrefixTitle'),
-    chunkSettingMode: i18nT('account_team:dataset_config_field_chunkSettings_chunkSettingMode'),
-    chunkSplitMode: i18nT('account_team:dataset_config_field_chunkSettings_chunkSplitMode'),
-    paragraphChunkAIMode: i18nT(
-      'account_team:dataset_config_field_chunkSettings_paragraphChunkAIMode'
-    ),
-    paragraphChunkDeep: i18nT('account_team:dataset_config_field_chunkSettings_paragraphChunkDeep'),
-    paragraphChunkMinSize: i18nT(
-      'account_team:dataset_config_field_chunkSettings_paragraphChunkMinSize'
-    ),
-    chunkSize: i18nT('account_team:dataset_config_field_chunkSettings_chunkSize'),
-    chunkSplitter: i18nT('account_team:dataset_config_field_chunkSettings_chunkSplitter'),
-    indexSize: i18nT('account_team:dataset_config_field_chunkSettings_indexSize'),
-    qaPrompt: i18nT('account_team:dataset_config_field_chunkSettings_qaPrompt')
+    trainingType: { label: i18nT('account_team:dataset_config_field_chunkSettings_trainingType') },
+    chunkTriggerType: {
+      label: i18nT('account_team:dataset_config_field_chunkSettings_chunkTriggerType')
+    },
+    chunkTriggerMinSize: {
+      label: i18nT('account_team:dataset_config_field_chunkSettings_chunkTriggerMinSize')
+    },
+    dataEnhanceCollectionName: {
+      label: i18nT('account_team:dataset_config_field_chunkSettings_dataEnhanceCollectionName'),
+      valueKind: 'boolean'
+    },
+    imageIndex: {
+      label: i18nT('account_team:dataset_config_field_chunkSettings_imageIndex'),
+      valueKind: 'boolean'
+    },
+    autoIndexes: {
+      label: i18nT('account_team:dataset_config_field_chunkSettings_autoIndexes'),
+      valueKind: 'boolean'
+    },
+    indexPrefixTitle: {
+      label: i18nT('account_team:dataset_config_field_chunkSettings_indexPrefixTitle'),
+      valueKind: 'boolean'
+    },
+    chunkSettingMode: {
+      label: i18nT('account_team:dataset_config_field_chunkSettings_chunkSettingMode')
+    },
+    chunkSplitMode: {
+      label: i18nT('account_team:dataset_config_field_chunkSettings_chunkSplitMode')
+    },
+    paragraphChunkAIMode: {
+      label: i18nT('account_team:dataset_config_field_chunkSettings_paragraphChunkAIMode')
+    },
+    paragraphChunkDeep: {
+      label: i18nT('account_team:dataset_config_field_chunkSettings_paragraphChunkDeep')
+    },
+    paragraphChunkMinSize: {
+      label: i18nT('account_team:dataset_config_field_chunkSettings_paragraphChunkMinSize')
+    },
+    chunkSize: { label: i18nT('account_team:dataset_config_field_chunkSettings_chunkSize') },
+    chunkSplitter: {
+      label: i18nT('account_team:dataset_config_field_chunkSettings_chunkSplitter')
+    },
+    indexSize: { label: i18nT('account_team:dataset_config_field_chunkSettings_indexSize') },
+    qaPrompt: { label: i18nT('account_team:dataset_config_field_chunkSettings_qaPrompt') }
   },
   [datasetConfigAuditItemLabelMap[DatasetConfigAuditItemEnum.API_DATASET_SERVER]]: {
-    apiServer: i18nT('account_team:dataset_config_field_apiDatasetServer_apiServer'),
-    'apiServer.baseUrl': i18nT(
-      'account_team:dataset_config_field_apiDatasetServer_apiServer_baseUrl'
-    ),
-    'apiServer.authorization': i18nT(
-      'account_team:dataset_config_field_apiDatasetServer_apiServer_authorization'
-    ),
-    'apiServer.basePath': i18nT(
-      'account_team:dataset_config_field_apiDatasetServer_apiServer_basePath'
-    ),
-    feishuServer: i18nT('account_team:dataset_config_field_apiDatasetServer_feishuServer'),
-    'feishuServer.appId': i18nT(
-      'account_team:dataset_config_field_apiDatasetServer_feishuServer_appId'
-    ),
-    'feishuServer.appSecret': i18nT(
-      'account_team:dataset_config_field_apiDatasetServer_feishuServer_appSecret'
-    ),
-    'feishuServer.folderToken': i18nT(
-      'account_team:dataset_config_field_apiDatasetServer_feishuServer_folderToken'
-    ),
-    yuqueServer: i18nT('account_team:dataset_config_field_apiDatasetServer_yuqueServer'),
-    'yuqueServer.userId': i18nT(
-      'account_team:dataset_config_field_apiDatasetServer_yuqueServer_userId'
-    ),
-    'yuqueServer.token': i18nT(
-      'account_team:dataset_config_field_apiDatasetServer_yuqueServer_token'
-    ),
-    'yuqueServer.basePath': i18nT(
-      'account_team:dataset_config_field_apiDatasetServer_yuqueServer_basePath'
-    ),
-    dingtalkServer: i18nT('account_team:dataset_config_field_apiDatasetServer_dingtalkServer'),
-    'dingtalkServer.appKey': i18nT(
-      'account_team:dataset_config_field_apiDatasetServer_dingtalkServer_appKey'
-    ),
-    'dingtalkServer.appSecret': i18nT(
-      'account_team:dataset_config_field_apiDatasetServer_dingtalkServer_appSecret'
-    ),
-    'dingtalkServer.userId': i18nT(
-      'account_team:dataset_config_field_apiDatasetServer_dingtalkServer_userId'
-    ),
-    'dingtalkServer.operatorId': i18nT(
-      'account_team:dataset_config_field_apiDatasetServer_dingtalkServer_operatorId'
-    ),
-    'dingtalkServer.workspaceId': i18nT(
-      'account_team:dataset_config_field_apiDatasetServer_dingtalkServer_workspaceId'
-    ),
-    'dingtalkServer.rootNodeId': i18nT(
-      'account_team:dataset_config_field_apiDatasetServer_dingtalkServer_rootNodeId'
-    ),
-    'dingtalkServer.workspaceName': i18nT(
-      'account_team:dataset_config_field_apiDatasetServer_dingtalkServer_workspaceName'
-    )
+    apiServer: { label: i18nT('account_team:dataset_config_field_apiDatasetServer_apiServer') },
+    'apiServer.baseUrl': {
+      label: i18nT('account_team:dataset_config_field_apiDatasetServer_apiServer_baseUrl')
+    },
+    'apiServer.authorization': {
+      label: i18nT('account_team:dataset_config_field_apiDatasetServer_apiServer_authorization')
+    },
+    'apiServer.basePath': {
+      label: i18nT('account_team:dataset_config_field_apiDatasetServer_apiServer_basePath')
+    },
+    feishuServer: {
+      label: i18nT('account_team:dataset_config_field_apiDatasetServer_feishuServer')
+    },
+    'feishuServer.appId': {
+      label: i18nT('account_team:dataset_config_field_apiDatasetServer_feishuServer_appId')
+    },
+    'feishuServer.appSecret': {
+      label: i18nT('account_team:dataset_config_field_apiDatasetServer_feishuServer_appSecret')
+    },
+    'feishuServer.folderToken': {
+      label: i18nT('account_team:dataset_config_field_apiDatasetServer_feishuServer_folderToken')
+    },
+    yuqueServer: {
+      label: i18nT('account_team:dataset_config_field_apiDatasetServer_yuqueServer')
+    },
+    'yuqueServer.userId': {
+      label: i18nT('account_team:dataset_config_field_apiDatasetServer_yuqueServer_userId')
+    },
+    'yuqueServer.token': {
+      label: i18nT('account_team:dataset_config_field_apiDatasetServer_yuqueServer_token')
+    },
+    'yuqueServer.basePath': {
+      label: i18nT('account_team:dataset_config_field_apiDatasetServer_yuqueServer_basePath')
+    },
+    dingtalkServer: {
+      label: i18nT('account_team:dataset_config_field_apiDatasetServer_dingtalkServer')
+    },
+    'dingtalkServer.appKey': {
+      label: i18nT('account_team:dataset_config_field_apiDatasetServer_dingtalkServer_appKey')
+    },
+    'dingtalkServer.appSecret': {
+      label: i18nT('account_team:dataset_config_field_apiDatasetServer_dingtalkServer_appSecret')
+    },
+    'dingtalkServer.userId': {
+      label: i18nT('account_team:dataset_config_field_apiDatasetServer_dingtalkServer_userId')
+    },
+    'dingtalkServer.operatorId': {
+      label: i18nT('account_team:dataset_config_field_apiDatasetServer_dingtalkServer_operatorId')
+    },
+    'dingtalkServer.workspaceId': {
+      label: i18nT('account_team:dataset_config_field_apiDatasetServer_dingtalkServer_workspaceId')
+    },
+    'dingtalkServer.rootNodeId': {
+      label: i18nT('account_team:dataset_config_field_apiDatasetServer_dingtalkServer_rootNodeId')
+    },
+    'dingtalkServer.workspaceName': {
+      label: i18nT(
+        'account_team:dataset_config_field_apiDatasetServer_dingtalkServer_workspaceName'
+      )
+    }
   },
   [datasetConfigAuditItemLabelMap[DatasetConfigAuditItemEnum.FILE_PARSE_CONFIG]]: {
-    keep_header_footer: i18nT(
-      'account_team:dataset_config_field_fileParseConfig_keep_header_footer'
-    ),
-    keep_appendix: i18nT('account_team:dataset_config_field_fileParseConfig_keep_appendix'),
-    image_analysis: i18nT('account_team:dataset_config_field_fileParseConfig_image_analysis'),
-    chart_analysis: i18nT('account_team:dataset_config_field_fileParseConfig_chart_analysis')
+    keep_header_footer: {
+      label: i18nT('account_team:dataset_config_field_fileParseConfig_keep_header_footer'),
+      valueKind: 'boolean'
+    },
+    keep_appendix: {
+      label: i18nT('account_team:dataset_config_field_fileParseConfig_keep_appendix'),
+      valueKind: 'boolean'
+    },
+    image_analysis: {
+      label: i18nT('account_team:dataset_config_field_fileParseConfig_image_analysis'),
+      valueKind: 'boolean'
+    },
+    chart_analysis: {
+      label: i18nT('account_team:dataset_config_field_fileParseConfig_chart_analysis'),
+      valueKind: 'boolean'
+    }
   }
 };
 
@@ -161,20 +183,33 @@ export const processDatasetConfigUpdateSpecific = (
   metadata: CommonMetadataFields,
   t: (key: string) => string
 ) => {
-  /** 按父配置项查表翻译已知子字段路径，未登记路径原样保留。 */
-  const translateFieldPath = (itemKey: string, fieldPath: string) => {
-    if (!Object.hasOwn(datasetConfigAuditFieldLabelMap, itemKey)) return fieldPath;
-    const fieldLabelMap = datasetConfigAuditFieldLabelMap[itemKey];
-    if (!fieldLabelMap || !Object.hasOwn(fieldLabelMap, fieldPath)) return fieldPath;
-    return t(fieldLabelMap[fieldPath]);
-  };
+  const { changeItem, oldValue, newValue, ...rest } = metadata;
+  const [itemKey, ...fieldPathParts] = String(changeItem ?? '').split(
+    DATASET_CONFIG_CHANGE_ITEM_SEPARATOR
+  );
+  const rawFieldPath =
+    fieldPathParts.length > 0
+      ? fieldPathParts.join(DATASET_CONFIG_CHANGE_ITEM_SEPARATOR)
+      : undefined;
 
-  /** 按配置项 key 与可选子路径解析展示侧值语义。 */
-  const resolveValueKind = (
-    itemKey: string,
-    fieldPath?: string
-  ): 'boolean' | 'model' | 'sensitive' | 'raw' => {
-    if (!fieldPath) {
+  const fieldMeta = (() => {
+    if (rawFieldPath === undefined || !Object.hasOwn(datasetConfigAuditFieldMap, itemKey)) {
+      return undefined;
+    }
+    const fieldMap = datasetConfigAuditFieldMap[itemKey];
+    return fieldMap && Object.hasOwn(fieldMap, rawFieldPath) ? fieldMap[rawFieldPath] : undefined;
+  })();
+
+  const translatedItem = itemKey ? t(itemKey) : itemKey;
+  const formattedChangeItem =
+    rawFieldPath !== undefined
+      ? `${translatedItem}${DATASET_CONFIG_CHANGE_ITEM_SEPARATOR}${
+          fieldMeta ? t(fieldMeta.label) : rawFieldPath
+        }`
+      : translatedItem;
+
+  const valueKind = ((): 'boolean' | 'model' | 'sensitive' | 'raw' => {
+    if (rawFieldPath === undefined) {
       if (itemKey === datasetConfigAuditItemLabelMap[DatasetConfigAuditItemEnum.AUTO_SYNC]) {
         return 'boolean';
       }
@@ -188,39 +223,13 @@ export const processDatasetConfigUpdateSpecific = (
     }
 
     if (
-      fieldPath.split('.').some((segment) => DATASET_CONFIG_SENSITIVE_KEY_PATTERN.test(segment))
+      rawFieldPath.split('.').some((segment) => DATASET_CONFIG_SENSITIVE_KEY_PATTERN.test(segment))
     ) {
       return 'sensitive';
     }
 
-    if (
-      Object.hasOwn(datasetConfigAuditBooleanFieldMap, itemKey) &&
-      datasetConfigAuditBooleanFieldMap[itemKey]?.has(fieldPath)
-    ) {
-      return 'boolean';
-    }
-
-    return 'raw';
-  };
-
-  const { changeItem, oldValue, newValue, ...rest } = metadata;
-  const [itemKey, ...fieldPathParts] = String(changeItem ?? '').split(
-    DATASET_CONFIG_CHANGE_ITEM_SEPARATOR
-  );
-  const rawFieldPath =
-    fieldPathParts.length > 0
-      ? fieldPathParts.join(DATASET_CONFIG_CHANGE_ITEM_SEPARATOR)
-      : undefined;
-  const translatedItem = itemKey ? t(itemKey) : itemKey;
-  const formattedChangeItem =
-    rawFieldPath !== undefined
-      ? `${translatedItem}${DATASET_CONFIG_CHANGE_ITEM_SEPARATOR}${translateFieldPath(
-          itemKey,
-          rawFieldPath
-        )}`
-      : translatedItem;
-
-  const valueKind = resolveValueKind(itemKey, rawFieldPath);
+    return fieldMeta?.valueKind ?? 'raw';
+  })();
 
   // 敏感配置变更不展示新旧值（同时屏蔽历史上已落库的 `[REDACTED]` 对比）。
   if (valueKind === 'sensitive') {

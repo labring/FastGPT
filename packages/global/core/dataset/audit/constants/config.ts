@@ -27,9 +27,6 @@ export type DatasetConfigAuditValueSource = 'literal' | 'fallback';
 /** 对象型配置项与子字段路径的分隔符，写入侧与展示侧共用。 */
 export const DATASET_CONFIG_CHANGE_ITEM_SEPARATOR = ' · ';
 
-/** 敏感配置在整体序列化兜底与历史日志中的脱敏占位符，写入侧与展示侧共用。 */
-export const DATASET_CONFIG_REDACTED_VALUE = '[REDACTED]';
-
 /**
  * 凭据类字段名匹配规则（写入侧脱敏与展示侧敏感子路径识别共用）。
  * 配置结构会随第三方集成扩展，宁可在少量非敏感字段上隐藏值，也不能漏出一个凭据。

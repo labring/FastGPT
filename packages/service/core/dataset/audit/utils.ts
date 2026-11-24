@@ -1,7 +1,6 @@
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
   DATASET_CONFIG_CHANGE_ITEM_SEPARATOR,
-  DATASET_CONFIG_REDACTED_VALUE,
   DATASET_CONFIG_SENSITIVE_KEY_PATTERN,
   datasetConfigAuditItemLabelMap,
   type DatasetConfigAuditItem,
@@ -40,7 +39,7 @@ const formatAuditScalar = (value: AuditRawValue): string => {
 
 /** 递归脱敏并剔除 `_id`；用于「必须整体展示」的兜底场景。 */
 const sanitizeAuditValue = (input: AuditRawValue, key?: string): AuditRawValue => {
-  if (key && DATASET_CONFIG_SENSITIVE_KEY_PATTERN.test(key)) return DATASET_CONFIG_REDACTED_VALUE;
+  if (key && DATASET_CONFIG_SENSITIVE_KEY_PATTERN.test(key)) return '[REDACTED]';
   if (Array.isArray(input)) return input.map((item) => sanitizeAuditValue(item));
   if (input && typeof input === 'object') {
     return Object.fromEntries(

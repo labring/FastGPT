@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  DATASET_CONFIG_REDACTED_VALUE,
   DatasetConfigAuditItemEnum,
   datasetConfigAuditItemLabelMap
 } from '@fastgpt/global/core/dataset/audit/constants/config';
@@ -14,8 +13,7 @@ import {
 import { formatAuditSummary } from '@fastgpt/web/support/user/audit/presenter';
 import {
   createDatasetAuditProcessors,
-  datasetConfigAuditBooleanFieldMap,
-  datasetConfigAuditFieldLabelMap,
+  datasetConfigAuditFieldMap,
   processDatasetCollectionSpecific,
   processDatasetConfigUpdateSpecific
 } from '@fastgpt/web/support/user/audit/processors/datasetProcessors';
@@ -176,14 +174,14 @@ describe('processDatasetConfigUpdateSpecific', () => {
     {
       changeItem: 'account_team:dataset_config_item_apiDatasetServer · apiServer.authorization',
       expectedItem: '第三方来源配置 · API 认证信息',
-      oldValue: DATASET_CONFIG_REDACTED_VALUE,
-      newValue: DATASET_CONFIG_REDACTED_VALUE
+      oldValue: '[REDACTED]',
+      newValue: '[REDACTED]'
     },
     {
       changeItem: 'account_team:dataset_config_item_apiDatasetServer · yuqueServer.token',
       expectedItem: '第三方来源配置 · 语雀 Token',
       oldValue: '-',
-      newValue: DATASET_CONFIG_REDACTED_VALUE
+      newValue: '[REDACTED]'
     }
   ])(
     'omits values for sensitive fields (new and historical) so summary hides value diff',
@@ -215,13 +213,13 @@ describe('processDatasetConfigUpdateSpecific', () => {
     {
       changeItem: 'account_team:dataset_config_item_intro',
       expectedItem: '简介',
-      oldValue: DATASET_CONFIG_REDACTED_VALUE,
+      oldValue: '[REDACTED]',
       newValue: '已隐藏'
     },
     {
       changeItem: 'account_team:dataset_config_item_websiteConfig · selector',
       expectedItem: '网站抓取配置 · 选择器',
-      oldValue: DATASET_CONFIG_REDACTED_VALUE,
+      oldValue: '[REDACTED]',
       newValue: '#content'
     },
     {
@@ -281,33 +279,20 @@ describe('processDatasetConfigUpdateSpecific', () => {
       ]
     );
 
+    const getMappedFields = (item: DatasetConfigAuditItemEnum) =>
+      datasetConfigAuditFieldMap[datasetConfigAuditItemLabelMap[item]] ?? {};
+
+    expect(Object.keys(getMappedFields(DatasetConfigAuditItemEnum.WEBSITE_CONFIG)).sort()).toEqual(
+      websiteKeys.sort()
+    );
+    expect(Object.keys(getMappedFields(DatasetConfigAuditItemEnum.CHUNK_SETTINGS)).sort()).toEqual(
+      chunkKeys.sort()
+    );
     expect(
-      Object.keys(
-        datasetConfigAuditFieldLabelMap[
-          datasetConfigAuditItemLabelMap[DatasetConfigAuditItemEnum.WEBSITE_CONFIG]
-        ] ?? {}
-      ).sort()
-    ).toEqual(websiteKeys.sort());
-    expect(
-      Object.keys(
-        datasetConfigAuditFieldLabelMap[
-          datasetConfigAuditItemLabelMap[DatasetConfigAuditItemEnum.CHUNK_SETTINGS]
-        ] ?? {}
-      ).sort()
-    ).toEqual(chunkKeys.sort());
-    expect(
-      Object.keys(
-        datasetConfigAuditFieldLabelMap[
-          datasetConfigAuditItemLabelMap[DatasetConfigAuditItemEnum.API_DATASET_SERVER]
-        ] ?? {}
-      ).sort()
+      Object.keys(getMappedFields(DatasetConfigAuditItemEnum.API_DATASET_SERVER)).sort()
     ).toEqual(apiServerKeys.sort());
     expect(
-      Object.keys(
-        datasetConfigAuditFieldLabelMap[
-          datasetConfigAuditItemLabelMap[DatasetConfigAuditItemEnum.FILE_PARSE_CONFIG]
-        ] ?? {}
-      ).sort()
+      Object.keys(getMappedFields(DatasetConfigAuditItemEnum.FILE_PARSE_CONFIG)).sort()
     ).toEqual(fileParseKeys.sort());
 
     const extractBooleanFields = (
@@ -323,20 +308,18 @@ describe('processDatasetConfigUpdateSpecific', () => {
         .map(([key]) => key)
         .sort();
 
-    expect(
-      Array.from(
-        datasetConfigAuditBooleanFieldMap[
-          datasetConfigAuditItemLabelMap[DatasetConfigAuditItemEnum.CHUNK_SETTINGS]
-        ] ?? []
-      ).sort()
-    ).toEqual(extractBooleanFields(ChunkSettingsSchema.shape));
-    expect(
-      Array.from(
-        datasetConfigAuditBooleanFieldMap[
-          datasetConfigAuditItemLabelMap[DatasetConfigAuditItemEnum.FILE_PARSE_CONFIG]
-        ] ?? []
-      ).sort()
-    ).toEqual(extractBooleanFields(sangforFileParseConfigSchema.shape));
+    const getMappedBooleanFields = (item: DatasetConfigAuditItemEnum) =>
+      Object.entries(getMappedFields(item))
+        .filter(([, meta]) => meta.valueKind === 'boolean')
+        .map(([key]) => key)
+        .sort();
+
+    expect(getMappedBooleanFields(DatasetConfigAuditItemEnum.CHUNK_SETTINGS)).toEqual(
+      extractBooleanFields(ChunkSettingsSchema.shape)
+    );
+    expect(getMappedBooleanFields(DatasetConfigAuditItemEnum.FILE_PARSE_CONFIG)).toEqual(
+      extractBooleanFields(sangforFileParseConfigSchema.shape)
+    );
   });
 
   it('keeps every dataset config audit i18n key present across all locales', () => {
@@ -352,8 +335,8 @@ describe('processDatasetConfigUpdateSpecific', () => {
       'common:no',
       'common:UnKnow',
       ...Object.values(datasetConfigAuditItemLabelMap),
-      ...Object.values(datasetConfigAuditFieldLabelMap).flatMap((fields) =>
-        Object.values(fields ?? {})
+      ...Object.values(datasetConfigAuditFieldMap).flatMap((fields) =>
+        Object.values(fields ?? {}).map((meta) => meta.label)
       )
     ];
 
