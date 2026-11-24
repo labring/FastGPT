@@ -38,7 +38,7 @@
 ### 3. 显式一次性历史索引退役与运维操作条件
 - 历史上原登记于旧版 Schema 的 **18 条** 废弃索引（如 `chats.appId_1_updateTime_-1`、`chats.chatGenerateStatus_1_updateTime_1`、`agent_sandbox_instances_v2.*` 等）统一收口至 [legacyDeprecatedIndexCleanup.ts](../../../packages/service/common/mongo/legacyDeprecatedIndexCleanup.ts) 的 `LEGACY_DEPRECATED_MONGO_INDEXES`。
 - **绝对不在应用启动索引同步热路径自动删除索引**；所有版本的废弃 Mongo 索引删除统一收口至系统升级迁移框架（`projects/app/src/migration/tasks/<version>/<YYYYMMDD>_cleanup_mongo_indexes/`，复用 `createMongoIndexCleanupMigration`；v4.18.0 为 `20261123_cleanup_mongo_indexes`，`independent: true` 后台集群互斥只执行一次）：
-  1. 凡存在替代索引的退役项必须声明 `requiredIndexes`；当旧索引存在时，迁移通过 `hasMatchingMongoIndex`（结合 `indexes()`、`$indexStats` 与 `queryPlanner` `explain` 排除构建中及 `hidden: true` 候选）持续轮询等待所有替代索引提交可用后才执行删除，超时仍未就绪则保守保留旧索引并失败待重试；
+  1. 凡存在替代索引的退役项必须声明 `requiredIndexes`；当旧索引存在时，迁移通过 `hasMatchingMongoIndex`（结合 `indexes()` 与 `queryPlanner` `explain` 排除构建中及 `hidden: true` 候选）持续轮询等待所有替代索引提交可用后才执行删除，超时仍未就绪则保守保留旧索引并失败待重试；
   2. 清理器按 **`name + key + 完整显式历史 options`** 严格匹配；若客户库中同名索引带有意外的 `unique`、`sparse`、`partialFilterExpression`、`expireAfterSeconds` 或 `collation`，一律返回 `skipped_mismatch` 并保守保留；
   3. 手动运维排查时仍可直接干跑预览 `runLegacyDeprecatedMongoIndexCleanup({ apply: false })` 或执行 `runLegacyDeprecatedMongoIndexCleanup({ apply: true })`。
 - **环境变量 `MONGO_DEPRECATE_INDEX` 边界**：

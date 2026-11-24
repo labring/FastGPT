@@ -378,7 +378,7 @@ describe('20261123_cleanup_mongo_indexes', () => {
     await expect(hiddenRun(hiddenCtx.context)).rejects.toThrow('failed to clean up');
     expect(await listIndexNames(collectionName)).toContain('appId_1_updateTime_-1');
 
-    // unhide 之后变为可用，但再模拟 MongoDB 8.x “listIndexes 已列出但仍在构建中”的状态（$indexStats.building=true）
+    // unhide 之后变为可用，但再模拟 MongoDB 8.x “listIndexes 已列出但仍在构建中”的状态（queryPlanner hint 返回 Error 2）
     await db.command({
       collMod: collectionName,
       index: { name: 'appId_1_updateTime_-1__id_-1', hidden: false }
@@ -396,18 +396,6 @@ describe('20261123_cleanup_mongo_indexes', () => {
             return {
               indexes: () => realCollection.indexes(),
               dropIndex: (idxName: string) => realCollection.dropIndex(idxName),
-              aggregate: (pipeline: readonly Record<string, unknown>[]) => ({
-                toArray: async () => {
-                  const realStats = await realCollection
-                    .aggregate(pipeline as Record<string, unknown>[])
-                    .toArray();
-                  return realStats.map((stat) =>
-                    isBuilding && stat.name === 'appId_1_updateTime_-1__id_-1'
-                      ? { ...stat, building: true }
-                      : stat
-                  );
-                }
-              }),
               find: (filter: Record<string, unknown>) => {
                 const cursor = realCollection.find(filter);
                 return {

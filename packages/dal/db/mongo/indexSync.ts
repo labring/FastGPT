@@ -924,73 +924,48 @@ export const inspectMongoIndexes = async ({
   return report;
 };
 
-type MongoIndexStatEntry = {
-  name?: string;
-  building?: boolean;
-  spec?: {
-    hidden?: boolean;
-  };
-};
+type ReadyMongoIndexSpec = LiveMongoIndexSpec & { name: string };
 
-const listIndexStatsSafe = async (
-  client: Mongoose,
-  collectionName: string
-): Promise<{ status: 'ok'; stats: MongoIndexStatEntry[] } | { status: 'unavailable' }> => {
-  const db = client.connection.db;
-  if (db === undefined) {
-    throw new DbConfigurationError('MongoDB connection is not established');
-  }
-  const collection = db.collection(collectionName) as unknown as {
-    aggregate?: (pipeline: readonly Record<string, unknown>[]) => {
-      toArray: () => Promise<MongoIndexStatEntry[]>;
-    };
-  };
-  if (typeof collection.aggregate !== 'function') {
-    return { status: 'unavailable' };
-  }
-
-  try {
-    const stats = await collection.aggregate([{ $indexStats: {} }]).toArray();
-    return { status: 'ok', stats };
-  } catch (error) {
-    const code = getMongoErrorCode(error);
-    // 26 = NamespaceNotFound：集合尚未建表，直接视为无就绪索引
-    if (code === 26) {
-      return { status: 'ok', stats: [] };
+const buildTextExplainFilter = (key: Record<string, unknown>): Record<string, unknown> => {
+  const filter: Record<string, unknown> = {};
+  for (const [field, order] of Object.entries(key)) {
+    if (field === '_fts' || field === '_ftsx' || order === 'text') {
+      break;
     }
-    // 13 = Unauthorized、59 = CommandNotFound、40324 = Unrecognized pipeline stage：
-    // 权限受限或兼容引擎不支持 $indexStats 时降级由 queryPlanner explain 兜底，不误放行构建中索引。
-    if (code === 13 || code === 59 || code === 40324) {
-      return { status: 'unavailable' };
-    }
-    throw error;
+    filter[field] = null;
   }
+  filter.$text = { $search: 'a' };
+  return filter;
 };
 
 const isIndexUsableByQueryPlanner = async (
   client: Mongoose,
   collectionName: string,
-  indexName: string
-): Promise<boolean | undefined> => {
+  candidate: ReadyMongoIndexSpec
+): Promise<boolean> => {
   const db = client.connection.db;
   if (db === undefined) {
     throw new DbConfigurationError('MongoDB connection is not established');
   }
-  const collection = db.collection(collectionName) as unknown as {
-    find?: (filter: Record<string, unknown>) => {
-      hint: (name: string) => {
-        limit: (n: number) => {
-          explain: (verbosity: 'queryPlanner') => Promise<unknown>;
-        };
-      };
-    };
-  };
-  if (typeof collection.find !== 'function') {
-    return undefined;
-  }
+  const collection = db.collection(collectionName);
 
   try {
-    await collection.find({}).hint(indexName).limit(1).explain('queryPlanner');
+    if (
+      isTextIndexSpec({
+        key: candidate.key ?? {},
+        weights: candidate.weights,
+        textIndexVersion: candidate.textIndexVersion
+      })
+    ) {
+      // MongoDB 不允许对 text 索引执行 .hint()，且单集合仅允许存在一个 text 索引；
+      // 若其处于构建中或 hidden 状态，带前导 prefix 条件的 $text 查询规划会直接报 Error 27（IndexNotFound）。
+      await collection
+        .find(buildTextExplainFilter(candidate.key ?? {}))
+        .limit(1)
+        .explain('queryPlanner');
+    } else {
+      await collection.find({}).hint(candidate.name).limit(1).explain('queryPlanner');
+    }
     return true;
   } catch (error) {
     const code = getMongoErrorCode(error);
@@ -1007,10 +982,10 @@ const isIndexUsableByQueryPlanner = async (
  * 100% 只读校验：判断目标集合是否存在与 `key + options` 完整等价、且**已提交完成、非隐藏、可供查询规划器使用**的索引。
  *
  * 注意：MongoDB 的 `listIndexes` / `indexes()` 会把正在后台构建中的索引与 `hidden: true` 隐藏索引一并返回；
- * 本函数通过三重守卫排除未就绪候选：
+ * 本函数通过统一的两步守卫排除未就绪候选：
  * 1. `indexes()` 比对 `key + 完整 options` 并直接过滤 `hidden: true`；
- * 2. `$indexStats` 过滤 `building: true` 与 `spec.hidden: true`（受权限限制时降级至下一步）；
- * 3. `find({}).hint(name).limit(1).explain('queryPlanner')` 零扫表验证查询规划器可直接使用该索引。
+ * 2. 使用原生驱动集合 `find(...).limit(1).explain('queryPlanner')`（非 text 索引显式 `.hint(name)`，
+ *    text 索引按前导 prefix + `$text` 匹配）零扫表验证查询规划器可直接选用该索引。
  */
 export const hasMatchingMongoIndex = async ({
   client,
@@ -1033,7 +1008,7 @@ export const hasMatchingMongoIndex = async ({
     weights: options?.weights
   });
 
-  const matchingCandidates = liveIndexes.filter((live) => {
+  const matchingCandidates = liveIndexes.filter((live): live is ReadyMongoIndexSpec => {
     if (live.hidden === true || typeof live.name !== 'string' || live.name.length === 0) {
       return false;
     }
@@ -1055,35 +1030,8 @@ export const hasMatchingMongoIndex = async ({
     );
   });
 
-  if (matchingCandidates.length === 0) {
-    return false;
-  }
-
-  const statsResult = await listIndexStatsSafe(client, collectionName);
-  const readyByStats =
-    statsResult.status === 'ok'
-      ? matchingCandidates.filter((candidate) => {
-          const stat = statsResult.stats.find((entry) => entry.name === candidate.name);
-          return stat !== undefined && stat.building !== true && stat.spec?.hidden !== true;
-        })
-      : matchingCandidates;
-
-  if (readyByStats.length === 0) {
-    return false;
-  }
-
-  for (const candidate of readyByStats) {
-    const plannerUsable = await isIndexUsableByQueryPlanner(
-      client,
-      collectionName,
-      candidate.name!
-    );
-    if (plannerUsable === true) {
-      return true;
-    }
-    // 仅当最小测试桩未实现 `find().explain()` 且 `$indexStats` 已明确证实非构建/非隐藏时放行；
-    // 真实 MongoDB 驱动始终提供 `find`，决不跳过 planner 可用性校验。
-    if (plannerUsable === undefined && statsResult.status === 'ok') {
+  for (const candidate of matchingCandidates) {
+    if (await isIndexUsableByQueryPlanner(client, collectionName, candidate)) {
       return true;
     }
   }
