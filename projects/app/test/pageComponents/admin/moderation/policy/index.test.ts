@@ -13,7 +13,9 @@ const mocks = vi.hoisted(() => ({
   push: vi.fn(),
   policyData: undefined as SystemModerationPolicyType | undefined,
   pluginsData: [] as AdminModerationPluginItemType[],
-  lastTitles: [] as Array<{ mainTitle: string; subTitles: string[] }>,
+  lastHeaderTitle: undefined as string | undefined,
+  lastTocItems: [] as Array<{ id: string; label: string }>,
+  lastOnSave: undefined as (() => void | Promise<unknown>) | undefined,
   lastNumberInputVariant: undefined as string | undefined,
   saveModerationConfig: vi.fn(),
   updateModerationPolicy: vi.fn(),
@@ -73,36 +75,75 @@ vi.mock('@chakra-ui/react', () => ({
     React.createElement('button', { onClick }, children),
   Flex: ({ children, onClick }: React.PropsWithChildren<{ onClick?: () => void }>) =>
     React.createElement('div', { onClick }, children),
-  Grid: ({ children }: React.PropsWithChildren) => React.createElement('div', null, children),
   HStack: ({ children }: React.PropsWithChildren) => React.createElement('div', null, children),
-  Switch: ({
-    isChecked,
-    onChange
-  }: {
-    isChecked: boolean;
-    onChange?: (e: { target: { checked: boolean } }) => void;
-  }) =>
-    React.createElement('input', {
-      type: 'checkbox',
-      checked: isChecked,
-      onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-        onChange?.({ target: { checked: e.target.checked } })
-    }),
+  SimpleGrid: ({ children }: React.PropsWithChildren) => React.createElement('div', null, children),
   Text: ({ children }: React.PropsWithChildren) => React.createElement('span', null, children),
   useDisclosure: () => ({ isOpen: false, onOpen: vi.fn(), onClose: vi.fn() })
 }));
-vi.mock('@/pageComponents/admin/settings/SettingPage', () => ({
+vi.mock('@/pageComponents/admin/settings/AdminSettingPage', () => ({
   default: ({
-    titles,
+    headerTitle,
+    tocItems,
+    onSave,
     children
-  }: React.PropsWithChildren<{ titles: Array<{ mainTitle: string; subTitles: string[] }> }>) => {
-    mocks.lastTitles = titles;
-    return React.createElement('div', { 'data-setting-page': 'true' }, children);
+  }: React.PropsWithChildren<{
+    headerTitle?: string;
+    tocItems: Array<{ id: string; label: string }>;
+    onSave?: () => void | Promise<unknown>;
+  }>) => {
+    mocks.lastHeaderTitle = headerTitle;
+    mocks.lastTocItems = tocItems;
+    mocks.lastOnSave = onSave;
+    return React.createElement(
+      'div',
+      { 'data-admin-setting-page': 'true', 'data-header-title': headerTitle },
+      children
+    );
   }
 }));
-vi.mock('@/pageComponents/admin/settings/FirstTitle', () => ({
-  default: ({ title }: { title: string }) =>
-    React.createElement('h2', { 'data-first-title': title }, title)
+vi.mock('@/pageComponents/admin/settings/AdminSettingSection', () => ({
+  default: ({
+    id,
+    title,
+    showDivider,
+    children
+  }: React.PropsWithChildren<{ id: string; title: string; showDivider?: boolean }>) =>
+    React.createElement(
+      'section',
+      {
+        id,
+        'data-setting-section': id,
+        'data-section-title': title,
+        'data-show-divider': String(Boolean(showDivider))
+      },
+      React.createElement('h2', null, title),
+      children
+    )
+}));
+vi.mock('@/pageComponents/admin/settings/AdminSwitchRow', () => ({
+  default: ({
+    label,
+    isChecked,
+    onChange
+  }: {
+    label: string;
+    isChecked?: boolean;
+    onChange?: (checked: boolean) => void;
+  }) =>
+    React.createElement(
+      'label',
+      { 'data-switch-row': label },
+      React.createElement('span', null, label),
+      React.createElement('input', {
+        type: 'checkbox',
+        checked: Boolean(isChecked),
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) => onChange?.(e.target.checked)
+      })
+    )
+}));
+vi.mock('@/pageComponents/admin/settings/AdminFormItem', () => ({
+  default: ({ label, children }: React.PropsWithChildren<{ label: string }>) =>
+    React.createElement('div', { 'data-form-item': label }, children)
 }));
 vi.mock('@fastgpt/web/components/common/Icon', () => ({
   default: () => null
@@ -120,9 +161,6 @@ vi.mock('@fastgpt/web/components/common/Input/NumberInput', () => ({
 }));
 vi.mock('@fastgpt/web/components/common/MySelect', () => ({
   default: () => React.createElement('div', { 'data-my-select': 'true' })
-}));
-vi.mock('@fastgpt/web/components/common/MyTooltip/QuestionTip', () => ({
-  default: () => null
 }));
 vi.mock('@/pageComponents/admin/moderation/policy/PluginItemRow', () => ({
   default: ({
@@ -182,7 +220,9 @@ describe('ModerationPolicy page', () => {
       enabled: true
     };
     mocks.pluginsData = [];
-    mocks.lastTitles = [];
+    mocks.lastHeaderTitle = undefined;
+    mocks.lastTocItems = [];
+    mocks.lastOnSave = undefined;
     mocks.lastNumberInputVariant = undefined;
     mocks.lastModalOnSuccess = undefined;
     mocks.saveModerationConfig.mockReset();
@@ -219,13 +259,25 @@ describe('ModerationPolicy page', () => {
     expect(mocks.lastNumberInputVariant).toBe('whiteOutline');
     expect(numberInput.value).toBe('100');
 
-    // Test section and anchor title are completely hidden when there is no active service
+    // Uses unified AdminSettingPage header title and AdminSettingSection layout
+    expect(mocks.lastHeaderTitle).toBe('admin:page_title_moderation_policy');
+    expect(
+      host.querySelector('[data-setting-section="service"]')?.getAttribute('data-show-divider')
+    ).toBe('false');
+    expect(
+      host.querySelector('[data-setting-section="hooks"]')?.getAttribute('data-show-divider')
+    ).toBe('true');
+    expect(
+      host.querySelector('[data-setting-section="strategy"]')?.getAttribute('data-show-divider')
+    ).toBe('true');
+
+    // Test section and TOC anchor are completely hidden when there is no active service
     expect(host.querySelector('[data-test-card]')).toBeNull();
-    expect(host.querySelector('[data-first-title="admin:moderation.test_title"]')).toBeNull();
-    expect(mocks.lastTitles.map((item) => item.mainTitle)).toEqual([
-      'admin:moderation.service_title',
-      'admin:moderation.hooks_title',
-      'admin:moderation.strategy_title'
+    expect(host.querySelector('[data-setting-section="test"]')).toBeNull();
+    expect(mocks.lastTocItems).toEqual([
+      { id: 'service', label: 'admin:moderation.service_title' },
+      { id: 'hooks', label: 'admin:moderation.hooks_title' },
+      { id: 'strategy', label: 'admin:moderation.strategy_title' }
     ]);
 
     await act(async () => {
@@ -273,12 +325,14 @@ describe('ModerationPolicy page', () => {
     expect(activateBtn.disabled).toBe(true);
     expect(activateBtn.textContent).toBe('in_use');
     expect(host.querySelector('[data-test-card="baidu"]')).not.toBeNull();
-    expect(host.querySelector('[data-first-title="admin:moderation.test_title"]')).not.toBeNull();
-    expect(mocks.lastTitles.map((item) => item.mainTitle)).toEqual([
-      'admin:moderation.service_title',
-      'admin:moderation.hooks_title',
-      'admin:moderation.strategy_title',
-      'admin:moderation.test_title'
+    expect(
+      host.querySelector('[data-setting-section="test"]')?.getAttribute('data-show-divider')
+    ).toBe('true');
+    expect(mocks.lastTocItems).toEqual([
+      { id: 'service', label: 'admin:moderation.service_title' },
+      { id: 'hooks', label: 'admin:moderation.hooks_title' },
+      { id: 'strategy', label: 'admin:moderation.strategy_title' },
+      { id: 'test', label: 'admin:moderation.test_title' }
     ]);
 
     // Clicking an already active plugin button cannot un-enable it
@@ -518,6 +572,61 @@ describe('ModerationPolicy page', () => {
 
     expect(mocks.updateModerationPolicy).not.toHaveBeenCalled();
     expect((host.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(false);
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it('exposes only the service TOC item when disabled and wires AdminSettingPage onSave validation', async () => {
+    mocks.policyData = {
+      ...DefaultSystemModerationPolicy,
+      enabled: false
+    };
+    mocks.updateModerationPolicy.mockResolvedValue({
+      ...DefaultSystemModerationPolicy,
+      enabled: false
+    });
+
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    await act(async () => {
+      root.render(React.createElement(ModerationPolicy));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mocks.lastTocItems).toEqual([
+      { id: 'service', label: 'admin:moderation.service_title' }
+    ]);
+
+    // Saving while disabled succeeds without requiring an active plugin
+    await act(async () => {
+      await mocks.lastOnSave?.();
+    });
+    expect(mocks.updateModerationPolicy).toHaveBeenCalledWith({
+      ...DefaultSystemModerationPolicy,
+      enabled: false
+    });
+
+    // Turning on moderation without an active plugin blocks save with an error toast
+    const totalSwitch = host.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    await act(async () => {
+      totalSwitch.click();
+    });
+    mocks.updateModerationPolicy.mockClear();
+
+    await act(async () => {
+      await mocks.lastOnSave?.();
+    });
+    expect(mocks.toast).toHaveBeenCalledWith({
+      status: 'error',
+      title: 'admin:moderation.select_plugin_required'
+    });
+    expect(mocks.updateModerationPolicy).not.toHaveBeenCalled();
 
     await act(async () => {
       root.unmount();

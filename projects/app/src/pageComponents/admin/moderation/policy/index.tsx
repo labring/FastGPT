@@ -2,13 +2,15 @@
 
 import React, { useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
-import { Box, Button, Flex, Grid, HStack, Switch, Text, useDisclosure } from '@chakra-ui/react';
-import SettingPage from '@/pageComponents/admin/settings/SettingPage';
-import FirstTitle from '@/pageComponents/admin/settings/FirstTitle';
+import { Box, Button, Flex, HStack, SimpleGrid, Text, useDisclosure } from '@chakra-ui/react';
+import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
+import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
+import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
+import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
+import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -134,18 +136,18 @@ export const ModerationPolicy = () => {
     }
   );
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const currentPolicy = policyRef.current;
     if (currentPolicy.enabled && !activePlugin) {
       toast({ status: 'error', title: t('admin:moderation.select_plugin_required') });
       return;
     }
-    void savePolicy(currentPolicy);
+    await savePolicy(currentPolicy);
   };
 
   /**
    * 同步已启用插件到全局策略：
-   * 若用户已在页面打开“是否开启内容审核”但尚未点击右侧“保存”，
+   * 若用户已在页面打开“是否开启内容审核”但尚未点击右上角“保存”，
    * 自动启用或手动点击启用时同步持久化最新草稿中的开关状态，避免刷新或离开页面后丢失开启状态，
    * 同时避免异步请求返回后覆盖等待期间的新增编辑。
    */
@@ -299,48 +301,40 @@ export const ModerationPolicy = () => {
 
   const showTestSection = policy.enabled && activePlugin !== undefined;
 
-  // SettingPage right-side anchor list: hide lower sections when moderation is disabled,
-  // and omit the test section until an active moderation service is selected.
-  const visibleTitles = (() => {
-    const serviceTitle = { mainTitle: t('admin:moderation.service_title'), subTitles: [] };
-    if (!policy.enabled) return [serviceTitle];
+  // AdminSettingPage 右侧 TOC 目录：未开启内容审核时隐藏下方大区，未启用审核服务时隐藏测试大区。
+  const tocItems: SettingTOCItem[] = useMemo(() => {
+    const serviceItem = { id: 'service', label: t('admin:moderation.service_title') };
+    if (!policy.enabled) return [serviceItem];
 
     return [
-      serviceTitle,
-      { mainTitle: t('admin:moderation.hooks_title'), subTitles: [] },
-      { mainTitle: t('admin:moderation.strategy_title'), subTitles: [] },
-      ...(showTestSection ? [{ mainTitle: t('admin:moderation.test_title'), subTitles: [] }] : [])
+      serviceItem,
+      { id: 'hooks', label: t('admin:moderation.hooks_title') },
+      { id: 'strategy', label: t('admin:moderation.strategy_title') },
+      ...(showTestSection ? [{ id: 'test', label: t('admin:moderation.test_title') }] : [])
     ];
-  })();
+  }, [policy.enabled, showTestSection, t]);
 
   return (
     <>
-      <SettingPage
-        titles={visibleTitles}
-        loading={loadingPolicy || loadingPlugins || savingPolicy}
-        onSubmit={handleSubmit}
+      <AdminSettingPage
+        headerTitle={t('admin:page_title_moderation_policy')}
+        tocItems={tocItems}
+        isLoading={loadingPolicy || loadingPlugins}
+        isSaving={savingPolicy}
+        onSave={handleSubmit}
       >
         {/* ================= 1. 审核服务 ================= */}
-        <FirstTitle title={t('admin:moderation.service_title')} />
-
-        <Box>
-          <Flex alignItems={'center'} minH={'32px'}>
-            <Box w={'240px'} maxW={'calc(100% - 36px)'}>
-              <Text fontSize={'md'} fontWeight={'medium'} color={'myGray.900'}>
-                {t('admin:moderation.enable_moderation')}
-              </Text>
-            </Box>
-            <Switch
-              size={'md'}
-              isChecked={policy.enabled}
-              onChange={(e) => {
-                updatePolicy((prev) => ({
-                  ...prev,
-                  enabled: e.target.checked
-                }));
-              }}
-            />
-          </Flex>
+        <AdminSettingSection id="service" title={t('admin:moderation.service_title')}>
+          <AdminSwitchRow
+            label={t('admin:moderation.enable_moderation')}
+            isChecked={policy.enabled}
+            onChange={(checked) => {
+              updatePolicy((prev) => ({
+                ...prev,
+                enabled: checked
+              }));
+            }}
+          />
 
           {/* 当开启内容审核时展示服务与插件管理列表 */}
           {policy.enabled && (
@@ -348,10 +342,10 @@ export const ModerationPolicy = () => {
               {/* 当前生效服务 & 全部收起/展开 */}
               <Flex alignItems={'center'} justifyContent={'space-between'} mt={4} minH={'32px'}>
                 <Flex alignItems={'center'} gap={2}>
-                  <Text fontSize={'md'} fontWeight={'medium'} color={'myGray.900'}>
+                  <Text fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
                     {t('admin:moderation.active_service')}
                   </Text>
-                  <Text fontSize={'md'} color={'myGray.600'}>
+                  <Text fontSize={'sm'} color={'myGray.600'}>
                     {activePlugin?.name ||
                       policy.activePluginId ||
                       t('admin:moderation.please_add_plugin')}
@@ -386,7 +380,7 @@ export const ModerationPolicy = () => {
 
               {/* 插件管理列表 (受折叠状态控制) */}
               {!isListCollapsed && (
-                <Box mt={5}>
+                <Box mt={4}>
                   {plugins.length === 0 ? (
                     /* 空态提示 */
                     <Box
@@ -509,223 +503,164 @@ export const ModerationPolicy = () => {
               )}
             </>
           )}
-        </Box>
+        </AdminSettingSection>
 
         {/* ================= 下方 3 个板块仅在开启内容审核时显示 ================= */}
         {policy.enabled && (
           <>
             {/* ================= 2. 审核生效环节 ================= */}
-            <FirstTitle title={t('admin:moderation.hooks_title')} />
-
-            <Box py={3}>
-              <Grid templateColumns={['1fr', '1fr 1fr']} gap={4}>
+            <AdminSettingSection id="hooks" title={t('admin:moderation.hooks_title')} showDivider>
+              <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4}>
                 {/* 用户输入 */}
-                <Flex
-                  alignItems={'center'}
-                  justifyContent={'space-between'}
-                  p={4}
-                  borderRadius={'md'}
-                  border={'1px solid'}
-                  borderColor={'myGray.200'}
-                  bg={'white'}
-                >
-                  <Flex alignItems={'center'} gap={1.5}>
-                    <Text fontSize={'md'} fontWeight={'medium'} color={'myGray.900'}>
-                      {t('admin:moderation.hook_user_input')}
-                    </Text>
-                    <QuestionTip label={t('admin:moderation.hook_user_input_tip')} />
-                  </Flex>
-                  <Switch
-                    size={'md'}
-                    isChecked={policy.hooks.userInput}
-                    onChange={(e) => {
-                      updatePolicy((prev) => ({
-                        ...prev,
-                        hooks: { ...prev.hooks, userInput: e.target.checked }
-                      }));
-                    }}
-                  />
-                </Flex>
+                <AdminSwitchRow
+                  label={t('admin:moderation.hook_user_input')}
+                  tooltip={t('admin:moderation.hook_user_input_tip')}
+                  isChecked={policy.hooks.userInput}
+                  onChange={(checked) => {
+                    updatePolicy((prev) => ({
+                      ...prev,
+                      hooks: { ...prev.hooks, userInput: checked }
+                    }));
+                  }}
+                />
 
                 {/* 模型输入 */}
-                <Flex
-                  alignItems={'center'}
-                  justifyContent={'space-between'}
-                  p={4}
-                  borderRadius={'md'}
-                  border={'1px solid'}
-                  borderColor={'myGray.200'}
-                  bg={'white'}
-                >
-                  <Flex alignItems={'center'} gap={1.5}>
-                    <Text fontSize={'md'} fontWeight={'medium'} color={'myGray.900'}>
-                      {t('admin:moderation.hook_model_input')}
-                    </Text>
-                    <QuestionTip label={t('admin:moderation.hook_model_input_tip')} />
-                  </Flex>
-                  <Switch
-                    size={'md'}
-                    isChecked={policy.hooks.modelInput}
-                    onChange={(e) => {
-                      updatePolicy((prev) => ({
-                        ...prev,
-                        hooks: { ...prev.hooks, modelInput: e.target.checked }
-                      }));
-                    }}
-                  />
-                </Flex>
+                <AdminSwitchRow
+                  label={t('admin:moderation.hook_model_input')}
+                  tooltip={t('admin:moderation.hook_model_input_tip')}
+                  isChecked={policy.hooks.modelInput}
+                  onChange={(checked) => {
+                    updatePolicy((prev) => ({
+                      ...prev,
+                      hooks: { ...prev.hooks, modelInput: checked }
+                    }));
+                  }}
+                />
 
                 {/* 最终输出 */}
-                <Flex
-                  alignItems={'center'}
-                  justifyContent={'space-between'}
-                  p={4}
-                  borderRadius={'md'}
-                  border={'1px solid'}
-                  borderColor={'myGray.200'}
-                  bg={'white'}
-                >
-                  <Flex alignItems={'center'} gap={1.5}>
-                    <Text fontSize={'md'} fontWeight={'medium'} color={'myGray.900'}>
-                      {t('admin:moderation.hook_final_output')}
-                    </Text>
-                    <QuestionTip label={t('admin:moderation.hook_final_output_tip')} />
-                  </Flex>
-                  <Switch
-                    size={'md'}
-                    isChecked={policy.hooks.finalOutput}
-                    onChange={(e) => {
-                      updatePolicy((prev) => ({
-                        ...prev,
-                        hooks: { ...prev.hooks, finalOutput: e.target.checked }
-                      }));
-                    }}
-                  />
-                </Flex>
-              </Grid>
-            </Box>
+                <AdminSwitchRow
+                  label={t('admin:moderation.hook_final_output')}
+                  tooltip={t('admin:moderation.hook_final_output_tip')}
+                  isChecked={policy.hooks.finalOutput}
+                  onChange={(checked) => {
+                    updatePolicy((prev) => ({
+                      ...prev,
+                      hooks: { ...prev.hooks, finalOutput: checked }
+                    }));
+                  }}
+                />
+              </SimpleGrid>
+            </AdminSettingSection>
 
             {/* ================= 3. 处理策略 ================= */}
-            <FirstTitle title={t('admin:moderation.strategy_title')} />
-
-            <Box py={3}>
-              <Flex flexDirection={'column'} gap={4}>
-                {/* 流式审核间隔 */}
-                <Box>
-                  <Flex alignItems={'center'} gap={1.5} mb={2}>
-                    <Text fontSize={'md'} fontWeight={'medium'} color={'myGray.900'}>
-                      {t('admin:moderation.stream_interval')}
-                    </Text>
-                    <QuestionTip label={t('admin:moderation.stream_interval_tip')} />
-                  </Flex>
-                  <HStack spacing={2}>
-                    <MyNumberInput
-                      min={1}
-                      precision={0}
-                      w={'160px'}
-                      variant={'whiteOutline'}
-                      value={policy.strategy.streamInterval}
-                      onChange={(val) => {
-                        updatePolicy((prev) => ({
-                          ...prev,
-                          strategy: {
-                            ...prev.strategy,
-                            streamInterval:
-                              typeof val === 'number' && Number.isFinite(val)
-                                ? Math.max(1, Math.trunc(val))
-                                : DEFAULT_MODERATION_STREAM_INTERVAL
-                          }
-                        }));
-                      }}
-                    />
-                    <Text fontSize={'sm'} color={'myGray.600'}>
-                      {t('admin:moderation.chars_per_check')}
-                    </Text>
-                  </HStack>
-                </Box>
-
-                {/* 疑似风险 */}
-                <Box>
-                  <Flex alignItems={'center'} gap={1.5} mb={2}>
-                    <Text fontSize={'md'} fontWeight={'medium'} color={'myGray.900'}>
-                      {t('admin:moderation.suspected_risk')}
-                    </Text>
-                    <QuestionTip label={t('admin:moderation.suspected_risk_tip')} />
-                  </Flex>
-                  <MySelect
-                    width={'100%'}
-                    value={policy.strategy.suspectedRiskAction}
-                    list={[
-                      {
-                        label: t('admin:moderation.risk_pass_and_log'),
-                        value: ModerationRiskActionEnum.passAndLog
-                      },
-                      {
-                        label: t('admin:moderation.risk_block_and_log'),
-                        value: ModerationRiskActionEnum.blockAndLog
-                      }
-                    ]}
+            <AdminSettingSection
+              id="strategy"
+              title={t('admin:moderation.strategy_title')}
+              showDivider
+            >
+              {/* 流式审核间隔 */}
+              <AdminFormItem
+                label={t('admin:moderation.stream_interval')}
+                tooltip={t('admin:moderation.stream_interval_tip')}
+              >
+                <HStack spacing={2}>
+                  <MyNumberInput
+                    min={1}
+                    precision={0}
+                    w={'160px'}
+                    variant={'whiteOutline'}
+                    value={policy.strategy.streamInterval}
                     onChange={(val) => {
                       updatePolicy((prev) => ({
                         ...prev,
                         strategy: {
                           ...prev.strategy,
-                          suspectedRiskAction: val
+                          streamInterval:
+                            typeof val === 'number' && Number.isFinite(val)
+                              ? Math.max(1, Math.trunc(val))
+                              : DEFAULT_MODERATION_STREAM_INTERVAL
                         }
                       }));
                     }}
                   />
-                </Box>
+                  <Text fontSize={'sm'} color={'myGray.600'}>
+                    {t('admin:moderation.chars_per_check')}
+                  </Text>
+                </HStack>
+              </AdminFormItem>
 
-                {/* 服务异常 */}
-                <Box>
-                  <Flex alignItems={'center'} gap={1.5} mb={2}>
-                    <Text fontSize={'md'} fontWeight={'medium'} color={'myGray.900'}>
-                      {t('admin:moderation.service_exception')}
-                    </Text>
-                    <QuestionTip label={t('admin:moderation.service_exception_tip')} />
-                  </Flex>
-                  <MySelect
-                    width={'100%'}
-                    value={policy.strategy.serviceExceptionAction}
-                    list={[
-                      {
-                        label: t('admin:moderation.exception_pass'),
-                        value: ModerationExceptionActionEnum.pass
-                      },
-                      {
-                        label: t('admin:moderation.exception_block'),
-                        description: t('admin:moderation.exception_block_desc'),
-                        value: ModerationExceptionActionEnum.block
+              {/* 疑似风险 */}
+              <AdminFormItem
+                label={t('admin:moderation.suspected_risk')}
+                tooltip={t('admin:moderation.suspected_risk_tip')}
+              >
+                <MySelect
+                  width={'100%'}
+                  value={policy.strategy.suspectedRiskAction}
+                  list={[
+                    {
+                      label: t('admin:moderation.risk_pass_and_log'),
+                      value: ModerationRiskActionEnum.passAndLog
+                    },
+                    {
+                      label: t('admin:moderation.risk_block_and_log'),
+                      value: ModerationRiskActionEnum.blockAndLog
+                    }
+                  ]}
+                  onChange={(val) => {
+                    updatePolicy((prev) => ({
+                      ...prev,
+                      strategy: {
+                        ...prev.strategy,
+                        suspectedRiskAction: val
                       }
-                    ]}
-                    onChange={(val) => {
-                      updatePolicy((prev) => ({
-                        ...prev,
-                        strategy: {
-                          ...prev.strategy,
-                          serviceExceptionAction: val
-                        }
-                      }));
-                    }}
-                  />
-                </Box>
-              </Flex>
-            </Box>
+                    }));
+                  }}
+                />
+              </AdminFormItem>
+
+              {/* 服务异常 */}
+              <AdminFormItem
+                label={t('admin:moderation.service_exception')}
+                tooltip={t('admin:moderation.service_exception_tip')}
+                mb={0}
+              >
+                <MySelect
+                  width={'100%'}
+                  value={policy.strategy.serviceExceptionAction}
+                  list={[
+                    {
+                      label: t('admin:moderation.exception_pass'),
+                      value: ModerationExceptionActionEnum.pass
+                    },
+                    {
+                      label: t('admin:moderation.exception_block'),
+                      description: t('admin:moderation.exception_block_desc'),
+                      value: ModerationExceptionActionEnum.block
+                    }
+                  ]}
+                  onChange={(val) => {
+                    updatePolicy((prev) => ({
+                      ...prev,
+                      strategy: {
+                        ...prev.strategy,
+                        serviceExceptionAction: val
+                      }
+                    }));
+                  }}
+                />
+              </AdminFormItem>
+            </AdminSettingSection>
 
             {/* ================= 4. 审核效果测试 ================= */}
             {activePlugin !== undefined && (
-              <>
-                <FirstTitle title={t('admin:moderation.test_title')} />
-
-                <Box>
-                  <ModerationTestCard activePlugin={activePlugin} />
-                </Box>
-              </>
+              <AdminSettingSection id="test" title={t('admin:moderation.test_title')} showDivider>
+                <ModerationTestCard activePlugin={activePlugin} />
+              </AdminSettingSection>
             )}
           </>
         )}
-      </SettingPage>
+      </AdminSettingPage>
 
       {/* 插件编辑弹窗 */}
       {editingPlugin && (

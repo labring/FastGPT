@@ -62,7 +62,9 @@ const AdminSettingPage = ({
     }
   };
   const [activeId, setActiveId] = useState<string>('');
-  const currentActiveId = activeId || tocItems[0]?.id || '';
+  const currentActiveId = tocItems.some((item) => item.id === activeId)
+    ? activeId
+    : tocItems[0]?.id || '';
 
   // 滚动监听，实时计算当前视口中最高亮的首个可见大区。
   // 每帧都会触发且内部多次 getBoundingClientRect 强制同步布局，沿用旧版 100ms 节流避免滚动掉帧。
