@@ -38077,6 +38077,25 @@
                                         "example": 4,
                                         "type": "number",
                                         "minimum": 0
+                                      },
+                                      "cacheReadPrice": {
+                                        "description": "每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费",
+                                        "example": 0.2,
+                                        "type": "number",
+                                        "minimum": 0
+                                      },
+                                      "cacheCreationPrice": {
+                                        "description": "每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费",
+                                        "example": 2.5,
+                                        "type": "number",
+                                        "minimum": 0
+                                      },
+                                      "maxInputTokens": {
+                                        "deprecated": true,
+                                        "description": "兼容旧客户端的阶梯上限，单位 M Tokens；新客户端请使用 maxInputTokensK",
+                                        "example": 0.128,
+                                        "type": "number",
+                                        "minimum": 0
                                       }
                                     },
                                     "required": [
@@ -38304,6 +38323,25 @@
                                       "outputPrice": {
                                         "description": "每百万输出 Tokens 的积分单价",
                                         "example": 4,
+                                        "type": "number",
+                                        "minimum": 0
+                                      },
+                                      "cacheReadPrice": {
+                                        "description": "每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费",
+                                        "example": 0.2,
+                                        "type": "number",
+                                        "minimum": 0
+                                      },
+                                      "cacheCreationPrice": {
+                                        "description": "每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费",
+                                        "example": 2.5,
+                                        "type": "number",
+                                        "minimum": 0
+                                      },
+                                      "maxInputTokens": {
+                                        "deprecated": true,
+                                        "description": "兼容旧客户端的阶梯上限，单位 M Tokens；新客户端请使用 maxInputTokensK",
+                                        "example": 0.128,
                                         "type": "number",
                                         "minimum": 0
                                       }

@@ -8027,6 +8027,11 @@ export type DatasetsDetailRes = {
         cacheReadPrice?: number;
         /** 每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费 */
         cacheCreationPrice?: number;
+        /**
+         * 兼容旧客户端的阶梯上限，单位 M Tokens；新客户端请使用 maxInputTokensK
+         * @deprecated
+         */
+        maxInputTokens?: number;
       }>;
     };
     provider: string;
@@ -8083,6 +8088,11 @@ export type DatasetsDetailRes = {
         cacheReadPrice?: number;
         /** 每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费 */
         cacheCreationPrice?: number;
+        /**
+         * 兼容旧客户端的阶梯上限，单位 M Tokens；新客户端请使用 maxInputTokensK
+         * @deprecated
+         */
+        maxInputTokens?: number;
       }>;
     };
     provider: string;

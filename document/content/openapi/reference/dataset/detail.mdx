@@ -170,6 +170,9 @@ curl --fail-with-body -X GET "https://cloud.fastgpt.cn/api/core/dataset/detail?i
 | `agentModel.pricing.tiers[].maxInputTokensK`    | `integer`        | 否   | 32                 | 本档输入上限，单位 K Tokens；省略表示无限。最大值：9007199254740991                                                           |
 | `agentModel.pricing.tiers[].inputPrice`         | `number`         | 是   | -                  | 每百万输入 Tokens 的积分单价。最小值：0                                                                                       |
 | `agentModel.pricing.tiers[].outputPrice`        | `number`         | 是   | -                  | 每百万输出 Tokens 的积分单价。最小值：0                                                                                       |
+| `agentModel.pricing.tiers[].cacheReadPrice`     | `number`         | 否   | -                  | 每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费。最小值：0                                                       |
+| `agentModel.pricing.tiers[].cacheCreationPrice` | `number`         | 否   | -                  | 每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费。最小值：0                                                       |
+| `agentModel.pricing.tiers[].maxInputTokens`     | `number`         | 否   | -                  | **已弃用**。兼容旧客户端的阶梯上限，单位 M Tokens；新客户端请使用 maxInputTokensK。最小值：0                                  |
 | `agentModel.provider`                           | `string`         | 是   | -                  | 最小长度：1                                                                                                                   |
 | `agentModel.model`                              | `string`         | 是   | -                  | 最小长度：1                                                                                                                   |
 | `agentModel.name`                               | `string`         | 是   | -                  | 最小长度：1                                                                                                                   |
@@ -210,6 +213,9 @@ curl --fail-with-body -X GET "https://cloud.fastgpt.cn/api/core/dataset/detail?i
 | `vlmModel.pricing.tiers[].maxInputTokensK`      | `integer`        | 否   | 32                 | 本档输入上限，单位 K Tokens；省略表示无限。最大值：9007199254740991                                                           |
 | `vlmModel.pricing.tiers[].inputPrice`           | `number`         | 是   | -                  | 每百万输入 Tokens 的积分单价。最小值：0                                                                                       |
 | `vlmModel.pricing.tiers[].outputPrice`          | `number`         | 是   | -                  | 每百万输出 Tokens 的积分单价。最小值：0                                                                                       |
+| `vlmModel.pricing.tiers[].cacheReadPrice`       | `number`         | 否   | -                  | 每百万缓存读取 Tokens 的积分单价；缺省沿用输入价，0 表示免费。最小值：0                                                       |
+| `vlmModel.pricing.tiers[].cacheCreationPrice`   | `number`         | 否   | -                  | 每百万缓存创建 Tokens 的积分单价；缺省沿用输入价，0 表示免费。最小值：0                                                       |
+| `vlmModel.pricing.tiers[].maxInputTokens`       | `number`         | 否   | -                  | **已弃用**。兼容旧客户端的阶梯上限，单位 M Tokens；新客户端请使用 maxInputTokensK。最小值：0                                  |
 | `vlmModel.provider`                             | `string`         | 是   | -                  | 最小长度：1                                                                                                                   |
 | `vlmModel.model`                                | `string`         | 是   | -                  | 最小长度：1                                                                                                                   |
 | `vlmModel.name`                                 | `string`         | 是   | -                  | 最小长度：1                                                                                                                   |

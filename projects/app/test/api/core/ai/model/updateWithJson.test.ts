@@ -1,5 +1,6 @@
 import { ModelPricingSchema } from '@fastgpt/global/core/ai/model/schema';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { calculateModelPrice } from '@fastgpt/global/core/ai/model/pricing';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { Call } from '@test/utils/request';
 import { getRootUser } from '@test/datas/users';
@@ -131,6 +132,73 @@ describe('admin settings model updateWithJson api', () => {
     expect(saved).not.toHaveProperty('outputPrice');
   });
 
+  it.each([
+    { legacyBound: 0.128, expectedBoundK: 128 },
+    { legacyBound: 1.024, expectedBoundK: 1024 },
+    { legacyBound: 32, expectedBoundK: 32, tierUnit: 'K' },
+    { legacyBound: 0.128, expectedBoundK: 256, maxInputTokensK: 256 }
+  ])(
+    'preserves tier pricing when importing an older bound ($legacyBound)',
+    async ({ legacyBound, expectedBoundK, tierUnit, maxInputTokensK }) => {
+      const res = await callUpdateWithJson(
+        JSON.stringify([
+          {
+            ...buildLlmConfig({ modelId: 'external-id' }),
+            pricing: {
+              tierUnit,
+              tiers: [
+                { maxInputTokens: legacyBound, maxInputTokensK, inputPrice: 10, outputPrice: 20 },
+                { inputPrice: 80, outputPrice: 160 }
+              ]
+            }
+          }
+        ])
+      );
+
+      expect(res.code).toBe(200);
+      const model = await MongoAIModel.collection.findOne({ model: 'test-llm' });
+      expect(model?.pricing).toEqual({
+        tiers: [
+          { maxInputTokensK: expectedBoundK, inputPrice: 10, outputPrice: 20 },
+          { inputPrice: 80, outputPrice: 160 }
+        ]
+      });
+      const config = {
+        scope: ModelScopeEnum.system,
+        type: ModelTypeEnum.llm,
+        pricing: ModelPricingSchema.parse(model?.pricing)
+      };
+      const boundary = expectedBoundK * 1000;
+      expect(calculateModelPrice({ config, inputTokens: boundary }).matchedTier?.inputPrice).toBe(
+        10
+      );
+      expect(
+        calculateModelPrice({ config, inputTokens: boundary + 1 }).matchedTier?.inputPrice
+      ).toBe(80);
+    }
+  );
+
+  it('rejects an old sub-K threshold before replacing any models', async () => {
+    const existingModel = await MongoAIModel.create(buildStoredLlm('keep-on-error'));
+    const res = await callUpdateWithJson(
+      JSON.stringify([
+        {
+          ...buildLlmConfig({ modelId: 'external-id' }),
+          pricing: {
+            tiers: [
+              { maxInputTokens: 0.1285, inputPrice: 10, outputPrice: 20 },
+              { inputPrice: 80, outputPrice: 160 }
+            ]
+          }
+        }
+      ])
+    );
+
+    expect(res.error?.name).toBe('ApiRequestInputParseError');
+    await expect(MongoAIModel.countDocuments({ _id: existingModel._id })).resolves.toBe(1);
+    expect(configMocks.updatedReloadSystemModel).not.toHaveBeenCalled();
+  });
+
   it('canonicalizes newly imported LLM prices and keeps embedding prices in M tokens', async () => {
     const result = await callUpdateWithJson(
       JSON.stringify([
@@ -170,16 +238,16 @@ describe('admin settings model updateWithJson api', () => {
       scope: 'system',
       isActive: true,
       config,
-      pricing:
-        type === ModelTypeEnum.stt
-          ? { type: 'duration' as const, unitPrice: 0.125 }
-          : { unitPrice: 0.125 }
+      pricing: { unitPrice: 0.125 }
     }));
     expect((await callUpdateWithJson(JSON.stringify(entries))).code).toBe(200);
     const first = await MongoAIModel.find({}).lean();
     for (const entry of entries) {
       expect(first.find(({ model }) => model === entry.model)).toMatchObject({
-        pricing: { unitPrice: 0.13 }
+        pricing: {
+          ...(entry.type === ModelTypeEnum.stt ? { type: 'duration' } : {}),
+          unitPrice: 0.13
+        }
       });
     }
     const root = await getRootUser();

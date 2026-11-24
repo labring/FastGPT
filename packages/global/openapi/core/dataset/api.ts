@@ -1,4 +1,10 @@
 import { z } from 'zod';
+import { MAX_MODEL_PRICE_TIERS } from '../../../core/ai/model/pricing';
+import {
+  LLMModelDataSchema,
+  LLMModelPricingSchema,
+  ModelPriceTierSchema
+} from '../../../core/ai/model/schema';
 import { DatasetSearchModeEnum, DatasetTypeEnum } from '../../../core/dataset/constants';
 import { ApiDatasetServerSchema } from '../../../core/dataset/apiDataset/type';
 import { ObjectIdSchema } from '../../../common/type/mongo';
@@ -213,8 +219,35 @@ export const GetDatasetDetailQuerySchema = z.object({
 });
 export type GetDatasetDetailQuery = z.infer<typeof GetDatasetDetailQuerySchema>;
 
-// 出参复用 DatasetItemSchema
-export const GetDatasetDetailResponseSchema = DatasetItemSchema;
+/** 旧版公开 API 客户端仍读取 M Tokens 上限。兼容字段仅用于详情响应。 */
+const DatasetDetailLLMModelSchema = LLMModelDataSchema.extend({
+  pricing: LLMModelPricingSchema.extend({
+    tiers: z
+      .array(
+        ModelPriceTierSchema.extend({
+          maxInputTokens: z.number().nonnegative().optional().meta({
+            deprecated: true,
+            description: '兼容旧客户端的阶梯上限，单位 M Tokens；新客户端请使用 maxInputTokensK',
+            example: 0.128
+          })
+        })
+      )
+      .max(MAX_MODEL_PRICE_TIERS)
+      .optional()
+      .meta({ description: 'LLM 阶梯价格，下限从上一档上限推导' })
+  })
+    .optional()
+    .meta({
+      description: 'LLM 每百万 Tokens 阶梯价格；缺省免费',
+      example: { tiers: [{ inputPrice: 2, outputPrice: 4 }] }
+    })
+});
+export const GetDatasetDetailResponseSchema = DatasetItemSchema.extend({
+  agentModel: DatasetDetailLLMModelSchema.optional().meta({
+    description: 'AI 模型；模型已删除时为空，已停用模型仍返回展示数据'
+  }),
+  vlmModel: DatasetDetailLLMModelSchema.optional().meta({ description: '视觉语言模型' })
+});
 export type GetDatasetDetailResponse = z.infer<typeof GetDatasetDetailResponseSchema>;
 
 /* ============================================================================

@@ -22,6 +22,51 @@ import type {
 } from '@fastgpt/global/openapi/core/dataset/api';
 
 describe('GET /api/core/dataset/detail', () => {
+  it('returns the deprecated M Tokens bound alongside the K Tokens bound for both LLMs', async () => {
+    const owner = await getUser(`dataset-price-detail-${getNanoid(6)}`);
+    const originalMap = getModelTestMap();
+    const defaultLlm = getModelTestDefaults().llm!;
+    const model = {
+      ...defaultLlm,
+      modelId: '68ad85a7463006c963799a79',
+      model: 'vision-with-price-tiers',
+      config: { ...defaultLlm.config, vision: true },
+      pricing: {
+        tiers: [
+          { maxInputTokensK: 128, inputPrice: 10, outputPrice: 20 },
+          { inputPrice: 80, outputPrice: 160 }
+        ]
+      }
+    };
+    setModelTestMap(new Map(originalMap));
+    addModelTestModel(model);
+    try {
+      const dataset = await MongoDataset.create({
+        teamId: owner.teamId,
+        tmbId: owner.tmbId,
+        name: 'Model price compatibility',
+        type: DatasetTypeEnum.dataset,
+        agentModelId: model.modelId,
+        vlmModelId: model.modelId
+      });
+      const result = await Call<
+        Record<string, never>,
+        GetDatasetDetailQuery,
+        GetDatasetDetailResponse
+      >(handler, { auth: owner, query: { id: String(dataset._id) } });
+      expect(result.code).toBe(200);
+      for (const llm of [result.data.agentModel, result.data.vlmModel]) {
+        expect(llm?.pricing?.tiers).toEqual([
+          { ...model.pricing.tiers[0], maxInputTokens: 0.128 },
+          model.pricing.tiers[1]
+        ]);
+        expect(llm?.pricing?.tiers?.[1]).not.toHaveProperty('maxInputTokens');
+      }
+    } finally {
+      setModelTestMap(originalMap);
+    }
+  });
+
   it.each(['unconfigured', 'deleted-legacy', 'deleted-id', 'disabled'])(
     'returns model IDs for selector state without exposing legacy fallback fields (%s)',
     async (state) => {
