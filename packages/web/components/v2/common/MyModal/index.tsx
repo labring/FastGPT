@@ -103,7 +103,7 @@ const MyModal = ({
         {...props}
       >
         {onClose && showCloseButton && (
-          <ModalCloseButton position={'absolute'} fontSize={'xs'} top={3} right={3} />
+          <ModalCloseButton position={'absolute'} fontSize={'xs'} top={3} right={3} zIndex={1} />
         )}
 
         {!!title && (
