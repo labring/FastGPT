@@ -17,7 +17,7 @@ try {
   if (command === 'generate') {
     const artifacts = await mod.writeSdkArtifacts();
     console.log(
-      `[sdk:codegen] Generated:\n  - ${artifacts.irPath}\n  - ${artifacts.typesPath}\n  - ${artifacts.resourcesPath}\n  - ${artifacts.pythonModelsPath}\n  - ${artifacts.pythonResourcesPath}`
+      `[sdk:codegen] Generated:\n  - ${artifacts.irPath}\n  - ${artifacts.typesPath}\n  - ${artifacts.resourcesPath}\n  - ${artifacts.pythonModelsPath}\n  - ${artifacts.pythonResourcesPath}\n  - ${artifacts.goModelsPath}\n  - ${artifacts.goResourcesPath}`
     );
   } else if (command === 'check') {
     const { driftedFiles } = await mod.checkSdkArtifactsDrift();
@@ -28,7 +28,7 @@ try {
       process.exitCode = 1;
     } else {
       console.log(
-        '[sdk:codegen] SDK IR and generated TypeScript/Python sources are up to date.'
+        '[sdk:codegen] SDK IR and generated TypeScript/Python/Go sources are up to date.'
       );
     }
   } else {
