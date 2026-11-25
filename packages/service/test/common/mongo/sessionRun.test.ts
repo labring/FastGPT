@@ -1,5 +1,5 @@
 import { DbConfigurationError, DbTransactionConflictError } from '@fastgpt/dal/db/errors';
-import { createMongoTransactionRunner } from '@fastgpt/dal/db/mongo/base';
+import { createMongoTransactionRunner, unwrapMongoSession } from '@fastgpt/dal/db/mongo/base';
 import { closeDbRuntime, configureDbRuntime } from '@fastgpt/dal/db/runtime';
 import { createManagedDbSession, runInTransaction } from '@fastgpt/dal/db/transaction';
 import type { DbSession } from '@fastgpt/dal/db/types';
@@ -16,6 +16,15 @@ import { afterMongoCommit } from '@fastgpt/service/common/mongo/sessionCommitHoo
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
+
+const isErrorWithLabels = (error: unknown): error is { errorLabels: readonly unknown[] } =>
+  typeof error === 'object' &&
+  error !== null &&
+  'errorLabels' in error &&
+  Array.isArray(error.errorLabels);
+
+const hasErrorLabel = (error: unknown, label: string): boolean =>
+  isErrorWithLabels(error) && error.errorLabels.includes(label);
 
 const createSession = () =>
   ({
@@ -64,11 +73,7 @@ describe('mongoSessionRun', () => {
           await session.commitTransaction();
           committed = true;
         } catch (error) {
-          if (
-            !(error as { errorLabels?: string[] }).errorLabels?.includes(
-              'UnknownTransactionCommitResult'
-            )
-          ) {
+          if (!hasErrorLabel(error, 'UnknownTransactionCommitResult')) {
             throw error;
           }
         }
@@ -280,9 +285,7 @@ describe('mongoSessionRun', () => {
       try {
         await callback();
       } catch (error) {
-        if (
-          !(error as { errorLabels?: string[] }).errorLabels?.includes('TransientTransactionError')
-        ) {
+        if (!hasErrorLabel(error, 'TransientTransactionError')) {
           throw error;
         }
         await callback();
@@ -462,8 +465,11 @@ describe('mongoSessionRun', () => {
       const s1 = bridgeDbSessionToClientSession(tx1);
       const tx2 = bridgeClientSessionToDbSession(s1);
       const s2 = bridgeDbSessionToClientSession(tx2);
+      expect(tx2).toBe(tx1);
       expect(s1).toBe(roundTripDalSession);
       expect(s2).toBe(roundTripDalSession);
+      expect(bridgeClientSessionToDbSession(s1, 'main')).toBe(tx1);
+      expect(() => bridgeClientSessionToDbSession(s1, 'log')).toThrow(DbConfigurationError);
 
       tx2?.afterCommit(() => {
         dalEvents.push('dal-roundtrip-tx2');
@@ -474,5 +480,48 @@ describe('mongoSessionRun', () => {
       expect(dalEvents).toEqual([]);
     });
     expect(dalEvents).toEqual(['dal-roundtrip-tx2', 'dal-roundtrip-legacy']);
+
+    // 共享连接池模式下的 log 事务往返必须保留原始 logical datasource='log'，
+    // 不得被默认重标为 'main' 后绕过 DAL 跨数据源隔离，且显式传入不匹配 datasource 必须 fail-closed。
+    const logRoundTripEvents: string[] = [];
+    const roundTripLogSession = createSession();
+    roundTripLogSession.withTransaction = vi.fn(async (callback) => {
+      await callback();
+    });
+    vi.spyOn(connectionMongo, 'startSession').mockResolvedValueOnce(roundTripLogSession);
+
+    await runInTransaction(
+      async (logTx) => {
+        expect(logTx.datasource).toBe('log');
+        expect(() => unwrapMongoSession(logTx, 'main')).toThrow(DbConfigurationError);
+
+        const unwrappedLogSession = bridgeDbSessionToClientSession(logTx, 'log');
+        expect(unwrappedLogSession).toBe(roundTripLogSession);
+
+        const rebridgedDefault = bridgeClientSessionToDbSession(unwrappedLogSession);
+        expect(rebridgedDefault).toBe(logTx);
+        expect(rebridgedDefault?.datasource).toBe('log');
+        expect(() => unwrapMongoSession(rebridgedDefault, 'main')).toThrow(DbConfigurationError);
+        expect(() => bridgeDbSessionToClientSession(rebridgedDefault, 'main')).toThrow(
+          DbConfigurationError
+        );
+        expect(unwrapMongoSession(rebridgedDefault, 'log')).toBe(roundTripLogSession);
+
+        expect(bridgeClientSessionToDbSession(unwrappedLogSession, 'log')).toBe(logTx);
+        expect(() => bridgeClientSessionToDbSession(unwrappedLogSession, 'main')).toThrow(
+          DbConfigurationError
+        );
+
+        rebridgedDefault?.afterCommit(() => {
+          logRoundTripEvents.push('log-roundtrip-tx');
+        });
+        await afterMongoCommit(unwrappedLogSession, () => {
+          logRoundTripEvents.push('log-roundtrip-legacy');
+        });
+        expect(logRoundTripEvents).toEqual([]);
+      },
+      { datasource: 'log' }
+    );
+    expect(logRoundTripEvents).toEqual(['log-roundtrip-tx', 'log-roundtrip-legacy']);
   });
 });

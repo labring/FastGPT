@@ -1,4 +1,4 @@
-import { DbTransactionConflictError } from '@fastgpt/dal/db/errors';
+import { DbConfigurationError, DbTransactionConflictError } from '@fastgpt/dal/db/errors';
 import { unwrapMongoSession } from '@fastgpt/dal/db/mongo/base';
 import { createManagedDbSession } from '@fastgpt/dal/db/transaction';
 import type { DbDatasource, DbSession } from '@fastgpt/dal/db/types';
@@ -8,6 +8,7 @@ import {
   afterMongoCommit,
   clearPendingMongoAfterCommit,
   flushMongoAfterCommit,
+  getBridgedMongoSession,
   registerBridgedMongoSession,
   registerManagedMongoSession
 } from './sessionCommitHook';
@@ -36,17 +37,32 @@ export class MongoTransactionConflictError extends DbTransactionConflictError {
 /**
  * 渐进迁移桥接工具：在存量外层仍持有 Mongoose `ClientSession` 时，将其临时包装为 `DbSession`
  * 传入已完成重构的领域 Service / Repository；待全仓切换至 `runInTransaction` 后移除。
+ *
+ * 若该 `ClientSession` 原本是从 `runInTransaction` 经反向桥接解包而来，则直接复用原 `DbSession`
+ * 以保留逻辑 `datasource`（如 `'log'`）与外层提交钩子；若显式传入了不匹配的 `datasource`，
+ * 立即抛 `DbConfigurationError`（fail-closed）。
  */
 export const bridgeClientSessionToDbSession = (
   session?: ClientSession | null,
-  datasource: DbDatasource = 'main'
+  datasource?: DbDatasource
 ): DbSession | undefined => {
   if (session === null || session === undefined) {
     return undefined;
   }
+
+  const existingTx = getBridgedMongoSession(session);
+  if (existingTx !== undefined) {
+    if (datasource !== undefined && datasource !== existingTx.datasource) {
+      throw new DbConfigurationError(
+        `DbSession datasource mismatch: expected "${datasource}", received "${existingTx.datasource}"`
+      );
+    }
+    return existingTx;
+  }
+
   const managedSession = createManagedDbSession({
     dialect: 'mongo',
-    datasource,
+    datasource: datasource ?? 'main',
     nativeTx: session,
     onAfterCommit: (callback) => {
       void afterMongoCommit(session, callback);

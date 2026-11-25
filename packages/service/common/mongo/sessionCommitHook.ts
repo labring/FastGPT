@@ -35,6 +35,10 @@ export const registerBridgedMongoSession = (session: ClientSession, tx: DbSessio
   bridgedMongoSessions.set(session, tx);
 };
 
+/** 获取与反向桥接解包出的 `ClientSession` 关联的外层真实 `DbSession`。 */
+export const getBridgedMongoSession = (session: ClientSession): DbSession | undefined =>
+  bridgedMongoSessions.get(session);
+
 /** 清空某次失败或即将重试的事务尝试期间暂存的回调队列，避免回滚/重跑后重复执行。 */
 export const clearPendingMongoAfterCommit = (session: ClientSession): void => {
   pendingMongoAfterCommit.delete(session);
