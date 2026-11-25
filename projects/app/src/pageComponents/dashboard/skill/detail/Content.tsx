@@ -9,15 +9,11 @@ import { RightHeader } from '@/pageComponents/dashboard/skill/detail/Header';
 const EDIT_DEBUG_CHAT_ID = 'edit-debug';
 
 const Content = () => {
-  const { sandboxState, skillId, isSkillReady, handleSandboxError } = useContextSelector(
-    SkillDetailContext,
-    (v) => ({
-      sandboxState: v.sandboxState,
-      skillId: v.skillId,
-      isSkillReady: v.isSkillReady,
-      handleSandboxError: v.handleSandboxError
-    })
-  );
+  const { sandboxState, skillId, isSkillReady } = useContextSelector(SkillDetailContext, (v) => ({
+    sandboxState: v.sandboxState,
+    skillId: v.skillId,
+    isSkillReady: v.isSkillReady
+  }));
   const isSandboxReady = sandboxState === 'ready';
   const canOperateSandbox = isSkillReady && isSandboxReady;
 
@@ -48,7 +44,6 @@ const Content = () => {
           enablePathCopy={true}
           enableZipExtract={canOperateSandbox}
           enableMultiSelect={true}
-          onError={(err) => handleSandboxError(err.message)}
           headerRight={canOperateSandbox ? <RightHeader /> : undefined}
         />
       )}
