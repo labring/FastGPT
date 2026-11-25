@@ -445,13 +445,12 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       .trim();
 
     if (workflowRuntimeSummary.errorCount > 0) {
-      // 渠道终态面向外部访问者：只发送通用失败提示，内部错误摘要留在运行摘要与日志里，
-      // 不能拼进渠道消息（终端用户无法区分内部细节，也可能被平台留存）。
+      // 渠道终态面向外部访问者：只发送通用失败提示。告警仅保留关联 ID 与失败计数，
+      // 节点错误摘要（可能含上游回显内容）只留在运行摘要与聊天轮次诊断里，不再重复记录。
       logger.warn('Outlink run finished with errors', {
         shareId: outLinkConfig.shareId,
         chatId,
         messageId,
-        errorText: workflowRuntimeSummary.errorText,
         errorCount: workflowRuntimeSummary.errorCount
       });
       responseController.push({

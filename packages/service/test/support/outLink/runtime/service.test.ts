@@ -29,6 +29,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { assertCancellation } from '@fastgpt/service/support/user/account/cancellation/guard';
 import { assertTeamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
 import { createApiI18n } from '@fastgpt/service/common/i18n/request';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { generatedLoaders } from '@fastgpt/web/i18n/resourceLoaders.generated';
 import enChat from '@fastgpt/web/i18n/en/chat.json';
 
@@ -193,13 +194,19 @@ describe('runOutlinkRuntime', () => {
   });
 
   it('reports uncaught workflow errors instead of a default answer', async () => {
+    // 带上游私有回显的错误摘要：只能留在聊天轮次诊断里，不能出现在渠道消息与告警中。
+    const sensitiveErrorText =
+      'SENSITIVE_UPSTREAM_ECHO vendor body https://internal.example.com/secret';
+    const warn = vi
+      .spyOn(getLogger(LogCategories.MODULE.OUTLINK), 'warn')
+      .mockImplementation(() => {});
     vi.mocked(dispatchWorkFlow).mockResolvedValue({
       ...workflowResult,
       assistantResponses: [],
       workflowRuntimeSummary: {
         ...workflowResult.workflowRuntimeSummary,
         errorCount: 1,
-        errorText: 'model failed'
+        errorText: sensitiveErrorText
       }
     } as any);
     const { events, respond } = createResponder();
@@ -215,14 +222,26 @@ describe('runOutlinkRuntime', () => {
       }
     ]);
     expect(events.map((event) => ('content' in event ? event.content : '')).join('')).not.toContain(
-      'model failed'
+      sensitiveErrorText
     );
+    // 告警只保留关联 ID 与失败计数；错误摘要不再重复上报（诊断已在轮次记录中）。
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith('Outlink run finished with errors', {
+      shareId: outLinkConfig.shareId,
+      chatId: message.chatId,
+      messageId: message.messageId,
+      errorCount: 1
+    });
+    const warnPayload = JSON.stringify(warn.mock.calls);
+    expect(warnPayload).not.toContain('SENSITIVE_UPSTREAM_ECHO');
+    expect(warnPayload).not.toContain('internal.example.com');
+    warn.mockRestore();
     // 内部错误继续用于诊断：运行摘要与聊天轮次保留原始错误。
     expect(finalizeChatRound).toHaveBeenCalledWith(
       expect.objectContaining({
         workflowRuntimeSummary: expect.objectContaining({
           errorCount: 1,
-          errorText: 'model failed'
+          errorText: sensitiveErrorText
         })
       })
     );

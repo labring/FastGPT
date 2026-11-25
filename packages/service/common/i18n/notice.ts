@@ -1,12 +1,13 @@
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { NodeHttpResponse } from '../../types/http';
 import { translateApiMessage, translateApiMessageWithDefaultLocale } from './request';
 
 /** Agent 节点失败时面向终端用户的通用提示（与内部错误摘要无关）。 */
-export const AGENT_RUN_FAILED_NOTICE_I18N_KEY = 'chat:agent_run_failed_notice';
+export const AGENT_RUN_FAILED_NOTICE_I18N_KEY = i18nT('chat:agent_run_failed_notice');
 /** Agent 节点失败时的兜底提示（内部上下文使用，同样不含错误摘要）。 */
-export const AGENT_RUN_FAILED_FALLBACK_I18N_KEY = 'chat:agent_run_failed_fallback';
+export const AGENT_RUN_FAILED_FALLBACK_I18N_KEY = i18nT('chat:agent_run_failed_fallback');
 /** 工作流/渠道终态失败时面向终端用户的通用提示。 */
-export const APP_RUN_FAILED_NOTICE_I18N_KEY = 'chat:app_run_failed_notice';
+export const APP_RUN_FAILED_NOTICE_I18N_KEY = i18nT('chat:app_run_failed_notice');
 
 // 默认语言资源不可用时的内置兜底，保证面向用户的出口永远不是空串或 `ns:key` 字面量。
 const DEFAULT_AGENT_RUN_FAILED_NOTICE =
