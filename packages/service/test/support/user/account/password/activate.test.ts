@@ -87,17 +87,21 @@ describe('activateAccount', () => {
     ).toBeTruthy();
   });
 
-  it('rejects a password identical to the current one', async () => {
-    await expect(
-      activateAccount({
-        userId: String(unactivatedUser._id),
-        newPassword: hashStr(OLD_PASSWORD)
-      })
-    ).rejects.toThrow(UserErrEnum.newPasswordSameAsOld);
+  it('allows reusing the current password and activates the account', async () => {
+    await activateAccount({
+      userId: String(unactivatedUser._id),
+      newPassword: hashStr(OLD_PASSWORD)
+    });
 
-    // 同密被拒后仍应保持待激活状态，用户需重新输入新密码。
+    const updated = await MongoUser.findById(unactivatedUser._id).lean();
+    expect(updated?.status).toBe(UserStatusEnum.active);
+    expect(updated?.passwordUpdateTime).toBeInstanceOf(Date);
     expect(
-      await MongoUser.exists({ _id: unactivatedUser._id, status: UserStatusEnum.inactive })
+      await MongoUser.exists({
+        _id: unactivatedUser._id,
+        password: hashStr(OLD_PASSWORD),
+        status: UserStatusEnum.active
+      })
     ).toBeTruthy();
   });
 
