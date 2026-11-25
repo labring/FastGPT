@@ -19,6 +19,7 @@ import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useLatest, useMemoizedFn } from 'ahooks';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import type { TreeNode } from './components/FileTree';
 import type { OpenedFile } from './components/FileTabs';
 import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
@@ -113,6 +114,12 @@ const createSandboxRpcError = (message: string, rpcCode?: number): SandboxRpcErr
   Object.assign(new Error(message), {
     ...(typeof rpcCode === 'number' ? { rpcCode } : {})
   });
+
+const isDiskQuotaExceededApiError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') return false;
+  const candidate = error as { statusText?: unknown };
+  return candidate.statusText === SandboxErrEnum.agentSandboxDiskQuotaExceeded;
+};
 
 /**
  * useSandboxEditor —— UI Hook
@@ -486,13 +493,11 @@ export const useSandboxFileStore = ({
     connectPromiseRef.current = promise;
   }, []);
 
-  // 连接生命周期只响应连接参数；提示文案和错误回调始终读取最新 render 值。
-  const handleConnectAttemptsExhausted = useMemoizedFn(() => {
-    const errMsg = t('chat:sandbox_connect_failed_max_attempts');
+  const stopConnectWithError = useMemoizedFn((errMsg: string, description?: string) => {
     if (!onError) {
       toast({
         title: errMsg,
-        description: t('chat:sandbox_refresh_page_to_retry'),
+        ...(description ? { description } : {}),
         status: 'error',
         duration: 5000,
         isClosable: true
@@ -503,6 +508,14 @@ export const useSandboxFileStore = ({
     stoppedConnectErrorRef.current = error;
     rejectConnectRef.current?.(error);
     onError?.(error);
+  });
+
+  // 连接生命周期只响应连接参数；提示文案和错误回调始终读取最新 render 值。
+  const handleConnectAttemptsExhausted = useMemoizedFn(() => {
+    stopConnectWithError(
+      t('chat:sandbox_connect_failed_max_attempts'),
+      t('chat:sandbox_refresh_page_to_retry')
+    );
   });
 
   const getWsCloseMessage = useMemoizedFn(
@@ -911,14 +924,23 @@ export const useSandboxFileStore = ({
           ws?.close();
         };
       } catch (error) {
+        if (isDestroyed) return;
+        // 卷空间已满属于确定性业务错误，无需重复轮询 getTicket，直接反馈给用户。
+        if (isDiskQuotaExceededApiError(error)) {
+          stopConnectWithError(
+            getErrText(
+              error,
+              t('common:code_error.sandbox_error.agent_sandbox_disk_quota_exceeded')
+            )
+          );
+          return;
+        }
         console.error('[SandboxWS] Handshake failed, retrying in 5s:', error);
         setIsWsConnected(false);
         stoppedConnectErrorRef.current = null;
         rejectConnectRef.current?.(error instanceof Error ? error : new Error(getErrText(error)));
         resetConnectPromise();
-        if (!isDestroyed) {
-          reconnectTimer = setTimeout(connect, 5000);
-        }
+        reconnectTimer = setTimeout(connect, 5000);
       }
     };
 

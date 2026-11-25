@@ -17,6 +17,8 @@ import {
   type SandboxGetTicketResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { createAgentSandboxDiskQuotaExceededError } from '@fastgpt/service/core/ai/sandbox/error';
+import { isSandboxDiskFullError } from '@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox/errors';
 
 const TICKET_EXPIRES_IN = '1m';
 
@@ -68,9 +70,16 @@ async function handler(
   const { workspaceRoot, sessionWorkDirectory } = sandbox.getRuntimePaths();
 
   // 用户级 Sandbox 可能由其它 Chat 创建，签发 Ticket 前确保当前 Chat 的 IDE 根目录存在。
-  await sandbox.runWithRecovery(() =>
-    sandbox.opensandbox.createDirectories([sessionWorkDirectory])
-  );
+  try {
+    await sandbox.runWithRecovery(() =>
+      sandbox.opensandbox.createDirectories([sessionWorkDirectory])
+    );
+  } catch (error) {
+    if (isSandboxDiskFullError(error)) {
+      throw createAgentSandboxDiskQuotaExceededError();
+    }
+    throw error;
+  }
 
   // 签发短期 HMAC 凭证，内含租户元数据，不包含任何物理寻址信息。
   const ticket = jwt.sign(
