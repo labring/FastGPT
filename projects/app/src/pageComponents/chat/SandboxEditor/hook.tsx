@@ -468,6 +468,8 @@ export const useSandboxFileStore = ({
   const fileTreeRef = useLatest(fileTree);
   const expandedDirsRef = useLatest(expandedDirs);
   const loadingFilePathsRef = useRef<Set<string>>(new Set());
+  // 编辑器连接会话版本号，连接重建或卸载时自增，用于统一丢弃失效的异步读取结果。
+  const lifecycleVersionRef = useRef(0);
   const isRefreshingWorkspaceRef = useRef(false);
   const hasPendingWorkspaceRefreshRef = useRef(false);
   const saveFileQueuesRef = useRef<Map<string, Promise<{ etag?: string } | undefined>>>(new Map());
@@ -809,6 +811,8 @@ export const useSandboxFileStore = ({
     stoppedConnectErrorRef.current = null;
 
     if (isPreparing) {
+      lifecycleVersionRef.current += 1;
+      loadingFilePathsRef.current.clear();
       Promise.resolve().then(() => {
         setIsWsConnected(false);
         stoppedConnectErrorRef.current = null;
@@ -826,6 +830,7 @@ export const useSandboxFileStore = ({
     let ws: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     const pendingRpcRequests = pendingRpcRequestsRef.current;
+    const loadingFilePaths = loadingFilePathsRef.current;
 
     const connect = async () => {
       if (reconnectAttemptsRef.current >= 5) {
@@ -948,6 +953,8 @@ export const useSandboxFileStore = ({
 
     return () => {
       isDestroyed = true;
+      lifecycleVersionRef.current += 1;
+      loadingFilePaths.clear();
       if (ws) {
         if (wsRef.current === ws) {
           wsRef.current = null;
@@ -990,10 +997,13 @@ export const useSandboxFileStore = ({
     return openedFiles.find((f) => f.path === activeFilePath);
   }, [openedFiles, activeFilePath]);
 
-  // 组件卸载时清理 Blob URL 内存
+  // 组件卸载时使在途异步读取失效并清理 Blob URL 内存
   useEffect(() => {
     const filesRef = openedFilesRef;
+    const loadingFilePaths = loadingFilePathsRef.current;
     return () => {
+      lifecycleVersionRef.current += 1;
+      loadingFilePaths.clear();
       filesRef.current?.forEach((file) => {
         if (file.isBinary && file.content.startsWith('blob:')) {
           URL.revokeObjectURL(file.content);
@@ -1005,6 +1015,7 @@ export const useSandboxFileStore = ({
   // 加载目录 - 改造为普通异步函数，避免 useRequest 的并发竞态问题
   const loadDirectory = useCallback(
     async (path: string, level: number) => {
+      const lifecycleVersion = lifecycleVersionRef.current;
       setLoadingDirs((prev) => {
         const next = new Set(prev);
         next.add(path);
@@ -1013,6 +1024,9 @@ export const useSandboxFileStore = ({
 
       try {
         const res = await rpcCall<SandboxDirEntry[]>('fs/read_dir', { path });
+        if (lifecycleVersionRef.current !== lifecycleVersion) {
+          return [];
+        }
         let filteredFiles = (res || []).map((item) => ({
           name: item.name,
           path: path === '.' ? item.name : `${path}/${item.name}`,
@@ -1042,18 +1056,22 @@ export const useSandboxFileStore = ({
 
         return sortedNodes;
       } catch (error) {
-        toast({
-          title: t('chat:sandbox_load_failed'),
-          description: getErrText(error),
-          status: 'error'
-        });
+        if (lifecycleVersionRef.current === lifecycleVersion) {
+          toast({
+            title: t('chat:sandbox_load_failed'),
+            description: getErrText(error),
+            status: 'error'
+          });
+        }
         throw error;
       } finally {
-        setLoadingDirs((prev) => {
-          const next = new Set(prev);
-          next.delete(path);
-          return next;
-        });
+        if (lifecycleVersionRef.current === lifecycleVersion) {
+          setLoadingDirs((prev) => {
+            const next = new Set(prev);
+            next.delete(path);
+            return next;
+          });
+        }
       }
     },
     [toast, t, setLoadingDirs, setFileTree, rpcCall]
@@ -1209,6 +1227,13 @@ export const useSandboxFileStore = ({
     setDownloadingFile(true);
     try {
       await downloadSandbox({ ...sandboxTarget, chatId, outLinkAuthData, path: activeFile.path });
+    } catch (error) {
+      console.error('Failed to download file:', error);
+      toast({
+        title: t('chat:sandbox_download_failed'),
+        description: getErrText(error),
+        status: 'error'
+      });
     } finally {
       setDownloadingFile(false);
     }
@@ -1248,9 +1273,18 @@ export const useSandboxFileStore = ({
 
     if (isAlreadyLoading) return;
 
+    const lifecycleVersion = lifecycleVersionRef.current;
+
     try {
       loadingFilePathsRef.current.add(filePath);
       const { content, isUnknown, etag, readOnly } = await loadFile(filePath, language);
+
+      if (lifecycleVersionRef.current !== lifecycleVersion) {
+        if (isBinary && content.startsWith('blob:')) {
+          URL.revokeObjectURL(content);
+        }
+        return;
+      }
 
       // 加载成功后更新 Tab 状态
       setOpenedFiles((prev) =>
@@ -1268,7 +1302,15 @@ export const useSandboxFileStore = ({
         )
       );
     } catch (error) {
+      if (lifecycleVersionRef.current !== lifecycleVersion) {
+        return;
+      }
       console.error('Failed to open file:', error);
+      toast({
+        title: t('chat:sandbox_open_file_failed'),
+        description: getErrText(error),
+        status: 'error'
+      });
       // 如果加载失败，把这个临时的 tab 移出，并切到其他 tab 或清空
       setOpenedFiles((prev) => {
         const newOpenedFiles = prev.filter((f) => f.path !== filePath);
@@ -1281,7 +1323,9 @@ export const useSandboxFileStore = ({
         return newOpenedFiles;
       });
     } finally {
-      loadingFilePathsRef.current.delete(filePath);
+      if (lifecycleVersionRef.current === lifecycleVersion) {
+        loadingFilePathsRef.current.delete(filePath);
+      }
     }
   };
 

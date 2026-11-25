@@ -210,6 +210,7 @@
   "sandbox_new_folder": "新建資料夾",
   "sandbox_new_folder_placeholder": "新建資料夾...",
   "sandbox_no_file": "虛擬機器裡還沒有文件",
+  "sandbox_open_file_failed": "開啟文件失敗",
   "sandbox_refresh_page_to_retry": "請重新整理頁面後重試。",
   "sandbox_rename": "重新命名",
   "sandbox_rename_failed": "重新命名失敗",
