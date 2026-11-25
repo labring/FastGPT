@@ -160,17 +160,21 @@ describe('password/activate API', () => {
     expect(delUserAllSession).toHaveBeenCalledWith(String(pendingUser._id), ['current-session']);
   });
 
-  it('rejects reusing the current password and keeps the account inactive', async () => {
+  it('allows reusing the current password and activates the account', async () => {
     const response = await Call<ActivateAccountBody, Record<string, never>, undefined>(
       activateAccountApi,
       { body: getBody({ newPsw: hashStr(OLD_PASSWORD) }), auth: getAuth() }
     );
 
-    expect(response.code).toBe(500);
-    expect(response.error).toMatchObject({ message: UserErrEnum.newPasswordSameAsOld });
+    expect(response.code).toBe(200);
     expect(
-      await MongoUser.exists({ _id: pendingUser._id, status: UserStatusEnum.inactive })
+      await MongoUser.exists({
+        _id: pendingUser._id,
+        password: hashStr(OLD_PASSWORD),
+        status: UserStatusEnum.active
+      })
     ).toBeTruthy();
+    expect(delUserAllSession).toHaveBeenCalledWith(String(pendingUser._id), ['current-session']);
   });
 
   it('rejects the request before the lock when the per-user rate limit is reached', async () => {
