@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { PERMISSION_FETCH_CONCURRENCY } from '@fastgpt/global/core/dataset/apiDataset/constants';
+import {
+  PERMISSION_FETCH_CONCURRENCY,
+  PERMISSION_FETCH_TIMEOUT_MS
+} from '@fastgpt/global/core/dataset/apiDataset/constants';
 import { fetchCustomApiFilePermissions } from '@fastgpt/service/core/dataset/apiDataset/permission/adapters/custom';
 import {
   PermissionSyncCancelledError,
@@ -116,18 +119,52 @@ describe('fetchCustomApiFilePermissions', () => {
   });
 
   it('aborts as a deadline error when the budget runs out during a request', async () => {
-    const request = {
-      getFileDetail: () => new Promise(() => {})
-    } as unknown as Parameters<typeof fetchCustomApiFilePermissions>[0]['request'];
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+      const request = {
+        getFileDetail: () => new Promise(() => {})
+      } as unknown as Parameters<typeof fetchCustomApiFilePermissions>[0]['request'];
 
-    // 预算远小于单请求超时上限：本次请求超时即代表截止时间已到，不能记成节点失败
-    await expect(
-      fetchCustomApiFilePermissions({
+      // 预算远小于单请求超时上限：本次请求超时即代表整轮截止已到，不能记成节点失败
+      const assertion = expect(
+        fetchCustomApiFilePermissions({
+          request,
+          apiFileIds: ['f1'],
+          deadlineAt: Date.now() + 20
+        })
+      ).rejects.toBeInstanceOf(PermissionSyncDeadlineError);
+
+      await vi.advanceTimersByTimeAsync(20);
+      await assertion;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('marks a single timed-out request as failed when round budget still remains', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+      const request = {
+        getFileDetail: ({ apiFileId }: { apiFileId: string }) =>
+          apiFileId === 'slow' ? new Promise(() => {}) : Promise.resolve(OK_EMPTY)
+      } as unknown as Parameters<typeof fetchCustomApiFilePermissions>[0]['request'];
+
+      const promise = fetchCustomApiFilePermissions({
         request,
-        apiFileIds: ['f1'],
-        deadlineAt: Date.now() + 20
-      })
-    ).rejects.toBeInstanceOf(PermissionSyncDeadlineError);
+        apiFileIds: ['ok', 'slow'],
+        deadlineAt: Date.now() + PERMISSION_FETCH_TIMEOUT_MS * 2
+      });
+
+      await vi.advanceTimersByTimeAsync(PERMISSION_FETCH_TIMEOUT_MS);
+      const result = await promise;
+
+      expect(result.get('ok')?.status).toBe('ok');
+      expect(result.get('slow')).toEqual({ apiFileId: 'slow', status: 'failed' });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('aborts when the dataset lease is lost instead of recording a failed node', async () => {

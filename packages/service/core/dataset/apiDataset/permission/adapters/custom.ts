@@ -2,12 +2,10 @@ import {
   PERMISSION_FETCH_CONCURRENCY,
   PERMISSION_FETCH_TIMEOUT_MS
 } from '@fastgpt/global/core/dataset/apiDataset/constants';
-import { withTimeout } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import type { getApiDatasetRequest } from '../../index';
 import {
   assertPermissionSyncActive,
-  getRemainingTimeoutMs,
   PermissionSyncCancelledError,
   PermissionSyncDeadlineError
 } from '../utils';
@@ -55,6 +53,30 @@ export const fetchCustomApiFilePermissions = async ({
   const result = new Map<string, RawApiFilePermissionSnapshot>();
   let failedInRound = 0;
 
+  // 保留超时来源（整轮预算 vs 单请求上限），避免 setTimeout 提前抖动时
+  // catch 内重读 Date.now() 误把整轮预算耗尽归类为普通单节点失败。
+  const raceWithRequestTimeout = async <T>({
+    promise,
+    timeoutMs,
+    onTimeout
+  }: {
+    promise: Promise<T>;
+    timeoutMs: number;
+    onTimeout: () => Error;
+  }): Promise<T> => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(onTimeout()), timeoutMs);
+        })
+      ]);
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
+  };
+
   for (let offset = 0; offset < apiFileIds.length; offset += PERMISSION_FETCH_CONCURRENCY) {
     assertPermissionSyncActive({ deadlineAt, lease });
 
@@ -65,17 +87,23 @@ export const fetchCustomApiFilePermissions = async ({
 
         // 单请求超时不超过剩余预算：让在途批在截止点收敛，旧任务不会在超时后多挂一个
         // 请求超时。只影响本次 await，底层请求仍会跑完，不释放连接。
-        const timeoutMs = getRemainingTimeoutMs({
-          deadlineAt,
-          maxTimeoutMs: PERMISSION_FETCH_TIMEOUT_MS
-        });
+        const remainingBudgetMs = deadlineAt === undefined ? undefined : deadlineAt - Date.now();
+        if (remainingBudgetMs !== undefined && remainingBudgetMs <= 0) {
+          throw new PermissionSyncDeadlineError();
+        }
+        const isDeadlineBound =
+          remainingBudgetMs !== undefined && remainingBudgetMs <= PERMISSION_FETCH_TIMEOUT_MS;
+        const timeoutMs = isDeadlineBound ? remainingBudgetMs : PERMISSION_FETCH_TIMEOUT_MS;
 
         try {
-          const detail = await withTimeout(
-            request.getFileDetail({ apiFileId }),
+          const detail = await raceWithRequestTimeout({
+            promise: request.getFileDetail({ apiFileId }),
             timeoutMs,
-            `Fetch api file permission timed out: ${apiFileId}`
-          );
+            onTimeout: () =>
+              isDeadlineBound
+                ? new PermissionSyncDeadlineError()
+                : new Error(`Fetch api file permission timed out: ${apiFileId}`)
+          });
 
           if (!detail.success) {
             if (detail.code === 'NOT_FOUND') {
