@@ -11,7 +11,7 @@ import type {
   EmbeddingModelDataType,
   LLMModelDataType
 } from '@fastgpt/global/core/ai/model/schema';
-import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import { bridgeClientSessionToDbSession, mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getLLMMaxChunkSize } from '../../../../global/core/dataset/training/utils';
 import { retryFn } from '@fastgpt/global/common/system/utils';
@@ -337,7 +337,10 @@ export const pushDataListToTrainingQueue = async ({
     }
 
     if (insertedModes.size > 0) {
-      await publishTrainingWakeup({ modes: [...insertedModes], session });
+      await publishTrainingWakeup({
+        modes: [...insertedModes],
+        tx: bridgeClientSessionToDbSession(session)
+      });
     }
 
     return insertedCount;
@@ -559,5 +562,8 @@ export const pushDatasetToParseQueue = async ({
     { session, ordered: true }
   );
 
-  await publishTrainingWakeup({ modes: [TrainingModeEnum.parse], session });
+  await publishTrainingWakeup({
+    modes: [TrainingModeEnum.parse],
+    tx: bridgeClientSessionToDbSession(session)
+  });
 };
