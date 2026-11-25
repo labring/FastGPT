@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import type { GetApiSchemaByUrlBodyType } from '@fastgpt/global/openapi/core/app/httpTools/api';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 
 const mocks = vi.hoisted(() => ({
   authCert: vi.fn(),
@@ -89,12 +90,121 @@ describe('getApiSchemaByUrl handler', () => {
       })
     });
 
-    await expect(
-      handler({
+    const promise = handler({
+      body: {
+        url: 'https://example.com/openapi.json'
+      }
+    } as ApiRequestProps<GetApiSchemaByUrlBodyType>);
+
+    await expect(promise).rejects.toBeInstanceOf(UserConfigError);
+    await expect(promise).rejects.toThrow('Unable to resolve $ref pointer');
+  });
+
+  it('classifies non-OpenAPI JSON payloads as UserConfigError without [object Object]', async () => {
+    mocks.axiosGet.mockResolvedValue({
+      data: JSON.stringify({ code: 200, data: { message: 'not openapi' } })
+    });
+
+    let caughtError: unknown;
+    try {
+      await handler({
         body: {
-          url: 'https://example.com/openapi.json'
+          url: 'https://example.com/api/info'
         }
-      } as ApiRequestProps<GetApiSchemaByUrlBodyType>)
-    ).rejects.toThrow('Unable to resolve $ref pointer');
+      } as ApiRequestProps<GetApiSchemaByUrlBodyType>);
+    } catch (error) {
+      caughtError = error;
+    }
+
+    expect(caughtError).toBeInstanceOf(UserConfigError);
+    expect((caughtError as UserConfigError).message).toBe(
+      'Schema is not a valid Openapi API definition'
+    );
+    expect((caughtError as UserConfigError).message).not.toContain('[object Object]');
+  });
+
+  it.each(['<html><body>404</body></html>', 'a: [1, 2'])(
+    'classifies invalid schema text %j as UserConfigError without leaking local paths',
+    async (data) => {
+      mocks.axiosGet.mockResolvedValue({ data });
+
+      let caughtError: unknown;
+      try {
+        await handler({
+          body: {
+            url: 'https://example.com/openapi.yaml'
+          }
+        } as ApiRequestProps<GetApiSchemaByUrlBodyType>);
+      } catch (error) {
+        caughtError = error;
+      }
+
+      expect(caughtError).toBeInstanceOf(UserConfigError);
+      expect((caughtError as UserConfigError).message).not.toContain(process.cwd());
+    }
+  );
+
+  it('classifies remote fetch failures as UserConfigError with non-empty message and cause', async () => {
+    const fetchError = {
+      message: 'Request failed with status code 404',
+      response: { status: 404, data: { message: { unexpected: 'object' } } }
+    };
+    mocks.axiosGet.mockRejectedValue(fetchError);
+
+    let caughtError: unknown;
+    try {
+      await handler({
+        body: {
+          url: 'https://example.com/missing.json'
+        }
+      } as ApiRequestProps<GetApiSchemaByUrlBodyType>);
+    } catch (error) {
+      caughtError = error;
+    }
+
+    expect(caughtError).toBeInstanceOf(UserConfigError);
+    expect((caughtError as UserConfigError).message).toBe('Request failed with status code 404');
+    expect((caughtError as UserConfigError).cause).toBe(fetchError);
+  });
+
+  it('keeps Error.message instead of raw HTML response bodies when axios fetch fails', async () => {
+    const axiosLikeError = Object.assign(new Error('Request failed with status code 502'), {
+      response: {
+        status: 502,
+        data: `<html><body>${'Bad Gateway '.repeat(100)}</body></html>`
+      }
+    });
+    mocks.axiosGet.mockRejectedValue(axiosLikeError);
+
+    let caughtError: unknown;
+    try {
+      await handler({
+        body: {
+          url: 'https://example.com/gateway-error.json'
+        }
+      } as ApiRequestProps<GetApiSchemaByUrlBodyType>);
+    } catch (error) {
+      caughtError = error;
+    }
+
+    expect(caughtError).toBeInstanceOf(UserConfigError);
+    expect((caughtError as UserConfigError).message).toBe('Request failed with status code 502');
+    expect((caughtError as UserConfigError).message).not.toContain('<html>');
+    expect((caughtError as UserConfigError).cause).toBe(axiosLikeError);
+  });
+
+  it('propagates UserConfigError when checkUrlSafety rejects the URL', async () => {
+    mocks.checkUrlSafety.mockRejectedValue(
+      new UserConfigError('OpenAPI Schema URL must be a valid URL')
+    );
+
+    const promise = handler({
+      body: {
+        url: 'invalid-url'
+      }
+    } as ApiRequestProps<GetApiSchemaByUrlBodyType>);
+
+    await expect(promise).rejects.toBeInstanceOf(UserConfigError);
+    await expect(promise).rejects.toThrow('OpenAPI Schema URL must be a valid URL');
   });
 });

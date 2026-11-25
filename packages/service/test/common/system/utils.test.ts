@@ -7,7 +7,8 @@ import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 // 优先采纳 global.systemInstanceConfig 并缓存，从而走 ?? serviceEnv 兜底分支。
 (global as any).systemInstanceConfig = { security: {} };
 
-import { isInternalAddress } from '@fastgpt/service/common/system/utils';
+import { checkUrlSafety, isInternalAddress } from '@fastgpt/service/common/system/utils';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 
 import dns from 'dns/promises';
 
@@ -524,5 +525,36 @@ describe('SSRF Protection - isInternalAddress', () => {
 
       expect(await isInternalAddress('http://metadata-proxy.example.com/')).toBe(true);
     });
+  });
+});
+
+describe('checkUrlSafety', () => {
+  const originalCheckInternalIp = getTestInstanceConfig().security.checkInternalIp;
+
+  beforeEach(() => {
+    getTestInstanceConfig().security.checkInternalIp = true;
+    vi.restoreAllMocks();
+    vi.spyOn(dns, 'resolve4').mockResolvedValue(['93.184.216.34']);
+    vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('No AAAA records'));
+  });
+
+  afterEach(() => {
+    getTestInstanceConfig().security.checkInternalIp = originalCheckInternalIp;
+  });
+
+  test('allows valid public https URLs', async () => {
+    await expect(
+      checkUrlSafety('https://example.com/openapi.json', 'OpenAPI Schema URL')
+    ).resolves.toBeUndefined();
+  });
+
+  test.each([
+    ['not-a-url', 'OpenAPI Schema URL must be a valid URL'],
+    ['ftp://example.com/openapi.json', 'OpenAPI Schema URL must use http or https protocol'],
+    ['http://127.0.0.1/openapi.json', 'OpenAPI Schema URL:']
+  ])('throws UserConfigError for rejected URL %s', async (url, expectedMessage) => {
+    const promise = checkUrlSafety(url, 'OpenAPI Schema URL');
+    await expect(promise).rejects.toBeInstanceOf(UserConfigError);
+    await expect(promise).rejects.toThrow(expectedMessage);
   });
 });

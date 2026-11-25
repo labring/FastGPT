@@ -644,7 +644,7 @@ export const jsonSchema2NodeOutput = ({
 export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema> => {
   try {
     const data = parseOpenAPISchemaString(yamlStr);
-    const jsonSchema = (await SwaggerParser.dereference(data, {
+    const jsonSchema = (await SwaggerParser.dereference(data as any, {
       resolve: {
         file: false,
         http: false

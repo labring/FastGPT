@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
@@ -644,19 +645,41 @@ describe('rewriteRuntimeWorkFlow independent toolsets', () => {
       createHttpToolSetNode([{ name: 'search', description: 'Saved tool' }], { apiSchemaUrl: '' })
     ];
 
-    await expect(
-      rewriteRuntimeWorkFlow({ teamId: 'team-1', tmbId: 'member-1', nodes, edges: [] })
-    ).rejects.toThrow('HTTP tool set schema URL is missing');
+    const promise = rewriteRuntimeWorkFlow({
+      teamId: 'team-1',
+      tmbId: 'member-1',
+      nodes,
+      edges: []
+    });
+    await expect(promise).rejects.toBeInstanceOf(UserConfigError);
+    await expect(promise).rejects.toThrow('HTTP tool set schema URL is missing');
     expect(mocks.getHttpSchema).not.toHaveBeenCalled();
   });
 
-  it('propagates HTTP download and parse failures without using saved summaries', async () => {
+  it('propagates HTTP download and parse failures as UserConfigError without using saved summaries', async () => {
     const nodes = [createHttpToolSetNode([{ name: 'search', description: 'Saved tool' }])];
     mocks.getHttpSchema.mockRejectedValue(new Error('schema download failed'));
 
-    await expect(
-      rewriteRuntimeWorkFlow({ teamId: 'team-1', tmbId: 'member-1', nodes, edges: [] })
-    ).rejects.toThrow('schema download failed');
+    const downloadPromise = rewriteRuntimeWorkFlow({
+      teamId: 'team-1',
+      tmbId: 'member-1',
+      nodes,
+      edges: []
+    });
+    await expect(downloadPromise).rejects.toBeInstanceOf(UserConfigError);
+    await expect(downloadPromise).rejects.toThrow('schema download failed');
+
+    mocks.getHttpSchema.mockResolvedValue({ data: JSON.stringify({ code: 200 }) });
+    const invalidJsonPromise = rewriteRuntimeWorkFlow({
+      teamId: 'team-1',
+      tmbId: 'member-1',
+      nodes: [createHttpToolSetNode([{ name: 'search', description: 'Saved tool' }])],
+      edges: []
+    });
+    await expect(invalidJsonPromise).rejects.toBeInstanceOf(UserConfigError);
+    await expect(invalidJsonPromise).rejects.toThrow(
+      'Schema is not a valid Openapi API definition'
+    );
 
     mocks.getHttpSchema.mockResolvedValue({ data: 'not an OpenAPI schema' });
     await expect(
@@ -666,6 +689,6 @@ describe('rewriteRuntimeWorkFlow independent toolsets', () => {
         nodes: [createHttpToolSetNode([{ name: 'search', description: 'Saved tool' }])],
         edges: []
       })
-    ).rejects.toThrow();
+    ).rejects.toBeInstanceOf(UserConfigError);
   });
 });

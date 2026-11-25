@@ -18,7 +18,11 @@ import {
   JsonSchemaPropertiesItemSchema,
   JSONSchemaInputTypeSchema
 } from '@fastgpt/global/core/app/jsonschema';
-import { bundleOpenAPISchema } from '@fastgpt/global/common/string/swagger';
+import {
+  bundleOpenAPISchema,
+  parseOpenAPISchemaString
+} from '@fastgpt/global/common/string/swagger';
+import { UserConfigError } from '@fastgpt/global/common/error/utils';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
 import {
@@ -2380,6 +2384,38 @@ paths:
   });
 });
 
+describe('parseOpenAPISchemaString', () => {
+  it('parses valid JSON and YAML OpenAPI objects', () => {
+    expect(
+      parseOpenAPISchemaString('{"openapi":"3.0.0","info":{"title":"Test"},"paths":{}}')
+    ).toEqual({
+      openapi: '3.0.0',
+      info: { title: 'Test' },
+      paths: {}
+    });
+    expect(
+      parseOpenAPISchemaString('openapi: 3.0.0\ninfo:\n  title: Test\n  version: 1.0.0\npaths: {}')
+    ).toEqual({
+      openapi: '3.0.0',
+      info: { title: 'Test', version: '1.0.0' },
+      paths: {}
+    });
+  });
+
+  it.each([
+    '',
+    '   ',
+    '<html><body>Not Found</body></html>',
+    'just plain text',
+    '[1, 2, 3]',
+    'null',
+    '123',
+    'a: [1, 2'
+  ])('throws UserConfigError for invalid or non-object schema text: %j', (input) => {
+    expect(() => parseOpenAPISchemaString(input)).toThrow(UserConfigError);
+  });
+});
+
 describe('bundleOpenAPISchema', () => {
   it('should bundle local refs from an already loaded schema object', async () => {
     const result = await bundleOpenAPISchema({
@@ -2398,21 +2434,66 @@ describe('bundleOpenAPISchema', () => {
   });
 
   it('should reject remote refs when bundling an already loaded schema object', async () => {
-    await expect(
-      bundleOpenAPISchema({
-        openapi: '3.0.0',
-        info: { title: 'Test API', version: '1.0.0' },
-        paths: {},
-        components: {
-          schemas: {
-            Leak: {
-              $ref: 'http://169.254.169.254/latest/meta-data/iam/security-credentials/'
-            }
+    const promise = bundleOpenAPISchema({
+      openapi: '3.0.0',
+      info: { title: 'Test API', version: '1.0.0' },
+      paths: {},
+      components: {
+        schemas: {
+          Leak: {
+            $ref: 'http://169.254.169.254/latest/meta-data/iam/security-credentials/'
           }
         }
-      })
-    ).rejects.toThrow('Unable to resolve $ref pointer');
+      }
+    });
+
+    await expect(promise).rejects.toBeInstanceOf(UserConfigError);
+    await expect(promise).rejects.toThrow('Unable to resolve $ref pointer');
   });
+
+  it('classifies plain non-OpenAPI JSON objects as UserConfigError without [object Object]', async () => {
+    let caughtError: unknown;
+    try {
+      await bundleOpenAPISchema({ code: 200, data: {} });
+    } catch (error) {
+      caughtError = error;
+    }
+
+    expect(caughtError).toBeInstanceOf(UserConfigError);
+    expect((caughtError as UserConfigError).message).toBe(
+      'Schema is not a valid Openapi API definition'
+    );
+    expect((caughtError as UserConfigError).message).not.toContain('[object Object]');
+    expect((caughtError as UserConfigError).cause).toBeInstanceOf(SyntaxError);
+  });
+
+  it.each([
+    { swagger: '2.0', info: { title: 'Test', version: '1.0.0' } },
+    { openapi: '3.2.0', info: { title: 'Test', version: '1.0.0' }, paths: {} },
+    { openapi: '3.0.0', info: null, paths: {} },
+    {
+      openapi: '3.0.0',
+      info: { title: 'Test', version: '1.0.0' },
+      paths: {},
+      components: { schemas: { Broken: { $ref: '#/components/schemas/Missing' } } }
+    },
+    '<html><body>404</body></html>',
+    [1, 2, 3],
+    null
+  ])(
+    'classifies malformed OpenAPI input %j as UserConfigError without leaking local paths',
+    async (input) => {
+      let caughtError: unknown;
+      try {
+        await bundleOpenAPISchema(input);
+      } catch (error) {
+        caughtError = error;
+      }
+
+      expect(caughtError).toBeInstanceOf(UserConfigError);
+      expect((caughtError as UserConfigError).message).not.toContain(process.cwd());
+    }
+  );
 });
 
 describe('JSONSchema property required support', () => {
