@@ -28,7 +28,7 @@ export const AiChatQuoteRole = {
   renderTypeList: [FlowNodeInputTypeEnum.hidden],
   label: '',
   valueType: WorkflowIOValueTypeEnum.string,
-  value: 'system' // user or system
+  value: 'user' // user or system
 };
 export const AiChatQuoteTemplate = {
   key: NodeInputKeyEnum.aiChatQuoteTemplate,

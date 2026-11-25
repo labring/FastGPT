@@ -44,7 +44,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       userChatInput: rawUserChatInput = '',
       isResponseAnswerText = true,
       systemPrompt: rawSystemPrompt = '',
-      aiChatQuoteRole = 'system',
+      aiChatQuoteRole = 'user',
       quoteTemplate,
       quotePrompt,
       aiChatReasoning = true,

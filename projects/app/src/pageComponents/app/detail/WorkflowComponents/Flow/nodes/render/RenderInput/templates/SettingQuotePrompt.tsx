@@ -72,7 +72,7 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
     defaultValues: {
       quoteTemplate: quoteTemplateInput?.value || '',
       quotePrompt: quotePromptInput?.value || '',
-      quoteRole: (quoteRoleInput?.value || 'system') as AiChatQuoteRoleType
+      quoteRole: (quoteRoleInput?.value || 'user') as AiChatQuoteRoleType
     }
   });
   const aiChatQuoteTemplate = watch('quoteTemplate');
@@ -189,7 +189,7 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
         const nextInputs = [...current.inputs];
         (
           [
-            { record: AiChatQuoteRole, value: data.quoteRole || 'system' },
+            { record: AiChatQuoteRole, value: data.quoteRole || 'user' },
             { record: AiChatQuoteTemplate, value: data.quoteTemplate },
             { record: AiChatQuotePrompt, value: data.quotePrompt }
           ] as const
@@ -235,14 +235,14 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
               value={aiChatQuoteRole}
               list={[
                 {
-                  label: 'System',
-                  value: 'system',
-                  description: t('workflow:dataset_quote_role_system_option_desc')
-                },
-                {
                   label: 'User',
                   value: 'user',
                   description: t('workflow:dataset_quote_role_user_option_desc')
+                },
+                {
+                  label: 'System',
+                  value: 'system',
+                  description: t('workflow:dataset_quote_role_system_option_desc')
                 }
               ]}
               onChange={(e) => {
