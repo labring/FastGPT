@@ -610,7 +610,11 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     const doneMemories = buildAgentMemories(buildClearedNodeMemories());
     const errorText = outputSummary.errorText ?? '';
     const doneNodeResponse = buildAgentNodeResponse({
-      textOutput: finalOutput.answerText || errorText || AGENT_ERROR_FALLBACK_TEXT,
+      // 仅在失败分支兜底，正常结束的空答案保持原样，避免误报执行失败。
+      textOutput:
+        coreResult.status === 'error'
+          ? finalOutput.answerText || errorText || AGENT_ERROR_FALLBACK_TEXT
+          : finalOutput.answerText,
       ...(coreResult.status === 'error' ? { errorText } : {})
     });
 
