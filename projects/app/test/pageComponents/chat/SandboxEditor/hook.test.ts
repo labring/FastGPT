@@ -147,6 +147,60 @@ describe('useSandboxFileStore failure toasts', () => {
     expect(mocks.toast).not.toHaveBeenCalled();
   });
 
+  it('does not toast when in-flight HTTP file reads fail after unmount', async () => {
+    const resolveFetches: Array<(response: Response) => void> = [];
+    mocks.fetch.mockImplementation(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveFetches.push(resolve);
+        })
+    );
+    FakeWebSocket.responder = (req) => {
+      if (req.method === 'fs/read_dir_recursive') {
+        return {
+          result: {
+            files: [
+              {
+                name: 'large.txt',
+                path: 'large.txt',
+                type: 'file',
+                size: 6 * 1024 * 1024,
+                level: 0
+              }
+            ],
+            expandedPaths: []
+          }
+        };
+      }
+      return { error: { code: -32004, message: 'File too large' } };
+    };
+
+    await mountStore();
+    let pendingLarge!: Promise<void>;
+    let pendingFallback!: Promise<void>;
+    await act(async () => {
+      pendingLarge = store.openFile('large.txt');
+      pendingFallback = store.openFile('fallback.txt');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(resolveFetches).toHaveLength(2);
+
+    await act(async () => {
+      root.unmount();
+      resolveFetches.forEach((resolve) =>
+        resolve(
+          new Response(JSON.stringify({ code: 503, message: 'Service unavailable' }), {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' }
+          })
+        )
+      );
+      await Promise.all([pendingLarge, pendingFallback]);
+    });
+
+    expect(mocks.toast).not.toHaveBeenCalled();
+  });
+
   it('toasts server error details and resets loading state when downloadCurrentFile fails', async () => {
     FakeWebSocket.responder = (req) => {
       if (req.method === 'fs/read_dir_recursive')
