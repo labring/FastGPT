@@ -1,5 +1,5 @@
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useLatest } from 'ahooks';
+import { useLatest, useMemoizedFn } from 'ahooks';
 import { useRouter } from 'next/router';
 import React, { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createContext } from 'use-context-selector';
@@ -27,6 +27,15 @@ import { clearChatInputDrafts, removeChatInputDraft } from '../inputDraft/storag
 
 type UpdateHistoryParams = Pick<UpdateHistoryBodyType, 'chatId' | 'customTitle' | 'top'>;
 
+export type SyncHistoryStatusParams = {
+  appId: string;
+  chatId: string;
+  status: ChatGenerateStatusEnum;
+  hasBeenRead?: boolean;
+  title?: string;
+  fallbackTitle?: string;
+};
+
 type ChatContextValueType = {
   params: GetHistoriesBodyType;
 };
@@ -37,7 +46,7 @@ type ChatContextType = {
   isOpenSlider: boolean;
   onCloseSlider: () => void;
   onOpenSlider: () => void;
-  setHistories: React.Dispatch<React.SetStateAction<ChatHistoryItemType[]>>;
+  syncHistoryStatus: (data: SyncHistoryStatusParams) => void;
   forbidLoadChat: React.MutableRefObject<boolean>;
   onChangeChatId: (chatId?: string, forbid?: boolean) => void;
   loadHistories: (options?: { init?: boolean; silent?: boolean }) => void;
@@ -63,7 +72,7 @@ export const ChatContext = createContext<ChatContextType>({
   onUpdateHistoryTitle: () => {},
   ScrollData: chatContextFallbackScrollData,
   loadHistories: () => {},
-  setHistories: () => {},
+  syncHistoryStatus: () => {},
   onUpdateHistory: () => {},
   onDelHistory: async () => undefined,
   onClearHistories: async () => undefined,
@@ -76,9 +85,6 @@ export const ChatContext = createContext<ChatContextType>({
   isLoading: false,
   isInitialLoading: false
 });
-
-const isSameHistoryList = (a: ChatHistoryItemType[], b: ChatHistoryItemType[]) =>
-  a.length === b.length && a.every((item, index) => item === b[index]);
 
 // 清理孤立乐观项需同时满足最小轮询次数与最小耗时，避免切窗/visibilitychange 高频触发 poll 在几秒内误删仍在首包前的会话。
 const PENDING_EXPIRE_MIN_POLLS = 6;
@@ -147,7 +153,7 @@ const ChatContextProvider = ({
     };
   }, []);
 
-  // 待服务端确认的乐观会话独立于 useScrollPagination，避免污染服务端分页的 data.length / offset / total。
+  // 未落库的乐观会话独立于 useScrollPagination，确保服务端分页的 offset 与 total 严格按落库记录推进。
   const [pendingState, setPendingState] = useState<{
     target: typeof historyTargetParams;
     items: ChatHistoryItemType[];
@@ -156,48 +162,10 @@ const ChatContextProvider = ({
     items: []
   }));
   const historyTargetParamsRef = useLatest(historyTargetParams);
-  const pendingTargetRef = useRef(historyTargetParams);
-  const pendingHistoriesRef = useRef<ChatHistoryItemType[]>([]);
   const pendingMissedPollsRef = useRef<Map<string, { count: number; firstMissedAt: number }>>(
     new Map()
   );
-
-  const getScopedPendingHistories = useCallback(() => {
-    if (pendingTargetRef.current !== historyTargetParamsRef.current) {
-      return [];
-    }
-    return pendingHistoriesRef.current;
-  }, [historyTargetParamsRef]);
-
-  const commitPendingHistories = useCallback(
-    (nextPending: ChatHistoryItemType[]) => {
-      const currentTarget = historyTargetParamsRef.current;
-      if (!currentTarget) return;
-      const prevPending = getScopedPendingHistories();
-      const nextIds = new Set(nextPending.map((item) => item.chatId));
-      for (const id of Array.from(pendingMissedPollsRef.current.keys())) {
-        if (!nextIds.has(id)) {
-          pendingMissedPollsRef.current.delete(id);
-        }
-      }
-      for (const item of nextPending) {
-        if (item.chatGenerateStatus !== ChatGenerateStatusEnum.generating) {
-          pendingMissedPollsRef.current.delete(item.chatId);
-        }
-      }
-
-      const targetChanged = pendingTargetRef.current !== currentTarget;
-      pendingTargetRef.current = currentTarget;
-      pendingHistoriesRef.current = nextPending;
-      if (targetChanged || !isSameHistoryList(prevPending, nextPending)) {
-        setPendingState({
-          target: currentTarget,
-          items: nextPending
-        });
-      }
-    },
-    [getScopedPendingHistories, historyTargetParamsRef]
-  );
+  const silentReloadScheduledRef = useRef(false);
 
   const fetchChatHistories = useCallback<
     (
@@ -213,32 +181,30 @@ const ChatContextProvider = ({
       }
 
       const serverIds = new Set(res.list.map((item) => item.chatId));
-      serverIds.forEach((id) => {
-        pendingMissedPollsRef.current.delete(id);
+      serverIds.forEach((id) => pendingMissedPollsRef.current.delete(id));
+
+      const isFirstPage = (reqParams.offset ?? 0) === 0;
+      setPendingState((prev) => {
+        if (prev.target !== requestTarget || prev.items.length === 0) return prev;
+        // 已进入服务端列表的条目自动毕业；首屏刷新后仅保留仍在生成中的未落库乐观会话。
+        const nextItems = prev.items.filter(
+          (item) =>
+            !serverIds.has(item.chatId) &&
+            (!isFirstPage || item.chatGenerateStatus === ChatGenerateStatusEnum.generating)
+        );
+        return nextItems.length === prev.items.length ? prev : { ...prev, items: nextItems };
       });
 
-      const currentPending = getScopedPendingHistories();
-      if (currentPending.length > 0) {
-        const isFirstPage = (reqParams.offset ?? 0) === 0;
-        const nextPending = currentPending.filter((item) => {
-          if (serverIds.has(item.chatId)) return false;
-          // 首屏刷新后仅保留尚未落库且仍在生成中的乐观会话，其余未落库占位随之收敛。
-          return !isFirstPage || item.chatGenerateStatus === ChatGenerateStatusEnum.generating;
-        });
-        commitPendingHistories(nextPending);
-      }
-
-      // 原样返回服务端分页结果，确保 useScrollPagination 的 offset 与 total 严格按服务端记录推进。
       return res;
     },
-    [commitPendingHistories, getScopedPendingHistories, historyTargetParamsRef]
+    [historyTargetParamsRef]
   );
 
   const {
     ScrollData,
     isLoading: isPaginationLoading,
     isInitialLoading,
-    setData: setRawHistories,
+    setData: setServerHistories,
     setTotal: setHistoriesTotal,
     fetchData: loadHistories,
     data: serverHistories
@@ -253,48 +219,97 @@ const ChatContextProvider = ({
     showNoMoreTip: false
   });
 
-  const serverHistoriesRef = useRef(serverHistories);
-  useEffect(() => {
-    serverHistoriesRef.current = serverHistories;
-  }, [serverHistories]);
+  const serverHistoriesRef = useLatest(serverHistories);
+  const loadHistoriesRef = useLatest(loadHistories);
 
-  const setHistories = useCallback<React.Dispatch<React.SetStateAction<ChatHistoryItemType[]>>>(
-    (updater) => {
-      const prevServer = serverHistoriesRef.current;
-      const serverIds = new Set(prevServer.map((item) => item.chatId));
-      const prevPending = getScopedPendingHistories().filter((item) => !serverIds.has(item.chatId));
-      const prevMerged = prevPending.length > 0 ? [...prevPending, ...prevServer] : prevServer;
-      const nextMerged = typeof updater === 'function' ? updater(prevMerged) : updater;
+  const scheduleSilentReload = useMemoizedFn(() => {
+    if (silentReloadScheduledRef.current) return;
+    silentReloadScheduledRef.current = true;
+    queueMicrotask(() => {
+      silentReloadScheduledRef.current = false;
+      loadHistoriesRef.current?.({ init: true, silent: true });
+    });
+  });
 
-      const nextServer = nextMerged.filter((item) => serverIds.has(item.chatId));
-      const nextPending = nextMerged.filter((item) => !serverIds.has(item.chatId));
+  /** 同步会话运行状态：已落库项原位更新，未落库新会话写入乐观层并在首次完成时静默重拉首屏。 */
+  const syncHistoryStatus = useMemoizedFn(
+    ({
+      appId: targetAppId,
+      chatId: targetChatId,
+      status,
+      hasBeenRead,
+      title,
+      fallbackTitle = ''
+    }: SyncHistoryStatusParams) => {
+      if (!targetAppId || !targetChatId) return;
+      const nextHasBeenRead = hasBeenRead ?? status !== ChatGenerateStatusEnum.generating;
 
-      serverHistoriesRef.current = nextServer;
-      if (!isSameHistoryList(prevServer, nextServer)) {
-        if (nextMerged.length === 0) {
-          setRawHistories([]);
-        } else {
-          setRawHistories((latestServer) => {
-            const prevServerIds = new Set(prevServer.map((item) => item.chatId));
-            const extraNewServerItems = latestServer.filter(
-              (item) => !prevServerIds.has(item.chatId)
-            );
-            return extraNewServerItems.length > 0
-              ? [...nextServer, ...extraNewServerItems]
-              : nextServer;
-          });
-        }
+      const existsInServer = (serverHistoriesRef.current ?? []).some(
+        (item) => item.chatId === targetChatId && item.appId === targetAppId
+      );
+      if (existsInServer) {
+        setServerHistories((prev) =>
+          prev.map((item) =>
+            item.chatId === targetChatId && item.appId === targetAppId
+              ? {
+                  ...item,
+                  ...(title ? { title } : {}),
+                  chatGenerateStatus: status,
+                  updateTime: new Date(),
+                  ...(hasBeenRead !== undefined ? { hasBeenRead } : {})
+                }
+              : item
+          )
+        );
+        return;
       }
 
-      commitPendingHistories(nextPending);
-    },
-    [commitPendingHistories, getScopedPendingHistories, setRawHistories]
+      setPendingState((prev) => {
+        const scoped = prev.target === historyTargetParams ? prev.items : [];
+        const existingIndex = scoped.findIndex(
+          (item) => item.chatId === targetChatId && item.appId === targetAppId
+        );
+        const nextItems =
+          existingIndex === -1
+            ? [
+                {
+                  chatId: targetChatId,
+                  appId: targetAppId,
+                  title: title || fallbackTitle,
+                  customTitle: '',
+                  top: false,
+                  updateTime: new Date(),
+                  chatGenerateStatus: status,
+                  hasBeenRead: nextHasBeenRead
+                },
+                ...scoped
+              ]
+            : scoped.map((item, index) =>
+                index === existingIndex
+                  ? {
+                      ...item,
+                      ...(title ? { title } : {}),
+                      chatGenerateStatus: status,
+                      updateTime: new Date(),
+                      ...(hasBeenRead !== undefined ? { hasBeenRead } : {})
+                    }
+                  : item
+              );
+        return { target: historyTargetParams, items: nextItems };
+      });
+
+      if (status !== ChatGenerateStatusEnum.generating) {
+        pendingMissedPollsRef.current.delete(targetChatId);
+        scheduleSilentReload();
+      }
+    }
   );
 
   const pendingHistories = useMemo(
     () => (pendingState.target === historyTargetParams ? pendingState.items : []),
     [pendingState, historyTargetParams]
   );
+  const pendingHistoriesRef = useLatest(pendingHistories);
   const mergedHistories = useMemo(() => {
     if (pendingHistories.length === 0) return serverHistories;
     const serverIds = new Set(serverHistories.map((item) => item.chatId));
@@ -307,34 +322,33 @@ const ChatContextProvider = ({
     () => mergedHistories.map(normalizeHistoryTitle),
     [mergedHistories]
   );
-  const historiesRef = useRef(displayHistories);
+  const historiesRef = useLatest(displayHistories);
 
-  useEffect(() => {
-    historiesRef.current = displayHistories;
-  }, [displayHistories]);
-
-  const onChangeChatId = useCallback(
-    (changeChatId = getNanoid(24), forbid = false) => {
-      setHistories((state) =>
-        state.map((item) =>
-          item.chatId === changeChatId
-            ? {
-                ...item,
-                hasBeenRead:
-                  item.chatGenerateStatus === ChatGenerateStatusEnum.generating ? false : true
-              }
-            : item
-        )
+  const onChangeChatId = useMemoizedFn((changeChatId = getNanoid(24), forbid = false) => {
+    const markRead = (list: ChatHistoryItemType[]) =>
+      list.map((item) =>
+        item.chatId === changeChatId
+          ? {
+              ...item,
+              hasBeenRead:
+                item.chatGenerateStatus === ChatGenerateStatusEnum.generating ? false : true
+            }
+          : item
       );
 
-      if (chatId !== changeChatId) {
-        forbidLoadChat.current = forbid;
-        setChatId(changeChatId);
-      }
-      onCloseSlider();
-    },
-    [chatId, onCloseSlider, setChatId, setHistories]
-  );
+    setServerHistories(markRead);
+    setPendingState((prev) =>
+      prev.target === historyTargetParams && prev.items.some((i) => i.chatId === changeChatId)
+        ? { ...prev, items: markRead(prev.items) }
+        : prev
+    );
+
+    if (chatId !== changeChatId) {
+      forbidLoadChat.current = forbid;
+      setChatId(changeChatId);
+    }
+    onCloseSlider();
+  });
 
   const onChangeAppId = useCallback(
     (appId: string) => {
@@ -359,7 +373,7 @@ const ChatContextProvider = ({
       onBefore(params) {
         const { chatId, top, customTitle } = params[0];
 
-        setHistories((histories) => {
+        setServerHistories((histories) => {
           const updatedHistories = histories.map((history) => {
             if (history.chatId === chatId) {
               return {
@@ -395,9 +409,17 @@ const ChatContextProvider = ({
     {
       onSuccess(data, params) {
         const chatId = params[0];
-        const hasDeletedServerHistory = serverHistoriesRef.current.some((i) => i.chatId === chatId);
+        const hasDeletedServerHistory = (serverHistoriesRef.current ?? []).some(
+          (i) => i.chatId === chatId
+        );
 
-        setHistories((old) => old.filter((i) => i.chatId !== chatId));
+        setServerHistories((old) => old.filter((i) => i.chatId !== chatId));
+        setPendingState((prev) =>
+          prev.target === historyTargetParams && prev.items.some((i) => i.chatId === chatId)
+            ? { ...prev, items: prev.items.filter((i) => i.chatId !== chatId) }
+            : prev
+        );
+        pendingMissedPollsRef.current.delete(chatId);
         if (hasDeletedServerHistory) {
           setHistoriesTotal((total) => Math.max(total - 1, 0));
         }
@@ -418,7 +440,9 @@ const ChatContextProvider = ({
     {
       refreshDeps: [historyTargetParams],
       onSuccess() {
-        setHistories([]);
+        setServerHistories([]);
+        setPendingState({ target: historyTargetParams, items: [] });
+        pendingMissedPollsRef.current.clear();
         setHistoriesTotal(0);
       },
       onFinally() {
@@ -432,17 +456,35 @@ const ChatContextProvider = ({
       const { appId: currentAppId, chatId: currentChatId } = useChatStore.getState();
       if (currentAppId !== historyAppId || chatId !== currentChatId) return;
 
-      setHistories((state) =>
-        upsertHistoryTitle({
-          histories: state,
-          appId: historyAppId,
-          chatId,
-          title: newTitle
-        })
+      const existsInServer = (serverHistoriesRef.current ?? []).some(
+        (item) => item.chatId === chatId
       );
+      if (existsInServer) {
+        setServerHistories((state) =>
+          upsertHistoryTitle({
+            histories: state,
+            appId: historyAppId,
+            chatId,
+            title: newTitle
+          })
+        );
+      } else {
+        setPendingState((prev) => {
+          const scoped = prev.target === historyTargetParams ? prev.items : [];
+          return {
+            target: historyTargetParams,
+            items: upsertHistoryTitle({
+              histories: scoped,
+              appId: historyAppId,
+              chatId,
+              title: newTitle
+            })
+          };
+        });
+      }
       loadHistories({ init: true, silent: true });
     },
-    [historyAppId, loadHistories, setHistories]
+    [historyAppId, historyTargetParams, loadHistories, serverHistoriesRef, setServerHistories]
   );
 
   const historyChatIdsKey = useMemo(
@@ -491,17 +533,12 @@ const ChatContextProvider = ({
 
   useEffect(() => {
     statusPollingNeedsRetry.current = false;
-    if (pendingTargetRef.current !== historyTargetParams) {
-      pendingMissedPollsRef.current.clear();
-      pendingTargetRef.current = historyTargetParams;
-      pendingHistoriesRef.current = [];
-    }
+    pendingMissedPollsRef.current.clear();
   }, [historyTargetParams]);
 
   const hasOutLinkTarget = Boolean(
     historyOutLinkAuthData?.shareId && historyOutLinkAuthData?.outLinkUid
   );
-  const loadHistoriesRef = useLatest(loadHistories);
 
   // 轮询同步侧栏 chatGenerateStatus / hasBeenRead（以服务端为准）。
   // 运行中或上一轮请求失败时继续重试；成功确认全部空闲后停止，切回标签页仍单次刷新。
@@ -509,7 +546,7 @@ const ChatContextProvider = ({
     if (
       disabled ||
       (!historyAppId && !historySkillId && !hasOutLinkTarget) ||
-      !historiesRef.current.length
+      !(historiesRef.current?.length ?? 0)
     ) {
       return;
     }
@@ -536,17 +573,16 @@ const ChatContextProvider = ({
       if (polling || disposed) return;
       polling = true;
       try {
-        const chatIds = historiesRef.current.map((h) => h.chatId);
+        const currentHistories = historiesRef.current ?? [];
+        const chatIds = currentHistories.map((h) => h.chatId);
         const res = await getChatHistoryStatus({ ...historyTargetParams, chatIds });
         if (disposed) return;
         statusPollingNeedsRetry.current = false;
         const map = new Map(res.list.map((item) => [item.chatId, item]));
         const expiredPendingIds = new Set<string>();
-        map.forEach((_status, id) => {
-          pendingMissedPollsRef.current.delete(id);
-        });
+        map.forEach((_status, id) => pendingMissedPollsRef.current.delete(id));
         const now = Date.now();
-        getScopedPendingHistories().forEach((item) => {
+        (pendingHistoriesRef.current ?? []).forEach((item) => {
           if (item.chatGenerateStatus !== ChatGenerateStatusEnum.generating) return;
           if (map.has(item.chatId)) return;
           const prevMiss = pendingMissedPollsRef.current.get(item.chatId);
@@ -560,7 +596,7 @@ const ChatContextProvider = ({
             pendingMissedPollsRef.current.set(item.chatId, { count, firstMissedAt });
           }
         });
-        const hasCompletedGenerating = historiesRef.current.some((item) => {
+        const hasCompletedGenerating = currentHistories.some((item) => {
           if (item.chatGenerateStatus !== ChatGenerateStatusEnum.generating) return false;
           const status = map.get(item.chatId);
           return (
@@ -569,24 +605,33 @@ const ChatContextProvider = ({
               ChatGenerateStatusEnum.generating
           );
         });
-        setHistories((prev) =>
-          prev
-            .filter((item) => !expiredPendingIds.has(item.chatId))
-            .map((item) => {
-              const status = map.get(item.chatId);
-              if (!status) return item;
-              const nextGen = status.chatGenerateStatus ?? item.chatGenerateStatus;
-              return {
-                ...item,
-                chatGenerateStatus: nextGen,
-                hasBeenRead:
-                  nextGen === ChatGenerateStatusEnum.generating
-                    ? false
-                    : (status.hasBeenRead ?? item.hasBeenRead),
-                updateTime: status.updateTime ?? item.updateTime
-              };
-            })
-        );
+        const applyStatus = (item: ChatHistoryItemType) => {
+          const status = map.get(item.chatId);
+          if (!status) return item;
+          const nextGen = status.chatGenerateStatus ?? item.chatGenerateStatus;
+          return {
+            ...item,
+            chatGenerateStatus: nextGen,
+            hasBeenRead:
+              nextGen === ChatGenerateStatusEnum.generating
+                ? false
+                : (status.hasBeenRead ?? item.hasBeenRead),
+            updateTime: status.updateTime ?? item.updateTime
+          };
+        };
+
+        if ((serverHistoriesRef.current ?? []).some((item) => map.has(item.chatId))) {
+          setServerHistories((prev) => prev.map(applyStatus));
+        }
+        if ((pendingHistoriesRef.current ?? []).length > 0) {
+          setPendingState((prev) => {
+            if (prev.target !== historyTargetParams || prev.items.length === 0) return prev;
+            const nextItems = prev.items
+              .filter((item) => !expiredPendingIds.has(item.chatId))
+              .map(applyStatus);
+            return { ...prev, items: nextItems };
+          });
+        }
         if (hasCompletedGenerating) {
           // 后台生成完成后静默刷新首屏历史，补齐服务端落库的真实标题与排序。
           loadHistoriesRef.current?.({ init: true, silent: true });
@@ -623,9 +668,11 @@ const ChatContextProvider = ({
     historyTargetParams,
     historyChatIdsKey,
     hasGeneratingInSidebar,
-    getScopedPendingHistories,
+    historiesRef,
     loadHistoriesRef,
-    setHistories
+    pendingHistoriesRef,
+    serverHistoriesRef,
+    setServerHistories
   ]);
 
   const isLoading = isDeletingHistory || isClearingHistory || isPaginationLoading;
@@ -643,7 +690,7 @@ const ChatContextProvider = ({
       onChangeAppId,
       isLoading,
       isInitialLoading,
-      setHistories,
+      syncHistoryStatus,
       ScrollData,
       loadHistories,
       histories: displayHistories,
@@ -664,7 +711,7 @@ const ChatContextProvider = ({
       onOpenSlider,
       onUpdateHistory,
       onUpdateHistoryTitle,
-      setHistories
+      syncHistoryStatus
     ]
   );
   return <ChatContext.Provider value={contextValue}>{children}</ChatContext.Provider>;

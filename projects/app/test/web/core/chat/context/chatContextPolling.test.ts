@@ -296,37 +296,32 @@ describe('chat history lease polling lifecycle', () => {
 
     // 乐观插入 A（尚未落库）和 B（将先完成）
     await act(async () => {
-      ctx.setHistories((prev) => [
-        {
-          appId: 'app',
-          chatId: 'chat-a',
-          title: 'New Chat',
-          updateTime: new Date(),
-          chatGenerateStatus: ChatGenerateStatusEnum.generating,
-          hasBeenRead: false
-        },
-        {
-          appId: 'app',
-          chatId: 'chat-b',
-          title: 'New Chat',
-          updateTime: new Date(),
-          chatGenerateStatus: ChatGenerateStatusEnum.generating,
-          hasBeenRead: false
-        },
-        ...prev
-      ]);
+      ctx.syncHistoryStatus({
+        appId: 'app',
+        chatId: 'chat-a',
+        status: ChatGenerateStatusEnum.generating,
+        hasBeenRead: false,
+        fallbackTitle: 'New Chat'
+      });
+      ctx.syncHistoryStatus({
+        appId: 'app',
+        chatId: 'chat-b',
+        status: ChatGenerateStatusEnum.generating,
+        hasBeenRead: false,
+        fallbackTitle: 'New Chat'
+      });
     });
 
-    // B 完成后触发首屏静默重拉，此时服务端仅返回 B，A 必须继续保留并参与轮询
+    // B 完成后自动触发首屏静默重拉，此时服务端仅返回 B，A 必须继续保留并参与轮询
     await act(async () => {
-      ctx.setHistories((prev) =>
-        prev.map((item) =>
-          item.chatId === 'chat-b'
-            ? { ...item, chatGenerateStatus: ChatGenerateStatusEnum.done, hasBeenRead: true }
-            : item
-        )
-      );
-      await ctx.loadHistories({ init: true, silent: true });
+      ctx.syncHistoryStatus({
+        appId: 'app',
+        chatId: 'chat-b',
+        status: ChatGenerateStatusEnum.done,
+        hasBeenRead: true
+      });
+      await Promise.resolve();
+      await Promise.resolve();
     });
 
     expect(document.querySelector('output')?.textContent).toBe('chat-a:0,chat-b:1');

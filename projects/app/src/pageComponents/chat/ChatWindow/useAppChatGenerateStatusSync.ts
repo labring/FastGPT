@@ -1,26 +1,21 @@
 import type { ChatGenerateStatusChangeHandler } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { useMemoizedFn } from 'ahooks';
 import { useTranslation } from 'next-i18next';
-import { useRef } from 'react';
 import { useContextSelector } from 'use-context-selector';
 
 /**
  * 在 App/Share 页面层同步侧栏历史的生成状态。
  *
  * ChatBox / PluginRunBox 只通过 `onChatGenerateStatusChange` 抛出标准 source target 事件，不直接感知
- * ChatContext 或侧栏历史模型；页面层根据自己的外部状态结构决定如何消费这个事件。
+ * ChatContext 或侧栏历史模型；页面层将 app 维度的状态事件转交给 ChatContext 统一维护。
  */
 export const useAppChatGenerateStatusSync = (): ChatGenerateStatusChangeHandler => {
   const { t } = useTranslation();
   const chatTitle = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.title);
-  const setHistories = useContextSelector(ChatContext, (v) => v.setHistories);
-  const loadHistories = useContextSelector(ChatContext, (v) => v.loadHistories);
-  // 记录首次运行的新会话，待运行落库结束后静默重拉首屏历史，避免运行刚开始时抢在写库前覆写乐观条目。
-  const pendingServerSyncKeysRef = useRef(new Set<string>());
-  const reloadScheduledRef = useRef(false);
+  const syncHistoryStatus = useContextSelector(ChatContext, (v) => v.syncHistoryStatus);
 
   return useMemoizedFn(({ sourceTarget, chatId, status, hasBeenRead, title }) => {
     if (sourceTarget.sourceType !== ChatSourceTypeEnum.app) return;
@@ -28,62 +23,13 @@ export const useAppChatGenerateStatusSync = (): ChatGenerateStatusChangeHandler 
     const appId = sourceTarget.sourceId;
     if (!appId || !chatId) return;
 
-    const syncKey = `${appId}:${chatId}`;
-    const triggerSilentReload = () => {
-      if (reloadScheduledRef.current) return;
-      reloadScheduledRef.current = true;
-      queueMicrotask(() => {
-        reloadScheduledRef.current = false;
-        loadHistories({ init: true, silent: true });
-      });
-    };
-
-    setHistories((prev) => {
-      const existingIndex = prev.findIndex(
-        (item) => item.chatId === chatId && item.appId === appId
-      );
-      const nextHasBeenRead = hasBeenRead ?? status !== ChatGenerateStatusEnum.generating;
-
-      if (existingIndex === -1) {
-        if (status === ChatGenerateStatusEnum.generating) {
-          pendingServerSyncKeysRef.current.add(syncKey);
-        } else {
-          pendingServerSyncKeysRef.current.delete(syncKey);
-          triggerSilentReload();
-        }
-        return [
-          {
-            chatId,
-            appId,
-            title: title || chatTitle || t('common:core.chat.New Chat'),
-            customTitle: '',
-            top: false,
-            updateTime: new Date(),
-            chatGenerateStatus: status,
-            hasBeenRead: nextHasBeenRead
-          },
-          ...prev
-        ];
-      }
-
-      if (
-        status !== ChatGenerateStatusEnum.generating &&
-        pendingServerSyncKeysRef.current.delete(syncKey)
-      ) {
-        triggerSilentReload();
-      }
-
-      return prev.map((item, index) =>
-        index === existingIndex
-          ? {
-              ...item,
-              ...(title ? { title } : {}),
-              chatGenerateStatus: status,
-              updateTime: new Date(),
-              ...(hasBeenRead !== undefined ? { hasBeenRead } : {})
-            }
-          : item
-      );
+    syncHistoryStatus({
+      appId,
+      chatId,
+      status,
+      hasBeenRead,
+      title,
+      fallbackTitle: chatTitle || t('common:core.chat.New Chat')
     });
   });
 };

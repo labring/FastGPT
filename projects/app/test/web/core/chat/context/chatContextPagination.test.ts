@@ -93,17 +93,13 @@ describe('ChatContextProvider real pagination with pending optimistic histories'
 
     // 插入未落库的乐观 generating 会话 A，并触发首屏静默刷新（如另一会话 B 完成）
     await act(async () => {
-      getCtx().setHistories((prev) => [
-        {
-          appId: 'app',
-          chatId: 'pending-a',
-          title: 'Pending A',
-          updateTime: new Date(),
-          chatGenerateStatus: ChatGenerateStatusEnum.generating,
-          hasBeenRead: false
-        },
-        ...prev
-      ]);
+      getCtx().syncHistoryStatus({
+        appId: 'app',
+        chatId: 'pending-a',
+        status: ChatGenerateStatusEnum.generating,
+        hasBeenRead: false,
+        title: 'Pending A'
+      });
     });
 
     await act(async () => {
@@ -130,17 +126,13 @@ describe('ChatContextProvider real pagination with pending optimistic histories'
     expect(getCtx().histories).toHaveLength(20);
 
     await act(async () => {
-      getCtx().setHistories((prev) => [
-        {
-          appId: 'app',
-          chatId: 'pending-a',
-          title: 'Pending A',
-          updateTime: new Date(),
-          chatGenerateStatus: ChatGenerateStatusEnum.generating,
-          hasBeenRead: false
-        },
-        ...prev
-      ]);
+      getCtx().syncHistoryStatus({
+        appId: 'app',
+        chatId: 'pending-a',
+        status: ChatGenerateStatusEnum.generating,
+        hasBeenRead: false,
+        title: 'Pending A'
+      });
     });
 
     await act(async () => {
