@@ -34,6 +34,7 @@ import {
   buildAgentLoopCoreInput,
   buildAgentLoopCorePausedMemories,
   createAgentLoopCoreChildInteractiveParams,
+  getAgentLoopCorePersistedTextOutput,
   prepareAgentLoopCoreProviderRunState,
   readAgentLoopCoreActivePlan,
   readAgentLoopCoreProviderStateMemory,
@@ -58,9 +59,8 @@ import { ensureAgentSandboxRuntime } from './sub/sandbox/prepare';
 import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
 import { checkModelContextModeration } from '../../../../plugin/moderation/modelInput';
 import { MODERATION_BLOCKED_ERROR_MESSAGE } from '@fastgpt/global/core/plugin/moderation/constants';
-
-/** 失败且没有任何可读错误文本时的兜底气泡文案，保证节点详情与用户气泡不空白。 */
-const AGENT_ERROR_FALLBACK_TEXT = '本轮执行失败，请重试';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { getAgentErrorFallbackText } from './constants';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
@@ -558,10 +558,25 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     // 4. 输出归一化。
     // done 正常落 answer；error/aborted 在未开启异常捕获时转成可见文本。开启 catchError 时
     // 仍要走错误分支路由，但必须保留一段可见文本，避免用户侧气泡与节点详情都是空白。
+    const agentErrorFallbackText = getAgentErrorFallbackText(lang);
     const finalTextForBubble =
       coreResult.status === 'error'
-        ? outputSummary.finalText || outputSummary.errorText || AGENT_ERROR_FALLBACK_TEXT
+        ? outputSummary.finalText || outputSummary.errorText || agentErrorFallbackText
         : outputSummary.finalText;
+    // 失败兜底文本会被补进 assistantResponses（聊天记录与节点详情），但模型在输出正文前
+    // 失败时它从未通过 SSE 发出。先按同一套「已持久化文本 vs 待补文本」规则算出未发送增量，
+    // 待输出归一化后由既有流式出口补发一次，避免前端气泡空白。
+    const persistedTextBeforeBubble = getAgentLoopCorePersistedTextOutput(
+      outputSummary.assistantResponses
+    );
+    const unsentErrorText =
+      coreResult.status === 'error' &&
+      finalTextForBubble &&
+      !persistedTextBeforeBubble.endsWith(finalTextForBubble)
+        ? persistedTextBeforeBubble && finalTextForBubble.startsWith(persistedTextBeforeBubble)
+          ? finalTextForBubble.slice(persistedTextBeforeBubble.length)
+          : finalTextForBubble
+        : '';
     const finalOutput = buildAgentLoopCoreFinalAssistantOutput({
       assistantResponses: outputSummary.assistantResponses,
       previousAssistantResponses,
@@ -609,11 +624,18 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
     const doneMemories = buildAgentMemories(buildClearedNodeMemories());
     const errorText = outputSummary.errorText ?? '';
+
+    // 补发未流式的失败提示：只在本轮失败、非交互、且未关闭答复流式输出时发送一次。
+    // 正常已流出的正文不在 unsentErrorText 中，不会重复或覆盖。
+    if (unsentErrorText && isResponseAnswerText !== false) {
+      getWorkflowContext().workflowStreamResponse?.(workflowSseEvent.answerDelta(unsentErrorText));
+    }
+
     const doneNodeResponse = buildAgentNodeResponse({
       // 仅在失败分支兜底，正常结束的空答案保持原样，避免误报执行失败。
       textOutput:
         coreResult.status === 'error'
-          ? finalOutput.answerText || errorText || AGENT_ERROR_FALLBACK_TEXT
+          ? finalOutput.answerText || errorText || agentErrorFallbackText
           : finalOutput.answerText,
       ...(coreResult.status === 'error' ? { errorText } : {})
     });
