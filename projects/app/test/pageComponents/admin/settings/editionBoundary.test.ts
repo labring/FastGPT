@@ -11,6 +11,7 @@ import type { SystemInstanceConfigDomainKey } from '@fastgpt/global/common/syste
 const mocks = vi.hoisted(() => ({
   isPro: false,
   enableSaasAdminConfig: false,
+  login2faEnabled: false,
   save: undefined as undefined | ((data: any) => Promise<unknown>),
   update: vi.fn(),
   patch: vi.fn(),
@@ -18,12 +19,17 @@ const mocks = vi.hoisted(() => ({
   switchRows: new Map<string, { isChecked: boolean; onChange: (checked: boolean) => void }>(),
   formLabels: [] as string[],
   authOverrides: {} as Record<string, unknown>,
+  authSecretKeys: new Set<string>(),
   featureOverrides: {} as Record<string, unknown>
 }));
 
 vi.mock('@/web/common/system/useSystemStore', () => ({
   useSystemStore: () => ({
-    feConfigs: { isProService: mocks.isPro, enableSaasAdminConfig: mocks.enableSaasAdminConfig }
+    feConfigs: {
+      isProService: mocks.isPro,
+      enableSaasAdminConfig: mocks.enableSaasAdminConfig,
+      login2faEnabled: mocks.login2faEnabled
+    }
   })
 }));
 vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
@@ -32,7 +38,7 @@ vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
 vi.mock('@/web/common/system/useDomainConfig', () => ({
   useDomainConfig: (domain: SystemInstanceConfigDomainKey) => ({
     revision: 1,
-    isSecretConfigured: () => false,
+    isSecretConfigured: (path: string) => domain === 'auth' && mocks.authSecretKeys.has(path),
     isLoading: false,
     overrides: domain === 'auth' ? mocks.authOverrides : {},
     effectiveConfig: filterDomainDataByEdition({
@@ -79,6 +85,9 @@ vi.mock('@chakra-ui/react', () => {
   };
 });
 vi.mock('@fastgpt/web/components/common/MySelect', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/common/MyPopover/PopoverConfirm', () => ({
+  default: ({ Trigger }: any) => Trigger
+}));
 vi.mock('@/pageComponents/admin/settings/AdminSettingPage', () => ({
   default: ({
     children,
@@ -120,7 +129,9 @@ describe('configuration form edition boundary', () => {
   beforeEach(() => {
     mocks.isPro = false;
     mocks.enableSaasAdminConfig = false;
+    mocks.login2faEnabled = false;
     mocks.authOverrides = {};
+    mocks.authSecretKeys = new Set<string>();
     mocks.featureOverrides = {};
     mocks.patch.mockReset().mockResolvedValue(undefined);
     mocks.pageSave = undefined;
@@ -128,6 +139,76 @@ describe('configuration form edition boundary', () => {
     mocks.formLabels = [];
     mocks.update.mockReset().mockResolvedValue({ results: [] });
   });
+
+  it.each([
+    [false, true, false],
+    [true, false, false],
+    [true, true, true]
+  ])(
+    'shows login 2FA SMS template input only for Pro=%s / 2FA=%s',
+    (isPro, login2faEnabled, visible) => {
+      mocks.isPro = isPro;
+      mocks.login2faEnabled = login2faEnabled;
+      mocks.authOverrides = {
+        loginProviders: { phone: { accessKeyId: 'ak', signName: 'sign' } }
+      };
+      mocks.authSecretKeys = new Set(['loginProviders.phone.accessKeySecret']);
+      const html = renderToStaticMarkup(React.createElement(AuthSettings));
+      expect(html.includes('id="smsLogin"')).toBe(isPro);
+      expect(mocks.formLabels.includes('admin:login_code_chinese_template')).toBe(visible);
+    }
+  );
+
+  it('shows prerequisite links instead of email switch or SMS templates when SMTP/Aliyun SMS are unconfigured', () => {
+    mocks.isPro = true;
+    const unconfiguredHtml = renderToStaticMarkup(React.createElement(AuthSettings));
+    expect(unconfiguredHtml).toContain('href="/admin/settings/core#email"');
+    expect(unconfiguredHtml).toContain('admin:please_configure_smtp_first');
+    expect(unconfiguredHtml).toContain('admin:smtp_service');
+    expect(mocks.switchRows.has('admin:enable_email_self_registration')).toBe(false);
+
+    expect(unconfiguredHtml).toContain('href="/admin/settings/core#sms"');
+    expect(unconfiguredHtml).toContain('admin:aliyun_sms_not_configured');
+    expect(unconfiguredHtml).toContain('admin:aliyun_sms');
+    expect(mocks.formLabels).not.toContain('admin:registration_code_chinese_template');
+
+    mocks.switchRows.clear();
+    mocks.formLabels = [];
+    mocks.authOverrides = {
+      loginProviders: {
+        email: { smtp: 'smtp.example.com', user: 'noreply@example.com' },
+        phone: { accessKeyId: 'ak', signName: 'sign' }
+      }
+    };
+    mocks.authSecretKeys = new Set([
+      'loginProviders.email.pass',
+      'loginProviders.phone.accessKeySecret'
+    ]);
+    const configuredHtml = renderToStaticMarkup(React.createElement(AuthSettings));
+    expect(configuredHtml).not.toContain('href="/admin/settings/core#email"');
+    expect(configuredHtml).not.toContain('href="/admin/settings/core#sms"');
+    expect(mocks.switchRows.has('admin:enable_email_self_registration')).toBe(true);
+    expect(mocks.formLabels).toContain('admin:registration_code_chinese_template');
+  });
+
+  it.each([false, true])(
+    'shows cancellation SMS template inputs only when accountCancellation.enabled=%s',
+    (enabled) => {
+      mocks.isPro = true;
+      mocks.authOverrides = { accountCancellation: { enabled } };
+      const html = renderToStaticMarkup(React.createElement(AuthSettings));
+      expect(html.includes('id="accountCancellation"')).toBe(true);
+      expect(mocks.formLabels.includes('admin:cancellation_request_chinese_template')).toBe(
+        enabled
+      );
+      expect(mocks.formLabels.includes('admin:cancellation_reminder_chinese_template')).toBe(
+        enabled
+      );
+      expect(mocks.formLabels.includes('admin:same_day_cancellation_chinese_template')).toBe(
+        enabled
+      );
+    }
+  );
 
   it.each([
     [false, true, false],

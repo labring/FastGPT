@@ -1418,5 +1418,11 @@
   "ops_perf_err_filter_error": "集合權限或中繼資料過濾查詢異常",
   "ops_perf_err_image_caption_error": "圖片描述產生（VLM）階段異常",
   "ops_perf_err_post_process_error": "檢索結果融合、裁剪或後處理異常",
-  "ops_perf_err_search_error": "知識庫檢索執行異常"
+  "ops_perf_err_search_error": "知識庫檢索執行異常",
+  "please_configure_smtp_first": "請先設定 {{service}}",
+  "smtp_service": "SMTP 服務",
+  "aliyun_sms_not_configured": "未設定{{service}}",
+  "aliyun_sms": "阿里雲簡訊",
+  "clear_smtp_config_confirm": "確認清空信箱 SMTP 服務設定？清空後需點擊儲存生效。",
+  "clear_aliyun_sms_confirm": "確認清空阿里雲簡訊服務設定？清空後需點擊儲存生效。"
 }

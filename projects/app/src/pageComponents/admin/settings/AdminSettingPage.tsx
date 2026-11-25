@@ -87,7 +87,9 @@ const AdminSettingPage = ({
       if (errors[0]) form.setFocus(errors[0].name);
     }
   };
-  const [activeId, setActiveId] = useState<string>('');
+  const [activeId, setActiveId] = useState<string>(() =>
+    typeof window !== 'undefined' ? window.location.hash.slice(1) : ''
+  );
   const currentActiveId = tocItems.some((item) => item.id === activeId)
     ? activeId
     : tocItems[0]?.id || '';
@@ -127,6 +129,14 @@ const AdminSettingPage = ({
   );
   // 卸载时取消挂起的节流调用，避免在已卸载组件上 setState
   useEffect(() => () => handleScroll.cancel(), [handleScroll]);
+
+  // 支持跨页跳转带锚点（如 /admin/settings/core#email）在数据加载完成后定位到目标区块。
+  useEffect(() => {
+    if (isLoading || typeof window === 'undefined') return;
+    const hash = window.location.hash.slice(1);
+    if (!hash) return;
+    document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [isLoading]);
 
   const headerActions =
     headerRightContent ||

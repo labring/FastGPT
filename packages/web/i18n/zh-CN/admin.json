@@ -1418,5 +1418,11 @@
   "ops_perf_err_filter_error": "集合权限或元数据过滤查询异常",
   "ops_perf_err_image_caption_error": "图片描述生成（VLM）阶段异常",
   "ops_perf_err_post_process_error": "检索结果融合、裁剪或后处理异常",
-  "ops_perf_err_search_error": "知识库检索执行异常"
+  "ops_perf_err_search_error": "知识库检索执行异常",
+  "please_configure_smtp_first": "请先配置 {{service}}",
+  "smtp_service": "SMTP 服务",
+  "aliyun_sms_not_configured": "未配置{{service}}",
+  "aliyun_sms": "阿里云短信",
+  "clear_smtp_config_confirm": "确认清空邮箱 SMTP 服务配置？清空后需点击保存生效。",
+  "clear_aliyun_sms_confirm": "确认清空阿里云短信服务配置？清空后需点击保存生效。"
 }

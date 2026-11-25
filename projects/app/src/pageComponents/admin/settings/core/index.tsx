@@ -1,8 +1,9 @@
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   SimpleGrid,
   Box,
+  Button,
   HStack,
   Input,
   Switch,
@@ -15,6 +16,7 @@ import {
 } from '@chakra-ui/react';
 import { useForm, Controller, useWatch } from 'react-hook-form';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { useAdminConfigSaveRequest } from '@/web/common/system/useAdminConfigSaveRequest';
 import { useDomainConfig, updateDomainConfigApi } from '@/web/common/system/useDomainConfig';
 import { useAdminPermission } from '@/pageComponents/admin/useAdminPermission';
@@ -111,11 +113,71 @@ const CoreSettingComponent = () => {
     handleSubmit,
     reset,
     register,
+    setValue,
     formState: { errors }
   } = form;
 
+  const [emailClearSeq, setEmailClearSeq] = useState(0);
+  const [phoneClearSeq, setPhoneClearSeq] = useState(0);
+
   const documentParseProvider = useWatch({ control, name: 'documentParse.provider' });
   const downloadMode = useWatch({ control, name: 'downloadMode' });
+  const emailSmtp = useWatch({ control, name: 'email.smtp' });
+  const emailUser = useWatch({ control, name: 'email.user' });
+  const emailPass = useWatch({ control, name: 'email.pass' });
+  const emailPort = useWatch({ control, name: 'email.port' });
+  const emailSecure = useWatch({ control, name: 'email.secure' });
+  const phoneAccessKeyId = useWatch({ control, name: 'phone.accessKeyId' });
+  const phoneAccessKeySecret = useWatch({ control, name: 'phone.accessKeySecret' });
+  const phoneSignName = useWatch({ control, name: 'phone.signName' });
+
+  const isEmailPassFilled =
+    typeof emailPass === 'string'
+      ? Boolean(emailPass.trim())
+      : auth.isSecretConfigured('loginProviders.email.pass');
+  const isSmtpFieldsRequired = Boolean(emailSmtp?.trim());
+  const canClearEmail = Boolean(
+    emailSmtp?.trim() ||
+    emailUser?.trim() ||
+    isEmailPassFilled ||
+    (emailPort !== undefined && emailPort !== 465) ||
+    emailSecure === false
+  );
+  const isPhoneSecretFilled =
+    typeof phoneAccessKeySecret === 'string'
+      ? Boolean(phoneAccessKeySecret.trim())
+      : auth.isSecretConfigured('loginProviders.phone.accessKeySecret');
+  const isPhoneFieldsRequired = Boolean(
+    phoneAccessKeyId?.trim() || phoneSignName?.trim() || isPhoneSecretFilled
+  );
+
+  // 一键清空 SMTP / 阿里云短信整组凭据，避免密钥输入框处于必填锁死时无法逐项清空。
+  const handleClearEmail = () => {
+    setValue('email.smtp', '', { shouldDirty: true });
+    setValue('email.user', '', { shouldDirty: true });
+    setValue('email.pass', '', { shouldDirty: true });
+    setValue('email.port', 465, { shouldDirty: true });
+    setValue('email.secure', true, { shouldDirty: true });
+    setEmailClearSeq((seq) => seq + 1);
+  };
+  const handleClearPhone = () => {
+    setValue('phone.accessKeyId', '', { shouldDirty: true });
+    setValue('phone.accessKeySecret', '', { shouldDirty: true });
+    setValue('phone.signName', '', { shouldDirty: true });
+    setPhoneClearSeq((seq) => seq + 1);
+  };
+
+  useEffect(() => {
+    if (!isSmtpFieldsRequired) {
+      form.clearErrors(['email.user', 'email.pass', 'email.port']);
+    }
+  }, [isSmtpFieldsRequired, form]);
+
+  useEffect(() => {
+    if (!isPhoneFieldsRequired) {
+      form.clearErrors(['phone.accessKeyId', 'phone.accessKeySecret', 'phone.signName']);
+    }
+  }, [isPhoneFieldsRequired, form]);
   const storageCapabilities = storage.storageCapabilities;
   const supportsExternalEndpoint = storageCapabilities?.supportsExternalEndpoint ?? true;
   const supportsCdnEndpoint = storageCapabilities?.supportsCdnEndpoint ?? true;
@@ -851,7 +913,25 @@ const CoreSettingComponent = () => {
 
       {/* 4. 邮箱 SMTP 服务 */}
       {showEmail && (
-        <AdminSettingSection id="email" title={t('admin:email_notification_config')} showDivider>
+        <AdminSettingSection
+          id="email"
+          title={t('admin:email_notification_config')}
+          showDivider
+          rightContent={
+            canClearEmail ? (
+              <PopoverConfirm
+                type="delete"
+                content={t('admin:clear_smtp_config_confirm')}
+                Trigger={
+                  <Button type={'button'} variant={'whiteBase'} size={'sm'}>
+                    {t('common:Clear')}
+                  </Button>
+                }
+                onConfirm={handleClearEmail}
+              />
+            ) : undefined
+          }
+        >
           <SimpleGrid columns={[1, 2]} spacing={5}>
             <AdminFormItem
               label={t('admin:smtp_server_address')}
@@ -866,27 +946,42 @@ const CoreSettingComponent = () => {
             <AdminFormItem
               label={t('admin:sender_email_account')}
               tooltip={t('admin:account_used_to_send_system_notification_emails')}
+              isRequired={isSmtpFieldsRequired}
             >
               <Input
                 isInvalid={Boolean(form.getFieldState('email.user', form.formState).error)}
-                {...register('email.user')}
+                {...register('email.user', {
+                  validate: (value) =>
+                    !isSmtpFieldsRequired || Boolean(value?.trim()) || t('admin:required')
+                })}
                 placeholder="no-reply@example.com"
               />
             </AdminFormItem>
             <AdminFormItem
               label={t('admin:email_auth_code_password')}
               tooltip={t('admin:smtp_login_credentials')}
+              isRequired={isSmtpFieldsRequired}
             >
               <Controller
                 name="email.pass"
                 control={control}
+                rules={{
+                  validate: (value) =>
+                    !isSmtpFieldsRequired ||
+                    (typeof value === 'string'
+                      ? Boolean(value.trim())
+                      : auth.isSecretConfigured('loginProviders.email.pass')) ||
+                    t('admin:required')
+                }}
                 render={({ field }) => (
                   <AdminSecretInput
+                    key={`email-pass-${emailClearSeq}`}
                     isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
                     isConfigured={auth.isSecretConfigured('loginProviders.email.pass')}
+                    isRequired={isSmtpFieldsRequired}
                   />
                 )}
               />
@@ -894,10 +989,20 @@ const CoreSettingComponent = () => {
             <AdminFormItem
               label={t('admin:smtp_port')}
               tooltip={t('admin:common_ports_465_ssl_587_tls')}
+              isRequired={isSmtpFieldsRequired}
             >
               <Controller
                 name="email.port"
                 control={control}
+                rules={{
+                  validate: (value) =>
+                    !isSmtpFieldsRequired ||
+                    (typeof value === 'number' &&
+                      Number.isInteger(value) &&
+                      value >= 1 &&
+                      value <= 65535) ||
+                    t('admin:required')
+                }}
                 render={({ field }) => (
                   <NumberInput
                     isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
@@ -938,32 +1043,64 @@ const CoreSettingComponent = () => {
 
       {/* 5. 阿里云短信服务 */}
       {showPhone && (
-        <AdminSettingSection id="sms" title={t('admin:aliyun_sms_credentials')} showDivider>
+        <AdminSettingSection
+          id="sms"
+          title={t('admin:aliyun_sms_credentials')}
+          showDivider
+          rightContent={
+            isPhoneFieldsRequired ? (
+              <PopoverConfirm
+                type="delete"
+                content={t('admin:clear_aliyun_sms_confirm')}
+                Trigger={
+                  <Button type={'button'} variant={'whiteBase'} size={'sm'}>
+                    {t('common:Clear')}
+                  </Button>
+                }
+                onConfirm={handleClearPhone}
+              />
+            ) : undefined
+          }
+        >
           <SimpleGrid columns={[1, 3]} spacing={5}>
             <AdminFormItem
               label={t('admin:aliyun_accesskeyid')}
               tooltip={t('admin:sms_accesskey_id')}
+              isRequired={isPhoneFieldsRequired}
             >
               <Input
                 isInvalid={Boolean(form.getFieldState('phone.accessKeyId', form.formState).error)}
-                {...register('phone.accessKeyId')}
-                placeholder="******"
+                {...register('phone.accessKeyId', {
+                  validate: (value) =>
+                    !isPhoneFieldsRequired || Boolean(value?.trim()) || t('admin:required')
+                })}
               />
             </AdminFormItem>
             <AdminFormItem
               label={t('admin:aliyun_accesskeysecret')}
               tooltip={t('admin:sms_accesskey_secret')}
+              isRequired={isPhoneFieldsRequired}
             >
               <Controller
                 name="phone.accessKeySecret"
                 control={control}
+                rules={{
+                  validate: (value) =>
+                    !isPhoneFieldsRequired ||
+                    (typeof value === 'string'
+                      ? Boolean(value.trim())
+                      : auth.isSecretConfigured('loginProviders.phone.accessKeySecret')) ||
+                    t('admin:required')
+                }}
                 render={({ field }) => (
                   <AdminSecretInput
+                    key={`phone-secret-${phoneClearSeq}`}
                     isInvalid={Boolean(form.getFieldState(field.name, form.formState).error)}
                     name={field.name}
                     value={field.value}
                     onChange={field.onChange}
                     isConfigured={auth.isSecretConfigured('loginProviders.phone.accessKeySecret')}
+                    isRequired={isPhoneFieldsRequired}
                   />
                 )}
               />
@@ -971,11 +1108,14 @@ const CoreSettingComponent = () => {
             <AdminFormItem
               label={t('admin:sms_signature')}
               tooltip={t('admin:signature_name_approved_in_the_aliyun_sms_console')}
+              isRequired={isPhoneFieldsRequired}
             >
               <Input
                 isInvalid={Boolean(form.getFieldState('phone.signName', form.formState).error)}
-                {...register('phone.signName')}
-                placeholder="FastGPT"
+                {...register('phone.signName', {
+                  validate: (value) =>
+                    !isPhoneFieldsRequired || Boolean(value?.trim()) || t('admin:required')
+                })}
               />
             </AdminFormItem>
           </SimpleGrid>
