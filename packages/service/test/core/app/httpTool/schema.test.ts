@@ -26,6 +26,8 @@ vi.unmock('@fastgpt/service/common/http/entry');
 vi.unmock('@fastgpt/service/common/response');
 vi.unmock('@fastgpt/service/common/logger');
 
+import { getOpenTelemetrySink } from '@fastgpt-sdk/otel/logger';
+import { isServerConfigError } from '@fastgpt/global/common/error/utils';
 import { createApiEntry } from '@fastgpt/service/common/http/entry';
 import { createApiI18n } from '@fastgpt/service/common/i18n/request';
 import { generatedLoaders } from '@fastgpt/web/i18n/resourceLoaders.generated';
@@ -39,7 +41,15 @@ const proxyEnvKeys = [
   'http_proxy',
   'https_proxy',
   'all_proxy',
-  'no_proxy'
+  'no_proxy',
+  'npm_config_http_proxy',
+  'NPM_CONFIG_HTTP_PROXY',
+  'npm_config_https_proxy',
+  'NPM_CONFIG_HTTPS_PROXY',
+  'npm_config_proxy',
+  'NPM_CONFIG_PROXY',
+  'npm_config_no_proxy',
+  'NPM_CONFIG_NO_PROXY'
 ] as const;
 
 describe('fetchOpenAPISchemaByUrl HTTP boundary', () => {
@@ -117,6 +127,52 @@ describe('fetchOpenAPISchemaByUrl HTTP boundary', () => {
       expect(JSON.stringify(vi.mocked(res.json).mock.calls)).not.toContain('proxy-secret');
     }
   );
+
+  it('redacts proxy credentials from OTel-serialized ServerConfigError while preserving error code', async () => {
+    vi.spyOn(dns, 'resolve4').mockResolvedValue(['93.184.216.34']);
+    vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('No AAAA records'));
+    process.env.HTTPS_PROXY = 'http://user:proxy-secret@bad host:8080';
+
+    let caughtError: unknown;
+    try {
+      await fetchOpenAPISchemaByUrl('https://example.com/openapi.json');
+    } catch (error) {
+      caughtError = error;
+    }
+
+    expect(isServerConfigError(caughtError)).toBe(true);
+    expect((caughtError as { code?: string }).code).toBe('ERR_INVALID_URL');
+    expect((caughtError as Error).cause).toBeUndefined();
+    expect(Object.prototype.hasOwnProperty.call(caughtError, 'input')).toBe(false);
+
+    const emittedRecords: unknown[] = [];
+    const sink = getOpenTelemetrySink({
+      loggerProvider: {
+        getLogger: () => ({
+          emit: (record: unknown) => {
+            emittedRecords.push(record);
+          }
+        })
+      } as any
+    });
+    sink({
+      category: ['http', 'error'],
+      level: 'error',
+      timestamp: Date.now(),
+      message: ['System unexpected error'],
+      rawMessage: 'System unexpected error',
+      properties: {
+        url: '/api/core/app/httpTools/getApiSchemaByUrl',
+        message: (caughtError as Error).message,
+        error: caughtError
+      }
+    });
+
+    const serialized = JSON.stringify(emittedRecords);
+    expect(serialized).toContain('ERR_INVALID_URL');
+    expect(serialized).not.toContain('proxy-secret');
+    expect(serialized).not.toContain('bad host');
+  });
 
   it('returns HTTP 400 without span error when remote schema URL returns 404', async () => {
     const server = http.createServer((_req, res) => {

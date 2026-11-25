@@ -74,6 +74,40 @@ describe('getApiSchemaByUrl handler', () => {
     expect(result.paths['/users']).toBeDefined();
   });
 
+  it('accepts paths x-* extensions and URI-encoded local refs', async () => {
+    mocks.axiosGet.mockResolvedValue({
+      data: JSON.stringify({
+        openapi: '3.0.3',
+        info: { title: 'Test API', version: '1.0.0' },
+        paths: {
+          'x-tag': 'internal',
+          'x-meta': null,
+          '/users': {
+            get: {
+              operationId: 'getUsers',
+              parameters: [{ $ref: '#/components/parameters/My%20Param' }],
+              responses: { '200': { description: 'OK' } }
+            }
+          }
+        },
+        components: {
+          parameters: {
+            'My Param': { name: 'q', in: 'query', schema: { type: 'string' } }
+          }
+        }
+      })
+    });
+
+    const result = await handler({
+      body: {
+        url: 'https://example.com/openapi.json'
+      }
+    } as ApiRequestProps<GetApiSchemaByUrlBodyType>);
+
+    expect(result.paths['x-tag']).toBe('internal');
+    expect(result.paths['/users'].get.operationId).toBe('getUsers');
+  });
+
   it('rejects external refs from downloaded schemas', async () => {
     mocks.axiosGet.mockResolvedValue({
       data: JSON.stringify({

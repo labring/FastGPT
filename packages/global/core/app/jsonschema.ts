@@ -665,6 +665,8 @@ export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema
     })();
 
     const pathData = Object.keys(jsonSchema.paths)
+      // OpenAPI Paths Object 允许 x-* 扩展元数据，跳过以免误解析为接口路径或在值为 null 时触发异常。
+      .filter((path) => !path.startsWith('x-'))
       .map((path) => {
         const methodData: any = jsonSchema.paths[path];
         return Object.keys(methodData)

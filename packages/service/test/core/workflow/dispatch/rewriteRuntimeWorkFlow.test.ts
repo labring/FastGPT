@@ -707,4 +707,41 @@ describe('rewriteRuntimeWorkFlow independent toolsets', () => {
       })
     ).rejects.toBeInstanceOf(UserConfigError);
   });
+
+  it('expands an inline HTTP toolset with paths x-* extensions and URI-encoded local refs', async () => {
+    mocks.getHttpSchema.mockResolvedValue({
+      data: JSON.stringify({
+        openapi: '3.0.3',
+        info: { title: 'Test API', version: '1.0.0' },
+        servers: [{ url: 'https://api.example.com' }],
+        paths: {
+          'x-tag': 'internal',
+          'x-meta': null,
+          '/users': {
+            get: {
+              operationId: 'getUsers',
+              parameters: [{ $ref: '#/components/parameters/My%20Param' }],
+              responses: { '200': { description: 'OK' } }
+            }
+          }
+        },
+        components: {
+          parameters: {
+            'My Param': { name: 'q', in: 'query', required: true, schema: { type: 'string' } }
+          }
+        }
+      })
+    });
+    const nodes = [createHttpToolSetNode([])];
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team-1', tmbId: 'member-1', nodes, edges: [] });
+
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].name).toBe('Local HTTP/getUsers');
+    expect(nodes[0].jsonSchema).toMatchObject({
+      type: 'object',
+      properties: { q: { type: 'string' } },
+      required: ['q']
+    });
+  });
 });

@@ -2382,6 +2382,48 @@ paths:
 
     expect(result.pathData[0].params).toHaveLength(2);
   });
+
+  it('ignores x-* extensions under paths and resolves URI-encoded local refs', async () => {
+    const openApiJson = JSON.stringify({
+      openapi: '3.0.3',
+      info: { title: 'Test API', version: '1.0.0' },
+      paths: {
+        'x-tag': 'internal',
+        'x-meta': null,
+        'x-custom': { get: { operationId: 'fake' } },
+        '/users': { $ref: '#/components/pathItems/User%20Path' }
+      },
+      components: {
+        parameters: {
+          'My Param': { name: 'q', in: 'query', schema: { type: 'string' } },
+          'Slash/Tilde~Param': { name: 's', in: 'query', schema: { type: 'string' } }
+        },
+        pathItems: {
+          'User Path': {
+            parameters: [{ $ref: '#/components/parameters/My%20Param' }],
+            get: {
+              operationId: 'getUsers',
+              parameters: [{ $ref: '#/components/parameters/Slash~1Tilde~0Param' }],
+              responses: { '200': { description: 'OK' } }
+            }
+          }
+        }
+      }
+    });
+
+    const result = await str2OpenApiSchema(openApiJson);
+
+    expect(result.pathData).toHaveLength(1);
+    expect(result.pathData[0]).toMatchObject({
+      path: '/users',
+      method: 'get',
+      name: 'getUsers',
+      params: [
+        { name: 'q', in: 'query', schema: { type: 'string' } },
+        { name: 's', in: 'query', schema: { type: 'string' } }
+      ]
+    });
+  });
 });
 
 describe('parseOpenAPISchemaString', () => {
@@ -2482,6 +2524,50 @@ describe('bundleOpenAPISchema', () => {
     }
   );
 
+  it('accepts paths x-* extensions, URI-encoded local refs, chained local refs, and deprecated ops', async () => {
+    const bundled = await bundleOpenAPISchema({
+      openapi: '3.0.3',
+      info: { title: 'Test API', version: '1.0.0' },
+      paths: {
+        'x-internal': true,
+        'x-tag': 'internal',
+        'x-meta': null,
+        '/users': { $ref: '#/components/pathItems/User%20Alias' }
+      },
+      components: {
+        parameters: {
+          'My Param': { name: 'q', in: 'query', schema: { type: 'string' } },
+          'Slash/Tilde~Param': { name: 's', in: 'query', schema: { type: 'string' } }
+        },
+        pathItems: {
+          'User Alias': { $ref: '#/components/pathItems/User%20Path' },
+          'User Path': {
+            parameters: [{ $ref: '#/components/parameters/My%20Param' }],
+            get: {
+              operationId: 'getUsers',
+              parameters: [{ $ref: '#/components/parameters/Slash~1Tilde~0Param' }],
+              responses: { '200': { description: 'OK' } }
+            },
+            post: {
+              deprecated: true,
+              parameters: 'ignored-because-deprecated',
+              responses: { '200': { description: 'OK' } }
+            }
+          }
+        }
+      }
+    });
+
+    const converted = await str2OpenApiSchema(JSON.stringify(bundled));
+    expect(converted.pathData).toHaveLength(1);
+    expect(converted.pathData[0]).toMatchObject({
+      path: '/users',
+      method: 'get',
+      name: 'getUsers'
+    });
+    expect(converted.pathData[0].params).toHaveLength(2);
+  });
+
   it.each([
     { openapi: '3.0.0', info: { title: 'Test', version: '1.0.0' }, paths: null },
     { openapi: '3.0.0', info: { title: 'Test', version: '1.0.0' }, paths: [] },
@@ -2497,6 +2583,17 @@ describe('bundleOpenAPISchema', () => {
       info: { title: 'Test', version: '1.0.0' },
       paths: { '/users': { $ref: '#/components/bad' } },
       components: { bad: null }
+    },
+    {
+      openapi: '3.0.0',
+      info: { title: 'Test', version: '1.0.0' },
+      paths: { '/bad': { $ref: '#/components/bad' } },
+      components: { bad: 'not-an-object' }
+    },
+    {
+      openapi: '3.0.0',
+      info: { title: 'Test', version: '1.0.0' },
+      paths: { '/loop': { $ref: '#/paths/~1loop' } }
     },
     {
       openapi: '3.0.0',

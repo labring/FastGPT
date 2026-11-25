@@ -11,30 +11,10 @@ const isPlainObject = (value: unknown): value is Record<string, any> =>
 
 const escapeJsonPointerToken = (token: string) => token.replace(/~/g, '~0').replace(/\//g, '~1');
 
-const unescapeJsonPointerToken = (token: string) => token.replace(/~1/g, '/').replace(/~0/g, '~');
-
-const resolveLocalPointer = (root: Record<string, any>, ref: string): unknown => {
-  if (ref === '#') return root;
-  if (!ref.startsWith('#/')) return undefined;
-
-  const segments = ref.slice(2).split('/').map(unescapeJsonPointerToken);
-  let current: unknown = root;
-  for (const segment of segments) {
-    if (Array.isArray(current)) {
-      const index = Number(segment);
-      if (!Number.isInteger(index) || index < 0 || index >= current.length) return undefined;
-      current = current[index];
-      continue;
-    }
-    if (!isPlainObject(current) || !Object.hasOwn(current, segment)) {
-      return undefined;
-    }
-    current = current[segment];
-  }
-  return current;
-};
-
-const resolveDocumentObject = (root: Record<string, any>, value: unknown): unknown => {
+const resolveDocumentObject = (
+  $refs: Pick<SwaggerParser['$refs'], 'get'>,
+  value: unknown
+): unknown => {
   const visitedRefs = new Set<string>();
   let current = value;
 
@@ -45,7 +25,11 @@ const resolveDocumentObject = (root: Record<string, any>, value: unknown): unkno
   ) {
     if (visitedRefs.has(current.$ref)) return undefined;
     visitedRefs.add(current.$ref);
-    current = resolveLocalPointer(root, current.$ref);
+    try {
+      current = $refs.get(current.$ref);
+    } catch {
+      return undefined;
+    }
   }
 
   return current;
@@ -92,7 +76,10 @@ const assertNoExternalOpenAPIRefs = (schema: Record<string, any>) => {
  * 校验工具转换与运行时 `str2OpenApiSchema` 依赖的最小文档结构，
  * 避免 `paths: null` 等可通过 swagger-parser 基础解析的无效文档进入后续执行链路。
  */
-const assertValidOpenAPIToolDocument = (doc: Record<string, any>) => {
+const assertValidOpenAPIToolDocument = (
+  doc: Record<string, any>,
+  $refs: Pick<SwaggerParser['$refs'], 'get'>
+) => {
   if (!isPlainObject(doc.paths)) {
     throw new UserConfigError('Schema paths must be an object');
   }
@@ -105,8 +92,11 @@ const assertValidOpenAPIToolDocument = (doc: Record<string, any>) => {
   }
 
   for (const [pathKey, rawPathItem] of Object.entries(doc.paths)) {
+    // OpenAPI Paths Object 允许以 x- 开头的扩展元数据（值可为标量、对象或 null），跳过不按路径项校验。
+    if (pathKey.startsWith('x-')) continue;
+
     const pathPointer = `#/paths/${escapeJsonPointerToken(pathKey)}`;
-    const pathItem = resolveDocumentObject(doc, rawPathItem);
+    const pathItem = resolveDocumentObject($refs, rawPathItem);
     if (!isPlainObject(pathItem)) {
       throw new UserConfigError(`Invalid OpenAPI path item at ${pathPointer}`);
     }
@@ -114,7 +104,7 @@ const assertValidOpenAPIToolDocument = (doc: Record<string, any>) => {
     if (
       pathItem.parameters !== undefined &&
       (!Array.isArray(pathItem.parameters) ||
-        !pathItem.parameters.every((item) => isPlainObject(resolveDocumentObject(doc, item))))
+        !pathItem.parameters.every((item) => isPlainObject(resolveDocumentObject($refs, item))))
     ) {
       throw new UserConfigError(`Invalid OpenAPI parameters at ${pathPointer}/parameters`);
     }
@@ -123,15 +113,16 @@ const assertValidOpenAPIToolDocument = (doc: Record<string, any>) => {
       if (!SUPPORTED_OPENAPI_HTTP_METHODS.has(method.toLowerCase())) continue;
 
       const operationPointer = `${pathPointer}/${escapeJsonPointerToken(method)}`;
-      const operation = resolveDocumentObject(doc, rawOperation);
+      const operation = resolveDocumentObject($refs, rawOperation);
       if (!isPlainObject(operation)) {
         throw new UserConfigError(`Invalid OpenAPI operation at ${operationPointer}`);
       }
 
       if (
+        !operation.deprecated &&
         operation.parameters !== undefined &&
         (!Array.isArray(operation.parameters) ||
-          !operation.parameters.every((item) => isPlainObject(resolveDocumentObject(doc, item))))
+          !operation.parameters.every((item) => isPlainObject(resolveDocumentObject($refs, item))))
       ) {
         throw new UserConfigError(`Invalid OpenAPI parameters at ${operationPointer}/parameters`);
       }
@@ -208,9 +199,10 @@ export const bundleOpenAPISchema = async (schema: unknown): Promise<Record<strin
 
   assertNoExternalOpenAPIRefs(schema);
 
+  const parser = new SwaggerParser();
   const bundled = await (async () => {
     try {
-      return await SwaggerParser.bundle(schema as any, {
+      return await parser.bundle(schema as any, {
         resolve: {
           file: false,
           http: false
@@ -230,7 +222,7 @@ export const bundleOpenAPISchema = async (schema: unknown): Promise<Record<strin
     throw new UserConfigError(INVALID_OPENAPI_SCHEMA_MESSAGE);
   }
 
-  assertValidOpenAPIToolDocument(bundled);
+  assertValidOpenAPIToolDocument(bundled, parser.$refs);
 
   return bundled;
 };

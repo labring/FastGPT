@@ -10,10 +10,10 @@ import https from 'https';
 import { isIP } from 'net';
 import { ProxyAgent, type ProxyAgentOptions } from 'proxy-agent';
 import { getProxyForUrl } from 'proxy-from-env';
-import { ServerConfigError } from '@fastgpt/global/common/error/utils';
 import { isDevEnv } from '@fastgpt/global/common/system/constants';
 import {
   createNodeOutboundProxyAgent,
+  createOutboundProxyConfigError,
   parseSupportedOutboundProxyUrl,
   PROXY_AUTHORIZATION_HEADER
 } from '../proxy/utils';
@@ -193,9 +193,7 @@ const resolveProxyUrl = (
     }
     return proxyUrl;
   } catch (error) {
-    throw new ServerConfigError('Invalid outbound proxy configuration', undefined, {
-      cause: error
-    });
+    throw createOutboundProxyConfigError('Invalid outbound proxy configuration', error);
   }
 };
 

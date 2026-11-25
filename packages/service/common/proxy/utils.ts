@@ -9,6 +9,33 @@ const SUPPORTED_HTTP_PROXY_PROTOCOLS = new Set(['http:', 'https:']);
 const SUPPORTED_SOCKS5_PROXY_PROTOCOLS = new Set(['socks:', 'socks5:', 'socks5h:']);
 
 /**
+ * 构造不含代理 URL/凭据细节的出站代理配置错误。
+ *
+ * Node 的 URL 解析异常（TypeError [ERR_INVALID_URL]）会在可枚举属性 `input` 中保留原始代理 URL
+ *（可能含 username/password）；直接透传为 `cause` 会被 OTel 日志序列化器递归输出导致凭据泄露。
+ * 这里仅保留安全的错误码（如 `ERR_INVALID_URL`）用于排障，绝不附带原始 URL 错误对象。
+ */
+export const createOutboundProxyConfigError = (
+  message: string,
+  error?: unknown
+): ServerConfigError => {
+  const code =
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    typeof (error as { code?: unknown }).code === 'string' &&
+    /^[A-Z0-9_]+$/.test((error as { code: string }).code)
+      ? (error as { code: string }).code
+      : undefined;
+
+  const configError = new ServerConfigError(message);
+  if (code) {
+    Object.assign(configError, { code });
+  }
+  return configError;
+};
+
+/**
  * 解析并校验受支持的出站代理 URL。
  *
  * 统一支持 http: / https: / socks: / socks5: / socks5h:，且全部采用代理侧 DNS 解析语义，
@@ -20,9 +47,7 @@ export const parseSupportedOutboundProxyUrl = (proxyUrl: string | URL): URL => {
     try {
       return proxyUrl instanceof URL ? new URL(proxyUrl.href) : new URL(proxyUrl);
     } catch (error) {
-      throw new ServerConfigError('Invalid outbound proxy URL configuration', undefined, {
-        cause: error
-      });
+      throw createOutboundProxyConfigError('Invalid outbound proxy URL configuration', error);
     }
   })();
 
