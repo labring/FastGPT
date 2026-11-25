@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { streamSimpleOpenAICompletions } from '@mariozechner/pi-ai/openai-completions';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import {
+  buildPiModel,
+  getPiThinkingLevel
+} from '@fastgpt/service/core/ai/llm/agentLoop/provider/piAgent/modelBridge';
 import { mergePiAgentPayload } from '@fastgpt/service/core/ai/llm/agentLoop/provider/piAgent/payload';
 
 const createModel = (overrides: Record<string, unknown> = {}) =>
@@ -140,5 +145,140 @@ describe('mergePiAgentPayload', () => {
     const runtime = createRuntime(createModel());
     expect(mergePiAgentPayload({ payload: null, runtime })).toBeNull();
     expect(mergePiAgentPayload({ payload: ['payload'], runtime })).toEqual(['payload']);
+  });
+
+  describe('Pi SDK outbound request body regression', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    const captureWireRequestBody = async ({
+      model,
+      reasoningEffort
+    }: {
+      model: Record<string, any>;
+      reasoningEffort?: any;
+    }) => {
+      let capturedBody: Record<string, unknown> | undefined;
+      vi.spyOn(globalThis, 'fetch').mockImplementationOnce(async (_input, init) => {
+        capturedBody = JSON.parse(String(init?.body ?? '{}'));
+        return new Response('data: [DONE]\n\n', {
+          status: 200,
+          headers: { 'content-type': 'text/event-stream' }
+        });
+      });
+
+      const piModel = buildPiModel(model as any, false, {
+        key: 'test-key',
+        baseUrl: 'https://proxy.example.com/v1'
+      } as any);
+      const thinkingLevel = getPiThinkingLevel(model as any, reasoningEffort);
+      const runtime = createRuntime(model, { reasoningEffort });
+
+      const stream = streamSimpleOpenAICompletions(
+        piModel,
+        {
+          systemPrompt: 'You are helpful.',
+          messages: [{ role: 'user', content: 'hi', timestamp: Date.now() }]
+        },
+        {
+          apiKey: 'test-key',
+          reasoning: thinkingLevel === 'off' ? undefined : thinkingLevel,
+          onPayload: (payload) => mergePiAgentPayload({ payload, runtime })
+        }
+      );
+      await stream.result();
+      return capturedBody;
+    };
+
+    it.each([
+      {
+        name: 'preserves xhigh for gpt-5.5 instead of letting pi-ai clamp to high',
+        model: createModel({
+          model: 'gpt-5.5',
+          config: {
+            maxContext: 128000,
+            maxResponse: 4096,
+            quoteMaxToken: 4096,
+            reasoning: true,
+            reasoningEffort: true,
+            reasoningEffortList: ['none', 'low', 'medium', 'high', 'xhigh']
+          }
+        }),
+        reasoningEffort: 'xhigh',
+        expectedEffort: 'xhigh'
+      },
+      {
+        name: 'keeps xhigh on fallback when a model only supports xhigh',
+        model: createModel({
+          model: 'xhigh-only-model',
+          config: {
+            maxContext: 128000,
+            maxResponse: 4096,
+            quoteMaxToken: 4096,
+            reasoning: true,
+            reasoningEffort: true,
+            reasoningEffortList: ['xhigh']
+          }
+        }),
+        reasoningEffort: undefined,
+        expectedEffort: 'xhigh'
+      },
+      {
+        name: 'explicitly sends reasoning_effort=none when supported (e.g. deepseek-flash)',
+        model: createModel({
+          model: 'deepseek-flash',
+          config: {
+            maxContext: 128000,
+            maxResponse: 4096,
+            quoteMaxToken: 4096,
+            reasoning: true,
+            reasoningEffort: true,
+            reasoningEffortList: ['none', 'high']
+          }
+        }),
+        reasoningEffort: 'none',
+        expectedEffort: 'none'
+      },
+      {
+        name: 'falls back legacy none to the lowest supported level when none is not supported',
+        model: createModel({
+          model: 'o4-mini',
+          config: {
+            maxContext: 128000,
+            maxResponse: 4096,
+            quoteMaxToken: 4096,
+            reasoning: true,
+            reasoningEffort: true,
+            reasoningEffortList: ['low', 'high']
+          }
+        }),
+        reasoningEffort: 'none',
+        expectedEffort: 'low'
+      },
+      {
+        name: 'omits reasoning_effort when model disables reasoningEffort',
+        model: createModel({
+          model: 'reasoning-fixed',
+          config: {
+            maxContext: 128000,
+            maxResponse: 4096,
+            quoteMaxToken: 4096,
+            reasoning: true,
+            reasoningEffort: false
+          }
+        }),
+        reasoningEffort: 'high',
+        expectedEffort: undefined
+      }
+    ])('$name', async ({ model, reasoningEffort, expectedEffort }) => {
+      const wireBody = await captureWireRequestBody({ model, reasoningEffort });
+      expect(wireBody).toBeDefined();
+      if (expectedEffort === undefined) {
+        expect(wireBody).not.toHaveProperty('reasoning_effort');
+      } else {
+        expect(wireBody).toHaveProperty('reasoning_effort', expectedEffort);
+      }
+    });
   });
 });

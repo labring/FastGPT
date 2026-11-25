@@ -3,7 +3,8 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
   buildPiModel,
   getModelApiKey,
-  getPiThinkingLevel
+  getPiThinkingLevel,
+  resolvePiReasoningEffort
 } from '@fastgpt/service/core/ai/llm/agentLoop/provider/piAgent/modelBridge';
 
 const createLlmModel = (overrides = {}) => ({
@@ -61,7 +62,32 @@ describe('PiAgent provider model bridge', () => {
     expect(getPiThinkingLevel(restrictedModel as any, 'high')).toBe('high');
     expect(getPiThinkingLevel(restrictedModel as any, 'xhigh')).toBe('low');
     expect(getPiThinkingLevel(restrictedModel as any, null)).toBe('low');
-    expect(getPiThinkingLevel(restrictedModel as any, 'none')).toBe('off');
+    // 模型不支持 'none' 时，旧 'none' 也应按回退规则落到支持的最低非 none 档位
+    expect(getPiThinkingLevel(restrictedModel as any, 'none')).toBe('low');
+    expect(resolvePiReasoningEffort(restrictedModel as any, 'none')).toBe('low');
+
+    const binaryModel = createLlmModel({
+      model: 'deepseek-flash',
+      config: {
+        reasoning: true,
+        reasoningEffort: true,
+        reasoningEffortList: ['none', 'high']
+      }
+    });
+    expect(getPiThinkingLevel(binaryModel as any, 'none')).toBe('off');
+    expect(resolvePiReasoningEffort(binaryModel as any, 'none')).toBe('none');
+    expect(resolvePiReasoningEffort(binaryModel as any, null)).toBe('high');
+
+    const xhighOnlyModel = createLlmModel({
+      model: 'gpt-5.5',
+      config: {
+        reasoning: true,
+        reasoningEffort: true,
+        reasoningEffortList: ['xhigh']
+      }
+    });
+    expect(getPiThinkingLevel(xhighOnlyModel as any, null)).toBe('xhigh');
+    expect(resolvePiReasoningEffort(xhighOnlyModel as any, null)).toBe('xhigh');
 
     const emptyEffortModel = createLlmModel({
       model: 'empty-effort',
@@ -72,6 +98,7 @@ describe('PiAgent provider model bridge', () => {
       }
     });
     expect(getPiThinkingLevel(emptyEffortModel as any, 'high')).toBe('off');
+    expect(resolvePiReasoningEffort(emptyEffortModel as any, 'high')).toBeUndefined();
     expect(buildPiModel(emptyEffortModel as any).compat?.supportsReasoningEffort).toBe(false);
   });
 

@@ -399,27 +399,9 @@ describe('system model management integration: MongoDB transactions and runtime 
       )?.config.reasoningEffortList
     ).toBeUndefined();
 
-    // 3. JSON 导入保留合法等级，且导入 Schema 严格拒绝非法思考等级
-    expect(
-      UpdateSystemModelsWithJsonBodySchema.safeParse({
-        config: [
-          {
-            ...createDraft('invalid-json-effort'),
-            config: {
-              maxContext: 32000,
-              maxResponse: 16000,
-              quoteMaxToken: 24000,
-              reasoning: true,
-              reasoningEffort: true,
-              reasoningEffortList: ['invalid_level']
-            }
-          }
-        ]
-      }).success
-    ).toBe(false);
-
-    await importSystemModels({
-      config: [
+    // 3. JSON 导入保留合法等级，且导入 Schema 严格拒绝非法思考等级（共用真实序列化请求体与 modelId）
+    const buildJsonImportPayload = (reasoningEffortList: unknown[]) => ({
+      config: JSON.stringify([
         {
           ...createDraft('imported-reasoning'),
           modelId: templateModelId,
@@ -429,11 +411,31 @@ describe('system model management integration: MongoDB transactions and runtime 
             quoteMaxToken: 24000,
             reasoning: true,
             reasoningEffort: true,
-            reasoningEffortList: ['minimal', 'high']
+            reasoningEffortList
           }
         }
-      ]
+      ])
     });
+
+    const invalidImportParse = UpdateSystemModelsWithJsonBodySchema.safeParse(
+      buildJsonImportPayload(['invalid_level'])
+    );
+    expect(invalidImportParse.success).toBe(false);
+    if (!invalidImportParse.success) {
+      expect(
+        invalidImportParse.error.issues.some(
+          (issue) => issue.path.join('.') === 'config.0.config.reasoningEffortList.0'
+        )
+      ).toBe(true);
+    }
+
+    const validImportParse = UpdateSystemModelsWithJsonBodySchema.safeParse(
+      buildJsonImportPayload(['minimal', 'high'])
+    );
+    expect(validImportParse.success).toBe(true);
+    if (!validImportParse.success) throw validImportParse.error;
+
+    await importSystemModels({ config: validImportParse.data.config });
     expect(
       getCachedSystemModelHandle()?.findModelData(
         { model: 'imported-reasoning' },

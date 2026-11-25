@@ -294,6 +294,11 @@ const AIChatSettingsModal = ({
             isDisabled={!!modelError}
             onClick={handleSubmit((formData) => {
               const submittedEffort = formData[NodeInputKeyEnum.aiChatReasoningEffort];
+              // 协作者未单独获授应用基线模型时，目录无详情对象；能力未知时保留原值，避免误清空。
+              if (!selectedModel || submittedEffort === undefined) {
+                onSuccess(formData);
+                return;
+              }
               const normalizedEffort =
                 submittedEffort &&
                 supportParams.reasoningEffortList.includes(submittedEffort as ReasoningEffortLevel)
@@ -301,8 +306,7 @@ const AIChatSettingsModal = ({
                   : null;
               onSuccess({
                 ...formData,
-                [NodeInputKeyEnum.aiChatReasoningEffort]:
-                  submittedEffort === undefined ? undefined : normalizedEffort
+                [NodeInputKeyEnum.aiChatReasoningEffort]: normalizedEffort
               });
             })}
           >

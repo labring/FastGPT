@@ -2,6 +2,7 @@ import json5 from 'json5';
 import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
 import { computedMaxToken, computedTemperature } from '../../../../utils';
 import type { AgentLoopRuntime } from '../../domain';
+import { resolvePiReasoningEffort } from './modelBridge';
 
 const normalizeResponseFormat = (
   responseFormat?: AgentLoopRuntime['llmParams']['responseFormat']
@@ -64,7 +65,13 @@ export const mergePiAgentPayload = <TChildrenResponse = unknown>({
         )
       : undefined;
 
-  return {
+  // pi-ai 会按内置白名单将 xhigh 降级为 high，并在 thinkingLevel='off' 时省略 reasoning_effort；
+  // 在最终出站层以模型实际能力声明为准同步 reasoning_effort，确保 xhigh/none 及回退档位与协议一致。
+  const resolvedReasoningEffort = resolvePiReasoningEffort(
+    modelData,
+    runtime.llmParams.reasoningEffort
+  );
+  const nextPayload: Record<string, unknown> = {
     ...payload,
     ...(messages ? { messages } : {}),
     ...(typeof maxTokens === 'number' ? { max_tokens: maxTokens } : {}),
@@ -75,4 +82,11 @@ export const mergePiAgentPayload = <TChildrenResponse = unknown>({
     ...(stop?.length ? { stop } : {}),
     ...(responseFormat ? { response_format: responseFormat } : {})
   };
+  if (resolvedReasoningEffort) {
+    nextPayload.reasoning_effort = resolvedReasoningEffort;
+  } else {
+    delete nextPayload.reasoning_effort;
+  }
+
+  return nextPayload;
 };

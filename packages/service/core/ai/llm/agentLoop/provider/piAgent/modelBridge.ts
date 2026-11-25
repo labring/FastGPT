@@ -10,45 +10,48 @@ import {
 } from '../../../../config';
 import { getLegacyModelEndpoint } from '../../../../legacy/requestUrl';
 import { computedMaxToken } from '../../../../utils';
-import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { LLMModelDataType, ReasoningEffortLevel } from '@fastgpt/global/core/ai/model/schema';
 
 type Model = import('@mariozechner/pi-ai').Model<'openai-completions'>;
 
 const normalizeBaseUrl = (url?: string) => (url ? url.replace(/\/chat\/completions$/, '') : '');
-const supportedThinkingLevels = new Set<ThinkingLevel>([
-  'minimal',
-  'low',
-  'medium',
-  'high',
-  'xhigh'
-]);
 
-export function getPiThinkingLevel(
+/**
+ * 解析 Pi Agent 出站应发送的思考等级：
+ * - 不支持思考或无可用思考等级时返回 undefined（不传 reasoning_effort）；
+ * - 请求档位在模型支持列表内时原样保留（含显式 `'none'`）；
+ * - 未指定或不在支持列表内（含模型不支持 `'none'` 时的旧 `'none'`）时，
+ *   优先回退 `'medium'`，否则选取最低非 `'none'` 档位（若仅支持 `'none'` 则返回 `'none'`）。
+ */
+export function resolvePiReasoningEffort(
   modelData: LLMModelDataType,
   reasoningEffort?: ReasoningEffort
-): ThinkingLevel {
+): ReasoningEffortLevel | undefined {
   const supportedLevels = getSupportedReasoningEfforts(modelData.config);
-  if (!modelData.config.reasoning || supportedLevels.length === 0 || reasoningEffort === 'none') {
-    return 'off';
+  if (!modelData.config.reasoning || supportedLevels.length === 0) {
+    return undefined;
   }
 
-  if (
-    reasoningEffort &&
-    supportedLevels.includes(reasoningEffort) &&
-    supportedThinkingLevels.has(reasoningEffort as ThinkingLevel)
-  ) {
-    return reasoningEffort as ThinkingLevel;
+  if (reasoningEffort && supportedLevels.includes(reasoningEffort)) {
+    return reasoningEffort;
   }
 
   if (supportedLevels.includes('medium')) {
     return 'medium';
   }
 
-  // 不支持 medium 时回退到模型支持的最低思考等级，避免发送不被上游接受的等级。
-  const fallbackLevel = supportedLevels.find(
-    (level) => level !== 'none' && supportedThinkingLevels.has(level as ThinkingLevel)
-  );
-  return (fallbackLevel as ThinkingLevel | undefined) ?? 'off';
+  return supportedLevels.find((level) => level !== 'none') ?? supportedLevels[0];
+}
+
+export function getPiThinkingLevel(
+  modelData: LLMModelDataType,
+  reasoningEffort?: ReasoningEffort
+): ThinkingLevel {
+  const resolvedEffort = resolvePiReasoningEffort(modelData, reasoningEffort);
+  if (!resolvedEffort || resolvedEffort === 'none') {
+    return 'off';
+  }
+  return resolvedEffort;
 }
 
 /** 无鉴权自定义端点的占位 Key；仅用于阻止 pi-ai 回退宿主环境变量，实际请求头会被置空。 */
