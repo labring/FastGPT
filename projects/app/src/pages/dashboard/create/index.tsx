@@ -347,6 +347,12 @@ const CreateAppsPage = () => {
                         handleSubmit((data) => onClickCreate(data, item.templateId))();
                       }
                     };
+                    const cardRevealStyles = {
+                      boxShadow:
+                        '0 4px 10px 0 rgba(19, 51, 107, 0.08), 0 0 1px 0 rgba(19, 51, 107, 0.08)',
+                      '& .template-intro': { opacity: 0 },
+                      '& .template-actions': { opacity: 1, pointerEvents: 'auto' }
+                    };
                     const actionBtnProps = {
                       as: 'button' as const,
                       type: 'button' as const,
@@ -363,7 +369,13 @@ const CreateAppsPage = () => {
                       cursor: 'pointer',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      _hover: { bg: 'myGray.05' }
+                      _hover: { bg: 'myGray.05' },
+                      _focusVisible: {
+                        bg: 'myGray.05',
+                        outline: '2px solid',
+                        outlineColor: 'primary.500',
+                        outlineOffset: '1px'
+                      }
                     };
 
                     return (
@@ -376,12 +388,8 @@ const CreateAppsPage = () => {
                         cursor={experienceUrl ? 'default' : 'pointer'}
                         boxShadow={'none'}
                         bg={'white'}
-                        _hover={{
-                          boxShadow:
-                            '0 4px 10px 0 rgba(19, 51, 107, 0.08), 0 0 1px 0 rgba(19, 51, 107, 0.08)',
-                          '& .template-intro': { opacity: 0 },
-                          '& .template-actions': { opacity: 1, pointerEvents: 'auto' }
-                        }}
+                        _hover={cardRevealStyles}
+                        sx={{ '&:has(:focus-visible)': cardRevealStyles }}
                         isLoading={creatingTemplateId === item.templateId}
                         onClick={experienceUrl ? undefined : onCreate}
                       >

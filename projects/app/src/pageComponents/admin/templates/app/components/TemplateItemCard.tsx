@@ -54,8 +54,10 @@ const TemplateCard = ({
       };
     }
 
+    // 携带 name 供 Pro 更新路由记录管理端审计日志，避免仅传增量字段时落为 Unknown Template。
     return {
       templateId: template.templateId,
+      name: template.name,
       ...patch
     };
   };

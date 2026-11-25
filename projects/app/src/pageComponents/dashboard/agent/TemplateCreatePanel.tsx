@@ -220,6 +220,12 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
                     handleCreateFromTemplate(item.templateId);
                   }
                 };
+                const cardRevealStyles = {
+                  boxShadow:
+                    '0 1px 2px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.15)',
+                  '& .template-content': { filter: 'blur(5px)' },
+                  '& .hover-text': { opacity: 1, pointerEvents: 'auto' }
+                };
                 const actionBtnProps = {
                   as: 'button' as const,
                   type: 'button' as const,
@@ -232,7 +238,13 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
                   py: 2.5,
                   whiteSpace: 'nowrap' as const,
                   cursor: 'pointer',
-                  _hover: { bg: 'myGray.05' }
+                  _hover: { bg: 'myGray.05' },
+                  _focusVisible: {
+                    bg: 'myGray.05',
+                    outline: '2px solid',
+                    outlineColor: 'primary.500',
+                    outlineOffset: '1px'
+                  }
                 };
 
                 return (
@@ -251,17 +263,8 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
                     bgSize={'105% auto'}
                     bgPosition={'top'}
                     bgRepeat={'no-repeat'}
-                    _hover={{
-                      boxShadow:
-                        '0 1px 2px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.15)',
-                      '& .template-content': {
-                        filter: 'blur(5px)'
-                      },
-                      '& .hover-text': {
-                        opacity: 1,
-                        pointerEvents: 'auto'
-                      }
-                    }}
+                    _hover={cardRevealStyles}
+                    sx={{ '&:has(:focus-visible)': cardRevealStyles }}
                     isLoading={creatingTemplateId === item.templateId}
                     onClick={experienceUrl ? undefined : onCreate}
                     display={'flex'}
