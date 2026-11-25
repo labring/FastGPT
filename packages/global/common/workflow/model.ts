@@ -140,8 +140,11 @@ const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
 /**
  * 枚举 Agent 节点 `selectedTools` 中由手工配置的 `selectLLMModel` 模型引用。
  *
- * - 编辑态（已展开 `tool.inputs` 含 `renderTypeList`）：同步识别 `selectLLMModel` 输入，跳过 `agentGenerated` 与变量引用；
- * - 存储态（`tool.inputs` 为稀疏 `{ key, mode }`）：结合调用方传入的 `getSelectedToolModelKeys` 从 `tool.config` 读取显式配置值。
+ * - 当调用方传入 `getSelectedToolModelKeys`（服务端批量写入场景）：
+ *   严格以服务端工具定义返回的模型键集合为准，绝不信任历史存储里可能过时的 `tool.inputs[*].renderTypeList`，
+ *   防止普通文本参数被误改写；确定合法模型键后兼容读取 `tool.config` 与旧版展开 `tool.inputs`。
+ * - 当调用方未传入 `getSelectedToolModelKeys`（编辑器实时诊断场景）：
+ *   读取已展开 `tool.inputs` 中的 `renderTypeList` 识别 `selectLLMModel`，跳过 `agentGenerated` 与变量引用。
  */
 export const collectAgentSelectedToolModelEntries = ({
   selectedTools,
@@ -159,7 +162,7 @@ export const collectAgentSelectedToolModelEntries = ({
 
     const config = isPlainRecord(rawTool.config) ? rawTool.config : undefined;
     const savedModeMap = new Map<string, string>();
-    const handledKeys = new Set<string>();
+    const inputByKey = new Map<string, FlowNodeInputItemType>();
 
     if (Array.isArray(rawTool.inputs)) {
       for (const rawInput of rawTool.inputs) {
@@ -169,49 +172,71 @@ export const collectAgentSelectedToolModelEntries = ({
           savedModeMap.set(rawInput.key, rawInput.mode);
         }
 
-        if (!Array.isArray(rawInput.renderTypeList)) continue;
-
-        const toolInput = rawInput as FlowNodeInputItemType;
-        if (
-          savedModeMap.get(toolInput.key) === AgentToolInputModeEnum.agentGenerated ||
-          nodeInputIsReference(toolInput) ||
-          getSelectedInputRenderType(toolInput) !== FlowNodeInputTypeEnum.selectLLMModel
-        ) {
-          continue;
+        if (Array.isArray(rawInput.renderTypeList)) {
+          inputByKey.set(rawInput.key, rawInput as FlowNodeInputItemType);
         }
-
-        handledKeys.add(toolInput.key);
-        const configValue =
-          config && Object.hasOwn(config, toolInput.key) ? config[toolInput.key] : undefined;
-        const value = toolInput.value ?? configValue ?? toolInput.defaultValue;
-
-        entries.push({
-          tool: rawTool,
-          toolIndex,
-          inputKey: toolInput.key,
-          input: toolInput,
-          value,
-          required: Boolean(toolInput.required),
-          valueSource: 'input'
-        });
       }
     }
 
-    if (!getSelectedToolModelKeys || !config) continue;
+    if (getSelectedToolModelKeys) {
+      const handledKeys = new Set<string>();
+      for (const key of getSelectedToolModelKeys(rawTool)) {
+        if (!key || handledKeys.has(key)) continue;
+        if (savedModeMap.get(key) === AgentToolInputModeEnum.agentGenerated) continue;
 
-    for (const key of getSelectedToolModelKeys(rawTool)) {
-      if (!key || handledKeys.has(key)) continue;
-      if (savedModeMap.get(key) === AgentToolInputModeEnum.agentGenerated) continue;
-      if (!Object.hasOwn(config, key)) continue;
+        const toolInput = inputByKey.get(key);
+        if (toolInput && nodeInputIsReference(toolInput)) continue;
 
-      handledKeys.add(key);
+        handledKeys.add(key);
+        if (config && Object.hasOwn(config, key)) {
+          entries.push({
+            tool: rawTool,
+            toolIndex,
+            inputKey: key,
+            ...(toolInput ? { input: toolInput } : {}),
+            value: config[key],
+            required: Boolean(toolInput?.required),
+            valueSource: 'config'
+          });
+          continue;
+        }
+
+        if (toolInput && (toolInput.value !== undefined || toolInput.defaultValue !== undefined)) {
+          entries.push({
+            tool: rawTool,
+            toolIndex,
+            inputKey: key,
+            input: toolInput,
+            value: toolInput.value ?? toolInput.defaultValue,
+            required: Boolean(toolInput.required),
+            valueSource: 'input'
+          });
+        }
+      }
+      continue;
+    }
+
+    for (const toolInput of inputByKey.values()) {
+      if (
+        savedModeMap.get(toolInput.key) === AgentToolInputModeEnum.agentGenerated ||
+        nodeInputIsReference(toolInput) ||
+        getSelectedInputRenderType(toolInput) !== FlowNodeInputTypeEnum.selectLLMModel
+      ) {
+        continue;
+      }
+
+      const configValue =
+        config && Object.hasOwn(config, toolInput.key) ? config[toolInput.key] : undefined;
+      const value = toolInput.value ?? configValue ?? toolInput.defaultValue;
+
       entries.push({
         tool: rawTool,
         toolIndex,
-        inputKey: key,
-        value: config[key],
-        required: false,
-        valueSource: 'config'
+        inputKey: toolInput.key,
+        input: toolInput,
+        value,
+        required: Boolean(toolInput.required),
+        valueSource: 'input'
       });
     }
   }

@@ -1302,7 +1302,19 @@ describe('replaceInvalidModelReferences', () => {
     expect(result.completed).toBe(true);
     expect(result.counts.app.llm.replacedReferences).toBe(1);
     expect(result.counts.version.llm.replacedReferences).toBe(1);
-    // 同一插件在 app 与 version 间复用缓存，仅查询一次。
+    expect(result.counts.app.llm.failedRecords).toBe(1);
+    expect(result.counts.version.llm.failedRecords).toBe(1);
+    expect(result.failedSamples).toEqual(
+      expect.arrayContaining([
+        { resourceType: 'app', resourceId: String(ids.app), reason: 'Tool detail unavailable' },
+        {
+          resourceType: 'version',
+          resourceId: String(ids.version),
+          reason: 'Tool detail unavailable'
+        }
+      ])
+    );
+    // 同一成功插件在 app 与 version 间复用缓存，仅查询一次。
     expect(
       getSystemToolDetailMock.mock.calls.filter(
         ([args]) => args.pluginId === 'systemTool-modelInvokeTest'
@@ -1328,5 +1340,179 @@ describe('replaceInvalidModelReferences', () => {
       prompt: 'keep-prompt'
     });
     expect(savedVersion?.resources).toContainEqual({ type: 'model', id: 'new-llm' });
+  });
+
+  it('does not cache transient tool detail failures and reports failed records for retry while recovering subsequent records', async () => {
+    let attempts = 0;
+    const getSystemToolDetailMock = vi
+      .spyOn(SystemToolRepo.getInstance(), 'getSystemToolDetail')
+      .mockImplementation(async ({ pluginId }) => {
+        attempts++;
+        if (attempts === 1) {
+          throw new Error('temporary plugin service error');
+        }
+        return {
+          id: pluginId,
+          inputSchema: {
+            type: 'object',
+            properties: {
+              model: { type: 'string', format: 'modelId' }
+            }
+          }
+        } as never;
+      });
+
+    const buildAgentNode = () => ({
+      nodeId: 'agent-transient',
+      flowNodeType: FlowNodeTypeEnum.agent,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.aiModelId,
+          renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+          value: 'new-llm'
+        },
+        {
+          key: NodeInputKeyEnum.selectedTools,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          value: [
+            {
+              id: 'systemTool-flakyModelTool',
+              source: 'system',
+              version: '0.1.0',
+              inputs: [{ key: 'model', mode: 'manual' }],
+              config: { model: 'old-llm' }
+            }
+          ]
+        }
+      ],
+      outputs: []
+    });
+
+    await MongoApp.collection.insertOne({
+      _id: ids.app,
+      teamId: ids.team,
+      tmbId: ids.member,
+      name: 'App With Transient Tool Lookup',
+      type: 'workflow',
+      modules: [buildAgentNode()],
+      chatConfig: {}
+    });
+    await MongoAppVersion.collection.insertOne({
+      _id: ids.version,
+      appId: ids.app,
+      tmbId: ids.member,
+      nodes: [buildAgentNode()],
+      edges: [],
+      chatConfig: {},
+      resources: [{ type: 'model', id: 'old-llm' }]
+    });
+
+    const result = await replaceInvalidModelReferences({
+      teamId: String(ids.team),
+      replacement,
+      handle,
+      assertCanContinue: async () => {}
+    });
+
+    expect(getSystemToolDetailMock).toHaveBeenCalledTimes(2);
+    expect(result.counts.app.llm.replacedReferences).toBe(0);
+    expect(result.counts.app.llm.failedRecords).toBe(1);
+    expect(result.failedSamples).toEqual([
+      { resourceType: 'app', resourceId: String(ids.app), reason: 'Tool detail unavailable' }
+    ]);
+    expect(result.counts.version.llm.replacedReferences).toBe(1);
+    expect(result.counts.version.llm.failedRecords).toBe(0);
+
+    const [savedApp, savedVersion] = await Promise.all([
+      MongoApp.collection.findOne({ _id: ids.app }),
+      MongoAppVersion.collection.findOne({ _id: ids.version })
+    ]);
+    expect(savedApp?.modules[0].inputs[1].value[0].config.model).toBe('old-llm');
+    expect(savedVersion?.nodes[0].inputs[1].value[0].config.model).toBe('new-llm');
+    expect(savedVersion?.resources).toContainEqual({ type: 'model', id: 'new-llm' });
+  });
+
+  it('uses current tool schema rather than stale expanded renderTypeList so plain text params are never overwritten', async () => {
+    vi.spyOn(SystemToolRepo.getInstance(), 'getSystemToolDetail').mockResolvedValue({
+      id: 'systemTool-schemaChanged',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          model: { type: 'string', format: 'modelId' },
+          prompt: { type: 'string' }
+        }
+      }
+    } as never);
+
+    const legacyExpandedAgentNode = {
+      nodeId: 'agent-legacy-expanded',
+      flowNodeType: FlowNodeTypeEnum.agent,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.aiModelId,
+          renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+          value: 'new-llm'
+        },
+        {
+          key: NodeInputKeyEnum.selectedTools,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          value: [
+            {
+              id: 'systemTool-schemaChanged',
+              source: 'system',
+              version: '0.1.0',
+              inputs: [
+                {
+                  key: 'model',
+                  renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+                  value: 'old-llm'
+                },
+                {
+                  key: 'prompt',
+                  // 历史元数据残留了 selectLLMModel，但当前工具 Schema 已是普通文本参数。
+                  renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+                  value: 'summarize this document'
+                }
+              ],
+              config: {
+                model: 'old-llm',
+                prompt: 'summarize this document'
+              }
+            }
+          ]
+        }
+      ],
+      outputs: []
+    };
+
+    await MongoApp.collection.insertOne({
+      _id: ids.app,
+      teamId: ids.team,
+      tmbId: ids.member,
+      name: 'Legacy Expanded Tool App',
+      type: 'workflow',
+      modules: [legacyExpandedAgentNode],
+      chatConfig: {}
+    });
+
+    const result = await replaceInvalidModelReferences({
+      teamId: String(ids.team),
+      replacement,
+      handle,
+      assertCanContinue: async () => {}
+    });
+
+    expect(result.completed).toBe(true);
+    expect(result.counts.app.llm.replacedReferences).toBe(1);
+    expect(result.counts.app.llm.failedRecords).toBe(0);
+
+    const savedApp = await MongoApp.collection.findOne({ _id: ids.app });
+    const savedTool = savedApp?.modules[0].inputs[1].value[0];
+    expect(savedTool.config).toEqual({
+      model: 'new-llm',
+      prompt: 'summarize this document'
+    });
+    expect(savedTool.inputs[0].value).toBe('new-llm');
+    expect(savedTool.inputs[1].value).toBe('summarize this document');
   });
 });

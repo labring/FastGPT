@@ -245,18 +245,83 @@ const lookupSystemToolSelectLLMModelKeys = ({
           keys: extractSelectLLMModelKeysFromToolDetail(detail)
         })
       );
+    // 仅跨记录复用成功解析的结果；临时故障不钉死在共享缓存中，避免同一批后续记录无法恢复查验。
     pending =
       onToolDetailError === 'ignore'
-        ? request.catch((): ToolModelKeysLookupResult => ({ status: 'unavailable' }))
-        : request;
+        ? request.catch((): ToolModelKeysLookupResult => {
+            if (cache.get(cacheKey) === pending) {
+              cache.delete(cacheKey);
+            }
+            return { status: 'unavailable' };
+          })
+        : request.catch((error) => {
+            if (cache.get(cacheKey) === pending) {
+              cache.delete(cacheKey);
+            }
+            throw error;
+          });
     cache.set(cacheKey, pending);
   }
   return pending;
 };
 
+export type SelectedToolModelKeysResolution = {
+  getSelectedToolModelKeys: SelectedToolModelKeysResolver;
+  unresolvedToolIds: string[];
+};
+
+const hasPotentialModelValueInInputs = (inputs: unknown): boolean => {
+  if (!Array.isArray(inputs)) return false;
+  return inputs.some((item) => {
+    if (!isPlainObjectRecord(item) || typeof item.key !== 'string') return false;
+    if (item.key === NodeInputKeyEnum.systemInputConfig) return false;
+    return Boolean(extractModelIdValue(item.value) || extractModelIdValue(item.defaultValue));
+  });
+};
+
+const collectToolIdentitiesForModelKeyResolution = ({
+  nodes,
+  teamId
+}: {
+  nodes: unknown[];
+  teamId?: string;
+}): SelectedToolCandidateIdentity[] => {
+  const identities: SelectedToolCandidateIdentity[] = [];
+
+  for (const node of nodes) {
+    if (!isPlainObjectRecord(node) || node.flowNodeType !== FlowNodeTypeEnum.agent) continue;
+
+    for (const input of Array.isArray(node.inputs) ? node.inputs : []) {
+      if (
+        !isPlainObjectRecord(input) ||
+        input.key !== NodeInputKeyEnum.selectedTools ||
+        nodeInputIsReference(input as FlowNodeInputItemType)
+      ) {
+        continue;
+      }
+      if (!Array.isArray(input.value)) continue;
+
+      for (const tool of input.value) {
+        if (!isPlainObjectRecord(tool)) continue;
+        const hasConfigCandidate =
+          isPlainObjectRecord(tool.config) && hasPotentialModelConfigValue(tool.config);
+        const hasInputCandidate = hasPotentialModelValueInInputs(tool.inputs);
+        if (!hasConfigCandidate && !hasInputCandidate) continue;
+
+        const identity = extractSelectedToolIdentity({ tool, teamId });
+        if (identity) {
+          identities.push(identity);
+        }
+      }
+    }
+  }
+
+  return identities;
+};
+
 /**
- * 批量预解析工作流内 Agent `selectedTools` 的 `selectLLMModel` 键位，返回供同步遍历复用的只读解析器。
- * 支持跨批次传入共享 `cache`，避免失效模型批量替换时重复查询相同插件详情。
+ * 批量预解析工作流内 Agent `selectedTools` 的 `selectLLMModel` 键位，返回供同步遍历复用的只读解析器与未查验工具列表。
+ * 始终返回解析器函数以保证服务端批量写入严格以当前工具 Schema 为准；共享 `cache` 仅复用成功结果。
  */
 export const resolveSelectedToolModelKeysResolver = async ({
   nodes,
@@ -268,21 +333,30 @@ export const resolveSelectedToolModelKeysResolver = async ({
   teamId?: string;
   cache?: SystemToolModelKeyCache;
   onToolDetailError?: ToolDetailErrorPolicy;
-}): Promise<SelectedToolModelKeysResolver | undefined> => {
-  if (!Array.isArray(nodes)) return undefined;
+}): Promise<SelectedToolModelKeysResolution> => {
+  const emptyResolver: SelectedToolModelKeysResolver = () => [];
+  if (!Array.isArray(nodes)) {
+    return {
+      getSelectedToolModelKeys: emptyResolver,
+      unresolvedToolIds: []
+    };
+  }
 
-  const candidates = collectSelectedToolModelCandidates({
-    nodes: nodes as Array<StoreNodeItemType | RuntimeNodeItemType>,
-    teamId
-  });
-  if (candidates.length === 0) return undefined;
+  const identities = collectToolIdentitiesForModelKeyResolution({ nodes, teamId });
+  if (identities.length === 0) {
+    return {
+      getSelectedToolModelKeys: emptyResolver,
+      unresolvedToolIds: []
+    };
+  }
 
   const resolvedKeysByIdentity = new Map<string, string[]>();
+  const unresolvedToolIds = new Set<string>();
   const uniqueIdentities = new Map<string, SelectedToolCandidateIdentity>();
-  for (const candidate of candidates) {
-    const key = getToolCandidateIdentityKey(candidate);
+  for (const identity of identities) {
+    const key = getToolCandidateIdentityKey(identity);
     if (!uniqueIdentities.has(key)) {
-      uniqueIdentities.set(key, candidate);
+      uniqueIdentities.set(key, identity);
     }
   }
 
@@ -293,18 +367,23 @@ export const resolveSelectedToolModelKeysResolver = async ({
         cache,
         onToolDetailError
       });
-      if (result.status === 'resolved' && result.keys.length > 0) {
+      if (result.status === 'unavailable') {
+        unresolvedToolIds.add(identity.toolId);
+        return;
+      }
+      if (result.keys.length > 0) {
         resolvedKeysByIdentity.set(cacheKey, result.keys);
       }
     })
   );
 
-  if (resolvedKeysByIdentity.size === 0) return undefined;
-
-  return (tool: Record<string, unknown>) => {
-    const identity = extractSelectedToolIdentity({ tool, teamId });
-    if (!identity) return [];
-    return resolvedKeysByIdentity.get(getToolCandidateIdentityKey(identity)) ?? [];
+  return {
+    getSelectedToolModelKeys: (tool: Record<string, unknown>) => {
+      const identity = extractSelectedToolIdentity({ tool, teamId });
+      if (!identity) return [];
+      return resolvedKeysByIdentity.get(getToolCandidateIdentityKey(identity)) ?? [];
+    },
+    unresolvedToolIds: Array.from(unresolvedToolIds)
   };
 };
 

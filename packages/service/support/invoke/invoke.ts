@@ -118,7 +118,7 @@ export const resolveInvokeToolName = async ({
 /**
  * 将工作流发布资源快照中的模型授权收窄到当前工具实际声明并绑定的模型参数：
  * 1. 未声明 `model:invoke` 权限，或不存在同团队工作流资源快照时，不签发任何发布模型授权；
- * 2. 仅从当前工具 `inputSchema` 中渲染类型为 `selectLLMModel` 的字段提取本次运行入参（缺失时回退字段默认值）；
+ * 2. 仅从当前工具 `inputSchema` 中渲染类型为 `selectLLMModel` 的字段提取本次运行显式传入的模型参数；
  * 3. 仅保留命中应用发布快照 `resourceMap` 的模型 ID，防止同一应用内其他节点的模型越权进入当前工具凭证。
  *    未命中的模型由反向调用路由按实际运行成员执行 `use` ACL 校验。
  */

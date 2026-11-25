@@ -374,6 +374,9 @@ export const createInvalidReferenceReplacer = ({
           if (toolConfig) {
             toolConfig[entry.inputKey] = targets.llm.modelId;
           }
+          if (entry.input && entry.input.value !== undefined && entry.input.value !== null) {
+            entry.input.value = targets.llm.modelId;
+          }
         } else if (entry.input) {
           if (entry.input.value !== undefined && entry.input.value !== null) {
             entry.input.value = targets.llm.modelId;
@@ -708,22 +711,25 @@ export const replaceInvalidModelReferences = async ({
         let lastChanges: Record<ModelKind, Change> | undefined;
         try {
           let current = app;
+          let unresolvedToolIds: string[] = [];
+          let recordedConflictFailure = false;
           for (let attempt = 0; attempt < 3; attempt++) {
             const normalizedWorkflow = migrateStoredWorkflow({
               nodes: current.modules,
               chatConfig: current.chatConfig
             });
-            const getSelectedToolModelKeys = await resolveSelectedToolModelKeysResolver({
+            const toolModelKeys = await resolveSelectedToolModelKeysResolver({
               nodes: current.modules,
               teamId,
               cache: toolModelKeyCache,
               onToolDetailError: 'ignore'
             });
+            unresolvedToolIds = toolModelKeys.unresolvedToolIds;
             const next = replacer.replaceAppContent({
               nodes: current.modules,
               chatConfig: current.chatConfig,
               referenceNodes: normalizedWorkflow.nodes,
-              getSelectedToolModelKeys
+              getSelectedToolModelKeys: toolModelKeys.getSelectedToolModelKeys
             });
             lastChanges = next.changes;
             if (modelKinds.every((kind) => next.changes[kind].replacedReferences === 0)) {
@@ -756,6 +762,7 @@ export const replaceInvalidModelReferences = async ({
                 counts.app[kind].failedRecords++;
               }
               addFailure('app', String(app._id), 'Concurrent update');
+              recordedConflictFailure = true;
               break;
             }
             const refreshed = await MongoApp.findById(app._id)
@@ -763,6 +770,10 @@ export const replaceInvalidModelReferences = async ({
               .lean<LegacyAppRow>();
             if (!refreshed) break;
             current = refreshed;
+          }
+          if (unresolvedToolIds.length > 0 && !recordedConflictFailure) {
+            counts.app.llm.failedRecords++;
+            addFailure('app', String(app._id), 'Tool detail unavailable');
           }
         } catch (error) {
           if (stopError) throw error;
@@ -805,23 +816,26 @@ export const replaceInvalidModelReferences = async ({
             let lastChanges: Record<ModelKind, Change> | undefined;
             try {
               let current = version;
+              let unresolvedToolIds: string[] = [];
+              let recordedConflictFailure = false;
               for (let attempt = 0; attempt < 3; attempt++) {
                 const normalizedWorkflow = migrateStoredWorkflow({
                   nodes: current.nodes,
                   edges: current.edges,
                   chatConfig: current.chatConfig
                 });
-                const getSelectedToolModelKeys = await resolveSelectedToolModelKeysResolver({
+                const toolModelKeys = await resolveSelectedToolModelKeysResolver({
                   nodes: current.nodes,
                   teamId,
                   cache: toolModelKeyCache,
                   onToolDetailError: 'ignore'
                 });
+                unresolvedToolIds = toolModelKeys.unresolvedToolIds;
                 const next = replacer.replaceAppContent({
                   nodes: current.nodes,
                   chatConfig: current.chatConfig,
                   referenceNodes: normalizedWorkflow.nodes,
-                  getSelectedToolModelKeys
+                  getSelectedToolModelKeys: toolModelKeys.getSelectedToolModelKeys
                 });
                 lastChanges = next.changes;
                 if (modelKinds.every((kind) => next.changes[kind].replacedReferences === 0)) {
@@ -876,6 +890,7 @@ export const replaceInvalidModelReferences = async ({
                     counts.version[kind].failedRecords++;
                   }
                   addFailure('version', String(version._id), 'Concurrent update');
+                  recordedConflictFailure = true;
                   break;
                 }
                 const refreshed = await MongoAppVersion.findById(version._id)
@@ -883,6 +898,10 @@ export const replaceInvalidModelReferences = async ({
                   .lean<LegacyAppVersionRow>();
                 if (!refreshed || String(refreshed.appId) !== String(app._id)) break;
                 current = refreshed;
+              }
+              if (unresolvedToolIds.length > 0 && !recordedConflictFailure) {
+                counts.version.llm.failedRecords++;
+                addFailure('version', String(version._id), 'Tool detail unavailable');
               }
             } catch (error) {
               if (stopError) throw error;

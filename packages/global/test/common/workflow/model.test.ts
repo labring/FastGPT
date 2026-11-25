@@ -148,8 +148,8 @@ describe('walkWorkflowModelReferences', () => {
     expect(onReference).toHaveBeenCalledTimes(1);
   });
 
-  it('walks selectLLMModel entries in Agent selectedTools for both expanded inputs and stored configs', () => {
-    const visited: Array<{ source: string; modelId: unknown; inputKey?: string }> = [];
+  it('walks selectLLMModel entries in Agent selectedTools for editor expanded mode and authoritative server schema mode', () => {
+    const editorVisited: Array<{ source: string; modelId: unknown; inputKey?: string }> = [];
 
     walkWorkflowModelReferences({
       nodes: [
@@ -176,17 +176,48 @@ describe('walkWorkflowModelReferences', () => {
                       value: 'ignored-agent-generated'
                     }
                   ]
-                },
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      onReference: ({ source, reference, agentTool }) => {
+        editorVisited.push({ source, modelId: reference.modelId, inputKey: agentTool?.inputKey });
+      }
+    });
+
+    expect(editorVisited).toEqual([
+      { source: 'agentToolConfig', modelId: 'expanded-llm-id', inputKey: 'model' }
+    ]);
+
+    const serverVisited: Array<{ source: string; modelId: unknown; inputKey?: string }> = [];
+
+    walkWorkflowModelReferences({
+      nodes: [
+        {
+          nodeId: 'agent',
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              value: [
                 {
                   id: 'systemTool-stored',
                   inputs: [
+                    {
+                      key: 'prompt',
+                      renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+                      value: 'stale-plain-text'
+                    },
                     { key: 'model', mode: 'manual' },
                     { key: 'autoModel', mode: 'agentGenerated' }
                   ],
                   config: {
                     model: 'stored-llm-id',
                     autoModel: 'ignored-stored-agent-generated',
-                    other: 'plain-text'
+                    prompt: 'stale-plain-text'
                   }
                 }
               ]
@@ -197,12 +228,11 @@ describe('walkWorkflowModelReferences', () => {
       getSelectedToolModelKeys: (tool) =>
         tool.id === 'systemTool-stored' ? ['model', 'autoModel'] : [],
       onReference: ({ source, reference, agentTool }) => {
-        visited.push({ source, modelId: reference.modelId, inputKey: agentTool?.inputKey });
+        serverVisited.push({ source, modelId: reference.modelId, inputKey: agentTool?.inputKey });
       }
     });
 
-    expect(visited).toEqual([
-      { source: 'agentToolConfig', modelId: 'expanded-llm-id', inputKey: 'model' },
+    expect(serverVisited).toEqual([
       { source: 'agentToolConfig', modelId: 'stored-llm-id', inputKey: 'model' }
     ]);
   });
