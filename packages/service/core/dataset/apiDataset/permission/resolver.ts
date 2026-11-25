@@ -1,17 +1,39 @@
-import { MongoUser } from '../../../../support/user/schema';
-import { MongoTeamMember } from '../../../../support/user/team/teamMemberSchema';
-import { MongoMemberGroupModel } from '../../../../support/permission/memberGroup/memberGroupSchema';
-import { MongoOrgModel } from '../../../../support/permission/org/orgSchema';
-import { Types } from '../../../../common/mongo';
+import type { DbSession } from '@fastgpt/dal/db/types';
 import {
   ManageRoleVal,
   OwnerRoleVal,
   ReadRoleVal,
   WriteRoleVal
 } from '@fastgpt/global/support/permission/constant';
-import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
 import type { ApiDatasetPermissionItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
+
+export type PermissionSubjectResolverDeps = {
+  findUsernamesByUserIds: (params: {
+    usernames: string[];
+    tx?: DbSession;
+  }) => Promise<Map<string, string>>;
+  findActiveTeamMemberIdsByUserIds: (params: {
+    teamId: string;
+    userIds: string[];
+    tx?: DbSession;
+  }) => Promise<Map<string, string>>;
+  findActiveTeamMemberIds: (params: {
+    teamId: string;
+    tmbIds: string[];
+    tx?: DbSession;
+  }) => Promise<Set<string>>;
+  findTeamMemberGroupIds: (params: {
+    teamId: string;
+    groupIds: string[];
+    tx?: DbSession;
+  }) => Promise<Set<string>>;
+  findTeamOrgIds: (params: {
+    teamId: string;
+    orgIds: string[];
+    tx?: DbSession;
+  }) => Promise<Set<string>>;
+};
 
 /**
  * 角色白名单。schema 已在 fetch 阶段挡掉非法 role，这里保留一道防线：
@@ -30,12 +52,6 @@ const ROLE_RANK = new Map<number, number>([
   [ReadRoleVal, 1]
 ]);
 const getRoleRank = (permission: number) => ROLE_RANK.get(permission) ?? 0;
-
-/** 外部传入的 id 不保证是合法 ObjectId；直接交给 Mongoose 会抛 CastError 让整轮失败。 */
-const toObjectIds = (ids: Set<string>) =>
-  Array.from(ids)
-    .filter((id) => Types.ObjectId.isValid(id))
-    .map((id) => new Types.ObjectId(id));
 
 /** 协作者唯一键：三类 subject 的 id 空间互不重叠，但仍按类型加前缀避免脏数据串号。 */
 export const getPermissionSubjectKey = (collaborator: CollaboratorItemType) => {
@@ -62,10 +78,14 @@ export const getPermissionSubjectKey = (collaborator: CollaboratorItemType) => {
  */
 export const resolveApiDatasetPermissionItems = async ({
   teamId,
-  itemsByFileId
+  itemsByFileId,
+  deps,
+  tx
 }: {
   teamId: string;
   itemsByFileId: Map<string, ApiDatasetPermissionItemType[] | undefined>;
+  deps: PermissionSubjectResolverDeps;
+  tx?: DbSession;
 }): Promise<Map<string, CollaboratorItemType[] | undefined>> => {
   const rawEntries = Array.from(itemsByFileId);
   const usernameSet = new Set<string>();
@@ -85,60 +105,35 @@ export const resolveApiDatasetPermissionItems = async ({
   // 两跳解析 username：先取 userId，再限定在本团队内取 tmbId
   const usernameToTmbId = new Map<string, string>();
   if (usernameSet.size > 0) {
-    const users = await MongoUser.find(
-      { username: { $in: Array.from(usernameSet) } },
-      'username'
-    ).lean();
-    const usernameByUserId = new Map(
-      users.map((user) => [String(user._id), String(user.username)])
-    );
+    const usernameByUserId = await deps.findUsernamesByUserIds({
+      usernames: Array.from(usernameSet),
+      tx
+    });
     if (usernameByUserId.size > 0) {
-      const teamMembers = await MongoTeamMember.find(
-        {
-          teamId,
-          userId: { $in: Array.from(usernameByUserId.keys()) },
-          status: TeamMemberStatusEnum.active
-        },
-        '_id userId'
-      ).lean();
-      for (const member of teamMembers) {
-        const username = usernameByUserId.get(String(member.userId));
-        if (username) usernameToTmbId.set(username, String(member._id));
+      const tmbIdByUserId = await deps.findActiveTeamMemberIdsByUserIds({
+        teamId,
+        userIds: Array.from(usernameByUserId.keys()),
+        tx
+      });
+      for (const [userId, tmbId] of tmbIdByUserId) {
+        const username = usernameByUserId.get(userId);
+        if (username) usernameToTmbId.set(username, tmbId);
       }
     }
   }
 
-  const validTmbIds = new Set<string>(
+  const validTmbIds =
     tmbIdSet.size > 0
-      ? (
-          await MongoTeamMember.find(
-            {
-              teamId,
-              _id: { $in: toObjectIds(tmbIdSet) },
-              status: TeamMemberStatusEnum.active
-            },
-            '_id'
-          ).lean()
-        ).map((item) => String(item._id))
-      : []
-  );
-  const validGroupIds = new Set<string>(
+      ? await deps.findActiveTeamMemberIds({ teamId, tmbIds: Array.from(tmbIdSet), tx })
+      : new Set<string>();
+  const validGroupIds =
     groupIdSet.size > 0
-      ? (
-          await MongoMemberGroupModel.find(
-            { teamId, _id: { $in: toObjectIds(groupIdSet) } },
-            '_id'
-          ).lean()
-        ).map((item) => String(item._id))
-      : []
-  );
-  const validOrgIds = new Set<string>(
+      ? await deps.findTeamMemberGroupIds({ teamId, groupIds: Array.from(groupIdSet), tx })
+      : new Set<string>();
+  const validOrgIds =
     orgIdSet.size > 0
-      ? (
-          await MongoOrgModel.find({ teamId, _id: { $in: toObjectIds(orgIdSet) } }, '_id').lean()
-        ).map((item) => String(item._id))
-      : []
-  );
+      ? await deps.findTeamOrgIds({ teamId, orgIds: Array.from(orgIdSet), tx })
+      : new Set<string>();
 
   const result = new Map<string, CollaboratorItemType[] | undefined>();
   for (const [apiFileId, items] of rawEntries) {

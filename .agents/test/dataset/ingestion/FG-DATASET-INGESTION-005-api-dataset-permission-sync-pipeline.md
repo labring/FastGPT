@@ -25,7 +25,6 @@ sources:
   - "packages/service/core/dataset/apiDataset/permission/sync.ts"
   - "packages/service/core/dataset/apiDataset/permission/writer.ts"
   - "packages/service/core/dataset/apiDataset/service.ts"
-  - "packages/service/core/dataset/apiDataset/migration.ts"
   - "packages/service/core/dataset/apiDataset/custom/api.ts"
   - "packages/service/support/permission/collection/enable.ts"
   - "projects/app/src/pages/api/core/dataset/create.ts"

@@ -127,14 +127,12 @@ export const isPermissionSyncDataset = (
 export const filterApiDatasetServerPublicData = (apiDatasetServer?: ApiDatasetServerType) => {
   if (!apiDatasetServer) return undefined;
 
-  const { apiServer, yuqueServer, feishuServer, dingtalkServer, permissionSync, syncAllFiles } =
-    apiDatasetServer;
+  const { apiServer, yuqueServer, feishuServer, dingtalkServer, permissionSync } = apiDatasetServer;
 
   return {
     // 白名单重建：新增开关必须同时加在这里，否则详情接口会静默丢掉字段，
     // 前端开关永远显示 false，且下次保存时把真实配置覆盖掉。
     permissionSync: permissionSync === true,
-    syncAllFiles: syncAllFiles === true,
     apiServer: apiServer
       ? {
           baseUrl: apiServer.baseUrl,

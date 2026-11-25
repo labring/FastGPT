@@ -137,6 +137,7 @@
   "dataset_config_field_apiDatasetServer_dingtalkServer_workspaceId": "DingTalk Workspace ID",
   "dataset_config_field_apiDatasetServer_dingtalkServer_rootNodeId": "DingTalk Root Node ID",
   "dataset_config_field_apiDatasetServer_dingtalkServer_workspaceName": "DingTalk Workspace Name",
+  "dataset_config_field_apiDatasetServer_permissionSync": "Permission sync",
   "dataset_config_field_fileParseConfig_keep_header_footer": "Keep header and footer",
   "dataset_config_field_fileParseConfig_keep_appendix": "Keep appendix",
   "dataset_config_field_fileParseConfig_image_analysis": "Image recognition",

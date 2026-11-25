@@ -7180,8 +7180,6 @@ export type DatasetsCollectionsDetailRes = {
       };
       /** 外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL */
       permissionSync?: boolean;
-      /** 整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点 */
-      syncAllFiles?: boolean;
     };
     /** 删除时间 */
     deleteTime?: string | null;
@@ -7561,8 +7559,6 @@ export type DatasetsCreateReq = {
     };
     /** 外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL */
     permissionSync?: boolean;
-    /** 整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点 */
-    syncAllFiles?: boolean;
   };
   /** 外部文档解析开关(页眉页脚/附录/图片识别/图转表),仅对 customPdfParse 解析路径生效 */
   sangforFileParseConfig?: {
@@ -7935,8 +7931,6 @@ export type DatasetsDetailRes = {
     };
     /** 外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL */
     permissionSync?: boolean;
-    /** 整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点 */
-    syncAllFiles?: boolean;
   };
   /** 删除时间 */
   deleteTime?: string | null;
@@ -8635,8 +8629,6 @@ export type DatasetsUpdateReq = {
     };
     /** 外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL */
     permissionSync?: boolean;
-    /** 整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点 */
-    syncAllFiles?: boolean;
   };
   /** 是否自动同步 */
   autoSync?: boolean;

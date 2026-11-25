@@ -133,6 +133,7 @@
   "dataset_config_field_apiDatasetServer_dingtalkServer_workspaceId": "DingTalk 워크스페이스 ID",
   "dataset_config_field_apiDatasetServer_dingtalkServer_rootNodeId": "DingTalk 루트 노드 ID",
   "dataset_config_field_apiDatasetServer_dingtalkServer_workspaceName": "DingTalk 워크스페이스 이름",
+  "dataset_config_field_apiDatasetServer_permissionSync": "권한 동기화",
   "dataset_config_field_fileParseConfig_keep_header_footer": "머리글 및 바닥글 유지",
   "dataset_config_field_fileParseConfig_keep_appendix": "부록 유지",
   "dataset_config_field_fileParseConfig_image_analysis": "이미지 인식",

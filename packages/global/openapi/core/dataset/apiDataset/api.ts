@@ -105,6 +105,9 @@ export type GetApiDatasetFileListExistIdResponse = z.infer<
 /* ============================================================================
  * API: 获取第三方知识库本地同步范围状态
  * Route: GET /api/core/dataset/apiDataset/syncState
+ * Method: GET
+ * Description: 返回知识库整库全量同步开关 syncAll 及当前用户可读的已导入 API 集合同步状态
+ * Tags: ['Dataset', 'ApiDataset', 'Read']
  * ============================================================================ */
 export const GetApiDatasetSyncStateQuerySchema = z.object({
   datasetId: ObjectIdSchema.meta({
@@ -115,12 +118,30 @@ export const GetApiDatasetSyncStateQuerySchema = z.object({
 export type GetApiDatasetSyncStateQuery = z.infer<typeof GetApiDatasetSyncStateQuerySchema>;
 
 export const ApiDatasetSyncStateCollectionItemSchema = z.object({
-  collectionId: ObjectIdSchema.meta({ description: '本地集合 ID' }),
-  apiFileId: z.string().meta({ description: '本地存储的 apiFileId（派生目录含 #dir 后缀）' }),
-  sourceId: z.string().meta({ description: '对应的真实远端节点 ID' }),
-  type: z.enum(DatasetCollectionTypeEnum).meta({ description: '本地集合类型' }),
-  syncChildren: z.boolean().meta({ description: '是否自动同步新增直属子级' }),
-  parentId: ObjectIdSchema.nullable().meta({ description: '本地父集合 ID' })
+  collectionId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a06',
+    description: '本地集合 ID'
+  }),
+  apiFileId: z.string().meta({
+    example: 'doc-123#dir',
+    description: '本地存储的 apiFileId（派生目录含 #dir 后缀）'
+  }),
+  sourceId: z.string().meta({
+    example: 'doc-123',
+    description: '对应的真实远端节点 ID'
+  }),
+  type: z.enum(DatasetCollectionTypeEnum).meta({
+    example: DatasetCollectionTypeEnum.folder,
+    description: '本地集合类型'
+  }),
+  syncChildren: z.boolean().meta({
+    example: true,
+    description: '是否自动同步新增直属子级'
+  }),
+  parentId: ObjectIdSchema.nullable().meta({
+    example: '68ad85a7463006c963799a05',
+    description: '本地父集合 ID'
+  })
 });
 export type ApiDatasetSyncStateCollectionItem = z.infer<
   typeof ApiDatasetSyncStateCollectionItemSchema
@@ -128,6 +149,7 @@ export type ApiDatasetSyncStateCollectionItem = z.infer<
 
 export const GetApiDatasetSyncStateResponseSchema = z.object({
   syncAll: z.boolean().meta({
+    example: false,
     description: '是否开启整库全量同步（开启后同步远端全部新增内容并覆盖已暂停子目录）'
   }),
   collections: z

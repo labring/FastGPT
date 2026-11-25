@@ -96,8 +96,7 @@ const CreateDatasetBodyObjectSchema = z.object({
     description: '第三方知识库服务器配置(API/飞书/语雀/钉钉)',
     example: {
       apiServer: { baseUrl: 'https://example.com', authorization: 'Bearer token' },
-      permissionSync: true,
-      syncAllFiles: true
+      permissionSync: true
     }
   }),
   sangforFileParseConfig: sangforFileParseConfigSchema.optional().meta({

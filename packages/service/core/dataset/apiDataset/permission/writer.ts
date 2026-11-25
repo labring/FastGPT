@@ -1,8 +1,12 @@
-import { MongoDatasetCollection } from '../../collection/schema';
-import { MongoDataset } from '../../schema';
+import { unwrapMongoSession } from '@fastgpt/dal/db/mongo/base';
+import { runInTransaction } from '@fastgpt/dal/db/transaction';
+import type { DbSession } from '@fastgpt/dal/db/types';
+import {
+  markDatasetCollectionsIndependent,
+  syncDatasetCollectionTreePermissions
+} from '../../collection/entity';
+import { bumpDatasetCollectionPermissionVersion } from '../../entity';
 import { resourcePermissionRepo } from '../../../../support/permission/repository/resourcePermissionRepo';
-import { syncResourceTreePermissions } from '../../../../support/permission/resourcePermissionService';
-import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
@@ -14,7 +18,6 @@ import { getPermissionSubjectKey } from './resolver';
 import { assertPermissionSyncActive, PermissionSyncStaleRoundError } from './utils';
 import type { CollectionPermissionTargetState } from './types';
 import type { RedisLeaseContext } from '@fastgpt/dal/redis/caches';
-import type { ClientSession } from 'mongoose';
 
 /** 协作者集合比较键：subject + role。ACL 行里存的就是这两项。 */
 const collaboratorKey = (collaborator: CollaboratorItemType) =>
@@ -43,23 +46,27 @@ export const isSameCollaboratorSet = (a: CollaboratorItemType[], b: Collaborator
  * 且不在 `stopResourceIds` 里的孩子，所以父目录物化到子目录就停，子目录及其后代
  * 由子目录自己那次调用按它的新 ACL 处理。父子两次物化互不重叠，先做谁结果都一样。
  *
- * `stopResourceIds` 是本轮所有拿到明确目标态的节点：它们自己已是独立态，
- * 物化子树时不能越过它们去改它们下面的节点。
+ * `stopResourceIds` 包含两类传播边界：
+ * - 本轮拿到明确目标态的节点：它们自己已是独立态，物化子树时不能越过它们去改它们下面的节点；
+ * - 本轮拉取失败的节点（`preserveResourceIds`）：即使当前仍为继承态，也不能被父目录的新 ACL 覆写。
  *
- * 调用方已在事务内时传入 `session` 复用同一事务；缺省时函数自建事务。
+ * 调用方已在事务内时传入 `tx` 复用同一事务；缺省时函数自建事务。
  */
 export const applyCollectionPermissionStates = async ({
   teamId,
   datasetId,
   states,
+  preserveResourceIds,
   expectedApiDatasetServer,
   deadlineAt,
   lease,
-  session
+  tx
 }: {
   teamId: string;
   datasetId: string;
   states: CollectionPermissionTargetState[];
+  /** 本轮拉取失败、需保留原 ACL 的集合 ID；并入传播边界防止被父目录物化改写。 */
+  preserveResourceIds?: Iterable<string>;
   /** 本轮抓取所依据的托管配置；写事务内锁库重读后必须仍一致。 */
   expectedApiDatasetServer: ApiDatasetServerType;
   /** 本轮截止时间；到达后不再写库。 */
@@ -67,29 +74,30 @@ export const applyCollectionPermissionStates = async ({
   /** 同库租约上下文；丢失后停止后续写入。已提交的事务无法回滚，靠下一个检查点收敛。 */
   lease?: RedisLeaseContext;
   /** 调用方已开启事务时传入，复用同一事务；缺省时函数自建事务。 */
-  session?: ClientSession;
+  tx?: DbSession;
 }): Promise<{ updated: number }> => {
   const changedStates = states.filter((state) => state.changed);
   if (changedStates.length === 0) return { updated: 0 };
 
   assertPermissionSyncActive({ deadlineAt, lease });
 
-  const stopResourceIds = new Set(states.map((state) => state.collectionId));
+  const stopResourceIds = new Set<string>([
+    ...states.map((state) => state.collectionId),
+    ...(preserveResourceIds ?? [])
+  ]);
 
-  const run = async (writeSession: ClientSession) => {
+  const run = async (writeTx: DbSession) => {
     // 事务可能被 driver 重试，检查放在回调内才能覆盖每一次重试。
     assertPermissionSyncActive({ deadlineAt, lease });
 
     // 锁 dataset 文档并重读托管状态：抓取期间若关闭托管（或改了外部配置），
     // 这类写入与本次 $inc 冲突，driver 重试后在这里看到新值并丢弃旧轮次，
     // 否则旧目标态会整集覆盖关闭后人工修改的 ACL。
-    const dataset = await MongoDataset.findOneAndUpdate(
-      { _id: datasetId, teamId },
-      { $inc: { collectionPermissionVersion: 1 } },
-      { session: writeSession, new: true }
-    )
-      .select('apiDatasetServer')
-      .lean();
+    const dataset = await bumpDatasetCollectionPermissionVersion({
+      datasetId,
+      teamId,
+      tx: writeTx
+    });
     if (!dataset) throw DatasetErrEnum.unExist;
     if (
       !isPermissionSyncDataset(dataset.apiDatasetServer) ||
@@ -105,14 +113,15 @@ export const applyCollectionPermissionStates = async ({
         resourceId: state.collectionId,
         collaborators: state.collaborators
       })),
-      session: writeSession
+      session: unwrapMongoSession(writeTx)
     });
 
-    await MongoDatasetCollection.updateMany(
-      { teamId, datasetId, _id: { $in: changedStates.map((state) => state.collectionId) } },
-      { $set: { inheritPermission: false } },
-      { session: writeSession }
-    );
+    await markDatasetCollectionsIndependent({
+      teamId,
+      datasetId,
+      collectionIds: changedStates.map((state) => state.collectionId),
+      tx: writeTx
+    });
 
     for (const state of changedStates) {
       // 只有目录的 ACL 真的变了，才需要把新 ACL 物化给需要跟随的继承态后代
@@ -123,20 +132,14 @@ export const applyCollectionPermissionStates = async ({
         continue;
       }
       assertPermissionSyncActive({ deadlineAt, lease });
-      await syncResourceTreePermissions({
-        resource: {
-          _id: state.collectionId,
-          type: DatasetCollectionTypeEnum.folder,
-          teamId,
-          parentId: state.parentId,
-          inheritPermission: true
-        },
-        resourceModel: MongoDatasetCollection,
-        resourceType: PerResourceTypeEnum.collection,
+      await syncDatasetCollectionTreePermissions({
+        collectionId: state.collectionId,
+        teamId,
+        parentId: state.parentId,
         oldParentCollaborators: state.currentCollaborators,
         newParentCollaborators: state.collaborators,
         stopResourceIds,
-        session: writeSession
+        tx: writeTx
       });
     }
 
@@ -145,10 +148,10 @@ export const applyCollectionPermissionStates = async ({
     assertPermissionSyncActive({ deadlineAt, lease });
   };
 
-  if (session) {
-    await run(session);
+  if (tx) {
+    await run(tx);
   } else {
-    await mongoSessionRun(run);
+    await runInTransaction(run);
   }
 
   // 覆盖「提交过程中租约才丢失」的窗口：写入可能已经落库，抛出取消让调用方按失败处理，

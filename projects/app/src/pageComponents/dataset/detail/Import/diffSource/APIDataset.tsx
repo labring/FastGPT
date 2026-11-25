@@ -1,38 +1,35 @@
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Loading from '@fastgpt/web/components/common/MyLoading';
-import { Box, Button, Checkbox, Flex, Spinner } from '@chakra-ui/react';
+import { Box, Button, Checkbox, Flex } from '@chakra-ui/react';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getApiDatasetFileList, getApiDatasetSyncState } from '@/web/core/dataset/api/apiDataset';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
+import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
+import FolderPath from '@/components/common/folder/Path';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import MyTag from '@fastgpt/web/components/common/Tag/index';
-import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { type APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
-import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useMount } from 'ahooks';
+
+const SYNC_ALL_SOURCE_ID = '__SYNC_ALL__';
+
+type SelectedApiFile = {
+  file: APIFileItemType;
+  ancestorIds: string[];
+};
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
   loading: () => <Loading fixed={false} />
 });
 const Upload = dynamic(() => import('../commonProgress/Upload'));
 const PreviewData = dynamic(() => import('../commonProgress/PreviewData'));
-
-const ROOT_NODE_KEY = '__ROOT__';
-const SYNC_ALL_SOURCE_ID = '__SYNC_ALL__';
-
-type SelectedApiFileEntry = {
-  item: APIFileItemType;
-  ancestorIds: string[];
-  ancestorPathLabel: string;
-  isReEnableSync: boolean;
-};
 
 const APIDatasetCollection = () => {
   const activeStep = useContextSelector(DatasetImportContext, (v) => v.activeStep);
@@ -53,24 +50,36 @@ const CustomAPIFileInput = () => {
   const { t } = useTranslation();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const goToNext = useContextSelector(DatasetImportContext, (v) => v.goToNext);
-  const currentLocalParentId = useContextSelector(DatasetImportContext, (v) => v.parentId);
+
   const sources = useContextSelector(DatasetImportContext, (v) => v.sources);
   const setSources = useContextSelector(DatasetImportContext, (v) => v.setSources);
 
-  const [selectedMap, setSelectedMap] = useState<Map<string, SelectedApiFileEntry>>(
-    () => new Map()
-  );
-  const [selectAll, setSelectAll] = useState(false);
+  const [selectFiles, setSelectFiles] = useState<SelectedApiFile[]>([]);
+  const [isSelectAll, setIsSelectAll] = useState(false);
+  const [parent, setParent] = useState<ParentTreePathItemType>({
+    parentId: '',
+    parentName: ''
+  });
+  const [paths, setPaths] = useState<ParentTreePathItemType[]>([]);
+
   const [searchKey, setSearchKey] = useState('');
 
-  // 树节点懒加载状态：key 为远端节点 id（根级为 ROOT_NODE_KEY）
-  const [childrenMap, setChildrenMap] = useState<Record<string, APIFileItemType[]>>({});
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
-  const [loadingNodeIds, setLoadingNodeIds] = useState<Set<string>>(() => new Set());
-  const loadedKeysRef = useRef<Set<string>>(new Set());
-  const autoExpandedRef = useRef(false);
+  const { data: fileList = [], loading } = useRequest(
+    async () => {
+      return getApiDatasetFileList({
+        datasetId: datasetDetail._id,
+        parentId: parent?.parentId,
+        searchKey: searchKey
+      });
+    },
+    {
+      refreshDeps: [datasetDetail._id, datasetDetail.apiDatasetServer, parent, searchKey],
+      throttleWait: 500,
+      manual: false
+    }
+  );
 
-  const { data: syncState, loading: loadingSyncState } = useRequest(
+  const { data: syncState } = useRequest(
     async () => {
       if (!datasetDetail._id) return undefined;
       return getApiDatasetSyncState({ datasetId: datasetDetail._id });
@@ -81,543 +90,322 @@ const CustomAPIFileInput = () => {
     }
   );
 
-  const { loading: loadingRoot } = useRequest(
-    async () => {
-      if (!datasetDetail._id) return [];
-      const list = await getApiDatasetFileList({
-        datasetId: datasetDetail._id,
-        parentId: ''
-      });
-      loadedKeysRef.current.add(ROOT_NODE_KEY);
-      setChildrenMap((prev) => ({ ...prev, [ROOT_NODE_KEY]: list }));
-      return list;
-    },
-    {
-      refreshDeps: [datasetDetail._id, datasetDetail.apiDatasetServer],
-      manual: false
-    }
-  );
+  const {
+    serverSyncAll,
+    existingFileIds,
+    syncingFolderIds,
+    pausedFolderIds,
+    ancestorChainBySourceId
+  } = useMemo(() => {
+    const fileIds = new Set<string>();
+    const activeFolders = new Set<string>();
+    const pausedFolders = new Set<string>();
+    const colById = new Map<string, NonNullable<typeof syncState>['collections'][number]>();
+    const folderColBySourceId = new Map<
+      string,
+      NonNullable<typeof syncState>['collections'][number]
+    >();
 
-  const trimmedSearchKey = searchKey.trim();
-  const { data: searchResultList = [], loading: loadingSearch } = useRequest(
-    async () => {
-      if (!datasetDetail._id || !trimmedSearchKey) return [];
-      return getApiDatasetFileList({
-        datasetId: datasetDetail._id,
-        parentId: '',
-        searchKey: trimmedSearchKey
-      });
-    },
-    {
-      refreshDeps: [datasetDetail._id, trimmedSearchKey],
-      throttleWait: 400,
-      manual: false
-    }
-  );
-
-  // 构建本地同步状态索引：区分正文文件、同步中目录、暂停同步目录（syncChildren === false）
-  const { serverSyncAll, existingFileBySourceId, existingFolderBySourceId, collectionById } =
-    useMemo(() => {
-      const fileMap = new Map<string, NonNullable<typeof syncState>['collections'][number]>();
-      const folderMap = new Map<string, NonNullable<typeof syncState>['collections'][number]>();
-      const colById = new Map<string, NonNullable<typeof syncState>['collections'][number]>();
-
-      for (const col of syncState?.collections ?? []) {
-        colById.set(col.collectionId, col);
-        if (col.type === DatasetCollectionTypeEnum.folder) {
-          folderMap.set(col.sourceId, col);
+    for (const col of syncState?.collections ?? []) {
+      colById.set(col.collectionId, col);
+      if (col.type === DatasetCollectionTypeEnum.folder) {
+        folderColBySourceId.set(col.sourceId, col);
+        if (col.syncChildren === false) {
+          pausedFolders.add(col.sourceId);
         } else {
-          fileMap.set(col.sourceId, col);
+          activeFolders.add(col.sourceId);
         }
+      } else {
+        fileIds.add(col.sourceId);
       }
+    }
 
-      return {
-        serverSyncAll: Boolean(syncState?.syncAll),
-        existingFileBySourceId: fileMap,
-        existingFolderBySourceId: folderMap,
-        collectionById: colById
-      };
-    }, [syncState]);
-
-  /** 懒加载并缓存指定远端父节点的直接子列表。 */
-  const loadNodeChildren = useCallback(
-    async (nodeId: string) => {
-      if (!datasetDetail._id || loadedKeysRef.current.has(nodeId)) return;
-      setLoadingNodeIds((prev) => {
-        const next = new Set(prev);
-        next.add(nodeId);
-        return next;
-      });
-      try {
-        const list = await getApiDatasetFileList({
-          datasetId: datasetDetail._id,
-          parentId: nodeId
-        });
-        loadedKeysRef.current.add(nodeId);
-        setChildrenMap((prev) => ({ ...prev, [nodeId]: list }));
-      } finally {
-        setLoadingNodeIds((prev) => {
-          const next = new Set(prev);
-          next.delete(nodeId);
-          return next;
-        });
+    const chainMap = new Map<string, string[]>();
+    for (const [sourceId, folderCol] of folderColBySourceId) {
+      const chain: string[] = [];
+      const seen = new Set<string>();
+      let curr: typeof folderCol | undefined = folderCol;
+      while (curr && !seen.has(curr.collectionId)) {
+        seen.add(curr.collectionId);
+        chain.unshift(curr.sourceId);
+        curr = curr.parentId ? colById.get(curr.parentId) : undefined;
       }
-    },
-    [datasetDetail._id]
+      chainMap.set(sourceId, chain);
+    }
+
+    return {
+      serverSyncAll: Boolean(syncState?.syncAll),
+      existingFileIds: fileIds,
+      syncingFolderIds: activeFolders,
+      pausedFolderIds: pausedFolders,
+      ancestorChainBySourceId: chainMap
+    };
+  }, [syncState]);
+
+  const canSelectSyncAll = Boolean(datasetDetail.permission?.hasManagePer);
+  const currentAncestorIds = useMemo(
+    () => paths.map((item) => item.parentId).filter((id): id is string => Boolean(id)),
+    [paths]
   );
 
-  // 若从列表页某个子目录点“添加文件”进入，自动展开对应的远端祖先目录链
-  useEffect(() => {
-    if (autoExpandedRef.current || !currentLocalParentId || collectionById.size === 0) return;
-    const ancestorSourceIds: string[] = [];
-    const seen = new Set<string>();
-    let currId: string | null = currentLocalParentId;
-    while (currId && !seen.has(currId)) {
-      seen.add(currId);
-      const col = collectionById.get(currId);
-      if (!col) break;
-      ancestorSourceIds.unshift(col.sourceId);
-      currId = col.parentId;
-    }
-    if (ancestorSourceIds.length === 0) return;
-    autoExpandedRef.current = true;
-
-    (async () => {
-      for (const sourceId of ancestorSourceIds) {
-        setExpandedIds((prev) => {
-          const next = new Set(prev);
-          next.add(sourceId);
-          return next;
-        });
-        await loadNodeChildren(sourceId);
+  /** 解析指定条目的可校验祖先链；若递归搜索返回未知深层目录，返回 null 禁止盲挂根目录。 */
+  const resolveItemAncestorIds = useCallback(
+    (item: APIFileItemType): string[] | null => {
+      const currentParentId = parent?.parentId || '';
+      const itemParentId = item.parentId || '';
+      if (!searchKey.trim() || !itemParentId || itemParentId === currentParentId) {
+        return currentAncestorIds;
       }
-    })();
-  }, [currentLocalParentId, collectionById, loadNodeChildren]);
+      const knownChain = ancestorChainBySourceId.get(itemParentId);
+      return knownChain ?? null;
+    },
+    [ancestorChainBySourceId, currentAncestorIds, parent?.parentId, searchKey]
+  );
 
-  // 返回上一步时恢复选中状态
+  // Init selected files
   useMount(() => {
-    if (sources.some((source) => source.isSyncAll)) {
-      setSelectAll(true);
-      setSelectedMap(new Map());
-      return;
+    const hasSyncAll = sources.some((item) => item.isSyncAll);
+    if (hasSyncAll) {
+      setIsSelectAll(true);
+      setSelectFiles([]);
+    } else {
+      setSelectFiles(
+        sources
+          .filter((item) => Boolean(item.apiFile))
+          .map((item) => ({
+            file: item.apiFile!,
+            ancestorIds: item.ancestorIds ?? []
+          }))
+      );
     }
-    const nextMap = new Map<string, SelectedApiFileEntry>();
-    for (const source of sources) {
-      if (!source.apiFile) continue;
-      nextMap.set(source.apiFile.id, {
-        item: source.apiFile,
-        ancestorIds: source.ancestorIds ?? [],
-        ancestorPathLabel: source.ancestorPathLabel ?? '',
-        isReEnableSync: Boolean(source.isReEnableSync)
-      });
-    }
-    setSelectedMap(nextMap);
   });
 
-  // 记录已选中项覆盖到的所有祖先 ID，用于在树中展示半选（indeterminate）状态
-  const selectedAncestorSet = useMemo(() => {
-    const set = new Set<string>();
-    for (const entry of selectedMap.values()) {
-      for (const ancId of entry.ancestorIds) {
-        set.add(ancId);
-      }
-    }
-    return set;
-  }, [selectedMap]);
-
-  const handleToggleExpand = useCallback(
-    async (nodeId: string) => {
-      const willExpand = !expandedIds.has(nodeId);
-      setExpandedIds((prev) => {
-        const next = new Set(prev);
-        if (willExpand) {
-          next.add(nodeId);
-        } else {
-          next.delete(nodeId);
-        }
-        return next;
-      });
-      if (willExpand) {
-        await loadNodeChildren(nodeId);
-      }
-    },
-    [expandedIds, loadNodeChildren]
-  );
-
-  const handleToggleNode = useCallback(
-    ({
-      item,
-      ancestorIds,
-      ancestorNames,
-      isReEnableSync
-    }: {
-      item: APIFileItemType;
-      ancestorIds: string[];
-      ancestorNames: string[];
-      isReEnableSync: boolean;
-    }) => {
-      setSelectedMap((prev) => {
-        const next = new Map(prev);
-        if (next.has(item.id)) {
-          next.delete(item.id);
-          return next;
-        }
-        // 选中目录时移除其已被单独选中的子孙项，避免重复提交
-        for (const [id, entry] of next.entries()) {
-          if (entry.ancestorIds.includes(item.id)) {
-            next.delete(id);
+  const { runAsync: onclickNext, loading: onNextLoading } = useRequest(
+    async () => {
+      if (isSelectAll) {
+        setSources([
+          {
+            id: SYNC_ALL_SOURCE_ID,
+            isSyncAll: true,
+            createStatus: 'waiting',
+            sourceName: t('dataset:Select_all'),
+            icon: 'common/folderFill'
           }
-        }
-        next.set(item.id, {
-          item,
-          ancestorIds,
-          ancestorPathLabel: ancestorNames.length > 0 ? `/${ancestorNames.join('/')}` : '/',
-          isReEnableSync
-        });
-        return next;
-      });
+        ]);
+        return;
+      }
+
+      setSources(
+        selectFiles.map(({ file, ancestorIds }) => ({
+          id: file.id,
+          apiFileId: file.id,
+          apiFile: file,
+          ancestorIds: ancestorIds.length > 0 ? ancestorIds : undefined,
+          createStatus: 'waiting',
+          sourceName: file.name,
+          icon:
+            file.type === 'folder'
+              ? 'common/folderFill'
+              : (getSourceNameIcon({ sourceName: file.name }) as any)
+        }))
+      );
     },
-    []
+    {
+      onSuccess() {
+        goToNext();
+      }
+    }
   );
 
-  const canSelectSyncAll = !serverSyncAll && Boolean(datasetDetail.permission?.hasManagePer);
-  const totalPendingCount = selectAll ? 1 : selectedMap.size;
-  const isRootChecked = serverSyncAll || selectAll;
-  const hasImportedItems = existingFolderBySourceId.size > 0 || existingFileBySourceId.size > 0;
-  const isRootIndeterminate = !isRootChecked && (hasImportedItems || selectedMap.size > 0);
+  const handleSelectAll = useCallback(() => {
+    if (parent?.parentId || serverSyncAll || !canSelectSyncAll) return;
 
-  const handleToggleSelectAll = useCallback(() => {
-    if (!canSelectSyncAll) return;
-    setSelectAll((prev) => {
-      const next = !prev;
-      if (next) {
-        setSelectedMap(new Map());
-      }
-      return next;
-    });
-  }, [canSelectSyncAll]);
-
-  const { runAsync: onclickNext, loading: onNextLoading } = useRequest(async () => {
-    if (selectAll) {
-      setSources([
-        {
-          id: SYNC_ALL_SOURCE_ID,
-          isSyncAll: true,
-          createStatus: 'waiting',
-          sourceName: t('dataset:api_dataset_sync_all_files'),
-          icon: 'common/folderFill'
-        }
-      ]);
-      goToNext();
-      return;
+    if (isSelectAll) {
+      // cancel the selection of the root directory
+      setIsSelectAll(false);
+      setSelectFiles([]);
+    } else {
+      // select the root directory
+      setIsSelectAll(true);
+      setSelectFiles([]);
     }
-    setSources(
-      [...selectedMap.values()].map(({ item, ancestorIds, ancestorPathLabel, isReEnableSync }) => ({
-        id: item.id,
-        apiFileId: item.id,
-        apiFile: item,
-        ancestorIds,
-        ancestorPathLabel,
-        isReEnableSync,
-        createStatus: 'waiting',
-        sourceName: item.name,
-        icon:
-          item.type === 'folder'
-            ? 'common/folderFill'
-            : (getSourceNameIcon({ sourceName: item.name }) as any)
-      }))
-    );
-    goToNext();
-  });
-
-  /** 渲染单个树节点及其已展开的子树；允许展开所有 hasChild 节点（含已同步/暂停目录）。 */
-  const renderTreeNode = (
-    item: APIFileItemType,
-    depth: number,
-    ancestorIds: string[],
-    ancestorNames: string[],
-    coveredBySelectedAncestor: boolean
-  ) => {
-    const localFolder = existingFolderBySourceId.get(item.id);
-    const localFile = existingFileBySourceId.get(item.id);
-    const isPausedFolder = Boolean(localFolder && localFolder.syncChildren === false);
-    const isSyncedFolder = Boolean(localFolder && localFolder.syncChildren !== false);
-    const isSyncedFileOnly = Boolean(localFile && !localFolder);
-    const isSelectedSelf = selectedMap.has(item.id);
-    const hasSelectedDescendant = selectedAncestorSet.has(item.id);
-
-    const isCovered = serverSyncAll || selectAll || coveredBySelectedAncestor;
-    const isAlreadySynced = isSyncedFolder || isSyncedFileOnly;
-    const isDisabled = isCovered || isAlreadySynced;
-    const isChecked = isCovered || isAlreadySynced || isSelectedSelf;
-    const isIndeterminate = !isChecked && (isPausedFolder || hasSelectedDescendant);
-
-    const isExpanded = expandedIds.has(item.id);
-    const isNodeLoading = loadingNodeIds.has(item.id);
-    const children = childrenMap[item.id];
-    const nextAncestorIds = [...ancestorIds, item.id];
-    const nextAncestorNames = [...ancestorNames, item.name];
-
-    return (
-      <React.Fragment key={item.id}>
-        <Flex
-          alignItems={'center'}
-          py={2}
-          pr={3}
-          pl={`${depth * 20 + 12}px`}
-          borderRadius={'sm'}
-          _hover={{ bg: 'primary.50' }}
-          cursor={'pointer'}
-          onClick={() => {
-            if (item.hasChild) {
-              handleToggleExpand(item.id);
-            } else if (!isDisabled) {
-              handleToggleNode({
-                item,
-                ancestorIds,
-                ancestorNames,
-                isReEnableSync: isPausedFolder
-              });
-            }
-          }}
-        >
-          <Box
-            w={'20px'}
-            h={'20px'}
-            display={'flex'}
-            alignItems={'center'}
-            justifyContent={'center'}
-            mr={1}
-            flexShrink={0}
-            onClick={(e) => {
-              if (!item.hasChild) return;
-              e.stopPropagation();
-              handleToggleExpand(item.id);
-            }}
-          >
-            {item.hasChild ? (
-              isNodeLoading ? (
-                <Spinner size={'xs'} color={'primary.500'} />
-              ) : (
-                <MyIcon
-                  name={'core/chat/chevronRight'}
-                  w={'14px'}
-                  color={'myGray.500'}
-                  transform={isExpanded ? 'rotate(90deg)' : undefined}
-                  transition={'transform 0.15s ease'}
-                />
-              )
-            ) : null}
-          </Box>
-
-          <Checkbox
-            mr={2.5}
-            isChecked={isChecked}
-            isIndeterminate={isIndeterminate}
-            isDisabled={isDisabled}
-            onClick={(e) => e.stopPropagation()}
-            onChange={() => {
-              if (isDisabled) return;
-              handleToggleNode({
-                item,
-                ancestorIds,
-                ancestorNames,
-                isReEnableSync: isPausedFolder
-              });
-            }}
-          />
-
-          <MyIcon
-            name={
-              item.type === 'folder'
-                ? 'common/folderFill'
-                : (getSourceNameIcon({ sourceName: item.name }) as any)
-            }
-            w={'18px'}
-            mr={1.5}
-            flexShrink={0}
-          />
-          <Box
-            flex={'1 1 0'}
-            minW={0}
-            fontSize={'sm'}
-            fontWeight={'medium'}
-            color={'myGray.900'}
-            className={'textEllipsis'}
-          >
-            {item.name}
-          </Box>
-          {isPausedFolder && !isSelectedSelf && !isCovered && (
-            <MyTag ml={2} colorSchema={'gray'} type={'fill'} fontSize={'mini'} flexShrink={0}>
-              {t('dataset:sync_children_paused_tag')}
-            </MyTag>
-          )}
-          {isPausedFolder && isSelectedSelf && (
-            <MyTag ml={2} colorSchema={'blue'} type={'fill'} fontSize={'mini'} flexShrink={0}>
-              {t('dataset:api_dataset_re_enable_sync_tag')}
-            </MyTag>
-          )}
-          {isAlreadySynced && !isPausedFolder && (
-            <MyTag ml={2} colorSchema={'green'} type={'fill'} fontSize={'mini'} flexShrink={0}>
-              {t('dataset:api_dataset_synced_tag')}
-            </MyTag>
-          )}
-        </Flex>
-
-        {item.hasChild && isExpanded && (
-          <Box>
-            {children && children.length > 0
-              ? children.map((child) =>
-                  renderTreeNode(
-                    child,
-                    depth + 1,
-                    nextAncestorIds,
-                    nextAncestorNames,
-                    isCovered || isSelectedSelf
-                  )
-                )
-              : !isNodeLoading && (
-                  <Box
-                    pl={`${(depth + 1) * 20 + 36}px`}
-                    py={1.5}
-                    fontSize={'xs'}
-                    color={'myGray.400'}
-                  >
-                    {t('common:Empty')}
-                  </Box>
-                )}
-          </Box>
-        )}
-      </React.Fragment>
-    );
-  };
-
-  const rootItems = childrenMap[ROOT_NODE_KEY] ?? [];
+  }, [canSelectSyncAll, isSelectAll, parent?.parentId, serverSyncAll]);
 
   return (
-    <MyBox
-      isLoading={loadingRoot || loadingSyncState}
-      h={'100%'}
-      display={'flex'}
-      flexDirection={'column'}
-    >
-      <Flex
-        flex={'1 0 0'}
-        minH={0}
-        flexDirection={'column'}
-        border={'base'}
-        borderRadius={'md'}
-        overflow={'hidden'}
-      >
-        <Flex
-          px={4}
-          py={3}
-          borderBottom={'base'}
-          alignItems={'center'}
-          justifyContent={'space-between'}
-          gap={3}
-        >
-          <Flex alignItems={'center'} gap={2}>
-            <Checkbox
-              isChecked={isRootChecked}
-              isIndeterminate={isRootIndeterminate}
-              isDisabled={serverSyncAll || !canSelectSyncAll}
-              onChange={handleToggleSelectAll}
-            >
-              <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
-                {t('dataset:api_dataset_sync_all_files')}
-              </Box>
-            </Checkbox>
-            {serverSyncAll && (
-              <MyTag colorSchema={'green'} type={'fill'} fontSize={'mini'}>
-                {t('dataset:api_dataset_sync_all_enabled_tag')}
-              </MyTag>
-            )}
-          </Flex>
-          {datasetDetail.type === DatasetTypeEnum.apiDataset && (
-            <Box w={'200px'}>
+    <MyBox isLoading={loading} position="relative" h="full">
+      <Flex flexDirection={'column'} h="full">
+        <Flex justifyContent={'space-between'}>
+          <FolderPath
+            forbidLastClick
+            paths={paths}
+            onClick={(parentId) => {
+              const index = paths.findIndex((item) => item.parentId === parentId);
+              if (index === -1) {
+                setParent({
+                  parentId: '',
+                  parentName: ''
+                });
+                setPaths([]);
+                return;
+              }
+              setParent(paths[index]);
+              setPaths(paths.slice(0, index + 1));
+            }}
+          />
+          {datasetDetail?.apiDatasetServer?.apiServer && (
+            <Box w={'240px'}>
               <SearchInput
-                size={'sm'}
                 value={searchKey}
                 onChange={(e) => setSearchKey(e.target.value)}
-                placeholder={t('common:Search')}
+                placeholder={t('common:core.workflow.template.Search')}
               />
             </Box>
           )}
         </Flex>
-
-        <Box flex={'1 0 0'} minH={0} overflowY={'auto'} py={2}>
-          {trimmedSearchKey ? (
-            loadingSearch ? (
-              <Flex justifyContent={'center'} py={8}>
-                <Spinner size={'sm'} color={'primary.500'} />
-              </Flex>
-            ) : searchResultList.length > 0 ? (
-              searchResultList.map((item) => renderTreeNode(item, 0, [], [], false))
-            ) : (
-              <EmptyTip text={t('common:Empty')} />
-            )
-          ) : rootItems.length > 0 ? (
-            rootItems.map((item) => renderTreeNode(item, 0, [], [], false))
-          ) : (
-            !loadingRoot && <EmptyTip text={t('common:Empty')} />
-          )}
-        </Box>
-        {totalPendingCount > 0 && (
-          <Box
-            px={4}
-            py={2.5}
-            borderTop={'base'}
-            bg={'myGray.25'}
-            maxH={'112px'}
-            overflowY={'auto'}
-          >
-            <Box fontSize={'xs'} fontWeight={'medium'} color={'myGray.600'} mb={1.5}>
-              {t('dataset:api_dataset_pending_summary', { count: totalPendingCount })}
-            </Box>
-            <Flex flexWrap={'wrap'} gap={1.5}>
-              {selectAll ? (
-                <MyTag colorSchema={'blue'} type={'fill'} fontSize={'mini'}>
-                  {t('dataset:api_dataset_sync_all_files')}
-                </MyTag>
+        <Box flex={1} overflowY="auto" mb={16} userSelect={'none'}>
+          <Box ml={2} mt={3}>
+            <Flex
+              alignItems={'center'}
+              py={3}
+              cursor={'pointer'}
+              bg={'myGray.50'}
+              pl={7}
+              rounded={'8px'}
+              fontSize={'sm'}
+              fontWeight={'medium'}
+              color={'myGray.900'}
+            >
+              {parent?.parentId ? (
+                <>{t('dataset:filename')}</>
               ) : (
-                [...selectedMap.values()].map(({ item, ancestorPathLabel, isReEnableSync }) => (
-                  <MyTag
-                    key={item.id}
-                    colorSchema={isReEnableSync ? 'blue' : 'gray'}
-                    type={'fill'}
-                    fontSize={'mini'}
-                    cursor={'pointer'}
-                    onClick={() => {
-                      setSelectedMap((prev) => {
-                        const next = new Map(prev);
-                        next.delete(item.id);
-                        return next;
-                      });
-                    }}
-                  >
-                    {`${ancestorPathLabel && ancestorPathLabel !== '/' ? `${ancestorPathLabel}/` : ''}${item.name}${isReEnableSync ? ` (${t('dataset:api_dataset_re_enable_sync_tag')})` : ''} ×`}
-                  </MyTag>
-                ))
+                <Checkbox
+                  className="checkbox"
+                  isChecked={serverSyncAll || isSelectAll}
+                  isDisabled={serverSyncAll || !canSelectSyncAll}
+                  onChange={() => {
+                    handleSelectAll();
+                  }}
+                >
+                  <Box>{t('dataset:Select_all')}</Box>
+                </Checkbox>
               )}
             </Flex>
-          </Box>
-        )}
-      </Flex>
 
-      <Flex justifyContent={'flex-end'} pt={4}>
-        <Button
-          isDisabled={totalPendingCount === 0}
-          isLoading={onNextLoading}
-          onClick={onclickNext}
+            {fileList.map((item) => {
+              const isPausedFolder = item.type === 'folder' && pausedFolderIds.has(item.id);
+              const isExists =
+                serverSyncAll ||
+                (item.type === 'folder'
+                  ? syncingFolderIds.has(item.id)
+                  : existingFileIds.has(item.id));
+              const resolvedAncestorIds = resolveItemAncestorIds(item);
+              const canSelectItem = resolvedAncestorIds !== null;
+              const isSelected = selectFiles.some((entry) => entry.file.id === item.id);
+              const isChecked = isExists || isSelected || isSelectAll;
+              const canEnter =
+                Boolean(item.hasChild) && (!isChecked || isPausedFolder) && canSelectItem;
+
+              const toggleSelect = () => {
+                if (isExists || !canSelectItem) return;
+                if (isSelectAll) {
+                  setIsSelectAll(false);
+                  setSelectFiles(
+                    fileList
+                      .filter((file) => {
+                        if (file.id === item.id) return false;
+                        const fileExists =
+                          file.type === 'folder'
+                            ? syncingFolderIds.has(file.id)
+                            : existingFileIds.has(file.id);
+                        return !fileExists && resolveItemAncestorIds(file) !== null;
+                      })
+                      .map((file) => ({
+                        file,
+                        ancestorIds: resolveItemAncestorIds(file) ?? []
+                      }))
+                  );
+                } else if (isSelected) {
+                  setSelectFiles((state) => state.filter((entry) => entry.file.id !== item.id));
+                } else {
+                  setSelectFiles((state) => [
+                    ...state,
+                    { file: item, ancestorIds: resolvedAncestorIds }
+                  ]);
+                }
+              };
+
+              return (
+                <Flex
+                  key={item.id}
+                  py={3}
+                  _hover={{ bg: 'primary.50' }}
+                  pl={7}
+                  cursor={'pointer'}
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).closest('.checkbox')) {
+                      return;
+                    }
+                    if (item.hasChild) {
+                      if (!canEnter) return;
+                      setPaths((state) => [...state, { parentId: item.id, parentName: item.name }]);
+                      return setParent({
+                        parentId: item.id,
+                        parentName: item.name
+                      });
+                    } else {
+                      toggleSelect();
+                    }
+                  }}
+                >
+                  <Checkbox
+                    className="checkbox"
+                    mr={2.5}
+                    isChecked={isChecked}
+                    isDisabled={isExists || !canSelectItem}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      toggleSelect();
+                    }}
+                  />
+                  <MyIcon
+                    name={
+                      item.type === 'folder'
+                        ? 'common/folderFill'
+                        : (getSourceNameIcon({ sourceName: item.name }) as any)
+                    }
+                    w={'18px'}
+                    mr={1.5}
+                  />
+                  <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
+                    {item.name}
+                  </Box>
+                  {canEnter && <MyIcon name="core/chat/chevronRight" w={'18px'} ml={2} />}
+                </Flex>
+              );
+            })}
+          </Box>
+        </Box>
+
+        <Box
+          position="absolute"
+          display={'flex'}
+          justifyContent={'end'}
+          bottom={0}
+          left={0}
+          right={0}
+          p={4}
         >
-          {selectAll
-            ? `${t('dataset:api_dataset_sync_all_files')} | `
-            : totalPendingCount > 0
-              ? `${t('dataset:total_num_files', { total: totalPendingCount })} | `
+          <Button
+            isDisabled={selectFiles.length === 0 && !isSelectAll}
+            isLoading={onNextLoading}
+            onClick={onclickNext}
+          >
+            {selectFiles.length > 0
+              ? `${t('dataset:total_num_files', { total: selectFiles.length })} | `
               : ''}
-          {t('common:next_step')}
-        </Button>
+            {t('common:next_step')}
+          </Button>
+        </Box>
       </Flex>
     </MyBox>
   );

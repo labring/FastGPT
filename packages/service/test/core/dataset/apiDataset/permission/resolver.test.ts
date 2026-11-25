@@ -1,36 +1,33 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
-import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
+import {
+  getPermissionSubjectKey,
+  resolveApiDatasetPermissionItems,
+  ensureOwnerAccess,
+  type PermissionSubjectResolverDeps
+} from '@fastgpt/service/core/dataset/apiDataset/permission/resolver';
 
-const userFind = vi.fn();
-const teamMemberFind = vi.fn();
-const groupFind = vi.fn();
-const orgFind = vi.fn();
+const findUsernamesByUserIds = vi.fn();
+const findActiveTeamMemberIdsByUserIds = vi.fn();
+const findActiveTeamMemberIds = vi.fn();
+const findTeamMemberGroupIds = vi.fn();
+const findTeamOrgIds = vi.fn();
 
-vi.mock('@fastgpt/service/support/user/schema', () => ({
-  MongoUser: { find: userFind }
-}));
-vi.mock('@fastgpt/service/support/user/team/teamMemberSchema', () => ({
-  MongoTeamMember: { find: teamMemberFind }
-}));
-vi.mock('@fastgpt/service/support/permission/memberGroup/memberGroupSchema', () => ({
-  MongoMemberGroupModel: { find: groupFind }
-}));
-vi.mock('@fastgpt/service/support/permission/org/orgSchema', () => ({
-  MongoOrgModel: { find: orgFind }
-}));
-
-const { getPermissionSubjectKey, resolveApiDatasetPermissionItems, ensureOwnerAccess } =
-  await import('@fastgpt/service/core/dataset/apiDataset/permission/resolver');
-
-const lean = <T>(rows: T[]) => ({ lean: vi.fn().mockResolvedValue(rows) });
+const deps: PermissionSubjectResolverDeps = {
+  findUsernamesByUserIds,
+  findActiveTeamMemberIdsByUserIds,
+  findActiveTeamMemberIds,
+  findTeamMemberGroupIds,
+  findTeamOrgIds
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
-  userFind.mockReturnValue(lean([]));
-  teamMemberFind.mockReturnValue(lean([]));
-  groupFind.mockReturnValue(lean([]));
-  orgFind.mockReturnValue(lean([]));
+  findUsernamesByUserIds.mockResolvedValue(new Map());
+  findActiveTeamMemberIdsByUserIds.mockResolvedValue(new Map());
+  findActiveTeamMemberIds.mockResolvedValue(new Set());
+  findTeamMemberGroupIds.mockResolvedValue(new Set());
+  findTeamOrgIds.mockResolvedValue(new Set());
 });
 
 describe('getPermissionSubjectKey', () => {
@@ -91,44 +88,34 @@ describe('ensureOwnerAccess', () => {
 
 describe('resolveApiDatasetPermissionItems', () => {
   it('resolves usernames through user → teamMember within the team', async () => {
-    userFind.mockReturnValue(lean([{ _id: 'user-1', username: 'alice' }]));
-    teamMemberFind.mockImplementation((filter: Record<string, unknown>) =>
-      lean(filter.userId ? [{ _id: 'tmb-1', userId: 'user-1' }] : [])
-    );
+    findUsernamesByUserIds.mockResolvedValue(new Map([['user-1', 'alice']]));
+    findActiveTeamMemberIdsByUserIds.mockResolvedValue(new Map([['user-1', 'tmb-1']]));
 
     const result = await resolveApiDatasetPermissionItems({
       teamId: 'team-1',
-      itemsByFileId: new Map([['file-1', [{ username: 'alice', permission: 4 }]]])
+      itemsByFileId: new Map([['file-1', [{ username: 'alice', permission: 4 }]]]),
+      deps
     });
 
     expect(result.get('file-1')).toEqual([{ tmbId: 'tmb-1', permission: 4 }]);
-    // 第二跳必须限定在当前团队且为在职状态
-    expect(teamMemberFind).toHaveBeenCalledWith(
-      expect.objectContaining({
-        teamId: 'team-1',
-        userId: { $in: ['user-1'] },
-        status: TeamMemberStatusEnum.active
-      }),
-      expect.anything()
-    );
+    expect(findActiveTeamMemberIdsByUserIds).toHaveBeenCalledWith({
+      teamId: 'team-1',
+      userIds: ['user-1'],
+      tx: undefined
+    });
   });
 
   it('excludes non-active (leave/forbidden) members for both username and tmbId queries', async () => {
     const activeTmbId = '64b7f4c2f1a2b3c4d5e6f7a1';
     const leftTmbId = '64b7f4c2f1a2b3c4d5e6f7a2';
-    userFind.mockReturnValue(
-      lean([
-        { _id: 'user-active', username: 'alice' },
-        { _id: 'user-left', username: 'bob' }
+    findUsernamesByUserIds.mockResolvedValue(
+      new Map([
+        ['user-active', 'alice'],
+        ['user-left', 'bob']
       ])
     );
-    teamMemberFind.mockImplementation((filter: Record<string, unknown>) => {
-      if (filter.status !== TeamMemberStatusEnum.active) return lean([]);
-      if (filter.userId) {
-        return lean([{ _id: 'tmb-alice', userId: 'user-active' }]);
-      }
-      return lean([{ _id: activeTmbId }]);
-    });
+    findActiveTeamMemberIdsByUserIds.mockResolvedValue(new Map([['user-active', 'tmb-alice']]));
+    findActiveTeamMemberIds.mockResolvedValue(new Set([activeTmbId]));
 
     const result = await resolveApiDatasetPermissionItems({
       teamId: 'team-1',
@@ -142,24 +129,23 @@ describe('resolveApiDatasetPermissionItems', () => {
             { tmbId: leftTmbId, permission: 4294967295 }
           ]
         ]
-      ])
+      ]),
+      deps
     });
 
     expect(result.get('file-1')).toEqual([
       { tmbId: 'tmb-alice', permission: 4 },
       { tmbId: activeTmbId, permission: 4 }
     ]);
-    expect(teamMemberFind).toHaveBeenCalledWith(
-      expect.objectContaining({ teamId: 'team-1', status: TeamMemberStatusEnum.active }),
-      '_id'
-    );
+    expect(findActiveTeamMemberIds).toHaveBeenCalledWith({
+      teamId: 'team-1',
+      tmbIds: [activeTmbId, leftTmbId],
+      tx: undefined
+    });
   });
 
   it('drops unknown usernames and unknown subjects instead of failing the round', async () => {
-    userFind.mockReturnValue(lean([{ _id: 'user-1', username: 'alice' }]));
-    teamMemberFind.mockImplementation((filter: Record<string, unknown>) =>
-      lean(filter.userId ? [] : [])
-    );
+    findUsernamesByUserIds.mockResolvedValue(new Map([['user-1', 'alice']]));
 
     const result = await resolveApiDatasetPermissionItems({
       teamId: 'team-1',
@@ -171,14 +157,15 @@ describe('resolveApiDatasetPermissionItems', () => {
             { tmbId: '64b7f4c2f1a2b3c4d5e6f7a8', permission: 2 }
           ]
         ]
-      ])
+      ]),
+      deps
     });
 
     expect(result.get('file-1')).toEqual([]);
   });
 
-  it('filters invalid roles and malformed object ids', async () => {
-    teamMemberFind.mockReturnValue(lean([{ _id: '64b7f4c2f1a2b3c4d5e6f7a8' }]));
+  it('filters invalid roles and unknown ids', async () => {
+    findActiveTeamMemberIds.mockResolvedValue(new Set(['64b7f4c2f1a2b3c4d5e6f7a8']));
 
     const result = await resolveApiDatasetPermissionItems({
       teamId: 'team-1',
@@ -190,17 +177,15 @@ describe('resolveApiDatasetPermissionItems', () => {
             { tmbId: 'not-an-objectid', permission: 4 }
           ]
         ]
-      ])
+      ]),
+      deps
     });
 
     expect(result.get('file-1')).toEqual([]);
-    // 非法 id 在查询前就被丢弃，不会交给 Mongoose
-    const idFilter = teamMemberFind.mock.calls.at(-1)?.[0] as { _id: { $in: unknown[] } };
-    expect(idFilter._id.$in).toHaveLength(1);
   });
 
   it('keeps the strongest permission for duplicate subjects regardless of occurrence order', async () => {
-    teamMemberFind.mockReturnValue(lean([{ _id: 'tmb-1' }]));
+    findActiveTeamMemberIds.mockResolvedValue(new Set(['tmb-1']));
 
     const result = await resolveApiDatasetPermissionItems({
       teamId: 'team-1',
@@ -212,7 +197,8 @@ describe('resolveApiDatasetPermissionItems', () => {
             { tmbId: 'tmb-1', permission: 2 }
           ]
         ]
-      ])
+      ]),
+      deps
     });
 
     // role 是位掩码，2(write) 比 4(read) 强，不能按数值大小取
@@ -220,7 +206,7 @@ describe('resolveApiDatasetPermissionItems', () => {
   });
 
   it('ranks manage above read and keeps the owner role as a valid value', async () => {
-    teamMemberFind.mockReturnValue(lean([{ _id: 'tmb-1' }, { _id: 'tmb-2' }]));
+    findActiveTeamMemberIds.mockResolvedValue(new Set(['tmb-1', 'tmb-2']));
 
     const result = await resolveApiDatasetPermissionItems({
       teamId: 'team-1',
@@ -234,7 +220,8 @@ describe('resolveApiDatasetPermissionItems', () => {
             { tmbId: 'tmb-2', permission: 4294967295 }
           ]
         ]
-      ])
+      ]),
+      deps
     });
 
     expect(result.get('file-1')).toEqual([
@@ -244,8 +231,8 @@ describe('resolveApiDatasetPermissionItems', () => {
   });
 
   it('preserves undefined snapshots and validates groups / orgs in the team', async () => {
-    groupFind.mockReturnValue(lean([{ _id: '64b7f4c2f1a2b3c4d5e6f7a8' }]));
-    orgFind.mockReturnValue(lean([]));
+    findTeamMemberGroupIds.mockResolvedValue(new Set(['64b7f4c2f1a2b3c4d5e6f7a8']));
+    findTeamOrgIds.mockResolvedValue(new Set());
 
     const result = await resolveApiDatasetPermissionItems({
       teamId: 'team-1',
@@ -258,11 +245,16 @@ describe('resolveApiDatasetPermissionItems', () => {
             { orgId: '64b7f4c2f1a2b3c4d5e6f7a8', permission: 1 }
           ]
         ]
-      ])
+      ]),
+      deps
     });
 
     expect(result.get('missing')).toBeUndefined();
     expect(result.get('file-1')).toEqual([{ groupId: '64b7f4c2f1a2b3c4d5e6f7a8', permission: 2 }]);
-    expect(groupFind).toHaveBeenCalledWith(expect.objectContaining({ teamId: 'team-1' }), '_id');
+    expect(findTeamMemberGroupIds).toHaveBeenCalledWith({
+      teamId: 'team-1',
+      groupIds: ['64b7f4c2f1a2b3c4d5e6f7a8'],
+      tx: undefined
+    });
   });
 });

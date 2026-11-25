@@ -1,5 +1,10 @@
+import { unwrapMongoSession } from '@fastgpt/dal/db/mongo/base';
+import type { DbSession } from '@fastgpt/dal/db/types';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
 import { Types } from '../../../common/mongo';
+import { syncResourceTreePermissions } from '../../../support/permission/resourcePermissionService';
 import { MongoDatasetCollection } from './schema';
 
 /**
@@ -34,4 +39,65 @@ export const countDatasetCollectionsByDatasetIds = async ({
 
   rows.forEach((row) => counts.set(String(row._id), row.count));
   return counts;
+};
+
+/** 将指定集合批量翻为独立权限态（inheritPermission=false）。 */
+export const markDatasetCollectionsIndependent = async ({
+  teamId,
+  datasetId,
+  collectionIds,
+  tx
+}: {
+  teamId: string;
+  datasetId: string;
+  collectionIds: string[];
+  tx?: DbSession;
+}) => {
+  if (collectionIds.length === 0) return;
+
+  await MongoDatasetCollection.updateMany(
+    { teamId, datasetId, _id: { $in: collectionIds } },
+    { $set: { inheritPermission: false } },
+    { session: unwrapMongoSession(tx) }
+  );
+};
+
+/** 将目录集合的新协作者集合向下物化到继承态后代，遇到 stopResourceIds 停止传播。 */
+export const syncDatasetCollectionTreePermissions = ({
+  collectionId,
+  teamId,
+  parentId,
+  oldParentCollaborators,
+  newParentCollaborators,
+  stopResourceIds,
+  tx
+}: {
+  collectionId: string;
+  teamId: string;
+  parentId: string | null;
+  oldParentCollaborators: CollaboratorItemType[];
+  newParentCollaborators: CollaboratorItemType[];
+  stopResourceIds?: Set<string>;
+  tx: DbSession;
+}) => {
+  const session = unwrapMongoSession(tx);
+  if (!session) {
+    throw new Error('Mongo transaction session is required for collection permission tree sync');
+  }
+
+  return syncResourceTreePermissions({
+    resource: {
+      _id: collectionId,
+      type: DatasetCollectionTypeEnum.folder,
+      teamId,
+      parentId,
+      inheritPermission: true
+    },
+    resourceModel: MongoDatasetCollection,
+    resourceType: PerResourceTypeEnum.collection,
+    oldParentCollaborators,
+    newParentCollaborators,
+    stopResourceIds,
+    session
+  });
 };

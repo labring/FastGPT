@@ -109,15 +109,11 @@ export const ApiDatasetServerPatchSchema = z.object({
   yuqueServer: YuqueServerSchema.optional(),
   dingtalkServer: DingtalkServerSchema.optional(),
 
-  // 两个开关均省略即 false。用 optional 而不是 default：schema 同时用于详情响应解析，
+  // 省略即 false。用 optional 而不是 default：schema 同时用于详情响应解析，
   // default 会把字段补进来，破坏「存量记录原样返回」和既有精确断言。
   permissionSync: BoolSchema.optional().meta({
     description:
       '外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL',
-    example: true
-  }),
-  syncAllFiles: BoolSchema.optional().meta({
-    description: '整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点',
     example: true
   })
 });

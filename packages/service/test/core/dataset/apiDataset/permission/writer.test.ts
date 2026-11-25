@@ -6,28 +6,28 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { PermissionSyncDeadlineError } from '@fastgpt/service/core/dataset/apiDataset/permission/utils';
 
-const updateMany = vi.fn();
+const markDatasetCollectionsIndependent = vi.fn();
+const syncDatasetCollectionTreePermissions = vi.fn();
 const replaceResources = vi.fn();
-const syncResourceTreePermissions = vi.fn();
-const mongoSessionRun = vi.fn(async (cb: (session: unknown) => Promise<void>) => cb('session'));
-const datasetFindOneAndUpdate = vi.fn();
+const fakeTx = { id: 'tx-1', dialect: 'mongo', datasource: 'main', afterCommit: vi.fn() };
+const runInTransaction = vi.fn(async (cb: (tx: unknown) => Promise<void>) => cb(fakeTx));
+const unwrapMongoSession = vi.fn((tx: unknown) =>
+  tx ? `mongo:${(tx as { id?: string }).id}` : undefined
+);
+const bumpDatasetCollectionPermissionVersion = vi.fn();
 
-vi.mock('@fastgpt/service/core/dataset/collection/schema', () => ({
-  MongoDatasetCollection: {
-    updateMany,
-    collection: { name: 'dataset_collections' }
-  }
+vi.mock('@fastgpt/dal/db/transaction', () => ({ runInTransaction }));
+vi.mock('@fastgpt/dal/db/mongo/base', () => ({ unwrapMongoSession }));
+vi.mock('@fastgpt/service/core/dataset/collection/entity', () => ({
+  markDatasetCollectionsIndependent,
+  syncDatasetCollectionTreePermissions
 }));
-vi.mock('@fastgpt/service/core/dataset/schema', () => ({
-  MongoDataset: { findOneAndUpdate: datasetFindOneAndUpdate }
+vi.mock('@fastgpt/service/core/dataset/entity', () => ({
+  bumpDatasetCollectionPermissionVersion
 }));
 vi.mock('@fastgpt/service/support/permission/repository/resourcePermissionRepo', () => ({
   resourcePermissionRepo: { replaceResources }
 }));
-vi.mock('@fastgpt/service/support/permission/resourcePermissionService', () => ({
-  syncResourceTreePermissions
-}));
-vi.mock('@fastgpt/service/common/mongo/sessionRun', () => ({ mongoSessionRun }));
 
 const { applyCollectionPermissionStates, isSameCollaboratorSet } =
   await import('@fastgpt/service/core/dataset/apiDataset/permission/writer');
@@ -40,7 +40,7 @@ const apiDatasetServer = {
   permissionSync: true
 };
 const mockDatasetState = (server: unknown = apiDatasetServer) => ({
-  select: vi.fn(() => ({ lean: vi.fn().mockResolvedValue({ apiDatasetServer: server }) }))
+  apiDatasetServer: server
 });
 
 const folderState = (overrides: Record<string, unknown> = {}) => ({
@@ -56,10 +56,10 @@ const folderState = (overrides: Record<string, unknown> = {}) => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  updateMany.mockResolvedValue({});
+  markDatasetCollectionsIndependent.mockResolvedValue(undefined);
   replaceResources.mockResolvedValue({});
-  syncResourceTreePermissions.mockResolvedValue(undefined);
-  datasetFindOneAndUpdate.mockImplementation(() => mockDatasetState());
+  syncDatasetCollectionTreePermissions.mockResolvedValue(undefined);
+  bumpDatasetCollectionPermissionVersion.mockResolvedValue(mockDatasetState());
 });
 
 describe('isSameCollaboratorSet', () => {
@@ -93,7 +93,7 @@ describe('applyCollectionPermissionStates', () => {
     });
 
     expect(result).toEqual({ updated: 0 });
-    expect(mongoSessionRun).not.toHaveBeenCalled();
+    expect(runInTransaction).not.toHaveBeenCalled();
     expect(replaceResources).not.toHaveBeenCalled();
   });
 
@@ -107,16 +107,18 @@ describe('applyCollectionPermissionStates', () => {
     });
     // 未变化的节点不写库，但仍属于本轮目标集，子树物化不能越过它
     const unchanged = folderState({ collectionId: '64b7f4c2f1a2b3c4d5e6f7a3', changed: false });
+    const failedInheritingChildId = '64b7f4c2f1a2b3c4d5e6f7a4';
 
     const result = await applyCollectionPermissionStates({
       teamId,
       datasetId,
       states: [folder, file, unchanged],
+      preserveResourceIds: [failedInheritingChildId],
       expectedApiDatasetServer: apiDatasetServer
     });
 
     expect(result).toEqual({ updated: 2 });
-    expect(mongoSessionRun).toHaveBeenCalledTimes(1);
+    expect(runInTransaction).toHaveBeenCalledTimes(1);
     expect(replaceResources).toHaveBeenCalledWith({
       teamId,
       resourceType: expect.anything(),
@@ -124,56 +126,55 @@ describe('applyCollectionPermissionStates', () => {
         { resourceId: folder.collectionId, collaborators: folder.collaborators },
         { resourceId: file.collectionId, collaborators: file.collaborators }
       ],
-      session: 'session'
+      session: 'mongo:tx-1'
     });
-    expect(updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        teamId,
-        datasetId,
-        _id: { $in: [folder.collectionId, file.collectionId] }
-      }),
-      { $set: { inheritPermission: false } },
-      { session: 'session' }
-    );
-    // 只有目录需要物化后代，且 stopResourceIds 覆盖本轮所有目标节点
-    expect(syncResourceTreePermissions).toHaveBeenCalledTimes(1);
-    expect(syncResourceTreePermissions).toHaveBeenCalledWith(
-      expect.objectContaining({
-        resource: expect.objectContaining({
-          _id: folder.collectionId,
-          inheritPermission: true,
-          parentId: null
-        }),
-        resourceModel: expect.anything(),
-        oldParentCollaborators: folder.currentCollaborators,
-        newParentCollaborators: folder.collaborators,
-        stopResourceIds: new Set([folder.collectionId, file.collectionId, unchanged.collectionId]),
-        session: 'session'
-      })
-    );
+    expect(markDatasetCollectionsIndependent).toHaveBeenCalledWith({
+      teamId,
+      datasetId,
+      collectionIds: [folder.collectionId, file.collectionId],
+      tx: fakeTx
+    });
+    // 只有目录需要物化后代，且 stopResourceIds 同时覆盖本轮目标节点与失败保留节点
+    expect(syncDatasetCollectionTreePermissions).toHaveBeenCalledTimes(1);
+    expect(syncDatasetCollectionTreePermissions).toHaveBeenCalledWith({
+      collectionId: folder.collectionId,
+      teamId,
+      parentId: null,
+      oldParentCollaborators: folder.currentCollaborators,
+      newParentCollaborators: folder.collaborators,
+      stopResourceIds: new Set([
+        folder.collectionId,
+        file.collectionId,
+        unchanged.collectionId,
+        failedInheritingChildId
+      ]),
+      tx: fakeTx
+    });
   });
 
-  it('reuses a caller-provided session instead of opening a new transaction', async () => {
+  it('reuses a caller-provided tx instead of opening a new transaction', async () => {
+    const outerTx = { id: 'outer-tx', dialect: 'mongo', datasource: 'main', afterCommit: vi.fn() };
     const result = await applyCollectionPermissionStates({
       teamId,
       datasetId,
       states: [folderState()],
       expectedApiDatasetServer: apiDatasetServer,
-      session: 'outer-session' as never
+      tx: outerTx as never
     });
 
     expect(result).toEqual({ updated: 1 });
-    expect(mongoSessionRun).not.toHaveBeenCalled();
-    expect(datasetFindOneAndUpdate).toHaveBeenCalledWith(expect.anything(), expect.anything(), {
-      session: 'outer-session',
-      new: true
+    expect(runInTransaction).not.toHaveBeenCalled();
+    expect(bumpDatasetCollectionPermissionVersion).toHaveBeenCalledWith({
+      datasetId,
+      teamId,
+      tx: outerTx
     });
     expect(replaceResources).toHaveBeenCalledWith(
-      expect.objectContaining({ session: 'outer-session' })
+      expect.objectContaining({ session: 'mongo:outer-tx' })
     );
-    expect(updateMany).toHaveBeenCalledWith(expect.anything(), expect.anything(), {
-      session: 'outer-session'
-    });
+    expect(markDatasetCollectionsIndependent).toHaveBeenCalledWith(
+      expect.objectContaining({ tx: outerTx })
+    );
   });
 
   it('skips materialization when a folder ACL is unchanged', async () => {
@@ -187,7 +188,7 @@ describe('applyCollectionPermissionStates', () => {
     });
 
     expect(replaceResources).toHaveBeenCalled();
-    expect(syncResourceTreePermissions).not.toHaveBeenCalled();
+    expect(syncDatasetCollectionTreePermissions).not.toHaveBeenCalled();
   });
 
   it('aborts before any write when the deadline has passed', async () => {
@@ -201,9 +202,9 @@ describe('applyCollectionPermissionStates', () => {
       })
     ).rejects.toBeInstanceOf(PermissionSyncDeadlineError);
 
-    expect(mongoSessionRun).not.toHaveBeenCalled();
+    expect(runInTransaction).not.toHaveBeenCalled();
     expect(replaceResources).not.toHaveBeenCalled();
-    expect(updateMany).not.toHaveBeenCalled();
+    expect(markDatasetCollectionsIndependent).not.toHaveBeenCalled();
   });
 
   it('aborts inside the transaction when the dataset lease is lost', async () => {
@@ -228,12 +229,12 @@ describe('applyCollectionPermissionStates', () => {
 
     // 事务回调内中止：ACL 与继承态都没有写
     expect(replaceResources).not.toHaveBeenCalled();
-    expect(updateMany).not.toHaveBeenCalled();
-    expect(syncResourceTreePermissions).not.toHaveBeenCalled();
+    expect(markDatasetCollectionsIndependent).not.toHaveBeenCalled();
+    expect(syncDatasetCollectionTreePermissions).not.toHaveBeenCalled();
   });
 
   it('discards the round when permission sync was disabled during fetch', async () => {
-    datasetFindOneAndUpdate.mockImplementation(() =>
+    bumpDatasetCollectionPermissionVersion.mockResolvedValue(
       mockDatasetState({ ...apiDatasetServer, permissionSync: false })
     );
 
@@ -248,12 +249,12 @@ describe('applyCollectionPermissionStates', () => {
 
     // 旧轮次一个字节都不能落库：关闭后人工设置的 ACL 不能被整集覆盖
     expect(replaceResources).not.toHaveBeenCalled();
-    expect(updateMany).not.toHaveBeenCalled();
-    expect(syncResourceTreePermissions).not.toHaveBeenCalled();
+    expect(markDatasetCollectionsIndependent).not.toHaveBeenCalled();
+    expect(syncDatasetCollectionTreePermissions).not.toHaveBeenCalled();
   });
 
   it('discards the round when the external config changed during fetch', async () => {
-    datasetFindOneAndUpdate.mockImplementation(() =>
+    bumpDatasetCollectionPermissionVersion.mockResolvedValue(
       mockDatasetState({
         ...apiDatasetServer,
         apiServer: { baseUrl: 'https://changed.example.com' }

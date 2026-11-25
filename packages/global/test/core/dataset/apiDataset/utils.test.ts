@@ -8,8 +8,7 @@ import {
 import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 
 const defaultSwitches = {
-  permissionSync: false,
-  syncAllFiles: false
+  permissionSync: false
 };
 
 describe('filterApiDatasetServerPublicData', () => {
@@ -34,13 +33,11 @@ describe('filterApiDatasetServerPublicData', () => {
   it('should keep permission sync switches so the frontend can round-trip them', () => {
     const result = filterApiDatasetServerPublicData({
       apiServer: { baseUrl: 'https://api.example.com' },
-      permissionSync: true,
-      syncAllFiles: true
+      permissionSync: true
     });
 
     expect(result).toMatchObject({
-      permissionSync: true,
-      syncAllFiles: true
+      permissionSync: true
     });
   });
 

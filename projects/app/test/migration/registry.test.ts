@@ -140,7 +140,9 @@ describe('validateSystemMigrationRegistry', () => {
     const migrateTask = systemMigrations.find(
       ({ id }) => id === '20261117_migrate_sandbox_to_opensandbox'
     );
-    const cleanupTask = systemMigrations.at(-1);
+    const cleanupTask = systemMigrations.find(
+      ({ id }) => id === '20261117_cleanup_legacy_sandbox_resources'
+    );
 
     expect(migrateTask).toMatchObject({
       id: '20261117_migrate_sandbox_to_opensandbox',
@@ -156,6 +158,11 @@ describe('validateSystemMigrationRegistry', () => {
       manual: true,
       blockStartup: false,
       dependsOn: ['20261117_migrate_sandbox_to_opensandbox']
+    });
+    expect(systemMigrations.at(-1)).toMatchObject({
+      id: '20261120_clean_api_dataset_system_root',
+      version: '4.18.0',
+      manual: true
     });
   });
 

@@ -89,22 +89,13 @@ describe('apiDataset permission sync switches', () => {
     expect(
       ApiDatasetServerSchema.safeParse({
         apiServer: { baseUrl: 'https://api.example.com' },
-        permissionSync: true,
-        syncAllFiles: true
+        permissionSync: true
       }).success
     ).toBe(true);
 
     const result = ApiDatasetServerSchema.safeParse({ permissionSync: true });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0]?.path).toEqual(['permissionSync']);
-
-    // 非 custom provider 只开 syncAllFiles 是合法的
-    expect(
-      ApiDatasetServerSchema.safeParse({
-        feishuServer: { appId: 'app', folderToken: 'folder' },
-        syncAllFiles: true
-      }).success
-    ).toBe(true);
   });
 
   it('exposes the switches on the update contract', () => {
@@ -112,13 +103,11 @@ describe('apiDataset permission sync switches', () => {
       id: objectId,
       apiDatasetServer: {
         apiServer: { baseUrl: 'https://api.example.com' },
-        permissionSync: true,
-        syncAllFiles: true
+        permissionSync: true
       }
     });
 
     expect(parsed.apiDatasetServer?.permissionSync).toBe(true);
-    expect(parsed.apiDatasetServer?.syncAllFiles).toBe(true);
   });
 });
 

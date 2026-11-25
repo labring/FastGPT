@@ -170,15 +170,17 @@ describe('syncCollectionPermissions', () => {
     expect(fetchApiFilePermissions).toHaveBeenCalledWith(
       expect.objectContaining({ apiFileIds: ['f1', 'f2', 'f3', 'f4'] })
     );
-    expect(resolveApiDatasetPermissionItems).toHaveBeenCalledWith({
-      teamId,
-      itemsByFileId: new Map([
-        ['f1', undefined],
-        ['f2', []],
-        ['f3', [{ tmbId: 'tmb-1', permission: ReadRoleVal }]],
-        ['f4', []]
-      ])
-    });
+    expect(resolveApiDatasetPermissionItems).toHaveBeenCalledWith(
+      expect.objectContaining({
+        teamId,
+        itemsByFileId: new Map([
+          ['f1', undefined],
+          ['f2', []],
+          ['f3', [{ tmbId: 'tmb-1', permission: ReadRoleVal }]],
+          ['f4', []]
+        ])
+      })
+    );
 
     const { states } = applyCollectionPermissionStates.mock.calls[0][0];
     expect(states.map((state: { collectionId: string }) => state.collectionId)).toEqual([
@@ -226,11 +228,74 @@ describe('syncCollectionPermissions', () => {
     const stats = await syncCollectionPermissions({ teamId, datasetId });
 
     expect(stats).toEqual({ checked: 1, updated: 0, skipped: 0, failed: 1 });
-    expect(resolveApiDatasetPermissionItems).toHaveBeenCalledWith({
-      teamId,
-      itemsByFileId: new Map()
-    });
+    expect(resolveApiDatasetPermissionItems).toHaveBeenCalledWith(
+      expect.objectContaining({
+        teamId,
+        itemsByFileId: new Map()
+      })
+    );
     expect(applyCollectionPermissionStates.mock.calls[0][0].states).toEqual([]);
+    expect(applyCollectionPermissionStates.mock.calls[0][0].preserveResourceIds).toEqual(['c1']);
+  });
+
+  it('protects failed inheriting child from parent folder propagation while letting omitted-permission sibling inherit', async () => {
+    mockCollectionFind({
+      all: [
+        {
+          _id: 'dir-1',
+          apiFileId: 'f-dir',
+          type: 'folder',
+          parentId: null,
+          inheritPermission: false
+        },
+        {
+          _id: 'file-failed',
+          apiFileId: 'f-failed',
+          type: 'file',
+          parentId: 'dir-1',
+          inheritPermission: true
+        },
+        {
+          _id: 'file-inherit',
+          apiFileId: 'f-inherit',
+          type: 'file',
+          parentId: 'dir-1',
+          inheritPermission: true
+        }
+      ]
+    });
+    fetchApiFilePermissions.mockResolvedValue(
+      new Map([
+        [
+          'f-dir',
+          {
+            apiFileId: 'f-dir',
+            status: 'ok',
+            permissions: [{ tmbId: 'tmb-new', permission: ReadRoleVal }]
+          }
+        ],
+        ['f-failed', { apiFileId: 'f-failed', status: 'failed' }],
+        ['f-inherit', { apiFileId: 'f-inherit', status: 'ok', permissions: undefined }]
+      ])
+    );
+    resolveApiDatasetPermissionItems.mockResolvedValue(
+      new Map([
+        ['f-dir', [{ tmbId: 'tmb-new', permission: ReadRoleVal }]],
+        ['f-inherit', undefined]
+      ])
+    );
+    applyCollectionPermissionStates.mockResolvedValue({ updated: 1 });
+
+    const stats = await syncCollectionPermissions({ teamId, datasetId });
+
+    expect(stats).toEqual({ checked: 3, updated: 1, skipped: 1, failed: 1 });
+    const applyCall = applyCollectionPermissionStates.mock.calls[0][0];
+    expect(applyCall.states.map((state: { collectionId: string }) => state.collectionId)).toEqual([
+      'dir-1'
+    ]);
+    // 失败的继承态子节点必须进入 preserveResourceIds，避免被 dir-1 物化覆写；
+    // 外部未返回 permissions 的 file-inherit 不进入 preserveResourceIds，继续随父目录继承。
+    expect(applyCall.preserveResourceIds).toEqual(['file-failed']);
   });
 
   it('falls back to dataset owner when non-empty external permissions resolve to nothing', async () => {

@@ -1137,17 +1137,30 @@ describe('dataset permission sync switch', () => {
       type: DatasetCollectionTypeEnum.file
     });
 
-    // root 的 header team 与 dataset 归属团队不同：锁库与物化都必须按 dataset 团队作用域
+    const pausedFolder = await MongoDatasetCollection.create({
+      teamId,
+      tmbId: String(otherTeamOwner.tmbId),
+      datasetId: String(dataset._id),
+      name: 'paused-folder',
+      type: DatasetCollectionTypeEnum.folder,
+      apiFileId: 'folder-paused',
+      syncChildren: false
+    });
+
+    // root 的 header team 与 dataset 归属团队不同：锁库、物化与 syncAll 恢复目录都必须按 dataset 团队作用域
     const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
       auth: root,
-      body: { id: String(dataset._id), name: 'renamed', ...permissionSyncBody }
+      body: { id: String(dataset._id), name: 'renamed', syncAll: true, ...permissionSyncBody }
     });
 
     expect(res.error).toBeUndefined();
     expect(res.code).toBe(200);
     const updated = await MongoDataset.findById(dataset._id).lean();
     expect(updated?.name).toBe('renamed');
+    expect(updated?.syncAll).toBe(true);
     expect(updated?.collectionPermissionEnabled).toBe(true);
+    const resumedFolder = await MongoDatasetCollection.findById(pausedFolder._id).lean();
+    expect(resumedFolder?.syncChildren).toBe(true);
     await expect(
       getResourceOwnedClbs({
         teamId,

@@ -137,6 +137,7 @@
   "dataset_config_field_apiDatasetServer_dingtalkServer_workspaceId": "钉钉知识库 ID",
   "dataset_config_field_apiDatasetServer_dingtalkServer_rootNodeId": "钉钉根节点 ID",
   "dataset_config_field_apiDatasetServer_dingtalkServer_workspaceName": "钉钉知识库名称",
+  "dataset_config_field_apiDatasetServer_permissionSync": "权限同步",
   "dataset_config_field_fileParseConfig_keep_header_footer": "保留页眉页脚",
   "dataset_config_field_fileParseConfig_keep_appendix": "保留附录",
   "dataset_config_field_fileParseConfig_image_analysis": "图片识别",

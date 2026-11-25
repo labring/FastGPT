@@ -137,6 +137,7 @@
   "dataset_config_field_apiDatasetServer_dingtalkServer_workspaceId": "DingTalk 知識庫 ID",
   "dataset_config_field_apiDatasetServer_dingtalkServer_rootNodeId": "DingTalk 根節點 ID",
   "dataset_config_field_apiDatasetServer_dingtalkServer_workspaceName": "DingTalk 知識庫名稱",
+  "dataset_config_field_apiDatasetServer_permissionSync": "權限同步",
   "dataset_config_field_fileParseConfig_keep_header_footer": "保留頁首頁尾",
   "dataset_config_field_fileParseConfig_keep_appendix": "保留附錄",
   "dataset_config_field_fileParseConfig_image_analysis": "圖片識別",

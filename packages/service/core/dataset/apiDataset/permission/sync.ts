@@ -9,6 +9,13 @@ import type { CollaboratorItemType } from '@fastgpt/global/support/permission/co
 import { buildLegacyApiFileDirSourceMap } from '../utils';
 import { resourcePermissionRepo } from '../../../../support/permission/repository/resourcePermissionRepo';
 import { pickCollaboratorIdFields } from '../../../../support/permission/utils';
+import { findUsernamesByUserIds } from '../../../../support/user/entity';
+import {
+  findActiveTeamMemberIds,
+  findActiveTeamMemberIdsByUserIds
+} from '../../../../support/user/team/entity';
+import { findTeamMemberGroupIds } from '../../../../support/permission/memberGroup/entity';
+import { findTeamOrgIds } from '../../../../support/permission/org/entity';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { Types } from '../../../../common/mongo';
 import { fetchApiFilePermissions } from './adapters';
@@ -230,7 +237,14 @@ export const syncCollectionPermissions = async ({
   assertPermissionSyncActive({ deadlineAt, lease });
   const resolved = await resolveApiDatasetPermissionItems({
     teamId,
-    itemsByFileId: okPermissionsByFileId
+    itemsByFileId: okPermissionsByFileId,
+    deps: {
+      findUsernamesByUserIds,
+      findActiveTeamMemberIdsByUserIds,
+      findActiveTeamMemberIds,
+      findTeamMemberGroupIds,
+      findTeamOrgIds
+    }
   });
 
   assertPermissionSyncActive({ deadlineAt, lease });
@@ -252,12 +266,17 @@ export const syncCollectionPermissions = async ({
 
   const ownerTmbId = String(dataset.tmbId);
   const states: CollectionPermissionTargetState[] = [];
+  const preserveResourceIds: string[] = [];
   assertPermissionSyncActive({ deadlineAt, lease });
   for (const collection of collections) {
     const collectionId = String(collection._id);
     const sourceId = sourceIdByCollectionId.get(collectionId)!;
-    // 抓取失败已在上面计入 failed，这里不能再算 skipped
-    if (failedFileIds.has(sourceId)) continue;
+    // 抓取失败已在上面计入 failed，这里不能再算 skipped；
+    // 同时并入传播边界，防止本轮父目录 ACL 变化时把继承态失败节点覆写掉。
+    if (failedFileIds.has(sourceId)) {
+      preserveResourceIds.push(collectionId);
+      continue;
+    }
     const collaborators = resolved.get(sourceId);
     // undefined = 外部未提供（或本条失败 / 全组格式非法）：本地保持不动（跳过，不算失败）
     if (collaborators === undefined) {
@@ -291,6 +310,7 @@ export const syncCollectionPermissions = async ({
     teamId,
     datasetId,
     states,
+    preserveResourceIds,
     // 抓取使用的是这份配置：写入事务内会锁库重读，托管关闭或配置变更时丢弃本轮
     expectedApiDatasetServer: dataset.apiDatasetServer,
     deadlineAt,

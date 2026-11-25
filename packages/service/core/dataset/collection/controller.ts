@@ -104,12 +104,14 @@ export const bulkInsertFolderCollections = async ({
   teamId,
   tmbId,
   datasetId,
-  docs
+  docs,
+  session: externalSession
 }: {
   teamId: string;
   tmbId: string;
   datasetId: string;
   docs: BulkInsertCollectionDoc[];
+  session?: ClientSession;
 }): Promise<{ successApiFileIds: string[]; failedApiFileIds: string[] }> => {
   const successApiFileIds: string[] = [];
   const failedApiFileIds: string[] = [];
@@ -119,7 +121,7 @@ export const bulkInsertFolderCollections = async ({
     const batch = docs.slice(i, i + API_FILE_FOLDER_BATCH_SIZE);
 
     try {
-      await mongoSessionRun(async (session) => {
+      const insertBatch = async (writeSession: ClientSession) => {
         await createCollections({
           collections: batch.map((doc) => ({
             ...doc,
@@ -129,9 +131,15 @@ export const bulkInsertFolderCollections = async ({
             parentId: doc.parentId ? String(doc.parentId) : null,
             apiFileParentId: doc.apiFileParentId ?? undefined
           })),
-          session
+          session: writeSession
         });
-      });
+      };
+
+      if (externalSession) {
+        await insertBatch(externalSession);
+      } else {
+        await mongoSessionRun(insertBatch);
+      }
       successApiFileIds.push(...batch.map((doc) => doc.apiFileId));
     } catch (error) {
       try {

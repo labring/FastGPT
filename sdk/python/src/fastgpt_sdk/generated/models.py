@@ -2019,7 +2019,6 @@ class DatasetsCollectionsDetailResDatasetApiDatasetServer(FastGPTResponseModel):
     yuque_server: DatasetsCollectionsDetailResDatasetApiDatasetServerYuqueServer | None = Field(default=None, validation_alias=AliasChoices("yuque_server", "yuqueServer"), serialization_alias="yuqueServer", description="语雀服务器配置")
     dingtalk_server: DatasetsCollectionsDetailResDatasetApiDatasetServerDingtalkServer | None = Field(default=None, validation_alias=AliasChoices("dingtalk_server", "dingtalkServer"), serialization_alias="dingtalkServer", description="钉钉知识库配置")
     permission_sync: bool | None = Field(default=None, validation_alias=AliasChoices("permission_sync", "permissionSync"), serialization_alias="permissionSync", description="外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL")
-    sync_all_files: bool | None = Field(default=None, validation_alias=AliasChoices("sync_all_files", "syncAllFiles"), serialization_alias="syncAllFiles", description="整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点")
 
 
 class DatasetsCollectionsDetailResDatasetApiServer(FastGPTResponseModel):
@@ -2301,7 +2300,6 @@ class DatasetsCreateReqApiDatasetServer(FastGPTRequestModel):
     yuque_server: DatasetsCreateReqApiDatasetServerYuqueServer | None = Field(default=None, validation_alias=AliasChoices("yuque_server", "yuqueServer"), serialization_alias="yuqueServer", description="语雀服务器配置")
     dingtalk_server: DatasetsCreateReqApiDatasetServerDingtalkServer | None = Field(default=None, validation_alias=AliasChoices("dingtalk_server", "dingtalkServer"), serialization_alias="dingtalkServer", description="钉钉知识库配置")
     permission_sync: bool | None = Field(default=None, validation_alias=AliasChoices("permission_sync", "permissionSync"), serialization_alias="permissionSync", description="外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL")
-    sync_all_files: bool | None = Field(default=None, validation_alias=AliasChoices("sync_all_files", "syncAllFiles"), serialization_alias="syncAllFiles", description="整库同步：每日同步的根范围来自知识库根目录，而不是本地最外层节点")
 
 
 class DatasetsCreateReqSangforFileParseConfig(FastGPTRequestModel):

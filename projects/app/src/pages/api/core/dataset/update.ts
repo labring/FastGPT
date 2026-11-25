@@ -348,7 +348,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     // 开启全量同步开关时，与导入路径共用同一状态转换入口，在同一事务内恢复库内全部暂停目录。
     if (syncAll === true) {
       await applyApiDatasetSyncAll({
-        teamId,
+        teamId: datasetTeamId,
         datasetId: id,
         session,
         updateDataset: false
@@ -356,7 +356,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     } else if (syncAll === false) {
       // 升级过渡期兼容：与目录暂停/删除共用同一关闭入口，同步拆除存量 SYSTEM_ROOT 哨兵（保留子节点与独立权限快照）。
       await disableApiDatasetSyncAllInSession({
-        teamId,
+        teamId: datasetTeamId,
         datasetId: id,
         session,
         updateDataset: false
