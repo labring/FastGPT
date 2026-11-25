@@ -183,6 +183,11 @@ export const createResourcePermissions = async ({
  * 这样取消继承的节点及其独立子树都不会被父级更新覆盖。
  * `stopResourceIds` 用于批量移动：停止节点已有按自身新父级算出的 ACL，不能沿用祖先的传播结果覆盖它。
  */
+type SyncChildrenPermissionDescendantType = Pick<
+  SyncChildrenPermissionResourceType,
+  '_id' | 'parentId' | 'inheritPermission'
+>;
+
 export const syncResourceTreePermissions = async ({
   resource,
   resourceModel,
@@ -210,7 +215,7 @@ export const syncResourceTreePermissions = async ({
     datasetId?: string;
     parentIds: string[];
     tx?: DbSession;
-  }) => Promise<SyncChildrenPermissionResourceType[]>;
+  }) => Promise<SyncChildrenPermissionDescendantType[]>;
   resourceType: PerResourceTypeEnum;
   oldParentCollaborators: CollaboratorItemType[];
   newParentCollaborators: CollaboratorItemType[];
@@ -286,7 +291,7 @@ export const syncResourceTreePermissions = async ({
   })();
 
   const allDescendantIds: string[] = [];
-  const descendantNodes: SyncChildrenPermissionResourceType[] = [];
+  const descendantNodes: SyncChildrenPermissionDescendantType[] = [];
   let pendingParentIds = [String(resource._id)];
 
   // 按层查询资源树，每次只查询当前 frontier 的直接子资源，避免加载整个团队资源。
@@ -307,7 +312,7 @@ export const syncResourceTreePermissions = async ({
             },
             '_id parentId inheritPermission'
           )
-          .lean<SyncChildrenPermissionResourceType[]>()
+          .lean<SyncChildrenPermissionDescendantType[]>()
           .session(session ?? null);
     // 被 stop 的节点不加入下一层 frontier，因此其整个分支都交由调用方的独立同步计划处理。
     const inheritingChildren = children.filter(
