@@ -6,6 +6,8 @@ import {
   SANDBOX_WRITE_FILE_TOOL_NAME
 } from '@fastgpt/global/core/ai/sandbox/tools';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import {
   createDefaultInstanceConfig,
   getTestInstanceConfig
@@ -215,6 +217,21 @@ describe('sandbox toolCall index', () => {
       files,
       readInputFile: undefined
     });
+
+    // 新会话目录创建遇 ENOSPC 时在附件写入前同样统一返回配额错误。
+    const fullSandbox = createSandboxInstance();
+    fullSandbox.opensandbox.createDirectories.mockRejectedValueOnce(
+      new Error('mkdir /workspace/sessions/chat: no space left on device')
+    );
+    runtimeMock.getSandboxClient.mockResolvedValueOnce(fullSandbox);
+    await expect(
+      prepareSandboxToolRuntime({
+        ...appSource,
+        userId: 'user',
+        chatId: 'chat',
+        files
+      })
+    ).rejects.toThrowError(new UserError(SandboxErrEnum.agentSandboxDiskQuotaExceeded));
   });
 
   it('validates Zod args before probing Docker disk quota', async () => {

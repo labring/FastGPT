@@ -173,18 +173,20 @@ export function isSandboxDiskFullError(error: unknown): boolean {
  *
  * 仅在 `exitCode` 非零时生效，避免 `grep`/`cat` 正常输出包含相关字样时误判。
  */
-export function isSandboxCommandDiskFull(params: {
+export function getSandboxCommandDiskFullReason(params: {
   exitCode: number | null;
   output: string;
-}): boolean {
+}): 'diskFull' | 'fileSizeLimit' | undefined {
   if (params.exitCode === 0 || params.exitCode === null) {
-    return false;
+    return undefined;
   }
-  return (
-    params.exitCode === 153 ||
-    DISK_FULL_PATTERN.test(params.output) ||
-    FSIZE_LIMIT_PATTERN.test(params.output)
-  );
+  if (params.exitCode === 153 || FSIZE_LIMIT_PATTERN.test(params.output)) {
+    return 'fileSizeLimit';
+  }
+  if (DISK_FULL_PATTERN.test(params.output)) {
+    return 'diskFull';
+  }
+  return undefined;
 }
 
 /**

@@ -269,5 +269,16 @@ describe('sandbox extractZip API', () => {
     await expect(handler(createReq('bundle.zip'))).rejects.toThrowError(
       new UserError(SandboxErrEnum.agentSandboxDiskQuotaExceeded)
     );
+
+    // 损坏的 ENOSPC.zip 仅文件名含关键字，不应误报为配额超限。
+    mocks.execute.mockResolvedValueOnce({
+      exitCode: 9,
+      stdout: '',
+      stderr: '[./ENOSPC.zip]\n  End-of-central-directory signature not found.'
+    });
+    await expect(handler(createReq('ENOSPC.zip'))).rejects.toMatchObject({
+      name: 'UserError',
+      message: SkillErrEnum.archiveExtractionFailed
+    });
   });
 });

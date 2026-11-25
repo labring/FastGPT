@@ -70,9 +70,19 @@ export async function checkSandboxQuota(identity: {
  */
 export function formatAgentDiskQuotaNotice(
   status: Pick<SandboxDiskQuotaStatus, 'usedBytes' | 'limitBytes'> | undefined,
-  mode: 'write' | 'shell'
+  mode: 'write' | 'shell' | 'fileSizeLimit'
 ): string {
+  const formatBytes = (bytes: number): string => {
+    const gib = 1024 * 1024 * 1024;
+    const mib = 1024 * 1024;
+    return bytes >= gib ? `${(bytes / gib).toFixed(2)} GiB` : `${(bytes / mib).toFixed(1)} MiB`;
+  };
   const guidance = `Do NOT delete files automatically. You may inspect disk usage (e.g. \`du -sh ${OPEN_SANDBOX_DEFAULT_HOME_PATH}/* ${OPEN_SANDBOX_DEFAULT_HOME_PATH}/workspace/* 2>/dev/null\`), then inform the user and ask for their confirmation before deleting any files`;
+
+  if (mode === 'fileSizeLimit') {
+    const limit = status?.limitBytes ? ` (${formatBytes(status.limitBytes)})` : '';
+    return `[Sandbox single-file write limit exceeded${limit} in ${OPEN_SANDBOX_DEFAULT_HOME_PATH}. ${guidance}.]`;
+  }
 
   if (!status) {
     if (mode === 'shell') {
@@ -81,11 +91,6 @@ export function formatAgentDiskQuotaNotice(
     return `Sandbox disk space is full (${OPEN_SANDBOX_DEFAULT_HOME_PATH}). Cannot create or modify files. ${guidance}.`;
   }
 
-  const formatBytes = (bytes: number): string => {
-    const gib = 1024 * 1024 * 1024;
-    const mib = 1024 * 1024;
-    return bytes >= gib ? `${(bytes / gib).toFixed(2)} GiB` : `${(bytes / mib).toFixed(1)} MiB`;
-  };
   const usage = `${formatBytes(status.usedBytes)} / ${formatBytes(status.limitBytes)} used in ${OPEN_SANDBOX_DEFAULT_HOME_PATH}`;
 
   if (mode === 'shell') {

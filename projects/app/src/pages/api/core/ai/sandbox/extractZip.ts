@@ -14,7 +14,6 @@ import {
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { getSandboxDiskQuotaStatus } from '@fastgpt/service/core/ai/sandbox/application/quota';
 import { createAgentSandboxDiskQuotaExceededError } from '@fastgpt/service/core/ai/sandbox/error';
-import { isSandboxCommandDiskFull } from '@fastgpt/service/core/ai/sandbox/infrastructure/opensandbox/errors';
 
 const EXTRACT_ZIP_TIMEOUT_MS = 30_000;
 
@@ -93,8 +92,12 @@ async function handler(
   if (result.exitCode !== 0) {
     const detail = result.stderr.trim() || result.stdout.trim();
     const output = [result.stderr, result.stdout].filter(Boolean).join('\n');
-    // Info-ZIP `unzip` 退出码 50（PK_DISK）表示卷写满。
-    if (isSandboxCommandDiskFull({ exitCode: result.exitCode, output }) || result.exitCode === 50) {
+    // 仅认 Info-ZIP 退出码 50（PK_DISK）、prlimit SIGXFSZ 153 及冒号后的真实 OS I/O 诊断，避免把 ENOSPC.zip 等文件名误报为配额错误。
+    if (
+      result.exitCode === 50 ||
+      result.exitCode === 153 ||
+      /:\s*(?:no space left on device|disk quota exceeded)\b|file size limit exceeded/i.test(output)
+    ) {
       throw createAgentSandboxDiskQuotaExceededError();
     }
     throw new UserError(SkillErrEnum.archiveExtractionFailed, detail || undefined);
