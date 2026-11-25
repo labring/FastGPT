@@ -6,6 +6,7 @@ export const startAppConfigPolling = () =>
   systemInstanceConfig.startPolling({
     key: 'app',
     refresh: async () => {
-      await initSystemConfig();
+      // 日志 TTL 索引由启动初始化与配置保存事务同步维护，常驻轮询不再访问独立日志库。
+      await initSystemConfig({ refreshLLMRequestRecordTTL: false });
     }
   });

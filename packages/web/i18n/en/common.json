@@ -1464,6 +1464,5 @@
   "puzzle_captcha_expired": "This image expired. Get a new image.",
   "puzzle_captcha_load_failed": "Could not load the image. Select New image.",
   "model.cache_read_price": "Cache read",
-  "model.cache_creation_price": "Cache creation",
-  "model.cache_price_default": "Input price"
+  "model.cache_creation_price": "Cache creation"
 }

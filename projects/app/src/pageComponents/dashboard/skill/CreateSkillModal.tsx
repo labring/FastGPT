@@ -8,7 +8,6 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { postCreateSkill } from '@/web/core/skill/api';
@@ -33,7 +32,6 @@ type Props = {
 
 const CreateSkillModal = ({ parentId, onClose, onSuccess, openDetailInNewTab = false }: Props) => {
   const { t } = useTranslation();
-  const { toast } = useToast();
   const router = useRouter();
 
   const { register, setValue, control, handleSubmit } = useForm<FormType>({
@@ -57,7 +55,7 @@ const CreateSkillModal = ({ parentId, onClose, onSuccess, openDetailInNewTab = f
     async ({ avatar, name, intro }: FormType) => {
       return postCreateSkill({
         parentId: parentId ?? null,
-        name: name.trim(),
+        name: name?.trim() || t('skill:unnamed_skill'),
         description: intro?.trim() || undefined,
         avatar: avatar || undefined
       });
@@ -67,48 +65,37 @@ const CreateSkillModal = ({ parentId, onClose, onSuccess, openDetailInNewTab = f
     }
   );
 
-  const handleConfirm = () => {
-    const onValid = async (data: FormType) => {
-      // 校验通过后再于同步用户手势内预建空白窗口：handleSubmit 同步校验通过后会立即调用 onValid，
-      // 仍在 click 手势调用栈内，不会被 Safari / 严格弹窗策略拦截。
-      // 关键：放在这里（而非校验前）可避免名称为空时「先开空白标签页、onInvalid 又关掉」造成的闪退。
-      // 注：不能用 noopener —— 需保留窗口句柄以便创建成功后设置 location；目标页为同源可信路由。
-      const popup = openDetailInNewTab ? window.open('', '_blank') : null;
+  const handleConfirm = handleSubmit(async (data: FormType) => {
+    // 于同步用户手势内预建空白窗口，避免异步创建后再 window.open 被 Safari / 严格弹窗策略拦截。
+    // 注：不能用 noopener —— 需保留窗口句柄以便创建成功后设置 location；目标页为同源可信路由。
+    const popup = openDetailInNewTab ? window.open('', '_blank') : null;
 
-      let skillId: string;
-      try {
-        skillId = await createSkill(data);
-      } catch {
-        // 创建失败：关掉预建窗口（useRequest 已展示错误提示）。
-        popup?.close();
-        return;
+    let skillId: string;
+    try {
+      skillId = await createSkill(data);
+    } catch {
+      // 创建失败：关掉预建窗口（useRequest 已展示错误提示）。
+      popup?.close();
+      return;
+    }
+
+    // 创建成功后立即关闭弹窗：后续回调失败不应让弹窗卡住，也不应掩盖创建已成功。
+    onClose();
+
+    // 打开详情页：新标签页模式下若窗口被拦截则不跳走当前页（如 Agent 编辑器）；
+    // 当前页模式下直接 router.push。
+    const detailUrl = `/skill/detail?skillId=${skillId}`;
+    if (openDetailInNewTab) {
+      if (popup && !popup.closed) {
+        popup.location.href = detailUrl;
       }
+    } else {
+      await router.push(detailUrl);
+    }
 
-      // 创建成功后立即关闭弹窗：后续回调失败不应让弹窗卡住，也不应掩盖创建已成功。
-      onClose();
-
-      // 打开详情页：新标签页模式下若窗口被拦截则不跳走当前页（如 Agent 编辑器）；
-      // 当前页模式下直接 router.push。
-      const detailUrl = `/skill/detail?skillId=${skillId}`;
-      if (openDetailInNewTab) {
-        if (popup && !popup.closed) {
-          popup.location.href = detailUrl;
-        }
-      } else {
-        await router.push(detailUrl);
-      }
-
-      // 创建后的关联/刷新交给调用方，由调用方自行处理异常。
-      await onSuccess?.(skillId);
-    };
-
-    const onInvalid = () => {
-      // 校验未通过（名称为空 / 纯空格）：稳定提示错误，弹窗保持打开，不再开/关空白标签页。
-      toast({ status: 'warning', title: t('common:name_is_empty') });
-    };
-
-    handleSubmit(onValid, onInvalid)();
-  };
+    // 创建后的关联/刷新交给调用方，由调用方自行处理异常。
+    await onSuccess?.(skillId);
+  });
 
   return (
     <>
@@ -169,11 +156,8 @@ const CreateSkillModal = ({ parentId, onClose, onSuccess, openDetailInNewTab = f
               <Input
                 flex={1}
                 size={'sm'}
-                placeholder={t('skill:skill_name_placeholder')}
-                {...register('name', {
-                  required: true,
-                  setValueAs: (value: string) => value.trim()
-                })}
+                placeholder={t('skill:unnamed_skill')}
+                {...register('name')}
               />
             </Flex>
           </Box>

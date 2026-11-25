@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { isEqual } from 'lodash-es';
 import { useRouter } from 'next/router';
 import { Box, Button, Flex, HStack, SimpleGrid, Text, useDisclosure } from '@chakra-ui/react';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
@@ -65,6 +66,11 @@ export const ModerationPolicy = () => {
   const [deletingPlugin, setDeletingPlugin] = useState(false);
   const deletingPluginRef = useRef(false);
   const persistedPolicyRef = useRef<SystemModerationPolicyType | null>(null);
+  const [persistedPolicy, setPersistedPolicy] = useState<SystemModerationPolicyType | null>(null);
+  const setPersistedPolicyState = (next: SystemModerationPolicyType | null) => {
+    persistedPolicyRef.current = next;
+    setPersistedPolicy(next);
+  };
   const operationQueueRef = useRef<Promise<unknown>>(Promise.resolve());
 
   const { isOpen: isImportOpen, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
@@ -118,7 +124,7 @@ export const ModerationPolicy = () => {
     {
       onSuccess: ({ data, revisionAtStart }) => {
         if (data) {
-          persistedPolicyRef.current = data;
+          setPersistedPolicyState(data);
           // 仅在请求期间未产生新草稿编辑时覆盖表单状态，防止异步回读冲掉更新的草稿
           if (draftRevisionRef.current === revisionAtStart) {
             const hasMarketplaceDraft = Boolean(marketplaceDraft.current);
@@ -198,7 +204,7 @@ export const ModerationPolicy = () => {
 
         const revisionAtSubmit = draftRevisionRef.current;
         const updated = await postAdminUpdateModerationPolicy(currentPolicy);
-        persistedPolicyRef.current = updated ?? currentPolicy;
+        setPersistedPolicyState(updated ?? currentPolicy);
         syncedRevisionRef.current = revisionAtSubmit;
         // 使用 allSettled 避免回读失败覆盖“保存成功”状态，回读错误由各自请求提示
         await Promise.allSettled([fetchPolicy(revisionAtSubmit), fetchPlugins()]);
@@ -247,7 +253,7 @@ export const ModerationPolicy = () => {
     if (nextPolicy.enabled && !persistedPolicyRef.current?.enabled) {
       const revisionAtSubmit = draftRevisionRef.current;
       const updated = await postAdminUpdateModerationPolicy(nextPolicy);
-      persistedPolicyRef.current = updated ?? nextPolicy;
+      setPersistedPolicyState(updated ?? nextPolicy);
       syncedRevisionRef.current = revisionAtSubmit;
       if (updated && draftRevisionRef.current === revisionAtSubmit) {
         updatePolicy(updated, { markDraftDirty: false });
@@ -256,10 +262,10 @@ export const ModerationPolicy = () => {
     }
 
     if (persistedPolicyRef.current) {
-      persistedPolicyRef.current = {
+      setPersistedPolicyState({
         ...persistedPolicyRef.current,
         activePluginId
-      };
+      });
     }
   };
 
@@ -444,6 +450,8 @@ export const ModerationPolicy = () => {
     ];
   }, [policy.enabled, showTestSection, t]);
 
+  const isUnsaved = Boolean(persistedPolicy && !isEqual(policy, persistedPolicy));
+
   return (
     <>
       <AdminSettingPage
@@ -451,6 +459,7 @@ export const ModerationPolicy = () => {
         tocItems={tocItems}
         isLoading={isPolicyBusy}
         isSaving={savingPolicy}
+        isUnsaved={isUnsaved}
         onSave={handleSubmit}
       >
         {/* ================= 1. 审核服务 ================= */}

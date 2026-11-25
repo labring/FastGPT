@@ -96,6 +96,8 @@ vi.mock('@chakra-ui/react', () => {
   });
   return {
     Box,
+    Button: ({ children, type = 'button', onClick }: any) =>
+      React.createElement('button', { type, onClick }, children),
     HStack: Box,
     Flex: Box,
     SimpleGrid: Box,
@@ -123,8 +125,8 @@ vi.mock('@/pageComponents/admin/settings/AdminSettingPage', () => ({
   }
 }));
 vi.mock('@/pageComponents/admin/settings/AdminSettingSection', () => ({
-  default: ({ children, id, title }: any) =>
-    React.createElement('section', { id, 'aria-label': title }, children)
+  default: ({ children, id, title, rightContent }: any) =>
+    React.createElement('section', { id, 'aria-label': title }, rightContent, children)
 }));
 vi.mock('@/pageComponents/admin/settings/AdminFormItem', () => ({
   default: ({ children }: any) => React.createElement('div', null, children)
@@ -142,6 +144,19 @@ vi.mock('@/pageComponents/admin/settings/AdminNumberInput', () => ({
 }));
 vi.mock('@/pageComponents/admin/settings/ImageInput', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/MySelect', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/common/MyPopover/PopoverConfirm', () => ({
+  default: ({ Trigger, onConfirm, content }: any) =>
+    React.createElement(
+      'span',
+      { 'data-confirm-content': content },
+      Trigger,
+      React.createElement(
+        'button',
+        { type: 'button', 'data-confirm-action': 'true', onClick: onConfirm },
+        'confirm'
+      )
+    )
+}));
 vi.mock('@/pageComponents/admin/config/components/FormField/ThirdPartyVariables', () => ({
   default: ({ value, onChange }: any) =>
     React.createElement('input', {
@@ -210,8 +225,12 @@ beforeEach(() => {
   mocks.subPlans = { standard: { basic: {} } };
   mocks.storageCapabilities = undefined;
   const full = resolveSystemInstanceConfig({});
+  full.auth.loginProviders.email.smtp = 'smtp.test';
+  full.auth.loginProviders.email.user = 'user@test.com';
   full.auth.loginProviders.email.pass = 'stored-email';
+  full.auth.loginProviders.phone.accessKeyId = 'stored-ak';
   full.auth.loginProviders.phone.accessKeySecret = 'stored-sms';
+  full.auth.loginProviders.phone.signName = 'stored-sign';
   full.auth.loginProviders.wechat.appSecret = 'stored-wechat';
   full.auth.loginProviders.wecom.token = 'stored-wecom';
   full.commercial.payment.wx.apiV3Key = 'stored-wx';
@@ -413,9 +432,88 @@ describe('system configuration secret forms', () => {
     expect(sentOverrides('auth').loginProviders.phone).not.toHaveProperty('accessKeySecret');
     await setSecret('email.pass', 'new-email');
     await setSecret('phone.accessKeySecret', '');
+    await act(async () => {
+      for (const name of ['phone.accessKeyId', 'phone.signName']) {
+        const input = container.querySelector<HTMLInputElement>(`[name="${name}"]`)!;
+        Simulate.change(input, { target: { name, value: '' } } as any);
+      }
+    });
     await save();
     expect(sentOverrides('auth').loginProviders.email.pass).toBe('new-email');
     expect(sentOverrides('auth').loginProviders.phone.accessKeySecret).toBe('');
+  });
+
+  it('requires SMTP user/pass when smtp host is set and all 3 Aliyun SMS fields when any is set', async () => {
+    mocks.configs.auth = omitDomainSecrets('auth', resolveSystemInstanceConfig({}).auth);
+    mocks.configured.auth = markDomainSecrets('auth', resolveSystemInstanceConfig({}).auth);
+    await act(async () => root.render(React.createElement(CoreSettings)));
+
+    const setInput = async (name: string, value: string) => {
+      const input = container.querySelector<HTMLInputElement>(`[name="${name}"]`)!;
+      await act(async () => Simulate.change(input, { target: { name, value } } as any));
+    };
+
+    // 1. 填写 SMTP 服务地址后，user 与 pass 均为必填
+    await setInput('email.smtp', 'smtp.example.com');
+    await save();
+    expect(mocks.update).not.toHaveBeenCalled();
+
+    // 补全 SMTP 必填项但只填 1 个阿里云短信字段，仍被拦截
+    await setInput('email.user', 'noreply@example.com');
+    await setSecret('email.pass', 'mail-pass');
+    await setInput('phone.accessKeyId', 'ak-1');
+    await save();
+    expect(mocks.update).not.toHaveBeenCalled();
+
+    // 补全阿里云短信全部 3 个字段后保存成功
+    await setSecret('phone.accessKeySecret', 'sk-1');
+    await setInput('phone.signName', 'FastGPT');
+    await save();
+    expect(mocks.update).toHaveBeenCalledOnce();
+    expect(sentOverrides('auth').loginProviders).toMatchObject({
+      email: { smtp: 'smtp.example.com', user: 'noreply@example.com', pass: 'mail-pass' },
+      phone: { accessKeyId: 'ak-1', accessKeySecret: 'sk-1', signName: 'FastGPT' }
+    });
+  });
+
+  it('clears all SMTP and Aliyun SMS fields including configured secrets via section Clear buttons', async () => {
+    mocks.configs.auth = {
+      ...mocks.configs.auth,
+      loginProviders: {
+        ...mocks.configs.auth.loginProviders,
+        email: { ...mocks.configs.auth.loginProviders.email, register: true }
+      }
+    };
+    await act(async () => root.render(React.createElement(CoreSettings)));
+
+    const emailClear = container.querySelector<HTMLButtonElement>(
+      '#email button:not([data-confirm-action])'
+    );
+    const smsClear = container.querySelector<HTMLButtonElement>(
+      '#sms button:not([data-confirm-action])'
+    );
+    const emailConfirm = container.querySelector<HTMLButtonElement>(
+      '#email button[data-confirm-action]'
+    );
+    const smsConfirm = container.querySelector<HTMLButtonElement>(
+      '#sms button[data-confirm-action]'
+    );
+    expect(emailClear?.textContent).toBe('common:Clear');
+    expect(smsClear?.textContent).toBe('common:Clear');
+
+    await act(async () => {
+      emailConfirm!.click();
+      smsConfirm!.click();
+    });
+    expect(container.querySelector('#email button')).toBeNull();
+    expect(container.querySelector('#sms button')).toBeNull();
+
+    await save();
+    expect(mocks.update).toHaveBeenCalledOnce();
+    expect(sentOverrides('auth').loginProviders).toMatchObject({
+      email: { smtp: '', user: '', pass: '', port: 465, secure: true, register: false },
+      phone: { accessKeyId: '', accessKeySecret: '', signName: '' }
+    });
   });
 
   it('preserves authentication secrets and submits explicit changes', async () => {
