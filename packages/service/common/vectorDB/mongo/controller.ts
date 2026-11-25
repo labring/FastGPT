@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import { DatasetEmbeddingDimensions } from '@fastgpt/global/core/dataset/data/embedding/type';
 import { serviceEnv } from '../../../env';
 import { MongoIndexManager } from '../../mongo/indexManager';
@@ -10,23 +11,18 @@ import z from 'zod';
 const SearchIndexFieldsSchema = z.array(z.record(z.string(), z.unknown()));
 
 export const MongoEmbeddingSearchIndexName = 'embedding_int8';
-const vectorField = {
-  type: 'vector',
-  path: 'vector',
-  numDimensions: DatasetEmbeddingDimensions,
-  similarity: 'dotProduct',
-  quantization: 'scalar',
-  indexingMethod: 'hnsw'
-};
-const filterFields = ['teamId', 'datasetId', 'collectionId'].map((path) => ({
-  type: 'filter',
-  path
-}));
-
 export const MongoEmbeddingSearchDefinition = {
   fields: [
-    { ...vectorField, hnswOptions: { maxEdges: 32, numEdgeCandidates: 256 } },
-    ...filterFields
+    {
+      type: 'vector',
+      path: 'vector',
+      numDimensions: DatasetEmbeddingDimensions,
+      similarity: 'dotProduct',
+      quantization: 'scalar',
+      indexingMethod: 'hnsw',
+      hnswOptions: { maxEdges: 32, numEdgeCandidates: 256 }
+    },
+    ...['teamId', 'datasetId', 'collectionId'].map((path) => ({ type: 'filter', path }))
   ]
 };
 
@@ -62,16 +58,16 @@ export const ensureMongoEmbeddingSearchIndex = () =>
     definition: MongoEmbeddingSearchDefinition,
     matchesDefinition: ({ fields }) => {
       const { data } = SearchIndexFieldsSchema.safeParse(fields);
-      // 建图参数只用于创建，旧索引即使使用不同参数也可以继续查询。
-      const requiredFields = [vectorField, ...filterFields];
       return (
-        data?.length === requiredFields.length &&
-        requiredFields.every((expected) =>
+        data?.length === MongoEmbeddingSearchDefinition.fields.length &&
+        MongoEmbeddingSearchDefinition.fields.every((expected) =>
           data.some((field) =>
-            Object.entries(expected).every(
-              ([key, value]) =>
-                // 旧索引未显式写 indexingMethod 时，服务端默认也是 HNSW。
-                (key === 'indexingMethod' ? (field[key] ?? 'hnsw') : field[key]) === value
+            Object.entries(expected).every(([key, value]) =>
+              // mongot 读回定义时可能省略默认的 HNSW 类型。
+              isDeepStrictEqual(
+                key === 'indexingMethod' ? (field[key] ?? 'hnsw') : field[key],
+                value
+              )
             )
           )
         )

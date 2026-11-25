@@ -127,30 +127,24 @@ describe('Mongo embedding initialization', () => {
     expect(mocks.create).not.toHaveBeenCalled();
   });
 
-  it('reuses HNSW indexes with default or explicit legacy build parameters', async () => {
-    const fields = MongoEmbeddingSearchDefinition.fields.map((field) => {
-      if (!('hnswOptions' in field)) return field;
-      const { indexingMethod: _method, hnswOptions: _build, ...rest } = field;
+  it('accepts a catalog definition with the default indexing method omitted', async () => {
+    const fields = structuredClone(MongoEmbeddingSearchDefinition.fields).map((field) => {
+      if (!('indexingMethod' in field)) return field;
+      const { indexingMethod: _method, ...rest } = field;
       return rest;
     });
-    for (const override of [{}, { hnswOptions: { maxEdges: 16, numEdgeCandidates: 100 } }]) {
-      mocks.list.mockResolvedValue([
-        {
-          ...ready(),
-          latestDefinition: {
-            fields: fields.map((field) =>
-              field.type === 'vector' ? { ...field, ...override } : field
-            )
-          }
-        }
-      ]);
-      await ensureMongoEmbeddingSearchIndex();
-    }
+    mocks.list.mockResolvedValue([{ ...ready(), latestDefinition: { fields } }]);
+    await ensureMongoEmbeddingSearchIndex();
     expect(mocks.create).not.toHaveBeenCalled();
   });
 
-  it('rejects flat or non-INT8 definitions', async () => {
-    for (const override of [{ indexingMethod: 'flat' }, { quantization: 'binary' }]) {
+  it('rejects mismatched vector definitions, including old build parameters', async () => {
+    for (const override of [
+      { indexingMethod: 'flat' },
+      { quantization: 'binary' },
+      { hnswOptions: undefined },
+      { hnswOptions: { maxEdges: 16, numEdgeCandidates: 100 } }
+    ]) {
       mocks.list.mockResolvedValue([
         {
           ...ready(),
