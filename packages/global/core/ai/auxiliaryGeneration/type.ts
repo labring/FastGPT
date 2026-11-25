@@ -44,7 +44,7 @@ export const AuxiliaryGenerationSelectedDatasetSchema = z.object({
   datasetId: z.string().meta({
     description: '可选知识库 ID'
   }),
-  avatar: z.string().meta({
+  avatar: z.string().optional().meta({
     description: '可选知识库头像'
   }),
   name: z.string().meta({

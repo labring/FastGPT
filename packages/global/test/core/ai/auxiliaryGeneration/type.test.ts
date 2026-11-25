@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { ChatAgentHelperMetadataSchema } from '../../../../core/ai/auxiliaryGeneration/type';
+import {
+  ChatAgentConfigFormDataSchema,
+  ChatAgentHelperMetadataSchema
+} from '../../../../core/ai/auxiliaryGeneration/type';
 
 describe('ChatAgentHelperMetadataSchema', () => {
   it('keeps modelId and strips unknown fields from the internal model config', () => {
@@ -12,5 +15,20 @@ describe('ChatAgentHelperMetadataSchema', () => {
         }
       }).modelConfig
     ).toEqual({ modelId: '68ad85a7463006c963799a05' });
+  });
+});
+
+describe('ChatAgentConfigFormDataSchema', () => {
+  it('allows datasets without avatar', () => {
+    const parsed = ChatAgentConfigFormDataSchema.parse({
+      datasets: [
+        {
+          datasetId: '68ad85a7463006c963799a05',
+          name: 'KB',
+          vectorModel: { model: 'text-embedding-3-small' }
+        }
+      ]
+    });
+    expect(parsed.datasets[0]?.avatar).toBeUndefined();
   });
 });
