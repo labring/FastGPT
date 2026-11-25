@@ -16,15 +16,16 @@ FastGPT 是使用 pnpm workspaces 的 AI Agent 构建平台。开发环境按根
 ## 开发约定
 
 - 改代码或测试前先读[代码规范](./.agents/code/syntax.md)，核对调用方和已有[设计](./.agents/design/)。现有实现与规范冲突时优先按规范执行，因业务或兼容性需要例外时说明原因。
+- **控制颗粒度与编码前契约**：单次变更聚焦单一目标；跨层大型需求优先按「底层契约/DAL → 核心业务与迁移 → UI/SDK/文档」拆分提交，不混入无关修复。编码前先明确权威状态源与 DAL 边界、已发布版本存量与 `pro` 滚动兼容窗口，以及异步并发/取消/失败回滚闭环（见[状态闭环与兼容边界](./.agents/code/syntax.md#状态闭环与兼容边界)）。
 - 对导出函数、核心业务函数、hook 和复杂工具优先用 `/** ... */` 说明职责和输入输出。在计费、权限、并发、重试等容易误解的分支旁用中文解释原因。
 - 单一调用方的 helper 优先放在调用函数内部。跨函数复用、需独立导出测试或属于模块公共能力时放到模块级，并说明职责和边界。
-- **修复问题（含 review 意见）**按[根因修复规范](./.agents/code/root-cause-fix.md)执行：先写清根因和不变量，在归属层修正并排查同类场景，不为关闭单条意见打补丁。
+- **修复问题（含 review 意见）**按[根因修复规范](./.agents/code/root-cause-fix.md)执行：先写清根因和不变量，在归属层修正并一次性扫清读/写/导入/导出/`pro` 等对称入口，调整或裁剪方案时同步清理死代码与多余契约，不为关闭单条意见打补丁。
 - 先用代码和调用方核实假设。影响行为的需求歧义或破坏性操作需向用户确认。**修改任何部署相关的 `.yml` 或 `.yaml` 文件前，必须获得用户明确确认。**
 
 ## 按改动查规范
 
 - **API 路由**按 [API 开发规范](./.agents/skills/system/api-development/SKILL.md) 同步合约与 OpenAPI。外部请求的 body、query、params 用 `parseApiInput` 校验。普通业务响应、数据库记录和模型输出用对应的 `Schema.parse`。无入参或无业务返回值时省略相应的占位 Schema。错误分类见[请求入参错误设计](./.agents/design/api/zod-request-parse-error-handling.md)。
-- **历史兼容与升级**涉及 Zod 枚举或判别联合变更时，按[历史兼容规范](./.agents/code/syntax.md#zod-枚举变更与历史兼容)核对旧数据和旧客户端，同时保留新写入的校验。新增或修改自动升级任务时遵循[系统迁移规范](./.agents/skills/system/system-migration-development/SKILL.md)。
+- **历史兼容、跨仓与升级**：修改持久化结构、配置默认值、公开 API/SDK 或跨主仓/`pro` 共享能力时，核对已发布版本存量数据、滚动升级/回滚窗口及 `pro` 调用方兼容；涉及 Zod 枚举或判别联合变更时按[历史兼容规范](./.agents/code/syntax.md#zod-枚举变更与历史兼容)处理，新增或修改自动升级任务时遵循[系统迁移规范](./.agents/skills/system/system-migration-development/SKILL.md)。
 - **跨实例调用**按[分层架构](./.agents/code/syntax.md#分层架构)组织：实例业务层不引入其他实例，所需能力由上层以函数参数注入。
 - **CI** 修改 GitHub Actions workflow 时按[双轨同步规则](./.agents/skills/system/ci-workflow-sync/SKILL.md)核对 Forgejo 对应项。
 
@@ -36,7 +37,7 @@ FastGPT 是使用 pnpm workspaces 的 AI Agent 构建平台。开发环境按根
 
 ## 测试
 
-- 开发时只运行覆盖改动及受影响行为的测试，根目录执行 `pnpm test <测试文件或目录>`。用户完成最终验收后才运行完整测试。
+- 开发与提交前运行覆盖改动及受影响行为的测试，根目录执行 `pnpm test <测试文件或目录>`；修改 `packages/*` 导出签名、DAL 子路径或共享契约时，同步运行受影响应用的 `typecheck` 并核对 `pro` 引用。用户完成最终验收后才运行完整测试。
 - 使用公共 Mongo 初始化的套件默认在本机启动临时副本集。要复用专用测试副本集，在运行前设置 `FASTGPT_TEST_MONGODB_URI`。
 - 单测优先放在所属 workspace 的 `test/`，根 `test/` 存放仓库级测试和共享初始化。编写单测见[单测规范](./.agents/skills/system/test-case/SKILL.md)。业务验收用例在 [.agents/test/](./.agents/test/)，按[用例编写](./.agents/skills/system/fastgpt-integration-test-case/SKILL.md)和[执行规则](./.agents/skills/system/fastgpt-integration-test-runner/SKILL.md)维护。
 

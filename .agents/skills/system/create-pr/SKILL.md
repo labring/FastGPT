@@ -36,7 +36,7 @@ git submodule status
    - 推送分支到已确认的可写个人 fork（通常为 `origin`）或指定 remote，严禁直接推送 `upstream/main`。
 2. **核查全部变更范围**：
    - 拉取目标基线后，同时检查未提交改动（`git status` / `git diff`）和已提交范围（`git log --oneline <merge-base>..HEAD`、`git diff --name-status <merge-base>..HEAD`）。
-   - **发现额外代码改动必须提醒用户**：逐文件核对是否属于本次需求。若存在无关改动、历史清理、临时脚本或未确认的部署 `.yml/.yaml`，列出具体文件路径与改动摘要，请用户确认是剔除、拆分还是纳入本次 PR，不得静默带入，也不得私自 `reset` / `checkout` 丢弃用户现场。
+   - **发现额外代码改动或超大混杂范围必须提醒用户**：逐文件核对是否属于本次需求。若存在无关改动、历史清理、临时脚本或未确认的部署 `.yml/.yaml`，列出具体文件路径与改动摘要，请用户确认是剔除、拆分还是纳入本次 PR，不得静默带入，也不得私自 `reset` / `checkout` 丢弃用户现场；若净改动混入多个独立议题，或同时横跨「底层契约/DAL + 核心业务迁移 + 大量 UI/SDK」具备明显可独立合入的拆分边界，主动建议拆分为多个单一职责小 PR。
    - 若修改了 `.github/workflows/`，同步检查 `.forgejo/workflows/` 是否已按 `ci-workflow-sync` 规范对齐。
 
 ## 2. Rebase `upstream/main` 与提交前验证
@@ -53,8 +53,9 @@ git rebase upstream/main
    - **机械冲突**（相邻独立改动、import 排序、明确的文件重命名）：结合双边完整上下文确认不改变语义后解决。
    - **逻辑冲突**（同一行为设计不同、依赖被移除/变更、数据结构/权限/计费/默认值分歧）：**暂停并向用户说明两边差异与选项**，不盲目使用 `ours` / `theirs` 掩盖冲突。
 3. **验证范围**：
-   - Rebase 完成后，基于最新 `upstream/main..HEAD` 复核净 diff，确认无冲突标记、无多余改动。
-   - 按 `AGENTS.md` 测试范围要求，运行覆盖改动及受影响模块的最小局部测试、类型检查或 lint；用户验收前不主动运行全量测试。
+   - Rebase 完成后，基于最新 `upstream/main..HEAD` 复核净 diff，确认无冲突标记、无多余改动；多轮修复或裁剪需求后，同步清理死代码、未引用 i18n key 与多余契约外壳。
+   - 按 `AGENTS.md` 测试范围要求，运行覆盖改动及受影响模块的最小局部测试与 lint；用户验收前不主动运行全量测试。
+   - 修改 `packages/*` 导出签名、跨包导入或 `@fastgpt/dal` 引用时，核对目标 `package.json` `exports` 公开子路径并运行受影响应用的 `typecheck`（如 `pnpm --filter @fastgpt/app typecheck`）；修改共享契约、运行时字段或 OpenAPI Schema 时，检索 `pro/` 与 `sdk/` 消费方确认已同步。
 
 ## 3. Pro 子模块联动检查与提交
 
