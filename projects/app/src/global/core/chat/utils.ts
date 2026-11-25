@@ -7,7 +7,11 @@ import type {
 } from '@fastgpt/global/core/chat/type';
 import type { SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { findFailedResponseNode, getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
+import {
+  filterNodeResponseTreeData,
+  findFailedResponseNode,
+  getFlatAppResponses
+} from '@fastgpt/global/core/chat/utils';
 import { sandboxToolMap } from '@fastgpt/global/core/ai/sandbox/tools';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 
@@ -68,6 +72,21 @@ export const getChatItemErrorText = (
     errorText: nodeErrorText
   };
 };
+
+/**
+ * 分享/公开历史边界的错误摘要提取。
+ *
+ * 与分享实时流（`filterNodeResponseTreeData`）共享同一公开节点白名单：
+ * 仅提取允许公开节点的未捕获 `errorText`，避免 HTTP 节点上游响应体等内部诊断进入匿名分享响应。
+ */
+export const getPublicChatItemErrorText = (
+  responseData: ChatHistoryItemResType[] = []
+): ErrorTextItemType | undefined =>
+  getChatItemErrorText(
+    filterNodeResponseTreeData({
+      nodeResponses: responseData
+    })
+  );
 
 /**
  * 聊天列表预览只需要从 nodeResponse rows 中提取标签和错误摘要。
@@ -136,9 +155,15 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
   const hasResolvedTags =
     historyItem.totalQuoteList !== undefined || historyItem.toolCiteLinks !== undefined;
   // 预览记录（已清除 responseData）可直接复用预计算标签；
-  // 交互续跑或恢复写入新 responseData 后需重新提取 errorText 与引用，避免旧空标签屏蔽最新节点错误。
+  // 交互续跑或恢复写入新 responseData 后需保留已有引用/外链，仅增量合并新响应并提取最新 errorText。
   if ((hasResolvedTags && !historyItem.responseData?.length) || !historyItem.responseData)
     return withUseAgentSandbox(historyItem, useAgentSandbox);
+
+  const existingQuoteList = historyItem.totalQuoteList ?? [];
+  const existingToolCiteLinks = historyItem.toolCiteLinks ?? [];
+  const initialLinkDedupe = new Set(
+    existingToolCiteLinks.map(({ name = '', url = '' }) => `${name}::${url}`)
+  );
 
   // Flat children
   const flatResData = getFlatAppResponses(historyItem.responseData || []);
@@ -188,23 +213,32 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
     {
       useAgentSandbox,
       totalQuoteList: [] as SearchDataResponseQuoteListItemType[],
-      toolCiteLinks: [] as ToolCiteLinksType[],
-      linkDedupe: new Set<string>(),
+      toolCiteLinks: [...existingToolCiteLinks] as ToolCiteLinksType[],
+      linkDedupe: initialLinkDedupe,
       llmModuleAccount: 0,
       historyPreviewLength: undefined as number | undefined
     }
   );
-  const errorText = getChatItemErrorText(historyItem.responseData);
+  const errorText = getChatItemErrorText(historyItem.responseData) ?? historyItem.errorText;
 
-  // Filter quote list to only include citations actually referenced in the response text
+  // Filter new quote list to only include citations actually referenced in the response text,
+  // while preserving previously resolved quotes (e.g. from pre-pause history previews).
   const responseText = historyItem.value.map((v) => v.text?.content || '').join('');
   const citedIds = new Set(extractCitationIdsFromText(responseText));
   const quoteDedupe = new Set<string>();
-  const filteredQuoteList = totalQuoteList.filter((quote) => {
-    if (!quote.id || !citedIds.has(quote.id) || quoteDedupe.has(quote.id)) return false;
+  const filteredQuoteList: SearchDataResponseQuoteListItemType[] = [];
+  existingQuoteList.forEach((quote) => {
+    if (quote.id) {
+      if (quoteDedupe.has(quote.id)) return;
+      quoteDedupe.add(quote.id);
+    }
+    filteredQuoteList.push(quote);
+  });
+  totalQuoteList.forEach((quote) => {
+    if (!quote.id || !citedIds.has(quote.id) || quoteDedupe.has(quote.id)) return;
 
     quoteDedupe.add(quote.id);
-    return true;
+    filteredQuoteList.push(quote);
   });
 
   return {

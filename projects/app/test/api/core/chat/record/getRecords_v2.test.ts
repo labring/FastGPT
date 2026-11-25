@@ -288,7 +288,7 @@ describe('getRecords_v2 skill edit target', () => {
     }
   });
 
-  it('preserves node errorText for outLink share history records in both getRecords_v2 and getPaginationRecords', async () => {
+  it('preserves public node errorText and hides internal node diagnostics for outLink share history in both getRecords_v2 and getPaginationRecords', async () => {
     const app = await MongoApp.create({
       name: 'Share Error Records App',
       type: AppTypeEnum.simple,
@@ -299,7 +299,8 @@ describe('getRecords_v2 skill edit target', () => {
     const shareId = `share_${getNanoid(8)}`;
     const outLinkUid = `uid_${getNanoid(8)}`;
     const shareChatId = getNanoid();
-    const roundDataId = 'share-err-round-1';
+    const publicErrDataId = 'share-err-round-public';
+    const internalErrDataId = 'share-err-round-internal';
 
     const outLink = await MongoOutLink.create({
       teamId: testUser.teamId,
@@ -332,7 +333,7 @@ describe('getRecords_v2 skill edit target', () => {
         sourceType: ChatSourceTypeEnum.app,
         appId: String(app._id),
         chatId: shareChatId,
-        dataId: roundDataId,
+        dataId: publicErrDataId,
         obj: ChatRoleEnum.AI,
         value: []
       }),
@@ -341,13 +342,37 @@ describe('getRecords_v2 skill edit target', () => {
         sourceType: ChatSourceTypeEnum.app,
         appId: String(app._id),
         chatId: shareChatId,
-        chatItemDataId: roundDataId,
+        chatItemDataId: publicErrDataId,
         data: {
           id: 'agent-err-resp',
           nodeId: 'agent-node',
           moduleName: 'Agent',
           moduleType: FlowNodeTypeEnum.agent,
           errorText: 'Sandbox error: runtime failed'
+        }
+      }),
+      MongoChatItem.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        sourceType: ChatSourceTypeEnum.app,
+        appId: String(app._id),
+        chatId: shareChatId,
+        dataId: internalErrDataId,
+        obj: ChatRoleEnum.AI,
+        value: []
+      }),
+      MongoChatItemResponse.create({
+        teamId: testUser.teamId,
+        sourceType: ChatSourceTypeEnum.app,
+        appId: String(app._id),
+        chatId: shareChatId,
+        chatItemDataId: internalErrDataId,
+        data: {
+          id: 'http-err-resp',
+          nodeId: 'http-node',
+          moduleName: 'HTTP 请求',
+          moduleType: FlowNodeTypeEnum.httpRequest468,
+          errorText: '500 Internal Server Error\n{"secret":"upstream-body-leak"}'
         }
       })
     ]);
@@ -363,10 +388,14 @@ describe('getRecords_v2 skill edit target', () => {
       }
     });
     expect(v2Res.code).toBe(200);
-    expect(v2Res.data.list[0]?.errorText).toEqual({
+    const v2PublicItem = v2Res.data.list.find((item) => item.dataId === publicErrDataId);
+    const v2InternalItem = v2Res.data.list.find((item) => item.dataId === internalErrDataId);
+    expect(v2PublicItem?.errorText).toEqual({
       moduleName: 'Agent',
       errorText: 'Sandbox error: runtime failed'
     });
+    expect(v2InternalItem?.errorText).toBeUndefined();
+    expect(JSON.stringify(v2Res.data)).not.toContain('upstream-body-leak');
 
     const pageRes = await Call<any, any, { list: any[] }>(paginationHandler, {
       body: {
@@ -380,9 +409,13 @@ describe('getRecords_v2 skill edit target', () => {
       }
     });
     expect(pageRes.code).toBe(200);
-    expect(pageRes.data.list[0]?.errorText).toEqual({
+    const pagePublicItem = pageRes.data.list.find((item) => item.dataId === publicErrDataId);
+    const pageInternalItem = pageRes.data.list.find((item) => item.dataId === internalErrDataId);
+    expect(pagePublicItem?.errorText).toEqual({
       moduleName: 'Agent',
       errorText: 'Sandbox error: runtime failed'
     });
+    expect(pageInternalItem?.errorText).toBeUndefined();
+    expect(JSON.stringify(pageRes.data)).not.toContain('upstream-body-leak');
   });
 });
