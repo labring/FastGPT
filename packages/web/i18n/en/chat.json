@@ -210,6 +210,7 @@
   "sandbox_new_folder": "New folder",
   "sandbox_new_folder_placeholder": "New folder...",
   "sandbox_no_file": "There are no files in the sandbox yet",
+  "sandbox_open_file_failed": "Failed to open file",
   "sandbox_refresh_page_to_retry": "Please refresh the page to try again.",
   "sandbox_rename": "Rename",
   "sandbox_rename_failed": "Rename failed",

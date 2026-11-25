@@ -86,10 +86,10 @@ describe('downloadFetch', () => {
       expect.stringContaining('/api/core/app/logs/exportLogs'),
       {
         method: 'POST',
-        headers: {
+        headers: expect.objectContaining({
           'Content-Type': 'application/json',
           [FASTGPT_WEB_REQUEST_HEADER]: FASTGPT_WEB_REQUEST_VALUE
-        },
+        }),
         body: JSON.stringify({ appId: 'app-id' })
       }
     );
@@ -99,6 +99,26 @@ describe('downloadFetch', () => {
     expect(anchor.click).toHaveBeenCalledOnce();
     expect(removeChild).toHaveBeenCalledWith(anchor);
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:download');
+  });
+
+  it('resolves filename from Content-Disposition when filename is omitted', async () => {
+    const encoded = encodeURIComponent('（测试文件）.xlsx');
+    fetchMock.mockResolvedValueOnce(
+      new Response('binary', {
+        status: 200,
+        headers: {
+          'Content-Disposition': `attachment; filename="${encoded}"; filename*=UTF-8''${encoded}`
+        }
+      })
+    );
+
+    await downloadFetch({
+      url: '/api/core/ai/sandbox/download',
+      body: { skillId: 'skill-1', chatId: 'edit-debug', path: '（测试文件）.xlsx' },
+      fallbackFilename: 'fallback.zip'
+    });
+
+    expect(anchor.download).toBe('（测试文件）.xlsx');
   });
 });
 

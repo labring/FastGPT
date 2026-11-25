@@ -1209,6 +1209,13 @@ export const useSandboxFileStore = ({
     setDownloadingFile(true);
     try {
       await downloadSandbox({ ...sandboxTarget, chatId, outLinkAuthData, path: activeFile.path });
+    } catch (error) {
+      console.error('Failed to download file:', error);
+      toast({
+        title: t('chat:sandbox_download_failed'),
+        description: getErrText(error),
+        status: 'error'
+      });
     } finally {
       setDownloadingFile(false);
     }
@@ -1269,6 +1276,11 @@ export const useSandboxFileStore = ({
       );
     } catch (error) {
       console.error('Failed to open file:', error);
+      toast({
+        title: t('chat:sandbox_open_file_failed'),
+        description: getErrText(error),
+        status: 'error'
+      });
       // 如果加载失败，把这个临时的 tab 移出，并切到其他 tab 或清空
       setOpenedFiles((prev) => {
         const newOpenedFiles = prev.filter((f) => f.path !== filePath);

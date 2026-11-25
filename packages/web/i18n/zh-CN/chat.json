@@ -210,6 +210,7 @@
   "sandbox_new_folder": "新建文件夹",
   "sandbox_new_folder_placeholder": "新建文件夹...",
   "sandbox_no_file": "虚拟机里还没有文件",
+  "sandbox_open_file_failed": "打开文件失败",
   "sandbox_refresh_page_to_retry": "请刷新页面重试。",
   "sandbox_rename": "重命名",
   "sandbox_rename_failed": "重命名失败",
