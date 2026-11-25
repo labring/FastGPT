@@ -5613,6 +5613,8 @@ type DatasetsCollectionsDetailResDatasetAPIDatasetServer struct {
 	YuqueServer *DatasetsCollectionsDetailResDatasetAPIDatasetServerYuqueServer `json:"yuqueServer,omitempty"`
 	// 钉钉知识库配置
 	DingtalkServer *DatasetsCollectionsDetailResDatasetAPIDatasetServerDingtalkServer `json:"dingtalkServer,omitempty"`
+	// 外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL
+	PermissionSync *bool `json:"permissionSync,omitempty"`
 }
 
 // 知识库
@@ -5678,6 +5680,8 @@ type DatasetsCollectionsDetailResDataset struct {
 	DeleteTime *string `json:"deleteTime,omitempty"`
 	// 自动同步
 	AutoSync *bool `json:"autoSync,omitempty"`
+	// 是否同步第三方知识库根目录下的新增文件与文件夹
+	SyncAll *bool `json:"syncAll,omitempty"`
 	// 外部读取 URL
 	//
 	// Deprecated: this field is marked deprecated in the FastGPT OpenAPI spec.
@@ -5836,6 +5840,8 @@ type DatasetsCollectionsDetailRes struct {
 	APIFileID *string `json:"apiFileId,omitempty"`
 	// API 文件父级 ID
 	APIFileParentID *string `json:"apiFileParentId,omitempty"`
+	// API 集合是否自动同步新增直属子级；缺省兼容存量视为 true
+	SyncChildren *bool `json:"syncChildren,omitempty"`
 	// 外部文件 URL
 	ExternalFileURL *string `json:"externalFileUrl,omitempty"`
 	// 原始文本长度
@@ -5981,6 +5987,10 @@ type DatasetsCollectionsListResListItem struct {
 	Tags []DatasetsCollectionsDetailResTagsItem `json:"tags,omitempty"`
 	// 外部文件 ID
 	ExternalFileID *string `json:"externalFileId,omitempty"`
+	// API 文件 ID
+	APIFileID *string `json:"apiFileId,omitempty"`
+	// API 集合是否自动同步新增直属子级；缺省兼容存量视为 true
+	SyncChildren *bool `json:"syncChildren,omitempty"`
 	// 文件 ID
 	FileID *string `json:"fileId,omitempty"`
 	// 原始链接
@@ -6031,6 +6041,8 @@ type DatasetsCollectionsUpdateParamsByID struct {
 	Tags Opt[[]DatasetCollectionTagInput] `json:"tags,omitzero"`
 	// 是否禁用
 	Forbid Opt[bool] `json:"forbid,omitzero"`
+	// 是否自动同步该 API 目录下的新增子级（仅 API 目录生效）
+	SyncChildren Opt[bool] `json:"syncChildren,omitzero"`
 	// 创建时间
 	CreateTime Opt[string] `json:"createTime,omitzero"`
 	// 数据集ID，配合 externalFileId 使用
@@ -6053,6 +6065,8 @@ type DatasetsCollectionsUpdateParamsByDatasetIDAndExternalFileID struct {
 	Tags Opt[[]DatasetCollectionTagInput] `json:"tags,omitzero"`
 	// 是否禁用
 	Forbid Opt[bool] `json:"forbid,omitzero"`
+	// 是否自动同步该 API 目录下的新增子级（仅 API 目录生效）
+	SyncChildren Opt[bool] `json:"syncChildren,omitzero"`
 	// 创建时间
 	CreateTime Opt[string] `json:"createTime,omitzero"`
 	// 数据集ID，配合 externalFileId 使用
@@ -6116,6 +6130,8 @@ type DatasetsCreateParamsAPIDatasetServer struct {
 	YuqueServer Opt[DatasetsCreateParamsAPIDatasetServerYuqueServer] `json:"yuqueServer,omitzero"`
 	// 钉钉知识库配置
 	DingtalkServer Opt[DatasetsCreateParamsAPIDatasetServerDingtalkServer] `json:"dingtalkServer,omitzero"`
+	// 外部文件权限同步。仅 custom apiServer 支持；开启即由外部列表全量接管 collection ACL
+	PermissionSync Opt[bool] `json:"permissionSync,omitzero"`
 }
 
 // 外部文档解析开关(页眉页脚/附录/图片识别/图转表),仅对 customPdfParse 解析路径生效
@@ -6573,6 +6589,8 @@ type DatasetsDetailRes struct {
 	DeleteTime *string `json:"deleteTime,omitempty"`
 	// 自动同步
 	AutoSync *bool `json:"autoSync,omitempty"`
+	// 是否同步第三方知识库根目录下的新增文件与文件夹
+	SyncAll *bool `json:"syncAll,omitempty"`
 	// 外部读取 URL
 	//
 	// Deprecated: this field is marked deprecated in the FastGPT OpenAPI spec.
@@ -6604,6 +6622,11 @@ type DatasetsDetailRes struct {
 	HasTrainingTask bool `json:"hasTrainingTask"`
 	// 错误信息
 	ErrorMsg *string `json:"errorMsg,omitempty"`
+	// 外部文件权限同步状态；仅在 permissionSync 开启时返回
+	// Allowed values: "active", "syncing", "waiting", "error".
+	PermissionSyncStatus *string `json:"permissionSyncStatus,omitempty"`
+	// 外部文件权限同步失败信息
+	PermissionSyncErrorMsg *string `json:"permissionSyncErrorMsg,omitempty"`
 	// 向量模型；模型已删除时为空，已停用模型仍返回展示数据
 	VectorModel *DatasetsDetailResVectorModel `json:"vectorModel,omitempty"`
 	// AI 模型；模型已删除时为空，已停用模型仍返回展示数据
@@ -7203,6 +7226,8 @@ type DatasetsUpdateParams struct {
 	APIDatasetServer Opt[DatasetsCreateParamsAPIDatasetServer] `json:"apiDatasetServer,omitzero"`
 	// 是否自动同步
 	AutoSync Opt[bool] `json:"autoSync,omitzero"`
+	// 是否开启第三方知识库整库全量同步（仅 API 知识库生效；开启后会同时恢复库内所有已暂停同步的子目录）
+	SyncAll Opt[bool] `json:"syncAll,omitzero"`
 	// 分块配置
 	ChunkSettings Opt[DatasetsUpdateParamsChunkSettings] `json:"chunkSettings,omitzero"`
 	// 外部文档解析开关(页眉页脚/附录/图片识别/图转表),仅对 customPdfParse 解析路径生效;编辑后仅对新解析的文件生效

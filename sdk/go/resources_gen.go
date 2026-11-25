@@ -464,7 +464,7 @@ var datasetsCollectionsUpdateSpec = operationSpec{
 	IdentityCarrier:    carrierNone,
 	PathParams:         nil,
 	QueryParams:        nil,
-	BodyParams:         []string{"id", "parentId", "name", "tags", "forbid", "createTime", "datasetId", "externalFileId"},
+	BodyParams:         []string{"id", "parentId", "name", "tags", "forbid", "syncChildren", "createTime", "datasetId", "externalFileId"},
 }
 
 var datasetsCreateSpec = operationSpec{
@@ -618,7 +618,7 @@ var datasetsUpdateSpec = operationSpec{
 	IdentityCarrier:    carrierNone,
 	PathParams:         nil,
 	QueryParams:        nil,
-	BodyParams:         []string{"id", "parentId", "name", "avatar", "intro", "agentModelId", "agentModel", "vlmModelId", "vlmModel", "websiteConfig", "externalReadUrl", "apiDatasetServer", "autoSync", "chunkSettings", "sangforFileParseConfig"},
+	BodyParams:         []string{"id", "parentId", "name", "avatar", "intro", "agentModelId", "agentModel", "vlmModelId", "vlmModel", "websiteConfig", "externalReadUrl", "apiDatasetServer", "autoSync", "syncAll", "chunkSettings", "sangforFileParseConfig"},
 }
 
 var modelsCatalogSpec = operationSpec{
