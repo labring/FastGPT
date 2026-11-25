@@ -18,6 +18,9 @@ it('shares an in-flight build and checks the current catalog again after complet
   const first = ensureMongoFullTextIndex();
   expect(ensureMongoFullTextIndex()).toBe(first);
   expect(ensure).toHaveBeenCalledTimes(1);
+  expect(ensure).toHaveBeenCalledWith(
+    expect.objectContaining({ name: 'fg_embedding_search_fulltext' })
+  );
   complete();
   await first;
 

@@ -1,7 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
 import { assertMongoSearchIndexReady, ensureMongoSearchIndex } from './searchIndex';
 
-export const MongoFullTextSearchIndexName = 'embedding_search_fulltext';
+export const MongoFullTextSearchIndexName = 'fg_embedding_search_fulltext';
 
 const definition = {
   mappings: {

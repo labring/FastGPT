@@ -45,7 +45,7 @@ beforeEach(() => {
       const text = typeof sql === 'string' ? sql : sql.text;
       if (text.includes('target_id AS')) return result([metadata]);
       if (text.startsWith('EXPLAIN'))
-        return result([{ 'QUERY PLAN': 'Index Scan using modeldata_fulltext on modeldata' }]);
+        return result([{ 'QUERY PLAN': 'Index Scan using fg_modeldata_fulltext on modeldata' }]);
       return result([{ valid: true }]);
     });
 });
@@ -72,7 +72,7 @@ describe('OpenGauss native BM25', () => {
     const statements = client.query.mock.calls.map(([sql]) => String(sql));
     expect(statements).toContain('ALTER TABLE modeldata ADD COLUMN fulltext_tokens TEXT');
     expect(statements).toContain(
-      'CREATE INDEX modeldata_fulltext ON modeldata USING bm25(fulltext_tokens)'
+      'CREATE INDEX fg_modeldata_fulltext ON modeldata USING bm25(fulltext_tokens)'
     );
     expect(
       statements.some((sql) => sql.includes('SELECT true,$1::uuid,$2::integer,$3::text'))
@@ -125,7 +125,7 @@ describe('OpenGauss native BM25', () => {
     await expect(prepareOpenGaussFullText()).rejects.toThrow();
     expect(client.query).toHaveBeenCalledWith('ROLLBACK');
     expect(client.query).not.toHaveBeenCalledWith(
-      expect.stringContaining('CREATE INDEX modeldata_fulltext')
+      expect.stringContaining('CREATE INDEX fg_modeldata_fulltext')
     );
     expect(client.release).toHaveBeenCalledOnce();
   });
@@ -194,7 +194,7 @@ describe('OpenGauss native BM25', () => {
     ]);
     const [sql, values] = vi.mocked(OgClient.query).mock.calls[0];
     expect(sql).toContain('ORDER BY fulltext_tokens <&> $1::text DESC LIMIT $6');
-    expect(sql).toContain('indexscan (modeldata modeldata_fulltext)');
+    expect(sql).toContain('indexscan (modeldata fg_modeldata_fulltext)');
     expect(sql).not.toContain(props.query);
     expect(values).toEqual(["' 中文 查询", 't', ['d'], ['allowed'], ['hidden'], 10]);
     vi.mocked(OgClient.query).mockClear();

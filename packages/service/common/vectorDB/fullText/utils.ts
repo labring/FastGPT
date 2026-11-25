@@ -9,7 +9,7 @@ export const SQL_FULL_TEXT_MAX_TOKEN_BYTES = 16 * 1024 * 1024;
 export const SQL_FULL_TEXT_COLUMN = 'fulltext_tokens';
 
 /** 各 SQL provider 统一的原生全文索引名。 */
-export const SQL_FULL_TEXT_INDEX = 'modeldata_fulltext';
+export const SQL_FULL_TEXT_INDEX = 'fg_modeldata_fulltext';
 
 /**
  * 单条全文记录的向量 ID 或文本内容契约错误。

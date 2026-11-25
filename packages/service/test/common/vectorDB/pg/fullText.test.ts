@@ -45,7 +45,7 @@ const identity = {
   analyzerVersion: 'fastgpt-jieba-search-v1'
 };
 const definition =
-  'CREATE INDEX modeldata_fulltext ON public.modeldata USING paradedb (id, ((fulltext_tokens)::pdb.whitespace), ((team_id)::pdb.literal), ((dataset_id)::pdb.literal), ((collection_id)::pdb.literal))';
+  'CREATE INDEX fg_modeldata_fulltext ON public.modeldata USING paradedb (id, ((fulltext_tokens)::pdb.whitespace), ((team_id)::pdb.literal), ((dataset_id)::pdb.literal), ((collection_id)::pdb.literal))';
 // 外置分析器（jieba 搜索模式 + 小写 + 停用词）对测试原文的实际输出
 const rawText = "O'Reilly 中文";
 const rawTokens = "o ' reilly 中文";
@@ -136,11 +136,11 @@ describe('PG full-text contracts', () => {
       if (existingValidity === true) {
         expect(build).toBeUndefined();
       } else {
-        expect(build).toContain('CONCURRENTLY IF NOT EXISTS modeldata_fulltext');
+        expect(build).toContain('CONCURRENTLY IF NOT EXISTS fg_modeldata_fulltext');
         expect(build).toContain('((fulltext_tokens)::pdb.whitespace)');
         expect(build).not.toContain('key_field');
       }
-      expect(statements.includes('DROP INDEX CONCURRENTLY modeldata_fulltext')).toBe(
+      expect(statements.includes('DROP INDEX CONCURRENTLY fg_modeldata_fulltext')).toBe(
         existingValidity === false
       );
       expect(client.query).toHaveBeenCalledWith(

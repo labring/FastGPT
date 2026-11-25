@@ -735,8 +735,8 @@ describe.skipIf(!target)('PG full-text real migration', () => {
 
   it('detects a wrong same-name index and never treats it as successful preparation', async () => {
     await preparePgFullText();
-    await pool.query('DROP INDEX modeldata_fulltext');
-    await pool.query('CREATE INDEX modeldata_fulltext ON modeldata (team_id)');
+    await pool.query('DROP INDEX fg_modeldata_fulltext');
+    await pool.query('CREATE INDEX fg_modeldata_fulltext ON modeldata (team_id)');
     await expect(assertPgFullTextCapability()).rejects.toThrow('supported configuration');
     await expect(preparePgFullText()).rejects.toThrow('supported configuration');
   });
@@ -745,7 +745,7 @@ describe.skipIf(!target)('PG full-text real migration', () => {
     await ctrl.init();
     const readIndex = () =>
       pool.query<{ indisvalid: boolean }>(
-        "SELECT indisvalid FROM pg_index WHERE indexrelid = to_regclass('modeldata_fulltext')"
+        "SELECT indisvalid FROM pg_index WHERE indexrelid = to_regclass('fg_modeldata_fulltext')"
       );
     expect((await readIndex()).rows).toEqual([]);
     // 普通建索引等待 ShareLock 时，新写事务也会排队，先准备可供接管后验收的数据。

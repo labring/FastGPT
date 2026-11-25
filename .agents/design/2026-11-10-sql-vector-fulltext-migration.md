@@ -69,7 +69,7 @@ MongoDB 及其他已适配的 SQL 向量库异步准备全文索引，应用启�
 
 ### MongoDB 向量库
 
-`SEARCH_MONGO_URL` 指向的 `dataset_data_embeddings` 用 `fulltextTokens` 存词串，与向量同行写删。全文与向量使用同一个 `mongot`，分别构建全文搜索索引 `embedding_search_fulltext` 和向量索引 `embedding_int8`。`lucene.whitespace` 复用 Jieba 词串，归属字段及字符串向量 ID 映射为 `token`。一次 `$search` 在索引里过滤团队、多个知识库和允许或禁止的数据集，按 BM25 分数及向量 ID 排序。取 Top-K 前使用主库当前文档复核相同范围，业务层负责反查有效向量引用。已有预览版普通 `$text` 索引保留，以兼容滚动部署。[MongoDB Search 查询](https://www.mongodb.com/docs/search/query/aggregation-stages/search/)
+`SEARCH_MONGO_URL` 指向的 `dataset_data_embeddings` 用 `fulltextTokens` 存词串，与向量同行写删。全文与向量使用同一个 `mongot`，分别构建全文搜索索引 `fg_embedding_search_fulltext` 和向量索引 `embedding_int8`。`lucene.whitespace` 复用 Jieba 词串，归属字段及字符串向量 ID 映射为 `token`。一次 `$search` 在索引里过滤团队、多个知识库和允许或禁止的数据集，按 BM25 分数及向量 ID 排序。取 Top-K 前使用主库当前文档复核相同范围，业务层负责反查有效向量引用。已有预览版普通 `$text` 索引保留，以兼容滚动部署。[MongoDB Search 查询](https://www.mongodb.com/docs/search/query/aggregation-stages/search/)
 
 全文索引后台创建，向量初始化不等待全文索引。迁移等到全文索引 `READY` 且可查询后校验数据，用固定中英文探测查询确认新写入已同步到索引。平时新增或更新的全文命中可能稍后可见。[MongoDB Search 索引延迟](https://www.mongodb.com/docs/search/performance/index-performance/)
 

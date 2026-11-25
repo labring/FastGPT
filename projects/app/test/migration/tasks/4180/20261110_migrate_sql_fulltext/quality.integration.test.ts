@@ -395,7 +395,7 @@ describe.skipIf(!target).each(qualityDatasets)(
         const selected = [...qrels.keys()].sort((a, b) => a.localeCompare(b));
         const beforeMaintenance = [];
         const segmentsBeforeMaintenance = (
-          await pool!.query("SELECT * FROM pdb.index_segments('modeldata_fulltext'::regclass)")
+          await pool!.query("SELECT * FROM pdb.index_segments('fg_modeldata_fulltext'::regclass)")
         ).rows;
         const probes = selected.slice(0, 10);
         for (const id of probes)
@@ -411,7 +411,7 @@ describe.skipIf(!target).each(qualityDatasets)(
           milliseconds: maintenanceMilliseconds,
           segmentsBefore: segmentsBeforeMaintenance,
           segmentsAfter: (
-            await pool!.query("SELECT * FROM pdb.index_segments('modeldata_fulltext'::regclass)")
+            await pool!.query("SELECT * FROM pdb.index_segments('fg_modeldata_fulltext'::regclass)")
           ).rows,
           before: beforeMaintenance,
           after: afterMaintenance
@@ -488,7 +488,7 @@ describe.skipIf(!target).each(qualityDatasets)(
         }
         acceptance.passed = true;
         report.indexSegments = (
-          await pool!.query("SELECT * FROM pdb.index_segments('modeldata_fulltext'::regclass)")
+          await pool!.query("SELECT * FROM pdb.index_segments('fg_modeldata_fulltext'::regclass)")
         ).rows;
         saveReport();
 

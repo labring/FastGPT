@@ -16,7 +16,7 @@ vi.mock('@fastgpt/service/common/vectorDB/mongo/controller', () => ({
 vi.mock('@fastgpt/service/common/vectorDB/mongo/fullTextIndex', () => ({
   assertMongoFullTextIndex: assertIndex,
   ensureMongoFullTextIndex: ensureIndex,
-  MongoFullTextSearchIndexName: 'embedding_search_fulltext'
+  MongoFullTextSearchIndexName: 'fg_embedding_search_fulltext'
 }));
 vi.mock('@fastgpt/service/common/vectorDB/mongo/schema', () => ({
   MongoDatasetDataEmbedding: { aggregate }
@@ -49,7 +49,7 @@ it('uses one search for multiple datasets and checks current collection scope be
   expect(aggregate).toHaveBeenCalledExactlyOnceWith([
     {
       $search: {
-        index: 'embedding_search_fulltext',
+        index: 'fg_embedding_search_fulltext',
         compound: {
           must: [{ text: { path: 'fulltextTokens', query: 'refund', matchCriteria: 'any' } }],
           filter: [

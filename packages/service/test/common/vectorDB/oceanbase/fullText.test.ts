@@ -18,9 +18,9 @@ describe.each(['oceanbase', 'seekdb'] as const)('%s native full text', (provider
   const metadata = { targetId: randomUUID(), schemaVersion: 1, analyzerVersion: analyzer };
   const version = provider === 'seekdb' ? 'OceanBase seekdb 1.0.1.0' : 'OceanBase_CE 4.3.5.1';
   const definition =
-    'CREATE TABLE modeldata (fulltext_tokens longtext, FULLTEXT KEY `modeldata_fulltext` (`fulltext_tokens`) WITH PARSER space PARSER_PROPERTIES=(min_token_size=1))';
+    'CREATE TABLE modeldata (fulltext_tokens longtext, FULLTEXT KEY `fg_modeldata_fulltext` (`fulltext_tokens`) WITH PARSER space PARSER_PROPERTIES=(min_token_size=1))';
   const index = {
-    Key_name: 'modeldata_fulltext',
+    Key_name: 'fg_modeldata_fulltext',
     Index_type: 'FULLTEXT',
     Column_name: 'fulltext_tokens',
     Visible: 'YES',
@@ -50,7 +50,7 @@ describe.each(['oceanbase', 'seekdb'] as const)('%s native full text', (provider
     );
     expect(state.query).toHaveBeenCalledWith(
       expect.stringContaining(
-        'CREATE FULLTEXT INDEX modeldata_fulltext ON modeldata(fulltext_tokens) WITH PARSER SPACE PARSER_PROPERTIES=(min_token_size=1)'
+        'CREATE FULLTEXT INDEX fg_modeldata_fulltext ON modeldata(fulltext_tokens) WITH PARSER SPACE PARSER_PROPERTIES=(min_token_size=1)'
       )
     );
     expect(state.query).toHaveBeenCalledWith(
@@ -127,7 +127,7 @@ describe.each(['oceanbase', 'seekdb'] as const)('%s native full text', (provider
     // 兼容 MySQL 版本条件注释、额外索引选项（如 BLOCK_SIZE）以及不回显 parser_properties 的产品输出
     for (const compatible of [
       definition.replace(' PARSER_PROPERTIES=(min_token_size=1)', ''),
-      'CREATE TABLE `modeldata` (`fulltext_tokens` longtext, FULLTEXT KEY `modeldata_fulltext` (`fulltext_tokens`) BLOCK_SIZE 16384 /*!50100 WITH PARSER `space` */ PARSER_PROPERTIES=(min_token_size=1))'
+      'CREATE TABLE `modeldata` (`fulltext_tokens` longtext, FULLTEXT KEY `fg_modeldata_fulltext` (`fulltext_tokens`) BLOCK_SIZE 16384 /*!50100 WITH PARSER `space` */ PARSER_PROPERTIES=(min_token_size=1))'
     ]) {
       state.query
         .mockResolvedValueOnce([[index]])
