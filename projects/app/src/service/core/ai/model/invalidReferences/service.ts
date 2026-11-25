@@ -380,8 +380,6 @@ export const createInvalidReferenceReplacer = ({
         } else if (entry.input) {
           if (entry.input.value !== undefined && entry.input.value !== null) {
             entry.input.value = targets.llm.modelId;
-          } else if (toolConfig && Object.hasOwn(toolConfig, entry.inputKey)) {
-            toolConfig[entry.inputKey] = targets.llm.modelId;
           } else if (entry.input.defaultValue !== undefined && entry.input.defaultValue !== null) {
             entry.input.defaultValue = targets.llm.modelId;
           } else {

@@ -1515,4 +1515,96 @@ describe('replaceInvalidModelReferences', () => {
     expect(savedTool.inputs[0].value).toBe('new-llm');
     expect(savedTool.inputs[1].value).toBe('summarize this document');
   });
+
+  it('falls back to legacy manual input values when config[key] is null while preserving non-null config precedence', async () => {
+    vi.spyOn(SystemToolRepo.getInstance(), 'getSystemToolDetail').mockResolvedValue({
+      id: 'systemTool-nullConfig',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          model: { type: 'string', format: 'modelId' },
+          secondaryModel: { type: 'string', format: 'modelId' },
+          explicitModel: { type: 'string', format: 'modelId' }
+        }
+      }
+    } as never);
+
+    const legacyNullConfigAgentNode = {
+      nodeId: 'agent-null-config',
+      flowNodeType: FlowNodeTypeEnum.agent,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.aiModelId,
+          renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+          value: 'new-llm'
+        },
+        {
+          key: NodeInputKeyEnum.selectedTools,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          value: [
+            {
+              id: 'systemTool-nullConfig',
+              source: 'system',
+              version: '0.1.0',
+              inputs: [
+                {
+                  key: 'model',
+                  renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+                  value: 'old-llm'
+                },
+                {
+                  key: 'secondaryModel',
+                  defaultValue: 'old-llm'
+                },
+                {
+                  key: 'explicitModel',
+                  renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel],
+                  value: 'old-llm'
+                }
+              ],
+              config: {
+                model: null,
+                secondaryModel: null,
+                explicitModel: 'new-llm'
+              }
+            }
+          ]
+        }
+      ],
+      outputs: []
+    };
+
+    await MongoApp.collection.insertOne({
+      _id: ids.app,
+      teamId: ids.team,
+      tmbId: ids.member,
+      name: 'Legacy Null Config Tool App',
+      type: 'workflow',
+      modules: [legacyNullConfigAgentNode],
+      chatConfig: {}
+    });
+
+    const result = await replaceInvalidModelReferences({
+      teamId: String(ids.team),
+      replacement,
+      handle,
+      assertCanContinue: async () => {}
+    });
+
+    expect(result.completed).toBe(true);
+    expect(result.counts.app.llm.replacedReferences).toBe(2);
+    expect(result.counts.app.llm.failedRecords).toBe(0);
+
+    const savedApp = await MongoApp.collection.findOne({ _id: ids.app });
+    const savedTool = savedApp?.modules[0].inputs[1].value[0];
+    expect(savedTool.config).toEqual({
+      model: 'new-llm',
+      secondaryModel: 'new-llm',
+      explicitModel: 'new-llm'
+    });
+    expect(savedTool.inputs[0].value).toBe('new-llm');
+    expect(savedTool.inputs[1].defaultValue).toBe('new-llm');
+    // explicitModel 使用了非空 config 中的有效值 'new-llm'，不应误触发替换写回旧 inputs。
+    expect(savedTool.inputs[2].value).toBe('old-llm');
+  });
 });

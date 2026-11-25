@@ -12,6 +12,7 @@ import {
   workflowDatasetParamModelSlots
 } from '../../core/workflow/model/constants';
 import { legacySystemConfigNodeType } from '../../core/workflow/migration/legacy/systemConfig';
+import { normalizeAgentToolInputs } from '../../core/workflow/migration/agentToolInput';
 import type {
   WorkflowModelFeature,
   WorkflowModelReferenceStatus,
@@ -168,26 +169,70 @@ export const collectAgentSelectedToolModelEntries = ({
       for (const rawInput of rawTool.inputs) {
         if (!isPlainRecord(rawInput) || typeof rawInput.key !== 'string') continue;
 
-        if (typeof rawInput.mode === 'string') {
+        if (!savedModeMap.has(rawInput.key) && typeof rawInput.mode === 'string') {
           savedModeMap.set(rawInput.key, rawInput.mode);
         }
 
-        if (Array.isArray(rawInput.renderTypeList)) {
+        if (!inputByKey.has(rawInput.key)) {
           inputByKey.set(rawInput.key, rawInput as FlowNodeInputItemType);
         }
       }
     }
 
     if (getSelectedToolModelKeys) {
+      // 复用工作流历史归一化规则，确保 config[key] 为 null/undefined 时与运行时一致回退到旧输入值。
+      const normalized = normalizeAgentToolInputs({
+        rawInputs: rawTool.inputs,
+        rawConfig: rawTool.config
+      });
+      const normalizedModeMap = new Map(normalized.inputs.map((item) => [item.key, item.mode]));
       const handledKeys = new Set<string>();
       for (const key of getSelectedToolModelKeys(rawTool)) {
         if (!key || handledKeys.has(key)) continue;
-        if (savedModeMap.get(key) === AgentToolInputModeEnum.agentGenerated) continue;
+        if (
+          savedModeMap.get(key) === AgentToolInputModeEnum.agentGenerated ||
+          normalizedModeMap.get(key) === AgentToolInputModeEnum.agentGenerated
+        ) {
+          continue;
+        }
 
         const toolInput = inputByKey.get(key);
         if (toolInput && nodeInputIsReference(toolInput)) continue;
 
         handledKeys.add(key);
+        const hasOwnConfigValue = Boolean(
+          config && Object.hasOwn(config, key) && config[key] !== undefined && config[key] !== null
+        );
+        if (hasOwnConfigValue) {
+          entries.push({
+            tool: rawTool,
+            toolIndex,
+            inputKey: key,
+            ...(toolInput ? { input: toolInput } : {}),
+            value: config![key],
+            required: Boolean(toolInput?.required),
+            valueSource: 'config'
+          });
+          continue;
+        }
+
+        if (
+          Object.hasOwn(normalized.config, key) &&
+          normalized.config[key] !== undefined &&
+          normalized.config[key] !== null
+        ) {
+          entries.push({
+            tool: rawTool,
+            toolIndex,
+            inputKey: key,
+            ...(toolInput ? { input: toolInput } : {}),
+            value: normalized.config[key],
+            required: Boolean(toolInput?.required),
+            valueSource: toolInput ? 'input' : 'config'
+          });
+          continue;
+        }
+
         if (config && Object.hasOwn(config, key)) {
           entries.push({
             tool: rawTool,
@@ -198,19 +243,6 @@ export const collectAgentSelectedToolModelEntries = ({
             required: Boolean(toolInput?.required),
             valueSource: 'config'
           });
-          continue;
-        }
-
-        if (toolInput && (toolInput.value !== undefined || toolInput.defaultValue !== undefined)) {
-          entries.push({
-            tool: rawTool,
-            toolIndex,
-            inputKey: key,
-            input: toolInput,
-            value: toolInput.value ?? toolInput.defaultValue,
-            required: Boolean(toolInput.required),
-            valueSource: 'input'
-          });
         }
       }
       continue;
@@ -218,6 +250,7 @@ export const collectAgentSelectedToolModelEntries = ({
 
     for (const toolInput of inputByKey.values()) {
       if (
+        !Array.isArray(toolInput.renderTypeList) ||
         savedModeMap.get(toolInput.key) === AgentToolInputModeEnum.agentGenerated ||
         nodeInputIsReference(toolInput) ||
         getSelectedInputRenderType(toolInput) !== FlowNodeInputTypeEnum.selectLLMModel

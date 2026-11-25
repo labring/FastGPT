@@ -236,6 +236,55 @@ describe('walkWorkflowModelReferences', () => {
       { source: 'agentToolConfig', modelId: 'stored-llm-id', inputKey: 'model' }
     ]);
   });
+
+  it('falls back to legacy input value when config[key] is null while keeping non-null config priority', () => {
+    const visited: Array<{ modelId: unknown; inputKey?: string; valueSource?: string }> = [];
+
+    walkWorkflowModelReferences({
+      nodes: [
+        {
+          nodeId: 'agent',
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              value: [
+                {
+                  id: 'systemTool-null-config',
+                  inputs: [
+                    { key: 'model', value: 'legacy-null-fallback-llm' },
+                    { key: 'backupModel', defaultValue: 'legacy-default-fallback-llm' },
+                    { key: 'explicitModel', value: 'stale-input-llm' }
+                  ],
+                  config: {
+                    model: null,
+                    backupModel: undefined,
+                    explicitModel: 'explicit-config-llm'
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      getSelectedToolModelKeys: (tool) =>
+        tool.id === 'systemTool-null-config' ? ['model', 'backupModel', 'explicitModel'] : [],
+      onReference: ({ reference, agentTool }) => {
+        visited.push({
+          modelId: reference.modelId,
+          inputKey: agentTool?.inputKey,
+          valueSource: agentTool?.valueSource
+        });
+      }
+    });
+
+    expect(visited).toEqual([
+      { modelId: 'legacy-null-fallback-llm', inputKey: 'model', valueSource: 'input' },
+      { modelId: 'legacy-default-fallback-llm', inputKey: 'backupModel', valueSource: 'input' },
+      { modelId: 'explicit-config-llm', inputKey: 'explicitModel', valueSource: 'config' }
+    ]);
+  });
 });
 
 describe('isWorkflowModelExpression', () => {
