@@ -8,16 +8,18 @@ export const findDatasetVectorData = (scope: { teamId: string; datasetId: string
     { vectorData: 1 }
   ).lean();
 
-/** 更新内部索引状态；pending 必须匹配投递前的时间戳，防止覆盖立即消费后产生的新状态。 */
-export const updateDatasetPgIndexState = ({
+/** 更新指定提供商的索引状态；pending 必须匹配投递前的时间戳。 */
+const updateDatasetIndexState = ({
   teamId,
   datasetId,
-  pgIndex,
+  state,
+  field,
   expectedCheckedAt
 }: {
   teamId: string;
   datasetId: string;
-  pgIndex: DatasetVectorData['pgIndex'];
+  state: NonNullable<DatasetVectorData['pgIndex']>;
+  field: 'pgIndex' | 'openGaussIndex';
   expectedCheckedAt?: Date;
 }) =>
   MongoDataset.updateOne(
@@ -25,15 +27,32 @@ export const updateDatasetPgIndexState = ({
       _id: datasetId,
       teamId,
       deleteTime: null,
-      ...(pgIndex === 'pending'
+      ...(state === 'pending'
         ? {
-            'vectorData.pgIndex': { $nin: ['ready', 'building', 'removing', 'pending'] },
-            'vectorData.pgIndexCheckedAt': expectedCheckedAt ?? null
+            [`vectorData.${field}`]: { $nin: ['ready', 'building', 'removing', 'pending'] },
+            [`vectorData.${field}CheckedAt`]: expectedCheckedAt ?? null
           }
         : {})
     },
-    { $set: { vectorData: { pgIndex, pgIndexCheckedAt: new Date() } } }
+    { $set: { [`vectorData.${field}`]: state, [`vectorData.${field}CheckedAt`]: new Date() } }
   );
+
+type UpdateIndexStateParams = Omit<
+  Parameters<typeof updateDatasetIndexState>[0],
+  'state' | 'field'
+> & {
+  pgIndex: NonNullable<DatasetVectorData['pgIndex']>;
+};
+
+export const updateDatasetPgIndexState = ({ pgIndex, ...scope }: UpdateIndexStateParams) =>
+  updateDatasetIndexState({ ...scope, state: pgIndex, field: 'pgIndex' });
+
+export const updateDatasetOpenGaussIndexState = ({
+  openGaussIndex,
+  ...scope
+}: Omit<UpdateIndexStateParams, 'pgIndex'> & {
+  openGaussIndex: NonNullable<DatasetVectorData['openGaussIndex']>;
+}) => updateDatasetIndexState({ ...scope, state: openGaussIndex, field: 'openGaussIndex' });
 
 /** 一次读取本次检索涉及的元数据，行数仍由 Redis/向量库提供。 */
 export const findDatasetsVectorData = ({

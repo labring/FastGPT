@@ -3,7 +3,7 @@ import type { DatasetDataEmbedding } from '@fastgpt/global/core/dataset/data/emb
 import type { VectorControllerType } from '../type';
 import { MongoDatasetDataEmbedding } from './schema';
 import { initEmbeddingMongo, MongoEmbeddingSearchIndexName } from './controller';
-import { assertMongoEmbeddingVector } from './utils';
+import { assertMongoEmbeddingVector, toMongoFullTextTokens } from './utils';
 
 // 以完整预过滤命中的向量规模选择查询方式；阈值是初始策略，不依据返回条数建删索引。
 const EXACT_SEARCH_MAX_ROWS = 200_000;
@@ -25,6 +25,7 @@ export class MongoVectorCtrl implements VectorControllerType {
     vectors.forEach(assertMongoEmbeddingVector);
     if (texts && texts.length !== vectors.length)
       throw new Error('Embedding texts and vectors must have the same length');
+    const tokens = texts && (await Promise.all(texts.map(toMongoFullTextTokens)));
     await this.init();
     const createTime = new Date();
     const documents = vectors.map((vector, i) => ({
@@ -34,7 +35,7 @@ export class MongoVectorCtrl implements VectorControllerType {
       collectionId,
       vector,
       createTime,
-      ...(texts && { text: texts[i] })
+      ...(tokens && { fulltextTokens: tokens[i] })
     }));
     await this.model.insertMany(documents);
     return { insertIds: documents.map(({ _id }) => _id) };

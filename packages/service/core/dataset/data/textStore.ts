@@ -9,9 +9,13 @@ import type {
   FullTextWriteProps
 } from '../../../common/vectorDB/type';
 import { getMilvusFullTextStore } from '../../../common/vectorDB/milvus/fullText';
+import { searchNativeFullText } from '../fullText/store';
 import { MongoDatasetDataText } from './dataTextSchema';
+import {
+  getFullTextProvider,
+  shouldWriteMongoFullText
+} from '../../../common/vectorDB/fullText/config';
 
-// re-export 共享类型(定义在 vectorDB/type.ts)
 export type {
   FullTextStore,
   FullTextSearchProps,
@@ -20,8 +24,8 @@ export type {
 
 /**
  * Mongo 全文实现。
- * 检索走 $text + jieba(基于现有 MongoDatasetDataText);写/删方法接收可选 session,
- * data 层事务内与主数据一并提交,批删/批量写同样透传 session 保持原子性。
+ * 检索走 $text + jieba（基于 MongoDatasetDataText）；写/删方法接收可选 session，
+ * 在兼容窗口内保持与主数据同事务维护，供未完成回填验收或滚动升级期间兼容读取。
  */
 export class MongoFullTextStore implements FullTextStore {
   async search({
@@ -80,8 +84,8 @@ export class MongoFullTextStore implements FullTextStore {
   }
 
   /**
-   * 批量写入全文 token,按 dataId bulkWrite upsert(幂等,重复写安全)。
-   * 支持事务内传 session,与主数据一并提交。
+   * 批量写入全文 token，按 dataId bulkWrite upsert（幂等，重复写安全）。
+   * 支持事务内传 session，与主数据一并提交。
    */
   async write(props: FullTextWriteProps[], session?: ClientSession): Promise<void> {
     const tokenized = await Promise.all(
@@ -117,7 +121,6 @@ export class MongoFullTextStore implements FullTextStore {
     { teamId, datasetIds }: { teamId: string; datasetIds: string[] },
     session?: ClientSession
   ): Promise<void> {
-    // 逐 datasetId 删除,控制单查询规模并设置超时(与 delDatasetRelevantData 一致)
     for (const datasetId of datasetIds) {
       await MongoDatasetDataText.deleteMany({ teamId, datasetId }, { session }).maxTimeMS(300000);
     }
@@ -142,12 +145,44 @@ export class MongoFullTextStore implements FullTextStore {
   }
 }
 
+/** 向量库的原生全文读取和 Mongo 兼容写删由同一个环境变量控制。 */
+export class NativeFullTextStore extends MongoFullTextStore {
+  override async search(props: FullTextSearchProps): Promise<FullTextSearchItem[]> {
+    if (getFullTextProvider() === 'legacy-mongo') return super.search(props);
+    return searchNativeFullText(props);
+  }
+
+  /** 兼容模式维护旧 Mongo 全文，原生词串始终由向量写入通道同行保存。 */
+  override async write(props: FullTextWriteProps[], session?: ClientSession): Promise<void> {
+    if (shouldWriteMongoFullText()) await super.write(props, session);
+  }
+
+  /** 兼容写删使用同一开关，开启时透传上层事务。 */
+  override async deleteByDataId(dataId: string, session?: ClientSession): Promise<void> {
+    if (shouldWriteMongoFullText()) await super.deleteByDataId(dataId, session);
+  }
+
+  override async deleteByDatasetIds(
+    props: { teamId: string; datasetIds: string[] },
+    session?: ClientSession
+  ): Promise<void> {
+    if (shouldWriteMongoFullText()) await super.deleteByDatasetIds(props, session);
+  }
+
+  override async deleteByCollectionIds(
+    props: { teamId: string; datasetIds: string[]; collectionIds: string[] },
+    session?: ClientSession
+  ): Promise<void> {
+    if (shouldWriteMongoFullText()) await super.deleteByCollectionIds(props, session);
+  }
+}
+
 let fullTextStore: FullTextStore | undefined;
 
-/** 全文检索实现跟随实际向量库 provider:milvus → BM25;其他向量库 → Mongo $text */
+/** 按物理存储分发单例，原生 Store 统一处理兼容模式。 */
 export const getFullTextStore = (): FullTextStore => {
   if (fullTextStore) return fullTextStore;
   fullTextStore =
-    getVectorType() === 'milvus' ? getMilvusFullTextStore() : new MongoFullTextStore();
+    getVectorType() === 'milvus' ? getMilvusFullTextStore() : new NativeFullTextStore();
   return fullTextStore;
 };

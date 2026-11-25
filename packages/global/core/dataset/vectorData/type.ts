@@ -1,10 +1,20 @@
 import z from 'zod';
 import { IntSchema } from '../../../common/zod';
 
-/** 行数仅缓存在 Redis；Mongo 内部元数据只记录 PG 局部索引的生命周期。 */
+/** 行数仅缓存在 Redis；Mongo 内部元数据按提供商记录局部索引生命周期。 */
+export const DatasetVectorIndexStateSchema = z.enum([
+  'none',
+  'pending',
+  'building',
+  'ready',
+  'removing',
+  'failed'
+]);
 export const DatasetVectorDataSchema = z.object({
-  pgIndex: z.enum(['none', 'pending', 'building', 'ready', 'removing', 'failed']),
-  pgIndexCheckedAt: z.date()
+  pgIndex: DatasetVectorIndexStateSchema.optional(),
+  pgIndexCheckedAt: z.date().optional(),
+  openGaussIndex: DatasetVectorIndexStateSchema.optional(),
+  openGaussIndexCheckedAt: z.date().optional()
 });
 export type DatasetVectorData = z.infer<typeof DatasetVectorDataSchema>;
 
@@ -12,6 +22,7 @@ export type DatasetVectorData = z.infer<typeof DatasetVectorDataSchema>;
 export const DatasetVectorSearchDataSchema = z.object({
   datasetId: z.string(),
   rows: IntSchema,
-  pgIndex: DatasetVectorDataSchema.shape.pgIndex
+  pgIndex: DatasetVectorIndexStateSchema.optional(),
+  openGaussIndex: DatasetVectorIndexStateSchema.optional()
 });
 export type DatasetVectorSearchData = z.infer<typeof DatasetVectorSearchDataSchema>;

@@ -55,10 +55,10 @@
   "migrations.20261025_token_prices_per_million.models": "시스템 모델 단가 업데이트",
   "migrations.20261025_token_prices_per_million.result": "시스템 모델 {{migratedCount}}개의 가격을 pricing으로 이전했습니다. 기존 가격과 팀 모델은 변경하지 않았습니다.",
   "migrations.20261022_initialize_dataset_vector_indexes.name": "데이터셋 벡터 인덱스 초기화",
-  "migrations.20261022_initialize_dataset_vector_indexes.description": "먼저 기존 전역 HNSW 인덱스를 검증하고 온라인으로 삭제합니다. 삭제에 성공한 뒤 데이터셋의 벡터 수를 백그라운드에서 집계하고 10,000개를 초과하면 FP16 부분 인덱스 생성 작업을 예약합니다. 인덱스 작업은 지연 없이 전역에서 하나씩 실행됩니다. 마이그레이션 완료가 모든 부분 인덱스의 준비 완료를 의미하지는 않습니다. 인덱스 생성 중에는 정확 검색을 계속 사용할 수 있습니다.",
+  "migrations.20261022_initialize_dataset_vector_indexes.description": "PostgreSQL에서는 기존 전역 HNSW 인덱스를 검증하고 온라인으로 삭제합니다. openGauss에서는 롤링 업그레이드 중 기존 인덱스를 유지합니다. 이후 데이터셋의 벡터 수를 백그라운드에서 집계하고 10,000개를 초과하면 부분 인덱스 생성 작업을 예약합니다. 인덱스 작업은 지연 없이 전역에서 하나씩 실행됩니다. 마이그레이션 완료가 모든 부분 인덱스의 준비 완료를 의미하지는 않습니다. 인덱스 생성 중에는 정확 검색을 계속 사용할 수 있습니다.",
   "migrations.20261022_initialize_dataset_vector_indexes.result": "{{scannedCount}}개 데이터셋을 집계했으며 {{eligibleCount}}개가 인덱스 생성 기준을 충족했습니다. 인덱스 생성은 대기열에서 계속 진행됩니다.",
   "migrations.20261022_initialize_dataset_vector_indexes.datasets": "벡터 수 집계 및 인덱스 생성 예약",
-  "migrations.20261022_initialize_dataset_vector_indexes.legacyIndex": "기존 전역 HNSW 인덱스 삭제",
+  "migrations.20261022_initialize_dataset_vector_indexes.legacyIndex": "PostgreSQL: 기존 전역 HNSW 인덱스 삭제",
   "migrations.20261104_backfill_chat_publish_source.name": "대화 호출 출처 보완",
   "migrations.20261104_backfill_chat_publish_source.description": "시작 후 독립 백그라운드 작업으로 이전 호출 출처를 보완하며, 기존 필드는 모두 보존합니다.",
   "migrations.20261104_backfill_chat_publish_source.result": "대화 {{chats}}개와 통계 버킷 {{chatLogs}}개 확인",
@@ -103,5 +103,11 @@
   "migrations.20261117_cleanup_legacy_sandbox_resources.preflight": "마이그레이션 상태 안전 검증",
   "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupDevboxes": "기존 Devbox, 볼륨 및 고아 레코드 정리",
   "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupLegacyZips": "기존 zip 아카이브 검증 및 삭제",
-  "migrations.20261117_cleanup_legacy_sandbox_resources.validation": "정리 결과 검증"
+  "migrations.20261117_cleanup_legacy_sandbox_resources.validation": "정리 결과 검증",
+  "migrations.20261110_migrate_sql_fulltext.name": "SQL 벡터 전문 검색 마이그레이션",
+  "migrations.20261110_migrate_sql_fulltext.description": "모든 App/Pro 노드의 업그레이드와 기존 학습 작업 종료를 확인하고 현재 벡터 데이터베이스의 전문 검색 기능을 준비한 뒤 실행하세요. pg_search 버전이 0.26.0 미만이면 PostgreSQL이 인덱스를 처음 생성하거나 다시 구축하는 동안 벡터 쓰기가 대기하며 시간 초과가 발생할 수 있습니다. 시간 초과를 방지하려면 시작하거나 재시도하기 전에 모든 데이터셋 벡터 쓰기를 일시 중지하고 진행 중인 쓰기가 끝날 때까지 기다리세요. 전문 구조 및 인덱스 준비 단계가 완료되면 쓰기를 재개할 수 있습니다. 마이그레이션은 원본을 검증하고 토큰을 배치로 채운 뒤 최종 검증을 모두 통과하면 성공으로 표시됩니다. TMP_MIGRATE_FULL_TEXT=true이면 마이그레이션 성공 후에도 기존 전문 검색 컬렉션에서 읽고 두 저장소에 기록합니다. 변수를 제거하고 재시작하면 현재 벡터 데이터베이스의 전문 검색으로 전환됩니다. 벡터 행이 실제로 누락된 경우 데이터셋의 임베딩 모델로 벡터와 전문 검색 토큰을 다시 생성하고 누락된 벡터 ID만 바꿉니다. FastGPT 포인트 확인 및 차감은 생략합니다.",
+  "migrations.20261110_migrate_sql_fulltext.result": "{{scanned}}개 보충, {{validated}}개 검증",
+  "migrations.20261110_migrate_sql_fulltext.prepare": "전문 구조 및 인덱스 준비",
+  "migrations.20261110_migrate_sql_fulltext.scan": "기존 토크나이징 인덱스 보충",
+  "migrations.20261110_migrate_sql_fulltext.validation": "유효 인덱스 완전성 검증"
 }

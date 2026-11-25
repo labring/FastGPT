@@ -27,17 +27,18 @@ const CheckpointSchema = z
 
 /**
  * 固定 _id 上界分批断点续扫：真实统计并可靠投递后才推进 checkpoint，重复批次由 datasetId 去重。
- * 先核验并在线删除旧全局 HNSW，成功后才开始统计和投递，避免本次迁移的建图与旧索引清理交错。
- * 清理失败不扫描、不投递；扫描重试先幂等确认旧索引已删除，再沿用断点继续。
+ * PostgreSQL 先清理旧全局 HNSW，再开始统计和投递。openGauss 局部索引和旧索引可共存，
+ * 旧实例仍可能重建全局索引，滚动升级完成后由管理员清理。
  * 迁移投递后立即进入全局串行建图队列；任务成功不表示局部索引已就绪，不阻塞系统启动。
  * 总量仅初始化一次；兼容旧断点，以已处理数加剩余数补齐，扫描结束后校准并发删除造成的偏差。
  */
 export const initializeDatasetVectorIndexes = async (context: SystemMigrationContext) => {
-  const isPg = getVectorType() === 'pg';
+  const provider = getVectorType();
+  const supportsPartialIndex = provider === 'pg' || provider === 'opengauss';
 
   // 先完成旧索引清理；扫描和投递尚未开始，失败不会留下本次迁移新创建的建图任务。
   await context.reportProgress({ key: 'legacyIndex', status: SystemMigrationStatusEnum.running });
-  if (isPg) {
+  if (provider === 'pg') {
     await context.assertActive();
     await removeLegacyPgVectorIndex(context);
     await context.assertActive();
@@ -45,7 +46,7 @@ export const initializeDatasetVectorIndexes = async (context: SystemMigrationCon
   await context.reportProgress({ key: 'legacyIndex', status: SystemMigrationStatusEnum.succeeded });
 
   await context.reportProgress({ key: 'datasets', status: SystemMigrationStatusEnum.running });
-  if (!isPg) {
+  if (!supportsPartialIndex) {
     await context.reportProgress({ key: 'datasets', status: SystemMigrationStatusEnum.succeeded });
     return { scannedCount: 0, eligibleCount: 0 };
   }

@@ -62,7 +62,6 @@ export const OceanBaseIndexConfig = (() => {
       type: 'hnsw_bq' as const,
       distance: 'cosine' as const,
       distanceFunc: 'cosine_distance',
-      orderDirection: 'ASC' as const,
       scoreTransform: (score: number) => 1 - score / 2
     };
   }
@@ -71,18 +70,16 @@ export const OceanBaseIndexConfig = (() => {
     return {
       type: 'hnsw_sq' as const,
       distance: 'inner_product' as const,
-      distanceFunc: 'inner_product',
-      orderDirection: 'DESC' as const,
-      scoreTransform: (score: number) => score
+      distanceFunc: 'negative_inner_product',
+      scoreTransform: (score: number) => -score
     };
   }
 
   return {
     type: 'hnsw' as const,
     distance: 'inner_product' as const,
-    distanceFunc: 'inner_product',
-    orderDirection: 'DESC' as const,
-    scoreTransform: (score: number) => score
+    distanceFunc: 'negative_inner_product',
+    scoreTransform: (score: number) => -score
   };
 })();
 

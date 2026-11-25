@@ -155,6 +155,10 @@ describe('registerNodeInstrumentation', () => {
       {
         _id: '20261120_migrate_model_pricing',
         status: SystemMigrationStatusEnum.succeeded
+      },
+      {
+        _id: '20261110_migrate_sql_fulltext',
+        status: SystemMigrationStatusEnum.succeeded
       }
     ]);
     // 开发期已有部分实例域；统一配置迁移必须在业务启动前清理残留并补齐全部域。

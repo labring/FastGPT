@@ -16,6 +16,7 @@ import {
   runLegacyDeprecatedMongoIndexCleanup
 } from '@fastgpt/service/common/mongo/legacyDeprecatedIndexCleanup';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import {
@@ -1074,5 +1075,16 @@ describe('Step 0 Mongo index safety fixes', () => {
     expect(capturedAutoIndex).toBe(false);
     expect(capturedReadyStateInside).toBe(1);
     expect(capturedDdlDb?.connection.readyState).toBe(0);
+  });
+});
+
+describe('dataset legacy full-text index retention', () => {
+  it('retains all three dataset_data_texts active indexes without deprecation during compatibility window', () => {
+    expect(MongoDatasetDataText.schema.indexes()).toEqual([
+      [{ teamId: 1, fullTextToken: 'text' }, expect.objectContaining({ default_language: 'none' })],
+      [{ teamId: 1, datasetId: 1, collectionId: 1 }, expect.any(Object)],
+      [{ dataId: 'hashed' }, expect.any(Object)]
+    ]);
+    expect(getSchemaDeprecatedMongoIndexes(MongoDatasetDataText.schema)).toEqual([]);
   });
 });

@@ -10,6 +10,7 @@ export const DatasetDataEmbeddingSchema = z.object({
   collectionId: z.string().min(1),
   vector: z.array(z.number()).length(DatasetEmbeddingDimensions),
   createTime: z.date(),
-  text: z.string().nullable().optional()
+  text: z.string().nullable().optional(),
+  fulltextTokens: z.string().nullable().optional()
 });
 export type DatasetDataEmbedding = z.infer<typeof DatasetDataEmbeddingSchema>;

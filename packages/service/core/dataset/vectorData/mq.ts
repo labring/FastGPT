@@ -10,8 +10,14 @@ import {
   ensurePgDatasetIndex,
   type PgDatasetIndexScope
 } from '../../../common/vectorDB/pg/datasetIndex';
+import { ensureOpenGaussDatasetIndex } from '../../../common/vectorDB/opengauss/datasetIndex';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { findDatasetVectorData, updateDatasetPgIndexState } from './entity';
+import {
+  findDatasetVectorData,
+  updateDatasetPgIndexState,
+  updateDatasetOpenGaussIndexState
+} from './entity';
+import type { DatasetVectorData } from '@fastgpt/global/core/dataset/vectorData/type';
 
 const logger = getLogger(LogCategories.INFRA.QUEUE);
 
@@ -34,14 +40,17 @@ export const onDatasetVectorCounted = async ({
   rows,
   ...scope
 }: PgDatasetIndexScope & { rows: number }) => {
-  if (getVectorType() !== 'pg') return;
+  const provider = getVectorType();
+  if (provider !== 'pg' && provider !== 'opengauss') return;
   const shouldBuild = rows > DATASET_VECTOR_INDEX_MIN_ROWS;
   if (!shouldBuild && rows >= DATASET_VECTOR_INDEX_DROP_ROWS) return;
   const dataset = await findDatasetVectorData(scope);
   if (!dataset) return;
   const data = dataset.vectorData;
+  const state = provider === 'pg' ? data?.pgIndex : data?.openGaussIndex;
+  const checkedAt = provider === 'pg' ? data?.pgIndexCheckedAt : data?.openGaussIndexCheckedAt;
   // 缺少索引元数据或已确认 none 的小库无需检查目录，避免所有小库都进入维护队列。
-  if (!shouldBuild && (!data || data.pgIndex === 'none')) return;
+  if (!shouldBuild && (!state || state === 'none')) return;
 
   const queue = getDatasetVectorIndexQueue();
   if (shouldBuild) {
@@ -61,59 +70,87 @@ export const onDatasetVectorCounted = async ({
   });
   if (!shouldBuild) {
     // 清理和创建共用消费槽位，投递方先终止在途创建，清理任务随后回收残留索引。
-    await cancelPgDatasetIndexBuild(scope);
+    if (provider === 'pg') await cancelPgDatasetIndexBuild(scope);
     return;
   }
-  if (!data || data.pgIndex === 'none' || data.pgIndex === 'failed') {
-    // 消费可能先完成，只有读取时的状态快照未变化，才能补写 pending。
-    await updateDatasetPgIndexState({
-      ...scope,
-      pgIndex: 'pending',
-      expectedCheckedAt: data?.pgIndexCheckedAt
-    });
+  if (!state || state === 'none' || state === 'failed') {
+    await updateIndexState({ provider, scope, state: 'pending', expectedCheckedAt: checkedAt });
   }
 };
 
-/**
- * 通过 PG 目录核验后同步状态；创建前检查是否已有清理任务，完成后不额外统计行数。
- * 清理任务回涨后保留有效索引；两种任务均只尝试一次，失败等待下次统计重新投递。
- */
+const updateIndexState = ({
+  provider,
+  scope,
+  state,
+  expectedCheckedAt
+}: {
+  provider: 'pg' | 'opengauss';
+  scope: PgDatasetIndexScope;
+  state: NonNullable<DatasetVectorData['pgIndex']>;
+  expectedCheckedAt?: Date;
+}) =>
+  provider === 'pg'
+    ? updateDatasetPgIndexState({
+        ...scope,
+        pgIndex: state,
+        ...(state === 'pending' && { expectedCheckedAt })
+      })
+    : updateDatasetOpenGaussIndexState({
+        ...scope,
+        openGaussIndex: state,
+        ...(state === 'pending' && { expectedCheckedAt })
+      });
+
+/** 通过向量库目录核验索引后同步状态，调度前后都检验知识库的有效性。 */
 export const processDatasetVectorIndex = async (
   scope: PgDatasetIndexScope,
   { operation }: { operation: 'build' | 'cleanup' }
 ) => {
+  const provider = getVectorType();
+  if (provider !== 'pg' && provider !== 'opengauss') return;
   const dataset = await findDatasetVectorData(scope);
   if (!dataset) return;
   const startedAt = Date.now();
   try {
-    const result = await ensurePgDatasetIndex({
+    const options = {
       ...scope,
       allowCreate: operation === 'build',
       onBuilding: async () => {
         // 清理通知可能早于专用 PG 连接建立；此时尚无会话可终止，由建图前检查挡住旧创建任务。
         if (await getDatasetVectorIndexQueue().getJob(`${scope.datasetId}-cleanup`)) return false;
-        const result = await updateDatasetPgIndexState({ ...scope, pgIndex: 'building' });
+        const result = await updateIndexState({ provider, scope, state: 'building' });
         // deleteTime 条件与状态更新原子判断，挡住进入删除流程前已领取的陈旧任务。
         return result.matchedCount > 0;
       },
       onRemoving: async () => {
-        await updateDatasetPgIndexState({ ...scope, pgIndex: 'removing' });
-      },
-      onProgress: (progress) => {
-        // blocks 是当前阶段的进度，等待旧事务等阶段没有总量，不能伪装为整个任务百分比。
-        logger.info('PG dataset FP16 index build progress', {
-          ...scope,
-          ...progress,
-          phasePercent:
-            progress.blocksTotal > 0
-              ? Math.round((1000 * progress.blocksDone) / progress.blocksTotal) / 10
-              : undefined,
-          elapsedMs: Date.now() - startedAt
-        });
+        await updateIndexState({ provider, scope, state: 'removing' });
       }
+    };
+    const result =
+      provider === 'pg'
+        ? await ensurePgDatasetIndex({
+            ...options,
+            onProgress: (progress) => {
+              // blocks 是当前阶段的进度，等待旧事务等阶段没有总量，不能伪装为整个任务百分比。
+              logger.info('PG dataset FP16 index build progress', {
+                ...scope,
+                ...progress,
+                phasePercent:
+                  progress.blocksTotal > 0
+                    ? Math.round((1000 * progress.blocksDone) / progress.blocksTotal) / 10
+                    : undefined,
+                elapsedMs: Date.now() - startedAt
+              });
+            }
+          })
+        : await ensureOpenGaussDatasetIndex(options);
+    await updateIndexState({
+      provider,
+      scope,
+      state: 'pgIndex' in result ? result.pgIndex : result.indexState
     });
-    await updateDatasetPgIndexState({ ...scope, pgIndex: result.pgIndex });
-    logger.info('PG dataset FP16 index task completed', {
+    logger.info('Dataset HNSW index task completed', {
+      provider,
       ...scope,
       operation,
       ...result,
@@ -123,23 +160,24 @@ export const processDatasetVectorIndex = async (
     // 资源不足也按普通失败处理，暂不通过降低并行度或内存预算保证建图成功。
     // 下次真实统计仍按原预算规则投递，资源限制未解除时可能再次失败；failed 期间走精确检索。
     // Mongo 故障不掩盖原始构建错误；下次真实统计重新投递后再核验，成功索引无需重复构建。
-    await updateDatasetPgIndexState({ ...scope, pgIndex: 'failed' }).catch((stateError) =>
-      logger.warn('Failed to update dataset PG index state', { ...scope, error: stateError })
+    await updateIndexState({ provider, scope, state: 'failed' }).catch((stateError) =>
+      logger.warn('Failed to update dataset index state', { ...scope, error: stateError })
     );
-    logger.error('PG dataset FP16 index task failed', { ...scope, operation, error });
+    logger.error('Dataset HNSW index task failed', { provider, ...scope, operation, error });
     throw error;
   }
 };
 
 /** 所有应用节点共享一个维护槽位；CREATE / DROP 串行执行，先设置全局并发再启动消费。 */
 export const initDatasetVectorIndexWorker = async () => {
-  if (getVectorType() !== 'pg') return;
+  const provider = getVectorType();
+  if (provider !== 'pg' && provider !== 'opengauss') return;
   await getDatasetVectorIndexQueue().setGlobalConcurrency(1);
   return bullMQ.getWorker<PgDatasetIndexScope>(
     QueueNames.datasetVectorIndex,
     (job) => {
       if (job.name !== 'build' && job.name !== 'cleanup') {
-        throw new Error(`Unknown PG dataset index task: ${job.name}`);
+        throw new Error(`Unknown dataset index task: ${job.name}`);
       }
       return processDatasetVectorIndex(job.data, { operation: job.name });
     },

@@ -55,10 +55,10 @@
   "migrations.20261025_token_prices_per_million.models": "更新系統模型單價",
   "migrations.20261025_token_prices_per_million.result": "已遷移 {{migratedCount}} 個系統模型至 pricing，舊價格原值和團隊模型保持不變。",
   "migrations.20261022_initialize_dataset_vector_indexes.name": "初始化知識庫向量索引",
-  "migrations.20261022_initialize_dataset_vector_indexes.description": "先核驗並在線上移除舊全域 HNSW 索引，成功後再於背景統計知識庫向量數，為超過一萬筆的知識庫排入 FP16 局部索引建置任務。建置任務不設延遲，全域串行執行；升級任務完成不表示局部索引全部就緒。索引完成前繼續精確檢索。",
+  "migrations.20261022_initialize_dataset_vector_indexes.description": "PostgreSQL 先核驗並在線上移除舊全域 HNSW 索引。openGauss 滾動升級期間保留舊索引。接著於背景統計知識庫向量數，為超過一萬筆的知識庫排入 局部索引建置任務。建置任務不設延遲，全域串行執行；升級任務完成不表示局部索引全部就緒。索引完成前繼續精確檢索。",
   "migrations.20261022_initialize_dataset_vector_indexes.result": "已統計 {{scannedCount}} 個知識庫，{{eligibleCount}} 個符合索引建置條件；實際建置由佇列繼續執行。",
   "migrations.20261022_initialize_dataset_vector_indexes.datasets": "統計知識庫並排入索引任務",
-  "migrations.20261022_initialize_dataset_vector_indexes.legacyIndex": "清理舊全域 HNSW 索引",
+  "migrations.20261022_initialize_dataset_vector_indexes.legacyIndex": "PostgreSQL：清理舊全域 HNSW 索引",
   "migrations.20261104_backfill_chat_publish_source.name": "回填對話呼叫來源",
   "migrations.20261104_backfill_chat_publish_source.description": "啟動後獨立背景回填歷史呼叫來源，保留所有舊欄位。",
   "migrations.20261104_backfill_chat_publish_source.result": "已掃描 {{chats}} 個會話、{{chatLogs}} 個統計桶",
@@ -103,5 +103,11 @@
   "migrations.20261117_cleanup_legacy_sandbox_resources.preflight": "遷移狀態安全門禁",
   "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupDevboxes": "清理舊 Devbox、舊持久卷與孤兒記錄",
   "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupLegacyZips": "核驗並刪除舊 zip 歸檔",
-  "migrations.20261117_cleanup_legacy_sandbox_resources.validation": "驗證遺留清理結果"
+  "migrations.20261117_cleanup_legacy_sandbox_resources.validation": "驗證遺留清理結果",
+  "migrations.20261110_migrate_sql_fulltext.name": "遷移向量庫全文檢索",
+  "migrations.20261110_migrate_sql_fulltext.description": "請確認所有 App/Pro 節點已完成升級、舊訓練任務已排空並已準備目前向量庫全文能力後再手動執行。PostgreSQL 使用低於 0.26.0 的 pg_search 時，首次建立或重建索引期間，向量寫入會排隊且可能逾時。為避免逾時，啟動或重試前先暫停所有知識庫向量寫入並等待進行中的寫入結束，準備全文結構與索引階段完成後恢復。確認向量列確實缺失後，會依知識庫的索引模型補建向量與詞串，只替換缺失項目的向量 ID，略過 FastGPT 點數檢查及扣除。遷移會分批驗證並回填歷史分詞詞串，完整驗收通過後標示為成功。設定 TMP_MIGRATE_FULL_TEXT=true 時，遷移成功後仍讀取舊全文並雙寫。確認成功後手動移除變數並重新啟動，才切換至目前向量庫的原生全文檢索。",
+  "migrations.20261110_migrate_sql_fulltext.result": "已回填 {{scanned}} 筆，驗證 {{validated}} 筆",
+  "migrations.20261110_migrate_sql_fulltext.prepare": "準備全文結構與索引",
+  "migrations.20261110_migrate_sql_fulltext.scan": "回填歷史分詞索引",
+  "migrations.20261110_migrate_sql_fulltext.validation": "驗證有效索引完整性"
 }

@@ -7,7 +7,8 @@ import { DevApiTagsMap } from '../../../../openapi/tag';
 const routes = {
   list: '/admin/migrations/list',
   failedRecords: '/admin/migrations/failedRecords',
-  retry: '/admin/migrations/retry'
+  retry: '/admin/migrations/retry',
+  start: '/admin/migrations/start'
 } as const;
 
 describe('system migration Admin OpenAPI contracts', () => {
@@ -17,6 +18,7 @@ describe('system migration Admin OpenAPI contracts', () => {
       DevApiTagsMap.adminSystemMigration
     ]);
     expect(openAPIPaths[routes.retry]?.post?.tags).toEqual([DevApiTagsMap.adminSystemMigration]);
+    expect(openAPIPaths[routes.start]?.post?.tags).toEqual([DevApiTagsMap.adminSystemMigration]);
   });
 
   it('places the migration tag in its dedicated system configuration group', () => {

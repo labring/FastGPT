@@ -23,7 +23,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20261104_backfill_openapi_key_type',
       '20261123_cleanup_mongo_indexes',
       '20261117_migrate_sandbox_to_opensandbox',
-      '20261117_cleanup_legacy_sandbox_resources'
+      '20261117_cleanup_legacy_sandbox_resources',
+      '20261110_migrate_sql_fulltext'
     ]);
     const tasks: readonly SystemMigration[] = systemMigrations;
     expect(tasks.filter((task) => task.blockStartup).map(({ id }) => id)).toEqual([
@@ -32,7 +33,8 @@ describe('validateSystemMigrationRegistry', () => {
     expect(tasks.filter((task) => task.delay || task.resumable)).toEqual([]);
     expect(tasks.filter((task) => task.manual).map(({ id }) => id)).toEqual([
       '20261117_migrate_sandbox_to_opensandbox',
-      '20261117_cleanup_legacy_sandbox_resources'
+      '20261117_cleanup_legacy_sandbox_resources',
+      '20261110_migrate_sql_fulltext'
     ]);
 
     const configMigration = tasks.find(({ id }) => id === '20261116_migrate_system_configs');
@@ -59,7 +61,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20261104_backfill_openapi_key_type',
       '20261123_cleanup_mongo_indexes',
       '20261117_migrate_sandbox_to_opensandbox',
-      '20261117_cleanup_legacy_sandbox_resources'
+      '20261117_cleanup_legacy_sandbox_resources',
+      '20261110_migrate_sql_fulltext'
     ]);
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });
@@ -133,11 +136,13 @@ describe('validateSystemMigrationRegistry', () => {
     expect(task).not.toHaveProperty('delay');
   });
 
-  it('registers OpenSandbox migration and dependent legacy cleanup as manual 4.18.0 tail tasks', () => {
+  it('registers OpenSandbox migration and dependent legacy cleanup as manual 4.18.0 tasks', () => {
     const migrateTask = systemMigrations.find(
       ({ id }) => id === '20261117_migrate_sandbox_to_opensandbox'
     );
-    const cleanupTask = systemMigrations.at(-1);
+    const cleanupTask = systemMigrations.find(
+      ({ id }) => id === '20261117_cleanup_legacy_sandbox_resources'
+    );
 
     expect(migrateTask).toMatchObject({
       id: '20261117_migrate_sandbox_to_opensandbox',
@@ -164,6 +169,20 @@ describe('validateSystemMigrationRegistry', () => {
       '20261104_backfill_openapi_key_type',
       '20261123_cleanup_mongo_indexes'
     ]);
+  });
+
+  it('registers SQL full-text migration as a manual task gated on cluster upgrade completion', () => {
+    const task = systemMigrations.find(({ id }) => id === '20261110_migrate_sql_fulltext');
+    expect(task).toMatchObject({
+      id: '20261110_migrate_sql_fulltext',
+      version: '4.18.0',
+      manual: true
+    });
+    expect(task).not.toHaveProperty('dependsOn');
+    expect(task).not.toHaveProperty('blockStartup');
+    expect(task).not.toHaveProperty('independent');
+    expect(task).not.toHaveProperty('delay');
+    expect(task?.progressSteps.map(({ key }) => key)).toEqual(['prepare', 'scan', 'validation']);
   });
 
   it('rejects delayed manual execution', () => {

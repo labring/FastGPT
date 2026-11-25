@@ -1,0 +1,108 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  getSqlFullTextAdapter,
+  startSqlFullTextIndexBuild
+} from '@fastgpt/service/common/vectorDB/fullText/controller';
+
+const mocks = vi.hoisted(() => ({
+  prepare: vi.fn(),
+  warn: vi.fn(),
+  metadata: { targetId: 'target', analyzerVersion: 'test' }
+}));
+vi.mock('@fastgpt/service/common/vectorDB/constants', () => ({ getVectorType: () => 'pg' }));
+vi.mock('@fastgpt/service/common/logger', () => ({
+  getLogger: () => ({ warn: mocks.warn }),
+  LogCategories: { INFRA: { VECTOR: 'vector' } }
+}));
+vi.mock('@fastgpt/service/common/vectorDB/pg/fullText', () => ({
+  preparePgFullText: mocks.prepare,
+  assertPgFullTextCapability: vi.fn(),
+  getPgFullTextMetadata: vi.fn(),
+  fillPgFullText: vi.fn(),
+  findMissingPgVectorIds: vi.fn(),
+  searchPgFullText: vi.fn()
+}));
+vi.mock('@fastgpt/service/common/vectorDB/opengauss/fullText', () => ({
+  prepareOpenGaussFullText: mocks.prepare,
+  assertOpenGaussFullTextCapability: vi.fn(),
+  getOpenGaussFullTextMetadata: vi.fn(),
+  fillOpenGaussFullText: vi.fn(),
+  findMissingOpenGaussVectorIds: vi.fn(),
+  searchOpenGaussFullText: vi.fn()
+}));
+vi.mock('@fastgpt/service/common/vectorDB/oceanbase/fullText', () => ({
+  OceanBaseFullTextAdapter: class {
+    prepare = mocks.prepare;
+    constructor(readonly provider: string) {}
+  }
+}));
+
+beforeEach(() => {
+  mocks.prepare.mockReset().mockResolvedValue(mocks.metadata);
+  mocks.warn.mockReset();
+});
+
+describe('getSqlFullTextAdapter', () => {
+  it.each(['opengauss', 'oceanbase', 'seekdb'] as const)(
+    'shares an in-flight %s preparation, then permits revalidation',
+    async (provider) => {
+      const adapter = getSqlFullTextAdapter(provider);
+      expect(getSqlFullTextAdapter(provider)).toBe(adapter);
+      let resolve!: (value: typeof mocks.metadata) => void;
+      mocks.prepare.mockReturnValueOnce(
+        new Promise((done) => {
+          resolve = done;
+        })
+      );
+      const first = adapter.prepare();
+      expect(adapter.prepare()).toBe(first);
+      expect(mocks.prepare).toHaveBeenCalledOnce();
+      resolve(mocks.metadata);
+      await expect(first).resolves.toEqual(mocks.metadata);
+      await adapter.prepare();
+      expect(mocks.prepare).toHaveBeenCalledTimes(2);
+    }
+  );
+
+  it('gives each PG preparation its own cancellation signal', async () => {
+    const adapter = getSqlFullTextAdapter('pg');
+    const first = { signal: new AbortController().signal };
+    const second = { signal: new AbortController().signal };
+    await Promise.all([adapter.prepare(first), adapter.prepare(second)]);
+    expect(mocks.prepare.mock.calls).toEqual([[first], [second]]);
+  });
+
+  it('uses the configured provider by default and rejects Milvus', () => {
+    expect(getSqlFullTextAdapter()).toBe(getSqlFullTextAdapter('pg'));
+    expect(() => getSqlFullTextAdapter('milvus')).toThrow('own native');
+  });
+});
+
+describe('startSqlFullTextIndexBuild', () => {
+  it('returns immediately while index construction is pending', async () => {
+    let resolve!: (value: typeof mocks.metadata) => void;
+    mocks.prepare.mockReturnValueOnce(
+      new Promise((done) => {
+        resolve = done;
+      })
+    );
+    expect(startSqlFullTextIndexBuild('opengauss')).toBeUndefined();
+    expect(mocks.prepare).toHaveBeenCalledOnce();
+    expect(mocks.warn).not.toHaveBeenCalled();
+    const pending = getSqlFullTextAdapter('opengauss').prepare();
+    resolve(mocks.metadata);
+    await pending;
+  });
+
+  it('handles background rejection and allows a subsequent migration retry', async () => {
+    const error = new Error('extension unavailable');
+    mocks.prepare.mockRejectedValueOnce(error);
+    startSqlFullTextIndexBuild('opengauss');
+    await expect(getSqlFullTextAdapter('opengauss').prepare()).rejects.toBe(error);
+    expect(mocks.warn).toHaveBeenCalledWith('SQL full-text background index build failed', {
+      provider: 'opengauss',
+      error
+    });
+    await expect(getSqlFullTextAdapter('opengauss').prepare()).resolves.toEqual(mocks.metadata);
+  });
+});

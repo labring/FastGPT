@@ -324,3 +324,15 @@ describe('initializeDatasetVectorIndexes', () => {
     expect(mocks.removeLegacy).toHaveBeenCalledTimes(pg ? 1 : 0);
   });
 });
+
+it('schedules openGauss partial indexes without dropping the global index during rolling upgrades', async () => {
+  mocks.provider = 'opengauss';
+  await seed(1);
+  const { context } = createContext();
+  expect(await initializeDatasetVectorIndexes(context)).toEqual({
+    scannedCount: 1,
+    eligibleCount: 1
+  });
+  expect(mocks.removeLegacy).not.toHaveBeenCalled();
+  expect(mocks.counted).toHaveBeenCalledWith({ teamId, datasetId: id(1), rows: 40000 });
+});

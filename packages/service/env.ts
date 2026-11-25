@@ -130,6 +130,10 @@ export const serviceEnv = createEnv({
     MILVUS_ADDRESS: z.string().optional().meta({ description: 'Milvus 向量库连接参数' }),
     MILVUS_TOKEN: z.string().optional().meta({ description: 'Milvus 向量库Token' }),
     // ==================== 全文检索 ====================
+    TMP_MIGRATE_FULL_TEXT: BoolSchema.default(false).meta({
+      description:
+        '原生全文迁移临时兼容开关。升级前开启以读取业务 Mongo 的旧全文并双写。迁移成功后移除并重启，使用当前向量库的原生全文'
+    }),
     MILVUS_LANGUAGE_IDENTIFIER: z.enum(['lingua', 'whatlang']).default('lingua').meta({
       description: 'Milvus 语言识别引擎(BM25 analyzer): lingua(默认) | whatlang'
     }),

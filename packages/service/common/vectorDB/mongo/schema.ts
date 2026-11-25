@@ -14,12 +14,13 @@ export const DatasetDataEmbeddingMongoSchema = new Schema<DatasetDataEmbedding>(
     collectionId: { type: String, required: true },
     vector: { type: [Number], required: true },
     createTime: { type: Date, required: true },
-    text: String
+    text: String,
+    fulltextTokens: String
   },
   { autoIndex: false, autoCreate: false, versionKey: false }
 );
 
-// 新集合没有 FastGPT 历史索引；只声明当前查询和孤儿向量清理所需的普通索引。
+// 普通索引服务于范围查询与孤儿清理；mongot 的索引单独管理。
 defineIndex(DatasetDataEmbeddingMongoSchema, { key: { teamId: 1, datasetId: 1, collectionId: 1 } });
 defineIndex(DatasetDataEmbeddingMongoSchema, { key: { createTime: 1 } });
 

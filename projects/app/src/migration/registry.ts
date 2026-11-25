@@ -16,6 +16,9 @@ import { cleanupMongoIndexes } from './tasks/4180/20261123_cleanup_mongo_indexes
 import { migrateSandboxToOpenSandbox } from './tasks/4180/20261117_migrate_sandbox_to_opensandbox';
 import { cleanupLegacySandboxResources } from './tasks/4180/20261117_cleanup_legacy_sandbox_resources';
 
+import { migrateSqlFullTextMigration } from './tasks/4180/20261110_migrate_sql_fulltext';
+import { SQL_FULL_TEXT_MIGRATION_ID } from '@fastgpt/global/core/dataset/fullText/constants';
+
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
   warn: (message: string, metadata?: Record<string, unknown>) => void;
@@ -341,6 +344,30 @@ export const systemMigrations = [
       }
     ],
     run: cleanupLegacySandboxResources
+  },
+  {
+    id: SQL_FULL_TEXT_MIGRATION_ID,
+    version: '4.18.0',
+    // 需待集群所有旧版 App/Pro 节点与旧训练消费者升级排空后再手动执行，防止切读后仍有旧写入方产生 NULL 词串。
+    manual: true,
+    nameKey: i18nT('system_migration:migrations.20261110_migrate_sql_fulltext.name'),
+    descriptionKey: i18nT('system_migration:migrations.20261110_migrate_sql_fulltext.description'),
+    resultKey: i18nT('system_migration:migrations.20261110_migrate_sql_fulltext.result'),
+    progressSteps: [
+      {
+        key: 'prepare',
+        labelKey: i18nT('system_migration:migrations.20261110_migrate_sql_fulltext.prepare')
+      },
+      {
+        key: 'scan',
+        labelKey: i18nT('system_migration:migrations.20261110_migrate_sql_fulltext.scan')
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT('system_migration:migrations.20261110_migrate_sql_fulltext.validation')
+      }
+    ],
+    run: migrateSqlFullTextMigration
   }
 ] as const satisfies readonly SystemMigration[];
 

@@ -227,7 +227,10 @@ const toDataItem = (
   }) as DatasetDataItemType;
 
 describe('Dataset data service', () => {
+  const originalFullTextMigrationMode = serviceEnv.TMP_MIGRATE_FULL_TEXT;
+
   beforeEach(() => {
+    serviceEnv.TMP_MIGRATE_FULL_TEXT = true;
     serviceEnv.DATASET_SYNONYM_ENABLED = true;
     resetVectorMocks();
     mockGetVectors.mockClear();
@@ -245,6 +248,7 @@ describe('Dataset data service', () => {
   });
 
   afterAll(() => {
+    serviceEnv.TMP_MIGRATE_FULL_TEXT = originalFullTextMigrationMode;
     serviceEnv.DATASET_SYNONYM_ENABLED = originalDatasetSynonymEnabled;
   });
 
@@ -1383,6 +1387,9 @@ describe('Dataset data service', () => {
       });
       expect((await MongoDatasetDataText.findOne({ dataId: data._id }).lean())?.fullTextToken).toBe(
         await jiebaSplit({ text: '退款\n稳定文本' })
+      );
+      expect(mockVectorInsert).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ texts: ['退款'] })
       );
       expect((await MongoDatasetData.findById(data._id).lean())?.synonymVersion).toBe(2);
     });

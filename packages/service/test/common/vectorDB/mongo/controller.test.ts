@@ -16,7 +16,8 @@ const mocks = vi.hoisted(() => ({
   connection: { readyState: 0 },
   connect: vi.fn(),
   list: vi.fn(),
-  create: vi.fn()
+  create: vi.fn(),
+  ensureFullText: vi.fn()
 }));
 vi.mock('@fastgpt/service/env', () => ({ serviceEnv: mocks.env }));
 vi.mock('@fastgpt/service/common/vectorDB/mongo/schema', () => ({
@@ -27,6 +28,9 @@ vi.mock('@fastgpt/service/common/vectorDB/mongo/schema', () => ({
       createSearchIndex: mocks.create
     }
   }
+}));
+vi.mock('@fastgpt/service/common/vectorDB/mongo/fullTextIndex', () => ({
+  ensureMongoFullTextIndex: mocks.ensureFullText
 }));
 const ready = () => ({
   status: 'READY',
@@ -43,6 +47,7 @@ describe('Mongo embedding initialization', () => {
     mocks.connect.mockReset().mockResolvedValue(undefined);
     mocks.list.mockReset().mockResolvedValue([ready()]);
     mocks.create.mockReset().mockResolvedValue('embedding_int8');
+    mocks.ensureFullText.mockReset().mockResolvedValue(undefined);
   });
 
   it('requires a dedicated URL and reuses an established connection', async () => {
@@ -91,7 +96,14 @@ describe('Mongo embedding initialization', () => {
     expect(mocks.create).toHaveBeenCalledWith({
       name: 'embedding_int8',
       type: 'vectorSearch',
-      definition: MongoEmbeddingSearchDefinition
+      definition: expect.objectContaining({
+        fields: expect.arrayContaining([
+          expect.objectContaining({
+            type: 'vector',
+            hnswOptions: { maxEdges: 32, numEdgeCandidates: 256 }
+          })
+        ])
+      })
     });
     mocks.create.mockClear();
     await ensureMongoEmbeddingSearchIndex();
@@ -115,20 +127,29 @@ describe('Mongo embedding initialization', () => {
     expect(mocks.create).not.toHaveBeenCalled();
   });
 
-  it('accepts the server default HNSW but rejects flat or non-INT8 definitions', async () => {
-    const fields = MongoEmbeddingSearchDefinition.fields.map((field) => {
+  it('accepts a catalog definition with the default indexing method omitted', async () => {
+    const fields = structuredClone(MongoEmbeddingSearchDefinition.fields).map((field) => {
       if (!('indexingMethod' in field)) return field;
       const { indexingMethod: _method, ...rest } = field;
       return rest;
     });
     mocks.list.mockResolvedValue([{ ...ready(), latestDefinition: { fields } }]);
     await ensureMongoEmbeddingSearchIndex();
-    for (const override of [{ indexingMethod: 'flat' }, { quantization: 'binary' }]) {
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects mismatched vector definitions, including old build parameters', async () => {
+    for (const override of [
+      { indexingMethod: 'flat' },
+      { quantization: 'binary' },
+      { hnswOptions: undefined },
+      { hnswOptions: { maxEdges: 16, numEdgeCandidates: 100 } }
+    ]) {
       mocks.list.mockResolvedValue([
         {
           ...ready(),
           latestDefinition: {
-            fields: fields.map((field) =>
+            fields: MongoEmbeddingSearchDefinition.fields.map((field) =>
               field.type === 'vector' ? { ...field, ...override } : field
             )
           }
@@ -151,14 +172,17 @@ describe('Mongo embedding initialization', () => {
     }
   });
 
-  it('retries a failed init and caches completed index initialization', async () => {
+  it('retries a failed init and starts vector operations while full-text index construction is pending', async () => {
     const sync = vi
       .spyOn(MongoIndexManager, 'syncModelIndexes')
       .mockRejectedValueOnce(new Error('index error'))
       .mockResolvedValue({} as never);
+    mocks.ensureFullText.mockReturnValue(new Promise<void>(() => {}));
     await expect(initEmbeddingMongo()).rejects.toThrow('index error');
     await Promise.all([initEmbeddingMongo(), initEmbeddingMongo()]);
     await initEmbeddingMongo();
     expect(sync).toHaveBeenCalledTimes(2);
+    expect(sync).toHaveBeenLastCalledWith(expect.objectContaining({ model: expect.any(Object) }));
+    expect(mocks.ensureFullText).toHaveBeenCalledOnce();
   });
 });
