@@ -38,6 +38,31 @@ describe('channel model import matching', () => {
     });
   });
 
+  it('prefers the most specific template when several match at the same rank', () => {
+    const templates = [
+      createTemplate({ model: 'gpt-4', name: 'GPT-4' }),
+      createTemplate({ model: 'gpt-4o', name: 'GPT-4o' }),
+      createTemplate({ model: 'gpt-4o-mini', name: 'GPT-4o mini' })
+    ];
+    const items = classifyChannelModels({
+      channelModels: [
+        { id: 'gpt-4o-2024-11-20' },
+        { id: 'openai/gpt-4o-mini-2024-07-18' },
+        { id: 'gpt-4-0613' }
+      ],
+      installedModelNames: [],
+      targetChannelModels: [],
+      targetModelMappings: {},
+      templates
+    });
+
+    expect(
+      items.map(({ candidate }) =>
+        candidate.category === 'template' ? candidate.template.model : ''
+      )
+    ).toEqual(['gpt-4o', 'gpt-4o-mini', 'gpt-4']);
+  });
+
   it('preserves template limits when upstream context length is missing', () => {
     const [preview] = classifyChannelModels({
       channelModels: [{ id: 'openai/gpt-4o' }],

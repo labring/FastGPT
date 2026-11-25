@@ -25,7 +25,12 @@ import { usePersistedFilters } from '@fastgpt/web/hooks/usePersistedFilters';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { appTypeTagMap } from '@/pageComponents/dashboard/constant';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { getAppDetailRoute, isWorkflowAppType } from '@/web/core/app/utils';
+import {
+  getAppDetailRoute,
+  getSafeExperienceUrl,
+  isWorkflowAppType,
+  openExperienceUrl
+} from '@/web/core/app/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { buildFilterStorageKey } from '@/web/common/filter/storageKey';
 import TemplateCategoryFilter from '@/pageComponents/dashboard/agent/filters/TemplateCategoryFilter';
@@ -137,6 +142,7 @@ const TemplateMarket = ({
     ({ item }: { item: AppTemplateListItemType }) => {
       const { t } = useSafeTranslation();
       const icon = appTypeTagMap[item.type as keyof typeof appTypeTagMap]?.icon;
+      const experienceUrl = getSafeExperienceUrl(item.experienceUrl);
 
       return (
         <MyBox
@@ -219,7 +225,7 @@ const TemplateMarket = ({
             </MyTooltip>
           </Box>
 
-          <Flex justifyContent={'space-between'} alignItems={'center'}>
+          <Flex justifyContent={'space-between'} alignItems={'center'} gap={2}>
             {(item.userGuide?.type === 'markdown' && item.userGuide?.content) ||
             (item.userGuide?.type === 'link' && item.userGuide?.link) ? (
               <UseGuideModal
@@ -234,6 +240,9 @@ const TemplateMarket = ({
                     color={'myGray.500'}
                     gap={1}
                     fontSize={'14px'}
+                    alignItems={'center'}
+                    flexShrink={0}
+                    whiteSpace={'nowrap'}
                     onClick={onClick}
                     _hover={{
                       color: 'primary.600'
@@ -247,16 +256,32 @@ const TemplateMarket = ({
             ) : (
               <Box></Box>
             )}
-            <Button
-              variant={'transparentBase'}
-              px={5}
-              py={2.5}
-              rounded={'sm'}
-              color={'primary.700'}
-              onClick={() => onUseTemplate(item)}
-            >
-              {t('app:templateMarket.Use')}
-            </Button>
+            <Flex alignItems={'center'} gap={2} flexShrink={0}>
+              {experienceUrl && (
+                <Button
+                  variant={'transparentBase'}
+                  px={{ base: 2, lg: 5 }}
+                  py={2.5}
+                  rounded={'sm'}
+                  color={'primary.700'}
+                  whiteSpace={'nowrap'}
+                  onClick={() => openExperienceUrl(experienceUrl)}
+                >
+                  {t('app:templateMarket.online_preview')}
+                </Button>
+              )}
+              <Button
+                variant={'transparentBase'}
+                px={experienceUrl ? { base: 2, lg: 5 } : 5}
+                py={2.5}
+                rounded={'sm'}
+                color={'primary.700'}
+                whiteSpace={'nowrap'}
+                onClick={() => onUseTemplate(item)}
+              >
+                {t('app:templateMarket.Use')}
+              </Button>
+            </Flex>
           </Flex>
         </MyBox>
       );

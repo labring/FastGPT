@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { ApiRequestInputParseError } from '../../../common/zod/requestParseError';
+import { getOpenTelemetrySink } from '@fastgpt-sdk/otel/logger';
 import { ServerConfigError, UserError, UserConfigError } from '@fastgpt/global/common/error/utils';
+import { parseSupportedOutboundProxyUrl } from '../../../common/proxy/utils';
 import { ERROR_ENUM, ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
@@ -370,6 +372,79 @@ describe('jsonRes HTTP status mapping', () => {
     } finally {
       entry.httpStatus = original;
     }
+  });
+
+  it('logs System unexpected error and maps unregistered ServerConfigError to HTTP 500', () => {
+    logger.info.mockClear();
+    logger.error.mockClear();
+
+    const serverError = new ServerConfigError('Invalid outbound proxy URL configuration');
+    const processed = processError({ error: serverError, url: '/api/test', defaultCode: 500 });
+
+    expect(processed).toMatchObject({
+      code: 500,
+      httpStatus: 500,
+      message: 'Invalid outbound proxy URL configuration'
+    });
+    expect(logger.error).toHaveBeenCalledWith(
+      'System unexpected error',
+      expect.objectContaining({
+        url: '/api/test',
+        message: 'Invalid outbound proxy URL configuration',
+        error: serverError
+      })
+    );
+    expect(logger.info).not.toHaveBeenCalled();
+
+    const res = createResponse();
+    jsonRes(res, { code: 500, error: serverError, url: '/api/test' });
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+
+  it('logs sanitized OTel payloads when ServerConfigError originates from an invalid proxy URL', () => {
+    logger.info.mockClear();
+    logger.error.mockClear();
+
+    let proxyError: unknown;
+    try {
+      parseSupportedOutboundProxyUrl('http://user:proxy-secret@bad host:8080');
+    } catch (error) {
+      proxyError = error;
+    }
+
+    const processed = processError({
+      error: proxyError,
+      url: '/api/core/app/httpTools/getApiSchemaByUrl',
+      defaultCode: 500
+    });
+
+    expect(processed.httpStatus).toBe(500);
+    expect(logger.error).toHaveBeenCalledTimes(1);
+    const [logMessage, logProps] = logger.error.mock.calls[0];
+
+    const emittedRecords: unknown[] = [];
+    const sink = getOpenTelemetrySink({
+      loggerProvider: {
+        getLogger: () => ({
+          emit: (record: unknown) => {
+            emittedRecords.push(record);
+          }
+        })
+      } as any
+    });
+    sink({
+      category: ['http', 'error'],
+      level: 'error',
+      timestamp: Date.now(),
+      message: [logMessage],
+      rawMessage: logMessage,
+      properties: logProps
+    });
+
+    const serialized = JSON.stringify(emittedRecords);
+    expect(serialized).toContain('ERR_INVALID_URL');
+    expect(serialized).not.toContain('proxy-secret');
+    expect(serialized).not.toContain('bad host');
   });
 
   it('maps ServerConfigError(ModelErrEnum.unExist) to HTTP 500 while keeping explicit UserError at 404', () => {

@@ -210,6 +210,7 @@
   "sandbox_new_folder": "새 폴더",
   "sandbox_new_folder_placeholder": "새 폴더...",
   "sandbox_no_file": "샌드박스에 아직 파일이 없습니다",
+  "sandbox_open_file_failed": "파일 열기 실패",
   "sandbox_refresh_page_to_retry": "페이지를 새로고침하여 다시 시도해 주세요.",
   "sandbox_rename": "이름 변경",
   "sandbox_rename_failed": "이름 변경 실패",

@@ -200,7 +200,8 @@ describe('docker disk soft-limit quota', () => {
     expect(writeNotice).toContain('Sandbox disk quota exceeded');
     expect(writeNotice).toContain('sandbox_shell');
     expect(writeNotice).toContain('RLIMIT_FSIZE=0');
-    expect(writeNotice).toContain('rm -rf');
+    expect(writeNotice).toContain('Do NOT delete files automatically');
+    expect(writeNotice).toContain('ask for their confirmation');
 
     const shellNotice = formatAgentDiskQuotaNotice(
       { usedBytes: limitBytes + 1, limitBytes },
@@ -208,6 +209,7 @@ describe('docker disk soft-limit quota', () => {
     );
     expect(shellNotice).toContain('read/delete-only mode');
     expect(shellNotice).toContain('/home/sandbox');
+    expect(shellNotice).toContain('Do NOT delete files automatically');
 
     // 探针失败时 fail-open 放行。
     fetchMock.mockRejectedValueOnce(new Error('timeout'));

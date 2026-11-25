@@ -39,11 +39,19 @@ impl FsError {
         Self::Message(message.into())
     }
 
-    const fn code(&self) -> JsonRpcErrorCode {
+    fn code(&self) -> JsonRpcErrorCode {
         match self {
             Self::FileConflict => JsonRpcErrorCode::FileConflict,
             Self::FileTooLarge { .. } => JsonRpcErrorCode::FileTooLarge,
             Self::DiskQuotaExceeded { .. } => JsonRpcErrorCode::DiskQuotaExceeded,
+            Self::Io(err)
+                if matches!(
+                    err.kind(),
+                    std::io::ErrorKind::StorageFull | std::io::ErrorKind::QuotaExceeded
+                ) =>
+            {
+                JsonRpcErrorCode::DiskQuotaExceeded
+            }
             Self::PermissionDenied => JsonRpcErrorCode::PermissionDenied,
             Self::MethodNotFound => JsonRpcErrorCode::MethodNotFound,
             Self::MissingParams
@@ -61,5 +69,33 @@ impl From<FsError> for JsonRpcError {
             code: error.code(),
             message: error.to_string(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn maps_disk_full_io_errors_to_disk_quota_exceeded() {
+        for kind in [
+            std::io::ErrorKind::StorageFull,
+            std::io::ErrorKind::QuotaExceeded,
+        ] {
+            let err = JsonRpcError::from(FsError::Io(std::io::Error::new(kind, "disk full")));
+            assert_eq!(err.code, JsonRpcErrorCode::DiskQuotaExceeded);
+        }
+
+        #[cfg(unix)]
+        for raw in [libc::ENOSPC, libc::EDQUOT] {
+            let err = JsonRpcError::from(FsError::Io(std::io::Error::from_raw_os_error(raw)));
+            assert_eq!(err.code, JsonRpcErrorCode::DiskQuotaExceeded);
+        }
+
+        let other = JsonRpcError::from(FsError::Io(std::io::Error::new(
+            std::io::ErrorKind::PermissionDenied,
+            "denied",
+        )));
+        assert_eq!(other.code, JsonRpcErrorCode::InternalError);
     }
 }

@@ -11,6 +11,7 @@ import { type SandboxInputFileReader } from '../file';
 import { prepareSandboxRuntimeMirrors } from './mirrors';
 import { runWithSandboxRuntimeStateScope } from './state';
 import type { SandboxInputFileNameAllocation } from '../../utils';
+import { rethrowSandboxDiskQuotaExceededError } from '../quota';
 
 export type SandboxPrepareContext = {
   sandbox: OpenSandboxClient;
@@ -62,7 +63,9 @@ export const preparePackageMirrors =
 export const prepareWorkDirectory =
   <Context extends SandboxPrepareContext>(): SandboxPrepareStep<Context> =>
   async (context) => {
-    await context.sandbox.createDirectories([context.workDirectory]);
+    await context.sandbox
+      .createDirectories([context.workDirectory])
+      .catch(rethrowSandboxDiskQuotaExceededError);
 
     return context;
   };

@@ -1427,7 +1427,7 @@ type ChatInitResAppChatConfigVariablesItemDatasetOptionsItem struct {
 	// 可选知识库 ID
 	DatasetID string `json:"datasetId"`
 	// 可选知识库头像
-	Avatar string `json:"avatar"`
+	Avatar *string `json:"avatar,omitempty"`
 	// 可选知识库名称
 	Name        string                                                             `json:"name"`
 	VectorModel ChatInitResAppChatConfigVariablesItemDatasetOptionsItemVectorModel `json:"vectorModel"`
@@ -2086,7 +2086,7 @@ type ChatInitResApp struct {
 	// 应用名称
 	Name string `json:"name"`
 	// 应用头像
-	Avatar string `json:"avatar"`
+	Avatar *string `json:"avatar,omitempty"`
 	// 应用简介
 	Intro string `json:"intro"`
 	// 是否可用

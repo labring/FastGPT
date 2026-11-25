@@ -186,7 +186,11 @@ export function processError(params: {
   }
 
   // 3. 根据错误类型记录不同级别的日志
-  if (isUserConfigError(error)) {
+  // ServerConfigError 继承自 UserError，必须先于 UserError 匹配，保留 5xx 告警日志。
+  if (isServerConfigError(error)) {
+    msg = error.displayMessage || msg;
+    logger.error('System unexpected error', { url, message: msg, error });
+  } else if (isUserConfigError(error)) {
     msg = typeof error.displayMessage === 'string' ? error.displayMessage || msg : msg;
   } else if (error instanceof UserError) {
     msg = error.displayMessage || msg;

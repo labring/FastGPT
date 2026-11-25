@@ -3800,7 +3800,7 @@
                                                   "type": "string",
                                                   "description": "可选知识库头像"
                                                 },
-                                                "required": true,
+                                                "required": false,
                                                 "description": "可选知识库头像"
                                               },
                                               {
@@ -4513,7 +4513,7 @@
                             "type": "string",
                             "description": "应用头像"
                           },
-                          "required": true,
+                          "required": false,
                           "description": "应用头像"
                         },
                         {
@@ -5023,7 +5023,7 @@
                                             "type": "string",
                                             "description": "可选知识库头像"
                                           },
-                                          "required": true,
+                                          "required": false,
                                           "description": "可选知识库头像"
                                         },
                                         {
@@ -6327,7 +6327,7 @@
                                                   "type": "string",
                                                   "description": "可选知识库头像"
                                                 },
-                                                "required": true,
+                                                "required": false,
                                                 "description": "可选知识库头像"
                                               },
                                               {
@@ -7040,7 +7040,7 @@
                             "type": "string",
                             "description": "应用头像"
                           },
-                          "required": true,
+                          "required": false,
                           "description": "应用头像"
                         },
                         {
@@ -7550,7 +7550,7 @@
                                             "type": "string",
                                             "description": "可选知识库头像"
                                           },
-                                          "required": true,
+                                          "required": false,
                                           "description": "可选知识库头像"
                                         },
                                         {
@@ -8854,7 +8854,7 @@
                                                   "type": "string",
                                                   "description": "可选知识库头像"
                                                 },
-                                                "required": true,
+                                                "required": false,
                                                 "description": "可选知识库头像"
                                               },
                                               {
@@ -9567,7 +9567,7 @@
                             "type": "string",
                             "description": "应用头像"
                           },
-                          "required": true,
+                          "required": false,
                           "description": "应用头像"
                         },
                         {
@@ -10077,7 +10077,7 @@
                                             "type": "string",
                                             "description": "可选知识库头像"
                                           },
-                                          "required": true,
+                                          "required": false,
                                           "description": "可选知识库头像"
                                         },
                                         {
@@ -11371,7 +11371,7 @@
                                                   "type": "string",
                                                   "description": "可选知识库头像"
                                                 },
-                                                "required": true,
+                                                "required": false,
                                                 "description": "可选知识库头像"
                                               },
                                               {
@@ -12084,7 +12084,7 @@
                             "type": "string",
                             "description": "应用头像"
                           },
-                          "required": true,
+                          "required": false,
                           "description": "应用头像"
                         },
                         {
@@ -12594,7 +12594,7 @@
                                             "type": "string",
                                             "description": "可选知识库头像"
                                           },
-                                          "required": true,
+                                          "required": false,
                                           "description": "可选知识库头像"
                                         },
                                         {
@@ -44675,7 +44675,7 @@
                                               "type": "string",
                                               "description": "可选知识库头像"
                                             },
-                                            "required": true,
+                                            "required": false,
                                             "description": "可选知识库头像"
                                           },
                                           {
@@ -45388,7 +45388,7 @@
                         "type": "string",
                         "description": "应用头像"
                       },
-                      "required": true,
+                      "required": false,
                       "description": "应用头像"
                     },
                     {
@@ -45898,7 +45898,7 @@
                                         "type": "string",
                                         "description": "可选知识库头像"
                                       },
-                                      "required": true,
+                                      "required": false,
                                       "description": "可选知识库头像"
                                     },
                                     {
@@ -47202,7 +47202,7 @@
                                               "type": "string",
                                               "description": "可选知识库头像"
                                             },
-                                            "required": true,
+                                            "required": false,
                                             "description": "可选知识库头像"
                                           },
                                           {
@@ -47915,7 +47915,7 @@
                         "type": "string",
                         "description": "应用头像"
                       },
-                      "required": true,
+                      "required": false,
                       "description": "应用头像"
                     },
                     {
@@ -48425,7 +48425,7 @@
                                         "type": "string",
                                         "description": "可选知识库头像"
                                       },
-                                      "required": true,
+                                      "required": false,
                                       "description": "可选知识库头像"
                                     },
                                     {
@@ -49729,7 +49729,7 @@
                                               "type": "string",
                                               "description": "可选知识库头像"
                                             },
-                                            "required": true,
+                                            "required": false,
                                             "description": "可选知识库头像"
                                           },
                                           {
@@ -50442,7 +50442,7 @@
                         "type": "string",
                         "description": "应用头像"
                       },
-                      "required": true,
+                      "required": false,
                       "description": "应用头像"
                     },
                     {
@@ -50952,7 +50952,7 @@
                                         "type": "string",
                                         "description": "可选知识库头像"
                                       },
-                                      "required": true,
+                                      "required": false,
                                       "description": "可选知识库头像"
                                     },
                                     {
@@ -52246,7 +52246,7 @@
                                               "type": "string",
                                               "description": "可选知识库头像"
                                             },
-                                            "required": true,
+                                            "required": false,
                                             "description": "可选知识库头像"
                                           },
                                           {
@@ -52959,7 +52959,7 @@
                         "type": "string",
                         "description": "应用头像"
                       },
-                      "required": true,
+                      "required": false,
                       "description": "应用头像"
                     },
                     {
@@ -53469,7 +53469,7 @@
                                         "type": "string",
                                         "description": "可选知识库头像"
                                       },
-                                      "required": true,
+                                      "required": false,
                                       "description": "可选知识库头像"
                                     },
                                     {

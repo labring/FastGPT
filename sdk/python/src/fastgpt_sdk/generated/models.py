@@ -598,7 +598,7 @@ class ChatInitResVariant1AppChatConfigVariablesItemDatasetOptionsItemVectorModel
 
 class ChatInitResVariant1AppChatConfigVariablesItemDatasetOptionsItem(FastGPTResponseModel):
     dataset_id: str = Field(validation_alias=AliasChoices("dataset_id", "datasetId"), serialization_alias="datasetId", description="可选知识库 ID")
-    avatar: str = Field(description="可选知识库头像")
+    avatar: str | None = Field(default=None, description="可选知识库头像")
     name: str = Field(description="可选知识库名称")
     vector_model: ChatInitResVariant1AppChatConfigVariablesItemDatasetOptionsItemVectorModel = Field(validation_alias=AliasChoices("vector_model", "vectorModel"), serialization_alias="vectorModel")
     error: str | None = None
@@ -827,7 +827,7 @@ class ChatInitResVariant1App(FastGPTResponseModel):
     chat_config: ChatInitResVariant1AppChatConfig | None = Field(default=None, validation_alias=AliasChoices("chat_config", "chatConfig"), serialization_alias="chatConfig", description="聊天配置")
     chat_models: list[str] | None = Field(default=None, validation_alias=AliasChoices("chat_models", "chatModels"), serialization_alias="chatModels", description="聊天模型")
     name: str = Field(description="应用名称")
-    avatar: str = Field(description="应用头像")
+    avatar: str | None = Field(default=None, description="应用头像")
     intro: str = Field(description="应用简介")
     can_use: bool | None = Field(default=None, validation_alias=AliasChoices("can_use", "canUse"), serialization_alias="canUse", description="是否可用")
     type: Literal["folder", "toolFolder", "simple", "chatAgent", "advanced", "plugin", "toolSet", "httpToolSet", "hidden", "tool", "httpPlugin"] = Field(description="应用类型")

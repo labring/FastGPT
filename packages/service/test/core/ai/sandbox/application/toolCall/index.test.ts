@@ -6,6 +6,8 @@ import {
   SANDBOX_WRITE_FILE_TOOL_NAME
 } from '@fastgpt/global/core/ai/sandbox/tools';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import {
   createDefaultInstanceConfig,
   getTestInstanceConfig
@@ -215,6 +217,21 @@ describe('sandbox toolCall index', () => {
       files,
       readInputFile: undefined
     });
+
+    // 新会话目录创建遇 ENOSPC 时在附件写入前同样统一返回配额错误。
+    const fullSandbox = createSandboxInstance();
+    fullSandbox.opensandbox.createDirectories.mockRejectedValueOnce(
+      new Error('mkdir /workspace/sessions/chat: no space left on device')
+    );
+    runtimeMock.getSandboxClient.mockResolvedValueOnce(fullSandbox);
+    await expect(
+      prepareSandboxToolRuntime({
+        ...appSource,
+        userId: 'user',
+        chatId: 'chat',
+        files
+      })
+    ).rejects.toThrowError(new UserError(SandboxErrEnum.agentSandboxDiskQuotaExceeded));
   });
 
   it('validates Zod args before probing Docker disk quota', async () => {
@@ -283,6 +300,36 @@ describe('sandbox toolCall index', () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+
+  it('returns cleanup guidance when write_file or edit_file hits ENOSPC on kubernetes', async () => {
+    getTestInstanceConfig().subservice.agentSandbox.opensandbox.runtime = 'kubernetes';
+    const sandbox = createSandboxInstance();
+    sandbox.opensandbox.writeFiles = vi.fn(async () => [
+      { path: 'a.txt', bytesWritten: 0, error: new Error('write failed: no space left on device') }
+    ]);
+    sandbox.opensandbox.replaceContent = vi.fn(async () => {
+      throw Object.assign(new Error('replace failed'), { code: 'ENOSPC' });
+    });
+
+    const writeRes = await runSandboxTools({
+      toolName: SANDBOX_WRITE_FILE_TOOL_NAME,
+      args: JSON.stringify({ path: 'a.txt', content: 'hello' }),
+      sandboxClient: sandbox
+    });
+    expect(writeRes.success).toBe(false);
+    expect(writeRes.response).toContain('Sandbox disk space is full');
+    expect(writeRes.response).toContain('Do NOT delete files automatically');
+    expect(writeRes.response).not.toContain('RLIMIT_FSIZE=0');
+
+    const editRes = await runSandboxTools({
+      toolName: SANDBOX_EDIT_FILE_TOOL_NAME,
+      args: JSON.stringify({ entries: [{ path: 'a.txt', oldContent: 'a', newContent: 'b' }] }),
+      sandboxClient: sandbox
+    });
+    expect(editRes.success).toBe(false);
+    expect(editRes.response).toContain('Sandbox disk space is full');
+    expect(editRes.response).not.toContain('RLIMIT_FSIZE=0');
   });
 
   it('returns localized tool info for known sandbox tools', () => {

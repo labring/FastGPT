@@ -41,7 +41,7 @@ const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
 
 type McpChildToolType = McpToolConfigType & {
   id: string;
-  avatar: string;
+  avatar?: string;
   url?: string;
   headerSecret?: StoreSecretValueType;
 };
@@ -978,7 +978,7 @@ export const getMCPChildren = async (
     return (toolSet.toolList ?? []).map((item) => ({
       ...item,
       id: `${AppToolSourceEnum.mcp}-${id}/${item.name}`,
-      avatar: app.avatar,
+      avatar: app.avatar ?? undefined,
       url: toolSet.url,
       headerSecret: toolSet.headerSecret ?? undefined
     }));
@@ -998,7 +998,7 @@ export const getMCPChildren = async (
     description: item.description,
     inputSchema: item.inputSchema,
     id: `${AppToolSourceEnum.mcp}-${id}/${item.name}`,
-    avatar: app.avatar,
+    avatar: app.avatar ?? undefined,
     url: item.url || url,
     headerSecret: item.headerSecret || headerSecret
   }));

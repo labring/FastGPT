@@ -11,7 +11,10 @@ import {
   type SandboxUploadResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { getAgentSandboxDiskBytes } from '@fastgpt/service/core/ai/sandbox/config';
-import { assertSandboxWorkspaceWritable } from '@fastgpt/service/core/ai/sandbox/application/quota';
+import {
+  assertSandboxWorkspaceWritable,
+  rethrowSandboxDiskQuotaExceededError
+} from '@fastgpt/service/core/ai/sandbox/application/quota';
 import { prepareSandboxFileParentDirectories } from '@fastgpt/service/core/ai/sandbox/application/file';
 import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
 import { buildSandboxClientQueryFromChatSource } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
@@ -59,7 +62,9 @@ async function handler(
   const providerPath = sandbox.resolveRuntimePath(path, { allowAbsolutePath: true });
   await sandbox.runWithRecovery(async () => {
     await assertSandboxWorkspaceWritable(sandbox.opensandbox, { rethrowRecoverable: true });
-    await prepareSandboxFileParentDirectories(sandbox.opensandbox, [providerPath]);
+    await prepareSandboxFileParentDirectories(sandbox.opensandbox, [providerPath]).catch(
+      rethrowSandboxDiskQuotaExceededError
+    );
   });
 
   const boundedStream = createSizeLimitedStream({
@@ -74,7 +79,9 @@ async function handler(
     }
   ]);
   if (!writeResult || writeResult.error) {
-    throw writeResult?.error ?? new Error('Sandbox did not return a file write result');
+    rethrowSandboxDiskQuotaExceededError(
+      writeResult?.error ?? new Error('Sandbox did not return a file write result')
+    );
   }
 
   return SandboxUploadResponseSchema.parse({

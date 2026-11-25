@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { emptyWorkDirectory } from '@fastgpt/service/core/ai/sandbox/application/runtime/prepare';
+import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import {
+  emptyWorkDirectory,
+  prepareWorkDirectory
+} from '@fastgpt/service/core/ai/sandbox/application/runtime/prepare';
 
 const file = (name: string) => ({
   name,
@@ -68,5 +73,20 @@ describe('sandbox runtime prepare', () => {
       'Failed to clean workspace file /workspace/session/.env: permission denied'
     );
     expect(sandbox.deleteDirectories).not.toHaveBeenCalled();
+  });
+
+  it('maps ENOSPC from prepareWorkDirectory to agentSandboxDiskQuotaExceeded', async () => {
+    const sandbox = {
+      createDirectories: vi
+        .fn()
+        .mockRejectedValueOnce(new Error('mkdir /workspace/sessions/chat: no space left on device'))
+    };
+
+    await expect(
+      prepareWorkDirectory()({
+        sandbox: sandbox as any,
+        workDirectory: '/workspace/sessions/chat'
+      })
+    ).rejects.toThrowError(new UserError(SandboxErrEnum.agentSandboxDiskQuotaExceeded));
   });
 });

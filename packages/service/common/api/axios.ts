@@ -13,6 +13,7 @@ import { getProxyForUrl } from 'proxy-from-env';
 import { isDevEnv } from '@fastgpt/global/common/system/constants';
 import {
   createNodeOutboundProxyAgent,
+  createOutboundProxyConfigError,
   parseSupportedOutboundProxyUrl,
   PROXY_AUTHORIZATION_HEADER
 } from '../proxy/utils';
@@ -173,21 +174,27 @@ const prepareSafeRequestConfig = async (
  *
  * 工厂默认的 proxy: false 仅用于关闭 axios 自动代理，环境变量由本入口统一处理。
  */
-const resolveProxyUrl = (requestUrl: string, explicitProxy: AxiosRequestConfig['proxy']) => {
+const resolveProxyUrl = (
+  requestUrl: string,
+  explicitProxy: AxiosRequestConfig['proxy']
+): string | URL | undefined => {
   if (!explicitProxy) {
-    const proxyUrl = getProxyForUrl(requestUrl);
-    return proxyUrl ? new URL(proxyUrl) : undefined;
+    return getProxyForUrl(requestUrl) || undefined;
   }
 
-  const { host, port, auth, protocol = 'http' } = explicitProxy;
-  const proxyHost = isIP(host) === 6 ? `[${host}]` : host;
-  const proxyUrl = new URL(`${protocol.replace(/:$/, '')}://${proxyHost}`);
-  if (port) proxyUrl.port = String(port);
-  if (auth) {
-    proxyUrl.username = encodeURIComponent(auth.username ?? '');
-    proxyUrl.password = encodeURIComponent(auth.password ?? '');
+  try {
+    const { host, port, auth, protocol = 'http' } = explicitProxy;
+    const proxyHost = isIP(host) === 6 ? `[${host}]` : host;
+    const proxyUrl = new URL(`${protocol.replace(/:$/, '')}://${proxyHost}`);
+    if (port) proxyUrl.port = String(port);
+    if (auth) {
+      proxyUrl.username = encodeURIComponent(auth.username ?? '');
+      proxyUrl.password = encodeURIComponent(auth.password ?? '');
+    }
+    return proxyUrl;
+  } catch (error) {
+    throw createOutboundProxyConfigError('Invalid outbound proxy configuration', error);
   }
-  return proxyUrl;
 };
 
 const attachRequestAgent = async (

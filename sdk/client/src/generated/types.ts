@@ -1081,7 +1081,7 @@ export type ChatInitRes =
               /** 可选知识库 ID */
               datasetId: string;
               /** 可选知识库头像 */
-              avatar: string;
+              avatar?: string;
               /** 可选知识库名称 */
               name: string;
               vectorModel: {
@@ -1254,7 +1254,7 @@ export type ChatInitRes =
         /** 应用名称 */
         name: string;
         /** 应用头像 */
-        avatar: string;
+        avatar?: string;
         /** 应用简介 */
         intro: string;
         /** 是否可用 */
@@ -1465,7 +1465,7 @@ export type ChatInitRes =
             /** 可选知识库 ID */
             datasetId: string;
             /** 可选知识库头像 */
-            avatar: string;
+            avatar?: string;
             /** 可选知识库名称 */
             name: string;
             vectorModel: {
@@ -1878,7 +1878,7 @@ export type ChatInitRes =
               /** 可选知识库 ID */
               datasetId: string;
               /** 可选知识库头像 */
-              avatar: string;
+              avatar?: string;
               /** 可选知识库名称 */
               name: string;
               vectorModel: {
@@ -2051,7 +2051,7 @@ export type ChatInitRes =
         /** 应用名称 */
         name: string;
         /** 应用头像 */
-        avatar: string;
+        avatar?: string;
         /** 应用简介 */
         intro: string;
         /** 是否可用 */
@@ -2262,7 +2262,7 @@ export type ChatInitRes =
             /** 可选知识库 ID */
             datasetId: string;
             /** 可选知识库头像 */
-            avatar: string;
+            avatar?: string;
             /** 可选知识库名称 */
             name: string;
             vectorModel: {
@@ -2675,7 +2675,7 @@ export type ChatInitRes =
               /** 可选知识库 ID */
               datasetId: string;
               /** 可选知识库头像 */
-              avatar: string;
+              avatar?: string;
               /** 可选知识库名称 */
               name: string;
               vectorModel: {
@@ -2848,7 +2848,7 @@ export type ChatInitRes =
         /** 应用名称 */
         name: string;
         /** 应用头像 */
-        avatar: string;
+        avatar?: string;
         /** 应用简介 */
         intro: string;
         /** 是否可用 */
@@ -3059,7 +3059,7 @@ export type ChatInitRes =
             /** 可选知识库 ID */
             datasetId: string;
             /** 可选知识库头像 */
-            avatar: string;
+            avatar?: string;
             /** 可选知识库名称 */
             name: string;
             vectorModel: {
@@ -3470,7 +3470,7 @@ export type ChatInitRes =
               /** 可选知识库 ID */
               datasetId: string;
               /** 可选知识库头像 */
-              avatar: string;
+              avatar?: string;
               /** 可选知识库名称 */
               name: string;
               vectorModel: {
@@ -3643,7 +3643,7 @@ export type ChatInitRes =
         /** 应用名称 */
         name: string;
         /** 应用头像 */
-        avatar: string;
+        avatar?: string;
         /** 应用简介 */
         intro: string;
         /** 是否可用 */
@@ -3854,7 +3854,7 @@ export type ChatInitRes =
             /** 可选知识库 ID */
             datasetId: string;
             /** 可选知识库头像 */
-            avatar: string;
+            avatar?: string;
             /** 可选知识库名称 */
             name: string;
             vectorModel: {

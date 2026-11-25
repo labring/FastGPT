@@ -92,13 +92,18 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
       if (skill) {
         return {
           name: skill.name,
-          avatar: skill.avatar ?? '',
+          avatar: skill.avatar ?? undefined,
           intro: skill.description ?? '',
           type: AppTypeEnum.simple
         };
       }
       if (!app) throw ChatErrEnum.unAuthChat;
-      return { name: app.name, avatar: app.avatar ?? '', intro: app.intro ?? '', type: app.type };
+      return {
+        name: app.name,
+        avatar: app.avatar ?? undefined,
+        intro: app.intro ?? '',
+        type: app.type
+      };
     })();
     const isAppChat = sourceType === ChatSourceTypeEnum.app;
     const pluginInputs = isAppChat

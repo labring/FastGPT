@@ -256,7 +256,7 @@ export const getHTTPToolList = async (app: AppSchemaType, workflow?: AppPublishe
             }
           : {}),
         id: `${AppToolSourceEnum.http}-${String(app._id)}/${item.name}`,
-        avatar: app.avatar
+        avatar: app.avatar ?? undefined
       };
     }) ?? []
   );

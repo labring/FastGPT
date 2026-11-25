@@ -1,3 +1,5 @@
+import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -25,9 +27,15 @@ vi.mock('@fastgpt/service/core/ai/sandbox/config', () => ({
   getAgentSandboxDiskBytes: mocks.getAgentSandboxDiskBytes
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/application/quota', () => ({
-  assertSandboxWorkspaceWritable: mocks.assertSandboxWorkspaceWritable
-}));
+vi.mock('@fastgpt/service/core/ai/sandbox/application/quota', async () => {
+  const actual = await vi.importActual<
+    typeof import('@fastgpt/service/core/ai/sandbox/application/quota')
+  >('@fastgpt/service/core/ai/sandbox/application/quota');
+  return {
+    ...actual,
+    assertSandboxWorkspaceWritable: mocks.assertSandboxWorkspaceWritable
+  };
+});
 
 vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', () => ({
   buildSandboxClientQueryFromChatSource: mocks.buildSandboxClientQueryFromChatSource
@@ -153,5 +161,19 @@ describe('sandbox upload API', () => {
 
     expect(mocks.createDirectories).not.toHaveBeenCalled();
     expect(mocks.writeFiles).not.toHaveBeenCalled();
+  });
+
+  it('maps ENOSPC write failure to agentSandboxDiskQuotaExceeded', async () => {
+    mocks.writeFiles.mockResolvedValueOnce([
+      {
+        path: '/workspace/sessions/chat-1/uploads/a.txt',
+        bytesWritten: 0,
+        error: new Error('write error: no space left on device')
+      }
+    ]);
+
+    await expect(handler(createReq())).rejects.toThrowError(
+      new UserError(SandboxErrEnum.agentSandboxDiskQuotaExceeded)
+    );
   });
 });

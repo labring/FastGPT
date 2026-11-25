@@ -12,6 +12,7 @@ import {
   getSandboxDiskQuotaStatus,
   type SandboxDiskQuotaStatus
 } from '../quota';
+import { getSandboxCommandDiskFullReason } from '../../infrastructure/opensandbox/errors';
 import { truncateSandboxToolOutput } from './utils';
 
 const SandboxShellToolSchema = z.object({
@@ -51,7 +52,8 @@ export const sandboxShellTool = defineTool({
         return `exec /bin/bash -c ${quotedCommand} 2>&1`;
       }
       if (fsizeLimit > 0) {
-        return `exec prlimit --fsize=${fsizeLimit}:${fsizeLimit} -- /bin/bash -c ${quotedCommand} 2>&1`;
+        // 不使用 exec，避免单命令直接被 SIGXFSZ 杀死时 execd 将信号退出报成 -1 而丢失 153。
+        return `prlimit --fsize=${fsizeLimit}:${fsizeLimit} -- /bin/bash -c ${quotedCommand} 2>&1; exit $?`;
       }
       // RLIMIT_FSIZE=0 时直接写 execd 落盘日志会触发 SIGXFSZ (153)，需通过匿名管道转交 cat 写出并保留原退出码。
       return `prlimit --fsize=0:0 -- /bin/bash -c ${quotedCommand} 2>&1 | cat; exit "\${PIPESTATUS[0]}"`;
@@ -82,9 +84,22 @@ export const sandboxShellTool = defineTool({
       result.exitCode === 0 || result.exitCode === null
         ? ''
         : `Command exited with code ${result.exitCode}`;
-    const quotaNotice = quotaStatus?.exceeded
-      ? formatAgentDiskQuotaNotice(quotaStatus, 'shell')
-      : '';
+    const quotaNotice = (() => {
+      if (quotaStatus?.exceeded) {
+        return formatAgentDiskQuotaNotice(quotaStatus, 'shell');
+      }
+      const diskFullReason = getSandboxCommandDiskFullReason({
+        exitCode: result.exitCode,
+        output: rawOutput
+      });
+      if (diskFullReason === 'fileSizeLimit') {
+        return formatAgentDiskQuotaNotice(quotaStatus, 'fileSizeLimit');
+      }
+      if (diskFullReason === 'diskFull') {
+        return formatAgentDiskQuotaNotice(undefined, 'shell');
+      }
+      return '';
+    })();
 
     return {
       response: [output.content, truncationNotice, exitNotice, quotaNotice]

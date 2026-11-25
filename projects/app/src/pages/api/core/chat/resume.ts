@@ -25,8 +25,10 @@ import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
 import {
   chatItemResponsePreviewProjection,
+  sanitizeOutLinkChatHistoryItem,
   transformPreviewHistories
 } from '@/global/core/chat/utils';
+import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { stripModerationRecordsFromNodeResponses } from '@fastgpt/global/core/chat/utils';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
@@ -106,6 +108,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     authToken: true
   });
   const { teamId, showCite = true, canWrite = false } = authRes;
+  const isOutLink = authRes.authType === AuthUserTypeEnum.outLink;
   const canReadModerationRecords = Boolean(canWrite);
   const resolvedSourceId = authRes.sourceId;
 
@@ -144,7 +147,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       nodeResponsePreviewProjection: chatItemResponsePreviewProjection
     });
 
-    const histories = await addPreviewUrlToChatItems(result.histories, 'chatFlow');
+    const previewHistories = await addPreviewUrlToChatItems(result.histories, 'chatFlow');
+    const histories = isOutLink
+      ? previewHistories.map((item) => sanitizeOutLinkChatHistoryItem(item, showCite))
+      : previewHistories;
 
     const list = transformPreviewHistories(histories, showCite).map((item) => {
       const chatItem = {
