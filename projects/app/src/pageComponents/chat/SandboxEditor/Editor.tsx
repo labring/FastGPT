@@ -31,7 +31,6 @@ export type Props = {
   enablePathCopy?: boolean;
   enableZipExtract?: boolean;
   enableMultiSelect?: boolean;
-  onError?: (err: Error) => void;
   headerRight?: React.ReactNode;
   bg?: string;
 };
@@ -50,7 +49,6 @@ const SandboxEditor = ({
   enablePathCopy = false,
   enableZipExtract = false,
   enableMultiSelect = false,
-  onError,
   headerRight,
   bg
 }: Props) => {
@@ -112,8 +110,7 @@ const SandboxEditor = ({
     chatId,
     outLinkAuthData,
     isPreparing,
-    canWrite: showFileOps,
-    onError
+    canWrite: showFileOps
   });
 
   // 绑定全部保存方法到 Context 引用上

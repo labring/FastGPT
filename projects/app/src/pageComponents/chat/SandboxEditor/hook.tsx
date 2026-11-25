@@ -44,6 +44,8 @@ import {
   isValidSandboxPathSegment,
   type SandboxMoveOperation
 } from './utils';
+import { createSandboxWsConnection, type SandboxWsConnection } from './sandboxWsConnection';
+import type { SandboxGetTicketResponse } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 
 const SYSTEM_FILE_NAMES = ['.DS_Store'];
 const INITIAL_TREE_MAX_DEPTH = 20;
@@ -106,13 +108,10 @@ const isReadFileStreamFallbackError = (error: unknown) => {
   return structuredError.rpcCode === SANDBOX_RPC_FILE_TOO_LARGE_CODE;
 };
 
+const FS_DID_CHANGE_METHOD = 'fs/did_change';
+
 const shouldReadFileByHttp = (fileSize?: number) =>
   typeof fileSize === 'number' && fileSize > RPC_READ_FILE_HTTP_MIN_BYTES;
-
-const createSandboxRpcError = (message: string, rpcCode?: number): SandboxRpcError =>
-  Object.assign(new Error(message), {
-    ...(typeof rpcCode === 'number' ? { rpcCode } : {})
-  });
 
 /**
  * useSandboxEditor —— UI Hook
@@ -424,15 +423,13 @@ export const useSandboxFileStore = ({
   chatId,
   outLinkAuthData,
   isPreparing = false,
-  canWrite = true,
-  onError
+  canWrite = true
 }: {
   sandboxTarget: ChatTargetInputType;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
   isPreparing?: boolean;
   canWrite?: boolean;
-  onError?: (err: Error) => void;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -449,7 +446,6 @@ export const useSandboxFileStore = ({
   const [loadingRoot, setLoadingRoot] = useState(false);
   const [downloadingFile, setDownloadingFile] = useState(false);
   const [isWsConnected, setIsWsConnected] = useState(false);
-  const reconnectAttemptsRef = useRef(0);
 
   // 多标签页状态与选中节点路径状态
   const [openedFiles, setOpenedFiles] = useState<OpenedFile[]>([]);
@@ -466,43 +462,20 @@ export const useSandboxFileStore = ({
   const saveFileQueuesRef = useRef<Map<string, Promise<{ etag?: string } | undefined>>>(new Map());
 
   // ==================== WebSocket 长连接及 JSON-RPC 2.0 ====================
-  const wsRef = useRef<WebSocket | null>(null);
-  const nextRpcIdRef = useRef(1);
-  const pendingRpcRequestsRef = useRef<
-    Map<number, { resolve: (res: unknown) => void; reject: (err: unknown) => void }>
-  >(new Map());
-  const connectPromiseRef = useRef<Promise<void> | null>(null);
-  const resolveConnectRef = useRef<(() => void) | null>(null);
-  const rejectConnectRef = useRef<((error: Error) => void) | null>(null);
-  const stoppedConnectErrorRef = useRef<Error | null>(null);
+  // 连接/重连/JSON-RPC 全部由 sandboxWsConnection 状态机持有；这里只保留一个指向当前实例的 ref。
+  const connectionRef = useRef<SandboxWsConnection | null>(null);
   const ideSessionRootRef = useRef('.');
 
-  const resetConnectPromise = useCallback(() => {
-    const promise = new Promise<void>((resolve, reject) => {
-      resolveConnectRef.current = resolve;
-      rejectConnectRef.current = reject;
+  // 连接生命周期只响应连接参数；提示文案始终读取最新 render 值。
+  // 可恢复断线只做 toast 通知：不 reject 连接 Promise（审查点 ①），也不上报致命错误。
+  const handleConnectRecovering = useMemoizedFn(() => {
+    toast({
+      title: t('chat:sandbox_connect_failed_max_attempts'),
+      description: t('chat:sandbox_refresh_page_to_retry'),
+      status: 'warning',
+      duration: 5000,
+      isClosable: true
     });
-    void promise.catch(() => undefined);
-    connectPromiseRef.current = promise;
-  }, []);
-
-  // 连接生命周期只响应连接参数；提示文案和错误回调始终读取最新 render 值。
-  const handleConnectAttemptsExhausted = useMemoizedFn(() => {
-    const errMsg = t('chat:sandbox_connect_failed_max_attempts');
-    if (!onError) {
-      toast({
-        title: errMsg,
-        description: t('chat:sandbox_refresh_page_to_retry'),
-        status: 'error',
-        duration: 5000,
-        isClosable: true
-      });
-    }
-    setIsWsConnected(false);
-    const error = new Error(errMsg);
-    stoppedConnectErrorRef.current = error;
-    rejectConnectRef.current?.(error);
-    onError?.(error);
   });
 
   const getWsCloseMessage = useMemoizedFn(
@@ -531,60 +504,25 @@ export const useSandboxFileStore = ({
     });
   }, []);
 
-  // RPC 调用
+  // RPC 调用：交给连接状态机发送，等待/超时/断线清理都在状态机内部完成。
+  // 审查点 ⑤：会话根目录在握手完成后才通过惰性参数求值，避免排队中的请求用旧 ticket 的路径。
   const rpcCall = useCallback(
     async <T = unknown,>(
       method: string,
       params: unknown,
       options: { timeoutMs?: number } = {}
     ): Promise<T> => {
-      if (stoppedConnectErrorRef.current) {
-        throw stoppedConnectErrorRef.current;
-      }
-      if (!connectPromiseRef.current) {
-        resetConnectPromise();
-      }
-      await connectPromiseRef.current;
-
-      const currentWs = wsRef.current;
-      if (!currentWs || currentWs.readyState !== WebSocket.OPEN) {
+      const connection = connectionRef.current;
+      if (!connection) {
         throw new Error('WebSocket is not connected');
       }
-      const id = nextRpcIdRef.current++;
-      const promise = new Promise<T>((resolve, reject) => {
-        const timer = window.setTimeout(() => {
-          pendingRpcRequestsRef.current.delete(id);
-          reject(new Error(`Sandbox RPC timeout: ${method}`));
-        }, options.timeoutMs ?? RPC_TIMEOUT_MS);
-
-        pendingRpcRequestsRef.current.set(id, {
-          resolve: (res) => {
-            window.clearTimeout(timer);
-            resolve(res as T);
-          },
-          reject: (err) => {
-            window.clearTimeout(timer);
-            reject(err);
-          }
-        });
+      return connection.send<T>({
+        method,
+        params: () => scopeSandboxIdeRpcParams(method, params, ideSessionRootRef.current),
+        timeoutMs: options.timeoutMs
       });
-      try {
-        currentWs.send(
-          JSON.stringify({
-            jsonrpc: '2.0',
-            id,
-            method,
-            params: scopeSandboxIdeRpcParams(method, params, ideSessionRootRef.current)
-          })
-        );
-      } catch (error) {
-        pendingRpcRequestsRef.current.get(id)?.reject(error);
-        pendingRpcRequestsRef.current.delete(id);
-        throw error;
-      }
-      return promise;
     },
-    [resetConnectPromise]
+    []
   );
 
   // 读取文件内容 - 根据 language 决定解码策略
@@ -788,159 +726,64 @@ export const useSandboxFileStore = ({
 
   const refreshWorkspaceRef = useLatest(refreshWorkspace);
 
-  // 维持长连接
+  // 维持长连接：React 只负责把 refs/state 与状态机接线，重连与 RPC 生命周期都在状态机内部。
   useEffect(() => {
     if (!sandboxTargetId || !chatId) return;
 
-    reconnectAttemptsRef.current = 0;
-    stoppedConnectErrorRef.current = null;
-
-    if (isPreparing) {
-      Promise.resolve().then(() => {
-        setIsWsConnected(false);
-        stoppedConnectErrorRef.current = null;
-      });
-      rejectConnectRef.current?.(new Error('Sandbox is preparing'));
-      resetConnectPromise();
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-      return;
-    }
-
-    let isDestroyed = false;
-    let ws: WebSocket | null = null;
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    const pendingRpcRequests = pendingRpcRequestsRef.current;
-
-    const connect = async () => {
-      if (reconnectAttemptsRef.current >= 5) {
-        handleConnectAttemptsExhausted();
-        return;
-      }
-
-      reconnectAttemptsRef.current++;
-
-      if (!connectPromiseRef.current) {
-        resetConnectPromise();
-      }
-      try {
-        const res = await getSandboxTicket({
+    const connection = createSandboxWsConnection<SandboxGetTicketResponse>({
+      // 审查点 ④：准备中 start() 不会调用 getTicket/握手/安排重连，就绪后由本 effect 重跑重建。
+      preparing: isPreparing,
+      getTicket: () =>
+        getSandboxTicket({
           ...sandboxTarget,
           chatId,
           outLinkAuthData,
           channel: 'fs',
           permission: canWrite ? 'write' : 'read'
-        });
-        if (isDestroyed) return;
+        }),
+      createWebSocket: (url) => new WebSocket(url),
+      schedule: (callback, delayMs) => window.setTimeout(callback, delayMs),
+      cancelSchedule: (handle) => window.clearTimeout(handle as number),
+      onConnectedChange: setIsWsConnected,
+      onRecovering: handleConnectRecovering,
+      onTicket: (res) => {
         setMaxFileBytes(res.maxFileBytes);
         setSessionWorkDirectory(res.sessionWorkDirectory);
-
         ideSessionRootRef.current = getSandboxIdeSessionRoot(
           res.workspaceRoot,
           res.sessionWorkDirectory
         );
-
-        ws = new WebSocket(res.wsUrl);
-        wsRef.current = ws;
-
-        ws.onopen = () => {
-          if (isDestroyed) {
-            ws?.close();
-            return;
-          }
-          stoppedConnectErrorRef.current = null;
-          setIsWsConnected(true);
-          resolveConnectRef.current?.();
-          refreshWorkspaceRef.current?.();
-        };
-
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            reconnectAttemptsRef.current = 0;
-            if (data.jsonrpc === '2.0' && data.id !== undefined) {
-              const rpcId = Number(data.id);
-              const pending = pendingRpcRequests.get(rpcId);
-              if (pending) {
-                pendingRpcRequests.delete(rpcId);
-                if (data.error) {
-                  const errorMessage =
-                    data.error.code === SANDBOX_RPC_DISK_QUOTA_EXCEEDED_CODE
-                      ? t('common:code_error.sandbox_error.agent_sandbox_disk_quota_exceeded')
-                      : data.error.message || 'Sandbox RPC failed';
-                  pending.reject(createSandboxRpcError(errorMessage, data.error.code));
-                } else {
-                  pending.resolve(data.result);
-                }
-              }
-            } else if (data.jsonrpc === '2.0' && data.method === 'fs/did_change') {
-              void refreshWorkspaceRef.current?.({ preserveExpandedDirs: true });
-            }
-          } catch (e) {
-            console.error('[SandboxWS] Failed to parse WebSocket message:', e);
-          }
-        };
-
-        ws.onclose = (e) => {
-          if (wsRef.current !== ws) return;
-
-          const closeMessage = getWsCloseMessage(e);
-
-          wsRef.current = null;
-          setIsWsConnected(false);
-          stoppedConnectErrorRef.current = null;
-          const closeError = new Error(closeMessage);
-          rejectConnectRef.current?.(closeError);
-          resetConnectPromise();
-
-          // 拒绝并清空当前所有积压的 pending RPC 请求，防止网络瞬断或代理重启时前端 Promise 永久 Pending 卡死
-          pendingRpcRequests.forEach((req) => {
-            req.reject(closeError);
-          });
-          pendingRpcRequests.clear();
-
-          if (!isDestroyed) {
-            reconnectTimer = setTimeout(connect, 3000);
-          }
-        };
-
-        ws.onerror = (err) => {
-          console.error('[SandboxWS] WebSocket error:', err);
-          ws?.close();
-        };
-      } catch (error) {
-        console.error('[SandboxWS] Handshake failed, retrying in 5s:', error);
-        setIsWsConnected(false);
-        stoppedConnectErrorRef.current = null;
-        rejectConnectRef.current?.(error instanceof Error ? error : new Error(getErrText(error)));
-        resetConnectPromise();
-        if (!isDestroyed) {
-          reconnectTimer = setTimeout(connect, 5000);
+      },
+      onOpen: () => refreshWorkspaceRef.current?.(),
+      onMessage: (message) => {
+        if (message.kind === 'notification' && message.method === FS_DID_CHANGE_METHOD) {
+          void refreshWorkspaceRef.current?.({ preserveExpandedDirs: true });
         }
-      }
-    };
+      },
+      onHandshakeError: (error) =>
+        console.error('[SandboxWS] Handshake failed, retrying with backoff:', error),
+      // 只记录脱敏端点（host/port/path），ticket 查询参数不进入日志。
+      onSocketError: (event, endpoint) =>
+        console.error('[SandboxWS] WebSocket error:', event, { endpoint }),
+      onMessageParseError: (error) =>
+        console.error('[SandboxWS] Failed to parse WebSocket message:', error),
+      // 磁盘配额超限时用 i18n 文案覆盖服务端原始错误，其余错误沿用服务端消息。
+      getRpcErrorMessage: (message, code) =>
+        code === SANDBOX_RPC_DISK_QUOTA_EXCEEDED_CODE
+          ? t('common:code_error.sandbox_error.agent_sandbox_disk_quota_exceeded')
+          : message || 'Sandbox RPC failed',
+      getCloseMessage: (event) => getWsCloseMessage(event),
+      rpcTimeoutMs: RPC_TIMEOUT_MS
+    });
 
-    connect();
+    connectionRef.current = connection;
+    connection.start();
 
     return () => {
-      isDestroyed = true;
-      if (ws) {
-        if (wsRef.current === ws) {
-          wsRef.current = null;
-        }
-        ws.close();
+      connection.stop();
+      if (connectionRef.current === connection) {
+        connectionRef.current = null;
       }
-      if (reconnectTimer) {
-        clearTimeout(reconnectTimer);
-      }
-      pendingRpcRequests.forEach((req) => {
-        req.reject(new Error('WebSocket connection closed'));
-      });
-      pendingRpcRequests.clear();
-      rejectConnectRef.current?.(new Error('WebSocket connection closed'));
-      resetConnectPromise();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -952,7 +795,8 @@ export const useSandboxFileStore = ({
     isPreparing,
     canWrite,
     refreshWorkspaceRef,
-    resetConnectPromise
+    handleConnectRecovering,
+    getWsCloseMessage
   ]);
   // =========================================================================
 
@@ -1713,7 +1557,9 @@ export const useSandboxFileStore = ({
   return {
     fileTree,
     setFileTree,
-    isWsConnected,
+    // 派生连接态：`isWsConnected` 只会在 onopen 后为 true，stop() 会显式上报 false；
+    // 准备中或新 ticket 尚未握手时仍对外显示未连接（审查点 ②）。
+    isWsConnected: isWsConnected && !isPreparing,
     openedFiles,
     setOpenedFiles,
     openedFilesRef,
