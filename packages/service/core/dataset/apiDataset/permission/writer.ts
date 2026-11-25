@@ -1,11 +1,9 @@
 import { runInTransaction } from '@fastgpt/dal/db/transaction';
 import type { DbSession } from '@fastgpt/dal/db/types';
-import {
-  markDatasetCollectionsIndependent,
-  syncDatasetCollectionTreePermissions
-} from '../../collection/entity';
-import { bumpDatasetCollectionPermissionVersion } from '../../entity';
+import { datasetCollectionRepo } from '../../collection/repository/datasetCollectionRepo';
+import { datasetRepo } from '../../repository/datasetRepo';
 import { resourcePermissionRepo } from '../../../../support/permission/repository/resourcePermissionRepo';
+import { syncResourceTreePermissions } from '../../../../support/permission/resourcePermissionService';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
@@ -51,6 +49,15 @@ export const isSameCollaboratorSet = (a: CollaboratorItemType[], b: Collaborator
  *
  * 调用方已在事务内时传入 `tx` 复用同一事务；缺省时函数自建事务。
  */
+export type ApplyCollectionPermissionStatesDeps = {
+  bumpCollectionPermissionVersion?: typeof datasetRepo.bumpCollectionPermissionVersion;
+  replaceResources?: typeof resourcePermissionRepo.replaceResources;
+  markCollectionsIndependent?: typeof datasetCollectionRepo.markIndependent;
+  findCollectionDatasetId?: typeof datasetCollectionRepo.findDatasetIdById;
+  findDirectChildren?: typeof datasetCollectionRepo.findDirectChildren;
+  syncTreePermissions?: typeof syncResourceTreePermissions;
+};
+
 export const applyCollectionPermissionStates = async ({
   teamId,
   datasetId,
@@ -59,7 +66,8 @@ export const applyCollectionPermissionStates = async ({
   expectedApiDatasetServer,
   deadlineAt,
   lease,
-  tx
+  tx,
+  deps
 }: {
   teamId: string;
   datasetId: string;
@@ -74,7 +82,19 @@ export const applyCollectionPermissionStates = async ({
   lease?: RedisLeaseContext;
   /** 调用方已开启事务时传入，复用同一事务；缺省时函数自建事务。 */
   tx?: DbSession;
+  /** 仓储与协同函数注入点；缺省绑定默认 Mongo 仓储适配层。 */
+  deps?: ApplyCollectionPermissionStatesDeps;
 }): Promise<{ updated: number }> => {
+  const bumpCollectionPermissionVersion =
+    deps?.bumpCollectionPermissionVersion ?? datasetRepo.bumpCollectionPermissionVersion;
+  const replaceResources = deps?.replaceResources ?? resourcePermissionRepo.replaceResources;
+  const markCollectionsIndependent =
+    deps?.markCollectionsIndependent ?? datasetCollectionRepo.markIndependent;
+  const findCollectionDatasetId =
+    deps?.findCollectionDatasetId ?? datasetCollectionRepo.findDatasetIdById;
+  const findDirectChildren = deps?.findDirectChildren ?? datasetCollectionRepo.findDirectChildren;
+  const syncTreePermissions = deps?.syncTreePermissions ?? syncResourceTreePermissions;
+
   const changedStates = states.filter((state) => state.changed);
   if (changedStates.length === 0) return { updated: 0 };
 
@@ -92,7 +112,7 @@ export const applyCollectionPermissionStates = async ({
     // 锁 dataset 文档并重读托管状态：抓取期间若关闭托管（或改了外部配置），
     // 这类写入与本次 $inc 冲突，driver 重试后在这里看到新值并丢弃旧轮次，
     // 否则旧目标态会整集覆盖关闭后人工修改的 ACL。
-    const dataset = await bumpDatasetCollectionPermissionVersion({
+    const dataset = await bumpCollectionPermissionVersion({
       datasetId,
       teamId,
       tx: writeTx
@@ -105,7 +125,7 @@ export const applyCollectionPermissionStates = async ({
       throw new PermissionSyncStaleRoundError();
     }
 
-    await resourcePermissionRepo.replaceResources({
+    await replaceResources({
       teamId,
       resourceType: PerResourceTypeEnum.collection,
       resources: changedStates.map((state) => ({
@@ -115,7 +135,7 @@ export const applyCollectionPermissionStates = async ({
       tx: writeTx
     });
 
-    await markDatasetCollectionsIndependent({
+    await markCollectionsIndependent({
       teamId,
       datasetId,
       collectionIds: changedStates.map((state) => state.collectionId),
@@ -131,10 +151,18 @@ export const applyCollectionPermissionStates = async ({
         continue;
       }
       assertPermissionSyncActive({ deadlineAt, lease });
-      await syncDatasetCollectionTreePermissions({
-        collectionId: state.collectionId,
-        teamId,
-        parentId: state.parentId,
+      await syncTreePermissions({
+        resource: {
+          _id: state.collectionId,
+          type: DatasetCollectionTypeEnum.folder,
+          teamId,
+          datasetId,
+          parentId: state.parentId,
+          inheritPermission: true
+        },
+        resourceType: PerResourceTypeEnum.collection,
+        findCollectionDatasetId,
+        findDirectChildren,
         oldParentCollaborators: state.currentCollaborators,
         newParentCollaborators: state.collaborators,
         stopResourceIds,

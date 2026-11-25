@@ -11,10 +11,14 @@ import {
   type BulkMoveCollectionParentItem,
   type DatasetModelAuthContext
 } from '../collection/controller';
+import { runInTransaction } from '@fastgpt/dal/db/transaction';
+import type { DbSession } from '@fastgpt/dal/db/types';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { MongoDataset } from '../schema';
 import { MongoDatasetCollection } from '../collection/schema';
+import { datasetRepo } from '../repository/datasetRepo';
+import { datasetCollectionRepo } from '../collection/repository/datasetCollectionRepo';
 import { getApiDatasetRequest } from './index';
 import {
   buildApiFileRecords,
@@ -71,7 +75,7 @@ export const cleanDatasetLegacySystemRootInSession = async ({
   backfillSyncAll = false
 }: {
   datasetId: string | Types.ObjectId;
-  session: ClientSession;
+  session?: ClientSession;
   backfillSyncAll?: boolean;
 }): Promise<CleanDatasetLegacySystemRootResult> => {
   const datasetObjectId = typeof datasetId === 'string' ? new Types.ObjectId(datasetId) : datasetId;
@@ -85,10 +89,10 @@ export const cleanDatasetLegacySystemRootInSession = async ({
       '_id teamId datasetId inheritPermission'
     )
       .lean()
-      .session(session),
+      .session(session ?? null),
     MongoDataset.findById(datasetObjectId, '_id teamId collectionPermissionEnabled')
       .lean()
-      .session(session)
+      .session(session ?? null)
   ]);
 
   const sentinelIds = sentinels.map((s) => s._id);
@@ -164,22 +168,26 @@ export const cleanDatasetLegacySystemRootInSession = async ({
 };
 
 /**
- * 递增 API 知识库的同步范围版本，用于在 Mongo 事务内把范围变更与 Pro 自动建档串行化到同一 Dataset 文档。
+ * 递增 API 知识库的同步范围版本，用于在事务内把范围变更与 Pro 自动建档串行化到同一 Dataset 文档。
+ * 新调用方传 `tx: DbSession`，存量 `mongoSessionRun` 路由通过 `session` 桥接。
  */
 export const bumpApiDatasetSyncScopeVersionInSession = async ({
   teamId,
   datasetId,
+  tx,
   session
 }: {
   teamId: string | Types.ObjectId;
   datasetId: string | Types.ObjectId;
-  session: ClientSession;
+  tx?: DbSession;
+  session?: ClientSession;
 }) => {
-  await MongoDataset.updateOne(
-    { _id: datasetId, teamId },
-    { $inc: { syncScopeVersion: 1 } },
-    { session }
-  );
+  await datasetRepo.updateSyncScope({
+    teamId,
+    datasetId,
+    tx,
+    session
+  });
 };
 
 /**
@@ -191,24 +199,25 @@ export const bumpApiDatasetSyncScopeVersionInSession = async ({
 export const disableApiDatasetSyncAllInSession = async ({
   teamId,
   datasetId,
+  tx,
   session,
   updateDataset = true,
   cleanLegacySystemRoot = true
 }: {
   teamId: string | Types.ObjectId;
   datasetId: string | Types.ObjectId;
-  session: ClientSession;
+  tx?: DbSession;
+  session?: ClientSession;
   updateDataset?: boolean;
   cleanLegacySystemRoot?: boolean;
 }) => {
-  await MongoDataset.updateOne(
-    { _id: datasetId, teamId },
-    {
-      ...(updateDataset ? { $set: { syncAll: false } } : {}),
-      $inc: { syncScopeVersion: 1 }
-    },
-    { session }
-  );
+  await datasetRepo.updateSyncScope({
+    teamId,
+    datasetId,
+    ...(updateDataset ? { syncAll: false } : {}),
+    tx,
+    session
+  });
   if (cleanLegacySystemRoot) {
     await cleanDatasetLegacySystemRootInSession({
       datasetId,
@@ -227,40 +236,34 @@ export const disableApiDatasetSyncAllInSession = async ({
 export const applyApiDatasetSyncAll = async ({
   teamId,
   datasetId,
+  tx,
   session,
   updateDataset = true
 }: {
   teamId: string;
   datasetId: string | Types.ObjectId;
+  tx?: DbSession;
   session?: ClientSession;
   updateDataset?: boolean;
 }) => {
-  const apply = async (tx: ClientSession) => {
-    await MongoDataset.updateOne(
-      { _id: datasetId, teamId },
-      {
-        ...(updateDataset ? { $set: { syncAll: true } } : {}),
-        $inc: { syncScopeVersion: 1 }
-      },
-      { session: tx }
-    );
-    await MongoDatasetCollection.updateMany(
-      {
-        teamId,
-        datasetId,
-        type: DatasetCollectionTypeEnum.folder,
-        apiFileId: { $exists: true, $ne: null },
-        syncChildren: false
-      },
-      { $set: { syncChildren: true } },
-      { session: tx }
-    );
+  const apply = async (scope: { tx?: DbSession; session?: ClientSession }) => {
+    await datasetRepo.updateSyncScope({
+      teamId,
+      datasetId,
+      ...(updateDataset ? { syncAll: true } : {}),
+      ...scope
+    });
+    await datasetCollectionRepo.reEnableAllPausedApiFolders({
+      teamId,
+      datasetId,
+      ...scope
+    });
   };
 
-  if (session) {
-    await apply(session);
+  if (tx || session) {
+    await apply({ tx, session });
   } else {
-    await mongoSessionRun(apply);
+    await runInTransaction((writeTx) => apply({ tx: writeTx }));
   }
 };
 
@@ -851,22 +854,26 @@ export const createApiDatasetCollection = async ({
 
   // 7. 导入完成后落盘同步范围状态：
   //    - 整库开启：与设置路由共用 applyApiDatasetSyncAll，在同一事务内原子写入 syncAll=true 并恢复全部暂停目录；
-  //    - 局部导入：仅恢复本次显式勾选覆盖到的暂停目录。
+  //    - 局部导入：在同一事务内递增 syncScopeVersion 并恢复本次显式勾选覆盖到的暂停目录。
   if (shouldApplyDatasetSyncAll && failedCount === 0) {
     await applyApiDatasetSyncAll({
       teamId,
       datasetId: dataset._id
     });
   } else if (reEnableSyncFolderIds.length > 0) {
-    await MongoDatasetCollection.updateMany(
-      {
-        _id: { $in: reEnableSyncFolderIds },
+    await runInTransaction(async (writeTx) => {
+      await datasetRepo.updateSyncScope({
         teamId,
         datasetId: dataset._id,
-        type: DatasetCollectionTypeEnum.folder
-      },
-      { $set: { syncChildren: true } }
-    );
+        tx: writeTx
+      });
+      await datasetCollectionRepo.reEnableSyncFolders({
+        teamId,
+        datasetId: dataset._id,
+        folderIds: reEnableSyncFolderIds,
+        tx: writeTx
+      });
+    });
   }
 
   logger.info('Create api file collection completed', {

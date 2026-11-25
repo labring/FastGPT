@@ -10,6 +10,8 @@ const {
   mockCollectionUpdateMany,
   mockDatasetUpdateOne,
   mockMongoSessionRun,
+  mockRunInTransaction,
+  mockUnwrapMongoSession,
   mockEnqueueDatasetPermissionSync,
   mockLoggerWarn,
   mockLoggerError
@@ -22,9 +24,21 @@ const {
   mockCollectionUpdateMany: vi.fn(),
   mockDatasetUpdateOne: vi.fn(),
   mockMongoSessionRun: vi.fn(),
+  mockRunInTransaction: vi.fn(async (cb: (tx: unknown) => Promise<unknown>) =>
+    cb({ id: 'mock-tx', dialect: 'mongo', datasource: 'main', afterCommit: vi.fn() })
+  ),
+  mockUnwrapMongoSession: vi.fn((tx: unknown) => (tx ? 'session' : undefined)),
   mockEnqueueDatasetPermissionSync: vi.fn(),
   mockLoggerWarn: vi.fn(),
   mockLoggerError: vi.fn()
+}));
+
+vi.mock('@fastgpt/dal/db/transaction', () => ({
+  runInTransaction: mockRunInTransaction
+}));
+
+vi.mock('@fastgpt/dal/db/mongo/base', () => ({
+  unwrapMongoSession: mockUnwrapMongoSession
 }));
 
 vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
@@ -863,6 +877,11 @@ describe('createApiDatasetCollection', () => {
       })
     );
     expect(createdFileParams().map((p: any) => p.apiFileId)).toEqual(['missing-file']);
+    expect(mockDatasetUpdateOne).toHaveBeenCalledWith(
+      { _id: 'dataset-id', teamId: 'team-id' },
+      { $inc: { syncScopeVersion: 1 } },
+      { session: 'session' }
+    );
     expect(mockCollectionUpdateMany).toHaveBeenCalledWith(
       {
         _id: { $in: [localId('PAUSED')] },
@@ -870,7 +889,8 @@ describe('createApiDatasetCollection', () => {
         datasetId: 'dataset-id',
         type: 'folder'
       },
-      { $set: { syncChildren: true } }
+      { $set: { syncChildren: true } },
+      { session: 'session' }
     );
   });
 
@@ -909,6 +929,11 @@ describe('createApiDatasetCollection', () => {
       })
     );
     expect(createdFileParams().map((p: any) => p.apiFileId)).toEqual(['child-1']);
+    expect(mockDatasetUpdateOne).toHaveBeenCalledWith(
+      { _id: 'dataset-id', teamId: 'team-id' },
+      { $inc: { syncScopeVersion: 1 } },
+      { session: 'session' }
+    );
     expect(mockCollectionUpdateMany).toHaveBeenCalledWith(
       {
         _id: { $in: [localId('DOC_DIR')] },
@@ -916,7 +941,8 @@ describe('createApiDatasetCollection', () => {
         datasetId: 'dataset-id',
         type: 'folder'
       },
-      { $set: { syncChildren: true } }
+      { $set: { syncChildren: true } },
+      { session: 'session' }
     );
   });
 

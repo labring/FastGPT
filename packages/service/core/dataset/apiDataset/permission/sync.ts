@@ -9,13 +9,10 @@ import type { CollaboratorItemType } from '@fastgpt/global/support/permission/co
 import { buildLegacyApiFileDirSourceMap } from '../utils';
 import { resourcePermissionRepo } from '../../../../support/permission/repository/resourcePermissionRepo';
 import { pickCollaboratorIdFields } from '../../../../support/permission/utils';
-import { findUsernamesByUserIds } from '../../../../support/user/entity';
-import {
-  findActiveTeamMemberIds,
-  findActiveTeamMemberIdsByUserIds
-} from '../../../../support/user/team/entity';
-import { findTeamMemberGroupIds } from '../../../../support/permission/memberGroup/entity';
-import { findTeamOrgIds } from '../../../../support/permission/org/entity';
+import { userRepo } from '../../../../support/user/repository/userRepo';
+import { teamMemberRepo } from '../../../../support/user/team/repository/teamMemberRepo';
+import { memberGroupRepo } from '../../../../support/permission/memberGroup/repository/memberGroupRepo';
+import { orgRepo } from '../../../../support/permission/org/repository/orgRepo';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { Types } from '../../../../common/mongo';
 import { fetchApiFilePermissions } from './adapters';
@@ -239,11 +236,11 @@ export const syncCollectionPermissions = async ({
     teamId,
     itemsByFileId: okPermissionsByFileId,
     deps: {
-      findUsernamesByUserIds,
-      findActiveTeamMemberIdsByUserIds,
-      findActiveTeamMemberIds,
-      findTeamMemberGroupIds,
-      findTeamOrgIds
+      findUsernamesByUserIds: userRepo.findUsernamesByUserIds,
+      findActiveTeamMemberIdsByUserIds: teamMemberRepo.findActiveTeamMemberIdsByUserIds,
+      findActiveTeamMemberIds: teamMemberRepo.findActiveTeamMemberIds,
+      findTeamMemberGroupIds: memberGroupRepo.findTeamMemberGroupIds,
+      findTeamOrgIds: orgRepo.findTeamOrgIds
     }
   });
 

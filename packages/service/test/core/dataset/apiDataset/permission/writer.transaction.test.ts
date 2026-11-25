@@ -152,4 +152,95 @@ describe('applyCollectionPermissionStates transaction boundary', () => {
     const row = await MongoDatasetCollection.findById(collectionId).lean();
     expect(row?.inheritPermission).toBe(true);
   });
+
+  it('commits folder ACL replacement and inheriting child materialization in one DbSession transaction', async () => {
+    const teamId = String(new Types.ObjectId());
+    const datasetId = String(new Types.ObjectId());
+    const folderId = String(new Types.ObjectId());
+    const inheritingChildId = String(new Types.ObjectId());
+    const preservedChildId = String(new Types.ObjectId());
+    const ownerTmbId = String(new Types.ObjectId());
+    const readerTmbId = String(new Types.ObjectId());
+
+    await MongoDataset.create({
+      _id: datasetId,
+      teamId,
+      tmbId: ownerTmbId,
+      name: 'materialize-dataset',
+      type: DatasetTypeEnum.dataset,
+      apiDatasetServer
+    });
+    await MongoDatasetCollection.create([
+      {
+        _id: folderId,
+        teamId,
+        datasetId,
+        tmbId: ownerTmbId,
+        name: 'parent-folder',
+        type: DatasetCollectionTypeEnum.folder,
+        inheritPermission: true
+      },
+      {
+        _id: inheritingChildId,
+        teamId,
+        datasetId,
+        tmbId: ownerTmbId,
+        parentId: folderId,
+        name: 'inheriting-child',
+        type: DatasetCollectionTypeEnum.apiFile,
+        inheritPermission: true
+      },
+      {
+        _id: preservedChildId,
+        teamId,
+        datasetId,
+        tmbId: ownerTmbId,
+        parentId: folderId,
+        name: 'preserved-child',
+        type: DatasetCollectionTypeEnum.apiFile,
+        inheritPermission: true
+      }
+    ]);
+
+    const result = await applyCollectionPermissionStates({
+      teamId,
+      datasetId,
+      states: [
+        {
+          collectionId: folderId,
+          type: DatasetCollectionTypeEnum.folder,
+          parentId: null,
+          collaborators: [
+            { tmbId: ownerTmbId, permission: OwnerRoleVal },
+            { tmbId: readerTmbId, permission: ReadRoleVal }
+          ],
+          currentCollaborators: [{ tmbId: ownerTmbId, permission: OwnerRoleVal }],
+          isIndependent: false,
+          changed: true
+        }
+      ],
+      preserveResourceIds: [preservedChildId],
+      expectedApiDatasetServer: apiDatasetServer
+    });
+
+    expect(result).toEqual({ updated: 1 });
+    expect((await MongoDatasetCollection.findById(folderId).lean())?.inheritPermission).toBe(false);
+    expect(
+      await MongoResourcePermission.countDocuments({
+        teamId,
+        resourceType: PerResourceTypeEnum.collection,
+        resourceId: inheritingChildId,
+        tmbId: readerTmbId,
+        permission: ReadRoleVal
+      })
+    ).toBe(1);
+    expect(
+      await MongoResourcePermission.countDocuments({
+        teamId,
+        resourceType: PerResourceTypeEnum.collection,
+        resourceId: preservedChildId,
+        tmbId: readerTmbId
+      })
+    ).toBe(0);
+  });
 });

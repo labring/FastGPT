@@ -170,13 +170,15 @@ export const resourcePermissionRepo = {
     resourceType,
     resourceIds,
     collaborators,
-    session
+    session,
+    tx
   }: {
     teamId: string;
     resourceType: PerResourceTypeEnum;
     resourceIds: string[];
     collaborators: CollaboratorIdType[];
     session?: ClientSession;
+    tx?: DbSession;
   }) => {
     if (resourceIds.length === 0 || collaborators.length === 0) return Promise.resolve([]);
 
@@ -184,6 +186,8 @@ export const resourcePermissionRepo = {
       .map(pickCollaboratorIdFields)
       .filter((filter) => Object.keys(filter).length === 1);
     if (collaboratorFilters.length === 0) return Promise.resolve([]);
+
+    const mongoSession = session ?? unwrapMongoSession(tx);
 
     return MongoResourcePermission.find(
       {
@@ -193,7 +197,7 @@ export const resourcePermissionRepo = {
         $or: collaboratorFilters
       },
       'resourceId permission tmbId groupId orgId',
-      withSession(session)
+      withSession(mongoSession)
     ).lean();
   },
 
@@ -758,15 +762,18 @@ export const resourcePermissionRepo = {
     teamId,
     resourceType,
     patches,
-    session
+    session,
+    tx
   }: {
     teamId: string;
     resourceType: PerResourceTypeEnum;
     patches: ResourcePermissionPatch[];
     session?: ClientSession;
+    tx?: DbSession;
   }) => {
     if (patches.length === 0) return;
 
+    const mongoSession = session ?? unwrapMongoSession(tx);
     const patchesByKey = new Map<string, ResourcePermissionPatch>();
     for (const patch of patches) {
       const collaborator = pickCollaboratorIdFields(patch.collaborator);
@@ -815,7 +822,7 @@ export const resourcePermissionRepo = {
       for (let index = 0; index < operations.length; index += batchSize) {
         await MongoResourcePermission.bulkWrite(
           operations.slice(index, index + batchSize),
-          withSession(session)
+          withSession(mongoSession)
         );
       }
     };
@@ -824,7 +831,7 @@ export const resourcePermissionRepo = {
 
     for (let index = 0; index < updateOperations.length; index += batchSize) {
       const operations = updateOperations.slice(index, index + batchSize);
-      const result = await MongoResourcePermission.bulkWrite(operations, withSession(session));
+      const result = await MongoResourcePermission.bulkWrite(operations, withSession(mongoSession));
       if (result.matchedCount !== operations.length) {
         throw new MongoTransactionConflictError(
           new Error('Resource permission update matched fewer rows than expected')
@@ -835,7 +842,7 @@ export const resourcePermissionRepo = {
     try {
       for (let index = 0; index < insertDocuments.length; index += batchSize) {
         await MongoResourcePermission.insertMany(insertDocuments.slice(index, index + batchSize), {
-          ...(session ? { session } : {}),
+          ...(mongoSession ? { session: mongoSession } : {}),
           ordered: true
         });
       }
