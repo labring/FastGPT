@@ -435,6 +435,7 @@
   "core.chat.Unpin": "고정 해제",
   "core.chat.error.Chat error": "대화 오류",
   "core.chat.error.Messages empty": "API 콘텐츠가 비어 있습니다. 텍스트가 너무 길 수 있습니다",
+  "core.chat.error.File read failed": "파일을 읽지 못했습니다. 다시 업로드한 후 시도해 주세요.",
   "core.chat.error.Select dataset empty": "데이터셋을 선택하지 않았습니다",
   "core.chat.error.data_error": "데이터 조회 오류",
   "core.chat.feedback.No Content": "사용자가 구체적인 피드백 내용을 제공하지 않았습니다",

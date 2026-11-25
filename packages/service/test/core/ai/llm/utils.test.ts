@@ -43,6 +43,26 @@ vi.mock('@fastgpt/service/common/system/log', () => ({
   }
 }));
 
+// 只观测告警日志，其余日志方法继续走真实实现，避免影响同文件其它模块。
+const { loggerWarnMock } = vi.hoisted(() => ({ loggerWarnMock: vi.fn() }));
+
+vi.mock('@fastgpt/service/common/logger', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/common/logger')>();
+  return {
+    ...actual,
+    getLogger: (category?: Parameters<typeof actual.getLogger>[0]) => {
+      const logger = actual.getLogger(category);
+      return new Proxy(logger, {
+        get(target, property, receiver) {
+          if (property === 'warn') return loggerWarnMock;
+          const value = Reflect.get(target, property, receiver);
+          return typeof value === 'function' ? value.bind(target) : value;
+        }
+      });
+    }
+  };
+});
+
 vi.mock('@fastgpt/service/common/api/axios', () => ({
   axios: {
     head: vi.fn(),
@@ -1387,6 +1407,101 @@ describe('loadRequestMessages function tests', () => {
       expect(result).toHaveLength(1);
       expect(result[0].content).toBe('Check these files');
       expect(mockAxiosGet).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not log raw media urls when dropping failed image/audio/video parts', async () => {
+      getTestInstanceConfig().feature.multipleDataToBase64 = true;
+      const signedUrl = 'https://files.example.com/private/media.png?X-Amz-Signature=secret';
+      const signedAudio = 'https://files.example.com/private/voice.mp3?token=secret';
+      const signedVideo = 'https://files.example.com/private/clip.mp4?token=secret';
+      mockGetImageBase64.mockRejectedValue(
+        Object.assign(new Error(`download failed for ${signedUrl}`), {
+          code: 'ERR_BAD_REQUEST',
+          response: { status: 403 }
+        })
+      );
+      mockAxiosGet.mockRejectedValue(new Error(`download failed for ${signedAudio}`));
+
+      const result = await loadRequestMessages({
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: [
+              { type: 'text', text: 'Keep the text' },
+              { type: 'image_url', image_url: { url: signedUrl } },
+              { type: 'input_audio', input_audio: { data: signedAudio, format: 'mp3' } },
+              { type: 'video_url', video_url: { url: signedVideo } }
+            ]
+          }
+        ],
+        useVision: true,
+        useAudio: true,
+        useVideo: true
+      });
+
+      expect(result[0].content).toBe('Keep the text');
+
+      const warns = loggerWarnMock.mock.calls as Array<[string, Record<string, unknown>]>;
+      const imageWarn = warns.find(
+        ([message]) => message === 'Drop image content part after normalization failure'
+      );
+      const audioWarn = warns.find(
+        ([message]) => message === 'Drop audio content part after normalization failure'
+      );
+      const videoWarn = warns.find(
+        ([message]) => message === 'Drop video content part after normalization failure'
+      );
+
+      expect(imageWarn?.[1]).toEqual({
+        mediaType: 'image',
+        status: 403,
+        code: 'ERR_BAD_REQUEST',
+        errorName: 'Error'
+      });
+      expect(audioWarn?.[1]).toMatchObject({ mediaType: 'audio', errorName: 'Error' });
+      expect(videoWarn?.[1]).toMatchObject({ mediaType: 'video', errorName: 'Error' });
+
+      // 签名地址与带 URL 的错误原文都不能进入日志。
+      const serializedWarns = JSON.stringify(warns);
+      expect(serializedWarns).not.toContain('files.example.com');
+      expect(serializedWarns).not.toContain('secret');
+    });
+
+    it('rejects when the only media part fails to normalize', async () => {
+      getTestInstanceConfig().feature.multipleDataToBase64 = true;
+      mockGetImageBase64.mockRejectedValue(new Error('download failed'));
+
+      // 只有一张图片且读取失败：本轮没有可消费输入，不能退化成字符串 'null' 继续请求模型。
+      await expect(
+        loadRequestMessages({
+          messages: [
+            {
+              role: ChatCompletionRequestMessageRoleEnum.User,
+              content: [
+                {
+                  type: 'image_url',
+                  image_url: { url: 'https://files.example.com/only.png?sig=secret' }
+                }
+              ]
+            }
+          ],
+          useVision: true
+        })
+      ).rejects.toThrow('common:core.chat.error.File read failed');
+    });
+
+    it('keeps the null placeholder when a user message never had any content', async () => {
+      // 用户本来就没发内容属于既有语义，仍格式化为 'null'，不能被误判成文件读取失败。
+      const result = await loadRequestMessages({
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: []
+          }
+        ]
+      });
+
+      expect(result[0].content).toBe('null');
     });
   });
 

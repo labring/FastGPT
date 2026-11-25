@@ -21,7 +21,7 @@ import { axios } from '../../../common/api/axios';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getImageBase64 } from '../../../common/file/image/utils';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import {
   parseFileExtensionFromUrl,
   parseFilenameExtension
@@ -74,6 +74,31 @@ export const isSandboxPreviewFileUrl = (url: string) => {
  */
 export const maskImagePlaceholderUrl = (url: string) =>
   isSandboxPreviewFileUrl(url) ? 'sandbox preview file' : url;
+
+/**
+ * 媒体归一化失败日志只记录可观测的分类、HTTP 状态与错误码/错误名。
+ * 上传链接和预览链接可能带签名或一次性凭证，错误原文也可能回显 URL，
+ * 因此既不记录原始地址，也不记录 `getErrText` 的完整文本。
+ */
+const getMediaNormalizationErrorLog = (mediaType: 'image' | 'audio' | 'video', error: unknown) => {
+  const err = error as {
+    name?: string;
+    code?: string | number;
+    status?: number;
+    response?: { status?: number };
+  };
+  return {
+    mediaType,
+    status: err?.response?.status ?? err?.status,
+    code: err?.code,
+    errorName: err?.name
+  };
+};
+
+/** 单条用户消息在归一化过程中的媒体丢弃计数，用于区分「部分失败」与「无可消费输入」。 */
+type MediaNormalizationState = {
+  droppedPartCount: number;
+};
 
 /** 工具图片下载超时上限（ms），避免单张慢图长时间阻塞 Agent 推理轮次。 */
 export const TOOL_IMAGE_DOWNLOAD_TIMEOUT_MS = 15 * 1000;
@@ -514,7 +539,8 @@ export const loadRequestMessages = async ({
    * 不在 FastGPT 服务端做 HEAD 可访问性校验，避免多图并发请求引发外部连接耗尽 DoS。
    */
   const normalizeImageContentPart = async (
-    item: Extract<ChatCompletionContentPart, { type: 'image_url' }>
+    item: Extract<ChatCompletionContentPart, { type: 'image_url' }>,
+    state?: MediaNormalizationState
   ): Promise<ChatCompletionContentPart | undefined> => {
     const { key: _key, ...imageItem } = item;
     const inlinePart = normalizeInlineImageDataPart(imageItem);
@@ -537,10 +563,11 @@ export const loadRequestMessages = async ({
       } catch (error) {
         // 内部文件下载偶发失败（签名过期、边缘节点 400 等）不应让整轮请求失败：
         // 丢弃该图片 part，保留其余文本继续请求模型，与工具图片的降级策略保持一致。
-        logger.warn('Drop image content part after normalization failure', {
-          url: maskImagePlaceholderUrl(imgUrl),
-          error: getErrText(error)
-        });
+        if (state) state.droppedPartCount++;
+        logger.warn(
+          'Drop image content part after normalization failure',
+          getMediaNormalizationErrorLog('image', error)
+        );
         return undefined;
       }
     }
@@ -552,7 +579,8 @@ export const loadRequestMessages = async ({
    * 归一化音频输入：远程 URL 可直接保留，内部文件或强制 base64 场景转成 data URL。
    */
   const normalizeAudioContentPart = async (
-    item: Extract<ChatCompletionContentPart, { type: 'input_audio' }>
+    item: Extract<ChatCompletionContentPart, { type: 'input_audio' }>,
+    state?: MediaNormalizationState
   ): Promise<ChatCompletionContentPart | undefined> => {
     const { key: _key, ...audioItem } = item;
     const audioData = audioItem.input_audio.data;
@@ -574,9 +602,11 @@ export const loadRequestMessages = async ({
         }
       };
     } catch (error) {
-      logger.warn('Drop audio content part after normalization failure', {
-        error: getErrText(error)
-      });
+      if (state) state.droppedPartCount++;
+      logger.warn(
+        'Drop audio content part after normalization failure',
+        getMediaNormalizationErrorLog('audio', error)
+      );
       return undefined;
     }
   };
@@ -586,7 +616,8 @@ export const loadRequestMessages = async ({
    * 保留 video_url 结构，避免在这里绑定具体供应商字段。
    */
   const normalizeVideoContentPart = async (
-    item: Extract<ChatCompletionContentPart, { type: 'video_url' }>
+    item: Extract<ChatCompletionContentPart, { type: 'video_url' }>,
+    state?: MediaNormalizationState
   ): Promise<ChatCompletionContentPart | undefined> => {
     const { key: _key, ...videoItem } = item;
     const videoUrl = videoItem.video_url.url;
@@ -607,9 +638,11 @@ export const loadRequestMessages = async ({
         }
       };
     } catch (error) {
-      logger.warn('Drop video content part after normalization failure', {
-        error: getErrText(error)
-      });
+      if (state) state.droppedPartCount++;
+      logger.warn(
+        'Drop video content part after normalization failure',
+        getMediaNormalizationErrorLog('video', error)
+      );
       return undefined;
     }
   };
@@ -619,7 +652,8 @@ export const loadRequestMessages = async ({
    * 普通文档文件不会进入 LLM 多模态消息，文档内容由上游读取后以文本提供。
    */
   const normalizeFileUrlContentPart = async (
-    item: Extract<ChatCompletionContentPart, { type: 'file_url' }>
+    item: Extract<ChatCompletionContentPart, { type: 'file_url' }>,
+    state?: MediaNormalizationState
   ): Promise<ChatCompletionContentPart | undefined> => {
     const { key: _key, ...fileItem } = item;
     if (!useVision && !useAudio && !useVideo) return;
@@ -635,17 +669,18 @@ export const loadRequestMessages = async ({
     // 上传文件会先以 FastGPT 内部的 file_url 存在，发给模型前需要转成供应商支持的
     // image_url / input_audio / video_url。文档和无法识别的文件不直接透传给 LLM。
     if (parsed.type === 'image' && useVision) {
-      return normalizeImageContentPart(createImageContentPart(fileItem.url));
+      return normalizeImageContentPart(createImageContentPart(fileItem.url), state);
     }
 
     if (parsed.type === 'audio' && useAudio) {
       return normalizeAudioContentPart(
-        createAudioContentPart(fileItem.url, parsed.filename || fileItem.name)
+        createAudioContentPart(fileItem.url, parsed.filename || fileItem.name),
+        state
       );
     }
 
     if (parsed.type === 'video' && useVideo) {
-      return normalizeVideoContentPart(createVideoContentPart(fileItem.url));
+      return normalizeVideoContentPart(createVideoContentPart(fileItem.url), state);
     }
   };
 
@@ -653,11 +688,14 @@ export const loadRequestMessages = async ({
    * 单个 content part 的协议归一化入口。
    * 文本和已支持的非媒体 part 直接透传，媒体 part 按类型分派处理。
    */
-  const normalizeMediaContentPart = async (item: ChatCompletionContentPart) => {
-    if (item.type === 'image_url') return normalizeImageContentPart(item);
-    if (item.type === 'input_audio') return normalizeAudioContentPart(item);
-    if (item.type === 'video_url') return normalizeVideoContentPart(item);
-    if (item.type === 'file_url') return normalizeFileUrlContentPart(item);
+  const normalizeMediaContentPart = async (
+    item: ChatCompletionContentPart,
+    state?: MediaNormalizationState
+  ) => {
+    if (item.type === 'image_url') return normalizeImageContentPart(item, state);
+    if (item.type === 'input_audio') return normalizeAudioContentPart(item, state);
+    if (item.type === 'video_url') return normalizeVideoContentPart(item, state);
+    if (item.type === 'file_url') return normalizeFileUrlContentPart(item, state);
 
     return item;
   };
@@ -666,8 +704,13 @@ export const loadRequestMessages = async ({
    * 将 FastGPT 内部媒体 content part 归一化为供应商可消费的消息格式。
    * 本地路径和强制 base64 开关会在这里统一转换；内部 key 只会被剥离，不参与处理。
    */
-  const normalizeMediaContentParts = async (content: ChatCompletionContentPart[]) => {
-    const normalized = await Promise.all(content.map((item) => normalizeMediaContentPart(item)));
+  const normalizeMediaContentParts = async (
+    content: ChatCompletionContentPart[],
+    state?: MediaNormalizationState
+  ) => {
+    const normalized = await Promise.all(
+      content.map((item) => normalizeMediaContentPart(item, state))
+    );
 
     return normalized.filter(Boolean) as ChatCompletionContentPart[];
   };
@@ -758,26 +801,35 @@ export const loadRequestMessages = async ({
    * - string 内容可从短文本提取媒体 URL；
    * - array 内容只做能力过滤，不再额外解析文本 URL；
    * - 最终统一归一化为模型供应商可消费的 content part。
+   *
+   * 返回值同时带上本条消息的媒体丢弃数：调用方据此区分「部分媒体失败但仍有文本」与
+   * 「本轮没有可消费输入」，后者不能再以字符串 `null` 继续请求模型。
    */
   const parseUserContent = async (content: string | ChatCompletionContentPart[]) => {
-    if (content === undefined) return;
+    const state: MediaNormalizationState = { droppedPartCount: 0 };
+    if (content === undefined) return { content: undefined, droppedPartCount: 0 };
     if (typeof content === 'string') {
-      if (content === '') return;
+      if (content === '') return { content: undefined, droppedPartCount: 0 };
 
       const normalizedContent = await normalizeMediaContentParts(
-        await parseTextUserContentParts(content)
+        await parseTextUserContentParts(content),
+        state
       );
-      if (normalizedContent.length === 0) return;
-      return normalizedContent;
+      return {
+        content: normalizedContent.length === 0 ? undefined : normalizedContent,
+        droppedPartCount: state.droppedPartCount
+      };
     }
 
     const supportedContent = content
       .map((item) => filterSupportedUserContentPart(item))
       .filter(Boolean) as ChatCompletionContentPart[];
-    const normalizedContent = await normalizeMediaContentParts(supportedContent);
+    const normalizedContent = await normalizeMediaContentParts(supportedContent, state);
 
-    if (normalizedContent.length === 0) return;
-    return normalizedContent;
+    return {
+      content: normalizedContent.length === 0 ? undefined : normalizedContent,
+      droppedPartCount: state.droppedPartCount
+    };
   };
 
   /**
@@ -971,8 +1023,14 @@ export const loadRequestMessages = async ({
             content
           };
         } else if (item.role === ChatCompletionRequestMessageRoleEnum.User) {
-          const content = await parseUserContent(item.content);
+          const { content, droppedPartCount } = await parseUserContent(item.content);
           if (!content) {
+            // 部分失败（仍有文本或其它可用 part）走上面的继续逻辑；这里只剩「本条消息没有
+            // 任何可消费输入」。若是因为媒体全部读取失败，不能再以 'null' 继续发空任务，
+            // 而应让本轮以明确的文件读取失败结束。
+            if (droppedPartCount > 0) {
+              throw new UserError(i18nT('common:core.chat.error.File read failed'));
+            }
             return {
               ...item,
               content: 'null'

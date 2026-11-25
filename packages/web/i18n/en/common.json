@@ -437,6 +437,7 @@
   "core.chat.Unpin": "Unpin",
   "core.chat.error.Chat error": "Chat Error",
   "core.chat.error.Messages empty": "API Content is Empty, Possibly Due to Text Being Too Long",
+  "core.chat.error.File read failed": "Failed to read the uploaded file. Please re-upload and try again.",
   "core.chat.error.Select dataset empty": "You Have Not Selected a Dataset",
   "core.chat.error.data_error": "Data Retrieval Error",
   "core.chat.feedback.No Content": "User Did Not Provide Specific Feedback Content",

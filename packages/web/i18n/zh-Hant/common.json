@@ -437,6 +437,7 @@
   "core.chat.Unpin": "取消釘選",
   "core.chat.error.Chat error": "對話發生錯誤",
   "core.chat.error.Messages empty": "API 內容為空，可能是文字過長",
+  "core.chat.error.File read failed": "檔案讀取失敗，請重新上傳後再試",
   "core.chat.error.Select dataset empty": "您尚未選擇知識庫",
   "core.chat.error.data_error": "取得資料錯誤",
   "core.chat.feedback.No Content": "使用者未提供具體回饋內容",
