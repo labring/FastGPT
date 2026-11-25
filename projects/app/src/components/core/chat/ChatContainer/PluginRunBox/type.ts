@@ -10,6 +10,7 @@ import { ChatBoxInputFormType } from '../ChatBox/type';
 
 export type PluginRunBoxProps = {
   complianceTipPlacement?: 'default' | 'external';
+  isReady?: boolean;
   appId: string;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;

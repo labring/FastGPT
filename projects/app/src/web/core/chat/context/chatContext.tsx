@@ -1,4 +1,5 @@
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useLatest } from 'ahooks';
 import { useRouter } from 'next/router';
 import React, { type ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
 import { createContext } from 'use-context-selector';
@@ -344,10 +345,21 @@ const ChatContextProvider = ({
     statusPollingNeedsRetry.current = false;
   }, [historyTargetParams]);
 
+  const hasOutLinkTarget = Boolean(
+    historyOutLinkAuthData?.shareId && historyOutLinkAuthData?.outLinkUid
+  );
+  const loadHistoriesRef = useLatest(loadHistories);
+
   // 轮询同步侧栏 chatGenerateStatus / hasBeenRead（以服务端为准）。
   // 运行中或上一轮请求失败时继续重试；成功确认全部空闲后停止，切回标签页仍单次刷新。
   useEffect(() => {
-    if (disabled || (!historyAppId && !historySkillId) || !historiesRef.current.length) return;
+    if (
+      disabled ||
+      (!historyAppId && !historySkillId && !hasOutLinkTarget) ||
+      !historiesRef.current.length
+    ) {
+      return;
+    }
 
     let polling = false;
     let disposed = false;
@@ -376,6 +388,15 @@ const ChatContextProvider = ({
         if (disposed) return;
         statusPollingNeedsRetry.current = false;
         const map = new Map(res.list.map((item) => [item.chatId, item]));
+        const hasCompletedGenerating = historiesRef.current.some((item) => {
+          if (item.chatGenerateStatus !== ChatGenerateStatusEnum.generating) return false;
+          const status = map.get(item.chatId);
+          return (
+            status !== undefined &&
+            (status.chatGenerateStatus ?? item.chatGenerateStatus) !==
+              ChatGenerateStatusEnum.generating
+          );
+        });
         setHistories((prev) =>
           prev.map((item) => {
             const status = map.get(item.chatId);
@@ -392,6 +413,10 @@ const ChatContextProvider = ({
             };
           })
         );
+        if (hasCompletedGenerating) {
+          // 后台生成完成后静默刷新首屏历史，补齐服务端落库的真实标题与排序。
+          loadHistoriesRef.current?.({ init: true, silent: true });
+        }
       } catch {
         if (disposed) return;
         // 请求失败无法确认最新状态，静默保留整轮快照，等待下一次成功读取后再更新。
@@ -420,9 +445,11 @@ const ChatContextProvider = ({
     disabled,
     historyAppId,
     historySkillId,
+    hasOutLinkTarget,
     historyTargetParams,
     historyChatIdsKey,
     hasGeneratingInSidebar,
+    loadHistoriesRef,
     setHistories
   ]);
 

@@ -1,5 +1,6 @@
-import React, { type ReactNode, useCallback, useEffect, useRef } from 'react';
+import React, { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
+import { useMemoizedFn } from 'ahooks';
 import type { PluginRunBoxProps } from './type';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { PluginRunBoxTabEnum } from './constants';
@@ -8,32 +9,54 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
   ChatGenerateStatusEnum,
   ChatRoleEnum,
-  ChatSourceTypeEnum
+  ChatSourceTypeEnum,
+  ChatStatusEnum
 } from '@fastgpt/global/core/chat/constants';
 import type { generatingMessageProps } from '../type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { useTranslation } from 'next-i18next';
-import type { ChatBoxInputFormType } from '../ChatBox/type';
+import type { ChatBoxInputFormType, ChatGeneratingConflictRecovery } from '../ChatBox/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { clientGetWorkflowToolRunUserQuery } from '@/components/core/chat/ChatContainer/PluginRunBox/utils';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import { toChatAuthApiTarget } from '@/web/core/chat/utils';
+import type { ResolvedChatAuthTargetInput } from '@/web/core/chat/type';
+import { useChatAuthApiTarget } from '@/web/core/chat/utils';
+import { getChatHistoryStatus } from '@/web/core/chat/history/api';
 import {
   appendNodeResponseByParent,
   mergeNodeResponseDataByIdAndParent
 } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { isChatEntryModerationError } from '@fastgpt/global/core/chat/error';
-import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
-import { safeAbortController } from '../ChatBox/utils/generate';
+import {
+  WorkflowRuntimeContext,
+  WorkflowRuntimeContextProvider
+} from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
+import {
+  getChatGeneratingConflictData,
+  isChatGeneratingError,
+  safeAbortController
+} from '../ChatBox/utils/generate';
+import { getLastAiDataId } from '../ChatBox/utils/resume';
+import { useChatResume } from '../ChatBox/hooks/useChatResume';
 
 type PluginRunContextType = PluginRunBoxProps & {
   isChatting: boolean;
   onSubmit: (e: ChatBoxInputFormType) => Promise<any>;
   instruction: string;
 };
+
+type PluginRunMessageTarget = {
+  runSourceKey: string;
+  runAppId: string;
+  runChatId: string;
+  responseChatItemId?: string;
+};
+
+const isAbortByLeave = (reason: unknown) =>
+  reason === 'leave' || (reason instanceof Error && reason.message === 'leave');
 
 export const PluginRunContext = createContext<
   Omit<PluginRunContextType, 'appId' | 'chatId' | 'outLinkAuthData'>
@@ -45,7 +68,7 @@ export const PluginRunContext = createContext<
   instruction: ''
 });
 
-const PluginRunContextProvider = ({
+const PluginRunContextInner = ({
   children,
   ...props
 }: PluginRunBoxProps & { children: ReactNode }) => {
@@ -55,14 +78,26 @@ const PluginRunContextProvider = ({
     onChatGenerateStatusChange,
     appId,
     chatId,
-    outLinkAuthData
+    outLinkAuthData,
+    isReady = true
   } = props;
+
+  const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
+  const sourceKey = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceKey);
+  const chatAuthTarget = useChatAuthApiTarget({ sourceTarget, outLinkAuthData });
 
   const pluginInputs = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.pluginInputs);
   const setTab = useContextSelector(ChatItemContext, (v) => v.setPluginRunTab);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const chatConfig = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.chatConfig);
+  const chatBoxSourceKey = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.sourceKey);
+  const chatBoxAppId = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.appId);
+  const chatBoxChatId = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.chatId);
+  const chatGenerateStatus = useContextSelector(
+    ChatItemContext,
+    (v) => v.chatBoxData?.chatGenerateStatus
+  );
 
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
@@ -70,18 +105,85 @@ const PluginRunContextProvider = ({
   const instruction = chatConfig?.instruction || '';
 
   const { toast } = useToast();
-  const chatController = useRef(new AbortController());
-  const activeTargetRef = useRef({ appId, chatId });
-  useEffect(() => {
-    activeTargetRef.current = { appId, chatId };
-  }, [appId, chatId]);
   const { t } = useTranslation();
-  /* Abort chat completions, questionGuide */
-  const abortRequest = useCallback(() => {
-    safeAbortController(chatController.current, 'stop');
-  }, []);
 
-  const notifyChatGenerateStatusChange = useCallback(
+  const chatControllerRef = useRef<AbortController>();
+  const resumeControllerRef = useRef<AbortController>();
+  const resumedChatTargetRef = useRef<string | undefined>();
+  const activeSourceKeyRef = useRef<string | undefined>(sourceKey);
+  const activeChatIdRef = useRef<string | undefined>(chatId);
+  const [chatGeneratingConflict, setChatGeneratingConflict] =
+    useState<ChatGeneratingConflictRecovery>();
+
+  /** 中断当前窗口的直连流与恢复流；离开切换使用 leave 保留服务端生成状态。 */
+  const abortRequest = useMemoizedFn((reason: 'stop' | 'leave' = 'stop') => {
+    safeAbortController(chatControllerRef.current, reason);
+    safeAbortController(resumeControllerRef.current, reason);
+  });
+
+  useEffect(() => {
+    activeSourceKeyRef.current = sourceKey;
+    activeChatIdRef.current = chatId;
+    resumedChatTargetRef.current = undefined;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset on chat switch
+    setChatGeneratingConflict(undefined);
+
+    return () => {
+      // 切换会话或卸载组件（例如切往普通对话应用）时清空活跃标识，并按 leave 断开本地订阅，
+      // 防止旧流继续写入外层共享的 ChatRecordContext 或对已离开的会话误发 markRead。
+      activeSourceKeyRef.current = undefined;
+      activeChatIdRef.current = undefined;
+      abortRequest('leave');
+    };
+  }, [sourceKey, chatId, abortRequest]);
+
+  useEffect(() => {
+    const handlePageHide = (event: PageTransitionEvent) => {
+      if (!event.persisted) abortRequest('leave');
+    };
+    window.addEventListener('pagehide', handlePageHide);
+    return () => {
+      window.removeEventListener('pagehide', handlePageHide);
+    };
+  }, [abortRequest]);
+
+  /** 结合组件活跃 ref 与全局会话 store，校验某轮插件运行是否仍对应当前可见会话。 */
+  const isTargetActive = useCallback(
+    ({
+      targetSourceKey,
+      targetAppId,
+      targetChatId,
+      resolvedChatId
+    }: {
+      targetSourceKey: string;
+      targetAppId: string;
+      targetChatId: string;
+      resolvedChatId?: string;
+    }) => {
+      if (activeSourceKeyRef.current !== targetSourceKey) return false;
+
+      const storeState = useChatStore.getState();
+      if (storeState.appId && storeState.appId !== targetAppId) return false;
+
+      if (targetChatId) {
+        if (activeChatIdRef.current !== targetChatId) return false;
+        if (storeState.chatId && storeState.chatId !== targetChatId) return false;
+        return true;
+      }
+
+      if (resolvedChatId) {
+        if (activeChatIdRef.current && activeChatIdRef.current !== resolvedChatId) {
+          return false;
+        }
+        return storeState.chatId === resolvedChatId;
+      }
+
+      return !activeChatIdRef.current && !storeState.chatId;
+    },
+    []
+  );
+
+  const notifyChatGenerateStatusChange = useMemoizedFn(
     (
       status: ChatGenerateStatusEnum,
       options?: {
@@ -105,83 +207,156 @@ const PluginRunContextProvider = ({
         hasBeenRead: options?.hasBeenRead,
         title: options?.title
       });
-    },
-    [appId, chatId, onChatGenerateStatusChange]
+    }
   );
 
-  const finishPluginGenerateStatus = useCallback(
+  const finishChatGenerateStatus = useMemoizedFn(
     ({
-      runAppId,
-      targetChatId,
-      runOutLinkAuthData,
+      status,
       finishedInActiveChat,
+      targetChatTarget = chatAuthTarget,
+      targetSourceKey = sourceKey,
+      targetAppId,
+      targetChatId = chatId,
+      shouldUpdateChatBoxData,
       skipMarkRead = false
     }: {
-      runAppId: string;
-      targetChatId: string;
-      runOutLinkAuthData?: PluginRunBoxProps['outLinkAuthData'];
+      status: ChatGenerateStatusEnum;
       finishedInActiveChat: boolean;
+      targetChatTarget?: ResolvedChatAuthTargetInput;
+      targetSourceKey?: string;
+      targetAppId?: string;
+      targetChatId?: string;
+      shouldUpdateChatBoxData?: (state: {
+        sourceKey?: string;
+        appId?: string;
+        chatId?: string;
+      }) => boolean;
       skipMarkRead?: boolean;
     }) => {
-      if (!runAppId || !targetChatId) return;
+      const appSourcePrefix = `${ChatSourceTypeEnum.app}:`;
+      const resolvedAppId =
+        targetAppId ??
+        (targetSourceKey?.startsWith(appSourcePrefix)
+          ? targetSourceKey.slice(appSourcePrefix.length)
+          : appId);
+      if (!resolvedAppId || !targetChatId) return;
+
+      const isGenerating = status === ChatGenerateStatusEnum.generating;
 
       setChatBoxData?.((state) =>
-        state.appId === runAppId && state.chatId === targetChatId
+        (shouldUpdateChatBoxData?.(state) ??
+        ((state.sourceKey === targetSourceKey || state.appId === resolvedAppId) &&
+          state.chatId === targetChatId))
           ? {
               ...state,
-              chatGenerateStatus: ChatGenerateStatusEnum.done,
-              hasBeenRead: finishedInActiveChat
+              chatGenerateStatus: status,
+              hasBeenRead: isGenerating ? false : finishedInActiveChat
             }
           : state
       );
 
-      const syncDoneStatus = (hasBeenRead: boolean) => {
-        notifyChatGenerateStatusChange(ChatGenerateStatusEnum.done, {
-          targetAppId: runAppId,
+      const syncStatus = (hasBeenRead: boolean) => {
+        notifyChatGenerateStatusChange(status, {
+          targetAppId: resolvedAppId,
           targetChatId,
           hasBeenRead
         });
       };
 
-      if (!finishedInActiveChat || skipMarkRead || !onMarkChatRead) {
-        syncDoneStatus(finishedInActiveChat);
+      if (isGenerating || !finishedInActiveChat || skipMarkRead || !onMarkChatRead) {
+        syncStatus(isGenerating ? false : finishedInActiveChat);
         return;
       }
 
-      const authTarget = toChatAuthApiTarget({
-        sourceTarget: { sourceType: ChatSourceTypeEnum.app, sourceId: runAppId },
-        outLinkAuthData: runOutLinkAuthData
-      });
       void onMarkChatRead({
-        ...authTarget,
+        ...targetChatTarget,
         chatId: targetChatId
       })
         .catch(() => {})
         .finally(() => {
-          syncDoneStatus(true);
+          syncStatus(true);
         });
-    },
-    [notifyChatGenerateStatusChange, onMarkChatRead, setChatBoxData]
+    }
   );
 
-  const generatingMessage = useCallback(
-    ({
-      event,
-      text = '',
-      status,
-      name,
-      tool,
-      nodeResponse,
-      variables,
-      title
-    }: generatingMessageProps) => {
-      const isCurrentTarget =
-        activeTargetRef.current.appId === appId && activeTargetRef.current.chatId === chatId;
+  /** 客户端非 leave 中断时，先向服务端核对真实租约状态，避免服务端仍在执行却提前报 done。 */
+  const reconcileAbortedRunStatus = useMemoizedFn(
+    async ({
+      runAppId,
+      runSourceKey,
+      targetChatId,
+      runChatTarget,
+      finishedInActiveChat
+    }: {
+      runAppId: string;
+      runSourceKey: string;
+      targetChatId: string;
+      runChatTarget: ResolvedChatAuthTargetInput;
+      finishedInActiveChat: boolean;
+    }) => {
+      if (!runAppId || !targetChatId) return;
+
+      try {
+        const { list } = await getChatHistoryStatus({
+          ...runChatTarget,
+          chatIds: [targetChatId]
+        });
+        const serverItem = list.find((item) => item.chatId === targetChatId);
+        if (serverItem?.chatGenerateStatus === ChatGenerateStatusEnum.generating) {
+          finishChatGenerateStatus({
+            status: ChatGenerateStatusEnum.generating,
+            finishedInActiveChat: false,
+            targetChatTarget: runChatTarget,
+            targetSourceKey: runSourceKey,
+            targetAppId: runAppId,
+            targetChatId
+          });
+          return;
+        }
+
+        finishChatGenerateStatus({
+          status: ChatGenerateStatusEnum.done,
+          finishedInActiveChat,
+          targetChatTarget: runChatTarget,
+          targetSourceKey: runSourceKey,
+          targetAppId: runAppId,
+          targetChatId
+        });
+      } catch {
+        // 状态查询失败无法确认服务端是否结束，保留 generating 交由侧栏轮询收敛。
+      }
+    }
+  );
+
+  const applyGeneratingMessage = useCallback(
+    (
+      {
+        event,
+        text = '',
+        status,
+        name,
+        tool,
+        nodeResponse,
+        variables,
+        title
+      }: generatingMessageProps,
+      runTarget?: PluginRunMessageTarget
+    ) => {
+      const targetSourceKey = runTarget?.runSourceKey ?? sourceKey;
+      const targetAppId = runTarget?.runAppId ?? appId;
+      const targetChatId = runTarget?.runChatId ?? chatId;
+      const isCurrentTarget = isTargetActive({
+        targetSourceKey,
+        targetAppId,
+        targetChatId
+      });
 
       if (event === SseResponseEventEnum.chatTitle && title) {
         if (isCurrentTarget) {
           setChatBoxData?.((state) =>
-            state.appId === appId && state.chatId === chatId
+            (state.sourceKey === targetSourceKey || state.appId === targetAppId) &&
+            state.chatId === targetChatId
               ? {
                   ...state,
                   title
@@ -190,8 +365,8 @@ const PluginRunContextProvider = ({
           );
         }
         notifyChatGenerateStatusChange(ChatGenerateStatusEnum.generating, {
-          targetAppId: appId,
-          targetChatId: chatId,
+          targetAppId,
+          targetChatId,
           title
         });
         return;
@@ -199,13 +374,22 @@ const PluginRunContextProvider = ({
 
       if (!isCurrentTarget) return;
 
+      if (event === SseResponseEventEnum.updateVariables && variables) {
+        resetVariables({ variables });
+        return;
+      }
+
       setChatRecords((state) =>
         state.map((item, index) => {
           if (index !== state.length - 1 || item.obj !== ChatRoleEnum.AI) return item;
+          if (runTarget?.responseChatItemId && item.dataId !== runTarget.responseChatItemId) {
+            return item;
+          }
 
-          const lastValue: AIChatItemValueItemType = JSON.parse(
-            JSON.stringify(item.value[item.value.length - 1])
-          );
+          const rawLastValue = item.value[item.value.length - 1];
+          const lastValue: AIChatItemValueItemType | undefined = rawLastValue
+            ? JSON.parse(JSON.stringify(rawLastValue))
+            : undefined;
 
           if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
             return {
@@ -275,19 +459,77 @@ const PluginRunContextProvider = ({
                 return val;
               })
             };
-          } else if (event === SseResponseEventEnum.updateVariables && variables) {
-            resetVariables({ variables });
           }
 
           return item;
         })
       );
     },
-    [appId, chatId, notifyChatGenerateStatusChange, resetVariables, setChatBoxData, setChatRecords]
+    [
+      appId,
+      chatId,
+      isTargetActive,
+      notifyChatGenerateStatusChange,
+      resetVariables,
+      setChatBoxData,
+      setChatRecords,
+      sourceKey
+    ]
   );
 
-  const isChatting =
-    chatRecords[chatRecords.length - 1] && chatRecords[chatRecords.length - 1]?.status !== 'finish';
+  const isRecordChatting = Boolean(
+    chatRecords[chatRecords.length - 1] &&
+    chatRecords[chatRecords.length - 1]?.status !== ChatStatusEnum.finish
+  );
+  const isCurrentChatGenerating = Boolean(
+    appId &&
+    chatId &&
+    (chatBoxSourceKey === sourceKey || chatBoxAppId === appId) &&
+    chatBoxChatId === chatId &&
+    chatGenerateStatus === ChatGenerateStatusEnum.generating
+  );
+  const isChatting = isRecordChatting || isCurrentChatGenerating;
+
+  const resumeTargetAiDataId = useMemo(() => getLastAiDataId(chatRecords), [chatRecords]);
+  const noop = useCallback(() => {}, []);
+  const handleResumeGeneratingMessage = useMemoizedFn((message: generatingMessageProps) => {
+    applyGeneratingMessage(message);
+  });
+  const handleResumeStart = useMemoizedFn(() => {
+    setTab(PluginRunBoxTabEnum.output);
+  });
+  const onChatGeneratingConflictRecovered = useMemoizedFn(() => {
+    toast({
+      title: t('chat:chat_generating_resumed'),
+      status: 'info',
+      duration: 5000
+    });
+  });
+
+  const { recoverChatGeneratingConflict } = useChatResume({
+    enableAutoResume: Boolean(onStartChat),
+    isReady,
+    isChatting: isRecordChatting,
+    resumeTargetAiDataId,
+    activeSourceKeyRef,
+    activeChatIdRef,
+    resumedChatTargetRef,
+    resumeControllerRef,
+    generatingMessage: handleResumeGeneratingMessage,
+    flushGeneratingMessages: noop,
+    scrollToBottom: noop,
+    finishChatGenerateStatus,
+    onResumeStart: handleResumeStart,
+    onChatGeneratingConflictRecovered
+  });
+
+  useEffect(() => {
+    if (!chatGeneratingConflict || isRecordChatting) return;
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- consume the one-shot recovery signal after the failed round is rolled back
+    setChatGeneratingConflict(undefined);
+    recoverChatGeneratingConflict(chatGeneratingConflict);
+  }, [chatGeneratingConflict, isRecordChatting, recoverChatGeneratingConflict]);
 
   const onSubmit = useCallback(
     async ({ variables }: ChatBoxInputFormType) => {
@@ -300,15 +542,19 @@ const PluginRunContextProvider = ({
         return;
       }
 
-      // reset controller
-      abortRequest();
+      const previousRecords = chatRecords;
       const abortSignal = new AbortController();
-      chatController.current = abortSignal;
+      chatControllerRef.current = abortSignal;
+      resumedChatTargetRef.current = undefined;
+
       const runAppId = appId;
+      const runSourceKey = sourceKey;
       const runChatId = chatId;
-      const runOutLinkAuthData = outLinkAuthData;
+      const runChatTarget = chatAuthTarget;
       const humanChatItemId = getNanoid(24);
       const responseChatItemId = getNanoid(24);
+      const isLeaveAborted = () =>
+        abortSignal.signal.aborted && isAbortByLeave(abortSignal.signal.reason);
 
       setChatRecords([
         {
@@ -317,7 +563,7 @@ const PluginRunContextProvider = ({
             variables
           }),
           dataId: humanChatItemId,
-          status: 'finish'
+          status: ChatStatusEnum.finish
         },
         {
           dataId: responseChatItemId,
@@ -329,12 +575,12 @@ const PluginRunContextProvider = ({
               }
             }
           ],
-          status: 'loading'
+          status: ChatStatusEnum.loading
         }
       ]);
       setTab(PluginRunBoxTabEnum.output);
       setChatBoxData?.((state) =>
-        state.appId === runAppId && state.chatId === runChatId
+        (state.sourceKey === runSourceKey || state.appId === runAppId) && state.chatId === runChatId
           ? {
               ...state,
               chatGenerateStatus: ChatGenerateStatusEnum.generating,
@@ -361,23 +607,43 @@ const PluginRunContextProvider = ({
       });
 
       const resolveTargetChatId = () => runChatId || useChatStore.getState().chatId;
-      const isTargetStillActive = (targetChatId: string) =>
-        activeTargetRef.current.appId === runAppId &&
-        (runChatId
-          ? activeTargetRef.current.chatId === targetChatId
-          : useChatStore.getState().chatId === targetChatId);
 
       try {
         await onStartChat({
           messages,
           responseChatItemId,
-          controller: chatController.current,
-          generatingMessage,
+          controller: abortSignal,
+          generatingMessage: (message) =>
+            applyGeneratingMessage(message, {
+              runSourceKey,
+              runAppId,
+              runChatId,
+              responseChatItemId
+            }),
           variables
         });
 
+        // 离开切换仅断开本地订阅，服务端仍继续执行，不能提前把原会话置为 done。
+        if (isLeaveAborted()) return;
+
         const targetChatId = resolveTargetChatId();
-        const finishedInActiveChat = isTargetStillActive(targetChatId);
+        const finishedInActiveChat = isTargetActive({
+          targetSourceKey: runSourceKey,
+          targetAppId: runAppId,
+          targetChatId: runChatId,
+          resolvedChatId: targetChatId
+        });
+
+        if (abortSignal.signal.aborted) {
+          await reconcileAbortedRunStatus({
+            runAppId,
+            runSourceKey,
+            targetChatId,
+            runChatTarget,
+            finishedInActiveChat
+          });
+          return;
+        }
 
         if (finishedInActiveChat) {
           setChatRecords((state) =>
@@ -395,73 +661,130 @@ const PluginRunContextProvider = ({
 
               return {
                 ...item,
-                status: 'finish',
+                status: ChatStatusEnum.finish,
                 responseData
               };
             })
           );
         }
 
-        finishPluginGenerateStatus({
-          runAppId,
-          targetChatId,
-          runOutLinkAuthData,
-          finishedInActiveChat
+        finishChatGenerateStatus({
+          status: ChatGenerateStatusEnum.done,
+          finishedInActiveChat,
+          targetChatTarget: runChatTarget,
+          targetSourceKey: runSourceKey,
+          targetAppId: runAppId,
+          targetChatId
         });
       } catch (err: any) {
-        const errorMsg = t(getErrText(err, t('common:core.chat.error.Chat error') as any));
+        // 浏览器刷新会先拒绝 fetch，再派发 pagehide；让出当前任务等 leave 标记落位。
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+        if (isLeaveAborted() || isAbortByLeave(err)) return;
+
         const targetChatId = resolveTargetChatId();
-        const finishedInActiveChat = isTargetStillActive(targetChatId);
+        const finishedInActiveChat = isTargetActive({
+          targetSourceKey: runSourceKey,
+          targetAppId: runAppId,
+          targetChatId: runChatId,
+          resolvedChatId: targetChatId
+        });
+
+        if (abortSignal.signal.aborted) {
+          await reconcileAbortedRunStatus({
+            runAppId,
+            runSourceKey,
+            targetChatId,
+            runChatTarget,
+            finishedInActiveChat
+          });
+          return;
+        }
+
+        if (isChatGeneratingError(err)) {
+          if (finishedInActiveChat) {
+            setChatRecords(previousRecords);
+            setChatBoxData?.((state) =>
+              (state.sourceKey === runSourceKey || state.appId === runAppId) &&
+              state.chatId === targetChatId
+                ? {
+                    ...state,
+                    chatGenerateStatus: ChatGenerateStatusEnum.done
+                  }
+                : state
+            );
+            const conflictData = getChatGeneratingConflictData(err);
+            setChatGeneratingConflict({
+              responseChatItemId: conflictData?.responseChatItemId,
+              previousAiDataId: getLastAiDataId(previousRecords),
+              canReusePreviousAi: conflictData?.reusePreviousAi ?? false
+            });
+          }
+          return;
+        }
+
+        const errorMsg = t(getErrText(err, t('common:core.chat.error.Chat error') as any));
 
         if (isChatEntryModerationError(err)) {
-          toast({ title: errorMsg, status: 'warning' });
           if (finishedInActiveChat) {
+            toast({ title: errorMsg, status: 'warning' });
             setChatRecords([]);
             setTab(PluginRunBoxTabEnum.input);
           }
-          finishPluginGenerateStatus({
-            runAppId,
-            targetChatId,
-            runOutLinkAuthData,
+          finishChatGenerateStatus({
+            status: ChatGenerateStatusEnum.done,
             finishedInActiveChat,
+            targetChatTarget: runChatTarget,
+            targetSourceKey: runSourceKey,
+            targetAppId: runAppId,
+            targetChatId,
             skipMarkRead: true
           });
           return;
         }
-        toast({ title: errorMsg, status: 'error' });
+
         if (finishedInActiveChat) {
+          toast({ title: errorMsg, status: 'error' });
           setChatRecords((state) =>
             state.map((item, index) => {
               if (index !== state.length - 1 || item.dataId !== responseChatItemId) return item;
               return {
                 ...item,
-                status: 'finish'
+                status: ChatStatusEnum.finish
               };
             })
           );
         }
-        finishPluginGenerateStatus({
-          runAppId,
-          targetChatId,
-          runOutLinkAuthData,
-          finishedInActiveChat
+        finishChatGenerateStatus({
+          status: ChatGenerateStatusEnum.done,
+          finishedInActiveChat,
+          targetChatTarget: runChatTarget,
+          targetSourceKey: runSourceKey,
+          targetAppId: runAppId,
+          targetChatId
         });
+      } finally {
+        if (chatControllerRef.current === abortSignal) {
+          chatControllerRef.current = undefined;
+        }
       }
     },
     [
-      abortRequest,
       appId,
+      applyGeneratingMessage,
+      chatAuthTarget,
       chatId,
-      finishPluginGenerateStatus,
-      generatingMessage,
+      chatRecords,
+      finishChatGenerateStatus,
       isChatting,
+      isTargetActive,
       notifyChatGenerateStatusChange,
       onStartChat,
-      outLinkAuthData,
       pluginInputs,
+      reconcileAbortedRunStatus,
       setChatBoxData,
       setChatRecords,
       setTab,
+      sourceKey,
       t,
       toast
     ]
@@ -473,6 +796,13 @@ const PluginRunContextProvider = ({
     onSubmit,
     instruction
   };
+  return <PluginRunContext.Provider value={contextValue}>{children}</PluginRunContext.Provider>;
+};
+
+const PluginRunContextProvider = ({
+  children,
+  ...props
+}: PluginRunBoxProps & { children: ReactNode }) => {
   return (
     <WorkflowRuntimeContextProvider
       sourceTarget={{ sourceType: ChatSourceTypeEnum.app, sourceId: props.appId }}
@@ -480,7 +810,7 @@ const PluginRunContextProvider = ({
       outLinkAuthData={props.outLinkAuthData}
       fileUploadMode={props.fileUploadMode ?? 'runtime'}
     >
-      <PluginRunContext.Provider value={contextValue}>{children}</PluginRunContext.Provider>
+      <PluginRunContextInner {...props}>{children}</PluginRunContextInner>
     </WorkflowRuntimeContextProvider>
   );
 };

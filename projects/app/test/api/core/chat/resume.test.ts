@@ -11,6 +11,7 @@ import {
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import {
   StreamResumeCompletedEvent,
@@ -21,6 +22,7 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import handler from '@/pages/api/core/chat/resume';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authChatTargetCrud } from '@fastgpt/service/core/chat/auth';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
@@ -44,6 +46,12 @@ vi.mock('@fastgpt/service/core/chat/chatSchema', () => ({
   MongoChat: {
     findOne: vi.fn(),
     updateOne: vi.fn()
+  }
+}));
+
+vi.mock('@fastgpt/service/core/app/schema', () => ({
+  MongoApp: {
+    findById: vi.fn()
   }
 }));
 
@@ -249,6 +257,7 @@ describe('stream resume api', () => {
       uid: 'user-test',
       showCite: true
     } as any);
+    vi.mocked(MongoApp.findById).mockReturnValue(createFindOneResult({ type: AppTypeEnum.simple }));
     vi.mocked(addPreviewUrlToChatItems).mockImplementation(async (histories) => histories);
   });
 
@@ -970,6 +979,64 @@ describe('stream resume api', () => {
     } as any);
     const authRes = await Call(handler, { query: { appId, chatId } });
     expect((authRes.data as any).records.list[0]?.errorText?.errorText).toContain('resume-leak');
+  });
+
+  it('should preserve full workflowTool responseData and workflowTool preview urls for completed outLink plugin chats', async () => {
+    vi.mocked(authChatTargetCrud).mockResolvedValue({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
+      teamId,
+      tmbId: 'tmb-test',
+      uid: 'outlink-uid',
+      authType: AuthUserTypeEnum.outLink,
+      showCite: false,
+      canWrite: false
+    } as any);
+    vi.mocked(MongoApp.findById).mockReturnValue(
+      createFindOneResult({ type: AppTypeEnum.workflowTool })
+    );
+    vi.mocked(MongoChat.findOne).mockReturnValue(createFindOneResult({ hasBeenRead: false }));
+    vi.mocked(getChatItems).mockResolvedValue({
+      histories: [
+        {
+          dataId: 'ai-plugin-1',
+          obj: ChatRoleEnum.AI,
+          value: [{ text: { content: 'done' } }],
+          responseData: [
+            {
+              id: 'plugin-out',
+              nodeId: 'plugin-out',
+              moduleName: 'Plugin Output',
+              moduleType: FlowNodeTypeEnum.pluginOutput,
+              pluginOutput: { answer: 'ok' }
+            }
+          ]
+        }
+      ],
+      total: 1,
+      hasMorePrev: false,
+      hasMoreNext: false
+    } as any);
+
+    const res = await Call(handler, {
+      query: {
+        outLinkAuthData: JSON.stringify({ shareId: 'share-1', outLinkUid: 'outlink-uid' }),
+        chatId
+      }
+    });
+
+    expect(getChatItems).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nodeResponseMode: 'full'
+      })
+    );
+    expect(addPreviewUrlToChatItems).toHaveBeenCalledWith(expect.any(Array), 'workflowTool');
+    expect((res.data as any).records.list[0]?.responseData).toEqual([
+      expect.objectContaining({
+        moduleType: FlowNodeTypeEnum.pluginOutput,
+        pluginOutput: { answer: 'ok' }
+      })
+    ]);
   });
 });
 

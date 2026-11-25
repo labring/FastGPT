@@ -6,7 +6,12 @@ import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatCo
 import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { useContextSelector } from 'use-context-selector';
 
-const mocks = vi.hoisted(() => ({ poll: vi.fn(), setHistories: vi.fn(), initialStatus: 0 }));
+const mocks = vi.hoisted(() => ({
+  poll: vi.fn(),
+  setHistories: vi.fn(),
+  loadHistories: vi.fn(),
+  initialStatus: 0
+}));
 vi.mock('@/web/core/chat/history/api', () => ({
   getChatHistoryStatus: mocks.poll,
   getChatHistories: vi.fn(),
@@ -40,7 +45,7 @@ vi.mock('@fastgpt/web/hooks/useScrollPagination', () => {
         isInitialLoading: false,
         setData: setHistories,
         setTotal: vi.fn(),
-        fetchData: vi.fn(),
+        fetchData: mocks.loadHistories,
         data
       };
     }
@@ -164,6 +169,7 @@ describe('chat history lease polling lifecycle', () => {
         await vi.advanceTimersByTimeAsync(5000);
       });
       expect(document.querySelector('output')?.textContent).toBe(`${ChatGenerateStatusEnum.done}`);
+      expect(mocks.loadHistories).toHaveBeenCalledWith({ init: true, silent: true });
       const idleCalls = mocks.poll.mock.calls.length;
       await act(async () => {
         await vi.advanceTimersByTimeAsync(15000);
@@ -180,6 +186,7 @@ describe('chat history lease polling lifecycle', () => {
   it.each([
     ['app', { appId: 'app' }],
     ['skill', { skillId: 'skill' }],
+    ['share', { outLinkAuthData: { shareId: 'share', outLinkUid: 'uid' } }],
     ['builder', { appId: 'app', sourceType: ChatSourceTypeEnum.workflowBuilder }],
     ['helper', { appId: 'app', sourceType: ChatSourceTypeEnum.chatAgentHelper }]
   ] as const)(
