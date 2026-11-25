@@ -1123,12 +1123,25 @@ func (c *Client) readBodyWithAttempt(
 	return rawBytes, nil
 }
 
+func isHTTPSuccessStatus(statusCode int) bool {
+	return statusCode >= http.StatusOK && statusCode < http.StatusMultipleChoices
+}
+
 func buildResponseError(
 	statusCode int,
 	raw RawResponse,
 	rawBytes []byte,
 	extraSecrets []string,
 ) error {
+	if statusCode >= http.StatusMultipleChoices && statusCode < http.StatusBadRequest {
+		location := strings.TrimSpace(raw.Header.Get("Location"))
+		msg := fmt.Sprintf("Request terminated with unfollowed HTTP %d redirect", statusCode)
+		if location != "" {
+			msg = fmt.Sprintf("Request terminated with unfollowed HTTP %d redirect to %s", statusCode, location)
+		}
+		return newMappedAPIError(msg, statusCode, 0, "", raw.RequestID, raw.URL, nil, extraSecrets)
+	}
+
 	rawText := strings.TrimSpace(string(rawBytes))
 	if rawText != "" {
 		var env struct {
@@ -1316,7 +1329,7 @@ func (c *Client) executeNonStream(
 
 	extraSecrets := scope.snapshot()
 	bodyBytes, err := c.readBodyWithAttempt(ctx, spec, res, extraSecrets)
-	if err == nil && res.resp.StatusCode >= http.StatusBadRequest {
+	if err == nil && !isHTTPSuccessStatus(res.resp.StatusCode) {
 		err = buildResponseError(res.resp.StatusCode, res.raw, bodyBytes, extraSecrets)
 	}
 	if err == nil && handleBody != nil {
@@ -1410,7 +1423,7 @@ func (c *Client) doBinary(
 	}
 
 	extraSecrets := scope.snapshot()
-	if res.resp.StatusCode >= http.StatusBadRequest {
+	if !isHTTPSuccessStatus(res.resp.StatusCode) {
 		bodyBytes, readErr := c.readBodyWithAttempt(ctx, spec, res, extraSecrets)
 		if readErr != nil {
 			return nil, reportErr(readErr)
@@ -1533,7 +1546,7 @@ func (c *Client) doStream(
 	}
 
 	extraSecrets := scope.snapshot()
-	if res.resp.StatusCode >= http.StatusBadRequest {
+	if !isHTTPSuccessStatus(res.resp.StatusCode) {
 		bodyBytes, readErr := c.readBodyWithAttempt(ctx, spec, res, extraSecrets)
 		if readErr != nil {
 			return nil, reportErr(readErr)

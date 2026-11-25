@@ -1474,3 +1474,144 @@ func TestBinaryDownloadEOFAfterReadFullDoesNotReportAborted(t *testing.T) {
 		t.Fatalf("OnError called %d times after clean EOF, want 0", onErrCount.Load())
 	}
 }
+
+func TestNon2xxAndUnfollowedRedirectsReturnAPIError(t *testing.T) {
+	var (
+		mu         sync.Mutex
+		origHits   int
+		targetHits int
+		srvURL     string
+	)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/redirect-target"):
+			mu.Lock()
+			targetHits++
+			mu.Unlock()
+			w.WriteHeader(http.StatusInternalServerError)
+		case strings.HasSuffix(r.URL.Path, "/core/dataset/collection/batchDownload"):
+			mu.Lock()
+			origHits++
+			base := srvURL
+			mu.Unlock()
+			ticket := r.URL.Query().Get("ticket")
+			statusCode := http.StatusPermanentRedirect
+			if ticket == "ticket-307" {
+				statusCode = http.StatusTemporaryRedirect
+			}
+			w.Header().Set("Content-Type", "text/html")
+			w.Header().Set("Location", base+"/redirect-target?ticket=secret-ticket-999")
+			w.WriteHeader(statusCode)
+			_, _ = w.Write([]byte("<html>redirecting</html>"))
+		case strings.HasSuffix(r.URL.Path, "/core/chat/history/markRead"):
+			mu.Lock()
+			base := srvURL
+			mu.Unlock()
+			w.Header().Set("Content-Type", "text/html")
+			w.Header().Set("Location", base+"/redirect-target")
+			w.WriteHeader(http.StatusPermanentRedirect)
+		case strings.HasSuffix(r.URL.Path, "/v2/chat/completions"):
+			mu.Lock()
+			base := srvURL
+			mu.Unlock()
+			w.Header().Set("Content-Type", "text/html")
+			w.Header().Set("Location", base+"/redirect-target")
+			w.WriteHeader(http.StatusPermanentRedirect)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+	mu.Lock()
+	srvURL = srv.URL
+	mu.Unlock()
+
+	// 1. Default http.Client does not follow 307/308 on non-replayable BatchDownload GET requests;
+	// doBinary must reject the redirect response with *APIError instead of returning HTML as a BinaryStream.
+	var onErrCount atomic.Int32
+	client := NewClient(
+		WithBaseURL(srv.URL),
+		WithAPIKey("fastgpt-key"),
+		WithHooks(Hooks{
+			OnError: func(_ context.Context, _ ErrorHookContext) {
+				onErrCount.Add(1)
+			},
+		}),
+	)
+
+	cases := []struct {
+		ticket     string
+		statusCode int
+		codeText   string
+	}{
+		{ticket: "ticket-308", statusCode: http.StatusPermanentRedirect, codeText: "308"},
+		{ticket: "ticket-307", statusCode: http.StatusTemporaryRedirect, codeText: "307"},
+	}
+
+	for idx, tc := range cases {
+		var raw RawResponse
+		stream, err := client.Datasets.Collections.BatchDownload(
+			t.Context(),
+			DatasetsCollectionsBatchDownloadParams{Ticket: tc.ticket},
+			WithRawResponse(&raw),
+		)
+		if stream != nil {
+			_ = stream.Close()
+			t.Fatalf("BatchDownload(%s) returned non-nil stream on HTTP %d", tc.ticket, tc.statusCode)
+		}
+		if err == nil {
+			t.Fatalf("BatchDownload(%s) expected error on HTTP %d, got nil", tc.ticket, tc.statusCode)
+		}
+		if !errors.Is(err, ErrAPI) || errors.Is(err, ErrServer) {
+			t.Fatalf("BatchDownload(%s) err classification unexpected: %v", tc.ticket, err)
+		}
+		var apiErr *APIError
+		if !errors.As(err, &apiErr) || apiErr.HTTPStatus != tc.statusCode {
+			t.Fatalf("BatchDownload(%s) APIError = %+v, want HTTPStatus=%d", tc.ticket, apiErr, tc.statusCode)
+		}
+		if !strings.Contains(err.Error(), tc.codeText) || strings.Contains(err.Error(), "secret-ticket-999") {
+			t.Fatalf("BatchDownload(%s) error message leaked or omitted status: %q", tc.ticket, err.Error())
+		}
+		if raw.StatusCode != tc.statusCode {
+			t.Fatalf("BatchDownload(%s) raw.StatusCode = %d, want %d", tc.ticket, raw.StatusCode, tc.statusCode)
+		}
+		mu.Lock()
+		gotOrigHits := origHits
+		gotTargetHits := targetHits
+		mu.Unlock()
+		if gotOrigHits != idx+1 || gotTargetHits != 0 {
+			t.Fatalf("BatchDownload(%s) hits orig=%d target=%d, want orig=%d target=0", tc.ticket, gotOrigHits, gotTargetHits, idx+1)
+		}
+		if int(onErrCount.Load()) != idx+1 {
+			t.Fatalf("OnError count = %d, want %d", onErrCount.Load(), idx+1)
+		}
+	}
+
+	// 2. Non-stream JSON/void and SSE stream paths also reject unfollowed 308 redirects uniformly.
+	noRedirectClient := NewClient(
+		WithBaseURL(srv.URL),
+		WithAPIKey("fastgpt-key"),
+		WithHTTPClient(&http.Client{
+			CheckRedirect: func(*http.Request, []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		}),
+	)
+
+	markErr := noRedirectClient.Chat.Histories.MarkRead(t.Context(), ChatHistoriesMarkReadParams{ChatID: "c-308"})
+	var apiErr *APIError
+	if !errors.Is(markErr, ErrAPI) || errors.Is(markErr, ErrServer) || !errors.As(markErr, &apiErr) || apiErr.HTTPStatus != http.StatusPermanentRedirect {
+		t.Fatalf("MarkRead() on 308 = %v, want *APIError(ErrAPI, HTTP 308)", markErr)
+	}
+
+	chatStream, streamErr := noRedirectClient.Chat.CompletionsV2Stream(t.Context(), ChatCompletionsV2Params{
+		ChatID: String("chat-308"),
+	})
+	if chatStream != nil {
+		_ = chatStream.Close()
+		t.Fatal("CompletionsV2Stream() returned non-nil stream on HTTP 308")
+	}
+	if !errors.Is(streamErr, ErrAPI) || errors.Is(streamErr, ErrServer) || !errors.As(streamErr, &apiErr) || apiErr.HTTPStatus != http.StatusPermanentRedirect {
+		t.Fatalf("CompletionsV2Stream() on 308 = %v, want *APIError(ErrAPI, HTTP 308)", streamErr)
+	}
+}

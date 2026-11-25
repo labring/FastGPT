@@ -331,6 +331,8 @@ func classifyAPIErrorKind(httpStatus int, serverCode int, statusText string) err
 	// 避免历史 statusText 覆盖 429 / 503 等真实传输层语义。
 	if httpStatus != 0 && httpStatus != 200 && httpStatus != 500 {
 		switch {
+		case httpStatus < 200 || (httpStatus >= 300 && httpStatus < 400):
+			return ErrAPI
 		case httpStatus == 401 || httpStatus == 403:
 			return ErrAuth
 		case httpStatus == 409:
