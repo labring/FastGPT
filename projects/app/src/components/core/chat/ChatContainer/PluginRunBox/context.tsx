@@ -15,7 +15,11 @@ import {
 import type { generatingMessageProps } from '../type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { useTranslation } from 'next-i18next';
-import type { ChatBoxInputFormType, ChatGeneratingConflictRecovery } from '../ChatBox/type';
+import type {
+  ChatBoxInputFormType,
+  ChatGeneratingConflictRecovery,
+  ChatSiteItemType
+} from '../ChatBox/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { clientGetWorkflowToolRunUserQuery } from '@/components/core/chat/ChatContainer/PluginRunBox/utils';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
@@ -100,6 +104,7 @@ const PluginRunContextInner = ({
   );
 
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
+  const refreshChatRecords = useContextSelector(ChatRecordContext, (v) => v.refreshChatRecords);
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const isLoadingRecords = useContextSelector(ChatRecordContext, (v) => v.isLoadingRecords);
 
@@ -385,23 +390,73 @@ const PluginRunContextInner = ({
         return;
       }
 
+      // 服务端已完成并释放租约时，优先拉取已落库记录补齐断流缺失的输出与 pluginOutput；
+      // 刷新期间若用户切走则不再写入当前窗口或标已读，刷新失败或无记录时降级收尾本地占位。
+      let finalActive = stillActive;
       if (stillActive) {
-        if (errorMsg) {
-          toast({ title: errorMsg, status: 'error' });
+        let refreshedRecords: ChatSiteItemType[] = [];
+        let refreshFailed = false;
+        try {
+          refreshedRecords = await refreshChatRecords();
+        } catch {
+          refreshFailed = true;
         }
-        setChatRecords((state) =>
-          state.map((item, index) => {
-            if (index !== state.length - 1 || item.dataId !== responseChatItemId) return item;
-            return {
+
+        finalActive = isTargetActive({
+          targetSourceKey: runSourceKey,
+          targetAppId: runAppId,
+          targetChatId: runChatId,
+          resolvedChatId: targetChatId
+        });
+
+        if (finalActive) {
+          const hasCompletedRound = refreshedRecords.some((item) => item.obj === ChatRoleEnum.AI);
+          if (hasCompletedRound) {
+            const normalizedRecords = refreshedRecords.map((item) => ({
               ...item,
               status: ChatStatusEnum.finish
-            };
-          })
-        );
+            }));
+            setChatRecords(normalizedRecords);
+
+            const lastAi = [...normalizedRecords]
+              .reverse()
+              .find((item) => item.obj === ChatRoleEnum.AI);
+            const lastNodeError = lastAi?.responseData?.[lastAi.responseData.length - 1]?.error;
+            if (lastNodeError) {
+              toast({
+                title: t(getErrText(lastNodeError)),
+                status: 'error'
+              });
+            } else if (
+              errorMsg &&
+              previousRecords.length > 0 &&
+              !normalizedRecords.some((item) => item.dataId === responseChatItemId)
+            ) {
+              toast({ title: errorMsg, status: 'error' });
+            }
+          } else {
+            if (errorMsg || refreshFailed) {
+              toast({
+                title: errorMsg || t('common:core.chat.error.Chat error'),
+                status: 'error'
+              });
+            }
+            setChatRecords((state) =>
+              state.map((item, index) => {
+                if (index !== state.length - 1 || item.dataId !== responseChatItemId) return item;
+                return {
+                  ...item,
+                  status: ChatStatusEnum.finish,
+                  responseData: mergeNodeResponseDataByIdAndParent(item.responseData || [])
+                };
+              })
+            );
+          }
+        }
       }
       finishChatGenerateStatus({
         status: ChatGenerateStatusEnum.done,
-        finishedInActiveChat: stillActive,
+        finishedInActiveChat: finalActive,
         targetChatTarget: runChatTarget,
         targetSourceKey: runSourceKey,
         targetAppId: runAppId,

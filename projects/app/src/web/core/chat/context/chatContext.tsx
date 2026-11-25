@@ -1,7 +1,7 @@
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useLatest } from 'ahooks';
 import { useRouter } from 'next/router';
-import React, { type ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import {
   delClearChatHistories,
@@ -77,6 +77,9 @@ export const ChatContext = createContext<ChatContextType>({
   isInitialLoading: false
 });
 
+const isSameHistoryList = (a: ChatHistoryItemType[], b: ChatHistoryItemType[]) =>
+  a.length === b.length && a.every((item, index) => item === b[index]);
+
 const ChatContextProvider = ({
   children,
   params,
@@ -140,34 +143,90 @@ const ChatContextProvider = ({
     };
   }, []);
 
-  // 记录尚未在服务端历史中确认的乐观 generating 会话，避免另一会话首屏静默刷新时将其覆写丢失。
-  const pendingGeneratingHistoriesRef = useRef<
-    Map<string, { item: ChatHistoryItemType; missedPolls: number }>
-  >(new Map());
-  const serverConfirmedChatIdsRef = useRef<Set<string>>(new Set());
+  // 待服务端确认的乐观会话独立于 useScrollPagination，避免污染服务端分页的 data.length / offset / total。
+  const [pendingState, setPendingState] = useState<{
+    target: typeof historyTargetParams;
+    items: ChatHistoryItemType[];
+  }>(() => ({
+    target: historyTargetParams,
+    items: []
+  }));
+  const historyTargetParamsRef = useLatest(historyTargetParams);
+  const pendingTargetRef = useRef(historyTargetParams);
+  const pendingHistoriesRef = useRef<ChatHistoryItemType[]>([]);
+  const pendingMissedPollsRef = useRef<Map<string, number>>(new Map());
 
-  const fetchChatHistoriesWithPending = useCallback<typeof getChatHistories>(async (reqParams) => {
-    const res = await getChatHistories(reqParams);
-    const serverIds = new Set(res.list.map((item) => item.chatId));
-    serverIds.forEach((id) => {
-      serverConfirmedChatIdsRef.current.add(id);
-      pendingGeneratingHistoriesRef.current.delete(id);
-    });
-
-    if ((reqParams.offset ?? 0) === 0 && pendingGeneratingHistoriesRef.current.size > 0) {
-      const preservedPending = Array.from(pendingGeneratingHistoriesRef.current.values())
-        .map((entry) => entry.item)
-        .filter((item) => !serverIds.has(item.chatId));
-      if (preservedPending.length > 0) {
-        return {
-          ...res,
-          list: [...preservedPending, ...res.list]
-        };
-      }
+  const getScopedPendingHistories = useCallback(() => {
+    if (pendingTargetRef.current !== historyTargetParamsRef.current) {
+      return [];
     }
+    return pendingHistoriesRef.current;
+  }, [historyTargetParamsRef]);
 
-    return res;
-  }, []);
+  const commitPendingHistories = useCallback(
+    (nextPending: ChatHistoryItemType[]) => {
+      const currentTarget = historyTargetParamsRef.current;
+      if (!currentTarget) return;
+      const prevPending = getScopedPendingHistories();
+      const nextIds = new Set(nextPending.map((item) => item.chatId));
+      for (const id of Array.from(pendingMissedPollsRef.current.keys())) {
+        if (!nextIds.has(id)) {
+          pendingMissedPollsRef.current.delete(id);
+        }
+      }
+      for (const item of nextPending) {
+        if (item.chatGenerateStatus !== ChatGenerateStatusEnum.generating) {
+          pendingMissedPollsRef.current.delete(item.chatId);
+        }
+      }
+
+      const targetChanged = pendingTargetRef.current !== currentTarget;
+      pendingTargetRef.current = currentTarget;
+      pendingHistoriesRef.current = nextPending;
+      if (targetChanged || !isSameHistoryList(prevPending, nextPending)) {
+        setPendingState({
+          target: currentTarget,
+          items: nextPending
+        });
+      }
+    },
+    [getScopedPendingHistories, historyTargetParamsRef]
+  );
+
+  const fetchChatHistories = useCallback<
+    (
+      reqParams: Parameters<typeof getChatHistories>[0],
+      cancelToken?: AbortController
+    ) => ReturnType<typeof getChatHistories>
+  >(
+    async (reqParams, cancelToken) => {
+      const requestTarget = historyTargetParamsRef.current;
+      const res = await getChatHistories(reqParams);
+      if (cancelToken?.signal.aborted || historyTargetParamsRef.current !== requestTarget) {
+        return res;
+      }
+
+      const serverIds = new Set(res.list.map((item) => item.chatId));
+      serverIds.forEach((id) => {
+        pendingMissedPollsRef.current.delete(id);
+      });
+
+      const currentPending = getScopedPendingHistories();
+      if (currentPending.length > 0) {
+        const isFirstPage = (reqParams.offset ?? 0) === 0;
+        const nextPending = currentPending.filter((item) => {
+          if (serverIds.has(item.chatId)) return false;
+          // 首屏刷新后仅保留尚未落库且仍在生成中的乐观会话，其余未落库占位随之收敛。
+          return !isFirstPage || item.chatGenerateStatus === ChatGenerateStatusEnum.generating;
+        });
+        commitPendingHistories(nextPending);
+      }
+
+      // 原样返回服务端分页结果，确保 useScrollPagination 的 offset 与 total 严格按服务端记录推进。
+      return res;
+    },
+    [commitPendingHistories, getScopedPendingHistories, historyTargetParamsRef]
+  );
 
   const {
     ScrollData,
@@ -176,8 +235,8 @@ const ChatContextProvider = ({
     setData: setRawHistories,
     setTotal: setHistoriesTotal,
     fetchData: loadHistories,
-    data: histories
-  } = useScrollPagination(fetchChatHistoriesWithPending, {
+    data: serverHistories
+  } = useScrollPagination(fetchChatHistories, {
     pageSize: 20,
     params,
     // /chat without an appId is the app-picker entry. It still needs this
@@ -188,39 +247,60 @@ const ChatContextProvider = ({
     showNoMoreTip: false
   });
 
+  const serverHistoriesRef = useRef(serverHistories);
+  useEffect(() => {
+    serverHistoriesRef.current = serverHistories;
+  }, [serverHistories]);
+
   const setHistories = useCallback<React.Dispatch<React.SetStateAction<ChatHistoryItemType[]>>>(
     (updater) => {
-      setRawHistories((prev) => {
-        const next = typeof updater === 'function' ? updater(prev) : updater;
-        const pendingMap = pendingGeneratingHistoriesRef.current;
-        const nextChatIds = new Set(next.map((item) => item.chatId));
+      const prevServer = serverHistoriesRef.current;
+      const serverIds = new Set(prevServer.map((item) => item.chatId));
+      const prevPending = getScopedPendingHistories().filter((item) => !serverIds.has(item.chatId));
+      const prevMerged = prevPending.length > 0 ? [...prevPending, ...prevServer] : prevServer;
+      const nextMerged = typeof updater === 'function' ? updater(prevMerged) : updater;
 
-        for (const id of Array.from(pendingMap.keys())) {
-          if (!nextChatIds.has(id)) {
-            pendingMap.delete(id);
-          }
+      const nextServer = nextMerged.filter((item) => serverIds.has(item.chatId));
+      const nextPending = nextMerged.filter((item) => !serverIds.has(item.chatId));
+
+      serverHistoriesRef.current = nextServer;
+      if (!isSameHistoryList(prevServer, nextServer)) {
+        if (nextMerged.length === 0) {
+          setRawHistories([]);
+        } else {
+          setRawHistories((latestServer) => {
+            const prevServerIds = new Set(prevServer.map((item) => item.chatId));
+            const extraNewServerItems = latestServer.filter(
+              (item) => !prevServerIds.has(item.chatId)
+            );
+            return extraNewServerItems.length > 0
+              ? [...nextServer, ...extraNewServerItems]
+              : nextServer;
+          });
         }
+      }
 
-        for (const item of next) {
-          if (item.chatGenerateStatus === ChatGenerateStatusEnum.generating) {
-            if (!serverConfirmedChatIdsRef.current.has(item.chatId)) {
-              const existing = pendingMap.get(item.chatId);
-              pendingMap.set(item.chatId, {
-                item,
-                missedPolls: existing?.missedPolls ?? 0
-              });
-            }
-          } else {
-            pendingMap.delete(item.chatId);
-          }
-        }
-
-        return next;
-      });
+      commitPendingHistories(nextPending);
     },
-    [setRawHistories]
+    [commitPendingHistories, getScopedPendingHistories, setRawHistories]
   );
-  const displayHistories = useMemo(() => histories.map(normalizeHistoryTitle), [histories]);
+
+  const pendingHistories = useMemo(
+    () => (pendingState.target === historyTargetParams ? pendingState.items : []),
+    [pendingState, historyTargetParams]
+  );
+  const mergedHistories = useMemo(() => {
+    if (pendingHistories.length === 0) return serverHistories;
+    const serverIds = new Set(serverHistories.map((item) => item.chatId));
+    const unpersistedPending = pendingHistories.filter((item) => !serverIds.has(item.chatId));
+    return unpersistedPending.length > 0
+      ? [...unpersistedPending, ...serverHistories]
+      : serverHistories;
+  }, [pendingHistories, serverHistories]);
+  const displayHistories = useMemo(
+    () => mergedHistories.map(normalizeHistoryTitle),
+    [mergedHistories]
+  );
   const historiesRef = useRef(displayHistories);
 
   useEffect(() => {
@@ -309,10 +389,10 @@ const ChatContextProvider = ({
     {
       onSuccess(data, params) {
         const chatId = params[0];
-        const hasDeletedHistory = historiesRef.current.some((i) => i.chatId === chatId);
+        const hasDeletedServerHistory = serverHistoriesRef.current.some((i) => i.chatId === chatId);
 
         setHistories((old) => old.filter((i) => i.chatId !== chatId));
-        if (hasDeletedHistory) {
+        if (hasDeletedServerHistory) {
           setHistoriesTotal((total) => Math.max(total - 1, 0));
         }
       },
@@ -405,8 +485,11 @@ const ChatContextProvider = ({
 
   useEffect(() => {
     statusPollingNeedsRetry.current = false;
-    pendingGeneratingHistoriesRef.current.clear();
-    serverConfirmedChatIdsRef.current.clear();
+    if (pendingTargetRef.current !== historyTargetParams) {
+      pendingMissedPollsRef.current.clear();
+      pendingTargetRef.current = historyTargetParams;
+      pendingHistoriesRef.current = [];
+    }
   }, [historyTargetParams]);
 
   const hasOutLinkTarget = Boolean(
@@ -454,16 +537,18 @@ const ChatContextProvider = ({
         const map = new Map(res.list.map((item) => [item.chatId, item]));
         const expiredPendingIds = new Set<string>();
         map.forEach((_status, id) => {
-          serverConfirmedChatIdsRef.current.add(id);
-          pendingGeneratingHistoriesRef.current.delete(id);
+          pendingMissedPollsRef.current.delete(id);
         });
-        pendingGeneratingHistoriesRef.current.forEach((entry, id) => {
-          if (map.has(id)) return;
-          entry.missedPolls += 1;
+        getScopedPendingHistories().forEach((item) => {
+          if (item.chatGenerateStatus !== ChatGenerateStatusEnum.generating) return;
+          if (map.has(item.chatId)) return;
+          const missedPolls = (pendingMissedPollsRef.current.get(item.chatId) ?? 0) + 1;
           // 连续多轮轮询均未落库（如切走后入口审核拦截），清理孤立乐观项避免无限轮询。
-          if (entry.missedPolls >= 6) {
-            pendingGeneratingHistoriesRef.current.delete(id);
-            expiredPendingIds.add(id);
+          if (missedPolls >= 6) {
+            pendingMissedPollsRef.current.delete(item.chatId);
+            expiredPendingIds.add(item.chatId);
+          } else {
+            pendingMissedPollsRef.current.set(item.chatId, missedPolls);
           }
         });
         const hasCompletedGenerating = historiesRef.current.some((item) => {
@@ -529,6 +614,7 @@ const ChatContextProvider = ({
     historyTargetParams,
     historyChatIdsKey,
     hasGeneratingInSidebar,
+    getScopedPendingHistories,
     loadHistoriesRef,
     setHistories
   ]);

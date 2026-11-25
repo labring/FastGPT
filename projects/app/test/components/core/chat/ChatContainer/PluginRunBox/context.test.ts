@@ -616,4 +616,120 @@ describe('PluginRunContextProvider history status sync & stream resume', () => {
       title: undefined
     });
   });
+
+  it('refreshes persisted answer and pluginOutput when stream drops after server already completed', async () => {
+    const persistedRecords: ChatSiteItemType[] = [
+      {
+        dataId: 'human-persisted',
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: '{}' } }],
+        status: ChatStatusEnum.finish
+      },
+      {
+        dataId: 'ai-persisted',
+        obj: ChatRoleEnum.AI,
+        value: [{ text: { content: 'full persisted answer' } }],
+        responseData: [
+          {
+            id: 'plugin-out',
+            nodeId: 'plugin-out',
+            moduleName: 'Plugin Output',
+            pluginOutput: { result: 'complete-output' }
+          } as any
+        ],
+        status: ChatStatusEnum.finish
+      }
+    ];
+    mocks.getChatHistoryStatus.mockResolvedValueOnce({
+      list: [{ chatId: 'chat-1', chatGenerateStatus: ChatGenerateStatusEnum.done }]
+    });
+    refreshChatRecords.mockResolvedValueOnce(persistedRecords);
+
+    await renderProvider(async ({ generatingMessage }) => {
+      generatingMessage({
+        event: SseResponseEventEnum.answer,
+        text: 'partial'
+      });
+      throw new Error('connection dropped at tail');
+    });
+
+    await act(async () => {
+      await onSubmit({ variables: {} } as ChatBoxInputFormType);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+
+    expect(refreshChatRecords).toHaveBeenCalledOnce();
+    expect(currentRecords).toHaveLength(2);
+    expect(currentRecords[1]?.value[0]?.text?.content).toBe('full persisted answer');
+    expect(currentRecords[1]?.responseData?.[0]?.pluginOutput).toEqual({
+      result: 'complete-output'
+    });
+    expect(currentRecords[1]?.status).toBe(ChatStatusEnum.finish);
+    expect(onMarkChatRead).toHaveBeenCalledExactlyOnceWith({
+      appId: 'app-1',
+      chatId: 'chat-1'
+    });
+    expect(onChatGenerateStatusChange).toHaveBeenLastCalledWith({
+      sourceTarget: { sourceType: ChatSourceTypeEnum.app, sourceId: 'app-1' },
+      chatId: 'chat-1',
+      status: ChatGenerateStatusEnum.done,
+      hasBeenRead: true,
+      title: undefined
+    });
+  });
+
+  it('skips record write and markRead if user switches chat while refreshing completed interrupted run', async () => {
+    const refreshDeferred = Promise.withResolvers<ChatSiteItemType[]>();
+    mocks.getChatHistoryStatus.mockResolvedValueOnce({
+      list: [{ chatId: 'chat-1', chatGenerateStatus: ChatGenerateStatusEnum.done }]
+    });
+    refreshChatRecords.mockReturnValueOnce(refreshDeferred.promise);
+
+    const { rerender } = await renderProvider(async () => {
+      throw new Error('tail disconnect');
+    });
+
+    let submitPromise!: Promise<any>;
+    await act(async () => {
+      submitPromise = onSubmit({ variables: {} } as ChatBoxInputFormType);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+
+    expect(refreshChatRecords).toHaveBeenCalledOnce();
+
+    const otherChatRecords: ChatSiteItemType[] = [
+      {
+        dataId: 'other-ai',
+        obj: ChatRoleEnum.AI,
+        value: [{ text: { content: 'other chat content' } }],
+        status: ChatStatusEnum.finish
+      }
+    ];
+    await rerender({ chatId: 'chat-2', chatRecords: otherChatRecords });
+    setChatRecords.mockClear();
+
+    await act(async () => {
+      refreshDeferred.resolve([
+        {
+          dataId: 'ai-stale',
+          obj: ChatRoleEnum.AI,
+          value: [{ text: { content: 'stale answer' } }],
+          status: ChatStatusEnum.finish
+        }
+      ]);
+      await submitPromise;
+      await Promise.resolve();
+    });
+
+    expect(setChatRecords).not.toHaveBeenCalled();
+    expect(currentRecords[0]?.value[0]?.text?.content).toBe('other chat content');
+    expect(onMarkChatRead).not.toHaveBeenCalled();
+    expect(onChatGenerateStatusChange).toHaveBeenLastCalledWith({
+      sourceTarget: { sourceType: ChatSourceTypeEnum.app, sourceId: 'app-1' },
+      chatId: 'chat-1',
+      status: ChatGenerateStatusEnum.done,
+      hasBeenRead: false,
+      title: undefined
+    });
+  });
 });
