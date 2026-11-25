@@ -103,5 +103,11 @@
   "migrations.20261117_cleanup_legacy_sandbox_resources.preflight": "마이그레이션 상태 안전 검증",
   "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupDevboxes": "기존 Devbox, 컨테이너 및 볼륨 정리",
   "migrations.20261117_cleanup_legacy_sandbox_resources.cleanupLegacyZips": "기존 zip 아카이브 검증 및 삭제",
-  "migrations.20261117_cleanup_legacy_sandbox_resources.validation": "정리 결과 검증"
+  "migrations.20261117_cleanup_legacy_sandbox_resources.validation": "정리 결과 검증",
+  "migrations.20261125_backfill_model_reasoning_effort_list.name": "모델 사고 강도 프리셋 채우기",
+  "migrations.20261125_backfill_model_reasoning_effort_list.description": "fastgpt-plugin 업그레이드 후 수동으로 실행하세요. 플러그인 모델 프리셋을 기준으로 사고 설정이 활성화된 기존 LLM의 누락된 사용 가능 사고 강도 목록을 채우며, 수동 설정 모델과 사용자 지정 모델은 유지합니다.",
+  "migrations.20261125_backfill_model_reasoning_effort_list.loadPresets": "플러그인 사고 강도 프리셋 불러오기",
+  "migrations.20261125_backfill_model_reasoning_effort_list.backfill": "모델 사고 강도 목록 채우기",
+  "migrations.20261125_backfill_model_reasoning_effort_list.validation": "채우기 결과 검증",
+  "migrations.20261125_backfill_model_reasoning_effort_list.result": "플러그인 프리셋 {{presetCount}}개를 불러와 LLM 모델 {{scannedCount}}개를 검사했습니다: {{backfilledCount}}개 채움, {{skippedCount}}개 건너뜀."
 }

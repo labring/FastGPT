@@ -12,6 +12,7 @@
 | `20261123_cleanup_mongo_indexes` | 独立执行 | 清理历史废弃 MongoDB 索引（按名/键/选项精确匹配，遵循 `MONGO_DEPRECATE_INDEX`） |
 | `20261117_migrate_sandbox_to_opensandbox` | 手动触发 | 存量 Sealos Devbox、旧 OpenSandbox 持久卷与 `.zip` 流式转码迁移至 OpenSandbox `.tar.zst` |
 | `20261117_cleanup_legacy_sandbox_resources` | 手动触发 | 核验并清理历史 Sealos Devbox、旧持久卷与旧 `.zip` 遗留资源 |
+| `20261125_backfill_model_reasoning_effort_list` | 手动触发 | 按插件预设回填存量 LLM 缺失的可用思考等级（`reasoningEffortList`），保留已手工配置项 |
 
 ## 废弃 MongoDB 索引按版本清理约定
 
