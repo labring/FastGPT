@@ -41,7 +41,7 @@ const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
 
 type McpChildToolType = McpToolConfigType & {
   id: string;
-  avatar: string;
+  avatar?: string;
   url?: string;
   headerSecret?: StoreSecretValueType;
 };

@@ -84,7 +84,7 @@ export const SystemToolCodec = {
       source: 'system',
       author,
       name,
-      avatar: avatar ?? '',
+      avatar,
       intro: intro ?? '',
       tags: tags ?? [],
       currentCost: item.currentCost ?? 0,

@@ -70,7 +70,7 @@ const SelectAppModal = ({
       appId: string;
       toolName: string;
       appName: string;
-      avatar: string;
+      avatar?: string;
       description: string;
     }[]
   >([]);
@@ -84,7 +84,7 @@ const SelectAppModal = ({
           appId: item.id,
           toolName: item.name,
           appName: item.name,
-          avatar: item.avatar ?? '',
+          avatar: item.avatar,
           description: selectedApps.find((app) => app.appId === item.id)?.description || ''
         }))
       );
