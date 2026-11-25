@@ -16,7 +16,10 @@ import {
   countActiveSandboxInstances,
   type SandboxResourceDoc
 } from '../infrastructure/instance/repository';
-import { isRecoverableSandboxError } from '../infrastructure/opensandbox/errors';
+import {
+  isRecoverableSandboxError,
+  isSandboxDiskFullError
+} from '../infrastructure/opensandbox/errors';
 import { isSandboxActiveStatus } from '../type';
 import {
   createAgentSandboxDiskQuotaExceededError,
@@ -150,4 +153,12 @@ export async function assertSandboxWorkspaceWritable(
   if (status.exceeded) {
     throw createAgentSandboxDiskQuotaExceededError();
   }
+}
+
+/** 将沙盒底层磁盘写满异常转换为面向用户的配额超限业务错误，其余异常原样抛出。 */
+export function rethrowSandboxDiskQuotaExceededError(error: unknown): never {
+  if (isSandboxDiskFullError(error)) {
+    throw createAgentSandboxDiskQuotaExceededError();
+  }
+  throw error;
 }

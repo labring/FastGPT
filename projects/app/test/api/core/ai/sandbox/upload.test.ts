@@ -27,9 +27,15 @@ vi.mock('@fastgpt/service/core/ai/sandbox/config', () => ({
   getAgentSandboxDiskBytes: mocks.getAgentSandboxDiskBytes
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/application/quota', () => ({
-  assertSandboxWorkspaceWritable: mocks.assertSandboxWorkspaceWritable
-}));
+vi.mock('@fastgpt/service/core/ai/sandbox/application/quota', async () => {
+  const actual = await vi.importActual<
+    typeof import('@fastgpt/service/core/ai/sandbox/application/quota')
+  >('@fastgpt/service/core/ai/sandbox/application/quota');
+  return {
+    ...actual,
+    assertSandboxWorkspaceWritable: mocks.assertSandboxWorkspaceWritable
+  };
+});
 
 vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', () => ({
   buildSandboxClientQueryFromChatSource: mocks.buildSandboxClientQueryFromChatSource

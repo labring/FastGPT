@@ -10,9 +10,7 @@ import { posix } from 'node:path';
 import { Readable } from 'node:stream';
 import type { SandboxClient } from './runtime/client';
 import { readExternalFileBuffer } from '../../../../common/file/read/external';
-import { createAgentSandboxDiskQuotaExceededError } from '../error';
-import { isSandboxDiskFullError } from '../infrastructure/opensandbox/errors';
-import { assertSandboxWorkspaceWritable } from './quota';
+import { assertSandboxWorkspaceWritable, rethrowSandboxDiskQuotaExceededError } from './quota';
 
 export type SandboxUrlFile = {
   path: string;
@@ -89,10 +87,7 @@ export async function writeUrlFilesToSandbox({
       });
     }
   } catch (error) {
-    if (isSandboxDiskFullError(error)) {
-      throw createAgentSandboxDiskQuotaExceededError();
-    }
-    throw error;
+    rethrowSandboxDiskQuotaExceededError(error);
   }
 }
 
