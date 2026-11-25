@@ -1490,6 +1490,86 @@ describe('loadRequestMessages function tests', () => {
       ).rejects.toThrow('common:core.chat.error.File read failed');
     });
 
+    it('keeps the request alive when only a historical turn has unreadable media', async () => {
+      getTestInstanceConfig().feature.multipleDataToBase64 = true;
+      mockGetImageBase64.mockRejectedValue(new Error('download failed for history image'));
+
+      // 历史轮次只有一张读取失败的图片，本轮是正常文本：历史消息只能降级丢弃，
+      // 不能把 'null'/空 part 发给模型，也不能让 Promise.all 拒绝。
+      const result = await loadRequestMessages({
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: [
+              {
+                type: 'image_url',
+                image_url: { url: 'https://files.example.com/history.png?sig=secret' }
+              }
+            ]
+          },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Assistant,
+            content: 'previous answer'
+          },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'current question'
+          }
+        ],
+        useVision: true
+      });
+
+      expect(mockGetImageBase64).toHaveBeenCalledWith(
+        'https://files.example.com/history.png?sig=secret'
+      );
+      // 历史图片消息被整体降级丢弃，本轮文本消息照常发出。
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'previous answer'
+      });
+      expect(result[1]).toMatchObject({
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: 'current question'
+      });
+      // 任何消息都不应出现 'null' 或空 content 数组。
+      expect(result.every((message) => message.content !== 'null')).toBe(true);
+      expect(
+        result.every((message) => !Array.isArray(message.content) || message.content.length > 0)
+      ).toBe(true);
+    });
+
+    it('rejects when only the current turn media fails to normalize, even with history', async () => {
+      getTestInstanceConfig().feature.multipleDataToBase64 = true;
+      mockGetImageBase64.mockRejectedValue(new Error('download failed for current image'));
+
+      // 历史轮次正常，本轮只有一张读取失败的图片：没有可消费输入，抛既定 UserError。
+      await expect(
+        loadRequestMessages({
+          messages: [
+            {
+              role: ChatCompletionRequestMessageRoleEnum.User,
+              content: 'earlier question'
+            },
+            {
+              role: ChatCompletionRequestMessageRoleEnum.Assistant,
+              content: 'earlier answer'
+            },
+            {
+              role: ChatCompletionRequestMessageRoleEnum.User,
+              content: [
+                {
+                  type: 'image_url',
+                  image_url: { url: 'https://files.example.com/current.png?sig=secret' }
+                }
+              ]
+            }
+          ],
+          useVision: true
+        })
+      ).rejects.toThrow('common:core.chat.error.File read failed');
+    });
+
     it('keeps the null placeholder when a user message never had any content', async () => {
       // 用户本来就没发内容属于既有语义，仍格式化为 'null'，不能被误判成文件读取失败。
       const result = await loadRequestMessages({

@@ -975,6 +975,14 @@ export const loadRequestMessages = async ({
   })(messages);
 
   /**
+   * 本轮请求的「当前输入」= 合并后最后一条 user 消息。
+   * 只有它缺少可消费内容时才应报错；历史轮次的媒体读取失败必须降级，不能阻断本轮提问。
+   */
+  const lastUserMessageIndex = mergeMessages.findLastIndex(
+    (message) => message.role === ChatCompletionRequestMessageRoleEnum.User
+  );
+
+  /**
    * 工具消息里的图片不能直接放进 tool content（供应商只接受字符串或文本 parts），
    * 需要转换成紧随其后的 user 视觉消息。但同一个 assistant 消息可能同时发起多个工具调用，
    * 这时的图片消息必须排在全部 tool 结果之后，否则会打断 tool_call 结果回填顺序。
@@ -1026,10 +1034,16 @@ export const loadRequestMessages = async ({
           const { content, droppedPartCount } = await parseUserContent(item.content);
           if (!content) {
             // 部分失败（仍有文本或其它可用 part）走上面的继续逻辑；这里只剩「本条消息没有
-            // 任何可消费输入」。若是因为媒体全部读取失败，不能再以 'null' 继续发空任务，
-            // 而应让本轮以明确的文件读取失败结束。
+            // 任何可消费输入」。
             if (droppedPartCount > 0) {
-              throw new UserError(i18nT('common:core.chat.error.File read failed'));
+              // 当前轮输入只有读取失败的附件：本轮确实没有可消费内容，明确报文件读取失败，
+              // 而不是把 'null' 发给模型。
+              if (i === lastUserMessageIndex) {
+                throw new UserError(i18nT('common:core.chat.error.File read failed'));
+              }
+              // 历史轮次的附件读取失败只降级：丢弃该条历史消息，不向下游发送空 part 或
+              // 'null'，也不让整批 Promise.all 拒绝，从而保证本轮请求照常发出。
+              return;
             }
             return {
               ...item,
