@@ -8,7 +8,6 @@ import { resolveSandboxSourceTeamId } from './sourceGuard';
 /**
  * 在运行入口确定团队归属，并补齐历史实例；返回值供配额、新建和恢复流程直接使用。
  * source 是归属真值，已有归属冲突时拒绝使用。回填失败原样抛出，禁止带着缺失归属激活。
- * 使用实例当前 provider 回填，兼容激活前尚未完成的 provider 迁移。
  */
 export async function ensureSandboxTeamOwnership(params: {
   sandboxId: string;
@@ -34,7 +33,6 @@ export async function ensureSandboxTeamOwnership(params: {
   }
 
   const result = await backfillSandboxInstanceTeamId({
-    provider: current.provider,
     sandboxId: current.sandboxId,
     teamId
   });

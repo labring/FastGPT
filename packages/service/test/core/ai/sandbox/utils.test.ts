@@ -57,9 +57,15 @@ describe('sandbox runtime paths', () => {
         allowAbsolutePath: true
       })
     ).toBe('/workspace/projects/a/SKILL.md');
-    expect(
+    expect(() =>
       resolveSandboxRuntimePath('/root/.fastgpt/skills/skill-creator/SKILL.md', paths, {
         allowAbsolutePath: true
+      })
+    ).toThrow('Sandbox path is outside workspace');
+    expect(
+      resolveSandboxRuntimePath('/root/.fastgpt/skills/skill-creator/SKILL.md', paths, {
+        allowAbsolutePath: true,
+        allowOutsideWorkspace: true
       })
     ).toBe('/root/.fastgpt/skills/skill-creator/SKILL.md');
     expect(() => resolveSandboxRuntimePath('../other-chat/file', paths)).toThrow(

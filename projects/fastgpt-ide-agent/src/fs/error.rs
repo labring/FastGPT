@@ -22,6 +22,10 @@ pub(super) enum FsError {
         size: u64,
         max_size: u64,
     },
+    #[error(
+        "Disk quota exceeded ({used} bytes >= {limit} bytes). Please delete unused files to free space."
+    )]
+    DiskQuotaExceeded { used: u64, limit: u64 },
     #[error("Forbidden: read-only sandbox ticket")]
     PermissionDenied,
     #[error("Method not found")]
@@ -39,6 +43,7 @@ impl FsError {
         match self {
             Self::FileConflict => JsonRpcErrorCode::FileConflict,
             Self::FileTooLarge { .. } => JsonRpcErrorCode::FileTooLarge,
+            Self::DiskQuotaExceeded { .. } => JsonRpcErrorCode::DiskQuotaExceeded,
             Self::PermissionDenied => JsonRpcErrorCode::PermissionDenied,
             Self::MethodNotFound => JsonRpcErrorCode::MethodNotFound,
             Self::MissingParams
@@ -47,12 +52,6 @@ impl FsError {
             | Self::InvalidContent(_)
             | Self::Message(_) => JsonRpcErrorCode::InternalError,
         }
-    }
-}
-
-impl From<String> for FsError {
-    fn from(message: String) -> Self {
-        Self::Message(message)
     }
 }
 

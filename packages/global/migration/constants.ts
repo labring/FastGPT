@@ -24,4 +24,8 @@ export const systemMigrationLimits = {
 
 /** App 与 Pro 共用的系统配置迁移握手标识，Pro 只读取状态，不运行迁移。 */
 export const systemConfigMigrationId = '20261116_migrate_system_configs';
+
+/** 4.18.0 Agent Sandbox 迁入 OpenSandbox 的升级任务标识，运行期只读查询其状态以拦截未迁移的 v2 实例。 */
+export const sandboxMigrationId = '20261117_migrate_sandbox_to_opensandbox';
+
 export const systemMigrationStateCollectionName = 'system_migration_states';

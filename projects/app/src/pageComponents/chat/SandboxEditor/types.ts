@@ -32,38 +32,20 @@ const normalizeSandboxChatTarget = (chatTarget?: ChatTargetInputType) => {
  * App 调用方可继续只传真实 appId；Skill Edit 必须传 chatTarget.skillId，避免 UI/API
  * 链路继续把 skillId 当作 appId 使用。
  */
-export function resolveSandboxTarget({
-  appId,
-  chatTarget
-}: SandboxTargetInput): ChatTargetInputType {
-  const normalizedChatTarget = normalizeSandboxChatTarget(chatTarget);
-  if (normalizedChatTarget) {
-    return normalizedChatTarget;
+export function resolveSandboxTarget(props: SandboxTargetInput): ChatTargetInputType {
+  const target = tryResolveSandboxTarget(props);
+  if (!target) {
+    throw new Error('Sandbox target is required');
   }
-
-  if (appId) {
-    return { appId };
-  }
-
-  throw new Error('Sandbox target is required');
+  return target;
 }
 
 /** 尝试解析 Sandbox 目标；分享页首屏可能尚未拿到真实 appId，此时保持空态等待后续刷新。 */
-export function tryResolveSandboxTarget(
-  props: SandboxTargetInput
-): ChatTargetInputType | undefined {
-  const { appId, chatTarget } = props;
-  const normalizedChatTarget = normalizeSandboxChatTarget(chatTarget);
-
-  if (normalizedChatTarget) {
-    return normalizedChatTarget;
-  }
-
-  if (appId) {
-    return { appId };
-  }
-
-  return undefined;
+export function tryResolveSandboxTarget({
+  appId,
+  chatTarget
+}: SandboxTargetInput): ChatTargetInputType | undefined {
+  return normalizeSandboxChatTarget(chatTarget) ?? (appId ? { appId } : undefined);
 }
 
 export const getSandboxTargetId = (target: ChatTargetInputType) =>

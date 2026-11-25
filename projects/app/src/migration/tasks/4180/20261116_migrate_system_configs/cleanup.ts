@@ -1,8 +1,13 @@
 import {
+  resolveDomainEffectiveConfig,
   SYSTEM_INSTANCE_CONFIG_DOMAINS,
   type SystemInstanceConfigDomainKey
 } from '@fastgpt/global/common/system/config/schema';
-import { readMigrationDomainConfig } from './validation';
+import {
+  agentSandboxProxyEnvKeys,
+  readMigrationDomainConfig,
+  resolveAgentSandboxProxyFromEnv
+} from './validation';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import {
   decryptDomainSecrets,
@@ -60,7 +65,10 @@ export const deprecatedOverridePaths: Partial<
     // 入口超时固定 60 秒，WebSocket 消息/帧上限固定 64/16 MiB。
     ['agentSandbox', 'common', 'entrypointTimeoutSeconds'],
     ['agentSandbox', 'common', 'wsMaxMessageBytes'],
-    ['agentSandbox', 'common', 'wsMaxFrameBytes']
+    ['agentSandbox', 'common', 'wsMaxFrameBytes'],
+    // Sealos Devbox 运行态与旧多 Provider 选择器在 4.18 下线，清理存量分支配置。
+    ['agentSandbox', 'sealosdevbox'],
+    ['agentSandbox', 'provider']
   ],
   auth: [
     // 新团队基础权限恢复为 ENV 权威，存量实例配置不再参与运行时决策。
@@ -229,17 +237,94 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
   const updatedDomains: SystemInstanceConfigDomainKey[] = [];
   let removedFieldCount = 0;
 
+  /** 解析单个域文档的清理结果，并将历史已启用的 `provider=opensandbox` 平滑转换为 `enabled=true`。 */
+  const cleanDomainDoc = ({
+    domain,
+    rawOverrides,
+    rawExplicitDefaultPaths
+  }: {
+    domain: SystemInstanceConfigDomainKey;
+    rawOverrides: unknown;
+    rawExplicitDefaultPaths: unknown;
+  }) => {
+    const decoded = decryptDomainSecrets(domain, rawOverrides);
+    const legacySandbox =
+      domain === 'subservice' && isPlainObject(decoded) && isPlainObject(decoded.agentSandbox)
+        ? decoded.agentSandbox
+        : undefined;
+    const legacySandboxProvider =
+      legacySandbox && typeof legacySandbox.provider === 'string'
+        ? legacySandbox.provider
+        : undefined;
+    const hasExplicitEnabledOverride =
+      Boolean(legacySandbox) && Object.hasOwn(legacySandbox!, 'enabled');
+    const explicitPaths = Array.isArray(rawExplicitDefaultPaths) ? rawExplicitDefaultPaths : [];
+    const hasExplicitEnabledDefaultMarker = explicitPaths.includes('agentSandbox.enabled');
+
+    // 先剥离已废弃键（如 legacy proxy.httpUrl 与 provider），再判断 proxy 是否空缺并尝试晋升 opensandbox.enabled=true。
+    const { overrides: strippedBase, removedFieldCount: removedOverrides } =
+      stripDeprecatedOverrides(domain, decoded);
+
+    const overrides = (() => {
+      if (
+        legacySandboxProvider === 'opensandbox' &&
+        !hasExplicitEnabledOverride &&
+        !hasExplicitEnabledDefaultMarker &&
+        isPlainObject(strippedBase.agentSandbox)
+      ) {
+        const candidate = structuredClone(strippedBase);
+        const candidateSandbox = candidate.agentSandbox as Record<string, unknown>;
+        candidateSandbox.enabled = true;
+        const hasClearedProxyLeaf = Object.keys(agentSandboxProxyEnvKeys).some((key) =>
+          explicitPaths.includes(`agentSandbox.proxy.${key}`)
+        );
+        // Stage 4 rehomeAgentSandboxProxy 尚未执行且管理员未显式清空代理时，若 DB 尚未落盘 proxy（或剔除旧 proxy.httpUrl 后已为空）
+        // 且环境变量已具备完整代理配置，先一并合并通过终审校验。
+        if (
+          (!isPlainObject(candidateSandbox.proxy) ||
+            Object.keys(candidateSandbox.proxy).length === 0) &&
+          !hasClearedProxyLeaf
+        ) {
+          const envProxy = resolveAgentSandboxProxyFromEnv(process.env);
+          if (envProxy) {
+            candidateSandbox.proxy = envProxy;
+          }
+        }
+        try {
+          resolveDomainEffectiveConfig({ domain, overrides: candidate });
+          return candidate;
+        } catch {
+          // 存量文档不满足启用条件（例如缺少 proxy 或 OpenSandbox 必填凭据）时不自动开启，避免阻塞清理。
+        }
+      }
+      return strippedBase;
+    })();
+    const { explicitDefaultPaths: strippedPaths, removedPathCount: removedMarkers } =
+      stripDeprecatedExplicitDefaultPaths(domain, rawExplicitDefaultPaths);
+    const explicitDefaultPaths =
+      legacySandboxProvider !== undefined &&
+      legacySandboxProvider !== 'opensandbox' &&
+      !hasExplicitEnabledOverride &&
+      !hasExplicitEnabledDefaultMarker
+        ? [...(strippedPaths ?? []), 'agentSandbox.enabled']
+        : strippedPaths;
+    return {
+      overrides,
+      removedOverrides,
+      explicitDefaultPaths,
+      removed: removedOverrides + removedMarkers
+    };
+  };
+
   for (const doc of docs) {
     const domain = ((doc as any).domain ?? doc._id) as SystemInstanceConfigDomainKey;
     if (!SYSTEM_INSTANCE_CONFIG_DOMAINS.includes(domain)) continue;
 
-    const { overrides, removedFieldCount: removedOverrides } = stripDeprecatedOverrides(
+    const { overrides, removedOverrides, explicitDefaultPaths, removed } = cleanDomainDoc({
       domain,
-      decryptDomainSecrets(domain, doc.overrides)
-    );
-    const { explicitDefaultPaths, removedPathCount: removedMarkers } =
-      stripDeprecatedExplicitDefaultPaths(domain, doc.explicitDefaultPaths);
-    const removed = removedOverrides + removedMarkers;
+      rawOverrides: doc.overrides,
+      rawExplicitDefaultPaths: doc.explicitDefaultPaths
+    });
     if (removed === 0) continue;
 
     // 写回前诊断保存约束；无效历史字段保留，告警不会阻断清理。
@@ -286,13 +371,13 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
         { readPreference: 'primary' }
       );
       const retry = latest
-        ? stripDeprecatedOverrides(domain, decryptDomainSecrets(domain, latest.overrides))
-        : { overrides: undefined, removedFieldCount: 0 };
-      const retryMarkers = latest
-        ? stripDeprecatedExplicitDefaultPaths(domain, latest.explicitDefaultPaths)
-        : { explicitDefaultPaths: undefined, removedPathCount: 0 };
-      const retryRemoved = retry.removedFieldCount + retryMarkers.removedPathCount;
-      if (retryRemoved > 0 && retry.overrides) {
+        ? cleanDomainDoc({
+            domain,
+            rawOverrides: latest.overrides,
+            rawExplicitDefaultPaths: latest.explicitDefaultPaths
+          })
+        : undefined;
+      if (retry && retry.removed > 0) {
         // 与首次路径一致：诊断保存约束但保留历史值，清理只删除已声明的废弃字段。
         try {
           readMigrationDomainConfig({ domain, overrides: retry.overrides });
@@ -307,7 +392,7 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
           { _id: doc._id, revision: latest!.revision },
           {
             $set: {
-              ...(retry.removedFieldCount > 0
+              ...(retry.removedOverrides > 0
                 ? {
                     overrides: encryptDomainSecrets({
                       domain,
@@ -316,8 +401,8 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
                     })
                   }
                 : {}),
-              ...(retryMarkers.explicitDefaultPaths !== undefined
-                ? { explicitDefaultPaths: retryMarkers.explicitDefaultPaths }
+              ...(retry.explicitDefaultPaths !== undefined
+                ? { explicitDefaultPaths: retry.explicitDefaultPaths }
                 : {}),
               updatedAt: new Date()
             },
@@ -332,7 +417,7 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
           );
         }
         updatedDomains.push(domain);
-        removedFieldCount += retryRemoved;
+        removedFieldCount += retry.removed;
       }
       continue;
     }

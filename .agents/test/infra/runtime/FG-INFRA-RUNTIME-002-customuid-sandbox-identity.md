@@ -54,7 +54,7 @@ baseline: "dd3cc357757bfb7c11a607c279a69a5f73a48c74"
 - 复用 OPENAPI-001 的身份准备，在独立应用 Ws 中启用 Agent 沙箱，节点调用一次固定的文件写入/读取工具：写当前 session 目录的 `RUN-marker.txt`，内容取系统 userId，随后原样读取。不得仅检查模型声称“写入成功”。记录实际导出的工作流及工具调用证据。
 - 使用真实可用的 provider、Redis、Mongo 与 sandbox proxy，启用 App 沙箱功能；仅引用已配置的环境变量，不在文档保存 URL 中的 ticket 或共享密钥。若环境仅有无状态“代码运行”服务而没有 Agent 沙箱，本例阻塞，不误判为代码沙箱失败。
 - 每 2 秒轮询本例实例记录及运行状态，最长 120 秒；运行报错或超时保留真实状态。getTicket 使用 `{sourceType:"app",sourceId:Ws,chatId,channel:"fs",permission:"read"}`，不尝试 App 不支持的 terminal 通道。
-- 保存 appId、chatId、uid、sandboxId、工具返回及实际文件内容。Mongo 只读查询：`db.agent_sandbox_instances_v2.find({sourceType:"app",sourceId:Ws,userId:{$in:[u1,u2,A]}},{sandboxId:1,userId:1,sourceId:1,status:1})`，同时用 OPENAPI-001 查询本次 chats。
+- 保存 appId、chatId、uid、sandboxId、工具返回及实际文件内容。Mongo 只读查询：`db.agent_sandbox_instances_v3.find({sourceType:"app",sourceId:Ws,userId:{$in:[u1,u2,A]}},{sandboxId:1,userId:1,sourceId:1,status:1})`，同时用 OPENAPI-001 查询本次 chats。
 - 复位/清理：每行按指定创建 chat；所有实例仅属于临时 Ws。完成后通过环境现有沙箱生命周期清理与应用删除流程撤销测试资源，核对实例和文件无残留；环境无 provider 清理能力时记录资源 ID 并将清理项阻塞，不能只删 Mongo 映射假装已清理。
 
 ## 测试步骤

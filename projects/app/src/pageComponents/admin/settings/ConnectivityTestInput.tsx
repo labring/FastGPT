@@ -2,16 +2,15 @@ import React, { useMemo, useRef, useState } from 'react';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, HStack, Input, Tag, Text, type InputProps } from '@chakra-ui/react';
 import { POST } from '@/web/common/api/request';
-import type {
-  ProbeConnectionBody,
-  ProbeConnectionResponse
+import {
+  isCredentialProbeService,
+  type ProbeConnectionBody,
+  type ProbeConnectionResponse
 } from '@fastgpt/global/openapi/admin/system/instanceConfig/probe';
 import AdminReadonlyInput from './AdminReadonlyInput';
 
 export type ConnectivityTestInputProps = Omit<InputProps, 'value' | 'onChange'> & {
-  url?: string;
   value?: string;
-  testUrl?: string;
   testPath?: string;
   service?: ProbeConnectionBody['service'];
   token?: string;
@@ -33,13 +32,11 @@ export type ConnectivityTestInputProps = Omit<InputProps, 'value' | 'onChange'> 
 /**
  * 连通性测试组件：
  * - 支持只读展示或直接编辑输入（通过 isEditable 控制），右侧集成测试按钮；
- * - 接收 url 或 value 参数，点击按钮后由后端服务发起实际 HTTP 探测并展示连通状态与延迟结果。
+ * - 接收 value 参数，点击按钮后由后端服务发起实际 HTTP 探测并展示连通状态与延迟结果。
  */
 function ConnectivityTestInput(
   {
-    url,
     value,
-    testUrl,
     testPath,
     service,
     token,
@@ -60,12 +57,11 @@ function ConnectivityTestInput(
   const resolvedButtonText = buttonText ?? t('admin:probe_button');
   const resolvedPlaceholder = placeholder ?? t('admin:not_configured_service_address');
   // 历史配置可能包含错误类型；保持可编辑文本，避免读取页面时因 trim 抛错。
-  const effectiveUrl = String(value ?? url ?? '');
+  const effectiveUrl = String(value ?? '');
   // 结果绑定完整输入快照；外部重置、凭据修改或禁用后不会展示旧结果。
   const probeInputs = useMemo(
     () => ({
       effectiveUrl,
-      testUrl,
       testPath,
       service,
       token,
@@ -73,7 +69,7 @@ function ConnectivityTestInput(
       timeoutMs,
       isDisabled
     }),
-    [effectiveUrl, testUrl, testPath, service, token, useStoredToken, timeoutMs, isDisabled]
+    [effectiveUrl, testPath, service, token, useStoredToken, timeoutMs, isDisabled]
   );
   const [probeState, setProbeState] = useState<{
     inputs: typeof probeInputs;
@@ -114,14 +110,14 @@ function ConnectivityTestInput(
   };
 
   const resolveTargetUrl = () => {
-    if (testUrl?.trim()) return testUrl.trim();
-    if (!effectiveUrl.trim()) return '';
+    const trimmed = effectiveUrl.trim();
+    if (!trimmed) return '';
     if (testPath) {
-      const base = effectiveUrl.trim().replace(/\/+$/, '');
+      const base = trimmed.replace(/\/+$/, '');
       const path = testPath.startsWith('/') ? testPath : '/' + testPath;
       return base + path;
     }
-    return effectiveUrl.trim();
+    return trimmed;
   };
 
   const handleTest = async () => {
@@ -136,7 +132,7 @@ function ConnectivityTestInput(
         url: targetUrl,
         timeoutMs,
         ...(service ? { service } : {}),
-        ...(service === 'codeSandbox'
+        ...(isCredentialProbeService(service)
           ? { ...(token !== undefined ? { token } : {}), useStoredToken }
           : {})
       });
@@ -169,7 +165,6 @@ function ConnectivityTestInput(
   ) : (
     <AdminReadonlyInput value={effectiveUrl} placeholder={resolvedPlaceholder} isTruncate />
   );
-  // 禁用条件与 resolveTargetUrl 一致：testUrl 可独立提供探测目标。
   const button = (
     <Button
       colorScheme={'blue'}
@@ -177,7 +172,7 @@ function ConnectivityTestInput(
       flexShrink={0}
       px={5}
       isLoading={isTesting}
-      isDisabled={(!effectiveUrl.trim() && !testUrl?.trim()) || isDisabled}
+      isDisabled={!effectiveUrl.trim() || isDisabled}
       onClick={handleTest}
     >
       {resolvedButtonText}

@@ -26,17 +26,26 @@ import { sandboxLsTool } from './ls.tool';
 import { sandboxReadFileTool } from './readFile.tool';
 import { sandboxShellTool } from './shell.tool';
 import { sandboxWriteFileTool } from './writeFile.tool';
-import { getSandboxClient, type SandboxClient } from '../runtime/client';
+import { type SandboxClient } from '../runtime/client';
+import { prepareAgentSandboxRuntime } from '../runtime';
 import { parseJsonArgs } from '../../../utils';
 import { writeUrlFilesToSandbox, type SandboxInputFileReader } from '../file';
-import { preparePackageMirrors, prepareSandbox } from '../runtime/prepare';
+import {
+  preparePackageMirrors,
+  prepareSandbox,
+  prepareWorkDirectory,
+  type SandboxPrepareContext,
+  type SandboxPrepareStep
+} from '../runtime/prepare';
+import { runSandboxEntrypoint } from '../runtime/entrypoint';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
+  allocateSandboxInputFiles,
   buildSandboxInputFileScopeKey,
   getSandboxInputFileNameAllocation,
-  getSafeSandboxInputFilename
+  type SandboxInputFileNameAllocation
 } from '../../utils';
-import { getRunningSandboxId, getSandboxUserId } from '../../utils/id';
+import { getSandboxUserId } from '../../utils/id';
 import { createToolRunner, type SandboxToolCallValidator } from './type';
 import type { ChatCompletionToolMessageContentPart } from '@fastgpt/global/core/ai/llm/type';
 
@@ -71,12 +80,14 @@ export const runSandboxTools = async ({
   toolName,
   args,
   sandboxClient,
-  validate
+  validate,
+  signal
 }: {
   toolName: string;
   args: string;
   sandboxClient: SandboxClient;
   validate?: SandboxToolCallValidator;
+  signal?: AbortSignal;
 }): Promise<SandboxToolCallResult> => {
   const startTime = Date.now();
   const getDuration = () => +((Date.now() - startTime) / 1000).toFixed(2);
@@ -104,7 +115,8 @@ export const runSandboxTools = async ({
 
   const result = await tool({
     sandboxInstance: sandboxClient,
-    input: parseJsonArgs<Record<string, unknown>>(args)
+    input: parseJsonArgs<Record<string, unknown>>(args),
+    signal
   });
   if (!result.success) {
     return {
@@ -136,75 +148,114 @@ export const prepareSandboxToolRuntime = async ({
   userId,
   chatId,
   files,
-  readInputFile
+  allocation: providedAllocation,
+  sandboxEntrypoint,
+  sandboxEntrypointScope,
+  readInputFile,
+  onUpgrade,
+  onUpgradeComplete
 }: {
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   userId: string;
   chatId: string;
   files: { path: string; url: string }[];
+  allocation?: SandboxInputFileNameAllocation;
+  sandboxEntrypoint?: string;
+  sandboxEntrypointScope?: string;
   readInputFile?: SandboxInputFileReader;
+  onUpgrade?: () => void;
+  onUpgradeComplete?: () => void;
 }) => {
+  const {
+    sandboxClient: instance,
+    workspaceRoot,
+    workDirectory
+  } = await prepareAgentSandboxRuntime({
+    sourceType,
+    sourceId,
+    userId,
+    chatId,
+    onUpgrade,
+    onUpgradeComplete
+  });
   const sandboxUserId = getSandboxUserId({ sourceType, userId });
-  const sandboxId = getRunningSandboxId({
-    sourceType,
-    sourceId,
-    userId: sandboxUserId
+  const allocation =
+    providedAllocation ??
+    getSandboxInputFileNameAllocation({
+      scopeKey: buildSandboxInputFileScopeKey({
+        sourceType,
+        sourceId,
+        userId: sandboxUserId,
+        chatId
+      }),
+      sandbox: instance.opensandbox,
+      workDirectory
+    });
+  const userInputItems = files.flatMap((file, index) => {
+    const normalizedPath = file.path.replace(/^\.\//, '');
+    return normalizedPath.startsWith(SANDBOX_USER_FILES_PATH)
+      ? [{ file, index, url: file.url }]
+      : [];
   });
-  const instance = await getSandboxClient({
-    sandboxId,
-    sourceType,
-    sourceId,
-    userId: sandboxUserId,
-    chatId
-  });
-  const runtimePaths = instance.getRuntimePaths();
-  await prepareSandbox(
-    {
-      sandbox: instance.provider,
-      sandboxClient: instance,
-      workDirectory: runtimePaths.sessionWorkDirectory,
-      workspaceRoot: runtimePaths.workspaceRoot
-    },
-    preparePackageMirrors()
+  const allocatedByIndex = new Map(
+    allocateSandboxInputFiles({
+      items: userInputItems,
+      getFilename: ({ file }) =>
+        file.path.replace(/^\.\//, '').slice(SANDBOX_USER_FILES_PATH.length),
+      allocation
+    }).map(({ item, filename }) => [item.index, filename])
   );
-  const allocation = getSandboxInputFileNameAllocation({
-    scopeKey: buildSandboxInputFileScopeKey({
-      sourceType,
-      sourceId,
-      userId: sandboxUserId,
-      chatId
-    }),
-    sandbox: instance.provider,
-    workDirectory: runtimePaths.sessionWorkDirectory
-  });
-  const usedNames = new Map<string, number>();
-  const batchUsedFilenames = new Set<string>();
-  await writeUrlFilesToSandbox(
-    instance.provider,
-    files.map((file, index) => {
-      const normalizedPath = file.path.replace(/^\.\//, '');
-      if (normalizedPath.startsWith(SANDBOX_USER_FILES_PATH)) {
-        const rawFilename = normalizedPath.slice(SANDBOX_USER_FILES_PATH.length);
-        const filename = getSafeSandboxInputFilename(rawFilename, index, usedNames, {
-          url: file.url,
-          allocation,
-          batchUsedFilenames
-        });
-        const relativePath = `${SANDBOX_USER_FILES_PATH}${filename}`;
-        file.path = relativePath;
-        return {
-          ...file,
-          path: instance.resolveRuntimePath(relativePath, { allowAbsolutePath: true })
-        };
-      }
-
+  const writeEntries = files.map((file, index) => {
+    const filename = allocatedByIndex.get(index);
+    if (filename) {
+      const relativePath = `${SANDBOX_USER_FILES_PATH}${filename}`;
+      file.path = relativePath;
       return {
         ...file,
-        path: instance.resolveRuntimePath(file.path, { allowAbsolutePath: true })
+        path: instance.resolveRuntimePath(relativePath, { allowAbsolutePath: true })
       };
-    }),
-    readInputFile
+    }
+
+    return {
+      ...file,
+      path: instance.resolveRuntimePath(file.path, { allowAbsolutePath: true })
+    };
+  });
+
+  const steps: SandboxPrepareStep<SandboxPrepareContext>[] = [
+    prepareWorkDirectory(),
+    preparePackageMirrors(),
+    ...(writeEntries.length > 0
+      ? [
+          async (ctx: SandboxPrepareContext) => {
+            await writeUrlFilesToSandbox({
+              sandbox: ctx.sandbox,
+              files: writeEntries,
+              readInputFile
+            });
+            return ctx;
+          }
+        ]
+      : []),
+    ...(sandboxEntrypoint?.trim() && sandboxEntrypointScope
+      ? [
+          runSandboxEntrypoint({
+            sandboxEntrypoint: sandboxEntrypoint.trim(),
+            scope: sandboxEntrypointScope
+          })
+        ]
+      : [])
+  ];
+
+  await prepareSandbox(
+    {
+      sandbox: instance.opensandbox,
+      sandboxClient: instance,
+      workDirectory,
+      workspaceRoot
+    },
+    ...steps
   );
   return instance;
 };

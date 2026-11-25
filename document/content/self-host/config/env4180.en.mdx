@@ -230,4 +230,5 @@ The WeChat Personal channel bypasses these proxy environment variables and requi
 | `VM_DOCKER_API_VERSION`    | `v1.44`                | Docker API version. Required only in `docker` mode.                                                     |
 | `VM_K8S_NAMESPACE`         | `opensandbox`          | Kubernetes namespace. Required only in `kubernetes` mode.                                               |
 | `VM_K8S_PVC_STORAGE_CLASS` | Unset                  | Kubernetes PVC StorageClass. Leave empty to use the cluster default. Applies only to `kubernetes` mode. |
-| `VM_LOG_LEVEL`             | `info`                 | Log level. Supported values are `debug`, `info`, and `none`.                                            |
+
+> Volume Manager logging uses the shared `LOG_*` variables (`LOG_ENABLE_CONSOLE`, `LOG_CONSOLE_LEVEL`, `LOG_ENABLE_OTEL`, and `LOG_OTEL_*`; defaults to `LOG_CONSOLE_LEVEL=info` and `LOG_OTEL_SERVICE_NAME=fastgpt-volume-manager`).
