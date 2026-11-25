@@ -308,34 +308,57 @@ describe('useDomainConfig', () => {
     expect(providerConfig.effectiveConfig).not.toHaveProperty('documentParse.customPdf.key');
   });
 
-  it('triggers clientInitData after successful save and passes includeSubPlans when subPlans are updated or cached', async () => {
-    mocks.post.mockResolvedValue({ results: [] });
+  it('delays clientInitData by 2s after save, coalesces rapid saves, and preserves includeSubPlans', async () => {
+    vi.useFakeTimers();
+    try {
+      mocks.post.mockResolvedValue({ results: [] });
 
-    await updateDomainConfigApi({
-      items: [{ domain: 'site', expectedRevision: 1, overrides: { name: 'Updated' } }]
-    });
-    expect(mocks.clientInitData).toHaveBeenLastCalledWith({ retry: 0 });
+      await updateDomainConfigApi({
+        items: [{ domain: 'site', expectedRevision: 1, overrides: { name: 'Updated' } }]
+      });
+      expect(mocks.clientInitData).not.toHaveBeenCalled();
 
-    await updateDomainConfigApi({
-      items: [{ domain: 'commercial', expectedRevision: 1, overrides: {} }],
-      subPlans: {},
-      subPlansExpectedRevision: 1
-    });
-    expect(mocks.clientInitData).toHaveBeenLastCalledWith({ retry: 0, includeSubPlans: true });
+      await vi.advanceTimersByTimeAsync(1999);
+      expect(mocks.clientInitData).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(mocks.clientInitData).toHaveBeenCalledTimes(1);
+      expect(mocks.clientInitData).toHaveBeenLastCalledWith({ retry: 0 });
 
-    mocks.subPlans = { standard: {} };
-    await updateDomainConfigApi({
-      items: [{ domain: 'site', expectedRevision: 2, overrides: { name: 'Updated 2' } }]
-    });
-    expect(mocks.clientInitData).toHaveBeenLastCalledWith({ retry: 0, includeSubPlans: true });
+      // 连续保存合并为一次 2 秒后的刷新，且保留之前保存携带的 includeSubPlans
+      await updateDomainConfigApi({
+        items: [{ domain: 'commercial', expectedRevision: 1, overrides: {} }],
+        subPlans: {},
+        subPlansExpectedRevision: 1
+      });
+      await vi.advanceTimersByTimeAsync(1000);
+      await updateDomainConfigApi({
+        items: [{ domain: 'site', expectedRevision: 2, overrides: { name: 'Updated 2' } }]
+      });
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(mocks.clientInitData).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(mocks.clientInitData).toHaveBeenCalledTimes(2);
+      expect(mocks.clientInitData).toHaveBeenLastCalledWith({ retry: 0, includeSubPlans: true });
 
-    mocks.clientInitData.mockClear();
-    mocks.post.mockRejectedValueOnce(new Error('Save failed'));
-    await expect(
-      updateDomainConfigApi({
-        items: [{ domain: 'site', expectedRevision: 2, overrides: { name: 'Fail' } }]
-      })
-    ).rejects.toThrow('Save failed');
-    expect(mocks.clientInitData).not.toHaveBeenCalled();
+      mocks.subPlans = { standard: {} };
+      await updateDomainConfigApi({
+        items: [{ domain: 'site', expectedRevision: 3, overrides: { name: 'Updated 3' } }]
+      });
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(mocks.clientInitData).toHaveBeenCalledTimes(3);
+      expect(mocks.clientInitData).toHaveBeenLastCalledWith({ retry: 0, includeSubPlans: true });
+
+      mocks.clientInitData.mockClear();
+      mocks.post.mockRejectedValueOnce(new Error('Save failed'));
+      await expect(
+        updateDomainConfigApi({
+          items: [{ domain: 'site', expectedRevision: 3, overrides: { name: 'Fail' } }]
+        })
+      ).rejects.toThrow('Save failed');
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(mocks.clientInitData).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

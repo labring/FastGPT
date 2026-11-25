@@ -5,7 +5,9 @@ import { initSystemConfig } from '.';
 export const startAppConfigPolling = () =>
   systemInstanceConfig.startPolling({
     key: 'app',
-    refresh: async () => {
-      await initSystemConfig();
+    refresh: async ({ changedScopes, initialLoad }) => {
+      await initSystemConfig({
+        refreshLLMRequestRecordTTL: initialLoad || changedScopes.includes('performance')
+      });
     }
   });

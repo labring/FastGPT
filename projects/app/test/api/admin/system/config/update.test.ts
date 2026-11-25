@@ -134,7 +134,7 @@ describe('instance config update API', () => {
     });
     expect(reads).toBe(2);
     expect(reloadSpy).not.toHaveBeenCalled();
-    expect(mocks.initSystemConfig).toHaveBeenCalled();
+    expect(mocks.initSystemConfig).toHaveBeenCalledWith({ refreshLLMRequestRecordTTL: false });
     expect(mocks.syncSiteAvatarLifecycle).toHaveBeenCalled();
     readSpy.mockRestore();
     expect(await MongoSystemInstanceConfig.findOne({ domain: 'site' }).lean()).toMatchObject({

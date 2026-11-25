@@ -241,8 +241,11 @@ async function handler(
     .catch((error) => logger.error('Failed to add system config audit log', { error }));
 
   // 5. 数据库提交后即保存成功；等待运行时快照刷新以便保存返回后 getInitData 立即命中最新配置，
+  // 仅当本次触及 performance 域时检查日志 TTL 变更（且在后台执行，不阻塞保存返回）；
   // 刷新失败不回滚也不将已提交的操作报告为失败。
-  await initSystemConfig().catch((error) => {
+  await initSystemConfig({
+    refreshLLMRequestRecordTTL: items.some((item) => item.domain === 'performance')
+  }).catch((error) => {
     logger.error('Failed to apply instance config after save', { error });
   });
 

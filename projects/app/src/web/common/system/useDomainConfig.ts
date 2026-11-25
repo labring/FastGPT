@@ -31,9 +31,37 @@ export const getDomainConfigApi = (
   return GET<GetDomainConfigResponse>('/admin/system/config/get', { domain });
 };
 
+const INIT_DATA_REFRESH_DELAY_MS = 2000;
+let pendingInitDataRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+let pendingIncludeSubPlans = false;
+
+/**
+ * 延迟刷新客户端初始化缓存：
+ * 多副本 App 通过 1 秒轮询同步实例配置，保存后延迟 2 秒再拉取可避开大部分滞后节点窗口，
+ * 同时合并 2 秒内的连续保存，避免多次刷新响应乱序覆盖。
+ */
+const scheduleClientInitDataRefresh = (includeSubPlans: boolean) => {
+  pendingIncludeSubPlans ||= includeSubPlans;
+  if (pendingInitDataRefreshTimer !== undefined) {
+    clearTimeout(pendingInitDataRefreshTimer);
+  }
+  pendingInitDataRefreshTimer = setTimeout(() => {
+    const shouldIncludeSubPlans = pendingIncludeSubPlans;
+    pendingInitDataRefreshTimer = undefined;
+    pendingIncludeSubPlans = false;
+    void clientInitData({
+      retry: 0,
+      ...(shouldIncludeSubPlans ? { includeSubPlans: true } : {})
+    }).catch(() => undefined);
+  }, INIT_DATA_REFRESH_DELAY_MS);
+  if (typeof pendingInitDataRefreshTimer === 'object') {
+    pendingInitDataRefreshTimer.unref?.();
+  }
+};
+
 /**
  * 客户端 API 请求函数：一次请求原子保存一个或多个 Domain 的稀疏配置。
- * 可附带 subPlans，与配置域在同一个数据库事务中提交；保存成功后异步刷新客户端初始化缓存。
+ * 可附带 subPlans，与配置域在同一个数据库事务中提交；保存成功后延迟刷新客户端初始化缓存。
  */
 export const updateDomainConfigApi = async (
   data: UpdateDomainConfigBody
@@ -41,11 +69,8 @@ export const updateDomainConfigApi = async (
   const res = await POST<UpdateDomainConfigResponse>('/admin/system/config/update', data);
   const includeSubPlans =
     data.subPlans !== undefined || Boolean(useSystemStore.getState?.()?.subPlans);
-  // 刷新客户端静态缓存（feConfigs / subPlans）；刷新失败不影响已提交保存。
-  void clientInitData({
-    retry: 0,
-    ...(includeSubPlans ? { includeSubPlans: true } : {})
-  }).catch(() => undefined);
+  // 延迟刷新客户端静态缓存（feConfigs / subPlans）；刷新失败不影响已提交保存。
+  scheduleClientInitDataRefresh(includeSubPlans);
   return res;
 };
 
