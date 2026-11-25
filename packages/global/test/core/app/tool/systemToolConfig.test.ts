@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SystemToolCodec } from '@fastgpt/global/core/app/tool/systemTool/codec';
+import { AdminSystemToolListItemSchema } from '@fastgpt/global/core/app/tool/systemTool/type/admin';
+import { SystemToolListItemSchema } from '@fastgpt/global/core/app/tool/systemTool/type/base';
 import { UpdateSystemToolBodySchema } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import { type SystemPluginToolCollectionType } from '@fastgpt/global/core/plugin/tool/type';
 
@@ -52,5 +54,21 @@ describe('system tool config', () => {
     expect(SystemToolCodec.getConfiguredSecretsVal(config)).toEqual({
       token: 'legacy-token'
     });
+  });
+
+  it('normalizes legacy null customConfig.avatar to undefined for tool list schemas', () => {
+    const dto = SystemToolCodec.fromDBTypeToListItemType({
+      pluginId: 'commercial-legacy-tool',
+      customConfig: {
+        name: 'Legacy Tool',
+        avatar: null as unknown as string,
+        version: 'v1',
+        associatedPluginId: '507f1f77bcf86cd799439011'
+      }
+    });
+
+    expect(dto.avatar).toBeUndefined();
+    expect(SystemToolListItemSchema.parse(dto).avatar).toBeUndefined();
+    expect(AdminSystemToolListItemSchema.parse(dto).avatar).toBeUndefined();
   });
 });
