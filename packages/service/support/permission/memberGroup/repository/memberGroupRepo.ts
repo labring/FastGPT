@@ -1,20 +1,12 @@
 import { unwrapMongoSession } from '@fastgpt/dal/db/mongo/base';
-import type { DbSession } from '@fastgpt/dal/db/types';
+import type { MemberGroupLookupRepository } from '@fastgpt/dal/db/repos/memberGroup/repo.type';
 import { Types } from '../../../../common/mongo';
 import { MongoMemberGroupModel } from '../memberGroupSchema';
 
-/** member_groups 的 Mongo 仓储适配层。 */
-export const memberGroupRepo = {
+/** member_groups 的 Mongo 仓储适配层（实现 `@fastgpt/dal/db/repos/memberGroup/repo.type` 公开契约）。 */
+export const memberGroupRepo: MemberGroupLookupRepository = {
   /** 校验并返回指定团队内存在的成员分组 ID 集合；非法 ObjectId 自动忽略。 */
-  findTeamMemberGroupIds: async ({
-    teamId,
-    groupIds,
-    tx
-  }: {
-    teamId: string;
-    groupIds: string[];
-    tx?: DbSession;
-  }): Promise<Set<string>> => {
+  findTeamMemberGroupIds: async ({ teamId, groupIds, tx }): Promise<Set<string>> => {
     const validObjectIds = groupIds
       .filter((id) => Types.ObjectId.isValid(id))
       .map((id) => new Types.ObjectId(id));

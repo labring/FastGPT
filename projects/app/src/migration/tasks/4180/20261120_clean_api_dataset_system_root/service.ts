@@ -1,4 +1,7 @@
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import {
+  bridgeClientSessionToDbSession,
+  mongoSessionRun
+} from '@fastgpt/service/common/mongo/sessionRun';
 import {
   cleanDatasetLegacySystemRootInSession,
   type CleanDatasetLegacySystemRootResult
@@ -18,7 +21,7 @@ export const cleanSingleDatasetSystemRoot = async ({
   mongoSessionRun((session) =>
     cleanDatasetLegacySystemRootInSession({
       datasetId,
-      session,
+      tx: bridgeClientSessionToDbSession(session),
       backfillSyncAll: true
     })
   );

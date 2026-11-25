@@ -1,5 +1,5 @@
 import { unwrapMongoSession } from '@fastgpt/dal/db/mongo/base';
-import type { DbSession } from '@fastgpt/dal/db/types';
+import type { TeamMemberLookupRepository } from '@fastgpt/dal/db/repos/teamMember/repo.type';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { Types } from '../../../../common/mongo';
 import { MongoTeamMember } from '../teamMemberSchema';
@@ -7,17 +7,13 @@ import { MongoTeamMember } from '../teamMemberSchema';
 const toObjectIds = (ids: string[]) =>
   ids.filter((id) => Types.ObjectId.isValid(id)).map((id) => new Types.ObjectId(id));
 
-/** team_members 的 Mongo 仓储适配层。 */
-export const teamMemberRepo = {
+/** team_members 的 Mongo 仓储适配层（实现 `@fastgpt/dal/db/repos/teamMember/repo.type` 公开契约）。 */
+export const teamMemberRepo: TeamMemberLookupRepository = {
   /** 查询指定团队内处于 active 状态的 userId -> tmbId 映射。 */
   findActiveTeamMemberIdsByUserIds: async ({
     teamId,
     userIds,
     tx
-  }: {
-    teamId: string;
-    userIds: string[];
-    tx?: DbSession;
   }): Promise<Map<string, string>> => {
     if (userIds.length === 0) return new Map();
 
@@ -36,15 +32,7 @@ export const teamMemberRepo = {
   },
 
   /** 校验并返回指定团队内处于 active 状态的 tmbId 集合；非法 ObjectId 自动忽略。 */
-  findActiveTeamMemberIds: async ({
-    teamId,
-    tmbIds,
-    tx
-  }: {
-    teamId: string;
-    tmbIds: string[];
-    tx?: DbSession;
-  }): Promise<Set<string>> => {
+  findActiveTeamMemberIds: async ({ teamId, tmbIds, tx }): Promise<Set<string>> => {
     const validObjectIds = toObjectIds(tmbIds);
     if (validObjectIds.length === 0) return new Set();
 

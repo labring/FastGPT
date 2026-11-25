@@ -37,6 +37,12 @@
     "./db/repos/registry": "./db/repos/registry.ts",
     "./db/repos/appRegistration/repo": "./db/repos/appRegistration/repo.ts",
     "./db/repos/appRegistration/repo.type": "./db/repos/appRegistration/repo.type.ts",
+    "./db/repos/dataset/repo.type": "./db/repos/dataset/repo.type.ts",
+    "./db/repos/datasetCollection/repo.type": "./db/repos/datasetCollection/repo.type.ts",
+    "./db/repos/user/repo.type": "./db/repos/user/repo.type.ts",
+    "./db/repos/teamMember/repo.type": "./db/repos/teamMember/repo.type.ts",
+    "./db/repos/memberGroup/repo.type": "./db/repos/memberGroup/repo.type.ts",
+    "./db/repos/org/repo.type": "./db/repos/org/repo.type.ts",
     "./db/repos/*/mongo/*": null,
     "./db/repos/*/oceanbase/*": null
   },

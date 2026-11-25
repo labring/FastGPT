@@ -9,7 +9,10 @@ import {
 import { disableApiDatasetSyncAllInSession } from '@fastgpt/service/core/dataset/apiDataset/service';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { parseHeaderCert } from '@fastgpt/service/support/permission/auth/common';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import {
+  bridgeClientSessionToDbSession,
+  mongoSessionRun
+} from '@fastgpt/service/common/mongo/sessionRun';
 import { NextAPI } from '@/service/middleware/entry';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
@@ -241,12 +244,13 @@ async function handler(req: ApiRequestProps) {
     }
 
     if (disableSyncAllDatasetIds.size > 0) {
+      const tx = bridgeClientSessionToDbSession(session);
       // 与关闭 syncAll、暂停目录共用同一状态转换入口：关闭全量同步并按需拆除存量 SYSTEM_ROOT 哨兵。
       for (const dsId of disableSyncAllDatasetIds) {
         await disableApiDatasetSyncAllInSession({
           teamId,
           datasetId: dsId,
-          session,
+          tx,
           cleanLegacySystemRoot: hasLegacySystemRootRefs
         });
       }

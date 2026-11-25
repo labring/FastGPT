@@ -1,3 +1,5 @@
+import type { DatasetPermissionLockDTO } from '@fastgpt/dal/db/repos/dataset/repo.type';
+import type { DatasetCollectionTreeNodeDTO } from '@fastgpt/dal/db/repos/datasetCollection/repo.type';
 import { runInTransaction } from '@fastgpt/dal/db/transaction';
 import type { DbSession } from '@fastgpt/dal/db/types';
 import { datasetCollectionRepo } from '../../collection/repository/datasetCollectionRepo';
@@ -50,12 +52,63 @@ export const isSameCollaboratorSet = (a: CollaboratorItemType[], b: Collaborator
  * 调用方已在事务内时传入 `tx` 复用同一事务；缺省时函数自建事务。
  */
 export type ApplyCollectionPermissionStatesDeps = {
-  bumpCollectionPermissionVersion?: typeof datasetRepo.bumpCollectionPermissionVersion;
-  replaceResources?: typeof resourcePermissionRepo.replaceResources;
-  markCollectionsIndependent?: typeof datasetCollectionRepo.markIndependent;
-  findCollectionDatasetId?: typeof datasetCollectionRepo.findDatasetIdById;
-  findDirectChildren?: typeof datasetCollectionRepo.findDirectChildren;
-  syncTreePermissions?: typeof syncResourceTreePermissions;
+  bumpCollectionPermissionVersion?: (params: {
+    datasetId: string;
+    teamId: string;
+    tx?: DbSession;
+  }) => Promise<DatasetPermissionLockDTO | null>;
+  replaceResources?: (params: {
+    teamId: string;
+    resourceType: PerResourceTypeEnum;
+    resources: Array<{
+      resourceId: string;
+      collaborators: CollaboratorItemType[];
+    }>;
+    tx?: DbSession;
+  }) => Promise<void>;
+  markCollectionsIndependent?: (params: {
+    teamId: string;
+    datasetId: string;
+    collectionIds: string[];
+    tx?: DbSession;
+  }) => Promise<void>;
+  findCollectionDatasetId?: (params: {
+    teamId: string;
+    collectionId: string;
+    tx?: DbSession;
+  }) => Promise<string | undefined>;
+  findDirectChildren?: (params: {
+    teamId: string;
+    datasetId?: string;
+    parentIds: string[];
+    tx?: DbSession;
+  }) => Promise<DatasetCollectionTreeNodeDTO[]>;
+  syncTreePermissions?: (params: {
+    resource: {
+      _id: string;
+      type: DatasetCollectionTypeEnum;
+      teamId: string;
+      datasetId?: string;
+      parentId?: string | null;
+      inheritPermission?: boolean;
+    };
+    resourceType: PerResourceTypeEnum;
+    findCollectionDatasetId?: (params: {
+      teamId: string;
+      collectionId: string;
+      tx?: DbSession;
+    }) => Promise<string | undefined>;
+    findDirectChildren?: (params: {
+      teamId: string;
+      datasetId?: string;
+      parentIds: string[];
+      tx?: DbSession;
+    }) => Promise<DatasetCollectionTreeNodeDTO[]>;
+    oldParentCollaborators: CollaboratorItemType[];
+    newParentCollaborators: CollaboratorItemType[];
+    stopResourceIds?: ReadonlySet<string>;
+    tx?: DbSession;
+  }) => Promise<void>;
 };
 
 export const applyCollectionPermissionStates = async ({

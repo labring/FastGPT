@@ -15,10 +15,10 @@ import { runInTransaction } from '@fastgpt/dal/db/transaction';
 import type { DbSession } from '@fastgpt/dal/db/types';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
-import { MongoDataset } from '../schema';
 import { MongoDatasetCollection } from '../collection/schema';
 import { datasetRepo } from '../repository/datasetRepo';
 import { datasetCollectionRepo } from '../collection/repository/datasetCollectionRepo';
+import { resourcePermissionRepo } from '../../../support/permission/repository/resourcePermissionRepo';
 import { getApiDatasetRequest } from './index';
 import {
   buildApiFileRecords,
@@ -49,7 +49,6 @@ import { isPermissionSyncDataset } from '@fastgpt/global/core/dataset/apiDataset
 import { enqueueDatasetPermissionSync } from '../datasetPermissionSync';
 import type { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { MongoResourcePermission } from '../../../support/permission/schema';
 
 const logger = getLogger(LogCategories.MODULE.DATASET);
 
@@ -71,32 +70,26 @@ export type CleanDatasetLegacySystemRootResult = {
  */
 export const cleanDatasetLegacySystemRootInSession = async ({
   datasetId,
-  session,
+  tx,
   backfillSyncAll = false
 }: {
-  datasetId: string | Types.ObjectId;
-  session?: ClientSession;
+  datasetId: string;
+  tx?: DbSession;
   backfillSyncAll?: boolean;
 }): Promise<CleanDatasetLegacySystemRootResult> => {
-  const datasetObjectId = typeof datasetId === 'string' ? new Types.ObjectId(datasetId) : datasetId;
-
   const [sentinels, dataset] = await Promise.all([
-    MongoDatasetCollection.find(
-      {
-        datasetId: datasetObjectId,
-        apiFileId: LEGACY_SYSTEM_ROOT_API_FILE_ID
-      },
-      '_id teamId datasetId inheritPermission'
-    )
-      .lean()
-      .session(session ?? null),
-    MongoDataset.findById(datasetObjectId, '_id teamId collectionPermissionEnabled')
-      .lean()
-      .session(session ?? null)
+    datasetCollectionRepo.findLegacySystemRootSentinels({
+      datasetId,
+      apiFileId: LEGACY_SYSTEM_ROOT_API_FILE_ID,
+      tx
+    }),
+    datasetRepo.findLegacySystemRootMetaById({
+      datasetId,
+      tx
+    })
   ]);
 
   const sentinelIds = sentinels.map((s) => s._id);
-  const sentinelIdStrings = sentinelIds.map(String);
   let reparented = 0;
 
   if (sentinelIds.length > 0) {
@@ -105,61 +98,39 @@ export const cleanDatasetLegacySystemRootInSession = async ({
       .map((s) => s._id);
 
     // 启用集合级权限且哨兵自身是独立权限时，保留子节点当前物化快照而不自动改继承 Dataset ACL
-    if (dataset?.collectionPermissionEnabled === true && independentSentinelIds.length > 0) {
-      const res = await MongoDatasetCollection.updateMany(
-        {
-          datasetId: datasetObjectId,
-          parentId: { $in: independentSentinelIds },
-          inheritPermission: { $ne: false }
-        },
-        { $set: { parentId: null, inheritPermission: false } },
-        { session }
-      );
-      reparented += res.modifiedCount;
-    }
-
-    const restRes = await MongoDatasetCollection.updateMany(
-      {
-        datasetId: datasetObjectId,
-        parentId: { $in: sentinelIds }
-      },
-      { $set: { parentId: null } },
-      { session }
-    );
-    reparented += restRes.modifiedCount;
+    reparented = await datasetCollectionRepo.reparentLegacySystemRootChildren({
+      datasetId,
+      sentinelIds,
+      independentSentinelIds,
+      preserveIndependentSnapshot: dataset?.collectionPermissionEnabled === true,
+      tx
+    });
 
     const teamIds = Array.from(
       new Set(
-        [...sentinels.map((s) => String(s.teamId)), ...(dataset ? [String(dataset.teamId)] : [])]
-          .filter(Boolean)
-          .map((id) => new Types.ObjectId(id))
+        [...sentinels.map((s) => s.teamId), ...(dataset ? [dataset.teamId] : [])].filter(Boolean)
       )
     );
 
-    await MongoResourcePermission.deleteMany(
-      {
-        resourceType: PerResourceTypeEnum.collection,
-        ...(teamIds.length > 0 ? { teamId: { $in: teamIds } } : {}),
-        resourceId: { $in: sentinelIdStrings }
-      },
-      { session }
-    );
+    await resourcePermissionRepo.deleteByResourceIdsForTeams({
+      teamIds,
+      resourceType: PerResourceTypeEnum.collection,
+      resourceIds: sentinelIds,
+      tx
+    });
 
     if (backfillSyncAll && dataset) {
-      await MongoDataset.updateOne({ _id: dataset._id }, { $set: { syncAll: true } }, { session });
+      await datasetRepo.markSyncAllEnabled({ datasetId: dataset._id, tx });
     }
 
-    await MongoDatasetCollection.deleteMany({ _id: { $in: sentinelIds } }, { session });
+    await datasetCollectionRepo.deleteByIds({ collectionIds: sentinelIds, tx });
   }
 
-  await MongoDatasetCollection.updateMany(
-    {
-      datasetId: datasetObjectId,
-      apiFileParentId: LEGACY_SYSTEM_ROOT_API_FILE_ID
-    },
-    { $unset: { apiFileParentId: '' } },
-    { session }
-  );
+  await datasetCollectionRepo.unsetLegacySystemRootParentRef({
+    datasetId,
+    apiFileParentId: LEGACY_SYSTEM_ROOT_API_FILE_ID,
+    tx
+  });
 
   return {
     sentinels: sentinelIds.length,
@@ -169,24 +140,20 @@ export const cleanDatasetLegacySystemRootInSession = async ({
 
 /**
  * 递增 API 知识库的同步范围版本，用于在事务内把范围变更与 Pro 自动建档串行化到同一 Dataset 文档。
- * 新调用方传 `tx: DbSession`，存量 `mongoSessionRun` 路由通过 `session` 桥接。
  */
 export const bumpApiDatasetSyncScopeVersionInSession = async ({
   teamId,
   datasetId,
-  tx,
-  session
+  tx
 }: {
-  teamId: string | Types.ObjectId;
-  datasetId: string | Types.ObjectId;
+  teamId: string;
+  datasetId: string;
   tx?: DbSession;
-  session?: ClientSession;
 }) => {
   await datasetRepo.updateSyncScope({
     teamId,
     datasetId,
-    tx,
-    session
+    tx
   });
 };
 
@@ -200,14 +167,12 @@ export const disableApiDatasetSyncAllInSession = async ({
   teamId,
   datasetId,
   tx,
-  session,
   updateDataset = true,
   cleanLegacySystemRoot = true
 }: {
-  teamId: string | Types.ObjectId;
-  datasetId: string | Types.ObjectId;
+  teamId: string;
+  datasetId: string;
   tx?: DbSession;
-  session?: ClientSession;
   updateDataset?: boolean;
   cleanLegacySystemRoot?: boolean;
 }) => {
@@ -215,13 +180,12 @@ export const disableApiDatasetSyncAllInSession = async ({
     teamId,
     datasetId,
     ...(updateDataset ? { syncAll: false } : {}),
-    tx,
-    session
+    tx
   });
   if (cleanLegacySystemRoot) {
     await cleanDatasetLegacySystemRootInSession({
       datasetId,
-      session,
+      tx,
       backfillSyncAll: false
     });
   }
@@ -237,33 +201,31 @@ export const applyApiDatasetSyncAll = async ({
   teamId,
   datasetId,
   tx,
-  session,
   updateDataset = true
 }: {
   teamId: string;
-  datasetId: string | Types.ObjectId;
+  datasetId: string;
   tx?: DbSession;
-  session?: ClientSession;
   updateDataset?: boolean;
 }) => {
-  const apply = async (scope: { tx?: DbSession; session?: ClientSession }) => {
+  const apply = async (writeTx: DbSession) => {
     await datasetRepo.updateSyncScope({
       teamId,
       datasetId,
       ...(updateDataset ? { syncAll: true } : {}),
-      ...scope
+      tx: writeTx
     });
     await datasetCollectionRepo.reEnableAllPausedApiFolders({
       teamId,
       datasetId,
-      ...scope
+      tx: writeTx
     });
   };
 
-  if (tx || session) {
-    await apply({ tx, session });
+  if (tx) {
+    await apply(tx);
   } else {
-    await runInTransaction((writeTx) => apply({ tx: writeTx }));
+    await runInTransaction(apply);
   }
 };
 
@@ -858,18 +820,18 @@ export const createApiDatasetCollection = async ({
   if (shouldApplyDatasetSyncAll && failedCount === 0) {
     await applyApiDatasetSyncAll({
       teamId,
-      datasetId: dataset._id
+      datasetId: String(dataset._id)
     });
   } else if (reEnableSyncFolderIds.length > 0) {
     await runInTransaction(async (writeTx) => {
       await datasetRepo.updateSyncScope({
         teamId,
-        datasetId: dataset._id,
+        datasetId: String(dataset._id),
         tx: writeTx
       });
       await datasetCollectionRepo.reEnableSyncFolders({
         teamId,
-        datasetId: dataset._id,
+        datasetId: String(dataset._id),
         folderIds: reEnableSyncFolderIds,
         tx: writeTx
       });

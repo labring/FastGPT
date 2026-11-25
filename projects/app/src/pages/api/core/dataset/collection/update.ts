@@ -21,7 +21,10 @@ import { type ApiRequestProps } from '@fastgpt/next/type';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ClientSession } from '@fastgpt/service/common/mongo';
 import { type DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import {
+  bridgeClientSessionToDbSession,
+  mongoSessionRun
+} from '@fastgpt/service/common/mongo/sessionRun';
 import { addAuditLogs, type AuditLogInput } from '@fastgpt/service/support/user/audit/util';
 import { buildCollectionAuditResource } from '@fastgpt/global/support/user/audit/type';
 import { diffCollectionTags } from '@fastgpt/service/core/dataset/audit/utils';
@@ -264,14 +267,14 @@ async function handler(req: ApiRequestProps) {
     if (syncChildren === false) {
       await disableApiDatasetSyncAllInSession({
         teamId: resourceTeamId,
-        datasetId: collection.datasetId,
-        session
+        datasetId: String(collection.datasetId),
+        tx: bridgeClientSessionToDbSession(session)
       });
     } else if (syncChildren === true) {
       await bumpApiDatasetSyncScopeVersionInSession({
         teamId: resourceTeamId,
-        datasetId: collection.datasetId,
-        session
+        datasetId: String(collection.datasetId),
+        tx: bridgeClientSessionToDbSession(session)
       });
     }
 

@@ -10,7 +10,10 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/api';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/next/type';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import {
+  bridgeClientSessionToDbSession,
+  mongoSessionRun
+} from '@fastgpt/service/common/mongo/sessionRun';
 import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { delDatasetRelevantData } from '@fastgpt/service/core/dataset/controller';
 import {
@@ -350,7 +353,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       await applyApiDatasetSyncAll({
         teamId: datasetTeamId,
         datasetId: id,
-        session,
+        tx: bridgeClientSessionToDbSession(session),
         updateDataset: false
       });
     } else if (syncAll === false) {
@@ -358,7 +361,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       await disableApiDatasetSyncAllInSession({
         teamId: datasetTeamId,
         datasetId: id,
-        session,
+        tx: bridgeClientSessionToDbSession(session),
         updateDataset: false
       });
     }

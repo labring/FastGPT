@@ -618,6 +618,33 @@ export const resourcePermissionRepo = {
       withSession(session)
     ),
 
+  /** 按团队集合（可选）与资源 ID 批量清理 ACL，支持显式 `tx: DbSession`。 */
+  deleteByResourceIdsForTeams: async ({
+    teamIds,
+    resourceType,
+    resourceIds,
+    tx
+  }: {
+    teamIds?: string[];
+    resourceType: PerResourceTypeEnum;
+    resourceIds: string[];
+    tx?: DbSession;
+  }): Promise<void> => {
+    if (resourceIds.length === 0) return;
+
+    const mongoSession = unwrapMongoSession(tx);
+    await MongoResourcePermission.deleteMany(
+      {
+        resourceType,
+        ...(teamIds && teamIds.length > 0
+          ? { teamId: { $in: teamIds.map((id) => new Types.ObjectId(id)) } }
+          : {}),
+        resourceId: { $in: resourceIds }
+      },
+      withSession(mongoSession)
+    );
+  },
+
   /** 资源本体删除后的全团队清理；仅用于全局唯一资源 ID，不能用于普通团队权限操作。 */
   deleteByResourceIdsAcrossTeams: ({
     resourceType,
