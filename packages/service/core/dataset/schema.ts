@@ -164,6 +164,13 @@ const DatasetSchema = new Schema({
     type: Number,
     default: 0
   },
+  // 内部事务版本：同步范围变更（syncAll / syncChildren / 删除停同步）与 Pro 自动建档写同一 dataset，
+  // 借助 Mongo 写冲突串行化，避免快照隔离下暂停提交后在途建档仍按旧范围写入。
+  // 不参与接口合约或索引；旧记录由首次 $inc 自动初始化，无需全量迁移。
+  syncScopeVersion: {
+    type: Number,
+    default: 0
+  },
   // 整体可选；计数不持久化。索引建成并通过 PG 目录核验后才能置为 ready。
   vectorData: {
     type: new Schema(

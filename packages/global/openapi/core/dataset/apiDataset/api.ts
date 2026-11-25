@@ -130,6 +130,10 @@ export const ApiDatasetSyncStateCollectionItemSchema = z.object({
     example: 'doc-123',
     description: '对应的真实远端节点 ID'
   }),
+  name: z.string().optional().meta({
+    example: '产品文档',
+    description: '本地集合名称（用于构建祖先面包屑路径）'
+  }),
   type: z.enum(DatasetCollectionTypeEnum).meta({
     example: DatasetCollectionTypeEnum.folder,
     description: '本地集合类型'

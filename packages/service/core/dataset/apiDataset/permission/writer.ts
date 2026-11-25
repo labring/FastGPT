@@ -1,4 +1,3 @@
-import { unwrapMongoSession } from '@fastgpt/dal/db/mongo/base';
 import { runInTransaction } from '@fastgpt/dal/db/transaction';
 import type { DbSession } from '@fastgpt/dal/db/types';
 import {
@@ -113,7 +112,7 @@ export const applyCollectionPermissionStates = async ({
         resourceId: state.collectionId,
         collaborators: state.collaborators
       })),
-      session: unwrapMongoSession(writeTx)
+      tx: writeTx
     });
 
     await markDatasetCollectionsIndependent({

@@ -126,7 +126,7 @@ describe('applyCollectionPermissionStates', () => {
         { resourceId: folder.collectionId, collaborators: folder.collaborators },
         { resourceId: file.collectionId, collaborators: file.collaborators }
       ],
-      session: 'mongo:tx-1'
+      tx: fakeTx
     });
     expect(markDatasetCollectionsIndependent).toHaveBeenCalledWith({
       teamId,
@@ -169,9 +169,7 @@ describe('applyCollectionPermissionStates', () => {
       teamId,
       tx: outerTx
     });
-    expect(replaceResources).toHaveBeenCalledWith(
-      expect.objectContaining({ session: 'mongo:outer-tx' })
-    );
+    expect(replaceResources).toHaveBeenCalledWith(expect.objectContaining({ tx: outerTx }));
     expect(markDatasetCollectionsIndependent).toHaveBeenCalledWith(
       expect.objectContaining({ tx: outerTx })
     );

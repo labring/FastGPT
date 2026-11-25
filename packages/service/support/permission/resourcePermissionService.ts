@@ -1,3 +1,5 @@
+import { unwrapMongoSession } from '@fastgpt/dal/db/mongo/base';
+import type { DbSession } from '@fastgpt/dal/db/types';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { OwnerRoleVal, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import type { MongoDeleteResult } from '../../common/mongo';
@@ -189,7 +191,8 @@ export const syncResourceTreePermissions = async ({
   oldParentCollaborators,
   newParentCollaborators,
   stopResourceIds,
-  session
+  session: rawSession,
+  tx
 }: {
   resource: SyncChildrenPermissionResourceType;
   resourceModel: ResourceModel;
@@ -198,8 +201,13 @@ export const syncResourceTreePermissions = async ({
   newParentCollaborators: CollaboratorItemType[];
   /** 停在这些节点之前：它们会由调用方使用各自的新快照单独同步。 */
   stopResourceIds?: Set<string>;
-  session: ClientSession;
+  session?: ClientSession;
+  tx?: DbSession;
 }) => {
+  const session = rawSession ?? unwrapMongoSession(tx);
+  if (tx && !session) {
+    throw new Error('Mongo transaction session is required for resource permission tree sync');
+  }
   const oldInheritedCollaborators = toInheritedCollaborators(oldParentCollaborators);
   const newInheritedCollaborators = toInheritedCollaborators(newParentCollaborators);
   const parentCollaboratorsById = new Map(
@@ -251,7 +259,7 @@ export const syncResourceTreePermissions = async ({
         await resourceModel
           .findOne({ _id: resource._id, teamId: resource.teamId }, 'datasetId')
           .lean<{ datasetId?: string } | null>()
-          .session(session)
+          .session(session ?? null)
       )?.datasetId;
     if (!datasetId) throw new Error('Collection dataset not found');
     return { datasetId };
@@ -269,7 +277,7 @@ export const syncResourceTreePermissions = async ({
         '_id parentId inheritPermission'
       )
       .lean<SyncChildrenPermissionResourceType[]>()
-      .session(session);
+      .session(session ?? null);
     // 被 stop 的节点不加入下一层 frontier，因此其整个分支都交由调用方的独立同步计划处理。
     const inheritingChildren = children.filter(
       (child) =>

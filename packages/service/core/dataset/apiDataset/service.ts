@@ -164,9 +164,29 @@ export const cleanDatasetLegacySystemRootInSession = async ({
 };
 
 /**
+ * 递增 API 知识库的同步范围版本，用于在 Mongo 事务内把范围变更与 Pro 自动建档串行化到同一 Dataset 文档。
+ */
+export const bumpApiDatasetSyncScopeVersionInSession = async ({
+  teamId,
+  datasetId,
+  session
+}: {
+  teamId: string | Types.ObjectId;
+  datasetId: string | Types.ObjectId;
+  session: ClientSession;
+}) => {
+  await MongoDataset.updateOne(
+    { _id: datasetId, teamId },
+    { $inc: { syncScopeVersion: 1 } },
+    { session }
+  );
+};
+
+/**
  * 在同一事务内关闭 API 知识库整库全量同步，并同步拆除存量 SYSTEM_ROOT 哨兵（保留存活子节点与独立权限快照）。
  * 统一供 dataset/update（关闭 syncAll）、collection/update（暂停目录）与 collection/delete（删除 API 集合）复用，
  * 避免哨兵残留导致 syncState/detail/Pro 继续将其判定为 syncAll = true。
+ * 无论 syncAll 原值是否为 true，都递增 syncScopeVersion 以在同一 Dataset 文档上与在途自动建档串行化。
  */
 export const disableApiDatasetSyncAllInSession = async ({
   teamId,
@@ -181,13 +201,14 @@ export const disableApiDatasetSyncAllInSession = async ({
   updateDataset?: boolean;
   cleanLegacySystemRoot?: boolean;
 }) => {
-  if (updateDataset) {
-    await MongoDataset.updateOne(
-      { _id: datasetId, teamId, syncAll: true },
-      { $set: { syncAll: false } },
-      { session }
-    );
-  }
+  await MongoDataset.updateOne(
+    { _id: datasetId, teamId },
+    {
+      ...(updateDataset ? { $set: { syncAll: false } } : {}),
+      $inc: { syncScopeVersion: 1 }
+    },
+    { session }
+  );
   if (cleanLegacySystemRoot) {
     await cleanDatasetLegacySystemRootInSession({
       datasetId,
@@ -199,7 +220,7 @@ export const disableApiDatasetSyncAllInSession = async ({
 
 /**
  * 在同一事务内原子开启 API 知识库整库全量同步：
- * 1. 置 Dataset.syncAll = true（当调用方已在同一事务中更新 Dataset 时可通过 updateDataset=false 跳过）；
+ * 1. 置 Dataset.syncAll = true（当调用方已在同一事务中更新 Dataset 时可通过 updateDataset=false 跳过）并递增 syncScopeVersion；
  * 2. 恢复本知识库内全部已暂停（syncChildren: false）的 API 目录，保证整库同步与局部目录状态一致。
  * 调用方必须先完成知识库 Manage 权限校验。
  */
@@ -215,13 +236,14 @@ export const applyApiDatasetSyncAll = async ({
   updateDataset?: boolean;
 }) => {
   const apply = async (tx: ClientSession) => {
-    if (updateDataset) {
-      await MongoDataset.updateOne(
-        { _id: datasetId, teamId },
-        { $set: { syncAll: true } },
-        { session: tx }
-      );
-    }
+    await MongoDataset.updateOne(
+      { _id: datasetId, teamId },
+      {
+        ...(updateDataset ? { $set: { syncAll: true } } : {}),
+        $inc: { syncScopeVersion: 1 }
+      },
+      { session: tx }
+    );
     await MongoDatasetCollection.updateMany(
       {
         teamId,

@@ -83,7 +83,7 @@ async function handler(
       datasetId: dataset._id,
       apiFileId: { $exists: true, $ne: null }
     },
-    '_id apiFileId apiFileParentId parentId type syncChildren metadata'
+    '_id name apiFileId apiFileParentId parentId type syncChildren metadata'
   ).lean();
 
   const legacySentinelIdSet = new Set(
@@ -118,6 +118,7 @@ async function handler(
           collectionId: idStr,
           apiFileId: col.apiFileId,
           sourceId,
+          name: col.name,
           type: col.type,
           syncChildren: isCollectionSyncChildrenEnabled(col),
           parentId

@@ -14,9 +14,14 @@ import FolderPath from '@/components/common/folder/Path';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { type APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useMount } from 'ahooks';
+import {
+  buildApiDatasetSyncIndex,
+  buildEnteredFolderPaths,
+  getApiDatasetItemState,
+  resolveApiFileAncestorPath
+} from './apiDatasetUtils';
 
 const SYNC_ALL_SOURCE_ID = '__SYNC_ALL__';
 
@@ -90,76 +95,31 @@ const CustomAPIFileInput = () => {
     }
   );
 
-  const {
-    serverSyncAll,
-    existingFileIds,
-    syncingFolderIds,
-    pausedFolderIds,
-    ancestorChainBySourceId
-  } = useMemo(() => {
-    const fileIds = new Set<string>();
-    const activeFolders = new Set<string>();
-    const pausedFolders = new Set<string>();
-    const colById = new Map<string, NonNullable<typeof syncState>['collections'][number]>();
-    const folderColBySourceId = new Map<
-      string,
-      NonNullable<typeof syncState>['collections'][number]
-    >();
-
-    for (const col of syncState?.collections ?? []) {
-      colById.set(col.collectionId, col);
-      if (col.type === DatasetCollectionTypeEnum.folder) {
-        folderColBySourceId.set(col.sourceId, col);
-        if (col.syncChildren === false) {
-          pausedFolders.add(col.sourceId);
-        } else {
-          activeFolders.add(col.sourceId);
-        }
-      } else {
-        fileIds.add(col.sourceId);
-      }
-    }
-
-    const chainMap = new Map<string, string[]>();
-    for (const [sourceId, folderCol] of folderColBySourceId) {
-      const chain: string[] = [];
-      const seen = new Set<string>();
-      let curr: typeof folderCol | undefined = folderCol;
-      while (curr && !seen.has(curr.collectionId)) {
-        seen.add(curr.collectionId);
-        chain.unshift(curr.sourceId);
-        curr = curr.parentId ? colById.get(curr.parentId) : undefined;
-      }
-      chainMap.set(sourceId, chain);
-    }
-
-    return {
-      serverSyncAll: Boolean(syncState?.syncAll),
-      existingFileIds: fileIds,
-      syncingFolderIds: activeFolders,
-      pausedFolderIds: pausedFolders,
-      ancestorChainBySourceId: chainMap
-    };
-  }, [syncState]);
+  const syncIndex = useMemo(() => buildApiDatasetSyncIndex(syncState), [syncState]);
+  const { serverSyncAll, existingFileIds, syncingFolderIds, ancestorPathBySourceId } = syncIndex;
 
   const canSelectSyncAll = Boolean(datasetDetail.permission?.hasManagePer);
-  const currentAncestorIds = useMemo(
-    () => paths.map((item) => item.parentId).filter((id): id is string => Boolean(id)),
-    [paths]
+
+  /** 解析指定条目的可校验祖先路径；若递归搜索返回未知深层目录，返回 null 禁止盲挂根目录。 */
+  const resolveItemAncestorPath = useCallback(
+    (item: APIFileItemType): ParentTreePathItemType[] | null =>
+      resolveApiFileAncestorPath({
+        item,
+        currentParentId: parent?.parentId || '',
+        currentPaths: paths,
+        searchKey,
+        ancestorPathBySourceId
+      }),
+    [ancestorPathBySourceId, parent?.parentId, paths, searchKey]
   );
 
-  /** 解析指定条目的可校验祖先链；若递归搜索返回未知深层目录，返回 null 禁止盲挂根目录。 */
   const resolveItemAncestorIds = useCallback(
     (item: APIFileItemType): string[] | null => {
-      const currentParentId = parent?.parentId || '';
-      const itemParentId = item.parentId || '';
-      if (!searchKey.trim() || !itemParentId || itemParentId === currentParentId) {
-        return currentAncestorIds;
-      }
-      const knownChain = ancestorChainBySourceId.get(itemParentId);
-      return knownChain ?? null;
+      const ancestorPath = resolveItemAncestorPath(item);
+      if (!ancestorPath) return null;
+      return ancestorPath.map((entry) => entry.parentId).filter((id): id is string => Boolean(id));
     },
-    [ancestorChainBySourceId, currentAncestorIds, parent?.parentId, searchKey]
+    [resolveItemAncestorPath]
   );
 
   // Init selected files
@@ -292,21 +252,23 @@ const CustomAPIFileInput = () => {
             </Flex>
 
             {fileList.map((item) => {
-              const isPausedFolder = item.type === 'folder' && pausedFolderIds.has(item.id);
-              const isExists =
-                serverSyncAll ||
-                (item.type === 'folder'
-                  ? syncingFolderIds.has(item.id)
-                  : existingFileIds.has(item.id));
-              const resolvedAncestorIds = resolveItemAncestorIds(item);
-              const canSelectItem = resolvedAncestorIds !== null;
+              const resolvedAncestorPath = resolveItemAncestorPath(item);
+              const resolvedAncestorIds = resolvedAncestorPath
+                ? resolvedAncestorPath
+                    .map((entry) => entry.parentId)
+                    .filter((id): id is string => Boolean(id))
+                : null;
               const isSelected = selectFiles.some((entry) => entry.file.id === item.id);
-              const isChecked = isExists || isSelected || isSelectAll;
-              const canEnter =
-                Boolean(item.hasChild) && (!isChecked || isPausedFolder) && canSelectItem;
+              const { isExists, canSelectItem, isChecked, canEnter } = getApiDatasetItemState({
+                item,
+                syncIndex,
+                isSelectAll,
+                isSelected,
+                resolvedAncestorPath
+              });
 
               const toggleSelect = () => {
-                if (isExists || !canSelectItem) return;
+                if (isExists || !canSelectItem || !resolvedAncestorIds) return;
                 if (isSelectAll) {
                   setIsSelectAll(false);
                   setSelectFiles(
@@ -346,12 +308,20 @@ const CustomAPIFileInput = () => {
                       return;
                     }
                     if (item.hasChild) {
-                      if (!canEnter) return;
-                      setPaths((state) => [...state, { parentId: item.id, parentName: item.name }]);
-                      return setParent({
+                      if (!canEnter || !resolvedAncestorPath) return;
+                      const nextPaths = buildEnteredFolderPaths({
+                        item,
+                        resolvedAncestorPath
+                      });
+                      setPaths(nextPaths);
+                      setParent({
                         parentId: item.id,
                         parentName: item.name
                       });
+                      if (searchKey) {
+                        setSearchKey('');
+                      }
+                      return;
                     } else {
                       toggleSelect();
                     }

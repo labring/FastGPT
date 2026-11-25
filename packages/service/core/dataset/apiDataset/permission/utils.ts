@@ -70,18 +70,3 @@ export const assertPermissionSyncActive = ({
     throw new PermissionSyncCancelledError('Permission sync lease lost', error);
   }
 };
-
-/**
- * 计算本次操作可用的超时时间：不超过默认上限，也不超过剩余截止时间。
- * 返回 `<= 0` 表示已经过期，调用方应立即中止。
- */
-export const getRemainingTimeoutMs = ({
-  deadlineAt,
-  maxTimeoutMs
-}: {
-  deadlineAt?: number;
-  maxTimeoutMs: number;
-}): number => {
-  if (deadlineAt === undefined) return maxTimeoutMs;
-  return Math.min(maxTimeoutMs, deadlineAt - Date.now());
-};

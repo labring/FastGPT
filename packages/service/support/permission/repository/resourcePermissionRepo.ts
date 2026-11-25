@@ -1,3 +1,5 @@
+import { unwrapMongoSession } from '@fastgpt/dal/db/mongo/base';
+import type { DbSession } from '@fastgpt/dal/db/types';
 import {
   Types,
   type AnyBulkWriteOperation,
@@ -720,13 +722,16 @@ export const resourcePermissionRepo = {
     teamId,
     resourceType,
     resources,
-    session
+    session,
+    tx
   }: ResourcePermissionQuery & {
     resources: ResourcePermissionSnapshot[];
     session?: ClientSession;
+    tx?: DbSession;
   }) => {
     if (resources.length === 0) return;
 
+    const mongoSession = session ?? unwrapMongoSession(tx);
     const snapshots = new Map(
       resources.map((resource) => [String(resource.resourceId), resource.collaborators])
     );
@@ -734,7 +739,7 @@ export const resourcePermissionRepo = {
 
     await MongoResourcePermission.deleteMany(
       { teamId, resourceType, resourceId: { $in: resourceIds } },
-      withSession(session)
+      withSession(mongoSession)
     );
 
     await insertResourcePermissionSnapshots({
@@ -744,7 +749,7 @@ export const resourcePermissionRepo = {
         resourceId,
         collaborators
       })),
-      session
+      session: mongoSession
     });
   },
 

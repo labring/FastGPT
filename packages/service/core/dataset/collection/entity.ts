@@ -79,13 +79,8 @@ export const syncDatasetCollectionTreePermissions = ({
   newParentCollaborators: CollaboratorItemType[];
   stopResourceIds?: Set<string>;
   tx: DbSession;
-}) => {
-  const session = unwrapMongoSession(tx);
-  if (!session) {
-    throw new Error('Mongo transaction session is required for collection permission tree sync');
-  }
-
-  return syncResourceTreePermissions({
+}) =>
+  syncResourceTreePermissions({
     resource: {
       _id: collectionId,
       type: DatasetCollectionTypeEnum.folder,
@@ -98,6 +93,5 @@ export const syncDatasetCollectionTreePermissions = ({
     oldParentCollaborators,
     newParentCollaborators,
     stopResourceIds,
-    session
+    tx
   });
-};

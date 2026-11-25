@@ -168,7 +168,7 @@ describe('createApiDatasetCollection', () => {
     expect(mockListFiles).toHaveBeenCalledWith({ parentId: undefined });
     expect(mockDatasetUpdateOne).toHaveBeenCalledWith(
       { _id: 'dataset-id', teamId: 'team-id' },
-      { $set: { syncAll: true } },
+      { $set: { syncAll: true }, $inc: { syncScopeVersion: 1 } },
       { session: 'session' }
     );
   });
@@ -657,7 +657,7 @@ describe('createApiDatasetCollection', () => {
       );
       expect(mockDatasetUpdateOne).toHaveBeenCalledWith(
         { _id: 'dataset-id', teamId: 'team-id' },
-        { $set: { syncAll: true } },
+        { $set: { syncAll: true }, $inc: { syncScopeVersion: 1 } },
         { session: 'session' }
       );
       expect(mockCollectionUpdateMany).toHaveBeenCalledWith(
@@ -745,7 +745,7 @@ describe('createApiDatasetCollection', () => {
     expect(createdFileParams().map((p: any) => p.apiFileId)).toEqual(['root-file']);
     expect(mockDatasetUpdateOne).toHaveBeenCalledWith(
       { _id: 'dataset-id', teamId: 'team-id' },
-      { $set: { syncAll: true } },
+      { $set: { syncAll: true }, $inc: { syncScopeVersion: 1 } },
       { session: 'session' }
     );
   });
@@ -776,7 +776,7 @@ describe('createApiDatasetCollection', () => {
     );
     expect(mockDatasetUpdateOne).toHaveBeenCalledWith(
       { _id: 'dataset-id', teamId: 'team-id' },
-      { $set: { syncAll: true } },
+      { $set: { syncAll: true }, $inc: { syncScopeVersion: 1 } },
       { session: 'session' }
     );
     expect(mockCollectionUpdateMany).toHaveBeenCalledWith(

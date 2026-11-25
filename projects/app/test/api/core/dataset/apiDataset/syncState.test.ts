@@ -77,6 +77,7 @@ describe('apiDataset syncState', () => {
           collectionId: String(folder._id),
           apiFileId: 'dir-a',
           sourceId: 'dir-a',
+          name: 'folder-a',
           type: DatasetCollectionTypeEnum.folder,
           syncChildren: false,
           parentId: null
@@ -85,6 +86,7 @@ describe('apiDataset syncState', () => {
           collectionId: String(derived._id),
           apiFileId: 'doc-b#dir',
           sourceId: 'doc-b',
+          name: 'doc-b',
           type: DatasetCollectionTypeEnum.folder,
           syncChildren: true,
           parentId: String(folder._id)
@@ -93,6 +95,7 @@ describe('apiDataset syncState', () => {
           collectionId: String(file._id),
           apiFileId: 'doc-b',
           sourceId: 'doc-b',
+          name: 'doc-b',
           type: DatasetCollectionTypeEnum.apiFile,
           syncChildren: true,
           parentId: String(derived._id)
@@ -227,6 +230,7 @@ describe('apiDataset syncState', () => {
         collectionId: String(topFile._id),
         apiFileId: 'doc-1',
         sourceId: 'doc-1',
+        name: 'top-doc',
         type: DatasetCollectionTypeEnum.apiFile,
         syncChildren: true,
         parentId: null
@@ -306,6 +310,7 @@ describe('apiDataset syncState', () => {
         collectionId: String(colSub._id),
         apiFileId: 'col-sub',
         sourceId: 'col-sub',
+        name: 'col-sub',
         type: DatasetCollectionTypeEnum.apiFile,
         syncChildren: true,
         parentId: null
