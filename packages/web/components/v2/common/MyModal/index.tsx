@@ -21,6 +21,7 @@ export type MyModalProps = Omit<ModalContentProps, 'title'> & {
   onClose?: () => void;
   onCloseComplete?: () => void;
   closeOnOverlayClick?: boolean;
+  closeOnEsc?: boolean;
   blockScrollOnMount?: boolean;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   showCloseButton?: boolean;
@@ -55,6 +56,7 @@ const MyModal = ({
   isCentered,
   isLoading,
   closeOnOverlayClick = true,
+  closeOnEsc,
   blockScrollOnMount = false,
   size = 'sm',
   showCloseButton = true,
@@ -84,6 +86,7 @@ const MyModal = ({
       allowPinchZoom
       scrollBehavior={'inside'}
       closeOnOverlayClick={closeOnOverlayClick}
+      closeOnEsc={closeOnEsc}
       returnFocusOnClose={false}
     >
       <ModalOverlay zIndex={props.zIndex} />

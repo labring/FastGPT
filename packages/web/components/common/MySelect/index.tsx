@@ -98,29 +98,30 @@ const SelectButtonContent = React.memo(function SelectButtonContent({
   placeholder
 }: SelectButtonContentProps) {
   return (
-    <Flex alignItems="center" justifyContent="space-between" w="100%" minW={0}>
-      <Flex alignItems="center" flex="1 1 0" minW={0} overflow="hidden">
-        {isSelecting && <MyIcon mr={2} name="common/loading" w="1rem" />}
-        {valueLabel ? (
-          <>{valueLabel}</>
-        ) : (
-          <>
-            {selectItem?.icon && (
-              <Avatar mr={2} src={selectItem.icon as any} w={selectItem.iconSize ?? '1rem'} />
-            )}
-            <Box
-              noOfLines={1}
-              {...(!selectItem
-                ? {
-                    color: 'myGray.500'
-                  }
-                : {})}
-            >
-              {selectItem?.alias || selectItem?.label || placeholder}
-            </Box>
-          </>
-        )}
-      </Flex>
+    <Flex alignItems="center" w="100%" minW={0} overflow="hidden">
+      {isSelecting && <MyIcon mr={2} name="common/loading" w="1rem" />}
+      {valueLabel ? (
+        <>{valueLabel}</>
+      ) : (
+        <>
+          {selectItem?.icon && (
+            <Avatar mr={2} src={selectItem.icon} w={selectItem.iconSize ?? '1rem'} flexShrink={0} />
+          )}
+          <Box
+            flex="1 1 auto"
+            minW={0}
+            isTruncated
+            wordBreak="normal"
+            {...(!selectItem
+              ? {
+                  color: 'myGray.500'
+                }
+              : {})}
+          >
+            {selectItem?.alias || selectItem?.label || placeholder}
+          </Box>
+        </>
+      )}
     </Flex>
   );
 });
